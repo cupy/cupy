@@ -31,7 +31,7 @@ function UploadCache([String]$gcs_dir, [String]$cupy_kernel_cache_file) {
     # Note: --expiry cannot be used as access time is not updated on Windows.
     # TODO: Also clean up ~/.cupy/callback_cache/*.ltoir
     echo "Trimming kernel cache..."
-    RunOrDie python .pfnci\trim_cupy_kernel_cache.py --max-size 4831838208 --rm
+    RunOrDie python .pfnci\trim_cupy_kernel_cache.py --max-size 10737418240 --rm
 
     pushd $Env:USERPROFILE
     # -mx=0 ... no compression
@@ -77,6 +77,7 @@ function Main {
     echo "Setting up test environment"
     RunOrDie python -V
     RunOrDie python -m pip install -U pip setuptools wheel
+    RunOrDie python -m pip install -U google-cloud-storage  # For GCP kernel cache backend
     RunOrDie python -m pip freeze
 
     echo "Building..."
@@ -100,6 +101,7 @@ function Main {
 
     $Env:CUPY_TEST_GPU_LIMIT = $Env:GPU
     $Env:CUPY_DUMP_CUDA_SOURCE_ON_ERROR = "1"
+    $Env:CUPY_NVRTC_USE_PCH = "1"
 
     # Unit test
     if ($test -eq "build") {
@@ -118,10 +120,12 @@ function Main {
     $cache_gcs_dir = "gs://tmp-asia-pfn-public-ci/cupy-ci/cache"
     $cache_pr_gcs_dir = "${cache_gcs_dir}-pr-" + (GetPullRequestNumber)
 
-    DownloadCache "${cache_gcs_dir}" "${cache_archive}"
-    if ($is_pull_request) {
-        DownloadCache "${cache_pr_gcs_dir}" "${cache_archive}"
-    }
+    #DownloadCache "${cache_gcs_dir}" "${cache_archive}"
+    #if ($is_pull_request) {
+    #    DownloadCache "${cache_pr_gcs_dir}" "${cache_archive}"
+    #}
+
+    $Env:CUPY_CI_ENABLE_GCP_KERNEL_CACHE = "1"
 
     if (-Not $is_pull_request) {
         $Env:CUPY_TEST_FULL_COMBINATION = "1"
@@ -139,11 +143,11 @@ function Main {
     $test_retval = RunWithTimeout -timeout 18000 -output ../cupy_test_log.txt -- python -m pytest -rfEX @pytest_opts .
     popd
 
-    if ($is_pull_request) {
-        UploadCache "${cache_pr_gcs_dir}" "${cache_archive}"
-    } else {
-        UploadCache "${cache_gcs_dir}" "${cache_archive}"
-    }
+    #if ($is_pull_request) {
+    #    UploadCache "${cache_pr_gcs_dir}" "${cache_archive}"
+    #} else {
+    #    UploadCache "${cache_gcs_dir}" "${cache_archive}"
+    #}
 
     echo "------------------------------------------------------------------------------------------"
     echo "Last 10 lines from the test output:"

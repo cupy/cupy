@@ -807,6 +807,7 @@ _sum_keep_dtype = create_reduction_func(
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q',
      ('e->e', (None, None, None, 'float')),
+     *bf16_loop(code=(None, None, None, 'float')),
      'f->f', 'd->d', 'F->F', 'D->D'),
     ('in0', 'a + b', 'out0 = type_out0_raw(a)', None), 0)
 
@@ -848,6 +849,7 @@ _prod_keep_dtype = create_reduction_func(
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q',
      ('e->e', (None, None, None, 'float')),
+     *bf16_loop(code=(None, None, None, 'float')),
      'f->f', 'd->d', 'F->F', 'D->D'),
     ('in0', 'a * b', 'out0 = type_out0_raw(a)', None), 1)
 
@@ -863,6 +865,7 @@ _nanprod_keep_dtype = create_reduction_func(
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q',
      ('e->e', (None, None, None, 'float')),
+     *bf16_loop(code=(None, None, None, 'float')),
      'f->f', 'd->d', 'F->F', 'D->D'),
     ('(in0 == in0) ? in0 : type_in0_raw(1)',
      'a * b', 'out0 = type_out0_raw(a)', None), 1)

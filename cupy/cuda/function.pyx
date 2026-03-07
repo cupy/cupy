@@ -157,6 +157,12 @@ cdef class Function:
         cdef size_t gridx = min(
             0x7fffffffUL, (size + block_max_size - 1) // block_max_size)
         cdef size_t blockx = min(block_max_size, size)
+        IF CUPY_HIP_VERSION > 0:
+            # The HSA AQL dispatch packet stores the grid size as total
+            # work-items (gridDimX * blockDimX) in a uint32_t field, so the
+            # product must not overflow.
+            if blockx > 0:
+                gridx = min(gridx, 0xffffffffUL // blockx)
         s = _get_stream(stream)
         _launch(
             self.ptr,

@@ -46,10 +46,11 @@ class TestGraph:
         reason="FFT capture fails threaded (CuPy 14, may be fixable).")
     def test_capture_run_on_same_stream(self, upload):
         s = cupy.cuda.Stream(non_blocking=True)
+        a = cupy.random.random((100,))
+        cupy.cuda.get_current_stream().synchronize()  # ensure `a` is written
 
         for n in range(3):
             func = getattr(self, '_helper{}'.format(n+1))
-            a = cupy.random.random((100,))
 
             with s:
                 s.begin_capture()
@@ -69,10 +70,11 @@ class TestGraph:
     def test_capture_run_on_different_streams(self, upload):
         s1 = cupy.cuda.Stream(non_blocking=True)
         s2 = cupy.cuda.Stream(non_blocking=True)
+        a = cupy.random.random((100,))
+        cupy.cuda.get_current_stream().synchronize()  # ensure `a` is written
 
         for n in range(3):
             func = getattr(self, '_helper{}'.format(n+1))
-            a = cupy.random.random((100,))
 
             with s1:
                 s1.begin_capture()
@@ -104,6 +106,8 @@ class TestGraph:
         # check the graph integrity
         if upload and cuda.runtime.runtimeGetVersion() >= 11010:
             g.upload()
+
+        cupy.cuda.get_current_stream().synchronize()  # ensure `a` is written
         g.launch()
         s.synchronize()
         testing.assert_array_equal(b, 3 * a)
@@ -161,6 +165,8 @@ class TestGraph:
         assert not s2.is_capturing()
         if upload and cuda.runtime.runtimeGetVersion() >= 11010:
             g.upload()
+
+        cupy.cuda.get_current_stream().synchronize()  # ensure `a` is written
         g.launch()
         s1.synchronize()
         testing.assert_array_equal(out2, func(a * 100))
@@ -186,6 +192,8 @@ class TestGraph:
         # check the graph integrity
         if upload and cuda.runtime.runtimeGetVersion() >= 11010:
             g.upload()
+
+        cupy.cuda.get_current_stream().synchronize()  # ensure `a` is written
         g.launch()
         s.synchronize()
         testing.assert_array_equal(b, a + 4)

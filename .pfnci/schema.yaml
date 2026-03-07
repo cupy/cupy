@@ -73,8 +73,8 @@ rocm:
   null:
     full_version: null
     packages: []
-  "7.0":
-    full_version: "7.0.2-complete"
+  "7.1":
+    full_version: "7.1.1-complete"
     packages: []
 
 ###############################################################################
@@ -320,12 +320,6 @@ ml_dtypes:
 mpi4py:
   null:
     spec: null
-  "3":
-    spec: "==3.*"
-    python:
-      - "3.10"
-      - "3.11"
-      - "3.12"
   "4":
     spec: "==4.*"
     python:

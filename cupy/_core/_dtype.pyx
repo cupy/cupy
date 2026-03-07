@@ -45,8 +45,9 @@ cdef bint check_supported_dtype(cnp.dtype dtype, bint error) except -1:
 
     if dtype.type in all_type_chars_b:
         return True  # fast-path, these are always OK
-    elif dtype.type == "V" and (<object>dtype).fields is not None:
-        # Support structured dtypes (not subarray here specifically).
+    elif dtype.type_num == cnp.NPY_VOID and (
+            not cnp.PyDataType_HASSUBARRAY(dtype) and dtype.itemsize != 0):
+        # Support structured dtypes and void (not subarray here specifically).
         # We don't really need to know anything about the dtype, but cannot
         # do references (copying back to CPU would be wrong).
         # Of course... the user may not be able to _do_ anything with it!

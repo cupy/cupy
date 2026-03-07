@@ -1,3 +1,5 @@
+import cython
+
 from cupy._core._carray cimport shape_t
 from cupy._core cimport _kernel
 from cupy._core cimport _optimize_config
@@ -51,9 +53,6 @@ cdef function.Function _create_cub_reduction_function(
         # hiprtc as of ROCm 3.5.0, so we must use hipcc.
         options += ('-I' + _rocm_path + '/include', '-O2')
         backend = 'nvcc'  # this is confusing...
-
-    # We rely on the type traits in cccl to avoid using jitify
-    jitify = False
 
     # TODO(leofang): try splitting the for-loop into full tiles and partial
     # tiles to utilize LoadDirectBlockedVectorized? See, for example,
@@ -235,10 +234,10 @@ __global__ void ${name}(${params}) {
     # values for arch, cachd, prepend_cupy_headers, ... to bypass cdef/cpdef
     # limitation...
     module = compile_with_cache(
-        module_code, options, arch=None, cachd_dir=None,
+        module_code, options, arch=None,
         prepend_cupy_headers=True, backend=backend, translate_cucomplex=False,
         enable_cooperative_groups=False, name_expressions=None,
-        log_stream=None, jitify=jitify)
+        log_stream=None, jitify=False)
     return module.get_function(name)
 
 
@@ -259,7 +258,8 @@ def _SimpleCubReductionKernel_get_cached_function(
 
 
 cdef str _cub_path = _environment.get_cub_path()
-cdef str _nvcc_path = _environment.get_nvcc_path()
+cdef str _nvcc_path = (
+    _environment.get_nvcc_path() if not runtime._is_hip_environment else None)
 cdef str _rocm_path = _environment.get_rocm_path()
 cdef str _hipcc_path = _environment.get_hipcc_path()
 cdef str _cub_header = None
@@ -384,11 +384,13 @@ cdef Py_ssize_t _cub_default_block_size = (
     256 if runtime._is_hip_environment else 512)
 
 
+@cython.cdivision(True)
 cdef (Py_ssize_t, Py_ssize_t) _get_cub_block_specs(  # NOQA
-        Py_ssize_t contiguous_size):
+        Py_ssize_t contiguous_size) noexcept:
     # This is recommended in the CUB internal and should be an
-    # even number
-    items_per_thread = 4
+    # even number.
+    cdef Py_ssize_t block_size, warp_size
+    cdef Py_ssize_t items_per_thread = 4
 
     # Calculate the reduction block dimensions.
     # Ideally, we want each block to handle one segment, so:

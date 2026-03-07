@@ -235,6 +235,13 @@
         "windows",
         "cuda130"
     ],
+    "cupy.win.cuda131": [
+        "@push",
+        "full",
+        "mini",
+        "windows",
+        "cuda131"
+    ],
     "cupy.linux.cuda-rapids": [
         "@push",
         "full",

@@ -59,7 +59,7 @@
   _inherits: "cupy.linux.cuda121"
   tags: ["@push", "full", "multi", "linux", "cuda121"]
   target: "cuda121.multi"
-  mpi4py: "3"
+  mpi4py: "4"
   test: "unit-multi"
 
 # CUDA 12.2 | Linux
@@ -89,7 +89,7 @@
   _inherits: "cupy.linux.cuda122"
   tags: ["@push", "full", "multi", "linux", "cuda122"]
   target: "cuda122.multi"
-  mpi4py: "3"
+  mpi4py: "4"
   test: "unit-multi"
 
 # CUDA 12.3 | Linux
@@ -119,7 +119,7 @@
   _inherits: "cupy.linux.cuda123"
   tags: ["@push", "full", "multi", "linux", "cuda123"]
   target: "cuda123.multi"
-  mpi4py: "3"
+  mpi4py: "4"
   test: "unit-multi"
 
 # CUDA 12.4 | Linux
@@ -149,7 +149,7 @@
   _inherits: "cupy.linux.cuda124"
   tags: ["@push", "full", "multi", "linux", "cuda124"]
   target: "cuda124.multi"
-  mpi4py: "3"
+  mpi4py: "4"
   test: "unit-multi"
 
 # CUDA 12.5 | Linux
@@ -179,7 +179,7 @@
   _inherits: "cupy.linux.cuda125"
   tags: ["@push", "full", "multi", "linux", "cuda125"]
   target: "cuda125.multi"
-  mpi4py: "3"
+  mpi4py: "4"
   test: "unit-multi"
 
 # CUDA 12.6 | Linux
@@ -239,7 +239,7 @@
   _inherits: "cupy.linux.cuda128"
   tags: ["@push", "full", "multi", "linux", "cuda128"]
   target: "cuda128.multi"
-  mpi4py: "3"
+  mpi4py: "4"
   test: "unit-multi"
 
 # CUDA 12.9 | Linux
@@ -269,7 +269,7 @@
   _inherits: "cupy.linux.cuda129"
   tags: ["@push", "full", "mini", "multi", "linux", "cuda129"]
   target: "cuda129.multi"
-  mpi4py: "3"
+  mpi4py: "4"
   test: "unit-multi"
 
 # CUDA 13.0 | Linux
@@ -344,17 +344,17 @@
 # ROCm (Linux)
 ###############################################################################
 
-# ROCm 7.0 | Linux
+# ROCm 7.1 | Linux
 # The lowest ROCm version matrix is intended to cover the lowest supported combination.
 # The latest ROCm version matrix is intended to cover the highest supported combination.
-- project: "cupy.linux.rocm-7-0"
-  _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_main/TEST=rocm-7-0,label=mnj-mi50/"
+- project: "cupy.linux.rocm-7-1"
+  _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_main/TEST=rocm-7-1,label=mnj-mi50/"
   tags: null  # self-hosted
-  target: "rocm-7-0"
+  target: "rocm-7-1"
   system: "linux"
   os: "ubuntu:22.04"
   cuda: null
-  rocm: '7.0'
+  rocm: '7.1'
   nccl: null
   cutensor: null
   cusparselt: null
@@ -542,6 +542,12 @@
   _extern: true
   target: "cuda130"
   tags: ["@push", "full", "mini", "windows", "cuda130"]
+  system: "windows"
+
+- project: "cupy.win.cuda131"
+  _extern: true
+  target: "cuda131"
+  tags: ["@push", "full", "mini", "windows", "cuda131"]
   system: "windows"
 
 - project: "cupy.linux.cuda-rapids"

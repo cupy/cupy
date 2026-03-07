@@ -16,18 +16,29 @@ if not _runtime.is_hip:
 #
 # Note: Do NOT add "nvrtc" here. It is run-time linked instead of dynamically
 # linked, so its loading is further deferred (to inside SoftLink).
-# TODO(leofang): add cusparselt (NVIDIA/cuda-python#1193)
 _submodules = (
     'cublas', 'cusolver', 'cusparse', 'curand', 'nccl', 'cutensor',
+    'cusparselt',
+)
+_submodules_runtime_link = (
+    'nvrtc', 'nvtx'
 )
 
 
 def __getattr__(name):
     if not _runtime.is_hip and name in _submodules:
         try:
-            _pathfinder.load_nvidia_dynamic_lib(name)
+            pathfinder_name = name
+            if name == 'cusparselt':
+                pathfinder_name = 'cusparseLt'
+            _pathfinder.load_nvidia_dynamic_lib(pathfinder_name)
         except _pathfinder.DynamicLibNotFoundError as e:
             if (not (_os.environ.get('READTHEDOCS') == 'True') and
                     not (_os.environ.get('CUPY_CI') is not None)):
                 raise ImportError(str(e)) from e
-    return _importlib.import_module(f'cupy_backends.cuda.libs.{name}')
+
+    if name in (_submodules + _submodules_runtime_link):
+        return _importlib.import_module(f'cupy_backends.cuda.libs.{name}')
+
+    raise AttributeError(
+        f"module {__name__!r} has no attribute {name!r}")
