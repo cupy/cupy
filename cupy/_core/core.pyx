@@ -266,11 +266,13 @@ cdef class _ndarray_base:
                         f"contiguous size of {self.size * itemsize} but got "
                         f"{alloc_size}.")
             else:
-                alloc_size = self.size * itemsize
+                alloc_size = right - left  # actual memory extend
         else:
             self._set_contiguous_strides(itemsize, order_char == b'C')
-            alloc_size = self.size * itemsize
+            alloc_size = self.size * itemsize  # contiguous
 
+        # Arrays can e.g. broadcast, so check that all pointer offsets fit and
+        # the size fit int32. (seberg: `* itemsize` may be unnecessary)
         max_diff = max(alloc_size, self.size * itemsize)
         self._index_32_bits = max_diff <= <Py_ssize_t>(1 << 31)
 

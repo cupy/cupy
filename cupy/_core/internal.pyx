@@ -370,7 +370,10 @@ cdef _broadcast_core(list arrays, shape_t& shape):
                 strides[j + nd - a_ndim] = a._strides[j]
 
         # TODO(niboshi): Confirm update_x_contiguity flags
-        arrays[i] = a._view(type(a), shape, strides, True, True, a)
+        a = a._view(type(a), shape, strides, True, True, a)
+        if a.size * a.itemsize > 2**31:
+            a._index_32_bits = False
+        arrays[i] = a
 
 
 @cython.boundscheck(False)
