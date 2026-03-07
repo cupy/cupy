@@ -98,3 +98,14 @@ if int(os.environ.get('CUPY_ENABLE_UMP', 0)) != 0:
         _realloc_ = ctypes.addressof(lib._realloc)
         _free_ = ctypes.addressof(lib._free)
     my_allocator.__enter__()
+
+
+if int(os.environ.get('CUPY_CI_ENABLE_GCP_KERNEL_CACHE', 0)) != 0:
+    from cupy.cuda.compiler import _set_kernel_cache_backend
+    from cupy_tests._gcp_kernel_cache_backend import GCPStorageCacheBackend
+
+    backend = GCPStorageCacheBackend(
+        bucket_name='tmp-asia-pfn-public-ci',
+        prefix='cupy-ci/kernel_cache_objects/'
+    )
+    _set_kernel_cache_backend(backend)
