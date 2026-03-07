@@ -9,6 +9,12 @@ from cupy._core._ufuncs import elementwise_copy
 import cupy._core.core as core
 from cupy import _util
 from cupy.cuda import thrust
+from cupy_backends.cuda.api import runtime as _runtime
+
+# ROCm 7.2+ requires a 64-bit mask type for __shfl_*_sync / __any_sync.
+# ~0ULL sets all bits, covering any wavefront size (32 or 64).
+_full_mask = ('~0ULL'
+              if _runtime.is_hip else '0xffffffff')
 
 from cupy._core cimport _routines_manipulation as _manipulation
 from cupy._core.core cimport compile_with_cache
@@ -387,7 +393,7 @@ def _partition_kernel(dtype):
             // If at least one thread in the warp has found t values that
             // can be selected, we update the first k elements.
     #if __CUDACC_VER_MAJOR__ >= 9
-            if (__any_sync(0xffffffff, x >= t)) {
+            if (__any_sync(${full_mask}, x >= t)) {
     #else
             if (__any(x >= t)) {
     #endif
@@ -419,7 +425,8 @@ def _partition_kernel(dtype):
     }
     }
     ''').substitute(name=name, merge_kernel=merge_kernel, dtype=dtype,
-                    type_headers=type_headers)
+                    type_headers=type_headers,
+                    full_mask=_full_mask)
     module = compile_with_cache(source)
     return module.get_function(name), module.get_function(merge_kernel)
 
@@ -513,7 +520,7 @@ def _argpartition_kernel(dtype):
             // If at least one thread in the warp has found t values that
             // can be selected, we update the first k elements.
     #if __CUDACC_VER_MAJOR__ >= 9
-            if (__any_sync(0xffffffff, x >= t)) {
+            if (__any_sync(${full_mask}, x >= t)) {
     #else
             if (__any(x >= t)) {
     #endif
@@ -546,6 +553,7 @@ def _argpartition_kernel(dtype):
     }
     }
     ''').substitute(name=name, merge_kernel=merge_kernel, dtype=dtype,
-                    type_headers=type_headers)
+                    type_headers=type_headers,
+                    full_mask=_full_mask)
     module = compile_with_cache(source)
     return module.get_function(name), module.get_function(merge_kernel)
