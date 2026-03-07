@@ -14,6 +14,7 @@ from cupy_backends.cuda.api cimport runtime
 
 import cupy as _cupy
 from cupy._core import _dtype
+from cupy._core import _scalar
 from cupy import _util
 from cupy._core import _codeblock
 from cupy._core import _fusion_op
@@ -84,13 +85,13 @@ cdef class FusedKernel:
         self._params = sorted(params, key=lambda x: x.serial_number)
         self._cuda_params_memo = {}
 
-        type_headers = set()
+        type_decls = set()
 
         # Generate the device functions.
         submodule_code = '\n\n'.join(set(itertools.chain.from_iterable([
             op.emit_preamble_codes() for op in op_list]))) + '\n\n'
         submodule_code += '\n\n'.join(itertools.chain.from_iterable([
-            op.emit_submodule_codes(type_headers) for op in op_list]))
+            op.emit_submodule_codes(type_decls) for op in op_list]))
 
         # Generate the function body of a __global__ function.
         codes = []
@@ -104,12 +105,11 @@ cdef class FusedKernel:
         for i, op in enumerate(op_list):
             if i > 0:
                 codes.append('_cg::sync(_grid);')
-            codes.append(op.emit_code(type_headers))
+            codes.append(op.emit_code(type_decls))
 
-        if type_headers:
-            # Insert parameter/type specific headers
-            submodule_code = (
-                "\n".join(sorted(type_headers)) + "\n\n" + submodule_code)
+        # Insert parameter/type specific headers
+        submodule_code = (
+            _scalar.format_type_decls(type_decls) + submodule_code)
 
         self._submodule_code = submodule_code
         self._cuda_body = str(_codeblock.CodeBlock('', codes))
