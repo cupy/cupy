@@ -219,9 +219,9 @@ def _make_aligned_dtype(
         raise ValueError("Reasonable alignments must be >0 and a power of 2.")
 
     if descr.type_num != cnp.NPY_VOID or (<object>descr).fields is None:
-        # Allow this when `alignment=` is passed, we try to add the meatadat
+        # Allow this when `alignment=` is passed, we try to add the metadata
         dtype_info = descr  # unchanged for now
-        final_alignment = descr.alignment
+        final_alignment = _scalar.get_cuda_alignment(descr)
     else:
         names = []
         offsets = []

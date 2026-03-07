@@ -139,6 +139,25 @@ class TestComparison:
         assert numpy.array_equal(res.get(), op(a.get(), b.get()))
 
 
+class TestMakeAlignedDtype:
+    # Note also tested partially in promotion for comparison
+    @pytest.mark.parametrize("dt,itemsize", [
+        # Complex is 8 byte aligned, padded to 16 (CPU would align 4)
+        ("?,c8", 16),
+        ("c8,?", 16),
+        # Subarray is also aligned (via base dtype)
+        ("?,(3,)c8", 32),
+        ("(3,)c8,?", 32),
+        # Nested structure works (first one is padded so full needs 24)
+        (numpy.dtype([("a", "c8,?"), ("b", "?")]), 24),
+        (numpy.dtype([("a", "?"), ("b", "c8,?")]), 24),
+        # Nested void works and doesn't do much:
+        ("?,(4,)V3", 13),  # All char aligned
+    ])
+    def test_make_aligned_dtype(self, dt, itemsize):
+        assert cupy.make_aligned_dtype(dt).itemsize == itemsize
+
+
 class TestFieldAccess:
     @testing.numpy_cupy_array_equal()
     @pytest.mark.parametrize("index", ["f0", "f1"])

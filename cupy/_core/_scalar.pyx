@@ -153,12 +153,14 @@ cdef Py_ssize_t get_cuda_alignment(cnp.dtype dtype) except -1:
         # It is unclear that this would be useful. Effectively, we would find
         # out the right alignment already as part of `get_typename` before we
         # launch the kernel.
-        if (cnp.PyDataType_HASFIELDS(dtype)
-                or cnp.PyDataType_HASSUBARRAY(dtype)):
+        if cnp.PyDataType_HASFIELDS(dtype):
             # Subarray would be obvious, but we don't suppor them yet.
             raise NotImplementedError(
                 f"get_cuda_alignment() only supports unstructured dtypes, "
                 f"got {dtype}")
+        if cnp.PyDataType_HASSUBARRAY(dtype):
+            # Alignment is inherited from the field dtype
+            return get_cuda_alignment(dtype.base)
 
     if _alignment_kernel is None:
         _alignment_kernel = cupy.ElementwiseKernel(
