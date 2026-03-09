@@ -108,4 +108,6 @@ if int(os.environ.get('CUPY_CI_ENABLE_GCP_KERNEL_CACHE', 0)) != 0:
         bucket_name='tmp-asia-pfn-public-ci',
         prefix='cupy-ci/kernel_cache_objects/'
     )
+    print("GCP kernel cache: initializing local cache from GCS...", flush=True)
+    backend.initialize_local_cache()
     _set_kernel_cache_backend(backend)

@@ -15,6 +15,9 @@ Requirements:
 
 from __future__ import annotations
 
+import concurrent.futures
+import os
+import time
 import warnings
 
 _GCP_AVAILABLE = True
@@ -85,6 +88,76 @@ class GCPStorageCacheBackend(DiskKernelCacheBackend):
             return
 
         self._gcp_enabled = True
+
+    def initialize_local_cache(self, *, max_workers: int = 16) -> int:
+        """
+        Pre-populate local disk cache by bulk-downloading all kernel files
+        from GCS.
+
+        Call this once at startup to warm the local cache, so that subsequent
+        kernel lookups during the test run can be served from disk rather than
+        triggering individual GCS network requests.
+
+        Args:
+            max_workers (int): Number of parallel download threads.
+                Defaults to 16.
+
+        Returns:
+            int: Number of new files downloaded from GCS.
+        """
+        if not self._gcp_enabled:
+            return 0
+
+        t0 = time.monotonic()
+        try:
+            blobs = list(self._bucket.list_blobs(prefix=self._prefix))
+        except Exception as e:
+            warnings.warn(
+                f"Failed to list GCS objects for cache initialization: "
+                f"{type(e)}: {e}",
+                RuntimeWarning
+            )
+            return 0
+
+        if not blobs:
+            return 0
+
+        prefix_len = len(self._prefix)
+
+        def _download_if_missing(blob: storage.Blob) -> bool:
+            name = blob.name[prefix_len:]
+            if not name:
+                # Skip the prefix "directory" entry itself.
+                return False
+            local_path = os.path.join(self._cache_dir, name)
+            if os.path.exists(local_path):
+                return False
+            try:
+                data = blob.download_as_bytes()
+                # super().save() prepends a SHA-1 hash; pass the raw cubin
+                # (same format used by GCPStorageCacheBackend.save).
+                # Source is not available for GCS-fetched kernels.
+                super(GCPStorageCacheBackend, self).save(name, data, "")
+                return True
+            except Exception as e:
+                warnings.warn(
+                    f"Failed to download {blob.name}: {type(e)}: {e}",
+                    RuntimeWarning
+                )
+                return False
+
+        with concurrent.futures.ThreadPoolExecutor(
+                max_workers=max_workers) as executor:
+            results = list(executor.map(_download_if_missing, blobs))
+
+        downloaded = sum(1 for r in results if r)
+        elapsed = time.monotonic() - t0
+        print(
+            f"GCP kernel cache: {downloaded} new file(s) downloaded "
+            f"({len(blobs)} total in GCS) in {elapsed:.1f}s.",
+            flush=True,
+        )
+        return downloaded
 
     def load(self, name: str) -> bytes | None:
         """
