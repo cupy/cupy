@@ -88,3 +88,39 @@ class TestDiskKernelCacheBackend:
             # Load should return None due to hash mismatch
             result = backend.load(name)
             assert result is None
+
+    def test_encode_decode_roundtrip(self):
+        """Test that _encode_cubin/_decode_cubin form a correct round-trip."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            backend = DiskKernelCacheBackend(cache_dir=tmpdir)
+            cubin = b'some_kernel_binary'
+            encoded = backend._encode_cubin(cubin)
+            # Encoded form is larger and starts with the ASCII hash
+            assert len(encoded) == _hash_length + len(cubin)
+            assert encoded[_hash_length:] == cubin
+            # Decode recovers the original cubin
+            assert backend._decode_cubin(encoded) == cubin
+
+    def test_decode_cubin_too_short(self):
+        """Test that _decode_cubin returns None for data shorter than hash."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            backend = DiskKernelCacheBackend(cache_dir=tmpdir)
+            assert backend._decode_cubin(b'short') is None
+
+    def test_decode_cubin_bad_hash(self):
+        """Test that _decode_cubin returns None when hash does not match."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            backend = DiskKernelCacheBackend(cache_dir=tmpdir)
+            bad_data = b'0' * _hash_length + b'kernel_data'
+            assert backend._decode_cubin(bad_data) is None
+
+    def test_write_encoded_readable_by_load(self):
+        """Test that _write_encoded writes data that load() can read back."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            backend = DiskKernelCacheBackend(cache_dir=tmpdir)
+            cubin = b'another_kernel_binary'
+            name = 'test.cubin'
+            backend._write_encoded(name, backend._encode_cubin(cubin))
+            assert backend.load(name) == cubin
+
+
