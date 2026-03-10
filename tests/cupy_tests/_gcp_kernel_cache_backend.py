@@ -14,6 +14,8 @@ Requirements:
 """
 
 from __future__ import annotations
+from cupy_backends.cuda.libs import nvrtc as _nvrtc
+from cupy.cuda.compiler import _get_cupy_cache_key
 
 import time
 import warnings
@@ -30,8 +32,6 @@ except ImportError:
     gcp_exceptions = None  # type: ignore
 
 from cupy.cuda._compiler_cache import DiskKernelCacheBackend  # noqa
-from cupy.cuda.compiler import _get_cupy_cache_key
-from cupy_backends.cuda.libs import nvrtc as _nvrtc
 
 
 class GCPStorageCacheBackend(DiskKernelCacheBackend):

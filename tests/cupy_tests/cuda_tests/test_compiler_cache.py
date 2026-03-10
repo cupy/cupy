@@ -122,5 +122,3 @@ class TestDiskKernelCacheBackend:
             name = 'test.cubin'
             backend._write_encoded(name, backend._encode_cubin(cubin))
             assert backend.load(name) == cubin
-
-
