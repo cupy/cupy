@@ -455,7 +455,10 @@ class TestMinimumPhase:
         fc = xp.asarray(10)
         fs = 100
         h = scp.signal.firwin(
-            N, fc, window="hann", pass_zero="lowpass", scale=False, fs=fs
+            N, fc, window="hann", pass_zero="lowpass",
+            scale=False, fs=fs
         )
         h = h.astype(dtype)
-        return scp.signal.minimum_phase(h, method="homomorphic", n_fft=N, half=False)
+        return scp.signal.minimum_phase(
+            h, method="homomorphic", n_fft=N, half=False
+        )
