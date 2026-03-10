@@ -53,6 +53,17 @@ cdef class _ThreadLocal:
         self.set_current_stream(prev_stream)
         assert len(self.current_stream_stack[device_id]) >= 1
 
+    cdef void replace_base_stream(self, stream, int device_id) except*:
+        assert device_id >= 0
+        # should not replace base stream if there are any other streams
+        # pushed onto the stack. e.g. .use() should not be called inside
+        # "with" blocks
+        if (len(self.current_stream_stack[device_id]) > 1):
+            raise RuntimeError(
+                'Calling .use() on a stream while using a stream context'
+                ' manager is no longer supported.')
+        self.current_stream_stack[device_id][0] = stream
+
     cdef set_current_stream(self, stream):
         cdef intptr_t ptr = <intptr_t>stream.ptr
         cdef int device_id = stream.device_id
@@ -259,6 +270,7 @@ class _BaseStream:
         tls = _ThreadLocal.get()
         cdef int device_id = self.device_id
         check_stream_device_match(device_id)
+        tls.replace_base_stream(self, device_id)
         tls.set_current_stream(self)
         return self
 
