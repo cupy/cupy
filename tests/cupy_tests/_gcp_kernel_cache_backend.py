@@ -30,6 +30,7 @@ except ImportError:
     gcp_exceptions = None  # type: ignore
 
 from cupy.cuda._compiler_cache import DiskKernelCacheBackend  # noqa
+from cupy.cuda.compiler import _get_cupy_cache_key
 from cupy_backends.cuda.libs import nvrtc as _nvrtc
 
 
@@ -68,10 +69,14 @@ class GCPStorageCacheBackend(DiskKernelCacheBackend):
 
         self._gcp_enabled = False
         self._prefix = prefix
-        # Narrow the GCS namespace to this pipeline's NVRTC (CUDA) version so
-        # that initialize_local_cache only downloads what this pipeline needs.
+        # Narrow the GCS namespace to this pipeline's cache key and NVRTC
+        # (CUDA) version so that initialize_local_cache only downloads what
+        # this pipeline needs, and so that kernels compiled with different
+        # CuPy builds do not collide or interfere with each other.
         major, minor = _nvrtc.getVersion()
-        self._nvrtc_prefix = f'{self._prefix}CUDA_{major}_{minor}/'
+        self._nvrtc_prefix = (
+            f'{self._prefix}{_get_cupy_cache_key()}/CUDA_{major}_{minor}/'
+        )
         if not _GCP_AVAILABLE:
             warnings.warn(
                 "google-cloud-storage is not installed. "
