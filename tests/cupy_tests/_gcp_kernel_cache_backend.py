@@ -15,21 +15,25 @@ Requirements:
 
 from __future__ import annotations
 
-import concurrent.futures
 import os
+import tempfile
 import time
 import warnings
 
 _GCP_AVAILABLE = True
 try:
     from google.cloud import storage
+    from google.cloud.storage import transfer_manager
     from google.api_core import exceptions as gcp_exceptions
 except ImportError:
     _GCP_AVAILABLE = False
     storage = None  # type: ignore
+    transfer_manager = None  # type: ignore
     gcp_exceptions = None  # type: ignore
 
-from cupy.cuda._compiler_cache import DiskKernelCacheBackend  # noqa
+from cupy.cuda._compiler_cache import (  # noqa
+    DiskKernelCacheBackend, _hash_hexdigest, _hash_length,
+)
 from cupy.cuda.compiler import _get_cupy_cache_key
 from cupy_backends.cuda.libs import nvrtc as _nvrtc
 
@@ -121,56 +125,61 @@ class GCPStorageCacheBackend(DiskKernelCacheBackend):
         t0 = time.perf_counter()
         prefix_len = len(self._nvrtc_prefix)
 
-        def _download_if_missing(blob: storage.Blob) -> bool:
-            name = blob.name[prefix_len:]
-            if not name:
-                # Skip the prefix "directory" entry itself.
-                return False
-            local_path = os.path.join(self._cache_dir, name)
-            if os.path.exists(local_path):
-                return False
-            try:
-                data = blob.download_as_bytes()
-                # super().save() prepends a SHA-1 hash; pass the raw cubin
-                # (same format used by GCPStorageCacheBackend.save).
-                # Source is not available for GCS-fetched kernels.
-                super(GCPStorageCacheBackend, self).save(name, data, "")
-                return True
-            except Exception as e:
-                warnings.warn(
-                    f"Failed to download {blob.name}: {type(e)}: {e}",
-                    RuntimeWarning
-                )
-                return False
-
         try:
-            # list_blobs returns a lazy HTTPIterator; passing it directly to
-            # executor.map lets GCS page fetching and blob downloads interleave:
-            # futures for already-listed blobs are submitted while subsequent
-            # pages are still being fetched from GCS.
+            # list_blobs returns a lazy HTTPIterator; we materialise it here
+            # to separate listing errors from download errors and to build the
+            # filtered list that is passed to download_many_to_path.
             blob_iter = self._bucket.list_blobs(prefix=self._nvrtc_prefix)
-            with concurrent.futures.ThreadPoolExecutor(
-                    max_workers=max_workers) as executor:
-                # list() must be called inside the with-block so that all
-                # futures are submitted and their results collected before the
-                # executor shuts down.
-                results = list(executor.map(_download_if_missing, blob_iter))
+            # blob_names are relative to self._nvrtc_prefix (the prefix is
+            # passed separately to download_many_to_path as blob_name_prefix).
+            missing_blob_names = [
+                blob.name[prefix_len:] for blob in blob_iter
+                if blob.name[prefix_len:]  # skip the prefix "directory" entry
+                and not os.path.exists(
+                    os.path.join(self._cache_dir, blob.name[prefix_len:]))
+            ]
         except Exception as e:
             warnings.warn(
-                f"Failed to list or download GCS objects for cache "
-                f"initialization: {type(e)}: {e}",
+                f"Failed to list GCS objects for cache initialization: "
+                f"{type(e)}: {e}",
                 RuntimeWarning
             )
             return 0
 
-        if not results:
+        if not missing_blob_names:
             return 0
 
-        downloaded = sum(1 for r in results if r)
+        try:
+            # GCS stores hash+cubin (same format as disk), so
+            # download_many_to_path writes files that
+            # DiskKernelCacheBackend.load() can read directly.
+            results = transfer_manager.download_many_to_path(
+                self._bucket,
+                missing_blob_names,
+                destination_directory=self._cache_dir,
+                blob_name_prefix=self._nvrtc_prefix,
+                worker_type=transfer_manager.THREAD,
+                max_workers=max_workers,
+            )
+        except Exception as e:
+            warnings.warn(
+                f"Failed to download GCS objects for cache initialization: "
+                f"{type(e)}: {e}",
+                RuntimeWarning
+            )
+            return 0
+
+        errors = [r for r in results if isinstance(r, Exception)]
+        for e in errors:
+            warnings.warn(
+                f"Failed to download a GCS object: {type(e)}: {e}",
+                RuntimeWarning
+            )
+        downloaded = len(results) - len(errors)
         elapsed = time.perf_counter() - t0
         print(
             f"GCP kernel cache: {downloaded} new file(s) downloaded "
-            f"({len(results)} total in GCS) in {elapsed:.1f}s.",
+            f"({len(missing_blob_names)} attempted) in {elapsed:.1f}s.",
             flush=True,
         )
         return downloaded
@@ -209,11 +218,27 @@ class GCPStorageCacheBackend(DiskKernelCacheBackend):
             )
             return None
 
-        # Persist to local disk for future use
-        # We pass empty string for source as we don't have it
-        super().save(name, data, "")
+        # GCS stores hash+cubin (same as disk format); validate the hash.
+        if len(data) < _hash_length:
+            return None
+        hash_stored = data[:_hash_length]
+        cubin = data[_hash_length:]
+        if hash_stored != _hash_hexdigest(cubin).encode('ascii'):
+            return None
 
-        return data
+        # Persist to disk as-is (already in hash+cubin format) so that
+        # DiskKernelCacheBackend.load() can read it directly next time.
+        path = os.path.join(self._cache_dir, name)
+        try:
+            with tempfile.NamedTemporaryFile(
+                    dir=self._cache_dir, delete=False) as tf:
+                tf.write(data)
+                temp_path = tf.name
+            os.replace(temp_path, path)
+        except Exception:
+            pass  # Failure to cache locally is non-fatal
+
+        return cubin
 
     def save(self, name: str, cubin: bytes, source: str) -> None:
         """
@@ -233,7 +258,12 @@ class GCPStorageCacheBackend(DiskKernelCacheBackend):
             return
         try:
             blob = self._bucket.blob(self._nvrtc_prefix + name)
-            blob.upload_from_string(cubin)
+            # Store hash+cubin in GCS (same as disk format) so that
+            # transfer_manager.download_many_to_path() writes files that
+            # DiskKernelCacheBackend.load() can read directly without
+            # post-processing.
+            cubin_hash = _hash_hexdigest(cubin).encode('ascii')
+            blob.upload_from_string(cubin_hash + cubin)
         except Exception as e:
             warnings.warn(f"Failed to save to GCS: {e}.", RuntimeWarning)
             return None
