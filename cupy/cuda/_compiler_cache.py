@@ -166,23 +166,10 @@ class DiskKernelCacheBackend(KernelCacheBackend):
             cubin (bytes): The compiled kernel binary data.
             source (str): The CUDA source code.
         """
-        data = self._encode_cubin(cubin)
-        path = os.path.join(self._cache_dir, name)
-
-        # Write to a temporary file and atomically replace
-        with tempfile.NamedTemporaryFile(
-                dir=self._cache_dir, delete=False) as tf:
-            tf.write(data)
-            temp_path = tf.name
-
-        try:
-            os.replace(temp_path, path)
-        except PermissionError:
-            # Windows may refuse to replace the file, assume this is a race
-            # and the existing file is OK (but keep using our copy)
-            pass
+        self._write_encoded(name, self._encode_cubin(cubin))
 
         # Save .cu source file along with .cubin if requested
         if self._save_cuda_source:
+            path = os.path.join(self._cache_dir, name)
             with open(path + '.cu', 'w') as f:
                 f.write(source)
