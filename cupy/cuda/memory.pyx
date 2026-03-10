@@ -35,7 +35,7 @@ cdef extern from "Python.h":
 
 # cudaMalloc() is aligned to at least 512 bytes
 # cf. https://gist.github.com/sonots/41daaa6432b1c8b27ef782cd14064269
-DEF ALLOCATION_UNIT_SIZE = 512
+cdef const int ALLOCATION_UNIT_SIZE = 512
 # for test
 _allocation_unit_size = ALLOCATION_UNIT_SIZE
 
@@ -1009,12 +1009,15 @@ cdef class PooledMemory(BaseMemory):
 cdef size_t _index_compaction_threshold = 512
 
 
+@cython.cdivision(True)
 cpdef inline size_t _round_size(size_t size) noexcept:
     """Rounds up the memory size to fit memory alignment of cudaMalloc."""
     # avoid 0 div checking
     size = (size + ALLOCATION_UNIT_SIZE - 1) // ALLOCATION_UNIT_SIZE
     return size * ALLOCATION_UNIT_SIZE
 
+
+@cython.cdivision(True)
 cpdef size_t _bin_index_from_size(size_t size) noexcept:
     """Returns appropriate bins index from the memory size."""
     # avoid 0 div checking
