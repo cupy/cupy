@@ -447,3 +447,15 @@ class TestMinimumPhase:
         if xp == cupy:
             h_linear = cupy.asarray(h_linear)
         return scp.signal.minimum_phase(h_linear, method="hilbert")
+
+    @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-6)
+    @pytest.mark.parametrize("N", (963, 964))
+    @pytest.mark.parametrize("dtype", ("float32", "float64"))
+    def test_nyquist(self, N, dtype, xp, scp):
+        fc = xp.asarray(10)
+        fs = 100
+        h = scp.signal.firwin(
+            N, fc, window="hann", pass_zero="lowpass", scale=False, fs=fs
+        )
+        h = h.astype(dtype)
+        return scp.signal.minimum_phase(h, method="homomorphic", n_fft=N, half=False)
