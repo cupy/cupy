@@ -30,6 +30,7 @@ except ImportError:
     gcp_exceptions = None  # type: ignore
 
 from cupy.cuda._compiler_cache import DiskKernelCacheBackend  # noqa
+from cupy_backends.cuda.libs import nvrtc as _nvrtc
 
 
 class GCPStorageCacheBackend(DiskKernelCacheBackend):
@@ -67,6 +68,10 @@ class GCPStorageCacheBackend(DiskKernelCacheBackend):
 
         self._gcp_enabled = False
         self._prefix = prefix
+        # Narrow the GCS namespace to this pipeline's NVRTC (CUDA) version so
+        # that initialize_local_cache only downloads what this pipeline needs.
+        major, minor = _nvrtc.getVersion()
+        self._nvrtc_prefix = f'{self._prefix}CUDA_{major}_{minor}/'
         if not _GCP_AVAILABLE:
             warnings.warn(
                 "google-cloud-storage is not installed. "
@@ -108,9 +113,9 @@ class GCPStorageCacheBackend(DiskKernelCacheBackend):
         if not self._gcp_enabled:
             return 0
 
-        t0 = time.monotonic()
+        t0 = time.perf_counter()
         try:
-            blobs = list(self._bucket.list_blobs(prefix=self._prefix))
+            blobs = list(self._bucket.list_blobs(prefix=self._nvrtc_prefix))
         except Exception as e:
             warnings.warn(
                 f"Failed to list GCS objects for cache initialization: "
@@ -122,7 +127,7 @@ class GCPStorageCacheBackend(DiskKernelCacheBackend):
         if not blobs:
             return 0
 
-        prefix_len = len(self._prefix)
+        prefix_len = len(self._nvrtc_prefix)
 
         def _download_if_missing(blob: storage.Blob) -> bool:
             name = blob.name[prefix_len:]
@@ -151,7 +156,7 @@ class GCPStorageCacheBackend(DiskKernelCacheBackend):
             results = list(executor.map(_download_if_missing, blobs))
 
         downloaded = sum(1 for r in results if r)
-        elapsed = time.monotonic() - t0
+        elapsed = time.perf_counter() - t0
         print(
             f"GCP kernel cache: {downloaded} new file(s) downloaded "
             f"({len(blobs)} total in GCS) in {elapsed:.1f}s.",
@@ -181,7 +186,7 @@ class GCPStorageCacheBackend(DiskKernelCacheBackend):
         if not self._gcp_enabled:
             return None
         try:
-            blob = self._bucket.blob(self._prefix + name)
+            blob = self._bucket.blob(self._nvrtc_prefix + name)
             data = blob.download_as_bytes()
         except gcp_exceptions.NotFound:
             # Cache miss.
@@ -216,7 +221,7 @@ class GCPStorageCacheBackend(DiskKernelCacheBackend):
         if not self._gcp_enabled:
             return
         try:
-            blob = self._bucket.blob(self._prefix + name)
+            blob = self._bucket.blob(self._nvrtc_prefix + name)
             blob.upload_from_string(cubin)
         except Exception as e:
             warnings.warn(f"Failed to save to GCS: {e}.", RuntimeWarning)
