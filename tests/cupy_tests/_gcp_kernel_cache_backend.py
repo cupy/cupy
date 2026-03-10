@@ -114,19 +114,6 @@ class GCPStorageCacheBackend(DiskKernelCacheBackend):
             return 0
 
         t0 = time.perf_counter()
-        try:
-            blobs = list(self._bucket.list_blobs(prefix=self._nvrtc_prefix))
-        except Exception as e:
-            warnings.warn(
-                f"Failed to list GCS objects for cache initialization: "
-                f"{type(e)}: {e}",
-                RuntimeWarning
-            )
-            return 0
-
-        if not blobs:
-            return 0
-
         prefix_len = len(self._nvrtc_prefix)
 
         def _download_if_missing(blob: storage.Blob) -> bool:
@@ -151,15 +138,34 @@ class GCPStorageCacheBackend(DiskKernelCacheBackend):
                 )
                 return False
 
-        with concurrent.futures.ThreadPoolExecutor(
-                max_workers=max_workers) as executor:
-            results = list(executor.map(_download_if_missing, blobs))
+        try:
+            # list_blobs returns a lazy HTTPIterator; passing it directly to
+            # executor.map lets GCS page fetching and blob downloads interleave:
+            # futures for already-listed blobs are submitted while subsequent
+            # pages are still being fetched from GCS.
+            blob_iter = self._bucket.list_blobs(prefix=self._nvrtc_prefix)
+            with concurrent.futures.ThreadPoolExecutor(
+                    max_workers=max_workers) as executor:
+                # list() must be called inside the with-block so that all
+                # futures are submitted and their results collected before the
+                # executor shuts down.
+                results = list(executor.map(_download_if_missing, blob_iter))
+        except Exception as e:
+            warnings.warn(
+                f"Failed to list or download GCS objects for cache "
+                f"initialization: {type(e)}: {e}",
+                RuntimeWarning
+            )
+            return 0
+
+        if not results:
+            return 0
 
         downloaded = sum(1 for r in results if r)
         elapsed = time.perf_counter() - t0
         print(
             f"GCP kernel cache: {downloaded} new file(s) downloaded "
-            f"({len(blobs)} total in GCS) in {elapsed:.1f}s.",
+            f"({len(results)} total in GCS) in {elapsed:.1f}s.",
             flush=True,
         )
         return downloaded
