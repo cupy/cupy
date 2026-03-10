@@ -84,8 +84,8 @@ def lsqr(A, b):
     return ret
 
 
-def lsmr(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
-         maxiter=None):
+def lsmr(A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None,
+         show=False, x0=None):
     """Iterative solver for least-squares problems.
 
     lsmr solves the system of linear equations ``Ax = b``. If the system
@@ -101,8 +101,6 @@ def lsmr(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
             :class:`cupyx.scipy.sparse.linalg.LinearOperator`.
         b (cupy.ndarray): Right hand side of the linear system with shape
             ``(m,)`` or ``(m, 1)``.
-        x0 (cupy.ndarray): Starting guess for the solution. If None zeros are
-            used.
         damp (float): Damping factor for regularized least-squares.
             `lsmr` solves the regularized least-squares problem
             ::
@@ -119,7 +117,11 @@ def lsmr(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
         conlim (float): `lsmr` terminates if an estimate of ``cond(A)`` i.e.
             condition number of matrix exceeds `conlim`. If `conlim` is None,
             the default value is 1e+8.
-        maxiter (int): Maximum number of iterations.
+        maxiter (int): Maximum number of iterations. The default is
+            ``maxiter = min(m, n)``.
+        show (bool): Print iteration logs if ``show=True``. Default is False.
+        x0 (cupy.ndarray): Starting guess for the solution. If None zeros are
+            used.
 
     Returns:
         tuple:
@@ -167,8 +169,22 @@ def lsmr(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
     m, n = A.shape
     minDim = min([m, n])
 
+    msg = ('The exact solution is x = 0, or x = x0, if x0 was given  ',
+           'Ax - b is small enough, given atol, btol                  ',
+           'The least-squares solution is good enough, given atol     ',
+           'The estimate of cond(Abar) has exceeded conlim            ',
+           'Ax - b is small enough for this machine                   ',
+           'The least-squares solution is good enough for this machine',
+           'Cond(Abar) seems to be too large for this machine         ',
+           'The iteration limit has been reached                      ')
+
+    hdg1 = '   itn      x(1)       norm r    norm Ar'
+    hdg2 = ' compatible   LS      norm A   cond A'
+    pfreq = 20   # print frequency (for repeating the heading)
+    pcount = 0   # print counter
+
     if maxiter is None:
-        maxiter = minDim * 5
+        maxiter = minDim
 
     if x0 is None:
         dtype = cupy.result_type(A, b, float)
@@ -189,6 +205,14 @@ def lsmr(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
         beta = cublas.nrm2(u)
 
     beta_cpu = beta.get().item()
+
+    if show:
+        print('')
+        print('LSMR            Least-squares solution of  Ax = b\n')
+        print(f'The matrix A has {m} rows and {n} columns')
+        print(f'damp = {damp:20.14e}\n')
+        print(f'atol = {atol:8.2e}                 conlim = {conlim:8.2e}\n')
+        print(f'btol = {btol:8.2e}             maxiter = {maxiter:8g}\n')
 
     v = cupy.zeros(n, dtype)
     alpha = cupy.zeros((), dtype=beta.dtype)
@@ -236,6 +260,12 @@ def lsmr(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
     condA = 1
     normx = 0
 
+    # Initialize print strings
+    str1 = ''
+    str2 = ''
+    str3 = ''
+    str4 = ''
+
     # Items for use in stopping rules.
     istop = 0
     ctol = 0
@@ -248,7 +278,19 @@ def lsmr(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
     # there was an error on return when arnorm==0
     normar = alpha_cpu * beta_cpu
     if normar == 0:
+        if show:
+            print(msg[0])
         return x, istop, itn, normr, normar, normA, condA, normx
+
+    if show:
+        print(' ')
+        print(hdg1, hdg2)
+        test1 = 1   # When x0=0, test1 (||r|| / ||b||) is always 1.
+        test2 = alpha / beta
+        str1 = f'{itn:6g} {x[0]:12.5e}'
+        str2 = f' {normr:10.3e} {normar:10.3e}'
+        str3 = f'  {test1:8.1e} {test2:8.1e}'
+        print(''.join([str1, str2, str3]))
 
     # Main iteration loop.
     while itn < maxiter:
@@ -387,8 +429,39 @@ def lsmr(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
         if test1 <= rtol:
             istop = 1
 
+        # See if it is time to print something.
+
+        if show:
+            if (n <= 40) or (itn <= 10) or (itn >= maxiter - 10) or \
+               (itn % 10 == 0) or (test3 <= 1.1 * ctol) or \
+               (test2 <= 1.1 * atol) or (test1 <= 1.1 * rtol) or \
+               (istop != 0):
+
+                if pcount >= pfreq:
+                    pcount = 0
+                    print(' ')
+                    print(hdg1, hdg2)
+                pcount = pcount + 1
+                str1 = f'{itn:6g} {x[0]:12.5e}'
+                str2 = f' {normr:10.3e} {normar:10.3e}'
+                str3 = f'  {test1:8.1e} {test2:8.1e}'
+                str4 = f' {normA:8.1e} {condA:8.1e}'
+                print(''.join([str1, str2, str3, str4]))
+
         if istop > 0:
             break
+
+    # Print the stopping condition.
+    if show:
+        print(' ')
+        print('LSMR finished')
+        print(msg[istop])
+        print(f'istop ={istop:8g}    normr ={normr:8.1e}')
+        print(f'    normA ={normA:8.1e}    normAr ={normar:8.1e}')
+        print(f'itn   ={itn:8g}    condA ={condA:8.1e}')
+        print(f'    normx ={normx:8.1e}')
+        print(str1, str2)
+        print(str3, str4)
 
     # The return type of SciPy is always float64. Therefore, x must be casted.
     x = x.astype(numpy.float64)
