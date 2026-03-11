@@ -44,14 +44,10 @@ def _get_platform_subdir() -> str:
             return 'linux-64'
         if machine in ('aarch64', 'arm64'):
             return 'linux-aarch64'
-        if machine == 'ppc64le':
-            return 'linux-ppc64le'
-        return f'linux-{machine}'
-    if sys.platform == 'darwin':
-        return 'osx-arm64' if machine == 'arm64' else 'osx-64'
+        assert False
     if sys.platform.startswith('win'):
         return 'win-64'
-    return f'{sys.platform}-{machine}'
+    assert False
 
 
 class GCPStorageCacheBackend(DiskKernelCacheBackend):
