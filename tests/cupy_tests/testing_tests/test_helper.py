@@ -175,6 +175,7 @@ class TestGenerateMatrixInvalid(unittest.TestCase):
                 (0, 2, 2), singular_values=numpy.ones(3))
 
 
+@pytest.mark.thread_unsafe(reason="unsafe AssertFunctionIsCalled.")
 class TestAssertFunctionIsCalled(unittest.TestCase):
 
     def test_patch_ndarray(self):
