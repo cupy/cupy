@@ -17,6 +17,8 @@ from __future__ import annotations
 from cupy_backends.cuda.libs import nvrtc as _nvrtc
 from cupy.cuda.compiler import _get_cupy_cache_key
 
+import platform
+import sys
 import time
 import warnings
 
@@ -32,6 +34,24 @@ except ImportError:
     gcp_exceptions = None  # type: ignore
 
 from cupy.cuda._compiler_cache import DiskKernelCacheBackend  # noqa
+
+
+def _get_platform_subdir() -> str:
+    """Return the conda-style platform subdir string (e.g. ``linux-64``)."""
+    machine = platform.machine()
+    if sys.platform.startswith('linux'):
+        if machine == 'x86_64':
+            return 'linux-64'
+        if machine in ('aarch64', 'arm64'):
+            return 'linux-aarch64'
+        if machine == 'ppc64le':
+            return 'linux-ppc64le'
+        return f'linux-{machine}'
+    if sys.platform == 'darwin':
+        return 'osx-arm64' if machine == 'arm64' else 'osx-64'
+    if sys.platform.startswith('win'):
+        return 'win-64'
+    return f'{sys.platform}-{machine}'
 
 
 class GCPStorageCacheBackend(DiskKernelCacheBackend):
@@ -75,7 +95,8 @@ class GCPStorageCacheBackend(DiskKernelCacheBackend):
         # CuPy builds do not collide or interfere with each other.
         major, minor = _nvrtc.getVersion()
         self._nvrtc_prefix = (
-            f'{self._prefix}{_get_cupy_cache_key()}/CUDA_{major}_{minor}/'
+            f'{self._prefix}{_get_cupy_cache_key()}/'
+            f'{_get_platform_subdir()}/CUDA_{major}_{minor}/'
         )
         if not _GCP_AVAILABLE:
             warnings.warn(
