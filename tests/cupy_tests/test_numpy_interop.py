@@ -158,6 +158,7 @@ class TestAsnumpy:
         reason='blocking or not is irrelevant when zero-copy is on'
     )
     @pytest.mark.parametrize('blocking', (True, False))
+    @pytest.mark.thread_unsafe(reason="allocation too large.")
     def test_asnumpy_blocking(self, blocking):
         prefactor = 4
         a = cupy.random.random(prefactor*128*1024*1024, dtype=cupy.float64)
