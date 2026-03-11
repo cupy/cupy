@@ -112,8 +112,10 @@ def spline_filter1d(input, order=3, axis=-1, output=cupy.float64,
         return output
 
     temp, data_dtype, output_dtype = _get_spline_output(x, output)
-    data_type = cupy._core._scalar.get_typename(temp.dtype)
-    pole_type = cupy._core._scalar.get_typename(temp.real.dtype)
+    spline_type_decls = set()
+    data_type = cupy._core._scalar.get_typename(temp.dtype, spline_type_decls)
+    pole_type = cupy._core._scalar.get_typename(
+        temp.real.dtype, spline_type_decls)
 
     index_type = _util._get_inttype(input)
     index_dtype = cupy.int32 if index_type == 'int' else cupy.int64
@@ -133,6 +135,7 @@ def spline_filter1d(input, order=3, axis=-1, output=cupy.float64,
         data_type=data_type,
         pole_type=pole_type,
         block_size=block_size,
+        type_decls=spline_type_decls,
     )
 
     # Due to recursive nature, a given line of data must be processed by a

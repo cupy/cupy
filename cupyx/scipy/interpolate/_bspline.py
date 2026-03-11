@@ -2,21 +2,26 @@ from __future__ import annotations
 
 
 import operator
+import string
+from typing import Any
 
 import cupy
 from cupy._core import internal
-from cupy._core._scalar import get_typename
+from cupy._core._scalar import get_typename, format_type_decls
 
 from cupyx.scipy.sparse import csr_matrix
 
 import numpy as np
 
-TYPES = ['double', 'thrust::complex<double>']
-INT_TYPES = ['int', 'long long']
+BSPLINE_TYPE_DECLS: set[Any] = set()
+TYPES = [get_typename(t, BSPLINE_TYPE_DECLS)
+         for t in [cupy.float64, cupy.complex128]]
+INT_TYPES = [get_typename(t, BSPLINE_TYPE_DECLS)
+             for t in [cupy.int32, cupy.int64]]
 
 INTERVAL_KERNEL = r'''
 #include <cupy/complex.cuh>
-#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_decls?
+${type_decls}
 
 extern "C" {
 __global__ void find_interval(
@@ -70,14 +75,16 @@ __global__ void find_interval(
 }
 '''
 
-INTERVAL_MODULE = cupy.RawModule(code=INTERVAL_KERNEL,)
+INTERVAL_MODULE = cupy.RawModule(
+    code=string.Template(INTERVAL_KERNEL).substitute(
+        type_decls=format_type_decls(BSPLINE_TYPE_DECLS)),)
 #    name_expressions=[f'find_interval<{type_name}>' for type_name in TYPES])
 
 
 D_BOOR_KERNEL = r'''
 #include <cupy/complex.cuh>
 #include <cupy/math_constants.h>
-#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_decls?
+${type_decls}
 #define COMPUTE_LINEAR 0x1
 
 template<typename T>
@@ -173,14 +180,16 @@ __global__ void d_boor(
 }
 '''
 
-D_BOOR_MODULE = cupy.RawModule(code=D_BOOR_KERNEL,
-                               name_expressions=[f'd_boor<{type_name}>'
-                                                 for type_name in TYPES])
+D_BOOR_MODULE = cupy.RawModule(
+    code=string.Template(D_BOOR_KERNEL).substitute(
+        type_decls=format_type_decls(BSPLINE_TYPE_DECLS)),
+    name_expressions=[f'd_boor<{type_name}>'
+                      for type_name in TYPES])
 
 
 DESIGN_MAT_KERNEL = r'''
 #include <cupy/complex.cuh>
-#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_decls?
+${type_decls}
 
 template<typename U>
 __global__ void compute_design_matrix(
@@ -205,7 +214,8 @@ __global__ void compute_design_matrix(
 '''
 
 DESIGN_MAT_MODULE = cupy.RawModule(
-    code=DESIGN_MAT_KERNEL,
+    code=string.Template(DESIGN_MAT_KERNEL).substitute(
+        type_decls=format_type_decls(BSPLINE_TYPE_DECLS)),
     name_expressions=[f'compute_design_matrix<{itype}>'
                       for itype in INT_TYPES])
 
