@@ -26,23 +26,21 @@ IF CUPY_HIP_VERSION == 0:
         char* __cu_demangle(const char* mangled_name, char* output_buffer)
 
 
-cdef str demangle_cxx_name(str mangled):
+cdef str demangle_cxx_name(const char* mangled_cstr):
     """Demangle a C++ mangled name using __cu_demangle from libcufilt.
 
     Args:
-        mangled: The mangled C++ name.
+        mangled_cstr: The mangled C++ name as a C string.
 
     Returns:
         The demangled name, or the original name if demangling fails.
     """
     IF CUPY_HIP_VERSION == 0:
-        cdef bytes mangled_bytes = mangled.encode('utf-8')
-        cdef const char* mangled_ptr = mangled_bytes
         cdef char* demangled_ptr = NULL
         cdef str result
 
         with nogil:
-            demangled_ptr = __cu_demangle(mangled_ptr, NULL)
+            demangled_ptr = __cu_demangle(mangled_cstr, NULL)
 
         if demangled_ptr != NULL:
             try:
@@ -53,10 +51,10 @@ cdef str demangle_cxx_name(str mangled):
         else:
             # Demangling failed - return original mangled name to allow
             # exact matching if user provides the mangled name directly
-            return mangled
+            return mangled_cstr.decode('utf-8')
     ELSE:
         # HIP/ROCm: libcufilt not available, return mangled name as-is
-        return mangled
+        return mangled_cstr.decode('utf-8')
 
 
 cdef class CPointer:
@@ -278,12 +276,11 @@ cdef class Module:
             self.mapping = {}
             cdef size_t i
             cdef const char* mangled_cstr
-            cdef str mangled, demangled
+            cdef str demangled
             for i in range(function_handles.size()):
                 mangled_cstr = driver.funcGetName(<intptr_t>function_handles[i])
-                mangled = mangled_cstr.decode('utf-8')
-                demangled = demangle_cxx_name(mangled)
-                self.mapping[demangled] = mangled
+                demangled = demangle_cxx_name(mangled_cstr)
+                self.mapping[demangled] = mangled_cstr.decode('utf-8')
         except Exception:
             # On error (e.g., CUDA < 11.6), mapping stays None
             # Caller should handle this by recompiling
