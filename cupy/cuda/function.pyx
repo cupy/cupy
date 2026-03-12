@@ -23,7 +23,7 @@ IF CUPY_CUDA_VERSION > 0:
     # C++ demangling using __cu_demangle from NVIDIA's libcufilt
     # See: https://docs.nvidia.com/cuda/cuda-binary-utilities/index.html#library-availability
     cdef extern from "nv_decode.h" nogil:
-        int __cu_demangle(const char* mangled_name, char** output_buffer, size_t* output_size)
+        char* __cu_demangle(const char* id, char* output_buffer, size_t* length, int* status)
 
 
 cdef str demangle_cxx_name(const char* mangled_cstr):
@@ -36,19 +36,20 @@ cdef str demangle_cxx_name(const char* mangled_cstr):
         The demangled name, or the original name if demangling fails.
     """
     IF CUPY_CUDA_VERSION > 0:
-        cdef char* output_buffer = NULL
-        cdef size_t output_size = 0
-        cdef int status
+        cdef char* demangled_ptr = NULL
+        cdef int status = 0
         cdef str result
 
+        # Call __cu_demangle with NULL buffer to let it allocate memory
+        # The function returns a pointer to the demangled string and sets status
         with nogil:
-            status = __cu_demangle(mangled_cstr, &output_buffer, &output_size)
+            demangled_ptr = __cu_demangle(mangled_cstr, NULL, NULL, &status)
 
-        if status == 0 and output_buffer != NULL:
+        if status == 0 and demangled_ptr != NULL:
             try:
-                result = output_buffer.decode('utf-8')
+                result = demangled_ptr.decode('utf-8')
             finally:
-                free(output_buffer)
+                free(demangled_ptr)
             return result
         else:
             # Demangling failed - return original mangled name to allow
