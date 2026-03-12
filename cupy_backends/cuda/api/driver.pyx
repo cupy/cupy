@@ -13,6 +13,7 @@ There are four differences compared to the original C API.
 """
 cimport cython  # NOQA
 from libc.stdint cimport intptr_t
+from libcpp cimport vector
 
 
 ###############################################################################
@@ -257,14 +258,14 @@ cpdef intptr_t moduleGetGlobal(intptr_t module, str varname) except? 0:
     return <intptr_t>var
 
 
-cpdef list moduleEnumerateFunctions(intptr_t module):
+cdef vector.vector[Function] moduleEnumerateFunctions(intptr_t module) except *:
     """Enumerate all functions in a module (CUDA 11.6+).
 
     Args:
         module: Module handle.
 
     Returns:
-        List of function handles.
+        Vector of function handles.
 
     .. note::
         This function requires CUDA 11.6 or later.
@@ -272,17 +273,17 @@ cpdef list moduleEnumerateFunctions(intptr_t module):
     initialize()
     cdef Function* functions = NULL
     cdef unsigned int numFunctions = 0
+    cdef vector.vector[Function] result
     with nogil:
         status = cuModuleEnumerateFunctions(&functions, &numFunctions, <Module>module)
     check_status(status)
 
-    result = []
     for i in range(numFunctions):
-        result.append(<intptr_t>functions[i])
+        result.push_back(functions[i])
     return result
 
 
-cpdef str funcGetName(intptr_t func):
+cdef const char* funcGetName(intptr_t func) except? NULL:
     """Get the name of a function (CUDA 11.6+).
 
     Args:
@@ -299,7 +300,7 @@ cpdef str funcGetName(intptr_t func):
     with nogil:
         status = cuFuncGetName(&name, <Function>func)
     check_status(status)
-    return name.decode('utf-8')
+    return name
 
 
 cpdef launchKernel(

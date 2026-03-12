@@ -1,12 +1,10 @@
 # distutils: language = c++
 
 import numpy
-import re
 import warnings
 
 from libc.stdint cimport intptr_t
 from libc.stdint cimport uintmax_t
-from libc.stdlib cimport free
 from libcpp cimport vector
 
 from cupy._core cimport _carray
@@ -18,79 +16,6 @@ from cupy.cuda cimport stream as stream_module
 from cupy.cuda.memory cimport MemoryPointer
 from cupy.cuda.texture cimport TextureObject, SurfaceObject
 from cupy.cuda import device
-
-
-# C++ demangling using __cu_demangle from NVIDIA's libcufilt
-# See: https://docs.nvidia.com/cuda/cuda-binary-utilities/index.html#library-availability
-cdef extern from "nv_decode.h" nogil:
-    char* __cu_demangle(const char* mangled_name, char* output_buffer)
-
-
-cdef str demangle_cxx_name(str mangled):
-    """Demangle a C++ mangled name using __cu_demangle from libcufilt.
-
-    Args:
-        mangled: The mangled C++ name.
-
-    Returns:
-        The demangled name, or the original name if demangling fails.
-    """
-    cdef bytes mangled_bytes = mangled.encode('utf-8')
-    cdef const char* mangled_ptr = mangled_bytes
-    cdef char* demangled_ptr = NULL
-    cdef str result
-
-    with nogil:
-        demangled_ptr = __cu_demangle(mangled_ptr, NULL)
-
-    if demangled_ptr != NULL:
-        try:
-            result = demangled_ptr.decode('utf-8')
-        finally:
-            free(demangled_ptr)
-        return result
-    else:
-        # Demangling failed - return original mangled name to allow
-        # exact matching if user provides the mangled name directly
-        return mangled
-
-
-cdef str normalize_name(str name):
-    """Normalize a C++ function name for comparison.
-
-    Removes spaces and standardizes formatting to make comparison easier.
-    """
-    # Remove all whitespace
-    name = re.sub(r'\s+', '', name)
-    return name
-
-
-cdef str match_name_expression(str name_expr, list mangled_names):
-    """Match a name expression to a list of mangled names.
-
-    Args:
-        name_expr: User-provided name expression (e.g., "kernel<float>")
-        mangled_names: List of (mangled_name, demangled_name) tuples
-
-    Returns:
-        The matching mangled name, or None if no match found.
-    """
-    # Try exact match first (for already mangled names)
-    for mangled, _ in mangled_names:
-        if name_expr == mangled:
-            return mangled
-
-    # Normalize the user's name expression
-    normalized_expr = normalize_name(name_expr)
-
-    # Try matching against demangled names
-    for mangled, demangled in mangled_names:
-        if demangled:
-            normalized_demangled = normalize_name(demangled)
-            if normalized_expr == normalized_demangled:
-                return mangled
-
-    return None
 
 
 cdef class CPointer:
@@ -304,22 +229,10 @@ cdef class Module:
                 'Function enumeration is not supported on HIP/ROCm')
 
         try:
-            # Enumerate all functions in the module
-            function_handles = driver.moduleEnumerateFunctions(self.ptr)
-
-            # Get mangled names and demangle them
-            mangled_names = []
-            for func_handle in function_handles:
-                mangled = driver.funcGetName(func_handle)
-                demangled = demangle_cxx_name(mangled)
-                mangled_names.append((mangled, demangled))
-
-            # Build mapping from user expressions to mangled names
-            self.mapping = {}
-            for name_expr in name_expressions:
-                matched = match_name_expression(name_expr, mangled_names)
-                if matched:
-                    self.mapping[name_expr] = matched
+            # Since name_expressions is now part of the cache key, each cache
+            # entry corresponds to a specific set of name expressions. We can
+            # simply create an identity mapping.
+            self.mapping = {name: name for name in name_expressions}
         except Exception:
             # On error (e.g., CUDA < 11.6), mapping stays None
             # Caller should handle this by recompiling
