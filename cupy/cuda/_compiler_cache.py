@@ -90,6 +90,55 @@ class DiskKernelCacheBackend(KernelCacheBackend):
         self._save_cuda_source = bool(
             os.environ.get('CUPY_CACHE_SAVE_CUDA_SOURCE'))
 
+    def _encode_cubin(self, cubin: bytes) -> bytes:
+        """Encode a cubin binary to the on-disk format (hash prefix + cubin).
+
+        Args:
+            cubin (bytes): Raw compiled kernel binary data.
+
+        Returns:
+            bytes: SHA-1 hash (ASCII hex) prepended to the cubin.
+        """
+        return _hash_hexdigest(cubin).encode('ascii') + cubin
+
+    def _decode_cubin(self, data: bytes) -> bytes | None:
+        """Decode and validate data in the on-disk format.
+
+        Args:
+            data (bytes): Raw bytes in the on-disk format (hash + cubin).
+
+        Returns:
+            bytes or None: The raw cubin if the hash is valid, None otherwise.
+        """
+        if len(data) < _hash_length:
+            return None
+        hash_stored = data[:_hash_length]
+        cubin = data[_hash_length:]
+        if hash_stored != _hash_hexdigest(cubin).encode('ascii'):
+            return None
+        return cubin
+
+    def _write_encoded(self, name: str, data: bytes) -> None:
+        """Atomically write pre-encoded (hash + cubin) data to the cache dir.
+
+        Unlike :meth:`save`, this method accepts data that is already in the
+        on-disk format (i.e. the SHA-1 hash prefix is already prepended).
+        It does not save a `.cu` source file.
+
+        Args:
+            name (str): The cache key (filename) for the compiled kernel.
+            data (bytes): Pre-encoded bytes (hash prefix + cubin).
+        """
+        path = os.path.join(self._cache_dir, name)
+        with tempfile.NamedTemporaryFile(
+                dir=self._cache_dir, delete=False) as tf:
+            tf.write(data)
+            temp_path = tf.name
+        try:
+            os.replace(temp_path, path)
+        except PermissionError:
+            pass  # Race on Windows; assume existing file is fine
+
     def load(self, name: str) -> bytes | None:
         """Load a cached kernel binary from disk.
 
@@ -107,18 +156,7 @@ class DiskKernelCacheBackend(KernelCacheBackend):
         with open(path, 'rb') as file:
             data = file.read()
 
-        if len(data) < _hash_length:
-            return None
-
-        hash_stored = data[:_hash_length]
-        cubin = data[_hash_length:]
-        cubin_hash = _hash_hexdigest(cubin).encode('ascii')
-
-        if hash_stored != cubin_hash:
-            # Hash mismatch, corrupted cache
-            return None
-
-        return cubin
+        return self._decode_cubin(data)
 
     def save(self, name: str, cubin: bytes, source: str) -> None:
         """Save a compiled kernel binary to disk.
@@ -128,26 +166,10 @@ class DiskKernelCacheBackend(KernelCacheBackend):
             cubin (bytes): The compiled kernel binary data.
             source (str): The CUDA source code.
         """
-        # Calculate hash and prepend to cubin
-        cubin_hash = _hash_hexdigest(cubin).encode('ascii')
-        data = cubin_hash + cubin
-
-        path = os.path.join(self._cache_dir, name)
-
-        # Write to a temporary file and atomically replace
-        with tempfile.NamedTemporaryFile(
-                dir=self._cache_dir, delete=False) as tf:
-            tf.write(data)
-            temp_path = tf.name
-
-        try:
-            os.replace(temp_path, path)
-        except PermissionError:
-            # Windows may refuse to replace the file, assume this is a race
-            # and the existing file is OK (but keep using our copy)
-            pass
+        self._write_encoded(name, self._encode_cubin(cubin))
 
         # Save .cu source file along with .cubin if requested
         if self._save_cuda_source:
+            path = os.path.join(self._cache_dir, name)
             with open(path + '.cu', 'w') as f:
                 f.write(source)
