@@ -3,6 +3,7 @@
 import numpy
 import warnings
 
+from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from libc.stdint cimport intptr_t
 from libc.stdint cimport uintmax_t
 from libc.stdlib cimport free
@@ -36,21 +37,34 @@ cdef str demangle_cxx_name(const char* mangled_cstr):
         The demangled name, or the original name if demangling fails.
     """
     IF CUPY_CUDA_VERSION > 0:
-        cdef char* demangled_ptr = NULL
+        cdef char* buffer = NULL
+        cdef size_t length = 0
         cdef int status = 0
         cdef str result
 
-        # Call __cu_demangle with NULL buffer to let it allocate memory
-        # The function returns a pointer to the demangled string and sets status
+        # First pass: call with NULL buffer to get required length
         with nogil:
-            demangled_ptr = __cu_demangle(mangled_cstr, NULL, NULL, &status)
+            __cu_demangle(mangled_cstr, NULL, &length, &status)
 
-        if status == 0 and demangled_ptr != NULL:
+        if status == 0 and length > 0:
+            # Second pass: allocate buffer and call again to populate it
+            buffer = <char*>PyMem_Malloc(length)
+            if buffer == NULL:
+                # Memory allocation failed - return mangled name
+                return mangled_cstr.decode('utf-8')
+
             try:
-                result = demangled_ptr.decode('utf-8')
+                with nogil:
+                    __cu_demangle(mangled_cstr, buffer, &length, &status)
+
+                if status == 0:
+                    result = buffer.decode('utf-8')
+                    return result
+                else:
+                    # Demangling failed - return original mangled name
+                    return mangled_cstr.decode('utf-8')
             finally:
-                free(demangled_ptr)
-            return result
+                PyMem_Free(buffer)
         else:
             # Demangling failed - return original mangled name to allow
             # exact matching if user provides the mangled name directly
