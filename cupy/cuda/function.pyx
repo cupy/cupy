@@ -1,7 +1,6 @@
 # distutils: language = c++
 
 import numpy
-import re
 import warnings
 
 from libc.stdint cimport intptr_t
@@ -53,44 +52,6 @@ cdef str demangle_cxx_name(str mangled):
         # Demangling failed - return original mangled name to allow
         # exact matching if user provides the mangled name directly
         return mangled
-
-
-cdef str normalize_name(str name):
-    """Normalize a C++ function name for comparison.
-
-    Removes spaces and standardizes formatting to make comparison easier.
-    """
-    # Remove all whitespace
-    name = re.sub(r'\s+', '', name)
-    return name
-
-
-cdef str match_name_expression(str name_expr, list mangled_names):
-    """Match a name expression to a list of mangled names.
-
-    Args:
-        name_expr: User-provided name expression (e.g., "kernel<float>")
-        mangled_names: List of (mangled_name, demangled_name) tuples
-
-    Returns:
-        The matching mangled name, or None if no match found.
-    """
-    # Try exact match first (for already mangled names)
-    for mangled, _ in mangled_names:
-        if name_expr == mangled:
-            return mangled
-
-    # Normalize the user's name expression
-    normalized_expr = normalize_name(name_expr)
-
-    # Try matching against demangled names
-    for mangled, demangled in mangled_names:
-        if demangled:
-            normalized_demangled = normalize_name(demangled)
-            if normalized_expr == normalized_demangled:
-                return mangled
-
-    return None
 
 
 cdef class CPointer:
@@ -308,22 +269,16 @@ cdef class Module:
             cdef vector.vector[driver.Function] function_handles
             function_handles = driver.moduleEnumerateFunctions(self.ptr)
 
-            # Get mangled names and demangle them
-            mangled_names = []
+            # Build mapping from demangled names to mangled names
+            self.mapping = {}
             cdef size_t i
             cdef const char* mangled_cstr
+            cdef str mangled, demangled
             for i in range(function_handles.size()):
                 mangled_cstr = driver.funcGetName(<intptr_t>function_handles[i])
                 mangled = mangled_cstr.decode('utf-8')
                 demangled = demangle_cxx_name(mangled)
-                mangled_names.append((mangled, demangled))
-
-            # Build mapping from user expressions to mangled names
-            self.mapping = {}
-            for name_expr in name_expressions:
-                matched = match_name_expression(name_expr, mangled_names)
-                if matched:
-                    self.mapping[name_expr] = matched
+                self.mapping[demangled] = mangled
         except Exception:
             # On error (e.g., CUDA < 11.6), mapping stays None
             # Caller should handle this by recompiling
