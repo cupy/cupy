@@ -257,6 +257,51 @@ cpdef intptr_t moduleGetGlobal(intptr_t module, str varname) except? 0:
     return <intptr_t>var
 
 
+cpdef list moduleEnumerateFunctions(intptr_t module):
+    """Enumerate all functions in a module (CUDA 11.6+).
+
+    Args:
+        module: Module handle.
+
+    Returns:
+        List of function handles.
+
+    .. note::
+        This function requires CUDA 11.6 or later.
+    """
+    initialize()
+    cdef Function* functions = NULL
+    cdef unsigned int numFunctions = 0
+    with nogil:
+        status = cuModuleEnumerateFunctions(&functions, &numFunctions, <Module>module)
+    check_status(status)
+
+    result = []
+    for i in range(numFunctions):
+        result.append(<intptr_t>functions[i])
+    return result
+
+
+cpdef str funcGetName(intptr_t func):
+    """Get the name of a function (CUDA 11.6+).
+
+    Args:
+        func: Function handle.
+
+    Returns:
+        The (mangled) name of the function.
+
+    .. note::
+        This function requires CUDA 11.6 or later.
+    """
+    initialize()
+    cdef const char* name = NULL
+    with nogil:
+        status = cuFuncGetName(&name, <Function>func)
+    check_status(status)
+    return name.decode('utf-8')
+
+
 cpdef launchKernel(
         intptr_t f, unsigned int grid_dim_x, unsigned int grid_dim_y,
         unsigned int grid_dim_z, unsigned int block_dim_x,

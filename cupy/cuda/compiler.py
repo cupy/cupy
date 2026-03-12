@@ -640,14 +640,23 @@ def _compile_with_cache_cuda(
 
     if not cache_in_memory:
         # Read from cache using global backend
-        # We force recompiling to retrieve C++ mangled names if so desired.
-        if not name_expressions:
-            cubin = _kernel_cache_backend.load(name)
-            if cubin is not None:
-                if to_ltoir:
-                    return cubin
+        cubin = _kernel_cache_backend.load(name)
+        if cubin is not None:
+            if to_ltoir:
+                return cubin
+            else:
+                mod.load(cubin)
+                # For name_expressions, enumerate functions from loaded CUBIN
+                # and build the mapping (CUDA 11.6+)
+                if name_expressions:
+                    mod._enumerate_and_build_mapping(list(name_expressions))
+                    # If enumeration failed (e.g., unsupported CUDA version),
+                    # fall through to recompile
+                    if not mod.mapping:
+                        pass  # Will continue to compilation below
+                    else:
+                        return mod
                 else:
-                    mod.load(cubin)
                     return mod
     else:
         # Enforce compiling -- the resulting kernel will be cached elsewhere,
@@ -962,11 +971,22 @@ def _compile_with_cache_hip(source, options, arch, extra_source,
 
     if not cache_in_memory:
         # Read from cache using global backend
-        # We force recompiling to retrieve C++ mangled names if so desired.
-        if not name_expressions:
-            binary = _kernel_cache_backend.load(name)
-            if binary is not None:
-                mod.load(binary)
+        binary = _kernel_cache_backend.load(name)
+        if binary is not None:
+            mod.load(binary)
+            # For name_expressions, enumerate functions from loaded binary
+            # Note: HIP/ROCm does not support function enumeration yet,
+            # so this will raise NotImplementedError and fall through to recompile
+            if name_expressions:
+                try:
+                    mod._enumerate_and_build_mapping(list(name_expressions))
+                    # If enumeration succeeded, return the module
+                    if mod.mapping:
+                        return mod
+                except NotImplementedError:
+                    # HIP/ROCm doesn't support enumeration, fall through to recompile
+                    pass
+            else:
                 return mod
     else:
         # Enforce compiling -- the resulting kernel will be cached elsewhere,

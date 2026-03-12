@@ -1,10 +1,12 @@
 # distutils: language = c++
 
 import numpy
+import re
 import warnings
 
 from libc.stdint cimport intptr_t
 from libc.stdint cimport uintmax_t
+from libc.stdlib cimport free
 from libcpp cimport vector
 
 from cupy._core cimport _carray
@@ -16,6 +18,79 @@ from cupy.cuda cimport stream as stream_module
 from cupy.cuda.memory cimport MemoryPointer
 from cupy.cuda.texture cimport TextureObject, SurfaceObject
 from cupy.cuda import device
+
+
+# C++ demangling using __cxa_demangle from libc++abi
+cdef extern from "<cxxabi.h>" namespace "abi" nogil:
+    char* __cxa_demangle(const char* mangled_name, char* output_buffer,
+                         size_t* length, int* status)
+
+
+cdef str demangle_cxx_name(str mangled):
+    """Demangle a C++ mangled name using __cxa_demangle.
+
+    Args:
+        mangled: The mangled C++ name.
+
+    Returns:
+        The demangled name, or the original name if demangling fails.
+    """
+    cdef bytes mangled_bytes = mangled.encode('utf-8')
+    cdef const char* mangled_ptr = mangled_bytes
+    cdef char* demangled_ptr = NULL
+    cdef int status = 0
+    cdef str result
+
+    with nogil:
+        demangled_ptr = __cxa_demangle(mangled_ptr, NULL, NULL, &status)
+
+    if status == 0 and demangled_ptr != NULL:
+        try:
+            result = demangled_ptr.decode('utf-8')
+        finally:
+            free(demangled_ptr)
+        return result
+    else:
+        # Demangling failed, return original
+        return mangled
+
+
+cdef str normalize_name(str name):
+    """Normalize a C++ function name for comparison.
+
+    Removes spaces and standardizes formatting to make comparison easier.
+    """
+    # Remove all whitespace
+    name = re.sub(r'\s+', '', name)
+    return name
+
+
+cdef str match_name_expression(str name_expr, list mangled_names):
+    """Match a name expression to a list of mangled names.
+
+    Args:
+        name_expr: User-provided name expression (e.g., "kernel<float>")
+        mangled_names: List of (mangled_name, demangled_name) tuples
+
+    Returns:
+        The matching mangled name, or None if no match found.
+    """
+    # Try exact match first (for already mangled names)
+    for mangled, _ in mangled_names:
+        if name_expr == mangled:
+            return mangled
+
+    # Normalize the user's name expression
+    normalized_expr = normalize_name(name_expr)
+
+    # Try matching against demangled names
+    for mangled, demangled in mangled_names:
+        if demangled:
+            normalized_demangled = normalize_name(demangled)
+            if normalized_expr == normalized_demangled:
+                return mangled
+
+    return None
 
 
 cdef class CPointer:
@@ -206,6 +281,49 @@ cdef class Module:
 
     cpdef _set_mapping(self, dict mapping):
         self.mapping = mapping
+
+    cpdef _enumerate_and_build_mapping(self, list name_expressions):
+        """Enumerate functions and build mapping (CUDA 11.6+).
+
+        This method enumerates all functions in the loaded CUBIN and builds
+        a mapping from user-provided name expressions to mangled names.
+
+        Args:
+            name_expressions: List of name expressions to match.
+
+        .. note::
+            This function requires CUDA 11.6 or later. On HIP/ROCm, this
+            raises NotImplementedError if function enumeration is not supported.
+        """
+        if self.mapping is not None:
+            return  # Already built
+
+        IF CUPY_HIP_VERSION > 0:
+            # HIP/ROCm does not support function enumeration yet
+            raise NotImplementedError(
+                'Function enumeration is not supported on HIP/ROCm')
+
+        try:
+            # Enumerate all functions in the module
+            function_handles = driver.moduleEnumerateFunctions(self.ptr)
+
+            # Get mangled names and demangle them
+            mangled_names = []
+            for func_handle in function_handles:
+                mangled = driver.funcGetName(func_handle)
+                demangled = demangle_cxx_name(mangled)
+                mangled_names.append((mangled, demangled))
+
+            # Build mapping from user expressions to mangled names
+            self.mapping = {}
+            for name_expr in name_expressions:
+                matched = match_name_expression(name_expr, mangled_names)
+                if matched:
+                    self.mapping[name_expr] = matched
+        except Exception:
+            # On error (e.g., CUDA < 11.6), mapping stays None
+            # Caller should handle this by recompiling
+            pass
 
 
 cdef class LinkState:

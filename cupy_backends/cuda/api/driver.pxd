@@ -65,6 +65,8 @@ cpdef intptr_t moduleLoadData(bytes image) except? 0
 cpdef moduleUnload(intptr_t module)
 cpdef intptr_t moduleGetFunction(intptr_t module, str funcname) except? 0
 cpdef intptr_t moduleGetGlobal(intptr_t module, str varname) except? 0
+cpdef list moduleEnumerateFunctions(intptr_t module)
+cpdef str funcGetName(intptr_t func)
 cpdef launchKernel(
     intptr_t f, unsigned int grid_dim_x, unsigned int grid_dim_y,
     unsigned int grid_dim_z, unsigned int block_dim_x,
