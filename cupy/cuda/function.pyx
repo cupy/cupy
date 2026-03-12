@@ -19,7 +19,7 @@ from cupy.cuda.texture cimport TextureObject, SurfaceObject
 from cupy.cuda import device
 
 
-IF CUPY_HIP_VERSION == 0:
+IF CUPY_CUDA_VERSION > 0:
     # C++ demangling using __cu_demangle from NVIDIA's libcufilt
     # See: https://docs.nvidia.com/cuda/cuda-binary-utilities/index.html#library-availability
     cdef extern from "nv_decode.h" nogil:
@@ -35,7 +35,7 @@ cdef str demangle_cxx_name(const char* mangled_cstr):
     Returns:
         The demangled name, or the original name if demangling fails.
     """
-    IF CUPY_HIP_VERSION == 0:
+    IF CUPY_CUDA_VERSION > 0:
         cdef char* demangled_ptr = NULL
         cdef str result
 
@@ -267,16 +267,18 @@ cdef class Module:
         if self.mapping is not None:
             return  # Already built
 
+        # Declare variables outside try block (Cython requirement)
+        cdef vector.vector[driver.Function] function_handles
+        cdef size_t i
+        cdef const char* mangled_cstr
+        cdef str demangled
+
         try:
             # Enumerate all functions in the module
-            cdef vector.vector[driver.Function] function_handles
             function_handles = driver.moduleEnumerateFunctions(self.ptr)
 
             # Build mapping from demangled names to mangled names
             self.mapping = {}
-            cdef size_t i
-            cdef const char* mangled_cstr
-            cdef str demangled
             for i in range(function_handles.size()):
                 mangled_cstr = driver.funcGetName(<intptr_t>function_handles[i])
                 demangled = demangle_cxx_name(mangled_cstr)
