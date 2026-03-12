@@ -453,7 +453,7 @@ class CUDA_cuda(Feature):
             _cudart_static_libs +
 
             # CUDA Toolkit
-            ['cublas', 'cufft', 'curand', 'cusparse']
+            ['cublas', 'cufft', 'curand', 'cusparse', 'cufilt']
         )
         self.static_libraries = ['cudart_static']
         self._version = self._UNDETERMINED

@@ -20,14 +20,14 @@ from cupy.cuda.texture cimport TextureObject, SurfaceObject
 from cupy.cuda import device
 
 
-# C++ demangling using __cxa_demangle from libc++abi
-cdef extern from "<cxxabi.h>" namespace "abi" nogil:
-    char* __cxa_demangle(const char* mangled_name, char* output_buffer,
-                         size_t* length, int* status)
+# C++ demangling using __cu_demangle from NVIDIA's libcufilt
+# See: https://docs.nvidia.com/cuda/cuda-binary-utilities/index.html#library-availability
+cdef extern from "nv_decode.h" nogil:
+    char* __cu_demangle(const char* mangled_name, char* output_buffer)
 
 
 cdef str demangle_cxx_name(str mangled):
-    """Demangle a C++ mangled name using __cxa_demangle.
+    """Demangle a C++ mangled name using __cu_demangle from libcufilt.
 
     Args:
         mangled: The mangled C++ name.
@@ -38,13 +38,12 @@ cdef str demangle_cxx_name(str mangled):
     cdef bytes mangled_bytes = mangled.encode('utf-8')
     cdef const char* mangled_ptr = mangled_bytes
     cdef char* demangled_ptr = NULL
-    cdef int status = 0
     cdef str result
 
     with nogil:
-        demangled_ptr = __cxa_demangle(mangled_ptr, NULL, NULL, &status)
+        demangled_ptr = __cu_demangle(mangled_ptr, NULL)
 
-    if status == 0 and demangled_ptr != NULL:
+    if demangled_ptr != NULL:
         try:
             result = demangled_ptr.decode('utf-8')
         finally:
@@ -282,14 +281,14 @@ cdef class Module:
     cpdef _set_mapping(self, dict mapping):
         self.mapping = mapping
 
-    cpdef _enumerate_and_build_mapping(self, list name_expressions):
+    cpdef _enumerate_and_build_mapping(self, tuple name_expressions):
         """Enumerate functions and build mapping (CUDA 11.6+).
 
         This method enumerates all functions in the loaded CUBIN and builds
         a mapping from user-provided name expressions to mangled names.
 
         Args:
-            name_expressions: List of name expressions to match.
+            name_expressions: Tuple of name expressions to match.
 
         .. note::
             This function requires CUDA 11.6 or later. On HIP/ROCm, this
