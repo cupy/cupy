@@ -19,10 +19,11 @@ from cupy.cuda.texture cimport TextureObject, SurfaceObject
 from cupy.cuda import device
 
 
-# C++ demangling using __cu_demangle from NVIDIA's libcufilt
-# See: https://docs.nvidia.com/cuda/cuda-binary-utilities/index.html#library-availability
-cdef extern from "nv_decode.h" nogil:
-    char* __cu_demangle(const char* mangled_name, char* output_buffer)
+IF CUPY_HIP_VERSION == 0:
+    # C++ demangling using __cu_demangle from NVIDIA's libcufilt
+    # See: https://docs.nvidia.com/cuda/cuda-binary-utilities/index.html#library-availability
+    cdef extern from "nv_decode.h" nogil:
+        char* __cu_demangle(const char* mangled_name, char* output_buffer)
 
 
 cdef str demangle_cxx_name(str mangled):
@@ -34,23 +35,27 @@ cdef str demangle_cxx_name(str mangled):
     Returns:
         The demangled name, or the original name if demangling fails.
     """
-    cdef bytes mangled_bytes = mangled.encode('utf-8')
-    cdef const char* mangled_ptr = mangled_bytes
-    cdef char* demangled_ptr = NULL
-    cdef str result
+    IF CUPY_HIP_VERSION == 0:
+        cdef bytes mangled_bytes = mangled.encode('utf-8')
+        cdef const char* mangled_ptr = mangled_bytes
+        cdef char* demangled_ptr = NULL
+        cdef str result
 
-    with nogil:
-        demangled_ptr = __cu_demangle(mangled_ptr, NULL)
+        with nogil:
+            demangled_ptr = __cu_demangle(mangled_ptr, NULL)
 
-    if demangled_ptr != NULL:
-        try:
-            result = demangled_ptr.decode('utf-8')
-        finally:
-            free(demangled_ptr)
-        return result
-    else:
-        # Demangling failed - return original mangled name to allow
-        # exact matching if user provides the mangled name directly
+        if demangled_ptr != NULL:
+            try:
+                result = demangled_ptr.decode('utf-8')
+            finally:
+                free(demangled_ptr)
+            return result
+        else:
+            # Demangling failed - return original mangled name to allow
+            # exact matching if user provides the mangled name directly
+            return mangled
+    ELSE:
+        # HIP/ROCm: libcufilt not available, return mangled name as-is
         return mangled
 
 
