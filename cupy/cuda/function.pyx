@@ -27,14 +27,15 @@ IF CUPY_CUDA_VERSION > 0:
         char* __cu_demangle(const char* id, char* output_buffer, size_t* length, int* status)
 
 
-cdef str demangle_cxx_name(const char* mangled_cstr):
+cdef str demangle_cxx_name(const char* mangled_cstr, str mangled_str):
     """Demangle a C++ mangled name using __cu_demangle from libcufilt.
 
     Args:
         mangled_cstr: The mangled C++ name as a C string.
+        mangled_str: The mangled name as a Python string (decoded from mangled_cstr).
 
     Returns:
-        The demangled name, or the original name if demangling fails.
+        The demangled name, or the original mangled name if demangling fails.
     """
     IF CUPY_CUDA_VERSION > 0:
         cdef char* buffer = NULL
@@ -50,8 +51,8 @@ cdef str demangle_cxx_name(const char* mangled_cstr):
             # Second pass: allocate buffer and call again to populate it
             buffer = <char*>PyMem_Malloc(length)
             if buffer == NULL:
-                # Memory allocation failed - return mangled name
-                return mangled_cstr.decode('utf-8')
+                # Memory allocation failed - raise MemoryError
+                raise MemoryError('Failed to allocate memory for demangled name')
 
             try:
                 with nogil:
@@ -62,16 +63,16 @@ cdef str demangle_cxx_name(const char* mangled_cstr):
                     return result
                 else:
                     # Demangling failed - return original mangled name
-                    return mangled_cstr.decode('utf-8')
+                    return mangled_str
             finally:
                 PyMem_Free(buffer)
         else:
             # Demangling failed - return original mangled name to allow
             # exact matching if user provides the mangled name directly
-            return mangled_cstr.decode('utf-8')
+            return mangled_str
     ELSE:
         # HIP/ROCm: libcufilt not available, return mangled name as-is
-        return mangled_cstr.decode('utf-8')
+        return mangled_str
 
 
 cdef class CPointer:
@@ -298,8 +299,9 @@ cdef class Module:
             self.mapping = {}
             for i in range(function_handles.size()):
                 mangled_cstr = driver.funcGetName(<intptr_t>function_handles[i])
-                demangled = demangle_cxx_name(mangled_cstr)
-                self.mapping[demangled] = mangled_cstr.decode('utf-8')
+                mangled_str = mangled_cstr.decode('utf-8')
+                demangled = demangle_cxx_name(mangled_cstr, mangled_str)
+                self.mapping[demangled] = mangled_str
         except Exception:
             # On error (e.g., CUDA < 11.6), mapping stays None
             # Caller should handle this by recompiling
