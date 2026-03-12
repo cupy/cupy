@@ -630,6 +630,10 @@ def _compile_with_cache_cuda(
 
     key_src = '%s %s %s %s %s' % (
         env, base, source, extra_source, _get_cupy_cache_key())
+    if name_expressions:
+        # Include name_expressions in the cache key so different template
+        # instantiations get separate cache entries
+        key_src += ' ' + ','.join(sorted(name_expressions))
     key_src = key_src.encode('utf-8')
     # In the case of generating LTO IRs, we pass them around as chunks of
     # bytes, so the filename extension is arbitrary
@@ -651,9 +655,12 @@ def _compile_with_cache_cuda(
                 if name_expressions:
                     mod._enumerate_and_build_mapping(tuple(name_expressions))
                     # If enumeration failed (e.g., unsupported CUDA version),
-                    # fall through to recompile
+                    # unload the module to prevent leaks and fall through to recompile
                     if not mod.mapping:
-                        pass  # Will continue to compilation below
+                        if mod.ptr:
+                            driver.moduleUnload(mod.ptr)
+                            mod.ptr = 0
+                        # Continue to compilation below
                     else:
                         return mod
                 else:

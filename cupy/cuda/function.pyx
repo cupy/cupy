@@ -50,7 +50,8 @@ cdef str demangle_cxx_name(str mangled):
             free(demangled_ptr)
         return result
     else:
-        # Demangling failed, return original
+        # Demangling failed - return original mangled name to allow
+        # exact matching if user provides the mangled name directly
         return mangled
 
 
