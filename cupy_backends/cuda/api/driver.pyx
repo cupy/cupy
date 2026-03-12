@@ -258,7 +258,7 @@ cpdef intptr_t moduleGetGlobal(intptr_t module, str varname) except? 0:
     return <intptr_t>var
 
 
-cdef vector.vector[Function] moduleEnumerateFunctions(intptr_t module) except +*:
+cdef vector.vector[Function] moduleEnumerateFunctions(intptr_t module) except +:
     """Enumerate all functions in a module (CUDA 11.6+).
 
     Args:
