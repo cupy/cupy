@@ -21,6 +21,9 @@ from cupy.cuda import device
 
 
 IF CUPY_CUDA_VERSION > 0:
+    cdef extern from "../../cupy_backends/cupy_backend.h" nogil:
+        pass
+
     # C++ demangling using __cu_demangle from NVIDIA's libcufilt
     # See: https://docs.nvidia.com/cuda/cuda-binary-utilities/index.html#library-availability
     cdef extern from "nv_decode.h" nogil:
