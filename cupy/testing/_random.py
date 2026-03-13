@@ -8,6 +8,8 @@ import random
 import types
 import unittest
 
+import pytest
+
 import cupy
 
 
@@ -95,6 +97,13 @@ def generate_seed():
 def fix_random():
     """Decorator that fixes random numbers in a test.
 
+    .. note:: free-threading
+        The function version of this decorator currently will never run
+        the test in free-threading (it is rarely used).
+        The class version does run it, but results must be considered
+        unpredictable in general, since tests would share the same global
+        random state.
+
     This decorator can be applied to either a test case class or a test method.
     It should not be applied within ``condition.retry`` or
     ``condition.repeat``.
@@ -110,6 +119,7 @@ def fix_random():
                 impl.__name__.startswith('test_')):
             # Applied to test method
             @functools.wraps(impl)
+            @pytest.mark.thread_unsafe(reason="fix_random seeds globals.")
             def test_func(self, *args, **kw):
                 _setup_random()
                 try:
