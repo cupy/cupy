@@ -167,54 +167,37 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
         if ctx.use_hip or ctx.use_stub:
             return
 
+        from cupy_builder.cupy_setup_build import _find_static_library
+        cufilt_lib = _find_static_library('cufilt')
+
         cuda_path = build.get_cuda_path()
-        if cuda_path is None:
-            print('Skipping cufilt trampoline: CUDA path not found')
-            return
-
-        cufilt_lib = None
-        for libdir in ['lib\\x64', 'lib']:
-            p = os.path.join(cuda_path, libdir, 'cufilt.lib')
-            if os.path.exists(p):
-                cufilt_lib = p
-                break
-        if cufilt_lib is None:
-            print('Skipping cufilt trampoline: cufilt.lib not found')
-            return
-
         cuda_include = os.path.join(cuda_path, 'include')
         source = os.path.abspath(
             os.path.join('cupy_backends', 'cuda', 'libs', 'cupy_cufilt.c'))
 
         out_dir = os.path.join(self.build_lib, 'cupy', 'cuda')
-        os.makedirs(out_dir, exist_ok=True)
-        dll_path = os.path.abspath(
-            os.path.join(out_dir, 'cupy_cufilt.dll'))
 
-        cl_exe = getattr(ctx, 'win32_cl_exe_path', 'cl.exe')
-
-        build_temp = os.path.join(self.build_temp, 'cufilt_trampoline')
-        os.makedirs(build_temp, exist_ok=True)
-
-        cmd = [
-            cl_exe, '/nologo', '/MT', '/LD',
-            f'/I{cuda_include}',
-            f'/Fe{dll_path}',
-            source,
-            '/link', cufilt_lib,
-        ]
-        print(f'Building cufilt trampoline DLL: {dll_path}')
-        result = subprocess.run(cmd, cwd=build_temp)
-        if result.returncode != 0:
-            print('WARNING: Failed to build cufilt trampoline DLL. '
-                  'C++ name demangling will not be available on Windows.')
-            return
+        print('Building cufilt trampoline DLL...')
+        objects = self.compiler.compile(
+            [source],
+            output_dir=self.build_temp,
+            include_dirs=[cuda_include],
+            extra_postargs=['/MT'],
+        )
+        self.compiler.link_shared_lib(
+            objects,
+            'cupy_cufilt',
+            output_dir=out_dir,
+            extra_postargs=[
+                cufilt_lib, '/MANIFEST', '/NODEFAULTLIB:MSVCRT'],
+        )
 
         if ctx.setup_command == 'editable_wheel':
             editable_dst = os.path.join('cupy', 'cuda', 'cupy_cufilt.dll')
-            shutil.copy2(dll_path, editable_dst)
+            shutil.copy2(
+                os.path.join(out_dir, 'cupy_cufilt.dll'), editable_dst)
 
-        print(f'cufilt trampoline DLL built successfully.')
+        print('cufilt trampoline DLL built successfully.')
 
     def build_extensions(self) -> None:
         ctx = cupy_builder.get_context()
