@@ -163,7 +163,7 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
         if sys.platform != 'win32':
             return
 
-        ctx = cupy_builder.get_context()
+        ctx = cupy_builder.get_context()  # type: ignore[unreachable]
         if ctx.use_hip or ctx.use_stub:
             return
 
