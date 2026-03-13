@@ -66,8 +66,8 @@ cdef str demangle_cxx_name(
 
 
 # Matches CuPy's bundled Thrust internal namespace on the complex type,
-# e.g. "thrust::THRUST_300102_SM_890_NS::complex" → "complex".
-cdef object _thrust_complex_re = re.compile(r'thrust::\w+::complex\b')
+# e.g. "thrust::THRUST_300102_SM_890_NS::complex" or "thrust::complex".
+cdef object _thrust_complex_re = re.compile(r'thrust::(?:\w+::)?complex\b')
 
 
 cdef inline str normalize_name_expr(str demangled):
@@ -320,10 +320,7 @@ cdef class Module:
             This function requires CUDA 12.3 or later.
             On HIP/ROCm, this raises NotImplementedError.
         """
-        IF CUPY_HIP_VERSION > 0:
-            raise NotImplementedError(
-                'Function enumeration is not supported on HIP/ROCm')
-        ELIF CUPY_CUDA_VERSION > 0:
+        IF CUPY_CUDA_VERSION > 0:
             if self.mapping is not None:
                 return  # Already built
 
@@ -331,20 +328,34 @@ cdef class Module:
             cdef unsigned int i, num_functions
             cdef const char* mangled_cstr
 
+            cdef dict mapping = {}
+            # Reverse lookup: normalized user name → original user name.
+            # This lets us match demangled symbols back to the user's
+            # original name expressions (which may contain thrust:: etc.).
+            cdef dict norm_to_user = {
+                normalize_name_expr(ne): ne for ne in name_expressions}
+
             try:
                 num_functions = driver.moduleGetFunctionCount(self.ptr)
                 function_handles = driver.moduleEnumerateFunctions(
                     self.ptr, num_functions)
 
-                self.mapping = {}
                 for i in range(function_handles.size()):
                     mangled_cstr = driver.funcGetName(
                         <intptr_t>(function_handles[i]))
                     mangled_str = mangled_cstr.decode('utf-8')
                     demangled = demangle_cxx_name(mangled_cstr, mangled_str)
-                    self.mapping[normalize_name_expr(demangled)] = mangled_str
+                    normalized = normalize_name_expr(demangled)
+                    original = norm_to_user.get(normalized)
+                    if original is not None:
+                        mapping[original] = mangled_str
             except Exception:
                 pass
+            else:
+                self._set_mapping(mapping)
+        ELSE:
+            raise NotImplementedError(
+                'Function enumeration is not supported on HIP/ROCm')
 
 
 cdef class LinkState:
