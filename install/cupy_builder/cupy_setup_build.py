@@ -487,7 +487,7 @@ def make_extensions(ctx: Context, compiler, use_cython):
                 args = s_file.setdefault('extra_link_args', [])
                 args.append(ldflag)
 
-            if not no_cuda and f == 'cupy.cuda.function':
+            if not no_cuda and not use_hip and f == 'cupy.cuda.function':
                 s_file['extra_objects'] = (
                     s_file.get('extra_objects', [])
                     + [_find_static_library('cufilt')])
