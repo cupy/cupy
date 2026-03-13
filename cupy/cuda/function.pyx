@@ -381,7 +381,7 @@ cdef class Module:
         self.mapping = mapping
 
     cpdef _enumerate_and_build_mapping(self, tuple name_expressions):
-        """Enumerate functions and build mapping (CUDA 12.3+).
+        """Enumerate functions and build mapping (CUDA driver 12.4+).
 
         This method enumerates all functions in the loaded CUBIN and builds
         a mapping from user-provided name expressions to mangled names.
@@ -390,7 +390,7 @@ cdef class Module:
             name_expressions: Tuple of name expressions to match.
 
         .. note::
-            This function requires CUDA 12.3 or later.
+            This function requires CUDA driver 12.4 or later.
             On HIP/ROCm, this raises NotImplementedError.
         """
         IF CUPY_CUDA_VERSION > 0:
