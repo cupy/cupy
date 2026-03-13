@@ -2980,7 +2980,7 @@ cdef tuple _compute_concat_info_impl(obj):
 
     if (cai := getattr(obj, '__cuda_array_interface__', None)) is not None:
         # Assume __cuda_array_interface__ is cheap enough to call twice
-        return cai['shape'], ndarray, numpy.dtype(cai['typestr'])
+        return cai['shape'], ndarray, get_cai_dtype(cai)
 
     if isinstance(obj, (list, tuple)):
         dim = len(obj)
@@ -3116,6 +3116,36 @@ cpdef _ndarray_base asfortranarray(_ndarray_base a, dtype=None):
     return newarray
 
 
+cdef inline get_cai_dtype(dict desc):
+    dtype = numpy.dtype(desc['typestr'])
+    if <cnp.dtype>(dtype).num != cnp.NPY_VOID:
+        return dtype
+
+    # extract dtype from descr, this is slightly "smarter" than some
+    # NumPy versions (at least 2.4), but much like `np.load` logic.
+    # (For CuPy it is much more likely to use aligned and thus padded dtypes.)
+    descr = desc['descr']
+    if isinstance(descr, list):
+        offset = 0
+        names = []
+        offsets = []
+        formats = []
+        # Note, we just don't support "titles" here...
+        for name, fmt in descr:
+            field_dtype = numpy.dtype(fmt)
+            if name:  # ignore fields with empty names (assume padding)
+                names.append(name)
+                formats.append(field_dtype)
+                offsets.append(offset)
+            offset += field_dtype.itemsize
+
+        dtype = numpy.dtype(
+            {"names": names, "offsets": offsets, "formats": formats})
+    else:
+        pass  # should be unstructured (and already correct).
+    return dtype
+
+
 cpdef _ndarray_base _convert_object_with_cuda_array_interface(a):
     # NOTE: Most code should use this indirectly via `_convert_from_cupy_like`
 
@@ -3126,7 +3156,7 @@ cpdef _ndarray_base _convert_object_with_cuda_array_interface(a):
     cdef size_t nbytes
 
     ptr = desc['data'][0]
-    dtype = numpy.dtype(desc['typestr'])
+    dtype = get_cai_dtype(desc)
     if dtype.byteorder == '>':
         raise ValueError('CuPy does not support the big-endian byte-order')
     mask = desc.get('mask')

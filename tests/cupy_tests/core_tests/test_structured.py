@@ -22,8 +22,9 @@ class TestCreation:
 
     @pytest.mark.parametrize("func", [
         cupy.array,
-        cupy.asarray,
         lambda x: cupy.asarray([x, x]),
+        # Uses __cuda_array_interface__ only which doesn't check as strictly:
+        pytest.param(cupy.asarray, marks=pytest.mark.xfail(strict=True)),
     ])
     def test_reject_references(self, func):
         arr = numpy.array([1, 2, 3], dtype="q,O")
@@ -34,7 +35,7 @@ class TestCreation:
         # Check coming from a bad cupy array-like
         base = cupy.zeros(3, dtype="q,q")
 
-        class ByteSwapped(DummyObjectWithCudaArrayInterface):
+        class WithReferences(DummyObjectWithCudaArrayInterface):
             @property
             def __cuda_array_interface__(self):
                 # Fake the dtype to something bad
@@ -43,12 +44,17 @@ class TestCreation:
                 iface["descr"] = arr.dtype.descr
                 return iface
 
-        # Right now, structured dtypes round-trip as V<itemsize> and lose
-        # their structure in the __cuda_array_interface__. As long as that
-        # is the case, this always passes.
-        # with pytest.raises(ValueError):
-        #     func(ByteSwapped(base))
-        assert func(ByteSwapped(base)).dtype == f"V{base.dtype.itemsize}"
+        with pytest.raises(ValueError):
+            func(WithReferences(base))
+
+    def test_cuda_array_interface_dtype(self):
+        # This dtype requires padding, let's make it so it round-trips fine
+        # in __cuda_array_interface__...
+        a = cupy.zeros(3, dtype=cupy.make_aligned_dtype("?,q"))
+        res = cupy.asarray(DummyObjectWithCudaArrayInterface(a))
+
+        assert a.dtype == res.dtype
+        assert cupy.may_share_memory(a, res)
 
 
 class TestFieldCasting:
