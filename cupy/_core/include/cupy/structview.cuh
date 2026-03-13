@@ -79,13 +79,6 @@ public:
     assign_broadcast<0>(value);
   }
 
-  StructView(const StructType& s) : StructType(s) {}
-  StructView(StructType&& s) : StructType(std::move(s)) {}
-
-  // Access underlying struct
-  StructType& as_struct() { return *this; }
-  const StructType& as_struct() const { return *this; }
-
   // Index-based field access
   template<size_t Index>
   auto& at() {

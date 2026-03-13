@@ -233,7 +233,7 @@ def _make_aligned_dtype(
             if offset < min_offset:
                 raise ValueError(
                     "make_aligned_dtype() only supports well behaved "
-                    "in order fields as it ignores field offsets).")
+                    "in-order fields as it ignores field offsets).")
 
             # Keep track of field offset to reject non-ordered inputs.
             min_offset = offset + subdtype.itemsize
@@ -299,7 +299,7 @@ def _make_aligned_dtype(
 def make_aligned_dtype(
         dtype, *, int alignment=-1, bint recurse=True):
     """Create a new structured dtype from a NumPy dtype or dtype-like with
-    sufficient algnment for GPU use.
+    sufficient alignment for GPU use.
 
     Args:
         dtype: Data type specifier compatible with NumPy.
@@ -317,10 +317,10 @@ def make_aligned_dtype(
 
         recurse: Whether to recurse into nested structures, defaults to True.
             When ``False``, the nested struct is assumed to be already
-            sufficientlyaligned.
+            sufficiently aligned.
 
     Returns:
-        cupy.ndarray: A view of the array with reduced dimensions.
+        numpy.dtype: A dtype object with the desired alignment.
 
 
     Notes:

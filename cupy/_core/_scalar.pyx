@@ -128,7 +128,7 @@ cpdef str get_typename(dtype, type_decls=None):
             elif not cnp.PyDataType_HASSUBARRAY(descr) and descr.itemsize > 0:
                 # Unstructured void is just a blob bytes.
                 if type_decls is not None:
-                    type_decls.add('#include "cupy/unstructued_void.cuh"')
+                    type_decls.add('#include "cupy/unstructured_void.cuh"')
                 return f"cupy::UnstructuredVoid<{descr.itemsize}>"
 
     raise ValueError(f"Unsupported dtype {dtype}")
@@ -168,6 +168,7 @@ cdef Py_ssize_t get_cuda_alignment(cnp.dtype dtype) except -1:
             "using in_t = decltype(in); out = alignof(in_t);",
         )
 
+    # synchronize!
     alignment = int(_alignment_kernel(cupy.empty((), dtype=dtype))[()])
     _cuda_alignments[dtype] = alignment
     return alignment
@@ -211,7 +212,7 @@ def _build_struct_typename(dtype, type_decls):
                 subalignment = subdtype.metadata.get(
                     "__cuda_alignment__", subalignment)
 
-        assert (subalignment - 1) & subalignment == 0
+        assert ((subalignment - 1) & subalignment) == 0
         alignment = max(alignment, subalignment)
 
         if offset % subalignment != 0:

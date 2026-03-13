@@ -41,6 +41,6 @@ public:
   }
 };
 
-} // namespace scupy
+} // namespace cupy
 
 #endif // UNSTRUCTURED_VOID_H_
