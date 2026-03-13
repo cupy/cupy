@@ -323,29 +323,28 @@ cdef class Module:
         IF CUPY_HIP_VERSION > 0:
             raise NotImplementedError(
                 'Function enumeration is not supported on HIP/ROCm')
+        ELIF CUPY_CUDA_VERSION > 0:
+            if self.mapping is not None:
+                return  # Already built
 
-        if self.mapping is not None:
-            return  # Already built
+            cdef vector.vector[driver.Function] function_handles
+            cdef unsigned int i, num_functions
+            cdef const char* mangled_cstr
 
-        cdef vector.vector[driver.Function] function_handles
-        cdef unsigned int i, num_functions = len(name_expressions)
-        cdef const char* mangled_cstr
+            try:
+                num_functions = driver.moduleGetFunctionCount(self.ptr)
+                function_handles = driver.moduleEnumerateFunctions(
+                    self.ptr, num_functions)
 
-        try:
-            function_handles = driver.moduleEnumerateFunctions(
-                self.ptr, <unsigned int>num_functions)
-
-            self.mapping = {}
-            for i in range(function_handles.size()):
-                mangled_cstr = driver.funcGetName(
-                    <intptr_t>(function_handles[i]))
-                mangled_str = mangled_cstr.decode('utf-8')
-                demangled = demangle_cxx_name(mangled_cstr, mangled_str)
-                self.mapping[normalize_name_expr(demangled)] = mangled_str
-        except Exception:
-            # On error (e.g., unsupported CUDA version), mapping stays None.
-            # Caller should handle this by recompiling.
-            pass
+                self.mapping = {}
+                for i in range(function_handles.size()):
+                    mangled_cstr = driver.funcGetName(
+                        <intptr_t>(function_handles[i]))
+                    mangled_str = mangled_cstr.decode('utf-8')
+                    demangled = demangle_cxx_name(mangled_cstr, mangled_str)
+                    self.mapping[normalize_name_expr(demangled)] = mangled_str
+            except Exception:
+                pass
 
 
 cdef class LinkState:

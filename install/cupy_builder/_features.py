@@ -455,7 +455,7 @@ class CUDA_cuda(Feature):
             # CUDA Toolkit
             ['cublas', 'cufft', 'curand', 'cusparse']
         )
-        self.static_libraries = ['cudart_static', 'cufilt']
+        self.static_libraries = ['cudart_static']
         self._version = self._UNDETERMINED
 
     def configure(self, compiler: Any, settings: Any) -> bool:

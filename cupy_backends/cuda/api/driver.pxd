@@ -66,6 +66,7 @@ cpdef intptr_t moduleLoadData(bytes image) except? 0
 cpdef moduleUnload(intptr_t module)
 cpdef intptr_t moduleGetFunction(intptr_t module, str funcname) except? 0
 cpdef intptr_t moduleGetGlobal(intptr_t module, str varname) except? 0
+cdef unsigned int moduleGetFunctionCount(intptr_t module) except +
 cdef vector[Function] moduleEnumerateFunctions(  # NOQA
     intptr_t module, unsigned int count) except +
 cdef const char* funcGetName(intptr_t func) except? NULL

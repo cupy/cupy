@@ -258,16 +258,27 @@ cpdef intptr_t moduleGetGlobal(intptr_t module, str varname) except? 0:
     return <intptr_t>var
 
 
+cdef unsigned int moduleGetFunctionCount(intptr_t module) except +:
+    """Get the number of functions in a module (CUDA 12.3+)."""
+    initialize()
+    cdef unsigned int count = 0
+    with nogil:
+        status = cuModuleGetFunctionCount(&count, <Module>module)
+    check_status(status)
+    return count
+
+
 cdef vector.vector[Function] moduleEnumerateFunctions(
         intptr_t module, unsigned int count) except +:
     """Enumerate functions in a module (CUDA 12.3+).
 
     Args:
         module: Module handle.
-        count: Maximum number of function handles to retrieve.
+        count: Number of function handles to retrieve (must match
+               the value returned by :func:`moduleGetFunctionCount`).
 
     Returns:
-        Vector of function handles (up to *count* entries).
+        Vector of function handles.
     """
     initialize()
     cdef vector.vector[Function] result
