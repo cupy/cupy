@@ -4,9 +4,9 @@ import re
 import numpy
 import warnings
 
-from cpython.mem cimport PyMem_Malloc, PyMem_Free  # no-cython-lint
 from libc.stdint cimport intptr_t
 from libc.stdint cimport uintmax_t
+from libc.stdlib cimport free  # no-cython-lint
 from libcpp cimport vector
 
 from cupy._core cimport _carray
@@ -32,44 +32,33 @@ IF CUPY_CUDA_VERSION > 0:
             size_t* length, int* status)
 
 
-cdef str demangle_cxx_name(const char* mangled_cstr, str mangled_str):
-    """Demangle a C++ mangled name using __cu_demangle from libcufilt.
+cdef str demangle_cxx_name(
+        const char* mangled_cstr, str mangled_str):
+    """Demangle a C++ mangled name using libcufilt.
 
     Args:
-        mangled_cstr: The mangled C++ name as a C string.
-        mangled_str: The mangled name as a Python string
-            (decoded from mangled_cstr).
+        mangled_cstr: C string of the mangled name.
+        mangled_str: Same name as a Python string.
 
     Returns:
-        The demangled name, or the original mangled name if demangling fails.
+        The demangled name, or *mangled_str* if
+        demangling fails.
     """
     IF CUPY_CUDA_VERSION > 0:
-        cdef char* buffer = NULL
-        cdef size_t length = 0
+        cdef char* result_ptr = NULL
         cdef int status = 0
         cdef str result
 
         with nogil:
-            __cu_demangle(mangled_cstr, NULL, &length, &status)
+            result_ptr = __cu_demangle(
+                mangled_cstr, NULL, NULL, &status)
 
-        if status == 0 and length > 0:
-            buffer = <char*>PyMem_Malloc(length)
-            if buffer == NULL:
-                raise MemoryError(
-                    'Failed to allocate memory for '
-                    'demangled name')
-
+        if status == 0 and result_ptr != NULL:
             try:
-                with nogil:
-                    __cu_demangle(mangled_cstr, buffer, &length, &status)
-
-                if status == 0:
-                    result = buffer.decode('utf-8')
-                    return result
-                else:
-                    return mangled_str
+                result = result_ptr.decode('utf-8')
+                return result
             finally:
-                PyMem_Free(buffer)
+                free(result_ptr)
         else:
             return mangled_str
     ELSE:
