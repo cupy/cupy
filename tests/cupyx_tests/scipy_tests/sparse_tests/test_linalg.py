@@ -627,6 +627,26 @@ class TestGmres:
             sp.linalg.gmres(ng_a, b)
 
 
+@testing.with_requires('scipy>=1.4')
+class TestGmresInfo:
+
+    def test_nonconvergence_with_restart_maxiter_mismatch(self):
+        n = 48
+        indices = numpy.arange(n, dtype=numpy.float64)
+        a_cpu = 1.0 / (indices[:, None] + indices[None, :] + 1.0)
+        a = sparse.csr_matrix(cupy.asarray(a_cpu))
+        x_true = cupy.asarray(numpy.random.default_rng(0).standard_normal(n))
+        b = a @ x_true
+        tol = 1e-12
+
+        x, info = sparse.linalg.gmres(
+            a, b, restart=2, maxiter=3, atol=tol, rtol=tol)
+        rel_res = cupy.linalg.norm(a @ x - b) / cupy.linalg.norm(b)
+
+        assert rel_res > tol
+        assert info != 0
+
+
 def skip_HIP_spMM_error(outer=()):
     def decorator(impl):
         @functools.wraps(impl)

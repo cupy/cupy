@@ -116,6 +116,7 @@ class TestUnownedMemory(unittest.TestCase):
         self.check(1)
 
 
+@pytest.mark.thread_unsafe(reason="MockMemory.cur_ptr is shared")
 class TestMemoryPointer(unittest.TestCase):
 
     def test_int(self):
@@ -286,40 +287,36 @@ class TestMemoryPointerAsync(unittest.TestCase):
 # -----------------------------------------------------------------------------
 # Memory pool
 
+@pytest.mark.thread_unsafe(reason="tests self.pool on a low level")
 class TestSingleDeviceMemoryPool(unittest.TestCase):
 
     def setUp(self):
         self.pool = memory.SingleDeviceMemoryPool(allocator=mock_alloc)
         self.unit = memory._allocation_unit_size
         self.stream = stream_module.Stream()
-        self.stream_ident = self.stream.ptr
+        self.arena = self.pool._arena(self.stream.ptr)
 
     def test_round_size(self):
         assert memory._round_size(self.unit - 1) == self.unit
         assert memory._round_size(self.unit) == self.unit
         assert memory._round_size(self.unit + 1) == self.unit * 2
 
-    def test_bin_index_from_size(self):
-        assert memory._bin_index_from_size(self.unit - 1) == 0
-        assert memory._bin_index_from_size(self.unit) == 0
-        assert memory._bin_index_from_size(self.unit + 1) == 1
-
     def test_split(self):
         mem = MockMemory(self.unit * 4)
-        chunk = memory._Chunk(mem, 0, mem.size, self.stream_ident)
+        chunk = memory._Chunk(mem, 0, mem.size, self.arena)
         tail = chunk.split(self.unit * 2)
         assert chunk.ptr() == mem.ptr
         assert chunk.offset == 0
         assert chunk.size == self.unit * 2
         assert chunk.prev is None
         assert chunk.next.ptr() == tail.ptr()
-        assert chunk.stream_ident == self.stream_ident
+        assert chunk.arena == self.arena
         assert tail.ptr() == mem.ptr + self.unit * 2
         assert tail.offset == self.unit * 2
         assert tail.size == self.unit * 2
         assert tail.prev.ptr() == chunk.ptr()
         assert tail.next is None
-        assert tail.stream_ident == self.stream_ident
+        assert tail.arena == self.arena
 
         tail_of_head = chunk.split(self.unit)
         assert chunk.ptr() == mem.ptr
@@ -327,13 +324,13 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
         assert chunk.size == self.unit
         assert chunk.prev is None
         assert chunk.next.ptr() == tail_of_head.ptr()
-        assert chunk.stream_ident == self.stream_ident
+        assert chunk.arena == self.arena
         assert tail_of_head.ptr() == mem.ptr + self.unit
         assert tail_of_head.offset == self.unit
         assert tail_of_head.size == self.unit
         assert tail_of_head.prev.ptr() == chunk.ptr()
         assert tail_of_head.next.ptr() == tail.ptr()
-        assert tail_of_head.stream_ident == self.stream_ident
+        assert tail_of_head.arena == self.arena
 
         tail_of_tail = tail.split(self.unit)
         assert tail.ptr() == chunk.ptr() + self.unit * 2
@@ -341,17 +338,17 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
         assert tail.size == self.unit
         assert tail.prev.ptr() == tail_of_head.ptr()
         assert tail.next.ptr() == tail_of_tail.ptr()
-        assert tail.stream_ident == self.stream_ident
+        assert tail.arena == self.arena
         assert tail_of_tail.ptr() == mem.ptr + self.unit * 3
         assert tail_of_tail.offset == self.unit * 3
         assert tail_of_tail.size == self.unit
         assert tail_of_tail.prev.ptr() == tail.ptr()
         assert tail_of_tail.next is None
-        assert tail_of_tail.stream_ident == self.stream_ident
+        assert tail_of_tail.arena == self.arena
 
     def test_merge(self):
         mem = MockMemory(self.unit * 4)
-        chunk = memory._Chunk(mem, 0, mem.size, self.stream_ident)
+        chunk = memory._Chunk(mem, 0, mem.size, self.arena)
         chunk_ptr = chunk.ptr()
         chunk_offset = chunk.offset
         chunk_size = chunk.size
@@ -368,29 +365,32 @@ class TestSingleDeviceMemoryPool(unittest.TestCase):
         tail_of_head = head.split(self.unit)
         tail_of_tail = tail.split(self.unit)
 
-        head.merge(tail_of_head)
+        head.merge_next()
         assert head.ptr() == head_ptr
         assert head.offset == head_offset
         assert head.size == head_size
         assert head.prev is None
         assert head.next.ptr() == tail_ptr
-        assert head.stream_ident == self.stream_ident
+        assert head.arena == self.arena
+        assert tail_of_head.arena is None
 
-        tail.merge(tail_of_tail)
+        tail.merge_next()
         assert tail.ptr() == tail_ptr
         assert tail.offset == tail_offset
         assert tail.size == tail_size
         assert tail.prev.ptr() == head_ptr
         assert tail.next is None
-        assert tail.stream_ident == self.stream_ident
+        assert tail.arena == self.arena
+        assert tail_of_tail.arena is None
 
-        head.merge(tail)
+        head.merge_next()
         assert head.ptr() == chunk_ptr
         assert head.offset == chunk_offset
         assert head.size == chunk_size
         assert head.prev is None
         assert head.next is None
-        assert head.stream_ident == self.stream_ident
+        assert head.arena == self.arena
+        assert tail.arena is None
 
     def test_alloc(self):
         p1 = self.pool.malloc(self.unit * 4)
@@ -708,6 +708,7 @@ class TestMemoryPool(unittest.TestCase):
             mem.free()
             mem.free()
 
+    @pytest.mark.thread_unsafe(reason="counts free blocks on shared pool")
     def test_free_all_blocks(self):
         with cupy.cuda.Device():
             mem = self.pool.malloc(1).mem
@@ -719,12 +720,14 @@ class TestMemoryPool(unittest.TestCase):
             self.pool.free_all_blocks()
             assert self.pool.n_free_blocks() == 0
 
+    @pytest.mark.thread_unsafe(reason="counts free blocks on shared pool")
     def test_free_all_blocks_without_malloc(self):
         with cupy.cuda.Device():
             # call directly without malloc.
             self.pool.free_all_blocks()
             assert self.pool.n_free_blocks() == 0
 
+    @pytest.mark.thread_unsafe(reason="counts free blocks on shared pool")
     def test_free_all_free(self):
         with cupy.cuda.Device():
             mem = self.pool.malloc(1).mem
@@ -737,6 +740,7 @@ class TestMemoryPool(unittest.TestCase):
                 self.pool.free_all_free()
             assert self.pool.n_free_blocks() == 0
 
+    @pytest.mark.thread_unsafe(reason="counts free blocks on shared pool")
     def test_free_all_free_without_malloc(self):
         with cupy.cuda.Device():
             # call directly without malloc.
@@ -744,6 +748,7 @@ class TestMemoryPool(unittest.TestCase):
                 self.pool.free_all_free()
             assert self.pool.n_free_blocks() == 0
 
+    @pytest.mark.thread_unsafe(reason="counts free blocks on shared pool")
     def test_n_free_blocks_without_malloc(self):
         with cupy.cuda.Device():
             # call directly without malloc/free_all_free.
@@ -791,6 +796,7 @@ class TestAllocator(unittest.TestCase):
         self.pool.free_all_blocks()
         memory.set_allocator(self.old_pool.malloc)
 
+    @pytest.mark.thread_unsafe(reason="checks usage of shared pool")
     def test_set_allocator(self):
         with cupy.cuda.Device():
             assert 0 == self.pool.used_bytes()
@@ -824,6 +830,7 @@ class TestAllocator(unittest.TestCase):
             assert memory.get_allocator() == new_pool.malloc
         assert memory.get_allocator() == self.pool.malloc
 
+    @pytest.mark.thread_unsafe(reason="test already threaded")
     def test_allocator_thread_local(self):
         barrier = threading.Barrier(2)
 
@@ -893,22 +900,26 @@ class TestAllocator(unittest.TestCase):
         assert not self._error
         return main_ptr, self._ptr
 
+    @pytest.mark.thread_unsafe(reason="test already threaded")
     def test_reuse_between_thread(self):
         stream = cupy.cuda.Stream.null
         main_ptr, sub_ptr = self._reuse_between_thread(stream, stream)
         assert main_ptr == sub_ptr
 
+    @pytest.mark.thread_unsafe(reason="test already threaded")
     def test_reuse_between_thread_same_stream(self):
         stream = cupy.cuda.Stream()
         main_ptr, sub_ptr = self._reuse_between_thread(stream, stream)
         assert main_ptr == sub_ptr
 
+    @pytest.mark.thread_unsafe(reason="test already threaded")
     def test_reuse_between_thread_different_stream(self):
         stream1 = cupy.cuda.Stream()
         stream2 = cupy.cuda.Stream()
         main_ptr, sub_ptr = self._reuse_between_thread(stream1, stream2)
         assert main_ptr != sub_ptr
 
+    @pytest.mark.thread_unsafe(reason="test already threaded")
     def test_reuse_between_thread_ptds(self):
         stream = cupy.cuda.Stream.ptds
         main_ptr, sub_ptr = self._reuse_between_thread(stream, stream)
@@ -953,6 +964,7 @@ class PythonAllocator:
         cupy.cuda.runtime.free(size)
 
 
+@pytest.mark.thread_unsafe(reason="uses global set_allocator")
 class TestPythonFunctionAllocator(unittest.TestCase):
     def setUp(self):
         self.old_pool = cupy.get_default_memory_pool()
@@ -979,12 +991,6 @@ class TestMemInfo(unittest.TestCase):
         assert len(mem_info) == 2
         assert all(isinstance(m, int) for m in mem_info)
         assert all(m > 0 for m in mem_info)
-
-
-class TestLockAndNoGc(unittest.TestCase):
-
-    def test(self):
-        memory._test_lock_and_no_gc()
 
 
 class TestExceptionPicklable(unittest.TestCase):
@@ -1082,6 +1088,7 @@ free_bytes_watermark = 0
 @pytest.mark.skipif(not cupy.cuda.driver._is_cuda_python()
                     and cupy.cuda.driver.get_build_version() < 11020,
                     reason='malloc_async is supported since CUDA 11.2')
+@pytest.mark.thread_unsafe(reason="tests shared self.pool properties")
 class TestMemoryAsyncPool(unittest.TestCase):
 
     def setUp(self):
