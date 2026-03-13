@@ -29,6 +29,28 @@ _cuda_hip_version = driver.get_build_version()
 
 
 _nvrtc_version = None
+_func_enum_supported = None
+
+
+def _is_function_enum_supported():
+    """Check if the CUDA driver supports function enumeration APIs.
+
+    cuModuleGetFunctionCount, cuModuleEnumerateFunctions, and cuFuncGetName
+    are required.  The first two were introduced in CUDA driver 12.4 (12040)
+    and cuFuncGetName in 12.3 (12030), so the effective minimum is 12040.
+
+    Returns False unconditionally on HIP/ROCm.
+    """
+    global _func_enum_supported
+    if _func_enum_supported is not None:
+        return _func_enum_supported
+    if not runtime.is_hip and runtime.driverGetVersion() >= 12040:
+        _func_enum_supported = True
+    else:
+        _func_enum_supported = False
+    return _func_enum_supported
+
+
 _win32 = sys.platform.startswith('win32')
 _rdc_flags = ('--device-c', '-dc', '-rdc=true',
               '--relocatable-device-code=true')
@@ -628,8 +650,16 @@ def _compile_with_cache_cuda(
         base = _preprocess('', options, arch, backend)
         _empty_file_preprocess_cache[env] = base
 
+    can_enum = _is_function_enum_supported()
+
     key_src = '%s %s %s %s %s' % (
         env, base, source, extra_source, _get_cupy_cache_key())
+    if name_expressions and can_enum:
+        # Include name_expressions in the cache key so different template
+        # instantiations get separate cache entries.
+        # Only when function enumeration is available (CUDA driver 12.4+);
+        # otherwise we force recompilation to retrieve mangled names.
+        key_src += ' ' + ','.join(sorted(name_expressions))
     key_src = key_src.encode('utf-8')
     # In the case of generating LTO IRs, we pass them around as chunks of
     # bytes, so the filename extension is arbitrary
@@ -639,16 +669,29 @@ def _compile_with_cache_cuda(
         mod = function.Module()
 
     if not cache_in_memory:
-        # Read from cache using global backend
-        # We force recompiling to retrieve C++ mangled names if so desired.
-        if not name_expressions:
+        # When name_expressions is used but the driver is too old for
+        # function enumeration, skip the cache to force recompilation
+        # so that NVRTC can retrieve mangled names directly.
+        use_cache = not name_expressions or can_enum
+        if use_cache:
             cubin = _kernel_cache_backend.load(name)
             if cubin is not None:
                 if to_ltoir:
                     return cubin
                 else:
                     mod.load(cubin)
-                    return mod
+                    if name_expressions:
+                        mod._enumerate_and_build_mapping(
+                            tuple(name_expressions))
+                        if not mod.mapping:
+                            if mod.ptr:
+                                driver.moduleUnload(mod.ptr)
+                                mod.ptr = 0
+                            # Continue to compilation below
+                        else:
+                            return mod
+                    else:
+                        return mod
     else:
         # Enforce compiling -- the resulting kernel will be cached elsewhere,
         # so we do nothing
@@ -963,6 +1006,8 @@ def _compile_with_cache_hip(source, options, arch, extra_source,
     if not cache_in_memory:
         # Read from cache using global backend
         # We force recompiling to retrieve C++ mangled names if so desired.
+        # TODO(leofang): Add support for function enumeration when HIP/ROCm
+        # provides equivalent APIs to cuModuleEnumerateFunctions/cuFuncGetName
         if not name_expressions:
             binary = _kernel_cache_backend.load(name)
             if binary is not None:

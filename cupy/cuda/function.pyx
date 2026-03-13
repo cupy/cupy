@@ -1,5 +1,6 @@
 # distutils: language = c++
 
+import re
 import numpy
 import warnings
 
@@ -16,6 +17,178 @@ from cupy.cuda cimport stream as stream_module
 from cupy.cuda.memory cimport MemoryPointer
 from cupy.cuda.texture cimport TextureObject, SurfaceObject
 from cupy.cuda import device
+
+
+IF CUPY_CUDA_VERSION > 0:
+    cdef extern from "../../cupy_backends/cupy_backend.h" nogil:
+        pass
+
+    # Platform-abstracted C++ demangling via NVIDIA's libcufilt.
+    # Linux: __cu_demangle is linked directly from libcufilt.a.
+    # Windows: cupy_cufilt.dll (a /MT trampoline) is loaded at runtime
+    #          to avoid the /MT vs /MD CRT mismatch with cufilt.lib.
+    cdef extern from *:
+        """
+        #ifdef _WIN32
+        #include <windows.h>
+        #include <cstddef>
+        #include <cstring>
+
+        typedef char* (*cupy_demangle_fn)(
+            const char*, char*, size_t*, int*);
+        typedef void (*cupy_free_fn)(char*);
+
+        static cupy_demangle_fn _cupy_demangle = NULL;
+        static cupy_free_fn _cupy_dfree = NULL;
+        static int _cupy_cufilt_loaded = 0;
+
+        static int _cupy_cufilt_init(void) {
+            HMODULE hSelf, hDll;
+            char path[MAX_PATH];
+            char *sep;
+
+            if (_cupy_cufilt_loaded)
+                return (_cupy_demangle != NULL);
+            _cupy_cufilt_loaded = 1;
+
+            /* Locate cupy_cufilt.dll next to this extension module. */
+            if (!GetModuleHandleExA(
+                    GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+                    GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                    (LPCSTR)&_cupy_cufilt_init, &hSelf))
+                return 0;
+            if (!GetModuleFileNameA(hSelf, path, MAX_PATH))
+                return 0;
+            sep = strrchr(path, '\\\\');
+            if (sep) *(sep + 1) = '\\0';
+            strcat(path, "cupy_cufilt.dll");
+
+            hDll = LoadLibraryA(path);
+            if (!hDll) return 0;
+            _cupy_demangle = (cupy_demangle_fn)GetProcAddress(
+                hDll, "cupy_cu_demangle");
+            _cupy_dfree = (cupy_free_fn)GetProcAddress(
+                hDll, "cupy_free");
+            return (_cupy_demangle && _cupy_dfree) ? 1 : 0;
+        }
+
+        static char* cupy_demangle(
+                const char* id, char* buf,
+                size_t* len, int* status) {
+            if (!_cupy_cufilt_init()) {
+                if (status) *status = -1;
+                return NULL;
+            }
+            return _cupy_demangle(id, buf, len, status);
+        }
+
+        static void cupy_demangle_free(char* ptr) {
+            if (_cupy_dfree) _cupy_dfree(ptr);
+        }
+        #else
+        #include "nv_decode.h"
+        #include <cstdlib>
+
+        static char* cupy_demangle(
+                const char* id, char* buf,
+                size_t* len, int* status) {
+            return __cu_demangle(id, buf, len, status);
+        }
+
+        static void cupy_demangle_free(char* ptr) {
+            free(ptr);
+        }
+        #endif
+        """
+        char* cupy_demangle(const char* id, char* output_buffer,
+                            size_t* length, int* status) nogil
+        void cupy_demangle_free(char* ptr) nogil
+
+
+cdef str demangle_cxx_name(
+        const char* mangled_cstr, str mangled_str):
+    """Demangle a C++ mangled name using libcufilt.
+
+    Args:
+        mangled_cstr: C string of the mangled name.
+        mangled_str: Same name as a Python string.
+
+    Returns:
+        The demangled name, or *mangled_str* if
+        demangling fails.
+    """
+    IF CUPY_CUDA_VERSION > 0:
+        cdef char* result_ptr = NULL
+        cdef int status = 0
+        cdef str result
+
+        with nogil:
+            result_ptr = cupy_demangle(
+                mangled_cstr, NULL, NULL, &status)
+
+        if status == 0 and result_ptr != NULL:
+            try:
+                result = result_ptr.decode('utf-8')
+                return result
+            finally:
+                cupy_demangle_free(result_ptr)
+        else:
+            return mangled_str
+    ELSE:
+        return mangled_str
+
+
+# Matches CuPy's bundled Thrust internal namespace on the complex type,
+# e.g. "thrust::THRUST_300102_SM_890_NS::complex" or "thrust::complex".
+cdef object _thrust_complex_re = re.compile(r'thrust::(?:\w+::)?complex\b')
+
+
+cdef inline str normalize_name_expr(str demangled):
+    """Normalize a demangled full signature to a short name expression.
+
+    Converts e.g.
+      ``"void square<thrust::NS::complex<double> >(const T1 *, T1 *, int)"``
+    to
+      ``"square<complex<double>>"``.
+
+    Steps:
+      1. Strip the ``void`` return-type prefix (CUDA kernels always return
+         void; non-template kernels are demangled without one).
+      2. Strip the parameter list ``(...)`` that follows the function name
+         (and any template arguments).
+      3. Replace ``thrust::*::complex`` with ``complex`` (CuPy's bundled
+         Thrust namespace).
+      4. Collapse whitespace before ``>`` so ``<double >`` becomes
+         ``<double>``.
+
+    Args:
+        demangled: Full demangled signature from ``__cu_demangle``.
+
+    Returns:
+        Normalised short name expression.
+    """
+    cdef str s = demangled
+
+    if s.startswith('void '):
+        s = s[5:]
+
+    # Find the opening '(' of the parameter list at angle-bracket depth 0.
+    cdef int depth = 0
+    cdef Py_ssize_t idx
+    cdef Py_ssize_t slen = len(s)
+    for idx in range(slen):
+        if s[idx] == '<':
+            depth += 1
+        elif s[idx] == '>':
+            depth -= 1
+        elif s[idx] == '(' and depth == 0:
+            s = s[:idx]
+            break
+
+    s = _thrust_complex_re.sub('complex', s)
+    s = s.replace(' >', '>')
+
+    return s
 
 
 cdef class CPointer:
@@ -206,6 +379,56 @@ cdef class Module:
 
     cpdef _set_mapping(self, dict mapping):
         self.mapping = mapping
+
+    cpdef _enumerate_and_build_mapping(self, tuple name_expressions):
+        """Enumerate functions and build mapping (CUDA driver 12.4+).
+
+        This method enumerates all functions in the loaded CUBIN and builds
+        a mapping from user-provided name expressions to mangled names.
+
+        Args:
+            name_expressions: Tuple of name expressions to match.
+
+        .. note::
+            This function requires CUDA driver 12.4 or later.
+            On HIP/ROCm, this raises NotImplementedError.
+        """
+        IF CUPY_CUDA_VERSION > 0:
+            if self.mapping is not None:
+                return  # Already built
+
+            cdef vector.vector[driver.Function] function_handles
+            cdef unsigned int i, num_functions
+            cdef const char* mangled_cstr
+
+            cdef dict mapping = {}
+            # Reverse lookup: normalized user name → original user name.
+            # This lets us match demangled symbols back to the user's
+            # original name expressions (which may contain thrust:: etc.).
+            cdef dict norm_to_user = {
+                normalize_name_expr(ne): ne for ne in name_expressions}
+
+            try:
+                num_functions = driver.moduleGetFunctionCount(self.ptr)
+                function_handles = driver.moduleEnumerateFunctions(
+                    self.ptr, num_functions)
+
+                for i in range(function_handles.size()):
+                    mangled_cstr = driver.funcGetName(
+                        <intptr_t>(function_handles[i]))
+                    mangled_str = mangled_cstr.decode('utf-8')
+                    demangled = demangle_cxx_name(mangled_cstr, mangled_str)
+                    normalized = normalize_name_expr(demangled)
+                    original = norm_to_user.get(normalized)
+                    if original is not None:
+                        mapping[original] = mangled_str
+            except Exception:
+                pass
+            else:
+                self._set_mapping(mapping)
+        ELSE:
+            raise NotImplementedError(
+                'Function enumeration is not supported on HIP/ROCm')
 
 
 cdef class LinkState:

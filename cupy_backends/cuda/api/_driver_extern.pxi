@@ -58,6 +58,15 @@ cdef F_cuFuncGetAttribute cuFuncGetAttribute
 ctypedef int (*F_cuFuncSetAttribute)(Function hfunc, CUfunction_attribute attrib, int value) noexcept nogil  # NOQA
 cdef F_cuFuncSetAttribute cuFuncSetAttribute
 
+# Function enumeration (CUDA driver 12.4+)
+ctypedef int (*F_cuModuleGetFunctionCount)(unsigned int* count, Module hmod) noexcept nogil  # NOQA
+cdef F_cuModuleGetFunctionCount cuModuleGetFunctionCount
+ctypedef int (*F_cuModuleEnumerateFunctions)(Function* functions, unsigned int numFunctions, Module hmod) noexcept nogil  # NOQA
+cdef F_cuModuleEnumerateFunctions cuModuleEnumerateFunctions
+
+ctypedef int (*F_cuFuncGetName)(const char** name, Function hfunc) noexcept nogil  # NOQA
+cdef F_cuFuncGetName cuFuncGetName
+
 # Occupancy
 ctypedef int (*F_cuOccupancyMaxActiveBlocksPerMultiprocessor)(int* numBlocks, Function func, int blockSize, size_t dynamicSMemSize) noexcept nogil  # NOQA
 cdef F_cuOccupancyMaxActiveBlocksPerMultiprocessor cuOccupancyMaxActiveBlocksPerMultiprocessor  # NOQA
@@ -131,6 +140,13 @@ cdef SoftLink _initialize():
     cuFuncGetAttribute = <F_cuFuncGetAttribute>_L.get('FuncGetAttribute')
     global cuFuncSetAttribute
     cuFuncSetAttribute = <F_cuFuncSetAttribute>_L.get('FuncSetAttribute')
+    # Function enumeration (CUDA driver 12.4+)
+    global cuModuleGetFunctionCount
+    cuModuleGetFunctionCount = <F_cuModuleGetFunctionCount>_L.get('ModuleGetFunctionCount')  # NOQA
+    global cuModuleEnumerateFunctions
+    cuModuleEnumerateFunctions = <F_cuModuleEnumerateFunctions>_L.get('ModuleEnumerateFunctions')  # NOQA
+    global cuFuncGetName
+    cuFuncGetName = <F_cuFuncGetName>_L.get('FuncGetName')
     global cuOccupancyMaxActiveBlocksPerMultiprocessor
     cuOccupancyMaxActiveBlocksPerMultiprocessor = <F_cuOccupancyMaxActiveBlocksPerMultiprocessor>_L.get('OccupancyMaxActiveBlocksPerMultiprocessor')  # NOQA
     global cuOccupancyMaxPotentialBlockSize
