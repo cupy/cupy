@@ -76,6 +76,7 @@ markers = [
   "parallel_threads", "iterations", "thread_unsafe",
 ]
 filterwarnings = [
+  "always",  # Make sure previous calls cannot hide future warnings.
   "error::FutureWarning",
   # ignore FutureWarning from cupy._util.experimental
   'ignore:.* is experimental\.:FutureWarning:cupy',
@@ -105,6 +106,8 @@ filterwarnings = [
   'ignore::PendingDeprecationWarning:numpy\.matrixlib\.defmatrix',
   # pyreadline (dependency from optuna -> cliff -> cmd2) uses deprecated ABCs
   "ignore:Using or importing the ABCs from:DeprecationWarning:pyreadline",
+  # google-api-core>=2.28.0 warns about Python versions approaching EOL
+  "ignore::FutureWarning:google.api_core",
   # Ignore warnings from Optuna 3.0 internal code
   # TODO(kmaehashi): Remove after the issue is fixed in Optuna.
   "ignore:(.+?) has been deprecated in v3.0.0:FutureWarning:optuna",

@@ -86,6 +86,7 @@ class TestSearch:
         return a.argmax(axis=1)
 
     @testing.slow
+    @pytest.mark.thread_unsafe(reason="allocation too large.")
     def test_argmax_int32_overflow(self):
         a = cupy.arange(2 ** 32 + 1, dtype=cupy.float64)
         assert a.argmax().item() == 2 ** 32
@@ -165,6 +166,7 @@ class TestSearch:
         return a.argmin(axis=1)
 
     @testing.slow
+    @pytest.mark.thread_unsafe(reason="allocation too large.")
     def test_argmin_int32_overflow(self):
         a = cupy.arange(2 ** 32 + 1, dtype=cupy.float64)
         cupy.negative(a, out=a)
@@ -187,6 +189,7 @@ def _skip_cuda90(dtype):
 }))
 @pytest.mark.skipif(
     not cupy.cuda.cub.available, reason='The CUB routine is not enabled')
+@pytest.mark.thread_unsafe(reason="unsafe setUp and counts function calls.")
 class TestCubReduction:
 
     @pytest.fixture(autouse=True)

@@ -292,6 +292,7 @@ def _get_bool_env_variable(name, default):
 
 
 _use_ptx = _get_bool_env_variable('CUPY_COMPILE_WITH_PTX', False)
+_use_pch = _get_bool_env_variable('CUPY_NVRTC_USE_PCH', False)
 _jitify_header_source_map_populated = False
 
 
@@ -373,12 +374,16 @@ def _compile_using_nvrtc_no_warning(
             options, headers, include_names = _jitify_prep(
                 source, options, cu_path)
         else:
+            # Some tests/kernels require the following option:
+            options += ('--device-as-default-execution-space',)
+
             headers = include_names = ()
             major_version, minor_version = _get_nvrtc_version()
-            if major_version >= 12:
-                # Starting with CUDA 12.0, even without using jitify, some
-                # tests cause an error if the following option is not included.
-                options += ('--device-as-default-execution-space',)
+
+            if ((major_version >= 13 or
+                    (major_version == 12 and minor_version >= 8)) and
+                    _use_pch):
+                options += ('--pch',)
 
         prog = _NVRTCProgram(source, cu_path, headers, include_names,
                              name_expressions=name_expressions, method=method)
