@@ -6,7 +6,6 @@ import warnings
 
 from libc.stdint cimport intptr_t
 from libc.stdint cimport uintmax_t
-from libc.stdlib cimport free  # no-cython-lint
 from libcpp cimport vector
 
 from cupy._core cimport _carray
@@ -24,12 +23,86 @@ IF CUPY_CUDA_VERSION > 0:
     cdef extern from "../../cupy_backends/cupy_backend.h" nogil:
         pass
 
-    # C++ demangling via __cu_demangle from NVIDIA's libcufilt
-    # https://docs.nvidia.com/cuda/cuda-binary-utilities/index.html#library-availability
-    cdef extern from "nv_decode.h" nogil:
-        char* __cu_demangle(  # NOQA
-            const char* id, char* output_buffer,
-            size_t* length, int* status)
+    # Platform-abstracted C++ demangling via NVIDIA's libcufilt.
+    # Linux: __cu_demangle is linked directly from libcufilt.a.
+    # Windows: cupy_cufilt.dll (a /MT trampoline) is loaded at runtime
+    #          to avoid the /MT vs /MD CRT mismatch with cufilt.lib.
+    cdef extern from *:
+        """
+        #ifdef _WIN32
+        #include <windows.h>
+        #include <cstddef>
+        #include <cstring>
+
+        typedef char* (*cupy_demangle_fn)(
+            const char*, char*, size_t*, int*);
+        typedef void (*cupy_free_fn)(char*);
+
+        static cupy_demangle_fn _cupy_demangle = NULL;
+        static cupy_free_fn _cupy_dfree = NULL;
+        static int _cupy_cufilt_loaded = 0;
+
+        static int _cupy_cufilt_init(void) {
+            HMODULE hSelf, hDll;
+            char path[MAX_PATH];
+            char *sep;
+
+            if (_cupy_cufilt_loaded)
+                return (_cupy_demangle != NULL);
+            _cupy_cufilt_loaded = 1;
+
+            /* Locate cupy_cufilt.dll next to this extension module. */
+            if (!GetModuleHandleExA(
+                    GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+                    GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                    (LPCSTR)&_cupy_cufilt_init, &hSelf))
+                return 0;
+            if (!GetModuleFileNameA(hSelf, path, MAX_PATH))
+                return 0;
+            sep = strrchr(path, '\\\\');
+            if (sep) *(sep + 1) = '\\0';
+            strcat(path, "cupy_cufilt.dll");
+
+            hDll = LoadLibraryA(path);
+            if (!hDll) return 0;
+            _cupy_demangle = (cupy_demangle_fn)GetProcAddress(
+                hDll, "cupy_cu_demangle");
+            _cupy_dfree = (cupy_free_fn)GetProcAddress(
+                hDll, "cupy_free");
+            return (_cupy_demangle && _cupy_dfree) ? 1 : 0;
+        }
+
+        static char* cupy_demangle(
+                const char* id, char* buf,
+                size_t* len, int* status) {
+            if (!_cupy_cufilt_init()) {
+                if (status) *status = -1;
+                return NULL;
+            }
+            return _cupy_demangle(id, buf, len, status);
+        }
+
+        static void cupy_demangle_free(char* ptr) {
+            if (_cupy_dfree) _cupy_dfree(ptr);
+        }
+        #else
+        #include "nv_decode.h"
+        #include <cstdlib>
+
+        static char* cupy_demangle(
+                const char* id, char* buf,
+                size_t* len, int* status) {
+            return __cu_demangle(id, buf, len, status);
+        }
+
+        static void cupy_demangle_free(char* ptr) {
+            free(ptr);
+        }
+        #endif
+        """
+        char* cupy_demangle(const char* id, char* output_buffer,
+                            size_t* length, int* status) nogil
+        void cupy_demangle_free(char* ptr) nogil
 
 
 cdef str demangle_cxx_name(
@@ -50,7 +123,7 @@ cdef str demangle_cxx_name(
         cdef str result
 
         with nogil:
-            result_ptr = __cu_demangle(
+            result_ptr = cupy_demangle(
                 mangled_cstr, NULL, NULL, &status)
 
         if status == 0 and result_ptr != NULL:
@@ -58,7 +131,7 @@ cdef str demangle_cxx_name(
                 result = result_ptr.decode('utf-8')
                 return result
             finally:
-                free(result_ptr)
+                cupy_demangle_free(result_ptr)
         else:
             return mangled_str
     ELSE:

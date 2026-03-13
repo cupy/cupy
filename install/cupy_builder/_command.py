@@ -152,6 +152,70 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
             compiler_directives=compiler_directives, annotate=ctx.annotate,
             compile_time_env=compile_time_env)
 
+    def _build_cufilt_trampoline(self) -> None:
+        """Build cupy_cufilt.dll on Windows.
+
+        cufilt.lib is compiled with /MT (static CRT) but Python extensions
+        require /MD (dynamic CRT), causing LNK2038 if linked directly.
+        This builds a small trampoline DLL with /MT that re-exports
+        __cu_demangle, which function.pyd loads at runtime.
+        """
+        if sys.platform != 'win32':
+            return
+
+        ctx = cupy_builder.get_context()
+        if ctx.use_hip or ctx.use_stub:
+            return
+
+        cuda_path = build.get_cuda_path()
+        if cuda_path is None:
+            print('Skipping cufilt trampoline: CUDA path not found')
+            return
+
+        cufilt_lib = None
+        for libdir in ['lib\\x64', 'lib']:
+            p = os.path.join(cuda_path, libdir, 'cufilt.lib')
+            if os.path.exists(p):
+                cufilt_lib = p
+                break
+        if cufilt_lib is None:
+            print('Skipping cufilt trampoline: cufilt.lib not found')
+            return
+
+        cuda_include = os.path.join(cuda_path, 'include')
+        source = os.path.abspath(
+            os.path.join('cupy_backends', 'cuda', 'libs', 'cupy_cufilt.c'))
+
+        out_dir = os.path.join(self.build_lib, 'cupy', 'cuda')
+        os.makedirs(out_dir, exist_ok=True)
+        dll_path = os.path.abspath(
+            os.path.join(out_dir, 'cupy_cufilt.dll'))
+
+        cl_exe = getattr(ctx, 'win32_cl_exe_path', 'cl.exe')
+
+        build_temp = os.path.join(self.build_temp, 'cufilt_trampoline')
+        os.makedirs(build_temp, exist_ok=True)
+
+        cmd = [
+            cl_exe, '/nologo', '/MT', '/LD',
+            f'/I{cuda_include}',
+            f'/Fe{dll_path}',
+            source,
+            '/link', cufilt_lib,
+        ]
+        print(f'Building cufilt trampoline DLL: {dll_path}')
+        result = subprocess.run(cmd, cwd=build_temp)
+        if result.returncode != 0:
+            print('WARNING: Failed to build cufilt trampoline DLL. '
+                  'C++ name demangling will not be available on Windows.')
+            return
+
+        if ctx.setup_command == 'editable_wheel':
+            editable_dst = os.path.join('cupy', 'cuda', 'cupy_cufilt.dll')
+            shutil.copy2(dll_path, editable_dst)
+
+        print(f'cufilt trampoline DLL built successfully.')
+
     def build_extensions(self) -> None:
         ctx = cupy_builder.get_context()
         num_jobs = int(os.environ.get('CUPY_NUM_BUILD_JOBS', '4'))
@@ -189,6 +253,8 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
             for src in ext.sources:
                 if not os.path.isfile(src):
                     raise RuntimeError(f'Fatal error: missing file: {src}')
+
+        self._build_cufilt_trampoline()
 
         print('Building extensions...')
         super().build_extensions()
