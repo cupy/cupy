@@ -66,7 +66,7 @@ cpdef intptr_t moduleLoadData(bytes image) except? 0
 cpdef moduleUnload(intptr_t module)
 cpdef intptr_t moduleGetFunction(intptr_t module, str funcname) except? 0
 cpdef intptr_t moduleGetGlobal(intptr_t module, str varname) except? 0
-cdef vector[Function] moduleEnumerateFunctions(intptr_t module) except +
+cdef vector[Function] moduleEnumerateFunctions(intptr_t module, unsigned int count) except +
 cdef const char* funcGetName(intptr_t func) except? NULL
 cpdef launchKernel(
     intptr_t f, unsigned int grid_dim_x, unsigned int grid_dim_y,

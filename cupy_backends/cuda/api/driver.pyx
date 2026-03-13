@@ -258,28 +258,29 @@ cpdef intptr_t moduleGetGlobal(intptr_t module, str varname) except? 0:
     return <intptr_t>var
 
 
-cdef vector.vector[Function] moduleEnumerateFunctions(intptr_t module) except +:
-    """Enumerate all functions in a module (CUDA 11.6+).
+cdef vector.vector[Function] moduleEnumerateFunctions(
+        intptr_t module, unsigned int count) except +:
+    """Enumerate functions in a module (CUDA 12.3+).
 
     Args:
         module: Module handle.
+        count: Maximum number of function handles to retrieve.
 
     Returns:
-        Vector of function handles.
-
-    .. note::
-        This function requires CUDA 11.6 or later.
+        Vector of function handles (up to *count* entries).
     """
     initialize()
-    cdef Function* functions = NULL
-    cdef unsigned int numFunctions = 0
     cdef vector.vector[Function] result
+    result.resize(count)
+
+    if count == 0:
+        return result
+
     with nogil:
-        status = cuModuleEnumerateFunctions(&functions, &numFunctions, <Module>module)
+        status = cuModuleEnumerateFunctions(
+            result.data(), count, <Module>module)
     check_status(status)
 
-    for i in range(numFunctions):
-        result.push_back(functions[i])
     return result
 
 

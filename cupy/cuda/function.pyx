@@ -1,5 +1,6 @@
 # distutils: language = c++
 
+import re
 import numpy
 import warnings
 
@@ -46,15 +47,12 @@ cdef str demangle_cxx_name(const char* mangled_cstr, str mangled_str):
         cdef int status = 0
         cdef str result
 
-        # First pass: call with NULL buffer to get required length
         with nogil:
             __cu_demangle(mangled_cstr, NULL, &length, &status)
 
         if status == 0 and length > 0:
-            # Second pass: allocate buffer and call again to populate it
             buffer = <char*>PyMem_Malloc(length)
             if buffer == NULL:
-                # Memory allocation failed - raise MemoryError
                 raise MemoryError('Failed to allocate memory for demangled name')
 
             try:
@@ -65,17 +63,66 @@ cdef str demangle_cxx_name(const char* mangled_cstr, str mangled_str):
                     result = buffer.decode('utf-8')
                     return result
                 else:
-                    # Demangling failed - return original mangled name
                     return mangled_str
             finally:
                 PyMem_Free(buffer)
         else:
-            # Demangling failed - return original mangled name to allow
-            # exact matching if user provides the mangled name directly
             return mangled_str
     ELSE:
-        # HIP/ROCm: libcufilt not available, return mangled name as-is
         return mangled_str
+
+
+# Matches CuPy's bundled Thrust internal namespace on the complex type,
+# e.g. "thrust::THRUST_300102_SM_890_NS::complex" → "complex".
+cdef object _thrust_complex_re = re.compile(r'thrust::\w+::complex\b')
+
+
+cdef inline str normalize_name_expr(str demangled):
+    """Normalize a demangled full signature to a short name expression.
+
+    Converts e.g.
+      ``"void square<thrust::NS::complex<double> >(const T1 *, T1 *, int)"``
+    to
+      ``"square<complex<double>>"``.
+
+    Steps:
+      1. Strip the ``void`` return-type prefix (CUDA kernels always return
+         void; non-template kernels are demangled without one).
+      2. Strip the parameter list ``(...)`` that follows the function name
+         (and any template arguments).
+      3. Replace ``thrust::*::complex`` with ``complex`` (CuPy's bundled
+         Thrust namespace).
+      4. Collapse whitespace before ``>`` so ``<double >`` becomes
+         ``<double>``.
+
+    Args:
+        demangled: Full demangled signature from ``__cu_demangle``.
+
+    Returns:
+        Normalised short name expression.
+    """
+    cdef str s = demangled
+
+    if s.startswith('void '):
+        s = s[5:]
+
+    # Find the opening '(' of the parameter list at angle-bracket depth 0.
+    cdef int depth = 0
+    cdef Py_ssize_t idx
+    cdef Py_ssize_t slen = len(s)
+    for idx in range(slen):
+        if s[idx] == '<':
+            depth += 1
+        elif s[idx] == '>':
+            depth -= 1
+        elif s[idx] == '(' and depth == 0:
+            s = s[:idx]
+            break
+
+    s = _thrust_complex_re.sub('complex', s)
+    s = s.replace(' >', '>')
+
+    return s
 
 
 cdef class CPointer:
@@ -268,7 +315,7 @@ cdef class Module:
         self.mapping = mapping
 
     cpdef _enumerate_and_build_mapping(self, tuple name_expressions):
-        """Enumerate functions and build mapping (CUDA 11.6+).
+        """Enumerate functions and build mapping (CUDA 12.3+).
 
         This method enumerates all functions in the loaded CUBIN and builds
         a mapping from user-provided name expressions to mangled names.
@@ -277,37 +324,33 @@ cdef class Module:
             name_expressions: Tuple of name expressions to match.
 
         .. note::
-            This function requires CUDA 11.6 or later. On HIP/ROCm, this
+            This function requires CUDA 12.3 or later. On HIP/ROCm, this
             raises NotImplementedError if function enumeration is not supported.
         """
         IF CUPY_HIP_VERSION > 0:
-            # HIP/ROCm does not support function enumeration yet
             raise NotImplementedError(
                 'Function enumeration is not supported on HIP/ROCm')
 
         if self.mapping is not None:
             return  # Already built
 
-        # Declare variables outside try block (Cython requirement)
         cdef vector.vector[driver.Function] function_handles
-        cdef size_t i
+        cdef unsigned int i, num_functions = len(name_expressions)
         cdef const char* mangled_cstr
-        cdef str demangled
 
         try:
-            # Enumerate all functions in the module
-            function_handles = driver.moduleEnumerateFunctions(self.ptr)
+            function_handles = driver.moduleEnumerateFunctions(
+                self.ptr, <unsigned int>num_functions)
 
-            # Build mapping from demangled names to mangled names
             self.mapping = {}
             for i in range(function_handles.size()):
-                mangled_cstr = driver.funcGetName(<intptr_t>function_handles[i])
+                mangled_cstr = driver.funcGetName(<intptr_t>(function_handles[i]))
                 mangled_str = mangled_cstr.decode('utf-8')
                 demangled = demangle_cxx_name(mangled_cstr, mangled_str)
-                self.mapping[demangled] = mangled_str
+                self.mapping[normalize_name_expr(demangled)] = mangled_str
         except Exception:
-            # On error (e.g., CUDA < 11.6), mapping stays None
-            # Caller should handle this by recompiling
+            # On error (e.g., unsupported CUDA version), mapping stays None.
+            # Caller should handle this by recompiling.
             pass
 
 

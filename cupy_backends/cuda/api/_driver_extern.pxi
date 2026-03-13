@@ -58,8 +58,8 @@ cdef F_cuFuncGetAttribute cuFuncGetAttribute
 ctypedef int (*F_cuFuncSetAttribute)(Function hfunc, CUfunction_attribute attrib, int value) noexcept nogil  # NOQA
 cdef F_cuFuncSetAttribute cuFuncSetAttribute
 
-# Function enumeration (CUDA 11.6+)
-ctypedef int (*F_cuModuleEnumerateFunctions)(Function** functions, unsigned int* numFunctions, Module hmod) noexcept nogil  # NOQA
+# Function enumeration (CUDA 12.3+)
+ctypedef int (*F_cuModuleEnumerateFunctions)(Function* functions, unsigned int numFunctions, Module hmod) noexcept nogil  # NOQA
 cdef F_cuModuleEnumerateFunctions cuModuleEnumerateFunctions
 
 ctypedef int (*F_cuFuncGetName)(const char** name, Function hfunc) noexcept nogil  # NOQA
@@ -138,7 +138,7 @@ cdef SoftLink _initialize():
     cuFuncGetAttribute = <F_cuFuncGetAttribute>_L.get('FuncGetAttribute')
     global cuFuncSetAttribute
     cuFuncSetAttribute = <F_cuFuncSetAttribute>_L.get('FuncSetAttribute')
-    # Function enumeration (CUDA 11.6+)
+    # Function enumeration (CUDA 12.3+)
     global cuModuleEnumerateFunctions
     cuModuleEnumerateFunctions = <F_cuModuleEnumerateFunctions>_L.get('ModuleEnumerateFunctions')  # NOQA
     global cuFuncGetName
