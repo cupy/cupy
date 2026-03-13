@@ -189,7 +189,7 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
             'cupy_cufilt',
             output_dir=out_dir,
             extra_postargs=[
-                cufilt_lib, '/MANIFEST', '/NODEFAULTLIB:MSVCRT'],
+                cufilt_lib, '/DLL', '/MANIFEST', '/NODEFAULTLIB:MSVCRT'],
         )
 
         if ctx.setup_command == 'editable_wheel':
