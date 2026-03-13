@@ -709,7 +709,7 @@ class TestCudaArrayInterfaceNonBuiltinDtype:
         b = DummyObjectWithCudaArrayInterface(a, ver, strides)
         c = cupy.asarray(b)
         # CAI typestr for structured dtypes is |V<n>; field info is lost
-        assert c.dtype == numpy.dtype(dtype.str)
+        assert c.dtype == dtype
         assert c.shape == (3,)
 
     @pytest.mark.parametrize('ver', range(max_cuda_array_interface_version+1))
