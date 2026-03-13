@@ -592,6 +592,10 @@ class Generator:
         Returns:
             cupy.ndarray: Samples drawn from the hypergeometric distribution.
 
+        .. warning::
+
+            This function may synchronize the device.
+
         .. seealso::
             :meth:`numpy.random.Generator.hypergeometric`
         """
@@ -633,6 +637,14 @@ class Generator:
         else:
             nsample = nsample.astype(numpy.int64, copy=False)
 
+        if cupy.any(ngood < 0):  # synchronize!
+            raise ValueError('ngood < 0')
+        if cupy.any(nbad < 0):  # synchronize!
+            raise ValueError('nbad < 0')
+        if cupy.any(nsample < 0):  # synchronize!
+            raise ValueError('nsample < 0')
+        if cupy.any(ngood + nbad < nsample):  # synchronize!
+            raise ValueError('ngood + nbad < nsample')
         if size is not None and not isinstance(size, tuple):
             size = (size,)
         if size is None:
