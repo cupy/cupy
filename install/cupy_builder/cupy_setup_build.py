@@ -487,10 +487,14 @@ def make_extensions(ctx: Context, compiler, use_cython):
                 args = s_file.setdefault('extra_link_args', [])
                 args.append(ldflag)
 
-            if not no_cuda and not use_hip and f == 'cupy.cuda.function':
+            if (not no_cuda and not use_hip
+                    and f == 'cupy.cuda.function'):
                 s_file['extra_objects'] = (
                     s_file.get('extra_objects', [])
                     + [_find_static_library('cufilt')])
+                if PLATFORM_WIN32:
+                    link_args = s_file.setdefault('extra_link_args', [])
+                    link_args.append('/NODEFAULTLIB:LIBCMT')
 
             sources = module_extension_sources(f, use_cython, no_cuda)
             extension = setuptools.Extension(name, sources, **s_file)
