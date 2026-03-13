@@ -1470,5 +1470,3 @@ def test_jitify_deprecation_warning(jitify, match):
     # Not technically part of the rawkernel, but test warning in compile here:
     with pytest.warns(DeprecationWarning, match=match):
         compiler.compile_using_nvrtc("", options=(), jitify=jitify)
-
-

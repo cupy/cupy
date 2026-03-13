@@ -4,10 +4,9 @@ import re
 import numpy
 import warnings
 
-from cpython.mem cimport PyMem_Malloc, PyMem_Free
+from cpython.mem cimport PyMem_Malloc, PyMem_Free  # no-cython-lint
 from libc.stdint cimport intptr_t
 from libc.stdint cimport uintmax_t
-from libc.stdlib cimport free
 from libcpp cimport vector
 
 from cupy._core cimport _carray
@@ -25,10 +24,12 @@ IF CUPY_CUDA_VERSION > 0:
     cdef extern from "../../cupy_backends/cupy_backend.h" nogil:
         pass
 
-    # C++ demangling using __cu_demangle from NVIDIA's libcufilt
-    # See: https://docs.nvidia.com/cuda/cuda-binary-utilities/index.html#library-availability
+    # C++ demangling via __cu_demangle from NVIDIA's libcufilt
+    # https://docs.nvidia.com/cuda/cuda-binary-utilities/index.html#library-availability
     cdef extern from "nv_decode.h" nogil:
-        char* __cu_demangle(const char* id, char* output_buffer, size_t* length, int* status)
+        char* __cu_demangle(  # NOQA
+            const char* id, char* output_buffer,
+            size_t* length, int* status)
 
 
 cdef str demangle_cxx_name(const char* mangled_cstr, str mangled_str):
@@ -36,7 +37,8 @@ cdef str demangle_cxx_name(const char* mangled_cstr, str mangled_str):
 
     Args:
         mangled_cstr: The mangled C++ name as a C string.
-        mangled_str: The mangled name as a Python string (decoded from mangled_cstr).
+        mangled_str: The mangled name as a Python string
+            (decoded from mangled_cstr).
 
     Returns:
         The demangled name, or the original mangled name if demangling fails.
@@ -53,7 +55,9 @@ cdef str demangle_cxx_name(const char* mangled_cstr, str mangled_str):
         if status == 0 and length > 0:
             buffer = <char*>PyMem_Malloc(length)
             if buffer == NULL:
-                raise MemoryError('Failed to allocate memory for demangled name')
+                raise MemoryError(
+                    'Failed to allocate memory for '
+                    'demangled name')
 
             try:
                 with nogil:
@@ -324,8 +328,8 @@ cdef class Module:
             name_expressions: Tuple of name expressions to match.
 
         .. note::
-            This function requires CUDA 12.3 or later. On HIP/ROCm, this
-            raises NotImplementedError if function enumeration is not supported.
+            This function requires CUDA 12.3 or later.
+            On HIP/ROCm, this raises NotImplementedError.
         """
         IF CUPY_HIP_VERSION > 0:
             raise NotImplementedError(
@@ -344,7 +348,8 @@ cdef class Module:
 
             self.mapping = {}
             for i in range(function_handles.size()):
-                mangled_cstr = driver.funcGetName(<intptr_t>(function_handles[i]))
+                mangled_cstr = driver.funcGetName(
+                    <intptr_t>(function_handles[i]))
                 mangled_str = mangled_cstr.decode('utf-8')
                 demangled = demangle_cxx_name(mangled_cstr, mangled_str)
                 self.mapping[normalize_name_expr(demangled)] = mangled_str

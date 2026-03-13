@@ -654,8 +654,8 @@ def _compile_with_cache_cuda(
                 # and build the mapping (CUDA 11.6+)
                 if name_expressions:
                     mod._enumerate_and_build_mapping(tuple(name_expressions))
-                    # If enumeration failed (e.g., unsupported CUDA version),
-                    # unload the module to prevent leaks and fall through to recompile
+                    # If enumeration failed, unload the module to
+                    # prevent leaks and fall through to recompile
                     if not mod.mapping:
                         if mod.ptr:
                             driver.moduleUnload(mod.ptr)
