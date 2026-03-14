@@ -19,6 +19,7 @@ cpdef void _raise_if_invalid_cast(
 
 cdef void populate_format(Py_buffer* buf, str dtype) except*
 
+cdef tuple get_str_and_descr(dtype)
 
 cdef inline normalize_dtype(dtype):
     """Given an existing NumPy dtype normalize it for cupy.
