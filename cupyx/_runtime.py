@@ -23,6 +23,8 @@ def _eval_or_error(func, errors):
     # representing the error.
     try:
         return func()
+    except ImportError:
+        return None
     except errors as e:
         return repr(e)
 
@@ -405,6 +407,8 @@ class _RuntimeInfo:
                     arch = ('Device {} Compute Capability'.format(device_id),
                             device.compute_capability)
                 records += [name, arch, pci_bus]
+
+        records = [(k, v) for (k, v) in records if v is not None]
 
         width = max([len(r[0]) for r in records]) + 2
         fmt = '{:' + str(width) + '}: {}\n'
