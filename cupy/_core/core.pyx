@@ -16,9 +16,11 @@ from cupy._core._kernel import ElementwiseKernel
 from cupy._core._ufuncs import elementwise_copy
 from cupy._core import flags as _flags
 from cupy._core import syncdetect
+
 from cupy import cuda
 from cupy.cuda import memory as memory_module
 from cupy.cuda import stream as stream_mod
+from cupy.cuda._ipc_handle import IPCMemoryHandle
 
 
 from cupy_backends.cuda.api.runtime import CUDARuntimeError
@@ -2282,6 +2284,43 @@ cdef class _ndarray_base:
         """
         # Note: We use the "public" API to show the deprecation warning.
         return dlpack.toDlpack(self)
+
+    def get_ipc_handle(self):
+        """
+        Returns an instance of :class:`IPCMemoryHandle`, a serializable class
+        which holds array information and IPC handle for the array.
+        This instance can be passed to other processes, for example, using
+        Python's multiprocessing module.
+
+        On the destination process, use the .open() method to create a new
+        :class:`ndarray` object that shares the allocation from the original
+        process. The IPC handle can be closed manually by calling the .close()
+        method. After that, the destination can no longer use the shared array
+        object. The handle is closed automatically when the instance is deleted
+        using del or goes out of scope.
+
+        Note:
+            Users are responsible for keeping the IPC instance alive in the
+            source process for the lifetime of the corresponding array in
+            the destination process.
+            The handle cannot be open on the source process or on a destination
+            process which is a direct 'forked' descendant of the process on
+            which the handle is created.
+
+        Returns:
+            cupy.cuda._ipc_handle.IPCMemoryHandle: Serializable class with
+            Array information and IPC handle.
+
+        Example:
+            >>> # Source process
+            >>> import cupy
+            >>> arr = cupy.ones((3,3))
+            >>> arr_ipc = arr.get_ipc_handle()
+            >>>
+            >>> # Destination process
+            >>> arr = arr_ipc.open()
+        """
+        return IPCMemoryHandle(self)
 
 
 cdef inline _carray.mdspan _mdspan_from_ndarray(
