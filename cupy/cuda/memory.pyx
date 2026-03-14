@@ -125,16 +125,17 @@ cdef class Memory(BaseMemory):
 
 
 cdef inline void check_async_alloc_supported(int device_id) except*:
-    if runtime._is_hip_environment:
-        raise RuntimeError('HIP does not support memory_async')
     cdef int dev_id
     cdef list support
     try:
         is_supported = _thread_local.device_support_async_alloc[device_id]
     except AttributeError:
-        support = [runtime.deviceGetAttribute(
-            runtime.cudaDevAttrMemoryPoolsSupported, dev_id)
-            for dev_id in range(runtime.getDeviceCount())]
+        if runtime._is_hip_environment and CUPY_HIP_VERSION < 60100000:
+            raise RuntimeError('HIP < 6.1 does not support memory_async')
+        else:
+            support = [runtime.deviceGetAttribute(
+                runtime.cudaDevAttrMemoryPoolsSupported, dev_id)
+                for dev_id in range(runtime.getDeviceCount())]
         _thread_local.device_support_async_alloc = support
         is_supported = support[device_id]
     if not is_supported:
