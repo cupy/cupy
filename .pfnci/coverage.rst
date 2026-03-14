@@ -96,7 +96,7 @@ CuPy CI Test Coverage
      - `cuda130.multi <t19_>`_ `🐳 <d19_>`_ `📜 <s19_>`_
      - `cuda131 <t20_>`_ `🐳 <d20_>`_ `📜 <s20_>`_
      - `cuda131.multi <t21_>`_ `🐳 <d21_>`_ `📜 <s21_>`_
-     - `rocm-7-0 <t22_>`_ `🐳 <d22_>`_ `📜 <s22_>`_
+     - `rocm-7-1 <t22_>`_ `🐳 <d22_>`_ `📜 <s22_>`_
      - `cuda-slow <t23_>`_ `🐳 <d23_>`_ `📜 <s23_>`_
      - `cuda-example <t24_>`_ `🐳 <d24_>`_ `📜 <s24_>`_
      - `cuda-head <t25_>`_ `🐳 <d25_>`_ `📜 <s25_>`_
@@ -776,7 +776,7 @@ CuPy CI Test Coverage
      - ✅
      - ✅
    * - 
-     - 7.0
+     - 7.1
      - 1
      - 
      - 
@@ -1609,7 +1609,7 @@ CuPy CI Test Coverage
      - 
    * - 
      - 2.3
-     - 14
+     - 10
      - 
      - 
      - 
@@ -1628,8 +1628,8 @@ CuPy CI Test Coverage
      - ✅
      - ✅
      - ✅
-     - ✅
-     - ✅
+     - 
+     - 
      - ✅
      - ✅
      - ✅
@@ -1637,6 +1637,38 @@ CuPy CI Test Coverage
      - ✅
      - 
      - ✅
+     - 
+     - 
+   * - 
+     - 2.4
+     - 4
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - ✅
+     - ✅
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
      - ✅
      - ✅
    * - 
@@ -1959,6 +1991,102 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+   * - ml_dtypes
+     - null
+     - 3
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - ✅
+     - ✅
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - ✅
+     - 
+     - 
+   * - 
+     - 0.5
+     - 25
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - 
+     - 
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - 
+     - 
+     - ✅
+     - ✅
+   * - 
+     - pre
+     - 1
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - 
+     - ✅
+     - 
+     - 
+     - 
    * - mpi4py
      - null
      - 18
@@ -1992,58 +2120,26 @@ CuPy CI Test Coverage
      - ✅
      - ✅
    * - 
-     - 3
-     - 7
-     - 
-     - 
-     - 
-     - ✅
-     - 
-     - ✅
-     - 
-     - ✅
-     - 
-     - ✅
-     - 
-     - ✅
-     - 
-     - 
-     - 
-     - ✅
-     - 
-     - ✅
-     - 
-     - 
-     - 
-     - 
-     - 
-     - 
-     - 
-     - 
-     - 
-     - 
-     - 
-   * - 
      - 4
-     - 4
+     - 11
      - 
      - ✅
      - 
-     - 
-     - 
-     - 
-     - 
-     - 
-     - 
-     - 
-     - 
-     - 
+     - ✅
      - 
      - ✅
      - 
+     - ✅
      - 
+     - ✅
      - 
+     - ✅
      - 
+     - ✅
+     - 
+     - ✅
+     - 
+     - ✅
      - 
      - ✅
      - 
@@ -2570,9 +2666,9 @@ CuPy CI Test Coverage
 .. _t21: https://ci.preferred.jp/cupy.linux.cuda131.multi/
 .. _d21: linux/tests/cuda131.multi.Dockerfile
 .. _s21: linux/tests/cuda131.multi.sh
-.. _t22: https://jenkins.preferred.jp/job/chainer/job/cupy_main/TEST=rocm-7-0,label=mnj-mi50/
-.. _d22: linux/tests/rocm-7-0.Dockerfile
-.. _s22: linux/tests/rocm-7-0.sh
+.. _t22: https://jenkins.preferred.jp/job/chainer/job/cupy_main/TEST=rocm-7-1,label=mnj-mi50/
+.. _d22: linux/tests/rocm-7-1.Dockerfile
+.. _s22: linux/tests/rocm-7-1.sh
 .. _t23: https://ci.preferred.jp/cupy.linux.cuda-slow/
 .. _d23: linux/tests/cuda-slow.Dockerfile
 .. _s23: linux/tests/cuda-slow.sh

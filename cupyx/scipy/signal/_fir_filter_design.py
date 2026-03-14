@@ -918,8 +918,8 @@ def minimum_phase(h, method='homomorphic', n_fft=None, half=True):
         win[0] = 1
         stop = n_fft // 2
         win[1:stop] = 2
-        if n_fft % 2:
-            win[stop] = 1
+        # Nyquist freq: odd use 2, even use 1
+        win[stop] = 1 + (n_fft % 2)
         h_temp *= win
         h_temp = ifft(cupy.exp(fft(h_temp)))
         h_minimum = h_temp.real

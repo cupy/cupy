@@ -19,6 +19,7 @@ echo "================ Environment Variables ================"
 env
 echo "======================================================="
 
+
+trap "$ACTIONS/cleanup.sh" EXIT
 "$ACTIONS/build.sh"
 "$ACTIONS/unittest.sh" "not slow and not multi_gpu"
-"$ACTIONS/cleanup.sh"

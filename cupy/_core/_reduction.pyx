@@ -45,6 +45,16 @@ cpdef str _create_reduction_function_code(
         name, block_size, reduce_type, params, arginfos, identity,
         pre_map_expr, reduce_expr, post_map_expr,
         _kernel._TypeMap type_map, input_expr, output_expr, preamble, options):
+
+    type_headers = set()
+    params = _kernel._get_kernel_params(params, arginfos, type_headers)
+    type_preamble = type_map.get_typedef_code(type_headers)
+
+    if not type_headers:
+        type_headers = ''
+    else:
+        type_headers = '\n'.join(sorted(type_headers)) + "\n\n"
+
     # A (incomplete) list of internal variables:
     # _J            : the index of an element in the array
     # _block_size   : the number of threads in a block; should be power of 2
@@ -52,7 +62,7 @@ cpdef str _create_reduction_function_code(
     #                 be power of 2 and <= _block_size
 
     module_code = string.Template('''
-${type_preamble}
+${type_headers}${type_preamble}
 ${preamble}
 #define REDUCE(a, b) (${reduce_expr})
 #define POST_MAP(a) (${post_map_expr})
@@ -108,12 +118,13 @@ extern "C" __global__ void ${name}(${params}) {
         name=name,
         block_size=block_size,
         reduce_type=reduce_type,
-        params=_kernel._get_kernel_params(params, arginfos),
+        params=params,
+        type_headers=type_headers,
         identity=identity,
         reduce_expr=reduce_expr,
         pre_map_expr=pre_map_expr,
         post_map_expr=post_map_expr,
-        type_preamble=type_map.get_typedef_code(),
+        type_preamble=type_preamble,
         input_expr=input_expr,
         output_expr=output_expr,
         preamble=preamble)
@@ -157,7 +168,7 @@ cpdef tuple _get_axis(object axis, Py_ssize_t ndim):
 
 cpdef shape_t _get_out_shape(
         const shape_t& shape, tuple reduce_axis, tuple out_axis,
-        bint keepdims):
+        bint keepdims) except *:
     cdef shape_t out_shape
     if keepdims:
         out_shape = shape
@@ -171,7 +182,8 @@ cpdef shape_t _get_out_shape(
 
 
 cdef shape_t _set_permuted_args(
-        list args, tuple axis_permutes, const shape_t& shape, tuple params):
+        list args, tuple axis_permutes, const shape_t& shape,
+        tuple params) except *:
     # This function updates `args`
     cdef ParameterInfo p
     cdef Py_ssize_t i, s
@@ -471,11 +483,11 @@ cdef class _AbstractReductionKernel:
             best.user_attrs['block_stride'],
             best.params['out_block_num'])
 
-    cdef inline void _launch(
+    cdef inline bint _launch(
             self, out_block_num, block_size, block_stride,
             in_args, out_args, in_shape, out_shape, type_map,
             map_expr, reduce_expr, post_map_expr, reduce_type,
-            stream, params):
+            stream, params) except -1:
         cdef function.Function func
 
         inout_args = (

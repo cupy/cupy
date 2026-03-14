@@ -368,7 +368,9 @@ CUDA Stream Pointers
 Import
 ******
 
-CuPy provides :class:`~cupy.cuda.ExternalStream` API that allows interoperating with CUDA streams created in other libraries.
+CuPy supports the CUDA Stream Protocol for interoperability with streams from other libraries.
+The recommended approach is to use :meth:`cupy.cuda.Stream.from_external`, which works with any stream object
+that implements the ``__cuda_stream__`` protocol.
 
 .. code:: python
 
@@ -379,9 +381,24 @@ CuPy provides :class:`~cupy.cuda.ExternalStream` API that allows interoperating 
 
    # Switch the current stream in PyTorch.
    with torch.cuda.stream(s):
-       # Switch the current stream in CuPy, using the pointer of the stream created in PyTorch.
-       with cupy.cuda.ExternalStream(s.cuda_stream):
+       # Switch the current stream in CuPy, using the stream from PyTorch.
+       cupy_stream = cupy.cuda.Stream.from_external(s)
+       with cupy_stream:
            # This block runs on the same CUDA stream.
+           torch.arange(10, device='cuda')
+           cupy.arange(10)
+
+The :meth:`~cupy.cuda.Stream.from_external` method automatically manages the lifetime of the foreign stream
+by holding a reference to it, ensuring it remains alive while in use by CuPy.
+
+For libraries that do not implement the CUDA Stream Protocol, you can still use the legacy
+:class:`~cupy.cuda.ExternalStream` API (deprecated since v14.0):
+
+.. code:: python
+
+   # Legacy approach (deprecated)
+   with torch.cuda.stream(s):
+       with cupy.cuda.ExternalStream(s.cuda_stream):
            torch.arange(10, device='cuda')
            cupy.arange(10)
 
@@ -394,12 +411,21 @@ CuPy can validate that for you if you pass ``device_id`` argument when creating 
 Export
 ******
 
-You can pass streams created in CuPy to other libraries.
+You can pass streams created in CuPy to other libraries using the CUDA Stream Protocol.
+CuPy streams implement the ``__cuda_stream__`` method:
 
 .. code:: python
 
    s = cupy.cuda.Stream()
-   print(s.ptr, s.device_id)  # => (93997451352336, 0)
+   
+   # Get version and stream pointer using the protocol
+   version, stream_ptr = s.__cuda_stream__()
+   print(version, stream_ptr)  # => 0 93997451352336
+   
+   # Or directly access the pointer attribute
+   print(s.ptr)  # => 93997451352336
 
-The CUDA stream will be destroyed when the :class:`~cupy.cuda.Stream` (``s``) gets destructed.
-You must keep the :class:`~cupy.cuda.Stream` instance alive while the pointer is in use by other libraries.
+The CUDA stream will be destroyed when the :class:`~cupy.cuda.Stream`
+(``s``) gets destructed.
+You must keep the :class:`~cupy.cuda.Stream` instance alive while the
+pointer is in use by other libraries.

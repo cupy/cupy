@@ -83,6 +83,21 @@ jobs:
         READTHEDOCS=True pip install -v -e .
         ccache --max-size 0.5Gi --cleanup --show-stats
 
+    - name: Try to check for `noexcept` functions that may raise errors
+      # We ignore __dealloc__ or the pycapsule_deleter as it is hard to avoid there.
+      # Cython does give a warning with all warnings enabled (but those are many).
+      run: |
+        result=$(grep -r 'Pyx_WriteUnraisable' --include='*.cpp' . \
+                | grep -v -E \
+                '(__dealloc__|const char \*name|pycapsule_deleter|cupy\.cuda\.thrust\.cupy_malloc|\._streamCallbackFunc|\._HostFnFunc)' \
+                || true)
+        if [ -n "$result" ]; then
+          echo "$result"
+          echo "Found possibly bad functions (see above). If this check fails a function"
+          echo "could (theoretically) raise an error but is marked as noexcept."
+          exit 1
+        fi
+
     - name: Docs Build
       run: |
         # Test to detect invalid escape sequences in docstrings (#1619)
@@ -109,4 +124,4 @@ jobs:
     - name: Build & Test
       run: |
         # Note: "-complete" Docker image variants exceeds disk size on GitHub hosted runners.
-        docker run --rm -v "${PWD}:/src" -w /src "rocm/dev-ubuntu-22.04:7.0.2" bash .github/workflows/scripts/pretest-rocm-test.sh
+        docker run --rm -v "${PWD}:/src" -w /src "rocm/dev-ubuntu-22.04:7.1.1" bash .github/workflows/scripts/pretest-rocm-test.sh
