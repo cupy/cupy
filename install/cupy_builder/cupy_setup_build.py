@@ -120,7 +120,7 @@ def preconfigure_modules(ctx: Context, MODULES, compiler, settings):
 
     for key in ['CFLAGS', 'LDFLAGS', 'LIBRARY_PATH',
                 'CUDA_PATH', 'NVCC', 'HIPCC',
-                'ROCM_HOME']:
+                'ROCM_HOME', 'CUTENSOR_PATH', 'HIPTENSOR_PATH']:
         summary += ['  {:<16}: {}'.format(key, os.environ.get(key, '(none)'))]
 
     summary += [
@@ -135,22 +135,31 @@ def preconfigure_modules(ctx: Context, MODULES, compiler, settings):
         errmsg = []
 
         if module['name'] == 'cutensor':
-            cutensor_path = os.environ.get('CUTENSOR_PATH', '')
-            inc_path = os.path.join(cutensor_path, 'include')
-            if os.path.exists(inc_path):
-                settings['include_dirs'].append(inc_path)
-            lib_path = os.path.join(cutensor_path, 'lib')
-            if os.path.exists(lib_path):
-                settings['library_dirs'].append(lib_path)
-            cuda_version = ctx.features['cuda'].get_version()
-            cuda_major = str(cuda_version // 1000)
-            cuda_major_minor = cuda_major + '.' + \
-                str((cuda_version // 10) % 100)
-            for cuda_ver in (cuda_major_minor, cuda_major):
-                lib_path = os.path.join(cutensor_path, 'lib', cuda_ver)
+            if ctx.use_hip:
+                hiptensor_path = os.environ.get('HIPTENSOR_PATH', '')
+                inc_path = os.path.join(hiptensor_path, 'include')
+                if os.path.exists(inc_path):
+                    settings['include_dirs'].append(inc_path)
+                lib_path = os.path.join(hiptensor_path, 'lib')
                 if os.path.exists(lib_path):
                     settings['library_dirs'].append(lib_path)
-                    break
+            else:
+                cutensor_path = os.environ.get('CUTENSOR_PATH', '')
+                inc_path = os.path.join(cutensor_path, 'include')
+                if os.path.exists(inc_path):
+                    settings['include_dirs'].append(inc_path)
+                lib_path = os.path.join(cutensor_path, 'lib')
+                if os.path.exists(lib_path):
+                    settings['library_dirs'].append(lib_path)
+                cuda_version = ctx.features['cuda'].get_version()
+                cuda_major = str(cuda_version // 1000)
+                cuda_major_minor = cuda_major + '.' + \
+                    str((cuda_version // 10) % 100)
+                for cuda_ver in (cuda_major_minor, cuda_major):
+                    lib_path = os.path.join(cutensor_path, 'lib', cuda_ver)
+                    if os.path.exists(lib_path):
+                        settings['library_dirs'].append(lib_path)
+                        break
 
         # In ROCm 4.1 and later, we need to use the independent version of
         # hipfft as well as rocfft. We configure the lists of include
