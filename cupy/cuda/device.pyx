@@ -1,6 +1,7 @@
 # distutils: language = c++
 
-import threading
+cimport cython
+from cupy._core._threadlocal cimport _ThreadLocalBase, PyThread_tss_create
 
 from cupy._core import syncdetect
 from cupy_backends.cuda.api cimport runtime
@@ -8,26 +9,34 @@ from cupy_backends.cuda.api import runtime as runtime_module
 from cupy import _util
 
 
-cdef object _thread_local = threading.local()
-
 cdef dict _devices = {}
 cdef dict _compute_capabilities = {}
 
 
-cdef class _ThreadLocalStack:
+cdef Py_tss_t _tlocal_key
+if PyThread_tss_create(&_tlocal_key) != 0:
+    raise MemoryError()
+
+
+@cython.no_gc
+cdef class _ThreadLocal(_ThreadLocalBase):
     cdef list _devices
+    cdef list cublas_handles
+    cdef list cusolver_handles
+    cdef list cusolver_sp_handles
+    cdef list cusparse_handles
 
     def __init__(self):
+        cdef int num_devices = runtime.getDeviceCount()
         self._devices = []
+        self.cusolver_handles = [None] * num_devices
+        self.cusolver_handles = [None] * num_devices
+        self.cusolver_sp_handles = [None] * num_devices
+        self.cusparse_handles = [None] * num_devices
 
     @staticmethod
-    cdef _ThreadLocalStack get():
-        try:
-            stack = _thread_local._device_stack
-        except AttributeError:
-            stack = _ThreadLocalStack()
-            _thread_local._device_stack = stack
-        return <_ThreadLocalStack>stack
+    cdef _ThreadLocal get():
+        return <_ThreadLocal>_ThreadLocal._get(_ThreadLocal, _tlocal_key)
 
     cdef void push(self, int device_id) except *:
         self._devices.append(device_id)
@@ -171,13 +180,13 @@ cdef class Device:
 
     def __enter__(self):
         cdef int id = runtime.getDevice()
-        _ThreadLocalStack.get().push(id)
+        _ThreadLocal.get().push(id)
         if self.id != id:
             runtime.setDevice(self.id)
         return self
 
     def __exit__(self, *args):
-        runtime.setDevice(_ThreadLocalStack.get().pop())
+        runtime.setDevice(_ThreadLocal.get().pop())
 
     def __repr__(self):
         return '<CUDA Device %d>' % self.id
@@ -225,20 +234,12 @@ cdef class Device:
         finally:
             runtime.setDevice(prev_device)
 
-    def _get_handle(self, name, create_func, destroy_func):
-        handles = getattr(_thread_local, name, None)
-        if handles is None:
-            handles = {}
-            setattr(_thread_local, name, handles)
-        handle = handles.get(self.id, None)
-        if handle is not None:
-            return handle.handle
+    def _make_handle(self, create_func, destroy_func):
         prev_device = runtime.getDevice()
         try:
             runtime.setDevice(self.id)
             handle = create_func()
-            handles[self.id] = Handle(handle, destroy_func)
-            return handle
+            return Handle(handle, destroy_func)
         finally:
             runtime.setDevice(prev_device)
 
@@ -250,9 +251,14 @@ cdef class Device:
         itself is different.
 
         """
+        handle = _ThreadLocal.get().cublas_handles[self.id]
+        if handle is not None:
+            return handle
+
         from cupy_backends.cuda.libs import cublas
-        return self._get_handle(
-            'cublas_handles', cublas.create, cublas.destroy)
+        handle = self._make_handle(cublas.create, cublas.destroy)
+        _ThreadLocal.get().cublas_handles[self.id] = handle
+        return handle
 
     @property
     def cusolver_handle(self):
@@ -262,9 +268,14 @@ cdef class Device:
         itself is different.
 
         """
+        handle = _ThreadLocal.get().cusolver_handles[self.id]
+        if handle is not None:
+            return handle
+
         from cupy_backends.cuda.libs import cusolver
-        return self._get_handle(
-            'cusolver_handles', cusolver.create, cusolver.destroy)
+        handle = self._make_handle(cusolver.create, cusolver.destroy)
+        _ThreadLocal.get().cusolver_handles[self.id] = handle
+        return handle
 
     @property
     def cusolver_sp_handle(self):
@@ -274,9 +285,14 @@ cdef class Device:
         itself is different.
 
         """
+        handle = _ThreadLocal.get().cusolver_sp_handles[self.id]
+        if handle is not None:
+            return handle
+
         from cupy_backends.cuda.libs import cusolver
-        return self._get_handle(
-            'cusolver_sp_handles', cusolver.spCreate, cusolver.spDestroy)
+        handle = self._make_handle(cusolver.spCreate, cusolver.spDestroy)
+        _ThreadLocal.get().cusolver_sp_handles[self.id] = handle
+        return handle
 
     @property
     def cusparse_handle(self):
@@ -286,9 +302,14 @@ cdef class Device:
         itself is different.
 
         """
+        handle = _ThreadLocal.get().cusparse_sp_handles[self.id]
+        if handle is not None:
+            return handle
+
         from cupy_backends.cuda.libs import cusparse
-        return self._get_handle(
-            'cusparse_sp_handles', cusparse.create, cusparse.destroy)
+        handle = self._make_handle(cusparse.create, cusparse.destroy)
+        _ThreadLocal.get().cusparse_sp_handles[self.id] = handle
+        return handle
 
     @property
     def mem_info(self):
