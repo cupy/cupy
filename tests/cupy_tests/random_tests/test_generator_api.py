@@ -29,8 +29,8 @@ class GeneratorTestCase(common_distributions.BaseGeneratorTestCase):
         else:
             return numpy.random.Generator(numpy.random.MT19937(seed))
 
-    def set_rng_seed(self, seed):
-        self.rng.bit_generator = random._bit_generator.Philox4x3210(seed=seed)
+    def set_rng_seed(self, rng, seed):
+        rng.bit_generator = random._bit_generator.Philox4x3210(seed=seed)
 
 
 class InvalidOutsMixin:
@@ -374,6 +374,7 @@ class TestDrichlet(
 
 @testing.slow
 class TestLarge:
+    @pytest.mark.thread_unsafe(reason="allocates large memory")
     def test_large(self):
         gen = random.Generator(random.XORWOW(1234))
         gen.random(2**31 + 1, dtype=cupy.int8)

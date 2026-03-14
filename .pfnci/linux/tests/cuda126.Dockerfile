@@ -26,7 +26,8 @@ ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
 RUN pyenv install 3.13.8 && \
     pyenv global 3.13.8 && \
-    pip install -U setuptools pip wheel
+    pip install -U setuptools pip wheel && \
+    pip install -U google-cloud-storage
 
 RUN pip install -U 'numpy==2.2.*' 'scipy==1.14.*' 'optuna==4.*' 'ml_dtypes==0.5.*' 'cython==3.1.*'
 RUN pip uninstall -y mpi4py cuda-python && \
