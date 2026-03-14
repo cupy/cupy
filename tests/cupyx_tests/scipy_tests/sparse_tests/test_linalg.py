@@ -1427,6 +1427,15 @@ class TestLsmr:
             x0 = xp.ones((self.n,))
         return sp.linalg.lsmr(a, b, x0=x0, damp=self.damp)
 
+    def _show_helper(self, xp, sp):
+        a = xp.eye(3, dtype=numpy.float64)
+        b = xp.ones(3, dtype=numpy.float64)
+        saved_stdout = io.StringIO()
+        with contextlib.redirect_stdout(saved_stdout):
+            result = sp.linalg.lsmr(a, b, show=True)
+        output = saved_stdout.getvalue().strip()
+        return result, output
+
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-1, atol=1e-1, sp_name='sp')
     def test_sparse(self, xp, sp, dtype):
@@ -1473,6 +1482,28 @@ class TestLsmr:
             ng_x0 = xp.ones((self.n + 1,))
             with pytest.raises(ValueError):
                 sp.linalg.lsmr(a, b, x0=ng_x0)
+
+    def test_show(self):
+        if not (self.damp == 0.0 and self.format == 'coo' and self.m == 30
+                and self.n == 20 and self.x0 is None
+                and self.use_linear_operator is False):
+            pytest.skip()
+
+        result_cupy, stdout_cupy = self._show_helper(cupy, sparse)
+        result_numpy, stdout_numpy = self._show_helper(numpy, scipy.sparse)
+
+        # Ignore numeric differences and compare only the printed format.
+        stdout_cupy = re.sub(
+            r'[-+]?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?', '{number}',
+            stdout_cupy)
+        stdout_numpy = re.sub(
+            r'[-+]?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?', '{number}',
+            stdout_numpy)
+
+        assert stdout_numpy == stdout_cupy, '''numpy: %s
+                                               cupy: %s''' % (stdout_numpy,
+                                                              stdout_cupy)
+        assert result_numpy[1:] == result_cupy[1:]
 
 
 @testing.parameterize(*testing.product({
