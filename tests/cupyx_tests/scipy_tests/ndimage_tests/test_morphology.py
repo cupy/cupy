@@ -814,6 +814,80 @@ class TestWhiteTophatAndBlackTopHat:
         return self._filter(xp, scp, x)
 
 
+@testing.with_requires('scipy')
+@testing.with_requires('scipy')
+class TestWhiteBlackTopHatStructureOnly:
+    """Regression tests for structure-only calls (no size or footprint).
+
+    Ensures white_tophat and black_tophat do not raise ValueError when called
+    with only the structure parameter. See https://github.com/cupy/cupy/issues/9756
+    """
+
+    @testing.numpy_cupy_array_equal(scipy_name='scp')
+    def test_white_tophat_structure_only(self, xp, scp):
+        x = xp.array([
+            [1, 0, 0, 0, 0],
+            [0, 1, 0, 0, 0],
+            [0, 0, 1, 0, 0],
+            [0, 0, 0, 1, 0],
+            [0, 0, 0, 0, 1],
+        ], dtype=xp.int32)
+        structure = xp.array([
+            [True, True, True],
+            [True, True, True],
+            [True, True, True],
+        ])
+        return scp.ndimage.white_tophat(x, structure=structure)
+
+    @testing.numpy_cupy_array_equal(scipy_name='scp')
+    def test_black_tophat_structure_only(self, xp, scp):
+        x = xp.array([
+            [1, 0, 0, 0, 0],
+            [0, 1, 0, 0, 0],
+            [0, 0, 1, 0, 0],
+            [0, 0, 0, 1, 0],
+            [0, 0, 0, 0, 1],
+        ], dtype=xp.int32)
+        structure = xp.array([
+            [True, True, True],
+            [True, True, True],
+            [True, True, True],
+        ])
+        return scp.ndimage.black_tophat(x, structure=structure)
+
+    @testing.numpy_cupy_array_equal(scipy_name='scp')
+    def test_white_tophat_float_structure_only(self, xp, scp):
+        x = xp.array([
+            [1., 0., 0., 0., 0.],
+            [0., 1., 0., 0., 0.],
+            [0., 0., 1., 0., 0.],
+            [0., 0., 0., 1., 0.],
+            [0., 0., 0., 0., 1.],
+        ])
+        structure = xp.array([
+            [True, True, True],
+            [True, True, True],
+            [True, True, True],
+        ])
+        return scp.ndimage.white_tophat(x, structure=structure)
+
+    @testing.numpy_cupy_array_equal(scipy_name='scp')
+    def test_black_tophat_float_structure_only(self, xp, scp):
+        x = xp.array([
+            [1., 0., 0., 0., 0.],
+            [0., 1., 0., 0., 0.],
+            [0., 0., 1., 0., 0.],
+            [0., 0., 0., 1., 0.],
+            [0., 0., 0., 0., 1.],
+        ])
+        structure = xp.array([
+            [True, True, True],
+            [True, True, True],
+            [True, True, True],
+        ])
+        return scp.ndimage.black_tophat(x, structure=structure)
+
+
 @testing.parameterize(*(
     testing.product({
         'shape': [(8, 9), (3, 4, 7, 8)],
