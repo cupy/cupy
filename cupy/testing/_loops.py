@@ -854,9 +854,11 @@ def for_dtypes(dtypes, name='dtype'):
         return test_func
     return decorator
 
-
-_complex_dtypes = (numpy.complex64, numpy.complex128)
-_regular_float_dtypes = (numpy.float64, numpy.float32)
+# ASCEND does not support float64 and complex128, so disable those types
+#_complex_dtypes = (numpy.complex64, numpy.complex128)
+#_regular_float_dtypes = (numpy.float64, numpy.float32)
+_complex_dtypes = tuple()
+_regular_float_dtypes = (numpy.float32, )
 _float_dtypes = _regular_float_dtypes + (numpy.float16,)
 _signed_dtypes = tuple(numpy.dtype(i).type for i in 'bhilq')
 _unsigned_dtypes = tuple(numpy.dtype(i).type for i in 'BHILQ')

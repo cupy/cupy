@@ -6,6 +6,7 @@
 #include "acl/acl_mdl.h"      // model record
 #endif
 #include "cupy_ascend_common.h" // 假设的自定义头文件
+#include <stdexcept>
 
 constexpr int ASCEND_DEFAULT_STREAM_PRIORITY = 1; // TODO: value
 

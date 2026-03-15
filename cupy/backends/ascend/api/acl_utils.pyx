@@ -113,7 +113,7 @@ cdef aclScalar* create_acl_scalar_from_py_str(str py_str):
     # 创建aclScalar，将指针地址作为值存入, not sure if str buffer will be copied
     scalar_ptr = aclCreateScalar(<void*>c_str, aclDataType.ACL_STRING)
     if scalar_ptr == NULL:
-        raise MemoryError("Failed to create aclScalar")
+        raise MemoryError("Failed to create string aclScalar")
     return scalar_ptr # 通常将aclScalar*本身也转换为整数在Python间传递
 
 cdef aclScalar* cupy_scalar_to_acl_scalar(_cupy_scalar s) except*:
@@ -1194,3 +1194,4 @@ cdef void init_builtin_operators():
 
 # only one function can be run during module init
 init_builtin_operators()
+
