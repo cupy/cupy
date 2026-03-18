@@ -909,7 +909,7 @@ struct _cub_reduce_argmin {
         size_t num_items, cudaStream_t s)
     {
         DeviceReduce::ArgMin(workspace, workspace_size, static_cast<T*>(x),
-            static_cast<KeyValuePair<int, T>*>(y), num_items, s);
+            static_cast<KeyValuePair<int, T>*>(y), (int)num_items, s);
     }
 };
 
@@ -924,7 +924,7 @@ struct _cub_reduce_argmax {
         size_t num_items, cudaStream_t s)
     {
         DeviceReduce::ArgMax(workspace, workspace_size, static_cast<T*>(x),
-            static_cast<KeyValuePair<int, T>*>(y), num_items, s);
+            static_cast<KeyValuePair<int, T>*>(y), (int)num_items, s);
     }
 };
 
