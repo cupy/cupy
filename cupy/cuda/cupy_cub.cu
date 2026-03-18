@@ -259,9 +259,9 @@ struct _arange
 };
 
 #ifndef CUPY_USE_HIP
-typedef thrust::transform_iterator<_arange, thrust::counting_iterator<int>> seg_offset_itr;
+typedef thrust::transform_iterator<_arange, thrust::counting_iterator<size_t>> seg_offset_itr;
 #else
-typedef TransformInputIterator<int, _arange, rocprim::counting_iterator<int>> seg_offset_itr;
+typedef TransformInputIterator<size_t, _arange, rocprim::counting_iterator<size_t>> seg_offset_itr;
 #endif
 
 /*
@@ -1062,9 +1062,9 @@ void cub_device_segmented_reduce(void* workspace, size_t& workspace_size,
 {
     // This iterates over [0, segment_size, 2*segment_size, 3*segment_size, ...]
     #ifndef CUPY_USE_HIP
-    thrust::counting_iterator<int> count_itr(0);
+    thrust::counting_iterator<size_t> count_itr(0);
     #else
-    rocprim::counting_iterator<int> count_itr(0);
+    rocprim::counting_iterator<size_t> count_itr(0);
     #endif
     _arange scaling(segment_size);
     seg_offset_itr itr(count_itr, scaling);

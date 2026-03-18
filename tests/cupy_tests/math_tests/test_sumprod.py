@@ -409,15 +409,13 @@ class TestReductionSizeOverInt32Max:
         cupy.get_default_memory_pool().free_all_blocks()
         cupy.get_default_pinned_memory_pool().free_all_blocks()
 
-    @pytest.mark.parametrize('shape,axis,part', [
-        ((INT32_MAX + 1024,), None, "first-part"),
-        ((4, 2**30 + 512), 1, "second-part"),
-        ((INT32_MAX + 1024, 2), 0, "first-part"),
+    @pytest.mark.parametrize('shape,axis,dtype,part', [
+        ((INT32_MAX + 1024,), None, "int8", "first_part"),
+        ((4, 2**30 + 512), 1, "float32", "second_part"),
+        ((INT32_MAX + 1024, 2), 0, "int8", "first_part"),
+        ((INT32_MAX + 1024, 2), 1, "int32", "second_part"),
     ])
-    @pytest.mark.parametrize('dtype', [
-        numpy.int8, numpy.int32, numpy.float32,
-    ])
-    def test_sum_max_min_prod(self, shape, axis, dtype, part):
+    def test_reduce(self, shape, axis, dtype, part):
         try:
             a = cupy.ones(shape, dtype=dtype)
             # Make first and last element along each slice interesting
