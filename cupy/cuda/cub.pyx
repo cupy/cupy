@@ -53,15 +53,16 @@ cdef extern from 'cupy_cub.h' nogil:
 
     void cub_device_reduce(void*, size_t&, void*, void*, size_t, Stream_t,
                            int, int)
-    void cub_device_segmented_reduce(void*, size_t&, void*, void*, size_t, size_t,
-                                     Stream_t, int, int)
-    void cub_device_scan(void*, size_t&, void*, void*, size_t, Stream_t, int, int)
-    void cub_device_histogram_range(void*, size_t&, void*, void*, size_t, void*,
-                                    size_t, Stream_t, int)
-    void cub_device_histogram_even(void*, size_t&, void*, void*, size_t, size_t, size_t,
-                                   size_t, Stream_t, int)
-    size_t cub_device_reduce_get_workspace_size(void*, void*, size_t, Stream_t,
-                                                int, int)
+    void cub_device_segmented_reduce(void*, size_t&, void*, void*,
+                                     size_t, size_t, Stream_t, int, int)
+    void cub_device_scan(void*, size_t&, void*, void*,
+                         size_t, Stream_t, int, int)
+    void cub_device_histogram_range(void*, size_t&, void*, void*,
+                                    size_t, void*, size_t, Stream_t, int)
+    void cub_device_histogram_even(void*, size_t&, void*, void*, size_t,
+                                   size_t, size_t, size_t, Stream_t, int)
+    size_t cub_device_reduce_get_workspace_size(void*, void*, size_t,
+                                                Stream_t, int, int)
     size_t cub_device_segmented_reduce_get_workspace_size(
         void*, void*, size_t, size_t, Stream_t, int, int)
     size_t cub_device_scan_get_workspace_size(
@@ -376,6 +377,10 @@ cpdef bint _cub_device_segmented_reduce_axis_compatible(
 
 cdef bint can_use_device_reduce(
         _ndarray_base x, int op, tuple out_axis, dtype=None) except*:
+    if op in (CUPY_CUB_ARGMIN, CUPY_CUB_ARGMAX):
+        # Argmin/argmax still use integer for their result key.
+        if x.size > 0x7fffffff:
+            return False
     return (
         out_axis is ()
         and _cub_reduce_dtype_compatible(x.dtype, op, dtype))
@@ -395,6 +400,10 @@ cdef (bint, Py_ssize_t) can_use_device_segmented_reduce(  # noqa: E211
         order = 'CF'  # for computing the contig size
     cdef Py_ssize_t contiguous_size = _preprocess_array(
         x.shape, reduce_axis, out_axis, order)
+    if op in (CUPY_CUB_ARGMIN, CUPY_CUB_ARGMAX):
+        # Argmin/argmax still use integer for their result key.
+        if contiguous_size > 0x7fffffff:
+            return (False, 0)
     return (True, contiguous_size)
 
 

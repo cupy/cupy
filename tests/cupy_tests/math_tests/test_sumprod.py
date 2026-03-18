@@ -409,46 +409,58 @@ class TestReductionSizeOverInt32Max:
         cupy.get_default_memory_pool().free_all_blocks()
         cupy.get_default_pinned_memory_pool().free_all_blocks()
 
-    @pytest.mark.parametrize('shape,axis', [
-        ((INT32_MAX + 1024,), None),
-        ((4, 2**30 + 512), 1),
-        ((INT32_MAX + 1024, 2), 0),
-    ], ids=['full', 'axis1', 'axis0'])
+    @pytest.mark.parametrize('shape,axis,part', [
+        ((INT32_MAX + 1024,), None, "first-part"),
+        ((4, 2**30 + 512), 1, "second-part"),
+        ((INT32_MAX + 1024, 2), 0, "first-part"),
+    ])
     @pytest.mark.parametrize('dtype', [
         numpy.int8, numpy.int32, numpy.float32,
     ])
-    def test_sum_max_min_prod(self, shape, axis, dtype):
+    def test_sum_max_min_prod(self, shape, axis, dtype, part):
         try:
             a = cupy.ones(shape, dtype=dtype)
             # Make first and last element along each slice interesting
             if axis is None:
                 a[[0, -1]] = [3, -1]
             elif axis == 0:
-                a[[0, -1], :] = [3, -1]
+                a[[0, -1], :] = [[3], [-1]]
             else:
-                a[:, [0, -1]] = [3, -1]
+                a[:, [0, -1]] = [[3, -1]]
 
-            if axis is None:
-                # Full reduction: one segment, one 2 and (size-1) ones
-                assert a.sum() == a.size
-                assert a.max() == 3
-                assert a.min() == -1
-                assert a.prod() == -3
+            # Test only half of the reductions per test for better speed
+            # (it is still very slow.)
+            if part == "first-part":
+                if axis is None:
+                    # Full reduction: one segment, one 2 and (size-1) ones
+                    assert a.sum() == a.size
+                    assert a.max() == 3
+                    assert a.argmin() == a.size - 1
+                else:
+                    s = a.sum(axis=axis)
+                    expected_sum = shape[axis]
+                    testing.assert_array_equal(s, cupy.full(
+                        s.shape, expected_sum, dtype=s.dtype))
+                    testing.assert_array_equal(
+                        a.max(axis=axis), cupy.full(s.shape, 3, dtype=dtype))
+                    testing.assert_array_equal(
+                        a.argmin(axis), cupy.full(s.shape, a.shape[axis] - 1))
             else:
-                s = a.sum(axis=axis)
-                expected_sum = shape[axis]
-                testing.assert_array_equal(s, cupy.full(
-                    s.shape, expected_sum, dtype=s.dtype))
-                testing.assert_array_equal(
-                    a.max(axis=axis), cupy.full(s.shape, 3, dtype=dtype))
-                testing.assert_array_equal(
-                    a.min(axis=axis), cupy.full(s.shape, -1, dtype=dtype))
-                testing.assert_array_equal(
-                    a.prod(axis=axis), cupy.full(s.shape, -3, dtype=dtype))
+                if axis is None:
+                    # Full reduction: one segment, one 2 and (size-1) ones
+                    assert a.prod() == -3
+                    assert a.min() == -1
+                    assert a.argmax() == 0
+                else:
+                    p = a.prod(axis=axis)
+                    testing.assert_array_equal(p, cupy.full(
+                        p.shape, -3, dtype=p.dtype))
+                    testing.assert_array_equal(
+                        a.min(axis=axis), cupy.full(p.shape, -1, dtype=dtype))
+                    testing.assert_array_equal(
+                        a.argmax(axis), cupy.full(p.shape, 0))
         except MemoryError:
             pytest.skip("out of memory in test.")
-
-        cupy.get_default_memory_pool().free_all_blocks()
 
     @pytest.mark.parametrize('dtype', [numpy.int8, numpy.int32, numpy.float32])
     def test_cumsum_size_over_int32_max(self, dtype):
@@ -467,8 +479,6 @@ class TestReductionSizeOverInt32Max:
         except MemoryError:
             pytest.skip("out of memory in test.")
 
-        cupy.get_default_memory_pool().free_all_blocks()
-
     @pytest.mark.parametrize('dtype', [numpy.int8, numpy.int32, numpy.float32])
     def test_cumprod_size_over_int32_max(self, dtype):
         """CUB device_scan (cumprod) with size > INT32_MAX."""
@@ -481,8 +491,6 @@ class TestReductionSizeOverInt32Max:
             assert out[-1] == 6  # product of array
         except MemoryError:
             pytest.skip("out of memory in test.")
-
-        cupy.get_default_memory_pool().free_all_blocks()
 
 
 # This class compares cuTENSOR results against NumPy's
