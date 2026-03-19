@@ -1,6 +1,7 @@
 from cupy._core cimport _accelerator
 from cupy._core._accelerator cimport ACCELERATOR_CUB
-from cupy._core._scalar cimport get_typename, _get_cuda_scalar_repr
+from cupy._core._scalar cimport (
+    get_typename, format_type_decls, _get_cuda_scalar_repr)
 
 import functools
 import string
@@ -65,8 +66,8 @@ class _Submodule(object):
     def key(self):
         return (self.name, tuple(self.dtypes))
 
-    def code(self):
-        params = ', '.join('{} &{}'.format(get_typename(t), s)
+    def code(self, type_decls):
+        params = ', '.join('{} &{}'.format(get_typename(t, type_decls), s)
                            for t, s in self.in_params + self.out_params)
         typedef = ''.join('typedef {} {}_type;\n'.format(get_typename(t), s)
                           for t, s in self.in_params + self.out_params)
@@ -105,10 +106,10 @@ class _FusionVarCUDA(object):
     def mutate(self):
         self.mutable = True
 
-    def declaration(self):
+    def declaration(self, type_decls):
         c = self.const_value
         val = c.item() if hasattr(c, 'dtype') else c
-        ctype = get_typename(self.dtype)
+        ctype = get_typename(self.dtype, type_decls)
 
         if self.const_value is None:
             return '{} v{};\n'.format(ctype, self.index)
@@ -149,17 +150,17 @@ class _FusionOp(object):
         return ' '.join('{} v{}_{};'.format(get_typename(t), self.index, j)
                         for j, t in enumerate(self.dtypes)) + '\n'
 
-    def code(self):
+    def code(self, type_decls):
         args_sub = ['v{}_{}'.format(self.index, i)
                     for i in range(len(self.args))]
-        ctypes = [get_typename(t) for t in self.dtypes]
+        ctypes = [get_typename(t, type_decls) for t in self.dtypes]
         args_list = list(zip(self.args, args_sub, ctypes))
         code = '// op  # {}\n'.format(self.index)
         code += ''.join('{} = static_cast< {} >(v{});\n'.format(s, t, v.index)
                         for v, s, t in args_list)
         code += self.submodule.fcall(args_sub)
         code += ''.join('v{} = static_cast< {} >({});\n'.format(
-            v.index, get_typename(v.dtype), s)
+            v.index, get_typename(v.dtype, type_decls), s)
             for v, s, _ in
             args_list[len(self.submodule.in_params):])
         return code
@@ -600,19 +601,17 @@ class _FusionHistory(object):
         raise NotImplementedError(
             'Fusion for elementwise-kernel is not implemented yet')
 
-    def _emit_submodules_code(self):
+    def _emit_submodules_code(self, type_decls):
         res = ''.join(self.preamble_set)
-        # TODO(seberg): The new fusion code injects this if needed, we should
-        # refactor the old one also to do this (or deprecate it?)
-        res += '#include "cupy/float16.cuh"\n'
-        res += '\n'.join([_.code() for _ in self.submodules.values()])
+        res += '\n'.join(
+            [_.code(type_decls) for _ in self.submodules.values()])
         return res
 
-    def _emit_operation_code(self):
+    def _emit_operation_code(self, type_decls):
         res = '// {} operations\n'.format(len(self.op_list))
-        res += ''.join(v.declaration() for v in self.local_list)
+        res += ''.join(v.declaration(type_decls) for v in self.local_list)
         res += ''.join(op.declaration_args() for op in self.op_list)
-        res += ''.join(op.code() for op in self.op_list)
+        res += ''.join(op.code(type_decls) for op in self.op_list)
         return res
 
     def _emit_premap_code(self, in_params, operation):
@@ -693,6 +692,7 @@ class _FusionHistory(object):
         """
         self.ndim = max([a.ndim for a in args if isinstance(a, core.ndarray)])
 
+        type_decls = set()
         in_params = []
         function_args = []
         for a in args:
@@ -730,15 +730,16 @@ class _FusionHistory(object):
         out_params_code = ', '.join(var.declaration_out_param()
                                     for var in out_params)
 
-        operation = self._emit_operation_code()
-        submodule_code = self._emit_submodules_code()
+        operation = self._emit_operation_code(type_decls)
+        submodule_code = self._emit_submodules_code(type_decls)
 
         if self.reduce_op is None:
             operation += ' '.join('{} = {};'.format(t, s)
                                   for s, t in zip(out_cvars, out_params))
+
             kernel = _kernel.ElementwiseKernel(
                 in_params_code, out_params_code, operation,
-                preamble=submodule_code,
+                preamble=format_type_decls(type_decls) + submodule_code,
                 return_tuple=return_tuple,
                 no_return=no_return,
                 name=name)
@@ -750,15 +751,16 @@ class _FusionHistory(object):
 
             postmap_type, = self.reduce_op.out_types
             postmap_dtype = numpy.dtype(postmap_type)
-            postmap_ctype = get_typename(postmap_dtype)
+            postmap_ctype = get_typename(postmap_dtype, type_decls)
 
             postmap_code = '// {} operations\n'.format(
                 len(self.postmap_op_list))
-            postmap_code += ''.join(v.declaration()
+            postmap_code += ''.join(v.declaration(type_decls)
                                     for v in self.postmap_local_list)
             postmap_code += ''.join(op.declaration_args()
                                     for op in self.postmap_op_list)
-            postmap_code += ''.join(op.code() for op in self.postmap_op_list)
+            postmap_code += ''.join(op.code(type_decls)
+                                    for op in self.postmap_op_list)
             postmap_code += ' '.join('{} = {};'.format(t, s)
                                      for s, t in zip(out_cvars, out_params))
 
@@ -783,7 +785,7 @@ class _FusionHistory(object):
                 self.reduce_identity,
                 name=name,
                 reduce_type=reduce_ctype,
-                preamble=submodule_code)
+                preamble=format_type_decls(type_decls) + submodule_code)
             return kernel, self.reduce_kwargs
 
 
