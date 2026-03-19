@@ -245,6 +245,46 @@ class TestHypergeometric(
     pass
 
 
+class TestHypergeometricValidation:
+
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        self.rs = _generator.RandomState(seed=0)
+
+    def test_hypergeometric_ngood_negative(self):
+        with pytest.raises(ValueError):
+            self.rs.hypergeometric(-1, 10, 5, size=10)
+
+    def test_hypergeometric_nbad_negative(self):
+        with pytest.raises(ValueError):
+            self.rs.hypergeometric(10, -1, 5, size=10)
+
+    def test_hypergeometric_nsample_zero(self):
+        with pytest.raises(ValueError):
+            self.rs.hypergeometric(10, 10, 0, size=10)
+
+    def test_hypergeometric_nsample_negative(self):
+        with pytest.raises(ValueError):
+            self.rs.hypergeometric(10, 10, -1, size=10)
+
+    def test_hypergeometric_nsample_too_large(self):
+        with pytest.raises(ValueError):
+            self.rs.hypergeometric(5, 10, 16, size=10)
+
+    def test_hypergeometric_nsample_equals_total(self):
+        # nsample == ngood + nbad is valid (deterministic)
+        out = self.rs.hypergeometric(5, 10, 15, size=10)
+        testing.assert_array_equal(out, cupy.full(10, 5))
+
+    def test_hypergeometric_ngood_zero(self):
+        out = self.rs.hypergeometric(0, 10, 5, size=10)
+        testing.assert_array_equal(out, cupy.zeros(10))
+
+    def test_hypergeometric_nbad_zero(self):
+        out = self.rs.hypergeometric(5, 0, 5, size=10)
+        testing.assert_array_equal(out, cupy.full(10, 5))
+
+
 @testing.fix_random()
 class TestLaplace(RandomGeneratorTestCase):
 

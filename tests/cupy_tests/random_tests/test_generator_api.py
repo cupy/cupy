@@ -292,6 +292,46 @@ class TestHypergeometric(
     pass
 
 
+class TestHypergeometricValidation:
+
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        self.gen = random.default_rng(seed=0)
+
+    def test_hypergeometric_ngood_negative(self):
+        with pytest.raises(ValueError):
+            self.gen.hypergeometric(-1, 10, 5, size=10)
+
+    def test_hypergeometric_nbad_negative(self):
+        with pytest.raises(ValueError):
+            self.gen.hypergeometric(10, -1, 5, size=10)
+
+    def test_hypergeometric_nsample_negative(self):
+        with pytest.raises(ValueError):
+            self.gen.hypergeometric(10, 10, -1, size=10)
+
+    def test_hypergeometric_nsample_too_large(self):
+        with pytest.raises(ValueError):
+            self.gen.hypergeometric(5, 10, 16, size=10)
+
+    def test_hypergeometric_nsample_zero(self):
+        # Generator API allows nsample=0 (returns zeros), unlike legacy API
+        out = self.gen.hypergeometric(5, 10, 0, size=10)
+        testing.assert_array_equal(out, cupy.zeros(10, dtype=cupy.int64))
+
+    def test_hypergeometric_nsample_equals_total(self):
+        out = self.gen.hypergeometric(5, 10, 15, size=10)
+        testing.assert_array_equal(out, cupy.full(10, 5, dtype=cupy.int64))
+
+    def test_hypergeometric_ngood_zero(self):
+        out = self.gen.hypergeometric(0, 10, 5, size=10)
+        testing.assert_array_equal(out, cupy.zeros(10, dtype=cupy.int64))
+
+    def test_hypergeometric_nbad_zero(self):
+        out = self.gen.hypergeometric(5, 0, 5, size=10)
+        testing.assert_array_equal(out, cupy.full(10, 5, dtype=cupy.int64))
+
+
 @testing.parameterize(*common_distributions.power_params)
 @testing.fix_random()
 class TestPower(
