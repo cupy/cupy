@@ -9,14 +9,39 @@ import math
 from cupy import _core
 
 
-def delete(arr, indices, axis=None):
+def _delete_mask(obj, size):
+    if isinstance(obj, slice):
+        mask = cupy.ones(size, dtype=cupy.bool_)
+        mask[obj] = False
+        return mask
+
+    raw_obj = obj
+    obj = cupy.asarray(obj)
+
+    if obj.dtype == cupy.bool_:
+        if obj.ndim != 1 or obj.shape[0] != size:
+            raise ValueError(
+                'boolean array argument obj to delete must be one '
+                f'dimensional and match the axis length of {size}')
+        return ~obj
+
+    # Match NumPy behavior for empty Python lists/tuples.
+    if obj.size == 0 and not isinstance(raw_obj, cupy.ndarray):
+        obj = obj.astype(cupy.intp)
+
+    mask = cupy.ones(size, dtype=cupy.bool_)
+    mask[obj] = False
+    return mask
+
+
+def delete(arr, obj, axis=None):
     """
     Delete values from an array along the specified axis.
 
     Args:
         arr (cupy.ndarray):
             Values are deleted from a copy of this array.
-        indices (slice, int or array of ints):
+        obj (slice, int or array of ints):
             These indices correspond to values that will be deleted from the
             copy of `arr`.
             Boolean indices are treated as a mask of elements to remove.
@@ -34,25 +59,19 @@ def delete(arr, indices, axis=None):
     .. seealso:: :func:`numpy.delete`.
     """
 
+    arr = cupy.asarray(arr)
+    ndim = arr.ndim
+
     if axis is None:
-
-        arr = arr.ravel()
-
-        if isinstance(indices, cupy.ndarray) and indices.dtype == cupy.bool_:
-            return arr[~indices]
-
-        mask = cupy.ones(arr.size, dtype=bool)
-        mask[indices] = False
-        return arr[mask]
-
+        if ndim != 1:
+            arr = arr.ravel()
+        axis = 0
     else:
+        axis = _core.internal._normalize_axis_index(axis, arr.ndim)
 
-        if isinstance(indices, cupy.ndarray) and indices.dtype == cupy.bool_:
-            return cupy.compress(~indices, arr, axis=axis)
-
-        mask = cupy.ones(arr.shape[axis], dtype=bool)
-        mask[indices] = False
-        return cupy.compress(mask, arr, axis=axis)
+    size = arr.shape[axis]
+    mask = _delete_mask(obj, size)
+    return cupy.compress(mask, arr, axis=axis)
 
 
 # TODO(okuta): Implement insert

@@ -46,12 +46,98 @@ class TestDelete(unittest.TestCase):
         return xp.delete(arr, indices)
 
     @testing.numpy_cupy_array_equal()
+    def test_delete_with_empty_indices(self, xp):
+        arr = xp.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+        return xp.delete(arr, [])
+
+    @testing.numpy_cupy_array_equal()
     def test_delete_with_indices_as_int(self, xp):
         arr = xp.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
         indices = 5
         if cupy.cuda.runtime.is_hip:
             pytest.xfail('HIP may have a bug')
         return xp.delete(arr, indices)
+
+    @testing.numpy_cupy_array_equal()
+    def test_delete_array_like_input(self, xp):
+        arr = [[0, 1, 2], [3, 4, 5]]
+        return xp.delete(arr, [1], axis=1)
+
+    @testing.numpy_cupy_array_equal(accept_error=ValueError)
+    def test_delete_with_bool_scalar_error(self, xp):
+        arr = xp.array([0, 1, 2, 3, 4])
+        xp.delete(arr, xp.array(True))
+
+    @testing.numpy_cupy_array_equal()
+    def test_delete_mixed_obj_input(self, xp):
+        arr = [1, 2, 3]
+        return xp.delete(arr, (0, True), axis=None)
+
+    @testing.numpy_cupy_array_equal()
+    def test_delete_with_negative_indices(self, xp):
+        arr = xp.array([0, 1, 2, 3, 4, 5])
+        indices = xp.array([-1, -3])
+        return xp.delete(arr, indices)
+
+    @testing.numpy_cupy_array_equal(accept_error=ValueError)
+    def test_delete_with_wrong_size_bool_mask_error(self, xp):
+        arr = xp.array([0, 1, 2, 3, 4])
+        xp.delete(arr, xp.array([True, False]))
+
+    @testing.numpy_cupy_array_equal(accept_error=IndexError)
+    def test_delete_with_wrong_dtype_indices_error(self, xp):
+        arr = xp.array([0, 1, 2, 3, 4])
+        xp.delete(arr, xp.array([1.5]))
+
+    @testing.numpy_cupy_array_equal()
+    def test_delete_with_empty_tuple_obj(self, xp):
+        arr = xp.array([10, 20, 30])
+        return xp.delete(arr, ())
+
+    @testing.numpy_cupy_array_equal(accept_error=ValueError)
+    def test_delete_with_empty_bool_array_obj_error(self, xp):
+        arr = xp.array([10, 20, 30])
+        xp.delete(arr, xp.array([], dtype=xp.bool_))
+
+    @testing.numpy_cupy_array_equal()
+    def test_delete_with_empty_int_array_obj(self, xp):
+        arr = xp.array([10, 20, 30])
+        return xp.delete(arr, xp.array([], dtype=xp.int_))
+
+    @testing.numpy_cupy_array_equal()
+    def test_delete_with_bool_list_obj_matching_size(self, xp):
+        arr = xp.array([10, 20, 30])
+        return xp.delete(arr, [True, False, True])
+
+    @testing.numpy_cupy_array_equal(accept_error=ValueError)
+    def test_delete_with_bool_list_obj_wrong_size_error(self, xp):
+        arr = xp.array([10, 20, 30])
+        xp.delete(arr, [True, False])
+
+    @testing.numpy_cupy_array_equal(accept_error=ValueError)
+    def test_delete_with_bool_scalar_true_obj_error(self, xp):
+        arr = xp.array([10, 20, 30])
+        xp.delete(arr, True)
+
+    @testing.numpy_cupy_array_equal(accept_error=ValueError)
+    def test_delete_with_bool_scalar_false_obj_error(self, xp):
+        arr = xp.array([10, 20, 30])
+        xp.delete(arr, False)
+
+    @testing.numpy_cupy_array_equal()
+    def test_delete_with_int_list_obj(self, xp):
+        arr = xp.array([10, 20, 30])
+        return xp.delete(arr, [0, 2])
+
+    @testing.numpy_cupy_array_equal()
+    def test_delete_with_int_array_obj(self, xp):
+        arr = xp.array([10, 20, 30])
+        return xp.delete(arr, xp.array([0, 2]))
+
+    @testing.numpy_cupy_array_equal(accept_error=IndexError)
+    def test_delete_with_float_array_obj_error(self, xp):
+        arr = xp.array([10, 20, 30])
+        xp.delete(arr, xp.array([0., 2.]))
 
 
 class TestAppend(unittest.TestCase):
