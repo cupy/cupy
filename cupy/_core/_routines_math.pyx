@@ -1042,7 +1042,8 @@ inline __device__ T complex_power(T in0, T in1) {
         return T(nanv, nanv);
     }
 
-    if (in0.imag() == value_type(0) && in1.imag() == value_type(0) && (in0.real() > value_type(0) | in1.real() > value_type(1))) {
+    if (in0.imag() == value_type(0) && in1.imag() == value_type(0) &&
+        (in0.real() > value_type(0) | in1.real() > value_type(1))) {
         return T(pow(in0.real(), in1.real()), value_type(0));
     }
 
