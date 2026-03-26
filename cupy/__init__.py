@@ -939,7 +939,7 @@ def show_config(*, _full=False):
     _sys.stdout.flush()
 
 
-_deprecated_apis = []
+_deprecated_apis: list[str] = []
 
 # APIs removed in NumPy 2.0 that we previously shimmed
 _removed_apis = {
