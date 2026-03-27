@@ -162,6 +162,8 @@ nccl:
       "12.8":
       "12.9":
       "13.0":
+      "13.1":
+        alias: "13.0"
 cutensor:
   # https://docs.nvidia.com/cuda/cutensor/
   # https://developer.nvidia.com/cutensor/downloads
