@@ -605,12 +605,15 @@ cdef class _ndarray_base:
                 ``cupy.int32`` is specified, the array size must not exceed
                 ``INT32_MAX``.
             allow_unsafe (bool): If True, allows creating an mdspan for arrays
-                that have either zero or negative strides, or one or more
-                dimensions of size zero. Depending on the access pattern such
-                mdspan may lead to undefined behavior when described with
-                either a left-, right, or stride- layout_stride as per C++
-                standard. For example, ``mdspan.required_span_size()`` might
-                become negative. Default is False.
+                that have zero strides (broadcasting) or zero-size
+                dimensions. Additionally, when True and the array has
+                negative strides, the pointer and offset are packed using
+                the legacy convention (``ptr=data.ptr``, ``offset=0``)
+                for backward compatibility with ``layout_stride`` kernels
+                that handle negative strides manually.
+                When False (default), arrays with negative strides are
+                accepted and packed with the correct offset for
+                ``cuda::layout_stride_relaxed``. Default is False.
 
         Returns:
             mdspan: An mdspan view of the array that can be passed to CUDA
@@ -622,9 +625,23 @@ cdef class _ndarray_base:
                 the specified ``index_type``.
 
         Note:
-            The returned mdspan can work with either ``layout_stride``,
-            ``layout_left``, or ``layout_right``, but your kernel must declare
-            the mdspan type with all extents being **dynamic**:
+            The underlying struct layout is
+            ``[ptr | extents[N] | strides[N] | offset]``, which is
+            compatible with ``cuda::layout_stride_relaxed`` from CCCL.
+
+            For arrays with non-negative strides (or when
+            ``allow_unsafe=True``), ``ptr`` is the logical data pointer
+            and ``offset`` is 0, so the struct is backward compatible
+            with ``layout_stride``, ``layout_left``, and
+            ``layout_right`` (they ignore the trailing offset field).
+
+            For arrays with negative strides and ``allow_unsafe=False``
+            (the default), ``ptr`` is the base of the allocation and
+            ``offset`` is set so that the kernel must use
+            ``cuda::layout_stride_relaxed`` on the device side.
+
+            Your kernel must declare the mdspan type with all extents
+            being **dynamic**:
 
             .. code-block:: cpp
 
@@ -2317,7 +2334,8 @@ cdef inline _carray.mdspan _mdspan_from_ndarray(
         )
 
     carr.init(
-        <void*>arr.data.ptr, arr.itemsize, arr._shape, arr._strides,
+        <void*>arr.data.ptr, <void*>arr.data.mem.ptr,
+        arr.itemsize, arr._shape, arr._strides,
         index_itemsize, allow_unsafe
     )
     return carr
