@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import contextlib
 import functools
 import re
@@ -623,6 +625,26 @@ class TestGmres:
         ng_a = xp.ones((self.n, self.n), dtype='i')
         with pytest.raises(TypeError):
             sp.linalg.gmres(ng_a, b)
+
+
+@testing.with_requires('scipy>=1.4')
+class TestGmresInfo:
+
+    def test_nonconvergence_with_restart_maxiter_mismatch(self):
+        n = 48
+        indices = numpy.arange(n, dtype=numpy.float64)
+        a_cpu = 1.0 / (indices[:, None] + indices[None, :] + 1.0)
+        a = sparse.csr_matrix(cupy.asarray(a_cpu))
+        x_true = cupy.asarray(numpy.random.default_rng(0).standard_normal(n))
+        b = a @ x_true
+        tol = 1e-12
+
+        x, info = sparse.linalg.gmres(
+            a, b, restart=2, maxiter=3, atol=tol, rtol=tol)
+        rel_res = cupy.linalg.norm(a @ x - b) / cupy.linalg.norm(b)
+
+        assert rel_res > tol
+        assert info != 0
 
 
 def skip_HIP_spMM_error(outer=()):
@@ -1387,52 +1409,55 @@ class TestLsmr:
 
     density = 0.01
 
-    def _make_matrix(self, xp):
+    def _make_matrix(self, xp, dtype):
         shape = (self.m, self.n)
-        a = testing.shaped_random(shape, xp, scale=1)
+        a = testing.shaped_random(shape, xp, dtype, scale=1)
         mask = testing.shaped_random(shape, xp, scale=1)
         a[mask > self.density] = 0
         return a
 
-    def _make_normalized_vector(self, xp):
-        b = testing.shaped_random((self.m,), xp, scale=1)
+    def _make_normalized_vector(self, xp, dtype):
+        b = testing.shaped_random((self.m,), xp, dtype, scale=1)
         return b / xp.linalg.norm(b)
 
     def _test_lsmr(self, xp, sp, a):
-        b = self._make_normalized_vector(xp)
+        b = self._make_normalized_vector(xp, a.dtype)
         x0 = None
         if self.x0 == 'ones':
             x0 = xp.ones((self.n,))
         return sp.linalg.lsmr(a, b, x0=x0, damp=self.damp)
 
+    @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-1, atol=1e-1, sp_name='sp')
-    def test_sparse(self, xp, sp):
+    def test_sparse(self, xp, sp, dtype):
         if runtime.is_hip and self.format in ('csr', 'csc'):
             pytest.xfail('may be buggy')  # trans=True
 
         if (self.damp == 0 and self.x0 == 'ones' and self.n != 20):
             pytest.skip()
-        a = self._make_matrix(xp)
+        a = self._make_matrix(xp, dtype)
         a = sp.coo_matrix(a).asformat(self.format)
         if self.use_linear_operator:
             a = sp.linalg.aslinearoperator(a)
         return self._test_lsmr(xp, sp, a)[0]
 
+    @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-1, atol=1e-1, sp_name='sp')
-    def test_dense(self, xp, sp):
+    def test_dense(self, xp, sp, dtype):
         if (self.damp == 0 and self.x0 == 'ones' and self.n != 20):
             pytest.skip()
-        a = self._make_matrix(xp)
+        a = self._make_matrix(xp, dtype)
         if self.use_linear_operator:
             a = sp.linalg.aslinearoperator(a)
         return self._test_lsmr(xp, sp, a)[0]
 
-    def test_invalid(self):
+    @testing.for_float_dtypes(no_float16=True)
+    def test_invalid(self, dtype):
         if not (self.x0 is None and self.use_linear_operator is False):
             pytest.skip()
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
-            a = self._make_matrix(xp)
-            b = self._make_normalized_vector(xp)
+            a = self._make_matrix(xp, dtype)
+            b = self._make_normalized_vector(xp, dtype)
             ng_a = xp.ones((self.m, ))
             with pytest.raises(ValueError):
                 sp.linalg.lsmr(ng_a, b)

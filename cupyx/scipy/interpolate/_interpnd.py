@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 
 import cupy
 from cupy._core._scalar import get_typename
@@ -190,6 +192,7 @@ class NDInterpolatorBase:
 LINEAR_INTERP_ND_DEF = r"""
 #include <cupy/complex.cuh>
 #include <cupy/math_constants.h>
+#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_headers?
 
 template<typename T>
 __global__ void evaluate_linear_nd_interp(
@@ -229,7 +232,7 @@ __global__ void evaluate_linear_nd_interp(
 """
 
 LINEAR_INTERP_ND_MODULE = cupy.RawModule(
-    code=LINEAR_INTERP_ND_DEF, options=('-std=c++11',),
+    code=LINEAR_INTERP_ND_DEF, options=('-std=c++17',),
     name_expressions=[f'evaluate_linear_nd_interp<{t}>' for t in TYPES])
 
 
@@ -635,7 +638,7 @@ __global__ void clough_tocher_2d(
 """
 
 CT_MODULE = cupy.RawModule(
-    code=CT_DEF, options=('-std=c++11',),
+    code=CT_DEF, options=('-std=c++17',),
     name_expressions=['estimate_gradients_2d'] +
                      [f'clough_tocher_2d<{t}>' for t in TYPES])
 

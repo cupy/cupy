@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import operator
 import os
 import shutil
@@ -68,6 +70,7 @@ class TestAvailable(unittest.TestCase):
         assert available
 
 
+@pytest.mark.thread_unsafe(reason="modifies environment variables")
 class TestNotAvailable(unittest.TestCase):
 
     def setUp(self):

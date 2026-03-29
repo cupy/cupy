@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import math
-from typing import Any, Optional
+from typing import Any
 
 import numpy
 
@@ -66,10 +68,10 @@ def _new_like_order_and_strides(
 
 def empty_like(
         prototype: NDArray[Any],
-        dtype: DTypeLike = None,
+        dtype: DTypeLike | None = None,
         order: _OrderKACF = 'K',
         subok: None = None,
-        shape: Optional[_ShapeLike] = None,
+        shape: _ShapeLike | None = None,
 ) -> NDArray[Any]:
     """Returns a new array with same shape and dtype of a given array.
 
@@ -108,7 +110,7 @@ def empty_like(
 
 def eye(
         N: int,
-        M: Optional[int] = None,
+        M: int | None = None,
         k: int = 0,
         dtype: DTypeLike = float,
         order: _OrderCF = 'C',
@@ -187,10 +189,10 @@ def ones(
 
 def ones_like(
         a: NDArray[Any],
-        dtype: DTypeLike = None,
+        dtype: DTypeLike | None = None,
         order: _OrderKACF = 'K',
         subok: None = None,
-        shape: Optional[_ShapeLike] = None,
+        shape: _ShapeLike | None = None,
 ) -> NDArray[Any]:
     """Returns an array of ones with same shape and dtype as a given array.
 
@@ -254,10 +256,10 @@ def zeros(
 
 def zeros_like(
         a: NDArray[Any],
-        dtype: DTypeLike = None,
+        dtype: DTypeLike | None = None,
         order: _OrderKACF = 'K',
         subok: None = None,
-        shape: Optional[_ShapeLike] = None,
+        shape: _ShapeLike | None = None,
 ) -> NDArray[Any]:
     """Returns an array of zeros with same shape and dtype as a given array.
 
@@ -298,7 +300,7 @@ def zeros_like(
 def full(
         shape: _ShapeLike,
         fill_value: Any,
-        dtype: DTypeLike = None,
+        dtype: DTypeLike | None = None,
         order: _OrderCF = 'C',
 ) -> NDArray[Any]:
     """Returns a new array of given shape and dtype, filled with a given value.
@@ -331,10 +333,10 @@ def full(
 def full_like(
         a: NDArray[Any],
         fill_value: Any,
-        dtype: DTypeLike = None,
+        dtype: DTypeLike | None = None,
         order: _OrderKACF = 'K',
         subok: None = None,
-        shape: Optional[_ShapeLike] = None,
+        shape: _ShapeLike | None = None,
 ) -> NDArray[Any]:
     """Returns a full array with same shape and dtype as a given array.
 

@@ -1,7 +1,7 @@
 [build-system]
 # Need to be installed manually when using `--no-build-isolation`.
 # Keep in sync with `docs/source/contribution.rst`.
-requires = ["setuptools>=77", "wheel", "Cython>=3,<3.2", "fastrlock>=0.5"]
+requires = ["setuptools>=77", "wheel", "Cython>=3.1,<3.2", "numpy>=2.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -17,11 +17,11 @@ classifiers = [
   "Intended Audience :: Developers",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Cython",
   "Topic :: Software Development",
@@ -29,26 +29,23 @@ classifiers = [
   "Operating System :: POSIX",
   "Operating System :: Microsoft :: Windows",
 ]
-requires-python = ">=3.9"
-dependencies = [
-  "numpy>=1.24,<2.6", # see #4773
-  "fastrlock>=0.5",
+requires-python = ">=3.10"
+dynamic = [
+  "version",
+  "readme",  # long_description
+  "dependencies",  # install_requires
+  "optional-dependencies",  # extras_require
 ]
-dynamic = ["version"]
-
-[project.optional-dependencies]
-"all" = [
-  "scipy>=1.10,<1.17", # see #4773
-  "Cython>=3",
-  "optuna>=2.0",
-]
-"test" = ["packaging", "pytest>=7.2", "hypothesis>=6.37.2,<6.55.0", "mpmath"]
 
 [project.urls]
 "Homepage" = "https://cupy.dev/"
 "Documentation" = "https://docs.cupy.dev/"
 "Bug Tracker" = "https://github.com/cupy/cupy/issues"
 "Source Code" = "https://github.com/cupy/cupy"
+
+[tool.setuptools]
+# Do not include files listed in MANIFEST.in to wheels.
+include-package-data = false
 
 [tool.setuptools.packages.find]
 include = ["cupy*", "cupyx*", "cupy_backends*"]
@@ -57,7 +54,7 @@ include = ["cupy*", "cupyx*", "cupy_backends*"]
 version = { attr = "cupy._version.__version__" }
 
 [tool.autopep8]
-exclude = "*.git*, *.eggs*, *cupy/array_api*, *tests/cupy_tests/array_api_tests*, *docs/source*"
+exclude = "*.git*, *.eggs*, *docs/source*"
 
 [tool.autopep8.per-file-ignores]
 # ignore long lines containing arrays of numerical constants
@@ -73,8 +70,13 @@ disable_error_code = ["attr-defined"]
 xfail_strict = true
 testpaths = "tests"
 addopts = "--strict-markers"
-markers = ["slow", "multi_gpu"]
+markers = [
+  "slow", "multi_gpu",
+  # If pytest-run-parallel is not available
+  "parallel_threads", "iterations", "thread_unsafe",
+]
 filterwarnings = [
+  "always",  # Make sure previous calls cannot hide future warnings.
   "error::FutureWarning",
   # ignore FutureWarning from cupy._util.experimental
   'ignore:.* is experimental\.:FutureWarning:cupy',
@@ -104,6 +106,8 @@ filterwarnings = [
   'ignore::PendingDeprecationWarning:numpy\.matrixlib\.defmatrix',
   # pyreadline (dependency from optuna -> cliff -> cmd2) uses deprecated ABCs
   "ignore:Using or importing the ABCs from:DeprecationWarning:pyreadline",
+  # google-api-core>=2.28.0 warns about Python versions approaching EOL
+  "ignore::FutureWarning:google.api_core",
   # Ignore warnings from Optuna 3.0 internal code
   # TODO(kmaehashi): Remove after the issue is fixed in Optuna.
   "ignore:(.+?) has been deprecated in v3.0.0:FutureWarning:optuna",
@@ -125,14 +129,12 @@ ecxlude_lines = ["if __name__ == .__main__.:"]
 [tool.ruff]
 line-length = 79
 extend-exclude = [
-  "cupy/array_api",
   "docs/source",
-  "tests/cupy_tests/array_api_tests",
   "third_party",
 ]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "UP"]
+select = ["E", "F", "W", "UP", "I002", "FA", "PYI", "PLC01"]
 extend-ignore = [
   "UP031", # printf-string-formatting
   "UP032", # f-string
@@ -145,3 +147,6 @@ extend-ignore = [
 "tests/typing_tests/cupy_tests/creation_tests/test_basic.pyi" = [
   "E501", # line-too-long (long comments)
 ]
+
+[tool.ruff.lint.isort]
+required-imports = ["from __future__ import annotations"]

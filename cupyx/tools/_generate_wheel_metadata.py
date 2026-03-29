@@ -8,6 +8,8 @@ This tool is NOT intended for end-user use.
 
 # This script will also be used as a standalone script when building wheels.
 # Keep the script runnable without CuPy dependency.
+from __future__ import annotations
+
 
 import argparse
 import json
@@ -60,7 +62,7 @@ def main(args):
     parser.add_argument('--target', type=str, required=True,
                         help='Target system (e.g., Linux:x86_64')
     parser.add_argument('--library',
-                        choices=['cudnn', 'cutensor', 'nccl'],
+                        choices=['cutensor', 'nccl'],
                         action='append',
                         default=[])
     params = parser.parse_args(args)

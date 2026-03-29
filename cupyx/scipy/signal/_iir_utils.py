@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 
 from itertools import product
 
@@ -37,6 +39,7 @@ IIR_KERNEL = r"""
 #include <cupy/math_constants.h>
 #include <cupy/carray.cuh>
 #include <cupy/complex.cuh>
+#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_headers?
 
 template<typename U, typename T>
 __global__ void compute_correction_factors(
@@ -192,6 +195,7 @@ IIR_SOS_KERNEL = r"""
 #include <cupy/math_constants.h>
 #include <cupy/carray.cuh>
 #include <cupy/complex.cuh>
+#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_headers?
 
 template<typename T>
 __global__ void pick_carries(
@@ -218,10 +222,10 @@ template<typename U, typename T>
 __global__ void compute_correction_factors_sos(
         const int m, const T* f_const, U* all_out) {
 
-    extern __shared__ __align__(sizeof(T)) thrust::complex<double> bc_d[2];
+    __shared__ __align__(sizeof(T)) thrust::complex<double> bc_d[2];
     T* b_c = reinterpret_cast<T*>(bc_d);
 
-    extern __shared__ __align__(sizeof(T)) thrust::complex<double> off_d[4];
+    __shared__ __align__(sizeof(T)) thrust::complex<double> off_d[4];
     U* off_cache = reinterpret_cast<U*>(off_d);
 
     int idx = threadIdx.x;
@@ -261,8 +265,8 @@ __global__ void first_pass_iir_sos(
         const int m, const int n, const int n_blocks,
         const T* factors, T* out, T* carries) {
 
-    extern __shared__ unsigned int thread_status[2];
-    extern __shared__ __align__(sizeof(T)) thrust::complex<double> fc_d[2 * 1024];
+    __shared__ unsigned int thread_status[2];
+    __shared__ __align__(sizeof(T)) thrust::complex<double> fc_d[2 * 1024];
     T* factor_cache = reinterpret_cast<T*>(fc_d);
 
     int orig_idx = blockDim.x * (blockIdx.x % n_blocks) + threadIdx.x;
@@ -343,7 +347,7 @@ __global__ void correct_carries_sos(
     const int m, const int n_blocks, const int carries_stride,
     const int offset, const T* factors, T* carries) {
 
-    extern __shared__ __align__(sizeof(T)) thrust::complex<double> fcd3[4];
+    __shared__ __align__(sizeof(T)) thrust::complex<double> fcd3[4];
     T* factor_cache = reinterpret_cast<T*>(fcd3);
 
     int idx = threadIdx.x;
@@ -379,10 +383,10 @@ __global__ void second_pass_iir_sos(
         const int n_blocks, const int offset, const T* factors,
         T* carries, T* out) {
 
-    extern __shared__ __align__(sizeof(T)) thrust::complex<double> fcd2[2 * 1024];
+    __shared__ __align__(sizeof(T)) thrust::complex<double> fcd2[2 * 1024];
     T* factor_cache = reinterpret_cast<T*>(fcd2);
 
-    extern __shared__ __align__(sizeof(T)) thrust::complex<double> c_d[2];
+    __shared__ __align__(sizeof(T)) thrust::complex<double> c_d[2];
     T* carries_cache = reinterpret_cast<T*>(c_d);
 
     int idx = blockDim.x * (blockIdx.x % n_blocks) + threadIdx.x;
@@ -425,10 +429,10 @@ __global__ void fir_sos(
         const int m, const int n, const int carries_stride, const int n_blocks,
         const int offset, const T* sos, T* carries, T* out) {
 
-    extern __shared__ __align__(sizeof(T)) thrust::complex<double> fir_cc[1024 + 2];
+    __shared__ __align__(sizeof(T)) thrust::complex<double> fir_cc[1024 + 2];
     T* fir_cache = reinterpret_cast<T*>(fir_cc);
 
-    extern __shared__ __align__(sizeof(T)) thrust::complex<double> fir_b[3];
+    __shared__ __align__(sizeof(T)) thrust::complex<double> fir_b[3];
     T* b = reinterpret_cast<T*>(fir_b);
 
     int idx = blockDim.x * (blockIdx.x % n_blocks) + threadIdx.x;
@@ -472,7 +476,7 @@ __global__ void fir_sos(
 """  # NOQA
 
 IIR_MODULE = cupy.RawModule(
-    code=IIR_KERNEL, options=('-std=c++11',),
+    code=IIR_KERNEL,
     name_expressions=[f'compute_correction_factors<{x}, {y}>'
                       for x, y in TYPE_PAIR_NAMES] +
                      [f'correct_carries<{x}>' for x in TYPE_NAMES] +
@@ -480,7 +484,7 @@ IIR_MODULE = cupy.RawModule(
                      [f'second_pass_iir<{x}>' for x in TYPE_NAMES])
 
 IIR_SOS_MODULE = cupy.RawModule(
-    code=IIR_SOS_KERNEL, options=('-std=c++11',),
+    code=IIR_SOS_KERNEL,
     name_expressions=[f'compute_correction_factors_sos<{x}, {y}>'
                       for x, y in TYPE_PAIR_NAMES] +
     [f'pick_carries<{x}>' for x in TYPE_NAMES] +

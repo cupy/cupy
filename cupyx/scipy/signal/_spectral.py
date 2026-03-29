@@ -23,6 +23,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
+from __future__ import annotations
+
 
 import warnings
 
@@ -769,7 +771,7 @@ def stft(
     .. math:: x[n]=\frac{\sum_{t}x_{t}[n]w[n-tH]}{\sum_{t}w^{2}[n-tH]}
 
     The NOLA constraint ensures that every normalization term that appears
-    in the denomimator of the OLA reconstruction equation is nonzero. Whether a
+    in the denominator of the OLA reconstruction equation is nonzero. Whether a
     choice of `window`, `nperseg`, and `noverlap` satisfy this constraint can
     be tested with `check_NOLA`.
 
@@ -1296,7 +1298,7 @@ def spectrogram(
     window, nperseg = _triage_segments(
         window, nperseg, input_length=x.shape[axis])
 
-    # Less overlap than welch, so samples are more statisically independent
+    # Less overlap than welch, so samples are more statistically independent
     if noverlap is None:
         noverlap = nperseg // 8
 

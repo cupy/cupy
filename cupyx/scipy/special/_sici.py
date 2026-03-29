@@ -1,4 +1,6 @@
 """Circular and hyperbolic sine and cosine integrals."""
+from __future__ import annotations
+
 
 from cupy import _core
 
@@ -9,7 +11,7 @@ sici = _core.create_ufunc(
             'f->ff',
             '''
             float si, ci;
-            xsf::sici(in0, &si, &ci);
+            xsf::sici(in0, si, ci);
             out0 = si; out1 = ci;
             ''',
         ),
@@ -17,7 +19,7 @@ sici = _core.create_ufunc(
             'd->dd',
             '''
             double si, ci;
-            xsf::sici(in0, &si, &ci);
+            xsf::sici(in0, si, ci);
             out0 = si; out1 = ci;
             ''',
         ),
@@ -25,7 +27,7 @@ sici = _core.create_ufunc(
             'F->FF',
             '''
             complex<float> si, ci;
-            xsf::sici(in0, &si, &ci);
+            xsf::sici(in0, si, ci);
             out0 = si; out1 = ci;
             ''',
         ),
@@ -33,7 +35,7 @@ sici = _core.create_ufunc(
             'D->DD',
             '''
             complex<double> si, ci;
-            xsf::sici(in0, &si, &ci);
+            xsf::sici(in0, si, ci);
             out0 = si; out1 = ci;
             ''',
         ),
@@ -55,7 +57,7 @@ shichi = _core.create_ufunc(
             'f->ff',
             '''
             float shi, chi;
-            xsf::shichi(in0, &shi, &chi);
+            xsf::shichi(in0, shi, chi);
             out0 = shi; out1 = chi;
             ''',
         ),
@@ -63,7 +65,7 @@ shichi = _core.create_ufunc(
             'd->dd',
             '''
             double shi, chi;
-            xsf::shichi(in0, &shi, &chi);
+            xsf::shichi(in0, shi, chi);
             out0 = shi; out1 = chi;
             ''',
         ),
@@ -71,7 +73,7 @@ shichi = _core.create_ufunc(
             'F->FF',
             '''
             complex<float> shi, chi;
-            xsf::shichi(in0, &shi, &chi);
+            xsf::shichi(in0, shi, chi);
             out0 = shi; out1 = chi;
             ''',
         ),
@@ -79,7 +81,7 @@ shichi = _core.create_ufunc(
             'D->DD',
             '''
             complex<double> shi, chi;
-            xsf::shichi(in0, &shi, &chi);
+            xsf::shichi(in0, shi, chi);
             out0 = shi; out1 = chi;
             ''',
         ),

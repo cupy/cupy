@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy
 
 from cupy import testing
@@ -259,6 +261,36 @@ class TestIntersect1d:
     def test_multiple_instances(self, xp, dtype):
         a = xp.array([2, 4, 5, 2, 1, 5], dtype=dtype)
         b = xp.array([4, 6, 2, 5, 7, 6], dtype=dtype)
+        return xp.intersect1d(a, b, return_indices=True)
+
+    @testing.numpy_cupy_array_equal()
+    def test_intersect1d_both_empty(self, xp):
+        return xp.intersect1d(xp.array([]), xp.array([]))
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_intersect1d_empty_array(self, xp, dtype):
+        a = xp.array([], dtype=dtype)
+        b = xp.array([0], dtype=dtype)
+        return xp.intersect1d(a, b, return_indices=True)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_intersect1d_second_empty_array(self, xp, dtype):
+        a = xp.array([0], dtype=dtype)
+        b = xp.array([], dtype=dtype)
+        return xp.intersect1d(a, b, return_indices=True)
+
+    @testing.numpy_cupy_array_equal()
+    def test_intersect1d_mixed_dtypes_empty(self, xp):
+        a = xp.array([0], dtype=xp.int64)
+        b = xp.array([], dtype=xp.float64)
+        return xp.intersect1d(a, b)
+
+    @testing.numpy_cupy_array_equal()
+    def test_intersect1d_mixed_dtypes_empty_with_indices(self, xp):
+        a = xp.array([0], dtype=xp.int64)
+        b = xp.array([], dtype=xp.float64)
         return xp.intersect1d(a, b, return_indices=True)
 
 

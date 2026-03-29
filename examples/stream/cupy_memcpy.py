@@ -1,4 +1,6 @@
 # nvprof --print-gpu-trace python examples/stream/cupy_memcpy.py
+from __future__ import annotations
+
 import cupy
 import numpy
 

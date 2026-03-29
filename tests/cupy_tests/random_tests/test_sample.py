@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import unittest
 from unittest import mock
 
@@ -290,7 +292,6 @@ class TestRandomSample(unittest.TestCase):
 )
 @testing.fix_random()
 class TestMultinomial(unittest.TestCase):
-
     @_condition.repeat(3, 10)
     @testing.for_float_dtypes()
     @testing.numpy_cupy_allclose(rtol=0.05)

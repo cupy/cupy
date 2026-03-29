@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import math
 
 import cupy
@@ -291,6 +293,7 @@ _CHANNELIZER_KERNEL_PREAMBLE = r"""
 #include <cooperative_groups.h>
 #include <cooperative_groups/reduce.h>
 #include <cupy/complex.cuh>
+#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_headers?
 #include <cupy/cuda_workaround.h>
 
 namespace std {

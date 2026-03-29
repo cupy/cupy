@@ -1,8 +1,8 @@
+from __future__ import annotations
+
 import numpy
 
 from cupy import _core
-from cupyx.jit import _interface
-from cupyx.jit import _cuda_types
 
 
 def _get_input_type(arg):
@@ -53,6 +53,7 @@ class vectorize:
 
     @staticmethod
     def _get_body(return_type, call):
+        from cupyx.jit import _cuda_types
         if isinstance(return_type, _cuda_types.Scalar):
             dtypes = [return_type.dtype]
             code = f'out0 = {call};'
@@ -72,6 +73,8 @@ class vectorize:
         return ', '.join(out_params), code
 
     def __call__(self, *args):
+        from cupyx.jit import _interface
+        from cupyx.jit import _cuda_types
         itypes = ''.join([_get_input_type(x) for x in args])
         kern = self._kernel_cache.get(itypes, None)
 

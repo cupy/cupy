@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import cupy
 from cupy import _core
 import cupy._core._routines_manipulation as _manipulation
@@ -110,7 +112,7 @@ def broadcast_arrays(*args):
     .. seealso:: :func:`numpy.broadcast_arrays`
 
     """
-    return list(broadcast(*args).values)
+    return tuple(broadcast(*args).values)
 
 
 def broadcast_to(array, shape):

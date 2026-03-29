@@ -31,6 +31,7 @@ cpdef enum:
     CUDA_C_8I = 7  # 8 bit complex as a pair of signed integers
     CUDA_R_8U = 8  # 8 bit real as a signed integer
     CUDA_C_8U = 9  # 8 bit complex as a pair of signed integers
+    CUDA_R_16BF = 14  # bfloat16 real
 
     # CUDA Limits
     cudaLimitStackSize = 0x00
@@ -95,7 +96,11 @@ cpdef enum:
     # cudaMemHandleTypeWin32Kmt = 0x4
 
     # cudaMemLocationType
+    cudaMemLocationTypeInvalid = 0          # CUDA 12.0
     cudaMemLocationTypeDevice = 1
+    cudaMemLocationTypeHost = 2             # CUDA 12.0
+    cudaMemLocationTypeHostNuma = 3         # CUDA 12.0
+    cudaMemLocationTypeHostNumaCurrent = 4  # CUDA 12.0
 
     # cudaGraphDebugDotFlags
     cudaGraphDebugDotFlagsVerbose = 1<<0

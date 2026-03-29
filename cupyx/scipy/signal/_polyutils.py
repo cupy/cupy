@@ -1,6 +1,8 @@
 """
 Routines for manipulating partial fraction expansions.
 """
+from __future__ import annotations
+
 
 import cupy
 

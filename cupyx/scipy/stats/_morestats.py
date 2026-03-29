@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import math
 
 import cupy
@@ -51,7 +53,7 @@ def boxcox_llf(lmb, data):
 
     N = data.shape[0]
     if N == 0:
-        return cupy.array(cupy.nan)
+        return cupy.array(cupy.nan, dtype=dtype)
 
     logdata = cupy.log(data)
 

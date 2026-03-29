@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy
 if numpy.__version__ < '2':
     from numpy.lib import index_tricks

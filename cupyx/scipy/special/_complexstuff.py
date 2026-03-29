@@ -17,6 +17,7 @@ Notes:
 - instead of zsqrt, use thrust::sqrt
 
 """
+from __future__ import annotations
 
 
 zlog1_definition = """

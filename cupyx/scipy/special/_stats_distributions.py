@@ -13,6 +13,8 @@ https://github.com/scipy/scipy/blob/main/scipy/special/cephes/pdtr.c
 Cephes Math Library, Release 2.3:  March, 1995
 Copyright 1984, 1995 by Stephen L. Moshier
 """
+from __future__ import annotations
+
 import warnings
 
 from cupy import _core
@@ -24,7 +26,9 @@ from cupyx.scipy.special._gammainc import _igam_preamble, _igami_preamble
 
 ndtr = _core.create_ufunc(
     'cupyx_scipy_special_ndtr',
-    (('f->f', 'out0 = normcdff(in0)'), 'd->d'),
+    (('e->d', 'out0 = normcdf(double(in0))'),
+     ('f->f', 'out0 = normcdff(in0)'),
+     'd->d'),
     'out0 = normcdf(in0)',
     doc='''Cumulative distribution function of normal distribution.
 
@@ -62,7 +66,9 @@ static __device__ float log_ndtrf(float x)
 
 log_ndtr = _core.create_ufunc(
     'cupyx_scipy_special_log_ndtr',
-    (('f->f', 'out0 = log_ndtrf(in0)'), 'd->d'),
+    (('e->d', 'out0 = log_ndtr(double(in0))'),
+     ('f->f', 'out0 = log_ndtrf(in0)'),
+     'd->d'),
     'out0 = log_ndtr(in0)',
     preamble=log_ndtr_definition,
     doc="""Logarithm of Gaussian cumulative distribution function.
@@ -436,7 +442,7 @@ __device__ double chdtrc(double df, double x)
 {
 
     if (x < 0.0) {
-        return 1.0;     /* modified by T. Oliphant */
+        return CUDART_NAN;
     }
     return igamc(df / 2.0, x / 2.0);
 }
@@ -807,7 +813,7 @@ __device__ double nbdtr(int k, int n, double p)
 {
     double dk, dn;
 
-    if (((p < 0.0) || (p > 1.0)) || (k < 0))
+    if (((p < 0.0) || (p > 1.0)) || (k < 0) || n == 0)
     {
         return CUDART_NAN;
     }
@@ -834,7 +840,7 @@ __device__ double nbdtrc(int k, int n, double p)
 {
     double dk, dn;
 
-    if (((p < 0.0) || (p > 1.0)) || k < 0)
+    if (((p < 0.0) || (p > 1.0)) || k < 0 || n == 0)
     {
         return CUDART_NAN;
     }

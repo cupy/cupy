@@ -7,6 +7,8 @@ References
    Probability and Statistics Tables and Formulae. Chapman & Hall: New
    York. 2000.
 """
+from __future__ import annotations
+
 import cupy as cp
 
 

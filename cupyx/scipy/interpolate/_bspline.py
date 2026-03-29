@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 
 import operator
 
@@ -14,6 +16,8 @@ INT_TYPES = ['int', 'long long']
 
 INTERVAL_KERNEL = r'''
 #include <cupy/complex.cuh>
+#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_headers?
+
 extern "C" {
 __global__ void find_interval(
         const double* t, const double* x, long long* out,
@@ -66,14 +70,14 @@ __global__ void find_interval(
 }
 '''
 
-INTERVAL_MODULE = cupy.RawModule(
-    code=INTERVAL_KERNEL, options=('-std=c++11',),)
+INTERVAL_MODULE = cupy.RawModule(code=INTERVAL_KERNEL,)
 #    name_expressions=[f'find_interval<{type_name}>' for type_name in TYPES])
 
 
 D_BOOR_KERNEL = r'''
 #include <cupy/complex.cuh>
 #include <cupy/math_constants.h>
+#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_headers?
 #define COMPUTE_LINEAR 0x1
 
 template<typename T>
@@ -143,7 +147,7 @@ __global__ void d_boor(
             xb = t[ind];
             xa = t[ind - j];
             if (xb == xa) {
-                h[mu] = 0.0;
+                h[n] = 0.0;
                 continue;
             }
             w = ((double) j) * hh[n - 1]/(xb - xa);
@@ -169,13 +173,14 @@ __global__ void d_boor(
 }
 '''
 
-D_BOOR_MODULE = cupy.RawModule(
-    code=D_BOOR_KERNEL, options=('-std=c++11',),
-    name_expressions=[f'd_boor<{type_name}>' for type_name in TYPES])
+D_BOOR_MODULE = cupy.RawModule(code=D_BOOR_KERNEL,
+                               name_expressions=[f'd_boor<{type_name}>'
+                                                 for type_name in TYPES])
 
 
 DESIGN_MAT_KERNEL = r'''
 #include <cupy/complex.cuh>
+#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_headers?
 
 template<typename U>
 __global__ void compute_design_matrix(
@@ -200,7 +205,7 @@ __global__ void compute_design_matrix(
 '''
 
 DESIGN_MAT_MODULE = cupy.RawModule(
-    code=DESIGN_MAT_KERNEL, options=('-std=c++11',),
+    code=DESIGN_MAT_KERNEL,
     name_expressions=[f'compute_design_matrix<{itype}>'
                       for itype in INT_TYPES])
 

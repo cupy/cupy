@@ -24,6 +24,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
+from __future__ import annotations
+
 
 import warnings
 
@@ -190,7 +192,7 @@ extern "C" __global__ void __launch_bounds__( 512 ) _cupy_lombscargle_float64(
 
 
 LOMBSCARGLE_MODULE = cupy.RawModule(
-    code=LOMBSCARGLE_KERNEL, options=('-std=c++11',),
+    code=LOMBSCARGLE_KERNEL,
     name_expressions=['_cupy_lombscargle_float32',
                       '_cupy_lombscargle_float64'])
 

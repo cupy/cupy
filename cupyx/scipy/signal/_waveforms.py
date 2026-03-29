@@ -24,6 +24,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
+from __future__ import annotations
+
 
 import cupy
 from cupy._core._scalar import get_typename
@@ -71,7 +73,12 @@ _sawtooth_kernel = cupy.ElementwiseKernel(
         out = nan("0xfff8000000000000ULL");
     }
 
-    const T tmod { fmod( t, 2.0 * M_PI ) };
+    // Use Python-compatible modulo: result is always in [0, 2*pi)
+    // C fmod can return negative values for negative inputs
+    T tmod { fmod( t, 2.0 * M_PI ) };
+    if ( tmod < 0 ) {
+        tmod += 2.0 * M_PI;
+    }
     const bool mask2 { ( ( 1 - mask1 ) && ( tmod < ( w * 2.0 * M_PI ) ) ) };
 
     if ( mask2 ) {
@@ -85,7 +92,6 @@ _sawtooth_kernel = cupy.ElementwiseKernel(
     y = out;
     """,
     "_sawtooth_kernel",
-    options=("-std=c++11",),
 )
 
 
@@ -140,7 +146,12 @@ _square_kernel = cupy.ElementwiseKernel(
         y = nan("0xfff8000000000000ULL");
     }
 
-    const T tmod { fmod( t, 2.0 * M_PI ) };
+    // Use Python-compatible modulo: result is always in [0, 2*pi)
+    // C fmod can return negative values for negative inputs
+    T tmod { fmod( t, 2.0 * M_PI ) };
+    if ( tmod < 0 ) {
+        tmod += 2.0 * M_PI;
+    }
     const bool mask2 { ( ( 1 - mask1 ) && ( tmod < ( w * 2.0 * M_PI ) ) ) };
 
     if ( mask2 ) {
@@ -154,7 +165,6 @@ _square_kernel = cupy.ElementwiseKernel(
 
     """,
     "_square_kernel",
-    options=("-std=c++11",),
 )
 
 
@@ -220,7 +230,6 @@ _gausspulse_kernel_F_F = cupy.ElementwiseKernel(
     yI = yenv * cos( 2 * M_PI * fc * t);
     """,
     "_gausspulse_kernel",
-    options=("-std=c++11",),
 )
 
 _gausspulse_kernel_F_T = cupy.ElementwiseKernel(
@@ -231,7 +240,6 @@ _gausspulse_kernel_F_T = cupy.ElementwiseKernel(
     yI = yenv * cos( 2 * M_PI * fc * t);
     """,
     "_gausspulse_kernel",
-    options=("-std=c++11",),
 )
 
 _gausspulse_kernel_T_F = cupy.ElementwiseKernel(
@@ -247,7 +255,6 @@ _gausspulse_kernel_T_F = cupy.ElementwiseKernel(
     yQ = yenv * l_yQ;
     """,
     "_gausspulse_kernel",
-    options=("-std=c++11",),
 )
 
 _gausspulse_kernel_T_T = cupy.ElementwiseKernel(
@@ -263,7 +270,6 @@ _gausspulse_kernel_T_T = cupy.ElementwiseKernel(
     yQ = yenv * l_yQ;
     """,
     "_gausspulse_kernel",
-    options=("-std=c++11",),
 )
 
 
@@ -379,7 +385,6 @@ _chirp_phase_lin_kernel_real = cupy.ElementwiseKernel(
     phase = cos(temp + phi);
     """,
     "_chirp_phase_lin_kernel",
-    options=("-std=c++11",),
 )
 
 _chirp_phase_lin_kernel_cplx = cupy.ElementwiseKernel(
@@ -392,7 +397,6 @@ _chirp_phase_lin_kernel_cplx = cupy.ElementwiseKernel(
     phase = Y(cos(temp + phi), cos(temp + phi + M_PI/2) * -1);
     """,
     "_chirp_phase_lin_kernel",
-    options=("-std=c++11",),
 )
 
 _chirp_phase_quad_kernel = cupy.ElementwiseKernel(
@@ -412,7 +416,6 @@ _chirp_phase_quad_kernel = cupy.ElementwiseKernel(
     phase = cos(temp + phi);
     """,
     "_chirp_phase_quad_kernel",
-    options=("-std=c++11",),
 )
 
 _chirp_phase_log_kernel = cupy.ElementwiseKernel(
@@ -430,7 +433,6 @@ _chirp_phase_log_kernel = cupy.ElementwiseKernel(
     phase = cos(temp + phi);
     """,
     "_chirp_phase_log_kernel",
-    options=("-std=c++11",),
 )
 
 _chirp_phase_hyp_kernel = cupy.ElementwiseKernel(
@@ -448,7 +450,6 @@ _chirp_phase_hyp_kernel = cupy.ElementwiseKernel(
     phase = cos(temp + phi);
     """,
     "_chirp_phase_hyp_kernel",
-    options=("-std=c++11",),
 )
 
 
@@ -665,7 +666,7 @@ UNIT_KERNEL = r'''
 #include <cupy/math_constants.h>
 #include <cupy/carray.cuh>
 #include <cupy/complex.cuh>
-
+#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_headers?
 
 template<typename T>
 __global__ void unit_impulse(const int n, const int iidx, T* out) {
@@ -684,7 +685,7 @@ __global__ void unit_impulse(const int n, const int iidx, T* out) {
 '''
 
 UNIT_MODULE = cupy.RawModule(
-    code=UNIT_KERNEL, options=('-std=c++11',),
+    code=UNIT_KERNEL,
     name_expressions=[f'unit_impulse<{x}>' for x in TYPE_NAMES])
 
 

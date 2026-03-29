@@ -12,26 +12,26 @@ $ErrorActionPreference = "Stop"
 . "$PSScriptRoot\_flexci.ps1"
 
 
-$cache_gcs_dir = "gs://tmp-asia-pfn-public-ci/cupy-ci/cache"
-
-function DownloadCache([String]$cupy_kernel_cache_file) {
+function DownloadCache([String]$gcs_dir, [String]$cupy_kernel_cache_file) {
     pushd $Env:USERPROFILE
     echo "Downloading kernel cache..."
-    gsutil -m -q cp "$cache_gcs_dir/$cupy_kernel_cache_file" .
+    gsutil -m -q cp "$gcs_dir/$cupy_kernel_cache_file" .
     if (-not $?) {
-        echo "*** Kernel cache unavailable"
+        echo "*** Kernel cache unavailable ($gcs_dir/$cupy_kernel_cache_file)"
     } else {
         echo "Extracting kernel cache..."
-        RunOrDie 7z x $cupy_kernel_cache_file
+        RunOrDie 7z x -aoa $cupy_kernel_cache_file
         rm $cupy_kernel_cache_file
     }
     popd
 }
 
-function UploadCache([String]$cupy_kernel_cache_file) {
-    # Maximum 1 GB
+function UploadCache([String]$gcs_dir, [String]$cupy_kernel_cache_file) {
+    # Limit *.cubin cache by total size.
+    # Note: --expiry cannot be used as access time is not updated on Windows.
+    # TODO: Also clean up ~/.cupy/callback_cache/*.ltoir
     echo "Trimming kernel cache..."
-    RunOrDie python .pfnci\trim_cupy_kernel_cache.py --max-size 1000000000 --rm
+    RunOrDie python .pfnci\trim_cupy_kernel_cache.py --max-size 10737418240 --rm
 
     pushd $Env:USERPROFILE
     # -mx=0 ... no compression
@@ -39,7 +39,7 @@ function UploadCache([String]$cupy_kernel_cache_file) {
     echo "Compressing kernel cache..."
     RunOrDie 7z a -tzip -mx=0 -mtc=on $cupy_kernel_cache_file .cupy
     echo "Uploading kernel cache..."
-    RunOrDie gsutil -m -q cp $cupy_kernel_cache_file $cache_gcs_dir/
+    RunOrDie gsutil -m -q cp $cupy_kernel_cache_file $gcs_dir/
     popd
 }
 
@@ -65,12 +65,6 @@ function Main {
     # Setup environment
     echo "Using CUDA $cuda and Python $python"
     ActivateCUDA $cuda
-    if ($cuda -eq "10.2") {
-        ActivateCuDNN "8.6" $cuda
-    } else {
-        ActivateCuDNN "8.8" $cuda
-    }
-    ActivateNVTX1
     ActivatePython $python
 
     # Setup build environment variables
@@ -83,11 +77,12 @@ function Main {
     echo "Setting up test environment"
     RunOrDie python -V
     RunOrDie python -m pip install -U pip setuptools wheel
+    RunOrDie python -m pip install -U google-cloud-storage  # For GCP kernel cache backend
     RunOrDie python -m pip freeze
 
     echo "Building..."
     $build_retval = 0
-    RunOrDie python -m pip install "numpy==$numpy.*" "scipy==$scipy.*" "Cython==3.*" "fastrlock>=0.5"
+    RunOrDie python -m pip install "numpy==$numpy.*" "scipy==$scipy.*" "Cython==3.*"
     python -m pip install --no-build-isolation ".[all,test]" -v > cupy_build_log.txt
     if (-not $?) {
         $build_retval = $LastExitCode
@@ -106,6 +101,7 @@ function Main {
 
     $Env:CUPY_TEST_GPU_LIMIT = $Env:GPU
     $Env:CUPY_DUMP_CUDA_SOURCE_ON_ERROR = "1"
+    $Env:CUPY_NVRTC_USE_PCH = "1"
 
     # Unit test
     if ($test -eq "build") {
@@ -121,8 +117,15 @@ function Main {
     $base_branch = (Get-Content .pfnci\BRANCH)
     $is_pull_request = IsPullRequestTest
     $cache_archive = "windows-cuda${cuda}-${base_branch}.zip"
+    $cache_gcs_dir = "gs://tmp-asia-pfn-public-ci/cupy-ci/cache"
+    $cache_pr_gcs_dir = "${cache_gcs_dir}-pr-" + (GetPullRequestNumber)
 
-    DownloadCache "${cache_archive}"
+    #DownloadCache "${cache_gcs_dir}" "${cache_archive}"
+    #if ($is_pull_request) {
+    #    DownloadCache "${cache_pr_gcs_dir}" "${cache_archive}"
+    #}
+
+    $Env:CUPY_CI_ENABLE_GCP_KERNEL_CACHE = "1"
 
     if (-Not $is_pull_request) {
         $Env:CUPY_TEST_FULL_COMBINATION = "1"
@@ -132,20 +135,19 @@ function Main {
         $Env:CUPY_TEST_FULL_COMBINATION = "0"
     }
 
-    # Install dependency for cuDNN 8.3+
-    echo ">> Installing zlib"
-    InstallZLIB
-
     pushd tests
     echo "CuPy Configuration:"
     RunOrDie python -c "import cupy; print(cupy); cupy.show_config()"
     echo "Running test..."
+    # TODO(leofang): allow larger/adjustable timeout?
     $test_retval = RunWithTimeout -timeout 18000 -output ../cupy_test_log.txt -- python -m pytest -rfEX @pytest_opts .
     popd
 
-    if (-Not $is_pull_request) {
-        UploadCache "${cache_archive}"
-    }
+    #if ($is_pull_request) {
+    #    UploadCache "${cache_pr_gcs_dir}" "${cache_archive}"
+    #} else {
+    #    UploadCache "${cache_gcs_dir}" "${cache_archive}"
+    #}
 
     echo "------------------------------------------------------------------------------------------"
     echo "Last 10 lines from the test output:"

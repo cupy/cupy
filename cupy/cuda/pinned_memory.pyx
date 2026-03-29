@@ -3,8 +3,6 @@
 import collections
 import weakref
 
-from fastrlock cimport rlock
-
 from cupy_backends.cuda.api import runtime
 
 from cupy._core cimport internal
@@ -92,7 +90,7 @@ cdef class PinnedMemoryPointer:
         return self.__iadd__(-offset)
 
     cpdef size_t size(self):
-        return self.mem.size - (self.ptr - self.mem.ptr)
+        return <size_t>(self.mem.size) - (self.ptr - <intptr_t>(self.mem.ptr))
 
     def __getbuffer__(self, Py_buffer *buffer, int flags):
         size = self.size()
@@ -115,32 +113,18 @@ cdef class PinnedMemoryPointer:
     def __releasebuffer__(self, Py_buffer *buffer):
         pass
 
-    def __getsegcount__(self, Py_ssize_t *lenp):
-        if lenp != NULL:
-            lenp[0] = self.size()
-        return 1
-
-    def __getreadbuffer__(self, Py_ssize_t idx, void **p):
-        if idx != 0:
-            raise SystemError('accessing non-existent buffer segment')
-        p[0] = <void*>self.ptr
-        return self.size()
-
-    def __getwritebuffer__(self, Py_ssize_t idx, void **p):
-        if idx != 0:
-            raise SystemError('accessing non-existent buffer segment')
-        p[0] = <void*>self.ptr
-        return self.size()
-
 
 cdef class _EventWatcher:
     cdef:
-        cdef list events
-        cdef object _lock
+        list events
+        # NOTE: Never use `lock()` outside a nogil statement, because
+        # almost anything could release the GIL and then deadlocks happen
+        # if another thread tries to lock also (without the GIL released).
+        # You can try with `try_lock()` first though.
+        recursive_mutex _lock
 
     def __init__(self):
         self.events = []
-        self._lock = rlock.create_fastrlock()
 
     cpdef add(self, event, obj):
         """ Add event to be monitored.
@@ -151,14 +135,16 @@ cdef class _EventWatcher:
             event (cupy.cuda.Event): The CUDA event to be monitored.
             obj: The object to be held.
         """
-        rlock.lock_fastrlock(self._lock, -1, True)
+        if not self._lock.try_lock():
+            with nogil:
+                self._lock.lock()
         try:
             self._check_and_release_without_lock()
             if event.done:
                 return
             self.events.append((event, obj))
         finally:
-            rlock.unlock_fastrlock(self._lock)
+            self._lock.unlock()
 
     cpdef check_and_release(self):
         """ Check and release completed events.
@@ -166,11 +152,14 @@ cdef class _EventWatcher:
         """
         if not self.events:
             return
-        rlock.lock_fastrlock(self._lock, -1, True)
+
+        if not self._lock.try_lock():
+            with nogil:
+                self._lock.lock()
         try:
             self._check_and_release_without_lock()
         finally:
-            rlock.unlock_fastrlock(self._lock)
+            self._lock.unlock()
 
     cpdef _check_and_release_without_lock(self):
         while self.events and self.events[0][0].done:
@@ -277,13 +266,11 @@ cdef class PinnedMemoryPool:
             size are all in use.
 
     """
-
     def __init__(self, allocator=_malloc):
         self._in_use = {}
         self._free = collections.defaultdict(list)
         self._alloc = allocator
         self._weakref = weakref.ref(self)
-        self._lock = rlock.create_fastrlock()
         self._allocation_unit_size = 512
 
     cpdef PinnedMemoryPointer malloc(self, size_t size):
@@ -296,7 +283,9 @@ cdef class PinnedMemoryPool:
         # Round up the memory size to fit memory alignment of cudaHostAlloc
         unit = self._allocation_unit_size
         size = internal.clp2(((size + unit - 1) // unit) * unit)
-        rlock.lock_fastrlock(self._lock, -1, True)
+        if not self._lock.try_lock():
+            with nogil:
+                self._lock.lock()
         try:
             free = self._free[size]
             if free:
@@ -312,13 +301,15 @@ cdef class PinnedMemoryPool:
 
             self._in_use[mem.ptr] = mem
         finally:
-            rlock.unlock_fastrlock(self._lock)
+            self._lock.unlock()
         pmem = PooledPinnedMemory(mem, self._weakref)
         return PinnedMemoryPointer(pmem, 0)
 
     cpdef free(self, intptr_t ptr, size_t size):
         cdef list free
-        rlock.lock_fastrlock(self._lock, -1, True)
+        if not self._lock.try_lock():
+            with nogil:
+                self._lock.lock()
         try:
             mem = self._in_use.pop(ptr, None)
             if mem is None:
@@ -326,16 +317,18 @@ cdef class PinnedMemoryPool:
             free = self._free[size]
             free.append(mem)
         finally:
-            rlock.unlock_fastrlock(self._lock)
+            self._lock.unlock()
 
     cpdef free_all_blocks(self):
         """Release free all blocks."""
         _watcher.check_and_release()
-        rlock.lock_fastrlock(self._lock, -1, True)
+        if not self._lock.try_lock():
+            with nogil:
+                self._lock.lock()
         try:
             self._free.clear()
         finally:
-            rlock.unlock_fastrlock(self._lock)
+            self._lock.unlock()
 
     cpdef n_free_blocks(self):
         """Count the total number of free blocks.
@@ -344,12 +337,14 @@ cdef class PinnedMemoryPool:
             int: The total number of free blocks.
         """
         cdef Py_ssize_t n = 0
-        rlock.lock_fastrlock(self._lock, -1, True)
+        if not self._lock.try_lock():
+            with nogil:
+                self._lock.lock()
         try:
             for v in self._free.values():
                 n += len(v)
         finally:
-            rlock.unlock_fastrlock(self._lock)
+            self._lock.unlock()
         return n
 
 

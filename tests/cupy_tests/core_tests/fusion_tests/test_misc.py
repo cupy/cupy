@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import threading
 import unittest
 from unittest import mock
@@ -225,6 +227,7 @@ class TestFusionDecorator(unittest.TestCase):
         assert func_w_paren.__doc__ == 'Fuse with parentheses'
 
 
+@pytest.mark.thread_unsafe(reason="Uses mock.patch on global state")
 class TestFusionKernelName(unittest.TestCase):
 
     def check(self, xp, func, expected_name, is_elementwise):

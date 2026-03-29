@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import typing
 from collections.abc import Sequence
 from itertools import chain
@@ -17,10 +19,10 @@ from cupyx.distributed.array import _modes
 
 
 def _find_updates(
-    args: Sequence['_array.DistributedArray'],
-    kwargs: dict[str, '_array.DistributedArray'],
+    args: Sequence[_array.DistributedArray],
+    kwargs: dict[str, _array.DistributedArray],
     dev: int, chunk_i: int,
-) -> list['_data_transfer._PartialUpdate']:
+) -> list[_data_transfer._PartialUpdate]:
     # If there is at most one array with partial updates, we return them
     # and execute the kernel without actually pushing those updates;
     # otherwise we propagate them beforehand.
@@ -48,8 +50,8 @@ def _find_updates(
 
 def _prepare_chunks_array(
     stream: Stream,
-    args: Sequence['_array.DistributedArray'],
-    kwargs: dict[str, '_array.DistributedArray'],
+    args: Sequence[_array.DistributedArray],
+    kwargs: dict[str, _array.DistributedArray],
     dev: int, chunk_i: int,
 ) -> tuple[list[ndarray], dict[str, ndarray]]:
     def access_array(d_array):
@@ -64,8 +66,8 @@ def _prepare_chunks_array(
 
 
 def _change_all_to_replica_mode(
-        args: list['_array.DistributedArray'],
-        kwargs: dict[str, '_array.DistributedArray']) -> None:
+        args: list[_array.DistributedArray],
+        kwargs: dict[str, _array.DistributedArray]) -> None:
     args[:] = [arg._to_op_mode(_modes.REPLICA) for arg in args]
     kwargs.update(
         (k, arg._to_op_mode(_modes.REPLICA)) for k, arg in kwargs.items()
@@ -74,9 +76,9 @@ def _change_all_to_replica_mode(
 
 def _execute_kernel(
     kernel,
-    args: Sequence['_array.DistributedArray'],
-    kwargs: dict[str, '_array.DistributedArray'],
-) -> '_array.DistributedArray':
+    args: Sequence[_array.DistributedArray],
+    kwargs: dict[str, _array.DistributedArray],
+) -> _array.DistributedArray:
     args = list(args)
 
     # TODO: Skip conversion to the replica mode when mode.func == kernel
@@ -171,9 +173,9 @@ def _execute_kernel(
 
 def _execute_peer_access(
     kernel,
-    args: Sequence['_array.DistributedArray'],
-    kwargs: dict[str, '_array.DistributedArray'],
-) -> '_array.DistributedArray':
+    args: Sequence[_array.DistributedArray],
+    kwargs: dict[str, _array.DistributedArray],
+) -> _array.DistributedArray:
     """Arguments must be in the replica mode."""
     assert len(args) >= 2   # if len == 1, peer access should be unnecessary
     if len(args) > 2:
@@ -258,8 +260,8 @@ def _execute_peer_access(
 
 
 def _is_peer_access_needed(
-    args: Sequence['_array.DistributedArray'],
-    kwargs: dict[str, '_array.DistributedArray'],
+    args: Sequence[_array.DistributedArray],
+    kwargs: dict[str, _array.DistributedArray],
 ) -> bool:
     index_map = None
     for arg in chain(args, kwargs.values()):

@@ -12,6 +12,8 @@ https://github.com/scipy/scipy/blob/main/scipy/special/cephes/incbi.c
 Cephes Math Library, Release 2.3:  March, 1995
 Copyright 1984, 1995 by Stephen L. Moshier
 """
+from __future__ import annotations
+
 
 from cupy import _core
 from cupyx.scipy.special._digamma import polevl_definition
@@ -474,11 +476,20 @@ __noinline__ __device__ double incbet(double aa, double bb, double xx)
     double a, b, t, x, xc, w, y;
     int flag;
 
-    if (!isfinite(aa) || !isfinite(bb) || isnan(xx)) {
+    if (isnan(aa) || isnan(bb) || isnan(xx)) {
         return CUDART_NAN;
     }
-    if (aa <= 0.0 || bb <= 0.0 || xx < 0 || xx > 1) {
+    if (aa < 0.0 || bb < 0.0 || xx < 0 || xx > 1) {
         return CUDART_NAN;
+    }
+    if ((aa == 0 && bb == 0) || (isinf(aa) && isinf(bb))) {
+        return CUDART_NAN;
+    }
+    if (aa == 0 || isinf(bb)) {
+        return xx > 0 ? 1 : 0;
+    }
+    if (bb == 0 || isinf(aa)) {
+	return xx < 1 ? 0 : 1;
     }
 
     if (xx == 0.0) {

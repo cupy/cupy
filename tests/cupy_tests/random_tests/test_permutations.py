@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import unittest
 
 import numpy
@@ -53,6 +55,7 @@ class TestPermutations(unittest.TestCase):
 
     # Test seed
 
+    @pytest.mark.thread_unsafe(reason="relies on global random state")
     @testing.for_all_dtypes()
     def test_permutation_seed1(self, dtype):
         a = testing.shaped_random((10,), cupy, dtype)
@@ -97,7 +100,7 @@ class TestShuffle(unittest.TestCase):
         testing.assert_allclose(cupy.sort(a, axis=0), b)
 
     # Test seed
-
+    @pytest.mark.thread_unsafe(reason="relies on global random state")
     @testing.for_all_dtypes()
     def test_shuffle_seed1(self, dtype):
         a = testing.shaped_random((10,), cupy, dtype)
@@ -144,7 +147,7 @@ class TestPermutationRandomness(unittest.TestCase):
     # This test is to check kind of randomness of permutation.
     # An intuition behind this test is that, when you make a sub-array
     # by regularly extracting half elements from the permuted array,
-    # the sub-array should also hold randomeness and accordingly
+    # the sub-array should also hold randomness and accordingly
     # frequency of appearance of 0 and 1 at each bit position of
     # whole elements in the sub-array should become similar
     # when elements count of original array is 2^N.

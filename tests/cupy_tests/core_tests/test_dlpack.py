@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy
 import pytest
 
@@ -20,6 +22,8 @@ def _gen_array(dtype):
         array = cupy.random.random((2, 3)).astype(dtype)
     elif dtype == cupy.bool_:
         array = cupy.random.randint(0, 2, size=(2, 3)).astype(cupy.bool_)
+    elif dtype.name == "bfloat16":
+        array = cupy.random.rand(2, 3).astype(dtype)
     else:
         assert False, f'unrecognized dtype: {dtype}'
     return array
@@ -85,6 +89,21 @@ class TestNewDLPackConversion:
     @testing.for_all_dtypes(no_bool=False)
     def test_conversion(self, dtype):
         orig_array = _gen_array(dtype)
+        out_array = cupy.from_dlpack(orig_array)
+        testing.assert_array_equal(orig_array, out_array)
+        testing.assert_array_equal(
+            orig_array.data.ptr, out_array.data.ptr)
+
+    @pytest.mark.skipif(
+        numpy.lib.NumpyVersion(numpy.__version__) < "2.1.2",
+        reason="bfloat16 not enabled due to NumPy bug.")
+    @pytest.mark.skipif(
+        not cuda.runtime.is_hip and cuda.get_local_runtime_version() < 12020,
+        reason="bfloat16 is missing some features (__hisnan)"
+    )
+    def test_conversion_bfloat16(self):
+        ml_dtypes = pytest.importorskip('ml_dtypes')
+        orig_array = _gen_array(numpy.dtype(ml_dtypes.bfloat16))
         out_array = cupy.from_dlpack(orig_array)
         testing.assert_array_equal(orig_array, out_array)
         testing.assert_array_equal(
@@ -221,6 +240,7 @@ class TestDLTensorMemory:
         cupy.cuda.set_allocator(old_pool.malloc)
 
     @pytest.mark.parametrize('max_version', [None, (1, 0)])
+    @pytest.mark.thread_unsafe(reason="modifies pool and tracks allocations")
     def test_deleter(self, pool, max_version):
         # memory is freed when tensor is deleted, as it's not consumed
         array = cupy.empty(10)
@@ -235,6 +255,7 @@ class TestDLTensorMemory:
         assert pool.n_free_blocks() == 1
 
     @pytest.mark.parametrize('max_version', [None, (1, 0)])
+    @pytest.mark.thread_unsafe(reason="modifies pool and tracks allocations")
     def test_deleter2(self, pool, max_version):
         # memory is freed when array2 is deleted, as tensor is consumed
         array = cupy.empty(10)

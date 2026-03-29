@@ -24,7 +24,9 @@ cdef class _MemoryManager:
         self.memory = dict()
 
 
-cdef public char* cupy_malloc(void *m, size_t size) with gil:
+# NOTE(seberg): On failure, thrust may expect a C++ exception, `noexcept`
+# prints it out and returns NULL (not great, but maybe OK).
+cdef public char* cupy_malloc(void *m, size_t size) noexcept with gil:
     if size == 0:
         return <char *>0
     cdef _MemoryManager mm = <_MemoryManager>m

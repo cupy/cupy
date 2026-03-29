@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import math as _math
 import time as _time
 
@@ -50,7 +52,7 @@ class _PerfCaseResult:
         holding times spent on GPU in seconds.
 
         These values are measured using ``cudaEventElapsedTime`` with events
-        recoreded before/after each repeat step.
+        recorded before/after each repeat step.
         """
         return self._ts[1:]
 
@@ -101,6 +103,11 @@ def benchmark(
         a = 0.5 - cp.random.random((100,))
         b = cp.random.random((100,))
         print(benchmark(f, (a, b), n_repeat=1000))
+
+    .. note::
+        For IPython/Jupyter users, the ``%gpu_timeit`` magic provides
+        a convenient way to use this function. See the documentation
+        for :doc:`/user_guide/performance` for details.
 
 
     Args:

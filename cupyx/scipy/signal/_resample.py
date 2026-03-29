@@ -25,6 +25,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
+from __future__ import annotations
+
 
 import operator
 from math import gcd
@@ -327,7 +329,10 @@ def resample(x, num, t=None, axis=0, window=None, domain="time"):
             W = window(fftfreq(Nx))
         elif isinstance(window, cupy.ndarray):
             if window.shape != (Nx,):
-                raise ValueError('window must have the same length as data')
+                raise ValueError(
+                    f"{window.shape=} != ({Nx},), i.e., window length "
+                    "is not equal to number of frequency bins!"
+                )
             W = window
         else:
             W = ifftshift(get_window(window, Nx))

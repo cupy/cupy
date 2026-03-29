@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import cupy
 from cupy import testing
 import cupyx.scipy.interpolate  # NOQA

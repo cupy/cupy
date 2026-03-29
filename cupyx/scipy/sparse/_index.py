@@ -1,5 +1,7 @@
 """Indexing mixin for sparse matrix classes.
 """
+from __future__ import annotations
+
 
 import cupy
 from cupy import _core

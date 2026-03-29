@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy
 import pytest
 
@@ -346,6 +348,7 @@ class TestArrayReductionZeroSize:
 }))
 @pytest.mark.skipif(
     not cupy.cuda.cub.available, reason='The CUB routine is not enabled')
+@pytest.mark.thread_unsafe(reason="unsafe setUp and AssertFunctionIsCalled.")
 class TestCubReduction:
 
     @pytest.fixture(autouse=True)

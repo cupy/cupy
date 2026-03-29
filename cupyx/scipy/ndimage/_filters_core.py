@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import warnings
 
 import numpy
@@ -188,11 +190,14 @@ def _call_kernel(kernel, input, weights, output, structure=None,
 if runtime.is_hip:
     includes = r'''
 // workaround for HIP: line begins with #include
-#include <cupy/math_constants.h>\n
+#include <cupy/math_constants.h>
+#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_headers?
+#include <type_traits>
 '''
 else:
     includes = r'''
 #include <cupy/cuda_workaround.h>  // provide C++ std:: coverage
+#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_headers?
 #include <cupy/math_constants.h>
 
 template<> struct std::is_floating_point<float16> : std::true_type {};
@@ -342,7 +347,6 @@ def _generate_nd_kernel(name, pre, found, post, modes, w_shape, int_type,
     if has_mask:
         name += '_with_mask'
     preamble = includes + _CAST_FUNCTION + preamble
-    options += ('--std=c++11', )
     return cupy.ElementwiseKernel(in_params, out_params, operation, name,
                                   reduce_dims=False, preamble=preamble,
                                   options=options)
