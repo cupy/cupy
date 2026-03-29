@@ -25,6 +25,23 @@ This enables code using NumPy to be directly operated on CuPy arrays.
 ``__array_function__`` feature requires NumPy 1.16 or later; As of NumPy 1.17, ``__array_function__`` is enabled by default.
 
 
+MArray
+------
+
+`MArray <https://github.com/mdhaber/marray>`__ adds missing data mask support to `Python Array API Standard <https://data-apis.org/array-api/latest/>`__ compatible array libraries.
+
+For example, to make CuPy arrays mask-aware:
+
+.. code:: python
+
+    from marray import cupy as mcp
+    x = mcp.asarray([1, 2, 3], mask=[False, True, False])
+    print(x)  # =>  [1 _ 3]
+    mcp.sum(x)  # => MArray(array(4), array(False))
+
+For more information, please see the `MArray tutorial <https://mdhaber.github.io/marray/tutorial.html>`__.
+
+
 Numba
 -----
 
