@@ -32,6 +32,64 @@ __device__ void kernel() {
 '''
 
 
+@pytest.mark.skipif(not cupy.cuda.runtime.is_hip, reason='for HIP/ROCm')
+class TestHIPWarpIntrinsics:
+    """Regression test for warp intrinsics via HIPRTC on ROCm 6.2+.
+
+    HIPRTC does not include the HIP runtime headers that provide native
+    __shfl_*_sync variants. CuPy's hip_workaround.cuh must define macros
+    that map these to the mask-less __shfl_* equivalents.
+    See: https://github.com/cupy/cupy/issues/9829
+    """
+
+    def test_warp_intrinsics_compile_and_run(self):
+        warp_size = cupy.cuda.runtime.getDeviceProperties(0)['warpSize']
+        header_dir = cupy._core.core._get_header_dir_path()
+        # Kernel that exercises all 5 warp intrinsics from hip_workaround.cuh.
+        # Each thread in lane 0 writes results to output to verify correctness.
+        code = f'''
+#include <cupy/hip_workaround.cuh>
+
+extern "C" __global__
+void test_warp_intrinsics(int* out) {{
+    int lane = threadIdx.x % {warp_size};
+    int val = lane + 1;
+
+    // __shfl_sync: broadcast lane 0's value to all lanes
+    int r0 = __shfl_sync(0xffffffff, val, 0, {warp_size});
+
+    // __shfl_up_sync: shift values up by 1 lane
+    int r1 = __shfl_up_sync(0xffffffff, val, 1, {warp_size});
+
+    // __shfl_down_sync: shift values down by 1 lane
+    int r2 = __shfl_down_sync(0xffffffff, val, 1, {warp_size});
+
+    // __shfl_xor_sync: XOR shuffle with mask 1 (swap neighbors)
+    int r3 = __shfl_xor_sync(0xffffffff, val, 1, {warp_size});
+
+    // __syncwarp
+    __syncwarp();
+
+    if (lane == 0) {{
+        out[0] = r0;  // shfl from lane 0: should be 1
+        out[1] = r1;  // shfl_up lane 0: no source, stays as val=1
+        out[2] = r2;  // shfl_down lane 0: gets lane 1's value=2
+        out[3] = r3;  // shfl_xor lane 0 ^ 1 = lane 1: value=2
+    }}
+}}
+'''
+        kern = cupy.RawKernel(
+            code, 'test_warp_intrinsics',
+            options=(f'-I{header_dir}',))
+        out = cupy.zeros(4, dtype=cupy.int32)
+        kern((1,), (warp_size,), (out,))
+        result = out.get()
+        assert result[0] == 1, f'__shfl_sync: expected 1, got {result[0]}'
+        assert result[1] == 1, f'__shfl_up_sync: expected 1, got {result[1]}'
+        assert result[2] == 2, f'__shfl_down_sync: expected 2, got {result[2]}'
+        assert result[3] == 2, f'__shfl_xor_sync: expected 2, got {result[3]}'
+
+
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='for CUDA')
 class TestIncludesCompileCUDA:
     def _get_cuda_archs(self):
