@@ -265,9 +265,9 @@ class TestFreqz:
     def test_broadcasting1(self, xp, scp, whole, worN):
         # Test broadcasting with worN an integer or a 1-D array,
         # b and a are n-dimensional arrays.
-        np.random.seed(123)
-        b = np.random.rand(3, 5, 1)
-        a = np.random.rand(2, 1)
+        rng = np.random.RandomState(123)
+        b = rng.rand(3, 5, 1)
+        a = rng.rand(2, 1)
         if xp == cupy:
             a = cupy.asarray(a)
             b = cupy.asarray(b)
@@ -284,8 +284,8 @@ class TestFreqz:
     def test_broadcasting2(self, xp, scp, whole, worN):
         # Test broadcasting with worN an integer or a 1-D array,
         # b is an n-dimensional array, and a is left at the default value.
-        np.random.seed(123)
-        b = np.random.rand(3, 5, 1)
+        rng = np.random.RandomState(123)
+        b = rng.rand(3, 5, 1)
 
         if xp == cupy:
             b = cupy.asarray(b)
@@ -308,9 +308,9 @@ class TestFreqz:
     def test_broadcasting3(self, xp, scp, whole, worN):
         # Test broadcasting where b.shape[-1] is the same length
         # as worN, and a is left at the default value.
-        np.random.seed(123)
+        rng = np.random.RandomState(123)
         N = 16
-        b = np.random.rand(3, N)     # XXX: N is worN or len(worN) !
+        b = rng.rand(3, N)     # XXX: N is worN or len(worN) !
 
         if xp == cupy:
             b = cupy.asarray(b)
@@ -323,13 +323,13 @@ class TestFreqz:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_broadcasting4(self, xp, scp, whole):
         # Test broadcasting with worN a 2-D array.
-        np.random.seed(123)
-        b = np.random.rand(4, 2, 1, 1)
-        a = np.random.rand(5, 2, 1, 1)
+        rng = np.random.RandomState(123)
+        b = rng.rand(4, 2, 1, 1)
+        a = rng.rand(5, 2, 1, 1)
 
         wh = []
 
-        for worN in [np.random.rand(6, 7), np.empty((6, 0))]:
+        for worN in [rng.rand(6, 7), np.empty((6, 0))]:
             if xp == cupy:
                 a = cupy.asarray(a)
                 b = cupy.asarray(b)

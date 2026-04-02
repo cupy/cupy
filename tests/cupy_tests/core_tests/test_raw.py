@@ -8,6 +8,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
 from unittest import mock
 
@@ -570,8 +571,9 @@ class _TestRawBase:
             code = compiler._convert_to_hip_source(_test_source5, None, False)
         # split() is needed because nvcc could come from the env var NVCC
         cmd = cc.split()
-        source = '{}/test_load_cubin.cu'.format(self.cache_dir)
-        file_path = self.cache_dir + 'test_load_cubin'
+        thread_id = threading.get_ident()
+        source = f'{self.cache_dir}/test_load_cubin_{thread_id}.cu'
+        file_path = self.cache_dir + f'test_load_cubin_{thread_id}'
         with open(source, 'w') as f:
             f.write(code)
         if not cupy.cuda.runtime.is_hip:

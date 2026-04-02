@@ -189,7 +189,7 @@ def gmres(A, b, x0=None, *, rtol=1e-5, atol=0.0, restart=None, maxiter=None,
         iters += restart
 
     info = 0
-    if iters == maxiter and not (r_norm <= atol):
+    if iters >= maxiter and not (r_norm <= atol):
         info = iters
     return mx, info
 

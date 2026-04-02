@@ -76,6 +76,7 @@ markers = [
   "parallel_threads", "iterations", "thread_unsafe",
 ]
 filterwarnings = [
+  "always",  # Make sure previous calls cannot hide future warnings.
   "error::FutureWarning",
   # ignore FutureWarning from cupy._util.experimental
   'ignore:.* is experimental\.:FutureWarning:cupy',

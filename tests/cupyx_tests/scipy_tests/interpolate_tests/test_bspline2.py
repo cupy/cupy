@@ -210,17 +210,17 @@ class TestInterp:
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_shapes(self, xp, scp):
-        xp.random.seed(1234)
+        rng = xp.random.RandomState(1234)
         k, n = 3, 22
-        x = xp.sort(xp.random.random(size=n))
-        y = xp.random.random(size=(n, 5, 6, 7))
+        x = xp.sort(rng.uniform(size=n))
+        y = rng.uniform(size=(n, 5, 6, 7))
 
         b1 = scp.interpolate.make_interp_spline(x, y, k)
         assert b1.c.shape == (n, 5, 6, 7)
 
         # now throw in some derivatives
-        d_l = [(1, xp.random.random((5, 6, 7)))]
-        d_r = [(1, xp.random.random((5, 6, 7)))]
+        d_l = [(1, rng.uniform(size=(5, 6, 7)))]
+        d_r = [(1, rng.uniform(size=(5, 6, 7)))]
         b2 = scp.interpolate.make_interp_spline(x, y, k, bc_type=(d_l, d_r))
         assert b2.c.shape == (n + k - 1, 5, 6, 7)
 
@@ -343,10 +343,10 @@ class TestInterp:
     def test_full_matrix(self):
         from cupyx.scipy.interpolate._bspline2 import (
             _make_interp_spline_full_matrix)
-        cupy.random.seed(1234)
+        rng = cupy.random.RandomState(1234)
         k, n = 3, 7
-        x = cupy.sort(cupy.random.random(size=n))
-        y = cupy.random.random(size=n)
+        x = cupy.sort(rng.uniform(size=n))
+        y = rng.uniform(size=n)
 
         # test not-a-knot
         b = csi.make_interp_spline(x, y, k=3)
@@ -397,9 +397,9 @@ class TestInterpPeriodic:
     def test_periodic_random(self, xp, scp, k):
         # tests for both cases (k > n and k <= n)
         n = 15
-        _np.random.seed(1234)
-        x = _np.sort(_np.random.random_sample(n) * 10)
-        y = _np.random.random_sample(n) * 100
+        rng = _np.random.RandomState(1234)
+        x = _np.sort(rng.random_sample(n) * 10)
+        y = rng.random_sample(n) * 100
         if xp is cupy:
             x = cupy.asarray(x)
             y = cupy.asarray(y)
@@ -413,8 +413,8 @@ class TestInterpPeriodic:
     def test_periodic_axis(self, xp, scp):
         x, y = self.get_xy(xp)
         n = x.shape[0]
-        _np.random.seed(1234)
-        x = _np.random.random_sample(n) * 2 * _np.pi
+        rng = _np.random.RandomState(1234)
+        x = rng.random_sample(n) * 2 * _np.pi
         x = _np.sort(x)
         if xp is cupy:
             x = cupy.asarray(x)
@@ -449,9 +449,9 @@ class TestInterpPeriodic:
         # edge case: Cubic interpolation on 3 points
         # TODO: refactor when PPoly / CubicHermiteSpline is available
         n = 3
-        cupy.random.seed(1234)
-        x = cupy.sort(cupy.random.random_sample(n) * 10)
-        y = cupy.random.random_sample(n) * 100
+        rng = cupy.random.RandomState(1234)
+        x = cupy.sort(rng.random_sample(n) * 10)
+        y = rng.random_sample(n) * 100
         y[0] = y[-1]
         b = csi.make_interp_spline(x, y, k=3, bc_type='periodic')
 
@@ -479,9 +479,9 @@ class TestLSQ:
     """
 
     def _get_xytk(self, xp, n=13, k=3):
-        _np.random.seed(1234)
-        x = _np.sort(_np.random.random(n))
-        y = _np.random.random(n)
+        rng = _np.random.RandomState(1234)
+        x = _np.sort(rng.random(n))
+        y = rng.random(n)
         t = _np.r_[(x[0],)*k,
                    _np.linspace(x[0], x[-1], 7),
                    (x[-1],)*k]
@@ -513,10 +513,10 @@ class TestLSQ:
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_multiple_rhs(self, xp, scp):
-        _np.random.seed(1234)
+        rng = _np.random.RandomState(1234)
         n = 11
         x, y, t, k = self._get_xytk(xp, n=n)
-        y = _np.random.random(size=(n, 5, 6, 7))
+        y = rng.random(size=(n, 5, 6, 7))
         y = xp.asarray(y)
 
         b = scp.interpolate.make_lsq_spline(x, y, t, k)

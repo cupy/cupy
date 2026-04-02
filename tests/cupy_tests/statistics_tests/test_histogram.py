@@ -333,14 +333,14 @@ class TestHistogram(unittest.TestCase):
 # This class compares CUB results against NumPy's
 @unittest.skipUnless(cupy.cuda.cub.available, 'The CUB routine is not enabled')
 class TestCubHistogram(unittest.TestCase):
-
-    def setUp(self):
-        self.old_accelerators = _accelerator.get_routine_accelerators()
+    @pytest.fixture(autouse=True, scope='class')
+    def setup(self):
+        old_accelerators = _accelerator.get_routine_accelerators()
         _accelerator.set_routine_accelerators(['cub'])
+        yield
+        _accelerator.set_routine_accelerators(old_accelerators)
 
-    def tearDown(self):
-        _accelerator.set_routine_accelerators(self.old_accelerators)
-
+    @pytest.mark.thread_unsafe(reason="uses AssertFunctionIsCalled")
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_histogram(self, xp, dtype):
@@ -364,6 +364,7 @@ class TestCubHistogram(unittest.TestCase):
         assert int(h.sum()) == 10
         return h, b
 
+    @pytest.mark.thread_unsafe(reason="uses AssertFunctionIsCalled")
     @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'],
                                         no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
@@ -381,6 +382,7 @@ class TestCubHistogram(unittest.TestCase):
         # ...then perform the actual computation
         return xp.histogram(x, bins)[0]
 
+    @pytest.mark.thread_unsafe(reason="uses AssertFunctionIsCalled")
     @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'],
                                         no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
@@ -408,6 +410,7 @@ class TestCubHistogram(unittest.TestCase):
         out = xp.histogram(A, bins=amax, range=[0, amax])
         return out
 
+    @pytest.mark.thread_unsafe(reason="uses AssertFunctionIsCalled")
     @testing.for_int_dtypes('dtype', no_bool=True)
     @testing.numpy_cupy_array_equal()
     def test_bincount_gh7698(self, xp, dtype):
