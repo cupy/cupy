@@ -790,7 +790,8 @@ __device__ long rk_hypergeometric_hrua(
 __device__ long rk_hypergeometric(
     rk_state *state, long good, long bad, long sample)
 {
-    if (sample > 10)
+    if (sample <= 0) return 0;
+    if ((sample > 10) && (sample <= good + bad - 10))
     {
         return rk_hypergeometric_hrua(state, good, bad, sample);
     } else

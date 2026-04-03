@@ -145,7 +145,8 @@ cdef _ndarray_base _ndarray_flatten_order_c(_ndarray_base self):
     return newarray
 
 
-cdef vector.vector[Py_ssize_t] _npyiter_k_order_axes(strides_t& strides):
+cdef vector.vector[Py_ssize_t] _npyiter_k_order_axes(
+        strides_t& strides) except *:
     # output transpose axes such that
     # x.flatten(order="K") == x.transpose(axes).flatten(order="C")
     # by reproducing `npyiter_find_best_axis_ordering`
@@ -734,7 +735,7 @@ cpdef Py_ssize_t size(_ndarray_base a, axis=None) except? -1:
 # private
 
 
-cdef bint _has_element(const shape_t &source, Py_ssize_t n):
+cdef bint _has_element(const shape_t &source, Py_ssize_t n) noexcept:
     for i in range(source.size()):
         if source[i] == n:
             return True

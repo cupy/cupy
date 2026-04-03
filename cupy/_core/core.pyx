@@ -240,8 +240,10 @@ cdef class _ndarray_base:
         del s
 
         # dtype
+        # When memptr is provided (e.g. wrapping existing CAI memory),
+        # skip dtype support check to allow non-builtin dtypes as containers.
         self.dtype, itemsize = _dtype.get_dtype_with_itemsize(
-            dtype, check_support=True)
+            dtype, check_support=(memptr is None))
 
         # Store strides
         if strides is not None:
@@ -874,7 +876,7 @@ cdef class _ndarray_base:
             return v
 
         v.dtype, v_is = _dtype.get_dtype_with_itemsize(
-            dtype, check_support=True)
+            dtype, check_support=False)
         self_is = self.dtype.itemsize
         if v_is == self_is:
             return v
@@ -2453,7 +2455,7 @@ cpdef bint use_default_std(tuple options):
             return False
     return True
 
-cpdef void warn_on_unsupported_std(tuple options):
+cpdef warn_on_unsupported_std(tuple options):
     cdef str opt
     for opt in options:
         if _is_hip:
@@ -2530,7 +2532,7 @@ cpdef tuple assemble_cupy_compiler_options(tuple options):
 
 
 cpdef function.Module compile_with_cache(
-        str source, tuple options=(), arch=None, cachd_dir=None,
+        str source, tuple options=(), arch=None,
         prepend_cupy_headers=True, backend='nvrtc', translate_cucomplex=False,
         enable_cooperative_groups=False, name_expressions=None,
         log_stream=None, bint jitify=False):
@@ -2548,7 +2550,7 @@ cpdef function.Module compile_with_cache(
     options = assemble_cupy_compiler_options(options)
 
     return cuda.compiler._compile_module_with_cache(
-        source, options, arch, cachd_dir, extra_source, backend,
+        source, options, arch=arch, extra_source=extra_source, backend=backend,
         enable_cooperative_groups=enable_cooperative_groups,
         name_expressions=name_expressions, log_stream=log_stream,
         jitify=jitify)
@@ -3120,7 +3122,8 @@ cpdef _ndarray_base _convert_object_with_cuda_array_interface(a):
 
     ptr = desc['data'][0]
     dtype = numpy.dtype(desc['typestr'])
-
+    if dtype.byteorder == '>':
+        raise ValueError('CuPy does not support the big-endian byte-order')
     mask = desc.get('mask')
     if mask is not None:
         raise ValueError('CuPy currently does not support masked arrays.')

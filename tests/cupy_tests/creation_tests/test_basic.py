@@ -19,6 +19,7 @@ class TestBasic:
         return a
 
     @testing.slow
+    @pytest.mark.thread_unsafe(reason="too large allocations")
     def test_empty_huge_size(self):
         a = cupy.empty((1024, 2048, 1024), dtype='b')
         a.fill(123)
@@ -28,6 +29,7 @@ class TestBasic:
         cupy.get_default_memory_pool().free_all_blocks()
 
     @testing.slow
+    @pytest.mark.thread_unsafe(reason="too large allocations")
     def test_empty_huge_size_fill0(self):
         a = cupy.empty((1024, 2048, 1024), dtype='b')
         a.fill(0)
@@ -61,6 +63,7 @@ class TestBasic:
         return a
 
     @testing.slow
+    @pytest.mark.thread_unsafe(reason="too large allocations")
     def test_empty_int_huge_size(self):
         a = cupy.empty(2 ** 31, dtype='b')
         a.fill(123)
@@ -70,6 +73,7 @@ class TestBasic:
         cupy.get_default_memory_pool().free_all_blocks()
 
     @testing.slow
+    @pytest.mark.thread_unsafe(reason="too large allocations")
     def test_empty_int_huge_size_fill0(self):
         a = cupy.empty(2 ** 31, dtype='b')
         a.fill(0)
@@ -521,3 +525,22 @@ class TestBasicReshape:
         c = cupy.full(self.shape, 1, dtype=dtype)
 
         testing.assert_array_equal(b, c)
+
+
+class TestDTypeUnchecked:
+    def test_void_dtype(self):
+        arr = cupy.zeros(3, dtype="V10")
+        assert not arr.get().view("uint8").any()
+
+        np_arr = numpy.array([b'1', b'2', b'3'], dtype="V10")
+        arr = cupy.array(np_arr)
+        testing.assert_array_equal(arr.get(), np_arr)
+
+    def test_subarray_rejected(self):
+        with pytest.raises(ValueError, match="Unsupported dtype"):
+            cupy.empty(3, dtype="3i")
+
+    def test_empty_void_rejected(self):
+        # We could try to allo V0 explicitly, but for now...
+        with pytest.raises(ValueError, match="Unsupported dtype"):
+            cupy.empty(3, dtype="V")

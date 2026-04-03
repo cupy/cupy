@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pickle
+import sys
 
 import pytest
 
@@ -56,7 +57,14 @@ def test_assumed_runtime_version():
     # by running the same logic in non-CUDA Python environment.
     # When this fails, `runtime.runtimeGetVersion()` logic needs to be fixed.
     (major, minor) = nvrtc.getVersion()
-    assert runtime._getLocalRuntimeVersion() == major * 1000 + minor * 10
+    local_ver = runtime._getLocalRuntimeVersion()
+    # On Windows, starting from CUDA 13.0, cudaRuntimeGetVersion() always
+    # returns major * 1000 regardless of the minor version (nvbugs 5955788,
+    # 5523579). Accept either form on Windows + CUDA >= 13.
+    if sys.platform == 'win32' and major >= 13:
+        assert local_ver in (major * 1000, major * 1000 + minor * 10)
+    else:
+        assert local_ver == major * 1000 + minor * 10
 
 
 def test_major_version():

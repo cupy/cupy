@@ -592,6 +592,10 @@ class Generator:
         Returns:
             cupy.ndarray: Samples drawn from the hypergeometric distribution.
 
+        .. warning::
+
+            This function may synchronize the device.
+
         .. seealso::
             :meth:`numpy.random.Generator.hypergeometric`
         """
@@ -633,6 +637,14 @@ class Generator:
         else:
             nsample = nsample.astype(numpy.int64, copy=False)
 
+        if cupy.any(ngood < 0):  # synchronize!
+            raise ValueError('ngood < 0')
+        if cupy.any(nbad < 0):  # synchronize!
+            raise ValueError('nbad < 0')
+        if cupy.any(nsample < 0):  # synchronize!
+            raise ValueError('nsample < 0')
+        if cupy.any(ngood + nbad < nsample):  # synchronize!
+            raise ValueError('ngood + nbad < nsample')
         if size is not None and not isinstance(size, tuple):
             size = (size,)
         if size is None:
@@ -1039,13 +1051,13 @@ def random_raw(generator, out):
     _launch_dist(generator, raw, out, ())
 
 
-cdef void _launch(
+cdef int _launch(
         func, int generator, intptr_t state, intptr_t strm,
-        int bsize, out, args):
+        int bsize, out, args) except -1:
     cdef ssize_t size = out.size
     if size == 0:
         # Avoid issues launching empty grids in CUDA 10.2
-        return
+        return 0
     nargs = [
         _array_data(a)
         if isinstance(a, cupy.ndarray) else a for a in args]
@@ -1166,7 +1178,7 @@ cdef class FeistelBijection:
                 uint64_t __L_mask_;
                 uint32_t __keys_[{_FEISTEL_NUM_ROUNDS}];
             }};
-            
+
             extern "C" __global__ void feistel_bijection_choice(
                 long long* out,
                 const FeistelParams params,
@@ -1180,11 +1192,11 @@ cdef class FeistelBijection:
                     // Apply Feistel bijection to tid, re-apply until valid
                     uint64_t __val = static_cast<uint64_t>(tid);
                     long long idx;
-                    
+
                     do {{
                         uint32_t __L = (uint32_t)(__val >> params.__R_bits_);
                         uint32_t __R = (uint32_t)(__val & params.__R_mask_);
-                        
+
                         // 24 rounds of Feistel network
                         for (uint32_t __i = 0; __i < {_FEISTEL_NUM_ROUNDS}; __i++) {{
                             constexpr uint64_t __m0  = 0xD2B74407B1CE6E93;
@@ -1196,12 +1208,12 @@ cdef class FeistelBijection:
                             __L                      = __L_prime & params.__L_mask_;
                             __R                      = __R_prime & params.__R_mask_;
                         }}
-                        
+
                         // Combine left and right sides
                         idx = (long long)((static_cast<uint64_t>(__L) << params.__R_bits_) | static_cast<uint64_t>(__R));
                         __val = static_cast<uint64_t>(idx);
                     }} while (idx >= static_cast<long long>(arr_size));
-                    
+
                     // Write output (tid is always < cutoff_size due to early return)
                     out[tid] = idx;
                 }}

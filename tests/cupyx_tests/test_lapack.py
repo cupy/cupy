@@ -31,7 +31,7 @@ class TestGesv(unittest.TestCase):
             a = a + 1j * self._make_array(shape, alpha, beta)
         return a
 
-    def setUp(self):
+    def setup(self):
         self.dtype = numpy.dtype(self.dtype)
         n = self.n
         nrhs = 1 if self.nrhs is None else self.nrhs
@@ -47,43 +47,47 @@ class TestGesv(unittest.TestCase):
         if self.nrhs is not None:
             b_shape.append(nrhs)
         b = b.reshape(b_shape)
-        self.a = a
+
         if self.nrhs is None or self.nrhs == 1:
-            self.b = b.copy(order=self.order)
+            b = b.copy(order=self.order)
         else:
-            self.b = b.copy(order='F')
+            b = b.copy(order='F')
         self.x_ref = x.reshape(b_shape)
         self.tol = self._tol[self.dtype.char.lower()]
 
+        return a, b
+
     def test_gesv(self):
-        lapack.gesv(self.a, self.b)
-        cupy.testing.assert_allclose(self.b, self.x_ref,
+        a, b = self.setup()
+        lapack.gesv(a, b)
+        cupy.testing.assert_allclose(b, self.x_ref,
                                      rtol=self.tol, atol=self.tol)
 
     def test_invalid_cases(self):
+        a, b = self.setup()
         if self.nrhs is None or self.nrhs == 1:
             raise unittest.SkipTest()
-        ng_a = self.a.reshape(1, self.n, self.n)
+        ng_a = a.reshape(1, self.n, self.n)
         with pytest.raises(ValueError):
-            lapack.gesv(ng_a, self.b)
-        ng_b = self.b.reshape(1, self.n, self.nrhs)
+            lapack.gesv(ng_a, b)
+        ng_b = b.reshape(1, self.n, self.nrhs)
         with pytest.raises(ValueError):
-            lapack.gesv(self.a, ng_b)
+            lapack.gesv(a, ng_b)
         ng_a = cupy.ones((self.n, self.n+1), dtype=self.dtype)
         with pytest.raises(ValueError):
-            lapack.gesv(ng_a, self.b)
+            lapack.gesv(ng_a, b)
         ng_a = cupy.ones((self.n+1, self.n+1), dtype=self.dtype)
         with pytest.raises(ValueError):
-            lapack.gesv(ng_a, self.b)
-        ng_a = cupy.ones(self.a.shape, dtype='i')
+            lapack.gesv(ng_a, b)
+        ng_a = cupy.ones(a.shape, dtype='i')
         with pytest.raises(TypeError):
-            lapack.gesv(ng_a, self.b)
+            lapack.gesv(ng_a, b)
         ng_a = cupy.ones((2, self.n, self.n), dtype=self.dtype, order='F')[0]
         with pytest.raises(ValueError):
-            lapack.gesv(ng_a, self.b)
-        ng_b = self.b.copy(order='C')
+            lapack.gesv(ng_a, b)
+        ng_b = b.copy(order='C')
         with pytest.raises(ValueError):
-            lapack.gesv(self.a, ng_b)
+            lapack.gesv(a, ng_b)
 
 
 @testing.parameterize(*testing.product({

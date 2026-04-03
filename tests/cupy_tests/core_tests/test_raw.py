@@ -8,6 +8,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
 from unittest import mock
 
@@ -18,6 +19,7 @@ from cupy import testing
 from cupy import _util
 from cupy._core import _accelerator
 from cupy.cuda import compiler
+from cupy.cuda import _compiler_cache
 from cupy.cuda import memory
 from cupy_backends.cuda.libs import nvrtc
 
@@ -354,11 +356,11 @@ extern "C" __global__ void my_func(void* input, int N) {
 def use_temporary_cache_dir():
     # Note uses mock, so not thread-safe (except at class/method level)
     # tempdir fixture could be used instead.
-    target1 = 'cupy.cuda.compiler.get_cache_dir'
+    target1 = 'cupy.cuda.compiler._kernel_cache_backend'
     target2 = 'cupy.cuda.compiler._empty_file_preprocess_cache'
     temp_cache = {}
     with tempfile.TemporaryDirectory() as path:
-        with mock.patch(target1, lambda: path):
+        with mock.patch(target1, _compiler_cache.DiskKernelCacheBackend(path)):
             with mock.patch(target2, temp_cache):
                 yield path
 
@@ -389,7 +391,7 @@ def find_nvcc_ver():
     cmd = cupy.cuda.get_nvcc_path().split()
     cmd += ['--version']
 
-    output = compiler._run_cc(cmd, cupy.cuda.compiler.get_cache_dir(), 'nvcc')
+    output = compiler._run_cc(cmd, None, 'nvcc')
     match = re.search(nvcc_ver_pattern, output)
     assert match
 
@@ -569,8 +571,9 @@ class _TestRawBase:
             code = compiler._convert_to_hip_source(_test_source5, None, False)
         # split() is needed because nvcc could come from the env var NVCC
         cmd = cc.split()
-        source = '{}/test_load_cubin.cu'.format(self.cache_dir)
-        file_path = self.cache_dir + 'test_load_cubin'
+        thread_id = threading.get_ident()
+        source = f'{self.cache_dir}/test_load_cubin_{thread_id}.cu'
+        file_path = self.cache_dir + f'test_load_cubin_{thread_id}'
         with open(source, 'w') as f:
             f.write(code)
         if not cupy.cuda.runtime.is_hip:

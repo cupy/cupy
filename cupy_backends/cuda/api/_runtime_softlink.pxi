@@ -8,7 +8,7 @@ Load CUDA Runtime shared library via SoftLink to allow probing CUDA
 version installed in users' environment.
 """
 
-ctypedef int (*F_cudaRuntimeGetVersion)(int* runtimeVersion) nogil
+ctypedef int (*F_cudaRuntimeGetVersion)(int* runtimeVersion) noexcept nogil
 cdef F_cudaRuntimeGetVersion DYN_cudaRuntimeGetVersion
 
 

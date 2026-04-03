@@ -211,7 +211,9 @@ class LinuxGenerator:
             'ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"',
             f'RUN pyenv install {py_spec} && \\',
             f'    pyenv global {py_spec} && \\',
-            '    pip install -U setuptools pip wheel',
+            '    pip install -U setuptools pip wheel && \\',
+            # For GCP kernel cache backend
+            '    pip install -U google-cloud-storage',
             '',
         ]
 

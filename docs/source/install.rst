@@ -6,7 +6,7 @@ Requirements
 
 * `NVIDIA CUDA GPU <https://developer.nvidia.com/cuda-gpus>`_ with the Compute Capability 3.0 or larger.
 
-* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v12.0 / v12.1 / v12.2 / v12.3 / v12.4 / v12.5 / v12.6 / v12.8 / v12.9 / v13.0
+* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v12.0 / v12.1 / v12.2 / v12.3 / v12.4 / v12.5 / v12.6 / v12.8 / v12.9 / v13.0 / v13.1
 
     * If you have multiple versions of CUDA Toolkit installed, CuPy will automatically choose one of the CUDA installations.
       See :ref:`install_cuda` for details.
@@ -58,7 +58,7 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 
     * The library to perform collective multi-GPU / multi-node computations.
 
-* `cuSPARSELt <https://docs.nvidia.com/cuda/cusparselt/>`_: v0.8.0 / v0.8.1
+* `cuSPARSELt <https://docs.nvidia.com/cuda/cusparselt/>`_: v0.8.0 / v0.8.1 / v0.9.0
 
     * The library to accelerate sparse matrix-matrix multiplication.
 

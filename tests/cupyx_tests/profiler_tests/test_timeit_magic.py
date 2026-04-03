@@ -65,6 +65,7 @@ def _verify_benchmark_output(output):
         number_pattern, output), "Output should contain timing numbers"
 
 
+@pytest.mark.thread_unsafe(reason="ipython_shell fixture not thread-safe")
 class TestGPUTimeitMagic:
     """Test %gpu_timeit magic functionality."""
 

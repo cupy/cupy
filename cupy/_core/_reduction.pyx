@@ -168,7 +168,7 @@ cpdef tuple _get_axis(object axis, Py_ssize_t ndim):
 
 cpdef shape_t _get_out_shape(
         const shape_t& shape, tuple reduce_axis, tuple out_axis,
-        bint keepdims):
+        bint keepdims) except *:
     cdef shape_t out_shape
     if keepdims:
         out_shape = shape
@@ -182,7 +182,8 @@ cpdef shape_t _get_out_shape(
 
 
 cdef shape_t _set_permuted_args(
-        list args, tuple axis_permutes, const shape_t& shape, tuple params):
+        list args, tuple axis_permutes, const shape_t& shape,
+        tuple params) except *:
     # This function updates `args`
     cdef ParameterInfo p
     cdef Py_ssize_t i, s
@@ -482,11 +483,11 @@ cdef class _AbstractReductionKernel:
             best.user_attrs['block_stride'],
             best.params['out_block_num'])
 
-    cdef inline void _launch(
+    cdef inline bint _launch(
             self, out_block_num, block_size, block_stride,
             in_args, out_args, in_shape, out_shape, type_map,
             map_expr, reduce_expr, post_map_expr, reduce_type,
-            stream, params):
+            stream, params) except -1:
         cdef function.Function func
 
         inout_args = (

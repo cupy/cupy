@@ -248,12 +248,24 @@ class RandomState:
     def hypergeometric(self, ngood, nbad, nsample, size=None, dtype='l'):
         """Returns an array of samples drawn from the hypergeometric distribution.
 
+        .. warning::
+
+            This function may synchronize the device.
+
         .. seealso::
             - :func:`cupy.random.hypergeometric` for full documentation
             - :meth:`numpy.random.RandomState.hypergeometric`
         """  # NOQA
         ngood, nbad, nsample = \
             cupy.asarray(ngood), cupy.asarray(nbad), cupy.asarray(nsample)
+        if cupy.any(ngood < 0):  # synchronize!
+            raise ValueError('ngood < 0')
+        if cupy.any(nbad < 0):  # synchronize!
+            raise ValueError('nbad < 0')
+        if cupy.any(nsample < 1):  # synchronize!
+            raise ValueError('nsample < 1')
+        if cupy.any(ngood + nbad < nsample):  # synchronize!
+            raise ValueError('ngood + nbad < nsample')
         if size is None:
             size = cupy.broadcast(ngood, nbad, nsample).shape
         y = cupy.empty(shape=size, dtype=dtype)

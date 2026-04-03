@@ -30,6 +30,17 @@ TEST_VALUES = numpy.array(
     dtype=BF16)
 
 
+@pytest.mark.parametrize("start,stop,step", [
+    (0, 10, 1),
+    (0, 10, 2),
+    (0, 10, -1),
+    (0, 50, 0.5),
+])
+@testing.numpy_cupy_allclose()
+def test_arange(xp, start, stop, step):
+    return xp.arange(start, stop, step, dtype=BF16)
+
+
 @pytest.mark.parametrize('func', [
     'positive', 'negative', 'absolute', 'sqrt', 'conjugate',
     'isnan', 'isinf', 'isfinite', 'signbit',
@@ -168,12 +179,29 @@ def test_matmul(xp, shapes):
     return res
 
 
-@pytest.mark.parametrize('func', ['sum', 'prod', 'min', 'max', 'mean'])
+@pytest.mark.parametrize('func', [
+    'sum', 'prod', 'min', 'max', 'mean',
+    'nansum', 'nanmin', 'nanmax',
+    # For some reason, NumPy result includes NaN:
+    pytest.param('nanprod', marks=[pytest.mark.xfail]),
+])
 @testing.numpy_cupy_allclose(rtol=TOL, atol=TOL)
 def test_reductions(xp, func):
     a = xp.asarray(TEST_VALUES.reshape(3, 4))
     with numpy.errstate(all='ignore'):
         return getattr(xp, func)(a, axis=1)
+
+
+@pytest.mark.parametrize('func', [
+    'sum', 'prod', 'mean', 'nansum',
+    # For some reason, NumPy result includes NaN:
+    pytest.param('nanprod', marks=[pytest.mark.xfail]),
+])
+@testing.numpy_cupy_allclose(rtol=TOL, atol=TOL)
+def test_reductions_dtype(xp, func):
+    a = xp.asarray(TEST_VALUES.reshape(3, 4))
+    with numpy.errstate(all='ignore'):
+        return getattr(xp, func)(a, axis=1, dtype=BF16)
 
 
 @pytest.mark.parametrize('func', ['sum', 'prod', 'min', 'max', 'mean'])

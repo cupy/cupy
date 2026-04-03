@@ -29,8 +29,8 @@ cdef class CUDAarray:
         readonly unsigned int flags
         readonly int ndim
 
-        int _get_memory_kind(self, src, dst)
-        void* _make_cudaMemcpy3DParms(self, src, dst)
+        int _get_memory_kind(self, src, dst) except -1
+        void* _make_cudaMemcpy3DParms(self, src, dst) except NULL
         void _prepare_copy(self, arr, stream, direction) except*
 
 

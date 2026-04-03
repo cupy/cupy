@@ -533,16 +533,18 @@ class TestBinaryMorphologyAxes:
                 structure = scp.ndimage.generate_binary_structure(
                     len(self.axes), self.connectivity)
         if len(self.origin) > len(self.axes):
-            self.origin = [self.origin[ax] for ax in self.axes]
+            origin = [self.origin[ax] for ax in self.axes]
+        else:
+            origin = self.origin
 
         if self.filter not in ["binary_hit_or_miss", "binary_fill_holes"]:
             kwargs["border_value"] = self.border_value
 
         if self.filter == "binary_hit_or_miss":
-            kwargs["origin1"] = self.origin
-            kwargs["origin2"] = self.origin
+            kwargs["origin1"] = origin
+            kwargs["origin2"] = origin
         else:
-            kwargs["origin"] = self.origin
+            kwargs["origin"] = origin
         return filter(x, structure, axes=self.axes, **kwargs)
 
     @testing.numpy_cupy_array_equal(scipy_name='scp')
