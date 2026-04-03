@@ -911,11 +911,20 @@ struct _cub_reduce_argmin {
         using KeyValuePair = cub::KeyValuePair<int, T>;
         KeyValuePair* d_output_pair = static_cast<KeyValuePair*>(y);
 
-        DeviceReduce::ArgMin(workspace, workspace_size, 
-                            static_cast<T*>(x), 
-                            &d_output_pair->value, // Iterator for the Value
-                            &d_output_pair->key,   // Iterator for the Index
-                            num_items, s);
+        #ifndef __HIP__
+                // NVIDIA CCCL v3+ API
+                DeviceReduce::ArgMin(workspace, workspace_size, 
+                                    static_cast<T*>(x), 
+                                    &d_output_pair->value, 
+                                    &d_output_pair->key, 
+                                    num_items, s);
+        #else
+                // AMD HipCUB API (Legacy)
+                DeviceReduce::ArgMin(workspace, workspace_size, 
+                                    static_cast<T*>(x), 
+                                    d_output_pair, 
+                                    num_items, s);
+        #endif
     }
 };
 
