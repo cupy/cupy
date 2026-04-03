@@ -908,11 +908,10 @@ struct _cub_reduce_argmin {
     void operator()(void* workspace, size_t& workspace_size, void* x, void* y,
         int num_items, cudaStream_t s)
     {
-        using KeyValuePair = cub::KeyValuePair<int, T>;
-        KeyValuePair* d_output_pair = static_cast<KeyValuePair*>(y);
-
         #ifndef __HIP__
-                // NVIDIA CCCL v3+ API
+        // NVIDIA CCCL v3+ API
+                using KeyValuePair = cub::KeyValuePair<int, T>;
+                KeyValuePair* d_output_pair = static_cast<KeyValuePair*>(y);
                 DeviceReduce::ArgMin(workspace, workspace_size, 
                                     static_cast<T*>(x), 
                                     &d_output_pair->value, 
@@ -920,6 +919,8 @@ struct _cub_reduce_argmin {
                                     num_items, s);
         #else
                 // AMD HipCUB API (Legacy)
+                using KeyValuePair = hipcub::KeyValuePair<int, T>;
+                KeyValuePair* d_output_pair = static_cast<KeyValuePair*>(y);
                 DeviceReduce::ArgMin(workspace, workspace_size, 
                                     static_cast<T*>(x), 
                                     d_output_pair, 
@@ -939,14 +940,24 @@ struct _cub_reduce_argmax {
         int num_items, cudaStream_t s)
     {
         
-        using KeyValuePair = cub::KeyValuePair<int, T>;
-        KeyValuePair* d_output_pair = static_cast<KeyValuePair*>(y);
-
-        DeviceReduce::ArgMax(workspace, workspace_size, 
-                            static_cast<T*>(x), 
-                            &d_output_pair->value, // Value first
-                            &d_output_pair->key,   // Index second
-                            num_items, s);
+        #ifndef __HIP__
+        // NVIDIA CCCL v3+ API
+                using KeyValuePair = cub::KeyValuePair<int, T>;
+                KeyValuePair* d_output_pair = static_cast<KeyValuePair*>(y);
+                DeviceReduce::ArgMax(workspace, workspace_size, 
+                                    static_cast<T*>(x), 
+                                    &d_output_pair->value, 
+                                    &d_output_pair->key, 
+                                    num_items, s);
+        #else
+                // AMD HipCUB API (Legacy)
+                using KeyValuePair = hipcub::KeyValuePair<int, T>;
+                KeyValuePair* d_output_pair = static_cast<KeyValuePair*>(y);
+                DeviceReduce::ArgMax(workspace, workspace_size, 
+                                    static_cast<T*>(x), 
+                                    d_output_pair, 
+                                    num_items, s);
+        #endif
     }
 };
 
