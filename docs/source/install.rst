@@ -58,7 +58,7 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 
     * The library to perform collective multi-GPU / multi-node computations.
 
-* `cuSPARSELt <https://docs.nvidia.com/cuda/cusparselt/>`_: v0.8.0 / v0.8.1
+* `cuSPARSELt <https://docs.nvidia.com/cuda/cusparselt/>`_: v0.8.0 / v0.8.1 / v0.9.0
 
     * The library to accelerate sparse matrix-matrix multiplication.
 
@@ -276,7 +276,7 @@ If you need to pass environment variable (e.g., ``CUDA_PATH``), you need to spec
 
   $ sudo CUDA_PATH=/opt/nvidia/cuda pip install cupy
 
-If you are using certain versions of conda, it may fail to build CuPy with error ``g++: error: unrecognized command line option ‘-R’``.
+If you are using certain versions of conda, it may fail to build CuPy with error ``g++: error: unrecognized command line option '-R'``.
 This is due to a bug in conda (see `conda/conda#6030 <https://github.com/conda/conda/issues/6030>`_ for details).
 If you encounter this problem, please upgrade your conda.
 
@@ -356,6 +356,24 @@ Install the ``cuda-cudart-dev-12-X`` package where ``12-X`` is the version of yo
   $ apt list "cuda-cudart-*"
   cuda-cudart-12-6/now 12.6.68-1 amd64 [installed,local]
   $ sudo apt install "cuda-cudart-dev-12-6"
+
+.. warning::
+
+   If you have both a system CUDA Toolkit (e.g., ``/usr/local/cuda``) **and** CUDA component wheels
+   installed via ``pip``, CuPy may pick up the NVRTC library from the wheel but use headers from
+   the system installation. When these are different CUDA versions (e.g., system CTK 12.0 and wheel
+   NVRTC 12.9), NVRTC compilation will fail with errors such as
+   ``incomplete type "__nv_fp8_e8m0" is not allowed``.
+
+   To avoid this, ensure that the CUDA headers and NVRTC library come from the same CUDA version.
+   You can either:
+
+   * **Install matching CUDA component wheels**: ``pip install cupy-cuda12x[ctk] cuda-toolkit==12.X.*``
+     where ``12.X`` matches your system CUDA version. The ``[ctk]`` extra installs CUDA component
+     wheels so that headers and libraries are consistent, and ``cuda-toolkit`` pins them to the
+     desired version.
+   * **Unset** ``CUDA_PATH`` if you want CuPy to ignore the system installation and use
+     wheels exclusively.
 
 CuPy always raises ``cupy.cuda.compiler.CompileException``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
