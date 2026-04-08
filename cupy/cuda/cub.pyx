@@ -57,10 +57,10 @@ cdef extern from 'cupy_cub.h' nogil:
                                      size_t, size_t, Stream_t, int, int)
     void cub_device_scan(void*, size_t&, void*, void*,
                          size_t, Stream_t, int, int)
-    void cub_device_histogram_range(void*, size_t&, void*, void*,
-                                    size_t, void*, size_t, Stream_t, int)
-    void cub_device_histogram_even(void*, size_t&, void*, void*, size_t,
-                                   size_t, size_t, size_t, Stream_t, int)
+    void cub_device_histogram_range(void*, size_t&, void*, void*, int, void*,
+                                    size_t, Stream_t, int)
+    void cub_device_histogram_even(void*, size_t&, void*, void*, int, int, int,
+                                   size_t, Stream_t, int)
     size_t cub_device_reduce_get_workspace_size(void*, void*, size_t,
                                                 Stream_t, int, int)
     size_t cub_device_segmented_reduce_get_workspace_size(
@@ -68,9 +68,9 @@ cdef extern from 'cupy_cub.h' nogil:
     size_t cub_device_scan_get_workspace_size(
         void*, void*, size_t, Stream_t, int, int)
     size_t cub_device_histogram_range_get_workspace_size(
-        void*, void*, size_t, void*, size_t, Stream_t, int)
+        void*, void*, int, void*, size_t, Stream_t, int)
     size_t cub_device_histogram_even_get_workspace_size(
-        void*, void*, size_t, size_t, size_t, size_t, Stream_t, int)
+        void*, void*, int, int, int, size_t, Stream_t, int)
 
     # Build-time version
     int CUPY_CUB_VERSION_CODE
@@ -311,8 +311,7 @@ def device_scan(_ndarray_base x, op):
 def device_histogram(_ndarray_base x, _ndarray_base y, bins):
     cdef memory.MemoryPointer ws
     cdef size_t ws_size, n_samples
-    cdef int dtype_id
-    cdef size_t n_bins
+    cdef int dtype_id, n_bins
     cdef void* x_ptr
     cdef void* bins_ptr
     cdef void* y_ptr

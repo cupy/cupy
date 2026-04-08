@@ -964,7 +964,7 @@ struct _cub_histogram_range {
     template <typename sampleT,
               typename binT = typename std::conditional<std::is_integral<sampleT>::value, double, sampleT>::type>
     void operator()(void* workspace, size_t& workspace_size, void* input, void* output,
-        size_t n_bins, void* bins, size_t n_samples, cudaStream_t s) const
+        int n_bins, void* bins, size_t n_samples, cudaStream_t s) const
     {
         // Ugly hack to avoid specializing complex types, which cub::DeviceHistogram does not support.
         // TODO(leofang): revisit this part when complex support is added to cupy.histogram()
@@ -981,7 +981,7 @@ struct _cub_histogram_range {
         // TODO(leofang): check if hipCUB has the same bug or not
 
         // if (n_samples < (1ULL << 31)) {
-            size_t num_samples = n_samples;
+            int num_samples = n_samples;
             DeviceHistogram::HistogramRange(workspace, workspace_size, static_cast<h_sampleT*>(input),
                 #ifndef CUPY_USE_HIP
                 static_cast<long long*>(output), n_bins, static_cast<h_binT*>(bins), num_samples, s);
@@ -1004,12 +1004,12 @@ struct _cub_histogram_range {
 struct _cub_histogram_even {
     template <typename sampleT>
     void operator()(void* workspace, size_t& workspace_size, void* input, void* output,
-        size_t& n_bins, size_t& lower, size_t& upper, size_t n_samples, cudaStream_t s) const
+        int& n_bins, int& lower, int& upper, size_t n_samples, cudaStream_t s) const
     {
         #ifndef CUPY_USE_HIP
         // Ugly hack to avoid specializing numerical types
-        typedef typename std::conditional<std::is_integral<sampleT>::value, sampleT, size_t>::type h_sampleT;
-        size_t num_samples = n_samples;
+        typedef typename std::conditional<std::is_integral<sampleT>::value, sampleT, int>::type h_sampleT;
+        int num_samples = n_samples;
         static_assert(sizeof(long long) == sizeof(intptr_t), "not supported");
         DeviceHistogram::HistogramEven(workspace, workspace_size, static_cast<h_sampleT*>(input),
             static_cast<long long*>(output), n_bins, lower, upper, num_samples, s);
@@ -1127,7 +1127,7 @@ size_t cub_device_scan_get_workspace_size(void* x, void* y, size_t num_items,
 /* -------- device histogram -------- */
 
 void cub_device_histogram_range(void* workspace, size_t& workspace_size, void* x, void* y,
-    size_t n_bins, void* bins, size_t n_samples, cudaStream_t stream, int dtype_id)
+    int n_bins, void* bins, size_t n_samples, cudaStream_t stream, int dtype_id)
 {
     // TODO(leofang): support complex
     if (dtype_id == CUPY_TYPE_COMPLEX64 || dtype_id == CUPY_TYPE_COMPLEX128) {
@@ -1139,7 +1139,7 @@ void cub_device_histogram_range(void* workspace, size_t& workspace_size, void* x
                             workspace, workspace_size, x, y, n_bins, bins, n_samples, stream);
 }
 
-size_t cub_device_histogram_range_get_workspace_size(void* x, void* y, size_t n_bins,
+size_t cub_device_histogram_range_get_workspace_size(void* x, void* y, int n_bins,
     void* bins, size_t n_samples, cudaStream_t stream, int dtype_id)
 {
     size_t workspace_size = 0;
@@ -1149,7 +1149,7 @@ size_t cub_device_histogram_range_get_workspace_size(void* x, void* y, size_t n_
 }
 
 void cub_device_histogram_even(void* workspace, size_t& workspace_size, void* x, void* y,
-    size_t n_bins, size_t lower, size_t upper, size_t n_samples, cudaStream_t stream, int dtype_id)
+    int n_bins, int lower, int upper, size_t n_samples, cudaStream_t stream, int dtype_id)
 {
     #ifndef CUPY_USE_HIP
     return dtype_dispatcher(dtype_id, _cub_histogram_even(),
@@ -1157,8 +1157,8 @@ void cub_device_histogram_even(void* workspace, size_t& workspace_size, void* x,
     #endif
 }
 
-size_t cub_device_histogram_even_get_workspace_size(void* x, void* y, size_t n_bins,
-    size_t lower, size_t upper, size_t n_samples, cudaStream_t stream, int dtype_id)
+size_t cub_device_histogram_even_get_workspace_size(void* x, void* y, int n_bins,
+    int lower, int upper, size_t n_samples, cudaStream_t stream, int dtype_id)
 {
     size_t workspace_size = 0;
     cub_device_histogram_even(NULL, workspace_size, x, y, n_bins, lower, upper, n_samples,
