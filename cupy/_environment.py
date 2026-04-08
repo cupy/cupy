@@ -140,11 +140,6 @@ def _get_conda_cuda_path():
 
 
 def _get_cuda_path():
-    # Use environment variable
-    cuda_path = os.environ.get('CUDA_PATH', '')  # Nvidia default on Windows
-    if os.path.exists(cuda_path):
-        return cuda_path
-
     # Use conda CUDA path. This ensures that only when CuPy is installed via
     # conda will we pick up the conda CUDA path. If CuPy is installed to a
     # conda env but via pip, we proceed to the next detection method so as to
@@ -182,6 +177,12 @@ def _get_cuda_path():
                     cuda_path = os.path.dirname(cuda_path)
                 return cuda_path
             return None
+        return cuda_path
+
+    # Use CUDA_PATH environment variable (demoted from first priority to
+    # ensure consistency with pathfinder-based NVRTC detection).
+    cuda_path = os.environ.get('CUDA_PATH', '')  # Nvidia default on Windows
+    if os.path.exists(cuda_path):
         return cuda_path
 
     # Use typical path
@@ -585,38 +586,6 @@ Reason: {type(exc).__name__} ({str(exc)})
 You can install the library by:
   $ {cmd}
 ''')
-
-
-@functools.cache
-def _get_include_dir_from_conda_or_wheel(major: int, minor: int) -> list[str]:
-    # FP16 headers from CUDA 12.2+ depends on headers from CUDA Runtime.
-    # See https://github.com/cupy/cupy/issues/8466.
-    if major < 12 or (major == 12 and minor < 2):
-        return []
-
-    config = get_preload_config()
-    if config is not None and config['packaging'] == 'conda':
-        cuda_path = _get_conda_cuda_path()
-        if cuda_path is not None:
-            # Note: this assumes that we prefer headers installed via conda.
-            result = [os.path.join(cuda_path, 'include')]
-            _log(f'found CUDA headers from conda: {result}')
-            return result
-
-    # Look for headers via cuda-pathfinder
-    from cuda.pathfinder import find_nvidia_header_directory
-    try:
-        include_dir = find_nvidia_header_directory('cudart')
-    except RuntimeError:
-        _log('CUDA headers not found via cuda-pathfinder')
-        return []
-    else:
-        if include_dir is not None:
-            _log(f'found CUDA headers via cuda-pathfinder: {include_dir}')
-            return [include_dir]
-        else:
-            _log('CUDA headers not found via cuda-pathfinder')
-            return []
 
 
 @functools.cache

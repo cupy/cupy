@@ -82,11 +82,13 @@ cdef inline void _set_vars() except*:
 
     _cuda_path = get_cuda_path()
     if _cuda_path is not None:
-        _cuda_include = os.path.join(_cuda_path, 'include')
         # TODO(leofang): this does not honor conda's new layout
         _nvprune = os.path.join(_cuda_path, 'bin/nvprune')
         if not os.path.isfile(_nvprune):
             _nvprune = None
+
+    from cuda.pathfinder import find_nvidia_header_directory
+    _cuda_include = find_nvidia_header_directory('cudart')
 
     _build_ver = str(runtime.runtimeGetVersion())
     _cufft_ver = get_cufft_version()
@@ -571,10 +573,12 @@ cdef class _JITCallbackManager(_CallbackManager):
                 raise NotImplementedError
 
     cdef str _get_cuda_include(self):
-        global _cuda_path, _cuda_include
-        if _cuda_path is None or _cuda_include is None:
-            _cuda_path = get_cuda_path()
-            _cuda_include = os.path.join(_cuda_path, 'include')
+        global _cuda_include
+        if _cuda_include is None:
+            from cuda.pathfinder import find_nvidia_header_directory
+            _cuda_include = find_nvidia_header_directory('cudart')
+            if _cuda_include is None:
+                raise RuntimeError('Failed to find CUDA headers.')
         return _cuda_include
 
     cdef _sanity_checks(self, cb_load, cb_store, cb_load_data, cb_store_data):

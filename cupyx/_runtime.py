@@ -234,9 +234,12 @@ class _RuntimeInfo:
             if nvrtc_version is None:
                 self.cuda_extra_include_dirs = '(NVRTC unavailable)'
             else:
-                self.cuda_extra_include_dirs = str(
-                    cupy._environment._get_include_dir_from_conda_or_wheel(
-                        *nvrtc_version))
+                from cuda.pathfinder import find_nvidia_header_directory
+                try:
+                    d = find_nvidia_header_directory('cudart')
+                except Exception:
+                    d = None
+                self.cuda_extra_include_dirs = str([d] if d else [])
 
         # NCCL
         if cupy._environment._can_attempt_preload('nccl'):
