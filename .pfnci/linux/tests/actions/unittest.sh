@@ -17,8 +17,17 @@ if [[ "${MARKER}" != "" ]]; then
     pytest_opts+=(-m "${MARKER}")
 fi
 
+if python -VV 2>&1 | grep -q "free-threading build"; then
+    if [[ "${MARKER}" =~ "not slow" ]]; then
+        echo "Found free-threaded Python build and 'not slow' marker, running tests in parallel."
+        # Force GIL disable (for now)
+        export PYTHON_GIL="0"
+        pytest_opts+=("--parallel-threads=2")
+    fi
+fi
+
 # TODO: support coverage reporting
-python3 -m pip install --user pytest-timeout pytest-xdist
+python3 -m pip install --user pytest-timeout pytest-xdist pytest-run-parallel
 
 pushd tests
 timeout --signal INT --kill-after 10 60 python3 -c 'import cupy; cupy.show_config(_full=True)'

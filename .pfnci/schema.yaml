@@ -224,7 +224,7 @@ python:
   "3.13":
     spec: "3.13.8"
   "3.14":
-    spec: "3.14.0"
+    spec: "3.14t"
   "pre":
     spec: "3.15-dev"  # note that dependency python libraies may not work
 
