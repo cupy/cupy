@@ -29,7 +29,7 @@ RUN pyenv install 3.10.18 && \
     pip install -U setuptools pip wheel && \
     pip install -U google-cloud-storage
 
-RUN pip install -U 'numpy==2.0.*' 'scipy==1.14.*' 'optuna==3.*' 'ml_dtypes==0.5.*' 'cython==3.1.*'
+RUN pip install -U 'numpy==2.0.*' 'scipy==1.14.*' 'optuna==3.*' 'ml_dtypes==0.5.*' 'cython==3.2.*'
 RUN pip uninstall -y mpi4py cuda-python && \
     pip check
 
