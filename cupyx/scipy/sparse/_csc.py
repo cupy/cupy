@@ -14,7 +14,7 @@ from cupyx.scipy.sparse import _base
 from cupyx.scipy.sparse import _compressed
 
 
-class csc_matrix(_compressed._compressed_sparse_matrix):
+class _csc_base(_compressed._compressed_sparse_matrix):
 
     """Compressed Sparse Column matrix.
 
@@ -66,8 +66,11 @@ class csc_matrix(_compressed._compressed_sparse_matrix):
         data = self.data.get(stream)
         indices = self.indices.get(stream)
         indptr = self.indptr.get(stream)
-        return scipy.sparse.csc_matrix(
-            (data, indices, indptr), shape=self._shape)
+        if isinstance(self, _base.sparray):
+            sp_cls = scipy.sparse.csc_array
+        else:
+            sp_cls = scipy.sparse.csc_matrix
+        return sp_cls((data, indices, indptr), shape=self._shape)
 
     def _convert_dense(self, x):
         from cupyx import cusparse
@@ -81,13 +84,13 @@ class csc_matrix(_compressed._compressed_sparse_matrix):
     def _swap(self, x, y):
         return (y, x)
 
-    def __mul__(self, other):
+    def _matmul_dispatch(self, other):
         from cupyx import cusparse
 
         if cupy.isscalar(other):
             self.sum_duplicates()
             return self._with_data(self.data * other)
-        elif cupyx.scipy.sparse.isspmatrix_csr(other):
+        elif _base.issparse(other) and other.format == 'csr':
             self.sum_duplicates()
             other.sum_duplicates()
             if cusparse.check_availability('spgemm'):
@@ -104,7 +107,7 @@ class csc_matrix(_compressed._compressed_sparse_matrix):
                 return cusparse.csrgemm2(a, other)
             else:
                 raise AssertionError
-        elif isspmatrix_csc(other):
+        elif _base.issparse(other) and other.format == 'csc':
             self.sum_duplicates()
             other.sum_duplicates()
             if cusparse.check_availability('csrgemm') and not runtime.is_hip:
@@ -126,8 +129,8 @@ class csc_matrix(_compressed._compressed_sparse_matrix):
                 return cusparse.spgemm(a, b)
             else:
                 raise AssertionError
-        elif cupyx.scipy.sparse.isspmatrix(other):
-            return self * other.tocsr()
+        elif cupyx.scipy.sparse.issparse(other):
+            return self._matmul_dispatch(other.tocsr())
         elif _base.isdense(other):
             if other.ndim == 0:
                 self.sum_duplicates()
@@ -259,7 +262,10 @@ class csc_matrix(_compressed._compressed_sparse_matrix):
             csrgeam = cusparse.csrgeam
         else:
             raise NotImplementedError
-        return csrgeam(self.T, other, alpha, beta).T
+        result = csrgeam(self.T, other, alpha, beta)
+        if not isinstance(result, self._csr_container):
+            result = self._csr_container(result)
+        return result.T
 
     # TODO(unno): Implement tobsr
 
@@ -283,7 +289,10 @@ class csc_matrix(_compressed._compressed_sparse_matrix):
             data = self.data
             indices = self.indices
 
-        return cusparse.csc2coo(self, data, indices)
+        result = cusparse.csc2coo(self, data, indices)
+        if not isinstance(result, self._coo_container):
+            result = self._coo_container(result)
+        return result
 
     def tocsc(self, copy=None):
         """Converts the matrix to Compressed Sparse Column format.
@@ -323,7 +332,10 @@ class csc_matrix(_compressed._compressed_sparse_matrix):
         else:
             raise NotImplementedError
         # don't touch has_sorted_indices, as cuSPARSE made no guarantee
-        return csc2csr(self)
+        result = csc2csr(self)
+        if not isinstance(result, self._csr_container):
+            result = self._csr_container(result)
+        return result
 
     def _tocsx(self):
         """Inverts the format.
@@ -358,7 +370,7 @@ class csc_matrix(_compressed._compressed_sparse_matrix):
             indptr = self.indptr.copy()
         else:
             data, indices, indptr = self.data, self.indices, self.indptr
-        return cupyx.scipy.sparse.csr_matrix._from_parts(
+        return self._csr_container._from_parts(
             data, indices, indptr, shape,
             has_canonical_format=getattr(
                 self, '_has_canonical_format', None),
@@ -411,6 +423,22 @@ class csc_matrix(_compressed._compressed_sparse_matrix):
 
     def _get_arrayXslice(self, row, col):
         return self._major_slice(col)._minor_index_fancy(row)
+
+
+class csc_matrix(_base.spmatrix, _csc_base):
+    """Compressed Sparse Column matrix.
+
+    .. seealso:: :class:`scipy.sparse.csc_matrix`
+    """
+    pass
+
+
+class csc_array(_csc_base, _base.sparray):
+    """Compressed Sparse Column array.
+
+    .. seealso:: :class:`scipy.sparse.csc_array`
+    """
+    pass
 
 
 def isspmatrix_csc(x):

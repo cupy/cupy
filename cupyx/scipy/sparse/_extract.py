@@ -44,9 +44,10 @@ def tril(A, k=0, format=None):
     .. seealso:: :func:`scipy.sparse.tril`
     """
     _check_A_type(A)
+    use_array = sparse.issparse(A) and isinstance(A, sparse.sparray)
     A = sparse.coo_matrix(A, copy=False)
     mask = A.row + k >= A.col
-    return _masked_coo(A, mask).asformat(format)
+    return _masked_coo(A, mask, use_array).asformat(format)
 
 
 def triu(A, k=0, format=None):
@@ -65,19 +66,21 @@ def triu(A, k=0, format=None):
     .. seealso:: :func:`scipy.sparse.triu`
     """
     _check_A_type(A)
+    use_array = sparse.issparse(A) and isinstance(A, sparse.sparray)
     A = sparse.coo_matrix(A, copy=False)
     mask = A.row + k <= A.col
-    return _masked_coo(A, mask).asformat(format)
+    return _masked_coo(A, mask, use_array).asformat(format)
 
 
 def _check_A_type(A):
-    if not (isinstance(A, cupy.ndarray) or cupyx.scipy.sparse.isspmatrix(A)):
-        msg = 'A must be cupy.ndarray or cupyx.scipy.sparse.spmatrix'
+    if not (isinstance(A, cupy.ndarray) or cupyx.scipy.sparse.issparse(A)):
+        msg = 'A must be cupy.ndarray or cupyx.scipy.sparse'
         raise TypeError(msg)
 
 
-def _masked_coo(A, mask):
+def _masked_coo(A, mask, use_array=False):
     row = A.row[mask]
     col = A.col[mask]
     data = A.data[mask]
-    return sparse.coo_matrix((data, (row, col)), shape=A.shape, dtype=A.dtype)
+    coo_cls = sparse.coo_array if use_array else sparse.coo_matrix
+    return coo_cls((data, (row, col)), shape=A.shape, dtype=A.dtype)

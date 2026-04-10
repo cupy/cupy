@@ -46,8 +46,12 @@ def connected_components(csgraph, directed=True, connection='weak',
     if csgraph.ndim != 2:
         raise ValueError('graph should have two dimensions')
 
-    if not cupyx.scipy.sparse.isspmatrix_csr(csgraph):
-        csgraph = cupyx.scipy.sparse.csr_matrix(csgraph)
+    if not (cupyx.scipy.sparse.issparse(csgraph)
+            and csgraph.format == 'csr'):
+        if cupyx.scipy.sparse.issparse(csgraph):
+            csgraph = csgraph.tocsr()
+        else:
+            csgraph = cupyx.scipy.sparse.csr_matrix(csgraph)
     m, m1 = csgraph.shape
     if m != m1:
         raise ValueError('graph should be a square array')
@@ -61,8 +65,10 @@ def connected_components(csgraph, directed=True, connection='weak',
             num_verts=m, num_edges=csgraph.nnz, labels=labels)
     else:
         csgraph += csgraph.T
-        if not cupyx.scipy.sparse.isspmatrix_csr(csgraph):
-            csgraph = cupyx.scipy.sparse.csr_matrix(csgraph)
+        if not (cupyx.scipy.sparse.issparse(csgraph)
+                and csgraph.format == 'csr'):
+            csgraph = csgraph.tocsr() if cupyx.scipy.sparse.issparse(
+                csgraph) else cupyx.scipy.sparse.csr_matrix(csgraph)
         _, labels = pylibcugraph.weakly_connected_components(
             resource_handle=None,
             graph=None,

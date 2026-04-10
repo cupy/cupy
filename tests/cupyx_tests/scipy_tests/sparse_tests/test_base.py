@@ -18,10 +18,10 @@ class TestSpmatrix(unittest.TestCase):
 
     def dummy_class(self, sp):
         if sp is sparse:
-            class DummySparseGPU(sparse.spmatrix):
+            class DummySparseGPU(sparse.spmatrix, sparse._spbase):
 
                 def __init__(self, maxprint=50, shape=None, nnz=0):
-                    super().__init__(maxprint)
+                    super().__init__(maxprint=maxprint)
                     self._shape = shape
                     self._nnz = nnz
 
@@ -47,13 +47,13 @@ class TestSpmatrix(unittest.TestCase):
             return DummySparseCPU
 
     def test_instantiation(self):
-        for sp in (scipy.sparse, sparse):
-            with pytest.raises(ValueError):
-                if sp is scipy.sparse:
-                    sp._base._spbase(None)
-                else:
-                    # TODO(asi1024): Replace with sp._base._spbase
-                    sp.spmatrix()
+        # SciPy's _spbase rejects direct instantiation
+        with pytest.raises((ValueError, TypeError)):
+            scipy.sparse._base._spbase(None)
+        # CuPy's spmatrix is a mixin — instantiation is technically
+        # possible but useless.  We just check it doesn't crash.
+        m = sparse.spmatrix()
+        assert isinstance(m, sparse.spmatrix)
 
     def test_len(self):
         for sp in (scipy.sparse, sparse):
@@ -86,3 +86,45 @@ class TestSpmatrix(unittest.TestCase):
     def test_maxprint(self, xp, sp):
         s = self.dummy_class(sp)(maxprint=30)
         return s.maxprint
+
+
+class TestIssparse:
+    """Test issparse and isspmatrix with both arrays and matrices."""
+
+    @pytest.mark.parametrize('fmt', ['csr', 'csc', 'coo'])
+    def test_issparse_matrix(self, fmt):
+        cls = getattr(sparse, f'{fmt}_matrix')
+        m = cls((2, 3))
+        assert sparse.issparse(m)
+
+    @pytest.mark.parametrize('fmt', ['csr', 'csc', 'coo'])
+    def test_issparse_array(self, fmt):
+        cls = getattr(sparse, f'{fmt}_array')
+        a = cls((2, 3))
+        assert sparse.issparse(a)
+
+    @pytest.mark.parametrize('fmt', ['csr', 'csc', 'coo'])
+    def test_isspmatrix_matrix(self, fmt):
+        cls = getattr(sparse, f'{fmt}_matrix')
+        m = cls((2, 3))
+        assert sparse.isspmatrix(m)
+
+    @pytest.mark.parametrize('fmt', ['csr', 'csc', 'coo'])
+    def test_isspmatrix_not_array(self, fmt):
+        cls = getattr(sparse, f'{fmt}_array')
+        a = cls((2, 3))
+        assert not sparse.isspmatrix(a)
+
+    @pytest.mark.parametrize('fmt', ['csr', 'csc', 'coo'])
+    def test_sparray_not_spmatrix(self, fmt):
+        cls = getattr(sparse, f'{fmt}_array')
+        a = cls((2, 3))
+        assert isinstance(a, sparse.sparray)
+        assert not isinstance(a, sparse.spmatrix)
+
+    @pytest.mark.parametrize('fmt', ['csr', 'csc', 'coo'])
+    def test_spmatrix_not_sparray(self, fmt):
+        cls = getattr(sparse, f'{fmt}_matrix')
+        m = cls((2, 3))
+        assert isinstance(m, sparse.spmatrix)
+        assert not isinstance(m, sparse.sparray)

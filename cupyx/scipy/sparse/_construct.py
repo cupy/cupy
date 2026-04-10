@@ -2,11 +2,18 @@ from __future__ import annotations
 
 import numpy
 import cupy
+from cupyx.scipy.sparse import _base
 from cupyx.scipy.sparse import _coo
 from cupyx.scipy.sparse import _csc
 from cupyx.scipy.sparse import _csr
 from cupyx.scipy.sparse import _dia
 from cupyx.scipy.sparse import _sputils
+
+
+def _any_sparray(*args):
+    """Return True if any argument is a sparse array (not matrix)."""
+    return any(isinstance(a, _base.sparray) for a in args
+               if _base.issparse(a))
 
 
 def eye(m, n=None, k=0, dtype='d', format=None):
@@ -120,11 +127,12 @@ def _compressed_sparse_stack(blocks, axis):
         sum_dim += b.shape[axis]
         last_indptr += b.indptr[-1]
     indptr[-1] = last_indptr
+    use_array = _any_sparray(*blocks)
     if axis == 0:
-        cls = _csr.csr_matrix
+        cls = _csr.csr_array if use_array else _csr.csr_matrix
         shape = (sum_dim, constant_dim)
     else:
-        cls = _csc.csc_matrix
+        cls = _csc.csc_array if use_array else _csc.csc_matrix
         shape = (constant_dim, sum_dim)
     return cls._from_parts(data, indices, indptr, shape)
 
@@ -245,18 +253,20 @@ def bmat(blocks, format=None, dtype=None):
                 blocks_flat.append(blocks[m][n])
 
     if len(blocks_flat) == 0:
-        return _coo.coo_matrix((0, 0), dtype=dtype)
+        coo_cls = _coo.coo_matrix  # no inputs to detect type from
+        return coo_cls((0, 0), dtype=dtype)
 
     # check for fast path cases
     if (N == 1 and format in (None, 'csr') and
-            all(isinstance(b, _csr.csr_matrix)
+            all(_base.issparse(b) and b.format == 'csr'
                 for b in blocks_flat)):
         A = _compressed_sparse_stack(blocks_flat, 0)
         if dtype is not None:
             A = A.astype(dtype)
         return A
     elif (M == 1 and format in (None, 'csc')
-          and all(isinstance(b, _csc.csc_matrix) for b in blocks_flat)):
+          and all(_base.issparse(b) and b.format == 'csc'
+                  for b in blocks_flat)):
         A = _compressed_sparse_stack(blocks_flat, 1)
         if dtype is not None:
             A = A.astype(dtype)
@@ -265,6 +275,9 @@ def bmat(blocks, format=None, dtype=None):
     block_mask = numpy.zeros((M, N), dtype=bool)
     brow_lengths = numpy.zeros(M+1, dtype=numpy.int64)
     bcol_lengths = numpy.zeros(N+1, dtype=numpy.int64)
+
+    # Detect array type before COO conversion loses it
+    _use_array = _any_sparray(*blocks_flat)
 
     # Check if any input block has int64 indices before conversion
     # to COO (the COO constructor may downcast via check_contents).
@@ -337,7 +350,8 @@ def bmat(blocks, format=None, dtype=None):
         col[idx] = B.col + col_offsets[j]
         nnz += B.nnz
 
-    A = _coo.coo_matrix._from_parts(data, row, col, shape)
+    coo_cls = _coo.coo_array if _use_array else _coo.coo_matrix
+    A = coo_cls._from_parts(data, row, col, shape)
     A.has_canonical_format = False
     return A.asformat(format)
 
@@ -541,13 +555,14 @@ def kron(A, B, format=None):
     # TODO(leofang): investigate if possible to optimize performance by
     #                starting with CSR instead of COO matrices
 
+    use_array = _any_sparray(A, B)
+    coo_cls = _coo.coo_array if use_array else _coo.coo_matrix
     A = _coo.coo_matrix(A)
     B = _coo.coo_matrix(B)
     out_shape = (A.shape[0] * B.shape[0], A.shape[1] * B.shape[1])
 
     if A.nnz == 0 or B.nnz == 0:
-        # kronecker product is the zero matrix
-        return _coo.coo_matrix(out_shape).asformat(format)
+        return coo_cls(out_shape).asformat(format)
 
     if max(out_shape[0], out_shape[1]) > cupy.iinfo('int32').max:
         dtype = cupy.int64
@@ -571,7 +586,7 @@ def kron(A, B, format=None):
     data = data.reshape(-1, B.nnz) * B.data
     data = data.ravel()
 
-    return _coo.coo_matrix(
+    return coo_cls(
         (data, (row, col)), shape=out_shape).asformat(format)
 
 
@@ -609,3 +624,99 @@ def kronsum(A, B, format=None):
     R = kron(B, eye(A.shape[0], dtype=dtype), format=format)
 
     return (L + R).asformat(format)
+
+
+# --- Array-returning construction functions ---
+
+_array_containers = {
+    'csr': lambda: _csr.csr_array,
+    'csc': lambda: _csc.csc_array,
+    'coo': lambda: _coo.coo_array,
+    'dia': lambda: _dia.dia_array,
+}
+
+
+def _to_array(matrix, format=None):
+    """Convert a sparse matrix result to the matching array type,
+    preserving the requested format when possible.
+    """
+    fmt = format or matrix.format
+    cls = _array_containers.get(fmt, lambda: _csr.csr_array)()
+    if isinstance(matrix, cls):
+        return matrix
+    # Convert via CSR then to target format if supported
+    arr = _csr.csr_array(matrix)
+    if fmt and fmt != 'csr':
+        try:
+            arr = arr.asformat(fmt)
+        except NotImplementedError:
+            pass  # keep as CSR
+    return arr
+
+
+def eye_array(m, n=None, *, k=0, dtype=float, format=None):
+    """Creates a sparse array with ones on diagonal.
+
+    Args:
+        m (int): Number of rows.
+        n (int or None): Number of columns. Defaults to ``m``.
+        k (int): Diagonal to place ones on.
+        dtype: Type of array to create.
+        format (str or None): Format of the result.
+
+    Returns:
+        cupyx.scipy.sparse.sparray
+
+    .. seealso:: :func:`scipy.sparse.eye_array`
+
+    """
+    if n is None:
+        n = m
+    m, n = int(m), int(n)
+    return _to_array(eye(m, n, k=k, dtype=dtype, format=format), format)
+
+
+def diags_array(diagonals, /, *, offsets=0, shape=None, format=None,
+                dtype=None):
+    """Construct a sparse array from diagonals.
+
+    Args:
+        diagonals: Array of diagonal values.
+        offsets (int or sequence of int): Diagonals to set.
+        shape (tuple or None): Shape of the result.
+        format (str or None): Sparse format of the result.
+        dtype: Data type of the result.
+
+    Returns:
+        cupyx.scipy.sparse.sparray
+
+    .. seealso:: :func:`scipy.sparse.diags_array`
+
+    """
+    return _to_array(
+        diags(diagonals, offsets=offsets, shape=shape, format=format,
+              dtype=dtype), format)
+
+
+def random_array(shape, *, density=0.01, format='coo', dtype=None,
+                 rng=None, data_sampler=None):
+    """Generate a sparse random array.
+
+    Args:
+        shape (tuple): Shape of the array (m, n).
+        density (float): Density of generated values.
+        format (str): Sparse format of the result.
+        dtype: Data type of generated values.
+        rng: Random number generator (numpy or cupy).
+        data_sampler: Function that accepts a size argument.
+
+    Returns:
+        cupyx.scipy.sparse.sparray
+
+    .. seealso:: :func:`scipy.sparse.random_array`
+
+    """
+    m, n = shape
+    return _to_array(
+        random(m, n, density=density, format=format, dtype=dtype,
+               random_state=rng, data_rvs=data_sampler), format)

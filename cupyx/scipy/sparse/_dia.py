@@ -8,7 +8,7 @@ except ImportError:
 
 import cupy
 from cupy import _core
-from cupyx.scipy.sparse import _csc
+from cupyx.scipy.sparse import _base
 from cupyx.scipy.sparse import _data
 from cupyx.scipy.sparse import _sputils
 from cupyx.scipy.sparse import _util
@@ -16,9 +16,10 @@ from cupyx.scipy.sparse import _util
 
 # TODO(leofang): The current implementation is CSC-based, which is troublesome
 # on ROCm/HIP. We should convert it to CSR-based for portability.
-class dia_matrix(_data._data_matrix):
+class _dia_base(_data._data_matrix):
+    """DIA format base (shared by dia_matrix and dia_array).
 
-    """Sparse matrix with DIAgonal storage.
+    Sparse matrix with DIAgonal storage.
 
     Now it has only one initializer format below:
 
@@ -106,7 +107,11 @@ class dia_matrix(_data._data_matrix):
             raise RuntimeError('scipy is not available')
         data = self.data.get(stream)
         offsets = self.offsets.get(stream)
-        return scipy.sparse.dia_matrix((data, offsets), shape=self._shape)
+        if isinstance(self, _base.sparray):
+            sp_cls = scipy.sparse.dia_array
+        else:
+            sp_cls = scipy.sparse.dia_matrix
+        return sp_cls((data, offsets), shape=self._shape)
 
     def get_shape(self):
         """Returns the shape of the matrix.
@@ -156,7 +161,7 @@ class dia_matrix(_data._data_matrix):
 
         """
         if self.data.size == 0:
-            return _csc.csc_matrix(self.shape, dtype=self.dtype)
+            return self._csc_container(self.shape, dtype=self.dtype)
 
         num_rows, num_cols = self.shape
         num_offsets, offset_len = self.data.shape
@@ -183,7 +188,7 @@ class dia_matrix(_data._data_matrix):
         indptr[offset_len + 1:] = indptr[offset_len]
         indices = row.T[mask.T].astype(idx_dtype, copy=False)
         data = self.data.T[mask.T]
-        return _csc.csc_matrix(
+        return self._csc_container(
             (data, indices, indptr), shape=self.shape, dtype=self.dtype)
 
     def tocsr(self, copy=False):
@@ -218,6 +223,22 @@ class dia_matrix(_data._data_matrix):
         if idx.size == 0:
             return cupy.zeros(last_col - first_col, dtype=self.data.dtype)
         return self.data[idx[0], first_col:last_col]
+
+
+class dia_matrix(_base.spmatrix, _dia_base):
+    """Sparse matrix with DIAgonal storage.
+
+    .. seealso:: :class:`scipy.sparse.dia_matrix`
+    """
+    pass
+
+
+class dia_array(_dia_base, _base.sparray):
+    """Sparse array with DIAgonal storage.
+
+    .. seealso:: :class:`scipy.sparse.dia_array`
+    """
+    pass
 
 
 def isspmatrix_dia(x):

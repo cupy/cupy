@@ -1,14 +1,20 @@
+from cupyx.scipy.sparse._base import _spbase  # NOQA
 from cupyx.scipy.sparse._base import issparse  # NOQA
 from cupyx.scipy.sparse._base import isspmatrix  # NOQA
+from cupyx.scipy.sparse._base import sparray  # NOQA
 from cupyx.scipy.sparse._base import spmatrix  # NOQA
 from cupyx.scipy.sparse._base import SparseWarning  # NOQA
 from cupyx.scipy.sparse._base import SparseEfficiencyWarning  # NOQA
+from cupyx.scipy.sparse._coo import coo_array  # NOQA
 from cupyx.scipy.sparse._coo import coo_matrix  # NOQA
 from cupyx.scipy.sparse._coo import isspmatrix_coo  # NOQA
+from cupyx.scipy.sparse._csc import csc_array  # NOQA
 from cupyx.scipy.sparse._csc import csc_matrix  # NOQA
 from cupyx.scipy.sparse._csc import isspmatrix_csc  # NOQA
+from cupyx.scipy.sparse._csr import csr_array  # NOQA
 from cupyx.scipy.sparse._csr import csr_matrix  # NOQA
 from cupyx.scipy.sparse._csr import isspmatrix_csr  # NOQA
+from cupyx.scipy.sparse._dia import dia_array  # NOQA
 from cupyx.scipy.sparse._dia import dia_matrix  # NOQA
 from cupyx.scipy.sparse._dia import isspmatrix_dia  # NOQA
 
@@ -20,7 +26,10 @@ from cupyx.scipy.sparse._construct import spdiags  # NOQA
 from cupyx.scipy.sparse._construct import diags  # NOQA
 
 from cupyx.scipy.sparse._construct import bmat  # NOQA
+from cupyx.scipy.sparse._construct import diags_array  # NOQA
+from cupyx.scipy.sparse._construct import eye_array  # NOQA
 from cupyx.scipy.sparse._construct import hstack  # NOQA
+from cupyx.scipy.sparse._construct import random_array  # NOQA
 from cupyx.scipy.sparse._construct import vstack  # NOQA
 
 # TODO(unno): implement bsr_matrix

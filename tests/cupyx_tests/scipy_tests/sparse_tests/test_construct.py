@@ -476,3 +476,36 @@ class TestKronsum:
         assert kronsum.shape == (a.shape[0] * b.shape[0],
                                  a.shape[1] * b.shape[1])
         return kronsum
+
+
+# ---------------------------------------------------------------------------
+# Verify issparse accepts results from all construction functions
+# ---------------------------------------------------------------------------
+
+@testing.with_requires('scipy')
+class TestConstructIssparse:
+    """Construction functions should return objects that issparse() accepts."""
+
+    def test_eye_issparse(self):
+        x = sparse.eye(3)
+        assert sparse.issparse(x)
+
+    def test_identity_issparse(self):
+        x = sparse.identity(3)
+        assert sparse.issparse(x)
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_hstack_issparse(self, xp, sp):
+        a = sp.csr_matrix(xp.eye(2, dtype='d'))
+        b = sp.csr_matrix(xp.eye(2, dtype='d'))
+        x = sp.hstack([a, b])
+        assert sp.issparse(x)
+        return x.toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_vstack_issparse(self, xp, sp):
+        a = sp.csr_matrix(xp.eye(2, dtype='d'))
+        b = sp.csr_matrix(xp.eye(2, dtype='d'))
+        x = sp.vstack([a, b])
+        assert sp.issparse(x)
+        return x.toarray()

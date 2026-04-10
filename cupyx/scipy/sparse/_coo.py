@@ -10,16 +10,13 @@ except ImportError:
 import cupy
 from cupy import _core
 from cupyx.scipy.sparse import _base
-from cupyx.scipy.sparse import _csc
-from cupyx.scipy.sparse import _csr
 from cupyx.scipy.sparse import _data as sparse_data
 from cupyx.scipy.sparse import _util
 from cupyx.scipy.sparse import _sputils
 
 
-class coo_matrix(sparse_data._data_matrix):
-
-    """COOrdinate format sparse matrix.
+class _coo_base(sparse_data._data_matrix):
+    """COO format base (shared by coo_matrix and coo_array).
 
     This can be instantiated in several ways.
 
@@ -150,13 +147,14 @@ class coo_matrix(sparse_data._data_matrix):
 
         data = data.astype(dtype, copy=copy)
         # Choose index dtype: int32 when values fit, int64 when they don't.
-        # Mirror scipy's get_index_dtype(check_contents=True) logic so we
-        # downcast int64 arrays whose values all fit in int32 (common case).
+        # For matrices, check_contents=True may downcast int64 to int32.
+        # For arrays, _get_index_dtype disables check_contents so user
+        # dtypes are preserved.
         if shape is not None:
             maxval = max(shape)
         else:
             maxval = None
-        idx_dtype = _sputils.get_index_dtype(
+        idx_dtype = self._get_index_dtype(
             (row, col), maxval=maxval, check_contents=True)
         row = row.astype(idx_dtype, copy=copy)
         col = col.astype(idx_dtype, copy=copy)
@@ -210,7 +208,7 @@ class coo_matrix(sparse_data._data_matrix):
         """Return a matrix with the same sparsity structure but
         different data.  Preserves has_canonical_format.
         """
-        return coo_matrix._from_parts(
+        return type(self)._from_parts(
             data,
             self.row.copy() if copy else self.row,
             self.col.copy() if copy else self.col,
@@ -238,7 +236,7 @@ class coo_matrix(sparse_data._data_matrix):
             row = self.row[diag_mask]
             data = self.data[diag_mask]
         else:
-            diag_coo = coo_matrix((self.data[diag_mask],
+            diag_coo = type(self)((self.data[diag_mask],
                                    (self.row[diag_mask], self.col[diag_mask])),
                                   shape=self.shape)
             diag_coo.sum_duplicates()
@@ -337,8 +335,11 @@ class coo_matrix(sparse_data._data_matrix):
         data = self.data.get(stream)
         row = self.row.get(stream)
         col = self.col.get(stream)
-        return scipy.sparse.coo_matrix(
-            (data, (row, col)), shape=self.shape)
+        if isinstance(self, _base.sparray):
+            sp_cls = scipy.sparse.coo_array
+        else:
+            sp_cls = scipy.sparse.coo_matrix
+        return sp_cls((data, (row, col)), shape=self.shape)
 
     def reshape(self, *shape, order='C'):
         """Gives a new shape to a sparse matrix without changing its data.
@@ -379,7 +380,7 @@ class coo_matrix(sparse_data._data_matrix):
         else:
             raise ValueError("'order' must be 'C' or 'F'")
 
-        return coo_matrix._from_parts(
+        return type(self)._from_parts(
             self.data, new_row, new_col, shape=shape)
 
     def sum_duplicates(self):
@@ -540,7 +541,7 @@ class coo_matrix(sparse_data._data_matrix):
         if self.nnz == 0:
             idx = self.col.dtype
             n = self.shape[1]
-            return _csc.csc_matrix._from_parts(
+            return self._csc_container._from_parts(
                 cupy.empty(0, self.dtype),
                 cupy.empty(0, idx),
                 cupy.zeros(n + 1, idx),
@@ -550,9 +551,11 @@ class coo_matrix(sparse_data._data_matrix):
         x = self.copy()
         x.sum_duplicates()
         cusparse.coosort(x, 'c')
-        x = cusparse.coo2csc(x)
-        x.has_canonical_format = True
-        return x
+        result = cusparse.coo2csc(x)
+        result.has_canonical_format = True
+        if not isinstance(result, self._csc_container):
+            result = self._csc_container(result)
+        return result
 
     def tocsr(self, copy=False):
         """Converts the matrix to Compressed Sparse Row format.
@@ -571,7 +574,7 @@ class coo_matrix(sparse_data._data_matrix):
         if self.nnz == 0:
             idx = self.row.dtype
             m = self.shape[0]
-            return _csr.csr_matrix._from_parts(
+            return self._csr_container._from_parts(
                 cupy.empty(0, self.dtype),
                 cupy.empty(0, idx),
                 cupy.zeros(m + 1, idx),
@@ -581,9 +584,11 @@ class coo_matrix(sparse_data._data_matrix):
         x = self.copy()
         x.sum_duplicates()
         cusparse.coosort(x, 'r')
-        x = cusparse.coo2csr(x)
-        x.has_canonical_format = True
-        return x
+        result = cusparse.coo2csr(x)
+        result.has_canonical_format = True
+        if not isinstance(result, self._csr_container):
+            result = self._csr_container(result)
+        return result
 
     def transpose(self, axes=None, copy=False):
         """Returns a transpose matrix.
@@ -609,20 +614,36 @@ class coo_matrix(sparse_data._data_matrix):
             data, row, col = self.data, self.col, self.row
         # Transposing swaps row/col, which generally destroys
         # canonical order (sorted by row then col).
-        return coo_matrix._from_parts(
+        return type(self)._from_parts(
             data, row, col, shape,
             has_canonical_format=False)
 
     def dot(self, other):
         """Ordinary dot product"""
         if _util.isscalarlike(other):
-            return coo_matrix._from_parts(
+            return type(self)._from_parts(
                 self.data * other,
                 self.row.copy(), self.col.copy(),
                 self.shape,
                 has_canonical_format=self.has_canonical_format)
         else:
             return self @ other
+
+
+class coo_matrix(_base.spmatrix, _coo_base):
+    """COOrdinate format sparse matrix.
+
+    .. seealso:: :class:`scipy.sparse.coo_matrix`
+    """
+    pass
+
+
+class coo_array(_coo_base, _base.sparray):
+    """COOrdinate format sparse array.
+
+    .. seealso:: :class:`scipy.sparse.coo_array`
+    """
+    pass
 
 
 def isspmatrix_coo(x):

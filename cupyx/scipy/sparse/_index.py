@@ -6,8 +6,8 @@ from __future__ import annotations
 import cupy
 from cupy import _core
 
-from cupyx.scipy.sparse._base import isspmatrix
-from cupyx.scipy.sparse._base import spmatrix
+from cupyx.scipy.sparse._base import _spbase
+from cupyx.scipy.sparse._base import issparse
 
 from cupy.cuda import device
 from cupy.cuda import runtime
@@ -404,7 +404,7 @@ class IndexMixin:
         if i.shape != j.shape:
             raise IndexError('number of row and column indices differ')
 
-        if isspmatrix(x):
+        if issparse(x):
             if i.ndim == 1:
                 # Inner indexing, so treat them like row vectors.
                 i = i[None]
@@ -563,7 +563,7 @@ def _unpack_index(index):
           assumed to be all (e.g., [maj, :]).
     """
     # First, check if indexing with single boolean matrix.
-    if ((isinstance(index, (spmatrix, cupy.ndarray,
+    if ((isinstance(index, (_spbase, cupy.ndarray,
                             numpy.ndarray))
          or _try_is_scipy_spmatrix(index))
             and index.ndim == 2 and index.dtype.kind == 'b'):
@@ -591,7 +591,7 @@ def _unpack_index(index):
         elif idx.ndim == 2:
             return idx.nonzero()
     # Next, check for validity and transform the index as needed.
-    if isspmatrix(row) or isspmatrix(col):
+    if issparse(row) or issparse(col):
         # Supporting sparse boolean indexing with both row and col does
         # not work because spmatrix.ndim is always 2.
         raise IndexError(

@@ -279,7 +279,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             # maxval may be None if shape is not yet known; contents check
             # handles that case.
             maxval = max(shape) if shape is not None else None
-            idx_dtype = _sputils.get_index_dtype(
+            idx_dtype = self._get_index_dtype(
                 (indices, indptr), maxval=maxval, check_contents=True)
 
         elif _base.isdense(arg1):
@@ -414,7 +414,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                 raise NotImplementedError(
                     'adding a nonzero scalar to a sparse matrix is not '
                     'supported')
-        elif _base.isspmatrix(other):
+        elif _base.issparse(other):
             alpha = -1 if lhs_negative else 1
             beta = -1 if rhs_negative else 1
             return self._add_sparse(other, alpha, beta)

@@ -16,7 +16,7 @@ _ufuncs = [
 ]
 
 
-class _data_matrix(_base.spmatrix):
+class _data_matrix(_base._spbase):
 
     def __init__(self, data):
         self.data = data
@@ -57,7 +57,7 @@ class _data_matrix(_base.spmatrix):
         else:
             return self
 
-    conj.__doc__ = _base.spmatrix.conj.__doc__
+    conj.__doc__ = _base._spbase.conj.__doc__
 
     @property
     def real(self):
@@ -70,7 +70,7 @@ class _data_matrix(_base.spmatrix):
     def copy(self):
         return self._with_data(self.data.copy(), copy=True)
 
-    copy.__doc__ = _base.spmatrix.copy.__doc__
+    copy.__doc__ = _base._spbase.copy.__doc__
 
     def count_nonzero(self):
         """Returns number of non-zero entries.

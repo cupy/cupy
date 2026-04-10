@@ -16,6 +16,21 @@ from cupy import _util
 import cupyx.scipy.sparse
 
 
+def _is_csr_type(x):
+    """True if x is any CSR sparse (array or matrix)."""
+    return cupyx.scipy.sparse.issparse(x) and x.format == 'csr'
+
+
+def _is_csc_type(x):
+    """True if x is any CSC sparse (array or matrix)."""
+    return cupyx.scipy.sparse.issparse(x) and x.format == 'csc'
+
+
+def _is_csr_or_coo_type(x):
+    """True if x is any CSR or COO sparse (array or matrix)."""
+    return cupyx.scipy.sparse.issparse(x) and x.format in ('csr', 'coo')
+
+
 class MatDescriptor:
 
     def __init__(self, descriptor):
@@ -579,9 +594,9 @@ def csrgeam(a, b, alpha=1, beta=1):
     if not check_availability('csrgeam'):
         raise RuntimeError('csrgeam is not available.')
 
-    if not isinstance(a, cupyx.scipy.sparse.csr_matrix):
+    if not _is_csr_type(a):
         raise TypeError('unsupported type (actual: {})'.format(type(a)))
-    if not isinstance(b, cupyx.scipy.sparse.csr_matrix):
+    if not _is_csr_type(b):
         raise TypeError('unsupported type (actual: {})'.format(type(b)))
     if not a.has_canonical_format:
         raise ValueError('expected canonical format for a')
@@ -669,9 +684,9 @@ def csrgeam2(a, b, alpha=1, beta=1):
         cupyx.scipy.sparse.csr_matrix: Result matrix.
 
     """
-    if not isinstance(a, cupyx.scipy.sparse.csr_matrix):
+    if not _is_csr_type(a):
         raise TypeError('unsupported type (actual: {})'.format(type(a)))
-    if not isinstance(b, cupyx.scipy.sparse.csr_matrix):
+    if not _is_csr_type(b):
         raise TypeError('unsupported type (actual: {})'.format(type(b)))
 
     # TODO(cuSPARSE): when SpGEAM ships, route ALL addition through
@@ -762,9 +777,9 @@ def spgeam(a, b, alpha=1, beta=1):
             return _cupy_csrgeam_int64(a, b, alpha, beta)
         return csrgeam2(a, b, alpha, beta)
 
-    if not isinstance(a, cupyx.scipy.sparse.csr_matrix):
+    if not _is_csr_type(a):
         raise TypeError('unsupported type (actual: {})'.format(type(a)))
-    if not isinstance(b, cupyx.scipy.sparse.csr_matrix):
+    if not _is_csr_type(b):
         raise TypeError('unsupported type (actual: {})'.format(type(b)))
     if not a.has_canonical_format:
         raise ValueError('expected canonical format for a')
@@ -934,9 +949,9 @@ def csrgemm2(a, b, d=None, alpha=1, beta=1):
 
     if a.ndim != 2 or b.ndim != 2:
         raise ValueError('expected 2-D matrices')
-    if not isinstance(a, cupyx.scipy.sparse.csr_matrix):
+    if not _is_csr_type(a):
         raise TypeError('unsupported type (actual: {})'.format(type(a)))
-    if not isinstance(b, cupyx.scipy.sparse.csr_matrix):
+    if not _is_csr_type(b):
         raise TypeError('unsupported type (actual: {})'.format(type(b)))
     if not a.has_canonical_format:
         raise ValueError('expected canonical format for a')
@@ -947,7 +962,7 @@ def csrgemm2(a, b, d=None, alpha=1, beta=1):
     if d is not None:
         if d.ndim != 2:
             raise ValueError('expected 2-D matrix for d')
-        if not isinstance(d, cupyx.scipy.sparse.csr_matrix):
+        if not _is_csr_type(d):
             raise TypeError('unsupported type (actual: {})'.format(type(d)))
         if not d.has_canonical_format:
             raise ValueError('expected canonical format for d')
@@ -1773,15 +1788,14 @@ def spmv(a, x, y=None, alpha=1, beta=0, transa=False):
     if not check_availability('spmv'):
         raise RuntimeError('spmv is not available.')
 
-    if isinstance(a, cupyx.scipy.sparse.csc_matrix):
+    if _is_csc_type(a):
         aT = a.T
-        if not isinstance(aT, cupyx.scipy.sparse.csr_matrix):
+        if not _is_csr_type(aT):
             msg = 'aT must be csr_matrix (actual: {})'.format(type(aT))
             raise TypeError(msg)
         a = aT
         transa = not transa
-    if not isinstance(a, (cupyx.scipy.sparse.csr_matrix,
-                          cupyx.scipy.sparse.coo_matrix)):
+    if not _is_csr_or_coo_type(a):
         raise TypeError('unsupported type (actual: {})'.format(type(a)))
     a_shape = a.shape if not transa else a.shape[::-1]
     if a_shape[1] != len(x):
@@ -1849,15 +1863,14 @@ def spmm(a, b, c=None, alpha=1, beta=0, transa=False, transb=False):
     if c is not None and not c.flags.f_contiguous:
         raise ValueError('expected F-contiguous array for c')
 
-    if isinstance(a, cupyx.scipy.sparse.csc_matrix):
+    if _is_csc_type(a):
         aT = a.T
-        if not isinstance(aT, cupyx.scipy.sparse.csr_matrix):
+        if not _is_csr_type(aT):
             msg = 'aT must be csr_matrix (actual: {})'.format(type(aT))
             raise TypeError(msg)
         a = aT
         transa = not transa
-    if not isinstance(a, (cupyx.scipy.sparse.csr_matrix,
-                          cupyx.scipy.sparse.coo_matrix)):
+    if not _is_csr_or_coo_type(a):
         raise TypeError('unsupported type (actual: {})'.format(type(a)))
     a_shape = a.shape if not transa else a.shape[::-1]
     b_shape = b.shape if not transb else b.shape[::-1]
@@ -1931,8 +1944,8 @@ def csrsm2(a, b, alpha=1.0, lower=True, unit_diag=False, transa=False,
     if not check_availability('csrsm2'):
         raise RuntimeError('csrsm2 is not available.')
 
-    if not (cupyx.scipy.sparse.isspmatrix_csr(a) or
-            cupyx.scipy.sparse.isspmatrix_csc(a)):
+    if not (cupyx.scipy.sparse.issparse(a)
+            and a.format in ('csr', 'csc')):
         raise ValueError('a must be CSR or CSC sparse matrix')
     if not isinstance(b, _cupy.ndarray):
         raise ValueError('b must be cupy.ndarray')
@@ -1999,12 +2012,12 @@ def csrsm2(a, b, alpha=1.0, lower=True, unit_diag=False, transa=False,
     else:
         raise ValueError('Unknown transa (actual: {})'.format(transa))
 
-    if cupyx.scipy.sparse.isspmatrix_csc(a):
+    if _is_csc_type(a):
         if transa == _cusparse.CUSPARSE_OPERATION_CONJUGATE_TRANSPOSE:
             raise ValueError('If matrix is CSC format and complex dtype,'
                              'transa must not be \'H\'')
         a = a.T
-        if not cupyx.scipy.sparse.isspmatrix_csr(a):
+        if not _is_csr_type(a):
             raise TypeError('expected CSR matrix after transpose')
         transa = 1 - transa
         fill_mode = 1 - fill_mode
@@ -2063,7 +2076,7 @@ def csrilu02(a, level_info=False):
     if not check_availability('csrilu02'):
         raise RuntimeError('csrilu02 is not available.')
 
-    if not cupyx.scipy.sparse.isspmatrix_csr(a):
+    if not _is_csr_type(a):
         raise TypeError('a must be CSR sparse matrix')
     if a.shape[0] != a.shape[1]:
         raise ValueError('invalid shape (a.shape: {})'.format(a.shape))
@@ -2267,9 +2280,9 @@ def spsm(a, b, alpha=1.0, lower=True, unit_diag=False, transa=False):
         raise ValueError(f'Unknown transa (actual: {transa})')
 
     # Check A's type and sparse format
-    if cupyx.scipy.sparse.isspmatrix_csr(a):
+    if _is_csr_type(a):
         pass
-    elif cupyx.scipy.sparse.isspmatrix_csc(a):
+    elif _is_csc_type(a):
         if transa == 'N':
             a = a.T
             transa = 'T'
@@ -2280,7 +2293,7 @@ def spsm(a, b, alpha=1.0, lower=True, unit_diag=False, transa=False):
             a = a.conj().T
             transa = 'N'
         lower = not lower
-    elif cupyx.scipy.sparse.isspmatrix_coo(a):
+    elif cupyx.scipy.sparse.issparse(a) and a.format == 'coo':
         pass
     else:
         raise ValueError('a must be CSR, CSC or COO sparse matrix')
@@ -2482,9 +2495,9 @@ def spgemm(a, b, alpha=1):
     """
     if a.ndim != 2 or b.ndim != 2:
         raise ValueError('expected 2-D matrices')
-    if not isinstance(a, cupyx.scipy.sparse.csr_matrix):
+    if not _is_csr_type(a):
         raise TypeError('unsupported type (actual: {})'.format(type(a)))
-    if not isinstance(b, cupyx.scipy.sparse.csr_matrix):
+    if not _is_csr_type(b):
         raise TypeError('unsupported type (actual: {})'.format(type(b)))
 
     # TODO(cuSPARSE): remove pure-CuPy fallback when all supported CUDA

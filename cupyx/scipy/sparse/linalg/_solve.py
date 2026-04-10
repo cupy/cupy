@@ -47,7 +47,7 @@ def lsqr(A, b):
 
     if runtime.is_hip:
         raise RuntimeError('HIP does not support lsqr')
-    if not sparse.isspmatrix_csr(A):
+    if not (sparse.issparse(A) and A.format == "csr"):
         A = sparse.csr_matrix(A)
     # csr_matrix is 2d
     _util._assert_stacked_square(A)
@@ -437,7 +437,7 @@ def spsolve_triangular(A, b, lower=True, overwrite_A=False, overwrite_b=False,
             cusparse.check_availability('csrsm2')):
         raise NotImplementedError
 
-    if not sparse.isspmatrix(A):
+    if not sparse.issparse(A):
         raise TypeError('A must be cupyx.scipy.sparse.spmatrix')
     if not isinstance(b, cupy.ndarray):
         raise TypeError('b must be cupy.ndarray')
@@ -453,16 +453,16 @@ def spsolve_triangular(A, b, lower=True, overwrite_A=False, overwrite_b=False,
         raise TypeError(f'unsupported dtype (actual: {A.dtype})')
 
     if cusparse.check_availability('spsm') and _should_use_spsm(b):
-        if not (sparse.isspmatrix_csr(A) or
-                sparse.isspmatrix_csc(A) or
-                sparse.isspmatrix_coo(A)):
+        if not (sparse.issparse(A)
+                and A.format in ('csr', 'csc', 'coo')):
             warnings.warn('CSR, CSC or COO format is required. Converting to '
                           'CSR format.', sparse.SparseEfficiencyWarning)
             A = A.tocsr()
         A.sum_duplicates()
         x = cusparse.spsm(A, b, lower=lower, unit_diag=unit_diagonal)
     elif cusparse.check_availability('csrsm2'):
-        if not (sparse.isspmatrix_csr(A) or sparse.isspmatrix_csc(A)):
+        if not (sparse.issparse(A)
+                and A.format in ('csr', 'csc')):
             warnings.warn('CSR or CSC format is required. Converting to CSR '
                           'format.', sparse.SparseEfficiencyWarning)
             A = A.tocsr()
@@ -502,7 +502,7 @@ def spsolve(A, b):
 
     if not cupyx.cusolver.check_availability('csrlsvqr'):
         raise NotImplementedError
-    if not sparse.isspmatrix(A):
+    if not sparse.issparse(A):
         raise TypeError('A must be cupyx.scipy.sparse.spmatrix')
     if not isinstance(b, cupy.ndarray):
         raise TypeError('b must be cupy.ndarray')
@@ -515,7 +515,7 @@ def spsolve(A, b):
         raise ValueError('matrix dimension mismatch (A.shape: {}, b.shape: {})'
                          .format(A.shape, b.shape))
 
-    if not sparse.isspmatrix_csr(A):
+    if not (sparse.issparse(A) and A.format == "csr"):
         warnings.warn('CSR format is required. Converting to CSR format.',
                       sparse.SparseEfficiencyWarning)
         A = A.tocsr()
@@ -639,7 +639,7 @@ class CusparseLU(SuperLU):
         """
         if not scipy_available:
             raise RuntimeError('scipy is not available')
-        if not sparse.isspmatrix_csr(a):
+        if not (sparse.issparse(a) and a.format == 'csr'):
             raise TypeError('a must be cupyx.scipy.sparse.csr_matrix')
 
         self.shape = a.shape
@@ -705,7 +705,7 @@ def splu(A, permc_spec=None, diag_pivot_thresh=None, relax=None,
     """
     if not scipy_available:
         raise RuntimeError('scipy is not available')
-    if not sparse.isspmatrix(A):
+    if not sparse.issparse(A):
         raise TypeError('A must be cupyx.scipy.sparse.spmatrix')
     if A.shape[0] != A.shape[1]:
         raise ValueError('A must be a square matrix (A.shape: {})'
@@ -758,7 +758,7 @@ def spilu(A, drop_tol=None, fill_factor=None, drop_rule=None,
 
     if not scipy_available:
         raise RuntimeError('scipy is not available')
-    if not sparse.isspmatrix(A):
+    if not sparse.issparse(A):
         raise TypeError('A must be cupyx.scipy.sparse.spmatrix')
     if A.shape[0] != A.shape[1]:
         raise ValueError('A must be a square matrix (A.shape: {})'
@@ -768,7 +768,7 @@ def spilu(A, drop_tol=None, fill_factor=None, drop_rule=None,
 
     if fill_factor == 1:
         # Computes ILU(0) on the GPU using cuSparse functions
-        if not sparse.isspmatrix_csr(A):
+        if not (sparse.issparse(A) and A.format == "csr"):
             a = A.tocsr()
         else:
             a = A.copy()
