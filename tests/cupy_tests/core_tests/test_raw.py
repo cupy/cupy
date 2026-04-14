@@ -445,12 +445,8 @@ class _TestRawBase:
             # kernel uses nvcc, with which I/O cannot be avoided
             files = os.listdir(self.cache_dir)
             for f in files:
-                if f == 'test_load_cubin.cu':
-                    count = 1
-                    break
-            else:
-                count = 0
-            assert len(files) == count
+                # only test_load_cubin_*.cu files should be present
+                assert re.match(r'test_load_cubin_(\d+)\.cu', f)
 
         self.in_memory_context.__exit__(*sys.exc_info())
         self.temporary_cache_dir_context.__exit__(*sys.exc_info())

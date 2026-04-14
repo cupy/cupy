@@ -404,6 +404,7 @@ class TestCuTensorReduction:
         yield
         cupy._core.set_routine_accelerators(old_accelerators)
 
+    @pytest.mark.thread_unsafe(reason="unsafe AssertFunctionIsCalled.")
     @testing.for_contiguous_axes()
     # sum supports less dtypes; don't test float16 as it's not as accurate?
     @testing.for_dtypes('qQfdFD')
