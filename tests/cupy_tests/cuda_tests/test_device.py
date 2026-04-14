@@ -154,6 +154,31 @@ class TestDeviceFromPointer(unittest.TestCase):
         assert cuda.device.from_pointer(cupy.empty(1).data.ptr).id == 0
 
 
+@pytest.mark.skipUnless(cuda.runtime.is_hip, 'HIP-specific test')
+class TestHIPComputeCapability(unittest.TestCase):
+    """Test that HIP compute_capability returns '9999' sentinel value."""
+
+    def test_compute_capability_is_sentinel(self):
+        d = cuda.Device(0)
+        cc = d.compute_capability
+        assert cc == '9999', (
+            f'Expected "9999" sentinel on HIP, got "{cc}"')
+
+    def test_compute_capability_int_castable(self):
+        d = cuda.Device(0)
+        cc = d.compute_capability
+        # Must be castable to int for threshold checks
+        assert int(cc) == 9999
+
+    @testing.multi_gpu(2)
+    def test_multi_gpu_same_sentinel(self):
+        d0 = cuda.Device(0)
+        d1 = cuda.Device(1)
+        # Both GPUs should return the same sentinel value
+        assert d0.compute_capability == '9999'
+        assert d1.compute_capability == '9999'
+
+
 @testing.multi_gpu(2)
 class TestDeviceSwitch(unittest.TestCase):
 

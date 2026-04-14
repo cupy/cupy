@@ -215,10 +215,19 @@ def _get_extra_include_dir_opts():
 
 @_util.memoize(for_each_device=True)
 def _get_arch():
+    if runtime.is_hip:
+        # On HIP, compute_capability returns '9999' (a pass-all sentinel),
+        # so we read the real GCN arch name directly for cache keying.
+        props = runtime.getDeviceProperties(device.Device().id)
+        try:
+            arch_name = props['gcnArchName'].decode()
+        except KeyError:  # ROCm < 3.6.0
+            arch_name = 'gfx' + str(props['gcnArch'])
+        # Strip feature flags (e.g. "gfx906:sramecc+:xnack-" -> "gfx906")
+        return arch_name.split(':')[0]
     # See Supported Compile Options section of NVRTC User Guide for
     # the maximum value allowed for `--gpu-architecture`.
     nvrtc_max_compute_capability = _get_max_compute_capability()
-
     arch = device.Device().compute_capability
     if arch in _tegra_archs:
         return arch

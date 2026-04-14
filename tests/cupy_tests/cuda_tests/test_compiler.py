@@ -91,6 +91,42 @@ class TestNvrtcArch(unittest.TestCase):
             compiler.CompileException, self._compile, '83')
 
 
+@unittest.skipUnless(cupy.cuda.runtime.is_hip, 'HIP specific tests')
+@pytest.mark.thread_unsafe(reason="Uses mock.patch.")
+class TestHIPArch(unittest.TestCase):
+    def setUp(self):
+        cupy.clear_memo()
+
+    def _check_get_arch(self, gcn_arch_name, expected_arch):
+        props = {'gcnArchName': gcn_arch_name.encode()}
+        with mock.patch('cupy.cuda.compiler.runtime') as mock_runtime, \
+                mock.patch('cupy.cuda.device.Device') as device_class:
+            mock_runtime.is_hip = True
+            mock_runtime.getDeviceProperties.return_value = props
+            device_class.return_value.id = 0
+            assert compiler._get_arch() == expected_arch
+        cupy.clear_memo()
+
+    def test_get_arch_hip_passthrough(self):
+        self._check_get_arch('gfx906', 'gfx906')
+
+    def test_get_arch_hip_other(self):
+        self._check_get_arch('gfx908', 'gfx908')
+
+    def test_get_arch_hip_hex(self):
+        self._check_get_arch('gfx90a', 'gfx90a')
+
+    def test_get_arch_hip_4digit(self):
+        self._check_get_arch('gfx1030', 'gfx1030')
+
+    def test_get_arch_hip_rdna3(self):
+        self._check_get_arch('gfx1100', 'gfx1100')
+
+    def test_get_arch_hip_strips_flags(self):
+        # Feature flags should be stripped from the arch name
+        self._check_get_arch('gfx906:sramecc+:xnack-', 'gfx906')
+
+
 class TestNvrtcStderr(unittest.TestCase):
 
     @unittest.skipIf(cupy.cuda.runtime.is_hip,
