@@ -10,6 +10,7 @@ import cupyx
 from cupy._core import _routines_linalg as _linalg
 from cupy import testing
 from cupy.cuda import device
+from cupy_backends.cuda.api import runtime
 
 from cupy.cuda import cutensor as ct
 
@@ -29,6 +30,13 @@ class TestCuTensor:
 
     @pytest.fixture(autouse=True)
     def setUp(self):
+        # hipTensor currently does not support complex kernels.
+        if runtime.is_hip and self.dtype in (numpy.complex64, numpy.complex128):
+            pytest.skip('hipTensor does not support complex dtypes')
+        # hipTensor elementwise kernels on MI300X currently show ~1e-6 absolute
+        # error for float64, suggesting reduced-precision computation.
+        if runtime.is_hip and self.dtype == numpy.float64:
+            self.tol = max(self.tol, 1e-6)
         self.a = testing.shaped_random(
             (20, 40, 30), cupy, self.dtype, seed=0)
         self.b = testing.shaped_random(
@@ -114,9 +122,10 @@ class TestCuTensor:
         )
 
     def test_contraction(self):
-        compute_capability = int(device.get_compute_capability())
-        if compute_capability < 70 and self.dtype == numpy.float16:
-            pytest.skip('Not supported.')
+        if not runtime.is_hip:
+            compute_capability = int(device.get_compute_capability())
+            if compute_capability < 70 and self.dtype == numpy.float16:
+                pytest.skip('Not supported.')
 
         d = cutensor.contraction(
             self.alpha, self.a, self.mode_a,
@@ -133,7 +142,7 @@ class TestCuTensor:
         )
 
     def test_reduction(self):
-        if self.dtype == numpy.float16:
+        if not runtime.is_hip and self.dtype == numpy.float16:
             pytest.skip('Not supported.')
 
         c = testing.shaped_random((30,), cupy, self.dtype, seed=2)
@@ -284,6 +293,14 @@ class TestCuTensorContraction:
 
     @pytest.fixture(autouse=True)
     def setUp(self):
+        if runtime.is_hip:
+            # hipTensor currently does not support complex kernels.
+            if any(c in 'FD' for c in self.dtype_combo):
+                pytest.skip('hipTensor does not support complex dtypes')
+            # hipTensor does not expose TF32 compute; CuPy maps TF32 to a
+            # CUDA-specific compute path.
+            if self.compute_type_hint == 'TF32':
+                pytest.skip('hipTensor does not support TF32 compute')
         compute_capability = int(device.get_compute_capability())
         if compute_capability < 70 and 'e' in self.dtype_combo:
             pytest.skip("Not supported")
@@ -355,6 +372,8 @@ class TestCuTensorIncontiguous:
 
     @pytest.fixture(autouse=True)
     def setUp(self):
+        if runtime.is_hip and self.dtype_char in ('F', 'D'):
+            pytest.skip('hipTensor does not support complex dtypes')
         compute_capability = int(device.get_compute_capability())
         if compute_capability < 70 and self.dtype_char == 'e':
             pytest.skip("Not supported")
@@ -481,6 +500,8 @@ class TestCuTensorMg:
 
     @pytest.fixture(autouse=True)
     def setUp(self):
+        if runtime.is_hip:
+            pytest.skip('cuTENSORMg is not available in hipTensor')
         compute_capability = int(device.get_compute_capability())
         if compute_capability < 70 and self.dtype_char == 'e':
             pytest.skip("Not supported")

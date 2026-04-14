@@ -1,16 +1,23 @@
 from __future__ import annotations
 
 import functools as _functools
+import os as _os
 import sys as _sys
 
 import numpy as _numpy
 
 from cupy import _environment
 from cupy import _version
+from cupy_backends.cuda.api import runtime as _runtime
 
 
 _environment._detect_duplicate_installation()  # NOQA
 _environment._setup_win32_dll_directory()  # NOQA
+# hipTensor currently assumes column-major packed strides by default when it
+# needs to infer strides. Since CuPy arrays are row-major by default, force the
+# default to row-major unless the user explicitly overrides it.
+if _runtime.is_hip:
+    _os.environ.setdefault('HIPTENSOR_DEFAULT_STRIDES_COL_MAJOR', 'OFF')
 _environment._preload_library('cutensor')  # NOQA
 
 
