@@ -209,7 +209,6 @@ def generate():
         'numpy', 'cupy', klass='ndarray', footnotes={
             'tostring': _deprecated,
 
-            'byteswap': _byte_order,
             'newbyteorder': _byte_order,
         })
     buf += [
