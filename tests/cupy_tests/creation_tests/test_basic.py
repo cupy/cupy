@@ -316,6 +316,37 @@ class TestBasic:
         with pytest.raises(TypeError):
             cupy.full_like(a, 1, subok=True)
 
+    @pytest.mark.slow
+    @pytest.mark.thread_unsafe(reason="large allocations")
+    @pytest.mark.parametrize('arr_factory,expected', [
+        (lambda: cupy.empty(2**31 - 1, dtype=cupy.int8), True),
+        (lambda: cupy.empty(2**31, dtype=cupy.int8), True),
+        (lambda: cupy.empty(2**31 + 1, dtype=cupy.int8)[::2], False),
+        (lambda: cupy.empty(2**31 // 8, dtype=cupy.complex64), True),
+        (lambda: cupy.empty(2**31 // 8 + 1, dtype=cupy.complex64), False),
+        # Regression test for gh-9750:
+        (lambda: cupy.empty(2**31 // 8, dtype=cupy.complex64).real, True),
+        (lambda: cupy.empty(2**31 // 8 + 1, dtype=cupy.complex64).real, False),
+        # broadcasting also causes this, test both broadcast_to and normal:
+        (lambda: cupy.broadcast_to(
+            cupy.empty(2**30 + 1, dtype=cupy.int8), (2, 2**30 + 1)), False),
+        (lambda: cupy.broadcast_arrays(
+            cupy.empty(2**30 + 1, dtype=cupy.int8), cupy.empty((2, 1))
+        )[0], False),
+        # Also test raw "broadcasting path":
+        (lambda: cupy.ndarray(
+            shape=(2**30 + 1, 2), strides=(1, 0), dtype=cupy.int8), False),
+        # These ones are debatable, the start pointers are OK, but the range
+        # extends beyond 32bits on a byte level:
+        (lambda: cupy.empty((2**31 + 1) // 3, dtype="i1,i1,i1"), False),
+        # Same cupy.byte_bounds as above, but strided (size * itemsize is OK):
+        (lambda: cupy.empty((2**31 + 1) // 3,
+         dtype="i1,i1,i1")[::2].view(), False),
+    ])
+    def test_index_32_bits(self, arr_factory, expected):
+        assert arr_factory()._index_32_bits == expected
+        cupy.get_default_memory_pool().free_all_blocks()
+
 
 @testing.parameterize(
     *testing.product({
