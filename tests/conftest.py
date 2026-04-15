@@ -106,7 +106,8 @@ if int(os.environ.get('CUPY_CI_ENABLE_GCP_KERNEL_CACHE', 0)) != 0:
 if int(os.environ.get('CUPY_TEST_RANDOM_SUBSAMPLE', '0')):
     seed = int(os.environ.get('_CUPY_TEST_SUBSAMPLE_SEED', '-1'))
     if seed == -1:
-        # Generate seed and store as environment variable for pytest-xdist.
+        # Generate seed and store as environment variable for pytest-xdist
+        # (and maybe to be picked up the `for_all_dtypes`).
         import secrets
 
         seed = secrets.randbits(64)
