@@ -22,7 +22,7 @@ if python -VV 2>&1 | grep -q "free-threading build"; then
         echo "Found free-threaded Python build and 'not slow' marker, running tests in parallel."
         # ft-tests are very slow, so run only a (largely) random subsample of parametrizations.
         export CUPY_TEST_RANDOM_SUBSAMPLE="1"
-        pytest_opts+=("--parallel-threads=4")
+        pytest_opts+=("--parallel-threads=2")
     fi
 fi
 
