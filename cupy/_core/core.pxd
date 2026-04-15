@@ -36,6 +36,7 @@ cdef class _ndarray_base:
         self, dtype, order=*, casting=*, subok=*, copy=*)
     cpdef _ndarray_base astype(
         self, dtype, order=*, casting=*, subok=*, copy=*)
+    cpdef _ndarray_base byteswap(self, inplace=*)
     cpdef _ndarray_base copy(self, order=*)
     cpdef _ndarray_base view(self, dtype=*, array_class=*)
     cpdef fill(self, value)

@@ -793,7 +793,53 @@ cdef class _ndarray_base:
         copy_ = True if copy else None
         return self._astype(dtype, order, casting, subok, copy_)
 
-    # TODO(okuta): Implement byteswap
+    cpdef _ndarray_base byteswap(self, inplace=False):
+        """Swap the bytes of the array elements.
+
+        Toggle between low-endian and big-endian data representation by
+        returning a byteswapped array, optionally swapped in-place.
+
+        Args:
+            inplace (bool): If ``True``, swap bytes in-place. Default is
+                ``False``.
+
+        Returns:
+            cupy.ndarray: The byteswapped array. If ``inplace`` is ``True``,
+            this is a view to self.
+
+        .. seealso:: :meth:`numpy.ndarray.byteswap`
+
+        """
+        dtype = self.dtype
+        itemsize = dtype.itemsize
+
+        if dtype.names is not None:
+            raise TypeError(
+                'byteswap is not supported for structured dtypes')
+
+        if itemsize == 1:
+            if inplace:
+                return self
+            return self.copy()
+
+        # Complex types: byteswap real and imaginary components independently
+        if numpy.issubdtype(dtype, numpy.complexfloating):
+            component_dtype = numpy.finfo(dtype).dtype
+            contig = _internal_ascontiguousarray(self).ravel()
+            float_view = contig.view(component_dtype)
+            swapped = _byteswap_dispatch(float_view)
+            result = _internal_ascontiguousarray(swapped)
+            result = result.view(dtype).reshape(self.shape)
+            if inplace:
+                elementwise_copy(result, self)
+                return self
+            return result
+
+        result = _byteswap_dispatch(self)
+        if inplace:
+            elementwise_copy(result, self)
+            return self
+        return result
 
     cpdef _ndarray_base copy(self, order='C'):
         """Returns a copy of the array.
@@ -2565,6 +2611,27 @@ cpdef function.Module compile_with_cache(
 cdef str _id = 'out0 = in0'
 
 cdef fill_kernel = ElementwiseKernel('T x', 'T y', 'y = x', 'cupy_fill')
+
+cdef _byteswap_kernel = ElementwiseKernel(
+    'T x', 'T y',
+    'y = cuda::std::byteswap(x)',
+    'cupy_byteswap',
+    preamble='#include <cuda/std/bit>')
+
+
+cdef _byteswap_dispatch(_ndarray_base a):
+    cdef int itemsize = a.dtype.itemsize
+    cdef _ndarray_base u, result
+    dtype = a.dtype
+    if itemsize == 2 or itemsize == 4 or itemsize == 8:
+        uint_dtype = numpy.dtype('uint{}'.format(itemsize * 8))
+        u = _internal_ascontiguousarray(a).view(uint_dtype)
+        result = _byteswap_kernel(u)
+        return result.view(dtype)
+    raise TypeError(
+        'byteswap not supported for dtype with '
+        'itemsize {}'.format(itemsize))
+
 
 cdef str _divmod_float = '''
     out0_type a = _floor_divide(in0, in1);
