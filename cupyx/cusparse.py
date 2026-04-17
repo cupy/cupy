@@ -1437,6 +1437,12 @@ def spmv(a, x, y=None, alpha=1, beta=0, transa=False):
     return y
 
 
+# cuSPARSE csrmm_alg1 gridDim.y overflow threshold (#9850).
+# The kernel sets gridDim.y = ceil(n / 16); hardware max is 65535.
+# Fixed in cuSPARSE 12.7.20+ (CUDA 13.2+).
+_SPMM_MAX_DENSE_COLS = 65535 * 16  # 1,048,560
+
+
 def spmm(a, b, c=None, alpha=1, beta=0, transa=False, transb=False):
     """Multiplication of sparse matrix and dense matrix.
 
@@ -1489,6 +1495,21 @@ def spmm(a, b, c=None, alpha=1, beta=0, transa=False, transb=False):
         raise ValueError('dimension mismatch')
     if a.nnz == 0:
         c.fill(0)
+        return c
+
+    if n > _SPMM_MAX_DENSE_COLS and getVersion() < 12720:
+        # Workaround for cuSPARSE csrmm_alg1 gridDim.y overflow (#9850)
+        for col0 in range(0, n, _SPMM_MAX_DENSE_COLS):
+            col1 = min(col0 + _SPMM_MAX_DENSE_COLS, n)
+            if transb:
+                # Row slice of F-contiguous is not F-contiguous; copy needed
+                b_chunk = _cupy.asfortranarray(b[col0:col1, :])
+            else:
+                # Column slice of F-contiguous is F-contiguous; no copy
+                b_chunk = b[:, col0:col1]
+            c_chunk = c[:, col0:col1]
+            spmm(a, b_chunk, c=c_chunk, alpha=alpha, beta=beta,
+                 transa=transa, transb=transb)
         return c
 
     desc_a = SpMatDescriptor.create(a)
