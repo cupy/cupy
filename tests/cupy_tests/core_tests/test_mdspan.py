@@ -25,12 +25,11 @@ ALL_TYPE_CHARS = '?bhilqBHILQefdFD'
 
 def _has_layout_stride_relaxed():
     """Check if the bundled CCCL has the layout_stride_relaxed header."""
-    cccl_dir = os.path.join(
-        os.path.dirname(os.path.dirname(cupy.__file__)),
-        'third_party', 'cccl',
-        'libcudacxx', 'include', 'cuda', '__mdspan',
-        'layout_stride_relaxed.h')
-    return os.path.isfile(cccl_dir)
+    header = os.path.join(
+        os.path.dirname(cupy.__file__),
+        '_core', 'include', 'cupy', '_cccl', 'libcudacxx',
+        'cuda', '__mdspan', 'layout_stride_relaxed.h')
+    return os.path.isfile(header)
 
 
 skip_no_relaxed_layout = pytest.mark.skipif(
@@ -131,9 +130,10 @@ __global__ void {{kernel_name}}(
     )
 
 
-# Kernel with compile-time size validation
+# Kernel with compile-time size validation (uses layout_stride_relaxed
+# because CuPy's mdspan struct includes an offset field)
 code_verify_with_validation = r"""
-#include <cuda/std/mdspan>
+#include <cuda/mdspan>
 #include <cupy/float16.cuh>
 #include <cupy/complex.cuh>
 
@@ -145,19 +145,19 @@ __global__ void verify_mdspan_with_size_check(
             IndexType,
             cuda::std::dynamic_extent,
             cuda::std::dynamic_extent>,
-        cuda::std::layout_stride> arr_in,
+        cuda::layout_stride_relaxed> arr_in,
     cuda::std::mdspan<
         T,
         cuda::std::extents<
             IndexType,
             cuda::std::dynamic_extent,
             cuda::std::dynamic_extent>,
-        cuda::std::layout_stride> arr_out
+        cuda::layout_stride_relaxed> arr_out
 ) {
     // Compile-time validation of mdspan size
-    // layout: [ptr | extents[2] | strides[2] | offset] = ptr + 5*IndexType
+    // layout: [ptr | extents[2] | strides[2] | offset(ptrdiff_t)]
     using mdspan_t = decltype(arr_in);
-    static_assert(sizeof(mdspan_t) == sizeof(void*) + 5*sizeof(IndexType),
+    static_assert(sizeof(mdspan_t) == sizeof(void*) + 4*sizeof(IndexType) + sizeof(ptrdiff_t),
                   "mdspan size does not match expected layout!");
 
     // Verify all extents are dynamic
@@ -520,6 +520,7 @@ class TestMdspan3D:
 @pytest.mark.skipif(
     cupy.cuda.runtime.is_hip, reason='libcudacxx not supported in HIP'
 )
+@skip_no_relaxed_layout
 class TestMdspanValidation:
     """Test mdspan with compile-time validation."""
 

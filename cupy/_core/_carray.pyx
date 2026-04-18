@@ -13,8 +13,7 @@ cdef fused index_t:
 cdef inline int populate_shape_strides(
         index_t val, size_t ndim, bint allow_unsafe,
         void* data, size_t& offset, int itemsize,
-        const shape_t& shape, const strides_t& strides,
-        long long mem_offset) except?-1:
+        const shape_t& shape, const strides_t& strides) except?-1:
     cdef int i
 
     for i in range(ndim):
@@ -33,13 +32,6 @@ cdef inline int populate_shape_strides(
         )
         offset += sizeof(index_t)
 
-    # Offset for layout_stride_relaxed support (see cupy/cupy#9772).
-    # For non-negative strides this is 0. For negative strides, this is the
-    # element distance from the base of the allocation to the logical origin,
-    # ensuring the layout mapping always returns a non-negative index.
-    (<index_t*>(<char*>(data) + offset))[0] = <index_t>mem_offset
-    offset += sizeof(index_t)
-
     return 0
 
 
@@ -53,9 +45,11 @@ cdef class mdspan(function.CPointer):
         assert ndim == strides.size()
         assert ndim <= MAX_NDIM
 
-        # Layout: [ptr | extents[N] | strides[N] | offset]
+        # Layout: [ptr | extents[N] | strides[N] | offset(ptrdiff_t)]
+        # The offset is always ptrdiff_t (8 bytes) to match
+        # layout_stride_relaxed's default offset_type.
         cdef size_t total_size = \
-            sizeof(void*) + (ndim * 2 + 1) * index_itemsize
+            sizeof(void*) + ndim * 2 * index_itemsize + sizeof(long long)
         cdef void* data = PyMem_Malloc(total_size)
         if data == NULL:
             raise MemoryError
@@ -96,12 +90,12 @@ cdef class mdspan(function.CPointer):
                     populate_shape_strides(
                         <int>(0),  # dummy
                         ndim, allow_unsafe, data, offset, itemsize,
-                        shape, strides, mem_offset)
+                        shape, strides)
                 elif index_itemsize == 8:
                     populate_shape_strides(
                         <long long>(0),  # dummy
                         ndim, allow_unsafe, data, offset, itemsize,
-                        shape, strides, mem_offset)
+                        shape, strides)
                 else:
                     raise ValueError(
                         f"Unsupported index_itemsize: {index_itemsize}"
@@ -110,13 +104,11 @@ cdef class mdspan(function.CPointer):
                 PyMem_Free(data)
                 self.ptr = 0
                 raise
-        else:
-            # 0-dim: no extents/strides, but still pack the offset field.
-            if index_itemsize == 4:
-                (<int*>(<char*>(data) + offset))[0] = <int>mem_offset
-            else:
-                (<long long*>(<char*>(data) + offset))[0] = mem_offset
-            offset += index_itemsize
+
+        # Offset for layout_stride_relaxed support (see cupy/cupy#9772).
+        # Always packed as ptrdiff_t (8 bytes) to match the C++ default.
+        (<long long*>(<char*>(data) + offset))[0] = mem_offset
+        offset += sizeof(long long)
 
         assert offset == total_size
 
