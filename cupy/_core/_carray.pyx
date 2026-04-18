@@ -1,3 +1,4 @@
+from libc.stddef cimport ptrdiff_t
 from libc.string cimport memcpy
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
 
@@ -49,7 +50,7 @@ cdef class mdspan(function.CPointer):
         # The offset is always ptrdiff_t (8 bytes) to match
         # layout_stride_relaxed's default offset_type.
         cdef size_t total_size = \
-            sizeof(void*) + ndim * 2 * index_itemsize + sizeof(long long)
+            sizeof(void*) + ndim * 2 * index_itemsize + sizeof(ptrdiff_t)
         cdef void* data = PyMem_Malloc(total_size)
         if data == NULL:
             raise MemoryError
@@ -64,7 +65,7 @@ cdef class mdspan(function.CPointer):
                 break
 
         cdef void* stored_ptr
-        cdef long long mem_offset
+        cdef ptrdiff_t mem_offset
         if has_negative_stride and not allow_unsafe:
             # Safe path for layout_stride_relaxed: store the base-of-
             # allocation pointer and compute the element offset from base
@@ -107,8 +108,8 @@ cdef class mdspan(function.CPointer):
 
         # Offset for layout_stride_relaxed support (see cupy/cupy#9772).
         # Always packed as ptrdiff_t (8 bytes) to match the C++ default.
-        (<long long*>(<char*>(data) + offset))[0] = mem_offset
-        offset += sizeof(long long)
+        (<ptrdiff_t*>(<char*>(data) + offset))[0] = mem_offset
+        offset += sizeof(ptrdiff_t)
 
         assert offset == total_size
 
