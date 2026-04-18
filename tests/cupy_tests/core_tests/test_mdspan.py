@@ -615,7 +615,7 @@ class TestMdspanValidation:
 
     @testing.for_all_dtypes()
     def test_mdspan_size_validation(self, dtype, index_type):
-        """Test that layout_stride mdspan works (extra offset bytes ignored)."""
+        """Test layout_stride mdspan (extra offset bytes ignored)."""
         shape = (4, 8)
         a = testing.shaped_random(shape, dtype=dtype)
         a_mdspan = a.mdspan(index_type=index_type)
@@ -1007,5 +1007,3 @@ class TestMdspanInt32Validation:
         # Should work with int64
         mdspan = a.mdspan(index_type=cupy.int64)
         assert mdspan is not None
-
-
