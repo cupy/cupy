@@ -323,7 +323,7 @@ class TestCubReduction:
     # TODO(leofang): test axis after support is added
     # don't test float16 as it's not as accurate?
     @pytest.mark.thread_unsafe(reason="unsafe AssertFunctionIsCalled.")
-    @testing.for_dtypes('bhilBHILfdF')
+    @testing.for_dtypes('bhilBHILfdFD')
     @testing.numpy_cupy_allclose(rtol=1E-4)
     def test_cub_cumsum(self, xp, dtype):
         if self.backend == 'block':
@@ -349,7 +349,7 @@ class TestCubReduction:
     # TODO(leofang): test axis after support is added
     # don't test float16 as it's not as accurate?
     @pytest.mark.thread_unsafe(reason="unsafe AssertFunctionIsCalled.")
-    @testing.for_dtypes('bhilBHILfdF')
+    @testing.for_dtypes('bhilBHILfdFD')
     @testing.numpy_cupy_allclose(rtol=1E-4)
     def test_cub_cumprod(self, xp, dtype):
         if self.backend == 'block':
