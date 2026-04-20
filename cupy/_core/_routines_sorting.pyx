@@ -36,6 +36,9 @@ cdef _ndarray_sort(_ndarray_base self, int axis):
 
     axis = internal._normalize_axis_index(axis, ndim)
 
+    if self._shape[axis] <= 1:
+        return  # already sorted (#9816)
+
     if axis == ndim - 1:
         data = self
     else:

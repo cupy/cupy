@@ -27,6 +27,11 @@ class TestSort(unittest.TestCase):
                 xp.sort(a)
 
     @testing.numpy_cupy_array_equal()
+    def test_sort_zero_length_axis(self, xp):
+        """Sorting along a zero-length axis is a no-op (#9816)."""
+        return xp.sort(xp.empty((2, 0)), axis=-1)
+
+    @testing.numpy_cupy_array_equal()
     def test_sort_two_or_more_dim(self, xp):
         a = testing.shaped_random((2, 3, 3), xp)
         a.sort()
