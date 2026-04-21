@@ -6,6 +6,7 @@ import subprocess
 import sys
 import random
 
+import pytest
 
 # enable NEP 50 weak promotion rules
 import numpy
