@@ -84,8 +84,14 @@ inline constexpr bool is_floating_point_v<thrust::complex<double>> = true;
 
 }  // namespace cuda
 
-template <> struct NumericTraits<complex<float>>  : BaseTraits<FLOATING_POINT, true, unsigned int, thrust::complex<float>> {};
-template <> struct NumericTraits<complex<double>> : BaseTraits<FLOATING_POINT, true, unsigned long long, thrust::complex<double>> {};
+// NumericTraits specializations for complex types were removed because
+// marking them as primitive (is_primitive=true) caused UB in CUB's
+// decoupled lookback scan (torn reads/writes for sizeof(T) >= 16).
+// CUB reduce/scan still works for complex types without these traits
+// because CuPy provides custom operator specializations (Max, Min,
+// ArgMax, ArgMin) below, and the dtype_dispatcher handles the type
+// dispatch at the C++ level.
+// See: https://github.com/NVIDIA/cccl/issues/8207
 
 // need specializations for initial values
 namespace std {

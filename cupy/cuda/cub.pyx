@@ -513,10 +513,6 @@ cpdef cub_scan(_ndarray_base arr, op):
         return None
 
     x_dtype = arr.dtype
-    if x_dtype == numpy.complex128:
-        # cub_device_scan seems buggy for complex128:
-        # https://github.com/cupy/cupy/pull/2919#issuecomment-574633590
-        return None
 
     cdef int dev_id = device.get_device_id()
     if x_dtype in _cub_support_dtype(False, dev_id):
