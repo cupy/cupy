@@ -223,3 +223,23 @@ def select(condlist, choicelist, default=0):
         cupy.copyto(result, choice, where=cond)
 
     return result
+
+
+def linalg_diagonal(x, /, *, offset=0):
+    """Returns the specified diagonals of a matrix (or a stack of matrices)
+    ``x``.
+
+    This function is Array API compatible, contrary to
+    :func:`cupy.diagonal`.
+
+    Args:
+        x (cupy.ndarray): Input array having shape (..., M, N).
+        offset (int): Offset specifying the off-diagonal relative to the main
+            diagonal.
+
+    Returns:
+        cupy.ndarray: The diagonals of ``x``.
+
+    .. seealso:: :func:`numpy.linalg.diagonal`
+    """
+    return diagonal(x, offset=offset, axis1=-2, axis2=-1)
