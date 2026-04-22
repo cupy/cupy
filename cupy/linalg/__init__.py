@@ -7,6 +7,10 @@
 from __future__ import annotations
 
 from cupy.linalg._product import matrix_power  # NOQA
+from cupy.linalg._product import matmul  # NOQA
+from cupy.linalg._product import multi_dot  # NOQA
+from cupy.linalg._product import outer  # NOQA
+from cupy.linalg._product import tensordot  # NOQA
 from cupy.linalg._product import linalg_cross as cross  # NOQA
 from cupy.linalg._product import vecdot  # NOQA
 from cupy._manipulation.transpose import matrix_transpose  # NOQA
@@ -17,6 +21,7 @@ from cupy._manipulation.transpose import matrix_transpose  # NOQA
 from cupy.linalg._decomposition import cholesky  # NOQA
 from cupy.linalg._decomposition import qr  # NOQA
 from cupy.linalg._decomposition import svd  # NOQA
+from cupy.linalg._decomposition import svdvals  # NOQA
 
 # -----------------------------------------------------------------------------
 # Matrix eigenvalues
@@ -34,6 +39,10 @@ from cupy.linalg._norms import cond  # NOQA
 from cupy.linalg._norms import det  # NOQA
 from cupy.linalg._norms import matrix_rank  # NOQA
 from cupy.linalg._norms import slogdet  # NOQA
+from cupy.linalg._norms import linalg_trace as trace  # NOQA
+from cupy.linalg._norms import matrix_norm  # NOQA
+from cupy.linalg._norms import vector_norm  # NOQA
+from cupy._indexing.indexing import linalg_diagonal as diagonal  # NOQA
 
 # -----------------------------------------------------------------------------
 # Solving equations and inverting matrices
@@ -53,9 +62,14 @@ from numpy.linalg import LinAlgError  # NOQA
 
 __all__ = [
     "matrix_power",
+    "matmul",
+    "multi_dot",
+    "outer",
+    "tensordot",
     "cholesky",
     "qr",
     "svd",
+    "svdvals",
     "eigh",
     "eig",
     "eigvalsh",
@@ -65,6 +79,10 @@ __all__ = [
     "det",
     "matrix_rank",
     "slogdet",
+    "trace",
+    "matrix_norm",
+    "vector_norm",
+    "diagonal",
     "solve",
     "tensorsolve",
     "inv",

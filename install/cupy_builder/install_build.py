@@ -176,6 +176,7 @@ def get_compiler_setting(ctx: Context, use_hip):
         else:
             assert PLATFORM_WIN32
             extra_compile_args.append('/std:c++17')
+            extra_compile_args.append('/Zc:preprocessor')
 
     if PLATFORM_WIN32:
         nvtx_path = _environment.get_nvtx_path()

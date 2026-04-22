@@ -228,7 +228,8 @@ class DeviceCompilerWin32(DeviceCompilerBase):
         postargs += ['-allow-unsupported-compiler']
         # "/bigobj" to silence `fatal error C1128: number of sections exceeded
         # object file format limit`
-        postargs += ['-Xcompiler', '/MD /bigobj', '-D_USE_MATH_DEFINES']
+        postargs += ['-Xcompiler',
+                     '/MD /bigobj /Zc:preprocessor', '-D_USE_MATH_DEFINES']
         # Bumping C++ standard from C++14 to C++17 for "if constexpr"
         num_threads = int(os.environ.get('CUPY_NUM_NVCC_THREADS', '2'))
         postargs += ['--std=c++17',
