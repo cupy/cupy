@@ -161,6 +161,20 @@ def cumsum(a, axis=None, dtype=None, out=None):
     return _math.scan_core(a, axis, _math.scan_op.SCAN_SUM, dtype, out)
 
 
+def cumulative_sum(x, /, *, axis=None, dtype=None, out=None):
+    """Returns the cumulative sum of an array along a given axis.
+
+    This function is Array API compatible.
+
+    .. seealso:: :func:`cupy.cumsum`
+    """
+    if axis is None and x.ndim > 1:
+        raise ValueError(
+            "For arrays which have more than one dimension "
+            "``axis`` argument is required.")
+    return cumsum(x, axis, dtype, out)
+
+
 def cumprod(a, axis=None, dtype=None, out=None):
     """Returns the cumulative product of an array along a given axis.
 
@@ -178,6 +192,20 @@ def cumprod(a, axis=None, dtype=None, out=None):
 
     """
     return _math.scan_core(a, axis, _math.scan_op.SCAN_PROD, dtype, out)
+
+
+def cumulative_prod(x, /, *, axis=None, dtype=None, out=None):
+    """Returns the cumulative product of an array along a given axis.
+
+    This function is Array API compatible.
+
+    .. seealso:: :func:`cupy.cumprod`
+    """
+    if axis is None and x.ndim > 1:
+        raise ValueError(
+            "For arrays which have more than one dimension "
+            "``axis`` argument is required.")
+    return cumprod(x, axis, dtype, out)
 
 
 def nancumsum(a, axis=None, dtype=None, out=None):

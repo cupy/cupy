@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from cupy.linalg._product import matrix_power  # NOQA
 from cupy.linalg._product import linalg_cross as cross  # NOQA
+from cupy.linalg._product import vecdot  # NOQA
+from cupy._manipulation.transpose import matrix_transpose  # NOQA
 
 # -----------------------------------------------------------------------------
 # Decompositions
@@ -70,5 +72,7 @@ __all__ = [
     "tensorinv",
     "lstsq",
     "cross",
+    "vecdot",
+    "matrix_transpose",
     "LinAlgError",
 ]

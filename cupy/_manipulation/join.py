@@ -164,3 +164,65 @@ def stack(tup, axis=0, out=None, *, dtype=None, casting='same_kind'):
     """
     return concatenate([cupy.expand_dims(x, axis) for x in tup], axis, out,
                        dtype=dtype, casting=casting)
+
+
+def block(arrays):
+    """Assembles an nd-array from nested lists of blocks.
+
+    Blocks in the innermost lists are concatenated along the last dimension
+    (-1), then these are concatenated along the second-last dimension (-2),
+    and so on until the outermost list is reached.
+
+    Args:
+        arrays (nested list of arrays): The blocks.
+
+    Returns:
+        cupy.ndarray: The assembled array.
+
+    .. seealso:: :func:`numpy.block`
+    """
+    if not isinstance(arrays, (list, tuple)):
+        return cupy.asanyarray(arrays)
+
+    def _get_depth(arrays):
+        if not isinstance(arrays, (list, tuple)):
+            return 0
+        if len(arrays) == 0:
+            raise ValueError('block() cannot be called with empty lists')
+        depths = [_get_depth(a) for a in arrays]
+        if any(d != depths[0] for d in depths):
+            raise ValueError(
+                'List depths are mismatched. All elements at the same '
+                'level must be lists or all must be non-lists.'
+            )
+        return depths[0] + 1
+
+    depth = _get_depth(arrays)
+
+    def _get_all_arrays(arrays):
+        if not isinstance(arrays, (list, tuple)):
+            return [cupy.asanyarray(arrays)]
+        all_arrs = []
+        for a in arrays:
+            all_arrs.extend(_get_all_arrays(a))
+        return all_arrs
+
+    all_arrays = _get_all_arrays(arrays)
+    max_ndim = max(a.ndim for a in all_arrays)
+    target_ndim = max(max_ndim, depth)
+
+    def _atleast_nd(a, nd):
+        if a.ndim >= nd:
+            return a
+        return a.reshape((1,) * (nd - a.ndim) + a.shape)
+
+    def _block_recursive(arrays, current_depth, target_ndim):
+        if not isinstance(arrays, (list, tuple)):
+            return _atleast_nd(cupy.asanyarray(arrays), target_ndim)
+
+        axis = -(depth - current_depth + 1)
+        res = [_block_recursive(a, current_depth + 1, target_ndim)
+               for a in arrays]
+        return concatenate(res, axis=axis)
+
+    return _block_recursive(arrays, 1, target_ndim)
