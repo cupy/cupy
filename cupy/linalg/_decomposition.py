@@ -597,3 +597,19 @@ def svd(a, full_matrices=True, compute_uv=True):
             return vt, s, u
     else:
         return s
+
+
+def svdvals(x, /):
+    """Returns the singular values of a matrix (or a stack of matrices) ``x``.
+
+    This function is Array API compatible.
+
+    Args:
+        x (cupy.ndarray): The input matrix with dimension ``(..., M, N)``.
+
+    Returns:
+        cupy.ndarray: Singular values.
+
+    .. seealso:: :func:`numpy.linalg.svdvals`
+    """
+    return svd(x, compute_uv=False)
