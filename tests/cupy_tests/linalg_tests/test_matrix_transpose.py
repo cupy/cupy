@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import unittest
 import numpy
 import cupy
 from cupy import testing
+
 
 class TestMatrixTranspose(unittest.TestCase):
 

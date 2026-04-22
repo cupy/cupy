@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import unittest
 import numpy
 import cupy
 from cupy import testing
+
 
 class TestCumulativeSumProd(unittest.TestCase):
 
@@ -40,7 +43,8 @@ class TestCumulativeSumProd(unittest.TestCase):
 
     @testing.for_all_dtypes(no_bool=True)
     def test_cumulative_sum_error(self, dtype):
-        # Test that cumulative_sum raises ValueError when axis is None and ndim > 1
+        # Test that cumulative_sum raises ValueError when axis is None
+        # and ndim > 1
         a = cupy.zeros((2, 2), dtype=dtype)
         with self.assertRaises(ValueError):
             cupy.cumulative_sum(a)
