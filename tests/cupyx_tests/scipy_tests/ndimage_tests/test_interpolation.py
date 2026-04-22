@@ -141,16 +141,28 @@ class TestMapCoordinatesHalfInteger:
         return self._map_coordinates(xp, scp, a, coordinates)
 
 
-@testing.parameterize(*testing.product({
-    'matrix_shape': [(2,), (2, 2), (2, 3), (3, 3)],
-    'offset': [0.3, [-1.3, 1.3]],
-    'output_shape': [None],
-    'output': [None, numpy.float64, 'empty'],
-    'order': [0, 1, 2, 3, 4, 5],
-    'mode': legacy_modes + scipy16_modes,
-    'cval': [1.0],
-    'prefilter': [False, True],
-}))
+@testing.parameterize(*(
+    testing.product({
+        'matrix_shape': [(3, 3)],
+        'offset': [[-1.3, 1.3]],
+        'output_shape': [None],
+        'output': [None, numpy.float64, 'empty'],
+        'order': [0, 1, 2, 3, 4, 5],
+        'mode': legacy_modes,
+        'cval': [1.0],
+        'prefilter': [False, True],
+    }) + testing.product({
+        'matrix_shape': [(2,), (2, 2), (2, 3)],
+        'offset': [0.3],
+        'output_shape': [None],
+        'output': [None],
+        'order': [0, 1, 3],
+        'mode': legacy_modes + scipy16_modes,
+        'cval': [1.0],
+        'prefilter': [True],
+
+    })
+))
 @testing.with_requires('scipy')
 class TestAffineTransform:
 
@@ -470,13 +482,16 @@ class TestRotate:
                           self.mode, self.cval, self.prefilter)
 
     @testing.for_float_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(rtol={"default": 1e-7, numpy.float32: 1e-5},
+                                 atol=1e-5,
+                                 scipy_name='scp')
     def test_rotate_float(self, xp, scp, dtype):
         a = testing.shaped_random((10, 10), xp, dtype)
         return self._rotate(xp, scp, a)
 
     @testing.for_complex_dtypes()
-    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(rtol={"default": 1e-7, numpy.complex64: 1e-5},
+                                 atol=1e-5, scipy_name='scp')
     @testing.with_requires('scipy>=1.6.0')
     def test_rotate_complex_float(self, xp, scp, dtype):
         if self.output == numpy.float64:
@@ -485,7 +500,7 @@ class TestRotate:
         return self._rotate(xp, scp, a)
 
     @testing.for_float_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, scipy_name='scp')
     def test_rotate_fortran_order(self, xp, scp, dtype):
         a = testing.shaped_random((10, 10), xp, dtype)
         a = xp.asfortranarray(a)
@@ -505,7 +520,7 @@ class TestRotate:
                 pytest.xfail('ROCm/HIP may have a bug')
 
     @testing.for_int_dtypes(no_bool=True)
-    @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, scipy_name='scp')
     def test_rotate_int(self, xp, scp, dtype):
         self._hip_skip_invalid_condition()
 

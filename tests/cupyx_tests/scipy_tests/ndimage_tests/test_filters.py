@@ -93,6 +93,12 @@ class FilterTestCaseBase:
         args = [getattr(self, param)
                 for param in FilterTestCaseBase.ARGS_PARAMS
                 if hasattr(self, param)]
+
+        # Some tests use a different "function" for NumPy vs. CuPy.
+        if hasattr(self, "func_or_kernel"):
+            assert not hasattr(self, "function")
+            args.append(self.get_func_or_kernel(xp))
+
         if wghts is not None:
             args.append(wghts)
 
@@ -660,9 +666,6 @@ class TestGenericFilter(FilterTestCaseBase):
 
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_filter(self, xp, scp):
-        # Need to deal with the different versions of the functions given to
-        # numpy vs cupy
-        self.function = self.get_func_or_kernel(xp)
         return self._filter(xp, scp)
 
 
@@ -702,9 +705,6 @@ class TestGenericFilterAxes(FilterTestCaseBase):
 
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_filter(self, xp, scp):
-        # Need to deal with the different versions of the functions given to
-        # numpy vs cupy
-        self.function = self.get_func_or_kernel(xp)
         return self._filter(xp, scp)
 
 
@@ -762,9 +762,6 @@ class TestGeneric1DFilter(FilterTestCaseBase):
 
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_filter(self, xp, scp):
-        # Need to deal with the different versions of the functions given to
-        # numpy vs cupy
-        self.function = self.get_func_or_kernel(xp)
         return self._filter(xp, scp)
 
 

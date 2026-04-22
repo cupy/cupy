@@ -15,7 +15,8 @@ cdef class _ndarray_base:
         public strides_t _strides
         readonly bint _c_contiguous
         readonly bint _f_contiguous
-        # To do fast indexing in the CArray class
+        # Whether the array memory can be addressed with 32bit signed
+        # integers. To do fast indexing in the CArray class.
         readonly bint _index_32_bits
         readonly object dtype
         readonly memory.MemoryPointer data
@@ -35,6 +36,7 @@ cdef class _ndarray_base:
         self, dtype, order=*, casting=*, subok=*, copy=*)
     cpdef _ndarray_base astype(
         self, dtype, order=*, casting=*, subok=*, copy=*)
+    cpdef _ndarray_base byteswap(self, inplace=*)
     cpdef _ndarray_base copy(self, order=*)
     cpdef _ndarray_base view(self, dtype=*, array_class=*)
     cpdef fill(self, value)
@@ -77,9 +79,9 @@ cdef class _ndarray_base:
     cpdef get(self, stream=*, order=*, out=*, blocking=*)
     cpdef set(self, arr, stream=*)
     cpdef _ndarray_base reduced_view(self, dtype=*)
-    cpdef _update_c_contiguity(self)
-    cpdef _update_f_contiguity(self)
-    cpdef _update_contiguity(self)
+    cdef _update_c_contiguity(self)
+    cdef _update_f_contiguity(self)
+    cdef _update_contiguity(self)
     cpdef _set_shape_and_strides(self, const shape_t& shape,
                                  const strides_t& strides,
                                  bint update_c_contiguity,
@@ -88,7 +90,7 @@ cdef class _ndarray_base:
                              const strides_t& strides,
                              bint update_c_contiguity,
                              bint update_f_contiguity, obj)
-    cpdef _set_contiguous_strides(
+    cdef _set_contiguous_strides(
         self, Py_ssize_t itemsize, bint is_c_contiguous)
     cdef CPointer get_pointer(self)
     cpdef object toDlpack(self)
@@ -100,7 +102,7 @@ cpdef _ndarray_base ascontiguousarray(_ndarray_base a, dtype=*)
 cpdef _ndarray_base asfortranarray(_ndarray_base a, dtype=*)
 
 cpdef Module compile_with_cache(str source, tuple options=*, arch=*,
-                                cachd_dir=*, prepend_cupy_headers=*,
+                                prepend_cupy_headers=*,
                                 backend=*, translate_cucomplex=*,
                                 enable_cooperative_groups=*,
                                 name_expressions=*, log_stream=*,

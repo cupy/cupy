@@ -2,7 +2,6 @@ import numpy as _numpy
 
 import cupy as _cupy
 from cupy import _util
-from cupy.cuda import device as _device
 
 cimport cython
 from libcpp cimport vector
@@ -21,23 +20,8 @@ from cupy.cuda.pinned_memory cimport alloc_pinned_memory, is_memory_pinned
 from cupy_backends.cuda.libs cimport cutensor
 from cupy.cuda import Device
 
-cdef dict _handles = {}
-cdef dict _tensor_descriptors = {}
-cdef dict _plan_preferences = {}
-cdef dict _plans = {}
 cdef dict _modes = {}
 cdef dict _scalars = {}
-cdef dict _elementwise_binary_operators = {}
-cdef dict _elementwise_trinary_operators = {}
-cdef dict _reduction_operators = {}
-cdef dict _contraction_operators = {}
-cdef dict _mg_handles = {}
-cdef dict _mg_tensor_descriptors = {}
-cdef dict _mg_copy_descriptors = {}
-cdef dict _mg_copy_plans = {}
-cdef dict _mg_contraction_descriptors = {}
-cdef dict _mg_contraction_finds = {}
-cdef dict _mg_contraction_plans = {}
 
 cdef dict _available_compute_capability = {
     'contraction': 60,
@@ -48,25 +32,34 @@ cdef dict _available_compute_capability = {
 }
 
 
-@_util.memoize(for_each_device=True)
-def check_availability(name):
-    if name in _available_compute_capability:
-        compute_capability = int(_device.get_compute_capability())
-        if compute_capability < _available_compute_capability[name]:
-            return False
-    return True
+cdef class CutensorHandle:
+    """Per-device, per-thread cuTENSOR handle with co-located caches.
 
-
-###############################################################################
-# Handle: This class encapsulates the opaque structure `cutensorHandle_t`
-# holding cuTENSOR's library context.
-###############################################################################
-
-cdef class Handle:
+    All cached descriptors, plans, and operators created from this handle
+    live here, so their lifetime is tied to the handle's lifetime. This
+    avoids the global-dict problems (unbounded growth from thread churn,
+    dangling pointers after handle destruction, handle-in-key bloat).
+    """
     cdef intptr_t _ptr
+    cdef dict _tensor_descriptors
+    cdef dict _plan_preferences
+    cdef dict _plans
+    cdef dict _elementwise_binary_operators
+    cdef dict _elementwise_trinary_operators
+    cdef dict _reduction_operators
+    cdef dict _contraction_operators
+    cdef dict _mg_handles
 
     def __init__(self):
         self._ptr = cutensor.create()
+        self._tensor_descriptors = {}
+        self._plan_preferences = {}
+        self._plans = {}
+        self._elementwise_binary_operators = {}
+        self._elementwise_trinary_operators = {}
+        self._reduction_operators = {}
+        self._contraction_operators = {}
+        self._mg_handles = {}
 
     def __dealloc__(self):
         if self._ptr is not 0:
@@ -76,6 +69,15 @@ cdef class Handle:
     @property
     def ptr(self):
         return self._ptr
+
+
+@_util.memoize(for_each_device=True)
+def check_availability(name):
+    if name in _available_compute_capability:
+        compute_capability = int(device.get_compute_capability())
+        if compute_capability < _available_compute_capability[name]:
+            return False
+    return True
 
 
 ###############################################################################
@@ -215,11 +217,8 @@ cdef class Plan:
         return self._ptr
 
 
-cpdef Handle _get_handle():
-    cdef int dev = device.get_device_id()
-    if dev not in _handles:
-        _handles[dev] = Handle()
-    return _handles[dev]
+cpdef CutensorHandle _get_handle():
+    return device.get_cutensor_handle()
 
 
 cpdef int _get_cutensor_dtype(dtype) except -1:
@@ -255,21 +254,20 @@ cpdef TensorDescriptor create_tensor_descriptor(_ndarray_base a):
     Returns:
         (TensorDescriptor): A instance of class TensorDescriptor.
     """
-    handle = _get_handle()
+    cdef CutensorHandle handle = _get_handle()
     alignment_req = a.itemsize
-    key = (handle.ptr, a.dtype, tuple(a.shape),
-           tuple(a.strides), alignment_req)
+    key = (a.dtype, tuple(a.shape), tuple(a.strides), alignment_req)
     if a.data.ptr & (alignment_req - 1) != 0:
         raise ValueError("Missaligned array")
-    if key not in _tensor_descriptors:
+    if key not in handle._tensor_descriptors:
         num_modes = a.ndim
         extent = _numpy.array(a.shape, dtype=_numpy.int64)
         stride = _numpy.array(a.strides, dtype=_numpy.int64) // a.itemsize
         cutensor_dtype = _get_cutensor_dtype(a.dtype)
-        _tensor_descriptors[key] = TensorDescriptor(
+        handle._tensor_descriptors[key] = TensorDescriptor(
             handle.ptr, num_modes, extent.ctypes.data, stride.ctypes.data,
             cutensor_dtype, alignment_req=alignment_req)
-    return _tensor_descriptors[key]
+    return handle._tensor_descriptors[key]
 
 
 cpdef PlanPreference create_plan_preference(
@@ -285,11 +283,12 @@ cpdef PlanPreference create_plan_preference(
     Returns:
         (PlanPreference): A instance of class PlanPreference.
     """
-    handle = _get_handle()
-    key = (handle.ptr, algo, jit_mode)
-    if key not in _plan_preferences:
-        _plan_preferences[key] = PlanPreference(handle.ptr, algo, jit_mode)
-    return _plan_preferences[key]
+    cdef CutensorHandle handle = _get_handle()
+    key = (algo, jit_mode)
+    if key not in handle._plan_preferences:
+        handle._plan_preferences[key] = PlanPreference(handle.ptr, algo,
+                                                       jit_mode)
+    return handle._plan_preferences[key]
 
 
 cpdef Plan create_plan(
@@ -304,11 +303,11 @@ cpdef Plan create_plan(
     Returns:
         (Plan): A instance of class Plan.
     """
-    handle = _get_handle()
-    key = (handle.ptr, desc.ptr, pref.ptr, ws_limit)
-    if key not in _plans:
-        _plans[key] = Plan(handle.ptr, desc.ptr, pref.ptr, ws_limit)
-    return _plans[key]
+    cdef CutensorHandle handle = _get_handle()
+    key = (desc.ptr, pref.ptr, ws_limit)
+    if key not in handle._plans:
+        handle._plans[key] = Plan(handle.ptr, desc.ptr, pref.ptr, ws_limit)
+    return handle._plans[key]
 
 
 cdef class Mode:
@@ -351,16 +350,14 @@ def create_mode(*mode):
 
 
 cdef inline Mode _create_mode_with_cache(axis_or_ndim):
-    cdef Mode mode
-    if axis_or_ndim in _modes:
-        mode = _modes[axis_or_ndim]
+    cdef Mode mode = <Mode>_modes.get(axis_or_ndim)
+    if mode is not None:
+        return mode
+    if type(axis_or_ndim) is int:
+        mode = Mode(tuple(range(axis_or_ndim)))
     else:
-        if type(axis_or_ndim) is int:
-            mode = Mode(tuple(range(axis_or_ndim)))
-        else:
-            mode = Mode(axis_or_ndim)
-        _modes[axis_or_ndim] = mode
-    return mode
+        mode = Mode(axis_or_ndim)
+    return <Mode>_modes.setdefault(axis_or_ndim, mode)
 
 
 cdef inline Mode _auto_create_mode(_ndarray_base array, mode):
@@ -390,12 +387,11 @@ cdef class _Scalar:
 cdef inline _Scalar _create_scalar(scale, dtype):
     cdef _Scalar scalar
     key = (scale, dtype)
-    if key in _scalars:
-        scalar = _scalars[key]
-    else:
-        scalar = _Scalar(scale, dtype)
-        _scalars[key] = scalar
-    return scalar
+    scalar = <_Scalar>_scalars.get(key)
+    if scalar is not None:
+        return scalar
+    scalar = _Scalar(scale, dtype)
+    return <_Scalar>_scalars.setdefault(key, scalar)
 
 
 cdef dict _elementwise_binary_compute_descs = {
@@ -448,19 +444,18 @@ cpdef OperationDescriptor create_elementwise_binary(
             'elementwise_binary ({}, {})'.format(ct_dtype_A, ct_dtype_C))
     if compute_desc == 0:
         compute_desc = compute_descs[ct_dtype_A][ct_dtype_C]
-    handle = _get_handle()
-    key = (handle.ptr,
-           desc_A.ptr, mode_A.data, op_A,
+    cdef CutensorHandle handle = _get_handle()
+    key = (desc_A.ptr, mode_A.data, op_A,
            desc_C.ptr, mode_C.data, op_C,
            desc_D.ptr, mode_D.data, op_AC, compute_desc)
-    if key not in _elementwise_binary_operators:
-        _elementwise_binary_operators[key] = OperationDescriptor()
-        _elementwise_binary_operators[key].create_elementwise_binary(
+    if key not in handle._elementwise_binary_operators:
+        handle._elementwise_binary_operators[key] = OperationDescriptor()
+        handle._elementwise_binary_operators[key].create_elementwise_binary(
             handle.ptr,
             desc_A.ptr, mode_A.data, op_A,
             desc_C.ptr, mode_C.data, op_C,
             desc_D.ptr, mode_D.data, op_AC, compute_desc)
-    return _elementwise_binary_operators[key]
+    return handle._elementwise_binary_operators[key]
 
 
 def elementwise_binary(
@@ -580,21 +575,20 @@ cpdef OperationDescriptor create_elementwise_trinary(
             'elementwise_trinary ({}, {})'.format(ct_dtype_A, ct_dtype_C))
     if compute_desc == 0:
         compute_desc = compute_descs[ct_dtype_A][ct_dtype_C]
-    handle = _get_handle()
-    key = (handle.ptr,
-           desc_A.ptr, mode_A.data, op_A,
+    cdef CutensorHandle handle = _get_handle()
+    key = (desc_A.ptr, mode_A.data, op_A,
            desc_B.ptr, mode_B.data, op_B,
            desc_C.ptr, mode_C.data, op_C,
            desc_D.ptr, mode_D.data, op_AB, op_ABC, compute_desc)
-    if key not in _elementwise_trinary_operators:
-        _elementwise_trinary_operators[key] = OperationDescriptor()
-        _elementwise_trinary_operators[key].create_elementwise_trinary(
+    if key not in handle._elementwise_trinary_operators:
+        handle._elementwise_trinary_operators[key] = OperationDescriptor()
+        handle._elementwise_trinary_operators[key].create_elementwise_trinary(
             handle.ptr,
             desc_A.ptr, mode_A.data, op_A,
             desc_B.ptr, mode_B.data, op_B,
             desc_C.ptr, mode_C.data, op_C,
             desc_D.ptr, mode_D.data, op_AB, op_ABC, compute_desc)
-    return _elementwise_trinary_operators[key]
+    return handle._elementwise_trinary_operators[key]
 
 
 def elementwise_trinary(
@@ -725,21 +719,20 @@ cpdef OperationDescriptor create_contraction(
             ' ({}, {}, {})'.format(ct_dtype_A, ct_dtype_B, ct_dtype_C))
     if compute_desc == 0:
         compute_desc = compute_descs[ct_dtype_A][ct_dtype_B][ct_dtype_C]
-    handle = _get_handle()
-    key = (handle.ptr,
-           desc_A.ptr, mode_A.data, op_A,
+    cdef CutensorHandle handle = _get_handle()
+    key = (desc_A.ptr, mode_A.data, op_A,
            desc_B.ptr, mode_B.data, op_B,
            desc_C.ptr, mode_C.data, op_C,
            compute_desc)
-    if key not in _contraction_operators:
-        _contraction_operators[key] = OperationDescriptor()
-        _contraction_operators[key].create_contraction(
+    if key not in handle._contraction_operators:
+        handle._contraction_operators[key] = OperationDescriptor()
+        handle._contraction_operators[key].create_contraction(
             handle.ptr,
             desc_A.ptr, mode_A.data, op_A,
             desc_B.ptr, mode_B.data, op_B,
             desc_C.ptr, mode_C.data, op_C,
             desc_C.ptr, mode_C.data, compute_desc)
-    return _contraction_operators[key]
+    return handle._contraction_operators[key]
 
 
 cdef _get_scalar_dtype(out_dtype):
@@ -860,20 +853,19 @@ cpdef OperationDescriptor create_reduction(
             '({}, {})'.format(ct_dtype_A, ct_dtype_C))
     if compute_desc == 0:
         compute_desc = compute_descs[ct_dtype_A][ct_dtype_C]
-    handle = _get_handle()
-    key = (handle.ptr,
-           desc_A.ptr, mode_A.data, op_A,
+    cdef CutensorHandle handle = _get_handle()
+    key = (desc_A.ptr, mode_A.data, op_A,
            desc_C.ptr, mode_C.data, op_C,
            op_reduce, compute_desc)
-    if key not in _reduction_operators:
-        _reduction_operators[key] = OperationDescriptor()
-        _reduction_operators[key].create_reduction(
+    if key not in handle._reduction_operators:
+        handle._reduction_operators[key] = OperationDescriptor()
+        handle._reduction_operators[key].create_reduction(
             handle.ptr,
             desc_A.ptr, mode_A.data, op_A,
             desc_C.ptr, mode_C.data, op_C,
             desc_C.ptr, mode_C.data,
             op_reduce, compute_desc)
-    return _reduction_operators[key]
+    return handle._reduction_operators[key]
 
 
 def reduction(
@@ -1097,11 +1089,23 @@ def _try_elementwise_binary_routine(
 cdef class MgHandle:
     cdef intptr_t _ptr
     cdef object _devices
+    cdef public dict _tensor_descriptors
+    cdef public dict _copy_descriptors
+    cdef public dict _copy_plans
+    cdef public dict _contraction_descriptors
+    cdef public dict _contraction_finds
+    cdef public dict _contraction_plans
 
     def __init__(self, devices):
         num_devices = len(devices)
         self._ptr = cutensor.createMg(num_devices, devices.ctypes.data)
         self._devices = devices
+        self._tensor_descriptors = {}
+        self._copy_descriptors = {}
+        self._copy_plans = {}
+        self._contraction_descriptors = {}
+        self._contraction_finds = {}
+        self._contraction_plans = {}
 
     def __dealloc__(self):
         if self._ptr is not 0:
@@ -1277,15 +1281,24 @@ cdef class MgContractionPlan:
     def ptr(self):
         return self._ptr
 
-cpdef MgHandle _get_mg_handle(devices=None):
+cpdef _get_mg_handle(devices=None):
+    """Get or create a multi-GPU handle, cached on the first device's
+    CutensorHandle for thread-local scoping.
+
+    cutensorMgHandle_t is a distinct opaque type from cutensorHandle_t
+    and cannot be substituted — it carries multi-device state that the
+    single-GPU handle does not have.
+    """
     if devices is None:
         devices = _numpy.arange(getDeviceCount(), dtype=_numpy.int32)
     else:
         devices = _numpy.asarray(devices, dtype=_numpy.int32)
+    cdef CutensorHandle ch = <CutensorHandle>(
+        device.Device(int(devices[0])).cutensor_handle)
     key = tuple(devices)
-    if key not in _mg_handles:
-        _mg_handles[key] = MgHandle(devices)
-    return _mg_handles[key]
+    if key not in ch._mg_handles:
+        ch._mg_handles[key] = MgHandle(devices)
+    return ch._mg_handles[key]
 
 
 class ndarray_mg:
@@ -1444,17 +1457,15 @@ cpdef MgTensorDescriptor create_mg_tensor_descriptor(a, devices=None):
         (MgTensorDescriptor): A instance of class MgTensorDescriptor.
     """
     handle = _get_mg_handle(devices)
-    key = (handle.ptr, *a.key)
-    if key not in _mg_tensor_descriptors:
-        # It seems that cuda_type is the same as cutensor_type,
-        # so just reuse the cutensor_type here
+    key = tuple(a.key)
+    if key not in handle._tensor_descriptors:
         cutensor_dtype = _get_cutensor_dtype(a.dtype)
-        _mg_tensor_descriptors[key] = MgTensorDescriptor(
+        handle._tensor_descriptors[key] = MgTensorDescriptor(
             handle.ptr, a.ndim, a.extent,
             a.element_stride, a.block_size,
             a.block_stride, a.device_count,
             a.num_devices, a.devices, cutensor_dtype)
-    return _mg_tensor_descriptors[key]
+    return handle._tensor_descriptors[key]
 
 
 cpdef MgCopyDescriptor create_mg_copy_descriptor(
@@ -1473,12 +1484,12 @@ cpdef MgCopyDescriptor create_mg_copy_descriptor(
         (MgCopyDescriptor): A instance of class MgCopyDescriptor.
     """
     handle = _get_mg_handle(devices)
-    key = (handle.ptr, descDst.ptr, modeDst.data, descSrc.ptr, modeSrc.data)
-    if key not in _mg_copy_descriptors:
-        _mg_copy_descriptors[key] = MgCopyDescriptor(
+    key = (descDst.ptr, modeDst.data, descSrc.ptr, modeSrc.data)
+    if key not in handle._copy_descriptors:
+        handle._copy_descriptors[key] = MgCopyDescriptor(
             handle.ptr, descDst.ptr, modeDst.data,
             descSrc.ptr, modeSrc.data)
-    return _mg_copy_descriptors[key]
+    return handle._copy_descriptors[key]
 
 
 cpdef MgCopyPlan create_mg_copy_plan(
@@ -1495,12 +1506,12 @@ cpdef MgCopyPlan create_mg_copy_plan(
         (MgCopyPlan): A instance of class MgCopyPlan.
     """
     handle = _get_mg_handle(devices)
-    key = (handle.ptr, desc.ptr, tuple(workspaceDeviceSize), workspaceHostSize)
-    if key not in _mg_copy_plans:
-        _mg_copy_plans[key] = MgCopyPlan(
+    key = (desc.ptr, tuple(workspaceDeviceSize), workspaceHostSize)
+    if key not in handle._copy_plans:
+        handle._copy_plans[key] = MgCopyPlan(
             handle.ptr, desc.ptr, workspaceDeviceSize.ctypes.data,
             workspaceHostSize)
-    return _mg_copy_plans[key]
+    return handle._copy_plans[key]
 
 
 def copyMg(dst, mode_Dst, src, mode_Src, deviceBuf=None, hostBuf=None,
@@ -1654,20 +1665,19 @@ cpdef MgContractionDescriptor create_mg_contraction_descriptor(
     if compute_desc == 0:
         compute_desc = compute_descs[ct_dtype_A][ct_dtype_B][ct_dtype_C]
     handle = _get_mg_handle(devices)
-    key = (handle.ptr,
-           descA.ptr, modeA.data,
+    key = (descA.ptr, modeA.data,
            descB.ptr, modeB.data,
            descC.ptr, modeC.data,
            descD.ptr, modeD.data,
            compute_desc)
-    if key not in _mg_contraction_descriptors:
-        _mg_contraction_descriptors[key]=MgContractionDescriptor(
+    if key not in handle._contraction_descriptors:
+        handle._contraction_descriptors[key] = MgContractionDescriptor(
             handle.ptr,
             descA.ptr, modeA.data,
             descB.ptr, modeB.data,
             descC.ptr, modeC.data,
             descD.ptr, modeD.data, compute_desc)
-    return _mg_contraction_descriptors[key]
+    return handle._contraction_descriptors[key]
 
 cpdef MgContractionFind create_mg_contraction_find(
         int algo=cutensor.CUTENSORMG_ALGO_DEFAULT, devices=None):
@@ -1682,11 +1692,10 @@ cpdef MgContractionFind create_mg_contraction_find(
         (MgContractionFind): A instance of class MgContractionFind.
     """
     handle = _get_mg_handle(devices)
-    key = (handle.ptr, algo)
-    if key not in _mg_contraction_finds:
-        _mg_contraction_finds[key]=MgContractionFind(
-            handle.ptr, algo)
-    return _mg_contraction_finds[key]
+    key = (algo,)
+    if key not in handle._contraction_finds:
+        handle._contraction_finds[key] = MgContractionFind(handle.ptr, algo)
+    return handle._contraction_finds[key]
 
 cpdef MgContractionPlan create_mg_contraction_plan(
         MgContractionDescriptor desc, MgContractionFind find,
@@ -1704,13 +1713,12 @@ cpdef MgContractionPlan create_mg_contraction_plan(
         (MgContractionPlan): A instance of class MgContractionPlan.
     """
     handle = _get_mg_handle(devices)
-    key = (handle.ptr, desc.ptr, find.ptr, tuple(workspaceDeviceSize),
-           workspaceHostSize)
-    if key not in _mg_contraction_plans:
-        _mg_contraction_plans[key]=MgContractionPlan(
-            handle.ptr, desc.ptr, find.ptr, workspaceDeviceSize.ctypes.data,
-            workspaceHostSize)
-    return _mg_contraction_plans[key]
+    key = (desc.ptr, find.ptr, tuple(workspaceDeviceSize), workspaceHostSize)
+    if key not in handle._contraction_plans:
+        handle._contraction_plans[key] = MgContractionPlan(
+            handle.ptr, desc.ptr, find.ptr,
+            workspaceDeviceSize.ctypes.data, workspaceHostSize)
+    return handle._contraction_plans[key]
 
 
 def contractionMg(alpha, A, modeA, B, modeB, beta, C, modeC,

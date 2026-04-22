@@ -229,6 +229,8 @@ class TestNdarrayCopy:
     @pytest.mark.xfail(
         runtime.is_hip,
         reason='ROCm may work differently in async D2D copy with streams')
+    @pytest.mark.thread_unsafe(
+        reason="order is unclear multithread. Also, hard crash in threaded!")
     def test_copy_multi_device_with_stream(self):
         # Kernel that takes long enough then finally writes values.
         src = _test_copy_multi_device_with_stream_src

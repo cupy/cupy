@@ -63,6 +63,7 @@ class TestSolve(unittest.TestCase):
             with pytest.raises(error_type):
                 xp.linalg.solve(a, b)
 
+    @testing.with_requires('numpy<2.4')
     @testing.numpy_cupy_allclose()
     def test_solve_singular_empty(self, xp):
         a = xp.zeros((3, 3))  # singular

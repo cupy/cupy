@@ -36,6 +36,9 @@ cdef _ndarray_sort(_ndarray_base self, int axis):
 
     axis = internal._normalize_axis_index(axis, ndim)
 
+    if self._shape[axis] <= 1:
+        return  # already sorted (#9816)
+
     if axis == ndim - 1:
         data = self
     else:
@@ -305,8 +308,15 @@ cdef _ndarray_base _ndarray_argpartition(self, kth, axis):
 def _partition_kernel(dtype):
     name = 'partition_kernel'
     merge_kernel = 'partition_merge_kernel'
-    dtype = _get_typename(dtype)
+    type_headers = set()
+    dtype = _get_typename(dtype, type_headers)
+    if not type_headers:
+        type_headers = ''
+    else:
+        type_headers = '\n'.join(sorted(type_headers)) + "\n\n"
+
     source = string.Template('''
+    ${type_headers}
     template<typename T>
     __device__ void bitonic_sort_step(CArray<T, 1, true> a,
             ptrdiff_t x, ptrdiff_t y, int i, ptrdiff_t s, ptrdiff_t w) {
@@ -411,7 +421,8 @@ def _partition_kernel(dtype):
         merge< ${dtype} >(a, k, id, z, m, k);
     }
     }
-    ''').substitute(name=name, merge_kernel=merge_kernel, dtype=dtype)
+    ''').substitute(name=name, merge_kernel=merge_kernel, dtype=dtype,
+                    type_headers=type_headers)
     module = compile_with_cache(source)
     return module.get_function(name), module.get_function(merge_kernel)
 
@@ -420,8 +431,15 @@ def _partition_kernel(dtype):
 def _argpartition_kernel(dtype):
     name = 'argpartition_kernel'
     merge_kernel = 'argpartition_merge_kernel'
-    dtype = _get_typename(dtype)
+    type_headers = set()
+    dtype = _get_typename(dtype, type_headers)
+    if not type_headers:
+        type_headers = ''
+    else:
+        type_headers = '\n'.join(sorted(type_headers)) + "\n\n"
+
     source = string.Template('''
+    ${type_headers}
     template<typename T>
     __device__ void bitonic_sort_step(
             CArray<T, 1, true> a, CArray<long long, 1, true> b,
@@ -530,6 +548,7 @@ def _argpartition_kernel(dtype):
         merge< ${dtype} >(a, b, k, id, z, m, k);
     }
     }
-    ''').substitute(name=name, merge_kernel=merge_kernel, dtype=dtype)
+    ''').substitute(name=name, merge_kernel=merge_kernel, dtype=dtype,
+                    type_headers=type_headers)
     module = compile_with_cache(source)
     return module.get_function(name), module.get_function(merge_kernel)

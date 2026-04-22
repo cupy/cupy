@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import unittest
-
 import numpy
 import pytest
 
@@ -11,7 +9,7 @@ from cupy import cuda
 from cupy import testing
 
 
-class TestElementwise(unittest.TestCase):
+class TestElementwise:
 
     def check_copy(self, dtype, src_id, dst_id):
         with cuda.Device(src_id):
@@ -31,7 +29,7 @@ class TestElementwise(unittest.TestCase):
     def test_copy_multigpu_nopeer(self, dtype):
         if cuda.runtime.deviceCanAccessPeer(0, 1) == 1:
             pytest.skip('peer access is available')
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             self.check_copy(dtype, 0, 1)
 
     @testing.multi_gpu(2)
@@ -71,24 +69,24 @@ class TestElementwise(unittest.TestCase):
         assert b.strides == b_cpu.strides
 
 
-class TestElementwiseInvalidShape(unittest.TestCase):
+class TestElementwiseInvalidShape:
 
     def test_invalid_shape(self):
-        with self.assertRaisesRegex(ValueError, 'Out shape is mismatched'):
+        with pytest.raises(ValueError, match='Out shape is mismatched'):
             f = cupy.ElementwiseKernel('T x', 'T y', 'y += x')
             x = cupy.arange(12).reshape(3, 4)
             y = cupy.arange(4)
             f(x, y)
 
 
-class TestElementwiseInvalidArgument(unittest.TestCase):
+class TestElementwiseInvalidArgument:
 
     def test_invalid_kernel_name(self):
-        with self.assertRaisesRegex(ValueError, 'Invalid kernel name'):
+        with pytest.raises(ValueError, match='Invalid kernel name'):
             cupy.ElementwiseKernel('T x', '', '', '1')
 
 
-class TestElementwiseType(unittest.TestCase):
+class TestElementwiseType:
 
     @testing.for_int_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal(accept_error=OverflowError)

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import unittest
 import sys
 
 import numpy
@@ -15,9 +14,9 @@ from cupy.testing._protocol_helpers import (
     DummyObjectWithCuPyGetNDArray, DummyObjectWithCudaArrayInterface)
 
 
-class TestSize(unittest.TestCase):
+class TestSize:
 
-    def tearDown(self):
+    def teardown_method(self):
         # Free huge memory for slow test
         cupy.get_default_memory_pool().free_all_blocks()
 
@@ -42,6 +41,7 @@ class TestSize(unittest.TestCase):
 
     @testing.numpy_cupy_equal()
     @testing.slow
+    @pytest.mark.thread_unsafe(reason="Allocation too large.")
     def test_size_huge(self, xp):
         a = xp.ndarray(2 ** 32, 'b')  # 4 GiB
         return xp.size(a)
@@ -57,7 +57,7 @@ _orders = {
 }
 
 
-class TestOrder(unittest.TestCase):
+class TestOrder:
 
     @testing.for_orders(_orders.keys())
     def test_ndarray(self, order):
@@ -114,26 +114,23 @@ class TestMinScalarType:
         assert cupy.min_scalar_type([obj, obj]) is arr.dtype
 
 
-@testing.parameterize(*testing.product({
-    'cxx': (None, '--std=c++17'),
-}))
-class TestCuPyHeaders(unittest.TestCase):
-
-    def setUp(self):
+class TestCuPyHeaders:
+    def setup_method(self):
         self.temporary_cache_dir_context = test_raw.use_temporary_cache_dir()
         self.cache_dir = self.temporary_cache_dir_context.__enter__()
         self.header = '\n'.join(['#include <' + h + '>'
                                  for h in core._cupy_header_list])
 
-    def tearDown(self):
+    def teardown_method(self):
         self.temporary_cache_dir_context.__exit__(*sys.exc_info())
 
-    def test_compiling_core_header(self):
+    @pytest.mark.parametrize("cxx", (None, '--std=c++17'))
+    def test_compiling_core_header(self, cxx):
         code = r'''
         extern "C" __global__ void _test_ker_() { }
         '''
         code = self.header + code
-        options = () if self.cxx is None else (self.cxx,)
+        options = () if cxx is None else (cxx,)
         ker = cupy.RawKernel(code, '_test_ker_',
                              options=options, backend='nvrtc')
         ker((1,), (1,), ())

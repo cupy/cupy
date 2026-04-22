@@ -51,7 +51,7 @@ library_records = {}
 
 
 def _make_cutensor_url(platform, filename):
-    # https://developer.download.nvidia.com/compute/cutensor/redist/libcutensor/windows-x86_64/libcutensor-windows-x86_64-2.3.1.0_cuda13-archive.zip
+    # https://developer.download.nvidia.com/compute/cutensor/redist/libcutensor/windows-x86_64/libcutensor-windows-x86_64-2.4.1.4_cuda13-archive.zip
     return (
         'https://developer.download.nvidia.com/compute/cutensor/' +
         f'redist/libcutensor/{platform}-x86_64/{filename}')
@@ -87,9 +87,9 @@ def _make_cutensor_record(cuda_version):
     # (2) CuPy started to use APIs introduced in minor versions
     cuda_major = cuda_version.split('.')[0]
     return __make_cutensor_record(
-        cuda_version, '2.3.1', '2.3.0',
-        f'libcutensor-linux-x86_64-2.3.1.0_cuda{cuda_major}-archive.tar.xz',
-        f'libcutensor-windows-x86_64-2.3.1.0_cuda{cuda_major}-archive.zip',
+        cuda_version, '2.4.1', '2.3.0',
+        f'libcutensor-linux-x86_64-2.4.1.4_cuda{cuda_major}-archive.tar.xz',
+        f'libcutensor-windows-x86_64-2.4.1.4_cuda{cuda_major}-archive.zip',
     )
 
 
@@ -133,7 +133,7 @@ _nccl_records.append(_make_nccl_record(
     'nccl_2.27.7-1+cuda13.0_x86_64.txz',
     'nccl_2.27.7-1+cuda13.0_aarch64.txz'))
 _nccl_records.append(_make_nccl_record(
-    '12.x', '2.25.1', '2.25.1', '2.16.5',
+    '12.x', '2.25.1', '2.25.1', '2.18.1',
     'nccl_2.25.1-1+cuda12.8_x86_64.txz',
     'nccl_2.25.1-1+cuda12.8_aarch64.txz'))
 library_records['nccl'] = _nccl_records

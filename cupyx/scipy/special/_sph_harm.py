@@ -7,8 +7,6 @@ https://github.com/scipy/scipy/blob/master/scipy/special/sph_harm.pxd
 from __future__ import annotations
 
 
-import warnings
-
 from cupy import _core
 
 from cupyx.scipy.special._poch import poch_definition
@@ -86,20 +84,6 @@ _sph_harm = _core.create_ufunc(
 
     """,
 )
-
-
-def sph_harm(m, n, theta, phi, out=None):
-    """Spherical Harmonic.
-
-    .. seealso:: :meth:`scipy.special.sph_harm`
-
-    """
-
-    warnings.warn(DeprecationWarning(
-        "`cupyx.scipy.special.sph_harm` is deprecated in CuPy v14 "
-        "and are planned to be removed in the future."))
-
-    return _sph_harm(m, n, theta, phi, out=out)
 
 
 def sph_harm_y(n, m, theta, phi, *, diff_n=0):

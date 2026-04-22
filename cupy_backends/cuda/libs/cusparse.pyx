@@ -1370,30 +1370,22 @@ cdef extern from '../../cupy_sparse.h' nogil:
     # Build-time version
     int CUSPARSE_VERSION
 
-ctypedef Status (*f_type)(...) nogil  # NOQA
-IF 11010 <= CUPY_CUDA_VERSION < 12000:
-    if _sys.platform == 'linux':
-        _libname = 'libcusparse.so.11'
-    else:
-        _libname = 'cusparse64_11.dll'
-ELIF 12000 <= CUPY_CUDA_VERSION < 13000:
-    if _sys.platform == 'linux':
-        _libname = 'libcusparse.so.12'
-    else:
-        _libname = 'cusparse64_12.dll'
-ELIF 13000 <= CUPY_CUDA_VERSION < 14000:
-    # libcusparse SO.VERSION are independent of the
-    # CUDA Toolkit version and 12 is correct
-    if _sys.platform == 'linux':
-        _libname = 'libcusparse.so.12'
-    else:
-        _libname = 'cusparse64_12.dll'
+ctypedef Status (*f_type)(...) noexcept nogil  # NOQA
+
+# TODO(leofang): Since we already require CUDA 12.0+, these code can probably
+# be removed entirely.
+cdef object _libname = None
+cdef object _handle = 0
+IF 12000 <= CUPY_CUDA_VERSION:
+    # We let libname be None here to avoid loading the library twice,
+    # which could potentially be loading different versions of the library.
+    from cuda import pathfinder
+    loaded_dl = pathfinder.load_nvidia_dynamic_lib('cusparse')
+    _handle = loaded_dl._handle_uint
 ELIF 0 < CUPY_HIP_VERSION:
     _libname = __file__
-ELSE:
-    _libname = None
 
-cdef SoftLink _lib = SoftLink(_libname, 'cusparse')
+cdef SoftLink _lib = SoftLink(_libname, 'cusparse', handle=_handle)
 # cuSPARSE 11.6+ (CUDA 11.3.1+)
 cdef f_type cusparseSpSM_createDescr = <f_type>_lib.get('SpSM_createDescr')
 cdef f_type cusparseSpSM_destroyDescr = <f_type>_lib.get('SpSM_destroyDescr')
@@ -1543,7 +1535,7 @@ cpdef inline check_status(int status):
 
 
 @cython.profile(False)
-cdef inline cuComplex complex_to_cuda(complex value):
+cdef inline cuComplex complex_to_cuda(complex value) noexcept:
     cdef cuComplex value_cuda
     value_cuda.x = value.real
     value_cuda.y = value.imag
@@ -1551,7 +1543,8 @@ cdef inline cuComplex complex_to_cuda(complex value):
 
 
 @cython.profile(False)
-cdef inline cuDoubleComplex double_complex_to_cuda(double complex value):
+cdef inline cuDoubleComplex double_complex_to_cuda(
+        double complex value) noexcept:
     cdef cuDoubleComplex value_cuda
     value_cuda.x = value.real
     value_cuda.y = value.imag

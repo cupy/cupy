@@ -14,7 +14,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
        && \
     apt-get -qqy install ccache git curl && \
     apt-get -qqy --allow-change-held-packages \
-            --allow-downgrades install 'libnccl2=2.17.*+cuda12.0' 'libnccl-dev=2.17.*+cuda12.0' 'libcutensor2-cuda-12=2.3.*' 'libcutensor2-dev-cuda-12=2.3.*'
+            --allow-downgrades install 'libnccl2=2.17.*+cuda12.0' 'libnccl-dev=2.17.*+cuda12.0' 'libcutensor2-cuda-12=2.4.*' 'libcutensor2-dev-cuda-12=2.4.*'
 
 ENV PATH "/usr/lib/ccache:${PATH}"
 
@@ -26,9 +26,10 @@ ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
 RUN pyenv install 3.10.18 && \
     pyenv global 3.10.18 && \
-    pip install -U setuptools pip wheel
+    pip install -U setuptools pip wheel && \
+    pip install -U google-cloud-storage
 
-RUN pip install -U 'numpy==2.0.*' 'scipy==1.14.*' 'optuna==3.*' 'cython==3.1.*'
+RUN pip install -U 'numpy==2.0.*' 'scipy==1.14.*' 'optuna==3.*' 'ml_dtypes==0.5.*' 'cython==3.1.*'
 RUN pip uninstall -y mpi4py cuda-python && \
     pip check
 

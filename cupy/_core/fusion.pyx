@@ -602,6 +602,9 @@ class _FusionHistory(object):
 
     def _emit_submodules_code(self):
         res = ''.join(self.preamble_set)
+        # TODO(seberg): The new fusion code injects this if needed, we should
+        # refactor the old one also to do this (or deprecate it?)
+        res += '#include "cupy/float16.cuh"\n'
         res += '\n'.join([_.code() for _ in self.submodules.values()])
         return res
 
@@ -928,8 +931,11 @@ def _call_reduction(fusion_op, *args, **kwargs):
         raise TypeError(mes.format(fusion_op._ops.name, len(args)))
 
     arg = args[0]
-    kwargs = dict([(key, value) for key, value in kwargs.items()
-                   if (key in ('axis', 'out') and value is not None)])
+    kwargs = {
+        key: value
+        for key, value in kwargs.items()
+        if (key in ('axis', 'out') and value is not None)
+    }
 
     if arg._is_postmap:
         # Multiple reduction

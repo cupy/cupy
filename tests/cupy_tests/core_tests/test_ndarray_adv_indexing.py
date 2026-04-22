@@ -718,3 +718,57 @@ class TestArrayAdvancedIndexingSetitemTranspose:
         slices = (numpy.array([1, 0]), slice(None), numpy.array([2, 1]))
         a[slices] = 1
         return a
+
+
+class TestHugeArrays:
+    # These tests require a lot of memory
+    @testing.slow
+    def test_advanced(self):
+        try:
+            arr = cupy.ones((1, 2**30), dtype=cupy.int8)
+            indx = cupy.zeros(3, dtype=cupy.int32)
+            res = arr[indx, :]
+            # sanity check, we mostly care about it not crashing.
+            assert res.sum() == 3 * 2**30
+            del res
+
+            arr[indx, :] = cupy.array([[1], [2], [3]], dtype=cupy.int8)
+            # Check 3 got written (order may not be strictly guaranteed)
+            assert arr.sum() == 2**30 * 3
+        except MemoryError:
+            pytest.skip("out of memory in test.")
+
+    @testing.slow
+    def test_take_array(self):
+        try:
+            arr = cupy.ones((1, 2**32), dtype=cupy.int8)
+            arr[0, 2**30] = 0  # We should see each of these once
+            arr[0, -1] = 0
+            res = arr.take(cupy.array([0, 0]), axis=0)
+            # sanity check, we mostly care about it not crashing.
+            assert res.sum() == 2 * (2**32 - 2)
+        except MemoryError:
+            pytest.skip("out of memory in test.")
+
+    @testing.slow
+    def test_take_scalar(self):
+        try:
+            arr = cupy.ones((1, 2**32), dtype=cupy.int8)
+            arr[0, 2**30] = 0  # We should see each of these once
+            arr[0, -1] = 0
+            res = arr.take(0, axis=0)
+            # sanity check, we mostly care about it not crashing.
+            assert res.sum() == 2**32 - 2
+        except MemoryError:
+            pytest.skip("out of memory in test.")
+
+    @testing.slow
+    def test_choose(self):
+        try:
+            choices = cupy.zeros((2, 2**31), dtype=cupy.int8)
+            choices[1, :] = 1
+            res = choices[1, :].choose(choices)
+            # sanity check, we mostly care about it not crashing.
+            assert res.sum() == 2**31
+        except MemoryError:
+            pytest.skip("out of memory in test.")

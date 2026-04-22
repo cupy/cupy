@@ -68,5 +68,7 @@ __all__ = [
     "inv",
     "pinv",
     "tensorinv",
+    "lstsq",
+    "cross",
     "LinAlgError",
 ]

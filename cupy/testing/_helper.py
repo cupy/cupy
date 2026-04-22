@@ -156,15 +156,15 @@ def shaped_random(
     from uniform distribution over :math:`[0, scale)`
     with specified dtype.
     """
-    numpy.random.seed(seed)
+    rng = numpy.random.RandomState(seed)
     dtype = numpy.dtype(dtype)
     if dtype == '?':
-        a = numpy.random.randint(2, size=shape)
+        a = rng.randint(2, size=shape)
     elif dtype.kind == 'c':
-        a = numpy.random.rand(*shape) + 1j * numpy.random.rand(*shape)
+        a = rng.rand(*shape) + 1j * rng.rand(*shape)
         a *= scale
     else:
-        a = numpy.random.rand(*shape) * scale
+        a = rng.rand(*shape) * scale
     return xp.asarray(a, dtype=dtype, order=order)
 
 
@@ -190,9 +190,8 @@ def shaped_sparse_random(
     if sp is None:
         sp = cupyx.scipy.sparse
     n_rows, n_cols = shape
-    numpy.random.seed(seed)
-
-    a = scipy.sparse.random(n_rows, n_cols, density).astype(dtype)
+    a = scipy.sparse.random(
+        n_rows, n_cols, density, random_state=seed).astype(dtype)
 
     try:
         return sp.coo_matrix(a).asformat(format)

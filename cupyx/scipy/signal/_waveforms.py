@@ -73,7 +73,12 @@ _sawtooth_kernel = cupy.ElementwiseKernel(
         out = nan("0xfff8000000000000ULL");
     }
 
-    const T tmod { fmod( t, 2.0 * M_PI ) };
+    // Use Python-compatible modulo: result is always in [0, 2*pi)
+    // C fmod can return negative values for negative inputs
+    T tmod { fmod( t, 2.0 * M_PI ) };
+    if ( tmod < 0 ) {
+        tmod += 2.0 * M_PI;
+    }
     const bool mask2 { ( ( 1 - mask1 ) && ( tmod < ( w * 2.0 * M_PI ) ) ) };
 
     if ( mask2 ) {
@@ -141,7 +146,12 @@ _square_kernel = cupy.ElementwiseKernel(
         y = nan("0xfff8000000000000ULL");
     }
 
-    const T tmod { fmod( t, 2.0 * M_PI ) };
+    // Use Python-compatible modulo: result is always in [0, 2*pi)
+    // C fmod can return negative values for negative inputs
+    T tmod { fmod( t, 2.0 * M_PI ) };
+    if ( tmod < 0 ) {
+        tmod += 2.0 * M_PI;
+    }
     const bool mask2 { ( ( 1 - mask1 ) && ( tmod < ( w * 2.0 * M_PI ) ) ) };
 
     if ( mask2 ) {
@@ -656,7 +666,7 @@ UNIT_KERNEL = r'''
 #include <cupy/math_constants.h>
 #include <cupy/carray.cuh>
 #include <cupy/complex.cuh>
-
+#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_headers?
 
 template<typename T>
 __global__ void unit_impulse(const int n, const int iidx, T* out) {
