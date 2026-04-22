@@ -249,6 +249,7 @@ from cupy._manipulation.transpose import moveaxis  # NOQA
 from cupy._manipulation.transpose import rollaxis  # NOQA
 from cupy._manipulation.transpose import swapaxes  # NOQA
 from cupy._manipulation.transpose import transpose  # NOQA
+from cupy._manipulation.transpose import matrix_transpose  # NOQA
 
 # NumPy 2.0 aliases
 permute_dims = transpose
@@ -488,6 +489,7 @@ from cupy.linalg._product import matmul  # NOQA
 from cupy.linalg._product import outer  # NOQA
 from cupy.linalg._product import tensordot  # NOQA
 from cupy.linalg._product import vdot  # NOQA
+from cupy.linalg._product import vecdot  # NOQA
 
 from cupy.linalg._norms import trace  # NOQA
 
@@ -504,9 +506,6 @@ from cupy._logic.content import isinf  # NOQA
 from cupy._logic.content import isnan  # NOQA
 from cupy._logic.content import isneginf  # NOQA
 from cupy._logic.content import isposinf  # NOQA
-
-from cupy._logic.truth import in1d  # NOQA
-from cupy._logic.truth import isin  # NOQA
 
 from cupy._logic.type_testing import iscomplex  # NOQA
 from cupy._logic.type_testing import iscomplexobj  # NOQA
@@ -606,8 +605,10 @@ from cupy._math.sumprod import prod  # NOQA
 from cupy._math.sumprod import product  # NOQA
 from cupy._math.sumprod import sum  # NOQA
 from cupy._math.sumprod import cumprod  # NOQA
+from cupy._math.sumprod import cumulative_prod  # NOQA
 from cupy._math.sumprod import cumproduct  # NOQA
 from cupy._math.sumprod import cumsum  # NOQA
+from cupy._math.sumprod import cumulative_sum  # NOQA
 from cupy._math.sumprod import ediff1d  # NOQA
 from cupy._math.sumprod import nancumprod  # NOQA
 from cupy._math.sumprod import nancumsum  # NOQA

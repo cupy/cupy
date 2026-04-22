@@ -124,6 +124,41 @@ def vdot(a, b):
     return _core.tensordot_core(a, b, None, 1, 1, a.size, ())
 
 
+def _vecdot(x1, x2, out=None):
+    if x1.dtype.kind == 'c':
+        x1 = x1.conj()
+    return cupy.multiply(x1, x2).sum(axis=-1, out=out)
+
+
+vecdot = _GUFunc(
+    _vecdot,
+    '(n),(n)->()',
+    supports_batched=True,
+    supports_out=True,
+    doc="""vecdot(x1, x2, /, *, axis=-1, out=None, **kwargs)
+
+    Vector dot product of two arrays.
+
+    Returns the dot product of two vectors. The dot product is computed over
+    the dimension specified by ``axis``. For complex input, it conjugates the
+    first argument.
+
+    Args:
+        x1 (cupy.ndarray): First input array.
+        x2 (cupy.ndarray): Second input array.
+        axis (int): Axis over which to compute the dot product.
+            The default is -1.
+        out (cupy.ndarray, optional): Output array.
+        **kwargs: ufunc keyword arguments.
+
+    Returns:
+        cupy.ndarray: The vector dot product of ``x1`` and ``x2``.
+
+    .. seealso:: :func:`numpy.vecdot`
+    """
+)
+
+
 def cross(a, b, axisa=-1, axisb=-1, axisc=-1, axis=None):
     """Returns the cross product of two vectors.
 
