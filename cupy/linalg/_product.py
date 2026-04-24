@@ -136,7 +136,7 @@ vecdot = _GUFunc(
     '(n),(n)->()',
     supports_batched=True,
     supports_out=True,
-    doc="""vecdot(x1, x2, /, *, axis=-1, out=None, **kwargs)
+    doc=r"""vecdot(x1, x2, /, \*, axis=-1, out=None, \*\*kwargs)
 
     Vector dot product of two arrays.
 
@@ -150,7 +150,7 @@ vecdot = _GUFunc(
         axis (int): Axis over which to compute the dot product.
             The default is -1.
         out (cupy.ndarray, optional): Output array.
-        **kwargs: ufunc keyword arguments.
+        \*\*kwargs: ufunc keyword arguments.
 
     Returns:
         cupy.ndarray: The vector dot product of ``x1`` and ``x2``.
