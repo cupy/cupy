@@ -174,3 +174,18 @@ When implementing or updating `numpy.*` compatible APIs (especially for NumPy 2.
    - Keep `numpy_cupy_implementation.md` updated with technical patterns and lessons learned.
 8. **PR:** Submit a PR with the changes.
     - Track the PR, make sure auto linters, formatters, and tests pass.
+
+## CI Stability and Best Practices
+
+To prevent common CI failures observed in this project, adhere to the following:
+
+### 1. Docstrings and Escape Sequences
+*   **Always use Raw Strings:** Use `r"""..."""` for all docstrings. Python 3.12+ emits `SyntaxWarning` for invalid escape sequences (like `\*` or `\d`) in standard strings.
+*   **Sphinx Strictness:** The CI runs Sphinx with `-p` (parallel) and `-W` (warnings-as-errors). A `SyntaxWarning` during import will crash the documentation build.
+*   **Validation:** Run `ruff check .` locally before pushing. It will catch `W605` (invalid-escape-sequence) errors.
+
+### 2. Symlink Integrity (Windows Development)
+*   **Symlink Corruption:** If developing on Windows, ensure your Git configuration handles symlinks correctly to avoid replacing them with large source code blobs.
+*   **Check Git Config:** Ensure `git config core.symlinks true` is set (requires Windows Developer Mode).
+*   **Avoid Overwrites:** Never replace a symlink file (mode `120000`) with the actual content of the target file. If a symlink is "broken" or showing as a text file containing a path, do not paste the source code into it.
+*   **Validation:** If a Git checkout fails with `File name too long`, check for symlinks that have been accidentally overwritten with source code using `git ls-tree -r HEAD`.
