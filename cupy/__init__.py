@@ -394,6 +394,8 @@ from numpy import iinfo  # NOQA
 
 from numpy import issubdtype  # NOQA
 
+from numpy import isdtype  # NOQA
+
 from numpy import mintypecode  # NOQA
 from numpy import typename  # NOQA
 
