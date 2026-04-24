@@ -31,6 +31,12 @@ def _is_in_ci():
     return ci_name != ''
 
 
+def pytest_configure(config):
+    if config.pluginmanager.hasplugin("xdist"):
+        # Some (few) tests should run grouped by class, so just force that.
+        config.option.dist = "loadscope"
+
+
 @pytest.hookimpl(tryfirst=True)
 def pytest_sessionstart(session):
     # Print installed packages
@@ -89,34 +95,36 @@ def pytest_sessionstart(session):
                 mem_fraction = int(100 / workers_on_my_gpu)
                 os.environ['CUPY_GPU_MEMORY_LIMIT'] = f"{mem_fraction}%"
 
+    # After setting up xdist do potentially non-trivial `cupy` configuration.
+    # (A simple cupy import by itself is OK, as it doesn't initialize CUDA.)
 
-if int(os.environ.get('CUPY_ENABLE_UMP', 0)) != 0:
-    # Make sure malloc is used in a stream-ordered fashion
-    import cupy as cp
-    cp.cuda.set_allocator(cp.cuda.MemoryPool(
-        cp.cuda.memory.malloc_system).malloc)
+    if int(os.environ.get('CUPY_ENABLE_UMP', 0)) != 0:
+        # Make sure malloc is used in a stream-ordered fashion
+        import cupy as cp
+        cp.cuda.set_allocator(cp.cuda.MemoryPool(
+            cp.cuda.memory.malloc_system).malloc)
 
-    import cupy._core.numpy_allocator as ac
-    import numpy_allocator
-    import ctypes
-    lib = ctypes.CDLL(ac.__file__)
+        import cupy._core.numpy_allocator as ac
+        import numpy_allocator
+        import ctypes
+        lib = ctypes.CDLL(ac.__file__)
 
-    class my_allocator(metaclass=numpy_allocator.type):
-        _calloc_ = ctypes.addressof(lib._calloc)
-        _malloc_ = ctypes.addressof(lib._malloc)
-        _realloc_ = ctypes.addressof(lib._realloc)
-        _free_ = ctypes.addressof(lib._free)
-    my_allocator.__enter__()
+        class my_allocator(metaclass=numpy_allocator.type):
+            _calloc_ = ctypes.addressof(lib._calloc)
+            _malloc_ = ctypes.addressof(lib._malloc)
+            _realloc_ = ctypes.addressof(lib._realloc)
+            _free_ = ctypes.addressof(lib._free)
+        my_allocator.__enter__()
 
+    if int(os.environ.get('CUPY_CI_ENABLE_GCP_KERNEL_CACHE', 0)) != 0:
+        from cupy.cuda.compiler import _set_kernel_cache_backend
+        from cupy_tests._gcp_kernel_cache_backend import GCPStorageCacheBackend
 
-if int(os.environ.get('CUPY_CI_ENABLE_GCP_KERNEL_CACHE', 0)) != 0:
-    from cupy.cuda.compiler import _set_kernel_cache_backend
-    from cupy_tests._gcp_kernel_cache_backend import GCPStorageCacheBackend
-
-    backend = GCPStorageCacheBackend(
-        bucket_name='tmp-asia-pfn-public-ci',
-        prefix='cupy-ci/kernel_cache_objects/'
-    )
-    print("GCP kernel cache: initializing local cache from GCS...", flush=True)
-    backend.initialize_local_cache()
-    _set_kernel_cache_backend(backend)
+        backend = GCPStorageCacheBackend(
+            bucket_name='tmp-asia-pfn-public-ci',
+            prefix='cupy-ci/kernel_cache_objects/'
+        )
+        print("GCP kernel cache: initializing local cache from GCS...",
+              flush=True)
+        backend.initialize_local_cache()
+        _set_kernel_cache_backend(backend)

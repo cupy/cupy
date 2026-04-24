@@ -185,4 +185,4 @@ class TestAsnumpy:
         else:
             ctx = contextlib.nullcontext()
         with ctx:
-            assert cupy.allclose(a, c)
+            testing.assert_array_equal(a, c)
