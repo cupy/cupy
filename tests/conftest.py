@@ -5,6 +5,7 @@ import os
 import subprocess
 import sys
 
+import pytest
 
 # enable NEP 50 weak promotion rules
 import numpy
@@ -30,18 +31,22 @@ def _is_in_ci():
     return ci_name != ''
 
 
-def pytest_configure(config):
+@pytest.hookimpl(tryfirst=True)
+def pytest_sessionstart(session):
     # Print installed packages
     if _is_in_ci() and _is_pip_installed():
         print("***** Installed packages *****", flush=True)
         subprocess.check_call([sys.executable, '-m', 'pip', 'freeze', '--all'])
 
-    if config.pluginmanager.hasplugin("xdist"):
+    if session.config.pluginmanager.hasplugin("xdist"):
+        plugin = session.config.pluginmanager.getplugin("xdist")
+        xdist_active = plugin.is_xdist_master(session)
+
         n_gpu = os.environ.get('CUPY_TEST_GPU_LIMIT')
         worker_id = os.environ.get('PYTEST_XDIST_WORKER', 'master')
 
         if n_gpu is None:
-            if worker_id == 'master':
+            if xdist_active and worker_id == 'master':
                 print('\nTIP: when using pytest-xdist, you can automatically '
                       'rotate CUDA_VISIBLE_DEVICES for each test worker by '
                       'setting CUPY_TEST_GPU_LIMIT environment variable.\n')
@@ -55,6 +60,10 @@ def pytest_configure(config):
                 devices = [str(k) for k in range(n_gpu)]
             else:
                 devices = devices.split(',')[:n_gpu]
+                if len(devices) < n_gpu:
+                    raise ValueError(
+                        f"Fewer CUDA_VISIBLE_DEVICES ({len(devices)}) "
+                        f"than CUPY_TEST_GPU_LIMIT ({n_gpu})")
 
             if worker_id == 'master':
                 print(f'\nNOTE: Setting workers to use a shifted version of:'
@@ -68,6 +77,17 @@ def pytest_configure(config):
                 devices.rotate(-w)
                 devices = ','.join(devices)
                 os.environ['CUDA_VISIBLE_DEVICES'] = devices
+
+                # Make sure workers don't starve each other if sharing GPUs
+                # by setting the memory limit to be split across workers
+                # (ignore potential distributed tests here).
+                # `PYTEST_XDIST_WORKER_COUNT` is alwasy set at this point.
+                n_workers = int(os.environ.get('PYTEST_XDIST_WORKER_COUNT'))
+                workers_on_my_gpu, remainder = divmod(n_workers, n_gpu)
+                if w % n_gpu < remainder:
+                    workers_on_my_gpu += 1
+                mem_fraction = int(100 / workers_on_my_gpu)
+                os.environ['CUPY_GPU_MEMORY_LIMIT'] = f"{mem_fraction}%"
 
 
 if int(os.environ.get('CUPY_ENABLE_UMP', 0)) != 0:

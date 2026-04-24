@@ -17,6 +17,12 @@ if [[ "${MARKER}" != "" ]]; then
     pytest_opts+=(-m "${MARKER}")
 fi
 
+if [[ "${MARKER}" =~ "not slow" ]]; then
+    # I we are not running slow tests (and not high memory)
+    # running tests in parallel should be safe.
+    pytest_opts+=("-n2")
+fi
+
 # TODO: support coverage reporting
 python3 -m pip install --user pytest-timeout pytest-xdist
 
