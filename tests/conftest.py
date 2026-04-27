@@ -93,7 +93,8 @@ def pytest_sessionstart(session):
                 if w % n_gpu < remainder:
                     workers_on_my_gpu += 1
                 mem_fraction = int(100 / workers_on_my_gpu)
-                os.environ['CUPY_GPU_MEMORY_LIMIT'] = f"{mem_fraction}%"
+                if os.environ.get('CUPY_GPU_MEMORY_LIMIT') is None:
+                    os.environ['CUPY_GPU_MEMORY_LIMIT'] = f"{mem_fraction}%"
 
     # After setting up xdist do potentially non-trivial `cupy` configuration.
     # (A simple cupy import by itself is OK, as it doesn't initialize CUDA.)
