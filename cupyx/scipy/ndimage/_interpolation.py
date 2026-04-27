@@ -322,7 +322,7 @@ def map_coordinates(input, coordinates, output=None, order=3,
 
 def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
                      order=3, mode='constant', cval=0.0, prefilter=True, *,
-                     texture_memory=False, float64_coords=True):
+                     texture_memory=False, float64_coords=False):
     """Apply an affine transformation.
 
     Given an output image pixel index vector ``o``, the pixel value is
@@ -379,6 +379,8 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
             - ``order=0`` (nearest neighbor) and ``order=1`` (linear
                 interpolation)
             - NVIDIA CUDA GPUs
+        float64_coords (bool): If True, force double precision computations
+            internally as in scipy.ndimage.
 
     Returns:
         cupy.ndarray or None:
@@ -434,13 +436,13 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
     float_dtype = cupy.float64
     if not float64_coords:
         float_dtype = cupy.promote_types(input.real.dtype, cupy.float32)
+    matrix = matrix.astype(float_dtype, copy=False)
     if mode == 'opencv' or mode == '_opencv_edge':
         if matrix.ndim == 1:
             matrix = cupy.diag(matrix)
-        coordinates = cupy.indices(output_shape, dtype=cupy.float64)
+        coordinates = cupy.indices(output_shape, dtype=float_dtype)
         coordinates = cupy.dot(matrix, coordinates.reshape((input.ndim, -1)))
         coordinates += cupy.expand_dims(cupy.asarray(offset), -1)
-        coordinates = coordinates.astype(float_dtype, copy=False)
         ret = _util._get_output(output, input, shape=output_shape)
         ret[:] = map_coordinates(input, coordinates, ret.dtype, order, mode,
                                  cval, prefilter).reshape(output_shape)
@@ -455,7 +457,6 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
     integer_output = output.dtype.kind in 'iu'
     _util._check_cval(mode, cval, integer_output)
     large_int = max(_prod(input.shape), _prod(output_shape)) > 1 << 31
-    matrix = matrix.astype(float_dtype, copy=False)
     if matrix.ndim == 1:
         offset = cupy.asarray(offset, dtype=float_dtype)
         offset = -offset / matrix
@@ -661,7 +662,7 @@ def shift(input, shift, output=None, order=3, mode='constant', cval=0.0,
             input.ndim, large_int, input.shape, mode, cval=cval, order=order,
             integer_output=integer_output, nprepad=nprepad,
             float_dtype=float_dtype)
-        shift = cupy.asarray(shift, dtype=cupy.float64, order='C')
+        shift = cupy.asarray(shift, dtype=float_dtype, order='C')
         if shift.ndim != 1:
             raise ValueError('shift must be 1d')
         if shift.size != filtered.ndim:
@@ -789,6 +790,6 @@ def zoom(input, zoom, output=None, order=3, mode='constant', cval=0.0,
             input.ndim, large_int, output_shape, mode, order=order,
             integer_output=integer_output, grid_mode=grid_mode,
             nprepad=nprepad, float_dtype=float_dtype)
-        zoom = cupy.asarray(zoom, dtype=cupy.float64)
+        zoom = cupy.asarray(zoom, dtype=float_dtype)
         kern(filtered, zoom, output)
     return output
