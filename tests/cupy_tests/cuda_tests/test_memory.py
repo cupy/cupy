@@ -886,6 +886,9 @@ class TestAllocator(unittest.TestCase):
             self._ptr = arr.data.ptr
             del arr
             self._error = False
+            # Wait for job to finish, otherwise shutdown seems unsafe
+            # when using the PTDS and work is still in progress.
+            stream.synchronize()
 
         # Run in main thread.
         self._ptr = -1
@@ -1094,6 +1097,9 @@ free_bytes_watermark = 0
                     and cupy.cuda.driver.get_build_version() < 11020,
                     reason='malloc_async is supported since CUDA 11.2')
 @pytest.mark.thread_unsafe(reason="tests shared self.pool properties")
+@pytest.mark.xdist_group(
+    # use of free/used_bytes_watermark assumes single worker
+    "memory-async-pool-tests")
 class TestMemoryAsyncPool:
 
     def setup_method(self):

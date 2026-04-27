@@ -34,7 +34,7 @@ def _is_in_ci():
 def pytest_configure(config):
     if config.pluginmanager.hasplugin("xdist"):
         # Some (few) tests should run grouped by class, so just force that.
-        config.option.dist = "loadscope"
+        config.option.dist = "loadgroup"
 
 
 @pytest.hookimpl(tryfirst=True)
