@@ -150,6 +150,8 @@ cpdef create_ufunc(name, ops, routine=*, preamble=*, doc=*,
                    default_casting=*, loop_prep=*, out_ops=*,
                    cutensor_op=*, scatter_op=*)
 
+cpdef str _full_mask_hex()
+
 cdef tuple _get_arginfos(list args)
 
 cdef str _get_kernel_params(tuple params, tuple arginfos, type_headers=*)
