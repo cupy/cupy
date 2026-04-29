@@ -2817,15 +2817,13 @@ class TestInt64FollowupSlicingFlags:
         assert r.nnz == 0
 
 
-class TestInt64FollowupCumsumWorkaround:
-    """cupy.cumsum silently fails on arrays > 2^31 elements.
-    _cumsum_int64 splits into chunks."""
+class TestInt64FollowupCumsum:
+    """cupy.cumsum works for arrays > 2^31 elements after #9867."""
 
     def test_cumsum_int64_basic(self):
-        from cupyx.cusparse import _cumsum_int64
         for dtype in [cupy.int32, cupy.int64]:
             a = cupy.array([0, 1, 0, 2, 0, 3], dtype=dtype)
-            _cumsum_int64(a)
+            cupy.cumsum(a, out=a)
             cupy.testing.assert_array_equal(
                 a, cupy.array([0, 1, 1, 3, 3, 6]))
 

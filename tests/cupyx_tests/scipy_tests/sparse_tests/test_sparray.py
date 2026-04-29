@@ -488,6 +488,14 @@ class TestCsrArrayRemovedMethods:
         assert self.arr.ndim == 2
 
 
+# These tests intentionally exercise the deprecated matrix-only APIs to
+# verify they remain present on ``spmatrix`` (and absent from ``sparray``).
+# The deprecation warnings are silenced here; the warning behavior itself
+# is exercised by ``test_base.py::TestDeprecatedSpmatrixApi``.
+@pytest.mark.filterwarnings(
+    "ignore:`spmatrix\\.(A|H|asfptype|get_shape|getformat|getmaxprint|"
+    "set_shape)`:DeprecationWarning"
+)
 class TestCsrMatrixLegacyMethods:
 
     @pytest.fixture(autouse=True)

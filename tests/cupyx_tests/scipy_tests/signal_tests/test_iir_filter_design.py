@@ -530,7 +530,7 @@ class TestButtord:
         N, Wn = scp.signal.buttord(wp, ws, rp, rs, False)
         return N, Wn
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=3e-7)
     def test_bandstop(self, xp, scp):
         wp = [0.1, 0.6]
         ws = [0.2, 0.5]

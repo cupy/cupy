@@ -592,10 +592,6 @@ class Generator:
         Returns:
             cupy.ndarray: Samples drawn from the hypergeometric distribution.
 
-        .. warning::
-
-            This function may synchronize the device.
-
         .. seealso::
             :meth:`numpy.random.Generator.hypergeometric`
         """
@@ -603,6 +599,15 @@ class Generator:
         cdef _ndarray_base ngood_a
         cdef _ndarray_base nbad_a
         cdef _ndarray_base nsample_a
+
+        # Array inputs are not validated here; the kernel dispatcher
+        # handles out-of-range values safely.
+        if type(ngood) in (float, int) and ngood < 0:
+            raise ValueError('ngood < 0')
+        if type(nbad) in (float, int) and nbad < 0:
+            raise ValueError('nbad < 0')
+        if type(nsample) in (float, int) and nsample < 0:
+            raise ValueError('nsample < 0')
 
         if not isinstance(ngood, _ndarray_base):
             if type(ngood) in (float, int):
@@ -636,15 +641,6 @@ class Generator:
                                 ' or a scalar')
         else:
             nsample = nsample.astype(numpy.int64, copy=False)
-
-        if cupy.any(ngood < 0):  # synchronize!
-            raise ValueError('ngood < 0')
-        if cupy.any(nbad < 0):  # synchronize!
-            raise ValueError('nbad < 0')
-        if cupy.any(nsample < 0):  # synchronize!
-            raise ValueError('nsample < 0')
-        if cupy.any(ngood + nbad < nsample):  # synchronize!
-            raise ValueError('ngood + nbad < nsample')
         if size is not None and not isinstance(size, tuple):
             size = (size,)
         if size is None:

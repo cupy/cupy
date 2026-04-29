@@ -116,42 +116,4 @@ __device__ double atomicMin(double* address, double val) {
   return __longlong_as_double(reinterpret_cast<long long&>(old));
 }
 
-
 #endif  // #if !defined(__HIPCC__) || HIP_VERSION < 40400000
-
-
-// CUDA provides native atomicMax/Min(long long*) since sm_32
-// (sm_32_atomic_functions.h).  CuPy requires sm_60+, so these are
-// only needed for old HIP/ROCm builds (< 4.5) that lack them.
-#if defined(__HIPCC__) && HIP_VERSION < 40400000
-
-__device__ long long atomicMax(long long* address, long long val) {
-    unsigned long long* addr_as_ull =
-        reinterpret_cast<unsigned long long*>(address);
-    unsigned long long old = *addr_as_ull, assumed;
-    do {
-        assumed = old;
-        long long assumed_ll = reinterpret_cast<long long&>(assumed);
-        long long new_val = val > assumed_ll ? val : assumed_ll;
-        old = atomicCAS(addr_as_ull, assumed,
-                        reinterpret_cast<unsigned long long&>(new_val));
-    } while (assumed != old);
-    return reinterpret_cast<long long&>(old);
-}
-
-
-__device__ long long atomicMin(long long* address, long long val) {
-    unsigned long long* addr_as_ull =
-        reinterpret_cast<unsigned long long*>(address);
-    unsigned long long old = *addr_as_ull, assumed;
-    do {
-        assumed = old;
-        long long assumed_ll = reinterpret_cast<long long&>(assumed);
-        long long new_val = val < assumed_ll ? val : assumed_ll;
-        old = atomicCAS(addr_as_ull, assumed,
-                        reinterpret_cast<unsigned long long&>(new_val));
-    } while (assumed != old);
-    return reinterpret_cast<long long&>(old);
-}
-
-#endif  // #if defined(__HIPCC__) && HIP_VERSION < 40400000

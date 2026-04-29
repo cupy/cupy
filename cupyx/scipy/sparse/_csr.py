@@ -98,14 +98,14 @@ class _csr_base(_compressed._compressed_sparse_matrix):
                         self.indptr.copy(), self.shape,
                         has_sorted_indices=True)
                 from cupyx.cusparse import (
-                    _indptr_to_coo, _build_indptr)
+                    _indptr_to_coo, _build_indptr_int64)
                 idx_dtype = self.indices.dtype
                 rows = _indptr_to_coo(self.indptr)
                 rows = rows[mask]
                 cols = self.indices[mask]
                 data = new_data[mask]
                 M = self._swap(*self.shape)[0]
-                indptr = _build_indptr(rows, M, idx_dtype)
+                indptr = _build_indptr_int64(rows, M, idx_dtype)
                 return cls._from_parts(
                     data, cols, indptr, self.shape,
                     has_sorted_indices=True)
@@ -319,7 +319,7 @@ class _csr_base(_compressed._compressed_sparse_matrix):
         from cupyx import cusparse
 
         if self.indices.dtype == cupy.int64:
-            # TODO(cuSPARSE): remove when csr2csr_compress supports int64
+            # TODO(eriknw): cuSPARSE--csr2csr_compress doesn't support int64
             mask = self.data != 0
             if mask.all():  # synchronize!
                 return
@@ -334,7 +334,7 @@ class _csr_base(_compressed._compressed_sparse_matrix):
                 return
             row_of_each = cusparse._indptr_to_coo(self.indptr)
             kept_rows = row_of_each[mask]
-            new_indptr = cusparse._build_indptr(
+            new_indptr = cusparse._build_indptr_int64(
                 kept_rows, nrows, idx_dtype)
             self.data = new_data
             self.indices = new_indices
@@ -1328,9 +1328,8 @@ def dense2csr(a):
     info = cupy.zeros(mn + 1, dtype=idx_dtype)
     it = numpy.dtype(idx_dtype).type
     cupy_dense2csr_step1()(it(m), it(n), a, indptr, info)
-    from cupyx.cusparse import _cumsum_int64
-    _cumsum_int64(indptr)
-    _cumsum_int64(info)
+    cupy.cumsum(indptr, out=indptr)
+    cupy.cumsum(info, out=info)
     nnz = int(indptr[-1])  # synchronize!
     indices = cupy.empty(nnz, dtype=idx_dtype)
     data = cupy.empty(nnz, dtype=a.dtype)

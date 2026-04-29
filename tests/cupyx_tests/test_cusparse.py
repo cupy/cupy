@@ -798,6 +798,27 @@ class TestSpmm:
         testing.assert_array_almost_equal(y, expect)
 
 
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float32, numpy.float64],
+}))
+class TestSpmmLargeColumns:
+    """cuSPARSE SpMM gridDim.y overflow (#9850)."""
+
+    @testing.slow
+    def test_spmm_large_n(self):
+        if not cusparse.check_availability('spmm'):
+            pytest.skip('spmm is not available')
+        n = 65535 * 16 + 1  # just above gridDim.y overflow threshold
+        m, k = 5, 5
+        a = sparse.random(m, k, density=0.2, format='csr',
+                          dtype=self.dtype)
+        a.sum_duplicates()
+        b = cupy.ones((k, n), dtype=self.dtype, order='F')
+        c = cusparse.spmm(a, b, alpha=1.0)
+        expected = a.toarray() @ b
+        testing.assert_allclose(c, expected, rtol=1e-5)
+
+
 @testing.with_requires('scipy')
 class TestErrorSpmm:
 

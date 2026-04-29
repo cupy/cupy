@@ -520,8 +520,8 @@ def spsolve(A, b):
                       sparse.SparseEfficiencyWarning)
         A = A.tocsr()
 
-    import cupyx.cusparse
-    cupyx.cusparse._check_int32_indices(A, 'spsolve')
+    from cupyx import cusparse
+    cusparse._check_int32_indices(A, 'spsolve')
 
     A.sum_duplicates()
     b = b.astype(A.dtype, copy=False)

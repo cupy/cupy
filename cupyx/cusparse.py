@@ -89,39 +89,11 @@ def _indptr_to_coo(indptr, dtype=None):
         _cupy.arange(nrows, dtype=dtype), _cupy.diff(indptr))
 
 
-def _cumsum_int64(arr):
-    # TODO(cupy): remove once https://github.com/cupy/cupy/pull/9810
-    # is merged (widens ``int`` to ``long long`` in the CUB scan
-    # wrapper so cupy.cumsum handles > 2^32 elements natively).
-    """In-place cumulative sum that works for arrays >= 2^32 elements.
-
-    ``cupy.cumsum`` silently produces wrong results when the array
-    has >= 2^32 elements.  This helper splits into chunks and chains
-    the partial sums.  For arrays < 2^32 elements, delegates directly
-    to ``cupy.cumsum``.
-    """
-    _CHUNK = (1 << 32) - 1  # UINT32_MAX -- largest safe CUB scan size
-    n = arr.shape[0]
-    if n <= _CHUNK:
-        _cupy.cumsum(arr, out=arr)
-        return arr
-    carry = arr.dtype.type(0)
-    for start in range(0, n, _CHUNK):
-        end = min(start + _CHUNK, n)
-        chunk = arr[start:end]
-        _cupy.cumsum(chunk, out=chunk)
-        if start > 0:
-            chunk += carry
-        carry = chunk[-1].item()  # synchronize!
-        carry = arr.dtype.type(carry)
-    return arr
-
-
-def _build_indptr(row_indices, n_rows, dtype):
+def _build_indptr_int64(row_indices, n_rows, dtype):
     """Build compressed indptr from per-nnz major-axis assignments."""
     indptr = _cupy.zeros(n_rows + 1, dtype=dtype)
     _cupy.add.at(indptr[1:], row_indices, 1)
-    _cumsum_int64(indptr)
+    _cupy.cumsum(indptr, out=indptr)
     return indptr
 
 
@@ -202,7 +174,7 @@ _available_cusparse_version = {
     'sparseToDense': (11300, None),
     'spgemm': (11100, None),
     'spsm': (11600, None),  # CUDA 11.3.1
-    # TODO(cuSPARSE): update when SpGEAM ships in a public release.
+    # TODO(eriknw): cuSPARSE--update when SpGEAM ships in a public release.
     # Present in dev, absent from all public releases through
     # CUDA 13.2 (checked 2026-04-03).  Verified working with dev build:
     # SpGEAM Generic API is ~2x faster than csrgeam2 Legacy for int32,
@@ -256,7 +228,7 @@ _available_hipsparse_version = {
     'sparseToDense': (402, None),
     'spgemm': (_numpy.inf, None),
     'spsm': (50000000, None),
-    # TODO(hipSPARSE): update when hipSPARSE adds these
+    # TODO(eriknw): hipSPARSE--update when hipSPARSE adds these
     'spgeam': (_numpy.inf, None),
     'spgemm_int64': (_numpy.inf, None),
 }
@@ -642,7 +614,7 @@ def csrgeam(a, b, alpha=1, beta=1):
 
 
 def _cupy_csrgeam_int64(a, b, alpha, beta):
-    # TODO(cuSPARSE): removable once SpGEAM ships and all supported
+    # TODO(eriknw): cuSPARSE--removable once SpGEAM ships and all supported
     # CUDA versions include it.  Keep as fallback for older CUDA.
     """Pure-CuPy CSR addition for int64: C = alpha*A + beta*B.
 
@@ -689,8 +661,8 @@ def csrgeam2(a, b, alpha=1, beta=1):
     if not _is_csr_type(b):
         raise TypeError('unsupported type (actual: {})'.format(type(b)))
 
-    # TODO(cuSPARSE): when SpGEAM ships, route ALL addition through
-    # spgeam() (not just int64) — benchmarks show SpGEAM Generic API
+    # TODO(eriknw): cuSPARSE--when SpGEAM ships, route ALL addition through
+    # spgeam() (not just int64)--benchmarks show SpGEAM Generic API
     # is ~2x faster than csrgeam2 Legacy for int32 at large sizes.
     if a.indices.dtype == _cupy.int64 or b.indices.dtype == _cupy.int64:
         if check_availability('spgeam'):
@@ -1118,7 +1090,7 @@ def csrsort(x):
     m, n = x.shape
 
     if x.indices.dtype == _cupy.int64:
-        # TODO(cuSPARSE): remove when xcsrsort supports int64
+        # TODO(eriknw): cuSPARSE--remove when xcsrsort supports int64
         row = _indptr_to_coo(x.indptr)
         order = _cupy.lexsort(_cupy.stack([x.indices, row]))
         x.indices[:] = x.indices[order]
@@ -1164,7 +1136,7 @@ def cscsort(x):
     m, n = x.shape
 
     if x.indices.dtype == _cupy.int64:
-        # TODO(cuSPARSE): remove when xcscsort supports int64
+        # TODO(eriknw): cuSPARSE--remove when xcscsort supports int64
         col = _indptr_to_coo(x.indptr)
         order = _cupy.lexsort(_cupy.stack([x.indices, col]))
         x.indices[:] = x.indices[order]
@@ -1213,7 +1185,7 @@ def coosort(x, sort_by='r'):
     m, n = x.shape
 
     if x.row.dtype == _cupy.int64:
-        # TODO(cuSPARSE): remove when xcoosort supports int64
+        # TODO(eriknw): cuSPARSE--remove when xcoosort supports int64
         if sort_by == 'r':
             # Sort by (row, col): primary=row, secondary=col
             order = _cupy.lexsort(_cupy.stack([x.col, x.row]))
@@ -1271,8 +1243,8 @@ def coo2csr(x):
     if nnz == 0:
         indptr = _cupy.zeros(m + 1, dtype=idx_dtype)
     elif idx_dtype == _cupy.int64:
-        # TODO(cuSPARSE): remove when xcoo2csr supports int64
-        indptr = _build_indptr(x.row, m, idx_dtype)
+        # TODO(eriknw): cuSPARSE--remove when xcoo2csr supports int64
+        indptr = _build_indptr_int64(x.row, m, idx_dtype)
     else:
         handle = _device.get_cusparse_handle()
         indptr = _cupy.empty(m + 1, dtype=idx_dtype)
@@ -1290,8 +1262,8 @@ def coo2csc(x):
     if nnz == 0:
         indptr = _cupy.zeros(n + 1, dtype=idx_dtype)
     elif idx_dtype == _cupy.int64:
-        # TODO(cuSPARSE): remove when xcoo2csr supports int64
-        indptr = _build_indptr(x.col, n, idx_dtype)
+        # TODO(eriknw): cuSPARSE--remove when xcoo2csr supports int64
+        indptr = _build_indptr_int64(x.col, n, idx_dtype)
     else:
         handle = _device.get_cusparse_handle()
         indptr = _cupy.empty(n + 1, dtype=idx_dtype)
@@ -1319,7 +1291,7 @@ def csr2coo(x, data, indices):
     idx_dtype = x.indptr.dtype
 
     if idx_dtype == _cupy.int64:
-        # TODO(cuSPARSE): remove when xcsr2coo supports int64
+        # TODO(eriknw): cuSPARSE--remove when xcsr2coo supports int64
         row = _indptr_to_coo(x.indptr)
     else:
         if not check_availability('csr2coo'):
@@ -1336,13 +1308,13 @@ def csr2coo(x, data, indices):
 
 
 def _cupy_transpose_compressed_int64(x, output_cls, out_dim):
-    # TODO(cuSPARSE): remove when a Generic API CSR↔CSC function ships.
+    # TODO(eriknw): cuSPARSE--remove when a Generic API CSR↔CSC function ships.
     # No such function exists as of CUDA 13.2 or dev.
     # This is the biggest perf gap: int64 tocsc is 7-10x slower than
     # int32 (measured on Blackwell, 10K-100K matrices).
     """Pure-CuPy CSR↔CSC transpose for int64 indices.
 
-    Uses _build_indptr + lexsort.
+    Uses _build_indptr_int64 + lexsort.
     O(nnz log nnz) time.
 
     Args:
@@ -1361,7 +1333,7 @@ def _cupy_transpose_compressed_int64(x, output_cls, out_dim):
             x.shape,
             has_sorted_indices=True)
 
-    out_indptr = _build_indptr(x.indices, out_dim, idx_dtype)
+    out_indptr = _build_indptr_int64(x.indices, out_dim, idx_dtype)
     expanded = _indptr_to_coo(x.indptr)
 
     # Sort by (output major, output minor) for canonical order.
@@ -1374,7 +1346,7 @@ def _cupy_transpose_compressed_int64(x, output_cls, out_dim):
 
 def csr2csc(x):
     if x.indices.dtype == _cupy.int64:
-        # TODO(cuSPARSE): remove when a Generic API CSR↔CSC ships
+        # TODO(eriknw): cuSPARSE--remove when a Generic API CSR↔CSC ships
         # (or when csr2csc supports int64).  No such API exists as
         # of dev or CUDA 13.2.  Biggest perf gap: 7-10x.
         return _cupy_transpose_compressed_int64(
@@ -1405,7 +1377,7 @@ def csr2csc(x):
 
 def csr2cscEx2(x):
     if x.indices.dtype == _cupy.int64:
-        # TODO(cuSPARSE): see csr2csc above (same gap: 7-10x)
+        # TODO(eriknw): cuSPARSE--see csr2csc above (same gap: 7-10x)
         return _cupy_transpose_compressed_int64(
             x, cupyx.scipy.sparse.csc_matrix, int(x.shape[1]))
 
@@ -1455,7 +1427,7 @@ def csc2coo(x, data, indices):
     idx_dtype = x.indptr.dtype
 
     if idx_dtype == _cupy.int64:
-        # TODO(cuSPARSE): remove when xcsr2coo supports int64
+        # TODO(eriknw): cuSPARSE--remove when xcsr2coo supports int64
         col = _indptr_to_coo(x.indptr)
     else:
         handle = _device.get_cusparse_handle()
@@ -1471,7 +1443,7 @@ def csc2coo(x, data, indices):
 
 def csc2csr(x):
     if x.indices.dtype == _cupy.int64:
-        # TODO(cuSPARSE): see csr2csc above (same gap: 7-10x)
+        # TODO(eriknw): cuSPARSE--see csr2csc above (same gap: 7-10x)
         return _cupy_transpose_compressed_int64(
             x, cupyx.scipy.sparse.csr_matrix, int(x.shape[0]))
 
@@ -1500,7 +1472,7 @@ def csc2csr(x):
 
 def csc2csrEx2(x):
     if x.indices.dtype == _cupy.int64:
-        # TODO(cuSPARSE): see csr2csc above (same gap: 7-10x)
+        # TODO(eriknw): cuSPARSE--see csr2csc above (same gap: 7-10x)
         return _cupy_transpose_compressed_int64(
             x, cupyx.scipy.sparse.csr_matrix, int(x.shape[0]))
 
@@ -1833,6 +1805,12 @@ def spmv(a, x, y=None, alpha=1, beta=0, transa=False):
     return y
 
 
+# cuSPARSE csrmm_alg1 gridDim.y overflow threshold (#9850).
+# The kernel sets gridDim.y = ceil(n / 16); hardware max is 65535.
+# Fixed in cuSPARSE 12.7.20+ (CUDA 13.2+).
+_SPMM_MAX_DENSE_COLS = 65535 * 16  # 1,048,560
+
+
 def spmm(a, b, c=None, alpha=1, beta=0, transa=False, transb=False):
     """Multiplication of sparse matrix and dense matrix.
 
@@ -1888,6 +1866,21 @@ def spmm(a, b, c=None, alpha=1, beta=0, transa=False, transb=False):
         raise ValueError('dimension mismatch')
     if a.nnz == 0:
         c.fill(0)
+        return c
+
+    if n > _SPMM_MAX_DENSE_COLS and getVersion() < 12720:
+        # Workaround for cuSPARSE csrmm_alg1 gridDim.y overflow (#9850)
+        for col0 in range(0, n, _SPMM_MAX_DENSE_COLS):
+            col1 = min(col0 + _SPMM_MAX_DENSE_COLS, n)
+            if transb:
+                # Row slice of F-contiguous is not F-contiguous; copy needed
+                b_chunk = _cupy.asfortranarray(b[col0:col1, :])
+            else:
+                # Column slice of F-contiguous is F-contiguous; no copy
+                b_chunk = b[:, col0:col1]
+            c_chunk = c[:, col0:col1]
+            spmm(a, b_chunk, c=c_chunk, alpha=alpha, beta=beta,
+                 transa=transa, transb=transb)
         return c
 
     desc_a = SpMatDescriptor.create(a)
@@ -2413,7 +2406,7 @@ def spsm(a, b, alpha=1.0, lower=True, unit_diag=False, transa=False):
 
 
 def _cupy_spgemm_int64(a, b, alpha):
-    # TODO(cuSPARSE): removable once all supported CUDA versions have
+    # TODO(eriknw): cuSPARSE--removable once all supported CUDA versions have
     # native int64 SpGEMM.  Verified working on CUDA 13.0+ (native is
     # ~14x faster).  Keep as fallback for CUDA < 13.0.
     """Pure-CuPy sort-merge SpGEMM for int64: C = alpha * A * B.
@@ -2500,7 +2493,7 @@ def spgemm(a, b, alpha=1):
     if not _is_csr_type(b):
         raise TypeError('unsupported type (actual: {})'.format(type(b)))
 
-    # TODO(cuSPARSE): remove pure-CuPy fallback when all supported CUDA
+    # TODO(eriknw): cuSPARSE--remove pure-CuPy fallback when all supported CUDA
     # versions have native int64 SpGEMM.  Native int64 SpGEMM is ~14x
     # faster and within 1.6x of int32 (verified on CUDA 13.0+).
     # cuSPARSE 12.7.9 ships with both CUDA 12.7 and 13.0 but only

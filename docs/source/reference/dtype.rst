@@ -43,6 +43,7 @@ Data type testing
    :align: left
 
    ``issubdtype`` (alias of :func:`numpy.issubdtype`)
+   ``isdtype`` (alias of :func:`numpy.isdtype`)
 
 Miscellaneous
 -------------

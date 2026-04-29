@@ -491,6 +491,7 @@ def _get_interp_kernel(is_complex):
             y = fy[len - 1];
         }
         else if (x_idx >= len - 1) { y = right[0]; }
+        else if (x[i] == fx[x_idx]) { y = fy[x_idx]; }
         else {
             const Z slope = (value_t)(fy[x_idx+1] - fy[x_idx]) / \
                             ((real_t)fx[x_idx+1] - (real_t)fx[x_idx]);

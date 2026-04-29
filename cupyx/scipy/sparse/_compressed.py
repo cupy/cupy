@@ -808,7 +808,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         out_idx_dtype = _sputils.get_index_dtype(
             arrays=(self.indices,), maxval=max(M, n_idx))
-        out_indptr = _cusparse_mod._build_indptr(
+        out_indptr = _cusparse_mod._build_indptr_int64(
             out_major, M, out_idx_dtype)
 
         return self.__class__._from_parts(

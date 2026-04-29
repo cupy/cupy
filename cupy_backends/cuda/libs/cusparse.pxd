@@ -69,7 +69,7 @@ cdef extern from *:
     # CSR2CSC
     ctypedef int Csr2CscAlg 'cusparseCsr2CscAlg_t'
 
-# TODO(cuSPARSE): remove stubs when SpGEAM ships in a public release.
+# TODO(eriknw): cuSPARSE--remove stubs when SpGEAM ships in a public release.
 # The #ifndef guard auto-deactivates when the real header defines these.
 cdef extern from *:
     """

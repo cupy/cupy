@@ -490,6 +490,18 @@ class TestMisc:
         fy = xp.asarray([0, 10], dtype=dtype_y)
         return xp.interp(x, fx, fy)
 
+    @testing.for_float_dtypes(name='dtype_x')
+    @testing.for_dtypes('efdFD', name='dtype_y')
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def test_interp_inf_fy_at_knot(self, xp, dtype_y, dtype_x):
+        # Regression test: querying at an exact knot point should return the
+        # knot value, not nan, even when the adjacent fy value is inf.
+        # See https://github.com/cupy/cupy/issues/9823
+        x = xp.asarray([2.0], dtype=dtype_x)
+        fx = xp.asarray([1.0, 2.0, 3.0, 4.0], dtype=dtype_x)
+        fy = xp.asarray([1.0, 2.0, xp.inf, 4.0], dtype=dtype_y)
+        return xp.interp(x, fx, fy)
+
     @testing.for_all_dtypes(name='dtype_2', no_bool=True, no_complex=True)
     @testing.for_all_dtypes(name='dtype_1', no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
