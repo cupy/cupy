@@ -433,6 +433,84 @@ class TestSort_complex(unittest.TestCase):
         return a, xp.sort_complex(a)
 
 
+class TestThrustWorkspaceOOM:
+    """Regression tests for cupy/cupy#9894.
+
+    When thrust's workspace allocation fails, sort/argsort/lexsort must
+    raise ``MemoryError`` instead of silently producing corrupt results.
+
+    Each op may make several pre-thrust allocations (e.g. ``data.copy()``
+    and ``idx_array``) before reaching thrust.  Failing the *first*
+    allocation only exercises pre-existing OOM behavior, not this fix.
+    To target thrust's workspace specifically, we count allocations during
+    a successful run, then re-run with the *last* allocation forced to
+    fail.  Since thrust is called last in each routine, the final
+    allocation is always inside thrust's workspace request.
+    """
+
+    @staticmethod
+    def _verify_workspace_oom_raises(op):
+        pool = cupy.get_default_memory_pool()
+        n = [0]
+
+        def counting(size):
+            n[0] += 1
+            return pool.malloc(size)
+
+        with cupy.cuda.using_allocator(counting):
+            op()
+        assert n[0] >= 1, "expected at least one allocation"
+        total = n[0]
+
+        seen = [0]
+
+        def fail_on_last(size):
+            seen[0] += 1
+            if seen[0] >= total:
+                raise cupy.cuda.memory.OutOfMemoryError(size, 0, 0)
+            return pool.malloc(size)
+
+        with cupy.cuda.using_allocator(fail_on_last):
+            with pytest.raises(MemoryError):
+                op()
+
+    def test_sort_workspace_oom(self):
+        self._verify_workspace_oom_raises(
+            lambda: cupy.arange(100_000, dtype=cupy.float32).sort()
+        )
+
+    def test_argsort_workspace_oom(self):
+        self._verify_workspace_oom_raises(
+            lambda: cupy.arange(100_000, dtype=cupy.float32).argsort()
+        )
+
+    def test_lexsort_workspace_oom(self):
+        self._verify_workspace_oom_raises(
+            lambda: cupy.lexsort(
+                cupy.arange(100_000, dtype=cupy.float32).reshape(2, 50_000)
+            )
+        )
+
+    @pytest.mark.thread_unsafe(
+        reason="contextlib.redirect_stderr replaces sys.stderr globally")
+    def test_no_stderr_noise_on_workspace_oom(self):
+        # The thrust allocator's `noexcept`-driven stderr trace was
+        # confusing to users (cupy/cupy#9894).  After the fix, OOM produces a
+        # clean MemoryError with no "Exception ignored" trace and no
+        # OutOfMemoryError print on stderr.
+        import contextlib
+        import io
+
+        buf = io.StringIO()
+        with contextlib.redirect_stderr(buf):
+            self._verify_workspace_oom_raises(
+                lambda: cupy.arange(100_000, dtype=cupy.float32).sort()
+            )
+        stderr = buf.getvalue()
+        assert "Exception ignored" not in stderr, stderr
+        assert "OutOfMemoryError" not in stderr, stderr
+
+
 @testing.parameterize(*testing.product({
     'external': [False, True],
     'length': [10, 20000],
