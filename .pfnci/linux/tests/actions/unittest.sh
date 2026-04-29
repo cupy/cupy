@@ -21,6 +21,8 @@ if [[ "${MARKER}" =~ "not slow" ]]; then
     # I we are not running slow tests (and not high memory)
     # running tests in parallel should be safe.
     pytest_opts+=("-n2")
+    # Use nvidia-cuda-mps-control -d to start MPS server and hopefully help execution speed on T4
+    nvidia-cuda-mps-control -d
 fi
 
 # TODO: support coverage reporting
