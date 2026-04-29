@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+import warnings
 
 import pytest
 try:
@@ -9,6 +10,7 @@ try:
 except ImportError:
     scipy_available = False
 
+import cupy
 from cupy import testing
 from cupyx.scipy import sparse
 
@@ -128,3 +130,82 @@ class TestIssparse:
         m = cls((2, 3))
         assert isinstance(m, sparse.spmatrix)
         assert not isinstance(m, sparse.sparray)
+
+
+class TestDeprecatedSpmatrixApi:
+    """SciPy 1.14 removed these matrix-only APIs from sparse arrays.
+    CuPy mirrors the deprecation: ``spmatrix`` mixin emits
+    ``DeprecationWarning``; arrays don't have the methods at all.
+
+    The warnings live on the ``spmatrix`` mixin and aren't overridden by
+    subclasses, so a single CSR fixture covers all matrix formats.
+    """
+
+    @pytest.fixture
+    def m(self):
+        return sparse.csr_matrix(cupy.array([[1.0, 0.0, 0.0],
+                                             [0.0, 2.0, 0.0],
+                                             [0.0, 0.0, 3.0]]))
+
+    @pytest.fixture
+    def a(self):
+        return sparse.csr_array(cupy.array([[1.0, 0.0, 0.0],
+                                            [0.0, 2.0, 0.0],
+                                            [0.0, 0.0, 3.0]]))
+
+    def test_A_warns(self, m):
+        with pytest.warns(DeprecationWarning, match=r"`spmatrix\.A`"):
+            result = m.A
+        testing.assert_array_equal(result, m.toarray())
+
+    def test_H_warns(self, m):
+        with pytest.warns(DeprecationWarning, match=r"`spmatrix\.H`"):
+            result = m.H
+        testing.assert_array_equal(
+            result.toarray(), m.transpose().conj().toarray())
+
+    def test_asfptype_warns(self, m):
+        with pytest.warns(DeprecationWarning, match="asfptype"):
+            result = m.asfptype()
+        assert result.dtype.kind == 'f'
+
+    def test_get_shape_warns(self, m):
+        with pytest.warns(DeprecationWarning, match="get_shape"):
+            result = m.get_shape()
+        assert result == m.shape
+
+    def test_getformat_warns(self, m):
+        with pytest.warns(DeprecationWarning, match="getformat"):
+            result = m.getformat()
+        assert result == m.format
+
+    def test_getmaxprint_warns(self, m):
+        with pytest.warns(DeprecationWarning, match="getmaxprint"):
+            result = m.getmaxprint()
+        assert result == m.maxprint
+
+    def test_set_shape_warns(self, m):
+        with pytest.warns(DeprecationWarning, match="set_shape"):
+            m.set_shape(m.shape)
+
+    def test_shape_setter_does_not_warn(self, m):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", DeprecationWarning)
+            m.shape = m.shape
+
+    def test_warning_is_attributed_to_caller(self, m):
+        # ``stacklevel=2`` should make the warning point at the user's
+        # frame (this test file) rather than ``_base.py``.
+        with pytest.warns(DeprecationWarning) as record:
+            m.A
+        assert record[0].filename.endswith('test_base.py')
+
+    @pytest.mark.parametrize(
+        'attr', ['A', 'H', 'asfptype', 'getformat', 'getmaxprint', 'set_shape']
+    )
+    def test_array_does_not_have_deprecated_attr(self, a, attr):
+        # `get_shape` is omitted: it currently leaks onto arrays via
+        # _csr_base/_csc_base/_coo_base/_dia_base inheritance.  Tracked in
+        # spai/FUTURE.md ("Format-base method leaks").
+        with pytest.raises(AttributeError):
+            getattr(a, attr)

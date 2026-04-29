@@ -513,6 +513,7 @@ class TestCooMatrixScipyComparison:
         m = self.make(xp, sp, self.dtype)
         return m.getnnz()
 
+    @pytest.mark.filterwarnings("ignore:.*asfptype.*:DeprecationWarning")
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_asfptype(self, xp, sp):
         m = _make(xp, sp, self.dtype)
