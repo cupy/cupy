@@ -173,10 +173,17 @@ class _csr_base(_compressed._compressed_sparse_matrix):
         return self._comparison(other, operator.ge, '_ge_')
 
     def _as_csr_type(self, result):
-        """Re-wrap a cuSPARSE result to match ``type(self)``."""
-        if type(result) is type(self) or not _is_csr(result):
+        """Re-wrap a cuSPARSE CSR result in ``self._csr_container``.
+
+        Using ``self._csr_container`` (instead of ``type(self)``) means
+        the same helper is also correct when called from a ``csc_*``
+        whose matmul produces a CSR — the result inherits ``self``'s
+        array vs matrix kind, not ``type(self)``.
+        """
+        target = self._csr_container
+        if type(result) is target or not _is_csr(result):
             return result
-        return type(self)._from_parts(
+        return target._from_parts(
             result.data, result.indices, result.indptr, result.shape,
             has_canonical_format=getattr(
                 result, '_has_canonical_format', None),
@@ -610,28 +617,12 @@ class _csr_base(_compressed._compressed_sparse_matrix):
             has_sorted_indices=getattr(
                 self, '_has_sorted_indices', None))
 
-    def getrow(self, i):
-        """Returns a copy of row i of the matrix, as a (1 x n)
-        CSR matrix (row vector).
-
-        Args:
-            i (integer): Row
-
-        Returns:
-            cupyx.scipy.sparse.csr_matrix: Sparse matrix with single row
-        """
+    def _getrow(self, i):
+        """Return a copy of row i as a (1 x n) CSR row vector."""
         return self._major_slice(slice(i, i + 1), copy=True)
 
-    def getcol(self, i):
-        """Returns a copy of column i of the matrix, as a (m x 1)
-        CSR matrix (column vector).
-
-        Args:
-            i (integer): Column
-
-        Returns:
-            cupyx.scipy.sparse.csr_matrix: Sparse matrix with single column
-        """
+    def _getcol(self, i):
+        """Return a copy of column i as an (m x 1) CSR column vector."""
         return self._minor_slice(slice(i, i + 1), copy=True)
 
     def _get_intXarray(self, row, col):

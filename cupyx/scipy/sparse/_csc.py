@@ -84,6 +84,25 @@ class _csc_base(_compressed._compressed_sparse_matrix):
     def _swap(self, x, y):
         return (y, x)
 
+    def _as_csr_type(self, result):
+        """Re-wrap a cuSPARSE CSR result in ``self``'s csr_container.
+
+        cuSPARSE's gemm helpers always return a ``csr_matrix``; if
+        ``self`` is a ``csc_array`` the matmul result should be a
+        ``csr_array`` instead.
+        """
+        target = self._csr_container
+        if type(result) is target:
+            return result
+        if not (_base.issparse(result) and result.format == 'csr'):
+            return result
+        return target._from_parts(
+            result.data, result.indices, result.indptr, result.shape,
+            has_canonical_format=getattr(
+                result, '_has_canonical_format', None),
+            has_sorted_indices=getattr(
+                result, '_has_sorted_indices', None))
+
     def _matmul_dispatch(self, other):
         from cupyx import cusparse
 
@@ -96,15 +115,16 @@ class _csc_base(_compressed._compressed_sparse_matrix):
             if cusparse.check_availability('spgemm'):
                 a = self.tocsr()
                 a.sum_duplicates()
-                return cusparse.spgemm(a, other)
+                return self._as_csr_type(cusparse.spgemm(a, other))
             elif cusparse.check_availability('csrgemm') and not runtime.is_hip:
                 # trans=True is still buggy as of ROCm 4.2.0
                 a = self.T
-                return cusparse.csrgemm(a, other, transa=True)
+                return self._as_csr_type(
+                    cusparse.csrgemm(a, other, transa=True))
             elif cusparse.check_availability('csrgemm2'):
                 a = self.tocsr()
                 a.sum_duplicates()
-                return cusparse.csrgemm2(a, other)
+                return self._as_csr_type(cusparse.csrgemm2(a, other))
             else:
                 raise AssertionError
         elif _base.issparse(other) and other.format == 'csc':
@@ -114,19 +134,20 @@ class _csc_base(_compressed._compressed_sparse_matrix):
                 # trans=True is still buggy as of ROCm 4.2.0
                 a = self.T
                 b = other.T
-                return cusparse.csrgemm(a, b, transa=True, transb=True)
+                return self._as_csr_type(
+                    cusparse.csrgemm(a, b, transa=True, transb=True))
             elif cusparse.check_availability('csrgemm2'):
                 a = self.tocsr()
                 b = other.tocsr()
                 a.sum_duplicates()
                 b.sum_duplicates()
-                return cusparse.csrgemm2(a, b)
+                return self._as_csr_type(cusparse.csrgemm2(a, b))
             elif cusparse.check_availability('spgemm'):
                 a = self.tocsr()
                 b = other.tocsr()
                 a.sum_duplicates()
                 b.sum_duplicates()
-                return cusparse.spgemm(a, b)
+                return self._as_csr_type(cusparse.spgemm(a, b))
             else:
                 raise AssertionError
         elif cupyx.scipy.sparse.issparse(other):
@@ -186,6 +207,17 @@ class _csc_base(_compressed._compressed_sparse_matrix):
         self.data = compress.data
         self.indices = compress.indices
         self.indptr = compress.indptr
+
+    def setdiag(self, values, k=0):
+        """Set diagonal or off-diagonal elements in place."""
+        # Route through COO (which has its own setdiag) so we share the
+        # COO implementation and stay independent of the CSC layout.
+        coo = self.tocoo()
+        coo.setdiag(values, k=k)
+        new = coo.tocsc()
+        self.data = new.data
+        self.indices = new.indices
+        self.indptr = new.indptr
 
     # TODO(unno): Implement maximum
     # TODO(unno): Implement minimum
@@ -377,28 +409,12 @@ class _csc_base(_compressed._compressed_sparse_matrix):
             has_sorted_indices=getattr(
                 self, '_has_sorted_indices', None))
 
-    def getrow(self, i):
-        """Returns a copy of row i of the matrix, as a (1 x n)
-        CSR matrix (row vector).
-
-        Args:
-            i (integer): Row
-
-        Returns:
-            cupyx.scipy.sparse.csc_matrix: Sparse matrix with single row
-        """
+    def _getrow(self, i):
+        """Return a copy of row i as a (1 x n) CSR row vector."""
         return self._minor_slice(slice(i, i + 1), copy=True).tocsr()
 
-    def getcol(self, i):
-        """Returns a copy of column i of the matrix, as a (m x 1)
-        CSC matrix (column vector).
-
-        Args:
-            i (integer): Column
-
-        Returns:
-            cupyx.scipy.sparse.csc_matrix: Sparse matrix with single column
-        """
+    def _getcol(self, i):
+        """Return a copy of column i as an (m x 1) CSC column vector."""
         return self._major_slice(slice(i, i + 1), copy=True)
 
     def _get_intXarray(self, row, col):

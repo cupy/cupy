@@ -31,10 +31,10 @@ def get_array_module(*args):
         types of the arguments.
 
     """
-    from cupyx.scipy.sparse._base import spmatrix as _spmatrix
+    from cupyx.scipy.sparse._base import _spbase
 
     for arg in args:
-        if isinstance(arg, (_ndarray, _spmatrix)):
+        if isinstance(arg, (_ndarray, _spbase)):
             return _cupyx_scipy
     return _scipy
 

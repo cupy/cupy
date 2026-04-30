@@ -203,8 +203,12 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         diff = diff_out;
         ''', 'cupyx_scipy_sparse_has_canonical_format')
 
-    def __init__(self, arg1, shape=None, dtype=None, copy=False):
+    def __init__(self, arg1, shape=None, dtype=None, copy=False,
+                 *, maxprint=None):
         from cupyx import cusparse
+
+        if maxprint is not None:
+            self.maxprint = maxprint
 
         if shape is not None:
             if not _util.isshape(shape):
@@ -476,7 +480,10 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             not_found_val)
 
         if major.ndim == 1:
-            # Scipy returns `matrix` here
+            # Sparse arrays return a 1-D ndarray; sparse matrices keep
+            # the legacy 2-D shape (matching scipy).
+            if isinstance(self, _base.sparray):
+                return val
             return cupy.expand_dims(val, 0)
         return self.__class__(val.reshape(major.shape))
 
@@ -1116,29 +1123,65 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
     has_sorted_indices = property(fget=__get_sorted, fset=__set_sorted)
 
-    def get_shape(self):
-        """Returns the shape of the matrix.
-
-        Returns:
-            tuple: Shape of the matrix.
-
-        """
-        return self._shape
-
-    def getnnz(self, axis=None):
-        """Returns the number of stored values, including explicit zeros.
+    def _getnnz(self, axis=None):
+        """Number of stored values, including explicit zeros.
 
         Args:
             axis: Not supported yet.
 
         Returns:
             int: The number of stored values.
-
         """
         if axis is None:
             return self.data.size
         else:
             raise ValueError
+
+    def count_nonzero(self, axis=None):
+        """Number of non-zero entries.
+
+        Unlike :attr:`nnz`, this counts only true non-zero values
+        (explicit zeros are excluded).  Duplicates are summed first.
+
+        Args:
+            axis ({-2, -1, 0, 1, ``None``}):
+                Count over the whole matrix, or along a logical
+                row/col axis.
+
+        Returns:
+            int or cupy.ndarray: Scalar count when ``axis=None``,
+            otherwise a 1-D ``cupy.ndarray`` of length
+            ``shape[1 - axis]``.
+
+        .. seealso:: :meth:`scipy.sparse.csr_matrix.count_nonzero`
+        """
+        # Match scipy: dedup in place, then count.  ``self.indices``
+        # and ``self.indptr`` then directly give per-axis counts via
+        # bincount / np.diff with no COO round-trip.
+        self.sum_duplicates()
+        if axis is None:
+            return int(cupy.count_nonzero(self.data))
+        if axis < -2 or axis > 1:
+            raise ValueError('axis out of bounds')
+        if axis < 0:
+            axis += 2
+        # Translate (row, col) → (major, minor).  CSR's _swap is
+        # identity; CSC's swaps.
+        major_axis, _ = self._swap(axis, 1 - axis)
+        major_dim, minor_dim = self._swap(*self.shape)
+        mask = self.data != 0
+        if major_axis == 0:
+            # axis-along-major: per-minor-index count → bincount(indices)
+            idx = self.indices if bool(mask.all()) else self.indices[mask]
+            return cupy.bincount(
+                idx.astype(cupy.int64), minlength=minor_dim)
+        # axis-along-minor: per-major-index count
+        if bool(mask.all()):
+            return cupy.diff(self.indptr).astype(cupy.intp)
+        from cupyx.cusparse import _indptr_to_coo
+        major = _indptr_to_coo(self.indptr)
+        return cupy.bincount(
+            major[mask].astype(cupy.int64), minlength=major_dim)
 
     def sorted_indices(self):
         """Return a copy of this matrix with sorted indices
@@ -1150,6 +1193,32 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         A = self.copy()
         A.sort_indices()
         return A
+
+    def prune(self):
+        """Remove empty space after all non-zero elements.
+
+        After certain operations the ``indices`` and ``data`` buffers
+        may be longer than the logical entry count (``indptr[-1]``).
+        ``prune`` shrinks them so the buffers exactly match.  CuPy's
+        own helpers don't produce oversized buffers, so this is mostly
+        useful when arrays were assembled directly via ``_from_parts``.
+
+        .. seealso:: :meth:`scipy.sparse.csr_matrix.prune`
+        """
+        major_dim = self._swap(*self.shape)[0]
+        if len(self.indptr) != major_dim + 1:
+            raise ValueError('index pointer has invalid length')
+        # indptr[-1] is the logical entry count; data/indices may be
+        # longer than that if the caller built them with slack.
+        nnz = int(self.indptr[-1])  # synchronize!
+        if len(self.indices) < nnz:
+            raise ValueError('indices array has fewer than nnz elements')
+        if len(self.data) < nnz:
+            raise ValueError('data array has fewer than nnz elements')
+        if len(self.indices) > nnz:
+            self.indices = self.indices[:nnz].copy()
+        if len(self.data) > nnz:
+            self.data = self.data[:nnz].copy()
 
     def sort_indices(self):
         # Unlike in SciPy, here this is implemented in child classes because

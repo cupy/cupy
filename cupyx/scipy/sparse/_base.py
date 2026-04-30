@@ -23,10 +23,23 @@ except ImportError:
         pass
 
 
+# Format -> human-readable name (mirrors scipy.sparse._base._formats).
+# Used by ``__repr__`` and ``__str__``.
+_format_names = {
+    'csr': 'Compressed Sparse Row',
+    'csc': 'Compressed Sparse Column',
+    'coo': 'COOrdinate',
+    'dia': 'DIAgonal',
+    'dok': 'Dictionary Of Keys',
+    'lil': 'List of Lists',
+    'bsr': 'Block Sparse Row',
+}
+
+
 class _spbase:
     """Common base class for all sparse arrays and matrices.
 
-    See :class:`scipy.sparse.spmatrix`
+    .. seealso:: :class:`scipy.sparse._base._spbase`
     """
 
     __array_priority__ = 101
@@ -34,18 +47,20 @@ class _spbase:
 
     @property
     def device(self):
-        """CUDA device on which this array resides."""
+        """CUDA device on which this object resides."""
         raise NotImplementedError
 
     def get(self, stream=None):
-        """Return a copy of the array on host memory.
+        """Return a copy of this object on host memory.
 
         Args:
-            stream (cupy.cuda.Stream): CUDA stream object. If it is given, the
-                copy runs asynchronously. Otherwise, the copy is synchronous.
+            stream (cupy.cuda.Stream): CUDA stream object. If it is given,
+                the copy runs asynchronously. Otherwise, the copy is
+                synchronous.
 
         Returns:
-            scipy.sparse.spmatrix: An array on host memory.
+            scipy.sparse: A SciPy sparse object on host memory of the
+            matching format and array/matrix type.
 
         """
         raise NotImplementedError
@@ -54,10 +69,25 @@ class _spbase:
         raise TypeError('sparse array length is ambiguous; '
                         'use shape[0] or .nnz')
 
+    def __repr__(self):
+        format_name = _format_names.get(self.format, self.format)
+        sparse_cls = 'array' if isinstance(self, sparray) else 'matrix'
+        return (
+            f"<{format_name} sparse {sparse_cls} of dtype '{self.dtype}'\n"
+            f"\twith {self.nnz} stored elements and shape {self.shape}>")
+
     def __str__(self):
-        # TODO(unno): Do not use get method which is only available when scipy
-        # is installed.
-        return str(self.get())
+        # Delegate to SciPy when available so our output exactly matches
+        # scipy.sparse __str__ (including format-specific quirks like the
+        # DIA "(N diagonals)" annotation and the diagonal-/row-major
+        # listing order, which differs across scipy versions).  When the
+        # ``get()`` path is unavailable (no SciPy installed, or a subclass
+        # that hasn't overridden ``get``), fall back to ``repr`` — that
+        # avoids fabricating a host-side listing in a different layout.
+        try:
+            return str(self.get())
+        except (RuntimeError, NotImplementedError):
+            return repr(self)
 
     def __iter__(self):
         for r in range(self.shape[0]):
@@ -181,16 +211,31 @@ class _spbase:
         return self.transpose()
 
     @property
+    def mT(self):
+        """Matrix transpose.
+
+        Equivalent to :func:`cupyx.scipy.sparse.matrix_transpose` (when
+        added).  Currently restricted to 2-D since CuPy sparse types are
+        2-D only; will support nD when nD sparse arrays land.
+        """
+        n = self.ndim
+        if n < 2:
+            raise ValueError(
+                'Array must be at least 2-dimensional, '
+                f'but it is {n}-D')
+        return self.transpose()
+
+    @property
     def ndim(self):
         return len(self._shape)
 
     @property
     def size(self):
-        return self.getnnz()
+        return self._getnnz()
 
     @property
     def nnz(self):
-        return self.getnnz()
+        return self._getnnz()
 
     @property
     def shape(self):
@@ -243,18 +288,26 @@ class _spbase:
         else:
             return getattr(self, 'to' + format)()
 
-    def astype(self, t):
-        """Casts the array to given data type.
+    def astype(self, dtype, copy=True):
+        """Cast the array elements to a specified type.
 
         Args:
-            t: Type specifier.
+            dtype: Target dtype.
+            copy (bool): If ``True`` (default), the returned array does
+                not share memory with ``self``.  If ``False``, ``self``
+                is returned unchanged when the dtype already matches.
 
         Returns:
-            cupyx.scipy.sparse.spmatrix:
-                A copy of the array with the given type and the same format.
-
+            cupyx.scipy.sparse: Sparse object with the requested dtype
+            and the same format as ``self``.
         """
-        return self.tocsr().astype(t).asformat(self.format)
+        dtype = numpy.dtype(dtype)
+        if self.dtype != dtype:
+            return self.tocsr().astype(
+                dtype, copy=copy).asformat(self.format)
+        if copy:
+            return self.copy()
+        return self
 
     def conj(self, copy=True):
         """Element-wise complex conjugation.
@@ -327,11 +380,27 @@ class _spbase:
         else:
             return self @ other
 
-    def getnnz(self, axis=None):
-        """Number of stored values, including explicit zeros."""
+    def _getnnz(self, axis=None):
+        """Number of stored values, including explicit zeros.
+
+        Subclasses override this to provide format-specific counts.
+        Public access is via :attr:`nnz` (no axis) or
+        :meth:`spmatrix.getnnz` (matrix-only, axis-aware).
+        """
         raise NotImplementedError
 
-    # TODO(unno): Implement getrow
+    def nonzero(self):
+        """Indices of the non-zero elements.
+
+        Returns a tuple ``(row, col)`` of cupy.ndarrays (matching
+        :meth:`scipy.sparse._base._spbase.nonzero`).  Explicit zeros are
+        excluded.
+        """
+        A = self.tocoo()
+        if not A.has_canonical_format:
+            A.sum_duplicates()
+        nz_mask = A.data != 0
+        return (A.row[nz_mask], A.col[nz_mask])
 
     def maximum(self, other):
         return self.tocsr().maximum(other)
@@ -556,18 +625,27 @@ class _spbase:
 
 
 class sparray:
-    """Namespace mixin for sparse array classes."""
+    """Namespace mixin for sparse array classes.
+
+    Sparse array classes follow NumPy semantics: ``*`` is element-wise
+    multiplication and ``**`` is element-wise power.  Use ``@`` for
+    matrix multiplication.
+
+    .. seealso:: :class:`scipy.sparse.sparray`
+    """
     pass
 
 
 class spmatrix:
     """Mixin for sparse matrix classes.
 
-    Overrides ``*`` to mean matrix multiplication and ``**`` to mean
-    matrix power.  Provides backward-compatibility methods (``.A``,
-    ``.H``, ``getrow``, ``getcol``, etc.) that do not exist on arrays.
+    Sparse matrix classes follow legacy ``numpy.matrix`` semantics:
+    ``*`` is matrix multiplication and ``**`` is matrix power.  Provides
+    backward-compatibility methods (``.A``, ``.H``, ``getrow``,
+    ``getcol``, etc.) that do not exist on sparse arrays.  These APIs
+    are deprecated in favor of the sparse array interface.
 
-    See :class:`scipy.sparse.spmatrix`
+    .. seealso:: :class:`scipy.sparse.spmatrix`
     """
 
     def __init__(self, *args, maxprint=50, **kwargs):
@@ -677,90 +755,72 @@ class spmatrix:
             DeprecationWarning, stacklevel=2)
         return self.transpose().conj()
 
-    @property
-    def shape(self):
+    def get_shape(self):
+        """Return the shape of the matrix."""
         return self._shape
 
-    @shape.setter
-    def shape(self, value):
-        # Bypass the deprecated ``set_shape`` so ``m.shape = ...`` does not
-        # emit a warning.
-        self.reshape(value)
+    def set_shape(self, shape):
+        """Set the shape of the matrix in-place."""
+        # Match scipy 1.17: build the reshaped matrix and swap __dict__
+        # so the change is visible on the original object.
+        new_self = self.reshape(shape).asformat(self.format)
+        self.__dict__ = new_self.__dict__
+
+    shape = property(
+        fget=get_shape, fset=set_shape, doc='Shape of the matrix.')
 
     def asfptype(self):
         """Upcasts matrix to a floating point format.
 
         When the matrix has floating point type, the method returns itself.
-        Otherwise it makes a copy with floating point type and the same format.
+        Otherwise it makes a copy with floating point type and the same
+        format.
 
         Returns:
             cupyx.scipy.sparse.spmatrix: A matrix with float type.
-
-        .. deprecated:: 15.0
-           Use ``.astype(numpy.promote_types(self.dtype, 'f'))`` instead.
-
         """
-        warnings.warn(
-            "`spmatrix.asfptype` is deprecated; "
-            "use `.astype(numpy.promote_types(self.dtype, 'f'))` instead.",
-            DeprecationWarning, stacklevel=2)
         if self.dtype.kind == 'f':
             return self
-        else:
-            typ = numpy.promote_types(self.dtype, 'f')
-            return self.astype(typ)
+        typ = numpy.promote_types(self.dtype, 'f')
+        return self.astype(typ)
 
     def getH(self):
+        """Hermitian (conjugate) transpose of this matrix."""
         return self.transpose().conj()
 
-    def get_shape(self):
-        """Get the shape of the matrix.
+    def getrow(self, i):
+        """Return a copy of row ``i`` as a (1 x n) sparse row vector.
 
-        .. deprecated:: 15.0
-           Use ``.shape`` instead.
-
+        Matrix-only API; for sparse arrays use ``A[i]`` (or ``A[[i], :]``
+        for a 2-D result).
         """
-        warnings.warn(
-            "`spmatrix.get_shape` is deprecated; use `.shape` instead.",
-            DeprecationWarning, stacklevel=2)
-        return self._shape
+        return self._getrow(i)
+
+    def getcol(self, j):
+        """Return a copy of column ``j`` as a (m x 1) sparse column vector.
+
+        Matrix-only API; for sparse arrays use ``A[:, j]`` (or
+        ``A[:, [j]]`` for a 2-D result).
+        """
+        return self._getcol(j)
 
     def getformat(self):
-        """Return the format of this matrix (e.g., ``'csr'``).
-
-        .. deprecated:: 15.0
-           Use ``.format`` instead.
-
-        """
-        warnings.warn(
-            "`spmatrix.getformat` is deprecated; use `.format` instead.",
-            DeprecationWarning, stacklevel=2)
+        """Return the format string of this matrix (e.g. ``'csr'``)."""
         return self.format
 
     def getmaxprint(self):
-        """Return the maximum number of stored values shown in ``__str__``.
-
-        .. deprecated:: 15.0
-           Use ``.maxprint`` instead.
-
-        """
-        warnings.warn(
-            "`spmatrix.getmaxprint` is deprecated; use `.maxprint` instead.",
-            DeprecationWarning, stacklevel=2)
+        """Return the maximum number of stored values shown in ``__str__``."""
         return self.maxprint
 
-    def set_shape(self, shape):
-        """Set the shape of the matrix in-place.
+    def getnnz(self, axis=None):
+        """Number of stored values, including explicit zeros.
 
-        .. deprecated:: 15.0
-           Assign to ``.shape`` or use ``.reshape`` instead.
-
+        Args:
+            axis (None, 0, or 1): Select between the number of values
+                across the whole matrix, in each column (axis=0), or in
+                each row (axis=1).
         """
-        warnings.warn(
-            "`spmatrix.set_shape` is deprecated; "
-            "assign to `.shape` or use `.reshape` instead.",
-            DeprecationWarning, stacklevel=2)
-        self.reshape(shape)
+        return self._getnnz(axis=axis)
 
 
 def issparse(x):

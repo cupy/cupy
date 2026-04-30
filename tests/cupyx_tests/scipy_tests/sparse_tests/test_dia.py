@@ -88,24 +88,23 @@ class TestDiaMatrix(unittest.TestCase):
 
     @testing.with_requires('scipy>=1.14')
     def test_str(self):
-        dtype_name = numpy.dtype(self.dtype).name
-        if numpy.dtype(self.dtype).kind == 'f':
-            expect = f'''<DIAgonal sparse matrix of dtype '{dtype_name}'
-\twith 5 stored elements (2 diagonals) and shape (3, 4)>
-  Coords\tValues
-  (1, 1)\t1.0
-  (2, 2)\t2.0
-  (1, 0)\t3.0
-  (2, 1)\t4.0'''  # NOQA
-        else:
-            expect = f'''<DIAgonal sparse matrix of dtype '{dtype_name}'
-\twith 5 stored elements (2 diagonals) and shape (3, 4)>
-  Coords\tValues
-  (1, 1)\t(1+0j)
-  (2, 2)\t(2+0j)
-  (1, 0)\t(3+0j)
-  (2, 1)\t(4+0j)'''  # NOQA
-        assert str(self.m) == expect
+        # The exact DIA __str__ format differs across SciPy versions:
+        # SciPy 1.14-1.16 use diagonal-major order; SciPy 1.17 switched
+        # to row-major.  CuPy delegates ``__str__`` to ``str(self.get())``
+        # so the output automatically tracks the installed SciPy.
+        s = str(self.m)
+        # Sanity-check the format-, type-, and shape-bearing repr line.
+        assert 'DIAgonal' in s
+        assert 'sparse matrix' in s
+        assert str(self.m.shape) in s
+        assert '(2 diagonals)' in s
+        # Each stored value must show up exactly once.
+        for value in [1.0, 2.0, 3.0, 4.0]:
+            tok = (f'{value}' if numpy.dtype(self.dtype).kind == 'f'
+                   else f'({int(value)}+0j)')
+            assert tok in s, f'missing {tok!r} in {s!r}'
+        # Delegation invariant.
+        assert s == str(self.m.get())
 
     def test_toarray(self):
         m = self.m.toarray()
@@ -235,6 +234,16 @@ class TestDiaMatrixScipyComparison(unittest.TestCase):
     @testing.numpy_cupy_equal(sp_name='sp')
     def test_nnz_axis(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
+        # SciPy 1.17 fixed DIA nnz to be bounded by the actual data
+        # buffer length; CuPy follows the new (correct) semantics
+        # unconditionally.  Older SciPys returned the maximum potential
+        # count from offsets/shape, so empty-data cases would mismatch.
+        if (self.make_method == '_make_empty'
+                and scipy_available
+                and numpy.lib.NumpyVersion(scipy.__version__) < '1.17.0'):
+            pytest.skip(
+                'scipy<1.17 reports an over-counted nnz for empty DIA '
+                'data (fixed in scipy/scipy#23055)')
         return m.nnz
 
     def test_nnz_axis_not_none(self):

@@ -293,25 +293,15 @@ class TestCsrMatrix:
 
     @testing.with_requires('scipy>=1.14')
     def test_str(self):
-        dtype_name = numpy.dtype(self.dtype).name
-        if numpy.dtype(self.dtype).kind == 'f':
-            expect = f'''<Compressed Sparse Row sparse matrix of dtype '{dtype_name}'
-\twith 4 stored elements and shape (3, 4)>
-  Coords\tValues
-  (0, 0)\t0.0
-  (0, 1)\t1.0
-  (1, 3)\t2.0
-  (2, 2)\t3.0'''  # NOQA
-        elif numpy.dtype(self.dtype).kind == 'c':
-            expect = f'''<Compressed Sparse Row sparse matrix of dtype '{dtype_name}'
-\twith 4 stored elements and shape (3, 4)>
-  Coords\tValues
-  (0, 0)\t0j
-  (0, 1)\t(1+0j)
-  (1, 3)\t(2+0j)
-  (2, 2)\t(3+0j)'''  # NOQA
-
-        assert str(self.m) == expect
+        # CuPy delegates ``__str__`` to ``str(self.get())`` so the output
+        # always matches the installed scipy's format.  Sanity-check the
+        # key repr fields explicitly so we'd notice if the delegation
+        # silently broke.
+        s = str(self.m)
+        assert 'Compressed Sparse Row' in s
+        assert 'sparse matrix' in s
+        assert str(self.m.shape) in s
+        assert s == str(self.m.get())
 
     def test_toarray(self):
         m = self.m.toarray()

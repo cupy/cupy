@@ -5,7 +5,6 @@ import numpy as np
 from cupy._core import internal
 from cupy import _util
 from cupyx.scipy.sparse import _base
-from cupyx.scipy.sparse import _coo
 from cupyx.scipy.sparse import _sputils
 
 
@@ -33,21 +32,37 @@ class _data_matrix(_base._spbase):
         """Elementwise absolute."""
         return self._with_data(abs(self.data))
 
+    def __round__(self, ndigits=0):
+        """Elementwise rounding (matches :func:`numpy.around`)."""
+        return self._with_data(cupy.around(self.data, decimals=ndigits))
+
     def __neg__(self):
         """Elementwise negative."""
+        if self.dtype.kind == 'b':
+            # Match scipy 1.17: raise NotImplementedError instead of letting
+            # the underlying cupy error surface.
+            raise NotImplementedError(
+                'negating a boolean sparse array is not supported')
         return self._with_data(-self.data)
 
-    def astype(self, t):
-        """Casts the array to given data type.
+    def astype(self, dtype, copy=True):
+        """Cast the array elements to a specified type.
 
         Args:
-            dtype: Type specifier.
+            dtype: Target dtype.
+            copy (bool): If ``True`` (default), the returned array does
+                not share memory with ``self``.  If ``False``, ``self``
+                is returned unchanged when the dtype already matches.
 
         Returns:
-            A copy of the array with a given type.
-
+            Sparse object with the requested dtype and the same format.
         """
-        return self._with_data(self.data.astype(t))
+        dtype = np.dtype(dtype)
+        if self.dtype != dtype:
+            return self._with_data(self.data.astype(dtype, copy=copy))
+        if copy:
+            return self.copy()
+        return self
 
     def conj(self, copy=True):
         if cupy.issubdtype(self.dtype, cupy.complexfloating):
@@ -72,20 +87,35 @@ class _data_matrix(_base._spbase):
 
     copy.__doc__ = _base._spbase.copy.__doc__
 
-    def count_nonzero(self):
-        """Returns number of non-zero entries.
+    def count_nonzero(self, axis=None):
+        """Number of non-zero entries.
 
-        .. note::
-           This method counts the actual number of non-zero entries, which
-           does not include explicit zero entries.
-           Instead ``nnz`` returns the number of entries including explicit
-           zeros.
+        Unlike :attr:`nnz` (length of ``data``), this counts only true
+        non-zero values; explicit-zero stored entries are excluded.
+
+        Args:
+            axis ({None, 0, 1, -1, -2}, optional):
+                Count nonzeros for the whole array, or along the
+                specified axis.  Per-axis support requires a
+                ``count_nonzero`` override on the format class — the
+                generic implementation here only handles ``axis=None``.
 
         Returns:
-            Number of non-zero entries.
-
+            int or cupy.ndarray: Scalar count when ``axis`` is
+            ``None``; otherwise a 1-D array (from format override).
         """
-        return cupy.count_nonzero(self.data)
+        # Match scipy: ensure deduped data before counting.  CuPy's
+        # other read-style ops (e.g. ``_matmul_dispatch``) already
+        # mutate via ``sum_duplicates``, so this is consistent.
+        if hasattr(self, 'sum_duplicates'):
+            self.sum_duplicates()
+        if axis is None:
+            return int(cupy.count_nonzero(self.data))
+        # Format-specific overrides (CSR/CSC/COO) handle axis cases.
+        # DIA doesn't natively, matching scipy's choice to raise.
+        raise NotImplementedError(
+            'axis-aware count_nonzero is not implemented for '
+            f'{type(self).__name__}')
 
     def mean(self, axis=None, dtype=None, out=None):
         """Compute the arithmetic mean along the specified axis.
@@ -180,14 +210,18 @@ class _minmax_mixin:
         n = len(value)
         zeros = cupy.zeros(n, dtype=idx_dtype)
         value = value.astype(self.dtype, copy=False)
+        # Use the appropriate container so the result inherits the
+        # array vs matrix type from ``self``.  CuPy COO is currently
+        # 2D-only, so reductions still produce (1, M) / (M, 1) shapes
+        # even for sparse arrays (SciPy sparse arrays return shape
+        # (M,) here, but that requires 1D sparse array support).
+        coo_cls = self._coo_container
         if axis == 0:
-            return _coo.coo_matrix._from_parts(
-                value, zeros, major_index,
-                shape=(1, M))
+            return coo_cls._from_parts(
+                value, zeros, major_index, shape=(1, M))
         else:
-            return _coo.coo_matrix._from_parts(
-                value, major_index, zeros,
-                shape=(M, 1))
+            return coo_cls._from_parts(
+                value, major_index, zeros, shape=(M, 1))
 
     def _min_or_max(self, axis, out, min_or_max, explicit):
         if out is not None:
@@ -232,6 +266,10 @@ class _minmax_mixin:
         # Do the reduction
         value = mat._arg_minor_reduce(op, axis)
 
+        # Sparse arrays return a 1-D ndarray; sparse matrices keep
+        # the legacy 2-D shape (matching scipy).
+        if isinstance(self, _base.sparray):
+            return value
         if axis == 0:
             return value[None, :]
         else:

@@ -21,6 +21,73 @@ def isscalarlike(x):
     return cupy.isscalar(x) or (isdense(x) and x.ndim == 0)
 
 
+def safely_cast_index_arrays(A, idx_dtype=numpy.int32, msg=""):
+    """Safely cast sparse array indices to ``idx_dtype``.
+
+    Check the shape of *A* to determine if it is safe to cast its index
+    arrays to dtype *idx_dtype*.  If any dimension in shape is larger than
+    fits in the dtype, casting is unsafe so raise :class:`ValueError`.
+    If safe, cast the index arrays to ``idx_dtype`` and return the result
+    without changing the input *A*.  The caller can assign the results to
+    *A*'s attributes if desired or use the recast index arrays directly.
+
+    Unless downcasting is needed, the original index arrays are returned.
+    You can test e.g. ``A.indptr is new_indptr`` to see if downcasting
+    occurred.
+
+    Args:
+        A (cupyx.scipy.sparse): The array for which index arrays should
+            be (potentially) downcast.
+        idx_dtype (dtype): Desired index dtype.  Defaults to ``numpy.int32``.
+        msg (str, optional): String appended to the ``ValueError`` message
+            when ``A.shape`` is too big to fit in ``idx_dtype``.
+
+    Returns:
+        ndarray or tuple of ndarrays:
+            For CSR/CSC, ``(indices, indptr)``.
+            For COO, ``(row, col)`` (CuPy is currently 2-D-only).
+            For DIA, ``offsets``.
+
+    Raises:
+        ValueError: When the dtype cannot represent ``A``'s shape or
+            existing index values.
+
+    .. seealso:: :func:`scipy.sparse.safely_cast_index_arrays`
+    """
+    idx_dtype = numpy.dtype(idx_dtype)
+    if not msg:
+        msg = f"dtype {idx_dtype}"
+    max_value = numpy.iinfo(idx_dtype).max
+
+    if A.format in ('csc', 'csr'):
+        # indptr is monotonically nondecreasing, so its last element is
+        # the largest representable value.
+        if int(A.indptr[-1]) > max_value:  # synchronize!
+            raise ValueError(f"indptr values too large for {msg}")
+        if max(A.shape) > max_value:
+            if bool((A.indices > max_value).any()):  # synchronize!
+                raise ValueError(f"indices values too large for {msg}")
+        return (A.indices.astype(idx_dtype, copy=False),
+                A.indptr.astype(idx_dtype, copy=False))
+
+    if A.format == 'coo':
+        if max(A.shape) > max_value:
+            if (bool((A.row > max_value).any())  # synchronize!
+                    or bool((A.col > max_value).any())):
+                raise ValueError(f"coords values too large for {msg}")
+        return (A.row.astype(idx_dtype, copy=False),
+                A.col.astype(idx_dtype, copy=False))
+
+    if A.format == 'dia':
+        if max(A.shape) > max_value:
+            if bool((A.offsets > max_value).any()):  # synchronize!
+                raise ValueError(f"offsets values too large for {msg}")
+        return A.offsets.astype(idx_dtype, copy=False)
+
+    raise TypeError(
+        f'Format {A.format} is not associated with index arrays.')
+
+
 def get_index_dtype(arrays=(), maxval=None, check_contents=False):
     """Based on input (integer) arrays ``a``, determines a suitable index data
     type that can hold the data in the arrays.

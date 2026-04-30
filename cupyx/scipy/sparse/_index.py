@@ -370,7 +370,15 @@ class IndexMixin:
                 return self._get_columnXarray(row[:, 0], col.ravel())
 
         # The only remaining case is inner (fancy) indexing
-        row, col = cupy.broadcast_arrays(row, col)
+        try:
+            row, col = cupy.broadcast_arrays(row, col)
+        except ValueError as e:
+            # Match scipy 1.17: shape-mismatch on fancy indexing
+            # raises IndexError, not ValueError.
+            raise IndexError(
+                'shape mismatch: indexing arrays could not be broadcast '
+                'together with shapes {} {}'.format(row.shape, col.shape)
+            ) from e
         if row.shape != col.shape:
             raise IndexError('number of row and column indices differ')
         if row.size == 0:
@@ -382,7 +390,12 @@ class IndexMixin:
 
         if isinstance(row, _int_scalar_types) and\
                 isinstance(col, _int_scalar_types):
-            x = cupy.asarray(x, dtype=self.dtype)
+            # A 1x1 sparse RHS (scipy/cupy sparse) is a valid scalar
+            # source — densify it before checking size.
+            if issparse(x):
+                x = cupy.asarray(x.toarray(), dtype=self.dtype)
+            else:
+                x = cupy.asarray(x, dtype=self.dtype)
             if x.size != 1:
                 raise ValueError('Trying to assign a sequence to an item')
             self._set_intXint(row, col, x.flat[0])
@@ -476,27 +489,27 @@ class IndexMixin:
 
         return x % length
 
-    def getrow(self, i):
-        """Return a copy of row i of the matrix, as a (1 x n) row vector.
+    def _getrow(self, i):
+        """Internal: return row ``i`` of the matrix as a (1 x n) row.
 
         Args:
-            i (integer): Row
+            i (integer): Row index.
 
         Returns:
-            cupyx.scipy.sparse.spmatrix: Sparse matrix with single row
+            cupyx.scipy.sparse: Sparse object with single row.
         """
         M, N = self.shape
         i = _normalize_index(i, M, 'index')
         return self._get_intXslice(i, slice(None))
 
-    def getcol(self, i):
-        """Return a copy of column i of the matrix, as a (m x 1) column vector.
+    def _getcol(self, i):
+        """Internal: return column ``i`` of the matrix as a (m x 1) column.
 
         Args:
-            i (integer): Column
+            i (integer): Column index.
 
         Returns:
-            cupyx.scipy.sparse.spmatrix: Sparse matrix with single column
+            cupyx.scipy.sparse: Sparse object with single column.
         """
         M, N = self.shape
         i = _normalize_index(i, N, 'index')
@@ -545,9 +558,10 @@ class IndexMixin:
         self._set_arrayXarray(row, col, x)
 
 
-def _try_is_scipy_spmatrix(index):
+def _try_is_scipy_sparse(index):
+    """True for any scipy.sparse object (matrix or array)."""
     if scipy_available:
-        return isinstance(index, scipy.sparse.spmatrix)
+        return scipy.sparse.issparse(index)
     return False
 
 
@@ -565,7 +579,7 @@ def _unpack_index(index):
     # First, check if indexing with single boolean matrix.
     if ((isinstance(index, (_spbase, cupy.ndarray,
                             numpy.ndarray))
-         or _try_is_scipy_spmatrix(index))
+         or _try_is_scipy_sparse(index))
             and index.ndim == 2 and index.dtype.kind == 'b'):
         return index.nonzero()
 

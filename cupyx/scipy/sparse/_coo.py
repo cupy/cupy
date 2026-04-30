@@ -16,33 +16,29 @@ from cupyx.scipy.sparse import _sputils
 
 
 class _coo_base(sparse_data._data_matrix):
-    """COO format base (shared by coo_matrix and coo_array).
+    """COO format base (shared by ``coo_matrix`` and ``coo_array``).
 
-    This can be instantiated in several ways.
+    This can be instantiated in several ways:
 
-    ``coo_matrix(D)``
+    ``coo_*(D)``
         ``D`` is a rank-2 :class:`cupy.ndarray`.
-
-    ``coo_matrix(S)``
-        ``S`` is another sparse matrix. It is equivalent to ``S.tocoo()``.
-
-    ``coo_matrix((M, N), [dtype])``
-        It constructs an empty matrix whose shape is ``(M, N)``. Default dtype
+    ``coo_*(S)``
+        ``S`` is another sparse object.  Equivalent to ``S.tocoo()``.
+    ``coo_*((M, N), [dtype])``
+        Constructs an empty (M, N)-shaped sparse object.  Default dtype
         is float64.
-
-    ``coo_matrix((data, (row, col)))``
-        All ``data``, ``row`` and ``col`` are one-dimenaional
-        :class:`cupy.ndarray`.
+    ``coo_*((data, (row, col)), shape=...)``
+        ``data``, ``row`` and ``col`` are 1-D :class:`cupy.ndarray`.
 
     Args:
         arg1: Arguments for the initializer.
-        shape (tuple): Shape of a matrix. Its length must be two.
-        dtype: Data type. It must be an argument of :class:`numpy.dtype`.
+        shape (tuple): Shape; must be a 2-tuple of ints.
+        dtype: Data type; must be representable as :class:`numpy.dtype`.
         copy (bool): If ``True``, copies of given data are always used.
 
     .. seealso::
+       :class:`scipy.sparse.coo_array`,
        :class:`scipy.sparse.coo_matrix`
-
     """
 
     format = 'coo'
@@ -58,7 +54,10 @@ class _coo_base(sparse_data._data_matrix):
         diff = diff_out;
         ''', 'cupyx_scipy_sparse_coo_sum_duplicates_diff')
 
-    def __init__(self, arg1, shape=None, dtype=None, copy=False):
+    def __init__(self, arg1, shape=None, dtype=None, copy=False,
+                 *, maxprint=None):
+        if maxprint is not None:
+            self.maxprint = maxprint
         if shape is not None and len(shape) != 2:
             raise ValueError(
                 'Only two-dimensional sparse arrays are supported.')
@@ -215,6 +214,23 @@ class _coo_base(sparse_data._data_matrix):
             self.shape,
             has_canonical_format=self.has_canonical_format)
 
+    @property
+    def coords(self):
+        """Tuple of coordinate arrays ``(row, col)``.
+
+        Mirrors :attr:`scipy.sparse.coo_array.coords` for partial
+        forward-compatibility with nD sparse arrays (CuPy is currently
+        2-D only).
+        """
+        return (self.row, self.col)
+
+    @coords.setter
+    def coords(self, value):
+        if not isinstance(value, tuple) or len(value) != 2:
+            raise ValueError(
+                'coords must be a 2-tuple of arrays for 2-D sparse')
+        self.row, self.col = value
+
     def diagonal(self, k=0):
         """Returns the k-th diagonal of the matrix.
 
@@ -303,20 +319,42 @@ class _coo_base(sparse_data._data_matrix):
         self.row = self.row[ind]
         self.col = self.col[ind]
 
-    def get_shape(self):
-        """Returns the shape of the matrix.
-
-        Returns:
-            tuple: Shape of the matrix.
-        """
-        return self._shape
-
-    def getnnz(self, axis=None):
-        """Returns the number of stored values, including explicit zeros."""
+    def _getnnz(self, axis=None):
+        """Number of stored values, including explicit zeros."""
         if axis is None:
             return self.data.size
         else:
             raise ValueError
+
+    def count_nonzero(self, axis=None):
+        """Number of non-zero entries.
+
+        Excludes explicit zeros.  Duplicates are summed first.
+
+        Args:
+            axis ({-2, -1, 0, 1, ``None``}):
+                Count over the whole matrix, or along an axis.
+
+        Returns:
+            int or cupy.ndarray: Scalar count when ``axis=None``,
+            otherwise a 1-D ``cupy.ndarray`` of length
+            ``shape[1 - axis]``.
+        """
+        # Match scipy: dedup in place, then count.  COO is already in
+        # row/col form so per-axis counts come straight from a bincount
+        # on the appropriate coord array — no format conversion needed.
+        self.sum_duplicates()
+        if axis is None:
+            return int(cupy.count_nonzero(self.data))
+        if axis < 0:
+            axis += 2
+        if axis < 0 or axis >= 2:
+            raise ValueError('axis out of bounds')
+        mask = self.data != 0
+        coord = (self.col if axis == 0 else self.row)[mask]
+        return cupy.bincount(
+            coord.astype(cupy.int64),
+            minlength=self.shape[1 - axis])
 
     def get(self, stream=None):
         """Returns a copy of the array on host memory.
