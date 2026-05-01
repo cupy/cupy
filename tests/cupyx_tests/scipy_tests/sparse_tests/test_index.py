@@ -119,6 +119,16 @@ class TestSetitemIndexing:
                             _get_index_combos(1)):
             self._run(maj, min, data=x)
 
+    def test_set_sparse_singleton(self):
+        # ``A[i, j] = sparse_1x1`` previously raised ValueError because
+        # ``cupy.asarray(sparse, dtype=...)`` doesn't densify; the
+        # __setitem__ scalar path now handles a sparse 1x1 RHS.
+        dtype = getattr(cupy, self.dtype)
+        m = sparse.csr_matrix(cupy.eye(3, dtype=dtype))
+        rhs = sparse.csr_matrix(cupy.array([[7.0]], dtype=dtype))
+        m[0, 0] = rhs
+        assert m.toarray()[0, 0] == 7.0
+
     @pytest.mark.xfail(scipy_113_or_later, reason="XXX: scipy1.13")
     @testing.with_requires('scipy>=1.5.0')
     def test_set_zero_dim_bool_mask(self):

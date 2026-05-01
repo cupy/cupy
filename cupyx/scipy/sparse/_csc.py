@@ -46,6 +46,8 @@ class _csc_base(_compressed._compressed_sparse_matrix):
     """
 
     format = 'csc'
+    # Index of the major axis in shape: columns for CSC.
+    _major_axis = 1
 
     def get(self, stream=None):
         """Returns a copy of the array on host memory.
@@ -112,7 +114,9 @@ class _csc_base(_compressed._compressed_sparse_matrix):
         elif _base.issparse(other) and other.format == 'csr':
             self.sum_duplicates()
             other.sum_duplicates()
-            if cusparse.check_availability('spgemm'):
+            is_int64 = (self.indices.dtype == cupy.int64
+                        or other.indices.dtype == cupy.int64)
+            if is_int64 or cusparse.check_availability('spgemm'):
                 a = self.tocsr()
                 a.sum_duplicates()
                 return self._as_csr_type(cusparse.spgemm(a, other))
@@ -130,6 +134,16 @@ class _csc_base(_compressed._compressed_sparse_matrix):
         elif _base.issparse(other) and other.format == 'csc':
             self.sum_duplicates()
             other.sum_duplicates()
+            is_int64 = (self.indices.dtype == cupy.int64
+                        or other.indices.dtype == cupy.int64)
+            if is_int64:
+                # csrgemm/csrgemm2 are int32-only; route via spgemm,
+                # which has a pure-CuPy fallback for older cuSPARSE.
+                a = self.tocsr()
+                b = other.tocsr()
+                a.sum_duplicates()
+                b.sum_duplicates()
+                return self._as_csr_type(cusparse.spgemm(a, b))
             if cusparse.check_availability('csrgemm') and not runtime.is_hip:
                 # trans=True is still buggy as of ROCm 4.2.0
                 a = self.T

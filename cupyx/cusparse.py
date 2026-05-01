@@ -81,7 +81,10 @@ def _check_int32_indices(a, func_name):
 
 
 def _indptr_to_coo(indptr, dtype=None):
-    """Expand compressed indptr to per-nnz major-axis indices."""
+    """Expand compressed ``indptr`` to per-nnz major-axis indices.
+
+    Inverse of :func:`_build_indptr`.  ``dtype`` defaults to ``indptr.dtype``.
+    """
     if dtype is None:
         dtype = indptr.dtype
     nrows = indptr.shape[0] - 1
@@ -89,8 +92,12 @@ def _indptr_to_coo(indptr, dtype=None):
         _cupy.arange(nrows, dtype=dtype), _cupy.diff(indptr))
 
 
-def _build_indptr_int64(row_indices, n_rows, dtype):
-    """Build compressed indptr from per-nnz major-axis assignments."""
+def _build_indptr(row_indices, n_rows, dtype):
+    """Build compressed indptr from per-nnz major-axis assignments.
+
+    Mirrors the histogram + prefix-sum recipe used by scipy.sparse,
+    works with both int32 and int64 ``dtype``.
+    """
     indptr = _cupy.zeros(n_rows + 1, dtype=dtype)
     _cupy.add.at(indptr[1:], row_indices, 1)
     _cupy.cumsum(indptr, out=indptr)
@@ -103,6 +110,8 @@ def _with_indices_dtype(m, dtype):
     Data array is shared (no copy).  Used to promote int32 index arrays to
     int64 before calling a cuSPARSE function that requires uniform int64.
     """
+    # The short-circuit relies on the invariant indices.dtype == indptr.dtype
+    # (enforced by _from_parts and the public constructor).
     if m.indptr.dtype == dtype:
         return m
     # Read private attrs to avoid triggering the lazy property getter
@@ -570,6 +579,8 @@ def csrgeam(a, b, alpha=1, beta=1):
         raise TypeError('unsupported type (actual: {})'.format(type(a)))
     if not _is_csr_type(b):
         raise TypeError('unsupported type (actual: {})'.format(type(b)))
+    _check_int32_indices(a, 'csrgeam')
+    _check_int32_indices(b, 'csrgeam')
     if not a.has_canonical_format:
         raise ValueError('expected canonical format for a')
     if not b.has_canonical_format:
@@ -762,6 +773,11 @@ def spgeam(a, b, alpha=1, beta=1):
 
     idx_dtype = _numpy.result_type(a.indices.dtype, b.indices.dtype)
     a, b = _cast_common_type(a, b)
+    # cuSPARSE requires uniform index dtype across operands; promote any
+    # int32 input to match the common idx_dtype before SpMatDescr.create.
+    # _cast_common_type only promotes data dtype, not indices.
+    a = _with_indices_dtype(a, idx_dtype)
+    b = _with_indices_dtype(b, idx_dtype)
     m, n = a.shape
     handle = _device.get_cusparse_handle()
 
@@ -848,6 +864,8 @@ def csrgemm(a, b, transa=False, transb=False):
 
     if a.ndim != 2 or b.ndim != 2:
         raise ValueError('expected 2-D matrices')
+    _check_int32_indices(a, 'csrgemm')
+    _check_int32_indices(b, 'csrgemm')
     if not a.has_canonical_format:
         raise ValueError('expected canonical format for a')
     if not b.has_canonical_format:
@@ -925,6 +943,8 @@ def csrgemm2(a, b, d=None, alpha=1, beta=1):
         raise TypeError('unsupported type (actual: {})'.format(type(a)))
     if not _is_csr_type(b):
         raise TypeError('unsupported type (actual: {})'.format(type(b)))
+    _check_int32_indices(a, 'csrgemm2')
+    _check_int32_indices(b, 'csrgemm2')
     if not a.has_canonical_format:
         raise ValueError('expected canonical format for a')
     if not b.has_canonical_format:
@@ -936,6 +956,7 @@ def csrgemm2(a, b, d=None, alpha=1, beta=1):
             raise ValueError('expected 2-D matrix for d')
         if not _is_csr_type(d):
             raise TypeError('unsupported type (actual: {})'.format(type(d)))
+        _check_int32_indices(d, 'csrgemm2')
         if not d.has_canonical_format:
             raise ValueError('expected canonical format for d')
         if a.shape[0] != d.shape[0] or b.shape[1] != d.shape[1]:
@@ -1232,8 +1253,8 @@ def coosort(x, sort_by='r'):
             desc_y = DnVecDescriptor.create(data_orig)
             _cusparse.gather(handle, desc_y.desc, desc_x.desc)
 
-    if sort_by == 'c':  # coo is sorted by row first
-        x._has_canonical_format = False
+    if sort_by == 'c':  # coo canonical order is row-major
+        x.has_canonical_format = False
 
 
 def coo2csr(x):
@@ -1244,7 +1265,7 @@ def coo2csr(x):
         indptr = _cupy.zeros(m + 1, dtype=idx_dtype)
     elif idx_dtype == _cupy.int64:
         # TODO(eriknw): cuSPARSE--remove when xcoo2csr supports int64
-        indptr = _build_indptr_int64(x.row, m, idx_dtype)
+        indptr = _build_indptr(x.row, m, idx_dtype)
     else:
         handle = _device.get_cusparse_handle()
         indptr = _cupy.empty(m + 1, dtype=idx_dtype)
@@ -1263,7 +1284,7 @@ def coo2csc(x):
         indptr = _cupy.zeros(n + 1, dtype=idx_dtype)
     elif idx_dtype == _cupy.int64:
         # TODO(eriknw): cuSPARSE--remove when xcoo2csr supports int64
-        indptr = _build_indptr_int64(x.col, n, idx_dtype)
+        indptr = _build_indptr(x.col, n, idx_dtype)
     else:
         handle = _device.get_cusparse_handle()
         indptr = _cupy.empty(n + 1, dtype=idx_dtype)
@@ -1308,22 +1329,23 @@ def csr2coo(x, data, indices):
 
 
 def _cupy_transpose_compressed_int64(x, output_cls, out_dim):
-    # TODO(eriknw): cuSPARSE--remove when a Generic API CSR↔CSC function ships.
-    # No such function exists as of CUDA 13.2 or dev.
-    # This is the biggest perf gap: int64 tocsc is 7-10x slower than
-    # int32 (measured on Blackwell, 10K-100K matrices).
-    """Pure-CuPy CSR↔CSC transpose for int64 indices.
+    """Pure-CuPy CSR<->CSC transpose for int64 indices.
 
-    Uses _build_indptr_int64 + lexsort.
-    O(nnz log nnz) time.
+    Uses ``_build_indptr`` + ``lexsort`` -- O(nnz log nnz) time.
+    Used as the int64 fallback because no Generic API CSR<->CSC
+    function exists as of CUDA 13.2 / dev.  This is the biggest
+    perf gap: int64 tocsc is 7-10x slower than int32 (measured on
+    Blackwell, 10K-100K matrices).
 
     Args:
         x: Input compressed sparse matrix.
         output_cls: Output class (csc_matrix or csr_matrix).
         out_dim: Size of the output's major axis (n for CSC, m for CSR).
     """
+    # TODO(eriknw): cuSPARSE--remove when a Generic API CSR<->CSC
+    # function ships.
     nnz = x.nnz
-    idx_dtype = x.indices.dtype  # int64
+    idx_dtype = x.indices.dtype
 
     if nnz == 0:
         return output_cls._from_parts(
@@ -1333,7 +1355,7 @@ def _cupy_transpose_compressed_int64(x, output_cls, out_dim):
             x.shape,
             has_sorted_indices=True)
 
-    out_indptr = _build_indptr_int64(x.indices, out_dim, idx_dtype)
+    out_indptr = _build_indptr(x.indices, out_dim, idx_dtype)
     expanded = _indptr_to_coo(x.indptr)
 
     # Sort by (output major, output minor) for canonical order.
@@ -1346,7 +1368,7 @@ def _cupy_transpose_compressed_int64(x, output_cls, out_dim):
 
 def csr2csc(x):
     if x.indices.dtype == _cupy.int64:
-        # TODO(eriknw): cuSPARSE--remove when a Generic API CSR↔CSC ships
+        # TODO(eriknw): cuSPARSE--remove when a Generic API CSR<->CSC ships
         # (or when csr2csc supports int64).  No such API exists as
         # of dev or CUDA 13.2.  Biggest perf gap: 7-10x.
         return _cupy_transpose_compressed_int64(
@@ -1448,7 +1470,7 @@ def csc2csr(x):
             x, cupyx.scipy.sparse.csr_matrix, int(x.shape[0]))
 
     if not check_availability('csc2csr'):
-        raise RuntimeError('csr2csc is not available.')
+        raise RuntimeError('csc2csr is not available.')
 
     handle = _device.get_cusparse_handle()
     m, n = x.shape
@@ -2415,17 +2437,13 @@ def _cupy_spgemm_int64(a, b, alpha):
     Expands all (i,j,a*b) products into COO, then sum_duplicates.
     O(P log P) time, O(P + nnz_C) space, where P = total products.
     """
-    # Normalise to int64 (no copy if already int64).
-    a_indices = (a.indices if a.indices.dtype == _cupy.int64
-                 else a.indices.astype(_cupy.int64))
-    a_indptr = (a.indptr if a.indptr.dtype == _cupy.int64
-                else a.indptr.astype(_cupy.int64))
-    b_indices = (b.indices if b.indices.dtype == _cupy.int64
-                 else b.indices.astype(_cupy.int64))
-    b_indptr = (b.indptr if b.indptr.dtype == _cupy.int64
-                else b.indptr.astype(_cupy.int64))
-
     idx_dtype = _cupy.int64
+    # Normalise both operands to int64 (no copy if already int64).
+    a_indices = a.indices.astype(idx_dtype, copy=False)
+    a_indptr = a.indptr.astype(idx_dtype, copy=False)
+    b_indices = b.indices.astype(idx_dtype, copy=False)
+    b_indptr = b.indptr.astype(idx_dtype, copy=False)
+
     m = a.shape[0]
     n = b.shape[1]
 
@@ -2442,23 +2460,23 @@ def _cupy_spgemm_int64(a, b, alpha):
             (m, n))
 
     a_src = _cupy.repeat(
-        _cupy.arange(a.nnz, dtype=_cupy.int64), products_per_a)
+        _cupy.arange(a.nnz, dtype=idx_dtype), products_per_a)
     # b_offset: position within each B row (grouped arange)
-    cum_prod = _cupy.zeros(a.nnz + 1, dtype=_cupy.int64)
-    _cupy.cumsum(products_per_a.astype(_cupy.int64), out=cum_prod[1:])
-    b_offset = _cupy.arange(total_products, dtype=_cupy.int64) \
-        - cum_prod[a_src]
+    cum_prod = _cupy.zeros(a.nnz + 1, dtype=idx_dtype)
+    _cupy.cumsum(products_per_a, out=cum_prod[1:])
+    b_offset = (
+        _cupy.arange(total_products, dtype=idx_dtype) - cum_prod[a_src])
     del cum_prod
 
-    # Expand A indptr → row index for each A nonzero.
+    # Expand A indptr -> row index for each A nonzero.
     a_rows = _indptr_to_coo(a_indptr)
 
     # Gather the (output_row, output_col, value) triple for each product.
     a_col_k = a_indices[a_src]                       # column of A = row of B
     b_row_start = b_indptr[a_col_k]                  # start pos in B arrays
-    b_col_pos = (b_row_start + b_offset).astype(_cupy.int64)
-    c_cols = b_indices[b_col_pos].astype(idx_dtype)
-    c_rows = a_rows[a_src].astype(idx_dtype)
+    b_col_pos = b_row_start + b_offset
+    c_cols = b_indices[b_col_pos]
+    c_rows = a_rows[a_src]
     c_vals = a.data[a_src] * b.data[b_col_pos]
     del a_src, b_offset, b_col_pos, a_rows, a_col_k  # free P-sized temporaries
     if alpha != 1:
@@ -2509,13 +2527,11 @@ def spgemm(a, b, alpha=1):
             and check_availability('spgemm')
         ) or check_availability('spgemm_int64')
         if _native_int64:
-            # Native int64 available: upcast any int32 index arrays to
-            # int64 so cuSPARSE receives uniform int64 (required by the
-            # API), then fall through to the regular cuSPARSE path below.
-            if a.indices.dtype != _cupy.int64:
-                a = _with_indices_dtype(a, _cupy.int64)
-            if b.indices.dtype != _cupy.int64:
-                b = _with_indices_dtype(b, _cupy.int64)
+            # Native int64 available: cuSPARSE requires uniform index
+            # dtype, so upcast any int32 operand to int64 before falling
+            # through to the regular cuSPARSE path below.
+            a = _with_indices_dtype(a, _cupy.int64)
+            b = _with_indices_dtype(b, _cupy.int64)
         else:
             a, b = _cast_common_type(a, b)
             return _cupy_spgemm_int64(a, b, alpha)

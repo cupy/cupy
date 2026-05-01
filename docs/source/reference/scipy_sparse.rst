@@ -20,15 +20,28 @@ matrix dimensions and index values:
 * **int64** when any dimension or index value exceeds
   ``2**31 - 1``.
 
-The dtype is chosen by :func:`~cupyx.scipy.sparse._sputils.get_index_dtype`
-(mirroring SciPy's logic) and is preserved through format
-conversions, arithmetic, and indexing.
+The dtype is chosen by ``get_index_dtype`` (mirroring SciPy's logic)
+and is preserved through format conversions, arithmetic, and indexing.
 
 Operations that delegate to cuSPARSE use the native Generic API
 (``SpMatDescr``) for int64 where available, with pure-CuPy
 fallbacks for legacy int32-only APIs (e.g., ``csr2cscEx2``,
-``xcoo2csr``, ``csrgeam2``).  Some operations (``spsolve``,
-``csrilu02``) do not yet support int64 and raise ``ValueError``.
+``xcoo2csr``, ``csrgeam2``).
+
+Known limitations
+~~~~~~~~~~~~~~~~~
+
+The following operations are int32-only and raise ``ValueError``
+when called on a matrix with int64 indices:
+
+* :func:`cupyx.scipy.sparse.linalg.spsolve` -- the underlying
+  ``cusolverSp<t>csrlsvqr`` routine has no int64 overload.
+* :func:`cupyx.scipy.sparse.linalg.spilu` -- the underlying
+  ``cusparse<t>csrilu02`` routine has no int64 overload.
+* :func:`cupyx.scipy.sparse.linalg.spsolve_triangular` on CUDA
+  builds older than 12.0, where the dispatch falls back to
+  ``cusparse<t>csrsm2``.  On CUDA 12.0+ it uses ``cusparseSpSM``
+  (Generic API), which supports int64.
 
 Conversion to/from SciPy sparse matrices
 ----------------------------------------

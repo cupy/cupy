@@ -145,11 +145,14 @@ class _dia_base(_data._data_matrix):
         m, n = self.shape
         # Bound by the actual data buffer length so an "empty" DIA
         # (data.shape[1] == 0 with non-empty offsets) reports 0,
-        # matching scipy 1.17.
+        # matching scipy 1.17 (gh-23055).
         L = min(self.data.shape[1], n)
         it = self.offsets.dtype.type
+        # Use int64 accumulator: per-diagonal counts fit int32, but the
+        # sum across (m + n - 1) diagonals can exceed INT32_MAX even when
+        # the offsets dtype is int32 (e.g., a dense 2**15 x 2**15 matrix).
         nnz = _core.ReductionKernel(
-            'I offsets, I m, I L', 'I nnz',
+            'I offsets, I m, I L', 'int64 nnz',
             'max(min(m + offsets, L) - max(offsets, (I)0), (I)0)',
             'a + b', 'nnz = a', '0', 'dia_nnz')(
                 self.offsets, it(m), it(L))

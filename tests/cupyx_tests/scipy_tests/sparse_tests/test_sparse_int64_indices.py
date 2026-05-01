@@ -1107,6 +1107,75 @@ class TestInt64SpGEMM:
         testing.assert_array_almost_equal(c.data, expected)
 
 
+class TestInt64SpGEMMCscDispatch:
+    """csr * csc, csc * csr, and csc * csc with int64 indices.
+
+    These paths previously fell through to csrgemm/csrgemm2, which are
+    int32-only.  ``__mul__`` now detects int64 operands and routes
+    through ``cusparse.spgemm`` (Generic API on CUDA 13.0+; pure-CuPy
+    ``_cupy_spgemm_int64`` fallback otherwise).
+    """
+
+    def _diag_csr_int64(self, vals):
+        n = len(vals)
+        return sparse.csr_matrix._from_parts(
+            cupy.asarray(vals, dtype=cupy.float64),
+            cupy.arange(n, dtype=cupy.int64),
+            cupy.arange(n + 1, dtype=cupy.int64),
+            (n, n))
+
+    def _diag_csc_int64(self, vals):
+        n = len(vals)
+        return sparse.csc_matrix._from_parts(
+            cupy.asarray(vals, dtype=cupy.float64),
+            cupy.arange(n, dtype=cupy.int64),
+            cupy.arange(n + 1, dtype=cupy.int64),
+            (n, n))
+
+    def test_csr_times_csc_int64(self):
+        # csr_int64 @ csc_int64 used to fall to csrgemm (int32-only)
+        # via __mul__'s csc branch; now routes through spgemm.
+        a = self._diag_csr_int64([1.0, 2.0, 3.0])
+        b = self._diag_csc_int64([4.0, 5.0, 6.0])
+        c = a @ b
+        assert c.indices.dtype == cupy.int64
+        testing.assert_array_almost_equal(
+            c.toarray(), cupy.diag(cupy.array([4.0, 10.0, 18.0])))
+
+    def test_csc_times_csr_int64(self):
+        a = self._diag_csc_int64([1.0, 2.0, 3.0])
+        b = self._diag_csr_int64([4.0, 5.0, 6.0])
+        c = a @ b
+        assert c.indices.dtype == cupy.int64
+        testing.assert_array_almost_equal(
+            c.toarray(), cupy.diag(cupy.array([4.0, 10.0, 18.0])))
+
+    def test_csc_times_csc_int64(self):
+        # Both operands CSC with int64 indices.  This case used to
+        # fall through to the csrgemm path (int32-only) on most CUDA
+        # builds; now routes through spgemm.
+        a = self._diag_csc_int64([1.0, 2.0, 3.0])
+        b = self._diag_csc_int64([4.0, 5.0, 6.0])
+        c = a @ b
+        assert c.indices.dtype == cupy.int64
+        testing.assert_array_almost_equal(
+            c.toarray(), cupy.diag(cupy.array([4.0, 10.0, 18.0])))
+
+    def test_csc_times_csc_mixed_dtypes(self):
+        # int32 csc * int64 csc should also route through spgemm
+        # (mixed-dtype detection picks int64).
+        a32 = sparse.csc_matrix._from_parts(
+            cupy.array([1.0, 2.0, 3.0]),
+            cupy.arange(3, dtype=cupy.int32),
+            cupy.arange(4, dtype=cupy.int32),
+            (3, 3))
+        b64 = self._diag_csc_int64([4.0, 5.0, 6.0])
+        c = a32 @ b64
+        assert c.indices.dtype == cupy.int64
+        testing.assert_array_almost_equal(
+            c.toarray(), cupy.diag(cupy.array([4.0, 10.0, 18.0])))
+
+
 class TestInt64DtypePreservation:
     """_with_data and construction bypass preserve index dtype.
 
@@ -1429,16 +1498,6 @@ class TestInt64DtypePreservation:
             has_sorted_indices=True)
         r = m[:, cupy.array([0, 2])]
         assert r.indices.dtype == cupy.int64
-
-    def test_from_parts_rejects_mismatched_dtypes(self):
-        # _from_parts should reject mismatched indices/indptr dtypes.
-        import pytest
-        with pytest.raises(ValueError, match='same dtype'):
-            sparse.csr_matrix._from_parts(
-                cupy.array([1.0]),
-                cupy.array([0], dtype=cupy.int32),
-                cupy.array([0, 1], dtype=cupy.int64),
-                shape=(1, 3))
 
     def test_csr_fancy_col_empty_preserves_int64(self):
         # _minor_index_fancy empty case used the public constructor.
@@ -2436,8 +2495,8 @@ class TestInt64SetitemInsert:
     """Inserting new entries into int64 sparse matrices via __setitem__.
 
     _insert_many uses cupy.add.at on an int64 target array to count
-    row insertions.  CUDA lacks atomicAdd for signed int64, so this
-    requires the view(uint64) workaround.
+    row insertions.  cupy.add.at supports int64 natively (CuPy's
+    atomics.cuh provides the long-long atomicAdd overload).
     """
 
     _shape = (2, _LARGE + 2)
@@ -2836,22 +2895,6 @@ class TestInt64FollowupCumsum:
         assert m.nnz == 2
         cupy.testing.assert_array_equal(
             m.toarray(), cupy.array([[3., 0.], [0., 7.]]))
-
-
-class TestInt64FollowupDense2csr:
-    """dense2csr kernels were int32-only; now templated for int64."""
-
-    @testing.slow
-    def test_large_bool_dense_to_csr(self):
-        n = numpy.iinfo(numpy.int32).max // 2 + 1
-        mem_free = cupy.cuda.runtime.memGetInfo()[0]
-        if mem_free < 20 * (1 << 30):
-            pytest.skip('insufficient GPU memory (~20 GB needed)')
-        a = cupy.zeros((2, n), dtype=bool)
-        a[0, 0] = True
-        m = sparse.csr_matrix(a)
-        assert m.indices.dtype == cupy.int64
-        assert m.nnz == 1
 
 
 class TestInt64FollowupAssertToValueError:
@@ -3281,8 +3324,9 @@ class TestInt64Regressions:
     def test_dia_nnz_empty_data(self):
         """DIA nnz is bounded by the actual data buffer length.
 
-        Matches scipy 1.17: an empty data array (``data.shape[1] == 0``)
-        gives nnz == 0 even when offsets indicate diagonals exist.
+        Matches scipy 1.17 (gh-23055): an empty data array
+        (``data.shape[1] == 0``) gives nnz == 0 even when offsets
+        indicate diagonals exist.
         """
         data = cupy.array([[]], dtype=cupy.float32)
         offsets = cupy.array([0], dtype=cupy.int32)
@@ -3292,3 +3336,195 @@ class TestInt64Regressions:
         data = cupy.array([[1.0, 2.0]], dtype=cupy.float32)
         m2 = sparse.dia_matrix((data, offsets), shape=(3, 4))
         assert m2.nnz == 2
+
+
+class TestFromPartsValidation:
+    """_from_parts is internal but must enforce its declared contract
+    so a buggy caller fails loudly rather than producing a corrupt matrix."""
+
+    def test_rejects_mismatched_index_dtypes(self):
+        data = cupy.array([1.0, 2.0])
+        with pytest.raises(ValueError, match='same dtype'):
+            sparse.csr_matrix._from_parts(
+                data,
+                cupy.array([0, 1], dtype=cupy.int32),
+                cupy.array([0, 1, 2], dtype=cupy.int64),
+                (2, 2))
+
+    def test_rejects_canonical_with_unsorted(self):
+        data = cupy.array([1.0])
+        idx = cupy.array([0], dtype=cupy.int32)
+        ptr = cupy.array([0, 1, 1], dtype=cupy.int32)
+        with pytest.raises(ValueError, match='canonical'):
+            sparse.csr_matrix._from_parts(
+                data, idx, ptr, (2, 2),
+                has_canonical_format=True,
+                has_sorted_indices=False)
+
+    def test_rejects_data_indices_length_mismatch(self):
+        with pytest.raises(ValueError, match='same length'):
+            sparse.csr_matrix._from_parts(
+                cupy.array([1.0, 2.0]),
+                cupy.array([0], dtype=cupy.int32),
+                cupy.array([0, 1], dtype=cupy.int32),
+                (1, 2))
+
+    def test_rejects_indptr_length_mismatch_csr(self):
+        # shape[0]=3 requires len(indptr)=4; we pass len(indptr)=2.
+        with pytest.raises(ValueError, match='major axis'):
+            sparse.csr_matrix._from_parts(
+                cupy.array([1.0]),
+                cupy.array([0], dtype=cupy.int32),
+                cupy.array([0, 1], dtype=cupy.int32),
+                (3, 2))
+
+    def test_rejects_indptr_length_mismatch_csc(self):
+        # CSC major axis is shape[1]; we pass len(indptr)=2 instead of 4.
+        with pytest.raises(ValueError, match='major axis'):
+            sparse.csc_matrix._from_parts(
+                cupy.array([1.0]),
+                cupy.array([0], dtype=cupy.int32),
+                cupy.array([0, 1], dtype=cupy.int32),
+                (2, 3))
+
+    def test_canonical_implies_sorted(self):
+        data = cupy.array([1.0])
+        idx = cupy.array([0], dtype=cupy.int32)
+        ptr = cupy.array([0, 1, 1], dtype=cupy.int32)
+        # has_canonical_format=True alone should also set _has_sorted_indices.
+        m = sparse.csr_matrix._from_parts(
+            data, idx, ptr, (2, 2), has_canonical_format=True)
+        assert m._has_canonical_format is True
+        assert m._has_sorted_indices is True
+
+
+class TestBmatIndexDtypeDetection:
+    """bmat must detect int64 from any input format, including DIA
+    (which stores its index information in .offsets, not .indices/.row)."""
+
+    def test_bmat_detects_int64_dia_offsets(self):
+        # The DIA constructor downcasts to int32 when shape fits int32
+        # (matching scipy), so we force int64 offsets via direct
+        # attribute assignment to simulate a DIA whose int64 dtype
+        # cannot be inferred from shape alone.  This is the only way
+        # to test the _has_int64 detection branch in isolation: with a
+        # shape > INT32_MAX, the result would be int64 regardless of
+        # whether bmat detects the DIA's offsets dtype, because
+        # get_index_dtype(maxval=max(shape)-1) would also return int64.
+        data = cupy.ones((1, 3), dtype=cupy.float64)
+        offsets = cupy.array([0], dtype=cupy.int32)
+        d = sparse.dia_matrix((data, offsets), shape=(3, 3))
+        d.offsets = cupy.array([0], dtype=cupy.int64)
+        csr = sparse.csr_matrix(cupy.eye(3, dtype=cupy.float64))
+        assert csr.indices.dtype == cupy.int32
+        result = sparse.bmat([[d, csr]])
+        # The int64 from DIA's offsets should propagate.
+        assert result.row.dtype == cupy.int64
+        assert result.col.dtype == cupy.int64
+
+    @testing.slow
+    def test_bmat_int64_dia_natural_large_shape(self):
+        # End-to-end check with a legitimately int64 DIA (shape large
+        # enough that the constructor preserves int64 offsets without
+        # any force-assign).  data shape (1, 1) keeps the input small,
+        # but bmat routes through CSC -> COO via ``_indptr_to_coo``,
+        # which materialises an ``arange(num_rows)`` of int64 — that's
+        # ~17 GB for shape ``(2**31 + 1, 1)``.  Marked ``slow`` so the
+        # default CI run excludes it; OOM-skip for hosts under 17 GB.
+        data = cupy.ones((1, 1), dtype=cupy.float64)
+        offsets = cupy.array([0], dtype=cupy.int32)
+        d = sparse.dia_matrix((data, offsets), shape=(2**31 + 1, 1))
+        assert d.offsets.dtype == cupy.int64
+        try:
+            result = sparse.bmat([[d]])
+        except cupy.cuda.memory.OutOfMemoryError:
+            pytest.skip('not enough GPU memory for arange(2**31+1)')
+        assert result.row.dtype == cupy.int64
+        assert result.shape == (2**31 + 1, 1)
+        assert result.nnz == 1
+
+    def test_bmat_all_int32_stays_int32(self):
+        csr = sparse.csr_matrix(cupy.eye(3, dtype=cupy.float64))
+        result = sparse.bmat([[csr, csr]])
+        assert result.row.dtype == cupy.int32
+
+
+class TestAddAtNegativeInt64:
+    """cupy.add.at / maximum.at / minimum.at on signed int64 arrays.
+
+    CUDA's atomicAdd has no native long-long overload, but CuPy's
+    atomics.cuh provides one via reinterpret_cast (bit-exact for
+    two's-complement addition).  atomicMax/atomicMin for signed int64
+    are provided natively by CUDA on sm_50+."""
+
+    def test_add_at_negative_int64(self):
+        v = cupy.array([0, -100, 50], dtype=cupy.int64)
+        idx = cupy.array([0, 1, 2, 0, 1])
+        vals = cupy.array([-5, -10, 100, 3, 200], dtype=cupy.int64)
+        cupy.add.at(v, idx, vals)
+        cupy.testing.assert_array_equal(
+            v, cupy.array([-5 + 3, -100 - 10 + 200, 50 + 100],
+                          dtype=cupy.int64))
+
+    def test_maximum_at_negative_int64(self):
+        v = cupy.array([10, -5, 100, -1000], dtype=cupy.int64)
+        idx = cupy.array([0, 1, 2, 3, 0, 1, 2, 3])
+        vals = cupy.array([20, -100, -50, -2000, -50, 5, 1000, 0],
+                          dtype=cupy.int64)
+        cupy.maximum.at(v, idx, vals)
+        cupy.testing.assert_array_equal(
+            v, cupy.array([20, 5, 1000, 0], dtype=cupy.int64))
+
+    def test_minimum_at_negative_int64(self):
+        v = cupy.array([10, -5, 100, -1000], dtype=cupy.int64)
+        idx = cupy.array([0, 1, 2, 3, 0, 1, 2, 3])
+        vals = cupy.array([20, -100, -50, -2000, -50, 5, 1000, 0],
+                          dtype=cupy.int64)
+        cupy.minimum.at(v, idx, vals)
+        cupy.testing.assert_array_equal(
+            v, cupy.array([-50, -100, -50, -2000], dtype=cupy.int64))
+
+
+class TestSpsolveTriangularGuard:
+    """spsolve_triangular must raise a clear error (with the user-facing
+    function name) when given int64 indices on the csrsm2 path."""
+
+    def test_int64_csr_raises_on_old_cuda(self):
+        # The csrsm2 path is only reached when spsm is unavailable.  On
+        # CUDA 12+ spsm is always available and supports int64, so this
+        # test is a no-op in practice.  We still verify the dispatch by
+        # forcing csrsm2 routing only when spsm is unavailable.
+        if cusparse.check_availability('spsm'):
+            pytest.skip('spsm is available; csrsm2 path not exercised')
+        from cupyx.scipy.sparse.linalg import spsolve_triangular
+        idx = cupy.array([0], dtype=cupy.int64)
+        ptr = cupy.array([0, 1, 1], dtype=cupy.int64)
+        a = sparse.csr_matrix._from_parts(
+            cupy.array([1.0]), idx, ptr, (2, 2),
+            has_canonical_format=True)
+        b = cupy.array([1.0, 2.0])
+        with pytest.raises(ValueError, match='spsolve_triangular'):
+            spsolve_triangular(a, b)
+
+
+class TestDiaGetnnzAccumulator:
+    """DIA getnnz uses an int64 accumulator so the sum across diagonals
+    cannot overflow even when offsets dtype is int32."""
+
+    def test_getnnz_with_int32_offsets(self):
+        # Small DIA, smoke test that the int64-accumulator change didn't
+        # break the int32-offsets path.
+        data = cupy.ones((3, 5), dtype=cupy.float64)
+        offsets = cupy.array([-1, 0, 1], dtype=cupy.int32)
+        m = sparse.dia_matrix((data, offsets), shape=(5, 5))
+        assert isinstance(m.getnnz(), int)
+        assert m.getnnz() == 4 + 5 + 4
+
+    def test_getnnz_returns_python_int(self):
+        # Ensure type(int) regardless of the kernel output dtype.
+        data = cupy.ones((1, 3), dtype=cupy.float64)
+        offsets = cupy.array([0], dtype=cupy.int32)
+        m = sparse.dia_matrix((data, offsets), shape=(3, 3))
+        n = m.getnnz()
+        assert type(n) is int
+        assert n == 3

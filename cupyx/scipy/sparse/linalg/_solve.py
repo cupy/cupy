@@ -461,6 +461,9 @@ def spsolve_triangular(A, b, lower=True, overwrite_A=False, overwrite_b=False,
         A.sum_duplicates()
         x = cusparse.spsm(A, b, lower=lower, unit_diag=unit_diagonal)
     elif cusparse.check_availability('csrsm2'):
+        # csrsm2 is int32-only; raise with the user-facing function name
+        # rather than the internal "csrsm2" name.
+        cusparse._check_int32_indices(A, 'spsolve_triangular')
         if not (sparse.issparse(A)
                 and A.format in ('csr', 'csc')):
             warnings.warn('CSR or CSC format is required. Converting to CSR '

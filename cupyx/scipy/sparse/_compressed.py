@@ -352,11 +352,33 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                 leaves the flag unset for lazy computation.
                 ``True`` implies ``has_sorted_indices=True``.
             has_sorted_indices (bool or None): Same semantics.
+
+        Raises:
+            ValueError: If *indices* and *indptr* dtypes differ, the
+                ``has_canonical_format`` / ``has_sorted_indices`` flags
+                are inconsistent, ``data`` and ``indices`` lengths
+                differ, or ``indptr`` length does not match the major
+                axis of *shape*.
         """
         if indices.dtype != indptr.dtype:
             raise ValueError(
                 'indices and indptr must have the same dtype, '
                 'got {} and {}'.format(indices.dtype, indptr.dtype))
+        if has_canonical_format is True and has_sorted_indices is False:
+            raise ValueError(
+                'has_canonical_format=True implies sorted indices, '
+                'but has_sorted_indices=False was passed')
+        if data.size != indices.size:
+            raise ValueError(
+                'data and indices must have the same length, '
+                'got {} and {}'.format(data.size, indices.size))
+        # Major axis: shape[0] for CSR (_major_axis=0), shape[1] for CSC.
+        # Subclasses must define _major_axis.
+        major = shape[cls._major_axis]
+        if indptr.size != major + 1:
+            raise ValueError(
+                'indptr has length {}, expected {} (major axis + 1)'
+                .format(indptr.size, major + 1))
         A = cls.__new__(cls)
         sparse_data._data_matrix.__init__(A, data)
         A.indices = indices
@@ -586,7 +608,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         const int row = blockIdx.x;
         if (row >= n_row) return;
 
-        // Atomic write pointer — use unsigned long long for atomicAdd
+        // Atomic write pointer -- use unsigned long long for atomicAdd
         // (CUDA supports atomicAdd on unsigned long long but not long long)
         __shared__ unsigned long long row_ptr;
         if (threadIdx.x == 0)
@@ -815,7 +837,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         out_idx_dtype = _sputils.get_index_dtype(
             arrays=(self.indices,), maxval=max(M, n_idx))
-        out_indptr = _cusparse_mod._build_indptr_int64(
+        out_indptr = _cusparse_mod._build_indptr(
             out_major, M, out_idx_dtype)
 
         return self.__class__._from_parts(
@@ -935,12 +957,16 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         # Temporary CSR mapping each stored element to its flat offset.
         # Use _from_parts to avoid check_contents D2H syncs; the
         # indices/indptr are already validated (they come from self).
+        # Use the indices dtype for the offset array so we get exact
+        # integer arithmetic at any nnz (float64 loses precision past
+        # 2**53, and -1 is a valid sentinel for any signed integer).
+        idx_dtype = self.indices.dtype
         new_sp = cupyx.scipy.sparse.csr_matrix._from_parts(
-            cupy.arange(self.nnz, dtype=cupy.float64),
+            cupy.arange(self.nnz, dtype=idx_dtype),
             self.indices, self.indptr, shape=(M, N))
 
         offsets = new_sp._get_arrayXarray(
-            i, j, not_found_val=-1).astype(self.indices.dtype).ravel()
+            i, j, not_found_val=-1).astype(idx_dtype).ravel()
 
         mask = offsets > -1
         self.data[offsets[mask]] = x[mask]
@@ -966,12 +992,14 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         """
         i, j, M, N = self._prepare_indices(i, j)
 
+        # Use indices dtype for exact integer offsets (see _set_many).
+        idx_dtype = self.indices.dtype
         new_sp = cupyx.scipy.sparse.csr_matrix._from_parts(
-            cupy.arange(self.nnz, dtype=cupy.float64),
+            cupy.arange(self.nnz, dtype=idx_dtype),
             self.indices, self.indptr, shape=(M, N))
 
         offsets = new_sp._get_arrayXarray(
-            i, j, not_found_val=-1).astype(self.indices.dtype).ravel()
+            i, j, not_found_val=-1).astype(idx_dtype).ravel()
 
         # only assign zeros to the existing sparsity structure
         self.data[offsets[offsets > -1]] = 0

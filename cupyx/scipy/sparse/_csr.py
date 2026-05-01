@@ -23,6 +23,8 @@ class _csr_base(_compressed._compressed_sparse_matrix):
     """CSR format base (shared by csr_matrix and csr_array)."""
 
     format = 'csr'
+    # Index of the major axis in shape: rows for CSR.
+    _major_axis = 0
 
     def get(self, stream=None):
         """Returns a copy of the array on host memory.
@@ -98,14 +100,14 @@ class _csr_base(_compressed._compressed_sparse_matrix):
                         self.indptr.copy(), self.shape,
                         has_sorted_indices=True)
                 from cupyx.cusparse import (
-                    _indptr_to_coo, _build_indptr_int64)
+                    _indptr_to_coo, _build_indptr)
                 idx_dtype = self.indices.dtype
                 rows = _indptr_to_coo(self.indptr)
                 rows = rows[mask]
                 cols = self.indices[mask]
                 data = new_data[mask]
                 M = self._swap(*self.shape)[0]
-                indptr = _build_indptr_int64(rows, M, idx_dtype)
+                indptr = _build_indptr(rows, M, idx_dtype)
                 return cls._from_parts(
                     data, cols, indptr, self.shape,
                     has_sorted_indices=True)
@@ -199,7 +201,11 @@ class _csr_base(_compressed._compressed_sparse_matrix):
         elif _is_csr(other):
             self.sum_duplicates()
             other.sum_duplicates()
-            if cusparse.check_availability('spgemm'):
+            # int64: always route through cusparse.spgemm, which has a
+            # pure-CuPy fallback when cuSPARSE lacks int64 SpGEMM.
+            is_int64 = (self.indices.dtype == cupy.int64
+                        or other.indices.dtype == cupy.int64)
+            if is_int64 or cusparse.check_availability('spgemm'):
                 return self._as_csr_type(cusparse.spgemm(self, other))
             elif cusparse.check_availability('csrgemm2'):
                 return self._as_csr_type(cusparse.csrgemm2(self, other))
@@ -210,6 +216,14 @@ class _csr_base(_compressed._compressed_sparse_matrix):
         elif _is_csc(other):
             self.sum_duplicates()
             other.sum_duplicates()
+            is_int64 = (self.indices.dtype == cupy.int64
+                        or other.indices.dtype == cupy.int64)
+            if is_int64:
+                # csrgemm/csrgemm2 are int32-only; route via spgemm,
+                # which has a pure-CuPy fallback for older cuSPARSE.
+                b = other.tocsr()
+                b.sum_duplicates()
+                return self._as_csr_type(cusparse.spgemm(self, b))
             if cusparse.check_availability('csrgemm') and not runtime.is_hip:
                 # trans=True is still buggy as of ROCm 4.2.0
                 return self._as_csr_type(
@@ -341,7 +355,7 @@ class _csr_base(_compressed._compressed_sparse_matrix):
                 return
             row_of_each = cusparse._indptr_to_coo(self.indptr)
             kept_rows = row_of_each[mask]
-            new_indptr = cusparse._build_indptr_int64(
+            new_indptr = cusparse._build_indptr(
                 kept_rows, nrows, idx_dtype)
             self.data = new_data
             self.indices = new_indices

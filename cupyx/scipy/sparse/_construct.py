@@ -345,11 +345,17 @@ def bmat(blocks, format=None, dtype=None):
 
     # Check if any input block has int64 indices before conversion
     # to COO (the COO constructor may downcast via check_contents).
+    # Each format stores indices in a different attribute: CSR/CSC use
+    # ``indices``, COO uses ``row``, DIA uses ``offsets``.
+    def _block_index_dtype(b):
+        for name in ('indices', 'row', 'offsets'):
+            arr = getattr(b, name, None)
+            if arr is not None:
+                return arr.dtype
+        return None
+
     _has_int64 = any(
-        getattr(b, 'indices', getattr(b, 'row', None)) is not None
-        and getattr(b, 'indices', getattr(b, 'row', None)).dtype
-        == cupy.int64
-        for b in blocks_flat)
+        _block_index_dtype(b) == cupy.int64 for b in blocks_flat)
 
     # convert everything to COO format
     for i in range(M):

@@ -212,3 +212,29 @@ class TestDeprecatedSpmatrixApi:
     def test_array_does_not_have_deprecated_attr(self, a, attr):
         with pytest.raises(AttributeError):
             getattr(a, attr)
+
+
+class TestSetShape:
+    """``set_shape`` must mutate ``self`` in place.  Plain
+    ``self.reshape(shape)`` returns a new matrix and discards the
+    reshaped result; the in-place wrapper has to swap ``__dict__``.
+    """
+
+    def test_csr_set_shape_mutates(self):
+        m = sparse.csr_matrix(cupy.array(
+            [[1, 2, 0], [0, 3, 0], [0, 0, 4]], dtype=cupy.float64))
+        m.set_shape((1, 9))
+        assert m.shape == (1, 9)
+        cupy.testing.assert_array_equal(
+            m.toarray(),
+            cupy.array([[1, 2, 0, 0, 3, 0, 0, 0, 4]], dtype=cupy.float64))
+
+    def test_csc_set_shape_mutates(self):
+        m = sparse.csc_matrix(cupy.eye(3, dtype=cupy.float64))
+        m.set_shape((9, 1))
+        assert m.shape == (9, 1)
+
+    def test_set_shape_invalid_total(self):
+        m = sparse.csr_matrix(cupy.eye(3, dtype=cupy.float64))
+        with pytest.raises(ValueError):
+            m.set_shape((4, 4))
