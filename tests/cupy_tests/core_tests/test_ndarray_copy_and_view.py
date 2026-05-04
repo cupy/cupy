@@ -160,6 +160,44 @@ class TestView:
         x = xp.ones((3, 20), xp.int16)[:0, ::2]
         return x.view(xp.int32)
 
+    @testing.numpy_cupy_array_equal()
+    def test_getfield_basic(self, xp):
+        x = xp.array([[1 + 1j, 0 + 0j], [0 + 0j, 2 + 4j]], dtype=numpy.complex128)
+        return x.getfield(numpy.float64)
+
+    @testing.numpy_cupy_array_equal()
+    def test_getfield_offset(self, xp):
+        x = xp.array([[1 + 1j, 0 + 0j], [0 + 0j, 2 + 4j]], dtype=numpy.complex128)
+        return x.getfield(numpy.float64, offset=8)
+
+    @testing.numpy_cupy_array_equal()
+    def test_getfield_0d(self, xp):
+        x = xp.array(1, dtype=numpy.int32)
+        return x.getfield(numpy.int16)
+
+    @testing.numpy_cupy_array_equal()
+    def test_getfield_non_contiguous(self, xp):
+        x = xp.arange(12, dtype=numpy.int32).reshape(3, 4).T
+        return x.getfield(numpy.int16, offset=2)
+
+    def test_getfield_invalid_offset(self):
+        for xp in (numpy, cupy):
+            x = xp.array([1 + 1j], dtype=numpy.complex64)
+            with pytest.raises(ValueError):
+                x.getfield(numpy.float64, offset=4)
+
+    def test_getfield_negative_offset(self):
+        for xp in (numpy, cupy):
+            x = xp.array([1 + 1j], dtype=numpy.complex64)
+            with pytest.raises(ValueError):
+                x.getfield(numpy.float64, offset=-1)
+
+    def test_getfield_invalid_dtype_size(self):
+        for xp in (numpy, cupy):
+            x = xp.array([1 + 1j], dtype=numpy.complex64)
+            with pytest.raises(ValueError):
+                x.getfield(numpy.complex128)
+
 
 class TestArrayCopy:
 
