@@ -162,12 +162,14 @@ class TestView:
 
     @testing.numpy_cupy_array_equal()
     def test_getfield_basic(self, xp):
-        x = xp.array([[1 + 1j, 0 + 0j], [0 + 0j, 2 + 4j]], dtype=numpy.complex128)
+        x = xp.array([[1 + 1j, 0 + 0j], [0 + 0j, 2 + 4j]],
+                     dtype=numpy.complex128)
         return x.getfield(numpy.float64)
 
     @testing.numpy_cupy_array_equal()
     def test_getfield_offset(self, xp):
-        x = xp.array([[1 + 1j, 0 + 0j], [0 + 0j, 2 + 4j]], dtype=numpy.complex128)
+        x = xp.array([[1 + 1j, 0 + 0j], [0 + 0j, 2 + 4j]],
+                     dtype=numpy.complex128)
         return x.getfield(numpy.float64, offset=8)
 
     @testing.numpy_cupy_array_equal()
