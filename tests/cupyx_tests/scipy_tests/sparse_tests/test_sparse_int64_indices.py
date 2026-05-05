@@ -3339,8 +3339,6 @@ class TestInt64Regressions:
 
 
 class TestFromPartsValidation:
-    """_from_parts is internal but must enforce its declared contract
-    so a buggy caller fails loudly rather than producing a corrupt matrix."""
 
     def test_rejects_mismatched_index_dtypes(self):
         data = cupy.array([1.0, 2.0])
@@ -3397,10 +3395,398 @@ class TestFromPartsValidation:
         assert m._has_canonical_format is True
         assert m._has_sorted_indices is True
 
+    def test_coo_rejects_data_row_col_length_mismatch(self):
+        # data.size != row.size: scipy-equivalent corruption check.
+        with pytest.raises(ValueError, match='same length'):
+            sparse.coo_matrix._from_parts(
+                cupy.array([1.0, 2.0]),
+                cupy.array([0], dtype=cupy.int64),
+                cupy.array([0, 1], dtype=cupy.int64),
+                (2, 2))
+        # row.size != col.size.
+        with pytest.raises(ValueError, match='same length'):
+            sparse.coo_matrix._from_parts(
+                cupy.array([1.0, 2.0]),
+                cupy.array([0, 1], dtype=cupy.int64),
+                cupy.array([0], dtype=cupy.int64),
+                (2, 2))
+
+    def test_coo_rejects_mismatched_index_dtypes(self):
+        with pytest.raises(ValueError, match='same dtype'):
+            sparse.coo_matrix._from_parts(
+                cupy.array([1.0]),
+                cupy.array([0], dtype=cupy.int32),
+                cupy.array([0], dtype=cupy.int64),
+                (2, 2))
+
+    def test_compressed_rejects_shape_too_large_for_dtype(self):
+        # CSR: shape[1] > int32max requires int64.
+        with pytest.raises(ValueError, match='too large for index dtype'):
+            sparse.csr_matrix._from_parts(
+                cupy.array([1.0]),
+                cupy.array([0], dtype=cupy.int32),
+                cupy.array([0, 1, 1], dtype=cupy.int32),
+                (2, 2**31 + 5))
+        # CSC: shape[0] > int32max requires int64.
+        with pytest.raises(ValueError, match='too large for index dtype'):
+            sparse.csc_matrix._from_parts(
+                cupy.array([1.0]),
+                cupy.array([0], dtype=cupy.int32),
+                cupy.array([0, 1, 1], dtype=cupy.int32),
+                (2**31 + 5, 2))
+
+    def test_coo_rejects_shape_too_large_for_dtype(self):
+        with pytest.raises(ValueError, match='too large for index dtype'):
+            sparse.coo_matrix._from_parts(
+                cupy.array([1.0]),
+                cupy.array([0], dtype=cupy.int32),
+                cupy.array([0], dtype=cupy.int32),
+                (2, 2**31 + 5))
+
+
+class TestCsr2CooCanonicalPreservation:
+    """Canonical CSR (sorted columns within each row, no duplicates)
+    expands to row-major lexicographic COO order, which is the COO
+    canonical form -- so ``has_canonical_format`` should propagate
+    through ``tocoo``.  Don't eagerly propagate ``False`` or
+    uncomputed: that would mask the real value from the lazy getter.
+    """
+
+    def test_canonical_csr_to_canonical_coo(self):
+        m = sparse.csr_matrix(cupy.eye(3, dtype=cupy.float64))
+        # Force the canonical flag on without running the kernel.
+        m._has_canonical_format = True
+        m._has_sorted_indices = True
+        c = m.tocoo()
+        assert c.has_canonical_format is True
+
+    def test_uncached_canonical_does_not_propagate(self):
+        # When the source has not computed canonical yet (None-state),
+        # do not eagerly compute it.  Result COO defaults to
+        # has_canonical_format=False.
+        m = sparse.csr_matrix(cupy.eye(3, dtype=cupy.float64))
+        # Ensure flag is uncached.
+        if hasattr(m, '_has_canonical_format'):
+            del m._has_canonical_format
+        if hasattr(m, '_has_sorted_indices'):
+            del m._has_sorted_indices
+        c = m.tocoo()
+        assert c.has_canonical_format is False
+
+    def test_cached_false_propagates_false(self):
+        # csr2coo doesn't sort: input with unsorted col indices in a
+        # row produces a COO with the same unsorted cols within that
+        # row, which is genuinely not canonical.  Propagating False
+        # is correct (and avoids a wasted lazy kernel launch later).
+        data = cupy.array([1.0, 2.0])
+        ind = cupy.array([1, 0], 'i')  # unsorted within row 0
+        ptr = cupy.array([0, 2], 'i')
+        m = sparse.csr_matrix._from_parts(data, ind, ptr, (1, 2))
+        m._has_canonical_format = False
+        c = m.tocoo()
+        assert c.has_canonical_format is False
+
+    def test_int64_canonical_csr_to_canonical_coo(self):
+        # The int64 path goes via _indptr_to_coo + Generic API, but
+        # the same canonical-preservation logic applies.
+        data = cupy.array([1.0, 2.0, 3.0], dtype=cupy.float64)
+        indices = cupy.array([0, 1, 2], dtype=cupy.int64)
+        indptr = cupy.array([0, 1, 2, 3], dtype=cupy.int64)
+        m = sparse.csr_matrix._from_parts(
+            data, indices, indptr, (3, 3),
+            has_canonical_format=True, has_sorted_indices=True)
+        c = m.tocoo()
+        assert c.has_canonical_format is True
+        assert c.row.dtype == cupy.int64
+
+
+class TestInt64TransposeCanonical:
+    """The int64 CSR<->CSC transpose runs through
+    ``_cupy_transpose_compressed_int64`` which sorts via lexsort.
+    Canonical input stays canonical, but ``False`` / uncomputed must
+    NOT propagate: even an unsorted input becomes canonical after
+    lexsort, and caching ``False`` would mask that from the lazy
+    getter.
+    """
+
+    def test_canonical_input_preserves_canonical(self):
+        data = cupy.array([1.0, 2.0, 3.0], dtype=cupy.float64)
+        indices = cupy.array([0, 1, 2], dtype=cupy.int64)
+        indptr = cupy.array([0, 1, 2, 3], dtype=cupy.int64)
+        m = sparse.csr_matrix._from_parts(
+            data, indices, indptr, (3, 3),
+            has_canonical_format=True, has_sorted_indices=True)
+        c = m.tocsc()
+        assert c._has_canonical_format is True
+        assert c._has_sorted_indices is True
+
+    def test_uncanonical_input_leaves_canonical_unset(self):
+        # Input has unsorted col indices in row 0 -> not canonical
+        # (canonical kernel returns False).  But after lexsort the
+        # output CSC has sorted-no-dup indices, i.e. IS canonical.
+        # Eagerly caching False would mask this from the lazy getter,
+        # so the output's canonical flag must stay unset for lazy
+        # compute.
+        data = cupy.array([1.0, 2.0, 3.0, 4.0], dtype=cupy.float64)
+        indices = cupy.array([1, 0, 2, 0], dtype=cupy.int64)
+        indptr = cupy.array([0, 2, 3, 4], dtype=cupy.int64)
+        m = sparse.csr_matrix._from_parts(data, indices, indptr, (3, 3))
+        m._has_canonical_format = False
+        m._has_sorted_indices = False
+        c = m.tocsc()
+        assert not hasattr(c, '_has_canonical_format'), (
+            'canonical=False must not propagate; output may actually '
+            'be canonical after lexsort')
+        # Lazy compute should now correctly find True.
+        assert c.has_canonical_format is True
+
+    def test_uncached_input_leaves_canonical_unset(self):
+        data = cupy.array([1.0, 2.0, 3.0], dtype=cupy.float64)
+        indices = cupy.array([0, 1, 2], dtype=cupy.int64)
+        indptr = cupy.array([0, 1, 2, 3], dtype=cupy.int64)
+        m = sparse.csr_matrix._from_parts(data, indices, indptr, (3, 3))
+        # Don't trigger the getter on m.
+        c = m.tocsc()
+        assert not hasattr(c, '_has_canonical_format')
+
+
+class TestInplaceScalarSpecials:
+
+    @pytest.mark.parametrize('cls_name', ['csr_matrix', 'csc_matrix',
+                                          'coo_matrix'])
+    def test_imul_scalar_preserves_identity(self, cls_name):
+        cls = getattr(sparse, cls_name)
+        A = cls(cupy.array([[1.0, 2.0], [3.0, 4.0]]))
+        old = A
+        old_data_id = id(A.data)
+        A *= 2
+        assert A is old
+        assert id(A.data) == old_data_id
+        cupy.testing.assert_array_equal(
+            A.toarray(), cupy.array([[2.0, 4.0], [6.0, 8.0]]))
+
+    @pytest.mark.parametrize('cls_name', ['csr_matrix', 'csc_matrix',
+                                          'coo_matrix'])
+    def test_itruediv_scalar_preserves_identity(self, cls_name):
+        cls = getattr(sparse, cls_name)
+        A = cls(cupy.array([[2.0, 4.0], [6.0, 8.0]]))
+        old = A
+        A /= 2
+        assert A is old
+        cupy.testing.assert_array_equal(
+            A.toarray(), cupy.array([[1.0, 2.0], [3.0, 4.0]]))
+
+    def test_imul_dia(self):
+        # DIA only accepts the (data, offsets) constructor.
+        data = cupy.array([[1.0, 2.0, 3.0]])
+        offsets = cupy.array([0])
+        A = sparse.dia_matrix((data, offsets), shape=(3, 3))
+        old = A
+        A *= 2
+        assert A is old
+        cupy.testing.assert_array_equal(
+            A.toarray(),
+            cupy.array([[2.0, 0.0, 0.0],
+                        [0.0, 4.0, 0.0],
+                        [0.0, 0.0, 6.0]]))
+
+    def test_imul_non_scalar_falls_back(self):
+        # For non-scalar operands, ``__imul__`` returns NotImplemented
+        # so Python rebinds via ``A = A * other``.  Identity is NOT
+        # preserved -- this is the same as scipy's behavior.
+        A = sparse.csr_matrix(cupy.array([[1.0, 0.0], [0.0, 1.0]]))
+        B = sparse.csr_matrix(cupy.array([[2.0, 0.0], [0.0, 3.0]]))
+        old = A
+        A *= B
+        # element-wise multiply is delegated to ``A.multiply(B)``;
+        # the result is a new object.
+        assert A is not old
+        cupy.testing.assert_array_equal(
+            A.toarray(), cupy.array([[2.0, 0.0], [0.0, 3.0]]))
+
+    def test_imul_scalar_zero(self):
+        # ``A *= 0`` zeroes out the data buffer in place but leaves
+        # the structure (indices/indptr).  Matches scipy.
+        A = sparse.csr_matrix(cupy.array([[1.0, 2.0], [3.0, 4.0]]))
+        old = A
+        original_indices = A.indices.copy()
+        A *= 0
+        assert A is old
+        cupy.testing.assert_array_equal(
+            A.toarray(), cupy.zeros((2, 2)))
+        # Structure is preserved: explicit zeros remain stored.
+        cupy.testing.assert_array_equal(A.indices, original_indices)
+
+
+class TestNegativeShapeRejected:
+    # Error message matches scipy: "'shape' elements cannot be negative".
+
+    @pytest.mark.parametrize('cls_name', ['csr_matrix', 'csc_matrix',
+                                          'coo_matrix', 'csr_array',
+                                          'csc_array', 'coo_array',
+                                          'dia_matrix', 'dia_array'])
+    @pytest.mark.parametrize('shape', [(10, -5), (-5, 10), (-5, -5)])
+    def test_negative_shape_raises(self, cls_name, shape):
+        cls = getattr(sparse, cls_name)
+        if cls_name.startswith('dia'):
+            # DIA only accepts (data, offsets) + shape= kwarg.
+            with pytest.raises(
+                    ValueError,
+                    match=r"'shape' elements cannot be negative"):
+                cls((cupy.array([[1.0]]), cupy.array([0])), shape=shape)
+        else:
+            with pytest.raises(
+                    ValueError,
+                    match=r"'shape' elements cannot be negative"):
+                cls(shape)
+
+    @pytest.mark.parametrize('cls_name', ['csr_matrix', 'csc_matrix',
+                                          'coo_matrix'])
+    def test_negative_shape_kwarg_raises(self, cls_name):
+        # Same check via the shape= keyword on a 3-tuple constructor.
+        cls = getattr(sparse, cls_name)
+        data = cupy.array([1.0])
+        if cls_name == 'coo_matrix':
+            row = cupy.array([0], dtype='i')
+            col = cupy.array([0], dtype='i')
+            with pytest.raises(
+                    ValueError,
+                    match=r"'shape' elements cannot be negative"):
+                cls((data, (row, col)), shape=(10, -5))
+        else:
+            indices = cupy.array([0], dtype='i')
+            indptr = cupy.array([0, 1, 1, 1], dtype='i')
+            with pytest.raises(
+                    ValueError,
+                    match=r"'shape' elements cannot be negative"):
+                cls((data, indices, indptr), shape=(10, -5))
+
+
+class TestCanonicalGetterPropagatesSorted:
+    """``has_canonical_format=True`` implies sorted indices, so the
+    canonical getter must also cache ``_has_sorted_indices=True`` --
+    otherwise a later ``has_sorted_indices`` access re-launches the
+    kernel.
+    """
+
+    def test_canonical_getter_sets_sorted(self):
+        m = sparse.csr_matrix(cupy.eye(3, dtype=cupy.float64))
+        # Clear cache.
+        if hasattr(m, '_has_canonical_format'):
+            del m._has_canonical_format
+        if hasattr(m, '_has_sorted_indices'):
+            del m._has_sorted_indices
+        # Trigger getter.
+        assert m.has_canonical_format is True
+        # Now sorted should also be cached True.
+        assert m._has_sorted_indices is True
+
+    def test_empty_data_sets_both(self):
+        # The data.size == 0 short-circuit must also propagate sorted.
+        m = sparse.csr_matrix(
+            (cupy.array([], dtype=cupy.float64),
+             cupy.array([], dtype='i'),
+             cupy.array([0, 0, 0], dtype='i')),
+            shape=(2, 2))
+        if hasattr(m, '_has_canonical_format'):
+            del m._has_canonical_format
+        if hasattr(m, '_has_sorted_indices'):
+            del m._has_sorted_indices
+        assert m.has_canonical_format is True
+        assert m._has_sorted_indices is True
+
+
+class TestIndptrToCooMemoryOptimization:
+    # ``_indptr_to_coo`` switches to a searchsorted formula when the
+    # major axis dwarfs nnz, to avoid an O(major_axis) allocation.
+
+    def test_repeat_path_for_typical_matrices(self):
+        # For typical matrices (nrows comparable to nnz), the repeat
+        # formula is used.  Below the threshold we never sync.
+        from cupyx.cusparse import _indptr_to_coo
+        indptr = cupy.array([0, 2, 3, 5], dtype=cupy.int64)
+        result = _indptr_to_coo(indptr)
+        cupy.testing.assert_array_equal(
+            result, cupy.array([0, 0, 1, 2, 2], dtype=cupy.int64))
+        assert result.dtype == cupy.int64
+
+    def test_searchsorted_path_for_tall_sparse(self):
+        # When nrows > 16K and nrows > 4*nnz, the searchsorted formula
+        # is used.  Result must match the repeat formula exactly.
+        from cupyx.cusparse import _indptr_to_coo
+        nrows = 2**16
+        indptr = cupy.zeros(nrows + 1, dtype=cupy.int64)
+        # Three nnz at rows 100, 1000, 50000.
+        indptr[101:1001] = 1
+        indptr[1001:50001] = 2
+        indptr[50001:] = 3
+        # nnz=3 << nrows=2**16, so triggers searchsorted path.
+        result = _indptr_to_coo(indptr, nnz=3)
+        cupy.testing.assert_array_equal(
+            result, cupy.array([100, 1000, 50000], dtype=cupy.int64))
+
+    def test_searchsorted_dtype_override(self):
+        # ``dtype`` kwarg honored on searchsorted path.
+        from cupyx.cusparse import _indptr_to_coo
+        nrows = 2**16
+        indptr = cupy.zeros(nrows + 1, dtype=cupy.int32)
+        indptr[1:] = 1  # nnz=1 at row 0
+        result = _indptr_to_coo(indptr, dtype=cupy.int64, nnz=1)
+        assert result.dtype == cupy.int64
+        cupy.testing.assert_array_equal(
+            result, cupy.array([0], dtype=cupy.int64))
+
+    def test_pathological_tall_csc_to_coo_memory(self):
+        # CSC with shape (2, BIG_N) and nnz=1: the repeat path would
+        # allocate O(BIG_N) memory; use a moderate BIG_N that still
+        # crosses the searchsorted threshold.
+        from cupyx.cusparse import _indptr_to_coo
+        BIG_N = 1 << 18  # 256K rows
+        indptr = cupy.zeros(BIG_N + 1, dtype=cupy.int64)
+        # Single nnz at the end.
+        indptr[BIG_N:] = 1
+        result = _indptr_to_coo(indptr, nnz=1)
+        assert result.size == 1
+        assert int(result[0]) == BIG_N - 1
+
+    def test_searchsorted_size_matches_repeat(self):
+        # The two paths must agree exactly: cross-check their outputs
+        # over a few synthetic indptrs covering edge cases (uniform
+        # density, hot rows, empty tail).
+        from cupyx.cusparse import _indptr_to_coo
+        nrows = 1 << 15  # 32K, just over threshold
+        for pattern in (
+                # uniform density: 4 entries per row
+                lambda i: 4 * (i + 1),
+                # half-empty: only first half has entries
+                lambda i: i + 1 if i < nrows // 2 else nrows // 2,
+                # spike at end: all in last row
+                lambda i: 5 if i == nrows - 1 else 0,
+        ):
+            indptr = cupy.zeros(nrows + 1, dtype=cupy.int64)
+            for i in range(nrows):
+                indptr[i + 1] = pattern(i)
+            # Force final cumsum monotonicity
+            indptr[1:] = cupy.cumsum(cupy.diff(indptr))
+            nnz_val = int(indptr[-1])
+            if nnz_val == 0:
+                continue
+            # Repeat path (no nnz hint, low threshold disabled by big
+            # nnz).
+            #
+            # Force repeat: use a temporary indptr whose nrows is below
+            # threshold but populated identically.
+            #
+            # Actually simpler: just compare against a reference repeat.
+            ref = cupy.repeat(
+                cupy.arange(nrows, dtype=cupy.int64),
+                cupy.diff(indptr))
+            actual = _indptr_to_coo(indptr, nnz=nnz_val)
+            cupy.testing.assert_array_equal(actual, ref)
+
 
 class TestBmatIndexDtypeDetection:
-    """bmat must detect int64 from any input format, including DIA
-    (which stores its index information in .offsets, not .indices/.row)."""
+    # DIA stores indices in .offsets (not .indices/.row).
 
     def test_bmat_detects_int64_dia_offsets(self):
         # The DIA constructor downcasts to int32 when shape fits int32
@@ -3450,12 +3836,11 @@ class TestBmatIndexDtypeDetection:
 
 
 class TestAddAtNegativeInt64:
-    """cupy.add.at / maximum.at / minimum.at on signed int64 arrays.
-
-    CUDA's atomicAdd has no native long-long overload, but CuPy's
+    """CUDA has no native ``atomicAdd(long long*, long long)``; CuPy's
     atomics.cuh provides one via reinterpret_cast (bit-exact for
-    two's-complement addition).  atomicMax/atomicMin for signed int64
-    are provided natively by CUDA on sm_50+."""
+    two's-complement).  ``atomicMax`` / ``atomicMin`` for signed
+    int64 are native on sm_50+.
+    """
 
     def test_add_at_negative_int64(self):
         v = cupy.array([0, -100, 50], dtype=cupy.int64)
@@ -3486,8 +3871,6 @@ class TestAddAtNegativeInt64:
 
 
 class TestSpsolveTriangularGuard:
-    """spsolve_triangular must raise a clear error (with the user-facing
-    function name) when given int64 indices on the csrsm2 path."""
 
     def test_int64_csr_raises_on_old_cuda(self):
         # The csrsm2 path is only reached when spsm is unavailable.  On
@@ -3508,8 +3891,9 @@ class TestSpsolveTriangularGuard:
 
 
 class TestDiaGetnnzAccumulator:
-    """DIA getnnz uses an int64 accumulator so the sum across diagonals
-    cannot overflow even when offsets dtype is int32."""
+    """DIA ``getnnz`` accumulates in int64 so the per-diagonal sum
+    cannot overflow even when offsets are int32.
+    """
 
     def test_getnnz_with_int32_offsets(self):
         # Small DIA, smoke test that the int64-accumulator change didn't
@@ -3528,3 +3912,459 @@ class TestDiaGetnnzAccumulator:
         n = m.getnnz()
         assert type(n) is int
         assert n == 3
+
+
+class TestLsqrInt32Guard:
+    """``lsqr`` dispatches to cuSOLVER's ``csrlsvqr`` which is
+    int32-only; raise a clean error for int64 indices instead of
+    letting the indices get reinterpreted.
+    """
+
+    def test_int64_csr_raises(self):
+        from cupy.cuda import runtime
+        if runtime.is_hip:
+            pytest.skip('HIP does not support lsqr')
+        from cupyx.scipy.sparse.linalg import lsqr
+        idx = cupy.array([0, 1, 2, 3], dtype=cupy.int64)
+        ptr = cupy.array([0, 1, 2, 3, 4], dtype=cupy.int64)
+        a = sparse.csr_matrix._from_parts(
+            cupy.array([2.0, 2.0, 2.0, 2.0]), idx, ptr, (4, 4),
+            has_canonical_format=True, has_sorted_indices=True)
+        b = cupy.array([1.0, 2.0, 3.0, 4.0])
+        with pytest.raises(ValueError, match='lsqr'):
+            lsqr(a, b)
+
+    def test_int32_csr_works(self):
+        # Regression: the int32 happy path is unchanged.
+        from cupy.cuda import runtime
+        if runtime.is_hip:
+            pytest.skip('HIP does not support lsqr')
+        from cupyx.scipy.sparse.linalg import lsqr
+        a = sparse.eye(4, format='csr', dtype=cupy.float64) * 2.0
+        b = cupy.array([1.0, 2.0, 3.0, 4.0])
+        x, *_ = lsqr(a, b)
+        cupy.testing.assert_allclose(x, [0.5, 1.0, 1.5, 2.0])
+
+
+class TestMultiplyMixedInt32Int64:
+    """``csr.multiply(csr)`` with mixed int32 / int64 operands must
+    promote to a common dtype (matches scipy) instead of raising a
+    kernel template-type-mismatch error.
+    """
+
+    def test_int32_multiply_int64(self):
+        a = sparse.csr_matrix(cupy.array([[1.0, 2.0], [3.0, 4.0]]))
+        idx = cupy.array([0, 1], dtype=cupy.int64)
+        ptr = cupy.array([0, 1, 2], dtype=cupy.int64)
+        b = sparse.csr_matrix._from_parts(
+            cupy.array([2.0, 5.0]), idx, ptr, (2, 2))
+        c = a.multiply(b)
+        assert c.indices.dtype == cupy.int64
+        cupy.testing.assert_array_equal(
+            c.toarray(), cupy.array([[2.0, 0.0], [0.0, 20.0]]))
+
+    def test_int64_multiply_int32(self):
+        idx = cupy.array([0, 1], dtype=cupy.int64)
+        ptr = cupy.array([0, 1, 2], dtype=cupy.int64)
+        a = sparse.csr_matrix._from_parts(
+            cupy.array([2.0, 5.0]), idx, ptr, (2, 2))
+        b = sparse.csr_matrix(cupy.array([[1.0, 2.0], [3.0, 4.0]]))
+        c = a.multiply(b)
+        assert c.indices.dtype == cupy.int64
+        cupy.testing.assert_array_equal(
+            c.toarray(), cupy.array([[2.0, 0.0], [0.0, 20.0]]))
+
+    def test_int32_only_unchanged(self):
+        a = sparse.csr_matrix(cupy.array([[1.0, 2.0], [3.0, 4.0]]))
+        b = sparse.csr_matrix(cupy.array([[1.0, 0.0], [0.0, 1.0]]))
+        c = a.multiply(b)
+        assert c.indices.dtype == cupy.int32
+
+    def test_int64_only_unchanged(self):
+        idx = cupy.array([0, 1], dtype=cupy.int64)
+        ptr = cupy.array([0, 1, 2], dtype=cupy.int64)
+        a = sparse.csr_matrix._from_parts(
+            cupy.array([1.0, 2.0]), idx, ptr, (2, 2))
+        b = sparse.csr_matrix._from_parts(
+            cupy.array([3.0, 4.0]), idx, ptr, (2, 2))
+        c = a.multiply(b)
+        assert c.indices.dtype == cupy.int64
+
+
+class TestKronSparrayDtypePreservation:
+    # sparray path preserves input dtype; matrix path uses the
+    # minimum-required dtype based on output shape.
+
+    def test_kron_sparray_int64_preserved(self):
+        a = sparse.eye_array(8, format='csr', dtype=cupy.float64)
+        a_int64 = sparse.csr_array._from_parts(
+            a.data, a.indices.astype(cupy.int64),
+            a.indptr.astype(cupy.int64), a.shape)
+        k = sparse.kron(a_int64, a_int64)
+        assert k.row.dtype == cupy.int64
+
+    def test_kronsum_sparray_int64_preserved(self):
+        a = sparse.eye_array(8, format='csr', dtype=cupy.float64)
+        a_int64 = sparse.csr_array._from_parts(
+            a.data, a.indices.astype(cupy.int64),
+            a.indptr.astype(cupy.int64), a.shape)
+        k = sparse.kronsum(a_int64, a_int64)
+        assert k.indices.dtype == cupy.int64
+
+    def test_kron_matrix_legacy_dtype(self):
+        # Matrix path: minimum-required dtype based on output shape.
+        a = sparse.eye(8, format='csr', dtype=cupy.float64)
+        a_int64 = sparse.csr_matrix._from_parts(
+            a.data, a.indices.astype(cupy.int64),
+            a.indptr.astype(cupy.int64), a.shape)
+        k = sparse.kron(a_int64, a_int64)
+        # Output shape (64, 64) fits int32.  Matrix path downcasts.
+        assert k.row.dtype == cupy.int32
+
+    def test_kron_sparray_int32_unchanged(self):
+        a = sparse.csr_array(cupy.array([[1.0, 2.0], [3.0, 4.0]]))
+        k = sparse.kron(a, a)
+        assert k.row.dtype == cupy.int32
+
+
+class TestFromPartsNdimGuard:
+
+    def test_compressed_rejects_2d_data(self):
+        with pytest.raises(ValueError, match='must be 1-D'):
+            sparse.csr_matrix._from_parts(
+                cupy.array([[1.0]]),
+                cupy.array([0], dtype=cupy.int32),
+                cupy.array([0, 1], dtype=cupy.int32),
+                (1, 1))
+
+    def test_compressed_rejects_2d_indices(self):
+        with pytest.raises(ValueError, match='must be 1-D'):
+            sparse.csr_matrix._from_parts(
+                cupy.array([1.0]),
+                cupy.array([[0]], dtype=cupy.int32),
+                cupy.array([0, 1], dtype=cupy.int32),
+                (1, 1))
+
+    def test_compressed_rejects_2d_indptr(self):
+        with pytest.raises(ValueError, match='must be 1-D'):
+            sparse.csr_matrix._from_parts(
+                cupy.array([1.0]),
+                cupy.array([0], dtype=cupy.int32),
+                cupy.array([[0, 1]], dtype=cupy.int32),
+                (1, 1))
+
+    def test_coo_rejects_2d(self):
+        with pytest.raises(ValueError, match='must be 1-D'):
+            sparse.coo_matrix._from_parts(
+                cupy.array([1.0]),
+                cupy.array([[0]], dtype=cupy.int32),
+                cupy.array([0], dtype=cupy.int32),
+                (1, 1))
+
+
+class TestCountNonzeroAxisFusedSync:
+
+    def test_partial_zero_csr(self):
+        a = sparse.csr_matrix(cupy.array(
+            [[1.0, 0.0, 2.0], [0.0, 3.0, 0.0]]))
+        cupy.testing.assert_array_equal(
+            a.count_nonzero(axis=0), cupy.array([1, 1, 1]))
+        cupy.testing.assert_array_equal(
+            a.count_nonzero(axis=1), cupy.array([2, 1]))
+
+    def test_all_zero_after_cancellation(self):
+        # Construct a matrix whose data is all zero (e.g. after a
+        # cancelling sum_duplicates) but with non-empty indptr.
+        idx = cupy.array([0, 1], dtype=cupy.int64)
+        ptr = cupy.array([0, 1, 2], dtype=cupy.int64)
+        a = sparse.csr_matrix._from_parts(
+            cupy.array([0.0, 0.0]), idx, ptr, (2, 2),
+            has_canonical_format=True, has_sorted_indices=True)
+        cupy.testing.assert_array_equal(
+            a.count_nonzero(axis=0), cupy.array([0, 0]))
+        cupy.testing.assert_array_equal(
+            a.count_nonzero(axis=1), cupy.array([0, 0]))
+
+    def test_all_nonzero(self):
+        a = sparse.csr_matrix(cupy.array([[1.0, 2.0], [3.0, 4.0]]))
+        cupy.testing.assert_array_equal(
+            a.count_nonzero(axis=0), cupy.array([2, 2]))
+        cupy.testing.assert_array_equal(
+            a.count_nonzero(axis=1), cupy.array([2, 2]))
+
+
+class TestFromPartsBufferCheck:
+
+    def test_slack_rejected_by_default(self):
+        # data.size > indptr[-1] -- slack at the end.
+        with pytest.raises(ValueError, match=r'data has length 5'):
+            sparse.csr_matrix._from_parts(
+                cupy.array([1.0, 2.0, 3.0, 99.0, 99.0]),
+                cupy.array([0, 1, 2, 99, 99], dtype='i'),
+                cupy.array([0, 1, 2, 3], dtype='i'),
+                (3, 3))
+
+    def test_skip_buffer_check_opt_out(self):
+        # Same input but with the opt-out: ``_from_parts`` accepts
+        # the slack (callers that prove the invariant out of band,
+        # e.g. transient build buffers).
+        m = sparse.csr_matrix._from_parts(
+            cupy.array([1.0, 2.0, 3.0, 99.0, 99.0]),
+            cupy.array([0, 1, 2, 99, 99], dtype='i'),
+            cupy.array([0, 1, 2, 3], dtype='i'),
+            (3, 3),
+            _skip_buffer_check=True)
+        assert int(m.indptr[-1]) == 3
+        assert m.indices.size == 5  # buffer has slack
+
+    def test_tight_buffer_passes(self):
+        # Default-validated tight buffer construction still works.
+        m = sparse.csr_matrix._from_parts(
+            cupy.array([1.0, 2.0, 3.0]),
+            cupy.array([0, 1, 2], dtype='i'),
+            cupy.array([0, 1, 2, 3], dtype='i'),
+            (3, 3))
+        assert m.nnz == 3
+
+
+class TestAsindicesOutOfBoundsRejected:
+
+    def test_getitem_oob_raises(self):
+        a = sparse.csr_matrix(cupy.eye(3))
+        with pytest.raises(IndexError, match='out of range'):
+            a[[5]]
+        with pytest.raises(IndexError, match='out of range'):
+            a[[-100], [0]]
+
+    def test_setitem_oob_raises(self):
+        import warnings
+        a = sparse.csr_matrix(cupy.eye(3))
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', sparse.SparseEfficiencyWarning)
+            with pytest.raises(IndexError, match='out of range'):
+                a[[5], [0]] = 99.0
+
+    def test_negative_in_range_works(self):
+        a = sparse.csr_matrix(cupy.eye(3))
+        # ``-1`` resolves to row 2; in range.
+        out = a[[-1]]
+        cupy.testing.assert_array_equal(
+            out.toarray(), cupy.array([[0., 0., 1.]]))
+
+    def test_overflow_int_raises_indexerror(self):
+        # Python int that doesn't fit in int32 indices -> IndexError
+        # (not OverflowError, which leaks numpy internals).
+        a = sparse.csr_matrix(cupy.eye(3))
+        with pytest.raises(IndexError):
+            a[[2**40]]
+
+
+class TestBoolIntScalarPromotion:
+    # cuSPARSE accepts only '?fdFD' for data; promote bool/int to
+    # float64 so the result is usable downstream.
+
+    def test_bool_imul_int(self):
+        a = sparse.csr_matrix(cupy.array([[True, False], [False, True]]))
+        old = a
+        a *= 2
+        assert a is old
+        assert a.dtype == cupy.float64
+        cupy.testing.assert_array_equal(a.data, cupy.array([2.0, 2.0]))
+
+    def test_bool_idiv_int(self):
+        a = sparse.csr_matrix(cupy.array([[True, False], [False, True]]))
+        old = a
+        a /= 2
+        assert a is old
+        assert a.dtype == cupy.float64
+        cupy.testing.assert_array_equal(a.data, cupy.array([0.5, 0.5]))
+
+    def test_bool_truediv_int(self):
+        # Non-in-place truediv goes through CSR's ``__truediv__``.
+        a = sparse.csr_matrix(cupy.array([[True, False], [False, True]]))
+        b = a / 2
+        assert b.dtype == cupy.float64
+        cupy.testing.assert_array_equal(b.data, cupy.array([0.5, 0.5]))
+
+    def test_float32_truediv_keeps_float64(self):
+        # Regression: float32 / 2.0 -> float64 (matches scipy's rule).
+        a = sparse.csr_matrix(
+            cupy.array([[1.0, 2.0]], dtype=cupy.float32))
+        b = a / 2.0
+        assert b.dtype == cupy.float64
+
+    def test_complex_truediv_unchanged(self):
+        a = sparse.csr_matrix(cupy.array([[1+2j, 3+4j]]))
+        b = a / 2
+        assert b.dtype == cupy.complex128
+
+
+class TestSparseTypingAliases:
+
+    def test_csr_array_typing(self):
+        import types
+        alias = sparse.csr_array[int]
+        assert isinstance(alias, types.GenericAlias)
+
+    def test_csr_matrix_typing(self):
+        import types
+        alias = sparse.csr_matrix[float, int]
+        assert isinstance(alias, types.GenericAlias)
+
+
+class TestPowerZeroRaises:
+    """``A.power(0)`` would densify the matrix (every implicit zero
+    becomes ``0**0 == 1``); raise NotImplementedError to match scipy
+    instead of returning a sparse-but-mathematically-wrong result.
+    """
+
+    @pytest.mark.parametrize('cls_name', ['csr_matrix', 'csr_array',
+                                          'csc_matrix', 'csc_array',
+                                          'coo_matrix', 'coo_array'])
+    def test_method_raises(self, cls_name):
+        cls = getattr(sparse, cls_name)
+        a = cls(cupy.array([[1.0, 0, 2.0], [0, 3.0, 0]]))
+        with pytest.raises(NotImplementedError, match='zero power'):
+            a.power(0)
+
+    def test_array_op_raises(self):
+        # sparray ``A ** 0`` -- must catch even though base also has a
+        # check (both paths route through ``power`` now).
+        a = sparse.csr_array(cupy.array([[1.0, 0, 2.0]]))
+        with pytest.raises(NotImplementedError, match='zero power'):
+            a ** 0
+
+    def test_array_pow_array_exponent(self):
+        # The non-scalar check must run before any ``other == 0``
+        # evaluation, otherwise ``if other == 0`` raises "truth value
+        # ambiguous" on an array exponent.
+        a = sparse.csr_array(cupy.array([[1.0, 0, 2.0]]))
+        with pytest.raises(NotImplementedError, match='not scalar'):
+            a ** cupy.array([2, 3, 4])
+
+    def test_method_nonzero_works(self):
+        a = sparse.csr_matrix(cupy.array([[2.0, 4.0]]))
+        b = a.power(2)
+        cupy.testing.assert_array_equal(b.data, cupy.array([4.0, 16.0]))
+
+
+class TestComparisonCrossFormat:
+    """``_comparison`` and ``_maximum_minimum`` accept any sparse
+    operand by routing through ``other.tocsr()`` (matches
+    ``_add_sparse`` / ``multiply``), so ``csr.maximum(coo)``,
+    ``csr == csc`` etc. don't bottom out in NotImplementedError.
+    """
+
+    def test_maximum_csr_coo(self):
+        a = sparse.csr_matrix(cupy.array([[1.0, 2.0], [3.0, 4.0]]))
+        b = sparse.coo_matrix(cupy.array([[5.0, 1.0], [2.0, 8.0]]))
+        c = a.maximum(b)
+        cupy.testing.assert_array_equal(
+            c.toarray(),
+            cupy.array([[5.0, 2.0], [3.0, 8.0]]))
+
+    def test_minimum_csr_csc(self):
+        a = sparse.csr_matrix(cupy.array([[5.0, 6.0], [7.0, 8.0]]))
+        b = sparse.csc_matrix(cupy.array([[1.0, 2.0], [3.0, 4.0]]))
+        c = a.minimum(b)
+        cupy.testing.assert_array_equal(
+            c.toarray(),
+            cupy.array([[1.0, 2.0], [3.0, 4.0]]))
+
+    def test_eq_csr_coo(self):
+        import warnings
+        a = sparse.csr_matrix(cupy.array([[1.0, 2.0]]))
+        b = sparse.coo_matrix(cupy.array([[1.0, 0.0]]))
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', sparse.SparseEfficiencyWarning)
+            c = a == b
+        assert sparse.issparse(c)
+
+    def test_lt_csr_dia(self):
+        a = sparse.csr_matrix(cupy.array([[1.0, 2.0], [3.0, 4.0]]))
+        b = sparse.dia_matrix(
+            (cupy.array([[5.0, 6.0]]), cupy.array([0])),
+            shape=(2, 2))
+        c = a < b
+        assert sparse.issparse(c)
+
+
+class TestSetdiag2DRejected:
+
+    def test_csr_setdiag_2d_raises(self):
+        a = sparse.csr_matrix(cupy.zeros((3, 3)))
+        with pytest.raises(ValueError, match='must be 0-d or 1-d'):
+            a.setdiag(cupy.array([[1.0, 2.0], [3.0, 4.0]]))
+
+    def test_coo_setdiag_2d_raises(self):
+        a = sparse.coo_matrix(cupy.zeros((3, 3)))
+        with pytest.raises(ValueError, match='must be 0-d or 1-d'):
+            a.setdiag(cupy.array([[1.0, 2.0], [3.0, 4.0]]))
+
+
+class TestPublicCtorIndptrZeroCheck:
+
+    def test_csr_indptr_must_start_at_zero(self):
+        with pytest.raises(ValueError, match='start with 0'):
+            sparse.csr_matrix(
+                (cupy.array([1.0, 2.0]),
+                 cupy.array([0, 1], dtype='i'),
+                 cupy.array([5, 6, 7], dtype='i')),
+                shape=(2, 2))
+
+    def test_csc_indptr_must_start_at_zero(self):
+        with pytest.raises(ValueError, match='start with 0'):
+            sparse.csc_matrix(
+                (cupy.array([1.0, 2.0]),
+                 cupy.array([0, 1], dtype='i'),
+                 cupy.array([5, 6, 7], dtype='i')),
+                shape=(2, 2))
+
+
+class TestComplexSignNumpy2x:
+    """scipy 1.16+ uses numpy 2.x ``sign`` semantics for complex
+    (``z / abs(z)``).  ``cupy.sign`` follows the same rule but
+    returns ``nan+nanj`` for ``0+0j`` (literal ``0/0``); mask
+    explicit zeros to keep stored ``0+0j`` round-tripping cleanly.
+    """
+
+    def test_complex_sign_unit_vector(self):
+        a = sparse.csr_matrix(cupy.array([[1+2j]]))
+        b = a.sign()
+        # (1+2j) / |1+2j| = (1+2j) / sqrt(5) ≈ 0.447 + 0.894j
+        cupy.testing.assert_allclose(
+            b.data,
+            cupy.array([1+2j]) / cupy.abs(cupy.array([1+2j])))
+
+    def test_complex_sign_zero_masked(self):
+        # Stored ``0+0j`` should round-trip to ``0+0j``, not ``nan+nanj``.
+        a = sparse.csr_matrix._from_parts(
+            cupy.array([0+0j, 1+1j]),
+            cupy.array([0, 1], dtype='i'),
+            cupy.array([0, 1, 2], dtype='i'),
+            (2, 2))
+        b = a.sign()
+        # First entry is 0+0j (masked), second is unit vector.
+        assert b.data[0] == 0+0j
+        cupy.testing.assert_allclose(
+            cupy.abs(b.data[1]).item(), 1.0, atol=1e-6)
+
+    def test_real_sign_unchanged(self):
+        a = sparse.csr_matrix(cupy.array([[-2.0, 0, 3.0]]))
+        b = a.sign()
+        cupy.testing.assert_array_equal(b.data, cupy.array([-1.0, 1.0]))
+
+
+class TestCsrilu02NoLeak:
+
+    def test_csrilu02_runs(self):
+        # Smoke test: the descriptor leak isn't observable at the
+        # Python level; this just verifies the try/finally wrapping
+        # didn't break the happy path.
+        from cupyx import cusparse
+        a = sparse.csr_matrix(cupy.array(
+            [[2.0, 0.1, 0, 0], [0.1, 2.0, 0.1, 0],
+             [0, 0.1, 2.0, 0.1], [0, 0, 0.1, 2.0]],
+            dtype=cupy.float64))
+        a.sum_duplicates()
+        cusparse.csrilu02(a)

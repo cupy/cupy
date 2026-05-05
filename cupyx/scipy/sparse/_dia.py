@@ -82,9 +82,7 @@ class _dia_base(_data._data_matrix):
 
         self.data = data
         self.offsets = offsets
-        if not _util.isshape(shape):
-            raise ValueError('invalid shape (must be a 2-tuple of int)')
-        self._shape = int(shape[0]), int(shape[1])
+        self._shape = _util.check_shape(shape)
 
     def _with_data(self, data, copy=True):
         """Return a sparse object with the same sparsity structure as self,

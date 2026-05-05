@@ -376,8 +376,9 @@ class IndexMixin:
             # Match scipy 1.17: shape-mismatch on fancy indexing
             # raises IndexError, not ValueError.
             raise IndexError(
-                'shape mismatch: indexing arrays could not be broadcast '
-                'together with shapes {} {}'.format(row.shape, col.shape)
+                f'shape mismatch: indexing arrays could not be '
+                f'broadcast together with shapes {row.shape} '
+                f'{col.shape}'
             ) from e
         if row.shape != col.shape:
             raise IndexError('number of row and column indices differ')
@@ -481,11 +482,31 @@ class IndexMixin:
         """
         try:
             x = cupy.asarray(idx, dtype=self.indices.dtype)
-        except (ValueError, TypeError, MemoryError):
+        except (ValueError, TypeError, MemoryError, OverflowError):
+            # ``OverflowError`` covers Python ints that don't fit in
+            # ``self.indices.dtype`` (e.g. ``A[[2**32]]`` on int32
+            # CSR).  Match scipy by surfacing IndexError.
             raise IndexError('invalid index')
 
         if x.ndim not in (1, 2):
             raise IndexError('Index dimension must be <= 2')
+
+        # Reject out-of-bounds before the modulo wrap (matches scipy).
+        # Stack max+min into one transfer to keep this a single D2H.
+        # synchronize!
+        if x.size:
+            bounds = cupy.stack((x.max(), x.min())).get()
+            xmax = int(bounds[0])
+            xmin = int(bounds[1])
+            if xmax >= length or xmin < -length:
+                bad = xmax if xmax >= length else xmin
+                raise IndexError(
+                    f'index ({bad}) out of range for axis with size '
+                    f'{length}')
+            if xmin >= 0:
+                # All non-negative indices already in range -- skip the
+                # modulo kernel launch.
+                return x
 
         return x % length
 

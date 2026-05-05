@@ -181,7 +181,8 @@ def _compressed_sparse_stack(blocks, axis):
     indices = cupy.empty(data.size, dtype=idx_dtype)
     indptr = cupy.empty(sum(b.shape[axis]
                             for b in blocks) + 1, dtype=idx_dtype)
-    last_indptr = idx_dtype(0)
+    # Keep ``last_indptr`` on device to avoid a per-block D2H sync.
+    last_indptr = cupy.zeros((), dtype=idx_dtype)
     sum_dim = 0
     sum_indices = 0
     for b in blocks:
@@ -194,7 +195,7 @@ def _compressed_sparse_stack(blocks, axis):
         indptr[idxs] = b.indptr[:-1]
         indptr[idxs] += last_indptr
         sum_dim += b.shape[axis]
-        last_indptr += b.indptr[-1]
+        last_indptr = last_indptr + b.indptr[-1]
     indptr[-1] = last_indptr
     use_array = _any_sparray(*blocks)
     if axis == 0:
@@ -203,7 +204,8 @@ def _compressed_sparse_stack(blocks, axis):
     else:
         cls = _csc.csc_array if use_array else _csc.csc_matrix
         shape = (constant_dim, sum_dim)
-    return cls._from_parts(data, indices, indptr, shape)
+    return cls._from_parts(
+        data, indices, indptr, shape, _skip_buffer_check=True)
 
 
 def hstack(blocks, format=None, dtype=None):
@@ -368,22 +370,22 @@ def bmat(blocks, format=None, dtype=None):
                 if brow_lengths[i+1] == 0:
                     brow_lengths[i+1] = A.shape[0]
                 elif brow_lengths[i+1] != A.shape[0]:
-                    msg = ('blocks[{i},:] has incompatible row dimensions. '
-                           'Got blocks[{i},{j}].shape[0] == {got}, '
-                           'expected {exp}.'.format(i=i, j=j,
-                                                    exp=brow_lengths[i+1],
-                                                    got=A.shape[0]))
-                    raise ValueError(msg)
+                    exp = brow_lengths[i+1]
+                    got = A.shape[0]
+                    raise ValueError(
+                        f'blocks[{i},:] has incompatible row '
+                        f'dimensions. Got blocks[{i},{j}].shape[0] '
+                        f'== {got}, expected {exp}.')
 
                 if bcol_lengths[j+1] == 0:
                     bcol_lengths[j+1] = A.shape[1]
                 elif bcol_lengths[j+1] != A.shape[1]:
-                    msg = ('blocks[:,{j}] has incompatible row dimensions. '
-                           'Got blocks[{i},{j}].shape[1] == {got}, '
-                           'expected {exp}.'.format(i=i, j=j,
-                                                    exp=bcol_lengths[j+1],
-                                                    got=A.shape[1]))
-                    raise ValueError(msg)
+                    exp = bcol_lengths[j+1]
+                    got = A.shape[1]
+                    raise ValueError(
+                        f'blocks[:,{j}] has incompatible column '
+                        f'dimensions. Got blocks[{i},{j}].shape[1] '
+                        f'== {got}, expected {exp}.')
 
     # Rebuild blocks_flat after COO conversion so that .nnz and
     # .dtype are available for dense inputs that were converted.
@@ -636,7 +638,18 @@ def kron(A, B, format=None):
     if A.nnz == 0 or B.nnz == 0:
         return coo_cls(out_shape).asformat(format)
 
-    if max(out_shape[0], out_shape[1]) > cupy.iinfo('int32').max:
+    # Choose the output index dtype.
+    #   - Sparray path: ``_get_index_dtype`` is called from a sparray
+    #     instance so ``check_contents`` is forced off; the input
+    #     arrays' dtypes are preserved (so kron(int64, int64) stays
+    #     int64 even when the output shape would also fit int32).
+    #     Mirrors scipy 1.17.
+    #   - Matrix path: the legacy minimum-required policy (int32 unless
+    #     the output shape forces int64).  Matches scipy matrix.
+    if use_array:
+        dtype = A._get_index_dtype(
+            (A.row, A.col, B.row, B.col), maxval=max(out_shape))
+    elif max(out_shape[0], out_shape[1]) > cupy.iinfo('int32').max:
         dtype = cupy.int64
     else:
         dtype = cupy.int32
@@ -823,13 +836,13 @@ def block_diag(mats, format=None, dtype=None):
         """Promote a dense input (list/tuple/scalar/ndarray) to a 2-D
         ``cupy.ndarray`` with a sparse-supported dtype.
 
-        cuSPARSE only accepts bool/float32/float64/complex64/complex128
-        for sparse storage, so integer-typed dense input is upcast to
-        float64.  This matches scipy's behaviour for integer ``diags``
-        input (see SciPy 1.17 FutureWarning).
+        Integer-typed dense input is upcast to float64 since cuSPARSE
+        won't store it.  This matches scipy's behaviour for integer
+        ``diags`` input -- the upstream FutureWarning is filtered out
+        in ``pyproject.toml``.
         """
         a = cupy.atleast_2d(cupy.asarray(a))
-        if a.dtype.char not in '?fdFD':
+        if not _sputils.is_sparse_data_dtype(a.dtype):
             a = a.astype(cupy.float64, copy=False)
         return a
 

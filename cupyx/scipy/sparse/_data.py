@@ -6,6 +6,7 @@ from cupy._core import internal
 from cupy import _util
 from cupyx.scipy.sparse import _base
 from cupyx.scipy.sparse import _sputils
+from cupyx.scipy.sparse import _util as _sparse_util
 
 
 _ufuncs = [
@@ -44,6 +45,52 @@ class _data_matrix(_base._spbase):
             raise NotImplementedError(
                 'negating a boolean sparse array is not supported')
         return self._with_data(-self.data)
+
+    @staticmethod
+    def _scalar_op_dtype(self_dtype, other):
+        """Pick the dtype for ``self.data * other`` / ``... / other``.
+
+        numpy's natural promotion can land outside the cuSPARSE-supported
+        set (e.g. ``bool * int -> int64``).  Upcast to ``float64`` in
+        that case so the result remains usable.  Mirrors scipy which
+        promotes bool / int sparse to float on division.
+        """
+        out = np.result_type(self_dtype, other)
+        if not _sputils.is_sparse_data_dtype(out):
+            out = np.dtype(np.float64)
+        return out
+
+    def __imul__(self, other):
+        # Mirror scipy: in-place scalar multiply mutates ``self.data``
+        # (preserves object identity).  Non-scalar fallthrough to
+        # NotImplemented lets Python rebind via ``self = self * other``.
+        # ``bool *= int`` and similar out-of-set promotions cannot
+        # mutate ``self.data`` in place (numpy disallows kind change
+        # under same_kind casting), so we reassign in those cases.
+        if _sparse_util.isscalarlike(other):
+            new_dtype = self._scalar_op_dtype(self.dtype, other)
+            if new_dtype != self.dtype:
+                self.data = self.data.astype(new_dtype) * other
+            else:
+                self.data *= other
+            return self
+        return NotImplemented
+
+    def __itruediv__(self, other):
+        # Mirror scipy: in-place scalar division mutates ``self.data``.
+        # See ``__imul__`` for the dtype-promotion rationale; division
+        # additionally promotes int dividends to float (``int / 2`` is
+        # ``float`` in Python and ``self.data /= 2`` would otherwise
+        # raise on int data).
+        if _sparse_util.isscalarlike(other):
+            recip = 1.0 / other
+            new_dtype = self._scalar_op_dtype(self.dtype, recip)
+            if new_dtype != self.dtype:
+                self.data = self.data.astype(new_dtype) * recip
+            else:
+                self.data *= recip
+            return self
+        return NotImplemented
 
     def astype(self, dtype, copy=True):
         """Cast the array elements to a specified type.
@@ -153,6 +200,15 @@ class _data_matrix(_base._spbase):
             dtype: Type specifier.
 
         """
+        # Non-scalar check must come first: ``n == 0`` on an array
+        # produces a bool array and ``if`` on that raises.
+        if not _sparse_util.isscalarlike(n):
+            raise NotImplementedError('input is not scalar')
+        if n == 0:
+            raise NotImplementedError(
+                'zero power is not supported as it would densify the '
+                'matrix.\n'
+                'Use cupy.ones(A.shape, dtype=A.dtype) for this case.')
         if dtype is None:
             data = self.data.copy()
         else:
@@ -216,12 +272,9 @@ class _minmax_mixin:
         # even for sparse arrays (SciPy sparse arrays return shape
         # (M,) here, but that requires 1D sparse array support).
         coo_cls = self._coo_container
-        if axis == 0:
-            return coo_cls._from_parts(
-                value, zeros, major_index, shape=(1, M))
-        else:
-            return coo_cls._from_parts(
-                value, major_index, zeros, shape=(M, 1))
+        row, col = (zeros, major_index) if axis == 0 else (major_index, zeros)
+        shape = (1, M) if axis == 0 else (M, 1)
+        return coo_cls._from_parts(value, row, col, shape=shape)
 
     def _min_or_max(self, axis, out, min_or_max, explicit):
         if out is not None:
@@ -432,14 +485,15 @@ class _minmax_mixin:
 def _install_ufunc(func_name):
 
     def f(self):
-        if func_name == "sign":
-            # scipy.sparse_matrix.sign behaves compatible with
-            # numpy.sign in NumPy 1.x series.
-            ufunc = cupy._math.misc._legacy_sign
+        # ``cupy.sign`` returns ``nan+nanj`` for ``0+0j`` (literal
+        # ``z/abs(z)``); mask explicit zeros to match numpy 2.x.
+        if func_name == 'sign' and self.data.dtype.kind == 'c':
+            zero = self.data.dtype.type(0)
+            result = cupy.where(self.data == zero, zero,
+                                cupy.sign(self.data))
         else:
             ufunc = getattr(cupy, func_name)
-
-        result = ufunc(self.data)
+            result = ufunc(self.data)
         return self._with_data(result)
 
     f.__doc__ = 'Elementwise %s.' % func_name

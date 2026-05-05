@@ -232,14 +232,17 @@ class TestBmat:
 
         A, B, C, D = self.data()
 
-        match = r'.*Got blocks\[{}\]\.shape\[{}\] == 1, expected 2'
-
-        # test failure cases
-        message1 = re.compile(match.format('1,0', '1'))
+        # blocks[:,0] mismatch: A is 2 cols, B is 1 col -> column dimensions
+        message1 = re.compile(
+            r'blocks\[:,0\] has incompatible column dimensions\. '
+            r'Got blocks\[1,0\]\.shape\[1\] == 1, expected 2')
         with pytest.raises(ValueError, match=message1):
             _construct.bmat([[A], [B]], dtype=self.dtype)
 
-        message2 = re.compile(match.format('0,1', '0'))
+        # blocks[0,:] mismatch: A is 2 rows, C is 1 row -> row dimensions
+        message2 = re.compile(
+            r'blocks\[0,:\] has incompatible row dimensions\. '
+            r'Got blocks\[0,1\]\.shape\[0\] == 1, expected 2')
         with pytest.raises(ValueError, match=message2):
             _construct.bmat([[A, C]], dtype=self.dtype)
 

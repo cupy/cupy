@@ -298,15 +298,93 @@ class TestSparseArrayTypeIdentity:
                         [0., 2., 0.],
                         [0., 0., 3.]]))
 
+    @pytest.mark.parametrize('fmt', ['csr', 'csc', 'coo'])
+    def test_setdiag_python_types(self, fmt):
+        # Regression: setdiag used to call ``values.astype(...)`` (or
+        # ``values.ndim``) directly on the input, raising AttributeError
+        # for Python lists / scalars.  scipy's ``_spbase.setdiag`` does
+        # ``np.asarray(values)`` first; cupy now mirrors that.
+        cls = getattr(sparse, f'{fmt}_array')
+        expected = cupy.array([[10., 2., 3.],
+                               [4., 20., 6.],
+                               [7., 8., 9.]])
+        for arg in ([10., 20.], (10., 20.), numpy.array([10., 20.])):
+            A = cls(cupy.array([[1., 2., 3.],
+                                [4., 5., 6.],
+                                [7., 8., 9.]]))
+            A.setdiag(arg)
+            cupy.testing.assert_array_equal(A.toarray(), expected)
+        # Scalar broadcasts to whole diagonal.
+        A = cls(cupy.array([[1., 2., 3.],
+                            [4., 5., 6.],
+                            [7., 8., 9.]]))
+        A.setdiag(99.0)
+        cupy.testing.assert_array_equal(
+            A.toarray(),
+            cupy.array([[99., 2., 3.],
+                        [4., 99., 6.],
+                        [7., 8., 99.]]))
+
+    @pytest.mark.parametrize('fmt', ['csr', 'csc', 'coo'])
+    def test_inplace_scalar_preserves_identity(self, fmt):
+        # ``A *= 2`` and ``A /= 2`` must mutate ``self.data`` in place
+        # so the bound name still refers to the same object (matches
+        # scipy's ``_data._data_matrix.__imul__``).  Without these
+        # specials, ``A *= 2`` rebinds via ``A = A * 2`` and silently
+        # allocates a new sparse matrix every time.
+        cls = getattr(sparse, f'{fmt}_array')
+        A = cls(cupy.array([[1., 2.], [3., 4.]]))
+        old = A
+        old_data_id = id(A.data)
+        A *= 2
+        assert A is old
+        assert id(A.data) == old_data_id
+        cupy.testing.assert_array_equal(
+            A.toarray(), cupy.array([[2., 4.], [6., 8.]]))
+        A /= 2
+        assert A is old
+        cupy.testing.assert_array_equal(
+            A.toarray(), cupy.array([[1., 2.], [3., 4.]]))
+
+    def test_inplace_scalar_dia(self):
+        # DIA only accepts the ``(data, offsets)`` tuple constructor
+        # (C2 pre-existing limitation), so it gets its own test.
+        data = cupy.array([[1., 2., 3.]])
+        offsets = cupy.array([0])
+        A = sparse.dia_array((data, offsets), shape=(3, 3))
+        old = A
+        A *= 2
+        assert A is old
+        cupy.testing.assert_array_equal(
+            A.toarray(),
+            cupy.array([[2., 0., 0.], [0., 4., 0.], [0., 0., 6.]]))
+
+    def test_setdiag_does_not_mutate_input(self):
+        # Regression: CSR setdiag used ``x_data -= self.diagonal(k)``
+        # in place.  Now that input is coerced via ``cupy.asarray``
+        # (no copy when dtype matches), the in-place subtraction would
+        # mutate the caller's array — switched to out-of-place ``-``.
+        for fmt in ('csr', 'csc', 'coo'):
+            cls = getattr(sparse, f'{fmt}_array')
+            A = cls(cupy.array([[1., 2., 3.],
+                                [4., 5., 6.],
+                                [7., 8., 9.]]))
+            v = cupy.array([10., 20., 30.])
+            v_orig = v.copy()
+            A.setdiag(v)
+            cupy.testing.assert_array_equal(v, v_orig)
+
     def test_prune_csr(self):
-        # Construct a CSR with extra slack at the end of indices/data.
-        # CuPy's `nnz` reports the buffer length (not indptr[-1]) so a
-        # call to ``prune()`` is what actually trims the buffers down
-        # to ``indptr[-1]``.
+        # Construct a CSR with slack at the end of indices/data, then
+        # verify ``prune()`` trims the buffers down to ``indptr[-1]``.
+        # ``_skip_buffer_check=True`` is required because the slack is
+        # intentional.
         data = cupy.array([1.0, 2.0, 3.0, 99.0, 99.0])
         indices = cupy.array([0, 1, 2, 99, 99], dtype='i')
         indptr = cupy.array([0, 1, 2, 3], dtype='i')
-        A = sparse.csr_matrix._from_parts(data, indices, indptr, (3, 3))
+        A = sparse.csr_matrix._from_parts(
+            data, indices, indptr, (3, 3),
+            _skip_buffer_check=True)
         assert int(A.indptr[-1]) == 3  # logical entry count
         assert A.indices.shape == (5,)  # buffer has slack
         A.prune()
@@ -423,6 +501,53 @@ class TestSparseArrayTypeIdentity:
         assert m.count_nonzero() == 2  # the 0 at (0, 0) doesn't count
         assert m.nnz == 3                # but it is stored
 
+    @pytest.mark.parametrize('fmt', ['csr', 'csc', 'coo'])
+    def test_count_nonzero_axis_empty(self, fmt):
+        # Regression: ``count_nonzero(axis=)`` on an empty sparse object
+        # used to crash because ``cupy.bincount`` errors on zero-size
+        # input even with ``minlength``.  scipy returns the zero-filled
+        # axis vector.
+        cls = getattr(sparse, f'{fmt}_array')
+        A = cls((3, 5))
+        assert A.count_nonzero() == 0
+        cupy.testing.assert_array_equal(
+            A.count_nonzero(axis=0), cupy.zeros(5, dtype=cupy.intp))
+        cupy.testing.assert_array_equal(
+            A.count_nonzero(axis=1), cupy.zeros(3, dtype=cupy.intp))
+        # Negative axes work the same.
+        cupy.testing.assert_array_equal(
+            A.count_nonzero(axis=-1), cupy.zeros(3, dtype=cupy.intp))
+        cupy.testing.assert_array_equal(
+            A.count_nonzero(axis=-2), cupy.zeros(5, dtype=cupy.intp))
+
+    @pytest.mark.parametrize('fmt', ['csr', 'csc', 'coo'])
+    def test_count_nonzero_axis_all_explicit_zero(self, fmt):
+        # When every stored value is an explicit zero, the
+        # bincount-on-mask path also produces a zero-size input that
+        # would otherwise crash.
+        cls = getattr(sparse, f'{fmt}_array')
+        A = cls(cupy.zeros((2, 3)) + 0.0)
+        # Stored explicit zeros: build via _from_parts to keep them.
+        if fmt == 'csr':
+            A = sparse.csr_array._from_parts(
+                cupy.zeros(3), cupy.array([0, 1, 2], 'i'),
+                cupy.array([0, 2, 3], 'i'), (2, 3))
+        elif fmt == 'csc':
+            A = sparse.csc_array._from_parts(
+                cupy.zeros(3), cupy.array([0, 1, 0], 'i'),
+                cupy.array([0, 1, 2, 3], 'i'), (2, 3))
+        else:
+            A = sparse.coo_array._from_parts(
+                cupy.zeros(3),
+                cupy.array([0, 0, 1], 'i'),
+                cupy.array([0, 1, 2], 'i'),
+                (2, 3))
+        assert A.count_nonzero() == 0
+        cupy.testing.assert_array_equal(
+            A.count_nonzero(axis=0), cupy.zeros(3, dtype=cupy.intp))
+        cupy.testing.assert_array_equal(
+            A.count_nonzero(axis=1), cupy.zeros(2, dtype=cupy.intp))
+
     @testing.with_requires('scipy')
     @pytest.mark.parametrize('fmt', ['csr', 'csc', 'coo'])
     def test_type_system_matches_scipy(self, fmt):
@@ -477,6 +602,27 @@ class TestCsrArrayConstruction:
         assert m.shape == (3, 4)
         assert m.nnz == 0
         assert isinstance(m, sparse.sparray)
+
+    def test_from_coo_tuple_preserves_int64_indices(self):
+        # Regression: csr_array((data, (row, col))) used to construct
+        # an intermediate ``coo_matrix`` (not ``coo_array``), which ran
+        # ``_get_index_dtype(check_contents=True)`` and silently
+        # downcast int64 row/col arrays to int32.  Now uses
+        # ``self._coo_container`` so the sparse-array dtype-preservation
+        # promise is honored.
+        data = cupy.array([1.0, 2.0], dtype=self.dtype)
+        row = cupy.array([0, 1], dtype=cupy.int64)
+        col = cupy.array([0, 1], dtype=cupy.int64)
+        m = sparse.csr_array((data, (row, col)), shape=(3, 3))
+        assert m.indices.dtype == cupy.int64
+        assert m.indptr.dtype == cupy.int64
+        # csc_array path is symmetric.
+        m = sparse.csc_array((data, (row, col)), shape=(3, 3))
+        assert m.indices.dtype == cupy.int64
+        assert m.indptr.dtype == cupy.int64
+        # Matrix variant should still downcast (matches scipy convention).
+        m = sparse.csr_matrix((data, (row, col)), shape=(3, 3))
+        assert m.indices.dtype == cupy.int32
 
 
 @testing.parameterize(*testing.product({

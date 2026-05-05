@@ -45,6 +45,13 @@ class _spbase:
     __array_priority__ = 101
     maxprint = 50
 
+    def __class_getitem__(cls, args):
+        # ``coo_array[int]``-style typing aliases (scipy 1.16+).
+        # ``types.GenericAlias`` is the same machinery that
+        # ``list[int]`` uses.
+        import types
+        return types.GenericAlias(cls, args)
+
     @property
     def device(self):
         """CUDA device on which this object resides."""
@@ -174,9 +181,7 @@ class _spbase:
 
     # Array semantics: ** is element-wise (spmatrix overrides to matrix power)
     def __pow__(self, other):
-        if other == 0:
-            raise NotImplementedError(
-                'zero power is not supported as it would densify the matrix.')
+        # ``power`` validates scalar / zero so this stays array-safe.
         return self.power(other)
 
     # matmul (@) operator

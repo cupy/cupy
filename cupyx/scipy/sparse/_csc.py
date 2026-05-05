@@ -86,25 +86,6 @@ class _csc_base(_compressed._compressed_sparse_matrix):
     def _swap(self, x, y):
         return (y, x)
 
-    def _as_csr_type(self, result):
-        """Re-wrap a cuSPARSE CSR result in ``self``'s csr_container.
-
-        cuSPARSE's gemm helpers always return a ``csr_matrix``; if
-        ``self`` is a ``csc_array`` the matmul result should be a
-        ``csr_array`` instead.
-        """
-        target = self._csr_container
-        if type(result) is target:
-            return result
-        if not (_base.issparse(result) and result.format == 'csr'):
-            return result
-        return target._from_parts(
-            result.data, result.indices, result.indptr, result.shape,
-            has_canonical_format=getattr(
-                result, '_has_canonical_format', None),
-            has_sorted_indices=getattr(
-                result, '_has_sorted_indices', None))
-
     def _matmul_dispatch(self, other):
         from cupyx import cusparse
 
@@ -421,7 +402,8 @@ class _csc_base(_compressed._compressed_sparse_matrix):
             has_canonical_format=getattr(
                 self, '_has_canonical_format', None),
             has_sorted_indices=getattr(
-                self, '_has_sorted_indices', None))
+                self, '_has_sorted_indices', None),
+            _skip_buffer_check=True)
 
     def _getrow(self, i):
         """Return a copy of row i as a (1 x n) CSR row vector."""

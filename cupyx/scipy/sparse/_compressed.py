@@ -17,7 +17,6 @@ from cupy import _core
 from cupy._core import _scalar
 from cupy._creation import basic
 from cupyx.scipy.sparse import _base
-from cupyx.scipy.sparse import _coo
 from cupyx.scipy.sparse import _data as sparse_data
 from cupyx.scipy.sparse import _sputils
 from cupyx.scipy.sparse import _util
@@ -211,9 +210,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             self.maxprint = maxprint
 
         if shape is not None:
-            if not _util.isshape(shape):
-                raise ValueError('invalid shape (must be a 2-tuple of int)')
-            shape = int(shape[0]), int(shape[1])
+            shape = _util.check_shape(shape)
 
         if _base.issparse(arg1):
             x = arg1.asformat(self.format)
@@ -231,8 +228,10 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                 shape = arg1.shape
 
         elif _util.isshape(arg1):
-            m, n = arg1
-            m, n = int(m), int(n)
+            # ``isshape`` is a pure type-check; ``check_shape`` raises
+            # ``ValueError("'shape' elements cannot be negative")`` on a
+            # negative dimension to match scipy's message.
+            m, n = _util.check_shape(arg1)
             idx_dtype = _sputils.get_index_dtype(maxval=max(m, n))
             data = basic.zeros(0, dtype if dtype else 'd')
             indices = basic.zeros(0, idx_dtype)
@@ -258,8 +257,14 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         elif isinstance(arg1, tuple) and len(arg1) == 2:
             # Note: This implementation is not efficient, as it first
             # constructs a sparse matrix with coo format, then converts it to
-            # compressed format.
-            sp_coo = _coo.coo_matrix(arg1, shape=shape, dtype=dtype, copy=copy)
+            # compressed format.  Use ``self._coo_container`` (sparse-array
+            # aware) so the intermediate COO is the same kind as ``self``;
+            # otherwise int64 row/col arrays would be downcast to int32 by
+            # ``coo_matrix``'s ``check_contents=True`` path even when the
+            # caller is a sparse-array constructor that promised to
+            # preserve the user's dtype.
+            sp_coo = self._coo_container(
+                arg1, shape=shape, dtype=dtype, copy=copy)
             sp_compressed = sp_coo.asformat(self.format)
             data = sp_compressed.data
             indices = sp_compressed.indices
@@ -277,6 +282,11 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
             if len(data) != len(indices):
                 raise ValueError('indices and data should have the same size')
+
+            if indptr.size > 0 and int(indptr[0]) != 0:
+                raise ValueError(
+                    f'index pointer should start with 0 '
+                    f'(got {int(indptr[0])})')
 
             # Mirror scipy: choose int32 when values fit,
             # int64 when they don't.
@@ -308,7 +318,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         else:
             dtype = numpy.dtype(dtype)
 
-        if dtype.char not in '?fdFD':
+        if not _sputils.is_sparse_data_dtype(dtype):
             raise ValueError(
                 'Only bool, float32, float64, complex64 and complex128 '
                 'are supported')
@@ -334,51 +344,61 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
     @classmethod
     def _from_parts(cls, data, indices, indptr, shape,
                     has_canonical_format=None,
-                    has_sorted_indices=None):
-        """Construct from pre-validated arrays (no check_contents).
+                    has_sorted_indices=None,
+                    _skip_buffer_check=False):
+        """Construct from pre-validated arrays without ``check_contents``.
 
         Internal API for building sparse matrices when the caller has
-        already determined the correct index dtype.  Skips the
-        check_contents=True downcast that the tuple-3 constructor
-        applies.
-
-        Caller must ensure *indices* and *indptr* share the same
-        integer dtype and are within bounds for *shape*.
+        already determined the correct index dtype.  ``indices`` and
+        ``indptr`` must share an integer dtype and be in bounds for
+        ``shape``.
 
         Args:
-            has_canonical_format (bool or None): If ``True`` or
-                ``False``, cache the flag directly (avoids the lazy
-                GPU kernel on first access).  ``None`` (default)
-                leaves the flag unset for lazy computation.
-                ``True`` implies ``has_sorted_indices=True``.
+            has_canonical_format (bool or None): If True or False,
+                cache the flag directly to skip the lazy GPU kernel on
+                first access.  None leaves the flag unset.  True
+                implies ``has_sorted_indices=True``.
             has_sorted_indices (bool or None): Same semantics.
-
-        Raises:
-            ValueError: If *indices* and *indptr* dtypes differ, the
-                ``has_canonical_format`` / ``has_sorted_indices`` flags
-                are inconsistent, ``data`` and ``indices`` lengths
-                differ, or ``indptr`` length does not match the major
-                axis of *shape*.
+            _skip_buffer_check (bool): Internal-only opt-out for
+                callers that already guarantee
+                ``data.size == int(indptr[-1])``.  When False
+                (default), one D2H read validates the invariant.
         """
+        shape = _util.check_shape(shape)
+        if data.ndim != 1 or indices.ndim != 1 or indptr.ndim != 1:
+            raise ValueError(
+                f'data, indices, and indptr must be 1-D, got ndim '
+                f'{data.ndim}, {indices.ndim}, {indptr.ndim}')
         if indices.dtype != indptr.dtype:
             raise ValueError(
-                'indices and indptr must have the same dtype, '
-                'got {} and {}'.format(indices.dtype, indptr.dtype))
+                f'indices and indptr must have the same dtype, '
+                f'got {indices.dtype} and {indptr.dtype}')
         if has_canonical_format is True and has_sorted_indices is False:
             raise ValueError(
                 'has_canonical_format=True implies sorted indices, '
                 'but has_sorted_indices=False was passed')
         if data.size != indices.size:
             raise ValueError(
-                'data and indices must have the same length, '
-                'got {} and {}'.format(data.size, indices.size))
-        # Major axis: shape[0] for CSR (_major_axis=0), shape[1] for CSC.
-        # Subclasses must define _major_axis.
+                f'data and indices must have the same length, '
+                f'got {data.size} and {indices.size}')
         major = shape[cls._major_axis]
         if indptr.size != major + 1:
             raise ValueError(
-                'indptr has length {}, expected {} (major axis + 1)'
-                .format(indptr.size, major + 1))
+                f'indptr has length {indptr.size}, '
+                f'expected {major + 1} (major axis + 1)')
+        if max(shape) > numpy.iinfo(indices.dtype).max:
+            raise ValueError(
+                f'shape {shape} too large for index dtype {indices.dtype}')
+        # cuSPARSE reads ``data.size`` as nnz, so a slack buffer
+        # (data.size > indptr[-1]) would feed trailing junk to
+        # cuSPARSE-backed ops.  One D2H read closes the gap.
+        if not _skip_buffer_check and indptr.size > 0:
+            live_nnz = int(indptr[-1])
+            if data.size != live_nnz:
+                raise ValueError(
+                    f'data has length {data.size} but '
+                    f'indptr[-1] == {live_nnz}; trim with .prune() '
+                    f'or pass _skip_buffer_check=True')
         A = cls.__new__(cls)
         sparse_data._data_matrix.__init__(A, data)
         A.indices = indices
@@ -398,8 +418,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         """Return a matrix with the same sparsity structure but
         different data.  Preserves sort/canonical flags.
         """
-        # Read private attrs to avoid the property getter, which
-        # launches a GPU kernel when the flag has not been computed.
+        # Read private attrs to skip the property getter's lazy kernel.
         return self.__class__._from_parts(
             data,
             self.indices.copy() if copy else self.indices,
@@ -408,7 +427,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             has_canonical_format=getattr(
                 self, '_has_canonical_format', None),
             has_sorted_indices=getattr(
-                self, '_has_sorted_indices', None))
+                self, '_has_sorted_indices', None),
+            _skip_buffer_check=True)
 
     def _empty_like(self, shape):
         """Return an empty matrix with the same index dtype."""
@@ -418,7 +438,29 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             cupy.empty(0, self.dtype),
             cupy.empty(0, idx),
             cupy.zeros(major + 1, idx),
-            shape)
+            shape,
+            _skip_buffer_check=True)
+
+    def _as_csr_type(self, result):
+        """Re-wrap a cuSPARSE CSR result in ``self``'s csr_container.
+
+        cuSPARSE's gemm helpers always return a ``csr_matrix``; if
+        ``self`` is a sparse-array (csr_array / csc_array) the matmul
+        result should be a ``csr_array`` instead.
+        """
+        target = self._csr_container
+        if type(result) is target:
+            return result
+        if not (_base.issparse(result) and result.format == 'csr'):
+            return result
+        # Rewrap the kind; ``result`` already has a tight buffer.
+        return target._from_parts(
+            result.data, result.indices, result.indptr, result.shape,
+            has_canonical_format=getattr(
+                result, '_has_canonical_format', None),
+            has_sorted_indices=getattr(
+                result, '_has_sorted_indices', None),
+            _skip_buffer_check=True)
 
     def _convert_dense(self, x):
         raise NotImplementedError
@@ -526,7 +568,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         return self.__class__._from_parts(
             *_index._csr_row_index(
                 self.data, self.indices, self.indptr, idx),
-            shape=new_shape)
+            shape=new_shape,
+            _skip_buffer_check=True)
 
     _bincount_kernel = r"""
     template<typename I>
@@ -714,11 +757,19 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         if self.nnz == 0 or n_idx == 0:
             return self._empty_like(new_shape)
 
-        # For very large minor axis (N > INT32_MAX), the O(N)
-        # col_counts allocation would be prohibitive and the int32
-        # col_counts/col_order arrays can't represent the positions.
-        # Fall back to the sort-based O(nnz) path.
-        if N > numpy.iinfo(numpy.int32).max:
+        # Both branches below allocate ``col_counts``/``col_order`` as
+        # int32 and rely on cumulative sums fitting in int32.  Either
+        # ``N > INT32_MAX`` (the count buffer would be > 8 GB and the
+        # row offsets in it can't fit) or ``n_idx > INT32_MAX``
+        # (``col_order = argsort(idx).astype(int32)`` truncates and
+        # ``cumsum(col_counts).astype(int32)`` overflows since the
+        # sum equals ``n_idx``) means we have to fall back to the
+        # sort-based O(nnz) path.  No direct unit test for the
+        # ``n_idx > INT32_MAX`` arm because it requires an > 8 GB idx
+        # array; correctness rests on code inspection plus the
+        # existing tests for ``_minor_index_fancy_sorted``.
+        if (N > numpy.iinfo(numpy.int32).max
+                or n_idx > numpy.iinfo(numpy.int32).max):
             return self._minor_index_fancy_sorted(
                 idx, M, n_idx, new_shape)
 
@@ -736,14 +787,14 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         block_count = (n_idx + thread_count - 1) // thread_count
 
         bincount_ker = self._bincount_mod.get_function(
-            'bincount_idx_global<{}>'.format(idx_tname))
+            f'bincount_idx_global<{idx_tname}>')
         bincount_ker((block_count,),
                      (thread_count,),
                      (n_idx, idx, col_counts))
 
         # Compute Bp
         calc_Bp_ker = self._calc_Bp_mod.get_function(
-            'row_kept_count<{}>'.format(idx_tname))
+            f'row_kept_count<{idx_tname}>')
         calc_Bp_ker((M,),
                     (thread_count,),
                     (M,
@@ -766,16 +817,12 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         # Compute Bj and Bx
         if self.dtype.kind == 'c':
-            ker_name = 'fill_B_complex<{}, {}>'.format(
-                _scalar.get_typename(self.data.real.dtype),
-                idx_tname,
-            )
+            tname = _scalar.get_typename(self.data.real.dtype)
+            ker_name = f'fill_B_complex<{tname}, {idx_tname}>'
             fillB = self._fill_B_complex.get_function(ker_name)
         else:
-            ker_name = 'fill_B<{}, {}>'.format(
-                _scalar.get_typename(self.data.dtype),
-                idx_tname,
-            )
+            tname = _scalar.get_typename(self.data.dtype)
+            ker_name = f'fill_B<{tname}, {idx_tname}>'
             fillB = self._fill_B.get_function(ker_name)
         threads = 32
         fillB((M,),
@@ -792,7 +839,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
               )
 
         return self.__class__._from_parts(
-            Bx, Bj, Bp, new_shape)
+            Bx, Bj, Bp, new_shape, _skip_buffer_check=True)
 
     def _minor_index_fancy_sorted(self, idx, M, n_idx, new_shape):
         """Sort-based fancy minor-axis indexing for large minor axis.
@@ -844,7 +891,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             out_data, out_minor.astype(out_idx_dtype),
             out_indptr, new_shape,
             has_canonical_format=True,
-            has_sorted_indices=True)
+            has_sorted_indices=True,
+            _skip_buffer_check=True)
 
     def _major_slice(self, idx, copy=False):
         """Index along the major axis where idx is a slice object.
@@ -875,7 +923,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                 has_canonical_format=getattr(
                     self, '_has_canonical_format', None),
                 has_sorted_indices=getattr(
-                    self, '_has_sorted_indices', None))
+                    self, '_has_sorted_indices', None),
+                _skip_buffer_check=True)
         rows = cupy.arange(start, stop, step, dtype=self.indptr.dtype)
         return self._major_index_fancy(rows)
 
@@ -955,15 +1004,15 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         x = cupy.array(x, dtype=self.dtype, copy=True, ndmin=1).ravel()
 
         # Temporary CSR mapping each stored element to its flat offset.
-        # Use _from_parts to avoid check_contents D2H syncs; the
-        # indices/indptr are already validated (they come from self).
+        # Use _from_parts to avoid check_contents D2H syncs.
         # Use the indices dtype for the offset array so we get exact
         # integer arithmetic at any nnz (float64 loses precision past
         # 2**53, and -1 is a valid sentinel for any signed integer).
         idx_dtype = self.indices.dtype
         new_sp = cupyx.scipy.sparse.csr_matrix._from_parts(
             cupy.arange(self.nnz, dtype=idx_dtype),
-            self.indices, self.indptr, shape=(M, N))
+            self.indices, self.indptr, shape=(M, N),
+            _skip_buffer_check=True)
 
         offsets = new_sp._get_arrayXarray(
             i, j, not_found_val=-1).astype(idx_dtype).ravel()
@@ -996,7 +1045,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         idx_dtype = self.indices.dtype
         new_sp = cupyx.scipy.sparse.csr_matrix._from_parts(
             cupy.arange(self.nnz, dtype=idx_dtype),
-            self.indices, self.indptr, shape=(M, N))
+            self.indices, self.indptr, shape=(M, N),
+            _skip_buffer_check=True)
 
         offsets = new_sp._get_arrayXarray(
             i, j, not_found_val=-1).astype(idx_dtype).ravel()
@@ -1100,6 +1150,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         # but this should do the job.
         if self.data.size == 0:
             self._has_canonical_format = True
+            self._has_sorted_indices = True
         # check to see if result was cached
         elif not getattr(self, '_has_sorted_indices', True):
             # not sorted => not canonical
@@ -1109,6 +1160,10 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                 self.indptr, self.indices, size=self.indptr.size-1)
             self._has_canonical_format = bool(
                 is_canonical.all())  # synchronize!
+            # Canonical implies sorted; mirror the setter so a later
+            # ``has_sorted_indices`` access does not re-launch a kernel.
+            if self._has_canonical_format:
+                self._has_sorted_indices = True
         return self._has_canonical_format
 
     def __set_has_canonical_format(self, val):
@@ -1181,6 +1236,11 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             otherwise a 1-D ``cupy.ndarray`` of length
             ``shape[1 - axis]``.
 
+        .. warning::
+            Synchronizes the device.  ``axis is not None`` reads the
+            popcount of the non-zero mask once (one D2H sync) plus
+            whatever ``sum_duplicates`` itself syncs.
+
         .. seealso:: :meth:`scipy.sparse.csr_matrix.count_nonzero`
         """
         # Match scipy: dedup in place, then count.  ``self.indices``
@@ -1197,16 +1257,36 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         # identity; CSC's swaps.
         major_axis, _ = self._swap(axis, 1 - axis)
         major_dim, minor_dim = self._swap(*self.shape)
+        # ``cupy.bincount`` errors on empty input even with ``minlength``
+        # (CUB max-reduction has no identity for zero-size arrays), so
+        # short-circuit when nothing is stored.  scipy returns the
+        # zero-filled axis vector in this case.
+        if self.data.size == 0:
+            out_dim = minor_dim if major_axis == 0 else major_dim
+            return cupy.zeros(out_dim, dtype=cupy.intp)
         mask = self.data != 0
+        # One D2H read of the popcount of ``mask`` tells us both whether
+        # all entries are non-zero (popcount == size) and whether any
+        # are non-zero (popcount > 0).  This replaces back-to-back
+        # ``mask.all()`` and ``mask.any()`` calls, halving the sync
+        # count in the common partially-zero case.
+        nnz_kept = int(mask.sum())  # synchronize!
+        all_kept = nnz_kept == mask.size
         if major_axis == 0:
             # axis-along-major: per-minor-index count → bincount(indices)
-            idx = self.indices if bool(mask.all()) else self.indices[mask]
+            if nnz_kept == 0:
+                return cupy.zeros(minor_dim, dtype=cupy.intp)
+            idx = self.indices if all_kept else self.indices[mask]
             return cupy.bincount(
                 idx.astype(cupy.int64), minlength=minor_dim)
         # axis-along-minor: per-major-index count
-        if bool(mask.all()):
+        if all_kept:
             return cupy.diff(self.indptr).astype(cupy.intp)
+        if nnz_kept == 0:
+            return cupy.zeros(major_dim, dtype=cupy.intp)
         from cupyx.cusparse import _indptr_to_coo
+        # ``data.size`` may exceed ``indptr[-1]`` when buffers carry
+        # slack; let the helper read ``indptr[-1]`` directly.
         major = _indptr_to_coo(self.indptr)
         return cupy.bincount(
             major[mask].astype(cupy.int64), minlength=major_dim)
@@ -1310,7 +1390,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             (cupy.amin, True): (self._min_nonzero_reduction_mod,
                                 'min_nonzero_reduction'),
         }[(ufunc, nonzero)]
-        ker = mod.get_function('{}<{}>'.format(fname, tname))
+        ker = mod.get_function(f'{fname}<{tname}>')
         ker((out_shape,), (1,),
             (self.data.astype(cupy.float64),
              self.indptr[:-1], self.indptr[1:],
@@ -1350,10 +1430,10 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         indptr_x = self.indptr[:len(self.indptr) - 1].astype(idx_dtype,
                                                              copy=False)
         indptr_y = self.indptr[1:].astype(idx_dtype, copy=False)
-        ker_name = '_arg_reduction<{}, {}, {}>'.format(
-            _scalar.get_typename(self.data.dtype),
-            _scalar.get_typename(out.dtype),
-            _scalar.get_typename(idx_dtype))
+        data_t = _scalar.get_typename(self.data.dtype)
+        out_t = _scalar.get_typename(out.dtype)
+        idx_t = _scalar.get_typename(idx_dtype)
+        ker_name = f'_arg_reduction<{data_t}, {out_t}, {idx_t}>'
 
         if ufunc == cupy.argmax:
             ker = self._max_arg_reduction_mod.get_function('max' + ker_name)
