@@ -7,6 +7,7 @@ from cupy import cublas
 from cupy.cuda import device
 from cupy.cuda import runtime
 from cupy.linalg import _util
+from cupyx import cusparse
 from cupyx.scipy import sparse
 from cupyx.scipy.sparse.linalg import _interface
 from cupyx.scipy.sparse.linalg._iterative import _make_system
@@ -54,7 +55,6 @@ def lsqr(A, b):
     _util._assert_cupy_array(b)
     # cuSOLVER's csrlsvqr is int32-only; mirror the guard already
     # present in spsolve (which dispatches to the same backend).
-    from cupyx import cusparse
     cusparse._check_int32_indices(A, 'lsqr')
     m = A.shape[0]
     if b.ndim != 1 or len(b) != m:
@@ -435,8 +435,6 @@ def spsolve_triangular(A, b, lower=True, overwrite_A=False, overwrite_b=False,
         cupy.ndarray:
             Solution to the system ``A x = b``. The shape is the same as ``b``.
     """
-    from cupyx import cusparse
-
     if not (cusparse.check_availability('spsm') or
             cusparse.check_availability('csrsm2')):
         raise NotImplementedError
@@ -527,7 +525,6 @@ def spsolve(A, b):
                       sparse.SparseEfficiencyWarning)
         A = A.tocsr()
 
-    from cupyx import cusparse
     cusparse._check_int32_indices(A, 'spsolve')
 
     A.sum_duplicates()
@@ -582,8 +579,6 @@ class SuperLU:
             cupy.ndarray:
                 Solution vector(s)
         """  # NOQA
-        from cupyx import cusparse
-
         if not isinstance(rhs, cupy.ndarray):
             raise TypeError('ojb must be cupy.ndarray')
         if rhs.ndim not in (1, 2):
@@ -761,8 +756,6 @@ def spilu(A, drop_tol=None, fill_factor=None, drop_rule=None,
 
     .. seealso:: :func:`scipy.sparse.linalg.spilu`
     """
-    from cupyx import cusparse
-
     if not scipy_available:
         raise RuntimeError('scipy is not available')
     if not sparse.issparse(A):

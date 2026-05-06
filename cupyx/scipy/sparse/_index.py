@@ -111,6 +111,38 @@ def _csr_row_index(Ax, Aj, Ap, rows):
     return Bx, Bj, Bp
 
 
+def _get_csr_submatrix_minor_axis(Ax, Aj, Ap, start, stop):
+    """Return a submatrix of the input sparse matrix by slicing minor axis.
+
+    Args:
+        Ax (cupy.ndarray): data array from input sparse matrix
+        Aj (cupy.ndarray): indices array from input sparse matrix
+        Ap (cupy.ndarray): indptr array from input sparse matrix
+        start (int): starting index of minor axis
+        stop (int): ending index of minor axis
+
+    Returns:
+        Bx (cupy.ndarray): data array of output sparse matrix
+        Bj (cupy.ndarray): indices array of output sparse matrix
+        Bp (cupy.ndarray): indptr array of output sparse matrix
+
+    The three returned arrays share no memory with the inputs:
+    boolean masking (``Aj[mask]``, ``Ax[mask]``) and fancy indexing
+    (``mask_sum[Ap]``) both allocate.  Callers may treat the results
+    as independent buffers; ``_minor_slice`` relies on this contract
+    to satisfy ``copy=True`` without an explicit ``.copy()``.
+    """
+    mask = (start <= Aj) & (Aj < stop)
+    mask_sum = cupy.empty(Aj.size + 1, dtype=Ap.dtype)
+    mask_sum[0] = 0
+    mask_sum[1:] = mask
+    cupy.cumsum(mask_sum, out=mask_sum)
+    Bp = mask_sum[Ap]
+    Bj = Aj[mask] - start
+    Bx = Ax[mask]
+    return Bx, Bj, Bp
+
+
 def _csr_indptr_to_coo_rows(nnz, Bp):
     if Bp.dtype == cupy.int64:
         # TODO(eriknw): cuSPARSE--remove when xcsr2coo supports int64

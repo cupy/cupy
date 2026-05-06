@@ -3914,6 +3914,52 @@ class TestDiaGetnnzAccumulator:
         assert n == 3
 
 
+class TestMinorSliceStep1FastPath:
+    """``m[:, a:b]`` (step==1 minor-axis slice) takes a fast path
+    via ``_index._get_csr_submatrix_minor_axis`` (mask + cumsum,
+    O(nnz)) instead of the histogram-based ``_minor_index_fancy``
+    path (O(N)).  The output buffer is tight by construction
+    (``Bx.size == int(Bp[-1])``), so the call passes
+    ``_skip_buffer_check=True`` to skip the validation D2H.
+    """
+
+    def test_step1_correctness_int64(self):
+        # Compare against scipy for a non-trivial CSR with int64
+        # indices.  Captures both the fast-path-vs-histogram dispatch
+        # and the buffer-tightness invariant required by
+        # ``_skip_buffer_check=True``.
+        import scipy.sparse
+        data = cupy.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+        indices = cupy.array([0, 2, 1, 3, 0, 4], dtype=cupy.int64)
+        indptr = cupy.array([0, 2, 4, 6], dtype=cupy.int64)
+        m = sparse.csr_matrix._from_parts(
+            data, indices, indptr, shape=(3, 5),
+            has_canonical_format=True)
+        sm = scipy.sparse.csr_matrix(
+            (data.get(), indices.get(), indptr.get()), shape=(3, 5))
+        for slc in (slice(0, 5), slice(1, 4), slice(2, 5),
+                    slice(0, 1), slice(0, 0)):
+            cu_arr = m[:, slc].toarray().get()
+            sci_arr = sm[:, slc].toarray()
+            cupy.testing.assert_array_equal(cu_arr, sci_arr)
+            # Index dtype must survive the slice.
+            if slc.stop > slc.start:
+                assert m[:, slc].indices.dtype == cupy.int64
+
+    def test_step1_propagates_canonical_format(self):
+        # The fast path forwards the cached canonical/sorted flags.
+        data = cupy.array([1.0, 2.0, 3.0])
+        indices = cupy.array([0, 1, 2], dtype=cupy.int64)
+        indptr = cupy.array([0, 1, 2, 3], dtype=cupy.int64)
+        m = sparse.csr_matrix._from_parts(
+            data, indices, indptr, shape=(3, 3),
+            has_canonical_format=True)
+        sliced = m[:, 0:2]
+        # ``has_canonical_format=True`` was on input; the fast path
+        # passes it through to the output via ``getattr``.
+        assert sliced._has_canonical_format is True
+
+
 class TestLsqrInt32Guard:
     """``lsqr`` dispatches to cuSOLVER's ``csrlsvqr`` which is
     int32-only; raise a clean error for int64 indices instead of
@@ -3947,9 +3993,11 @@ class TestLsqrInt32Guard:
 
 
 class TestMultiplyMixedInt32Int64:
-    """``csr.multiply(csr)`` with mixed int32 / int64 operands must
-    promote to a common dtype (matches scipy) instead of raising a
-    kernel template-type-mismatch error.
+    """``csr.multiply(csr)`` previously rejected mixed int32 / int64
+    operands with a kernel template-type-mismatch error
+    (``Type is mismatched. B_INDPTR int32 int64 I``).  Promote both
+    operands to a common dtype so the kernel template parameter ``I``
+    is consistent (matches scipy).
     """
 
     def test_int32_multiply_int64(self):

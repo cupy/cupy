@@ -742,12 +742,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         ],
     )
 
-    @staticmethod
-    def _idx_type_name(dtype):
-        if dtype == cupy.int64:
-            return 'long long'
-        return 'int'
-
     def _minor_index_fancy(self, idx):
         """Index along the minor axis where idx is an array of ints.
         """
@@ -757,24 +751,25 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         if self.nnz == 0 or n_idx == 0:
             return self._empty_like(new_shape)
 
-        # Both branches below allocate ``col_counts``/``col_order`` as
-        # int32 and rely on cumulative sums fitting in int32.  Either
-        # ``N > INT32_MAX`` (the count buffer would be > 8 GB and the
-        # row offsets in it can't fit) or ``n_idx > INT32_MAX``
-        # (``col_order = argsort(idx).astype(int32)`` truncates and
-        # ``cumsum(col_counts).astype(int32)`` overflows since the
-        # sum equals ``n_idx``) means we have to fall back to the
-        # sort-based O(nnz) path.  No direct unit test for the
-        # ``n_idx > INT32_MAX`` arm because it requires an > 8 GB idx
-        # array; correctness rests on code inspection plus the
-        # existing tests for ``_minor_index_fancy_sorted``.
-        if (N > numpy.iinfo(numpy.int32).max
-                or n_idx > numpy.iinfo(numpy.int32).max):
+        # The histogram path uses ``cupy.int32`` for the count buffer
+        # and relies on cumulative sums fitting in int32.  Fall back
+        # to the sort-based O(nnz) path when either:
+        #  * ``N > INT32_MAX``: the count buffer would be > 8 GB and
+        #    the row offsets in it can't fit; or
+        #  * ``n_idx > INT32_MAX``: ``col_order =
+        #    argsort(idx).astype(int32)`` truncates and
+        #    ``cumsum(col_counts).astype(int32)`` overflows since the
+        #    cumulative sum equals ``n_idx``.
+        # No direct unit test for the n_idx arm (would require an > 8
+        # GB idx array); correctness rests on code inspection plus the
+        # existing ``_minor_index_fancy_sorted`` tests.
+        int32_max = numpy.iinfo(numpy.int32).max
+        if N > int32_max or n_idx > int32_max:
             return self._minor_index_fancy_sorted(
                 idx, M, n_idx, new_shape)
 
         idx_dtype = self.indices.dtype
-        idx_tname = self._idx_type_name(idx_dtype)
+        idx_tname = _scalar.get_typename(idx_dtype)
 
         # Create buffers
         col_counts = cupy.zeros(N, dtype=cupy.int32)
@@ -858,17 +853,17 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         hi = cupy.searchsorted(sorted_idx, self.indices, side='right')
         cnt = (hi - lo).astype(cupy.int64)
 
-        total_nnz = int(cnt.sum())  # synchronize!
+        out_src = cupy.repeat(
+            cupy.arange(self.nnz, dtype=cupy.int64), cnt)
+        total_nnz = out_src.size
         if total_nnz == 0:
             return self._empty_like(new_shape)
 
-        out_src = cupy.repeat(
-            cupy.arange(self.nnz, dtype=cupy.int64), cnt)
         # offset: position within each repeated group (grouped arange)
         cum_cnt = cupy.zeros(self.nnz + 1, dtype=cupy.int64)
         cupy.cumsum(cnt, out=cum_cnt[1:])
-        offset = cupy.arange(total_nnz, dtype=cupy.int64) \
-            - cum_cnt[out_src]
+        offset = (cupy.arange(total_nnz, dtype=cupy.int64)
+                  - cum_cnt[out_src])
 
         out_minor = sort_order[lo[out_src] + offset]
         out_data = self.data[out_src]
@@ -942,6 +937,24 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         if N == 0 or self.nnz == 0:
             return self._empty_like(new_shape)
+        if step == 1:
+            # Fast path for contiguous minor-axis slicing: mask + cumsum,
+            # avoids building the per-column histogram in the fancy path.
+            # ``_get_csr_submatrix_minor_axis`` documents that it returns
+            # fresh arrays, so the ``copy`` kwarg is satisfied without
+            # an explicit ``.copy()`` -- unlike ``_major_slice``, whose
+            # helper returns slice views.  Buffer is tight by
+            # construction (``Bx.size == int(Bp[-1]) == mask.sum()``),
+            # so skip the validation D2H.
+            data, indices, indptr = _index._get_csr_submatrix_minor_axis(
+                self.data, self.indices, self.indptr, start, stop)
+            return self.__class__._from_parts(
+                data, indices, indptr, new_shape,
+                has_canonical_format=getattr(
+                    self, '_has_canonical_format', None),
+                has_sorted_indices=getattr(
+                    self, '_has_sorted_indices', None),
+                _skip_buffer_check=True)
         cols = cupy.arange(start, stop, step, dtype=self.indices.dtype)
         return self._minor_index_fancy(cols)
 

@@ -108,7 +108,7 @@ def _indptr_to_coo(indptr, dtype=None, *, nnz=None):
     # and the log factor of searchsorted is a wash, so prefer repeat.
     # Above the threshold, sync once (8-byte D2H) to read nnz, then
     # only switch to searchsorted if the major axis would actually
-    # blow up memory (4* gives a safety margin against marginal cases).
+    # blow up memory (4x gives a safety margin against marginal cases).
     if nrows > (1 << 14):
         if nnz is None:
             nnz = int(indptr[-1])  # synchronize!
@@ -1419,8 +1419,8 @@ def _cupy_transpose_compressed_int64(x, output_cls, out_dim):
     # indices are also sorted-no-dup within each major slot.  Read the
     # cached flag directly to avoid triggering the lazy GPU kernel on
     # ``x``.  When the input is *not* canonical (or canonical state is
-    # unknown), the output may still be canonical -- the lexsort below
-    # makes the output sorted regardless of the input's order, and the
+    # unknown), the output may still be canonical -- the lexsort makes
+    # the output sorted regardless of the input's order, and the
     # output has duplicates iff the input did.  So we conservatively
     # propagate only known-True; False / None both leave the output's
     # flag unset for lazy compute.
@@ -2297,7 +2297,12 @@ def denseToSparse(x, format='csr'):
     desc_y = SpMatDescriptor.create(y)
     _cusparse.denseToSparse_convert(handle, desc_x.desc,
                                     desc_y.desc, algo, buff.data.ptr)
-    y.has_canonical_format = True  # propagates to _has_sorted_indices
+    # COO uses ``has_canonical_format`` (no leading underscore) as its
+    # plain attribute -- writing ``_has_canonical_format`` would set a
+    # different attribute and the result would not be marked canonical.
+    # CSR/CSC have a property and the public name dispatches to the
+    # setter, which also propagates ``_has_sorted_indices = True``.
+    y.has_canonical_format = True
     return y
 
 
