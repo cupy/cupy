@@ -28,12 +28,12 @@ configs {
       cpu: 8
       memory: 50
       disk: 30
-      gpu: 2
+      gpu: 1
     }
     time_limit: {
       seconds: 21600
     }
-    environment_variables { key: "GPU" value: "2" }
+    environment_variables { key: "GPU" value: "1" }
     command: ".pfnci/linux/main-flexci.sh cuda120.multi"
   }
 }
@@ -64,12 +64,12 @@ configs {
       cpu: 8
       memory: 50
       disk: 30
-      gpu: 2
+      gpu: 1
     }
     time_limit: {
       seconds: 21600
     }
-    environment_variables { key: "GPU" value: "2" }
+    environment_variables { key: "GPU" value: "1" }
     command: ".pfnci/linux/main-flexci.sh cuda121.multi"
   }
 }
@@ -100,12 +100,12 @@ configs {
       cpu: 8
       memory: 50
       disk: 30
-      gpu: 2
+      gpu: 1
     }
     time_limit: {
       seconds: 21600
     }
-    environment_variables { key: "GPU" value: "2" }
+    environment_variables { key: "GPU" value: "1" }
     command: ".pfnci/linux/main-flexci.sh cuda122.multi"
   }
 }
@@ -136,12 +136,12 @@ configs {
       cpu: 8
       memory: 50
       disk: 30
-      gpu: 2
+      gpu: 1
     }
     time_limit: {
       seconds: 21600
     }
-    environment_variables { key: "GPU" value: "2" }
+    environment_variables { key: "GPU" value: "1" }
     command: ".pfnci/linux/main-flexci.sh cuda123.multi"
   }
 }
@@ -172,12 +172,12 @@ configs {
       cpu: 8
       memory: 50
       disk: 30
-      gpu: 2
+      gpu: 1
     }
     time_limit: {
       seconds: 21600
     }
-    environment_variables { key: "GPU" value: "2" }
+    environment_variables { key: "GPU" value: "1" }
     command: ".pfnci/linux/main-flexci.sh cuda124.multi"
   }
 }
@@ -207,12 +207,12 @@ configs {
       cpu: 8
       memory: 50
       disk: 30
-      gpu: 2
+      gpu: 1
     }
     time_limit: {
       seconds: 21600
     }
-    environment_variables { key: "GPU" value: "2" }
+    environment_variables { key: "GPU" value: "1" }
     command: ".pfnci/linux/main-flexci.sh cuda125.multi"
   }
 }
@@ -242,12 +242,12 @@ configs {
       cpu: 8
       memory: 50
       disk: 30
-      gpu: 2
+      gpu: 1
     }
     time_limit: {
       seconds: 21600
     }
-    environment_variables { key: "GPU" value: "2" }
+    environment_variables { key: "GPU" value: "1" }
     command: ".pfnci/linux/main-flexci.sh cuda126.multi"
   }
 }
@@ -277,12 +277,12 @@ configs {
       cpu: 8
       memory: 60
       disk: 30
-      gpu: 2
+      gpu: 1
     }
     time_limit: {
       seconds: 21600
     }
-    environment_variables { key: "GPU" value: "2" }
+    environment_variables { key: "GPU" value: "1" }
     command: ".pfnci/linux/main-flexci.sh cuda128.multi"
   }
 }
@@ -312,12 +312,12 @@ configs {
       cpu: 8
       memory: 60
       disk: 30
-      gpu: 2
+      gpu: 1
     }
     time_limit: {
       seconds: 21600
     }
-    environment_variables { key: "GPU" value: "2" }
+    environment_variables { key: "GPU" value: "1" }
     command: ".pfnci/linux/main-flexci.sh cuda129.multi"
   }
 }
@@ -347,12 +347,12 @@ configs {
       cpu: 8
       memory: 60
       disk: 30
-      gpu: 2
+      gpu: 1
     }
     time_limit: {
       seconds: 21600
     }
-    environment_variables { key: "GPU" value: "2" }
+    environment_variables { key: "GPU" value: "1" }
     command: ".pfnci/linux/main-flexci.sh cuda130.multi"
   }
 }
@@ -382,12 +382,12 @@ configs {
       cpu: 8
       memory: 60
       disk: 30
-      gpu: 2
+      gpu: 1
     }
     time_limit: {
       seconds: 21600
     }
-    environment_variables { key: "GPU" value: "2" }
+    environment_variables { key: "GPU" value: "1" }
     command: ".pfnci/linux/main-flexci.sh cuda131.multi"
   }
 }
