@@ -392,6 +392,41 @@ configs {
   }
 }
 
+# CUDA 13.2 | Linux
+configs {
+  key: "cupy.linux.cuda132"
+  value {
+    requirement {
+      cpu: 8
+      memory: 60
+      disk: 30
+      gpu: 1
+    }
+    time_limit: {
+      seconds: 21600
+    }
+    environment_variables { key: "GPU" value: "1" }
+    command: ".pfnci/linux/main-flexci.sh cuda132"
+  }
+}
+# CUDA 13.2 (Multi-GPU) | Linux
+configs {
+  key: "cupy.linux.cuda132.multi"
+  value {
+    requirement {
+      cpu: 8
+      memory: 60
+      disk: 30
+      gpu: 2
+    }
+    time_limit: {
+      seconds: 21600
+    }
+    environment_variables { key: "GPU" value: "2" }
+    command: ".pfnci/linux/main-flexci.sh cuda132.multi"
+  }
+}
+
 # CUDA 12.x + CUDA Python
 configs {
   key: "cupy.linux.cuda12x-cuda-python"
@@ -819,5 +854,25 @@ configs {
     }
     environment_variables { key: "GPU" value: "2" }
     command: ".pfnci\\windows\\run.bat 13.1 3.14 2.3 1.16 test"
+  }
+}
+configs {
+  key: "cupy.win.cuda132"
+  value {
+    requirement {
+      cpu: 8
+      memory: 36
+      disk: 10
+      gpu: 2
+      image: "windows"
+    }
+    time_limit {
+      seconds: 72000
+    }
+    checkout_strategy {
+      include_dot_git: true
+    }
+    environment_variables { key: "GPU" value: "2" }
+    command: ".pfnci\\windows\\run.bat 13.2 3.14 2.4 1.16 test"
   }
 }
