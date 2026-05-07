@@ -8,6 +8,7 @@ from cupy import _core
 from cupy._core import _fusion_interface
 from cupy._core import fusion
 from cupy._sorting import search
+from cupy.cuda import stream
 from cupy_backends.cuda.api import runtime
 
 
@@ -100,7 +101,21 @@ def copyto(dst, src, casting='same_kind', where=None):
         return
 
     if _can_memcpy(dst, src):
-        dst.data.copy_from_async(src.data, src.nbytes)
+        if runtime.is_hip and src.device != dst.device:
+            # From hip_runtime_api.h (hipMemcpyAsync): "For multi-gpu
+            # or peer-to-peer configurations, it is recommended to
+            # use a stream which is attached to the device where the
+            # src data is physically located."
+            # Issue the copy from the source device context, then
+            # make the destination device's stream wait for the copy
+            # to complete.
+            with src.device:
+                dst.data.copy_from_async(src.data, src.nbytes)
+                copy_event = stream.get_current_stream().record()
+            with dst.device:
+                stream.get_current_stream().wait_event(copy_event)
+        else:
+            dst.data.copy_from_async(src.data, src.nbytes)
         return
 
     device = dst.device

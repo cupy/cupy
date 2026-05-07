@@ -48,15 +48,16 @@ def _check_shares_memory(xp, sp, x, y):
 @testing.with_requires('scipy>=1.4.0')
 class TestSetitemIndexing:
 
-    def _run(self, maj, min=None, data=5):
-
+    def _run(self, maj, min=None, data=5, density=None):
+        if density is None:
+            density = self.density
         import scipy.sparse
         for i in range(2):
             shape = self.n_rows, self.n_cols
             a = testing.shaped_sparse_random(
-                shape, sparse, self.dtype, self.density, self.format)
+                shape, sparse, self.dtype, density, self.format)
             expected = testing.shaped_sparse_random(
-                shape, scipy.sparse, self.dtype, self.density, self.format)
+                shape, scipy.sparse, self.dtype, density, self.format)
 
             maj_h = maj.get() if isinstance(maj, cupy.ndarray) else maj
             min_h = min.get() if isinstance(min, cupy.ndarray) else min
@@ -320,11 +321,11 @@ class TestSetitemIndexing:
         # ref: https://github.com/cupy/cupy/issues/3836
         # Starting with an empty array for now, since insertions
         # use `last-in-wins`.
-        self.density = 0.0  # Zeroing out density to force only insertions
         for maj, min, data in zip(_get_index_combos([0, 5, 10, 2, 0, 10]),
                                   _get_index_combos([1, 2, 3, 4, 1, 3]),
                                   _get_index_combos([1, 2, 3, 4, 5, 6])):
-            self._run(maj, min, data)
+            # Zeroing out density to force only insertions:
+            self._run(maj, min, data, density=0.0)
 
 
 class IndexingTestBase:

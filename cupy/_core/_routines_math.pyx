@@ -6,6 +6,7 @@ import numpy
 import cupy
 from cupy._core._reduction import create_reduction_func
 from cupy._core._kernel import create_ufunc, _get_warpsize
+from cupy._core._kernel cimport _full_mask_hex
 from cupy._core._scalar import get_typename
 from cupy._core._ufuncs import elementwise_copy
 import cupy._core.core as core
@@ -193,7 +194,7 @@ def _cupy_bsum_shfl(op, chunk_size, warp_size=32):
         if (2*i < a.size()) x = a[2*i];
         if (2*i + 1 < a.size()) x ${op}= a[2*i + 1];
         for (int j = 1; j < ${warp_size}; j *= 2) {
-            x ${op}= __shfl_xor_sync(0xffffffff, x, j, ${warp_size});
+            x ${op}= __shfl_xor_sync(${full_mask}, x, j, ${warp_size});
         }
         if (lane_id == 0) smem[warp_id] = x;
         __syncthreads();
@@ -201,13 +202,14 @@ def _cupy_bsum_shfl(op, chunk_size, warp_size=32):
             x = ${identity};
             if (lane_id < n_warp) x = smem[lane_id];
             for (int j = 1; j < n_warp; j *= 2) {
-                x ${op}= __shfl_xor_sync(0xffffffff, x, j, ${warp_size});
+                x ${op}= __shfl_xor_sync(${full_mask}, x, j, ${warp_size});
             }
             int block_id = i / ${block_size};
             if (lane_id == 0) b[block_id] = x;
         }
     """).substitute(block_size=block_size, warp_size=warp_size,
-                    op=_op_char[op], identity=_identity[op])
+                    op=_op_char[op], identity=_identity[op],
+                    full_mask=_full_mask_hex())
     return cupy.ElementwiseKernel(in_params, out_params, loop_body,
                                   'cupy_bsum_shfl', loop_prep=loop_prep)
 

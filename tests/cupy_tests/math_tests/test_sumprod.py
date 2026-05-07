@@ -323,7 +323,7 @@ class TestCubReduction:
     # TODO(leofang): test axis after support is added
     # don't test float16 as it's not as accurate?
     @pytest.mark.thread_unsafe(reason="unsafe AssertFunctionIsCalled.")
-    @testing.for_dtypes('bhilBHILfdF')
+    @testing.for_dtypes('bhilBHILfdFD')
     @testing.numpy_cupy_allclose(rtol=1E-4)
     def test_cub_cumsum(self, xp, dtype):
         if self.backend == 'block':
@@ -349,7 +349,7 @@ class TestCubReduction:
     # TODO(leofang): test axis after support is added
     # don't test float16 as it's not as accurate?
     @pytest.mark.thread_unsafe(reason="unsafe AssertFunctionIsCalled.")
-    @testing.for_dtypes('bhilBHILfdF')
+    @testing.for_dtypes('bhilBHILfdFD')
     @testing.numpy_cupy_allclose(rtol=1E-4)
     def test_cub_cumprod(self, xp, dtype):
         if self.backend == 'block':
@@ -387,6 +387,110 @@ class TestCubReduction:
         return result
 
 
+INT32_MAX = numpy.iinfo(numpy.int32).max
+
+
+@pytest.mark.skipif(
+    not cupy.cuda.cub.available, reason='The CUB routine is not enabled')
+@testing.slow
+class TestReductionSizeOverInt32Max:
+
+    @pytest.fixture(autouse=True)
+    def _cub_device_and_memory(self):
+        cupy.get_default_memory_pool().free_all_blocks()
+        cupy.get_default_pinned_memory_pool().free_all_blocks()
+        old_routine = _acc.get_routine_accelerators()
+        old_red = _acc.get_reduction_accelerators()
+        _acc.set_routine_accelerators(['cub'])
+        _acc.set_reduction_accelerators([])
+        yield
+        _acc.set_routine_accelerators(old_routine)
+        _acc.set_reduction_accelerators(old_red)
+        cupy.get_default_memory_pool().free_all_blocks()
+        cupy.get_default_pinned_memory_pool().free_all_blocks()
+
+    @pytest.mark.parametrize('shape,axis,dtype,part', [
+        ((INT32_MAX + 1024,), None, "int8", "first_part"),
+        ((4, 2**30 + 512), 1, "float32", "second_part"),
+        ((INT32_MAX + 1024, 2), 0, "int8", "first_part"),
+        ((INT32_MAX + 1024, 2), 1, "int32", "second_part"),
+    ])
+    def test_reduce(self, shape, axis, dtype, part):
+        try:
+            a = cupy.ones(shape, dtype=dtype)
+            # Make first and last element along each slice interesting
+            if axis is None:
+                a[[0, -1]] = [3, -1]
+            elif axis == 0:
+                a[[0, -1], :] = [[3], [-1]]
+            else:
+                a[:, [0, -1]] = [[3, -1]]
+
+            # Test only half of the reductions per test for better speed
+            # (it is still very slow.)
+            if part == "first_part":
+                if axis is None:
+                    # Full reduction: one segment, one 2 and (size-1) ones
+                    assert a.sum() == a.size
+                    assert a.max() == 3
+                    assert a.argmin() == a.size - 1
+                else:
+                    s = a.sum(axis=axis)
+                    expected_sum = shape[axis]
+                    testing.assert_array_equal(s, cupy.full(
+                        s.shape, expected_sum, dtype=s.dtype))
+                    testing.assert_array_equal(
+                        a.max(axis=axis), cupy.full(s.shape, 3, dtype=dtype))
+                    testing.assert_array_equal(
+                        a.argmin(axis), cupy.full(s.shape, a.shape[axis] - 1))
+            else:
+                if axis is None:
+                    # Full reduction: one segment, one 2 and (size-1) ones
+                    assert a.prod() == -3
+                    assert a.min() == -1
+                    assert a.argmax() == 0
+                else:
+                    p = a.prod(axis=axis)
+                    testing.assert_array_equal(p, cupy.full(
+                        p.shape, -3, dtype=p.dtype))
+                    testing.assert_array_equal(
+                        a.min(axis=axis), cupy.full(p.shape, -1, dtype=dtype))
+                    testing.assert_array_equal(
+                        a.argmax(axis), cupy.full(p.shape, 0))
+        except MemoryError:
+            pytest.skip("out of memory in test.")
+
+    @pytest.mark.parametrize('dtype', [numpy.int8, numpy.int32, numpy.float32])
+    def test_cumsum_size_over_int32_max(self, dtype):
+        """CUB device_scan with size > INT32_MAX."""
+        try:
+            n = INT32_MAX + 1024
+            a = cupy.ones(n, dtype=dtype)
+            a[0] = 3
+            a[-1] = -1
+            out = a.cumsum()
+            expected = n
+            if dtype in (numpy.float32, numpy.float64):
+                testing.assert_allclose(float(out[-1]), expected, rtol=2e-4)
+            else:
+                assert int(out[-1]) == expected
+        except MemoryError:
+            pytest.skip("out of memory in test.")
+
+    @pytest.mark.parametrize('dtype', [numpy.int8, numpy.int32, numpy.float32])
+    def test_cumprod_size_over_int32_max(self, dtype):
+        """CUB device_scan (cumprod) with size > INT32_MAX."""
+        try:
+            n = INT32_MAX + 1024
+            a = cupy.ones(n, dtype=dtype)
+            a[0] = 2
+            a[-1] = 3
+            out = a.cumprod()
+            assert out[-1] == 6  # product of array
+        except MemoryError:
+            pytest.skip("out of memory in test.")
+
+
 # This class compares cuTENSOR results against NumPy's
 @testing.parameterize(*testing.product({
     'shape': [(10,), (10, 20), (10, 20, 30), (10, 20, 30, 40)],
@@ -404,6 +508,7 @@ class TestCuTensorReduction:
         yield
         cupy._core.set_routine_accelerators(old_accelerators)
 
+    @pytest.mark.thread_unsafe(reason="unsafe AssertFunctionIsCalled.")
     @testing.for_contiguous_axes()
     # sum supports less dtypes; don't test float16 as it's not as accurate?
     @testing.for_dtypes('qQfdFD')

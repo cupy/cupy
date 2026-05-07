@@ -19,15 +19,16 @@ class TestDriver(unittest.TestCase):
     def test_ctxGetCurrent_thread(self):
         # Make sure to create context in main thread.
         cupy.arange(1)
+        _result0 = None
+        _result1 = None
 
         def f(self):
-            self._result0 = driver.ctxGetCurrent()
+            nonlocal _result0, _result1
+            _result0 = driver.ctxGetCurrent()
             cupy.cuda.Device().use()
             cupy.arange(1)
-            self._result1 = driver.ctxGetCurrent()
+            _result1 = driver.ctxGetCurrent()
 
-        self._result0 = None
-        self._result1 = None
         t = threading.Thread(target=f, args=(self,))
         t.daemon = True
         t.start()
@@ -35,11 +36,11 @@ class TestDriver(unittest.TestCase):
 
         # The returned context pointer must be NULL on sub thread
         # without valid context.
-        assert 0 == self._result0
+        assert 0 == _result0
 
         # After the context is created, it should return the valid
         # context pointer.
-        assert 0 != self._result1
+        assert 0 != _result1
 
     @testing.multi_gpu(2)
     def test_ctxGetDevice(self):

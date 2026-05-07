@@ -266,11 +266,13 @@ cdef class _ndarray_base:
                         f"contiguous size of {self.size * itemsize} but got "
                         f"{alloc_size}.")
             else:
-                alloc_size = self.size * itemsize
+                alloc_size = right - left  # actual memory extend
         else:
             self._set_contiguous_strides(itemsize, order_char == b'C')
-            alloc_size = self.size * itemsize
+            alloc_size = self.size * itemsize  # contiguous
 
+        # Arrays can e.g. broadcast, so check that all pointer offsets fit and
+        # the size fit int32. (seberg: `* itemsize` may be unnecessary)
         max_diff = max(alloc_size, self.size * itemsize)
         self._index_32_bits = max_diff <= <Py_ssize_t>(1 << 31)
 
@@ -791,7 +793,53 @@ cdef class _ndarray_base:
         copy_ = True if copy else None
         return self._astype(dtype, order, casting, subok, copy_)
 
-    # TODO(okuta): Implement byteswap
+    cpdef _ndarray_base byteswap(self, inplace=False):
+        """Swap the bytes of the array elements.
+
+        Toggle between low-endian and big-endian data representation by
+        returning a byteswapped array, optionally swapped in-place.
+
+        Args:
+            inplace (bool): If ``True``, swap bytes in-place. Default is
+                ``False``.
+
+        Returns:
+            cupy.ndarray: The byteswapped array. If ``inplace`` is ``True``,
+            this is a view to self.
+
+        .. seealso:: :meth:`numpy.ndarray.byteswap`
+
+        """
+        dtype = self.dtype
+        itemsize = dtype.itemsize
+
+        if dtype.names is not None:
+            raise TypeError(
+                'byteswap is not supported for structured dtypes')
+
+        if itemsize == 1:
+            if inplace:
+                return self
+            return self.copy()
+
+        # Complex types: byteswap real and imaginary components independently
+        if numpy.issubdtype(dtype, numpy.complexfloating):
+            component_dtype = numpy.finfo(dtype).dtype
+            contig = _internal_ascontiguousarray(self).ravel()
+            float_view = contig.view(component_dtype)
+            swapped = _byteswap_dispatch(float_view)
+            result = _internal_ascontiguousarray(swapped)
+            result = result.view(dtype).reshape(self.shape)
+            if inplace:
+                elementwise_copy(result, self)
+                return self
+            return result
+
+        result = _byteswap_dispatch(self)
+        if inplace:
+            elementwise_copy(result, self)
+            return self
+        return result
 
     cpdef _ndarray_base copy(self, order='C'):
         """Returns a copy of the array.
@@ -839,13 +887,23 @@ cdef class _ndarray_base:
 
         copy_context = _null_context
         if runtime._is_hip_environment:
-            # HIP requires changing the active device to the one where
-            # src data is before the copy. From the docs:
-            # it is recommended to set the current device to the device
-            # where the src data is physically located.
+            # From hip_runtime_api.h (hipMemcpyAsync): "For multi-gpu
+            # or peer-to-peer configurations, it is recommended to
+            # use a stream which is attached to the device where the
+            # src data is physically located."
             copy_context = self.device
         with copy_context:
             newarray.data.copy_from_device_async(x.data, x.nbytes)
+            if runtime._is_hip_environment:
+                # The copy ran on the source device's stream. Record an
+                # event so the destination device's stream waits for the
+                # copy to complete before any subsequent work uses
+                # newarray (e.g. .get() readback).
+                copy_event = stream_module.get_current_stream().record()
+        if runtime._is_hip_environment:
+            newarray.device.use()
+            stream_module.get_current_stream().wait_event(copy_event)
+            runtime.setDevice(prev_device)
         return newarray
 
     cpdef _ndarray_base view(self, dtype=None, array_class=None):
@@ -2563,6 +2621,27 @@ cpdef function.Module compile_with_cache(
 cdef str _id = 'out0 = in0'
 
 cdef fill_kernel = ElementwiseKernel('T x', 'T y', 'y = x', 'cupy_fill')
+
+cdef _byteswap_kernel = ElementwiseKernel(
+    'T x', 'T y',
+    'y = cuda::std::byteswap(x)',
+    'cupy_byteswap',
+    preamble='#include <cuda/std/bit>')
+
+
+cdef _byteswap_dispatch(_ndarray_base a):
+    cdef int itemsize = a.dtype.itemsize
+    cdef _ndarray_base u, result
+    dtype = a.dtype
+    if itemsize == 2 or itemsize == 4 or itemsize == 8:
+        uint_dtype = numpy.dtype('uint{}'.format(itemsize * 8))
+        u = _internal_ascontiguousarray(a).view(uint_dtype)
+        result = _byteswap_kernel(u)
+        return result.view(dtype)
+    raise TypeError(
+        'byteswap not supported for dtype with '
+        'itemsize {}'.format(itemsize))
+
 
 cdef str _divmod_float = '''
     out0_type a = _floor_divide(in0, in1);

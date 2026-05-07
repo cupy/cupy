@@ -866,6 +866,15 @@ class TestCsrMatrixScipyComparison:
         x = xp.arange(8).reshape(4, 2).astype(self.dtype)
         return m * x
 
+    @testing.slow
+    @testing.numpy_cupy_allclose(sp_name='sp', contiguous_check=False)
+    def test_mul_dense_matrix_large_rows(self, xp, sp):
+        """cuSPARSE SpMM gridDim.y overflow (#9850)."""
+        n = 1048561  # just above 65535 * 16
+        m = self.make(xp, sp, self.dtype)
+        x = xp.ones((n, m.shape[0]), dtype=self.dtype)
+        return x @ m
+
     def test_mul_dense_matrix_invalid_shape(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             m = self.make(xp, sp, self.dtype)
