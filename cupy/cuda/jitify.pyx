@@ -195,7 +195,7 @@ cdef inline void _init_cupy_headers_from_scratch() except*:
     # headers)
     # need to defer import to avoid circular dependency
     from cupy._core.core import assemble_cupy_compiler_options
-    cdef tuple options = ('-std=c++11', '-DCUB_DISABLE_BF16_SUPPORT',)
+    cdef tuple options = ('-std=c++17', '-DCUB_DISABLE_BF16_SUPPORT',)
     options = assemble_cupy_compiler_options(options)
     jitify(warmup_kernel, options)
 
@@ -234,7 +234,7 @@ cpdef void _init_module() except*:
     # start time, for enabling CCCL + CuPy developers?
     global _jitify_cache_versions
     if _jitify_cache_versions is None:
-        # jitify version could be "<unknown>" and the angular brakets are not
+        # jitify version could be "<unknown>" and the angular brackets are not
         # valid characters on Windows, so we need to strip them
         _jitify_version = re.sub(r'<([^>]*)>', r'\1', get_build_version())
         _jitify_cache_versions = (

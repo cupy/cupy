@@ -12,8 +12,6 @@ except ImportError:
     _scipy_available = False
 
 import cupy
-from cupy._core import _accelerator
-from cupy.cuda import cub
 from cupy.cuda import runtime
 from cupyx.scipy.sparse import _base
 from cupyx.scipy.sparse import _compressed
@@ -190,20 +188,6 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
             elif other.ndim == 1:
                 self.sum_duplicates()
                 other = cupy.asfortranarray(other)
-                # need extra padding to ensure not stepping on the CUB bug,
-                # see cupy/cupy#3679 for discussion
-                is_cub_safe = (self.indptr.data.mem.size
-                               > self.indptr.size * self.indptr.dtype.itemsize)
-                # CUB spmv is buggy since CUDA 11.0, see
-                # https://github.com/cupy/cupy/issues/3822#issuecomment-782607637
-                is_cub_safe &= (cub._get_cuda_build_version() < 11000)
-                for accelerator in _accelerator.get_routine_accelerators():
-                    if (accelerator == _accelerator.ACCELERATOR_CUB
-                            and not runtime.is_hip
-                            and is_cub_safe and other.flags.c_contiguous):
-                        return cub.device_csrmv(
-                            self.shape[0], self.shape[1], self.nnz,
-                            self.data, self.indptr, self.indices, other)
                 if (cusparse.check_availability('csrmvEx') and self.nnz > 0 and
                         cusparse.csrmvExIsAligned(self, other)):
                     # csrmvEx does not work if nnz == 0
@@ -297,25 +281,17 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
 
     def _maximum_minimum(self, other, cupy_op, op_name, dense_check):
         if _util.isscalarlike(other):
-            other = cupy.asarray(other, dtype=self.dtype)
+            dtype = cupy.result_type(self.dtype, other)
+            other = cupy.asarray(other)
             if dense_check(other):
-                dtype = self.dtype
-                # Note: This is a work-around to make the output dtype the same
-                # as SciPy. It might be SciPy version dependent.
-                if dtype == numpy.float32:
-                    dtype = numpy.float64
-                elif dtype == numpy.complex64:
-                    dtype = numpy.complex128
-                dtype = cupy.result_type(dtype, other)
                 other = other.astype(dtype, copy=False)
-                # Note: The computation steps below are different from SciPy.
                 new_array = cupy_op(self.todense(), other)
                 return csr_matrix(new_array)
             else:
                 self.sum_duplicates()
                 new_data = cupy_op(self.data, other)
                 return csr_matrix((new_data, self.indices, self.indptr),
-                                  shape=self.shape, dtype=self.dtype)
+                                  shape=self.shape, dtype=dtype)
         elif _util.isdense(other):
             self.sum_duplicates()
             other = cupy.atleast_2d(other)

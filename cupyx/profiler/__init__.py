@@ -31,3 +31,13 @@ def profile():
         yield
     finally:
         _runtime.profilerStop()
+
+
+def load_ipython_extension(ipython):
+    """Load the %gpu_timeit magic.
+
+    This function is called when the extension is loaded via:
+        %load_ext cupyx.profiler
+    """
+    from cupyx.profiler._timeit_magic import GPUTimeitMagics
+    ipython.register_magics(GPUTimeitMagics)

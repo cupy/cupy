@@ -1,3 +1,5 @@
+import cython
+
 from cupy._core._carray cimport shape_t
 from cupy._core cimport _kernel
 from cupy._core cimport _optimize_config
@@ -11,6 +13,8 @@ from cupy.cuda cimport cub
 from cupy.cuda cimport function
 from cupy.cuda cimport memory
 from cupy_backends.cuda.api cimport runtime
+from cupy_backends.cuda.libs cimport nvrtc
+
 
 import math
 import string
@@ -27,8 +31,10 @@ cdef function.Function _create_cub_reduction_function(
         _kernel._TypeMap type_map, preamble, options):
     # A (incomplete) list of internal variables:
     # _J            : the index of an element in the array
+
+    major, _ = nvrtc.getVersion()
     # ROCm5.3 and above requires c++14
-    if runtime._is_hip_environment:
+    if runtime._is_hip_environment and major < 7:
         options += ('--std=c++14',)
     else:
         # 1. static_assert needs at least C++11 in NVRTC
@@ -36,21 +42,17 @@ cdef function.Function _create_cub_reduction_function(
         #    license issue we can't yet bundle bf16 headers. CUB offers us a
         #    band-aid solution to avoid including the latter (NVIDIA/cub#478,
         #    nvbugs 3641496).
-        # 3. Recent CCCL versions need C++17.
-        options += ('--std=c++17', '-DCUB_DISABLE_BF16_SUPPORT')
+        # 3. Recent CCCL and hipCUB versions need C++17.
+        options += ('--std=c++17',)
+        if not runtime._is_hip_environment:
+            options += ('-DCUB_DISABLE_BF16_SUPPORT',)
 
-    cdef str backend
+    cdef str backend = 'nvrtc'
     if runtime._is_hip_environment:
         # In ROCm, we need to set the include path. This does not work for
         # hiprtc as of ROCm 3.5.0, so we must use hipcc.
         options += ('-I' + _rocm_path + '/include', '-O2')
         backend = 'nvcc'  # this is confusing...
-        jitify = False
-    else:
-        # use nvrtc
-        backend = 'nvrtc'
-        # We rely on the type traits in cccl to avoid using jitify
-        jitify = False
 
     # TODO(leofang): try splitting the for-loop into full tiles and partial
     # tiles to utilize LoadDirectBlockedVectorized? See, for example,
@@ -58,7 +60,7 @@ cdef function.Function _create_cub_reduction_function(
 
     cdef str module_code = _get_cub_header_include()
     module_code += '''
-${type_preamble}
+${type_headers}${type_preamble}
 ${preamble}
 
 typedef ${reduce_type} _type_reduce;
@@ -205,28 +207,37 @@ __global__ void ${name}(${params}) {
   }
 }
 '''
+    type_headers = set()
+    params = _get_cub_kernel_params(params, arginfos, type_headers)
+    type_preambles = type_map.get_typedef_code(type_headers)
+
+    if not type_headers:
+        type_headers = ''
+    else:
+        type_headers = '\n'.join(sorted(type_headers)) + "\n\n"
 
     module_code = string.Template(module_code).substitute(
         name=name,
         block_size=block_size,
         items_per_thread=items_per_thread,
         reduce_type=reduce_type,
-        params=_get_cub_kernel_params(params, arginfos),
+        params=params,
+        type_headers=type_headers,
         identity=identity,
         reduce_expr=reduce_expr,
         pre_map_expr=pre_map_expr,
         post_map_expr=post_map_expr,
-        type_preamble=type_map.get_typedef_code(),
+        type_preamble=type_preambles,
         preamble=preamble)
 
     # To specify the backend, we have to explicitly spell out the default
     # values for arch, cachd, prepend_cupy_headers, ... to bypass cdef/cpdef
     # limitation...
     module = compile_with_cache(
-        module_code, options, arch=None, cachd_dir=None,
+        module_code, options, arch=None,
         prepend_cupy_headers=True, backend=backend, translate_cucomplex=False,
         enable_cooperative_groups=False, name_expressions=None,
-        log_stream=None, jitify=jitify)
+        log_stream=None, jitify=False)
     return module.get_function(name)
 
 
@@ -247,7 +258,8 @@ def _SimpleCubReductionKernel_get_cached_function(
 
 
 cdef str _cub_path = _environment.get_cub_path()
-cdef str _nvcc_path = _environment.get_nvcc_path()
+cdef str _nvcc_path = (
+    _environment.get_nvcc_path() if not runtime._is_hip_environment else None)
 cdef str _rocm_path = _environment.get_rocm_path()
 cdef str _hipcc_path = _environment.get_hipcc_path()
 cdef str _cub_header = None
@@ -349,7 +361,7 @@ cpdef inline tuple _can_use_cub_block_reduction(
 
 
 # similar to cupy._core._kernel._get_kernel_params()
-cdef str _get_cub_kernel_params(tuple params, tuple arginfos):
+cdef str _get_cub_kernel_params(tuple params, tuple arginfos, type_headers):
     cdef _kernel.ParameterInfo p
     cdef _kernel._ArgInfo arginfo
     cdef lst = []
@@ -363,7 +375,7 @@ cdef str _get_cub_kernel_params(tuple params, tuple arginfos):
             c_type = 'const void*' if p.is_const else 'void*'
         else:
             # for segment size and array size
-            c_type = arginfo.get_param_c_type(p)
+            c_type = arginfo.get_param_c_type(p, type_headers)
         lst.append('{} {}'.format(c_type, c_name))
     return ', '.join(lst)
 
@@ -372,11 +384,13 @@ cdef Py_ssize_t _cub_default_block_size = (
     256 if runtime._is_hip_environment else 512)
 
 
+@cython.cdivision(True)
 cdef (Py_ssize_t, Py_ssize_t) _get_cub_block_specs(  # NOQA
-        Py_ssize_t contiguous_size):
+        Py_ssize_t contiguous_size) noexcept:
     # This is recommended in the CUB internal and should be an
-    # even number
-    items_per_thread = 4
+    # even number.
+    cdef Py_ssize_t block_size, warp_size
+    cdef Py_ssize_t items_per_thread = 4
 
     # Calculate the reduction block dimensions.
     # Ideally, we want each block to handle one segment, so:
@@ -396,7 +410,7 @@ cdef (Py_ssize_t, Py_ssize_t) _get_cub_block_specs(  # NOQA
 cdef _scalar.CScalar _cub_convert_to_c_scalar(
         Py_ssize_t segment_size, Py_ssize_t value):
     if segment_size > 0x7fffffff:
-        return _scalar.scalar_to_c_scalar(value)
+        return _scalar.CScalar(value)
     else:
         return _scalar.CScalar.from_int32(value)
 

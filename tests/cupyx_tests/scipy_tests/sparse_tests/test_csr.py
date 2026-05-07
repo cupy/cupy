@@ -16,7 +16,6 @@ except ImportError:
 from cupy_backends.cuda.api import driver
 from cupy_backends.cuda.api import runtime
 import cupy
-from cupy._core import _accelerator
 from cupy import testing
 import cupyx.cusparse
 from cupyx.scipy import sparse
@@ -866,6 +865,15 @@ class TestCsrMatrixScipyComparison:
         m = self.make(xp, sp, self.dtype)
         x = xp.arange(8).reshape(4, 2).astype(self.dtype)
         return m * x
+
+    @testing.slow
+    @testing.numpy_cupy_allclose(sp_name='sp', contiguous_check=False)
+    def test_mul_dense_matrix_large_rows(self, xp, sp):
+        """cuSPARSE SpMM gridDim.y overflow (#9850)."""
+        n = 1048561  # just above 65535 * 16
+        m = self.make(xp, sp, self.dtype)
+        x = xp.ones((n, m.shape[0]), dtype=self.dtype)
+        return x @ m
 
     def test_mul_dense_matrix_invalid_shape(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
@@ -1797,47 +1805,6 @@ class TestCsrMatrixGetitem2:
         return _make(xp, sp, self.dtype)[None:4]
 
 
-# CUB SpMV works only when the matrix size is nonzero
-@testing.parameterize(*testing.product({
-    'make_method': ['_make', '_make_unordered', '_make_duplicate'],
-    'dtype': [numpy.float32, numpy.float64, cupy.complex64, cupy.complex128],
-}))
-@testing.with_requires('scipy')
-@pytest.mark.skipif(
-    cupy.cuda.cub._get_cuda_build_version() >= 11000,
-    reason='CUDA built-in CUB SpMV is buggy, see cupy/cupy#3822')
-@pytest.mark.skipif(runtime.is_hip, reason='hipCUB does not provide spmv')
-@pytest.mark.skipif(
-    not cupy.cuda.cub.available,
-    reason='The CUB routine is not enabled')
-class TestCubSpmv:
-
-    @pytest.fixture(autouse=True, scope='class')
-    def cub(self):
-        old_accelerators = _accelerator.get_routine_accelerators()
-        _accelerator.set_routine_accelerators(['cub'])
-        yield
-        _accelerator.set_routine_accelerators(old_accelerators)
-
-    @property
-    def make(self):
-        return globals()[self.make_method]
-
-    @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_mul_dense_vector(self, xp, sp):
-        m = self.make(xp, sp, self.dtype)
-        x = xp.arange(4).astype(self.dtype)
-        if xp is numpy:
-            return m * x
-
-        # xp is cupy, first ensure we really use CUB
-        func = 'cupyx.scipy.sparse._csr.cub.device_csrmv'
-        with testing.AssertFunctionIsCalled(func):
-            m * x
-        # ...then perform the actual computation
-        return m * x
-
-
 @testing.parameterize(*testing.product({
     'a_dtype': ['float32', 'float64', 'complex64', 'complex128'],
     'b_dtype': ['float32', 'float64', 'complex64', 'complex128'],
@@ -1925,27 +1892,21 @@ class TestCsrMatrixMaximumMinimum:
         b = self._make_sp_matrix_col(self.b_dtype, xp, sp).toarray()
         return getattr(a, self.opt)(b)
 
+    @testing.with_requires('scipy>=1.16')
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_scalar_plus(self, xp, sp):
-        if (self.a_dtype in ('float32', 'complex64')):
-            pytest.xfail(reason="XXX: np2.0: weak promotion")
-
         a = self._make_sp_matrix(self.a_dtype, xp, sp)
         return getattr(a, self.opt)(0.5)
 
+    @testing.with_requires('scipy>=1.16')
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_scalar_minus(self, xp, sp):
-        if (self.a_dtype in ('float32', 'complex64')):
-            pytest.xfail(reason="XXX: np2.0: weak promotion")
-
         a = self._make_sp_matrix(self.a_dtype, xp, sp)
         return getattr(a, self.opt)(-0.5)
 
+    @testing.with_requires('scipy>=1.16')
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_scalar_zero(self, xp, sp):
-        if self.a_dtype in ('float32', 'complex64'):
-            pytest.xfail(reason="XXX: np2.0: weak promotion")
-
         a = self._make_sp_matrix(self.a_dtype, xp, sp)
         return getattr(a, self.opt)(0)
 
@@ -2086,18 +2047,21 @@ class TestCsrMatrixComparison:
         b = self._make_sp_matrix_col(self.b_dtype, xp, sp).toarray()
         return self._compare(a, b)
 
+    @testing.with_requires('numpy>=2.0')
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_scalar_plus(self, xp, sp):
         a = self._make_sp_matrix(self.a_dtype, xp, sp)
         with self._assert_warns_efficiency(sp, 0.5):
             return self._compare(a, 0.5)
 
+    @testing.with_requires('numpy>=2.0')
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_scalar_minus(self, xp, sp):
         a = self._make_sp_matrix(self.a_dtype, xp, sp)
         with self._assert_warns_efficiency(sp, -0.5):
             return self._compare(a, -0.5)
 
+    @testing.with_requires('numpy>=2.0')
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_scalar_zero(self, xp, sp):
         if self.opt in ('_le_', '_ge_'):

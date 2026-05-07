@@ -13,6 +13,8 @@ import cupy_backends
 
 
 is_hip = cupy_backends.cuda.api.runtime.is_hip
+if not is_hip:
+    from cuda import pathfinder
 
 
 def _eval_or_error(func, errors):
@@ -23,6 +25,25 @@ def _eval_or_error(func, errors):
         return func()
     except errors as e:
         return repr(e)
+
+
+def _load_and_get_path(lib_name):
+    try:
+        loaded_dl = pathfinder.load_nvidia_dynamic_lib(lib_name)
+    except (pathfinder.DynamicLibNotFoundError, RuntimeError):
+        return None
+    else:
+        return loaded_dl.abs_path
+
+
+def _version_and_path(ver_seq, path_seq):
+    assert len(ver_seq) >= len(path_seq)
+    result = []
+    for i in range(len(ver_seq)):
+        result.append(ver_seq[i])
+        if i < len(path_seq):
+            result.append(path_seq[i])
+    return result
 
 
 class _InstallInfo:
@@ -63,6 +84,7 @@ class _RuntimeInfo:
 
     cupy_version = None
     cuda_path = None
+    nvcc_path = None
 
     # CUDA Driver
     cuda_build_version = None
@@ -71,33 +93,44 @@ class _RuntimeInfo:
     # CUDA Runtime
     cuda_runtime_version = None
     cuda_local_runtime_version = None
+    cuda_local_runtime_path = None
 
     # CUDA Toolkit
     cublas_version = None
+    cublas_path = None
     cufft_version = None
+    cufft_path = None
     curand_version = None
+    curand_path = None
     cusolver_version = None
+    cusolver_path = None
     cusparse_version = None
+    cusparse_path = None
     nvrtc_version = None
+    nvrtc_path = None
     thrust_version = None
     cuda_extra_include_dirs = None
 
     # Optional Libraries
-    cudnn_build_version = None
-    cudnn_version = None
     nccl_build_version = None
     nccl_runtime_version = None
+    nccl_path = None
     cub_build_version = None
     jitify_build_version = None
     cutensor_version = None
+    cutensor_path = None
     cusparselt_version = None
+    cusparselt_path = None
     cython_build_version = None
     cython_version = None
 
     numpy_version = None
     scipy_version = None
 
+    _full = True
+
     def __init__(self, *, full=True):
+        self._full = full
         self.cupy_version = cupy.__version__
 
         if not is_hip:
@@ -131,6 +164,8 @@ class _RuntimeInfo:
         self.cuda_local_runtime_version = _eval_or_error(
             cupy.cuda.get_local_runtime_version,
             Exception)
+        if full and not is_hip:
+            self.cuda_local_runtime_path = _load_and_get_path('cudart')
 
         # cuBLAS
         self.cublas_version = '(available)'
@@ -139,12 +174,16 @@ class _RuntimeInfo:
                 lambda: cupy.cuda.cublas.getVersion(
                     cupy.cuda.device.get_cublas_handle()),
                 Exception)
+            if not is_hip:
+                self.cublas_path = _load_and_get_path('cublas')
 
         # cuFFT
         try:
             from cupy.cuda import cufft
             self.cufft_version = _eval_or_error(
                 lambda: cufft.getVersion(), Exception)
+            if full and not is_hip:
+                self.cufft_path = _load_and_get_path('cufft')
         except ImportError:
             pass
 
@@ -152,11 +191,15 @@ class _RuntimeInfo:
         self.curand_version = _eval_or_error(
             lambda: cupy.cuda.curand.getVersion(),
             Exception)
+        if full and not is_hip:
+            self.curand_path = _load_and_get_path('curand')
 
         # cuSOLVER
         self.cusolver_version = _eval_or_error(
             lambda: cupy.cuda.cusolver._getVersion(),
             Exception)
+        if full and not is_hip:
+            self.cusolver_path = _load_and_get_path('cusolver')
 
         # cuSPARSE
         self.cusparse_version = '(available)'
@@ -165,11 +208,15 @@ class _RuntimeInfo:
                 lambda: cupy.cuda.cusparse.getVersion(
                     cupy.cuda.device.get_cusparse_handle()),
                 Exception)
+            if not is_hip:
+                self.cusparse_path = _load_and_get_path('cusparse')
 
         # NVRTC
         self.nvrtc_version = _eval_or_error(
             lambda: cupy.cuda.nvrtc.getVersion(),
             Exception)
+        if full and not is_hip:
+            self.nvrtc_path = _load_and_get_path('nvrtc')
 
         # Thrust
         try:
@@ -191,32 +238,19 @@ class _RuntimeInfo:
                     cupy._environment._get_include_dir_from_conda_or_wheel(
                         *nvrtc_version))
 
-        # cuDNN
-        if cupy._environment._can_attempt_preload('cudnn'):
-            if full:
-                cupy._environment._preload_library('cudnn')
-            else:
-                self.cudnn_build_version = (
-                    '(not loaded; try `import cupy.cuda.cudnn` first)')
-                self.cudnn_version = self.cudnn_build_version
-        try:
-            import cupy_backends.cuda.libs.cudnn as cudnn
-            self.cudnn_build_version = cudnn.get_build_version()
-            self.cudnn_version = _eval_or_error(
-                cudnn.getVersion, cudnn.CuDNNError)
-        except ImportError:
-            pass
-
         # NCCL
         if cupy._environment._can_attempt_preload('nccl'):
             if full:
+                # TODO(leofang): get rid of preloading?
                 cupy._environment._preload_library('nccl')
+                if not is_hip:
+                    self.nccl_path = _load_and_get_path('nccl')
             else:
                 self.nccl_build_version = (
                     '(not loaded; try `import cupy.cuda.nccl` first)')
                 self.nccl_runtime_version = self.nccl_build_version
         try:
-            import cupy_backends.cuda.libs.nccl as nccl
+            from cupy_backends.cuda.libs import nccl
             self.nccl_build_version = nccl.get_build_version()
             nccl_runtime_version = nccl.get_version()
             if nccl_runtime_version == 0:
@@ -236,17 +270,21 @@ class _RuntimeInfo:
 
         # cuTENSOR
         try:
-            import cupy_backends.cuda.libs.cutensor as cutensor
+            from cupy_backends.cuda.libs import cutensor
             self.cutensor_version = cutensor.get_version()
         except ImportError:
             pass
+        if full and not is_hip:
+            self.cutensor_path = _load_and_get_path('cutensor')
 
         # cuSparseLT
         try:
-            import cupy_backends.cuda.libs.cusparselt as cusparselt
+            from cupy_backends.cuda.libs import cusparselt
             self.cusparselt_version = cusparselt.get_build_version()
         except ImportError:
             pass
+        if full and not is_hip:
+            self.cusparselt_path = _load_and_get_path('cusparseLt')
 
         # Cython
         self.cython_build_version = cupy._util.cython_build_ver
@@ -267,6 +305,8 @@ class _RuntimeInfo:
             pass
 
     def __str__(self):
+        full = self._full
+
         records = [
             ('OS',  platform.platform()),
             ('Python Version', platform.python_version()),
@@ -277,7 +317,7 @@ class _RuntimeInfo:
             ('Cython Build Version', self.cython_build_version),
             ('Cython Runtime Version', self.cython_version),
             ('CUDA Root', self.cuda_path),
-            ('hipcc PATH' if is_hip else 'nvcc PATH', self.nvcc_path),
+            ('HIPCC PATH' if is_hip else 'NVCC PATH', self.nvcc_path),
 
             ('CUDA Build Version', self.cuda_build_version),
             ('CUDA Driver Version', self.cuda_driver_version),
@@ -286,10 +326,18 @@ class _RuntimeInfo:
                 f'{self.cuda_runtime_version} (linked to CuPy) / '
                 f'{self.cuda_local_runtime_version} (locally installed)'
             )),
+        ]
+        if full and not is_hip:
+            records += [(
+                'CUDA Runtime Path',
+                f'{self.cuda_local_runtime_path} (locally installed)'
+            ),]
+
+        records += [
             ('CUDA Extra Include Dirs', self.cuda_extra_include_dirs),
         ]
 
-        records += [
+        ctk_lib_vers = [
             ('cuBLAS Version', self.cublas_version),
             ('cuFFT Version', self.cufft_version),
             ('cuRAND Version', self.curand_version),
@@ -301,14 +349,37 @@ class _RuntimeInfo:
             ('Jitify Build Version', self.jitify_build_version),
         ]
 
+        if full and not is_hip:
+            ctk_lib_paths = [
+                ('cuBLAS Path', self.cublas_path),
+                ('cuFFT Path', self.cufft_path),
+                ('cuRAND Path', self.curand_path),
+                ('cuSOLVER Path', self.cusolver_path),
+                ('cuSPARSE Path', self.cusparse_path),
+                ('NVRTC Path', self.nvrtc_path),
+            ]
+            records += _version_and_path(ctk_lib_vers, ctk_lib_paths)
+        else:
+            records += ctk_lib_vers
+
         records += [
-            ('cuDNN Build Version', self.cudnn_build_version),
-            ('cuDNN Version', self.cudnn_version),
             ('NCCL Build Version', self.nccl_build_version),
             ('NCCL Runtime Version', self.nccl_runtime_version),
+        ]
+        if full and not is_hip:
+            records += [('NCCL Path', self.nccl_path)]
+
+        records += [
             ('cuTENSOR Version', self.cutensor_version),
+        ]
+        if full and not is_hip:
+            records += [('cuTENSOR Path', self.cutensor_path)]
+
+        records += [
             ('cuSPARSELt Build Version', self.cusparselt_version),
         ]
+        if full and not is_hip:
+            records += [('cuSPARSELt Path', self.cusparselt_path)]
 
         device_count = 0
         try:

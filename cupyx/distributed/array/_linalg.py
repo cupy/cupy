@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 import dataclasses
 import typing
-from typing import Callable
 
 import cupy
 from cupyx.distributed.array import _array

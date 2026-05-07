@@ -6,11 +6,13 @@ import numpy
 import cupy
 from cupy._core._reduction import create_reduction_func
 from cupy._core._kernel import create_ufunc, _get_warpsize
+from cupy._core._kernel cimport _full_mask_hex
 from cupy._core._scalar import get_typename
 from cupy._core._ufuncs import elementwise_copy
 import cupy._core.core as core
 from cupy._core cimport internal
 from cupy import _util
+from cupy._util import bf16_loop
 
 from cupy_backends.cuda.api cimport runtime
 from cupy._core cimport _accelerator
@@ -23,7 +25,7 @@ from cupy.cuda cimport memory
 from cupy.cuda import cub
 
 try:
-    import cupy_backends.cuda.libs.cutensor as cuda_cutensor
+    from cupy_backends.cuda.libs import cutensor as cuda_cutensor
 except ImportError:
     cuda_cutensor = None
 
@@ -192,7 +194,7 @@ def _cupy_bsum_shfl(op, chunk_size, warp_size=32):
         if (2*i < a.size()) x = a[2*i];
         if (2*i + 1 < a.size()) x ${op}= a[2*i + 1];
         for (int j = 1; j < ${warp_size}; j *= 2) {
-            x ${op}= __shfl_xor_sync(0xffffffff, x, j, ${warp_size});
+            x ${op}= __shfl_xor_sync(${full_mask}, x, j, ${warp_size});
         }
         if (lane_id == 0) smem[warp_id] = x;
         __syncthreads();
@@ -200,13 +202,14 @@ def _cupy_bsum_shfl(op, chunk_size, warp_size=32):
             x = ${identity};
             if (lane_id < n_warp) x = smem[lane_id];
             for (int j = 1; j < n_warp; j *= 2) {
-                x ${op}= __shfl_xor_sync(0xffffffff, x, j, ${warp_size});
+                x ${op}= __shfl_xor_sync(${full_mask}, x, j, ${warp_size});
             }
             int block_id = i / ${block_size};
             if (lane_id == 0) b[block_id] = x;
         }
     """).substitute(block_size=block_size, warp_size=warp_size,
-                    op=_op_char[op], identity=_identity[op])
+                    op=_op_char[op], identity=_identity[op],
+                    full_mask=_full_mask_hex())
     return cupy.ElementwiseKernel(in_params, out_params, loop_body,
                                   'cupy_bsum_shfl', loop_prep=loop_prep)
 
@@ -525,8 +528,15 @@ def _inclusive_batch_scan_kernel(
     op_char = {scan_op.SCAN_SUM: '+', scan_op.SCAN_PROD: '*'}
     identity = {scan_op.SCAN_SUM: 0, scan_op.SCAN_PROD: 1}
     name = 'cupy_inclusive_batch_scan_kernel'
-    dtype = get_typename(dtype)
+    type_headers = set()
+    dtype = get_typename(dtype, type_headers)
+    if not type_headers:
+        type_headers = ''
+    else:
+        type_headers = '\n'.join(sorted(type_headers)) + "\n\n"
+
     source = string.Template("""
+    ${type_headers}
     extern "C" __global__ void ${name}(
         const CArray<${dtype}, 2, ${src_c_cont}> src,
         CArray<${dtype}, 2, ${out_c_cont}> dst, int batch_size){
@@ -602,7 +612,8 @@ def _inclusive_batch_scan_kernel(
     }
     """).substitute(name=name, dtype=dtype, block_size=block_size,
                     op=op_char[op], identity=identity[op],
-                    src_c_cont=src_c_cont, out_c_cont=out_c_cont)
+                    src_c_cont=src_c_cont, out_c_cont=out_c_cont,
+                    type_headers=type_headers)
     module = compile_with_cache(source)
     return module.get_function(name)
 
@@ -610,9 +621,16 @@ def _inclusive_batch_scan_kernel(
 @_util.memoize(for_each_device=True)
 def _add_scan_batch_blocked_sum_kernel(dtype, op, block_size, c_cont):
     name = 'cupy_add_scan_blocked_sum_kernel'
-    dtype = get_typename(dtype)
+    type_headers = set()
+    dtype = get_typename(dtype, type_headers)
+    if not type_headers:
+        type_headers = ''
+    else:
+        type_headers = '\n'.join(sorted(type_headers)) + "\n\n"
+
     ops = {scan_op.SCAN_SUM: '+', scan_op.SCAN_PROD: '*'}
     source = string.Template("""
+    ${type_headers}
     extern "C" __global__ void ${name}(CArray<${dtype}, 2, ${c_cont}> src_dst,
         int batch_size){
         long long n = src_dst.size();
@@ -638,7 +656,7 @@ def _add_scan_batch_blocked_sum_kernel(dtype, op, block_size, c_cont):
         }
     }
     """).substitute(name=name, dtype=dtype, op=ops[op], block_size=block_size,
-                    c_cont=c_cont)
+                    c_cont=c_cont, type_headers=type_headers)
     module = compile_with_cache(source)
     return module.get_function(name)
 
@@ -768,6 +786,7 @@ if sys.platform == "win32":
         '?->q', 'b->q', 'B->Q', 'h->q', 'H->Q', 'i->q', 'I->Q', 'l->q', 'L->Q',
         'q->q', 'Q->Q',
         ('e->e', (None, None, None, 'float')),
+        *bf16_loop(code=(None, None, None, 'float')),
         'f->f', 'd->d', 'F->F', 'D->D',
     )
 else:
@@ -775,6 +794,7 @@ else:
         '?->l', 'b->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
         'q->q', 'Q->Q',
         ('e->e', (None, None, None, 'float')),
+        *bf16_loop(code=(None, None, None, 'float')),
         'f->f', 'd->d', 'F->F', 'D->D',
     )
 
@@ -789,6 +809,7 @@ _sum_keep_dtype = create_reduction_func(
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q',
      ('e->e', (None, None, None, 'float')),
+     *bf16_loop(code=(None, None, None, 'float')),
      'f->f', 'd->d', 'F->F', 'D->D'),
     ('in0', 'a + b', 'out0 = type_out0_raw(a)', None), 0)
 
@@ -804,6 +825,7 @@ _nansum_keep_dtype = create_reduction_func(
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q',
      ('e->e', (None, None, None, 'float')),
+     *bf16_loop(code=(None, None, None, 'float')),
      'f->f', 'd->d', 'F->F', 'D->D'),
     ('(in0 == in0) ? in0 : type_in0_raw(0)',
      'a + b', 'out0 = type_out0_raw(a)', None), 0)
@@ -829,6 +851,7 @@ _prod_keep_dtype = create_reduction_func(
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q',
      ('e->e', (None, None, None, 'float')),
+     *bf16_loop(code=(None, None, None, 'float')),
      'f->f', 'd->d', 'F->F', 'D->D'),
     ('in0', 'a * b', 'out0 = type_out0_raw(a)', None), 1)
 
@@ -844,6 +867,7 @@ _nanprod_keep_dtype = create_reduction_func(
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q',
      ('e->e', (None, None, None, 'float')),
+     *bf16_loop(code=(None, None, None, 'float')),
      'f->f', 'd->d', 'F->F', 'D->D'),
     ('(in0 == in0) ? in0 : type_in0_raw(1)',
      'a * b', 'out0 = type_out0_raw(a)', None), 1)
@@ -870,8 +894,8 @@ cdef create_arithmetic(
         'cupy_' + name,
         (('??->?', boolop),
          'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
-         'LL->L', 'qq->q', 'QQ->Q', 'ee->e', 'ff->f', 'dd->d', 'FF->F',
-         'DD->D'),
+         'LL->L', 'qq->q', 'QQ->Q',
+         'ee->e', *bf16_loop(2), 'ff->f', 'dd->d', 'FF->F', 'DD->D'),
         'out0 = in0 %s in1' % op,
         doc=doc,
         cutensor_op=cutensor_op,
@@ -891,7 +915,7 @@ _add = create_arithmetic(
 _conjugate = create_ufunc(
     'cupy_conjugate',
     ('b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L', 'q->q',
-     'Q->Q', 'e->e', 'f->f', 'd->d',
+     'Q->Q', 'e->e', *bf16_loop(), 'f->f', 'd->d',
      ('F->F', 'out0 = conj(in0)'),
      ('D->D', 'out0 = conj(in0)')),
     'out0 = in0',
@@ -904,10 +928,12 @@ _conjugate = create_ufunc(
 
 _angle = create_ufunc(
     'cupy_angle',
-    ('?->d', 'e->e', 'f->f', 'd->d',
+    ('?->d', 'e->e', *bf16_loop(), 'f->f', 'd->d',
      ('F->f', 'out0 = arg(in0)'),
      ('D->d', 'out0 = arg(in0)')),
-    'out0 = in0 >= 0 ? 0 : M_PI',
+    '''
+    out0 = in0 >= 0 ? 0.0 : M_PI
+    ''',
     doc='''Returns the angle of the complex argument.
 
     .. seealso:: :func:`numpy.angle`
@@ -917,10 +943,12 @@ _angle = create_ufunc(
 
 _angle_deg = create_ufunc(
     'cupy_angle_deg',
-    ('?->d', 'e->e', 'f->f', 'd->d',
+    ('?->d', 'e->e', *bf16_loop(), 'f->f', 'd->d',
      ('F->f', 'out0 = arg(in0) * (180.0 / M_PI)'),
      ('D->d', 'out0 = arg(in0) * (180.0 / M_PI)')),
-    'out0 = in0 >= 0 ? 0 : 180.0',
+    '''
+    out0 = in0 >= 0 ? 0.0 : 180.0
+    ''',
     doc='''Returns the angle of the complex argument.
 
     .. seealso:: :func:`numpy.angle`
@@ -937,7 +965,7 @@ _positive = create_ufunc(
     'cupy_positive',
     (('?->?', _positive_boolean_error),
      'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
-     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
+     'q->q', 'Q->Q', 'e->e', *bf16_loop(), 'f->f', 'd->d', 'F->F', 'D->D'),
     'out0 = +in0',
     doc='''Takes numerical positive elementwise.
 
@@ -956,7 +984,7 @@ _negative = create_ufunc(
     'cupy_negative',
     (('?->?', _negative_boolean_error),
      'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
-     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
+     'q->q', 'Q->Q', 'e->e', *bf16_loop(), 'f->f', 'd->d', 'F->F', 'D->D'),
     'out0 = -in0',
     doc='''Takes numerical negative elementwise.
 
@@ -1007,6 +1035,7 @@ _power = create_ufunc(
     ('??->b', 'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
      'LL->L', 'qq->q', 'QQ->Q',
      ('ee->e', 'out0 = powf(in0, in1)'),
+     *bf16_loop(2, 1, code='out0 = powf(in0, in1)'),
      ('ff->f', 'out0 = powf(in0, in1)'),
      ('dd->d', 'out0 = pow(in0, in1)'),
      ('FF->F', 'out0 = complex_power(in0, in1)'),
@@ -1046,14 +1075,14 @@ _subtract = create_arithmetic(
 _true_divide = create_ufunc(
     'cupy_true_divide',
     ('qq->d', 'qQ->d', 'Qq->d', 'QQ->d',
-     'ee->e', 'ff->f', 'dd->d', 'FF->F', 'DD->D'),
+     'ee->e', *bf16_loop(2), 'ff->f', 'dd->d', 'FF->F', 'DD->D'),
     'out0 = static_cast<out0_type>(in0) / static_cast<out0_type>(in1)',
     doc='''Elementwise true division (i.e. division as floating values).
 
     .. seealso:: :data:`numpy.true_divide`
 
     ''',
-    out_ops=('ee->e', 'ff->f', 'dd->d', 'FF->F', 'DD->D'),
+    out_ops=('ee->e', *bf16_loop(2), 'ff->f', 'dd->d', 'FF->F', 'DD->D'),
 )
 
 
@@ -1063,7 +1092,7 @@ _divide = _true_divide
 _floor_divide = create_ufunc(
     'cupy_floor_divide',
     ('bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l', 'LL->L',
-     'qq->q', 'QQ->Q', 'ee->e', 'ff->f', 'dd->d'),
+     'qq->q', 'QQ->Q', 'ee->e', *bf16_loop(2), 'ff->f', 'dd->d'),
     'out0 = _floor_divide(in0, in1)',
     doc='''Elementwise floor division (i.e. integer quotient).
 
@@ -1077,6 +1106,7 @@ _remainder = create_ufunc(
     ('bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l', 'LL->L',
      'qq->q', 'QQ->Q',
      ('ee->e', 'out0 = in0 - _floor_divide(in0, in1) * in1'),
+     *bf16_loop(2, code='out0 = in0 - _floor_divide(in0, in1) * in1'),
      ('ff->f', 'out0 = in0 - _floor_divide(in0, in1) * in1'),
      ('dd->d', 'out0 = in0 - _floor_divide(in0, in1) * in1')),
     'out0 = (in0 - _floor_divide(in0, in1) * in1) * (in1 != 0)',
@@ -1094,6 +1124,7 @@ _absolute = create_ufunc(
      'i->i', ('I->I', 'out0 = in0'), 'l->l', ('L->L', 'out0 = in0'),
      'q->q', ('Q->Q', 'out0 = in0'),
      ('e->e', 'out0 = fabsf(in0)'),
+     *bf16_loop(code='out0 = fabsf(in0)'),
      ('f->f', 'out0 = fabsf(in0)'),
      ('d->d', 'out0 = fabs(in0)'),
      ('F->f', 'out0 = abs(in0)'),
@@ -1108,7 +1139,7 @@ _absolute = create_ufunc(
 
 _sqrt = create_ufunc(
     'cupy_sqrt',
-    ('e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
+    ('e->e', *bf16_loop(), 'f->f', 'd->d', 'F->F', 'D->D'),
     'out0 = sqrt(in0)',
     doc='''Elementwise square root function.
 
@@ -1120,7 +1151,8 @@ _sqrt = create_ufunc(
 _clip = create_ufunc(
     'cupy_clip',
     ('???->?', 'bbb->b', 'BBB->B', 'hhh->h', 'HHH->H', 'iii->i', 'III->I',
-     'lll->l', 'LLL->L', 'qqq->q', 'QQQ->Q', 'eee->e', 'fff->f', 'ddd->d'),
+     'lll->l', 'LLL->L', 'qqq->q', 'QQQ->Q',
+     'eee->e', 'fff->f', 'ddd->d'),
     'out0 = in1 > in2 ? in2 : (in0 < in1 ? in1 : (in0 > in2 ? in2 : in0))')
 
 

@@ -14,8 +14,6 @@ import cupy
 from cupy.exceptions import AxisError
 from cupy.testing import _array
 from cupy.testing import _parameterized
-import cupyx
-import cupyx.scipy.sparse
 
 from cupy.testing._pytest_impl import is_available
 
@@ -65,8 +63,10 @@ def _call_func_cupy(impl, args, kw, name, sp_name, scipy_name):
 
     # Run cupy
     if sp_name:
+        import cupyx.scipy.sparse
         kw[sp_name] = cupyx.scipy.sparse
     if scipy_name:
+        import cupyx
         kw[scipy_name] = cupyx.scipy
     kw[name] = cupy
     result, error = _call_func(impl, args, kw)
@@ -383,6 +383,7 @@ def _convert_output_to_ndarray(c_out, n_out, sp_name, check_sparse_format):
     Returns:
         The tuple of cupy.ndarray and numpy.ndarray.
     """
+    import cupyx.scipy.sparse
     if sp_name is not None and cupyx.scipy.sparse.issparse(c_out):
         # Sparse output case.
         import scipy.sparse

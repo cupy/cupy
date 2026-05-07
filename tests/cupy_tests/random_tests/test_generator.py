@@ -71,8 +71,8 @@ class RandomGeneratorTestCase(common_distributions.BaseGeneratorTestCase):
     def get_rng(self, xp, seed):
         return xp.random.RandomState(seed=seed)
 
-    def set_rng_seed(self, seed):
-        self.rng.seed(seed)
+    def set_rng_seed(self, rng, seed):
+        rng.seed(seed)
 
 
 def _xp_random(xp, method_name):
@@ -92,12 +92,8 @@ def _xp_random(xp, method_name):
 
 @testing.fix_random()
 class TestRandomState(unittest.TestCase):
-
-    def setUp(self):
-        self.rs = _generator.RandomState(seed=testing.generate_seed())
-
     def check_seed(self, seed):
-        rs = self.rs
+        rs = _generator.RandomState(seed=testing.generate_seed())
 
         rs.seed(seed)
         xs1 = [rs.uniform() for _ in range(100)]
@@ -120,13 +116,15 @@ class TestRandomState(unittest.TestCase):
 
     @testing.for_dtypes([numpy.complex128])
     def test_seed_invalid_type_complex(self, dtype):
+        rs = _generator.RandomState(seed=testing.generate_seed())
         with self.assertRaises(TypeError):
-            self.rs.seed(dtype(0))
+            rs.seed(dtype(0))
 
     @testing.for_float_dtypes()
     def test_seed_invalid_type_float(self, dtype):
+        rs = _generator.RandomState(seed=testing.generate_seed())
         with self.assertRaises(TypeError):
-            self.rs.seed(dtype(0))
+            rs.seed(dtype(0))
 
     def test_array_seed(self):
         self.check_seed(numpy.random.randint(0, 2**31, size=40))
@@ -245,6 +243,49 @@ class TestHypergeometric(
     RandomGeneratorTestCase
 ):
     pass
+
+
+class TestHypergeometricValidation:
+
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        self.rs = _generator.RandomState(seed=0)
+
+    def test_hypergeometric_ngood_negative(self):
+        with pytest.raises(ValueError):
+            self.rs.hypergeometric(-1, 10, 5, size=10)
+
+    def test_hypergeometric_nbad_negative(self):
+        with pytest.raises(ValueError):
+            self.rs.hypergeometric(10, -1, 5, size=10)
+
+    def test_hypergeometric_nsample_zero(self):
+        with pytest.raises(ValueError):
+            self.rs.hypergeometric(10, 10, 0, size=10)
+
+    def test_hypergeometric_nsample_negative(self):
+        with pytest.raises(ValueError):
+            self.rs.hypergeometric(10, 10, -1, size=10)
+
+    def test_hypergeometric_nsample_equals_total(self):
+        # nsample == ngood + nbad is valid (deterministic)
+        out = self.rs.hypergeometric(5, 10, 15, size=10)
+        testing.assert_array_equal(out, cupy.full(10, 5))
+
+    def test_hypergeometric_nsample_exceeds_total(self):
+        # nsample > ngood + nbad would previously cause an infinite
+        # loop in the HRUA kernel. The kernel now routes this through
+        # the HYP path which handles it safely.
+        out = self.rs.hypergeometric(5, 10, 16, size=10)
+        testing.assert_array_equal(out, cupy.full(10, 5))
+
+    def test_hypergeometric_ngood_zero(self):
+        out = self.rs.hypergeometric(0, 10, 5, size=10)
+        testing.assert_array_equal(out, cupy.zeros(10))
+
+    def test_hypergeometric_nbad_zero(self):
+        out = self.rs.hypergeometric(5, 0, 5, size=10)
+        testing.assert_array_equal(out, cupy.full(10, 5))
 
 
 @testing.fix_random()
@@ -848,7 +889,6 @@ class TestChoiceChi(RandomGeneratorTestCase):
 
 @testing.fix_random()
 class TestChoiceMultinomial(unittest.TestCase):
-
     @_condition.repeat(3, 10)
     @testing.for_float_dtypes()
     @testing.numpy_cupy_allclose(atol=0.02)
@@ -903,7 +943,7 @@ class TestChoiceReplaceFalse(RandomGeneratorTestCase):
         if isinstance(self.a, numpy.ndarray):
             expected_dtype = 'float'
         else:
-            expected_dtype = 'long'
+            expected_dtype = 'int64'
         assert v.dtype == expected_dtype
         assert v.shape == expected_shape
 
@@ -916,6 +956,160 @@ class TestChoiceReplaceFalse(RandomGeneratorTestCase):
         assert (val < 5).all()
         val = numpy.asarray(val)
         assert numpy.unique(val).size == val.size
+
+
+@testing.parameterize(
+    # Edge cases with small domain sizes
+    {'a': 0, 'size': 0},
+    {'a': 1, 'size': 1},
+    {'a': 2, 'size': 1},
+    {'a': 256, 'size': 100},  # Minimum cipher bits threshold
+    {'a': 257, 'size': 100},
+    # large scalare uniqueness
+    {'a': 100, 'size': 50},
+    {'a': 1000, 'size': 500},
+    {'a': 10000, 'size': 5000},
+    {'a': 100000, 'size': 50000},
+    # full inpupt permutation
+    {'a': 10, 'size': 10},
+    {'a': 100, 'size': 100},
+    {'a': 1000, 'size': 1000},
+    # Power of 2
+    {'a': 2**8, 'size': 100},
+    {'a': 2**10, 'size': 500},
+    {'a': 2**16, 'size': 1000},
+    {'a': 2**20, 'size': 5000},
+    {'a': 2**24, 'size': 10000},
+    # Just below power of 2
+    {'a': 2**8 - 1, 'size': 100},
+    {'a': 2**16 - 1, 'size': 1000},
+    {'a': 2**20 - 1, 'size': 5000},
+    # Just above power of 2
+    {'a': 2**8 + 1, 'size': 100},
+    {'a': 2**16 + 1, 'size': 1000},
+    {'a': 2**20 + 1, 'size': 5000},
+    # Test multi-dimensional shapes.
+    {'a': 6, 'size': (2, 3)},
+    {'a': 32, 'size': (4, 5)},
+    {'a': 120, 'size': (5, 4, 5)},
+)
+@testing.fix_random()
+class TestChoiceReplaceFalseLargeScale(RandomGeneratorTestCase):
+    """Test large-scale uniqueness for Feistel bijection implementation."""
+
+    target_method = 'choice'
+
+    def test_uniqueness_and_bounds(self):
+        """Test that samples have no duplicates and correct bounds."""
+        val = self.generate(a=self.a, size=self.size, replace=False).get()
+        size = self.size if isinstance(self.size, tuple) else (self.size,)
+
+        # Check shape
+        assert val.shape == size
+
+        # Check bounds
+        assert (0 <= val).all()
+        assert (val < self.a).all()
+
+        # Check uniqueness
+        val_flat = numpy.asarray(val).flatten()
+        assert numpy.unique(val_flat).size == val_flat.size, \
+            "Found duplicate values in replace=False sample"
+
+
+@testing.fix_random()
+class TestChoiceReplaceFalseStatistical(RandomGeneratorTestCase):
+    """Statistical tests for uniformity of Feistel bijection."""
+
+    target_method = 'choice'
+
+    @_condition.repeat(3)
+    def test_small_domain_uniformity(self):
+        """Chi-square test for uniform sampling in small domain."""
+        # Sample from domain of size 10, taking 5 elements
+        # Repeat many times and check each index appears uniformly
+        n = 10
+        sample_size = 5
+        n_trials = 1000
+
+        counts = cupy.zeros(n, dtype=int)
+        vals = self.generate_many(
+            n, size=sample_size, replace=False, _count=n_trials)
+        for val in vals:
+            counts[val] += 1
+        counts = counts.get()
+
+        # Each index should appear ~500 times (5/10 * 1000)
+        expected = numpy.ones(n, dtype=int) * (sample_size * n_trials // n)
+        assert _hypothesis.chi_square_test(counts, expected)
+
+    @_condition.repeat(3, 10)
+    def test_permutation_variability(self):
+        """Test that repeated full permutations are different."""
+        n = 20
+        n_trials = 10
+
+        vals = self.generate_many(n, size=n, replace=False, _count=n_trials)
+        perms = cupy.vstack(vals)
+
+        # Should have multiple unique permutations
+        unique_perms = cupy.unique(perms, axis=0)
+        assert len(unique_perms) == n_trials, \
+            "Permutations should vary across multiple calls"
+
+
+@testing.slow
+@testing.fix_random()
+class TestChoiceReplaceFalseVeryLargeDomain(unittest.TestCase):
+    """Test memory efficiency with very large domains."""
+
+    def setUp(self):
+        self.rs = _generator.RandomState(seed=testing.generate_seed())
+
+    def test_large_domain_memory_efficiency(self):
+        """Test that very large domains don't allocate full arrays."""
+        # This should NOT allocate a 2^30 element array
+        # If it did, it would require ~8GB of memory
+        a = 2**30
+        size = 1000
+
+        val = self.rs.choice(a=a, size=size, replace=False).get()
+
+        # Check bounds
+        assert (0 <= val).all()
+        assert (val < a).all()
+
+        # Check uniqueness
+        assert numpy.unique(val).size == size
+
+    def test_near_32bit_limit(self):
+        """Test at the 32-bit boundary."""
+        # Current implementation supports up to 2^32
+        a = 2**31
+        size = 500
+
+        val = self.rs.choice(a=a, size=size, replace=False).get()
+
+        # Check bounds
+        assert (0 <= val).all()
+        assert (val < a).all()
+
+        # Check uniqueness
+        assert numpy.unique(val).size == size
+
+
+@testing.fix_random()
+class TestChoiceReplaceFalseDtypeConsistency(RandomGeneratorTestCase):
+    """Test output dtype consistency."""
+
+    target_method = 'choice'
+
+    def test_integer_input_dtype(self):
+        """Integer input should produce int64/long dtype."""
+        val = self.generate(a=100, size=50, replace=False)
+
+        # Should be 'l' (long) dtype, which is int64 on most platforms
+        assert val.dtype == numpy.dtype('l') or val.dtype == numpy.int64
 
 
 @testing.fix_random()
@@ -1098,13 +1292,14 @@ class TestChoiceReplaceFalseFailure(unittest.TestCase):
 
 
 class TestResetStates(unittest.TestCase):
-
+    @pytest.mark.thread_unsafe(reason="mutates global _generator.")
     def test_reset_states(self):
         _generator._random_states = 'dummy'
         _generator.reset_states()
         assert {} == _generator._random_states
 
 
+@pytest.mark.thread_unsafe(reason="mutates global _generator.")
 class TestGetRandomState(unittest.TestCase):
 
     def setUp(self):
@@ -1128,6 +1323,7 @@ class TestGetRandomState(unittest.TestCase):
         assert 'expected' == rs
 
 
+@pytest.mark.thread_unsafe(reason="mutates global _generator.")
 class TestSetRandomState(unittest.TestCase):
 
     def setUp(self):
@@ -1169,6 +1365,7 @@ class TestTriangular(RandomGeneratorTestCase):
             left=self.left, mode=self.mode, right=self.right, size=(3, 2))
 
 
+@pytest.mark.thread_unsafe(reason="Mutates global rng instance.")
 class TestRandomStateThreadSafe(unittest.TestCase):
 
     def setUp(self):
@@ -1228,6 +1425,7 @@ class TestRandomStateThreadSafe(unittest.TestCase):
         assert cupy.random.get_random_state() is rs
 
 
+@pytest.mark.thread_unsafe(reason="mutates global random states")
 class TestGetRandomState2(unittest.TestCase):
 
     def setUp(self):

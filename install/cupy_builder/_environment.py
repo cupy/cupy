@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 import functools
 import glob
 import os
 import sys
-from typing import Any, Callable
+from typing import Any
 
 
 def _memoize(f: Callable) -> Callable:

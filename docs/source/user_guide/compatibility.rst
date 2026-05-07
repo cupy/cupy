@@ -139,7 +139,7 @@ We support environmental compatibilities in the following ways.
 - Any changes of dependent libraries that force modifications on the existing environments must be done in major updates.
   Such changes include following cases:
 
-  - dropping supported versions of dependent libraries (e.g. dropping cuDNN v2)
+  - dropping supported versions of dependent libraries (e.g. dropping NCCL v2)
   - adding new mandatory dependencies (e.g. adding h5py to setup_requires)
 
 - Supporting optional packages/libraries may be done in minor updates (e.g. supporting h5py in optional features).

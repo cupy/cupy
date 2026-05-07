@@ -1,9 +1,9 @@
 # distutils: language = c++
 
-import collections
-import weakref
+cimport cython
+cimport cpython
 
-from fastrlock cimport rlock
+import weakref
 
 from cupy_backends.cuda.api import runtime
 
@@ -92,7 +92,7 @@ cdef class PinnedMemoryPointer:
         return self.__iadd__(-offset)
 
     cpdef size_t size(self):
-        return self.mem.size - (self.ptr - self.mem.ptr)
+        return <size_t>(self.mem.size) - (self.ptr - <intptr_t>(self.mem.ptr))
 
     def __getbuffer__(self, Py_buffer *buffer, int flags):
         size = self.size()
@@ -106,41 +106,28 @@ cdef class PinnedMemoryPointer:
         buffer.itemsize = 1
         buffer.len = size
         buffer.ndim = 1
-        buffer.obj = self
         buffer.readonly = 0
         buffer.shape = self._shape
         buffer.strides = self._strides
         buffer.suboffsets = NULL
+        cpython.Py_INCREF(self)
+        buffer.obj = self
 
     def __releasebuffer__(self, Py_buffer *buffer):
-        pass
-
-    def __getsegcount__(self, Py_ssize_t *lenp):
-        if lenp != NULL:
-            lenp[0] = self.size()
-        return 1
-
-    def __getreadbuffer__(self, Py_ssize_t idx, void **p):
-        if idx != 0:
-            raise SystemError('accessing non-existent buffer segment')
-        p[0] = <void*>self.ptr
-        return self.size()
-
-    def __getwritebuffer__(self, Py_ssize_t idx, void **p):
-        if idx != 0:
-            raise SystemError('accessing non-existent buffer segment')
-        p[0] = <void*>self.ptr
-        return self.size()
+        cpython.Py_DECREF(self)
 
 
 cdef class _EventWatcher:
     cdef:
-        cdef list events
-        cdef object _lock
+        list events
+        # NOTE: Never use `lock()` outside a nogil statement, because
+        # almost anything could release the GIL and then deadlocks happen
+        # if another thread tries to lock also (without the GIL released).
+        # You can try with `try_lock()` first though.
+        cython.pymutex _lock
 
     def __init__(self):
         self.events = []
-        self._lock = rlock.create_fastrlock()
 
     cpdef add(self, event, obj):
         """ Add event to be monitored.
@@ -151,14 +138,10 @@ cdef class _EventWatcher:
             event (cupy.cuda.Event): The CUDA event to be monitored.
             obj: The object to be held.
         """
-        rlock.lock_fastrlock(self._lock, -1, True)
-        try:
-            self._check_and_release_without_lock()
-            if event.done:
-                return
-            self.events.append((event, obj))
-        finally:
-            rlock.unlock_fastrlock(self._lock)
+        self.check_and_release()
+        if event.done:
+            return
+        self.events.append((event, obj))  # atomic
 
     cpdef check_and_release(self):
         """ Check and release completed events.
@@ -166,15 +149,11 @@ cdef class _EventWatcher:
         """
         if not self.events:
             return
-        rlock.lock_fastrlock(self._lock, -1, True)
-        try:
-            self._check_and_release_without_lock()
-        finally:
-            rlock.unlock_fastrlock(self._lock)
 
-    cpdef _check_and_release_without_lock(self):
-        while self.events and self.events[0][0].done:
-            del self.events[0]
+        # lock to ensure we are not deleting in parallel.
+        with self._lock:
+            while self.events and self.events[0][0].done:
+                del self.events[0]
 
 
 cpdef PinnedMemoryPointer _malloc(size_t size):
@@ -245,6 +224,7 @@ class PooledPinnedMemory(PinnedMemory):
         self.ptr = mem.ptr
         self.size = mem.size
         self.pool = pool
+        self.mem = mem
 
     def free(self):
         """Releases the memory buffer and sends it to the memory pool.
@@ -253,9 +233,9 @@ class PooledPinnedMemory(PinnedMemory):
         buffer to the memory pool for reuse.
 
         """
-        pool = self.pool()
-        if pool and self.ptr != 0:
-            pool.free(self.ptr, self.size)
+        cdef PinnedMemoryPool pool = self.pool()
+        if pool is not None and self.ptr != 0:
+            pool.free(self.mem, self.size)
         self.ptr = 0
         self.size = 0
 
@@ -263,7 +243,6 @@ class PooledPinnedMemory(PinnedMemory):
 
 
 cdef class PinnedMemoryPool:
-
     """Memory pool for pinned memory on the host.
 
     Note that it preserves all allocated memory buffers even if the user
@@ -277,13 +256,22 @@ cdef class PinnedMemoryPool:
             size are all in use.
 
     """
+    cdef:
+        object _alloc
+        dict _free
+        set _in_use
+        object __weakref__
+        object _weakref
+        size_t _allocation_unit_size
+        # This lock only really protects the `.pop()` from failing
+        # (other operations are all atomic).
+        cython.pymutex _lock
 
     def __init__(self, allocator=_malloc):
-        self._in_use = {}
-        self._free = collections.defaultdict(list)
+        self._free = {}
+        self._in_use = set()
         self._alloc = allocator
         self._weakref = weakref.ref(self)
-        self._lock = rlock.create_fastrlock()
         self._allocation_unit_size = 512
 
     cpdef PinnedMemoryPointer malloc(self, size_t size):
@@ -296,9 +284,8 @@ cdef class PinnedMemoryPool:
         # Round up the memory size to fit memory alignment of cudaHostAlloc
         unit = self._allocation_unit_size
         size = internal.clp2(((size + unit - 1) // unit) * unit)
-        rlock.lock_fastrlock(self._lock, -1, True)
-        try:
-            free = self._free[size]
+        with self._lock:
+            free = self._free.get(size)
             if free:
                 mem = free.pop()
             else:
@@ -310,46 +297,42 @@ cdef class PinnedMemoryPool:
                     self.free_all_blocks()
                     mem = self._alloc(size).mem
 
-            self._in_use[mem.ptr] = mem
-        finally:
-            rlock.unlock_fastrlock(self._lock)
+        self._in_use.add(mem)
         pmem = PooledPinnedMemory(mem, self._weakref)
         return PinnedMemoryPointer(pmem, 0)
 
-    cpdef free(self, intptr_t ptr, size_t size):
-        cdef list free
-        rlock.lock_fastrlock(self._lock, -1, True)
-        try:
-            mem = self._in_use.pop(ptr, None)
-            if mem is None:
-                raise RuntimeError('Cannot free out-of-pool memory')
-            free = self._free[size]
-            free.append(mem)
-        finally:
-            rlock.unlock_fastrlock(self._lock)
+    cdef free(self, mem, size):
+        cdef list free = self._free.get(size)
+        if free is None:
+            free = self._free.setdefault(size, [])
+
+        # Remove from in-use (must happen first, as soon as we append to free
+        # can immediately be `_in_use` again).
+        self._in_use.remove(mem)
+
+        # OK to append to list (atomic) while another threads may pop().
+        free.append(mem)
 
     cpdef free_all_blocks(self):
         """Release free all blocks."""
         _watcher.check_and_release()
-        rlock.lock_fastrlock(self._lock, -1, True)
-        try:
-            self._free.clear()
-        finally:
-            rlock.unlock_fastrlock(self._lock)
+        self._free.clear()
 
     cpdef n_free_blocks(self):
         """Count the total number of free blocks.
+
+        This function is thread-safe but may not capture a consistent
+        state. It exists for debugging purposes and is slow.
 
         Returns:
             int: The total number of free blocks.
         """
         cdef Py_ssize_t n = 0
-        rlock.lock_fastrlock(self._lock, -1, True)
-        try:
-            for v in self._free.values():
-                n += len(v)
-        finally:
-            rlock.unlock_fastrlock(self._lock)
+        # Shallow copy to be sure the iterator is thread-safe; no lock needed,
+        # it's OK if lists are modified while iterating.
+        for v in self._free.copy().values():
+            n += len(v)
+
         return n
 
 

@@ -19,6 +19,7 @@ class TestBasic:
         return a
 
     @testing.slow
+    @pytest.mark.thread_unsafe(reason="too large allocations")
     def test_empty_huge_size(self):
         a = cupy.empty((1024, 2048, 1024), dtype='b')
         a.fill(123)
@@ -28,6 +29,7 @@ class TestBasic:
         cupy.get_default_memory_pool().free_all_blocks()
 
     @testing.slow
+    @pytest.mark.thread_unsafe(reason="too large allocations")
     def test_empty_huge_size_fill0(self):
         a = cupy.empty((1024, 2048, 1024), dtype='b')
         a.fill(0)
@@ -61,6 +63,7 @@ class TestBasic:
         return a
 
     @testing.slow
+    @pytest.mark.thread_unsafe(reason="too large allocations")
     def test_empty_int_huge_size(self):
         a = cupy.empty(2 ** 31, dtype='b')
         a.fill(123)
@@ -70,6 +73,7 @@ class TestBasic:
         cupy.get_default_memory_pool().free_all_blocks()
 
     @testing.slow
+    @pytest.mark.thread_unsafe(reason="too large allocations")
     def test_empty_int_huge_size_fill0(self):
         a = cupy.empty(2 ** 31, dtype='b')
         a.fill(0)
@@ -228,6 +232,14 @@ class TestBasic:
         with pytest.raises(TypeError):
             cupy.zeros_like(a, subok=True)
 
+    def test_reject_byteswap(self):
+        # Reject creation of arrays with bad byte-order at a low level
+        with pytest.raises(ValueError, match=".*byte-order"):
+            cupy.ndarray((2, 3, 4), dtype=">i")
+
+        with pytest.raises(ValueError, match=".*byte-order"):
+            cupy.zeros((2, 3, 4), dtype=">i")
+
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -245,6 +257,24 @@ class TestBasic:
         a = cupy.ndarray((2, 3, 4))
         with pytest.raises(TypeError):
             cupy.ones_like(a, subok=True)
+
+    @pytest.mark.parametrize('shape, strides', [
+        ((2, 3, 4), (8 * 3 * 4, 8 * 4, 8)),  # contiguous
+        ((2, 3, 4), (8, 0, 8)),  # smaller than contiguous needed
+        ((2, 0, 4), (8, 128, 1024)),  # empty can be OK
+    ])
+    def test_ndarray_strides(self, shape, strides):
+        a = cupy.ndarray(shape, strides=strides, dtype="float64")
+        assert cupy.byte_bounds(a)[0] == a.data.ptr
+        assert cupy.byte_bounds(a)[1] - a.data.ptr <= a.data.mem.size
+
+    @pytest.mark.parametrize('shape, strides', [
+        ((2, 3, 4), (8, 128, 1024)),  # too large
+        ((2, 3, 4), (-8, 8, 8)),  # negative (needs offset)
+    ])
+    def test_ndarray_strides_raises(self, shape, strides):
+        with pytest.raises(ValueError, match=r"ndarray\(\) with strides.*"):
+            cupy.ndarray(shape, strides=strides)
 
     @testing.for_CF_orders()
     @testing.for_all_dtypes()
@@ -285,6 +315,37 @@ class TestBasic:
         a = cupy.ndarray((2, 3, 4))
         with pytest.raises(TypeError):
             cupy.full_like(a, 1, subok=True)
+
+    @pytest.mark.slow
+    @pytest.mark.thread_unsafe(reason="large allocations")
+    @pytest.mark.parametrize('arr_factory,expected', [
+        (lambda: cupy.empty(2**31 - 1, dtype=cupy.int8), True),
+        (lambda: cupy.empty(2**31, dtype=cupy.int8), True),
+        (lambda: cupy.empty(2**31 + 1, dtype=cupy.int8)[::2], False),
+        (lambda: cupy.empty(2**31 // 8, dtype=cupy.complex64), True),
+        (lambda: cupy.empty(2**31 // 8 + 1, dtype=cupy.complex64), False),
+        # Regression test for gh-9750:
+        (lambda: cupy.empty(2**31 // 8, dtype=cupy.complex64).real, True),
+        (lambda: cupy.empty(2**31 // 8 + 1, dtype=cupy.complex64).real, False),
+        # broadcasting also causes this, test both broadcast_to and normal:
+        (lambda: cupy.broadcast_to(
+            cupy.empty(2**30 + 1, dtype=cupy.int8), (2, 2**30 + 1)), False),
+        (lambda: cupy.broadcast_arrays(
+            cupy.empty(2**30 + 1, dtype=cupy.int8), cupy.empty((2, 1))
+        )[0], False),
+        # Also test raw "broadcasting path":
+        (lambda: cupy.ndarray(
+            shape=(2**30 + 1, 2), strides=(1, 0), dtype=cupy.int8), False),
+        # These ones are debatable, the start pointers are OK, but the range
+        # extends beyond 32bits on a byte level:
+        (lambda: cupy.empty((2**31 + 1) // 3, dtype="i1,i1,i1"), False),
+        # Same cupy.byte_bounds as above, but strided (size * itemsize is OK):
+        (lambda: cupy.empty((2**31 + 1) // 3,
+         dtype="i1,i1,i1")[::2].view(), False),
+    ])
+    def test_index_32_bits(self, arr_factory, expected):
+        assert arr_factory()._index_32_bits == expected
+        cupy.get_default_memory_pool().free_all_blocks()
 
 
 @testing.parameterize(
@@ -495,3 +556,22 @@ class TestBasicReshape:
         c = cupy.full(self.shape, 1, dtype=dtype)
 
         testing.assert_array_equal(b, c)
+
+
+class TestDTypeUnchecked:
+    def test_void_dtype(self):
+        arr = cupy.zeros(3, dtype="V10")
+        assert not arr.get().view("uint8").any()
+
+        np_arr = numpy.array([b'1', b'2', b'3'], dtype="V10")
+        arr = cupy.array(np_arr)
+        testing.assert_array_equal(arr.get(), np_arr)
+
+    def test_subarray_rejected(self):
+        with pytest.raises(ValueError, match="Unsupported dtype"):
+            cupy.empty(3, dtype="3i")
+
+    def test_empty_void_rejected(self):
+        # We could try to allo V0 explicitly, but for now...
+        with pytest.raises(ValueError, match="Unsupported dtype"):
+            cupy.empty(3, dtype="V")

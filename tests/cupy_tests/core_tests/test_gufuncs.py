@@ -11,14 +11,25 @@ from cupy._core._gufuncs import _GUFunc
 
 class TestGUFuncSignature:
     @pytest.mark.parametrize('signature', [
-        ('(i,j)->(i,j)', [('i', 'j')], [('i', 'j')]),
-        ('->(i)', [()], [('i',)]),
-        ('(i,j),(j,k)->(k,l)', [('i', 'j'), ('j', 'k')], [('k', 'l')]),
-        ('()->()', [()], [()])])
+        ('(i,j)->(i,j)',
+         [(('i', False, False), ('j', False, False))],
+         [(('i', False, False), ('j', False, False))], 2),
+        ('->(i)', [()], [(('i', False, False),)], 1),
+        ('(i,j),(j,k)->(k,l)',
+         [(('i', False, False), ('j', False, False)),
+          (('j', False, False), ('k', False, False))],
+         [(('k', False, False), ('l', False, False))], 4),
+        ('()->()', [()], [()], 0),
+        ('(i?,j|1),(i?,j)->(i?,j)',
+         [(('i', True, False), ('j', False, True)),
+          (('i', True, False), ('j', False, False))],
+         [(('i', True, False), ('j', False, False))], 2),
+    ])
     def test_signature_parsing(self, signature):
-        i, o = cupy._core._gufuncs._parse_gufunc_signature(signature[0])
+        i, o, n_cd = cupy._core._gufuncs._parse_gufunc_signature(signature[0])
         assert i == signature[1]
         assert o == signature[2]
+        assert n_cd == signature[3]
 
     @pytest.mark.parametrize('signature', [
         '(i,j)(i,j)',
@@ -42,6 +53,13 @@ class TestGUFuncAxes:
         def func(x):
             return x.sum()
         return _GUFunc(func, signature)
+
+    def _get_gufunc_scalar_supports_all(self, signature):
+        def func(x, out=None):
+            # Does not use keepdims, but gufunc supports it.
+            return x.sum(axis=-1, out=out)
+        return _GUFunc(
+            func, signature, supports_batched=True, supports_out=True)
 
     @pytest.mark.parametrize('axes', [
         ((-1, -2), (-1, -2)),
@@ -85,14 +103,57 @@ class TestGUFuncAxes:
         else:
             return numpy.moveaxis(x, axes[0], axes[1])
 
-    @pytest.mark.parametrize('axis', [0, 1, 2, 3])
+    @pytest.mark.parametrize('axes', [
+        [(0, 1), (0, 1), (0, 1)],
+        [(0, 1), (0, 1), (1, 0)],
+        [(-2, -1), (-3, 0), (-1, -3)],
+    ])
+    @pytest.mark.parametrize('use_out', [True, False])
     @testing.numpy_cupy_array_equal()
-    def test_axis(self, xp, axis):
+    def test_axes_matmul(self, xp, axes, use_out):
+        # Do not use a weird shape, but rather rely on each
+        # arange transpose giving a unique result.
+        x = testing.shaped_arange((3, 3, 3, 3), xp=xp)
+        y = testing.shaped_arange((3, 3, 3, 3), xp=xp)
+        if use_out:
+            out = xp.empty((3, 3, 3, 3))
+        else:
+            out = None
+
+        return xp.matmul(x, y, axes=axes, out=out)
+
+    @pytest.mark.parametrize('ax,outer_ax',
+                             [(0, 1), (1, 0), ((-1,), 0)])
+    @testing.numpy_cupy_array_equal(accept_error=numpy.exceptions.AxisError)
+    def test_axes_single_matmul(self, xp, ax, outer_ax):
+        # We do not allow this (just as NumPy), although it may be possible
+        # to define it in principle.
+        x = xp.ones((2, 3))
+        y = xp.ones((2, 3))
+        xp.matmul(x, y, axes=[ax] * 2 + [()])
+        # no return, should raise error.
+
+    @pytest.mark.parametrize('axis', [0, 1, 2, 3])
+    @pytest.mark.parametrize('keepdims', [True, False])
+    @testing.numpy_cupy_array_equal()
+    def test_axis(self, xp, axis, keepdims):
         x = testing.shaped_arange((2, 3, 4, 5), xp=xp)
         if xp is cupy:
-            return self._get_gufunc_scalar('(i)->()')(x, axis=axis)
+            return self._get_gufunc_scalar('(i)->()')(
+                x, axis=axis, keepdims=keepdims)
         else:
-            return x.sum(axis=axis)
+            return x.sum(axis=axis, keepdims=keepdims)
+
+    @pytest.mark.parametrize('axis', [0, 1, 2, 3])
+    @pytest.mark.parametrize('keepdims', [True, False])
+    @testing.numpy_cupy_array_equal()
+    def test_axis_full_core_support(self, xp, axis, keepdims):
+        x = testing.shaped_arange((2, 3, 4, 5), xp=xp)
+        if xp is cupy:
+            return self._get_gufunc_scalar_supports_all('(i)->()')(
+                x, axis=axis, keepdims=keepdims)
+        else:
+            return x.sum(axis=axis, keepdims=keepdims)
 
     def test_axis_invalid(self):
         x = testing.shaped_arange((2, 3, 4, 5))
@@ -282,3 +343,109 @@ class TestGUFuncSignatures:
         y = x
         with pytest.raises(TypeError):
             gu_func(x, y, casting='unsafe', signature=sig)
+
+
+class TestGUFuncOptional:
+    def _get_gufunc_ridiculous_optional(self):
+        signature = '(a?,b,c,d?),(i?,j?,k,l)->(b,c,a?,d?,k,l,j?,i?)'
+
+        def func(x, y):
+            # The ufunc is always passed all dimensions (filled in with 1)
+            # if omitted and optional.
+            res_shape = x.shape[1:-1] + (x.shape[0], x.shape[-1])
+            res_shape += y.shape[2:] + (y.shape[1], y.shape[0])
+            return cupy.ones(res_shape)
+
+        return _GUFunc(func, signature)
+
+    def _get_forbidden_optional(self):
+        signature = '(a?,b?),(b,a?)->(a?,b?)'
+
+        def func(x, y):
+            raise RuntimeError('this will not be called')
+
+        return _GUFunc(func, signature)
+
+    @pytest.mark.parametrize('x_ndim, y_ndim', [
+        (2, 2), (3, 2), (2, 3), (3, 3), (4, 2), (2, 4), (4, 3), (3, 4),
+        (4, 4), (6, 6)
+    ])
+    def test_ridiculous_optional(self, x_ndim, y_ndim):
+        gufunc = self._get_gufunc_ridiculous_optional()
+
+        x_shape = tuple(range(1, x_ndim + 1))
+        y_shape = tuple(range(1, y_ndim + 1))
+        x = cupy.ones(x_shape)
+        y = cupy.ones(y_shape)
+        # Succeeds if the correct `func` above matches with allocated output.
+        res = gufunc(x, y)
+
+        if x_ndim == 6 and y_ndim == 6:
+            # only test where this is the case
+            x_shape = x_shape[2:]
+            y_shape = y_shape[2:]
+            outer_shape = (1, 2)
+        else:
+            outer_shape = ()
+
+        # Check that the result shape is actually what we expect it to be.
+        if x.ndim == 2:  # b, c
+            core_shape = x_shape
+        elif x.ndim == 3:  # b, c, d -> b, c, d
+            core_shape = x_shape[:-1] + (x_shape[-1],)
+        else:  # a, b, c, d -> b, c, a, d
+            core_shape = x_shape[1:-1] + (x_shape[0], x_shape[-1])
+
+        if y.ndim == 2:  # k, l
+            core_shape += y_shape
+        elif y.ndim == 3:  # j, k, l -> k, l, j
+            core_shape += y_shape[1:] + (y_shape[0],)
+        else:  # i, j, k, l -> k, l, j, i
+            core_shape += y_shape[2:] + (y_shape[1], y_shape[0])
+
+        assert res.shape == outer_shape + core_shape
+
+    def test_forbidden_optional(self):
+        gufunc = self._get_forbidden_optional()
+        x = cupy.ones(2)
+        y = cupy.ones((2, 2))
+        with pytest.raises(ValueError):
+            # first op is missing a at front but second is not
+            gufunc(x, y)
+
+        with pytest.raises(ValueError):
+            # second op is missing a at end but first is not
+            gufunc(y, x)
+
+
+class TestGUFuncBroadcastable:
+    def _get_gufunc(self):
+        def func(x, y):
+            shape = cupy.broadcast_shapes(x.shape, y.shape)
+            return cupy.ones(shape)
+        return _GUFunc(func, '(i|1,j|1),(i|1,j)->(i,j)')
+
+    @pytest.mark.parametrize('x_shape, y_shape', [
+        ((2, 1), (2, 3)),
+        ((1, 1), (2, 1)),
+        ((2, 3), (1, 3)),
+        ((1, 1), (1, 1)),
+    ])
+    def test_broadcastable(self, x_shape, y_shape):
+        func = self._get_gufunc()
+        x = cupy.ones(x_shape)
+        y = cupy.ones(y_shape)
+
+        res = func(x, y)
+        assert res.shape == cupy.broadcast_shapes(x_shape, y_shape)
+
+    @pytest.mark.parametrize('x_shape, y_shape', [
+        ((2, 3), (2, 1)),  # second operand 1 is not broadcastable
+    ])
+    def test_not_broadcastable(self, x_shape, y_shape):
+        func = self._get_gufunc()
+        x = cupy.ones(x_shape)
+        y = cupy.ones(y_shape)
+
+        with pytest.raises(ValueError):
+            func(x, y)

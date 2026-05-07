@@ -14,6 +14,7 @@ from cupyx.scipy.signal._iir_utils import collapse_2d, apply_iir_sos
 SYMIIR2_KERNEL = r"""
 #include <cupy/math_constants.h>
 #include <cupy/carray.cuh>
+#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_headers?
 
 template<typename T>
 __device__ T _compute_symiirorder2_fwd_hc(
@@ -111,7 +112,7 @@ __global__ void compute_symiirorder2_bwd_sc(
 """
 
 SYMIIR2_MODULE = cupy.RawModule(
-    code=SYMIIR2_KERNEL, options=('-std=c++11',),
+    code=SYMIIR2_KERNEL,
     name_expressions=[f'compute_symiirorder2_bwd_sc<{t}>'
                       for t in ['float', 'double']] +
     [f'compute_symiirorder2_fwd_sc<{t}>'

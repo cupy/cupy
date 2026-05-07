@@ -25,6 +25,7 @@ Environment variables:
 - GPU: Number of GPUs available for testing.
 - CACHE_DIR: Path to the local directory to store cache files.
 - CACHE_GCS_DIR: Path to the GCS directory to store a cache archive.
+- CACHE_KERNEL_TO_GCS: Set to 1 to enable GCS bucket based kernel cache.
 - DOCKER_IMAGE: Base name of the Docker image (without a tag).
 - DOCKER_IMAGE_CACHE: Set to 0 to disable using cache when building a docker
                       image.
@@ -134,7 +135,7 @@ main() {
       rm -f "${cache_archive}"
       ;;
 
-    test | shell | benchmark)
+    test | shell | benchmark )
       container_name="cupy_ci_$$_$RANDOM"
       docker_args=(
         docker run
@@ -148,6 +149,9 @@ main() {
       fi
       if [[ "${CACHE_DIR:-}" != "" ]]; then
         docker_args+=(--volume="${CACHE_DIR}:${CACHE_DIR}" --env "CACHE_DIR=${CACHE_DIR}")
+      fi
+      if [[ "${CACHE_KERNEL_TO_GCS:-0}" == "1" ]]; then
+        docker_args+=(--env "CUPY_CI_ENABLE_GCP_KERNEL_CACHE=1")
       fi
       if [[ "${PULL_REQUEST:-}" != "" ]]; then
         docker_args+=(--env "PULL_REQUEST=${PULL_REQUEST}")
@@ -163,24 +167,39 @@ main() {
         docker_args+=(--runtime=nvidia)
       fi
 
-      test_command=(bash "/src/.pfnci/linux/tests/${TARGET}.sh")
       if [[ "${stage}" = "benchmark" ]]; then
         mkdir -p ${BENCHMARK_DIR}
         docker_args+=(--volume="${BENCHMARK_DIR}:/perf-results")
       fi
 
-      if [[ "${stage}" = "test" || "${stage}" = "benchmark" ]]; then
+      if [[ ${stage} = test || ${stage} = benchmark ]]; then
         "${docker_args[@]}" --volume="${repo_root}:/src:ro" --workdir "/src" \
-            "${docker_image}" timeout 8h "${test_command[@]}" &
+            "${docker_image}" timeout 8h bash "/src/.pfnci/linux/tests/${TARGET}.sh" &
         docker_pid=$!
         trap "kill -KILL ${docker_pid}; docker kill '${container_name}' & wait; exit 1" TERM INT HUP
         wait $docker_pid
         trap TERM INT HUP
-      elif [[ "${stage}" = "shell" ]]; then
-        echo "Hint: ${test_command[@]}"
-        "${docker_args[@]}" --volume="${repo_root}:/src:rw" --workdir "/src" \
-            --tty --user "$(id -u):$(id -g)" \
-            "${docker_image}" bash
+      elif [[ ${stage} = shell ]]; then
+        set +x
+        echo "==================== INTERACTIVE SHELL IN CI IMAGE ===================="
+        echo "Tips:"
+        echo "  - To reproduce CI: bash '${repo_root}/.pfnci/linux/tests/${TARGET}.sh'"
+        echo "  - To build CuPy: pip install --no-build-isolation -v -e '.[test]'"
+        echo "  - To run tests: pytest tests/path_to_test.py"
+        echo "  - Several env vars are automatically set for convenience; to check: env"
+        echo "  - To build for current GPU device only: export CUPY_NVCC_GENERATE_CODE=current"
+        echo "  - To accelerate build: export CUPY_NUM_BUILD_JOBS=\$(nproc)"
+        echo "  - In shell mode, ccache is activated for gcc/g++ but not for nvcc; "
+        echo "    to activate: export NVCC='ccache nvcc'"
+        echo "  - To persist build/kernel cache across multiple shell session runs: "
+        echo "    set CACHE_DIR env var BEFORE starting run.sh"
+        echo "======================================================================="
+        uid_gid="$(id -u):$(id -g)"
+        set -x
+        "${docker_args[@]}" --volume="${repo_root}:${repo_root}:rw" --workdir "${repo_root}" \
+            --tty --user "${uid_gid}" \
+            --env "USER=cupy-user" --env "HOME=/home/cupy-user" --env "SHELL_MODE=yes" \
+            "${docker_image}" /bin/bash -c "source ${repo_root}/.pfnci/linux/tests/actions/_environment.sh && exec bash"
       fi
       ;;
     * )

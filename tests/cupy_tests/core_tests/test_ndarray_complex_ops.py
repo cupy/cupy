@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import unittest
-
 import numpy
 import pytest
 
@@ -9,7 +7,7 @@ import cupy
 from cupy import testing
 
 
-class TestConj(unittest.TestCase):
+class TestConj:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_almost_equal()
@@ -40,7 +38,7 @@ class TestConj(unittest.TestCase):
         return y
 
 
-class TestAngle(unittest.TestCase):
+class TestAngle:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_almost_equal()
@@ -49,7 +47,7 @@ class TestAngle(unittest.TestCase):
         return xp.angle(x)
 
 
-class TestRealImag(unittest.TestCase):
+class TestRealImag:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_almost_equal(accept_error=False)
@@ -156,7 +154,7 @@ class TestRealImag(unittest.TestCase):
         assert cupy.all(x == expected)
 
 
-class TestScalarConversion(unittest.TestCase):
+class TestScalarConversion:
 
     @testing.for_all_dtypes()
     def test_scalar_conversion(self, dtype):

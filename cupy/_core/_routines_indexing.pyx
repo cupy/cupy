@@ -7,6 +7,7 @@ import cupy
 import cupy._core.core as core
 from cupy.exceptions import AxisError
 from cupy._core._kernel import ElementwiseKernel, _get_warpsize
+from cupy._core._kernel cimport _full_mask_hex
 from cupy._core._ufuncs import elementwise_copy
 
 from libcpp cimport vector
@@ -16,7 +17,7 @@ from cupy._core._carray cimport strides_t
 from cupy._core cimport core
 from cupy._core cimport _routines_math as _math
 from cupy._core cimport _routines_manipulation as _manipulation
-from cupy._core.core cimport _ndarray_base
+from cupy._core.core cimport _convert_from_cupy_like, _ndarray_base
 from cupy._core cimport internal
 
 
@@ -27,6 +28,9 @@ cdef _ndarray_base _ndarray_getitem(_ndarray_base self, slices):
     cdef Py_ssize_t axis
     cdef list slice_list
     cdef _ndarray_base a
+
+    if isinstance(slices, str) and self.dtype.fields is not None:
+        return _getitem_fields(self, slices)
 
     slice_list = _prepare_slice_list(slices)
     a, adv = _view_getitem(self, slice_list)
@@ -47,6 +51,13 @@ cdef _ndarray_base _ndarray_getitem(_ndarray_base self, slices):
 cdef _ndarray_setitem(_ndarray_base self, slices, value):
     if isinstance(value, _ndarray_base):
         value = _squeeze_leading_unit_dims(value)
+
+    if isinstance(slices, str) and self.dtype.fields is not None:
+        # TODO: This is kinda right, but not quite due to finalization
+        # for subclasses.
+        self = _getitem_fields(self, slices)
+        slices = ...  # Need to assign the full thing as if an Ellipsis
+
     _scatter_op(self, slices, value, 'update')
 
 
@@ -262,15 +273,31 @@ cpdef list _prepare_slice_list(slices):
                 # keep scalar int
                 continue
 
-        if cupy.min_scalar_type(s).char == 'O':
-            raise IndexError(
-                'arrays used as indices must be of integer (or boolean) type')
         try:
             s = core.array(s, dtype=None, copy=None)
-        except ValueError:
-            # "Unsupported dtype"
+        except ValueError as e:
+            # Conversion failed, presumably with "Unsupported dtype".
+
+            # If this is a NumPy array, it should have an unsupportd dtype
+            # raise that as as not "integer or boolean" dtype.
+            if isinstance(s, numpy.ndarray):
+                if s.dtype.kind not in {'b', 'i', 'u'}:
+                    raise IndexError(
+                        'arrays used as indices must be of integer or boolean '
+                        'type (actual: {})'.format(s.dtype.type))
+                # Unlikely/impossible, but there was another error re-raise
+                raise
+
+            try:
+                numpy.asarray(s)  # check if NumPy can convert the index
+            except Exception:
+                # Can't convert, raise original (probably identical) error.
+                # For example `[1, [2]]` is "ragged" and fails this way.
+                raise e from None
+
+            # Probably an arbitrary object, so give generic error:
             raise IndexError(
-                'only integers, slices (`:`), ellipsis (`...`),'
+                'only integers, slices (`:`), ellipsis (`...`), '
                 'numpy.newaxis (`None`) and integer or '
                 'boolean arrays are valid indices')
         if fix_empty_dtype and s.size == 0:
@@ -464,7 +491,7 @@ def _nonzero_kernel_incomplete_scan(block_size, warp_size=32):
         S x = 0;
         if (i < a.size()) x = a[i];
         for (int j = 1; j < ${warp_size}; j *= 2) {
-            S tmp = __shfl_up_sync(0xffffffff, x, j, ${warp_size});
+            S tmp = __shfl_up_sync(${full_mask}, x, j, ${warp_size});
             if (lane_id - j >= 0) x += tmp;
         }
         if (lane_id == ${warp_size} - 1) smem[warp_id] = x;
@@ -473,7 +500,7 @@ def _nonzero_kernel_incomplete_scan(block_size, warp_size=32):
             S y = 0;
             if (lane_id < n_warp) y = smem[lane_id];
             for (int j = 1; j < n_warp; j *= 2) {
-                S tmp = __shfl_up_sync(0xffffffff, y, j, ${warp_size});
+                S tmp = __shfl_up_sync(${full_mask}, y, j, ${warp_size});
                 if (lane_id - j >= 0) y += tmp;
             }
             int block_id = i / ${block_size};
@@ -484,7 +511,7 @@ def _nonzero_kernel_incomplete_scan(block_size, warp_size=32):
         }
         __syncthreads();
         x += smem[warp_id];
-        S x0 = __shfl_up_sync(0xffffffff, x, 1, ${warp_size});
+        S x0 = __shfl_up_sync(${full_mask}, x, 1, ${warp_size});
         if (lane_id == 0) {
             x0 = smem[warp_id];
         }
@@ -497,7 +524,8 @@ def _nonzero_kernel_incomplete_scan(block_size, warp_size=32):
                 j = j_next;
             }
         }
-    """).substitute(block_size=block_size, warp_size=warp_size)
+    """).substitute(block_size=block_size, warp_size=warp_size,
+                    full_mask=_full_mask_hex())
     return cupy.ElementwiseKernel(in_params, out_params, loop_body,
                                   'cupy_nonzero_kernel_incomplete_scan',
                                   loop_prep=loop_prep)
@@ -517,6 +545,12 @@ _nonzero_kernel = ElementwiseKernel(
 
 
 _take_kernel_core = '''
+using idx_t = decltype(a)::index_t;
+idx_t index_range = static_cast<idx_t>(index_range_);
+idx_t ldim = static_cast<idx_t>(ldim_);
+idx_t cdim = static_cast<idx_t>(cdim_);
+idx_t rdim = static_cast<idx_t>(rdim_);
+
 ptrdiff_t out_i = indices % index_range;
 if (out_i < 0) out_i += index_range;
 if (ldim != 1) out_i += (i / (cdim * rdim)) * index_range;
@@ -526,33 +560,43 @@ out = a[out_i];
 
 
 _take_kernel = ElementwiseKernel(
-    'raw T a, S indices, uint32 ldim, uint32 cdim, uint32 rdim, '
-    'int64 index_range',
+    'raw T a, S indices, int64 ldim_, int64 cdim_, int64 rdim_, '
+    'int64 index_range_',
     'T out', _take_kernel_core, 'cupy_take')
 
 
 _take_kernel_scalar = ElementwiseKernel(
-    'raw T a, int64 indices, uint32 ldim, uint32 cdim, uint32 rdim, '
-    'int64 index_range',
+    'raw T a, int64 indices, int64 ldim_, int64 cdim_, int64 rdim_, '
+    'int64 index_range_',
     'T out', _take_kernel_core, 'cupy_take_scalar')
 
 
 _choose_kernel = ElementwiseKernel(
-    'S a, raw T choices, int32 n_channel',
+    'S a, raw T choices, int64 n_channel',
     'T y',
-    'y = choices[i + n_channel * a]',
+    '''
+      using idx_t = decltype(choices)::index_t;
+      y = choices[i + static_cast<idx_t>(n_channel) * static_cast<idx_t>(a)];
+    ''',
     'cupy_choose')
 
 
 _choose_clip_kernel = ElementwiseKernel(
-    'S a, raw T choices, int32 n_channel, int32 n',
+    'S a, raw T choices, int64 n_channel_, int64 n_',
     'T y',
     '''
-      S x = a;
+      using idx_t = decltype(choices)::index_t;
+      idx_t n_channel = static_cast<idx_t>(n_channel_);
+      idx_t n = static_cast<idx_t>(n_);
+
+      idx_t x;
       if (a < 0) {
         x = 0;
       } else if (a >= n) {
         x = n - 1;
+      }
+      else {
+        x = static_cast<idx_t>(a);
       }
       y = choices[i + n_channel * x];
     ''',
@@ -563,12 +607,14 @@ cdef _put_raise_kernel = ElementwiseKernel(
     'S ind, raw T vals, int64 n_vals, int64 n',
     'raw U data, raw bool err',
     '''
+      using v_idx_t = decltype(vals)::index_t;
+
       ptrdiff_t ind_ = ind;
       if (!(-n <= ind_ && ind_ < n)) {
         err[0] = 1;
       } else {
         if (ind_ < 0) ind_ += n;
-        data[ind_] = (U)(vals[i % n_vals]);
+        data[ind_] = (U)(vals[i % static_cast<v_idx_t>(n_vals)]);
       }
     ''',
     'cupy_put_raise')
@@ -578,10 +624,12 @@ cdef _put_wrap_kernel = ElementwiseKernel(
     'S ind, raw T vals, int64 n_vals, int64 n',
     'raw U data',
     '''
+      using v_idx_t = decltype(vals)::index_t;
+
       ptrdiff_t ind_ = ind;
       ind_ %= n;
       if (ind_ < 0) ind_ += n;
-      data[ind_] = (U)(vals[i % n_vals]);
+      data[ind_] = (U)(vals[i % static_cast<v_idx_t>(n_vals)]);
     ''',
     'cupy_put_wrap')
 
@@ -590,28 +638,35 @@ cdef _put_clip_kernel = ElementwiseKernel(
     'S ind, raw T vals, int64 n_vals, int64 n',
     'raw U data',
     '''
+      using v_idx_t = decltype(vals)::index_t;
+
       ptrdiff_t ind_ = ind;
       if (ind_ < 0) {
         ind_ = 0;
       } else if (ind_ >= n) {
         ind_ = n - 1;
       }
-      data[ind_] = (U)(vals[i % n_vals]);
+      data[ind_] = (U)(vals[i % static_cast<v_idx_t>(n_vals)]);
     ''',
     'cupy_put_clip')
 
 
 cdef _create_scatter_kernel(name, code):
     return ElementwiseKernel(
-        'T v, S indices, int32 cdim, int32 rdim, int32 adim',
+        'T v, S indices, int64 cdim_, int64 rdim_, int64 adim_',
         'raw T a',
         string.Template('''
-            S wrap_indices = indices % adim;
+            using i_idx_t = decltype(i);
+            using a_idx_t = decltype(a)::index_t;
+            i_idx_t cdim = static_cast<i_idx_t>(cdim_);
+            a_idx_t rdim = static_cast<a_idx_t>(rdim_);
+            a_idx_t adim = static_cast<a_idx_t>(adim_);
+
+            a_idx_t wrap_indices = indices % adim;
             if (wrap_indices < 0) wrap_indices += adim;
-            ptrdiff_t li = i / (rdim * cdim);
-            ptrdiff_t ri = i % rdim;
+            a_idx_t li = i / (rdim * cdim);
+            a_idx_t ri = i % rdim;
             T &out0 = a[(li * adim + wrap_indices) * rdim + ri];
-            T &in0 = out0;
             const T &in1 = v;
             ${code};
         ''').substitute(code=code),
@@ -1010,10 +1065,12 @@ cdef _scatter_op(_ndarray_base a, slices, value, op):
     y = a
 
     if op == 'update':
-        if not isinstance(value, _ndarray_base):
+        x = _convert_from_cupy_like(value, error=False)
+        if x is None:
+            # Refuse assignment from CPU arrays, see gh-2079
             y.fill(value)
             return
-        x = value
+
         if (internal.vector_equal(y._shape, x._shape) and
                 internal.vector_equal(y._strides, x._strides)):
             if y.data.ptr == x.data.ptr:
@@ -1139,6 +1196,32 @@ cdef _ndarray_base _getitem_multiple(
     reduced_idx, start, stop = _prepare_multiple_array_indexing(
         a, start, slices)
     return _take(a, reduced_idx, start, stop)
+
+
+cdef _ndarray_base _getitem_fields(_ndarray_base a, str name):
+    cdef _ndarray_base v
+    try:
+        new_dtype, offset, *_ = a.dtype.fields[name]
+    except KeyError:
+        raise ValueError(f"no field name of {name}")
+
+    if new_dtype.shape:
+        # We do not attempt to check all of this ahead of time, so have to
+        # check it here.
+        raise ValueError(
+            "CuPy does not yet support accessing nested subarrays, "
+            "please open an issue if you need this support.")
+
+    # Subclasses are finalized before modifying the dtype here
+    v = a.view()
+    v.data = a.data + offset
+    v.dtype = new_dtype
+    v._update_contiguity()  # if it was contiguous it most likely is not now
+    internal.check_aligned(v)  # raise if it seems to be unaligned.
+
+    # TODO(seberg): For user convenience it would be nice to check alignment
+    # because NumPy often creates unaligned structs that are unusable here.
+    return v
 
 
 cdef _ndarray_base _add_reduceat(

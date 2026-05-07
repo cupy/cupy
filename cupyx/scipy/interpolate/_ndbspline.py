@@ -241,7 +241,7 @@ __global__ void store_nd_bsplines(
 """
 
 NDBSPL_MOD = cupy.RawModule(
-    code=NDBSPL_DEF, options=('-std=c++11',),
+    code=NDBSPL_DEF, options=('-std=c++17',),
     name_expressions=['compute_nd_bsplines', 'store_nd_bsplines'] +
                      [f'eval_nd_bspline<{t}>' for t in TYPES])
 

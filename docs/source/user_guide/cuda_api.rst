@@ -80,8 +80,10 @@ objects can also be used for synchronization.
 
 .. _CUDA Programming Guide: https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html
 
-To interoperate with streams created in other Python libraries, CuPy provides the :class:`~cupy.cuda.ExternalStream`
-API to wrap an existing stream pointer (given as a Python ``int``). See :doc:`interoperability` for details.
+To interoperate with streams created in other Python libraries, CuPy supports the CUDA Stream Protocol.
+Use :meth:`cupy.cuda.Stream.from_external` to create a CuPy stream from any stream object that implements
+the ``__cuda_stream__`` method. For legacy code, the :class:`~cupy.cuda.ExternalStream` API (deprecated since v14.0)
+can wrap an existing stream pointer (given as a Python ``int``). See :doc:`interoperability` for details.
 
 CUDA Driver and Runtime API
 ---------------------------

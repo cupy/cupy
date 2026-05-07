@@ -146,7 +146,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
     _max_arg_reduction_mod = _core.RawModule(
         code=string.Template(_argmax_argmin_code).substitute(
             func='max', op='>'),
-        options=('-std=c++11',),
         name_expressions=['max_arg_reduction<float, int>',
                           'max_arg_reduction<float, long long>',
                           'max_arg_reduction<double, int>',
@@ -155,7 +154,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
     _min_arg_reduction_mod = _core.RawModule(
         code=string.Template(_argmax_argmin_code).substitute(
             func='min', op='<'),
-        options=('-std=c++11',),
         name_expressions=['min_arg_reduction<float, int>',
                           'min_arg_reduction<float, long long>',
                           'min_arg_reduction<double, int>',
@@ -508,7 +506,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
     _fill_B = _core.RawModule(
         code=_fill_B_kernel,
-        options=('-std=c++11',),
+        options=('-std=c++17',),
         name_expressions=['fill_B<float>',
                           'fill_B<double>',
                           ],
@@ -559,7 +557,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
     _fill_B_complex = _core.RawModule(
         code=_fill_B_kernel_complex,
-        options=('-std=c++11',),
+        options=('-std=c++17',),
         name_expressions=['fill_B_complex<float>',
                           'fill_B_complex<double>',
                           ],
@@ -580,7 +578,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         Bp = cupy.empty(M + 1, dtype=cupy.int32)
         Bp[0] = 0
 
-        # Count occurences of each column
+        # Count occurrences of each column
         thread_count = 256
 
         block_count = (n_idx + thread_count - 1) // thread_count

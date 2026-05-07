@@ -11,7 +11,7 @@ from cupyx.tools import install_library
 import pytest
 
 
-_libraries = ['cudnn', 'nccl', 'cutensor']
+_libraries = ['nccl', 'cutensor']
 
 
 def _get_supported_cuda_versions(lib):
@@ -20,14 +20,6 @@ def _get_supported_cuda_versions(lib):
 
 
 class TestInstallLibrary:
-
-    @pytest.mark.skipif(
-        platform.machine() == "aarch64",
-        reason="FIXME")  # TODO(leofang)
-    @pytest.mark.parametrize('cuda', _get_supported_cuda_versions('cudnn'))
-    @testing.slow
-    def test_install_cudnn(self, cuda):
-        self._test_install('cudnn', cuda)
 
     @pytest.mark.skipif(
         platform.system() == 'Windows',
@@ -47,13 +39,16 @@ class TestInstallLibrary:
 
     def _test_install(self, library, cuda):
         system = platform.system()
+        arch = platform.uname().machine.lower()
+        if arch == "amd64":  # Windows
+            arch = "x86_64"
         for rec in install_library.library_records[library]:
             if rec['cuda'] != cuda:
                 continue
             version = rec[library]
-            filenames = rec['assets'][system]['filenames']
+            filenames = rec['assets'][f'{system}:{arch}']['filenames']
             with tempfile.TemporaryDirectory() as d:
-                install_library.install_lib(cuda, d, library)
+                install_library.install_lib(cuda, d, library, arch)
                 self._check_installed(
                     d, cuda, library, version, filenames)
             break

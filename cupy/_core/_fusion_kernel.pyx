@@ -42,12 +42,14 @@ def _cuda_compile(preamble, name, cuda_params, cuda_body, use_grid_sync):
         cuda_params=cuda_params,
         cuda_body=cuda_body)
 
-    # (For contributers) We can view the whole generated CUDA code
+    # (For contributors) We can view the whole generated CUDA code
     # by uncommenting the following line.
     # print(code)
 
     module = compile_with_cache(
-        code, (), None, None, True, 'nvrtc', False, use_grid_sync)
+        code, (), arch=None, prepend_cupy_headers=True,
+        backend='nvrtc', translate_cucomplex=False,
+        enable_cooperative_groups=use_grid_sync)
     return module.get_function(name)
 
 
@@ -82,11 +84,13 @@ cdef class FusedKernel:
         self._params = sorted(params, key=lambda x: x.serial_number)
         self._cuda_params_memo = {}
 
+        type_headers = set()
+
         # Generate the device functions.
         submodule_code = '\n\n'.join(set(itertools.chain.from_iterable([
             op.emit_preamble_codes() for op in op_list]))) + '\n\n'
         submodule_code += '\n\n'.join(itertools.chain.from_iterable([
-            op.emit_submodule_codes() for op in op_list]))
+            op.emit_submodule_codes(type_headers) for op in op_list]))
 
         # Generate the function body of a __global__ function.
         codes = []
@@ -100,7 +104,12 @@ cdef class FusedKernel:
         for i, op in enumerate(op_list):
             if i > 0:
                 codes.append('_cg::sync(_grid);')
-            codes.append(op.emit_code())
+            codes.append(op.emit_code(type_headers))
+
+        if type_headers:
+            # Insert parameter/type specific headers
+            submodule_code = (
+                "\n".join(sorted(type_headers)) + "\n\n" + submodule_code)
 
         self._submodule_code = submodule_code
         self._cuda_body = str(_codeblock.CodeBlock('', codes))
@@ -229,7 +238,7 @@ cdef class FusedKernel:
         ])
 
     cdef tuple _get_kernel_size(self, list ndarray_list):
-        """Calculate the numnber of contiguous blocks in non-reduction axes
+        """Calculate the number of contiguous blocks in non-reduction axes
         of input arrays, and set them to ``self._contiguous_size``.
         """
         cdef _ndarray_base in_array, out_array

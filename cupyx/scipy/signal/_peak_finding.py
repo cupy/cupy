@@ -70,6 +70,7 @@ PEAKS_KERNEL = r"""
 #include <cupy/math_constants.h>
 #include <cupy/carray.cuh>
 #include <cupy/complex.cuh>
+#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_headers?
 
 template<typename T>
 __global__ void local_maxima_1d(
@@ -306,7 +307,7 @@ __global__ void peak_widths<half>(
 """  # NOQA
 
 PEAKS_MODULE = cupy.RawModule(
-    code=PEAKS_KERNEL, options=('-std=c++11',),
+    code=PEAKS_KERNEL,
     name_expressions=[f'local_maxima_1d<{x}>' for x in TYPE_NAMES] +
     [f'peak_prominences<{x}>' for x in TYPE_NAMES] +
     [f'peak_widths<{x}>' for x in TYPE_NAMES])
@@ -316,6 +317,7 @@ ARGREL_KERNEL = r"""
 #include <cupy/math_constants.h>
 #include <cupy/carray.cuh>
 #include <cupy/complex.cuh>
+#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_headers?
 
 template<typename T>
 __device__ __forceinline__ bool less( const T &a, const T &b ) {
@@ -474,7 +476,7 @@ __global__ void boolrelextrema_2D( const int  in_x,
 
 
 ARGREL_MODULE = cupy.RawModule(
-    code=ARGREL_KERNEL, options=('-std=c++11',),
+    code=ARGREL_KERNEL,
     name_expressions=[f'boolrelextrema_1D<{x}>' for x in FLOAT_INT_NAMES] +
     [f'boolrelextrema_2D<{x}>' for x in FLOAT_INT_NAMES])
 

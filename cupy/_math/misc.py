@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import cupy
-import cupyx.scipy.fft
 
 from cupy import _core
 from cupy._core import _routines_math as _math
 from cupy._core import fusion
 from cupy.lib import stride_tricks
+from cupy._util import bf16_loop
 
 import numpy
 
@@ -80,7 +80,6 @@ def convolve(a, v, mode='full'):
 
 
 def _fft_convolve(a1, a2, mode):
-
     offset = 0
     if a1.shape[-1] < a2.shape[-1]:
         a1, a2 = a2, a1
@@ -94,6 +93,7 @@ def _fft_convolve(a1, a2, mode):
 
     dtype = cupy.result_type(a1, a2)
     n1, n2 = a1.shape[-1], a2.shape[-1]
+    import cupyx.scipy.fft
     out_size = cupyx.scipy.fft.next_fast_len(n1 + n2 - 1)
     fa1 = fft(a1, out_size)
     fa2 = fft(a2, out_size)
@@ -185,7 +185,7 @@ sqrt = sqrt_fixed = _core.sqrt
 
 cbrt = _core.create_ufunc(
     'cupy_cbrt',
-    ('e->e', 'f->f', 'd->d'),
+    ('e->e', *bf16_loop(), 'f->f', 'd->d'),
     'out0 = cbrt(in0)',
     doc='''Elementwise cube root function.
 
@@ -197,7 +197,7 @@ cbrt = _core.create_ufunc(
 square = _core.create_ufunc(
     'cupy_square',
     ('b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L', 'q->q',
-     'Q->Q', 'e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
+     'Q->Q', 'e->e', *bf16_loop(), 'f->f', 'd->d', 'F->F', 'D->D'),
     'out0 = in0 * in0',
     doc='''Elementwise square function.
 
@@ -211,7 +211,7 @@ absolute = _core.absolute
 
 fabs = _core.create_ufunc(
     'cupy_fabs',
-    ('e->e', 'f->f', 'd->d'),
+    ('e->e', *bf16_loop(), 'f->f', 'd->d'),
     'out0 = abs(in0)',
     doc='''Calculates absolute values element-wise.
     Only real values are handled.
@@ -229,7 +229,8 @@ sign = _core.create_ufunc(
     'cupy_sign',
     ('b->b', ('B->B', _unsigned_sign), 'h->h', ('H->H', _unsigned_sign),
      'i->i', ('I->I', _unsigned_sign), 'l->l', ('L->L', _unsigned_sign),
-     'q->q', ('Q->Q', _unsigned_sign), 'e->e', 'f->f', 'd->d',
+     'q->q', ('Q->Q', _unsigned_sign),
+     'e->e', *bf16_loop(), 'f->f', 'd->d',
      ('F->F', _complex_sign), ('D->D', _complex_sign)),
     'out0 = (in0 > 0) - (in0 < 0)',
     doc='''Elementwise sign function.
@@ -254,7 +255,8 @@ _legacy_sign = _core.create_ufunc(
     'cupy_sign',
     ('b->b', ('B->B', _unsigned_sign), 'h->h', ('H->H', _unsigned_sign),
      'i->i', ('I->I', _unsigned_sign), 'l->l', ('L->L', _unsigned_sign),
-     'q->q', ('Q->Q', _unsigned_sign), 'e->e', 'f->f', 'd->d',
+     'q->q', ('Q->Q', _unsigned_sign),
+     'e->e', *bf16_loop(), 'f->f', 'd->d',
      ('F->F', _legacy_complex_sign), ('D->D', _legacy_complex_sign)),
     'out0 = (in0 > 0) - (in0 < 0)'
 )
@@ -262,7 +264,7 @@ _legacy_sign = _core.create_ufunc(
 
 heaviside = _core.create_ufunc(
     'cupy_heaviside',
-    ('ee->e', 'ff->f', 'dd->d'),
+    ('ee->e', *bf16_loop(2), 'ff->f', 'dd->d'),
     '''
     if (isnan(in0)) {
         out0 = in0;
@@ -292,6 +294,7 @@ maximum = _core.create_ufunc(
     ('??->?', 'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
      'LL->L', 'qq->q', 'QQ->Q',
      ('ee->e', _float_maximum),
+     *bf16_loop(2, code=_float_maximum),
      ('ff->f', _float_maximum),
      ('dd->d', _float_maximum),
      ('FF->F', _float_maximum),
@@ -315,6 +318,7 @@ minimum = _core.create_ufunc(
     ('??->?', 'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
      'LL->L', 'qq->q', 'QQ->Q',
      ('ee->e', _float_minimum),
+     *bf16_loop(2, code=_float_minimum),
      ('ff->f', _float_minimum),
      ('dd->d', _float_minimum),
      ('FF->F', _float_minimum),
@@ -336,6 +340,7 @@ fmax = _core.create_ufunc(
     ('??->?', 'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
      'LL->L', 'qq->q', 'QQ->Q',
      ('ee->e', 'out0 = fmax(in0, in1)'),
+     *bf16_loop(2, code='out0 = fmax(in0, in1)'),
      ('ff->f', 'out0 = fmax(in0, in1)'),
      ('dd->d', 'out0 = fmax(in0, in1)'),
      'FF->F', 'DD->D'),
@@ -354,6 +359,7 @@ fmin = _core.create_ufunc(
     ('??->?', 'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
      'LL->L', 'qq->q', 'QQ->Q',
      ('ee->e', 'out0 = fmin(in0, in1)'),
+     *bf16_loop(2, code='out0 = fmin(in0, in1)'),
      ('ff->f', 'out0 = fmin(in0, in1)'),
      ('dd->d', 'out0 = fmin(in0, in1)'),
      'FF->F', 'DD->D'),
@@ -392,6 +398,7 @@ _nan_to_num = _core.create_ufunc(
      'iiii->i', 'IIII->I', 'llll->l', 'LLLL->L', 'qqqq->q', 'QQQQ->Q',
      ('eeee->e',
       'out0 = nan_to_num(in0, in1, in2, in3)'),
+     *bf16_loop(4, 1, code='out0 = nan_to_num(in0, in1, in2, in3)'),
      ('ffff->f',
       'out0 = nan_to_num(in0, in1, in2, in3)'),
      ('dddd->d',
@@ -484,6 +491,7 @@ def _get_interp_kernel(is_complex):
             y = fy[len - 1];
         }
         else if (x_idx >= len - 1) { y = right[0]; }
+        else if (x[i] == fx[x_idx]) { y = fy[x_idx]; }
         else {
             const Z slope = (value_t)(fy[x_idx+1] - fy[x_idx]) / \
                             ((real_t)fx[x_idx+1] - (real_t)fx[x_idx]);

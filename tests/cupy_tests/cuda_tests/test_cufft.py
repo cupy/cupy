@@ -12,7 +12,7 @@ from cupy.cuda import cufft
 from cupy.fft import config
 from cupy.fft._fft import _convert_fft_type
 
-from ..fft_tests.test_fft import (multi_gpu_config, _skip_multi_gpu_bug)
+from ..fft_tests.test_fft import multi_gpu_config
 
 
 class TestExceptionPicklable(unittest.TestCase):
@@ -38,8 +38,6 @@ class TestMultiGpuPlan1dNumPy(unittest.TestCase):
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
     @testing.for_complex_dtypes()
     def test_fft(self, dtype):
-        _skip_multi_gpu_bug(self.shape, self.gpus)
-
         a = testing.shaped_random(self.shape, numpy, dtype)
 
         if len(self.shape) == 1:
@@ -51,7 +49,7 @@ class TestMultiGpuPlan1dNumPy(unittest.TestCase):
 
         # compute via cuFFT
         cufft_type = _convert_fft_type(a.dtype, 'C2C')
-        plan = cufft.Plan1d(nx, cufft_type, batch, devices=config._devices)
+        plan = cufft.Plan1d(nx, cufft_type, batch, devices=config.devices)
         out_cp = numpy.empty_like(a)
         plan.fft(a, out_cp, cufft.CUFFT_FORWARD)
 
@@ -70,8 +68,6 @@ class TestMultiGpuPlan1dNumPy(unittest.TestCase):
     @multi_gpu_config(gpu_configs=[[0, 1], [1, 0]])
     @testing.for_complex_dtypes()
     def test_ifft(self, dtype):
-        _skip_multi_gpu_bug(self.shape, self.gpus)
-
         a = testing.shaped_random(self.shape, numpy, dtype)
 
         if len(self.shape) == 1:
@@ -83,7 +79,7 @@ class TestMultiGpuPlan1dNumPy(unittest.TestCase):
 
         # compute via cuFFT
         cufft_type = _convert_fft_type(a.dtype, 'C2C')
-        plan = cufft.Plan1d(nx, cufft_type, batch, devices=config._devices)
+        plan = cufft.Plan1d(nx, cufft_type, batch, devices=config.devices)
         out_cp = numpy.empty_like(a)
         plan.fft(a, out_cp, cufft.CUFFT_INVERSE)
         # normalization

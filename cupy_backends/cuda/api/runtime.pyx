@@ -18,7 +18,6 @@ cimport cpython  # NOQA
 cimport cython  # NOQA
 
 from cupy_backends.cuda.api cimport driver  # NOQA
-from cupy_backends.cuda.libs cimport nvrtc  # no-cython-lint
 
 
 ###############################################################################
@@ -75,7 +74,8 @@ cdef class _ThreadLocal:
 include '_runtime_softlink.pxi'
 
 IF CUPY_USE_CUDA_PYTHON:
-    from cuda.ccudart cimport *
+    # this means CUPY_CUDA_VERSION >= 12000
+    from cuda.bindings.cyruntime cimport *
 ELSE:
     include '_runtime_extern.pxi'
     pass  # for cython-lint
@@ -164,16 +164,8 @@ cpdef int runtimeGetVersion() except? -1:
     """
 
     cdef int version
-    IF CUPY_USE_CUDA_PYTHON:
-        # Workarounds an issue that cuda-python returns its version instead of
-        # the real runtime version.
-        # https://github.com/NVIDIA/cuda-python/issues/16
-        cdef int major, minor
-        (major, minor) = nvrtc.getVersion()
-        version = major * 1000 + minor * 10
-    ELSE:
-        status = cudaRuntimeGetVersion(&version)
-        check_status(status)
+    status = cudaRuntimeGetVersion(&version)
+    check_status(status)
     return version
 
 
@@ -225,11 +217,11 @@ cpdef getDeviceProperties(int device):
         computeMode = deviceGetAttribute(cudaDevAttrComputeMode, device)
         cooperativeMultiDeviceLaunch = False
     ELSE:
-        clockRate = props.clockRate
-        kernelExecTimeoutEnabled = props.kernelExecTimeoutEnabled
-        memoryClockRate = props.memoryClockRate
-        computeMode = props.computeMode
-        cooperativeMultiDeviceLaunch = props.cooperativeMultiDeviceLaunch
+        clockRate = props.clockRate  # no-cython-lint
+        kernelExecTimeoutEnabled = props.kernelExecTimeoutEnabled  # no-cython-lint
+        memoryClockRate = props.memoryClockRate  # no-cython-lint
+        computeMode = props.computeMode  # no-cython-lint
+        cooperativeMultiDeviceLaunch = props.cooperativeMultiDeviceLaunch  # no-cython-lint
 
     IF CUPY_CUDA_VERSION > 0 or CUPY_HIP_VERSION > 0:
         properties = {
@@ -734,8 +726,8 @@ cpdef memPrefetchAsync(intptr_t devPtr, size_t count, int dstDevice,
     ELSE:
         cdef _MemLocation loc_c
         c_memset(&loc_c, 0, sizeof(_MemLocation))
-        loc_c.location.type = cudaMemLocationTypeDevice
-        loc_c.location.id = dstDevice
+        loc_c.type = <MemLocationType>cudaMemLocationTypeDevice
+        loc_c.id = dstDevice
         with nogil:
             status = cudaMemPrefetchAsync(<void*>devPtr, count,
                                           loc_c, 0,
@@ -752,8 +744,8 @@ cpdef memAdvise(intptr_t devPtr, size_t count, int advice, int device):
     ELSE:
         cdef _MemLocation loc_c
         c_memset(&loc_c, 0, sizeof(_MemLocation))
-        loc_c.location.type = cudaMemLocationTypeDevice
-        loc_c.location.id = device
+        loc_c.type = <MemLocationType>cudaMemLocationTypeDevice
+        loc_c.id = device
         with nogil:
             status = cudaMemAdvise(<void*>devPtr, count,
                                    <MemoryAdvise>advice, loc_c)
@@ -883,14 +875,16 @@ cpdef memPoolSetAttribute(intptr_t pool, int attr, object value):
 
 cpdef intptr_t streamCreate() except? 0:
     cdef driver.Stream stream
-    status = cudaStreamCreate(&stream)
+    with nogil:
+        status = cudaStreamCreate(&stream)
     check_status(status)
     return <intptr_t>stream
 
 
 cpdef intptr_t streamCreateWithFlags(unsigned int flags) except? 0:
     cdef driver.Stream stream
-    status = cudaStreamCreateWithFlags(&stream, flags)
+    with nogil:
+        status = cudaStreamCreateWithFlags(&stream, flags)
     check_status(status)
     return <intptr_t>stream
 
@@ -898,7 +892,8 @@ cpdef intptr_t streamCreateWithFlags(unsigned int flags) except? 0:
 cpdef intptr_t streamCreateWithPriority(unsigned int flags,
                                         int priority) except? 0:
     cdef driver.Stream stream
-    status = cudaStreamCreateWithPriority(&stream, flags, priority)
+    with nogil:
+        status = cudaStreamCreateWithPriority(&stream, flags, priority)
     check_status(status)
     return <intptr_t>stream
 
@@ -918,7 +913,8 @@ cpdef int streamGetPriority(intptr_t stream) except? 0:
 
 
 cpdef streamDestroy(intptr_t stream):
-    status = cudaStreamDestroy(<driver.Stream>stream)
+    with nogil:
+        status = cudaStreamDestroy(<driver.Stream>stream)
     check_status(status)
 
 
@@ -928,32 +924,32 @@ cpdef streamSynchronize(intptr_t stream):
     check_status(status)
 
 
-cdef _streamCallbackFunc(driver.Stream hStream, int status,
-                         void* func_arg) with gil:
-    obj = <object>func_arg
-    func, arg = obj
-    func(<intptr_t>hStream, status, arg)
-    cpython.Py_DECREF(obj)
+cdef void _streamCallbackFunc(driver.Stream hStream, int status,
+                              void* func_arg) nogil noexcept:
+    with gil:
+        obj = <object>func_arg
+        cpython.Py_DECREF(obj)
+        func, arg = obj
+        func(<intptr_t>hStream, status, arg)
 
 
-cdef _HostFnFunc(void* func_arg) with gil:
-    obj = <object>func_arg
-    func, arg = obj
-    func(arg)
-    cpython.Py_DECREF(obj)
+cdef void _HostFnFunc(void* func_arg) nogil noexcept:
+    with gil:
+        obj = <object>func_arg
+        cpython.Py_DECREF(obj)
+        func, arg = obj
+        func(arg)
 
 
-cdef _HostFnFuncUnmanaged(void* func_arg) with gil:
-    obj = <object>func_arg
-    func, arg = obj
-    func(arg)
+cdef void _HostFnFuncUnmanaged(void* func_arg) nogil noexcept:
+    with gil:
+        obj = <object>func_arg
+        func, arg = obj
+        func(arg)
 
 
 cpdef streamAddCallback(intptr_t stream, callback, intptr_t arg,
                         unsigned int flags=0):
-    if _is_hip_environment and stream == 0:
-        raise RuntimeError('HIP does not allow adding callbacks to the '
-                           'default (null) stream')
     func_arg = (callback, arg)
     cpython.Py_INCREF(func_arg)
     with nogil:
@@ -968,8 +964,6 @@ cpdef launchHostFunc(intptr_t stream, callback, intptr_t arg):
     # capture, as the reference to the callback/arg will be DECREFed on the
     # first callback.
     # Eventually this should be replaced by `_launchHostFuncUnmanaged`.
-    if _is_hip_environment:
-        raise RuntimeError('This feature is not supported on HIP')
 
     func_arg = (callback, arg)
     cpython.Py_INCREF(func_arg)
@@ -1006,8 +1000,6 @@ cpdef streamWaitEvent(intptr_t stream, intptr_t event, unsigned int flags=0):
 
 
 cpdef streamBeginCapture(intptr_t stream, int mode=streamCaptureModeRelaxed):
-    if _is_hip_environment:
-        raise RuntimeError('streamBeginCapture is not supported in ROCm')
     # TODO(leofang): check and raise if stream == 0?
     with nogil:
         status = cudaStreamBeginCapture(<driver.Stream>stream,
@@ -1018,8 +1010,6 @@ cpdef streamBeginCapture(intptr_t stream, int mode=streamCaptureModeRelaxed):
 cpdef intptr_t streamEndCapture(intptr_t stream) except? 0:
     # TODO(leofang): check and raise if stream == 0?
     cdef Graph g
-    if _is_hip_environment:
-        raise RuntimeError('streamEndCapture is not supported in ROCm')
     with nogil:
         status = cudaStreamEndCapture(<driver.Stream>stream, &g)
     check_status(status)
@@ -1028,8 +1018,6 @@ cpdef intptr_t streamEndCapture(intptr_t stream) except? 0:
 
 cpdef bint streamIsCapturing(intptr_t stream) except*:
     cdef StreamCaptureStatus s
-    if _is_hip_environment:
-        raise RuntimeError('streamIsCapturing is not supported in ROCm')
     with nogil:
         status = cudaStreamIsCapturing(<driver.Stream>stream, &s)
     check_status(status)  # cudaErrorStreamCaptureImplicit could be raised here
@@ -1041,25 +1029,30 @@ cpdef bint streamIsCapturing(intptr_t stream) except*:
 
 cpdef intptr_t eventCreate() except? 0:
     cdef driver.Event event
-    status = cudaEventCreate(&event)
+    with nogil:
+        status = cudaEventCreate(&event)
     check_status(status)
     return <intptr_t>event
 
 cpdef intptr_t eventCreateWithFlags(unsigned int flags) except? 0:
     cdef driver.Event event
-    status = cudaEventCreateWithFlags(&event, flags)
+    with nogil:
+        status = cudaEventCreateWithFlags(&event, flags)
     check_status(status)
     return <intptr_t>event
 
 
 cpdef eventDestroy(intptr_t event):
-    status = cudaEventDestroy(<driver.Event>event)
+    with nogil:
+        status = cudaEventDestroy(<driver.Event>event)
     check_status(status)
 
 
 cpdef float eventElapsedTime(intptr_t start, intptr_t end) except? 0:
     cdef float ms
-    status = cudaEventElapsedTime(&ms, <driver.Event>start, <driver.Event>end)
+    with nogil:
+        status = cudaEventElapsedTime(
+            &ms, <driver.Event>start, <driver.Event>end)
     check_status(status)
     return ms
 
@@ -1069,7 +1062,8 @@ cpdef eventQuery(intptr_t event):
 
 
 cpdef eventRecord(intptr_t event, intptr_t stream):
-    status = cudaEventRecord(<driver.Event>event, <driver.Stream>stream)
+    with nogil:
+        status = cudaEventRecord(<driver.Event>event, <driver.Stream>stream)
     check_status(status)
 
 
@@ -1178,9 +1172,13 @@ cpdef graphExecDestroy(intptr_t graphExec):
 cpdef intptr_t graphInstantiate(intptr_t graph) except? 0:
     # TODO(leofang): support reporting error log?
     cdef GraphExec ge
-    with nogil:
-        status = cudaGraphInstantiate(<GraphExec*>(&ge), <Graph>graph,
-                                      NULL, NULL, 0)
+    IF CUPY_HIP_VERSION > 0 or 12000 > CUPY_CUDA_VERSION > 0:
+        with nogil:
+            status = cudaGraphInstantiate(<GraphExec*>(&ge), <Graph>graph,
+                                          NULL, NULL, 0)
+    ELSE:
+        with nogil:
+            status = cudaGraphInstantiate(<GraphExec*>(&ge), <Graph>graph, 0)
     check_status(status)
     return <intptr_t>ge
 

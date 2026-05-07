@@ -2976,7 +2976,7 @@ RealType*           coords
 """
 
 DELAUNAY_MODULE = cupy.RawModule(
-    code=KERNEL_DIVISION, options=('-std=c++11', '-w',),
+    code=KERNEL_DIVISION, options=('-std=c++17', '-w',),
     name_expressions=['kerMakeFirstTri', 'kerInitPointLocationFast',
                       'kerInitPointLocationExact', 'kerVoteForPoint',
                       'kerPickWinnerPoint', 'kerShiftValues<Tri>',

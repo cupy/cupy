@@ -6,6 +6,7 @@ import numpy
 
 import cupy
 from cupy import _core
+from cupy._util import bf16_loop
 
 
 def arange(start, stop=None, step=1, dtype=None):
@@ -280,7 +281,7 @@ def meshgrid(*xi, **kwargs):
             into the original arrays are returned. Default is ``True``.
 
     Returns:
-        list of cupy.ndarray
+        tuple of cupy.ndarray
 
     .. seealso:: :func:`numpy.meshgrid`
 
@@ -301,7 +302,7 @@ def meshgrid(*xi, **kwargs):
         if not isinstance(x, cupy.ndarray):
             raise ValueError('input has to be cupy.ndarray')
     if len(xi) <= 1:
-        return list(xi)
+        return tuple(xi)
 
     meshes = []
     for i, x in enumerate(xi):
@@ -325,7 +326,7 @@ def meshgrid(*xi, **kwargs):
     if copy:
         for i in range(len(meshes_br)):
             meshes_br[i] = meshes_br[i].copy()
-    return meshes_br
+    return tuple(meshes_br)
 
 
 class nd_grid:
@@ -428,7 +429,7 @@ ogrid = nd_grid(sparse=True)
 _arange_ufunc = _core.create_ufunc(
     'cupy_arange',
     ('bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l', 'LL->L',
-     'qq->q', 'QQ->Q', 'ee->e', 'ff->f', 'dd->d',
+     'qq->q', 'QQ->Q', 'ee->e', *bf16_loop(2), 'ff->f', 'dd->d',
      ('FF->F', 'out0 = in0 + float(i) * in1'),
      ('DD->D', 'out0 = in0 + double(i) * in1')),
     'out0 = in0 + i * in1')

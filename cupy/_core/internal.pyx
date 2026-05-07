@@ -3,24 +3,17 @@
 cimport cpython  # NOQA
 cimport cython  # NOQA
 from libcpp cimport bool as cpp_bool
-from libc.stdint cimport uint32_t
+from libc.stdint cimport intptr_t
 
 import warnings
 
 import numpy
 from cupy.exceptions import AxisError
 
-from cupy._core.core cimport _ndarray_base
-
-
-cdef extern from 'halffloat.h':
-    uint16_t npy_floatbits_to_halfbits(uint32_t f)
-    uint32_t npy_halfbits_to_floatbits(uint16_t h)
-
 
 @cython.profile(False)
-cpdef inline Py_ssize_t prod(const vector.vector[Py_ssize_t]& args):
-    cdef Py_ssize_t n = 1
+cpdef inline Py_ssize_t prod(const vector.vector[Py_ssize_t]& args) noexcept:
+    cdef Py_ssize_t i, n = 1
     for i in range(args.size()):
         n *= args[i]
     return n
@@ -35,7 +28,8 @@ cpdef inline Py_ssize_t prod_sequence(object args):
 
 
 @cython.profile(False)
-cpdef inline bint is_in(const vector.vector[Py_ssize_t]& args, Py_ssize_t x):
+cpdef inline bint is_in(
+        const vector.vector[Py_ssize_t]& args, Py_ssize_t x) noexcept:
     cdef Py_ssize_t i
     for i in range(<Py_ssize_t>args.size()):
         if args[i] == x:
@@ -78,7 +72,7 @@ cpdef inline tuple get_size(object size):
 @cython.profile(False)
 cpdef inline bint vector_equal(
         const vector.vector[Py_ssize_t]& x,
-        const vector.vector[Py_ssize_t]& y):
+        const vector.vector[Py_ssize_t]& y) noexcept:
     cdef Py_ssize_t n = x.size()
     if n != <Py_ssize_t>y.size():
         return False
@@ -89,15 +83,15 @@ cpdef inline bint vector_equal(
 
 
 @cython.profile(False)
-cdef void get_reduced_dims(
+cdef int get_reduced_dims(
         shape_t& shape, strides_t& strides, Py_ssize_t itemsize,
-        shape_t& reduced_shape, strides_t& reduced_strides):
+        shape_t& reduced_shape, strides_t& reduced_strides) except -1:
     cdef Py_ssize_t i, ndim, sh, st, prev_st, index
     ndim = shape.size()
     reduced_shape.clear()
     reduced_strides.clear()
     if ndim == 0:
-        return
+        return 0
     reduced_shape.reserve(ndim)
     reduced_strides.reserve(ndim)
 
@@ -108,7 +102,7 @@ cdef void get_reduced_dims(
         if sh == 0:
             reduced_shape.assign(1, 0)
             reduced_strides.assign(1, itemsize)
-            return
+            return 0
         if sh == 1:
             continue
         st = strides[i]
@@ -124,8 +118,8 @@ cdef void get_reduced_dims(
 
 @cython.profile(False)
 cdef inline Py_ssize_t get_contiguous_strides_inplace(
-        const shape_t& shape, strides_t& strides,
-        Py_ssize_t itemsize, bint is_c_contiguous, bint zeros_for_zerosize):
+        const shape_t& shape, strides_t& strides, Py_ssize_t itemsize,
+        bint is_c_contiguous, bint zeros_for_zerosize) except -1:
     cdef Py_ssize_t st, sh
     cdef Py_ssize_t is_nonzero_size = 1
     cdef int i, ndim = shape.size()
@@ -163,7 +157,7 @@ cdef inline Py_ssize_t get_contiguous_strides_inplace(
 
 @cython.profile(False)
 cpdef inline bint get_c_contiguity(
-        shape_t& shape, strides_t& strides, Py_ssize_t itemsize):
+        shape_t& shape, strides_t& strides, Py_ssize_t itemsize) noexcept:
     cdef Py_ssize_t i, prev_i, ndim, sh, st, index
     ndim = strides.size()
     if ndim == 0 or (ndim == 1 and strides[0] == itemsize):
@@ -293,7 +287,7 @@ cpdef tuple complete_slice_list(list slice_list, Py_ssize_t ndim):
 
 
 @cython.profile(False)
-cpdef size_t clp2(size_t x):
+cpdef size_t clp2(size_t x) noexcept:
     x -= 1
     x |= x >> 1
     x |= x >> 2
@@ -302,23 +296,6 @@ cpdef size_t clp2(size_t x):
     x |= x >> 16
     x |= x >> 32
     return x + 1
-
-
-cdef union float32_int:
-    uint32_t n
-    float f
-
-
-cpdef uint16_t to_float16(float f):
-    cdef float32_int c
-    c.f = f
-    return npy_floatbits_to_halfbits(c.n)
-
-
-cpdef float from_float16(uint16_t v):
-    cdef float32_int c
-    c.n = npy_halfbits_to_floatbits(v)
-    return c.f
 
 
 @cython.profile(False)
@@ -393,12 +370,15 @@ cdef _broadcast_core(list arrays, shape_t& shape):
                 strides[j + nd - a_ndim] = a._strides[j]
 
         # TODO(niboshi): Confirm update_x_contiguity flags
-        arrays[i] = a._view(type(a), shape, strides, True, True, a)
+        a = a._view(type(a), shape, strides, True, True, a)
+        if a.size * a.itemsize > 2**31:
+            a._index_32_bits = False
+        arrays[i] = a
 
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cpdef bint _contig_axes(tuple axes):
+cpdef bint _contig_axes(tuple axes) except -1:
     # Indicate if the specified axes are in ascending order without gaps.
     cdef Py_ssize_t n
     cdef int n_ax = len(axes)
@@ -470,7 +450,7 @@ cpdef tuple _normalize_axis_indices(
     return tuple(sorted(res) if sort_axes else res)
 
 
-cpdef strides_t _get_strides_for_order_K(x, dtype, shape=None):
+cpdef strides_t _get_strides_for_order_K(x, dtype, shape=None) except *:
     # x here can be either numpy.ndarray or cupy.ndarray
     cdef strides_t strides
     # strides used when order='K' for astype, empty_like, etc.
@@ -489,7 +469,7 @@ cpdef strides_t _get_strides_for_order_K(x, dtype, shape=None):
 
 
 cpdef int _update_order_char(
-        bint is_c_contiguous, bint is_f_contiguous, int order_char):
+        bint is_c_contiguous, bint is_f_contiguous, int order_char) noexcept:
     # update order_char based on array contiguity
     if order_char == b'A':
         if is_f_contiguous and not is_c_contiguous:
@@ -547,3 +527,37 @@ cdef bint _is_layout_expected(
         return True
     else:
         return False
+
+
+cdef bint check_aligned(_ndarray_base arr) except -1:
+    """Check if an array is aligned with its dtype. We usually assume
+    that this is the case, since cuda allocations are aligned.
+
+    NOTE: We currently assume structured dtypes are always aligned for lack
+    of a clearer definition of what it means for them to be aligned.
+    """
+    cdef Py_ssize_t itemsize = arr.dtype.itemsize
+    cdef Py_ssize_t pow_2_mask = itemsize - 1
+    cdef Py_ssize_t i
+
+    if arr.dtype.char == "V":
+        return True
+
+    # all basic types have a power of two itemsize, we use this fact.
+    assert (itemsize & pow_2_mask) == 0 and itemsize != 0
+
+    for i in range(arr.ndim):
+        if arr._shape[i] == 0:
+            return True  # Empty array so alignment is meaningles enough.
+        if arr._strides[i] & pow_2_mask:
+            break
+    else:
+        # Strides were all OK, check pointer as well.
+        if (<intptr_t>arr.data.ptr & <intptr_t>pow_2_mask) == 0:
+            return True
+
+    raise ValueError(
+        f"result array with dtype {arr.dtype} would not be sufficiently "
+        "aligned for GPU operations. When using structured dtypes you must "
+        "manually align the dtype and its fields; CuPy may provide "
+        "utilities for this in the future.")

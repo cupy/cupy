@@ -25,15 +25,6 @@ DLPack helper
 
    cupy.fromDlpack
 
-Time range
-----------
-
-.. autosummary::
-   :toctree: generated/
-
-   cupy.prof.TimeRangeDecorator
-   cupy.prof.time_range
-
 Timing helper
 -------------
 

@@ -1,4 +1,4 @@
-// This file is a stub header file of cudnn for Read the Docs.
+// This file is a stub header file of cusolver for Read the Docs.
 
 #ifndef INCLUDE_GUARD_STUB_CUPY_CUSOLVER_H
 #define INCLUDE_GUARD_STUB_CUPY_CUSOLVER_H

@@ -6,6 +6,7 @@ import cupy
 from cupy.exceptions import AxisError
 from cupy._core._scalar import get_typename as _get_typename
 from cupy._core._ufuncs import elementwise_copy
+from cupy._core._kernel cimport _full_mask_hex
 import cupy._core.core as core
 from cupy import _util
 from cupy.cuda import thrust
@@ -35,6 +36,9 @@ cdef _ndarray_sort(_ndarray_base self, int axis):
                                   'supported.')
 
     axis = internal._normalize_axis_index(axis, ndim)
+
+    if self._shape[axis] <= 1:
+        return  # already sorted (#9816)
 
     if axis == ndim - 1:
         data = self
@@ -305,8 +309,15 @@ cdef _ndarray_base _ndarray_argpartition(self, kth, axis):
 def _partition_kernel(dtype):
     name = 'partition_kernel'
     merge_kernel = 'partition_merge_kernel'
-    dtype = _get_typename(dtype)
+    type_headers = set()
+    dtype = _get_typename(dtype, type_headers)
+    if not type_headers:
+        type_headers = ''
+    else:
+        type_headers = '\n'.join(sorted(type_headers)) + "\n\n"
+
     source = string.Template('''
+    ${type_headers}
     template<typename T>
     __device__ void bitonic_sort_step(CArray<T, 1, true> a,
             ptrdiff_t x, ptrdiff_t y, int i, ptrdiff_t s, ptrdiff_t w) {
@@ -380,7 +391,7 @@ def _partition_kernel(dtype):
             // If at least one thread in the warp has found t values that
             // can be selected, we update the first k elements.
     #if __CUDACC_VER_MAJOR__ >= 9
-            if (__any_sync(0xffffffff, x >= t)) {
+            if (__any_sync(${full_mask}, x >= t)) {
     #else
             if (__any(x >= t)) {
     #endif
@@ -411,7 +422,9 @@ def _partition_kernel(dtype):
         merge< ${dtype} >(a, k, id, z, m, k);
     }
     }
-    ''').substitute(name=name, merge_kernel=merge_kernel, dtype=dtype)
+    ''').substitute(name=name, merge_kernel=merge_kernel, dtype=dtype,
+                    type_headers=type_headers,
+                    full_mask=_full_mask_hex())
     module = compile_with_cache(source)
     return module.get_function(name), module.get_function(merge_kernel)
 
@@ -420,8 +433,15 @@ def _partition_kernel(dtype):
 def _argpartition_kernel(dtype):
     name = 'argpartition_kernel'
     merge_kernel = 'argpartition_merge_kernel'
-    dtype = _get_typename(dtype)
+    type_headers = set()
+    dtype = _get_typename(dtype, type_headers)
+    if not type_headers:
+        type_headers = ''
+    else:
+        type_headers = '\n'.join(sorted(type_headers)) + "\n\n"
+
     source = string.Template('''
+    ${type_headers}
     template<typename T>
     __device__ void bitonic_sort_step(
             CArray<T, 1, true> a, CArray<long long, 1, true> b,
@@ -498,7 +518,7 @@ def _argpartition_kernel(dtype):
             // If at least one thread in the warp has found t values that
             // can be selected, we update the first k elements.
     #if __CUDACC_VER_MAJOR__ >= 9
-            if (__any_sync(0xffffffff, x >= t)) {
+            if (__any_sync(${full_mask}, x >= t)) {
     #else
             if (__any(x >= t)) {
     #endif
@@ -530,6 +550,8 @@ def _argpartition_kernel(dtype):
         merge< ${dtype} >(a, b, k, id, z, m, k);
     }
     }
-    ''').substitute(name=name, merge_kernel=merge_kernel, dtype=dtype)
+    ''').substitute(name=name, merge_kernel=merge_kernel, dtype=dtype,
+                    type_headers=type_headers,
+                    full_mask=_full_mask_hex())
     module = compile_with_cache(source)
     return module.get_function(name), module.get_function(merge_kernel)

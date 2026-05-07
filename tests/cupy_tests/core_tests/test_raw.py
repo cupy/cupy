@@ -8,6 +8,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
 from unittest import mock
 
@@ -18,6 +19,7 @@ from cupy import testing
 from cupy import _util
 from cupy._core import _accelerator
 from cupy.cuda import compiler
+from cupy.cuda import _compiler_cache
 from cupy.cuda import memory
 from cupy_backends.cuda.libs import nvrtc
 
@@ -352,11 +354,13 @@ extern "C" __global__ void my_func(void* input, int N) {
 
 @contextlib.contextmanager
 def use_temporary_cache_dir():
-    target1 = 'cupy.cuda.compiler.get_cache_dir'
+    # Note uses mock, so not thread-safe (except at class/method level)
+    # tempdir fixture could be used instead.
+    target1 = 'cupy.cuda.compiler._kernel_cache_backend'
     target2 = 'cupy.cuda.compiler._empty_file_preprocess_cache'
     temp_cache = {}
     with tempfile.TemporaryDirectory() as path:
-        with mock.patch(target1, lambda: path):
+        with mock.patch(target1, _compiler_cache.DiskKernelCacheBackend(path)):
             with mock.patch(target2, temp_cache):
                 yield path
 
@@ -386,9 +390,8 @@ def find_nvcc_ver():
     nvcc_ver_pattern = r'release (\d+\.\d+)'
     cmd = cupy.cuda.get_nvcc_path().split()
     cmd += ['--version']
-    cache_ctx = use_temporary_cache_dir()
-    with cache_ctx as cache_path:
-        output = compiler._run_cc(cmd, cache_path, 'nvcc')
+
+    output = compiler._run_cc(cmd, None, 'nvcc')
     match = re.search(nvcc_ver_pattern, output)
     assert match
 
@@ -404,19 +407,19 @@ class _TestRawBase:
     _nvrtc_ver = None
 
     def setUp(self):
-        if hasattr(self, 'clean_up'):
+        if getattr(self, 'clean_up', False):
             if cupy.cuda.runtime.is_hip:
                 # Clearing memo triggers recompiling kernels using name
                 # expressions in other tests, e.g. dot and matmul, which
                 # hits a nvrtc bug. See #5843, #5945 and #6725.
-                self.skipTest('Clearing memo hits a nvrtc bug in other tests')
+                pytest.skip('Clearing memo hits a nvrtc bug in other tests')
             _util.clear_memo()
         self.dev = cupy.cuda.runtime.getDevice()
         assert self.dev != 1
-        if not hasattr(self, 'jitify'):
-            self.jitify = False
+
+        self.jitify = getattr(self, 'jitify', False)
         if cupy.cuda.runtime.is_hip and self.jitify:
-            self.skipTest('Jitify does not support ROCm/HIP')
+            pytest.skip('Jitify does not support ROCm/HIP')
 
         self.temporary_cache_dir_context = use_temporary_cache_dir()
         self.in_memory_context = compile_in_memory(self.in_memory)
@@ -442,12 +445,8 @@ class _TestRawBase:
             # kernel uses nvcc, with which I/O cannot be avoided
             files = os.listdir(self.cache_dir)
             for f in files:
-                if f == 'test_load_cubin.cu':
-                    count = 1
-                    break
-            else:
-                count = 0
-            assert len(files) == count
+                # only test_load_cubin_*.cu files should be present
+                assert re.match(r'test_load_cubin_(\d+)\.cu', f)
 
         self.in_memory_context.__exit__(*sys.exc_info())
         self.temporary_cache_dir_context.__exit__(*sys.exc_info())
@@ -568,8 +567,9 @@ class _TestRawBase:
             code = compiler._convert_to_hip_source(_test_source5, None, False)
         # split() is needed because nvcc could come from the env var NVCC
         cmd = cc.split()
-        source = '{}/test_load_cubin.cu'.format(self.cache_dir)
-        file_path = self.cache_dir + 'test_load_cubin'
+        thread_id = threading.get_ident()
+        source = f'{self.cache_dir}/test_load_cubin_{thread_id}.cu'
+        file_path = self.cache_dir + f'test_load_cubin_{thread_id}'
         with open(source, 'w') as f:
             f.write(code)
         if not cupy.cuda.runtime.is_hip:
@@ -828,6 +828,7 @@ class _TestRawBase:
         ker((grid,), (block,), (a, b, out))
         assert (out == a + b).all()
 
+    @pytest.mark.thread_unsafe(reason="mutates global in RawModule")
     def test_const_memory(self):
         mod = cupy.RawModule(code=test_const_mem,
                              backend=self.backend,
@@ -1074,6 +1075,7 @@ class _TestRawBase:
 
     @unittest.skipUnless(not cupy.cuda.runtime.is_hip,
                          'only CUDA raises warning')
+    @pytest.mark.thread_unsafe(reason="mutates global cache directory")
     def test_compile_kernel(self):
         kern = cupy.RawKernel(
             _test_compile_src, 'test_op',
@@ -1089,6 +1091,7 @@ class _TestRawBase:
 
     @unittest.skipUnless(not cupy.cuda.runtime.is_hip,
                          'only CUDA raises warning')
+    @pytest.mark.thread_unsafe(reason="mutates global cache directory")
     def test_compile_module(self):
         module = cupy.RawModule(
             code=_test_compile_src,
@@ -1114,6 +1117,7 @@ class _TestRawBase:
     # Finally, we test NVCC
     {'backend': 'nvcc', 'in_memory': False},
 )
+@pytest.mark.filterwarnings("ignore:.*jitify=False:DeprecationWarning")
 class TestRaw(_TestRawBase, unittest.TestCase):
     pass
 
@@ -1131,6 +1135,9 @@ class TestRaw(_TestRawBase, unittest.TestCase):
     {'backend': 'nvrtc', 'in_memory': True, 'clean_up': True, 'jitify': True},
 )
 @testing.slow
+@pytest.mark.thread_unsafe(
+    reason="Jitify seems to have problems, skip as largely unmaintained.")
+@pytest.mark.filterwarnings("ignore:jitify=True:DeprecationWarning")
 class TestRawWithJitify(_TestRawBase, unittest.TestCase):
     pass
 
@@ -1160,17 +1167,16 @@ void test_grid_sync(const float* x1, const float* x2, float* y, int n) {
     'block': [64, 256],
 }))
 @unittest.skipIf(
-    find_nvcc_ver() >= 12020,
-    "fp16 header compatibility issue, see cupy#8412")
+    cupy.cuda.runtime.is_hip or find_nvcc_ver() >= 12020,
+    "fp16 header compatibility issue, see cupy#8412 (Skip on HIP)")
 @unittest.skipUnless(
     9000 <= cupy.cuda.runtime.runtimeGetVersion(),
     'Requires CUDA 9.x or later')
 @unittest.skipUnless(
     60 <= int(cupy.cuda.device.get_compute_capability()),
     'Requires compute capability 6.0 or later')
-@unittest.skipIf(cupy.cuda.runtime.is_hip, 'Skip on HIP')
 class TestRawGridSync(unittest.TestCase):
-
+    @pytest.mark.thread_unsafe(reason="mutates global cache directory")
     def test_grid_sync_rawkernel(self):
         n = self.n
         with use_temporary_cache_dir():
@@ -1185,6 +1191,7 @@ class TestRawGridSync(unittest.TestCase):
             kern_grid_sync((grid,), (block,), (x1, x2, y, n ** 2))
             assert cupy.allclose(y, x1 + x2)
 
+    @pytest.mark.thread_unsafe(reason="mutates global cache directory")
     def test_grid_sync_rawmodule(self):
         n = self.n
         with use_temporary_cache_dir():
@@ -1237,7 +1244,6 @@ assert ker.enable_cooperative_groups
 @unittest.skipIf(cupy.cuda.runtime.is_hip,
                  'HIP does not support enable_cooperative_groups')
 class TestRawPicklable(unittest.TestCase):
-
     def setUp(self):
         self.temporary_dir_context = use_temporary_cache_dir()
         self.temp_dir = self.temporary_dir_context.__enter__()
@@ -1313,14 +1319,7 @@ __global__ void shift (T* a, int N) {
 # Recent CCCL has made Jitify cold-launch very slow, see the discussion
 # starting https://github.com/cupy/cupy/pull/8899#issuecomment-2613022424.
 # TODO(leofang): Further refactor the test suite?
-@testing.parameterize(*testing.product({
-    'jitify': (False, True),
-}))
-@unittest.skipIf(cupy.cuda.runtime.is_hip,
-                 'Jitify does not support ROCm/HIP')
-@testing.slow
-class TestRawJitify(unittest.TestCase):
-
+class _TestRawJitify:
     def setUp(self):
         self.temporary_dir_context = use_temporary_cache_dir()
         self.temp_dir = self.temporary_dir_context.__enter__()
@@ -1426,3 +1425,46 @@ class TestRawJitify(unittest.TestCase):
             with pytest.raises(cupy.cuda.compiler.CompileException) as ex:
                 self._helper(hdr, options=('-I'+self.temp_dir,))
             assert 'cannot open source file' in str(ex.value)
+
+
+@unittest.skipIf(cupy.cuda.runtime.is_hip,
+                 'Jitify does not support ROCm/HIP')
+@testing.slow
+@pytest.mark.filterwarnings("ignore:.*jitify=False:DeprecationWarning")
+class TestRawJitifyNoJitify(_TestRawJitify, unittest.TestCase):
+    jitify = False
+
+
+@unittest.skipIf(cupy.cuda.runtime.is_hip,
+                 'Jitify does not support ROCm/HIP')
+@testing.slow
+@pytest.mark.thread_unsafe(
+    reason="Jitify seems to have problems, skip as largely unmaintained.")
+@pytest.mark.filterwarnings("ignore:jitify=True:DeprecationWarning")
+class TestRawJitifyJitify(_TestRawJitify, unittest.TestCase):
+    jitify = True
+
+
+@pytest.mark.parametrize("jitify,match", [
+    (True, ".*"),
+    (False, "Avoid passing.*jitify=False")
+])
+@unittest.skipIf(cupy.cuda.runtime.is_hip,
+                 'Jitify does not support ROCm/HIP')
+@testing.slow
+@pytest.mark.thread_unsafe(reason="uses temporary cache dir")
+@use_temporary_cache_dir()
+def test_jitify_deprecation_warning(jitify, match):
+    with pytest.warns(DeprecationWarning, match=match):
+        cupy.RawKernel(
+            _test_source1, 'test_sum',
+            backend='nvrtc', jitify=jitify)
+
+    with pytest.warns(DeprecationWarning, match=match):
+        cupy.RawModule(
+            code=_test_source1,
+            backend='nvrtc', jitify=jitify)
+
+    # Not technically part of the rawkernel, but test warning in compile here:
+    with pytest.warns(DeprecationWarning, match=match):
+        compiler.compile_using_nvrtc("", options=(), jitify=jitify)

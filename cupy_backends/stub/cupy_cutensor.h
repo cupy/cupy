@@ -21,6 +21,7 @@ extern "C" {
     typedef enum {} cutensorPlan_t;
     typedef enum {} cutensorPlanPreference_t;
     typedef enum {} cutensorPlanPreferenceAttribute_t;
+    typedef enum {} cutensorPlanAttribute_t;
     typedef enum {} cutensorJitMode_t;
     typedef enum {} cutensorCacheMode_t;
     typedef enum {} cutensorWorksizePreference_t;
@@ -102,6 +103,10 @@ extern "C" {
     }
 
     cutensorStatus_t cutensorCreatePlan(...) {
+	return CUTENSOR_STATUS_SUCCESS;
+    }
+
+    cutensorStatus_t cutensorPlanGetAttribute(...) {
 	return CUTENSOR_STATUS_SUCCESS;
     }
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from cupy import _core
 from cupy._math import ufunc
+from cupy._util import bf16_loop
 
 
 exp = ufunc.create_math_ufunc(
@@ -24,7 +25,7 @@ expm1 = ufunc.create_math_ufunc(
 
 exp2 = _core.create_ufunc(
     'cupy_exp2',
-    ('e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
+    ('e->e', *bf16_loop(), 'f->f', 'd->d', 'F->F', 'D->D'),
     'out0 = pow(in0_type(2), in0)',
     doc='''Elementwise exponentiation with base 2.
 
@@ -71,7 +72,7 @@ log1p = ufunc.create_math_ufunc(
 
 logaddexp = _core.create_ufunc(
     'cupy_logaddexp',
-    ('ee->e', 'ff->f', 'dd->d'),
+    ('ee->e', *bf16_loop(2), 'ff->f', 'dd->d'),
     '''
     if (in0 == in1) {
         /* Handles infinities of the same sign */
@@ -89,7 +90,7 @@ logaddexp = _core.create_ufunc(
 
 logaddexp2 = _core.create_ufunc(
     'cupy_logaddexp2',
-    ('ee->e', 'ff->f', 'dd->d'),
+    ('ee->e', *bf16_loop(2), 'ff->f', 'dd->d'),
     '''
     if (in0 == in1) {
         /* Handles infinities of the same sign */
