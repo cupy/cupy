@@ -863,7 +863,7 @@ configs {
       cpu: 8
       memory: 36
       disk: 10
-      gpu: 2
+      gpu: 1
       image: "windows"
     }
     time_limit {
@@ -872,7 +872,7 @@ configs {
     checkout_strategy {
       include_dot_git: true
     }
-    environment_variables { key: "GPU" value: "2" }
+    environment_variables { key: "GPU" value: "1" }
     command: ".pfnci\\windows\\run.bat 13.2 3.14 2.4 1.16 test"
   }
 }
