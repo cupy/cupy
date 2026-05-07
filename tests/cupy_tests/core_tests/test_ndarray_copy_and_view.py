@@ -182,23 +182,16 @@ class TestView:
         x = xp.arange(12, dtype=numpy.int32).reshape(3, 4).T
         return x.getfield(numpy.int16, offset=2)
 
-    def test_getfield_invalid_offset(self):
+    @pytest.mark.parametrize(('offset', 'dtype'), [
+        (4, numpy.float64),
+        (-1, numpy.float64),
+        (0, numpy.complex128),
+    ])
+    def test_getfield_invalid_cases(self, offset, dtype):
         for xp in (numpy, cupy):
             x = xp.array([1 + 1j], dtype=numpy.complex64)
             with pytest.raises(ValueError):
-                x.getfield(numpy.float64, offset=4)
-
-    def test_getfield_negative_offset(self):
-        for xp in (numpy, cupy):
-            x = xp.array([1 + 1j], dtype=numpy.complex64)
-            with pytest.raises(ValueError):
-                x.getfield(numpy.float64, offset=-1)
-
-    def test_getfield_invalid_dtype_size(self):
-        for xp in (numpy, cupy):
-            x = xp.array([1 + 1j], dtype=numpy.complex64)
-            with pytest.raises(ValueError):
-                x.getfield(numpy.complex128)
+                x.getfield(dtype, offset=offset)
 
 
 class TestArrayCopy:

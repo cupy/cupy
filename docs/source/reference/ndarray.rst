@@ -27,11 +27,6 @@ That means, NumPy functions cannot take :class:`cupy.ndarray`\s as inputs, and v
 Note that converting between :class:`cupy.ndarray` and :class:`numpy.ndarray` incurs data transfer between
 the host (CPU) device and the GPU device, which is costly in terms of performance.
 
-.. note::
-
-   :meth:`cupy.ndarray.getfield` is supported and follows the same dtype/offset semantics as
-   :meth:`numpy.ndarray.getfield`.
-
 
 .. TODO(kmaehashi): use currentmodule:: cupy
 .. autosummary::
