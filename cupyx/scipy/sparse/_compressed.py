@@ -30,14 +30,13 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                                 _index.IndexMixin):
 
     _max_min_reduction_code = r'''
-        extern "C" __global__
-        void ${func}(double* data, int* x, int* y, int length,
-                           double* z) {
+        template<typename TI> __global__
+        void ${func}(double* data, TI* x, TI* y, TI length, double* z) {
             // Get the index of the block
             int tid = blockIdx.x * blockDim.x + threadIdx.x;
 
             // Calculate the block length
-            int block_length = y[tid] - x[tid];
+            TI block_length = y[tid] - x[tid];
 
             // Select initial value based on the block density
             double running_value = 0;
@@ -48,7 +47,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             }
 
             // Iterate over the block and update
-            for (int entry = x[tid]; entry < y[tid]; entry++){
+            for (TI entry = x[tid]; entry < y[tid]; entry++){
                 if (data[entry] != data[entry]){
                     // Check for NaN
                     running_value = nan("");
@@ -65,42 +64,51 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             z[tid] = running_value;
         }'''
 
-    _max_reduction_kern = _core.RawKernel(
-        string.Template(_max_min_reduction_code).substitute(
+    # Index type specializations: int (int32) and long long (int64).
+    _idx_types = ('int', 'long long')
+
+    _max_reduction_mod = _core.RawModule(
+        code=string.Template(_max_min_reduction_code).substitute(
             func='max_reduction', op='>', cond='block_length == length'),
-        'max_reduction')
+        name_expressions=[
+            f'max_reduction<{t}>' for t in _idx_types])
 
-    _max_nonzero_reduction_kern = _core.RawKernel(
-        string.Template(_max_min_reduction_code).substitute(
-            func='max_nonzero_reduction', op='>', cond='block_length > 0'),
-        'max_nonzero_reduction')
+    _max_nonzero_reduction_mod = _core.RawModule(
+        code=string.Template(_max_min_reduction_code).substitute(
+            func='max_nonzero_reduction', op='>',
+            cond='block_length > 0'),
+        name_expressions=[
+            f'max_nonzero_reduction<{t}>' for t in _idx_types])
 
-    _min_reduction_kern = _core.RawKernel(
-        string.Template(_max_min_reduction_code).substitute(
+    _min_reduction_mod = _core.RawModule(
+        code=string.Template(_max_min_reduction_code).substitute(
             func='min_reduction', op='<', cond='block_length == length'),
-        'min_reduction')
+        name_expressions=[
+            f'min_reduction<{t}>' for t in _idx_types])
 
-    _min_nonzero_reduction_kern = _core.RawKernel(
-        string.Template(_max_min_reduction_code).substitute(
-            func='min_nonzero_reduction', op='<', cond='block_length > 0'),
-        'min_nonzero_reduction')
+    _min_nonzero_reduction_mod = _core.RawModule(
+        code=string.Template(_max_min_reduction_code).substitute(
+            func='min_nonzero_reduction', op='<',
+            cond='block_length > 0'),
+        name_expressions=[
+            f'min_nonzero_reduction<{t}>' for t in _idx_types])
 
     # For _max_arg_reduction_mod and _min_arg_reduction_mod below, we pick
     # the right template specialization according to input dtypes at runtime.
     # The distinction in int types (T2) is important for portability in OS.
 
     _argmax_argmin_code = r'''
-        template<typename T1, typename T2> __global__ void
-        ${func}_arg_reduction(T1* data, int* indices, int* x, int* y,
-                              int length, T2* z) {
+        template<typename T1, typename T2, typename TI> __global__ void
+        ${func}_arg_reduction(T1* data, TI* indices, TI* x, TI* y,
+                              TI length, T2* z) {
             // Get the index of the block
             int tid = blockIdx.x * blockDim.x + threadIdx.x;
 
             // Calculate the block length
-            int block_length = y[tid] - x[tid];
+            TI block_length = y[tid] - x[tid];
 
             // Select initial value based on the block density
-            int data_index = 0;
+            TI data_index = 0;
             double data_value = 0;
 
             if (block_length == length){
@@ -124,7 +132,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             }
 
             // Iterate over the section of the sparse matrix
-            for (int entry = x[tid]; entry < y[tid]; entry++){
+            for (TI entry = x[tid]; entry < y[tid]; entry++){
                 if (data[entry] != data[entry]){
                     // Check for NaN
                     data_value = nan("");
@@ -140,24 +148,28 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             }
 
             // Store in the return function
-            z[tid] = data_index;
+            z[tid] = (T2)data_index;
         }'''
+
+    # T1=data type, T2=output type, TI=index type
+    _arg_reduction_types = [
+        f'{{func}}_arg_reduction<{t1}, {t2}, {ti}>'
+        for t1 in ('float', 'double')
+        for t2 in ('int', 'long long')
+        for ti in ('int', 'long long')
+    ]
 
     _max_arg_reduction_mod = _core.RawModule(
         code=string.Template(_argmax_argmin_code).substitute(
             func='max', op='>'),
-        name_expressions=['max_arg_reduction<float, int>',
-                          'max_arg_reduction<float, long long>',
-                          'max_arg_reduction<double, int>',
-                          'max_arg_reduction<double, long long>'])
+        name_expressions=[
+            t.format(func='max') for t in _arg_reduction_types])
 
     _min_arg_reduction_mod = _core.RawModule(
         code=string.Template(_argmax_argmin_code).substitute(
             func='min', op='<'),
-        name_expressions=['min_arg_reduction<float, int>',
-                          'min_arg_reduction<float, long long>',
-                          'min_arg_reduction<double, int>',
-                          'min_arg_reduction<double, long long>'])
+        name_expressions=[
+            t.format(func='min') for t in _arg_reduction_types])
 
     # TODO(leofang): rewrite a more load-balanced approach than this naive one?
     _has_sorted_indices_kern = _core.ElementwiseKernel(
@@ -204,6 +216,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             data = x.data
             indices = x.indices
             indptr = x.indptr
+            # Preserve index dtype from source matrix.
+            idx_dtype = indices.dtype
 
             if arg1.format != self.format:
                 # When formats are different, all arrays are already copied
@@ -215,26 +229,30 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         elif _util.isshape(arg1):
             m, n = arg1
             m, n = int(m), int(n)
+            idx_dtype = _sputils.get_index_dtype(maxval=max(m, n))
             data = basic.zeros(0, dtype if dtype else 'd')
-            indices = basic.zeros(0, 'i')
-            indptr = basic.zeros(self._swap(m, n)[0] + 1, dtype='i')
+            indices = basic.zeros(0, idx_dtype)
+            indptr = basic.zeros(self._swap(m, n)[0] + 1, dtype=idx_dtype)
             # shape and copy argument is ignored
             shape = (m, n)
             copy = False
 
         elif scipy_available and scipy.sparse.issparse(arg1):
-            # Convert scipy.sparse to cupyx.scipy.sparse
+            # Convert scipy.sparse to cupyx.scipy.sparse.
+            # Preserve scipy's index dtype (scipy uses
+            # get_index_dtype internally).
             x = arg1.asformat(self.format)
             data = cupy.array(x.data)
-            indices = cupy.array(x.indices, dtype='i')
-            indptr = cupy.array(x.indptr, dtype='i')
+            idx_dtype = x.indices.dtype
+            indices = cupy.array(x.indices, dtype=idx_dtype)
+            indptr = cupy.array(x.indptr, dtype=idx_dtype)
             copy = False
 
             if shape is None:
                 shape = arg1.shape
 
         elif isinstance(arg1, tuple) and len(arg1) == 2:
-            # Note: This implementation is not efficeint, as it first
+            # Note: This implementation is not efficient, as it first
             # constructs a sparse matrix with coo format, then converts it to
             # compressed format.
             sp_coo = _coo.coo_matrix(arg1, shape=shape, dtype=dtype, copy=copy)
@@ -242,6 +260,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             data = sp_compressed.data
             indices = sp_compressed.indices
             indptr = sp_compressed.indptr
+            # Derived from COO's get_index_dtype call.
+            idx_dtype = indices.dtype
 
         elif isinstance(arg1, tuple) and len(arg1) == 3:
             data, indices, indptr = arg1
@@ -254,6 +274,14 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             if len(data) != len(indices):
                 raise ValueError('indices and data should have the same size')
 
+            # Mirror scipy: choose int32 when values fit,
+            # int64 when they don't.
+            # maxval may be None if shape is not yet known; contents check
+            # handles that case.
+            maxval = max(shape) if shape is not None else None
+            idx_dtype = _sputils.get_index_dtype(
+                (indices, indptr), maxval=maxval, check_contents=True)
+
         elif _base.isdense(arg1):
             if arg1.ndim > 2:
                 raise ValueError('expected dimension <= 2 array or matrix')
@@ -262,6 +290,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             elif arg1.ndim == 0:
                 arg1 = arg1[None, None]
             data, indices, indptr = self._convert_dense(arg1)
+            idx_dtype = indices.dtype  # respect what _convert_dense chose
             copy = False
             if shape is None:
                 shape = arg1.shape
@@ -283,11 +312,12 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         data = data.astype(dtype, copy=copy)
         sparse_data._data_matrix.__init__(self, data)
 
-        self.indices = indices.astype('i', copy=copy)
-        self.indptr = indptr.astype('i', copy=copy)
+        self.indices = indices.astype(idx_dtype, copy=copy)
+        self.indptr = indptr.astype(idx_dtype, copy=copy)
 
         if shape is None:
-            shape = self._swap(len(indptr) - 1, int(indices.max()) + 1)
+            shape = self._swap(
+                len(indptr) - 1, int(indices.max()) + 1)  # synchronize!
 
         major, minor = self._swap(*shape)
         if len(indptr) != major + 1:
@@ -297,17 +327,94 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         self._descr = cusparse.MatDescriptor.create()
         self._shape = shape
 
+    @classmethod
+    def _from_parts(cls, data, indices, indptr, shape,
+                    has_canonical_format=None,
+                    has_sorted_indices=None):
+        """Construct from pre-validated arrays (no check_contents).
+
+        Internal API for building sparse matrices when the caller has
+        already determined the correct index dtype.  Skips the
+        check_contents=True downcast that the tuple-3 constructor
+        applies.
+
+        Caller must ensure *indices* and *indptr* share the same
+        integer dtype and are within bounds for *shape*.
+
+        Args:
+            has_canonical_format (bool or None): If ``True`` or
+                ``False``, cache the flag directly (avoids the lazy
+                GPU kernel on first access).  ``None`` (default)
+                leaves the flag unset for lazy computation.
+                ``True`` implies ``has_sorted_indices=True``.
+            has_sorted_indices (bool or None): Same semantics.
+
+        Raises:
+            ValueError: If *indices* and *indptr* dtypes differ, the
+                ``has_canonical_format`` / ``has_sorted_indices`` flags
+                are inconsistent, ``data`` and ``indices`` lengths
+                differ, or ``indptr`` length does not match the major
+                axis of *shape*.
+        """
+        if indices.dtype != indptr.dtype:
+            raise ValueError(
+                'indices and indptr must have the same dtype, '
+                'got {} and {}'.format(indices.dtype, indptr.dtype))
+        if has_canonical_format is True and has_sorted_indices is False:
+            raise ValueError(
+                'has_canonical_format=True implies sorted indices, '
+                'but has_sorted_indices=False was passed')
+        if data.size != indices.size:
+            raise ValueError(
+                'data and indices must have the same length, '
+                'got {} and {}'.format(data.size, indices.size))
+        # Major axis: shape[0] for CSR (_major_axis=0), shape[1] for CSC.
+        # Subclasses must define _major_axis.
+        major = shape[cls._major_axis]
+        if indptr.size != major + 1:
+            raise ValueError(
+                'indptr has length {}, expected {} (major axis + 1)'
+                .format(indptr.size, major + 1))
+        A = cls.__new__(cls)
+        sparse_data._data_matrix.__init__(A, data)
+        A.indices = indices
+        A.indptr = indptr
+        from cupyx.cusparse import MatDescriptor
+        A._descr = MatDescriptor.create()
+        A._shape = shape
+        if has_canonical_format is not None:
+            A._has_canonical_format = has_canonical_format
+            if has_canonical_format:
+                A._has_sorted_indices = True
+        if has_sorted_indices is not None:
+            A._has_sorted_indices = has_sorted_indices
+        return A
+
     def _with_data(self, data, copy=True):
-        if copy:
-            return self.__class__(
-                (data, self.indices.copy(), self.indptr.copy()),
-                shape=self.shape,
-                dtype=data.dtype)
-        else:
-            return self.__class__(
-                (data, self.indices, self.indptr),
-                shape=self.shape,
-                dtype=data.dtype)
+        """Return a matrix with the same sparsity structure but
+        different data.  Preserves sort/canonical flags.
+        """
+        # Read private attrs to avoid the property getter, which
+        # launches a GPU kernel when the flag has not been computed.
+        return self.__class__._from_parts(
+            data,
+            self.indices.copy() if copy else self.indices,
+            self.indptr.copy() if copy else self.indptr,
+            self.shape,
+            has_canonical_format=getattr(
+                self, '_has_canonical_format', None),
+            has_sorted_indices=getattr(
+                self, '_has_sorted_indices', None))
+
+    def _empty_like(self, shape):
+        """Return an empty matrix with the same index dtype."""
+        idx = self.indices.dtype
+        major = self._swap(*shape)[0]
+        return self.__class__._from_parts(
+            cupy.empty(0, self.dtype),
+            cupy.empty(0, idx),
+            cupy.zeros(major + 1, idx),
+            shape)
 
     def _convert_dense(self, x):
         raise NotImplementedError
@@ -407,16 +514,18 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         M = idx.size
         new_shape = self._swap(M, N)
         if self.nnz == 0 or M == 0:
-            return self.__class__(new_shape, dtype=self.dtype)
+            return self._empty_like(new_shape)
 
-        return self.__class__(
-            _index._csr_row_index(self.data, self.indices, self.indptr, idx),
-            shape=new_shape, copy=False)
+        return self.__class__._from_parts(
+            *_index._csr_row_index(
+                self.data, self.indices, self.indptr, idx),
+            shape=new_shape)
 
     _bincount_kernel = r"""
-    extern "C" __global__
+    template<typename I>
+    __global__
     void bincount_idx_global(const int  n_idx,
-                            const int* __restrict__ idx,
+                            const I* __restrict__ idx,
                             int*       __restrict__ col_cnt)
     {
         int k = blockIdx.x * blockDim.x + threadIdx.x;
@@ -425,22 +534,29 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
     }
     """
 
-    _bincount = _core.RawKernel(_bincount_kernel, "bincount_idx_global")
+    _bincount_mod = _core.RawModule(
+        code=_bincount_kernel,
+        options=('-std=c++17',),
+        name_expressions=[
+            f'bincount_idx_global<{t}>' for t in _idx_types
+        ],
+    )
 
     _calc_Bp_kernel = r"""
-    extern "C" __global__
+    template<typename I>
+    __global__
     void row_kept_count(const int  n_row,
-                        const int* __restrict__ Ap,
-                        const int* __restrict__ Aj,
+                        const I* __restrict__ Ap,
+                        const I* __restrict__ Aj,
                         const int* __restrict__ col_cnt,
-                        int*       __restrict__ Bp)
+                        I*       __restrict__ Bp)
 {
     // 1 block = 1 row
     const int row = blockIdx.x;
     if (row >= n_row) return;
 
     int local = 0;
-    for (int p = Ap[row] + threadIdx.x; p < Ap[row + 1]; p += blockDim.x)
+    for (I p = Ap[row] + threadIdx.x; p < Ap[row + 1]; p += blockDim.x)
         local += col_cnt[Aj[p]];
 
     #pragma unroll
@@ -456,37 +572,45 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         #pragma unroll
         for (int offset = 16; offset > 0; offset >>= 1)
             val += __shfl_down_sync(0xffffffff, val, offset);
-        if (threadIdx.x == 0) Bp[row + 1] = val;
+        if (threadIdx.x == 0) Bp[row + 1] = I(val);
     }
 }
 """
 
-    _calc_Bp_minor = _core.RawKernel(_calc_Bp_kernel, "row_kept_count")
+    _calc_Bp_mod = _core.RawModule(
+        code=_calc_Bp_kernel,
+        options=('-std=c++17',),
+        name_expressions=[
+            f'row_kept_count<{t}>' for t in _idx_types
+        ],
+    )
 
     _fill_B_kernel = r"""
-    template<typename T> __global__ void
+    template<typename T, typename I> __global__ void
     fill_B(const int  n_row,
-                        const int* __restrict__ Ap,
-                        const int* __restrict__ Aj,
+                        const I* __restrict__ Ap,
+                        const I* __restrict__ Aj,
                         const   T* __restrict__ Ax,
                         const int* __restrict__ col_offset,
                         const int* __restrict__ col_order,
-                        const int* __restrict__ Bp,
-                        int*       __restrict__ Bj,
+                        const I* __restrict__ Bp,
+                        I*       __restrict__ Bj,
                         T*       __restrict__ Bx)
     {
         // 1 block = 1 row
         const int row = blockIdx.x;
         if (row >= n_row) return;
 
-        // atomic write pointer
-        __shared__ int row_ptr;
-        if (threadIdx.x == 0) row_ptr = Bp[row];
+        // Atomic write pointer -- use unsigned long long for atomicAdd
+        // (CUDA supports atomicAdd on unsigned long long but not long long)
+        __shared__ unsigned long long row_ptr;
+        if (threadIdx.x == 0)
+            row_ptr = static_cast<unsigned long long>(Bp[row]);
         __syncthreads();
 
-        for (int p = Ap[row] +threadIdx.x; p < Ap[row + 1]; p +=blockDim.x)
+        for (I p = Ap[row] +threadIdx.x; p < Ap[row + 1]; p +=blockDim.x)
         {
-            int col   = Aj[p];
+            I col     = Aj[p];
             int stop  = col_offset[col];
             int start = (col == 0) ? 0 : col_offset[col - 1];
             int cnt   = stop - start;
@@ -494,10 +618,11 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
             T v = Ax[p];
             // unique slice for this thread
-            int my_out = atomicAdd(&row_ptr, cnt);
+            unsigned long long my_out = atomicAdd(
+                &row_ptr, static_cast<unsigned long long>(cnt));
             for (int k = 0; k < cnt; ++k)
             {
-                Bj[my_out + k] = col_order[start + k];
+                Bj[my_out + k] = I(col_order[start + k]);
                 Bx[my_out + k] = v;
             }
         }
@@ -507,35 +632,37 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
     _fill_B = _core.RawModule(
         code=_fill_B_kernel,
         options=('-std=c++17',),
-        name_expressions=['fill_B<float>',
-                          'fill_B<double>',
-                          ],
+        name_expressions=[
+            f'fill_B<{dt}, {it}>'
+            for dt in ('float', 'double')
+            for it in ('int', 'long long')
+        ],
     )
 
     _fill_B_kernel_complex = r"""
-    template<typename T> __global__ void
+    template<typename T, typename I> __global__ void
     fill_B_complex(const int  n_row,
-                        const int* __restrict__ Ap,
-                        const int* __restrict__ Aj,
+                        const I* __restrict__ Ap,
+                        const I* __restrict__ Aj,
                         const   T* __restrict__ Ax,
                         const int* __restrict__ col_offset,
                         const int* __restrict__ col_order,
-                        const int* __restrict__ Bp,
-                        int*       __restrict__ Bj,
+                        const I* __restrict__ Bp,
+                        I*       __restrict__ Bj,
                         T*       __restrict__ Bx)
     {
         // 1 block = 1 row
         const int row = blockIdx.x;
         if (row >= n_row) return;
 
-        // atomic write pointer
-        __shared__ int row_ptr;
-        if (threadIdx.x == 0) row_ptr = Bp[row];
+        __shared__ unsigned long long row_ptr;
+        if (threadIdx.x == 0)
+            row_ptr = static_cast<unsigned long long>(Bp[row]);
         __syncthreads();
 
-        for (int p = Ap[row] +threadIdx.x; p < Ap[row + 1]; p +=blockDim.x)
+        for (I p = Ap[row] +threadIdx.x; p < Ap[row + 1]; p +=blockDim.x)
         {
-            int col   = Aj[p];
+            I col     = Aj[p];
             int stop  = col_offset[col];
             int start = (col == 0) ? 0 : col_offset[col - 1];
             int cnt   = stop - start;
@@ -543,11 +670,11 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
             T v = Ax[p*2];
             T i = Ax[p*2+1];
-            // unique slice for this thread
-            int my_out = atomicAdd(&row_ptr, cnt);
+            unsigned long long my_out = atomicAdd(
+                &row_ptr, static_cast<unsigned long long>(cnt));
             for (int k = 0; k < cnt; ++k)
             {
-                Bj[my_out + k] = col_order[start + k];
+                Bj[my_out + k] = I(col_order[start + k]);
                 Bx[(my_out + k)*2] = v;
                 Bx[(my_out + k)*2 + 1] = i;
             }
@@ -558,9 +685,11 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
     _fill_B_complex = _core.RawModule(
         code=_fill_B_kernel_complex,
         options=('-std=c++17',),
-        name_expressions=['fill_B_complex<float>',
-                          'fill_B_complex<double>',
-                          ],
+        name_expressions=[
+            f'fill_B_complex<{dt}, {it}>'
+            for dt in ('float', 'double')
+            for it in ('int', 'long long')
+        ],
     )
 
     def _minor_index_fancy(self, idx):
@@ -570,12 +699,27 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         n_idx = idx.size
         new_shape = self._swap(M, n_idx)
         if self.nnz == 0 or n_idx == 0:
+            return self._empty_like(new_shape)
 
-            return self.__class__(new_shape, dtype=self.dtype)
+        # The histogram path uses ``cupy.int32`` for the count buffer
+        # and relies on cumulative sums fitting in int32.  Fall back
+        # to the sort-based O(nnz) path when either:
+        #  * ``N > INT32_MAX``: the count buffer would be > 8 GB and
+        #    the row offsets in it can't fit; or
+        #  * ``n_idx > INT32_MAX``: ``col_order =
+        #    argsort(idx).astype(int32)`` truncates and
+        #    ``cumsum(col_counts).astype(int32)`` overflows.
+        int32_max = numpy.iinfo(numpy.int32).max
+        if N > int32_max or n_idx > int32_max:
+            return self._minor_index_fancy_sorted(
+                idx, M, n_idx, new_shape)
+
+        idx_dtype = self.indices.dtype
+        idx_tname = _scalar.get_typename(idx_dtype)
 
         # Create buffers
         col_counts = cupy.zeros(N, dtype=cupy.int32)
-        Bp = cupy.empty(M + 1, dtype=cupy.int32)
+        Bp = cupy.empty(M + 1, dtype=idx_dtype)
         Bp[0] = 0
 
         # Count occurrences of each column
@@ -583,40 +727,46 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         block_count = (n_idx + thread_count - 1) // thread_count
 
-        self._bincount((block_count,),
-                       (thread_count,),
-                       (n_idx, idx, col_counts))
+        bincount_ker = self._bincount_mod.get_function(
+            'bincount_idx_global<{}>'.format(idx_tname))
+        bincount_ker((block_count,),
+                     (thread_count,),
+                     (n_idx, idx, col_counts))
 
         # Compute Bp
-        self._calc_Bp_minor((M,),
-                            (thread_count,),
-                            (M,
-                             self.indptr,
-                             self.indices,
-                             col_counts,
-                             Bp)
-                            )
+        calc_Bp_ker = self._calc_Bp_mod.get_function(
+            'row_kept_count<{}>'.format(idx_tname))
+        calc_Bp_ker((M,),
+                    (thread_count,),
+                    (M,
+                     self.indptr,
+                     self.indices,
+                     col_counts,
+                     Bp)
+                    )
 
         # Compute col_order and col_offset
         col_order = cupy.argsort(idx).astype(cupy.int32)
         col_offset = cupy.cumsum(col_counts, dtype=cupy.int32)
 
         # Compute Bp
-        Bp[1:] = cupy.cumsum(Bp[1:], dtype=cupy.int32)
-        nnzB = int(Bp[-1].get())
+        Bp[1:] = cupy.cumsum(Bp[1:], dtype=idx_dtype)
+        nnzB = int(Bp[-1])  # synchronize!
 
-        Bj = cupy.empty(nnzB, dtype=cupy.int32)
+        Bj = cupy.empty(nnzB, dtype=idx_dtype)
         Bx = cupy.empty(nnzB, dtype=self.data.dtype)
 
         # Compute Bj and Bx
         if self.dtype.kind == 'c':
-            ker_name = 'fill_B_complex<{}>'.format(
+            ker_name = 'fill_B_complex<{}, {}>'.format(
                 _scalar.get_typename(self.data.real.dtype),
+                idx_tname,
             )
             fillB = self._fill_B_complex.get_function(ker_name)
         else:
-            ker_name = 'fill_B<{}>'.format(
+            ker_name = 'fill_B<{}, {}>'.format(
                 _scalar.get_typename(self.data.dtype),
+                idx_tname,
             )
             fillB = self._fill_B.get_function(ker_name)
         threads = 32
@@ -633,12 +783,60 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                Bx),
               )
 
-        out = self.__class__(
-            (Bx, Bj, Bp),
-            dtype=self.dtype,
-            shape=new_shape,
-        )
-        return out
+        return self.__class__._from_parts(
+            Bx, Bj, Bp, new_shape)
+
+    def _minor_index_fancy_sorted(self, idx, M, n_idx, new_shape):
+        """Sort-based fancy minor-axis indexing for large minor axis.
+
+        O(nnz + n_idx) space instead of O(N). Used when N > INT32_MAX
+        where the histogram-based path would require a prohibitive
+        O(N) allocation.
+        """
+        idx_dtype = self.indices.dtype
+        idx = cupy.asarray(idx, dtype=idx_dtype)
+
+        sort_order = cupy.argsort(idx)
+        sorted_idx = idx[sort_order]
+
+        lo = cupy.searchsorted(sorted_idx, self.indices, side='left')
+        hi = cupy.searchsorted(sorted_idx, self.indices, side='right')
+        cnt = (hi - lo).astype(cupy.int64)
+
+        out_src = cupy.repeat(
+            cupy.arange(self.nnz, dtype=cupy.int64), cnt)
+        total_nnz = out_src.size
+        if total_nnz == 0:
+            return self._empty_like(new_shape)
+
+        # offset: position within each repeated group (grouped arange)
+        cum_cnt = cupy.zeros(self.nnz + 1, dtype=cupy.int64)
+        cupy.cumsum(cnt, out=cum_cnt[1:])
+        offset = (cupy.arange(total_nnz, dtype=cupy.int64)
+                  - cum_cnt[out_src])
+
+        out_minor = sort_order[lo[out_src] + offset]
+        out_data = self.data[out_src]
+
+        from cupyx import cusparse as _cusparse_mod
+        major_of_each = _cusparse_mod._indptr_to_coo(self.indptr)
+        out_major = major_of_each[out_src]
+
+        sort_key = cupy.lexsort(cupy.stack([out_minor, out_major]))
+        out_major = out_major[sort_key]
+        out_minor = out_minor[sort_key]
+        out_data = out_data[sort_key]
+
+        out_idx_dtype = _sputils.get_index_dtype(
+            arrays=(self.indices,), maxval=max(M, n_idx))
+        out_indptr = _cusparse_mod._build_indptr(
+            out_major, M, out_idx_dtype)
+
+        return self.__class__._from_parts(
+            out_data, out_minor.astype(out_idx_dtype),
+            out_indptr, new_shape,
+            has_canonical_format=True,
+            has_sorted_indices=True)
 
     def _major_slice(self, idx, copy=False):
         """Index along the major axis where idx is a slice object.
@@ -654,11 +852,22 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         if step == 1:
             if M == 0 or self.nnz == 0:
-                return self.__class__(new_shape, dtype=self.dtype)
-            return self.__class__(
+                return self._empty_like(new_shape)
+            data, indices, indptr = \
                 _index._get_csr_submatrix_major_axis(
-                    self.data, self.indices, self.indptr, start, stop),
-                shape=new_shape, copy=copy)
+                    self.data, self.indices, self.indptr,
+                    start, stop)
+            if copy:
+                data = data.copy()
+                indices = indices.copy()
+                # indptr is already a new array (Ap[start:stop+1] -
+                # Ap[start]), so no copy needed.
+            return self.__class__._from_parts(
+                data, indices, indptr, new_shape,
+                has_canonical_format=getattr(
+                    self, '_has_canonical_format', None),
+                has_sorted_indices=getattr(
+                    self, '_has_sorted_indices', None))
         rows = cupy.arange(start, stop, step, dtype=self.indptr.dtype)
         return self._major_index_fancy(rows)
 
@@ -675,12 +884,22 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         new_shape = self._swap(M, N)
 
         if N == 0 or self.nnz == 0:
-            return self.__class__(new_shape, dtype=self.dtype)
+            return self._empty_like(new_shape)
         if step == 1:
-            return self.__class__(
-                _index._get_csr_submatrix_minor_axis(
-                    self.data, self.indices, self.indptr, start, stop),
-                shape=new_shape, copy=False)
+            # Fast path for contiguous minor-axis slicing: mask + cumsum,
+            # avoids building the per-column histogram in the fancy path.
+            data, indices, indptr = _index._get_csr_submatrix_minor_axis(
+                self.data, self.indices, self.indptr, start, stop)
+            if copy:
+                data = data.copy()
+                indices = indices.copy()
+                indptr = indptr.copy()
+            return self.__class__._from_parts(
+                data, indices, indptr, new_shape,
+                has_canonical_format=getattr(
+                    self, '_has_canonical_format', None),
+                has_sorted_indices=getattr(
+                    self, '_has_sorted_indices', None))
         cols = cupy.arange(start, stop, step, dtype=self.indices.dtype)
         return self._minor_index_fancy(cols)
 
@@ -742,17 +961,24 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         i, j, M, N = self._prepare_indices(i, j)
         x = cupy.array(x, dtype=self.dtype, copy=True, ndmin=1).ravel()
 
-        new_sp = cupyx.scipy.sparse.csr_matrix(
-            (cupy.arange(self.nnz, dtype=cupy.float32),
-             self.indices, self.indptr), shape=(M, N))
+        # Temporary CSR mapping each stored element to its flat offset.
+        # Use _from_parts to avoid check_contents D2H syncs; the
+        # indices/indptr are already validated (they come from self).
+        # Use the indices dtype for the offset array so we get exact
+        # integer arithmetic at any nnz (float64 loses precision past
+        # 2**53, and -1 is a valid sentinel for any signed integer).
+        idx_dtype = self.indices.dtype
+        new_sp = cupyx.scipy.sparse.csr_matrix._from_parts(
+            cupy.arange(self.nnz, dtype=idx_dtype),
+            self.indices, self.indptr, shape=(M, N))
 
         offsets = new_sp._get_arrayXarray(
-            i, j, not_found_val=-1).astype(cupy.int32).ravel()
+            i, j, not_found_val=-1).astype(idx_dtype).ravel()
 
         mask = offsets > -1
         self.data[offsets[mask]] = x[mask]
 
-        if mask.all():
+        if mask.all():  # synchronize!
             # only affects existing non-zero cells
             return
 
@@ -773,12 +999,14 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         """
         i, j, M, N = self._prepare_indices(i, j)
 
-        new_sp = cupyx.scipy.sparse.csr_matrix(
-            (cupy.arange(self.nnz, dtype=cupy.float32),
-             self.indices, self.indptr), shape=(M, N))
+        # Use indices dtype for exact integer offsets (see _set_many).
+        idx_dtype = self.indices.dtype
+        new_sp = cupyx.scipy.sparse.csr_matrix._from_parts(
+            cupy.arange(self.nnz, dtype=idx_dtype),
+            self.indices, self.indptr, shape=(M, N))
 
         offsets = new_sp._get_arrayXarray(
-            i, j, not_found_val=-1).astype(cupy.int32).ravel()
+            i, j, not_found_val=-1).astype(idx_dtype).ravel()
 
         # only assign zeros to the existing sparsity structure
         self.data[offsets[offsets > -1]] = 0
@@ -795,7 +1023,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         # Build output arrays
         cupy.cumsum(new_indptr, out=new_indptr)
-        out_nnz = int(new_indptr[-1])
+        out_nnz = int(new_indptr[-1])  # synchronize!
 
         new_indices = cupy.empty(out_nnz, dtype=idx_dtype)
         new_data = cupy.empty(out_nnz, dtype=self.data.dtype)
@@ -849,9 +1077,10 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         to_add[:-1] = ui_indptr
         ui_indptr = to_add
 
-        # Compute the counts for each row in the insertion array
+        # Compute the counts for each row in the insertion array.
         row_counts = cupy.zeros(ui_indptr.size-1, dtype=idx_dtype)
-        cupy.add.at(row_counts, cupy.searchsorted(rows, indptr_inserts), 1)
+        search_idx = cupy.searchsorted(rows, indptr_inserts)
+        cupy.add.at(row_counts, search_idx, 1)
 
         self._perform_insert(indices_inserts, data_inserts,
                              rows, row_counts, idx_dtype)
@@ -885,7 +1114,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         elif not hasattr(self, '_has_canonical_format'):
             is_canonical = self._has_canonical_format_kern(
                 self.indptr, self.indices, size=self.indptr.size-1)
-            self._has_canonical_format = bool(is_canonical.all())
+            self._has_canonical_format = bool(
+                is_canonical.all())  # synchronize!
         return self._has_canonical_format
 
     def __set_has_canonical_format(self, val):
@@ -920,7 +1150,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         elif not hasattr(self, '_has_sorted_indices'):
             is_sorted = self._has_sorted_indices_kern(
                 self.indptr, self.indices, size=self.indptr.size-1)
-            self._has_sorted_indices = bool(is_sorted.all())
+            self._has_sorted_indices = bool(is_sorted.all())  # synchronize!
         return self._has_sorted_indices
 
     def __set_sorted(self, val):
@@ -1012,20 +1242,25 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         """
         out_shape = self.shape[1 - axis]
-        # Call to the appropriate kernel function
+        # TI (index type) must match self.indptr.dtype for correct
+        # int64 indptr.
+        idx_dtype = self.indptr.dtype
+        tname = _scalar.get_typename(idx_dtype)
         out = cupy.zeros(out_shape).astype(cupy.float64)
-        if nonzero:
-            kerns = {cupy.amax: self._max_nonzero_reduction_kern,
-                     cupy.amin: self._min_nonzero_reduction_kern}
-        else:
-            kerns = {cupy.amax: self._max_reduction_kern,
-                     cupy.amin: self._min_reduction_kern}
-
-        kerns[ufunc]((out_shape,), (1,),
-                     (self.data.astype(cupy.float64),
-                      self.indptr[:len(self.indptr) - 1],
-                      self.indptr[1:], cupy.int64(self.shape[axis]),
-                      out))
+        mod, fname = {
+            (cupy.amax, False): (self._max_reduction_mod, 'max_reduction'),
+            (cupy.amin, False): (self._min_reduction_mod, 'min_reduction'),
+            (cupy.amax, True): (self._max_nonzero_reduction_mod,
+                                'max_nonzero_reduction'),
+            (cupy.amin, True): (self._min_nonzero_reduction_mod,
+                                'min_nonzero_reduction'),
+        }[(ufunc, nonzero)]
+        ker = mod.get_function('{}<{}>'.format(fname, tname))
+        ker((out_shape,), (1,),
+            (self.data.astype(cupy.float64),
+             self.indptr[:-1], self.indptr[1:],
+             idx_dtype.type(self.shape[axis]),
+             out))
 
         return out
 
@@ -1054,9 +1289,16 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         out = cupy.zeros(out_shape, dtype=int)
 
         # Perform the calculation
-        ker_name = '_arg_reduction<{}, {}>'.format(
+        # TI (index type) must match self.indices.dtype for correct int64
+        # column values. indptr slices are cast to match indices dtype.
+        idx_dtype = self.indices.dtype
+        indptr_x = self.indptr[:len(self.indptr) - 1].astype(idx_dtype,
+                                                             copy=False)
+        indptr_y = self.indptr[1:].astype(idx_dtype, copy=False)
+        ker_name = '_arg_reduction<{}, {}, {}>'.format(
             _scalar.get_typename(self.data.dtype),
-            _scalar.get_typename(out.dtype))
+            _scalar.get_typename(out.dtype),
+            _scalar.get_typename(idx_dtype))
 
         if ufunc == cupy.argmax:
             ker = self._max_arg_reduction_mod.get_function('max' + ker_name)
@@ -1065,8 +1307,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         ker((out_shape,), (1,),
             (self.data, self.indices,
-             self.indptr[:len(self.indptr) - 1],
-             self.indptr[1:], cupy.int64(self.shape[axis]),
+             indptr_x, indptr_y,
+             idx_dtype.type(self.shape[axis]),
              out))
 
         return out

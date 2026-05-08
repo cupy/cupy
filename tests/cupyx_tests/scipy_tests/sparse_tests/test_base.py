@@ -9,6 +9,7 @@ try:
 except ImportError:
     scipy_available = False
 
+import cupy
 from cupy import testing
 from cupyx.scipy import sparse
 
@@ -86,3 +87,29 @@ class TestSpmatrix(unittest.TestCase):
     def test_maxprint(self, xp, sp):
         s = self.dummy_class(sp)(maxprint=30)
         return s.maxprint
+
+
+class TestSetShape(unittest.TestCase):
+    """``set_shape`` must mutate ``self`` in place.  Plain
+    ``self.reshape(shape)`` returns a new matrix and discards the
+    reshaped result; the in-place wrapper has to swap ``__dict__``.
+    """
+
+    def test_csr_set_shape_mutates(self):
+        m = sparse.csr_matrix(cupy.array(
+            [[1, 2, 0], [0, 3, 0], [0, 0, 4]], dtype=cupy.float64))
+        m.set_shape((1, 9))
+        assert m.shape == (1, 9)
+        cupy.testing.assert_array_equal(
+            m.toarray(),
+            cupy.array([[1, 2, 0, 0, 3, 0, 0, 0, 4]], dtype=cupy.float64))
+
+    def test_csc_set_shape_mutates(self):
+        m = sparse.csc_matrix(cupy.eye(3, dtype=cupy.float64))
+        m.set_shape((9, 1))
+        assert m.shape == (9, 1)
+
+    def test_set_shape_invalid_total(self):
+        m = sparse.csr_matrix(cupy.eye(3, dtype=cupy.float64))
+        with pytest.raises(ValueError):
+            m.set_shape((4, 4))

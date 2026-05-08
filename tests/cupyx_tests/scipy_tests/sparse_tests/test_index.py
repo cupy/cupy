@@ -119,6 +119,16 @@ class TestSetitemIndexing:
                             _get_index_combos(1)):
             self._run(maj, min, data=x)
 
+    def test_set_sparse_singleton(self):
+        # ``A[i, j] = sparse_1x1`` previously raised ValueError because
+        # ``cupy.asarray(sparse, dtype=...)`` doesn't densify; the
+        # __setitem__ scalar path now handles a sparse 1x1 RHS.
+        dtype = getattr(cupy, self.dtype)
+        m = sparse.csr_matrix(cupy.eye(3, dtype=dtype))
+        rhs = sparse.csr_matrix(cupy.array([[7.0]], dtype=dtype))
+        m[0, 0] = rhs
+        assert m.toarray()[0, 0] == 7.0
+
     @pytest.mark.xfail(scipy_113_or_later, reason="XXX: scipy1.13")
     @testing.with_requires('scipy>=1.5.0')
     def test_set_zero_dim_bool_mask(self):
@@ -599,7 +609,10 @@ class TestIndexingIndexError(IndexingTestBase):
 class TestIndexingValueError(IndexingTestBase):
 
     def test_indexing_value_error(self):
+        # SciPy <1.17 raises ValueError for shape-mismatch in fancy
+        # indexing; SciPy >=1.17 raises IndexError.  Accept either to
+        # remain compatible with both.
         for xp, sp in [(numpy, scipy.sparse), (cupy, sparse)]:
             a = self._make_matrix(sp, numpy.float32)
-            with pytest.raises(ValueError):
+            with pytest.raises((ValueError, IndexError)):
                 a[self.indices]

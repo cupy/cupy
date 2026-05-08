@@ -59,6 +59,14 @@ class _data_matrix(_base.spmatrix):
 
     conj.__doc__ = _base.spmatrix.conj.__doc__
 
+    @property
+    def real(self):
+        return self._with_data(self.data.real)
+
+    @property
+    def imag(self):
+        return self._with_data(self.data.imag)
+
     def copy(self):
         return self._with_data(self.data.copy(), copy=True)
 
@@ -68,7 +76,7 @@ class _data_matrix(_base.spmatrix):
         """Returns number of non-zero entries.
 
         .. note::
-           This method counts the actual number of non-zero entories, which
+           This method counts the actual number of non-zero entries, which
            does not include explicit zero entries.
            Instead ``nnz`` returns the number of entries including explicit
            zeros.
@@ -162,20 +170,24 @@ class _minmax_mixin:
 
         # Do the reduction
         value = mat._minor_reduce(min_or_max, axis, explicit)
-        major_index = cupy.arange(M)
+        idx_dtype = _sputils.get_index_dtype(maxval=M)
+        major_index = cupy.arange(M, dtype=idx_dtype)
 
         mask = value != 0
         major_index = cupy.compress(mask, major_index)
         value = cupy.compress(mask, value)
 
+        n = len(value)
+        zeros = cupy.zeros(n, dtype=idx_dtype)
+        value = value.astype(self.dtype, copy=False)
         if axis == 0:
-            return _coo.coo_matrix(
-                (value, (cupy.zeros(len(value)), major_index)),
-                dtype=self.dtype, shape=(1, M))
+            return _coo.coo_matrix._from_parts(
+                value, zeros, major_index,
+                shape=(1, M))
         else:
-            return _coo.coo_matrix(
-                (value, (major_index, cupy.zeros(len(value)))),
-                dtype=self.dtype, shape=(M, 1))
+            return _coo.coo_matrix._from_parts(
+                value, major_index, zeros,
+                shape=(M, 1))
 
     def _min_or_max(self, axis, out, min_or_max, explicit):
         if out is not None:

@@ -104,6 +104,11 @@ filterwarnings = [
   # `np.matrix`.
   'ignore::PendingDeprecationWarning:scipy\.sparse\.\w+',
   'ignore::PendingDeprecationWarning:numpy\.matrixlib\.defmatrix',
+  # SciPy 1.17 announces an upcoming dtype change in
+  # ``diags()`` / ``diags_array()`` via a FutureWarning when the
+  # input dtype is integer.  CuPy mirrors current behaviour and
+  # will adapt when SciPy actually flips the default.
+  'ignore:Input has data type.*output has been cast.*:FutureWarning',
   # pyreadline (dependency from optuna -> cliff -> cmd2) uses deprecated ABCs
   "ignore:Using or importing the ABCs from:DeprecationWarning:pyreadline",
   # google-api-core>=2.28.0 warns about Python versions approaching EOL

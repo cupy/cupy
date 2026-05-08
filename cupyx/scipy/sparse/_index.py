@@ -6,6 +6,7 @@ from __future__ import annotations
 import cupy
 from cupy import _core
 
+from cupyx.scipy.sparse._base import issparse
 from cupyx.scipy.sparse._base import isspmatrix
 from cupyx.scipy.sparse._base import spmatrix
 
@@ -25,13 +26,13 @@ _bool_scalar_types = (bool, numpy.bool_)
 
 
 _compress_getitem_kern = _core.ElementwiseKernel(
-    'T d, S ind, int32 minor', 'raw T answer',
+    'T d, S ind, S minor', 'raw T answer',
     'if (ind == minor) atomicAdd(&answer[0], d);',
     'cupyx_scipy_sparse_compress_getitem')
 
 
 _compress_getitem_complex_kern = _core.ElementwiseKernel(
-    'T real, T imag, S ind, int32 minor',
+    'T real, T imag, S ind, S minor',
     'raw T answer_real, raw T answer_imag',
     '''
     if (ind == minor) {
@@ -59,7 +60,7 @@ def _get_csr_submatrix_major_axis(Ax, Aj, Ap, start, stop):
 
     """
     Ap = Ap[start:stop + 1]
-    start_offset, stop_offset = int(Ap[0]), int(Ap[-1])
+    start_offset, stop_offset = int(Ap[0]), int(Ap[-1])  # synchronize!
     Bp = Ap - start_offset
     Bj = Aj[start_offset:stop_offset]
     Bx = Ax[start_offset:stop_offset]
@@ -67,38 +68,10 @@ def _get_csr_submatrix_major_axis(Ax, Aj, Ap, start, stop):
     return Bx, Bj, Bp
 
 
-def _get_csr_submatrix_minor_axis(Ax, Aj, Ap, start, stop):
-    """Return a submatrix of the input sparse matrix by slicing minor axis.
-
-    Args:
-        Ax (cupy.ndarray): data array from input sparse matrix
-        Aj (cupy.ndarray): indices array from input sparse matrix
-        Ap (cupy.ndarray): indptr array from input sparse matrix
-        start (int): starting index of minor axis
-        stop (int): ending index of minor axis
-
-    Returns:
-        Bx (cupy.ndarray): data array of output sparse matrix
-        Bj (cupy.ndarray): indices array of output sparse matrix
-        Bp (cupy.ndarray): indptr array of output sparse matrix
-
-    """
-    mask = (start <= Aj) & (Aj < stop)
-    mask_sum = cupy.empty(Aj.size + 1, dtype=Aj.dtype)
-    mask_sum[0] = 0
-    mask_sum[1:] = mask
-    cupy.cumsum(mask_sum, out=mask_sum)
-    Bp = mask_sum[Ap]
-    Bj = Aj[mask] - start
-    Bx = Ax[mask]
-
-    return Bx, Bj, Bp
-
-
 _csr_row_index_ker = _core.ElementwiseKernel(
-    'int32 out_rows, raw I rows, '
-    'raw int32 Ap, raw int32 Aj, raw T Ax, raw int32 Bp',
-    'int32 Bj, T Bx',
+    'I out_rows, raw I rows, '
+    'raw I Ap, raw I Aj, raw T Ax, raw I Bp',
+    'I Bj, T Bx',
     '''
     const I row = rows[out_rows];
 
@@ -124,11 +97,14 @@ def _csr_row_index(Ax, Aj, Ap, rows):
         Bj (cupy.ndarray): indices array of output sparse matrix
         Bp (cupy.ndarray): indptr array for output sparse matrix
     """
+    # Ensure rows has the same dtype as Ap/Aj so the kernel type parameter I
+    # is consistent across all array arguments.
+    rows = rows.astype(Ap.dtype, copy=False)
     row_nnz = cupy.diff(Ap)
     Bp = cupy.empty(rows.size + 1, dtype=Ap.dtype)
     Bp[0] = 0
     cupy.cumsum(row_nnz[rows], out=Bp[1:])
-    nnz = int(Bp[-1])
+    nnz = int(Bp[-1])  # synchronize!
 
     out_rows = _csr_indptr_to_coo_rows(nnz, Bp)
 
@@ -136,7 +112,38 @@ def _csr_row_index(Ax, Aj, Ap, rows):
     return Bx, Bj, Bp
 
 
+def _get_csr_submatrix_minor_axis(Ax, Aj, Ap, start, stop):
+    """Return a submatrix of the input sparse matrix by slicing minor axis.
+
+    Args:
+        Ax (cupy.ndarray): data array from input sparse matrix
+        Aj (cupy.ndarray): indices array from input sparse matrix
+        Ap (cupy.ndarray): indptr array from input sparse matrix
+        start (int): starting index of minor axis
+        stop (int): ending index of minor axis
+
+    Returns:
+        Bx (cupy.ndarray): data array of output sparse matrix
+        Bj (cupy.ndarray): indices array of output sparse matrix
+        Bp (cupy.ndarray): indptr array of output sparse matrix
+    """
+    mask = (start <= Aj) & (Aj < stop)
+    mask_sum = cupy.empty(Aj.size + 1, dtype=Ap.dtype)
+    mask_sum[0] = 0
+    mask_sum[1:] = mask
+    cupy.cumsum(mask_sum, out=mask_sum)
+    Bp = mask_sum[Ap]
+    Bj = Aj[mask] - start
+    Bx = Ax[mask]
+    return Bx, Bj, Bp
+
+
 def _csr_indptr_to_coo_rows(nnz, Bp):
+    if Bp.dtype == cupy.int64:
+        # TODO(eriknw): cuSPARSE--remove when xcsr2coo supports int64
+        from cupyx.cusparse import _indptr_to_coo
+        return _indptr_to_coo(Bp)
+
     from cupy_backends.cuda.libs import cusparse
 
     out_rows = cupy.empty(nnz, dtype=numpy.int32)
@@ -402,7 +409,12 @@ class IndexMixin:
 
         if isinstance(row, _int_scalar_types) and\
                 isinstance(col, _int_scalar_types):
-            x = cupy.asarray(x, dtype=self.dtype)
+            # A 1x1 sparse RHS (cupy/scipy sparse) is a valid scalar
+            # source — densify it before checking size.
+            if issparse(x):
+                x = cupy.asarray(x.toarray(), dtype=self.dtype)
+            else:
+                x = cupy.asarray(x, dtype=self.dtype)
             if x.size != 1:
                 raise ValueError('Trying to assign a sequence to an item')
             self._set_intXint(row, col, x.flat[0])
@@ -459,9 +471,9 @@ class IndexMixin:
         row, col = _unpack_index(key)
 
         if self._is_scalar(row):
-            row = row.item()
+            row = row.item()  # synchronize!
         if self._is_scalar(col):
-            col = col.item()
+            col = col.item()  # synchronize!
 
         # Scipy calls sputils.isintlike() rather than
         # isinstance(x, _int_scalar_types). Comparing directly to int
