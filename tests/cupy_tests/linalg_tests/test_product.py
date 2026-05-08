@@ -451,7 +451,8 @@ class TestInt8Tensordot:
         if cupy.cuda.runtime.is_hip:
             pytest.skip('int8 cublasGemmEx path is NVIDIA-only')
         if int(cupy.cuda.Device().compute_capability) < 61:
-            pytest.skip('CUBLAS_COMPUTE_32I requires compute capability >= 6.1')
+            pytest.skip(
+                'CUBLAS_COMPUTE_32I requires compute capability >= 6.1')
 
     @testing.numpy_cupy_array_equal()
     def test_int8_tensordot_aligned(self, xp):

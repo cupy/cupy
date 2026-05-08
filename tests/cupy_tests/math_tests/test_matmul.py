@@ -356,7 +356,8 @@ class TestMatmulInt8(unittest.TestCase):
         if cupy.cuda.runtime.is_hip:
             pytest.skip('int8 cublasGemmEx path is NVIDIA-only')
         if int(cupy.cuda.Device().compute_capability) < 61:
-            pytest.skip('CUBLAS_COMPUTE_32I requires compute capability >= 6.1')
+            pytest.skip(
+                'CUBLAS_COMPUTE_32I requires compute capability >= 6.1')
 
     @testing.numpy_cupy_array_equal()
     def test_operator_matmul(self, xp):
@@ -373,10 +374,10 @@ class TestMatmulInt8(unittest.TestCase):
         rng = numpy.random.default_rng(seed=0)
         m, k = self.shape_pair[0]
         _, n = self.shape_pair[1]
-        x1 = xp.asarray(
-            numpy.asfortranarray(rng.integers(-10, 10, (m, k), dtype=numpy.int8)))
-        x2 = xp.asarray(
-            numpy.asfortranarray(rng.integers(-10, 10, (k, n), dtype=numpy.int8)))
+        x1 = xp.asarray(numpy.asfortranarray(
+            rng.integers(-10, 10, (m, k), dtype=numpy.int8)))
+        x2 = xp.asarray(numpy.asfortranarray(
+            rng.integers(-10, 10, (k, n), dtype=numpy.int8)))
         return x1 @ x2
 
     def test_overflow_wraps_like_numpy(self):
@@ -388,7 +389,7 @@ class TestMatmulInt8(unittest.TestCase):
         cupy.testing.assert_array_equal(a @ b, np_a @ np_b)
 
     def test_fallback_emits_performance_warning(self):
-        """When cuBLAS fails, a PerformanceWarning is emitted before fallback."""
+        """When cuBLAS fails, PerformanceWarning is emitted before fallback."""
         from cupy import _util
         from cupy_backends.cuda.libs import cublas
         import unittest.mock as mock
@@ -414,7 +415,7 @@ class TestMatmulInt8(unittest.TestCase):
 
 
 class TestMatmulInt8SetComputeTypeError(unittest.TestCase):
-    """set_compute_type rejects non-DEFAULT compute types for integer dtypes."""
+    """set_compute_type rejects non-DEFAULT compute types for int dtypes."""
 
     def test_int8_rejects_fp16_compute_type(self):
         with pytest.raises(ValueError, match='integer dtypes'):
