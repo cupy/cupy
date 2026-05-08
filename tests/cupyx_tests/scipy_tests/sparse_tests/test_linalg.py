@@ -1354,7 +1354,9 @@ class TestLOBPCG:
         """
         n = 50
         m = 4
-        vals = -xp.arange(1, n + 1)
+        # Use dtype=float to avoid SciPy 1.17 FutureWarning for
+        # integer input to ``diags``.
+        vals = -xp.arange(1, n + 1, dtype=float)
         A = sp.diags([vals], [0], (n, n))
         A = A.astype(xp.float32)
         X = testing.shaped_random((n, m), xp=xp, seed=3)

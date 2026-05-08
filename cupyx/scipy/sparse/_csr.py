@@ -52,6 +52,8 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
     """
 
     format = 'csr'
+    # Index of the major axis in shape: rows for CSR.
+    _major_axis = 0
 
     def get(self, stream=None):
         """Returns a copy of the array on host memory.
@@ -101,9 +103,62 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
                     return csr_matrix(cupy.ones(self.shape, dtype=numpy.bool_))
                 else:
                     return csr_matrix(self.shape, dtype=numpy.bool_)
-            indices = cupy.zeros((1,), dtype=numpy.int32)
-            indptr = cupy.arange(2, dtype=numpy.int32)
-            other = csr_matrix((data, indices, indptr), shape=(1, 1))
+            scalar = data[0]
+            # Fast path: when op(0, scalar) is False, unstored
+            # entries (implicit zeros) all produce False.  The result
+            # is sparse -- only stored entries can contribute True.
+            # This avoids the O(m*n) expansion in binopt_csr.
+            try:
+                zero_cmp = bool(op(self.dtype.type(0), scalar))
+            except TypeError:
+                # Complex dtypes don't support < > in Python
+                zero_cmp = True  # fall through to binopt
+            if not zero_cmp:
+                self.sum_duplicates()
+                new_data = op(self.data, scalar)
+                # Keep only True entries (filter explicit False).  The
+                # post-``sum_duplicates`` structure is canonical
+                # (sorted, no duplicates); filtering preserves both
+                # invariants, so propagate ``has_canonical_format=True``.
+                mask = new_data
+                if mask.all():  # synchronize!
+                    return csr_matrix._from_parts(
+                        new_data, self.indices.copy(),
+                        self.indptr.copy(), self.shape,
+                        has_canonical_format=True)
+                from cupyx.cusparse import (
+                    _indptr_to_coo, _build_indptr)
+                idx_dtype = self.indices.dtype
+                rows = _indptr_to_coo(self.indptr)
+                rows = rows[mask]
+                cols = self.indices[mask]
+                data = new_data[mask]
+                M = self._swap(*self.shape)[0]
+                indptr = _build_indptr(rows, M, idx_dtype)
+                return csr_matrix._from_parts(
+                    data, cols, indptr, self.shape,
+                    has_canonical_format=True)
+            # Slow path: op(0, scalar) is True, so unstored entries
+            # contribute.  Fall through to binopt_csr which expands
+            # to O(m*n).  This is unavoidable when the result is
+            # dense.  Match scipy by emitting a warning.
+            _inv = {
+                '_eq_': ('==', '!='), '_ne_': ('!=', '=='),
+                '_lt_': ('<', '>='), '_gt_': ('>', '<='),
+                '_le_': ('<=', '>'), '_ge_': ('>=', '<'),
+            }
+            sym, alt = _inv.get(op_name, (op_name, '!='))
+            warnings.warn(
+                'Comparing a sparse matrix with {} using {} is '
+                'inefficient. Try using {} instead.'
+                .format(scalar, sym, alt),
+                _base.SparseEfficiencyWarning)
+            idx_dtype = self.indices.dtype
+            other = csr_matrix._from_parts(
+                data,
+                cupy.zeros((1,), dtype=idx_dtype),
+                cupy.arange(2, dtype=idx_dtype),
+                (1, 1))
             return binopt_csr(self, other, op_name)
         elif _util.isdense(other):
             return op(self.todense(), other)
@@ -155,7 +210,11 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
         elif isspmatrix_csr(other):
             self.sum_duplicates()
             other.sum_duplicates()
-            if cusparse.check_availability('spgemm'):
+            # int64: always route through cusparse.spgemm, which has a
+            # pure-CuPy fallback when cuSPARSE lacks int64 SpGEMM.
+            is_int64 = (self.indices.dtype == cupy.int64
+                        or other.indices.dtype == cupy.int64)
+            if is_int64 or cusparse.check_availability('spgemm'):
                 return cusparse.spgemm(self, other)
             elif cusparse.check_availability('csrgemm2'):
                 return cusparse.csrgemm2(self, other)
@@ -166,6 +225,14 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
         elif _csc.isspmatrix_csc(other):
             self.sum_duplicates()
             other.sum_duplicates()
+            is_int64 = (self.indices.dtype == cupy.int64
+                        or other.indices.dtype == cupy.int64)
+            if is_int64:
+                # csrgemm/csrgemm2 are int32-only; route via spgemm,
+                # which has a pure-CuPy fallback for older cuSPARSE.
+                b = other.tocsr()
+                b.sum_duplicates()
+                return cusparse.spgemm(self, b)
             if cusparse.check_availability('csrgemm') and not runtime.is_hip:
                 # trans=True is still buggy as of ROCm 4.2.0
                 return cusparse.csrgemm(self, other.T, transb=True)
@@ -266,13 +333,38 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
             return cupy.empty(0, dtype=self.dtype)
         self.sum_duplicates()
         y = cupy.empty(ylen, dtype=self.dtype)
-        _cupy_csr_diagonal()(k, rows, cols, self.data, self.indptr,
-                             self.indices, y)
+        idx_dtype = self.indptr.dtype
+        _cupy_csr_diagonal()(idx_dtype.type(k),
+                             idx_dtype.type(rows), idx_dtype.type(cols),
+                             self.data, self.indptr, self.indices, y)
         return y
 
     def eliminate_zeros(self):
-        """Removes zero entories in place."""
+        """Removes zero entries in place."""
         from cupyx import cusparse
+
+        if self.indices.dtype == cupy.int64:
+            # TODO(eriknw): cuSPARSE--csr2csr_compress doesn't support int64
+            mask = self.data != 0
+            if mask.all():  # synchronize!
+                return
+            new_data = self.data[mask]
+            new_indices = self.indices[mask]
+            nrows = self.shape[0]
+            idx_dtype = self.indptr.dtype
+            if len(new_data) == 0:
+                self.data = new_data
+                self.indices = new_indices
+                self.indptr = cupy.zeros(nrows + 1, dtype=idx_dtype)
+                return
+            row_of_each = cusparse._indptr_to_coo(self.indptr)
+            kept_rows = row_of_each[mask]
+            new_indptr = cusparse._build_indptr(
+                kept_rows, nrows, idx_dtype)
+            self.data = new_data
+            self.indices = new_indices
+            self.indptr = new_indptr
+            return
 
         compress = cusparse.csr2csr_compress(self, 0)
         self.data = compress.data
@@ -290,8 +382,14 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
             else:
                 self.sum_duplicates()
                 new_data = cupy_op(self.data, other)
-                return csr_matrix((new_data, self.indices, self.indptr),
-                                  shape=self.shape, dtype=dtype)
+                new_data = new_data.astype(dtype, copy=False)
+                return csr_matrix._from_parts(
+                    new_data, self.indices, self.indptr,
+                    self.shape,
+                    has_canonical_format=getattr(
+                        self, '_has_canonical_format', None),
+                    has_sorted_indices=getattr(
+                        self, '_has_sorted_indices', None))
         elif _util.isdense(other):
             self.sum_duplicates()
             other = cupy.atleast_2d(other)
@@ -342,12 +440,15 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
         else:
             x_len = min(x_len, values.size)
             x_data = values[:x_len]
-        x_indices = cupy.arange(col_st, col_st + x_len, dtype='i')
-        x_indptr = cupy.zeros((rows + 1,), dtype='i')
-        x_indptr[row_st:row_st+x_len+1] = cupy.arange(x_len+1, dtype='i')
+        idx_dtype = self.indices.dtype
+        x_indices = cupy.arange(col_st, col_st + x_len, dtype=idx_dtype)
+        x_indptr = cupy.zeros((rows + 1,), dtype=idx_dtype)
+        x_indptr[row_st:row_st+x_len+1] = cupy.arange(
+            x_len+1, dtype=idx_dtype)
         x_indptr[row_st+x_len+1:] = x_len
         x_data -= self.diagonal(k=k)[:x_len]
-        y = self + csr_matrix((x_data, x_indices, x_indptr), shape=self.shape)
+        y = self + csr_matrix._from_parts(
+            x_data, x_indices, x_indptr, self.shape)
         self.data = y.data
         self.indices = y.indices
         self.indptr = y.indptr
@@ -512,10 +613,18 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
                 'swapping dimensions is the only logical permutation.')
 
         shape = self.shape[1], self.shape[0]
-        trans = _csc.csc_matrix(
-            (self.data, self.indices, self.indptr), shape=shape, copy=copy)
-        trans.has_canonical_format = self.has_canonical_format
-        return trans
+        if copy:
+            data = self.data.copy()
+            indices = self.indices.copy()
+            indptr = self.indptr.copy()
+        else:
+            data, indices, indptr = self.data, self.indices, self.indptr
+        return _csc.csc_matrix._from_parts(
+            data, indices, indptr, shape,
+            has_canonical_format=getattr(
+                self, '_has_canonical_format', None),
+            has_sorted_indices=getattr(
+                self, '_has_sorted_indices', None))
 
     def getrow(self, i):
         """Returns a copy of row i of the matrix, as a (1 x n)
@@ -594,9 +703,12 @@ def check_shape_for_pointwise_op(a_shape, b_shape, allow_broadcasting=True):
 
 def multiply_by_scalar(sp, a):
     data = sp.data * a
-    indices = sp.indices.copy()
-    indptr = sp.indptr.copy()
-    return csr_matrix((data, indices, indptr), shape=sp.shape)
+    return csr_matrix._from_parts(
+        data, sp.indices.copy(), sp.indptr.copy(), sp.shape,
+        has_canonical_format=getattr(
+            sp, '_has_canonical_format', None),
+        has_sorted_indices=getattr(
+            sp, '_has_sorted_indices', None))
 
 
 def multiply_by_dense(sp, dn):
@@ -619,15 +731,21 @@ def multiply_by_dense(sp, dn):
             indptr *= n
 
     # out = sp * dn
-    cupy_multiply_by_dense()(sp.data, sp.indptr, sp.indices, sp_m, sp_n,
-                             dn, dn_m, dn_n, indptr, m, n, data, indices)
+    idx_dtype = sp.indptr.dtype
+    it = idx_dtype.type
+    cupy_multiply_by_dense()(
+        sp.data, sp.indptr, sp.indices, it(sp_m), it(sp_n),
+        dn, it(dn_m), it(dn_n), indptr, it(m), it(n),
+        data, indices)
 
-    return csr_matrix((data, indices, indptr), shape=(m, n))
+    return csr_matrix._from_parts(
+        data, indices, indptr, shape=(m, n))
 
 
 _GET_ROW_ID_ = '''
-__device__ inline int get_row_id(int i, int min, int max, const int *indptr) {
-    int row = (min + max) / 2;
+template<typename I>
+__device__ inline I get_row_id(I i, I min, I max, const I *indptr) {
+    I row = (min + max) / 2;
     while (min < max) {
         if (i < indptr[row]) {
             max = row - 1;
@@ -643,13 +761,14 @@ __device__ inline int get_row_id(int i, int min, int max, const int *indptr) {
 '''
 
 _FIND_INDEX_HOLDING_COL_IN_ROW_ = '''
-__device__ inline int find_index_holding_col_in_row(
-        int row, int col, const int *indptr, const int *indices) {
-    int j_min = indptr[row];
-    int j_max = indptr[row+1] - 1;
+template<typename I>
+__device__ inline I find_index_holding_col_in_row(
+        I row, I col, const I *indptr, const I *indices) {
+    I j_min = indptr[row];
+    I j_max = indptr[row+1] - 1;
     while (j_min <= j_max) {
-        int j = (j_min + j_max) / 2;
-        int j_col = indices[j];
+        I j = (j_min + j_max) / 2;
+        I j_col = indices[j];
         if (j_col == col) {
             return j;
         } else if (j_col < col) {
@@ -658,7 +777,7 @@ __device__ inline int find_index_holding_col_in_row(
             j_max = j - 1;
         }
     }
-    return -1;
+    return (I)(-1);
 }
 '''
 
@@ -668,32 +787,32 @@ def cupy_multiply_by_dense():
     return cupy.ElementwiseKernel(
         '''
         raw S SP_DATA, raw I SP_INDPTR, raw I SP_INDICES,
-        int32 SP_M, int32 SP_N,
-        raw D DN_DATA, int32 DN_M, int32 DN_N,
-        raw I OUT_INDPTR, int32 OUT_M, int32 OUT_N
+        I SP_M, I SP_N,
+        raw D DN_DATA, I DN_M, I DN_N,
+        raw I OUT_INDPTR, I OUT_M, I OUT_N
         ''',
         'O OUT_DATA, I OUT_INDICES',
         '''
-        int i_out = i;
-        int m_out = get_row_id(i_out, 0, OUT_M - 1, &(OUT_INDPTR[0]));
-        int i_sp = i_out;
+        I i_out = (I)i;
+        I m_out = get_row_id(i_out, (I)0, OUT_M - 1, &(OUT_INDPTR[0]));
+        I i_sp = i_out;
         if (OUT_M > SP_M && SP_M == 1) {
             i_sp -= OUT_INDPTR[m_out];
         }
         if (OUT_N > SP_N && SP_N == 1) {
             i_sp /= OUT_N;
         }
-        int n_out = SP_INDICES[i_sp];
+        I n_out = SP_INDICES[i_sp];
         if (OUT_N > SP_N && SP_N == 1) {
             n_out = i_out - OUT_INDPTR[m_out];
         }
-        int m_dn = m_out;
+        I m_dn = m_out;
         if (OUT_M > DN_M && DN_M == 1) {
-            m_dn = 0;
+            m_dn = (I)0;
         }
-        int n_dn = n_out;
+        I n_dn = n_out;
         if (OUT_N > DN_N && DN_N == 1) {
-            n_dn = 0;
+            n_dn = (I)0;
         }
         OUT_DATA = (O)(SP_DATA[i_sp] * DN_DATA[n_dn + (DN_N * m_dn)]);
         OUT_INDICES = n_out;
@@ -724,76 +843,86 @@ def multiply_by_csr(a, b):
     b_nnz = b.nnz * (m // b_m) * (n // b_n)
     if a_nnz > b_nnz:
         return multiply_by_csr(b, a)
+    # Harmonize index dtypes so the kernel template parameter ``I`` is
+    # consistent across both operands (mirrors ``binopt_csr``).
+    # Without this, mixed int32/int64 inputs trip a type mismatch.
+    idx_dtype = numpy.promote_types(a.indices.dtype, b.indices.dtype)
+    a_indices = a.indices.astype(idx_dtype, copy=False)
+    a_indptr = a.indptr.astype(idx_dtype, copy=False)
+    b_indices = b.indices.astype(idx_dtype, copy=False)
+    b_indptr = b.indptr.astype(idx_dtype, copy=False)
     c_nnz = a_nnz
     dtype = numpy.promote_types(a.dtype, b.dtype)
     c_data = cupy.empty(c_nnz, dtype=dtype)
-    c_indices = cupy.empty(c_nnz, dtype=a.indices.dtype)
+    c_indices = cupy.empty(c_nnz, dtype=idx_dtype)
     if m > a_m:
         if n > a_n:
-            c_indptr = cupy.arange(0, c_nnz+1, n, dtype=a.indptr.dtype)
+            c_indptr = cupy.arange(0, c_nnz+1, n, dtype=idx_dtype)
         else:
-            c_indptr = cupy.arange(0, c_nnz+1, a.nnz, dtype=a.indptr.dtype)
+            c_indptr = cupy.arange(0, c_nnz+1, a.nnz, dtype=idx_dtype)
     else:
-        c_indptr = a.indptr.copy()
+        c_indptr = a_indptr.copy()
         if n > a_n:
             c_indptr *= n
-    flags = cupy.zeros(c_nnz+1, dtype=a.indices.dtype)
-    nnz_each_row = cupy.zeros(m+1, dtype=a.indptr.dtype)
+    flags = cupy.zeros(c_nnz+1, dtype=idx_dtype)
+    nnz_each_row = cupy.zeros(m+1, dtype=idx_dtype)
 
     # compute c = a * b where necessary and get sparsity pattern of matrix d
+    it = idx_dtype.type
     cupy_multiply_by_csr_step1()(
-        a.data, a.indptr, a.indices, a_m, a_n,
-        b.data, b.indptr, b.indices, b_m, b_n,
-        c_indptr, m, n, c_data, c_indices, flags, nnz_each_row)
+        a.data, a_indptr, a_indices, it(a_m), it(a_n),
+        b.data, b_indptr, b_indices, it(b_m), it(b_n),
+        c_indptr, it(m), it(n), c_data, c_indices, flags, nnz_each_row)
 
-    flags = cupy.cumsum(flags, dtype=a.indptr.dtype)
-    d_indptr = cupy.cumsum(nnz_each_row, dtype=a.indptr.dtype)
-    d_nnz = int(d_indptr[-1])
+    flags = cupy.cumsum(flags, dtype=idx_dtype)
+    d_indptr = cupy.cumsum(nnz_each_row, dtype=idx_dtype)
+    d_nnz = int(d_indptr[-1])  # synchronize!
     d_data = cupy.empty(d_nnz, dtype=dtype)
-    d_indices = cupy.empty(d_nnz, dtype=a.indices.dtype)
+    d_indices = cupy.empty(d_nnz, dtype=idx_dtype)
 
     # remove zero elements in matrix c
     cupy_multiply_by_csr_step2()(c_data, c_indices, flags, d_data, d_indices)
 
-    return csr_matrix((d_data, d_indices, d_indptr), shape=(m, n))
+    return csr_matrix._from_parts(
+        d_data, d_indices, d_indptr, shape=(m, n))
 
 
 @cupy._util.memoize(for_each_device=True)
 def cupy_multiply_by_csr_step1():
     return cupy.ElementwiseKernel(
         '''
-        raw A A_DATA, raw I A_INDPTR, raw I A_INDICES, int32 A_M, int32 A_N,
-        raw B B_DATA, raw I B_INDPTR, raw I B_INDICES, int32 B_M, int32 B_N,
-        raw I C_INDPTR, int32 C_M, int32 C_N
+        raw A A_DATA, raw I A_INDPTR, raw I A_INDICES, I A_M, I A_N,
+        raw B B_DATA, raw I B_INDPTR, raw I B_INDICES, I B_M, I B_N,
+        raw I C_INDPTR, I C_M, I C_N
         ''',
         'C C_DATA, I C_INDICES, raw I FLAGS, raw I NNZ_EACH_ROW',
         '''
-        int i_c = i;
-        int m_c = get_row_id(i_c, 0, C_M - 1, &(C_INDPTR[0]));
+        I i_c = (I)i;
+        I m_c = get_row_id(i_c, (I)0, C_M - 1, &(C_INDPTR[0]));
 
-        int i_a = i;
+        I i_a = (I)i;
         if (C_M > A_M && A_M == 1) {
             i_a -= C_INDPTR[m_c];
         }
         if (C_N > A_N && A_N == 1) {
             i_a /= C_N;
         }
-        int n_c = A_INDICES[i_a];
+        I n_c = A_INDICES[i_a];
         if (C_N > A_N && A_N == 1) {
-            n_c = i % C_N;
+            n_c = (I)i % C_N;
         }
-        int m_b = m_c;
+        I m_b = m_c;
         if (C_M > B_M && B_M == 1) {
-            m_b = 0;
+            m_b = (I)0;
         }
-        int n_b = n_c;
+        I n_b = n_c;
         if (C_N > B_N && B_N == 1) {
-            n_b = 0;
+            n_b = (I)0;
         }
-        int i_b = find_index_holding_col_in_row(m_b, n_b,
+        I i_b = find_index_holding_col_in_row(m_b, n_b,
             &(B_INDPTR[0]), &(B_INDICES[0]));
-        if (i_b >= 0) {
-            atomicAdd(&(NNZ_EACH_ROW[m_c+1]), 1);
+        if (i_b >= (I)0) {
+            atomicAdd(&NNZ_EACH_ROW[m_c+1], (I)1);
             FLAGS[i+1] = 1;
             C_DATA = (C)(A_DATA[i_a] * B_DATA[i_b]);
             C_INDICES = n_c;
@@ -810,7 +939,7 @@ def cupy_multiply_by_csr_step2():
         'T C_DATA, I C_INDICES, raw I FLAGS',
         'raw D D_DATA, raw I D_INDICES',
         '''
-        int j = FLAGS[i];
+        I j = FLAGS[i];
         if (j < FLAGS[i+1]) {
             D_DATA[j] = (D)(C_DATA);
             D_INDICES[j] = C_INDICES;
@@ -870,11 +999,16 @@ def binopt_csr(a, b, op_name):
     a_nnz = a.nnz * (m // a_m) * (n // a_n)
     b_nnz = b.nnz * (m // b_m) * (n // b_n)
 
-    a_info = cupy.zeros(a_nnz + 1, dtype=a.indices.dtype)
-    b_info = cupy.zeros(b_nnz + 1, dtype=b.indices.dtype)
+    idx_dtype = numpy.promote_types(a.indices.dtype, b.indices.dtype)
+    a_indptr = a.indptr.astype(idx_dtype, copy=False)
+    a_indices = a.indices.astype(idx_dtype, copy=False)
+    b_indptr = b.indptr.astype(idx_dtype, copy=False)
+    b_indices = b.indices.astype(idx_dtype, copy=False)
+    a_info = cupy.zeros(a_nnz + 1, dtype=idx_dtype)
+    b_info = cupy.zeros(b_nnz + 1, dtype=idx_dtype)
     a_valid = cupy.zeros(a_nnz, dtype=numpy.int8)
     b_valid = cupy.zeros(b_nnz, dtype=numpy.int8)
-    c_indptr = cupy.zeros(m + 1, dtype=a.indptr.dtype)
+    c_indptr = cupy.zeros(m + 1, dtype=idx_dtype)
     in_dtype = numpy.promote_types(a.dtype, b.dtype)
     a_data = a.data.astype(in_dtype, copy=False)
     b_data = b.data.astype(in_dtype, copy=False)
@@ -907,27 +1041,29 @@ def binopt_csr(a, b, op_name):
         raise ValueError('invalid op_name: {}'.format(op_name))
     a_tmp_data = cupy.empty(a_nnz, dtype=out_dtype)
     b_tmp_data = cupy.empty(b_nnz, dtype=out_dtype)
-    a_tmp_indices = cupy.empty(a_nnz, dtype=a.indices.dtype)
-    b_tmp_indices = cupy.empty(b_nnz, dtype=b.indices.dtype)
+    a_tmp_indices = cupy.empty(a_nnz, dtype=idx_dtype)
+    b_tmp_indices = cupy.empty(b_nnz, dtype=idx_dtype)
     _size = a_nnz + b_nnz
+    it = idx_dtype.type
     cupy_binopt_csr_step1(op_name, preamble=funcs)(
-        m, n,
-        a.indptr, a.indices, a_data, a_m, a_n, a.nnz, a_nnz,
-        b.indptr, b.indices, b_data, b_m, b_n, b.nnz, b_nnz,
+        it(m), it(n),
+        a_indptr, a_indices, a_data, it(a_m), it(a_n), it(a.nnz), it(a_nnz),
+        b_indptr, b_indices, b_data, it(b_m), it(b_n), it(b.nnz), it(b_nnz),
         a_info, a_valid, a_tmp_indices, a_tmp_data,
         b_info, b_valid, b_tmp_indices, b_tmp_data,
         c_indptr, size=_size)
     a_info = cupy.cumsum(a_info, dtype=a_info.dtype)
     b_info = cupy.cumsum(b_info, dtype=b_info.dtype)
     c_indptr = cupy.cumsum(c_indptr, dtype=c_indptr.dtype)
-    c_nnz = int(c_indptr[-1])
-    c_indices = cupy.empty(c_nnz, dtype=a.indices.dtype)
+    c_nnz = int(c_indptr[-1])  # synchronize!
+    c_indices = cupy.empty(c_nnz, dtype=idx_dtype)
     c_data = cupy.empty(c_nnz, dtype=out_dtype)
     cupy_binopt_csr_step2(op_name)(
-        a_info, a_valid, a_tmp_indices, a_tmp_data, a_nnz,
-        b_info, b_valid, b_tmp_indices, b_tmp_data, b_nnz,
+        a_info, a_valid, a_tmp_indices, a_tmp_data, it(a_nnz),
+        b_info, b_valid, b_tmp_indices, b_tmp_data, it(b_nnz),
         c_indices, c_data, size=_size)
-    return csr_matrix((c_data, c_indices, c_indptr), shape=(m, n))
+    return csr_matrix._from_parts(
+        c_data, c_indices, c_indptr, shape=(m, n))
 
 
 @cupy._util.memoize(for_each_device=True)
@@ -935,11 +1071,11 @@ def cupy_binopt_csr_step1(op_name, preamble=''):
     name = 'cupyx_scipy_sparse_csr_binopt_' + op_name + 'step1'
     return cupy.ElementwiseKernel(
         '''
-        int32 M, int32 N,
+        I M, I N,
         raw I A_INDPTR, raw I A_INDICES, raw T A_DATA,
-        int32 A_M, int32 A_N, int32 A_NNZ_ACT, int32 A_NNZ,
+        I A_M, I A_N, I A_NNZ_ACT, I A_NNZ,
         raw I B_INDPTR, raw I B_INDICES, raw T B_DATA,
-        int32 B_M, int32 B_N, int32 B_NNZ_ACT, int32 B_NNZ
+        I B_M, I B_N, I B_NNZ_ACT, I B_NNZ
         ''',
         '''
         raw I A_INFO, raw B A_VALID, raw I A_TMP_INDICES, raw O A_TMP_DATA,
@@ -949,16 +1085,16 @@ def cupy_binopt_csr_step1(op_name, preamble=''):
         '''
         if (i >= A_NNZ + B_NNZ) return;
 
-        const int *MY_INDPTR, *MY_INDICES;  int *MY_INFO;  const T *MY_DATA;
-        const int *OP_INDPTR, *OP_INDICES;  int *OP_INFO;  const T *OP_DATA;
-        int MY_M, MY_N, MY_NNZ_ACT, MY_NNZ;
-        int OP_M, OP_N, OP_NNZ_ACT, OP_NNZ;
+        const I *MY_INDPTR, *MY_INDICES;  I *MY_INFO;  const T *MY_DATA;
+        const I *OP_INDPTR, *OP_INDICES;  I *OP_INFO;  const T *OP_DATA;
+        I MY_M, MY_N, MY_NNZ_ACT, MY_NNZ;
+        I OP_M, OP_N, OP_NNZ_ACT, OP_NNZ;
         signed char *MY_VALID;  I *MY_TMP_INDICES;  O *MY_TMP_DATA;
 
-        int my_j;
+        I my_j;
         if (i < A_NNZ) {
             // in charge of one of non-zero element of sparse matrix A
-            my_j = i;
+            my_j = (I)i;
             MY_INDPTR  = &(A_INDPTR[0]);   OP_INDPTR  = &(B_INDPTR[0]);
             MY_INDICES = &(A_INDICES[0]);  OP_INDICES = &(B_INDICES[0]);
             MY_INFO    = &(A_INFO[0]);     OP_INFO    = &(B_INFO[0]);
@@ -972,7 +1108,7 @@ def cupy_binopt_csr_step1(op_name, preamble=''):
             MY_TMP_INDICES = &(A_TMP_INDICES[0]);
         } else {
             // in charge of one of non-zero element of sparse matrix B
-            my_j = i - A_NNZ;
+            my_j = (I)i - A_NNZ;
             MY_INDPTR  = &(B_INDPTR[0]);   OP_INDPTR  = &(A_INDPTR[0]);
             MY_INDICES = &(B_INDICES[0]);  OP_INDICES = &(A_INDICES[0]);
             MY_INFO    = &(B_INFO[0]);     OP_INFO    = &(A_INFO[0]);
@@ -985,11 +1121,11 @@ def cupy_binopt_csr_step1(op_name, preamble=''):
             MY_TMP_DATA= &(B_TMP_DATA[0]);
             MY_TMP_INDICES = &(B_TMP_INDICES[0]);
         }
-        int _min, _max, _mid;
+        I _min, _max, _mid;
 
         // get column location
-        int my_col;
-        int my_j_act = my_j;
+        I my_col;
+        I my_j_act = my_j;
         if (MY_M == 1 && MY_M < M) {
             if (MY_N == 1 && MY_N < N) my_j_act = 0;
             else                       my_j_act = my_j % MY_NNZ_ACT;
@@ -1002,22 +1138,22 @@ def cupy_binopt_csr_step1(op_name, preamble=''):
         }
 
         // get row location
-        int my_row = get_row_id(my_j_act, 0, MY_M - 1, &(MY_INDPTR[0]));
+        I my_row = get_row_id(my_j_act, (I)0, MY_M - 1, &(MY_INDPTR[0]));
         if (MY_M == 1 && MY_M < M) {
             if (MY_N == 1 && MY_N < N) my_row = my_j / N;
             else                       my_row = my_j / MY_NNZ_ACT;
         }
 
-        int op_row = my_row;
-        int op_row_act = op_row;
+        I op_row = my_row;
+        I op_row_act = op_row;
         if (OP_M == 1 && OP_M < M) {
             op_row_act = 0;
         }
 
-        int op_col = 0;
+        I op_col = 0;
         _min = OP_INDPTR[op_row_act];
         _max = OP_INDPTR[op_row_act + 1] - 1;
-        int op_j_act = _min;
+        I op_j_act = _min;
         bool op_nz = false;
         if (_min <= _max) {
             if (OP_N == 1 && OP_N < N) {
@@ -1048,7 +1184,7 @@ def cupy_binopt_csr_step1(op_name, preamble=''):
             }
         }
 
-        int op_j = op_j_act;
+        I op_j = op_j_act;
         if (OP_M == 1 && OP_M < M) {
             if (OP_N == 1 && OP_N < N) {
                 op_j = (op_col + N * op_row) * OP_NNZ_ACT;
@@ -1072,9 +1208,9 @@ def cupy_binopt_csr_step1(op_name, preamble=''):
                 MY_VALID[my_j] = 1;
                 MY_TMP_DATA[my_j] = out;
                 MY_TMP_INDICES[my_j] = my_col;
-                atomicAdd( &(C_INFO[my_row + 1]), 1 );
-                atomicAdd( &(MY_INFO[my_j + 1]), 1 );
-                atomicAdd( &(OP_INFO[op_j]), 1 );
+                atomicAdd(&C_INFO[my_row + 1], (I)1);
+                atomicAdd(&MY_INFO[my_j + 1], (I)1);
+                atomicAdd(&OP_INFO[op_j], (I)1);
             }
         }
         ''',
@@ -1088,20 +1224,20 @@ def cupy_binopt_csr_step2(op_name):
     return cupy.ElementwiseKernel(
         '''
         raw I A_INFO, raw B A_VALID, raw I A_TMP_INDICES, raw O A_TMP_DATA,
-        int32 A_NNZ,
+        I A_NNZ,
         raw I B_INFO, raw B B_VALID, raw I B_TMP_INDICES, raw O B_TMP_DATA,
-        int32 B_NNZ
+        I B_NNZ
         ''',
         'raw I C_INDICES, raw O C_DATA',
         '''
         if (i < A_NNZ) {
-            int j = i;
+            I j = (I)i;
             if (A_VALID[j]) {
                 C_INDICES[A_INFO[j]] = A_TMP_INDICES[j];
                 C_DATA[A_INFO[j]]    = A_TMP_DATA[j];
             }
         } else if (i < A_NNZ + B_NNZ) {
-            int j = i - A_NNZ;
+            I j = (I)i - A_NNZ;
             if (B_VALID[j]) {
                 C_INDICES[B_INFO[j]] = B_TMP_INDICES[j];
                 C_DATA[B_INFO[j]]    = B_TMP_DATA[j];
@@ -1115,8 +1251,10 @@ def cupy_binopt_csr_step2(op_name):
 def csr2dense(a, order):
     out = cupy.zeros(a.shape, dtype=a.dtype, order=order)
     m, n = a.shape
+    idx_dtype = a.indptr.dtype
     kern = _cupy_csr2dense(a.dtype)
-    kern(m, n, a.indptr, a.indices, a.data, (order == 'C'), out)
+    kern(idx_dtype.type(m), idx_dtype.type(n),
+         a.indptr, a.indices, a.data, (order == 'C'), out)
     return out
 
 
@@ -1128,12 +1266,12 @@ def _cupy_csr2dense(dtype):
         op = "atomicAdd(&OUT[index], DATA);"
 
     return cupy.ElementwiseKernel(
-        'int32 M, int32 N, raw I INDPTR, I INDICES, T DATA, bool C_ORDER',
+        'I M, I N, raw I INDPTR, I INDICES, T DATA, bool C_ORDER',
         'raw T OUT',
         '''
-        int row = get_row_id(i, 0, M - 1, &(INDPTR[0]));
-        int col = INDICES;
-        int index = C_ORDER ? col + N * row : row + M * col;
+        I row = get_row_id((I)i, (I)0, M - 1, &(INDPTR[0]));
+        I col = INDICES;
+        I index = C_ORDER ? col + N * row : row + M * col;
         ''' + op,
         'cupyx_scipy_sparse_csr2dense',
         preamble=_GET_ROW_ID_
@@ -1149,30 +1287,35 @@ def dense2csr(a):
         else:
             return cusparse.dense2csr(a)
     m, n = a.shape
+    mn = m * n
+    idx_dtype = numpy.int64 if mn > numpy.iinfo(numpy.int32).max \
+        else numpy.int32
     a = cupy.ascontiguousarray(a)
-    indptr = cupy.zeros(m + 1, dtype=numpy.int32)
-    info = cupy.zeros(m * n + 1, dtype=numpy.int32)
-    cupy_dense2csr_step1()(m, n, a, indptr, info)
-    indptr = cupy.cumsum(indptr, dtype=numpy.int32)
-    info = cupy.cumsum(info, dtype=numpy.int32)
-    nnz = int(indptr[-1])
-    indices = cupy.empty(nnz, dtype=numpy.int32)
+    indptr = cupy.zeros(m + 1, dtype=idx_dtype)
+    info = cupy.zeros(mn + 1, dtype=idx_dtype)
+    it = numpy.dtype(idx_dtype).type
+    cupy_dense2csr_step1()(it(m), it(n), a, indptr, info)
+    cupy.cumsum(indptr, out=indptr)
+    cupy.cumsum(info, out=info)
+    nnz = int(indptr[-1])  # synchronize!
+    indices = cupy.empty(nnz, dtype=idx_dtype)
     data = cupy.empty(nnz, dtype=a.dtype)
-    cupy_dense2csr_step2()(m, n, a, info, indices, data)
-    return csr_matrix((data, indices, indptr), shape=(m, n))
+    cupy_dense2csr_step2()(it(m), it(n), a, info, indices, data)
+    return csr_matrix._from_parts(
+        data, indices, indptr, (m, n))
 
 
 @cupy._util.memoize(for_each_device=True)
 def cupy_dense2csr_step1():
     return cupy.ElementwiseKernel(
-        'int32 M, int32 N, T A',
+        'I M, I N, T A',
         'raw I INDPTR, raw I INFO',
         '''
-        int row = i / N;
-        int col = i % N;
+        I row = (I)i / N;
+        I col = (I)i % N;
         if (A != static_cast<T>(0)) {
-            atomicAdd( &(INDPTR[row + 1]), 1 );
-            INFO[i + 1] = 1;
+            atomicAdd(&INDPTR[row + 1], (I)1);
+            INFO[(I)i + 1] = 1;
         }
         ''',
         'cupyx_scipy_sparse_dense2csr_step1')
@@ -1181,13 +1324,13 @@ def cupy_dense2csr_step1():
 @cupy._util.memoize(for_each_device=True)
 def cupy_dense2csr_step2():
     return cupy.ElementwiseKernel(
-        'int32 M, int32 N, T A, raw I INFO',
+        'I M, I N, T A, raw I INFO',
         'raw I INDICES, raw T DATA',
         '''
-        int row = i / N;
-        int col = i % N;
+        I row = (I)i / N;
+        I col = (I)i % N;
         if (A != static_cast<T>(0)) {
-            int idx = INFO[i];
+            I idx = INFO[(I)i];
             INDICES[idx] = col;
             DATA[idx] = A;
         }
@@ -1198,18 +1341,18 @@ def cupy_dense2csr_step2():
 @cupy._util.memoize(for_each_device=True)
 def _cupy_csr_diagonal():
     return cupy.ElementwiseKernel(
-        'int32 k, int32 rows, int32 cols, '
+        'I k, I rows, I cols, '
         'raw T data, raw I indptr, raw I indices',
         'T y',
         '''
-        int row = i;
-        int col = i;
-        if (k < 0) row -= k;
-        if (k > 0) col += k;
+        I row = (I)i;
+        I col = (I)i;
+        if (k < 0) row -= (I)k;
+        if (k > 0) col += (I)k;
         if (row >= rows || col >= cols) return;
-        int j = find_index_holding_col_in_row(row, col,
+        I j = find_index_holding_col_in_row(row, col,
             &(indptr[0]), &(indices[0]));
-        if (j >= 0) {
+        if (j >= (I)0) {
             y = data[j];
         } else {
             y = static_cast<T>(0);

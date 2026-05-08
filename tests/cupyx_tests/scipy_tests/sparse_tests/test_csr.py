@@ -293,25 +293,15 @@ class TestCsrMatrix:
 
     @testing.with_requires('scipy>=1.14')
     def test_str(self):
-        dtype_name = numpy.dtype(self.dtype).name
-        if numpy.dtype(self.dtype).kind == 'f':
-            expect = f'''<Compressed Sparse Row sparse matrix of dtype '{dtype_name}'
-\twith 4 stored elements and shape (3, 4)>
-  Coords\tValues
-  (0, 0)\t0.0
-  (0, 1)\t1.0
-  (1, 3)\t2.0
-  (2, 2)\t3.0'''  # NOQA
-        elif numpy.dtype(self.dtype).kind == 'c':
-            expect = f'''<Compressed Sparse Row sparse matrix of dtype '{dtype_name}'
-\twith 4 stored elements and shape (3, 4)>
-  Coords\tValues
-  (0, 0)\t0j
-  (0, 1)\t(1+0j)
-  (1, 3)\t(2+0j)
-  (2, 2)\t(3+0j)'''  # NOQA
-
-        assert str(self.m) == expect
+        # CuPy delegates ``__str__`` to ``str(self.get())`` so the output
+        # always matches the installed scipy's format.  Sanity-check the
+        # key repr fields explicitly so we'd notice if the delegation
+        # silently broke.
+        s = str(self.m)
+        assert 'Compressed Sparse Row' in s
+        assert 'sparse matrix' in s
+        assert str(self.m.shape) in s
+        assert s == str(self.m.get())
 
     def test_toarray(self):
         m = self.m.toarray()
@@ -2150,3 +2140,76 @@ class TestCsrMatrixDiagonal:
                 scipy_a.setdiag(x, k=k)
             with pytest.raises(ValueError):
                 cupyx_a.setdiag(x, k=k)
+
+
+class TestSetitemLargeNNZ:
+    """__setitem__ on matrices with nnz > 2**24.
+
+    Regression test for a float32 precision bug in _set_many
+    and _zero_many: the offset-lookup trick uses
+    arange(nnz, dtype=float) as unique position markers, but
+    float32 only has 24 bits of mantissa so consecutive values
+    collide for nnz > 2**24.  This causes __setitem__ to write
+    to the wrong position (data corruption).
+    """
+
+    @testing.slow
+    def test_setitem_large_nnz_writes_correct_position(self):
+        # Diagonal matrix with nnz = 2**24 + 10.
+        # Set the last diagonal entry to 99.0 and verify it
+        # lands in the right place (not at a neighbor).
+        N = 2**24 + 10
+        data = cupy.ones(N, dtype=cupy.float64)
+        indices = cupy.arange(N, dtype=cupy.int32)
+        indptr = cupy.arange(N + 1, dtype=cupy.int32)
+        m = sparse.csr_matrix(
+            (data, indices, indptr), shape=(N, N))
+
+        m[N - 1, N - 1] = 99.0
+        assert float(m[N - 1, N - 1]) == pytest.approx(99.0)
+
+    @testing.slow
+    def test_setitem_large_nnz_no_neighbor_corruption(self):
+        # Same setup as above, but verify the neighbor is
+        # NOT corrupted by the write.
+        N = 2**24 + 10
+        data = cupy.ones(N, dtype=cupy.float64)
+        indices = cupy.arange(N, dtype=cupy.int32)
+        indptr = cupy.arange(N + 1, dtype=cupy.int32)
+        m = sparse.csr_matrix(
+            (data, indices, indptr), shape=(N, N))
+
+        m[N - 1, N - 1] = 99.0
+        assert float(m[N - 2, N - 2]) == pytest.approx(1.0)
+
+    @testing.slow
+    def test_setitem_large_nnz_csc(self):
+        # Same bug applies to CSC (_set_many is in _compressed.py).
+        N = 2**24 + 10
+        data = cupy.ones(N, dtype=cupy.float64)
+        indices = cupy.arange(N, dtype=cupy.int32)
+        indptr = cupy.arange(N + 1, dtype=cupy.int32)
+        m = sparse.csc_matrix(
+            (data, indices, indptr), shape=(N, N))
+
+        m[N - 1, N - 1] = 99.0
+        assert float(m[N - 1, N - 1]) == pytest.approx(99.0)
+        assert float(m[N - 2, N - 2]) == pytest.approx(1.0)
+
+    @testing.slow
+    def test_setitem_large_nnz_zero_existing(self):
+        # _zero_many uses the same float lookup trick.
+        # Setting an existing entry to 0 must write to the
+        # correct position, not a neighbor.
+        N = 2**24 + 10
+        data = cupy.ones(N, dtype=cupy.float64)
+        indices = cupy.arange(N, dtype=cupy.int32)
+        indptr = cupy.arange(N + 1, dtype=cupy.int32)
+        m = sparse.csr_matrix(
+            (data, indices, indptr), shape=(N, N))
+
+        m[N - 1, N - 1] = 0.0
+        # Structural zero: nnz doesn't change (explicit zero stored)
+        # but the value at (N-1, N-1) must be 0.
+        assert float(m[N - 1, N - 1]) == pytest.approx(0.0)
+        assert float(m[N - 2, N - 2]) == pytest.approx(1.0)

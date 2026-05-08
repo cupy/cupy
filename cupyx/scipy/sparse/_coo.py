@@ -85,8 +85,9 @@ class coo_matrix(sparse_data._data_matrix):
             m, n = arg1
             m, n = int(m), int(n)
             data = cupy.zeros(0, dtype if dtype else 'd')
-            row = cupy.zeros(0, dtype='i')
-            col = cupy.zeros(0, dtype='i')
+            idx_dtype = _sputils.get_index_dtype(maxval=max(m, n))
+            row = cupy.zeros(0, dtype=idx_dtype)
+            col = cupy.zeros(0, dtype=idx_dtype)
             # shape and copy argument is ignored
             shape = (m, n)
             copy = False
@@ -94,11 +95,13 @@ class coo_matrix(sparse_data._data_matrix):
             self.has_canonical_format = True
 
         elif _scipy_available and scipy.sparse.issparse(arg1):
-            # Convert scipy.sparse to cupyx.scipy.sparse
+            # Convert scipy.sparse to cupyx.scipy.sparse.
+            # Preserve scipy's index dtype (scipy uses
+            # get_index_dtype internally).
             x = arg1.tocoo()
             data = cupy.array(x.data)
-            row = cupy.array(x.row, dtype='i')
-            col = cupy.array(x.col, dtype='i')
+            row = cupy.array(x.row, dtype=x.row.dtype)
+            col = cupy.array(x.col, dtype=x.col.dtype)
             copy = False
             if shape is None:
                 shape = arg1.shape
@@ -146,8 +149,17 @@ class coo_matrix(sparse_data._data_matrix):
                 ' are supported')
 
         data = data.astype(dtype, copy=copy)
-        row = row.astype('i', copy=copy)
-        col = col.astype('i', copy=copy)
+        # Choose index dtype: int32 when values fit, int64 when they don't.
+        # Mirror scipy's get_index_dtype(check_contents=True) logic so we
+        # downcast int64 arrays whose values all fit in int32 (common case).
+        if shape is not None:
+            maxval = max(shape)
+        else:
+            maxval = None
+        idx_dtype = _sputils.get_index_dtype(
+            (row, col), maxval=maxval, check_contents=True)
+        row = row.astype(idx_dtype, copy=copy)
+        col = col.astype(idx_dtype, copy=copy)
 
         if shape is None:
             if len(row) == 0 or len(col) == 0:
@@ -172,19 +184,38 @@ class coo_matrix(sparse_data._data_matrix):
             raise ValueError('invalid shape (must be a 2-tuple of int)')
         self._shape = int(shape[0]), int(shape[1])
 
-    def _with_data(self, data, copy=True):
-        """Returns a matrix with the same sparsity structure as self,
-        but with different data.  By default the index arrays
-        (i.e. .row and .col) are copied.
+    @classmethod
+    def _from_parts(cls, data, row, col, shape,
+                    has_canonical_format=False):
+        """Construct from pre-validated arrays (no check_contents).
+
+        Internal API for building COO matrices when the caller has
+        already determined the correct index dtype.  Skips the
+        check_contents=True downcast that the tuple-2 constructor
+        applies.
+
+        Args:
+            has_canonical_format (bool): Defaults to ``False`` (not
+                known to be canonical).
         """
-        if copy:
-            return coo_matrix(
-                (data, (self.row.copy(), self.col.copy())),
-                shape=self.shape, dtype=data.dtype)
-        else:
-            return coo_matrix(
-                (data, (self.row, self.col)), shape=self.shape,
-                dtype=data.dtype)
+        A = cls.__new__(cls)
+        sparse_data._data_matrix.__init__(A, data)
+        A.row = row
+        A.col = col
+        A._shape = int(shape[0]), int(shape[1])
+        A.has_canonical_format = has_canonical_format
+        return A
+
+    def _with_data(self, data, copy=True):
+        """Return a matrix with the same sparsity structure but
+        different data.  Preserves has_canonical_format.
+        """
+        return coo_matrix._from_parts(
+            data,
+            self.row.copy() if copy else self.row,
+            self.col.copy() if copy else self.col,
+            self.shape,
+            has_canonical_format=self.has_canonical_format)
 
     def diagonal(self, k=0):
         """Returns the k-th diagonal of the matrix.
@@ -348,10 +379,8 @@ class coo_matrix(sparse_data._data_matrix):
         else:
             raise ValueError("'order' must be 'C' or 'F'")
 
-        new_data = self.data
-
-        return coo_matrix((new_data, (new_row, new_col)), shape=shape,
-                          copy=False)
+        return coo_matrix._from_parts(
+            self.data, new_row, new_col, shape=shape)
 
     def sum_duplicates(self):
         """Eliminate duplicate matrix entries by adding them together.
@@ -404,22 +433,27 @@ class coo_matrix(sparse_data._data_matrix):
         src_col = self.col[order]
         diff = self._sum_duplicates_diff(src_row, src_col, size=self.row.size)
 
-        if diff[1:].all():
+        if diff[1:].all():  # synchronize!
             # All elements have different indices.
             data = src_data
             row = src_row
             col = src_col
         else:
             # TODO(leofang): move the kernels outside this method
-            index = cupy.cumsum(diff, dtype='i')
-            size = int(index[-1]) + 1
+            # Use the actual index dtype (int64 when indices are
+            # large).  ElementwiseKernel silently casts to the
+            # declared type -- using 'int32' here would silently
+            # truncate int64 index values > INT32_MAX.
+            idx_dtype = self.row.dtype
+            index = cupy.cumsum(diff, dtype=idx_dtype)
+            size = int(index[-1]) + 1  # synchronize!
             data = cupy.zeros(size, dtype=self.data.dtype)
-            row = cupy.empty(size, dtype='i')
-            col = cupy.empty(size, dtype='i')
+            row = cupy.empty(size, dtype=idx_dtype)
+            col = cupy.empty(size, dtype=idx_dtype)
             if self.data.dtype.kind == 'b':
                 cupy.ElementwiseKernel(
-                    'T src_data, int32 src_row, int32 src_col, int32 index',
-                    'raw T data, raw int32 row, raw int32 col',
+                    'T src_data, I src_row, I src_col, I index',
+                    'raw T data, raw I row, raw I col',
                     '''
                     if (src_data) data[index] = true;
                     row[index] = src_row;
@@ -429,8 +463,8 @@ class coo_matrix(sparse_data._data_matrix):
                 )(src_data, src_row, src_col, index, data, row, col)
             elif self.data.dtype.kind == 'f':
                 cupy.ElementwiseKernel(
-                    'T src_data, int32 src_row, int32 src_col, int32 index',
-                    'raw T data, raw int32 row, raw int32 col',
+                    'T src_data, I src_row, I src_col, I index',
+                    'raw T data, raw I row, raw I col',
                     '''
                     atomicAdd(&data[index], src_data);
                     row[index] = src_row;
@@ -440,9 +474,9 @@ class coo_matrix(sparse_data._data_matrix):
                 )(src_data, src_row, src_col, index, data, row, col)
             elif self.data.dtype.kind == 'c':
                 cupy.ElementwiseKernel(
-                    'T src_real, T src_imag, int32 src_row, int32 src_col, '
-                    'int32 index',
-                    'raw T real, raw T imag, raw int32 row, raw int32 col',
+                    'T src_real, T src_imag, I src_row, I src_col, '
+                    'I index',
+                    'raw T real, raw T imag, raw I row, raw I col',
                     '''
                     atomicAdd(&real[index], src_real);
                     atomicAdd(&imag[index], src_imag);
@@ -504,7 +538,13 @@ class coo_matrix(sparse_data._data_matrix):
         from cupyx import cusparse
 
         if self.nnz == 0:
-            return _csc.csc_matrix(self.shape, dtype=self.dtype)
+            idx = self.col.dtype
+            n = self.shape[1]
+            return _csc.csc_matrix._from_parts(
+                cupy.empty(0, self.dtype),
+                cupy.empty(0, idx),
+                cupy.zeros(n + 1, idx),
+                self.shape)
         # copy is silently ignored (in line with SciPy) because both
         # sum_duplicates and coosort change the underlying data
         x = self.copy()
@@ -529,7 +569,13 @@ class coo_matrix(sparse_data._data_matrix):
         from cupyx import cusparse
 
         if self.nnz == 0:
-            return _csr.csr_matrix(self.shape, dtype=self.dtype)
+            idx = self.row.dtype
+            m = self.shape[0]
+            return _csr.csr_matrix._from_parts(
+                cupy.empty(0, self.dtype),
+                cupy.empty(0, idx),
+                cupy.zeros(m + 1, idx),
+                self.shape)
         # copy is silently ignored (in line with SciPy) because both
         # sum_duplicates and coosort change the underlying data
         x = self.copy()
@@ -556,16 +602,25 @@ class coo_matrix(sparse_data._data_matrix):
                 'Sparse matrices do not support an \'axes\' parameter because '
                 'swapping dimensions is the only logical permutation.')
         shape = self.shape[1], self.shape[0]
-        return coo_matrix(
-            (self.data, (self.col, self.row)), shape=shape, copy=copy)
+        if copy:
+            data = self.data.copy()
+            row, col = self.col.copy(), self.row.copy()
+        else:
+            data, row, col = self.data, self.col, self.row
+        # Transposing swaps row/col, which generally destroys
+        # canonical order (sorted by row then col).
+        return coo_matrix._from_parts(
+            data, row, col, shape,
+            has_canonical_format=False)
 
     def dot(self, other):
         """Ordinary dot product"""
         if _util.isscalarlike(other):
-            return coo_matrix(
-                (self.data * other, (self.row, self.col)),
-                shape=self.shape, copy=True,
-            )
+            return coo_matrix._from_parts(
+                self.data * other,
+                self.row.copy(), self.col.copy(),
+                self.shape,
+                has_canonical_format=self.has_canonical_format)
         else:
             return self @ other
 

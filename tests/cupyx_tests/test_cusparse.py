@@ -843,12 +843,12 @@ class TestErrorSpmm:
 
         a = sparse.csr_matrix(self.a)
         b = cupy.array(self.b, order='f')
-        with pytest.raises(AssertionError):
+        with pytest.raises(ValueError):
             cusparse.spmm(a, b.T)
 
         a = sparse.csr_matrix(self.a)
         b = cupy.array(self.b)
-        with pytest.raises(AssertionError):
+        with pytest.raises(ValueError):
             cusparse.spmm(a, b)
 
         a = sparse.csr_matrix(self.a)
