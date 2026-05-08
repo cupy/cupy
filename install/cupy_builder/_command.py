@@ -152,6 +152,53 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
             compiler_directives=compiler_directives, annotate=ctx.annotate,
             compile_time_env=compile_time_env)
 
+    def _build_cufilt_trampoline(self) -> None:
+        """Build cupy_cufilt.dll on Windows.
+
+        cufilt.lib is compiled with /MT (static CRT) but Python extensions
+        require /MD (dynamic CRT), causing LNK2038 if linked directly.
+        This builds a small trampoline DLL with /MT that re-exports
+        __cu_demangle, which function.pyd loads at runtime.
+        """
+        if sys.platform != 'win32':
+            return
+
+        ctx = cupy_builder.get_context()  # type: ignore[unreachable]
+        if ctx.use_hip or ctx.use_stub:
+            return
+
+        from cupy_builder.cupy_setup_build import _find_static_library
+        cufilt_lib = _find_static_library('cufilt')
+
+        cuda_path = build.get_cuda_path()
+        cuda_include = os.path.join(cuda_path, 'include')
+        source = os.path.abspath(
+            os.path.join('cupy', 'cuda', 'cupy_cufilt.c'))
+
+        out_dir = os.path.join(self.build_lib, 'cupy', 'cuda')
+
+        print('Building cufilt trampoline DLL...')
+        objects = self.compiler.compile(
+            [source],
+            output_dir=self.build_temp,
+            include_dirs=[cuda_include],
+            extra_postargs=['/MT'],
+        )
+        self.compiler.link_shared_lib(
+            objects,
+            'cupy_cufilt',
+            output_dir=out_dir,
+            extra_postargs=[
+                cufilt_lib, '/DLL', '/MANIFEST', '/NODEFAULTLIB:MSVCRT'],
+        )
+
+        if ctx.setup_command == 'editable_wheel':
+            editable_dst = os.path.join('cupy', 'cuda', 'cupy_cufilt.dll')
+            shutil.copy2(
+                os.path.join(out_dir, 'cupy_cufilt.dll'), editable_dst)
+
+        print('cufilt trampoline DLL built successfully.')
+
     def build_extensions(self) -> None:
         ctx = cupy_builder.get_context()
         num_jobs = int(os.environ.get('CUPY_NUM_BUILD_JOBS', '4'))
@@ -189,6 +236,8 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
             for src in ext.sources:
                 if not os.path.isfile(src):
                     raise RuntimeError(f'Fatal error: missing file: {src}')
+
+        self._build_cufilt_trampoline()
 
         print('Building extensions...')
         super().build_extensions()
