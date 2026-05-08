@@ -138,6 +138,10 @@ cpdef int to_cuda_dtype(dtype, bint is_half_allowed=False) except -1:
     elif dtype_char == 'E' and is_half_allowed:
         # complex32, not supported in NumPy
         return runtime.CUDA_C_16F
+    elif dtype_char == 'b':
+        return runtime.CUDA_R_8I
+    elif dtype_char == 'i':
+        return runtime.CUDA_R_32I
     else:
         raise TypeError('dtype is not supported: {}'.format(dtype))
 
