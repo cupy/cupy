@@ -443,6 +443,63 @@ class TestProduct:
                 else arg for arg in [a, b]]
         return xp.kron(*args)
 
+    @pytest.mark.parametrize(
+        "shape_a, shape_b", [
+            # 2-D, empty in `a`
+            ((1, 0), (2, 2)),
+            ((3, 0), (2, 4)),
+            ((0, 3), (2, 4)),
+            ((0, 0), (2, 4)),
+            # 2-D, empty in `b`
+            ((2, 4), (3, 0)),
+            ((2, 4), (0, 0)),
+            # 1-D
+            ((0,), (4,)),
+            ((4,), (0,)),
+            ((0,), (0,)),
+            # >2-D with an empty dim
+            ((2, 0, 3), (1, 4, 2)),
+            ((1, 2, 0), (3, 4, 5)),
+            # mixed ndim, empty operand smaller-rank
+            ((0,), (3, 4)),
+            ((4,), (3, 0)),
+            ((3, 0), (2,)),
+        ]
+    )
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_kron_empty(self, xp, dtype, shape_a, shape_b):
+        a = xp.empty(shape_a, dtype=dtype)
+        b = xp.empty(shape_b, dtype=dtype)
+        return xp.kron(a, b)
+
+    @pytest.mark.parametrize(
+        "shape_b", [(0,), (0, 5), (3, 0), (2, 0, 4)],
+    )
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_kron_zerodim_with_empty(self, xp, dtype, shape_b):
+        # 0-D scalar array × empty array — exercises the early
+        # `cupy.multiply` branch rather than the empty-result short-circuit.
+        a = xp.array(2, dtype=dtype)
+        b = xp.empty(shape_b, dtype=dtype)
+        return xp.kron(a, b)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_kron_empty_fortran_order(self, xp, dtype):
+        a = xp.empty((3, 0), dtype=dtype, order='F')
+        b = xp.empty((2, 4), dtype=dtype, order='F')
+        return xp.kron(a, b)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_kron_empty_via_slice(self, xp, dtype):
+        # Empty array produced by zero-length slicing of a non-empty buffer.
+        a = xp.zeros((3, 4), dtype=dtype)[:0]
+        b = xp.zeros((1, 2), dtype=dtype)
+        return xp.kron(a, b)
+
 
 @testing.parameterize(*testing.product({
     'params': [
