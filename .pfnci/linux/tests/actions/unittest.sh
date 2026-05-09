@@ -17,13 +17,10 @@ if [[ "${MARKER}" != "" ]]; then
     pytest_opts+=(-m "${MARKER}")
 fi
 
-if python -VV 2>&1 | grep -q "free-threading build"; then
-    if [[ "${MARKER}" =~ "not slow" ]]; then
-        echo "Found free-threaded Python build and 'not slow' marker, running tests in parallel."
-        # ft-tests are very slow, so run only a (largely) random subsample of parametrizations.
-        export CUPY_TEST_RANDOM_SUBSAMPLE="1"
-        pytest_opts+=("--parallel-threads=2")
-    fi
+if [[ -n "${CUPY_CI_PYTEST_EXTRA_OPTS:-}" ]]; then
+    # Intentionally split a space-separated option string into pytest args.
+    read -r -a extra_pytest_opts <<< "${CUPY_CI_PYTEST_EXTRA_OPTS}"
+    pytest_opts+=("${extra_pytest_opts[@]}")
 fi
 
 # TODO: support coverage reporting

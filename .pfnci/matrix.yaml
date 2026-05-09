@@ -363,6 +363,16 @@
   mpi4py: "4"
   test: "unit-multi"
 
+# CUDA 13.x + Python 3.14 free-threaded | Linux
+- project: "cupy.linux.cuda13x-py314t"
+  _inherits: "cupy.linux.cuda131"
+  tags: ["@push", "full", "mini", "linux", "cuda131", "py314t"]
+  target: "cuda13x-py314t"
+  python: "3.14t"
+  env:CUPY_TEST_RANDOM_SUBSAMPLE: "1"
+  env:CUPY_CI_PYTEST_EXTRA_OPTS: "--parallel-threads=2"
+  test: "unit"
+
 
 ###############################################################################
 # CUDA (Windows)
