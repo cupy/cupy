@@ -275,7 +275,11 @@ def _find_static_library(name: str) -> str:
             cuda_path = (f'{build.get_cuda_path()}/targets/'
                          f'{build.conda_get_target_name()}/')
         else:
-            libdirs = ['lib64', 'lib']
+            # On conda CUDA 12+, shared libs are symlinked into lib/ but
+            # static libs (e.g. libcufilt.a) live only under
+            # targets/<target>/lib/.
+            libdirs = ['lib64', 'lib',
+                       f'targets/{build.conda_get_target_name()}/lib']
             cuda_path = build.get_cuda_path()
     elif PLATFORM_WIN32:
         filename = f'{name}.lib'
