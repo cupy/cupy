@@ -26,6 +26,11 @@ class _data_matrix(_base.spmatrix):
         """Data type of the matrix."""
         return self.data.dtype
 
+    @property
+    def device(self):
+        """CUDA device on which this array resides."""
+        return self.data.device
+
     def _with_data(self, data, copy=True):
         raise NotImplementedError
 
