@@ -113,3 +113,27 @@ def trimcoef(c, tol=0):
     if ind == 0:
         return cupy.zeros_like(c[:1])
     return c[: ind]
+
+
+def _sub(c1, c2):
+    """Subtract polynomial coefficients.
+
+    Args:
+        c1 (cupy.ndarray): 1-D array of polynomial coefficients ordered
+            from low to high degree.
+        c2 (cupy.ndarray): 1-D array of polynomial coefficients ordered
+            from low to high degree.
+
+    Returns:
+        cupy.ndarray: The coefficient array representing their difference.
+
+    """
+    [c1, c2] = as_series([c1, c2], trim=True)
+    if c1.size > c2.size:
+        c1[:c2.size] -= c2
+        ret = c1
+    else:
+        c2 = -c2
+        c2[:c1.size] += c1
+        ret = c2
+    return trimseq(ret)
