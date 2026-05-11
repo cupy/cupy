@@ -7,6 +7,9 @@ import cupy
 from cupy import testing
 import cupyx
 import cupyx.scipy.stats  # NOQA
+from cupyx.scipy.stats import rankdata
+from cupy.testing import assert_array_equal
+
 
 try:
     import scipy.stats
@@ -250,3 +253,219 @@ class TestZscore:
             x = xp.array([1, 2, 3, xp.nan], dtype=dtype)
             with pytest.raises(ValueError):
                 scp.stats.zscore(x, nan_policy='raise')
+
+
+class TestRankData:
+
+    def test_empty(self):
+        """stats.rankdata([]) should return an empty array."""
+        a = cupy.array([], dtype=int)
+        r = rankdata(a)
+        assert_array_equal(r, cupy.array([], dtype=cupy.float64))
+        r = rankdata([])
+        assert_array_equal(r, cupy.array([], dtype=cupy.float64))
+
+    @pytest.mark.parametrize("shape", [(0, 1, 2)])
+    @pytest.mark.parametrize("axis", [None, *range(3)])
+    def test_empty_multidim(self, shape, axis):
+        a = cupy.empty(shape, dtype=int)
+        r = rankdata(a, axis=axis)
+        expected_shape = (0,) if axis is None else shape
+        assert_array_equal(r.shape, expected_shape)
+        assert r.dtype == cupy.float64
+
+    def test_one(self):
+        """Check stats.rankdata with an array of length 1."""
+        data = [100]
+        a = cupy.array(data, dtype=int)
+        r = rankdata(a)
+        assert_array_equal(r, cupy.array([1.0], dtype=cupy.float64))
+        r = rankdata(data)
+        assert_array_equal(r, cupy.array([1.0], dtype=cupy.float64))
+
+    def test_basic(self):
+        """Basic tests of stats.rankdata."""
+        data = [100, 10, 50]
+        expected = cupy.array([3.0, 1.0, 2.0], dtype=cupy.float64)
+        a = cupy.array(data, dtype=int)
+        r = rankdata(a)
+        assert_array_equal(r, expected)
+        r = rankdata(data)
+        assert_array_equal(r, expected)
+
+        data = [40, 10, 30, 10, 50]
+        expected = cupy.array([4.0, 1.5, 3.0, 1.5, 5.0], dtype=cupy.float64)
+        a = cupy.array(data, dtype=int)
+        r = rankdata(a)
+        assert_array_equal(r, expected)
+        r = rankdata(data)
+        assert_array_equal(r, expected)
+
+        data = [20, 20, 20, 10, 10, 10]
+        expected = cupy.array(
+            [5.0, 5.0, 5.0, 2.0, 2.0, 2.0], dtype=cupy.float64)
+        a = cupy.array(data, dtype=int)
+        r = rankdata(a)
+        assert_array_equal(r, expected)
+        r = rankdata(data)
+        assert_array_equal(r, expected)
+        # The docstring states explicitly that the argument is flattened.
+        a2d = a.reshape(2, 3)
+        r = rankdata(a2d)
+        assert_array_equal(r, expected)
+
+    def test_large_int(self):
+        data = cupy.array([2**60, 2**60+1], dtype=cupy.uint64)
+        r = rankdata(data)
+        assert_array_equal(r, [1.0, 2.0])
+
+        data = cupy.array([2**60, 2**60+1], dtype=cupy.int64)
+        r = rankdata(data)
+        assert_array_equal(r, [1.0, 2.0])
+
+        data = cupy.array([2**60, -2**60+1], dtype=cupy.int64)
+        r = rankdata(data)
+        assert_array_equal(r, [2.0, 1.0])
+
+    def test_big_tie(self):
+        for n in [10000, 100000, 1000000]:
+            data = cupy.ones(n, dtype=int)
+            r = rankdata(data)
+            expected_rank = 0.5 * (n + 1)
+            assert_array_equal(r, expected_rank * data,
+                               err_msg=f"test failed with n={n}")
+
+    def test_axis(self):
+        data = [[0, 2, 1],
+                [4, 2, 2]]
+        expected0 = [[1., 1.5, 1.],
+                     [2., 1.5, 2.]]
+        r0 = rankdata(data, axis=0)
+        assert_array_equal(r0, expected0)
+        expected1 = [[1., 3., 2.],
+                     [3., 1.5, 1.5]]
+        r1 = rankdata(data, axis=1)
+        assert_array_equal(r1, expected1)
+
+    methods = ["average", "min", "max", "dense", "ordinal"]
+    dtypes = [cupy.float64] + [cupy.int64]*4
+
+    @pytest.mark.parametrize("axis", [0, 1])
+    @pytest.mark.parametrize("method, dtype", zip(methods, dtypes))
+    def test_size_0_axis(self, axis, method, dtype):
+        shape = (3, 0)
+        data = cupy.zeros(shape)
+        r = rankdata(data, method=method, axis=axis)
+        assert_array_equal(r.shape, shape)
+        assert r.dtype == dtype
+
+    @pytest.mark.parametrize('axis', range(3))
+    @pytest.mark.parametrize('method', methods)
+    def test_nan_policy_omit_3d(self, axis, method):
+        shape = (20, 21, 22)
+        rng = cupy.random.RandomState(23983242)
+
+        a = rng.rand(*shape)
+        i = rng.rand(*shape) < 0.4
+        j = rng.rand(*shape) < 0.1
+        k = rng.rand(*shape) < 0.1
+        a[i] = cupy.nan
+        a[j] = -cupy.inf
+        a[k] - cupy.inf
+
+        def rank_1d_omit(a, method):
+            out = cupy.zeros_like(a)
+            i = cupy.isnan(a)
+            a_compressed = a[~i]
+            res = rankdata(a_compressed, method)
+            out[~i] = res
+            out[i] = cupy.nan
+            return out
+
+        def rank_omit(a, method, axis):
+            return cupy.apply_along_axis(lambda a: rank_1d_omit(a, method),
+                                         axis, a)
+
+        res = rankdata(a, method, axis=axis, nan_policy='omit')
+        res0 = rank_omit(a, method, axis=axis)
+
+        assert_array_equal(res, res0)
+
+    def test_nan_policy_2d_axis_none(self):
+        # 2 2d-array test with axis=None
+        data = [[0, cupy.nan, 3],
+                [4, 2, cupy.nan],
+                [1, 2, 2]]
+        assert_array_equal(rankdata(data, axis=None, nan_policy='omit'),
+                           [1., cupy.nan, 6., 7., 4., cupy.nan, 2., 4., 4.])
+        assert_array_equal(rankdata(data, axis=None, nan_policy='propagate'),
+                           [cupy.nan, cupy.nan, cupy.nan, cupy.nan, cupy.nan,
+                            cupy.nan, cupy.nan, cupy.nan, cupy.nan])
+
+    def test_nan_policy_propagate(self):
+        # 1 1d-array test
+        data = [0, 2, 3, -2, cupy.nan, cupy.nan]
+        assert_array_equal(rankdata(data, nan_policy='propagate'),
+                           [cupy.nan, cupy.nan, cupy.nan, cupy.nan, cupy.nan,
+                            cupy.nan])
+
+        # 2 2d-array test
+        data = [[0, cupy.nan, 3],
+                [4, 2, cupy.nan],
+                [1, 2, 2]]
+        assert_array_equal(rankdata(data, axis=0, nan_policy='propagate'),
+                           [[1, cupy.nan, cupy.nan],
+                            [3, cupy.nan, cupy.nan],
+                            [2, cupy.nan, cupy.nan]])
+        assert_array_equal(rankdata(data, axis=1, nan_policy='propagate'),
+                           [[cupy.nan, cupy.nan, cupy.nan],
+                            [cupy.nan, cupy.nan, cupy.nan],
+                            [1, 2.5, 2.5]])
+
+
+_cases = (
+    # values, method, expected
+    ([], 'average', []),
+    ([], 'min', []),
+    ([], 'max', []),
+    ([], 'dense', []),
+    ([], 'ordinal', []),
+    #
+    ([100], 'average', [1.0]),
+    ([100], 'min', [1.0]),
+    ([100], 'max', [1.0]),
+    ([100], 'dense', [1.0]),
+    ([100], 'ordinal', [1.0]),
+    #
+    ([100, 100, 100], 'average', [2.0, 2.0, 2.0]),
+    ([100, 100, 100], 'min', [1.0, 1.0, 1.0]),
+    ([100, 100, 100], 'max', [3.0, 3.0, 3.0]),
+    ([100, 100, 100], 'dense', [1.0, 1.0, 1.0]),
+    ([100, 100, 100], 'ordinal', [1.0, 2.0, 3.0]),
+    #
+    ([100, 300, 200], 'average', [1.0, 3.0, 2.0]),
+    ([100, 300, 200], 'min', [1.0, 3.0, 2.0]),
+    ([100, 300, 200], 'max', [1.0, 3.0, 2.0]),
+    ([100, 300, 200], 'dense', [1.0, 3.0, 2.0]),
+    ([100, 300, 200], 'ordinal', [1.0, 3.0, 2.0]),
+    #
+    ([100, 200, 300, 200], 'average', [1.0, 2.5, 4.0, 2.5]),
+    ([100, 200, 300, 200], 'min', [1.0, 2.0, 4.0, 2.0]),
+    ([100, 200, 300, 200], 'max', [1.0, 3.0, 4.0, 3.0]),
+    ([100, 200, 300, 200], 'dense', [1.0, 2.0, 3.0, 2.0]),
+    ([100, 200, 300, 200], 'ordinal', [1.0, 2.0, 4.0, 3.0]),
+    #
+    ([100, 200, 300, 200, 100], 'average', [1.5, 3.5, 5.0, 3.5, 1.5]),
+    ([100, 200, 300, 200, 100], 'min', [1.0, 3.0, 5.0, 3.0, 1.0]),
+    ([100, 200, 300, 200, 100], 'max', [2.0, 4.0, 5.0, 4.0, 2.0]),
+    ([100, 200, 300, 200, 100], 'dense', [1.0, 2.0, 3.0, 2.0, 1.0]),
+    ([100, 200, 300, 200, 100], 'ordinal', [1.0, 3.0, 5.0, 4.0, 2.0]),
+    #
+    ([10] * 30, 'ordinal', cupy.arange(1.0, 31.0)),
+)
+
+
+def test_cases():
+    for values, method, expected in _cases:
+        r = rankdata(values, method=method)
+        assert_array_equal(r, expected)
