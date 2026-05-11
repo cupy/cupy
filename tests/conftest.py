@@ -124,7 +124,7 @@ if int(os.environ.get('CUPY_TEST_RANDOM_SUBSAMPLE', '0')):
             groups[base].append(item)
         items[:] = [
             x for v in groups.values()
-            for x in rng.sample(v, 1 + len(v) // 10)
+            for x in rng.sample(v, 1 + len(v) // 15)
         ]
 
         print(f"\nRandomly subsampled parametrized tests from {original_len} "

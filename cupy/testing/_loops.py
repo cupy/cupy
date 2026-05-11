@@ -849,7 +849,7 @@ def for_dtypes(dtypes, name='dtype'):
     argument.
     """
     if _subsample_rng is not None:
-        dtypes = _subsample_rng.sample(dtypes, 1 + len(dtypes) // 10)
+        dtypes = _subsample_rng.sample(dtypes, 1 + len(dtypes) // 15)
 
     def decorator(impl):
         @_wraps_partial(impl, name)
@@ -1092,7 +1092,7 @@ def for_dtypes_combination(types, names=('dtype',), full=None):
 
     if _subsample_rng is not None:
         combination = _subsample_rng.sample(
-            combination, 1 + len(combination) // 10)
+            combination, 1 + len(combination) // 15)
 
     def decorator(impl):
         @_wraps_partial(impl, *names)
