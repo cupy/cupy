@@ -6,6 +6,9 @@ from cupyx.signal._convolution import convolve1d3o  # NOQA
 from cupyx.signal._filtering import channelize_poly  # NOQA
 from cupyx.signal._filtering import firfilter, firfilter2, firfilter_zi  # NOQA
 from cupyx.signal._filtering import freq_shift  # NOQA
+from cupyx.signal._io._writer import write_bin  # NOQA
+from cupyx.signal._io._reader import read_bin  # NOQA
+from cupyx.signal._utils.arraytools import get_shared_mem, get_pinned_mem  # NOQA
 from cupyx.signal._radartools import pulse_compression  # NOQA
 from cupyx.signal._radartools import pulse_doppler  # NOQA
 from cupyx.signal._radartools import cfar_alpha  # NOQA
