@@ -672,3 +672,88 @@ class TestFindObjectsBasic:
         if contiguous_type == "strided":
             data = data[::2, ::2]
         return scp.ndimage.find_objects(data)
+
+
+@pytest.mark.slow
+class TestLabelOverflow:
+    """Tests ndimage.label on arrays that trigger int32 overflow."""
+
+    _CELL_SIZE = 10
+    _RADIUS = 4
+    _INT32_MAX = 2**31 - 1
+
+    def _make_sphere_pack(self, tile_counts):
+        s = self._CELL_SIZE
+        c = s // 2
+        r = self._RADIUS
+        ix, iy, iz = numpy.mgrid[:s, :s, :s]
+        cell = (ix - c) ** 2 + (iy - c) ** 2 + (iz - c) ** 2 <= r ** 2
+        return cupy.tile(cupy.asarray(cell, dtype=cupy.float16), tile_counts)
+
+    #   cell grid | image dimensions | voxel count | above int32 limit?
+    # 100x100x100 |    1000x10001000 |        ~1e9 | no
+    # 130x130x130 |    1300x13001300 |    ~2.197e9 | yes
+    @pytest.mark.parametrize('tile_counts', [
+        ((100, 100, 100)),
+        ((130, 130, 130)),
+    ])
+    @pytest.mark.parametrize('output', [None, numpy.int32, numpy.int64])
+    def test_label_dtype_output(self, tile_counts, output):
+        """Correct label count with dtype-type output argument"""
+        try:
+            img = self._make_sphere_pack(tile_counts)
+            _, n_labels = cupyx.scipy.ndimage.label(img, output=output)
+            assert n_labels == numpy.prod(tile_counts)
+        except MemoryError:
+            pytest.skip("Test needs a massive amount of GPU memory to pass")
+
+    @pytest.mark.parametrize('tile_counts', [
+        ((100, 100, 100)),
+        ((130, 130, 130)),
+    ])
+    @pytest.mark.parametrize('output_dtype', [numpy.int32, numpy.int64])
+    def test_label_array_output(self, tile_counts, output_dtype):
+        """Correct label count with pre-allocated array output argument"""
+        try:
+            img = self._make_sphere_pack(tile_counts)
+            out = cupy.empty_like(img, dtype=output_dtype)
+            n_labels = cupyx.scipy.ndimage.label(img, output=out)
+            assert n_labels == numpy.prod(tile_counts)
+        except MemoryError:
+            pytest.skip("Test needs a massive amount of GPU memory to pass")
+
+    @pytest.mark.parametrize('output_dtype', [numpy.int16, numpy.uint16])
+    def test_label_array_output_non_default_dtype(self, output_dtype):
+        img = cupy.asarray([[1, 0, 1], [0, 1, 0]], dtype=numpy.int8)
+        out = cupy.empty_like(img, dtype=output_dtype)
+        n_labels = cupyx.scipy.ndimage.label(img, output=out)
+        assert n_labels == 3
+
+    @pytest.mark.parametrize('output_dtype', [numpy.int16, numpy.uint16])
+    def test_label_dtype_output_non_default_dtype(self, output_dtype):
+        img = cupy.asarray([[1, 0, 1], [0, 1, 0]], dtype=numpy.int8)
+        out, n_labels = cupyx.scipy.ndimage.label(img, output=output_dtype)
+        assert out.dtype == output_dtype
+        assert n_labels == 3
+
+    def test_label_int32_overflow_error(self):
+        """Raises ValueError when n_labels > INT32_MAX with int32 output."""
+        try:
+            img = cupy.ones((1300, 1300, 1300), dtype=cupy.float16)
+            assert img.size > self._INT32_MAX
+
+            # every voxel becomes its own component with zero structure
+            structure = numpy.zeros((3, 3, 3), dtype=bool)
+            out = cupy.empty_like(img, dtype=numpy.int32)
+
+            with pytest.raises(ValueError):
+                cupyx.scipy.ndimage.label(img, output=out, structure=structure)
+        except MemoryError:
+            pytest.skip("Test needs a massive amount of GPU memory to pass")
+
+    @pytest.mark.parametrize('output', [numpy.int8, 'int8'])
+    def test_label_small_integer_output_overflow_error(self, output):
+        img = cupy.ones((130,), dtype=numpy.int8)
+        structure = numpy.zeros((3,), dtype=bool)
+        with pytest.raises(ValueError):
+            cupyx.scipy.ndimage.label(img, output=output, structure=structure)
