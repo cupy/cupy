@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+import warnings
 
 import pytest
 try:
@@ -87,6 +88,68 @@ class TestSpmatrix(unittest.TestCase):
     def test_maxprint(self, xp, sp):
         s = self.dummy_class(sp)(maxprint=30)
         return s.maxprint
+
+
+class TestSpmatrixOnlyApi:
+    """Matrix-only APIs whose status mirrors scipy 1.17.
+
+    SciPy 1.14 *removed* ``.A``/``.H`` from the array side.  CuPy keeps
+    them on ``spmatrix`` for now but emits ``DeprecationWarning`` so user
+    code has a migration breadcrumb.
+
+    SciPy 1.14 deprecated and 1.17 *un-deprecated* ``asfptype``,
+    ``getformat``, ``getmaxprint``, ``set_shape`` (et al.) — they remain
+    plain matrix-side conveniences.  CuPy follows: no warning.
+    """
+
+    @pytest.fixture
+    def m(self):
+        return sparse.csr_matrix(cupy.array([[1.0, 0.0, 0.0],
+                                             [0.0, 2.0, 0.0],
+                                             [0.0, 0.0, 3.0]]))
+
+    @pytest.mark.parametrize("attr", ["A", "H"])
+    def test_attr_warns(self, m, attr):
+        with pytest.warns(DeprecationWarning,
+                          match=fr"`spmatrix\.{attr}`"):
+            getattr(m, attr)
+
+    @pytest.mark.parametrize("name", [
+        "asfptype", "getformat", "getmaxprint",
+        "getnnz", "get_shape", "set_shape",
+    ])
+    def test_plain_method_no_warn(self, m, name):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", DeprecationWarning)
+            if name == "set_shape":
+                m.set_shape(m.shape)
+            else:
+                getattr(m, name)()
+
+    def test_shape_setter_no_warn(self, m):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", DeprecationWarning)
+            m.shape = m.shape
+
+    @pytest.mark.parametrize("via", ["set_shape", "shape="])
+    def test_shape_mutates_in_place(self, via):
+        # Regression for the silent no-op: ``reshape`` returned a new
+        # matrix and the result was discarded.  Now the change must be
+        # visible on ``self``.
+        m = sparse.csr_matrix(cupy.array([[1.0, 0.0, 2.0],
+                                          [0.0, 3.0, 0.0]]))
+        if via == "set_shape":
+            m.set_shape((3, 2))
+        else:
+            m.shape = (3, 2)
+        assert m.shape == (3, 2)
+
+    def test_warning_attributed_to_caller(self, m):
+        # ``stacklevel=2`` should make the warning point at the user's
+        # frame (this test file) rather than ``_base.py``.
+        with pytest.warns(DeprecationWarning) as record:
+            m.A
+        assert record[0].filename.endswith("test_base.py")
 
 
 class TestSetShape(unittest.TestCase):
