@@ -559,6 +559,8 @@ class TestCsrMatrixScipyComparison:
                 m.toarray(order='#')
 
     @testing.with_requires('scipy<1.14')
+    @pytest.mark.filterwarnings(
+        r"ignore:`spmatrix\.A` is deprecated:DeprecationWarning")
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_A(self, xp, sp):
         m = self.make(xp, sp, self.dtype)

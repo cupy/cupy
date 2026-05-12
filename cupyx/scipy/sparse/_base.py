@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numbers
+import warnings
 
 import numpy
 
@@ -33,6 +34,11 @@ class spmatrix:
     """
 
     __array_priority__ = 101
+    # ``_data_matrix.__init__`` (and therefore the format subclasses
+    # built on it: csr/csc/coo/dia) does not chain through to
+    # ``spmatrix.__init__``, so instances never get ``self.maxprint``
+    # set as an instance attribute.  This class default is the fallback.
+    maxprint = 50
 
     def __init__(self, maxprint=50):
         if self.__class__ == spmatrix:
@@ -60,7 +66,7 @@ class spmatrix:
 
     def __len__(self):
         raise TypeError('sparse matrix length is ambiguous; '
-                        'use getnnz() or shape[0]')
+                        'use shape[0] or .nnz')
 
     def __str__(self):
         # TODO(unno): Do not use get method which is only available when scipy
@@ -215,10 +221,13 @@ class spmatrix:
     def A(self):
         """Dense ndarray representation of this matrix.
 
-        This property is equivalent to
-        :meth:`~cupyx.scipy.sparse.spmatrix.toarray` method.
+        .. deprecated:: 15.0
+           Use :meth:`~cupyx.scipy.sparse.spmatrix.toarray` instead.
 
         """
+        warnings.warn(
+            "`spmatrix.A` is deprecated; use `.toarray()` instead.",
+            DeprecationWarning, stacklevel=2)
         return self.toarray()
 
     @property
@@ -227,7 +236,16 @@ class spmatrix:
 
     @property
     def H(self):
-        return self.getH()
+        """Hermitian (conjugate) transpose of this matrix.
+
+        .. deprecated:: 15.0
+           Use ``.T.conj()`` instead.
+
+        """
+        warnings.warn(
+            "`spmatrix.H` is deprecated; use `.T.conj()` instead.",
+            DeprecationWarning, stacklevel=2)
+        return self.transpose().conj()
 
     @property
     def ndim(self):
@@ -369,9 +387,11 @@ class spmatrix:
     # TODO(unno): Implement getcol
 
     def getformat(self):
+        """Return the format of this matrix (e.g., ``'csr'``)."""
         return self.format
 
     def getmaxprint(self):
+        """Return the maximum number of stored values shown in ``__str__``."""
         return self.maxprint
 
     def getnnz(self, axis=None):
