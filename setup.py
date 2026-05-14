@@ -67,7 +67,7 @@ dependencies = [
 ]
 optional_dependencies = {
     "all": [
-        "scipy>=1.10,<1.17",  # see #4773
+        "scipy>=1.14,<1.17",  # see #4773
         "Cython>=3",
         "optuna>=2.0",
     ],

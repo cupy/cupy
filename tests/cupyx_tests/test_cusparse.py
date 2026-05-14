@@ -144,7 +144,7 @@ class TestCsrmm2:
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
     'shape': [(3, 4), (4, 3)]
 }))
-@testing.with_requires('scipy>=1.2.0')
+@testing.with_requires('scipy')
 class TestCsrgeam:
 
     alpha = 0.5
@@ -277,7 +277,7 @@ class TestCsrgemm:
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
     'shape': [(2, 3, 4), (4, 3, 2)]
 }))
-@testing.with_requires('scipy>=1.2.0')
+@testing.with_requires('scipy')
 class TestCsrgemm2:
 
     alpha = 0.5
@@ -373,7 +373,7 @@ class TestCsrgemm2InvalidCases:
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
     'shape': [(2, 3, 4), (4, 3, 2), (100000, 100000, 50)]
 }))
-@testing.with_requires('scipy>=1.2.0')
+@testing.with_requires('scipy')
 class TestSpgemm:
 
     alpha = 0.5
@@ -633,7 +633,7 @@ class TestCscsort:
     'shape': [(3, 2), (4, 3)],
     'format': ['csr', 'csc', 'coo'],
 }))
-@testing.with_requires('scipy>=1.2.0')
+@testing.with_requires('scipy')
 class TestSpmv:
 
     alpha = 0.5
@@ -735,7 +735,7 @@ class TestErrorSpmv:
     'dims': [(2, 3, 4), (3, 4, 2)],
     'format': ['csr', 'csc', 'coo'],
 }))
-@testing.with_requires('scipy>=1.2.0')
+@testing.with_requires('scipy')
 class TestSpmm:
 
     alpha = 0.5

@@ -444,7 +444,7 @@ class TestFilterFast(FilterTestCaseBase):
         })
     )
 ))
-@testing.with_requires('scipy>=1.11')
+@testing.with_requires('scipy')
 class TestFilterFastAxes(FilterTestCaseBase):
 
     def _hip_skip_invalid_condition(self):
@@ -572,7 +572,7 @@ class TestFilterFastAxesSciPy15(FilterTestCaseBase):
 class TestFilterComplexFast(FilterTestCaseBase):
 
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
-    @testing.with_requires('scipy>=1.6.0')
+    @testing.with_requires('scipy')
     def test_filter(self, xp, scp):
         return self._filter(xp, scp)
 
@@ -765,7 +765,6 @@ class TestGeneric1DFilter(FilterTestCaseBase):
         return self._filter(xp, scp)
 
 
-# Tests things requiring scipy >= 1.5.0
 @testing.parameterize(*(
     testing.product_dict(
         # Filter-function specific params
@@ -786,8 +785,7 @@ class TestGeneric1DFilter(FilterTestCaseBase):
         })
     )
 ))
-# SciPy behavior fixed in 1.5.0: https://github.com/scipy/scipy/issues/11661
-@testing.with_requires('scipy>=1.5.0')
+@testing.with_requires('scipy')
 class TestMirrorWithDim1(FilterTestCaseBase):
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_filter(self, xp, scp):
@@ -894,7 +892,7 @@ class TestWeightDtype(FilterTestCaseBase):
         })
     )
 ))
-@testing.with_requires('scipy>=1.5.9')
+@testing.with_requires('scipy')
 class TestWeightComplexDtype(FilterTestCaseBase):
 
     def _skip_noncomplex(self):
@@ -908,12 +906,12 @@ class TestWeightComplexDtype(FilterTestCaseBase):
         return arr, weights
 
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
-    @testing.with_requires('scipy>=1.6.0')
+    @testing.with_requires('scipy')
     def test_filter_complex(self, xp, scp):
         self._skip_noncomplex()
         return self._filter(xp, scp)
 
-    @testing.with_requires('scipy>=1.6.0')
+    @testing.with_requires('scipy')
     def test_filter_complex_output_dtype_error(self):
         # raises RuntimeError if provided a real-valued output array
         self._skip_noncomplex()
@@ -924,7 +922,7 @@ class TestWeightComplexDtype(FilterTestCaseBase):
             with pytest.raises(RuntimeError):
                 func(arr, weights, output=output)
 
-    @testing.with_requires('scipy>=1.6.0')
+    @testing.with_requires('scipy')
     def test_filter_complex_output_dtype_warns(self):
         # warns if a real-valued dtype is specified for the output
         self._skip_noncomplex()
@@ -1043,8 +1041,7 @@ class TestInvalidMode(FilterTestCaseBase):
     'ksize': [3, 4],
     'shape': [(4, 5)], 'dtype': [numpy.float64],
 }))
-# SciPy behavior fixed in 1.2.0: https://github.com/scipy/scipy/issues/822
-@testing.with_requires('scipy>=1.2.0')
+@testing.with_requires('scipy')
 class TestInvalidOrigin(FilterTestCaseBase):
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
                                  accept_error=ValueError)
