@@ -625,6 +625,75 @@ class TestNansumNanprodExtra:
             cupy.nansum(a, axis=1, out=b)
 
 
+@testing.with_requires("numpy>=1.22.0")
+class TestNansumNanprodParams:
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
+    @testing.numpy_cupy_allclose()
+    def test_nansum_initial(self, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        return xp.nansum(a, initial=10)
+
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
+    @testing.numpy_cupy_allclose()
+    def test_nansum_initial_axis(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        return xp.nansum(a, axis=1, initial=10)
+
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
+    @testing.numpy_cupy_allclose()
+    def test_nansum_where(self, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        where = xp.array([[True, False, True], [False, True, True]])
+        return xp.nansum(a, where=where)
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose()
+    def test_nansum_where_with_nan(self, xp, dtype):
+        a = xp.array([[1.0, float("nan"), 3.0], [4.0, 5.0, 6.0]], dtype)
+        where = xp.array([[True, True, True], [False, True, True]])
+        return xp.nansum(a, where=where)
+
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
+    @testing.numpy_cupy_allclose()
+    def test_nansum_initial_and_where(self, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        where = xp.array([[True, False, True], [False, True, True]])
+        return xp.nansum(a, where=where, initial=10)
+
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
+    @testing.numpy_cupy_allclose()
+    def test_nanprod_initial(self, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        return xp.nanprod(a, initial=2)
+
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
+    @testing.numpy_cupy_allclose()
+    def test_nanprod_initial_axis(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        return xp.nanprod(a, axis=1, initial=2)
+
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
+    @testing.numpy_cupy_allclose()
+    def test_nanprod_where(self, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        where = xp.array([[True, False, True], [False, True, True]])
+        return xp.nanprod(a, where=where)
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose()
+    def test_nanprod_where_with_nan(self, xp, dtype):
+        a = xp.array([[1.0, float("nan"), 3.0], [4.0, 5.0, 6.0]], dtype)
+        where = xp.array([[True, True, True], [False, True, True]])
+        return xp.nanprod(a, where=where)
+
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
+    @testing.numpy_cupy_allclose()
+    def test_nanprod_initial_and_where(self, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        where = xp.array([[True, False, True], [False, True, True]])
+        return xp.nanprod(a, where=where, initial=2)
+
+
 @testing.parameterize(
     *testing.product({
         'shape': [(2, 3, 4, 5), (20, 30, 40, 50)],

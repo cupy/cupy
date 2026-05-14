@@ -432,6 +432,112 @@ class TestOrder:
         a = xp.array([float('nan'), float('nan')], dtype)
         return xp.ptp(a)
 
+    @testing.with_requires("numpy>=1.22.0")
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose()
+    def test_nanmin_initial(self, xp, dtype):
+        a = testing.shaped_random((2, 3), xp, dtype)
+        return xp.nanmin(a, initial=0)
+
+    @testing.with_requires("numpy>=1.22.0")
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose()
+    def test_nanmin_initial_axis(self, xp, dtype):
+        a = testing.shaped_random((2, 3, 4), xp, dtype)
+        return xp.nanmin(a, axis=1, initial=0)
+
+    @testing.with_requires("numpy>=1.22.0")
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_nanmin_initial_all_nan(self, xp, dtype):
+        a = xp.array([float("nan"), float("nan")], dtype)
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            m = xp.nanmin(a, initial=5)
+        assert len(w) == 0
+        return m
+
+    @testing.with_requires("numpy>=1.22.0")
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_nanmin_with_where(self, xp, dtype):
+        a = xp.array([[1.0, 2.0, 3.0], [4.0, float("nan"), 6.0]], dtype)
+        where = xp.array([[True, False, True], [False, True, True]])
+        return xp.nanmin(a, where=where, initial=numpy.inf)
+
+    @testing.with_requires("numpy>=1.22.0")
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_nanmin_with_initial_and_where(self, xp, dtype):
+        a = xp.array(
+            [[float("nan"), float("nan"), 3.0], [4.0, float("nan"), 6.0]],
+            dtype,
+        )
+        where = xp.array([[True, False, True], [False, True, True]])
+        return xp.nanmin(a, where=where, initial=2)
+
+    @testing.with_requires("numpy>=1.22.0")
+    @testing.for_float_dtypes()
+    def test_nanmin_where_without_initial_raises(self, dtype):
+        for xp in (numpy, cupy):
+            a = xp.array([1.0, 2.0, 3.0], dtype)
+            where = xp.array([True, False, True])
+            with pytest.raises(ValueError):
+                xp.nanmin(a, where=where)
+
+    @testing.with_requires("numpy>=1.22.0")
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose()
+    def test_nanmax_initial(self, xp, dtype):
+        a = testing.shaped_random((2, 3), xp, dtype)
+        return xp.nanmax(a, initial=0)
+
+    @testing.with_requires("numpy>=1.22.0")
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose()
+    def test_nanmax_initial_axis(self, xp, dtype):
+        a = testing.shaped_random((2, 3, 4), xp, dtype)
+        return xp.nanmax(a, axis=1, initial=0)
+
+    @testing.with_requires("numpy>=1.22.0")
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_nanmax_initial_all_nan(self, xp, dtype):
+        a = xp.array([float("nan"), float("nan")], dtype)
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            m = xp.nanmax(a, initial=5)
+        assert len(w) == 0
+        return m
+
+    @testing.with_requires("numpy>=1.22.0")
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_nanmax_with_where(self, xp, dtype):
+        a = xp.array([[1.0, 2.0, 3.0], [4.0, float("nan"), 6.0]], dtype)
+        where = xp.array([[True, False, True], [False, True, True]])
+        return xp.nanmax(a, where=where, initial=-numpy.inf)
+
+    @testing.with_requires("numpy>=1.22.0")
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_nanmax_with_initial_and_where(self, xp, dtype):
+        a = xp.array(
+            [[float("nan"), float("nan"), 3.0], [4.0, float("nan"), 6.0]],
+            dtype,
+        )
+        where = xp.array([[True, False, True], [False, True, True]])
+        return xp.nanmax(a, where=where, initial=2)
+
+    @testing.with_requires("numpy>=1.22.0")
+    @testing.for_float_dtypes()
+    def test_nanmax_where_without_initial_raises(self, dtype):
+        for xp in (numpy, cupy):
+            a = xp.array([1.0, 2.0, 3.0], dtype)
+            where = xp.array([True, False, True])
+            with pytest.raises(ValueError):
+                xp.nanmax(a, where=where)
+
 
 # See gh-4607
 # "Magic" values used in this test were empirically found to result in
