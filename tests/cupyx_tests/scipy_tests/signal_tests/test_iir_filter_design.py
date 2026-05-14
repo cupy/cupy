@@ -19,7 +19,7 @@ nimpl = pytest.mark.xfail(reason="not implemented")
 prec_loss = pytest.mark.xfail(reason="zpk2tf loses precision")
 
 
-@testing.with_requires("scipy>=1.8")
+@testing.with_requires("scipy")
 class TestIIRFilter:
 
     # NB: test_symmetry with higher order ellip filters need low tolerance
@@ -167,7 +167,7 @@ class TestButter:
                               'sos',
                               pytest.param('ba', marks=prec_loss)])
     @testing.numpy_cupy_allclose(scipy_name="scp")
-    @testing.with_requires("scipy>=1.8")
+    @testing.with_requires("scipy")
     def test_ba_output(self, xp, scp, outp):
         outp = scp.signal.butter(
             4, [100, 300], 'bandpass', analog=True, output=outp)
@@ -393,7 +393,7 @@ class TestCheby2:
         # assert_allclose(a, a2, rtol=1e-14)
 
 
-@testing.with_requires("scipy>=1.8")
+@testing.with_requires("scipy")
 class TestEllip:
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
@@ -773,7 +773,7 @@ class TestEllipord:
         return N, Wn
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
-    @testing.with_requires('scipy>=1.7')
+    @testing.with_requires('scipy')
     def test_lowpass_1000dB(self, xp, scp):
         # failed when ellipkm1 wasn't used in ellipord and ellipap
         wp = 0.2
@@ -1071,7 +1071,7 @@ class TestIIRComb:
         return b, a
 
     # Verify pass_zero parameter
-    @testing.with_requires("scipy>=1.9.0")
+    @testing.with_requires("scipy")
     @testing.numpy_cupy_allclose(scipy_name="scp")
     @pytest.mark.parametrize('ftype,pass_zero,peak,notch',
                              [('peak', True, 123.45, 61.725),
@@ -1104,7 +1104,7 @@ class TestIIRComb:
         return b, a
 
     # Verify that https://github.com/scipy/scipy/issues/14043 is fixed
-    @testing.with_requires('scipy>=1.9.0')
+    @testing.with_requires('scipy')
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_nearest_divisor(self, xp, scp):
         # Create a notching comb filter

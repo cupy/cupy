@@ -16,15 +16,11 @@ import cupyx.scipy.ndimage  # NOQA
 try:
     import scipy
     import scipy.ndimage  # NOQA
-    scipy_version = numpy.lib.NumpyVersion(scipy.__version__)
 except ImportError:
-    scipy_version = numpy.lib.NumpyVersion('0.0.0')
     pass
 
-stats_ops = ['sum', 'mean', 'variance', 'standard_deviation', 'center_of_mass']
-if scipy_version >= '1.6.0':
-    # 'scipy 1.6 added a copy of sum under the name sum_labels'
-    stats_ops += ['sum_labels']
+stats_ops = ['sum', 'mean', 'variance', 'standard_deviation', 'center_of_mass',
+             'sum_labels']
 
 
 def _generate_binary_structure(rank, connectivity):
@@ -460,7 +456,7 @@ class TestLabeledComprehension:
 @testing.parameterize(*testing.product({
     'shape': [(500,), (220, 240), (16, 24, 32), (4, 6, 8, 10)],
 }))
-@testing.with_requires('scipy>=1.10')
+@testing.with_requires('scipy')
 class TestValueIndices:
 
     def _make_image(self, shape, xp, dtype, scale):

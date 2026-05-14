@@ -7,20 +7,11 @@ from cupyx.scipy import fft as cp_fft
 from cupy import testing
 
 try:
-    # scipy.fft is available since scipy v1.4.0+
     import scipy.fft as scipy_fft  # noqa
 except ImportError:
     scipy_fft = None
 
-# used to avoid SciPy bug in complex dtype cases with output_x=True
-# https://github.com/scipy/scipy/pull/11904
-scipy_cplx_bug = not cp_fft._scipy_150
-
-if cp_fft._scipy_160:
-    # additional normalization options available for SciPy>=1.6
-    all_dct_norms = [None, 'ortho', 'forward', 'backward']
-else:
-    all_dct_norms = [None, 'ortho']
+all_dct_norms = [None, 'ortho', 'forward', 'backward']
 
 
 @testing.parameterize(
@@ -48,14 +39,11 @@ else:
         }
     )
 )
-@testing.with_requires('scipy>=1.12.0rc1')
+@testing.with_requires('scipy')
 class TestDctDst:
 
     def _run_transform(self, dct_func, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        if scipy_cplx_bug and x.dtype.kind == 'c':
-            # skip cases where SciPy has a bug
-            return x
         x_orig = x.copy()
         kwargs = dict(type=self.type,
                       n=self.n,
@@ -135,14 +123,11 @@ class TestDctDst:
         )
     )
 )
-@testing.with_requires('scipy>=1.12.0rc1')
+@testing.with_requires('scipy')
 class TestDctnDstn:
 
     def _run_transform(self, dct_func, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        if scipy_cplx_bug and x.dtype.kind == 'c':
-            # skip cases where SciPy has a bug
-            return x
         x_orig = x.copy()
         out = dct_func(
             x,

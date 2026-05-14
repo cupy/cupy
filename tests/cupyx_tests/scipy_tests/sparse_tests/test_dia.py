@@ -86,7 +86,7 @@ class TestDiaMatrix(unittest.TestCase):
         n = _make_complex(cupy, sparse, self.dtype)
         cupy.testing.assert_array_equal(n.conjugate().data, n.data.conj())
 
-    @testing.with_requires('scipy>=1.14')
+    @testing.with_requires('scipy')
     def test_str(self):
         # The exact DIA __str__ format differs across SciPy versions:
         # SciPy 1.14-1.16 use diagonal-major order; SciPy 1.17 switched
@@ -285,14 +285,6 @@ class TestDiaMatrixScipyComparison(unittest.TestCase):
         m = self.make(xp, sp, self.dtype)
         return m.toarray()
 
-    @testing.with_requires('scipy<1.14')
-    @pytest.mark.filterwarnings(
-        r"ignore:`spmatrix\.A` is deprecated:DeprecationWarning")
-    @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_A(self, xp, sp):
-        m = self.make(xp, sp, self.dtype)
-        return m.A
-
     @testing.with_requires('scipy>=1.16')
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_sum_tuple_axis(self, xp, sp):
@@ -352,10 +344,8 @@ class TestDiaMatrixScipyComparison(unittest.TestCase):
         m = self.make(xp, sp, self.dtype)
         return m.transpose()
 
-    @testing.with_requires('scipy>=1.5.0')
+    @testing.with_requires('scipy')
     def test_diagonal_error(self):
-        # Before scipy 1.5.0 dia_matrix diagonal raised
-        # `ValueError`, now returns empty array.
         # Check #3469
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             m = _make(xp, sp, self.dtype)
