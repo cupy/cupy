@@ -210,7 +210,7 @@ def std(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
                  keepdims=keepdims)
 
 
-def nanmean(a, axis=None, dtype=None, out=None, keepdims=False):
+def nanmean(a, axis=None, dtype=None, out=None, keepdims=False, where=True):
     """Returns the arithmetic mean along an axis ignoring NaN values.
 
     Args:
@@ -221,6 +221,8 @@ def nanmean(a, axis=None, dtype=None, out=None, keepdims=False):
         out (cupy.ndarray): Output array.
         keepdims (bool): If ``True``, the axis is remained as an axis of
             size one.
+        where (array-like of bool): Boolean mask broadcastable to ``a``'s
+            shape. Only ``True`` positions contribute to the mean.
 
     Returns:
         cupy.ndarray: The mean of the input array along the axis ignoring NaNs.
@@ -228,15 +230,23 @@ def nanmean(a, axis=None, dtype=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.nanmean`
 
     """
+    a = cupy.asarray(a)
+    where_is_trivial = isinstance(where, bool) and where is True
+
+    if not where_is_trivial:
+        where_arr = cupy.asarray(where, dtype=bool)
+        a = a.astype(cupy.result_type(a.dtype, cupy.float64), copy=True)
+        a = cupy.where(cupy.broadcast_to(where_arr, a.shape), a, cupy.nan)
+        return _statistics._nanmean(
+            a, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+
     if a.dtype.kind in 'biu':
         return a.mean(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
-
-    # TODO(okuta): check type
     return _statistics._nanmean(
         a, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 
-def nanvar(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
+def nanvar(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False, where=True):
     """Returns the variance along an axis ignoring NaN values.
 
     Args:
@@ -245,8 +255,12 @@ def nanvar(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
             is used by default.
         dtype: Data type specifier.
         out (cupy.ndarray): Output array.
+        ddof (int): Degrees of freedom. The divisor used in calculations is
+            ``N - ddof``.
         keepdims (bool): If ``True``, the axis is remained as an axis of
             size one.
+        where (array-like of bool): Boolean mask broadcastable to ``a``'s
+            shape. Only ``True`` positions contribute to the variance.
 
     Returns:
         cupy.ndarray: The variance of the input array along the axis.
@@ -254,16 +268,23 @@ def nanvar(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
     .. seealso:: :func:`numpy.nanvar`
 
     """
-    if a.dtype.kind in 'biu':
-        return a.var(axis=axis, dtype=dtype, out=out, ddof=ddof,
-                     keepdims=keepdims)
+    a = cupy.asarray(a)
+    where_is_trivial = isinstance(where, bool) and where is True
 
-    # TODO(okuta): check type
+    if not where_is_trivial:
+        where_arr = cupy.asarray(where, dtype=bool)
+        a = a.astype(cupy.result_type(a.dtype, cupy.float64), copy=True)
+        a = cupy.where(cupy.broadcast_to(where_arr, a.shape), a, cupy.nan)
+        return _statistics._nanvar(
+            a, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
+
+    if a.dtype.kind in 'biu':
+        return a.var(axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
     return _statistics._nanvar(
         a, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
 
 
-def nanstd(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
+def nanstd(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False, where=True):
     """Returns the standard deviation along an axis ignoring NaN values.
 
     Args:
@@ -272,8 +293,13 @@ def nanstd(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
             flattened array is used by default.
         dtype: Data type specifier.
         out (cupy.ndarray): Output array.
+        ddof (int): Degrees of freedom. The divisor used in calculations is
+            ``N - ddof``.
         keepdims (bool): If ``True``, the axis is remained as an axis of
             size one.
+        where (array-like of bool): Boolean mask broadcastable to ``a``'s
+            shape. Only ``True`` positions contribute to the standard
+            deviation.
 
     Returns:
         cupy.ndarray: The standard deviation of the input array along the axis.
@@ -281,10 +307,17 @@ def nanstd(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
     .. seealso:: :func:`numpy.nanstd`
 
     """
-    if a.dtype.kind in 'biu':
-        return a.std(axis=axis, dtype=dtype, out=out, ddof=ddof,
-                     keepdims=keepdims)
+    a = cupy.asarray(a)
+    where_is_trivial = isinstance(where, bool) and where is True
 
-    # TODO(okuta): check type
+    if not where_is_trivial:
+        where_arr = cupy.asarray(where, dtype=bool)
+        a = a.astype(cupy.result_type(a.dtype, cupy.float64), copy=True)
+        a = cupy.where(cupy.broadcast_to(where_arr, a.shape), a, cupy.nan)
+        return _statistics._nanstd(
+            a, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
+
+    if a.dtype.kind in 'biu':
+        return a.std(axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
     return _statistics._nanstd(
         a, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
