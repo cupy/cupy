@@ -122,7 +122,8 @@ def nansum(a, axis=None, dtype=None, out=None, keepdims=False,
         a = cupy.where(cupy.broadcast_to(where_arr, a.shape), a, 0)
 
     # TODO(okuta): check type
-    res = _math._nansum(a, axis, dtype, out if initial is None else None, keepdims)
+    res = _math._nansum(
+        a, axis, dtype, out if initial is None else None, keepdims)
 
     if initial is not None:
         res = res + initial
@@ -179,7 +180,8 @@ def nanprod(a, axis=None, dtype=None, out=None, keepdims=False,
         a = cupy.where(cupy.broadcast_to(where_arr, a.shape), a, 1)
 
     # TODO(okuta): check type
-    res = _math._nanprod(a, axis, dtype, out if initial is None else None, keepdims)
+    res = _math._nanprod(
+        a, axis, dtype, out if initial is None else None, keepdims)
 
     if initial is not None:
         res = res * initial

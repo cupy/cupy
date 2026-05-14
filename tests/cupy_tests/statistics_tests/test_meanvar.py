@@ -551,6 +551,7 @@ class TestNanVarStdAdditional:
         )
         return xp.nanstd(a, axis=1, where=where)
 
+
 @testing.parameterize(*testing.product({
     'params': [
         ((), None),
