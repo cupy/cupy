@@ -94,7 +94,7 @@ def amax(a, axis=None, out=None, keepdims=False):
     return a.max(axis=axis, out=out, keepdims=keepdims)
 
 
-def nanmin(a, axis=None, out=None, keepdims=False):
+def nanmin(a, axis=None, out=None, keepdims=False, initial=None, where=True):
     """Returns the minimum of an array along an axis ignoring NaN.
 
     When there is a slice whose elements are all NaN, a :class:`RuntimeWarning`
@@ -102,11 +102,17 @@ def nanmin(a, axis=None, out=None, keepdims=False):
 
     Args:
         a (cupy.ndarray): Array to take the minimum.
-        axis (int): Along which axis to take the minimum. The flattened array
-            is used by default.
+        axis (int or tuple of ints): Along which axis to take the minimum.
+            The flattened array is used by default.
         out (cupy.ndarray): Output array.
         keepdims (bool): If ``True``, the axis is remained as an axis of
             size one.
+        initial (scalar): Starting value for the reduction. Acts as if
+            ``initial`` is prepended to every output slice before taking
+            the minimum. Required when ``where`` is specified.
+        where (array-like of bool): Boolean mask broadcastable to ``a``'s
+            shape. Only ``True`` positions contribute to the minimum.
+            Requires ``initial``.
 
     Returns:
         cupy.ndarray: The minimum of ``a``, along the axis if specified.
@@ -119,13 +125,39 @@ def nanmin(a, axis=None, out=None, keepdims=False):
 
     """
     # TODO(niboshi): Avoid synchronization.
-    res = _core.nanmin(a, axis=axis, out=out, keepdims=keepdims)
-    if content.isnan(res).any():  # synchronize!
+
+    where_is_trivial = isinstance(where, bool) and where is True
+    if not where_is_trivial and initial is None:
+        raise ValueError(
+            "reduction operation 'minimum' does not have an identity, "
+            "so to use a where mask one has to specify 'initial'"
+        )
+
+    a = cupy.asarray(a)
+
+    if not where_is_trivial:
+        where_arr = cupy.asarray(where, dtype=bool)
+        a = a.astype(cupy.result_type(a.dtype, cupy.float64), copy=True)
+        a = cupy.where(cupy.broadcast_to(where_arr, a.shape), a, cupy.nan)
+
+    res = _core.nanmin(a, axis=axis, keepdims=keepdims)
+
+    nan_mask = content.isnan(res)
+    has_all_nan_slice = bool(nan_mask.any())  # synchronize!
+
+    if initial is not None:
+        res = cupy.where(nan_mask, initial, cupy.minimum(res, initial))
+
+    if has_all_nan_slice and initial is None:
         warnings.warn('All-NaN slice encountered', RuntimeWarning)
+
+    if out is not None:
+        out[...] = res
+        return out
     return res
 
 
-def nanmax(a, axis=None, out=None, keepdims=False):
+def nanmax(a, axis=None, out=None, keepdims=False, initial=None, where=True):
     """Returns the maximum of an array along an axis ignoring NaN.
 
     When there is a slice whose elements are all NaN, a :class:`RuntimeWarning`
@@ -133,11 +165,17 @@ def nanmax(a, axis=None, out=None, keepdims=False):
 
     Args:
         a (cupy.ndarray): Array to take the maximum.
-        axis (int): Along which axis to take the maximum. The flattened array
-            is used by default.
+        axis (int or tuple of ints): Along which axis to take the maximum.
+            The flattened array is used by default.
         out (cupy.ndarray): Output array.
         keepdims (bool): If ``True``, the axis is remained as an axis of
             size one.
+        initial (scalar): Starting value for the reduction. Acts as if
+            ``initial`` is prepended to every output slice before taking
+            the maximum. Required when ``where`` is specified.
+        where (array-like of bool): Boolean mask broadcastable to ``a``'s
+            shape. Only ``True`` positions contribute to the maximum.
+            Requires ``initial``.
 
     Returns:
         cupy.ndarray: The maximum of ``a``, along the axis if specified.
@@ -150,9 +188,35 @@ def nanmax(a, axis=None, out=None, keepdims=False):
 
     """
     # TODO(niboshi): Avoid synchronization.
-    res = _core.nanmax(a, axis=axis, out=out, keepdims=keepdims)
-    if content.isnan(res).any():  # synchronize!
+
+    where_is_trivial = isinstance(where, bool) and where is True
+    if not where_is_trivial and initial is None:
+        raise ValueError(
+            "reduction operation 'maximum' does not have an identity, "
+            "so to use a where mask one has to specify 'initial'"
+        )
+
+    a = cupy.asarray(a)
+
+    if not where_is_trivial:
+        where_arr = cupy.asarray(where, dtype=bool)
+        a = a.astype(cupy.result_type(a.dtype, cupy.float64), copy=True)
+        a = cupy.where(cupy.broadcast_to(where_arr, a.shape), a, cupy.nan)
+
+    res = _core.nanmax(a, axis=axis, keepdims=keepdims)
+
+    nan_mask = content.isnan(res)
+    has_all_nan_slice = bool(nan_mask.any())  # synchronize!
+
+    if initial is not None:
+        res = cupy.where(nan_mask, initial, cupy.maximum(res, initial))
+
+    if has_all_nan_slice and initial is None:
         warnings.warn('All-NaN slice encountered', RuntimeWarning)
+
+    if out is not None:
+        out[...] = res
+        return out
     return res
 
 
