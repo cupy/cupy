@@ -74,7 +74,8 @@ def prod(a, axis=None, dtype=None, out=None, keepdims=False):
     return a.prod(axis, dtype, out, keepdims)
 
 
-def nansum(a, axis=None, dtype=None, out=None, keepdims=False, initial=None, where=True):
+def nansum(a, axis=None, dtype=None, out=None, keepdims=False,
+           initial=None, where=True):
     """Returns the sum of an array along given axes treating Not a Numbers
     (NaNs) as zero.
 
@@ -103,7 +104,8 @@ def nansum(a, axis=None, dtype=None, out=None, keepdims=False, initial=None, whe
                 'cupy.nansum does not support `keepdims` in fusion yet.')
         if not where_is_trivial or initial is not None:
             raise NotImplementedError(
-                'cupy.nansum does not support `initial` or `where` in fusion yet.')
+                'cupy.nansum does not support `initial` or `where` '
+                'in fusion yet.')
         if a.dtype.char in 'FD':
             func = _math._nansum_complex_dtype
         elif dtype is None:
@@ -131,7 +133,8 @@ def nansum(a, axis=None, dtype=None, out=None, keepdims=False, initial=None, whe
     return res
 
 
-def nanprod(a, axis=None, dtype=None, out=None, keepdims=False, initial=None, where=True):
+def nanprod(a, axis=None, dtype=None, out=None, keepdims=False,
+            initial=None, where=True):
     """Returns the product of an array along given axes treating Not a Numbers
     (NaNs) as one.
 
@@ -160,7 +163,8 @@ def nanprod(a, axis=None, dtype=None, out=None, keepdims=False, initial=None, wh
                 'cupy.nanprod does not support `keepdims` in fusion yet.')
         if not where_is_trivial or initial is not None:
             raise NotImplementedError(
-                'cupy.nanprod does not support `initial` or `where` in fusion yet.')
+                'cupy.nanprod does not support `initial` or `where` '
+                'in fusion yet.')
         if dtype is None:
             func = _math._nanprod_auto_dtype
         else:

@@ -246,7 +246,8 @@ def nanmean(a, axis=None, dtype=None, out=None, keepdims=False, where=True):
         a, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 
-def nanvar(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False, where=True):
+def nanvar(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False,
+           where=True):
     """Returns the variance along an axis ignoring NaN values.
 
     Args:
@@ -279,12 +280,14 @@ def nanvar(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False, where=Tru
             a, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
 
     if a.dtype.kind in 'biu':
-        return a.var(axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
+        return a.var(
+            axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
     return _statistics._nanvar(
         a, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
 
 
-def nanstd(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False, where=True):
+def nanstd(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False,
+           where=True):
     """Returns the standard deviation along an axis ignoring NaN values.
 
     Args:
@@ -318,6 +321,7 @@ def nanstd(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False, where=Tru
             a, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
 
     if a.dtype.kind in 'biu':
-        return a.std(axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
+        return a.std(
+            axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
     return _statistics._nanstd(
         a, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
