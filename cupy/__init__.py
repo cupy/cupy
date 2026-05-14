@@ -939,16 +939,6 @@ def show_config(*, _full=False):
     _sys.stdout.flush()
 
 
-_deprecated_apis: list[str] = []
-
-# APIs removed in NumPy 2.0 that we previously shimmed
-_removed_apis = {
-    'bool8': 'bool',
-    'int0': 'int',
-    'uint0': 'uint',
-}
-
-
 # np 2.0: XXX shims for things removed in np 2.0
 alltrue = all
 sometrue = any
@@ -1133,14 +1123,6 @@ Use {recommendation} instead.
 
 
 def __getattr__(name):
-    if name in _removed_apis:
-        raise AttributeError(
-            f"module 'cupy' has no attribute {name!r}. "
-            f"Use '{_removed_apis[name]}' instead."
-        )
-    if name in _deprecated_apis:
-        return getattr(_numpy, name)
-
     raise AttributeError(f"module 'cupy' has no attribute {name!r}")
 
 
