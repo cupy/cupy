@@ -4,6 +4,7 @@ import numpy
 
 import cupy
 from cupy import _core
+from cupy.cuda import compiler
 from cupy.linalg import _decomposition
 from cupy.linalg import _util
 
@@ -14,6 +15,14 @@ def _multi_svd_norm(x, row_axis, col_axis, op):
     y = cupy.moveaxis(x, (row_axis, col_axis), (-2, -1))
     result = op(_decomposition.svd(y, compute_uv=False), axis=-1)
     return result
+
+
+def _norm_fallback(x, axis, keepdims):
+    if x.dtype.kind == 'c':
+        s = abs(x)
+        s *= s
+        return cupy.sqrt(s.sum(axis=axis, keepdims=keepdims))
+    return cupy.sqrt((x * x).sum(axis=axis, keepdims=keepdims))
 
 
 _norm_ord2 = _core.create_reduction_func(
@@ -93,9 +102,12 @@ def norm(x, ord=None, axis=None, keepdims=False):
             return abs(x).sum(axis=axis, keepdims=keepdims)
         elif ord is None or ord == 2:
             # special case for speedup
-            if x.dtype.kind == 'c':
-                return _norm_ord2_complex(x, axis=axis, keepdims=keepdims)
-            return _norm_ord2(x, axis=axis, keepdims=keepdims)
+            try:
+                if x.dtype.kind == 'c':
+                    return _norm_ord2_complex(x, axis=axis, keepdims=keepdims)
+                return _norm_ord2(x, axis=axis, keepdims=keepdims)
+            except compiler.CompileException:
+                return _norm_fallback(x, axis, keepdims)
         else:
             try:
                 float(ord)
@@ -141,10 +153,13 @@ def norm(x, ord=None, axis=None, keepdims=False):
                 row_axis -= 1
             ret = abs(x).sum(axis=col_axis).min(axis=row_axis)
         elif ord in [None, 'fro', 'f']:
-            if x.dtype.kind == 'c':
-                ret = _norm_ord2_complex(x, axis=axis)
-            else:
-                ret = _norm_ord2(x, axis=axis)
+            try:
+                if x.dtype.kind == 'c':
+                    ret = _norm_ord2_complex(x, axis=axis)
+                else:
+                    ret = _norm_ord2(x, axis=axis)
+            except compiler.CompileException:
+                ret = _norm_fallback(x, axis, keepdims=False)
         elif ord == 'nuc':
             ret = _multi_svd_norm(x, row_axis, col_axis, cupy.sum)
         else:
@@ -363,3 +378,73 @@ def trace(a, offset=0, axis1=0, axis2=1, dtype=None, out=None):
     """
     # TODO(okuta): check type
     return a.trace(offset, axis1, axis2, dtype, out)
+
+
+def linalg_trace(x, /, *, offset=0, dtype=None):
+    """Returns the sum along the specified diagonals of a matrix
+    (or a stack of matrices) ``x``.
+
+    This function is Array API compatible, contrary to
+    :func:`cupy.trace`.
+
+    Args:
+        x (cupy.ndarray): Input array having shape (..., M, N).
+        offset (int): Offset specifying the off-diagonal relative to the main
+            diagonal.
+        dtype: Data type specifier of the output.
+
+    Returns:
+        cupy.ndarray: The trace of ``x``.
+
+    .. seealso:: :func:`numpy.linalg.trace`
+    """
+    return trace(x, offset=offset, axis1=-2, axis2=-1, dtype=dtype)
+
+
+def matrix_norm(x, /, *, keepdims=False, ord="fro"):
+    """Computes the matrix norm of a matrix (or a stack of matrices) ``x``.
+
+    This function is Array API compatible.
+
+    Args:
+        x (cupy.ndarray): Input array having shape (..., M, N).
+        keepdims (bool): If this is set to True, the axes which are normed
+            over are left in the result as dimensions with size one.
+            Default: False.
+        ord: The order of the norm. For details see the table under ``Notes``
+            in :func:`cupy.linalg.norm`. Default: 'fro'.
+
+    Returns:
+        cupy.ndarray: The matrix norm of ``x``.
+
+    .. seealso:: :func:`numpy.linalg.matrix_norm`
+    """
+    return norm(x, axis=(-2, -1), keepdims=keepdims, ord=ord)
+
+
+def vector_norm(x, /, *, axis=None, keepdims=False, ord=2):
+    """Computes the vector norm of a vector (or batch of vectors) ``x``.
+
+    This function is Array API compatible.
+
+    Args:
+        x (cupy.ndarray): Input array.
+        axis: If an integer, ``axis`` specifies the axis along which to
+            compute vector norms. If an n-tuple, ``axis`` specifies the axes
+            along which to compute batched vector norms. If ``None``, the
+            vector norm is computed over all array values. Default: ``None``.
+        keepdims (bool): If this is set to True, the axes which are normed
+            over are left in the result as dimensions with size one.
+            Default: False.
+        ord: The order of the norm. For details see the table under ``Notes``
+            in :func:`cupy.linalg.norm`. Default: 2.
+
+    Returns:
+        cupy.ndarray: The vector norm of ``x``.
+
+    .. seealso:: :func:`numpy.linalg.vector_norm`
+    """
+    if axis is None:
+        x = x.ravel()
+        axis = (0,)
+    return norm(x, axis=axis, keepdims=keepdims, ord=ord)

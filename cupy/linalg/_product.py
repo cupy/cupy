@@ -124,6 +124,41 @@ def vdot(a, b):
     return _core.tensordot_core(a, b, None, 1, 1, a.size, ())
 
 
+def _vecdot(x1, x2, out=None):
+    if x1.dtype.kind == 'c':
+        x1 = x1.conj()
+    return cupy.multiply(x1, x2).sum(axis=-1, out=out)
+
+
+vecdot = _GUFunc(
+    _vecdot,
+    '(n),(n)->()',
+    supports_batched=True,
+    supports_out=True,
+    doc="""vecdot(x1, x2, /, *, axis=-1, out=None, **kwargs)
+
+    Vector dot product of two arrays.
+
+    Returns the dot product of two vectors. The dot product is computed over
+    the dimension specified by ``axis``. For complex input, it conjugates the
+    first argument.
+
+    Args:
+        x1 (cupy.ndarray): First input array.
+        x2 (cupy.ndarray): Second input array.
+        axis (int): Axis over which to compute the dot product.
+            The default is -1.
+        out (cupy.ndarray, optional): Output array.
+        **kwargs: ufunc keyword arguments.
+
+    Returns:
+        cupy.ndarray: The vector dot product of ``x1`` and ``x2``.
+
+    .. seealso:: :func:`numpy.vecdot`
+    """
+)
+
+
 def cross(a, b, axisa=-1, axisb=-1, axisc=-1, axis=None):
     """Returns the cross product of two vectors.
 
@@ -511,3 +546,111 @@ def _move_axes_to_head(a, axes):
 
     return a.transpose(
         axes + [i for i in range(a.ndim) if i not in axes])
+
+
+def multi_dot(arrays, *, out=None):
+    """Compute the dot product of two or more arrays in a single function call,
+    while automatically selecting the fastest evaluation order.
+
+    `multi_dot` chains `cupy.dot` and uses optimal parenthesization
+    of the matrices. Depending on the shapes of the matrices,
+    this can speed up the multiplication a lot.
+
+    If the first argument is 1-D it is treated as a row vector.
+    If the last argument is 1-D it is treated as a column vector.
+    The other arguments must be 2-D.
+
+    Args:
+        arrays (sequence of cupy.ndarray): Sequence of arrays to multiply.
+        out (cupy.ndarray, optional): Output array.
+
+    Returns:
+        cupy.ndarray: The dot product of the arrays.
+
+    .. seealso:: :func:`numpy.linalg.multi_dot`
+    """
+    n = len(arrays)
+    if n < 2:
+        raise ValueError('multi_dot requires at least two arrays')
+    elif n == 2:
+        return cupy.dot(arrays[0], arrays[1], out=out)
+
+    arrays = [cupy.asanyarray(a) for a in arrays]
+
+    # save original ndim to reshape the result array into the proper form later
+    ndim_first, ndim_last = arrays[0].ndim, arrays[-1].ndim
+    # Explicitly convert vectors to 2D arrays to keep the logic of the internal
+    # _multi_dot_* functions as simple as possible.
+    if arrays[0].ndim == 1:
+        arrays[0] = cupy.atleast_2d(arrays[0])
+    if arrays[-1].ndim == 1:
+        arrays[-1] = cupy.atleast_2d(arrays[-1]).T
+    _util._assert_2d(*arrays)
+
+    # _multi_dot_three is much faster than _multi_dot_matrix_chain_order
+    if n == 3:
+        result = _multi_dot_three(arrays[0], arrays[1], arrays[2], out=out)
+    else:
+        order = _multi_dot_matrix_chain_order(arrays)
+        result = _multi_dot_recursive(arrays, order, 0, n - 1, out=out)
+
+    # return proper shape
+    if ndim_first == 1 and ndim_last == 1:
+        return result[0, 0]  # scalar
+    elif ndim_first == 1 or ndim_last == 1:
+        return result.ravel()  # 1-D
+    else:
+        return result
+
+
+def _multi_dot_three(A, B, C, out=None):
+    """
+    Find the best order for three arrays and do the multiplication.
+    """
+    a0, a1b0 = A.shape
+    b1c0, c1 = C.shape
+    # cost1 = cost((AB)C) = a0*a1b0*b1c0 + a0*b1c0*c1
+    cost1 = a0 * b1c0 * (a1b0 + c1)
+    # cost2 = cost(A(BC)) = a1b0*b1c0*c1 + a0*a1b0*c1
+    cost2 = a1b0 * c1 * (a0 + b1c0)
+
+    if cost1 < cost2:
+        return cupy.dot(cupy.dot(A, B), C, out=out)
+    else:
+        return cupy.dot(A, cupy.dot(B, C), out=out)
+
+
+def _multi_dot_matrix_chain_order(arrays):
+    """
+    Return a numpy array that encodes the optimal order of multiplications.
+    """
+    n = len(arrays)
+    # p stores the dimensions of the matrices
+    p = [a.shape[0] for a in arrays] + [arrays[-1].shape[1]]
+    # m is a matrix of costs of the subproblems
+    m = numpy.zeros((n, n), dtype=numpy.double)
+    # s is the actual ordering
+    s = numpy.empty((n, n), dtype=numpy.intp)
+
+    for length in range(1, n):
+        for i in range(n - length):
+            j = i + length
+            m[i, j] = numpy.inf
+            for k in range(i, j):
+                q = m[i, k] + m[k + 1, j] + p[i] * p[k + 1] * p[j + 1]
+                if q < m[i, j]:
+                    m[i, j] = q
+                    s[i, j] = k
+
+    return s
+
+
+def _multi_dot_recursive(arrays, order, i, j, out=None):
+    """Actually do the multiplication with the given order."""
+    if i == j:
+        return arrays[i]
+    else:
+        return cupy.dot(_multi_dot_recursive(arrays, order, i, order[i, j]),
+                        _multi_dot_recursive(
+                            arrays, order, order[i, j] + 1, j),
+                        out=out)
