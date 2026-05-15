@@ -1122,10 +1122,6 @@ Use {recommendation} instead.
         raise RuntimeError(mesg)
 
 
-def __getattr__(name):
-    raise AttributeError(f"module 'cupy' has no attribute {name!r}")
-
-
 def _embed_signatures(dirs):
     for name, value in dirs.items():
         if isinstance(value, ufunc):
