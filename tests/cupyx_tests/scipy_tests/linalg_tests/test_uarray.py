@@ -4,7 +4,7 @@ from cupy import testing
 import cupyx.scipy.linalg._uarray
 
 
-@testing.with_requires('scipy>=1.5')
+@testing.with_requires('scipy')
 def test_implements_names():
     # With the newest SciPy, the decorator `@implements` must find the
     # matching scipy functions.

@@ -925,15 +925,18 @@ cdef _scatter_op_single(
         _scatter_update_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
     elif op == 'add':
-        # There is constraints on types because atomicAdd() in CUDA 7.5
-        # only supports int32, uint32, uint64, and float32.
+        # CUDA natively supports atomicAdd for int32, uint32, uint64,
+        # float32, float64.  CuPy's atomics.cuh provides an int64
+        # (long long) overload via reinterpret_cast to unsigned long long.
         if not issubclass(v.dtype.type,
-                          (numpy.int32, numpy.float16, numpy.float32,
-                           numpy.float64, numpy.uint32, numpy.uint64,
-                           numpy.intc, numpy.uintc, numpy.ulonglong)):
+                          (numpy.int32, numpy.int64,
+                           numpy.float16, numpy.float32, numpy.float64,
+                           numpy.uint32, numpy.uint64,
+                           numpy.intc, numpy.uintc,
+                           numpy.longlong, numpy.ulonglong)):
             raise TypeError(
-                'cupy.add.at only supports int32, float16, float32, float64, '
-                'uint32, uint64, as data type')
+                'cupy.add.at only supports int32, int64, float16, float32, '
+                'float64, uint32, uint64 as data type')
         _scatter_add_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
     elif op == 'sub':
@@ -946,22 +949,26 @@ cdef _scatter_op_single(
             v, indices, cdim, rdim, adim, a.reduced_view())
     elif op == 'max':
         if not issubclass(v.dtype.type,
-                          (numpy.int32, numpy.float32, numpy.float64,
+                          (numpy.int32, numpy.int64,
+                           numpy.float32, numpy.float64,
                            numpy.uint32, numpy.uint64,
-                           numpy.intc, numpy.uintc, numpy.ulonglong)):
+                           numpy.intc, numpy.uintc,
+                           numpy.longlong, numpy.ulonglong)):
             raise TypeError(
-                'cupy.maximum.at only supports int32, float32, float64, '
-                'uint32, uint64 as data type')
+                'cupy.maximum.at only supports int32, int64, float32, '
+                'float64, uint32, uint64 as data type')
         _scatter_max_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
     elif op == 'min':
         if not issubclass(v.dtype.type,
-                          (numpy.int32, numpy.float32, numpy.float64,
+                          (numpy.int32, numpy.int64,
+                           numpy.float32, numpy.float64,
                            numpy.uint32, numpy.uint64,
-                           numpy.intc, numpy.uintc, numpy.ulonglong)):
+                           numpy.intc, numpy.uintc,
+                           numpy.longlong, numpy.ulonglong)):
             raise TypeError(
-                'cupy.minimum.at only supports int32, float32, float64, '
-                'uint32, uint64 as data type')
+                'cupy.minimum.at only supports int32, int64, float32, '
+                'float64, uint32, uint64 as data type')
         _scatter_min_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
     elif op == 'and':

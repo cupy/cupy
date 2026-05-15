@@ -40,9 +40,9 @@ jobs:
     - name: Type Check
       run: |
         # TODO: Test against various NumPy/SciPy versions.
-        pip install 'numpy==1.25.*' 'scipy==1.10.*'
+        pip install 'numpy==2.0.*' 'scipy==1.14.*'
         pip install 'mypy==1.5.*' 'types-setuptools==57.4.14' 'pytest>=7.2'
-        sed -i s/error::cupy.exceptions./error::numpy./ pyproject.toml  # Because no cupy here. See cupy#8346
+        sed -i s/error::cupy.exceptions./error::numpy.exceptions./ pyproject.toml  # Because no cupy here. See cupy#8346
         pytest -v tests/typing_tests/test_typing.py
 
   build-cuda:
