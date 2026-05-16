@@ -43,6 +43,10 @@ class _spbase:
     """
 
     __array_priority__ = 101
+    # ``_data_matrix.__init__`` (and therefore the format subclasses
+    # built on it: csr/csc/coo/dia) does not chain through to
+    # ``spmatrix.__init__``, so instances never get ``self.maxprint``
+    # set as an instance attribute.  This class default is the fallback.
     maxprint = 50
 
     def __class_getitem__(cls, args):

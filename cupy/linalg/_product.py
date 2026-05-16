@@ -490,23 +490,15 @@ def kron(a, b):
     if a_ndim == 0 or b_ndim == 0:
         return cupy.multiply(a, b)
 
-    ndim = b_ndim
-    a_shape = a.shape
-    b_shape = b.shape
-    if a_ndim != b_ndim:
-        if b_ndim > a_ndim:
-            a_shape = (1,) * (b_ndim - a_ndim) + a_shape
-        else:
-            b_shape = (1,) * (a_ndim - b_ndim) + b_shape
-            ndim = a_ndim
-
-    axis = ndim - 1
-    out = _core.tensordot_core(
-        a, b, None, a.size, b.size, 1, a_shape + b_shape)
-    for _ in range(ndim):
-        out = _core.concatenate_method(out, axis=axis)
-
-    return out
+    ndim = max(a_ndim, b_ndim)
+    a_shape = (1,) * (ndim - a_ndim) + a.shape
+    b_shape = (1,) * (ndim - b_ndim) + b.shape
+    a_arr = cupy.expand_dims(
+        a.reshape(a_shape), axis=tuple(range(1, ndim * 2, 2)))
+    b_arr = cupy.expand_dims(
+        b.reshape(b_shape), axis=tuple(range(0, ndim * 2, 2)))
+    out_shape = tuple(s_a * s_b for s_a, s_b in zip(a_shape, b_shape))
+    return cupy.multiply(a_arr, b_arr).reshape(out_shape)
 
 
 def _move_axes_to_head(a, axes):
