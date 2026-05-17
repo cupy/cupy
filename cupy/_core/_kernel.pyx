@@ -1711,8 +1711,7 @@ cdef class _Ops:
     ):
         cdef _Op op
         cdef tuple op_types
-        cdef Py_ssize_t n = len(in_types)
-        cdef Py_ssize_t i
+        cdef int i
 
         if self.promote_types is not None:
             # NOTE(seberg): This works fine, but should maybe be considered
@@ -1721,7 +1720,7 @@ cdef class _Ops:
 
         for op in self.ops:
             op_types = op.in_types
-            for i in range(n):
+            for i in range(self.nin):
                 it = in_types[i]
                 ot = op_types[i]
                 weak_t = weaks[i] if weaks is not None else False
