@@ -77,7 +77,7 @@ class TestComparisonOperator:
         return [op(a, b) for op in self.operators]
 
     @pytest.mark.parametrize('dtype', [
-        numpy.int8, numpy.int64, numpy.uint8, numpy.uint64])
+        numpy.bool, numpy.int8, numpy.int64, numpy.uint8, numpy.uint64])
     @pytest.mark.parametrize('scalar', [-1, 0, 2**32, 2**63, 2**64-1])
     @pytest.mark.parametrize('op', operators)
     @testing.numpy_cupy_array_equal()

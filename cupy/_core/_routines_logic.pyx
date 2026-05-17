@@ -62,7 +62,12 @@ def promote_weak_int(in_types, weaks):
     if weaks is None:
         return in_types, weaks
 
-    return in_types, tuple([w if w is not int else False for w in weaks])
+    if weaks[0] is int and weaks[1] is False and in_types[0].kind in "biu":
+        return in_types, (False, weaks[1])
+    elif weaks[1] is int and weaks[0] is False and in_types[1].kind in "biu":
+        return in_types, (weaks[0], False)
+
+    return in_types, weaks
 
 
 def struct_compare_resolution(op, in_dtypes, out_dtypes):
@@ -92,7 +97,8 @@ def struct_compare_resolution(op, in_dtypes, out_dtypes):
     return (cmp_dtype, cmp_dtype), out_dtypes
 
 
-cpdef create_comparison(name, op, doc='', no_complex_dtype=True):
+cpdef create_comparison(
+        name, op, doc='', no_complex_dtype=True, allow_structured=False):
     ops = (
         '??->?',
         'qq->?', 'QQ->?',
