@@ -77,7 +77,7 @@ class TestComparisonOperator:
         return [op(a, b) for op in self.operators]
 
     @pytest.mark.parametrize('dtype', [
-        numpy.bool, numpy.int8, numpy.int64, numpy.uint8, numpy.uint64])
+        numpy.int8, numpy.int64, numpy.uint8, numpy.uint64])
     @pytest.mark.parametrize('scalar', [-1, 0, 2**32, 2**63, 2**64-1])
     @pytest.mark.parametrize('op', operators)
     @testing.numpy_cupy_array_equal()
@@ -90,6 +90,29 @@ class TestComparisonOperator:
             dtype=dtype)
         b = scalar
         return [op(a, b), op(b, a)]
+
+    @pytest.mark.parametrize('dtype', [
+        numpy.float16, numpy.float32, numpy.float64])
+    @pytest.mark.parametrize('scalar',
+                             [-1, 0, 2**32, 2**31-1, 2**31+1, 2**63, 2**64-1])
+    @pytest.mark.parametrize('op', operators)
+    @testing.numpy_cupy_array_equal()
+    def test_binary_array_pyscalar_int_and_float(self, xp, dtype, scalar, op):
+        a = xp.array([-1, 0, 2**31-1, 2**31+1, 2**32, 2**63-1, 2**62, 2**62+1])
+        a = a.astype(dtype)  # cast (overflow OK)
+        b = scalar
+        return [op(a, b), op(b, a)]
+
+    @pytest.mark.parametrize('scalar,safe_scalar',
+                             [(2**63, 2), (2**63+100, 2), (-2**63, -1)])
+    @pytest.mark.parametrize('op', operators)
+    def test_binary_array_pyscalar_int_and_bool(
+            self, scalar, safe_scalar, op):
+        # As of 2.5, NumPy uses the default integer and fails for very large
+        # Python scalars. But CuPy uses uint64 and succeeds.
+        a = cupy.array([True, False])
+        testing.assert_array_equal(op(a, scalar), op(a, safe_scalar))
+        testing.assert_array_equal(op(scalar, a), op(safe_scalar, a))
 
 
 class TestArrayEqual(unittest.TestCase):

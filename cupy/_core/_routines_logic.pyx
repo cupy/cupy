@@ -57,14 +57,17 @@ cdef _any = create_reduction_func(
 
 
 def promote_weak_int(in_types, weaks):
-    # Python integers can be originally discovered as uint or int.
-    # For comparison we define loops for both so take whatever it is.
     if weaks is None:
         return in_types, weaks
 
-    if weaks[0] is int and weaks[1] is False and in_types[0].kind in "biu":
+    # Python integers can be originally discovered as uint or int.
+    # E.g. for int32(-2**31) == 2**32 we need to promote, rather than try
+    # to use the NEP 50 style and use int32 (failing the conversion).
+    # For float this is currently not what NumPy does (debatable).
+    # For bool, NumPy uses the default integer while we make it work (ignore).
+    if weaks[0] is int and weaks[1] is False and in_types[1].kind in "iu":
         return in_types, (False, weaks[1])
-    elif weaks[1] is int and weaks[0] is False and in_types[1].kind in "biu":
+    elif weaks[1] is int and weaks[0] is False and in_types[0].kind in "iu":
         return in_types, (weaks[0], False)
 
     return in_types, weaks
