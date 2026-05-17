@@ -249,6 +249,7 @@ from cupy._manipulation.transpose import moveaxis  # NOQA
 from cupy._manipulation.transpose import rollaxis  # NOQA
 from cupy._manipulation.transpose import swapaxes  # NOQA
 from cupy._manipulation.transpose import transpose  # NOQA
+from cupy._manipulation.transpose import matrix_transpose  # NOQA
 
 # NumPy 2.0 aliases
 permute_dims = transpose
