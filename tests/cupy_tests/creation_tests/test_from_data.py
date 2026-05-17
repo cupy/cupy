@@ -709,7 +709,7 @@ class TestCudaArrayInterfaceNonBuiltinDtype:
         b = DummyObjectWithCudaArrayInterface(a, ver, strides)
         c = cupy.asarray(b)
         # CAI typestr for structured dtypes is |V<n>; field info is lost
-        assert c.dtype == numpy.dtype(dtype.str)
+        assert c.dtype == dtype
         assert c.shape == (3,)
 
     @pytest.mark.parametrize('ver', range(max_cuda_array_interface_version+1))
@@ -744,6 +744,7 @@ class TestCudaArrayInterfaceMaskedArray(unittest.TestCase):
 
 # marked slow as either numpy or cupy could go OOM in this test
 @testing.slow
+@pytest.mark.thread_unsafe(reason="too large allocations")
 class TestCudaArrayInterfaceBigArray(unittest.TestCase):
     def test_with_over_size_array(self):
         # real example from #3009

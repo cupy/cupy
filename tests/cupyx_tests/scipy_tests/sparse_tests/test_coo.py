@@ -207,34 +207,17 @@ class TestCooMatrix:
         ], dtype=self.dtype)
         numpy.testing.assert_allclose(m.toarray(), expect)
 
-    @testing.with_requires('scipy>=1.14')
+    @testing.with_requires('scipy')
     def test_str(self):
-        dtype_name = numpy.dtype(self.dtype).name
-        if numpy.dtype(self.dtype).kind == 'b':
-            expect = f'''<COOrdinate sparse matrix of dtype '{dtype_name}'
-\twith 4 stored elements and shape (3, 4)>
-  Coords\tValues
-  (0, 0)\tFalse
-  (0, 1)\tTrue
-  (1, 3)\tTrue
-  (2, 2)\tTrue'''
-        elif numpy.dtype(self.dtype).kind == 'f':
-            expect = f'''<COOrdinate sparse matrix of dtype '{dtype_name}'
-\twith 4 stored elements and shape (3, 4)>
-  Coords\tValues
-  (0, 0)\t0.0
-  (0, 1)\t1.0
-  (1, 3)\t2.0
-  (2, 2)\t3.0'''
-        elif numpy.dtype(self.dtype).kind == 'c':
-            expect = f'''<COOrdinate sparse matrix of dtype '{dtype_name}'
-\twith 4 stored elements and shape (3, 4)>
-  Coords\tValues
-  (0, 0)\t0j
-  (0, 1)\t(1+0j)
-  (1, 3)\t(2+0j)
-  (2, 2)\t(3+0j)'''
-        assert str(self.m) == expect
+        # CuPy delegates ``__str__`` to ``str(self.get())`` so the output
+        # always matches the installed scipy's format.  Sanity-check the
+        # key repr fields explicitly so we'd notice if the delegation
+        # silently broke.
+        s = str(self.m)
+        assert 'COOrdinate' in s
+        assert 'sparse matrix' in s
+        assert str(self.m.shape) in s
+        assert s == str(self.m.get())
 
     def test_toarray(self):
         m = self.m.toarray()
@@ -523,12 +506,6 @@ class TestCooMatrixScipyComparison:
         m = self.make(xp, sp, self.dtype)
         return m.toarray()
 
-    @testing.with_requires('scipy<1.14')
-    @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_A(self, xp, sp):
-        m = self.make(xp, sp, self.dtype)
-        return m.toarray()
-
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocoo(self, xp, sp):
         m = _make(xp, sp, self.dtype)
@@ -574,13 +551,13 @@ class TestCooMatrixScipyComparison:
         return n
 
     # dot
-    @testing.with_requires('scipy!=1.8.0')
+    @testing.with_requires('scipy')
     @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_dot_scalar(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         return m.dot(2.0)
 
-    @testing.with_requires('scipy!=1.8.0')
+    @testing.with_requires('scipy')
     @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_dot_numpy_scalar(self, xp, sp):
         m = _make(xp, sp, self.dtype)
@@ -889,11 +866,6 @@ class TestCooMatrixScipyComparison:
             with pytest.raises(ValueError):
                 x * m
 
-    @pytest.mark.xfail(
-        scipy_available and
-        numpy.lib.NumpyVersion(scipy.__version__) >= '1.8.0rc1' and
-        numpy.lib.NumpyVersion(scipy.__version__) <= '1.9.0rc1',
-        reason='See scipy/15210')
     def test_rmul_unsupported(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             m = _make(xp, sp, self.dtype)
@@ -1058,7 +1030,7 @@ class TestCooMatrixSumDuplicates:
         assert m.nnz == 0
         return m
 
-    @testing.with_requires('scipy>=1.11.0')
+    @testing.with_requires('scipy')
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_sum_duplicates_compatibility(self, xp, sp):
         m = _make_sum_dup(xp, sp, self.dtype)
@@ -1070,29 +1042,6 @@ class TestCooMatrixSumDuplicates:
         testing.assert_array_equal(m.row, row)
         testing.assert_array_equal(m.col, col)
         assert m.has_canonical_format
-        return m
-
-    @testing.with_requires('scipy<1.11.0')
-    @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_sum_duplicates_incompatibility(self, xp, sp):
-        # See #3620 and #3624. CuPy's and SciPy's COO indices could mismatch
-        # due to the order of lexsort, but the matrix is correct.
-        m = _make_sum_dup(xp, sp, self.dtype)
-        if xp is cupy:
-            sorted_first = m.row.copy()
-        else:
-            sorted_first = m.col.copy()
-        assert not m.has_canonical_format
-        m.sum_duplicates()
-        assert m.has_canonical_format
-        # Here we ensure this sorting order is not altered by future PRs...
-        sorted_first.sort()
-        if xp is cupy:
-            testing.assert_array_equal(m.row, sorted_first)
-        else:
-            testing.assert_array_equal(m.col, sorted_first)
-        assert m.has_canonical_format
-        # ...and now we make sure the dense matrix is the same
         return m
 
 
@@ -1143,7 +1092,7 @@ class TestIsspmatrixCoo:
 @testing.parameterize(*testing.product({
     'shape': [(8, 5), (5, 5), (5, 8)],
 }))
-@testing.with_requires('scipy>=1.5.0')
+@testing.with_requires('scipy')
 class TestCooMatrixDiagonal:
     density = 0.5
 

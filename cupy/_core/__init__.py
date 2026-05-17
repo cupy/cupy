@@ -21,6 +21,9 @@ from cupy._core._kernel import create_ufunc  # NOQA
 from cupy._core._kernel import ElementwiseKernel  # NOQA
 from cupy._core._kernel import ufunc  # NOQA
 from cupy._core._kernel import _get_warpsize  # NOQA
+from cupy._core._kernel import _full_mask  # NOQA
+from cupy._core._kernel import _full_mask_hex  # NOQA
+from cupy._core._kernel import _is_hip_7_plus  # NOQA
 from cupy._core._reduction import create_reduction_func  # NOQA
 from cupy._core._reduction import ReductionKernel  # NOQA
 from cupy._core._routines_binary import bitwise_and  # NOQA

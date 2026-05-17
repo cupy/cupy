@@ -28,6 +28,7 @@ cdef class Module:
     cpdef get_global_var(self, name)
     cpdef get_function(self, name)
     cpdef _set_mapping(self, dict mapping)
+    cpdef _enumerate_and_build_mapping(self, tuple name_expressions)
 
 
 cdef class LinkState:
