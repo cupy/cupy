@@ -180,8 +180,8 @@ _available_cusparse_version = {
     'csc2csr': (8000, 11000),  # the entity is csr2csc
     'csr2cscEx2': (10200, None),
     'csc2csrEx2': (10200, None),  # the entity is csr2cscEx2
-    'dense2csc': (8000, None),
-    'dense2csr': (8000, None),
+    'dense2csc': (8000, 12000),
+    'dense2csr': (8000, 12000),
     'csr2csr_compress': (8000, None),
     'csrsm2': (9020, 12000),
     'csrilu02': (8000, None),
