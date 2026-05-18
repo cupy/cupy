@@ -84,11 +84,16 @@ cdef inline void _set_vars() except*:
     _python_include = sysconfig.get_path('include')
 
     _cuda_path = get_cuda_path()
-    _nvprune = find_nvidia_binary_utility('nvprune')
-    if _nvprune is None and _cuda_path is not None:
-        _nvprune = os.path.join(_cuda_path, 'bin/nvprune')
-        if not os.path.isfile(_nvprune):
-            _nvprune = None
+    if _cuda_path is not None:
+        _nvprune = find_nvidia_binary_utility('nvprune')
+        if _nvprune is None:
+            _nvprune = os.path.join(_cuda_path, 'bin/nvprune')
+            if not os.path.isfile(_nvprune):
+                _nvprune = None
+    else:
+        # _prune() needs both nvprune and _cuda_path (for
+        # libcufft_static.a), so skip nvprune if there is no root.
+        _nvprune = None
 
     _cuda_include = find_nvidia_header_directory('cudart')
 

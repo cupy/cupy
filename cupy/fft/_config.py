@@ -19,8 +19,11 @@ if not runtime.is_hip:
     from cupy.fft._callback import (
         get_current_callback_manager, set_cufft_callbacks)
 else:
-    get_current_callback_manager = None
-    set_cufft_callbacks = None
+    def get_current_callback_manager():
+        return None
+
+    def set_cufft_callbacks(*args, **kwargs):
+        raise RuntimeError('cuFFT callbacks are not supported on ROCm')
 
 
 class _FFTConfig:
