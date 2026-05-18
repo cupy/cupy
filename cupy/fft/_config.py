@@ -15,7 +15,7 @@ from cupy.fft._cache import (get_plan_cache,
                              set_plan_cache_max_memsize,
                              show_plan_cache_info)
 # expose callback handles via `config` object (CUDA only)
-if not runtime._is_hip_environment:
+if not runtime.is_hip:
     from cupy.fft._callback import (
         get_current_callback_manager, set_cufft_callbacks)
 else:
