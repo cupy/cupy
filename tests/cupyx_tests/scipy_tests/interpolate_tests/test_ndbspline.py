@@ -16,7 +16,7 @@ import pytest
 import itertools
 
 
-@testing.with_requires('scipy>=1.12')
+@testing.with_requires('scipy')
 class TestNdBSpline:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_1D(self, xp, scp):
@@ -382,7 +382,7 @@ class TestNdBSpline:
         bspl3 = scp.interpolate.NdBSpline(t3, c3, k=3)
         return bspl3((1, 2, 3))
 
-    @testing.with_requires('scipy>=1.13')
+    @testing.with_requires('scipy')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_design_matrix(self, xp, scp):
         t3, c3, k = self.make_3d_case(xp, scp)
@@ -396,7 +396,7 @@ class TestNdBSpline:
 
         return dm.todense(), dm1.todense()
 
-    @testing.with_requires('scipy>=1.13')
+    @testing.with_requires('scipy')
     @pytest.mark.parametrize('k', [(3, 1), (1, 3), (1, 1), (3, 3)])
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_design_matrix_2(self, xp, scp, k):
@@ -415,7 +415,7 @@ class TestNdBSpline:
 
 
 @pytest.mark.skipif(runtime.is_hip, reason='csrlsvqr not available')
-@testing.with_requires('scipy>=1.13')
+@testing.with_requires('scipy')
 class TestMakeND:
 
     def _make(self, xp):

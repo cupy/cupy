@@ -144,7 +144,7 @@ class TestCsrmm2:
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
     'shape': [(3, 4), (4, 3)]
 }))
-@testing.with_requires('scipy>=1.2.0')
+@testing.with_requires('scipy')
 class TestCsrgeam:
 
     alpha = 0.5
@@ -277,7 +277,7 @@ class TestCsrgemm:
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
     'shape': [(2, 3, 4), (4, 3, 2)]
 }))
-@testing.with_requires('scipy>=1.2.0')
+@testing.with_requires('scipy')
 class TestCsrgemm2:
 
     alpha = 0.5
@@ -373,7 +373,7 @@ class TestCsrgemm2InvalidCases:
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
     'shape': [(2, 3, 4), (4, 3, 2), (100000, 100000, 50)]
 }))
-@testing.with_requires('scipy>=1.2.0')
+@testing.with_requires('scipy')
 class TestSpgemm:
 
     alpha = 0.5
@@ -633,7 +633,7 @@ class TestCscsort:
     'shape': [(3, 2), (4, 3)],
     'format': ['csr', 'csc', 'coo'],
 }))
-@testing.with_requires('scipy>=1.2.0')
+@testing.with_requires('scipy')
 class TestSpmv:
 
     alpha = 0.5
@@ -735,7 +735,7 @@ class TestErrorSpmv:
     'dims': [(2, 3, 4), (3, 4, 2)],
     'format': ['csr', 'csc', 'coo'],
 }))
-@testing.with_requires('scipy>=1.2.0')
+@testing.with_requires('scipy')
 class TestSpmm:
 
     alpha = 0.5
@@ -798,6 +798,27 @@ class TestSpmm:
         testing.assert_array_almost_equal(y, expect)
 
 
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float32, numpy.float64],
+}))
+class TestSpmmLargeColumns:
+    """cuSPARSE SpMM gridDim.y overflow (#9850)."""
+
+    @testing.slow
+    def test_spmm_large_n(self):
+        if not cusparse.check_availability('spmm'):
+            pytest.skip('spmm is not available')
+        n = 65535 * 16 + 1  # just above gridDim.y overflow threshold
+        m, k = 5, 5
+        a = sparse.random(m, k, density=0.2, format='csr',
+                          dtype=self.dtype)
+        a.sum_duplicates()
+        b = cupy.ones((k, n), dtype=self.dtype, order='F')
+        c = cusparse.spmm(a, b, alpha=1.0)
+        expected = a.toarray() @ b
+        testing.assert_allclose(c, expected, rtol=1e-5)
+
+
 @testing.with_requires('scipy')
 class TestErrorSpmm:
 
@@ -822,12 +843,12 @@ class TestErrorSpmm:
 
         a = sparse.csr_matrix(self.a)
         b = cupy.array(self.b, order='f')
-        with pytest.raises(AssertionError):
+        with pytest.raises(ValueError):
             cusparse.spmm(a, b.T)
 
         a = sparse.csr_matrix(self.a)
         b = cupy.array(self.b)
-        with pytest.raises(AssertionError):
+        with pytest.raises(ValueError):
             cusparse.spmm(a, b)
 
         a = sparse.csr_matrix(self.a)

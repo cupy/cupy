@@ -310,10 +310,6 @@ class TestHypergeometricValidation:
         with pytest.raises(ValueError):
             self.gen.hypergeometric(10, 10, -1, size=10)
 
-    def test_hypergeometric_nsample_too_large(self):
-        with pytest.raises(ValueError):
-            self.gen.hypergeometric(5, 10, 16, size=10)
-
     def test_hypergeometric_nsample_zero(self):
         # Generator API allows nsample=0 (returns zeros), unlike legacy API
         out = self.gen.hypergeometric(5, 10, 0, size=10)
@@ -321,6 +317,13 @@ class TestHypergeometricValidation:
 
     def test_hypergeometric_nsample_equals_total(self):
         out = self.gen.hypergeometric(5, 10, 15, size=10)
+        testing.assert_array_equal(out, cupy.full(10, 5, dtype=cupy.int64))
+
+    def test_hypergeometric_nsample_exceeds_total(self):
+        # nsample > ngood + nbad would previously cause an infinite
+        # loop in the HRUA kernel. The kernel now routes this through
+        # the HYP path which handles it safely.
+        out = self.gen.hypergeometric(5, 10, 16, size=10)
         testing.assert_array_equal(out, cupy.full(10, 5, dtype=cupy.int64))
 
     def test_hypergeometric_ngood_zero(self):

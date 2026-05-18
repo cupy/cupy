@@ -1165,6 +1165,9 @@ cdef class _Arena:
         cdef std_set[index_type].iterator it
         cdef _Chunk chunk = None
 
+        if len(self._pending_free):
+            self._commit_pending_free()
+
         it = self.index.lower_bound(index_type(size, 0))
         if it != self.index.end():
             chunk = <_Chunk><void *>deref(it).second
@@ -1235,6 +1238,7 @@ cdef class SingleDeviceMemoryPool:
         dict _arenas
         # NOTE: Never use `.lock()` outside a `with nogil:` statement as it
         # may deadlock (GIL may be unlocked and another thread also locks).
+        # We currently use a mutex for the ability to use `try_lock`.
         cpp_mutex _arena_mutex
 
         # Number of total bytes actually allocated on GPU.
