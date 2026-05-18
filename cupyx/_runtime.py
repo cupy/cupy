@@ -234,9 +234,8 @@ class _RuntimeInfo:
             if nvrtc_version is None:
                 self.cuda_extra_include_dirs = '(NVRTC unavailable)'
             else:
-                from cuda.pathfinder import find_nvidia_header_directory
                 try:
-                    d = find_nvidia_header_directory('cudart')
+                    d = pathfinder.find_nvidia_header_directory('cudart')
                 except Exception:
                     d = None
                 self.cuda_extra_include_dirs = str([d] if d else [])
