@@ -14,6 +14,7 @@ import tempfile
 import warnings
 
 from cuda.pathfinder import find_nvidia_header_directory
+
 from cupy.cuda import cub
 from cupy import _util
 

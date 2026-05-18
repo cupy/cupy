@@ -18,6 +18,8 @@ import tempfile
 import threading
 import warnings
 
+from cuda.pathfinder import find_nvidia_header_directory
+
 from cupy import __version__ as _cupy_ver
 from cupy._environment import (get_nvcc_path, get_cuda_path)
 from cupy.cuda.compiler import (_get_bool_env_variable, CompileException)
@@ -87,7 +89,6 @@ cdef inline void _set_vars() except*:
         if not os.path.isfile(_nvprune):
             _nvprune = None
 
-    from cuda.pathfinder import find_nvidia_header_directory
     _cuda_include = find_nvidia_header_directory('cudart')
 
     _build_ver = str(runtime.runtimeGetVersion())
@@ -575,7 +576,6 @@ cdef class _JITCallbackManager(_CallbackManager):
     cdef str _get_cuda_include(self):
         global _cuda_include
         if _cuda_include is None:
-            from cuda.pathfinder import find_nvidia_header_directory
             _cuda_include = find_nvidia_header_directory('cudart')
             if _cuda_include is None:
                 raise RuntimeError('Failed to find CUDA headers.')
