@@ -140,6 +140,10 @@ def _get_conda_cuda_path():
 
 
 def _get_cuda_path():
+    # Derive the CUDA root from NVRTC's location via pathfinder.
+    # Pathfinder's search order (site-packages -> conda -> system ->
+    # CUDA_PATH) ensures consistent priority.
+
     # Use conda CUDA path. This ensures that only when CuPy is installed via
     # conda will we pick up the conda CUDA path. If CuPy is installed to a
     # conda env but via pip, we proceed to the next detection method so as to
@@ -150,8 +154,6 @@ def _get_cuda_path():
         if conda_cuda_path is not None:
             return conda_cuda_path
 
-    # Use NVRTC path. We don't use NVCC path because NVCC is not always
-    # installed, whereas NVRTC is a hard dependency.
     from cuda.pathfinder import (
         load_nvidia_dynamic_lib, DynamicLibNotFoundError)
     try:
@@ -159,33 +161,30 @@ def _get_cuda_path():
     except DynamicLibNotFoundError:
         pass
     else:
-        cuda_path = os.path.dirname(os.path.dirname(nvrtc.abs_path))
+        # realpath normalizes ".." components and resolves symlinks
+        # (e.g. conda's lib-dynload/../../libnvrtc.so).
+        cuda_path = os.path.dirname(
+            os.path.dirname(os.path.realpath(nvrtc.abs_path)))
         if nvrtc.found_via == 'conda':
-            # In this case we'd find cuda_path == $CONDA_PREFIX, which is
-            # not the actual CUDA path in conda. So we need to adjust it.
             conda_cuda_path = _get_conda_cuda_path()
             assert conda_cuda_path.startswith(cuda_path)
             return conda_cuda_path
         elif nvrtc.found_via == 'site-packages':
-            # For CUDA 13.0+, the CTK wheels are installed to
-            # site-packages/nvidia/cuXX/{bin,include,lib,...}; CUDA 12.x and
-            # below have a splayed layout, so a single CUDA_PATH is not well
-            # defined.
+            # CUDA 13+: unified layout nvidia/cu<major>/{bin,include,lib}
+            # CUDA 12.x: splayed layout nvidia/cuda_nvrtc/ — no single root
             if re.search(r'site-packages.*nvidia.*cu\d{2}', cuda_path):
                 if _PLATFORM_WIN32:
-                    # dll locates in site-packages\nvidia\cuXX\bin\x86_64
                     cuda_path = os.path.dirname(cuda_path)
                 return cuda_path
             return None
+        # System CTK or CUDA_PATH/CUDA_HOME.
+        # On Windows CUDA 13+, DLLs are in bin\x64\ instead of bin\,
+        # so dirname x2 gives ...\bin rather than the CUDA root.
+        if _PLATFORM_WIN32 and os.path.basename(cuda_path) == 'bin':
+            cuda_path = os.path.dirname(cuda_path)
         return cuda_path
 
-    # Use CUDA_PATH environment variable (demoted from first priority to
-    # ensure consistency with pathfinder-based NVRTC detection).
-    cuda_path = os.environ.get('CUDA_PATH', '')  # Nvidia default on Windows
-    if os.path.exists(cuda_path):
-        return cuda_path
-
-    # Use typical path
+    # Use typical path (not covered by pathfinder)
     if os.path.exists('/usr/local/cuda'):
         return '/usr/local/cuda'
 
@@ -198,7 +197,7 @@ def _get_nvcc_path():
     if nvcc_path is not None:
         return nvcc_path
 
-    # Use pathfinder (searches site-packages, conda, CUDA_PATH, system)
+    # Use pathfinder (searches site-packages, conda, system, CUDA_PATH)
     from cuda.pathfinder import find_nvidia_binary_utility
     nvcc_path = find_nvidia_binary_utility('nvcc')
     if nvcc_path is not None:
