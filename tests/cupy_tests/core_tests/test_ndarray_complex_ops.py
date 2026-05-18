@@ -9,6 +9,7 @@ from cupy import testing
 
 class TestConj:
 
+    @testing.with_requires('numpy>=2.0')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_almost_equal()
     def test_conj(self, xp, dtype):
@@ -27,6 +28,7 @@ class TestConj:
         assert x is y
         return y
 
+    @testing.with_requires('numpy>=2.0')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_almost_equal()
     def test_conjugate(self, xp, dtype):

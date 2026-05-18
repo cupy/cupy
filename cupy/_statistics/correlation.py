@@ -73,10 +73,18 @@ def correlate(a, v, mode='valid'):
     # choose_conv_method does not choose from the values in
     # the input array, so no need to apply conj.
     method = cupy._math.misc._choose_conv_method(a, v, mode)
+    # conj is mathematically a no-op for real-typed v (and would
+    # promote bool -> int8 via the matching _ndarray_conj fix
+    # elsewhere in this branch, leaking the dtype change into
+    # correlate's output and diverging from numpy.correlate, which
+    # preserves the input dtype for real types). Skip the conj entirely
+    # for non-complex v -- the [::-1] reversal alone is what
+    # correlate actually needs there.
+    v_for_conv = v.conj()[::-1] if v.dtype.kind == 'c' else v[::-1]
     if method == 'direct':
-        out = cupy._math.misc._dot_convolve(a, v.conj()[::-1], mode)
+        out = cupy._math.misc._dot_convolve(a, v_for_conv, mode)
     elif method == 'fft':
-        out = cupy._math.misc._fft_convolve(a, v.conj()[::-1], mode)
+        out = cupy._math.misc._fft_convolve(a, v_for_conv, mode)
     else:
         raise ValueError('Unsupported method')
     return out
@@ -209,6 +217,10 @@ def cov(a, y=None, rowvar=True, bias=False, ddof=None,
         X_T = X.T
     else:
         X_T = (X * w).T
-    out = X.dot(X_T.conj()) / fact
+    # See the matching comment in correlate() above: skip the conj
+    # for real-typed X so that the matching _ndarray_conj bool ->
+    # int8 promotion does not leak into cov()'s output dtype.
+    X_T_for_dot = X_T.conj() if X_T.dtype.kind == 'c' else X_T
+    out = X.dot(X_T_for_dot) / fact
 
     return out.squeeze()

@@ -34,7 +34,9 @@ except ImportError:
 
 
 cdef _ndarray_base _ndarray_conj(_ndarray_base self):
-    if self.dtype.kind == 'c':
+    # NumPy 2.x promotes bool -> int8 on conj; keep the same-object
+    # fast path for other real dtypes.
+    if self.dtype.kind == 'c' or self.dtype.kind == 'b':
         return _conjugate(self)
     else:
         return self
