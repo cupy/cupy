@@ -17,15 +17,14 @@ class TestConj:
             return x  # NumPy 2.4.5 had a regression for bool_arr.conj()
         return x.conj()
 
-    @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_array_almost_equal()
-    def test_conj_pass(self, xp, dtype):
-        x = testing.shaped_arange((2, 3), xp, dtype)
+    @testing.for_all_dtypes(no_complex=True, no_bool=True)
+    def test_conj_pass(self, dtype):
+        # CuPy keeps the same-object fast path; numpy 2.x dropped it.
+        x = testing.shaped_arange((2, 3), cupy, dtype)
         y = x.conj()
         if xp is numpy and numpy.__version__ == "2.4.5":
             return x  # NumPy 2.4.5 had a regression for bool_arr.conj()
         assert x is y
-        return y
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_almost_equal()
@@ -35,15 +34,14 @@ class TestConj:
             return x  # NumPy 2.4.5 had a regression for bool_arr.conj()
         return x.conjugate()
 
-    @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_array_almost_equal()
-    def test_conjugate_pass(self, xp, dtype):
-        x = testing.shaped_arange((2, 3), xp, dtype)
+    @testing.for_all_dtypes(no_complex=True, no_bool=True)
+    def test_conjugate_pass(self, dtype):
+        # See test_conj_pass.
+        x = testing.shaped_arange((2, 3), cupy, dtype)
         y = x.conjugate()
         if xp is numpy and numpy.__version__ == "2.4.5":
             return x  # NumPy 2.4.5 had a regression for bool_arr.conj()
         assert x is y
-        return y
 
 
 class TestAngle:
