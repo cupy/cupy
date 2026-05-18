@@ -46,6 +46,8 @@ class csc_matrix(_compressed._compressed_sparse_matrix):
     """
 
     format = 'csc'
+    # Index of the major axis in shape: columns for CSC.
+    _major_axis = 1
 
     def get(self, stream=None):
         """Returns a copy of the array on host memory.
@@ -90,7 +92,9 @@ class csc_matrix(_compressed._compressed_sparse_matrix):
         elif cupyx.scipy.sparse.isspmatrix_csr(other):
             self.sum_duplicates()
             other.sum_duplicates()
-            if cusparse.check_availability('spgemm'):
+            is_int64 = (self.indices.dtype == cupy.int64
+                        or other.indices.dtype == cupy.int64)
+            if is_int64 or cusparse.check_availability('spgemm'):
                 a = self.tocsr()
                 a.sum_duplicates()
                 return cusparse.spgemm(a, other)
@@ -107,6 +111,16 @@ class csc_matrix(_compressed._compressed_sparse_matrix):
         elif isspmatrix_csc(other):
             self.sum_duplicates()
             other.sum_duplicates()
+            is_int64 = (self.indices.dtype == cupy.int64
+                        or other.indices.dtype == cupy.int64)
+            if is_int64:
+                # csrgemm/csrgemm2 are int32-only; route via spgemm,
+                # which has a pure-CuPy fallback for older cuSPARSE.
+                a = self.tocsr()
+                b = other.tocsr()
+                a.sum_duplicates()
+                b.sum_duplicates()
+                return cusparse.spgemm(a, b)
             if cusparse.check_availability('csrgemm') and not runtime.is_hip:
                 # trans=True is still buggy as of ROCm 4.2.0
                 a = self.T
@@ -352,10 +366,18 @@ class csc_matrix(_compressed._compressed_sparse_matrix):
                 'swapping dimensions is the only logical permutation.')
 
         shape = self.shape[1], self.shape[0]
-        trans = cupyx.scipy.sparse.csr_matrix(
-            (self.data, self.indices, self.indptr), shape=shape, copy=copy)
-        trans.has_canonical_format = self.has_canonical_format
-        return trans
+        if copy:
+            data = self.data.copy()
+            indices = self.indices.copy()
+            indptr = self.indptr.copy()
+        else:
+            data, indices, indptr = self.data, self.indices, self.indptr
+        return cupyx.scipy.sparse.csr_matrix._from_parts(
+            data, indices, indptr, shape,
+            has_canonical_format=getattr(
+                self, '_has_canonical_format', None),
+            has_sorted_indices=getattr(
+                self, '_has_sorted_indices', None))
 
     def getrow(self, i):
         """Returns a copy of row i of the matrix, as a (1 x n)

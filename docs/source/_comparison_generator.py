@@ -209,9 +209,18 @@ def generate():
         'numpy', 'cupy', klass='ndarray', footnotes={
             'tostring': _deprecated,
 
-            'byteswap': _byte_order,
             'newbyteorder': _byte_order,
         })
+    buf += [
+        'Masked Arrays',
+        '~~~~~~~~~~~~~',
+        '',
+        'CuPy does not implement the NumPy masked array API. '
+        'An alternative is `MArray <https://github.com/mdhaber/marray>`__, '
+        'which adds mask support to Python Array API Standard-compatible '
+        'array backends, including CuPy.',
+        '',
+    ]
     buf += _section(
         'Linear Algebra',
         'numpy.linalg', 'cupy.linalg', exclude=['test'])

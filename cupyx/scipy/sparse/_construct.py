@@ -32,8 +32,9 @@ def eye(m, n=None, k=0, dtype='d', format=None):
 
     if m == n and k == 0:
         if format in ['csr', 'csc']:
-            indptr = cupy.arange(n + 1, dtype='i')
-            indices = cupy.arange(n, dtype='i')
+            idx_dtype = _sputils.get_index_dtype(maxval=max(m, n))
+            indptr = cupy.arange(n + 1, dtype=idx_dtype)
+            indices = cupy.arange(n, dtype=idx_dtype)
             data = cupy.ones(n, dtype=dtype)
             if format == 'csr':
                 cls = _csr.csr_matrix
@@ -42,8 +43,9 @@ def eye(m, n=None, k=0, dtype='d', format=None):
             return cls((data, indices, indptr), (n, n))
 
         elif format == 'coo':
-            row = cupy.arange(n, dtype='i')
-            col = cupy.arange(n, dtype='i')
+            idx_dtype = _sputils.get_index_dtype(maxval=max(m, n))
+            row = cupy.arange(n, dtype=idx_dtype)
+            col = cupy.arange(n, dtype=idx_dtype)
             data = cupy.ones(n, dtype=dtype)
             return _coo.coo_matrix((data, (row, col)), (n, n))
 
@@ -97,7 +99,8 @@ def _compressed_sparse_stack(blocks, axis):
     other_axis = 1 if axis == 0 else 0
     data = cupy.concatenate([b.data for b in blocks])
     constant_dim = blocks[0].shape[other_axis]
-    idx_dtype = _sputils.get_index_dtype(arrays=[b.indptr for b in blocks],
+    all_idx = [b.indptr for b in blocks] + [b.indices for b in blocks]
+    idx_dtype = _sputils.get_index_dtype(arrays=all_idx,
                                          maxval=max(data.size, constant_dim))
     indices = cupy.empty(data.size, dtype=idx_dtype)
     indptr = cupy.empty(sum(b.shape[axis]
@@ -118,11 +121,12 @@ def _compressed_sparse_stack(blocks, axis):
         last_indptr += b.indptr[-1]
     indptr[-1] = last_indptr
     if axis == 0:
-        return _csr.csr_matrix((data, indices, indptr),
-                               shape=(sum_dim, constant_dim))
+        cls = _csr.csr_matrix
+        shape = (sum_dim, constant_dim)
     else:
-        return _csc.csc_matrix((data, indices, indptr),
-                               shape=(constant_dim, sum_dim))
+        cls = _csc.csc_matrix
+        shape = (constant_dim, sum_dim)
+    return cls._from_parts(data, indices, indptr, shape)
 
 
 def hstack(blocks, format=None, dtype=None):
@@ -262,6 +266,20 @@ def bmat(blocks, format=None, dtype=None):
     brow_lengths = numpy.zeros(M+1, dtype=numpy.int64)
     bcol_lengths = numpy.zeros(N+1, dtype=numpy.int64)
 
+    # Check if any input block has int64 indices before conversion
+    # to COO (the COO constructor may downcast via check_contents).
+    # Each format stores indices in a different attribute: CSR/CSC use
+    # ``indices``, COO uses ``row``, DIA uses ``offsets``.
+    def _block_index_dtype(b):
+        for name in ('indices', 'row', 'offsets'):
+            arr = getattr(b, name, None)
+            if arr is not None:
+                return arr.dtype
+        return None
+
+    _has_int64 = any(
+        _block_index_dtype(b) == cupy.int64 for b in blocks_flat)
+
     # convert everything to COO format
     for i in range(M):
         for j in range(N):
@@ -290,6 +308,10 @@ def bmat(blocks, format=None, dtype=None):
                                                     got=A.shape[1]))
                     raise ValueError(msg)
 
+    # Rebuild blocks_flat after COO conversion so that .nnz and
+    # .dtype are available for dense inputs that were converted.
+    blocks_flat = [blocks[i][j] for i in range(M) for j in range(N)
+                   if blocks[i][j] is not None]
     nnz = sum(block.nnz for block in blocks_flat)
     if dtype is None:
         all_dtypes = [blk.dtype for blk in blocks_flat]
@@ -301,7 +323,13 @@ def bmat(blocks, format=None, dtype=None):
     shape = (row_offsets[-1], col_offsets[-1])
 
     data = cupy.empty(nnz, dtype=dtype)
-    idx_dtype = _sputils.get_index_dtype(maxval=max(shape))
+    # Propagate int64 from input blocks: if any input block had int64
+    # indices (checked before COO conversion), the output should too.
+    if _has_int64:
+        idx_dtype = numpy.int64
+    else:
+        idx_dtype = _sputils.get_index_dtype(
+            maxval=max(int(shape[0]), int(shape[1])) - 1)
     row = cupy.empty(nnz, dtype=idx_dtype)
     col = cupy.empty(nnz, dtype=idx_dtype)
 
@@ -315,7 +343,9 @@ def bmat(blocks, format=None, dtype=None):
         col[idx] = B.col + col_offsets[j]
         nnz += B.nnz
 
-    return _coo.coo_matrix((data, (row, col)), shape=shape).asformat(format)
+    A = _coo.coo_matrix._from_parts(data, row, col, shape)
+    A.has_canonical_format = False
+    return A.asformat(format)
 
 
 def random(m, n, density=0.01, format='coo', dtype=None,
@@ -354,8 +384,6 @@ def random(m, n, density=0.01, format='coo', dtype=None,
     if dtype.char not in 'fd':
         raise NotImplementedError('type %s not supported' % dtype)
 
-    mn = m * n
-
     k = int(density * m * n)
 
     if random_state is None:
@@ -366,7 +394,12 @@ def random(m, n, density=0.01, format='coo', dtype=None,
     if data_rvs is None:
         data_rvs = random_state.rand
 
+    mn = m * n
+
+    tp = numpy.int64 if mn > numpy.iinfo(numpy.int32).max \
+        else numpy.int32
     ind = random_state.choice(mn, size=k, replace=False)
+    ind = ind.astype(tp, copy=False)
     j = ind // m
     i = ind - j * m
     vals = data_rvs(k).astype(dtype)
@@ -449,7 +482,7 @@ def diags(diagonals, offsets=0, shape=None, format=None, dtype=None):
         diagonals = list(map(cupy.atleast_1d, diagonals))
 
     if isinstance(offsets, cupy.ndarray):
-        offsets = offsets.get()
+        offsets = offsets.get()  # synchronize!
     offsets = numpy.atleast_1d(offsets)
 
     # Basic check

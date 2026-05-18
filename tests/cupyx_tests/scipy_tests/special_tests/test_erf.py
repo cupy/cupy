@@ -71,7 +71,7 @@ class TestSpecial(unittest.TestCase, _TestBase):
         a = xp.array(a, dtype=dtype)
         return getattr(scp.special, name)(a)
 
-    @testing.with_requires('scipy>=1.4.0')
+    @testing.with_requires('scipy')
     @testing.for_dtypes(['f', 'd'])
     def test_erfinv_behavior(self, dtype):
         a = cupy.empty((1,), dtype=dtype)
@@ -89,7 +89,7 @@ class TestSpecial(unittest.TestCase, _TestBase):
         a = cupyx.scipy.special.erfinv(a)
         assert numpy.isneginf(cupy.asnumpy(a))
 
-    @testing.with_requires('scipy>=1.4.0')
+    @testing.with_requires('scipy')
     @testing.for_dtypes(['f', 'd'])
     def test_erfcinv_behavior(self, dtype):
         a = cupy.empty((1,), dtype=dtype)
