@@ -193,12 +193,18 @@ def _get_cuda_path():
 
 
 def _get_nvcc_path():
-    # Honor the "NVCC" env var
+    # Honor the "NVCC" env var (e.g., "ccache nvcc")
     nvcc_path = os.environ.get('NVCC', None)
     if nvcc_path is not None:
         return nvcc_path
 
-    # Lookup <CUDA>/bin
+    # Use pathfinder (searches site-packages, conda, CUDA_PATH, system)
+    from cuda.pathfinder import find_nvidia_binary_utility
+    nvcc_path = find_nvidia_binary_utility('nvcc')
+    if nvcc_path is not None:
+        return nvcc_path
+
+    # Fallback: lookup <CUDA>/bin
     cuda_path = get_cuda_path()
     if cuda_path is None:
         return None

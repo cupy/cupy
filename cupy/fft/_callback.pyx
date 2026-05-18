@@ -18,6 +18,7 @@ import tempfile
 import threading
 import warnings
 
+from cuda.pathfinder import find_nvidia_binary_utility
 from cuda.pathfinder import find_nvidia_header_directory
 
 from cupy import __version__ as _cupy_ver
@@ -83,8 +84,8 @@ cdef inline void _set_vars() except*:
     _python_include = sysconfig.get_path('include')
 
     _cuda_path = get_cuda_path()
-    if _cuda_path is not None:
-        # TODO(leofang): this does not honor conda's new layout
+    _nvprune = find_nvidia_binary_utility('nvprune')
+    if _nvprune is None and _cuda_path is not None:
         _nvprune = os.path.join(_cuda_path, 'bin/nvprune')
         if not os.path.isfile(_nvprune):
             _nvprune = None
