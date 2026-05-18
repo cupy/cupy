@@ -979,7 +979,42 @@ cdef class _ndarray_base:
             v._update_f_contiguity()
         return v
 
-    # TODO(okuta): Implement getfield
+    cpdef _ndarray_base getfield(self, dtype, Py_ssize_t offset=0):
+        """Returns a view of the array data as a different dtype.
+
+        Args:
+            dtype: Data type for the returned view.
+            offset (int): Number of bytes to skip before beginning the
+                element view within each original element.
+
+        Returns:
+            cupy.ndarray: A view of the array with the requested dtype.
+
+        .. seealso:: :meth:`numpy.ndarray.getfield`
+        """
+        cdef _ndarray_base v
+        cdef int self_is, v_is
+
+        if offset < 0:
+            raise ValueError('offset must be non-negative')
+
+        v = self._view(type(self), self._shape, self._strides,
+                       False, False, self)
+        v.dtype, v_is = _dtype.get_dtype_with_itemsize(
+            dtype, check_support=False)
+        self_is = self.dtype.itemsize
+        if v_is > self_is:
+            raise ValueError(
+                'dtype size must not be larger than the array element size')
+        if offset + v_is > self_is:
+            raise ValueError(
+                'offset must be such that the requested dtype fits in the '
+                'array element')
+        if offset != 0:
+            v.data = self.data + offset
+        v._update_contiguity()
+        return v
+
     # TODO(okuta): Implement setflags
 
     cpdef fill(self, value):
