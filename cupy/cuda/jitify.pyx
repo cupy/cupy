@@ -13,6 +13,7 @@ import re
 import tempfile
 import warnings
 
+from cuda.pathfinder import find_nvidia_header_directory
 from cupy.cuda import cub
 from cupy import _util
 
@@ -63,7 +64,6 @@ cpdef str get_cuda_version():
     # as a proxy.
     cdef str cuda_ver = None
 
-    from cuda.pathfinder import find_nvidia_header_directory
     include_dir = find_nvidia_header_directory('cudart')
     if include_dir is not None:
         try:
