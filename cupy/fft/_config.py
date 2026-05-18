@@ -3,6 +3,8 @@ from __future__ import annotations
 import contextvars
 import warnings
 
+from cupy_backends.cuda.api import runtime
+
 from cupy import _util
 # expose cache handles via `config` object
 from cupy.fft._cache import (get_plan_cache,
@@ -12,9 +14,13 @@ from cupy.fft._cache import (get_plan_cache,
                              get_plan_cache_max_memsize,
                              set_plan_cache_max_memsize,
                              show_plan_cache_info)
-# expose callback handles via `config` object
-from cupy.fft._callback import (
-    get_current_callback_manager, set_cufft_callbacks)
+# expose callback handles via `config` object (CUDA only)
+if not runtime._is_hip_environment:
+    from cupy.fft._callback import (
+        get_current_callback_manager, set_cufft_callbacks)
+else:
+    get_current_callback_manager = None
+    set_cufft_callbacks = None
 
 
 class _FFTConfig:
