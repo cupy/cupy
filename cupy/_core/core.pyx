@@ -2402,7 +2402,8 @@ _HANDLED_TYPES = (ndarray, numpy.ndarray)
 # TODO(niboshi): Move it out of core.pyx
 
 cdef bint _is_hip = runtime._is_hip_environment
-cdef str _rocm_path = ''  # '' for uninitialized, None for non-existing
+cdef str _cuda_include_dir = ''  # '' for uninitialized, None for non-existing
+cdef str _rocm_include_dir = ''  # '' for uninitialized, None for non-existing
 
 cdef list cupy_header_list = [
     'cupy/complex.cuh',
@@ -2543,23 +2544,29 @@ cpdef tuple assemble_cupy_compiler_options(tuple options):
     options += ('-I%s' % _get_header_dir_path(),)
 
     if not _is_hip:
-        from cuda.pathfinder import find_nvidia_header_directory
-        include_dir = find_nvidia_header_directory('cudart')
-        if include_dir is None:
+        global _cuda_include_dir
+        if _cuda_include_dir == '':
+            from cuda.pathfinder import find_nvidia_header_directory
+            _cuda_include_dir = find_nvidia_header_directory('cudart')
+        if _cuda_include_dir is None:
             raise RuntimeError(
                 'Failed to find CUDA headers. Please install CUDA toolkit '
                 'headers (e.g., pip install cupy-cuda12x[ctk]) or specify '
                 'CUDA_PATH environment variable.')
-        options += ('-I' + include_dir,)
+        options += ('-I' + _cuda_include_dir,)
     else:
-        global _rocm_path
-        if _rocm_path == '':
+        global _rocm_include_dir
+        if _rocm_include_dir == '':
             _rocm_path = cuda.get_rocm_path()
-        if _rocm_path is None:
+            if _rocm_path is not None:
+                _rocm_include_dir = os.path.join(_rocm_path, 'include')
+            else:
+                _rocm_include_dir = None
+        if _rocm_include_dir is None:
             raise RuntimeError(
                 'Failed to auto-detect ROCm root directory. '
                 'Please specify `ROCM_HOME` environment variable.')
-        options += ('-I' + os.path.join(_rocm_path, 'include'),)
+        options += ('-I' + _rocm_include_dir,)
 
     return options
 
