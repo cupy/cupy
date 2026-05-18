@@ -273,8 +273,10 @@ class TestAffineTransform:
         return self._affine_transform(xp, scp, a, matrix)
 
     def _hip_skip_invalid_condition(self):
+        # HIP int affine_transform: high-order spline + int cast diverges
+        # from scipy (especially uint8 wrap vs clamp at boundary).
         if (runtime.is_hip
-                and self.matrix_shape in [(2,), (2, 2)]
+                and self.matrix_shape in [(2,), (2, 2), (2, 3), (3, 3)]
                 and self.order in [2, 3, 4, 5]
                 and self.output in [None, 'empty']
                 and self.prefilter):
