@@ -10,7 +10,6 @@ import warnings
 import numpy
 
 import cupy
-from cupy import _environment
 from cupy._core._kernel import create_ufunc
 from cupy._core._kernel import ElementwiseKernel
 from cupy._core._ufuncs import elementwise_copy
