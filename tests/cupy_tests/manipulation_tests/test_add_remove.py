@@ -58,10 +58,10 @@ class TestDelete(unittest.TestCase):
             pytest.xfail('HIP may have a bug')
         return xp.delete(arr, indices)
 
-    @testing.numpy_cupy_array_equal()
-    def test_delete_array_like_input(self, xp):
+    def test_delete_array_like_input(self):
         arr = [[0, 1, 2], [3, 4, 5]]
-        return xp.delete(arr, [1], axis=1)
+        with pytest.raises(ValueError):
+            cupy.delete(arr, [1], axis=1)
 
     @testing.numpy_cupy_array_equal(accept_error=ValueError)
     def test_delete_with_bool_scalar_error(self, xp):
@@ -70,7 +70,7 @@ class TestDelete(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
     def test_delete_mixed_obj_input(self, xp):
-        arr = [1, 2, 3]
+        arr = xp.array([1, 2, 3])
         return xp.delete(arr, (0, True), axis=None)
 
     @testing.numpy_cupy_array_equal()

@@ -9,39 +9,14 @@ import math
 from cupy import _core
 
 
-def _delete_mask(obj, size):
-    if isinstance(obj, slice):
-        mask = cupy.ones(size, dtype=cupy.bool_)
-        mask[obj] = False
-        return mask
-
-    raw_obj = obj
-    obj = cupy.asarray(obj)
-
-    if obj.dtype == cupy.bool_:
-        if obj.ndim != 1 or obj.shape[0] != size:
-            raise ValueError(
-                'boolean array argument obj to delete must be one '
-                f'dimensional and match the axis length of {size}')
-        return ~obj
-
-    # Match NumPy behavior for empty Python lists/tuples.
-    if obj.size == 0 and not isinstance(raw_obj, cupy.ndarray):
-        obj = obj.astype(cupy.intp)
-
-    mask = cupy.ones(size, dtype=cupy.bool_)
-    mask[obj] = False
-    return mask
-
-
-def delete(arr, obj, axis=None):
+def delete(arr, indices, axis=None):
     """
     Delete values from an array along the specified axis.
 
     Args:
         arr (cupy.ndarray):
             Values are deleted from a copy of this array.
-        obj (slice, int or array of ints):
+        indices (slice, int or array of ints):
             These indices correspond to values that will be deleted from the
             copy of `arr`.
             Boolean indices are treated as a mask of elements to remove.
@@ -59,18 +34,40 @@ def delete(arr, obj, axis=None):
     .. seealso:: :func:`numpy.delete`.
     """
 
-    arr = cupy.asarray(arr)
-    ndim = arr.ndim
+    if not isinstance(arr, cupy.ndarray):
+        raise ValueError('delete(): arr must be a cupy.ndarray')
 
     if axis is None:
-        if ndim != 1:
+        if arr.ndim != 1:
             arr = arr.ravel()
         axis = 0
     else:
         axis = _core.internal._normalize_axis_index(axis, arr.ndim)
 
     size = arr.shape[axis]
-    mask = _delete_mask(obj, size)
+    if not (
+            isinstance(indices, slice) or (
+                isinstance(indices, (int, numpy.integer))
+                and not isinstance(indices, bool)
+            )):
+        # NOTE(seberg): Delete is a utility function, but we could optimize
+        # it for slices and scalar integers (that are not bools).
+        # NumPy specializes slices, integers and boolean arrays.
+        idx_arr = cupy.asarray(indices)
+        if idx_arr.dtype == cupy.bool_:
+            if idx_arr.ndim != 1 or idx_arr.shape[0] != size:
+                raise ValueError(
+                    'boolean array argument indices to delete must be one '
+                    f'dimensional and match the axis length of {size}')
+            if arr.ndim == 1:
+                return arr[~idx_arr]
+
+        # Use array unless it is e.g. an empty lists that indexing accepts.
+        if idx_arr.size != 0:
+            indices = idx_arr
+
+    mask = cupy.ones(size, dtype=cupy.bool_)
+    mask[indices,] = False
     return cupy.compress(mask, arr, axis=axis)
 
 
