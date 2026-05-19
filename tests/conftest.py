@@ -118,6 +118,9 @@ if int(os.environ.get('CUPY_TEST_RANDOM_SUBSAMPLE', '0')):
 
     def pytest_collection_modifyitems(session, config, items):
         original_len = len(items)
+        if original_len == 0:
+            return  # No tests, so nothing to subsample
+
         groups = collections.defaultdict(list)
         for item in items:
             base = f"{item.parent.nodeid}::{item.originalname}"

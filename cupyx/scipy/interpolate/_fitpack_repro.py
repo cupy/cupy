@@ -978,10 +978,11 @@ def make_splrep(x, y, *, w=None, xb=None, xe=None, k=3, s=0, t=None,
 
     for a spline function :math:`g(x)` with a _fixed_ knot vector ``t``.
     """
-    # Implementation detail: make_splrep._res.ier communicates the status
-    # of the optimization. This is later consumed by UnivariateSpline
-    # ._res.ier = -1 means an interpolating spline
-    # ._res.ier = -2 means a single degree-k LSQ polynomial (no internal knots)
+    # Implementation detail: return_value._make_splrep_res communicates the
+    # status of the optimization. This is later consumed by UnivariateSpline
+    # ._make_splrep_res.ier = -1 means an interpolating spline
+    # ._make_splrep_res.ier = -2 means a single degree-k LSQ polynomial
+    # (no internal knots).
     # The values match FITPACK
     if s == 0:
         if t is not None or w is not None or nest is not None:
