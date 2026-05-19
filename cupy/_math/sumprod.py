@@ -74,7 +74,8 @@ def prod(a, axis=None, dtype=None, out=None, keepdims=False):
     return a.prod(axis, dtype, out, keepdims)
 
 
-def nansum(a, axis=None, dtype=None, out=None, keepdims=False):
+def nansum(a, axis=None, dtype=None, out=None, keepdims=False,
+           initial=None, where=True):
     """Returns the sum of an array along given axes treating Not a Numbers
     (NaNs) as zero.
 
@@ -85,6 +86,9 @@ def nansum(a, axis=None, dtype=None, out=None, keepdims=False):
         out (cupy.ndarray): Output array.
         keepdims (bool): If ``True``, the specified axes are remained as axes
             of length one.
+        initial (scalar): Starting value for the sum.
+        where (array-like of bool): Boolean mask broadcastable to ``a``'s
+            shape. Only ``True`` positions contribute to the sum.
 
     Returns:
         cupy.ndarray: The result array.
@@ -92,10 +96,16 @@ def nansum(a, axis=None, dtype=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.nansum`
 
     """
+    where_is_trivial = isinstance(where, bool) and where is True
+
     if _fusion_thread_local.is_fusing():
         if keepdims:
             raise NotImplementedError(
                 'cupy.nansum does not support `keepdims` in fusion yet.')
+        if not where_is_trivial or initial is not None:
+            raise NotImplementedError(
+                'cupy.nansum does not support `initial` or `where` '
+                'in fusion yet.')
         if a.dtype.char in 'FD':
             func = _math._nansum_complex_dtype
         elif dtype is None:
@@ -105,13 +115,29 @@ def nansum(a, axis=None, dtype=None, out=None, keepdims=False):
         return _fusion_thread_local.call_reduction(
             func, a, axis=axis, dtype=dtype, out=out)
 
+    a = cupy.asarray(a)
+
+    if not where_is_trivial:
+        where_arr = cupy.asarray(where, dtype=bool)
+        a = cupy.where(cupy.broadcast_to(where_arr, a.shape), a, 0)
+
     # TODO(okuta): check type
-    return _math._nansum(a, axis, dtype, out, keepdims)
+    res = _math._nansum(
+        a, axis, dtype, out if initial is None else None, keepdims)
+
+    if initial is not None:
+        res = res + initial
+        if out is not None:
+            out[...] = res
+            return out
+
+    return res
 
 
-def nanprod(a, axis=None, dtype=None, out=None, keepdims=False):
+def nanprod(a, axis=None, dtype=None, out=None, keepdims=False,
+            initial=None, where=True):
     """Returns the product of an array along given axes treating Not a Numbers
-    (NaNs) as zero.
+    (NaNs) as one.
 
     Args:
         a (cupy.ndarray): Array to take product.
@@ -120,6 +146,9 @@ def nanprod(a, axis=None, dtype=None, out=None, keepdims=False):
         out (cupy.ndarray): Output array.
         keepdims (bool): If ``True``, the specified axes are remained as axes
             of length one.
+        initial (scalar): Starting value for the product.
+        where (array-like of bool): Boolean mask broadcastable to ``a``'s
+            shape. Only ``True`` positions contribute to the product.
 
     Returns:
         cupy.ndarray: The result array.
@@ -127,10 +156,16 @@ def nanprod(a, axis=None, dtype=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.nanprod`
 
     """
+    where_is_trivial = isinstance(where, bool) and where is True
+
     if _fusion_thread_local.is_fusing():
         if keepdims:
             raise NotImplementedError(
                 'cupy.nanprod does not support `keepdims` in fusion yet.')
+        if not where_is_trivial or initial is not None:
+            raise NotImplementedError(
+                'cupy.nanprod does not support `initial` or `where` '
+                'in fusion yet.')
         if dtype is None:
             func = _math._nanprod_auto_dtype
         else:
@@ -138,8 +173,23 @@ def nanprod(a, axis=None, dtype=None, out=None, keepdims=False):
         return _fusion_thread_local.call_reduction(
             func, a, axis=axis, dtype=dtype, out=out)
 
+    a = cupy.asarray(a)
+
+    if not where_is_trivial:
+        where_arr = cupy.asarray(where, dtype=bool)
+        a = cupy.where(cupy.broadcast_to(where_arr, a.shape), a, 1)
+
     # TODO(okuta): check type
-    return _math._nanprod(a, axis, dtype, out, keepdims)
+    res = _math._nanprod(
+        a, axis, dtype, out if initial is None else None, keepdims)
+
+    if initial is not None:
+        res = res * initial
+        if out is not None:
+            out[...] = res
+            return out
+
+    return res
 
 
 def cumsum(a, axis=None, dtype=None, out=None):
