@@ -40,9 +40,9 @@ jobs:
     - name: Type Check
       run: |
         # TODO: Test against various NumPy/SciPy versions.
-        pip install 'numpy==1.25.*' 'scipy==1.10.*'
+        pip install 'numpy==2.0.*' 'scipy==1.14.*'
         pip install 'mypy==1.5.*' 'types-setuptools==57.4.14' 'pytest>=7.2'
-        sed -i s/error::cupy.exceptions./error::numpy./ pyproject.toml  # Because no cupy here. See cupy#8346
+        sed -i s/error::cupy.exceptions./error::numpy.exceptions./ pyproject.toml  # Because no cupy here. See cupy#8346
         pytest -v tests/typing_tests/test_typing.py
 
   build-cuda:
@@ -82,6 +82,21 @@ jobs:
         pip install -U pip wheel setuptools
         READTHEDOCS=True pip install -v -e .
         ccache --max-size 0.5Gi --cleanup --show-stats
+
+    - name: Try to check for `noexcept` functions that may raise errors
+      # We ignore __dealloc__ or the pycapsule_deleter as it is hard to avoid there.
+      # Cython does give a warning with all warnings enabled (but those are many).
+      run: |
+        result=$(grep -r 'Pyx_WriteUnraisable' --include='*.cpp' . \
+                | grep -v -E \
+                '(__dealloc__|const char \*name|pycapsule_deleter|cupy\.cuda\.thrust\.cupy_malloc|\._streamCallbackFunc|\._HostFnFunc)' \
+                || true)
+        if [ -n "$result" ]; then
+          echo "$result"
+          echo "Found possibly bad functions (see above). If this check fails a function"
+          echo "could (theoretically) raise an error but is marked as noexcept."
+          exit 1
+        fi
 
     - name: Docs Build
       run: |

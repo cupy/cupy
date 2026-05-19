@@ -15,7 +15,8 @@ cdef class _ndarray_base:
         public strides_t _strides
         readonly bint _c_contiguous
         readonly bint _f_contiguous
-        # To do fast indexing in the CArray class
+        # Whether the array memory can be addressed with 32bit signed
+        # integers. To do fast indexing in the CArray class.
         readonly bint _index_32_bits
         readonly object dtype
         readonly memory.MemoryPointer data
@@ -35,6 +36,7 @@ cdef class _ndarray_base:
         self, dtype, order=*, casting=*, subok=*, copy=*)
     cpdef _ndarray_base astype(
         self, dtype, order=*, casting=*, subok=*, copy=*)
+    cpdef _ndarray_base byteswap(self, inplace=*)
     cpdef _ndarray_base copy(self, order=*)
     cpdef _ndarray_base view(self, dtype=*, array_class=*)
     cpdef fill(self, value)
@@ -100,7 +102,7 @@ cpdef _ndarray_base ascontiguousarray(_ndarray_base a, dtype=*)
 cpdef _ndarray_base asfortranarray(_ndarray_base a, dtype=*)
 
 cpdef Module compile_with_cache(str source, tuple options=*, arch=*,
-                                cachd_dir=*, prepend_cupy_headers=*,
+                                prepend_cupy_headers=*,
                                 backend=*, translate_cucomplex=*,
                                 enable_cooperative_groups=*,
                                 name_expressions=*, log_stream=*,

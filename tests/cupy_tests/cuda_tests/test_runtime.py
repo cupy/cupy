@@ -6,7 +6,6 @@ import pytest
 
 import cupy
 from cupy.cuda import driver
-from cupy.cuda import nvrtc
 from cupy.cuda import runtime
 
 
@@ -46,17 +45,6 @@ class TestMemPool:
         assert ptr > 0
         runtime.freeAsync(ptr, s.ptr)
         runtime.memPoolDestroy(pool)
-
-
-@pytest.mark.skipif(runtime.is_hip,
-                    reason='This assumption is correct only in CUDA')
-def test_assumed_runtime_version():
-    # When CUDA Python is enabled, CuPy calculates the CUDA runtime version
-    # from NVRTC version. This test ensures that the assumption is correct
-    # by running the same logic in non-CUDA Python environment.
-    # When this fails, `runtime.runtimeGetVersion()` logic needs to be fixed.
-    (major, minor) = nvrtc.getVersion()
-    assert runtime._getLocalRuntimeVersion() == major * 1000 + minor * 10
 
 
 def test_major_version():

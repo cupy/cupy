@@ -1,3 +1,5 @@
+import cython
+
 from cupy._core._carray cimport shape_t
 from cupy._core cimport _kernel
 from cupy._core cimport _optimize_config
@@ -58,7 +60,7 @@ cdef function.Function _create_cub_reduction_function(
 
     cdef str module_code = _get_cub_header_include()
     module_code += '''
-${type_headers}${type_preamble}
+${type_decls}${type_preamble}
 ${preamble}
 
 typedef ${reduce_type} _type_reduce;
@@ -205,14 +207,9 @@ __global__ void ${name}(${params}) {
   }
 }
 '''
-    type_headers = set()
-    params = _get_cub_kernel_params(params, arginfos, type_headers)
-    type_preambles = type_map.get_typedef_code(type_headers)
-
-    if not type_headers:
-        type_headers = ''
-    else:
-        type_headers = '\n'.join(sorted(type_headers)) + "\n\n"
+    type_decls = set()
+    params = _get_cub_kernel_params(params, arginfos, type_decls)
+    type_preambles = type_map.get_typedef_code(type_decls)
 
     module_code = string.Template(module_code).substitute(
         name=name,
@@ -220,7 +217,7 @@ __global__ void ${name}(${params}) {
         items_per_thread=items_per_thread,
         reduce_type=reduce_type,
         params=params,
-        type_headers=type_headers,
+        type_decls=_scalar.format_type_decls(type_decls),
         identity=identity,
         reduce_expr=reduce_expr,
         pre_map_expr=pre_map_expr,
@@ -232,7 +229,7 @@ __global__ void ${name}(${params}) {
     # values for arch, cachd, prepend_cupy_headers, ... to bypass cdef/cpdef
     # limitation...
     module = compile_with_cache(
-        module_code, options, arch=None, cachd_dir=None,
+        module_code, options, arch=None,
         prepend_cupy_headers=True, backend=backend, translate_cucomplex=False,
         enable_cooperative_groups=False, name_expressions=None,
         log_stream=None, jitify=False)
@@ -359,7 +356,7 @@ cpdef inline tuple _can_use_cub_block_reduction(
 
 
 # similar to cupy._core._kernel._get_kernel_params()
-cdef str _get_cub_kernel_params(tuple params, tuple arginfos, type_headers):
+cdef str _get_cub_kernel_params(tuple params, tuple arginfos, type_decls):
     cdef _kernel.ParameterInfo p
     cdef _kernel._ArgInfo arginfo
     cdef lst = []
@@ -373,7 +370,7 @@ cdef str _get_cub_kernel_params(tuple params, tuple arginfos, type_headers):
             c_type = 'const void*' if p.is_const else 'void*'
         else:
             # for segment size and array size
-            c_type = arginfo.get_param_c_type(p, type_headers)
+            c_type = arginfo.get_param_c_type(p, type_decls)
         lst.append('{} {}'.format(c_type, c_name))
     return ', '.join(lst)
 
@@ -382,11 +379,13 @@ cdef Py_ssize_t _cub_default_block_size = (
     256 if runtime._is_hip_environment else 512)
 
 
+@cython.cdivision(True)
 cdef (Py_ssize_t, Py_ssize_t) _get_cub_block_specs(  # NOQA
-        Py_ssize_t contiguous_size):
+        Py_ssize_t contiguous_size) noexcept:
     # This is recommended in the CUB internal and should be an
-    # even number
-    items_per_thread = 4
+    # even number.
+    cdef Py_ssize_t block_size, warp_size
+    cdef Py_ssize_t items_per_thread = 4
 
     # Calculate the reduction block dimensions.
     # Ideally, we want each block to handle one segment, so:

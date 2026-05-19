@@ -67,7 +67,7 @@ cdef class _ThreadLocal:
         stream_ref = self.current_stream[device_id]
         return stream_ref
 
-    cdef intptr_t get_current_stream_ptr(self):
+    cdef intptr_t get_current_stream_ptr(self) except? -1:
         return backends_stream.get_current_stream_ptr()
 
 
@@ -75,7 +75,7 @@ cdef get_default_stream():
     return Stream.ptds if backends_stream.is_ptds_enabled() else Stream.null
 
 
-cdef intptr_t get_current_stream_ptr():
+cdef intptr_t get_current_stream_ptr() except? -1:
     """C API to get current CUDA stream pointer.
 
     Returns:

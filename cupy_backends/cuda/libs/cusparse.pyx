@@ -1370,7 +1370,7 @@ cdef extern from '../../cupy_sparse.h' nogil:
     # Build-time version
     int CUSPARSE_VERSION
 
-ctypedef Status (*f_type)(...) nogil  # NOQA
+ctypedef Status (*f_type)(...) noexcept nogil  # NOQA
 
 # TODO(leofang): Since we already require CUDA 12.0+, these code can probably
 # be removed entirely.
@@ -1403,6 +1403,14 @@ cdef f_type cusparseSparseToDense = <f_type>_lib.get('SparseToDense')
 cdef f_type cusparseDenseToSparse_bufferSize = <f_type>_lib.get('DenseToSparse_bufferSize')  # NOQA
 cdef f_type cusparseDenseToSparse_analysis = <f_type>_lib.get('DenseToSparse_analysis')  # NOQA
 cdef f_type cusparseDenseToSparse_convert = <f_type>_lib.get('DenseToSparse_convert')  # NOQA
+# TODO(eriknw): cuSPARSE--SpGEAM not yet in any public release.
+# Loaded via SoftLink; returns NULL on builds without SpGEAM.
+cdef f_type cusparseSpGEAM_createDescr = <f_type>_lib.get('SpGEAM_createDescr')
+cdef f_type cusparseSpGEAM_destroyDescr = (
+    <f_type>_lib.get('SpGEAM_destroyDescr'))
+cdef f_type cusparseSpGEAM_bufferSize = <f_type>_lib.get('SpGEAM_bufferSize')
+cdef f_type cusparseSpGEAM_nnz = <f_type>_lib.get('SpGEAM_nnz')
+cdef f_type cusparseSpGEAM_fn = <f_type>_lib.get('SpGEAM')
 
 cdef dict HIP_STATUS = {
     0: b'HIPSPARSE_STATUS_SUCCESS',
@@ -1535,7 +1543,7 @@ cpdef inline check_status(int status):
 
 
 @cython.profile(False)
-cdef inline cuComplex complex_to_cuda(complex value):
+cdef inline cuComplex complex_to_cuda(complex value) noexcept:
     cdef cuComplex value_cuda
     value_cuda.x = value.real
     value_cuda.y = value.imag
@@ -1543,7 +1551,8 @@ cdef inline cuComplex complex_to_cuda(complex value):
 
 
 @cython.profile(False)
-cdef inline cuDoubleComplex double_complex_to_cuda(double complex value):
+cdef inline cuDoubleComplex double_complex_to_cuda(
+        double complex value) noexcept:
     cdef cuDoubleComplex value_cuda
     value_cuda.x = value.real
     value_cuda.y = value.imag
@@ -5094,6 +5103,64 @@ cpdef void spGEMM_copy(
         <SpMatDescr>matB, <const void*>beta, <SpMatDescr>matC, computeType,
         <SpGEMMAlg>alg, <SpGEMMDescr>spgemmDescr)
     check_status(status)
+
+cpdef size_t spGEAM_createDescr() except? 0:
+    cdef SpGEAMDescr descr
+    status = cusparseSpGEAM_createDescr(&descr)
+    check_status(status)
+    return <size_t>descr
+
+
+cpdef void spGEAM_destroyDescr(size_t descr) except *:
+    status = cusparseSpGEAM_destroyDescr(<SpGEAMDescr>descr)
+    check_status(status)
+
+
+cpdef size_t spGEAM_bufferSize(
+        intptr_t handle, int opA, int opB,
+        intptr_t alpha, size_t matA, intptr_t beta, size_t matB,
+        size_t matC, DataType computeType, int alg,
+        size_t spgeamDescr) except? -1:
+    cdef size_t bufferSize
+    status = cusparseSpGEAM_bufferSize(
+        <Handle>handle, <Operation>opA, <Operation>opB,
+        <const void*>alpha, <SpMatDescr>matA,
+        <const void*>beta, <SpMatDescr>matB,
+        <SpMatDescr>matC, computeType, <SpGEAMAlg>alg,
+        <SpGEAMDescr>spgeamDescr, &bufferSize)
+    check_status(status)
+    return bufferSize
+
+
+cpdef void spGEAM_nnz(
+        intptr_t handle, int opA, int opB,
+        intptr_t alpha, size_t matA, intptr_t beta, size_t matB,
+        size_t matC, DataType computeType, int alg,
+        size_t spgeamDescr, intptr_t externalBuffer) except *:
+    _setStream(handle)
+    status = cusparseSpGEAM_nnz(
+        <Handle>handle, <Operation>opA, <Operation>opB,
+        <const void*>alpha, <SpMatDescr>matA,
+        <const void*>beta, <SpMatDescr>matB,
+        <SpMatDescr>matC, computeType, <SpGEAMAlg>alg,
+        <SpGEAMDescr>spgeamDescr, <void*>externalBuffer)
+    check_status(status)
+
+
+cpdef void spGEAM(
+        intptr_t handle, int opA, int opB,
+        intptr_t alpha, size_t matA, intptr_t beta, size_t matB,
+        size_t matC, DataType computeType, int alg,
+        size_t spgeamDescr, intptr_t externalBuffer) except *:
+    _setStream(handle)
+    status = cusparseSpGEAM_fn(
+        <Handle>handle, <Operation>opA, <Operation>opB,
+        <const void*>alpha, <SpMatDescr>matA,
+        <const void*>beta, <SpMatDescr>matB,
+        <SpMatDescr>matC, computeType, <SpGEAMAlg>alg,
+        <SpGEAMDescr>spgeamDescr, <void*>externalBuffer)
+    check_status(status)
+
 
 cpdef void gather(intptr_t handle, size_t vecY, size_t vecX) except *:
     status = cusparseGather(<Handle>handle, <DnVecDescr>vecY, <SpVecDescr>vecX)

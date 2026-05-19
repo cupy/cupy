@@ -311,7 +311,7 @@ cdef class CUDAarray:
             runtime.freeArray(self.ptr)
             self.ptr = 0
 
-    cdef int _get_memory_kind(self, src, dst):
+    cdef int _get_memory_kind(self, src, dst) except -1:
         cdef int kind
         if isinstance(src, _ndarray_base) and dst is self:
             kind = runtime.memcpyDeviceToDevice
@@ -325,7 +325,7 @@ cdef class CUDAarray:
             raise
         return kind
 
-    cdef void* _make_cudaMemcpy3DParms(self, src, dst):
+    cdef void* _make_cudaMemcpy3DParms(self, src, dst) except NULL:
         '''Private helper for data transfer. Supports all dimensions.'''
         cdef Memcpy3DParms* param = \
             <Memcpy3DParms*>PyMem_Malloc(sizeof(Memcpy3DParms))

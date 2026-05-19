@@ -323,7 +323,7 @@ class TestRandomInvalidArgument:
                 sp.random(3, 4, density=1.1)
 
     def test_invalid_dtype(self):
-        # Note: SciPy 1.12+ accepts integer.
+        # Note: SciPy accepts integer (cupy does not yet).
         with pytest.raises(NotImplementedError):
             sparse.random(3, 4, dtype='i')
 
@@ -420,7 +420,7 @@ def skip_HIP_0_size_matrix():
     'arrA': _arrs_kron,
     'arrB': _arrs_kron,
 }))
-@testing.with_requires('scipy>=1.6')
+@testing.with_requires('scipy')
 class TestKron:
 
     def _make_sp_mat(self, xp, sp, arr, dtype):
@@ -459,7 +459,7 @@ _arrs_kronsum = [
     'arrA': _arrs_kronsum,
     'arrB': _arrs_kronsum,
 }))
-@testing.with_requires('scipy>=1.6')
+@testing.with_requires('scipy')
 class TestKronsum:
 
     def _make_sp_mat(self, xp, sp, arr, dtype):

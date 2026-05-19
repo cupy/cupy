@@ -6,7 +6,8 @@ import numpy
 import cupy
 from cupy._core._reduction import create_reduction_func
 from cupy._core._kernel import create_ufunc, _get_warpsize
-from cupy._core._scalar import get_typename
+from cupy._core._kernel cimport _full_mask_hex
+from cupy._core._scalar import get_typename, format_type_decls
 from cupy._core._ufuncs import elementwise_copy
 import cupy._core.core as core
 from cupy._core cimport internal
@@ -193,7 +194,7 @@ def _cupy_bsum_shfl(op, chunk_size, warp_size=32):
         if (2*i < a.size()) x = a[2*i];
         if (2*i + 1 < a.size()) x ${op}= a[2*i + 1];
         for (int j = 1; j < ${warp_size}; j *= 2) {
-            x ${op}= __shfl_xor_sync(0xffffffff, x, j, ${warp_size});
+            x ${op}= __shfl_xor_sync(${full_mask}, x, j, ${warp_size});
         }
         if (lane_id == 0) smem[warp_id] = x;
         __syncthreads();
@@ -201,13 +202,14 @@ def _cupy_bsum_shfl(op, chunk_size, warp_size=32):
             x = ${identity};
             if (lane_id < n_warp) x = smem[lane_id];
             for (int j = 1; j < n_warp; j *= 2) {
-                x ${op}= __shfl_xor_sync(0xffffffff, x, j, ${warp_size});
+                x ${op}= __shfl_xor_sync(${full_mask}, x, j, ${warp_size});
             }
             int block_id = i / ${block_size};
             if (lane_id == 0) b[block_id] = x;
         }
     """).substitute(block_size=block_size, warp_size=warp_size,
-                    op=_op_char[op], identity=_identity[op])
+                    op=_op_char[op], identity=_identity[op],
+                    full_mask=_full_mask_hex())
     return cupy.ElementwiseKernel(in_params, out_params, loop_body,
                                   'cupy_bsum_shfl', loop_prep=loop_prep)
 
@@ -526,15 +528,11 @@ def _inclusive_batch_scan_kernel(
     op_char = {scan_op.SCAN_SUM: '+', scan_op.SCAN_PROD: '*'}
     identity = {scan_op.SCAN_SUM: 0, scan_op.SCAN_PROD: 1}
     name = 'cupy_inclusive_batch_scan_kernel'
-    type_headers = set()
-    dtype = get_typename(dtype, type_headers)
-    if not type_headers:
-        type_headers = ''
-    else:
-        type_headers = '\n'.join(sorted(type_headers)) + "\n\n"
+    type_decls = set()
+    dtype = get_typename(dtype, type_decls)
 
     source = string.Template("""
-    ${type_headers}
+    ${type_decls}
     extern "C" __global__ void ${name}(
         const CArray<${dtype}, 2, ${src_c_cont}> src,
         CArray<${dtype}, 2, ${out_c_cont}> dst, int batch_size){
@@ -611,7 +609,7 @@ def _inclusive_batch_scan_kernel(
     """).substitute(name=name, dtype=dtype, block_size=block_size,
                     op=op_char[op], identity=identity[op],
                     src_c_cont=src_c_cont, out_c_cont=out_c_cont,
-                    type_headers=type_headers)
+                    type_decls=format_type_decls(type_decls))
     module = compile_with_cache(source)
     return module.get_function(name)
 
@@ -619,16 +617,12 @@ def _inclusive_batch_scan_kernel(
 @_util.memoize(for_each_device=True)
 def _add_scan_batch_blocked_sum_kernel(dtype, op, block_size, c_cont):
     name = 'cupy_add_scan_blocked_sum_kernel'
-    type_headers = set()
-    dtype = get_typename(dtype, type_headers)
-    if not type_headers:
-        type_headers = ''
-    else:
-        type_headers = '\n'.join(sorted(type_headers)) + "\n\n"
+    type_decls = set()
+    dtype = get_typename(dtype, type_decls)
 
     ops = {scan_op.SCAN_SUM: '+', scan_op.SCAN_PROD: '*'}
     source = string.Template("""
-    ${type_headers}
+    ${type_decls}
     extern "C" __global__ void ${name}(CArray<${dtype}, 2, ${c_cont}> src_dst,
         int batch_size){
         long long n = src_dst.size();
@@ -654,7 +648,8 @@ def _add_scan_batch_blocked_sum_kernel(dtype, op, block_size, c_cont):
         }
     }
     """).substitute(name=name, dtype=dtype, op=ops[op], block_size=block_size,
-                    c_cont=c_cont, type_headers=type_headers)
+                    c_cont=c_cont,
+                    type_decls=format_type_decls(type_decls))
     module = compile_with_cache(source)
     return module.get_function(name)
 

@@ -29,6 +29,8 @@ from libc.stdint cimport int64_t, intptr_t, INT32_MAX
 from libc cimport stdlib
 from cpython cimport Py_buffer
 
+cimport numpy as cnp
+
 from cupy._core cimport _carray
 from cupy._core cimport _dtype
 from cupy._core._dtype cimport get_dtype
@@ -266,11 +268,13 @@ cdef class _ndarray_base:
                         f"contiguous size of {self.size * itemsize} but got "
                         f"{alloc_size}.")
             else:
-                alloc_size = self.size * itemsize
+                alloc_size = right - left  # actual memory extend
         else:
             self._set_contiguous_strides(itemsize, order_char == b'C')
-            alloc_size = self.size * itemsize
+            alloc_size = self.size * itemsize  # contiguous
 
+        # Arrays can e.g. broadcast, so check that all pointer offsets fit and
+        # the size fit int32. (seberg: `* itemsize` may be unnecessary)
         max_diff = max(alloc_size, self.size * itemsize)
         self._index_32_bits = max_diff <= <Py_ssize_t>(1 << 31)
 
@@ -791,7 +795,53 @@ cdef class _ndarray_base:
         copy_ = True if copy else None
         return self._astype(dtype, order, casting, subok, copy_)
 
-    # TODO(okuta): Implement byteswap
+    cpdef _ndarray_base byteswap(self, inplace=False):
+        """Swap the bytes of the array elements.
+
+        Toggle between low-endian and big-endian data representation by
+        returning a byteswapped array, optionally swapped in-place.
+
+        Args:
+            inplace (bool): If ``True``, swap bytes in-place. Default is
+                ``False``.
+
+        Returns:
+            cupy.ndarray: The byteswapped array. If ``inplace`` is ``True``,
+            this is a view to self.
+
+        .. seealso:: :meth:`numpy.ndarray.byteswap`
+
+        """
+        dtype = self.dtype
+        itemsize = dtype.itemsize
+
+        if dtype.names is not None:
+            raise TypeError(
+                'byteswap is not supported for structured dtypes')
+
+        if itemsize == 1:
+            if inplace:
+                return self
+            return self.copy()
+
+        # Complex types: byteswap real and imaginary components independently
+        if numpy.issubdtype(dtype, numpy.complexfloating):
+            component_dtype = numpy.finfo(dtype).dtype
+            contig = _internal_ascontiguousarray(self).ravel()
+            float_view = contig.view(component_dtype)
+            swapped = _byteswap_dispatch(float_view)
+            result = _internal_ascontiguousarray(swapped)
+            result = result.view(dtype).reshape(self.shape)
+            if inplace:
+                elementwise_copy(result, self)
+                return self
+            return result
+
+        result = _byteswap_dispatch(self)
+        if inplace:
+            elementwise_copy(result, self)
+            return self
+        return result
 
     cpdef _ndarray_base copy(self, order='C'):
         """Returns a copy of the array.
@@ -839,13 +889,23 @@ cdef class _ndarray_base:
 
         copy_context = _null_context
         if runtime._is_hip_environment:
-            # HIP requires changing the active device to the one where
-            # src data is before the copy. From the docs:
-            # it is recommended to set the current device to the device
-            # where the src data is physically located.
+            # From hip_runtime_api.h (hipMemcpyAsync): "For multi-gpu
+            # or peer-to-peer configurations, it is recommended to
+            # use a stream which is attached to the device where the
+            # src data is physically located."
             copy_context = self.device
         with copy_context:
             newarray.data.copy_from_device_async(x.data, x.nbytes)
+            if runtime._is_hip_environment:
+                # The copy ran on the source device's stream. Record an
+                # event so the destination device's stream waits for the
+                # copy to complete before any subsequent work uses
+                # newarray (e.g. .get() readback).
+                copy_event = stream_module.get_current_stream().record()
+        if runtime._is_hip_environment:
+            newarray.device.use()
+            stream_module.get_current_stream().wait_event(copy_event)
+            runtime.setDevice(prev_device)
         return newarray
 
     cpdef _ndarray_base view(self, dtype=None, array_class=None):
@@ -931,21 +991,23 @@ cdef class _ndarray_base:
         .. seealso:: :meth:`numpy.ndarray.fill`
 
         """
-        if isinstance(value, cupy.ndarray):
-            if value.shape != ():
+        cupy_arr = _convert_from_cupy_like(value, error=False)
+        if cupy_arr is not None:
+            if cupy_arr.shape != ():
                 raise ValueError(
                     'non-scalar cupy.ndarray cannot be used for fill')
-            value = value.astype(self.dtype, copy=False)
-            fill_kernel(value, self)
-            return
-
-        if isinstance(value, numpy.ndarray):
+            value = cupy_arr.astype(self.dtype, copy=False)
+        else:
+            value = numpy.asarray(value, dtype=self.dtype)
             if value.shape != ():
                 raise ValueError(
                     'non-scalar numpy.ndarray cannot be used for fill')
-            value = value.astype(self.dtype, copy=False).item()
+            value = value[()]  # use scalar rather than NumPy array
 
-        if value == 0 and self._c_contiguous:
+        if ((<cnp.dtype>(self.dtype)).type_num != cnp.NPY_VOID
+                and value == 0 and self._c_contiguous):
+            # For most types, we can just memset if the value is zero.
+            # (Void also works mostly, but the `value == 0` could fail.)
             self.data.memset_async(0, self.nbytes)
         else:
             fill_kernel(value, self)
@@ -2455,7 +2517,7 @@ cpdef bint use_default_std(tuple options):
             return False
     return True
 
-cpdef void warn_on_unsupported_std(tuple options):
+cpdef warn_on_unsupported_std(tuple options):
     cdef str opt
     for opt in options:
         if _is_hip:
@@ -2532,7 +2594,7 @@ cpdef tuple assemble_cupy_compiler_options(tuple options):
 
 
 cpdef function.Module compile_with_cache(
-        str source, tuple options=(), arch=None, cachd_dir=None,
+        str source, tuple options=(), arch=None,
         prepend_cupy_headers=True, backend='nvrtc', translate_cucomplex=False,
         enable_cooperative_groups=False, name_expressions=None,
         log_stream=None, bint jitify=False):
@@ -2550,7 +2612,7 @@ cpdef function.Module compile_with_cache(
     options = assemble_cupy_compiler_options(options)
 
     return cuda.compiler._compile_module_with_cache(
-        source, options, arch, cachd_dir, extra_source, backend,
+        source, options, arch=arch, extra_source=extra_source, backend=backend,
         enable_cooperative_groups=enable_cooperative_groups,
         name_expressions=name_expressions, log_stream=log_stream,
         jitify=jitify)
@@ -2563,6 +2625,27 @@ cpdef function.Module compile_with_cache(
 cdef str _id = 'out0 = in0'
 
 cdef fill_kernel = ElementwiseKernel('T x', 'T y', 'y = x', 'cupy_fill')
+
+cdef _byteswap_kernel = ElementwiseKernel(
+    'T x', 'T y',
+    'y = cuda::std::byteswap(x)',
+    'cupy_byteswap',
+    preamble='#include <cuda/std/bit>')
+
+
+cdef _byteswap_dispatch(_ndarray_base a):
+    cdef int itemsize = a.dtype.itemsize
+    cdef _ndarray_base u, result
+    dtype = a.dtype
+    if itemsize == 2 or itemsize == 4 or itemsize == 8:
+        uint_dtype = numpy.dtype('uint{}'.format(itemsize * 8))
+        u = _internal_ascontiguousarray(a).view(uint_dtype)
+        result = _byteswap_kernel(u)
+        return result.view(dtype)
+    raise TypeError(
+        'byteswap not supported for dtype with '
+        'itemsize {}'.format(itemsize))
+
 
 cdef str _divmod_float = '''
     out0_type a = _floor_divide(in0, in1);
@@ -2975,7 +3058,7 @@ cdef tuple _compute_concat_info_impl(obj):
 
     if (cai := getattr(obj, '__cuda_array_interface__', None)) is not None:
         # Assume __cuda_array_interface__ is cheap enough to call twice
-        return cai['shape'], ndarray, numpy.dtype(cai['typestr'])
+        return cai['shape'], ndarray, get_cai_dtype(cai)
 
     if isinstance(obj, (list, tuple)):
         dim = len(obj)
@@ -3111,6 +3194,38 @@ cpdef _ndarray_base asfortranarray(_ndarray_base a, dtype=None):
     return newarray
 
 
+cdef inline get_cai_dtype(dict desc):
+    dtype = numpy.dtype(desc['typestr'])
+    if <cnp.dtype>(dtype).num != cnp.NPY_VOID:
+        return dtype
+
+    # extract dtype from descr, this is slightly "smarter" than some
+    # NumPy versions (at least 2.4), but much like `np.load` logic.
+    # (For CuPy it is much more likely to use aligned and thus padded dtypes.)
+    descr = desc.get('descr')  # allow missing 'descr'
+    if descr is None:
+        return dtype
+    if isinstance(descr, list):
+        offset = 0
+        names = []
+        offsets = []
+        formats = []
+        # Note, we just don't support "titles" here...
+        for name, fmt in descr:
+            field_dtype = numpy.dtype(fmt)
+            if name:  # ignore fields with empty names (assume padding)
+                names.append(name)
+                formats.append(field_dtype)
+                offsets.append(offset)
+            offset += field_dtype.itemsize
+
+        dtype = numpy.dtype(
+            {"names": names, "offsets": offsets, "formats": formats})
+    else:
+        pass  # should be unstructured (and already correct).
+    return dtype
+
+
 cpdef _ndarray_base _convert_object_with_cuda_array_interface(a):
     # NOTE: Most code should use this indirectly via `_convert_from_cupy_like`
 
@@ -3121,7 +3236,7 @@ cpdef _ndarray_base _convert_object_with_cuda_array_interface(a):
     cdef size_t nbytes
 
     ptr = desc['data'][0]
-    dtype = numpy.dtype(desc['typestr'])
+    dtype = get_cai_dtype(desc)
     if dtype.byteorder == '>':
         raise ValueError('CuPy does not support the big-endian byte-order')
     mask = desc.get('mask')

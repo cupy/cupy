@@ -6,7 +6,7 @@ Requirements
 
 * `NVIDIA CUDA GPU <https://developer.nvidia.com/cuda-gpus>`_ with the Compute Capability 3.0 or larger.
 
-* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v12.0 / v12.1 / v12.2 / v12.3 / v12.4 / v12.5 / v12.6 / v12.8 / v12.9 / v13.0 / v13.1
+* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v12.0 / v12.1 / v12.2 / v12.3 / v12.4 / v12.5 / v12.6 / v12.8 / v12.9 / v13.0 / v13.1 / v13.2
 
     * If you have multiple versions of CUDA Toolkit installed, CuPy will automatically choose one of the CUDA installations.
       See :ref:`install_cuda` for details.
@@ -54,11 +54,11 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 
     * The library to accelerate tensor operations. See :doc:`../reference/environment` for the details.
 
-* `NCCL <https://developer.nvidia.com/nccl>`_: v2.16 / v2.17 / v2.18 / v2.19 / v2.20 / v2.21 / v2.22 / v2.25 / v2.26 / v2.27
+* `NCCL <https://developer.nvidia.com/nccl>`_: v2.16 / v2.17 / v2.18 / v2.19 / v2.20 / v2.21 / v2.22 / v2.25 / v2.26 / v2.27 / v2.28 / v2.29
 
     * The library to perform collective multi-GPU / multi-node computations.
 
-* `cuSPARSELt <https://docs.nvidia.com/cuda/cusparselt/>`_: v0.8.0 / v0.8.1
+* `cuSPARSELt <https://docs.nvidia.com/cuda/cusparselt/>`_: v0.8.0 / v0.8.1 / v0.9.0
 
     * The library to accelerate sparse matrix-matrix multiplication.
 
@@ -193,6 +193,38 @@ If you want to install the latest development version of CuPy from a cloned Git 
 
    Cython 3 is required to build CuPy from source.
    It will be automatically installed during the build process if not available.
+
+.. note::
+
+   When building CuPy from source inside a Conda environment that provides the
+   CUDA Toolkit (e.g. ``conda install -c conda-forge cuda-toolkit``), set both
+   ``CUDA_PATH`` and ``NVCC``::
+
+    $ export CUDA_PATH=$CONDA_PREFIX/targets/x86_64-linux/    # use sbsa-linux on aarch64
+    $ export NVCC=$CONDA_PREFIX/bin/nvcc
+
+   Conda CUDA 12+ packages place headers (``cuda_runtime.h``) and static libs
+   (e.g. ``libcufilt.a``) under ``$CONDA_PREFIX/targets/<target>/``, so
+   ``CUDA_PATH`` must point at that subdirectory. ``NVCC`` must be the real
+   binary path: invoking ``nvcc`` through the symlink at
+   ``$CUDA_PATH/bin/nvcc`` causes the build to fail with
+   ``fatal error: cuda_runtime.h: No such file or directory``.
+
+.. note::
+
+   By default, the source build compiles CUDA kernels for every architecture
+   supported by your CUDA Toolkit, which can be very slow. To compile only
+   for the architecture of your installed GPU, set::
+
+    $ export CUPY_NVCC_GENERATE_CODE=current
+
+   You can also increase build parallelism::
+
+    $ export CUPY_NUM_BUILD_JOBS=8    # parallel C++ extension processes (default 4)
+    $ export CUPY_NUM_NVCC_THREADS=4  # nvcc threads per .cu file (default 2)
+
+   See :doc:`reference/environment` for the full list of build-time environment
+   variables.
 
 
 Uninstalling CuPy
