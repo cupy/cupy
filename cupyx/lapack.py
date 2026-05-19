@@ -256,18 +256,34 @@ def _batched_posv(a, b):
 
     b_shape = b.shape
     b = b.conj().reshape(batch_size, n, -1).astype(dtype, order='C', copy=True)
-    bp = _cupy._core._mat_ptrs(b)
     ldb, nrhs = b.shape[-2:]
     dev_info = _cupy.empty(1, dtype=_numpy.int32)
 
-    # NOTE: potrsBatched does not currently support nrhs > 1 (CUDA v10.2)
-    # Solve: A[i] * X[i] = B[i]
-    potrsBatched(handle, uplo, n, nrhs, ap.data.ptr, lda, bp.data.ptr, ldb,
-                 dev_info.data.ptr, batch_size)
-    _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
-        potrsBatched, dev_info)
+    # potrsBatched expects each per-batch right-hand side block in
+    # column-major layout. When nrhs == 1 a single column is trivially
+    # column-major and we can issue one batched call. When nrhs > 1 the
+    # C-order (batch, n, nrhs) layout doesn't match cuSOLVER's F-order
+    # expectation; loop one column at a time (mirroring _batched_potrs).
+    # This also sidesteps cuSOLVER's documented restriction that
+    # cusolverDn?potrsBatched only supports nrhs == 1.
+    if nrhs == 1:
+        bp = _cupy._core._mat_ptrs(b)
+        potrsBatched(handle, uplo, n, 1, ap.data.ptr, lda, bp.data.ptr,
+                     ldb, dev_info.data.ptr, batch_size)
+        _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(
+            potrsBatched, dev_info)
+    else:
+        b_tmp = _cupy.empty(b.shape[:-1], dtype=b.dtype, order='C')
+        bp_tmp = _cupy._core._mat_ptrs(b_tmp[..., None])
+        for i in range(nrhs):
+            b_tmp[...] = b[..., i]
+            potrsBatched(handle, uplo, n, 1, ap.data.ptr, lda,
+                         bp_tmp.data.ptr, b_tmp.shape[-1],
+                         dev_info.data.ptr, batch_size)
+            _cupy.linalg._util._check_cusolver_dev_info_if_synchronization_allowed(  # noqa: E501
+                potrsBatched, dev_info)
+            b[..., i] = b_tmp
 
-    # TODO: check if conj() is necessary when nrhs > 1
     return b.conj().reshape(b_shape)
 
 
