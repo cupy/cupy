@@ -179,10 +179,18 @@ class TestAsnumpy:
             c[c.size//2:] = -1.  # potential data race
         s.synchronize()
 
-        a[c.size//2:] = -1.
+        # Sanity check that the first part of `c` seems correct:
+        half = c.size//2
+        testing.assert_array_equal(a[half - 100:half], c[half - 100:half])
+
+        # only second half of `a` has potential for corruption
+        del a
+        expected = cupy.full(c.size - half, -1.0, dtype=cupy.float64)
+
         if not blocking:
             ctx = pytest.raises(AssertionError)
         else:
             ctx = contextlib.nullcontext()
         with ctx:
-            assert cupy.allclose(a, c)
+            # compare the large array on GPU For speed
+            assert (expected == cupy.asarray(c[c.size//2:])).all()

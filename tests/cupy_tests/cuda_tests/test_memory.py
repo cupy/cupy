@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ctypes
 import gc
+import os
 import pickle
 import sys
 import threading
@@ -291,7 +292,11 @@ class TestMemoryPointerAsync(unittest.TestCase):
 class TestSingleDeviceMemoryPool(unittest.TestCase):
 
     def setUp(self):
+        # For these tests unset possible CUPY_GPU_MEMORY_LIMIT.
+        original_limit = os.environ.pop('CUPY_GPU_MEMORY_LIMIT', None)
         self.pool = memory.SingleDeviceMemoryPool(allocator=mock_alloc)
+        if original_limit is not None:
+            os.environ['CUPY_GPU_MEMORY_LIMIT'] = original_limit
         self.unit = memory._allocation_unit_size
         self.stream = stream_module.Stream()
         self.arena = self.pool._arena(self.stream.ptr)
@@ -881,6 +886,9 @@ class TestAllocator(unittest.TestCase):
             self._ptr = arr.data.ptr
             del arr
             self._error = False
+            # Wait for job to finish, otherwise shutdown seems unsafe
+            # when using the PTDS and work is still in progress.
+            stream.synchronize()
 
         # Run in main thread.
         self._ptr = -1
@@ -1089,20 +1097,27 @@ free_bytes_watermark = 0
                     and cupy.cuda.driver.get_build_version() < 11020,
                     reason='malloc_async is supported since CUDA 11.2')
 @pytest.mark.thread_unsafe(reason="tests shared self.pool properties")
-class TestMemoryAsyncPool(unittest.TestCase):
+@pytest.mark.xdist_group(
+    # use of free/used_bytes_watermark assumes single worker
+    "memory-async-pool-tests")
+class TestMemoryAsyncPool:
 
-    def setUp(self):
+    def setup_method(self):
         if cupy.cuda.runtime.deviceGetAttribute(
                 cupy.cuda.runtime.cudaDevAttrMemoryPoolsSupported, 0) == 0:
             pytest.skip('malloc_async is not supported on device 0')
+        # For these tests unset possible CUPY_GPU_MEMORY_LIMIT.
+        original_limit = os.environ.pop('CUPY_GPU_MEMORY_LIMIT', None)
         self.pool = memory.MemoryAsyncPool()
+        if original_limit is not None:
+            os.environ['CUPY_GPU_MEMORY_LIMIT'] = original_limit
         self.unit = memory._allocation_unit_size
         self.stream = stream_module.Stream()
         self.stream_ident = self.stream.ptr
         cupy.get_default_memory_pool().free_all_blocks()
         cupy.cuda.Device().synchronize()
 
-    def tearDown(self):
+    def teardown_method(self):
         self.pool.set_limit(size=0)
         self.pool.free_all_blocks()
         global used_bytes_watermark, free_bytes_watermark
@@ -1317,7 +1332,7 @@ class TestMemoryAsyncPool(unittest.TestCase):
         self.pool.set_limit(size=0)
         assert 2**64-1 == self.pool.get_limit()
 
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             self.pool.set_limit(size=-1)
 
     def test_set_limit_fraction(self):
@@ -1332,10 +1347,10 @@ class TestMemoryAsyncPool(unittest.TestCase):
         self.pool.set_limit(fraction=1.0)
         assert total == self.pool.get_limit()
 
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             self.pool.set_limit(fraction=-1)
 
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             self.pool.set_limit(fraction=1.1)
 
 

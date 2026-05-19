@@ -5,6 +5,7 @@ import os
 import subprocess
 import sys
 
+import pytest
 
 # enable NEP 50 weak promotion rules
 import numpy
@@ -31,17 +32,27 @@ def _is_in_ci():
 
 
 def pytest_configure(config):
+    if config.pluginmanager.hasplugin("xdist"):
+        # Some (few) tests should run grouped by class, so just force that.
+        config.option.dist = "loadgroup"
+
+
+@pytest.hookimpl(tryfirst=True)
+def pytest_sessionstart(session):
     # Print installed packages
     if _is_in_ci() and _is_pip_installed():
         print("***** Installed packages *****", flush=True)
         subprocess.check_call([sys.executable, '-m', 'pip', 'freeze', '--all'])
 
-    if config.pluginmanager.hasplugin("xdist"):
+    if session.config.pluginmanager.hasplugin("xdist"):
+        plugin = session.config.pluginmanager.getplugin("xdist")
+        xdist_active = plugin.is_xdist_master(session)
+
         n_gpu = os.environ.get('CUPY_TEST_GPU_LIMIT')
         worker_id = os.environ.get('PYTEST_XDIST_WORKER', 'master')
 
         if n_gpu is None:
-            if worker_id == 'master':
+            if xdist_active and worker_id == 'master':
                 print('\nTIP: when using pytest-xdist, you can automatically '
                       'rotate CUDA_VISIBLE_DEVICES for each test worker by '
                       'setting CUPY_TEST_GPU_LIMIT environment variable.\n')
@@ -55,6 +66,10 @@ def pytest_configure(config):
                 devices = [str(k) for k in range(n_gpu)]
             else:
                 devices = devices.split(',')[:n_gpu]
+                if len(devices) < n_gpu:
+                    raise ValueError(
+                        f"Fewer CUDA_VISIBLE_DEVICES ({len(devices)}) "
+                        f"than CUPY_TEST_GPU_LIMIT ({n_gpu})")
 
             if worker_id == 'master':
                 print(f'\nNOTE: Setting workers to use a shifted version of:'
@@ -69,34 +84,48 @@ def pytest_configure(config):
                 devices = ','.join(devices)
                 os.environ['CUDA_VISIBLE_DEVICES'] = devices
 
+                # Make sure workers don't starve each other if sharing GPUs
+                # by setting the memory limit to be split across workers
+                # (ignore potential distributed tests here).
+                # `PYTEST_XDIST_WORKER_COUNT` is alwasy set at this point.
+                n_workers = int(os.environ.get('PYTEST_XDIST_WORKER_COUNT'))
+                workers_on_my_gpu, remainder = divmod(n_workers, n_gpu)
+                if w % n_gpu < remainder:
+                    workers_on_my_gpu += 1
+                mem_fraction = int(100 / workers_on_my_gpu)
+                if os.environ.get('CUPY_GPU_MEMORY_LIMIT') is None:
+                    os.environ['CUPY_GPU_MEMORY_LIMIT'] = f"{mem_fraction}%"
 
-if int(os.environ.get('CUPY_ENABLE_UMP', 0)) != 0:
-    # Make sure malloc is used in a stream-ordered fashion
-    import cupy as cp
-    cp.cuda.set_allocator(cp.cuda.MemoryPool(
-        cp.cuda.memory.malloc_system).malloc)
+    # After setting up xdist do potentially non-trivial `cupy` configuration.
+    # (A simple cupy import by itself is OK, as it doesn't initialize CUDA.)
 
-    import cupy._core.numpy_allocator as ac
-    import numpy_allocator
-    import ctypes
-    lib = ctypes.CDLL(ac.__file__)
+    if int(os.environ.get('CUPY_ENABLE_UMP', 0)) != 0:
+        # Make sure malloc is used in a stream-ordered fashion
+        import cupy as cp
+        cp.cuda.set_allocator(cp.cuda.MemoryPool(
+            cp.cuda.memory.malloc_system).malloc)
 
-    class my_allocator(metaclass=numpy_allocator.type):
-        _calloc_ = ctypes.addressof(lib._calloc)
-        _malloc_ = ctypes.addressof(lib._malloc)
-        _realloc_ = ctypes.addressof(lib._realloc)
-        _free_ = ctypes.addressof(lib._free)
-    my_allocator.__enter__()
+        import cupy._core.numpy_allocator as ac
+        import numpy_allocator
+        import ctypes
+        lib = ctypes.CDLL(ac.__file__)
 
+        class my_allocator(metaclass=numpy_allocator.type):
+            _calloc_ = ctypes.addressof(lib._calloc)
+            _malloc_ = ctypes.addressof(lib._malloc)
+            _realloc_ = ctypes.addressof(lib._realloc)
+            _free_ = ctypes.addressof(lib._free)
+        my_allocator.__enter__()
 
-if int(os.environ.get('CUPY_CI_ENABLE_GCP_KERNEL_CACHE', 0)) != 0:
-    from cupy.cuda.compiler import _set_kernel_cache_backend
-    from cupy_tests._gcp_kernel_cache_backend import GCPStorageCacheBackend
+    if int(os.environ.get('CUPY_CI_ENABLE_GCP_KERNEL_CACHE', 0)) != 0:
+        from cupy.cuda.compiler import _set_kernel_cache_backend
+        from cupy_tests._gcp_kernel_cache_backend import GCPStorageCacheBackend
 
-    backend = GCPStorageCacheBackend(
-        bucket_name='tmp-asia-pfn-public-ci',
-        prefix='cupy-ci/kernel_cache_objects/'
-    )
-    print("GCP kernel cache: initializing local cache from GCS...", flush=True)
-    backend.initialize_local_cache()
-    _set_kernel_cache_backend(backend)
+        backend = GCPStorageCacheBackend(
+            bucket_name='tmp-asia-pfn-public-ci',
+            prefix='cupy-ci/kernel_cache_objects/'
+        )
+        print("GCP kernel cache: initializing local cache from GCS...",
+              flush=True)
+        backend.initialize_local_cache()
+        _set_kernel_cache_backend(backend)

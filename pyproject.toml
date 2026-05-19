@@ -74,6 +74,8 @@ markers = [
   "slow", "multi_gpu",
   # If pytest-run-parallel is not available
   "parallel_threads", "iterations", "thread_unsafe",
+  # If pytest-xdist is not available
+  "xdist_group",
 ]
 filterwarnings = [
   "always",  # Make sure previous calls cannot hide future warnings.

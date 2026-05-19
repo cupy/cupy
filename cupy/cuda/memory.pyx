@@ -18,7 +18,6 @@ from libc.stdlib cimport free as c_free
 from libcpp.atomic cimport atomic as std_atomic
 from libcpp.set cimport set as std_set
 from libcpp.pair cimport pair as std_pair
-from libcpp.mutex cimport mutex as cpp_mutex
 
 from cupy.cuda cimport device
 from cupy.cuda cimport memory_hook
@@ -1182,6 +1181,7 @@ cdef class _Arena:
         return chunk
 
     cdef _get_size(self):
+        self._commit_pending_free()
         return self.index.size()
 
     cdef _index_to_python(self):
@@ -1234,12 +1234,11 @@ cdef class SingleDeviceMemoryPool:
         # `_Chunk` attribute that keeps the arena alive.
         # NOTE: If you work with any arena you must hold the `_arena_mutex`.
         # The only safe operation is `add_pending_free_atomic` (note the
-        # atomic # in the name).
+        # atomic # in the name); `pool.free` always uses that path so it
+        # never acquires `_arena_mutex` itself, which keeps finalizer-driven
+        # frees from re-entering the lock from the owning thread.
         dict _arenas
-        # NOTE: Never use `.lock()` outside a `with nogil:` statement as it
-        # may deadlock (GIL may be unlocked and another thread also locks).
-        # We currently use a mutex for the ability to use `try_lock`.
-        cpp_mutex _arena_mutex
+        cython.pymutex _arena_mutex
 
         # Number of total bytes actually allocated on GPU.
         # NOTE: You MUST use _try_block_total_bytes to increase the value
@@ -1293,12 +1292,8 @@ cdef class SingleDeviceMemoryPool:
 
     def _debug_arena_get_index(self, intptr_t stream_ident):
         # Sets returned are not copies, mutating them will break things
-        with nogil:
-            self._arena_mutex.lock()
-        try:
+        with self._arena_mutex:
             return self._arena(stream_ident)._index_to_python()
-        finally:
-            self._arena_mutex.unlock()
 
     cdef MemoryPointer _alloc(self, Py_ssize_t rounded_size):
         if memory_hook._has_memory_hooks():
@@ -1361,15 +1356,10 @@ cdef class SingleDeviceMemoryPool:
         stream_ident = _get_stream_identifier(
             stream_module.get_current_stream_ptr())
 
-        if not self._arena_mutex.try_lock():
-            with nogil:
-                self._arena_mutex.lock()
-        try:
+        with self._arena_mutex:
             arena = self._arena(stream_ident)
             # find best-fit, or a smallest larger allocation
             chunk = arena.get_chunk(size)
-        finally:
-            self._arena_mutex.unlock()
 
         if chunk is None:
             # cudaMalloc if a cache chunk is not found
@@ -1388,14 +1378,8 @@ cdef class SingleDeviceMemoryPool:
     cdef free(self, _Chunk chunk):
         self._in_use_bytes -= chunk.size
 
-        # Make sure freeing is always safe, but if we can lock do it.
-        if self._arena_mutex.try_lock():
-            try:
-                chunk.arena.insert_chunk(chunk)
-            finally:
-                self._arena_mutex.unlock()
-        else:
-            chunk.arena.add_pending_free_atomic(chunk)
+        # Free must be atomic as we may already be holding the arena mutex.
+        chunk.arena.add_pending_free_atomic(chunk)
 
     cpdef free_all_blocks(self, stream=None):
         """Free all **non-split** blocks for one or all arenas.
@@ -1405,26 +1389,23 @@ cdef class SingleDeviceMemoryPool:
         cdef tuple idents
         cdef size_t bytes_freed = 0
 
-        if not self._arena_mutex.try_lock():
-            with nogil:
-                self._arena_mutex.lock()
         try:
-            if stream is None:
-                idents = tuple(self._arenas.keys())
-            else:
-                stream_ident = _get_stream_identifier(stream.ptr)
-                if stream_ident not in self._arenas:
-                    return  # stream doesn't exist, just return
-                idents = (stream_ident,)
-
-            for ident in idents:
-                arena = self._arenas[ident]()
-                if arena is None:
-                    del self._arenas[ident]
+            with self._arena_mutex:
+                if stream is None:
+                    idents = tuple(self._arenas.keys())
                 else:
-                    bytes_freed += arena.free_all()
+                    stream_ident = _get_stream_identifier(stream.ptr)
+                    if stream_ident not in self._arenas:
+                        return  # stream doesn't exist, just return
+                    idents = (stream_ident,)
+
+                for ident in idents:
+                    arena = self._arenas[ident]()
+                    if arena is None:
+                        del self._arenas[ident]
+                    else:
+                        bytes_freed += arena.free_all()
         finally:
-            self._arena_mutex.unlock()
             self._total_bytes -= bytes_freed
 
     cpdef free_all_free(self):
@@ -1437,17 +1418,12 @@ cdef class SingleDeviceMemoryPool:
         cdef size_t n = 0
         cdef _Arena arena
 
-        if not self._arena_mutex.try_lock():
-            with nogil:
-                self._arena_mutex.lock()
-        try:
+        with self._arena_mutex:
             for ref in self._arenas.itervalues():
                 arena = ref()
                 if arena is None:
                     continue
                 n += arena._get_size()
-        finally:
-            self._arena_mutex.unlock()
 
         return n
 
