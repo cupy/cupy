@@ -192,6 +192,11 @@ class TestConvolveCorrelate2D:
             pytest.skip('fillvalue overflow')
         in1 = testing.shaped_random(self.size1, xp, dtype)
         in2 = testing.shaped_random(self.size2, xp, dtype)
+
+        if xp is np and np.__version__ == "2.4.5" and in1.dtype == bool:
+            # A NumPy regression causes SciPy to promote bool to int8:
+            raise ValueError("unsupported type in SciPy")
+
         return getattr(scp.signal, func)(in1, in2, self.mode, self.boundary,
                                          self.fillvalue)
 
