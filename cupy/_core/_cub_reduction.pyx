@@ -253,8 +253,6 @@ def _SimpleCubReductionKernel_get_cached_function(
 
 
 cdef str _cub_path = _environment.get_cub_path()
-cdef str _nvcc_path = (
-    _environment.get_nvcc_path() if not runtime._is_hip_environment else None)
 cdef str _rocm_path = _environment.get_rocm_path()
 cdef str _hipcc_path = _environment.get_hipcc_path()
 cdef str _cub_header = None
@@ -344,9 +342,10 @@ cpdef inline tuple _can_use_cub_block_reduction(
         if in_arr.size // contiguous_size > 0x7fffffff:
             return None
 
-    # rare event (mainly for conda-forge users): nvcc is not found!
+    # CUB headers must be available (always true for CUDA builds since CUB
+    # is bundled; on ROCm, hipCUB and hipcc must be present).
     if not runtime._is_hip_environment:
-        if _nvcc_path is None:
+        if _cub_path is None:
             return None
     else:
         if _hipcc_path is None:
