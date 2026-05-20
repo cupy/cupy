@@ -8,6 +8,7 @@ from cupyx.scipy.signal._iir_filter_conversions import _cplxreal
 
 from cupy import testing
 from cupy.testing import assert_array_almost_equal
+from cupy.testing._helper import skip_if_after_baseline
 
 import numpy as np
 
@@ -635,6 +636,8 @@ class TestCplxReal:
 @testing.with_requires("scipy")
 class TestLowLevelAP:
     @testing.numpy_cupy_allclose(scipy_name="scp")
+    @skip_if_after_baseline(
+        scipy="1.17", reason="SciPy>=1.17 returns float for `k`, cupy int 1.")
     def test_buttap(self, xp, scp):
         return scp.signal.buttap(3)
 
@@ -647,5 +650,7 @@ class TestLowLevelAP:
         return scp.signal.cheb2ap(3, 1)
 
     @testing.numpy_cupy_allclose(scipy_name="scp", atol=2e-4, rtol=2e-4)
+    @skip_if_after_baseline(
+        scipy="1.17", reason="SciPy>=1.17 returns float, not array for `k`.")
     def test_ellipap(self, xp, scp):
         return scp.signal.ellipap(7, 1, 10)
