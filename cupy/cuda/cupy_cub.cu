@@ -17,7 +17,8 @@
 #include <hipcub/device/device_scan.hpp>
 #include <hipcub/device/device_histogram.hpp>
 #include <rocprim/iterator/counting_iterator.hpp>
-#include <hipcub/iterator/transform_input_iterator.hpp>
+// rocprim::transform_iterator replaces deprecated hipcub::TransformInputIterator.
+#include <rocprim/iterator/transform_iterator.hpp>
 #endif
 
 
@@ -267,7 +268,7 @@ struct _arange
 #ifndef CUPY_USE_HIP
 typedef thrust::transform_iterator<_arange, thrust::counting_iterator<int>> seg_offset_itr;
 #else
-typedef TransformInputIterator<int, _arange, rocprim::counting_iterator<int>> seg_offset_itr;
+typedef rocprim::transform_iterator<rocprim::counting_iterator<int>, _arange> seg_offset_itr;
 #endif
 
 /*
@@ -743,6 +744,26 @@ struct select_min<__half> {
 
 /* ------------------------------------ End of "patches" ------------------------------------ */
 
+// CUPY_CUB_TRY wraps every CUB/hipCUB device call (they're nodiscard).
+template <typename CupyCubStatus>
+static inline void cupy_cub_check(CupyCubStatus err, const char* expr) {
+#ifdef CUPY_USE_HIP
+    if (err != hipSuccess) {
+        throw std::runtime_error(
+            std::string("hipCUB call failed (") + expr + "): "
+            + hipGetErrorString(err));
+    }
+#else
+    if (err != cudaSuccess) {
+        throw std::runtime_error(
+            std::string("CUB call failed (") + expr + "): "
+            + cudaGetErrorString(err));
+    }
+#endif
+}
+
+#define CUPY_CUB_TRY(expr) ::cupy_cub_check((expr), #expr)
+
 //
 // **** CUB Sum ****
 //
@@ -751,8 +772,8 @@ struct _cub_reduce_sum {
     void operator()(void* workspace, size_t& workspace_size, void* x, void* y,
         int num_items, cudaStream_t s)
     {
-        DeviceReduce::Sum(workspace, workspace_size, static_cast<T*>(x),
-            static_cast<T*>(y), num_items, s);
+        CUPY_CUB_TRY(DeviceReduce::Sum(workspace, workspace_size, static_cast<T*>(x),
+            static_cast<T*>(y), num_items, s));
     }
 };
 
@@ -761,9 +782,9 @@ struct _cub_segmented_reduce_sum {
     void operator()(void* workspace, size_t& workspace_size, void* x, void* y,
         int num_segments, seg_offset_itr offset_start, cudaStream_t s)
     {
-        DeviceSegmentedReduce::Sum(workspace, workspace_size,
+        CUPY_CUB_TRY(DeviceSegmentedReduce::Sum(workspace, workspace_size,
             static_cast<T*>(x), static_cast<T*>(y), num_segments,
-            offset_start, offset_start+1, s);
+            offset_start, offset_start+1, s));
     }
 };
 
@@ -778,8 +799,8 @@ struct _cub_reduce_prod {
         _multiply product_op;
         // the init value is cast from 1.0f because on host __half can only be
         // initialized by float or double; static_cast<__half>(1) = 0 on host.
-        DeviceReduce::Reduce(workspace, workspace_size, static_cast<T*>(x),
-            static_cast<T*>(y), num_items, product_op, static_cast<T>(1.0f), s);
+        CUPY_CUB_TRY(DeviceReduce::Reduce(workspace, workspace_size, static_cast<T*>(x),
+            static_cast<T*>(y), num_items, product_op, static_cast<T>(1.0f), s));
     }
 };
 
@@ -791,10 +812,10 @@ struct _cub_segmented_reduce_prod {
         _multiply product_op;
         // the init value is cast from 1.0f because on host __half can only be
         // initialized by float or double; static_cast<__half>(1) = 0 on host.
-        DeviceSegmentedReduce::Reduce(workspace, workspace_size,
+        CUPY_CUB_TRY(DeviceSegmentedReduce::Reduce(workspace, workspace_size,
             static_cast<T*>(x), static_cast<T*>(y), num_segments,
             offset_start, offset_start+1,
-            product_op, static_cast<T>(1.0f), s);
+            product_op, static_cast<T>(1.0f), s));
     }
 };
 
@@ -808,14 +829,14 @@ struct _cub_reduce_min {
     {
         if constexpr (std::numeric_limits<T>::has_infinity)
         {
-            DeviceReduce::Reduce(workspace, workspace_size, static_cast<T*>(x),
+            CUPY_CUB_TRY(DeviceReduce::Reduce(workspace, workspace_size, static_cast<T*>(x),
                 static_cast<T*>(y), num_items,
-                typename select_min<T>::type{}, std::numeric_limits<T>::infinity(), s);
+                typename select_min<T>::type{}, std::numeric_limits<T>::infinity(), s));
         }
         else
         {
-            DeviceReduce::Min(workspace, workspace_size, static_cast<T*>(x),
-                static_cast<T*>(y), num_items, s);
+            CUPY_CUB_TRY(DeviceReduce::Min(workspace, workspace_size, static_cast<T*>(x),
+                static_cast<T*>(y), num_items, s));
         }
     }
 };
@@ -827,16 +848,16 @@ struct _cub_segmented_reduce_min {
     {
         if constexpr (std::numeric_limits<T>::has_infinity)
         {
-            DeviceSegmentedReduce::Reduce(workspace, workspace_size,
+            CUPY_CUB_TRY(DeviceSegmentedReduce::Reduce(workspace, workspace_size,
                 static_cast<T*>(x), static_cast<T*>(y), num_segments,
                 offset_start, offset_start+1,
-                typename select_min<T>::type{}, std::numeric_limits<T>::infinity(), s);
+                typename select_min<T>::type{}, std::numeric_limits<T>::infinity(), s));
         }
         else
         {
-            DeviceSegmentedReduce::Min(workspace, workspace_size,
+            CUPY_CUB_TRY(DeviceSegmentedReduce::Min(workspace, workspace_size,
                 static_cast<T*>(x), static_cast<T*>(y), num_segments,
-                offset_start, offset_start+1, s);
+                offset_start, offset_start+1, s));
         }
     }
 };
@@ -854,22 +875,22 @@ struct _cub_reduce_max {
             // to avoid compiler error: invalid argument type '__half' to unary expression on HIP...
             if constexpr (std::is_same_v<T, __half>)
             {
-                DeviceReduce::Reduce(workspace, workspace_size, static_cast<T*>(x),
+                CUPY_CUB_TRY(DeviceReduce::Reduce(workspace, workspace_size, static_cast<T*>(x),
                     static_cast<T*>(y), num_items,
-                    typename select_max<T>::type{}, half_negate_inf(), s);
+                    typename select_max<T>::type{}, half_negate_inf(), s));
             }
             else
             {
-                DeviceReduce::Reduce(workspace, workspace_size, static_cast<T*>(x),
+                CUPY_CUB_TRY(DeviceReduce::Reduce(workspace, workspace_size, static_cast<T*>(x),
                     static_cast<T*>(y), num_items,
-                    typename select_max<T>::type{}, -std::numeric_limits<T>::infinity(), s);
+                    typename select_max<T>::type{}, -std::numeric_limits<T>::infinity(), s));
 
             }
         }
         else
         {
-            DeviceReduce::Max(workspace, workspace_size, static_cast<T*>(x),
-                static_cast<T*>(y), num_items, s);
+            CUPY_CUB_TRY(DeviceReduce::Max(workspace, workspace_size, static_cast<T*>(x),
+                static_cast<T*>(y), num_items, s));
         }
     }
 };
@@ -884,24 +905,24 @@ struct _cub_segmented_reduce_max {
             // to avoid compiler error: invalid argument type '__half' to unary expression on HIP...
             if constexpr (std::is_same_v<T, __half>)
             {
-                DeviceSegmentedReduce::Reduce(workspace, workspace_size,
+                CUPY_CUB_TRY(DeviceSegmentedReduce::Reduce(workspace, workspace_size,
                     static_cast<T*>(x), static_cast<T*>(y), num_segments,
                     offset_start, offset_start+1,
-                    typename select_max<T>::type{}, half_negate_inf(), s);
+                    typename select_max<T>::type{}, half_negate_inf(), s));
             }
             else
             {
-                DeviceSegmentedReduce::Reduce(workspace, workspace_size,
+                CUPY_CUB_TRY(DeviceSegmentedReduce::Reduce(workspace, workspace_size,
                     static_cast<T*>(x), static_cast<T*>(y), num_segments,
                     offset_start, offset_start+1,
-                    typename select_max<T>::type{}, -std::numeric_limits<T>::infinity(), s);
+                    typename select_max<T>::type{}, -std::numeric_limits<T>::infinity(), s));
             }
         }
         else
         {
-            DeviceSegmentedReduce::Max(workspace, workspace_size,
+            CUPY_CUB_TRY(DeviceSegmentedReduce::Max(workspace, workspace_size,
                 static_cast<T*>(x), static_cast<T*>(y), num_segments,
-                offset_start, offset_start+1, s);
+                offset_start, offset_start+1, s));
         }
     }
 };
@@ -909,13 +930,29 @@ struct _cub_segmented_reduce_max {
 //
 // **** CUB ArgMin ****
 //
+// CUB 2.8+ deprecates single-KeyValuePair ArgMin/ArgMax in favour of a
+// two-iterator form. Caller still passes one KeyValuePair block; we split
+// it into value/key pointers (layout unchanged).
+#if (defined(CUB_VERSION) && CUB_VERSION >= 200800) || \
+    (defined(HIPCUB_VERSION) && HIPCUB_VERSION >= 400200)
+#define CUPY_CUB_HAS_TWO_ITER_ARG_REDUCE 1
+#else
+#define CUPY_CUB_HAS_TWO_ITER_ARG_REDUCE 0
+#endif
+
 struct _cub_reduce_argmin {
     template <typename T>
     void operator()(void* workspace, size_t& workspace_size, void* x, void* y,
         int num_items, cudaStream_t s)
     {
-        DeviceReduce::ArgMin(workspace, workspace_size, static_cast<T*>(x),
-            static_cast<KeyValuePair<int, T>*>(y), num_items, s);
+#if CUPY_CUB_HAS_TWO_ITER_ARG_REDUCE
+        auto* kvp = static_cast<KeyValuePair<int, T>*>(y);
+        CUPY_CUB_TRY(DeviceReduce::ArgMin(workspace, workspace_size, static_cast<T*>(x),
+            &kvp->value, &kvp->key, num_items, s));
+#else
+        CUPY_CUB_TRY(DeviceReduce::ArgMin(workspace, workspace_size, static_cast<T*>(x),
+            static_cast<KeyValuePair<int, T>*>(y), num_items, s));
+#endif
     }
 };
 
@@ -929,8 +966,14 @@ struct _cub_reduce_argmax {
     void operator()(void* workspace, size_t& workspace_size, void* x, void* y,
         int num_items, cudaStream_t s)
     {
-        DeviceReduce::ArgMax(workspace, workspace_size, static_cast<T*>(x),
-            static_cast<KeyValuePair<int, T>*>(y), num_items, s);
+#if CUPY_CUB_HAS_TWO_ITER_ARG_REDUCE
+        auto* kvp = static_cast<KeyValuePair<int, T>*>(y);
+        CUPY_CUB_TRY(DeviceReduce::ArgMax(workspace, workspace_size, static_cast<T*>(x),
+            &kvp->value, &kvp->key, num_items, s));
+#else
+        CUPY_CUB_TRY(DeviceReduce::ArgMax(workspace, workspace_size, static_cast<T*>(x),
+            static_cast<KeyValuePair<int, T>*>(y), num_items, s));
+#endif
     }
 };
 
@@ -944,8 +987,8 @@ struct _cub_inclusive_sum {
     void operator()(void* workspace, size_t& workspace_size, void* input, void* output,
         int num_items, cudaStream_t s)
     {
-        DeviceScan::InclusiveSum(workspace, workspace_size, static_cast<T*>(input),
-            static_cast<T*>(output), num_items, s);
+        CUPY_CUB_TRY(DeviceScan::InclusiveSum(workspace, workspace_size, static_cast<T*>(input),
+            static_cast<T*>(output), num_items, s));
     }
 };
 
@@ -958,8 +1001,8 @@ struct _cub_inclusive_product {
         int num_items, cudaStream_t s)
     {
         _multiply product_op;
-        DeviceScan::InclusiveScan(workspace, workspace_size, static_cast<T*>(input),
-            static_cast<T*>(output), product_op, num_items, s);
+        CUPY_CUB_TRY(DeviceScan::InclusiveScan(workspace, workspace_size, static_cast<T*>(input),
+            static_cast<T*>(output), product_op, num_items, s));
     }
 };
 
@@ -988,14 +1031,14 @@ struct _cub_histogram_range {
 
         // if (n_samples < (1ULL << 31)) {
             int num_samples = n_samples;
-            DeviceHistogram::HistogramRange(workspace, workspace_size, static_cast<h_sampleT*>(input),
+            CUPY_CUB_TRY(DeviceHistogram::HistogramRange(workspace, workspace_size, static_cast<h_sampleT*>(input),
                 #ifndef CUPY_USE_HIP
-                static_cast<long long*>(output), n_bins, static_cast<h_binT*>(bins), num_samples, s);
+                static_cast<long long*>(output), n_bins, static_cast<h_binT*>(bins), num_samples, s));
                 #else
                 // rocPRIM looks up atomic_add() from the namespace rocprim::detail; there's no way we can
                 // inject a "long long" version as we did for CUDA, so we must do it in "unsigned long long"
                 // and convert later...
-                static_cast<unsigned long long*>(output), n_bins, static_cast<h_binT*>(bins), num_samples, s);
+                static_cast<unsigned long long*>(output), n_bins, static_cast<h_binT*>(bins), num_samples, s));
                 #endif
         // } else {
         //     DeviceHistogram::HistogramRange(workspace, workspace_size, static_cast<h_sampleT*>(input),
@@ -1017,8 +1060,8 @@ struct _cub_histogram_even {
         typedef typename std::conditional<std::is_integral<sampleT>::value, sampleT, int>::type h_sampleT;
         int num_samples = n_samples;
         static_assert(sizeof(long long) == sizeof(intptr_t), "not supported");
-        DeviceHistogram::HistogramEven(workspace, workspace_size, static_cast<h_sampleT*>(input),
-            static_cast<long long*>(output), n_bins, lower, upper, num_samples, s);
+        CUPY_CUB_TRY(DeviceHistogram::HistogramEven(workspace, workspace_size, static_cast<h_sampleT*>(input),
+            static_cast<long long*>(output), n_bins, lower, upper, num_samples, s));
         #else
         throw std::runtime_error("HIP is not supported yet");
         #endif

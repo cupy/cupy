@@ -51,25 +51,35 @@ CUB_sum_support_dtype = {}
 cdef extern from 'cupy_cub.h' nogil:
     ctypedef void* Stream_t 'cudaStream_t'
 
+    # The cub_device_* entry points wrap each underlying CUB / hipCUB
+    # device-API call in CUPY_CUB_TRY (see cupy/cuda/cupy_cub.cu), which
+    # throws std::runtime_error on a non-success cudaError_t / hipError_t.
+    # Mark every declaration 'except +' so Cython 3.x catches the C++
+    # exception across the C boundary, reacquires the GIL, and re-raises
+    # it as a Python RuntimeError instead of letting it propagate as a
+    # noexcept violation (which would call std::terminate() and SIGABRT
+    # the interpreter).
+
     void cub_device_reduce(void*, size_t&, void*, void*, int, Stream_t,
-                           int, int)
+                           int, int) except +
     void cub_device_segmented_reduce(void*, size_t&, void*, void*, int, int,
-                                     Stream_t, int, int)
-    void cub_device_scan(void*, size_t&, void*, void*, int, Stream_t, int, int)
+                                     Stream_t, int, int) except +
+    void cub_device_scan(void*, size_t&, void*, void*, int, Stream_t,
+                         int, int) except +
     void cub_device_histogram_range(void*, size_t&, void*, void*, int, void*,
-                                    size_t, Stream_t, int)
+                                    size_t, Stream_t, int) except +
     void cub_device_histogram_even(void*, size_t&, void*, void*, int, int, int,
-                                   size_t, Stream_t, int)
+                                   size_t, Stream_t, int) except +
     size_t cub_device_reduce_get_workspace_size(void*, void*, int, Stream_t,
-                                                int, int)
+                                                int, int) except +
     size_t cub_device_segmented_reduce_get_workspace_size(
-        void*, void*, int, int, Stream_t, int, int)
+        void*, void*, int, int, Stream_t, int, int) except +
     size_t cub_device_scan_get_workspace_size(
-        void*, void*, int, Stream_t, int, int)
+        void*, void*, int, Stream_t, int, int) except +
     size_t cub_device_histogram_range_get_workspace_size(
-        void*, void*, int, void*, size_t, Stream_t, int)
+        void*, void*, int, void*, size_t, Stream_t, int) except +
     size_t cub_device_histogram_even_get_workspace_size(
-        void*, void*, int, int, int, size_t, Stream_t, int)
+        void*, void*, int, int, int, size_t, Stream_t, int) except +
 
     # Build-time version
     int CUPY_CUB_VERSION_CODE
