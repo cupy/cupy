@@ -291,27 +291,17 @@ class TestCsrMatrix:
         ]
         numpy.testing.assert_allclose(m.toarray(), expect)
 
-    @testing.with_requires('scipy>=1.14')
+    @testing.with_requires('scipy')
     def test_str(self):
-        dtype_name = numpy.dtype(self.dtype).name
-        if numpy.dtype(self.dtype).kind == 'f':
-            expect = f'''<Compressed Sparse Row sparse matrix of dtype '{dtype_name}'
-\twith 4 stored elements and shape (3, 4)>
-  Coords\tValues
-  (0, 0)\t0.0
-  (0, 1)\t1.0
-  (1, 3)\t2.0
-  (2, 2)\t3.0'''  # NOQA
-        elif numpy.dtype(self.dtype).kind == 'c':
-            expect = f'''<Compressed Sparse Row sparse matrix of dtype '{dtype_name}'
-\twith 4 stored elements and shape (3, 4)>
-  Coords\tValues
-  (0, 0)\t0j
-  (0, 1)\t(1+0j)
-  (1, 3)\t(2+0j)
-  (2, 2)\t(3+0j)'''  # NOQA
-
-        assert str(self.m) == expect
+        # CuPy delegates ``__str__`` to ``str(self.get())`` so the output
+        # always matches the installed scipy's format.  Sanity-check the
+        # key repr fields explicitly so we'd notice if the delegation
+        # silently broke.
+        s = str(self.m)
+        assert 'Compressed Sparse Row' in s
+        assert 'sparse matrix' in s
+        assert str(self.m.shape) in s
+        assert s == str(self.m.get())
 
     def test_toarray(self):
         m = self.m.toarray()
@@ -524,7 +514,7 @@ class TestCsrMatrixScipyComparison:
             with pytest.raises(TypeError):
                 len(m)
 
-    @testing.with_requires('scipy>=1.4.0')
+    @testing.with_requires('scipy')
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_iter(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
@@ -568,12 +558,6 @@ class TestCsrMatrixScipyComparison:
             with pytest.raises(ValueError):
                 m.toarray(order='#')
 
-    @testing.with_requires('scipy<1.14')
-    @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_A(self, xp, sp):
-        m = self.make(xp, sp, self.dtype)
-        return m.A
-
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocoo(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
@@ -615,13 +599,13 @@ class TestCsrMatrixScipyComparison:
         return n
 
     # dot
-    @testing.with_requires('scipy!=1.8.0')
+    @testing.with_requires('scipy')
     @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_dot_scalar(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         return m.dot(2.0)
 
-    @testing.with_requires('scipy!=1.8.0')
+    @testing.with_requires('scipy')
     @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_dot_numpy_scalar(self, xp, sp):
         m = _make(xp, sp, self.dtype)
@@ -654,7 +638,7 @@ class TestCsrMatrixScipyComparison:
         x = _make3(xp, sp, self.dtype).tocoo()
         return m.dot(x)
 
-    @testing.with_requires('scipy>=1.8.0rc1')
+    @testing.with_requires('scipy')
     def test_dot_zero_dim(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             m = self.make(xp, sp, self.dtype)
@@ -954,10 +938,7 @@ class TestCsrMatrixScipyComparison:
                 x * m
 
     def test_rmul_unsupported(self):
-        if (
-            numpy.lib.NumpyVersion(scipy.__version__) >= '1.8.0rc1' and
-            self.make_method not in ['_make_empty', '_make_shape']
-        ):
+        if self.make_method not in ['_make_empty', '_make_shape']:
             pytest.xfail('See scipy/15210')
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             m = self.make(xp, sp, self.dtype)
@@ -1044,19 +1025,11 @@ class TestCsrMatrixScipyComparison:
         assert 2 == len(M.indices)  # unaffected content
         return M
 
-    @testing.with_requires('scipy>1.6.0')
+    @testing.with_requires('scipy')
     @testing.numpy_cupy_equal(sp_name='sp')
     def test_has_sorted_indices(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         return m.has_sorted_indices
-
-    # TODO(asi1024): Remove test after the fixed version is released.
-    # https://github.com/scipy/scipy/pull/13426
-    @testing.with_requires('scipy<=1.6.0')
-    @testing.numpy_cupy_equal(sp_name='sp')
-    def test_has_sorted_indices_for_old_scipy(self, xp, sp):
-        m = self.make(xp, sp, self.dtype)
-        return bool(m.has_sorted_indices)
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_has_sorted_indices2(self, xp, sp):
@@ -1244,21 +1217,21 @@ class TestCsrMatrixScipyComparison:
         y = m / xp.array(self._make_scalar(dtype))
         return y.toarray()
 
-    @testing.with_requires('scipy>=1.11')
+    @testing.with_requires('scipy')
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_divide_dense_row(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         x = xp.arange(4, dtype=self.dtype)
         return m / x
 
-    @testing.with_requires('scipy>=1.11')
+    @testing.with_requires('scipy')
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_divide_dense_col(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         x = xp.arange(3, dtype=self.dtype).reshape(3, 1)
         return m / x
 
-    @testing.with_requires('scipy>=1.11')
+    @testing.with_requires('scipy')
     @testing.numpy_cupy_allclose(sp_name='sp', rtol=2e-7)
     def test_divide_dense_matrix(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
@@ -1324,7 +1297,7 @@ class TestCsrMatrixPowScipyComparison:
             with pytest.raises(ValueError):
                 m ** 1.5
 
-    @testing.with_requires('scipy>=1.12.0rc1')
+    @testing.with_requires('scipy')
     def test_pow_list(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             m = _make_square(xp, sp, self.dtype)
@@ -1413,7 +1386,7 @@ class TestCsrMatrixScipyCompressed:
     'axis': [None, -2, -1, 0, 1],
     'dense': [False, True],  # means a sparse matrix but all elements filled
 }))
-@testing.with_requires('scipy>=0.19.0')
+@testing.with_requires('scipy')
 class TestCsrMatrixScipyCompressedMinMax:
     def _make_data_min(self, xp, sp, dense=False):
         dm_data = testing.shaped_random((10, 20), xp=xp, scale=1.0)
@@ -1649,7 +1622,7 @@ class TestIsspmatrixCsr:
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, cupy.complex64, cupy.complex128],
 }))
-@testing.with_requires('scipy>=1.4.0')
+@testing.with_requires('scipy')
 class TestCsrMatrixGetitem:
 
     @testing.numpy_cupy_equal(sp_name='sp')
@@ -1728,8 +1701,6 @@ class TestCsrMatrixGetitem:
     def test_getitem_slice_negative(self, xp, sp):
         return _make(xp, sp, self.dtype)[-2:-1]
 
-    # SciPy prior to 1.4 has bugs where either an IndexError is raised or a
-    # segfault occurs instead of returning an empty slice.
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_getitem_slice_start_larger_than_stop(self, xp, sp):
         return _make(xp, sp, self.dtype)[3:2]
@@ -1748,7 +1719,7 @@ class TestCsrMatrixGetitem:
         return _make(xp, sp, self.dtype)[slice(None, None, None)]
 
     @testing.numpy_cupy_allclose(sp_name='sp')
-    @testing.with_requires('scipy>=1.9.3')
+    @testing.with_requires('scipy')
     def test_getitem_rowslice_negative_stop(self, xp, sp):
         # This test is adapted from Scipy
         return _make(xp, sp, self.dtype)[slice(1, -2, 2)]
@@ -1785,7 +1756,7 @@ class TestCsrMatrixGetitem:
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, cupy.complex64, cupy.complex128],
 }))
-@testing.with_requires('scipy>=1.4.0')
+@testing.with_requires('scipy')
 class TestCsrMatrixGetitem2:
 
     @testing.numpy_cupy_allclose(sp_name='sp')
@@ -1926,7 +1897,7 @@ class TestCsrMatrixMaximumMinimum:
     'shape': [(6, 15), (15, 6)],
     'opt': ['_eq_', '_ne_', '_lt_', '_gt_', '_le_', '_ge_'],
 }))
-@testing.with_requires('scipy>=1.2')
+@testing.with_requires('scipy')
 class TestCsrMatrixComparison:
     nz_rate = 0.3
 
@@ -2091,7 +2062,7 @@ class TestCsrMatrixComparison:
 @testing.parameterize(*testing.product({
     'shape': [(8, 5), (5, 5), (5, 8)],
 }))
-@testing.with_requires('scipy>=1.5.0')
+@testing.with_requires('scipy')
 class TestCsrMatrixDiagonal:
     density = 0.5
 
@@ -2150,3 +2121,76 @@ class TestCsrMatrixDiagonal:
                 scipy_a.setdiag(x, k=k)
             with pytest.raises(ValueError):
                 cupyx_a.setdiag(x, k=k)
+
+
+class TestSetitemLargeNNZ:
+    """__setitem__ on matrices with nnz > 2**24.
+
+    Regression test for a float32 precision bug in _set_many
+    and _zero_many: the offset-lookup trick uses
+    arange(nnz, dtype=float) as unique position markers, but
+    float32 only has 24 bits of mantissa so consecutive values
+    collide for nnz > 2**24.  This causes __setitem__ to write
+    to the wrong position (data corruption).
+    """
+
+    @testing.slow
+    def test_setitem_large_nnz_writes_correct_position(self):
+        # Diagonal matrix with nnz = 2**24 + 10.
+        # Set the last diagonal entry to 99.0 and verify it
+        # lands in the right place (not at a neighbor).
+        N = 2**24 + 10
+        data = cupy.ones(N, dtype=cupy.float64)
+        indices = cupy.arange(N, dtype=cupy.int32)
+        indptr = cupy.arange(N + 1, dtype=cupy.int32)
+        m = sparse.csr_matrix(
+            (data, indices, indptr), shape=(N, N))
+
+        m[N - 1, N - 1] = 99.0
+        assert float(m[N - 1, N - 1]) == pytest.approx(99.0)
+
+    @testing.slow
+    def test_setitem_large_nnz_no_neighbor_corruption(self):
+        # Same setup as above, but verify the neighbor is
+        # NOT corrupted by the write.
+        N = 2**24 + 10
+        data = cupy.ones(N, dtype=cupy.float64)
+        indices = cupy.arange(N, dtype=cupy.int32)
+        indptr = cupy.arange(N + 1, dtype=cupy.int32)
+        m = sparse.csr_matrix(
+            (data, indices, indptr), shape=(N, N))
+
+        m[N - 1, N - 1] = 99.0
+        assert float(m[N - 2, N - 2]) == pytest.approx(1.0)
+
+    @testing.slow
+    def test_setitem_large_nnz_csc(self):
+        # Same bug applies to CSC (_set_many is in _compressed.py).
+        N = 2**24 + 10
+        data = cupy.ones(N, dtype=cupy.float64)
+        indices = cupy.arange(N, dtype=cupy.int32)
+        indptr = cupy.arange(N + 1, dtype=cupy.int32)
+        m = sparse.csc_matrix(
+            (data, indices, indptr), shape=(N, N))
+
+        m[N - 1, N - 1] = 99.0
+        assert float(m[N - 1, N - 1]) == pytest.approx(99.0)
+        assert float(m[N - 2, N - 2]) == pytest.approx(1.0)
+
+    @testing.slow
+    def test_setitem_large_nnz_zero_existing(self):
+        # _zero_many uses the same float lookup trick.
+        # Setting an existing entry to 0 must write to the
+        # correct position, not a neighbor.
+        N = 2**24 + 10
+        data = cupy.ones(N, dtype=cupy.float64)
+        indices = cupy.arange(N, dtype=cupy.int32)
+        indptr = cupy.arange(N + 1, dtype=cupy.int32)
+        m = sparse.csr_matrix(
+            (data, indices, indptr), shape=(N, N))
+
+        m[N - 1, N - 1] = 0.0
+        # Structural zero: nnz doesn't change (explicit zero stored)
+        # but the value at (N-1, N-1) must be 0.
+        assert float(m[N - 1, N - 1]) == pytest.approx(0.0)
+        assert float(m[N - 2, N - 2]) == pytest.approx(1.0)

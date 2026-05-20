@@ -21,15 +21,15 @@ class _TestBase:
     def test_ndtri(self):
         self.check_unary_linspace0_1('ndtri')
 
-    @testing.with_requires("scipy>=1.14")
+    @testing.with_requires("scipy")
     def test_logit(self):
         self.check_unary_lower_precision('logit')
 
-    @testing.with_requires("scipy>=1.14")
+    @testing.with_requires("scipy")
     def test_expit(self):
         self.check_unary_lower_precision('expit')
 
-    @testing.with_requires("scipy>=1.14")
+    @testing.with_requires("scipy")
     def test_log_expit(self):
         self.check_unary_lower_precision('log_expit')
 
@@ -237,12 +237,11 @@ class TestThreeArgumentDistributions(_TestDistributionsBase):
         x = x[xp.newaxis, xp.newaxis, :]
         return func(a, b, x)
 
-    # omit test with scipy < 1.5 due to change in ufunc type signatures
     @pytest.mark.parametrize('function', ['bdtr', 'bdtrc', 'bdtri'])
     @testing.for_float_dtypes()
     @testing.for_signed_dtypes(name='int_dtype')
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
-    @testing.with_requires('scipy>=1.5.0')
+    @testing.with_requires('scipy')
     @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
                         reason="avoid failures observed on HIP")
     def test_binomdist_linspace(self, xp, scp, function, dtype, int_dtype):

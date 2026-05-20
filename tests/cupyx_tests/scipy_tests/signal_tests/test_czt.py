@@ -69,7 +69,7 @@ def _gen_random_signal():
     yield from lengths
 
 
-@testing.with_requires("scipy >= 1.8.0")
+@testing.with_requires("scipy")
 class Test1D:
 
     @pytest.mark.parametrize('func', zf_checks)
@@ -155,7 +155,7 @@ class Test1D:
         return scp.signal.czt(x)
 
 
-@testing.with_requires("scipy >= 1.8.0")
+@testing.with_requires("scipy")
 class TestErrors:
 
     @pytest.mark.parametrize('size', [0, -5, 3.5, 4.0])
@@ -197,7 +197,7 @@ class TestErrors:
             signal.zoom_fft(5, 0.5)
 
 
-@testing.with_requires("scipy >= 1.8.0")
+@testing.with_requires("scipy")
 class TestCZTPoints:
 
     @pytest.mark.parametrize("N", [1, 2, 3, 8, 11, 100, 101, 10007])
@@ -221,7 +221,7 @@ class TestCZTPoints:
                 scp.signal.czt_points(11, w=2))
 
 
-@testing.with_requires("scipy >= 1.8.0")
+@testing.with_requires("scipy")
 @pytest.mark.slow
 def test_czt_vs_fft():
     cupy.random.seed(123)

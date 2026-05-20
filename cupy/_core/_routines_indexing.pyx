@@ -29,8 +29,16 @@ cdef _ndarray_base _ndarray_getitem(_ndarray_base self, slices):
     cdef list slice_list
     cdef _ndarray_base a
 
-    if isinstance(slices, str) and self.dtype.fields is not None:
-        return _getitem_fields(self, slices)
+    # TODO: Use NumPy C-API to fast-path this.
+    if self.dtype.fields is not None:
+        # The array has fields, check whether this may be field access
+        if (
+            isinstance(slices, str) or (
+                isinstance(slices, list) and
+                all(isinstance(s, str) for s in slices)
+            )
+        ):
+            return _getitem_fields(self, slices)
 
     slice_list = _prepare_slice_list(slices)
     a, adv = _view_getitem(self, slice_list)
@@ -52,11 +60,17 @@ cdef _ndarray_setitem(_ndarray_base self, slices, value):
     if isinstance(value, _ndarray_base):
         value = _squeeze_leading_unit_dims(value)
 
-    if isinstance(slices, str) and self.dtype.fields is not None:
-        # TODO: This is kinda right, but not quite due to finalization
-        # for subclasses.
-        self = _getitem_fields(self, slices)
-        slices = ...  # Need to assign the full thing as if an Ellipsis
+    # TODO: Use NumPy C-API to fast-path this.
+    if self.dtype.fields is not None:
+        # The array has fields, check whether this may be field access
+        if (
+            isinstance(slices, str) or (
+                isinstance(slices, list) and
+                all(isinstance(s, str) for s in slices)
+            )
+        ):
+            self = _getitem_fields(self, slices)
+            slices = ...  # Need to assign the full thing as if an Ellipsis
 
     _scatter_op(self, slices, value, 'update')
 
@@ -925,15 +939,18 @@ cdef _scatter_op_single(
         _scatter_update_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
     elif op == 'add':
-        # There is constraints on types because atomicAdd() in CUDA 7.5
-        # only supports int32, uint32, uint64, and float32.
+        # CUDA natively supports atomicAdd for int32, uint32, uint64,
+        # float32, float64.  CuPy's atomics.cuh provides an int64
+        # (long long) overload via reinterpret_cast to unsigned long long.
         if not issubclass(v.dtype.type,
-                          (numpy.int32, numpy.float16, numpy.float32,
-                           numpy.float64, numpy.uint32, numpy.uint64,
-                           numpy.intc, numpy.uintc, numpy.ulonglong)):
+                          (numpy.int32, numpy.int64,
+                           numpy.float16, numpy.float32, numpy.float64,
+                           numpy.uint32, numpy.uint64,
+                           numpy.intc, numpy.uintc,
+                           numpy.longlong, numpy.ulonglong)):
             raise TypeError(
-                'cupy.add.at only supports int32, float16, float32, float64, '
-                'uint32, uint64, as data type')
+                'cupy.add.at only supports int32, int64, float16, float32, '
+                'float64, uint32, uint64 as data type')
         _scatter_add_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
     elif op == 'sub':
@@ -946,22 +963,26 @@ cdef _scatter_op_single(
             v, indices, cdim, rdim, adim, a.reduced_view())
     elif op == 'max':
         if not issubclass(v.dtype.type,
-                          (numpy.int32, numpy.float32, numpy.float64,
+                          (numpy.int32, numpy.int64,
+                           numpy.float32, numpy.float64,
                            numpy.uint32, numpy.uint64,
-                           numpy.intc, numpy.uintc, numpy.ulonglong)):
+                           numpy.intc, numpy.uintc,
+                           numpy.longlong, numpy.ulonglong)):
             raise TypeError(
-                'cupy.maximum.at only supports int32, float32, float64, '
-                'uint32, uint64 as data type')
+                'cupy.maximum.at only supports int32, int64, float32, '
+                'float64, uint32, uint64 as data type')
         _scatter_max_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
     elif op == 'min':
         if not issubclass(v.dtype.type,
-                          (numpy.int32, numpy.float32, numpy.float64,
+                          (numpy.int32, numpy.int64,
+                           numpy.float32, numpy.float64,
                            numpy.uint32, numpy.uint64,
-                           numpy.intc, numpy.uintc, numpy.ulonglong)):
+                           numpy.intc, numpy.uintc,
+                           numpy.longlong, numpy.ulonglong)):
             raise TypeError(
-                'cupy.minimum.at only supports int32, float32, float64, '
-                'uint32, uint64 as data type')
+                'cupy.minimum.at only supports int32, int64, float32, '
+                'float64, uint32, uint64 as data type')
         _scatter_min_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
     elif op == 'and':
@@ -1198,8 +1219,15 @@ cdef _ndarray_base _getitem_multiple(
     return _take(a, reduced_idx, start, stop)
 
 
-cdef _ndarray_base _getitem_fields(_ndarray_base a, str name):
+cdef _ndarray_base _getitem_fields(_ndarray_base a, slices):
+    cdef str name
     cdef _ndarray_base v
+    if isinstance(slices, list):
+        new_dtype = a.dtype[slices]
+        return a.view(new_dtype)
+
+    # Otherwise, we got a single field name.
+    name = slices
     try:
         new_dtype, offset, *_ = a.dtype.fields[name]
     except KeyError:

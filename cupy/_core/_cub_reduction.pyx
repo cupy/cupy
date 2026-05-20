@@ -60,7 +60,7 @@ cdef function.Function _create_cub_reduction_function(
 
     cdef str module_code = _get_cub_header_include()
     module_code += '''
-${type_headers}${type_preamble}
+${type_decls}${type_preamble}
 ${preamble}
 
 typedef ${reduce_type} _type_reduce;
@@ -207,14 +207,9 @@ __global__ void ${name}(${params}) {
   }
 }
 '''
-    type_headers = set()
-    params = _get_cub_kernel_params(params, arginfos, type_headers)
-    type_preambles = type_map.get_typedef_code(type_headers)
-
-    if not type_headers:
-        type_headers = ''
-    else:
-        type_headers = '\n'.join(sorted(type_headers)) + "\n\n"
+    type_decls = set()
+    params = _get_cub_kernel_params(params, arginfos, type_decls)
+    type_preambles = type_map.get_typedef_code(type_decls)
 
     module_code = string.Template(module_code).substitute(
         name=name,
@@ -222,7 +217,7 @@ __global__ void ${name}(${params}) {
         items_per_thread=items_per_thread,
         reduce_type=reduce_type,
         params=params,
-        type_headers=type_headers,
+        type_decls=_scalar.format_type_decls(type_decls),
         identity=identity,
         reduce_expr=reduce_expr,
         pre_map_expr=pre_map_expr,
@@ -246,8 +241,7 @@ def _SimpleCubReductionKernel_get_cached_function(
         map_expr, reduce_expr, post_map_expr, reduce_type,
         params, arginfos, _kernel._TypeMap type_map,
         name, block_size, identity, preamble,
-        options, cub_params):
-    items_per_thread = cub_params[0]
+        options, items_per_thread):
     name = name.replace('cupy_', 'cupy_cub_')
     name = name.replace('cupyx_', 'cupyx_cub_')
     return _create_cub_reduction_function(
@@ -258,8 +252,6 @@ def _SimpleCubReductionKernel_get_cached_function(
 
 
 cdef str _cub_path = _environment.get_cub_path()
-cdef str _nvcc_path = (
-    _environment.get_nvcc_path() if not runtime._is_hip_environment else None)
 cdef str _rocm_path = _environment.get_rocm_path()
 cdef str _hipcc_path = _environment.get_hipcc_path()
 cdef str _cub_header = None
@@ -349,9 +341,10 @@ cpdef inline tuple _can_use_cub_block_reduction(
         if in_arr.size // contiguous_size > 0x7fffffff:
             return None
 
-    # rare event (mainly for conda-forge users): nvcc is not found!
+    # CUB headers must be available (always true for CUDA builds since CUB
+    # is bundled; on ROCm, hipCUB and hipcc must be present).
     if not runtime._is_hip_environment:
-        if _nvcc_path is None:
+        if _cub_path is None:
             return None
     else:
         if _hipcc_path is None:
@@ -361,7 +354,7 @@ cpdef inline tuple _can_use_cub_block_reduction(
 
 
 # similar to cupy._core._kernel._get_kernel_params()
-cdef str _get_cub_kernel_params(tuple params, tuple arginfos, type_headers):
+cdef str _get_cub_kernel_params(tuple params, tuple arginfos, type_decls):
     cdef _kernel.ParameterInfo p
     cdef _kernel._ArgInfo arginfo
     cdef lst = []
@@ -375,7 +368,7 @@ cdef str _get_cub_kernel_params(tuple params, tuple arginfos, type_headers):
             c_type = 'const void*' if p.is_const else 'void*'
         else:
             # for segment size and array size
-            c_type = arginfo.get_param_c_type(p, type_headers)
+            c_type = arginfo.get_param_c_type(p, type_decls)
         lst.append('{} {}'.format(c_type, c_name))
     return ', '.join(lst)
 
@@ -435,7 +428,6 @@ cdef inline void _cub_two_pass_launch(
     cdef memory.MemoryPointer memptr
     cdef str post_map_expr1, post_map_expr2, f
     cdef list inout_args
-    cdef tuple cub_params
     cdef size_t gridx, blockx
     cdef _ndarray_base in_arr
 
@@ -454,7 +446,6 @@ cdef inline void _cub_two_pass_launch(
     inout_args = [in_args[0], out_args[0],
                   _cub_convert_to_c_scalar(segment_size, contiguous_size),
                   _cub_convert_to_c_scalar(segment_size, segment_size)]
-    cub_params = (items_per_thread,)
 
     if 'mean' in name:
         post_map_expr1 = post_map_expr.replace('_in_ind.size()', '1.0')
@@ -480,7 +471,7 @@ cdef inline void _cub_two_pass_launch(
         _kernel._get_arginfos(inout_args),
         type_map,
         name, block_size, identity, preamble,
-        ('-DFIRST_PASS=1',), cub_params)
+        ('-DFIRST_PASS=1',), items_per_thread)
 
     # Kernel arguments passed to the __global__ function.
     gridx = <size_t>(out_block_num * block_size)
@@ -514,7 +505,7 @@ cdef inline void _cub_two_pass_launch(
         _kernel._get_arginfos(inout_args),
         type_map,
         name, block_size, identity, preamble,
-        ('-DSECOND_PASS=1',), cub_params)
+        ('-DSECOND_PASS=1',), items_per_thread)
 
     # Kernel arguments passed to the __global__ function.
     gridx = <size_t>(out_block_num * block_size)
@@ -557,7 +548,7 @@ cdef inline void _launch_cub(
             map_expr, reduce_expr, post_map_expr, reduce_type,
             params, arginfos, type_map,
             self.name, block_size, self.identity, self.preamble,
-            (), cub_params)
+            (), items_per_thread)
 
         func.linear_launch(
             out_block_num * block_size, inout_args, 0, block_size, stream)
