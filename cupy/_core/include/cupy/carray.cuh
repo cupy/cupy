@@ -225,13 +225,14 @@ public:
   }
 };
 
-template <typename T, int _ndim, bool _c_contiguous=false, bool _use_32bit_indexing=false>
+template <typename T, int _ndim, bool _c_contiguous=false, bool _use_32bit_indexing=false, int _core_ndim=0>
 class CArray {
 public:
   static const int ndim = _ndim;
   static const bool c_contiguous = _c_contiguous;
   typedef typename cupy::type_traits::conditional<_use_32bit_indexing, int, ptrdiff_t>::type index_t;
   typedef typename cupy::type_traits::conditional<_c_contiguous, T*, CArrayIterator<T, index_t> >::type iterator;
+  static const int core_ndim = _core_ndim;
 
 private:
   T* data_;
@@ -264,7 +265,7 @@ public:
       this->shape_[i] = shape[i];
       this->strides_[i] = strides[i];
     }
-  } 
+  }
 
 #if __cplusplus >= 201103 || (defined(_MSC_VER) && _MSC_VER >= 1900)
   template <typename Int, typename U=T>
@@ -344,6 +345,27 @@ public:
     Int idx[ndim];
     memcpy(idx, idx_.begin(), ndim*sizeof(Int));
     return this->operator[](idx);
+  }
+
+  template <typename Int, int C = _core_ndim>
+  __device__
+  typename cupy::type_traits::enable_if<(C > 0), CArray<T, C, _c_contiguous, _use_32bit_indexing, 0> >::type
+  operator[](const Int (&idx)[_ndim - C]) const {
+    // overload for case _core_ndim > 0. Indexing yields CArray for a core slice.
+    constexpr int batch_ndim = _ndim - C;
+    index_t diff = 0;
+    for (int dim = 0; dim < batch_ndim; ++dim) {
+      diff += static_cast<index_t>(strides_[dim]) * static_cast<index_t>(idx[dim]);
+    }
+
+    const char* ptr = reinterpret_cast<const char*>(data_);
+    T* new_head = const_cast<T*>(reinterpret_cast<const T*>(ptr + diff));
+
+    return CArray<T, C, _c_contiguous, _use_32bit_indexing, 0>(
+        new_head,
+        this->shape_ + batch_ndim,
+        this->strides_ + batch_ndim
+    );
   }
 #endif
 
@@ -459,7 +481,7 @@ public:
 
 template <typename T, bool _use_32bit_indexing>
 
-class CArray<T, 0, true, _use_32bit_indexing> {
+class CArray<T, 0, true, _use_32bit_indexing, 0> {
 private:
   T* data_;
   ptrdiff_t size_;
@@ -469,7 +491,7 @@ public:
   typedef typename cupy::type_traits::conditional<_use_32bit_indexing, int, ptrdiff_t>::type index_t;
 
   __device__ CArray() : data_(NULL), size_(1) { }
-  
+
   __device__ explicit CArray(T* data) : data_(data), size_(1) { }
 
   template <typename Int>
@@ -571,7 +593,7 @@ public:
   }
 #endif
 
-  __device__ CIndexer() : size_(1) 
+  __device__ CIndexer() : size_(1)
   {
     memset(this->shape_, 0, sizeof(this->shape_));
     memset(this->index_, 0, sizeof(this->index_));
