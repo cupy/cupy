@@ -621,6 +621,9 @@ class TestAkima1D:
 
 
 @testing.with_requires("scipy")
+@pytest.mark.xfail(
+    runtime.is_hip, strict=False, raises=AssertionError,
+    reason='CubicSpline n>3 needs spsolve (no HIP backend)')
 class TestCubicSpline:
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=2e-14)
     @pytest.mark.parametrize('n', [2, 3, 8])    # 8 is x.size
@@ -751,6 +754,10 @@ class TestCubicSpline:
         return S(q)
 
 
+@pytest.mark.xfail(
+    runtime.is_hip, strict=False,
+    raises=(AssertionError, NotImplementedError),
+    reason='quadratic/cubic interp1d needs spsolve (no HIP backend)')
 class TestInterp1D:
 
     def setup_method(self):
