@@ -82,6 +82,13 @@ class TestSolve(unittest.TestCase):
         with cupyx.errstate(linalg='raise'):
             xp.linalg.solve(a, b)
 
+    @testing.with_requires('numpy>=2.4.3')
+    def test_solve_singular_empty__ignore_assert(self):
+        a = cupy.zeros((3, 3))  # singular
+        b = cupy.empty((3, 0))  # nrhs = 0
+        c = cupy.linalg.solve(a, b)
+        assert c.size == 0
+
     @testing.numpy_cupy_allclose()
     def test_solve_singular_empty__identity(self, xp):
         a = xp.eye(3)
