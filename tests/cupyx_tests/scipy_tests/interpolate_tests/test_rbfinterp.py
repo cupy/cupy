@@ -14,13 +14,8 @@ import cupyx.scipy.interpolate  # NOQA
 
 try:
     from scipy import interpolate  # NOQA
-except ImportError:
-    pass
-
-try:
     from scipy.stats.qmc import Halton
 except ImportError:
-    # qmc.Halton is only available in SciPy >= 1.70
     pass
 
 
@@ -102,7 +97,7 @@ def _is_conditionally_positive_definite(kernel, m, xp, scp):
 
 # Sorting the parametrize arguments is necessary to avoid a parallelization
 # issue described here: https://github.com/pytest-dev/pytest-xdist/issues/432.
-@testing.with_requires("scipy>=1.7.0")
+@testing.with_requires("scipy")
 @pytest.mark.skip(reason='conditionally posdef: skip for now')
 @testing.numpy_cupy_allclose(scipy_name='scp')
 @pytest.mark.parametrize('kernel', sorted(_AVAILABLE))
@@ -114,7 +109,7 @@ def test_conditionally_positive_definite(xp, scp, kernel):
     assert _is_conditionally_positive_definite(kernel, m, xp, scp)
 
 
-@testing.with_requires("scipy>=1.7.0")
+@testing.with_requires("scipy")
 class _TestRBFInterpolator:
     rtol = 5e-5
     atol = 5e-5
@@ -444,7 +439,7 @@ class _TestRBFInterpolator:
         testing.assert_array_equal(yitp1, yitp2)
 
 
-@testing.with_requires("scipy>=1.7.0")
+@testing.with_requires("scipy")
 class TestRBFInterpolatorNeighborsNone(_TestRBFInterpolator):
     def build(self, scp, *args, **kwargs):
         return scp.interpolate.RBFInterpolator(*args, **kwargs)

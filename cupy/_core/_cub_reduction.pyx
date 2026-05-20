@@ -60,7 +60,7 @@ cdef function.Function _create_cub_reduction_function(
 
     cdef str module_code = _get_cub_header_include()
     module_code += '''
-${type_headers}${type_preamble}
+${type_decls}${type_preamble}
 ${preamble}
 
 typedef ${reduce_type} _type_reduce;
@@ -207,14 +207,9 @@ __global__ void ${name}(${params}) {
   }
 }
 '''
-    type_headers = set()
-    params = _get_cub_kernel_params(params, arginfos, type_headers)
-    type_preambles = type_map.get_typedef_code(type_headers)
-
-    if not type_headers:
-        type_headers = ''
-    else:
-        type_headers = '\n'.join(sorted(type_headers)) + "\n\n"
+    type_decls = set()
+    params = _get_cub_kernel_params(params, arginfos, type_decls)
+    type_preambles = type_map.get_typedef_code(type_decls)
 
     module_code = string.Template(module_code).substitute(
         name=name,
@@ -222,7 +217,7 @@ __global__ void ${name}(${params}) {
         items_per_thread=items_per_thread,
         reduce_type=reduce_type,
         params=params,
-        type_headers=type_headers,
+        type_decls=_scalar.format_type_decls(type_decls),
         identity=identity,
         reduce_expr=reduce_expr,
         pre_map_expr=pre_map_expr,
@@ -257,8 +252,6 @@ def _SimpleCubReductionKernel_get_cached_function(
 
 
 cdef str _cub_path = _environment.get_cub_path()
-cdef str _nvcc_path = (
-    _environment.get_nvcc_path() if not runtime._is_hip_environment else None)
 cdef str _rocm_path = _environment.get_rocm_path()
 cdef str _hipcc_path = _environment.get_hipcc_path()
 cdef str _cub_header = None
@@ -348,9 +341,10 @@ cpdef inline tuple _can_use_cub_block_reduction(
         if in_arr.size // contiguous_size > 0x7fffffff:
             return None
 
-    # rare event (mainly for conda-forge users): nvcc is not found!
+    # CUB headers must be available (always true for CUDA builds since CUB
+    # is bundled; on ROCm, hipCUB and hipcc must be present).
     if not runtime._is_hip_environment:
-        if _nvcc_path is None:
+        if _cub_path is None:
             return None
     else:
         if _hipcc_path is None:
@@ -360,7 +354,7 @@ cpdef inline tuple _can_use_cub_block_reduction(
 
 
 # similar to cupy._core._kernel._get_kernel_params()
-cdef str _get_cub_kernel_params(tuple params, tuple arginfos, type_headers):
+cdef str _get_cub_kernel_params(tuple params, tuple arginfos, type_decls):
     cdef _kernel.ParameterInfo p
     cdef _kernel._ArgInfo arginfo
     cdef lst = []
@@ -374,7 +368,7 @@ cdef str _get_cub_kernel_params(tuple params, tuple arginfos, type_headers):
             c_type = 'const void*' if p.is_const else 'void*'
         else:
             # for segment size and array size
-            c_type = arginfo.get_param_c_type(p, type_headers)
+            c_type = arginfo.get_param_c_type(p, type_decls)
         lst.append('{} {}'.format(c_type, c_name))
     return ', '.join(lst)
 

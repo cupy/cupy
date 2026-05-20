@@ -78,17 +78,13 @@ cpdef str _full_mask_hex():
 cdef str _get_simple_elementwise_kernel_code(
         tuple params_, tuple arginfos, str operation, str name,
         _TypeMap type_map, str preamble, str loop_prep='', str after_loop=''):
-    type_headers = set()
-    params = _get_kernel_params(params_, arginfos, type_headers)
-    typedef_preamble = type_map.get_typedef_code(type_headers)
-    if not type_headers:
-        type_headers = ""
-    else:
-        type_headers = "\n".join(sorted(type_headers)) + "\n\n"
+    type_decls = set()
+    params = _get_kernel_params(params_, arginfos, type_decls)
+    typedef_preamble = type_map.get_typedef_code(type_decls)
 
     # No loop unrolling due to avoid 64-bit division
     module_code = string.Template('''
-    ${type_headers}${typedef_preamble}
+    ${type_decls}${typedef_preamble}
     ${preamble}
     extern "C" __global__ void ${name}(${params}) {
       ${loop_prep};
@@ -102,7 +98,7 @@ cdef str _get_simple_elementwise_kernel_code(
     ''').substitute(
         typedef_preamble=typedef_preamble,
         params=params,
-        type_headers=type_headers,
+        type_decls=_scalar.format_type_decls(type_decls),
         operation=operation,
         name=name,
         preamble=preamble,
@@ -234,7 +230,7 @@ cdef class _ArgInfo:
         ret._init(
             ARG_KIND_NDARRAY,
             type(arg),
-            arg.dtype.type,
+            arg.dtype,
             arg._shape.size(),
             arg._c_contiguous,
             arg._index_32_bits)
@@ -243,7 +239,7 @@ cdef class _ArgInfo:
     @staticmethod
     cdef _ArgInfo from_scalar(_scalar.CScalar arg):
         cdef _ArgInfo ret = _ArgInfo.__new__(_ArgInfo)
-        dtype = arg.get_numpy_type()
+        dtype = arg.descr
         ret._init(ARG_KIND_SCALAR, _scalar.CScalar, dtype, 0, True, True)
         return ret
 
@@ -312,26 +308,26 @@ cdef class _ArgInfo:
     cdef bint is_scalar(self) noexcept:
         return self.arg_kind == ARG_KIND_SCALAR
 
-    cdef str get_c_type(self, type_headers=None):
+    cdef str get_c_type(self, type_decls=None):
         # Returns the C type representation.
         if self.arg_kind == ARG_KIND_NDARRAY:
-            name = _get_typename(self.dtype, type_headers)
+            name = _get_typename(self.dtype, type_decls)
             name = 'CArray<%s, %d, %d, %d>' % (
                 name, self.ndim,
                 self.c_contiguous, self.index_32_bits)
             return name
         if self.arg_kind == ARG_KIND_SCALAR:
-            return _get_typename(self.dtype, type_headers)
+            return _get_typename(self.dtype, type_decls)
         if self.arg_kind == ARG_KIND_INDEXER:
             return 'CIndexer<%d, %d>' % (self.ndim, self.index_32_bits)
         if self.arg_kind == ARG_KIND_TEXTURE:
             return 'cudaTextureObject_t'
         assert False
 
-    cdef str get_param_c_type(self, ParameterInfo p, type_headers=None):
+    cdef str get_param_c_type(self, ParameterInfo p, type_decls=None):
         # Returns the C type representation in the global function's
         # parameter list.
-        cdef str ctyp = self.get_c_type(type_headers)
+        cdef str ctyp = self.get_c_type(type_decls)
         if p.is_const:
             return 'const ' + ctyp
         return ctyp
@@ -346,7 +342,7 @@ cdef tuple _get_arginfos(list args):
     return tuple([_ArgInfo.from_arg(a) for a in args])
 
 
-cdef str _get_kernel_params(tuple params, tuple arginfos, type_headers=None):
+cdef str _get_kernel_params(tuple params, tuple arginfos, type_decls=None):
     cdef ParameterInfo p
     cdef _ArgInfo arginfo
     cdef lst = []
@@ -355,7 +351,7 @@ cdef str _get_kernel_params(tuple params, tuple arginfos, type_headers=None):
     for i in range(len(params)):
         p = params[i]
         arginfo = arginfos[i]
-        arg = arginfo.get_param_c_type(p, type_headers)
+        arg = arginfo.get_param_c_type(p, type_decls)
         lst.append('{} {}'.format(arg, arginfo.get_c_var_name(p)))
 
     return ', '.join(lst)
@@ -484,9 +480,7 @@ cdef class ParameterInfo:
             self.ctype = t
         else:
             dtype = get_dtype(t)
-            self.dtype = dtype.type
-            if dtype.name != t:
-                raise ValueError('Wrong type %s' % t)
+            self.dtype = dtype
             self.ctype = _get_typename(self.dtype)
 
         for i in s[:-2]:
@@ -553,10 +547,10 @@ cdef class _TypeMap:
     def __str__(self):
         return '<_TypeMap {}>'.format(self._pairs)
 
-    cdef str get_typedef_code(self, type_headers=None):
+    cdef str get_typedef_code(self, type_decls=None):
         # Returns a code fragment of typedef statements used as preamble.
         return ''.join([
-            'typedef %s %s;\n' % (_get_typename(ctype2, type_headers), ctype1)
+            'typedef %s %s;\n' % (_get_typename(ctype2, type_decls), ctype1)
             for ctype1, ctype2 in self._pairs])
 
 
@@ -894,14 +888,14 @@ cdef class ElementwiseKernel:
         in_ndarray_types = []
         for a in in_args:
             if isinstance(a, _ndarray_base):
-                t = a.dtype.type
+                t = a.dtype
             elif isinstance(a, texture.TextureObject):
                 t = 'cudaTextureObject_t'
             else:
                 t = None
             in_ndarray_types.append(t)
         in_ndarray_types = tuple(in_ndarray_types)
-        out_ndarray_types = tuple([a.dtype.type for a in out_args])
+        out_ndarray_types = tuple([a.dtype for a in out_args])
 
         in_types, out_types, type_map = self._decide_params_type(
             in_ndarray_types, out_ndarray_types)
@@ -970,7 +964,7 @@ cdef class ElementwiseKernel:
         in_types = []
         for x in arginfos:
             if x.type is cupy.ndarray:
-                in_types.append(cupy.dtype(x.dtype).char)
+                in_types.append(cupy.dtype(x.dtype))
         in_types = tuple(in_types)
         if in_types not in self._cached_codes:
             code = _get_elementwise_kernel_code(
@@ -1106,13 +1100,7 @@ cdef function.Function _get_ufunc_kernel(
         loop_prep=loop_prep, after_loop='', options=("--std=c++17",))
 
 
-cdef dict _mst_unsigned_to_signed = {
-    i: (numpy.iinfo(j).max, (i, j))
-    for i, j in [(numpy.dtype(i).type, numpy.dtype(i.lower()).type)
-                 for i in "BHILQ"]}
-
-
-cdef inline int _get_kind_score(type kind) except -1:
+cdef inline int _get_kind_score(kind) except -1:
     if issubclass(kind, numpy.bool_):
         return 0
     if issubclass(kind, (numpy.integer, int)):
@@ -1148,7 +1136,7 @@ cdef inline bint _check_should_use_weak_scalar(
             kind = _get_kind_score(w_t)
             max_scalar_kind = max(max_scalar_kind, kind)
         else:
-            kind = _get_kind_score(in_t)
+            kind = _get_kind_score(in_t.type)  # kind score uses scalar type
             max_array_kind = max(max_array_kind, kind)
 
     all_scalars_or_arrays = max_scalar_kind == -1 or max_array_kind == -1
@@ -1284,7 +1272,7 @@ cdef class ufunc:
         # Note default behavior of casting is 'same_kind' on numpy>=1.10
         casting = kwargs.pop('casting', self._default_casting)
         if dtype is not None:
-            dtype = get_dtype(dtype).type
+            dtype = get_dtype(dtype)
         if kwargs:
             raise TypeError('Wrong arguments %s' % kwargs)
 
@@ -1381,8 +1369,10 @@ cdef class ufunc:
                 template = in_arg
                 break
 
+        core_in_dtypes, core_out_dtypes = op.resolve_dtypes(in_args, out_args)
+
         out_args = _get_out_args_from_optionals(
-            subtype, out_args, op.out_types, shape, casting, template)
+            subtype, out_args, core_out_dtypes, shape, casting, template)
         # inout_args may have included given outputs for broadcasting, replace:
         inout_args[len(in_args) + has_where:] = out_args
 
@@ -1394,7 +1384,7 @@ cdef class ufunc:
         if _contains_zero(shape):
             return ret
 
-        for i, t in enumerate(op.in_types):
+        for i, t in enumerate(core_in_dtypes):
             # If necessary, cast scalars here (deals with Python ints also)
             if type(inout_args[i]) is _scalar.CScalar:
                 (<_scalar.CScalar>inout_args[i]).apply_dtype(t)
@@ -1404,7 +1394,8 @@ cdef class ufunc:
         inout_args.append(indexer)
         arginfos = _get_arginfos(inout_args)
 
-        kern = self._get_ufunc_kernel(dev_id, op, arginfos, has_where)
+        kern = self._get_ufunc_kernel(
+            core_in_dtypes, core_out_dtypes, dev_id, op, arginfos, has_where)
 
         kern.linear_launch(indexer.size, inout_args)
         return ret
@@ -1416,7 +1407,7 @@ cdef class ufunc:
         cdef _ArgInfo arginfo
         inout_type_words = []
         for arginfo in arginfos:
-            dtype = str(numpy.dtype(arginfo.dtype))
+            dtype = numpy.dtype(arginfo.dtype).name  # TODO: better scheme!
             if arginfo.is_ndarray():
                 inout_type_words.append(dtype)
             elif arginfo.is_scalar():
@@ -1424,7 +1415,8 @@ cdef class ufunc:
         return '{}__{}'.format(name, '_'.join(inout_type_words))
 
     cdef function.Function _get_ufunc_kernel(
-            self, int dev_id, _Op op, tuple arginfos, bint has_where):
+            self, tuple in_dtypes, tuple out_dtypes,
+            int dev_id, _Op op, tuple arginfos, bint has_where):
         cdef function.Function kern
         key = (dev_id, op, arginfos, has_where)
         kern = self._kernel_memo.get(key, None)
@@ -1432,7 +1424,7 @@ cdef class ufunc:
             name = self._get_name_with_type(arginfos, has_where)
             params = self._params_with_where if has_where else self._params
             kern = _get_ufunc_kernel(
-                op.in_types, op.out_types, op.routine, arginfos, has_where,
+                in_dtypes, out_dtypes, op.routine, arginfos, has_where,
                 params, name, self._preamble, self._loop_prep)
             kern = self._kernel_memo.setdefault(key, kern)
         return kern
@@ -1541,7 +1533,7 @@ cdef class _Op:
 
     def __init__(
             self, tuple in_types, tuple out_types, object routine,
-            object error_func):
+            object error_func, object resolution_func):
         if error_func is None:
             assert routine is not None
         else:
@@ -1553,9 +1545,21 @@ cdef class _Op:
         self.routine = routine
         self.error_func = error_func
 
+        # Resolution func is typically None (non parametric dtypes) but can
+        # implement more complex logic.
+        # NOTE(seberg): Unlike NumPy, we currently have a more "raw"
+        # resolution function which is passed the original dtypes rather than
+        # preprocessed ones.
+        # NumPy normally already casts input dtypes to the loop types and we
+        # skip this. Because (a) it is a bit tricky and (b) it is actually in
+        # the way for structured. Maybe NumPy will allow this in the future...
+        self._resolution_func = resolution_func
+        self._in_dtypes = tuple([get_dtype(t) for t in in_types])
+        self._out_dtypes = tuple([get_dtype(t) for t in out_types])
+
     @staticmethod
     cdef _Op _from_type_and_routine_or_error_func(
-            typ, object routine, object error_func):
+            typ, object routine, object error_func, object resolution_func):
         # TODO(niboshi): Write type mapping specification.
         if isinstance(typ, str):
             types = typ.split('->')
@@ -1569,27 +1573,35 @@ cdef class _Op:
         else:
             raise TypeError("Expected string or list for typ identifier.")
 
-        in_types = tuple([get_dtype(t).type for t in in_types])
-        out_types = tuple([get_dtype(t).type for t in out_types])
-        return _Op(in_types, out_types, routine, error_func)
+        in_types = tuple([get_dtype(t) for t in in_types])
+        out_types = tuple([get_dtype(t) for t in out_types])
+        return _Op(in_types, out_types, routine, error_func, resolution_func)
 
     @staticmethod
-    cdef _Op from_type_and_routine(typ, routine):
-        return _Op._from_type_and_routine_or_error_func(typ, routine, None)
+    cdef _Op from_type_and_routine(typ, routine, resolution_func):
+        return _Op._from_type_and_routine_or_error_func(
+            typ, routine, None, resolution_func)
 
     @staticmethod
     cdef _Op from_type_and_error_func(typ, error_func):
-        return _Op._from_type_and_routine_or_error_func(typ, None, error_func)
+        return _Op._from_type_and_routine_or_error_func(
+            typ, None, error_func, None)
 
     cdef check_valid(self):
         if self.error_func is not None:
             self.error_func()
 
-    cpdef tuple get_in_dtypes(self):
-        return tuple([get_dtype(t) for t in self.in_types])
+    cpdef tuple resolve_dtypes(self, list in_args, list out_args):
+        # In most cases, this just returns the typical dtypes matching the
+        # the dtype kind (or DType class, as of now represented by the scalar).
+        # For parametric DTypes, more complex handling may be necessary and
+        # can be implemented by providing the resolver function.
+        if self._resolution_func is None:
+            return self._in_dtypes, self._out_dtypes
 
-    cpdef tuple get_out_dtypes(self):
-        return tuple([get_dtype(t) for t in self.out_types])
+        in_dtypes = [None if arg is None else arg.dtype for arg in in_args]
+        out_dtypes = [None if arg is None else arg.dtype for arg in out_args]
+        return self._resolution_func(self, tuple(in_dtypes), tuple(out_dtypes))
 
     def __repr__(self):
         # Just for debugging purposes.
@@ -1613,8 +1625,12 @@ cdef class _Ops:
     cdef _Ops from_tuples(object ops, routine):
         ops_ = []
         for t in ops:
+            resolution_func = None
             if isinstance(t, tuple):
-                typ, rt = t
+                typ, rt, *res_func = t
+                if res_func:
+                    resolution_func, = res_func
+
                 if rt is None:
                     rt = routine
                 elif isinstance(rt, tuple):
@@ -1624,6 +1640,7 @@ cdef class _Ops:
                         raise ValueError(
                             f"invalid op {t}, expected callable {rt}")
                     assert callable(rt)
+                    assert resolution_func is None  # can't error and resolve
                     ops_.append(_Op.from_type_and_error_func(typ, rt))
                     continue
             else:
@@ -1631,7 +1648,7 @@ cdef class _Ops:
                     raise ValueError(
                         f"invalid op {t}, expected string or list")
                 typ, rt = t, routine
-            ops_.append(_Op.from_type_and_routine(typ, rt))
+            ops_.append(_Op.from_type_and_routine(typ, rt, resolution_func))
         return _Ops(tuple(ops_))
 
     cpdef _Op guess_routine(
@@ -1646,13 +1663,12 @@ cdef class _Ops:
             in_types_l = []
             for a in in_args:
                 if type(a) is _scalar.CScalar:
-                    # .typeobj is the C-level type (as a PyTypeObject *)
-                    t = <object>((<_scalar.CScalar>a).descr.typeobj)
+                    t = (<_scalar.CScalar>a).descr
                     weak_t = (<_scalar.CScalar>a).weak_t
                     if weak_t is not False:
                         any_weak = True
                 elif isinstance(a, _ndarray_base):
-                    t = (<_ndarray_base>a).dtype.type
+                    t = (<_ndarray_base>a).dtype
                     weak_t = False
                 else:
                     raise RuntimeError(f"Need array or CScalar got {type(a)}")

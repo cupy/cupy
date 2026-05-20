@@ -39,7 +39,7 @@ IIR_KERNEL = r"""
 #include <cupy/math_constants.h>
 #include <cupy/carray.cuh>
 #include <cupy/complex.cuh>
-#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_headers?
+#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_decls?
 
 template<typename U, typename T>
 __global__ void compute_correction_factors(
@@ -195,7 +195,7 @@ IIR_SOS_KERNEL = r"""
 #include <cupy/math_constants.h>
 #include <cupy/carray.cuh>
 #include <cupy/complex.cuh>
-#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_headers?
+#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_decls?
 
 template<typename T>
 __global__ void pick_carries(
