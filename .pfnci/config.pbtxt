@@ -426,6 +426,24 @@ configs {
     command: ".pfnci/linux/main-flexci.sh cuda132.multi"
   }
 }
+# CUDA 13.x + Python 3.14 free-threaded | Linux
+configs {
+  key: "cupy.linux.cuda13x-py314t"
+  value {
+    requirement {
+      cpu: 8
+      memory: 60
+      disk: 30
+      gpu: 1
+    }
+    time_limit: {
+      seconds: 21600
+    }
+    environment_variables { key: "GPU" value: "1" }
+
+    command: ".pfnci/linux/main-flexci.sh cuda13x-py314t"
+  }
+}
 
 # CUDA 12.x + CUDA Python
 configs {

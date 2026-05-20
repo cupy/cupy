@@ -28,6 +28,15 @@ else:
     _skip_classes = unittest.SkipTest,
 
 
+_subsample_rng: random.Random | None = None
+
+# Set up a subsampling RNG to avoid tests from interfering with randomness.
+if int(os.environ.get('CUPY_TEST_RANDOM_SUBSAMPLE', '0')):
+    # Stabilize seed for `pytest-xdist` across workers:
+    seed = os.environ.get('_CUPY_TEST_SUBSAMPLE_SEED')
+    _subsample_rng = random.Random(None if seed is None else int(seed))
+
+
 def _format_exception(exc):
     if exc is None:
         return None
@@ -839,6 +848,9 @@ def for_dtypes(dtypes, name='dtype'):
     by passing the each element of ``dtypes`` to the named
     argument.
     """
+    if _subsample_rng is not None:
+        dtypes = _subsample_rng.sample(dtypes, 1 + len(dtypes) // 15)
+
     def decorator(impl):
         @_wraps_partial(impl, name)
         def test_func(*args, **kw):
@@ -1077,6 +1089,10 @@ def for_dtypes_combination(types, names=('dtype',), full=None):
         combination = [tuple(zip(names, typs)) for typs in zip(*ts)]
         # Remove duplicate entries
         combination = [dict(assoc_list) for assoc_list in set(combination)]
+
+    if _subsample_rng is not None:
+        combination = _subsample_rng.sample(
+            combination, 1 + len(combination) // 15)
 
     def decorator(impl):
         @_wraps_partial(impl, *names)

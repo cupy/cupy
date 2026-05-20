@@ -241,8 +241,7 @@ def _SimpleCubReductionKernel_get_cached_function(
         map_expr, reduce_expr, post_map_expr, reduce_type,
         params, arginfos, _kernel._TypeMap type_map,
         name, block_size, identity, preamble,
-        options, cub_params):
-    items_per_thread = cub_params[0]
+        options, items_per_thread):
     name = name.replace('cupy_', 'cupy_cub_')
     name = name.replace('cupyx_', 'cupyx_cub_')
     return _create_cub_reduction_function(
@@ -430,7 +429,6 @@ cdef inline void _cub_two_pass_launch(
     cdef memory.MemoryPointer memptr
     cdef str post_map_expr1, post_map_expr2, f
     cdef list inout_args
-    cdef tuple cub_params
     cdef size_t gridx, blockx
     cdef _ndarray_base in_arr
 
@@ -449,7 +447,6 @@ cdef inline void _cub_two_pass_launch(
     inout_args = [in_args[0], out_args[0],
                   _cub_convert_to_c_scalar(segment_size, contiguous_size),
                   _cub_convert_to_c_scalar(segment_size, segment_size)]
-    cub_params = (items_per_thread,)
 
     if 'mean' in name:
         post_map_expr1 = post_map_expr.replace('_in_ind.size()', '1.0')
@@ -475,7 +472,7 @@ cdef inline void _cub_two_pass_launch(
         _kernel._get_arginfos(inout_args),
         type_map,
         name, block_size, identity, preamble,
-        ('-DFIRST_PASS=1',), cub_params)
+        ('-DFIRST_PASS=1',), items_per_thread)
 
     # Kernel arguments passed to the __global__ function.
     gridx = <size_t>(out_block_num * block_size)
@@ -509,7 +506,7 @@ cdef inline void _cub_two_pass_launch(
         _kernel._get_arginfos(inout_args),
         type_map,
         name, block_size, identity, preamble,
-        ('-DSECOND_PASS=1',), cub_params)
+        ('-DSECOND_PASS=1',), items_per_thread)
 
     # Kernel arguments passed to the __global__ function.
     gridx = <size_t>(out_block_num * block_size)
@@ -552,7 +549,7 @@ cdef inline void _launch_cub(
             map_expr, reduce_expr, post_map_expr, reduce_type,
             params, arginfos, type_map,
             self.name, block_size, self.identity, self.preamble,
-            (), cub_params)
+            (), items_per_thread)
 
         func.linear_launch(
             out_block_num * block_size, inout_args, 0, block_size, stream)
