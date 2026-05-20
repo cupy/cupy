@@ -17,8 +17,14 @@ if [[ "${MARKER}" != "" ]]; then
     pytest_opts+=(-m "${MARKER}")
 fi
 
+if [[ -n "${CUPY_CI_PYTEST_EXTRA_OPTS:-}" ]]; then
+    # Intentionally split a space-separated option string into pytest args.
+    read -r -a extra_pytest_opts <<< "${CUPY_CI_PYTEST_EXTRA_OPTS}"
+    pytest_opts+=("${extra_pytest_opts[@]}")
+fi
+
 # TODO: support coverage reporting
-python3 -m pip install --user pytest-timeout pytest-xdist
+python3 -m pip install --user pytest-timeout pytest-xdist pytest-run-parallel
 
 pushd tests
 timeout --signal INT --kill-after 10 60 python3 -c 'import cupy; cupy.show_config(_full=True)'
