@@ -1246,3 +1246,86 @@ class TestTrapezoid:
         a = testing.shaped_arange((5,), xp, dtype)
         x = testing.shaped_arange((5,), xp, dtype)
         return xp.trapezoid(a, x=x, dx=0.1)
+
+
+@testing.with_requires('numpy>=2.1')
+@pytest.mark.parametrize('func', ['cumulative_sum', 'cumulative_prod'])
+class TestCumulativeSumProd:
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_1d(self, xp, dtype, func):
+        a = testing.shaped_arange((5,), xp, dtype)
+        return getattr(xp, func)(a)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-6, contiguous_check=False)
+    def test_axis(self, xp, dtype, func):
+        a = testing.shaped_arange((3, 4, 5), xp, dtype)
+        return getattr(xp, func)(a, axis=1)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_negative_axis(self, xp, dtype, func):
+        a = testing.shaped_arange((3, 4, 5), xp, dtype)
+        return getattr(xp, func)(a, axis=-1)
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_dtype(self, xp, dtype, func):
+        a = testing.shaped_arange((5,), xp, numpy.int16)
+        return getattr(xp, func)(a, dtype=dtype)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_1d_include_initial(self, xp, dtype, func):
+        a = testing.shaped_arange((5,), xp, dtype)
+        return getattr(xp, func)(a, include_initial=True)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-6, contiguous_check=False)
+    def test_axis_include_initial(self, xp, dtype, func):
+        a = testing.shaped_arange((3, 4, 5), xp, dtype)
+        return getattr(xp, func)(a, axis=1, include_initial=True)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_negative_axis_include_initial(self, xp, dtype, func):
+        a = testing.shaped_arange((3, 4, 5), xp, dtype)
+        return getattr(xp, func)(a, axis=-1, include_initial=True)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_out(self, xp, dtype, func):
+        a = testing.shaped_arange((3, 4, 5), xp, dtype)
+        out = xp.zeros((3, 4, 5), dtype=dtype)
+        getattr(xp, func)(a, axis=1, out=out)
+        return out
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_out_include_initial(self, xp, dtype, func):
+        a = testing.shaped_arange((3, 4, 5), xp, dtype)
+        out = xp.zeros((3, 5, 5), dtype=dtype)
+        getattr(xp, func)(a, axis=1, out=out, include_initial=True)
+        return out
+
+    @testing.for_all_dtypes()
+    def test_axis_none_requires_1d(self, dtype, func):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((3, 4), xp, dtype)
+            with pytest.raises(ValueError):
+                getattr(xp, func)(a)
+
+    @testing.for_all_dtypes()
+    def test_invalid_axis(self, dtype, func):
+        for xp in (numpy, cupy):
+            a = testing.shaped_arange((3, 4), xp, dtype)
+            with pytest.raises(AxisError):
+                getattr(xp, func)(a, axis=3)
+
+    def test_out_shape_mismatch(self, func):
+        a = testing.shaped_arange((3, 4), cupy, numpy.float32)
+        out = cupy.zeros((3, 5), dtype=numpy.float32)
+        with pytest.raises(ValueError):
+            getattr(cupy, func)(a, axis=1, out=out)
