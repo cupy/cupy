@@ -5,6 +5,9 @@ cdef class Flags:
     cdef readonly bint c_contiguous
     cdef readonly bint f_contiguous
     cdef readonly bint owndata
+    # NOTE(seberg): CuPy used a Python type previously allowing
+    # arbitray monkeypatching.  (one cupyx test was relying on this)
+    cdef dict __dict__
 
     @staticmethod
     cdef inline Flags _create(
