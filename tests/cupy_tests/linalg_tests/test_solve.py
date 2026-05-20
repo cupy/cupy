@@ -73,21 +73,17 @@ class TestSolve(unittest.TestCase):
     # TODO: replace above test_solve_singular_empty with test below after
     # bumping numpy baseline to 2.4 (https://github.com/cupy/cupy/issues/9838)
     @testing.with_requires('numpy>=2.4.3')
-    def test_solve_singular_empty__assert_raises(self):
-        for xp in (numpy, cupy):
-            a = xp.zeros((3, 3))  # singular
-            b = xp.empty((3, 0))  # nrhs = 0
-            with pytest.raises(numpy.linalg.LinAlgError):
-                if xp == cupy:
-                    # errstate is 'ignore' by default since enabling it causes
-                    # synchronization
-                    with cupyx.errstate(linalg='raise'):
-                        xp.linalg.solve(a, b)
-                else:
-                    xp.linalg.solve(a, b)
+    @testing.numpy_cupy_allclose(accept_error=numpy.linalg.LinAlgError)
+    def test_solve_singular_empty__assert_raises(self, xp):
+        a = xp.zeros((3, 3))  # singular
+        b = xp.empty((3, 0))  # nrhs = 0
+        # errstate is 'ignore' by default since enabling it causes
+        # synchronization
+        with cupyx.errstate(linalg='raise'):
+            xp.linalg.solve(a, b)
 
     @testing.numpy_cupy_allclose()
-    def test_solve_singular_identity(self, xp):
+    def test_solve_singular_empty__identity(self, xp):
         a = xp.eye(3)
         b = xp.empty((3, 0))  # nrhs = 0
         return xp.linalg.solve(a, b)
