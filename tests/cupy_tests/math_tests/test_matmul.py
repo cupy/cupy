@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import operator
 import unittest
+import warnings
 
 import numpy
 import pytest
@@ -335,6 +336,99 @@ class TestMatmulFp64ComputeTypes(_TestMatmulComputeTypes):
     def test_cupy_matmul(self, xp):
         x1, x2 = self.make_x1_x2(xp, self.shape_pair, self.dtype_pair)
         return xp.matmul(x1, x2)
+
+
+@testing.parameterize(
+    *testing.product({
+        'shape_pair': [
+            # k is a multiple of 4 (cuBLAS IMMA path)
+            ((32, 64), (64, 96)),
+            ((64, 32), (32, 96)),
+            # k is NOT a multiple of 4 (alignment guard -> CUDA kernel path)
+            ((32, 7), (7, 16)),
+            ((16, 9), (9, 32)),
+        ],
+    }))
+class TestMatmulInt8(unittest.TestCase):
+    """int8 matmul correctness against NumPy across aligned and unaligned k."""
+
+    def setUp(self):
+        if cupy.cuda.runtime.is_hip:
+            pytest.skip('int8 cublasGemmEx path is NVIDIA-only')
+        if int(cupy.cuda.Device().compute_capability) < 61:
+            pytest.skip(
+                'CUBLAS_COMPUTE_32I requires compute capability >= 6.1')
+
+    @testing.numpy_cupy_array_equal()
+    def test_operator_matmul(self, xp):
+        rng = numpy.random.default_rng(seed=42)
+        m, k = self.shape_pair[0]
+        _, n = self.shape_pair[1]
+        x1 = xp.asarray(rng.integers(-10, 10, (m, k), dtype=numpy.int8))
+        x2 = xp.asarray(rng.integers(-10, 10, (k, n), dtype=numpy.int8))
+        return x1 @ x2
+
+    @testing.numpy_cupy_array_equal()
+    def test_transposed_inputs(self, xp):
+        """Exercises _mat_to_cublas_contiguous with non-standard strides."""
+        rng = numpy.random.default_rng(seed=0)
+        m, k = self.shape_pair[0]
+        _, n = self.shape_pair[1]
+        x1 = xp.asarray(numpy.asfortranarray(
+            rng.integers(-10, 10, (m, k), dtype=numpy.int8)))
+        x2 = xp.asarray(numpy.asfortranarray(
+            rng.integers(-10, 10, (k, n), dtype=numpy.int8)))
+        return x1 @ x2
+
+    def test_overflow_wraps_like_numpy(self):
+        """int32->int8 cast wraps mod 256, matching NumPy matmul semantics."""
+        a = cupy.full((4, 4), 100, dtype=numpy.int8)
+        b = cupy.full((4, 4), 100, dtype=numpy.int8)
+        np_a = cupy.asnumpy(a)
+        np_b = cupy.asnumpy(b)
+        cupy.testing.assert_array_equal(a @ b, np_a @ np_b)
+
+    def test_fallback_emits_performance_warning(self):
+        """When cuBLAS fails, PerformanceWarning is emitted before fallback."""
+        from cupy import _util
+        from cupy_backends.cuda.libs import cublas
+        import unittest.mock as mock
+
+        m, k = self.shape_pair[0]
+        _, n = self.shape_pair[1]
+        k_aligned = ((k + 3) // 4) * 4
+        a = cupy.zeros((m, k_aligned), dtype=numpy.int8)
+        b = cupy.zeros((k_aligned, n), dtype=numpy.int8)
+
+        def _failing_gemmEx(*args, **kwargs):
+            raise cublas.CUBLASError(13)  # CUBLAS_STATUS_NOT_SUPPORTED
+
+        with mock.patch.object(cublas, 'gemmEx', side_effect=_failing_gemmEx):
+            with warnings.catch_warnings(record=True) as caught:
+                warnings.simplefilter('always')
+                _ = a @ b
+        perf_warnings = [
+            w for w in caught
+            if issubclass(w.category, _util.PerformanceWarning)
+        ]
+        assert len(perf_warnings) >= 1
+
+
+class TestMatmulInt8SetComputeTypeError(unittest.TestCase):
+    """set_compute_type rejects non-DEFAULT compute types for int dtypes."""
+
+    def test_int8_rejects_fp16_compute_type(self):
+        with pytest.raises(ValueError, match='integer dtypes'):
+            cupy._core.set_compute_type(numpy.int8, _linalg.COMPUTE_TYPE_FP16)
+
+    def test_int8_rejects_fp32_compute_type(self):
+        with pytest.raises(ValueError, match='integer dtypes'):
+            cupy._core.set_compute_type(numpy.int8, _linalg.COMPUTE_TYPE_FP32)
+
+    def test_int8_accepts_default_compute_type(self):
+        old = cupy._core.get_compute_type(numpy.int8)
+        cupy._core.set_compute_type(numpy.int8, _linalg.COMPUTE_TYPE_DEFAULT)
+        cupy._core.set_compute_type(numpy.int8, old)
 
 
 @testing.parameterize(
