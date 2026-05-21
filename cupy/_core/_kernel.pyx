@@ -352,7 +352,7 @@ cdef class _ArgInfo:
         return p.name
 
 
-cdef tuple _get_arginfos(list args, *, object core_ndims = None):
+cdef tuple _get_arginfos(list args, object core_ndims = None):
     if core_ndims is None:
         return tuple([_ArgInfo.from_arg(a) for a in args])
     return tuple(

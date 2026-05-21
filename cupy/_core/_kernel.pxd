@@ -156,7 +156,7 @@ cpdef create_ufunc(name, ops, routine=*, preamble=*, doc=*,
 
 cpdef str _full_mask_hex()
 
-cdef tuple _get_arginfos(list args)
+cdef tuple _get_arginfos(list args, object core_ndims=*)
 
 cdef str _get_kernel_params(tuple params, tuple arginfos, type_decls=*)
 
