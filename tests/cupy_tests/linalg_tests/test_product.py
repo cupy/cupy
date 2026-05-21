@@ -717,6 +717,28 @@ class TestLinalgDiagonal:
 
 class TestLinalgOuter:
 
-    def test_outer(self):
-        # Currently the identical function.
-        assert cupy.linalg.outer is cupy.outer
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_outer(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        b = testing.shaped_arange((4,), xp, dtype)
+        return xp.linalg.outer(a, b)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_reversed_outer(self, xp, dtype):
+        a = testing.shaped_arange((5,), xp, dtype)
+        b = testing.shaped_arange((4,), xp, dtype)
+        return xp.linalg.outer(a[::-1], b[::-1])
+
+    @pytest.mark.parametrize('shape1, shape2', [
+        ((2, 3), (4, 5)),
+        ((2, 3), (4,)),
+        ((4,), (2, 5)),
+    ])
+    def test_multidim_outer(self, shape1, shape2):
+        a = cupy.ones(shape1)
+        b = cupy.ones(shape2)
+
+        with pytest.raises(ValueError):
+            cupy.linalg.outer(a, b)

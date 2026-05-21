@@ -387,4 +387,4 @@ def matrix_norm(x, /, *, keepdims=False, ord="fro"):
     .. seealso:: :func:`numpy.linalg.norm`
 
     """
-    return norm(x=x, ord=ord, axis=(-2, -1), keepdims=keepdims)
+    return norm(x, ord=ord, axis=(-2, -1), keepdims=keepdims)
