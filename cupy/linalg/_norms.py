@@ -363,3 +363,30 @@ def trace(a, offset=0, axis1=0, axis2=1, dtype=None, out=None):
     """
     # TODO(okuta): check type
     return a.trace(offset, axis1, axis2, dtype, out)
+
+
+def matrix_norm(x, /, *, keepdims=False, ord="fro"):
+    """
+    Computes the matrix norm of a matrix (or a stack of matrices) ``x``.
+
+    This function is Array API compatible.
+
+    Parameters
+    ----------
+    x : array_like
+        Input array having shape (..., M, N) and whose two innermost
+        dimensions form ``MxN`` matrices.
+    keepdims : bool, optional
+        If this is set to True, the axes which are normed over are left in
+        the result as dimensions with size one. Default: False.
+    ord : {1, -1, 2, -2, inf, -inf, 'fro', 'nuc'}, optional
+        The order of the norm. For details see the table under ``Notes``
+        in `numpy.linalg.norm`.
+
+    See Also
+    --------
+    numpy.linalg.norm : Generic norm function
+    """
+
+    x = cupy.asanyarray(x)
+    return norm(x=x, ord=ord, axis=(-2, -1), keepdims=keepdims)
