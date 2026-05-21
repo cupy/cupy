@@ -717,27 +717,6 @@ class TestLinalgDiagonal:
 
 class TestLinalgOuter:
 
-    def test_outer_exists(self):
-        assert hasattr(cupy.linalg, 'outer')
-
-    @pytest.mark.parametrize('m,n', [(1, 1), (3, 4), (5, 2), (7, 7)])
-    @pytest.mark.parametrize('dtype', [
-        numpy.float32, numpy.float64, numpy.complex64,
-    ])
-    def test_outer_matches_numpy(self, m, n, dtype):
-        x1_np = (numpy.arange(m, dtype=dtype) + 1)
-        x2_np = (numpy.arange(n, dtype=dtype) + 1)
-        x1_cp = cupy.asarray(x1_np)
-        x2_cp = cupy.asarray(x2_np)
-
-        expected = numpy.linalg.outer(x1_np, x2_np)
-        actual = cupy.linalg.outer(x1_cp, x2_cp)
-
-        assert actual.shape == (m, n)
-        testing.assert_array_equal(actual, cupy.asarray(expected))
-
-    def test_outer_result_dtype(self):
-        x1 = cupy.arange(3, dtype=cupy.float64)
-        x2 = cupy.arange(4, dtype=cupy.float64)
-        result = cupy.linalg.outer(x1, x2)
-        assert result.dtype == numpy.float64
+    def test_outer(self):
+        # Currently the identical function.
+        assert cupy.linalg.outer is cupy.outer

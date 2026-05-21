@@ -371,22 +371,20 @@ def matrix_norm(x, /, *, keepdims=False, ord="fro"):
 
     This function is Array API compatible.
 
-    Parameters
-    ----------
-    x : array_like
-        Input array having shape (..., M, N) and whose two innermost
-        dimensions form ``MxN`` matrices.
-    keepdims : bool, optional
-        If this is set to True, the axes which are normed over are left in
-        the result as dimensions with size one. Default: False.
-    ord : {1, -1, 2, -2, inf, -inf, 'fro', 'nuc'}, optional
-        The order of the norm. For details see the table under ``Notes``
-        in `numpy.linalg.norm`.
+    Args:
+        x (cupy.ndarray) : Input array having shape (..., M, N) and whose
+            two innermost dimensions form ``MxN`` matrices.
+        keepdims (bool) : If this is set to True, the axes which are
+            normed over are left in the result as dimensions
+            with size one. Default: False.
+        ord : The order of the norm. For details see the table under ``Notes``
+            in `numpy.linalg.norm`. Takes any of
+            {1, -1, 2, -2, inf, -inf, 'fro', 'nuc'}
 
-    See Also
-    --------
-    numpy.linalg.norm : Generic norm function
+    Returns:
+        cupy.ndarray: norm of input cupy.ndarray
+
+    .. seealso:: :func:`numpy.linalg.norm`
+
     """
-
-    x = cupy.asanyarray(x)
     return norm(x=x, ord=ord, axis=(-2, -1), keepdims=keepdims)

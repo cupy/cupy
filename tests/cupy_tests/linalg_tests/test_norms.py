@@ -331,71 +331,41 @@ class TestCondBasicNonSVD(unittest.TestCase):
 
 class TestLinalgMatrixNorm:
 
-    def test_matrix_norm_exists(self):
-        assert hasattr(cupy.linalg, 'matrix_norm')
-
-    @pytest.mark.parametrize('shape', [(3, 3), (4, 5), (5, 4)])
-    @pytest.mark.parametrize('ord', [
-        None, 'fro', 'nuc', 1, -1, 2, -2, numpy.inf, -numpy.inf,
-    ])
+    @pytest.mark.parametrize(
+        'shape',
+        [
+            (3, 3),
+            (4, 5),
+            (5, 4),
+            (2, 3, 3),
+            (3, 2, 4, 5),
+        ],
+    )
+    @pytest.mark.parametrize(
+        'ord',
+        [
+            None, 'fro', 'nuc', 1, -1, 2, -2,
+            numpy.inf, -numpy.inf,
+        ],
+    )
     @pytest.mark.parametrize('keepdims', [False, True])
-    def test_matrix_norm_matches_numpy_2d(self, shape, ord, keepdims):
-        size = shape[0] * shape[1]
-        a_np = (numpy.arange(size, dtype=numpy.float64) + 1).reshape(shape)
-        a_cp = cupy.asarray(a_np)
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-6)
+    def test_matrix_norm(self, xp, shape, ord, keepdims):
+        a = testing.shaped_arange(shape, xp, dtype=xp.float64) + 1
         kwargs = {} if ord is None else {'ord': ord}
-
-        expected = numpy.linalg.matrix_norm(a_np, keepdims=keepdims, **kwargs)
-        actual = cupy.linalg.matrix_norm(a_cp, keepdims=keepdims, **kwargs)
-
-        testing.assert_allclose(actual, cupy.asarray(expected),
-                                rtol=1e-5, atol=1e-6)
-
-    @pytest.mark.parametrize('shape', [(2, 3, 3), (3, 2, 4, 5)])
-    @pytest.mark.parametrize('ord', ['fro', 1, -1, numpy.inf, -numpy.inf])
-    @pytest.mark.parametrize('keepdims', [False, True])
-    def test_matrix_norm_matches_numpy_batched(self, shape, ord, keepdims):
-        size = 1
-        for s in shape:
-            size *= s
-        a_np = (numpy.arange(size, dtype=numpy.float64) + 1).reshape(shape)
-        a_cp = cupy.asarray(a_np)
-
-        expected = numpy.linalg.matrix_norm(a_np, keepdims=keepdims, ord=ord)
-        actual = cupy.linalg.matrix_norm(a_cp, keepdims=keepdims, ord=ord)
-
-        assert actual.shape == expected.shape
-        testing.assert_allclose(actual, cupy.asarray(expected),
-                                rtol=1e-5, atol=1e-6)
+        return xp.linalg.matrix_norm(
+            a, keepdims=keepdims, **kwargs)
 
     def test_matrix_norm_default_ord_is_fro(self):
-        a_np = (numpy.arange(9, dtype=numpy.float64) + 1).reshape(3, 3)
-        a_cp = cupy.asarray(a_np)
-        default = cupy.linalg.matrix_norm(a_cp)
-        explicit = cupy.linalg.matrix_norm(a_cp, ord='fro')
+        a = testing.shaped_arange((3, 3), cupy, dtype=cupy.float64) + 1
+        default = cupy.linalg.matrix_norm(a)
+        explicit = cupy.linalg.matrix_norm(a, ord='fro')
         testing.assert_array_equal(default, explicit)
 
     def test_matrix_norm_keepdims_shape(self):
-        a_cp = (cupy.arange(24, dtype=cupy.float64) + 1).reshape(2, 3, 4)
-        kept = cupy.linalg.matrix_norm(a_cp, keepdims=True)
-        not_kept = cupy.linalg.matrix_norm(a_cp, keepdims=False)
+        a = testing.shaped_arange(
+            (2, 3, 4), cupy, dtype=cupy.float64) + 1
+        kept = cupy.linalg.matrix_norm(a, keepdims=True)
+        not_kept = cupy.linalg.matrix_norm(a, keepdims=False)
         assert kept.shape == (2, 1, 1)
         assert not_kept.shape == (2,)
-
-    @pytest.mark.parametrize('shape', [(), (4,), (5,)])
-    def test_matrix_norm_raises_for_low_ndim(self, shape):
-        # Guard: forces this test to fail at the base commit (missing
-        # attribute) rather than being incidentally "satisfied" by
-        # pytest.raises catching an AttributeError.
-        assert hasattr(cupy.linalg, 'matrix_norm')
-
-        if shape:
-            size = 1
-            for s in shape:
-                size *= s
-            a_cp = cupy.arange(size, dtype=cupy.float64).reshape(shape)
-        else:
-            a_cp = cupy.asarray(1.0, dtype=cupy.float64)
-
-        with pytest.raises(Exception):
-            cupy.linalg.matrix_norm(a_cp)

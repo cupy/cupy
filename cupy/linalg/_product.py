@@ -533,36 +533,18 @@ def matrix_transpose(a):
 
 
 def diagonal(x, /, *, offset=0):
+    """Returns the specified diagonal of the last two dimensions of an array.
+
+    Args:
+        x (~cupy.ndarray): Input array with shape ``(..., M, N)``.
+        offset (int): Offset of the diagonal from the main diagonal.
+            A positive value selects a diagonal above the main diagonal,
+            while a negative value selects a diagonal below it.
+
+    Returns:
+        ~cupy.ndarray: The selected diagonal with shape
+        ``(..., K)``, where ``K`` is the length of the diagonal.
+
+    .. seealso:: :func:`numpy.linalg.diagonal`
     """
-    Returns specified diagonals of a matrix (or a stack of matrices) ``x``.
-
-    This function is Array API compatible, contrary to
-    :py:func:`numpy.diagonal`, the matrix is assumed
-    to be defined by the last two dimensions.
-
-    Parameters
-    ----------
-    x : (...,M,N) array_like
-        Input array having shape (..., M, N) and whose innermost two
-        dimensions form MxN matrices.
-    offset : int, optional
-        Offset specifying the off-diagonal relative to the main diagonal,
-        where::
-
-            * offset = 0: the main diagonal.
-            * offset > 0: off-diagonal above the main diagonal.
-            * offset < 0: off-diagonal below the main diagonal.
-
-    Returns
-    -------
-    out : (...,min(N,M)) ndarray
-        An array containing the diagonals and whose shape is determined by
-        removing the last two dimensions and appending a dimension equal to
-        the size of the resulting diagonals. The returned array must have
-        the same data type as ``x``.
-
-    See Also
-    --------
-    numpy.linalg.diagonal
-    """
-    return x.diagonal(0, -2, -1)
+    return x.diagonal(offset, -2, -1)
