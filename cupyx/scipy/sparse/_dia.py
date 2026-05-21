@@ -8,7 +8,7 @@ except ImportError:
 
 import cupy
 from cupy import _core
-from cupyx.scipy.sparse import _csc
+from cupyx.scipy.sparse import _base
 from cupyx.scipy.sparse import _data
 from cupyx.scipy.sparse import _sputils
 from cupyx.scipy.sparse import _util
@@ -16,9 +16,10 @@ from cupyx.scipy.sparse import _util
 
 # TODO(leofang): The current implementation is CSC-based, which is troublesome
 # on ROCm/HIP. We should convert it to CSR-based for portability.
-class dia_matrix(_data._data_matrix):
+class _dia_base(_data._data_matrix):
+    """DIA format base (shared by dia_matrix and dia_array).
 
-    """Sparse matrix with DIAgonal storage.
+    Sparse matrix with DIAgonal storage.
 
     Now it has only one initializer format below:
 
@@ -37,7 +38,10 @@ class dia_matrix(_data._data_matrix):
 
     format = 'dia'
 
-    def __init__(self, arg1, shape=None, dtype=None, copy=False):
+    def __init__(self, arg1, shape=None, dtype=None, copy=False,
+                 *, maxprint=None):
+        if maxprint is not None:
+            self.maxprint = maxprint
         if _scipy_available and scipy.sparse.issparse(arg1):
             x = arg1.todia()
             data = x.data
@@ -78,18 +82,29 @@ class dia_matrix(_data._data_matrix):
 
         self.data = data
         self.offsets = offsets
-        if not _util.isshape(shape):
-            raise ValueError('invalid shape (must be a 2-tuple of int)')
-        self._shape = int(shape[0]), int(shape[1])
+        self._shape = _util.check_shape(shape)
 
     def _with_data(self, data, copy=True):
-        """Returns a matrix with the same sparsity structure as self,
+        """Return a sparse object with the same sparsity structure as self,
         but with different data.  By default the structure arrays are copied.
+
+        Preserves the concrete leaf type (``dia_array`` vs ``dia_matrix``).
         """
         if copy:
-            return dia_matrix((data, self.offsets.copy()), shape=self.shape)
+            return type(self)(
+                (data, self.offsets.copy()), shape=self.shape)
         else:
-            return dia_matrix((data, self.offsets), shape=self.shape)
+            return type(self)((data, self.offsets), shape=self.shape)
+
+    def __repr__(self):
+        # Match scipy's DIA repr which annotates the diagonal count.
+        format_name = _base._format_names.get(self.format, self.format)
+        sparse_cls = (
+            'array' if isinstance(self, _base.sparray) else 'matrix')
+        return (
+            f"<{format_name} sparse {sparse_cls} of dtype '{self.dtype}'\n"
+            f"\twith {self.nnz} stored elements ({len(self.offsets)} "
+            f"diagonals) and shape {self.shape}>")
 
     def get(self, stream=None):
         """Returns a copy of the array on host memory.
@@ -106,25 +121,20 @@ class dia_matrix(_data._data_matrix):
             raise RuntimeError('scipy is not available')
         data = self.data.get(stream)
         offsets = self.offsets.get(stream)
-        return scipy.sparse.dia_matrix((data, offsets), shape=self._shape)
+        if isinstance(self, _base.sparray):
+            sp_cls = scipy.sparse.dia_array
+        else:
+            sp_cls = scipy.sparse.dia_matrix
+        return sp_cls((data, offsets), shape=self._shape)
 
-    def get_shape(self):
-        """Returns the shape of the matrix.
-
-        Returns:
-            tuple: Shape of the matrix.
-        """
-        return self._shape
-
-    def getnnz(self, axis=None):
-        """Returns the number of stored values, including explicit zeros.
+    def _getnnz(self, axis=None):
+        """Number of stored values, including explicit zeros.
 
         Args:
-            axis: Not supported yet.
+            axis: Not supported.
 
         Returns:
-            int: The number of stored values.
-
+            int: Number of stored values.
         """
         if axis is not None:
             raise NotImplementedError(
@@ -145,6 +155,42 @@ class dia_matrix(_data._data_matrix):
             'a + b', 'nnz = a', '0', 'dia_nnz')(
                 self.offsets, it(m), it(L))
         return int(nnz)
+
+    def _data_mask(self):
+        """Boolean mask the same shape as ``self.data`` indicating
+        which entries fall inside the matrix.
+
+        ``mask[i, j]`` is True iff position ``(j - offsets[i], j)``
+        lies within ``self.shape``.  Used to filter ``data`` for
+        operations that should ignore the buffer's pad columns
+        (``count_nonzero``, dense expansion, etc.).
+
+        Mirrors :meth:`scipy.sparse._dia._dia_base._data_mask`.
+        """
+        num_rows, num_cols = self.shape
+        offset_inds = cupy.arange(self.data.shape[1])
+        row = offset_inds - self.offsets[:, None]
+        mask = (row >= 0)
+        mask &= (row < num_rows)
+        mask &= (offset_inds < num_cols)
+        return mask
+
+    def count_nonzero(self, axis=None):
+        """Number of non-zero entries.
+
+        Excludes explicit zeros and entries that lie outside the
+        matrix shape (DIA's ``data`` buffer can be wider than
+        ``num_cols``; those pad entries don't count).  DIA doesn't
+        support per-axis counts -- use ``tocsr().count_nonzero(axis)``.
+
+        .. seealso:: :meth:`scipy.sparse.dia_matrix.count_nonzero`
+        """
+        if axis is not None:
+            raise NotImplementedError(
+                'count_nonzero over an axis is not implemented for '
+                'DIA format')
+        mask = self._data_mask()
+        return int(cupy.count_nonzero(self.data[mask]))
 
     def toarray(self, order=None, out=None):
         """Returns a dense matrix representing the same value."""
@@ -177,7 +223,7 @@ class dia_matrix(_data._data_matrix):
 
         """
         if self.data.size == 0:
-            return _csc.csc_matrix(self.shape, dtype=self.dtype)
+            return self._csc_container(self.shape, dtype=self.dtype)
 
         num_rows, num_cols = self.shape
         num_offsets, offset_len = self.data.shape
@@ -200,17 +246,18 @@ class dia_matrix(_data._data_matrix):
                 self.offsets[:, None].astype(idx_dtype, copy=False),
                 it(num_rows), it(num_cols), self.data)
         indptr = cupy.zeros(num_cols + 1, dtype=idx_dtype)
-        # When ``offset_len`` exceeds ``num_cols`` (data buffer wider
-        # than the matrix), the trailing columns lie outside the matrix
-        # and their mask entries are all False, so truncate to
-        # ``num_cols`` for the indptr write.
+        # Each column of ``data`` contributes one count to the matching
+        # output column.  When ``offset_len`` exceeds ``num_cols`` (data
+        # buffer wider than the matrix), the extra trailing columns lie
+        # outside the matrix and their mask entries are all False, so
+        # truncate to ``num_cols`` for the indptr write.
         col_counts = mask.sum(axis=0)
         eff_len = min(offset_len, num_cols)
         indptr[1: eff_len + 1] = cupy.cumsum(col_counts[:eff_len])
         indptr[eff_len + 1:] = indptr[eff_len]
         indices = row.T[mask.T].astype(idx_dtype, copy=False)
         data = self.data.T[mask.T]
-        return _csc.csc_matrix(
+        return self._csc_container(
             (data, indices, indptr), shape=self.shape, dtype=self.dtype)
 
     def tocsr(self, copy=False):
@@ -245,6 +292,22 @@ class dia_matrix(_data._data_matrix):
         if idx.size == 0:
             return cupy.zeros(last_col - first_col, dtype=self.data.dtype)
         return self.data[idx[0], first_col:last_col]
+
+
+class dia_matrix(_base.spmatrix, _dia_base):
+    """Sparse matrix with DIAgonal storage.
+
+    .. seealso:: :class:`scipy.sparse.dia_matrix`
+    """
+    pass
+
+
+class dia_array(_dia_base, _base.sparray):
+    """Sparse array with DIAgonal storage.
+
+    .. seealso:: :class:`scipy.sparse.dia_array`
+    """
+    pass
 
 
 def isspmatrix_dia(x):

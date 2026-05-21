@@ -828,7 +828,7 @@ def csrlsvqr(A, b, tol=0, reorder=1):
     if not check_availability('csrlsvqr'):
         raise RuntimeError('csrlsvqr is not available.')
 
-    if not _cupyx.scipy.sparse.isspmatrix_csr(A):
+    if not (_cupyx.scipy.sparse.issparse(A) and A.format == 'csr'):
         raise ValueError('A must be CSR sparse matrix')
     if not isinstance(b, _cupy.ndarray):
         raise ValueError('b must be cupy.ndarray')
