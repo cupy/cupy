@@ -56,6 +56,23 @@ cdef _any = create_reduction_func(
     'false', '')
 
 
+def promote_weak_int(in_types, weaks):
+    if weaks is None:
+        return in_types, weaks
+
+    # Python integers can be originally discovered as uint or int.
+    # E.g. for int32(-2**31) == 2**32 we need to promote, rather than try
+    # to use the NEP 50 style and use int32 (failing the conversion).
+    # For float this is currently not what NumPy does (debatable).
+    # For bool, NumPy uses the default integer while we make it work (ignore).
+    if weaks[0] is int and weaks[1] is False and in_types[1].kind in "iu":
+        return in_types, (False, weaks[1])
+    elif weaks[1] is int and weaks[0] is False and in_types[0].kind in "iu":
+        return in_types, (weaks[0], False)
+
+    return in_types, weaks
+
+
 def struct_compare_resolution(op, in_dtypes, out_dtypes):
     # NumPy ignores field names, so we'll do that as well.
     dt1, dt2 = in_dtypes
@@ -85,14 +102,15 @@ def struct_compare_resolution(op, in_dtypes, out_dtypes):
 
 cpdef create_comparison(
         name, op, doc='', no_complex_dtype=True, allow_structured=False):
+    ops = (
+        '??->?',
+        'qq->?', 'QQ->?',
+        ('qQ->?', f'out0 = in0 < 0 ? in0 {op} 0 : in0 {op} in1'),
+        ('Qq->?', f'out0 = in1 < 0 ? 0 {op} in1 : in0 {op} in1'),
+        'ee->?', *bf16_loop(2, '?'), 'ff->?', 'dd->?')
 
-    if no_complex_dtype:
-        ops = ('??->?', 'qq->?', 'qQ->?', 'Qq->?', 'QQ->?',
-               'ee->?', *bf16_loop(2, '?'), 'ff->?', 'dd->?')
-    else:
-        ops = ('??->?', 'qq->?', 'qQ->?', 'Qq->?', 'QQ->?',
-               'ee->?', *bf16_loop(2, '?'), 'ff->?', 'dd->?',
-               'FF->?', 'DD->?')
+    if not no_complex_dtype:
+        ops += ('FF->?', 'DD->?')
 
     if allow_structured:
         ops += (("VV->?", None, struct_compare_resolution),)
@@ -101,7 +119,7 @@ cpdef create_comparison(
         'cupy_' + name,
         ops,
         'out0 = in0 %s in1' % op,
-        doc=doc)
+        doc=doc, promote_types=promote_weak_int)
 
 
 cdef _greater = create_comparison(

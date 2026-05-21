@@ -115,6 +115,7 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
             # https://github.com/cupy/cupy/pull/8457#issuecomment-2656568499
             'binding': False,
             'warn.deprecated.IF': False,   # suppress IF deprecation warning
+            'freethreading_compatible': True,
         }
 
         # Compile-time constants to be used in Cython code
