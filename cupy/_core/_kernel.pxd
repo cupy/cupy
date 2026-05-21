@@ -1,10 +1,10 @@
 from libcpp cimport vector
 
-from cupy._core cimport function
 from cupy._core cimport _carray
 from cupy._core cimport _scalar
 from cupy._core._carray cimport shape_t
 from cupy._core.core cimport _ndarray_base
+from cupy.cuda cimport function
 from cupy.cuda cimport memory
 from cupy.cuda cimport texture
 
@@ -179,19 +179,20 @@ cdef shape_t _reduce_dims(
     list args, tuple params, const shape_t& shape) except *
 
 
-cdef class _JITKernelBase:
-    readonly tuple in_params
-    readonly tuple out_params
-    readonly tuple params
-    readonly Py_ssize_t nin
-    readonly Py_ssize_t nout
-    readonly object operation
-    readonly str name
-    readonly str __name__
-    readonly object preamble
-    readonly dict _params_type_memo
-    readonly dict _kernel_memo
-    readonly dict _cached_codes
+cdef class _XwiseKernelBase:
+    cdef:
+        readonly tuple in_params
+        readonly tuple out_params
+        readonly tuple params
+        readonly Py_ssize_t nin
+        readonly Py_ssize_t nout
+        readonly object operation
+        readonly str name
+        readonly str __name__
+        readonly object preamble
+        readonly dict _params_type_memo
+        readonly dict _kernel_memo
+        readonly dict _cached_codes
 
     cpdef tuple _decide_params_type(
         self, tuple in_args_dtype, tuple out_args_dtype)

@@ -759,7 +759,7 @@ def _get_elementwise_kernel(
     return _get_simple_elementwise_kernel_from_code(name, code, options)
 
 
-cdef class _JITKernelBase:
+cdef class _XwiseKernelBase:
 
     cpdef tuple _decide_params_type(
             self, tuple in_args_dtype, tuple out_args_dtype):
@@ -786,7 +786,7 @@ cdef class _JITKernelBase:
         # _get_elementwise_kernel() may include IO wait.
         in_types = []
         for x in arginfos:
-            if x.is_ndarray():
+            if x.type is cupy.ndarray:
                 in_types.append(cupy.dtype(x.dtype))
         in_types = tuple(in_types)
         if in_types not in self._cached_codes:
@@ -822,8 +822,16 @@ cdef class _JITKernelBase:
                 'Please use `.cached_codes` instead.')
         return next(iter(codes.values()))
 
+    cdef function.Function _compile_kernel(
+            self, int dev_id, tuple arginfos, object type_map):
+        raise NotImplementedError
 
-cdef class ElementwiseKernel(_JITKernelBase):
+    cdef str _get_kernel_code(
+            self, tuple arginfos, object type_map):
+        raise NotImplementedError
+
+
+cdef class ElementwiseKernel(_XwiseKernelBase):
 
     """User-defined elementwise kernel.
 

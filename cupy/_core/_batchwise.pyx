@@ -15,6 +15,7 @@ from cupy._core._kernel cimport _preprocess_args
 from cupy._core._kernel cimport ParameterInfo
 from cupy._core._kernel cimport _decide_params_type_core
 from cupy._core._kernel cimport _get_arg_infos
+from cupy._core._kernel import _XwiseKernelBase
 
 
 @_util.memoize()
@@ -53,29 +54,20 @@ def _get_batchwise_param_info(str s, bint is_const):
     return tuple(params), tuple(core_ndims)
 
 
-cdef class BatchwiseKernel:
+cdef class BatchwiseKernel(_XwiseKernelBase):
     """docstring will go here."""
-    readonly tuple in_params
-    readonly tuple out_params
-    readonly tuple in_core_ndims
-    readonly tuple out_core_ndims
-    readonly Py_ssize_t nin
-    readonly Py_ssize_t nout
-    readonly tuple params
-    readonly object operation
-    readonly str name
-    readonly str __name__
-    readonly object preamble
-    readonly object validate_core_shapes
-    readonly dict _params_type_memo
-    readonly dict _batchwise_kernel_memo
-    readonly dict _cached_codes
+    cdef:
+        readonly tuple in_core_ndims
+        readonly tuple out_core_ndims
+        readonly object validate_core_shapes
 
     def __init__(self, in_params, out_params, operation,
                  name='kernel', preamble='', *, validate_core_shapes):
         
-        self.in_params, self.in_core_ndims = _get_batchwise_param_info(in_params, True)
-        self.out_params, self.out_core_ndims = _get_batchwise_param_info(out_params, False)
+        self.in_params, self.in_core_ndims = _get_batchwise_param_info(
+            in_params, True)
+        self.out_params, self.out_core_ndims = _get_batchwise_param_info(
+            out_params, False)
         self.nin = len(self.in_params)
         self.nout = len(self.out_params)
         self.nargs = self.nin + self.nout
@@ -89,7 +81,7 @@ cdef class BatchwiseKernel:
         names = [p.name for p in self.in_params + self.out_params]
         if 'i' in names:
             raise ValueError('Can not use \'i\' as a parameter name.')
-        self._batchwise_kernel_memo = {}
+        self._kernel_memo = {}
         # This is for profiling mechanisms to auto infer a name.
         self.__name__ = name
             
@@ -112,7 +104,6 @@ cdef class BatchwiseKernel:
                 f"Wrong number of outputs for {self.name}. "
                 f"Expected {self.nout}, got {len(out)}."
             )
-            
     
         dev_id = device.get_device_id()
         in_args = _preprocess_args(dev_id, args)
@@ -196,19 +187,8 @@ cdef class BatchwiseKernel:
         inout_args.append(indexer)
 
         arginfos = _get_arginfos(inout_args)
-        kern = self._get_batchwise_kernel(dev_id, arginfos, type_map)
+        kern = self._get_kernel(dev_id, arginfos, type_map)
 
         kern.linear_launch(indexer.size, inout_args, shared_mem=0,
                            block_max_size=0, stream=None)
         return out if self.nout > 1 else out[0]
-
-    cpdef tuple _decide_params_type(
-            self, tuple in_args_dtype, tuple out_args_dtype):
-        key = (in_args_dtype, out_args_dtype)
-        ret = self._params_type_memo.get(key, None)
-        if ret is not None:
-            return ret
-        ret = _decide_params_type_core(
-            self.in_params, self.out_params, in_args_dtype, out_args_dtype)
-        self._params_type_memo[key] = ret
-        return ret
