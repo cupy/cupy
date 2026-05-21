@@ -4,6 +4,8 @@ from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from libc.stdint cimport intptr_t
 from libcpp.vector cimport vector
 
+cimport numpy as cnp
+
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda cimport stream as stream_module
 from cupy._core.core cimport _ndarray_base
@@ -70,64 +72,26 @@ cdef void deleter_ver(DLManagedTensorVersioned* tensor) noexcept with gil:
     PyMem_Free(tensor)
 
 
-cdef uint8_t get_dlpack_dtype_code_itemsize(dtype, size_t *size) except? 255:
+cdef uint8_t get_dlpack_dtype_code_itemsize(
+        cnp.dtype descr, size_t *size) except? 255:
     """Convert NumPy/CuPy to dlpack dtype kind and fill in size.
     """
-    # Infer everything from type number to avoid multiple Python lookups.
-    cdef int num = dtype.num
+    cdef char kind = descr.kind
 
-    if num == 0:
-        size[0] = 1
+    size[0] = descr.itemsize
+    if kind == b'u':
+        return <uint8_t>kDLUInt
+    elif kind == b'i':
+        return <uint8_t>kDLInt
+    elif kind == b'f':
+        return <uint8_t>kDLFloat
+    elif kind == b'c':
+        return <uint8_t>kDLComplex
+    elif kind == b'b':
         return <uint8_t>kDLBool
-    elif num == 1:
-        size[0] = sizeof(char)
-        return <uint8_t>kDLInt
-    elif num == 2:
-        size[0] = sizeof(char)
-        return <uint8_t>kDLUInt
-    elif num == 3:
-        size[0] = sizeof(short)
-        return <uint8_t>kDLInt
-    elif num == 4:
-        size[0] = sizeof(short)
-        return <uint8_t>kDLUInt
-    elif num == 5:
-        size[0] = sizeof(int)
-        return <uint8_t>kDLInt
-    elif num == 6:
-        size[0] = sizeof(int)
-        return <uint8_t>kDLUInt
-    elif num == 7:
-        size[0] = sizeof(long)
-        return <uint8_t>kDLInt
-    elif num == 8:
-        size[0] = sizeof(long)
-        return <uint8_t>kDLUInt
-    elif num == 9:
-        size[0] = sizeof(long long)
-        return <uint8_t>kDLInt
-    elif num == 10:
-        size[0] = sizeof(long long)
-        return <uint8_t>kDLUInt
-    elif num == 11:
-        size[0] = sizeof(float)
-        return <uint8_t>kDLFloat
-    elif num == 12:
-        size[0] = sizeof(double)
-        return <uint8_t>kDLFloat
-    elif num == 14:
-        size[0] = 2 * sizeof(float)
-        return <uint8_t>kDLComplex
-    elif num == 15:
-        size[0] = 2 * sizeof(double)
-        return <uint8_t>kDLComplex
-    elif num == 23:
-        size[0] = 2  # sizeof(half)
-        return <uint8_t>kDLFloat
     else:
         # One-off special handling for `ml_dtypes`
-        if dtype.name == "bfloat16":
-            size[0] = 2
+        if descr.name == "bfloat16":
             return <uint8_t>kDLBfloat
         else:
             raise BufferError('dtype is not supported for dlpack export')
@@ -209,7 +173,8 @@ cdef object _toDlpack(
     # Fetch dtype early (as this can raise a BufferError in theory)
     cdef uint8_t dtype_code
     cdef size_t dtype_itemsize
-    dtype_code = get_dlpack_dtype_code_itemsize(array.dtype, &dtype_itemsize)
+    dtype_code = get_dlpack_dtype_code_itemsize(
+            <cnp.dtype>array.dtype, &dtype_itemsize)
 
     # Fetch device information since we need it to deal with CPU logic.
     cdef DLDevice device = get_dlpack_device(array)
