@@ -149,6 +149,38 @@ class TestMisc:
         a_max = xp.array([[10], [9], [8]], dtype=dtype)
         return a.clip(a_min, a_max)
 
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def test_clip_nan_in_array(self, xp, dtype):
+        # NaN in array is preserved; finite bounds clip other values
+        nan = float('nan')
+        a = xp.array([1.0, nan, 5.0, -1.0, 3.0], dtype=dtype)
+        return xp.clip(a, 2.0, 4.0)
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def test_clip_nan_min(self, xp, dtype):
+        # When min bound is NaN, output is NaN (NumPy behavior)
+        nan = float('nan')
+        a = xp.array([1.0, 2.0, 3.0], dtype=dtype)
+        return xp.clip(a, nan, 4.0)
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def test_clip_nan_max(self, xp, dtype):
+        # When max bound is NaN, output is NaN (NumPy behavior)
+        nan = float('nan')
+        a = xp.array([1.0, 2.0, 3.0], dtype=dtype)
+        return xp.clip(a, 0.0, nan)
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def test_clip_nan_min_max(self, xp, dtype):
+        # When both bounds are NaN, output is NaN
+        nan = float('nan')
+        a = xp.array([1.0, 2.0, 3.0], dtype=dtype)
+        return xp.clip(a, nan, nan)
+
     def test_sqrt(self):
         self.check_unary('sqrt')
 
