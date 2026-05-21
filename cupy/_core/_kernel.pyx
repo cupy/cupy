@@ -190,9 +190,10 @@ cdef class _ArgInfo:
     # Holds metadata of an argument.
     # This class is immutable and used as a part of hash keys.
 
-    def __init__(self, *args):
+    def __init__(self, *args, core_ndim=0):
         arg_kind, typ, dtype, ndim, c_contiguous, index_32_bits = args
-        self._init(arg_kind, typ, dtype, ndim, c_contiguous, index_32_bits)
+        self._init(
+            arg_kind, typ, dtype, ndim, c_contiguous, index_32_bits, core_ndim)
 
     cdef _ArgInfo _init(
             self,
@@ -201,19 +202,21 @@ cdef class _ArgInfo:
             object dtype,
             int ndim,
             bint c_contiguous,
-            bint index_32_bits):
+            bint index_32_bits,
+            int core_ndim=0):
         self.arg_kind = arg_kind
         self.type = typ
         self.dtype = dtype
         self.ndim = ndim
         self.c_contiguous = c_contiguous
         self.index_32_bits = index_32_bits
+        self.core_ndim = core_ndim
 
     @staticmethod
-    cdef _ArgInfo from_arg(object arg):
+    cdef _ArgInfo from_arg(object arg, int core_ndim=0):
         typ = type(arg)
         if issubclass(typ, _ndarray_base):
-            return _ArgInfo.from_ndarray(arg)
+            return _ArgInfo.from_ndarray(arg, core_ndim)
         if typ is _scalar.CScalar:
             return _ArgInfo.from_scalar(arg)
         if typ is _carray.Indexer:
@@ -225,7 +228,7 @@ cdef class _ArgInfo:
         assert False, typ
 
     @staticmethod
-    cdef _ArgInfo from_ndarray(_ndarray_base arg):
+    cdef _ArgInfo from_ndarray(_ndarray_base arg, int core_ndim=0):
         cdef _ArgInfo ret = _ArgInfo.__new__(_ArgInfo)
         ret._init(
             ARG_KIND_NDARRAY,
@@ -233,7 +236,9 @@ cdef class _ArgInfo:
             arg.dtype,
             arg._shape.size(),
             arg._c_contiguous,
-            arg._index_32_bits)
+            arg._index_32_bits,
+            core_ndim,
+        )
         return ret
 
     @staticmethod
@@ -267,7 +272,7 @@ cdef class _ArgInfo:
 
     def __hash__(self):
         return hash((self.arg_kind, self.type, self.dtype, self.ndim,
-                     self.c_contiguous, self.index_32_bits))
+                     self.c_contiguous, self.index_32_bits, self.core_ndim))
 
     def __eq__(self, other):
         cdef _ArgInfo oth
@@ -280,7 +285,8 @@ cdef class _ArgInfo:
             and self.dtype == oth.dtype
             and self.ndim == oth.ndim
             and self.c_contiguous == oth.c_contiguous
-            and self.index_32_bits == oth.index_32_bits)
+            and self.index_32_bits == oth.index_32_bits
+            and self.core_ndim == oth.core_ndim)
 
     def __repr__(self):
         return '<_ArgInfo({})>'.format(
@@ -291,6 +297,7 @@ cdef class _ArgInfo:
                 'ndim={!r}'.format(self.ndim),
                 'c_contiguous={!r}'.format(self.c_contiguous),
                 'index_32_bits={!r}'.format(self.index_32_bits),
+                'core_ndim={!r}'.format(self.core_ndim),
             ]))
 
     cdef _ArgInfo as_ndarray_with_ndim(self, int ndim):
@@ -300,7 +307,8 @@ cdef class _ArgInfo:
         if self.ndim == ndim:
             return self
         return _ArgInfo(
-            ARG_KIND_NDARRAY, self.dtype, self.dtype, ndim, False, False)
+            ARG_KIND_NDARRAY, self.dtype, self.dtype, ndim, False, False,
+            core_ndim=self.core_ndim)
 
     cdef bint is_ndarray(self) noexcept:
         return self.arg_kind == ARG_KIND_NDARRAY
@@ -312,9 +320,15 @@ cdef class _ArgInfo:
         # Returns the C type representation.
         if self.arg_kind == ARG_KIND_NDARRAY:
             name = _get_typename(self.dtype, type_decls)
-            name = 'CArray<%s, %d, %d, %d>' % (
-                name, self.ndim,
-                self.c_contiguous, self.index_32_bits)
+            if self.core_ndim > 0:
+                name = 'CArray<%s, %d, %d, %d, %d>' % (
+                    name, self.ndim,
+                    self.c_contiguous, self.index_32_bits, self.core_ndim
+)
+            else:
+                name = 'CArray<%s, %d, %d, %d>' % (
+                    name, self.ndim,
+                    self.c_contiguous, self.index_32_bits)
             return name
         if self.arg_kind == ARG_KIND_SCALAR:
             return _get_typename(self.dtype, type_decls)
@@ -338,8 +352,13 @@ cdef class _ArgInfo:
         return p.name
 
 
-cdef tuple _get_arginfos(list args):
-    return tuple([_ArgInfo.from_arg(a) for a in args])
+cdef tuple _get_arginfos(list args, *, object core_ndims = None):
+    if core_ndims is None:
+        return tuple([_ArgInfo.from_arg(a) for a in args])
+    return tuple(
+        [_ArgInfo.from_arg(a, core_ndim=core_ndim)
+         for a, core_ndim in zip(args, core_ndims)]
+    )
 
 
 cdef str _get_kernel_params(tuple params, tuple arginfos, type_decls=None):

@@ -36,6 +36,7 @@ cdef class _ArgInfo:
         readonly int ndim
         readonly bint c_contiguous
         readonly bint index_32_bits
+        readonly int core_ndim
 
     cdef _ArgInfo _init(
         self,
@@ -44,13 +45,14 @@ cdef class _ArgInfo:
         object dtype,
         int ndim,
         bint c_contiguous,
-        bint index_32_bits)
+        bint index_32_bits,
+        int core_ndim=*)
 
     @staticmethod
-    cdef _ArgInfo from_arg(object arg)
+    cdef _ArgInfo from_arg(object arg, int core_ndim=*)
 
     @staticmethod
-    cdef _ArgInfo from_ndarray(_ndarray_base arg)
+    cdef _ArgInfo from_ndarray(_ndarray_base arg, int core_ndim=*)
 
     @staticmethod
     cdef _ArgInfo from_scalar(_scalar.CScalar arg)
