@@ -634,3 +634,80 @@ class TestLinalgMatrixTranspose:
     def test_matrix_transpose_error(self, xp, dtype):
         a = testing.shaped_arange((10,), xp, dtype)
         return xp.linalg.matrix_transpose(a)
+
+
+class TestLinalgDiagonal:
+
+    def test_diagonal_exists(self):
+        assert hasattr(cupy.linalg, 'diagonal')
+
+    @pytest.mark.parametrize('shape', [
+        (3, 3), (4, 5), (5, 4), (1, 1), (2, 3, 3), (2, 3, 4, 5),
+    ])
+    @pytest.mark.parametrize('offset', [-2, -1, 0, 1, 2])
+    @pytest.mark.parametrize('dtype', [
+        numpy.float32, numpy.float64, numpy.complex64, numpy.int32,
+    ])
+    def test_diagonal_matches_numpy(self, shape, offset, dtype):
+        size = 1
+        for s in shape:
+            size *= s
+        a_np = numpy.arange(size, dtype=dtype).reshape(shape)
+        a_cp = cupy.asarray(a_np)
+
+        expected = numpy.linalg.diagonal(a_np, offset=offset)
+        actual = cupy.linalg.diagonal(a_cp, offset=offset)
+
+        assert actual.shape == expected.shape
+        assert actual.dtype == a_cp.dtype
+        testing.assert_array_equal(actual, cupy.asarray(expected))
+
+    def test_diagonal_default_offset(self):
+        a_np = numpy.arange(9, dtype=numpy.float64).reshape(3, 3)
+        a_cp = cupy.asarray(a_np)
+        expected = numpy.linalg.diagonal(a_np)
+        actual = cupy.linalg.diagonal(a_cp)
+        testing.assert_array_equal(actual, cupy.asarray(expected))
+
+    def test_diagonal_operates_on_last_two_axes(self):
+        # Array-API semantics: for N-D input the diagonal must always be
+        # taken over the *last two* axes, regardless of rank.
+        a_np = numpy.arange(2 * 3 * 4, dtype=numpy.float64).reshape(2, 3, 4)
+        a_cp = cupy.asarray(a_np)
+        expected = numpy.linalg.diagonal(a_np)
+        actual = cupy.linalg.diagonal(a_cp)
+        assert actual.shape == expected.shape
+        testing.assert_array_equal(actual, cupy.asarray(expected))
+
+    def test_diagonal_offset_is_keyword_only(self):
+        a_cp = cupy.arange(9, dtype=cupy.float64).reshape(3, 3)
+        with pytest.raises(TypeError):
+            cupy.linalg.diagonal(a_cp, 1)  # offset must be passed by keyword
+
+
+class TestLinalgOuter:
+
+    def test_outer_exists(self):
+        assert hasattr(cupy.linalg, 'outer')
+
+    @pytest.mark.parametrize('m,n', [(1, 1), (3, 4), (5, 2), (7, 7)])
+    @pytest.mark.parametrize('dtype', [
+        numpy.float32, numpy.float64, numpy.complex64,
+    ])
+    def test_outer_matches_numpy(self, m, n, dtype):
+        x1_np = (numpy.arange(m, dtype=dtype) + 1)
+        x2_np = (numpy.arange(n, dtype=dtype) + 1)
+        x1_cp = cupy.asarray(x1_np)
+        x2_cp = cupy.asarray(x2_np)
+
+        expected = numpy.linalg.outer(x1_np, x2_np)
+        actual = cupy.linalg.outer(x1_cp, x2_cp)
+
+        assert actual.shape == (m, n)
+        testing.assert_array_equal(actual, cupy.asarray(expected))
+
+    def test_outer_result_dtype(self):
+        x1 = cupy.arange(3, dtype=cupy.float64)
+        x2 = cupy.arange(4, dtype=cupy.float64)
+        result = cupy.linalg.outer(x1, x2)
+        assert result.dtype == numpy.float64
