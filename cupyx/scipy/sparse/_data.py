@@ -61,12 +61,13 @@ class _data_matrix(_base._spbase):
         return out
 
     def __imul__(self, other):
-        # Mirror scipy: in-place scalar multiply mutates ``self.data``
-        # (preserves object identity).  Non-scalar fallthrough to
-        # NotImplemented lets Python rebind via ``self = self * other``.
-        # ``bool *= int`` and similar out-of-set promotions cannot
-        # mutate ``self.data`` in place (numpy disallows kind change
-        # under same_kind casting), so we reassign in those cases.
+        # In-place scalar multiply mutates ``self.data`` to preserve
+        # object identity.  Non-scalar falls through to NotImplemented
+        # so Python rebinds via ``self = self * other``.  Unlike scipy,
+        # which raises ``UFuncTypeError`` on out-of-set promotions
+        # (e.g. ``bool *= int``), CuPy reassigns ``self.data`` to a
+        # cuSPARSE-supported dtype.  Identity of ``self`` is preserved;
+        # identity of ``self.data`` is not.
         if _sparse_util.isscalarlike(other):
             new_dtype = self._scalar_op_dtype(self.dtype, other)
             if new_dtype != self.dtype:
@@ -77,11 +78,11 @@ class _data_matrix(_base._spbase):
         return NotImplemented
 
     def __itruediv__(self, other):
-        # Mirror scipy: in-place scalar division mutates ``self.data``.
-        # See ``__imul__`` for the dtype-promotion rationale; division
-        # additionally promotes int dividends to float (``int / 2`` is
-        # ``float`` in Python and ``self.data /= 2`` would otherwise
-        # raise on int data).
+        # In-place scalar division mutates ``self.data``.  See
+        # ``__imul__`` for the upcast rationale; division additionally
+        # promotes int dividends to float (``int / 2`` is ``float``
+        # in Python and ``self.data /= 2`` would otherwise raise on
+        # int data).
         if _sparse_util.isscalarlike(other):
             recip = 1.0 / other
             new_dtype = self._scalar_op_dtype(self.dtype, recip)
@@ -141,25 +142,19 @@ class _data_matrix(_base._spbase):
         non-zero values; explicit-zero stored entries are excluded.
 
         Args:
-            axis ({None, 0, 1, -1, -2}, optional):
-                Count nonzeros for the whole array, or along the
-                specified axis.  Per-axis support requires a
-                ``count_nonzero`` override on the format class — the
-                generic implementation here only handles ``axis=None``.
+            axis (``None``, optional): Only ``None`` is handled here;
+                CSR/CSC/COO override this to support ``0``, ``1``,
+                ``-1``, ``-2``.
 
         Returns:
             int or cupy.ndarray: Scalar count when ``axis`` is
             ``None``; otherwise a 1-D array (from format override).
         """
-        # Match scipy: ensure deduped data before counting.  CuPy's
-        # other read-style ops (e.g. ``_matmul_dispatch``) already
-        # mutate via ``sum_duplicates``, so this is consistent.
+        # Match scipy: dedup in place before counting.
         if hasattr(self, 'sum_duplicates'):
             self.sum_duplicates()
         if axis is None:
             return int(cupy.count_nonzero(self.data))
-        # Format-specific overrides (CSR/CSC/COO) handle axis cases.
-        # DIA doesn't natively, matching scipy's choice to raise.
         raise NotImplementedError(
             'axis-aware count_nonzero is not implemented for '
             f'{type(self).__name__}')
@@ -267,10 +262,9 @@ class _minmax_mixin:
         zeros = cupy.zeros(n, dtype=idx_dtype)
         value = value.astype(self.dtype, copy=False)
         # Use the appropriate container so the result inherits the
-        # array vs matrix type from ``self``.  CuPy COO is currently
-        # 2D-only, so reductions still produce (1, M) / (M, 1) shapes
-        # even for sparse arrays (SciPy sparse arrays return shape
-        # (M,) here, but that requires 1D sparse array support).
+        # array vs matrix type from ``self``.  CuPy COO is 2-D-only, so
+        # reductions return (1, M) / (M, 1) for both array and matrix
+        # (scipy sparse arrays return shape (M,)).
         coo_cls = self._coo_container
         row, col = (zeros, major_index) if axis == 0 else (major_index, zeros)
         shape = (1, M) if axis == 0 else (M, 1)
@@ -300,7 +294,8 @@ class _minmax_mixin:
                 elif min_or_max is cupy.max:
                     m = cupy.maximum(zero, m)
                 else:
-                    assert False
+                    raise AssertionError(
+                        f'unexpected min_or_max ufunc: {min_or_max}')
             return m
 
         if axis < 0:

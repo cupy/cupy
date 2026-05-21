@@ -263,25 +263,15 @@ class TestDiaMatrixScipyComparison(unittest.TestCase):
 
     @testing.numpy_cupy_equal(sp_name='sp')
     def test_nnz_axis(self, xp, sp):
-        # CuPy fixes scipy gh-23055 (DIA nnz with empty data buffer)
-        # ahead of scipy: bound the diagonal length by the actual data
-        # buffer.  scipy < 1.17 over-counts empty DIAs, so the
-        # comparison would disagree for the empty variant; skip it.
+        # CuPy bounds the diagonal length by the actual data buffer
+        # length, matching the scipy 1.17 fix (scipy/scipy#23055).
+        # Earlier scipy returns the maximum potential count from
+        # offsets/shape, so empty-data cases would mismatch.
         if self.make_method == '_make_empty':
             from packaging.version import parse as _v
             if _v(scipy.__version__) < _v('1.17'):
                 pytest.skip('scipy < 1.17 over-counts empty DIA nnz')
         m = self.make(xp, sp, self.dtype)
-        # SciPy 1.17 fixed DIA nnz to be bounded by the actual data
-        # buffer length; CuPy follows the new (correct) semantics
-        # unconditionally.  Older SciPys returned the maximum potential
-        # count from offsets/shape, so empty-data cases would mismatch.
-        if (self.make_method == '_make_empty'
-                and scipy_available
-                and numpy.lib.NumpyVersion(scipy.__version__) < '1.17.0'):
-            pytest.skip(
-                'scipy<1.17 reports an over-counted nnz for empty DIA '
-                'data (fixed in scipy/scipy#23055)')
         return m.nnz
 
     def test_nnz_axis_not_none(self):

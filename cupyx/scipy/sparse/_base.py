@@ -24,7 +24,6 @@ except ImportError:
 
 
 # Format -> human-readable name (mirrors scipy.sparse._base._formats).
-# Used by ``__repr__`` and ``__str__``.
 _format_names = {
     'csr': 'Compressed Sparse Row',
     'csc': 'Compressed Sparse Column',
@@ -43,16 +42,12 @@ class _spbase:
     """
 
     __array_priority__ = 101
-    # ``_data_matrix.__init__`` (and therefore the format subclasses
-    # built on it: csr/csc/coo/dia) does not chain through to
-    # ``spmatrix.__init__``, so instances never get ``self.maxprint``
-    # set as an instance attribute.  This class default is the fallback.
+    # Class default since ``__init__`` chains across format subclasses
+    # don't always reach ``spmatrix.__init__``.
     maxprint = 50
 
     def __class_getitem__(cls, args):
         # ``coo_array[int]``-style typing aliases (scipy 1.16+).
-        # ``types.GenericAlias`` is the same machinery that
-        # ``list[int]`` uses.
         import types
         return types.GenericAlias(cls, args)
 
@@ -88,13 +83,10 @@ class _spbase:
             f"\twith {self.nnz} stored elements and shape {self.shape}>")
 
     def __str__(self):
-        # Delegate to SciPy when available so our output exactly matches
-        # scipy.sparse __str__ (including format-specific quirks like the
-        # DIA "(N diagonals)" annotation and the diagonal-/row-major
-        # listing order, which differs across scipy versions).  When the
-        # ``get()`` path is unavailable (no SciPy installed, or a subclass
-        # that hasn't overridden ``get``), fall back to ``repr`` — that
-        # avoids fabricating a host-side listing in a different layout.
+        # Delegate to scipy via ``self.get()`` so the output (including
+        # version-specific quirks like DIA's "(N diagonals)" annotation)
+        # tracks the installed scipy.  Fall back to ``repr`` only when
+        # ``get()`` is unavailable.
         try:
             return str(self.get())
         except (RuntimeError, NotImplementedError):
@@ -185,7 +177,6 @@ class _spbase:
 
     # Array semantics: ** is element-wise (spmatrix overrides to matrix power)
     def __pow__(self, other):
-        # ``power`` validates scalar / zero so this stays array-safe.
         return self.power(other)
 
     # matmul (@) operator
@@ -223,9 +214,8 @@ class _spbase:
     def mT(self):
         """Matrix transpose.
 
-        Equivalent to :func:`cupyx.scipy.sparse.matrix_transpose` (when
-        added).  Currently restricted to 2-D since CuPy sparse types are
-        2-D only; will support nD when nD sparse arrays land.
+        Equivalent to :func:`cupyx.scipy.sparse.matrix_transpose`.
+        CuPy sparse types are 2-D only.
         """
         n = self.ndim
         if n < 2:
@@ -352,8 +342,12 @@ class _spbase:
         """
         return self.__class__(self, copy=True)
 
-    def count_nonzero(self):
-        """Number of non-zero entries, equivalent to"""
+    def count_nonzero(self, axis=None):
+        """Number of non-zero entries.
+
+        Subclasses override this; ``_spbase`` itself does not implement
+        a generic counter.
+        """
         raise NotImplementedError
 
     def diagonal(self, k=0):
@@ -488,8 +482,6 @@ class _spbase:
         if issparse(other):
             other = other.tocsr()
         return self.tocsr().multiply(other)
-
-    # TODO(unno): Implement nonzero
 
     def power(self, n, dtype=None):
         return self.tocsr().power(n, dtype=dtype)
@@ -664,10 +656,11 @@ class spmatrix:
         if nxt is not object.__init__:
             nxt(*args, **kwargs)
         elif args or kwargs:
-            try:
-                nxt(*args, **kwargs)
-            except TypeError:
-                pass
+            # Direct instantiation of ``spmatrix(args)`` with no concrete
+            # format subclass; scipy raises here, so do the same.
+            raise TypeError(
+                'cannot instantiate spmatrix directly; use a format '
+                'subclass such as csr_matrix')
 
     # Matrix semantics: * is matmul (overrides _spbase element-wise default)
     def __mul__(self, other):

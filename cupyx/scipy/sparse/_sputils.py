@@ -11,8 +11,6 @@ supported_dtypes = [get_dtype(x) for x in
 
 # dtype kind chars that cuSPARSE accepts for sparse ``data`` arrays:
 #   '?' bool, 'f' float32, 'd' float64, 'F' complex64, 'D' complex128.
-# Update if/when CuPy gains support for additional sparse-data dtypes
-# (e.g. float16 / bfloat16 via cuSPARSE Generic API extensions).
 _SPARSE_DATA_KINDS = frozenset('?fdFD')
 
 
@@ -20,9 +18,7 @@ def is_sparse_data_dtype(dtype):
     """Return True if ``dtype`` can be stored in a sparse ``data`` array.
 
     cuSPARSE-backed ops accept only bool, float32, float64, complex64,
-    and complex128 for ``data``.  Other dtypes (integer, float16,
-    bfloat16, struct, string) require pure-CuPy fallbacks or are not
-    supported.
+    and complex128 for ``data``.
     """
     return numpy.dtype(dtype).char in _SPARSE_DATA_KINDS
 

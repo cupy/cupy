@@ -492,10 +492,12 @@ class TestConstructIssparse:
     def test_eye_issparse(self):
         x = sparse.eye(3)
         assert sparse.issparse(x)
+        cupy.testing.assert_array_equal(x.toarray(), cupy.eye(3))
 
     def test_identity_issparse(self):
         x = sparse.identity(3)
         assert sparse.issparse(x)
+        cupy.testing.assert_array_equal(x.toarray(), cupy.eye(3))
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_hstack_issparse(self, xp, sp):

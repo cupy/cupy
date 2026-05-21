@@ -210,22 +210,8 @@ class _coo_base(sparse_data._data_matrix):
                 arrays' lengths are inconsistent, ``shape`` contains
                 a negative dimension, or the index dtype is too
                 narrow to address ``shape``.
-
-        Notes:
-            The shape-vs-dtype check is conservative: it requires
-            ``max(shape) <= iinfo(row.dtype).max``.  CuPy uses only
-            int32/int64 for sparse indices in practice, so this is
-            both necessary and sufficient for any representable COO.
         """
-        # Normalize shape first so all subsequent code can rely on it
-        # being ``(int, int)``.  ``check_shape`` also rejects negatives
-        # -- redundant for typical internal callers but harmless and
-        # matches the public constructor's invariant.
         shape = _util.check_shape(shape)
-        # ndim guard: the public constructor enforces 1-D arrays;
-        # mirror that here so ``_from_parts`` callers can't slip a
-        # 2-D buffer through and break downstream ops with confusing
-        # errors.
         if data.ndim != 1 or row.ndim != 1 or col.ndim != 1:
             raise ValueError(
                 f'data, row, and col must be 1-D, got ndim '
@@ -264,9 +250,7 @@ class _coo_base(sparse_data._data_matrix):
     def coords(self):
         """Tuple of coordinate arrays ``(row, col)``.
 
-        Mirrors :attr:`scipy.sparse.coo_array.coords` for partial
-        forward-compatibility with nD sparse arrays (CuPy is currently
-        2-D only).
+        Mirrors :attr:`scipy.sparse.coo_array.coords` (CuPy is 2-D only).
         """
         return (self.row, self.col)
 
@@ -394,7 +378,7 @@ class _coo_base(sparse_data._data_matrix):
         """
         # Match scipy: dedup in place, then count.  COO is already in
         # row/col form so per-axis counts come straight from a bincount
-        # on the appropriate coord array — no format conversion needed.
+        # on the appropriate coord array -- no format conversion needed.
         self.sum_duplicates()
         if axis is None:
             return int(cupy.count_nonzero(self.data))
@@ -469,10 +453,10 @@ class _coo_base(sparse_data._data_matrix):
             flat_indices = cupy.multiply(ncols, self.row,
                                          dtype=dtype) + self.col
             new_row, new_col = divmod(flat_indices, shape[1])
-        elif order == 'F':
+        elif order == 'F':  # column-major: flat = col * nrows + row
             dtype = _sputils.get_index_dtype(
-                maxval=(ncols * max(0, nrows - 1) + max(0, ncols - 1)))
-            flat_indices = cupy.multiply(ncols, self.row,
+                maxval=(nrows * max(0, ncols - 1) + max(0, nrows - 1)))
+            flat_indices = cupy.multiply(nrows, self.col,
                                          dtype=dtype) + self.row
             new_col, new_row = divmod(flat_indices, shape[0])
         else:

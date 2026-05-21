@@ -40,8 +40,7 @@ def check_shape(shape):
     Accepts any 2-element iterable (tuple, list, etc.) of intlike
     values.  Raises ``ValueError`` with the same message scipy uses
     when the shape is not a 2-tuple of intlike values or contains a
-    negative dimension.  Centralizing this here keeps the error
-    message consistent across CuPy's sparse constructors.
+    negative dimension.
     """
     try:
         shape_tuple = tuple(shape)

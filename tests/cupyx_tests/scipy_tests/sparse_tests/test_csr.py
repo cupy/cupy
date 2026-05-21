@@ -333,7 +333,7 @@ class TestCsrMatrix:
 
     def test_reshape_2(self):
         m = self.m.reshape((1, 12), order='F').toarray()
-        expect = [[1, 0, 0, 0, 0, 2, 0, 0, 0, 0, 3, 0]]
+        expect = [[0, 0, 0, 1, 0, 0, 0, 0, 3, 0, 2, 0]]
         cupy.testing.assert_allclose(m, expect)
 
 

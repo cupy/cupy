@@ -52,7 +52,7 @@ class TestSpmatrix(unittest.TestCase):
         # SciPy's _spbase rejects direct instantiation
         with pytest.raises((ValueError, TypeError)):
             scipy.sparse._base._spbase(None)
-        # CuPy's spmatrix is a mixin — instantiation is technically
+        # CuPy's spmatrix is a mixin -- instantiation is technically
         # possible but useless.  We just check it doesn't crash.
         m = sparse.spmatrix()
         assert isinstance(m, sparse.spmatrix)

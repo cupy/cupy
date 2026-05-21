@@ -205,7 +205,7 @@ def _compressed_sparse_stack(blocks, axis):
         cls = _csc.csc_array if use_array else _csc.csc_matrix
         shape = (constant_dim, sum_dim)
     return cls._from_parts(
-        data, indices, indptr, shape, _skip_buffer_check=True)
+        data, indices, indptr, shape)
 
 
 def hstack(blocks, format=None, dtype=None):
@@ -221,7 +221,8 @@ def hstack(blocks, format=None, dtype=None):
 
     Returns:
         cupyx.scipy.sparse: The stacked sparse object.  Returns a sparse
-        array when *all* inputs are sparse arrays, else a sparse matrix.
+        array when *any* input is a sparse array, else a sparse matrix
+        (matches scipy).
 
     .. seealso:: :func:`scipy.sparse.hstack`
 
@@ -250,7 +251,8 @@ def vstack(blocks, format=None, dtype=None):
 
     Returns:
         cupyx.scipy.sparse: The stacked sparse object.  Returns a sparse
-        array when *all* inputs are sparse arrays, else a sparse matrix.
+        array when *any* input is a sparse array, else a sparse matrix
+        (matches scipy).
 
     .. seealso:: :func:`scipy.sparse.vstack`
 
@@ -319,8 +321,7 @@ def bmat(blocks, format=None, dtype=None):
                 blocks_flat.append(blocks[m][n])
 
     if len(blocks_flat) == 0:
-        coo_cls = _coo.coo_matrix  # no inputs to detect type from
-        return coo_cls((0, 0), dtype=dtype)
+        return _coo.coo_matrix((0, 0), dtype=dtype)
 
     # check for fast path cases
     if (N == 1 and format in (None, 'csr') and
@@ -724,20 +725,21 @@ _array_containers = {
 
 
 def _to_array(matrix, format=None):
-    """Convert a sparse matrix result to the matching array type,
-    preserving the requested format when possible.
+    """Convert a sparse matrix result to the matching array type.
+
+    When the requested format has no implemented array-side conversion
+    (e.g. CSR -> DIA), the result is returned as ``csr_array``.
     """
     fmt = format or matrix.format
     cls = _array_containers.get(fmt, lambda: _csr.csr_array)()
     if isinstance(matrix, cls):
         return matrix
-    # Convert via CSR then to target format if supported
     arr = _csr.csr_array(matrix)
     if fmt and fmt != 'csr':
         try:
             arr = arr.asformat(fmt)
         except NotImplementedError:
-            pass  # keep as CSR
+            pass
     return arr
 
 
@@ -849,16 +851,16 @@ def block_diag(mats, format=None, dtype=None):
     rows = []
     cols = []
     datas = []
-    idx_arrays = []  # track int64 coords for downstream get_index_dtype
+    # Collect int64 coord arrays so ``get_index_dtype`` picks int64 for
+    # the assembled output when any input block needs it.  Each coord
+    # is checked independently because a ``tocoo()`` implementation
+    # could drop one side to int32.
+    idx_arrays = []
     r_idx = 0
     c_idx = 0
     for a in mats:
-        if isinstance(a, (list, tuple)) or numpy.isscalar(a):
-            a = _normalize_dense(a)
         if _base.issparse(a):
             a_coo = a.tocoo()
-            # Preserve int64 if either coord is int64 (``_from_parts``
-            # allows mismatched dtypes; defend against that).
             if a_coo.row.dtype == cupy.int64:
                 idx_arrays.append(a_coo.row)
             if a_coo.col.dtype == cupy.int64:

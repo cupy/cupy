@@ -147,7 +147,7 @@ def _csr_indptr_to_coo_rows(nnz, Bp):
     if Bp.dtype == cupy.int64:
         # TODO(eriknw): cuSPARSE--remove when xcsr2coo supports int64
         from cupyx.cusparse import _indptr_to_coo
-        return _indptr_to_coo(Bp)
+        return _indptr_to_coo(Bp, nnz=nnz)
 
     from cupy_backends.cuda.libs import cusparse
 
@@ -416,7 +416,7 @@ class IndexMixin:
         if isinstance(row, _int_scalar_types) and\
                 isinstance(col, _int_scalar_types):
             # A 1x1 sparse RHS (scipy/cupy sparse) is a valid scalar
-            # source — densify it before checking size.
+            # source -- densify it before checking size.
             if issparse(x):
                 x = cupy.asarray(x.toarray(), dtype=self.dtype)
             else:
@@ -533,32 +533,6 @@ class IndexMixin:
                 return x
 
         return x % length
-
-    def _getrow(self, i):
-        """Internal: return row ``i`` of the matrix as a (1 x n) row.
-
-        Args:
-            i (integer): Row index.
-
-        Returns:
-            cupyx.scipy.sparse: Sparse object with single row.
-        """
-        M, N = self.shape
-        i = _normalize_index(i, M, 'index')
-        return self._get_intXslice(i, slice(None))
-
-    def _getcol(self, i):
-        """Internal: return column ``i`` of the matrix as a (m x 1) column.
-
-        Args:
-            i (integer): Column index.
-
-        Returns:
-            cupyx.scipy.sparse: Sparse object with single column.
-        """
-        M, N = self.shape
-        i = _normalize_index(i, N, 'index')
-        return self._get_sliceXint(slice(None), i)
 
     def _get_intXint(self, row, col):
         raise NotImplementedError()

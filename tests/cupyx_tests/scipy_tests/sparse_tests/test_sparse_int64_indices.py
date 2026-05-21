@@ -260,7 +260,7 @@ class TestInt64Sort:
 
 
 class TestInt64ArithmeticFallback:
-    """Sparse addition with int64 indices — pure-CuPy fallback.
+    """Sparse addition with int64 indices -- pure-CuPy fallback.
 
     csrgeam2 routes int64 inputs to _cupy_csrgeam_int64 *before* checking
     cuSPARSE availability, so the path works on any CUDA version.
@@ -658,7 +658,7 @@ class TestInt64Argmax:
 
     def test_csr_argmax_no_axis_flat_index(self):
         # argmax() with no axis returns a flat index.  This path goes through
-        # COO conversion (int64-aware), not _arg_minor_reduce — so it worked
+        # COO conversion (int64-aware), not _arg_minor_reduce -- so it worked
         # before too.  Include as a regression guard.
         data = cupy.array([1.0, 2.0])
         indices = cupy.array([0, _LARGE], dtype=cupy.int64)
@@ -757,7 +757,7 @@ class TestInt64Multiply:
     """
 
     def test_multiply_dense_broadcast_int64(self):
-        # (1, _LARGE+1) sparse * (1, 1) dense — broadcasting.
+        # (1, _LARGE+1) sparse * (1, 1) dense -- broadcasting.
         data = cupy.array([2.0, 3.0])
         indices = cupy.array([0, _LARGE], dtype=cupy.int64)
         indptr = cupy.array([0, 2], dtype=cupy.int64)
@@ -811,7 +811,7 @@ class TestInt64Diagonal:
     """
 
     def test_diagonal_int64_large_cols(self):
-        # (2, _LARGE+1) matrix — diagonal is 2 elements.
+        # (2, _LARGE+1) matrix -- diagonal is 2 elements.
         data = cupy.array([1.0, 2.0])
         indices = cupy.array([0, 1], dtype=cupy.int64)
         indptr = cupy.array([0, 1, 2], dtype=cupy.int64)
@@ -847,13 +847,13 @@ class TestInt64MinMaxReduction:
     get_typename(self.indptr.dtype); shape param passed as idx_dtype.type(N).
 
     Design note: axis=1 (reduce over columns) on a CSR matrix sends
-    length = shape[1] directly to the kernel — the critical int64 path.
+    length = shape[1] directly to the kernel -- the critical int64 path.
     axis=0 converts to CSC first, then sends length = shape[0].
     Both paths exercise the same TI template, just with different shapes.
     """
 
     def _make_int64_csr(self):
-        # 2 × (_LARGE+1) CSR — shape forces int64 index dtype.
+        # 2 × (_LARGE+1) CSR -- shape forces int64 index dtype.
         # Row 0: col 0 → 1.0, col 2 → 3.0
         # Row 1: col 1 → 2.0, col 2 → -1.0
         data = cupy.array([1.0, 3.0, 2.0, -1.0])
@@ -884,7 +884,7 @@ class TestInt64MinMaxReduction:
 
     def test_max_axis0_int64(self):
         # axis=0 on CSC: _minor_reduce receives length = shape[0] = _LARGE+1.
-        # Construct (_LARGE+1, 2) CSC directly — indptr has 3 elements (tiny).
+        # Construct (_LARGE+1, 2) CSC directly -- indptr has 3 elements (tiny).
         # Col 0: rows 0,1 → 1.0, -2.0   Col 1: row 0 → 3.0
         data = cupy.array([1.0, -2.0, 3.0])
         indices = cupy.array([0, 1, 0], dtype=cupy.int64)
@@ -1669,7 +1669,7 @@ class TestInt64FancyMinorIndex:
         assert float(sub.data[0]) == pytest.approx(1.0)
 
     def test_csr_fancy_col_value_at_large_index(self):
-        # Selecting col _LARGE — previously the histogram kernel silently
+        # Selecting col _LARGE -- previously the histogram kernel silently
         # truncated _LARGE to its low 32 bits, producing a wrong column match
         # and returning 0.0 instead of the stored value.
         m = self._make_int64_csr_2row()
@@ -2409,7 +2409,7 @@ class TestInt64SumAxis:
         assert float(s[0, 4]) == pytest.approx(7.0)
 
     def test_sum_axis1_large_cols(self):
-        # shape=(2, _LARGE+2): axis=1 creates ones(_LARGE+2) — OOM.
+        # shape=(2, _LARGE+2): axis=1 creates ones(_LARGE+2) -- OOM.
         # Use small-value int64 matrix to keep ncols small.
         data = cupy.array([3.0, 7.0])
         indices = cupy.array([0, 2], dtype=cupy.int64)
@@ -2622,7 +2622,7 @@ class TestInt64DiaConversion:
 
     def test_dia_tocsr_large_shape(self):
         # Shape (_LARGE+1, 2): max(shape) > INT32_MAX triggers int64.
-        # tocsc() produces a 2-column CSC (indptr has 3 entries — cheap).
+        # tocsc() produces a 2-column CSC (indptr has 3 entries -- cheap).
         # A full tocsr() would create _LARGE+1 row CSR (17 GB indptr),
         # so verify the int64 chain via tocsc→tocoo instead.
         data = cupy.ones((1, 2))
@@ -2638,7 +2638,7 @@ class TestInt64DiaConversion:
 
     def test_dia_tocsc_large_shape(self):
         # Shape (_LARGE+1, 2): tocsc() produces a 2-column CSC
-        # (indptr has 3 entries — cheap) while still exercising the
+        # (indptr has 3 entries -- cheap) while still exercising the
         # int64 kernel path (idx_dtype chosen by max(shape) > INT32_MAX).
         data = cupy.ones((1, 2))
         offsets = cupy.array([0], dtype=cupy.int32)
@@ -2693,7 +2693,7 @@ class TestInt64RandomSparse:
         assert m.shape == (_LARGE, 2)
 
     def test_random_large_mn(self):
-        # m*n = 10^12 — old code would OOM allocating 8 TB
+        # m*n = 10^12 -- old code would OOM allocating 8 TB
         m = sparse.random(10**6, 10**6, density=1e-9, format='coo')
         assert m.nnz > 0
         assert m.shape == (10**6, 10**6)
@@ -3750,37 +3750,24 @@ class TestIndptrToCooMemoryOptimization:
         assert int(result[0]) == BIG_N - 1
 
     def test_searchsorted_size_matches_repeat(self):
-        # The two paths must agree exactly: cross-check their outputs
-        # over a few synthetic indptrs covering edge cases (uniform
-        # density, hot rows, empty tail).
+        # Cross-check that the searchsorted path agrees with the repeat
+        # path across uniform density, half-empty, and end-spike indptrs.
         from cupyx.cusparse import _indptr_to_coo
-        nrows = 1 << 15  # 32K, just over threshold
-        for pattern in (
-                # uniform density: 4 entries per row
-                lambda i: 4 * (i + 1),
-                # half-empty: only first half has entries
-                lambda i: i + 1 if i < nrows // 2 else nrows // 2,
-                # spike at end: all in last row
-                lambda i: 5 if i == nrows - 1 else 0,
-        ):
+        nrows = 1 << 15  # 32K, just over the searchsorted threshold
+        i = cupy.arange(nrows, dtype=cupy.int64)
+        per_row_counts = (
+            cupy.full(nrows, 4, dtype=cupy.int64),
+            cupy.where(i < nrows // 2, 1, 0).astype(cupy.int64),
+            cupy.where(i == nrows - 1, 5, 0).astype(cupy.int64),
+        )
+        for diffs in per_row_counts:
             indptr = cupy.zeros(nrows + 1, dtype=cupy.int64)
-            for i in range(nrows):
-                indptr[i + 1] = pattern(i)
-            # Force final cumsum monotonicity
-            indptr[1:] = cupy.cumsum(cupy.diff(indptr))
+            indptr[1:] = cupy.cumsum(diffs)
             nnz_val = int(indptr[-1])
             if nnz_val == 0:
                 continue
-            # Repeat path (no nnz hint, low threshold disabled by big
-            # nnz).
-            #
-            # Force repeat: use a temporary indptr whose nrows is below
-            # threshold but populated identically.
-            #
-            # Actually simpler: just compare against a reference repeat.
             ref = cupy.repeat(
-                cupy.arange(nrows, dtype=cupy.int64),
-                cupy.diff(indptr))
+                cupy.arange(nrows, dtype=cupy.int64), diffs)
             actual = _indptr_to_coo(indptr, nnz=nnz_val)
             cupy.testing.assert_array_equal(actual, ref)
 
@@ -3814,7 +3801,7 @@ class TestBmatIndexDtypeDetection:
         # enough that the constructor preserves int64 offsets without
         # any force-assign).  data shape (1, 1) keeps the input small,
         # but bmat routes through CSC -> COO via ``_indptr_to_coo``,
-        # which materialises an ``arange(num_rows)`` of int64 — that's
+        # which materialises an ``arange(num_rows)`` of int64 -- that's
         # ~17 GB for shape ``(2**31 + 1, 1)``.  Marked ``slow`` so the
         # default CI run excludes it; OOM-skip for hosts under 17 GB.
         data = cupy.ones((1, 1), dtype=cupy.float64)
@@ -3919,15 +3906,13 @@ class TestMinorSliceStep1FastPath:
     via ``_index._get_csr_submatrix_minor_axis`` (mask + cumsum,
     O(nnz)) instead of the histogram-based ``_minor_index_fancy``
     path (O(N)).  The output buffer is tight by construction
-    (``Bx.size == int(Bp[-1])``), so the call passes
-    ``_skip_buffer_check=True`` to skip the validation D2H.
+    (``Bx.size == int(Bp[-1])``).
     """
 
     def test_step1_correctness_int64(self):
         # Compare against scipy for a non-trivial CSR with int64
         # indices.  Captures both the fast-path-vs-histogram dispatch
-        # and the buffer-tightness invariant required by
-        # ``_skip_buffer_check=True``.
+        # and the buffer-tightness invariant.
         import scipy.sparse
         data = cupy.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
         indices = cupy.array([0, 2, 1, 3, 0, 4], dtype=cupy.int64)
@@ -4143,36 +4128,55 @@ class TestCountNonzeroAxisFusedSync:
 
 class TestFromPartsBufferCheck:
 
-    def test_slack_rejected_by_default(self):
-        # data.size > indptr[-1] -- slack at the end.
-        with pytest.raises(ValueError, match=r'data has length 5'):
+    def test_mismatched_data_indices_rejected(self):
+        # data.size != indices.size is caught cheaply (no sync).
+        with pytest.raises(ValueError, match=r'same length'):
             sparse.csr_matrix._from_parts(
-                cupy.array([1.0, 2.0, 3.0, 99.0, 99.0]),
-                cupy.array([0, 1, 2, 99, 99], dtype='i'),
+                cupy.array([1.0, 2.0, 3.0, 99.0]),
+                cupy.array([0, 1, 2], dtype='i'),
                 cupy.array([0, 1, 2, 3], dtype='i'),
                 (3, 3))
 
-    def test_skip_buffer_check_opt_out(self):
-        # Same input but with the opt-out: ``_from_parts`` accepts
-        # the slack (callers that prove the invariant out of band,
-        # e.g. transient build buffers).
-        m = sparse.csr_matrix._from_parts(
-            cupy.array([1.0, 2.0, 3.0, 99.0, 99.0]),
-            cupy.array([0, 1, 2, 99, 99], dtype='i'),
-            cupy.array([0, 1, 2, 3], dtype='i'),
-            (3, 3),
-            _skip_buffer_check=True)
-        assert int(m.indptr[-1]) == 3
-        assert m.indices.size == 5  # buffer has slack
-
     def test_tight_buffer_passes(self):
-        # Default-validated tight buffer construction still works.
+        # The canonical, no-slack construction path.
         m = sparse.csr_matrix._from_parts(
             cupy.array([1.0, 2.0, 3.0]),
             cupy.array([0, 1, 2], dtype='i'),
             cupy.array([0, 1, 2, 3], dtype='i'),
             (3, 3))
         assert m.nnz == 3
+
+    @pytest.mark.parametrize('fmt', ['csr', 'csc'])
+    def test_public_ctor_trims_slack(self, fmt):
+        # ``csr_matrix((data, indices, indptr), ...)`` with
+        # ``data.size > indptr[-1]`` is silently trimmed at the public
+        # constructor (matches scipy).  Prevents slack from leaking
+        # into the internal pipeline via user-supplied tuples.
+        cls = getattr(sparse, f'{fmt}_matrix')
+        shape = (3, 100) if fmt == 'csr' else (100, 3)
+        A = cls(
+            (cupy.array([1.0, 2.0, 3.0, 99.0, 99.0]),
+             cupy.array([0, 1, 2, 99, 99], dtype='i'),
+             cupy.array([0, 1, 2, 3], dtype='i')),
+            shape=shape)
+        assert A.data.size == 3
+        assert A.indices.size == 3
+        assert float(A.sum()) == 6.0
+
+    @pytest.mark.parametrize('fmt', ['csr', 'csc'])
+    def test_public_ctor_rejects_indptr_overshoot(self, fmt):
+        # The inverse of the trim: when ``indptr[-1] > data.size`` the
+        # constructor must raise rather than build an inconsistent
+        # matrix (where downstream readers would index past data).
+        # scipy raises here too.
+        cls = getattr(sparse, f'{fmt}_matrix')
+        shape = (3, 5) if fmt == 'csr' else (5, 3)
+        with pytest.raises(ValueError, match='last index pointer'):
+            cls(
+                (cupy.array([1.0, 2.0]),
+                 cupy.array([0, 1], dtype='i'),
+                 cupy.array([0, 1, 5], dtype='i')),
+                shape=shape)
 
 
 class TestAsindicesOutOfBoundsRejected:

@@ -28,10 +28,10 @@ class _csc_base(_compressed._compressed_sparse_matrix):
         It constructs an empty matrix whose shape is ``(M, N)``. Default dtype
         is float64.
     ``csc_matrix((data, (row, col)))``
-        All ``data``, ``row`` and ``col`` are one-dimenaional
+        All ``data``, ``row`` and ``col`` are one-dimensional
         :class:`cupy.ndarray`.
     ``csc_matrix((data, indices, indptr))``
-        All ``data``, ``indices`` and ``indptr`` are one-dimenaional
+        All ``data``, ``indices`` and ``indptr`` are one-dimensional
         :class:`cupy.ndarray`.
 
     Args:
@@ -111,7 +111,7 @@ class _csc_base(_compressed._compressed_sparse_matrix):
                 a.sum_duplicates()
                 return self._as_csr_type(cusparse.csrgemm2(a, other))
             else:
-                raise AssertionError
+                raise RuntimeError('no cuSPARSE spgemm backend available')
         elif _base.issparse(other) and other.format == 'csc':
             self.sum_duplicates()
             other.sum_duplicates()
@@ -144,7 +144,7 @@ class _csc_base(_compressed._compressed_sparse_matrix):
                 b.sum_duplicates()
                 return self._as_csr_type(cusparse.spgemm(a, b))
             else:
-                raise AssertionError
+                raise RuntimeError('no cuSPARSE spgemm backend available')
         elif cupyx.scipy.sparse.issparse(other):
             return self._matmul_dispatch(other.tocsr())
         elif _base.isdense(other):
@@ -168,7 +168,7 @@ class _csc_base(_compressed._compressed_sparse_matrix):
                     # (I got HIPSPARSE_STATUS_INTERNAL_ERROR...)
                     csrmv = cusparse.spmv
                 else:
-                    raise AssertionError
+                    raise RuntimeError('no cuSPARSE spmv backend available')
                 return csrmv(self.T, cupy.asfortranarray(other), transa=True)
             elif other.ndim == 2:
                 self.sum_duplicates()
@@ -184,7 +184,7 @@ class _csc_base(_compressed._compressed_sparse_matrix):
                 elif cusparse.check_availability('spmm'):
                     csrmm = cusparse.spmm
                 else:
-                    raise AssertionError
+                    raise RuntimeError('no cuSPARSE spmm backend available')
                 return csrmm(self.T, cupy.asfortranarray(other), transa=True)
             else:
                 raise ValueError('could not interpret dimensions')
@@ -192,7 +192,6 @@ class _csc_base(_compressed._compressed_sparse_matrix):
             return NotImplemented
 
     # TODO(unno): Implement check_format
-    # TODO(unno): Implement diagonal
 
     def eliminate_zeros(self):
         """Removes zero entories in place."""
@@ -213,11 +212,6 @@ class _csc_base(_compressed._compressed_sparse_matrix):
         self.data = new.data
         self.indices = new.indices
         self.indptr = new.indptr
-
-    # TODO(unno): Implement maximum
-    # TODO(unno): Implement minimum
-    # TODO(unno): Implement multiply
-    # TODO(unno): Implement prune
 
     def sort_indices(self):
         """Sorts the indices of this matrix *in place*.
@@ -374,7 +368,7 @@ class _csc_base(_compressed._compressed_sparse_matrix):
     # TODO(unno): Implement tolil
 
     def transpose(self, axes=None, copy=False):
-        """Returns a transpose matrix.
+        """Returns the transpose of this object.
 
         Args:
             axes: This option is not supported.
@@ -382,7 +376,8 @@ class _csc_base(_compressed._compressed_sparse_matrix):
                 Otherwise, it shared data arrays as much as possible.
 
         Returns:
-            cupyx.scipy.sparse.csr_matrix: `self` with the dimensions reversed.
+            csr_array if ``self`` is a sparse array, else csr_matrix,
+            with the dimensions reversed.
 
         """
         if axes is not None:
@@ -402,8 +397,7 @@ class _csc_base(_compressed._compressed_sparse_matrix):
             has_canonical_format=getattr(
                 self, '_has_canonical_format', None),
             has_sorted_indices=getattr(
-                self, '_has_sorted_indices', None),
-            _skip_buffer_check=True)
+                self, '_has_sorted_indices', None))
 
     def _getrow(self, i):
         """Return a copy of row i as a (1 x n) CSR row vector."""

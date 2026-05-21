@@ -102,12 +102,11 @@ class _csr_base(_compressed._compressed_sparse_matrix):
                     return cls._from_parts(
                         new_data, self.indices.copy(),
                         self.indptr.copy(), self.shape,
-                        has_canonical_format=True,
-                        _skip_buffer_check=True)
+                        has_canonical_format=True)
                 from cupyx.cusparse import (
                     _indptr_to_coo, _build_indptr)
                 idx_dtype = self.indices.dtype
-                rows = _indptr_to_coo(self.indptr)
+                rows = _indptr_to_coo(self.indptr, nnz=self.nnz)
                 rows = rows[mask]
                 cols = self.indices[mask]
                 data = new_data[mask]
@@ -115,8 +114,7 @@ class _csr_base(_compressed._compressed_sparse_matrix):
                 indptr = _build_indptr(rows, M, idx_dtype)
                 return cls._from_parts(
                     data, cols, indptr, self.shape,
-                    has_canonical_format=True,
-                    _skip_buffer_check=True)
+                    has_canonical_format=True)
             # Slow path: op(0, scalar) is True, so unstored entries
             # contribute.  Fall through to binopt_csr which expands
             # to O(m*n).  This is unavoidable when the result is
@@ -136,8 +134,7 @@ class _csr_base(_compressed._compressed_sparse_matrix):
                 data,
                 cupy.zeros((1,), dtype=idx_dtype),
                 cupy.arange(2, dtype=idx_dtype),
-                (1, 1),
-                _skip_buffer_check=True)
+                (1, 1))
             return binopt_csr(self, other, op_name)
         elif _util.isdense(other):
             return op(self.todense(), other)
@@ -263,10 +260,6 @@ class _csr_base(_compressed._compressed_sparse_matrix):
         else:
             return NotImplemented
 
-    def _mul_scalar(self, other):
-        self.sum_duplicates()
-        return self._with_data(self.data * other)
-
     def __div__(self, other):
         raise NotImplementedError
 
@@ -276,13 +269,13 @@ class _csr_base(_compressed._compressed_sparse_matrix):
     def __truediv__(self, other):
         """Point-wise division by another matrix, vector or scalar"""
         if _util.isscalarlike(other):
-            # Pick the result dtype:
-            #   - scipy upcasts float32 sparse to float64 on division
-            #     (legacy compatibility -- carried over here);
-            #   - bool / int sparse must promote to a float so the
-            #     result remains usable with cuSPARSE-backed ops;
-            #   - real-vs-complex follows numpy's natural promotion
-            #     (``result_type(float64, complex64) -> complex128``).
+            # Pick the result dtype.  scipy upcasts any dtype that's
+            # castable to float64 (bool/int*/float16/float32/...) before
+            # dividing; mirror that behaviour, and additionally fall
+            # back to float64 for any non-cuSPARSE-supported dtype so
+            # the result remains usable with cuSPARSE-backed ops.
+            # Real-vs-complex follows numpy's natural promotion
+            # (``result_type(float64, complex64) -> complex128``).
             dtype = self.dtype
             if dtype == numpy.float32:
                 dtype = numpy.float64
@@ -351,7 +344,8 @@ class _csr_base(_compressed._compressed_sparse_matrix):
                 self.indices = new_indices
                 self.indptr = cupy.zeros(nrows + 1, dtype=idx_dtype)
                 return
-            row_of_each = cusparse._indptr_to_coo(self.indptr)
+            row_of_each = cusparse._indptr_to_coo(
+                self.indptr, nnz=self.nnz)
             kept_rows = row_of_each[mask]
             new_indptr = cusparse._build_indptr(
                 kept_rows, nrows, idx_dtype)
@@ -384,8 +378,7 @@ class _csr_base(_compressed._compressed_sparse_matrix):
                     has_canonical_format=getattr(
                         self, '_has_canonical_format', None),
                     has_sorted_indices=getattr(
-                        self, '_has_sorted_indices', None),
-                    _skip_buffer_check=True)
+                        self, '_has_sorted_indices', None))
         elif _util.isdense(other):
             self.sum_duplicates()
             other = cupy.atleast_2d(other)
@@ -419,14 +412,12 @@ class _csr_base(_compressed._compressed_sparse_matrix):
         elif _is_csr(other):
             self.sum_duplicates()
             other.sum_duplicates()
-            return multiply_by_csr(self, other)
+            return multiply_by_csr(self, other, out_cls=type(self))
         elif _base.issparse(other):
             return self.multiply(other.tocsr())
         else:
             msg = 'expected scalar, dense matrix/vector or csr matrix'
             raise TypeError(msg)
-
-    # TODO(unno): Implement prune
 
     def setdiag(self, values, k=0):
         """Set diagonal or off-diagonal elements of the array.
@@ -464,8 +455,7 @@ class _csr_base(_compressed._compressed_sparse_matrix):
         # right dtype, so an in-place ``-=`` would mutate the caller.
         x_data = x_data - self.diagonal(k=k)[:x_len]
         y = self + type(self)._from_parts(
-            x_data, x_indices, x_indptr, self.shape,
-            _skip_buffer_check=True)
+            x_data, x_indices, x_indptr, self.shape)
         self.data = y.data
         self.indices = y.indices
         self.indptr = y.indptr
@@ -619,7 +609,7 @@ class _csr_base(_compressed._compressed_sparse_matrix):
         raise NotImplementedError
 
     def transpose(self, axes=None, copy=False):
-        """Returns a transpose matrix.
+        """Returns the transpose of this object.
 
         Args:
             axes: This option is not supported.
@@ -627,7 +617,8 @@ class _csr_base(_compressed._compressed_sparse_matrix):
                 Otherwise, it shared data arrays as much as possible.
 
         Returns:
-            cupyx.scipy.sparse.csc_matrix: `self` with the dimensions reversed.
+            csc_array if ``self`` is a sparse array, else csc_matrix,
+            with the dimensions reversed.
 
         """
         if axes is not None:
@@ -647,8 +638,7 @@ class _csr_base(_compressed._compressed_sparse_matrix):
             has_canonical_format=getattr(
                 self, '_has_canonical_format', None),
             has_sorted_indices=getattr(
-                self, '_has_sorted_indices', None),
-            _skip_buffer_check=True)
+                self, '_has_sorted_indices', None))
 
     def _getrow(self, i):
         """Return a copy of row i as a (1 x n) CSR row vector."""
@@ -699,10 +689,10 @@ class csr_matrix(_base.spmatrix, _csr_base):
         It constructs an empty matrix whose shape is ``(M, N)``. Default dtype
         is float64.
     ``csr_matrix((data, (row, col)))``
-        All ``data``, ``row`` and ``col`` are one-dimenaional
+        All ``data``, ``row`` and ``col`` are one-dimensional
         :class:`cupy.ndarray`.
     ``csr_matrix((data, indices, indptr))``
-        All ``data``, ``indices`` and ``indptr`` are one-dimenaional
+        All ``data``, ``indices`` and ``indptr`` are one-dimensional
         :class:`cupy.ndarray`.
 
     Args:
@@ -773,8 +763,7 @@ def multiply_by_scalar(sp, a):
         has_canonical_format=getattr(
             sp, '_has_canonical_format', None),
         has_sorted_indices=getattr(
-            sp, '_has_sorted_indices', None),
-        _skip_buffer_check=True)
+            sp, '_has_sorted_indices', None))
 
 
 def multiply_by_dense(sp, dn):
@@ -805,8 +794,7 @@ def multiply_by_dense(sp, dn):
         data, indices)
 
     return type(sp)._from_parts(
-        data, indices, indptr, shape=(m, n),
-        _skip_buffer_check=True)
+        data, indices, indptr, shape=(m, n))
 
 
 _GET_ROW_ID_ = '''
@@ -901,7 +889,12 @@ def _cupy_divide_by_dense():
     )
 
 
-def multiply_by_csr(a, b):
+def multiply_by_csr(a, b, *, out_cls=None):
+    # ``out_cls`` pins the result type to the caller (e.g. ``type(self)``
+    # from ``_csr_base.multiply``) so the swap below for performance
+    # doesn't leak the other operand's type into the result.
+    if out_cls is None:
+        out_cls = type(a)
     check_shape_for_pointwise_op(a.shape, b.shape)
     a_m, a_n = a.shape
     b_m, b_n = b.shape
@@ -909,12 +902,11 @@ def multiply_by_csr(a, b):
     a_nnz = a.nnz * (m // a_m) * (n // a_n)
     b_nnz = b.nnz * (m // b_m) * (n // b_n)
     if a_nnz > b_nnz:
-        return multiply_by_csr(b, a)
+        return multiply_by_csr(b, a, out_cls=out_cls)
     # Harmonise index dtypes so the kernel's templated ``I`` parameter
     # is consistent across both operands (mirrors ``binopt_csr``).
-    # Without this, mixed int32/int64 inputs trip
-    # ``TypeError: Type is mismatched. B_INDPTR int32 int64 I``.
-    # ``promote_types`` is dtype-only (faster than ``result_type``).
+    # Without this, mixed int32/int64 inputs trip ``TypeError: Type is
+    # mismatched. B_INDPTR int32 int64 I``.
     idx_dtype = numpy.promote_types(a.indices.dtype, b.indices.dtype)
     a_indices = a.indices.astype(idx_dtype, copy=False)
     a_indptr = a.indptr.astype(idx_dtype, copy=False)
@@ -952,9 +944,8 @@ def multiply_by_csr(a, b):
     # remove zero elements in matrix c
     cupy_multiply_by_csr_step2()(c_data, c_indices, flags, d_data, d_indices)
 
-    return type(a)._from_parts(
-        d_data, d_indices, d_indptr, shape=(m, n),
-        _skip_buffer_check=True)
+    return out_cls._from_parts(
+        d_data, d_indices, d_indptr, shape=(m, n))
 
 
 @cupy._util.memoize(for_each_device=True)
@@ -1133,8 +1124,7 @@ def binopt_csr(a, b, op_name):
         b_info, b_valid, b_tmp_indices, b_tmp_data, it(b_nnz),
         c_indices, c_data, size=_size)
     return type(a)._from_parts(
-        c_data, c_indices, c_indptr, shape=(m, n),
-        _skip_buffer_check=True)
+        c_data, c_indices, c_indptr, shape=(m, n))
 
 
 @cupy._util.memoize(for_each_device=True)
@@ -1372,9 +1362,8 @@ def dense2csr(a):
     indices = cupy.empty(nnz, dtype=idx_dtype)
     data = cupy.empty(nnz, dtype=a.dtype)
     cupy_dense2csr_step2()(it(m), it(n), a, info, indices, data)
-    # ``dense2csr`` always returns ``csr_matrix``.
     return csr_matrix._from_parts(
-        data, indices, indptr, (m, n), _skip_buffer_check=True)
+        data, indices, indptr, (m, n))
 
 
 @cupy._util.memoize(for_each_device=True)

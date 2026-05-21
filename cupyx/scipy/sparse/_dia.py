@@ -181,7 +181,7 @@ class _dia_base(_data._data_matrix):
         Excludes explicit zeros and entries that lie outside the
         matrix shape (DIA's ``data`` buffer can be wider than
         ``num_cols``; those pad entries don't count).  DIA doesn't
-        support per-axis counts — use ``tocsr().count_nonzero(axis)``.
+        support per-axis counts -- use ``tocsr().count_nonzero(axis)``.
 
         .. seealso:: :meth:`scipy.sparse.dia_matrix.count_nonzero`
         """

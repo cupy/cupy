@@ -39,7 +39,7 @@ from cupyx.scipy.sparse._construct import diags_array  # NOQA
 from cupyx.scipy.sparse._construct import eye_array  # NOQA
 from cupyx.scipy.sparse._construct import random_array  # NOQA
 
-# Combining (type-aware: returns array when all inputs are arrays)
+# Combining (type-aware: returns array when any input is an array)
 from cupyx.scipy.sparse._construct import hstack  # NOQA
 from cupyx.scipy.sparse._construct import vstack  # NOQA
 from cupyx.scipy.sparse._construct import kron  # NOQA
