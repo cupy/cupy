@@ -760,6 +760,19 @@ def _get_elementwise_kernel(
 
 
 cdef class _XwiseKernelBase:
+    cdef:
+        readonly tuple in_params
+        readonly tuple out_params
+        readonly tuple params
+        readonly Py_ssize_t nin
+        readonly Py_ssize_t nout
+        readonly object operation
+        readonly str name
+        readonly str __name__
+        readonly object preamble
+        readonly dict _params_type_memo
+        readonly dict _kernel_memo
+        readonly dict _cached_codes
 
     cpdef tuple _decide_params_type(
             self, tuple in_args_dtype, tuple out_args_dtype):
