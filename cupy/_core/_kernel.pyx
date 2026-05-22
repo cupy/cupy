@@ -1888,10 +1888,10 @@ cdef class BatchwiseKernel(_XwiseKernelBase):
     cdef:
         readonly tuple in_core_ndims
         readonly tuple out_core_ndims
-        readonly object validate_core_shapes
+        readonly object core_shape_mapper
 
     def __init__(self, in_params, out_params, operation,
-                 name='kernel', preamble='', *, validate_core_shapes):
+                 name='kernel', preamble='', *, core_shape_mapper):
 
         self.in_params, self.in_core_ndims = _get_batchwise_param_info(
             in_params, True)
@@ -1905,7 +1905,7 @@ cdef class BatchwiseKernel(_XwiseKernelBase):
         self.operation = operation
         self.name = name
         self.preamble = preamble
-        self.validate_core_shapes = validate_core_shapes
+        self.core_shape_mapper = core_shape_mapper
         self._params_type_memo = {}
         self._cached_codes = {}
         names = [p.name for p in self.in_params + self.out_params]
@@ -1967,7 +1967,13 @@ cdef class BatchwiseKernel(_XwiseKernelBase):
             if self.out_core_ndims[i] > 0 else ()
             for i, arg in enumerate(out_args)
         )
-        self.validate_core_shapes(in_core_shapes, out_core_shapes)
+
+        expected_out_core_shapes = self.core_shape_mapper(in_core_shapes)
+        if out_core_shapes != expected_out_core_shapes:
+            raise ValueError(
+                f"output core shape mismatch for {self.name}. "
+                f"expected {expected_out_core_shapes}, got {out_core_shapes}."
+            )
 
         in_batch_shapes = [
             arg.shape[:-self.in_core_ndims[i]] if self.in_core_ndims[i] > 0
