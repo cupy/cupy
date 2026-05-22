@@ -128,11 +128,13 @@ cdef class BatchwiseKernel(_XwiseKernelBase):
             raise ValueError("output with insufficient dimensions.")
 
         in_core_shapes = tuple(
-            arg.shape[-self.in_core_ndims[i]:] if self.in_core_ndims[i] > 0 else ()
+            arg.shape[-self.in_core_ndims[i]:]
+            if self.in_core_ndims[i] > 0 else ()
             for i, arg in enumerate(in_args)
         )
         out_core_shapes = tuple(
-            arg.shape[-self.out_core_ndims[i]:] if self.out_core_ndims[i] > 0 else ()
+            arg.shape[-self.out_core_ndims[i]:]
+            if self.out_core_ndims[i] > 0 else ()
             for i, arg in enumerate(out_args)
         )
         self.validate_core_shapes(in_core_shapes, out_core_shapes)
