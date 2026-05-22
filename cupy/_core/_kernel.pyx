@@ -2026,7 +2026,7 @@ cdef class BatchwiseKernel(_XwiseKernelBase):
         kern = self._get_kernel(dev_id, arginfos, type_map)
 
         kern.linear_launch(indexer.size, inout_args, shared_mem=0,
-                           block_max_size=0, stream=None)
+                           block_max_size=128, stream=None)
         return out if self.nout > 1 else out[0]
 
     cdef function.Function _compile_kernel(
