@@ -771,6 +771,10 @@ cdef class _XwiseKernelBase:
         readonly str name
         readonly str __name__
         readonly object preamble
+        readonly bint reduce_dims
+        readonly bint no_return
+        readonly bint return_tuple
+        readonly dict kwargs
         readonly dict _params_type_memo
         readonly dict _kernel_memo
         readonly dict _cached_codes
@@ -884,12 +888,6 @@ cdef class ElementwiseKernel(_XwiseKernelBase):
             the bottom of the kernel function definition.
 
     """
-
-    cdef:
-        readonly bint reduce_dims
-        readonly bint no_return
-        readonly bint return_tuple
-        readonly dict kwargs
 
     def __init__(self, in_params, out_params, operation,
                  name='kernel', reduce_dims=True, preamble='',
@@ -1969,6 +1967,7 @@ cdef class BatchwiseKernel(_XwiseKernelBase):
         self.operation = operation
         self.name = name
         self.preamble = preamble
+        self.reduce_dims = reduce_dims
         self.no_return = no_return
         self.return_tuple = return_tuple
         self.core_shape_mapper = core_shape_mapper
