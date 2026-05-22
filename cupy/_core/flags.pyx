@@ -3,9 +3,9 @@
 
 cdef class Flags:
     def __init__(self, c_contiguous, f_contiguous, owndata):
-        self._c_contiguous = c_contiguous
-        self._f_contiguous = f_contiguous
-        self._owndata = owndata
+        self.c_contiguous = c_contiguous
+        self.f_contiguous = f_contiguous
+        self.owndata = owndata
 
     @property
     def fnc(self):
