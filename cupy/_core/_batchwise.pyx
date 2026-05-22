@@ -186,7 +186,7 @@ cdef class BatchwiseKernel(_XwiseKernelBase):
         indexer = _carray._indexer_init(loop_shape)
         inout_args.append(indexer)
 
-        arginfos = _get_arginfos(inout_args)
+        arginfos = _get_arginfos(inout_args, core_ndims=core_ndims)
         kern = self._get_kernel(dev_id, arginfos, type_map)
 
         kern.linear_launch(indexer.size, inout_args, shared_mem=0,
