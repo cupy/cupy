@@ -13,12 +13,18 @@ from cupy._core.core cimport _ndarray_base
 from cupy._core._carray cimport shape_t
 from cupy._core._kernel cimport _preprocess_args
 from cupy._core._kernel cimport ParameterInfo
-from cupy._core._kernel cimport _contains_zero
 from cupy._core._kernel cimport _decide_params_type_core
 from cupy._core._kernel cimport _get_arg_infos
 from cupy._core._kernel cimport _get_simple_elementwise_kernel_code
 from cupy._core._kernel cimport _get_simple_elementwise_kernel_from_code
 from cupy._core._kernel cimport _XwiseKernelBase
+
+
+cdef inline bint _contains_zero(const shape_t& v) except? -1:
+    for i in range(v.size()):
+        if v[i] == 0:
+            return True
+    return False
 
 
 @_util.memoize()
