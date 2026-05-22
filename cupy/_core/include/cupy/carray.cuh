@@ -225,6 +225,14 @@ public:
   }
 };
 
+template <typename T, int _ndim, bool _c_contiguous, bool _use_32bit_indexing, int _core_ndim>
+class CArray;
+
+namespace xsf {
+    template <typename T, int ndim, bool is_c_contiguous, bool index_32_bits, int core_ndim>
+    __device__ auto as_mdspan(const CArray<T, ndim, is_c_contiguous, index_32_bits, core_ndim>& arr);
+}
+
 template <typename T, int _ndim, bool _c_contiguous=false, bool _use_32bit_indexing=false, int _core_ndim=0>
 class CArray {
 public:
@@ -239,6 +247,9 @@ private:
   ptrdiff_t size_;
   ptrdiff_t shape_[ndim];
   ptrdiff_t strides_[ndim];
+
+  template <typename U, int n, bool c, bool idx, int cdim>
+  friend auto xsf::as_mdspan(const CArray<U, n, c, idx, cdim>& arr);
 
 public:
   // Constructor supports pointers or initializer lists and strides is optional
