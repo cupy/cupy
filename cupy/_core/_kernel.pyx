@@ -1903,6 +1903,7 @@ cdef class BatchwiseKernel(_XwiseKernelBase):
         param_rest = _get_param_info('CIndexer _ind', False)
         self.params = self.in_params + self.out_params + param_rest
         self.operation = operation
+        self.name = name
         self.preamble = preamble
         self.validate_core_shapes = validate_core_shapes
         self._params_type_memo = {}
