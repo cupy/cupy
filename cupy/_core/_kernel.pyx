@@ -1858,9 +1858,9 @@ def _get_batchwise_kernel_code(
                     fmt = 'const {t} &{n} = _raw_{n}[_ind.get()];'
                 else:
                     fmt = '{t} &{n} = _raw_{n}[_ind.get()];'
-                    
+
             op.append(fmt.format(t=p.ctype, n=p.name))
-            
+
     op.append(operation)
     operation = '\n'.join(op)
 
@@ -1874,7 +1874,7 @@ def _get_batchwise_kernel(
         tuple arginfos, object type_map,
         tuple params, str operation, str name,
         str preamble, str loop_prep='', str after_loop='', tuple options=()):
-        
+
     cdef str code = _get_batchwise_kernel_code(
         arginfos, type_map, params, operation, name, preamble, loop_prep,
         after_loop
@@ -1892,7 +1892,7 @@ cdef class BatchwiseKernel(_XwiseKernelBase):
 
     def __init__(self, in_params, out_params, operation,
                  name='kernel', preamble='', *, validate_core_shapes):
-        
+
         self.in_params, self.in_core_ndims = _get_batchwise_param_info(
             in_params, True)
         self.out_params, self.out_core_ndims = _get_batchwise_param_info(
@@ -1913,7 +1913,7 @@ cdef class BatchwiseKernel(_XwiseKernelBase):
         self._kernel_memo = {}
         # This is for profiling mechanisms to auto infer a name.
         self.__name__ = name
-            
+
     def __call__(self, *args, out):
         cdef list in_args, out_args
         cdef tuple in_types, out_types
@@ -1933,7 +1933,7 @@ cdef class BatchwiseKernel(_XwiseKernelBase):
                 f"Wrong number of outputs for {self.name}. "
                 f"Expected {self.nout}, got {len(out)}."
             )
-    
+
         dev_id = device.get_device_id()
         in_args = _preprocess_args(dev_id, args)
         out_args = _preprocess_args(dev_id, out)
@@ -1975,7 +1975,7 @@ cdef class BatchwiseKernel(_XwiseKernelBase):
         ]
 
         out_batch_shapes = [
-            arg.shape[:-self.out_core_ndims[i]] if self.out_core_ndims[i] > 0 
+            arg.shape[:-self.out_core_ndims[i]] if self.out_core_ndims[i] > 0
             else arg.shape if isinstance(arg, _ndarray_base) else ()
             for i, arg in enumerate(out_args)
         ]
