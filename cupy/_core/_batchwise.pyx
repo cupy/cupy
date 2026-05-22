@@ -13,9 +13,12 @@ from cupy._core.core cimport _ndarray_base
 from cupy._core._carray cimport shape_t
 from cupy._core._kernel cimport _preprocess_args
 from cupy._core._kernel cimport ParameterInfo
+from cupy._core._kernel cimport _contains_zero
 from cupy._core._kernel cimport _decide_params_type_core
 from cupy._core._kernel cimport _get_arg_infos
-from cupy._core._kernel import _XwiseKernelBase
+from cupy._core._kernel cimport _get_simple_elementwise_kernel_code
+from cupy._core._kernel cimport _get_simple_elementwise_kernel_from_code
+from cupy._core._kernel cimport _XwiseKernelBase
 
 
 @_util.memoize()
@@ -52,6 +55,51 @@ def _get_batchwise_param_info(str s, bint is_const):
         core_ndims.append(core_ndim)
 
     return tuple(params), tuple(core_ndims)
+
+
+@_util.memoize()
+def _get_batchwise_kernel_code(
+        tuple arginfos, object type_map,
+        tuple params, str operation, str name,
+        str preamble, str loop_prep='', str after_loop='', tuple options=()):
+    cdef _ArgInfo arginfo
+
+    op = []
+    for p, arginfo in zip(params, arginfos):
+        if arginfo.is_ndarray() and not p.raw:
+            if arginfo.core_ndim > 0:
+                if p.is_const:
+                    fmt = 'const auto {n} = _raw_{n}[_ind.get()];'
+                else:
+                    fmt = 'auto {n} = _raw_{n}[_ind.get()];'
+            else:
+                if p.is_const:
+                    fmt = 'const {t} &{n} = _raw_{n}[_ind.get()];'
+                else:
+                    fmt = '{t} &{n} = _raw_{n}[_ind.get()];'
+                    
+            op.append(fmt.format(t=p.ctype, n=p.name))
+            
+    op.append(operation)
+    operation = '\n'.join(op)
+
+    return _get_simple_elementwise_kernel_code(
+        params, arginfos, operation, name, type_map,
+        preamble, loop_prep, after_loop)
+
+
+@_util.memoize(for_each_device=True)
+def _get_batchwise_kernel(
+        tuple arginfos, object type_map,
+        tuple params, str operation, str name,
+        str preamble, str loop_prep='', str after_loop='', tuple options=()):
+        
+    cdef str code = _get_batchwise_kernel_code(
+        arginfos, type_map, params, operation, name, preamble, loop_prep,
+        after_loop
+    )
+    # Hand the C++ string to NVRTC to compile into a binary
+    return _get_simple_elementwise_kernel_from_code(name, code, options)
 
 
 cdef class BatchwiseKernel(_XwiseKernelBase):
@@ -188,9 +236,21 @@ cdef class BatchwiseKernel(_XwiseKernelBase):
         indexer = _carray._indexer_init(loop_shape)
         inout_args.append(indexer)
 
+        core_ndims = self.in_core_ndims + self.out_core_ndims
         arginfos = _get_arginfos(inout_args, core_ndims=core_ndims)
         kern = self._get_kernel(dev_id, arginfos, type_map)
 
         kern.linear_launch(indexer.size, inout_args, shared_mem=0,
                            block_max_size=0, stream=None)
         return out if self.nout > 1 else out[0]
+
+    cdef function.Function _compile_kernel(
+            self, int dev_id, tuple arginfos, object type_map):
+        return _get_batchwise_kernel(
+            arginfos, type_map, self.params, self.operation,
+            self.name, self.preamble)
+
+    cdef str _get_kernel_code(self, tuple arginfos, object type_map):
+        return _get_batchwise_kernel_code(
+            arginfos, type_map, self.params, self.operation,
+            self.name, self.preamble)
