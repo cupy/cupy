@@ -1770,13 +1770,19 @@ class DnMatDescriptor(BaseDescriptor):
     def create(cls, a):
         if a.ndim != 2:
             raise ValueError('expected 2-D matrix')
-        if not a.flags.f_contiguous:
-            raise ValueError('expected F-contiguous array')
+        # if not a.flags.f_contiguous:
+        #    raise ValueError('expected F-contiguous array')
         rows, cols = a.shape
-        ld = rows
         cuda_dtype = _dtype.to_cuda_dtype(a.dtype)
+        if a.flags.c_contiguous:
+            order = _cusparse.CUSPARSE_ORDER_ROW
+            ld = cols
+        else:
+            order = _cusparse.CUSPARSE_ORDER_COL
+            ld = rows
+        # ld = rows
         desc = _cusparse.createDnMat(rows, cols, ld, a.data.ptr, cuda_dtype,
-                                     _cusparse.CUSPARSE_ORDER_COL)
+                                     order)
         get = _cusparse.dnMatGet
         destroy = _cusparse.destroyDnMat
         return DnMatDescriptor(desc, get, destroy)
@@ -1881,10 +1887,11 @@ def spmm(a, b, c=None, alpha=1, beta=0, transa=False, transb=False):
 
     if a.ndim != 2 or b.ndim != 2:
         raise ValueError('expected 2-D matrices')
-    if not b.flags.f_contiguous:
-        raise ValueError('expected F-contiguous array for b')
-    if c is not None and not c.flags.f_contiguous:
-        raise ValueError('expected F-contiguous array for c')
+    if c is not None:
+        if (c.flags.c_contiguous != b.flags.c_contiguous or
+                c.flags.c_contiguous != b.flags.c_contiguous):
+            raise ValueError(
+                'expected same F-contiguous or C-contiguous array for b and c')
 
     if isinstance(a, cupyx.scipy.sparse.csc_matrix):
         aT = a.T
