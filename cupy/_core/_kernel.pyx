@@ -1884,14 +1884,78 @@ def _get_batchwise_kernel(
 
 
 cdef class BatchwiseKernel(_XwiseKernelBase):
-    """docstring will go here."""
+    """User-defined batchwise kernel.
+
+    This class offers a generalization of ``ElementwiseKernel`` to handle kernels
+    which behave like NumPy's generalized universal functions (gufuncs). Whereas
+    NumPy's ufuncs allow broadcastable element-by-element operations, gufuncs allow
+    sub-array by sub-array operations. The inputs and outputs of a gufunc each have
+    an associated "core" dimensionality ``n``. The final ``n`` axes of an input/output
+    with core dimensionality ``n`` correspond to the core dimensions and all prior axes
+    are treated as batch dimensions. There must be a fixed rule mapping input shapes to
+    output shapes. See
+    https://numpy.org/doc/stable/reference/c-api/generalized-ufuncs.html
+    for more info.
+
+    Unlike for ``ElementwiseKernel``, the ``out`` kwarg of
+    :meth:`~BatchwiseKernel.__call__` is currently mandatory. The caller is responsible
+    for passing an array (or tuple of arrays) for ``out`` with the correct shape(s) for
+    the given inputs.
+
+    The kernel is compiled at an invocation of the
+    :meth:`~BatchwiseKernel.__call__` method,
+    which is cached for each device.
+    The compiled binary is also cached into a file under the
+    ``$HOME/.cupy/kernel_cache/`` directory with a hashed file name. The cached
+    binary is reused by other processes.
+
+    Args:
+        in_params (str): Input argument list.
+        out_params (str): Output argument list.
+            To specify the core dimensionality of an input or output
+            append '_{n}d' to the end of the type for integer ``n``
+            equal to the number of core dimensions (e.g. float64_1d
+            to specify that an input takes doubles with core dimensionality 1).
+        operation (str): The body in the loop written in CUDA-C/C++.
+        name (str): Name of the kernel function. It should be set for
+            readability of the performance profiling.
+        reduce_dims (bool): This currently is ignored. ``BatchwiseKernel``
+            is not yet capable of reducing the shapes of array arguments.
+            `reduce_dims` included for the sake of API consistency with
+            ``ElementwiseKernel`` in the expectation that support for it will
+            be added eventually.
+        options (tuple): Compile options passed to NVRTC. For details, see
+            https://docs.nvidia.com/cuda/nvrtc/index.html#group__options.
+            Note that ``BatchwiseKernel`` requires at least C++17 and will
+            default to inserting '--std=c++17' into `options` if the user does
+            not supply a value for '--std', and will raise if an earlier
+            C++ language standard is passed.
+        preamble (str): Fragment of the CUDA-C/C++ code that is inserted at the
+            top of the cu file.
+        no_return (bool): If ``True``, __call__ returns ``None``.
+        return_tuple (bool): If ``True``, __call__ always returns tuple of
+            array even if single value is returned.
+        loop_prep (str): Fragment of the CUDA-C/C++ code that is inserted at
+            the top of the kernel function definition and above the ``for``
+            loop.
+        after_loop (str): Fragment of the CUDA-C/C++ code that is inserted at
+            the bottom of the kernel function definition.
+        core_shape_mapper (callable[tuple]->tuple): A callable capable of
+            mapping tuples containing the core shapes of arbitrary inputs
+            to the core shapes of the corresponding outputs. core_shape_mapper
+            is a mandatory keyword argument. It is required for correctly
+            resolving the output shapes from the input shapes.
+
+    """
     cdef:
         readonly tuple in_core_ndims
         readonly tuple out_core_ndims
         readonly object core_shape_mapper
 
     def __init__(self, in_params, out_params, operation,
-                 name='kernel', preamble='', *, core_shape_mapper):
+                 name='kernel', reduce_dims=True, preamble='',
+                 no_return=False, return_tuple=False,
+                 *, core_shape_mapper, **kwargs):
 
         self.in_params, self.in_core_ndims = _get_batchwise_param_info(
             in_params, True)
@@ -1905,7 +1969,26 @@ cdef class BatchwiseKernel(_XwiseKernelBase):
         self.operation = operation
         self.name = name
         self.preamble = preamble
+        self.no_return = no_return
+        self.return_tuple = return_tuple
         self.core_shape_mapper = core_shape_mapper
+
+        # default to '--std=c++17'.
+        options = kwargs.get('options', [])
+        for opt in options:
+            if opt.startswith('--std=c++'):
+                has_std = True
+                std_ver = opt.split('--std=c++')[-1]
+                if std_ver.isdigit() and int(std_ver) < 17:
+                    raise ValueError(
+                        f'BatchwiseKernel requires at least C++17, '
+                        f'but received: {opt}'
+                    )
+        if not has_std:
+            options.append('--std=c++17')
+
+        kwargs['options'] = tuple(options)
+        self.kwargs = kwargs
         self._params_type_memo = {}
         self._cached_codes = {}
         names = [p.name for p in self.in_params + self.out_params]
@@ -1915,7 +1998,7 @@ cdef class BatchwiseKernel(_XwiseKernelBase):
         # This is for profiling mechanisms to auto infer a name.
         self.__name__ = name
 
-    def __call__(self, *args, out):
+    def __call__(self, *args, out, stream=None, block_size=128):
         cdef list in_args, out_args
         cdef tuple in_types, out_types
         cdef shape_t loop_shape
@@ -2011,9 +2094,16 @@ cdef class BatchwiseKernel(_XwiseKernelBase):
         in_types, out_types, type_map = self._decide_params_type(
             in_ndarray_types, out_ndarray_types)
 
+        if self.no_return:
+            ret = None
+        elif not self.return_tuple and self.nout == 1:
+            ret = out[0]
+        else:
+            ret = tuple(out)
+
         loop_shape = batch_shape
         if _contains_zero(loop_shape):
-            return out if len(out) > 1 else out[0]
+            return ret
 
         for i, x in enumerate(in_args):
             if type(x) is _scalar.CScalar:
@@ -2032,16 +2122,16 @@ cdef class BatchwiseKernel(_XwiseKernelBase):
         kern = self._get_kernel(dev_id, arginfos, type_map)
 
         kern.linear_launch(indexer.size, inout_args, shared_mem=0,
-                           block_max_size=128, stream=None)
-        return out if self.nout > 1 else out[0]
+                           block_max_size=block_size, stream=stream)
+        return ret
 
     cdef function.Function _compile_kernel(
             self, int dev_id, tuple arginfos, object type_map):
         return _get_batchwise_kernel(
             arginfos, type_map, self.params, self.operation,
-            self.name, self.preamble, options=("--std=c++17",))
+            self.name, self.preamble, **self.kwargs)
 
     cdef str _get_kernel_code(self, tuple arginfos, object type_map):
         return _get_batchwise_kernel_code(
             arginfos, type_map, self.params, self.operation,
-            self.name, self.preamble)
+            self.name, self.preamble, **self.kwargs)
