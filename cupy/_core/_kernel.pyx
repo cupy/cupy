@@ -2022,6 +2022,8 @@ cdef class BatchwiseKernel(_XwiseKernelBase):
         in_args = _preprocess_args(dev_id, args)
         out_args = _preprocess_args(dev_id, out)
 
+        # Check that inputs and outputs all have ndim high enough to
+        # hold the correct number of core dimensions.
         if any(
             [
                 (arg.ndim if isinstance(arg, _ndarray_base) else 0)
@@ -2030,7 +2032,6 @@ cdef class BatchwiseKernel(_XwiseKernelBase):
             ]
         ):
             raise ValueError("input with insufficient dimensions.")
-
         if any(
             [
                 (arg.ndim if isinstance(arg, _ndarray_base) else 0)
@@ -2040,6 +2041,8 @@ cdef class BatchwiseKernel(_XwiseKernelBase):
         ):
             raise ValueError("output with insufficient dimensions.")
 
+        # get the core shapes of the inputs and outputs and validate that
+        # the outputs are shaped correctly using self.core_shape_mapper
         in_core_shapes = tuple(
             arg.shape[-self.in_core_ndims[i]:]
             if self.in_core_ndims[i] > 0 else ()
@@ -2050,7 +2053,6 @@ cdef class BatchwiseKernel(_XwiseKernelBase):
             if self.out_core_ndims[i] > 0 else ()
             for i, arg in enumerate(out_args)
         )
-
         expected_out_core_shapes = self.core_shape_mapper(in_core_shapes)
         if out_core_shapes != expected_out_core_shapes:
             raise ValueError(
@@ -2058,6 +2060,9 @@ cdef class BatchwiseKernel(_XwiseKernelBase):
                 f"expected {expected_out_core_shapes}, got {out_core_shapes}."
             )
 
+        # get the batch shapes for inputs and outputs and broadcast the
+        # batch dimensions against each other, keeping core dimensions
+        # untouched.
         in_batch_shapes = [
             arg.shape[:-self.in_core_ndims[i]] if self.in_core_ndims[i] > 0
             else arg.shape if isinstance(arg, _ndarray_base) else ()
@@ -2072,7 +2077,6 @@ cdef class BatchwiseKernel(_XwiseKernelBase):
         batch_shape = numpy.broadcast_shapes(*in_batch_shapes, *out_batch_shapes)
         if any(shape != batch_shape for shape in out_batch_shapes):
             raise ValueError("output batch shape mismatch.")
-
         in_args = [
             cupy.broadcast_to(arg, batch_shape + core_shape)
             if isinstance(arg, _ndarray_base) else arg
@@ -2111,6 +2115,7 @@ cdef class BatchwiseKernel(_XwiseKernelBase):
 
         inout_args = in_args + out_args
 
+        # the indexer will only loop through the batch dimensions.
         indexer = _carray._indexer_init(loop_shape)
         inout_args.append(indexer)
 
@@ -2118,6 +2123,11 @@ cdef class BatchwiseKernel(_XwiseKernelBase):
         # need a dummy core_ndims for the indexer
         core_ndims += (0,)
 
+        # pass core_ndims into _get_arginfos to propagate these
+        # to the _ArgInfo classes which will in turn propagate them
+        # to the underlying CArray's generated for each input and output.
+        # Iteration over a CArray with core_ndim > 0 with CIndexer will yield
+        # CArray's of core slices.
         arginfos = _get_arginfos(inout_args, core_ndims=core_ndims)
         kern = self._get_kernel(dev_id, arginfos, type_map)
 
