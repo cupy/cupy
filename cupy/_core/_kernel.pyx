@@ -2018,6 +2018,9 @@ cdef class BatchwiseKernel(_XwiseKernelBase):
         inout_args.append(indexer)
 
         core_ndims = self.in_core_ndims + self.out_core_ndims
+        # need a dummy core_ndims for the indexer
+        core_ndims += (0,)
+
         arginfos = _get_arginfos(inout_args, core_ndims=core_ndims)
         kern = self._get_kernel(dev_id, arginfos, type_map)
 
