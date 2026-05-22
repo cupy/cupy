@@ -105,6 +105,7 @@ _cuda_files = [
     'cupy_backends.cuda.stream',
     'cupy_backends.cuda._softlink',
     'cupy._core._accelerator',
+    'cupy._core._batchwise',
     'cupy._core._carray',
     'cupy._core._cub_reduction',
     'cupy._core._dtype',

@@ -17,6 +17,7 @@ from cupy._core._accelerator import get_routine_accelerators  # NOQA
 
 
 # import class and function
+from cupy._core._batchwise import BatchwiseKernel  # NOQA
 from cupy._core._kernel import create_ufunc  # NOQA
 from cupy._core._kernel import ElementwiseKernel  # NOQA
 from cupy._core._kernel import ufunc  # NOQA
