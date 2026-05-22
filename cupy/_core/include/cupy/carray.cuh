@@ -360,7 +360,7 @@ public:
 
   template <typename Int, int C = _core_ndim>
   __device__
-  typename cupy::type_traits::enable_if<(C > 0), CArray<T, C, _c_contiguous, _use_32bit_indexing, 0> >::type
+  typename cupy::type_traits::enable_if<(C > 0 && _ndim > C), CArray<T, C, _c_contiguous, _use_32bit_indexing, 0> >::type
   operator[](const Int (&idx)[_ndim - C]) const {
     // overload for case _core_ndim > 0. Indexing yields CArray for a core slice.
     constexpr int batch_ndim = _ndim - C;
@@ -376,6 +376,17 @@ public:
         new_head,
         this->shape_ + batch_ndim,
         this->strides_ + batch_ndim
+    );
+  }
+
+  template <typename Int, int C = _core_ndim>
+  __device__
+  typename cupy::type_traits::enable_if<(C > 0 && _ndim == C), CArray<T, C, _c_contiguous, _use_32bit_indexing, 0> >::type
+  operator[](const Int* idx) const {
+    return CArray<T, C, _c_contiguous, _use_32bit_indexing, 0>(
+        data_,
+        this->shape_,
+        this->strides_
     );
   }
 #endif
