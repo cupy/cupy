@@ -766,6 +766,7 @@ cdef class _XwiseKernelBase:
         readonly tuple params
         readonly Py_ssize_t nin
         readonly Py_ssize_t nout
+        readonly Py_ssize_t nargs
         readonly object operation
         readonly str name
         readonly str __name__
@@ -885,7 +886,6 @@ cdef class ElementwiseKernel(_XwiseKernelBase):
     """
 
     cdef:
-        readonly int nargs
         readonly bint reduce_dims
         readonly bint no_return
         readonly bint return_tuple
