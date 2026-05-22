@@ -2032,7 +2032,7 @@ cdef class BatchwiseKernel(_XwiseKernelBase):
             self, int dev_id, tuple arginfos, object type_map):
         return _get_batchwise_kernel(
             arginfos, type_map, self.params, self.operation,
-            self.name, self.preamble)
+            self.name, self.preamble, options=("--std=c++17",))
 
     cdef str _get_kernel_code(self, tuple arginfos, object type_map):
         return _get_batchwise_kernel_code(
