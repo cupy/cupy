@@ -324,7 +324,7 @@ cdef class _ArgInfo:
                 name = 'CArray<%s, %d, %d, %d, %d>' % (
                     name, self.ndim,
                     self.c_contiguous, self.index_32_bits, self.core_ndim
-)
+                )
             else:
                 name = 'CArray<%s, %d, %d, %d>' % (
                     name, self.ndim,
@@ -1024,8 +1024,8 @@ cdef class ElementwiseKernel(_XwiseKernelBase):
                            block_max_size=block_size, stream=stream)
         return ret
 
-    cdef function.Function _compile_kernel(
-        self, int dev_id, tuple arginfos, object type_map):
+    cdef function.Function _compile_kernel(self, int dev_id, tuple arginfos,
+                                           object type_map):
         return _get_elementwise_kernel(
             arginfos, type_map, self.params, self.operation,
             self.name, self.preamble, **self.kwargs)
@@ -1884,21 +1884,22 @@ def _get_batchwise_kernel(
 cdef class BatchwiseKernel(_XwiseKernelBase):
     """User-defined batchwise kernel.
 
-    This class offers a generalization of ``ElementwiseKernel`` to handle kernels
-    which behave like NumPy's generalized universal functions (gufuncs). Whereas
-    NumPy's ufuncs allow broadcastable element-by-element operations, gufuncs allow
-    sub-array by sub-array operations. The inputs and outputs of a gufunc each have
-    an associated "core" dimensionality ``n``. The final ``n`` axes of an input/output
-    with core dimensionality ``n`` correspond to the core dimensions and all prior axes
-    are treated as batch dimensions. There must be a fixed rule mapping input shapes to
-    output shapes. See
+    This class offers a generalization of ``ElementwiseKernel`` to handle
+    kernels which behave like NumPy's generalized universal functions
+    (gufuncs). Whereas NumPy's ufuncs allow broadcastable element-by-element
+    operations, gufuncs allow sub-array by sub-array operations. The inputs and
+    outputs of a gufunc each have an associated "core" dimensionality
+    ``n``. The final ``n`` axes of an input/output with core dimensionality
+    ``n`` correspond to the core dimensions and all prior axes are treated as
+    batch dimensions. There must be a fixed rule mapping input shapes to output
+    shapes. See
     https://numpy.org/doc/stable/reference/c-api/generalized-ufuncs.html
     for more info.
 
     Unlike for ``ElementwiseKernel``, the ``out`` kwarg of
-    :meth:`~BatchwiseKernel.__call__` is currently mandatory. The caller is responsible
-    for passing an array (or tuple of arrays) for ``out`` with the correct shape(s) for
-    the given inputs.
+    :meth:`~BatchwiseKernel.__call__` is currently mandatory. The caller is
+    responsible for passing an array (or tuple of arrays) for ``out`` with the
+    correct shape(s) for the given inputs.
 
     The kernel is compiled at an invocation of the
     :meth:`~BatchwiseKernel.__call__` method,
@@ -1999,7 +2000,7 @@ cdef class BatchwiseKernel(_XwiseKernelBase):
 
     def __call__(self, *args, out, stream=None, block_size=128):
         cdef list in_args, out_args
-        cdef tuple in_types, out_types
+        cdef tuple in_types
         cdef shape_t loop_shape
 
         if len(args) != self.nin:
@@ -2073,7 +2074,8 @@ cdef class BatchwiseKernel(_XwiseKernelBase):
             else arg.shape if isinstance(arg, _ndarray_base) else ()
             for i, arg in enumerate(out_args)
         ]
-        batch_shape = numpy.broadcast_shapes(*in_batch_shapes, *out_batch_shapes)
+        batch_shape = numpy.broadcast_shapes(
+            *in_batch_shapes, *out_batch_shapes)
         if any(shape != batch_shape for shape in out_batch_shapes):
             raise ValueError("output batch shape mismatch.")
         in_args = [
@@ -2094,7 +2096,7 @@ cdef class BatchwiseKernel(_XwiseKernelBase):
         in_ndarray_types = tuple(in_ndarray_types)
         out_ndarray_types = tuple([a.dtype for a in out_args])
 
-        in_types, out_types, type_map = self._decide_params_type(
+        in_types, _, type_map = self._decide_params_type(
             in_ndarray_types, out_ndarray_types)
 
         if self.no_return:

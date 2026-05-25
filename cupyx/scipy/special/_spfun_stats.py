@@ -1,3 +1,6 @@
+"""Assorted statistical functions"""
+from __future__ import annotations
+
 import numpy
 
 import cupy
@@ -7,6 +10,7 @@ preamble = """
 #include <cupy/xsf/stats.h>
 #include <cupy/xsf/cupy.h>
 """
+
 
 def _poisson_binom_pmf_shape_mapper(in_core_shapes):
     return ((in_core_shapes[0][0] + 1, ),)
@@ -87,7 +91,8 @@ def _poisson_binom_pmf(k, p):
     n = p.shape[-1]
     intermediate_pmf = cupy.empty(batch_shape + (n + 1,), dtype=p.dtype)
     _poisson_binom_pmf_all(p, out=intermediate_pmf)
-    out = cupy.empty(numpy.broadcast_shapes(batch_shape, k.shape), dtype=p.dtype)
+    out = cupy.empty(numpy.broadcast_shapes(
+        batch_shape, k.shape), dtype=p.dtype)
     _take_from_pmf(intermediate_pmf, k, out=out)
     return out
 
@@ -115,6 +120,7 @@ def _poisson_binom_cdf(k, p):
     n = p.shape[-1]
     intermediate_cdf = cupy.empty(batch_shape + (n + 1,), dtype=p.dtype)
     _poisson_binom_cdf_all(p, out=intermediate_cdf)
-    out = cupy.empty(numpy.broadcast_shapes(batch_shape, k.shape), dtype=p.dtype)
+    out = cupy.empty(numpy.broadcast_shapes(
+        batch_shape, k.shape), dtype=p.dtype)
     _take_from_discrete_cdf(intermediate_cdf, k, out=out)
     return out
