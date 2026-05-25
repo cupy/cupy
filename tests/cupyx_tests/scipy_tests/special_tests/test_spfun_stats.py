@@ -5,7 +5,7 @@ import numpy
 from cupy import testing
 
 
-@testing.with_requires('scipy>=1.18.0-dev')
+@testing.with_requires('scipy>=1.18.0')
 class TestPoissonBinom:
     rng = numpy.random.default_rng(1234)
     p = rng.uniform(0, 1, (1000, 10))
