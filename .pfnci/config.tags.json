@@ -163,6 +163,14 @@
         "linux",
         "cuda132"
     ],
+    "cupy.linux.cuda13x-py314t": [
+        "@push",
+        "full",
+        "mini",
+        "linux",
+        "cuda131",
+        "py314t"
+    ],
     "cupy.linux.cuda-slow": [
         "slow",
         "linux"

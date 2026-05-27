@@ -194,6 +194,38 @@ If you want to install the latest development version of CuPy from a cloned Git 
    Cython 3 is required to build CuPy from source.
    It will be automatically installed during the build process if not available.
 
+.. note::
+
+   When building CuPy from source inside a Conda environment that provides the
+   CUDA Toolkit (e.g. ``conda install -c conda-forge cuda-toolkit``), set both
+   ``CUDA_PATH`` and ``NVCC``::
+
+    $ export CUDA_PATH=$CONDA_PREFIX/targets/x86_64-linux/    # use sbsa-linux on aarch64
+    $ export NVCC=$CONDA_PREFIX/bin/nvcc
+
+   Conda CUDA 12+ packages place headers (``cuda_runtime.h``) and static libs
+   (e.g. ``libcufilt.a``) under ``$CONDA_PREFIX/targets/<target>/``, so
+   ``CUDA_PATH`` must point at that subdirectory. ``NVCC`` must be the real
+   binary path: invoking ``nvcc`` through the symlink at
+   ``$CUDA_PATH/bin/nvcc`` causes the build to fail with
+   ``fatal error: cuda_runtime.h: No such file or directory``.
+
+.. note::
+
+   By default, the source build compiles CUDA kernels for every architecture
+   supported by your CUDA Toolkit, which can be very slow. To compile only
+   for the architecture of your installed GPU, set::
+
+    $ export CUPY_NVCC_GENERATE_CODE=current
+
+   You can also increase build parallelism::
+
+    $ export CUPY_NUM_BUILD_JOBS=8    # parallel C++ extension processes (default 4)
+    $ export CUPY_NUM_NVCC_THREADS=4  # nvcc threads per .cu file (default 2)
+
+   See :doc:`reference/environment` for the full list of build-time environment
+   variables.
+
 
 Uninstalling CuPy
 -----------------
