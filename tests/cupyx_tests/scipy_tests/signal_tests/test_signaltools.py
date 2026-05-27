@@ -192,6 +192,11 @@ class TestConvolveCorrelate2D:
             pytest.skip('fillvalue overflow')
         in1 = testing.shaped_random(self.size1, xp, dtype)
         in2 = testing.shaped_random(self.size2, xp, dtype)
+
+        if xp is np and np.__version__ == "2.4.5" and in1.dtype == bool:
+            # A NumPy regression causes SciPy to promote bool to int8:
+            raise ValueError("unsupported type in SciPy")
+
         return getattr(scp.signal, func)(in1, in2, self.mode, self.boundary,
                                          self.fillvalue)
 
@@ -239,7 +244,7 @@ def test_correlation_lags(mode, xp, scp, behind, input_size):
 class TestConvolve2DEdgeCase:
 
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
-    @testing.with_requires('scipy>=1.10')
+    @testing.with_requires('scipy')
     def test_convolve2d_1(self, xp, scp):
         # Meant a gray-scale image
         data = testing.shaped_random(
@@ -362,20 +367,7 @@ class TestOrderFilter:
     'kernel_size': [3, 4, (3, 3, 5)],
 }))
 class TestMedFilt:
-    @testing.with_requires('scipy>=1.7.0', 'scipy<1.11.0')
-    @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(atol=1e-8, rtol=1e-8, scipy_name='scp',
-                                 accept_error=ValueError)  # for even kernels
-    def test_medfilt_no_complex(self, xp, scp, dtype):
-        if sys.platform == 'win32':
-            pytest.xfail('medfilt broken for Scipy 1.7.0 in windows')
-        volume = testing.shaped_random(self.volume, xp, dtype)
-        kernel_size = self.kernel_size
-        if isinstance(kernel_size, tuple):
-            kernel_size = kernel_size[:volume.ndim]
-        return scp.signal.medfilt(volume, kernel_size)
-
-    @testing.with_requires('scipy>=1.12.0rc1')
+    @testing.with_requires('scipy')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(
         atol=1e-8, rtol=1e-8, scipy_name='scp',
@@ -385,7 +377,7 @@ class TestMedFilt:
             # https://github.com/scipy/scipy/issues/22368
             return xp.array([])  # Skip
         if sys.platform == 'win32':
-            pytest.xfail('medfilt broken for Scipy 1.7.0 in windows')
+            pytest.xfail('medfilt broken for SciPy on windows')
         volume = testing.shaped_random(self.volume, xp, dtype)
         kernel_size = self.kernel_size
         if isinstance(kernel_size, tuple):
@@ -398,25 +390,14 @@ class TestMedFilt:
     'kernel_size': [3, 4, (3, 5)],
 }))
 class TestMedFilt2d:
-    @testing.with_requires('scipy>=1.7.0', 'scipy<1.11.0')
-    @testing.for_all_dtypes(no_complex=True)
-    @testing.numpy_cupy_allclose(atol=1e-8, rtol=1e-8, scipy_name='scp',
-                                 accept_error=ValueError)  # for even kernels
-    def test_medfilt2d_no_complex(self, xp, scp, dtype):
-        if sys.platform == 'win32':
-            pytest.xfail('medfilt2d broken for Scipy 1.7.0 in windows')
-        input = testing.shaped_random(self.input, xp, dtype)
-        kernel_size = self.kernel_size
-        return scp.signal.medfilt2d(input, kernel_size)
-
-    @testing.with_requires('scipy>=1.12.0rc1')
+    @testing.with_requires('scipy')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(
         atol=1e-8, rtol=1e-8, scipy_name='scp',
         accept_error=ValueError)  # for even kernels
     def test_medfilt2d(self, xp, scp, dtype):
         if sys.platform == 'win32':
-            pytest.xfail('medfilt2d broken for Scipy 1.7.0 in windows')
+            pytest.xfail('medfilt2d broken for SciPy on windows')
         input = testing.shaped_random(self.input, xp, dtype)
         kernel_size = self.kernel_size
         return scp.signal.medfilt2d(input, kernel_size)
@@ -1054,7 +1035,7 @@ class TestHilbert:
 
     @pytest.mark.parametrize('dtype', [np.float32, np.float64])
     @testing.numpy_cupy_allclose(scipy_name='scp')
-    @testing.with_requires("scipy>=1.9")
+    @testing.with_requires("scipy")
     def test_hilbert_types(self, dtype, xp, scp):
         in_typed = xp.zeros(8, dtype=dtype)
         return scp.signal.hilbert(in_typed)
@@ -1087,7 +1068,7 @@ class TestHilbert2:
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
     @pytest.mark.parametrize('dtype', [np.float32, np.float64])
-    @testing.with_requires("scipy>=1.9")
+    @testing.with_requires("scipy")
     def test_hilbert2_types(self, dtype, xp, scp):
         in_typed = xp.zeros((2, 32), dtype=dtype)
         return scp.signal.hilbert2(in_typed)
