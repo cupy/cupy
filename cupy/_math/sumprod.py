@@ -24,6 +24,7 @@ def sum(a, axis=None, dtype=None, out=None, keepdims=False):
     Returns:
         cupy.ndarray: The result array.
 
+
     .. seealso:: :func:`numpy.sum`
 
     """
