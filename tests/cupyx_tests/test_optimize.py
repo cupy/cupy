@@ -181,6 +181,7 @@ class TestOptimizeBackends(unittest.TestCase):
         _accelerator.set_routine_accelerators(self.old_routines)
         _accelerator.set_reduction_accelerators(self.old_reductions)
 
+    @pytest.mark.thread_unsafe(reason="AssertFunctionIsCalled.")
     def test_optimize1(self):
         # Ensure the optimizer is run 3 times for all backends.
         func = 'cupyx.optimizing._optimize._optimize'
@@ -197,6 +198,7 @@ class TestOptimizeBackends(unittest.TestCase):
             with cupyx.optimizing.optimize():
                 self.x.sum(axis=0)  # CUB falls back to the simple reduction
 
+    @pytest.mark.thread_unsafe(reason="AssertFunctionIsCalled.")
     def test_optimize2(self):
         # Ensure the CUB optimizer is not run when the CUB kernel is not used.
         func = 'cupy._core._cub_reduction._get_cub_optimized_params'

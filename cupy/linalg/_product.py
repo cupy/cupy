@@ -511,3 +511,22 @@ def _move_axes_to_head(a, axes):
 
     return a.transpose(
         axes + [i for i in range(a.ndim) if i not in axes])
+
+
+def matrix_transpose(a):
+    """
+    Transposes the innermost 2 dimensions of ndarray
+
+    args:
+        x : (~cupy.ndarray) : (..., M, N)
+    Returns:
+        ~cupy.ndarray: (..., N, M)
+
+    Reference:
+        more details: func : numpy.linalg.matrix_transpose
+    """
+    ndim = a.ndim
+
+    if ndim < 2:
+        raise ValueError('Matrix dimension is less than 2')
+    return a.swapaxes(ndim-1, ndim-2)
