@@ -2986,9 +2986,21 @@ cdef _ndarray_base _array_default(
         else:
             order = 'C'
 
-    copy = False if NUMPY_1x else None
-    a_cpu = numpy.array(obj, dtype=dtype, copy=copy, order=order,
-                        ndmin=ndmin)
+    # Avoid copy when the passed object is a compatible numpy array
+    # A non-contiguous array can be let through without copy,
+    # as it will be copied to a pinned vector below
+    if (
+        isinstance(obj, numpy.ndarray)
+        and obj.dtype == numpy.dtype(dtype)
+        and obj.ndim >= ndmin
+        and not pinned_memory.is_memory_pinned(obj.ctypes.data)
+        and not _is_ump_enabled
+    ):
+        a_cpu = obj
+    else:
+        copy = False if NUMPY_1x else None
+        a_cpu = numpy.array(obj, dtype=dtype, copy=copy, order=order,
+                            ndmin=ndmin)
 
     a_cpu = a_cpu.astype(_dtype.normalize_dtype(a_cpu.dtype), copy=False)
     a_dtype = a_cpu.dtype
@@ -3021,7 +3033,8 @@ cdef _ndarray_base _array_default(
         mem = _alloc_async_transfer_buffer(nbytes)
         if mem is not None:
             src_cpu = numpy.frombuffer(mem, a_dtype, a_cpu.size)
-            src_cpu[:] = a_cpu.ravel(order)
+            src_cpu = src_cpu.reshape(a_cpu.shape, order=order)
+            src_cpu[:] = a_cpu
             a.data.copy_from_host_async(mem.ptr, nbytes, stream)
             pinned_memory._add_to_watch_list(stream.record(), mem)
         else:
