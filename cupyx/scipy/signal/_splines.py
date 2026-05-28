@@ -191,7 +191,7 @@ def _symiirorder1_nd(input, c0, z1, precision=-1.0, axis=-1):
 
     # Compute backward symmetric condition and apply the system
     # c0 / (1 - z1 * z)
-    zi = -c0 / (z1 - 1.0) * axis_slice(y1, -1)
+    zi = (-c0 / (z1 - 1.0) * axis_slice(y1, -1)).astype(input.dtype)
     all_zi = axis_assign(all_zi, zi, 3, 4)
 
     coef = cupy.r_[c0, 0, 0, 1, -z1, 0]
