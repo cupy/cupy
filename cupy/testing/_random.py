@@ -8,8 +8,6 @@ import random
 import types
 import unittest
 
-import pytest
-
 import cupy
 
 
@@ -108,6 +106,7 @@ def fix_random():
     It should not be applied within ``condition.retry`` or
     ``condition.repeat``.
     """
+    import pytest
 
     # TODO(niboshi): Prevent this decorator from being applied within
     #    condition.repeat or condition.retry decorators. That would repeat
