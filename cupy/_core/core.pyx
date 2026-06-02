@@ -2969,7 +2969,7 @@ cdef _ndarray_base _array_default(
     # as it will be copied to a pinned vector below
     if (
         isinstance(obj, numpy.ndarray)
-        and obj.dtype == numpy.dtype(dtype)
+        and (dtype is None or obj.dtype == numpy.dtype(dtype))
         and obj.ndim >= ndmin
         and not pinned_memory.is_memory_pinned(obj.ctypes.data)
         and not _is_ump_enabled
