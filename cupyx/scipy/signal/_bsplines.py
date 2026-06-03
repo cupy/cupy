@@ -27,6 +27,7 @@ DEALINGS IN THE SOFTWARE.
 """
 from __future__ import annotations
 
+import math
 
 import cupy
 import cupyx.scipy.ndimage
@@ -251,12 +252,12 @@ def _quadratic_coeff(signal):
 
 
 def compute_root_from_lambda(lamb):
-    tmp = np.sqrt(3 + 144 * lamb)
+    tmp = math.sqrt(3 + 144 * lamb)
     xi = 1 - 96 * lamb + 24 * lamb * tmp
-    omega = np.arctan(np.sqrt((144 * lamb - 1.0) / xi))
-    tmp2 = np.sqrt(xi)
+    omega = np.arctan(math.sqrt((144 * lamb - 1.0) / xi))
+    tmp2 = math.sqrt(xi)
     r = ((24 * lamb - 1 - tmp2) / (24 * lamb) *
-         np.sqrt(48*lamb + 24 * lamb * tmp) / tmp2)
+         math.sqrt(48*lamb + 24 * lamb * tmp) / tmp2)
     return r, omega
 
 
@@ -469,7 +470,7 @@ def cspline2d(signal, lamb=0.0, precision=-1.0):
     """
     if lamb <= 1 / 144.0:
         # Normal cubic spline
-        r = -2 + np.sqrt(3.0)
+        r = -2 + math.sqrt(3.0)
         out = _symiirorder1_nd(signal, -r * 6.0, r, precision=precision,
                                axis=-1)
         out = _symiirorder1_nd(out, -r * 6.0, r, precision=precision,
@@ -509,7 +510,7 @@ def qspline2d(signal, lamb=0.0, precision=-1.0):
         raise ValueError('lambda must be negative or zero')
 
     # normal quadratic spline
-    r = -3 + 2 * np.sqrt(2.0)
+    r = -3 + 2 * math.sqrt(2.0)
 
     out = _symiirorder1_nd(signal, -r * 8.0, r, precision=precision, axis=-1)
     out = _symiirorder1_nd(out, -r * 8.0, r, precision=precision, axis=0)
