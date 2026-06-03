@@ -54,6 +54,9 @@ def batched_gesv(a, b):
             'or (..., M, K)')
 
     dtype, out_dtype = _util.linalg_common_type(a, b)
+    if a.size == 0:
+        return cupy.empty(b.shape, out_dtype)
+
     if dtype == 'f':
         t = 's'
     elif dtype == 'd':

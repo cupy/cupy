@@ -61,6 +61,9 @@ def solve(a, b):
         return batched_gesv(a, b)
 
     dtype, out_dtype = _util.linalg_common_type(a, b)
+    if a.size == 0:
+        return cupy.empty(b.shape, out_dtype)
+
     if a.ndim == 2:
         # prevent 'a' and 'b' to be overwritten
         a = a.astype(dtype, copy=True, order='F')
