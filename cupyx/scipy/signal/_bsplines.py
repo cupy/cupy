@@ -36,8 +36,6 @@ from cupyx.scipy.signal._iir_utils import apply_iir_sos
 from cupyx.scipy.signal._splines import _symiirorder1_nd, _symiirorder2_nd
 from cupyx.scipy.interpolate._bspline import BSpline
 
-import numpy as np
-
 
 def sepfir2d(input, hrow, hcol):
     """Convolve with a 2-D separable FIR filter.
