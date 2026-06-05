@@ -594,7 +594,16 @@ class TestLFilter:
         return out
 
     @pytest.mark.parametrize(
-        'zeros', [(2,), (1,), (0,), (1, 2), (0, 1), (0, 2), (0, 1, 2)])
+        'zeros',
+        [(2,), (1,), (0,),
+         pytest.param(
+             (1, 2),
+             marks=pytest.mark.skipif(
+                 runtime.is_hip,
+                 reason='SIGABRT in rocSOLVER SVD for this specific '
+                        'IIR-coefficient pattern (crashes the worker; '
+                        'not xfail-able)')),
+         (0, 1), (0, 2), (0, 1, 2)])
     @testing.numpy_cupy_array_almost_equal(scipy_name='scp', decimal=5)
     def test_lfilter_zi_with_zeros(self, zeros, xp, scp):
         fir_order = 3
