@@ -1,5 +1,4 @@
-from __future__ import annotations
-
+import numpy
 import cupy
 from cupy import _core
 from cupy._core import fusion
@@ -39,7 +38,7 @@ def argmax(a, axis=None, dtype=None, out=None, keepdims=False):
     return a.argmax(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 
-def nanargmax(a, axis=None, dtype=None, out=None, keepdims=False):
+def nanargmax(a, axis=None, out=None, *, dtype=None, keepdims=numpy._NoValue):
     """Return the indices of the maximum values in the specified axis ignoring
     NaNs. For all-NaN slice ``-1`` is returned.
     Subclass cannot be passed yet, subok=True still unsupported
@@ -58,6 +57,9 @@ def nanargmax(a, axis=None, dtype=None, out=None, keepdims=False):
             whereas ``numpy.nanargmax`` raises ``ValueError``
     .. seealso:: :func:`numpy.nanargmax`
     """
+    if keepdims is numpy._NoValue:
+        keepdims = False
+
     if a.dtype.kind in 'biu':
         return argmax(a, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
@@ -94,7 +96,7 @@ def argmin(a, axis=None, dtype=None, out=None, keepdims=False):
     return a.argmin(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
 
-def nanargmin(a, axis=None, dtype=None, out=None, keepdims=False):
+def nanargmin(a, axis=None, out=None, *, dtype=None, keepdims=numpy._NoValue):
     """Return the indices of the minimum values in the specified axis ignoring
     NaNs. For all-NaN slice ``-1`` is returned.
     Subclass cannot be passed yet, subok=True still unsupported
@@ -113,6 +115,9 @@ def nanargmin(a, axis=None, dtype=None, out=None, keepdims=False):
             whereas ``numpy.nanargmin`` raises ``ValueError``
     .. seealso:: :func:`numpy.nanargmin`
     """
+    if keepdims is numpy._NoValue:
+        keepdims = False
+
     if a.dtype.kind in 'biu':
         return argmin(a, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 

@@ -74,7 +74,48 @@ def prod(a, axis=None, dtype=None, out=None, keepdims=False):
     return a.prod(axis, dtype, out, keepdims)
 
 
-def nansum(a, axis=None, dtype=None, out=None, keepdims=False):
+def _nansum_prod(a, axis, dtype, out, keepdims, initial, where, is_sum):
+    if keepdims is numpy._NoValue:
+        keepdims = False
+
+    a = cupy.asanyarray(a)
+
+    if a.dtype.kind in 'fc':
+        isnan_mask = cupy.isnan(a)
+        if where is not numpy._NoValue and where is not None:
+            valid = cupy.asanyarray(where) & ~isnan_mask
+        else:
+            valid = ~isnan_mask
+    else:
+        if where is not numpy._NoValue and where is not None:
+            valid = cupy.asanyarray(where)
+        else:
+            valid = None
+
+    fill_val = 0 if is_sum else 1
+    if valid is not None:
+        a_clean = cupy.where(valid, a, fill_val)
+    else:
+        a_clean = cupy.where(isnan_mask, fill_val, a) if a.dtype.kind in 'fc' else a
+
+    if is_sum:
+        res = cupy.sum(a_clean, axis=axis, dtype=dtype, keepdims=keepdims)
+    else:
+        res = cupy.prod(a_clean, axis=axis, dtype=dtype, keepdims=keepdims)
+
+    if initial is not numpy._NoValue:
+        if is_sum:
+            res = res + initial
+        else:
+            res = res * initial
+
+    if out is not None:
+        cupy.copyto(out, res)
+        return out
+    return res
+
+
+def nansum(a, axis=None, dtype=None, out=None, keepdims=numpy._NoValue, initial=numpy._NoValue, where=numpy._NoValue):
     """Returns the sum of an array along given axes treating Not a Numbers
     (NaNs) as zero.
 
@@ -92,24 +133,10 @@ def nansum(a, axis=None, dtype=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.nansum`
 
     """
-    if _fusion_thread_local.is_fusing():
-        if keepdims:
-            raise NotImplementedError(
-                'cupy.nansum does not support `keepdims` in fusion yet.')
-        if a.dtype.char in 'FD':
-            func = _math._nansum_complex_dtype
-        elif dtype is None:
-            func = _math._nansum_auto_dtype
-        else:
-            func = _math._nansum_keep_dtype
-        return _fusion_thread_local.call_reduction(
-            func, a, axis=axis, dtype=dtype, out=out)
-
-    # TODO(okuta): check type
-    return _math._nansum(a, axis, dtype, out, keepdims)
+    return _nansum_prod(a, axis, dtype, out, keepdims, initial, where, is_sum=True)
 
 
-def nanprod(a, axis=None, dtype=None, out=None, keepdims=False):
+def nanprod(a, axis=None, dtype=None, out=None, keepdims=numpy._NoValue, initial=numpy._NoValue, where=numpy._NoValue):
     """Returns the product of an array along given axes treating Not a Numbers
     (NaNs) as zero.
 
@@ -127,19 +154,7 @@ def nanprod(a, axis=None, dtype=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.nanprod`
 
     """
-    if _fusion_thread_local.is_fusing():
-        if keepdims:
-            raise NotImplementedError(
-                'cupy.nanprod does not support `keepdims` in fusion yet.')
-        if dtype is None:
-            func = _math._nanprod_auto_dtype
-        else:
-            func = _math._nanprod_keep_dtype
-        return _fusion_thread_local.call_reduction(
-            func, a, axis=axis, dtype=dtype, out=out)
-
-    # TODO(okuta): check type
-    return _math._nanprod(a, axis, dtype, out, keepdims)
+    return _nansum_prod(a, axis, dtype, out, keepdims, initial, where, is_sum=False)
 
 
 def cumsum(a, axis=None, dtype=None, out=None):
