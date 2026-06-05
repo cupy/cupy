@@ -1165,7 +1165,11 @@ cdef class FeistelBijection:
         global _feistel_bijection_with_cutoff_kernel
         if _feistel_bijection_with_cutoff_kernel is None:
             _feistel_bijection_with_cutoff_kernel = cupy.RawKernel(rf'''
+            #if defined(__HIPCC_RTC__) || defined(__HIPCC__)
+            #include <stdint.h>
+            #else
             #include <cuda/std/cstdint>
+            #endif
 
             struct FeistelParams {{
                 uint64_t __R_bits_;
