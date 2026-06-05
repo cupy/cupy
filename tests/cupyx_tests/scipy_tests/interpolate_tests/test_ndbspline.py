@@ -17,6 +17,10 @@ import itertools
 
 
 @testing.with_requires('scipy')
+@pytest.mark.xfail(
+    runtime.is_hip, strict=False,
+    raises=(AssertionError, NotImplementedError),
+    reason='make_interp_spline needs spsolve (no HIP backend)')
 class TestNdBSpline:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_1D(self, xp, scp):

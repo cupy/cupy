@@ -490,6 +490,9 @@ class TestRegularGridInterpolator:
         v2 = cp.expand_dims(vs, axis=0)
         assert_allclose(v, v2, atol=1e-14, err_msg=method)
 
+    @pytest.mark.xfail(
+        runtime.is_hip, strict=True, raises=NotImplementedError,
+        reason='make_ndbspl needs spsolve (no HIP backend)')
     def test_derivatives(self):
         points, values = self._get_sample_4d()
         sample = cp.array([[0.1, 0.1, 1., 0.9],

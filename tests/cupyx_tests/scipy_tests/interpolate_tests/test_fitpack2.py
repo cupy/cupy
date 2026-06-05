@@ -12,6 +12,9 @@ except ImportError:
     pass
 
 
+@pytest.mark.skipif(
+    cupy.cuda.runtime.is_hip,
+    reason='UnivariateSpline needs spsolve (no HIP backend)')
 @testing.with_requires("scipy")
 class TestUnivariateSpline:
 
