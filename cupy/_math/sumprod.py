@@ -140,7 +140,8 @@ def nansum(
 
     """
     return _nansum_prod(
-        a, axis, dtype, out, keepdims, initial, where, is_sum=True)
+        a, axis, dtype, out, keepdims, initial, where, is_sum=True
+    )
 
 
 def nanprod(
@@ -165,7 +166,8 @@ def nanprod(
 
     """
     return _nansum_prod(
-        a, axis, dtype, out, keepdims, initial, where, is_sum=False)
+        a, axis, dtype, out, keepdims, initial, where, is_sum=False
+    )
 
 
 def cumsum(a, axis=None, dtype=None, out=None):
