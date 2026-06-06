@@ -96,7 +96,10 @@ def _nansum_prod(a, axis, dtype, out, keepdims, initial, where, is_sum):
     if valid is not None:
         a_clean = cupy.where(valid, a, fill_val)
     else:
-        a_clean = cupy.where(isnan_mask, fill_val, a) if a.dtype.kind in 'fc' else a
+        if a.dtype.kind in 'fc':
+            a_clean = cupy.where(isnan_mask, fill_val, a)
+        else:
+            a_clean = a
 
     if is_sum:
         res = cupy.sum(a_clean, axis=axis, dtype=dtype, keepdims=keepdims)
@@ -440,7 +443,9 @@ def gradient(f, *varargs, axis=None, edge_order=1):
                 2.0 * ax_dx
             )
         else:
+            # pyrefly: ignore [bad-index]
             dx1 = ax_dx[0:-1]
+            # pyrefly: ignore [bad-index]
             dx2 = ax_dx[1:]
             dx_sum = dx1 + dx2
             a = -(dx2) / (dx1 * dx_sum)
@@ -451,15 +456,18 @@ def gradient(f, *varargs, axis=None, edge_order=1):
             shape[axis] = -1
             a.shape = b.shape = c.shape = tuple(shape)
             # 1D equivalent -- out[1:-1] = a * f[:-2] + b * f[1:-1] + c * f[2:]
-            out[tuple(slice1)] = (a * f[tuple(slice2)] +
-                                  b * f[tuple(slice3)] +
-                                  c * f[tuple(slice4)])
+            out[tuple(slice1)] = (
+                a * f[tuple(slice2)]
+                + b * f[tuple(slice3)]
+                + c * f[tuple(slice4)]
+            )
 
         # Numerical differentiation: 1st order edges
         if edge_order == 1:
             slice1[axis] = 0
             slice2[axis] = 1
             slice3[axis] = 0
+            # pyrefly: ignore [bad-index]
             dx_0 = ax_dx if uniform_spacing else ax_dx[0]
             # 1D equivalent -- out[0] = (f[1] - f[0]) / (x[1] - x[0])
             out[tuple(slice1)] = (f[tuple(slice2)] - f[tuple(slice3)]) / dx_0
@@ -467,6 +475,7 @@ def gradient(f, *varargs, axis=None, edge_order=1):
             slice1[axis] = -1
             slice2[axis] = -1
             slice3[axis] = -2
+            # pyrefly: ignore [bad-index]
             dx_n = ax_dx if uniform_spacing else ax_dx[-1]
             # 1D equivalent -- out[-1] = (f[-1] - f[-2]) / (x[-1] - x[-2])
             out[tuple(slice1)] = (f[tuple(slice2)] - f[tuple(slice3)]) / dx_n
@@ -482,7 +491,9 @@ def gradient(f, *varargs, axis=None, edge_order=1):
                 b = 2.0 / ax_dx
                 c = -0.5 / ax_dx
             else:
+                # pyrefly: ignore [bad-index]
                 dx1 = ax_dx[0]
+                # pyrefly: ignore [bad-index]
                 dx2 = ax_dx[1]
                 dx_sum = dx1 + dx2
                 a = -(2.0 * dx1 + dx2) / (dx1 * (dx_sum))
@@ -502,17 +513,21 @@ def gradient(f, *varargs, axis=None, edge_order=1):
                 b = -2.0 / ax_dx
                 c = 1.5 / ax_dx
             else:
+                # pyrefly: ignore [bad-index]
                 dx1 = ax_dx[-2]
+                # pyrefly: ignore [bad-index]
                 dx2 = ax_dx[-1]
                 dx_sum = dx1 + dx2
                 a = (dx2) / (dx1 * (dx_sum))
                 b = -dx_sum / (dx1 * dx2)
                 c = (2.0 * dx2 + dx1) / (dx2 * (dx_sum))
             # 1D equivalent -- out[-1] = a * f[-3] + b * f[-2] + c * f[-1]
-            out[tuple(slice1)] = (a * f[tuple(slice2)] +
-                                  b * f[tuple(slice3)] +
-                                  c * f[tuple(slice4)])
-        outvals.append(out)
+            out[tuple(slice1)] = (
+                a * f[tuple(slice2)]
+                + b * f[tuple(slice3)]
+                + c * f[tuple(slice4)]
+            )
+            outvals.append(out)
 
         # reset the slice object in this dimension to ":"
         slice1[axis] = slice(None)
