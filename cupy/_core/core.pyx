@@ -2790,13 +2790,6 @@ cdef _ndarray_base _array_from_cupy_ndarray(
     return a
 
 
-cdef _ndarray_base _array_from_cuda_array_interface(
-        obj, dtype, copy, order, bint subok, Py_ssize_t ndmin):
-    return array(
-        _convert_object_with_cuda_array_interface(obj),
-        dtype, copy, order, subok, ndmin)
-
-
 cdef _ndarray_base _array_from_nested_sequence(
         obj, dtype, order, Py_ssize_t ndmin, concat_shape, concat_type,
         concat_dtype, bint blocking):

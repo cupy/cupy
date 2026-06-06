@@ -69,7 +69,10 @@ cusolverStatus_t cusolverGetProperty(libraryPropertyType type, int* val) {
 }
 
 
-typedef enum cusolverDnParams_t {};
+// Placeholder for cuSOLVER's opaque cusolverDnParams_t (HIP shims
+// ignore it). Anonymous enum named via typedef avoids the
+// "typedef ignored" warning the named-enum form produced.
+typedef enum {} cusolverDnParams_t;
 
 cusolverStatus_t cusolverDnCreateParams(...) {
     return rocblas_status_not_implemented;
