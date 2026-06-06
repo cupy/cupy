@@ -118,7 +118,10 @@ def _nansum_prod(a, axis, dtype, out, keepdims, initial, where, is_sum):
     return res
 
 
-def nansum(a, axis=None, dtype=None, out=None, keepdims=numpy._NoValue, initial=numpy._NoValue, where=numpy._NoValue):
+def nansum(
+    a, axis=None, dtype=None, out=None, keepdims=numpy._NoValue,
+    initial=numpy._NoValue, where=numpy._NoValue
+):
     """Returns the sum of an array along given axes treating Not a Numbers
     (NaNs) as zero.
 
@@ -136,10 +139,14 @@ def nansum(a, axis=None, dtype=None, out=None, keepdims=numpy._NoValue, initial=
     .. seealso:: :func:`numpy.nansum`
 
     """
-    return _nansum_prod(a, axis, dtype, out, keepdims, initial, where, is_sum=True)
+    return _nansum_prod(
+        a, axis, dtype, out, keepdims, initial, where, is_sum=True)
 
 
-def nanprod(a, axis=None, dtype=None, out=None, keepdims=numpy._NoValue, initial=numpy._NoValue, where=numpy._NoValue):
+def nanprod(
+    a, axis=None, dtype=None, out=None, keepdims=numpy._NoValue,
+    initial=numpy._NoValue, where=numpy._NoValue
+):
     """Returns the product of an array along given axes treating Not a Numbers
     (NaNs) as zero.
 
@@ -157,7 +164,8 @@ def nanprod(a, axis=None, dtype=None, out=None, keepdims=numpy._NoValue, initial
     .. seealso:: :func:`numpy.nanprod`
 
     """
-    return _nansum_prod(a, axis, dtype, out, keepdims, initial, where, is_sum=False)
+    return _nansum_prod(
+        a, axis, dtype, out, keepdims, initial, where, is_sum=False)
 
 
 def cumsum(a, axis=None, dtype=None, out=None):
