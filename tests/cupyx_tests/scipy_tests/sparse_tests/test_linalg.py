@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-import contextlib
 import functools
-import re
-import io
 import unittest
 import warnings
 
@@ -401,7 +398,7 @@ class TestCg:
                 M = sp.linalg.aslinearoperator(M)
         return self._test_cg(dtype, xp, sp, a, M)
 
-    @testing.with_requires('scipy>=1.12.0rc1')
+    @testing.with_requires('scipy')
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
     def test_empty(self, dtype, xp, sp):
@@ -540,7 +537,7 @@ class TestBicgstab:
                 M = sp.linalg.aslinearoperator(M)
         return self._test_bicgstab(dtype, xp, sp, a, M)
 
-    @testing.with_requires('scipy>=1.12.0rc1')
+    @testing.with_requires('scipy')
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
     def test_empty(self, dtype, xp, sp):
@@ -614,7 +611,7 @@ class TestBicgstab:
     'restart': [None, 10],
     'use_linear_operator': [False, True],
 }))
-@testing.with_requires('scipy>=1.4')
+@testing.with_requires('scipy')
 class TestGmres:
     n = 30
     density = 0.2
@@ -689,7 +686,7 @@ class TestGmres:
                 M = sp.linalg.aslinearoperator(M)
         return self._test_gmres(dtype, xp, sp, a, M)
 
-    @testing.with_requires('scipy>=1.12.0rc1')
+    @testing.with_requires('scipy')
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
     def test_empty(self, dtype, xp, sp):
@@ -766,7 +763,7 @@ class TestGmres:
             sp.linalg.gmres(ng_a, b)
 
 
-@testing.with_requires('scipy>=1.4')
+@testing.with_requires('scipy')
 class TestGmresInfo:
 
     def test_nonconvergence_with_restart_maxiter_mismatch(self):
@@ -807,7 +804,7 @@ def skip_HIP_spMM_error(outer=()):
     'M': [1, 6],
     'N': [1, 7],
 }))
-@testing.with_requires('scipy>=1.4')
+@testing.with_requires('scipy')
 class TestLinearOperator:
 
     # modified from scipy
@@ -930,7 +927,7 @@ class TestLinearOperator:
     'nrhs': [None, 1, 4],
     'order': ['C', 'F']
 }))
-@testing.with_requires('scipy>=1.4.0')
+@testing.with_requires('scipy')
 @pytest.mark.skipif(not cusparse.check_availability('csrsm2'),
                     reason='no working implementation')
 class TestSpsolveTriangular:
@@ -1087,7 +1084,7 @@ def _eigen_vec_transform(block_vec, xp):
     return block_vec * direction
 
 
-@testing.with_requires('scipy>=1.4')
+@testing.with_requires('scipy')
 @pytest.mark.skipif(runtime.is_hip and driver.get_build_version() < 402,
                     reason='syevj not available')
 # tests adapted from scipy's tests of lobpcg
@@ -1149,32 +1146,6 @@ class TestLOBPCG:
         A, B = self._generate_input_for_mikota_pair(10, xp)
         n = A.shape[0]
         X = self._generate_random_initial_ortho_eigvec(n, 10, xp)
-        eigvals, eigvecs = sp.linalg.lobpcg(A,
-                                            X, B=B,
-                                            tol=1e-5, maxiter=30,
-                                            largest=False)
-        return eigvals, _eigen_vec_transform(eigvecs, xp)
-
-    @testing.with_requires('scipy<1.11')
-    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
-                                 contiguous_check=False)
-    def test_generate_input_for_elastic_rod(self, xp, sp):
-        A, B = self._generate_input_for_elastic_rod(100, xp)
-        n = A.shape[0]
-        X = self._generate_random_initial_ortho_eigvec(n, 20, xp)
-        eigvals, eigvecs = sp.linalg.lobpcg(A,
-                                            X, B=B,
-                                            tol=1e-5, maxiter=30,
-                                            largest=False)
-        return eigvals, _eigen_vec_transform(eigvecs, xp)
-
-    @testing.with_requires('scipy<1.11')
-    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
-                                 contiguous_check=False)
-    def test_generate_input_for_mikota_pair(self, xp, sp):
-        A, B = self._generate_input_for_mikota_pair(100, xp)
-        n = A.shape[0]
-        X = self._generate_random_initial_ortho_eigvec(n, 20, xp)
         eigvals, eigvecs = sp.linalg.lobpcg(A,
                                             X, B=B,
                                             tol=1e-5, maxiter=30,
@@ -1314,38 +1285,6 @@ class TestLOBPCG:
         lobpcg_w, lobpcg_V = sp.linalg.lobpcg(A, X, largest=False)
         return lobpcg_w, _eigen_vec_transform(lobpcg_V, xp)
 
-    def _verbosity_helper(self, xp, sp):
-        """Helper to capture the verbose output from stdout
-        """
-        A, B = self._generate_input_for_elastic_rod(100, xp)
-        n = A.shape[0]
-        m = 20
-        X = self._generate_random_initial_ortho_eigvec(n, m, xp)
-        saved_stdout = io.StringIO()
-        with contextlib.redirect_stdout(saved_stdout):
-            _, _ = sp.linalg.lobpcg(A, X, B=B, tol=1e-5,
-                                    maxiter=30, largest=False,
-                                    verbosityLevel=9)
-        output = saved_stdout.getvalue().strip()
-        return output
-
-    @testing.with_requires('scipy>=1.10', 'scipy<1.11')
-    def test_verbosity(self):
-        """Check that nonzero verbosity level code runs
-           and is identical to scipy's output format.
-        """
-        stdout_cupy = self._verbosity_helper(cupy, cupyx.scipy.sparse)
-        stdout_numpy = self._verbosity_helper(numpy, scipy.sparse)
-        # getting rid of the numbers and whitespaces, we care only about
-        # format of printed output.
-        # also, due to the fact that there are unpredictable (but minor)
-        # differences in decimal digits between scipy and cupy verbose output
-        stdout_cupy = re.sub(r'[-+]?\d+\.?\d*[ ]*', '{number}', stdout_cupy)
-        stdout_numpy = re.sub(r'[-+]?\d+\.?\d*[ ]*', '{number}', stdout_numpy)
-        assert stdout_numpy == stdout_cupy, '''numpy: %s
-                                               cupy: %s''' % (stdout_numpy,
-                                                              stdout_cupy)
-
     @testing.numpy_cupy_allclose(
         rtol=1e-5, atol=5e-3 if runtime.is_hip else 1e-3, sp_name='sp',
         contiguous_check=False)
@@ -1399,7 +1338,7 @@ class TestLOBPCG:
         assert len(l_h) == 22
 
 
-@testing.with_requires('scipy>=1.4')
+@testing.with_requires('scipy')
 @testing.parameterize(*testing.product({
     'A_sparsity': [True, False],
     'B_sparsity': [True, False],
@@ -1689,7 +1628,7 @@ class TestCgs:
                 M = sp.linalg.aslinearoperator(M)
         return self._test_cgs(dtype, xp, sp, a, M)
 
-    @testing.with_requires('scipy>=1.12.0rc1')
+    @testing.with_requires('scipy')
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
     def test_empty(self, dtype, xp, sp):

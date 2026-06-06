@@ -353,14 +353,6 @@ class IndexMixin:
     """
 
     def __getitem__(self, key):
-
-        # For testing- Scipy >= 1.4.0 is needed to guarantee
-        # results match.
-        if scipy_available and numpy.lib.NumpyVersion(
-                scipy.__version__) < '1.4.0':
-            raise NotImplementedError(
-                "Sparse __getitem__() requires Scipy >= 1.4.0")
-
         row, col = self._parse_indices(key)
 
         # Dispatch to specialized methods.

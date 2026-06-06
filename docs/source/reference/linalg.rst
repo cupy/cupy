@@ -31,7 +31,7 @@ Matrix and vector products
    outer
    # linalg.outer
    matmul
-   # linalg.matmul (Array API compatible location)
+   linalg.matmul (Array API compatible location)
    # matvec
    # vecmat
    tensordot
@@ -100,4 +100,4 @@ Other matrix operations
 
    diagonal
    # linalg.diagonal (Array API compatible)
-   # linalg.matrix_transpose (Array API compatible)
+   linalg.matrix_transpose (Array API compatible)

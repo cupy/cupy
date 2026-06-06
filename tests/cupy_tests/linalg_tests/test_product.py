@@ -443,6 +443,63 @@ class TestProduct:
                 else arg for arg in [a, b]]
         return xp.kron(*args)
 
+    @pytest.mark.parametrize(
+        "shape_a, shape_b", [
+            # 2-D, empty in `a`
+            ((1, 0), (2, 2)),
+            ((3, 0), (2, 4)),
+            ((0, 3), (2, 4)),
+            ((0, 0), (2, 4)),
+            # 2-D, empty in `b`
+            ((2, 4), (3, 0)),
+            ((2, 4), (0, 0)),
+            # 1-D
+            ((0,), (4,)),
+            ((4,), (0,)),
+            ((0,), (0,)),
+            # >2-D with an empty dim
+            ((2, 0, 3), (1, 4, 2)),
+            ((1, 2, 0), (3, 4, 5)),
+            # mixed ndim, empty operand smaller-rank
+            ((0,), (3, 4)),
+            ((4,), (3, 0)),
+            ((3, 0), (2,)),
+        ]
+    )
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_kron_empty(self, xp, dtype, shape_a, shape_b):
+        a = xp.empty(shape_a, dtype=dtype)
+        b = xp.empty(shape_b, dtype=dtype)
+        return xp.kron(a, b)
+
+    @pytest.mark.parametrize(
+        "shape_b", [(0,), (0, 5), (3, 0), (2, 0, 4)],
+    )
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_kron_zerodim_with_empty(self, xp, dtype, shape_b):
+        # 0-D scalar array × empty array — exercises the early
+        # `cupy.multiply` branch rather than the empty-result short-circuit.
+        a = xp.array(2, dtype=dtype)
+        b = xp.empty(shape_b, dtype=dtype)
+        return xp.kron(a, b)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_kron_empty_fortran_order(self, xp, dtype):
+        a = xp.empty((3, 0), dtype=dtype, order='F')
+        b = xp.empty((2, 4), dtype=dtype, order='F')
+        return xp.kron(a, b)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_kron_empty_via_slice(self, xp, dtype):
+        # Empty array produced by zero-length slicing of a non-empty buffer.
+        a = xp.zeros((3, 4), dtype=dtype)[:0]
+        b = xp.zeros((1, 2), dtype=dtype)
+        return xp.kron(a, b)
+
 
 class TestInt8Tensordot:
     """Smoke test for cupy.tensordot with int8 dtype via tensordot_core."""
@@ -572,3 +629,35 @@ class TestMatrixPowerBatched:
         a = testing.shaped_arange(shape, xp, dtype)
         a += xp.identity(shape[-1], dtype)
         return xp.linalg.matrix_power(a, n)
+
+
+@pytest.mark.parametrize('shapes', [
+    ((3, 4), (4, 5)),
+    ((1, 1), (1, 1)),
+    ((5, 5), (5, 5)),
+    ((1, 7), (7, 1)),
+])
+class TestLinalgMatmul2D:
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose(atol=1e-3, rtol=1e-3)
+    def test_matmul_2d(self, xp, dtype, shapes):
+        shape_a, shape_b = shapes
+        a = testing.shaped_random(shape_a, xp, dtype)
+        b = testing.shaped_random(shape_b, xp, dtype)
+        return xp.linalg.matmul(a, b)
+
+
+class TestLinalgMatrixTranspose:
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_matrix_transpose(self, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        return xp.linalg.matrix_transpose(a)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal(accept_error=ValueError)
+    def test_matrix_transpose_error(self, xp, dtype):
+        a = testing.shaped_arange((10,), xp, dtype)
+        return xp.linalg.matrix_transpose(a)

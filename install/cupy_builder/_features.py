@@ -143,7 +143,6 @@ _cuda_files = [
     'cupy.cuda.graph',
     'cupy.cuda.texture',
     'cupy.fft._cache',
-    'cupy.fft._callback',
     'cupy.lib._polynomial',
     'cupy._util',
     'cupyx.scipy.ndimage._bbox_slices',
@@ -186,6 +185,7 @@ def get_features(ctx: Context) -> dict[str, Feature]:
             'hiprand',
             'hipsparse',
             'rocfft',
+            'roctracer64',  # cudaProfilerStart/Stop -> roctracer_start/stop
             'roctx64',
             'rocblas',
             'rocsolver',
@@ -438,7 +438,9 @@ class CUDA_cuda(Feature):
         super().__init__(ctx)
         self.name = 'cuda'
         self.required = True
-        self.modules = _cuda_files
+        self.modules = _cuda_files + [
+            'cupy.fft._callback',
+        ]
         self.includes = [
             'cublas_v2.h',
             'cuda.h',

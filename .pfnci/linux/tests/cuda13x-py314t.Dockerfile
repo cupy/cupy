@@ -1,5 +1,5 @@
 # AUTO GENERATED: DO NOT EDIT!
-ARG BASE_IMAGE="nvidia/cuda:13.2.0-devel-ubuntu22.04"
+ARG BASE_IMAGE="nvidia/cuda:13.1.0-devel-ubuntu22.04"
 FROM ${BASE_IMAGE}
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
@@ -10,11 +10,11 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
        curl llvm libncursesw5-dev xz-utils tk-dev \
        libxml2-dev libxmlsec1-dev libffi-dev \
        liblzma-dev \
-       libopenmpi-dev \
+\
        && \
     apt-get -qqy install ccache git curl && \
     apt-get -qqy --allow-change-held-packages \
-            --allow-downgrades install 'libnccl2=2.29.*+cuda13.2' 'libnccl-dev=2.29.*+cuda13.2' 'libcutensor2-cuda-13=2.4.*' 'libcutensor2-dev-cuda-13=2.4.*' 'libcusparselt0-cuda-13=0.9.0.*' 'libcusparselt0-dev-cuda-13=0.9.0.*'
+            --allow-downgrades install 'libnccl2=2.28.*+cuda13.0' 'libnccl-dev=2.28.*+cuda13.0' 'libcutensor2-cuda-13=2.4.*' 'libcutensor2-dev-cuda-13=2.4.*' 'libcusparselt0-cuda-13=0.9.0.*' 'libcusparselt0-dev-cuda-13=0.9.0.*'
 
 ENV PATH "/usr/lib/ccache:${PATH}"
 
@@ -27,13 +27,13 @@ ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/libcusparseLt/13:${LD_LIBRARY_PATH
 RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
-RUN pyenv install 3.14.0 && \
-    pyenv global 3.14.0 && \
+RUN pyenv install 3.14t && \
+    pyenv global 3.14t && \
     pip install -U setuptools pip wheel && \
     pip install -U google-cloud-storage
 
-RUN pip install -U 'numpy==2.4.*' 'scipy==1.16.*' 'optuna==4.*' 'mpi4py==4.*' 'ml_dtypes==0.5.*' 'cython==3.2.*'
-RUN pip uninstall -y cuda-python && \
+RUN pip install -U 'numpy==2.4.*' 'scipy==1.16.*' 'optuna==4.*' 'ml_dtypes==0.5.*' 'cython==3.2.*'
+RUN pip uninstall -y mpi4py cuda-python && \
     pip check
 
 RUN mkdir /home/cupy-user && chmod 777 /home/cupy-user

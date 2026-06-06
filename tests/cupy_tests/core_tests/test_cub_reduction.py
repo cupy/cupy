@@ -130,6 +130,8 @@ class TestSimpleCubReductionKernelMisc(CubReductionTestBase):
         b = cupy.empty((), dtype=cupy.int8)
         assert self.can_use([a], [b], (1,), (0,)) is None
 
+    @pytest.mark.thread_unsafe(
+        reason="AssertFunctionIsCalled and accelerate mutation.")
     def test_can_use_accelerator_set_unset(self):
         # ensure we use CUB block reduction and not CUB device reduction
         old_routine_accelerators = _accelerator.get_routine_accelerators()

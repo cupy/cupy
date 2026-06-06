@@ -158,7 +158,7 @@ class TestBinaryErosionAndDilation1d:
         'output': [None, numpy.float32, numpy.int8]}
     )
 ))
-@testing.with_requires('scipy>=1.1.0')
+@testing.with_requires('scipy')
 class TestBinaryOpeningAndClosing:
     def _filter(self, xp, scp, x):
         filter = getattr(scp.ndimage, self.filter)
@@ -202,7 +202,7 @@ class TestBinaryOpeningAndClosing:
                    'binary_closing']}
     ))
 )
-@testing.with_requires('scipy>=1.1.0')
+@testing.with_requires('scipy')
 class TestBinaryMorphologyTupleFootprint:
     def _filter(self, x, structure):
         filter = getattr(cupyx.scipy.ndimage, self.filter)
