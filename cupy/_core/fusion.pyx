@@ -558,10 +558,10 @@ class _FusionHistory(object):
             raise ValueError('non-broadcastable output operand')
 
         # Typecast and add an operation
-        in_sctypes = tuple([a.dtype.type for a in in_vars])
+        in_dtypes = tuple([a.dtype for a in in_vars])
         weaks = tuple([getattr(a, 'is_weak', False) for a in in_vars])
 
-        op = ufunc._ops._guess_routine_from_in_types(in_sctypes, weaks)
+        op = ufunc._ops._guess_routine_from_in_types(in_dtypes, weaks)
 
         if op is not None:
             in_dtypes = [numpy.dtype(t) for t in op.in_types]
