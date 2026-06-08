@@ -8,6 +8,7 @@ import numpy
 
 from cupy import _core
 from cupy._core import internal
+from cupy._core._scalar import format_type_decls
 from cupy.cuda import runtime
 from cupyx import _texture
 from cupyx.scipy.ndimage import _util
@@ -116,6 +117,7 @@ def spline_filter1d(input, order=3, axis=-1, output=cupy.float64,
     data_type = cupy._core._scalar.get_typename(temp.dtype, spline_type_decls)
     pole_type = cupy._core._scalar.get_typename(
         temp.real.dtype, spline_type_decls)
+    spline_type_decls = format_type_decls(spline_type_decls)
 
     index_type = _util._get_inttype(input)
     index_dtype = cupy.int32 if index_type == 'int' else cupy.int64
