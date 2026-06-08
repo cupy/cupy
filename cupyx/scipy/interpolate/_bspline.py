@@ -189,7 +189,6 @@ D_BOOR_MODULE = cupy.RawModule(
 
 DESIGN_MAT_KERNEL = r'''
 #include <cupy/complex.cuh>
-${type_decls}
 
 template<typename U>
 __global__ void compute_design_matrix(
@@ -214,8 +213,7 @@ __global__ void compute_design_matrix(
 '''
 
 DESIGN_MAT_MODULE = cupy.RawModule(
-    code=string.Template(DESIGN_MAT_KERNEL).substitute(
-        type_decls=format_type_decls(BSPLINE_TYPE_DECLS)),
+    code=DESIGN_MAT_KERNEL,
     name_expressions=[f'compute_design_matrix<{itype}>'
                       for itype in INT_TYPES])
 

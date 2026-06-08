@@ -165,6 +165,8 @@ def test_ldexp(xp):
     # Make size large enough that float32 compute type should matter
     ((10, 20_000), (20_000, 10)),
     ((30_000,), (30_000,)),
+    # Batched matmul:
+    ((2, 10, 20_000), (2, 20_000, 10)),
 ])
 @testing.numpy_cupy_allclose(rtol=TOL, atol=TOL)
 @pytest.mark.skipif(runtime.is_hip, reason="Matrix version crashed CI.")
