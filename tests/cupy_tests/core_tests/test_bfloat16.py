@@ -253,13 +253,25 @@ def test_astype_from_bfloat16(xp, to_dtype):
     lambda x: cupy.sqrt(x),
     lambda x: x.astype(numpy.float32),
     lambda x: x + ml_dtypes.bfloat16(2),
-    lambda x: x.sum(),
+    lambda x: cupy.sum(x),  # prefer cupy.sum as attr only works for new path
 ])
-def test_fusion_basic(func):
+@pytest.mark.parametrize('old_fusion', [True, False])
+def test_fusion_basic(func, old_fusion):
     # NOTE(seberg): As of writing v14.0 no attempt made for old-fusion.
     arr = cupy.asarray(TEST_VALUES)
     expected = func(arr)
+    count = 0
 
-    fused = cupy._core.new_fusion.Fusion(func, 'bf16_fuse_test')
+    def count_calls(x):
+        nonlocal count
+        count += 1
+        return func(x)
+
+    if old_fusion:
+        fused = cupy._core.fusion.Fusion(count_calls, 'bf16_fuse_test')
+    else:
+        fused = cupy._core.new_fusion.Fusion(count_calls, 'bf16_fuse_test')
+
     actual = fused(arr)
+    assert count == 1
     cupy.testing.assert_allclose(actual, expected, rtol=TOL, atol=TOL)
