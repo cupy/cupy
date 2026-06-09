@@ -2606,9 +2606,38 @@ cdef fill_kernel = ElementwiseKernel('T x', 'T y', 'y = x', 'cupy_fill')
 
 cdef _byteswap_kernel = ElementwiseKernel(
     'T x', 'T y',
-    'y = cuda::std::byteswap(x)',
+    'y = cupy_byteswap(x)',
     'cupy_byteswap',
-    preamble='#include <cuda/std/bit>')
+    preamble='''
+#ifdef __HIPCC_RTC__
+// HIPRTC lacks <cuda/std/bit> and <bit>; use clang builtins.
+template <typename T>
+__device__ inline T cupy_byteswap(T x) {
+    if constexpr (sizeof(T) == 2) {
+        return static_cast<T>(
+            __builtin_bswap16(static_cast<unsigned short>(x)));
+    } else if constexpr (sizeof(T) == 4) {
+        return static_cast<T>(
+            __builtin_bswap32(static_cast<unsigned int>(x)));
+    } else if constexpr (sizeof(T) == 8) {
+        return static_cast<T>(
+            __builtin_bswap64(static_cast<unsigned long long>(x)));
+    } else {
+        static_assert(
+            false,
+            "cupy_byteswap: only 16, 32, and 64 bit integer types "
+            "are supported under HIPRTC");
+    }
+}
+#else
+#include <cuda/std/bit>
+#include <cuda/std/utility>
+template <typename T>
+__device__ inline auto cupy_byteswap(T&& x) {
+    return cuda::std::byteswap(cuda::std::forward<T>(x));
+}
+#endif
+''')
 
 
 cdef _byteswap_dispatch(_ndarray_base a):
@@ -2788,13 +2817,6 @@ cdef _ndarray_base _array_from_cupy_ndarray(
         a.shape = (1,) * (ndmin - ndim) + a.shape
 
     return a
-
-
-cdef _ndarray_base _array_from_cuda_array_interface(
-        obj, dtype, copy, order, bint subok, Py_ssize_t ndmin):
-    return array(
-        _convert_object_with_cuda_array_interface(obj),
-        dtype, copy, order, subok, ndmin)
 
 
 cdef _ndarray_base _array_from_nested_sequence(

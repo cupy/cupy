@@ -21,17 +21,13 @@ cdef extern from *:
 
     ctypedef int Action 'cusparseAction_t'
 
-    ctypedef void* cusparseHandle_t
-    ctypedef void* cusparseMatDescr_t
     ctypedef void* csric02Info_t
     ctypedef void* bsric02Info_t
     ctypedef void* csrilu02Info_t
     ctypedef void* bsrilu02Info_t
 
     # Declarations for cuSparse generic API
-    ctypedef int cusparseStatus_t
-    ctypedef int cusparseDirection_t
-    ctypedef int cusparseSolvePolicy_t
+    ctypedef int SolvePolicy 'cusparseSolvePolicy_t'
 
     ctypedef int IndexType 'cusparseIndexType_t'
     ctypedef int Format 'cusparseFormat_t'
@@ -50,17 +46,8 @@ cdef extern from *:
     ctypedef void* SpSMDescr 'cusparseSpSMDescr_t'
     ctypedef void* SpGEMMDescr 'cusparseSpGEMMDescr_t'
 
-    ctypedef void* cusparseSpVecDescr_t
-    ctypedef void* cusparseDnVecDescr_t
-    ctypedef void* cusparseSpMatDescr_t
-    ctypedef void* cusparseDnMatDescr_t
-    ctypedef void* cusparseSpSMDescr_t
-    ctypedef void* cusparseSpGEMMDescr_t
-
-    ctypedef int cusparseSparseToDenseAlg_t
-    ctypedef int cusparseDenseToSparseAlg_t
-    ctypedef int cusparseSpSMAlg_t
-    ctypedef int cusparseSpGEMMAlg_t
+    ctypedef int SparseToDenseAlg 'cusparseSparseToDenseAlg_t'
+    ctypedef int DenseToSparseAlg 'cusparseDenseToSparseAlg_t'
 
     # CSR2CSC
     ctypedef int Csr2CscAlg 'cusparseCsr2CscAlg_t'

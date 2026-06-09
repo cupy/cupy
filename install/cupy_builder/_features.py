@@ -185,6 +185,7 @@ def get_features(ctx: Context) -> dict[str, Feature]:
             'hiprand',
             'hipsparse',
             'rocfft',
+            'roctracer64',  # cudaProfilerStart/Stop -> roctracer_start/stop
             'roctx64',
             'rocblas',
             'rocsolver',
