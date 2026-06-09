@@ -205,6 +205,62 @@ class TestSumprod:
         return a.prod(dtype=dst_dtype)
 
 
+@testing.with_requires("numpy>=1.22.0")
+class TestSumProdParams:
+
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
+    @testing.numpy_cupy_allclose()
+    def test_sum_initial(self, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        return xp.sum(a, initial=10)
+
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
+    @testing.numpy_cupy_allclose()
+    def test_sum_initial_axis(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        return xp.sum(a, axis=1, initial=10)
+
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
+    @testing.numpy_cupy_allclose()
+    def test_sum_where(self, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        where = xp.array([[True, False, True], [False, True, True]])
+        return xp.sum(a, where=where)
+
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
+    @testing.numpy_cupy_allclose()
+    def test_sum_initial_and_where(self, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        where = xp.array([[True, False, True], [False, True, True]])
+        return xp.sum(a, where=where, initial=10)
+
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
+    @testing.numpy_cupy_allclose()
+    def test_prod_initial(self, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        return xp.prod(a, initial=2)
+
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
+    @testing.numpy_cupy_allclose()
+    def test_prod_initial_axis(self, xp, dtype):
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        return xp.prod(a, axis=1, initial=2)
+
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
+    @testing.numpy_cupy_allclose()
+    def test_prod_where(self, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        where = xp.array([[True, False, True], [False, True, True]])
+        return xp.prod(a, where=where)
+
+    @testing.for_all_dtypes(no_bool=True, no_float16=True)
+    @testing.numpy_cupy_allclose()
+    def test_prod_initial_and_where(self, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype)
+        where = xp.array([[True, False, True], [False, True, True]])
+        return xp.prod(a, where=where, initial=2)
+
+
 # This class compares CUB results against NumPy's
 @testing.parameterize(*testing.product({
     'shape': [(10,), (10, 20), (10, 20, 30), (10, 20, 30, 40)],

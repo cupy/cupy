@@ -538,6 +538,84 @@ class TestOrder:
             with pytest.raises(ValueError):
                 xp.nanmax(a, where=where)
 
+    @testing.with_requires("numpy>=1.22.0")
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose()
+    def test_amin_initial(self, xp, dtype):
+        a = testing.shaped_random((2, 3), xp, dtype)
+        return xp.amin(a, initial=0)
+
+    @testing.with_requires("numpy>=1.22.0")
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose()
+    def test_amin_initial_axis(self, xp, dtype):
+        a = testing.shaped_random((2, 3, 4), xp, dtype)
+        return xp.amin(a, axis=1, initial=0)
+
+    @testing.with_requires("numpy>=1.22.0")
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_amin_with_where(self, xp, dtype):
+        a = xp.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], dtype)
+        where = xp.array([[True, False, True], [False, True, True]])
+        return xp.amin(a, where=where, initial=numpy.inf)
+
+    @testing.with_requires("numpy>=1.22.0")
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_amin_with_initial_and_where(self, xp, dtype):
+        a = xp.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], dtype)
+        where = xp.array([[True, False, True], [False, True, True]])
+        return xp.amin(a, where=where, initial=10)
+
+    @testing.with_requires("numpy>=1.22.0")
+    @testing.for_float_dtypes()
+    def test_amin_where_without_initial_raises(self, dtype):
+        for xp in (numpy, cupy):
+            a = xp.array([1.0, 2.0, 3.0], dtype)
+            where = xp.array([True, False, True])
+            with pytest.raises(ValueError):
+                xp.amin(a, where=where)
+
+    @testing.with_requires("numpy>=1.22.0")
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose()
+    def test_amax_initial(self, xp, dtype):
+        a = testing.shaped_random((2, 3), xp, dtype)
+        return xp.amax(a, initial=0)
+
+    @testing.with_requires("numpy>=1.22.0")
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose()
+    def test_amax_initial_axis(self, xp, dtype):
+        a = testing.shaped_random((2, 3, 4), xp, dtype)
+        return xp.amax(a, axis=1, initial=0)
+
+    @testing.with_requires("numpy>=1.22.0")
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_amax_with_where(self, xp, dtype):
+        a = xp.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], dtype)
+        where = xp.array([[True, False, True], [False, True, True]])
+        return xp.amax(a, where=where, initial=-numpy.inf)
+
+    @testing.with_requires("numpy>=1.22.0")
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_amax_with_initial_and_where(self, xp, dtype):
+        a = xp.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], dtype)
+        where = xp.array([[True, False, True], [False, True, True]])
+        return xp.amax(a, where=where, initial=0)
+
+    @testing.with_requires("numpy>=1.22.0")
+    @testing.for_float_dtypes()
+    def test_amax_where_without_initial_raises(self, dtype):
+        for xp in (numpy, cupy):
+            a = xp.array([1.0, 2.0, 3.0], dtype)
+            where = xp.array([True, False, True])
+            with pytest.raises(ValueError):
+                xp.amax(a, where=where)
+
 
 # See gh-4607
 # "Magic" values used in this test were empirically found to result in
