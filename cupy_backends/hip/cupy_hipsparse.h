@@ -3034,7 +3034,8 @@ typedef enum {} cusparseFormat_t;
 typedef enum {} cusparseOrder_t;
 static hipsparseOrder_t convert_hipsparseOrder_t(cusparseOrder_t type) {
     switch(static_cast<int>(type)) {
-        case 1 /* CUSPARSE_ORDER_COL */: return HIPSPARSE_ORDER_COLUMN;
+        // hipSPARSE renamed HIPSPARSE_ORDER_COLUMN -> _COL (same value).
+        case 1 /* CUSPARSE_ORDER_COL */: return HIPSPARSE_ORDER_COL;
         case 2 /* CUSPARSE_ORDER_ROW */: return HIPSPARSE_ORDER_ROW;
         default: throw std::runtime_error("unrecognized type");
     }

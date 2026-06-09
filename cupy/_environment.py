@@ -217,10 +217,12 @@ def _get_rocm_path():
     if os.path.exists(rocm_path):
         return rocm_path
 
-    # Use hipcc path
+    # Resolve hipcc symlinks (distros expose /usr/bin/hipcc ->
+    # /opt/rocm-X.Y/bin/hipcc via update-alternatives).
     hipcc_path = shutil.which('hipcc')
     if hipcc_path is not None:
-        return os.path.dirname(os.path.dirname(hipcc_path))
+        return os.path.dirname(
+            os.path.dirname(os.path.realpath(hipcc_path)))
 
     # Use typical path
     if os.path.exists('/opt/rocm'):
