@@ -525,10 +525,9 @@ cdef extern from '../../cupy_sparse.h' nogil:
     Status cusparseDgtsv2(
         Handle handle, int m, int n, const double *dl,
         const double *d, const double *du, double *B, int ldb, void *pBuffer)
-    Status cusparseCgtsv2(Handle handle, int m, int n,
-                                    const cuComplex *dl, const cuComplex *d,
-                                    const cuComplex *du, cuComplex *B, int ldb,
-                                    void *pBuffer)
+    Status cusparseCgtsv2(
+        Handle handle, int m, int n, const cuComplex *dl, const cuComplex *d,
+        const cuComplex *du, cuComplex *B, int ldb, void *pBuffer)
     Status cusparseZgtsv2(
         Handle handle, int m, int n, const cuDoubleComplex *dl,
         const cuDoubleComplex *d, const cuDoubleComplex *du,
