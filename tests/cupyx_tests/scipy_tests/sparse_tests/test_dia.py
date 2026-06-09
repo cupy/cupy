@@ -242,6 +242,27 @@ class TestDiaMatrixInit(unittest.TestCase):
         n = _make_complex(xp, sp, self.dtype)
         cupy.testing.assert_array_equal(n.conj().data, n.data.conj())
 
+    def test_offsets_no_copy(self):
+        # copy=False must not copy the offsets array when its dtype
+        # already matches; mutating the input is reflected in the matrix.
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            offsets = self.offsets(xp)
+            m = sp.dia_matrix(
+                (self.data(xp), offsets), shape=self.shape, copy=False)
+            offsets[0] += 1
+            assert int(m.offsets[0]) == int(offsets[0])
+
+    def test_offsets_copy(self):
+        # copy=True must copy the offsets array; mutating the input must
+        # not affect the matrix.
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            offsets = self.offsets(xp)
+            original = int(offsets[0])
+            m = sp.dia_matrix(
+                (self.data(xp), offsets), shape=self.shape, copy=True)
+            offsets[0] += 1
+            assert int(m.offsets[0]) == original
+
 
 @testing.parameterize(*testing.product({
     'make_method': ['_make', '_make_empty'],

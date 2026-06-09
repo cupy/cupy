@@ -57,7 +57,7 @@ class dia_matrix(_data._data_matrix):
         data = cupy.array(data, dtype=dtype, copy=copy)
         data = cupy.atleast_2d(data)
         off_dtype = _sputils.get_index_dtype(maxval=max(shape))
-        offsets = cupy.array(offsets, dtype=off_dtype)
+        offsets = cupy.array(offsets, dtype=off_dtype, copy=copy)
         offsets = cupy.atleast_1d(offsets)
 
         if offsets.ndim != 1:
