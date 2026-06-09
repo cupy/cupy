@@ -10,7 +10,6 @@ import warnings
 import numpy
 
 import cupy
-from cupy import _environment
 from cupy._core._kernel import create_ufunc
 from cupy._core._kernel import ElementwiseKernel
 from cupy._core._ufuncs import elementwise_copy
@@ -2403,9 +2402,8 @@ _HANDLED_TYPES = (ndarray, numpy.ndarray)
 # TODO(niboshi): Move it out of core.pyx
 
 cdef bint _is_hip = runtime._is_hip_environment
-cdef str _cuda_path = ''  # '' for uninitialized, None for non-existing
-cdef str _bundled_include = ''  # '' for uninitialized, None for non-existing
-_headers_from_wheel_available = False
+cdef str _cuda_include_dir = ''  # '' for uninitialized, None for non-existing
+cdef str _rocm_include_dir = ''  # '' for uninitialized, None for non-existing
 
 cdef list cupy_header_list = [
     'cupy/complex.cuh',
@@ -2545,50 +2543,30 @@ cpdef tuple assemble_cupy_compiler_options(tuple options):
 
     options += ('-I%s' % _get_header_dir_path(),)
 
-    global _cuda_path
-    if _cuda_path == '':
-        if not _is_hip:
-            _cuda_path = cuda.get_cuda_path()
-        else:
-            _cuda_path = cuda.get_rocm_path()
-
     if not _is_hip:
-        # CUDA Enhanced Compatibility
-        global _bundled_include, _headers_from_wheel_available
-        if _bundled_include == '':
-            major, minor = nvrtc.getVersion()
-            if major == 12 and minor < 2:
-                # Use bundled header for CUDA 12.0 and 12.1 only.
-                _bundled_include = 'cuda-12'
-            else:
-                # Do not use bundled includes dir after CUDA 12.2+.
-                _bundled_include = None
-
-            # Check if headers from cudart wheels are available.
-            wheel_dir_count = len(
-                _environment._get_include_dir_from_conda_or_wheel(
-                    major, minor))
-            _headers_from_wheel_available = (0 < wheel_dir_count)
-
-        if (_bundled_include is None and
-                _cuda_path is None and
-                not _headers_from_wheel_available):
+        global _cuda_include_dir
+        if _cuda_include_dir == '':
+            from cuda.pathfinder import find_nvidia_header_directory
+            _cuda_include_dir = find_nvidia_header_directory('cudart')
+        if _cuda_include_dir is None:
             raise RuntimeError(
-                'Failed to auto-detect CUDA root directory. '
-                'Please specify `CUDA_PATH` environment variable if you '
-                'are using CUDA versions not yet supported by CuPy.')
-
-        if _bundled_include is not None:
-            options += ('-I' + os.path.join(
-                _get_header_dir_path(), 'cupy', '_cuda', _bundled_include),)
-    elif _is_hip:
-        if _cuda_path is None:
+                'Failed to find CUDA headers. Please install CUDA toolkit '
+                'headers (e.g., pip install cupy-cuda12x[ctk]) or specify '
+                'CUDA_PATH environment variable.')
+        options += ('-I' + _cuda_include_dir,)
+    else:
+        global _rocm_include_dir
+        if _rocm_include_dir == '':
+            _rocm_path = cuda.get_rocm_path()
+            if _rocm_path is not None:
+                _rocm_include_dir = os.path.join(_rocm_path, 'include')
+            else:
+                _rocm_include_dir = None
+        if _rocm_include_dir is None:
             raise RuntimeError(
                 'Failed to auto-detect ROCm root directory. '
                 'Please specify `ROCM_HOME` environment variable.')
-
-    if _cuda_path is not None:
-        options += ('-I' + os.path.join(_cuda_path, 'include'),)
+        options += ('-I' + _rocm_include_dir,)
 
     return options
 
@@ -2628,9 +2606,38 @@ cdef fill_kernel = ElementwiseKernel('T x', 'T y', 'y = x', 'cupy_fill')
 
 cdef _byteswap_kernel = ElementwiseKernel(
     'T x', 'T y',
-    'y = cuda::std::byteswap(x)',
+    'y = cupy_byteswap(x)',
     'cupy_byteswap',
-    preamble='#include <cuda/std/bit>')
+    preamble='''
+#ifdef __HIPCC_RTC__
+// HIPRTC lacks <cuda/std/bit> and <bit>; use clang builtins.
+template <typename T>
+__device__ inline T cupy_byteswap(T x) {
+    if constexpr (sizeof(T) == 2) {
+        return static_cast<T>(
+            __builtin_bswap16(static_cast<unsigned short>(x)));
+    } else if constexpr (sizeof(T) == 4) {
+        return static_cast<T>(
+            __builtin_bswap32(static_cast<unsigned int>(x)));
+    } else if constexpr (sizeof(T) == 8) {
+        return static_cast<T>(
+            __builtin_bswap64(static_cast<unsigned long long>(x)));
+    } else {
+        static_assert(
+            false,
+            "cupy_byteswap: only 16, 32, and 64 bit integer types "
+            "are supported under HIPRTC");
+    }
+}
+#else
+#include <cuda/std/bit>
+#include <cuda/std/utility>
+template <typename T>
+__device__ inline auto cupy_byteswap(T&& x) {
+    return cuda::std::byteswap(cuda::std::forward<T>(x));
+}
+#endif
+''')
 
 
 cdef _byteswap_dispatch(_ndarray_base a):
@@ -2810,13 +2817,6 @@ cdef _ndarray_base _array_from_cupy_ndarray(
         a.shape = (1,) * (ndmin - ndim) + a.shape
 
     return a
-
-
-cdef _ndarray_base _array_from_cuda_array_interface(
-        obj, dtype, copy, order, bint subok, Py_ssize_t ndmin):
-    return array(
-        _convert_object_with_cuda_array_interface(obj),
-        dtype, copy, order, subok, ndmin)
 
 
 cdef _ndarray_base _array_from_nested_sequence(
