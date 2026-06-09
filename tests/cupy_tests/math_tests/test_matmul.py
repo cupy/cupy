@@ -388,6 +388,8 @@ class TestMatmulInt8(unittest.TestCase):
         np_b = cupy.asnumpy(b)
         cupy.testing.assert_array_equal(a @ b, np_a @ np_b)
 
+    @pytest.mark.thread_unsafe(
+        reason="patches cublas.gemmEx via mock.patch.object")
     def test_fallback_emits_performance_warning(self):
         """When cuBLAS fails, PerformanceWarning is emitted before fallback."""
         from cupy import _util

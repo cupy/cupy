@@ -64,7 +64,7 @@ cpdef int to_compute_type_index(dtype) except -1:
         return 2
     elif dtype_char in 'dD':
         return 3
-    elif dtype.name == "bfloat16":
+    elif numpy.dtype(dtype).name == "bfloat16":
         return 0
     elif dtype_char == 'b':
         return 4
@@ -650,7 +650,8 @@ cpdef _ndarray_base tensordot_core(
                     a = _internal_ascontiguousarray(a)
                 if transb:
                     b = _internal_ascontiguousarray(b)
-                _integral_tensordot_core(b, a, c, m, n, k, dtype, ret_shape)
+                _integral_tensordot_core(
+                    b, a, c, m, n, k, dtype.char, ret_shape)
                 if copy_to_out is not None:
                     elementwise_copy(copy_to_out, out)
                 return out
@@ -673,7 +674,8 @@ cpdef _ndarray_base tensordot_core(
                     a = _internal_ascontiguousarray(a)
                 if transb:
                     b = _internal_ascontiguousarray(b)
-                _integral_tensordot_core(b, a, c, m, n, k, dtype, ret_shape)
+                _integral_tensordot_core(
+                    b, a, c, m, n, k, dtype.char, ret_shape)
         else:
             tensordot_core_v11(transb, transa, m, n, k, b, ldb, a, lda, c, m)
         if copy_to_out is not None:
@@ -686,7 +688,7 @@ cpdef _ndarray_base tensordot_core(
             a = _internal_ascontiguousarray(a)
         if transb:
             b = _internal_ascontiguousarray(b)
-        _integral_tensordot_core(b, a, c, m, n, k, dtype, ret_shape)
+        _integral_tensordot_core(b, a, c, m, n, k, dtype.char, ret_shape)
         if copy_to_out is not None:
             elementwise_copy(copy_to_out, out)
         return out
