@@ -171,23 +171,25 @@ def nansum(a, axis=None, dtype=None, out=None, keepdims=False,
         return _fusion_thread_local.call_reduction(
             func, a, axis=axis, dtype=dtype, out=out)
 
+    if where_is_trivial and initial is None:
+        # TODO(okuta): check type
+        return _math._nansum(a, axis, dtype, out, keepdims)
+
     a = cupy.asarray(a)
 
-    if not where_is_trivial:
-        where_arr = cupy.asarray(where, dtype=bool)
-        a = cupy.where(cupy.broadcast_to(where_arr, a.shape), a, 0)
+    if a.dtype.kind in 'efdFD':
+        valid = ~cupy.isnan(a)
+        if not where_is_trivial:
+            where_arr = cupy.broadcast_to(
+                cupy.asarray(where, dtype=bool), a.shape)
+            effective_where = valid & where_arr
+        else:
+            effective_where = valid
+    else:
+        effective_where = where
 
-    # TODO(okuta): check type
-    res = _math._nansum(
-        a, axis, dtype, out if initial is None else None, keepdims)
-
-    if initial is not None:
-        res = res + initial
-        if out is not None:
-            out[...] = res
-            return out
-
-    return res
+    return sum(a, axis=axis, dtype=dtype, out=out, keepdims=keepdims,
+               initial=initial, where=effective_where)
 
 
 def nanprod(a, axis=None, dtype=None, out=None, keepdims=False,
@@ -229,23 +231,25 @@ def nanprod(a, axis=None, dtype=None, out=None, keepdims=False,
         return _fusion_thread_local.call_reduction(
             func, a, axis=axis, dtype=dtype, out=out)
 
+    if where_is_trivial and initial is None:
+        # TODO(okuta): check type
+        return _math._nanprod(a, axis, dtype, out, keepdims)
+
     a = cupy.asarray(a)
 
-    if not where_is_trivial:
-        where_arr = cupy.asarray(where, dtype=bool)
-        a = cupy.where(cupy.broadcast_to(where_arr, a.shape), a, 1)
+    if a.dtype.kind in 'efdFD':
+        valid = ~cupy.isnan(a)
+        if not where_is_trivial:
+            where_arr = cupy.broadcast_to(
+                cupy.asarray(where, dtype=bool), a.shape)
+            effective_where = valid & where_arr
+        else:
+            effective_where = valid
+    else:
+        effective_where = where
 
-    # TODO(okuta): check type
-    res = _math._nanprod(
-        a, axis, dtype, out if initial is None else None, keepdims)
-
-    if initial is not None:
-        res = res * initial
-        if out is not None:
-            out[...] = res
-            return out
-
-    return res
+    return prod(a, axis=axis, dtype=dtype, out=out, keepdims=keepdims,
+                initial=initial, where=effective_where)
 
 
 def cumsum(a, axis=None, dtype=None, out=None):
