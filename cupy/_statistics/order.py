@@ -210,20 +210,24 @@ def nanmin(a, axis=None, out=None, keepdims=False, initial=None, where=True):
 
     a = cupy.asarray(a)
 
-    if not where_is_trivial:
-        where_arr = cupy.asarray(where, dtype=bool)
-        a = a.astype(cupy.result_type(a.dtype, cupy.float64), copy=True)
-        a = cupy.where(cupy.broadcast_to(where_arr, a.shape), a, cupy.nan)
+    if initial is not None or not where_is_trivial:
+        if a.dtype.kind in 'efdFD':
+            valid = ~cupy.isnan(a)
+            if not where_is_trivial:
+                where_arr = cupy.broadcast_to(
+                    cupy.asarray(where, dtype=bool), a.shape)
+                effective_where = valid & where_arr
+            else:
+                effective_where = valid
+        else:
+            effective_where = where
+        return amin(a, axis=axis, out=out, keepdims=keepdims,
+                    initial=initial, where=effective_where)
 
     res = _core.nanmin(a, axis=axis, keepdims=keepdims)
 
     nan_mask = content.isnan(res)
-    has_all_nan_slice = bool(nan_mask.any())  # synchronize!
-
-    if initial is not None:
-        res = cupy.where(nan_mask, initial, cupy.minimum(res, initial))
-
-    if has_all_nan_slice and initial is None:
+    if bool(nan_mask.any()):  # synchronize!
         warnings.warn('All-NaN slice encountered', RuntimeWarning)
 
     if out is not None:
@@ -273,20 +277,23 @@ def nanmax(a, axis=None, out=None, keepdims=False, initial=None, where=True):
 
     a = cupy.asarray(a)
 
-    if not where_is_trivial:
-        where_arr = cupy.asarray(where, dtype=bool)
-        a = a.astype(cupy.result_type(a.dtype, cupy.float64), copy=True)
-        a = cupy.where(cupy.broadcast_to(where_arr, a.shape), a, cupy.nan)
+    if initial is not None or not where_is_trivial:
+        if a.dtype.kind in 'efdFD':
+            valid = ~cupy.isnan(a)
+            if not where_is_trivial:
+                where_arr = cupy.broadcast_to(
+                    cupy.asarray(where, dtype=bool), a.shape)
+                effective_where = valid & where_arr
+            else:
+                effective_where = valid
+        else:
+            effective_where = where
+        return amax(a, axis=axis, out=out, keepdims=keepdims,
+                    initial=initial, where=effective_where)
 
     res = _core.nanmax(a, axis=axis, keepdims=keepdims)
-
     nan_mask = content.isnan(res)
-    has_all_nan_slice = bool(nan_mask.any())  # synchronize!
-
-    if initial is not None:
-        res = cupy.where(nan_mask, initial, cupy.maximum(res, initial))
-
-    if has_all_nan_slice and initial is None:
+    if bool(nan_mask.any()):  # synchronize!
         warnings.warn('All-NaN slice encountered', RuntimeWarning)
 
     if out is not None:
