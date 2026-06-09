@@ -20,7 +20,7 @@ _QUANTILE_PARAMS = {
 }
 
 
-def amin(a, axis=None, out=None, keepdims=False):
+def amin(a, axis=None, out=None, keepdims=False, initial=None, where=True):
     """Returns the minimum of an array or the minimum along an axis.
 
     .. note::
@@ -46,18 +46,53 @@ def amin(a, axis=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.amin`
 
     """
+    where_is_trivial = isinstance(where, bool) and where is True
+    if not where_is_trivial and initial is None:
+        raise ValueError(
+            "reduction operation 'minimum' does not have an identity, "
+            "so to use a where mask one has to specify 'initial'"
+        )
+
     if _fusion_thread_local.is_fusing():
         if keepdims:
             raise NotImplementedError(
                 'cupy.amin does not support `keepdims` in fusion yet.')
+        if not where_is_trivial or initial is not None:
+            raise NotImplementedError(
+                'cupy.amin does not support `initial` or `where` '
+                'in fusion yet.')
         return _fusion_thread_local.call_reduction(
             _statistics.amin, a, axis=axis, out=out)
 
+    if where_is_trivial and initial is None:
+        # TODO(okuta): check type
+        return a.min(axis=axis, out=out, keepdims=keepdims)
+
+    a = cupy.asarray(a)
+
+    if not where_is_trivial:
+        where_arr = cupy.asarray(where, dtype=bool)
+        if a.dtype.kind == 'f':
+            fill = a.dtype.type('inf')
+        elif a.dtype.kind == 'b':
+            fill = True
+        else:
+            fill = numpy.iinfo(a.dtype).max
+        a = cupy.where(cupy.broadcast_to(where_arr, a.shape), a, fill)
+
     # TODO(okuta): check type
-    return a.min(axis=axis, out=out, keepdims=keepdims)
+    res = a.min(axis=axis, keepdims=keepdims)
+
+    if initial is not None:
+        res = cupy.minimum(res, initial)
+
+    if out is not None:
+        out[...] = res
+        return out
+    return res
 
 
-def amax(a, axis=None, out=None, keepdims=False):
+def amax(a, axis=None, out=None, keepdims=False, initial=None, where=True):
     """Returns the maximum of an array or the maximum along an axis.
 
     .. note::
@@ -72,6 +107,11 @@ def amax(a, axis=None, out=None, keepdims=False):
         out (cupy.ndarray): Output array.
         keepdims (bool): If ``True``, the axis is remained as an axis of
             size one.
+        initial (scalar): Starting value for the reduction. Required when
+            ``where`` is specified.
+        where (array-like of bool): Boolean mask broadcastable to ``a``'s
+            shape. Only ``True`` positions contribute to the maximum.
+            Requires ``initial``.
 
     Returns:
         cupy.ndarray: The maximum of ``a``, along the axis if specified.
@@ -83,15 +123,50 @@ def amax(a, axis=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.amax`
 
     """
+    where_is_trivial = isinstance(where, bool) and where is True
+    if not where_is_trivial and initial is None:
+        raise ValueError(
+            "reduction operation 'maximum' does not have an identity, "
+            "so to use a where mask one has to specify 'initial'"
+        )
+
     if _fusion_thread_local.is_fusing():
         if keepdims:
             raise NotImplementedError(
                 'cupy.amax does not support `keepdims` in fusion yet.')
+        if not where_is_trivial or initial is not None:
+            raise NotImplementedError(
+                'cupy.amax does not support `initial` or `where` '
+                'in fusion yet.')
         return _fusion_thread_local.call_reduction(
             _statistics.amax, a, axis=axis, out=out)
 
+    if where_is_trivial and initial is None:
+        # TODO(okuta): check type
+        return a.max(axis=axis, out=out, keepdims=keepdims)
+
+    a = cupy.asarray(a)
+
+    if not where_is_trivial:
+        where_arr = cupy.asarray(where, dtype=bool)
+        if a.dtype.kind == 'f':
+            fill = a.dtype.type('-inf')
+        elif a.dtype.kind == 'b':
+            fill = False
+        else:
+            fill = numpy.iinfo(a.dtype).min
+        a = cupy.where(cupy.broadcast_to(where_arr, a.shape), a, fill)
+
     # TODO(okuta): check type
-    return a.max(axis=axis, out=out, keepdims=keepdims)
+    res = a.max(axis=axis, keepdims=keepdims)
+
+    if initial is not None:
+        res = cupy.maximum(res, initial)
+
+    if out is not None:
+        out[...] = res
+        return out
+    return res
 
 
 def nanmin(a, axis=None, out=None, keepdims=False, initial=None, where=True):
