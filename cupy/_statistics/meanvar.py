@@ -242,6 +242,7 @@ def nanmean(a, axis=None, dtype=None, out=None, keepdims=False, where=True):
 
     if a.dtype.kind in 'biu':
         return a.mean(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+    # TODO(okuta): check type
     return _statistics._nanmean(
         a, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
@@ -282,6 +283,7 @@ def nanvar(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False,
     if a.dtype.kind in 'biu':
         return a.var(
             axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
+    # TODO(okuta): check type
     return _statistics._nanvar(
         a, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
 
@@ -323,5 +325,6 @@ def nanstd(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False,
     if a.dtype.kind in 'biu':
         return a.std(
             axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
+    # TODO(okuta): check type
     return _statistics._nanstd(
         a, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
