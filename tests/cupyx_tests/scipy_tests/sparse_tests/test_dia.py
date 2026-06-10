@@ -242,26 +242,18 @@ class TestDiaMatrixInit(unittest.TestCase):
         n = _make_complex(xp, sp, self.dtype)
         cupy.testing.assert_array_equal(n.conj().data, n.data.conj())
 
-    def test_offsets_no_copy(self):
-        # copy=False must not copy the offsets array when its dtype
-        # already matches; mutating the input is reflected in the matrix.
+    @pytest.mark.parametrize("copy", [True, False])
+    def test_copy_kwarg(self, copy):
+        # If their dtypes are correct, data and offset should be copied
+        # only when copy=True.
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             offsets = self.offsets(xp)
-            m = sp.dia_matrix(
-                (self.data(xp), offsets), shape=self.shape, copy=False)
-            offsets[0] += 1
-            assert int(m.offsets[0]) == int(offsets[0])
+            data = self.data(xp)
+            m = sp.dia_matrix((data, offsets), shape=self.shape, copy=copy)
 
-    def test_offsets_copy(self):
-        # copy=True must copy the offsets array; mutating the input must
-        # not affect the matrix.
-        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
-            offsets = self.offsets(xp)
-            original = int(offsets[0])
-            m = sp.dia_matrix(
-                (self.data(xp), offsets), shape=self.shape, copy=True)
-            offsets[0] += 1
-            assert int(m.offsets[0]) == original
+            shares_memory = not copy
+            assert xp.may_share_memory(m.data, data) == shares_memory
+            assert xp.may_share_memory(m.offsets, offsets) == shares_memory
 
 
 @testing.parameterize(*testing.product({
