@@ -169,13 +169,14 @@ class TestDiaMatrix(unittest.TestCase):
             c.toarray(), cupy.eye(2, dtype=self.dtype))
 
 
-@testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
-}))
-@unittest.skipUnless(scipy_available, 'requires scipy')
-class TestDiaMatrixInit(unittest.TestCase):
+@pytest.mark.parametrize(
+    'dtype', [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128])
+@pytest.mark.skipif(not scipy_available, reason='requires scipy')
+class TestDiaMatrixInit:
 
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def _setup(self, dtype):
+        self.dtype = dtype
         self.shape = (3, 4)
 
     def data(self, xp):
@@ -242,18 +243,39 @@ class TestDiaMatrixInit(unittest.TestCase):
         n = _make_complex(xp, sp, self.dtype)
         cupy.testing.assert_array_equal(n.conj().data, n.data.conj())
 
-    @pytest.mark.parametrize("copy", [True, False])
+    @pytest.mark.parametrize('copy', [True, False])
     def test_copy_kwarg(self, copy):
-        # If their dtypes are correct, data and offset should be copied
-        # only when copy=True.
+        # If their dtypes are correct, data and offsets are copied only when
+        # copy=True; copy=False must share memory.
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             offsets = self.offsets(xp)
             data = self.data(xp)
             m = sp.dia_matrix((data, offsets), shape=self.shape, copy=copy)
-
             shares_memory = not copy
             assert xp.may_share_memory(m.data, data) == shares_memory
             assert xp.may_share_memory(m.offsets, offsets) == shares_memory
+
+    def test_copy_false_dtype_mismatch(self):
+        # copy=False must not raise even when dtype conversion is needed.
+        # The arrays are copied (conversion requires it), but no error.
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            # Pass int64 offsets for a small matrix (constructor needs int32).
+            offsets64 = xp.array([0, -1], dtype=xp.int64)
+            data = self.data(xp)
+            m = sp.dia_matrix((data, offsets64), shape=self.shape, copy=False)
+            assert m.offsets.dtype == xp.dtype('i')  # converted to int32
+            xp.testing.assert_array_equal(m.offsets, offsets64)
+
+            # Pass float32 data; constructor should convert to self.dtype
+            # without raising.  (float32 → any sparse dtype is always safe.)
+            if self.dtype != numpy.float32:
+                data_f32 = xp.array([[1, 2, 3], [4, 5, 6]], dtype=xp.float32)
+                m2 = sp.dia_matrix(
+                    (data_f32, self.offsets(xp)), shape=self.shape,
+                    dtype=self.dtype, copy=False)
+                assert m2.dtype == xp.dtype(self.dtype)
+                xp.testing.assert_array_almost_equal(
+                    m2.data, data_f32.astype(self.dtype))
 
 
 @testing.parameterize(*testing.product({
