@@ -267,8 +267,6 @@ private:
   ptrdiff_t shape_[ndim];
   ptrdiff_t strides_[ndim];
 
-  template <typename U, int n, bool c, bool idx, int cdim>
-
 public:
   // Constructor supports pointers or initializer lists and strides is optional
   // as long as _c_contiguous=true.
