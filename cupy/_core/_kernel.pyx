@@ -320,15 +320,10 @@ cdef class _ArgInfo:
         # Returns the C type representation.
         if self.arg_kind == ARG_KIND_NDARRAY:
             name = _get_typename(self.dtype, type_decls)
-            if self.core_ndim > 0:
-                name = 'CArray<%s, %d, %d, %d, %d>' % (
-                    name, self.ndim,
-                    self.c_contiguous, self.index_32_bits, self.core_ndim
-                )
-            else:
-                name = 'CArray<%s, %d, %d, %d>' % (
-                    name, self.ndim,
-                    self.c_contiguous, self.index_32_bits)
+            name = 'CArray<%s, %d, %d, %d, %d>' % (
+                name, self.ndim,
+                self.c_contiguous, self.index_32_bits, self.core_ndim
+            )
             return name
         if self.arg_kind == ARG_KIND_SCALAR:
             return _get_typename(self.dtype, type_decls)
@@ -727,7 +722,7 @@ cdef list _get_out_args_with_params(
 
 @_util.memoize()
 def _get_elementwise_kernel_code(
-        tuple arginfos, _TypeMap type_map,
+        tuple arginfos, object type_map,
         tuple params, str operation, str name,
         str preamble, str loop_prep='', str after_loop='', tuple options=()):
     cdef _ArgInfo arginfo
@@ -735,13 +730,22 @@ def _get_elementwise_kernel_code(
     op = []
     for p, arginfo in zip(params, arginfos):
         if arginfo.is_ndarray() and not p.raw:
-            if p.is_const:
-                fmt = 'const {t} &{n} = _raw_{n}[_ind.get()];'
+            if arginfo.core_ndim > 0:
+                if p.is_const:
+                    fmt = 'const auto {n} = _raw_{n}[_ind.get()];'
+                else:
+                    fmt = 'auto {n} = _raw_{n}[_ind.get()];'
             else:
-                fmt = '{t} &{n} = _raw_{n}[_ind.get()];'
+                if p.is_const:
+                    fmt = 'const {t} &{n} = _raw_{n}[_ind.get()];'
+                else:
+                    fmt = '{t} &{n} = _raw_{n}[_ind.get()];'
+
             op.append(fmt.format(t=p.ctype, n=p.name))
+
     op.append(operation)
     operation = '\n'.join(op)
+
     return _get_simple_elementwise_kernel_code(
         params, arginfos, operation, name, type_map,
         preamble, loop_prep, after_loop)
@@ -1836,51 +1840,6 @@ def _get_batchwise_param_info(str s, bint is_const):
     return tuple(params), tuple(core_ndims)
 
 
-@_util.memoize()
-def _get_batchwise_kernel_code(
-        tuple arginfos, object type_map,
-        tuple params, str operation, str name,
-        str preamble, str loop_prep='', str after_loop='', tuple options=()):
-    cdef _ArgInfo arginfo
-
-    op = []
-    for p, arginfo in zip(params, arginfos):
-        if arginfo.is_ndarray() and not p.raw:
-            if arginfo.core_ndim > 0:
-                if p.is_const:
-                    fmt = 'const auto {n} = _raw_{n}[_ind.get()];'
-                else:
-                    fmt = 'auto {n} = _raw_{n}[_ind.get()];'
-            else:
-                if p.is_const:
-                    fmt = 'const {t} &{n} = _raw_{n}[_ind.get()];'
-                else:
-                    fmt = '{t} &{n} = _raw_{n}[_ind.get()];'
-
-            op.append(fmt.format(t=p.ctype, n=p.name))
-
-    op.append(operation)
-    operation = '\n'.join(op)
-
-    return _get_simple_elementwise_kernel_code(
-        params, arginfos, operation, name, type_map,
-        preamble, loop_prep, after_loop)
-
-
-@_util.memoize(for_each_device=True)
-def _get_batchwise_kernel(
-        tuple arginfos, object type_map,
-        tuple params, str operation, str name,
-        str preamble, str loop_prep='', str after_loop='', tuple options=()):
-
-    cdef str code = _get_batchwise_kernel_code(
-        arginfos, type_map, params, operation, name, preamble, loop_prep,
-        after_loop
-    )
-    # Hand the C++ string to NVRTC to compile into a binary
-    return _get_simple_elementwise_kernel_from_code(name, code, options)
-
-
 cdef class BatchwiseKernel(_XwiseKernelBase):
     """User-defined batchwise kernel.
 
@@ -2138,11 +2097,11 @@ cdef class BatchwiseKernel(_XwiseKernelBase):
 
     cdef function.Function _compile_kernel(
             self, int dev_id, tuple arginfos, object type_map):
-        return _get_batchwise_kernel(
+        return _get_elementwise_kernel(
             arginfos, type_map, self.params, self.operation,
             self.name, self.preamble, **self.kwargs)
 
     cdef str _get_kernel_code(self, tuple arginfos, object type_map):
-        return _get_batchwise_kernel_code(
+        return _get_elementwise_kernel_code(
             arginfos, type_map, self.params, self.operation,
             self.name, self.preamble, **self.kwargs)
