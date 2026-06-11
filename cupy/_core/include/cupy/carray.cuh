@@ -59,7 +59,7 @@ namespace cupy {
 #endif  // #ifdef __HIPCC_RTC__
 
 // mdspan to support xsf gufunc kernels in ElementwiseKernel.
-#ifdef CUPY_JIT_MODE
+
 #if __cplusplus >= 201402L || (defined(_MSC_VER) && _MSC_VER >= 1910)
 #if defined(__HIPCC_RTC__) || defined(__HIPCC__)
 #define MDSPAN_IMPL_STANDARD_NAMESPACE cupy
@@ -85,7 +85,7 @@ namespace cupy {
 }
 #endif
 #endif // __cplusplus >= 201402L || (defined(_MSC_VER) && _MSC_VER >= 1910)
-#endif // CUPY_JIT_MODE
+
 
 // Forward declare our custom types here
 class bfloat16;
@@ -355,6 +355,7 @@ public:
   __device__ typename cupy::as_tuple<_ndim, ptrdiff_t>::type get_strides() const {
     return cupy::as_tuple<_ndim, ptrdiff_t>::call(strides_);
   }
+#endif  // CUPY_JIT_MODE
 
 #if __cplusplus >= 201402L || (defined(_MSC_VER) && _MSC_VER >= 1910)
   __device__ inline auto as_mdspan() const {
@@ -371,8 +372,8 @@ public:
 
     return cupy::mdspan<T, Extents, cupy::layout_stride>(data_, Mapping(Extents(exts), strs));
   }
-#endif
-#endif  // CUPY_JIT_MODE
+#endif  // __cplusplus >= 201402L || (defined(_MSC_VER) && _MSC_VER >= 1910)
+
 
 #if __cplusplus >= 201103 || (defined(_MSC_VER) && _MSC_VER >= 1900)
   template <typename Int>
