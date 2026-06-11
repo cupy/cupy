@@ -8,7 +8,6 @@ from cupy._core import BatchwiseKernel
 
 preamble = """
 #include <cupy/xsf/stats.h>
-#include <cupy/xsf/cupy.h>
 """
 
 
