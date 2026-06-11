@@ -58,11 +58,38 @@ namespace cupy {
 
 #endif  // #ifdef __HIPCC_RTC__
 
+// mdspan to support xsf gufunc kernels in ElementwiseKernel.
+#ifdef CUPY_JIT_MODE
+#if __cplusplus >= 201402L || (defined(_MSC_VER) && _MSC_VER >= 1910)
+#if defined(__HIPCC_RTC__) || defined(__HIPCC__)
+#define MDSPAN_IMPL_STANDARD_NAMESPACE cupy
+#include <cupy/xsf/third_party/kokkos/mdspan.hpp>
+#include <array>
+namespace cupy {
+  using std::array;
+  using std::ptrdiff_t;
+}
+#else
+#include <cuda/std/mdspan>
+#include <cuda/std/array>
+namespace cupy {
+  using cuda::std::layout_left;
+  using cuda::std::layout_right;
+  using cuda::std::layout_stride;
+  using cuda::std::default_accessor;
+  using cuda::std::dextents;
+  using cuda::std::extents;
+  using cuda::std::mdspan;
+  using cuda::std::array;
+  using cuda::std::ptrdiff_t;
+}
+#endif
+#endif // __cplusplus >= 201402L || (defined(_MSC_VER) && _MSC_VER >= 1910)
+#endif // CUPY_JIT_MODE
 
 // Forward declare our custom types here
 class bfloat16;
 class float16;
-
 
 // CArray
 #define CUPY_FOR(i, n) \
@@ -225,14 +252,6 @@ public:
   }
 };
 
-template <typename T, int _ndim, bool _c_contiguous, bool _use_32bit_indexing, int _core_ndim>
-class CArray;
-
-namespace xsf {
-    template <typename T, int ndim, bool is_c_contiguous, bool index_32_bits, int core_ndim>
-    __device__ auto as_mdspan(const CArray<T, ndim, is_c_contiguous, index_32_bits, core_ndim>& arr);
-}
-
 template <typename T, int _ndim, bool _c_contiguous=false, bool _use_32bit_indexing=false, int _core_ndim=0>
 class CArray {
 public:
@@ -249,7 +268,6 @@ private:
   ptrdiff_t strides_[ndim];
 
   template <typename U, int n, bool c, bool idx, int cdim>
-  friend auto xsf::as_mdspan(const CArray<U, n, c, idx, cdim>& arr);
 
 public:
   // Constructor supports pointers or initializer lists and strides is optional
@@ -339,6 +357,23 @@ public:
   __device__ typename cupy::as_tuple<_ndim, ptrdiff_t>::type get_strides() const {
     return cupy::as_tuple<_ndim, ptrdiff_t>::call(strides_);
   }
+
+#if __cplusplus >= 201402L || (defined(_MSC_VER) && _MSC_VER >= 1910)
+  __device__ inline auto as_mdspan() const {
+    cupy::array<cupy::ptrdiff_t, ndim> exts;
+    cupy::array<cupy::ptrdiff_t, ndim> strs;
+
+    for (int i = 0; i < ndim; ++i) {
+      exts[i] = static_cast<cupy::ptrdiff_t>(shape_[i]);
+      strs[i] = static_cast<cupy::ptrdiff_t>(strides_[i]) / sizeof(T);
+    }
+
+    using Extents = cupy::dextents<cupy::ptrdiff_t, ndim>;
+    using Mapping = cupy::layout_stride::mapping<Extents>;
+
+    return cupy::mdspan<T, Extents, cupy::layout_stride>(data_, Mapping(Extents(exts), strs));
+  }
+#endif
 #endif  // CUPY_JIT_MODE
 
 #if __cplusplus >= 201103 || (defined(_MSC_VER) && _MSC_VER >= 1900)
