@@ -475,29 +475,55 @@ cdef shape_t _reduced_view_core(
     return newshape
 
 
+def _parse_param_info(t):
+    shape_start_idx = t.find('(')
+    if shape_start_idx == -1:
+        return (t, None)
+    shape_end_idx = t.find(')')
+    if shape_end_idx != len(t) - 1:
+        raise Exception('Syntax error: %s' % t)
+    type_ = t[:shape_start_idx]
+    dims_str = t[shape_start_idx+1:-1].strip()
+    if not dims_str:
+        return (type_, ())
+
+    dims = tuple(d.replace(' ', '') for d in dims_str.split(','))
+    if '' in dims:
+        raise Exception('Syntax error: %s' % t)
+    return (type_, dims)
+
+
 cdef class ParameterInfo:
 
     def __init__(self, str param, bint is_const):
         self.name = None
         self.dtype = None
         self.ctype = None
+        self.core_shapes = None
         self.raw = False
         self.is_const = is_const
-        s = tuple([i for i in param.split() if len(i) != 0])
-        if len(s) < 2:
+
+        parts = param.rsplit(maxsplit=1)
+        if len(parts) < 2:
             raise Exception('Syntax error: %s' % param)
+        param_info, self.name = parts
+        info, core_shapes = _parse_param_info(param_info)
+        s = tuple([i for i in info.split() if len(i) != 0])
+        t = s[-1]
 
-        t, self.name = s[-2:]
         if t == 'CIndexer':
-            pass
-        elif len(t) == 1:
-            self.ctype = t
+            if core_shapes is not None:
+                raise Exception('Syntax error: %s' % param)
         else:
-            dtype = get_dtype(t)
-            self.dtype = dtype
-            self.ctype = _get_typename(self.dtype)
+            self.core_shapes = () if core_shapes is None else core_shapes
+            if len(t) == 1:
+                self.ctype = t
+            else:
+                dtype = get_dtype(t)
+                self.dtype = dtype
+                self.ctype = _get_typename(self.dtype)
 
-        for i in s[:-2]:
+        for i in s[:-1]:
             if i == 'raw':
                 self.raw = True
             elif i == '_non_const':
@@ -507,7 +533,8 @@ cdef class ParameterInfo:
 
     def __hash__(self):
         return hash((
-            self.name, self.dtype, self.ctype, self.raw, self.is_const))
+            self.name, self.dtype, self.ctype, self.core_shapes, self.raw,
+            self.is_const))
 
     def __eq__(self, other):
         cdef ParameterInfo oth
@@ -518,6 +545,7 @@ cdef class ParameterInfo:
             self.name == oth.name
             and self.dtype == oth.dtype
             and self.ctype == oth.ctype
+            and self.core_shapes == oth.core_shapes
             and self.raw == oth.raw
             and self.is_const == oth.is_const)
 
@@ -527,16 +555,41 @@ cdef class ParameterInfo:
                 'name={!r}'.format(self.name),
                 'dtype={!r}'.format(self.dtype),
                 'ctype={!r}'.format(self.ctype),
+                'core_shapes={!r}'.format(self.core_shapes),
                 'raw={!r}'.format(self.raw),
                 'is_const={!r}'.format(self.is_const),
             ]))
+
+
+def _tokenize_params(s):
+    if not s.strip():
+        return []
+    depth = 0
+    chunks = []
+    chunk = ""
+    for c in s:
+        if c == '(':
+            depth += 1
+        elif c == ')':
+            depth -= 1
+        elif depth == 0 and c == ',':
+            chunks.append(chunk)
+            chunk = ""
+            continue
+        if depth not in {0, 1}:
+            raise ValueError
+        chunk += c
+    if depth != 0:
+        raise ValueError
+    chunks.append(chunk)
+    return chunks
 
 
 @_util.memoize()
 def _get_param_info(str s, is_const):
     if len(s) == 0:
         return ()
-    return tuple([ParameterInfo(i, is_const) for i in s.strip().split(',')])
+    return tuple([ParameterInfo(i, is_const) for i in _tokenize_params(s)])
 
 
 @_util.memoize()
@@ -1898,11 +1951,6 @@ cdef class BatchwiseKernel(_XwiseKernelBase):
             loop.
         after_loop (str): Fragment of the CUDA-C/C++ code that is inserted at
             the bottom of the kernel function definition.
-        core_shape_mapper (callable[tuple]->tuple): A callable capable of
-            mapping tuples containing the core shapes of arbitrary inputs
-            to the core shapes of the corresponding outputs. core_shape_mapper
-            is a mandatory keyword argument. It is required for correctly
-            resolving the output shapes from the input shapes.
 
     """
     cdef:
@@ -1968,8 +2016,8 @@ cdef class BatchwiseKernel(_XwiseKernelBase):
                 f"Expected {self.nin}, got {len(args)}."
             )
 
-        if not isinstance(out, list):
-            out = [out]
+        if not isinstance(out, tuple):
+            out = (out,)
 
         if len(out) != self.nout:
             raise TypeError(
