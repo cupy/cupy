@@ -1881,7 +1881,7 @@ def _validate_output_expression(expr, input_variables):
     except SyntaxError:
         raise ValueError(f"Invalid syntax in output dimension: '{expr}'")
     for node in ast.walk(tree):
-        if type(node) not in _ALLOWED_AST_NODES:
+        if type(node) not in _core_shape_mapper_allowed_ast_nodes:
             raise ValueError
         # Catch undefined variables at compile time!
         if isinstance(node, ast.Name):
