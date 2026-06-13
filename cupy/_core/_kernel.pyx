@@ -908,7 +908,7 @@ cdef class _XwiseKernelBase:
         raise NotImplementedError
 
 
-cdef class ElementwiseKernel(_XwiseKernelBase):
+cdef class ElementwiseKernel:
 
     """User-defined elementwise kernel.
 
@@ -947,6 +947,25 @@ cdef class ElementwiseKernel(_XwiseKernelBase):
             the bottom of the kernel function definition.
 
     """
+
+    cdef:
+        readonly tuple in_params
+        readonly tuple out_params
+        readonly tuple params
+        readonly Py_ssize_t nin
+        readonly Py_ssize_t nout
+        readonly Py_ssize_t nargs
+        readonly object operation
+        readonly str name
+        readonly str __name__
+        readonly object preamble
+        readonly bint reduce_dims
+        readonly bint no_return
+        readonly bint return_tuple
+        readonly dict kwargs
+        readonly dict _params_type_memo
+        readonly dict _elementwise_kernel_memo
+        readonly dict _cached_codes
 
     def __init__(self, in_params, out_params, operation,
                  name='kernel', reduce_dims=True, preamble='',
@@ -1083,16 +1102,72 @@ cdef class ElementwiseKernel(_XwiseKernelBase):
                            block_max_size=block_size, stream=stream)
         return ret
 
-    cdef function.Function _compile_kernel(self, int dev_id, tuple arginfos,
-                                           object type_map):
-        return _get_elementwise_kernel(
+    cpdef tuple _decide_params_type(
+            self, tuple in_args_dtype, tuple out_args_dtype):
+        key = (in_args_dtype, out_args_dtype)
+        ret = self._params_type_memo.get(key, None)
+        if ret is not None:
+            return ret
+        ret = _decide_params_type_core(
+            self.in_params, self.out_params, in_args_dtype, out_args_dtype)
+        self._params_type_memo[key] = ret
+        return ret
+
+    cpdef function.Function _get_elementwise_kernel(
+            self, int dev_id, tuple arginfos, _TypeMap type_map):
+        key = (
+            dev_id,
+            arginfos,
+            type_map)
+        kern = self._elementwise_kernel_memo.get(key, None)
+        if kern is not None:
+            return kern
+        kern = _get_elementwise_kernel(
             arginfos, type_map, self.params, self.operation,
             self.name, self.preamble, **self.kwargs)
 
-    cdef str _get_kernel_code(self, tuple arginfos, object type_map):
-        return _get_elementwise_kernel_code(
-            arginfos, type_map, self.params, self.operation,
-            self.name, self.preamble, **self.kwargs)
+        # Store the compiled kernel in the cache.
+        # Potentially overwrite a duplicate cache entry because
+        # _get_elementwise_kernel() may include IO wait.
+        in_types = []
+        for x in arginfos:
+            if x.type is cupy.ndarray:
+                in_types.append(cupy.dtype(x.dtype))
+        in_types = tuple(in_types)
+        if in_types not in self._cached_codes:
+            code = _get_elementwise_kernel_code(
+                arginfos, type_map, self.params, self.operation,
+                self.name, self.preamble, **self.kwargs)
+            self._cached_codes[in_types] = code
+        kern = self._elementwise_kernel_memo.setdefault(key, kern)
+        return kern
+
+    @property
+    def cached_codes(self):
+        """Returns a dict that has input types as keys and codes values.
+
+        This property method is for debugging purpose.
+        The return value is not guaranteed to keep backward compatibility.
+        """
+        if len(self._cached_codes) == 0:
+            warnings.warn(
+                'No codes are cached because compilation is deferred until '
+                'the first function call.')
+        return dict(self._cached_codes.items())
+
+    @property
+    def cached_code(self):
+        """Returns `next(iter(self.cached_codes.values()))`.
+
+        This property method is for debugging purpose.
+        The return value is not guaranteed to keep backward compatibility.
+        """
+        codes = self._cached_codes
+        if len(codes) > 1:
+            warnings.warn(
+                'The input types of the kernel could not be inferred. '
+                'Please use `.cached_codes` instead.')
+        return next(iter(codes.values()))
 
 
 cdef str fix_cast_expr(src_type, dst_type, str expr):
@@ -2018,7 +2093,7 @@ cdef class BatchwiseKernel(_XwiseKernelBase):
     def __init__(self, in_params, out_params, operation,
                  name='kernel', reduce_dims=True, preamble='',
                  no_return=False, return_tuple=False,
-                 *, core_shape_mapper, **kwargs):
+                 **kwargs):
 
         self.in_params = _get_param_info(in_params, True)
         self.out_params = _get_param_info(out_params, False)
