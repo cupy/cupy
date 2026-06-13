@@ -1,3 +1,5 @@
+import ast
+import linecache
 import string
 import warnings
 
@@ -1857,40 +1859,95 @@ cpdef create_ufunc(name, ops, routine=None, preamble='', doc='',
         cutensor_op=cutensor_op, scatter_op=scatter_op)
 
 
-@_util.memoize()
-def _get_batchwise_param_info(str s, bint is_const):
-    if not s:
-        return (), ()
+_core_shape_mapper_allowed_ast_nodes = {
+    ast.Expression,
+    ast.BinOp,
+    ast.Add,
+    ast.Sub,
+    ast.Mult,
+    ast.FloorDiv,
+    ast.Pow,
+    ast.Name,
+    ast.Load,
+    ast.Constant,
+}
 
-    params = []
-    core_ndims = []
 
-    for param in s.split(','):
-        param = param.strip()
-        if not param:
+def _validate_output_expression(expr, input_variables):
+    if expr.isnumeric() or expr in input_variables:
+        return
+    try:
+        tree = ast.parse(expr, mode='eval')
+    except SyntaxError:
+        raise ValueError(f"Invalid syntax in output dimension: '{expr}'")
+    for node in ast.walk(tree):
+        if type(node) not in _ALLOWED_AST_NODES:
+            raise ValueError
+        # Catch undefined variables at compile time!
+        if isinstance(node, ast.Name):
+            if node.id not in input_variables:
+                raise ValueError
+
+
+def _make_core_shape_mapper(in_core_shape_info, out_core_shape_info, name):
+    lines = ["def core_shape_mapper(in_core_shapes):"]
+    seen_dims = set()
+
+    for i, shape_info in enumerate(in_core_shape_info):
+        if not shape_info:
             continue
 
-        parts = param.split()
-        if len(parts) < 2:
-            raise ValueError(f"Syntax error: {param}")
+        lines.append(f"    if len(in_core_shapes[{i}]) != {len(shape_info)}:")
+        lines.append("        raise ValueError")
 
-        type_str = parts[-2]
+        for j, dim in enumerate(shape_info):
+            idx_str = f"in_core_shapes[{i}][{j}]"
+            if dim.isnumeric():
+                lines.append(
+                    f"    if {idx_str} != {dim}:"
+                    " raise ValueError"
+                )
+            elif dim in seen_dims:
+                lines.append(
+                    f"    if {idx_str} != {dim}:"
+                    " raise ValueError"
+                )
+            else:
+                lines.append(f"    {dim} = {idx_str}")
+                seen_dims.add(dim)
 
-        sub_parts = type_str.rsplit('_', maxsplit=1)
-        if (
-                len(sub_parts) == 2
-                and sub_parts[1].endswith('d')
-                and sub_parts[1][:-1].isdigit()
-        ):
-            parts[-2] = sub_parts[0]
-            core_ndim = int(sub_parts[1][:-1])
+    out_returns = []
+    for i, shape_info in enumerate(out_core_shape_info):
+        if not shape_info:
+            out_returns.append("()")
         else:
-            core_ndim = 0
+            for expr in shape_info:
+                _validate_output_expression(expr, seen_dims)
+            out_str = (
+                ", ".join(shape_info) + ("," if len(shape_info) == 1 else "")
+            )
+            lines.append(f"    out_shape_{i} = ({out_str})")
+            lines.append(f"    for dim in out_shape_{i}:")
+            lines.append("        if not isinstance(dim, int) or dim < 0:")
+            lines.append("            raise ValueError")
+            out_returns.append(f"out_shape_{i}")
 
-        params.append(ParameterInfo(' '.join(parts), is_const))
-        core_ndims.append(core_ndim)
+    ret_str = ", ".join(out_returns) + ("," if len(out_returns) == 1 else "")
+    lines.append(f"    return [{ret_str}]")
 
-    return tuple(params), tuple(core_ndims)
+    code_str = "\n".join(lines)
+
+    dummy_filename = f"<cupy_{name}_generated_shape_mapper>"
+    linecache.cache[dummy_filename] = (
+        len(code_str),
+        None,
+        code_str.splitlines(True),
+        dummy_filename
+    )
+    compiled_code = compile(code_str, dummy_filename, 'exec')
+    namespace = {}
+    exec(compiled_code, {}, namespace)
+    return namespace['core_shape_mapper']
 
 
 cdef class BatchwiseKernel(_XwiseKernelBase):
@@ -1963,10 +2020,8 @@ cdef class BatchwiseKernel(_XwiseKernelBase):
                  no_return=False, return_tuple=False,
                  *, core_shape_mapper, **kwargs):
 
-        self.in_params, self.in_core_ndims = _get_batchwise_param_info(
-            in_params, True)
-        self.out_params, self.out_core_ndims = _get_batchwise_param_info(
-            out_params, False)
+        self.in_params = _get_param_info(in_params, True)
+        self.out_params = _get_param_info(out_params, False)
         self.nin = len(self.in_params)
         self.nout = len(self.out_params)
         self.nargs = self.nin + self.nout
@@ -1978,7 +2033,14 @@ cdef class BatchwiseKernel(_XwiseKernelBase):
         self.reduce_dims = reduce_dims
         self.no_return = no_return
         self.return_tuple = return_tuple
-        self.core_shape_mapper = core_shape_mapper
+
+        in_core_shape_info = [p.core_shapes for p in self.in_params]
+        out_core_shape_info = [p.core_shapes for p in self.out_params]
+        self.core_shape_mapper = _make_core_shape_mapper(
+            in_core_shape_info, out_core_shape_info, name
+        )
+        self.in_core_ndims = [len(s) for s in in_core_shape_info]
+        self.out_core_ndims = [len(s) for s in out_core_shape_info]
 
         # default to '--std=c++17'.
         options = kwargs.get('options', [])
