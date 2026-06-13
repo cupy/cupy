@@ -1937,7 +1937,7 @@ def _make_core_shape_mapper(in_core_shape_info, out_core_shape_info, name):
 
     code_str = "\n".join(lines)
 
-    dummy_filename = f"<cupy_{name}_generated_shape_mapper>"
+    dummy_filename = f"<{name}_generated_shape_mapper>"
     linecache.cache[dummy_filename] = (
         len(code_str),
         None,
