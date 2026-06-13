@@ -11,59 +11,43 @@ preamble = """
 """
 
 
-def _poisson_binom_pmf_shape_mapper(in_core_shapes):
-    return ((in_core_shapes[0][0] + 1, ),)
-
-
 _poisson_binom_pmf_all = BatchwiseKernel(
-    in_params="T_1d p",
-    out_params="T_1d out",
+    in_params="T(n) p",
+    out_params="T(n+1) out",
     operation=(
         "xsf::poisson_binom_pmf_all(p.as_mdspan(), out.as_mdspan());"
     ),
     name="cupy_poisson_binom_pmf_all",
     preamble=preamble,
-    core_shape_mapper=_poisson_binom_pmf_shape_mapper,
 )
 
 
-def _take_from_pmf_shape_mapper(in_core_shapes):
-    return ((),)
-
-
 _take_from_pmf = BatchwiseKernel(
-    in_params="T_1d pmf, int64 k",
+    in_params="T(n) pmf, int64 k",
     out_params="T out",
     operation="out = xsf::take_from_pmf(pmf.as_mdspan(), k);",
     name="cupy_take_from_pmf",
     preamble=preamble,
-    core_shape_mapper=_take_from_pmf_shape_mapper,
 )
 
 
 _poisson_binom_cdf_all = BatchwiseKernel(
-    in_params="T_1d p",
-    out_params="T_1d out",
+    in_params="T(n) p",
+    out_params="T(n+1) out",
     operation=(
         "xsf::poisson_binom_cdf_all(p.as_mdspan(), out.as_mdspan());"
     ),
     name="cupy_poisson_binom_cdf_all",
     preamble=preamble,
-    core_shape_mapper=_poisson_binom_pmf_shape_mapper,
 )
 
 
-def _take_from_discrete_cdf_shape_mapper(in_core_shapes):
-    return ((),)
-
-
 _take_from_discrete_cdf = BatchwiseKernel(
-    in_params="T_1d cdf, int64 k",
+    in_params="T(n) cdf, int64 k",
     out_params="T out",
     operation="out = xsf::take_from_discrete_cdf(cdf.as_mdspan(), k);",
     name="cupy_take_from_discrete_cdf",
     preamble=preamble,
-    core_shape_mapper=_take_from_discrete_cdf_shape_mapper,
 )
 
 
