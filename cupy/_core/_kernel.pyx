@@ -1,5 +1,4 @@
 import ast
-import itertools
 import linecache
 import string
 import warnings
@@ -503,6 +502,7 @@ cdef class ParameterInfo:
         self.dtype = None
         self.ctype = None
         self.core_shapes = None
+        self.core_ndims = None
         self.raw = False
         self.is_const = is_const
 
@@ -519,6 +519,7 @@ cdef class ParameterInfo:
                 raise Exception('Syntax error: %s' % param)
         else:
             self.core_shapes = () if core_shapes is None else core_shapes
+            self.core_ndims = len(self.core_shapes)
             if len(t) == 1:
                 self.ctype = t
             else:
@@ -528,6 +529,10 @@ cdef class ParameterInfo:
 
         for i in s[:-1]:
             if i == 'raw':
+                if self.core_ndims > 0:
+                    raise Exception(
+                        'Raw parameter "%s" specifies core dimensions' %param
+                    )
                 self.raw = True
             elif i == '_non_const':
                 self.is_const = False
@@ -708,6 +713,40 @@ cdef list _broadcast(list args, tuple params, bint use_size, shape_t& shape):
         if a is None:
             value[i] = args[i]
     return value
+
+
+cdef list _gubroadcast(list args, tuple params, shape_t& shape):
+    # `shape` is an output argument
+    cdef Py_ssize_t i
+    cdef int core_ndim
+    cdef ParameterInfo p
+
+    # Collect non-raw arrays
+    batch_shapes = []
+    for i, a in enumerate(args):
+        p = params[i]
+        if not p.raw and isinstance(a, _ndarray_base):
+            continue
+        core_ndim = len(p.core_shapes)
+        if a.ndim < core_ndim:
+            raise ValueError(f'Argument {p.name} has insufficient dimensions.')
+        batch_shapes.append(
+            a.shape[:-core_ndim] if core_ndimn > 0 else a.shape)
+    batch_shape = numpy.broadcast_shapes(*batch_shapes)
+    shape = batch_shape
+
+    broadcasted_args = []
+    for i, a in enumerate(args):
+        p = params[i]
+        if p.raw or not isinstance(a, _ndarray_base):
+            broadcasted_args.append(a)
+        else:
+            core_ndim = len(p.core_shapes)
+            core_shape = a.shape[-core_ndim:] if core_ndim > 0 else ()
+            broadcasted_args.append(
+                cupy.broadcast_to(a, batch_shape + core_shape)
+            )
+    return broadcasted_args
 
 
 cdef _numpy_can_cast = numpy.can_cast
@@ -1061,6 +1100,7 @@ cdef class ElementwiseKernel:
         readonly tuple _in_core_ndims
         readonly tuple _out_core_ndims
         readonly object _core_shape_mapper
+        readonly bint _is_gufunc_like
 
     def __init__(self, in_params, out_params, operation,
                  name='kernel', reduce_dims=True, preamble='',
@@ -1094,15 +1134,12 @@ cdef class ElementwiseKernel:
 
         in_core_shape_info = [p.core_shapes for p in self.in_params]
         out_core_shape_info = [p.core_shapes for p in self.out_params]
-        self._in_core_ndims = [len(s) for s in in_core_shape_info]
-        self._out_core_ndims = [len(s) for s in out_core_shape_info]
-        if all(
-                x == 0 for x in itertools.chain(
-                    self._in_core_ndims, self._out_core_ndims
-                )
+        self._is_gufunc_like = False
+        self._core_shape_mapper = None
+        if not all(
+                len(x) == 0 for x in _in_core_shape_info + _out_core_shape_info
         ):
-            self._core_shape_mapper = None
-        else:
+            self._is_gufunc_like = True
             self._core_shape_mapper = _make_core_shape_mapper(
                 in_core_shape_info, out_core_shape_info, name
             )
@@ -1135,7 +1172,7 @@ cdef class ElementwiseKernel:
         cdef Py_ssize_t size, i
         cdef list in_args, out_args
         cdef tuple in_types, out_types
-        cdef shape_t shape
+        cdef shape_t batch_shape
 
         size = kwargs.pop('size', -1)
         stream = kwargs.pop('stream', None)
@@ -1159,9 +1196,13 @@ cdef class ElementwiseKernel:
         arg_list = _preprocess_args(dev_id, args)
 
         out_args = arg_list[self.nin:]
-        # _broadcast updates shape
-        in_args = _broadcast(
-            arg_list, self.params, size != -1, shape)[:self.nin]
+        if not self._is_gufunc_like:
+            # _broadcast updates shape
+            in_args = _broadcast(
+                arg_list, self.params, size != -1, batch_shape)[:self.nin]
+        else:
+            in_args = _gubroadcast(
+                arg_list, self.params, batch_shape)[:self.nin]
 
         in_ndarray_types = []
         for a in in_args:
@@ -1180,11 +1221,15 @@ cdef class ElementwiseKernel:
 
         is_size_specified = False
         if size != -1:
-            shape.assign(1, size)
+            batch_shape.assign(1, size)
             is_size_specified = True
 
-        out_args = _get_out_args_with_params(
-            out_args, out_types, shape, self.out_params, is_size_specified)
+        if not self._is_gufunc_like:
+            out_args = _get_out_args_with_params(
+                out_args, out_types, shape, self.out_params, is_size_specified)
+        else:
+            # stuff goes here
+            pass
         if self.no_return:
             ret = None
         elif not self.return_tuple and self.nout == 1:
@@ -1192,7 +1237,7 @@ cdef class ElementwiseKernel:
         else:
             ret = tuple(out_args)
 
-        if _contains_zero(shape):
+        if _contains_zero(batch_shape):
             return ret
 
         for i, x in enumerate(in_args):
@@ -1202,8 +1247,8 @@ cdef class ElementwiseKernel:
         inout_args = in_args + out_args
 
         if self.reduce_dims:
-            shape = _reduce_dims(inout_args, self.params, shape)
-        indexer = _carray._indexer_init(shape)
+            shape = _reduce_dims(inout_args, self.params, batch_shape)
+        indexer = _carray._indexer_init(batch_shape)
         inout_args.append(indexer)
 
         arginfos = _get_arginfos(inout_args)
