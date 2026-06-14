@@ -996,7 +996,7 @@ cdef class ElementwiseKernel:
     The compiled binary is also cached into a file under the
     ``$HOME/.cupy/kernel_cache/`` directory with a hashed file name. The cached
     binary is reused by other processes.
-
+    
     Args:
         in_params (str): Input argument list.
         out_params (str): Output argument list.
@@ -1007,7 +1007,8 @@ cdef class ElementwiseKernel:
             kept within the kernel invocation. The shapes are reduced
             (i.e., the arrays are reshaped without copy to the minimum
             dimension) by default. It may make the kernel fast by reducing the
-            index calculations.
+            index calculations. `reduce_dims` is currently ignored in cases
+            where any params have nonzero core dimensionality.
         options (tuple): Compile options passed to NVRTC. For details, see
             https://docs.nvidia.com/cuda/nvrtc/index.html#group__options.
         preamble (str): Fragment of the CUDA-C/C++ code that is inserted at the
@@ -1021,7 +1022,51 @@ cdef class ElementwiseKernel:
         after_loop (str): Fragment of the CUDA-C/C++ code that is inserted at
             the bottom of the kernel function definition.
 
-    """
+    .. note::
+
+        `ElementwiseKernel` supports
+        `generalized universal function <https://numpy.org/doc/stable/reference/c-api/generalized-ufuncs.html>`_
+         like behavior, allowing for GPU acceleration of subarray-wise
+         operations, rather than just the elementwise-operations its
+         name may suggest. The core dimensionality information described
+         in NumPy through the gufunc
+         `signature <https://numpy.org/doc/stable/reference/c-api/generalized-ufuncs.html#details-of-signature>`_
+         is described here in the ``in_params`` and ``out_params` strings by
+         appending parenthetical expressions from the gufunc signatures
+         to the type annotations.
+
+         For example, a dot-product like reduction with NumPy gufunc signature
+         ``'(n),(n)->()``
+
+         can be described with
+
+         ``in_params='T(n) in0, T(n) in1', out_params='T() out'``
+
+         Any valid Python identifier may be used for the dimension names
+         (.e.g. ``n`` above) in the signatures.
+
+         For parameters with core dimensionality
+         equal to zero, it is permitted to omit the `()`, so one may
+         equivalently write the above as
+
+         ``in_params='T(n) in0, T(n) in1', out_params='T out'``
+
+         Unlike in NumPy gufunc signatures, one may express the core
+         output shapes through arithmetic operations on the core input
+         shapes. For example, for the function ``euclidean_pdist`` which
+         takes an array of ``n`` ``d``-dimensional vectors and computes
+         pairwise distances among them, one may write
+
+         ``in_params='T(n, d) in', out_params='T((n * (n - 1)) // 2) out'``
+
+         Any of the arithmetic operations ``+``, ``-``, ``*``, ``//``, or
+         ``**`` may be used.
+
+         Within the operation, args with nonzero core dimensionality
+         such as `in` above will take CArray views of core slices
+         within the loop body.
+
+    """  # NOQA
 
     cdef:
         readonly tuple in_params
@@ -1248,6 +1293,7 @@ cdef class ElementwiseKernel:
         return kern
 
     cdef tuple _resolve_shapes(self, list in_args, shape_t& batch_shape):
+        """Returns expected output shapes for gufunc-like case."""
         cdef list in_core_shapes = []
         cdef tuple out_core_shapes
         cdef tuple batch_shape_tuple
