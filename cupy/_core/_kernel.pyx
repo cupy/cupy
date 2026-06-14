@@ -478,6 +478,7 @@ cdef shape_t _reduced_view_core(
 
 
 def _parse_param_info(t):
+    # Parses param info string, separating out core shape info if present.
     shape_start_idx = t.find('(')
     if shape_start_idx == -1:
         return (t, None)
@@ -570,6 +571,9 @@ cdef class ParameterInfo:
 
 
 def _tokenize_params(s):
+    # Tokenizes a params string, taking into account that "," is used to
+    # separate different params but also to separate different dimensions in
+    # the signature for params with core_ndim > 0 (e.g. T(n, m)).
     if not s.strip():
         return []
     depth = 0
@@ -716,6 +720,9 @@ cdef list _broadcast(list args, tuple params, bint use_size, shape_t& shape):
 
 
 cdef list _broadcast_gu(list args, tuple params, shape_t& shape):
+    # _broadcast equivalent for gufunc-like case with some params having
+    #  core_ndim > 0. Needs to broadcast batch dimensions against each other
+    # and leave core dimensions alone.
     # `shape` is an output argument
     cdef Py_ssize_t i
     cdef ParameterInfo p
@@ -814,6 +821,8 @@ cdef list _get_out_args_with_params(
 
 cdef list _get_out_args_with_params_gu(
         list out_args, tuple out_types, tuple out_shapes, tuple out_params):
+    # _get_out_args_with_params equivalent for gufunc-like case with
+    # some args having core_ndims > 0.
     cdef ParameterInfo p
     cdef _ndarray_base arr
 
@@ -876,6 +885,8 @@ def _get_elementwise_kernel(
     return _get_simple_elementwise_kernel_from_code(name, code, options)
 
 
+# Use this to restrict mapping from core input shapes to core output shapes
+# to basic arithmetic.
 _core_shape_mapper_allowed_ast_nodes = {
     ast.Expression,
     ast.BinOp,
@@ -891,6 +902,9 @@ _core_shape_mapper_allowed_ast_nodes = {
 
 
 def _validate_output_expression(expr, input_variables):
+    # validates that expression for out core shapes is a basic
+    # arithmetic expression depending on the core shapes of the
+    # inputs.
     if expr.isnumeric() or expr in input_variables:
         return
     try:
@@ -907,6 +921,8 @@ def _validate_output_expression(expr, input_variables):
 
 
 def _make_core_shape_mapper(in_core_shape_info, out_core_shape_info, name):
+    # Given tuples containing gufunc-like signature info, produce a shape
+    # mapper function that maps core input shapes to core output shapes.
     lines = ["def core_shape_mapper(in_core_shapes):"]
     seen_dims = set()
 
