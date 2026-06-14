@@ -1,9 +1,6 @@
 """Assorted statistical functions"""
 from __future__ import annotations
 
-import numpy
-
-import cupy
 from cupy._core import ElementwiseKernel
 
 preamble = """
@@ -69,15 +66,7 @@ def _poisson_binom_pmf(k, p):
     the preceding dimensions are batch dimensions. The batch
     dimensions are broadcast against ``k``.
     """
-    p, k = cupy.asarray(p), cupy.asarray(k)
-    batch_shape = p.shape[:-1]
-    n = p.shape[-1]
-    intermediate_pmf = cupy.empty(batch_shape + (n + 1,), dtype=p.dtype)
-    _poisson_binom_pmf_all(p, out=intermediate_pmf)
-    out = cupy.empty(numpy.broadcast_shapes(
-        batch_shape, k.shape), dtype=p.dtype)
-    _take_from_pmf(intermediate_pmf, k, out=out)
-    return out
+    return _take_from_pmf(_poisson_binom_pmf_all(p), k)
 
 
 def _poisson_binom_cdf(k, p):
@@ -98,12 +87,4 @@ def _poisson_binom_cdf(k, p):
     the preceding dimensions are batch dimensions. The batch
     dimensions are broadcast against ``k``.
     """
-    p, k = cupy.asarray(p), cupy.asarray(k)
-    batch_shape = p.shape[:-1]
-    n = p.shape[-1]
-    intermediate_cdf = cupy.empty(batch_shape + (n + 1,), dtype=p.dtype)
-    _poisson_binom_cdf_all(p, out=intermediate_cdf)
-    out = cupy.empty(numpy.broadcast_shapes(
-        batch_shape, k.shape), dtype=p.dtype)
-    _take_from_discrete_cdf(intermediate_cdf, k, out=out)
-    return out
+    return _take_from_discrete_cdf(_poisson_binom_cdf_all(p), k)
