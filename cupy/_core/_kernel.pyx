@@ -715,7 +715,7 @@ cdef list _broadcast(list args, tuple params, bint use_size, shape_t& shape):
     return value
 
 
-cdef list _gubroadcast(list args, tuple params, shape_t& shape):
+cdef list _broadcast_gu(list args, tuple params, shape_t& shape):
     # `shape` is an output argument
     cdef Py_ssize_t i
     cdef int core_ndim
@@ -727,11 +727,10 @@ cdef list _gubroadcast(list args, tuple params, shape_t& shape):
         p = params[i]
         if not p.raw and isinstance(a, _ndarray_base):
             continue
-        core_ndim = len(p.core_shapes)
-        if a.ndim < core_ndim:
+        if a.ndim < p.core_ndims:
             raise ValueError(f'Argument {p.name} has insufficient dimensions.')
         batch_shapes.append(
-            a.shape[:-core_ndim] if core_ndimn > 0 else a.shape)
+            a.shape[:-p.core_ndims] if p.core_ndims > 0 else a.shape)
     batch_shape = numpy.broadcast_shapes(*batch_shapes)
     shape = batch_shape
 
@@ -741,8 +740,7 @@ cdef list _gubroadcast(list args, tuple params, shape_t& shape):
         if p.raw or not isinstance(a, _ndarray_base):
             broadcasted_args.append(a)
         else:
-            core_ndim = len(p.core_shapes)
-            core_shape = a.shape[-core_ndim:] if core_ndim > 0 else ()
+            core_shape = a.shape[-p.core_ndims:] if p.core_ndims > 0 else ()
             broadcasted_args.append(
                 cupy.broadcast_to(a, batch_shape + core_shape)
             )
@@ -811,6 +809,27 @@ cdef list _get_out_args_with_params(
                 'Output arguments type must be cupy.ndarray')
         arr = a
         if not p.raw and not internal.vector_equal(arr._shape, out_shape):
+            raise ValueError('Out shape is mismatched')
+    return out_args
+
+
+cdef list _get_out_args_with_params_gu(
+        list out_args, tuple out_types, tuple out_shapes, tuple out_params):
+    cdef ParameterInfo p
+    cdef _ndarray_base arr
+
+    if not out_args:
+        return [_ndarray_init(
+            cupy.ndarray, out_shapes[i], out_types[i], None)
+            for i in range(len(out_types))]
+
+    for i, p in enumerate(out_params):
+        a = out_args[i]
+        if not isinstance(a, _ndarray_base):
+            raise TypeError(
+                'Output arguments type must be cupy.ndarray')
+        arr = a
+        if not p.raw and arr.shape != out_shapes[i]:
             raise ValueError('Out shape is mismatched')
     return out_args
 
@@ -1132,14 +1151,14 @@ cdef class ElementwiseKernel:
         # This is for profiling mechanisms to auto infer a name
         self.__name__ = name
 
-        in_core_shape_info = [p.core_shapes for p in self.in_params]
-        out_core_shape_info = [p.core_shapes for p in self.out_params]
         self._is_gufunc_like = False
         self._core_shape_mapper = None
         if not all(
-                len(x) == 0 for x in _in_core_shape_info + _out_core_shape_info
+                x.core_ndims == 0 for x in self.in_params + self.out_params
         ):
             self._is_gufunc_like = True
+            in_core_shape_info = [p.core_shapes for p in self.in_params]
+            out_core_shape_info = [p.core_shapes for p in self.out_params]
             self._core_shape_mapper = _make_core_shape_mapper(
                 in_core_shape_info, out_core_shape_info, name
             )
@@ -1171,7 +1190,7 @@ cdef class ElementwiseKernel:
         cdef function.Function kern
         cdef Py_ssize_t size, i
         cdef list in_args, out_args
-        cdef tuple in_types, out_types
+        cdef tuple in_types, out_types, out_shapes
         cdef shape_t batch_shape
 
         size = kwargs.pop('size', -1)
@@ -1201,7 +1220,7 @@ cdef class ElementwiseKernel:
             in_args = _broadcast(
                 arg_list, self.params, size != -1, batch_shape)[:self.nin]
         else:
-            in_args = _gubroadcast(
+            in_args = _broadcast_gu(
                 arg_list, self.params, batch_shape)[:self.nin]
 
         in_ndarray_types = []
@@ -1228,8 +1247,9 @@ cdef class ElementwiseKernel:
             out_args = _get_out_args_with_params(
                 out_args, out_types, shape, self.out_params, is_size_specified)
         else:
-            # stuff goes here
-            pass
+            out_shapes = self._resolve_shapes(in_args, batch_shape)
+            out_args = _get_out_args_with_params_gu(
+                out_args, out_types, out_shapes, self.out_params)
         if self.no_return:
             ret = None
         elif not self.return_tuple and self.nout == 1:
@@ -1296,6 +1316,24 @@ cdef class ElementwiseKernel:
             self._cached_codes[in_types] = code
         kern = self._elementwise_kernel_memo.setdefault(key, kern)
         return kern
+
+    cdef tuple _resolve_shapes(self, list in_args, shape_t& batch_shape):
+        cdef list in_core_shapes = []
+        cdef tuple expected_out_core_shapes
+        cdef tuple batch_shape_tuple
+        cdef ParameterInfo p
+
+        for a, p in zip(in_args, self.in_params):
+            if not isinstance(a, _ndarray_base) or p.core_ndims == 0:
+                in_core_shapes.append(())
+            else:
+                in_core_shapes.append(a.shape[-p.core_ndims:])
+
+        out_core_shapes = self._core_shape_mapper(tuple(in_core_shapes))
+        batch_shape_tuple = tuple(batch_shape)
+        return = tuple(
+            batch_shape_tuple + expected_shape
+            for expected_shape in out_core_shapes)
 
     @property
     def cached_codes(self):
