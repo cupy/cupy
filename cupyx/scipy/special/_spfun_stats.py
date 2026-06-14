@@ -4,14 +4,14 @@ from __future__ import annotations
 import numpy
 
 import cupy
-from cupy._core import BatchwiseKernel
+from cupy._core import ElementwiseKernel
 
 preamble = """
 #include <cupy/xsf/stats.h>
 """
 
 
-_poisson_binom_pmf_all = BatchwiseKernel(
+_poisson_binom_pmf_all = ElementwiseKernel(
     in_params="T(n) p",
     out_params="T(n+1) out",
     operation=(
@@ -22,7 +22,7 @@ _poisson_binom_pmf_all = BatchwiseKernel(
 )
 
 
-_take_from_pmf = BatchwiseKernel(
+_take_from_pmf = ElementwiseKernel(
     in_params="T(n) pmf, int64 k",
     out_params="T out",
     operation="out = xsf::take_from_pmf(pmf.as_mdspan(), k);",
@@ -31,7 +31,7 @@ _take_from_pmf = BatchwiseKernel(
 )
 
 
-_poisson_binom_cdf_all = BatchwiseKernel(
+_poisson_binom_cdf_all = ElementwiseKernel(
     in_params="T(n) p",
     out_params="T(n+1) out",
     operation=(
@@ -42,7 +42,7 @@ _poisson_binom_cdf_all = BatchwiseKernel(
 )
 
 
-_take_from_discrete_cdf = BatchwiseKernel(
+_take_from_discrete_cdf = ElementwiseKernel(
     in_params="T(n) cdf, int64 k",
     out_params="T out",
     operation="out = xsf::take_from_discrete_cdf(cdf.as_mdspan(), k);",
