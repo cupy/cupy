@@ -13,8 +13,8 @@ cdef class ParameterInfo:
         readonly str name
         readonly object dtype
         readonly str ctype
-        readonly tuple core_shapes
-        readonly int core_ndims
+        readonly tuple core_shape
+        readonly int core_ndim
         readonly bint raw
         readonly bint is_const
 

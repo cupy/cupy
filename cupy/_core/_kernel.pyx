@@ -501,8 +501,8 @@ cdef class ParameterInfo:
         self.name = None
         self.dtype = None
         self.ctype = None
-        self.core_shapes = None
-        self.core_ndims = None
+        self.core_shape = None
+        self.core_ndim = 0
         self.raw = False
         self.is_const = is_const
 
@@ -510,16 +510,16 @@ cdef class ParameterInfo:
         if len(parts) < 2:
             raise Exception('Syntax error: %s' % param)
         param_info, self.name = parts
-        info, core_shapes = _parse_param_info(param_info)
+        info, core_shape = _parse_param_info(param_info)
         s = tuple([i for i in info.split() if len(i) != 0])
         t = s[-1]
 
         if t == 'CIndexer':
-            if core_shapes is not None:
+            if core_shape is not None:
                 raise Exception('Syntax error: %s' % param)
         else:
-            self.core_shapes = () if core_shapes is None else core_shapes
-            self.core_ndims = len(self.core_shapes)
+            self.core_shape = () if core_shape is None else core_shape
+            self.core_ndim = len(self.core_shape)
             if len(t) == 1:
                 self.ctype = t
             else:
@@ -529,7 +529,7 @@ cdef class ParameterInfo:
 
         for i in s[:-1]:
             if i == 'raw':
-                if self.core_ndims > 0:
+                if self.core_ndim > 0:
                     raise Exception(
                         'Raw parameter "%s" specifies core dimensions' %param
                     )
@@ -541,7 +541,7 @@ cdef class ParameterInfo:
 
     def __hash__(self):
         return hash((
-            self.name, self.dtype, self.ctype, self.core_shapes, self.raw,
+            self.name, self.dtype, self.ctype, self.core_shape, self.raw,
             self.is_const))
 
     def __eq__(self, other):
@@ -553,7 +553,7 @@ cdef class ParameterInfo:
             self.name == oth.name
             and self.dtype == oth.dtype
             and self.ctype == oth.ctype
-            and self.core_shapes == oth.core_shapes
+            and self.core_shape == oth.core_shape
             and self.raw == oth.raw
             and self.is_const == oth.is_const)
 
@@ -563,7 +563,7 @@ cdef class ParameterInfo:
                 'name={!r}'.format(self.name),
                 'dtype={!r}'.format(self.dtype),
                 'ctype={!r}'.format(self.ctype),
-                'core_shapes={!r}'.format(self.core_shapes),
+                'core_shape={!r}'.format(self.core_shape),
                 'raw={!r}'.format(self.raw),
                 'is_const={!r}'.format(self.is_const),
             ]))
@@ -727,10 +727,10 @@ cdef list _broadcast_gu(list args, tuple params, shape_t& shape):
         p = params[i]
         if not p.raw and isinstance(a, _ndarray_base):
             continue
-        if a.ndim < p.core_ndims:
+        if a.ndim < p.core_ndim:
             raise ValueError(f'Argument {p.name} has insufficient dimensions.')
         batch_shapes.append(
-            a.shape[:-p.core_ndims] if p.core_ndims > 0 else a.shape)
+            a.shape[:-p.core_ndim] if p.core_ndim > 0 else a.shape)
     batch_shape = numpy.broadcast_shapes(*batch_shapes)
     shape = batch_shape
 
@@ -740,7 +740,7 @@ cdef list _broadcast_gu(list args, tuple params, shape_t& shape):
         if p.raw or not isinstance(a, _ndarray_base):
             broadcasted_args.append(a)
         else:
-            core_shape = a.shape[-p.core_ndims:] if p.core_ndims > 0 else ()
+            core_shape = a.shape[-p.core_ndim:] if p.core_ndim > 0 else ()
             broadcasted_args.append(
                 cupy.broadcast_to(a, batch_shape + core_shape)
             )
@@ -875,96 +875,6 @@ def _get_elementwise_kernel(
         after_loop
     )
     return _get_simple_elementwise_kernel_from_code(name, code, options)
-
-
-cdef class _XwiseKernelBase:
-    cdef:
-        readonly tuple in_params
-        readonly tuple out_params
-        readonly tuple params
-        readonly Py_ssize_t nin
-        readonly Py_ssize_t nout
-        readonly Py_ssize_t nargs
-        readonly object operation
-        readonly str name
-        readonly str __name__
-        readonly object preamble
-        readonly bint reduce_dims
-        readonly bint no_return
-        readonly bint return_tuple
-        readonly dict kwargs
-        readonly dict _params_type_memo
-        readonly dict _kernel_memo
-        readonly dict _cached_codes
-
-    cpdef tuple _decide_params_type(
-            self, tuple in_args_dtype, tuple out_args_dtype):
-        key = (in_args_dtype, out_args_dtype)
-        ret = self._params_type_memo.get(key, None)
-        if ret is not None:
-            return ret
-        ret = _decide_params_type_core(
-            self.in_params, self.out_params, in_args_dtype, out_args_dtype)
-        self._params_type_memo[key] = ret
-        return ret
-
-    cpdef function.Function _get_kernel(
-            self, int dev_id, tuple arginfos, object type_map):
-        key = (dev_id, arginfos, type_map)
-        kern = self._kernel_memo.get(key, None)
-        if kern is not None:
-            return kern
-
-        kern = self._compile_kernel(dev_id, arginfos, type_map)
-
-        # Store the compiled kernel in the cache.
-        # Potentially overwrite a duplicate cache entry because
-        # _get_elementwise_kernel() may include IO wait.
-        in_types = []
-        for x in arginfos:
-            if x.type is cupy.ndarray:
-                in_types.append(cupy.dtype(x.dtype))
-        in_types = tuple(in_types)
-        if in_types not in self._cached_codes:
-            code = self._get_kernel_code(arginfos, type_map)
-            self._cached_codes[in_types] = code
-        kern = self._kernel_memo.setdefault(key, kern)
-        return kern
-
-    @property
-    def cached_codes(self):
-        """Returns a dict that has input types as keys and codes values.
-
-        This property method is for debugging purpose.
-        The return value is not guaranteed to keep backward compatibility.
-        """
-        if len(self._cached_codes) == 0:
-            warnings.warn(
-                'No codes are cached because compilation is deferred until '
-                'the first function call.')
-        return dict(self._cached_codes.items())
-
-    @property
-    def cached_code(self):
-        """Returns `next(iter(self.cached_codes.values()))`.
-
-        This property method is for debugging purpose.
-        The return value is not guaranteed to keep backward compatibility.
-        """
-        codes = self._cached_codes
-        if len(codes) > 1:
-            warnings.warn(
-                'The input types of the kernel could not be inferred. '
-                'Please use `.cached_codes` instead.')
-        return next(iter(codes.values()))
-
-    cdef function.Function _compile_kernel(
-            self, int dev_id, tuple arginfos, object type_map):
-        raise NotImplementedError
-
-    cdef str _get_kernel_code(
-            self, tuple arginfos, object type_map):
-        raise NotImplementedError
 
 
 _core_shape_mapper_allowed_ast_nodes = {
@@ -1157,8 +1067,8 @@ cdef class ElementwiseKernel:
                 x.core_ndims == 0 for x in self.in_params + self.out_params
         ):
             self._is_gufunc_like = True
-            in_core_shape_info = [p.core_shapes for p in self.in_params]
-            out_core_shape_info = [p.core_shapes for p in self.out_params]
+            in_core_shape_info = [p.core_shape for p in self.in_params]
+            out_core_shape_info = [p.core_shape for p in self.out_params]
             self._core_shape_mapper = _make_core_shape_mapper(
                 in_core_shape_info, out_core_shape_info, name
             )
@@ -1266,12 +1176,16 @@ cdef class ElementwiseKernel:
 
         inout_args = in_args + out_args
 
-        if self.reduce_dims:
+        if self.reduce_dims and not self._is_gufunc_like:
             shape = _reduce_dims(inout_args, self.params, batch_shape)
         indexer = _carray._indexer_init(batch_shape)
         inout_args.append(indexer)
 
-        arginfos = _get_arginfos(inout_args)
+        if not self._is_gufunc_like:
+            arginfos = _get_arginfos(inout_args)
+        else:
+            core_ndims = (p.core_ndim for p in self.params)
+            arginfos = _get_arginfos(inout_args, core_ndims=core_ndims)
         kern = self._get_kernel(dev_id, arginfos, type_map)
         kern.linear_launch(indexer.size, inout_args, shared_mem=0,
                            block_max_size=block_size, stream=stream)
@@ -1319,7 +1233,7 @@ cdef class ElementwiseKernel:
 
     cdef tuple _resolve_shapes(self, list in_args, shape_t& batch_shape):
         cdef list in_core_shapes = []
-        cdef tuple expected_out_core_shapes
+        cdef tuple out_core_shapes
         cdef tuple batch_shape_tuple
         cdef ParameterInfo p
 
@@ -2125,270 +2039,3 @@ cpdef create_ufunc(name, ops, routine=None, preamble='', doc='',
         name, ops_.nin, ops_.nout, ops_, preamble,
         loop_prep, doc, default_casting=default_casting, out_ops=_out_ops,
         cutensor_op=cutensor_op, scatter_op=scatter_op)
-
-
-cdef class BatchwiseKernel(_XwiseKernelBase):
-    """User-defined batchwise kernel.
-
-    This class offers a generalization of ``ElementwiseKernel`` to handle
-    kernels which behave like NumPy's generalized universal functions
-    (gufuncs). Whereas NumPy's ufuncs allow broadcastable element-by-element
-    operations, gufuncs allow sub-array by sub-array operations. The inputs and
-    outputs of a gufunc each have an associated "core" dimensionality
-    ``n``. The final ``n`` axes of an input/output with core dimensionality
-    ``n`` correspond to the core dimensions and all prior axes are treated as
-    batch dimensions. There must be a fixed rule mapping input shapes to output
-    shapes. See
-    https://numpy.org/doc/stable/reference/c-api/generalized-ufuncs.html
-    for more info.
-
-    Unlike for ``ElementwiseKernel``, the ``out`` kwarg of
-    :meth:`~BatchwiseKernel.__call__` is currently mandatory. The caller is
-    responsible for passing an array (or tuple of arrays) for ``out`` with the
-    correct shape(s) for the given inputs.
-
-    The kernel is compiled at an invocation of the
-    :meth:`~BatchwiseKernel.__call__` method,
-    which is cached for each device.
-    The compiled binary is also cached into a file under the
-    ``$HOME/.cupy/kernel_cache/`` directory with a hashed file name. The cached
-    binary is reused by other processes.
-
-    Args:
-        in_params (str): Input argument list.
-        out_params (str): Output argument list.
-            To specify the core dimensionality of an input or output
-            append '_{n}d' to the end of the type for integer ``n``
-            equal to the number of core dimensions (e.g. float64_1d
-            to specify that an input takes doubles with core dimensionality 1).
-        operation (str): The body in the loop written in CUDA-C/C++.
-        name (str): Name of the kernel function. It should be set for
-            readability of the performance profiling.
-        reduce_dims (bool): This currently is ignored. ``BatchwiseKernel``
-            is not yet capable of reducing the shapes of array arguments.
-            `reduce_dims` included for the sake of API consistency with
-            ``ElementwiseKernel`` in the expectation that support for it will
-            be added eventually.
-        options (tuple): Compile options passed to NVRTC. For details, see
-            https://docs.nvidia.com/cuda/nvrtc/index.html#group__options.
-            Note that ``BatchwiseKernel`` requires at least C++17 and will
-            default to inserting '--std=c++17' into `options` if the user does
-            not supply a value for '--std', and will raise if an earlier
-            C++ language standard is passed.
-        preamble (str): Fragment of the CUDA-C/C++ code that is inserted at the
-            top of the cu file.
-        no_return (bool): If ``True``, __call__ returns ``None``.
-        return_tuple (bool): If ``True``, __call__ always returns tuple of
-            array even if single value is returned.
-        loop_prep (str): Fragment of the CUDA-C/C++ code that is inserted at
-            the top of the kernel function definition and above the ``for``
-            loop.
-        after_loop (str): Fragment of the CUDA-C/C++ code that is inserted at
-            the bottom of the kernel function definition.
-
-    """
-    cdef:
-        readonly tuple in_core_ndims
-        readonly tuple out_core_ndims
-        readonly object core_shape_mapper
-
-    def __init__(self, in_params, out_params, operation,
-                 name='kernel', reduce_dims=True, preamble='',
-                 no_return=False, return_tuple=False,
-                 **kwargs):
-
-        self.in_params = _get_param_info(in_params, True)
-        self.out_params = _get_param_info(out_params, False)
-        self.nin = len(self.in_params)
-        self.nout = len(self.out_params)
-        self.nargs = self.nin + self.nout
-        param_rest = _get_param_info('CIndexer _ind', False)
-        self.params = self.in_params + self.out_params + param_rest
-        self.operation = operation
-        self.name = name
-        self.preamble = preamble
-        self.reduce_dims = reduce_dims
-        self.no_return = no_return
-        self.return_tuple = return_tuple
-
-        in_core_shape_info = [p.core_shapes for p in self.in_params]
-        out_core_shape_info = [p.core_shapes for p in self.out_params]
-        self.core_shape_mapper = _make_core_shape_mapper(
-            in_core_shape_info, out_core_shape_info, name
-        )
-        self.in_core_ndims = [len(s) for s in in_core_shape_info]
-        self.out_core_ndims = [len(s) for s in out_core_shape_info]
-
-        # default to '--std=c++17'.
-        options = kwargs.get('options', [])
-        for opt in options:
-            if opt.startswith('--std=c++'):
-                has_std = True
-                std_ver = opt.split('--std=c++')[-1]
-                if std_ver.isdigit() and int(std_ver) < 17:
-                    raise ValueError(
-                        f'BatchwiseKernel requires at least C++17, '
-                        f'but received: {opt}'
-                    )
-        if not has_std:
-            options.append('--std=c++17')
-
-        kwargs['options'] = tuple(options)
-        self.kwargs = kwargs
-        self._params_type_memo = {}
-        self._cached_codes = {}
-        names = [p.name for p in self.in_params + self.out_params]
-        if 'i' in names:
-            raise ValueError('Can not use \'i\' as a parameter name.')
-        self._kernel_memo = {}
-        # This is for profiling mechanisms to auto infer a name.
-        self.__name__ = name
-
-    def __call__(self, *args, out, stream=None, block_size=128):
-        cdef list in_args, out_args
-        cdef tuple in_types
-        cdef shape_t loop_shape
-
-        if len(args) != self.nin:
-            raise TypeError(
-                f"Wrong number of arguments for {self.name}. "
-                f"Expected {self.nin}, got {len(args)}."
-            )
-
-        if not isinstance(out, tuple):
-            out = (out,)
-
-        if len(out) != self.nout:
-            raise TypeError(
-                f"Wrong number of outputs for {self.name}. "
-                f"Expected {self.nout}, got {len(out)}."
-            )
-
-        dev_id = device.get_device_id()
-        in_args = _preprocess_args(dev_id, args)
-        out_args = _preprocess_args(dev_id, out)
-
-        # Check that inputs and outputs all have ndim high enough to
-        # hold the correct number of core dimensions.
-        if any(
-            [
-                (arg.ndim if isinstance(arg, _ndarray_base) else 0)
-                < self.in_core_ndims[i]
-                for i, arg in enumerate(in_args)
-            ]
-        ):
-            raise ValueError("input with insufficient dimensions.")
-        if any(
-            [
-                (arg.ndim if isinstance(arg, _ndarray_base) else 0)
-                < self.out_core_ndims[i]
-                for i, arg in enumerate(out_args)
-            ]
-        ):
-            raise ValueError("output with insufficient dimensions.")
-
-        # get the core shapes of the inputs and outputs and validate that
-        # the outputs are shaped correctly using self.core_shape_mapper
-        in_core_shapes = tuple(
-            arg.shape[-self.in_core_ndims[i]:]
-            if self.in_core_ndims[i] > 0 else ()
-            for i, arg in enumerate(in_args)
-        )
-        out_core_shapes = tuple(
-            arg.shape[-self.out_core_ndims[i]:]
-            if self.out_core_ndims[i] > 0 else ()
-            for i, arg in enumerate(out_args)
-        )
-        expected_out_core_shapes = self.core_shape_mapper(in_core_shapes)
-        if out_core_shapes != expected_out_core_shapes:
-            raise ValueError(
-                f"output core shape mismatch for {self.name}. "
-                f"expected {expected_out_core_shapes}, got {out_core_shapes}."
-            )
-
-        # get the batch shapes for inputs and outputs and broadcast the
-        # batch dimensions against each other, keeping core dimensions
-        # untouched.
-        in_batch_shapes = [
-            arg.shape[:-self.in_core_ndims[i]] if self.in_core_ndims[i] > 0
-            else arg.shape if isinstance(arg, _ndarray_base) else ()
-            for i, arg in enumerate(in_args)
-        ]
-
-        out_batch_shapes = [
-            arg.shape[:-self.out_core_ndims[i]] if self.out_core_ndims[i] > 0
-            else arg.shape if isinstance(arg, _ndarray_base) else ()
-            for i, arg in enumerate(out_args)
-        ]
-        batch_shape = numpy.broadcast_shapes(
-            *in_batch_shapes, *out_batch_shapes)
-        if any(shape != batch_shape for shape in out_batch_shapes):
-            raise ValueError("output batch shape mismatch.")
-        in_args = [
-            cupy.broadcast_to(arg, batch_shape + core_shape)
-            if isinstance(arg, _ndarray_base) else arg
-            for arg, core_shape in zip(in_args, in_core_shapes)
-        ]
-
-        in_ndarray_types = []
-        for a in in_args:
-            if isinstance(a, _ndarray_base):
-                t = a.dtype
-            elif isinstance(a, texture.TextureObject):
-                t = 'cudaTextureObject_t'
-            else:
-                t = None
-            in_ndarray_types.append(t)
-        in_ndarray_types = tuple(in_ndarray_types)
-        out_ndarray_types = tuple([a.dtype for a in out_args])
-
-        in_types, _, type_map = self._decide_params_type(
-            in_ndarray_types, out_ndarray_types)
-
-        if self.no_return:
-            ret = None
-        elif not self.return_tuple and self.nout == 1:
-            ret = out[0]
-        else:
-            ret = tuple(out)
-
-        loop_shape = batch_shape
-        if _contains_zero(loop_shape):
-            return ret
-
-        for i, x in enumerate(in_args):
-            if type(x) is _scalar.CScalar:
-                (<_scalar.CScalar>x).apply_dtype(in_types[i])
-
-        inout_args = in_args + out_args
-
-        # the indexer will only loop through the batch dimensions.
-        indexer = _carray._indexer_init(loop_shape)
-        inout_args.append(indexer)
-
-        core_ndims = self.in_core_ndims + self.out_core_ndims
-        # need a dummy core_ndims for the indexer
-        core_ndims += (0,)
-
-        # pass core_ndims into _get_arginfos to propagate these
-        # to the _ArgInfo classes which will in turn propagate them
-        # to the underlying CArray's generated for each input and output.
-        # Iteration over a CArray with core_ndim > 0 with CIndexer will yield
-        # CArray's of core slices.
-        arginfos = _get_arginfos(inout_args, core_ndims=core_ndims)
-        kern = self._get_kernel(dev_id, arginfos, type_map)
-
-        kern.linear_launch(indexer.size, inout_args, shared_mem=0,
-                           block_max_size=block_size, stream=stream)
-        return ret
-
-    cdef function.Function _compile_kernel(
-            self, int dev_id, tuple arginfos, object type_map):
-        return _get_elementwise_kernel(
-            arginfos, type_map, self.params, self.operation,
-            self.name, self.preamble, **self.kwargs)
-
-    cdef str _get_kernel_code(self, tuple arginfos, object type_map):
-        return _get_elementwise_kernel_code(
-            arginfos, type_map, self.params, self.operation,
-            self.name, self.preamble, **self.kwargs)
