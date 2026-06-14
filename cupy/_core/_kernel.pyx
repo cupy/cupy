@@ -1063,7 +1063,7 @@ cdef class ElementwiseKernel:
         self._is_gufunc_like = False
         self._core_shape_mapper = None
         if not all(
-                x.core_ndims == 0 for x in self.in_params + self.out_params
+                x.core_ndim == 0 for x in self.in_params + self.out_params
         ):
             self._is_gufunc_like = True
             in_core_shape_info = [p.core_shape for p in self.in_params]
@@ -1238,10 +1238,10 @@ cdef class ElementwiseKernel:
         cdef ParameterInfo p
 
         for a, p in zip(in_args, self.in_params):
-            if not isinstance(a, _ndarray_base) or p.core_ndims == 0:
+            if not isinstance(a, _ndarray_base) or p.core_ndim == 0:
                 in_core_shapes.append(())
             else:
-                in_core_shapes.append(a.shape[-p.core_ndims:])
+                in_core_shapes.append(a.shape[-p.core_ndim:])
 
         out_core_shapes = self._core_shape_mapper(tuple(in_core_shapes))
         batch_shape_tuple = tuple(batch_shape)
