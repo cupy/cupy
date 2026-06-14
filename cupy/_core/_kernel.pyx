@@ -731,7 +731,7 @@ cdef list _broadcast_gu(list args, tuple params, shape_t& shape):
     batch_shapes = []
     for i, a in enumerate(args):
         p = params[i]
-        if not p.raw and isinstance(a, _ndarray_base):
+        if p.raw or not isinstance(a, _ndarray_base):
             continue
         if a.ndim < p.core_ndim:
             raise ValueError(f'Argument {p.name} has insufficient dimensions.')
