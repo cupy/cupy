@@ -1154,7 +1154,8 @@ cdef class ElementwiseKernel:
 
         if not self._is_gufunc_like:
             out_args = _get_out_args_with_params(
-                out_args, out_types, shape, self.out_params, is_size_specified)
+                out_args, out_types, batch_shape, self.out_params,
+                is_size_specified)
         else:
             out_shapes = self._resolve_shapes(in_args, batch_shape)
             out_args = _get_out_args_with_params_gu(
@@ -1176,7 +1177,7 @@ cdef class ElementwiseKernel:
         inout_args = in_args + out_args
 
         if self.reduce_dims and not self._is_gufunc_like:
-            shape = _reduce_dims(inout_args, self.params, batch_shape)
+            batch_shape = _reduce_dims(inout_args, self.params, batch_shape)
         indexer = _carray._indexer_init(batch_shape)
         inout_args.append(indexer)
 
