@@ -966,7 +966,7 @@ def _make_core_shape_mapper(in_core_shape_info, out_core_shape_info, name):
             out_returns.append(f"out_shape_{i}")
 
     ret_str = ", ".join(out_returns) + ("," if len(out_returns) == 1 else "")
-    lines.append(f"    return [{ret_str}]")
+    lines.append(f"    return ({ret_str})")
 
     code_str = "\n".join(lines)
 
