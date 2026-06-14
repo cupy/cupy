@@ -93,6 +93,10 @@ class dia_matrix(_data._data_matrix):
         else:
             return dia_matrix((data, self.offsets), shape=self.shape)
 
+    def _repr_detail(self):
+        d = self.data.shape[0]
+        return f' ({d} diagonals)'
+
     def get(self, stream=None):
         """Returns a copy of the array on host memory.
 

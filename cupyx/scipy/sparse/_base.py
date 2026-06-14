@@ -33,6 +33,13 @@ class spmatrix:
     See :class:`scipy.sparse.spmatrix`
     """
 
+    _formats = {
+        'csc': 'Compressed Sparse Column',
+        'csr': 'Compressed Sparse Row',
+        'coo': 'COOrdinate',
+        'dia': 'DIAgonal',
+    }
+
     __array_priority__ = 101
     # ``_data_matrix.__init__`` (and therefore the format subclasses
     # built on it: csr/csc/coo/dia) does not chain through to
@@ -72,6 +79,24 @@ class spmatrix:
         # TODO(unno): Do not use get method which is only available when scipy
         # is installed.
         return str(self.get())
+
+    def __repr__(self):
+        # Subclasses that lack format/dtype/nnz/shape (e.g. test
+        # helpers) fall back to object.__repr__.
+        try:
+            format_name = self._formats[self.format]
+        except (AttributeError, KeyError):
+            return object.__repr__(self)
+        return (
+            f"<{format_name} sparse matrix of dtype '{self.dtype}'\n"
+            f"\twith {self.nnz} stored elements"
+            f"{self._repr_detail()} and shape {self.shape}>"
+        )
+
+    def _repr_detail(self):
+        """Hook for subclasses to append format-specific info to
+        ``__repr__``.  Non-empty values must start with a space."""
+        return ''
 
     def __iter__(self):
         for r in range(self.shape[0]):
