@@ -718,7 +718,6 @@ cdef list _broadcast(list args, tuple params, bint use_size, shape_t& shape):
 cdef list _broadcast_gu(list args, tuple params, shape_t& shape):
     # `shape` is an output argument
     cdef Py_ssize_t i
-    cdef int core_ndim
     cdef ParameterInfo p
 
     # Collect non-raw arrays
@@ -1245,7 +1244,7 @@ cdef class ElementwiseKernel:
 
         out_core_shapes = self._core_shape_mapper(tuple(in_core_shapes))
         batch_shape_tuple = tuple(batch_shape)
-        return = tuple(
+        return tuple(
             batch_shape_tuple + expected_shape
             for expected_shape in out_core_shapes)
 
