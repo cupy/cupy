@@ -1186,7 +1186,7 @@ cdef class ElementwiseKernel:
         else:
             core_ndims = (p.core_ndim for p in self.params)
             arginfos = _get_arginfos(inout_args, core_ndims=core_ndims)
-        kern = self._get_kernel(dev_id, arginfos, type_map)
+        kern = self._get_elementwise_kernel(dev_id, arginfos, type_map)
         kern.linear_launch(indexer.size, inout_args, shared_mem=0,
                            block_max_size=block_size, stream=stream)
         return ret
