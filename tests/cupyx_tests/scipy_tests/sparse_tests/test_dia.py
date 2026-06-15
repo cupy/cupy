@@ -175,7 +175,7 @@ class TestDiaMatrix(unittest.TestCase):
 class TestDiaMatrixInit:
 
     @pytest.fixture(autouse=True)
-    def _setup(self, dtype, scope='class'):
+    def _setup(self, dtype):
         self.dtype = dtype
         self.shape = (3, 4)
 
