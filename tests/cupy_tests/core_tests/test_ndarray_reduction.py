@@ -15,20 +15,21 @@ from cupy import testing
 class TestArrayReduction:
 
     @pytest.fixture(scope='class')
-    def exclude_cutensor(self):
+    @classmethod
+    def exclude_cutensor(cls):
         # cuTENSOR seems to have issues in handling inf/nan in reduction-based
         # routines, so we use this fixture to skip testing it
-        self.old_routine_accelerators = _acc.get_routine_accelerators()
-        self.old_reduction_accelerators = _acc.get_reduction_accelerators()
+        old_routine_accelerators = _acc.get_routine_accelerators()
+        old_reduction_accelerators = _acc.get_reduction_accelerators()
 
-        rot_acc = self.old_routine_accelerators.copy()
+        rot_acc = old_routine_accelerators.copy()
         try:
             rot_acc.remove(_acc.ACCELERATOR_CUTENSOR)
         except ValueError:
             pass
         _acc.set_routine_accelerators(rot_acc)
 
-        red_acc = self.old_reduction_accelerators.copy()
+        red_acc = old_reduction_accelerators.copy()
         try:
             red_acc.remove(_acc.ACCELERATOR_CUTENSOR)
         except ValueError:
@@ -37,8 +38,8 @@ class TestArrayReduction:
 
         yield
 
-        _acc.set_routine_accelerators(self.old_routine_accelerators)
-        _acc.set_reduction_accelerators(self.old_reduction_accelerators)
+        _acc.set_routine_accelerators(old_routine_accelerators)
+        _acc.set_reduction_accelerators(old_reduction_accelerators)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(contiguous_check=False)

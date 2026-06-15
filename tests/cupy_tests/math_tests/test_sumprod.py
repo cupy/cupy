@@ -502,7 +502,8 @@ class TestReductionSizeOverInt32Max:
 class TestCuTensorReduction:
 
     @pytest.fixture(autouse=True, scope='class')
-    def setup(self):
+    @classmethod
+    def setup(cls):
         old_accelerators = cupy._core.get_routine_accelerators()
         cupy._core.set_routine_accelerators(['cutensor'])
         yield
