@@ -18,6 +18,7 @@ from cupyx.scipy.sparse._construct import rand  # NOQA
 from cupyx.scipy.sparse._construct import random  # NOQA
 from cupyx.scipy.sparse._construct import spdiags  # NOQA
 from cupyx.scipy.sparse._construct import diags  # NOQA
+from cupyx.scipy.sparse._construct import block_diag  # NOQA
 
 from cupyx.scipy.sparse._construct import bmat  # NOQA
 from cupyx.scipy.sparse._construct import hstack  # NOQA
