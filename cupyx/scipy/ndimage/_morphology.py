@@ -164,9 +164,6 @@ def _binary_erosion(input, structure, iterations, mask, output, border_value,
     if input.dtype.kind == 'c':
         raise TypeError('Complex type not supported')
 
-    # The Cython code can't cope with broadcasted inputs
-    if not input.flags.c_contiguous and not input.flags.f_contiguous:
-        input = cupy.ascontiguousarray(input)
     ndim = input.ndim
     axes = _util._check_axes(axes, ndim)
     num_axes = len(axes)

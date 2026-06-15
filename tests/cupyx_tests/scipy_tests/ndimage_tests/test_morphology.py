@@ -459,7 +459,6 @@ class TestBinaryPropagation:
         'density': [0.1, 0.5, 0.9],
         'filter': ['binary_erosion', 'binary_dilation'],
         'iterations': [1],
-        'contiguity': ['C', 'F', 'none'],
         'output': [None]}
     ) + testing.product({
         'x_dtype': [numpy.int8, numpy.float32],
@@ -470,7 +469,6 @@ class TestBinaryPropagation:
         'density': [0.2],
         'filter': ['binary_erosion', 'binary_dilation'],
         'iterations': [1, 2, 0],
-        'contiguity': ['C', 'F', 'none'],
         'output': [None, numpy.float32, 'array']}
     )
 ))
@@ -491,17 +489,29 @@ class TestBinaryErosionAndDilation:
                       output=self.output, border_value=self.border_value,
                       origin=self.origin, brute_force=True)
 
+    @pytest.mark.parametrize(
+        "contiguity",
+        ['C', 'F', 'none'],
+    )
     @testing.numpy_cupy_array_equal(scipy_name='scp')
-    def test_binary_erosion_and_dilation(self, xp, scp):
+    def test_contiguity(self, xp, scp, contiguity):
         if self.x_dtype == self.output:
             pytest.skip('redundant')
         rstate = numpy.random.RandomState(5)
         x = rstate.randn(*self.shape) > self.density
         x = xp.asarray(x, dtype=self.x_dtype)
-        if self.contiguity == 'F':
+        if contiguity == 'F':
             x = xp.asfortranarray(x)
-        elif self.contiguity == 'none':
+        elif contiguity == 'none':
             x = x[::-1]
+        return self._filter(xp, scp, x)
+
+    @testing.numpy_cupy_array_equal(scipy_name='scp')
+    def test_zero_strides(self, xp, scp):
+        if self.x_dtype == self.output:
+            pytest.skip('redundant')
+        x = xp.ones((1, ), dtype=self.x_dtype)
+        x = xp.broadcast_to(x, self.shape)
         return self._filter(xp, scp, x)
 
 

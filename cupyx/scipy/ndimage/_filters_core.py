@@ -286,8 +286,9 @@ def _generate_nd_kernel(name, pre, found, post, modes, w_shape, int_type,
     for (int iw_{j} = 0; iw_{j} < {w_shape[j]}; iw_{j}++)
     {{
         {int_type} ix_{j} = ind_{j} + iw_{j};
-        {boundary}
-        ix_{j} *= xstride_{j};
+        {boundary} else {{
+            ix_{j} *= xstride_{j};
+        }};
         ''')
 
     # CArray: string becomes 'x[inds]', no format call needed
