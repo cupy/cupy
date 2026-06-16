@@ -1031,12 +1031,12 @@ cdef class ElementwiseKernel:
          name may suggest. The core dimensionality information described
          in NumPy through the gufunc
          `signature <https://numpy.org/doc/stable/reference/c-api/generalized-ufuncs.html#details-of-signature>`_
-         is described here in the ``in_params`` and ``out_params` strings by
+         is described here in the ``in_params`` and ``out_params`` strings by
          appending parenthetical expressions from the gufunc signatures
          to the type annotations.
 
          For example, a dot-product like reduction with NumPy gufunc signature
-         ``'(n),(n)->()``
+         ``'(n),(n)->()'``
 
          can be described with
 
