@@ -1036,29 +1036,26 @@ cdef class ElementwiseKernel:
         For example, a dot-product like reduction with NumPy gufunc signature
         ``'(n),(n)->()'``
 
-        can be described with
+        can be described with::
 
-        ``in_params='T(n) in0, T(n) in1', out_params='T() out'``
+            in_params='T(n) in0, T(n) in1', out_params='T() out'
 
         Any valid Python identifier may be used for the dimension names
         (.e.g. ``n`` above) in the signatures.
 
         For parameters with core dimensionality
         equal to zero, it is permitted to omit the `()`, so one may
-        equivalently write the above as
+        equivalently write the above as::
 
-        ``in_params='T(n) in0, T(n) in1', out_params='T out'``
+            in_params='T(n) in0, T(n) in1', out_params='T out'
 
         Unlike in NumPy gufunc signatures, one may express the core
         output shapes through arithmetic operations on the core input
         shapes. For example, for the function ``euclidean_pdist`` which
         takes an array of ``n`` ``d``-dimensional vectors and computes
-        pairwise distances among them, one may write
+        pairwise distances among them, one may write::
 
-        ``in_params='T(n, d) in', out_params='T((n * (n - 1)) // 2) out'``
-
-        Any of the arithmetic operations ``+``, ``-``, ``*``, ``//``, or
-        ``**`` may be used.
+            in_params='T(n, d) in', out_params='T((n * (n - 1)) // 2) out'
 
         Within the operation, args with nonzero core dimensionality
         such as `in` above will take CArray views of core slices
