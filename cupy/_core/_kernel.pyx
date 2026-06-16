@@ -1,4 +1,3 @@
-import ast
 import linecache
 import string
 import warnings
@@ -885,39 +884,24 @@ def _get_elementwise_kernel(
     return _get_simple_elementwise_kernel_from_code(name, code, options)
 
 
-# Use this to restrict mapping from core input shapes to core output shapes
-# to basic arithmetic.
-_core_shape_mapper_allowed_ast_nodes = {
-    ast.Expression,
-    ast.BinOp,
-    ast.Add,
-    ast.Sub,
-    ast.Mult,
-    ast.FloorDiv,
-    ast.Pow,
-    ast.Name,
-    ast.Load,
-    ast.Constant,
-}
-
-
 def _validate_output_expression(expr, input_variables):
-    # validates that expression for out core shapes is a basic
-    # arithmetic expression depending on the core shapes of the
-    # inputs.
+    # validates out core shapes is determined by an arithmetic
+    # arithmetic expression, then no free variables appear in this
+    # expression.
     if expr.isnumeric() or expr in input_variables:
-        return
+        return expr
+    if expr.isidentifier():
+        return 'None'
     try:
         tree = ast.parse(expr, mode='eval')
     except SyntaxError:
-        raise ValueError(f"Invalid syntax in output dimension: '{expr}'")
+        raise Exception(f'Invalid syntax in output dimension: "{expr}"')
     for node in ast.walk(tree):
-        if type(node) not in _core_shape_mapper_allowed_ast_nodes:
-            raise ValueError
-        # Catch undefined variables at compile time!
         if isinstance(node, ast.Name):
             if node.id not in input_variables:
-                raise ValueError
+                raise Exception(
+                    f'Invalid syntax in output dimension: "{expr}"')
+    return expr
 
 
 def _make_core_shape_mapper(in_core_shape_info, out_core_shape_info, name):
@@ -950,27 +934,33 @@ def _make_core_shape_mapper(in_core_shape_info, out_core_shape_info, name):
                 seen_dims.add(dim)
 
     out_returns = []
+    out_shapes_determined = True
     for i, shape_info in enumerate(out_core_shape_info):
         if not shape_info:
             out_returns.append("()")
         else:
+            out_shape_parts = []
             for expr in shape_info:
                 _validate_output_expression(expr, seen_dims)
+                if expr == 'None':
+                    out_shapes_determined = False
+                out_shape_parts.append(expr)
             out_str = (
-                ", ".join(shape_info) + ("," if len(shape_info) == 1 else "")
+                ', '.join(out_shape_parts)
+                + (',' if len(shape_info) == 1 else '')
             )
-            lines.append(f"    out_shape_{i} = ({out_str})")
-            lines.append(f"    for dim in out_shape_{i}:")
-            lines.append("        if not isinstance(dim, int) or dim < 0:")
-            lines.append("            raise ValueError")
-            out_returns.append(f"out_shape_{i}")
+            lines.append(f'    out_shape_{i} = ({out_str})')
+            lines.append(f'    for dim in out_shape_{i}:')
+            lines.append('        if not isinstance(dim, int) or dim < 0:')
+            lines.append('            raise ValueError')
+            out_returns.append(f'out_shape_{i}')
 
-    ret_str = ", ".join(out_returns) + ("," if len(out_returns) == 1 else "")
-    lines.append(f"    return ({ret_str})")
+    ret_str = ', '.join(out_returns) + (',' if len(out_returns) == 1 else '')
+    lines.append(f'    return ({ret_str}), {out_shapes_determined}')
 
-    code_str = "\n".join(lines)
+    code_str = '\n'.join(lines)
 
-    dummy_filename = f"<{name}_generated_shape_mapper>"
+    dummy_filename = f'<{name}_generated_shape_mapper>'
     linecache.cache[dummy_filename] = (
         len(code_str),
         None,
@@ -996,7 +986,7 @@ cdef class ElementwiseKernel:
     The compiled binary is also cached into a file under the
     ``$HOME/.cupy/kernel_cache/`` directory with a hashed file name. The cached
     binary is reused by other processes.
-    
+
     Args:
         in_params (str): Input argument list.
         out_params (str): Output argument list.
@@ -1218,7 +1208,7 @@ cdef class ElementwiseKernel:
                 out_args, out_types, batch_shape, self.out_params,
                 is_size_specified)
         else:
-            out_shapes = self._resolve_shapes(in_args, batch_shape)
+            out_shapes = self._resolve_shapes(in_args, out_args, batch_shape)
             out_args = _get_out_args_with_params_gu(
                 out_args, out_types, out_shapes, self.out_params)
         if self.no_return:
@@ -1292,7 +1282,9 @@ cdef class ElementwiseKernel:
         kern = self._elementwise_kernel_memo.setdefault(key, kern)
         return kern
 
-    cdef tuple _resolve_shapes(self, list in_args, shape_t& batch_shape):
+    cdef tuple _resolve_shapes(
+        self, list in_args, list out_args, shape_t& batch_shape
+    ):
         """Returns expected output shapes for gufunc-like case."""
         cdef list in_core_shapes = []
         cdef tuple out_core_shapes
@@ -1305,11 +1297,31 @@ cdef class ElementwiseKernel:
             else:
                 in_core_shapes.append(a.shape[-p.core_ndim:])
 
-        out_core_shapes = self._core_shape_mapper(tuple(in_core_shapes))
+        out_core_shapes, out_shapes_determined = self._core_shape_mapper(
+            tuple(in_core_shapes))
         batch_shape_tuple = tuple(batch_shape)
-        return tuple(
-            batch_shape_tuple + expected_shape
-            for expected_shape in out_core_shapes)
+
+        if out_shapes_determined:
+            return tuple(
+                batch_shape_tuple + expected_core_shape
+                for expected_core_shape in out_core_shapes)
+
+        if len(out_args) != len(out_core_shapes):
+            raise RuntimeError(
+                'Out shape is indeterminate and no explicit out arguments'
+                ' were passed.')
+        result = []
+        for expected_shape, p, out_arg in zip(
+                out_core_shapes, self.out_params, out_args):
+            if None in expected_shape:
+                out_core_shape = out_arg.shape[-p.core_ndim:]
+                expected_shape = tuple(
+                    out_core_shape[j] if dim is None else dim
+                    for j, dim in enumerate(expected_shape)
+                )
+
+            result.append(batch_shape_tuple + expected_shape)
+        return tuple(result)
 
     @property
     def cached_codes(self):
