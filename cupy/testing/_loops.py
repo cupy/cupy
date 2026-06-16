@@ -261,7 +261,7 @@ def _wraps_partial(wrapped, *names):
     return decorator
 
 
-def _wraps_partial_xp(wrapped, name, sp_name, scipy_name):
+def _wraps_partial_xp(wrapped, name, sp_name=None, scipy_name=None):
     names = [name, sp_name, scipy_name]
     names = [n for n in names if n is not None]
     return _wraps_partial(wrapped, *names)
