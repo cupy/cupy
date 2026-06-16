@@ -952,9 +952,9 @@ def _make_core_shape_mapper(in_core_shape_info, out_core_shape_info, name):
             )
             lines.append(f'    out_shape_{i} = ({out_str})')
             for j, part in enumerate(out_shape_parts):
-                # Validate that all computed out shapes are actually
-                # nonnegative integers. Skip this if the shape is the
-                # None sentinel, signaling shape should be resolved by
+                # Validate that all computed out dims are actually
+                # nonnegative integers. Skip this if the dim is the
+                # None sentinel, signaling dim should be resolved by
                 # user passing out args.
                 if part != 'None':
                     lines.append(
