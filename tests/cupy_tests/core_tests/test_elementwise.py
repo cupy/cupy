@@ -147,6 +147,15 @@ class TestElementwiseType:
 
 def _make_test_kernel(
         in_shapes, out_shapes, no_return=False, return_tuple=False):
+    # Creates a toy kernel for testing gufunc-like capabilities of
+    # ElementwiseKernel. The core calculation takes the sum of the values
+    # in a core slice for each argument, and multiples these sums together.
+    # The output core slices are then filled with this product of sums
+    # multiplied elementwise by an ndarray of the appropriate core shape
+    # whose value at a given element is one more than the sum of indices
+    # associated to that element. ``in_shapes`` and ``out_shapes`` contain
+    # tuples containing info from the input and output parts of a gufunc
+    # signature.
     in_params = [f'T{shape} in{i}' for i, shape in enumerate(in_shapes)]
     out_params = [f'T{shape} out{i}' for i, shape in enumerate(out_shapes)]
 
@@ -214,6 +223,7 @@ def _make_test_kernel(
 
 
 def _reference_func(*args, out_shape, in_core_ndims, out_core_ndim):
+    # Compute reference values for the toy kernel described above.
     val = 1
     for arg, ndim in zip(args, in_core_ndims):
         if ndim == 0:
@@ -239,6 +249,7 @@ def _reference_func(*args, out_shape, in_core_ndims, out_core_ndim):
 
 class TestElementwiseGuFuncLike:
     def test_scalar(self):
+        # '(),()->()'
         kern = _make_test_kernel(('()', '()'), ('()',))
         in0 = cupy.random.uniform(size=(1, 10))
         in1 = cupy.random.uniform(size=(10, 1))
@@ -250,6 +261,7 @@ class TestElementwiseGuFuncLike:
         testing.assert_allclose(actual, desired)
 
     def test_reduction(self):
+        # '(i)->()'
         kern = _make_test_kernel(('(i)',), ('()',))
         in0 = cupy.random.uniform(size=(30, 20, 100))
         out_shape = (30, 20)
@@ -260,6 +272,7 @@ class TestElementwiseGuFuncLike:
         testing.assert_allclose(actual, desired)
 
     def test_matmul_like(self):
+        # '(m,n),(n,p)->(m,p)'
         kern = _make_test_kernel(('(m,n)', '(n,p)'), ('(m,p)',))
         in0 = cupy.random.uniform(size=(1, 10, 30, 20))
         in1 = cupy.random.uniform(size=(2, 10, 20, 50))
@@ -271,6 +284,7 @@ class TestElementwiseGuFuncLike:
         testing.assert_allclose(actual, desired)
 
     def test_frozen_dims(self):
+        # '(3)(3)->(3)'
         kern = _make_test_kernel(('(3)', '(3)'), ('(3)',))
         in0 = cupy.random.uniform(size=(100, 3))
         in1 = cupy.random.uniform(size=(100, 3))
@@ -282,6 +296,7 @@ class TestElementwiseGuFuncLike:
         testing.assert_allclose(actual, desired)
 
     def test_pdist_like(self):
+        # '(n, d)->(n * (n - 1) // 2)'
         kern = _make_test_kernel(('(n, d)',), ('(n * (n - 1) // 2)',))
         in0 = cupy.random.uniform(size=(100, 6, 10))
         out_shape = (100, 15)
@@ -291,6 +306,7 @@ class TestElementwiseGuFuncLike:
         testing.assert_allclose(actual, desired)
 
     def test_multiple_outputs(self):
+        # '(m,n),(n,p)->(m**2+p**2,2*n**2),(m*n*n*p)'
         kern = _make_test_kernel(
             ('(m,n)', '(n,p)'), ('(m**2+p**2, 2*n**2)', '(m*n*n*p)',))
         in0 = cupy.random.uniform(size=(10, 1, 3, 2))
