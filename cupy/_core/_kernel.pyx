@@ -588,7 +588,7 @@ def _tokenize_params(s):
             chunks.append(chunk)
             chunk = ""
             continue
-        if depth not in {0, 1}:
+        if depth < 0:
             raise ValueError
         chunk += c
     if depth != 0:
