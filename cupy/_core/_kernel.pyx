@@ -942,7 +942,7 @@ def _make_core_shape_mapper(in_core_shape_info, out_core_shape_info, name):
         else:
             out_shape_parts = []
             for expr in shape_info:
-                _validate_output_expression(expr, seen_dims)
+                expr = _validate_output_expression(expr, seen_dims)
                 if expr == 'None':
                     out_shapes_determined = False
                 out_shape_parts.append(expr)
@@ -951,9 +951,16 @@ def _make_core_shape_mapper(in_core_shape_info, out_core_shape_info, name):
                 + (',' if len(shape_info) == 1 else '')
             )
             lines.append(f'    out_shape_{i} = ({out_str})')
-            lines.append(f'    for dim in out_shape_{i}:')
-            lines.append('        if not isinstance(dim, int) or dim < 0:')
-            lines.append('            raise ValueError')
+            for j, part in enumerate(out_shape_parts):
+                # Validate that all computed out shapes are actually
+                # nonnegative integers. Skip this if the shape is the
+                # None sentinel, signaling shape should be resolved by
+                # user passing out args.
+                if part != 'None':
+                    lines.append(
+                        f'    if not isinstance(out_shape_{i}[{j}], int)'
+                        f' or out_shape_{i}[{j}] < 0:')
+                    lines.append('        raise ValueError')
             out_returns.append(f'out_shape_{i}')
 
     ret_str = ', '.join(out_returns) + (',' if len(out_returns) == 1 else '')

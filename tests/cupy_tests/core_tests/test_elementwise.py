@@ -378,5 +378,5 @@ class TestElementwiseGUFuncLike:
         actual = cupy.empty(out_shape)
         _ = kern(in0, actual)
         desired = _reference_func(
-            in0, out_shape, in_core_ndims=(1,), out_core_ndim=1)
+            in0, out_shape=out_shape, in_core_ndims=(1,), out_core_ndim=1)
         testing.assert_allclose(actual, desired)
