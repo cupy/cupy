@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import unittest
 import pytest
 
 import cupy
@@ -15,7 +14,7 @@ from cupy_tests.core_tests.fusion_tests import fusion_utils
     not fusion_utils.can_use_grid_synchronization(),
     reason='Requires CUDA grid synchronization'
 )
-class TestFusionExample(unittest.TestCase):
+class TestFusionExample:
     def generate_inputs(self, xp):
         shape = (8, 64, 112, 112)
         _, chan, _, _ = shape
