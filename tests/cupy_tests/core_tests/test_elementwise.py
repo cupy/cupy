@@ -392,3 +392,11 @@ class TestElementwiseGUFuncLike:
         desired = _reference_func(
             in0, out_shape=out_shape, in_core_ndims=(1,), out_core_ndim=1)
         testing.assert_allclose(actual, desired)
+
+    def test_shape_validation(self):
+        kern = _make_test_kernel(('(n)',), ('(n-10)',))
+        in0 = cupy.random.uniform(size=(20, 5))
+        with pytest.raises(ValueError):
+            kern(in0)
+        in0 = cupy.random.uniform(size=(20, 10))
+        kern(in0)
