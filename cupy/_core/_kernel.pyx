@@ -482,7 +482,7 @@ def _parse_param_info(t):
     shape_start_idx = t.find('(')
     if shape_start_idx == -1:
         return (t, None)
-    shape_end_idx = t.find(')')
+    shape_end_idx = t.rfind(')')
     if shape_end_idx != len(t) - 1:
         raise Exception('Syntax error: %s' % t)
     type_ = t[:shape_start_idx]
