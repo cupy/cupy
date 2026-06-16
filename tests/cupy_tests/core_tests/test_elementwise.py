@@ -219,6 +219,8 @@ def _make_test_kernel(
         out_params=out_params_str,
         operation=operation,
         options=("--std=c++17",),
+        return_tuple=return_tuple,
+        no_return=no_return,
     )
 
 
@@ -247,7 +249,7 @@ def _reference_func(*args, out_shape, in_core_ndims, out_core_ndim):
     return cupy.broadcast_to(expanded_val, out_shape)
 
 
-class TestElementwiseGuFuncLike:
+class TestElementwiseGUFuncLike:
     def test_scalar(self):
         # '(),()->()'
         kern = _make_test_kernel(('()', '()'), ('()',))
@@ -284,7 +286,7 @@ class TestElementwiseGuFuncLike:
         testing.assert_allclose(actual, desired)
 
     def test_frozen_dims(self):
-        # '(3)(3)->(3)'
+        # '(3),(3)->(3)'
         kern = _make_test_kernel(('(3)', '(3)'), ('(3)',))
         in0 = cupy.random.uniform(size=(100, 3))
         in1 = cupy.random.uniform(size=(100, 3))
@@ -321,3 +323,49 @@ class TestElementwiseGuFuncLike:
         )
         testing.assert_allclose(actual0, desired0)
         testing.assert_allclose(actual1, desired1)
+
+    def test_with_preallocated_out(self):
+        # '(m,n),(n,p)->(m**2+p**2,2*n**2),(m*n*n*p)'
+        kern = _make_test_kernel(
+            ('(m,n)', '(n,p)'), ('(m**2+p**2, 2*n**2)', '(m*n*n*p)',))
+        in0 = cupy.random.uniform(size=(10, 1, 3, 2))
+        in1 = cupy.random.uniform(size=(1, 10, 2, 4))
+        out_shapes = ((10, 10, 25, 8), (10, 10, 48,))
+        out0, out1 = (cupy.empty(shape) for shape in out_shapes)
+        actual0, actual1 = kern(in0, in1, out0, out1)
+        assert actual0 is out0
+        assert actual1 is out1
+        desired0, desired1 = (
+            _reference_func(
+                in0, in1, out_shape=out_shape, in_core_ndims=(2, 2),
+                out_core_ndim=ndim)
+            for out_shape, ndim in zip(out_shapes, (2, 1))
+        )
+        testing.assert_allclose(actual0, desired0)
+        testing.assert_allclose(actual1, desired1)
+
+    def test_return_tuple(self):
+        # '(i)->()'
+        kern = _make_test_kernel(('(i)',), ('()',), return_tuple=True)
+        in0 = cupy.random.uniform(size=(30, 20, 100))
+        out_shape = (30, 20)
+        actual = kern(in0)
+        assert isinstance(actual, tuple)
+        assert len(actual) == 1
+        desired = _reference_func(
+            in0, out_shape=out_shape, in_core_ndims=(1,),
+            out_core_ndim=0)
+        testing.assert_allclose(actual[0], desired)
+
+    def test_no_return(self):
+        # '(n, d)->(n * (n - 1) // 2)'
+        kern = _make_test_kernel(
+            ('(n, d)',), ('(n * (n - 1) // 2)',), no_return=True)
+        in0 = cupy.random.uniform(size=(100, 6, 10))
+        out_shape = (100, 15)
+        actual = cupy.empty(out_shape)
+        result = kern(in0, actual)
+        assert result is None
+        desired = _reference_func(
+            in0, out_shape=out_shape, in_core_ndims=(2,), out_core_ndim=1)
+        testing.assert_allclose(actual, desired)
