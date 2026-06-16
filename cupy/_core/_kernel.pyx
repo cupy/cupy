@@ -1026,45 +1026,45 @@ cdef class ElementwiseKernel:
 
         `ElementwiseKernel` supports
         `generalized universal function <https://numpy.org/doc/stable/reference/c-api/generalized-ufuncs.html>`_
-         like behavior, allowing for GPU acceleration of subarray-wise
-         operations, rather than just the elementwise-operations its
-         name may suggest. The core dimensionality information described
-         in NumPy through the gufunc
-         `signature <https://numpy.org/doc/stable/reference/c-api/generalized-ufuncs.html#details-of-signature>`_
-         is described here in the ``in_params`` and ``out_params`` strings by
-         appending parenthetical expressions from the gufunc signatures
-         to the type annotations.
+        like behavior, allowing for GPU acceleration of subarray-wise
+        operations, rather than just the elementwise-operations its
+        name may suggest. The core dimensionality information described
+        in NumPy through the gufunc
+        `signature <https://numpy.org/doc/stable/reference/c-api/generalized-ufuncs.html#details-of-signature>`_
+        is described here in the ``in_params`` and ``out_params`` strings by
+        appending parenthetical expressions from the gufunc signatures
+        to the type annotations.
 
-         For example, a dot-product like reduction with NumPy gufunc signature
-         ``'(n),(n)->()'``
+        For example, a dot-product like reduction with NumPy gufunc signature
+        ``'(n),(n)->()'``
 
-         can be described with
+        can be described with
 
-         ``in_params='T(n) in0, T(n) in1', out_params='T() out'``
+        ``in_params='T(n) in0, T(n) in1', out_params='T() out'``
 
-         Any valid Python identifier may be used for the dimension names
-         (.e.g. ``n`` above) in the signatures.
+        Any valid Python identifier may be used for the dimension names
+        (.e.g. ``n`` above) in the signatures.
 
-         For parameters with core dimensionality
-         equal to zero, it is permitted to omit the `()`, so one may
-         equivalently write the above as
+        For parameters with core dimensionality
+        equal to zero, it is permitted to omit the `()`, so one may
+        equivalently write the above as
 
-         ``in_params='T(n) in0, T(n) in1', out_params='T out'``
+        ``in_params='T(n) in0, T(n) in1', out_params='T out'``
 
-         Unlike in NumPy gufunc signatures, one may express the core
-         output shapes through arithmetic operations on the core input
-         shapes. For example, for the function ``euclidean_pdist`` which
-         takes an array of ``n`` ``d``-dimensional vectors and computes
-         pairwise distances among them, one may write
+        Unlike in NumPy gufunc signatures, one may express the core
+        output shapes through arithmetic operations on the core input
+        shapes. For example, for the function ``euclidean_pdist`` which
+        takes an array of ``n`` ``d``-dimensional vectors and computes
+        pairwise distances among them, one may write
 
-         ``in_params='T(n, d) in', out_params='T((n * (n - 1)) // 2) out'``
+        ``in_params='T(n, d) in', out_params='T((n * (n - 1)) // 2) out'``
 
-         Any of the arithmetic operations ``+``, ``-``, ``*``, ``//``, or
-         ``**`` may be used.
+        Any of the arithmetic operations ``+``, ``-``, ``*``, ``//``, or
+        ``**`` may be used.
 
-         Within the operation, args with nonzero core dimensionality
-         such as `in` above will take CArray views of core slices
-         within the loop body.
+        Within the operation, args with nonzero core dimensionality
+        such as `in` above will take CArray views of core slices
+        within the loop body.
 
     """  # NOQA
 
