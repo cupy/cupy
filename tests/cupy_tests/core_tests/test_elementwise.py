@@ -369,3 +369,14 @@ class TestElementwiseGUFuncLike:
         desired = _reference_func(
             in0, out_shape=out_shape, in_core_ndims=(2,), out_core_ndim=1)
         testing.assert_allclose(actual, desired)
+
+    def test_indeterminate_out_shape(self):
+        # '(i)->(j)'
+        kern = _make_test_kernel(('(i)',), ('(j)',))
+        in0 = cupy.random.uniform(size=(100, 10))
+        out_shape = (100, 20)
+        actual = cupy.empty(out_shape)
+        _ = kern(in0, actual)
+        desired = _reference_func(
+            in0, out_shape, in_core_ndims=(1,), out_core_ndim=1)
+        testing.assert_allclose(actual, desired)
