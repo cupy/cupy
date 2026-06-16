@@ -344,6 +344,18 @@ class TestElementwiseGUFuncLike:
         testing.assert_allclose(actual0, desired0)
         testing.assert_allclose(actual1, desired1)
 
+    def test_broadcast_against_out(self):
+        # '(m,n),(n,p)->(m,p)'
+        kern = _make_test_kernel(('(m,n)', '(n,p)'), ('(m,p)',))
+        in0 = cupy.random.uniform(size=(1, 10, 30, 20))
+        in1 = cupy.random.uniform(size=(1, 10, 20, 50))
+        out_shape = (10, 10, 30, 50)
+        actual = kern(in0, in1)
+        desired = _reference_func(
+            in0, in1, out_shape=out_shape, in_core_ndims=(2, 2),
+            out_core_ndim=2)
+        testing.assert_allclose(actual, desired)
+
     def test_return_tuple(self):
         # '(i)->()'
         kern = _make_test_kernel(('(i)',), ('()',), return_tuple=True)
