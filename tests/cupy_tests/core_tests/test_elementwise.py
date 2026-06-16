@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import numpy
 import pytest
+import re
 
 import cupy
 from cupy import _core
@@ -143,3 +144,167 @@ class TestElementwiseType:
         a = xp.array([xp.iinfo(dtype).min + 1], dtype=dtype)
         b = xp.int8(-1)
         return a + b
+
+
+def _make_test_kernel(
+        signature, no_return=False, return_tuple=False):
+    in_shapes_str, out_shapes_str = signature.split('->')
+    in_shapes = re.findall(r'\([^)]*\)', in_shapes_str)
+    out_shapes = re.findall(r'\([^)]*\)', out_shapes_str)
+
+    in_params = [f'T{shape} in{i}' for i, shape in enumerate(in_shapes)]
+    out_params = [f'T{shape} out{i}' for i, shape in enumerate(out_shapes)]
+
+    in_params_str = ','.join(in_params)
+    out_params_str = ','.join(out_params)
+
+    operation = ''
+
+    for i, shape in enumerate(in_shapes):
+        if shape != '()':
+            operation += f'auto in{i}_mdspan = in{i}.as_mdspan(); '
+
+    for i, shape in enumerate(out_shapes):
+        if shape != '()':
+            operation += f'auto out{i}_mdspan = out{i}.as_mdspan(); '
+
+    operation += 'T result = 1; '
+
+    for i, shape in enumerate(in_shapes):
+        operation += f'T sum{i} = 0; '
+
+        if shape == '()':
+            operation += f'sum{i} += in{i}; '
+        else:
+            rank = shape.count(',') + 1
+            param = f'in{i}_mdspan'
+            for dim in range(rank):
+                operation += (
+                    f'for (int i{dim} = 0; i{dim} < {param}.extent({dim});'
+                    f' ++i{dim}) {{ '
+                )
+            indices = ', '.join(f'i{d}' for d in range(rank))
+            operation += f'sum{i} += {param}({indices}); '
+            for _ in range(rank):
+                operation += '} '
+
+        operation += f'result *= sum{i}; '
+
+    for i, shape in enumerate(out_shapes):
+        if shape == '()':
+            operation += f'out{i} = result; '
+        else:
+            rank = shape.count(',') + 1
+            param = f'out{i}_mdspan'
+
+            for dim in range(rank):
+                operation += (
+                    f'for (int j{dim} = 0; j{dim} < {param}.extent({dim});'
+                    f' ++j{dim}) {{ '
+                )
+            indices = ', '.join(f'j{d}' for d in range(rank))
+            index_sum = ' + '.join(f'T(j{d})' for d in range(rank))
+            operation += (
+                f'{param}({indices}) = result * ({index_sum} + T(1)); ')
+
+            for _ in range(rank):
+                operation += '} '
+
+    return cupy.ElementwiseKernel(
+        in_params=in_params_str,
+        out_params=out_params_str,
+        operation=operation,
+        options=("--std=c++17",),
+    )
+
+
+def _reference_func(*args, out_shape, in_core_ndims, out_core_ndim):
+    val = 1
+    for arg, ndim in zip(args, in_core_ndims):
+        if ndim == 0:
+            val = val * arg
+        else:
+            axis = tuple(range(-ndim, 0))
+            val = val * cupy.sum(arg, axis=axis)
+
+    if not out_shape:
+        return val
+
+    expanded_val = val
+    for _ in range(out_core_ndim):
+        expanded_val = cupy.expand_dims(expanded_val, axis=-1)
+
+    if out_core_ndim > 0:
+        core_shape = out_shape[-out_core_ndim:]
+        index_sum = sum(cupy.ogrid[tuple(slice(d) for d in core_shape)])
+        return expanded_val * (index_sum + 1)
+
+    return cupy.broadcast_to(expanded_val, out_shape)
+
+
+class TestElementwiseGuFuncLike:
+    def test_scalar(self):
+        kern = _make_test_kernel('(),()->()')
+        in0 = cupy.random.uniform(size=(1, 10))
+        in1 = cupy.random.uniform(size=(10, 1))
+        out_shape = (10, 10)
+        actual = kern(in0, in1)
+        desired = _reference_func(
+            in0, in1, out_shape=out_shape, in_core_ndims=(0, 0),
+            out_core_ndim=0)
+        testing.assert_allclose(actual, desired)
+
+    def test_reduction(self):
+        kern = _make_test_kernel('(i)->()')
+        in0 = cupy.random.uniform(size=(30, 20, 100))
+        out_shape = (30, 20)
+        actual = kern(in0)
+        desired = _reference_func(
+            in0, out_shape=out_shape, in_core_ndims=(1,),
+            out_core_ndim=0)
+        testing.assert_allclose(actual, desired)
+
+    def test_matmul_like(self):
+        kern = _make_test_kernel('(m,n),(n,p)->(m,p)')
+        in0 = cupy.random.uniform(size=(1, 10, 30, 20))
+        in1 = cupy.random.uniform(size=(2, 10, 20, 50))
+        out_shape = (2, 10, 30, 50)
+        actual = kern(in0, in1)
+        desired = _reference_func(
+            in0, in1, out_shape=out_shape, in_core_ndims=(2, 2),
+            out_core_ndim=2)
+        testing.assert_allclose(actual, desired)
+
+    def test_frozen_dims(self):
+        kern = _make_test_kernel('(3),(3)->(3)')
+        in0 = cupy.random.uniform(size=(100, 3))
+        in1 = cupy.random.uniform(size=(100, 3))
+        out_shape = (100, 3)
+        actual = kern(in0, in1)
+        desired = _reference_func(
+            in0, in1, out_shape=out_shape, in_core_ndims=(1, 1),
+            out_core_ndim=1)
+        testing.assert_allclose(actual, desired)
+
+    def test_pdist_like(self):
+        kern = _make_test_kernel('(n, d)->(n * (n - 1) // 2)')
+        in0 = cupy.random.uniform(size=(100, 6, 10))
+        out_shape = (100, 15)
+        actual = kern(in0)
+        desired = _reference_func(
+            in0, out_shape=out_shape, in_core_ndims=(2,), out_core_ndim=1)
+        testing.assert_allclose(actual, desired)
+
+    def test_multiple_outputs(self):
+        kern = _make_test_kernel('(m,n),(n,p)->(m**2+p**2, 2*n**2),(m*n*n*p)')
+        in0 = cupy.random.uniform(size=(10, 1, 3, 2))
+        in1 = cupy.random.uniform(size=(1, 10, 2, 4))
+        out_shapes = ((10, 10, 25, 8), (10, 10, 48,))
+        actual0, actual1 = kern(in0, in1)
+        desired0, desired1 = (
+            _reference_func(
+                in0, in1, out_shape=out_shape, in_core_ndims=(2, 2),
+                out_core_ndim=1)
+            for out_shape in out_shapes)
+        testing.assert_allclose(actual0, desired0)
+        testing.assert_allclose(actual1, desired1)
