@@ -399,6 +399,25 @@ class TestNanMeanAdditional:
         a[:] = xp.nan
         return xp.nanmean(a)
 
+    @testing.with_requires("numpy>=1.22.0")
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_nanmean_where(self, xp, dtype):
+        a = xp.array([[1.0, 2.0, 3.0], [4.0, float("nan"), 6.0]], dtype)
+        where = xp.array([[True, False, True], [False, True, True]])
+        return xp.nanmean(a, where=where)
+
+    @testing.with_requires("numpy>=1.22.0")
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_nanmean_where_axis(self, xp, dtype):
+        a = testing.shaped_random((3, 4, 5), xp, dtype)
+        a[1, :] = xp.nan
+        where = xp.array([True, False, True, True, False] * 12).reshape(
+            3, 4, 5
+        )
+        return xp.nanmean(a, axis=1, where=where)
+
 
 @testing.parameterize(
     *testing.product({
@@ -493,6 +512,44 @@ class TestNanVarStdAdditional:
         a = testing.shaped_arange((4, 5), xp, numpy.float16)
         a[0][0] = xp.nan
         return xp.nanstd(a, axis=1)
+
+    @testing.with_requires("numpy>=1.22.0")
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_nanvar_where(self, xp, dtype):
+        a = xp.array([[1.0, 2.0, 3.0], [4.0, float("nan"), 6.0]], dtype)
+        where = xp.array([[True, False, True], [False, True, True]])
+        return xp.nanvar(a, where=where)
+
+    @testing.with_requires("numpy>=1.22.0")
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_nanvar_where_axis(self, xp, dtype):
+        a = testing.shaped_random((3, 4, 5), xp, dtype)
+        a[0, :] = xp.nan
+        where = xp.array([True, False, True, True, False] * 12).reshape(
+            3, 4, 5
+        )
+        return xp.nanvar(a, axis=1, where=where)
+
+    @testing.with_requires("numpy>=1.22.0")
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_nanstd_where(self, xp, dtype):
+        a = xp.array([[1.0, 2.0, 3.0], [4.0, float("nan"), 6.0]], dtype)
+        where = xp.array([[True, False, True], [False, True, True]])
+        return xp.nanstd(a, where=where)
+
+    @testing.with_requires("numpy>=1.22.0")
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_nanstd_where_axis(self, xp, dtype):
+        a = testing.shaped_random((3, 4, 5), xp, dtype)
+        a[0, :] = xp.nan
+        where = xp.array([True, False, True, True, False] * 12).reshape(
+            3, 4, 5
+        )
+        return xp.nanstd(a, axis=1, where=where)
 
 
 @testing.parameterize(*testing.product({
