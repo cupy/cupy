@@ -1262,7 +1262,7 @@ def for_contiguous_axes(name='axis'):
                     impl(self, *args, **kw)
                 except Exception:
                     print(name, 'is', a, ', ndim is', ndim, ', shape is',
-                          ndim, ', order is', order)
+                          kw['shape'], ', order is', order)
                     raise
         return test_func
     return decorator
