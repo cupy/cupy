@@ -1,1 +1,4 @@
-* @cupy/code-owners
+# Require review approval from code owners group for important repo-wide metadata changes.
+/.github/ @cupy/code-owners
+/CODE_OF_CONDUCT.md @cupy/code-owners
+/LICENSE @cupy/code-owners
