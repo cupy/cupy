@@ -9,7 +9,6 @@ import subprocess
 import sys
 import tempfile
 import threading
-import unittest
 from unittest import mock
 
 import pytest
@@ -402,35 +401,35 @@ def find_nvcc_ver():
 
 # Recent CCCL has made Jitify cold-launch very slow, see the discussion
 # starting https://github.com/cupy/cupy/pull/8899#issuecomment-2613022424.
-@pytest.mark.parametrize(
-    "backend,in_memory,clean_up,jitify",
-    [
-        # First test NVRTC
-        pytest.param("nvrtc", False, False, False, id="NVRTC (no-jitify)"),
-        # this run will read from in-memory cache
-        pytest.param(
-            "nvrtc", True, False, False,
-            id="NVRTC (in-memory cache, no-jitify)"),
-        # this run will force recompilation
-        pytest.param(
-            "nvrtc", True, True, False,
-            id="NVRTC (in-memory cache, re-compile, no-jitify)"),
-        # Finally, we test NVCC
-        pytest.param("nvcc", False, False, False, id="NVCC (no-jitify)"),
+@testing.slow
+@pytest.mark.parametrize("backend,in_memory,clean_up,jitify", [
+    # First test NVRTC
+    pytest.param("nvrtc", False, False, False, id="NVRTC (no-jitify)"),
+    # this run will read from in-memory cache
+    pytest.param(
+        "nvrtc", True, False, False,
+        id="NVRTC (in-memory cache, no-jitify)"),
+    # this run will force recompilation
+    pytest.param(
+        "nvrtc", True, True, False,
+        id="NVRTC (in-memory cache, re-compile, no-jitify)"),
+    # Finally, we test NVCC
+    pytest.param("nvcc", False, False, False, id="NVCC (no-jitify)"),
 
-        # Below is the same set of NVRTC tests, with Jitify turned on.
-        # For tests that can already pass, it shouldn't matter whether
-        # Jitify is on or not, and the only side effect is to add overhead.
-        # It doesn't make sense to test NVCC + Jitify.
-        pytest.param("nvrtc", False, False, True, id="NVRTC (jitify)"),
-        pytest.param(
-            "nvrtc", True, False, True,
-            id="NVRTC (in-memory cache, jitify)"),
-        pytest.param(
-            "nvrtc", True, True, True,
-            id="NVRTC (in-memory cache, re-compile, jitify)"),
-    ]
-)
+    # Below is the same set of NVRTC tests, with Jitify turned on.
+    # For tests that can already pass, it shouldn't matter whether
+    # Jitify is on or not, and the only side effect is to add overhead.
+    # It doesn't make sense to test NVCC + Jitify.
+    pytest.param("nvrtc", False, False, True, id="NVRTC (jitify)"),
+    pytest.param(
+        "nvrtc", True, False, True,
+        id="NVRTC (in-memory cache, jitify)"),
+    pytest.param(
+        "nvrtc", True, True, True,
+        id="NVRTC (in-memory cache, re-compile, jitify)"),
+])
+@pytest.mark.thread_unsafe(
+    reason="Jitify seems to have problems, skip as largely unmaintained.")
 @pytest.mark.filterwarnings(
     "ignore:The jitify argument is deprecated:DeprecationWarning")
 @pytest.mark.filterwarnings(
@@ -1185,23 +1184,21 @@ void test_grid_sync(const float* x1, const float* x2, float* y, int n) {
 '''
 
 
-@testing.parameterize(*testing.product({
-    'n': [10, 100, 1000],
-    'block': [64, 256],
-}))
-@unittest.skipIf(
+@pytest.mark.parametrize("n", [10, 100, 1000])
+@pytest.mark.parametrize("block", [64, 256])
+@pytest.mark.skipif(
     cupy.cuda.runtime.is_hip or find_nvcc_ver() >= 12020,
-    "fp16 header compatibility issue, see cupy#8412 (Skip on HIP)")
-@unittest.skipUnless(
-    9000 <= cupy.cuda.runtime.runtimeGetVersion(),
-    'Requires CUDA 9.x or later')
-@unittest.skipUnless(
-    60 <= int(cupy.cuda.device.get_compute_capability()),
-    'Requires compute capability 6.0 or later')
-class TestRawGridSync(unittest.TestCase):
+    reason="fp16 header compatibility issue, see cupy#8412 (Skip on HIP)")
+@pytest.mark.skipif(
+    9000 > cupy.cuda.runtime.runtimeGetVersion(),
+    reason="Requires CUDA 9.x or later")
+@pytest.mark.skipif(
+    60 > int(cupy.cuda.device.get_compute_capability()),
+    reason="Requires compute capability 6.0 or later")
+class TestRawGridSync:
+
     @pytest.mark.thread_unsafe(reason="mutates global cache directory")
-    def test_grid_sync_rawkernel(self):
-        n = self.n
+    def test_grid_sync_rawkernel(self, n, block):
         with use_temporary_cache_dir():
             kern_grid_sync = cupy.RawKernel(
                 _test_grid_sync, 'test_grid_sync', backend='nvcc',
@@ -1209,14 +1206,12 @@ class TestRawGridSync(unittest.TestCase):
             x1 = cupy.arange(n ** 2, dtype='float32').reshape(n, n)
             x2 = cupy.ones((n, n), dtype='float32')
             y = cupy.zeros((n, n), dtype='float32')
-            block = self.block
             grid = (n * n + block - 1) // block
             kern_grid_sync((grid,), (block,), (x1, x2, y, n ** 2))
             assert cupy.allclose(y, x1 + x2)
 
     @pytest.mark.thread_unsafe(reason="mutates global cache directory")
-    def test_grid_sync_rawmodule(self):
-        n = self.n
+    def test_grid_sync_rawmodule(self, n, block):
         with use_temporary_cache_dir():
             mod_grid_sync = cupy.RawModule(
                 code=_test_grid_sync, backend='nvcc',
@@ -1225,7 +1220,6 @@ class TestRawGridSync(unittest.TestCase):
             x2 = cupy.ones((n, n), dtype='float32')
             y = cupy.zeros((n, n), dtype='float32')
             kern = mod_grid_sync.get_function('test_grid_sync')
-            block = self.block
             grid = (n * n + block - 1) // block
             kern((grid,), (block,), (x1, x2, y, n ** 2))
             assert cupy.allclose(y, x1 + x2)
@@ -1257,12 +1251,10 @@ assert ker.enable_cooperative_groups
 # Pickling/unpickling a RawModule should always success, whereas
 # pickling/unpickling a RawKernel would fail if we don't enforce
 # recompiling after unpickling it.
-@pytest.mark.parametrize(
-    "compile", [
-        pytest.param(False, id="nocompile"),
-        pytest.param(True, id="compile"),
-    ]
-)
+@pytest.mark.parametrize("compile", [
+    pytest.param(False, id="nocompile"),
+    pytest.param(True, id="compile"),
+])
 @pytest.mark.parametrize("raw", ['ker', 'mod', 'mod_ker'])
 @pytest.mark.skipif(
     60 > int(cupy.cuda.device.get_compute_capability()),
@@ -1346,16 +1338,16 @@ __global__ void shift (T* a, int N) {
 
 # Recent CCCL has made Jitify cold-launch very slow, see the discussion
 # starting https://github.com/cupy/cupy/pull/8899#issuecomment-2613022424.
-@pytest.mark.parametrize(
-    "jitify",
-    [
-        pytest.param(False, id="no-jitify"),
-        pytest.param(True, id="jitify"),
-    ]
-)
+@testing.slow
+@pytest.mark.parametrize("jitify", [
+    pytest.param(False, id="no-jitify"),
+    pytest.param(True, id="jitify"),
+])
 @pytest.mark.skipif(
     cupy.cuda.runtime.is_hip,
     reason="Jitify does not support ROCm/HIP")
+@pytest.mark.thread_unsafe(
+    reason="Jitify seems to have problems, skip as largely unmaintained.")
 @pytest.mark.filterwarnings(
     "ignore:The jitify argument is deprecated:DeprecationWarning")
 @pytest.mark.filterwarnings(
@@ -1471,8 +1463,9 @@ class TestRawJitify:
     (True, ".*"),
     (False, "Avoid passing.*jitify=False")
 ])
-@unittest.skipIf(cupy.cuda.runtime.is_hip,
-                 'Jitify does not support ROCm/HIP')
+@pytest.mark.skipif(
+    cupy.cuda.runtime.is_hip,
+    reason="Jitify does not support ROCm/HIP")
 @testing.slow
 @pytest.mark.thread_unsafe(reason="uses temporary cache dir")
 @use_temporary_cache_dir()
