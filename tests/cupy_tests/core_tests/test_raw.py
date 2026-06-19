@@ -1346,22 +1346,33 @@ __global__ void shift (T* a, int N) {
 
 # Recent CCCL has made Jitify cold-launch very slow, see the discussion
 # starting https://github.com/cupy/cupy/pull/8899#issuecomment-2613022424.
-# TODO(leofang): Further refactor the test suite?
-class _TestRawJitify:
-    def setUp(self):
-        self.temporary_dir_context = use_temporary_cache_dir()
-        self.temp_dir = self.temporary_dir_context.__enter__()
+@pytest.mark.parametrize(
+    "jitify",
+    [
+        pytest.param(False, id="no-jitify"),
+        pytest.param(True, id="jitify"),
+    ]
+)
+@pytest.mark.skipif(
+    cupy.cuda.runtime.is_hip,
+    reason="Jitify does not support ROCm/HIP")
+@pytest.mark.filterwarnings(
+    "ignore:The jitify argument is deprecated:DeprecationWarning")
+@pytest.mark.filterwarnings(
+    "ignore:jitify=True is deprecated:DeprecationWarning")
+class TestRawJitify:
+    @pytest.fixture(autouse=True)
+    def configure(self):
+        with use_temporary_cache_dir() as temp_dir:
+            yield temp_dir
 
-    def tearDown(self):
-        self.temporary_dir_context.__exit__(*sys.exc_info())
-
-    def _helper(self, header, options=()):
+    def _helper(self, jitify, header, options=()):
         code = header
         code += _test_source1
         mod1 = cupy.RawModule(code=code,
                               backend='nvrtc',
                               options=options,
-                              jitify=self.jitify)
+                              jitify=jitify)
 
         N = 10
         x1 = cupy.arange(N**2, dtype=cupy.float32).reshape(N, N)
@@ -1371,9 +1382,9 @@ class _TestRawJitify:
         ker((N,), (N,), (x1, x2, y, N**2))
         assert cupy.allclose(x1 + x2, y)
 
-    def _helper2(self, type_str):
+    def _helper2(self, jitify, type_str):
         mod2 = cupy.RawModule(code=std_code,
-                              jitify=self.jitify,
+                              jitify=jitify,
                               name_expressions=('shift<%s>' % type_str,))
         ker = mod2.get_function('shift<%s>' % type_str)
         N = 256
@@ -1382,7 +1393,7 @@ class _TestRawJitify:
         ker((1,), (N,), (a, N))
         assert cupy.allclose(a, b+100)
 
-    def test_jitify1(self):
+    def test_jitify1(self, jitify):
         # simply prepend an unused header
         hdr = '#include <cub/block/block_reduce.cuh>\n'
         # Starting CUDA 12.2, fp16/bf16 headers are intertwined, but due to
@@ -1392,85 +1403,68 @@ class _TestRawJitify:
         options = ('-DCUB_DISABLE_BF16_SUPPORT',)
 
         # Compiling CUB headers now works with or without Jitify.
-        self._helper(hdr, options)
+        self._helper(jitify, hdr, options)
 
-    def test_jitify2(self):
+    def test_jitify2(self, jitify):
         # NVRTC cannot compile any code involving std
-        if self.jitify:
+        if jitify:
             # Jitify will make it work
-            self._helper2('int')
+            self._helper2(jitify, 'int')
         else:
             with pytest.raises(cupy.cuda.compiler.CompileException) as ex:
-                self._helper2('int')
+                self._helper2(jitify, 'int')
             assert 'cannot open source file' in str(ex.value)
 
-    def test_jitify3(self):
+    def test_jitify3(self, jitify):
         # We supply a type impossible to specialize. Jitify is still able to
         # locate the headers, but when it comes to the actual compilation,
         # NVRTC fails (raising the same exception) with different error
         # messages.
         ex_type = cupy.cuda.compiler.CompileException
         with pytest.raises(ex_type) as ex:
-            self._helper2('float')
-        if self.jitify:
+            self._helper2(jitify, 'float')
+        if jitify:
             assert 'Error in parsing name expression' in str(ex.value)
         else:
             assert 'cannot open source file' in str(ex.value)
 
-    def test_jitify4(self):
+    def test_jitify4(self, jitify):
         # ensure JitifyException is raised with a broken code
         code = r'''
         __global__ void i_am_broken() {
         '''
 
-        if self.jitify:
+        if jitify:
             ex_type = cupy.cuda.compiler.JitifyException
         else:
             ex_type = cupy.cuda.compiler.CompileException
 
         with pytest.raises(ex_type):
-            mod = cupy.RawModule(code=code, jitify=self.jitify)
+            mod = cupy.RawModule(code=code, jitify=jitify)
             ker = mod.get_function('i_am_broken')  # noqa
         # if Jitify could redirect its output, we would be able to check
         # the error log here as well (NVIDIA/jitify#79)
 
-    def test_jitify5(self):
+    def test_jitify5(self, configure, jitify):
+        temp_dir = configure
         # If including a header that does not exist, Jitify would attempt to
         # comment it out and proceed. If this header is actually unused, then
         # everything would run just fine.
 
         hdr = 'I_INCLUDE_SOMETHING.h'
-        with open(self.temp_dir + '/' + hdr, 'w') as f:
+        with open(temp_dir + '/' + hdr, 'w') as f:
             dummy = '#include <cupy/I_DO_NOT_EXIST_WAH_HA_HA.h>\n'
             f.write(dummy)
         hdr = '#include "' + hdr + '"\n'
 
-        if self.jitify:
+        if jitify:
             # Jitify would print a warning "[jitify] File not found" to stdout,
             # but as mentioned above and elsewhere, we can't capture it.
-            self._helper(hdr, options=('-I'+self.temp_dir,))
+            self._helper(jitify, hdr, options=('-I'+temp_dir,))
         else:
             with pytest.raises(cupy.cuda.compiler.CompileException) as ex:
-                self._helper(hdr, options=('-I'+self.temp_dir,))
+                self._helper(jitify, hdr, options=(f"-I{temp_dir}",))
             assert 'cannot open source file' in str(ex.value)
-
-
-@unittest.skipIf(cupy.cuda.runtime.is_hip,
-                 'Jitify does not support ROCm/HIP')
-@testing.slow
-@pytest.mark.filterwarnings("ignore:.*jitify=False:DeprecationWarning")
-class TestRawJitifyNoJitify(_TestRawJitify, unittest.TestCase):
-    jitify = False
-
-
-@unittest.skipIf(cupy.cuda.runtime.is_hip,
-                 'Jitify does not support ROCm/HIP')
-@testing.slow
-@pytest.mark.thread_unsafe(
-    reason="Jitify seems to have problems, skip as largely unmaintained.")
-@pytest.mark.filterwarnings("ignore:jitify=True:DeprecationWarning")
-class TestRawJitifyJitify(_TestRawJitify, unittest.TestCase):
-    jitify = True
 
 
 @pytest.mark.parametrize("jitify,match", [
