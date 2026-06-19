@@ -1250,9 +1250,6 @@ assert ker.enable_cooperative_groups
 class TestRawPicklable:
     @pytest.fixture(autouse=True)
     def configure(self, compile, raw):
-        temporary_dir_context = use_temporary_cache_dir()
-        temp_dir = temporary_dir_context.__enter__()
-
         # test if kw-only arguments are properly handled or not
         ker, mod = None, None
         if raw == 'ker':
@@ -1263,8 +1260,9 @@ class TestRawPicklable:
             mod = cupy.RawModule(code=_test_source1,
                                  backend='nvcc',
                                  enable_cooperative_groups=True)
-        yield compile, raw, ker, mod, temp_dir
-        temporary_dir_context.__exit__(*sys.exc_info())
+
+        with use_temporary_cache_dir() as temp_dir:
+            yield compile, raw, ker, mod, temp_dir
 
     def _helper(self, raw, ker, mod):
         N = 10
