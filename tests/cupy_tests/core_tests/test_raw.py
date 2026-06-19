@@ -544,7 +544,7 @@ class TestRaw:
 
     def test_invalid_compiler_flag(self, backend, jitify):
         if cupy.cuda.runtime.is_hip and backend == 'nvrtc':
-            self.skipTest('hiprtc does not handle #error macro properly')
+            pytest.skip('hiprtc does not handle #error macro properly')
 
         if jitify:
             ex_type = cupy.cuda.compiler.JitifyException
