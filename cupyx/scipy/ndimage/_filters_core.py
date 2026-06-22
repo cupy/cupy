@@ -290,7 +290,7 @@ def _generate_nd_kernel(name, pre, found, post, modes, w_shape, int_type,
         {boundary}
         ''')
 
-        # Unconditionally handle strides and handle out-of-bound issues
+        # Unconditionally handle strides and out-of-bound issues
         loops.append(f'''
         // Offset remains unchanged for zero-strided arrays
         {int_type} offset_{j} = 0;
