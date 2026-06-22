@@ -14,6 +14,29 @@ from cupy import testing
 from cupyx.scipy import sparse
 
 
+SPARSE_FORMATS = ('csr', 'csc', 'coo', 'dia')
+
+
+def _make_small_sparse(
+        fmt, *, array=True, shape=(2, 3), dtype=numpy.float64,
+        xp=cupy, spmod=sparse):
+    """Return a small sparse array/matrix with values on the main diagonal."""
+    kind = 'array' if array else 'matrix'
+    if fmt == 'dia':
+        width = min(shape)
+        data = xp.ones((1, width), dtype=dtype)
+        offsets = xp.array([0], dtype='i')
+        cls = spmod.dia_array if array else spmod.dia_matrix
+        return cls((data, offsets), shape=shape)
+    cls = getattr(spmod, f'{fmt}_{kind}')
+    dense = xp.zeros(shape, dtype=dtype)
+    diag_n = min(shape)
+    if diag_n:
+        diag_idx = xp.arange(diag_n)
+        dense[diag_idx, diag_idx] = xp.arange(1, diag_n + 1, dtype=dtype)
+    return cls(dense)
+
+
 def _make_csr(xp, sp, dtype, *, array=False):
     """3x4 CSR with 4 nonzeros."""
     data = xp.array([0, 1, 2, 3], dtype)
@@ -41,6 +64,15 @@ def _make_csr_sq2(xp, sp, dtype, *, array=False):
     return cls((data, indices, indptr), shape=(3, 3))
 
 
+def _make_csc(xp, sp, dtype, *, array=False):
+    """3x3 diagonal CSC with values [1, 2, 3]."""
+    data = xp.array([1, 2, 3], dtype)
+    indices = xp.array([0, 1, 2], 'i')
+    indptr = xp.array([0, 1, 2, 3], 'i')
+    cls = sp.csc_array if array else sp.csc_matrix
+    return cls((data, indices, indptr), shape=(3, 3))
+
+
 def _make_for_matmul(xp, sp, dtype, *, array=False):
     """4x3 CSR for matmul with 3x4."""
     data = xp.array([1, 2, 3, 4, 5], dtype)
@@ -53,36 +85,31 @@ def _make_for_matmul(xp, sp, dtype, *, array=False):
 class TestSparseArrayTypeIdentity:
     """issparse, isspmatrix, isinstance checks for all formats."""
 
-    @pytest.mark.parametrize('fmt', ['csr', 'csc', 'coo'])
+    @pytest.mark.parametrize('fmt', SPARSE_FORMATS)
     def test_array_issparse(self, fmt):
-        cls = getattr(sparse, f'{fmt}_array')
-        A = cls((2, 3), dtype=numpy.float64)
+        A = _make_small_sparse(fmt, array=True)
         assert sparse.issparse(A)
 
-    @pytest.mark.parametrize('fmt', ['csr', 'csc', 'coo'])
+    @pytest.mark.parametrize('fmt', SPARSE_FORMATS)
     def test_array_not_isspmatrix(self, fmt):
-        cls = getattr(sparse, f'{fmt}_array')
-        A = cls((2, 3), dtype=numpy.float64)
+        A = _make_small_sparse(fmt, array=True)
         assert not sparse.isspmatrix(A)
 
-    @pytest.mark.parametrize('fmt', ['csr', 'csc', 'coo'])
+    @pytest.mark.parametrize('fmt', SPARSE_FORMATS)
     def test_array_isinstance_sparray(self, fmt):
-        cls = getattr(sparse, f'{fmt}_array')
-        A = cls((2, 3), dtype=numpy.float64)
+        A = _make_small_sparse(fmt, array=True)
         assert isinstance(A, sparse.sparray)
         assert not isinstance(A, sparse.spmatrix)
 
-    @pytest.mark.parametrize('fmt', ['csr', 'csc', 'coo'])
+    @pytest.mark.parametrize('fmt', SPARSE_FORMATS)
     def test_matrix_isinstance_spmatrix(self, fmt):
-        cls = getattr(sparse, f'{fmt}_matrix')
-        M = cls((2, 3), dtype=numpy.float64)
+        M = _make_small_sparse(fmt, array=False)
         assert isinstance(M, sparse.spmatrix)
         assert not isinstance(M, sparse.sparray)
 
-    @pytest.mark.parametrize('fmt', ['csr', 'csc', 'coo'])
+    @pytest.mark.parametrize('fmt', SPARSE_FORMATS)
     def test_matrix_issparse(self, fmt):
-        cls = getattr(sparse, f'{fmt}_matrix')
-        M = cls((2, 3), dtype=numpy.float64)
+        M = _make_small_sparse(fmt, array=False)
         assert sparse.issparse(M)
         assert sparse.isspmatrix(M)
 
@@ -136,21 +163,14 @@ class TestSparseArrayTypeIdentity:
                         [1., 0., 1., 0.],
                         [0., 1., 0., 1.]]))
 
-    def test_block_diag_arrays(self):
-        A = sparse.csr_array(cupy.array([[1, 2]], dtype='d'))
-        B = sparse.csr_array(cupy.array([[3]], dtype='d'))
+    @pytest.mark.parametrize('use_array', [True, False])
+    def test_block_diag_type_and_values(self, use_array):
+        cls = sparse.csr_array if use_array else sparse.csr_matrix
+        expected_type = sparse.sparray if use_array else sparse.spmatrix
+        A = cls(cupy.array([[1, 2]], dtype='d'))
+        B = cls(cupy.array([[3]], dtype='d'))
         result = sparse.block_diag((A, B))
-        assert isinstance(result, sparse.sparray)
-        cupy.testing.assert_array_equal(
-            result.toarray(),
-            cupy.array([[1., 2., 0.],
-                        [0., 0., 3.]]))
-
-    def test_block_diag_matrices(self):
-        A = sparse.csr_matrix(cupy.array([[1, 2]], dtype='d'))
-        B = sparse.csr_matrix(cupy.array([[3]], dtype='d'))
-        result = sparse.block_diag((A, B))
-        assert isinstance(result, sparse.spmatrix)
+        assert isinstance(result, expected_type)
         cupy.testing.assert_array_equal(
             result.toarray(),
             cupy.array([[1., 2., 0.],
@@ -229,20 +249,19 @@ class TestSparseArrayTypeIdentity:
         with pytest.raises(ValueError):
             sparse.permute_dims(A, (0, 0))
 
-    @pytest.mark.parametrize('fmt', ['csr', 'csc', 'coo'])
+    @pytest.mark.parametrize('fmt', SPARSE_FORMATS)
     def test_array_maxprint_kwarg(self, fmt):
-        cls = getattr(sparse, f'{fmt}_array')
-        A = cls(cupy.array([[1., 2.]]), maxprint=10)
+        if fmt == 'dia':
+            data = cupy.array([[1., 2.]])
+            offsets = cupy.array([0], dtype='i')
+            A = sparse.dia_array((data, offsets), shape=(2, 2), maxprint=10)
+            B = sparse.dia_array((data, offsets), shape=(2, 2))
+        else:
+            cls = getattr(sparse, f'{fmt}_array')
+            A = cls(cupy.array([[1., 2.]]), maxprint=10)
+            B = cls(cupy.array([[1., 2.]]))
         assert A.maxprint == 10
-        # Default
-        B = cls(cupy.array([[1., 2.]]))
         assert B.maxprint == 50
-
-    def test_dia_array_maxprint_kwarg(self):
-        data = cupy.array([[1., 2., 3.]])
-        offsets = cupy.array([0])
-        A = sparse.dia_array((data, offsets), shape=(3, 3), maxprint=10)
-        assert A.maxprint == 10
 
     def test_negate_bool_array_raises(self):
         # Match scipy 1.17: NotImplementedError, not TypeError.
@@ -262,6 +281,10 @@ class TestSparseArrayTypeIdentity:
         assert isinstance(res, cupy.ndarray)
         cupy.testing.assert_array_equal(
             res, cupy.array([1., 0., 0., 3.]))
+
+    def test_copy_preserves_array_type(self):
+        a = _make_csr(cupy, sparse, numpy.float64, array=True)
+        assert isinstance(a.copy(), sparse.sparray)
 
     def test_csc_array_matmul_preserves_array_type(self):
         # SciPy gh-fix: csc_array @ csc_array (or csr_array) returns
@@ -313,7 +336,7 @@ class TestSparseArrayTypeIdentity:
                         [0., 2., 0.],
                         [0., 0., 3.]]))
 
-    @pytest.mark.parametrize('fmt', ['csr', 'csc', 'coo'])
+    @pytest.mark.parametrize('fmt', ('csr', 'csc', 'coo'))
     def test_setdiag_python_types(self, fmt):
         # Regression: setdiag used to call ``values.astype(...)`` (or
         # ``values.ndim``) directly on the input, raising AttributeError
@@ -340,7 +363,7 @@ class TestSparseArrayTypeIdentity:
                         [4., 99., 6.],
                         [7., 8., 99.]]))
 
-    @pytest.mark.parametrize('fmt', ['csr', 'csc', 'coo'])
+    @pytest.mark.parametrize('fmt', ('csr', 'csc', 'coo'))
     def test_inplace_scalar_preserves_identity(self, fmt):
         # ``A *= 2`` and ``A /= 2`` must mutate ``self.data`` in place
         # so the bound name still refers to the same object (matches
@@ -391,7 +414,7 @@ class TestSparseArrayTypeIdentity:
             A.toarray(),
             cupy.array([[2., 0., 0.], [0., 4., 0.], [0., 0., 6.]]))
 
-    @pytest.mark.parametrize('fmt', ['csr', 'csc', 'coo'])
+    @pytest.mark.parametrize('fmt', ('csr', 'csc', 'coo'))
     def test_setdiag_does_not_mutate_input(self, fmt):
         # Regression: CSR setdiag used ``x_data -= self.diagonal(k)``
         # in place.  Now that input is coerced via ``cupy.asarray``
@@ -535,7 +558,7 @@ class TestSparseArrayTypeIdentity:
         assert m.count_nonzero() == 2  # the 0 at (0, 0) doesn't count
         assert m.nnz == 3                # but it is stored
 
-    @pytest.mark.parametrize('fmt', ['csr', 'csc', 'coo'])
+    @pytest.mark.parametrize('fmt', ('csr', 'csc', 'coo'))
     def test_count_nonzero_axis_empty(self, fmt):
         # Regression: ``count_nonzero(axis=)`` on an empty sparse object
         # used to crash because ``cupy.bincount`` errors on zero-size
@@ -554,7 +577,7 @@ class TestSparseArrayTypeIdentity:
         cupy.testing.assert_array_equal(
             A.count_nonzero(axis=-2), cupy.zeros(5, dtype=cupy.intp))
 
-    @pytest.mark.parametrize('fmt', ['csr', 'csc', 'coo'])
+    @pytest.mark.parametrize('fmt', ('csr', 'csc', 'coo'))
     def test_count_nonzero_axis_all_explicit_zero(self, fmt):
         # When every stored value is an explicit zero, the
         # bincount-on-mask path also produces a zero-size input that
@@ -583,18 +606,14 @@ class TestSparseArrayTypeIdentity:
             A.count_nonzero(axis=1), cupy.zeros(2, dtype=cupy.intp))
 
     @testing.with_requires('scipy')
-    @pytest.mark.parametrize('fmt', ['csr', 'csc', 'coo'])
+    @pytest.mark.parametrize('fmt', SPARSE_FORMATS)
     def test_type_system_matches_scipy(self, fmt):
         """CuPy and SciPy type predicates should agree."""
-        sp_arr_cls = getattr(scipy.sparse, f'{fmt}_array')
-        sp_mat_cls = getattr(scipy.sparse, f'{fmt}_matrix')
-        cp_arr_cls = getattr(sparse, f'{fmt}_array')
-        cp_mat_cls = getattr(sparse, f'{fmt}_matrix')
-
-        sp_a = sp_arr_cls((2, 3))
-        sp_m = sp_mat_cls((2, 3))
-        cp_a = cp_arr_cls((2, 3))
-        cp_m = cp_mat_cls((2, 3))
+        sp_a = _make_small_sparse(fmt, xp=numpy, spmod=scipy.sparse)
+        sp_m = _make_small_sparse(
+            fmt, array=False, xp=numpy, spmod=scipy.sparse)
+        cp_a = _make_small_sparse(fmt)
+        cp_m = _make_small_sparse(fmt, array=False)
 
         assert sparse.issparse(cp_a) == scipy.sparse.issparse(sp_a)
         assert sparse.issparse(cp_m) == scipy.sparse.issparse(sp_m)
@@ -602,49 +621,48 @@ class TestSparseArrayTypeIdentity:
         assert sparse.isspmatrix(cp_m) == scipy.sparse.isspmatrix(sp_m)
 
 
-@testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
-}))
+@pytest.mark.parametrize(
+    'dtype', [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128])
 @testing.with_requires('scipy')
 class TestCsrArrayConstruction:
 
     @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_from_data_indices_indptr(self, xp, sp):
-        m = _make_csr(xp, sp, self.dtype, array=True)
+    def test_from_data_indices_indptr(self, xp, sp, dtype):
+        m = _make_csr(xp, sp, dtype, array=True)
         assert m.format == 'csr'
         assert isinstance(m, sp.sparray)
         return m
 
     @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_from_dense(self, xp, sp):
-        dense = xp.array([[1, 0, 2], [0, 3, 0]], dtype=self.dtype)
+    def test_from_dense(self, xp, sp, dtype):
+        dense = xp.array([[1, 0, 2], [0, 3, 0]], dtype=dtype)
         m = sp.csr_array(dense)
         assert isinstance(m, sp.sparray)
         return m
 
     @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_from_coo_tuple(self, xp, sp):
-        data = xp.array([1, 2, 3], self.dtype)
+    def test_from_coo_tuple(self, xp, sp, dtype):
+        data = xp.array([1, 2, 3], dtype)
         row = xp.array([0, 1, 2], 'i')
         col = xp.array([2, 0, 1], 'i')
         m = sp.csr_array((data, (row, col)), shape=(3, 3))
         assert isinstance(m, sp.sparray)
         return m
 
-    def test_empty(self):
-        m = sparse.csr_array((3, 4), dtype=numpy.float64)
+    def test_empty(self, dtype):
+        m = sparse.csr_array((3, 4), dtype=dtype)
         assert m.shape == (3, 4)
         assert m.nnz == 0
         assert isinstance(m, sparse.sparray)
 
-    def test_from_coo_tuple_preserves_int64_indices(self):
+    def test_from_coo_tuple_preserves_int64_indices(self, dtype):
         # Regression: csr_array((data, (row, col))) used to construct
         # an intermediate ``coo_matrix`` (not ``coo_array``), which ran
         # ``_get_index_dtype(check_contents=True)`` and silently
         # downcast int64 row/col arrays to int32.  Now uses
         # ``self._coo_container`` so the sparse-array dtype-preservation
         # promise is honored.
-        data = cupy.array([1.0, 2.0], dtype=self.dtype)
+        data = cupy.array([1.0, 2.0], dtype=dtype)
         row = cupy.array([0, 1], dtype=cupy.int64)
         col = cupy.array([0, 1], dtype=cupy.int64)
         m = sparse.csr_array((data, (row, col)), shape=(3, 3))
@@ -659,172 +677,118 @@ class TestCsrArrayConstruction:
         assert m.indices.dtype == cupy.int32
 
 
-@testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64],
-}))
+@pytest.mark.parametrize('dtype', [numpy.float32, numpy.float64])
 @testing.with_requires('scipy')
 class TestCsrArrayStarIsElementwise:
     """Verify that * is element-wise for csr_array (matching scipy.sparse)."""
 
     @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_star_sparse(self, xp, sp):
+    def test_star_sparse(self, xp, sp, dtype):
         """array * array should be element-wise."""
-        a = _make_csr_sq(xp, sp, self.dtype, array=True)
-        b = _make_csr_sq(xp, sp, self.dtype, array=True)
-        return a * b
+        a = _make_csr_sq(xp, sp, dtype, array=True)
+        b = _make_csr_sq(xp, sp, dtype, array=True)
+        result = a * b
+        assert isinstance(result, sp.sparray)
+        return result
 
     @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_star_scalar(self, xp, sp):
+    def test_star_scalar(self, xp, sp, dtype):
         """array * scalar should be scalar multiplication."""
-        a = _make_csr(xp, sp, self.dtype, array=True)
-        return a * self.dtype(2.0)
+        a = _make_csr(xp, sp, dtype, array=True)
+        result = a * dtype(2.0)
+        assert isinstance(result, sp.sparray)
+        return result
 
     @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_rstar_scalar(self, xp, sp):
+    def test_rstar_scalar(self, xp, sp, dtype):
         """scalar * array should be scalar multiplication."""
-        a = _make_csr(xp, sp, self.dtype, array=True)
-        return self.dtype(3.0) * a
+        a = _make_csr(xp, sp, dtype, array=True)
+        result = dtype(3.0) * a
+        assert isinstance(result, sp.sparray)
+        return result
 
 
-@testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64],
-}))
+@pytest.mark.parametrize('dtype', [numpy.float32, numpy.float64])
 @testing.with_requires('scipy')
 class TestCsrArrayMatmul:
 
     @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_matmul_sparse(self, xp, sp):
-        a = _make_csr(xp, sp, self.dtype, array=True)
-        b = _make_for_matmul(xp, sp, self.dtype, array=True)
-        return a @ b
+    def test_matmul_sparse(self, xp, sp, dtype):
+        a = _make_csr(xp, sp, dtype, array=True)
+        b = _make_for_matmul(xp, sp, dtype, array=True)
+        result = a @ b
+        assert isinstance(result, sp.sparray)
+        return result
 
     @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_matmul_dense_vector(self, xp, sp):
-        a = _make_csr(xp, sp, self.dtype, array=True)
-        x = xp.arange(4).astype(self.dtype)
+    def test_matmul_dense_vector(self, xp, sp, dtype):
+        a = _make_csr(xp, sp, dtype, array=True)
+        x = xp.arange(4).astype(dtype)
         return a @ x
 
     @testing.numpy_cupy_allclose(sp_name='sp', contiguous_check=False)
-    def test_matmul_dense_matrix(self, xp, sp):
-        a = _make_csr(xp, sp, self.dtype, array=True)
-        x = xp.arange(8).reshape(4, 2).astype(self.dtype)
+    def test_matmul_dense_matrix(self, xp, sp, dtype):
+        a = _make_csr(xp, sp, dtype, array=True)
+        x = xp.arange(8).reshape(4, 2).astype(dtype)
         return a @ x
 
-    def test_matmul_scalar_raises(self):
-        a = _make_csr_sq(cupy, sparse, numpy.float64, array=True)
+    def test_matmul_scalar_raises(self, dtype):
+        a = _make_csr_sq(cupy, sparse, dtype, array=True)
         with pytest.raises(ValueError):
             a @ 5.0
 
 
-@testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64],
-}))
+@pytest.mark.parametrize('dtype', [numpy.float32, numpy.float64])
 @testing.with_requires('scipy')
 class TestCsrArrayPower:
 
     @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_power_elementwise(self, xp, sp):
+    def test_power_elementwise(self, xp, sp, dtype):
         """array ** n should be element-wise, not matrix power."""
-        a = _make_csr_sq(xp, sp, self.dtype, array=True)
-        return a ** 2
+        a = _make_csr_sq(xp, sp, dtype, array=True)
+        result = a ** 2
+        assert isinstance(result, sp.sparray)
+        return result
 
     @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_power_matches_dense(self, xp, sp):
+    def test_power_matches_dense(self, xp, sp, dtype):
         """Verify ** gives same result as dense element-wise power."""
-        a = _make_csr_sq(xp, sp, self.dtype, array=True)
+        a = _make_csr_sq(xp, sp, dtype, array=True)
         result_sparse = (a ** 2).toarray()
         result_dense = a.toarray() ** 2
         xp.testing.assert_allclose(result_sparse, result_dense)
         return result_sparse
 
-    def test_power_zero_raises(self):
+    def test_power_zero_raises(self, dtype):
         """Array ** 0 raises NotImplementedError (would densify)."""
-        a = _make_csr_sq(cupy, sparse, self.dtype, array=True)
+        a = _make_csr_sq(cupy, sparse, dtype, array=True)
         with pytest.raises(NotImplementedError):
             a ** 0
 
 
-@testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64],
-}))
+@pytest.mark.parametrize('dtype', [numpy.float32, numpy.float64])
 @testing.with_requires('scipy')
 class TestCsrMatrixStarIsMatmul:
     """Verify that * is still matmul for csr_matrix (unchanged)."""
 
     @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_star_matmul(self, xp, sp):
+    def test_star_matmul(self, xp, sp, dtype):
         """matrix * matrix should be matmul."""
-        a = _make_csr(xp, sp, self.dtype)
-        b = _make_for_matmul(xp, sp, self.dtype)
+        a = _make_csr(xp, sp, dtype)
+        b = _make_for_matmul(xp, sp, dtype)
         return a * b
 
     @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_star_scalar(self, xp, sp):
+    def test_star_scalar(self, xp, sp, dtype):
         """matrix * scalar should still work."""
-        a = _make_csr(xp, sp, self.dtype)
-        return a * self.dtype(2.0)
+        a = _make_csr(xp, sp, dtype)
+        return a * dtype(2.0)
 
     @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_pow_matrix_power(self, xp, sp):
+    def test_pow_matrix_power(self, xp, sp, dtype):
         """matrix ** n should be matrix power."""
-        a = _make_csr_sq(xp, sp, self.dtype)
+        a = _make_csr_sq(xp, sp, dtype)
         return a ** 2
-
-
-class TestCsrArrayTypePreservation:
-    """Operations on csr_array should return csr_array (not csr_matrix)."""
-
-    dtype = numpy.float64
-
-    def _check_array(self, result):
-        assert isinstance(result, sparse.sparray), (
-            f'Expected sparray, got {type(result).__name__}')
-        assert not isinstance(result, sparse.spmatrix)
-
-    def test_star(self):
-        a = _make_csr_sq(cupy, sparse, self.dtype, array=True)
-        b = _make_csr_sq(cupy, sparse, self.dtype, array=True)
-        self._check_array(a * b)
-
-    def test_matmul(self):
-        a = _make_csr_sq(cupy, sparse, self.dtype, array=True)
-        b = _make_csr_sq2(cupy, sparse, self.dtype, array=True)
-        self._check_array(a @ b)
-
-    def test_add(self):
-        a = _make_csr(cupy, sparse, self.dtype, array=True)
-        b = _make_csr(cupy, sparse, self.dtype, array=True)
-        self._check_array(a + b)
-
-    def test_sub(self):
-        a = _make_csr(cupy, sparse, self.dtype, array=True)
-        b = _make_csr(cupy, sparse, self.dtype, array=True)
-        self._check_array(a - b)
-
-    def test_neg(self):
-        a = _make_csr(cupy, sparse, self.dtype, array=True)
-        self._check_array(-a)
-
-    def test_scalar_mul(self):
-        a = _make_csr(cupy, sparse, self.dtype, array=True)
-        self._check_array(a * self.dtype(2.0))
-
-    def test_pow(self):
-        a = _make_csr_sq(cupy, sparse, self.dtype, array=True)
-        self._check_array(a ** 2)
-
-    def test_copy(self):
-        a = _make_csr(cupy, sparse, self.dtype, array=True)
-        self._check_array(a.copy())
-
-    def test_abs(self):
-        a = _make_csr(cupy, sparse, self.dtype, array=True)
-        self._check_array(abs(a))
-
-    def test_T(self):
-        a = _make_csr(cupy, sparse, self.dtype, array=True)
-        result = a.T
-        assert isinstance(result, sparse.sparray)
 
 
 class TestMultiplyMixedSparrayMatrix:
@@ -873,44 +837,6 @@ class TestMultiplyMixedSparrayMatrix:
         cupy.testing.assert_array_equal(result.toarray(), hi * lo)
 
 
-@testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64],
-}))
-@testing.with_requires('scipy')
-class TestCsrArrayConversions:
-
-    @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_tocsc(self, xp, sp):
-        m = _make_csr(xp, sp, self.dtype, array=True)
-        result = m.tocsc()
-        assert isinstance(result, sp.sparray)
-        assert result.format == 'csc'
-        return result
-
-    @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_tocoo(self, xp, sp):
-        m = _make_csr(xp, sp, self.dtype, array=True)
-        result = m.tocoo()
-        assert isinstance(result, sp.sparray)
-        assert result.format == 'coo'
-        return result
-
-    @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_toarray(self, xp, sp):
-        m = _make_csr(xp, sp, self.dtype, array=True)
-        return m.toarray()
-
-    def test_tocsr_returns_self(self):
-        m = _make_csr(cupy, sparse, numpy.float64, array=True)
-        assert m.tocsr() is m
-
-    def test_tocsr_copy(self):
-        m = _make_csr(cupy, sparse, numpy.float64, array=True)
-        n = m.tocsr(copy=True)
-        assert n is not m
-        assert isinstance(n, sparse.sparray)
-
-
 @testing.with_requires('scipy')
 class TestCsrArrayGet:
 
@@ -932,122 +858,84 @@ class TestCsrArrayGet:
         return m.toarray()
 
 
-@testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
-}))
+@pytest.mark.parametrize(
+    'dtype', [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128])
 @testing.with_requires('scipy')
 class TestCsrArrayArithmeticSciPyComparison:
 
     @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_add(self, xp, sp):
-        a = _make_csr(xp, sp, self.dtype, array=True)
-        b = _make_csr(xp, sp, self.dtype, array=True)
-        return a + b
+    def test_add(self, xp, sp, dtype):
+        a = _make_csr(xp, sp, dtype, array=True)
+        b = _make_csr(xp, sp, dtype, array=True)
+        result = a + b
+        assert isinstance(result, sp.sparray)
+        return result
 
     @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_sub(self, xp, sp):
-        a = _make_csr(xp, sp, self.dtype, array=True)
-        b = _make_csr(xp, sp, self.dtype, array=True)
-        return (a - b).toarray()
+    def test_sub(self, xp, sp, dtype):
+        a = _make_csr(xp, sp, dtype, array=True)
+        b = _make_csr(xp, sp, dtype, array=True)
+        result = a - b
+        assert isinstance(result, sp.sparray)
+        return result.toarray()
 
     @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_neg(self, xp, sp):
-        a = _make_csr(xp, sp, self.dtype, array=True)
-        return (-a).toarray()
+    def test_neg(self, xp, sp, dtype):
+        a = _make_csr(xp, sp, dtype, array=True)
+        result = -a
+        assert isinstance(result, sp.sparray)
+        return result.toarray()
 
     @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_mul_elementwise(self, xp, sp):
-        a = _make_csr_sq(xp, sp, self.dtype, array=True)
-        b = _make_csr_sq(xp, sp, self.dtype, array=True)
-        return a * b
+    def test_mul_elementwise(self, xp, sp, dtype):
+        a = _make_csr_sq(xp, sp, dtype, array=True)
+        b = _make_csr_sq(xp, sp, dtype, array=True)
+        result = a * b
+        assert isinstance(result, sp.sparray)
+        return result
 
     @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_mul_scalar(self, xp, sp):
-        a = _make_csr(xp, sp, self.dtype, array=True)
-        return a * self.dtype(2.5)
+    def test_mul_scalar(self, xp, sp, dtype):
+        a = _make_csr(xp, sp, dtype, array=True)
+        result = a * dtype(2.5)
+        assert isinstance(result, sp.sparray)
+        return result
 
     @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_matmul(self, xp, sp):
-        a = _make_csr(xp, sp, self.dtype, array=True)
-        b = _make_for_matmul(xp, sp, self.dtype, array=True)
-        return a @ b
+    def test_matmul(self, xp, sp, dtype):
+        a = _make_csr(xp, sp, dtype, array=True)
+        b = _make_for_matmul(xp, sp, dtype, array=True)
+        result = a @ b
+        assert isinstance(result, sp.sparray)
+        return result
 
     @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_power_elementwise(self, xp, sp):
-        a = _make_csr_sq(xp, sp, self.dtype, array=True)
-        return a ** 2
+    def test_power_elementwise(self, xp, sp, dtype):
+        a = _make_csr_sq(xp, sp, dtype, array=True)
+        result = a ** 2
+        assert isinstance(result, sp.sparray)
+        return result
 
     @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_abs(self, xp, sp):
-        a = _make_csr(xp, sp, self.dtype, array=True)
-        return abs(a)
+    def test_abs(self, xp, sp, dtype):
+        a = _make_csr(xp, sp, dtype, array=True)
+        result = abs(a)
+        assert isinstance(result, sp.sparray)
+        return result
 
     @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_transpose(self, xp, sp):
-        a = _make_csr(xp, sp, self.dtype, array=True)
-        return a.T
+    def test_transpose(self, xp, sp, dtype):
+        a = _make_csr(xp, sp, dtype, array=True)
+        result = a.T
+        assert isinstance(result, sp.sparray)
+        return result
 
     @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_conj(self, xp, sp):
-        a = _make_csr(xp, sp, self.dtype, array=True)
-        return a.conj()
-
-
-class TestCsrArrayRemovedMethods:
-
-    @pytest.fixture(autouse=True)
-    def setUp(self):
-        self.arr = sparse.csr_array(
-            (cupy.array([1.0]), cupy.array([0], dtype='i'),
-             cupy.array([0, 1], dtype='i')), shape=(1, 2))
-
-    def test_no_A(self):
-        with pytest.raises(AttributeError):
-            self.arr.A
-
-    def test_no_H(self):
-        with pytest.raises(AttributeError):
-            self.arr.H
-
-    def test_no_getrow(self):
-        with pytest.raises(AttributeError):
-            self.arr.getrow(0)
-
-    def test_no_getcol(self):
-        with pytest.raises(AttributeError):
-            self.arr.getcol(0)
-
-    def test_no_getH(self):
-        with pytest.raises(AttributeError):
-            self.arr.getH()
-
-    def test_no_asfptype(self):
-        with pytest.raises(AttributeError):
-            self.arr.asfptype()
-
-    def test_no_getformat(self):
-        with pytest.raises(AttributeError):
-            self.arr.getformat()
-
-    def test_no_getmaxprint(self):
-        with pytest.raises(AttributeError):
-            self.arr.getmaxprint()
-
-    def test_no_shape_setter(self):
-        with pytest.raises(AttributeError):
-            self.arr.shape = (2, 1)
-
-    def test_has_shape(self):
-        assert self.arr.shape == (1, 2)
-
-    def test_has_nnz(self):
-        assert self.arr.nnz == 1
-
-    def test_has_format(self):
-        assert self.arr.format == 'csr'
-
-    def test_has_ndim(self):
-        assert self.arr.ndim == 2
+    def test_conj(self, xp, sp, dtype):
+        a = _make_csr(xp, sp, dtype, array=True)
+        result = a.conj()
+        assert isinstance(result, sp.sparray)
+        return result
 
 
 # Matrix-only APIs that don't exist on sparray.  In SciPy 1.14 most of
@@ -1059,44 +947,62 @@ class TestCsrArrayRemovedMethods:
 @pytest.mark.filterwarnings(
     "ignore:`spmatrix\\.(A|H)`:DeprecationWarning"
 )
-class TestCsrMatrixLegacyMethods:
+class TestLegacyApiSurfaceVia:
+    """Legacy array/matrix API surface checks using CSR as the
+    representative sparse format.
 
-    @pytest.fixture(autouse=True)
-    def setUp(self):
-        self.mat = sparse.csr_matrix(
-            (cupy.array([1.0]), cupy.array([0], dtype='i'),
-             cupy.array([0, 1], dtype='i')), shape=(1, 2))
+    Intent: validate common array-vs-matrix API contract (attribute
+    presence/absence and shape-setter behavior) without multiplying by
+    all formats.  Some legacy methods (e.g. getrow/getcol) dispatch to
+    format-specific hooks, so keeping this class CSR-focused avoids
+    mixing format-implementation tests into API-surface checks.
+    """
 
-    def test_has_A(self):
-        result = self.mat.A
-        assert isinstance(result, cupy.ndarray)
+    @pytest.fixture
+    def arr(self):
+        return _make_small_sparse('csr', array=True, shape=(1, 2))
 
-    def test_has_H(self):
-        result = self.mat.H
-        assert sparse.issparse(result)
+    @pytest.fixture
+    def mat(self):
+        return _make_small_sparse('csr', array=False, shape=(1, 2))
 
-    def test_has_getH(self):
-        result = self.mat.getH()
-        assert sparse.issparse(result)
+    @pytest.mark.parametrize(
+        'attr', ['A', 'H', 'getrow', 'getcol', 'getH', 'asfptype',
+                 'getformat', 'getmaxprint']
+    )
+    def test_array_has_no_matrix_only_api(self, arr, attr):
+        with pytest.raises(AttributeError):
+            getattr(arr, attr)
 
-    def test_has_asfptype(self):
-        result = self.mat.asfptype()
-        assert sparse.issparse(result)
+    def test_array_has_basic_surface(self, arr):
+        assert arr.shape == (1, 2)
+        assert arr.nnz == 1
+        assert arr.format == 'csr'
+        assert arr.ndim == 2
 
-    def test_has_getformat(self):
-        assert self.mat.getformat() == 'csr'
+    def test_array_has_no_shape_setter(self, arr):
+        with pytest.raises(AttributeError):
+            arr.shape = (2, 1)
 
-    def test_has_getrow(self):
-        result = self.mat.getrow(0)
-        assert sparse.issparse(result)
+    def test_matrix_A_and_H_exist(self, mat):
+        assert isinstance(mat.A, cupy.ndarray)
+        assert sparse.issparse(mat.H)
 
-    def test_has_getcol(self):
-        result = self.mat.getcol(0)
-        assert sparse.issparse(result)
+    @pytest.mark.parametrize('name,args', [
+        ('getH', ()),
+        ('asfptype', ()),
+        ('getrow', (0,)),
+        ('getcol', (0,)),
+    ])
+    def test_matrix_legacy_methods_exist(self, mat, name, args):
+        assert sparse.issparse(getattr(mat, name)(*args))
 
-    def test_has_shape_setter(self):
+    def test_matrix_getformat_exists(self, mat):
+        assert mat.getformat() == 'csr'
+
+    def test_matrix_shape_setter_exists(self, mat):
         # shape setter exists on matrices (even if reshape is no-op here)
-        self.mat.shape = (1, 2)
+        mat.shape = (1, 2)
 
 
 # Index dtype policy: arrays preserve int64, matrices may downcast
@@ -1141,51 +1047,75 @@ class TestCsrArrayIndexDtype:
         assert A.col.dtype == cupy.int64
 
 
-# CSC/COO array conversion type preservation
+# Sparse array format conversions
 
-class TestNonCsrArrayConversions:
+@pytest.mark.parametrize('dtype', [numpy.float32, numpy.float64])
+class TestSparseArrayConversions:
 
-    def test_coo_array_tocsr_type(self):
-        A = sparse.coo_array(
-            (cupy.array([1.0]), (cupy.array([0], dtype='i'),
-             cupy.array([0], dtype='i'))), shape=(2, 2))
-        B = A.tocsr()
-        assert isinstance(B, sparse.sparray)
-        assert B.format == 'csr'
+    @testing.with_requires('scipy')
+    @pytest.mark.parametrize('src_fmt', SPARSE_FORMATS)
+    @pytest.mark.parametrize('dst_fmt', SPARSE_FORMATS)
+    @testing.numpy_cupy_allclose(sp_name='sp', contiguous_check=False)
+    def test_conversion_values_match_scipy(
+            self, xp, sp, src_fmt, dst_fmt, dtype):
+        if dst_fmt == 'dia' and src_fmt != 'dia':
+            # CuPy does not implement non-DIA -> DIA yet.
+            pytest.skip('non-DIA -> DIA conversion is not implemented')
+        A = _make_small_sparse(
+            src_fmt, array=True, shape=(2, 2), dtype=dtype, xp=xp, spmod=sp)
+        return getattr(A, f'to{dst_fmt}')().toarray()
 
-    def test_coo_array_tocsc_type(self):
-        A = sparse.coo_array(
-            (cupy.array([1.0]), (cupy.array([0], dtype='i'),
-             cupy.array([0], dtype='i'))), shape=(2, 2))
-        B = A.tocsc()
-        assert isinstance(B, sparse.sparray)
-        assert B.format == 'csc'
+    @testing.with_requires('scipy')
+    @pytest.mark.parametrize('src_fmt', SPARSE_FORMATS)
+    @testing.numpy_cupy_allclose(sp_name='sp', contiguous_check=False)
+    def test_toarray(self, xp, sp, src_fmt, dtype):
+        m = _make_small_sparse(
+            src_fmt, array=True, shape=(2, 2), dtype=dtype, xp=xp, spmod=sp)
+        return m.toarray()
 
-    def test_csc_array_tocsr_type(self):
-        data = cupy.array([1.0, 2.0], dtype='d')
-        indices = cupy.array([0, 1], dtype='i')
-        indptr = cupy.array([0, 1, 2], dtype='i')
-        A = sparse.csc_array((data, indices, indptr), shape=(2, 2))
-        B = A.tocsr()
-        assert isinstance(B, sparse.sparray)
-        assert B.format == 'csr'
-
-    def test_csc_array_tocoo_type(self):
-        data = cupy.array([1.0, 2.0], dtype='d')
-        indices = cupy.array([0, 1], dtype='i')
-        indptr = cupy.array([0, 1, 2], dtype='i')
-        A = sparse.csc_array((data, indices, indptr), shape=(2, 2))
-        B = A.tocoo()
-        assert isinstance(B, sparse.sparray)
-        assert B.format == 'coo'
-
-    def test_csc_array_transpose_type(self):
-        data = cupy.array([1.0, 2.0], dtype='d')
-        indices = cupy.array([0, 1], dtype='i')
-        indptr = cupy.array([0, 1, 2], dtype='i')
-        A = sparse.csc_array((data, indices, indptr), shape=(2, 2))
+    @pytest.mark.parametrize(
+        'src_fmt,expected_fmt',
+        [('csr', 'csc'),
+         ('csc', 'csr'),
+         ('coo', 'coo'),
+         # DIA has no transpose override yet; routes via tocsr() → CSC.
+         ('dia', 'csc')])
+    def test_array_transpose_type(self, src_fmt, expected_fmt, dtype):
+        A = _make_small_sparse(src_fmt, array=True, shape=(2, 2), dtype=dtype)
         AT = A.T
         assert isinstance(AT, sparse.sparray)
+        assert AT.format == expected_fmt
+
+    @pytest.mark.parametrize('src_fmt', SPARSE_FORMATS)
+    @pytest.mark.parametrize('dst_fmt', SPARSE_FORMATS)
+    def test_conversion_type_and_format(
+            self, src_fmt, dst_fmt, dtype):
+        A = _make_small_sparse(src_fmt, array=True, shape=(2, 2), dtype=dtype)
+        op = getattr(A, f'to{dst_fmt}')
+        if dst_fmt == 'dia' and src_fmt != 'dia':
+            # Non-DIA -> DIA currently routes to CSR.todia(), which is not
+            # implemented yet.
+            with pytest.raises(NotImplementedError):
+                op()
+            return
+        result = op()
+        assert isinstance(result, sparse.sparray)
+        assert result.format == dst_fmt
+        if src_fmt == dst_fmt:
+            assert result is A
+
+    @pytest.mark.parametrize('src_fmt', SPARSE_FORMATS)
+    @pytest.mark.parametrize('copy', [False, True])
+    def test_same_format_conversion_copy_semantics(
+            self, src_fmt, copy, dtype):
+        A = _make_small_sparse(src_fmt, array=True, shape=(2, 2), dtype=dtype)
+        result = getattr(A, f'to{src_fmt}')(copy=copy)
+        assert isinstance(result, sparse.sparray)
+        assert result.format == src_fmt
+        if copy:
+            assert result is not A
+        else:
+            assert result is A
 
 
 # Construction functions
@@ -1236,91 +1166,50 @@ class TestConstructionFunctions:
 
 class TestTypeAwareConstruct:
 
-    @pytest.fixture
-    def arr_pair(self):
+    def _make_pair(self, use_array):
+        cls = sparse.csr_array if use_array else sparse.csr_matrix
         d = cupy.array([[1, 0], [0, 2]], dtype='d')
-        return sparse.csr_array(d), sparse.csr_array(d)
+        return cls(d), cls(d)
 
-    @pytest.fixture
-    def mat_pair(self):
-        d = cupy.array([[1, 0], [0, 2]], dtype='d')
-        return sparse.csr_matrix(d), sparse.csr_matrix(d)
-
-    def test_hstack_arrays(self, arr_pair):
-        result = sparse.hstack(list(arr_pair))
-        assert isinstance(result, sparse.sparray)
-
-    def test_hstack_matrices(self, mat_pair):
-        result = sparse.hstack(list(mat_pair))
-        assert isinstance(result, sparse.spmatrix)
-
-    def test_vstack_arrays(self, arr_pair):
-        result = sparse.vstack(list(arr_pair))
-        assert isinstance(result, sparse.sparray)
-
-    def test_vstack_matrices(self, mat_pair):
-        result = sparse.vstack(list(mat_pair))
-        assert isinstance(result, sparse.spmatrix)
-
-    def test_kron_arrays(self, arr_pair):
-        result = sparse.kron(*arr_pair)
-        assert isinstance(result, sparse.sparray)
-
-    def test_kron_matrices(self, mat_pair):
-        result = sparse.kron(*mat_pair)
-        assert isinstance(result, sparse.spmatrix)
-
-    def test_tril_array(self, arr_pair):
-        result = sparse.tril(arr_pair[0])
-        assert isinstance(result, sparse.sparray)
-
-    def test_tril_matrix(self, mat_pair):
-        result = sparse.tril(mat_pair[0])
-        assert isinstance(result, sparse.spmatrix)
-
-    def test_triu_array(self, arr_pair):
-        result = sparse.triu(arr_pair[0])
-        assert isinstance(result, sparse.sparray)
-
-    def test_triu_matrix(self, mat_pair):
-        result = sparse.triu(mat_pair[0])
-        assert isinstance(result, sparse.spmatrix)
+    @pytest.mark.parametrize('use_array', [True, False])
+    @pytest.mark.parametrize('op_name', ['hstack', 'vstack', 'kron',
+                                         'tril', 'triu'])
+    def test_construct_type_propagation(self, use_array, op_name):
+        pair = self._make_pair(use_array)
+        expected_type = sparse.sparray if use_array else sparse.spmatrix
+        op = getattr(sparse, op_name)
+        if op_name in ('hstack', 'vstack'):
+            result = op(list(pair))
+        elif op_name == 'kron':
+            result = op(*pair)
+        else:
+            result = op(pair[0])
+        assert isinstance(result, expected_type)
 
 
 # CSC array arithmetic
 
-@testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64],
-}))
+@pytest.mark.parametrize('dtype', [numpy.float32, numpy.float64])
 @testing.with_requires('scipy')
 class TestCscArrayArithmetic:
 
     @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_add(self, xp, sp):
-        data = xp.array([1, 2, 3], self.dtype)
-        indices = xp.array([0, 1, 2], 'i')
-        indptr = xp.array([0, 1, 2, 3], 'i')
-        a = sp.csc_array((data, indices, indptr), shape=(3, 3))
-        b = sp.csc_array((data, indices, indptr), shape=(3, 3))
-        return a + b
+    def test_add(self, xp, sp, dtype):
+        a = _make_csc(xp, sp, dtype, array=True)
+        result = a + a
+        assert isinstance(result, sp.sparray)
+        return result
 
     @testing.numpy_cupy_allclose(sp_name='sp', contiguous_check=False)
-    def test_sub(self, xp, sp):
-        data = xp.array([1, 2, 3], self.dtype)
-        indices = xp.array([0, 1, 2], 'i')
-        indptr = xp.array([0, 1, 2, 3], 'i')
-        a = sp.csc_array((data, indices, indptr), shape=(3, 3))
-        b = sp.csc_array((data, indices, indptr), shape=(3, 3))
-        return (a - b).toarray()
+    def test_sub(self, xp, sp, dtype):
+        a = _make_csc(xp, sp, dtype, array=True)
+        result = a - a
+        assert isinstance(result, sp.sparray)
+        return result.toarray()
 
-    def test_add_preserves_type(self):
-        data = cupy.array([1, 2, 3], numpy.float64)
-        indices = cupy.array([0, 1, 2], 'i')
-        indptr = cupy.array([0, 1, 2, 3], 'i')
-        a = sparse.csc_array((data, indices, indptr), shape=(3, 3))
-        b = sparse.csc_array((data, indices, indptr), shape=(3, 3))
-        result = a + b
-        assert isinstance(result, sparse.sparray)
+    def test_add_preserves_type(self, dtype):
+        a = _make_csc(cupy, sparse, dtype, array=True)
+        assert isinstance(a + a, sparse.sparray)
 
 
 # Cross-format multiply
@@ -1331,85 +1220,77 @@ class TestCrossFormatMultiply:
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_coo_star_coo(self, xp, sp):
         """COO * COO element-wise should work."""
-        data = xp.array([1, 2, 3], numpy.float64)
-        row = xp.array([0, 1, 2], 'i')
-        col = xp.array([0, 1, 2], 'i')
-        a = sp.coo_array((data, (row, col)), shape=(3, 3))
-        b = sp.coo_array((data, (row, col)), shape=(3, 3))
-        return (a * b).toarray()
+        a = sp.coo_array(_make_csr_sq(xp, sp, numpy.float64, array=True))
+        result = a * a
+        assert isinstance(result, sp.sparray)
+        return result.toarray()
 
     @testing.numpy_cupy_allclose(sp_name='sp', contiguous_check=False)
     def test_csc_star_csc(self, xp, sp):
         """CSC * CSC element-wise should work."""
-        data = xp.array([1, 2, 3], numpy.float64)
-        indices = xp.array([0, 1, 2], 'i')
-        indptr = xp.array([0, 1, 2, 3], 'i')
-        a = sp.csc_array((data, indices, indptr), shape=(3, 3))
-        b = sp.csc_array((data, indices, indptr), shape=(3, 3))
-        return (a * b).toarray()
+        a = _make_csc(xp, sp, numpy.float64, array=True)
+        result = a * a
+        assert isinstance(result, sp.sparray)
+        return result.toarray()
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_csr_star_coo(self, xp, sp):
         """CSR * COO cross-format multiply should work."""
-        data = xp.array([1, 2, 3], numpy.float64)
-        indices = xp.array([0, 1, 2], 'i')
-        indptr = xp.array([0, 1, 2, 3], 'i')
-        a = sp.csr_array((data, indices, indptr), shape=(3, 3))
-        row = xp.array([0, 1, 2], 'i')
-        col = xp.array([0, 1, 2], 'i')
-        b = sp.coo_array((data, (row, col)), shape=(3, 3))
-        return (a * b).toarray()
+        a = _make_csr_sq(xp, sp, numpy.float64, array=True)
+        b = sp.coo_array(a)
+        result = a * b
+        assert isinstance(result, sp.sparray)
+        return result.toarray()
 
 
 # Reduction 1D shaping
 
-@testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64],
-}))
+@pytest.mark.parametrize('dtype', [numpy.float32, numpy.float64])
 @testing.with_requires('scipy')
 class TestArrayReductions:
 
     @testing.numpy_cupy_equal(sp_name='sp')
-    def test_sum_axis0_ndim(self, xp, sp):
-        m = _make_csr(xp, sp, self.dtype, array=True)
+    def test_sum_axis0_ndim(self, xp, sp, dtype):
+        m = _make_csr(xp, sp, dtype, array=True)
         result = m.sum(axis=0)
         return result.ndim
 
     @testing.numpy_cupy_equal(sp_name='sp')
-    def test_sum_axis1_ndim(self, xp, sp):
-        m = _make_csr(xp, sp, self.dtype, array=True)
+    def test_sum_axis1_ndim(self, xp, sp, dtype):
+        m = _make_csr(xp, sp, dtype, array=True)
         result = m.sum(axis=1)
         return result.ndim
 
     @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_sum_axis0_values(self, xp, sp):
-        m = _make_csr(xp, sp, self.dtype, array=True)
+    def test_sum_axis0_values(self, xp, sp, dtype):
+        m = _make_csr(xp, sp, dtype, array=True)
         return m.sum(axis=0)
 
     @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_sum_axis1_values(self, xp, sp):
-        m = _make_csr(xp, sp, self.dtype, array=True)
+    def test_sum_axis1_values(self, xp, sp, dtype):
+        m = _make_csr(xp, sp, dtype, array=True)
         return m.sum(axis=1)
 
     @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_mean_axis0(self, xp, sp):
-        m = _make_csr(xp, sp, self.dtype, array=True)
+    def test_mean_axis0(self, xp, sp, dtype):
+        m = _make_csr(xp, sp, dtype, array=True)
         return m.mean(axis=0)
 
-    def test_matrix_sum_stays_2d(self):
+    def test_matrix_sum_stays_2d(self, dtype):
         """Matrix sum(axis=0) should still be 2D."""
-        m = _make_csr(cupy, sparse, numpy.float64, array=False)
+        m = _make_csr(cupy, sparse, dtype, array=False)
         result = m.sum(axis=0)
         assert result.ndim == 2
 
-    def test_min_max_axis_returns_2d_known_gap(self):
+    def test_min_max_axis_returns_2d_known_gap(self, dtype):
         # KNOWN GAP vs scipy: scipy sparse *arrays* return 1-D from min/max
         # over an axis (shape ``(M,)``), as sum()/argmin() already do here.
         # CuPy's COO is 2-D-only, so min/max(axis=) currently returns 2-D
         # (``(1, M)`` / ``(M, 1)``) for arrays too -- an inconsistency with
         # sum/argmin.  Pinned so the divergence is tracked; tighten to 1-D
         # if/when 1-D sparse arrays land.  See ``_data.py._min_or_max_axis``.
-        a = sparse.csr_array(cupy.array([[1.0, 0.0, 2.0], [0.0, 3.0, 0.0]]))
+        a = sparse.csr_array(
+            cupy.array([[1.0, 0.0, 2.0], [0.0, 3.0, 0.0]], dtype=dtype))
         assert a.min(axis=0).shape == (1, 3)
         assert a.max(axis=1).shape == (2, 1)
         # Contrast: sum(axis=) IS 1-D for arrays (the consistent behavior).
@@ -1421,27 +1302,9 @@ class TestArrayReductions:
 class TestDiaArrayBasic:
 
     def test_construction(self):
-        data = cupy.array([[1, 2, 3]], dtype=numpy.float64)
-        offsets = cupy.array([0])
-        A = sparse.dia_array((data, offsets), shape=(3, 3))
+        A = _make_small_sparse('dia', array=True, shape=(3, 3))
         assert isinstance(A, sparse.sparray)
         assert A.format == 'dia'
-
-    def test_tocsr(self):
-        data = cupy.array([[1, 2, 3]], dtype=numpy.float64)
-        offsets = cupy.array([0])
-        A = sparse.dia_array((data, offsets), shape=(3, 3))
-        B = A.tocsr()
-        assert isinstance(B, sparse.sparray)
-        assert B.format == 'csr'
-
-    def test_tocsc(self):
-        data = cupy.array([[1, 2, 3]], dtype=numpy.float64)
-        offsets = cupy.array([0])
-        A = sparse.dia_array((data, offsets), shape=(3, 3))
-        B = A.tocsc()
-        assert isinstance(B, sparse.sparray)
-        assert B.format == 'csc'
 
     @testing.with_requires('scipy')
     @testing.numpy_cupy_allclose(sp_name='sp')
@@ -1470,26 +1333,17 @@ class TestLinearOperatorFromArray:
 
 class TestSpsolveArray:
 
-    def test_spsolve_csr_array(self):
+    @pytest.mark.parametrize('use_array', [True, False])
+    def test_spsolve_csr_input(self, use_array):
         from cupyx.scipy.sparse.linalg import spsolve
         n = 8
         A_dense = cupy.zeros((n, n), dtype=numpy.float64)
         A_dense[cupy.arange(n), cupy.arange(n)] = 4
         A_dense[cupy.arange(n - 1), cupy.arange(1, n)] = 1
         A_dense[cupy.arange(1, n), cupy.arange(n - 1)] = 1
-        A = sparse.csr_array(A_dense)
+        cls = sparse.csr_array if use_array else sparse.csr_matrix
+        A = cls(A_dense)
         b = cupy.arange(1, n + 1, dtype=numpy.float64)
         x = spsolve(A, b)
-        cupy.testing.assert_allclose(A @ x, b, rtol=1e-10)
-
-    def test_spsolve_csr_matrix(self):
-        from cupyx.scipy.sparse.linalg import spsolve
-        n = 8
-        A_dense = cupy.zeros((n, n), dtype=numpy.float64)
-        A_dense[cupy.arange(n), cupy.arange(n)] = 4
-        A_dense[cupy.arange(n - 1), cupy.arange(1, n)] = 1
-        A_dense[cupy.arange(1, n), cupy.arange(n - 1)] = 1
-        M = sparse.csr_matrix(A_dense)
-        b = cupy.arange(1, n + 1, dtype=numpy.float64)
-        x = spsolve(M, b)
-        cupy.testing.assert_allclose(M * x, b, rtol=1e-10)
+        lhs = A @ x if use_array else A * x
+        cupy.testing.assert_allclose(lhs, b, rtol=1e-10)
