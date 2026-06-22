@@ -260,7 +260,7 @@ def _generate_nd_kernel(name, pre, found, post, modes, w_shape, int_type,
     sizes = [size.format(j=j) for j in range(ndim)]
     inds = _util._generate_indices_ops(ndim, int_type, offsets)
     # CArray: remove expr entirely
-    expr = ' + '.join([f'ix_{j}' for j in range(ndim)])
+    expr = ' + '.join([f'offset_{j}' for j in range(ndim)])
 
     ws_init = ws_pre = ws_post = ''
     if has_weights or has_structure:
@@ -277,7 +277,10 @@ def _generate_nd_kernel(name, pre, found, post, modes, w_shape, int_type,
     for j in range(ndim):
         if w_shape[j] == 1:
             # CArray: string becomes 'inds[{j}] = ind_{j};', remove (int_)type
-            loops.append(f'{{ {int_type} ix_{j} = ind_{j} * xstride_{j};')
+            loops.append(f'''
+            {{
+                {int_type} ix_{j} = ind_{j};
+                {int_type} offset_{j} = ix_{j} * xstride_{j};''')
         else:
             boundary = _util._generate_boundary_condition_ops(
                 modes[j], f'ix_{j}', f'xsize_{j}', int_type)
@@ -286,9 +289,10 @@ def _generate_nd_kernel(name, pre, found, post, modes, w_shape, int_type,
     for (int iw_{j} = 0; iw_{j} < {w_shape[j]}; iw_{j}++)
     {{
         {int_type} ix_{j} = ind_{j} + iw_{j};
+        {int_type} offset_{j} = 0;
         {boundary} else {{
-            ix_{j} *= xstride_{j};
-        }};
+            offset_{j} = ix_{j} * xstride_{j};
+        }}
         ''')
 
     # CArray: string becomes 'x[inds]', no format call needed
