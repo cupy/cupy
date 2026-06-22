@@ -255,8 +255,9 @@ def _generate_nd_kernel(name, pre, found, post, modes, w_shape, int_type,
     constant_mode = (num_unique_modes == 1 and modes[0] == 'constant')
 
     # CArray: remove xstride_{j}=... from string
-    size = ('%s xsize_{j}=x.shape()[{j}], ysize_{j} = _raw_y.shape()[{j}]'
-            ', xstride_{j}=x.strides()[{j}];' % int_type)
+    size = ('%s xsize_{j} = x.shape()[{j}], ysize_{j} = _raw_y.shape()[{j}]'
+            ', xstride_{j} = x.strides()[{j}]'
+            ', maxsize_{j} = xsize_{j} * xstride_{j};' % int_type)
     sizes = [size.format(j=j) for j in range(ndim)]
     inds = _util._generate_indices_ops(ndim, int_type, offsets)
     # CArray: remove expr entirely
@@ -277,10 +278,7 @@ def _generate_nd_kernel(name, pre, found, post, modes, w_shape, int_type,
     for j in range(ndim):
         if w_shape[j] == 1:
             # CArray: string becomes 'inds[{j}] = ind_{j};', remove (int_)type
-            loops.append(f'''
-            {{
-                {int_type} ix_{j} = ind_{j};
-                {int_type} offset_{j} = ix_{j} * xstride_{j};''')
+            loops.append(f'{{ {int_type} ix_{j} = ind_{j};')
         else:
             boundary = _util._generate_boundary_condition_ops(
                 modes[j], f'ix_{j}', f'xsize_{j}', int_type)
@@ -289,16 +287,27 @@ def _generate_nd_kernel(name, pre, found, post, modes, w_shape, int_type,
     for (int iw_{j} = 0; iw_{j} < {w_shape[j]}; iw_{j}++)
     {{
         {int_type} ix_{j} = ind_{j} + iw_{j};
+        {boundary}
+        ''')
+
+        # Unconditionally handle strides and handle out-of-bound issues
+        loops.append(f'''
+        // Offset remains unchanged for zero-strided arrays
         {int_type} offset_{j} = 0;
-        {boundary} else {{
+        bool ix_out_of_range = false;
+        if (xstride_{j} != 0) {{
             offset_{j} = ix_{j} * xstride_{j};
+            ix_out_of_range = offset_{j} < 0
+                ? offset_{j} <= maxsize_{j}
+                : offset_{j} >= maxsize_{j};
         }}
         ''')
 
     # CArray: string becomes 'x[inds]', no format call needed
     value = f'(*(X*)&data[{expr}])'
     if constant_mode:
-        cond = ' || '.join([f'(ix_{j} < 0)' for j in range(ndim)])
+        cond = ' || '.join(
+            [f'(ix_{j} < 0 || ix_out_of_range)' for j in range(ndim)])
 
     if cval is numpy.nan:
         cval = 'CUDART_NAN'
