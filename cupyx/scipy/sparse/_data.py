@@ -479,14 +479,15 @@ class _minmax_mixin:
 def _install_ufunc(func_name):
 
     def f(self):
-        if func_name == "sign":
-            # scipy.sparse_matrix.sign behaves compatible with
-            # numpy.sign in NumPy 1.x series.
-            ufunc = cupy._math.misc._legacy_sign
+        # ``cupy.sign`` returns ``nan+nanj`` for ``0+0j`` (literal
+        # ``z/abs(z)``); mask explicit zeros to match numpy 2.x.
+        if func_name == 'sign' and self.data.dtype.kind == 'c':
+            zero = self.data.dtype.type(0)
+            result = cupy.where(self.data == zero, zero,
+                                cupy.sign(self.data))
         else:
             ufunc = getattr(cupy, func_name)
-
-        result = ufunc(self.data)
+            result = ufunc(self.data)
         return self._with_data(result)
 
     f.__doc__ = 'Elementwise %s.' % func_name

@@ -344,7 +344,8 @@ class _csr_base(_compressed._compressed_sparse_matrix):
                 self.indices = new_indices
                 self.indptr = cupy.zeros(nrows + 1, dtype=idx_dtype)
                 return
-            row_of_each = cusparse._indptr_to_coo(self.indptr)
+            row_of_each = cusparse._indptr_to_coo(
+                self.indptr, nnz=self.nnz)
             kept_rows = row_of_each[mask]
             new_indptr = cusparse._build_indptr(
                 kept_rows, nrows, idx_dtype)

@@ -817,8 +817,10 @@ def spgeam(a, b, alpha=1, beta=1):
     handle = _device.get_cusparse_handle()
 
     # Build an empty C with the right index dtype so SpMatDescr carries it.
-    # Use _from_parts to preserve int64 (public constructor downcasts).
-    c_indptr = _cupy.empty(m + 1, dtype=idx_dtype)
+    # ``c_indptr`` is zero-initialized so the tight-buffer invariant
+    # (``data.size == int(indptr[-1])``) holds (0 == 0); spGEAM_nnz
+    # below overwrites it.
+    c_indptr = _cupy.zeros(m + 1, dtype=idx_dtype)
     c = cupyx.scipy.sparse.csr_matrix._from_parts(
         _cupy.empty(0, a.dtype), _cupy.empty(0, idx_dtype),
         c_indptr, (m, n))
@@ -1147,7 +1149,7 @@ def csrsort(x):
 
     if x.indices.dtype == _cupy.int64:
         # TODO(eriknw): cuSPARSE--remove when xcsrsort supports int64
-        row = _indptr_to_coo(x.indptr)
+        row = _indptr_to_coo(x.indptr, nnz=nnz)
         order = _cupy.lexsort(_cupy.stack([x.indices, row]))
         x.indices[:] = x.indices[order]
         x.data[:] = x.data[order]
@@ -1193,7 +1195,7 @@ def cscsort(x):
 
     if x.indices.dtype == _cupy.int64:
         # TODO(eriknw): cuSPARSE--remove when xcscsort supports int64
-        col = _indptr_to_coo(x.indptr)
+        col = _indptr_to_coo(x.indptr, nnz=nnz)
         order = _cupy.lexsort(_cupy.stack([x.indices, col]))
         x.indices[:] = x.indices[order]
         x.data[:] = x.data[order]
@@ -1348,7 +1350,7 @@ def csr2coo(x, data, indices):
 
     if idx_dtype == _cupy.int64:
         # TODO(eriknw): cuSPARSE--remove when xcsr2coo supports int64
-        row = _indptr_to_coo(x.indptr)
+        row = _indptr_to_coo(x.indptr, nnz=nnz)
     else:
         if not check_availability('csr2coo'):
             raise RuntimeError('csr2coo is not available.')
@@ -1397,19 +1399,17 @@ def _cupy_transpose_compressed_int64(x, output_cls, out_dim):
             has_sorted_indices=True)
 
     out_indptr = _build_indptr(x.indices, out_dim, idx_dtype)
-    expanded = _indptr_to_coo(x.indptr)
+    expanded = _indptr_to_coo(x.indptr, nnz=x.nnz)
 
     # Sort by (output major, output minor) for canonical order.
     order = _cupy.lexsort(_cupy.stack([expanded, x.indices]))
 
-    # Preserve has_canonical_format: a canonical input (sorted col
-    # indices, no duplicates) transposes to a CSC/CSR whose minor
-    # indices are also sorted-no-dup within each major slot.  When the
-    # input is *not* canonical (or canonical state is unknown), the
-    # output may still be canonical -- the lexsort makes the output
-    # sorted regardless of the input's order, and the output has
-    # duplicates iff the input did.  Conservatively propagate only
-    # known-True; False / None both leave the output's flag unset.
+    # Propagate has_canonical_format only when known True: a canonical
+    # input transposes to a canonical output (lexsort guarantees sort;
+    # output has duplicates iff input did).  False/None are not
+    # propagated -- the lexsort may make a non-canonical input canonical
+    # in the output, so we let the lazy getter recompute.  Read the
+    # private attr to avoid triggering ``x``'s lazy kernel ourselves.
     canonical = getattr(x, '_has_canonical_format', None)
     return output_cls._from_parts(
         x.data[order], expanded[order], out_indptr, x.shape,
@@ -1501,7 +1501,7 @@ def csc2coo(x, data, indices):
 
     if idx_dtype == _cupy.int64:
         # TODO(eriknw): cuSPARSE--remove when xcsr2coo supports int64
-        col = _indptr_to_coo(x.indptr)
+        col = _indptr_to_coo(x.indptr, nnz=nnz)
     else:
         handle = _device.get_cusparse_handle()
         col = _cupy.empty(nnz, idx_dtype)
@@ -2523,7 +2523,7 @@ def _cupy_spgemm_int64(a, b, alpha):
     del cum_prod
 
     # Expand A indptr -> row index for each A nonzero.
-    a_rows = _indptr_to_coo(a_indptr)
+    a_rows = _indptr_to_coo(a_indptr, nnz=a.nnz)
 
     # Gather the (output_row, output_col, value) triple for each product.
     a_col_k = a_indices[a_src]                       # column of A = row of B
