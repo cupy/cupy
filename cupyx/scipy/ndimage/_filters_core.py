@@ -288,7 +288,7 @@ def _generate_nd_kernel(name, pre, found, post, modes, w_shape, int_type,
     {{
         {int_type} ix_{j} = ind_{j} + iw_{j};
         {boundary}
-        ''')
+            ''')
 
         # Unconditionally handle strides and out-of-bound issues
         loops.append(f'''
