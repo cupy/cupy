@@ -296,12 +296,13 @@ class _coo_base(sparse_data._data_matrix):
         """Set diagonal or off-diagonal elements of the array.
 
         Args:
-            values (ndarray): New values of the diagonal elements. Values may
-                have any length. If the diagonal is longer than values, then
-                the remaining diagonal entries will not be set. If values are
-                longer than the diagonal, then the remaining values are
-                ignored. If a scalar value is given, all of the diagonal is set
-                to it.
+            values: New values of the diagonal elements.  Accepts a
+                scalar, list, or 1-D array; any non-cupy input is
+                coerced via :func:`cupy.asarray`.  Values may have any
+                length: if longer than the diagonal, extras are
+                ignored; if shorter, remaining diagonal entries are
+                left unchanged.  A scalar broadcasts to the whole
+                diagonal.
             k (int, optional): Which off-diagonal to set, corresponding to
                 elements a[i,i+k]. Default: 0 (the main diagonal).
 
@@ -452,10 +453,10 @@ class _coo_base(sparse_data._data_matrix):
             flat_indices = cupy.multiply(ncols, self.row,
                                          dtype=dtype) + self.col
             new_row, new_col = divmod(flat_indices, shape[1])
-        elif order == 'F':
+        elif order == 'F':  # column-major: flat = col * nrows + row
             dtype = _sputils.get_index_dtype(
-                maxval=(ncols * max(0, nrows - 1) + max(0, ncols - 1)))
-            flat_indices = cupy.multiply(ncols, self.row,
+                maxval=(nrows * max(0, ncols - 1) + max(0, nrows - 1)))
+            flat_indices = cupy.multiply(nrows, self.col,
                                          dtype=dtype) + self.row
             new_col, new_row = divmod(flat_indices, shape[0])
         else:

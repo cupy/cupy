@@ -294,7 +294,8 @@ class _minmax_mixin:
                 elif min_or_max is cupy.max:
                     m = cupy.maximum(zero, m)
                 else:
-                    assert False
+                    raise AssertionError(
+                        f'unexpected min_or_max ufunc: {min_or_max}')
             return m
 
         if axis < 0:
