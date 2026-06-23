@@ -472,10 +472,6 @@ class TestRaw:
         if cupy.cuda.runtime.is_hip and jitify:
             pytest.skip('Jitify does not support ROCm/HIP')
 
-        # TODO: how is this used? could benefit from context manager
-        self.in_memory_context = compile_in_memory(in_memory)
-        self.in_memory_context.__enter__()
-
         kern = cupy.RawKernel(
             _test_source1, 'test_sum',
             backend=backend, jitify=jitify)
@@ -487,7 +483,9 @@ class TestRaw:
             options=('-DPRECISION=2',),
             backend=backend, jitify=jitify)
 
-        with use_temporary_cache_dir() as cache_dir:
+        with (
+                compile_in_memory(in_memory),
+                use_temporary_cache_dir() as cache_dir):
             yield kern, mod2, mod3, cache_dir
 
             if (in_memory
@@ -500,8 +498,6 @@ class TestRaw:
                 for f in files:
                     # only test_load_cubin_*.cu files should be present
                     assert re.match(r'test_load_cubin_(\d+)\.cu', f)
-
-        self.in_memory_context.__exit__(*sys.exc_info())
 
     def _helper(self, kernel, dtype):
         N = 10
