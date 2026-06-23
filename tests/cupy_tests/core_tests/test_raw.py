@@ -406,6 +406,7 @@ no_jitify_markers = [
         "ignore:The jitify argument is deprecated:DeprecationWarning")
 ]
 jitify_markers = [
+    testing.slow(),
     pytest.mark.filterwarnings(
         "ignore:jitify=True is deprecated:DeprecationWarning"),
     pytest.mark.thread_unsafe(
@@ -483,9 +484,8 @@ class TestRaw:
             options=('-DPRECISION=2',),
             backend=backend, jitify=jitify)
 
-        with (
-                compile_in_memory(in_memory),
-                use_temporary_cache_dir() as cache_dir):
+        with (compile_in_memory(in_memory),
+              use_temporary_cache_dir() as cache_dir):
             yield kern, mod2, mod3, cache_dir
 
             if (in_memory
