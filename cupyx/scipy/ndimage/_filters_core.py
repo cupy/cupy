@@ -256,8 +256,7 @@ def _generate_nd_kernel(name, pre, found, post, modes, w_shape, int_type,
 
     # CArray: remove xstride_{j}=... from string
     size = ('%s xsize_{j} = x.shape()[{j}], ysize_{j} = _raw_y.shape()[{j}]'
-            ', xstride_{j} = x.strides()[{j}]'
-            ', maxsize_{j} = xsize_{j} * xstride_{j};' % int_type)
+            ', xstride_{j} = x.strides()[{j}];' % int_type)
     sizes = [size.format(j=j) for j in range(ndim)]
     inds = _util._generate_indices_ops(ndim, int_type, offsets)
     # CArray: remove expr entirely
