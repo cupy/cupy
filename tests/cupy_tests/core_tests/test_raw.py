@@ -401,39 +401,57 @@ def find_nvcc_ver():
 
 # Recent CCCL has made Jitify cold-launch very slow, see the discussion
 # starting https://github.com/cupy/cupy/pull/8899#issuecomment-2613022424.
-@testing.slow
+no_jitify_markers = [
+    pytest.mark.filterwarnings(
+        "ignore:The jitify argument is deprecated:DeprecationWarning")
+]
+jitify_markers = [
+    pytest.mark.filterwarnings(
+        "ignore:jitify=True is deprecated:DeprecationWarning"),
+    pytest.mark.thread_unsafe(
+        reason="Jitify seems to have problems, skip as largely unmaintained.")
+]
+
+
 @pytest.mark.parametrize("backend,in_memory,clean_up,jitify", [
     # First test NVRTC
-    pytest.param("nvrtc", False, False, False, id="NVRTC (no-jitify)"),
+    pytest.param(
+        "nvrtc", False, False, False,
+        marks=no_jitify_markers,
+        id="NVRTC (no-jitify)"),
     # this run will read from in-memory cache
     pytest.param(
         "nvrtc", True, False, False,
+        marks=no_jitify_markers,
         id="NVRTC (in-memory cache, no-jitify)"),
     # this run will force recompilation
     pytest.param(
         "nvrtc", True, True, False,
+        marks=no_jitify_markers,
         id="NVRTC (in-memory cache, re-compile, no-jitify)"),
     # Finally, we test NVCC
-    pytest.param("nvcc", False, False, False, id="NVCC (no-jitify)"),
+    pytest.param(
+        "nvcc", False, False, False,
+        marks=no_jitify_markers,
+        id="NVCC (no-jitify)"),
 
     # Below is the same set of NVRTC tests, with Jitify turned on.
     # For tests that can already pass, it shouldn't matter whether
     # Jitify is on or not, and the only side effect is to add overhead.
     # It doesn't make sense to test NVCC + Jitify.
-    pytest.param("nvrtc", False, False, True, id="NVRTC (jitify)"),
+    pytest.param(
+        "nvrtc", False, False, True,
+        marks=jitify_markers,
+        id="NVRTC (jitify)"),
     pytest.param(
         "nvrtc", True, False, True,
+        marks=jitify_markers,
         id="NVRTC (in-memory cache, jitify)"),
     pytest.param(
         "nvrtc", True, True, True,
+        marks=jitify_markers,
         id="NVRTC (in-memory cache, re-compile, jitify)"),
 ])
-@pytest.mark.thread_unsafe(
-    reason="Jitify seems to have problems, skip as largely unmaintained.")
-@pytest.mark.filterwarnings(
-    "ignore:The jitify argument is deprecated:DeprecationWarning")
-@pytest.mark.filterwarnings(
-    "ignore:jitify=True is deprecated:DeprecationWarning")
 class TestRaw:
 
     _nvcc_ver = None
@@ -451,7 +469,7 @@ class TestRaw:
         self.dev = cupy.cuda.runtime.getDevice()
         assert self.dev != 1
 
-        if cupy.cuda.runtime.is_hip and self.jitify:
+        if cupy.cuda.runtime.is_hip and jitify:
             pytest.skip('Jitify does not support ROCm/HIP')
 
         # TODO: how is this used? could benefit from context manager
@@ -1340,18 +1358,30 @@ __global__ void shift (T* a, int N) {
 # starting https://github.com/cupy/cupy/pull/8899#issuecomment-2613022424.
 @testing.slow
 @pytest.mark.parametrize("jitify", [
-    pytest.param(False, id="no-jitify"),
-    pytest.param(True, id="jitify"),
+    pytest.param(
+        False,
+        marks=[
+            pytest.mark.filterwarnings(
+                "ignore:The jitify argument is deprecated:DeprecationWarning")
+        ],
+        id="no-jitify"),
+    pytest.param(
+        True,
+        marks=[
+            pytest.mark.thread_unsafe(
+                reason=(
+                    "Jitify seems to have problems, ",
+                    "skip as largely unmaintained."
+                )
+            ),
+            pytest.mark.filterwarnings(
+                "ignore:jitify=True is deprecated:DeprecationWarning")
+        ],
+        id="jitify"),
 ])
 @pytest.mark.skipif(
     cupy.cuda.runtime.is_hip,
     reason="Jitify does not support ROCm/HIP")
-@pytest.mark.thread_unsafe(
-    reason="Jitify seems to have problems, skip as largely unmaintained.")
-@pytest.mark.filterwarnings(
-    "ignore:The jitify argument is deprecated:DeprecationWarning")
-@pytest.mark.filterwarnings(
-    "ignore:jitify=True is deprecated:DeprecationWarning")
 class TestRawJitify:
     @pytest.fixture(autouse=True)
     def configure(self):
