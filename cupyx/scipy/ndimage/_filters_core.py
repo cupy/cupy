@@ -290,24 +290,14 @@ def _generate_nd_kernel(name, pre, found, post, modes, w_shape, int_type,
         {boundary}
             ''')
 
-        # Unconditionally handle strides and out-of-bound issues
         loops.append(f'''
-        // Offset remains unchanged for zero-strided arrays
-        {int_type} offset_{j} = 0;
-        bool ix_out_of_range = false;
-        if (xstride_{j} != 0) {{
-            offset_{j} = ix_{j} * xstride_{j};
-            ix_out_of_range = offset_{j} < 0
-                ? offset_{j} <= maxsize_{j}
-                : offset_{j} >= maxsize_{j};
-        }}
+        {int_type} offset_{j} = ix_{j} * xstride_{j};
         ''')
 
     # CArray: string becomes 'x[inds]', no format call needed
     value = f'(*(X*)&data[{expr}])'
     if constant_mode:
-        cond = ' || '.join(
-            [f'(ix_{j} < 0 || ix_out_of_range)' for j in range(ndim)])
+        cond = ' || '.join([f'(ix_{j} < 0)' for j in range(ndim)])
 
     if cval is numpy.nan:
         cval = 'CUDART_NAN'
