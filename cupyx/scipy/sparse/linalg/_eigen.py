@@ -186,7 +186,7 @@ def _lanczos_fast(A, n, ncv):
         raise TypeError('invalid dtype ({})'.format(A.dtype))
 
     cusparse_handle = None
-    if _csr.isspmatrix_csr(A) and cusparse.check_availability('spmv'):
+    if _csr._is_csr(A) and cusparse.check_availability('spmv'):
         cusparse_handle = device.get_cusparse_handle()
         spmv_op_a = _cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
         spmv_alpha = numpy.array(1.0, A.dtype)

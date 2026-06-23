@@ -23,55 +23,74 @@ except ImportError:
         pass
 
 
-# TODO(asi1024): Implement _spbase
+# Format -> human-readable name (mirrors scipy.sparse._base._formats).
+_format_names = {
+    'csr': 'Compressed Sparse Row',
+    'csc': 'Compressed Sparse Column',
+    'coo': 'COOrdinate',
+    'dia': 'DIAgonal',
+    'dok': 'Dictionary Of Keys',
+    'lil': 'List of Lists',
+    'bsr': 'Block Sparse Row',
+}
 
 
-class spmatrix:
+class _spbase:
+    """Common base class for all sparse arrays and matrices.
 
-    """Base class of all sparse matrixes.
-
-    See :class:`scipy.sparse.spmatrix`
+    .. seealso:: :class:`scipy.sparse._base._spbase`
     """
 
     __array_priority__ = 101
-    # ``_data_matrix.__init__`` (and therefore the format subclasses
-    # built on it: csr/csc/coo/dia) does not chain through to
-    # ``spmatrix.__init__``, so instances never get ``self.maxprint``
-    # set as an instance attribute.  This class default is the fallback.
+    # Class default since ``__init__`` chains across format subclasses
+    # don't always reach ``spmatrix.__init__``.
     maxprint = 50
 
-    def __init__(self, maxprint=50):
-        if self.__class__ == spmatrix:
-            raise ValueError(
-                'This class is not intended to be instantiated directly.')
-        self.maxprint = maxprint
+    def __class_getitem__(cls, args):
+        # ``coo_array[int]``-style typing aliases (scipy 1.16+).
+        import types
+        return types.GenericAlias(cls, args)
 
     @property
     def device(self):
-        """CUDA device on which this array resides."""
+        """CUDA device on which this object resides."""
         raise NotImplementedError
 
     def get(self, stream=None):
-        """Return a copy of the array on host memory.
+        """Return a copy of this object on host memory.
 
         Args:
-            stream (cupy.cuda.Stream): CUDA stream object. If it is given, the
-                copy runs asynchronously. Otherwise, the copy is synchronous.
+            stream (cupy.cuda.Stream): CUDA stream object. If it is given,
+                the copy runs asynchronously. Otherwise, the copy is
+                synchronous.
 
         Returns:
-            scipy.sparse.spmatrix: An array on host memory.
+            scipy.sparse: A SciPy sparse object on host memory of the
+            matching format and array/matrix type.
 
         """
         raise NotImplementedError
 
     def __len__(self):
-        raise TypeError('sparse matrix length is ambiguous; '
+        raise TypeError('sparse array length is ambiguous; '
                         'use shape[0] or .nnz')
 
+    def __repr__(self):
+        format_name = _format_names.get(self.format, self.format)
+        sparse_cls = 'array' if isinstance(self, sparray) else 'matrix'
+        return (
+            f"<{format_name} sparse {sparse_cls} of dtype '{self.dtype}'\n"
+            f"\twith {self.nnz} stored elements and shape {self.shape}>")
+
     def __str__(self):
-        # TODO(unno): Do not use get method which is only available when scipy
-        # is installed.
-        return str(self.get())
+        # Delegate to scipy via ``self.get()`` so the output (including
+        # version-specific quirks like DIA's "(N diagonals)" annotation)
+        # tracks the installed scipy.  Fall back to ``repr`` only when
+        # ``get()`` is unavailable.
+        try:
+            return str(self.get())
+        except (RuntimeError, NotImplementedError):
+            return repr(self)
 
     def __iter__(self):
         for r in range(self.shape[0]):
@@ -107,6 +126,9 @@ class spmatrix:
     def __abs__(self):
         return self.tocsr().__abs__()
 
+    def __neg__(self):
+        return -self.tocsr()
+
     def __add__(self, other):
         return self.tocsr().__add__(other)
 
@@ -119,31 +141,12 @@ class spmatrix:
     def __rsub__(self, other):
         return self.tocsr().__rsub__(other)
 
+    # Array semantics: * is element-wise (spmatrix overrides to matmul)
     def __mul__(self, other):
-        return self.tocsr().__mul__(other)
+        return self.multiply(other)
 
     def __rmul__(self, other):
-        if cupy.isscalar(other) or isdense(other) and other.ndim == 0:
-            return self * other
-        else:
-            try:
-                tr = other.T
-            except AttributeError:
-                return NotImplemented
-            return (self.T * tr).T
-
-    # matmul (@) operator
-    def __matmul__(self, other):
-        if _util.isscalarlike(other):
-            raise ValueError('Scalar operands are not allowed, '
-                             'use \'*\' instead')
-        return self.__mul__(other)
-
-    def __rmatmul__(self, other):
-        if _util.isscalarlike(other):
-            raise ValueError('Scalar operands are not allowed, '
-                             'use \'*\' instead')
-        return self.__rmul__(other)
+        return self.multiply(other)
 
     def __div__(self, other):
         return self.tocsr().__div__(other)
@@ -156,9 +159,6 @@ class spmatrix:
 
     def __rtruediv__(self, other):
         return self.tocsr().__rtruediv__(other)
-
-    def __neg__(self):
-        return -self.tocsr()
 
     def __iadd__(self, other):
         return NotImplemented
@@ -175,97 +175,106 @@ class spmatrix:
     def __itruediv__(self, other):
         return NotImplemented
 
+    # Array semantics: ** is element-wise (spmatrix overrides to matrix power)
     def __pow__(self, other):
-        """Calculates n-th power of the matrix.
+        return self.power(other)
 
-        This method calculates n-th power of a given matrix. The matrix must
-        be a squared matrix, and a given exponent must be an integer.
+    # matmul (@) operator
+    def __matmul__(self, other):
+        if _util.isscalarlike(other):
+            raise ValueError('Scalar operands are not allowed, '
+                             'use \'*\' instead')
+        return self._matmul_dispatch(other)
 
-        Args:
-            other (int): Exponent.
+    def __rmatmul__(self, other):
+        if _util.isscalarlike(other):
+            raise ValueError('Scalar operands are not allowed, '
+                             'use \'*\' instead')
+        return self._rmatmul_dispatch(other)
 
-        Returns:
-            cupyx.scipy.sparse.spmatrix: A sparse matrix representing n-th
-            power of this matrix.
+    def _matmul_dispatch(self, other):
+        """Default: convert to CSR.  Format subclasses override."""
+        return self.tocsr()._matmul_dispatch(other)
 
-        """
-        m, n = self.shape
-        if m != n:
-            raise TypeError('matrix is not square')
-        if not isinstance(other, numbers.Integral):
-            raise ValueError("exponent must be an integer")
-
-        if _util.isintlike(other):
-            other = int(other)
-            if other < 0:
-                raise ValueError('exponent must be >= 0')
-
-            if other == 0:
-                import cupyx.scipy.sparse
-                return cupyx.scipy.sparse.identity(
-                    m, dtype=self.dtype, format='csr')
-            elif other == 1:
-                return self.copy()
-            else:
-                tmp = self.__pow__(other // 2)
-                if other % 2:
-                    return self * tmp * tmp
-                else:
-                    return tmp * tmp
-        elif _util.isscalarlike(other):
-            raise ValueError('exponent must be an integer')
+    def _rmatmul_dispatch(self, other):
+        if cupy.isscalar(other) or (isdense(other) and other.ndim == 0):
+            return self._matmul_dispatch(other)
         else:
-            return NotImplemented
-
-    @property
-    def A(self):
-        """Dense ndarray representation of this matrix.
-
-        .. deprecated:: 15.0
-           Use :meth:`~cupyx.scipy.sparse.spmatrix.toarray` instead.
-
-        """
-        warnings.warn(
-            "`spmatrix.A` is deprecated; use `.toarray()` instead.",
-            DeprecationWarning, stacklevel=2)
-        return self.toarray()
+            try:
+                tr = other.T
+            except AttributeError:
+                return NotImplemented
+            return (self.T._matmul_dispatch(tr)).T
 
     @property
     def T(self):
         return self.transpose()
 
     @property
-    def H(self):
-        """Hermitian (conjugate) transpose of this matrix.
+    def mT(self):
+        """Matrix transpose.
 
-        .. deprecated:: 15.0
-           Use ``.T.conj()`` instead.
-
+        Equivalent to :func:`cupyx.scipy.sparse.matrix_transpose`.
+        CuPy sparse types are 2-D only.
         """
-        warnings.warn(
-            "`spmatrix.H` is deprecated; use `.T.conj()` instead.",
-            DeprecationWarning, stacklevel=2)
-        return self.transpose().conj()
+        n = self.ndim
+        if n < 2:
+            raise ValueError(
+                'Array must be at least 2-dimensional, '
+                f'but it is {n}-D')
+        return self.transpose()
 
     @property
     def ndim(self):
-        return 2
+        return len(self._shape)
 
     @property
     def size(self):
-        return self.getnnz()
+        return self._getnnz()
 
     @property
     def nnz(self):
-        return self.getnnz()
+        return self._getnnz()
 
     @property
     def shape(self):
-        return self.get_shape()
+        return self._shape
 
-    @shape.setter
-    def shape(self, value):
-        self.set_shape(value)
+    @property
+    def _shape_as_2d(self):
+        s = self._shape
+        return (1, s[-1]) if len(s) == 1 else s
+
+    # Container properties: default to array types.
+    # spmatrix overrides these to return matrix types.
+
+    @property
+    def _csr_container(self):
+        from cupyx.scipy.sparse._csr import csr_array
+        return csr_array
+
+    @property
+    def _csc_container(self):
+        from cupyx.scipy.sparse._csc import csc_array
+        return csc_array
+
+    @property
+    def _coo_container(self):
+        from cupyx.scipy.sparse._coo import coo_array
+        return coo_array
+
+    @property
+    def _dia_container(self):
+        from cupyx.scipy.sparse._dia import dia_array
+        return dia_array
+
+    def _get_index_dtype(self, arrays=(), maxval=None, check_contents=False):
+        """Wraps get_index_dtype: arrays never downcast (check_contents
+        is disabled for sparray instances).
+        """
+        return _sputils.get_index_dtype(
+            arrays, maxval,
+            check_contents and not isinstance(self, sparray))
 
     def asformat(self, format):
         """Return this matrix in a given sparse format.
@@ -278,34 +287,26 @@ class spmatrix:
         else:
             return getattr(self, 'to' + format)()
 
-    def asfptype(self):
-        """Upcasts matrix to a floating point format.
-
-        When the matrix has floating point type, the method returns itself.
-        Otherwise it makes a copy with floating point type and the same format.
-
-        Returns:
-            cupyx.scipy.sparse.spmatrix: A matrix with float type.
-
-        """
-        if self.dtype.kind == 'f':
-            return self
-        else:
-            typ = numpy.promote_types(self.dtype, 'f')
-            return self.astype(typ)
-
-    def astype(self, t):
-        """Casts the array to given data type.
+    def astype(self, dtype, copy=True):
+        """Cast the array elements to a specified type.
 
         Args:
-            t: Type specifier.
+            dtype: Target dtype.
+            copy (bool): If ``True`` (default), the returned array does
+                not share memory with ``self``.  If ``False``, ``self``
+                is returned unchanged when the dtype already matches.
 
         Returns:
-            cupyx.scipy.sparse.spmatrix:
-                A copy of the array with the given type and the same format.
-
+            cupyx.scipy.sparse: Sparse object with the requested dtype
+            and the same format as ``self``.
         """
-        return self.tocsr().astype(t).asformat(self.format)
+        dtype = numpy.dtype(dtype)
+        if self.dtype != dtype:
+            return self.tocsr().astype(
+                dtype, copy=copy).asformat(self.format)
+        if copy:
+            return self.copy()
+        return self
 
     def conj(self, copy=True):
         """Element-wise complex conjugation.
@@ -341,8 +342,12 @@ class spmatrix:
         """
         return self.__class__(self, copy=True)
 
-    def count_nonzero(self):
-        """Number of non-zero entries, equivalent to"""
+    def count_nonzero(self, axis=None):
+        """Number of non-zero entries.
+
+        Subclasses override this; ``_spbase`` itself does not implement
+        a generic counter.
+        """
         raise NotImplementedError
 
     def diagonal(self, k=0):
@@ -378,27 +383,27 @@ class spmatrix:
         else:
             return self @ other
 
-    def getH(self):
-        return self.transpose().conj()
+    def _getnnz(self, axis=None):
+        """Number of stored values, including explicit zeros.
 
-    def get_shape(self):
+        Subclasses override this to provide format-specific counts.
+        Public access is via :attr:`nnz` (no axis) or
+        :meth:`spmatrix.getnnz` (matrix-only, axis-aware).
+        """
         raise NotImplementedError
 
-    # TODO(unno): Implement getcol
+    def nonzero(self):
+        """Indices of the non-zero elements.
 
-    def getformat(self):
-        """Return the format of this matrix (e.g., ``'csr'``)."""
-        return self.format
-
-    def getmaxprint(self):
-        """Return the maximum number of stored values shown in ``__str__``."""
-        return self.maxprint
-
-    def getnnz(self, axis=None):
-        """Number of stored values, including explicit zeros."""
-        raise NotImplementedError
-
-    # TODO(unno): Implement getrow
+        Returns a tuple ``(row, col)`` of cupy.ndarrays (matching
+        :meth:`scipy.sparse._base._spbase.nonzero`).  Explicit zeros are
+        excluded.
+        """
+        A = self.tocoo()
+        if not A.has_canonical_format:
+            A.sum_duplicates()
+        nz_mask = A.data != 0
+        return (A.row[nz_mask], A.col[nz_mask])
 
     def maximum(self, other):
         return self.tocsr().maximum(other)
@@ -474,9 +479,9 @@ class spmatrix:
 
     def multiply(self, other):
         """Point-wise multiplication by another matrix"""
+        if issparse(other):
+            other = other.tocsr()
         return self.tocsr().multiply(other)
-
-    # TODO(unno): Implement nonzero
 
     def power(self, n, dtype=None):
         return self.tocsr().power(n, dtype=dtype)
@@ -503,15 +508,6 @@ class spmatrix:
             return self
 
         return self.tocoo().reshape(shape, order=order)
-
-    def set_shape(self, shape):
-        """Set the shape of the matrix in-place."""
-        # ``self.reshape(shape)`` builds a new matrix and returns it
-        # (it's the immutable form).  To make the change visible on the
-        # original object, build the reshaped matrix in the same format
-        # and swap ``__dict__``.  Mirrors scipy 1.17's implementation.
-        new_self = self.reshape(shape).asformat(self.format)
-        self.__dict__ = new_self.__dict__
 
     def setdiag(self, values, k=0):
         """Set diagonal or off-diagonal elements of the array.
@@ -563,10 +559,20 @@ class spmatrix:
         if axis < 0:
             axis += 2
 
-        if axis == 0:
-            ret = self.T.dot(cupy.ones(m, dtype=self.dtype)).reshape(1, n)
-        else:  # axis == 1
-            ret = self.dot(cupy.ones(n, dtype=self.dtype)).reshape(m, 1)
+        if isinstance(self, sparray):
+            # Arrays: reduction along an axis returns 1D
+            if axis == 0:
+                ret = self.T.dot(cupy.ones(m, dtype=self.dtype))
+            else:
+                ret = self.dot(cupy.ones(n, dtype=self.dtype))
+        else:
+            # Matrices: keep 2D shape
+            if axis == 0:
+                ret = self.T.dot(
+                    cupy.ones(m, dtype=self.dtype)).reshape(1, n)
+            else:
+                ret = self.dot(
+                    cupy.ones(n, dtype=self.dtype)).reshape(m, 1)
 
         if out is not None:
             if out.shape != ret.shape:
@@ -619,16 +625,225 @@ class spmatrix:
         return self.tocsr(copy=copy).transpose(axes=axes, copy=False)
 
 
+class sparray:
+    """Namespace mixin for sparse array classes.
+
+    Sparse array classes follow NumPy semantics: ``*`` is element-wise
+    multiplication and ``**`` is element-wise power.  Use ``@`` for
+    matrix multiplication.
+
+    .. seealso:: :class:`scipy.sparse.sparray`
+    """
+    pass
+
+
+class spmatrix:
+    """Mixin for sparse matrix classes.
+
+    Sparse matrix classes follow legacy ``numpy.matrix`` semantics:
+    ``*`` is matrix multiplication and ``**`` is matrix power.  Provides
+    backward-compatibility methods (``.A``, ``.H``, ``getrow``,
+    ``getcol``, etc.) that do not exist on sparse arrays.  These APIs
+    are deprecated in favor of the sparse array interface.
+
+    .. seealso:: :class:`scipy.sparse.spmatrix`
+    """
+
+    def __init__(self, *args, maxprint=50, **kwargs):
+        self.maxprint = maxprint
+        # Cooperative MI: forward to the next __init__ in the MRO.
+        nxt = super().__init__
+        if nxt is not object.__init__:
+            nxt(*args, **kwargs)
+        elif args or kwargs:
+            # Direct instantiation of ``spmatrix(args)`` with no concrete
+            # format subclass; scipy raises here, so do the same.
+            raise TypeError(
+                'cannot instantiate spmatrix directly; use a format '
+                'subclass such as csr_matrix')
+
+    # Matrix semantics: * is matmul (overrides _spbase element-wise default)
+    def __mul__(self, other):
+        return self._matmul_dispatch(other)
+
+    def __rmul__(self, other):
+        return self._rmatmul_dispatch(other)
+
+    def __pow__(self, other):
+        """Calculates n-th power of the matrix.
+
+        This method calculates n-th power of a given matrix. The matrix must
+        be a squared matrix, and a given exponent must be an integer.
+
+        Args:
+            other (int): Exponent.
+
+        Returns:
+            cupyx.scipy.sparse.spmatrix: A sparse matrix representing n-th
+            power of this matrix.
+
+        """
+        m, n = self.shape
+        if m != n:
+            raise TypeError('matrix is not square')
+        if not isinstance(other, numbers.Integral):
+            raise ValueError("exponent must be an integer")
+
+        if _util.isintlike(other):
+            other = int(other)
+            if other < 0:
+                raise ValueError('exponent must be >= 0')
+
+            if other == 0:
+                import cupyx.scipy.sparse
+                return cupyx.scipy.sparse.identity(
+                    m, dtype=self.dtype, format='csr')
+            elif other == 1:
+                return self.copy()
+            else:
+                tmp = self.__pow__(other // 2)
+                if other % 2:
+                    return self * tmp * tmp
+                else:
+                    return tmp * tmp
+        elif _util.isscalarlike(other):
+            raise ValueError('exponent must be an integer')
+        else:
+            return NotImplemented
+
+    @property
+    def _csr_container(self):
+        from cupyx.scipy.sparse._csr import csr_matrix
+        return csr_matrix
+
+    @property
+    def _csc_container(self):
+        from cupyx.scipy.sparse._csc import csc_matrix
+        return csc_matrix
+
+    @property
+    def _coo_container(self):
+        from cupyx.scipy.sparse._coo import coo_matrix
+        return coo_matrix
+
+    @property
+    def _dia_container(self):
+        from cupyx.scipy.sparse._dia import dia_matrix
+        return dia_matrix
+
+    @property
+    def A(self):
+        """Dense ndarray representation of this matrix.
+
+        .. deprecated:: 15.0
+           Use :meth:`~cupyx.scipy.sparse.spmatrix.toarray` instead.
+
+        """
+        warnings.warn(
+            "`spmatrix.A` is deprecated; use `.toarray()` instead.",
+            DeprecationWarning, stacklevel=2)
+        return self.toarray()
+
+    @property
+    def H(self):
+        """Hermitian (conjugate) transpose of this matrix.
+
+        .. deprecated:: 15.0
+           Use ``.T.conj()`` instead.
+
+        """
+        warnings.warn(
+            "`spmatrix.H` is deprecated; use `.T.conj()` instead.",
+            DeprecationWarning, stacklevel=2)
+        return self.transpose().conj()
+
+    def get_shape(self):
+        """Return the shape of the matrix."""
+        return self._shape
+
+    def set_shape(self, shape):
+        """Set the shape of the matrix in-place."""
+        # Match scipy 1.17: build the reshaped matrix and swap __dict__
+        # so the change is visible on the original object.
+        new_self = self.reshape(shape).asformat(self.format)
+        self.__dict__ = new_self.__dict__
+
+    shape = property(
+        fget=get_shape, fset=set_shape, doc='Shape of the matrix.')
+
+    def asfptype(self):
+        """Upcasts matrix to a floating point format.
+
+        When the matrix has floating point type, the method returns itself.
+        Otherwise it makes a copy with floating point type and the same
+        format.
+
+        Returns:
+            cupyx.scipy.sparse.spmatrix: A matrix with float type.
+        """
+        if self.dtype.kind == 'f':
+            return self
+        typ = numpy.promote_types(self.dtype, 'f')
+        return self.astype(typ)
+
+    def getH(self):
+        """Hermitian (conjugate) transpose of this matrix."""
+        return self.transpose().conj()
+
+    def getrow(self, i):
+        """Return a copy of row ``i`` as a (1 x n) sparse row vector.
+
+        Matrix-only API; for sparse arrays use ``A[i]`` (or ``A[[i], :]``
+        for a 2-D result).
+        """
+        return self._getrow(i)
+
+    def getcol(self, j):
+        """Return a copy of column ``j`` as a (m x 1) sparse column vector.
+
+        Matrix-only API; for sparse arrays use ``A[:, j]`` (or
+        ``A[:, [j]]`` for a 2-D result).
+        """
+        return self._getcol(j)
+
+    def getformat(self):
+        """Return the format string of this matrix (e.g. ``'csr'``)."""
+        return self.format
+
+    def getmaxprint(self):
+        """Return the maximum number of stored values shown in ``__str__``."""
+        return self.maxprint
+
+    def getnnz(self, axis=None):
+        """Number of stored values, including explicit zeros.
+
+        Args:
+            axis (None, 0, or 1): Select between the number of values
+                across the whole matrix, in each column (axis=0), or in
+                each row (axis=1).
+        """
+        return self._getnnz(axis=axis)
+
+
 def issparse(x):
-    """Checks if a given matrix is a sparse matrix.
+    """Checks if a given matrix is a sparse matrix or array.
 
     Returns:
-        bool: Returns if ``x`` is :class:`cupyx.scipy.sparse.spmatrix` that is
-        a base class of all sparse matrix classes.
+        bool: Returns if ``x`` is :class:`cupyx.scipy.sparse.spmatrix`
+        or :class:`cupyx.scipy.sparse.sparray`.
+
+    """
+    return isinstance(x, _spbase)
+
+
+def isspmatrix(x):
+    """Checks if a given matrix is a sparse matrix (not array).
+
+    Returns:
+        bool: Returns if ``x`` is :class:`cupyx.scipy.sparse.spmatrix`.
 
     """
     return isinstance(x, spmatrix)
 
 
 isdense = _util.isdense
-isspmatrix = issparse

@@ -2,11 +2,87 @@ from __future__ import annotations
 
 import numpy
 import cupy
+from cupyx.scipy.sparse import _base
 from cupyx.scipy.sparse import _coo
 from cupyx.scipy.sparse import _csc
 from cupyx.scipy.sparse import _csr
 from cupyx.scipy.sparse import _dia
 from cupyx.scipy.sparse import _sputils
+
+
+def _any_sparray(*args):
+    """Return True if any argument is a sparse array (not matrix)."""
+    return any(isinstance(a, _base.sparray) for a in args
+               if _base.issparse(a))
+
+
+def matrix_transpose(A):
+    """Transpose the last two axes of a sparse object.
+
+    Args:
+        A (cupyx.scipy.sparse): Sparse object (CuPy currently supports
+            2-D only).
+
+    Returns:
+        cupyx.scipy.sparse: ``A`` with its last two axes swapped (same
+        array vs matrix type as the input).
+
+    .. seealso:: :func:`scipy.sparse.matrix_transpose`
+    """
+    if not _base.issparse(A):
+        raise TypeError('matrix_transpose expected a sparse object')
+    return A.transpose()
+
+
+def swapaxes(A, axis1, axis2):
+    """Interchange two axes of a sparse object.
+
+    Args:
+        A (cupyx.scipy.sparse): Sparse 2-D object.
+        axis1 (int): First axis (in ``[-2, 1]``).
+        axis2 (int): Second axis (in ``[-2, 1]``).
+
+    Returns:
+        cupyx.scipy.sparse: ``A`` with axes swapped.
+
+    .. seealso:: :func:`scipy.sparse.swapaxes`
+    """
+    if not _base.issparse(A):
+        raise TypeError('swapaxes expected a sparse object')
+    a1 = axis1 + 2 if axis1 < 0 else axis1
+    a2 = axis2 + 2 if axis2 < 0 else axis2
+    if a1 not in (0, 1) or a2 not in (0, 1):
+        raise ValueError('axis out of range for 2-D sparse object')
+    if a1 == a2:
+        return A.copy()
+    return A.transpose()
+
+
+def permute_dims(A, axes=None, copy=False):
+    """Permute the axes of a sparse object.
+
+    Args:
+        A (cupyx.scipy.sparse): Sparse 2-D object.
+        axes (tuple of int or None): Permutation of axis indices.
+            Defaults to reversing the axes (i.e. transpose).
+        copy (bool): If ``True``, the result does not share data with
+            ``A``.
+
+    Returns:
+        cupyx.scipy.sparse: ``A`` with axes permuted.
+
+    .. seealso:: :func:`scipy.sparse.permute_dims`
+    """
+    if not _base.issparse(A):
+        raise TypeError('permute_dims expected a sparse object')
+    if axes is None:
+        axes = (1, 0)
+    axes = tuple(a + 2 if a < 0 else a for a in axes)
+    if sorted(axes) != [0, 1]:
+        raise ValueError('axes must be a permutation of (0, 1)')
+    if axes == (0, 1):
+        return A.copy() if copy else A
+    return A.transpose(copy=copy)
 
 
 def eye(m, n=None, k=0, dtype='d', format=None):
@@ -120,32 +196,32 @@ def _compressed_sparse_stack(blocks, axis):
         sum_dim += b.shape[axis]
         last_indptr += b.indptr[-1]
     indptr[-1] = last_indptr
+    use_array = _any_sparray(*blocks)
     if axis == 0:
-        cls = _csr.csr_matrix
+        cls = _csr.csr_array if use_array else _csr.csr_matrix
         shape = (sum_dim, constant_dim)
     else:
-        cls = _csc.csc_matrix
+        cls = _csc.csc_array if use_array else _csc.csc_matrix
         shape = (constant_dim, sum_dim)
-    return cls._from_parts(data, indices, indptr, shape)
+    return cls._from_parts(
+        data, indices, indptr, shape)
 
 
 def hstack(blocks, format=None, dtype=None):
-    """Stacks sparse matrices horizontally (column wise)
+    """Stacks sparse arrays/matrices horizontally (column wise).
 
     Args:
-        blocks (sequence of cupyx.scipy.sparse.spmatrix):
-            sparse matrices to stack
-
-        format (str):
-            sparse format of the result (e.g. "csr")
-            by default an appropriate sparse matrix format is returned.
-            This choice is subject to change.
-        dtype (dtype, optional):
-            The data-type of the output matrix.  If not given, the dtype is
-            determined from that of ``blocks``.
+        blocks (sequence of cupyx.scipy.sparse): sparse objects to stack.
+        format (str): sparse format of the result (e.g. ``'csr'``).  By
+            default an appropriate sparse format is returned.  This choice
+            is subject to change.
+        dtype (dtype, optional): The data-type of the output.  If not
+            given, the dtype is determined from that of ``blocks``.
 
     Returns:
-        cupyx.scipy.sparse.spmatrix: the stacked sparse matrix
+        cupyx.scipy.sparse: The stacked sparse object.  Returns a sparse
+        array when *any* input is a sparse array, else a sparse matrix
+        (matches scipy).
 
     .. seealso:: :func:`scipy.sparse.hstack`
 
@@ -249,14 +325,15 @@ def bmat(blocks, format=None, dtype=None):
 
     # check for fast path cases
     if (N == 1 and format in (None, 'csr') and
-            all(isinstance(b, _csr.csr_matrix)
+            all(_base.issparse(b) and b.format == 'csr'
                 for b in blocks_flat)):
         A = _compressed_sparse_stack(blocks_flat, 0)
         if dtype is not None:
             A = A.astype(dtype)
         return A
     elif (M == 1 and format in (None, 'csc')
-          and all(isinstance(b, _csc.csc_matrix) for b in blocks_flat)):
+          and all(_base.issparse(b) and b.format == 'csc'
+                  for b in blocks_flat)):
         A = _compressed_sparse_stack(blocks_flat, 1)
         if dtype is not None:
             A = A.astype(dtype)
@@ -265,6 +342,9 @@ def bmat(blocks, format=None, dtype=None):
     block_mask = numpy.zeros((M, N), dtype=bool)
     brow_lengths = numpy.zeros(M+1, dtype=numpy.int64)
     bcol_lengths = numpy.zeros(N+1, dtype=numpy.int64)
+
+    # Detect array type before COO conversion loses it
+    _use_array = _any_sparray(*blocks_flat)
 
     # Check if any input block has int64 indices before conversion
     # to COO (the COO constructor may downcast via check_contents).
@@ -343,7 +423,8 @@ def bmat(blocks, format=None, dtype=None):
         col[idx] = B.col + col_offsets[j]
         nnz += B.nnz
 
-    A = _coo.coo_matrix._from_parts(data, row, col, shape)
+    coo_cls = _coo.coo_array if _use_array else _coo.coo_matrix
+    A = coo_cls._from_parts(data, row, col, shape)
     A.has_canonical_format = False
     return A.asformat(format)
 
@@ -547,15 +628,29 @@ def kron(A, B, format=None):
     # TODO(leofang): investigate if possible to optimize performance by
     #                starting with CSR instead of COO matrices
 
-    A = _coo.coo_matrix(A)
-    B = _coo.coo_matrix(B)
+    use_array = _any_sparray(A, B)
+    coo_cls = _coo.coo_array if use_array else _coo.coo_matrix
+    # Use the array path on input conversion when any input is a sparse
+    # array so int64 indices survive the trip through COO.
+    A = coo_cls(A)
+    B = coo_cls(B)
     out_shape = (A.shape[0] * B.shape[0], A.shape[1] * B.shape[1])
 
     if A.nnz == 0 or B.nnz == 0:
-        # kronecker product is the zero matrix
-        return _coo.coo_matrix(out_shape).asformat(format)
+        return coo_cls(out_shape).asformat(format)
 
-    if max(out_shape[0], out_shape[1]) > cupy.iinfo('int32').max:
+    # Choose the output index dtype.
+    #   - Sparray path: ``_get_index_dtype`` is called from a sparray
+    #     instance so ``check_contents`` is forced off; the input
+    #     arrays' dtypes are preserved (so kron(int64, int64) stays
+    #     int64 even when the output shape would also fit int32).
+    #     Mirrors scipy 1.17.
+    #   - Matrix path: the legacy minimum-required policy (int32 unless
+    #     the output shape forces int64).  Matches scipy matrix.
+    if use_array:
+        dtype = A._get_index_dtype(
+            (A.row, A.col, B.row, B.col), maxval=max(out_shape))
+    elif max(out_shape[0], out_shape[1]) > cupy.iinfo('int32').max:
         dtype = cupy.int64
     else:
         dtype = cupy.int32
@@ -577,7 +672,7 @@ def kron(A, B, format=None):
     data = data.reshape(-1, B.nnz) * B.data
     data = data.ravel()
 
-    return _coo.coo_matrix(
+    return coo_cls(
         (data, (row, col)), shape=out_shape).asformat(format)
 
 
@@ -600,8 +695,10 @@ def kronsum(A, B, format=None):
     .. seealso:: :func:`scipy.sparse.kronsum`
 
     """
-    A = _coo.coo_matrix(A)
-    B = _coo.coo_matrix(B)
+    use_array = _any_sparray(A, B)
+    src_cls = _coo.coo_array if use_array else _coo.coo_matrix
+    A = src_cls(A)
+    B = src_cls(B)
 
     if A.shape[0] != A.shape[1]:
         raise ValueError('A is not square matrix')
@@ -615,3 +712,212 @@ def kronsum(A, B, format=None):
     R = kron(B, eye(A.shape[0], dtype=dtype), format=format)
 
     return (L + R).asformat(format)
+
+
+# --- Array-returning construction functions ---
+
+_array_containers = {
+    'csr': lambda: _csr.csr_array,
+    'csc': lambda: _csc.csc_array,
+    'coo': lambda: _coo.coo_array,
+    'dia': lambda: _dia.dia_array,
+}
+
+
+def _to_array(matrix, format=None):
+    """Convert a sparse matrix result to the matching array type.
+
+    When the requested format has no implemented array-side conversion
+    (e.g. CSR -> DIA), the result is returned as ``csr_array``.
+    """
+    fmt = format or matrix.format
+    cls = _array_containers.get(fmt, lambda: _csr.csr_array)()
+    if isinstance(matrix, cls):
+        return matrix
+    arr = _csr.csr_array(matrix)
+    if fmt and fmt != 'csr':
+        try:
+            arr = arr.asformat(fmt)
+        except NotImplementedError:
+            pass
+    return arr
+
+
+def eye_array(m, n=None, *, k=0, dtype=float, format=None):
+    """Creates a sparse array with ones on diagonal.
+
+    Args:
+        m (int): Number of rows.
+        n (int or None): Number of columns. Defaults to ``m``.
+        k (int): Diagonal to place ones on.
+        dtype: Type of array to create.
+        format (str or None): Format of the result.
+
+    Returns:
+        cupyx.scipy.sparse.sparray
+
+    .. seealso:: :func:`scipy.sparse.eye_array`
+
+    """
+    if n is None:
+        n = m
+    m, n = int(m), int(n)
+    return _to_array(eye(m, n, k=k, dtype=dtype, format=format), format)
+
+
+def diags_array(diagonals, /, *, offsets=0, shape=None, format=None,
+                dtype=None):
+    """Construct a sparse array from diagonals.
+
+    Args:
+        diagonals: Array of diagonal values.
+        offsets (int or sequence of int): Diagonals to set.
+        shape (tuple or None): Shape of the result.
+        format (str or None): Sparse format of the result.
+        dtype: Data type of the result.
+
+    Returns:
+        cupyx.scipy.sparse.sparray
+
+    .. seealso:: :func:`scipy.sparse.diags_array`
+
+    """
+    return _to_array(
+        diags(diagonals, offsets=offsets, shape=shape, format=format,
+              dtype=dtype), format)
+
+
+def block_array(blocks, *, format=None, dtype=None):
+    """Build a sparse array from sparse sub-blocks.
+
+    This is the array-returning equivalent of :func:`bmat`: even when none
+    of the input ``blocks`` are sparse arrays the result is still a
+    sparse array.
+
+    Args:
+        blocks (array_like): Grid of sparse arrays/matrices with compatible
+            shapes.  An entry of ``None`` denotes an all-zero block.
+        format (str, optional): Sparse format of the result (e.g. ``'csr'``).
+            By default, an appropriate format is chosen.
+        dtype (dtype, optional): Data type of the output.  Defaults to a
+            promotion across input dtypes.
+
+    Returns:
+        cupyx.scipy.sparse.sparray: Stacked sparse array.
+
+    .. seealso:: :func:`scipy.sparse.block_array`, :func:`bmat`
+    """
+    result = bmat(blocks, format=format, dtype=dtype)
+    # Preserve sparse-array-ness even when all inputs were matrices/dense.
+    if isinstance(result, _base.sparray):
+        return result
+    return _to_array(result, format)
+
+
+def block_diag(mats, format=None, dtype=None):
+    """Build a block-diagonal sparse object from a sequence of blocks.
+
+    Args:
+        mats (sequence): Input sparse arrays/matrices, dense ndarrays,
+            scalars, or Python lists/tuples.  Each block becomes a
+            diagonal sub-block in the output.
+        format (str, optional): Sparse format of the result.  Defaults to
+            ``'coo'`` when not specified.
+        dtype (dtype, optional): Data type of the output.
+
+    Returns:
+        cupyx.scipy.sparse: Sparse array if any input is a sparse array,
+        else sparse matrix (matching scipy).
+
+    .. seealso:: :func:`scipy.sparse.block_diag`
+    """
+    use_array = any(isinstance(a, _base.sparray) for a in mats)
+    coo_cls = _coo.coo_array if use_array else _coo.coo_matrix
+
+    def _normalize_dense(a):
+        """Promote a dense input (list/tuple/scalar/ndarray) to a 2-D
+        ``cupy.ndarray`` with a sparse-supported dtype.
+
+        Integer-typed dense input is upcast to float64 since cuSPARSE
+        won't store it.  This matches scipy's behaviour for integer
+        ``diags`` input -- the upstream FutureWarning is filtered out
+        in ``pyproject.toml``.
+        """
+        a = cupy.atleast_2d(cupy.asarray(a))
+        if not _sputils.is_sparse_data_dtype(a.dtype):
+            a = a.astype(cupy.float64, copy=False)
+        return a
+
+    rows = []
+    cols = []
+    datas = []
+    # Collect int64 coord arrays so ``get_index_dtype`` picks int64 for
+    # the assembled output when any input block needs it.  Each coord
+    # is checked independently because a ``tocoo()`` implementation
+    # could drop one side to int32.
+    idx_arrays = []
+    r_idx = 0
+    c_idx = 0
+    for a in mats:
+        if _base.issparse(a):
+            a_coo = a.tocoo()
+            if a_coo.row.dtype == cupy.int64:
+                idx_arrays.append(a_coo.row)
+            if a_coo.col.dtype == cupy.int64:
+                idx_arrays.append(a_coo.col)
+            nrows, ncols = a_coo.shape
+            rows.append(a_coo.row + r_idx)
+            cols.append(a_coo.col + c_idx)
+            datas.append(a_coo.data)
+        else:
+            ad = _normalize_dense(a)
+            nrows, ncols = ad.shape
+            r, c = cupy.divmod(
+                cupy.arange(nrows * ncols), ncols)
+            rows.append(r + r_idx)
+            cols.append(c + c_idx)
+            datas.append(ad.ravel())
+        r_idx += nrows
+        c_idx += ncols
+
+    idx_dtype = _sputils.get_index_dtype(
+        arrays=tuple(idx_arrays),
+        maxval=max(r_idx, c_idx) if r_idx or c_idx else None)
+    if rows:
+        row = cupy.concatenate(rows).astype(idx_dtype, copy=False)
+        col = cupy.concatenate(cols).astype(idx_dtype, copy=False)
+        data = cupy.concatenate(datas)
+    else:
+        # Empty input: build an explicit (0, 0) sparse output.
+        row = cupy.zeros(0, dtype=idx_dtype)
+        col = cupy.zeros(0, dtype=idx_dtype)
+        data = cupy.zeros(0, dtype=dtype if dtype is not None else 'd')
+    new_shape = (r_idx, c_idx)
+    out = coo_cls._from_parts(data, row, col, new_shape)
+    if dtype is not None:
+        out = out.astype(dtype)
+    return out.asformat(format)
+
+
+def random_array(shape, *, density=0.01, format='coo', dtype=None,
+                 rng=None, data_sampler=None):
+    """Generate a sparse random array.
+
+    Args:
+        shape (tuple): Shape of the array (m, n).
+        density (float): Density of generated values.
+        format (str): Sparse format of the result.
+        dtype: Data type of generated values.
+        rng: Random number generator (numpy or cupy).
+        data_sampler: Function that accepts a size argument.
+
+    Returns:
+        cupyx.scipy.sparse.sparray
+
+    .. seealso:: :func:`scipy.sparse.random_array`
+
+    """
+    m, n = shape
+    return _to_array(
+        random(m, n, density=density, format=format, dtype=dtype,
+               random_state=rng, data_rvs=data_sampler), format)
