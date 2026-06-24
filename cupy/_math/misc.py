@@ -252,7 +252,9 @@ sign = _core.create_ufunc(
     _float_sign,
     doc='''Elementwise sign function.
 
-    It returns -1, 0, or 1 depending on the sign of the input.
+    Returns -1, 0, or 1 depending on the sign of the input. NaN is returned
+    for NaN inputs.
+    For complex values, sign returns ``x/abs(x)`` (and ``0 if x == 0``).
 
     .. seealso:: :data:`numpy.sign`
 
