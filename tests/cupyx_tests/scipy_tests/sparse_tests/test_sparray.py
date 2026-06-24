@@ -316,8 +316,10 @@ class TestSparseArrayTypeIdentity:
         assert cscipy.get_array_module(M).__name__ == 'cupyx.scipy'
 
     def test_dia_tocsc_data_wider_than_matrix(self):
-        # Regression: DIA with data buffer wider than the matrix used to
-        # raise a broadcast-shape ValueError in tocsc().
+        # tocsc() must handle a DIA ``data`` buffer wider than the
+        # matrix: the trailing columns fall outside ``shape`` and are
+        # dropped.  A wider-than-num_cols buffer previously raised a
+        # broadcast-shape ValueError here.
         data = cupy.array([[1., 2., 3., 4., 5., 6.]])
         offsets = cupy.array([0])
         m = sparse.dia_array((data, offsets), shape=(3, 4))
@@ -338,10 +340,11 @@ class TestSparseArrayTypeIdentity:
 
     @pytest.mark.parametrize('fmt', ('csr', 'csc', 'coo'))
     def test_setdiag_python_types(self, fmt):
-        # Regression: setdiag used to call ``values.astype(...)`` (or
-        # ``values.ndim``) directly on the input, raising AttributeError
-        # for Python lists / scalars.  scipy's ``_spbase.setdiag`` does
-        # ``np.asarray(values)`` first; cupy now mirrors that.
+        # setdiag must accept Python scalars/lists, not just cupy
+        # arrays: scipy's ``_spbase.setdiag`` coerces via
+        # ``np.asarray`` first, and cupy mirrors that.  (It previously
+        # called ``.astype``/``.ndim`` on the raw input, which raised
+        # AttributeError for lists/scalars.)
         cls = getattr(sparse, f'{fmt}_array')
         expected = cupy.array([[10., 2., 3.],
                                [4., 20., 6.],
@@ -416,10 +419,10 @@ class TestSparseArrayTypeIdentity:
 
     @pytest.mark.parametrize('fmt', ('csr', 'csc', 'coo'))
     def test_setdiag_does_not_mutate_input(self, fmt):
-        # Regression: CSR setdiag used ``x_data -= self.diagonal(k)``
-        # in place.  Now that input is coerced via ``cupy.asarray``
-        # (no copy when dtype matches), the in-place subtraction would
-        # mutate the caller's array -- switched to out-of-place ``-``.
+        # setdiag must not mutate the caller's ``values``.  Input is
+        # coerced via ``cupy.asarray`` (no copy when the dtype already
+        # matches), so the diagonal subtraction is out-of-place (``-``,
+        # not ``-=``) to avoid writing through that shared view.
         cls = getattr(sparse, f'{fmt}_array')
         A = cls(cupy.array([[1., 2., 3.],
                             [4., 5., 6.],
@@ -560,10 +563,10 @@ class TestSparseArrayTypeIdentity:
 
     @pytest.mark.parametrize('fmt', ('csr', 'csc', 'coo'))
     def test_count_nonzero_axis_empty(self, fmt):
-        # Regression: ``count_nonzero(axis=)`` on an empty sparse object
-        # used to crash because ``cupy.bincount`` errors on zero-size
-        # input even with ``minlength``.  scipy returns the zero-filled
-        # axis vector.
+        # count_nonzero(axis=) on an empty matrix returns scipy's
+        # zero-filled axis vector.  Exercises the zero-size guard:
+        # ``cupy.bincount`` rejects zero-size input even with
+        # ``minlength``, so the empty case is special-cased.
         cls = getattr(sparse, f'{fmt}_array')
         A = cls((3, 5))
         assert A.count_nonzero() == 0
@@ -656,12 +659,11 @@ class TestCsrArrayConstruction:
         assert isinstance(m, sparse.sparray)
 
     def test_from_coo_tuple_preserves_int64_indices(self, dtype):
-        # Regression: csr_array((data, (row, col))) used to construct
-        # an intermediate ``coo_matrix`` (not ``coo_array``), which ran
-        # ``_get_index_dtype(check_contents=True)`` and silently
-        # downcast int64 row/col arrays to int32.  Now uses
-        # ``self._coo_container`` so the sparse-array dtype-preservation
-        # promise is honored.
+        # csr_array must preserve int64 indices.  The
+        # ``(data, (row, col))`` tuple is routed through
+        # ``self._coo_container`` (coo_array), not ``coo_matrix`` --
+        # whose ``_get_index_dtype(check_contents=True)`` path would
+        # silently downcast int64 row/col to int32.
         data = cupy.array([1.0, 2.0], dtype=dtype)
         row = cupy.array([0, 1], dtype=cupy.int64)
         col = cupy.array([0, 1], dtype=cupy.int64)
