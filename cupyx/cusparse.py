@@ -1799,13 +1799,11 @@ class DnMatDescriptor(BaseDescriptor):
     def create(cls, a):
         if a.ndim != 2:
             raise ValueError('expected 2-D matrix')
-        if not a.flags.f_contiguous:
-            raise ValueError('expected F-contiguous array')
         rows, cols = a.shape
-        ld = rows
+        ld = cols if a.flags.c_contiguous else rows
         cuda_dtype = _dtype.to_cuda_dtype(a.dtype)
         desc = _cusparse.createDnMat(rows, cols, ld, a.data.ptr, cuda_dtype,
-                                     _cusparse.CUSPARSE_ORDER_COL)
+                                     _cusparse.CUSPARSE_ORDER_ROW if a.flags.c_contiguous else _cusparse.CUSPARSE_ORDER_COL)
         get = _cusparse.dnMatGet
         destroy = _cusparse.destroyDnMat
         return DnMatDescriptor(desc, get, destroy)
@@ -2217,7 +2215,7 @@ def denseToSparse(x, format='csr'):
         raise ValueError('expected 2-D matrix')
     if x.dtype.char not in 'fdFD':
         raise ValueError('unsupported dtype')
-    x = _cupy.asfortranarray(x)
+    x = _cupy.ascontiguousarray(x) if (format == "csr" and x.flags.c_contiguous) else _cupy.asfortranarray(x)
     desc_x = DnMatDescriptor.create(x)
     if format == 'csr':
         y = cupyx.scipy.sparse.csr_matrix(x.shape, dtype=x.dtype)
@@ -2275,7 +2273,7 @@ def denseToSparse(x, format='csr'):
     return y
 
 
-def sparseToDense(x, out=None):
+def sparseToDense(x, out=None, order=None):
     """Converts sparse matrix to a dense matrix.
 
     Args:
@@ -2294,12 +2292,9 @@ def sparseToDense(x, out=None):
     if dtype.char not in 'fdFD':
         raise ValueError('unsupported dtype')
     if out is None:
-        out = _cupy.zeros(x.shape, dtype=dtype, order='F')
-    else:
-        if not out.flags.f_contiguous:
-            raise ValueError('expected F-contiguous array for out')
-        if out.dtype != dtype:
-            raise ValueError('out dtype mismatch')
+        out = _cupy.zeros(x.shape, dtype=dtype, order="F" if order is None else order)
+    elif out.dtype != dtype:
+        raise ValueError('out dtype mismatch')
 
     desc_x = SpMatDescriptor.create(x)
     desc_out = DnMatDescriptor.create(out)
