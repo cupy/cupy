@@ -726,7 +726,8 @@ class TestCsrArrayConstruction:
         assert m.indices.dtype == cupy.int32
 
 
-@pytest.mark.parametrize('dtype', [numpy.float32, numpy.float64])
+@pytest.mark.parametrize(
+    'dtype', [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128])
 @testing.with_requires('scipy')
 class TestCsrArrayStarIsElementwise:
     """Verify that * is element-wise for csr_array (matching scipy.sparse)."""
@@ -757,7 +758,8 @@ class TestCsrArrayStarIsElementwise:
         return result
 
 
-@pytest.mark.parametrize('dtype', [numpy.float32, numpy.float64])
+@pytest.mark.parametrize(
+    'dtype', [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128])
 @testing.with_requires('scipy')
 class TestCsrArrayMatmul:
 
@@ -787,7 +789,8 @@ class TestCsrArrayMatmul:
             a @ 5.0
 
 
-@pytest.mark.parametrize('dtype', [numpy.float32, numpy.float64])
+@pytest.mark.parametrize(
+    'dtype', [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128])
 @testing.with_requires('scipy')
 class TestCsrArrayPower:
 
@@ -942,6 +945,13 @@ class TestCsrArrayGet:
     'dtype', [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128])
 @testing.with_requires('scipy')
 class TestCsrArrayArithmeticSciPyComparison:
+    """SciPy-parity sweep over float and complex dtypes.
+
+    Elementwise ``*``, ``@``, and ``**`` are covered across the same
+    dtype set by ``TestCsrArrayStarIsElementwise`` /
+    ``TestCsrArrayMatmul`` / ``TestCsrArrayPower``, so this class only
+    covers the remaining ops (add/sub/neg/abs/transpose/conj).
+    """
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_add(self, xp, sp, dtype):
@@ -965,36 +975,6 @@ class TestCsrArrayArithmeticSciPyComparison:
         result = -a
         assert isinstance(result, sp.sparray)
         return result.toarray()
-
-    @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_mul_elementwise(self, xp, sp, dtype):
-        a = _make_csr_sq(xp, sp, dtype, array=True)
-        b = _make_csr_sq(xp, sp, dtype, array=True)
-        result = a * b
-        assert isinstance(result, sp.sparray)
-        return result
-
-    @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_mul_scalar(self, xp, sp, dtype):
-        a = _make_csr(xp, sp, dtype, array=True)
-        result = a * dtype(2.5)
-        assert isinstance(result, sp.sparray)
-        return result
-
-    @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_matmul(self, xp, sp, dtype):
-        a = _make_csr(xp, sp, dtype, array=True)
-        b = _make_for_matmul(xp, sp, dtype, array=True)
-        result = a @ b
-        assert isinstance(result, sp.sparray)
-        return result
-
-    @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_power_elementwise(self, xp, sp, dtype):
-        a = _make_csr_sq(xp, sp, dtype, array=True)
-        result = a ** 2
-        assert isinstance(result, sp.sparray)
-        return result
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_abs(self, xp, sp, dtype):
