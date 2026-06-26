@@ -20,7 +20,6 @@ cdef extern from *:
     ctypedef int PointerMode 'cusparsePointerMode_t'
 
     ctypedef int Action 'cusparseAction_t'
-    ctypedef int AlgMode 'cusparseAlgMode_t'
 
     ctypedef void* csrsv2Info_t
     ctypedef void* csrsm2Info_t
@@ -104,9 +103,6 @@ cpdef enum:
 
     CUSPARSE_SOLVE_POLICY_NO_LEVEL = 0
     CUSPARSE_SOLVE_POLICY_USE_LEVEL = 1
-
-    CUSPARSE_ALG_NAIVE = 0
-    CUSPARSE_ALG_MERGE_PATH = 1
 
     # Enums for cuSparse generic API
     CUSPARSE_FORMAT_CSR = 1  # Compressed Sparse Row (CSR)

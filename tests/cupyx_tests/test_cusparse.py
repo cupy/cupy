@@ -503,51 +503,6 @@ class TestCsrmv:
         assert y is z
         testing.assert_array_almost_equal(y, expect)
 
-    def test_csrmvEx_aligned(self):
-        if not cusparse.check_availability('csrmvEx'):
-            pytest.skip('csrmvEx is not available')
-        a = sparse.csr_matrix(self.a)
-        x = cupy.array(self.x, order='f')
-
-        assert cusparse.csrmvExIsAligned(a, x)
-
-    def test_csrmvEx_not_aligned(self):
-        if not cusparse.check_availability('csrmvEx'):
-            pytest.skip('csrmvEx is not available')
-        a = sparse.csr_matrix(self.a)
-        tmp = cupy.array(numpy.hstack([self.x, self.y]), order='f')
-        x = tmp[0:len(self.x)]
-        y = tmp[len(self.x):]
-        assert not cusparse.csrmvExIsAligned(a, x, y)
-
-    def test_csrmvEx(self):
-        if not cusparse.check_availability('csrmvEx'):
-            pytest.skip('csrmvEx is not available')
-        if self.transa:
-            # no support for transa
-            return
-
-        a = sparse.csr_matrix(self.a)
-        x = cupy.array(self.x, order='f')
-        y = cusparse.csrmvEx(a, x, alpha=self.alpha)
-        expect = self.alpha * self.op_a.dot(self.x)
-        testing.assert_array_almost_equal(y, expect)
-
-    def test_csrmvEx_with_y(self):
-        if not cusparse.check_availability('csrmvEx'):
-            pytest.skip('csrmvEx is not available')
-        if self.transa:
-            # no support for transa
-            return
-        a = sparse.csr_matrix(self.a)
-        x = cupy.array(self.x, order='f')
-        y = cupy.array(self.y, order='f')
-        z = cusparse.csrmvEx(
-            a, x, y=y, alpha=self.alpha, beta=self.beta)
-        expect = self.alpha * self.op_a.dot(self.x) + self.beta * self.y
-        assert y is z
-        testing.assert_array_almost_equal(y, expect)
-
 
 @testing.with_requires('scipy')
 class TestCoosort:

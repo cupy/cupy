@@ -86,24 +86,6 @@ cdef extern from '../../cupy_sparse.h' nogil:
         const cuDoubleComplex *x, const cuDoubleComplex *beta,
         cuDoubleComplex *y)
 
-    Status cusparseCsrmvEx_bufferSize(
-        Handle handle, AlgMode alg, Operation transA, int m, int n,
-        int nnz, const void *alpha, DataType alphatype,
-        MatDescr descrA, const void *csrValA, DataType csrValAtype,
-        const int *csrRowPtrA, const int *csrColIndA,
-        const void *x, DataType xtype, const void *beta,
-        DataType betatype, void *y, DataType ytype,
-        DataType executiontype, size_t *bufferSizeInBytes)
-
-    Status cusparseCsrmvEx(
-        Handle handle, AlgMode alg, Operation transA, int m, int n,
-        int nnz, const void *alpha, DataType alphatype,
-        MatDescr descrA, const void *csrValA, DataType csrValAtype,
-        const int *csrRowPtrA, const int *csrColIndA,
-        const void *x, DataType xtype, const void *beta,
-        DataType betatype, void *y, DataType ytype,
-        DataType executiontype, void* buffer)
-
     Status cusparseCreateCsrsv2Info(csrsv2Info_t* info)
     Status cusparseDestroyCsrsv2Info(csrsv2Info_t info)
 
@@ -1275,7 +1257,6 @@ cdef extern from '../../cupy_sparse.h' nogil:
     Status cusparseSpMatGetSize(SpMatDescr spMatDescr, int64_t* rows,
                                 int64_t* cols, int64_t* nnz)
     Status cusparseSpMatGetStridedBatch(SpMatDescr spMatDescr, int* batchCount)
-    Status cusparseSpMatSetStridedBatch(SpMatDescr spMatDescr, int batchCount)
 
     # Dense Vector APIs
     Status cusparseCreateDnVec(DnVecDescr *dnVecDescr, int64_t size,
@@ -1327,14 +1308,6 @@ cdef extern from '../../cupy_sparse.h' nogil:
                         void* alpha, SpMatDescr matA, DnMatDescr matB,
                         void* beta, DnMatDescr matC, DataType computeType,
                         SpMMAlg alg, void* externalBuffer)
-    Status cusparseConstrainedGeMM_bufferSize(
-        Handle handle, Operation opA, Operation opB, void* alpha,
-        DnMatDescr matA, DnMatDescr matB, void* beta, SpMatDescr matC,
-        DataType computeType, size_t* bufferSize)
-    Status cusparseConstrainedGeMM(
-        Handle handle, Operation opA, Operation opB, void* alpha,
-        DnMatDescr matA, DnMatDescr matB, void* beta, SpMatDescr matC,
-        DataType computeType, void* externalBuffer)
 
     Status cusparseSpGEMM_createDescr(SpGEMMDescr* spgemmDescr)
     Status cusparseSpGEMM_destroyDescr(SpGEMMDescr spgemmDescr)
@@ -1754,43 +1727,6 @@ cpdef void zcsrmv(
         <const int *>csrSortedRowPtrA, <const int *>csrSortedColIndA,
         <const cuDoubleComplex *>x, <const cuDoubleComplex *>beta,
         <cuDoubleComplex *>y)
-    check_status(status)
-
-cpdef size_t csrmvEx_bufferSize(
-        intptr_t handle, int alg, int transA, int m, int n,
-        int nnz, size_t alpha, int alphatype, size_t descrA,
-        size_t csrValA, int csrValAtype, size_t csrRowPtrA,
-        size_t csrColIndA, size_t x, int xtype, size_t beta,
-        int betatype, size_t y, int ytype, int executiontype) except? -1:
-    cdef size_t bufferSizeInBytes
-    _setStream(handle)
-    status = cusparseCsrmvEx_bufferSize(
-        <Handle>handle, <AlgMode>alg, <Operation>transA, m,
-        n, nnz, <const void *>alpha, <DataType>alphatype,
-        <MatDescr>descrA, <const void *>csrValA, <DataType>csrValAtype,
-        <const int *>csrRowPtrA, <const int *>csrColIndA,
-        <const void *>x, <DataType>xtype, <const void *>beta,
-        <DataType>betatype, <void *>y, <DataType>ytype,
-        <DataType>executiontype, &bufferSizeInBytes)
-    check_status(status)
-    return bufferSizeInBytes
-
-cpdef void csrmvEx(
-        intptr_t handle, int alg, int transA, int m, int n,
-        int nnz, size_t alpha, int alphatype, size_t descrA,
-        size_t csrValA, int csrValAtype, size_t csrRowPtrA,
-        size_t csrColIndA, size_t x, int xtype, size_t beta,
-        int betatype, size_t y, int ytype, int executiontype,
-        size_t buffer) except *:
-    _setStream(handle)
-    status = cusparseCsrmvEx(
-        <Handle>handle, <AlgMode>alg, <Operation>transA, m,
-        n, nnz, <const void *>alpha, <DataType>alphatype,
-        <MatDescr>descrA, <const void *>csrValA, <DataType>csrValAtype,
-        <const int *>csrRowPtrA, <const int *>csrColIndA,
-        <const void *>x, <DataType>xtype, <const void *>beta,
-        <DataType>betatype, <void *>y, <DataType>ytype,
-        <DataType>executiontype, <void *>buffer)
     check_status(status)
 
 cpdef size_t createCsrsv2Info() except? -1:
@@ -4822,10 +4758,6 @@ cpdef int spMatGetStridedBatch(size_t desc) except? -1:
     check_status(status)
     return batchCount
 
-cpdef void spMatSetStridedBatch(size_t desc, int batchCount) except *:
-    status = cusparseSpMatSetStridedBatch(<SpMatDescr>desc, batchCount)
-    check_status(status)
-
 ############################################################
 # Dense Vector APIs
 
@@ -5029,31 +4961,6 @@ cpdef void spMM(
                           <SpMatDescr>matA, <DnMatDescr>matB, <void*>beta,
                           <DnMatDescr>matC, computeType, alg,
                           <void*>externalBuffer)
-    check_status(status)
-
-cpdef size_t constrainedGeMM_bufferSize(intptr_t handle, Operation opA,
-                                        Operation opB, intptr_t alpha,
-                                        size_t matA, size_t matB,
-                                        intptr_t beta, size_t matC,
-                                        DataType computeType) except? -1:
-    cdef size_t bufferSize
-    status = cusparseConstrainedGeMM_bufferSize(
-        <Handle>handle, opA, opB, <void*>alpha, <DnMatDescr>matA,
-        <DnMatDescr>matB, <void*>beta, <SpMatDescr>matC, computeType,
-        &bufferSize)
-    check_status(status)
-    return bufferSize
-
-cpdef void constrainedGeMM(
-        intptr_t handle, Operation opA, Operation opB,
-        intptr_t alpha, size_t matA, size_t matB, intptr_t beta,
-        size_t matC, DataType computeType,
-        intptr_t externalBuffer) except *:
-    _setStream(handle)
-    status = cusparseConstrainedGeMM(
-        <Handle>handle, opA, opB, <void*>alpha, <DnMatDescr>matA,
-        <DnMatDescr>matB, <void*>beta, <SpMatDescr>matC, computeType,
-        <void*>externalBuffer)
     check_status(status)
 
 cpdef size_t spGEMM_createDescr() except? -1:

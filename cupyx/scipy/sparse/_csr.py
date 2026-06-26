@@ -255,11 +255,7 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
             elif other.ndim == 1:
                 self.sum_duplicates()
                 other = cupy.asfortranarray(other)
-                if (cusparse.check_availability('csrmvEx') and self.nnz > 0 and
-                        cusparse.csrmvExIsAligned(self, other)):
-                    # csrmvEx does not work if nnz == 0
-                    csrmv = cusparse.csrmvEx
-                elif cusparse.check_availability('csrmv'):
+                if cusparse.check_availability('csrmv'):
                     csrmv = cusparse.csrmv
                 elif cusparse.check_availability('spmv'):
                     csrmv = cusparse.spmv
