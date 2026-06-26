@@ -3637,3 +3637,52 @@ class TestMultiplyMixedInt32Int64:
         b = sparse.csr_matrix(cupy.array([[1.0, 0.0], [0.0, 1.0]]))
         c = a.multiply(b)
         assert c.indices.dtype == cupy.int32
+
+
+class TestKronSparrayDtypePreservation:
+    # sparray path preserves input dtype; matrix path uses the
+    # minimum-required dtype based on output shape.
+
+    def test_kron_sparray_int64_preserved(self):
+        a = sparse.eye_array(8, format='csr', dtype=cupy.float64)
+        a_int64 = sparse.csr_array._from_parts(
+            a.data, a.indices.astype(cupy.int64),
+            a.indptr.astype(cupy.int64), a.shape)
+        k = sparse.kron(a_int64, a_int64)
+        assert k.row.dtype == cupy.int64
+
+    def test_kronsum_sparray_int64_preserved(self):
+        a = sparse.eye_array(8, format='csr', dtype=cupy.float64)
+        a_int64 = sparse.csr_array._from_parts(
+            a.data, a.indices.astype(cupy.int64),
+            a.indptr.astype(cupy.int64), a.shape)
+        k = sparse.kronsum(a_int64, a_int64)
+        assert k.indices.dtype == cupy.int64
+
+    def test_kron_matrix_legacy_dtype(self):
+        # Matrix path: minimum-required dtype based on output shape.
+        a = sparse.eye(8, format='csr', dtype=cupy.float64)
+        a_int64 = sparse.csr_matrix._from_parts(
+            a.data, a.indices.astype(cupy.int64),
+            a.indptr.astype(cupy.int64), a.shape)
+        k = sparse.kron(a_int64, a_int64)
+        # Output shape (64, 64) fits int32.  Matrix path downcasts.
+        assert k.row.dtype == cupy.int32
+
+    def test_kron_sparray_int32_unchanged(self):
+        a = sparse.csr_array(cupy.array([[1.0, 2.0], [3.0, 4.0]]))
+        k = sparse.kron(a, a)
+        assert k.row.dtype == cupy.int32
+
+
+class TestSparseTypingAliases:
+
+    def test_csr_array_typing(self):
+        import types
+        alias = sparse.csr_array[int]
+        assert isinstance(alias, types.GenericAlias)
+
+    def test_csr_matrix_typing(self):
+        import types
+        alias = sparse.csr_matrix[float, int]
+        assert isinstance(alias, types.GenericAlias)

@@ -21,13 +21,10 @@ cdef extern from *:
 
     ctypedef int Action 'cusparseAction_t'
 
-    ctypedef void* csrsv2Info_t
-    ctypedef void* csrsm2Info_t
     ctypedef void* csric02Info_t
     ctypedef void* bsric02Info_t
     ctypedef void* csrilu02Info_t
     ctypedef void* bsrilu02Info_t
-    ctypedef void* csrgemm2Info_t
 
     # Declarations for cuSparse generic API
     ctypedef int SolvePolicy 'cusparseSolvePolicy_t'
@@ -55,6 +52,12 @@ cdef extern from *:
     # CSR2CSC
     ctypedef int Csr2CscAlg 'cusparseCsr2CscAlg_t'
 
+# Types removed in CUDA 12.0+
+IF CUPY_CUDA_VERSION == 0:
+    cdef extern from *:
+        ctypedef void* csrsv2Info_t
+        ctypedef void* csrsm2Info_t
+        ctypedef void* csrgemm2Info_t
 # TODO(eriknw): cuSPARSE--remove stubs when SpGEAM ships in a public release.
 # The #ifndef guard auto-deactivates when the real header defines these.
 cdef extern from *:

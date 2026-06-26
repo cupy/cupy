@@ -558,7 +558,7 @@ def aslinearoperator(A):
         A = cupy.atleast_2d(A)
         return MatrixLinearOperator(A)
 
-    elif sparse.isspmatrix(A):
+    elif sparse.issparse(A):
         return MatrixLinearOperator(A)
 
     else:
