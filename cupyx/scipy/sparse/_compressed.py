@@ -284,8 +284,10 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                     f'(got {int(indptr[0])})')
 
             # Reconcile data/indices size against indptr[-1] (scipy
-            # parity).  Internal helpers always produce tight buffers,
-            # so this only kicks in for user-supplied tuples.
+            # parity).  Internal construction (via ``_from_parts``)
+            # always sizes data/indices exactly to indptr[-1] with no
+            # trailing slack, so this trim/overshoot check only matters
+            # for user-supplied 3-tuples.
             if indptr.size > 0:
                 nnz_live = int(indptr[-1])  # synchronize!
                 if nnz_live > data.size:

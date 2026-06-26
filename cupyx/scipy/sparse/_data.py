@@ -481,6 +481,8 @@ def _install_ufunc(func_name):
     def f(self):
         # ``cupy.sign`` returns ``nan+nanj`` for ``0+0j`` (literal
         # ``z/abs(z)``); mask explicit zeros to match numpy 2.x.
+        # TODO(eriknw): once ``cupy.sign(0+0j)`` returns ``0``
+        # (gh-10034) this explicit-zero masking can be dropped.
         if func_name == 'sign' and self.data.dtype.kind == 'c':
             zero = self.data.dtype.type(0)
             result = cupy.where(self.data == zero, zero,
