@@ -178,6 +178,7 @@ jobs:
             CUPY_NUM_BUILD_JOBS
           CIBW_ENVIRONMENT_LINUX: >
             CUDA_PATH=/project/cuda_toolkit
+            LIBRARY_PATH=/project/cuda_toolkit/lib64/stubs
             CC="/host/${{ env.SCCACHE_PATH }} cc"
             CXX="/host/${{ env.SCCACHE_PATH }} c++"
             SCCACHE_GHA_ENABLED=true
@@ -197,6 +198,7 @@ jobs:
             echo "ok!"
           CIBW_REPAIR_WHEEL_COMMAND_LINUX: >
             auditwheel repair -w {dest_dir}
+            --exclude 'libcuda.so*'
             --exclude 'libcudart.so*'
             --exclude 'libcublas.so*'
             --exclude 'libcublasLt.so*'
@@ -214,7 +216,7 @@ jobs:
           CIBW_BEFORE_BUILD_WINDOWS: pip install delvewheel
           CIBW_REPAIR_WHEEL_COMMAND_WINDOWS: >
             delvewheel repair -w {dest_dir} {wheel}
-            --exclude "cudart64_*.dll;cublas64_*.dll;cublasLt64_*.dll;cufft64_*.dll;curand64_*.dll;cusparse64_*.dll;cusolver64_*.dll;nvrtc64_*.dll;nvrtc-builtins64_*.dll;nvJitLink_*.dll;cutensor.dll;cutensorMg.dll"
+            --exclude "nvcuda.dll;cudart64_*.dll;cublas64_*.dll;cublasLt64_*.dll;cufft64_*.dll;curand64_*.dll;cusparse64_*.dll;cusolver64_*.dll;nvrtc64_*.dll;nvrtc-builtins64_*.dll;nvJitLink_*.dll;cutensor.dll;cutensorMg.dll"
           CIBW_BUILD_VERBOSITY: 1
 
       - name: Report sccache stats (cupy-cuda${{ env.BUILD_CUDA_MAJOR }}x)
