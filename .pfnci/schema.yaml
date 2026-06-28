@@ -349,7 +349,7 @@ mpi4py:
       - "3.14"
 cython:
   "3.2":
-    spec: "==3.2.*"
+    spec: "==3.2.*,!=3.2.6"
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
 cuda-python:
