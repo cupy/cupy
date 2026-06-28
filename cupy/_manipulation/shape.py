@@ -22,7 +22,7 @@ def shape(a):
         return numpy.shape(a)
 
 
-def reshape(a, newshape, order='C'):
+def reshape(a, newshape, order='C', *, copy=None):
     """Returns an array with new shape and same elements.
 
     It tries to return a view if possible, otherwise returns a copy.
@@ -46,6 +46,10 @@ def reshape(a, newshape, order='C'):
             underlying array, and only refer to the order of indexing. 'A'
             means to read / write the elements in Fortran-like index order if
             a is Fortran contiguous in memory, C-like order otherwise.
+        copy (bool or None):
+            If ``True``, then the array data is copied. If ``None``, a copy is
+            made only if required. For ``False``, a ``ValueError`` is raised if
+            a copy cannot be avoided.
 
     Returns:
         cupy.ndarray: A reshaped view of ``a`` if possible, otherwise a copy.
@@ -54,7 +58,7 @@ def reshape(a, newshape, order='C'):
 
     """
     # TODO(okuta): check type
-    return a.reshape(newshape, order=order)
+    return a.reshape(newshape, order=order, copy=copy)
 
 
 def ravel(a, order='C'):
