@@ -3436,24 +3436,6 @@ IF CUPY_CUDA_VERSION == 0:
             const cuDoubleComplex *x, const cuDoubleComplex *beta,
             cuDoubleComplex *y)
 
-        Status cusparseCsrmvEx_bufferSize(
-            Handle handle, AlgMode alg, Operation transA, int m, int n,
-            int nnz, const void *alpha, DataType alphatype,
-            MatDescr descrA, const void *csrValA, DataType csrValAtype,
-            const int *csrRowPtrA, const int *csrColIndA,
-            const void *x, DataType xtype, const void *beta,
-            DataType betatype, void *y, DataType ytype,
-            DataType executiontype, size_t *bufferSizeInBytes)
-
-        Status cusparseCsrmvEx(
-            Handle handle, AlgMode alg, Operation transA, int m, int n,
-            int nnz, const void *alpha, DataType alphatype,
-            MatDescr descrA, const void *csrValA, DataType csrValAtype,
-            const int *csrRowPtrA, const int *csrColIndA,
-            const void *x, DataType xtype, const void *beta,
-            DataType betatype, void *y, DataType ytype,
-            DataType executiontype, void* buffer)
-
         Status cusparseCreateCsrsv2Info(csrsv2Info_t* info)
         Status cusparseDestroyCsrsv2Info(csrsv2Info_t info)
 
@@ -3963,17 +3945,6 @@ IF CUPY_CUDA_VERSION == 0:
                                  void** cooValues, IndexType* idxType,
                                  IndexBase* idxBase, DataType* valueType)
 
-        Status cusparseSpMatSetStridedBatch(SpMatDescr spMatDescr, int batchCount)  # no-cython-lint
-
-        Status cusparseConstrainedGeMM_bufferSize(
-            Handle handle, Operation opA, Operation opB, void* alpha,
-            DnMatDescr matA, DnMatDescr matB, void* beta, SpMatDescr matC,
-            DataType computeType, size_t* bufferSize)
-        Status cusparseConstrainedGeMM(
-            Handle handle, Operation opA, Operation opB, void* alpha,
-            DnMatDescr matA, DnMatDescr matB, void* beta, SpMatDescr matC,
-            DataType computeType, void* externalBuffer)
-
     # Public APIs supported only by HIP and stub builds.
     cpdef void sgthr(
             intptr_t handle, int nnz, size_t y, size_t xVal, size_t xInd,
@@ -4067,43 +4038,6 @@ IF CUPY_CUDA_VERSION == 0:
             <const int *>csrSortedRowPtrA, <const int *>csrSortedColIndA,
             <const cuDoubleComplex *>x, <const cuDoubleComplex *>beta,
             <cuDoubleComplex *>y)
-        check_status(status)
-
-    cpdef size_t csrmvEx_bufferSize(
-            intptr_t handle, int alg, int transA, int m, int n,
-            int nnz, size_t alpha, int alphatype, size_t descrA,
-            size_t csrValA, int csrValAtype, size_t csrRowPtrA,
-            size_t csrColIndA, size_t x, int xtype, size_t beta,
-            int betatype, size_t y, int ytype, int executiontype) except? -1:
-        cdef size_t bufferSizeInBytes
-        _setStream(handle)
-        status = cusparseCsrmvEx_bufferSize(
-            <Handle>handle, <AlgMode>alg, <Operation>transA, m,
-            n, nnz, <const void *>alpha, <DataType>alphatype,
-            <MatDescr>descrA, <const void *>csrValA, <DataType>csrValAtype,
-            <const int *>csrRowPtrA, <const int *>csrColIndA,
-            <const void *>x, <DataType>xtype, <const void *>beta,
-            <DataType>betatype, <void *>y, <DataType>ytype,
-            <DataType>executiontype, &bufferSizeInBytes)
-        check_status(status)
-        return bufferSizeInBytes
-
-    cpdef void csrmvEx(
-            intptr_t handle, int alg, int transA, int m, int n,
-            int nnz, size_t alpha, int alphatype, size_t descrA,
-            size_t csrValA, int csrValAtype, size_t csrRowPtrA,
-            size_t csrColIndA, size_t x, int xtype, size_t beta,
-            int betatype, size_t y, int ytype, int executiontype,
-            size_t buffer) except *:
-        _setStream(handle)
-        status = cusparseCsrmvEx(
-            <Handle>handle, <AlgMode>alg, <Operation>transA, m,
-            n, nnz, <const void *>alpha, <DataType>alphatype,
-            <MatDescr>descrA, <const void *>csrValA, <DataType>csrValAtype,
-            <const int *>csrRowPtrA, <const int *>csrColIndA,
-            <const void *>x, <DataType>xtype, <const void *>beta,
-            <DataType>betatype, <void *>y, <DataType>ytype,
-            <DataType>executiontype, <void *>buffer)
         check_status(status)
 
     cpdef size_t createCsrsv2Info() except? -1:
@@ -5205,32 +5139,3 @@ IF CUPY_CUDA_VERSION == 0:
         check_status(status)
         return CooAoSAttributes(rows, cols, nnz, ind, values,
                                 idxType, idxBase, valueType)
-
-    cpdef void spMatSetStridedBatch(size_t desc, int batchCount) except *:
-        status = cusparseSpMatSetStridedBatch(<SpMatDescr>desc, batchCount)
-        check_status(status)
-
-    cpdef size_t constrainedGeMM_bufferSize(intptr_t handle, Operation opA,
-                                            Operation opB, intptr_t alpha,
-                                            size_t matA, size_t matB,
-                                            intptr_t beta, size_t matC,
-                                            DataType computeType) except? -1:
-        cdef size_t bufferSize
-        status = cusparseConstrainedGeMM_bufferSize(
-            <Handle>handle, opA, opB, <void*>alpha, <DnMatDescr>matA,
-            <DnMatDescr>matB, <void*>beta, <SpMatDescr>matC, computeType,
-            &bufferSize)
-        check_status(status)
-        return bufferSize
-
-    cpdef void constrainedGeMM(
-            intptr_t handle, Operation opA, Operation opB,
-            intptr_t alpha, size_t matA, size_t matB, intptr_t beta,
-            size_t matC, DataType computeType,
-            intptr_t externalBuffer) except *:
-        _setStream(handle)
-        status = cusparseConstrainedGeMM(
-            <Handle>handle, opA, opB, <void*>alpha, <DnMatDescr>matA,
-            <DnMatDescr>matB, <void*>beta, <SpMatDescr>matC, computeType,
-            <void*>externalBuffer)
-        check_status(status)
