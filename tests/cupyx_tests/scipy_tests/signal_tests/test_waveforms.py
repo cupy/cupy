@@ -48,6 +48,68 @@ class TestChirp:
             t=0, f0=10.0, f1=1.0, t1=1.0, method='hyperbolic')
         return w
 
+    @pytest.mark.parametrize('method, f0, f1, kwargs', [
+        ('linear', 1.0, 3.0, {}),
+        ('quadratic', 1.0, 3.0, {}),
+        ('quadratic', 1.0, 3.0, {'vertex_zero': False}),
+        ('logarithmic', 1.0, 3.0, {}),
+        ('hyperbolic', 3.0, 1.0, {}),
+    ])
+    @testing.with_requires('scipy>=1.15.0')
+    @testing.numpy_cupy_allclose(
+        scipy_name="scp", rtol=1e-6, atol=1e-6)
+    def test_complex(self, method, f0, f1, kwargs, xp, scp):
+        t = xp.linspace(0, 1, 50)
+        w = scp.signal.chirp(
+            t, f0, 1.0, f1, method=method, complex=True, **kwargs)
+        return w
+
+    @testing.with_requires('scipy>=1.15.0')
+    @testing.numpy_cupy_allclose(
+        scipy_name="scp", rtol=1e-6, atol=1e-6)
+    def test_complex_phi(self, xp, scp):
+        t = xp.linspace(-1, 1, 50)
+        w = scp.signal.chirp(
+            t, 1.0, 1.0, 3.0, phi=45.0, complex=True)
+        return w
+
+    @testing.with_requires('scipy>=1.15.0')
+    def test_complex_real_part_and_magnitude(self):
+        t = cupy.linspace(0, 1, 50)
+        real = cupyx.scipy.signal.chirp(t, 1.0, 1.0, 3.0)
+        analytic = cupyx.scipy.signal.chirp(
+            t, 1.0, 1.0, 3.0, complex=True)
+
+        testing.assert_allclose(analytic.real, real, rtol=1e-7, atol=1e-7)
+        testing.assert_allclose(
+            cupy.abs(analytic), cupy.ones_like(real), rtol=1e-7, atol=1e-7)
+
+    @pytest.mark.parametrize('dtype, expected_dtype', [
+        ('float32', cupy.complex64),
+        ('float64', cupy.complex128),
+    ])
+    @testing.with_requires('scipy>=1.15.0')
+    def test_complex_dtype(self, dtype, expected_dtype):
+        t = cupy.linspace(0, 1, 50, dtype=dtype)
+        actual = cupyx.scipy.signal.chirp(
+            t, 1.0, 1.0, 3.0, complex=True)
+
+        assert actual.dtype == expected_dtype
+        expected = scipy.signal.chirp(
+            np.linspace(0, 1, 50, dtype=dtype), 1.0, 1.0, 3.0,
+            complex=True)
+        testing.assert_allclose(actual, expected, rtol=1e-6, atol=1e-6)
+
+    @pytest.mark.parametrize('complex_', [1, "yes", None])
+    @testing.with_requires('scipy>=1.15.0')
+    @testing.numpy_cupy_allclose(
+        scipy_name="scp", rtol=1e-6, atol=1e-6)
+    def test_complex_non_bool(self, complex_, xp, scp):
+        t = xp.linspace(0, 1, 50)
+        w = scp.signal.chirp(
+            t, 1.0, 1.0, 3.0, complex=complex_)
+        return w
+
     def test_hyperbolic_zero_freq(self):
         # f0=0 or f1=0 must raise a ValueError.
         method = 'hyperbolic'
@@ -73,6 +135,19 @@ class TestChirp:
 
             with pytest.raises(ValueError):
                 scp.signal.chirp(t, f0, t1, f1, method)
+
+    @testing.with_requires('scipy>=1.15.0')
+    def test_unknown_method_complex(self):
+        method = "foo"
+        f0 = 10.0
+        f1 = 20.0
+        t1 = 1.0
+
+        for xp, scp in [(cupy, cupyx.scipy), (np, scipy)]:
+            t = xp.linspace(0, t1, 10)
+
+            with pytest.raises(ValueError):
+                scp.signal.chirp(t, f0, t1, f1, method, complex=True)
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_integer_t1(self, xp, scp):
