@@ -188,7 +188,6 @@ def _call_cusparse(name, dtype, *args):
 
 _available_cusparse_version = {
     'csrmv': (8000, 11000),
-    'csrmvEx': (8000, 11000),  # TODO(anaruse): failure in cuSparse 11.0
     'csrmm': (8000, 11000),
     'csrmm2': (8000, 11000),
     'csrgeam': (8000, 11000),
@@ -246,7 +245,6 @@ _available_hipsparse_version = {
     # For APIs supported by CUDA but not yet by HIP, we still need them here
     # so that our test suite can cover both platforms.
     'csrmv': (305, None),
-    'csrmvEx': (_numpy.inf, None),
     'csrmm': (305, None),
     'csrmm2': (305, None),
     'csrgeam': (305, None),
@@ -366,106 +364,6 @@ def csrmv(a, x, y=None, alpha=1, beta=0, transa=False):
         a.data.data.ptr, a.indptr.data.ptr, a.indices.data.ptr,
         x.data.ptr, beta.data, y.data.ptr)
 
-    return y
-
-
-def csrmvExIsAligned(a, x, y=None):
-    """Check if the pointers of arguments for csrmvEx are aligned or not
-
-    Args:
-        a (cupyx.cusparse.csr_matrix): Matrix A.
-        x (cupy.ndarray): Vector x.
-        y (cupy.ndarray or None): Vector y.
-
-        Check if a, x, y pointers are aligned by 128 bytes as
-        required by csrmvEx.
-
-    Returns:
-        bool:
-        ``True`` if all pointers are aligned.
-        ``False`` if otherwise.
-
-    """
-
-    if a.data.data.ptr % 128 != 0:
-        return False
-    if a.indptr.data.ptr % 128 != 0:
-        return False
-    if a.indices.data.ptr % 128 != 0:
-        return False
-    if x.data.ptr % 128 != 0:
-        return False
-    if y is not None and y.data.ptr % 128 != 0:
-        return False
-    return True
-
-
-def csrmvEx(a, x, y=None, alpha=1, beta=0, merge_path=True):
-    """Matrix-vector product for a CSR-matrix and a dense vector.
-
-    .. math::
-
-       y = \\alpha * A x + \\beta y,
-
-    Args:
-        a (cupyx.cusparse.csr_matrix): Matrix A.
-        x (cupy.ndarray): Vector x.
-        y (cupy.ndarray or None): Vector y. It must be F-contiguous.
-        alpha (float): Coefficient for x.
-        beta (float): Coefficient for y.
-        merge_path (bool): If ``True``, merge path algorithm is used.
-
-        All pointers must be aligned with 128 bytes.
-
-    Returns:
-        cupy.ndarray: Calculated ``y``.
-
-    """
-    if not check_availability('csrmvEx'):
-        raise RuntimeError('csrmvEx is not available.')
-
-    if y is not None and not y.flags.f_contiguous:
-        raise ValueError('expected F-contiguous array for y')
-
-    if a.shape[1] != len(x):
-        raise ValueError('dimension mismatch')
-
-    handle = _device.get_cusparse_handle()
-    m, n = a.shape
-
-    a, x, y = _cast_common_type(a, x, y)
-    dtype = a.dtype
-    if y is None:
-        y = _cupy.zeros(m, dtype)
-
-    datatype = _dtype.to_cuda_dtype(dtype)
-    algmode = _cusparse.CUSPARSE_ALG_MERGE_PATH if \
-        merge_path else _cusparse.CUSPARSE_ALG_NAIVE
-    transa_flag = _cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
-
-    alpha = _numpy.array(alpha, dtype).ctypes
-    beta = _numpy.array(beta, dtype).ctypes
-
-    assert csrmvExIsAligned(a, x, y)
-
-    bufferSize = _cusparse.csrmvEx_bufferSize(
-        handle, algmode, transa_flag,
-        a.shape[0], a.shape[1], a.nnz, alpha.data, datatype,
-        a._descr.descriptor, a.data.data.ptr, datatype,
-        a.indptr.data.ptr, a.indices.data.ptr,
-        x.data.ptr, datatype, beta.data, datatype,
-        y.data.ptr, datatype, datatype)
-
-    buf = _cupy.empty(bufferSize, 'b')
-    assert buf.data.ptr % 128 == 0
-
-    _cusparse.csrmvEx(
-        handle, algmode, transa_flag,
-        a.shape[0], a.shape[1], a.nnz, alpha.data, datatype,
-        a._descr.descriptor, a.data.data.ptr, datatype,
-        a.indptr.data.ptr, a.indices.data.ptr,
-        x.data.ptr, datatype, beta.data, datatype,
-        y.data.ptr, datatype, datatype, buf.data.ptr)
     return y
 
 
