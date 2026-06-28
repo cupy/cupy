@@ -55,7 +55,6 @@ cdef extern from *:
 # Types removed in CUDA 12.0+
 IF CUPY_CUDA_VERSION == 0:
     cdef extern from *:
-        ctypedef int AlgMode 'cusparseAlgMode_t'
         ctypedef void* csrsv2Info_t
         ctypedef void* csrsm2Info_t
         ctypedef void* csrgemm2Info_t
@@ -107,9 +106,6 @@ cpdef enum:
 
     CUSPARSE_SOLVE_POLICY_NO_LEVEL = 0
     CUSPARSE_SOLVE_POLICY_USE_LEVEL = 1
-
-    CUSPARSE_ALG_NAIVE = 0
-    CUSPARSE_ALG_MERGE_PATH = 1
 
     # Enums for cuSparse generic API
     CUSPARSE_FORMAT_CSR = 1  # Compressed Sparse Row (CSR)
