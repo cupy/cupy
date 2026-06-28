@@ -35,6 +35,21 @@ jobs:
     runs-on: ${{ (inputs.host-platform == 'linux-64' && 'ubuntu-22.04') ||
                  (inputs.host-platform == 'win-64'   && 'windows-2022') }}
     steps:
+      - name: Enable symlinks on Windows (must precede checkout)
+        if: ${{ inputs.host-platform == 'win-64' }}
+        run: git config --global core.symlinks true
+
+      - name: Verify LongPathsEnabled on Windows
+        if: ${{ inputs.host-platform == 'win-64' }}
+        shell: pwsh -command ". '{0}'"
+        run: |
+          $val = (Get-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem' -Name 'LongPathsEnabled').LongPathsEnabled
+          echo "LongPathsEnabled = $val"
+          if ($val -ne 1) {
+            echo "::error::LongPathsEnabled is not set to 1 (see cuda-python#1820)"
+            exit 1
+          }
+
       - name: Checkout ${{ github.event.repository.name }}
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
         with:
