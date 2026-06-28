@@ -116,6 +116,7 @@ jobs:
         with:
           host-platform: ${{ inputs.host-platform }}
           cuda-version: ${{ inputs.cuda-version }}
+          cuda-components: "cuda_nvcc,cuda_cudart,cuda_crt,cuda_cuxxfilt,libnvvm,cuda_nvrtc,cuda_nvtx,cuda_profiler_api,cuda_cccl,libnvjitlink,libcublas,libcufft,libcurand,libcusparse,libcusolver"
 
       - name: Install cuTENSOR preload
         run: |
