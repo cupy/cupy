@@ -107,6 +107,30 @@ class TestLabelSpecialCases:
         labels, num_features = scp.ndimage.label(x)
         return labels
 
+    @testing.for_dtypes([numpy.float32, numpy.float64])
+    @testing.numpy_cupy_array_equal(scipy_name='scp')
+    def test_label_float_nonzero_values(self, xp, scp, dtype):
+        x = xp.array([[0, -1.5, 0, 0, numpy.inf],
+                      [0, 2.25, 0, 0, 0],
+                      [0, 0, 0, numpy.nan, 0],
+                      [0, 0, 0, -numpy.inf, 0]], dtype=dtype)
+        structure = numpy.array([[0, 1, 0],
+                                 [0, 1, 0],
+                                 [0, 1, 0]], dtype=bool)
+        return scp.ndimage.label(x, structure=structure)
+
+    @testing.numpy_cupy_array_equal(scipy_name='scp')
+    def test_label_bool(self, xp, scp):
+        x = xp.array([[True, False, True],
+                      [False, True, False]], dtype=bool)
+        return scp.ndimage.label(x)
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_array_equal(scipy_name='scp', accept_error=TypeError)
+    def test_label_complex_unsupported(self, xp, scp, dtype):
+        x = xp.ones((2, 2), dtype=dtype)
+        return scp.ndimage.label(x)
+
 
 @testing.parameterize(*testing.product({
     'op': stats_ops,
