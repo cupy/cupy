@@ -65,4 +65,12 @@ namespace std {
     using cuda::std::make_tuple;
 }
 
+#elif defined(__HIPCC_RTC__)
+
+// HIPRTC: pull in libstdc++ <type_traits> / <utility> (clang's HIP
+// mode picks them up via the host gcc include paths) so kernel code
+// can spell `std::is_signed`, `std::declval`, etc. just like on NVRTC.
+#include <type_traits>
+#include <utility>
+
 #endif
