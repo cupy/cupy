@@ -31,8 +31,13 @@ if [[ "${1}" == "build" ]]; then
   echo "CIBW_BUILD=cp${PYTHON_VERSION_FORMATTED}-${CIBW_PLATFORM_TAG}" >> "$GITHUB_ENV"
   BUILD_CUDA_MAJOR="$(cut -d '.' -f 1 <<< ${CUDA_VER})"
   echo "BUILD_CUDA_MAJOR=${BUILD_CUDA_MAJOR}" >> "$GITHUB_ENV"
-  # Enforce an explicit cache dir so that we can reuse this path later
-  echo "SCCACHE_DIR=${HOME}/.cache/sccache" >> "$GITHUB_ENV"
+  # Enforce an explicit cache dir so that we can reuse this path later.
+  # On Windows, convert Git Bash's POSIX form to a native Windows path.
+  SCCACHE_DIR_PATH="${HOME}/.cache/sccache"
+  if [[ "${HOST_PLATFORM}" == win-* ]]; then
+    SCCACHE_DIR_PATH="$(cygpath -w "${SCCACHE_DIR_PATH}")"
+  fi
+  echo "SCCACHE_DIR=${SCCACHE_DIR_PATH}" >> "$GITHUB_ENV"
   echo "SCCACHE_CACHE_SIZE=1G" >> "$GITHUB_ENV"
 else
   echo "Error: unknown build mode '${1}' (expected: build)" >&2

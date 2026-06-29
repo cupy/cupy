@@ -38,7 +38,7 @@ runs:
         label = os.environ["SCCACHE_LABEL"]
         build_step = os.environ.get("SCCACHE_BUILD_STEP", "")
 
-        with open(json_file) as f:
+        with open(json_file, encoding="utf-8") as f:
             stats = json.load(f)["stats"]
 
         # compile_requests only counts top-level nvcc invocations, but each
@@ -66,7 +66,7 @@ runs:
 
         summary_file = os.environ.get("GITHUB_STEP_SUMMARY", "")
         if summary_file:
-            with open(summary_file, "a") as sf:
+            with open(summary_file, "a", encoding="utf-8") as sf:
                 sf.write(f"### 📊 {label} — sccache stats\n")
                 sf.write("| Hit Rate | Hits | Misses | Requests |\n")
                 sf.write("|----------|------|--------|----------|\n")

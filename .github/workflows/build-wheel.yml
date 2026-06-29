@@ -57,11 +57,26 @@ jobs:
           submodules: recursive
 
       - name: Install latest rapidsai/sccache
-        if: ${{ startsWith(inputs.host-platform, 'linux') }}
+        env:
+          HOST_PLATFORM: ${{ inputs.host-platform }}
         run: |
-          curl -fsSL "https://github.com/rapidsai/sccache/releases/latest/download/sccache-$(uname -m)-unknown-linux-musl.tar.gz" \
-            | sudo tar -C /usr/local/bin -xvzf - --wildcards --strip-components=1 -x '*/sccache'
-          echo "SCCACHE_PATH=/usr/local/bin/sccache" >> "$GITHUB_ENV"
+          case "${HOST_PLATFORM}" in
+            linux-*)  URL_TRIPLE="$(uname -m)-unknown-linux-musl"; SCCACHE_BIN="sccache" ;;
+            win-*)    URL_TRIPLE="x86_64-pc-windows-msvc";         SCCACHE_BIN="sccache.exe" ;;
+            *)        echo "Unsupported host-platform: ${HOST_PLATFORM}" >&2; exit 1 ;;
+          esac
+          mkdir -p sccache_bin
+          curl -fsSL "https://github.com/rapidsai/sccache/releases/latest/download/sccache-${URL_TRIPLE}.tar.gz" \
+            | tar -C sccache_bin -xzf - --wildcards --strip-components=1 "*/${SCCACHE_BIN}"
+          SCCACHE_BIN_DIR="$(pwd)/sccache_bin"
+          SCCACHE_BIN_FULL="${SCCACHE_BIN_DIR}/${SCCACHE_BIN}"
+          # On Windows, convert Git Bash's POSIX form to a native Windows path.
+          if [[ "${HOST_PLATFORM}" == win-* ]]; then
+            SCCACHE_BIN_DIR="$(cygpath -w "${SCCACHE_BIN_DIR}")"
+            SCCACHE_BIN_FULL="$(cygpath -w "${SCCACHE_BIN_FULL}")"
+          fi
+          echo "${SCCACHE_BIN_DIR}" >> "$GITHUB_PATH"
+          echo "SCCACHE_PATH=${SCCACHE_BIN_FULL}" >> "$GITHUB_ENV"
 
       # xref: https://github.com/orgs/community/discussions/42856#discussioncomment-7678867
       - name: Adding addtional GHA cache-related env vars
@@ -176,24 +191,31 @@ jobs:
             CUPY_LIBRARY_PATH
             CUPY_PACKAGE_NAME
             CUPY_NUM_BUILD_JOBS
-          CIBW_ENVIRONMENT_LINUX: >
-            CUDA_PATH=/project/cuda_toolkit
-            LIBRARY_PATH=/project/cuda_toolkit/lib64/stubs
-            CC="/host/${{ env.SCCACHE_PATH }} cc"
-            CXX="/host/${{ env.SCCACHE_PATH }} c++"
+          CIBW_ENVIRONMENT: >
             SCCACHE_GHA_ENABLED=true
             ACTIONS_RUNTIME_TOKEN=${{ env.ACTIONS_RUNTIME_TOKEN }}
             ACTIONS_RUNTIME_URL=${{ env.ACTIONS_RUNTIME_URL }}
             ACTIONS_RESULTS_URL=${{ env.ACTIONS_RESULTS_URL }}
             ACTIONS_CACHE_URL=${{ env.ACTIONS_CACHE_URL }}
             ACTIONS_CACHE_SERVICE_V2=${{ env.ACTIONS_CACHE_SERVICE_V2 }}
-            SCCACHE_DIR=/host/${{ env.SCCACHE_DIR }}
             SCCACHE_CACHE_SIZE=${{ env.SCCACHE_CACHE_SIZE }}
+          CIBW_ENVIRONMENT_LINUX: >
+            CUDA_PATH=/project/cuda_toolkit
+            LIBRARY_PATH=/project/cuda_toolkit/lib64/stubs
+            CC="/host/${{ env.SCCACHE_PATH }} cc"
+            CXX="/host/${{ env.SCCACHE_PATH }} c++"
+            NVCC="/host/${{ env.SCCACHE_PATH }} /project/cuda_toolkit/bin/nvcc"
+            SCCACHE_DIR=/host/${{ env.SCCACHE_DIR }}
           CIBW_ENVIRONMENT_WINDOWS: >
             CUDA_PATH="$(cygpath -w ${{ env.CUDA_PATH }})"
+            NVCC="sccache nvcc"
+            SCCACHE_DIR=${{ env.SCCACHE_DIR }}
           CIBW_BEFORE_TEST_LINUX: >
             "/host/${{ env.SCCACHE_PATH }}" --show-adv-stats &&
             "/host/${{ env.SCCACHE_PATH }}" --show-stats --stats-format=json > /host/${{ github.workspace }}/sccache_cupy.json
+          CIBW_BEFORE_TEST_WINDOWS: >
+            "${{ env.SCCACHE_PATH }}" --show-adv-stats &&
+            "${{ env.SCCACHE_PATH }}" --show-stats --stats-format=json > "${{ github.workspace }}\\sccache_cupy.json"
           CIBW_TEST_COMMAND: >
             echo "ok!"
           CIBW_REPAIR_WHEEL_COMMAND_LINUX: >
@@ -220,7 +242,6 @@ jobs:
           CIBW_BUILD_VERBOSITY: 1
 
       - name: Report sccache stats (cupy-cuda${{ env.BUILD_CUDA_MAJOR }}x)
-        if: ${{ inputs.host-platform != 'win-64' }}
         uses: ./.github/actions/sccache-summary
         with:
           json-file: sccache_cupy.json
