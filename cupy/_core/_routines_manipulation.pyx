@@ -24,6 +24,12 @@ from cupy._core._kernel cimport _check_peer_access, _preprocess_args
 from cupy.cuda import device
 
 
+cdef enum:
+    _COPY_IF_NEEDED = 0
+    _COPY_ALWAYS = 1
+    _COPY_NEVER = 2
+
+
 @cython.final
 cdef class broadcast:
     """Object that performs broadcasting.
@@ -70,8 +76,22 @@ cdef _ndarray_shape_setter(_ndarray_base self, newshape):
     self._set_shape_and_strides(shape, strides, False, True)
 
 
-cdef _ndarray_base _ndarray_reshape(_ndarray_base self, tuple shape, order):
+cdef int _normalize_copy_mode(copy) except -1:
+    if copy is None:
+        return _COPY_IF_NEEDED
+    if isinstance(copy, str):
+        raise ValueError(
+            "strings are not allowed for 'copy' keyword. "
+            "Use True/False/None instead.")
+    if copy:
+        return _COPY_ALWAYS
+    return _COPY_NEVER
+
+
+cdef _ndarray_base _ndarray_reshape(
+        _ndarray_base self, tuple shape, order, copy):
     cdef int order_char = internal._normalize_order(order, False)
+    cdef int copy_mode = _normalize_copy_mode(copy)
 
     if len(shape) == 1 and cpython.PySequence_Check(shape[0]):
         shape = tuple(shape[0])
@@ -82,7 +102,7 @@ cdef _ndarray_base _ndarray_reshape(_ndarray_base self, tuple shape, order):
         else:
             order_char = b'C'
     if order_char == b'C':
-        return _reshape(self, shape)
+        return _reshape(self, shape, copy_mode)
     else:
         # TODO(grlee77): Support order within _reshape instead
 
@@ -90,7 +110,7 @@ cdef _ndarray_base _ndarray_reshape(_ndarray_base self, tuple shape, order):
         #     1.) reverse the axes via transpose
         #     2.) C-ordered reshape using reversed shape
         #     3.) reverse the axes via transpose
-        return _T(_reshape(_T(self), shape[::-1]))
+        return _T(_reshape(_T(self), shape[::-1], copy_mode))
 
 
 cdef _ndarray_base _ndarray_transpose(_ndarray_base self, tuple axes):
@@ -348,17 +368,30 @@ cpdef _ndarray_base rollaxis(
     return _transpose(a, axes)
 
 
-cpdef _ndarray_base _reshape(_ndarray_base self, const shape_t &shape_spec):
+cpdef _ndarray_base _reshape(
+        _ndarray_base self, const shape_t &shape_spec, copy=None):
     cdef shape_t shape
     cdef strides_t strides
     cdef _ndarray_base newarray
+    cdef int copy_mode
+    if copy is None:
+        copy_mode = _COPY_IF_NEEDED
+    else:
+        copy_mode = copy
     shape = internal.infer_unknown_dimension(shape_spec, self.size)
     if internal.vector_equal(shape, self._shape):
+        if copy_mode == _COPY_ALWAYS:
+            return self.copy()
         return self.view()
 
     _get_strides_for_nocopy_reshape(self, shape, strides)
     if strides.size() == shape.size():
-        return self._view(type(self), shape, strides, False, True, self)
+        newarray = self._view(type(self), shape, strides, False, True, self)
+        if copy_mode == _COPY_ALWAYS:
+            return newarray.copy()
+        return newarray
+    if copy_mode == _COPY_NEVER:
+        raise ValueError('Unable to avoid copy while reshaping.')
     newarray = self.copy()
     _get_strides_for_nocopy_reshape(newarray, shape, strides)
 
