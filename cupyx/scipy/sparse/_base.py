@@ -41,6 +41,13 @@ class _spbase:
     .. seealso:: :class:`scipy.sparse._base._spbase`
     """
 
+    _formats = {
+        'csc': 'Compressed Sparse Column',
+        'csr': 'Compressed Sparse Row',
+        'coo': 'COOrdinate',
+        'dia': 'DIAgonal',
+    }
+
     __array_priority__ = 101
     # Class default since ``__init__`` chains across format subclasses
     # don't always reach ``spmatrix.__init__``.
@@ -91,6 +98,24 @@ class _spbase:
             return str(self.get())
         except (RuntimeError, NotImplementedError):
             return repr(self)
+
+    def __repr__(self):
+        # Subclasses that lack format/dtype/nnz/shape (e.g. test
+        # helpers) fall back to object.__repr__.
+        try:
+            format_name = self._formats[self.format]
+        except (AttributeError, KeyError):
+            return object.__repr__(self)
+        return (
+            f"<{format_name} sparse matrix of dtype '{self.dtype}'\n"
+            f"\twith {self.nnz} stored elements"
+            f"{self._repr_detail()} and shape {self.shape}>"
+        )
+
+    def _repr_detail(self):
+        """Hook for subclasses to append format-specific info to
+        ``__repr__``.  Non-empty values must start with a space."""
+        return ''
 
     def __iter__(self):
         for r in range(self.shape[0]):
