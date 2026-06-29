@@ -295,7 +295,12 @@ def _get_avail_version_from_spec(x):
 def check_availability(name):
     if not _runtime.is_hip:
         available_version = _available_cusparse_version
-        version = _cusparse.get_build_version()
+        if _cusparse.is_cuda_python_build():
+            # In the CUDA Python build, cusparse is not required at build time;
+            # all symbols are loaded at runtime, so use the runtime version.
+            version = getVersion()
+        else:
+            version = _cusparse.get_build_version()
     else:
         available_version = _available_hipsparse_version
         version = _driver.get_build_version()  # = HIP_VERSION
