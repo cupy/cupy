@@ -116,6 +116,8 @@ filterwarnings = [
   # setuptools 65+
   # TODO(kmaehashi): Remove distutils from cupy_builder to remove this
   "ignore:Absolute path '(.+?)' is being replaced with a relative path '(.+?)' for outputs:DeprecationWarning:distutils",
+  # Older SciPy versions + NumPy 2.5+ do not avoid this warning.
+  "ignore:Setting the shape on a NumPy:DeprecationWarning:scipy",
 ]
 
 [tool.coverage.run]

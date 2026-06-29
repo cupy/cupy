@@ -256,6 +256,9 @@ class TestNdarrayCopy:
                     b, numpy.array([0, 0], dtype=numpy.uint64))
 
 
+@pytest.mark.filterwarnings(
+    # Shape setting is deprecated starting NumPy 2.5
+    'ignore:Setting the shape on a NumPy:DeprecationWarning')
 class TestNdarrayShape(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
