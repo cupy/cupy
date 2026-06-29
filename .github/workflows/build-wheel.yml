@@ -1,13 +1,14 @@
+name: Build CuPy wheel
+
 on:
   workflow_call:
     inputs:
       host-platform:
+        description: "linux-64, linux-aarch64, or win-64"
         required: true
         type: string
       cuda-version:
-        required: true
-        type: string
-      prev-cuda-version:
+        description: "Full CTK version to download from redist (e.g. 12.9.2)"
         required: true
         type: string
 
@@ -24,26 +25,21 @@ jobs:
       fail-fast: false
       matrix:
         python-version:
-          - "3.10"
-          - "3.11"
-          - "3.12"
-          - "3.13"
+          # TODO: enable other Python versions once the first matrix is green.
+          # - "3.11"
+          # - "3.12"
+          # - "3.13"
           - "3.14"
-          - "3.14t"
-          - "3.15"
-          - "3.15t"
+          # - "3.14t"
     name: py${{ matrix.python-version }}
-    runs-on: ${{ (inputs.host-platform == 'linux-64' && 'linux-amd64-cpu8') ||
-                 (inputs.host-platform == 'linux-aarch64' && 'linux-arm64-cpu8') ||
-                 (inputs.host-platform == 'win-64' && 'windows-2022') }}
+    runs-on: ${{ (inputs.host-platform == 'linux-64' && 'ubuntu-22.04') ||
+                 (inputs.host-platform == 'win-64'   && 'windows-2022') }}
     steps:
       - name: Checkout ${{ github.event.repository.name }}
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
         with:
-          # Treeless clone: setuptools-scm needs the commit graph (`git describe`)
-          # but not historical blobs.
           fetch-depth: 0
-          filter: blob:none
+          submodules: recursive
 
       - name: Install latest rapidsai/sccache
         if: ${{ startsWith(inputs.host-platform, 'linux') }}
@@ -62,14 +58,6 @@ jobs:
             core.exportVariable('ACTIONS_RESULTS_URL', process.env['ACTIONS_RESULTS_URL'] || '');
             core.exportVariable('ACTIONS_RUNTIME_URL', process.env['ACTIONS_RUNTIME_URL'] || '');
             core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env['ACTIONS_RUNTIME_TOKEN'] || '');
-
-      - name: Setup proxy cache
-        uses: nv-gha-runners/setup-proxy-cache@main
-        continue-on-error: true
-        # Skip cache on GitHub-hosted Windows runners.
-        if: ${{ inputs.host-platform != 'win-64' }}
-        with:
-          enable-apt: true
 
       - name: Set up Python
         id: setup-python1
@@ -115,44 +103,12 @@ jobs:
         run: ./ci/tools/env-vars build
 
       - name: Dump environment
-        run: |
-          env
+        run: env
 
-      - name: Install twine
+      - name: Install Python build deps
         run: |
-          pip install twine
-
-      # To keep the build workflow simple, all matrix jobs will build a wheel for later use within this workflow.
-      - name: Build and check cuda.pathfinder wheel
-        run: |
-          pushd cuda_pathfinder
-          pip wheel -v --no-deps .
-          popd
-
-      - name: List the cuda.pathfinder artifacts directory
-        run: |
-          if [[ "${{ inputs.host-platform }}" == win* ]]; then
-            export CHOWN=chown
-          else
-            export CHOWN="sudo chown"
-          fi
-          $CHOWN -R $(whoami) cuda_pathfinder/*.whl
-          ls -lahR cuda_pathfinder
-
-      # We only need/want a single pure python wheel, pick linux-64 index 0.
-      # This is what we will use for testing & releasing.
-      - name: Check cuda.pathfinder wheel
-        if: ${{ strategy.job-index == 0 && inputs.host-platform == 'linux-64' }}
-        run: |
-          twine check --strict cuda_pathfinder/*.whl
-
-      - name: Upload cuda.pathfinder build artifacts
-        if: ${{ strategy.job-index == 0 && inputs.host-platform == 'linux-64' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
-        with:
-          name: cuda-pathfinder-wheel
-          path: cuda_pathfinder/*.whl
-          if-no-files-found: error
+          python -m pip install --upgrade pip
+          pip install tomli_w pyyaml twine
 
       - name: Set up mini CTK
         uses: ./.github/actions/fetch_ctk
@@ -161,22 +117,51 @@ jobs:
           host-platform: ${{ inputs.host-platform }}
           cuda-version: ${{ inputs.cuda-version }}
 
-      - name: Build cuda.bindings wheel
-        uses: pypa/cibuildwheel@54327ab9d35de03b359ac25c97de9417d94639c0  # v4.0.0rc1
+      - name: Install cuTENSOR preload
+        run: |
+          python cupyx/tools/install_library.py \
+            --library cutensor --cuda ${{ env.BUILD_CUDA_MAJOR }}.x \
+            --arch x86_64 --prefix ./preloads --action install
+
+      - name: Install NCCL preload (Linux only)
+        if: ${{ inputs.host-platform == 'linux-64' }}
+        run: |
+          python cupyx/tools/install_library.py \
+            --library nccl --cuda ${{ env.BUILD_CUDA_MAJOR }}.x \
+            --arch x86_64 --prefix ./preloads --action install
+
+      - name: Prepare wheel build (Linux)
+        if: ${{ inputs.host-platform == 'linux-64' }}
+        run: |
+          python ci/tools/prepare_wheel_build.py \
+            --cuda-major ${{ env.BUILD_CUDA_MAJOR }} \
+            --host-platform linux \
+            --root-prefix /project >> "$GITHUB_ENV"
+
+      - name: Prepare wheel build (Windows)
+        if: ${{ inputs.host-platform == 'win-64' }}
+        run: |
+          python ci/tools/prepare_wheel_build.py \
+            --cuda-major ${{ env.BUILD_CUDA_MAJOR }} \
+            --host-platform win >> "$GITHUB_ENV"
+
+      - name: Build cupy-cuda${{ env.BUILD_CUDA_MAJOR }}x wheel
+        uses: pypa/cibuildwheel@8d2b08b68458a16aeb24b64e68a09ab1c8e82084  # v3.4.1
         with:
-          package-dir: ./cuda_bindings/
-          output-dir: ${{ env.CUDA_BINDINGS_ARTIFACTS_DIR }}
+          output-dir: wheelhouse
         env:
           CIBW_BUILD: ${{ env.CIBW_BUILD }}
-          # TODO: remove cpython-prerelease once 3.15 is officially supported
-          # Allow CPython pre-release builds (currently 3.15 / 3.15t). This is a
-          # no-op for stable Python versions because CIBW_BUILD still filters
-          # the target version.
-          CIBW_ENABLE: cpython-prerelease
-          # CIBW mounts the host filesystem under /host
+          CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_28
+          CIBW_ENVIRONMENT_PASS_LINUX: >
+            CUPY_INSTALL_NO_RPATH
+            CUPY_INSTALL_LONG_DESCRIPTION
+            CUPY_INSTALL_WHEEL_METADATA
+            CUPY_INCLUDE_PATH
+            CUPY_LIBRARY_PATH
+            CUPY_PACKAGE_NAME
+            CUPY_NUM_BUILD_JOBS
           CIBW_ENVIRONMENT_LINUX: >
-            CUDA_PATH=/host/${{ env.CUDA_PATH }}
-            CUDA_PYTHON_PARALLEL_LEVEL=${{ env.CUDA_PYTHON_PARALLEL_LEVEL }}
+            CUDA_PATH=/project/cuda_toolkit
             CC="/host/${{ env.SCCACHE_PATH }} cc"
             CXX="/host/${{ env.SCCACHE_PATH }} c++"
             SCCACHE_GHA_ENABLED=true
@@ -189,401 +174,58 @@ jobs:
             SCCACHE_CACHE_SIZE=${{ env.SCCACHE_CACHE_SIZE }}
           CIBW_ENVIRONMENT_WINDOWS: >
             CUDA_PATH="$(cygpath -w ${{ env.CUDA_PATH }})"
-            CUDA_PYTHON_PARALLEL_LEVEL=${{ env.CUDA_PYTHON_PARALLEL_LEVEL }}
-          # check cache stats before leaving cibuildwheel
           CIBW_BEFORE_TEST_LINUX: >
             "/host/${{ env.SCCACHE_PATH }}" --show-adv-stats &&
-            "/host/${{ env.SCCACHE_PATH }}" --show-stats --stats-format=json > /host/${{ github.workspace }}/sccache_bindings.json
-          # force the test stage to be run (so that before-test is not skipped)
-          # TODO: we might want to think twice on adding this, it does a lot of
-          # things before reaching this command.
+            "/host/${{ env.SCCACHE_PATH }}" --show-stats --stats-format=json > /host/${{ github.workspace }}/sccache_cupy.json
           CIBW_TEST_COMMAND: >
             echo "ok!"
-
-      - name: Report sccache stats (cuda.bindings)
-        if: ${{ inputs.host-platform != 'win-64' }}
-        uses: ./.github/actions/sccache-summary
-        with:
-          json-file: sccache_bindings.json
-          label: "cuda.bindings"
-          build-step: "Build cuda.bindings wheel"
-
-      - name: List the cuda.bindings artifacts directory
-        run: |
-          if [[ "${{ inputs.host-platform }}" == win* ]]; then
-            export CHOWN=chown
-          else
-            export CHOWN="sudo chown"
-          fi
-          $CHOWN -R $(whoami) ${{ env.CUDA_BINDINGS_ARTIFACTS_DIR }}
-          ls -lahR ${{ env.CUDA_BINDINGS_ARTIFACTS_DIR }}
-
-      - name: Check cuda.bindings wheel
-        run: |
-          twine check --strict ${{ env.CUDA_BINDINGS_ARTIFACTS_DIR }}/*.whl
-
-      - name: Upload cuda.bindings build artifacts
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
-        with:
-          name: ${{ env.CUDA_BINDINGS_ARTIFACT_NAME }}
-          path: ${{ env.CUDA_BINDINGS_ARTIFACTS_DIR }}/*.whl
-          if-no-files-found: error
-
-      - name: Build cuda.core wheel
-        uses: pypa/cibuildwheel@54327ab9d35de03b359ac25c97de9417d94639c0  # v4.0.0rc1
-        with:
-          package-dir: ./cuda_core/
-          output-dir: ${{ env.CUDA_CORE_ARTIFACTS_DIR }}
-        env:
-          CIBW_BUILD: ${{ env.CIBW_BUILD }}
-          # TODO: remove cpython-prerelease once 3.15 is officially supported
-          # Allow CPython pre-release builds (currently 3.15 / 3.15t). This is a
-          # no-op for stable Python versions because CIBW_BUILD still filters
-          # the target version.
-          CIBW_ENABLE: cpython-prerelease
-          # CIBW mounts the host filesystem under /host
-          CIBW_ENVIRONMENT_LINUX: >
-            CUDA_PATH=/host/${{ env.CUDA_PATH }}
-            CUDA_PYTHON_PARALLEL_LEVEL=${{ env.CUDA_PYTHON_PARALLEL_LEVEL }}
-            CUDA_CORE_BUILD_MAJOR=${{ env.BUILD_CUDA_MAJOR }}
-            PIP_FIND_LINKS=/host/${{ env.CUDA_BINDINGS_ARTIFACTS_DIR }}
-            CC="/host/${{ env.SCCACHE_PATH }} cc"
-            CXX="/host/${{ env.SCCACHE_PATH }} c++"
-            SCCACHE_GHA_ENABLED=true
-            ACTIONS_RUNTIME_TOKEN=${{ env.ACTIONS_RUNTIME_TOKEN }}
-            ACTIONS_RUNTIME_URL=${{ env.ACTIONS_RUNTIME_URL }}
-            ACTIONS_RESULTS_URL=${{ env.ACTIONS_RESULTS_URL }}
-            ACTIONS_CACHE_URL=${{ env.ACTIONS_CACHE_URL }}
-            ACTIONS_CACHE_SERVICE_V2=${{ env.ACTIONS_CACHE_SERVICE_V2 }}
-            SCCACHE_DIR=/host/${{ env.SCCACHE_DIR }}
-            SCCACHE_CACHE_SIZE=${{ env.SCCACHE_CACHE_SIZE }}
-          CIBW_ENVIRONMENT_WINDOWS: >
-            CUDA_PATH="$(cygpath -w ${{ env.CUDA_PATH }})"
-            CUDA_PYTHON_PARALLEL_LEVEL=${{ env.CUDA_PYTHON_PARALLEL_LEVEL }}
-            CUDA_CORE_BUILD_MAJOR=${{ env.BUILD_CUDA_MAJOR }}
-            PIP_FIND_LINKS="$(cygpath -w ${{ env.CUDA_BINDINGS_ARTIFACTS_DIR }})"
-          # check cache stats before leaving cibuildwheel
-          CIBW_BEFORE_TEST_LINUX: >
-            "/host${{ env.SCCACHE_PATH }}" --show-adv-stats &&
-            "/host${{ env.SCCACHE_PATH }}" --show-stats --stats-format=json > /host/${{ github.workspace }}/sccache_core.json
-          # force the test stage to be run (so that before-test is not skipped)
-          # TODO: we might want to think twice on adding this, it does a lot of
-          # things before reaching this command.
-          CIBW_TEST_COMMAND: >
-            echo "ok!"
-
-      - name: Report sccache stats (cuda.core)
-        if: ${{ inputs.host-platform != 'win-64' }}
-        uses: ./.github/actions/sccache-summary
-        with:
-          json-file: sccache_core.json
-          label: "cuda.core"
-          build-step: "Build cuda.core wheel"
-
-      - name: List the cuda.core artifacts directory and rename
-        run: |
-          if [[ "${{ inputs.host-platform }}" == win* ]]; then
-            export CHOWN=chown
-          else
-            export CHOWN="sudo chown"
-          fi
-          $CHOWN -R $(whoami) ${{ env.CUDA_CORE_ARTIFACTS_DIR }}
-
-          # Rename wheel to include CUDA version suffix
-          mkdir -p "${{ env.CUDA_CORE_ARTIFACTS_DIR }}/cu${BUILD_CUDA_MAJOR}"
-          for wheel in ${{ env.CUDA_CORE_ARTIFACTS_DIR }}/*.whl; do
-            if [[ -f "${wheel}" ]]; then
-              base_name=$(basename "${wheel}" .whl)
-              new_name="${base_name}.cu${BUILD_CUDA_MAJOR}.whl"
-              mv "${wheel}" "${{ env.CUDA_CORE_ARTIFACTS_DIR }}/cu${BUILD_CUDA_MAJOR}/${new_name}"
-              echo "Renamed wheel to: ${new_name}"
-            fi
-          done
-
-          ls -lahR ${{ env.CUDA_CORE_ARTIFACTS_DIR }}
-
-      # We only need/want a single pure python wheel, pick linux-64 index 0.
-      - name: Build and check cuda-python wheel
-        if: ${{ strategy.job-index == 0 && inputs.host-platform == 'linux-64' }}
-        run: |
-          pushd cuda_python
-          pip wheel -v --no-deps .
-          twine check --strict *.whl
-          popd
-
-      - name: List the cuda-python artifacts directory
-        if: ${{ strategy.job-index == 0 && inputs.host-platform == 'linux-64' }}
-        run: |
-          if [[ "${{ inputs.host-platform }}" == win* ]]; then
-            export CHOWN=chown
-          else
-            export CHOWN="sudo chown"
-          fi
-          $CHOWN -R $(whoami) cuda_python/*.whl
-          ls -lahR cuda_python
-
-      - name: Upload cuda-python build artifacts
-        if: ${{ strategy.job-index == 0 && inputs.host-platform == 'linux-64' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
-        with:
-          name: cuda-python-wheel
-          path: cuda_python/*.whl
-          if-no-files-found: error
-
-      - name: Set up Python
-        id: setup-python2
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
-        with:
-          python-version: ${{ matrix.python-version }}
-          # TODO: remove allow-prereleases once 3.15 is officially supported
-          allow-prereleases: ${{ startsWith(matrix.python-version, '3.15') }}
-
-      - name: verify free-threaded build
-        if: endsWith(matrix.python-version, 't')
-        run: python -c 'import sys; assert not sys._is_gil_enabled()'
-
-      - name: Set up Python include paths
-        run: |
-          if [[ "${{ inputs.host-platform }}" == linux* ]]; then
-            echo "CPLUS_INCLUDE_PATH=${Python3_ROOT_DIR}/include/python${{ matrix.python-version }}" >> $GITHUB_ENV
-          elif [[ "${{ inputs.host-platform }}" == win* ]]; then
-            echo "CL=/I\"${Python3_ROOT_DIR}\include\python${{ matrix.python-version }}\"" >> $GITHUB_ENV
-          fi
-          # For caching
-          echo "PY_EXT_SUFFIX=$(python -c "import sysconfig; print(sysconfig.get_config_var('EXT_SUFFIX'))")" >> $GITHUB_ENV
-
-      - name: Install cuda.pathfinder (required for next step)
-        run: |
-          pip install cuda_pathfinder/*.whl
-
-      - name: Hide GNU link.exe so Meson finds MSVC link.exe
-        if: ${{ startsWith(inputs.host-platform, 'win') }}
-        run: |
-          if [ -f "/c/Program Files/Git/usr/bin/link.exe" ]; then
-            mv "/c/Program Files/Git/usr/bin/link.exe" "/c/Program Files/Git/usr/bin/link.exe.bak"
-          fi
-
-      # TODO: remove the numpy pre-build steps once 3.15 is officially supported
-      # (numpy will publish pre-built 3.15 wheels at that point)
-      - name: Download and patch numpy sdist (pre-release Python)
-        if: ${{ startsWith(matrix.python-version, '3.15') }}
-        run: |
-          pip download --no-binary numpy --no-deps "numpy>=1.21.1" -d numpy-sdist/
-          cd numpy-sdist && tar xf numpy-*.tar.gz && rm numpy-*.tar.gz
-          # WAR: numpy 2.4.x ships [tool.cibuildwheel] config that is
-          # incompatible with cibuildwheel v4.0 (cpython-freethreading enable
-          # group, OpenBLAS before-build scripts, etc.). Strip the cibuildwheel
-          # sections but preserve [tool.meson-python] (vendored meson path).
-          python -c "
-          import glob
-          for f in glob.glob('numpy-*/pyproject.toml'):
-              lines, skip = open(f).readlines(), False
-              out = []
-              for line in lines:
-                  hdr = line.strip()
-                  if hdr.startswith('[tool.cibuildwheel') or hdr.startswith('[[tool.cibuildwheel'):
-                      skip = True
-                      continue
-                  if skip and hdr.startswith('[') and 'cibuildwheel' not in hdr:
-                      skip = False
-                  if not skip:
-                      out.append(line)
-              open(f, 'w').writelines(out)
-          "
-          echo "NUMPY_SRC_DIR=$(pwd)/$(ls -d numpy-*/)" >> $GITHUB_ENV
-
-      - name: Build numpy wheel (pre-release Python)
-        if: ${{ startsWith(matrix.python-version, '3.15') }}
-        uses: pypa/cibuildwheel@54327ab9d35de03b359ac25c97de9417d94639c0  # v4.0.0rc1
-        env:
-          CIBW_BUILD: ${{ env.CIBW_BUILD }}
-          CIBW_SKIP: "*-musllinux* *-win32"
-          CIBW_ARCHS_LINUX: "native"
+          CIBW_REPAIR_WHEEL_COMMAND_LINUX: >
+            auditwheel repair -w {dest_dir}
+            --exclude 'libcudart.so*'
+            --exclude 'libcublas.so*'
+            --exclude 'libcublasLt.so*'
+            --exclude 'libcufft.so*'
+            --exclude 'libcurand.so*'
+            --exclude 'libcusparse.so*'
+            --exclude 'libcusolver.so*'
+            --exclude 'libnvrtc.so*'
+            --exclude 'libnvrtc-builtins.so*'
+            --exclude 'libnvJitLink.so*'
+            --exclude 'libcutensor.so*'
+            --exclude 'libcutensorMg.so*'
+            --exclude 'libnccl.so*'
+            {wheel}
+          CIBW_BEFORE_BUILD_WINDOWS: pip install delvewheel
+          CIBW_REPAIR_WHEEL_COMMAND_WINDOWS: >
+            delvewheel repair -w {dest_dir} {wheel}
+            --exclude "cudart64_*.dll;cublas64_*.dll;cublasLt64_*.dll;cufft64_*.dll;curand64_*.dll;cusparse64_*.dll;cusolver64_*.dll;nvrtc64_*.dll;nvrtc-builtins64_*.dll;nvJitLink_*.dll;cutensor.dll;cutensorMg.dll"
           CIBW_BUILD_VERBOSITY: 1
-          CIBW_CONFIG_SETTINGS: "setup-args=-Dallow-noblas=true"
-          CIBW_CONFIG_SETTINGS_WINDOWS: "setup-args=--vsenv setup-args=-Dallow-noblas=true"
-          CIBW_BEFORE_BUILD_WINDOWS: "pip install delvewheel"
-          CIBW_REPAIR_WHEEL_COMMAND_WINDOWS: "delvewheel repair -w {dest_dir} {wheel}"
-          CIBW_ENABLE: "cpython-prerelease"
-        with:
-          package-dir: ${{ env.NUMPY_SRC_DIR }}
-          output-dir: numpy-wheel/
 
-      - name: Upload numpy wheel
-        if: ${{ startsWith(matrix.python-version, '3.15') }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
-        with:
-          name: numpy-python${{ env.PYTHON_VERSION_FORMATTED }}-${{ inputs.host-platform }}
-          path: numpy-wheel/*.whl
-          if-no-files-found: error
-
-      - name: Install numpy wheel
-        if: ${{ startsWith(matrix.python-version, '3.15') }}
-        run: pip install numpy-wheel/*.whl
-
-      - name: Build cuda.bindings Cython tests
-        run: |
-          pip install ${{ env.CUDA_BINDINGS_ARTIFACTS_DIR }}/*.whl --group ./cuda_bindings/pyproject.toml:test
-          pushd ${{ env.CUDA_BINDINGS_CYTHON_TESTS_DIR }}
-          bash build_tests.sh
-          popd
-
-      - name: Upload cuda.bindings Cython tests
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
-        with:
-          name: ${{ env.CUDA_BINDINGS_ARTIFACT_NAME }}-tests
-          path: ${{ env.CUDA_BINDINGS_CYTHON_TESTS_DIR }}/test_*${{ env.PY_EXT_SUFFIX }}
-          if-no-files-found: error
-
-      - name: Build cuda.core Cython tests
-        run: |
-          pip install ${{ env.CUDA_CORE_ARTIFACTS_DIR }}/"cu${BUILD_CUDA_MAJOR}"/*.whl --group ./cuda_core/pyproject.toml:test
-          pushd ${{ env.CUDA_CORE_CYTHON_TESTS_DIR }}
-          bash build_tests.sh
-          popd
-
-      - name: Upload cuda.core Cython tests
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
-        with:
-          name: ${{ env.CUDA_CORE_ARTIFACT_NAME }}-tests
-          path: ${{ env.CUDA_CORE_CYTHON_TESTS_DIR }}/test_*${{ env.PY_EXT_SUFFIX }}
-          if-no-files-found: error
-
-      # Note: This overwrites CUDA_PATH etc
-      - name: Set up mini CTK
-        uses: ./.github/actions/fetch_ctk
-        continue-on-error: false
-        with:
-          host-platform: ${{ inputs.host-platform }}
-          cuda-version: ${{ inputs.prev-cuda-version }}
-          cuda-path: "./cuda_toolkit_prev"
-
-      - name: Build cuda.core test binaries
-        run: bash ${{ env.CUDA_CORE_TEST_BINARIES_DIR }}/build_test_binaries.sh
-
-      - name: Upload cuda.core test binaries
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
-        with:
-          name: ${{ env.CUDA_CORE_ARTIFACT_NAME }}-test-binaries
-          path: ${{ env.CUDA_CORE_TEST_BINARIES_DIR }}/*.o
-          if-no-files-found: error
-
-      - name: Download cuda.bindings build artifacts from the prior branch
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if ! (command -v gh 2>&1 >/dev/null); then
-            # See https://github.com/cli/cli/blob/trunk/docs/install_linux.md#debian-ubuntu-linux-raspberry-pi-os-apt.
-            # gh is needed for artifact fetching.
-            mkdir -p -m 755 /etc/apt/keyrings \
-                  && out=$(mktemp) && wget -nv -O$out https://cli.github.com/packages/githubcli-archive-keyring.gpg \
-                  && cat $out | tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null \
-            && chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
-            && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
-            && apt update \
-            && apt install gh -y
-          fi
-
-          OLD_BRANCH=$(yq '.backport_branch' ci/versions.yml)
-          OLD_BASENAME="cuda-bindings-python${PYTHON_VERSION_FORMATTED}-cuda*-${{ inputs.host-platform }}*"
-          LATEST_PRIOR_RUN_ID=$(./ci/tools/lookup-run-id --branch "${OLD_BRANCH}" NVIDIA/cuda-python "CI")
-
-          gh run download $LATEST_PRIOR_RUN_ID -p ${OLD_BASENAME} -R NVIDIA/cuda-python
-          rm -rf ${OLD_BASENAME}-tests  # exclude cython test artifacts
-          ls -al $OLD_BASENAME
-          mkdir -p "${{ env.CUDA_BINDINGS_ARTIFACTS_DIR }}"
-          mv $OLD_BASENAME/*.whl "${{ env.CUDA_BINDINGS_ARTIFACTS_DIR }}"
-          rmdir $OLD_BASENAME
-
-      - name: Build cuda.core wheel
-        uses: pypa/cibuildwheel@54327ab9d35de03b359ac25c97de9417d94639c0  # v4.0.0rc1
-        with:
-          package-dir: ./cuda_core/
-          output-dir: ${{ env.CUDA_CORE_ARTIFACTS_DIR }}
-        env:
-          CIBW_BUILD: ${{ env.CIBW_BUILD }}
-          # TODO: remove cpython-prerelease once 3.15 is officially supported
-          # Allow CPython pre-release builds (currently 3.15 / 3.15t). This is a
-          # no-op for stable Python versions because CIBW_BUILD still filters
-          # the target version.
-          CIBW_ENABLE: cpython-prerelease
-          # CIBW mounts the host filesystem under /host
-          CIBW_ENVIRONMENT_LINUX: >
-            CUDA_PATH=/host/${{ env.CUDA_PATH }}
-            CUDA_PYTHON_PARALLEL_LEVEL=${{ env.CUDA_PYTHON_PARALLEL_LEVEL }}
-            CUDA_CORE_BUILD_MAJOR=${{ env.BUILD_PREV_CUDA_MAJOR }}
-            PIP_FIND_LINKS=/host/${{ env.CUDA_BINDINGS_ARTIFACTS_DIR }}
-            CC="/host/${{ env.SCCACHE_PATH }} cc"
-            CXX="/host/${{ env.SCCACHE_PATH }} c++"
-            SCCACHE_GHA_ENABLED=true
-            ACTIONS_RUNTIME_TOKEN=${{ env.ACTIONS_RUNTIME_TOKEN }}
-            ACTIONS_RUNTIME_URL=${{ env.ACTIONS_RUNTIME_URL }}
-            ACTIONS_RESULTS_URL=${{ env.ACTIONS_RESULTS_URL }}
-            ACTIONS_CACHE_URL=${{ env.ACTIONS_CACHE_URL }}
-            ACTIONS_CACHE_SERVICE_V2=${{ env.ACTIONS_CACHE_SERVICE_V2 }}
-            SCCACHE_DIR=/host/${{ env.SCCACHE_DIR }}
-            SCCACHE_CACHE_SIZE=${{ env.SCCACHE_CACHE_SIZE }}
-          CIBW_ENVIRONMENT_WINDOWS: >
-            CUDA_PATH="$(cygpath -w ${{ env.CUDA_PATH }})"
-            CUDA_PYTHON_PARALLEL_LEVEL=${{ env.CUDA_PYTHON_PARALLEL_LEVEL }}
-            CUDA_CORE_BUILD_MAJOR=${{ env.BUILD_PREV_CUDA_MAJOR }}
-            PIP_FIND_LINKS="$(cygpath -w ${{ env.CUDA_BINDINGS_ARTIFACTS_DIR }})"
-          # check cache stats before leaving cibuildwheel
-          CIBW_BEFORE_TEST_LINUX: >
-            "/host${{ env.SCCACHE_PATH }}" --show-adv-stats &&
-            "/host${{ env.SCCACHE_PATH }}" --show-stats --stats-format=json > /host/${{ github.workspace }}/sccache_core_prev.json
-          # force the test stage to be run (so that before-test is not skipped)
-          # TODO: we might want to think twice on adding this, it does a lot of
-          # things before reaching this command.
-          CIBW_TEST_COMMAND: >
-            echo "ok!"
-
-      - name: Report sccache stats (cuda.core prev)
+      - name: Report sccache stats (cupy-cuda${{ env.BUILD_CUDA_MAJOR }}x)
         if: ${{ inputs.host-platform != 'win-64' }}
         uses: ./.github/actions/sccache-summary
         with:
-          json-file: sccache_core_prev.json
-          label: "cuda.core (prev CTK)"
-          build-step: "Build cuda.core wheel"
+          json-file: sccache_cupy.json
+          label: "cupy-cuda${{ env.BUILD_CUDA_MAJOR }}x"
+          build-step: "Build cupy-cuda${{ env.BUILD_CUDA_MAJOR }}x wheel"
 
-      - name: List the cuda.core artifacts directory and rename
+      - name: List the wheelhouse contents
         run: |
           if [[ "${{ inputs.host-platform }}" == win* ]]; then
             export CHOWN=chown
           else
             export CHOWN="sudo chown"
           fi
-          $CHOWN -R $(whoami) ${{ env.CUDA_CORE_ARTIFACTS_DIR }}
-          ls -lahR ${{ env.CUDA_CORE_ARTIFACTS_DIR }}
+          $CHOWN -R $(whoami) wheelhouse
+          ls -lahR wheelhouse
 
-          # Rename wheel to include CUDA version suffix
-          mkdir -p "${{ env.CUDA_CORE_ARTIFACTS_DIR }}/cu${BUILD_PREV_CUDA_MAJOR}"
-          for wheel in ${{ env.CUDA_CORE_ARTIFACTS_DIR }}/*.whl; do
-            if [[ -f "${wheel}" ]]; then
-              base_name=$(basename "${wheel}" .whl)
-              new_name="${base_name}.cu${BUILD_PREV_CUDA_MAJOR}.whl"
-              mv "${wheel}" "${{ env.CUDA_CORE_ARTIFACTS_DIR }}/cu${BUILD_PREV_CUDA_MAJOR}/${new_name}"
-              echo "Renamed wheel to: ${new_name}"
-            fi
-          done
-
-          ls -lahR ${{ env.CUDA_CORE_ARTIFACTS_DIR }}
-
-      - name: Merge cuda.core wheels
+      - name: Check wheel
         run: |
-          pip install wheel
-          python ci/tools/merge_cuda_core_wheels.py \
-            "${{ env.CUDA_CORE_ARTIFACTS_DIR }}"/cu"${BUILD_CUDA_MAJOR}"/cuda_core*.whl \
-            "${{ env.CUDA_CORE_ARTIFACTS_DIR }}"/cu"${BUILD_PREV_CUDA_MAJOR}"/cuda_core*.whl \
-            --output-dir "${{ env.CUDA_CORE_ARTIFACTS_DIR }}"
+          twine check --strict wheelhouse/*.whl
 
-      - name: Check cuda.core wheel
-        run: |
-          twine check --strict ${{ env.CUDA_CORE_ARTIFACTS_DIR }}/*.whl
-
-      - name: Upload cuda.core build artifacts
+      - name: Upload wheel artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
-          name: ${{ env.CUDA_CORE_ARTIFACT_NAME }}
-          path: ${{ env.CUDA_CORE_ARTIFACTS_DIR }}/*.whl
+          name: cupy-cuda${{ env.BUILD_CUDA_MAJOR }}x-py${{ matrix.python-version }}-${{ inputs.host-platform }}-${{ github.sha }}
+          path: wheelhouse/*.whl
           if-no-files-found: error

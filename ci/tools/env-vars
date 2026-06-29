@@ -4,107 +4,37 @@
 
 set -euo pipefail
 
-# Check if the script was called with exactly 1 argument
 if [[ ${#} -ne 1 ]]; then
   echo "Error: This script requires exactly 1 argument (the build mode). You provided ${#}"
-  echo "Usage: ${0} build_mode[build or test]"
+  echo "Usage: ${0} build_mode[build]"
   exit 1
 fi
 
 PYTHON_VERSION_FORMATTED=$(echo "${PY_VER}" | tr -d '.')
 
-if [[ "${HOST_PLATFORM}" == linux* ]]; then
-  REPO_DIR=$(pwd)
-  TOOLS_PATH="${REPO_DIR}/ci/tools"
-elif [[ "${HOST_PLATFORM}" == win* ]]; then
-  PWD=$(pwd)
-  REPO_DIR=$(cygpath -w ${PWD})
-  TOOLS_PATH=$(cygpath -w ${PWD}/ci/tools)
-fi
-
-echo "${TOOLS_PATH}" >> $GITHUB_PATH
-echo "CUDA_PYTHON_PARALLEL_LEVEL=$(nproc)" >> $GITHUB_ENV
-CUDA_CORE_ARTIFACT_BASENAME="cuda-core-python${PYTHON_VERSION_FORMATTED}-${HOST_PLATFORM}"
 {
-  echo "CUDA_CORE_ARTIFACT_BASENAME=${CUDA_CORE_ARTIFACT_BASENAME}"
-  echo "CUDA_CORE_ARTIFACT_NAME=${CUDA_CORE_ARTIFACT_BASENAME}-${SHA}"
-  echo "CUDA_CORE_ARTIFACTS_DIR=$(realpath "${REPO_DIR}/cuda_core/dist")"
-  echo "CUDA_CORE_CYTHON_TESTS_DIR=$(realpath "${REPO_DIR}/cuda_core/tests/cython")"
-  echo "CUDA_CORE_TEST_BINARIES_DIR=$(realpath "${REPO_DIR}/cuda_core/tests/test_binaries")"
   echo "PYTHON_VERSION_FORMATTED=${PYTHON_VERSION_FORMATTED}"
-} >> $GITHUB_ENV
+  echo "CUPY_NUM_BUILD_JOBS=$(getconf _NPROCESSORS_ONLN || echo 4)"
+} >> "$GITHUB_ENV"
 
 if [[ "${1}" == "build" ]]; then
-  # platform is handled by the default value of platform (`auto`) in cibuildwheel
-  # here we only need to specify the python version we want
-  echo "CIBW_BUILD=cp${PYTHON_VERSION_FORMATTED}-*" >> $GITHUB_ENV
+  if [[ "${HOST_PLATFORM}" == "linux-64" ]]; then
+    CIBW_PLATFORM_TAG="manylinux_x86_64"
+  elif [[ "${HOST_PLATFORM}" == "linux-aarch64" ]]; then
+    CIBW_PLATFORM_TAG="manylinux_aarch64"
+  elif [[ "${HOST_PLATFORM}" == "win-64" ]]; then
+    CIBW_PLATFORM_TAG="win_amd64"
+  else
+    echo "Error: unsupported HOST_PLATFORM=${HOST_PLATFORM}" >&2
+    exit 1
+  fi
+  echo "CIBW_BUILD=cp${PYTHON_VERSION_FORMATTED}-${CIBW_PLATFORM_TAG}" >> "$GITHUB_ENV"
   BUILD_CUDA_MAJOR="$(cut -d '.' -f 1 <<< ${CUDA_VER})"
-  echo "BUILD_CUDA_MAJOR=${BUILD_CUDA_MAJOR}" >> $GITHUB_ENV
-  echo "BUILD_PREV_CUDA_MAJOR=$((${BUILD_CUDA_MAJOR} - 1))" >> $GITHUB_ENV
-  CUDA_BINDINGS_ARTIFACT_BASENAME="cuda-bindings-python${PYTHON_VERSION_FORMATTED}-cuda${CUDA_VER}-${HOST_PLATFORM}"
+  echo "BUILD_CUDA_MAJOR=${BUILD_CUDA_MAJOR}" >> "$GITHUB_ENV"
   # Enforce an explicit cache dir so that we can reuse this path later
-  echo "SCCACHE_DIR=${HOME}/.cache/sccache" >> $GITHUB_ENV
-  echo "SCCACHE_CACHE_SIZE=1G" >> $GITHUB_ENV
-elif [[ "${1}" == "test" ]]; then
-  BUILD_CUDA_MAJOR="$(cut -d '.' -f 1 <<< ${BUILD_CUDA_VER})"
-  TEST_CUDA_MAJOR="$(cut -d '.' -f 1 <<< ${CUDA_VER})"
-  CUDA_BINDINGS_ARTIFACT_BASENAME="cuda-bindings-python${PYTHON_VERSION_FORMATTED}-cuda${BUILD_CUDA_VER}-${HOST_PLATFORM}"
-
-  # BINDINGS_SOURCE controls which cuda-bindings to install at test time:
-  #   main      — use the just-built bindings wheel from this CI run
-  #   backport  — fetch bindings from the prior (N-1) branch
-  #   published — install from PyPI (cuda-bindings==${TEST_CUDA_MAJOR}.${TEST_CUDA_MINOR}.*)
-  #
-  # SKIP_CUDA_BINDINGS_TEST / SKIP_CYTHON_TEST control which *tests* to run
-  # (they do NOT affect installation — that's BINDINGS_SOURCE's job).
-
-  BUILD_CUDA_MINOR="$(cut -d '.' -f 2 <<< ${BUILD_CUDA_VER})"
-  TEST_CUDA_MINOR="$(cut -d '.' -f 2 <<< ${CUDA_VER})"
-
-  if [[ ${BUILD_CUDA_MAJOR} != ${TEST_CUDA_MAJOR} ]]; then
-    # Major mismatch (e.g. build=13.x, test=12.x): use the backport branch.
-    BINDINGS_SOURCE=backport
-    SKIP_CUDA_BINDINGS_TEST=1
-    SKIP_CYTHON_TEST=1
-  elif [[ ${BUILD_CUDA_MINOR} != ${TEST_CUDA_MINOR} ]]; then
-    # Same major, minor mismatch (e.g. build=13.2, test=13.0): use published
-    # bindings from PyPI to test the real-world backward-compat scenario.
-    BINDINGS_SOURCE=published
-    SKIP_CUDA_BINDINGS_TEST=1
-    SKIP_CYTHON_TEST=1
-  else
-    # Exact match: use the just-built bindings wheel.
-    BINDINGS_SOURCE=main
-    if [[ "${SKIP_BINDINGS_TEST_OVERRIDE:-0}" == "1" ]]; then
-      SKIP_CUDA_BINDINGS_TEST=1
-    else
-      SKIP_CUDA_BINDINGS_TEST=0
-    fi
-    SKIP_CYTHON_TEST=0
-  fi
-  # We don't test compute-sanitizer on CTK<12 because backporting fixes is too much effort
-  # We only test compute-sanitizer on python 3.12 arbitrarily; we don't need to use sanitizer on the entire matrix
-  # Only local ctk installs have compute-sanitizer; there is no wheel for it
-  if [[ "${PY_VER}" == "3.12" && "${CUDA_VER}" != "11.8.0" && "${LOCAL_CTK}" == 1 && "${HOST_PLATFORM}" == linux* ]]; then
-    echo "LATEST_CUDA_VERSION=$(bash ci/tools/guess_latest.sh $TEST_CUDA_MAJOR)" >> $GITHUB_ENV
-    SETUP_SANITIZER=1
-  else
-    SETUP_SANITIZER=0
-    echo "SANITIZER_CMD=" >> $GITHUB_ENV
-  fi
-  {
-    echo "SETUP_SANITIZER=${SETUP_SANITIZER}"
-    echo "BINDINGS_SOURCE=${BINDINGS_SOURCE}"
-    echo "SKIP_CUDA_BINDINGS_TEST=${SKIP_CUDA_BINDINGS_TEST}"
-    echo "SKIP_CYTHON_TEST=${SKIP_CYTHON_TEST}"
-    echo "TEST_CUDA_MAJOR=${TEST_CUDA_MAJOR}"
-    echo "TEST_CUDA_MINOR=${TEST_CUDA_MINOR}"
-  } >> $GITHUB_ENV
+  echo "SCCACHE_DIR=${HOME}/.cache/sccache" >> "$GITHUB_ENV"
+  echo "SCCACHE_CACHE_SIZE=1G" >> "$GITHUB_ENV"
+else
+  echo "Error: unknown build mode '${1}' (expected: build)" >&2
+  exit 1
 fi
-
-{
-  echo "CUDA_BINDINGS_ARTIFACT_BASENAME=${CUDA_BINDINGS_ARTIFACT_BASENAME}"
-  echo "CUDA_BINDINGS_ARTIFACT_NAME=${CUDA_BINDINGS_ARTIFACT_BASENAME}-${SHA}"
-  echo "CUDA_BINDINGS_ARTIFACTS_DIR=$(realpath "${REPO_DIR}/cuda_bindings/dist")"
-  echo "CUDA_BINDINGS_CYTHON_TESTS_DIR=$(realpath "${REPO_DIR}/cuda_bindings/tests/cython")"
-} >> $GITHUB_ENV

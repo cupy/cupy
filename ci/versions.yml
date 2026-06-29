@@ -1,7 +1,5 @@
-backport_branch: "12.9.x"  # keep in sync with target-branch in .github/dependabot.yml
-
 cuda:
   build:
-    version: "13.3.0"
+    version: "13.2.1"
   prev_build:
-    version: "12.9.1"
+    version: "12.9.2"
