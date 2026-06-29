@@ -1,8 +1,10 @@
 cimport cpython  # NOQA
+from cpython.mem cimport PyMem_Malloc, PyMem_Free
 
-from libc cimport stdlib
 from libc.stdint cimport intptr_t
 from libcpp.vector cimport vector
+
+cimport numpy as cnp
 
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda cimport stream as stream_module
@@ -58,25 +60,25 @@ cdef void pycapsule_deleter(object dltensor) noexcept:
 
 cdef void deleter(DLManagedTensor* tensor) noexcept with gil:
     # Delete fully initialized DLManagedTensor
-    stdlib.free(tensor.dl_tensor.shape)
     cpython.Py_DECREF(<_ndarray_base>tensor.manager_ctx)
     tensor.manager_ctx = NULL
-    stdlib.free(tensor)
+    PyMem_Free(tensor)
 
 
 cdef void deleter_ver(DLManagedTensorVersioned* tensor) noexcept with gil:
     # Delete fully initialized DLManagedTensorVersioned
-    stdlib.free(tensor.dl_tensor.shape)
     cpython.Py_DECREF(<_ndarray_base>tensor.manager_ctx)
     tensor.manager_ctx = NULL
-    stdlib.free(tensor)
+    PyMem_Free(tensor)
 
 
-cdef uint8_t get_dlpack_dtype_code(dtype) except? 255:
-    """Convert NumPy/CuPy to dlpack dtype (kind, without bitsize).
+cdef uint8_t get_dlpack_dtype_code_itemsize(
+        cnp.dtype descr, size_t *size) except? 255:
+    """Convert NumPy/CuPy to dlpack dtype kind and fill in size.
     """
-    cdef char kind = ord(dtype.kind)
+    cdef char kind = descr.kind
 
+    size[0] = descr.itemsize
     if kind == b'u':
         return <uint8_t>kDLUInt
     elif kind == b'i':
@@ -89,7 +91,7 @@ cdef uint8_t get_dlpack_dtype_code(dtype) except? 255:
         return <uint8_t>kDLBool
     else:
         # One-off special handling for `ml_dtypes`
-        if dtype.name == "bfloat16":
+        if descr.name == "bfloat16":
             return <uint8_t>kDLBfloat
         else:
             raise BufferError('dtype is not supported for dlpack export')
@@ -102,8 +104,9 @@ cdef DLDevice get_dlpack_device(_ndarray_base array) except DLDevice_err:
     device.device_id = array.data.device_id
 
     if not runtime._is_hip_environment:
-        attrs = runtime.pointerGetAttributes(array.data.ptr)
-        is_managed = (attrs.type == runtime.memoryTypeManaged)
+        mem_type = runtime.pointerGetMemoryType(array.data.ptr)
+        is_managed = (mem_type == runtime.memoryTypeManaged)
+
         if is_managed:
             device.device_type = kDLCUDAManaged
         else:
@@ -151,21 +154,27 @@ cpdef object toDlpack(
         "release. Use the cupy.from_dlpack() array constructor instead.",
         cupy.VisibleDeprecationWarning)
     return _toDlpack(array, use_versioned=use_versioned, to_cpu=to_cpu,
-                     ensure_copy=ensure_copy, stream=stream)
+                     ensure_copy=ensure_copy)
 
 
 cdef object _toDlpack(
-    _ndarray_base array, bint use_versioned=True, bint to_cpu=False,
-    bint ensure_copy=False, stream=None
+    _ndarray_base array, bint use_versioned, bint to_cpu, bint ensure_copy
 ):
     cdef DLManagedTensor* dlm_tensor
     cdef DLManagedTensorVersioned* dlm_tensor_ver
     cdef DLTensor* dl_tensor
     cdef const char *capsule_name
+    cdef int32_t n  # to iterate dimensions
+    cdef size_t tensor_size = (
+        sizeof(DLManagedTensorVersioned) if use_versioned
+        else sizeof(DLManagedTensor)
+    )
 
     # Fetch dtype early (as this can raise a BufferError in theory)
-    cdef uint8_t dtype_code = get_dlpack_dtype_code(array.dtype)
-    cdef size_t dtype_itemsize = array.dtype.itemsize
+    cdef uint8_t dtype_code
+    cdef size_t dtype_itemsize
+    dtype_code = get_dlpack_dtype_code_itemsize(
+            <cnp.dtype>array.dtype, &dtype_itemsize)
 
     # Fetch device information since we need it to deal with CPU logic.
     cdef DLDevice device = get_dlpack_device(array)
@@ -179,31 +188,24 @@ cdef object _toDlpack(
         # `kDLCPU` here.  We only honor this request in spirit, but not
         # strictly (because e.g. NumPy will remember the managed part).
         owner = array
-        if stream is None:
-            # The user did not request a stream to synchronize on.  We have to
-            # assume they don't even know this is GPU data, so must fully
-            # synchronize on the current stream.
-            py_stream_module.get_current_stream().synchronize()
+        # The consumer cannot request a stream if they requested CPU export
+        # so we must fully synchronize on the current stream.
+        py_stream_module.get_current_stream().synchronize()
     else:
         # We need to create a CPU copy.  Assumes owner.dtype == array.dtype.
-        owner = array.get(
-            stream=stream, order='A', out=None, blocking=stream is None)
+        owner = array.get(stream=None, order='A', out=None, blocking=True)
         device.device_type = kDLCPU
         device.device_id = 0
 
-    cdef void *dlm_tensor_ptr = stdlib.malloc(
-        sizeof(DLManagedTensorVersioned) if use_versioned
-        else sizeof(DLManagedTensor)
+    cdef void *dlm_tensor_ptr = PyMem_Malloc(
+        tensor_size + ndim * sizeof(int64_t) * 2
     )
     if dlm_tensor_ptr == NULL:
         raise MemoryError()
 
-    # Note: could coalesce this with the previous allocation in principle
-    cdef int64_t* shape_strides = <int64_t*>stdlib.malloc(
-        ndim * sizeof(int64_t) * 2)
-    if shape_strides == NULL:
-        stdlib.free(dlm_tensor_ptr)
-        raise MemoryError()
+    # Coalesced with above: assumes tensor_size is an alignof(int64) multiple.
+    cdef int64_t* shape_strides = <int64_t *>(
+        <char *>dlm_tensor_ptr + tensor_size)
 
     # We need a different setup for versioned/unversioned when it comes to
     # the context/deleter and additional info in the newer versioned one.
@@ -240,8 +242,7 @@ cdef object _toDlpack(
         capsule = cpython.PyCapsule_New(
             dlm_tensor_ptr, capsule_name, pycapsule_deleter)
     except BaseException:
-        stdlib.free(dlm_tensor_ptr)
-        stdlib.free(shape_strides)
+        PyMem_Free(dlm_tensor_ptr)
         raise
     else:
         # Finalize dlm_tensor for `pycapsule_deleter`.  This else block must
