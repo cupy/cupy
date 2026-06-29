@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import concurrent.futures
+import pathlib
 
 import numpy
 import pytest
@@ -76,6 +77,48 @@ class TestDistributionsBinomial(RandomDistributionsTestCase):
         p = numpy.full(self.p_shape, 0.5, dtype=p_dtype)
         self.check_distribution('binomial',
                                 {'n': n, 'p': p}, self.dtype)
+
+
+class TestGeneratorBinomialBtpe:
+
+    sample_size = 20000
+
+    def check_binomial_moments(self, n, p, seed):
+        rng = cupy.random.default_rng(seed)
+        samples = rng.binomial(n, p, size=self.sample_size)
+        samples = samples.astype(cupy.float64)
+
+        expected_mean = n * p
+        expected_var = n * p * (1 - p)
+        mean_tol = 8 * numpy.sqrt(expected_var / self.sample_size)
+        var_tol = 8 * expected_var * numpy.sqrt(2 / (self.sample_size - 1))
+
+        assert abs(float(samples.mean()) - expected_mean) < mean_tol
+        assert abs(float(samples.var()) - expected_var) < var_tol
+
+    def test_binomial_btpe_mean_variance(self):
+        self.check_binomial_moments(100000, 0.5, 0)
+
+    def test_binomial_btpe_reflected_mean_variance(self):
+        self.check_binomial_moments(100000, 0.7, 1)
+
+    def test_binomial_inversion_mean_variance(self):
+        self.check_binomial_moments(20, 0.1, 2)
+
+    def test_binomial_btpe_stirling_correction_signs(self):
+        source_path = pathlib.Path(__file__).parents[3]
+        source_path /= 'cupy/random/cupy_distributions.cu'
+        source = source_path.read_text()
+        lines = source.splitlines()
+        start = next(
+            i for i, line in enumerate(lines)
+            if 'if (A > (xm*log(f1/x1)' in line
+        )
+        signs = [
+            line.strip()[0] for line in lines[start:start + 8]
+            if '/166320.' in line
+        ]
+        assert signs == ['+', '+', '-', '-']
 
 
 @testing.parameterize(*testing.product({
