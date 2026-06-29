@@ -83,7 +83,25 @@ function Main {
     echo "Building..."
     $build_retval = 0
     RunOrDie python -m pip install "numpy==$numpy.*" "scipy==$scipy.*" "Cython==3.2.*,!=3.2.6"
-    python -m pip install --no-build-isolation ".[all,test]" -v > cupy_build_log.txt
+
+    # Fetch the CuPy wheel built by GHA (.github/workflows/build-wheel.yml) for
+    # the current PR HEAD / merge commit, then pip-install it. The wheel-build
+    # matrix does not yet cover every FlexCI (CUDA, Python) tuple; this step
+    # will fail on combinations without a matching artifact -- by design.
+    if (-not $Env:GH_TOKEN) {
+        throw "GH_TOKEN env var is required to fetch wheel artifacts from cupy/cupy CI"
+    }
+    $sha = (& git rev-parse HEAD).Trim()
+    $py_ver = (& python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')").Trim()
+    $cuda_major = $cuda.Split(".")[0]
+    $artifact_name = "cupy-cuda${cuda_major}x-py${py_ver}-win-64-${sha}"
+    $run_id = (& bash ci/tools/lookup-run-id --commit $sha cupy/cupy "CI").Trim()
+    $wheel_dir = New-Item -ItemType Directory -Path ([System.IO.Path]::GetTempFileName() + ".d") -Force
+    RunOrDie gh run download $run_id -R cupy/cupy -n $artifact_name -D $wheel_dir.FullName
+    $wheel = (Get-ChildItem -Path $wheel_dir.FullName -Filter '*.whl' | Select-Object -First 1).FullName
+    if (-not $wheel) { throw "No wheel found under $($wheel_dir.FullName)" }
+
+    python -m pip install -v "${wheel}[test]" > cupy_build_log.txt
     if (-not $?) {
         $build_retval = $LastExitCode
     }
