@@ -4,7 +4,7 @@ import numpy
 
 import cupy
 from cupy.exceptions import AxisError
-from cupy._core._scalar import get_typename as _get_typename
+from cupy._core import _scalar
 from cupy._core._ufuncs import elementwise_copy
 from cupy._core._kernel cimport _full_mask_hex
 import cupy._core.core as core
@@ -309,15 +309,11 @@ cdef _ndarray_base _ndarray_argpartition(self, kth, axis):
 def _partition_kernel(dtype):
     name = 'partition_kernel'
     merge_kernel = 'partition_merge_kernel'
-    type_headers = set()
-    dtype = _get_typename(dtype, type_headers)
-    if not type_headers:
-        type_headers = ''
-    else:
-        type_headers = '\n'.join(sorted(type_headers)) + "\n\n"
+    type_decls = set()
+    dtype = _scalar.get_typename(dtype, type_decls)
 
     source = string.Template('''
-    ${type_headers}
+    ${type_decls}
     template<typename T>
     __device__ void bitonic_sort_step(CArray<T, 1, true> a,
             ptrdiff_t x, ptrdiff_t y, int i, ptrdiff_t s, ptrdiff_t w) {
@@ -423,7 +419,7 @@ def _partition_kernel(dtype):
     }
     }
     ''').substitute(name=name, merge_kernel=merge_kernel, dtype=dtype,
-                    type_headers=type_headers,
+                    type_decls=_scalar.format_type_decls(type_decls),
                     full_mask=_full_mask_hex())
     module = compile_with_cache(source)
     return module.get_function(name), module.get_function(merge_kernel)
@@ -433,15 +429,11 @@ def _partition_kernel(dtype):
 def _argpartition_kernel(dtype):
     name = 'argpartition_kernel'
     merge_kernel = 'argpartition_merge_kernel'
-    type_headers = set()
-    dtype = _get_typename(dtype, type_headers)
-    if not type_headers:
-        type_headers = ''
-    else:
-        type_headers = '\n'.join(sorted(type_headers)) + "\n\n"
+    type_decls = set()
+    dtype = _scalar.get_typename(dtype, type_decls)
 
     source = string.Template('''
-    ${type_headers}
+    ${type_decls}
     template<typename T>
     __device__ void bitonic_sort_step(
             CArray<T, 1, true> a, CArray<long long, 1, true> b,
@@ -551,7 +543,7 @@ def _argpartition_kernel(dtype):
     }
     }
     ''').substitute(name=name, merge_kernel=merge_kernel, dtype=dtype,
-                    type_headers=type_headers,
+                    type_decls=_scalar.format_type_decls(type_decls),
                     full_mask=_full_mask_hex())
     module = compile_with_cache(source)
     return module.get_function(name), module.get_function(merge_kernel)

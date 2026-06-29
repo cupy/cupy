@@ -243,7 +243,7 @@ class TestLp2bs_zpk:
         return z_bs_s, p_bs_s, k_bs
 
 
-@testing.with_requires("scipy >= 1.8.0")
+@testing.with_requires("scipy")
 class TestZpk2Sos:
 
     @pytest.mark.parametrize('dt', 'fdFD')

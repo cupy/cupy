@@ -6,9 +6,8 @@ from __future__ import annotations
 import cupy
 from cupy import _core
 
+from cupyx.scipy.sparse._base import _spbase
 from cupyx.scipy.sparse._base import issparse
-from cupyx.scipy.sparse._base import isspmatrix
-from cupyx.scipy.sparse._base import spmatrix
 
 from cupy.cuda import device
 from cupy.cuda import runtime
@@ -353,14 +352,6 @@ class IndexMixin:
     """
 
     def __getitem__(self, key):
-
-        # For testing- Scipy >= 1.4.0 is needed to guarantee
-        # results match.
-        if scipy_available and numpy.lib.NumpyVersion(
-                scipy.__version__) < '1.4.0':
-            raise NotImplementedError(
-                "Sparse __getitem__() requires Scipy >= 1.4.0")
-
         row, col = self._parse_indices(key)
 
         # Dispatch to specialized methods.
@@ -436,7 +427,7 @@ class IndexMixin:
         if i.shape != j.shape:
             raise IndexError('number of row and column indices differ')
 
-        if isspmatrix(x):
+        if issparse(x):
             if i.ndim == 1:
                 # Inner indexing, so treat them like row vectors.
                 i = i[None]
@@ -508,32 +499,6 @@ class IndexMixin:
 
         return x % length
 
-    def getrow(self, i):
-        """Return a copy of row i of the matrix, as a (1 x n) row vector.
-
-        Args:
-            i (integer): Row
-
-        Returns:
-            cupyx.scipy.sparse.spmatrix: Sparse matrix with single row
-        """
-        M, N = self.shape
-        i = _normalize_index(i, M, 'index')
-        return self._get_intXslice(i, slice(None))
-
-    def getcol(self, i):
-        """Return a copy of column i of the matrix, as a (m x 1) column vector.
-
-        Args:
-            i (integer): Column
-
-        Returns:
-            cupyx.scipy.sparse.spmatrix: Sparse matrix with single column
-        """
-        M, N = self.shape
-        i = _normalize_index(i, N, 'index')
-        return self._get_sliceXint(slice(None), i)
-
     def _get_intXint(self, row, col):
         raise NotImplementedError()
 
@@ -577,9 +542,10 @@ class IndexMixin:
         self._set_arrayXarray(row, col, x)
 
 
-def _try_is_scipy_spmatrix(index):
+def _try_is_scipy_sparse(index):
+    """True for any scipy.sparse object (matrix or array)."""
     if scipy_available:
-        return isinstance(index, scipy.sparse.spmatrix)
+        return scipy.sparse.issparse(index)
     return False
 
 
@@ -595,9 +561,9 @@ def _unpack_index(index):
           assumed to be all (e.g., [maj, :]).
     """
     # First, check if indexing with single boolean matrix.
-    if ((isinstance(index, (spmatrix, cupy.ndarray,
+    if ((isinstance(index, (_spbase, cupy.ndarray,
                             numpy.ndarray))
-         or _try_is_scipy_spmatrix(index))
+         or _try_is_scipy_sparse(index))
             and index.ndim == 2 and index.dtype.kind == 'b'):
         return index.nonzero()
 
@@ -623,7 +589,7 @@ def _unpack_index(index):
         elif idx.ndim == 2:
             return idx.nonzero()
     # Next, check for validity and transform the index as needed.
-    if isspmatrix(row) or isspmatrix(col):
+    if issparse(row) or issparse(col):
         # Supporting sparse boolean indexing with both row and col does
         # not work because spmatrix.ndim is always 2.
         raise IndexError(

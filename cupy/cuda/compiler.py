@@ -224,17 +224,6 @@ def _get_max_compute_capability():
     return nvrtc_max_compute_capability
 
 
-@_util.memoize()
-def _get_extra_include_dir_opts():
-    major, minor = _get_nvrtc_version()
-    return tuple(
-        f'-I{d}'
-        for d in _environment._get_include_dir_from_conda_or_wheel(
-            major, minor
-        )
-    )
-
-
 @_util.memoize(for_each_device=True)
 def _get_arch():
     # See Supported Compile Options section of NVRTC User Guide for
@@ -620,10 +609,6 @@ def _compile_with_cache_cuda(
     if to_ltoir:
         options += ('-dlto',)
 
-    if enable_cooperative_groups:
-        # `cooperative_groups` requires relocatable device code.
-        options += ('--device-c',)
-
     # TODO(leofang): check if this works for LTO IR
     if _get_bool_env_variable('CUPY_CUDA_COMPILE_WITH_DEBUG', False):
         options += ('--device-debug', '--generate-line-info')
@@ -640,7 +625,6 @@ def _compile_with_cache_cuda(
     if jitify and backend != 'nvrtc':
         raise ValueError('jitify only works with NVRTC')
 
-    options += _get_extra_include_dir_opts()
     # TODO(leofang): technically we shouldn't use _get_nvrtc_version here if
     # the backend is not nvrtc
     env = ((arch, options, _get_nvrtc_version(), backend)

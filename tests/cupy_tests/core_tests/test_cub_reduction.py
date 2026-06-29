@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from itertools import combinations
-import unittest
 import sys
 
 import pytest
@@ -17,13 +16,14 @@ from cupy.cuda import memory
 # This test class and its children below only test if CUB backend can be used
 # or not; they don't verify its correctness as it's already extensively covered
 # by existing tests
-class CubReductionTestBase(unittest.TestCase):
+class CubReductionTestBase:
     """
     Note: call self.can_use() when arrays are already allocated, otherwise
     call self._test_can_use().
     """
 
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def configure(self):
         if _environment.get_cub_path() is None:
             pytest.skip('CUB not found')
         if cupy.cuda.runtime.is_hip:
@@ -34,8 +34,7 @@ class CubReductionTestBase(unittest.TestCase):
 
         self.old_accelerators = _accelerator.get_reduction_accelerators()
         _accelerator.set_reduction_accelerators(['cub'])
-
-    def tearDown(self):
+        yield
         _accelerator.set_reduction_accelerators(self.old_accelerators)
 
     def _test_can_use(
@@ -46,34 +45,36 @@ class CubReductionTestBase(unittest.TestCase):
         assert result is expected
 
 
-@testing.parameterize(*testing.product({
-    'shape': [(2,), (2, 3), (2, 3, 4), (2, 3, 4, 5)],
-    'order': ('C', 'F'),
-}))
+@pytest.mark.parametrize(
+    "shape", [(2,), (2, 3), (2, 3, 4), (2, 3, 4, 5)]
+)
+@pytest.mark.parametrize(
+    "order", ['C', 'F'],
+)
 class TestSimpleCubReductionKernelContiguity(CubReductionTestBase):
 
     @testing.for_contiguous_axes()
-    def test_can_use_cub_contiguous(self, axis):
+    def test_can_use_cub_contiguous(self, axis, shape, order):
         r_axis = axis
-        i_shape = self.shape
+        i_shape = shape
         o_axis = tuple(i for i in range(len(i_shape)) if i not in r_axis)
-        o_shape = tuple(self.shape[i] for i in o_axis)
-        self._test_can_use(i_shape, o_shape, r_axis, o_axis, self.order, True)
+        o_shape = tuple(shape[i] for i in o_axis)
+        self._test_can_use(i_shape, o_shape, r_axis, o_axis, order, True)
 
     @testing.for_contiguous_axes()
-    def test_can_use_cub_non_contiguous(self, axis):
+    def test_can_use_cub_non_contiguous(self, axis, shape, order):
         # array is contiguous, but reduce_axis is not
-        dim = len(self.shape)
+        dim = len(shape)
         r_dim = len(axis)
         non_contiguous_axes = [i for i in combinations(range(dim), r_dim)
                                if i != axis]
 
-        i_shape = self.shape
+        i_shape = shape
         for r_axis in non_contiguous_axes:
             o_axis = tuple(i for i in range(dim) if i not in r_axis)
-            o_shape = tuple(self.shape[i] for i in o_axis)
+            o_shape = tuple(shape[i] for i in o_axis)
             self._test_can_use(i_shape, o_shape, r_axis, o_axis,
-                               self.order, False)
+                               order, False)
 
 
 class TestSimpleCubReductionKernelMisc(CubReductionTestBase):
@@ -130,6 +131,8 @@ class TestSimpleCubReductionKernelMisc(CubReductionTestBase):
         b = cupy.empty((), dtype=cupy.int8)
         assert self.can_use([a], [b], (1,), (0,)) is None
 
+    @pytest.mark.thread_unsafe(
+        reason="AssertFunctionIsCalled and accelerate mutation.")
     def test_can_use_accelerator_set_unset(self):
         # ensure we use CUB block reduction and not CUB device reduction
         old_routine_accelerators = _accelerator.get_routine_accelerators()

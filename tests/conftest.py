@@ -4,7 +4,9 @@ import collections
 import os
 import subprocess
 import sys
+import random
 
+import pytest
 
 # enable NEP 50 weak promotion rules
 import numpy
@@ -100,3 +102,47 @@ if int(os.environ.get('CUPY_CI_ENABLE_GCP_KERNEL_CACHE', 0)) != 0:
     print("GCP kernel cache: initializing local cache from GCS...", flush=True)
     backend.initialize_local_cache()
     _set_kernel_cache_backend(backend)
+
+
+if int(os.environ.get('CUPY_TEST_RANDOM_SUBSAMPLE', '0')):
+    seed = int(os.environ.get('_CUPY_TEST_SUBSAMPLE_SEED', '-1'))
+    if seed == -1:
+        # Generate seed and store as environment variable for pytest-xdist
+        # (and maybe to be picked up the `for_all_dtypes`).
+        import secrets
+
+        seed = secrets.randbits(64)
+        os.environ['_CUPY_TEST_SUBSAMPLE_SEED'] = str(seed)
+
+    rng = random.Random(seed)
+
+    def pytest_collection_modifyitems(session, config, items):
+        original_len = len(items)
+        if original_len == 0:
+            return  # No tests, so nothing to subsample
+
+        groups = collections.defaultdict(list)
+        for item in items:
+            base = f"{item.parent.nodeid}::{item.originalname}"
+            groups[base].append(item)
+        items[:] = [
+            x for v in groups.values()
+            for x in rng.sample(v, 1 + len(v) // 15)
+        ]
+
+        print(f"\nRandomly subsampled parametrized tests from {original_len} "
+              f"to {len(items)} ({len(items) / original_len:.1%}). "
+              f"(Similar subsampling is also done for `for_all_dtypes`!)\n")
+
+        # Disable strict xfail on selected items — subsampling (e.g. via
+        # for_all_dtypes) may remove the failing parametrizations.
+        # (This also overrides the global pyproject setting.)
+        # TODO(seberg): Could audit strict xfail to remove this.
+        for item in items:
+            for node in item.listchain():
+                for i, marker in enumerate(node.own_markers):
+                    if marker.name == 'xfail':
+                        kwargs = dict(marker.kwargs)
+                        kwargs['strict'] = False
+                        node.own_markers[i] = pytest.mark.xfail(
+                            *marker.args, **kwargs).mark

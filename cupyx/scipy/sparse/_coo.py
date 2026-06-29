@@ -10,42 +10,35 @@ except ImportError:
 import cupy
 from cupy import _core
 from cupyx.scipy.sparse import _base
-from cupyx.scipy.sparse import _csc
-from cupyx.scipy.sparse import _csr
 from cupyx.scipy.sparse import _data as sparse_data
 from cupyx.scipy.sparse import _util
 from cupyx.scipy.sparse import _sputils
 
 
-class coo_matrix(sparse_data._data_matrix):
+class _coo_base(sparse_data._data_matrix):
+    """COO format base (shared by ``coo_matrix`` and ``coo_array``).
 
-    """COOrdinate format sparse matrix.
+    This can be instantiated in several ways:
 
-    This can be instantiated in several ways.
-
-    ``coo_matrix(D)``
+    ``coo_*(D)``
         ``D`` is a rank-2 :class:`cupy.ndarray`.
-
-    ``coo_matrix(S)``
-        ``S`` is another sparse matrix. It is equivalent to ``S.tocoo()``.
-
-    ``coo_matrix((M, N), [dtype])``
-        It constructs an empty matrix whose shape is ``(M, N)``. Default dtype
+    ``coo_*(S)``
+        ``S`` is another sparse object.  Equivalent to ``S.tocoo()``.
+    ``coo_*((M, N), [dtype])``
+        Constructs an empty (M, N)-shaped sparse object.  Default dtype
         is float64.
-
-    ``coo_matrix((data, (row, col)))``
-        All ``data``, ``row`` and ``col`` are one-dimenaional
-        :class:`cupy.ndarray`.
+    ``coo_*((data, (row, col)), shape=...)``
+        ``data``, ``row`` and ``col`` are 1-D :class:`cupy.ndarray`.
 
     Args:
         arg1: Arguments for the initializer.
-        shape (tuple): Shape of a matrix. Its length must be two.
-        dtype: Data type. It must be an argument of :class:`numpy.dtype`.
+        shape (tuple): Shape; must be a 2-tuple of ints.
+        dtype: Data type; must be representable as :class:`numpy.dtype`.
         copy (bool): If ``True``, copies of given data are always used.
 
     .. seealso::
+       :class:`scipy.sparse.coo_array`,
        :class:`scipy.sparse.coo_matrix`
-
     """
 
     format = 'coo'
@@ -61,7 +54,10 @@ class coo_matrix(sparse_data._data_matrix):
         diff = diff_out;
         ''', 'cupyx_scipy_sparse_coo_sum_duplicates_diff')
 
-    def __init__(self, arg1, shape=None, dtype=None, copy=False):
+    def __init__(self, arg1, shape=None, dtype=None, copy=False,
+                 *, maxprint=None):
+        if maxprint is not None:
+            self.maxprint = maxprint
         if shape is not None and len(shape) != 2:
             raise ValueError(
                 'Only two-dimensional sparse arrays are supported.')
@@ -142,47 +138,51 @@ class coo_matrix(sparse_data._data_matrix):
         else:
             dtype = numpy.dtype(dtype)
 
-        if dtype not in (numpy.bool_, numpy.float32, numpy.float64,
-                         numpy.complex64, numpy.complex128):
+        if not _sputils.is_sparse_data_dtype(dtype):
             raise ValueError(
                 'Only bool, float32, float64, complex64 and complex128'
                 ' are supported')
 
         data = data.astype(dtype, copy=copy)
         # Choose index dtype: int32 when values fit, int64 when they don't.
-        # Mirror scipy's get_index_dtype(check_contents=True) logic so we
-        # downcast int64 arrays whose values all fit in int32 (common case).
+        # For matrices, check_contents=True may downcast int64 to int32.
+        # For arrays, _get_index_dtype disables check_contents so user
+        # dtypes are preserved.
         if shape is not None:
             maxval = max(shape)
         else:
             maxval = None
-        idx_dtype = _sputils.get_index_dtype(
+        idx_dtype = self._get_index_dtype(
             (row, col), maxval=maxval, check_contents=True)
         row = row.astype(idx_dtype, copy=copy)
         col = col.astype(idx_dtype, copy=copy)
 
-        if shape is None:
-            if len(row) == 0 or len(col) == 0:
-                raise ValueError(
-                    'cannot infer dimensions from zero sized index arrays')
-            shape = (int(row.max()) + 1, int(col.max()) + 1)
+        if shape is None and (len(row) == 0 or len(col) == 0):
+            raise ValueError(
+                'cannot infer dimensions from zero sized index arrays')
 
         if len(data) > 0:
-            if row.max() >= shape[0]:
+            # Fuse the four max/min reductions into one D2H read so
+            # the constructor syncs once instead of up to six times.
+            bounds = cupy.stack(
+                (row.max(), col.max(), row.min(), col.min())
+            ).get()  # synchronize!
+            rmax, cmax, rmin, cmin = (int(b) for b in bounds)
+            if shape is None:
+                shape = (rmax + 1, cmax + 1)
+            if rmax >= shape[0]:
                 raise ValueError('row index exceeds matrix dimensions')
-            if col.max() >= shape[1]:
+            if cmax >= shape[1]:
                 raise ValueError('column index exceeds matrix dimensions')
-            if row.min() < 0:
+            if rmin < 0:
                 raise ValueError('negative row index found')
-            if col.min() < 0:
+            if cmin < 0:
                 raise ValueError('negative column index found')
 
         sparse_data._data_matrix.__init__(self, data)
         self.row = row
         self.col = col
-        if not _util.isshape(shape):
-            raise ValueError('invalid shape (must be a 2-tuple of int)')
-        self._shape = int(shape[0]), int(shape[1])
+        self._shape = _util.check_shape(shape)
 
     @classmethod
     def _from_parts(cls, data, row, col, shape,
@@ -210,12 +210,27 @@ class coo_matrix(sparse_data._data_matrix):
         """Return a matrix with the same sparsity structure but
         different data.  Preserves has_canonical_format.
         """
-        return coo_matrix._from_parts(
+        return type(self)._from_parts(
             data,
             self.row.copy() if copy else self.row,
             self.col.copy() if copy else self.col,
             self.shape,
             has_canonical_format=self.has_canonical_format)
+
+    @property
+    def coords(self):
+        """Tuple of coordinate arrays ``(row, col)``.
+
+        Mirrors :attr:`scipy.sparse.coo_array.coords` (CuPy is 2-D only).
+        """
+        return (self.row, self.col)
+
+    @coords.setter
+    def coords(self, value):
+        if not isinstance(value, tuple) or len(value) != 2:
+            raise ValueError(
+                'coords must be a 2-tuple of arrays for 2-D sparse')
+        self.row, self.col = value
 
     def diagonal(self, k=0):
         """Returns the k-th diagonal of the matrix.
@@ -238,7 +253,7 @@ class coo_matrix(sparse_data._data_matrix):
             row = self.row[diag_mask]
             data = self.data[diag_mask]
         else:
-            diag_coo = coo_matrix((self.data[diag_mask],
+            diag_coo = type(self)((self.data[diag_mask],
                                    (self.row[diag_mask], self.col[diag_mask])),
                                   shape=self.shape)
             diag_coo.sum_duplicates()
@@ -265,6 +280,11 @@ class coo_matrix(sparse_data._data_matrix):
         M, N = self.shape
         if (k > 0 and k >= N) or (k < 0 and -k >= M):
             raise ValueError("k exceeds matrix dimensions")
+        # Coerce list/scalar/numpy input; matches scipy's
+        # ``np.asarray(values)`` in ``_spbase.setdiag``.
+        values = cupy.asarray(values, dtype=self.dtype)
+        if values.ndim > 1:
+            raise ValueError('values must be 0-d or 1-d')
         if values.ndim and not len(values):
             return
         idx_dtype = self.row.dtype
@@ -305,20 +325,50 @@ class coo_matrix(sparse_data._data_matrix):
         self.row = self.row[ind]
         self.col = self.col[ind]
 
-    def get_shape(self):
-        """Returns the shape of the matrix.
-
-        Returns:
-            tuple: Shape of the matrix.
-        """
-        return self._shape
-
-    def getnnz(self, axis=None):
-        """Returns the number of stored values, including explicit zeros."""
+    def _getnnz(self, axis=None):
+        """Number of stored values, including explicit zeros."""
         if axis is None:
             return self.data.size
         else:
             raise ValueError
+
+    def count_nonzero(self, axis=None):
+        """Number of non-zero entries.
+
+        Excludes explicit zeros.  Duplicates are summed first.
+
+        Args:
+            axis ({-2, -1, 0, 1, ``None``}):
+                Count over the whole matrix, or along an axis.
+
+        Returns:
+            int or cupy.ndarray: Scalar count when ``axis=None``,
+            otherwise a 1-D ``cupy.ndarray`` of length
+            ``shape[1 - axis]``.
+        """
+        # Match scipy: dedup in place, then count.  COO is already in
+        # row/col form so per-axis counts come straight from a bincount
+        # on the appropriate coord array -- no format conversion needed.
+        self.sum_duplicates()
+        if axis is None:
+            return int(cupy.count_nonzero(self.data))
+        if axis < 0:
+            axis += 2
+        if axis < 0 or axis >= 2:
+            raise ValueError('axis out of bounds')
+        # ``cupy.bincount`` errors on empty input even with ``minlength``
+        # (CUB max-reduction has no identity for zero-size arrays), so
+        # short-circuit when nothing is stored or every entry is an
+        # explicit zero.  scipy returns the zero-filled axis vector.
+        out_dim = self.shape[1 - axis]
+        if self.data.size == 0:
+            return cupy.zeros(out_dim, dtype=cupy.intp)
+        mask = self.data != 0
+        coord = (self.col if axis == 0 else self.row)[mask]
+        if coord.size == 0:
+            return cupy.zeros(out_dim, dtype=cupy.intp)
+        return cupy.bincount(
+            coord.astype(cupy.int64), minlength=out_dim)
 
     def get(self, stream=None):
         """Returns a copy of the array on host memory.
@@ -337,8 +387,11 @@ class coo_matrix(sparse_data._data_matrix):
         data = self.data.get(stream)
         row = self.row.get(stream)
         col = self.col.get(stream)
-        return scipy.sparse.coo_matrix(
-            (data, (row, col)), shape=self.shape)
+        if isinstance(self, _base.sparray):
+            sp_cls = scipy.sparse.coo_array
+        else:
+            sp_cls = scipy.sparse.coo_matrix
+        return sp_cls((data, (row, col)), shape=self.shape)
 
     def reshape(self, *shape, order='C'):
         """Gives a new shape to a sparse matrix without changing its data.
@@ -379,7 +432,7 @@ class coo_matrix(sparse_data._data_matrix):
         else:
             raise ValueError("'order' must be 'C' or 'F'")
 
-        return coo_matrix._from_parts(
+        return type(self)._from_parts(
             self.data, new_row, new_col, shape=shape)
 
     def sum_duplicates(self):
@@ -540,7 +593,7 @@ class coo_matrix(sparse_data._data_matrix):
         if self.nnz == 0:
             idx = self.col.dtype
             n = self.shape[1]
-            return _csc.csc_matrix._from_parts(
+            return self._csc_container._from_parts(
                 cupy.empty(0, self.dtype),
                 cupy.empty(0, idx),
                 cupy.zeros(n + 1, idx),
@@ -550,9 +603,11 @@ class coo_matrix(sparse_data._data_matrix):
         x = self.copy()
         x.sum_duplicates()
         cusparse.coosort(x, 'c')
-        x = cusparse.coo2csc(x)
-        x.has_canonical_format = True
-        return x
+        result = cusparse.coo2csc(x)
+        result.has_canonical_format = True
+        if not isinstance(result, self._csc_container):
+            result = self._csc_container(result)
+        return result
 
     def tocsr(self, copy=False):
         """Converts the matrix to Compressed Sparse Row format.
@@ -571,7 +626,7 @@ class coo_matrix(sparse_data._data_matrix):
         if self.nnz == 0:
             idx = self.row.dtype
             m = self.shape[0]
-            return _csr.csr_matrix._from_parts(
+            return self._csr_container._from_parts(
                 cupy.empty(0, self.dtype),
                 cupy.empty(0, idx),
                 cupy.zeros(m + 1, idx),
@@ -581,9 +636,11 @@ class coo_matrix(sparse_data._data_matrix):
         x = self.copy()
         x.sum_duplicates()
         cusparse.coosort(x, 'r')
-        x = cusparse.coo2csr(x)
-        x.has_canonical_format = True
-        return x
+        result = cusparse.coo2csr(x)
+        result.has_canonical_format = True
+        if not isinstance(result, self._csr_container):
+            result = self._csr_container(result)
+        return result
 
     def transpose(self, axes=None, copy=False):
         """Returns a transpose matrix.
@@ -609,20 +666,36 @@ class coo_matrix(sparse_data._data_matrix):
             data, row, col = self.data, self.col, self.row
         # Transposing swaps row/col, which generally destroys
         # canonical order (sorted by row then col).
-        return coo_matrix._from_parts(
+        return type(self)._from_parts(
             data, row, col, shape,
             has_canonical_format=False)
 
     def dot(self, other):
         """Ordinary dot product"""
         if _util.isscalarlike(other):
-            return coo_matrix._from_parts(
+            return type(self)._from_parts(
                 self.data * other,
                 self.row.copy(), self.col.copy(),
                 self.shape,
                 has_canonical_format=self.has_canonical_format)
         else:
             return self @ other
+
+
+class coo_matrix(_base.spmatrix, _coo_base):
+    """COOrdinate format sparse matrix.
+
+    .. seealso:: :class:`scipy.sparse.coo_matrix`
+    """
+    pass
+
+
+class coo_array(_coo_base, _base.sparray):
+    """COOrdinate format sparse array.
+
+    .. seealso:: :class:`scipy.sparse.coo_array`
+    """
+    pass
 
 
 def isspmatrix_coo(x):

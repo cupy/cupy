@@ -465,7 +465,7 @@ def _make_fast_matvec(A):
     from cupy_backends.cuda.libs import cusparse as _cusparse
     from cupyx import cusparse
 
-    if _csr.isspmatrix_csr(A) and cusparse.check_availability('spmv'):
+    if _csr._is_csr(A) and cusparse.check_availability('spmv'):
         handle = device.get_cusparse_handle()
         op_a = _cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
         alpha = numpy.array(1.0, A.dtype)
