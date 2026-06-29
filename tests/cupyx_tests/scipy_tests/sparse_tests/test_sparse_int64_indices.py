@@ -260,7 +260,7 @@ class TestInt64Sort:
 
 
 class TestInt64ArithmeticFallback:
-    """Sparse addition with int64 indices — pure-CuPy fallback.
+    """Sparse addition with int64 indices -- pure-CuPy fallback.
 
     csrgeam2 routes int64 inputs to _cupy_csrgeam_int64 *before* checking
     cuSPARSE availability, so the path works on any CUDA version.
@@ -658,7 +658,7 @@ class TestInt64Argmax:
 
     def test_csr_argmax_no_axis_flat_index(self):
         # argmax() with no axis returns a flat index.  This path goes through
-        # COO conversion (int64-aware), not _arg_minor_reduce — so it worked
+        # COO conversion (int64-aware), not _arg_minor_reduce -- so it worked
         # before too.  Include as a regression guard.
         data = cupy.array([1.0, 2.0])
         indices = cupy.array([0, _LARGE], dtype=cupy.int64)
@@ -757,7 +757,7 @@ class TestInt64Multiply:
     """
 
     def test_multiply_dense_broadcast_int64(self):
-        # (1, _LARGE+1) sparse * (1, 1) dense — broadcasting.
+        # (1, _LARGE+1) sparse * (1, 1) dense -- broadcasting.
         data = cupy.array([2.0, 3.0])
         indices = cupy.array([0, _LARGE], dtype=cupy.int64)
         indptr = cupy.array([0, 2], dtype=cupy.int64)
@@ -811,7 +811,7 @@ class TestInt64Diagonal:
     """
 
     def test_diagonal_int64_large_cols(self):
-        # (2, _LARGE+1) matrix — diagonal is 2 elements.
+        # (2, _LARGE+1) matrix -- diagonal is 2 elements.
         data = cupy.array([1.0, 2.0])
         indices = cupy.array([0, 1], dtype=cupy.int64)
         indptr = cupy.array([0, 1, 2], dtype=cupy.int64)
@@ -847,13 +847,13 @@ class TestInt64MinMaxReduction:
     get_typename(self.indptr.dtype); shape param passed as idx_dtype.type(N).
 
     Design note: axis=1 (reduce over columns) on a CSR matrix sends
-    length = shape[1] directly to the kernel — the critical int64 path.
+    length = shape[1] directly to the kernel -- the critical int64 path.
     axis=0 converts to CSC first, then sends length = shape[0].
     Both paths exercise the same TI template, just with different shapes.
     """
 
     def _make_int64_csr(self):
-        # 2 × (_LARGE+1) CSR — shape forces int64 index dtype.
+        # 2 × (_LARGE+1) CSR -- shape forces int64 index dtype.
         # Row 0: col 0 → 1.0, col 2 → 3.0
         # Row 1: col 1 → 2.0, col 2 → -1.0
         data = cupy.array([1.0, 3.0, 2.0, -1.0])
@@ -884,7 +884,7 @@ class TestInt64MinMaxReduction:
 
     def test_max_axis0_int64(self):
         # axis=0 on CSC: _minor_reduce receives length = shape[0] = _LARGE+1.
-        # Construct (_LARGE+1, 2) CSC directly — indptr has 3 elements (tiny).
+        # Construct (_LARGE+1, 2) CSC directly -- indptr has 3 elements (tiny).
         # Col 0: rows 0,1 → 1.0, -2.0   Col 1: row 0 → 3.0
         data = cupy.array([1.0, -2.0, 3.0])
         indices = cupy.array([0, 1, 0], dtype=cupy.int64)
@@ -1669,7 +1669,7 @@ class TestInt64FancyMinorIndex:
         assert float(sub.data[0]) == pytest.approx(1.0)
 
     def test_csr_fancy_col_value_at_large_index(self):
-        # Selecting col _LARGE — previously the histogram kernel silently
+        # Selecting col _LARGE -- previously the histogram kernel silently
         # truncated _LARGE to its low 32 bits, producing a wrong column match
         # and returning 0.0 instead of the stored value.
         m = self._make_int64_csr_2row()
@@ -2409,7 +2409,7 @@ class TestInt64SumAxis:
         assert float(s[0, 4]) == pytest.approx(7.0)
 
     def test_sum_axis1_large_cols(self):
-        # shape=(2, _LARGE+2): axis=1 creates ones(_LARGE+2) — OOM.
+        # shape=(2, _LARGE+2): axis=1 creates ones(_LARGE+2) -- OOM.
         # Use small-value int64 matrix to keep ncols small.
         data = cupy.array([3.0, 7.0])
         indices = cupy.array([0, 2], dtype=cupy.int64)
@@ -2622,7 +2622,7 @@ class TestInt64DiaConversion:
 
     def test_dia_tocsr_large_shape(self):
         # Shape (_LARGE+1, 2): max(shape) > INT32_MAX triggers int64.
-        # tocsc() produces a 2-column CSC (indptr has 3 entries — cheap).
+        # tocsc() produces a 2-column CSC (indptr has 3 entries -- cheap).
         # A full tocsr() would create _LARGE+1 row CSR (17 GB indptr),
         # so verify the int64 chain via tocsc→tocoo instead.
         data = cupy.ones((1, 2))
@@ -2638,7 +2638,7 @@ class TestInt64DiaConversion:
 
     def test_dia_tocsc_large_shape(self):
         # Shape (_LARGE+1, 2): tocsc() produces a 2-column CSC
-        # (indptr has 3 entries — cheap) while still exercising the
+        # (indptr has 3 entries -- cheap) while still exercising the
         # int64 kernel path (idx_dtype chosen by max(shape) > INT32_MAX).
         data = cupy.ones((1, 2))
         offsets = cupy.array([0], dtype=cupy.int32)
@@ -2693,7 +2693,7 @@ class TestInt64RandomSparse:
         assert m.shape == (_LARGE, 2)
 
     def test_random_large_mn(self):
-        # m*n = 10^12 — old code would OOM allocating 8 TB
+        # m*n = 10^12 -- old code would OOM allocating 8 TB
         m = sparse.random(10**6, 10**6, density=1e-9, format='coo')
         assert m.nnz > 0
         assert m.shape == (10**6, 10**6)
@@ -3339,8 +3339,6 @@ class TestInt64Regressions:
 
 
 class TestFromPartsValidation:
-    """_from_parts is internal but must enforce its declared contract
-    so a buggy caller fails loudly rather than producing a corrupt matrix."""
 
     def test_rejects_mismatched_index_dtypes(self):
         data = cupy.array([1.0, 2.0])
@@ -3397,10 +3395,273 @@ class TestFromPartsValidation:
         assert m._has_canonical_format is True
         assert m._has_sorted_indices is True
 
+    def test_coo_rejects_data_row_col_length_mismatch(self):
+        # data.size != row.size: scipy-equivalent corruption check.
+        with pytest.raises(ValueError, match='same length'):
+            sparse.coo_matrix._from_parts(
+                cupy.array([1.0, 2.0]),
+                cupy.array([0], dtype=cupy.int64),
+                cupy.array([0, 1], dtype=cupy.int64),
+                (2, 2))
+        # row.size != col.size.
+        with pytest.raises(ValueError, match='same length'):
+            sparse.coo_matrix._from_parts(
+                cupy.array([1.0, 2.0]),
+                cupy.array([0, 1], dtype=cupy.int64),
+                cupy.array([0], dtype=cupy.int64),
+                (2, 2))
+
+    def test_coo_rejects_mismatched_index_dtypes(self):
+        with pytest.raises(ValueError, match='same dtype'):
+            sparse.coo_matrix._from_parts(
+                cupy.array([1.0]),
+                cupy.array([0], dtype=cupy.int32),
+                cupy.array([0], dtype=cupy.int64),
+                (2, 2))
+
+    def test_compressed_rejects_shape_too_large_for_dtype(self):
+        # CSR: shape[1] > int32max requires int64.
+        with pytest.raises(ValueError, match='too large for index dtype'):
+            sparse.csr_matrix._from_parts(
+                cupy.array([1.0]),
+                cupy.array([0], dtype=cupy.int32),
+                cupy.array([0, 1, 1], dtype=cupy.int32),
+                (2, 2**31 + 5))
+        # CSC: shape[0] > int32max requires int64.
+        with pytest.raises(ValueError, match='too large for index dtype'):
+            sparse.csc_matrix._from_parts(
+                cupy.array([1.0]),
+                cupy.array([0], dtype=cupy.int32),
+                cupy.array([0, 1, 1], dtype=cupy.int32),
+                (2**31 + 5, 2))
+
+    def test_coo_rejects_shape_too_large_for_dtype(self):
+        with pytest.raises(ValueError, match='too large for index dtype'):
+            sparse.coo_matrix._from_parts(
+                cupy.array([1.0]),
+                cupy.array([0], dtype=cupy.int32),
+                cupy.array([0], dtype=cupy.int32),
+                (2, 2**31 + 5))
+
+
+class TestCsr2CooCanonicalPreservation:
+    """Canonical CSR (sorted columns within each row, no duplicates)
+    expands to row-major lexicographic COO order, which is the COO
+    canonical form -- so ``has_canonical_format`` should propagate
+    through ``tocoo``.  Don't eagerly propagate ``False`` or
+    uncomputed: that would mask the real value from the lazy getter.
+    """
+
+    def test_canonical_csr_to_canonical_coo(self):
+        m = sparse.csr_matrix(cupy.eye(3, dtype=cupy.float64))
+        # Force the canonical flag on without running the kernel.
+        m._has_canonical_format = True
+        m._has_sorted_indices = True
+        c = m.tocoo()
+        assert c.has_canonical_format is True
+
+    def test_uncached_canonical_does_not_propagate(self):
+        # When the source has not computed canonical yet (None-state),
+        # do not eagerly compute it.  Result COO defaults to
+        # has_canonical_format=False.
+        m = sparse.csr_matrix(cupy.eye(3, dtype=cupy.float64))
+        # Ensure flag is uncached.
+        if hasattr(m, '_has_canonical_format'):
+            del m._has_canonical_format
+        if hasattr(m, '_has_sorted_indices'):
+            del m._has_sorted_indices
+        c = m.tocoo()
+        assert c.has_canonical_format is False
+
+    def test_cached_false_propagates_false(self):
+        # csr2coo doesn't sort: input with unsorted col indices in a
+        # row produces a COO with the same unsorted cols within that
+        # row, which is genuinely not canonical.  Propagating False
+        # is correct (and avoids a wasted lazy kernel launch later).
+        data = cupy.array([1.0, 2.0])
+        ind = cupy.array([1, 0], 'i')  # unsorted within row 0
+        ptr = cupy.array([0, 2], 'i')
+        m = sparse.csr_matrix._from_parts(data, ind, ptr, (1, 2))
+        m._has_canonical_format = False
+        c = m.tocoo()
+        assert c.has_canonical_format is False
+
+    def test_int64_canonical_csr_to_canonical_coo(self):
+        # The int64 path goes via _indptr_to_coo + Generic API, but
+        # the same canonical-preservation logic applies.
+        data = cupy.array([1.0, 2.0, 3.0], dtype=cupy.float64)
+        indices = cupy.array([0, 1, 2], dtype=cupy.int64)
+        indptr = cupy.array([0, 1, 2, 3], dtype=cupy.int64)
+        m = sparse.csr_matrix._from_parts(
+            data, indices, indptr, (3, 3),
+            has_canonical_format=True, has_sorted_indices=True)
+        c = m.tocoo()
+        assert c.has_canonical_format is True
+        assert c.row.dtype == cupy.int64
+
+
+class TestInt64TransposeCanonical:
+    """The int64 CSR<->CSC transpose runs through
+    ``_cupy_transpose_compressed_int64`` which sorts via lexsort.
+    Canonical input stays canonical, but ``False`` / uncomputed must
+    NOT propagate: even an unsorted input becomes canonical after
+    lexsort, and caching ``False`` would mask that from the lazy
+    getter.
+    """
+
+    def test_canonical_input_preserves_canonical(self):
+        data = cupy.array([1.0, 2.0, 3.0], dtype=cupy.float64)
+        indices = cupy.array([0, 1, 2], dtype=cupy.int64)
+        indptr = cupy.array([0, 1, 2, 3], dtype=cupy.int64)
+        m = sparse.csr_matrix._from_parts(
+            data, indices, indptr, (3, 3),
+            has_canonical_format=True, has_sorted_indices=True)
+        c = m.tocsc()
+        assert c._has_canonical_format is True
+        assert c._has_sorted_indices is True
+
+    def test_uncanonical_input_leaves_canonical_unset(self):
+        # Input has unsorted col indices in row 0 -> not canonical
+        # (canonical kernel returns False).  But after lexsort the
+        # output CSC has sorted-no-dup indices, i.e. IS canonical.
+        # Eagerly caching False would mask this from the lazy getter,
+        # so the output's canonical flag must stay unset for lazy
+        # compute.
+        data = cupy.array([1.0, 2.0, 3.0, 4.0], dtype=cupy.float64)
+        indices = cupy.array([1, 0, 2, 0], dtype=cupy.int64)
+        indptr = cupy.array([0, 2, 3, 4], dtype=cupy.int64)
+        m = sparse.csr_matrix._from_parts(data, indices, indptr, (3, 3))
+        m._has_canonical_format = False
+        m._has_sorted_indices = False
+        c = m.tocsc()
+        assert not hasattr(c, '_has_canonical_format'), (
+            'canonical=False must not propagate; output may actually '
+            'be canonical after lexsort')
+        # Lazy compute should now correctly find True.
+        assert c.has_canonical_format is True
+
+    def test_uncached_input_leaves_canonical_unset(self):
+        data = cupy.array([1.0, 2.0, 3.0], dtype=cupy.float64)
+        indices = cupy.array([0, 1, 2], dtype=cupy.int64)
+        indptr = cupy.array([0, 1, 2, 3], dtype=cupy.int64)
+        m = sparse.csr_matrix._from_parts(data, indices, indptr, (3, 3))
+        # Don't trigger the getter on m.
+        c = m.tocsc()
+        assert not hasattr(c, '_has_canonical_format')
+
+
+class TestCanonicalGetterPropagatesSorted:
+    """``has_canonical_format=True`` implies sorted indices, so the
+    canonical getter must also cache ``_has_sorted_indices=True`` --
+    otherwise a later ``has_sorted_indices`` access re-launches the
+    kernel.
+    """
+
+    def test_canonical_getter_sets_sorted(self):
+        m = sparse.csr_matrix(cupy.eye(3, dtype=cupy.float64))
+        # Clear cache.
+        if hasattr(m, '_has_canonical_format'):
+            del m._has_canonical_format
+        if hasattr(m, '_has_sorted_indices'):
+            del m._has_sorted_indices
+        # Trigger getter.
+        assert m.has_canonical_format is True
+        # Now sorted should also be cached True.
+        assert m._has_sorted_indices is True
+
+    def test_empty_data_sets_both(self):
+        # The data.size == 0 short-circuit must also propagate sorted.
+        m = sparse.csr_matrix(
+            (cupy.array([], dtype=cupy.float64),
+             cupy.array([], dtype='i'),
+             cupy.array([0, 0, 0], dtype='i')),
+            shape=(2, 2))
+        if hasattr(m, '_has_canonical_format'):
+            del m._has_canonical_format
+        if hasattr(m, '_has_sorted_indices'):
+            del m._has_sorted_indices
+        assert m.has_canonical_format is True
+        assert m._has_sorted_indices is True
+
+
+class TestIndptrToCooMemoryOptimization:
+    # ``_indptr_to_coo`` switches to a searchsorted formula when the
+    # major axis dwarfs nnz, to avoid an O(major_axis) allocation.
+
+    def test_repeat_path_for_typical_matrices(self):
+        # For typical matrices (nrows comparable to nnz), the repeat
+        # formula is used.  Below the threshold we never sync.
+        from cupyx.cusparse import _indptr_to_coo
+        indptr = cupy.array([0, 2, 3, 5], dtype=cupy.int64)
+        result = _indptr_to_coo(indptr)
+        cupy.testing.assert_array_equal(
+            result, cupy.array([0, 0, 1, 2, 2], dtype=cupy.int64))
+        assert result.dtype == cupy.int64
+
+    def test_searchsorted_path_for_tall_sparse(self):
+        # When nrows > 16K and nrows > 4*nnz, the searchsorted formula
+        # is used.  Result must match the repeat formula exactly.
+        from cupyx.cusparse import _indptr_to_coo
+        nrows = 2**16
+        indptr = cupy.zeros(nrows + 1, dtype=cupy.int64)
+        # Three nnz at rows 100, 1000, 50000.
+        indptr[101:1001] = 1
+        indptr[1001:50001] = 2
+        indptr[50001:] = 3
+        # nnz=3 << nrows=2**16, so triggers searchsorted path.
+        result = _indptr_to_coo(indptr, nnz=3)
+        cupy.testing.assert_array_equal(
+            result, cupy.array([100, 1000, 50000], dtype=cupy.int64))
+
+    def test_searchsorted_dtype_override(self):
+        # ``dtype`` kwarg honored on searchsorted path.
+        from cupyx.cusparse import _indptr_to_coo
+        nrows = 2**16
+        indptr = cupy.zeros(nrows + 1, dtype=cupy.int32)
+        indptr[1:] = 1  # nnz=1 at row 0
+        result = _indptr_to_coo(indptr, dtype=cupy.int64, nnz=1)
+        assert result.dtype == cupy.int64
+        cupy.testing.assert_array_equal(
+            result, cupy.array([0], dtype=cupy.int64))
+
+    def test_pathological_tall_csc_to_coo_memory(self):
+        # CSC with shape (2, BIG_N) and nnz=1: the repeat path would
+        # allocate O(BIG_N) memory; use a moderate BIG_N that still
+        # crosses the searchsorted threshold.
+        from cupyx.cusparse import _indptr_to_coo
+        BIG_N = 1 << 18  # 256K rows
+        indptr = cupy.zeros(BIG_N + 1, dtype=cupy.int64)
+        # Single nnz at the end.
+        indptr[BIG_N:] = 1
+        result = _indptr_to_coo(indptr, nnz=1)
+        assert result.size == 1
+        assert int(result[0]) == BIG_N - 1
+
+    def test_searchsorted_size_matches_repeat(self):
+        # Cross-check that the searchsorted path agrees with the repeat
+        # path across uniform density, half-empty, and end-spike indptrs.
+        from cupyx.cusparse import _indptr_to_coo
+        nrows = 1 << 15  # 32K, just over the searchsorted threshold
+        i = cupy.arange(nrows, dtype=cupy.int64)
+        per_row_counts = (
+            cupy.full(nrows, 4, dtype=cupy.int64),
+            cupy.where(i < nrows // 2, 1, 0).astype(cupy.int64),
+            cupy.where(i == nrows - 1, 5, 0).astype(cupy.int64),
+        )
+        for diffs in per_row_counts:
+            indptr = cupy.zeros(nrows + 1, dtype=cupy.int64)
+            indptr[1:] = cupy.cumsum(diffs)
+            nnz_val = int(indptr[-1])
+            if nnz_val == 0:
+                continue
+            ref = cupy.repeat(
+                cupy.arange(nrows, dtype=cupy.int64), diffs)
+            actual = _indptr_to_coo(indptr, nnz=nnz_val)
+            cupy.testing.assert_array_equal(actual, ref)
+
 
 class TestBmatIndexDtypeDetection:
-    """bmat must detect int64 from any input format, including DIA
-    (which stores its index information in .offsets, not .indices/.row)."""
+    # DIA stores indices in .offsets (not .indices/.row).
 
     def test_bmat_detects_int64_dia_offsets(self):
         # The DIA constructor downcasts to int32 when shape fits int32
@@ -3428,7 +3689,7 @@ class TestBmatIndexDtypeDetection:
         # enough that the constructor preserves int64 offsets without
         # any force-assign).  data shape (1, 1) keeps the input small,
         # but bmat routes through CSC -> COO via ``_indptr_to_coo``,
-        # which materialises an ``arange(num_rows)`` of int64 — that's
+        # which materialises an ``arange(num_rows)`` of int64 -- that's
         # ~17 GB for shape ``(2**31 + 1, 1)``.  Marked ``slow`` so the
         # default CI run excludes it; OOM-skip for hosts under 17 GB.
         data = cupy.ones((1, 1), dtype=cupy.float64)
@@ -3450,12 +3711,11 @@ class TestBmatIndexDtypeDetection:
 
 
 class TestAddAtNegativeInt64:
-    """cupy.add.at / maximum.at / minimum.at on signed int64 arrays.
-
-    CUDA's atomicAdd has no native long-long overload, but CuPy's
+    """CUDA has no native ``atomicAdd(long long*, long long)``; CuPy's
     atomics.cuh provides one via reinterpret_cast (bit-exact for
-    two's-complement addition).  atomicMax/atomicMin for signed int64
-    are provided natively by CUDA on sm_50+."""
+    two's-complement).  ``atomicMax`` / ``atomicMin`` for signed
+    int64 are native on sm_50+.
+    """
 
     def test_add_at_negative_int64(self):
         v = cupy.array([0, -100, 50], dtype=cupy.int64)
@@ -3486,8 +3746,6 @@ class TestAddAtNegativeInt64:
 
 
 class TestSpsolveTriangularGuard:
-    """spsolve_triangular must raise a clear error (with the user-facing
-    function name) when given int64 indices on the csrsm2 path."""
 
     def test_int64_csr_raises_on_old_cuda(self):
         # The csrsm2 path is only reached when spsm is unavailable.  On
@@ -3508,8 +3766,9 @@ class TestSpsolveTriangularGuard:
 
 
 class TestDiaGetnnzAccumulator:
-    """DIA getnnz uses an int64 accumulator so the sum across diagonals
-    cannot overflow even when offsets dtype is int32."""
+    """DIA ``getnnz`` accumulates in int64 so the per-diagonal sum
+    cannot overflow even when offsets are int32.
+    """
 
     def test_getnnz_with_int32_offsets(self):
         # Small DIA, smoke test that the int64-accumulator change didn't
@@ -3530,51 +3789,54 @@ class TestDiaGetnnzAccumulator:
         assert n == 3
 
 
-class TestIndptrToCooSearchsorted:
-    """``_indptr_to_coo`` switches to a searchsorted-based formula
-    when the major axis dwarfs ``nnz``.  The motivating case is a
-    ``(2, 2**31+5)`` CSC produced by transposing a wide-sparse CSR
-    with one stored entry: the ``cupy.repeat(arange(major), ...)``
-    formula would otherwise allocate ``arange(2**31+5)`` -- 17 GB.
+class TestMinorSliceStep1FastPath:
+    """``m[:, a:b]`` (step==1 minor-axis slice) takes a fast path
+    via ``_index._get_csr_submatrix_minor_axis`` (mask + cumsum,
+    O(nnz)) instead of the histogram-based ``_minor_index_fancy``
+    path (O(N)).  The output buffer is tight by construction
+    (``Bx.size == int(Bp[-1])``).
     """
 
-    def test_repeat_path_for_typical_matrices(self):
-        # Below the 16K-row threshold the legacy ``repeat`` path runs
-        # without any extra D2H sync.
-        indptr = cupy.array([0, 2, 3, 5], dtype=cupy.int64)
-        result = cusparse._indptr_to_coo(indptr)
-        cupy.testing.assert_array_equal(
-            result, cupy.array([0, 0, 1, 2, 2], dtype=cupy.int64))
-        assert result.dtype == cupy.int64
+    def test_step1_correctness_int64(self):
+        # Compare against scipy for a non-trivial CSR with int64
+        # indices.  Captures both the fast-path-vs-histogram dispatch
+        # and the buffer-tightness invariant.
+        import scipy.sparse
+        data = cupy.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+        indices = cupy.array([0, 2, 1, 3, 0, 4], dtype=cupy.int64)
+        indptr = cupy.array([0, 2, 4, 6], dtype=cupy.int64)
+        m = sparse.csr_matrix._from_parts(
+            data, indices, indptr, shape=(3, 5),
+            has_canonical_format=True)
+        sm = scipy.sparse.csr_matrix(
+            (data.get(), indices.get(), indptr.get()), shape=(3, 5))
+        for slc in (slice(0, 5), slice(1, 4), slice(2, 5),
+                    slice(0, 1), slice(0, 0)):
+            cu_arr = m[:, slc].toarray().get()
+            sci_arr = sm[:, slc].toarray()
+            cupy.testing.assert_array_equal(cu_arr, sci_arr)
+            # Index dtype must survive the slice.
+            if slc.stop > slc.start:
+                assert m[:, slc].indices.dtype == cupy.int64
 
-    def test_searchsorted_path_for_tall_sparse(self):
-        # nrows > 16K and nrows > 4*nnz: triggers searchsorted.
-        # Output must match the repeat-formula reference exactly.
-        nrows = 2**16
-        indptr = cupy.zeros(nrows + 1, dtype=cupy.int64)
-        # Three nnz at rows 100, 1000, 50000.
-        indptr[101:1001] = 1
-        indptr[1001:50001] = 2
-        indptr[50001:] = 3
-        result = cusparse._indptr_to_coo(indptr)
-        cupy.testing.assert_array_equal(
-            result, cupy.array([100, 1000, 50000], dtype=cupy.int64))
-
-    def test_searchsorted_path_pathological_tall_csc(self):
-        # The motivating case: nnz=1 in a moderately tall matrix.
-        BIG_N = 1 << 18  # 256K rows
-        indptr = cupy.zeros(BIG_N + 1, dtype=cupy.int64)
-        indptr[BIG_N:] = 1  # single nnz at the end
-        result = cusparse._indptr_to_coo(indptr)
-        assert result.size == 1
-        assert int(result[0]) == BIG_N - 1
+    def test_step1_propagates_canonical_format(self):
+        # The fast path forwards the cached canonical/sorted flags.
+        data = cupy.array([1.0, 2.0, 3.0])
+        indices = cupy.array([0, 1, 2], dtype=cupy.int64)
+        indptr = cupy.array([0, 1, 2, 3], dtype=cupy.int64)
+        m = sparse.csr_matrix._from_parts(
+            data, indices, indptr, shape=(3, 3),
+            has_canonical_format=True)
+        sliced = m[:, 0:2]
+        # ``has_canonical_format=True`` was on input; the fast path
+        # passes it through to the output via ``getattr``.
+        assert sliced._has_canonical_format is True
 
 
 class TestLsqrInt32Guard:
-    """``lsqr`` calls cuSOLVER's ``csrlsvqr`` which is int32-only;
-    without an explicit guard, int64 indices were silently
-    reinterpreted, producing NaN/Inf garbage.  Mirror the guard
-    already present in ``spsolve``.
+    """``lsqr`` dispatches to cuSOLVER's ``csrlsvqr`` which is
+    int32-only; raise a clean error for int64 indices instead of
+    letting the indices get reinterpreted.
     """
 
     def test_int64_csr_raises(self):
@@ -3585,7 +3847,8 @@ class TestLsqrInt32Guard:
         idx = cupy.array([0, 1, 2, 3], dtype=cupy.int64)
         ptr = cupy.array([0, 1, 2, 3, 4], dtype=cupy.int64)
         a = sparse.csr_matrix._from_parts(
-            cupy.array([2.0, 2.0, 2.0, 2.0]), idx, ptr, (4, 4))
+            cupy.array([2.0, 2.0, 2.0, 2.0]), idx, ptr, (4, 4),
+            has_canonical_format=True, has_sorted_indices=True)
         b = cupy.array([1.0, 2.0, 3.0, 4.0])
         with pytest.raises(ValueError, match='lsqr'):
             lsqr(a, b)
@@ -3603,11 +3866,11 @@ class TestLsqrInt32Guard:
 
 
 class TestMultiplyMixedInt32Int64:
-    """``csr.multiply(csr)`` previously rejected mixed int32/int64
+    """``csr.multiply(csr)`` previously rejected mixed int32 / int64
     operands with a kernel template-type-mismatch error
     (``Type is mismatched. B_INDPTR int32 int64 I``).  Promote both
     operands to a common dtype so the kernel template parameter ``I``
-    is consistent.
+    is consistent (matches scipy).
     """
 
     def test_int32_multiply_int64(self):
@@ -3637,6 +3900,16 @@ class TestMultiplyMixedInt32Int64:
         b = sparse.csr_matrix(cupy.array([[1.0, 0.0], [0.0, 1.0]]))
         c = a.multiply(b)
         assert c.indices.dtype == cupy.int32
+
+    def test_int64_only_unchanged(self):
+        idx = cupy.array([0, 1], dtype=cupy.int64)
+        ptr = cupy.array([0, 1, 2], dtype=cupy.int64)
+        a = sparse.csr_matrix._from_parts(
+            cupy.array([1.0, 2.0]), idx, ptr, (2, 2))
+        b = sparse.csr_matrix._from_parts(
+            cupy.array([3.0, 4.0]), idx, ptr, (2, 2))
+        c = a.multiply(b)
+        assert c.indices.dtype == cupy.int64
 
 
 class TestKronSparrayDtypePreservation:
@@ -3673,6 +3946,157 @@ class TestKronSparrayDtypePreservation:
         a = sparse.csr_array(cupy.array([[1.0, 2.0], [3.0, 4.0]]))
         k = sparse.kron(a, a)
         assert k.row.dtype == cupy.int32
+
+
+class TestFromPartsNdimGuard:
+
+    def test_compressed_rejects_2d_data(self):
+        with pytest.raises(ValueError, match='must be 1-D'):
+            sparse.csr_matrix._from_parts(
+                cupy.array([[1.0]]),
+                cupy.array([0], dtype=cupy.int32),
+                cupy.array([0, 1], dtype=cupy.int32),
+                (1, 1))
+
+    def test_compressed_rejects_2d_indices(self):
+        with pytest.raises(ValueError, match='must be 1-D'):
+            sparse.csr_matrix._from_parts(
+                cupy.array([1.0]),
+                cupy.array([[0]], dtype=cupy.int32),
+                cupy.array([0, 1], dtype=cupy.int32),
+                (1, 1))
+
+    def test_compressed_rejects_2d_indptr(self):
+        with pytest.raises(ValueError, match='must be 1-D'):
+            sparse.csr_matrix._from_parts(
+                cupy.array([1.0]),
+                cupy.array([0], dtype=cupy.int32),
+                cupy.array([[0, 1]], dtype=cupy.int32),
+                (1, 1))
+
+    def test_coo_rejects_2d(self):
+        with pytest.raises(ValueError, match='must be 1-D'):
+            sparse.coo_matrix._from_parts(
+                cupy.array([1.0]),
+                cupy.array([[0]], dtype=cupy.int32),
+                cupy.array([0], dtype=cupy.int32),
+                (1, 1))
+
+
+class TestCountNonzeroAxisFusedSync:
+
+    def test_partial_zero_csr(self):
+        a = sparse.csr_matrix(cupy.array(
+            [[1.0, 0.0, 2.0], [0.0, 3.0, 0.0]]))
+        cupy.testing.assert_array_equal(
+            a.count_nonzero(axis=0), cupy.array([1, 1, 1]))
+        cupy.testing.assert_array_equal(
+            a.count_nonzero(axis=1), cupy.array([2, 1]))
+
+    def test_all_zero_after_cancellation(self):
+        # Construct a matrix whose data is all zero (e.g. after a
+        # cancelling sum_duplicates) but with non-empty indptr.
+        idx = cupy.array([0, 1], dtype=cupy.int64)
+        ptr = cupy.array([0, 1, 2], dtype=cupy.int64)
+        a = sparse.csr_matrix._from_parts(
+            cupy.array([0.0, 0.0]), idx, ptr, (2, 2),
+            has_canonical_format=True, has_sorted_indices=True)
+        cupy.testing.assert_array_equal(
+            a.count_nonzero(axis=0), cupy.array([0, 0]))
+        cupy.testing.assert_array_equal(
+            a.count_nonzero(axis=1), cupy.array([0, 0]))
+
+    def test_all_nonzero(self):
+        a = sparse.csr_matrix(cupy.array([[1.0, 2.0], [3.0, 4.0]]))
+        cupy.testing.assert_array_equal(
+            a.count_nonzero(axis=0), cupy.array([2, 2]))
+        cupy.testing.assert_array_equal(
+            a.count_nonzero(axis=1), cupy.array([2, 2]))
+
+
+class TestFromPartsBufferCheck:
+
+    def test_mismatched_data_indices_rejected(self):
+        # data.size != indices.size is caught cheaply (no sync).
+        with pytest.raises(ValueError, match=r'same length'):
+            sparse.csr_matrix._from_parts(
+                cupy.array([1.0, 2.0, 3.0, 99.0]),
+                cupy.array([0, 1, 2], dtype='i'),
+                cupy.array([0, 1, 2, 3], dtype='i'),
+                (3, 3))
+
+    def test_tight_buffer_passes(self):
+        # The canonical, no-slack construction path.
+        m = sparse.csr_matrix._from_parts(
+            cupy.array([1.0, 2.0, 3.0]),
+            cupy.array([0, 1, 2], dtype='i'),
+            cupy.array([0, 1, 2, 3], dtype='i'),
+            (3, 3))
+        assert m.nnz == 3
+
+    @pytest.mark.parametrize('fmt', ['csr', 'csc'])
+    def test_public_ctor_trims_slack(self, fmt):
+        # ``csr_matrix((data, indices, indptr), ...)`` with
+        # ``data.size > indptr[-1]`` is silently trimmed at the public
+        # constructor (matches scipy).  Prevents slack from leaking
+        # into the internal pipeline via user-supplied tuples.
+        cls = getattr(sparse, f'{fmt}_matrix')
+        shape = (3, 100) if fmt == 'csr' else (100, 3)
+        A = cls(
+            (cupy.array([1.0, 2.0, 3.0, 99.0, 99.0]),
+             cupy.array([0, 1, 2, 99, 99], dtype='i'),
+             cupy.array([0, 1, 2, 3], dtype='i')),
+            shape=shape)
+        assert A.data.size == 3
+        assert A.indices.size == 3
+        assert float(A.sum()) == 6.0
+
+    @pytest.mark.parametrize('fmt', ['csr', 'csc'])
+    def test_public_ctor_rejects_indptr_overshoot(self, fmt):
+        # The inverse of the trim: when ``indptr[-1] > data.size`` the
+        # constructor must raise rather than build an inconsistent
+        # matrix (where downstream readers would index past data).
+        # scipy raises here too.
+        cls = getattr(sparse, f'{fmt}_matrix')
+        shape = (3, 5) if fmt == 'csr' else (5, 3)
+        with pytest.raises(ValueError, match='last index pointer'):
+            cls(
+                (cupy.array([1.0, 2.0]),
+                 cupy.array([0, 1], dtype='i'),
+                 cupy.array([0, 1, 5], dtype='i')),
+                shape=shape)
+
+
+class TestAsindicesOutOfBoundsRejected:
+
+    def test_getitem_oob_raises(self):
+        a = sparse.csr_matrix(cupy.eye(3))
+        with pytest.raises(IndexError, match='out of range'):
+            a[[5]]
+        with pytest.raises(IndexError, match='out of range'):
+            a[[-100], [0]]
+
+    def test_setitem_oob_raises(self):
+        import warnings
+        a = sparse.csr_matrix(cupy.eye(3))
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', sparse.SparseEfficiencyWarning)
+            with pytest.raises(IndexError, match='out of range'):
+                a[[5], [0]] = 99.0
+
+    def test_negative_in_range_works(self):
+        a = sparse.csr_matrix(cupy.eye(3))
+        # ``-1`` resolves to row 2; in range.
+        out = a[[-1]]
+        cupy.testing.assert_array_equal(
+            out.toarray(), cupy.array([[0., 0., 1.]]))
+
+    def test_overflow_int_raises_indexerror(self):
+        # Python int that doesn't fit in int32 indices -> IndexError
+        # (not OverflowError, which leaks numpy internals).
+        a = sparse.csr_matrix(cupy.eye(3))
+        with pytest.raises(IndexError):
+            a[[2**40]]
 
 
 class TestSparseTypingAliases:
