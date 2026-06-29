@@ -752,6 +752,29 @@ class TestSpmm:
         assert y is c
         testing.assert_array_almost_equal(y, expect)
 
+    def test_spmm_with_b_row_major(self):
+        a = self.sparse_matrix(self.a)
+        if not a.has_canonical_format:
+            a.sum_duplicates()
+        b = cupy.array(self.b, order='C')
+        c = cusparse.spmm(
+            a, b, alpha=self.alpha, transa=self.transa, transb=self.transb)
+        expect = self.alpha * self.op_a.dot(self.op_b)
+        testing.assert_array_almost_equal(c, expect)
+
+    def test_spmm_with_c_row_major(self):
+        a = self.sparse_matrix(self.a)
+        if not a.has_canonical_format:
+            a.sum_duplicates()
+        b = cupy.array(self.b, order='C')
+        c = cupy.array(self.c, order='C')
+        y = cusparse.spmm(
+            a, b, c=c, alpha=self.alpha, beta=self.beta,
+            transa=self.transa, transb=self.transb)
+        expect = self.alpha * self.op_a.dot(self.op_b) + self.beta * self.c
+        assert y is c
+        testing.assert_array_almost_equal(y, expect)
+
 
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64],
@@ -802,11 +825,6 @@ class TestErrorSpmm:
             cusparse.spmm(a, b.T)
 
         a = sparse.csr_matrix(self.a)
-        b = cupy.array(self.b)
-        with pytest.raises(ValueError):
-            cusparse.spmm(a, b)
-
-        a = sparse.csr_matrix(self.a)
         b = cupy.array(self.c, order='f')
         with pytest.raises(ValueError):
             cusparse.spmm(a, b)
@@ -814,6 +832,22 @@ class TestErrorSpmm:
         a = sparse.csr_matrix(self.a)
         b = cupy.array(self.b, order='f')
         c = cupy.array(self.b, order='f')
+        with pytest.raises(ValueError):
+            cusparse.spmm(a, b, c=c)
+
+    def test_error_mismatched_dense_layout(self):
+        if not cusparse.check_availability('spmm'):
+            pytest.skip('spmm is not available')
+
+        a = sparse.csr_matrix(self.a)
+        b = cupy.array(self.b, order='c')
+        c = cupy.array(self.c, order='f')
+        with pytest.raises(ValueError):
+            cusparse.spmm(a, b, c=c)
+
+        a = sparse.csr_matrix(self.a)
+        b = cupy.array(self.b, order='f')
+        c = cupy.array(self.c, order='c')
         with pytest.raises(ValueError):
             cusparse.spmm(a, b, c=c)
 
