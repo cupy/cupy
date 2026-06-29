@@ -897,8 +897,14 @@ cpdef _ndarray_base matmul(
 
     ret_dtype = numpy.promote_types(a.dtype, b.dtype)
     dtype = ret_dtype
-    if dtype.char == 'e':
-        dtype = numpy.dtype('f')
+
+    cdef int cuda_dtype
+    if dtype.kind not in 'biu':
+        cuda_dtype = to_cuda_dtype(dtype, is_half_allowed=True)
+        if (cuda_dtype == runtime.CUDA_R_16F
+                or cuda_dtype == runtime.CUDA_R_16BF):
+            dtype = numpy.dtype('f')
+            cuda_dtype = runtime.CUDA_R_32F
 
     a = ascontiguousarray(a, dtype)
     b = ascontiguousarray(b, dtype)
@@ -989,7 +995,7 @@ cpdef _ndarray_base matmul(
     else:
         c_view = c
 
-    if dtype.char not in 'efdFD':
+    if dtype.kind in 'biu':
         if not use_broadcast:
             _integral_tensordot_core_strided_batched(
                 a, b, c_view, n, m, ka, dtype.char, batchCount)
@@ -1001,7 +1007,6 @@ cpdef _ndarray_base matmul(
         return out
 
     cdef intptr_t handle = device.get_cublas_handle()
-    cdef int cuda_dtype = to_cuda_dtype(dtype)
     cdef int algo = cublas.CUBLAS_GEMM_DEFAULT
 
     one = numpy.array(1, dtype=dtype)

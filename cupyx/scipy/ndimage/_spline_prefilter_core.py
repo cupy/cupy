@@ -193,7 +193,7 @@ def _get_spline1d_code(mode, poles, n_boundary):
 _FILTER_GENERAL = '''
 #include "cupy/carray.cuh"
 #include "cupy/complex.cuh"
-#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_decls?
+{type_decls}
 
 typedef {data_type} T;
 typedef {pole_type} P;
@@ -236,7 +236,7 @@ void {kernel_name}(T* __restrict__ y, const idx_t* __restrict__ info) {{
 @cupy.memoize(for_each_device=True)
 def get_raw_spline1d_kernel(axis, ndim, mode, order, index_type='int',
                             data_type='double', pole_type='double',
-                            block_size=128):
+                            block_size=128, type_decls=None):
     """Generate a kernel for applying a spline prefilter along a given axis."""
     poles = get_poles(order)
 
@@ -250,7 +250,8 @@ def get_raw_spline1d_kernel(axis, ndim, mode, order, index_type='int',
     # headers and general utility function for extracting rows of data
     code = _FILTER_GENERAL.format(index_type=index_type,
                                   data_type=data_type,
-                                  pole_type=pole_type)
+                                  pole_type=pole_type,
+                                  type_decls=type_decls)
 
     # generate source for a 1d function for a given boundary mode and poles
     code += _get_spline1d_code(mode, poles, n_boundary)
