@@ -265,60 +265,6 @@ def _get_cub_path():
     return _cub_path
 
 
-def _setup_win32_dll_directory():
-    # Setup DLL directory to load CUDA Toolkit libs and shared libraries
-    # added during the build process.
-    if sys.platform.startswith('win32'):
-        # see _can_attempt_preload()
-        config = get_preload_config()
-        is_conda = (config is not None and (config['packaging'] == 'conda'))
-
-        # Path to the CUDA Toolkit binaries
-        cuda_path = get_cuda_path()
-        if cuda_path is not None:
-            if is_conda:
-                cuda_bin_path = cuda_path
-            else:
-                cuda_bin_path = os.path.join(cuda_path, 'bin')
-        else:
-            cuda_bin_path = None
-            if not is_conda:
-                warnings.warn(
-                    'CUDA path could not be detected.'
-                    ' Set CUDA_PATH environment variable if CuPy '
-                    'fails to load.')
-        _log('CUDA_PATH: {}'.format(cuda_path))
-
-        # Path to shared libraries in wheel
-        wheel_libdir = os.path.join(
-            get_cupy_install_path(), 'cupy', '.data', 'lib')
-        if os.path.isdir(wheel_libdir):
-            _log('Wheel shared libraries: {}'.format(wheel_libdir))
-        else:
-            _log('Not wheel distribution ({} not found)'.format(
-                wheel_libdir))
-            wheel_libdir = None
-
-        if (3, 8) <= sys.version_info:
-            if cuda_bin_path is not None:
-                _log('Adding DLL search path: {}'.format(cuda_bin_path))
-                os.add_dll_directory(cuda_bin_path)
-                cuda_bin_x64_path = os.path.join(cuda_bin_path, 'x64')
-                if os.path.exists(cuda_bin_x64_path):
-                    _log('Adding DLL search path (for CUDA 13): '
-                         f'{cuda_bin_x64_path}')
-                    os.add_dll_directory(cuda_bin_x64_path)
-            if wheel_libdir is not None:
-                _log('Adding DLL search path: {}'.format(wheel_libdir))
-                os.add_dll_directory(wheel_libdir)
-        else:
-            # Users are responsible for adding `%CUDA_PATH%/bin` to PATH.
-            if wheel_libdir is not None:
-                _log('Adding to PATH: {}'.format(wheel_libdir))
-                path = os.environ.get('PATH', '')
-                os.environ['PATH'] = wheel_libdir + os.pathsep + path
-
-
 def get_cupy_install_path():
     # Path to the directory where the package is installed.
     return os.path.abspath(
