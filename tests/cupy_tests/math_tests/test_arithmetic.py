@@ -26,6 +26,21 @@ negative_no_complex_types = [numpy.bool_] + float_types + signed_int_types
 no_complex_types = [numpy.bool_] + float_types + int_types
 
 
+def _scalar_power_values(xp, dtype, shape, exponent):
+    if shape == ():
+        value = 4 if exponent == 0.5 else 2
+        return xp.asarray(value, dtype=dtype)
+    if 0 in shape:
+        return xp.empty(shape, dtype=dtype)
+    if exponent == 0.5:
+        values = [0, 1, 4, 9, 16, 25]
+    elif exponent == -1:
+        values = [-4, -2, -1, 1, 2, 4]
+    else:
+        values = [-3, -2, -1, 0, 2, 3]
+    return xp.asarray(values, dtype=dtype).reshape(shape)
+
+
 @testing.parameterize(*(
     testing.product({
         'nargs': [1],
@@ -375,6 +390,67 @@ class TestArithmeticBinary3(ArithmeticBinaryBase):
                 y = func(arg1, arg2, **dtype_arg)
 
         return y
+
+
+class TestNdarrayScalarPowerSpecialCases:
+
+    @pytest.mark.parametrize('shape', [(2, 3), (), (3, 0, 2)])
+    @pytest.mark.parametrize('dtype', [numpy.float32, numpy.float64])
+    @pytest.mark.parametrize(
+        'exponent',
+        [2, numpy.float32(2), 0.5, numpy.float32(0.5),
+         -1, numpy.float32(-1)])
+    @testing.numpy_cupy_array_equal()
+    def test_scalar_power_matches_power_ufunc(
+            self, xp, dtype, shape, exponent):
+        a = _scalar_power_values(xp, dtype, shape, exponent)
+        with numpy.errstate(divide='ignore'):
+            actual = a ** exponent
+            expected = xp.power(a, exponent)
+        assert actual.dtype == expected.dtype
+        testing.assert_array_equal(actual, expected)
+        return actual
+
+    @pytest.mark.parametrize(
+        'exponent', [numpy.int64(2), numpy.float64(0.5),
+                     numpy.int64(-1), 2.5])
+    @testing.numpy_cupy_allclose()
+    def test_scalar_power_fallback_matches_power_ufunc(self, xp, exponent):
+        a = xp.asarray([1, 4, 9, 16], dtype=numpy.float32)
+        with numpy.errstate(divide='ignore'):
+            actual = a ** exponent
+            expected = xp.power(a, exponent)
+        assert actual.dtype == expected.dtype
+        testing.assert_allclose(actual, expected)
+        return actual
+
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_integer_power_two_dtype(self, xp, dtype):
+        a = xp.asarray([0, 1, 2, 3], dtype=dtype)
+        return a ** 2
+
+    @pytest.mark.parametrize('dtype', [numpy.int32, numpy.uint32])
+    def test_integer_power_negative_one_matches_power_ufunc(self, dtype):
+        a = cupy.asarray([0, 1, 2], dtype=dtype)
+        try:
+            expected = cupy.power(a, -1)
+        except Exception as e:
+            with pytest.raises(type(e)):
+                a ** -1
+        else:
+            actual = a ** -1
+            assert actual.dtype == expected.dtype
+            testing.assert_array_equal(actual, expected)
+
+    @pytest.mark.parametrize('exponent', [2, 0.5, -1])
+    @pytest.mark.parametrize('dtype', [numpy.float32, numpy.float64])
+    @testing.numpy_cupy_array_equal()
+    def test_inplace_scalar_power(self, xp, dtype, exponent):
+        a = _scalar_power_values(xp, dtype, (2, 3), exponent)
+        with numpy.errstate(divide='ignore'):
+            a **= exponent
+        return a
 
 
 class UfuncTestBase:

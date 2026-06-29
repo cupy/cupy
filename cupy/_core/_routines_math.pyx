@@ -1042,6 +1042,35 @@ _power = create_ufunc(
     ''')
 
 
+_square = create_ufunc(
+    'cupy_square',
+    ('b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L', 'q->q',
+     'Q->Q', 'e->e', *bf16_loop(), 'f->f', 'd->d', 'F->F', 'D->D'),
+    'out0 = in0 * in0',
+    doc='''Elementwise square function.
+
+    .. seealso:: :data:`numpy.square`
+
+    ''')
+
+
+_reciprocal = create_ufunc(
+    'cupy_reciprocal',
+    ('b', 'B', 'h', 'H', 'i', 'I', 'l', 'L', 'q', 'Q',
+     ('e', 'out0 = 1 / in0'),
+     *bf16_loop(code='out0 = 1 / in0'),
+     ('f', 'out0 = 1 / in0'),
+     ('d', 'out0 = 1 / in0'),
+     ('F', 'out0 = in0_type(1) / in0'),
+     ('D', 'out0 = in0_type(1) / in0')),
+    'out0 = in0 == 0 ? 0 : (1 / in0)',
+    doc='''Computes ``1 / x`` elementwise.
+
+    .. seealso:: :data:`numpy.reciprocal`
+
+    ''')
+
+
 def _subtract_boolean_error():
     raise TypeError(
         'cupy boolean subtract, the `-` operator, is deprecated, use the '
@@ -1162,6 +1191,8 @@ negative = _negative
 multiply = _multiply
 divide = _divide
 power = _power
+square = _square
+reciprocal = _reciprocal
 subtract = _subtract
 true_divide = _true_divide
 floor_divide = _floor_divide

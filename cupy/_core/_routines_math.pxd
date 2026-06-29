@@ -31,6 +31,8 @@ cdef object _negative
 cdef object _multiply
 cdef object _divide
 cdef object _power
+cdef object _square
+cdef object _reciprocal
 cdef object _subtract
 cdef object _true_divide
 cdef object _floor_divide

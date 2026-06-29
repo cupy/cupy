@@ -118,6 +118,96 @@ cdef inline _should_use_rop(x, y):
     yp = getattr(y, '__array_priority__', 0)
     return xp < yp
 
+
+cdef inline bint _power_scalar_type_matches(
+        _ndarray_base x, object y, object out_dtype) except*:
+    try:
+        return numpy.result_type(x.dtype, y) == out_dtype
+    except TypeError:
+        return False
+
+
+cdef inline bint _power_scalar_matches_square(
+        _ndarray_base x, object y) except*:
+    cdef object out_dtype
+
+    if type(y) is int:
+        if y != 2:
+            return False
+        if x.dtype.kind == 'b':
+            return True
+        return _power_scalar_type_matches(x, y, x.dtype)
+
+    if type(y) is float:
+        return y == 2.0 and _power_scalar_type_matches(x, y, x.dtype)
+
+    if isinstance(y, numpy.generic):
+        if y != 2 or y.dtype.kind not in 'iuf':
+            return False
+        if x.dtype.kind == 'b':
+            out_dtype = numpy.dtype(numpy.int8)
+        else:
+            out_dtype = x.dtype
+        return _power_scalar_type_matches(x, y, out_dtype)
+
+    return False
+
+
+cdef inline bint _power_scalar_matches_sqrt(
+        _ndarray_base x, object y) except*:
+    if x.dtype.kind not in 'fc':
+        return False
+
+    if type(y) is float:
+        return y == 0.5 and _power_scalar_type_matches(x, y, x.dtype)
+
+    if isinstance(y, numpy.generic):
+        if y != 0.5 or y.dtype.kind != 'f':
+            return False
+        return _power_scalar_type_matches(x, y, x.dtype)
+
+    return False
+
+
+cdef inline bint _power_scalar_matches_reciprocal(
+        _ndarray_base x, object y) except*:
+    if x.dtype.kind not in 'fc':
+        return False
+
+    if type(y) is int:
+        return y == -1 and _power_scalar_type_matches(x, y, x.dtype)
+
+    if type(y) is float:
+        return y == -1.0 and _power_scalar_type_matches(x, y, x.dtype)
+
+    if isinstance(y, numpy.generic):
+        if y != -1 or y.dtype.kind not in 'iuf':
+            return False
+        return _power_scalar_type_matches(x, y, x.dtype)
+
+    return False
+
+
+cdef inline object _power_scalar_fast_path(
+        _ndarray_base x, object y, object out) except*:
+    if _power_scalar_matches_square(x, y):
+        if out is None:
+            return _math._square(x)
+        return _math._square(x, out)
+
+    if _power_scalar_matches_sqrt(x, y):
+        if out is None:
+            return _math._sqrt(x)
+        return _math._sqrt(x, out)
+
+    if _power_scalar_matches_reciprocal(x, y):
+        if out is None:
+            return _math._reciprocal(x)
+        return _math._reciprocal(x, out)
+
+    return None
+
+
 cdef bint _is_ump_enabled = (int(os.environ.get('CUPY_ENABLE_UMP', '0')) != 0)
 
 cdef inline bint is_ump_supported(int device_id) except*:
@@ -1624,6 +1714,9 @@ cdef class _ndarray_base:
         elif _should_use_rop(x, y):
             return NotImplemented
         else:
+            result = _power_scalar_fast_path(x, y, None)
+            if result is not None:
+                return result
             return numpy.power(x, y)
 
     def __lshift__(x, y):
@@ -1690,6 +1783,9 @@ cdef class _ndarray_base:
         return _math._remainder(self, other, self)
 
     def __ipow__(self, other):
+        result = _power_scalar_fast_path(self, other, self)
+        if result is not None:
+            return result
         return _math._power(self, other, self)
 
     def __ilshift__(self, other):
