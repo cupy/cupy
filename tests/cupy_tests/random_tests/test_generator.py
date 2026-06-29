@@ -142,14 +142,15 @@ class TestRandomState(unittest.TestCase):
         for method in methods:
             if (runtime.is_hip and
                     method == cupy.cuda.curand.CURAND_RNG_PSEUDO_MT19937):
-                # hipRAND fails for MT19937 with the status code 1000,
-                # HIPRAND_STATUS_NOT_IMPLEMENTED. We use `pytest.raises` here
-                # so that we will be able to find it once hipRAND implement
-                # MT19937 as the imperative `pytest.xfail` immediately rewinds
-                # the control flow and does not run the test.
-                with pytest.raises(KeyError) as e:
+                # ROCm 7+ implements MT19937; tolerate both old (KeyError) and new.
+                try:
                     rs = cupy.random.RandomState(method=method)
-                assert e.value.args == (1000,)
+                except KeyError as e:
+                    assert e.args == (1000,), (
+                        'expected only HIPRAND_STATUS_NOT_IMPLEMENTED'
+                        f' (1000) on older hipRAND, got {e.args!r}')
+                    continue
+                rs.normal()
                 continue
             rs = cupy.random.RandomState(method=method)
             rs.normal()
