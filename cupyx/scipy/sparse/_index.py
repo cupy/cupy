@@ -125,6 +125,12 @@ def _get_csr_submatrix_minor_axis(Ax, Aj, Ap, start, stop):
         Bx (cupy.ndarray): data array of output sparse matrix
         Bj (cupy.ndarray): indices array of output sparse matrix
         Bp (cupy.ndarray): indptr array of output sparse matrix
+
+    The three returned arrays share no memory with the inputs:
+    boolean masking (``Aj[mask]``, ``Ax[mask]``) and fancy indexing
+    (``mask_sum[Ap]``) both allocate.  Callers may treat the results
+    as independent buffers; ``_minor_slice`` relies on this contract
+    to satisfy ``copy=True`` without an explicit ``.copy()``.
     """
     mask = (start <= Aj) & (Aj < stop)
     mask_sum = cupy.empty(Aj.size + 1, dtype=Ap.dtype)
@@ -141,7 +147,7 @@ def _csr_indptr_to_coo_rows(nnz, Bp):
     if Bp.dtype == cupy.int64:
         # TODO(eriknw): cuSPARSE--remove when xcsr2coo supports int64
         from cupyx.cusparse import _indptr_to_coo
-        return _indptr_to_coo(Bp)
+        return _indptr_to_coo(Bp, nnz=nnz)
 
     from cupy_backends.cuda.libs import cusparse
 
@@ -388,7 +394,16 @@ class IndexMixin:
                 return self._get_columnXarray(row[:, 0], col.ravel())
 
         # The only remaining case is inner (fancy) indexing
-        row, col = cupy.broadcast_arrays(row, col)
+        try:
+            row, col = cupy.broadcast_arrays(row, col)
+        except ValueError as e:
+            # Match scipy 1.17: shape-mismatch on fancy indexing
+            # raises IndexError, not ValueError.
+            raise IndexError(
+                f'shape mismatch: indexing arrays could not be '
+                f'broadcast together with shapes {row.shape} '
+                f'{col.shape}'
+            ) from e
         if row.shape != col.shape:
             raise IndexError('number of row and column indices differ')
         if row.size == 0:
@@ -400,8 +415,8 @@ class IndexMixin:
 
         if isinstance(row, _int_scalar_types) and\
                 isinstance(col, _int_scalar_types):
-            # A 1x1 sparse RHS (cupy/scipy sparse) is a valid scalar
-            # source — densify it before checking size.
+            # A 1x1 sparse RHS (scipy/cupy sparse) is a valid scalar
+            # source -- densify it before checking size.
             if issparse(x):
                 x = cupy.asarray(x.toarray(), dtype=self.dtype)
             else:
@@ -491,11 +506,31 @@ class IndexMixin:
         """
         try:
             x = cupy.asarray(idx, dtype=self.indices.dtype)
-        except (ValueError, TypeError, MemoryError):
+        except (ValueError, TypeError, MemoryError, OverflowError):
+            # ``OverflowError`` covers Python ints that don't fit in
+            # ``self.indices.dtype`` (e.g. ``A[[2**32]]`` on int32
+            # CSR).  Match scipy by surfacing IndexError.
             raise IndexError('invalid index')
 
         if x.ndim not in (1, 2):
             raise IndexError('Index dimension must be <= 2')
+
+        # Reject out-of-bounds before the modulo wrap (matches scipy).
+        # Stack max+min into one transfer to keep this a single D2H.
+        # synchronize!
+        if x.size:
+            bounds = cupy.stack((x.max(), x.min())).get()
+            xmax = int(bounds[0])
+            xmin = int(bounds[1])
+            if xmax >= length or xmin < -length:
+                bad = xmax if xmax >= length else xmin
+                raise IndexError(
+                    f'index ({bad}) out of range for axis with size '
+                    f'{length}')
+            if xmin >= 0:
+                # All non-negative indices already in range -- skip the
+                # modulo kernel launch.
+                return x
 
         return x % length
 
