@@ -53,8 +53,17 @@ jobs:
       - name: Checkout ${{ github.event.repository.name }}
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
         with:
-          fetch-depth: 0
+          fetch-depth: 1
           submodules: recursive
+
+      # Linux + free-threaded Python (e.g. 3.14t) blows the ~14 GiB default
+      # runner disk during NVCC compilation -- the free-threaded ABI can't share
+      # intermediates with the regular py3.14 build, doubling the footprint.
+      # Currently only `linux-64 + cu13 + py3.14t` OOMs in practice; widen the
+      # condition if other matrix entries start failing.
+      - name: Free disk space (Linux + free-threaded Python)
+        if: ${{ inputs.host-platform == 'linux-64' && endsWith(matrix.python-version, 't') }}
+        uses: ./.github/actions/free-disk-space
 
       - name: Install latest rapidsai/sccache
         env:
