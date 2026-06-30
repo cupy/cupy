@@ -25,12 +25,12 @@ jobs:
       fail-fast: false
       matrix:
         python-version:
-          # TODO: enable other Python versions once the first matrix is green.
-          # - "3.11"
-          # - "3.12"
-          # - "3.13"
+          - "3.10"
+          - "3.11"
+          - "3.12"
+          - "3.13"
           - "3.14"
-          # - "3.14t"
+          - "3.14t"
     name: py${{ matrix.python-version }}
     runs-on: ${{ (inputs.host-platform == 'linux-64' && 'ubuntu-22.04') ||
                  (inputs.host-platform == 'win-64'   && 'windows-2022') }}
