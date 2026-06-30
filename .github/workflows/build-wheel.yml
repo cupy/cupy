@@ -1,0 +1,284 @@
+name: Build CuPy wheel
+
+on:
+  workflow_call:
+    inputs:
+      host-platform:
+        description: "linux-64, linux-aarch64, or win-64"
+        required: true
+        type: string
+      cuda-version:
+        description: "Full CTK version to download from redist (e.g. 12.9.2)"
+        required: true
+        type: string
+      ref:
+        description: "Git ref to check out (e.g. refs/pull/N/merge, or a merge_commit_sha)"
+        required: true
+        type: string
+
+defaults:
+  run:
+    shell: bash --noprofile --norc -xeuo pipefail {0}
+
+permissions:
+  contents: read  # This is required for actions/checkout
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - "3.10"
+          - "3.11"
+          - "3.12"
+          - "3.13"
+          - "3.14"
+          - "3.14t"
+    name: py${{ matrix.python-version }}
+    runs-on: ${{ (inputs.host-platform == 'linux-64' && 'ubuntu-22.04') ||
+                 (inputs.host-platform == 'win-64'   && 'windows-2022') }}
+    steps:
+      - name: Enable symlinks on Windows (must precede checkout)
+        if: ${{ inputs.host-platform == 'win-64' }}
+        run: git config --global core.symlinks true
+
+      - name: Verify LongPathsEnabled on Windows
+        if: ${{ inputs.host-platform == 'win-64' }}
+        shell: pwsh -command ". '{0}'"
+        run: |
+          $val = (Get-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem' -Name 'LongPathsEnabled').LongPathsEnabled
+          echo "LongPathsEnabled = $val"
+          if ($val -ne 1) {
+            echo "::error::LongPathsEnabled is not set to 1 (see cuda-python#1820)"
+            exit 1
+          }
+
+      - name: Checkout ${{ github.event.repository.name }}
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 1
+          submodules: recursive
+
+      # Linux + free-threaded Python (e.g. 3.14t) blows the ~14 GiB default
+      # runner disk during NVCC compilation -- the free-threaded ABI can't share
+      # intermediates with the regular py3.14 build, doubling the footprint.
+      # Currently only `linux-64 + cu13 + py3.14t` OOMs in practice; widen the
+      # condition if other matrix entries start failing.
+      - name: Free disk space (Linux + free-threaded Python)
+        if: ${{ inputs.host-platform == 'linux-64' && endsWith(matrix.python-version, 't') }}
+        uses: ./.github/actions/free-disk-space
+
+      - name: Install latest rapidsai/sccache
+        env:
+          HOST_PLATFORM: ${{ inputs.host-platform }}
+        run: |
+          case "${HOST_PLATFORM}" in
+            linux-*)  URL_TRIPLE="$(uname -m)-unknown-linux-musl"; SCCACHE_BIN="sccache" ;;
+            win-*)    URL_TRIPLE="x86_64-pc-windows-msvc";         SCCACHE_BIN="sccache.exe" ;;
+            *)        echo "Unsupported host-platform: ${HOST_PLATFORM}" >&2; exit 1 ;;
+          esac
+          mkdir -p sccache_bin
+          curl -fsSL "https://github.com/rapidsai/sccache/releases/latest/download/sccache-${URL_TRIPLE}.tar.gz" \
+            | tar -C sccache_bin -xzf - --wildcards --strip-components=1 "*/${SCCACHE_BIN}"
+          SCCACHE_BIN_DIR="$(pwd)/sccache_bin"
+          SCCACHE_BIN_FULL="${SCCACHE_BIN_DIR}/${SCCACHE_BIN}"
+          # On Windows, convert Git Bash's POSIX form to a native Windows path.
+          if [[ "${HOST_PLATFORM}" == win-* ]]; then
+            SCCACHE_BIN_DIR="$(cygpath -w "${SCCACHE_BIN_DIR}")"
+            SCCACHE_BIN_FULL="$(cygpath -w "${SCCACHE_BIN_FULL}")"
+          fi
+          echo "${SCCACHE_BIN_DIR}" >> "$GITHUB_PATH"
+          echo "SCCACHE_PATH=${SCCACHE_BIN_FULL}" >> "$GITHUB_ENV"
+
+      # xref: https://github.com/orgs/community/discussions/42856#discussioncomment-7678867
+      - name: Adding addtional GHA cache-related env vars
+        uses: actions/github-script@v9
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_SERVICE_V2', 'on');
+            core.exportVariable('ACTIONS_CACHE_URL', process.env['ACTIONS_CACHE_URL'] || '');
+            core.exportVariable('ACTIONS_RESULTS_URL', process.env['ACTIONS_RESULTS_URL'] || '');
+            core.exportVariable('ACTIONS_RUNTIME_URL', process.env['ACTIONS_RUNTIME_URL'] || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env['ACTIONS_RUNTIME_TOKEN'] || '');
+
+      - name: Set up Python
+        id: setup-python1
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          # WAR: setup-python is not relocatable, and cibuildwheel hard-wires to 3.12...
+          # see https://github.com/actions/setup-python/issues/871
+          python-version: "3.12"
+
+      - name: Set up MSVC
+        if: ${{ startsWith(inputs.host-platform, 'win') }}
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756  # v1
+
+      - name: Set up yq
+        # GitHub made an unprofessional decision to not provide it in their Windows VMs,
+        # see https://github.com/actions/runner-images/issues/7443.
+        if: ${{ startsWith(inputs.host-platform, 'win') }}
+        env:
+          YQ_VERSION: v4.52.5
+          YQ_SHA256: 47594981f3848a4b4447494adeca9555f908f7cf0a89c4da3fd0243a4631da1c
+          YQ_DIR: yq
+        shell: pwsh -command ". '{0}'"
+        run: |
+          $yqUrl = "https://github.com/mikefarah/yq/releases/download/${env:YQ_VERSION}/yq_windows_amd64.exe"
+          mkdir -Force -ErrorAction SilentlyContinue "${env:YQ_DIR}" | Out-Null
+          Invoke-WebRequest -UseBasicParsing -OutFile "${env:YQ_DIR}/yq.exe" -Uri "$yqUrl"
+          $hash = (Get-FileHash -Algorithm SHA256 "${env:YQ_DIR}/yq.exe").Hash.ToLower()
+          if ($hash -ne $env:YQ_SHA256) {
+            Write-Error "SHA256 mismatch for yq: expected $env:YQ_SHA256, got $hash"
+            exit 1
+          }
+          ls -l $env:YQ_DIR
+          echo "$((Get-Location).Path)\\$env:YQ_DIR" >> $env:GITHUB_PATH
+          $env:Path += ";$((Get-Location).Path)\\$env:YQ_DIR"
+          yq --version
+
+      - name: Set environment variables
+        env:
+          CUDA_VER: ${{ inputs.cuda-version }}
+          HOST_PLATFORM: ${{ inputs.host-platform }}
+          PY_VER: ${{ matrix.python-version }}
+          SHA: ${{ github.sha }}
+        run: ./ci/tools/env-vars build
+
+      - name: Dump environment
+        run: env
+
+      - name: Install Python build deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install tomli_w pyyaml twine
+
+      - name: Set up mini CTK
+        uses: ./.github/actions/fetch_ctk
+        continue-on-error: false
+        with:
+          host-platform: ${{ inputs.host-platform }}
+          cuda-version: ${{ inputs.cuda-version }}
+          cuda-components: "cuda_nvcc,cuda_cudart,cuda_crt,cuda_cuxxfilt,libnvvm,cuda_nvrtc,cuda_nvtx,cuda_profiler_api,cuda_cccl,libnvjitlink,libcublas,libcufft,libcurand,libcusparse,libcusolver"
+
+      - name: Install cuTENSOR preload
+        run: |
+          python cupyx/tools/install_library.py \
+            --library cutensor --cuda ${{ env.BUILD_CUDA_MAJOR }}.x \
+            --arch x86_64 --prefix ./preloads --action install
+
+      - name: Install NCCL preload (Linux only)
+        if: ${{ inputs.host-platform == 'linux-64' }}
+        run: |
+          python cupyx/tools/install_library.py \
+            --library nccl --cuda ${{ env.BUILD_CUDA_MAJOR }}.x \
+            --arch x86_64 --prefix ./preloads --action install
+
+      - name: Prepare wheel build (Linux)
+        if: ${{ inputs.host-platform == 'linux-64' }}
+        run: |
+          python ci/tools/prepare_wheel_build.py \
+            --cuda-major ${{ env.BUILD_CUDA_MAJOR }} \
+            --host-platform linux \
+            --root-prefix /project >> "$GITHUB_ENV"
+
+      - name: Prepare wheel build (Windows)
+        if: ${{ inputs.host-platform == 'win-64' }}
+        run: |
+          python ci/tools/prepare_wheel_build.py \
+            --cuda-major ${{ env.BUILD_CUDA_MAJOR }} \
+            --host-platform win >> "$GITHUB_ENV"
+
+      - name: Build cupy-cuda${{ env.BUILD_CUDA_MAJOR }}x wheel
+        uses: pypa/cibuildwheel@8d2b08b68458a16aeb24b64e68a09ab1c8e82084  # v3.4.1
+        with:
+          output-dir: wheelhouse
+        env:
+          CIBW_BUILD: ${{ env.CIBW_BUILD }}
+          CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_28
+          CIBW_ENVIRONMENT_PASS_LINUX: >
+            CUPY_INSTALL_NO_RPATH
+            CUPY_INSTALL_LONG_DESCRIPTION
+            CUPY_INSTALL_WHEEL_METADATA
+            CUPY_INCLUDE_PATH
+            CUPY_LIBRARY_PATH
+            CUPY_PACKAGE_NAME
+            CUPY_NUM_BUILD_JOBS
+          CIBW_ENVIRONMENT: >
+            SCCACHE_GHA_ENABLED=true
+            ACTIONS_RUNTIME_TOKEN=${{ env.ACTIONS_RUNTIME_TOKEN }}
+            ACTIONS_RUNTIME_URL=${{ env.ACTIONS_RUNTIME_URL }}
+            ACTIONS_RESULTS_URL=${{ env.ACTIONS_RESULTS_URL }}
+            ACTIONS_CACHE_URL=${{ env.ACTIONS_CACHE_URL }}
+            ACTIONS_CACHE_SERVICE_V2=${{ env.ACTIONS_CACHE_SERVICE_V2 }}
+            SCCACHE_CACHE_SIZE=${{ env.SCCACHE_CACHE_SIZE }}
+          CIBW_ENVIRONMENT_LINUX: >
+            CUDA_PATH=/project/cuda_toolkit
+            LIBRARY_PATH=/project/cuda_toolkit/lib64/stubs
+            CC="/host/${{ env.SCCACHE_PATH }} cc"
+            CXX="/host/${{ env.SCCACHE_PATH }} c++"
+            NVCC="/host/${{ env.SCCACHE_PATH }} /project/cuda_toolkit/bin/nvcc"
+            SCCACHE_DIR=/host/${{ env.SCCACHE_DIR }}
+          CIBW_ENVIRONMENT_WINDOWS: >
+            CUDA_PATH="$(cygpath -w ${{ env.CUDA_PATH }})"
+            NVCC="sccache nvcc"
+            SCCACHE_DIR=${{ env.SCCACHE_DIR }}
+          CIBW_BEFORE_TEST_LINUX: >
+            "/host/${{ env.SCCACHE_PATH }}" --show-adv-stats &&
+            "/host/${{ env.SCCACHE_PATH }}" --show-stats --stats-format=json > /host/${{ github.workspace }}/sccache_cupy.json
+          CIBW_BEFORE_TEST_WINDOWS: >
+            "${{ env.SCCACHE_PATH }}" --show-adv-stats &&
+            "${{ env.SCCACHE_PATH }}" --show-stats --stats-format=json > "${{ github.workspace }}\\sccache_cupy.json"
+          CIBW_TEST_COMMAND: >
+            echo "ok!"
+          CIBW_REPAIR_WHEEL_COMMAND_LINUX: >
+            auditwheel repair -w {dest_dir}
+            --exclude 'libcuda.so*'
+            --exclude 'libcudart.so*'
+            --exclude 'libcublas.so*'
+            --exclude 'libcublasLt.so*'
+            --exclude 'libcufft.so*'
+            --exclude 'libcurand.so*'
+            --exclude 'libcusparse.so*'
+            --exclude 'libcusolver.so*'
+            --exclude 'libnvrtc.so*'
+            --exclude 'libnvrtc-builtins.so*'
+            --exclude 'libnvJitLink.so*'
+            --exclude 'libcutensor.so*'
+            --exclude 'libcutensorMg.so*'
+            --exclude 'libnccl.so*'
+            {wheel}
+          CIBW_BEFORE_BUILD_WINDOWS: pip install delvewheel
+          CIBW_REPAIR_WHEEL_COMMAND_WINDOWS: >
+            delvewheel repair -w {dest_dir} {wheel}
+            --exclude "nvcuda.dll;cudart64_*.dll;cublas64_*.dll;cublasLt64_*.dll;cufft64_*.dll;curand64_*.dll;cusparse64_*.dll;cusolver64_*.dll;nvrtc64_*.dll;nvrtc-builtins64_*.dll;nvJitLink_*.dll;cutensor.dll;cutensorMg.dll"
+          CIBW_BUILD_VERBOSITY: 1
+
+      - name: Report sccache stats (cupy-cuda${{ env.BUILD_CUDA_MAJOR }}x)
+        uses: ./.github/actions/sccache-summary
+        with:
+          json-file: sccache_cupy.json
+          label: "cupy-cuda${{ env.BUILD_CUDA_MAJOR }}x"
+          build-step: "Build cupy-cuda${{ env.BUILD_CUDA_MAJOR }}x wheel"
+
+      - name: List the wheelhouse contents
+        run: |
+          if [[ "${{ inputs.host-platform }}" == win* ]]; then
+            export CHOWN=chown
+          else
+            export CHOWN="sudo chown"
+          fi
+          $CHOWN -R $(whoami) wheelhouse
+          ls -lahR wheelhouse
+
+      - name: Check wheel
+        run: |
+          twine check --strict wheelhouse/*.whl
+
+      - name: Upload wheel artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: cupy-cuda${{ env.BUILD_CUDA_MAJOR }}x-py${{ matrix.python-version }}-${{ inputs.host-platform }}-${{ github.sha }}
+          path: wheelhouse/*.whl
+          if-no-files-found: error

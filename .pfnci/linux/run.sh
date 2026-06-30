@@ -159,6 +159,10 @@ main() {
       if [[ "${GPU:-}" != "" ]]; then
         docker_args+=(--env "GPU=${GPU}")
       fi
+      if [[ "${GH_TOKEN:-}" != "" ]]; then
+        # Needed by actions/build.sh to fetch the GHA-built wheel artifact.
+        docker_args+=(--env "GH_TOKEN=${GH_TOKEN}")
+      fi
       if [[ "${TARGET}" == *rocm* ]]; then
         docker_args+=(--device=/dev/kfd --device=/dev/dri)
       elif [[ "${TARGET}" == cuda-build ]]; then

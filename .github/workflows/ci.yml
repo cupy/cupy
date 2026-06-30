@@ -1,0 +1,253 @@
+# Note: This name is referred to in the nightly workflow, so make sure any
+# changes are sync'd up!
+name: "CI"
+
+# CuPy CI is gated behind /test from an OWNER/MEMBER on a PR, or fires
+# automatically on PR merge. There is no automatic build on pull_request
+# open/push -- the guard job below is the single front door.
+on:
+  issue_comment:
+    types: [created]
+  pull_request_target:
+    types: [closed]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.issue.number || github.event.pull_request.number }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+  statuses: write
+
+jobs:
+  guard:
+    name: Guard (auth + dispatch decision)
+    runs-on: ubuntu-latest
+    if: github.repository_owner == 'cupy'
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+      ref: ${{ steps.check.outputs.ref }}
+      pr_number: ${{ steps.check.outputs.pr_number }}
+      pr_base_ref: ${{ steps.check.outputs.pr_base_ref }}
+    steps:
+      - name: Evaluate trigger
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          should_run=false
+          ref=""
+          pr_number=""
+          pr_base_ref=""
+
+          case "$GITHUB_EVENT_NAME" in
+          issue_comment)
+            if [[ "$(jq -r '.issue.pull_request // empty | tostring | length' "$GITHUB_EVENT_PATH")" == "0" ]]; then
+              echo "Not a PR comment; skipping"
+            elif ! jq -r '.comment.body' "$GITHUB_EVENT_PATH" | grep -qE '^/test( |$)'; then
+              echo "Comment does not start with '/test'; skipping"
+            else
+              assoc="$(jq -r '.comment.author_association' "$GITHUB_EVENT_PATH")"
+              if [[ "$assoc" != "OWNER" && "$assoc" != "MEMBER" ]]; then
+                echo "::warning::Comment author_association=$assoc is not OWNER/MEMBER; skipping"
+              else
+                pr_url="$(jq -r '.issue.pull_request.url' "$GITHUB_EVENT_PATH")"
+                pr_json="$(gh api "$pr_url")"
+                pr_number="$(jq -r '.number' <<< "$pr_json")"
+                pr_base_ref="$(jq -r '.base.ref' <<< "$pr_json")"
+                ref="refs/pull/${pr_number}/merge"
+                should_run=true
+              fi
+            fi
+            ;;
+          pull_request_target)
+            if [[ "$(jq -r '.pull_request.merged' "$GITHUB_EVENT_PATH")" != "true" ]]; then
+              echo "PR closed without merge; skipping"
+            elif jq -e '.pull_request.labels[] | select(.name == "skip-ci")' "$GITHUB_EVENT_PATH" >/dev/null; then
+              echo "skip-ci label present; skipping"
+            else
+              pr_number="$(jq -r '.pull_request.number' "$GITHUB_EVENT_PATH")"
+              pr_base_ref="$(jq -r '.pull_request.base.ref' "$GITHUB_EVENT_PATH")"
+              ref="$(jq -r '.pull_request.merge_commit_sha' "$GITHUB_EVENT_PATH")"
+              should_run=true
+            fi
+            ;;
+          *)
+            echo "Unsupported event: $GITHUB_EVENT_NAME"
+            ;;
+          esac
+
+          echo "should_run=${should_run}" >> "$GITHUB_OUTPUT"
+          echo "ref=${ref}" >> "$GITHUB_OUTPUT"
+          echo "pr_number=${pr_number}" >> "$GITHUB_OUTPUT"
+          echo "pr_base_ref=${pr_base_ref}" >> "$GITHUB_OUTPUT"
+
+  ci-vars:
+    needs: guard
+    if: needs.guard.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      CUDA_BUILD_VER: ${{ steps.get-vars.outputs.cuda_build_ver }}
+      CUDA_PREV_BUILD_VER: ${{ steps.get-vars.outputs.cuda_prev_build_ver }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        with:
+          ref: ${{ needs.guard.outputs.ref }}
+          fetch-depth: 1
+      - name: Get CUDA build versions
+        id: get-vars
+        run: |
+          cuda_build_ver=$(yq '.cuda.build.version' ci/versions.yml)
+          echo "cuda_build_ver=$cuda_build_ver" >> $GITHUB_OUTPUT
+
+          cuda_prev_build_ver=$(yq '.cuda.prev_build.version' ci/versions.yml)
+          echo "cuda_prev_build_ver=$cuda_prev_build_ver" >> $GITHUB_OUTPUT
+
+  # NOTE: Build jobs are intentionally split by platform rather than using a single
+  # matrix. This allows each test job to depend only on its corresponding build,
+  # so faster platforms can proceed through build & test without waiting for slower
+  # ones. Keep these job definitions textually identical except for:
+  #   - host-platform value
+  build-linux-64:
+    needs:
+      - guard
+      - ci-vars
+    if: needs.guard.outputs.should_run == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        host-platform:
+          - linux-64
+        cuda-version:
+          - ${{ needs.ci-vars.outputs.CUDA_BUILD_VER }}
+          - ${{ needs.ci-vars.outputs.CUDA_PREV_BUILD_VER }}
+    name: Build ${{ matrix.host-platform }}, CUDA ${{ matrix.cuda-version }}
+    secrets: inherit
+    uses: ./.github/workflows/build-wheel.yml
+    with:
+      host-platform: ${{ matrix.host-platform }}
+      cuda-version: ${{ matrix.cuda-version }}
+      ref: ${{ needs.guard.outputs.ref }}
+
+  # TODO: enable once linux-64 + win-64 are green.
+  # # See build-linux-64 for why build jobs are split by platform.
+  # build-linux-aarch64:
+  #   needs:
+  #     - guard
+  #     - ci-vars
+  #   if: needs.guard.outputs.should_run == 'true'
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       host-platform:
+  #         - linux-aarch64
+  #       cuda-version:
+  #         - ${{ needs.ci-vars.outputs.CUDA_BUILD_VER }}
+  #         - ${{ needs.ci-vars.outputs.CUDA_PREV_BUILD_VER }}
+  #   name: Build ${{ matrix.host-platform }}, CUDA ${{ matrix.cuda-version }}
+  #   secrets: inherit
+  #   uses: ./.github/workflows/build-wheel.yml
+  #   with:
+  #     host-platform: ${{ matrix.host-platform }}
+  #     cuda-version: ${{ matrix.cuda-version }}
+  #     ref: ${{ needs.guard.outputs.ref }}
+
+  # See build-linux-64 for why build jobs are split by platform.
+  build-windows:
+    needs:
+      - guard
+      - ci-vars
+    if: needs.guard.outputs.should_run == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        host-platform:
+          - win-64
+        cuda-version:
+          - ${{ needs.ci-vars.outputs.CUDA_BUILD_VER }}
+          - ${{ needs.ci-vars.outputs.CUDA_PREV_BUILD_VER }}
+    name: Build ${{ matrix.host-platform }}, CUDA ${{ matrix.cuda-version }}
+    secrets: inherit
+    uses: ./.github/workflows/build-wheel.yml
+    with:
+      host-platform: ${{ matrix.host-platform }}
+      cuda-version: ${{ matrix.cuda-version }}
+      ref: ${{ needs.guard.outputs.ref }}
+
+  # Dispatcher (folded in from the former flexci.yml). Forwards the GitHub
+  # webhook payload to FlexCI so that PFN-side test jobs run. Builds must
+  # complete first because the .pfnci scripts fetch the wheel artifact via
+  # ci/tools/lookup-run-id --commit <SHA>.
+  dispatch-flexci:
+    name: Dispatch FlexCI
+    needs:
+      - guard
+      - build-linux-64
+      - build-windows
+    if: needs.guard.outputs.should_run == 'true'
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout (Base / Trusted)
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        with:
+          ref: ${{ github.event_name == 'issue_comment' && needs.guard.outputs.pr_base_ref || needs.guard.outputs.ref }}
+
+      - name: Checkout (Untrusted PR code, data only)
+        if: github.event_name == 'issue_comment'
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        with:
+          ref: ${{ needs.guard.outputs.ref }}
+          path: _pr_untrusted
+
+      - name: Setup Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: '3.13'
+
+      - name: Setup Environment
+        run: pip install pygithub
+
+      - name: Dispatch
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          FLEXCI_WEBHOOK_SECRET: ${{ secrets.FLEXCI_WEBHOOK_SECRET }}
+          PROJECTS_ROOT_DIR: ${{ github.event_name == 'issue_comment' && '_pr_untrusted' || '.' }}
+        run: |
+          ./.github/workflows/scripts/flexci_dispatcher.py \
+              --event "${GITHUB_EVENT_NAME}" \
+              --webhook "${GITHUB_EVENT_PATH}" \
+              --projects "${PROJECTS_ROOT_DIR}/.pfnci/config.tags.json" \
+              --external-tag jenkins \
+              --external-tag rocm
+
+  checks:
+    name: Check job status
+    if: always() && needs.guard.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    needs:
+      - guard
+      - build-linux-64
+      - build-windows
+      - dispatch-flexci
+    steps:
+      - name: Exit
+        run: |
+          status="success"
+          check_result() {
+            name=$1; expected=$2; result=$3
+            echo "Checking $name: result='$result' (expected '$expected')"
+            if [[ "$result" != "$expected" ]]; then
+              echo "::error::$name did not match expected result"
+              status="failed"
+            fi
+          }
+
+          check_result "guard"           "success" "${{ needs.guard.result }}"
+          check_result "build-linux-64"  "success" "${{ needs.build-linux-64.result }}"
+          check_result "build-windows"   "success" "${{ needs.build-windows.result }}"
+          check_result "dispatch-flexci" "success" "${{ needs.dispatch-flexci.result }}"
+
+          [[ "$status" == "success" ]]
