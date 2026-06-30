@@ -1,0 +1,165 @@
+# Note: This name is referred to in the nightly workflow, so make sure any
+# changes are sync'd up!
+name: "CI"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+    branches:
+      - "main"
+      - "v*"  # backport branches (e.g. v14)
+  push:
+    branches:
+      - "main"
+      - "v*"
+    tags:
+      - "v*"
+  schedule:
+    # every 24 hours at midnight UTC
+    - cron: "0 0 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ci-vars:
+    runs-on: ubuntu-latest
+    outputs:
+      CUDA_BUILD_VER: ${{ steps.get-vars.outputs.cuda_build_ver }}
+      CUDA_PREV_BUILD_VER: ${{ steps.get-vars.outputs.cuda_prev_build_ver }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        with:
+          fetch-depth: 1
+      - name: Get CUDA build versions
+        id: get-vars
+        run: |
+          cuda_build_ver=$(yq '.cuda.build.version' ci/versions.yml)
+          echo "cuda_build_ver=$cuda_build_ver" >> $GITHUB_OUTPUT
+
+          cuda_prev_build_ver=$(yq '.cuda.prev_build.version' ci/versions.yml)
+          echo "cuda_prev_build_ver=$cuda_prev_build_ver" >> $GITHUB_OUTPUT
+
+  should-skip:
+    runs-on: ubuntu-latest
+    outputs:
+      skip: ${{ steps.get-should-skip.outputs.skip }}
+      doc-only: ${{ steps.get-should-skip.outputs.doc_only }}
+    steps:
+      - name: Compute whether to skip builds and tests
+        id: get-should-skip
+        run: |
+          set -euxo pipefail
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            pr_title=${{ toJSON(github.event.pull_request.title) }}
+            skip="$(echo "${pr_title}" | grep -q '\[no-ci\]' && echo true || echo false)"
+            doc_only="$(echo "${pr_title}" | grep -q '\[doc-only\]' && echo true || echo false)"
+          else
+            skip=false
+            doc_only=false
+          fi
+          echo "skip=${skip}" >> "$GITHUB_OUTPUT"
+          echo "doc_only=${doc_only}" >> "$GITHUB_OUTPUT"
+
+  # NOTE: Build jobs are intentionally split by platform rather than using a single
+  # matrix. This allows each test job to depend only on its corresponding build,
+  # so faster platforms can proceed through build & test without waiting for slower
+  # ones. Keep these job definitions textually identical except for:
+  #   - host-platform value
+  #   - if: condition (build-linux-64 omits doc-only check since it's needed for docs)
+  build-linux-64:
+    needs:
+      - ci-vars
+      - should-skip
+    strategy:
+      fail-fast: false
+      matrix:
+        host-platform:
+          - linux-64
+        cuda-version:
+          - ${{ needs.ci-vars.outputs.CUDA_BUILD_VER }}
+          - ${{ needs.ci-vars.outputs.CUDA_PREV_BUILD_VER }}
+    name: Build ${{ matrix.host-platform }}, CUDA ${{ matrix.cuda-version }}
+    if: ${{ github.repository_owner == 'cupy' && !fromJSON(needs.should-skip.outputs.skip) }}
+    secrets: inherit
+    uses: ./.github/workflows/build-wheel.yml
+    with:
+      host-platform: ${{ matrix.host-platform }}
+      cuda-version: ${{ matrix.cuda-version }}
+
+  # TODO: enable once linux-64 + win-64 are green.
+  # # See build-linux-64 for why build jobs are split by platform.
+  # build-linux-aarch64:
+  #   needs:
+  #     - ci-vars
+  #     - should-skip
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       host-platform:
+  #         - linux-aarch64
+  #       cuda-version:
+  #         - ${{ needs.ci-vars.outputs.CUDA_BUILD_VER }}
+  #         - ${{ needs.ci-vars.outputs.CUDA_PREV_BUILD_VER }}
+  #   name: Build ${{ matrix.host-platform }}, CUDA ${{ matrix.cuda-version }}
+  #   if: ${{ github.repository_owner == 'cupy' && !fromJSON(needs.should-skip.outputs.skip) && !fromJSON(needs.should-skip.outputs.doc-only) }}
+  #   secrets: inherit
+  #   uses: ./.github/workflows/build-wheel.yml
+  #   with:
+  #     host-platform: ${{ matrix.host-platform }}
+  #     cuda-version: ${{ matrix.cuda-version }}
+
+  # See build-linux-64 for why build jobs are split by platform.
+  build-windows:
+    needs:
+      - ci-vars
+      - should-skip
+    strategy:
+      fail-fast: false
+      matrix:
+        host-platform:
+          - win-64
+        cuda-version:
+          - ${{ needs.ci-vars.outputs.CUDA_BUILD_VER }}
+          - ${{ needs.ci-vars.outputs.CUDA_PREV_BUILD_VER }}
+    name: Build ${{ matrix.host-platform }}, CUDA ${{ matrix.cuda-version }}
+    if: ${{ github.repository_owner == 'cupy' && !fromJSON(needs.should-skip.outputs.skip) && !fromJSON(needs.should-skip.outputs.doc-only) }}
+    secrets: inherit
+    uses: ./.github/workflows/build-wheel.yml
+    with:
+      host-platform: ${{ matrix.host-platform }}
+      cuda-version: ${{ matrix.cuda-version }}
+
+  checks:
+    name: Check job status
+    if: always()
+    runs-on: ubuntu-latest
+    needs:
+      - should-skip
+      - build-linux-64
+      - build-windows
+    steps:
+      - name: Exit
+        run: |
+          if [[ "${{ needs.should-skip.outputs.skip }}" == "true" ]]; then
+            echo "[no-ci] - skipping aggregator checks"
+            exit 0
+          fi
+
+          status="success"
+          check_result() {
+            name=$1; expected=$2; result=$3
+            echo "Checking $name: result='$result' (expected '$expected')"
+            if [[ "$result" != "$expected" ]]; then
+              echo "::error::$name did not match expected result"
+              status="failed"
+            fi
+          }
+
+          check_result "should-skip"    "success" "${{ needs.should-skip.result }}"
+          check_result "build-linux-64" "success" "${{ needs.build-linux-64.result }}"
+          check_result "build-windows"  "success" "${{ needs.build-windows.result }}"
+
+          [[ "$status" == "success" ]]
