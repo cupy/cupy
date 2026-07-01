@@ -40,7 +40,10 @@ sici = _core.create_ufunc(
             ''',
         ),
     ),
-    preamble="#include <cupy/xsf/sici.h>",
+    preamble="""
+    #include <cupy/xsf/sici.h>
+    #include <cupy/_xsf_thrust_complex_bridge.h>
+    """,
     doc="""sici
 
     Sine and Cosine integrals
@@ -86,7 +89,10 @@ shichi = _core.create_ufunc(
             ''',
         ),
     ),
-    preamble="#include <cupy/xsf/sici.h>",
+    preamble="""
+    #include <cupy/xsf/sici.h>
+    #include <cupy/_xsf_thrust_complex_bridge.h>
+    """,
     doc="""shichi
 
     Hyperbolic sine and cosine integrals.
