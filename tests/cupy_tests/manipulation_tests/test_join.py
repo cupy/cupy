@@ -534,3 +534,48 @@ class TestJoin:
         b = cupy.zeros((4, 3))
         with pytest.raises(ValueError), pytest.warns(DeprecationWarning):
             cupy.row_stack((a, b))
+
+    @testing.numpy_cupy_array_list_equal()
+    def test_unstack_1d_axis_0(self, xp):
+        a = xp.arange(5)
+        return xp.unstack(a, axis=0)
+
+    @testing.numpy_cupy_array_list_equal()
+    def test_unstack_1d_axis_negative_1(self, xp):
+        a = xp.arange(5)
+        return xp.unstack(a, axis=-1)
+
+    @testing.numpy_cupy_array_list_equal()
+    def test_unstack_3d_positive_axis(self, xp):
+        a = xp.arange(24).reshape((2, 3, 4))
+        return xp.unstack(a, axis=1)
+
+    @testing.numpy_cupy_array_list_equal()
+    def test_unstack_3d_negative_axis(self, xp):
+        a = xp.arange(24).reshape((2, 3, 4))
+        return xp.unstack(a, axis=-2)
+
+    @testing.numpy_cupy_raises(accept_errors=(ValueError,))
+    def test_unstack_0d_array(self, xp):
+        a = xp.array(42)
+        xp.unstack(a, axis=0)
+
+    @testing.numpy_cupy_raises(accept_errors=(numpy.AxisError,))
+    def test_unstack_1d_invalid_positive(self, xp):
+        a = xp.zeros((5,))
+        xp.unstack(a, axis=1)
+
+    @testing.numpy_cupy_raises(accept_errors=(numpy.AxisError,))
+    def test_unstack_2d_invalid_positive(self, xp):
+        a = xp.zeros((3, 4))
+        xp.unstack(a, axis=2)
+
+    @testing.numpy_cupy_raises(accept_errors=(numpy.AxisError,))
+    def test_unstack_2d_invalid_negative(self, xp):
+        a = xp.zeros((3, 4))
+        xp.unstack(a, axis=-3)
+
+    @testing.numpy_cupy_raises(accept_errors=(numpy.AxisError,))
+    def test_unstack_3d_invalid_negative(self, xp):
+        a = xp.zeros((2, 3, 4))
+        xp.unstack(a, axis=-4)

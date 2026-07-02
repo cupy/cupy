@@ -164,3 +164,20 @@ def stack(tup, axis=0, out=None, *, dtype=None, casting='same_kind'):
     """
     return concatenate([cupy.expand_dims(x, axis) for x in tup], axis, out,
                        dtype=dtype, casting=casting)
+
+def unstack(x, axis=0, /):
+    """Splits an array into a sequence of arrays along the given axis.
+
+    Args:
+        x (cupy.ndarray): The array to be unstacked.
+        axis (int): Axis along which the array is unstacked. Defaults to 0.
+
+    Returns:
+        tuple of cupy.ndarray: Tuple of unstacked arrays.
+
+    .. seealso:: :func:`numpy.unstack`
+    """
+    if x.ndim == 0:
+        raise ValueError("Cannot unstack a 0-dimensional array.")
+        
+    return tuple(cupy.moveaxis(x, axis, 0))
