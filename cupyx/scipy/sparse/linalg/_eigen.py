@@ -8,10 +8,11 @@ from cupy._core import _dtype
 from cupy.cuda import device
 from cupy_backends.cuda.libs import cublas as _cublas
 from cupyx.scipy.sparse import _csr
+from cupyx.scipy.sparse import _construct
 from cupyx.scipy.sparse.linalg import _interface
 
 
-def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
+def eigsh(a, k=6, *, which='LM', sigma=None, v0=None, ncv=None, maxiter=None,
           tol=0, return_eigenvectors=True):
     """
     Find ``k`` eigenvalues and eigenvectors of the real symmetric square
@@ -65,8 +66,9 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
         raise ValueError('k must be greater than 0 (actual: {})'.format(k))
     if k >= n:
         raise ValueError('k must be smaller than n (actual: {})'.format(k))
-    if which not in ('LM', 'LA', 'SA'):
-        raise ValueError('which must be \'LM\',\'LA\'or\'SA\' (actual: {})'
+    if which not in ('LM', 'LA', 'SA', 'SM'):
+        raise ValueError('which must be \'LM\',\'LA\',\'SA\'or\'SM\''
+                         '    (actual: {})'
                          ''.format(which))
     if ncv is None:
         ncv = min(max(2 * k, k + 32), n - 1)
@@ -76,6 +78,21 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
         maxiter = 10 * n
     if tol == 0:
         tol = numpy.finfo(a.dtype).eps
+
+    if which == 'SM':
+        if sigma is not None:
+            raise ValueError(
+                "which='SM' is not supported together with sigma"
+            )
+        sigma = 0
+        which = 'LM'
+        auto_shift = True
+    else:
+        auto_shift = False
+
+    if sigma is not None:
+        return _eigsh_shift_invert(a, k, sigma, which, v0, ncv, maxiter, tol,
+                                   return_eigenvectors, auto_shift=auto_shift)
 
     alpha = cupy.zeros((ncv,), dtype=a.dtype)
     beta = cupy.zeros((ncv,), dtype=a.dtype.char.lower())
@@ -143,6 +160,53 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
         return w[idx], x[:, idx]
     else:
         return cupy.sort(w)
+
+
+def _eigsh_shift_invert(a, k, sigma, which, v0, ncv, maxiter, tol,
+                        return_eigenvectors, auto_shift):
+    if isinstance(a, _interface.MatrixLinearOperator):
+        a = a.A          # unwrap: shift-invert needs the explicit matrix
+    elif isinstance(a, _interface.LinearOperator):
+        raise TypeError(
+            'shift-invert requires an explicit matrix; pass a ndarray or '
+            'sparse matrix (support for OPinv is not implemented)')
+
+    n = a.shape[0]
+
+    if auto_shift:
+        if isinstance(a, cupy.ndarray):
+            scale = float(cupy.abs(a).max())
+        else:
+            scale = float(cupy.abs(a.data).max()) if a.nnz > 0 else 0.0
+        sigma = -numpy.sqrt(numpy.finfo(a.dtype).eps) * max(scale, 1.0)
+
+    if isinstance(a, cupy.ndarray):
+        A_shifted = _csr.csr_matrix(a - sigma * cupy.eye(n, dtype=a.dtype))
+    else:
+        A_shifted = a - sigma * _construct.identity(n, dtype=a.dtype,
+                                                    format='csr')
+
+    # Factorize and solve on the CPU
+    import scipy.sparse.linalg as scipy_sparse_linalg
+    lu = scipy_sparse_linalg.splu(A_shifted.tocsc().get())
+
+    def matvec(b):
+        return cupy.asarray(lu.solve(cupy.asnumpy(b)))
+
+    op = _interface.LinearOperator((n, n), matvec, dtype=a.dtype)
+
+    nu, v = eigsh(op, k=k, which=which, v0=v0,
+                  ncv=ncv, maxiter=maxiter, tol=tol)
+
+    # transform back
+    w = sigma + 1.0 / nu
+
+    if return_eigenvectors:
+        idx = cupy.argsort(w)  # ascending algebraic
+        return w[idx], v[:, idx]
+    else:
+        idx = cupy.argsort(cupy.absolute(w))[::-1]  # decreasing |w|
+        return w[idx]
 
 
 def _lanczos_asis(a, V, u, alpha, beta, i_start, i_end):
@@ -327,10 +391,7 @@ def _eigsh_solve_ritz(alpha, beta, beta_k, k, which):
         idx = numpy.argsort(w)
         wk = w[idx[:k]]
         sk = s[:, idx[:k]]
-    # elif which == 'SM':  #dysfunctional
-    #   idx = cupy.argsort(abs(w))
-    #   wk = w[idx[:k]]
-    #   sk = s[:,idx[:k]]
+
     return cupy.array(wk), cupy.array(sk)
 
 
