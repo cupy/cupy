@@ -1354,26 +1354,8 @@ __global__ void shift (T* a, int N) {
 # starting https://github.com/cupy/cupy/pull/8899#issuecomment-2613022424.
 @testing.slow
 @pytest.mark.parametrize("jitify", [
-    pytest.param(
-        False,
-        marks=[
-            pytest.mark.filterwarnings(
-                "ignore:The jitify argument is deprecated:DeprecationWarning")
-        ],
-        id="no-jitify"),
-    pytest.param(
-        True,
-        marks=[
-            pytest.mark.thread_unsafe(
-                reason=(
-                    "Jitify seems to have problems, ",
-                    "skip as largely unmaintained."
-                )
-            ),
-            pytest.mark.filterwarnings(
-                "ignore:jitify=True is deprecated:DeprecationWarning")
-        ],
-        id="jitify"),
+    pytest.param(False, marks=no_jitify_markers, id="no-jitify"),
+    pytest.param(True, marks=jitify_markers, id="jitify"),
 ])
 @pytest.mark.skipif(
     cupy.cuda.runtime.is_hip,
