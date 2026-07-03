@@ -506,6 +506,7 @@ class TestBinaryErosionAndDilation:
             x = x[::-1]
         return self._filter(xp, scp, x)
 
+    # TODO: remove scipy constraint when cuda120 mini jobs don't rely on 1.14
     @testing.with_requires('scipy>1.14')
     @testing.numpy_cupy_array_equal(scipy_name='scp')
     def test_zero_strides(self, xp, scp):
