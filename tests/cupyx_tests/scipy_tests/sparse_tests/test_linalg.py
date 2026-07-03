@@ -127,7 +127,7 @@ class TestVectorNorm:
 
 
 @testing.parameterize(*testing.product({
-    'which': ['LM', 'LA', 'SA'],
+    'which': ['LM', 'LA', 'SA', 'SM'],
     'k': [3, 6, 12],
     'return_eigenvectors': [True, False],
     'use_linear_operator': [True, False],
@@ -215,8 +215,6 @@ class TestEigsh:
             sp.linalg.eigsh(xp.ones((2, 2), dtype='i'))
         with pytest.raises(ValueError):
             sp.linalg.eigsh(a, k=self.n)
-        with pytest.raises(ValueError):
-            sp.linalg.eigsh(a, k=self.k, which='SM')
 
     def test_starting_vector(self):
         eigsh = cupyx.scipy.sparse.linalg.eigsh
@@ -321,8 +319,6 @@ class TestSvds:
             sp.linalg.svds(xp.ones((2, 2), dtype='i'))
         with pytest.raises(ValueError):
             sp.linalg.svds(a, k=min(self.shape))
-        with pytest.raises(ValueError):
-            sp.linalg.svds(a, k=self.k, which='SM')
 
 
 @testing.parameterize(*testing.product({
