@@ -173,6 +173,22 @@ def validateaxis(axis):
             raise ValueError("axis out of range")
 
 
+def validate_axis_1d(axis):
+    """Validate a reduction ``axis`` for a 1-D sparse array.
+
+    Accepts ``None``, ``0``, ``-1``, or a length-1 tuple of one of those
+    (scipy allows a 1-tuple axis).  Raises ``ValueError`` otherwise.  A
+    1-D reduction always collapses the single axis, so callers ignore the
+    (absent) return value and reduce over everything.
+    """
+    if isinstance(axis, tuple):
+        if len(axis) != 1:
+            raise ValueError('axis out of range for 1-D array')
+        axis = axis[0]
+    if axis not in (None, 0, -1):
+        raise ValueError(f'axis {axis} is out of bounds for 1-D array')
+
+
 def upcast(*args):
     """Returns the nearest supported sparse dtype for the
     combination of one or more types.
@@ -202,8 +218,14 @@ def upcast(*args):
     raise TypeError('no supported conversion for types: %r' % (args,))
 
 
-def check_shape(args, current_shape=None):
-    """Check validity of the shape"""
+def check_shape(args, current_shape=None, *, allow_nd=(2,)):
+    """Check validity of the shape.
+
+    Args:
+        allow_nd (tuple of int): Accepted dimensionalities (tuple
+            lengths).  Defaults to ``(2,)`` so 2-D-only callers are
+            unaffected; pass ``(1, 2)`` to also accept 1-D shapes.
+    """
 
     if len(args) == 0:
         raise TypeError("function missing 1 required positional argument: "
@@ -220,9 +242,9 @@ def check_shape(args, current_shape=None):
         new_shape = tuple(operator.index(arg) for arg in args)
 
     if current_shape is None:
-        if len(new_shape) != 2:
+        if len(new_shape) not in allow_nd:
             raise ValueError('shape must be a 2-tuple of positive integers')
-        elif new_shape[0] < 0 or new_shape[1] < 0:
+        elif any(d < 0 for d in new_shape):
             raise ValueError("'shape' elements cannot be negative")
 
     else:
@@ -242,11 +264,12 @@ def check_shape(args, current_shape=None):
                 err_shape = tuple('newshape'if x < 0 else x for x in new_shape)
                 raise ValueError('cannot reshape array of size {} into shape'
                                  '{}'.format(current_size, err_shape))
-            new_shape = new_shape[0:skip] + (unspecified,) + new_shape[skip+1:]
+            new_shape = (new_shape[0:skip] + (int(unspecified),)
+                         + new_shape[skip+1:])
         else:
             raise ValueError('can only specify one unknown dimension')
 
-    if len(new_shape) != 2:
+    if len(new_shape) not in allow_nd:
         raise ValueError('matrix shape must be two-dimensional')
 
     return new_shape

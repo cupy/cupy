@@ -202,12 +202,104 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         diff = diff_out;
         ''', 'cupyx_scipy_sparse_has_canonical_format')
 
+    @staticmethod
+    def _input_is_1d(arg1, shape):
+        """Whether the constructor arguments describe a 1-D array."""
+        if _base.issparse(arg1) or _base.isdense(arg1):
+            input_ndim = arg1.ndim
+        elif scipy_available and scipy.sparse.issparse(arg1):
+            input_ndim = arg1.ndim
+        else:
+            input_ndim = None
+        if input_ndim is not None:
+            # A whole sparse/dense input carries its own dimensionality: it
+            # is 1-D only when the data is 1-D *and* no conflicting 2-D shape
+            # was given.  A 2-D input with a 1-D shape (or a 1-D input with a
+            # 2-D shape) is routed to the 2-D path, which rejects the bad
+            # shape (via ``check_shape``) or promotes -- rather than silently
+            # reinterpreting the data and corrupting it.
+            return input_ndim == 1 and (shape is None or len(shape) == 1)
+        if shape is not None:
+            return len(shape) == 1
+        if isinstance(arg1, tuple):
+            if len(arg1) == 1:           # shape tuple ``(N,)``
+                return True
+            if len(arg1) == 2 and isinstance(arg1[1], tuple):
+                return len(arg1[1]) == 1  # ``(data, (col,))``
+        return False
+
     def __init__(self, arg1, shape=None, dtype=None, copy=False,
                  *, maxprint=None):
         from cupyx import cusparse
 
         if maxprint is not None:
             self.maxprint = maxprint
+
+        if self._input_is_1d(arg1, shape):
+            if 1 not in self._allow_nd:
+                # Only csr_array supports 1-D (matching scipy).  Other
+                # compressed *array* classes reject it; *matrix* classes
+                # keep their legacy behavior (1-D promotes to (1, N)),
+                # handled by falling through to the 2-D path below.
+                if isinstance(self, _base.sparray):
+                    raise ValueError(
+                        f'{type(self).__name__} does not support 1D input; '
+                        'use a 2D shape or coo_array / csr_array')
+            else:
+                # Build the single-row CSR backing.  A same-format sparse
+                # input is adopted directly; the canonical ``(data,
+                # indices, indptr)`` 3-tuple is built via ``_from_parts``;
+                # all other forms route through the 1-D-aware COO path.
+                if (_base.issparse(arg1) and arg1.format == self.format
+                        and (shape is None
+                             or tuple(shape) == tuple(arg1.shape))):
+                    # Avoid a needless CSR -> COO -> CSR round-trip.  A
+                    # differing (but ndim-compatible) explicit shape is
+                    # routed through the COO path below instead, which
+                    # bounds-checks the indices against the new shape.
+                    result = arg1.copy() if copy else arg1
+                    if dtype is not None:
+                        result = result.astype(dtype)
+                elif isinstance(arg1, tuple) and len(arg1) == 3:
+                    data, indices, indptr = (cupy.asarray(a) for a in arg1)
+                    # Same validation as the 2-D 3-tuple path: indptr must
+                    # start at 0, and data/indices are trimmed to the live
+                    # nnz (indptr[-1]).
+                    if indptr.size > 0 and int(indptr[0]) != 0:
+                        raise ValueError(
+                            f'index pointer should start with 0 '
+                            f'(got {int(indptr[0])})')
+                    if indptr.size > 0:
+                        nnz_live = int(indptr[-1])  # synchronize!
+                        if nnz_live > data.size:
+                            raise ValueError(
+                                f'last index pointer ({nnz_live}) exceeds '
+                                f'the size of data/indices ({data.size})')
+                        if data.size > nnz_live:
+                            data = data[:nnz_live]
+                            indices = indices[:nnz_live]
+                    result = type(self)._from_parts(
+                        data, indices, indptr,
+                        _util.check_shape(shape, allow_nd=self._allow_nd))
+                    # The 3-tuple path skips ``dtype``; apply it here.
+                    if dtype is not None:
+                        result = result.astype(dtype)
+                else:
+                    # The COO path already applied ``dtype``.
+                    result = self._coo_container(
+                        arg1, shape=shape, dtype=dtype, copy=copy).tocsr()
+                sparse_data._data_matrix.__init__(self, result.data)
+                self.indices = result.indices
+                self.indptr = result.indptr
+                self._descr = cusparse.MatDescriptor.create()
+                self._shape = result._shape
+                hcf = getattr(result, '_has_canonical_format', None)
+                if hcf is not None:
+                    self._has_canonical_format = hcf
+                hsi = getattr(result, '_has_sorted_indices', None)
+                if hsi is not None:
+                    self._has_sorted_indices = hsi
+                return
 
         if shape is not None:
             shape = _util.check_shape(shape)
@@ -311,6 +403,12 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         elif _base.isdense(arg1):
             if arg1.ndim > 2:
                 raise ValueError('expected dimension <= 2 array or matrix')
+            elif arg1.ndim == 0 and isinstance(self, _base.sparray):
+                # scipy rejects scalar (0-D) input for sparse arrays;
+                # *matrix* classes keep the legacy (1, 1) promotion below.
+                raise TypeError(
+                    f'{type(self).__name__} does not support scalar (0-D) '
+                    'input; provide a 1-D or 2-D array')
             elif arg1.ndim == 1:
                 arg1 = arg1[None]
             elif arg1.ndim == 0:
@@ -374,7 +472,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                 implies ``has_sorted_indices=True``.
             has_sorted_indices (bool or None): Same semantics.
         """
-        shape = _util.check_shape(shape)
+        shape = _util.check_shape(shape, allow_nd=cls._allow_nd)
         if data.ndim != 1 or indices.ndim != 1 or indptr.ndim != 1:
             raise ValueError(
                 f'data, indices, and indptr must be 1-D, got ndim '
@@ -391,7 +489,10 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             raise ValueError(
                 f'data and indices must have the same length, '
                 f'got {data.size} and {indices.size}')
-        major = shape[cls._major_axis]
+        # A 1-D array is stored as a (1, N) row vector, so its major-axis
+        # length is 1 (indptr == [0, nnz]).
+        shape_2d = (1, shape[-1]) if len(shape) == 1 else shape
+        major = shape_2d[cls._major_axis]
         if indptr.size != major + 1:
             raise ValueError(
                 f'indptr has length {indptr.size}, '
@@ -428,6 +529,39 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                 self, '_has_canonical_format', None),
             has_sorted_indices=getattr(
                 self, '_has_sorted_indices', None))
+
+    def _as_2d(self):
+        """Return the ``(1, N)`` 2-D backing of a 1-D array (else self).
+
+        A 1-D CSR array stores a single row (``indptr == [0, nnz]``), so
+        the backing is built directly from the existing arrays with shape
+        :attr:`_shape_as_2d`.
+        """
+        if self.ndim != 1:
+            return self
+        return self.__class__._from_parts(
+            self.data, self.indices, self.indptr, self._shape_as_2d,
+            has_canonical_format=getattr(self, '_has_canonical_format', None),
+            has_sorted_indices=getattr(self, '_has_sorted_indices', None))
+
+    def _apply_2d_inplace(self, op):
+        """Run an in-place structural op on the ``(1, N)`` backing of a
+        1-D array, then adopt the resulting arrays/flags (keeping the 1-D
+        shape).  Lets 1-D reuse the tested 2-D implementations of
+        ``eliminate_zeros`` / ``sort_indices`` etc.  ``op`` mutates the
+        2-D object passed to it.
+        """
+        tmp = self._as_2d()
+        op(tmp)
+        self.data = tmp.data
+        self.indices = tmp.indices
+        self.indptr = tmp.indptr
+        hcf = getattr(tmp, '_has_canonical_format', None)
+        if hcf is not None:
+            self._has_canonical_format = hcf
+        hsi = getattr(tmp, '_has_sorted_indices', None)
+        if hsi is not None:
+            self._has_sorted_indices = hsi
 
     def _empty_like(self, shape):
         """Return an empty matrix with the same index dtype."""
@@ -480,6 +614,10 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                     'adding a nonzero scalar to a sparse matrix is not '
                     'supported')
         elif _base.issparse(other):
+            if self.ndim != 2 or other.ndim != 2:
+                raise NotImplementedError(
+                    'addition/subtraction between sparse arrays is not yet '
+                    'supported for 1-D sparse arrays')
             alpha = -1 if lhs_negative else 1
             beta = -1 if rhs_negative else 1
             return self._add_sparse(other, alpha, beta)
@@ -1242,6 +1380,10 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         """
         # Match scipy: dedup in place, then count.
         self.sum_duplicates()
+        if self.ndim == 1:
+            # The only axis collapses to a scalar count.
+            _sputils.validate_axis_1d(axis)
+            return int(cupy.count_nonzero(self.data))
         if axis is None:
             return int(cupy.count_nonzero(self.data))
         if axis < -2 or axis > 1:
@@ -1300,7 +1442,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         .. seealso:: :meth:`scipy.sparse.csr_matrix.prune`
         """
-        major_dim = self._swap(*self.shape)[0]
+        # A 1-D array's single-row backing has major-axis length 1.
+        major_dim = self._swap(*self._shape_as_2d)[0]
         if len(self.indptr) != major_dim + 1:
             raise ValueError('index pointer has invalid length')
         nnz = int(self.indptr[-1])  # synchronize!

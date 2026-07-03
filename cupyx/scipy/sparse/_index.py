@@ -358,6 +358,9 @@ class IndexMixin:
     """
 
     def __getitem__(self, key):
+        if self.ndim != 2:
+            raise NotImplementedError(
+                'indexing is not yet supported for 1-D sparse arrays')
         row, col = self._parse_indices(key)
 
         # Dispatch to specialized methods.
@@ -411,6 +414,9 @@ class IndexMixin:
         return self._get_arrayXarray(row, col)
 
     def __setitem__(self, key, x):
+        if self.ndim != 2:
+            raise NotImplementedError(
+                'indexing is not yet supported for 1-D sparse arrays')
         row, col = self._parse_indices(key)
 
         if isinstance(row, _int_scalar_types) and\

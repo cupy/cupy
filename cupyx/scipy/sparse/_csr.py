@@ -72,6 +72,9 @@ class _csr_base(_compressed._compressed_sparse_matrix):
         return self._as_csr_type(csrgeam(self, other, alpha, beta))
 
     def _comparison(self, other, op, op_name):
+        if self.ndim != 2:
+            raise NotImplementedError(
+                'comparisons are not yet supported for 1-D sparse arrays')
         cls = type(self)
         if _util.isscalarlike(other):
             data = cupy.asarray(other, dtype=self.dtype).reshape(1)
@@ -186,7 +189,10 @@ class _csr_base(_compressed._compressed_sparse_matrix):
         if cupy.isscalar(other):
             self.sum_duplicates()
             return self._with_data(self.data * other)
-        elif _is_csr(other):
+        if self.ndim != 2 or (_base.issparse(other) and other.ndim != 2):
+            raise NotImplementedError(
+                'matmul (@) is not yet supported for 1-D sparse arrays')
+        if _is_csr(other):
             self.sum_duplicates()
             other.sum_duplicates()
             # int64: always route through cusparse.spgemm, which has a
@@ -284,7 +290,11 @@ class _csr_base(_compressed._compressed_sparse_matrix):
                 dtype = numpy.dtype(numpy.float64)
             d = cupy.reciprocal(other, dtype=dtype)
             return multiply_by_scalar(self, d)
-        elif _util.isdense(other):
+        if self.ndim != 2:
+            raise NotImplementedError(
+                'element-wise division by a non-scalar is not yet '
+                'supported for 1-D sparse arrays')
+        if _util.isdense(other):
             other = cupy.atleast_2d(other)
             other = cupy.broadcast_to(other, self.shape)
             check_shape_for_pointwise_op(self.shape, other.shape)
@@ -314,6 +324,7 @@ class _csr_base(_compressed._compressed_sparse_matrix):
     # TODO(unno): Implement check_format
 
     def diagonal(self, k=0):
+        self._require_2d('diagonal')
         rows, cols = self.shape
         ylen = min(rows + min(k, 0), cols - max(k, 0))
         if ylen <= 0:
@@ -329,6 +340,11 @@ class _csr_base(_compressed._compressed_sparse_matrix):
     def eliminate_zeros(self):
         """Removes zero entries in place."""
         from cupyx import cusparse
+
+        if self.ndim == 1:
+            # Route through the (1, N) backing (rebuilds indptr as
+            # [0, nnz]); the direct paths below assume a 2-D shape.
+            return self._apply_2d_inplace(lambda m: m.eliminate_zeros())
 
         if self.indices.dtype == cupy.int64:
             # TODO(eriknw): cuSPARSE--csr2csr_compress doesn't support int64
@@ -379,7 +395,11 @@ class _csr_base(_compressed._compressed_sparse_matrix):
                         self, '_has_canonical_format', None),
                     has_sorted_indices=getattr(
                         self, '_has_sorted_indices', None))
-        elif _util.isdense(other):
+        if self.ndim != 2:
+            raise NotImplementedError(
+                'element-wise maximum/minimum with a non-scalar is not '
+                'yet supported for 1-D sparse arrays')
+        if _util.isdense(other):
             self.sum_duplicates()
             other = cupy.atleast_2d(other)
             return cupy_op(self.todense(), other)
@@ -405,7 +425,11 @@ class _csr_base(_compressed._compressed_sparse_matrix):
         """Point-wise multiplication by another matrix, vector or scalar"""
         if cupy.isscalar(other):
             return multiply_by_scalar(self, other)
-        elif _util.isdense(other):
+        if self.ndim != 2:
+            raise NotImplementedError(
+                'element-wise multiply with a non-scalar is not yet '
+                'supported for 1-D sparse arrays')
+        if _util.isdense(other):
             self.sum_duplicates()
             other = cupy.atleast_2d(other)
             return multiply_by_dense(self, other)
@@ -428,6 +452,7 @@ class _csr_base(_compressed._compressed_sparse_matrix):
                 coerced via :func:`cupy.asarray`.
             k (int): Which diagonal to set.  Default 0 (main diagonal).
         """
+        self._require_2d('setdiag')
         rows, cols = self.shape
         row_st, col_st = max(0, -k), max(0, k)
         x_len = min(rows - row_st, cols - col_st)
@@ -469,6 +494,10 @@ class _csr_base(_compressed._compressed_sparse_matrix):
         """
         from cupyx import cusparse
 
+        if self.ndim == 1:
+            # csrsort needs a 2-D shape; sort on the (1, N) backing.
+            return self._apply_2d_inplace(lambda m: m.sort_indices())
+
         if not self.has_sorted_indices:
             cusparse.csrsort(self)
             self.has_sorted_indices = True
@@ -487,6 +516,11 @@ class _csr_base(_compressed._compressed_sparse_matrix):
         .. seealso:: :meth:`scipy.sparse.csr_matrix.toarray`
 
         """
+        if self.ndim == 1:
+            # Densify through the (1, N) backing, then drop the length-1
+            # leading axis.
+            return self._as_2d().toarray(order=order).reshape(self.shape)
+
         from cupyx import cusparse
 
         order = 'C' if order is None else order.upper()
@@ -534,6 +568,10 @@ class _csr_base(_compressed._compressed_sparse_matrix):
             cupyx.scipy.sparse.coo_matrix: Converted matrix.
 
         """
+        if self.ndim == 1:
+            # Build the (1, N) coo backing, then drop the length-1 axis.
+            return self._as_2d().tocoo(copy=copy).reshape(self.shape)
+
         from cupyx import cusparse
 
         if copy:
@@ -560,6 +598,10 @@ class _csr_base(_compressed._compressed_sparse_matrix):
             cupyx.scipy.sparse.csc_matrix: Converted matrix.
 
         """
+        if self.ndim == 1:
+            raise ValueError(
+                'Cannot convert a 1-D sparse array to csc format')
+
         from cupyx import cusparse
 
         # copy is ignored
@@ -625,6 +667,10 @@ class _csr_base(_compressed._compressed_sparse_matrix):
             raise ValueError(
                 'Sparse matrices do not support an \'axes\' parameter because '
                 'swapping dimensions is the only logical permutation.')
+
+        if self.ndim == 1:
+            # Transpose of a 1-D array is a no-op (matches scipy).
+            return self.copy() if copy else self
 
         shape = self.shape[1], self.shape[0]
         if copy:
@@ -716,9 +762,17 @@ class csr_array(_csr_base, _base.sparray):
     Unlike ``csr_matrix``, the ``*`` operator performs element-wise
     multiplication (not matrix multiplication).  Use ``@`` for matmul.
 
+    Supports 1-D shapes (``ndim == 1``) in addition to 2-D, matching
+    :class:`scipy.sparse.csr_array`.  A 1-D array is stored as a single
+    CSR row (``indptr == [0, nnz]``) presenting ``shape == (N,)``.  As of
+    this release, 1-D CSR arises mainly via ``coo_array(...).tocsr()``;
+    element-wise arithmetic, matmul, and indexing on 1-D are not yet
+    implemented and raise ``NotImplementedError``.
+
     .. seealso:: :class:`scipy.sparse.csr_array`
     """
-    pass
+
+    _allow_nd = (1, 2)
 
 
 def _is_csr(x):

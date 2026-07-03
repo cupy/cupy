@@ -174,10 +174,19 @@ class _data_matrix(_base._spbase):
            :meth:`scipy.sparse.spmatrix.mean`
 
         """
-        _sputils.validateaxis(axis)
-        nRow, nCol = self.shape
-        data = self.data.copy()
+        if self.ndim == 1:
+            # Collapse the single axis to a scalar mean directly, without
+            # building a throwaway sparse object.
+            _sputils.validate_axis_1d(axis)
+            ret = (self.data / self.shape[0]).sum(dtype=dtype)
+            if out is not None:
+                out[...] = ret
+                return out
+            return ret
 
+        _sputils.validateaxis(axis)
+        data = self.data.copy()
+        nRow, nCol = self.shape
         if axis is None:
             n = nRow * nCol
         elif axis in (0, -2):
@@ -261,11 +270,15 @@ class _minmax_mixin:
         n = len(value)
         zeros = cupy.zeros(n, dtype=idx_dtype)
         value = value.astype(self.dtype, copy=False)
-        # Use the appropriate container so the result inherits the
-        # array vs matrix type from ``self``.  CuPy COO is 2-D-only, so
-        # reductions return (1, M) / (M, 1) for both array and matrix
-        # (scipy sparse arrays return shape (M,)).
+        # Use the appropriate container so the result inherits the array
+        # vs matrix type from ``self``.
         coo_cls = self._coo_container
+        if isinstance(self, _base.sparray):
+            # Sparse arrays reduce a dimension: return a 1-D coo_array
+            # of shape ``(M,)`` (matching scipy), stored as a (1, M) row
+            # vector (row=zeros, col=major_index).
+            return coo_cls._from_parts(value, zeros, major_index, shape=(M,))
+        # Matrices keep the legacy 2-D shape (1, M) / (M, 1).
         row, col = (zeros, major_index) if axis == 0 else (major_index, zeros)
         shape = (1, M) if axis == 0 else (M, 1)
         return coo_cls._from_parts(value, row, col, shape=shape)
@@ -275,7 +288,12 @@ class _minmax_mixin:
             raise ValueError("Sparse matrices do not support "
                              "an 'out' parameter.")
 
-        _sputils.validateaxis(axis)
+        if self.ndim == 1:
+            # The only axis reduces everything to a scalar.
+            _sputils.validate_axis_1d(axis)
+            axis = None
+        else:
+            _sputils.validateaxis(axis)
 
         if axis is None:
             if 0 in self.shape:
@@ -328,7 +346,12 @@ class _minmax_mixin:
             raise ValueError("Sparse matrices do not support "
                              "an 'out' parameter.")
 
-        _sputils.validateaxis(axis)
+        if self.ndim == 1:
+            # The only axis reduces everything to a scalar index.
+            _sputils.validate_axis_1d(axis)
+            axis = None
+        else:
+            _sputils.validateaxis(axis)
 
         if axis is None:
             if 0 in self.shape:
@@ -346,6 +369,11 @@ class _minmax_mixin:
                 am = op(mat.data)
                 m = mat.data[am]
 
+                if mat.ndim == 1:
+                    # Use the (1, N) backing: ``row`` is all-zeros, so the
+                    # flat index reduces to ``col`` and the 2-D helper
+                    # applies unchanged.
+                    mat = mat._as_2d()
                 return cupy.where(
                     compare(m, zero), mat.row[am] * mat.shape[1] + mat.col[am],
                     _non_zero_cmp(mat, am, zero, m))

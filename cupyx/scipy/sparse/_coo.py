@@ -58,16 +58,29 @@ class _coo_base(sparse_data._data_matrix):
                  *, maxprint=None):
         if maxprint is not None:
             self.maxprint = maxprint
-        if shape is not None and len(shape) != 2:
+        if shape is not None and len(shape) not in self._allow_nd:
             raise ValueError(
-                'Only two-dimensional sparse arrays are supported.')
+                'Only two-dimensional sparse arrays are supported.'
+                if 1 not in self._allow_nd
+                else 'Only 1-D and 2-D sparse arrays are supported.')
         if shape is not None:
             # Catch negative dimensions before the index-bounds checks
             # below would otherwise fire with a misleading
             # "column index exceeds matrix dimensions" message.
-            shape = _util.check_shape(shape)
+            shape = _util.check_shape(shape, allow_nd=self._allow_nd)
+        # A 1-D array is stored as a (1, N) row vector (``row`` all-zeros,
+        # ``col`` the coordinate) presenting ``shape == (N,)``; see
+        # ``_as_2d``.  ``is_1d`` is reconciled from ``shape`` below.
+        is_1d = False
+        # Number of coordinate arrays supplied (tuple-of-coords form only);
+        # validated against the shape's ndim below.
+        n_coords = None
 
         if _base.issparse(arg1):
+            # A whole sparse input fixes the dimensionality; a conflicting
+            # explicit shape must not silently reinterpret it (would corrupt
+            # a 2-D input presented as 1-D, or vice versa).
+            _util.check_input_ndim(shape, arg1.ndim)
             x = arg1.asformat(self.format)
             data = x.data
             row = x.row
@@ -82,22 +95,22 @@ class _coo_base(sparse_data._data_matrix):
 
             self.has_canonical_format = x.has_canonical_format
 
-        elif _util.isshape(arg1):
+        elif _util.isshape(arg1, allow_nd=self._allow_nd):
             # ``isshape`` is a pure type-check; ``check_shape`` raises
             # ``ValueError("'shape' elements cannot be negative")`` on a
             # negative dimension to match scipy's message.
-            m, n = _util.check_shape(arg1)
+            shape = _util.check_shape(arg1, allow_nd=self._allow_nd)
             data = cupy.zeros(0, dtype if dtype else 'd')
-            idx_dtype = _sputils.get_index_dtype(maxval=max(m, n))
+            idx_dtype = _sputils.get_index_dtype(maxval=max(shape))
             row = cupy.zeros(0, dtype=idx_dtype)
             col = cupy.zeros(0, dtype=idx_dtype)
             # shape and copy argument is ignored
-            shape = (m, n)
             copy = False
 
             self.has_canonical_format = True
 
         elif _scipy_available and scipy.sparse.issparse(arg1):
+            _util.check_input_ndim(shape, arg1.ndim)
             # Convert scipy.sparse to cupyx.scipy.sparse.
             # Preserve scipy's index dtype (scipy uses
             # get_index_dtype internally).
@@ -113,32 +126,93 @@ class _coo_base(sparse_data._data_matrix):
 
         elif isinstance(arg1, tuple) and len(arg1) == 2:
             try:
-                data, (row, col) = arg1
+                data, coords = arg1
             except (TypeError, ValueError):
                 raise TypeError('invalid input format')
+            # ``coords`` is a sequence of per-dimension index arrays:
+            # ``(col,)`` (1-D) or ``(row, col)`` (2-D).  A single dense
+            # ``(ndim, nnz)`` array is also accepted -- its rows are the
+            # per-dimension coordinates -- matching scipy and the former
+            # ``data, (row, col) = arg1`` unpacking.  A bare 1-D dense
+            # array is not a valid coordinate sequence.
+            if _base.isdense(coords) and coords.ndim != 2:
+                raise TypeError('invalid input format')
+            try:
+                coords = tuple(coords)
+            except TypeError:
+                raise TypeError('invalid input format')
 
-            if not (_base.isdense(data) and data.ndim == 1 and
-                    _base.isdense(row) and row.ndim == 1 and
-                    _base.isdense(col) and col.ndim == 1):
-                raise ValueError('row, column, and data arrays must be 1-D')
-            if not (len(data) == len(row) == len(col)):
-                raise ValueError(
-                    'row, column, and data array must all be the same length')
+            n_coords = len(coords)
+            if len(coords) == 1 and 1 in self._allow_nd:
+                (col,) = coords
+                if not (_base.isdense(data) and data.ndim == 1 and
+                        _base.isdense(col) and col.ndim == 1):
+                    raise ValueError(
+                        'coordinate and data arrays must be 1-D')
+                if len(data) != len(col):
+                    raise ValueError(
+                        'coordinate and data array must all be the '
+                        'same length')
+                row = cupy.zeros_like(col)
+                is_1d = True
+            elif len(coords) == 2:
+                row, col = coords
+                if not (_base.isdense(data) and data.ndim == 1 and
+                        _base.isdense(row) and row.ndim == 1 and
+                        _base.isdense(col) and col.ndim == 1):
+                    raise ValueError(
+                        'row, column, and data arrays must be 1-D')
+                if not (len(data) == len(row) == len(col)):
+                    raise ValueError(
+                        'row, column, and data array must all be the '
+                        'same length')
+            else:
+                raise ValueError('invalid number of coordinate arrays')
 
             self.has_canonical_format = False
 
         elif _base.isdense(arg1):
             if arg1.ndim > 2:
                 raise TypeError('expected dimension <= 2 array or matrix')
-            dense = cupy.atleast_2d(arg1)
-            row, col = dense.nonzero()
-            data = dense[row, col]
-            shape = dense.shape
+            if arg1.ndim == 0 and isinstance(self, _base.sparray):
+                # scipy rejects scalar (0-D) input for sparse arrays.
+                raise TypeError(
+                    f'{type(self).__name__} does not support scalar (0-D) '
+                    'input; provide a 1-D or 2-D array')
+            if arg1.ndim >= 1:
+                # A dense input fixes the dimensionality; reject a shape of a
+                # different ndim (0-D matrix promotion is handled below).
+                _util.check_input_ndim(shape, arg1.ndim)
+            if arg1.ndim == 1 and 1 in self._allow_nd:
+                # 1-D dense input -> 1-D coo_array.
+                dense = cupy.atleast_1d(arg1)
+                col = dense.nonzero()[0]
+                data = dense[col]
+                row = cupy.zeros_like(col)
+                shape = dense.shape
+            else:
+                dense = cupy.atleast_2d(arg1)
+                row, col = dense.nonzero()
+                data = dense[row, col]
+                shape = dense.shape
 
             self.has_canonical_format = True
 
         else:
             raise TypeError('invalid input format')
+
+        # A tuple-of-coords input must supply exactly one coordinate array
+        # per dimension of the requested shape (scipy parity); otherwise the
+        # 1-D backing would silently keep a bogus ``row`` or mis-dimension.
+        if (n_coords is not None and shape is not None
+                and len(shape) != n_coords):
+            raise ValueError(
+                f'mismatching number of index arrays for shape; got '
+                f'{n_coords}, expected {len(shape)}')
+        # When the shape is known, it is authoritative for dimensionality;
+        # otherwise ``is_1d`` was set by the (data, (col,)) branch above.
+        if shape is not None:
+            is_1d = len(shape) == 1
 
         if dtype is None:
             dtype = data.dtype
@@ -169,27 +243,38 @@ class _coo_base(sparse_data._data_matrix):
                 'cannot infer dimensions from zero sized index arrays')
 
         if len(data) > 0:
-            # Fuse the four max/min reductions into one D2H read so
-            # the constructor syncs once instead of up to six times.
-            bounds = cupy.stack(
-                (row.max(), col.max(), row.min(), col.min())
-            ).get()  # synchronize!
-            rmax, cmax, rmin, cmin = (int(b) for b in bounds)
-            if shape is None:
-                shape = (rmax + 1, cmax + 1)
-            if rmax >= shape[0]:
-                raise ValueError('row index exceeds matrix dimensions')
-            if cmax >= shape[1]:
-                raise ValueError('column index exceeds matrix dimensions')
-            if rmin < 0:
-                raise ValueError('negative row index found')
-            if cmin < 0:
-                raise ValueError('negative column index found')
+            if is_1d:
+                # Only ``col`` carries information for a 1-D array.
+                bounds = cupy.stack((col.max(), col.min())).get()  # sync!
+                cmax, cmin = (int(b) for b in bounds)
+                if shape is None:
+                    shape = (cmax + 1,)
+                if cmax >= shape[0]:
+                    raise ValueError('column index exceeds matrix dimensions')
+                if cmin < 0:
+                    raise ValueError('negative column index found')
+            else:
+                # Fuse the four max/min reductions into one D2H read so
+                # the constructor syncs once instead of up to six times.
+                bounds = cupy.stack(
+                    (row.max(), col.max(), row.min(), col.min())
+                ).get()  # synchronize!
+                rmax, cmax, rmin, cmin = (int(b) for b in bounds)
+                if shape is None:
+                    shape = (rmax + 1, cmax + 1)
+                if rmax >= shape[0]:
+                    raise ValueError('row index exceeds matrix dimensions')
+                if cmax >= shape[1]:
+                    raise ValueError('column index exceeds matrix dimensions')
+                if rmin < 0:
+                    raise ValueError('negative row index found')
+                if cmin < 0:
+                    raise ValueError('negative column index found')
 
         sparse_data._data_matrix.__init__(self, data)
         self.row = row
         self.col = col
-        self._shape = _util.check_shape(shape)
+        self._shape = _util.check_shape(shape, allow_nd=self._allow_nd)
 
     @classmethod
     def _from_parts(cls, data, row, col, shape,
@@ -211,7 +296,7 @@ class _coo_base(sparse_data._data_matrix):
                 a negative dimension, or the index dtype is too
                 narrow to address ``shape``.
         """
-        shape = _util.check_shape(shape)
+        shape = _util.check_shape(shape, allow_nd=cls._allow_nd)
         if data.ndim != 1 or row.ndim != 1 or col.ndim != 1:
             raise ValueError(
                 f'data, row, and col must be 1-D, got ndim '
@@ -248,18 +333,39 @@ class _coo_base(sparse_data._data_matrix):
 
     @property
     def coords(self):
-        """Tuple of coordinate arrays ``(row, col)``.
+        """Tuple of coordinate arrays.
 
-        Mirrors :attr:`scipy.sparse.coo_array.coords` (CuPy is 2-D only).
+        For a 2-D array this is ``(row, col)``; for a 1-D array it is the
+        single coordinate ``(col,)`` (``row`` is an all-zeros backing).
+        Mirrors :attr:`scipy.sparse.coo_array.coords`.
         """
+        if self.ndim == 1:
+            return (self.col,)
         return (self.row, self.col)
 
     @coords.setter
     def coords(self, value):
-        if not isinstance(value, tuple) or len(value) != 2:
+        if not isinstance(value, tuple) or len(value) != self.ndim:
             raise ValueError(
-                'coords must be a 2-tuple of arrays for 2-D sparse')
-        self.row, self.col = value
+                f'coords must be a {self.ndim}-tuple of arrays')
+        if self.ndim == 1:
+            (self.col,) = value
+            self.row = cupy.zeros_like(self.col)
+        else:
+            self.row, self.col = value
+
+    def _as_2d(self):
+        """Return the ``(1, N)`` 2-D backing of a 1-D array (else self).
+
+        A 1-D COO array stores ``row`` as an all-zeros vector and ``col``
+        as the coordinate, so the backing is built directly from the
+        existing arrays with shape :attr:`_shape_as_2d`.
+        """
+        if self.ndim != 1:
+            return self
+        return type(self)._from_parts(
+            self.data, self.row, self.col, self._shape_as_2d,
+            has_canonical_format=self.has_canonical_format)
 
     def diagonal(self, k=0):
         """Returns the k-th diagonal of the matrix.
@@ -271,6 +377,7 @@ class _coo_base(sparse_data._data_matrix):
         Returns:
             cupy.ndarray : The k-th diagonal.
         """
+        self._require_2d('diagonal')
         rows, cols = self.shape
         if k <= -rows or k >= cols:
             return cupy.empty(0, dtype=self.data.dtype)
@@ -307,6 +414,7 @@ class _coo_base(sparse_data._data_matrix):
                 elements a[i,i+k]. Default: 0 (the main diagonal).
 
         """
+        self._require_2d('setdiag')
         M, N = self.shape
         if (k > 0 and k >= N) or (k < 0 and -k >= M):
             raise ValueError("k exceeds matrix dimensions")
@@ -380,6 +488,10 @@ class _coo_base(sparse_data._data_matrix):
         # row/col form so per-axis counts come straight from a bincount
         # on the appropriate coord array -- no format conversion needed.
         self.sum_duplicates()
+        if self.ndim == 1:
+            # The only axis collapses to a scalar count.
+            _sputils.validate_axis_1d(axis)
+            return int(cupy.count_nonzero(self.data))
         if axis is None:
             return int(cupy.count_nonzero(self.data))
         if axis < 0:
@@ -415,12 +527,16 @@ class _coo_base(sparse_data._data_matrix):
             raise RuntimeError('scipy is not available')
 
         data = self.data.get(stream)
-        row = self.row.get(stream)
-        col = self.col.get(stream)
         if isinstance(self, _base.sparray):
             sp_cls = scipy.sparse.coo_array
         else:
             sp_cls = scipy.sparse.coo_matrix
+        if self.ndim == 1:
+            # 1-D coo_array (scipy >= 1.13): single coordinate array.
+            col = self.col.get(stream)
+            return sp_cls((data, (col,)), shape=self.shape)
+        row = self.row.get(stream)
+        col = self.col.get(stream)
         return sp_cls((data, (row, col)), shape=self.shape)
 
     def reshape(self, *shape, order='C'):
@@ -440,25 +556,29 @@ class _coo_base(sparse_data._data_matrix):
 
         """
 
-        shape = _sputils.check_shape(shape, self.shape)
+        shape = _sputils.check_shape(
+            shape, self.shape, allow_nd=self._allow_nd)
 
         if shape == self.shape:
             return self
 
-        nrows, ncols = self.shape
+        # Map both source and target through their (1, N) 2-D backing so
+        # the flatten/unravel math below handles 1-D arrays uniformly.
+        nrows, ncols = self._shape_as_2d
+        tgt_nrows, tgt_ncols = (1, shape[0]) if len(shape) == 1 else shape
 
         if order == 'C':  # C to represent matrix in row major format
             dtype = _sputils.get_index_dtype(
                 maxval=(ncols * max(0, nrows - 1) + max(0, ncols - 1)))
             flat_indices = cupy.multiply(ncols, self.row,
                                          dtype=dtype) + self.col
-            new_row, new_col = divmod(flat_indices, shape[1])
+            new_row, new_col = divmod(flat_indices, tgt_ncols)
         elif order == 'F':  # column-major: flat = col * nrows + row
             dtype = _sputils.get_index_dtype(
                 maxval=(nrows * max(0, ncols - 1) + max(0, nrows - 1)))
             flat_indices = cupy.multiply(nrows, self.col,
                                          dtype=dtype) + self.row
-            new_col, new_row = divmod(flat_indices, shape[0])
+            new_col, new_row = divmod(flat_indices, tgt_nrows)
         else:
             raise ValueError("'order' must be 'C' or 'F'")
 
@@ -588,6 +708,15 @@ class _coo_base(sparse_data._data_matrix):
         .. seealso:: :meth:`scipy.sparse.coo_matrix.toarray`
 
         """
+        if self.ndim == 1:
+            # Densify through the (1, N) backing (correct duplicate and
+            # explicit-zero handling), then drop the length-1 axis.
+            dense = self._as_2d().tocsr().toarray(order=order)
+            result = dense.reshape(self.shape)
+            if out is not None:
+                _core.elementwise_copy(result, out)
+                return out
+            return result
         return self.tocsr().toarray(order=order, out=out)
 
     def tocoo(self, copy=False):
@@ -618,6 +747,10 @@ class _coo_base(sparse_data._data_matrix):
             cupyx.scipy.sparse.csc_matrix: Converted matrix.
 
         """
+        if self.ndim == 1:
+            raise ValueError(
+                'Cannot convert a 1-D sparse array to csc format')
+
         from cupyx import cusparse
 
         if self.nnz == 0:
@@ -651,6 +784,16 @@ class _coo_base(sparse_data._data_matrix):
             cupyx.scipy.sparse.csr_matrix: Converted matrix.
 
         """
+        if self.ndim == 1:
+            # Convert the (1, N) backing, then present the result as 1-D.
+            csr2d = self._as_2d().tocsr(copy=copy)
+            return self._csr_container._from_parts(
+                csr2d.data, csr2d.indices, csr2d.indptr, self.shape,
+                has_canonical_format=getattr(
+                    csr2d, '_has_canonical_format', None),
+                has_sorted_indices=getattr(
+                    csr2d, '_has_sorted_indices', None))
+
         from cupyx import cusparse
 
         if self.nnz == 0:
@@ -688,6 +831,9 @@ class _coo_base(sparse_data._data_matrix):
             raise ValueError(
                 'Sparse matrices do not support an \'axes\' parameter because '
                 'swapping dimensions is the only logical permutation.')
+        if self.ndim == 1:
+            # Transpose of a 1-D array is a no-op (matches scipy).
+            return self.copy() if copy else self
         shape = self.shape[1], self.shape[0]
         if copy:
             data = self.data.copy()
@@ -723,9 +869,16 @@ class coo_matrix(_base.spmatrix, _coo_base):
 class coo_array(_coo_base, _base.sparray):
     """COOrdinate format sparse array.
 
+    Unlike :class:`coo_matrix`, this supports 1-D shapes (``ndim == 1``)
+    in addition to 2-D, matching :class:`scipy.sparse.coo_array`.  A 1-D
+    array of length ``N`` is stored as a ``(1, N)`` row vector
+    (``row`` all-zeros, ``col`` the coordinate) and presents
+    ``shape == (N,)``; see :attr:`_spbase._shape_as_2d`.
+
     .. seealso:: :class:`scipy.sparse.coo_array`
     """
-    pass
+
+    _allow_nd = (1, 2)
 
 
 def isspmatrix_coo(x):

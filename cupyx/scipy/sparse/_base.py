@@ -45,6 +45,10 @@ class _spbase:
     # Class default since ``__init__`` chains across format subclasses
     # don't always reach ``spmatrix.__init__``.
     maxprint = 50
+    # Accepted dimensionalities (mirrors scipy's ``_allow_nd``).  All
+    # matrices and the base default are 2-D only; ``coo_array`` and
+    # ``csr_array`` override this to also accept 1-D.
+    _allow_nd: tuple[int, ...] = (2,)
 
     def __class_getitem__(cls, args):
         # ``coo_array[int]``-style typing aliases (scipy 1.16+).
@@ -245,6 +249,16 @@ class _spbase:
         s = self._shape
         return (1, s[-1]) if len(s) == 1 else s
 
+    def _require_2d(self, op):
+        """Raise ``ValueError`` if this is not a 2-D array/matrix.
+
+        Central guard for operations that are only meaningful in 2-D
+        (e.g. ``diagonal``/``setdiag``); keeps the message consistent
+        and makes it obvious which ops still assume 2-D.
+        """
+        if self.ndim != 2:
+            raise ValueError(f'{op} requires two dimensions')
+
     # Container properties: default to array types.
     # spmatrix overrides these to return matrix types.
 
@@ -395,14 +409,17 @@ class _spbase:
     def nonzero(self):
         """Indices of the non-zero elements.
 
-        Returns a tuple ``(row, col)`` of cupy.ndarrays (matching
-        :meth:`scipy.sparse._base._spbase.nonzero`).  Explicit zeros are
-        excluded.
+        Returns a tuple of cupy.ndarrays, one per dimension -- ``(row,
+        col)`` for a 2-D array/matrix or ``(col,)`` for a 1-D array --
+        matching :meth:`scipy.sparse._base._spbase.nonzero`.  Explicit
+        zeros are excluded.
         """
         A = self.tocoo()
         if not A.has_canonical_format:
             A.sum_duplicates()
         nz_mask = A.data != 0
+        if A.ndim == 1:
+            return (A.col[nz_mask],)
         return (A.row[nz_mask], A.col[nz_mask])
 
     def maximum(self, other):
@@ -502,7 +519,8 @@ class _spbase:
             cupyx.scipy.sparse.coo_matrix: sparse matrix
 
         """
-        shape = _sputils.check_shape(shape, self.shape)
+        shape = _sputils.check_shape(
+            shape, self.shape, allow_nd=self._allow_nd)
 
         if shape == self.shape:
             return self
@@ -544,6 +562,19 @@ class _spbase:
         """
         # This implementation uses multiplication, though it is not efficient
         # for some matrix types. These should override this function.
+
+        if self.ndim == 1:
+            # The only axis reduces everything to a scalar.  Summing the
+            # stored data (duplicates included) equals the dense sum
+            # because implicit zeros contribute nothing.
+            _sputils.validate_axis_1d(axis)
+            ret = self.data.sum(dtype=dtype)
+            if out is not None:
+                if out.shape != ret.shape:
+                    raise ValueError('dimensions do not match')
+                _core.elementwise_copy(ret, out)
+                return out
+            return ret
 
         m, n = self.shape
 
