@@ -7,13 +7,6 @@ from cupy_backends.cuda cimport stream as stream_module
 from cupy_backends.cuda._softlink cimport SoftLink
 
 
-cdef extern from '../../cupy_complex.h':
-    ctypedef struct cuComplex 'cuComplex':
-        float x, y
-
-    ctypedef struct cuDoubleComplex 'cuDoubleComplex':
-        double x, y
-
 cdef extern from '../../cupy_sparse.h' nogil:
     ctypedef void* Stream 'cudaStream_t'
 

@@ -1,6 +1,15 @@
 
 from libc.stdint cimport intptr_t, int64_t
 
+
+cdef extern from '../../cupy_complex.h':
+    ctypedef struct cuComplex 'cuComplex':
+        float x, y
+
+    ctypedef struct cuDoubleComplex 'cuDoubleComplex':
+        double x, y
+
+
 cdef extern from *:
     ctypedef int IndexBase 'cusparseIndexBase_t'
     ctypedef int Status 'cusparseStatus_t'
@@ -62,7 +71,7 @@ IF CUPY_CUDA_VERSION == 0:
 cdef extern from '../../cupy_sparse.h' nogil:
     """
     /* The generic SpGEAM API shipped in cuSPARSE 12.8.1 (CUDA 13.3) */
-    #if CUSPARSE_VERSION < 12801
+    #if !defined(CUSPARSE_VERSION) || CUSPARSE_VERSION < 12801
     /* SpGEAM not in this cuSPARSE; provide opaque forward decls. */
     struct cusparseSpGEAMDescr;
     typedef struct cusparseSpGEAMDescr* cusparseSpGEAMDescr_t;
