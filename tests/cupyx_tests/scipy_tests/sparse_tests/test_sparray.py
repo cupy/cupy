@@ -1528,9 +1528,9 @@ class TestPublicCtorIndptrZeroCheck:
 
 class TestComplexSignNumpy2x:
     """scipy 1.16+ uses numpy 2.x ``sign`` semantics for complex
-    (``z / abs(z)``).  ``cupy.sign`` follows the same rule but
-    returns ``nan+nanj`` for ``0+0j`` (literal ``0/0``); mask
-    explicit zeros to keep stored ``0+0j`` round-tripping cleanly.
+    (``z / abs(z)``).  ``cupy.sign`` follows the same rule and
+    returns ``0+0j`` for ``0+0j``, so a stored explicit ``0+0j``
+    round-trips cleanly through ``sign()``.
     """
 
     def test_complex_sign_unit_vector(self):
@@ -1541,7 +1541,7 @@ class TestComplexSignNumpy2x:
             b.data,
             cupy.array([1+2j]) / cupy.abs(cupy.array([1+2j])))
 
-    def test_complex_sign_zero_masked(self):
+    def test_complex_sign_zero(self):
         # Stored ``0+0j`` should round-trip to ``0+0j``, not ``nan+nanj``.
         a = sparse.csr_matrix._from_parts(
             cupy.array([0+0j, 1+1j]),
@@ -1549,7 +1549,7 @@ class TestComplexSignNumpy2x:
             cupy.array([0, 1, 2], dtype='i'),
             (2, 2))
         b = a.sign()
-        # First entry is 0+0j (masked), second is unit vector.
+        # First entry is 0+0j, second is unit vector.
         assert b.data[0] == 0+0j
         cupy.testing.assert_allclose(
             cupy.abs(b.data[1]).item(), 1.0, atol=1e-6)
