@@ -506,6 +506,7 @@ class TestBinaryErosionAndDilation:
             x = x[::-1]
         return self._filter(xp, scp, x)
 
+    @testing.with_requires('scipy>1.14')
     @testing.numpy_cupy_array_equal(scipy_name='scp')
     def test_zero_strides(self, xp, scp):
         if self.x_dtype == self.output:
