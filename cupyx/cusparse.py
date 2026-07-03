@@ -221,13 +221,7 @@ _available_cusparse_version = {
     'sparseToDense': (11300, None),
     'spgemm': (11100, None),
     'spsm': (11600, None),  # CUDA 11.3.1
-    # TODO(eriknw): cuSPARSE--update when SpGEAM ships in a public release.
-    # Present in dev, absent from all public releases through
-    # CUDA 13.2 (checked 2026-04-03).  The SpGEAM Generic API is ~2x
-    # faster than csrgeam2 Legacy for int32 and supports int64 natively.
-    # When shipped, route ALL sparse addition through spgeam() (not just
-    # int64) for the speedup.
-    'spgeam': (99000, None),
+    'spgeam': (12801, None),  # cuSPARSE 12.8.1+ (CUDA 13.3+)
     # CUSPARSE-2365 added int64 SpGEMM in CUDA 13.0, but cuSPARSE ships
     # as version 12.7.9 (12709) for both CUDA 12.7 and 13.0.  The
     # cuSPARSE version alone cannot distinguish the two, so the spgemm()
@@ -668,11 +662,9 @@ def csrgeam2(a, b, alpha=1, beta=1):
 def spgeam(a, b, alpha=1, beta=1):
     """Sparse matrix addition using the Generic API: C = alpha*A + beta*B.
 
-    Uses ``cusparseSpGEAM`` when available.  Not yet in any public CUDA
-    release as of 13.2, but present in dev and verified working
-    (~2x faster than csrgeam2 for int32, supports int64 natively).
+    Uses ``cusparseSpGEAM`` on cuSPARSE 12.8.1+ (CUDA 13.3+).
     Falls back to ``_cupy_csrgeam_int64`` for int64 or ``csrgeam2``
-    for int32.
+    for int32 when unavailable.
 
     Args:
         a (cupyx.scipy.sparse.csr_matrix): Sparse matrix A.

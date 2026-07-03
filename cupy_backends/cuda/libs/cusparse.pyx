@@ -819,8 +819,8 @@ cdef f_type cusparseSparseToDense = <f_type>_lib.get('SparseToDense')
 cdef f_type cusparseDenseToSparse_bufferSize = <f_type>_lib.get('DenseToSparse_bufferSize')  # NOQA
 cdef f_type cusparseDenseToSparse_analysis = <f_type>_lib.get('DenseToSparse_analysis')  # NOQA
 cdef f_type cusparseDenseToSparse_convert = <f_type>_lib.get('DenseToSparse_convert')  # NOQA
-# TODO(eriknw): cuSPARSE--SpGEAM not yet in any public release.
-# Loaded via SoftLink; returns NULL on builds without SpGEAM.
+# cuSPARSE 12.8.1+ (CUDA 13.3+).
+# Loaded via SoftLink so older builds can still import and fall back.
 cdef f_type cusparseSpGEAM_createDescr = <f_type>_lib.get('SpGEAM_createDescr')
 cdef f_type cusparseSpGEAM_destroyDescr = (
     <f_type>_lib.get('SpGEAM_destroyDescr'))

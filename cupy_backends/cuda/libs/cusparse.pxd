@@ -58,13 +58,14 @@ IF CUPY_CUDA_VERSION == 0:
         ctypedef void* csrsv2Info_t
         ctypedef void* csrsm2Info_t
         ctypedef void* csrgemm2Info_t
-# TODO(eriknw): cuSPARSE--remove stubs when SpGEAM ships in a public release.
-# The #ifndef guard auto-deactivates when the real header defines these.
-cdef extern from *:
+
+cdef extern from '../../cupy_sparse.h' nogil:
     """
-    #ifndef CUSPARSE_SPGEAM_ALG_DEFAULT
+    /* The generic SpGEAM API shipped in cuSPARSE 12.8.1 (CUDA 13.3) */
+    #if CUSPARSE_VERSION < 12801
     /* SpGEAM not in this cuSPARSE; provide opaque forward decls. */
-    typedef void* cusparseSpGEAMDescr_t;
+    struct cusparseSpGEAMDescr;
+    typedef struct cusparseSpGEAMDescr* cusparseSpGEAMDescr_t;
     typedef int cusparseSpGEAMAlg_t;
     #define CUSPARSE_SPGEAM_ALG_DEFAULT 0
     #define CUSPARSE_SPGEAM_ALG1 1
