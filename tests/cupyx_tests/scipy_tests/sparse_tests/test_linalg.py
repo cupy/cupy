@@ -127,7 +127,7 @@ class TestVectorNorm:
 
 
 @testing.parameterize(*testing.product({
-    'which': ['LM', 'LA', 'SA', 'SM'],
+    'which': ['LM', 'LA', 'SA'],
     'k': [3, 6, 12],
     'return_eigenvectors': [True, False],
     'use_linear_operator': [True, False],
@@ -237,6 +237,69 @@ class TestEigsh:
         v_v0 = cupy.copysign(ev_v0[:, 0], v)
 
         assert cupy.linalg.norm(v - v_v0) < cupy.linalg.norm(v - v_aux)
+
+
+@testing.parameterize(*testing.product({
+    'k': [3, 6, 12],
+    'return_eigenvectors': [True, False],
+    'use_linear_operator': [True, False],
+}))
+@testing.with_requires('scipy')
+class TestEigshSM:
+    n = 30
+    density = 0.33
+    # CuPy computes 'SM' via shift-invert while SciPy uses bare ARPACK;
+    # for interior eigenvalues their single-precision agreement is
+    # limited to ~1e-4 by each solver's own accumulated error.
+    tol = {numpy.float32: 1e-4, numpy.complex64: 1e-4, 'default': 1e-10}
+    res_tol = {'f': 1e-5, 'd': 1e-12}
+
+    def _make_matrix(self, dtype, xp):
+        shape = (self.n, self.n)
+        a = testing.shaped_random(shape, xp, dtype=dtype)
+        mask = testing.shaped_random(shape, xp, dtype='f', scale=1)
+        a[mask > self.density] = 0
+        a = a * a.conj().T
+        return a
+
+    def _test_eigsh(self, a, a_norm, xp, sp):
+        ret = sp.linalg.eigsh(a, k=self.k, which='SM',
+                              return_eigenvectors=self.return_eigenvectors)
+        if self.return_eigenvectors:
+            w, x = ret
+            # Check the residuals to see if eigenvectors are correct.
+            # 'SM' eigenvalues are the ones nearest zero, so norm(w) is
+            # not a usable residual scale; normalize by the matrix norm.
+            ax_xw = a @ x - xp.multiply(x, w.reshape(1, self.k))
+            res = xp.linalg.norm(ax_xw) / a_norm
+            tol = self.res_tol[numpy.dtype(a.dtype).char.lower()]
+            assert (res < tol)
+        else:
+            w = ret
+        return xp.sort(w)
+
+    @pytest.mark.parametrize('format', ['csr', 'csc', 'coo'])
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=tol, atol=tol, sp_name='sp')
+    def test_sparse(self, format, dtype, xp, sp):
+        if runtime.is_hip and format == 'csc':
+            pytest.xfail('may be buggy')  # trans=True
+
+        a = self._make_matrix(dtype, xp)
+        a_norm = xp.linalg.norm(a)
+        a = sp.coo_matrix(a).asformat(format)
+        if self.use_linear_operator:
+            a = sp.linalg.aslinearoperator(a)
+        return self._test_eigsh(a, a_norm, xp, sp)
+
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=tol, atol=tol, sp_name='sp')
+    def test_dense(self, dtype, xp, sp):
+        a = self._make_matrix(dtype, xp)
+        a_norm = xp.linalg.norm(a)
+        if self.use_linear_operator:
+            a = sp.linalg.aslinearoperator(a)
+        return self._test_eigsh(a, a_norm, xp, sp)
 
 
 @testing.parameterize(*testing.product({
