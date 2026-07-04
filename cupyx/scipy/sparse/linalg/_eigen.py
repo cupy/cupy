@@ -386,12 +386,10 @@ def _eigsh_solve_ritz(alpha, beta, beta_k, k, which):
         idx = numpy.argsort(numpy.absolute(w))
         wk = w[idx[-k:]]
         sk = s[:, idx[-k:]]
-
     elif which == 'SA':
         idx = numpy.argsort(w)
         wk = w[idx[:k]]
         sk = s[:, idx[:k]]
-
     return cupy.array(wk), cupy.array(sk)
 
 

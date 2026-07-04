@@ -248,9 +248,6 @@ class TestEigsh:
 class TestEigshSM:
     n = 30
     density = 0.33
-    # CuPy computes 'SM' via shift-invert while SciPy uses bare ARPACK;
-    # for interior eigenvalues their single-precision agreement is
-    # limited to ~1e-4 by each solver's own accumulated error.
     tol = {numpy.float32: 1e-4, numpy.complex64: 1e-4, 'default': 1e-10}
     res_tol = {'f': 1e-5, 'd': 1e-12}
 
@@ -267,7 +264,6 @@ class TestEigshSM:
                               return_eigenvectors=self.return_eigenvectors)
         if self.return_eigenvectors:
             w, x = ret
-            # Check the residuals to see if eigenvectors are correct.
             # 'SM' eigenvalues are the ones nearest zero, so norm(w) is
             # not a usable residual scale; normalize by the matrix norm.
             ax_xw = a @ x - xp.multiply(x, w.reshape(1, self.k))
