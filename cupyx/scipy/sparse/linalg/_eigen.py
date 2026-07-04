@@ -41,13 +41,14 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
         tol (float): Tolerance for residuals ``||Ax - wx||``. If ``0``, machine
             precision is used.
         sigma (float or complex): If not ``None``, find eigenvalues near
-            ``sigma`` using shift-invert mode: the Lanczos iteration is run on
-            ``(A - sigma * I)^{-1}`` and the resulting values are mapped back by
+            ``sigma`` using shift-invert mode: the Lanczos iteration is run
+            on ``(A - sigma * I)^{-1}`` and the values are mapped back by
             ``w = sigma + 1 / w_inv``. ``A`` must then be sparse (so that
-            ``A - sigma * I`` can be factorized) unless ``OPinv`` is supplied.
-        OPinv (LinearOperator): Operator applying ``(A - sigma * I)^{-1}``, used
-            in shift-invert mode instead of factorizing ``A - sigma * I``.
-            Required when ``sigma`` is given and ``A`` is not sparse.
+            ``A - sigma * I`` can be factorized) unless ``OPinv`` is given.
+        OPinv (LinearOperator): Operator applying ``(A - sigma * I)^{-1}``,
+            used in shift-invert mode instead of factorizing
+            ``A - sigma * I``. Required when ``sigma`` is given and ``A`` is
+            not sparse.
         return_eigenvectors (bool): If ``True``, returns eigenvectors in
             addition to eigenvalues.
 
@@ -69,15 +70,16 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
         raise ValueError('expected square matrix (shape: {})'.format(a.shape))
 
     if sigma is not None:
-        # Shift-invert mode. Run the (unshifted) Lanczos iteration on the operator
-        # OPinv = (A - sigma * I)^{-1}: the eigenvalues of A nearest sigma become the
-        # largest-magnitude eigenvalues of OPinv, so they are well separated and are
-        # recovered as the 'LM' eigenpairs; the eigenvectors are shared, and the
-        # eigenvalues map back by w = sigma + 1 / w_inv. This mirrors
+        # Shift-invert mode. Run the Lanczos iteration on the operator
+        # OPinv = (A - sigma * I)^{-1}: the eigenvalues of A nearest sigma
+        # become the largest-magnitude eigenvalues of OPinv, so they are well
+        # separated and recovered as the 'LM' eigenpairs; eigenvectors are
+        # shared and eigenvalues map back by w = sigma + 1 / w_inv. Mirrors
         # scipy.sparse.linalg.eigsh's sigma (shift-invert) mode for the common
         # "eigenvalues near sigma" case. 'which' selection among the near-sigma
         # values is not yet mirrored (they are returned sorted ascending).
-        from cupyx.scipy.sparse import identity as _identity, issparse as _issparse
+        from cupyx.scipy.sparse import identity as _identity
+        from cupyx.scipy.sparse import issparse as _issparse
         from cupyx.scipy.sparse.linalg._solve import splu as _splu
         from cupyx.scipy.sparse.linalg._interface import LinearOperator as _LO
         if OPinv is None:
@@ -85,8 +87,8 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
                 raise TypeError(
                     "sigma in shift-invert mode requires a sparse 'a' (to "
                     "factorize A - sigma*I) or an explicit OPinv operator")
-            shifted = (a - sigma * _identity(n, dtype=a.dtype, format='csc')).tocsc()
-            lu = _splu(shifted)
+            shifted = a - sigma * _identity(n, dtype=a.dtype, format='csc')
+            lu = _splu(shifted.tocsc())
             OPinv = _LO((n, n), matvec=lu.solve, dtype=a.dtype)
         elif not isinstance(OPinv, _LO):
             OPinv = _interface.aslinearoperator(OPinv)
