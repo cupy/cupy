@@ -264,8 +264,8 @@ class TestEigshSM:
                               return_eigenvectors=self.return_eigenvectors)
         if self.return_eigenvectors:
             w, x = ret
-            # 'SM' eigenvalues are the ones nearest zero, so norm(w) is
-            # not a usable residual scale; normalize by the matrix norm.
+            # Check the residuals to see if eigenvectors are correct.
+            # Use norm(a) as the scale since norm(w) is ~0 for 'SM'.
             ax_xw = a @ x - xp.multiply(x, w.reshape(1, self.k))
             res = xp.linalg.norm(ax_xw) / a_norm
             tol = self.res_tol[numpy.dtype(a.dtype).char.lower()]
@@ -296,6 +296,70 @@ class TestEigshSM:
         if self.use_linear_operator:
             a = sp.linalg.aslinearoperator(a)
         return self._test_eigsh(a, a_norm, xp, sp)
+
+
+@testing.parameterize(*testing.product({
+    'which': ['LM', 'LA', 'SA'],
+    'k': [3, 6],
+    'return_eigenvectors': [True, False],
+    'format': ['dense', 'csr'],
+}))
+@testing.with_requires('scipy')
+class TestEigshSigma:
+    n = 30
+    density = 0.33
+    sigma = 0.5
+    tol = {numpy.float32: 1e-4, numpy.complex64: 1e-4, 'default': 1e-10}
+    res_tol = {'f': 1e-5, 'd': 1e-12}
+
+    def _make_matrix(self, dtype, xp):
+        shape = (self.n, self.n)
+        a = testing.shaped_random(shape, xp, dtype=dtype)
+        mask = testing.shaped_random(shape, xp, dtype='f', scale=1)
+        a[mask > self.density] = 0
+        a = a * a.conj().T
+        return a
+
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=tol, atol=tol, sp_name='sp')
+    def test_sigma(self, dtype, xp, sp):
+        a = self._make_matrix(dtype, xp)
+        a_norm = xp.linalg.norm(a)
+        if self.format == 'csr':
+            a = sp.csr_matrix(a)
+        ret = sp.linalg.eigsh(a, k=self.k, sigma=self.sigma,
+                              which=self.which,
+                              return_eigenvectors=self.return_eigenvectors)
+        if self.return_eigenvectors:
+            w, x = ret
+            # Check the residuals to see if eigenvectors are correct.
+            ax_xw = a @ x - xp.multiply(x, w.reshape(1, self.k))
+            res = xp.linalg.norm(ax_xw) / a_norm
+            tol = self.res_tol[numpy.dtype(a.dtype).char.lower()]
+            assert (res < tol)
+        else:
+            w = ret
+        if numpy.dtype(dtype).kind == 'c':
+            # scipy returns complex results in inconsistent order
+            w = xp.sort(w)
+        return w
+
+
+@testing.with_requires('scipy')
+class TestEigshShiftInvertInvalid:
+    n = 30
+
+    def test_sigma_with_sm(self):
+        a = cupy.diag(cupy.ones((self.n,), dtype='f'))
+        with pytest.raises(ValueError):
+            sparse.linalg.eigsh(a, k=3, which='SM', sigma=1.0)
+
+    def test_linear_operator(self):
+        a = cupy.diag(cupy.ones((self.n,), dtype='f'))
+        op = sparse.linalg.LinearOperator(
+            (self.n, self.n), matvec=lambda x: a @ x, dtype=a.dtype)
+        with pytest.raises(TypeError):
+            sparse.linalg.eigsh(op, k=3, which='SM')
 
 
 @testing.parameterize(*testing.product({
@@ -378,6 +442,8 @@ class TestSvds:
             sp.linalg.svds(xp.ones((2, 2), dtype='i'))
         with pytest.raises(ValueError):
             sp.linalg.svds(a, k=min(self.shape))
+        with pytest.raises(ValueError):
+            sp.linalg.svds(a, k=self.k, which='SM')
 
 
 @testing.parameterize(*testing.product({
