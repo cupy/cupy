@@ -12,7 +12,7 @@ from cupyx.scipy.sparse.linalg import _interface
 
 
 def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
-          tol=0, return_eigenvectors=True):
+          tol=0, sigma=None, OPinv=None, return_eigenvectors=True):
     """
     Find ``k`` eigenvalues and eigenvectors of the real symmetric square
     matrix or complex Hermitian matrix ``A``.
@@ -40,6 +40,14 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
             If ``None``, default value is used.
         tol (float): Tolerance for residuals ``||Ax - wx||``. If ``0``, machine
             precision is used.
+        sigma (float or complex): If not ``None``, find eigenvalues near
+            ``sigma`` using shift-invert mode: the Lanczos iteration is run on
+            ``(A - sigma * I)^{-1}`` and the resulting values are mapped back by
+            ``w = sigma + 1 / w_inv``. ``A`` must then be sparse (so that
+            ``A - sigma * I`` can be factorized) unless ``OPinv`` is supplied.
+        OPinv (LinearOperator): Operator applying ``(A - sigma * I)^{-1}``, used
+            in shift-invert mode instead of factorizing ``A - sigma * I``.
+            Required when ``sigma`` is given and ``A`` is not sparse.
         return_eigenvectors (bool): If ``True``, returns eigenvectors in
             addition to eigenvalues.
 
@@ -59,6 +67,39 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
     n = a.shape[0]
     if a.ndim != 2 or a.shape[0] != a.shape[1]:
         raise ValueError('expected square matrix (shape: {})'.format(a.shape))
+
+    if sigma is not None:
+        # Shift-invert mode. Run the (unshifted) Lanczos iteration on the operator
+        # OPinv = (A - sigma * I)^{-1}: the eigenvalues of A nearest sigma become the
+        # largest-magnitude eigenvalues of OPinv, so they are well separated and are
+        # recovered as the 'LM' eigenpairs; the eigenvectors are shared, and the
+        # eigenvalues map back by w = sigma + 1 / w_inv. This mirrors
+        # scipy.sparse.linalg.eigsh's sigma (shift-invert) mode for the common
+        # "eigenvalues near sigma" case. 'which' selection among the near-sigma
+        # values is not yet mirrored (they are returned sorted ascending).
+        from cupyx.scipy.sparse import identity as _identity, issparse as _issparse
+        from cupyx.scipy.sparse.linalg._solve import splu as _splu
+        from cupyx.scipy.sparse.linalg._interface import LinearOperator as _LO
+        if OPinv is None:
+            if not _issparse(a):
+                raise TypeError(
+                    "sigma in shift-invert mode requires a sparse 'a' (to "
+                    "factorize A - sigma*I) or an explicit OPinv operator")
+            shifted = (a - sigma * _identity(n, dtype=a.dtype, format='csc')).tocsc()
+            lu = _splu(shifted)
+            OPinv = _LO((n, n), matvec=lu.solve, dtype=a.dtype)
+        elif not isinstance(OPinv, _LO):
+            OPinv = _interface.aslinearoperator(OPinv)
+        ret = eigsh(OPinv, k=k, which='LM', v0=v0, ncv=ncv, maxiter=maxiter,
+                    tol=tol, return_eigenvectors=return_eigenvectors)
+        w_inv, x = ret if return_eigenvectors else (ret, None)
+        w = (sigma + 1.0 / w_inv).real.astype(a.dtype.char.lower())
+        order = cupy.argsort(w)
+        w = w[order]
+        if return_eigenvectors:
+            return w, x[:, order]
+        return w
+
     if a.dtype.char not in 'fdFD':
         raise TypeError('unsupprted dtype (actual: {})'.format(a.dtype))
     if k <= 0:

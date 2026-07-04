@@ -198,6 +198,28 @@ class TestEigsh:
             a = sp.linalg.aslinearoperator(a)
         return self._test_eigsh(a, xp, sp)
 
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=tol, atol=tol, sp_name='sp')
+    def test_shift_invert(self, dtype, xp, sp):
+        # shift-invert mode mirrors scipy for the 'eigenvalues nearest sigma'
+        # ('LM' on the inverted operator) case only.
+        if self.use_linear_operator or self.which != 'LM':
+            pytest.skip()
+        a = self._make_matrix(dtype, xp)          # PSD Hermitian
+        a = sp.csr_matrix(a)
+        # sigma = -1 keeps A - sigma*I = A + I positive definite (invertible);
+        # 'LM' then returns the k eigenvalues nearest sigma.
+        ret = sp.linalg.eigsh(a, k=self.k, sigma=-1.0, which='LM',
+                              return_eigenvectors=self.return_eigenvectors)
+        if self.return_eigenvectors:
+            w, x = ret
+            ax_xw = a @ x - xp.multiply(x, w.reshape(1, self.k))
+            res = xp.linalg.norm(ax_xw) / xp.linalg.norm(w)
+            assert res < self.res_tol[numpy.dtype(a.dtype).char.lower()]
+        else:
+            w = ret
+        return xp.sort(w)
+
     def test_invalid(self):
         if self.use_linear_operator is True:
             pytest.skip()
