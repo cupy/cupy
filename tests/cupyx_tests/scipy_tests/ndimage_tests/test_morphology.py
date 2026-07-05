@@ -877,3 +877,17 @@ class TestGreyMorphologyAxes:
     def test_grey_morphology_axes(self, xp, scp):
         x = testing.shaped_random(self.shape, xp, self.x_dtype)
         return self._filter(xp, scp, x)
+
+
+class TestGreyMorphologyRegression:
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_white_tophat_structure_only(self, xp, scp):
+        x = xp.array([[True, False, False],
+                      [False, True, False],
+                      [False, False, True]], dtype=bool)
+        structure = xp.array([[True, True, True],
+                              [True, True, True],
+                              [True, True, True]], dtype=bool)
+        return scp.ndimage.white_tophat(x, structure=structure)
+
