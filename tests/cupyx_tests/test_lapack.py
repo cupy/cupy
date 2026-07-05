@@ -7,7 +7,6 @@ import pytest
 
 import cupy
 from cupy import testing
-import cupyx
 from cupyx import cusolver, lapack
 
 
@@ -156,12 +155,13 @@ class TestPosv(unittest.TestCase):
         return a
 
 
-# TODO: cusolver does not support nrhs > 1 for potrsBatched
 @testing.parameterize(*testing.product({
     'shape': [(2, 3, 3)],
-    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
+    'dtype': [numpy.float32, numpy.float64,
+              numpy.complex64, numpy.complex128],
 }))
-class TestXFailBatchedPosv(unittest.TestCase):
+class TestBatchedPosvNrhsGt1(unittest.TestCase):
+    """Batched cupyx.lapack.posv with nrhs > 1."""
 
     def test_posv(self):
         if not cusolver.check_availability('potrsBatched'):
@@ -171,9 +171,16 @@ class TestXFailBatchedPosv(unittest.TestCase):
         identity_matrix = cupy.eye(n, dtype=a.dtype)
         b = cupy.empty(a.shape, a.dtype)
         b[...] = identity_matrix
-        with cupyx.errstate(linalg='ignore'):
-            with pytest.raises(cupy.cuda.cusolver.CUSOLVERError):
-                lapack.posv(a, b)
+        # Solve A @ X = I per batch element; X should be A^-1.
+        x = lapack.posv(a, b)
+        # Verify A @ X == I within tolerance. Use a moderately loose
+        # tolerance because the matrices are small (3x3) and the
+        # condition number, while bounded by the diagonal-shift in
+        # _create_posdef_matrix, is not specifically controlled.
+        reconstructed = a @ x
+        atol = 1e-4 if self.dtype in (numpy.float32,
+                                      numpy.complex64) else 1e-10
+        testing.assert_allclose(reconstructed, b, atol=atol)
 
     def _create_posdef_matrix(self, xp, shape, dtype):
         n = shape[-1]
