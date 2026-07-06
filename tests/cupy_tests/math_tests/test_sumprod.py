@@ -207,9 +207,12 @@ class TestSumprod:
         return a.prod(dtype=dst_dtype)
 
 
-# This class compares CUB results against NumPy's
+# This class compares CUB results against NumPy's.
+# Shapes keep both the first and last axis >= 128 so that the contiguous
+# reduction (last axis for C-order, first axis for F-order) stays on the
+# CUB block-reduction path instead of the short-axis fallback.
 @pytest.mark.parametrize(
-    "shape", [(10,), (10, 20), (10, 20, 30), (10, 20, 30, 40)]
+    "shape", [(128,), (128, 128), (128, 2, 128), (128, 2, 2, 128)]
 )
 @pytest.mark.parametrize(
     "order", ['C', 'F'],

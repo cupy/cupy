@@ -258,6 +258,8 @@ def device_segmented_reduce(_ndarray_base x, op, tuple reduce_axis,
     # get workspace size and then fire up
     ws_size = cub_device_segmented_reduce_get_workspace_size(
         x_ptr, y_ptr, n_segments, contiguous_size, s, op, dtype_id)
+    # When `ws_size` is 1 we don't need a scratch space, but passing NULL would
+    # discover the number of bytes needed...
     ws = memory.alloc(ws_size)
     ws_ptr = <void*>ws.ptr
     op_code = <int>op

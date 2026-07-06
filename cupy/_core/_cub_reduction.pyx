@@ -626,6 +626,12 @@ cdef bint _try_to_call_cub_reduction(
 
     axis_permutes, contiguous_size, full_reduction = can_use_cub
 
+    # For reductions the CUB block kernel launches one block
+    # per segment with very little work each, which is slower than the
+    # generic reduction kernel so use the naive kernel instead.
+    if contiguous_size < 128:
+        return False
+
     in_shape = _reduction._set_permuted_args(
         in_args, axis_permutes, a_shape, self.in_params)
 

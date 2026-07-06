@@ -138,7 +138,7 @@ class TestSimpleCubReductionKernelMisc(CubReductionTestBase):
         old_routine_accelerators = _accelerator.get_routine_accelerators()
         _accelerator.set_routine_accelerators([])
 
-        a = cupy.random.random((10, 10))
+        a = cupy.random.random((10, 128))
         # this is the only function we can mock; the rest is cdef'd
         func_name = ''.join(('cupy._core._cub_reduction.',
                              '_SimpleCubReductionKernel_get_cached_function'))
