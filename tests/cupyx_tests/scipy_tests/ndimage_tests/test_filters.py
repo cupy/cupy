@@ -1062,4 +1062,3 @@ class TestSequenceModeRegression:
     def test_prewitt_sequence_mode(self, xp, scp):
         arr = xp.asarray([[1., 0., 0], [1, 1, 0], [0, 0, 0]])
         return scp.ndimage.prewitt(arr, mode=['reflect', 'reflect'])
-

@@ -890,4 +890,3 @@ class TestGreyMorphologyRegression:
                               [True, True, True],
                               [True, True, True]], dtype=bool)
         return scp.ndimage.white_tophat(x, structure=structure)
-
