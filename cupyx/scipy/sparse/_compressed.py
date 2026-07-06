@@ -1258,11 +1258,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         # CSR's _swap is identity; CSC's swaps row/col.
         major_axis, _ = self._swap(axis, 1 - axis)
         major_dim, minor_dim = self._swap(*self.shape)
-        # ``cupy.bincount`` rejects empty input even with ``minlength``;
-        # short-circuit when nothing is stored.
-        if self.data.size == 0:
-            out_dim = minor_dim if major_axis == 0 else major_dim
-            return cupy.zeros(out_dim, dtype=cupy.intp)
         mask = self.data != 0
         # mask.sum() == size captures both "all non-zero" and the nnz of
         # the kept set in one D2H read.

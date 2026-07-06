@@ -385,15 +385,11 @@ class _coo_base(sparse_data._data_matrix):
             axis += 2
         if axis < 0 or axis >= 2:
             raise ValueError('axis out of bounds')
-        # ``cupy.bincount`` errors on empty input even with ``minlength``
-        # (CUB max-reduction has no identity for zero-size arrays), so
-        # short-circuit when nothing is stored or every entry is an
-        # explicit zero.  scipy returns the zero-filled axis vector.
         out_dim = self.shape[1 - axis]
-        if self.data.size == 0:
-            return cupy.zeros(out_dim, dtype=cupy.intp)
         mask = self.data != 0
         coord = (self.col if axis == 0 else self.row)[mask]
+        # Nothing left to count (empty matrix or all explicit zeros):
+        # scipy returns the zero-filled axis vector.
         if coord.size == 0:
             return cupy.zeros(out_dim, dtype=cupy.intp)
         return cupy.bincount(
