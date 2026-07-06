@@ -13,6 +13,8 @@ import cupy.cuda.cutensor
 from cupy._core import _cub_reduction
 from cupy import testing
 from cupy.exceptions import AxisError
+from cupy_tests.core_tests.test_cub_reduction import (
+    expected_cub_block_kernel_calls)
 
 
 class TestSumprod:
@@ -265,10 +267,7 @@ class TestCubReduction:
             func_name = 'cupy._core._cub_reduction.'
             func_name += '_SimpleCubReductionKernel_get_cached_function'
             func = _cub_reduction._SimpleCubReductionKernel_get_cached_function
-            if len(axis) == len(shape):
-                times_called = 2  # two passes
-            else:
-                times_called = 1  # one pass
+            times_called = expected_cub_block_kernel_calls(a.shape, axis)
             with testing.AssertFunctionIsCalled(
                     func_name, wraps=func, times_called=times_called):
                 a.sum(axis=axis)
@@ -290,9 +289,17 @@ class TestCubReduction:
     @testing.for_contiguous_axes()
     # prod supports less dtypes; don't test float16 as it's not as accurate?
     @testing.for_dtypes('qQfdFD')
-    @testing.numpy_cupy_allclose(rtol=1E-5)
+    @testing.numpy_cupy_allclose(
+        rtol={'default': 1E-5, numpy.complex64: 3E-5})
     def test_cub_prod(self, xp, dtype, axis, shape, order, backend):
-        a = testing.shaped_random(shape, xp, dtype)
+        if numpy.dtype(dtype).kind == 'c':
+            # Keep the CUB backend route test away from overflow/invalid
+            # regions, where a different reduction tree can legitimately
+            # produce Inf before NumPy's order produces NaN.
+            a = testing.shaped_random(shape, xp, dtype, scale=0.0001)
+            a = a + xp.asarray(1, dtype=dtype)
+        else:
+            a = testing.shaped_random(shape, xp, dtype)
         if order in ('c', 'C'):
             a = xp.ascontiguousarray(a)
         elif order in ('f', 'F'):
@@ -316,10 +323,7 @@ class TestCubReduction:
             func_name = 'cupy._core._cub_reduction.'
             func_name += '_SimpleCubReductionKernel_get_cached_function'
             func = _cub_reduction._SimpleCubReductionKernel_get_cached_function
-            if len(axis) == len(shape):
-                times_called = 2  # two passes
-            else:
-                times_called = 1  # one pass
+            times_called = expected_cub_block_kernel_calls(a.shape, axis)
             with testing.AssertFunctionIsCalled(
                     func_name, wraps=func, times_called=times_called):
                 a.prod(axis=axis)

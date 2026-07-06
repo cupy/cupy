@@ -9,6 +9,8 @@ import cupy
 import cupy._core._accelerator as _acc
 from cupy._core import _cub_reduction
 from cupy import testing
+from cupy_tests.core_tests.test_cub_reduction import (
+    expected_cub_block_kernel_calls)
 
 
 @pytest.mark.parametrize("order", ['C', 'F'])
@@ -389,10 +391,7 @@ class TestCubReduction:
             func_name = 'cupy._core._cub_reduction.'
             func_name += '_SimpleCubReductionKernel_get_cached_function'
             func = _cub_reduction._SimpleCubReductionKernel_get_cached_function
-            if len(axis) == len(shape):
-                times_called = 2  # two passes
-            else:
-                times_called = 1  # one pass
+            times_called = expected_cub_block_kernel_calls(a.shape, axis)
             if a.size == 0:
                 times_called = 0  # _reduction.pyx has an early return path
             with testing.AssertFunctionIsCalled(
@@ -436,10 +435,7 @@ class TestCubReduction:
             func_name = 'cupy._core._cub_reduction.'
             func_name += '_SimpleCubReductionKernel_get_cached_function'
             func = _cub_reduction._SimpleCubReductionKernel_get_cached_function
-            if len(axis) == len(shape):
-                times_called = 2  # two passes
-            else:
-                times_called = 1  # one pass
+            times_called = expected_cub_block_kernel_calls(a.shape, axis)
             if a.size == 0:
                 times_called = 0  # _reduction.pyx has an early return path
             with testing.AssertFunctionIsCalled(
