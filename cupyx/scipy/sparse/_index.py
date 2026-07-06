@@ -506,31 +506,11 @@ class IndexMixin:
         """
         try:
             x = cupy.asarray(idx, dtype=self.indices.dtype)
-        except (ValueError, TypeError, MemoryError, OverflowError):
-            # ``OverflowError`` covers Python ints that don't fit in
-            # ``self.indices.dtype`` (e.g. ``A[[2**32]]`` on int32
-            # CSR).  Match scipy by surfacing IndexError.
+        except (ValueError, TypeError, MemoryError):
             raise IndexError('invalid index')
 
         if x.ndim not in (1, 2):
             raise IndexError('Index dimension must be <= 2')
-
-        # Reject out-of-bounds before the modulo wrap (matches scipy).
-        # Stack max+min into one transfer to keep this a single D2H.
-        # synchronize!
-        if x.size:
-            bounds = cupy.stack((x.max(), x.min())).get()
-            xmax = int(bounds[0])
-            xmin = int(bounds[1])
-            if xmax >= length or xmin < -length:
-                bad = xmax if xmax >= length else xmin
-                raise IndexError(
-                    f'index ({bad}) out of range for axis with size '
-                    f'{length}')
-            if xmin >= 0:
-                # All non-negative indices already in range -- skip the
-                # modulo kernel launch.
-                return x
 
         return x % length
 
