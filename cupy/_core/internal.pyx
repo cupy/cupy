@@ -317,6 +317,20 @@ cdef inline int _normalize_order(order, cpp_bool allow_k=True) except? 0:
     return order_char
 
 
+cdef inline _normalize_copy(copy):
+    # Validate the ``copy`` keyword for reshape/array-like APIs and return it
+    # as a plain tri-state: ``None`` (copy only if needed), ``True`` (always
+    # copy) or ``False`` (never copy). Strings are rejected explicitly so a
+    # stray ``copy='K'`` cannot be silently treated as truthy.
+    if isinstance(copy, str):
+        raise ValueError(
+            "strings are not allowed for 'copy' keyword. "
+            "Use True/False/None instead.")
+    if copy is None:
+        return None
+    return bool(copy)
+
+
 cdef _broadcast_core(list arrays, shape_t& shape):
     cdef Py_ssize_t i, j, s, a_ndim, a_sh, nd
     cdef strides_t strides

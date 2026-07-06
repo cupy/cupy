@@ -44,6 +44,8 @@ cpdef size_t clp2(size_t x) noexcept
 
 cdef int _normalize_order(order, cpp_bool allow_k=*) except? 0
 
+cdef _normalize_copy(copy)
+
 cdef _broadcast_core(list arrays, shape_t& shape)
 
 cpdef bint _contig_axes(tuple axes) except -1

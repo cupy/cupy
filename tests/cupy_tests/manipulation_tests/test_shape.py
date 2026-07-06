@@ -116,84 +116,68 @@ class TestReshape:
         a = xp.zeros((8,), dtype=xp.float32)
         return xp.reshape(a, (1, 1, 1, 4, 1, 2), order=order)
 
+    # ``external`` toggles between the bound (``a.reshape``) and functional
+    # (``xp.reshape(a, ...)``) call forms, which share a code path, so the
+    # copy behaviour is exercised once and parametrized rather than duplicated.
     @testing.with_requires('numpy>=2.1')
+    @pytest.mark.parametrize('external', [False, True])
     @pytest.mark.parametrize('copy', [None, True, False])
     @testing.for_orders('CFA')
     @testing.numpy_cupy_array_equal(
         accept_error=ValueError, strides_check=True)
-    def test_reshape_with_copy(self, xp, order, copy):
+    def test_reshape_with_copy(self, xp, order, copy, external):
         a = testing.shaped_arange((2, 3, 4), xp)
-        return a.reshape(3, -1, order=order, copy=copy)
+        if external:
+            return xp.reshape(a, (3, -1), order=order, copy=copy)
+        return a.reshape((3, -1), order=order, copy=copy)
 
-    @testing.with_requires('numpy>=2.1')
-    @pytest.mark.parametrize('copy', [None, True, False])
-    @testing.for_orders('CFA')
-    @testing.numpy_cupy_array_equal(
-        accept_error=ValueError, strides_check=True)
-    def test_external_reshape_with_copy(self, xp, order, copy):
-        a = testing.shaped_arange((2, 3, 4), xp)
-        return xp.reshape(a, (3, -1), order=order, copy=copy)
-
-    def test_reshape_copy_true_does_not_share_memory(self):
+    @pytest.mark.parametrize('external', [False, True])
+    def test_reshape_copy_true_forces_copy(self, external):
         a = testing.shaped_arange((2, 3, 4), cupy)
-        b = a.reshape(3, -1, copy=True)
-
+        b = (cupy.reshape(a, (3, -1), copy=True) if external
+             else a.reshape((3, -1), copy=True))
         assert not cupy.shares_memory(a, b)
         testing.assert_array_equal(b, a.reshape(3, -1))
 
-    def test_external_reshape_copy_true_does_not_share_memory(self):
+    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize('external', [False, True])
+    def test_reshape_copy_false_shares_memory(self, external, order):
         a = testing.shaped_arange((2, 3, 4), cupy)
-        b = cupy.reshape(a, (3, -1), copy=True)
-
-        assert not cupy.shares_memory(a, b)
-        testing.assert_array_equal(b, cupy.reshape(a, (3, -1)))
-
-    def test_reshape_copy_false_shares_memory(self):
-        a = testing.shaped_arange((2, 3, 4), cupy)
-        b = a.reshape(3, -1, copy=False)
-
+        if order == 'F':
+            a = cupy.asfortranarray(a)
+        b = (cupy.reshape(a, (3, -1), order=order, copy=False) if external
+             else a.reshape((3, -1), order=order, copy=False))
         assert cupy.shares_memory(a, b)
-        testing.assert_array_equal(b, a.reshape(3, -1))
+        if order == 'F':
+            assert b.flags.f_contiguous
+        testing.assert_array_equal(b, a.reshape(3, -1, order=order))
 
-    def test_reshape_copy_false_fortran_order_shares_memory(self):
-        a = cupy.asfortranarray(testing.shaped_arange((2, 3, 4), cupy))
-        b = a.reshape(3, -1, order='F', copy=False)
-
-        assert cupy.shares_memory(a, b)
-        assert b.flags.f_contiguous
-        testing.assert_array_equal(b, a.reshape(3, -1, order='F'))
-
-    def test_reshape_copy_false_noncontiguous_raises(self):
+    @pytest.mark.parametrize('external', [False, True])
+    def test_reshape_copy_false_noncontiguous_raises(self, external):
         a = testing.shaped_arange((2, 3, 4), cupy).transpose(2, 0, 1)
         with pytest.raises(
                 ValueError, match=r'Unable to avoid copy while reshaping\.'):
-            a.reshape(2, 3, 4, copy=False)
+            if external:
+                cupy.reshape(a, (2, 3, 4), copy=False)
+            else:
+                a.reshape((2, 3, 4), copy=False)
 
-    def test_external_reshape_copy_false_noncontiguous_raises(self):
-        a = testing.shaped_arange((2, 3, 4), cupy).transpose(2, 0, 1)
-        with pytest.raises(
-                ValueError, match=r'Unable to avoid copy while reshaping\.'):
-            cupy.reshape(a, (2, 3, 4), copy=False)
+    @pytest.mark.parametrize('shape', [(0,), (1,)])
+    def test_reshape_copy_false_zero_size_and_scalar(self, shape):
+        a = cupy.zeros((0,)) if shape == (0,) else cupy.array(1)
+        b = a.reshape(shape, copy=False)
+        assert b.base is a
+        testing.assert_array_equal(b, a.reshape(shape))
 
-    def test_reshape_copy_false_zero_size_and_scalar(self):
-        arrays_and_shapes = [
-            (cupy.zeros((0,)), (0,)),
-            (cupy.array(1), (1,)),
-        ]
-
-        for a, shape in arrays_and_shapes:
-            b = a.reshape(shape, copy=False)
-            assert b.base is a
-            testing.assert_array_equal(b, a.reshape(shape))
-
-    def test_reshape_invalid_copy(self):
+    @pytest.mark.parametrize('external', [False, True])
+    def test_reshape_invalid_copy(self, external):
         a = testing.shaped_arange((2, 3), cupy)
         with pytest.raises(
                 ValueError, match="strings are not allowed for 'copy'"):
-            a.reshape(3, 2, copy='invalid')
-        with pytest.raises(
-                ValueError, match="strings are not allowed for 'copy'"):
-            cupy.reshape(a, (3, 2), copy='invalid')
+            if external:
+                cupy.reshape(a, (3, 2), copy='invalid')
+            else:
+                a.reshape((3, 2), copy='invalid')
 
     def _test_ndim_limit(self, xp, ndim, dtype, order):
         idx = [1]*ndim
