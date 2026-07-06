@@ -4067,36 +4067,25 @@ class TestFromPartsBufferCheck:
                 shape=shape)
 
 
-class TestAsindicesOutOfBoundsRejected:
-
-    def test_getitem_oob_raises(self):
+class TestAsindicesLegacyWraparound:
+    # To avoid synchronization, out of bound indexing wraps.
+    # Similar to normal CuPy array indexing.
+    def test_getitem_oob_wraps(self):
         a = sparse.csr_matrix(cupy.eye(3))
-        with pytest.raises(IndexError, match='out of range'):
-            a[[5]]
-        with pytest.raises(IndexError, match='out of range'):
-            a[[-100], [0]]
-
-    def test_setitem_oob_raises(self):
-        import warnings
-        a = sparse.csr_matrix(cupy.eye(3))
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', sparse.SparseEfficiencyWarning)
-            with pytest.raises(IndexError, match='out of range'):
-                a[[5], [0]] = 99.0
-
-    def test_negative_in_range_works(self):
-        a = sparse.csr_matrix(cupy.eye(3))
-        # ``-1`` resolves to row 2; in range.
-        out = a[[-1]]
+        out = a[[5]]
         cupy.testing.assert_array_equal(
             out.toarray(), cupy.array([[0., 0., 1.]]))
 
-    def test_overflow_int_raises_indexerror(self):
-        # Python int that doesn't fit in int32 indices -> IndexError
-        # (not OverflowError, which leaks numpy internals).
+    def test_setitem_oob_wraps(self):
         a = sparse.csr_matrix(cupy.eye(3))
-        with pytest.raises(IndexError):
-            a[[2**40]]
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', sparse.SparseEfficiencyWarning)
+            a[[5], [0]] = 99.0
+        cupy.testing.assert_array_equal(
+            a.toarray(),
+            cupy.array([[1., 0., 0.],
+                        [0., 1., 0.],
+                        [99., 0., 1.]]))
 
 
 class TestSparseTypingAliases:
