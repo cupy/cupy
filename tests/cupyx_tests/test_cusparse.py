@@ -759,6 +759,10 @@ class TestSpmm:
 class TestSpmmLargeColumns:
     """cuSPARSE SpMM gridDim.y overflow (#9850)."""
 
+    @pytest.mark.thread_unsafe(
+        reason="sparse.random -> cupy.random.choice lazily compiles a "
+               "RawKernel into a module global (FeistelBijection.get_kernel), "
+               "which races and can crash under free-threading.")
     @testing.slow
     def test_spmm_large_n(self):
         if not cusparse.check_availability('spmm'):
