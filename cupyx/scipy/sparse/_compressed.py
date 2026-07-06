@@ -278,6 +278,26 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             if len(data) != len(indices):
                 raise ValueError('indices and data should have the same size')
 
+            if indptr.size > 0 and int(indptr[0]) != 0:
+                raise ValueError(
+                    f'index pointer should start with 0 '
+                    f'(got {int(indptr[0])})')
+
+            # Reconcile data/indices size against indptr[-1] (scipy
+            # parity).  Internal construction (via ``_from_parts``)
+            # always sizes data/indices exactly to indptr[-1] with no
+            # trailing slack, so this trim/overshoot check only matters
+            # for user-supplied 3-tuples.
+            if indptr.size > 0:
+                nnz_live = int(indptr[-1])  # synchronize!
+                if nnz_live > data.size:
+                    raise ValueError(
+                        f'last index pointer ({nnz_live}) exceeds '
+                        f'the size of data/indices ({data.size})')
+                if data.size > nnz_live:
+                    data = data[:nnz_live]
+                    indices = indices[:nnz_live]
+
             # Choose int32 when all values fit, int64 otherwise.
             # ``_get_index_dtype`` on a sparray instance disables
             # ``check_contents`` and preserves the input dtype; the
@@ -354,6 +374,11 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                 implies ``has_sorted_indices=True``.
             has_sorted_indices (bool or None): Same semantics.
         """
+        shape = _util.check_shape(shape)
+        if data.ndim != 1 or indices.ndim != 1 or indptr.ndim != 1:
+            raise ValueError(
+                f'data, indices, and indptr must be 1-D, got ndim '
+                f'{data.ndim}, {indices.ndim}, {indptr.ndim}')
         if indices.dtype != indptr.dtype:
             raise ValueError(
                 f'indices and indptr must have the same dtype, '
@@ -371,6 +396,9 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             raise ValueError(
                 f'indptr has length {indptr.size}, '
                 f'expected {major + 1} (major axis + 1)')
+        if max(shape) > numpy.iinfo(indices.dtype).max:
+            raise ValueError(
+                f'shape {shape} too large for index dtype {indices.dtype}')
         A = cls.__new__(cls)
         sparse_data._data_matrix.__init__(A, data)
         A.indices = indices
@@ -1145,6 +1173,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         # but this should do the job.
         if self.data.size == 0:
             self._has_canonical_format = True
+            self._has_sorted_indices = True
         # check to see if result was cached
         elif not getattr(self, '_has_sorted_indices', True):
             # not sorted => not canonical
@@ -1154,6 +1183,10 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                 self.indptr, self.indices, size=self.indptr.size-1)
             self._has_canonical_format = bool(
                 is_canonical.all())  # synchronize!
+            # Canonical implies sorted; mirror the setter so a later
+            # ``has_sorted_indices`` access does not re-launch a kernel.
+            if self._has_canonical_format:
+                self._has_sorted_indices = True
         return self._has_canonical_format
 
     def __set_has_canonical_format(self, val):
@@ -1244,11 +1277,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         # CSR's _swap is identity; CSC's swaps row/col.
         major_axis, _ = self._swap(axis, 1 - axis)
         major_dim, minor_dim = self._swap(*self.shape)
-        # ``cupy.bincount`` rejects empty input even with ``minlength``;
-        # short-circuit when nothing is stored.
-        if self.data.size == 0:
-            out_dim = minor_dim if major_axis == 0 else major_dim
-            return cupy.zeros(out_dim, dtype=cupy.intp)
         mask = self.data != 0
         # mask.sum() == size captures both "all non-zero" and the nnz of
         # the kept set in one D2H read.

@@ -61,6 +61,11 @@ class _coo_base(sparse_data._data_matrix):
         if shape is not None and len(shape) != 2:
             raise ValueError(
                 'Only two-dimensional sparse arrays are supported.')
+        if shape is not None:
+            # Catch negative dimensions before the index-bounds checks
+            # below would otherwise fire with a misleading
+            # "column index exceeds matrix dimensions" message.
+            shape = _util.check_shape(shape)
 
         if _base.issparse(arg1):
             x = arg1.asformat(self.format)
@@ -78,8 +83,10 @@ class _coo_base(sparse_data._data_matrix):
             self.has_canonical_format = x.has_canonical_format
 
         elif _util.isshape(arg1):
-            m, n = arg1
-            m, n = int(m), int(n)
+            # ``isshape`` is a pure type-check; ``check_shape`` raises
+            # ``ValueError("'shape' elements cannot be negative")`` on a
+            # negative dimension to match scipy's message.
+            m, n = _util.check_shape(arg1)
             data = cupy.zeros(0, dtype if dtype else 'd')
             idx_dtype = _sputils.get_index_dtype(maxval=max(m, n))
             row = cupy.zeros(0, dtype=idx_dtype)
@@ -197,12 +204,34 @@ class _coo_base(sparse_data._data_matrix):
         Args:
             has_canonical_format (bool): Defaults to ``False`` (not
                 known to be canonical).
+
+        Raises:
+            ValueError: If ``row`` and ``col`` dtypes differ, the
+                arrays' lengths are inconsistent, ``shape`` contains
+                a negative dimension, or the index dtype is too
+                narrow to address ``shape``.
         """
+        shape = _util.check_shape(shape)
+        if data.ndim != 1 or row.ndim != 1 or col.ndim != 1:
+            raise ValueError(
+                f'data, row, and col must be 1-D, got ndim '
+                f'{data.ndim}, {row.ndim}, {col.ndim}')
+        if row.dtype != col.dtype:
+            raise ValueError(
+                f'row and col must have the same dtype, '
+                f'got {row.dtype} and {col.dtype}')
+        if data.size != row.size or data.size != col.size:
+            raise ValueError(
+                f'data, row, and col must have the same length, '
+                f'got {data.size}, {row.size}, and {col.size}')
+        if max(shape) > numpy.iinfo(row.dtype).max:
+            raise ValueError(
+                f'shape {shape} too large for index dtype {row.dtype}')
         A = cls.__new__(cls)
         sparse_data._data_matrix.__init__(A, data)
         A.row = row
         A.col = col
-        A._shape = int(shape[0]), int(shape[1])
+        A._shape = shape
         A.has_canonical_format = has_canonical_format
         return A
 
@@ -356,15 +385,11 @@ class _coo_base(sparse_data._data_matrix):
             axis += 2
         if axis < 0 or axis >= 2:
             raise ValueError('axis out of bounds')
-        # ``cupy.bincount`` errors on empty input even with ``minlength``
-        # (CUB max-reduction has no identity for zero-size arrays), so
-        # short-circuit when nothing is stored or every entry is an
-        # explicit zero.  scipy returns the zero-filled axis vector.
         out_dim = self.shape[1 - axis]
-        if self.data.size == 0:
-            return cupy.zeros(out_dim, dtype=cupy.intp)
         mask = self.data != 0
         coord = (self.col if axis == 0 else self.row)[mask]
+        # Nothing left to count (empty matrix or all explicit zeros):
+        # scipy returns the zero-filled axis vector.
         if coord.size == 0:
             return cupy.zeros(out_dim, dtype=cupy.intp)
         return cupy.bincount(
