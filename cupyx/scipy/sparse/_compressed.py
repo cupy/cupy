@@ -278,6 +278,26 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             if len(data) != len(indices):
                 raise ValueError('indices and data should have the same size')
 
+            if indptr.size > 0 and int(indptr[0]) != 0:
+                raise ValueError(
+                    f'index pointer should start with 0 '
+                    f'(got {int(indptr[0])})')
+
+            # Reconcile data/indices size against indptr[-1] (scipy
+            # parity).  Internal construction (via ``_from_parts``)
+            # always sizes data/indices exactly to indptr[-1] with no
+            # trailing slack, so this trim/overshoot check only matters
+            # for user-supplied 3-tuples.
+            if indptr.size > 0:
+                nnz_live = int(indptr[-1])  # synchronize!
+                if nnz_live > data.size:
+                    raise ValueError(
+                        f'last index pointer ({nnz_live}) exceeds '
+                        f'the size of data/indices ({data.size})')
+                if data.size > nnz_live:
+                    data = data[:nnz_live]
+                    indices = indices[:nnz_live]
+
             # Choose int32 when all values fit, int64 otherwise.
             # ``_get_index_dtype`` on a sparray instance disables
             # ``check_contents`` and preserves the input dtype; the
@@ -354,6 +374,11 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                 implies ``has_sorted_indices=True``.
             has_sorted_indices (bool or None): Same semantics.
         """
+        shape = _util.check_shape(shape)
+        if data.ndim != 1 or indices.ndim != 1 or indptr.ndim != 1:
+            raise ValueError(
+                f'data, indices, and indptr must be 1-D, got ndim '
+                f'{data.ndim}, {indices.ndim}, {indptr.ndim}')
         if indices.dtype != indptr.dtype:
             raise ValueError(
                 f'indices and indptr must have the same dtype, '
@@ -371,6 +396,9 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             raise ValueError(
                 f'indptr has length {indptr.size}, '
                 f'expected {major + 1} (major axis + 1)')
+        if max(shape) > numpy.iinfo(indices.dtype).max:
+            raise ValueError(
+                f'shape {shape} too large for index dtype {indices.dtype}')
         A = cls.__new__(cls)
         sparse_data._data_matrix.__init__(A, data)
         A.indices = indices
@@ -562,6 +590,18 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
     )
 
     _calc_Bp_kernel = r"""
+    // __shfl_*_sync requires the mask to equal the active-lane set
+    // (__ballot(true)); a hardcoded all-ones mask over-claims lanes and
+    // aborts with an HSA exception on the wrong wavefront width.
+    // HIP: use __activemask() (== __ballot(true), unsigned long long) so the
+    //      contract holds on both wave64 (CDNA) and wave32 (Navi/RDNA).
+    // NVRTC: CUDA uses a 32-bit mask.
+    #ifdef __HIP_DEVICE_COMPILE__
+      #define CUPY_FULL_WARP_MASK __activemask()
+    #else
+      #define CUPY_FULL_WARP_MASK 0xffffffffu
+    #endif
+
     template<typename I>
     __global__
     void row_kept_count(const int  n_row,
@@ -578,19 +618,26 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
     for (I p = Ap[row] + threadIdx.x; p < Ap[row + 1]; p += blockDim.x)
         local += col_cnt[Aj[p]];
 
+    // Reduce each warp/wavefront into lane 0 (warpSize: 32 on NVIDIA,
+    // 64 on AMD wave64).
     #pragma unroll
-    for (int offs = 16; offs; offs >>= 1)
-        local += __shfl_down_sync(0xffffffff, local, offs);
+    for (int offs = warpSize / 2; offs > 0; offs >>= 1)
+        local += __shfl_down_sync(CUPY_FULL_WARP_MASK, local, offs);
 
-    static __shared__ int s[32];              // one per warp
-    if ((threadIdx.x & 31) == 0) s[threadIdx.x>>5] = local;
+    // Stage each warp's partial sum (up to 32 warps).
+    static __shared__ int s[32];
+    if ((threadIdx.x & (warpSize - 1)) == 0)
+        s[threadIdx.x / warpSize] = local;
     __syncthreads();
 
-    if (threadIdx.x < 32) {
-        int val = (threadIdx.x < (blockDim.x>>5)) ? s[threadIdx.x] : int(0);
+    // First warp reduces the per-warp sums (mask must match EXEC; the
+    // <32 guard the old kernel used aborted with HSA exception on wave64).
+    if (threadIdx.x < warpSize) {
+        const int n_warps = blockDim.x / warpSize;
+        int val = (threadIdx.x < n_warps) ? s[threadIdx.x] : int(0);
         #pragma unroll
-        for (int offset = 16; offset > 0; offset >>= 1)
-            val += __shfl_down_sync(0xffffffff, val, offset);
+        for (int offs = warpSize / 2; offs > 0; offs >>= 1)
+            val += __shfl_down_sync(CUPY_FULL_WARP_MASK, val, offs);
         if (threadIdx.x == 0) Bp[row + 1] = I(val);
     }
 }
@@ -1126,6 +1173,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         # but this should do the job.
         if self.data.size == 0:
             self._has_canonical_format = True
+            self._has_sorted_indices = True
         # check to see if result was cached
         elif not getattr(self, '_has_sorted_indices', True):
             # not sorted => not canonical
@@ -1135,6 +1183,10 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                 self.indptr, self.indices, size=self.indptr.size-1)
             self._has_canonical_format = bool(
                 is_canonical.all())  # synchronize!
+            # Canonical implies sorted; mirror the setter so a later
+            # ``has_sorted_indices`` access does not re-launch a kernel.
+            if self._has_canonical_format:
+                self._has_sorted_indices = True
         return self._has_canonical_format
 
     def __set_has_canonical_format(self, val):
@@ -1225,11 +1277,6 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         # CSR's _swap is identity; CSC's swaps row/col.
         major_axis, _ = self._swap(axis, 1 - axis)
         major_dim, minor_dim = self._swap(*self.shape)
-        # ``cupy.bincount`` rejects empty input even with ``minlength``;
-        # short-circuit when nothing is stored.
-        if self.data.size == 0:
-            out_dim = minor_dim if major_axis == 0 else major_dim
-            return cupy.zeros(out_dim, dtype=cupy.intp)
         mask = self.data != 0
         # mask.sum() == size captures both "all non-zero" and the nnz of
         # the kept set in one D2H read.
