@@ -147,3 +147,38 @@ class TestSolveTriangular(unittest.TestCase):
         self.check_batched((4, 4, 4), (4, 4))
         self.check_batched((5, 5, 5), (5, 5, 2))
         self.check_batched((5, 5, 5), (5, 5, 5))
+
+
+@testing.with_requires('scipy')
+class TestSolveTriangularPointerMode(unittest.TestCase):
+    # Regression test for the cuBLAS pointer-mode handling of solve_triangular.
+    # The routine passes the scalar alpha by host pointer, so it must force HOST
+    # pointer mode on the shared cuBLAS handle.  If another routine left the handle
+    # in DEVICE pointer mode, the host pointer would be misread as device memory --
+    # tolerated by CUDA cuBLAS but rejected by ROCm/hipBLAS.  solve_triangular must
+    # both compute correctly and leave the handle's pointer mode unchanged.
+
+    @testing.for_dtypes('fdFD')
+    def test_solve_with_device_pointer_mode(self, dtype):
+        from cupy.cuda import cublas
+        from cupy.cuda import device
+
+        a_cpu = (numpy.tril(numpy.random.rand(5, 5))
+                 + 5 * numpy.eye(5)).astype(dtype)
+        b_cpu = numpy.random.rand(5, 3).astype(dtype)
+        a = cupy.asarray(a_cpu)
+        b = cupy.asarray(b_cpu)
+
+        handle = device.get_cublas_handle()
+        orig_mode = cublas.getPointerMode(handle)
+        cublas.setPointerMode(handle, cublas.CUBLAS_POINTER_MODE_DEVICE)
+        try:
+            result = cupyx.scipy.linalg.solve_triangular(a, b, lower=True)
+            mode_after = cublas.getPointerMode(handle)
+        finally:
+            cublas.setPointerMode(handle, orig_mode)
+
+        expected = scipy.linalg.solve_triangular(a_cpu, b_cpu, lower=True)
+        testing.assert_allclose(result, expected, atol=1e-5)
+        # solve_triangular must restore the handle's pointer mode on exit.
+        assert mode_after == cublas.CUBLAS_POINTER_MODE_DEVICE

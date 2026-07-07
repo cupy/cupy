@@ -155,32 +155,43 @@ def solve_triangular(a, b, trans=0, lower=False, unit_diagonal=False,
     else:
         diag = cublas.CUBLAS_DIAG_NON_UNIT
 
-    if batch_count:
-        if dtype == 'f':
-            trsm = cublas.strsmBatched
-        elif dtype == 'd':
-            trsm = cublas.dtrsmBatched
-        elif dtype == 'F':
-            trsm = cublas.ctrsmBatched
-        else:  # dtype == 'D'
-            trsm = cublas.ztrsmBatched
-        trsm(
-            cublas_handle, cublas.CUBLAS_SIDE_LEFT, uplo,
-            trans, diag,
-            m, n, one.ctypes.data, a_array.data.ptr, m,
-            b_array.data.ptr, m, batch_count)
-        return b.transpose(0, 2, 1).reshape(b_shape)
-    else:
-        if dtype == 'f':
-            trsm = cublas.strsm
-        elif dtype == 'd':
-            trsm = cublas.dtrsm
-        elif dtype == 'F':
-            trsm = cublas.ctrsm
-        else:  # dtype == 'D'
-            trsm = cublas.ztrsm
-        trsm(
-            cublas_handle, cublas.CUBLAS_SIDE_LEFT, uplo,
-            trans, diag,
-            m, n, one.ctypes.data, a.data.ptr, m, b.data.ptr, m)
-        return b
+    # ?trsm passes the scalar ``one`` by host pointer, so the cuBLAS handle must
+    # be in HOST pointer mode.  The handle returned by ``get_cublas_handle()`` is
+    # shared and may have been left in DEVICE pointer mode by another routine; in
+    # that case the host pointer is interpreted as a device pointer -- silently
+    # tolerated by CUDA cuBLAS, but rejected with an error by ROCm/hipBLAS.  Force
+    # HOST mode around the call and restore the previous mode afterwards.
+    pointer_mode = cublas.getPointerMode(cublas_handle)
+    cublas.setPointerMode(cublas_handle, cublas.CUBLAS_POINTER_MODE_HOST)
+    try:
+        if batch_count:
+            if dtype == 'f':
+                trsm = cublas.strsmBatched
+            elif dtype == 'd':
+                trsm = cublas.dtrsmBatched
+            elif dtype == 'F':
+                trsm = cublas.ctrsmBatched
+            else:  # dtype == 'D'
+                trsm = cublas.ztrsmBatched
+            trsm(
+                cublas_handle, cublas.CUBLAS_SIDE_LEFT, uplo,
+                trans, diag,
+                m, n, one.ctypes.data, a_array.data.ptr, m,
+                b_array.data.ptr, m, batch_count)
+            return b.transpose(0, 2, 1).reshape(b_shape)
+        else:
+            if dtype == 'f':
+                trsm = cublas.strsm
+            elif dtype == 'd':
+                trsm = cublas.dtrsm
+            elif dtype == 'F':
+                trsm = cublas.ctrsm
+            else:  # dtype == 'D'
+                trsm = cublas.ztrsm
+            trsm(
+                cublas_handle, cublas.CUBLAS_SIDE_LEFT, uplo,
+                trans, diag,
+                m, n, one.ctypes.data, a.data.ptr, m, b.data.ptr, m)
+            return b
+    finally:
+        cublas.setPointerMode(cublas_handle, pointer_mode)
