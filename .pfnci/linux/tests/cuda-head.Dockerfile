@@ -30,7 +30,7 @@ RUN pyenv install 3.12.11 && \
     pip install -U google-cloud-storage
 
 RUN pip install -U 'numpy>=0a0' 'scipy>=0a0' 'optuna>=0a0' 'ml_dtypes>=0a0' 'cython==3.2.*,!=3.2.6'
-RUN pip uninstall -y mpi4py cuda-python && \
+RUN pip uninstall -y mpi4py cuda-python nvmath-python && \
     pip check
 
 RUN mkdir /home/cupy-user && chmod 777 /home/cupy-user
