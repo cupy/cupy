@@ -141,7 +141,7 @@ def _csr_indptr_to_coo_rows(nnz, Bp):
     if Bp.dtype == cupy.int64:
         # TODO(eriknw): cuSPARSE--remove when xcsr2coo supports int64
         from cupyx.cusparse import _indptr_to_coo
-        return _indptr_to_coo(Bp)
+        return _indptr_to_coo(Bp, nnz=nnz)
 
     from cupy_backends.cuda.libs import cusparse
 
