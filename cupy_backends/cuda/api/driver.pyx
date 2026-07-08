@@ -33,6 +33,11 @@ cdef extern from '../../cupy_backend.h' nogil:
     # Note: CUDA_VERSION is defined either in CUDA Python or _driver_extern.pxi
     enum: HIP_VERSION
 
+IF CUPY_HIP_VERSION > 0:
+    # Used by check_status() to drain HIP 7's sticky runtime-error slot.
+    cdef extern from '../../cupy_backend_runtime.h' nogil:
+        int cudaGetLastError()
+
 # Provide access to constants from Python.
 from cupy_backends.cuda.api._driver_enum import *
 
@@ -61,6 +66,11 @@ class CUDADriverError(RuntimeError):
 @cython.profile(False)
 cpdef inline check_status(int status):
     if status != 0:
+        IF CUPY_HIP_VERSION > 0:
+            # HIP 7 leaks failed driver-API status into the runtime
+            # sticky slot, poisoning subsequent kernel launches. Drain
+            # it. Compiled out entirely on CUDA.
+            cudaGetLastError()
         raise CUDADriverError(status)
 
 
