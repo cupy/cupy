@@ -278,18 +278,22 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             if len(data) != len(indices):
                 raise ValueError('indices and data should have the same size')
 
-            if indptr.size > 0 and int(indptr[0]) != 0:
-                raise ValueError(
-                    f'index pointer should start with 0 '
-                    f'(got {int(indptr[0])})')
-
-            # Reconcile data/indices size against indptr[-1] (scipy
-            # parity).  Internal construction (via ``_from_parts``)
-            # always sizes data/indices exactly to indptr[-1] with no
-            # trailing slack, so this trim/overshoot check only matters
-            # for user-supplied 3-tuples.
+            # Validate ``indptr[0] == 0`` (scipy parity) and reconcile
+            # data/indices length against ``indptr[-1]``, reading both
+            # ends in a single D2H transfer so construction syncs only
+            # once instead of twice.  Internal construction (via
+            # ``_from_parts``) always sizes data/indices exactly to
+            # ``indptr[-1]`` with no trailing slack, so the trim/overshoot
+            # arms only matter for user-supplied 3-tuples.
             if indptr.size > 0:
-                nnz_live = int(indptr[-1])  # synchronize!
+                bounds = cupy.stack(
+                    (indptr[0], indptr[-1])).get()  # synchronize!
+                first = int(bounds[0])
+                nnz_live = int(bounds[1])
+                if first != 0:
+                    raise ValueError(
+                        f'index pointer should start with 0 '
+                        f'(got {first})')
                 if nnz_live > data.size:
                     raise ValueError(
                         f'last index pointer ({nnz_live}) exceeds '
