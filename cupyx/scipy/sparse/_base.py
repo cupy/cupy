@@ -97,8 +97,13 @@ class _spbase:
             return repr(self)
 
     def __iter__(self):
-        for r in range(self.shape[0]):
-            yield self[r, :]
+        if self.ndim == 1:
+            # Iterate elements (0-D results), like cupy dense 1-D arrays.
+            for i in range(self.shape[0]):
+                yield self[i]
+        else:
+            for r in range(self.shape[0]):
+                yield self[r, :]
 
     def __bool__(self):
         if self.shape == (1, 1):
@@ -258,6 +263,36 @@ class _spbase:
         """
         if self.ndim != 2:
             raise ValueError(f'{op} requires two dimensions')
+
+    def _squeeze_to_1d(self, result):
+        """Squeeze a 2-D ``(1, N)`` op result back to 1-D.
+
+        The 1-D sparse-array ops run on the ``(1, N)`` backing (see
+        :meth:`_as_2d`) and pass the result here.  When the other operand
+        is itself 2-D it can broadcast the result up to ``(K, N)`` with
+        ``K > 1`` (e.g. ``multiply``/``maximum`` against a 2-D operand);
+        such a result is genuinely 2-D and is returned unchanged, matching
+        scipy.  A true ``(1, N)`` result is collapsed to 1-D: a CSR result
+        is rewrapped as a 1-D CSR (preserving format, matching scipy); any
+        other sparse result is reshaped to 1-D; a dense result is raveled.
+        """
+        if issparse(result):
+            m, n = result.shape
+            if m != 1:
+                # A 2-D operand broadcast the result up; keep it 2-D.
+                return result
+            if result.format == 'csr':
+                return self._csr_container._from_parts(
+                    result.data, result.indices, result.indptr, (n,),
+                    has_canonical_format=getattr(
+                        result, '_has_canonical_format', None),
+                    has_sorted_indices=getattr(
+                        result, '_has_sorted_indices', None))
+            return result.reshape((n,))
+        if result.ndim == 2 and result.shape[0] != 1:
+            # Dense result broadcast up by a 2-D operand -- genuinely 2-D.
+            return result
+        return result.reshape(-1)
 
     # Container properties: default to array types.
     # spmatrix overrides these to return matrix types.

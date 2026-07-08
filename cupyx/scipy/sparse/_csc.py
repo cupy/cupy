@@ -92,7 +92,10 @@ class _csc_base(_compressed._compressed_sparse_matrix):
         if cupy.isscalar(other):
             self.sum_duplicates()
             return self._with_data(self.data * other)
-        elif _base.issparse(other) and other.format == 'csr':
+        if self.ndim != 2 or (_base.issparse(other) and other.ndim != 2):
+            # A 1-D operand is involved: run on the (1, N)/(N, 1) backing.
+            return self._matmul_1d(other)
+        if _base.issparse(other) and other.format == 'csr':
             self.sum_duplicates()
             other.sum_duplicates()
             is_int64 = (self.indices.dtype == cupy.int64

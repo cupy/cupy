@@ -544,6 +544,32 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             has_canonical_format=getattr(self, '_has_canonical_format', None),
             has_sorted_indices=getattr(self, '_has_sorted_indices', None))
 
+    def _matmul_1d(self, other):
+        """Matmul with at least one 1-D sparse operand.
+
+        Runs on the ``(1, N)`` / ``(N, 1)`` backing with numpy 1-D matmul
+        semantics: ``1d @ 1d`` -> 0-D scalar (dot); ``1d @ 2d`` -> ``(N,)``;
+        ``2d @ 1d`` -> ``(M,)`` (sparse results are COO, matching scipy).
+        """
+        self_1d = self.ndim == 1
+        other_1d = ((_base.issparse(other) and other.ndim == 1)
+                    or (_base.isdense(other) and other.ndim == 1))
+        a = self._as_2d() if self_1d else self
+        if _base.issparse(other) and other.ndim == 1:
+            b = other._as_2d().T   # (K, 1)
+        else:
+            b = other              # 2-D sparse, or dense (K,) / (K, N)
+        result = a @ b
+        if self_1d and other_1d:
+            # Dot product -> 0-D array (matches cupy dense ``v @ w``).
+            if _base.issparse(result):
+                result = result.toarray()
+            return result.reshape(())
+        if _base.issparse(result):
+            m, n = result.shape
+            return result.reshape((n if m == 1 else m,))
+        return result.reshape(-1)
+
     def _apply_2d_inplace(self, op):
         """Run an in-place structural op on the ``(1, N)`` backing of a
         1-D array, then adopt the resulting arrays/flags (keeping the 1-D
@@ -615,9 +641,10 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                     'supported')
         elif _base.issparse(other):
             if self.ndim != 2 or other.ndim != 2:
-                raise NotImplementedError(
-                    'addition/subtraction between sparse arrays is not yet '
-                    'supported for 1-D sparse arrays')
+                # 1-D: add/subtract on the (1, N) backing, squeeze back.
+                o = other._as_2d() if other.ndim == 1 else other
+                return self._squeeze_to_1d(
+                    self._as_2d()._add(o, lhs_negative, rhs_negative))
             alpha = -1 if lhs_negative else 1
             beta = -1 if rhs_negative else 1
             return self._add_sparse(other, alpha, beta)
@@ -652,12 +679,20 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         data, indices, _ = _index._get_csr_submatrix_major_axis(
             self.data, self.indices, self.indptr, major, major + 1)
         dtype = data.dtype
-        res = cupy.zeros((), dtype=dtype)
         if dtype.kind == 'c':
+            res = cupy.zeros((), dtype=dtype)
             _index._compress_getitem_complex_kern(
                 data.real, data.imag, indices, minor, res.real, res.imag)
-        else:
-            _index._compress_getitem_kern(data, indices, minor, res)
+            return res
+        if dtype.kind == 'b':
+            # ``atomicAdd`` has no bool overload; accumulate the matching
+            # entries as int, then a non-zero count means a stored True.
+            res = cupy.zeros((), dtype=cupy.int32)
+            _index._compress_getitem_kern(
+                data.astype(cupy.int32), indices, minor, res)
+            return res.astype(dtype)
+        res = cupy.zeros((), dtype=dtype)
+        _index._compress_getitem_kern(data, indices, minor, res)
         return res
 
     def _get_sliceXslice(self, row, col):
@@ -818,7 +853,9 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         options=('-std=c++17',),
         name_expressions=[
             f'fill_B<{dt}, {it}>'
-            for dt in ('float', 'double')
+            # ``bool`` is a supported data dtype; ``fill_B`` only copies
+            # values (no arithmetic on ``T``), so it instantiates safely.
+            for dt in ('bool', 'float', 'double')
             for it in ('int', 'long long')
         ],
     )

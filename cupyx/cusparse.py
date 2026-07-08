@@ -566,6 +566,11 @@ def _cupy_csrgeam_int64(a, b, alpha, beta):
 
     Uses COO concatenation + sum_duplicates.  O(nnz log nnz).
     """
+    # Guard shape mismatch like csrgeam2/spgeam do; without this the COO
+    # concatenation below silently drops rows (b's row coords can exceed
+    # a.shape) instead of raising for incompatible operands.
+    if a.shape != b.shape:
+        raise ValueError('inconsistent shapes')
     idx_dtype = _numpy.result_type(a.indices.dtype, b.indices.dtype)
     # ``dtype.type(alpha)`` returns a numpy scalar; a 0-d ndarray
     # (e.g. from ``_numpy.array(alpha)``) would be rejected by CuPy's ufunc.

@@ -235,6 +235,10 @@ def hstack(blocks, format=None, dtype=None):
         array([[1., 2., 5.],
                [3., 4., 6.]])
     """
+    # Promote 1-D array blocks to their (1, N) backing so they stack as
+    # rows (scipy semantics: ``hstack`` of 1-D arrays -> a single row).
+    blocks = [b._as_2d() if _base.issparse(b) and b.ndim == 1 else b
+              for b in blocks]
     return bmat([blocks], format=format, dtype=dtype)
 
 
@@ -266,6 +270,10 @@ def vstack(blocks, format=None, dtype=None):
                [3., 4.],
                [5., 6.]])
     """
+    # Promote 1-D array blocks to their (1, N) backing so they stack as
+    # rows (scipy semantics: ``vstack`` of 1-D arrays -> one row each).
+    blocks = [b._as_2d() if _base.issparse(b) and b.ndim == 1 else b
+              for b in blocks]
     return bmat([[b] for b in blocks], format=format, dtype=dtype)
 
 
@@ -917,6 +925,13 @@ def random_array(shape, *, density=0.01, format='coo', dtype=None,
     .. seealso:: :func:`scipy.sparse.random_array`
 
     """
+    if len(shape) == 1:
+        # Generate a random (1, N) then present it as a 1-D array.
+        (n,) = shape
+        base = random(1, n, density=density, dtype=dtype,
+                      random_state=rng, data_rvs=data_sampler)
+        arr = _coo.coo_array((base.data, (base.col,)), shape=(n,))
+        return arr.asformat(format)
     m, n = shape
     return _to_array(
         random(m, n, density=density, format=format, dtype=dtype,

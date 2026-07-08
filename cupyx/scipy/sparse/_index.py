@@ -8,6 +8,7 @@ from cupy import _core
 
 from cupyx.scipy.sparse._base import _spbase
 from cupyx.scipy.sparse._base import issparse
+from cupyx.scipy.sparse._base import sparray
 
 from cupy.cuda import device
 from cupy.cuda import runtime
@@ -358,11 +359,45 @@ class IndexMixin:
     """
 
     def __getitem__(self, key):
-        if self.ndim != 2:
-            raise NotImplementedError(
-                'indexing is not yet supported for 1-D sparse arrays')
-        row, col = self._parse_indices(key)
+        if self.ndim == 1:
+            # Index the (1, N) backing on its column axis, then squeeze
+            # the (1, k) result back to 1-D.  An integer key reduces to a
+            # 0-D scalar via _get_intXint; a slice/array key yields a 1-D
+            # result whose format is preserved (CSR stays CSR, matching
+            # scipy) by _squeeze_to_1d.
+            if isinstance(key, tuple):
+                # A 1-D array takes a single index (Ellipsis excepted);
+                # more than one is an error (matches numpy/scipy).
+                idx = tuple(k for k in key if k is not Ellipsis)
+                if len(idx) > 1:
+                    raise IndexError(
+                        'too many indices for array: array is '
+                        f'1-dimensional, but {len(idx)} were indexed')
+                key = idx[0] if idx else slice(None)
+            backing = self._as_2d()
+            row, col = backing._parse_indices((0, key))
+            result = backing._getitem_2d(row, col)
+            if issparse(result):
+                return self._squeeze_to_1d(result)
+            return result
 
+        row, col = self._parse_indices(key)
+        result = self._getitem_2d(row, col)
+        # For sparse *arrays*, an integer index reduces that axis: exactly
+        # one integer -> 1-D, both integers -> scalar (already handled by
+        # _get_intXint).  Matrices keep the legacy 2-D result.  scipy
+        # returns a 1-D COO array for the reduced result; route through COO
+        # (the only format that supports a 1-D shape -- CSC's reshape would
+        # otherwise raise).
+        if isinstance(self, sparray) and issparse(result):
+            row_int = isinstance(row, _int_scalar_types)
+            col_int = isinstance(col, _int_scalar_types)
+            if row_int != col_int:
+                length = result.shape[1] if row_int else result.shape[0]
+                result = result.tocoo().reshape((length,))
+        return result
+
+    def _getitem_2d(self, row, col):
         # Dispatch to specialized methods.
         if isinstance(row, _int_scalar_types):
             if isinstance(col, _int_scalar_types):
@@ -414,9 +449,15 @@ class IndexMixin:
         return self._get_arrayXarray(row, col)
 
     def __setitem__(self, key, x):
-        if self.ndim != 2:
-            raise NotImplementedError(
-                'indexing is not yet supported for 1-D sparse arrays')
+        if self.ndim == 1:
+            # Assign on the (1, N) backing (column axis), then adopt the
+            # mutated arrays back onto this 1-D array.  A 1-D sparse RHS is
+            # promoted to its (1, N) backing so the 2-D assignment code
+            # (which reads x.shape[1]) sees a 2-D operand.
+            if issparse(x) and x.ndim == 1:
+                x = x._as_2d()
+            self._apply_2d_inplace(lambda m: m.__setitem__((0, key), x))
+            return
         row, col = self._parse_indices(key)
 
         if isinstance(row, _int_scalar_types) and\

@@ -73,8 +73,11 @@ class _csr_base(_compressed._compressed_sparse_matrix):
 
     def _comparison(self, other, op, op_name):
         if self.ndim != 2:
-            raise NotImplementedError(
-                'comparisons are not yet supported for 1-D sparse arrays')
+            # 1-D: compare on the (1, N) backing, squeeze back.
+            o = (other._as_2d() if (_base.issparse(other) and other.ndim == 1)
+                 else other)
+            return self._squeeze_to_1d(
+                self._as_2d()._comparison(o, op, op_name))
         cls = type(self)
         if _util.isscalarlike(other):
             data = cupy.asarray(other, dtype=self.dtype).reshape(1)
@@ -190,8 +193,9 @@ class _csr_base(_compressed._compressed_sparse_matrix):
             self.sum_duplicates()
             return self._with_data(self.data * other)
         if self.ndim != 2 or (_base.issparse(other) and other.ndim != 2):
-            raise NotImplementedError(
-                'matmul (@) is not yet supported for 1-D sparse arrays')
+            # A 1-D operand is involved: run on the (1, N)/(N, 1) backing
+            # with numpy-style 1-D matmul semantics.
+            return self._matmul_1d(other)
         if _is_csr(other):
             self.sum_duplicates()
             other.sum_duplicates()
@@ -287,9 +291,10 @@ class _csr_base(_compressed._compressed_sparse_matrix):
             d = cupy.reciprocal(other, dtype=dtype)
             return multiply_by_scalar(self, d)
         if self.ndim != 2:
-            raise NotImplementedError(
-                'element-wise division by a non-scalar is not yet '
-                'supported for 1-D sparse arrays')
+            # 1-D: divide on the (1, N) backing, squeeze back.
+            o = (other._as_2d() if (_base.issparse(other) and other.ndim == 1)
+                 else other)
+            return self._squeeze_to_1d(self._as_2d().__truediv__(o))
         if _util.isdense(other):
             other = cupy.atleast_2d(other)
             other = cupy.broadcast_to(other, self.shape)
@@ -392,9 +397,11 @@ class _csr_base(_compressed._compressed_sparse_matrix):
                     has_sorted_indices=getattr(
                         self, '_has_sorted_indices', None))
         if self.ndim != 2:
-            raise NotImplementedError(
-                'element-wise maximum/minimum with a non-scalar is not '
-                'yet supported for 1-D sparse arrays')
+            # 1-D: run on the (1, N) backing, squeeze back.
+            o = (other._as_2d() if (_base.issparse(other) and other.ndim == 1)
+                 else other)
+            return self._squeeze_to_1d(self._as_2d()._maximum_minimum(
+                o, cupy_op, op_name, dense_check))
         if _util.isdense(other):
             self.sum_duplicates()
             other = cupy.atleast_2d(other)
@@ -422,9 +429,10 @@ class _csr_base(_compressed._compressed_sparse_matrix):
         if cupy.isscalar(other):
             return multiply_by_scalar(self, other)
         if self.ndim != 2:
-            raise NotImplementedError(
-                'element-wise multiply with a non-scalar is not yet '
-                'supported for 1-D sparse arrays')
+            # 1-D: multiply on the (1, N) backing, squeeze back.
+            o = (other._as_2d() if (_base.issparse(other) and other.ndim == 1)
+                 else other)
+            return self._squeeze_to_1d(self._as_2d().multiply(o))
         if _util.isdense(other):
             self.sum_duplicates()
             other = cupy.atleast_2d(other)
