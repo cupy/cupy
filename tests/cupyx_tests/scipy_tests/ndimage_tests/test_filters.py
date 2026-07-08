@@ -1054,3 +1054,31 @@ class TestInvalidOrigin(FilterTestCaseBase):
     def test_invalid_origin_pos(self, xp, scp):
         self.origin = self.ksize - self.ksize // 2
         return self._filter(xp, scp)
+
+
+# Tests that `output` aliasing `input` still produces the filtered result
+# instead of the unmodified input. See cupy/cupy#8406.
+@testing.with_requires('scipy')
+class TestOutputOverlapsInput:
+
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_correlate(self, xp, scp):
+        a = testing.shaped_random((5, 6), xp, numpy.float64)
+        weights = testing.shaped_random((3, 3), xp, numpy.float64, seed=1)
+        return scp.ndimage.correlate(a, weights, output=a)
+
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_minimum_filter(self, xp, scp):
+        a = testing.shaped_random((5, 6), xp, numpy.float64)
+        return scp.ndimage.minimum_filter(a, size=3, output=a)
+
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_rank_filter(self, xp, scp):
+        a = testing.shaped_random((5, 6), xp, numpy.int32, scale=100)
+        return scp.ndimage.rank_filter(a, 1, size=[2, 3], output=a)
+
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_generic_filter(self, xp, scp):
+        a = testing.shaped_random((5, 6), xp, numpy.float64)
+        func = rms_pyfunc if xp is numpy else rms_raw
+        return scp.ndimage.generic_filter(a, func, size=3, output=a)

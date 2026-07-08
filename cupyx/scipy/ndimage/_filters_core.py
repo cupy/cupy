@@ -182,7 +182,7 @@ def _call_kernel(kernel, input, weights, output, structure=None,
     args.append(output)
     kernel(*args)
     if needs_temp:
-        _core.elementwise_copy(temp, output)
+        _core.elementwise_copy(output, temp)
         output = temp
     return output
 
