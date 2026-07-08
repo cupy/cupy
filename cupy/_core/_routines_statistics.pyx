@@ -471,22 +471,9 @@ cpdef _ndarray_base _median(
 cpdef _ndarray_base _nanmedian(
         _ndarray_base a, axis, out, overwrite_input, keepdims):
 
-    if axis is None:
-        axis = tuple(range(a.ndim))
-    if not sequence.PySequence_Check(axis):
-        axis = (axis,)
-
-    reduce_axis = []
-    reduce_shape = []
-    out_axis = []
-    out_shape = []
-    for i in range(a.ndim):
-        if axis is None or i in axis or i - a.ndim in axis:
-            reduce_axis.append(i)
-            reduce_shape.append(a.shape[i])
-        else:
-            out_axis.append(i)
-            out_shape.append(a.shape[i])
+    reduce_axis, out_axis = _reduction._get_axis(axis, a.ndim)
+    reduce_shape = [a.shape[i] for i in reduce_axis]
+    out_shape = [a.shape[i] for i in out_axis]
 
     a_data_ptr = a.data.ptr
     a = a.transpose(out_axis + reduce_axis)
