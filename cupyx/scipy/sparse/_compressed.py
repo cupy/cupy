@@ -589,6 +589,18 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
     )
 
     _calc_Bp_kernel = r"""
+    // __shfl_*_sync requires the mask to equal the active-lane set
+    // (__ballot(true)); a hardcoded all-ones mask over-claims lanes and
+    // aborts with an HSA exception on the wrong wavefront width.
+    // HIP: use __activemask() (== __ballot(true), unsigned long long) so the
+    //      contract holds on both wave64 (CDNA) and wave32 (Navi/RDNA).
+    // NVRTC: CUDA uses a 32-bit mask.
+    #ifdef __HIP_DEVICE_COMPILE__
+      #define CUPY_FULL_WARP_MASK __activemask()
+    #else
+      #define CUPY_FULL_WARP_MASK 0xffffffffu
+    #endif
+
     template<typename I>
     __global__
     void row_kept_count(const int  n_row,
@@ -605,19 +617,26 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
     for (I p = Ap[row] + threadIdx.x; p < Ap[row + 1]; p += blockDim.x)
         local += col_cnt[Aj[p]];
 
+    // Reduce each warp/wavefront into lane 0 (warpSize: 32 on NVIDIA,
+    // 64 on AMD wave64).
     #pragma unroll
-    for (int offs = 16; offs; offs >>= 1)
-        local += __shfl_down_sync(0xffffffff, local, offs);
+    for (int offs = warpSize / 2; offs > 0; offs >>= 1)
+        local += __shfl_down_sync(CUPY_FULL_WARP_MASK, local, offs);
 
-    static __shared__ int s[32];              // one per warp
-    if ((threadIdx.x & 31) == 0) s[threadIdx.x>>5] = local;
+    // Stage each warp's partial sum (up to 32 warps).
+    static __shared__ int s[32];
+    if ((threadIdx.x & (warpSize - 1)) == 0)
+        s[threadIdx.x / warpSize] = local;
     __syncthreads();
 
-    if (threadIdx.x < 32) {
-        int val = (threadIdx.x < (blockDim.x>>5)) ? s[threadIdx.x] : int(0);
+    // First warp reduces the per-warp sums (mask must match EXEC; the
+    // <32 guard the old kernel used aborted with HSA exception on wave64).
+    if (threadIdx.x < warpSize) {
+        const int n_warps = blockDim.x / warpSize;
+        int val = (threadIdx.x < n_warps) ? s[threadIdx.x] : int(0);
         #pragma unroll
-        for (int offset = 16; offset > 0; offset >>= 1)
-            val += __shfl_down_sync(0xffffffff, val, offset);
+        for (int offs = warpSize / 2; offs > 0; offs >>= 1)
+            val += __shfl_down_sync(CUPY_FULL_WARP_MASK, val, offs);
         if (threadIdx.x == 0) Bp[row + 1] = I(val);
     }
 }
