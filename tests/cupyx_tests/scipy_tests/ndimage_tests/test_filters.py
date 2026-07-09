@@ -1056,6 +1056,19 @@ class TestInvalidOrigin(FilterTestCaseBase):
         return self._filter(xp, scp)
 
 
+# RawKernel/pyfunc pair for TestOutputOverlapsInput.test_generic_filter.
+mean_raw = cupy.RawKernel('''extern "C" __global__
+void mean_filter(const double* x, int filter_size, double* y) {
+    double s = 0;
+    for (int i = 0; i < filter_size; ++i) { s += x[i]; }
+    y[0] = s / filter_size;
+}''', 'mean_filter')
+
+
+def mean_pyfunc(x):
+    return x.sum() / len(x)
+
+
 # Tests that `output` aliasing `input` still produces the filtered result
 # instead of the unmodified input. See cupy/cupy#8406.
 @testing.with_requires('scipy')
@@ -1070,15 +1083,30 @@ class TestOutputOverlapsInput:
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_minimum_filter(self, xp, scp):
         a = testing.shaped_random((5, 6), xp, numpy.float64)
-        return scp.ndimage.minimum_filter(a, size=3, output=a)
+        # A rectangular (all-True) footprint is separable into independent
+        # 1D passes and takes a fast path that bypasses the aliasing guard
+        # entirely, so it wouldn't exercise the bug this test targets. A
+        # non-rectangular footprint forces the non-separable _call_kernel
+        # path instead.
+        footprint = xp.array(
+            [[0, 1, 0], [1, 1, 1], [0, 1, 0]], dtype=bool)
+        return scp.ndimage.minimum_filter(a, footprint=footprint, output=a)
 
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_rank_filter(self, xp, scp):
         a = testing.shaped_random((5, 6), xp, numpy.int32, scale=100)
         return scp.ndimage.rank_filter(a, 1, size=[2, 3], output=a)
 
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
-    def test_generic_filter(self, xp, scp):
-        a = testing.shaped_random((5, 6), xp, numpy.float64)
-        func = rms_pyfunc if xp is numpy else rms_raw
-        return scp.ndimage.generic_filter(a, func, size=3, output=a)
+    def test_generic_filter(self):
+        # SciPy's generic_filter does not protect the Python-callback path
+        # against read-after-write when output aliases input (it processes
+        # cells sequentially with no double-buffering), so its own aliased
+        # output does not equal its own clean (non-aliased) output. CuPy's
+        # aliasing guard means CuPy's aliased result should equal SciPy's
+        # *clean* result instead, so that is what this compares against.
+        a = testing.shaped_random((5, 6), cupy, numpy.float64)
+        actual = cupyx.scipy.ndimage.generic_filter(
+            a, mean_raw, size=3, output=a)
+        a_np = testing.shaped_random((5, 6), numpy, numpy.float64)
+        expected = scipy.ndimage.generic_filter(a_np, mean_pyfunc, size=3)
+        testing.assert_allclose(actual, expected, atol=1e-5, rtol=1e-5)
