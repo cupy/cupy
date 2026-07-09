@@ -3034,10 +3034,17 @@ cdef _ndarray_base _array_default(
         if mem is not None:
             src_cpu = numpy.frombuffer(mem, a_dtype, a_cpu.size)
             src_cpu = src_cpu.reshape(a_cpu.shape, order=order)
-            src_cpu[:] = a_cpu
+            src_cpu[...] = a_cpu
             a.data.copy_from_host_async(mem.ptr, nbytes, stream)
             pinned_memory._add_to_watch_list(stream.record(), mem)
         else:
+            if order == 'C':
+                a_cpu = numpy.ascontiguousarray(a_cpu)
+            elif order == 'F':
+                a_cpu = numpy.asfortranarray(a_cpu)
+            else:
+                assert False # order must be 'C' or 'F' here
+            ptr_h = <intptr_t>(a_cpu.ctypes.data)
             a.data.copy_from_host_async(ptr_h, nbytes, stream)
 
     if blocking:
