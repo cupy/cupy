@@ -1056,23 +1056,16 @@ class TestInvalidOrigin(FilterTestCaseBase):
         return self._filter(xp, scp)
 
 
-# RawKernel/pyfunc pair for TestOutputOverlapsInput.test_generic_filter.
-mean_raw = cupy.RawKernel('''extern "C" __global__
-void mean_filter(const double* x, int filter_size, double* y) {
-    double s = 0;
-    for (int i = 0; i < filter_size; ++i) { s += x[i]; }
-    y[0] = s / filter_size;
-}''', 'mean_filter')
+# ReductionKernel for TestOutputOverlapsInput.test_generic_filter.
+mean_red = cupy.ReductionKernel('X x', 'Y y', 'x',
+                                'a + b', 'y = a / _in_ind.size()', '0',
+                                'mean')
 
 
-def mean_pyfunc(x):
-    return x.sum() / len(x)
-
-
-# Tests that `output` aliasing `input` still produces the filtered result
-# instead of the unmodified input. See cupy/cupy#8406.
 @testing.with_requires('scipy')
 class TestOutputOverlapsInput:
+    # Tests that `output` aliasing `input` still produces the filtered
+    # result instead of the unmodified input. See cupy/cupy#8406.
 
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_correlate(self, xp, scp):
@@ -1106,7 +1099,7 @@ class TestOutputOverlapsInput:
         # *clean* result instead, so that is what this compares against.
         a = testing.shaped_random((5, 6), cupy, numpy.float64)
         actual = cupyx.scipy.ndimage.generic_filter(
-            a, mean_raw, size=3, output=a)
+            a, mean_red, size=3, output=a)
         a_np = testing.shaped_random((5, 6), numpy, numpy.float64)
-        expected = scipy.ndimage.generic_filter(a_np, mean_pyfunc, size=3)
+        expected = scipy.ndimage.generic_filter(a_np, numpy.mean, size=3)
         testing.assert_allclose(actual, expected, atol=1e-5, rtol=1e-5)
