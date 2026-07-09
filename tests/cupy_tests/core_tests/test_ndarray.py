@@ -115,6 +115,7 @@ class TestNdarrayInit(unittest.TestCase):
         b = UserNdarray((2, 3))
         b.custom_attr = 100
 
+
 @testing.parameterize(
     *testing.product({
         'np_order': ['C', 'F'],
@@ -136,12 +137,14 @@ class TestAsarray(unittest.TestCase):
             count = numpy.prod(shape)
             dtype = numpy.float32()
             pinned_ptr = cupy.cuda.alloc_pinned_memory(count * dtype.itemsize)
-            a_cpu = numpy.frombuffer(pinned_ptr, dtype=dtype, count=count).reshape(shape)
+            a_cpu = numpy.frombuffer(
+                pinned_ptr, dtype=dtype, count=count).reshape(shape)
         else:
-            a_cpu = numpy.ndarray(shape, dtype=numpy.float32, order=self.np_order)
+            a_cpu = numpy.ndarray(
+                shape, dtype=numpy.float32, order=self.np_order)
         a_cpu[...] = numpy.arange(a_cpu.size).reshape(a_cpu.shape)
         if view:
-            a_cpu = a_cpu[:,1,:]
+            a_cpu = a_cpu[:, 1, :]
         try:
             if self.pinned_alloc_fails:
                 cupy.cuda.set_pinned_memory_allocator(lambda _: None)
