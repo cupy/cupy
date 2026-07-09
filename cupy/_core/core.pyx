@@ -3043,7 +3043,7 @@ cdef _ndarray_base _array_default(
             elif order == 'F':
                 a_cpu = numpy.asfortranarray(a_cpu)
             else:
-                assert False # order must be 'C' or 'F' here
+                assert False  # order must be 'C' or 'F' here
             ptr_h = <intptr_t>(a_cpu.ctypes.data)
             a.data.copy_from_host_async(ptr_h, nbytes, stream)
 
