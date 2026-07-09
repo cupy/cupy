@@ -1747,7 +1747,7 @@ cdef class _ndarray_base:
             runtime.setDevice(prev_device)
 
     def __reduce__(self):
-        return array, (self.get(),)
+        return array, (self.get(order="A"),)
 
     # Basic customization:
 
