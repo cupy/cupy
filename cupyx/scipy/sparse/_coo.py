@@ -224,6 +224,11 @@ class _coo_base(sparse_data._data_matrix):
             raise ValueError(
                 f'data, row, and col must have the same length, '
                 f'got {data.size}, {row.size}, and {col.size}')
+        # ``row``/``col`` hold coordinates bounded by ``max(shape)``.
+        # Unlike CSR/CSC there is no cumulative ``indptr``, so
+        # ``max(shape)`` -- not ``prod(shape)`` or ``nnz`` -- is the only
+        # dtype constraint.  (Can't fold into ``check_shape``: it depends
+        # on the array dtype, not just the shape.)
         if max(shape) > numpy.iinfo(row.dtype).max:
             raise ValueError(
                 f'shape {shape} too large for index dtype {row.dtype}')

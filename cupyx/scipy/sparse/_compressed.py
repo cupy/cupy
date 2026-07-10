@@ -400,9 +400,20 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             raise ValueError(
                 f'indptr has length {indptr.size}, '
                 f'expected {major + 1} (major axis + 1)')
-        if max(shape) > numpy.iinfo(indices.dtype).max:
+        # The shared index dtype must address both stored arrays:
+        # ``indices`` holds minor-axis positions (< max(shape)) and
+        # ``indptr`` holds cumulative counts (<= nnz == data.size).
+        # ``prod(shape)`` is deliberately not the bound -- a genuinely
+        # sparse matrix has nnz << prod(shape), so ``indptr`` never needs
+        # to reach it.  (Can't fold into ``check_shape``: it depends on
+        # the array dtype, not just the shape.)
+        idx_max = numpy.iinfo(indices.dtype).max
+        if max(shape) > idx_max:
             raise ValueError(
                 f'shape {shape} too large for index dtype {indices.dtype}')
+        if data.size > idx_max:
+            raise ValueError(
+                f'nnz {data.size} too large for index dtype {indices.dtype}')
         A = cls.__new__(cls)
         sparse_data._data_matrix.__init__(A, data)
         A.indices = indices
