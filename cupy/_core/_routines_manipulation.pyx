@@ -370,7 +370,10 @@ cpdef _ndarray_base _reshape(
             return newarray.copy()
         return newarray
     if copy is False:
-        raise ValueError('Unable to avoid copy while reshaping.')
+        raise ValueError(
+            f'Unable to avoid creating a copy while reshaping array of '
+            f'shape {tuple(self._shape)} and size {self.size} into shape '
+            f'{tuple(shape)}.')
     newarray = self.copy()
     _get_strides_for_nocopy_reshape(newarray, shape, strides)
 

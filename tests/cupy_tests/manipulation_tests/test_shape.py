@@ -156,7 +156,10 @@ class TestReshape:
     def test_reshape_copy_false_noncontiguous_raises(self, external):
         a = testing.shaped_arange((2, 3, 4), cupy).transpose(2, 0, 1)
         with pytest.raises(
-                ValueError, match=r'Unable to avoid copy while reshaping\.'):
+                ValueError,
+                match=(r'Unable to avoid creating a copy while reshaping '
+                       r'array of shape \(4, 2, 3\) and size 24 into '
+                       r'shape \(2, 3, 4\)\.')):
             if external:
                 cupy.reshape(a, (2, 3, 4), copy=False)
             else:
