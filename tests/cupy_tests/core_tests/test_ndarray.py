@@ -514,8 +514,15 @@ class TestNdarrayTakeErrorTypeMismatch(unittest.TestCase):
             a = testing.shaped_arange(self.shape, xp, numpy.int32)
             i = testing.shaped_arange(self.indices, xp, numpy.int32) % 3
             o = testing.shaped_arange(self.out_shape, xp, numpy.float32)
-            with pytest.raises(TypeError):
+            if (xp is numpy
+                    and numpy.lib.NumpyVersion(numpy.__version__)
+                    >= '2.5.0'):
+                # numpy>=2.5 permits safe casting of the take() out= dtype,
+                # so it no longer raises; cupy still enforces a match.
                 wrap_take(a, i, out=o)
+            else:
+                with pytest.raises(TypeError):
+                    wrap_take(a, i, out=o)
 
 
 @testing.parameterize(
