@@ -1,9 +1,12 @@
+# distutils: language = c++
+
 from libc.stdint cimport intptr_t, uint64_t, int32_t, int64_t, uint32_t
 from libc.string cimport memcpy
 
 import numpy
 
 import cupy
+from cupy._core.internal cimport cached_object
 from cupy import _core
 from cupy.cuda cimport stream
 from cupy.cuda.function cimport CPointer
@@ -1092,7 +1095,7 @@ cdef class _FeistelBijectionParam(CPointer):
         self.ptr = <intptr_t>(&self.struct)
 
 
-cdef object _feistel_bijection_with_cutoff_kernel = None
+cdef cached_object _feistel_bijection_with_cutoff_kernel
 
 
 cdef inline uint64_t get_cipher_bits(uint64_t m) nogil noexcept:
@@ -1162,9 +1165,10 @@ cdef class FeistelBijection:
         Returns:
             cupy.RawKernel: The compiled CUDA kernel for the bijection
         """
-        global _feistel_bijection_with_cutoff_kernel
-        if _feistel_bijection_with_cutoff_kernel is None:
-            _feistel_bijection_with_cutoff_kernel = cupy.RawKernel(rf'''
+        kernel = _feistel_bijection_with_cutoff_kernel.get()
+        if kernel is None:
+            kernel = _feistel_bijection_with_cutoff_kernel.setdefault(
+                cupy.RawKernel(rf'''
             #if defined(__HIPCC_RTC__) || defined(__HIPCC__)
             #include <stdint.h>
             #else
@@ -1219,8 +1223,8 @@ cdef class FeistelBijection:
                 }}
             }}
             '''  # noqa: E501
-            , 'feistel_bijection_choice')
-        return _feistel_bijection_with_cutoff_kernel
+            , 'feistel_bijection_choice'))
+        return kernel
 
     def __call__(self, size):
         kernel = self.get_kernel()

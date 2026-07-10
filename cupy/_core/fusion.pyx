@@ -1,6 +1,9 @@
+# distutils: language = c++
+
 from cupy._core cimport _accelerator
 from cupy._core._accelerator cimport ACCELERATOR_CUB
 from cupy._core._scalar cimport get_typename, _get_cuda_scalar_repr
+from cupy._core.internal cimport cached_object
 
 import functools
 import string
@@ -971,13 +974,13 @@ def _create_astype_ufunc(dtype):
     return core.create_ufunc(name, rules, command)
 
 
-_dtype_to_astype_dict = None
+cdef cached_object _dtype_to_astype_dict
 
 
 def _dtype_to_astype(dtype):
-    global _dtype_to_astype_dict
-    if _dtype_to_astype_dict is None:
-        _dtype_to_astype_dict = dict([
+    cdef object astype_dict = _dtype_to_astype_dict.get()
+    if astype_dict is None:
+        astype_dict = _dtype_to_astype_dict.setdefault(dict([
             (dt, _create_astype_ufunc(dt))
-            for dt in _dtype_list])
-    return _dtype_to_astype_dict[dtype]
+            for dt in _dtype_list]))
+    return astype_dict[dtype]

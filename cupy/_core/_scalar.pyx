@@ -1,3 +1,5 @@
+# distutils: language = c++
+
 from libc.stdint cimport intptr_t
 
 cimport cpython
@@ -9,6 +11,7 @@ import numpy
 
 import cupy
 from cupy._core cimport _dtype
+from cupy._core.internal cimport cached_object
 
 
 cdef dict _typenames_base = {
@@ -144,7 +147,7 @@ cdef dict _cuda_alignments = {
     numpy.dtype('complex64'): 8,
     numpy.dtype('complex128'): 16,
 }
-cdef object _alignment_kernel = None
+cdef cached_object _alignment_kernel
 
 
 cdef Py_ssize_t get_cuda_alignment(cnp.dtype dtype) except -1:
@@ -152,7 +155,8 @@ cdef Py_ssize_t get_cuda_alignment(cnp.dtype dtype) except -1:
     uses an ElementwiseKernel to compile and get the actual alignment.
     (Although, normally that should just be the itemsize.)
     """
-    global _cuda_alignments, _alignment_kernel
+    global _cuda_alignments
+    cdef object kernel
 
     alignment = _cuda_alignments.get(dtype)
     if alignment is not None:
@@ -176,15 +180,16 @@ cdef Py_ssize_t get_cuda_alignment(cnp.dtype dtype) except -1:
             # Alignment is inherited from the field dtype
             return get_cuda_alignment(dtype.base)
 
-    if _alignment_kernel is None:
-        _alignment_kernel = cupy.ElementwiseKernel(
+    kernel = _alignment_kernel.get()
+    if kernel is None:
+        kernel = _alignment_kernel.setdefault(cupy.ElementwiseKernel(
             "T in", "int64 out",
             "using in_t = decltype(in); out = alignof(in_t);",
             "_cupy_get_cuda_alignment",
-        )
+        ))
 
     # synchronize!
-    alignment = int(_alignment_kernel(cupy.empty((), dtype=dtype))[()])
+    alignment = int(kernel(cupy.empty((), dtype=dtype))[()])
     _cuda_alignments[dtype] = alignment
     return alignment
 
