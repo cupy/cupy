@@ -31,13 +31,12 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
             'LM': finds ``k`` largest (in magnitude) eigenvalues.
             'LA': finds ``k`` largest (algebraic) eigenvalues.
             'SA': finds ``k`` smallest (algebraic) eigenvalues.
-            'SM': finds ``k`` smallest (in magnitude) eigenvalues. Implemented
-                as shift-invert at ``sigma = 0`` (the eigenvalues nearest 0),
-                since plain Lanczos does not converge to the smallest/interior
-                eigenvalues. ``a`` must therefore be sparse and non-singular, or
-                an ``OPinv`` operator for ``A^{-1}`` must be supplied; for a
-                singular ``a`` (e.g. a graph Laplacian with a zero eigenvalue)
-                pass a small nonzero ``sigma`` instead.
+            'SM': finds ``k`` smallest (in magnitude) eigenvalues, as an alias
+            for shift-invert at ``sigma = 0`` (eigenvalues nearest 0). Plain
+            Lanczos does not converge to the smallest/interior eigenvalues, so
+            ``a`` must be sparse and non-singular, or an ``OPinv`` for
+            ``A^{-1}`` supplied; for a singular ``a`` (e.g. a graph Laplacian
+            with a zero eigenvalue) pass a small nonzero ``sigma`` instead.
 
         v0 (ndarray): Starting vector for iteration. If ``None``, a random
             unit vector is used.
@@ -77,9 +76,9 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
         raise ValueError('expected square matrix (shape: {})'.format(a.shape))
 
     if which == 'SM' and sigma is None:
-        # 'SM' (smallest magnitude) == the eigenvalues nearest 0: route through
-        # shift-invert at sigma = 0. Plain-Lanczos 'SM' does not converge to the
-        # smallest / interior eigenvalues, so shift-invert is used instead.
+        # 'SM' (smallest magnitude) == eigenvalues nearest 0: route through
+        # shift-invert at sigma = 0. Plain-Lanczos 'SM' does not converge to
+        # the smallest / interior eigenvalues, so shift-invert is used here.
         sigma = 0
 
     if sigma is not None:
