@@ -238,7 +238,33 @@ class TestEigsh:
         with pytest.raises(ValueError):
             sp.linalg.eigsh(a, k=self.n)
         with pytest.raises(ValueError):
+            sp.linalg.eigsh(a, k=self.k, which='XX')
+        with pytest.raises(TypeError):
+            # 'SM' routes through shift-invert at sigma=0, which needs a sparse
+            # 'a' to factorize (or an explicit OPinv); a dense 'a' must raise.
             sp.linalg.eigsh(a, k=self.k, which='SM')
+
+    @testing.for_dtypes('fdFD')
+    def test_smallest_magnitude(self, dtype):
+        # which='SM' is an alias for shift-invert at sigma=0 (eigenvalues
+        # nearest 0 == smallest in magnitude). Cupy-only: compare the alias to
+        # explicit sigma=0 shift-invert and to a dense reference (scipy's plain
+        # 'SM' Lanczos is unreliable, so it is not used as the oracle here).
+        if self.use_linear_operator or self.which != 'LM':
+            pytest.skip()
+        eigsh = cupyx.scipy.sparse.linalg.eigsh
+        rt = self.res_tol[numpy.dtype(dtype).char.lower()]
+        a = self._make_matrix(dtype, cupy)
+        a = a + cupy.eye(self.n, dtype=a.dtype)      # positive definite (invertible at 0)
+        a = sparse.csr_matrix(a)
+        w_sm = eigsh(a, k=self.k, which='SM', return_eigenvectors=False)
+        w_si = eigsh(a, k=self.k, sigma=0, which='LM', return_eigenvectors=False)
+        # the alias must match explicit shift-invert at sigma=0 ...
+        testing.assert_allclose(cupy.sort(w_sm), cupy.sort(w_si), rtol=rt, atol=rt)
+        # ... and both must be the k smallest-magnitude eigenvalues (dense ref).
+        ref = numpy.linalg.eigvalsh(cupy.asnumpy(a.toarray()))
+        ref = numpy.sort(ref[numpy.argsort(numpy.abs(ref))[:self.k]])
+        testing.assert_allclose(cupy.asnumpy(cupy.sort(w_sm)), ref, rtol=rt, atol=rt)
 
     def test_starting_vector(self):
         eigsh = cupyx.scipy.sparse.linalg.eigsh

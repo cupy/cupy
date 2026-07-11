@@ -27,10 +27,17 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
             :class:`cupyx.scipy.sparse.linalg.LinearOperator`.
         k (int): The number of eigenvalues and eigenvectors to compute. Must be
             ``1 <= k < n``.
-        which (str): 'LM' or 'LA' or 'SA'.
+        which (str): 'LM', 'LA', 'SA' or 'SM'.
             'LM': finds ``k`` largest (in magnitude) eigenvalues.
             'LA': finds ``k`` largest (algebraic) eigenvalues.
             'SA': finds ``k`` smallest (algebraic) eigenvalues.
+            'SM': finds ``k`` smallest (in magnitude) eigenvalues. Implemented
+                as shift-invert at ``sigma = 0`` (the eigenvalues nearest 0),
+                since plain Lanczos does not converge to the smallest/interior
+                eigenvalues. ``a`` must therefore be sparse and non-singular, or
+                an ``OPinv`` operator for ``A^{-1}`` must be supplied; for a
+                singular ``a`` (e.g. a graph Laplacian with a zero eigenvalue)
+                pass a small nonzero ``sigma`` instead.
 
         v0 (ndarray): Starting vector for iteration. If ``None``, a random
             unit vector is used.
@@ -68,6 +75,12 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
     n = a.shape[0]
     if a.ndim != 2 or a.shape[0] != a.shape[1]:
         raise ValueError('expected square matrix (shape: {})'.format(a.shape))
+
+    if which == 'SM' and sigma is None:
+        # 'SM' (smallest magnitude) == the eigenvalues nearest 0: route through
+        # shift-invert at sigma = 0. Plain-Lanczos 'SM' does not converge to the
+        # smallest / interior eigenvalues, so shift-invert is used instead.
+        sigma = 0
 
     if sigma is not None:
         # Shift-invert mode. Run the Lanczos iteration on the operator
@@ -108,9 +121,9 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
         raise ValueError('k must be greater than 0 (actual: {})'.format(k))
     if k >= n:
         raise ValueError('k must be smaller than n (actual: {})'.format(k))
-    if which not in ('LM', 'LA', 'SA'):
-        raise ValueError('which must be \'LM\',\'LA\'or\'SA\' (actual: {})'
-                         ''.format(which))
+    if which not in ('LM', 'LA', 'SA', 'SM'):
+        raise ValueError('which must be \'LM\', \'LA\', \'SA\' or \'SM\' '
+                         '(actual: {})'.format(which))
     if ncv is None:
         ncv = min(max(2 * k, k + 32), n - 1)
     else:
@@ -370,10 +383,9 @@ def _eigsh_solve_ritz(alpha, beta, beta_k, k, which):
         idx = numpy.argsort(w)
         wk = w[idx[:k]]
         sk = s[:, idx[:k]]
-    # elif which == 'SM':  #dysfunctional
-    #   idx = cupy.argsort(abs(w))
-    #   wk = w[idx[:k]]
-    #   sk = s[:,idx[:k]]
+    # 'SM' (smallest magnitude) is handled in eigsh() via shift-invert at
+    # sigma = 0; plain-Lanczos Ritz selection does not converge to the
+    # smallest / interior eigenvalues, so it is intentionally not done here.
     return cupy.array(wk), cupy.array(sk)
 
 
