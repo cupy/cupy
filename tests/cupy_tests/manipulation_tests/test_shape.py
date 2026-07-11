@@ -157,9 +157,7 @@ class TestReshape:
         a = testing.shaped_arange((2, 3, 4), cupy).transpose(2, 0, 1)
         with pytest.raises(
                 ValueError,
-                match=(r'Unable to avoid creating a copy while reshaping '
-                       r'array of shape \(4, 2, 3\) and size 24 into '
-                       r'shape \(2, 3, 4\)\.')):
+                match=r'Unable to avoid creating a copy while reshaping\.'):
             if external:
                 cupy.reshape(a, (2, 3, 4), copy=False)
             else:

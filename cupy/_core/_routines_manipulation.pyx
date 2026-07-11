@@ -370,10 +370,9 @@ cpdef _ndarray_base _reshape(
             return newarray.copy()
         return newarray
     if copy is False:
+        # Same message as NumPy (numpy/_core/src/multiarray/shape.c).
         raise ValueError(
-            f'Unable to avoid creating a copy while reshaping array of '
-            f'shape {tuple(self._shape)} and size {self.size} into shape '
-            f'{tuple(shape)}.')
+            'Unable to avoid creating a copy while reshaping.')
     newarray = self.copy()
     _get_strides_for_nocopy_reshape(newarray, shape, strides)
 
