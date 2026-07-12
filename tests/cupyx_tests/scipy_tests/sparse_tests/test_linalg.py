@@ -182,6 +182,19 @@ class TestEigsh:
             a = sp.linalg.aslinearoperator(a)
         return self._test_eigsh(a, xp, sp)
 
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=tol, atol=tol, sp_name='sp')
+    def test_k_near_n(self, dtype, xp, sp):
+        # k close to n is too large for the thick-restart Lanczos and is served
+        # by a dense fallback (gh-6863); check it matches SciPy at k = n - 2.
+        a = self._make_matrix(dtype, xp)
+        if self.use_linear_operator:
+            a = sp.linalg.aslinearoperator(a)
+        ret = sp.linalg.eigsh(a, k=self.n - 2, which=self.which,
+                              return_eigenvectors=self.return_eigenvectors)
+        w = ret[0] if self.return_eigenvectors else ret
+        return xp.sort(w)
+
     @pytest.mark.xfail(
         reason='eigsh works wrong (#5001)',
         raises=AssertionError,
@@ -289,6 +302,22 @@ class TestSvds:
         if self.use_linear_operator:
             a = sp.linalg.aslinearoperator(a)
         return self._test_svds(a, xp, sp)
+
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=tol, atol=tol, sp_name='sp')
+    def test_k_near_min(self, dtype, xp, sp):
+        # k close to min(shape) makes the inner eigsh too small for the
+        # thick-restart Lanczos; it is served by eigsh's dense fallback
+        # (gh-9278, gh-8636). Check it matches SciPy at k = min(shape) - 2.
+        a = self._make_matrix(dtype, xp)
+        if self.use_linear_operator:
+            a = sp.linalg.aslinearoperator(a)
+        ret = sp.linalg.svds(a, k=min(self.shape) - 2,
+                             return_singular_vectors=self.return_vectors)
+        if self.return_vectors:
+            u, s, vt = ret
+            return u @ xp.diag(s) @ vt
+        return xp.sort(ret)
 
     @pytest.mark.xfail(
         reason='eigsh works wrong (#5001)',

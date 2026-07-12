@@ -68,6 +68,12 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
     if which not in ('LM', 'LA', 'SA'):
         raise ValueError('which must be \'LM\',\'LA\'or\'SA\' (actual: {})'
                          ''.format(which))
+    # The thick-restart Lanczos needs ncv >= k + 2 with ncv <= n - 1, i.e.
+    # k <= n - 3. For a matrix too small for that (k >= n - 2) fall back to a
+    # dense eigensolver; this also fixes eigsh/svds crashing for small matrices
+    # or k close to n (gh-6863, gh-9278, gh-8636).
+    if k >= n - 2:
+        return _eigsh_dense(a, k, which, return_eigenvectors)
     if ncv is None:
         ncv = min(max(2 * k, k + 32), n - 1)
     else:
@@ -143,6 +149,27 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
         return w[idx], x[:, idx]
     else:
         return cupy.sort(w)
+
+
+def _eigsh_dense(a, k, which, return_eigenvectors):
+    # Dense fallback used by ``eigsh`` when the matrix is too small for the
+    # thick-restart Lanczos (which needs ncv >= k + 2 with ncv <= n - 1, i.e.
+    # k <= n - 3). Densifies ``a`` (ndarray / spmatrix / LinearOperator) via a
+    # matmul with the identity, then selects ``k`` eigenpairs by ``which``.
+    n = a.shape[0]
+    A = a @ cupy.eye(n, dtype=a.dtype)
+    w, v = cupy.linalg.eigh(A)                    # real, ascending eigenvalues
+    if which == 'LM':
+        sel = cupy.argsort(cupy.abs(w))[n - k:]   # k largest in magnitude
+    elif which == 'LA':
+        sel = cupy.arange(n - k, n)               # k largest algebraic
+    else:  # 'SA'
+        sel = cupy.arange(k)                      # k smallest algebraic
+    w, v = w[sel], v[:, sel]
+    idx = cupy.argsort(w)                         # ascending, matching eigsh
+    if return_eigenvectors:
+        return w[idx], v[:, idx]
+    return w[idx]
 
 
 def _lanczos_asis(a, V, u, alpha, beta, i_start, i_end):
