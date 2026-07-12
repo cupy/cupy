@@ -222,6 +222,11 @@ def _lanczos_fast(A, n, ncv):
             spmv_buff = cupy.empty(buff_size, cupy.int8)
 
         v[...] = V[i_start]
+        # Running ||A|| estimate and previous off-diagonal, for the
+        # lucky-breakdown test below.
+        anorm = 0.0
+        prev_beta = 0.0
+        break_rtol = float(numpy.sqrt(numpy.finfo(A.dtype).eps))
         for i in range(i_start, i_end):
             # Matrix-vector multiplication
             if cusparse_handle is None:
@@ -286,6 +291,21 @@ def _lanczos_fast(A, n, ncv):
             if i >= i_end - 1:
                 break
 
+            # Lucky breakdown: beta[i] ~ 0 means A @ v landed in span(V), i.e.
+            # an invariant subspace was found. Normalizing by it (below) yields
+            # NaNs / wrong results on degenerate or rank-deficient spectra
+            # (gh-6446, gh-7495, gh-8009, gh-7157). Instead decouple the
+            # tridiagonal (beta[i] = 0) and restart V[i+1] with a fresh unit
+            # vector orthogonal to V[:i+1] so the iteration keeps exploring.
+            beta_i = float(beta[i])
+            anorm = max(anorm, float(abs(alpha[i])) + beta_i + prev_beta)
+            prev_beta = beta_i
+            if beta_i < break_rtol * anorm:
+                beta[i] = 0
+                v[...] = _restart_ortho(V, i + 1, n, u.dtype)
+                V[i + 1] = v
+                continue
+
             # Normalize
             _kernel_normalize(u, beta, i, n, v, V)
 
@@ -296,6 +316,16 @@ _kernel_normalize = cupy.ElementwiseKernel(
     'T u, raw S beta, int32 j, int32 n', 'T v, raw T V',
     'v = u / beta[j]; V[i + (j+1) * n] = v;', 'cupy_eigsh_normalize'
 )
+
+
+def _restart_ortho(V, m, n, dtype):
+    # Fresh unit vector orthogonal to V[:m], used to restart the Lanczos
+    # recurrence after a lucky breakdown (two classical Gram-Schmidt passes).
+    w = cupy.random.random((n,)).astype(dtype)
+    Vm = V[:m]
+    for _ in range(2):
+        w = w - Vm.T @ (Vm.conj() @ w)
+    return w / cupy.linalg.norm(w)
 
 
 def _eigsh_solve_ritz(alpha, beta, beta_k, k, which):
