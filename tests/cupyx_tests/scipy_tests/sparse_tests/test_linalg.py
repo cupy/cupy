@@ -195,6 +195,25 @@ class TestEigsh:
         cupy.testing.assert_allclose(
             cupy.sort(w), cupy.ones(self.k, dtype='d'), atol=1e-8)
 
+    def test_clustered_large_k(self):
+        # A degenerate spectrum loses orthogonality after a single reorth pass,
+        # giving ghost / overflow Ritz values at larger k (gh-7168, gh-6769); a
+        # second reorthogonalization pass restores it. Checked once, vs dense.
+        if self.use_linear_operator or self.which != 'LA':
+            pytest.skip()
+        n, k = 200, 20
+        evals = cupy.concatenate(
+            [cupy.ones(n // 2, dtype='d'),
+             50.0 * cupy.ones(n // 2, dtype='d')])
+        q, _ = cupy.linalg.qr(testing.shaped_random((n, n), cupy, dtype='d'))
+        a = (q * evals) @ q.T
+        w = sparse.linalg.eigsh(sparse.csr_matrix(a), k=k, which='LA',
+                                return_eigenvectors=False)
+        assert not bool(cupy.isnan(w).any())
+        assert bool((cupy.abs(w) < 1e3).all())      # no ghost / overflow
+        ref = cupy.sort(cupy.linalg.eigvalsh(a))[-k:]
+        cupy.testing.assert_allclose(cupy.sort(w), ref, rtol=1e-6, atol=1e-6)
+
     @pytest.mark.xfail(
         reason='eigsh works wrong (#5001)',
         raises=AssertionError,

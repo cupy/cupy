@@ -278,6 +278,22 @@ def _lanczos_fast(A, n, ncv):
                  one.ctypes.data, u.data.ptr, 1)
             alpha[i] += uu[i]
 
+            # Second reorthogonalization pass ("twice is enough"): a single
+            # classical Gram-Schmidt pass leaves residual non-orthogonality on
+            # clustered / degenerate spectra, which grows into spurious
+            # ("ghost") Ritz values and overflow at large k (gh-7168, gh-6769,
+            # gh-9019). A second pass restores orthogonality.
+            gemv(cublas_handle, _cublas.CUBLAS_OP_C,
+                 n, i + 1,
+                 one.ctypes.data, V.data.ptr, n,
+                 u.data.ptr, 1,
+                 zero.ctypes.data, uu.data.ptr, 1)
+            gemv(cublas_handle, _cublas.CUBLAS_OP_N,
+                 n, i + 1,
+                 mone.ctypes.data, V.data.ptr, n,
+                 uu.data.ptr, 1,
+                 one.ctypes.data, u.data.ptr, 1)
+
             # Call nrm2
             _cublas.setPointerMode(
                 cublas_handle, _cublas.CUBLAS_POINTER_MODE_DEVICE)
