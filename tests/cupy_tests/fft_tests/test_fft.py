@@ -420,6 +420,10 @@ class TestFft2:
         {'shape': (0, 5), 's': None, 'axes': None},
         {'shape': (2, 0, 5), 's': None, 'axes': None},
         {'shape': (0, 0, 5), 's': None, 'axes': None},
+        # s coincides with shape as a raw tuple, but axes is not the
+        # default order, so a real per-axis crop/pad is still required
+        {'shape': (3, 2), 's': (3, 2), 'axes': (1, 0)},
+        {'shape': (2, 3, 4), 's': (2, 3, 4), 'axes': (2, 1, 0)},
     ],
         testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
     )
@@ -955,6 +959,10 @@ class TestRfft2EmptyAxes:
         {'shape': (2, 3, 4), 's': None, 'axes': None},
         {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2)},
         {'shape': (2, 3, 4, 5), 's': None, 'axes': None},
+        # s coincides with shape as a raw tuple, but axes is not the
+        # default order, so a real per-axis crop/pad is still required
+        {'shape': (3, 2), 's': (3, 2), 'axes': (1, 0)},
+        {'shape': (2, 3, 4), 's': (2, 3, 4), 'axes': (2, 1, 0)},
     ],
         testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
     )
