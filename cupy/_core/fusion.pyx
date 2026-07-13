@@ -825,6 +825,14 @@ class Fusion(object):
             # No cupy ndarray exists in the arguments
             return self.func(*args)
 
+        # The old tracer has no notion of a callable argument; route
+        # straight to the newer tracer, which passes callables through
+        # unchanged instead of abstracting them into kernel parameters.
+        for arg in args:
+            if callable(arg):
+                self.new_fusion = new_fusion.Fusion(self.func, self.name)
+                return self.new_fusion(*args)
+
         # Invalid argument types
         for arg in args:
             if not isinstance(arg, _acceptable_types):
