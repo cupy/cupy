@@ -6,6 +6,12 @@ import pytest
 import cupy
 from cupy import testing
 
+test_for_all_copy_args = pytest.mark.parametrize("copy", [
+    pytest.param(None, id='copy-None'),
+    pytest.param(False, id='copy-False'),
+    pytest.param(True, id='copy-True')
+])
+
 
 @pytest.mark.parametrize('shape', [(2, 3), (), (4,)])
 class TestShape:
@@ -53,6 +59,33 @@ class TestReshape:
         b[1] = 1
         return a
 
+    @testing.with_requires('numpy>=2.1')
+    @testing.for_orders('CFA')
+    @testing.for_all_dtypes()
+    @test_for_all_copy_args
+    @testing.numpy_cupy_array_equal(accept_error=ValueError)
+    def test_copy_arg_reshape(self, xp, dtype, order, copy):
+        a = xp.zeros((2, 3, 4), dtype=dtype)
+        b = a.reshape(4, 3, 2, order=order, copy=copy)
+        b[1] = 1
+        return b
+
+    @testing.with_requires('numpy>=2.1')
+    def test_copy_arg_str_reshape_raises(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(
+                    ValueError, match="strings are not allowed for"):
+                a = xp.zeros((2, 3, 4), dtype=numpy.int32)
+                a.reshape(4, 3, 2, copy='False')
+
+    @testing.with_requires('numpy>=2.1')
+    def test_copy_arg_false_reshape_raises(self):
+        for xp in (numpy, cupy):
+            a = xp.zeros((2, 3, 4))
+            with pytest.raises(
+                    ValueError, match="Unable to avoid creating a copy"):
+                a.transpose(2, 0, 1).reshape(4, 3, 2, order='F', copy=False)
+
     @testing.for_orders('CFA')
     @testing.numpy_cupy_array_equal()
     def test_transposed_reshape2(self, xp, order):
@@ -68,31 +101,36 @@ class TestReshape:
     def test_reshape_with_multiple_unknown_dimensions(self):
         for xp in (numpy, cupy):
             a = testing.shaped_arange((2, 3, 4), xp)
-            with pytest.raises(ValueError):
+            with pytest.raises(
+                    ValueError,
+                    match="can only specify one unknown dimension"):
                 a.reshape(3, -1, -1)
 
     def test_reshape_with_changed_arraysize(self):
         for xp in (numpy, cupy):
             a = testing.shaped_arange((2, 3, 4), xp)
-            with pytest.raises(ValueError):
+            with pytest.raises(
+                    ValueError, match="cannot reshape array of size"):
                 a.reshape(2, 4, 4)
 
     def test_reshape_invalid_order(self):
         for xp in (numpy, cupy):
             a = testing.shaped_arange((2, 3, 4), xp)
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="is not permitted"):
                 a.reshape(2, 4, 4, order='K')
 
     def test_reshape_zerosize_invalid(self):
         for xp in (numpy, cupy):
             a = xp.zeros((0,))
-            with pytest.raises(ValueError):
+            with pytest.raises(
+                    ValueError, match="cannot reshape array of size"):
                 a.reshape(())
 
     def test_reshape_zerosize_invalid_unknown(self):
         for xp in (numpy, cupy):
             a = xp.zeros((0,))
-            with pytest.raises(ValueError):
+            with pytest.raises(
+                    ValueError, match="cannot reshape array of size"):
                 a.reshape((-1, 0))
 
     @testing.numpy_cupy_array_equal()
@@ -111,10 +149,11 @@ class TestReshape:
         return b
 
     @testing.for_orders('CFA')
+    @test_for_all_copy_args
     @testing.numpy_cupy_array_equal()
-    def test_external_reshape(self, xp, order):
+    def test_external_reshape(self, xp, order, copy):
         a = xp.zeros((8,), dtype=xp.float32)
-        return xp.reshape(a, (1, 1, 1, 4, 1, 2), order=order)
+        return xp.reshape(a, (1, 1, 1, 4, 1, 2), order=order, copy=copy)
 
     def _test_ndim_limit(self, xp, ndim, dtype, order):
         idx = [1]*ndim
@@ -136,7 +175,9 @@ class TestReshape:
     @testing.for_all_dtypes()
     def test_ndim_limit2(self, dtype, order):
         for xp in (numpy, cupy):
-            with pytest.raises(ValueError):
+            with pytest.raises(
+                    ValueError,
+                    match="maximum supported dimension for an ndarray is"):
                 self._test_ndim_limit(xp, 65, dtype, order)
 
 
