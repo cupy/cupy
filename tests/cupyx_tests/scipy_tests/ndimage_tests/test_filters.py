@@ -1054,3 +1054,11 @@ class TestInvalidOrigin(FilterTestCaseBase):
     def test_invalid_origin_pos(self, xp, scp):
         self.origin = self.ksize - self.ksize // 2
         return self._filter(xp, scp)
+
+
+class TestSequenceModeRegression:
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_prewitt_sequence_mode(self, xp, scp):
+        arr = xp.asarray([[1., 0., 0], [1, 1, 0], [0, 0, 0]])
+        return scp.ndimage.prewitt(arr, mode=['reflect', 'reflect'])
