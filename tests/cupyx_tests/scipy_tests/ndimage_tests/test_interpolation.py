@@ -491,7 +491,7 @@ class TestAffineTransformOpenCV:
 
 @testing.parameterize(*(
     testing.product({
-        'angle': [-10, 1000],
+        'angle': [-10, 1000, 90, 180, -180],
         'axes': [(1, 0)],
         'reshape': [False, True],
         # Avoid float64 output so rtol dict keyed by result dtype picks up

@@ -489,6 +489,24 @@ def _minmax(coor, minc, maxc):
     return minc, maxc
 
 
+def _sindg_cosdg(angle):
+    """Return (sin, cos) of an angle given in degrees.
+
+    At exact multiples of 90 degrees this returns exact values in
+    {-1, 0, 1} instead of going through radians, matching what
+    scipy.ndimage.rotate gets from cosdg/sindg. math.sin(deg2rad(180))
+    is 1.2246e-16, not exactly 0, and that residual is enough to push a
+    boundary pixel's remapped coordinate just past the array bound.
+    """
+    if angle % 90 == 0:
+        quadrant = int(angle // 90) % 4
+        sin = (0.0, 1.0, 0.0, -1.0)[quadrant]
+        cos = (1.0, 0.0, -1.0, 0.0)[quadrant]
+        return sin, cos
+    rad = numpy.deg2rad(angle)
+    return math.sin(rad), math.cos(rad)
+
+
 def rotate(input, angle, axes=(1, 0), reshape=True, output=None, order=3,
            mode='constant', cval=0.0, prefilter=True):
     """Rotate an array.
@@ -547,9 +565,7 @@ def rotate(input, angle, axes=(1, 0), reshape=True, output=None, order=3,
         raise ValueError('invalid rotation plane specified')
 
     ndim = input_arr.ndim
-    rad = numpy.deg2rad(angle)
-    sin = math.sin(rad)
-    cos = math.cos(rad)
+    sin, cos = _sindg_cosdg(angle)
     float_dtype = cupy.promote_types(input_arr.real.dtype, cupy.float32)
 
     # determine offsets and output shape as in scipy.ndimage.rotate
