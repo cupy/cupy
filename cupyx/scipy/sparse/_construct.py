@@ -181,7 +181,8 @@ def _compressed_sparse_stack(blocks, axis):
     indices = cupy.empty(data.size, dtype=idx_dtype)
     indptr = cupy.empty(sum(b.shape[axis]
                             for b in blocks) + 1, dtype=idx_dtype)
-    last_indptr = idx_dtype(0)
+    # Keep ``last_indptr`` on device to avoid a per-block D2H sync.
+    last_indptr = cupy.zeros((), dtype=idx_dtype)
     sum_dim = 0
     sum_indices = 0
     for b in blocks:
@@ -194,7 +195,7 @@ def _compressed_sparse_stack(blocks, axis):
         indptr[idxs] = b.indptr[:-1]
         indptr[idxs] += last_indptr
         sum_dim += b.shape[axis]
-        last_indptr += b.indptr[-1]
+        last_indptr = last_indptr + b.indptr[-1]
     indptr[-1] = last_indptr
     use_array = _any_sparray(*blocks)
     if axis == 0:
@@ -238,21 +239,20 @@ def hstack(blocks, format=None, dtype=None):
 
 
 def vstack(blocks, format=None, dtype=None):
-    """Stacks sparse matrices vertically (row wise)
+    """Stacks sparse arrays/matrices vertically (row wise).
 
     Args:
-        blocks (sequence of cupyx.scipy.sparse.spmatrix)
-            sparse matrices to stack
-        format (str, optional):
-            sparse format of the result (e.g. "csr")
-            by default an appropriate sparse matrix format is returned.
-            This choice is subject to change.
-        dtype (dtype, optional):
-            The data-type of the output matrix.  If not given, the dtype is
-            determined from that of `blocks`.
+        blocks (sequence of cupyx.scipy.sparse): sparse objects to stack.
+        format (str, optional): sparse format of the result (e.g. ``'csr'``).
+            By default an appropriate sparse format is returned.  This
+            choice is subject to change.
+        dtype (dtype, optional): The data-type of the output.  If not
+            given, the dtype is determined from that of ``blocks``.
 
     Returns:
-        cupyx.scipy.sparse.spmatrix: the stacked sparse matrix
+        cupyx.scipy.sparse: The stacked sparse object.  Returns a sparse
+        array when *any* input is a sparse array, else a sparse matrix
+        (matches scipy).
 
     .. seealso:: :func:`scipy.sparse.vstack`
 
@@ -371,22 +371,22 @@ def bmat(blocks, format=None, dtype=None):
                 if brow_lengths[i+1] == 0:
                     brow_lengths[i+1] = A.shape[0]
                 elif brow_lengths[i+1] != A.shape[0]:
-                    msg = ('blocks[{i},:] has incompatible row dimensions. '
-                           'Got blocks[{i},{j}].shape[0] == {got}, '
-                           'expected {exp}.'.format(i=i, j=j,
-                                                    exp=brow_lengths[i+1],
-                                                    got=A.shape[0]))
-                    raise ValueError(msg)
+                    exp = brow_lengths[i+1]
+                    got = A.shape[0]
+                    raise ValueError(
+                        f'blocks[{i},:] has incompatible row '
+                        f'dimensions. Got blocks[{i},{j}].shape[0] '
+                        f'== {got}, expected {exp}.')
 
                 if bcol_lengths[j+1] == 0:
                     bcol_lengths[j+1] = A.shape[1]
                 elif bcol_lengths[j+1] != A.shape[1]:
-                    msg = ('blocks[:,{j}] has incompatible row dimensions. '
-                           'Got blocks[{i},{j}].shape[1] == {got}, '
-                           'expected {exp}.'.format(i=i, j=j,
-                                                    exp=bcol_lengths[j+1],
-                                                    got=A.shape[1]))
-                    raise ValueError(msg)
+                    exp = bcol_lengths[j+1]
+                    got = A.shape[1]
+                    raise ValueError(
+                        f'blocks[:,{j}] has incompatible column '
+                        f'dimensions. Got blocks[{i},{j}].shape[1] '
+                        f'== {got}, expected {exp}.')
 
     # Rebuild blocks_flat after COO conversion so that .nnz and
     # .dtype are available for dense inputs that were converted.
