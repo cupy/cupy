@@ -39,6 +39,8 @@ def array(obj, dtype=None, copy=True, order='K', subok=False, ndmin=0, *,
             the source ``obj`` without proper ordering while copying would
             result in a race condition. If set to ``True``, the copy is
             synchronous (with respect to the host).
+        device (int or cupy.cuda.Device, optional): The device on which the
+            array is allocated. ``None`` (default) uses the current device.
 
     Returns:
         cupy.ndarray: An array on the current device.
@@ -81,6 +83,8 @@ def asarray(a, dtype=None, order=None, *, copy=None, blocking=False,
             the source ``a`` without proper ordering while copying would
             result in a race condition. If set to ``True``, the copy is
             synchronous (with respect to the host).
+        device (int or cupy.cuda.Device, optional): The device on which the
+            array is allocated. ``None`` (default) uses the current device.
 
     Returns:
         cupy.ndarray: An array on the current device. If ``a`` is already on

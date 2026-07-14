@@ -97,6 +97,8 @@ def empty_like(
         shape (int or tuple of ints): Overrides the shape of the result. If
             ``order='K'`` and the number of dimensions is unchanged, will try
             to keep order, otherwise, ``order='C'`` is implied.
+        device (int or cupy.cuda.Device, optional): The device on which the
+            array is allocated. ``None`` (default) uses the current device.
 
     Returns:
         cupy.ndarray: A new array with same shape and dtype of ``a`` with
@@ -234,6 +236,8 @@ def ones_like(
         shape (int or tuple of ints): Overrides the shape of the result. If
             ``order='K'`` and the number of dimensions is unchanged, will try
             to keep order, otherwise, ``order='C'`` is implied.
+        device (int or cupy.cuda.Device, optional): The device on which the
+            array is allocated. ``None`` (default) uses the current device.
 
     Returns:
         cupy.ndarray: An array filled with ones.
@@ -309,6 +313,8 @@ def zeros_like(
         shape (int or tuple of ints): Overrides the shape of the result. If
             ``order='K'`` and the number of dimensions is unchanged, will try
             to keep order, otherwise, ``order='C'`` is implied.
+        device (int or cupy.cuda.Device, optional): The device on which the
+            array is allocated. ``None`` (default) uses the current device.
 
     Returns:
         cupy.ndarray: An array filled with zeros.
@@ -348,6 +354,8 @@ def full(
         dtype (data-type, optional): Data type specifier.
         order ({'C', 'F'}): Row-major (C-style) or column-major
             (Fortran-style) order.
+        device (int or cupy.cuda.Device, optional): The device on which the
+            array is allocated. ``None`` (default) uses the current device.
 
     Returns:
         cupy.ndarray: An array filled with ``fill_value``.
@@ -393,6 +401,8 @@ def full_like(
         shape (int or tuple of ints): Overrides the shape of the result. If
             ``order='K'`` and the number of dimensions is unchanged, will try
             to keep order, otherwise, ``order='C'`` is implied.
+        device (int or cupy.cuda.Device, optional): The device on which the
+            array is allocated. ``None`` (default) uses the current device.
 
     Returns:
         cupy.ndarray: An array filled with ``fill_value``.
