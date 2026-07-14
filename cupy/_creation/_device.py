@@ -6,17 +6,15 @@ from cupy.cuda import Device, runtime
 def _get_device_id(device):
     """Normalizes a ``device=`` argument to an integer device id.
 
-    ``None`` maps to ``-1``, which is used as a sentinel meaning "the current
-    device" (i.e. no device switch). An ``int`` is returned as is, and a
-    :class:`cupy.cuda.Device` contributes its ``id``. Anything else raises
+    ``None`` maps to ``-1`` (the current device); an ``int`` or
+    :class:`cupy.cuda.Device` gives the device id. Anything else raises
     :class:`TypeError`.
     """
     if device is None:
         return -1
     if isinstance(device, Device):
         return device.id
-    # Note: bool is a subclass of int; reject it explicitly to avoid
-    # treating ``True``/``False`` as device 1/0.
+    # bool is an int subclass; reject it so True/False aren't devices 1/0.
     if isinstance(device, int) and not isinstance(device, bool):
         return device
     raise TypeError(
@@ -27,11 +25,9 @@ def _get_device_id(device):
 class _DeviceGuard:
     """Lightweight scoped device switch used by array creation functions.
 
-    Sets the current device to ``device_id`` on entry, skipping the switch
-    when it already matches, and restores the previous device on exit. Unlike
-    :class:`cupy.cuda.Device`, it keeps the previous device on the instance
-    instead of a thread-local stack, so the common same-device path is close
-    to a single ``cudaGetDevice``. A negative ``device_id`` is a no-op.
+    Sets the current device to ``device_id`` on entry (skipping the switch when
+    it already matches) and restores it on exit. A negative ``device_id`` is a
+    no-op.
     """
 
     __slots__ = ('_device_id', '_prev')
