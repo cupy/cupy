@@ -2449,13 +2449,13 @@ cdef list _cupy_extra_header_list = [
 ]
 
 
-cpdef str _init_header_dir_path():
+cpdef str _get_header_dir_path():
     # Cython cannot use __file__ in global scope
     return os.path.abspath(
             os.path.join(os.path.dirname(__file__), 'include'))
 
 
-cdef str _header_dir_path = _init_header_dir_path()
+cdef str _header_dir_path = _get_header_dir_path()
 cdef cached_object _header_source_cache
 cdef dict _header_source_map = {}
 
