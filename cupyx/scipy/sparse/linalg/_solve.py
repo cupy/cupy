@@ -476,7 +476,8 @@ def spsolve_triangular(A, b, lower=True, overwrite_A=False, overwrite_b=False,
 
         cusparse.csrsm2(A, x, lower=lower, unit_diag=unit_diagonal)
     else:
-        assert False
+        raise RuntimeError(
+            'no cuSPARSE backend available for spsolve_triangular')
 
     if x.dtype.char in 'fF':
         # Note: This is for compatibility with SciPy.

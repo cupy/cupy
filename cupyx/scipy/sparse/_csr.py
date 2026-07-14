@@ -200,7 +200,7 @@ class _csr_base(_compressed._compressed_sparse_matrix):
             elif cusparse.check_availability('csrgemm'):
                 return self._as_csr_type(cusparse.csrgemm(self, other))
             else:
-                raise AssertionError
+                raise RuntimeError('no cuSPARSE spgemm backend available')
         elif _is_csc(other):
             self.sum_duplicates()
             other.sum_duplicates()
@@ -225,7 +225,7 @@ class _csr_base(_compressed._compressed_sparse_matrix):
                 b.sum_duplicates()
                 return self._as_csr_type(cusparse.csrgemm2(self, b))
             else:
-                raise AssertionError
+                raise RuntimeError('no cuSPARSE spgemm backend available')
         elif _base.issparse(other):
             return self._matmul_dispatch(other.tocsr())
         elif _base.isdense(other):
@@ -240,7 +240,7 @@ class _csr_base(_compressed._compressed_sparse_matrix):
                 elif cusparse.check_availability('spmv'):
                     csrmv = cusparse.spmv
                 else:
-                    raise AssertionError
+                    raise RuntimeError('no cuSPARSE spmv backend available')
                 return csrmv(self, other)
             elif other.ndim == 2:
                 self.sum_duplicates()
@@ -249,7 +249,7 @@ class _csr_base(_compressed._compressed_sparse_matrix):
                 elif cusparse.check_availability('spmm'):
                     csrmm = cusparse.spmm
                 else:
-                    raise AssertionError
+                    raise RuntimeError('no cuSPARSE spmm backend available')
                 return csrmm(self, cupy.asfortranarray(other))
             else:
                 raise ValueError('could not interpret dimensions')
