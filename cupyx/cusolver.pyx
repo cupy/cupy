@@ -295,178 +295,63 @@ ELSE:
         ctypedef struct cuDoubleComplex 'cuDoubleComplex':
             double x, y
 
-    cdef extern from * nogil:
-        """
-        #include "../cupy_backends/cupy_lapack.h"
-
-        static int cupyx_sgesvd_loop(
-                intptr_t handle, char jobu, char jobvt, int m, int n,
-                intptr_t A, intptr_t s_ptr, intptr_t u_ptr,
-                intptr_t vt_ptr, intptr_t w_ptr, int buffersize,
-                intptr_t info_ptr, int batch_size) {
-            return gesvd_loop<float>(
-                handle, jobu, jobvt, m, n, A, s_ptr, u_ptr, vt_ptr, w_ptr,
-                buffersize, info_ptr, batch_size);
-        }
-
-        static int cupyx_dgesvd_loop(
-                intptr_t handle, char jobu, char jobvt, int m, int n,
-                intptr_t A, intptr_t s_ptr, intptr_t u_ptr,
-                intptr_t vt_ptr, intptr_t w_ptr, int buffersize,
-                intptr_t info_ptr, int batch_size) {
-            return gesvd_loop<double>(
-                handle, jobu, jobvt, m, n, A, s_ptr, u_ptr, vt_ptr, w_ptr,
-                buffersize, info_ptr, batch_size);
-        }
-
-        static int cupyx_cgesvd_loop(
-                intptr_t handle, char jobu, char jobvt, int m, int n,
-                intptr_t A, intptr_t s_ptr, intptr_t u_ptr,
-                intptr_t vt_ptr, intptr_t w_ptr, int buffersize,
-                intptr_t info_ptr, int batch_size) {
-            return gesvd_loop<cuComplex>(
-                handle, jobu, jobvt, m, n, A, s_ptr, u_ptr, vt_ptr, w_ptr,
-                buffersize, info_ptr, batch_size);
-        }
-
-        static int cupyx_zgesvd_loop(
-                intptr_t handle, char jobu, char jobvt, int m, int n,
-                intptr_t A, intptr_t s_ptr, intptr_t u_ptr,
-                intptr_t vt_ptr, intptr_t w_ptr, int buffersize,
-                intptr_t info_ptr, int batch_size) {
-            return gesvd_loop<cuDoubleComplex>(
-                handle, jobu, jobvt, m, n, A, s_ptr, u_ptr, vt_ptr, w_ptr,
-                buffersize, info_ptr, batch_size);
-        }
-
-        static int cupyx_sgeqrf_loop(
-                intptr_t handle, int m, int n, intptr_t a_ptr, int lda,
-                intptr_t tau_ptr, intptr_t w_ptr, int buffersize,
-                intptr_t info_ptr, int batch_size) {
-            return geqrf_loop<float>(
-                handle, m, n, a_ptr, lda, tau_ptr, w_ptr, buffersize,
-                info_ptr, batch_size);
-        }
-
-        static int cupyx_dgeqrf_loop(
-                intptr_t handle, int m, int n, intptr_t a_ptr, int lda,
-                intptr_t tau_ptr, intptr_t w_ptr, int buffersize,
-                intptr_t info_ptr, int batch_size) {
-            return geqrf_loop<double>(
-                handle, m, n, a_ptr, lda, tau_ptr, w_ptr, buffersize,
-                info_ptr, batch_size);
-        }
-
-        static int cupyx_cgeqrf_loop(
-                intptr_t handle, int m, int n, intptr_t a_ptr, int lda,
-                intptr_t tau_ptr, intptr_t w_ptr, int buffersize,
-                intptr_t info_ptr, int batch_size) {
-            return geqrf_loop<cuComplex>(
-                handle, m, n, a_ptr, lda, tau_ptr, w_ptr, buffersize,
-                info_ptr, batch_size);
-        }
-
-        static int cupyx_zgeqrf_loop(
-                intptr_t handle, int m, int n, intptr_t a_ptr, int lda,
-                intptr_t tau_ptr, intptr_t w_ptr, int buffersize,
-                intptr_t info_ptr, int batch_size) {
-            return geqrf_loop<cuDoubleComplex>(
-                handle, m, n, a_ptr, lda, tau_ptr, w_ptr, buffersize,
-                info_ptr, batch_size);
-        }
-
-        static int cupyx_sorgqr_loop(
-                intptr_t handle, int m, int n, int k, intptr_t a_ptr,
-                int lda, intptr_t tau_ptr, intptr_t w_ptr, int buffersize,
-                intptr_t info_ptr, int batch_size, int origin_n) {
-            return orgqr_loop<float>(
-                handle, m, n, k, a_ptr, lda, tau_ptr, w_ptr, buffersize,
-                info_ptr, batch_size, origin_n);
-        }
-
-        static int cupyx_dorgqr_loop(
-                intptr_t handle, int m, int n, int k, intptr_t a_ptr,
-                int lda, intptr_t tau_ptr, intptr_t w_ptr, int buffersize,
-                intptr_t info_ptr, int batch_size, int origin_n) {
-            return orgqr_loop<double>(
-                handle, m, n, k, a_ptr, lda, tau_ptr, w_ptr, buffersize,
-                info_ptr, batch_size, origin_n);
-        }
-
-        static int cupyx_cungqr_loop(
-                intptr_t handle, int m, int n, int k, intptr_t a_ptr,
-                int lda, intptr_t tau_ptr, intptr_t w_ptr, int buffersize,
-                intptr_t info_ptr, int batch_size, int origin_n) {
-            return orgqr_loop<cuComplex>(
-                handle, m, n, k, a_ptr, lda, tau_ptr, w_ptr, buffersize,
-                info_ptr, batch_size, origin_n);
-        }
-
-        static int cupyx_zungqr_loop(
-                intptr_t handle, int m, int n, int k, intptr_t a_ptr,
-                int lda, intptr_t tau_ptr, intptr_t w_ptr, int buffersize,
-                intptr_t info_ptr, int batch_size, int origin_n) {
-            return orgqr_loop<cuDoubleComplex>(
-                handle, m, n, k, a_ptr, lda, tau_ptr, w_ptr, buffersize,
-                info_ptr, batch_size, origin_n);
-        }
-        """
-        int sgesvd_loop 'cupyx_sgesvd_loop'(
+    cdef extern from '../cupy_backends/cupy_lapack.h' nogil:
+        int sgesvd_loop 'gesvd_loop<float>'(
             intptr_t handle, char jobu, char jobvt, int m, int n, intptr_t A,
             intptr_t s_ptr, intptr_t u_ptr, intptr_t vt_ptr,
             intptr_t w_ptr, int buffersize, intptr_t info_ptr,
             int batch_size)
-        int dgesvd_loop 'cupyx_dgesvd_loop'(
+        int dgesvd_loop 'gesvd_loop<double>'(
             intptr_t handle, char jobu, char jobvt, int m, int n, intptr_t A,
             intptr_t s_ptr, intptr_t u_ptr, intptr_t vt_ptr,
             intptr_t w_ptr, int buffersize, intptr_t info_ptr,
             int batch_size)
-        int cgesvd_loop 'cupyx_cgesvd_loop'(
+        int cgesvd_loop 'gesvd_loop<cuComplex>'(
             intptr_t handle, char jobu, char jobvt, int m, int n, intptr_t A,
             intptr_t s_ptr, intptr_t u_ptr, intptr_t vt_ptr,
             intptr_t w_ptr, int buffersize, intptr_t info_ptr,
             int batch_size)
-        int zgesvd_loop 'cupyx_zgesvd_loop'(
+        int zgesvd_loop 'gesvd_loop<cuDoubleComplex>'(
             intptr_t handle, char jobu, char jobvt, int m, int n, intptr_t A,
             intptr_t s_ptr, intptr_t u_ptr, intptr_t vt_ptr,
             intptr_t w_ptr, int buffersize, intptr_t info_ptr,
             int batch_size)
-        int sgeqrf_loop 'cupyx_sgeqrf_loop'(
+        int sgeqrf_loop 'geqrf_loop<float>'(
             intptr_t handle, int m, int n, intptr_t a_ptr, int lda,
             intptr_t tau_ptr, intptr_t w_ptr,
             int buffersize, intptr_t info_ptr,
             int batch_size)
-        int dgeqrf_loop 'cupyx_dgeqrf_loop'(
+        int dgeqrf_loop 'geqrf_loop<double>'(
             intptr_t handle, int m, int n, intptr_t a_ptr, int lda,
             intptr_t tau_ptr, intptr_t w_ptr,
             int buffersize, intptr_t info_ptr,
             int batch_size)
-        int cgeqrf_loop 'cupyx_cgeqrf_loop'(
+        int cgeqrf_loop 'geqrf_loop<cuComplex>'(
             intptr_t handle, int m, int n, intptr_t a_ptr, int lda,
             intptr_t tau_ptr, intptr_t w_ptr,
             int buffersize, intptr_t info_ptr,
             int batch_size)
-        int zgeqrf_loop 'cupyx_zgeqrf_loop'(
+        int zgeqrf_loop 'geqrf_loop<cuDoubleComplex>'(
             intptr_t handle, int m, int n, intptr_t a_ptr, int lda,
             intptr_t tau_ptr, intptr_t w_ptr,
             int buffersize, intptr_t info_ptr,
             int batch_size)
-        int sorgqr_loop 'cupyx_sorgqr_loop'(
+        int sorgqr_loop 'orgqr_loop<float>'(
             intptr_t handle, int m, int n, int k, intptr_t a_ptr, int lda,
             intptr_t tau_ptr, intptr_t w_ptr,
             int buffersize, intptr_t info_ptr,
             int batch_size, int origin_n)
-        int dorgqr_loop 'cupyx_dorgqr_loop'(
+        int dorgqr_loop 'orgqr_loop<double>'(
             intptr_t handle, int m, int n, int k, intptr_t a_ptr, int lda,
             intptr_t tau_ptr, intptr_t w_ptr,
             int buffersize, intptr_t info_ptr,
             int batch_size, int origin_n)
-        int cungqr_loop 'cupyx_cungqr_loop'(
+        int cungqr_loop 'orgqr_loop<cuComplex>'(
             intptr_t handle, int m, int n, int k, intptr_t a_ptr, int lda,
             intptr_t tau_ptr, intptr_t w_ptr,
             int buffersize, intptr_t info_ptr,
             int batch_size, int origin_n)
-        int zungqr_loop 'cupyx_zungqr_loop'(
+        int zungqr_loop 'orgqr_loop<cuDoubleComplex>'(
             intptr_t handle, int m, int n, int k, intptr_t a_ptr, int lda,
             intptr_t tau_ptr, intptr_t w_ptr,
             int buffersize, intptr_t info_ptr,
