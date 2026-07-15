@@ -50,12 +50,17 @@ def check_shape(shape, allow_nd=(2,)):
         allow_nd (tuple of int): Accepted dimensionalities.  Defaults to
             ``(2,)``; pass ``(1, 2)`` to also accept 1-D shapes.
     """
+    if allow_nd == (2,):
+        msg = 'invalid shape (must be a 2-tuple of int)'
+    else:
+        msg = ('invalid shape (must be a tuple of int with length in '
+               f'{allow_nd})')
     try:
         shape_tuple = tuple(shape)
     except TypeError:
-        raise ValueError('invalid shape (must be a 2-tuple of int)')
+        raise ValueError(msg)
     if not isshape(shape_tuple, allow_nd=allow_nd):
-        raise ValueError('invalid shape (must be a 2-tuple of int)')
+        raise ValueError(msg)
     out = tuple(int(v) for v in shape_tuple)
     if any(v < 0 for v in out):
         raise ValueError("'shape' elements cannot be negative")

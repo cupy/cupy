@@ -223,10 +223,10 @@ _available_cusparse_version = {
     'spsm': (11600, None),  # CUDA 11.3.1
     # TODO(eriknw): cuSPARSE--update when SpGEAM ships in a public release.
     # Present in dev, absent from all public releases through
-    # CUDA 13.2 (checked 2026-04-03).  The SpGEAM Generic API is ~2x
-    # faster than csrgeam2 Legacy for int32 and supports int64 natively.
-    # When shipped, route ALL sparse addition through spgeam() (not just
-    # int64) for the speedup.
+    # CUDA 13.2 (checked 2026-04-03).  Verified working with dev build:
+    # SpGEAM Generic API is ~2x faster than csrgeam2 Legacy for int32,
+    # and supports int64 natively.  When shipped, route ALL sparse
+    # addition through spgeam() (not just int64) for the speedup.
     'spgeam': (99000, None),
     # CUSPARSE-2365 added int64 SpGEMM in CUDA 13.0, but cuSPARSE ships
     # as version 12.7.9 (12709) for both CUDA 12.7 and 13.0.  The
@@ -1276,15 +1276,28 @@ def csr2coo(x, data, indices):
     return A
 
 
-def _cupy_transpose_compressed_int64(x, output_cls, out_dim):
-    """Pure-CuPy CSR<->CSC transpose for int64 indices.
+def _transpose_needs_cupy(x):
+    """Whether a CSR<->CSC transpose must use the pure-CuPy fallback.
 
-    Uses ``_build_indptr`` + ``lexsort`` -- O(nnz log nnz) time.
-    This is the int64 path on every cuSPARSE version: no Generic API
-    CSR<->CSC transpose accepts 64-bit indices (newer sparse Generic
-    APIs such as SpGEAM are addition, not transpose), so int64 always
-    takes this fallback and runs roughly an order of magnitude slower
-    than the int32 ``cusparseCsr2cscEx2`` path.
+    cuSPARSE's ``Csr2cscEx2`` (and legacy ``csr2csc``) support only
+    float/complex data with int32 indices, so both int64 indices and a
+    non-float (e.g. ``bool``) data dtype must route through the
+    dtype-agnostic :func:`_cupy_transpose_compressed`.
+    """
+    return x.indices.dtype == _cupy.int64 or x.dtype.char not in 'fdFD'
+
+
+def _cupy_transpose_compressed(x, output_cls, out_dim):
+    """Pure-CuPy CSR<->CSC transpose (int64 indices or non-float data).
+
+    Uses ``_build_indptr`` + ``lexsort`` -- O(nnz log nnz) time, and is
+    dtype-agnostic (it only gathers/reorders the data, never operating on
+    the value dtype).  It is the fallback whenever cuSPARSE's float-only,
+    int32-only ``Csr2cscEx2`` cannot be used: no Generic API CSR<->CSC
+    transpose accepts 64-bit indices (newer sparse Generic APIs such as
+    SpGEAM are addition, not transpose), and cuSPARSE has no bool support
+    at all.  For int64 this runs roughly an order of magnitude slower than
+    the int32 ``cusparseCsr2cscEx2`` path.
 
     Args:
         x: Input compressed sparse matrix.
@@ -1324,11 +1337,12 @@ def _cupy_transpose_compressed_int64(x, output_cls, out_dim):
 
 
 def csr2csc(x):
-    if x.indices.dtype == _cupy.int64:
-        # TODO(eriknw): cuSPARSE--remove when a Generic API CSR<->CSC
-        # function ships (or csr2csc supports int64).  Absent as of
-        # CUDA 13.2 / dev.
-        return _cupy_transpose_compressed_int64(
+    if _transpose_needs_cupy(x):
+        # TODO(eriknw): cuSPARSE--int64 indices need a Generic API
+        # CSR<->CSC function (absent as of CUDA 13.2 / dev); non-float
+        # (bool) data has no cuSPARSE support at all.  Both use the
+        # dtype-agnostic pure-CuPy fallback.
+        return _cupy_transpose_compressed(
             x, cupyx.scipy.sparse.csc_matrix, int(x.shape[1]))
 
     if not check_availability('csr2csc'):
@@ -1355,9 +1369,9 @@ def csr2csc(x):
 
 
 def csr2cscEx2(x):
-    if x.indices.dtype == _cupy.int64:
-        # TODO(eriknw): cuSPARSE--see csr2csc above (same int64 gap)
-        return _cupy_transpose_compressed_int64(
+    if _transpose_needs_cupy(x):
+        # TODO(eriknw): cuSPARSE--see csr2csc above (int64 / bool gap)
+        return _cupy_transpose_compressed(
             x, cupyx.scipy.sparse.csc_matrix, int(x.shape[1]))
 
     if not check_availability('csr2cscEx2'):
@@ -1421,9 +1435,9 @@ def csc2coo(x, data, indices):
 
 
 def csc2csr(x):
-    if x.indices.dtype == _cupy.int64:
-        # TODO(eriknw): cuSPARSE--see csr2csc above (same int64 gap)
-        return _cupy_transpose_compressed_int64(
+    if _transpose_needs_cupy(x):
+        # TODO(eriknw): cuSPARSE--see csr2csc above (int64 / bool gap)
+        return _cupy_transpose_compressed(
             x, cupyx.scipy.sparse.csr_matrix, int(x.shape[0]))
 
     if not check_availability('csc2csr'):
@@ -1450,9 +1464,9 @@ def csc2csr(x):
 
 
 def csc2csrEx2(x):
-    if x.indices.dtype == _cupy.int64:
-        # TODO(eriknw): cuSPARSE--see csr2csc above (same int64 gap)
-        return _cupy_transpose_compressed_int64(
+    if _transpose_needs_cupy(x):
+        # TODO(eriknw): cuSPARSE--see csr2csc above (int64 / bool gap)
+        return _cupy_transpose_compressed(
             x, cupyx.scipy.sparse.csr_matrix, int(x.shape[0]))
 
     if not check_availability('csc2csrEx2'):

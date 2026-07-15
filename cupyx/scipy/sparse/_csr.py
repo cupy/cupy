@@ -768,10 +768,10 @@ class csr_array(_csr_base, _base.sparray):
 
     Supports 1-D shapes (``ndim == 1``) in addition to 2-D, matching
     :class:`scipy.sparse.csr_array`.  A 1-D array is stored as a single
-    CSR row (``indptr == [0, nnz]``) presenting ``shape == (N,)``.  As of
-    this release, 1-D CSR arises mainly via ``coo_array(...).tocsr()``;
-    element-wise arithmetic, matmul, and indexing on 1-D are not yet
-    implemented and raise ``NotImplementedError``.
+    CSR row (``indptr == [0, nnz]``) presenting ``shape == (N,)``, and
+    supports element-wise arithmetic, comparisons, matmul, reductions,
+    indexing, and assignment.  ``diagonal``/``setdiag`` and conversion
+    to CSC require two dimensions, as in scipy.
 
     .. seealso:: :class:`scipy.sparse.csr_array`
     """
@@ -1373,7 +1373,7 @@ def csr2dense(a, order):
     idx_dtype = a.indptr.dtype
     kern = _cupy_csr2dense(a.dtype)
     kern(idx_dtype.type(m), idx_dtype.type(n),
-         a.indptr, a.indices, a.data, (order == 'C'), out)
+         a.indptr, a.indices, a.data, out)
     return out
 
 
@@ -1385,12 +1385,18 @@ def _cupy_csr2dense(dtype):
         op = "atomicAdd(&OUT[index], DATA);"
 
     return cupy.ElementwiseKernel(
-        'I M, I N, raw I INDPTR, I INDICES, T DATA, bool C_ORDER',
+        'I M, I N, raw I INDPTR, I INDICES, T DATA',
         'raw T OUT',
         '''
         I row = get_row_id((I)i, (I)0, M - 1, &(INDPTR[0]));
         I col = INDICES;
-        I index = C_ORDER ? col + N * row : row + M * col;
+        // Logical (C-order) position: the raw-array indexer applies the
+        // output's actual strides, so this addresses both C- and
+        // F-order allocations correctly.  Compute in 64-bit: with int32
+        // indices the flat position ``col + N * row`` can exceed INT32_MAX
+        // (M*N > 2^31) even though M, N, and each index fit int32, which
+        // would otherwise wrap negative and write out of bounds.
+        long long index = (long long)col + (long long)N * (long long)row;
         ''' + op,
         'cupyx_scipy_sparse_csr2dense',
         preamble=_GET_ROW_ID_
@@ -1407,8 +1413,8 @@ def dense2csr(a):
             return cusparse.dense2csr(a)
     m, n = a.shape
     mn = m * n
-    idx_dtype = numpy.int64 if mn > numpy.iinfo(numpy.int32).max \
-        else numpy.int32
+    # The prefix-sum scratch values run up to mn, hence maxval=mn.
+    idx_dtype = _sputils.get_index_dtype(maxval=mn)
     a = cupy.ascontiguousarray(a)
     indptr = cupy.zeros(m + 1, dtype=idx_dtype)
     info = cupy.zeros(mn + 1, dtype=idx_dtype)

@@ -29,6 +29,24 @@ class _data_matrix(_base._spbase):
     def _with_data(self, data, copy=True):
         raise NotImplementedError
 
+    def _bool_reduction_carrier(self):
+        """Non-mutating float64 carrier for reducing a bool array.
+
+        cuSPARSE has no bool arithmetic, so bool ``sum``/``mean`` reduce
+        through a float64 carrier.  Bool duplicates coalesce by logical-or
+        (densify semantics, matching :meth:`toarray`), so the carrier is
+        deduplicated -- but on a *copy*, never mutating ``self`` (a
+        reduction must not compact its operand).  An already-canonical
+        array, or a format that cannot hold duplicates (DIA), skips the
+        copy; the raw flag is read without a device sync.
+        """
+        src = self
+        if (getattr(self, '_has_canonical_format', None) is not True
+                and hasattr(self, 'sum_duplicates')):
+            src = self.copy()
+            src.sum_duplicates()
+        return src._with_data(src.data.astype(cupy.float64), copy=False)
+
     def __abs__(self):
         """Elementwise absolute."""
         return self._with_data(abs(self.data))
@@ -168,24 +186,37 @@ class _data_matrix(_base._spbase):
                 Select from ``{None, 0, 1, -2, -1}``.
 
         Returns:
-            cupy.ndarray: Summed array.
+            cupy.ndarray: The computed mean.
 
         .. seealso::
            :meth:`scipy.sparse.spmatrix.mean`
 
         """
+        # Scale by the Python-level reciprocal like scipy does: the mean
+        # of a zero-length axis then raises ZeroDivisionError instead of
+        # silently returning 0.
+        if self.dtype == bool:
+            # Densify-consistent mean: reduce the coalesced float64 carrier
+            # so bool duplicates OR together (matching sum()/toarray()).
+            # (scipy's mean instead counts duplicates -- inconsistent with
+            # its own coalescing sum -- so this deliberately diverges from
+            # scipy for a non-canonical bool array.)
+            return self._bool_reduction_carrier().mean(
+                axis=axis, dtype=dtype, out=out)
         if self.ndim == 1:
             # Collapse the single axis to a scalar mean directly, without
             # building a throwaway sparse object.
             _sputils.validate_axis_1d(axis)
-            ret = (self.data / self.shape[0]).sum(dtype=dtype)
+            ret = (self.data * (1.0 / self.shape[0])).sum(dtype=dtype)
             if out is not None:
+                if out.shape != ret.shape:
+                    raise ValueError('dimensions do not match')
                 out[...] = ret
                 return out
             return ret
 
+        axis = _sputils.collapse_2d_axis(axis)
         _sputils.validateaxis(axis)
-        data = self.data.copy()
         nRow, nCol = self.shape
         if axis is None:
             n = nRow * nCol
@@ -194,7 +225,7 @@ class _data_matrix(_base._spbase):
         else:
             n = nCol
 
-        return self._with_data(data / n).sum(axis, dtype, out)
+        return self._with_data(self.data * (1.0 / n)).sum(axis, dtype, out)
 
     def power(self, n, dtype=None):
         """Elementwise power function.

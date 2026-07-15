@@ -356,6 +356,9 @@ def bmat(blocks, format=None, dtype=None):
 
     # Check if any input block has int64 indices before conversion
     # to COO (the COO constructor may downcast via check_contents).
+    # Unlike scipy -- where the equivalent introspection is discarded by
+    # the final constructor call -- the dtype chosen here survives,
+    # because the result below is assembled with ``_from_parts``.
     # Each format stores indices in a different attribute: CSR/CSC use
     # ``indices``, COO uses ``row``, DIA uses ``offsets``.
     def _block_index_dtype(b):
@@ -485,8 +488,8 @@ def random(m, n, density=0.01, format='coo', dtype=None,
 
     mn = m * n
 
-    tp = numpy.int64 if mn > numpy.iinfo(numpy.int32).max \
-        else numpy.int32
+    # The flat sample indices lie in [0, mn), so mn - 1 is the max value.
+    tp = _sputils.get_index_dtype(maxval=mn - 1)
     ind = random_state.choice(mn, size=k, replace=False)
     ind = ind.astype(tp, copy=False)
     j = ind // m

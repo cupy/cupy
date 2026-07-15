@@ -14,7 +14,9 @@ except ImportError:
 
 import cupy
 from cupy import testing
+import cupyx.scipy
 from cupyx.scipy import sparse
+from cupyx.scipy.sparse.linalg import aslinearoperator, matrix_power, spsolve
 
 
 SPARSE_FORMATS = ('csr', 'csc', 'coo', 'dia')
@@ -310,13 +312,12 @@ class TestSparseArrayTypeIdentity:
     def test_get_array_module_sparray(self):
         # cupy.get_array_module and cupyx.scipy.get_array_module recognize
         # sparray, not just spmatrix.
-        import cupyx.scipy as cscipy
         A = sparse.csr_array(cupy.array([[1., 2.]]))
         M = sparse.csr_matrix(cupy.array([[1., 2.]]))
         assert cupy.get_array_module(A) is cupy
         assert cupy.get_array_module(M) is cupy
-        assert cscipy.get_array_module(A).__name__ == 'cupyx.scipy'
-        assert cscipy.get_array_module(M).__name__ == 'cupyx.scipy'
+        assert cupyx.scipy.get_array_module(A).__name__ == 'cupyx.scipy'
+        assert cupyx.scipy.get_array_module(M).__name__ == 'cupyx.scipy'
 
     def test_dia_tocsc_data_wider_than_matrix(self):
         # tocsc() must handle a DIA ``data`` buffer wider than the
@@ -619,9 +620,8 @@ class TestSparseArrayTypeIdentity:
     @pytest.mark.parametrize('fmt', ('csr', 'csc', 'coo'))
     def test_count_nonzero_axis_empty(self, fmt):
         # count_nonzero(axis=) on an empty matrix returns scipy's
-        # zero-filled axis vector.  Exercises the zero-size guard:
-        # ``cupy.bincount`` rejects zero-size input even with
-        # ``minlength``, so the empty case is special-cased.
+        # zero-filled axis vector (exercises ``cupy.bincount`` on
+        # zero-size input with ``minlength``).
         cls = getattr(sparse, f'{fmt}_array')
         A = cls((3, 5))
         assert A.count_nonzero() == 0
@@ -1417,7 +1417,6 @@ class TestDiaArrayBasic:
 class TestLinearOperatorFromArray:
 
     def test_aslinearoperator_csr_array(self):
-        from cupyx.scipy.sparse.linalg import aslinearoperator
         m = _make_csr_sq(cupy, sparse, numpy.float64, array=True)
         op = aslinearoperator(m)
         v = cupy.ones(3, dtype=numpy.float64)
@@ -1432,7 +1431,6 @@ class TestSpsolveArray:
 
     @pytest.mark.parametrize('use_array', [True, False])
     def test_spsolve_csr_input(self, use_array):
-        from cupyx.scipy.sparse.linalg import spsolve
         n = 8
         A_dense = cupy.zeros((n, n), dtype=numpy.float64)
         A_dense[cupy.arange(n), cupy.arange(n)] = 4
@@ -1815,6 +1813,8 @@ class TestSparseArray1D:
         a = sp.csr_array(xp.array([[0., 1., 0.], [2., 3., 0.]]))
         return a.reshape((6,))
 
+    # scipy's count_nonzero gained the axis argument in 1.15.
+    @testing.with_requires('scipy>=1.15')
     @testing.numpy_cupy_equal(sp_name='sp')
     def test_csr_count_nonzero_axis0(self, xp, sp):
         return sp.csr_array(xp.array([0., 1., 0., 2.])).count_nonzero(axis=0)
@@ -1919,9 +1919,13 @@ class TestSparseArray1D:
         with pytest.raises(ValueError):
             cls((cupy.array([1., 2.]), (cupy.array([0, 1]),)), shape=(1, 4))
 
-    @pytest.mark.parametrize('fmt', ['coo', 'csr', 'csc'])
-    def test_zero_d_dense_rejected(self, fmt):
-        with pytest.raises(TypeError):
+    # scipy rejects 0-D array input with a format-dependent exception
+    # type: TypeError for coo/csr, ValueError for csc ("CSC arrays don't
+    # support 0D input").  Match the type per format.
+    @pytest.mark.parametrize('fmt,exc', [
+        ('coo', TypeError), ('csr', TypeError), ('csc', ValueError)])
+    def test_zero_d_dense_rejected(self, fmt, exc):
+        with pytest.raises(exc):
             getattr(sparse, f'{fmt}_array')(cupy.array(5.0))
 
     @pytest.mark.parametrize(
@@ -1935,6 +1939,8 @@ class TestSparseArray1D:
             else:
                 getattr(v, method)()
 
+    # scipy accepts a length-1 tuple for the reduction axis since 1.16.
+    @testing.with_requires('scipy>=1.16')
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_sum_tuple_axis(self, xp, sp):
         return sp.coo_array(xp.array([0., 1., 2., 3.])).sum(axis=(0,))
@@ -2077,12 +2083,16 @@ class TestSparseArray1D:
         r = a @ cupy.array([1., 2., 3., 4., 5.])
         cupy.testing.assert_allclose(cupy.asarray(r), cupy.asarray(25.0))
 
+    # scipy's 2-D @ 1-D raised through 1.14; fixed in 1.15.
+    @testing.with_requires('scipy>=1.15')
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_2d_matmul_1d(self, xp, sp):
         M = sp.csr_array(xp.array([[1., 0, 2, 0], [0, 3, 0, 1]]))
         v = sp.coo_array(xp.array([1., 2., 3., 4.]))
         return M @ v
 
+    # scipy 1.14 returned csr from 1-D @ 2-D; coo (as here) since 1.15.
+    @testing.with_requires('scipy>=1.15')
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_1d_matmul_2d(self, xp, sp):
         M = sp.csr_array(xp.array([[1., 0, 2, 0], [0, 3, 0, 1]]))
@@ -2175,9 +2185,9 @@ class TestSparseArray1D:
     # -- 1-D indexing format and CSC indexing ---------------------------
 
     def test_2d_csc_int_index_is_1d(self):
-        # A 2-D csc_array reduces an integer-indexed axis to 1-D (scipy
-        # returns a coo_array).  Regression: the reduction reshaped the
-        # csc result itself, which raised because csc has no 1-D shape.
+        # A 2-D csc_array reduces an integer-indexed axis to 1-D, as a
+        # coo_array like scipy: the reduction must route through COO
+        # because csc has no 1-D shape.
         A = sparse.csc_array(cupy.array([[1., 0, 2], [0, 3, 0]]))
         for r, expected in [
                 (A[1], cupy.array([0., 3., 0.])),
@@ -2196,8 +2206,8 @@ class TestSparseArray1D:
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_1d_multiply_broadcast_2d_sparse(self, xp, sp):
-        # 1-D * 2-D broadcasts to a 2-D result (scipy).  Regression:
-        # _squeeze_to_1d forced a 1-D reshape and raised.
+        # 1-D * 2-D broadcasts to a genuinely 2-D result (scipy); the
+        # (1, N)-backing result must not be squeezed back to 1-D.
         v = sp.csr_array(xp.array([1., 2., 3.]))
         M = sp.csr_array(xp.array([[1., 0, 1], [0, 2, 0]]))
         return v.multiply(M)
@@ -2214,7 +2224,8 @@ class TestSparseArray1D:
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_1d_maximum_broadcast_2d_dense(self, xp, sp):
-        # Regression: dense broadcast result was silently flattened.
+        # A dense 2-D operand broadcasts the result to dense 2-D; it
+        # must not be flattened back to 1-D.
         v = sp.csr_array(xp.array([1., 2., 3.]))
         return v.maximum(xp.array([[0., 3, 0], [2, 0, 2]]))
 
@@ -2282,3 +2293,427 @@ class TestSparseArray1D:
         cupy.testing.assert_array_equal(
             A[:, cupy.array([0, 2])].toarray(),
             cupy.array([[True, True], [False, False]]))
+
+
+class Test1dIndexingEdges:
+    """Edge semantics of 1-D indexing/assignment (numpy/scipy parity)."""
+
+    def test_setitem_tuple_key_raises(self):
+        # A tuple key on a 1-D array is too many indices; it must raise
+        # (like numpy/scipy) rather than be misread as a fancy index.
+        v = sparse.csr_array(cupy.array([1., 0., 2.]))
+        with pytest.raises(IndexError, match='too many indices'):
+            v[1, 2] = 9.
+        cupy.testing.assert_array_equal(
+            v.toarray(), cupy.array([1., 0., 2.]))
+
+    def test_setitem_ellipsis(self):
+        v = sparse.csr_array(cupy.array([1., 0., 2.]))
+        with pytest.warns(sparse.SparseEfficiencyWarning):
+            v[...] = 7.
+        cupy.testing.assert_array_equal(
+            v.toarray(), cupy.array([7., 7., 7.]))
+
+    def test_getitem_none_adds_axis(self):
+        # v[None] / v[None, :] -> (1, N); v[:, None] -> (N, 1).  The
+        # promoted axis makes the result 2-D COO, matching scipy.
+        v = sparse.csr_array(cupy.array([1., 0., 2.]))
+        for key in (None, (None, slice(None))):
+            r = v[key]
+            assert r.shape == (1, 3) and r.format == 'coo'
+            cupy.testing.assert_array_equal(
+                r.toarray(), cupy.array([[1., 0., 2.]]))
+        r = v[:, None]
+        assert r.shape == (3, 1) and r.format == 'coo'
+        cupy.testing.assert_array_equal(
+            r.toarray(), cupy.array([[1.], [0.], [2.]]))
+
+    def test_getitem_none_with_int(self):
+        # An integer plus one new axis gives a length-1 sparse array of
+        # the same format (scipy: csr stays csr).
+        v = sparse.csr_array(cupy.array([1., 0., 2.]))
+        for key in ((None, 2), (2, None)):
+            r = v[key]
+            assert r.shape == (1,) and r.format == 'csr'
+            cupy.testing.assert_array_equal(r.toarray(), cupy.array([2.]))
+        # A zero element round-trips as an empty (1,) array.
+        assert v[None, 1].nnz == 0
+
+    def test_getitem_none_beyond_2d_raises(self):
+        v = sparse.csr_array(cupy.array([1., 0., 2.]))
+        with pytest.raises(IndexError):
+            v[None, None]
+
+
+class TestCooArrayGetitem:
+    """coo_array supports indexing (scipy >= 1.17); coo_matrix does not."""
+
+    def test_coo_2d_getitem(self):
+        dense = cupy.array([[1., 0., 2., 0.], [0., 3., 0., 0.],
+                            [4., 0., 0., 5.]])
+        A = sparse.coo_array(dense)
+        r = A[1]
+        assert r.shape == (4,) and r.format == 'coo'
+        cupy.testing.assert_array_equal(r.toarray(), dense[1])
+        assert float(A[2, 3]) == 5.
+        r = A[:, 1]
+        assert r.shape == (3,) and r.format == 'coo'
+        cupy.testing.assert_array_equal(r.toarray(), dense[:, 1])
+        r = A[0:2]
+        assert r.shape == (2, 4) and r.format == 'coo'
+        cupy.testing.assert_array_equal(r.toarray(), dense[0:2])
+        r = A[cupy.array([0, 2])]
+        assert r.shape == (2, 4) and r.format == 'coo'
+        cupy.testing.assert_array_equal(
+            r.toarray(), dense[cupy.array([0, 2])])
+
+    def test_coo_1d_getitem(self):
+        v = sparse.coo_array(cupy.array([1., 0., 2., 0., 3.]))
+        assert float(v[4]) == 3.
+        r = v[::2]
+        assert r.shape == (3,) and r.format == 'coo'
+        cupy.testing.assert_array_equal(
+            r.toarray(), cupy.array([1., 2., 3.]))
+
+    def test_coo_matrix_not_subscriptable(self):
+        M = sparse.coo_matrix(cupy.eye(3))
+        with pytest.raises(TypeError, match='not subscriptable'):
+            M[0]
+
+
+class TestBoolSum:
+    """sum() on bool data (cuSPARSE has no bool arithmetic)."""
+
+    @pytest.mark.parametrize('fmt', SPARSE_FORMATS)
+    def test_bool_sum_matches_dense(self, fmt):
+        dense = cupy.zeros((3, 4), dtype=bool)
+        dense[cupy.arange(3), cupy.arange(3)] = True
+        dense[0, 2] = True
+        if fmt == 'dia':
+            # DIA has no dense-input constructor form.
+            A = sparse.dia_array(
+                (cupy.ones((2, 3), dtype=bool),
+                 cupy.array([0, 2], dtype='i')), shape=(3, 4))
+            dense = A.astype(cupy.float64).toarray() != 0
+        else:
+            A = getattr(sparse, f'{fmt}_array')(dense)
+        r = A.sum()
+        assert r.dtype == cupy.int64
+        assert int(r) == int(dense.sum())
+        for axis in (0, 1):
+            r = A.sum(axis=axis)
+            assert r.dtype == cupy.int64
+            cupy.testing.assert_array_equal(
+                cupy.asarray(r).ravel(), dense.sum(axis=axis))
+
+    def test_bool_sum_duplicates_axis(self):
+        # A duplicate stored True coalesces (a bool coordinate is present
+        # once), so the axis sum equals densify-then-sum -- i.e. numpy's
+        # dense semantics.  This is deliberately NOT compared against
+        # scipy: on a non-canonical bool COO scipy's axis sum double-counts
+        # the duplicate ([0, 2, 0]) while its full sum coalesces (1), an
+        # internal inconsistency cupy avoids.
+        A = sparse.coo_array((cupy.array([True, True]),
+                              (cupy.array([0, 0]), cupy.array([1, 1]))),
+                             shape=(2, 3))
+        dense = A.toarray()
+        r = A.sum(axis=0)
+        assert r.dtype == cupy.int64
+        cupy.testing.assert_array_equal(r, dense.sum(axis=0))
+        cupy.testing.assert_array_equal(r, cupy.array([0, 1, 0]))
+
+    # scipy coalesces bool duplicates in the full sum only since 1.16
+    # (1.14/1.15 counted them, returning 2); cupy matches the newer,
+    # densify-consistent result, so compare against scipy >= 1.16.
+    @testing.with_requires('scipy>=1.16')
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_bool_sum_duplicates_scalar(self, xp, sp):
+        A2 = sp.coo_array((xp.array([True, True]),
+                           (xp.array([0, 0]), xp.array([1, 1]))), shape=(2, 3))
+        v = sp.coo_array((xp.array([True, True]), (xp.array([1, 1]),)),
+                         shape=(3,))
+        return int(A2.sum()), int(v.sum())
+
+    def test_matrix_bool_sum_stays_2d(self):
+        M = sparse.csr_matrix(cupy.eye(3, dtype=bool))
+        r = M.sum(axis=0)
+        assert r.shape == (1, 3)
+        cupy.testing.assert_array_equal(r, cupy.ones((1, 3), dtype=cupy.int64))
+
+    @pytest.mark.parametrize('fmt', ['coo', 'csr', 'csc'])
+    def test_bool_sum_does_not_mutate(self, fmt):
+        # A reduction must not compact its operand: the bool coalescing is
+        # done on a copy, so nnz/coordinates/flags are unchanged.
+        A = sparse.coo_array(
+            (cupy.array([True, True]),
+             (cupy.array([0, 0]), cupy.array([1, 1]))), shape=(2, 3)
+        ).asformat(fmt)
+        n0 = A.nnz
+        assert int(A.sum()) == 1
+        assert A.nnz == n0
+
+    def test_bool_sum_1d_does_not_mutate(self):
+        v = sparse.coo_array(
+            (cupy.array([True, True]), (cupy.array([1, 1]),)), shape=(3,))
+        n0 = v.nnz
+        assert int(v.sum()) == 1
+        assert v.nnz == n0
+
+
+class TestBoolMean:
+    """mean() on bool coalesces duplicates so mean == sum/n (densify)."""
+
+    def test_bool_mean_equals_sum_over_n(self):
+        # A duplicate stored True coalesces (densify), so the mean divides
+        # the coalesced sum by the element count -- unlike scipy, whose mean
+        # counts duplicates while its sum coalesces (an inconsistency cupy
+        # avoids).
+        A = sparse.coo_array(
+            (cupy.array([True, True]),
+             (cupy.array([0, 0]), cupy.array([1, 1]))), shape=(2, 3))
+        assert abs(float(A.mean()) - float(A.sum()) / 6) < 1e-12
+        assert abs(float(A.mean()) - 1 / 6) < 1e-12
+
+    @pytest.mark.parametrize('axis', [None, 0, 1])
+    def test_bool_mean_matches_densify(self, axis):
+        A = sparse.csr_array(cupy.eye(3, dtype=bool))
+        dense = A.toarray().astype(cupy.float64)
+        cupy.testing.assert_allclose(
+            cupy.asarray(A.mean(axis=axis)), dense.mean(axis=axis))
+
+    def test_bool_mean_does_not_mutate(self):
+        A = sparse.coo_array(
+            (cupy.array([True, True]),
+             (cupy.array([0, 0]), cupy.array([1, 1]))), shape=(2, 3))
+        n0 = A.nnz
+        A.mean()
+        assert A.nnz == n0
+
+
+class TestBoolDenseConversion:
+    def test_csc_bool_dense_round_trip(self):
+        # cuSPARSE dense<->sparse conversion is float-only; the bool CSC
+        # paths route through the pure-CuPy CSR fallback on the transpose.
+        d = cupy.array([[True, False], [False, True], [True, True]])
+        A = sparse.csc_array(d)
+        assert A.format == 'csc' and A.dtype == bool
+        cupy.testing.assert_array_equal(A.toarray(), d)
+        f_out = A.toarray(order='F')
+        assert f_out.flags.f_contiguous
+        cupy.testing.assert_array_equal(f_out, d)
+
+    def test_csr_bool_toarray_order_f(self):
+        # order='F' affects the layout only; the values must match the
+        # C-order result (csr2dense addresses the output by logical
+        # position, letting the strides handle the layout).
+        d = cupy.array([[True, False, True], [False, True, True]])
+        A = sparse.csr_array(d)
+        out = A.toarray(order='F')
+        assert out.flags.f_contiguous
+        cupy.testing.assert_array_equal(out, d)
+
+
+class TestMeanEmpty:
+    """mean() over a zero-length axis raises like scipy."""
+
+    # scipy raises ZeroDivisionError on an empty mean; accept_error makes
+    # the decorator require both libraries to raise the same type.
+    @pytest.mark.parametrize('shape', [(0,), (0, 3)])
+    @testing.with_requires('scipy')
+    @testing.numpy_cupy_allclose(sp_name='sp',
+                                 accept_error=ZeroDivisionError)
+    def test_mean_empty_raises(self, xp, sp, shape):
+        return sp.coo_array(xp.zeros(shape)).mean()
+
+    @testing.with_requires('scipy')
+    @testing.numpy_cupy_allclose(sp_name='sp',
+                                 accept_error=ZeroDivisionError)
+    def test_mean_empty_axis_raises(self, xp, sp):
+        return sp.csr_array(xp.zeros((3, 0))).mean(axis=1)
+
+    @testing.with_requires('scipy')
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_mean_values_2d(self, xp, sp):
+        return sp.csr_array(
+            xp.array([[1., 0., 2.], [0., 3., 0.]])).mean(axis=0)
+
+    @testing.with_requires('scipy')
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_mean_values_scalar(self, xp, sp):
+        a = sp.csr_array(xp.array([[1., 0., 2.], [0., 3., 0.]]))
+        v = sp.coo_array(xp.array([1., 0., 2.]))
+        return float(a.mean()), float(v.mean())
+
+    def test_1d_mean_out_shape_checked(self):
+        # A wrong-shaped ``out`` must raise, not silently broadcast the
+        # scalar mean (matching 1-D sum and the 2-D reductions).
+        v = sparse.coo_array(cupy.array([1., 2., 3.]))
+        with pytest.raises(ValueError, match='dimensions do not match'):
+            v.mean(out=cupy.empty(5))
+        buf = cupy.empty(())
+        assert v.mean(out=buf) is buf
+        cupy.testing.assert_allclose(buf, 2.0)
+
+
+class TestTupleAxisValidation:
+    """Tuple reduction axes: valid ones collapse, bogus ones raise."""
+
+    @pytest.mark.parametrize('bad', [(None,), (0.0,), (0, 0), (0, 1, 2)])
+    def test_bad_tuple_axis_raises(self, bad):
+        A = sparse.csr_array(cupy.array([[1., 0., 2.], [0., 3., 0.]]))
+        with pytest.raises((TypeError, ValueError)):
+            A.sum(axis=bad)
+
+    @testing.with_requires('scipy>=1.16')
+    def test_none_tuple_axis_matches_scipy(self):
+        # scipy rejects a non-integer axis element (given None) too.
+        A = sparse.csr_array(cupy.array([[1., 0., 2.], [0., 3., 0.]]))
+        An = scipy.sparse.csr_array(numpy.array([[1., 0., 2.], [0., 3., 0.]]))
+        with pytest.raises(TypeError):
+            A.sum(axis=(None,))
+        with pytest.raises(TypeError):
+            An.sum(axis=(None,))
+
+
+class Test1dConstructorParity:
+    """1-D constructor forms behave like their 2-D counterparts."""
+
+    def test_1d_three_tuple_float_indices(self):
+        # The 2-D 3-tuple path casts non-integer index arrays; the 1-D
+        # form (which routes through it) must accept them identically.
+        v = sparse.csr_array(
+            (cupy.array([1., 2.]), cupy.array([0., 2.]),
+             cupy.array([0, 2])), shape=(5,))
+        assert v.shape == (5,)
+        assert v.indices.dtype.kind == 'i'
+        cupy.testing.assert_array_equal(
+            v.toarray(), cupy.array([1., 0., 2., 0., 0.]))
+
+    def test_1d_three_tuple_validation(self):
+        with pytest.raises(ValueError, match='index pointer should start'):
+            sparse.csr_array(
+                (cupy.array([1.]), cupy.array([0]), cupy.array([1, 1])),
+                shape=(3,))
+
+    @testing.with_requires('scipy')
+    def test_scalar_input_matches_scipy_exc_type(self):
+        # cupy's 0-D-input exception type must match scipy's per format
+        # (TypeError for coo/csr, ValueError for csc).
+        for name in ('coo_array', 'csr_array', 'csc_array'):
+            with pytest.raises(Exception) as cu:
+                getattr(sparse, name)(cupy.array(5.))
+            with pytest.raises(Exception) as sp:
+                getattr(scipy.sparse, name)(numpy.array(5.))
+            assert type(cu.value) is type(sp.value)
+
+    def test_coo_bad_ndim_shape_tuple(self):
+        # For a coo_array, an int-tuple shape of unsupported length reports
+        # the dimensionality limit rather than a generic input error.
+        with pytest.raises(ValueError, match='1-D and 2-D'):
+            sparse.coo_array((2, 3, 4))
+        # coo_matrix keeps scipy's generic TypeError('invalid input
+        # format') for a 1-tuple shape (scipy's coo_matrix does the same).
+        with pytest.raises(TypeError):
+            sparse.coo_matrix((5,))
+
+
+class TestReshapeAcrossNdim:
+    def test_reshape_2d_to_1d(self):
+        # scipy: reshaping a 2-D csr_array to 1-D yields a 1-D coo_array.
+        A = sparse.csr_array(cupy.eye(4))
+        r = A.reshape(16)
+        assert r.shape == (16,) and r.format == 'coo'
+        cupy.testing.assert_array_equal(r.toarray(), cupy.eye(4).ravel())
+
+    def test_reshape_matrix_to_1d_raises(self):
+        M = sparse.csr_matrix(cupy.eye(4))
+        with pytest.raises(ValueError, match='shape must have length'):
+            M.reshape(16)
+
+
+class Test1dCountNonzeroAxis:
+    @pytest.mark.parametrize('fmt', ('csr', 'coo'))
+    def test_1d_count_nonzero_axis(self, fmt):
+        cls = getattr(sparse, f'{fmt}_array')
+        v = cls((cupy.array([1., 0., 2.]), (cupy.array([0, 1, 3]),)),
+                shape=(5,))
+        # The stored explicit zero does not count.
+        for axis in (None, 0, -1, (0,)):
+            assert v.count_nonzero(axis=axis) == 2
+        with pytest.raises(ValueError):
+            v.count_nonzero(axis=1)
+
+
+class TestMajorFancyFlagPreservation:
+    def test_row_fancy_preserves_sort_flags(self):
+        # Gathering whole rows preserves per-row order/uniqueness, so the
+        # result inherits the flags without recomputing them on the GPU.
+        A = sparse.csr_array(cupy.array([[1., 0., 2.], [0., 3., 0.]]))
+        assert A.has_canonical_format  # dense conversion is canonical
+        B = A[cupy.array([1, 0, 1]), :]
+        assert getattr(B, '_has_canonical_format', None) is True
+        cupy.testing.assert_array_equal(
+            B.toarray(),
+            cupy.array([[0., 3., 0.], [1., 0., 2.], [0., 3., 0.]]))
+
+
+class TestMatrixPower:
+    # Values compared against scipy's matrix_power; format is ignored
+    # (cupy returns csr for power 0, scipy dia).
+    @pytest.mark.parametrize('p', [0, 1, 2, 3, 5])
+    @testing.with_requires('scipy')
+    @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
+    def test_matrix_power_values(self, xp, sp, p):
+        A = sp.csr_array(xp.array([[0., 1., 0.], [1., 0., 1.], [0., 1., 0.]]))
+        return sp.linalg.matrix_power(A, p)
+
+    def test_matrix_power_zero_is_identity(self):
+        A = sparse.csr_array(cupy.eye(3) * 2.)
+        r = matrix_power(A, 0)
+        assert isinstance(r, sparse.sparray)
+        assert r.dtype == A.dtype
+        cupy.testing.assert_allclose(r.toarray(), cupy.eye(3))
+
+    def test_matrix_power_one_is_copy(self):
+        A = sparse.csr_array(cupy.eye(2))
+        r = matrix_power(A, 1)
+        assert r is not A
+        r.data[...] = 5.
+        cupy.testing.assert_allclose(A.toarray(), cupy.eye(2))
+
+    def test_matrix_power_matrix_input(self):
+        M = sparse.csr_matrix(cupy.eye(3) * 2.)
+        r = matrix_power(M, 2)
+        assert isinstance(r, sparse.spmatrix)
+        cupy.testing.assert_allclose(r.toarray(), cupy.eye(3) * 4.)
+
+    def test_matrix_power_errors(self):
+        A = sparse.csr_array(cupy.eye(3))
+        with pytest.raises(ValueError, match='>= 0'):
+            matrix_power(A, -1)
+        with pytest.raises(ValueError, match='integer'):
+            matrix_power(A, 2.0)
+        with pytest.raises(TypeError, match='square'):
+            matrix_power(sparse.csr_array(cupy.ones((2, 3))), 2)
+
+    def test_matrix_pow_operator_keeps_matrix_kind(self):
+        # ``matrix ** n`` (sharing matrix_power's recursion) must return a
+        # matrix -- including ``** 0`` -- so ``*`` on the result stays
+        # matmul rather than flipping to element-wise.
+        M = sparse.csr_matrix(cupy.array([[0., 1.], [1., 0.]]))
+        for p in (0, 1, 2, 3):
+            r = M ** p
+            assert isinstance(r, sparse.spmatrix)
+        cupy.testing.assert_allclose((M ** 0).toarray(), cupy.eye(2))
+        cupy.testing.assert_allclose((M ** 2).toarray(), cupy.eye(2))
+        # ``*`` on the identity result is still matmul (2-D @ 2-D).
+        assert ((M ** 0) * M).toarray().shape == (2, 2)
+
+    def test_matrix_pow_errors_match_matrix_power(self):
+        M = sparse.csr_matrix(cupy.eye(3))
+        with pytest.raises(ValueError, match='>= 0'):
+            M ** -1
+        with pytest.raises(ValueError, match='integer'):
+            M ** 2.5
+        with pytest.raises(TypeError, match='square'):
+            sparse.csr_matrix(cupy.ones((2, 3))) ** 2

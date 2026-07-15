@@ -360,26 +360,7 @@ class IndexMixin:
 
     def __getitem__(self, key):
         if self.ndim == 1:
-            # Index the (1, N) backing on its column axis, then squeeze
-            # the (1, k) result back to 1-D.  An integer key reduces to a
-            # 0-D scalar via _get_intXint; a slice/array key yields a 1-D
-            # result whose format is preserved (CSR stays CSR, matching
-            # scipy) by _squeeze_to_1d.
-            if isinstance(key, tuple):
-                # A 1-D array takes a single index (Ellipsis excepted);
-                # more than one is an error (matches numpy/scipy).
-                idx = tuple(k for k in key if k is not Ellipsis)
-                if len(idx) > 1:
-                    raise IndexError(
-                        'too many indices for array: array is '
-                        f'1-dimensional, but {len(idx)} were indexed')
-                key = idx[0] if idx else slice(None)
-            backing = self._as_2d()
-            row, col = backing._parse_indices((0, key))
-            result = backing._getitem_2d(row, col)
-            if issparse(result):
-                return self._squeeze_to_1d(result)
-            return result
+            return self._getitem_1d(key)
 
         row, col = self._parse_indices(key)
         result = self._getitem_2d(row, col)
@@ -396,6 +377,101 @@ class IndexMixin:
                 length = result.shape[1] if row_int else result.shape[0]
                 result = result.tocoo().reshape((length,))
         return result
+
+    def _normalize_1d_key(self, key):
+        """Split a 1-D index key into its real axis and new-axis counts.
+
+        Returns ``(real_key, none_before, none_after)``: ``real_key`` is
+        the single index applied to the one real axis (a full slice when
+        the key is only ``None`` / ``Ellipsis``), and ``none_before`` /
+        ``none_after`` count the ``None`` (new-axis) entries positioned
+        before/after that real axis.  Follows numpy semantics -- an
+        ``Ellipsis`` expands to the real axis, and a key with no explicit
+        index appends the axis at the end.  Raises ``IndexError`` for more
+        than one ``Ellipsis`` or more than one real index (matching
+        numpy/scipy), so it is shared by ``__getitem__`` and
+        ``__setitem__``.
+        """
+        if not isinstance(key, tuple):
+            key = (key,)
+        if sum(k is Ellipsis for k in key) > 1:
+            raise IndexError(
+                "an index can only have a single ellipsis ('...')")
+        reals = [k for k in key if k is not None and k is not Ellipsis]
+        if len(reals) > 1:
+            raise IndexError(
+                'too many indices for array: array is 1-dimensional, '
+                f'but {len(reals)} were indexed')
+        has_real = len(reals) == 1
+        none_before = none_after = 0
+        placed = False
+        for k in key:
+            if k is None:
+                if placed:
+                    none_after += 1
+                else:
+                    none_before += 1
+            elif k is Ellipsis:
+                # Ellipsis marks the real axis only when no explicit index
+                # does (there it stands for a full slice).
+                if not has_real:
+                    placed = True
+            else:
+                placed = True
+        return (reals[0] if has_real else slice(None)), none_before, none_after
+
+    def _getitem_1d_axis(self, key):
+        """Index the single real axis of a 1-D array via its (1, N) backing.
+
+        A slice / 1-D array key yields a 1-D result whose format is
+        preserved (matching scipy); an integer key yields a 0-D scalar; a
+        2-D integer array key gathers into a same-shaped 2-D result
+        (matching numpy/scipy).
+        """
+        backing = self._as_2d()
+        row, col = backing._parse_indices((0, key))
+        if isinstance(col, cupy.ndarray) and col.ndim == 2:
+            flat = backing._getitem_2d(0, col.ravel())
+            return self._squeeze_to_1d(flat).reshape(col.shape)
+        result = backing._getitem_2d(row, col)
+        if issparse(result):
+            return self._squeeze_to_1d(result)
+        return result
+
+    def _getitem_1d(self, key):
+        """Index a 1-D array.
+
+        Delegates the real axis to :meth:`_getitem_1d_axis`, then re-adds
+        any ``None`` (new-axis) entries.  An integer real key collapses the
+        axis to a scalar that each new axis wraps back up, staying in the
+        source format (matching scipy); a surviving real axis promoted by a
+        new axis becomes 2-D COO (the only 1-D->2-D sparse promotion, also
+        matching scipy).  cupy sparse is at most 2-D, so keys implying more
+        dimensions raise ``IndexError``.
+        """
+        real_key, none_before, none_after = self._normalize_1d_key(key)
+        base = self._getitem_1d_axis(real_key)
+
+        if none_before == 0 and none_after == 0:
+            return base
+
+        if not issparse(base):
+            # Integer key collapsed the real axis to a scalar.
+            n_axes = none_before + none_after
+            if n_axes == 1:
+                return type(self)(cupy.atleast_1d(base))
+            if n_axes == 2:
+                return type(self)(cupy.atleast_2d(base))
+            raise IndexError(
+                'Indexing that leads to more than 2 dimensions is not '
+                'supported')
+
+        if base.ndim != 1 or none_before + none_after > 1:
+            raise IndexError(
+                'Indexing that leads to more than 2 dimensions is not '
+                'supported')
+        n = base.shape[0]
+        return base.reshape((1, n) if none_before else (n, 1))
 
     def _getitem_2d(self, row, col):
         # Dispatch to specialized methods.
@@ -451,12 +527,17 @@ class IndexMixin:
     def __setitem__(self, key, x):
         if self.ndim == 1:
             # Assign on the (1, N) backing (column axis), then adopt the
-            # mutated arrays back onto this 1-D array.  A 1-D sparse RHS is
-            # promoted to its (1, N) backing so the 2-D assignment code
-            # (which reads x.shape[1]) sees a 2-D operand.
+            # mutated arrays back onto this 1-D array.  ``None`` new-axis
+            # entries are size-1 broadcast axes that do not change which
+            # elements are addressed, so the shared key normalizer reduces
+            # the key to its real axis (also rejecting too-many-indices and
+            # multi-ellipsis keys, matching __getitem__ and numpy/scipy).
+            # A 1-D sparse RHS is promoted to its (1, N) backing so the 2-D
+            # assignment code (which reads x.shape[1]) sees a 2-D operand.
+            real_key, _, _ = self._normalize_1d_key(key)
             if issparse(x) and x.ndim == 1:
                 x = x._as_2d()
-            self._apply_2d_inplace(lambda m: m.__setitem__((0, key), x))
+            self._apply_2d_inplace(lambda m: m.__setitem__((0, real_key), x))
             return
         row, col = self._parse_indices(key)
 

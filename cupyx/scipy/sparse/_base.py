@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import numbers
 import warnings
 
 import numpy
@@ -598,10 +597,22 @@ class _spbase:
         # This implementation uses multiplication, though it is not efficient
         # for some matrix types. These should override this function.
 
+        if self.dtype == bool:
+            # cuSPARSE has no bool arithmetic, so bool reduces through a
+            # non-mutating, duplicate-coalesced float64 carrier (densify
+            # semantics: bool duplicates OR together, matching toarray()),
+            # cast to the int64 that numpy gives a bool sum.  Delegating on
+            # the float carrier reuses the ndim/axis/dtype/out handling
+            # below for both 1-D and 2-D.
+            return self._bool_reduction_carrier().sum(
+                axis=axis, dtype=cupy.int64 if dtype is None else dtype,
+                out=out)
+
         if self.ndim == 1:
-            # The only axis reduces everything to a scalar.  Summing the
-            # stored data (duplicates included) equals the dense sum
-            # because implicit zeros contribute nothing.
+            # The only axis reduces everything to a scalar.  Implicit zeros
+            # contribute nothing, so summing the stored data suffices;
+            # duplicates of a non-bool dtype already sum to the right total,
+            # so no dedup (or in-place mutation) is needed here.
             _sputils.validate_axis_1d(axis)
             ret = self.data.sum(dtype=dtype)
             if out is not None:
@@ -613,8 +624,10 @@ class _spbase:
 
         m, n = self.shape
 
-        if self.ndim == 2 and axis == (0, 1):
-            axis = None
+        # scipy accepts tuple axes for 2-D reductions (a length-1 tuple, or
+        # a length-2 tuple spanning both axes -> full reduction), matching
+        # the 1-D path's tuple support.
+        axis = _sputils.collapse_2d_axis(axis)
 
         _sputils.validateaxis(axis)
 
@@ -717,16 +730,17 @@ class spmatrix:
 
     def __init__(self, *args, maxprint=50, **kwargs):
         self.maxprint = maxprint
-        # Cooperative MI: forward to the next __init__ in the MRO.
-        nxt = super().__init__
-        if nxt is not object.__init__:
-            nxt(*args, **kwargs)
-        elif args or kwargs:
-            # Direct instantiation of ``spmatrix(args)`` with no concrete
-            # format subclass; scipy raises here, so do the same.
-            raise TypeError(
-                'cannot instantiate spmatrix directly; use a format '
-                'subclass such as csr_matrix')
+        if type(self) is spmatrix:
+            if args or kwargs:
+                # Direct instantiation of ``spmatrix(args)`` with no
+                # concrete format subclass; scipy raises here, so do the
+                # same.  Bare ``spmatrix()`` stays allowed (as in scipy).
+                raise TypeError(
+                    'cannot instantiate spmatrix directly; use a format '
+                    'subclass such as csr_matrix')
+            return
+        # Cooperative MI: forward to the format class next in the MRO.
+        super().__init__(*args, **kwargs)
 
     # Matrix semantics: * is matmul (overrides _spbase element-wise default)
     def __mul__(self, other):
@@ -749,33 +763,15 @@ class spmatrix:
             power of this matrix.
 
         """
-        m, n = self.shape
-        if m != n:
-            raise TypeError('matrix is not square')
-        if not isinstance(other, numbers.Integral):
-            raise ValueError("exponent must be an integer")
-
-        if _util.isintlike(other):
-            other = int(other)
-            if other < 0:
-                raise ValueError('exponent must be >= 0')
-
-            if other == 0:
-                import cupyx.scipy.sparse
-                return cupyx.scipy.sparse.identity(
-                    m, dtype=self.dtype, format='csr')
-            elif other == 1:
-                return self.copy()
-            else:
-                tmp = self.__pow__(other // 2)
-                if other % 2:
-                    return self * tmp * tmp
-                else:
-                    return tmp * tmp
-        elif _util.isscalarlike(other):
-            raise ValueError('exponent must be an integer')
-        else:
-            return NotImplemented
+        # Matrices keep a matrix identity for ``** 0`` (so ``*`` on the
+        # result stays matmul); the exponentiation-by-squaring recursion is
+        # shared with ``linalg.matrix_power`` to avoid drift.
+        import cupyx.scipy.sparse
+        from cupyx.scipy.sparse.linalg._matfuncs import _pow_by_squaring
+        return _pow_by_squaring(
+            self, other,
+            lambda: cupyx.scipy.sparse.identity(
+                self.shape[0], dtype=self.dtype, format='csr'))
 
     @property
     def _csr_container(self):

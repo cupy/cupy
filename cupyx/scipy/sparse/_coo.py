@@ -59,10 +59,7 @@ class _coo_base(sparse_data._data_matrix):
         if maxprint is not None:
             self.maxprint = maxprint
         if shape is not None and len(shape) not in self._allow_nd:
-            raise ValueError(
-                'Only two-dimensional sparse arrays are supported.'
-                if 1 not in self._allow_nd
-                else 'Only 1-D and 2-D sparse arrays are supported.')
+            raise self._unsupported_ndim_error()
         if shape is not None:
             # Catch negative dimensions before the index-bounds checks
             # below would otherwise fire with a misleading
@@ -175,7 +172,9 @@ class _coo_base(sparse_data._data_matrix):
             if arg1.ndim > 2:
                 raise TypeError('expected dimension <= 2 array or matrix')
             if arg1.ndim == 0 and isinstance(self, _base.sparray):
-                # scipy rejects scalar (0-D) input for sparse arrays.
+                # scipy rejects scalar (0-D) input for sparse arrays;
+                # coo_array reaches a TypeError (as does csr_array), so
+                # match that type here.
                 raise TypeError(
                     f'{type(self).__name__} does not support scalar (0-D) '
                     'input; provide a 1-D or 2-D array')
@@ -199,6 +198,14 @@ class _coo_base(sparse_data._data_matrix):
             self.has_canonical_format = True
 
         else:
+            if (isinstance(self, _base.sparray) and isinstance(arg1, tuple)
+                    and len(arg1) > 0
+                    and _util.isshape(arg1, allow_nd=(len(arg1),))):
+                # A positional int-tuple shape of unsupported length: report
+                # the dimensionality limit rather than a generic input error
+                # (scipy supports n-D coo_array; cupy does not).  Matrices
+                # fall through to the TypeError, matching scipy's coo_matrix.
+                raise self._unsupported_ndim_error()
             raise TypeError('invalid input format')
 
         # A tuple-of-coords input must supply exactly one coordinate array
@@ -275,6 +282,13 @@ class _coo_base(sparse_data._data_matrix):
         self.row = row
         self.col = col
         self._shape = _util.check_shape(shape, allow_nd=self._allow_nd)
+
+    def _unsupported_ndim_error(self):
+        """``ValueError`` naming this class's supported dimensionalities."""
+        return ValueError(
+            'Only two-dimensional sparse arrays are supported.'
+            if 1 not in self._allow_nd
+            else 'Only 1-D and 2-D sparse arrays are supported.')
 
     @classmethod
     def _from_parts(cls, data, row, col, shape,
@@ -371,6 +385,62 @@ class _coo_base(sparse_data._data_matrix):
         return type(self)._from_parts(
             self.data, self.row, self.col, self._shape_as_2d,
             has_canonical_format=self.has_canonical_format)
+
+    def __getitem__(self, key):
+        # scipy supports indexing coo_array (but not coo_matrix, which
+        # stays non-subscriptable).
+        if not isinstance(self, _base.sparray):
+            raise TypeError(
+                f"'{type(self).__name__}' object is not subscriptable")
+
+        # Scalar key fast path: sum the stored values at the coordinate
+        # directly (matching scipy, duplicates included), avoiding the full
+        # tocsr() O(nnz log nnz) sort that a single lookup would otherwise
+        # pay.
+        scalar = self._get_coo_scalar(key)
+        if scalar is not NotImplemented:
+            return scalar
+
+        # General keys: delegate to CSR indexing, then present the result
+        # as scipy's coo_array indexing does -- a sparse (coo) result for
+        # every non-scalar key.  CSR returns a dense array for boolean-mask
+        # and inner-fancy keys, so wrap those back into a coo_array.  Each
+        # such lookup pays a format conversion; index through ``tocsr()``
+        # directly when doing many lookups.
+        result = self.tocsr()[key]
+        if _base.issparse(result):
+            return result.tocoo()
+        if isinstance(result, cupy.ndarray) and result.ndim >= 1:
+            return type(self)(result)
+        return result
+
+    def _get_coo_scalar(self, key):
+        """Return ``A[i]`` / ``A[i, j]`` via a mask-sum, else NotImplemented.
+
+        Only handles the all-integer scalar key (a 1-D array index, or a
+        2-D ``(row, col)`` pair); every other key form returns
+        ``NotImplemented`` so the caller falls back to CSR delegation.
+        """
+        from cupyx.scipy.sparse._index import (
+            _int_scalar_types, _normalize_index)
+        if self.ndim == 1:
+            if not isinstance(key, _int_scalar_types):
+                return NotImplemented
+            (n,) = self.shape
+            mask = self.col == _normalize_index(key, n, 'index')
+        else:
+            if not (isinstance(key, tuple) and len(key) == 2
+                    and isinstance(key[0], _int_scalar_types)
+                    and isinstance(key[1], _int_scalar_types)):
+                return NotImplemented
+            m, n = self.shape
+            mask = ((self.row == _normalize_index(key[0], m, 'row'))
+                    & (self.col == _normalize_index(key[1], n, 'column')))
+        # Sum the stored values at the coordinate (duplicates included,
+        # like scipy); absent entries contribute nothing.  ``sum`` upcasts
+        # bool to int, so restore the bool dtype to match the CSR path.
+        s = self.data[mask].sum()
+        return s.astype(self.dtype) if self.dtype.kind == 'b' else s
 
     def diagonal(self, k=0):
         """Returns the k-th diagonal of the matrix.
@@ -472,8 +542,8 @@ class _coo_base(sparse_data._data_matrix):
         """Number of stored values, including explicit zeros."""
         if axis is None:
             return self.data.size
-        else:
-            raise ValueError
+        raise NotImplementedError(
+            'getnnz over an axis is not implemented for COO format')
 
     def count_nonzero(self, axis=None):
         """Number of non-zero entries.
@@ -712,12 +782,9 @@ class _coo_base(sparse_data._data_matrix):
         if self.ndim == 1:
             # Densify through the (1, N) backing (correct duplicate and
             # explicit-zero handling), then drop the length-1 axis.
-            dense = self._as_2d().tocsr().toarray(order=order)
-            result = dense.reshape(self.shape)
-            if out is not None:
-                _core.elementwise_copy(result, out)
-                return out
-            return result
+            # ``out`` is accepted but unused, matching the 2-D path.
+            return self._as_2d().tocsr().toarray(order=order).reshape(
+                self.shape)
         return self.tocsr().toarray(order=order, out=out)
 
     def tocoo(self, copy=False):

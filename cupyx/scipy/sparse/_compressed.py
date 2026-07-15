@@ -261,29 +261,17 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                     if dtype is not None:
                         result = result.astype(dtype)
                 elif isinstance(arg1, tuple) and len(arg1) == 3:
-                    data, indices, indptr = (cupy.asarray(a) for a in arg1)
-                    # Same validation as the 2-D 3-tuple path: indptr must
-                    # start at 0, and data/indices are trimmed to the live
-                    # nnz (indptr[-1]).
-                    if indptr.size > 0 and int(indptr[0]) != 0:
-                        raise ValueError(
-                            f'index pointer should start with 0 '
-                            f'(got {int(indptr[0])})')
-                    if indptr.size > 0:
-                        nnz_live = int(indptr[-1])  # synchronize!
-                        if nnz_live > data.size:
-                            raise ValueError(
-                                f'last index pointer ({nnz_live}) exceeds '
-                                f'the size of data/indices ({data.size})')
-                        if data.size > nnz_live:
-                            data = data[:nnz_live]
-                            indices = indices[:nnz_live]
-                    result = type(self)._from_parts(
-                        data, indices, indptr,
-                        _util.check_shape(shape, allow_nd=self._allow_nd))
-                    # The 3-tuple path skips ``dtype``; apply it here.
-                    if dtype is not None:
-                        result = result.astype(dtype)
+                    # Run the canonical (data, indices, indptr) input
+                    # through the full 2-D constructor on the (1, N)
+                    # backing, so the 1-D form gets identical validation,
+                    # index-dtype selection, and casting (including the
+                    # single fused indptr[0]/indptr[-1] D2H sync).  A
+                    # 3-tuple is only routed here with an explicit 1-D
+                    # shape (the input alone cannot imply 1-D).
+                    (n,) = _util.check_shape(shape, allow_nd=self._allow_nd)
+                    result = type(self)(arg1, shape=(1, n), dtype=dtype,
+                                        copy=copy)
+                    result._shape = (n,)
                 else:
                     # The COO path already applied ``dtype``.
                     result = self._coo_container(
@@ -364,8 +352,11 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             if not (_base.isdense(data) and data.ndim == 1 and
                     _base.isdense(indices) and indices.ndim == 1 and
                     _base.isdense(indptr) and indptr.ndim == 1):
+                # Names both failure modes: the check rejects host inputs
+                # (lists/numpy) as well as wrong-ndim arrays, so "should be
+                # 1-D" alone was misleading for a valid-shaped list.
                 raise ValueError(
-                    'data, indices, and indptr should be 1-D')
+                    'data, indices, and indptr must be 1-D cupy arrays')
 
             if len(data) != len(indices):
                 raise ValueError('indices and data should have the same size')
@@ -410,9 +401,16 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             elif arg1.ndim == 0 and isinstance(self, _base.sparray):
                 # scipy rejects scalar (0-D) input for sparse arrays;
                 # *matrix* classes keep the legacy (1, 1) promotion below.
-                raise TypeError(
+                # scipy's exception type differs by format: csr_array (and
+                # coo_array) reach a TypeError, csc_array raises ValueError
+                # ("CSC arrays don't support 0D input").  Mirror that.
+                if 1 in self._allow_nd:  # csr_array (supports 1-D)
+                    raise TypeError(
+                        f'{type(self).__name__} does not support scalar '
+                        '(0-D) input; provide a 1-D or 2-D array')
+                raise ValueError(
                     f'{type(self).__name__} does not support scalar (0-D) '
-                    'input; provide a 1-D or 2-D array')
+                    'input; provide a 2-D array')
             elif arg1.ndim == 1:
                 arg1 = arg1[None]
             elif arg1.ndim == 0:
@@ -750,10 +748,23 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         if self.nnz == 0 or M == 0:
             return self._empty_like(new_shape)
 
+        # Gathering whole major-axis lines preserves each line's index
+        # order and per-line uniqueness (repeated ``idx`` entries produce
+        # distinct output lines), so the source's sort/canonical state
+        # carries over.  Read the raw cached flags to avoid a D2H sync, but
+        # reconcile them the way the ``has_canonical_format`` getter does:
+        # a disowned sort order (``_has_sorted_indices`` False) invalidates
+        # a stale cached canonical flag, so the pair forwarded here is never
+        # the illegal ``(True, False)`` that ``_from_parts`` rejects.
+        hsi = getattr(self, '_has_sorted_indices', None)
+        hcf = getattr(self, '_has_canonical_format', None)
+        if hsi is False:
+            hcf = False
         return self.__class__._from_parts(
             *_index._csr_row_index(
                 self.data, self.indices, self.indptr, idx),
-            shape=new_shape)
+            shape=new_shape,
+            has_canonical_format=hcf, has_sorted_indices=hsi)
 
     _bincount_kernel = r"""
     template<typename I>
@@ -1416,15 +1427,16 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         """Number of stored values, including explicit zeros.
 
         Args:
-            axis: Not supported yet.
+            axis: Not supported.
 
         Returns:
             int: The number of stored values.
         """
         if axis is None:
             return self.data.size
-        else:
-            raise ValueError
+        raise NotImplementedError(
+            'getnnz over an axis is not implemented for '
+            f'{self.format.upper()} format')
 
     def count_nonzero(self, axis=None):
         """Number of non-zero entries.
@@ -1575,15 +1587,23 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         # int64 indptr.
         idx_dtype = self.indptr.dtype
         tname = _scalar.get_typename(idx_dtype)
-        out = cupy.zeros(out_shape).astype(cupy.float64)
-        mod, fname = {
-            (cupy.amax, False): (self._max_reduction_mod, 'max_reduction'),
-            (cupy.amin, False): (self._min_reduction_mod, 'min_reduction'),
-            (cupy.amax, True): (self._max_nonzero_reduction_mod,
-                                'max_nonzero_reduction'),
-            (cupy.amin, True): (self._min_nonzero_reduction_mod,
-                                'min_nonzero_reduction'),
-        }[(ufunc, nonzero)]
+        out = cupy.zeros(out_shape, dtype=cupy.float64)
+        if ufunc is cupy.amax:
+            if nonzero:
+                mod, fname = (self._max_nonzero_reduction_mod,
+                              'max_nonzero_reduction')
+            else:
+                mod, fname = self._max_reduction_mod, 'max_reduction'
+        elif ufunc is cupy.amin:
+            if nonzero:
+                mod, fname = (self._min_nonzero_reduction_mod,
+                              'min_nonzero_reduction')
+            else:
+                mod, fname = self._min_reduction_mod, 'min_reduction'
+        else:
+            # Only min/max reductions have kernels; guard against a future
+            # caller silently getting a min result for another ufunc.
+            raise ValueError(f'unsupported reduction ufunc: {ufunc}')
         ker = mod.get_function(f'{fname}<{tname}>')
         ker((out_shape,), (1,),
             (self.data.astype(cupy.float64),
