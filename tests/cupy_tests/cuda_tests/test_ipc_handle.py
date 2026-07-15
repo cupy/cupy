@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import unittest
 import cupy
 from cupy import testing
@@ -11,10 +13,10 @@ class TestIPCHandle(unittest.TestCase):
         self.context = get_context("spawn")
 
     @staticmethod
-    def modify_array(handle, result_queue):
+    def modify_array(handle):
         arr = handle.open()
         arr *= 2
-        result_queue.put(arr)
+        cupy.cuda.get_current_stream().synchronize()
 
     @staticmethod
     def get_twice(handle, error_queue):
@@ -26,16 +28,16 @@ class TestIPCHandle(unittest.TestCase):
             error_queue.put(e)
 
     def test_IPCHandle_get(self):
-        handle = cupy.ones(10).get_ipc_handle()
+        arr = cupy.ones(10)
+        handle = arr.get_ipc_handle()
 
-        result_queue = self.context.Queue()
         p = self.context.Process(target=self.modify_array,
-                                 args=(handle, result_queue))
+                                 args=(handle,))
         p.start()
         p.join()
 
-        result = cupy.ones(10)*2
-        testing.assert_array_equal(result, result_queue.get())
+        expected = cupy.ones(10) * 2
+        testing.assert_array_equal(expected, arr)
 
     def test_IPCHandle_error_handling(self):
         arr = cupy.ones(10)

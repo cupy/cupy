@@ -1,12 +1,15 @@
+from __future__ import annotations
+
 import os
 import warnings
 from multiprocessing import get_start_method
 
 from cupy.cuda.memory import UnownedMemory, MemoryPointer
 
-from cupy.cuda.runtime import ipcGetMemHandle
-from cupy.cuda.runtime import ipcOpenMemHandle
-from cupy.cuda.runtime import ipcCloseMemHandle
+from cupy_backends.cuda.api.runtime import (
+    ipcGetMemHandle, ipcOpenMemHandle, ipcCloseMemHandle)
+
+from cupy import _util
 
 
 class IPCMemoryHandle:
@@ -25,19 +28,17 @@ class IPCMemoryHandle:
         """
         from cupy._core.core import ndarray
 
-        if type(ndarray_instance) is not ndarray \
-                and isinstance(ndarray_instance, ndarray):
-            warnings.warn("The provided object is an instance of a "
-                          "subclass of cupy.ndarray, not cupy.ndarray "
-                          "itself. The .open() method will always return "
-                          "a cupy.ndarray object.")
-
-        if not isinstance(ndarray_instance, ndarray):
-            raise TypeError(
-                "The provided object is neither an instance of "
-                "cupy.ndarray, nor an instance of a subclass of "
-                "cupy.ndarray."
-            )
+        if type(ndarray_instance) is not ndarray:
+            if isinstance(ndarray_instance, ndarray):
+                warnings.warn("The provided object is an instance of a "
+                              "subclass of cupy.ndarray, not cupy.ndarray "
+                              "itself. The .open() method will always return "
+                              "a cupy.ndarray object.")
+            else:
+                raise TypeError(
+                    "The provided object is neither an instance of "
+                    "cupy.ndarray, nor an instance of a subclass of "
+                    "cupy.ndarray.")
 
         self.dtype = ndarray_instance.dtype
         self.shape = ndarray_instance.shape
@@ -48,10 +49,12 @@ class IPCMemoryHandle:
         self.source_pid = os.getpid()
         self.arr_ptr = -1
 
-    def __del__(self):
+    def __del__(self, is_shutting_down=_util.is_shutting_down):
         """
         Closes the handle when object is deleted or goes out of scope.
         """
+        if is_shutting_down():
+            return
         self.close()
 
     def close(self):
