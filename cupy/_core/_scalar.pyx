@@ -1,5 +1,3 @@
-# distutils: language = c++
-
 from libc.stdint cimport intptr_t
 
 cimport cpython

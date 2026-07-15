@@ -1,5 +1,3 @@
-# distutils: language = c++
-
 cimport cython  # NOQA
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from libc.string cimport memset as c_memset
