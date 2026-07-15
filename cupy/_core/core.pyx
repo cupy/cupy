@@ -2989,18 +2989,15 @@ cdef _ndarray_base _array_default(
     # Avoid copy when the passed object is a compatible numpy array
     # A non-contiguous array can be let through without copy,
     # as it will be copied to a pinned vector below
+    numpy_order = order
     if (
         isinstance(obj, numpy.ndarray)
-        and (dtype is None or obj.dtype == numpy.dtype(dtype))
-        and obj.ndim >= ndmin
         and not pinned_memory.is_memory_pinned(obj.ctypes.data)
         and not _is_ump_enabled
     ):
-        a_cpu = obj
-    else:
-        copy = False if NUMPY_1x else None
-        a_cpu = numpy.array(obj, dtype=dtype, copy=copy, order=order,
-                            ndmin=ndmin)
+        numpy_order = 'K'
+    a_cpu = numpy.array(obj, dtype=dtype, copy=None, order=numpy_order,
+                        ndmin=ndmin)
 
     a_cpu = a_cpu.astype(_dtype.normalize_dtype(a_cpu.dtype), copy=False)
     a_dtype = a_cpu.dtype
