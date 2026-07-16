@@ -7,6 +7,7 @@ import cupy
 from cupy.cuda import runtime
 from cupy import testing
 import cupyx.scipy.ndimage
+from cupyx.scipy.ndimage import _interpolation
 from cupyx.scipy.ndimage import _util
 
 try:
@@ -491,7 +492,7 @@ class TestAffineTransformOpenCV:
 
 @testing.parameterize(*(
     testing.product({
-        'angle': [-10, 1000, 90, 180, -180],
+        'angle': [-10, 1000, 180, -180],
         'axes': [(1, 0)],
         'reshape': [False, True],
         # Avoid float64 output so rtol dict keyed by result dtype picks up
@@ -596,6 +597,26 @@ class TestRotateExceptions:
                 ndi.rotate(x, angle, [0, x.ndim])
             with pytest.raises(ValueError):
                 ndi.rotate(x, angle, [-(x.ndim + 1), 1])
+
+
+class TestRotateSindgCosdg:
+
+    @pytest.mark.parametrize('angle,sin,cos', [
+        (90, 1.0, 0.0),
+        (180, 0.0, -1.0),
+        (270, -1.0, 0.0),
+        (360, 0.0, 1.0),
+        (-90, -1.0, 0.0),
+        (-180, 0.0, -1.0),
+    ])
+    def test_exact_at_multiples_of_90(self, angle, sin, cos):
+        # math.sin/cos(deg2rad(angle)) is off by ~1e-16 at these angles,
+        # which is what corrupted rotate()'s corner pixels (see #8400).
+        # Assert exact equality, not closeness, so this can't be masked
+        # by an atol the way the end-to-end rotate() comparison can.
+        s, c = _interpolation._sindg_cosdg(angle)
+        assert s == sin
+        assert c == cos
 
 
 @testing.parameterize(
