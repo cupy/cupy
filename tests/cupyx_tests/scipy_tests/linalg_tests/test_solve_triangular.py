@@ -151,12 +151,14 @@ class TestSolveTriangular(unittest.TestCase):
 
 @testing.with_requires('scipy')
 class TestSolveTriangularPointerMode(unittest.TestCase):
-    # Regression test for the cuBLAS pointer-mode handling of solve_triangular.
-    # The routine passes the scalar alpha by host pointer, so it must force HOST
-    # pointer mode on the shared cuBLAS handle.  If another routine left the handle
-    # in DEVICE pointer mode, the host pointer would be misread as device memory --
-    # tolerated by CUDA cuBLAS but rejected by ROCm/hipBLAS.  solve_triangular must
-    # both compute correctly and leave the handle's pointer mode unchanged.
+    # Regression test for the cuBLAS pointer-mode handling of
+    # solve_triangular.  The routine passes the scalar alpha by host
+    # pointer, so it must force HOST pointer mode on the shared cuBLAS
+    # handle.  If another routine left the handle in DEVICE pointer mode,
+    # the host pointer would be misread as device memory -- tolerated by
+    # CUDA cuBLAS but rejected by ROCm/hipBLAS.  solve_triangular must
+    # both compute correctly and leave the handle's pointer mode
+    # unchanged.
 
     @testing.for_dtypes('fdFD')
     def test_solve_with_device_pointer_mode(self, dtype):

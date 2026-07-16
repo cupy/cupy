@@ -155,12 +155,13 @@ def solve_triangular(a, b, trans=0, lower=False, unit_diagonal=False,
     else:
         diag = cublas.CUBLAS_DIAG_NON_UNIT
 
-    # ?trsm passes the scalar ``one`` by host pointer, so the cuBLAS handle must
-    # be in HOST pointer mode.  The handle returned by ``get_cublas_handle()`` is
-    # shared and may have been left in DEVICE pointer mode by another routine; in
-    # that case the host pointer is interpreted as a device pointer -- silently
-    # tolerated by CUDA cuBLAS, but rejected with an error by ROCm/hipBLAS.  Force
-    # HOST mode around the call and restore the previous mode afterwards.
+    # ?trsm passes the scalar ``one`` by host pointer, so the cuBLAS
+    # handle must be in HOST pointer mode.  The handle returned by
+    # ``get_cublas_handle()`` is shared and may have been left in DEVICE
+    # pointer mode by another routine; in that case the host pointer is
+    # interpreted as a device pointer -- silently tolerated by CUDA
+    # cuBLAS, but rejected with an error by ROCm/hipBLAS.  Force HOST
+    # mode around the call and restore the previous mode afterwards.
     pointer_mode = cublas.getPointerMode(cublas_handle)
     cublas.setPointerMode(cublas_handle, cublas.CUBLAS_POINTER_MODE_HOST)
     try:
