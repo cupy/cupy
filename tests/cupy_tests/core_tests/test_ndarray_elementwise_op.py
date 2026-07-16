@@ -95,6 +95,35 @@ class TestArrayElementwiseOp:
     def test_rpow_scalar(self):
         self.check_array_scalar_op(operator.pow, swap=True)
 
+    @pytest.mark.parametrize('exp', [2, 3, 4, 2.0, 3.0, 0.5, -1.0])
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    @numpy.errstate(invalid='ignore')
+    def test_pow_python_scalar_fastpath(self, xp, dtype, exp):
+        if xp.dtype(dtype).kind not in "u":
+            a = xp.array([[1, -2, 3], [4, -5, 6]], dtype)
+        else:
+            a = xp.array([[1, 2, 3], [4, 5, 6]], dtype)
+
+        return a ** exp
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(accept_error=OverflowError)
+    def test_pow_python_scalar_negative_one(self, xp, dtype):
+        # ** -1 is special cased because NumPy raises for int**-1.
+        if xp.dtype(dtype).kind not in "u":
+            a = xp.array([[1, -2, 3], [4, -5, 6]], dtype)
+        else:
+            a = xp.array([[1, 2, 3], [4, 5, 6]], dtype)
+
+        if xp == numpy and a.dtype.kind in "ib":
+            # NumPy raises for signed_int/bool ** -1 but we don't
+            # (at least for power we cannot check in the kernel)
+            # unsigned powers "work" (we also fail for the scalar case)
+            return (a ** -1.0).astype((a ** 1).dtype)
+
+        return a ** -1
+
     @testing.for_all_dtypes_combination(names=['x_type', 'y_type'])
     @testing.numpy_cupy_allclose(atol=1.0, accept_error=TypeError)
     def check_ipow_scalar(self, xp, x_type, y_type):

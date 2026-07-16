@@ -1619,6 +1619,35 @@ cdef class _ndarray_base:
 
     def __pow__(x, y, modulo):
         # Note that we ignore the modulo argument as well as NumPy.
+
+        # Explicit special cases for common powers. As of 14.2, we do not
+        # have further special cases in the ufunc implementation.
+        # TODO(seberg): it would be nice to move part (or all!) of this into
+        #     the ufunc, but that would require new ufunc infrastructure
+        #     (i.e. for specific scalar values compile hard-code the kernel).
+        fast_func = None
+        fast_func_dtype = None
+        if type(y) is int:
+            if y == 2:
+                fast_func = cupy.square
+        elif type(y) is float:
+            if y == 0.5:
+                # For **0.5 promotion should be the same as sqrt
+                # (true for all typical numerical types we currently have)
+                fast_func = cupy.sqrt
+            elif y == 2.0:
+                fast_func = cupy.square
+            elif y == -1.0:
+                fast_func = cupy.reciprocal
+
+            if fast_func is not None and x.dtype.kind not in "fc":
+                # If the inputs aren't floats/ints, assume power is just
+                # a result_type() call.
+                fast_func_dtype = cupy.result_type(x.dtype, y)
+
+        if fast_func is not None:
+            return fast_func(x, dtype=fast_func_dtype)
+
         if isinstance(y, ndarray):
             return _math._power(x, y)
         elif _should_use_rop(x, y):
