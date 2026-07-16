@@ -12,6 +12,14 @@ from cupy.exceptions import AxisError
 
 class TestSort(unittest.TestCase):
 
+    def _sort(self, xp, a, use_method, axis=-1, descending=None):
+        kwargs = {} if descending is None else {'descending': descending}
+        if use_method:
+            a.sort(axis=axis, **kwargs)
+            return a
+        else:
+            return xp.sort(a, axis=axis, **kwargs)
+
     # Test ranks
 
     def test_sort_zero_dim(self):
@@ -48,14 +56,13 @@ class TestSort(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_sort_dtype(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
-        a.sort()
-        return a
+        return self._sort(xp, a, use_method=True)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_external_sort_dtype(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
-        return xp.sort(a)
+        return self._sort(xp, a, use_method=False)
 
     # Test contiguous arrays
 
@@ -91,8 +98,7 @@ class TestSort(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_sort_axis2(self, xp):
         a = testing.shaped_random((2, 3, 4), xp)
-        a.sort(axis=1)
-        return a
+        return self._sort(xp, a, use_method=True, axis=1)
 
     @testing.numpy_cupy_array_equal()
     def test_sort_axis3(self, xp):
@@ -103,7 +109,7 @@ class TestSort(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_external_sort_axis(self, xp):
         a = testing.shaped_random((2, 3, 3), xp)
-        return xp.sort(a, axis=0)
+        return self._sort(xp, a, use_method=False, axis=0)
 
     @testing.numpy_cupy_array_equal()
     def test_sort_negative_axis(self, xp):
@@ -172,8 +178,7 @@ class TestSort(unittest.TestCase):
     def test_nan1(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
         a[2] = a[6] = xp.nan
-        out = xp.sort(a)
-        return out
+        return self._sort(xp, a, use_method=False)
 
     @testing.for_dtypes('efdFD')
     @testing.numpy_cupy_array_equal()
@@ -206,34 +211,32 @@ class TestSort(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_sort_descending_dtype(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
-        a.sort(descending=True)
-        return a
+        return self._sort(xp, a, use_method=True, descending=True)
 
     @testing.with_requires('numpy>=2.5')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_external_sort_descending_dtype(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
-        return xp.sort(a, descending=True)
+        return self._sort(xp, a, use_method=False, descending=True)
 
     @testing.with_requires('numpy>=2.5')
     @testing.numpy_cupy_array_equal()
     def test_sort_descending_axis(self, xp):
         a = testing.shaped_random((2, 3, 4), xp)
-        a.sort(axis=1, descending=True)
-        return a
+        return self._sort(xp, a, use_method=True, axis=1, descending=True)
 
     @testing.with_requires('numpy>=2.5')
     @testing.numpy_cupy_array_equal()
     def test_external_sort_descending_axis(self, xp):
         a = testing.shaped_random((2, 3, 4), xp)
-        return xp.sort(a, axis=1, descending=True)
+        return self._sort(xp, a, use_method=False, axis=1, descending=True)
 
     @testing.with_requires('numpy>=2.5')
     @testing.numpy_cupy_array_equal()
     def test_sort_descending_false_matches_default(self, xp):
         a = testing.shaped_random((10,), xp)
-        return xp.sort(a, descending=False)
+        return self._sort(xp, a, use_method=False, descending=False)
 
     @testing.with_requires('numpy>=2.5')
     @testing.for_dtypes('efdFD')
@@ -241,7 +244,7 @@ class TestSort(unittest.TestCase):
     def test_sort_descending_nan(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
         a[2] = a[6] = xp.nan
-        return xp.sort(a, descending=True)
+        return self._sort(xp, a, use_method=False, descending=True)
 
     # Large case
 
