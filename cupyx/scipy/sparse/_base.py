@@ -264,22 +264,22 @@ class _spbase:
             raise ValueError(f'{op} requires two dimensions')
 
     def _squeeze_to_1d(self, result):
-        """Squeeze a 2-D ``(1, N)`` op result back to 1-D.
+        """Collapse a ``(1, N)`` op result to 1-D.
 
-        The 1-D sparse-array ops run on the ``(1, N)`` backing (see
-        :meth:`_as_2d`) and pass the result here.  When the other operand
-        is itself 2-D it can broadcast the result up to ``(K, N)`` with
-        ``K > 1`` (e.g. ``multiply``/``maximum`` against a 2-D operand);
-        such a result is genuinely 2-D and is returned unchanged, matching
-        scipy.  A true ``(1, N)`` result is collapsed to 1-D: a CSR result
+        Only valid when the operation is genuinely 1-D (the 1-D-array ops
+        run on the ``(1, N)`` backing -- see :meth:`_as_2d`).  A CSR result
         is rewrapped as a 1-D CSR (preserving format, matching scipy); any
         other sparse result is reshaped to 1-D; a dense result is raveled.
+        A sparse result that is not ``(1, N)`` cannot be a 1-D value and
+        raises rather than silently returning a wrong-shaped array (the
+        caller must gate on operand dimensionality -- see
+        :meth:`_finalize_1d_op`).
         """
         if issparse(result):
             m, n = result.shape
             if m != 1:
-                # A 2-D operand broadcast the result up; keep it 2-D.
-                return result
+                raise ValueError(
+                    f'cannot squeeze a {result.shape} result to 1-D')
             if result.format == 'csr':
                 return self._csr_container._from_parts(
                     result.data, result.indices, result.indptr, (n,),
@@ -288,10 +288,44 @@ class _spbase:
                     has_sorted_indices=getattr(
                         result, '_has_sorted_indices', None))
             return result.reshape((n,))
-        if result.ndim == 2 and result.shape[0] != 1:
-            # Dense result broadcast up by a 2-D operand -- genuinely 2-D.
-            return result
         return result.reshape(-1)
+
+    def _finalize_1d_op(self, result, other):
+        """Shape the result of a broadcasting op run on a ``(1, N)`` backing.
+
+        The operation is genuinely 1-D -- and the result is squeezed back to
+        1-D -- only when *both* operands are 1-D (a scalar or 1-D
+        array/sparse).  If either operand is 2-D the result is a real 2-D
+        value (numpy broadcasting: ``self`` may be a one-row ``(1, N)`` and
+        ``other`` a one-row ``(1, N)``), returned unchanged -- deciding by
+        the operand dimensionality rather than the result shape avoids
+        wrongly squeezing a genuine ``(1, N)`` result (e.g. ``v < M`` where
+        ``M`` has one row).
+        """
+        if result is NotImplemented:
+            # The inner op did not recognize ``other`` (e.g. a numpy array
+            # or list); pass the sentinel through so Python's operator
+            # protocol can try the reflected op, matching the 2-D path
+            # instead of crashing in ``_squeeze_to_1d``.
+            return result
+        result_is_2d = self.ndim == 2 or (
+            (issparse(other) or isdense(other)) and other.ndim == 2)
+        return result if result_is_2d else self._squeeze_to_1d(result)
+
+    def _run_1d_backing_op(self, other, run):
+        """Run a broadcasting binary op involving a 1-D array on the
+        ``(1, N)`` backing, then finalize the result shape.
+
+        ``run(backing, other)`` performs the actual op on 2-D operands: the
+        receiver is mapped to its ``(1, N)`` backing (a no-op if already
+        2-D) and a 1-D sparse ``other`` is promoted to its own backing so
+        the inner op sees a 2-D operand.  :meth:`_finalize_1d_op` then keeps
+        the result 2-D or squeezes it to 1-D based on the operand
+        dimensionality.  Shared by the 1-D arithmetic/comparison ops so the
+        normalize/finalize rule lives in one place.
+        """
+        o = other._as_2d() if (issparse(other) and other.ndim == 1) else other
+        return self._finalize_1d_op(run(self._as_2d(), o), other)
 
     # Container properties: default to array types.
     # spmatrix overrides these to return matrix types.
@@ -612,15 +646,10 @@ class _spbase:
             # The only axis reduces everything to a scalar.  Implicit zeros
             # contribute nothing, so summing the stored data suffices;
             # duplicates of a non-bool dtype already sum to the right total,
-            # so no dedup (or in-place mutation) is needed here.
+            # so no dedup (or in-place mutation) is needed here.  ``out=`` is
+            # forwarded to the reduction, which validates its shape.
             _sputils.validate_axis_1d(axis)
-            ret = self.data.sum(dtype=dtype)
-            if out is not None:
-                if out.shape != ret.shape:
-                    raise ValueError('dimensions do not match')
-                _core.elementwise_copy(ret, out)
-                return out
-            return ret
+            return self.data.sum(dtype=dtype, out=out)
 
         m, n = self.shape
 

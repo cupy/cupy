@@ -176,15 +176,17 @@ def validateaxis(axis):
 def validate_axis_1d(axis):
     """Validate a reduction ``axis`` for a 1-D sparse array.
 
-    Accepts ``None``, ``0``, ``-1``, or a length-1 tuple of one of those
-    (scipy allows a 1-tuple axis).  Raises ``ValueError`` otherwise.  A
-    1-D reduction always collapses the single axis, so callers ignore the
-    (absent) return value and reduce over everything.
+    Accepts ``None``, ``0``, ``-1``, or a length-1 tuple of ``0``/``-1``
+    (scipy allows a 1-tuple axis).  Raises otherwise.  A 1-D reduction
+    always collapses the single axis, so callers ignore the (absent)
+    return value and reduce over everything.
     """
     if isinstance(axis, tuple):
         if len(axis) != 1:
             raise ValueError('axis out of range for 1-D array')
-        axis = axis[0]
+        # A tuple axis must hold an integer axis: numpy/scipy reject a
+        # non-integer element such as ``(None,)`` (mirrors collapse_2d_axis).
+        axis = operator.index(axis[0])
     if axis not in (None, 0, -1):
         raise ValueError(f'axis {axis} is out of bounds for 1-D array')
 

@@ -205,15 +205,16 @@ class _data_matrix(_base._spbase):
                 axis=axis, dtype=dtype, out=out)
         if self.ndim == 1:
             # Collapse the single axis to a scalar mean directly, without
-            # building a throwaway sparse object.
+            # building a throwaway sparse object.  Accumulate the sum in
+            # floating point and scale *before* the final cast: casting each
+            # ``1/N``-scaled term to an integer ``dtype`` mid-reduction would
+            # truncate it (matches the 2-D path and numpy).  ``out=`` is
+            # forwarded to that final reduction, which validates its shape;
+            # the Python-level ``1.0 / N`` raises ZeroDivisionError on an
+            # empty axis, like scipy.
             _sputils.validate_axis_1d(axis)
-            ret = (self.data * (1.0 / self.shape[0])).sum(dtype=dtype)
-            if out is not None:
-                if out.shape != ret.shape:
-                    raise ValueError('dimensions do not match')
-                out[...] = ret
-                return out
-            return ret
+            total = self.data.sum() * (1.0 / self.shape[0])
+            return total.sum(dtype=dtype, out=out)
 
         axis = _sputils.collapse_2d_axis(axis)
         _sputils.validateaxis(axis)

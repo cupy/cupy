@@ -236,16 +236,15 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             self.maxprint = maxprint
 
         if self._input_is_1d(arg1, shape):
-            if 1 not in self._allow_nd:
-                # Only csr_array supports 1-D (matching scipy).  Other
-                # compressed *array* classes reject it; *matrix* classes
-                # keep their legacy behavior (1-D promotes to (1, N)),
-                # handled by falling through to the 2-D path below.
-                if isinstance(self, _base.sparray):
-                    raise ValueError(
-                        f'{type(self).__name__} does not support 1D input; '
-                        'use a 2D shape or coo_array / csr_array')
-            else:
+            if 1 not in self._allow_nd and isinstance(self, _base.sparray):
+                # Only csr_array supports 1-D (matching scipy); other
+                # compressed *array* classes (csc_array) reject it.
+                raise ValueError(
+                    f'{type(self).__name__} does not support 1D input; '
+                    'use a 2D shape or coo_array / csr_array')
+            elif 1 in self._allow_nd:
+                # (A *matrix* class with 1-D input falls through to the 2-D
+                # path below, which promotes it to (1, N).)
                 # Build the single-row CSR backing.  A same-format sparse
                 # input is adopted directly; the canonical ``(data,
                 # indices, indptr)`` 3-tuple is built via ``_from_parts``;
@@ -654,10 +653,12 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                     'supported')
         elif _base.issparse(other):
             if self.ndim != 2 or other.ndim != 2:
-                # 1-D: add/subtract on the (1, N) backing, squeeze back.
-                o = other._as_2d() if other.ndim == 1 else other
-                return self._squeeze_to_1d(
-                    self._as_2d()._add(o, lhs_negative, rhs_negative))
+                # A 1-D operand is involved: add/subtract on the (1, N)
+                # backing (2-D result kept, 1-D squeezed -- and a genuinely
+                # 2-D one-row ``self`` stays 2-D; see _run_1d_backing_op).
+                return self._run_1d_backing_op(
+                    other,
+                    lambda a, o: a._add(o, lhs_negative, rhs_negative))
             alpha = -1 if lhs_negative else 1
             beta = -1 if rhs_negative else 1
             return self._add_sparse(other, alpha, beta)

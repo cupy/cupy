@@ -779,12 +779,8 @@ class _coo_base(sparse_data._data_matrix):
         .. seealso:: :meth:`scipy.sparse.coo_matrix.toarray`
 
         """
-        if self.ndim == 1:
-            # Densify through the (1, N) backing (correct duplicate and
-            # explicit-zero handling), then drop the length-1 axis.
-            # ``out`` is accepted but unused, matching the 2-D path.
-            return self._as_2d().tocsr().toarray(order=order).reshape(
-                self.shape)
+        # ``tocsr`` handles 1-D too (returning a 1-D CSR), so no 1-D
+        # special case is needed here.
         return self.tocsr().toarray(order=order, out=out)
 
     def tocoo(self, copy=False):

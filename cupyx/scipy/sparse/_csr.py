@@ -73,11 +73,10 @@ class _csr_base(_compressed._compressed_sparse_matrix):
 
     def _comparison(self, other, op, op_name):
         if self.ndim != 2:
-            # 1-D: compare on the (1, N) backing, squeeze back.
-            o = (other._as_2d() if (_base.issparse(other) and other.ndim == 1)
-                 else other)
-            return self._squeeze_to_1d(
-                self._as_2d()._comparison(o, op, op_name))
+            # 1-D: compare on the (1, N) backing (2-D result kept, 1-D
+            # squeezed -- see _run_1d_backing_op).
+            return self._run_1d_backing_op(
+                other, lambda a, o: a._comparison(o, op, op_name))
         cls = type(self)
         if _util.isscalarlike(other):
             data = cupy.asarray(other, dtype=self.dtype).reshape(1)
@@ -291,10 +290,10 @@ class _csr_base(_compressed._compressed_sparse_matrix):
             d = cupy.reciprocal(other, dtype=dtype)
             return multiply_by_scalar(self, d)
         if self.ndim != 2:
-            # 1-D: divide on the (1, N) backing, squeeze back.
-            o = (other._as_2d() if (_base.issparse(other) and other.ndim == 1)
-                 else other)
-            return self._squeeze_to_1d(self._as_2d().__truediv__(o))
+            # 1-D: divide on the (1, N) backing (2-D result kept, 1-D
+            # squeezed -- see _run_1d_backing_op).
+            return self._run_1d_backing_op(
+                other, lambda a, o: a.__truediv__(o))
         if _util.isdense(other):
             other = cupy.atleast_2d(other)
             other = cupy.broadcast_to(other, self.shape)
@@ -397,11 +396,12 @@ class _csr_base(_compressed._compressed_sparse_matrix):
                     has_sorted_indices=getattr(
                         self, '_has_sorted_indices', None))
         if self.ndim != 2:
-            # 1-D: run on the (1, N) backing, squeeze back.
-            o = (other._as_2d() if (_base.issparse(other) and other.ndim == 1)
-                 else other)
-            return self._squeeze_to_1d(self._as_2d()._maximum_minimum(
-                o, cupy_op, op_name, dense_check))
+            # 1-D: run on the (1, N) backing (2-D result kept, 1-D
+            # squeezed -- see _run_1d_backing_op).
+            return self._run_1d_backing_op(
+                other,
+                lambda a, o: a._maximum_minimum(
+                    o, cupy_op, op_name, dense_check))
         if _util.isdense(other):
             self.sum_duplicates()
             other = cupy.atleast_2d(other)
@@ -429,10 +429,10 @@ class _csr_base(_compressed._compressed_sparse_matrix):
         if cupy.isscalar(other):
             return multiply_by_scalar(self, other)
         if self.ndim != 2:
-            # 1-D: multiply on the (1, N) backing, squeeze back.
-            o = (other._as_2d() if (_base.issparse(other) and other.ndim == 1)
-                 else other)
-            return self._squeeze_to_1d(self._as_2d().multiply(o))
+            # 1-D: multiply on the (1, N) backing (2-D result kept, 1-D
+            # squeezed -- see _run_1d_backing_op).
+            return self._run_1d_backing_op(
+                other, lambda a, o: a.multiply(o))
         if _util.isdense(other):
             self.sum_duplicates()
             other = cupy.atleast_2d(other)
