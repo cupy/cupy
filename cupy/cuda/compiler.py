@@ -609,10 +609,6 @@ def _compile_with_cache_cuda(
     if to_ltoir:
         options += ('-dlto',)
 
-    if enable_cooperative_groups:
-        # `cooperative_groups` requires relocatable device code.
-        options += ('--device-c',)
-
     # TODO(leofang): check if this works for LTO IR
     if _get_bool_env_variable('CUPY_CUDA_COMPILE_WITH_DEBUG', False):
         options += ('--device-debug', '--generate-line-info')

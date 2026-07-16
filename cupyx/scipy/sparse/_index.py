@@ -6,9 +6,8 @@ from __future__ import annotations
 import cupy
 from cupy import _core
 
+from cupyx.scipy.sparse._base import _spbase
 from cupyx.scipy.sparse._base import issparse
-from cupyx.scipy.sparse._base import isspmatrix
-from cupyx.scipy.sparse._base import spmatrix
 
 from cupy.cuda import device
 from cupy.cuda import runtime
@@ -126,6 +125,12 @@ def _get_csr_submatrix_minor_axis(Ax, Aj, Ap, start, stop):
         Bx (cupy.ndarray): data array of output sparse matrix
         Bj (cupy.ndarray): indices array of output sparse matrix
         Bp (cupy.ndarray): indptr array of output sparse matrix
+
+    The three returned arrays share no memory with the inputs:
+    boolean masking (``Aj[mask]``, ``Ax[mask]``) and fancy indexing
+    (``mask_sum[Ap]``) both allocate.  Callers may treat the results
+    as independent buffers; ``_minor_slice`` relies on this contract
+    to satisfy ``copy=True`` without an explicit ``.copy()``.
     """
     mask = (start <= Aj) & (Aj < stop)
     mask_sum = cupy.empty(Aj.size + 1, dtype=Ap.dtype)
@@ -142,7 +147,7 @@ def _csr_indptr_to_coo_rows(nnz, Bp):
     if Bp.dtype == cupy.int64:
         # TODO(eriknw): cuSPARSE--remove when xcsr2coo supports int64
         from cupyx.cusparse import _indptr_to_coo
-        return _indptr_to_coo(Bp)
+        return _indptr_to_coo(Bp, nnz=nnz)
 
     from cupy_backends.cuda.libs import cusparse
 
@@ -389,7 +394,16 @@ class IndexMixin:
                 return self._get_columnXarray(row[:, 0], col.ravel())
 
         # The only remaining case is inner (fancy) indexing
-        row, col = cupy.broadcast_arrays(row, col)
+        try:
+            row, col = cupy.broadcast_arrays(row, col)
+        except ValueError as e:
+            # Match scipy 1.17: shape-mismatch on fancy indexing
+            # raises IndexError, not ValueError.
+            raise IndexError(
+                f'shape mismatch: indexing arrays could not be '
+                f'broadcast together with shapes {row.shape} '
+                f'{col.shape}'
+            ) from e
         if row.shape != col.shape:
             raise IndexError('number of row and column indices differ')
         if row.size == 0:
@@ -401,8 +415,8 @@ class IndexMixin:
 
         if isinstance(row, _int_scalar_types) and\
                 isinstance(col, _int_scalar_types):
-            # A 1x1 sparse RHS (cupy/scipy sparse) is a valid scalar
-            # source — densify it before checking size.
+            # A 1x1 sparse RHS (scipy/cupy sparse) is a valid scalar
+            # source -- densify it before checking size.
             if issparse(x):
                 x = cupy.asarray(x.toarray(), dtype=self.dtype)
             else:
@@ -428,7 +442,7 @@ class IndexMixin:
         if i.shape != j.shape:
             raise IndexError('number of row and column indices differ')
 
-        if isspmatrix(x):
+        if issparse(x):
             if i.ndim == 1:
                 # Inner indexing, so treat them like row vectors.
                 i = i[None]
@@ -500,32 +514,6 @@ class IndexMixin:
 
         return x % length
 
-    def getrow(self, i):
-        """Return a copy of row i of the matrix, as a (1 x n) row vector.
-
-        Args:
-            i (integer): Row
-
-        Returns:
-            cupyx.scipy.sparse.spmatrix: Sparse matrix with single row
-        """
-        M, N = self.shape
-        i = _normalize_index(i, M, 'index')
-        return self._get_intXslice(i, slice(None))
-
-    def getcol(self, i):
-        """Return a copy of column i of the matrix, as a (m x 1) column vector.
-
-        Args:
-            i (integer): Column
-
-        Returns:
-            cupyx.scipy.sparse.spmatrix: Sparse matrix with single column
-        """
-        M, N = self.shape
-        i = _normalize_index(i, N, 'index')
-        return self._get_sliceXint(slice(None), i)
-
     def _get_intXint(self, row, col):
         raise NotImplementedError()
 
@@ -569,9 +557,10 @@ class IndexMixin:
         self._set_arrayXarray(row, col, x)
 
 
-def _try_is_scipy_spmatrix(index):
+def _try_is_scipy_sparse(index):
+    """True for any scipy.sparse object (matrix or array)."""
     if scipy_available:
-        return isinstance(index, scipy.sparse.spmatrix)
+        return scipy.sparse.issparse(index)
     return False
 
 
@@ -587,9 +576,9 @@ def _unpack_index(index):
           assumed to be all (e.g., [maj, :]).
     """
     # First, check if indexing with single boolean matrix.
-    if ((isinstance(index, (spmatrix, cupy.ndarray,
+    if ((isinstance(index, (_spbase, cupy.ndarray,
                             numpy.ndarray))
-         or _try_is_scipy_spmatrix(index))
+         or _try_is_scipy_sparse(index))
             and index.ndim == 2 and index.dtype.kind == 'b'):
         return index.nonzero()
 
@@ -615,7 +604,7 @@ def _unpack_index(index):
         elif idx.ndim == 2:
             return idx.nonzero()
     # Next, check for validity and transform the index as needed.
-    if isspmatrix(row) or isspmatrix(col):
+    if issparse(row) or issparse(col):
         # Supporting sparse boolean indexing with both row and col does
         # not work because spmatrix.ndim is always 2.
         raise IndexError(

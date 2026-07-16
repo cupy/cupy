@@ -887,7 +887,7 @@ def get_array_module(*args):
     """
     import cupyx
     for arg in args:
-        if isinstance(arg, (ndarray, cupyx.scipy.sparse.spmatrix,
+        if isinstance(arg, (ndarray, cupyx.scipy.sparse._spbase,
                             _core.fusion._FusionVarArray,
                             _core.new_fusion._ArrayProxy)):
             return _cupy

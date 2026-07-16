@@ -5,8 +5,8 @@ import numpy as np
 from cupy._core import internal
 from cupy import _util
 from cupyx.scipy.sparse import _base
-from cupyx.scipy.sparse import _coo
 from cupyx.scipy.sparse import _sputils
+from cupyx.scipy.sparse import _util as _sparse_util
 
 
 _ufuncs = [
@@ -16,7 +16,7 @@ _ufuncs = [
 ]
 
 
-class _data_matrix(_base.spmatrix):
+class _data_matrix(_base._spbase):
 
     def __init__(self, data):
         self.data = data
@@ -33,21 +33,84 @@ class _data_matrix(_base.spmatrix):
         """Elementwise absolute."""
         return self._with_data(abs(self.data))
 
+    def __round__(self, ndigits=0):
+        """Elementwise rounding (matches :func:`numpy.around`)."""
+        return self._with_data(cupy.around(self.data, decimals=ndigits))
+
     def __neg__(self):
         """Elementwise negative."""
+        if self.dtype.kind == 'b':
+            # Match scipy 1.17: raise NotImplementedError instead of letting
+            # the underlying cupy error surface.
+            raise NotImplementedError(
+                'negating a boolean sparse array is not supported')
         return self._with_data(-self.data)
 
-    def astype(self, t):
-        """Casts the array to given data type.
+    @staticmethod
+    def _scalar_op_dtype(self_dtype, other):
+        """Pick the dtype for ``self.data * other`` / ``... / other``.
+
+        numpy's natural promotion can land outside the cuSPARSE-supported
+        set (e.g. ``bool * int -> int64``).  Upcast to ``float64`` in
+        that case so the result remains usable.  Mirrors scipy which
+        promotes bool / int sparse to float on division.
+        """
+        out = np.result_type(self_dtype, other)
+        if not _sputils.is_sparse_data_dtype(out):
+            out = np.dtype(np.float64)
+        return out
+
+    def __imul__(self, other):
+        # In-place scalar multiply mutates ``self.data`` to preserve
+        # object identity.  Non-scalar falls through to NotImplemented
+        # so Python rebinds via ``self = self * other``.  Unlike scipy,
+        # which raises ``UFuncTypeError`` on out-of-set promotions
+        # (e.g. ``bool *= int``), CuPy reassigns ``self.data`` to a
+        # cuSPARSE-supported dtype.  Identity of ``self`` is preserved;
+        # identity of ``self.data`` is not.
+        if _sparse_util.isscalarlike(other):
+            new_dtype = self._scalar_op_dtype(self.dtype, other)
+            if new_dtype != self.dtype:
+                self.data = self.data.astype(new_dtype) * other
+            else:
+                self.data *= other
+            return self
+        return NotImplemented
+
+    def __itruediv__(self, other):
+        # In-place scalar division mutates ``self.data``.  See
+        # ``__imul__`` for the upcast rationale; division additionally
+        # promotes int dividends to float (``int / 2`` is ``float``
+        # in Python and ``self.data /= 2`` would otherwise raise on
+        # int data).
+        if _sparse_util.isscalarlike(other):
+            recip = 1.0 / other
+            new_dtype = self._scalar_op_dtype(self.dtype, recip)
+            if new_dtype != self.dtype:
+                self.data = self.data.astype(new_dtype) * recip
+            else:
+                self.data *= recip
+            return self
+        return NotImplemented
+
+    def astype(self, dtype, copy=True):
+        """Cast the array elements to a specified type.
 
         Args:
-            dtype: Type specifier.
+            dtype: Target dtype.
+            copy (bool): If ``True`` (default), the returned array does
+                not share memory with ``self``.  If ``False``, ``self``
+                is returned unchanged when the dtype already matches.
 
         Returns:
-            A copy of the array with a given type.
-
+            Sparse object with the requested dtype and the same format.
         """
-        return self._with_data(self.data.astype(t))
+        dtype = np.dtype(dtype)
+        if self.dtype != dtype:
+            return self._with_data(self.data.astype(dtype, copy=copy))
+        if copy:
+            return self.copy()
+        return self
 
     def conj(self, copy=True):
         if cupy.issubdtype(self.dtype, cupy.complexfloating):
@@ -57,7 +120,7 @@ class _data_matrix(_base.spmatrix):
         else:
             return self
 
-    conj.__doc__ = _base.spmatrix.conj.__doc__
+    conj.__doc__ = _base._spbase.conj.__doc__
 
     @property
     def real(self):
@@ -70,22 +133,31 @@ class _data_matrix(_base.spmatrix):
     def copy(self):
         return self._with_data(self.data.copy(), copy=True)
 
-    copy.__doc__ = _base.spmatrix.copy.__doc__
+    copy.__doc__ = _base._spbase.copy.__doc__
 
-    def count_nonzero(self):
-        """Returns number of non-zero entries.
+    def count_nonzero(self, axis=None):
+        """Number of non-zero entries.
 
-        .. note::
-           This method counts the actual number of non-zero entries, which
-           does not include explicit zero entries.
-           Instead ``nnz`` returns the number of entries including explicit
-           zeros.
+        Unlike :attr:`nnz` (length of ``data``), this counts only true
+        non-zero values; explicit-zero stored entries are excluded.
+
+        Args:
+            axis (``None``, optional): Only ``None`` is handled here;
+                CSR/CSC/COO override this to support ``0``, ``1``,
+                ``-1``, ``-2``.
 
         Returns:
-            Number of non-zero entries.
-
+            int or cupy.ndarray: Scalar count when ``axis`` is
+            ``None``; otherwise a 1-D array (from format override).
         """
-        return cupy.count_nonzero(self.data)
+        # Match scipy: dedup in place before counting.
+        if hasattr(self, 'sum_duplicates'):
+            self.sum_duplicates()
+        if axis is None:
+            return int(cupy.count_nonzero(self.data))
+        raise NotImplementedError(
+            'axis-aware count_nonzero is not implemented for '
+            f'{type(self).__name__}')
 
     def mean(self, axis=None, dtype=None, out=None):
         """Compute the arithmetic mean along the specified axis.
@@ -123,6 +195,15 @@ class _data_matrix(_base.spmatrix):
             dtype: Type specifier.
 
         """
+        # Non-scalar check must come first: ``n == 0`` on an array
+        # produces a bool array and ``if`` on that raises.
+        if not _sparse_util.isscalarlike(n):
+            raise NotImplementedError('input is not scalar')
+        if n == 0:
+            raise NotImplementedError(
+                'zero power is not supported as it would densify the '
+                'matrix.\n'
+                'Use cupy.ones(A.shape, dtype=A.dtype) for this case.')
         if dtype is None:
             data = self.data.copy()
         else:
@@ -180,14 +261,14 @@ class _minmax_mixin:
         n = len(value)
         zeros = cupy.zeros(n, dtype=idx_dtype)
         value = value.astype(self.dtype, copy=False)
-        if axis == 0:
-            return _coo.coo_matrix._from_parts(
-                value, zeros, major_index,
-                shape=(1, M))
-        else:
-            return _coo.coo_matrix._from_parts(
-                value, major_index, zeros,
-                shape=(M, 1))
+        # Use the appropriate container so the result inherits the
+        # array vs matrix type from ``self``.  CuPy COO is 2-D-only, so
+        # reductions return (1, M) / (M, 1) for both array and matrix
+        # (scipy sparse arrays return shape (M,)).
+        coo_cls = self._coo_container
+        row, col = (zeros, major_index) if axis == 0 else (major_index, zeros)
+        shape = (1, M) if axis == 0 else (M, 1)
+        return coo_cls._from_parts(value, row, col, shape=shape)
 
     def _min_or_max(self, axis, out, min_or_max, explicit):
         if out is not None:
@@ -213,7 +294,8 @@ class _minmax_mixin:
                 elif min_or_max is cupy.max:
                     m = cupy.maximum(zero, m)
                 else:
-                    assert False
+                    raise AssertionError(
+                        f'unexpected min_or_max ufunc: {min_or_max}')
             return m
 
         if axis < 0:
@@ -232,6 +314,10 @@ class _minmax_mixin:
         # Do the reduction
         value = mat._arg_minor_reduce(op, axis)
 
+        # Sparse arrays return a 1-D ndarray; sparse matrices keep
+        # the legacy 2-D shape (matching scipy).
+        if isinstance(self, _base.sparray):
+            return value
         if axis == 0:
             return value[None, :]
         else:
@@ -394,13 +480,7 @@ class _minmax_mixin:
 def _install_ufunc(func_name):
 
     def f(self):
-        if func_name == "sign":
-            # scipy.sparse_matrix.sign behaves compatible with
-            # numpy.sign in NumPy 1.x series.
-            ufunc = cupy._math.misc._legacy_sign
-        else:
-            ufunc = getattr(cupy, func_name)
-
+        ufunc = getattr(cupy, func_name)
         result = ufunc(self.data)
         return self._with_data(result)
 

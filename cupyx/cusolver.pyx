@@ -86,7 +86,8 @@ _available_hip_version = {
     'gesvdjBatched': (309, None),  # = rocsolver_<t>gesvd_batched
     'gesvda': (_numpy.inf, None),
     'potrfBatched': (306, None),
-    'potrsBatched': (_numpy.inf, None),
+    # Same HIP_VERSION gate as potrfBatched (shared pointer-array bridge).
+    'potrsBatched': (306, None),
     'syevj': (402, None),
     'gesv': (_numpy.inf, None),
     'gels': (_numpy.inf, None),
@@ -828,7 +829,7 @@ def csrlsvqr(A, b, tol=0, reorder=1):
     if not check_availability('csrlsvqr'):
         raise RuntimeError('csrlsvqr is not available.')
 
-    if not _cupyx.scipy.sparse.isspmatrix_csr(A):
+    if not (_cupyx.scipy.sparse.issparse(A) and A.format == 'csr'):
         raise ValueError('A must be CSR sparse matrix')
     if not isinstance(b, _cupy.ndarray):
         raise ValueError('b must be cupy.ndarray')
