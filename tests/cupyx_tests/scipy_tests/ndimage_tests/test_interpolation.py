@@ -491,7 +491,8 @@ class TestAffineTransformOpenCV:
 
 @testing.parameterize(*(
     testing.product({
-        'angle': [-10, 1000],
+        # Note that certain angles can lead to larger differences.
+        'angle': [-10, 30, 90, 195, 1000],
         'axes': [(1, 0)],
         'reshape': [False, True],
         # Avoid float64 output so rtol dict keyed by result dtype picks up
@@ -535,23 +536,22 @@ class TestRotate:
                           self.mode, self.cval, self.prefilter)
 
     @testing.for_float_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(rtol={"default": 1e-7, numpy.float32: 1e-5},
-                                 atol=1e-5,
-                                 scipy_name='scp')
+    @testing.numpy_cupy_allclose(
+        rtol={"default": 1e-7, numpy.float32: 1.25e-5}, scipy_name='scp')
     def test_rotate_float(self, xp, scp, dtype):
         a = testing.shaped_random((10, 10), xp, dtype)
         return self._rotate(xp, scp, a)
 
     @testing.for_complex_dtypes()
-    @testing.numpy_cupy_allclose(rtol={"default": 1e-7, numpy.complex64: 1e-5},
-                                 atol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(
+        rtol={"default": 1e-7, numpy.complex64: 1.25e-5}, scipy_name='scp')
     @testing.with_requires('scipy')
     def test_rotate_complex_float(self, xp, scp, dtype):
         a = testing.shaped_random((10, 10), xp, dtype)
         return self._rotate(xp, scp, a)
 
     @testing.for_float_dtypes(no_float16=True)
-    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(rtol=1.25e-5, scipy_name='scp')
     def test_rotate_fortran_order(self, xp, scp, dtype):
         a = testing.shaped_random((10, 10), xp, dtype)
         a = xp.asfortranarray(a)
@@ -571,8 +571,8 @@ class TestRotate:
                 pytest.xfail('ROCm/HIP may have a bug')
 
     @testing.for_int_dtypes(no_bool=True)
-    @testing.numpy_cupy_allclose(rtol={"default": 1e-7, numpy.float32: 1e-4},
-                                 atol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(
+        rtol={"default": 1e-7, numpy.float32: 1.25e-4}, scipy_name='scp')
     def test_rotate_int(self, xp, scp, dtype):
         self._hip_skip_invalid_condition()
 
