@@ -302,10 +302,10 @@ cdef class _ndarray_base:
 
     @property
     def __cuda_array_interface__(self):
-        str, descr = _dtype.get_str_and_descr(self.dtype)
+        typestr, descr = _dtype.get_str_and_descr(self.dtype)
         cdef dict desc = {
             'shape': self.shape,
-            'typestr': str,
+            'typestr': typestr,
             'descr': descr,
         }
         cdef int ver = _util.CUDA_ARRAY_INTERFACE_EXPORT_VERSION
@@ -343,7 +343,11 @@ cdef class _ndarray_base:
                    dl_device=None, copy=None):
         cdef bint use_versioned = False
         cdef bint to_cpu = False
-        cdef intptr_t consumer_stream = -2  # invalid value
+        # consumer_stream state machine:
+        #   -2: unset (including CPU which always synchronizes)
+        #   -1: establish no stream order
+        #   >= 0: stream ptr to compare against curr_stream_ptr
+        cdef intptr_t consumer_stream = -2
         cdef intptr_t curr_stream_ptr
 
         # Check if we can export version 1
@@ -382,11 +386,11 @@ cdef class _ndarray_base:
 
         # stream must be an int for CUDA/ROCm
         if to_cpu:
-            # We simply ignore a possibly passed stream here.  Previously,
-            # we assumed this was a CPU stream, but DLPack doesn't say this
-            # (because CPU has no streams and the stream should match the
-            # requested device).
-            curr_stream = -1  # synchronization ensured in toDlpack()
+            # Ignore a possibly passed stream.  Previously we assumed this was
+            # a CPU stream, but DLPack doesn't say that (CPU has no streams and
+            # the stream should match the requested device).  Synchronization
+            # for the CPU copy is handled inside _toDlpack().
+            pass
         elif not runtime._is_hip_environment:  # CUDA
             if stream is None:
                 consumer_stream = runtime.streamLegacy
@@ -407,7 +411,7 @@ cdef class _ndarray_base:
                     ' converting to; CuPy assumes 0 as a legacy default '
                     'stream. Please report this problem to the library as this'
                     ' violates the DLPack protocol.')
-                stream = runtime.streamLegacy
+                consumer_stream = runtime.streamLegacy
             if curr_stream_ptr == 0:
                 curr_stream_ptr = runtime.streamLegacy
         else:  # ROCm/HIP
@@ -428,7 +432,7 @@ cdef class _ndarray_base:
         if consumer_stream < 0:
             pass  # Establish no stream order (includes to_cpu)
         elif consumer_stream != curr_stream_ptr:
-            stream = stream_mod._BaseStream(stream, -1)
+            stream = stream_mod._BaseStream(consumer_stream, -1)
             event = curr_stream.record()
             stream.wait_event(event)
 

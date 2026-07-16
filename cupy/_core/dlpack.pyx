@@ -137,11 +137,8 @@ cpdef object toDlpack(
     ensure_copy : bool
         If `to_cpu` is True, whether a copy is requested/required.
     stream : None or stream
-        Only used with `to_cpu`. The stream to use for making the data
-        available to the CPU.
-        If `None`, we make sure to synchronize to have the data available
-        as soon as we return.  Otherwise, we use this stream to copy the
-        data (as requested by the user).
+        Ignored. Kept only for backward compatibility. Stream ordering for
+        DLPack export is handled by :meth:`ndarray.__dlpack__`.
 
     .. warning::
 

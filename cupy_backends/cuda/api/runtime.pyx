@@ -779,7 +779,11 @@ cpdef PointerAttributes pointerGetAttributes(intptr_t ptr):
 
 
 cpdef int pointerGetMemoryType(intptr_t ptr) except -1:
-    ''' Get the memory type, returns -1 for RTD '''
+    '''Allocation-free replacement for ``pointerGetAttributes(ptr).type``.
+
+    Returns the CUDA/HIP memory type enum for ``ptr`` (e.g.
+    ``memoryTypeDevice`` / ``memoryTypeHost`` / ``memoryTypeManaged``).
+    '''
     cdef _PointerAttributes attrs
     status = cudaPointerGetAttributes(&attrs, <void*>ptr)
     check_status(status)
@@ -787,8 +791,8 @@ cpdef int pointerGetMemoryType(intptr_t ptr) except -1:
         return attrs.type
     ELIF 0 < CUPY_HIP_VERSION < 60000000:
         return attrs.memoryType
-    ELSE:
-        raise ValueError("Fetching memory unsupported.")
+    ELSE:  # for RTD
+        raise ValueError('Fetching memory unsupported.')
 
 
 cpdef intptr_t deviceGetDefaultMemPool(int device) except? 0:
