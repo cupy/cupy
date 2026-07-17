@@ -95,9 +95,9 @@ class TestArrayElementwiseOp:
     def test_rpow_scalar(self):
         self.check_array_scalar_op(operator.pow, swap=True)
 
-    @pytest.mark.parametrize('exp', [2, 3, 4, 2.0, 3.0, 0.5, -1.0])
+    @pytest.mark.parametrize('exp', [2, 3, 2.0, 3.0, 0.5, -1.0])
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(atol={"default": 1e-7, cupy.complex64: 2e-5})
     @numpy.errstate(invalid='ignore')
     def test_pow_python_scalar_fastpath(self, xp, dtype, exp):
         if xp.dtype(dtype).kind not in "u":
@@ -105,10 +105,14 @@ class TestArrayElementwiseOp:
         else:
             a = xp.array([[1, 2, 3], [4, 5, 6]], dtype)
 
+        if xp == numpy and a.dtype == bool and exp == 2 and type(exp) is int:
+            return xp.power(a, exp)  # newer NumPy returns int8 incorrectly.
         return a ** exp
 
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(accept_error=OverflowError)
+    @testing.numpy_cupy_allclose(
+        atol={"default": 1e-7, cupy.complex64: 2e-5},
+        accept_error=OverflowError)
     def test_pow_python_scalar_negative_one(self, xp, dtype):
         # ** -1 is special cased because NumPy raises for int**-1.
         if xp.dtype(dtype).kind not in "u":

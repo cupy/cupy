@@ -1630,6 +1630,8 @@ cdef class _ndarray_base:
         if type(y) is int:
             if y == 2:
                 fast_func = cupy.square
+                if x.dtype.kind not in "ifc":
+                    fast_func_dtype = cupy.result_type(x.dtype, y)
         elif type(y) is float:
             if y == 0.5:
                 # For **0.5 promotion should be the same as sqrt
