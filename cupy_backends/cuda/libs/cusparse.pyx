@@ -1074,8 +1074,23 @@ IF not CUPY_USE_CUDA_PYTHON:
     cdef f_type cusparseDenseToSparse_bufferSize = <f_type>_lib.get('DenseToSparse_bufferSize')  # NOQA
     cdef f_type cusparseDenseToSparse_analysis = <f_type>_lib.get('DenseToSparse_analysis')  # NOQA
     cdef f_type cusparseDenseToSparse_convert = <f_type>_lib.get('DenseToSparse_convert')  # NOQA
+
 # cuSPARSE 12.8.1+ (CUDA 13.3+).
 # Loaded via SoftLink so older builds can still import and fall back.
+
+cdef extern from *:
+    # Stub SpGEAM when absent: HIP || CUDA-Python (no header) || old cuSPARSE
+    """
+    #if (defined(CUPY_USE_HIP) \
+         || !defined(CUSPARSE_VERSION) || CUSPARSE_VERSION < 12801)
+    struct cusparseSpGEAMDescr;
+    typedef struct cusparseSpGEAMDescr* cusparseSpGEAMDescr_t;
+    typedef int cusparseSpGEAMAlg_t;
+    #endif
+    """
+    ctypedef void* SpGEAMDescr 'cusparseSpGEAMDescr_t'
+    ctypedef int SpGEAMAlg 'cusparseSpGEAMAlg_t'
+
 cdef f_type cusparseSpGEAM_createDescr = <f_type>_lib.get('SpGEAM_createDescr')
 cdef f_type cusparseSpGEAM_destroyDescr = (
     <f_type>_lib.get('SpGEAM_destroyDescr'))

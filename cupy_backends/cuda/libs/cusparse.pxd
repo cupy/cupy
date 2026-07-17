@@ -84,20 +84,6 @@ IF CUPY_CUDA_VERSION == 0:
         ctypedef void* csrsv2Info_t
         ctypedef void* csrsm2Info_t
         ctypedef void* csrgemm2Info_t
-cdef extern from '../../cupy_sparse.h' nogil:
-    """
-    /* The generic SpGEAM API shipped in cuSPARSE 12.8.1 (CUDA 13.3) */
-    #if !defined(CUSPARSE_VERSION) || CUSPARSE_VERSION < 12801
-    /* SpGEAM not in this cuSPARSE; provide opaque forward decls. */
-    struct cusparseSpGEAMDescr;
-    typedef struct cusparseSpGEAMDescr* cusparseSpGEAMDescr_t;
-    typedef int cusparseSpGEAMAlg_t;
-    #define CUSPARSE_SPGEAM_ALG_DEFAULT 0
-    #define CUSPARSE_SPGEAM_ALG1 1
-    #endif
-    """
-    ctypedef void* SpGEAMDescr 'cusparseSpGEAMDescr_t'
-    ctypedef int SpGEAMAlg 'cusparseSpGEAMAlg_t'
 
 cpdef enum:
     CUSPARSE_POINTER_MODE_HOST = 0
