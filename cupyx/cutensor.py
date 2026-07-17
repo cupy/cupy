@@ -1,0 +1,53 @@
+# Shim around `_cutensor.pyx`, the whole purpose of this is to ensure
+# we load `from cupy_backends.cuda.libs import cutensor` as a `from`
+# import, which ensure cuda-pathfinder use.
+# This should become unnecessary with `CUPY_USE_CUDA_PYTHON`.
+from __future__ import annotations
+
+from cupy_backends.cuda.libs import cutensor as _libs_cutensor  # noqa: F401
+from cupyx._cutensor import (  # noqa: F401
+    CutensorHandle,
+    MgContractionDescriptor,
+    MgContractionFind,
+    MgContractionPlan,
+    MgCopyDescriptor,
+    MgCopyPlan,
+    MgHandle,
+    MgTensorDescriptor,
+    Mode,
+    OperationDescriptor,
+    Plan,
+    PlanPreference,
+    TensorDescriptor,
+    _Scalar,
+    _cutensor_dtypes,
+    _get_cutensor_dtype,
+    _get_handle,
+    _get_mg_handle,
+    _try_elementwise_binary_routine,
+    _try_reduction_routine,
+    check_availability,
+    contraction,
+    contractionMg,
+    contractionMgWorkspace,
+    copyMg,
+    copyMgWorkspace,
+    create_contraction,
+    create_elementwise_binary,
+    create_elementwise_trinary,
+    create_mg_contraction_descriptor,
+    create_mg_contraction_find,
+    create_mg_contraction_plan,
+    create_mg_copy_descriptor,
+    create_mg_copy_plan,
+    create_mg_tensor_descriptor,
+    create_mode,
+    create_plan,
+    create_plan_preference,
+    create_reduction,
+    create_tensor_descriptor,
+    elementwise_binary,
+    elementwise_trinary,
+    reduction,
+    to_mg_ndarray,
+)
