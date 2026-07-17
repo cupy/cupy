@@ -2986,8 +2986,17 @@ cdef _ndarray_base _array_default(
         else:
             order = 'C'
 
-    copy = False if NUMPY_1x else None
-    a_cpu = numpy.array(obj, dtype=dtype, copy=copy, order=order,
+    # Avoid copy when the passed object is a compatible numpy array
+    # A non-contiguous array can be let through without copy,
+    # as it will be copied to a pinned vector below
+    numpy_order = order
+    if (
+        isinstance(obj, numpy.ndarray)
+        and not pinned_memory.is_memory_pinned(obj.ctypes.data)
+        and not _is_ump_enabled
+    ):
+        numpy_order = 'K'
+    a_cpu = numpy.array(obj, dtype=dtype, copy=None, order=numpy_order,
                         ndmin=ndmin)
 
     a_cpu = a_cpu.astype(_dtype.normalize_dtype(a_cpu.dtype), copy=False)
@@ -3021,10 +3030,18 @@ cdef _ndarray_base _array_default(
         mem = _alloc_async_transfer_buffer(nbytes)
         if mem is not None:
             src_cpu = numpy.frombuffer(mem, a_dtype, a_cpu.size)
-            src_cpu[:] = a_cpu.ravel(order)
+            src_cpu = src_cpu.reshape(a_cpu.shape, order=order)
+            src_cpu[...] = a_cpu
             a.data.copy_from_host_async(mem.ptr, nbytes, stream)
             pinned_memory._add_to_watch_list(stream.record(), mem)
         else:
+            if order == 'C':
+                a_cpu = numpy.ascontiguousarray(a_cpu)
+            elif order == 'F':
+                a_cpu = numpy.asfortranarray(a_cpu)
+            else:
+                assert False  # order must be 'C' or 'F' here
+            ptr_h = <intptr_t>(a_cpu.ctypes.data)
             a.data.copy_from_host_async(ptr_h, nbytes, stream)
 
     if blocking:
