@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from operator import index as _index
+
 import cupy
 from cupy._core import core
 
@@ -9,6 +11,19 @@ def isdense(x):
 
 
 def isintlike(x):
+    try:
+        _index(x)  # NOQA
+        return True
+    except TypeError:
+        pass
+
+    # TODO(seberg): All of this fallback should be deprecated, if the
+    # above conversion fails, this is not intlike.
+    # NumPy until 2.4 allowed 1-element sized arrays to be converted
+    # via int() with a warning.  But those do not make sense in our
+    # context!
+    if getattr(x, "ndim", 0) != 0:
+        return False
     try:
         return bool(int(x) == x)
     except (TypeError, ValueError):
