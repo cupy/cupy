@@ -105,8 +105,10 @@ class TestArrayElementwiseOp:
         else:
             a = xp.array([[1, 2, 3], [4, 5, 6]], dtype)
 
-        if xp == numpy and a.dtype == bool and exp == 2 and type(exp) is int:
-            return xp.power(a, exp)  # newer NumPy returns int8 incorrectly.
+        if xp == numpy and a.dtype == bool and exp == 2:
+            # NumPy uses xp.square even if promotion is different:
+            # 2.x-2.5+ returns int8 for `a ** 2`, 2.0 even for `a ** 2.0`
+            return xp.power(a, exp)
         return a ** exp
 
     @testing.for_all_dtypes()
