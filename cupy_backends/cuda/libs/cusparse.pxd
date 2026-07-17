@@ -1,65 +1,82 @@
 
 from libc.stdint cimport intptr_t, int64_t
 
+IF CUPY_USE_CUDA_PYTHON:
+    from nvmath.bindings.cycusparse cimport (
+        cudaDataType as DataType,
+        cusparseAction_t as Action,
+        cusparseCsr2CscAlg_t as Csr2CscAlg,
+        cusparseDenseToSparseAlg_t as DenseToSparseAlg,
+        cusparseDiagType_t as DiagType,
+        cusparseDirection_t as Direction,
+        cusparseDnMatDescr_t as DnMatDescr,
+        cusparseDnVecDescr_t as DnVecDescr,
+        cusparseFillMode_t as FillMode,
+        cusparseFormat_t as Format,
+        cusparseHandle_t as Handle,
+        cusparseIndexBase_t as IndexBase,
+        cusparseIndexType_t as IndexType,
+        cusparseMatDescr_t as MatDescr,
+        cusparseMatrixType_t as MatrixType,
+        cusparseOperation_t as Operation,
+        cusparseOrder_t as Order,
+        cusparsePointerMode_t as PointerMode,
+        cusparseSolvePolicy_t as SolvePolicy,
+        cusparseSparseToDenseAlg_t as SparseToDenseAlg,
+        cusparseSpGEMMAlg_t as SpGEMMAlg,
+        cusparseSpGEMMDescr_t as SpGEMMDescr,
+        cusparseSpMatAttribute_t as SpMatAttribute,
+        cusparseSpMatDescr_t as SpMatDescr,
+        cusparseSpMMAlg_t as SpMMAlg,
+        cusparseSpMVAlg_t as SpMVAlg,
+        cusparseSpSMAlg_t as SpSMAlg,
+        cusparseSpSMDescr_t as SpSMDescr,
+        cusparseSpVecDescr_t as SpVecDescr,
+        cusparseStatus_t as Status,
+        bsric02Info_t,
+        bsrilu02Info_t,
+        csric02Info_t,
+        csrilu02Info_t,
+    )
+ELSE:
+    cdef extern from *:
+        ctypedef int IndexBase 'cusparseIndexBase_t'
+        ctypedef int Status 'cusparseStatus_t'
+        ctypedef void* Handle 'cusparseHandle_t'
+        ctypedef void* MatDescr 'cusparseMatDescr_t'
+        ctypedef int Direction 'cusparseDirection_t'
+        ctypedef int MatrixType 'cusparseMatrixType_t'
+        ctypedef int FillMode 'cusparseFillMode_t'
+        ctypedef int DiagType 'cusparseDiagType_t'
+        ctypedef int Operation 'cusparseOperation_t'
+        ctypedef int PointerMode 'cusparsePointerMode_t'
+        ctypedef int Action 'cusparseAction_t'
+        ctypedef void* csric02Info_t
+        ctypedef void* bsric02Info_t
+        ctypedef void* csrilu02Info_t
+        ctypedef void* bsrilu02Info_t
 
-cdef extern from '../../cupy_complex.h':
-    ctypedef struct cuComplex 'cuComplex':
-        float x, y
-
-    ctypedef struct cuDoubleComplex 'cuDoubleComplex':
-        double x, y
-
-
-cdef extern from *:
-    ctypedef int IndexBase 'cusparseIndexBase_t'
-    ctypedef int Status 'cusparseStatus_t'
-
-    ctypedef void* Handle 'cusparseHandle_t'
-
-    ctypedef void* MatDescr 'cusparseMatDescr_t'
-
-    ctypedef int Direction 'cusparseDirection_t'
-
-    ctypedef int MatrixType 'cusparseMatrixType_t'
-    ctypedef int FillMode 'cusparseFillMode_t'
-    ctypedef int DiagType 'cusparseDiagType_t'
-
-    ctypedef int Operation 'cusparseOperation_t'
-
-    ctypedef int PointerMode 'cusparsePointerMode_t'
-
-    ctypedef int Action 'cusparseAction_t'
-
-    ctypedef void* csric02Info_t
-    ctypedef void* bsric02Info_t
-    ctypedef void* csrilu02Info_t
-    ctypedef void* bsrilu02Info_t
-
-    # Declarations for cuSparse generic API
-    ctypedef int SolvePolicy 'cusparseSolvePolicy_t'
-
-    ctypedef int IndexType 'cusparseIndexType_t'
-    ctypedef int Format 'cusparseFormat_t'
-    ctypedef int Order 'cusparseOrder_t'
-    ctypedef int SpMVAlg 'cusparseSpMVAlg_t'
-    ctypedef int SpSMAlg 'cusparseSpSMAlg_t'
-    ctypedef int SpMMAlg 'cusparseSpMMAlg_t'
-    ctypedef int SpGEMMAlg 'cusparseSpGEMMAlg_t'
-    ctypedef int DataType 'cudaDataType'
-    ctypedef int SpMatAttribute 'cusparseSpMatAttribute_t'
-
-    ctypedef void* SpVecDescr 'cusparseSpVecDescr_t'
-    ctypedef void* DnVecDescr 'cusparseDnVecDescr_t'
-    ctypedef void* SpMatDescr 'cusparseSpMatDescr_t'
-    ctypedef void* DnMatDescr 'cusparseDnMatDescr_t'
-    ctypedef void* SpSMDescr 'cusparseSpSMDescr_t'
-    ctypedef void* SpGEMMDescr 'cusparseSpGEMMDescr_t'
-
-    ctypedef int SparseToDenseAlg 'cusparseSparseToDenseAlg_t'
-    ctypedef int DenseToSparseAlg 'cusparseDenseToSparseAlg_t'
-
-    # CSR2CSC
-    ctypedef int Csr2CscAlg 'cusparseCsr2CscAlg_t'
+        # Declarations for cuSparse generic API
+        ctypedef int SolvePolicy 'cusparseSolvePolicy_t'
+        ctypedef int IndexType 'cusparseIndexType_t'
+        ctypedef int Format 'cusparseFormat_t'
+        ctypedef int Order 'cusparseOrder_t'
+        ctypedef int SpMVAlg 'cusparseSpMVAlg_t'
+        ctypedef int SpSMAlg 'cusparseSpSMAlg_t'
+        ctypedef int SpMMAlg 'cusparseSpMMAlg_t'
+        ctypedef int SpGEMMAlg 'cusparseSpGEMMAlg_t'
+        ctypedef int DataType 'cudaDataType'
+        ctypedef int SpMatAttribute 'cusparseSpMatAttribute_t'
+        ctypedef void* SpVecDescr 'cusparseSpVecDescr_t'
+        ctypedef void* DnVecDescr 'cusparseDnVecDescr_t'
+        ctypedef void* SpMatDescr 'cusparseSpMatDescr_t'
+        ctypedef void* DnMatDescr 'cusparseDnMatDescr_t'
+        ctypedef void* SpSMDescr 'cusparseSpSMDescr_t'
+        ctypedef void* SpGEMMDescr 'cusparseSpGEMMDescr_t'
+        ctypedef int SparseToDenseAlg 'cusparseSparseToDenseAlg_t'
+        ctypedef int DenseToSparseAlg 'cusparseDenseToSparseAlg_t'
+        # CSR2CSC
+        ctypedef int Csr2CscAlg 'cusparseCsr2CscAlg_t'
 
 # Types removed in CUDA 12.0+
 IF CUPY_CUDA_VERSION == 0:
@@ -67,7 +84,6 @@ IF CUPY_CUDA_VERSION == 0:
         ctypedef void* csrsv2Info_t
         ctypedef void* csrsm2Info_t
         ctypedef void* csrgemm2Info_t
-
 cdef extern from '../../cupy_sparse.h' nogil:
     """
     /* The generic SpGEAM API shipped in cuSPARSE 12.8.1 (CUDA 13.3) */

@@ -1,12 +1,20 @@
+"""Thin wrapper of cuRAND."""
 ###############################################################################
 # Types
 ###############################################################################
 
-cdef extern from *:
-    ctypedef int Ordering 'curandOrdering_t'
-    ctypedef int RngType 'curandRngType_t'
+IF CUPY_USE_CUDA_PYTHON:
+    from nvmath.bindings.cycurand cimport (
+        curandRngType_t as RngType,
+        curandOrdering_t as Ordering,
+        curandGenerator_t as Generator,
+    )
+ELSE:
+    cdef extern from *:
+        ctypedef int Ordering 'curandOrdering_t'
+        ctypedef int RngType 'curandRngType_t'
 
-    ctypedef void* Generator 'curandGenerator_t'
+        ctypedef void* Generator 'curandGenerator_t'
 
 
 ###############################################################################
