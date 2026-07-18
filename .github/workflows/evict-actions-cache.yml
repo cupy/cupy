@@ -1,0 +1,28 @@
+name: "Evict Actions Cache"
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  actions: write
+
+concurrency:
+  group: evict-actions-cache
+  cancel-in-progress: false
+
+jobs:
+  evict:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Evict old caches
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          python .github/workflows/scripts/evict_actions_caches.py
