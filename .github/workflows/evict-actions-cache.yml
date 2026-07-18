@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   evict:
-    if: github.repository_owner == 'cupy'
+    if: github.repository_owner == 'cupy' || github.repository_owner == 'kmaehashi'
     runs-on: ubuntu-22.04
 
     steps:
