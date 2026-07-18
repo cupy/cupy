@@ -209,25 +209,35 @@ jobs:
             CUPY_LIBRARY_PATH
             CUPY_PACKAGE_NAME
             CUPY_NUM_BUILD_JOBS
-          CIBW_ENVIRONMENT: >
-            SCCACHE_GHA_ENABLED=true
-            ACTIONS_RUNTIME_TOKEN=${{ env.ACTIONS_RUNTIME_TOKEN }}
-            ACTIONS_RUNTIME_URL=${{ env.ACTIONS_RUNTIME_URL }}
-            ACTIONS_RESULTS_URL=${{ env.ACTIONS_RESULTS_URL }}
-            ACTIONS_CACHE_URL=${{ env.ACTIONS_CACHE_URL }}
-            ACTIONS_CACHE_SERVICE_V2=${{ env.ACTIONS_CACHE_SERVICE_V2 }}
-            SCCACHE_CACHE_SIZE=${{ env.SCCACHE_CACHE_SIZE }}
+          # NOTE: cibuildwheel resolves CIBW_ENVIRONMENT_<PLATFORM> *in place
+          # of* CIBW_ENVIRONMENT (last-match-wins, no merging -- see
+          # OptionsReader.get() in cibuildwheel/options.py). A generic
+          # CIBW_ENVIRONMENT block would be silently ignored on platforms that
+          # define a platform block, so keep shared variables duplicated in
+          # BOTH platform blocks below.
           CIBW_ENVIRONMENT_LINUX: >
             CUDA_PATH=/project/cuda_toolkit
             LIBRARY_PATH=/project/cuda_toolkit/lib64/stubs
             CC="/host/${{ env.SCCACHE_PATH }} cc"
             CXX="/host/${{ env.SCCACHE_PATH }} c++"
             NVCC="/host/${{ env.SCCACHE_PATH }} /project/cuda_toolkit/bin/nvcc"
+            SCCACHE_GHA_ENABLED=true
+            ACTIONS_RUNTIME_TOKEN=${{ env.ACTIONS_RUNTIME_TOKEN }}
+            ACTIONS_RUNTIME_URL=${{ env.ACTIONS_RUNTIME_URL }}
+            ACTIONS_RESULTS_URL=${{ env.ACTIONS_RESULTS_URL }}
+            ACTIONS_CACHE_URL=${{ env.ACTIONS_CACHE_URL }}
+            ACTIONS_CACHE_SERVICE_V2=${{ env.ACTIONS_CACHE_SERVICE_V2 }}
             SCCACHE_DIR=/host/${{ env.SCCACHE_DIR }}
+            SCCACHE_CACHE_SIZE=${{ env.SCCACHE_CACHE_SIZE }}
+          # Windows builds run natively (no container), so the ACTIONS_*
+          # values flow in from the job environment; only the sccache opt-in
+          # knobs need to be set here.
           CIBW_ENVIRONMENT_WINDOWS: >
             CUDA_PATH="$(cygpath -w ${{ env.CUDA_PATH }})"
             NVCC="sccache nvcc"
+            SCCACHE_GHA_ENABLED=true
             SCCACHE_DIR=${{ env.SCCACHE_DIR }}
+            SCCACHE_CACHE_SIZE=${{ env.SCCACHE_CACHE_SIZE }}
           CIBW_BEFORE_TEST_LINUX: >
             "/host/${{ env.SCCACHE_PATH }}" --show-adv-stats &&
             "/host/${{ env.SCCACHE_PATH }}" --show-stats --stats-format=json > /host/${{ github.workspace }}/sccache_cupy.json
