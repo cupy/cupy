@@ -10,6 +10,14 @@ on:
     types: [created]
   pull_request_target:
     types: [closed]
+  # TEMPORARY (revert before merging this PR): auto-fire the wheel-build
+  # side on PR sync so this PR and #10058 (stacked on it) can validate
+  # the build pipeline before ci.yml reaches the default branch.
+  # dispatch-flexci is gated off on pull_request events (fork PRs get no
+  # secrets there).
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main, "v*"]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.issue.number || github.event.pull_request.number }}-${{ github.event_name }}
@@ -82,6 +90,14 @@ jobs:
               artifact_sha="${ref}"
               should_run=true
             fi
+            ;;
+          pull_request)
+            # TEMPORARY (see the pull_request trigger note above).
+            pr_number="$(jq -r '.pull_request.number' "$GITHUB_EVENT_PATH")"
+            pr_base_ref="$(jq -r '.pull_request.base.ref' "$GITHUB_EVENT_PATH")"
+            ref="refs/pull/${pr_number}/merge"
+            artifact_sha="$(jq -r '.pull_request.head.sha' "$GITHUB_EVENT_PATH")"
+            should_run=true
             ;;
           *)
             echo "Unsupported event: $GITHUB_EVENT_NAME"
@@ -200,7 +216,9 @@ jobs:
       - guard
       - build-linux-64
       - build-windows
-    if: needs.guard.outputs.should_run == 'true'
+    # TEMPORARY: skip on pull_request events -- fork PRs have no access
+    # to secrets.FLEXCI_WEBHOOK_SECRET there.
+    if: needs.guard.outputs.should_run == 'true' && github.event_name != 'pull_request'
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout (Base / Trusted)
@@ -261,6 +279,12 @@ jobs:
           check_result "guard"           "success" "${{ needs.guard.result }}"
           check_result "build-linux-64"  "success" "${{ needs.build-linux-64.result }}"
           check_result "build-windows"   "success" "${{ needs.build-windows.result }}"
-          check_result "dispatch-flexci" "success" "${{ needs.dispatch-flexci.result }}"
+          # TEMPORARY: dispatch-flexci is skipped on pull_request events
+          # (no secrets on fork PRs); accept that as the expected outcome.
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            check_result "dispatch-flexci" "skipped" "${{ needs.dispatch-flexci.result }}"
+          else
+            check_result "dispatch-flexci" "success" "${{ needs.dispatch-flexci.result }}"
+          fi
 
           [[ "$status" == "success" ]]
