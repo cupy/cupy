@@ -294,8 +294,6 @@ def posv(a, b):
     If matrix ``A`` is not positive definite, Cholesky factorization fails
     and it raises an error.
 
-    Note: For batch input, NRHS > 1 is not currently supported.
-
     Args:
         a (cupy.ndarray): Array of real symmetric or complex hermitian
             matrices with dimension (..., N, N).
