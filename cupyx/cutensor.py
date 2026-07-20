@@ -48,6 +48,7 @@ from cupyx._cutensor import (  # noqa: F401
     create_tensor_descriptor,
     elementwise_binary,
     elementwise_trinary,
+    ndarray_mg,
     reduction,
     to_mg_ndarray,
 )
