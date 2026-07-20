@@ -825,65 +825,62 @@ class Fusion(object):
             # No cupy ndarray exists in the arguments
             return self.func(*args)
 
-        # The old tracer has no notion of a callable argument; route
-        # straight to the newer tracer, which passes callables through
-        # unchanged instead of abstracting them into kernel parameters.
-        for arg in args:
-            if callable(arg):
-                self.new_fusion = new_fusion.Fusion(self.func, self.name)
-                return self.new_fusion(*args)
+        # The old tracer has no notion of a callable argument. Widen the
+        # type gate to accept callables broadly, and let anything the old
+        # tracer can't actually handle (callables included) fall through
+        # to the pre-existing except -> new_fusion fallback below, rather
+        # than special-casing callables ahead of it.
+        try:
+            for arg in args:
+                if (
+                    not isinstance(arg, _acceptable_types)
+                    and not callable(arg)
+                ):
+                    mes = "Invalid argument type for '{}': ({})"
+                    arg_types = ', '.join(repr(type(a)) for a in args)
+                    raise TypeError(mes.format(self.name, arg_types))
 
-        # Invalid argument types
-        for arg in args:
-            if not isinstance(arg, _acceptable_types):
-                mes = 'Invalid argument type for \'{}\': ({})'
-                arg_types = ', '.join(repr(type(a)) for a in args)
-                raise TypeError(mes.format(self.name, arg_types))
+            # Cache the result of execution path analysis
+            params_info = []
+            for arg in args:
+                if isinstance(arg, core.ndarray):
+                    params_info.append(arg.dtype.char)
+                    params_info.append(arg.ndim)
+                elif isinstance(arg, numpy.generic):
+                    params_info.append(arg.dtype.char)
+                elif arg is None:
+                    params_info.append(None)
+                elif isinstance(arg, float):
+                    params_info.append('d')
+                    params_info.append(float)
+                elif isinstance(arg, int):
+                    params_info.append('l')
+                    params_info.append(int)
+                elif isinstance(arg, bool):
+                    params_info.append('?')
+                    params_info.append(bool)
+                elif isinstance(arg, complex):
+                    params_info.append('D')
+                    params_info.append(complex)
+                else:
+                    assert False
 
-        # Cache the result of execution path analysis
-        cdef list params_info = []
-        for arg in args:
-            if isinstance(arg, core.ndarray):
-                params_info.append(arg.dtype.char)
-                params_info.append(arg.ndim)
-            elif isinstance(arg, numpy.generic):
-                params_info.append(arg.dtype.char)
-            elif arg is None:
-                params_info.append(None)
-            elif isinstance(arg, float):
-                params_info.append('d')
-                params_info.append(float)
-            elif isinstance(arg, int):
-                params_info.append('l')
-                params_info.append(int)
-            elif isinstance(arg, bool):
-                params_info.append('?')
-                params_info.append(bool)
-            elif isinstance(arg, complex):
-                params_info.append('D')
-                params_info.append(complex)
-            else:
-                assert False
+            key = tuple(params_info)
 
-        cdef tuple key = tuple(params_info)
-
-        if key not in self._memo:
-            try:
+            if key not in self._memo:
                 history = _FusionHistory()
                 _thread_local.history = history
                 _thread_local.is_old_fusing = True
                 try:
                     self._memo[key] = history.get_fusion(
                         self.func, args, self.name)
-                except Exception:
-                    self.new_fusion = new_fusion.Fusion(self.func, self.name)
+                finally:
                     _thread_local.history = None
                     _thread_local.is_old_fusing = False
-                    return self.new_fusion(*args)
-            finally:
-                _thread_local.history = None
-                _thread_local.is_old_fusing = False
-        kernel, kwargs = self._memo[key]
+            kernel, kwargs = self._memo[key]
+        except Exception:
+            self.new_fusion = new_fusion.Fusion(self.func, self.name)
+            return self.new_fusion(*args)
 
         return kernel(
             *[a for a in args if a is not None],
