@@ -3005,6 +3005,7 @@ cdef _ndarray_base _array_default(
         obj, dtype, copy, order, Py_ssize_t ndmin, bint blocking):
     cdef _ndarray_base a
     cdef bint is_correct_contiguous
+    cdef int order_char = internal._normalize_order(order)
 
     # Fast path: zero-copy a NumPy array if possible
     if not blocking:
@@ -3012,11 +3013,13 @@ cdef _ndarray_base _array_default(
         if a is not None:
             return a
 
-    if order is not None and len(order) >= 1 and order[0] in 'KAka':
+    if order_char == b'K' or order_char == b'A':
         if isinstance(obj, numpy.ndarray) and obj.flags.fnc:
             order = 'F'
+            order_char = b'F'
         else:
             order = 'C'
+            order_char = b'C'
 
     # Avoid copy when the passed object is a numpy array, we'll copy
     # it below. Copying (which may not be pinned) here is not useful.
@@ -3024,9 +3027,9 @@ cdef _ndarray_base _array_default(
     # I am hesitant to remove it for the dtype conversion/validation.
     if isinstance(obj, numpy.ndarray) and not _is_ump_enabled:
         a_cpu = numpy.array(obj, dtype=dtype, copy=None, ndmin=ndmin)
-        if order == 'C':
+        if order_char == b'C':
             is_correct_contiguous = a_cpu.flags.c_contiguous
-        elif order == 'F':
+        elif order_char == b'F':
             is_correct_contiguous = a_cpu.flags.f_contiguous
         else:
             assert False  # assume above normalizes to C or F.
