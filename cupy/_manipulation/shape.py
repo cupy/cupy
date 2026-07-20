@@ -22,7 +22,7 @@ def shape(a):
         return numpy.shape(a)
 
 
-def reshape(a, newshape, order='C', copy=None):
+def reshape(a, newshape, order='C', *, copy=None):
     """Returns an array with new shape and same elements.
 
     It tries to return a view if possible, otherwise returns a copy.

@@ -74,11 +74,12 @@ cdef _ndarray_base _ndarray_reshape(
         _ndarray_base self, tuple shape, order, copy):
     # TODO: still prefer this in func like internal._normalize_copy?
     if copy is not None:
-        if(cpython.PyUnicode_Check(copy)):
+        if isinstance(copy, str):
             raise ValueError(
                 "strings are not allowed for 'copy' keyword. "
                 "Use True/False/None instead.")
         copy = bool(copy)
+
     cdef int order_char = internal._normalize_order(order, False)
 
     if len(shape) == 1 and cpython.PySequence_Check(shape[0]):
@@ -363,6 +364,7 @@ cpdef _ndarray_base _reshape(
     cdef _ndarray_base newarray
     shape = internal.infer_unknown_dimension(shape_spec, self.size)
     if internal.vector_equal(shape, self._shape):
+        # numpy also returns a C-contiguous copy
         return self.copy() if copy else self.view()
 
     _get_strides_for_nocopy_reshape(self, shape, strides)
