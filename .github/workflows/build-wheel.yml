@@ -15,8 +15,8 @@ on:
         description: "Git ref to check out (e.g. refs/pull/N/merge, or a merge_commit_sha)"
         required: true
         type: string
-      artifact-sha:
-        description: "Commit SHA keying the wheel artifact name (what the test stage looks up)"
+      artifact-suffix:
+        description: "Suffix keying the wheel artifact name (pr<N>-<head sha> for /test builds, the push SHA post-merge); what the test stage looks up"
         required: true
         type: string
 
@@ -298,6 +298,9 @@ jobs:
       - name: Upload wheel artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
-          name: cupy-cuda${{ env.BUILD_CUDA_MAJOR }}x-py${{ matrix.python-version }}-${{ inputs.host-platform }}-${{ inputs.artifact-sha }}
+          name: cupy-cuda${{ env.BUILD_CUDA_MAJOR }}x-py${{ matrix.python-version }}-${{ inputs.host-platform }}-${{ inputs.artifact-suffix }}
           path: wheelhouse/*.whl
           if-no-files-found: error
+          # Keep "re-run all jobs" viable: v4+ artifacts are immutable, so a
+          # second attempt's upload would otherwise collide and fail.
+          overwrite: true

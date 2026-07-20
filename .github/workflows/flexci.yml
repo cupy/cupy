@@ -1,0 +1,210 @@
+name: "FlexCI"
+
+# The /test dispatch point (see ci.yml's header for the three-workflow flow):
+# fires when a CI build run completes, and dispatches FlexCI for /test-vouched
+# PR builds. workflow_run gives guaranteed ordering (this run starts only
+# after the build run finished) and executes the default branch's copy of
+# this file with secrets available -- the standard pattern for reacting to
+# untrusted pull_request runs from a trusted context.
+#
+# Post-merge dispatch does NOT go through the workflow_run leg: it lives in
+# ci.yml's push leg (single trusted run, plain `needs:` ordering). The
+# TEMPORARY legacy job below covers merges into bases that have not yet been
+# backported the new push workflow.
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+  # TEMPORARY (remove together with the last allowlist entry below): legacy
+  # post-merge dispatch for bases whose branches do not yet carry the new
+  # push workflow. pull_request_target runs the default branch's copy of
+  # this file (GitHub, 2025-12-08), so this works regardless of the base
+  # branch's contents.
+  pull_request_target:
+    types: [closed]
+
+permissions:
+  actions: read  # read artifacts of other runs
+  contents: read
+  pull-requests: write
+  statuses: write
+
+jobs:
+  dispatch:
+    name: Dispatch FlexCI
+    if: |
+        github.repository_owner == 'cupy' &&
+        github.event_name == 'workflow_run' &&
+        github.event.workflow_run.event == 'pull_request' &&
+        github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Find the vouched request(s) for this build
+      id: request
+      env:
+        GH_TOKEN: ${{ github.token }}
+        HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        TRIGGER_RUN_ID: ${{ github.event.workflow_run.id }}
+        HEAD_REPO_OWNER: ${{ github.event.workflow_run.head_repository.owner.login }}
+        HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+        REPO_ID: ${{ github.event.repository.id }}
+        DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      run: |
+        set -euo pipefail
+
+        # 1) Liveness: the triggering run must have actually built (the
+        #    sentinel is uploaded only after every build job succeeded).
+        #    Unrelated-label no-op runs have no sentinel. Fetch first so an
+        #    API failure fails the job (visible, re-runnable) instead of
+        #    reading as "sentinel absent" and silently dropping a dispatch.
+        trigger_artifacts="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${TRIGGER_RUN_ID}/artifacts" \
+            --jq '[.artifacts[].name]')"
+        if ! jq -e --arg n "build-${HEAD_SHA}" 'index($n) != null' <<< "${trigger_artifacts}" >/dev/null; then
+          echo "Triggering run has no build sentinel (no-op run); nothing to dispatch."
+          echo "found=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        # 2) Identity, from trusted API metadata only (never from artifacts,
+        #    which PR-controlled runs can name freely): the open PR(s) whose
+        #    head is the branch this run built.
+        candidates="$(gh api "repos/${GITHUB_REPOSITORY}/pulls?head=${HEAD_REPO_OWNER}:${HEAD_BRANCH}&state=open" \
+            --jq '.[].number')"
+        if [[ -z "${candidates}" ]]; then
+          echo "No open PR for ${HEAD_REPO_OWNER}:${HEAD_BRANCH}; nothing to dispatch."
+          echo "found=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        # 3) Per candidate PR: a trusted /test request must exist for
+        #    exactly this (PR, head), and the PR must still point where the
+        #    vouch pointed (head-pin) with the same base (base-ref pin).
+        mkdir -p "${RUNNER_TEMP}/requests"
+        dispatch_list=()
+        for pr in ${candidates}; do
+          name="dispatch-request-${pr}-${HEAD_SHA}"
+          # Newest artifact with this name produced by a run of this
+          # repository's own default branch: only trusted issue_comment
+          # runs qualify (fork runs carry the fork's head_repository_id).
+          artifact_id="$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${name}&per_page=100" \
+              --jq "[.artifacts[] | select(.expired == false
+                     and .workflow_run.head_repository_id == ${REPO_ID}
+                     and .workflow_run.head_branch == \"${DEFAULT_BRANCH}\")]
+                    | sort_by(.created_at) | last | .id // empty")"
+          if [[ -z "${artifact_id}" ]]; then
+            echo "PR #${pr}: no vouched request for ${HEAD_SHA}; skipping"
+            continue
+          fi
+          # Download by immutable artifact id (unambiguous across re-runs).
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" \
+              > "${RUNNER_TEMP}/requests/${pr}.zip"
+          mkdir -p "${RUNNER_TEMP}/requests/${pr}"
+          unzip -q -o "${RUNNER_TEMP}/requests/${pr}.zip" -d "${RUNNER_TEMP}/requests/${pr}"
+          if [[ "$(cat "${RUNNER_TEMP}/requests/${pr}/event_name")" != "issue_comment" ]]; then
+            echo "::warning::PR #${pr}: request is not an issue_comment recording; skipping"
+            continue
+          fi
+          pr_json="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${pr}")"
+          current_head="$(jq -r '.head.sha' <<< "${pr_json}")"
+          current_base="$(jq -r '.base.ref' <<< "${pr_json}")"
+          recorded_base="$(cat "${RUNNER_TEMP}/requests/${pr}/base_ref")"
+          if [[ "${current_head}" != "${HEAD_SHA}" ]]; then
+            echo "::warning::PR #${pr} moved (${HEAD_SHA} -> ${current_head}) since this build; re-issue /test."
+            continue
+          fi
+          if [[ "${current_base}" != "${recorded_base}" ]]; then
+            echo "::warning::PR #${pr} was retargeted (${recorded_base} -> ${current_base}) since /test; re-issue /test."
+            continue
+          fi
+          dispatch_list+=("${pr}")
+        done
+
+        if [[ ${#dispatch_list[@]} -eq 0 ]]; then
+          echo "No dispatchable request; nothing to do."
+          echo "found=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        echo "found=true" >> "$GITHUB_OUTPUT"
+        echo "prs=${dispatch_list[*]}" >> "$GITHUB_OUTPUT"
+
+    - name: Checkout (dispatcher, trusted)
+      if: steps.request.outputs.found == 'true'
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+
+    - name: Checkout (Untrusted Pull-Request Code, data only)
+      if: steps.request.outputs.found == 'true'
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+      with:
+        # Pinned to the tested revision, so the config.tags.json consumed
+        # below matches the code that was built and vouched.
+        ref: ${{ github.event.workflow_run.head_sha }}
+        path: _pr_untrusted
+
+    - name: Setup Python
+      if: steps.request.outputs.found == 'true'
+      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+      with:
+        python-version: '3.13'
+
+    - name: Setup Environment
+      if: steps.request.outputs.found == 'true'
+      run: pip install pygithub
+
+    - name: Dispatch
+      if: steps.request.outputs.found == 'true'
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+        FLEXCI_WEBHOOK_SECRET: ${{ secrets.FLEXCI_WEBHOOK_SECRET }}
+        PROJECTS_ROOT_DIR: _pr_untrusted
+        PRS: ${{ steps.request.outputs.prs }}
+      run: |
+        set -euo pipefail
+        for pr in ${PRS}; do
+          ./.github/workflows/scripts/flexci_dispatcher.py \
+              --event issue_comment \
+              --webhook "${RUNNER_TEMP}/requests/${pr}/event.json" \
+              --projects "${PROJECTS_ROOT_DIR}/.pfnci/config.tags.json" \
+              --external-tag jenkins \
+              --external-tag rocm
+        done
+
+  # TEMPORARY legacy post-merge dispatch (see the trigger comment above).
+  # Allowlist of bases whose branches do not yet carry the new push
+  # workflow; each entry is removed in the same PR that backports the
+  # workflows to that base, so double-dispatch is impossible by
+  # construction.
+  legacy-dispatch:
+    name: Dispatch FlexCI (legacy, not-yet-backported bases)
+    if: |
+        github.repository_owner == 'cupy' &&
+        github.event_name == 'pull_request_target' &&
+        github.event.pull_request.merged &&
+        !contains(github.event.pull_request.labels.*.name, 'skip-ci') &&
+        contains(fromJSON('["v14"]'), github.event.pull_request.base.ref)
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Checkout
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+      with:
+        ref: ${{ github.event.pull_request.merge_commit_sha }}
+
+    - name: Setup Python
+      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+      with:
+        python-version: '3.13'
+
+    - name: Setup Environment
+      run: pip install pygithub
+
+    - name: Dispatch
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+        FLEXCI_WEBHOOK_SECRET: ${{ secrets.FLEXCI_WEBHOOK_SECRET }}
+      run: |
+        ./.github/workflows/scripts/flexci_dispatcher.py \
+            --event "${GITHUB_EVENT_NAME}" \
+            --webhook "${GITHUB_EVENT_PATH}" \
+            --projects ".pfnci/config.tags.json" \
+            --external-tag jenkins \
+            --external-tag rocm
