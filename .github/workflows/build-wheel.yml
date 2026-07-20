@@ -241,7 +241,7 @@ jobs:
             ACTIONS_RESULTS_URL=${{ env.ACTIONS_RESULTS_URL }}
             ACTIONS_CACHE_URL=${{ env.ACTIONS_CACHE_URL }}
             ACTIONS_CACHE_SERVICE_V2=${{ env.ACTIONS_CACHE_SERVICE_V2 }}
-            SCCACHE_DIR=${{ env.SCCACHE_DIR }}
+            SCCACHE_DIR='${{ env.SCCACHE_DIR }}'
             SCCACHE_CACHE_SIZE=${{ env.SCCACHE_CACHE_SIZE }}
           CIBW_BEFORE_TEST_LINUX: >
             "/host/${{ env.SCCACHE_PATH }}" --show-adv-stats &&
