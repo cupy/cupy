@@ -72,7 +72,6 @@ cdef _ndarray_shape_setter(_ndarray_base self, newshape):
 
 cdef _ndarray_base _ndarray_reshape(
         _ndarray_base self, tuple shape, order, copy):
-    # TODO: still prefer this in func like internal._normalize_copy?
     if copy is not None:
         if isinstance(copy, str):
             raise ValueError(
