@@ -295,7 +295,12 @@ def _get_avail_version_from_spec(x):
 def check_availability(name):
     if not _runtime.is_hip:
         available_version = _available_cusparse_version
-        version = _cusparse.get_build_version()
+        if _cusparse.is_cuda_python_build():
+            # In the CUDA Python build, cusparse is not required at build time;
+            # all symbols are loaded at runtime, so use the runtime version.
+            version = getVersion()
+        else:
+            version = _cusparse.get_build_version()
     else:
         available_version = _available_hipsparse_version
         version = _driver.get_build_version()  # = HIP_VERSION
@@ -2354,8 +2359,6 @@ def spsm(a, b, alpha=1.0, lower=True, unit_diag=False, transa=False):
     if b._f_contiguous:
         op_b = _cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
     elif b._c_contiguous:
-        if _cusparse.get_build_version() < 11701:  # earlier than CUDA 11.6
-            raise ValueError('b must be F-contiguous.')
         b = b.T
         op_b = _cusparse.CUSPARSE_OPERATION_TRANSPOSE
     else:
