@@ -1619,6 +1619,37 @@ cdef class _ndarray_base:
 
     def __pow__(x, y, modulo):
         # Note that we ignore the modulo argument as well as NumPy.
+
+        # Explicit special cases for common powers. As of 14.2, we do not
+        # have further special cases in the ufunc implementation.
+        # TODO(seberg): it would be nice to move part (or all!) of this into
+        #     the ufunc, but that would require new ufunc infrastructure
+        #     (i.e. for specific scalar values compile hard-code the kernel).
+        fast_func = None
+        fast_func_dtype = None
+        if type(y) is int:
+            if y == 2:
+                fast_func = cupy.square
+                if x.dtype.kind not in "ifc":
+                    fast_func_dtype = cupy.result_type(x.dtype, y)
+        elif type(y) is float:
+            if y == 0.5:
+                # For **0.5 promotion should be the same as sqrt
+                # (true for all typical numerical types we currently have)
+                fast_func = cupy.sqrt
+            elif y == 2.0:
+                fast_func = cupy.square
+            elif y == -1.0:
+                fast_func = cupy.reciprocal
+
+            if fast_func is not None and x.dtype.kind not in "fc":
+                # If the inputs aren't floats/ints, assume power is just
+                # a result_type() call.
+                fast_func_dtype = cupy.result_type(x.dtype, y)
+
+        if fast_func is not None:
+            return fast_func(x, dtype=fast_func_dtype)
+
         if isinstance(y, ndarray):
             return _math._power(x, y)
         elif _should_use_rop(x, y):
@@ -1747,7 +1778,7 @@ cdef class _ndarray_base:
             runtime.setDevice(prev_device)
 
     def __reduce__(self):
-        return array, (self.get(),)
+        return array, (self.get(order="A"),)
 
     # Basic customization:
 
@@ -2986,8 +3017,17 @@ cdef _ndarray_base _array_default(
         else:
             order = 'C'
 
-    copy = False if NUMPY_1x else None
-    a_cpu = numpy.array(obj, dtype=dtype, copy=copy, order=order,
+    # Avoid copy when the passed object is a compatible numpy array
+    # A non-contiguous array can be let through without copy,
+    # as it will be copied to a pinned vector below
+    numpy_order = order
+    if (
+        isinstance(obj, numpy.ndarray)
+        and not pinned_memory.is_memory_pinned(obj.ctypes.data)
+        and not _is_ump_enabled
+    ):
+        numpy_order = 'K'
+    a_cpu = numpy.array(obj, dtype=dtype, copy=None, order=numpy_order,
                         ndmin=ndmin)
 
     a_cpu = a_cpu.astype(_dtype.normalize_dtype(a_cpu.dtype), copy=False)
@@ -3021,10 +3061,18 @@ cdef _ndarray_base _array_default(
         mem = _alloc_async_transfer_buffer(nbytes)
         if mem is not None:
             src_cpu = numpy.frombuffer(mem, a_dtype, a_cpu.size)
-            src_cpu[:] = a_cpu.ravel(order)
+            src_cpu = src_cpu.reshape(a_cpu.shape, order=order)
+            src_cpu[...] = a_cpu
             a.data.copy_from_host_async(mem.ptr, nbytes, stream)
             pinned_memory._add_to_watch_list(stream.record(), mem)
         else:
+            if order == 'C':
+                a_cpu = numpy.ascontiguousarray(a_cpu)
+            elif order == 'F':
+                a_cpu = numpy.asfortranarray(a_cpu)
+            else:
+                assert False  # order must be 'C' or 'F' here
+            ptr_h = <intptr_t>(a_cpu.ctypes.data)
             a.data.copy_from_host_async(ptr_h, nbytes, stream)
 
     if blocking:

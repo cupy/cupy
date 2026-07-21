@@ -125,6 +125,12 @@ def _get_csr_submatrix_minor_axis(Ax, Aj, Ap, start, stop):
         Bx (cupy.ndarray): data array of output sparse matrix
         Bj (cupy.ndarray): indices array of output sparse matrix
         Bp (cupy.ndarray): indptr array of output sparse matrix
+
+    The three returned arrays share no memory with the inputs:
+    boolean masking (``Aj[mask]``, ``Ax[mask]``) and fancy indexing
+    (``mask_sum[Ap]``) both allocate.  Callers may treat the results
+    as independent buffers; ``_minor_slice`` relies on this contract
+    to satisfy ``copy=True`` without an explicit ``.copy()``.
     """
     mask = (start <= Aj) & (Aj < stop)
     mask_sum = cupy.empty(Aj.size + 1, dtype=Ap.dtype)
@@ -141,7 +147,7 @@ def _csr_indptr_to_coo_rows(nnz, Bp):
     if Bp.dtype == cupy.int64:
         # TODO(eriknw): cuSPARSE--remove when xcsr2coo supports int64
         from cupyx.cusparse import _indptr_to_coo
-        return _indptr_to_coo(Bp)
+        return _indptr_to_coo(Bp, nnz=nnz)
 
     from cupy_backends.cuda.libs import cusparse
 
@@ -388,7 +394,16 @@ class IndexMixin:
                 return self._get_columnXarray(row[:, 0], col.ravel())
 
         # The only remaining case is inner (fancy) indexing
-        row, col = cupy.broadcast_arrays(row, col)
+        try:
+            row, col = cupy.broadcast_arrays(row, col)
+        except ValueError as e:
+            # Match scipy 1.17: shape-mismatch on fancy indexing
+            # raises IndexError, not ValueError.
+            raise IndexError(
+                f'shape mismatch: indexing arrays could not be '
+                f'broadcast together with shapes {row.shape} '
+                f'{col.shape}'
+            ) from e
         if row.shape != col.shape:
             raise IndexError('number of row and column indices differ')
         if row.size == 0:
@@ -400,8 +415,8 @@ class IndexMixin:
 
         if isinstance(row, _int_scalar_types) and\
                 isinstance(col, _int_scalar_types):
-            # A 1x1 sparse RHS (cupy/scipy sparse) is a valid scalar
-            # source — densify it before checking size.
+            # A 1x1 sparse RHS (scipy/cupy sparse) is a valid scalar
+            # source -- densify it before checking size.
             if issparse(x):
                 x = cupy.asarray(x.toarray(), dtype=self.dtype)
             else:

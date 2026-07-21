@@ -294,7 +294,8 @@ class _minmax_mixin:
                 elif min_or_max is cupy.max:
                     m = cupy.maximum(zero, m)
                 else:
-                    assert False
+                    raise AssertionError(
+                        f'unexpected min_or_max ufunc: {min_or_max}')
             return m
 
         if axis < 0:
@@ -479,13 +480,7 @@ class _minmax_mixin:
 def _install_ufunc(func_name):
 
     def f(self):
-        if func_name == "sign":
-            # scipy.sparse_matrix.sign behaves compatible with
-            # numpy.sign in NumPy 1.x series.
-            ufunc = cupy._math.misc._legacy_sign
-        else:
-            ufunc = getattr(cupy, func_name)
-
+        ufunc = getattr(cupy, func_name)
         result = ufunc(self.data)
         return self._with_data(result)
 
