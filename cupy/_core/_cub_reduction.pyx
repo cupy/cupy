@@ -356,6 +356,10 @@ cpdef inline tuple _can_use_cub_block_reduction(
         if _hipcc_path is None:
             return None
 
+    # Use naive kernel for very small reductions (see threshold docs)
+    if contiguous_size < CUB_REDUCE_SIZE_THRESHOLD:
+        return None
+
     return (axis_permutes_cub, contiguous_size, full_reduction)
 
 
@@ -631,10 +635,6 @@ cdef bint _try_to_call_cub_reduction(
         return False
 
     axis_permutes, contiguous_size, full_reduction = can_use_cub
-
-    # Use naive kernel for very small reductions (see threshold docs)
-    if contiguous_size < CUB_REDUCE_SIZE_THRESHOLD:
-        return False
 
     in_shape = _reduction._set_permuted_args(
         in_args, axis_permutes, a_shape, self.in_params)
