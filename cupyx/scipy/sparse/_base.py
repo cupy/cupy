@@ -647,9 +647,14 @@ class _spbase:
             # contribute nothing, so summing the stored data suffices;
             # duplicates of a non-bool dtype already sum to the right total,
             # so no dedup (or in-place mutation) is needed here.  ``out=`` is
-            # forwarded to the reduction, which validates its shape.
+            # forwarded to the reduction (which validates its shape and writes
+            # the result in place) and then returned explicitly: the cuTENSOR
+            # reduction backend returns a fresh 0-D array from a 1-D reduction
+            # even when ``out`` is given, which breaks numpy's out-identity
+            # contract (``a.sum(out=b) is b``).
             _sputils.validate_axis_1d(axis)
-            return self.data.sum(dtype=dtype, out=out)
+            result = self.data.sum(dtype=dtype, out=out)
+            return out if out is not None else result
 
         m, n = self.shape
 
@@ -661,8 +666,12 @@ class _spbase:
         _sputils.validateaxis(axis)
 
         if axis is None:
-            return self.dot(cupy.ones(n, dtype=self.dtype)).sum(
+            # ``ones``-vector matmul gives a 1-D vector; its final reduction
+            # to a scalar must return ``out`` explicitly (see the 1-D branch:
+            # cuTENSOR returns a fresh 0-D array from a 1-D reduction).
+            result = self.dot(cupy.ones(n, dtype=self.dtype)).sum(
                 dtype=dtype, out=out)
+            return out if out is not None else result
 
         if axis < 0:
             axis += 2

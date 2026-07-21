@@ -2615,6 +2615,21 @@ class TestMeanEmpty:
         assert v.sum(out=buf) is buf
         cupy.testing.assert_allclose(buf, 6.0)
 
+    def test_2d_full_reduction_out_identity(self):
+        # The full (axis=None) 2-D sum/mean must also return ``out``: the
+        # intermediate ones-vector matmul is 1-D, and some backends
+        # (cuTENSOR) return a fresh 0-D array from a 1-D reduction even when
+        # ``out`` is written in place.  (Only fails under those backends, but
+        # CI exercises ``CUPY_ACCELERATORS=cutensor,cub``.)
+        for cls in (sparse.csr_array, sparse.csr_matrix):
+            m = cls(cupy.array([[1., 0., 2.], [0., 3., 0.]]))
+            for reduce in (m.sum, m.mean):
+                buf = cupy.empty(())
+                assert reduce(out=buf) is buf
+        cupy.testing.assert_allclose(
+            sparse.csr_array(cupy.array([[1., 0., 2.], [0., 3., 0.]]))
+            .sum(out=cupy.empty(())), 6.0)
+
 
 class TestTupleAxisValidation:
     """Tuple reduction axes: valid ones collapse, bogus ones raise."""
