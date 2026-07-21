@@ -45,8 +45,13 @@ class CubReductionTestBase:
         assert result is expected
 
 
+_MIN_SIZE = cupy._core._cub_reduction._CUB_REDUCE_SIZE_THRESHOLD
+
+
 @pytest.mark.parametrize(
-    "shape", [(2,), (2, 3), (2, 3, 4), (2, 3, 4, 5)]
+    "shape", [
+        (_MIN_SIZE,), (_MIN_SIZE, _MIN_SIZE+1), (_MIN_SIZE, 3, _MIN_SIZE+1),
+        (_MIN_SIZE, 3, 4, _MIN_SIZE+1)]
 )
 @pytest.mark.parametrize(
     "order", ['C', 'F'],
