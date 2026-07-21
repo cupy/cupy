@@ -27,6 +27,7 @@ cimport cython  # NOQA
 cimport cpython
 from libc.stdint cimport int64_t, intptr_t, INT32_MAX
 from libc cimport stdlib
+from libcpp cimport bool as cpp_bool
 from cpython cimport Py_buffer
 
 cimport numpy as cnp
@@ -48,6 +49,7 @@ from cupy._core cimport _routines_statistics as _statistics
 from cupy._core cimport _scalar
 from cupy._core cimport dlpack
 from cupy._core cimport internal
+from cupy._core.internal cimport cached_object
 from cupy.cuda cimport device
 from cupy.cuda cimport function
 from cupy.cuda cimport pinned_memory
@@ -80,9 +82,8 @@ cdef tuple _HANDLED_TYPES
 cdef object _null_context = contextlib.nullcontext()
 
 # Supported index types for mdspan - initialized at runtime to avoid
-# circular import
-cdef tuple _MDSPAN_SUPPORTED_INDEX_TYPES = None
-cdef dict _MDSPAN_INDEX_TYPE_TO_ITEMSIZE = None
+# circular import.  Maps index type -> itemsize in bytes.
+cdef cached_object _MDSPAN_SUPPORTED_INDEX_TYPES
 
 
 # If rop of cupy.ndarray is called, cupy's op is the last chance.
@@ -2381,25 +2382,26 @@ cdef inline _carray.mdspan _mdspan_from_ndarray(
     # Creates mdspan from ndarray.
     # Note that this function cannot be defined in _carray.pxd because that
     # would cause cyclic cimport dependencies.
-    global _MDSPAN_SUPPORTED_INDEX_TYPES, _MDSPAN_INDEX_TYPE_TO_ITEMSIZE
-
     cdef _carray.mdspan carr
     cdef int index_itemsize
+    cdef dict supported_index_types
 
     # Initialize cached constants on first use (avoid circular import)
-    if _MDSPAN_SUPPORTED_INDEX_TYPES is None:
-        _MDSPAN_SUPPORTED_INDEX_TYPES = (cupy.int32, cupy.int64)
-        _MDSPAN_INDEX_TYPE_TO_ITEMSIZE = {cupy.int32: 4, cupy.int64: 8}
+    supported_index_types = _MDSPAN_SUPPORTED_INDEX_TYPES.get()
+    if supported_index_types is None:
+        supported_index_types = _MDSPAN_SUPPORTED_INDEX_TYPES.setdefault({
+            cupy.int32: 4,
+            cupy.int64: 8,
+        })
 
     carr = _carray.mdspan.__new__(_carray.mdspan)
 
-    # Use dict lookup with membership check for validation
-    if index_type not in _MDSPAN_SUPPORTED_INDEX_TYPES:
+    index_itemsize = supported_index_types.get(index_type, -1)
+    if index_itemsize == -1:
         raise ValueError(
             f"Unsupported index_type: {index_type}. "
             "Must be cupy.int32 or cupy.int64."
         )
-    index_itemsize = _MDSPAN_INDEX_TYPE_TO_ITEMSIZE[index_type]
 
     # Validate that array size fits in index_type
     if index_type == cupy.int32 and arr.size > INT32_MAX:
@@ -2433,8 +2435,9 @@ _HANDLED_TYPES = (ndarray, numpy.ndarray)
 # TODO(niboshi): Move it out of core.pyx
 
 cdef bint _is_hip = runtime._is_hip_environment
-cdef str _cuda_include_dir = ''  # '' for uninitialized, None for non-existing
-cdef str _rocm_include_dir = ''  # '' for uninitialized, None for non-existing
+# Lazily resolved include dirs.
+cdef cached_object _cuda_include_dir
+cdef cached_object _rocm_include_dir
 
 cdef list cupy_header_list = [
     'cupy/complex.cuh',
@@ -2476,44 +2479,42 @@ cdef list _cupy_extra_header_list = [
     'cupy/complex/catrigf.h',
 ]
 
-cdef str _header_path_cache = None
-cdef str _header_source = None
-cdef dict _header_source_map = {}
-
 
 cpdef str _get_header_dir_path():
-    global _header_path_cache
-    if _header_path_cache is None:
-        # Cython cannot use __file__ in global scope
-        _header_path_cache = os.path.abspath(
+    # Cython cannot use __file__ in global scope
+    return os.path.abspath(
             os.path.join(os.path.dirname(__file__), 'include'))
-    return _header_path_cache
+
+
+cdef str _header_dir_path = _get_header_dir_path()
+cdef cached_object _header_source_cache
+cdef dict _header_source_map = {}
 
 
 cpdef tuple _get_cccl_include_options():
     # the search paths are made such that they resemble the layout in CTK
-    return (f"-I{_get_header_dir_path()}/cupy/_cccl/cub",
-            f"-I{_get_header_dir_path()}/cupy/_cccl/thrust",
-            f"-I{_get_header_dir_path()}/cupy/_cccl/libcudacxx")
+    return (f"-I{_header_dir_path}/cupy/_cccl/cub",
+            f"-I{_header_dir_path}/cupy/_cccl/thrust",
+            f"-I{_header_dir_path}/cupy/_cccl/libcudacxx")
 
 
 cpdef str _get_header_source():
-    global _header_source
     global _header_source_map
     cdef str header_path, base_path, file_path, header
     cdef list source
+    cdef object header_source = _header_source_cache.get()
 
-    if _header_source is None or not _header_source_map:
+    if header_source is None or not _header_source_map:
         source = []
-        base_path = _get_header_dir_path()
+        base_path = _header_dir_path
         for file_path in _cupy_extra_header_list + cupy_header_list:
             header_path = os.path.join(base_path, file_path)
             with open(header_path) as header_file:
                 header = header_file.read()
             source.append(header)
             _header_source_map[file_path.encode()] = header.encode()
-        _header_source = '\n'.join(source)
-    return _header_source
+        header_source = _header_source_cache.setdefault('\n'.join(source))
+    return header_source
 
 
 cpdef dict _get_header_source_map():
@@ -2563,6 +2564,8 @@ cpdef warn_on_unsupported_std(tuple options):
 
 
 cpdef tuple assemble_cupy_compiler_options(tuple options):
+    cdef cpp_bool initialized
+
     if use_default_std(options):
         options += ('--std=c++17',)
     else:
@@ -2572,32 +2575,36 @@ cpdef tuple assemble_cupy_compiler_options(tuple options):
         # make sure bundled CCCL is searched first
         options = (_get_cccl_include_options() + options)
 
-    options += ('-I%s' % _get_header_dir_path(),)
+    options += ('-I%s' % _header_dir_path,)
 
     if not _is_hip:
-        global _cuda_include_dir
-        if _cuda_include_dir == '':
+        cuda_include_dir = _cuda_include_dir.get(&initialized)
+        if not initialized:
             from cuda.pathfinder import find_nvidia_header_directory
-            _cuda_include_dir = find_nvidia_header_directory('cudart')
-        if _cuda_include_dir is None:
+            cuda_include_dir = _cuda_include_dir.setdefault(
+                find_nvidia_header_directory('cudart'))
+
+        if cuda_include_dir is None:
             raise RuntimeError(
                 'Failed to find CUDA headers. Please install CUDA toolkit '
                 'headers (e.g., pip install cupy-cuda12x[ctk]) or specify '
                 'CUDA_PATH environment variable.')
-        options += ('-I' + _cuda_include_dir,)
+        options += ('-I' + cuda_include_dir,)
     else:
-        global _rocm_include_dir
-        if _rocm_include_dir == '':
+        rocm_include_dir = _rocm_include_dir.get(&initialized)
+        if not initialized:
             _rocm_path = cuda.get_rocm_path()
             if _rocm_path is not None:
-                _rocm_include_dir = os.path.join(_rocm_path, 'include')
+                rocm_include_dir = os.path.join(_rocm_path, 'include')
             else:
-                _rocm_include_dir = None
-        if _rocm_include_dir is None:
+                rocm_include_dir = None
+            rocm_include_dir = _rocm_include_dir.setdefault(rocm_include_dir)
+
+        if rocm_include_dir is None:
             raise RuntimeError(
                 'Failed to auto-detect ROCm root directory. '
                 'Please specify `ROCM_HOME` environment variable.')
-        options += ('-I' + _rocm_include_dir,)
+        options += ('-I' + rocm_include_dir,)
 
     return options
 

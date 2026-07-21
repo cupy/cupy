@@ -1,3 +1,5 @@
+# distutils: language = c++
+
 cimport cython  # NOQA
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from libc.string cimport memset as c_memset
@@ -25,27 +27,30 @@ cdef F_cufftXtSetJITCallback _cufftXtSetJITCallback
 
 # ****************** SoftLink utilities ******************
 
+# NOTE: Need a mutex to safely init the callback and the owner _L
+cdef cython.pymutex _init_mutex
 cdef SoftLink _L = None
 
 cdef inline void initialize() except *:
     global _L
-    if _L is not None:
-        return
-    _L = _initialize()
+    with _init_mutex:
+        if _L is not None:
+            return
+        _L = _initialize_locked()
 
-cdef SoftLink _initialize():
-    _L = _get_softlink()
-
+cdef SoftLink _initialize_locked() except *:
     global _cufftXtSetJITCallback
+    cdef SoftLink L = _get_softlink()
+
     if CUPY_CUDA_VERSION < 13000:
         # __cufftXtSetJITCallback_12_7
-        _cufftXtSetJITCallback = <F_cufftXtSetJITCallback>_L.get(
+        _cufftXtSetJITCallback = <F_cufftXtSetJITCallback>L.get(
             'XtSetJITCallback_12_7')
     else:
-        _cufftXtSetJITCallback = <F_cufftXtSetJITCallback>_L.get(
+        _cufftXtSetJITCallback = <F_cufftXtSetJITCallback>L.get(
             'XtSetJITCallback')
 
-    return _L
+    return L
 
 cdef SoftLink _get_softlink():
     cdef int runtime_version

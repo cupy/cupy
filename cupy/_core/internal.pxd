@@ -7,6 +7,71 @@ from cupy._core._carray cimport strides_t
 from cupy._core.core cimport _ndarray_base
 
 
+cdef extern from *:
+    """
+    #include <atomic>
+
+    class cached_object {
+    private:
+        std::atomic<PyObject*> ptr;
+
+    public:
+        cached_object() : ptr(nullptr) {}
+        cached_object(const cached_object&) = delete;
+        cached_object& operator=(const cached_object&) = delete;
+        ~cached_object() {
+            PyObject *val = ptr.exchange(nullptr, std::memory_order_relaxed);
+            if (val && Py_IsInitialized()) {
+                Py_DECREF(val);
+            }
+        }
+
+        PyObject* get(bool *initialized = nullptr) const {
+            PyObject* o = ptr.load(std::memory_order_acquire);
+            if (initialized) {
+                *initialized = (o != nullptr);
+            }
+            if (o != nullptr) {
+                Py_INCREF(o);
+                return o;
+            }
+            Py_RETURN_NONE;
+        }
+
+        bool initialized() const {
+            // NOTE: Using memory_order_acquire so that true means it is fully
+            // initialized with all side-effects.
+            return ptr.load(std::memory_order_acquire) != nullptr;
+        }
+
+        // Install ``value`` iff nothing is stored yet; always return the
+        // stored value (with a new strong reference for the caller).
+        PyObject* setdefault(PyObject* value) {
+            Py_INCREF(value);
+            PyObject* expected = nullptr;
+            if (!ptr.compare_exchange_strong(
+                    expected, value,
+                    std::memory_order_release,  // wrote value: release
+                    std::memory_order_acquire)  // read value: acquire
+                ) {
+                Py_DECREF(value);
+                value = expected;
+            }
+            Py_INCREF(value);
+            return value;
+        }
+    };
+    """
+    cppclass cached_object:
+        cached_object() except +
+        # Get the stored value or None.
+        object get()
+        # Also return if already initialized (useful if None is valid).
+        object get(cpp_bool *initialized)
+        cpp_bool initialized() const
+        object setdefault(object value)
+
+
 cpdef Py_ssize_t prod(const vector.vector[Py_ssize_t]& args) noexcept
 
 cpdef Py_ssize_t prod_sequence(object args)
