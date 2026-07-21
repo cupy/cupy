@@ -487,10 +487,7 @@ def _empty_like(model):
 
 
 def _get_sparse_type(matrix):
-    if not sparse.issparse(matrix):
-        raise TypeError(
-            'NCCL is not supported for this type of sparse matrix')
-    if matrix.format in ('coo', 'csr', 'csc'):
+    if sparse.issparse(matrix) and matrix.format in ('coo', 'csr', 'csc'):
         return matrix.format
     raise TypeError(
         'NCCL is not supported for this type of sparse matrix')
