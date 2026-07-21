@@ -176,7 +176,7 @@ class TestOptimizeBackends(unittest.TestCase):
         _accelerator.set_routine_accelerators([])
 
         self.x = testing.shaped_arange(
-            (3, cupy._core._cub_reduction.CUB_REDUCE_SIZE_THRESHOLD),
+            (3, cupy._core._cub_reduction._CUB_REDUCE_SIZE_THRESHOLD),
             cupy, dtype=cupy.float32)
 
     def tearDown(self):
