@@ -24,6 +24,12 @@ from cupy.cuda import driver
 from cupy import _util
 
 
+# For reductions the CUB block kernel launches one block per segment with very
+# little work each, which is slower than the generic reduction kernel.
+cdef int CUB_REDUCE_SIZE_THRESHOLD = 128
+_CUB_REDUCE_SIZE_THRESHOLD = CUB_REDUCE_SIZE_THRESHOLD
+
+
 cdef function.Function _create_cub_reduction_function(
         name, block_size, items_per_thread,
         reduce_type, params, arginfos, identity,
@@ -626,10 +632,8 @@ cdef bint _try_to_call_cub_reduction(
 
     axis_permutes, contiguous_size, full_reduction = can_use_cub
 
-    # For reductions the CUB block kernel launches one block
-    # per segment with very little work each, which is slower than the
-    # generic reduction kernel so use the naive kernel instead.
-    if contiguous_size < 128:
+    # Use naive kernel for very small reductions (see threshold docs)
+    if contiguous_size < CUB_REDUCE_SIZE_THRESHOLD:
         return False
 
     in_shape = _reduction._set_permuted_args(
