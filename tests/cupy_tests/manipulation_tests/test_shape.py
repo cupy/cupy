@@ -67,7 +67,7 @@ class TestReshape:
     def test_copy_arg_reshape(self, xp, dtype, order, copy):
         a = xp.zeros((2, 3, 4), dtype=dtype)
         b = a.reshape(4, 3, 2, order=order, copy=copy)
-        b[1] = 1
+        a[1] = 1
         return b
 
     @testing.with_requires('numpy>=2.1')
@@ -148,6 +148,7 @@ class TestReshape:
         assert b.base is a
         return b
 
+    @testing.with_requires('numpy>=2.1')
     @testing.for_orders('CFA')
     @test_for_all_copy_args
     @testing.numpy_cupy_array_equal()
