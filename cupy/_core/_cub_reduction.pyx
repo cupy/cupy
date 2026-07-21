@@ -17,6 +17,7 @@ from cupy_backends.cuda.libs cimport nvrtc
 
 
 import math
+import os
 import string
 from cupy import _environment
 from cupy._core._kernel import _get_param_info
@@ -25,7 +26,7 @@ from cupy import _util
 
 
 cdef function.Function _create_cub_reduction_function(
-        name, block_size, items_per_thread,
+        name, block_size, items_per_thread, reduce_group_threads,
         reduce_type, params, arginfos, identity,
         pre_map_expr, reduce_expr, post_map_expr,
         _kernel._TypeMap type_map, preamble, options):
@@ -71,6 +72,7 @@ static_assert(sizeof(_type_reduce) <= 32,
 // Compile-time constants for CUB template specializations
 #define ITEMS_PER_THREAD  ${items_per_thread}
 #define BLOCK_SIZE        ${block_size}
+#define REDUCE_GROUP_THREADS ${reduce_group_threads}
 
 // for hipCUB: use the hipcub namespace
 #ifdef __HIP_DEVICE_COMPILE__
@@ -100,10 +102,9 @@ struct _reduction_op {
 
 extern "C"
 __global__ void ${name}(${params}) {
-  unsigned int _tid = threadIdx.x;
 '''
 
-    if pre_map_expr == 'in0':
+    if reduce_group_threads == block_size and pre_map_expr == 'in0':
         module_code += '''
   // Specialize BlockLoad type for faster (?) loading
   typedef cub::BlockLoad<_type_reduce, BLOCK_SIZE,
@@ -113,12 +114,14 @@ __global__ void ${name}(${params}) {
   __shared__ typename BlockLoadT::TempStorage temp_storage_load;
 '''
 
-    module_code += '''
+        module_code += '''
+  unsigned int _tid = threadIdx.x;
+
   // Specialize BlockReduce type for our thread block
-  typedef cub::BlockReduce<_type_reduce, BLOCK_SIZE> BlockReduceT;
+  typedef cub::BlockReduce<_type_reduce, BLOCK_SIZE> SegmentReduceT;
 
   // Shared memory for reduction
-  __shared__ typename BlockReduceT::TempStorage temp_storage;
+  __shared__ typename SegmentReduceT::TempStorage temp_storage;
 
   // Declare reduction operation
   _reduction_op op;
@@ -163,40 +166,17 @@ __global__ void ${name}(${params}) {
       if (_seg_size - i <= tile_size) { tile_size = _seg_size - i; }
 '''
 
-    if pre_map_expr == 'in0':
         module_code += '''
       // load a tile
       BlockLoadT(temp_storage_load).Load(segment_head + i, _sdata, tile_size,
                                          _type_reduce(${identity}));
 '''
-    else:  # pre_map_expr could be something like "in0 != type_in0_raw(0)"
+
         module_code += '''
-      // load a tile
-      #pragma unroll
-      for (int j = 0; j < ITEMS_PER_THREAD; j++) {
-          // index of the element in a tile
-          int e_idx = _tid * ITEMS_PER_THREAD + j;
-
-          // some pre_map_expr uses _J internally...
-          #if defined FIRST_PASS
-          IndexT _J = (segment_idx + i + e_idx);
-          #else  // only one pass
-          IndexT _J = (segment_idx + i + e_idx) % _seg_size;
-          #endif
-
-          if (e_idx < tile_size) {
-              const type_mid_in in0 = *(segment_head + i + e_idx);
-              _sdata[j] = static_cast<_type_reduce>(${pre_map_expr});
-          } else {
-              _sdata[j] = _type_reduce(${identity});
-          }
-      }
-'''
-
-    module_code += '''
       // Compute block reduction
       // Note that the output is only meaningful for thread 0
-      aggregate = op(aggregate, BlockReduceT(temp_storage).Reduce(_sdata, op));
+      aggregate = op(aggregate, SegmentReduceT(temp_storage).Reduce(
+          _sdata, op));
 
       __syncthreads();  // for reusing temp_storage
   }
@@ -207,14 +187,92 @@ __global__ void ${name}(${params}) {
   }
 }
 '''
+
+    else:
+        module_code += '''
+  typedef ${collective_type} SegmentReduceT;
+  static const int segments_per_block = ${segments_per_block};
+
+  unsigned int _tid = threadIdx.x;
+  unsigned int group_id = _tid / REDUCE_GROUP_THREADS;
+  unsigned int lane = _tid % REDUCE_GROUP_THREADS;
+
+  // Shared memory for one or more independent segment reductions per block.
+  __shared__ typename SegmentReduceT::TempStorage
+      temp_storage[segments_per_block];
+
+  // Declare reduction operation
+  _reduction_op op;
+
+  // input & output raw pointers
+  const type_mid_in* _in0 = static_cast<const type_mid_in*>(_raw_in0);
+  type_mid_out* _out0 = static_cast<type_mid_out*>(_raw_out0);
+
+  // Each logical warp group or block handles one fixed-size segment.
+  size_t segment_id = size_t(blockIdx.x) * segments_per_block + group_id;
+  size_t segment_idx = segment_id * _segment_size;
+  const type_mid_in* segment_head = _in0 + segment_idx;
+  sizeT _seg_size = _segment_size;
+  bool valid_segment = true;
+
+  #if defined FIRST_PASS
+  // for two-pass reduction only: "last segment" is special
+  if (_array_size > 0) {
+      if (_array_size - segment_idx <= _segment_size) {
+          _seg_size = _array_size - segment_idx;
+      }
+      #ifdef __HIP_DEVICE_COMPILE__
+      // We don't understand HIP...
+      __syncthreads();  // Propagate the new value back to memory
+      #endif
+  }
+  #elif !defined SECOND_PASS
+  // For one-pass partial reductions, _array_size carries num_segments.
+  valid_segment = segment_id < _array_size;
+  #endif
+
+  // Loop over one segment. For logical-warp mode, one block handles multiple
+  // segments; for block mode, REDUCE_GROUP_THREADS == BLOCK_SIZE.
+  _type_reduce aggregate = _type_reduce(${identity});
+  for (size_t i = lane; valid_segment && i < _seg_size;
+       i += REDUCE_GROUP_THREADS) {
+      // some pre_map_expr uses _J internally...
+      #if defined FIRST_PASS
+      IndexT _J = segment_idx + i;
+      #else
+      IndexT _J = i;
+      #endif
+      const type_mid_in in0 = *(segment_head + i);
+      aggregate = op(aggregate,
+                     static_cast<_type_reduce>(${pre_map_expr}));
+  }
+
+  aggregate = SegmentReduceT(temp_storage[group_id]).Reduce(aggregate, op);
+
+  if (valid_segment && lane == 0) {
+      type_mid_out& out0 = *(_out0 + segment_id);
+      POST_MAP(aggregate);
+  }
+}
+'''
+
     type_decls = set()
     params = _get_cub_kernel_params(params, arginfos, type_decls)
     type_preambles = type_map.get_typedef_code(type_decls)
+    segments_per_block = block_size // reduce_group_threads
+    if reduce_group_threads == block_size:
+        collective_type = 'cub::BlockReduce<_type_reduce, BLOCK_SIZE>'
+    else:
+        collective_type = (
+            'cub::WarpReduce<_type_reduce, REDUCE_GROUP_THREADS>')
 
     module_code = string.Template(module_code).substitute(
         name=name,
         block_size=block_size,
         items_per_thread=items_per_thread,
+        reduce_group_threads=reduce_group_threads,
+        collective_type=collective_type,
+        segments_per_block=segments_per_block,
         reduce_type=reduce_type,
         params=params,
         type_decls=_scalar.format_type_decls(type_decls),
@@ -241,11 +299,13 @@ def _SimpleCubReductionKernel_get_cached_function(
         map_expr, reduce_expr, post_map_expr, reduce_type,
         params, arginfos, _kernel._TypeMap type_map,
         name, block_size, identity, preamble,
-        options, items_per_thread):
+        options, cub_params):
+    items_per_thread = cub_params[0]
+    reduce_group_threads = cub_params[3]
     name = name.replace('cupy_', 'cupy_cub_')
     name = name.replace('cupyx_', 'cupyx_cub_')
     return _create_cub_reduction_function(
-        name, block_size, items_per_thread,
+        name, block_size, items_per_thread, reduce_group_threads,
         reduce_type, params, arginfos, identity,
         map_expr, reduce_expr, post_map_expr,
         type_map, preamble, options)
@@ -267,6 +327,7 @@ cdef str _get_cub_header_include():
         _cub_header = '''
 #include <cub/block/block_reduce.cuh>
 #include <cub/block/block_load.cuh>
+#include <cub/warp/warp_reduce.cuh>
 '''
     elif _cub_path == '<ROCm>':
         # As of ROCm 3.5.0, the block headers cannot be included by themselves
@@ -377,6 +438,42 @@ cdef Py_ssize_t _cub_default_block_size = (
     256 if runtime._is_hip_environment else 512)
 
 
+cpdef Py_ssize_t _get_cub_segment_group_threads(
+        Py_ssize_t contiguous_size, Py_ssize_t block_size) except -1:
+    cdef Py_ssize_t warp_size = 64 if runtime._is_hip_environment else 32
+    cdef Py_ssize_t group_threads
+    # Short-axis policy for generic CUB reductions: use the fallback kernel
+    # through 64 elements, WarpReduce<16> from 128 to 4096, and BlockReduce
+    # for larger segments.  CUPY_CUB_REDUCTION_GROUP_THREADS overrides this
+    # for testing (0/fallback, block, or a divisor of block_size).
+    override = os.environ.get('CUPY_CUB_REDUCTION_GROUP_THREADS')
+
+    if override is not None:
+        if override == 'fallback':
+            return 0
+        if override == 'block':
+            return block_size
+        group_threads = int(override)
+        if group_threads < 1 or group_threads > block_size:
+            raise ValueError('invalid CUPY_CUB_REDUCTION_GROUP_THREADS')
+        if block_size % group_threads != 0:
+            raise ValueError('CUPY_CUB_REDUCTION_GROUP_THREADS must divide '
+                             'the CUB reduction block size')
+        return group_threads
+
+    if contiguous_size <= 64:
+        return 0
+    if contiguous_size >= 4096:
+        return block_size
+
+    group_threads = 16
+    if group_threads > block_size:
+        group_threads = block_size
+    elif group_threads > warp_size:
+        group_threads = warp_size
+    return group_threads
+
+
 @cython.cdivision(True)
 cdef (Py_ssize_t, Py_ssize_t) _get_cub_block_specs(  # NOQA
         Py_ssize_t contiguous_size) noexcept:
@@ -446,6 +543,7 @@ cdef inline void _cub_two_pass_launch(
     inout_args = [in_args[0], out_args[0],
                   _cub_convert_to_c_scalar(segment_size, contiguous_size),
                   _cub_convert_to_c_scalar(segment_size, segment_size)]
+    cub_params = (items_per_thread, contiguous_size, True, block_size)
 
     if 'mean' in name:
         post_map_expr1 = post_map_expr.replace('_in_ind.size()', '1.0')
@@ -471,7 +569,7 @@ cdef inline void _cub_two_pass_launch(
         _kernel._get_arginfos(inout_args),
         type_map,
         name, block_size, identity, preamble,
-        ('-DFIRST_PASS=1',), items_per_thread)
+        ('-DFIRST_PASS=1',), cub_params)
 
     # Kernel arguments passed to the __global__ function.
     gridx = <size_t>(out_block_num * block_size)
@@ -505,7 +603,7 @@ cdef inline void _cub_two_pass_launch(
         _kernel._get_arginfos(inout_args),
         type_map,
         name, block_size, identity, preamble,
-        ('-DSECOND_PASS=1',), items_per_thread)
+        ('-DSECOND_PASS=1',), cub_params)
 
     # Kernel arguments passed to the __global__ function.
     gridx = <size_t>(out_block_num * block_size)
@@ -522,12 +620,15 @@ cdef inline void _launch_cub(
         stream, params, cub_params) except *:
     cdef bint full_reduction
     cdef Py_ssize_t contiguous_size, items_per_thread
+    cdef Py_ssize_t reduce_group_threads, segments_per_block
     cdef function.Function func
+    cdef size_t gridx
 
     # Kernel arguments passed to the __global__ function.
     items_per_thread = cub_params[0]
     contiguous_size = cub_params[1]
     full_reduction = cub_params[2]
+    reduce_group_threads = cub_params[3]
 
     if full_reduction:
         _cub_two_pass_launch(
@@ -542,16 +643,19 @@ cdef inline void _launch_cub(
             [_cub_convert_to_c_scalar(
                 contiguous_size, contiguous_size),
              _cub_convert_to_c_scalar(
-                 contiguous_size, 0)])
+                 contiguous_size, out_block_num)])
         arginfos = _kernel._get_arginfos(inout_args)
         func = _SimpleCubReductionKernel_get_cached_function(
             map_expr, reduce_expr, post_map_expr, reduce_type,
             params, arginfos, type_map,
             self.name, block_size, self.identity, self.preamble,
-            (), items_per_thread)
+            (), cub_params)
 
+        segments_per_block = block_size // reduce_group_threads
+        gridx = <size_t>(
+            (out_block_num + segments_per_block - 1) // segments_per_block)
         func.linear_launch(
-            out_block_num * block_size, inout_args, 0, block_size, stream)
+            gridx * block_size, inout_args, 0, block_size, stream)
 
 
 def _get_cub_optimized_params(
@@ -568,8 +672,11 @@ def _get_cub_optimized_params(
 
     def target_func(block_size, items_per_thread):
         block_stride = block_size * items_per_thread
+        reduce_group_threads = block_size if full_reduction else (
+            _get_cub_segment_group_threads(contiguous_size, block_size))
         cub_params = (
-            items_per_thread, contiguous_size, full_reduction)
+            items_per_thread, contiguous_size, full_reduction,
+            reduce_group_threads)
         _launch_cub(
             self,
             out_block_num, block_size, block_stride, in_args, out_args,
@@ -616,6 +723,7 @@ cdef bint _try_to_call_cub_reduction(
     cdef Py_ssize_t i
     cdef Py_ssize_t contiguous_size = -1
     cdef Py_ssize_t block_size, block_stride, out_block_num = 0
+    cdef Py_ssize_t items_per_thread, reduce_group_threads
 
     # decide to use CUB or not
     can_use_cub = _can_use_cub_block_reduction(
@@ -672,13 +780,16 @@ cdef bint _try_to_call_cub_reduction(
         ))
 
     # Calculate the reduction block dimensions.
+    items_per_thread, block_size = _get_cub_block_specs(contiguous_size)
+    reduce_group_threads = block_size if full_reduction else (
+        _get_cub_segment_group_threads(contiguous_size, block_size))
+    if reduce_group_threads == 0:
+        return False
+
     optimize_context = _optimize_config.get_current_context()
-    if optimize_context is None:
-        # Calculate manually
-        items_per_thread, block_size = _get_cub_block_specs(contiguous_size)
-    else:
+    if optimize_context is not None:
         # Optimize dynamically
-        key = ('cub_reduction',) + key
+        key = ('cub_reduction', reduce_group_threads) + key
         opt_params = optimize_context.get_params(key)
         if opt_params is None:
             opt_params = _get_cub_optimized_params(
@@ -689,9 +800,13 @@ cdef bint _try_to_call_cub_reduction(
                 full_reduction, out_block_num, contiguous_size, params)
             optimize_context.set_params(key, opt_params)
         items_per_thread, block_size = opt_params
+        reduce_group_threads = block_size if full_reduction else (
+            _get_cub_segment_group_threads(contiguous_size, block_size))
 
     block_stride = block_size * items_per_thread
-    cub_params = (items_per_thread, contiguous_size, full_reduction)
+    cub_params = (
+        items_per_thread, contiguous_size, full_reduction,
+        reduce_group_threads)
 
     _launch_cub(
         self,

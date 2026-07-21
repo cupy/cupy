@@ -3,6 +3,7 @@ from __future__ import annotations
 from itertools import combinations
 import sys
 
+import numpy
 import pytest
 
 import cupy
@@ -13,9 +14,20 @@ from cupy._core import _cub_reduction
 from cupy.cuda import memory
 
 
+def expected_cub_block_kernel_calls(shape, axis):
+    """Return how many generic CUB block-reduction kernels should launch."""
+    if len(axis) == len(shape):
+        return 2  # two-pass full reduction
+    contiguous_size = int(numpy.prod([shape[i] for i in axis]))
+    group_threads = _cub_reduction._get_cub_segment_group_threads(
+        contiguous_size, 512)
+    return 0 if group_threads == 0 else 1
+
 # This test class and its children below only test if CUB backend can be used
 # or not; they don't verify its correctness as it's already extensively covered
 # by existing tests
+
+
 class CubReductionTestBase:
     """
     Note: call self.can_use() when arrays are already allocated, otherwise
@@ -138,7 +150,7 @@ class TestSimpleCubReductionKernelMisc(CubReductionTestBase):
         old_routine_accelerators = _accelerator.get_routine_accelerators()
         _accelerator.set_routine_accelerators([])
 
-        a = cupy.random.random((10, 10))
+        a = cupy.random.random((10, 128))
         # this is the only function we can mock; the rest is cdef'd
         func_name = ''.join(('cupy._core._cub_reduction.',
                              '_SimpleCubReductionKernel_get_cached_function'))
@@ -150,7 +162,98 @@ class TestSimpleCubReductionKernelMisc(CubReductionTestBase):
                 func_name, wraps=func, times_called=1):  # one pass
             a.sum(axis=1)
         with testing.AssertFunctionIsCalled(
+                func_name, wraps=func, times_called=0):  # fallback
+            a[:, :1].sum(axis=1)
+        with testing.AssertFunctionIsCalled(
                 func_name, wraps=func, times_called=0):  # not used
             a.sum(axis=0)
 
         _accelerator.set_routine_accelerators(old_routine_accelerators)
+
+
+class TestSimpleCubReductionKernelSegmentMode(CubReductionTestBase):
+
+    @pytest.mark.parametrize('contiguous_size,expected', [
+        (1, 0),
+        (2, 0),
+        (4, 0),
+        (8, 0),
+        (16, 0),
+        (32, 0),
+        (64, 0),
+        (128, 16),
+        (256, 16),
+        (512, 16),
+        (2048, 16),
+        (4096, 512),
+    ])
+    def test_get_cub_segment_group_threads(
+            self, contiguous_size, expected):
+        result = _cub_reduction._get_cub_segment_group_threads(
+            contiguous_size, 512)
+        assert result == expected
+
+    @pytest.mark.parametrize('override,expected', [
+        ('fallback', 0),
+        ('block', 512),
+        ('16', 16),
+    ])
+    def test_get_cub_segment_group_threads_override(
+            self, monkeypatch, override, expected):
+        monkeypatch.setenv('CUPY_CUB_REDUCTION_GROUP_THREADS', override)
+        result = _cub_reduction._get_cub_segment_group_threads(64, 512)
+        assert result == expected
+
+
+class TestSimpleCubReductionKernelCorrectness(CubReductionTestBase):
+
+    @pytest.fixture(autouse=True)
+    def disable_routine_accelerators(self):
+        self.old_routine_accelerators = (
+            _accelerator.get_routine_accelerators())
+        _accelerator.set_routine_accelerators([])
+        yield
+        _accelerator.set_routine_accelerators(
+            self.old_routine_accelerators)
+
+    @pytest.mark.parametrize('shape', [
+        (32, 2),
+        (17, 33),
+        (9, 129),
+    ])
+    @pytest.mark.parametrize('op', [
+        'nansum',
+        'nanprod',
+        'all',
+        'any',
+        'argmin',
+        'argmax',
+    ])
+    def test_generic_cub_short_axis_correctness(self, shape, op):
+        if op in ('all', 'any'):
+            a = cupy.arange(numpy.prod(shape)).reshape(shape) % 3 == 0
+            expect = getattr(numpy, op)(cupy.asnumpy(a), axis=1)
+        else:
+            a = testing.shaped_arange(shape, cupy, dtype=cupy.float32)
+            if op in ('nansum', 'nanprod'):
+                a[:, 0] = cupy.nan
+            expect = getattr(numpy, op)(cupy.asnumpy(a), axis=1)
+
+        actual = getattr(cupy, op)(a, axis=1)
+        testing.assert_allclose(actual, expect)
+
+    @pytest.mark.parametrize('shape', [
+        (32, 2),
+        (17, 33),
+        (9, 129),
+    ])
+    def test_generic_user_reduction_kernel_correctness(self, shape):
+        kernel = cupy.ReductionKernel(
+            'float32 x', 'float32 y',
+            'x * x', 'a + b', 'y = a', '0',
+            'cupy_test_square_sum')
+        a = testing.shaped_arange(shape, cupy, dtype=cupy.float32)
+
+        actual = kernel(a, axis=1)
+        expect = (cupy.asnumpy(a) ** 2).sum(axis=1)
+        testing.assert_allclose(actual, expect)
