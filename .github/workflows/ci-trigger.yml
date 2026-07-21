@@ -23,6 +23,10 @@ jobs:
     name: Record /test request + trigger build
     if: github.repository_owner == 'cupy' && github.event_name == 'issue_comment'
     runs-on: ubuntu-latest
+    # CI_TRIGGER_APP_ID / CI_TRIGGER_APP_PRIVATE_KEY are scoped to this
+    # deployment environment (branch policy: main only -- which is the ref
+    # issue_comment runs execute on). Each /test records a deployment here.
+    environment: ci-trigger
     concurrency:
       group: ci-trigger-${{ github.event.issue.number }}
       cancel-in-progress: false
