@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import numbers
 import warnings
 
 import numpy
@@ -45,6 +44,10 @@ class _spbase:
     # Class default since ``__init__`` chains across format subclasses
     # don't always reach ``spmatrix.__init__``.
     maxprint = 50
+    # Accepted dimensionalities (mirrors scipy's ``_allow_nd``).  All
+    # matrices and the base default are 2-D only; ``coo_array`` and
+    # ``csr_array`` override this to also accept 1-D.
+    _allow_nd: tuple[int, ...] = (2,)
 
     def __class_getitem__(cls, args):
         # ``coo_array[int]``-style typing aliases (scipy 1.16+).
@@ -93,8 +96,13 @@ class _spbase:
             return repr(self)
 
     def __iter__(self):
-        for r in range(self.shape[0]):
-            yield self[r, :]
+        if self.ndim == 1:
+            # Iterate elements (0-D results), like cupy dense 1-D arrays.
+            for i in range(self.shape[0]):
+                yield self[i]
+        else:
+            for r in range(self.shape[0]):
+                yield self[r, :]
 
     def __bool__(self):
         if self.shape == (1, 1):
@@ -244,6 +252,80 @@ class _spbase:
     def _shape_as_2d(self):
         s = self._shape
         return (1, s[-1]) if len(s) == 1 else s
+
+    def _require_2d(self, op):
+        """Raise ``ValueError`` if this is not a 2-D array/matrix.
+
+        Central guard for operations that are only meaningful in 2-D
+        (e.g. ``diagonal``/``setdiag``); keeps the message consistent
+        and makes it obvious which ops still assume 2-D.
+        """
+        if self.ndim != 2:
+            raise ValueError(f'{op} requires two dimensions')
+
+    def _squeeze_to_1d(self, result):
+        """Collapse a ``(1, N)`` op result to 1-D.
+
+        Only valid when the operation is genuinely 1-D (the 1-D-array ops
+        run on the ``(1, N)`` backing -- see :meth:`_as_2d`).  A CSR result
+        is rewrapped as a 1-D CSR (preserving format, matching scipy); any
+        other sparse result is reshaped to 1-D; a dense result is raveled.
+        A sparse result that is not ``(1, N)`` cannot be a 1-D value and
+        raises rather than silently returning a wrong-shaped array (the
+        caller must gate on operand dimensionality -- see
+        :meth:`_finalize_1d_op`).
+        """
+        if issparse(result):
+            m, n = result.shape
+            if m != 1:
+                raise ValueError(
+                    f'cannot squeeze a {result.shape} result to 1-D')
+            if result.format == 'csr':
+                return self._csr_container._from_parts(
+                    result.data, result.indices, result.indptr, (n,),
+                    has_canonical_format=getattr(
+                        result, '_has_canonical_format', None),
+                    has_sorted_indices=getattr(
+                        result, '_has_sorted_indices', None))
+            return result.reshape((n,))
+        return result.reshape(-1)
+
+    def _finalize_1d_op(self, result, other):
+        """Shape the result of a broadcasting op run on a ``(1, N)`` backing.
+
+        The operation is genuinely 1-D -- and the result is squeezed back to
+        1-D -- only when *both* operands are 1-D (a scalar or 1-D
+        array/sparse).  If either operand is 2-D the result is a real 2-D
+        value (numpy broadcasting: ``self`` may be a one-row ``(1, N)`` and
+        ``other`` a one-row ``(1, N)``), returned unchanged -- deciding by
+        the operand dimensionality rather than the result shape avoids
+        wrongly squeezing a genuine ``(1, N)`` result (e.g. ``v < M`` where
+        ``M`` has one row).
+        """
+        if result is NotImplemented:
+            # The inner op did not recognize ``other`` (e.g. a numpy array
+            # or list); pass the sentinel through so Python's operator
+            # protocol can try the reflected op, matching the 2-D path
+            # instead of crashing in ``_squeeze_to_1d``.
+            return result
+        result_is_2d = self.ndim == 2 or (
+            (issparse(other) or isdense(other)) and other.ndim == 2)
+        return result if result_is_2d else self._squeeze_to_1d(result)
+
+    def _run_1d_backing_op(self, other, run):
+        """Run a broadcasting binary op involving a 1-D array on the
+        ``(1, N)`` backing, then finalize the result shape.
+
+        ``run(backing, other)`` performs the actual op on 2-D operands: the
+        receiver is mapped to its ``(1, N)`` backing (a no-op if already
+        2-D) and a 1-D sparse ``other`` is promoted to its own backing so
+        the inner op sees a 2-D operand.  :meth:`_finalize_1d_op` then keeps
+        the result 2-D or squeezes it to 1-D based on the operand
+        dimensionality.  Shared by the 1-D arithmetic/comparison ops so the
+        normalize/finalize rule lives in one place.
+        """
+        o = other._as_2d() if (issparse(other) and other.ndim == 1) else other
+        return self._finalize_1d_op(run(self._as_2d(), o), other)
 
     # Container properties: default to array types.
     # spmatrix overrides these to return matrix types.
@@ -395,14 +477,17 @@ class _spbase:
     def nonzero(self):
         """Indices of the non-zero elements.
 
-        Returns a tuple ``(row, col)`` of cupy.ndarrays (matching
-        :meth:`scipy.sparse._base._spbase.nonzero`).  Explicit zeros are
-        excluded.
+        Returns a tuple of cupy.ndarrays, one per dimension -- ``(row,
+        col)`` for a 2-D array/matrix or ``(col,)`` for a 1-D array --
+        matching :meth:`scipy.sparse._base._spbase.nonzero`.  Explicit
+        zeros are excluded.
         """
         A = self.tocoo()
         if not A.has_canonical_format:
             A.sum_duplicates()
         nz_mask = A.data != 0
+        if A.ndim == 1:
+            return (A.col[nz_mask],)
         return (A.row[nz_mask], A.col[nz_mask])
 
     def maximum(self, other):
@@ -502,7 +587,8 @@ class _spbase:
             cupyx.scipy.sparse.coo_matrix: sparse matrix
 
         """
-        shape = _sputils.check_shape(shape, self.shape)
+        shape = _sputils.check_shape(
+            shape, self.shape, allow_nd=self._allow_nd)
 
         if shape == self.shape:
             return self
@@ -545,16 +631,47 @@ class _spbase:
         # This implementation uses multiplication, though it is not efficient
         # for some matrix types. These should override this function.
 
+        if self.dtype == bool:
+            # cuSPARSE has no bool arithmetic, so bool reduces through a
+            # non-mutating, duplicate-coalesced float64 carrier (densify
+            # semantics: bool duplicates OR together, matching toarray()),
+            # cast to the int64 that numpy gives a bool sum.  Delegating on
+            # the float carrier reuses the ndim/axis/dtype/out handling
+            # below for both 1-D and 2-D.
+            return self._bool_reduction_carrier().sum(
+                axis=axis, dtype=cupy.int64 if dtype is None else dtype,
+                out=out)
+
+        if self.ndim == 1:
+            # The only axis reduces everything to a scalar.  Implicit zeros
+            # contribute nothing, so summing the stored data suffices;
+            # duplicates of a non-bool dtype already sum to the right total,
+            # so no dedup (or in-place mutation) is needed here.  ``out=`` is
+            # forwarded to the reduction (which validates its shape and writes
+            # the result in place) and then returned explicitly: the cuTENSOR
+            # reduction backend returns a fresh 0-D array from a 1-D reduction
+            # even when ``out`` is given, which breaks numpy's out-identity
+            # contract (``a.sum(out=b) is b``).
+            _sputils.validate_axis_1d(axis)
+            result = self.data.sum(dtype=dtype, out=out)
+            return out if out is not None else result
+
         m, n = self.shape
 
-        if self.ndim == 2 and axis == (0, 1):
-            axis = None
+        # scipy accepts tuple axes for 2-D reductions (a length-1 tuple, or
+        # a length-2 tuple spanning both axes -> full reduction), matching
+        # the 1-D path's tuple support.
+        axis = _sputils.collapse_2d_axis(axis)
 
         _sputils.validateaxis(axis)
 
         if axis is None:
-            return self.dot(cupy.ones(n, dtype=self.dtype)).sum(
+            # ``ones``-vector matmul gives a 1-D vector; its final reduction
+            # to a scalar must return ``out`` explicitly (see the 1-D branch:
+            # cuTENSOR returns a fresh 0-D array from a 1-D reduction).
+            result = self.dot(cupy.ones(n, dtype=self.dtype)).sum(
                 dtype=dtype, out=out)
+            return out if out is not None else result
 
         if axis < 0:
             axis += 2
@@ -651,16 +768,17 @@ class spmatrix:
 
     def __init__(self, *args, maxprint=50, **kwargs):
         self.maxprint = maxprint
-        # Cooperative MI: forward to the next __init__ in the MRO.
-        nxt = super().__init__
-        if nxt is not object.__init__:
-            nxt(*args, **kwargs)
-        elif args or kwargs:
-            # Direct instantiation of ``spmatrix(args)`` with no concrete
-            # format subclass; scipy raises here, so do the same.
-            raise TypeError(
-                'cannot instantiate spmatrix directly; use a format '
-                'subclass such as csr_matrix')
+        if type(self) is spmatrix:
+            if args or kwargs:
+                # Direct instantiation of ``spmatrix(args)`` with no
+                # concrete format subclass; scipy raises here, so do the
+                # same.  Bare ``spmatrix()`` stays allowed (as in scipy).
+                raise TypeError(
+                    'cannot instantiate spmatrix directly; use a format '
+                    'subclass such as csr_matrix')
+            return
+        # Cooperative MI: forward to the format class next in the MRO.
+        super().__init__(*args, **kwargs)
 
     # Matrix semantics: * is matmul (overrides _spbase element-wise default)
     def __mul__(self, other):
@@ -683,33 +801,15 @@ class spmatrix:
             power of this matrix.
 
         """
-        m, n = self.shape
-        if m != n:
-            raise TypeError('matrix is not square')
-        if not isinstance(other, numbers.Integral):
-            raise ValueError("exponent must be an integer")
-
-        if _util.isintlike(other):
-            other = int(other)
-            if other < 0:
-                raise ValueError('exponent must be >= 0')
-
-            if other == 0:
-                import cupyx.scipy.sparse
-                return cupyx.scipy.sparse.identity(
-                    m, dtype=self.dtype, format='csr')
-            elif other == 1:
-                return self.copy()
-            else:
-                tmp = self.__pow__(other // 2)
-                if other % 2:
-                    return self * tmp * tmp
-                else:
-                    return tmp * tmp
-        elif _util.isscalarlike(other):
-            raise ValueError('exponent must be an integer')
-        else:
-            return NotImplemented
+        # Matrices keep a matrix identity for ``** 0`` (so ``*`` on the
+        # result stays matmul); the exponentiation-by-squaring recursion is
+        # shared with ``linalg.matrix_power`` to avoid drift.
+        import cupyx.scipy.sparse
+        from cupyx.scipy.sparse.linalg._matfuncs import _pow_by_squaring
+        return _pow_by_squaring(
+            self, other,
+            lambda: cupyx.scipy.sparse.identity(
+                self.shape[0], dtype=self.dtype, format='csr'))
 
     @property
     def _csr_container(self):
