@@ -4,6 +4,7 @@ Functions for acting on a axis of an array.
 from __future__ import annotations
 
 import cupy
+from cupy.lib.stride_tricks import as_strided as _as_strided  # NOQA
 
 
 def axis_slice(a, start=None, stop=None, step=None, axis=-1):
@@ -96,6 +97,12 @@ def axis_reverse(a, axis=-1):
     return axis_slice(a, step=-1, axis=axis)
 
 
+def _pad_width(ndim, n, axis):
+    pad_width = [(0, 0)] * ndim
+    pad_width[axis] = (n, n)
+    return pad_width
+
+
 def odd_ext(x, n, axis=-1):
     """
     Odd extension at the boundaries of an array
@@ -119,19 +126,8 @@ def odd_ext(x, n, axis=-1):
     array([[-1,  0,  1,  2,  3,  4,  5,  6,  7],
            [-4, -1,  0,  1,  4,  9, 16, 23, 28]])
     """
-    if n < 1:
-        return x
-    if n > x.shape[axis] - 1:
-        raise ValueError(("The extension length n (%d) is too big. " +
-                          "It must not exceed x.shape[axis]-1, which is %d.")
-                         % (n, x.shape[axis] - 1))
-    left_end = axis_slice(x, start=0, stop=1, axis=axis)
-    left_ext = axis_slice(x, start=n, stop=0, step=-1, axis=axis)
-    right_end = axis_slice(x, start=-1, axis=axis)
-    right_ext = axis_slice(x, start=-2, stop=-(n + 2), step=-1, axis=axis)
-    ext = cupy.concatenate((2 * left_end - left_ext, x,
-                            2 * right_end - right_ext), axis=axis)
-    return ext
+    pad = _pad_width(x.ndim, n, axis)
+    return cupy.pad(x, pad, 'edge') * 2 - cupy.pad(x, pad, 'reflect')
 
 
 def even_ext(x, n, axis=-1):
@@ -158,16 +154,7 @@ def even_ext(x, n, axis=-1):
            [ 4,  1,  0,  1,  4,  9, 16,  9,  4]])
 
     """
-    if n < 1:
-        return x
-    if n > x.shape[axis] - 1:
-        raise ValueError(("The extension length n (%d) is too big. " +
-                          "It must not exceed x.shape[axis]-1, which is %d.")
-                         % (n, x.shape[axis] - 1))
-    left_ext = axis_slice(x, start=n, stop=0, step=-1, axis=axis)
-    right_ext = axis_slice(x, start=-2, stop=-(n + 2), step=-1, axis=axis)
-    ext = cupy.concatenate((left_ext, x, right_ext), axis=axis)
-    return ext
+    return cupy.pad(x, _pad_width(x.ndim, n, axis), 'reflect')
 
 
 def const_ext(x, n, axis=-1):
@@ -195,17 +182,7 @@ def const_ext(x, n, axis=-1):
     array([[ 1,  1,  1,  2,  3,  4,  5,  5,  5],
            [ 0,  0,  0,  1,  4,  9, 16, 16, 16]])
     """
-    if n < 1:
-        return x
-    left_end = axis_slice(x, start=0, stop=1, axis=axis)
-    ones_shape = [1] * x.ndim
-    ones_shape[axis] = n
-    ones = cupy.ones(ones_shape, dtype=x.dtype)
-    left_ext = ones * left_end
-    right_end = axis_slice(x, start=-1, axis=axis)
-    right_ext = ones * right_end
-    ext = cupy.concatenate((left_ext, x, right_ext), axis=axis)
-    return ext
+    return cupy.pad(x, _pad_width(x.ndim, n, axis), 'edge')
 
 
 def zero_ext(x, n, axis=-1):
@@ -233,42 +210,4 @@ def zero_ext(x, n, axis=-1):
     array([[ 0,  0,  1,  2,  3,  4,  5,  0,  0],
            [ 0,  0,  0,  1,  4,  9, 16,  0,  0]])
     """
-    if n < 1:
-        return x
-    zeros_shape = list(x.shape)
-    zeros_shape[axis] = n
-    zeros = cupy.zeros(zeros_shape, dtype=x.dtype)
-    ext = cupy.concatenate((zeros, x, zeros), axis=axis)
-    return ext
-
-
-def _as_strided(x, shape=None, strides=None):
-    """
-    Create a view into the array with the given shape and strides.
-    .. warning:: This function has to be used with extreme care, see notes.
-
-    Parameters
-    ----------
-    x : ndarray
-        Array to create a new.
-    shape : sequence of int, optional
-        The shape of the new array. Defaults to ``x.shape``.
-    strides : sequence of int, optional
-        The strides of the new array. Defaults to ``x.strides``.
-
-    Returns
-    -------
-    view : ndarray
-
-    Notes
-    -----
-    ``as_strided`` creates a view into the array given the exact strides
-    and shape. This means it manipulates the internal data structure of
-    ndarray and, if done incorrectly, the array elements can point to
-    invalid memory and can corrupt results or crash your program.
-    """
-    shape = x.shape if shape is None else tuple(shape)
-    strides = x.strides if strides is None else tuple(strides)
-
-    return cupy.ndarray(
-        shape=shape, dtype=x.dtype, memptr=x.data, strides=strides)
+    return cupy.pad(x, _pad_width(x.ndim, n, axis), 'constant')
