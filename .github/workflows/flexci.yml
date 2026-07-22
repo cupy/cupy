@@ -15,11 +15,11 @@ on:
   workflow_run:
     workflows: ["CI"]
     types: [completed]
-  # TEMPORARY (remove together with the last allowlist entry below): legacy
-  # post-merge dispatch for bases whose branches do not yet carry the new
-  # push workflow. pull_request_target runs the default branch's copy of
-  # this file (GitHub, 2025-12-08), so this works regardless of the base
-  # branch's contents.
+  # TEMPORARY (inert once every active release base carries the new push
+  # workflow -- delete at leisure after that): legacy post-merge dispatch
+  # for bases whose branches do not yet carry it. pull_request_target runs
+  # the default branch's copy of this file (GitHub, 2025-12-08), so this
+  # works regardless of the base branch's contents.
   pull_request_target:
     types: [closed]
 
@@ -170,34 +170,77 @@ jobs:
         done
 
   # TEMPORARY legacy post-merge dispatch (see the trigger comment above).
-  # Allowlist of bases whose branches do not yet carry the new push
-  # workflow; each entry is removed in the same PR that backports the
-  # workflows to that base, so double-dispatch is impossible by
-  # construction.
+  # Instead of hard-coding which bases still need it, the probe step checks
+  # the merge commit's own tree for the new build+dispatch workflow: the
+  # push run for this merge used exactly those files, so "file present"
+  # means that run dispatches and this job must stay quiet. The handoff is
+  # atomic -- the very backport merge that brings the workflow to a base is
+  # already dispatched by its own push run -- so double dispatch and missed
+  # dispatch are both impossible by construction.
   legacy-dispatch:
-    name: Dispatch FlexCI (legacy, not-yet-backported bases)
+    name: Dispatch FlexCI (legacy, bases without the new push workflow)
     if: |
         github.repository_owner == 'cupy' &&
         github.event_name == 'pull_request_target' &&
         github.event.pull_request.merged &&
         !contains(github.event.pull_request.labels.*.name, 'skip-ci') &&
-        contains(fromJSON('["v14"]'), github.event.pull_request.base.ref)
+        github.event.pull_request.base.ref != github.event.repository.default_branch
     runs-on: ubuntu-22.04
     steps:
+    - name: Check whether this merge dispatches for itself
+      id: probe
+      env:
+        GH_TOKEN: ${{ github.token }}
+        MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+        BASE_REF: ${{ github.event.pull_request.base.ref }}
+      run: |
+        set -euo pipefail
+        # The push run only exists at all for bases matched by ci.yml's
+        # push branch filter (keep this case list in sync with it); for
+        # any other base, carrying the file changes nothing. Unlike bash
+        # globs, Actions branch patterns never cross '/', hence the first
+        # arm.
+        case "${BASE_REF}" in
+          */*)
+            echo "legacy=true" >> "$GITHUB_OUTPUT"
+            exit 0
+            ;;
+          v*|hotfix-*) ;;
+          *)
+            echo "legacy=true" >> "$GITHUB_OUTPUT"
+            exit 0
+            ;;
+        esac
+        # Tolerate exactly HTTP 404 ("no new workflow there" -> dispatch
+        # legacy-style); any other failure must abort visibly rather than
+        # guess in either direction.
+        if out="$(gh api "repos/${GITHUB_REPOSITORY}/contents/.github/workflows/ci.yml?ref=${MERGE_SHA}" 2>&1)"; then
+          echo "legacy=false" >> "$GITHUB_OUTPUT"
+        elif grep -q "HTTP 404" <<< "${out}"; then
+          echo "legacy=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "${out}" >&2
+          exit 1
+        fi
+
     - name: Checkout
+      if: steps.probe.outputs.legacy == 'true'
       uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
       with:
         ref: ${{ github.event.pull_request.merge_commit_sha }}
 
     - name: Setup Python
+      if: steps.probe.outputs.legacy == 'true'
       uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
       with:
         python-version: '3.13'
 
     - name: Setup Environment
+      if: steps.probe.outputs.legacy == 'true'
       run: pip install pygithub
 
     - name: Dispatch
+      if: steps.probe.outputs.legacy == 'true'
       env:
         GITHUB_TOKEN: ${{ github.token }}
         FLEXCI_WEBHOOK_SECRET: ${{ secrets.FLEXCI_WEBHOOK_SECRET }}
