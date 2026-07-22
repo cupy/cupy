@@ -261,8 +261,8 @@ class TestEigsh:
         if self.use_linear_operator or self.which != 'LA':
             pytest.skip()
         n, k = 60, 6
-        evals = cupy.concatenate([cupy.ones(3, dtype='d'),
-                                   cupy.zeros(n - 3, dtype='d')])
+        evals = cupy.concatenate(
+            [cupy.ones(3, dtype='d'), cupy.zeros(n - 3, dtype='d')])
         q, _ = cupy.linalg.qr(
             testing.shaped_random((n, n), cupy, dtype='d'))
         a = (q * evals) @ q.T
