@@ -7,48 +7,73 @@ from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda cimport stream as stream_module
 
 ###############################################################################
+# Imports
+###############################################################################
+
+IF CUPY_USE_CUDA_PYTHON:
+    from nvmath.bindings.cycurand cimport (
+        cudaStream_t as Stream,
+        curandCreateGenerator,
+        curandDestroyGenerator,
+        curandGetVersion,
+        curandSetStream,
+        curandSetPseudoRandomGeneratorSeed,
+        curandSetGeneratorOffset,
+        curandSetGeneratorOrdering,
+        curandGenerate,
+        curandGenerateLongLong,
+        curandGenerateUniform,
+        curandGenerateUniformDouble,
+        curandGenerateNormal,
+        curandGenerateNormalDouble,
+        curandGenerateLogNormal,
+        curandGenerateLogNormalDouble,
+        curandGeneratePoisson,
+    )
+###############################################################################
 # Extern
 ###############################################################################
 
-cdef extern from '../../cupy_rand.h' nogil:
-    ctypedef void* Stream 'cudaStream_t'
+ELSE:
+    cdef extern from '../../cupy_rand.h' nogil:
+        ctypedef void* Stream 'cudaStream_t'
 
-    # Generator
-    int curandCreateGenerator(Generator* generator, int rng_type)
-    int curandDestroyGenerator(Generator generator)
-    int curandGetVersion(int* version)
+        # Generator
+        int curandCreateGenerator(Generator* generator, int rng_type)
+        int curandDestroyGenerator(Generator generator)
+        int curandGetVersion(int* version)
 
-    # Stream
-    int curandSetStream(Generator generator, Stream stream)
-    int curandSetPseudoRandomGeneratorSeed(
-        Generator generator, unsigned long long seed)
-    int curandSetGeneratorOffset(
-        Generator generator, unsigned long long offset)
-    int curandSetGeneratorOrdering(Generator generator, Ordering order)
+        # Stream
+        int curandSetStream(Generator generator, Stream stream)
+        int curandSetPseudoRandomGeneratorSeed(
+            Generator generator, unsigned long long seed)
+        int curandSetGeneratorOffset(
+            Generator generator, unsigned long long offset)
+        int curandSetGeneratorOrdering(Generator generator, Ordering order)
 
-    # Generation functions
-    int curandGenerate(
-        Generator generator, unsigned int* outputPtr, size_t num)
-    int curandGenerateLongLong(
-        Generator generator, unsigned long long* outputPtr, size_t num)
-    int curandGenerateUniform(
-        Generator generator, float* outputPtr, size_t num)
-    int curandGenerateUniformDouble(
-        Generator generator, double* outputPtr, size_t num)
-    int curandGenerateNormal(
-        Generator generator, float* outputPtr, size_t num,
-        float mean, float stddev)
-    int curandGenerateNormalDouble(
-        Generator generator, double* outputPtr, size_t n,
-        double mean, double stddev)
-    int curandGenerateLogNormal(
-        Generator generator, float* outputPtr, size_t n,
-        float mean, float stddev)
-    int curandGenerateLogNormalDouble(
-        Generator generator, double* outputPtr, size_t n,
-        double mean, double stddev)
-    int curandGeneratePoisson(
-        Generator generator, unsigned int* outputPtr, size_t n, double lam)
+        # Generation functions
+        int curandGenerate(
+            Generator generator, unsigned int* outputPtr, size_t num)
+        int curandGenerateLongLong(
+            Generator generator, unsigned long long* outputPtr, size_t num)
+        int curandGenerateUniform(
+            Generator generator, float* outputPtr, size_t num)
+        int curandGenerateUniformDouble(
+            Generator generator, double* outputPtr, size_t num)
+        int curandGenerateNormal(
+            Generator generator, float* outputPtr, size_t num,
+            float mean, float stddev)
+        int curandGenerateNormalDouble(
+            Generator generator, double* outputPtr, size_t n,
+            double mean, double stddev)
+        int curandGenerateLogNormal(
+            Generator generator, float* outputPtr, size_t n,
+            float mean, float stddev)
+        int curandGenerateLogNormalDouble(
+            Generator generator, double* outputPtr, size_t n,
+            double mean, double stddev)
+        int curandGeneratePoisson(
+            Generator generator, unsigned int* outputPtr, size_t n, double lam)
 
 
 ###############################################################################
