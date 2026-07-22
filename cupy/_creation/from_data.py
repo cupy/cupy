@@ -4,7 +4,7 @@ import numpy
 
 from cupy import _core
 from cupy._core import fusion
-from cupy._creation._device import _device_guard
+from cupy._creation._device import _get_device_id, _on_device
 
 
 def array(obj, dtype=None, copy=True, order='K', subok=False, ndmin=0, *,
@@ -56,8 +56,11 @@ def array(obj, dtype=None, copy=True, order='K', subok=False, ndmin=0, *,
     .. seealso:: :func:`numpy.array`
 
     """
-    with _device_guard(device):
+    if device is None:
         return _core.array(obj, dtype, copy, order, subok, ndmin, blocking)
+    return _on_device(
+        _get_device_id(device),
+        lambda: _core.array(obj, dtype, copy, order, subok, ndmin, blocking))
 
 
 def asarray(a, dtype=None, order=None, *, copy=None, blocking=False,
@@ -98,8 +101,11 @@ def asarray(a, dtype=None, order=None, *, copy=None, blocking=False,
     .. seealso:: :func:`numpy.asarray`
 
     """
-    with _device_guard(device):
+    if device is None:
         return _core.array(a, dtype, copy, order, blocking=blocking)
+    return _on_device(
+        _get_device_id(device),
+        lambda: _core.array(a, dtype, copy, order, blocking=blocking))
 
 
 def asanyarray(a, dtype=None, order=None, *, copy=None, blocking=False,
@@ -114,8 +120,11 @@ def asanyarray(a, dtype=None, order=None, *, copy=None, blocking=False,
     .. seealso:: :func:`cupy.asarray`, :func:`numpy.asanyarray`
 
     """
-    with _device_guard(device):
+    if device is None:
         return _core.array(a, dtype, copy, order, blocking=blocking)
+    return _on_device(
+        _get_device_id(device),
+        lambda: _core.array(a, dtype, copy, order, blocking=blocking))
 
 
 def ascontiguousarray(a, dtype=None):

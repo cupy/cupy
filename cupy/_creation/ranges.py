@@ -6,7 +6,7 @@ import numpy
 
 import cupy
 from cupy import _core
-from cupy._creation._device import _device_guard
+from cupy._creation._device import _get_device_id, _on_device
 from cupy._util import bf16_loop
 
 
@@ -48,7 +48,7 @@ def arange(start, stop=None, step=1, dtype=None, *, device=None):
 
     size = int(numpy.ceil((stop - start) / step))
 
-    with _device_guard(device):
+    def _make():
         if size <= 0:
             return cupy.empty((0,), dtype=dtype)
 
@@ -67,6 +67,10 @@ def arange(start, stop=None, step=1, dtype=None, *, device=None):
         typ = numpy.dtype(dtype).type
         _arange_ufunc(typ(start), typ(step), ret, dtype=dtype)
         return ret
+
+    if device is None:
+        return _make()
+    return _on_device(_get_device_id(device), _make)
 
 
 def _linspace_scalar(start, stop, num=50, endpoint=True, retstep=False,
@@ -165,7 +169,7 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None,
         raise ValueError('linspace with num<0 is not supported')
     div = (num - 1) if endpoint else num
 
-    with _device_guard(device):
+    def _make(start=start, stop=stop, dtype=dtype):
         scalar_start = cupy.isscalar(start)
         scalar_stop = cupy.isscalar(stop)
         if scalar_start and scalar_stop:
@@ -228,6 +232,10 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None,
             return ret, step
         else:
             return ret
+
+    if device is None:
+        return _make()
+    return _on_device(_get_device_id(device), _make)
 
 
 def logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None,

@@ -4,14 +4,7 @@ from cupy.cuda import Device, runtime
 
 
 def _get_device_id(device):
-    """Normalizes a ``device=`` argument to an integer device id.
-
-    ``None`` maps to ``-1`` (the current device); an ``int`` or
-    :class:`cupy.cuda.Device` gives the device id. Anything else raises
-    :class:`TypeError`.
-    """
-    if device is None:
-        return -1
+    """Normalizes a non-``None`` ``device=`` argument to an integer id."""
     if isinstance(device, Device):
         return device.id
     # bool is an int subclass; reject it so True/False aren't devices 1/0.
@@ -22,36 +15,17 @@ def _get_device_id(device):
         f'{type(device).__name__!r}')
 
 
-class _DeviceGuard:
-    """Lightweight scoped device switch used by array creation functions.
+def _on_device(device_id, make):
+    """Runs ``make()`` with ``device_id`` current, then restores the device.
 
-    Sets the current device to ``device_id`` on entry (skipping the switch when
-    it already matches) and restores it on exit. A negative ``device_id`` is a
-    no-op.
+    Calls cudart directly and keeps no state, following CuPy's convention of
+    not using a context manager for internal device switches.
     """
-
-    __slots__ = ('_device_id', '_prev')
-
-    def __init__(self, device_id):
-        self._device_id = device_id
-        self._prev = -1
-
-    def __enter__(self):
-        dev = self._device_id
-        if dev < 0:
-            return self
-        prev = runtime.getDevice()
-        self._prev = prev
-        if dev != prev:
-            runtime.setDevice(dev)
-        return self
-
-    def __exit__(self, *exc):
-        prev = self._prev
-        if prev >= 0 and prev != self._device_id:
+    prev = runtime.getDevice()
+    if device_id != prev:
+        runtime.setDevice(device_id)
+    try:
+        return make()
+    finally:
+        if device_id != prev:
             runtime.setDevice(prev)
-
-
-def _device_guard(device):
-    """Returns a :class:`_DeviceGuard` for a ``device=`` argument."""
-    return _DeviceGuard(_get_device_id(device))

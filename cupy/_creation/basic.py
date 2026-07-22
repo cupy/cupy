@@ -7,7 +7,7 @@ import numpy
 
 import cupy
 from cupy._core.internal import _get_strides_for_order_K, _update_order_char
-from cupy._creation._device import _device_guard
+from cupy._creation._device import _get_device_id, _on_device
 from cupy.typing._types import (
     _OrderKACF, _OrderCF, _ShapeLike, DTypeLike, NDArray,
 )
@@ -36,8 +36,10 @@ def empty(
     .. seealso:: :func:`numpy.empty`
 
     """
-    with _device_guard(device):
+    if device is None:
         return cupy.ndarray(shape, dtype, order=order)
+    return _on_device(_get_device_id(device),
+                      lambda: cupy.ndarray(shape, dtype, order=order))
 
 
 def _new_like_order_and_strides(
@@ -112,11 +114,15 @@ def empty_like(
     if dtype is None:
         dtype = prototype.dtype
 
-    with _device_guard(device):
+    def _make(order=order, shape=shape):
         order, strides, memptr = _new_like_order_and_strides(
             prototype, dtype, order, shape)
         shape = shape if shape else prototype.shape
         return cupy.ndarray(shape, dtype, memptr, strides, order)
+
+    if device is None:
+        return _make()
+    return _on_device(_get_device_id(device), _make)
 
 
 def eye(
@@ -151,12 +157,17 @@ def eye(
     """
     if M is None:
         M = N
-    with _device_guard(device):
+
+    def _make():
         ret = zeros((N, M), dtype=dtype, order=order)
         if k <= -N or k >= M:
             return ret
         ret.diagonal(k).fill(1)
-    return ret
+        return ret
+
+    if device is None:
+        return _make()
+    return _on_device(_get_device_id(device), _make)
 
 
 def identity(
@@ -205,10 +216,14 @@ def ones(
     .. seealso:: :func:`numpy.ones`
 
     """
-    with _device_guard(device):
+    def _make():
         a = cupy.ndarray(shape, dtype, order=order)
         a.fill(1)
-    return a
+        return a
+
+    if device is None:
+        return _make()
+    return _on_device(_get_device_id(device), _make)
 
 
 def ones_like(
@@ -250,13 +265,17 @@ def ones_like(
     if dtype is None:
         dtype = a.dtype
 
-    with _device_guard(device):
+    def _make(a=a, order=order, shape=shape):
         order, strides, memptr = _new_like_order_and_strides(a, dtype, order,
                                                              shape)
         shape = shape if shape else a.shape
         a = cupy.ndarray(shape, dtype, memptr, strides, order)
         a.fill(1)
-    return a
+        return a
+
+    if device is None:
+        return _make()
+    return _on_device(_get_device_id(device), _make)
 
 
 def zeros(
@@ -282,10 +301,14 @@ def zeros(
     .. seealso:: :func:`numpy.zeros`
 
     """
-    with _device_guard(device):
+    def _make():
         a = cupy.ndarray(shape, dtype, order=order)
         a.data.memset_async(0, a.nbytes)
-    return a
+        return a
+
+    if device is None:
+        return _make()
+    return _on_device(_get_device_id(device), _make)
 
 
 def zeros_like(
@@ -327,13 +350,17 @@ def zeros_like(
     if dtype is None:
         dtype = a.dtype
 
-    with _device_guard(device):
+    def _make(a=a, order=order, shape=shape):
         order, strides, memptr = _new_like_order_and_strides(a, dtype, order,
                                                              shape)
         shape = shape if shape else a.shape
         a = cupy.ndarray(shape, dtype, memptr, strides, order)
         a.data.memset_async(0, a.nbytes)
-    return a
+        return a
+
+    if device is None:
+        return _make()
+    return _on_device(_get_device_id(device), _make)
 
 
 def full(
@@ -368,10 +395,14 @@ def full(
             dtype = fill_value.dtype
         else:
             dtype = numpy.array(fill_value).dtype
-    with _device_guard(device):
+    def _make():
         a = cupy.ndarray(shape, dtype, order=order)
         cupy.copyto(a, fill_value, casting='unsafe')
-    return a
+        return a
+
+    if device is None:
+        return _make()
+    return _on_device(_get_device_id(device), _make)
 
 
 def full_like(
@@ -415,13 +446,17 @@ def full_like(
     if dtype is None:
         dtype = a.dtype
 
-    with _device_guard(device):
+    def _make(a=a, order=order, shape=shape):
         order, strides, memptr = _new_like_order_and_strides(a, dtype, order,
                                                              shape)
         shape = shape if shape else a.shape
         a = cupy.ndarray(shape, dtype, memptr, strides, order)
         cupy.copyto(a, fill_value, casting='unsafe')
-    return a
+        return a
+
+    if device is None:
+        return _make()
+    return _on_device(_get_device_id(device), _make)
 
 
 # Array API compatible array.astype wrapper
