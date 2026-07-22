@@ -130,16 +130,22 @@ jobs:
 
     - name: Checkout (dispatcher, trusted)
       if: steps.request.outputs.found == 'true'
-      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
     - name: Checkout (Untrusted Pull-Request Code, data only)
       if: steps.request.outputs.found == 'true'
-      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
         # Pinned to the tested revision, so the config.tags.json consumed
         # below matches the code that was built and vouched.
         ref: ${{ github.event.workflow_run.head_sha }}
         path: _pr_untrusted
+        # Deliberate security decision (checkout v7, and the 2026-07-20
+        # backports to older lines, refuses fork-PR code under workflow_run
+        # by default): this tree is data only -- the dispatcher executes
+        # from the trusted checkout above and merely json-loads
+        # config.tags.json from here.
+        allow-unsafe-pr-checkout: true
 
     - name: Setup Python
       if: steps.request.outputs.found == 'true'
@@ -225,9 +231,14 @@ jobs:
 
     - name: Checkout
       if: steps.probe.outputs.legacy == 'true'
-      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
         ref: ${{ github.event.pull_request.merge_commit_sha }}
+        # Deliberate security decision (checkout v7 refuses fork-PR code
+        # under pull_request_target by default, merge_commit_sha included):
+        # this job only runs for MERGED PRs, so the commit is reviewed code
+        # already landed on the base branch.
+        allow-unsafe-pr-checkout: true
 
     - name: Setup Python
       if: steps.probe.outputs.legacy == 'true'
