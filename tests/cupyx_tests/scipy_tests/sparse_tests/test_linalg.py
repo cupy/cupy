@@ -214,6 +214,64 @@ class TestEigsh:
         ref = cupy.sort(cupy.linalg.eigvalsh(a))[-k:]
         cupy.testing.assert_allclose(cupy.sort(w), ref, rtol=1e-6, atol=1e-6)
 
+    def test_complex_degenerate(self):
+        # Exercises the COMPLEX lucky-breakdown restart (_restart_ortho, whose
+        # projection conjugates V): a complex Hermitian matrix with repeated
+        # eigenvalues exhausts the Krylov space, forcing restarts on complex
+        # data. A wrong conjugation there gives non-orthogonal restarts and
+        # ghost / NaN Ritz values.
+        if self.use_linear_operator or self.which != 'LA':
+            pytest.skip()
+        n, k = 60, 6
+        for dtype in ('F', 'D'):
+            rdt = numpy.dtype(dtype).char.lower()
+            evals = cupy.concatenate([5.0 * cupy.ones(4, dtype=rdt),
+                                      2.0 * cupy.ones(4, dtype=rdt),
+                                      cupy.zeros(n - 8, dtype=rdt)])
+            q, _ = cupy.linalg.qr(
+                testing.shaped_random((n, n), cupy, dtype=dtype, scale=1))
+            a = (q * evals) @ q.conj().T                 # complex Hermitian
+            w = sparse.linalg.eigsh(sparse.csr_matrix(a), k=k, which='LA',
+                                    return_eigenvectors=False)
+            assert not bool(cupy.isnan(w).any())
+            ref = cupy.sort(cupy.linalg.eigvalsh(a))[-k:]
+            cupy.testing.assert_allclose(
+                cupy.sort(w), ref, rtol=1e-4, atol=1e-4)
+
+    def test_zero_matrix(self):
+        # All-zero spectrum: anorm stays 0 so the relative breakdown threshold
+        # collapses to 0; the non-strict (<=) guard must still catch it instead
+        # of normalizing by ~0 and returning NaN. Expect k zeros.
+        if self.use_linear_operator:
+            pytest.skip()
+        idx = cupy.arange(self.n)
+        a = sparse.csr_matrix(                           # n explicit zeros
+            (cupy.zeros(self.n, dtype='d'), (idx, idx)),
+            shape=(self.n, self.n))
+        w = sparse.linalg.eigsh(a, k=self.k, which=self.which,
+                                return_eigenvectors=False)
+        assert not bool(cupy.isnan(w).any())
+        cupy.testing.assert_allclose(
+            cupy.sort(w), cupy.zeros(self.k, dtype='d'), atol=1e-8)
+
+    def test_multiple_breakdowns(self):
+        # A low-rank, high-multiplicity spectrum forces SEVERAL lucky
+        # breakdowns/restarts in one run; the tridiagonal must stay decoupled
+        # and recover the correct multiset (no ghosts, no NaN).
+        if self.use_linear_operator or self.which != 'LA':
+            pytest.skip()
+        n, k = 60, 6
+        evals = cupy.concatenate([cupy.ones(3, dtype='d'),
+                                   cupy.zeros(n - 3, dtype='d')])
+        q, _ = cupy.linalg.qr(
+            testing.shaped_random((n, n), cupy, dtype='d'))
+        a = (q * evals) @ q.T
+        w = sparse.linalg.eigsh(sparse.csr_matrix(a), k=k, which='LA',
+                                return_eigenvectors=False)
+        assert not bool(cupy.isnan(w).any())
+        ref = cupy.sort(cupy.linalg.eigvalsh(a))[-k:]    # [0,0,0,1,1,1]
+        cupy.testing.assert_allclose(cupy.sort(w), ref, atol=1e-6)
+
     @pytest.mark.xfail(
         reason='eigsh works wrong (#5001)',
         raises=AssertionError,

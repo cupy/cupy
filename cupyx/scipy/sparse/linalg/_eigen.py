@@ -313,10 +313,13 @@ def _lanczos_fast(A, n, ncv):
             # (gh-6446, gh-7495, gh-8009, gh-7157). Instead decouple the
             # tridiagonal (beta[i] = 0) and restart V[i+1] with a fresh unit
             # vector orthogonal to V[:i+1] so the iteration keeps exploring.
+            # The test is non-strict (<=) so an all-zero spectrum -- where anorm
+            # stays 0 and the relative threshold collapses to 0 -- is still
+            # caught instead of dividing by ~0.
             beta_i = float(beta[i])
             anorm = max(anorm, float(abs(alpha[i])) + beta_i + prev_beta)
             prev_beta = beta_i
-            if beta_i < break_rtol * anorm:
+            if beta_i <= break_rtol * anorm:
                 beta[i] = 0
                 v[...] = _restart_ortho(V, i + 1, n, u.dtype)
                 V[i + 1] = v
@@ -337,11 +340,19 @@ _kernel_normalize = cupy.ElementwiseKernel(
 def _restart_ortho(V, m, n, dtype):
     # Fresh unit vector orthogonal to V[:m], used to restart the Lanczos
     # recurrence after a lucky breakdown (two classical Gram-Schmidt passes).
+    # The projection conjugates V (Vm.conj()) so it is correct for complex
+    # Hermitian A; the reconstruction (Vm.T) is intentionally not conjugated.
     w = cupy.random.random((n,)).astype(dtype)
     Vm = V[:m]
     for _ in range(2):
         w = w - Vm.T @ (Vm.conj() @ w)
-    return w / cupy.linalg.norm(w)
+    nrm = cupy.linalg.norm(w)
+    # If V[:m] already spans the space (m >= n, e.g. an all-zero spectrum that
+    # keeps breaking down until the Krylov basis is full), no orthogonal
+    # direction remains -- return zeros so the tridiagonal stays decoupled
+    # rather than normalizing by ~0 and producing NaNs.
+    tol = numpy.sqrt(numpy.finfo(dtype).eps)
+    return w / nrm if float(nrm) > tol else cupy.zeros_like(w)
 
 
 def _eigsh_solve_ritz(alpha, beta, beta_k, k, which):
