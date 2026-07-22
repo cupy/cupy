@@ -395,6 +395,7 @@ def full(
             dtype = fill_value.dtype
         else:
             dtype = numpy.array(fill_value).dtype
+
     def _make():
         a = cupy.ndarray(shape, dtype, order=order)
         cupy.copyto(a, fill_value, casting='unsafe')
