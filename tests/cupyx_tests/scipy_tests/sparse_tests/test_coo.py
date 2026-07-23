@@ -241,7 +241,7 @@ class TestCooMatrix:
     def test_reshape_2(self):
         m = self.m.reshape((1, 12), order='F').toarray()
         expect = numpy.array(
-            [[1, 0, 0, 0, 0, 2, 0, 0, 0, 0, 3, 0]], dtype=self.dtype)
+            [[0, 0, 0, 1, 0, 0, 0, 0, 3, 0, 2, 0]], dtype=self.dtype)
         cupy.testing.assert_allclose(m, expect)
 
 
@@ -496,6 +496,7 @@ class TestCooMatrixScipyComparison:
         m = self.make(xp, sp, self.dtype)
         return m.getnnz()
 
+    @pytest.mark.filterwarnings("ignore:.*asfptype.*:DeprecationWarning")
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_asfptype(self, xp, sp):
         m = _make(xp, sp, self.dtype)

@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import unittest
-
 import numpy
 import pytest
 
@@ -9,14 +7,14 @@ from cupy import testing
 from cupy_tests.core_tests.fusion_tests import fusion_utils
 
 
-class FusionUnaryUfuncTestBase(unittest.TestCase):
+class FusionUnaryUfuncTestBase:
 
     def generate_inputs(self, xp, dtype):
         x = testing.shaped_random((3, 4), xp, dtype, scale=10, seed=0)
         return (x,), {}
 
 
-class FusionBinaryUfuncTestBase(unittest.TestCase):
+class FusionBinaryUfuncTestBase:
 
     def generate_inputs(self, xp, dtype1, dtype2):
         x = testing.shaped_random((3, 4), xp, dtype1, scale=10, seed=0)
@@ -24,22 +22,23 @@ class FusionBinaryUfuncTestBase(unittest.TestCase):
         return (x, y), {}
 
 
-@testing.parameterize(*testing.product({
-    'func': [
+@pytest.mark.parametrize(
+    'func',
+    [
         'bitwise_and', 'bitwise_or', 'bitwise_xor', 'left_shift', 'right_shift'
     ]
-}))
+)
 class TestFusionBitwiseBinary(FusionBinaryUfuncTestBase):
 
     @testing.for_int_dtypes_combination(names=('dtype1', 'dtype2'))
     @fusion_utils.check_fusion()
-    def test_bitwise(self, xp, dtype1, dtype2):
+    def test_bitwise(self, xp, dtype1, dtype2, func):
         def impl(x, y):
             if ((x.dtype == 'uint64' and y.dtype.kind == 'i')
                     or (y.dtype == 'uint64' and x.dtype.kind == 'i')):
                 # Skip TypeError case.
                 return
-            return getattr(xp, self.func)(x, y)
+            return getattr(xp, func)(x, y)
         return impl
 
 
@@ -51,20 +50,21 @@ class TestFusionBitwiseUnary(FusionUnaryUfuncTestBase):
         return lambda x: xp.invert(x)
 
 
-@testing.parameterize(*testing.product({
-    'func': [
+@pytest.mark.parametrize(
+    "func",
+    [
         'greater', 'greater_equal', 'less', 'less_equal', 'equal', 'not_equal',
         'logical_and', 'logical_or', 'logical_xor',
         'maximum', 'minimum', 'fmax', 'fmin',
     ]
-}))
+)
 class TestFusionComparisonBinary(FusionBinaryUfuncTestBase):
 
     @testing.for_all_dtypes_combination(
         no_complex=True, names=('dtype1', 'dtype2'))
     @fusion_utils.check_fusion()
-    def test_comparison(self, xp, dtype1, dtype2):
-        return lambda x, y: getattr(xp, self.func)(x, y)
+    def test_comparison(self, xp, dtype1, dtype2, func):
+        return lambda x, y: getattr(xp, func)(x, y)
 
 
 class TestFusionComparisonUnary(FusionUnaryUfuncTestBase):
@@ -107,13 +107,14 @@ class TestFusionArrayContents(FusionUnaryUfuncTestBase):
         return lambda x: xp.isnan(x)
 
 
-@testing.parameterize(*testing.product({
-    'func': [
+@pytest.mark.parametrize(
+    "func",
+    [
         'sin', 'cos', 'tan', 'arcsin', 'arccos', 'arctan',
         'sinh', 'cosh', 'tanh', 'arcsinh', 'arccosh', 'arctanh',
-    ],
-}))
-class TestFusionTrigonometricUnary(unittest.TestCase):
+    ]
+)
+class TestFusionTrigonometricUnary:
 
     def generate_inputs(self, xp, dtype):
         if numpy.dtype(dtype).kind not in ('f', 'c'):
@@ -124,52 +125,54 @@ class TestFusionTrigonometricUnary(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @fusion_utils.check_fusion()
-    def test_trigonometric(self, xp, dtype):
+    def test_trigonometric(self, xp, dtype, func):
         def impl(x):
             with numpy.errstate(divide='ignore', invalid='ignore'):
-                return getattr(xp, self.func)(x)
+                return getattr(xp, func)(x)
         return impl
 
 
-@testing.parameterize(*testing.product({
-    'func': ['arctan2', 'hypot']
-}))
+@pytest.mark.parametrize(
+    "func", ['arctan2', 'hypot']
+)
 class TestFusionTrigonometricBinary(FusionBinaryUfuncTestBase):
 
     @testing.for_all_dtypes_combination(
         no_complex=True, names=('dtype1', 'dtype2'))
     @fusion_utils.check_fusion()
-    def test_trigonometric(self, xp, dtype1, dtype2):
-        return lambda x, y: getattr(xp, self.func)(x, y)
+    def test_trigonometric(self, xp, dtype1, dtype2, func):
+        return lambda x, y: getattr(xp, func)(x, y)
 
 
-@testing.parameterize(*testing.product({
-    'func': ['deg2rad', 'rad2deg', 'degrees', 'radians']
-}))
+@pytest.mark.parametrize(
+    "func", ['deg2rad', 'rad2deg', 'degrees', 'radians']
+)
 class TestFusionDegRad(FusionUnaryUfuncTestBase):
 
     @testing.for_all_dtypes(no_complex=True)
     @fusion_utils.check_fusion()
-    def test_trigonometric(self, xp, dtype):
-        return lambda x: getattr(xp, self.func)(x)
+    def test_trigonometric(self, xp, dtype, func):
+        return lambda x: getattr(xp, func)(x)
 
 
-@testing.parameterize(*testing.product({
-    'func': ['around', 'round', 'rint', 'floor', 'ceil', 'trunc',
-             'fix']
-}))
+@pytest.mark.parametrize(
+    "func",
+    [
+        'around', 'round', 'rint', 'floor', 'ceil', 'trunc', 'fix'
+    ]
+)
 class TestFusionRounding(FusionUnaryUfuncTestBase):
 
     @testing.for_all_dtypes(no_complex=True)
     @fusion_utils.check_fusion()
-    def test_rounding(self, xp, dtype):
-        return lambda x: getattr(xp, self.func)(x)
+    def test_rounding(self, xp, dtype, func):
+        return lambda x: getattr(xp, func)(x)
 
 
-@testing.parameterize(*testing.product({
-    'func': ['exp', 'expm1', 'exp2', 'log', 'log10', 'log2', 'log1p']
-}))
-class TestFusionExpLogUnary(unittest.TestCase):
+@pytest.mark.parametrize(
+    "func", ['exp', 'expm1', 'exp2', 'log', 'log10', 'log2', 'log1p']
+)
+class TestFusionExpLogUnary:
 
     def generate_inputs(self, xp, dtype):
         x = testing.shaped_random((3, 4), xp, dtype, scale=10, seed=0) + 1
@@ -177,20 +180,20 @@ class TestFusionExpLogUnary(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @fusion_utils.check_fusion()
-    def test_explog(self, xp, dtype):
-        return lambda x: getattr(xp, self.func)(x)
+    def test_explog(self, xp, dtype, func):
+        return lambda x: getattr(xp, func)(x)
 
 
-@testing.parameterize(*testing.product({
-    'func': ['logaddexp', 'logaddexp2']
-}))
+@pytest.mark.parametrize(
+    "func", ['logaddexp', 'logaddexp2']
+)
 class TestFusionExpLogBinary(FusionBinaryUfuncTestBase):
 
     @testing.for_all_dtypes_combination(
         no_complex=True, names=('dtype1', 'dtype2'))
     @fusion_utils.check_fusion()
-    def test_explog(self, xp, dtype1, dtype2):
-        return lambda x, y: getattr(xp, self.func)(x, y)
+    def test_explog(self, xp, dtype1, dtype2, func):
+        return lambda x, y: getattr(xp, func)(x, y)
 
 
 class TestFusionLdexp(FusionBinaryUfuncTestBase):
@@ -202,32 +205,32 @@ class TestFusionLdexp(FusionBinaryUfuncTestBase):
         return lambda x, y: xp.ldexp(x, y)
 
 
-@testing.parameterize(*testing.product({
-    'func': ['signbit', 'frexp']
-}))
+@pytest.mark.parametrize(
+    "func", ['signbit', 'frexp']
+)
 class TestFusionFloatingUnary(FusionUnaryUfuncTestBase):
 
     @testing.for_all_dtypes(no_complex=True)
     @fusion_utils.check_fusion()
-    def test_floating_point_routine(self, xp, dtype):
-        return lambda x: getattr(xp, self.func)(x)
+    def test_floating_point_routine(self, xp, dtype, func):
+        return lambda x: getattr(xp, func)(x)
 
 
-@testing.parameterize(*testing.product({
-    'func': ['copysign', 'nextafter']
-}))
+@pytest.mark.parametrize(
+    "func", ['copysign', 'nextafter']
+)
 class TestFusionFloatingBinary(FusionBinaryUfuncTestBase):
 
     @testing.for_all_dtypes_combination(
         names=('dtype1', 'dtype2'), no_complex=True)
     @fusion_utils.check_fusion()
-    def test_floating_point_routine(self, xp, dtype1, dtype2):
-        return lambda x, y: getattr(xp, self.func)(x, y)
+    def test_floating_point_routine(self, xp, dtype1, dtype2, func):
+        return lambda x, y: getattr(xp, func)(x, y)
 
 
-@testing.parameterize(*testing.product({
-    'func': ['reciprocal', 'negative', 'angle', 'conj', 'real', 'imag']
-}))
+@pytest.mark.parametrize(
+    "func", ['reciprocal', 'negative', 'angle', 'conj', 'real', 'imag']
+)
 class TestArithmeticUnary(FusionUnaryUfuncTestBase):
 
     def generate_inputs(self, xp, dtype):
@@ -237,8 +240,8 @@ class TestArithmeticUnary(FusionUnaryUfuncTestBase):
 
     @testing.for_all_dtypes(no_bool=True)
     @fusion_utils.check_fusion()
-    def test_arithmetic(self, xp, dtype):
-        return lambda x: getattr(xp, self.func)(x)
+    def test_arithmetic(self, xp, dtype, func):
+        return lambda x: getattr(xp, func)(x)
 
 
 class TestModf(FusionUnaryUfuncTestBase):
@@ -253,9 +256,9 @@ class TestModf(FusionUnaryUfuncTestBase):
         return lambda x: xp.modf(x)
 
 
-@testing.parameterize(*testing.product({
-    'func': ['add', 'subtract', 'multiply', 'power']
-}))
+@pytest.mark.parametrize(
+    "func", ['add', 'subtract', 'multiply', 'power']
+)
 class TestArithmeticBinary(FusionBinaryUfuncTestBase):
 
     def generate_inputs(self, xp, dtype1, dtype2):
@@ -266,15 +269,15 @@ class TestArithmeticBinary(FusionBinaryUfuncTestBase):
     @testing.for_all_dtypes_combination(
         names=('dtype1', 'dtype2'), no_complex=True, no_bool=True)
     @fusion_utils.check_fusion()
-    def test_arithmetic(self, xp, dtype1, dtype2):
+    def test_arithmetic(self, xp, dtype1, dtype2, func):
         # TODO(unno): boolean subtract causes DeprecationWarning in numpy>=1.13
-        return lambda x, y: getattr(xp, self.func)(x, y)
+        return lambda x, y: getattr(xp, func)(x, y)
 
 
-@testing.parameterize(*testing.product({
-    'func': ['divide', 'true_divide', 'floor_divide', 'fmod', 'remainder']
-}))
-class TestDivide(unittest.TestCase):
+@pytest.mark.parametrize(
+    "func", ['divide', 'true_divide', 'floor_divide', 'fmod', 'remainder']
+)
+class TestDivide:
 
     def generate_inputs(self, xp, dtype1, dtype2):
         x = testing.shaped_random((3, 4), xp, dtype1, scale=10, seed=0)
@@ -285,11 +288,11 @@ class TestDivide(unittest.TestCase):
     @testing.for_all_dtypes_combination(
         names=('dtype1', 'dtype2'), no_complex=True)
     @fusion_utils.check_fusion()
-    def test_divide(self, xp, dtype1, dtype2):
-        return lambda x, y: getattr(xp, self.func)(x, y)
+    def test_divide(self, xp, dtype1, dtype2, func):
+        return lambda x, y: getattr(xp, func)(x, y)
 
 
-class TestDivmod(unittest.TestCase):
+class TestDivmod:
 
     def generate_inputs(self, xp, dtype1, dtype2):
         x = testing.shaped_random((3, 4), xp, dtype1, scale=10, seed=0)
@@ -345,19 +348,19 @@ class TestFusionMisc(FusionUnaryUfuncTestBase):
         return lambda x: xp.clip(x, dtype(2), dtype(4))
 
 
-@testing.parameterize(*testing.product({
-    'func': ['i0', 'sinc']
-}))
+@pytest.mark.parametrize(
+    "func", ['i0', 'sinc']
+)
 class TestFusionSpecialMath(FusionUnaryUfuncTestBase):
 
     # TODO(imanishi): Fix for integer tests
     @testing.for_float_dtypes()
     @fusion_utils.check_fusion()
-    def test_special_math(self, xp, dtype):
-        return lambda x: getattr(xp, self.func)(x)
+    def test_special_math(self, xp, dtype, func):
+        return lambda x: getattr(xp, func)(x)
 
 
-class TestFusionManipulation(unittest.TestCase):
+class TestFusionManipulation:
 
     def generate_inputs(self, xp, dtype1, dtype2):
         cond = testing.shaped_random((3, 4), xp, 'bool_', seed=0)
@@ -393,23 +396,23 @@ class TestFusionManipulation(unittest.TestCase):
         return lambda cond, x, y: xp.where(x, y, where=cond)
 
 
-@testing.parameterize(*testing.product({
-    'func': ['sum', 'prod', 'amax', 'amin', 'max', 'min']
-}))
+@pytest.mark.parametrize(
+    "func", ['sum', 'prod', 'amax', 'amin', 'max', 'min']
+)
 class TestFusionNumericalReduction(FusionUnaryUfuncTestBase):
 
     @testing.for_all_dtypes()
     @fusion_utils.check_fusion()
-    def test_reduction(self, xp, dtype):
-        return lambda x: getattr(xp, self.func)(x)
+    def test_reduction(self, xp, dtype, func):
+        return lambda x: getattr(xp, func)(x)
 
 
-@testing.parameterize(*testing.product({
-    'func': ['all', 'any']
-}))
+@pytest.mark.parametrize(
+    "func", ['all', 'any']
+)
 class TestFusionLogicalReduction(FusionUnaryUfuncTestBase):
 
     @testing.for_all_dtypes(no_complex=True)
     @fusion_utils.check_fusion()
-    def test_reduction(self, xp, dtype):
-        return lambda x: getattr(xp, self.func)(x)
+    def test_reduction(self, xp, dtype, func):
+        return lambda x: getattr(xp, func)(x)

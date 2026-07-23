@@ -25,7 +25,6 @@ typedef enum {} cusparseOperation_t;
 typedef enum {} cusparsePointerMode_t;
 typedef enum {} cusparseAction_t;
 typedef enum {} cusparseDirection_t;
-typedef enum {} cusparseAlgMode_t;
 typedef enum {} cusparseSolvePolicy_t;
 typedef enum {} cusparseSpMatAttribute_t;
 
@@ -124,14 +123,6 @@ cusparseStatus_t cusparseCcsrmv(...) {
 }
 
 cusparseStatus_t cusparseZcsrmv(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseCsrmvEx_bufferSize(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseCsrmvEx(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
@@ -1069,10 +1060,6 @@ cusparseStatus_t cusparseSpMatGetStridedBatch(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
-cusparseStatus_t cusparseSpMatSetStridedBatch(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
 cusparseStatus_t cusparseCreateDnVec(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
@@ -1163,14 +1150,6 @@ cusparseStatus_t cusparseSpMM_bufferSize(...) {
 }
 
 cusparseStatus_t cusparseSpMM(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseConstrainedGeMM_bufferSize(...) {
-  return CUSPARSE_STATUS_SUCCESS;
-}
-
-cusparseStatus_t cusparseConstrainedGeMM(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
