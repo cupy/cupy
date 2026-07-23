@@ -1129,7 +1129,7 @@ cdef class _ndarray_base:
         if kind is not None and kind != "stable":
             raise ValueError("kind can only be None or 'stable'")
 
-    cpdef sort(self, int axis=-1, kind=None):
+    cpdef sort(self, int axis=-1, kind=None, descending=False):
         """Sort an array, in-place with a stable sorting algorithm.
 
         Args:
@@ -1137,6 +1137,9 @@ cdef class _ndarray_base:
                 sort along the last axis.
             kind: Default is `None`, which is equivalent to 'stable'. Unlike in
                 NumPy any other options are not accepted here.
+            descending (bool): Sort order. If ``True``, the array is sorted
+                in descending order. NaN values are sorted to the end for
+                both orders. Default is ``False``.
 
         .. note::
            For its implementation reason, ``ndarray.sort`` currently supports
@@ -1149,9 +1152,9 @@ cdef class _ndarray_base:
 
         """
         self._check_kind_sort(kind)
-        _sorting._ndarray_sort(self, axis)
+        _sorting._ndarray_sort(self, axis, descending)
 
-    cpdef _ndarray_base argsort(self, axis=-1, kind=None):
+    cpdef _ndarray_base argsort(self, axis=-1, kind=None, descending=False):
         """Returns the indices that would sort an array with stable sorting
 
         Args:
@@ -1160,6 +1163,9 @@ cdef class _ndarray_base:
                 is flattened before sorting.
             kind: Default is `None`, which is equivalent to 'stable'. Unlike in
                 NumPy any other options are not accepted here.
+            descending (bool): Sort order. If ``True``, the returned indices
+                sort the array in descending order. NaN values are sorted to
+                the end for both orders. Default is ``False``.
 
         Returns:
             cupy.ndarray: Array of indices that sort the array.
@@ -1170,7 +1176,7 @@ cdef class _ndarray_base:
 
         """
         self._check_kind_sort(kind)
-        return _sorting._ndarray_argsort(self, axis)
+        return _sorting._ndarray_argsort(self, axis, descending)
 
     cpdef partition(self, kth, int axis=-1):
         """Partitions an array.

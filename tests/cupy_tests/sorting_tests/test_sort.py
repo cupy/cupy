@@ -12,6 +12,14 @@ from cupy.exceptions import AxisError
 
 class TestSort(unittest.TestCase):
 
+    def _sort(self, xp, a, use_method, axis=-1, descending=None):
+        kwargs = {} if descending is None else {'descending': descending}
+        if use_method:
+            a.sort(axis=axis, **kwargs)
+            return a
+        else:
+            return xp.sort(a, axis=axis, **kwargs)
+
     # Test ranks
 
     def test_sort_zero_dim(self):
@@ -48,14 +56,13 @@ class TestSort(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_sort_dtype(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
-        a.sort()
-        return a
+        return self._sort(xp, a, use_method=True)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_external_sort_dtype(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
-        return xp.sort(a)
+        return self._sort(xp, a, use_method=False)
 
     # Test contiguous arrays
 
@@ -91,8 +98,7 @@ class TestSort(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_sort_axis2(self, xp):
         a = testing.shaped_random((2, 3, 4), xp)
-        a.sort(axis=1)
-        return a
+        return self._sort(xp, a, use_method=True, axis=1)
 
     @testing.numpy_cupy_array_equal()
     def test_sort_axis3(self, xp):
@@ -103,7 +109,7 @@ class TestSort(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_external_sort_axis(self, xp):
         a = testing.shaped_random((2, 3, 3), xp)
-        return xp.sort(a, axis=0)
+        return self._sort(xp, a, use_method=False, axis=0)
 
     @testing.numpy_cupy_array_equal()
     def test_sort_negative_axis(self, xp):
@@ -172,8 +178,7 @@ class TestSort(unittest.TestCase):
     def test_nan1(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
         a[2] = a[6] = xp.nan
-        out = xp.sort(a)
-        return out
+        return self._sort(xp, a, use_method=False)
 
     @testing.for_dtypes('efdFD')
     @testing.numpy_cupy_array_equal()
@@ -198,6 +203,48 @@ class TestSort(unittest.TestCase):
         a[0, 2, 1] = a[1, 0, 3] = xp.nan
         out = xp.sort(a, axis=2)
         return out
+
+    # Test descending order
+
+    @testing.with_requires('numpy>=2.5')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_sort_descending_dtype(self, xp, dtype):
+        a = testing.shaped_random((10,), xp, dtype)
+        return self._sort(xp, a, use_method=True, descending=True)
+
+    @testing.with_requires('numpy>=2.5')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_external_sort_descending_dtype(self, xp, dtype):
+        a = testing.shaped_random((10,), xp, dtype)
+        return self._sort(xp, a, use_method=False, descending=True)
+
+    @testing.with_requires('numpy>=2.5')
+    @testing.numpy_cupy_array_equal()
+    def test_sort_descending_axis(self, xp):
+        a = testing.shaped_random((2, 3, 4), xp)
+        return self._sort(xp, a, use_method=True, axis=1, descending=True)
+
+    @testing.with_requires('numpy>=2.5')
+    @testing.numpy_cupy_array_equal()
+    def test_external_sort_descending_axis(self, xp):
+        a = testing.shaped_random((2, 3, 4), xp)
+        return self._sort(xp, a, use_method=False, axis=1, descending=True)
+
+    @testing.with_requires('numpy>=2.5')
+    @testing.numpy_cupy_array_equal()
+    def test_sort_descending_false_matches_default(self, xp):
+        a = testing.shaped_random((10,), xp)
+        return self._sort(xp, a, use_method=False, descending=False)
+
+    @testing.with_requires('numpy>=2.5')
+    @testing.for_dtypes('efdFD')
+    @testing.numpy_cupy_array_equal()
+    def test_sort_descending_nan(self, xp, dtype):
+        a = testing.shaped_random((10,), xp, dtype)
+        a[2] = a[6] = xp.nan
+        return self._sort(xp, a, use_method=False, descending=True)
 
     # Large case
 
@@ -290,14 +337,23 @@ class TestLexsort(unittest.TestCase):
 }))
 class TestArgsort(unittest.TestCase):
 
-    def argsort(self, a, axis=-1):
-        if self.external:
+    def argsort(self, a, axis=-1, descending=None):
+        xp = cupy.get_array_module(a)
+        if descending is None:
             # Need to explicitly specify kind="stable"
             # numpy uses "quicksort" as default
-            xp = cupy.get_array_module(a)
-            return xp.argsort(a, axis=axis, kind="stable")
+            kwargs = {'kind': 'stable'}
         else:
-            return a.argsort(axis=axis, kind="stable")
+            # numpy rejects `kind` combined with `descending`; `stable=True`
+            # is its replacement for forcing determinism. cupy's argsort is
+            # always stable regardless, and doesn't accept `stable`.
+            kwargs = {'descending': descending}
+            if xp is numpy:
+                kwargs['stable'] = True
+        if self.external:
+            return xp.argsort(a, axis=axis, **kwargs)
+        else:
+            return a.argsort(axis=axis, **kwargs)
 
     # Test base cases
 
@@ -403,6 +459,43 @@ class TestArgsort(unittest.TestCase):
         a = testing.shaped_random((2, 3, 4), xp, dtype)
         a[0, 2, 1] = a[1, 1, 3] = xp.nan
         return self.argsort(a)
+
+    # Test descending order
+
+    @testing.with_requires('numpy>=2.5')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_argsort_descending_dtype(self, xp, dtype):
+        a = testing.shaped_random((10,), xp, dtype)
+        return self.argsort(a, descending=True)
+
+    @testing.with_requires('numpy>=2.5')
+    @testing.numpy_cupy_array_equal()
+    def test_argsort_descending_axis(self, xp):
+        a = testing.shaped_random((2, 3, 3), xp)
+        return self.argsort(a, axis=0, descending=True)
+
+    @testing.with_requires('numpy>=2.5')
+    @testing.numpy_cupy_array_equal()
+    def test_argsort_descending_false_matches_default(self, xp):
+        a = testing.shaped_random((10,), xp)
+        return self.argsort(a, descending=False)
+
+    @testing.with_requires('numpy>=2.5')
+    @testing.numpy_cupy_array_equal()
+    def test_argsort_descending_stable(self, xp):
+        # Repeated values must keep their original relative (ascending
+        # index) order, not just be the reverse of the ascending argsort.
+        a = xp.array([3, 1, 3, 1, 2, 3, 1, 2])
+        return self.argsort(a, descending=True)
+
+    @testing.with_requires('numpy>=2.5')
+    @testing.for_dtypes('efdFD')
+    @testing.numpy_cupy_array_equal()
+    def test_argsort_descending_nan(self, xp, dtype):
+        a = testing.shaped_random((10,), xp, dtype)
+        a[2] = a[6] = xp.nan
+        return self.argsort(a, descending=True)
 
 
 class TestSort_complex(unittest.TestCase):
