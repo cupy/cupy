@@ -30,8 +30,8 @@ class TestInstallLibrary:
         self._test_install('nccl', cuda)
 
     @pytest.mark.skipif(
-        platform.machine() == "aarch64",
-        reason="FIXME")  # TODO(leofang)
+        platform.machine().lower() in ('aarch64', 'arm64'),
+        reason='cuTENSOR packages are unavailable on ARM64')
     @pytest.mark.parametrize('cuda', _get_supported_cuda_versions('cutensor'))
     @testing.slow
     def test_install_cutensor(self, cuda):
