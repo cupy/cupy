@@ -317,10 +317,9 @@ cpdef getDeviceProperties(int device):
             props.accessPolicyMaxWindowSize)
         properties['reservedSharedMemPerBlock'] = (
             props.reservedSharedMemPerBlock)
-    if (
-        CUPY_USE_CUDA_PYTHON
-        or (CUPY_CUDA_VERSION >= 9020 and CUPY_CUDA_VERSION < 13000)
-    ):
+    if 0 < CUPY_CUDA_VERSION < 13000:
+        # CUDA 12.x: these fields exist in cudaDeviceProp.
+        # "> 0" excludes HIP builds where CUPY_CUDA_VERSION == 0.
         properties['deviceOverlap'] = props.deviceOverlap
         properties['maxTexture1DLinear'] = props.maxTexture1DLinear
         properties['singleToDoublePrecisionPerfRatio'] = (
