@@ -105,7 +105,7 @@ CuPy CI Test Coverage
      - `cuda132 <t22_>`_ `🐳 <d22_>`_ `📜 <s22_>`_
      - `cuda132.multi <t23_>`_ `🐳 <d23_>`_ `📜 <s23_>`_
      - `cuda13x-py314t <t24_>`_ `🐳 <d24_>`_ `📜 <s24_>`_
-     - `rocm-7-1 <t25_>`_ `🐳 <d25_>`_ `📜 <s25_>`_
+     - `rocm-7-14 <t25_>`_ `🐳 <d25_>`_ `📜 <s25_>`_
      - `cuda-slow <t26_>`_ `🐳 <d26_>`_ `📜 <s26_>`_
      - `cuda-example <t27_>`_ `🐳 <d27_>`_ `📜 <s27_>`_
      - `cuda-head <t28_>`_ `🐳 <d28_>`_ `📜 <s28_>`_
@@ -883,7 +883,7 @@ CuPy CI Test Coverage
      - ✅
      - ✅
    * - 
-     - 7.1
+     - 7.14
      - 1
      - 
      - 
@@ -3128,9 +3128,9 @@ CuPy CI Test Coverage
 .. _t24: https://ci.preferred.jp/cupy.linux.cuda13x-py314t/
 .. _d24: linux/tests/cuda13x-py314t.Dockerfile
 .. _s24: linux/tests/cuda13x-py314t.sh
-.. _t25: https://jenkins.preferred.jp/job/chainer/job/cupy_main/TEST=rocm-7-1,label=mnj-mi50/
-.. _d25: linux/tests/rocm-7-1.Dockerfile
-.. _s25: linux/tests/rocm-7-1.sh
+.. _t25: https://jenkins.preferred.jp/job/chainer/job/cupy_main/TEST=rocm-7-14,label=mnj-mi50/
+.. _d25: linux/tests/rocm-7-14.Dockerfile
+.. _s25: linux/tests/rocm-7-14.sh
 .. _t26: https://ci.preferred.jp/cupy.linux.cuda-slow/
 .. _d26: linux/tests/cuda-slow.Dockerfile
 .. _s26: linux/tests/cuda-slow.sh

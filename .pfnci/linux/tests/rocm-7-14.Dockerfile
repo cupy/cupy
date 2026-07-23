@@ -1,10 +1,10 @@
 # AUTO GENERATED: DO NOT EDIT!
-ARG BASE_IMAGE="rocm/dev-ubuntu-22.04:7.1.1-complete"
+ARG BASE_IMAGE="rocm/dev-ubuntu-22.04:7.14.0-full"
 FROM ${BASE_IMAGE}
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
     ( apt-get -qqy update || true ) && \
-    apt-get -qqy install ca-certificates && \
+    apt-get -qqy install ca-certificates gnupg && \
     curl -qL https://repo.radeon.com/rocm/rocm.gpg.key | apt-key add -
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get -qqy update && \
