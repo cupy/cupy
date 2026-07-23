@@ -193,6 +193,13 @@
         "linux",
         "cuda-python"
     ],
+    "cupy.linux.cuda13x-cuda-python": [
+        "@push",
+        "full",
+        "mini",
+        "linux",
+        "cuda-python"
+    ],
     "cupy.win.cuda120": [
         "@push",
         "full",

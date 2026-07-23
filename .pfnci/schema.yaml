@@ -357,6 +357,8 @@ cuda-python:
     spec: null
   "12":
     spec: "==12.*"
+  "13.2":
+    spec: "==13.2.*"
 nvmath-python:
   null:
     spec: null
