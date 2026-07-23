@@ -15,6 +15,15 @@ Abstract linear operators
    aslinearoperator
 
 
+Matrix operations
+-----------------
+
+.. autosummary::
+   :toctree: generated/
+
+   matrix_power
+
+
 Matrix norms
 ------------
 
