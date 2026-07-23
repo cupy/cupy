@@ -266,7 +266,7 @@ class TestInt64Arithmetic:
     otherwise through _cupy_csrgeam_int64, so the path works on any CUDA
     version.
 
-    On cuSPARSE 12.8.1+ this can use native cusparseSpGEAM; older builds use
+    On cuSPARSE 12.8.5+ this can use native cusparseSpGEAM; older builds use
     the pure-CuPy fallback. Both paths preserve
     numpy.result_type(a.indices.dtype, b.indices.dtype) throughout.
     """
