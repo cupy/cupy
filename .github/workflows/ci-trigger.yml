@@ -12,9 +12,10 @@ on:
   pull_request_target:
     types: [synchronize, reopened]
 
+# Least privilege: read-only by default; the two jobs below elevate
+# explicitly (test-request reads the PR; hygiene writes the label).
 permissions:
   contents: read
-  issues: write  # label bounce / clearing
 
 jobs:
   # Leg 1 of the /test flow: validate the request, record it for flexci.yml,
@@ -23,6 +24,11 @@ jobs:
     name: Record /test request + trigger build
     if: github.repository_owner == 'cupy' && github.event_name == 'issue_comment'
     runs-on: ubuntu-latest
+    # GITHUB_TOKEN only reads the PR (guard step); the label bounce uses a
+    # separate GitHub App token, so no issues:write is needed here. No checkout,
+    # so no contents access either.
+    permissions:
+      pull-requests: read
     # CI_TRIGGER_APP_ID / CI_TRIGGER_APP_PRIVATE_KEY are scoped to this
     # deployment environment (branch policy: main only -- which is the ref
     # issue_comment runs execute on). Each /test records a deployment here.
@@ -136,6 +142,9 @@ jobs:
     name: Clear stale label
     if: github.repository_owner == 'cupy' && github.event_name == 'pull_request_target'
     runs-on: ubuntu-latest
+    # Deletes the stale ci:triggered label via GITHUB_TOKEN; no checkout.
+    permissions:
+      issues: write
     concurrency:
       group: ci-build-${{ github.event.pull_request.number }}
       cancel-in-progress: true

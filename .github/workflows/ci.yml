@@ -41,16 +41,19 @@ concurrency:
   group: ${{ github.event_name == 'pull_request' && format('ci-build-{0}', github.event.pull_request.number) || format('ci-push-{0}', github.sha) }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# Least privilege: read-only by default; jobs that need more grant it
+# per-job below (only dispatch-flexci writes, via flexci_dispatcher.py).
 permissions:
   contents: read
-  pull-requests: write  # flexci_dispatcher.py (push leg)
-  statuses: write       # flexci_dispatcher.py (push leg)
 
 jobs:
   guard:
     name: Guard (build decision)
     runs-on: ubuntu-latest
     if: github.repository_owner == 'cupy'
+    permissions:
+      contents: read       # actions/checkout (sparse ci/tools)
+      pull-requests: read  # ci-guard.sh reads commits/<sha>/pulls (push leg)
     outputs:
       should_run: ${{ steps.check.outputs.should_run }}
       ref: ${{ steps.check.outputs.ref }}
@@ -78,6 +81,9 @@ jobs:
     needs: guard
     if: needs.guard.outputs.should_run == 'true'
     runs-on: ubuntu-latest
+    # Only reads ci/versions.yml from the pinned ref; no write scopes needed.
+    permissions:
+      contents: read
     outputs:
       CUDA_BUILD_VER: ${{ steps.get-vars.outputs.cuda_build_ver }}
       CUDA_PREV_BUILD_VER: ${{ steps.get-vars.outputs.cuda_prev_build_ver }}
@@ -110,6 +116,9 @@ jobs:
       - guard
       - ci-vars
     if: needs.guard.outputs.should_run == 'true'
+    # Bounds the reusable build to a checkout-only token (no secrets, no writes).
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -155,6 +164,9 @@ jobs:
       - guard
       - ci-vars
     if: needs.guard.outputs.should_run == 'true'
+    # Bounds the reusable build to a checkout-only token (no secrets, no writes).
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -211,6 +223,10 @@ jobs:
       - build-windows
     if: github.event_name == 'push' && needs.guard.outputs.should_run == 'true'
     runs-on: ubuntu-22.04
+    permissions:
+      contents: read       # actions/checkout
+      pull-requests: write  # flexci_dispatcher.py force-skip comments
+      statuses: write       # flexci_dispatcher.py commit statuses
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3

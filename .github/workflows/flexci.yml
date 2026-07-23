@@ -23,11 +23,9 @@ on:
   pull_request_target:
     types: [closed]
 
+# Least privilege: read-only by default; each job below elevates explicitly.
 permissions:
-  actions: read  # read artifacts of other runs
   contents: read
-  pull-requests: write
-  statuses: write
 
 jobs:
   dispatch:
@@ -38,6 +36,11 @@ jobs:
         github.event.workflow_run.event == 'pull_request' &&
         github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-22.04
+    permissions:
+      actions: read         # read triggering-run + request artifacts
+      contents: read        # checkout (dispatcher + PR config data)
+      pull-requests: write  # read open PRs by head + post force-skip comments
+      statuses: write       # flexci_dispatcher.py commit statuses
 
     steps:
     - name: Find the vouched request(s) for this build
@@ -192,6 +195,10 @@ jobs:
         !contains(github.event.pull_request.labels.*.name, 'skip-ci') &&
         github.event.pull_request.base.ref != github.event.repository.default_branch
     runs-on: ubuntu-22.04
+    permissions:
+      contents: read        # probe reads ci.yml at merge SHA + checkout
+      pull-requests: write  # flexci_dispatcher.py force-skip comments
+      statuses: write       # flexci_dispatcher.py commit statuses
     steps:
     - name: Check whether this merge dispatches for itself
       id: probe
