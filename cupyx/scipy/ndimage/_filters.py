@@ -908,7 +908,8 @@ def _min_or_max_filter(input, size, ftprnt, structure, output, mode, cval,
 
     axes, ftprnt, origins, modes, int_type = _filters_core._check_nd_args(
         input, ftprnt, mode, origin, 'footprint', sizes=size, axes=axes,
-        raise_on_zero_size_weight=True)
+        raise_on_zero_size_weight=structure is None,
+        structure=structure)
     num_axes = len(axes)
     sizes, ftprnt, structure = _filters_core._check_size_footprint_structure(
         num_axes, size, ftprnt, structure)
