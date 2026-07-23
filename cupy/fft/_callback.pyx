@@ -223,9 +223,26 @@ cdef dict _cc_major_map = {
 
 cdef inline str _prune(str temp_dir, str cache_dir, str _cufft_ver, str arch):
     cdef str cufft_lib_full, cufft_lib_pruned, cufft_lib_temp, cufft_lib_cached
+    cdef str libdir, candidate
 
     if _nvprune:
-        cufft_lib_full = os.path.join(_cuda_path, 'lib64/libcufft_static.a')
+        # _cuda_path may point to either the CUDA Toolkit root (which has
+        # lib64/ on Linux) or a targets/<arch> directory (which has lib/
+        # only; e.g. conda, or a system CTK located via cuda.pathfinder),
+        # so probe both layouts.
+        cufft_lib_full = None
+        for libdir in ('lib64', 'lib'):
+            candidate = os.path.join(_cuda_path, libdir, 'libcufft_static.a')
+            if os.path.isfile(candidate):
+                cufft_lib_full = candidate
+                break
+        if cufft_lib_full is None:
+            # cannot locate the static library; fall back to linking the
+            # full one via nvcc's default library search paths
+            warnings.warn(
+                'libcufft_static.a not found under ' + _cuda_path,
+                RuntimeWarning)
+            return None
         cufft_lib_pruned = f'cufft_static_{_cufft_ver}_sm{arch[0]}'
         cufft_lib_temp = os.path.join(temp_dir,
                                       'lib' + cufft_lib_pruned + '.a')
