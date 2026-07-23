@@ -1,14 +1,19 @@
 from __future__ import annotations
 
 
+import string
+from typing import Any
+
 import cupy
-from cupy._core._scalar import get_typename
+from cupy._core._scalar import get_typename, format_type_decls
 from cupyx.scipy.spatial._delaunay import Delaunay
 
 import warnings
 
 
-TYPES = ['double', 'thrust::complex<double>']
+INTERPND_TYPE_DECLS: set[Any] = set()
+TYPES = [get_typename(t, INTERPND_TYPE_DECLS)
+         for t in [cupy.float64, cupy.complex128]]
 
 
 def _get_module_func(module, func_name, *template_args):
@@ -192,7 +197,7 @@ class NDInterpolatorBase:
 LINEAR_INTERP_ND_DEF = r"""
 #include <cupy/complex.cuh>
 #include <cupy/math_constants.h>
-#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_decls?
+${type_decls}
 
 template<typename T>
 __global__ void evaluate_linear_nd_interp(
@@ -232,7 +237,9 @@ __global__ void evaluate_linear_nd_interp(
 """
 
 LINEAR_INTERP_ND_MODULE = cupy.RawModule(
-    code=LINEAR_INTERP_ND_DEF, options=('-std=c++17',),
+    code=string.Template(LINEAR_INTERP_ND_DEF).substitute(
+        type_decls=format_type_decls(INTERPND_TYPE_DECLS)),
+    options=('-std=c++17',),
     name_expressions=[f'evaluate_linear_nd_interp<{t}>' for t in TYPES])
 
 
