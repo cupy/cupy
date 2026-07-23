@@ -1,5 +1,3 @@
-from cupy._core cimport _accelerator
-from cupy._core._accelerator cimport ACCELERATOR_CUB
 from cupy._core._scalar cimport (
     get_typename, format_type_decls, _get_cuda_scalar_repr)
 
@@ -765,10 +763,10 @@ class _FusionHistory(object):
                                      for s, t in zip(out_cvars, out_params))
 
             submodule_code += self._emit_premap_code(in_params, operation)
-            use_cub = ACCELERATOR_CUB in _accelerator._reduction_accelerators
-            if not use_cub:
-                submodule_code += 'typedef {} type_in0_raw;\n'.format(
-                    postmap_ctype)
+            # Always define `type_in0_raw` for non-CUB reductions paths
+            # as we do not know if CUB is used or not for sure.
+            submodule_code += 'typedef {} type_in0_raw;\n'.format(
+                postmap_ctype)
             submodule_code += 'typedef {} type_out0_raw;\n'.format(
                 postmap_ctype)
             submodule_code += self._emit_postmap_cast_code(
