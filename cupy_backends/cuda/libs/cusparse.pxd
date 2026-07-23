@@ -81,21 +81,17 @@ ELSE:
 # Types removed in CUDA 12.0+
 IF CUPY_CUDA_VERSION == 0:
     cdef extern from *:
+        """
+        /* SpGEAM is unavailable in HIP and stub builds. */
+        typedef void* cusparseSpGEAMDescr_t;
+        typedef int cusparseSpGEAMAlg_t;
+        #define CUSPARSE_SPGEAM_ALG_DEFAULT 0
+        #define CUSPARSE_SPGEAM_ALG1 1
+        """
         ctypedef void* csrsv2Info_t
         ctypedef void* csrsm2Info_t
         ctypedef void* csrgemm2Info_t
-# TODO(eriknw): cuSPARSE--remove stubs when SpGEAM ships in a public release.
-# The #ifndef guard auto-deactivates when the real header defines these.
 cdef extern from *:
-    """
-    #ifndef CUSPARSE_SPGEAM_ALG_DEFAULT
-    /* SpGEAM not in this cuSPARSE; provide opaque forward decls. */
-    typedef void* cusparseSpGEAMDescr_t;
-    typedef int cusparseSpGEAMAlg_t;
-    #define CUSPARSE_SPGEAM_ALG_DEFAULT 0
-    #define CUSPARSE_SPGEAM_ALG1 1
-    #endif
-    """
     ctypedef void* SpGEAMDescr 'cusparseSpGEAMDescr_t'
     ctypedef int SpGEAMAlg 'cusparseSpGEAMAlg_t'
 

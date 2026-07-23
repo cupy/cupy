@@ -303,11 +303,15 @@ def _setup_win32_dll_directory():
             if cuda_bin_path is not None:
                 _log('Adding DLL search path: {}'.format(cuda_bin_path))
                 os.add_dll_directory(cuda_bin_path)
-                cuda_bin_x64_path = os.path.join(cuda_bin_path, 'x64')
-                if os.path.exists(cuda_bin_x64_path):
+                machine = platform.machine().lower()
+                cuda_bin_arch = (
+                    'arm64' if machine in ('arm64', 'aarch64') else 'x64')
+                cuda_bin_arch_path = os.path.join(
+                    cuda_bin_path, cuda_bin_arch)
+                if os.path.exists(cuda_bin_arch_path):
                     _log('Adding DLL search path (for CUDA 13): '
-                         f'{cuda_bin_x64_path}')
-                    os.add_dll_directory(cuda_bin_x64_path)
+                         f'{cuda_bin_arch_path}')
+                    os.add_dll_directory(cuda_bin_arch_path)
             if wheel_libdir is not None:
                 _log('Adding DLL search path: {}'.format(wheel_libdir))
                 os.add_dll_directory(wheel_libdir)

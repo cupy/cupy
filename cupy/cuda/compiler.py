@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import glob
 import math
 import os
 import platform
@@ -145,10 +146,53 @@ def _get_extra_path_for_msvc():
     if cl_exe_dir:
         return cl_exe_dir
 
+    cl_exe_dir = _get_cl_exe_dir_vswhere()
+    if cl_exe_dir:
+        return cl_exe_dir
+
     cl_exe_dir = _get_cl_exe_dir_fallback()
     if cl_exe_dir:
         return cl_exe_dir
 
+    return None
+
+
+def _get_cl_exe_dir_vswhere() -> str | None:
+    program_files = os.environ.get('ProgramFiles(x86)')
+    if program_files is None:
+        return None
+    vswhere = os.path.join(
+        program_files, 'Microsoft Visual Studio', 'Installer', 'vswhere.exe')
+    if not os.path.exists(vswhere):
+        return None
+
+    machine = platform.machine().lower()
+    if machine in ('arm64', 'aarch64'):
+        arch = 'arm64'
+    elif machine in ('amd64', 'x86_64'):
+        arch = 'x64'
+    else:
+        return None
+
+    try:
+        installations = subprocess.check_output(
+            [vswhere, '-all', '-products', '*',
+             '-property', 'installationPath'],
+            text=True,
+            creationflags=subprocess.CREATE_NO_WINDOW).splitlines()
+    except Exception as e:
+        warnings.warn(
+            f'Failed to find cl.exe with vswhere: {type(e)}: {e}')
+        return None
+
+    candidates = []
+    for installation in installations:
+        pattern = os.path.join(
+            installation, 'VC', 'Tools', 'MSVC', '*', 'bin',
+            f'Host{arch}', arch, 'cl.exe')
+        candidates.extend(glob.glob(pattern))
+    if candidates:
+        return os.path.dirname(sorted(candidates)[-1])
     return None
 
 
