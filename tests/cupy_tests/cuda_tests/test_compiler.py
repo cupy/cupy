@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import pickle
 import unittest
 from unittest import mock
@@ -141,3 +142,21 @@ class TestExceptionPicklable(unittest.TestCase):
 class TestCompileWithCache:
     def test_compile_module_with_cache(self):
         compiler._compile_module_with_cache('__device__ void func() {}')
+
+
+@pytest.mark.skipif(not compiler._win32, reason='Windows specific test')
+def test_get_cl_exe_dir_vswhere():
+    vswhere_output = os.path.join('C:\\', 'Visual Studio') + '\n'
+    cl_exe = os.path.join(
+        'C:\\', 'Visual Studio', 'VC', 'Tools', 'MSVC', '14.51', 'bin',
+        'Hostarm64', 'arm64', 'cl.exe')
+    with (
+            mock.patch.dict(os.environ, {'ProgramFiles(x86)': 'C:\\PF86'}),
+            mock.patch.object(compiler.os.path, 'exists', return_value=True),
+            mock.patch.object(
+                compiler.subprocess, 'check_output',
+                return_value=vswhere_output),
+            mock.patch.object(compiler.platform, 'machine',
+                              return_value='ARM64'),
+            mock.patch.object(compiler.glob, 'glob', return_value=[cl_exe])):
+        assert compiler._get_cl_exe_dir_vswhere() == os.path.dirname(cl_exe)

@@ -268,7 +268,7 @@ def main(args):
         machine = platform.uname().machine.lower()
         if machine in ('x86_64', 'amd64'):
             params.arch = 'x86_64'
-        elif machine == 'aarch64':
+        elif machine in ('aarch64', 'arm64'):
             params.arch = 'aarch64'
         else:
             raise AssertionError(f'unsupported architecture: {machine}')
