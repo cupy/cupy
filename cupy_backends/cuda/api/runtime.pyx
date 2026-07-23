@@ -778,8 +778,8 @@ cpdef PointerAttributes pointerGetAttributes(intptr_t ptr):
         return None
 
 
-cpdef int pointerGetMemoryType(intptr_t ptr) except -1:
-    ''' Get the memory type, returns -1 for RTD '''
+cdef int pointerGetMemoryType(intptr_t ptr) except -1:
+    ''' Get the memory type, raises if not valid '''
     cdef _PointerAttributes attrs
     status = cudaPointerGetAttributes(&attrs, <void*>ptr)
     check_status(status)
