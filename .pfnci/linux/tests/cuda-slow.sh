@@ -19,5 +19,5 @@ echo "======================================================="
 
 
 trap "$ACTIONS/cleanup.sh" EXIT
-"$ACTIONS/build.sh"
+"$ACTIONS/fetch-wheel.sh"
 "$ACTIONS/unittest.sh" "slow"

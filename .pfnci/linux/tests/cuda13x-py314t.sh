@@ -23,5 +23,5 @@ echo "======================================================="
 
 
 trap "$ACTIONS/cleanup.sh" EXIT
-"$ACTIONS/build.sh"
+"$ACTIONS/fetch-wheel.sh"
 "$ACTIONS/unittest.sh" "not slow and not multi_gpu"

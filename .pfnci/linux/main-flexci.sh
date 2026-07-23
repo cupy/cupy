@@ -8,7 +8,9 @@ TARGET="${1}"
 LOG_FILE="/tmp/log.txt"
 
 echo "Environment Variables:"
-env
+# Redact the wheel-fetch token (provisioned in the FlexCI job env) from the
+# published log; fetch-wheel.sh receives it via a mounted file, not the env.
+env | grep -v -e '^CUPY_CI_GITHUB_TOKEN=' -e '^GH_TOKEN='
 
 pull_req=""
 if [[ "${FLEXCI_BRANCH:-}" == refs/pull/* ]]; then
