@@ -29,7 +29,7 @@ RUN pyenv install 3.14.0 && \
     pip install -U setuptools pip wheel && \
     pip install -U google-cloud-storage
 
-RUN pip install -U 'numpy==2.4.*' 'scipy==1.16.*' 'optuna==4.*' 'cython==3.2.*,!=3.2.6' 'cuda-python==13.*' 'nvmath-python==1.*'
+RUN pip install -U 'numpy==2.4.*' 'scipy==1.16.*' 'optuna==4.*' 'cython==3.2.*,!=3.2.6' 'cuda-python==13.2.*' 'nvmath-python==1.*'
 RUN pip uninstall -y mpi4py ml_dtypes && \
     pip check
 
