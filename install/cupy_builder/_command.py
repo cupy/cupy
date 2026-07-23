@@ -102,6 +102,8 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
         # the user does not have Cython installed.
         import Cython.Build
 
+        import numpy
+
         ctx = cupy_builder.get_context()
         compiler_directives = {
             'linetrace': ctx.linetrace,
@@ -130,6 +132,7 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
 
         compile_time_env['CUPY_CUFFT_STATIC'] = False
         compile_time_env['CUPY_CYTHON_VERSION'] = Cython.__version__
+        compile_time_env['CUPY_NUMPY_VERSION'] = numpy.__version__
         if ctx.use_stub:  # on RTD
             compile_time_env['CUPY_CUDA_VERSION'] = 0
             compile_time_env['CUPY_HIP_VERSION'] = 0
