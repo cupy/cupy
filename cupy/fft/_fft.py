@@ -39,11 +39,13 @@ def _convert_dtype(a, value_type):
 
 
 def _cook_shape(a, s, axes, value_type, order='C'):
-    if s is None or s == a.shape:
+    if s is None:
         return a
     if (value_type == 'C2R') and (s[-1] is not None):
         s = list(s)
         s[-1] = s[-1] // 2 + 1
+    if all(sz is None or sz == a.shape[axis] for sz, axis in zip(s, axes)):
+        return a
     for sz, axis in zip(s, axes):
         if (sz is not None) and (sz != a.shape[axis]):
             shape = list(a.shape)
