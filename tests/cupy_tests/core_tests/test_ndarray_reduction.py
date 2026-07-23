@@ -332,10 +332,13 @@ class TestArrayReductionZeroSize:
 
 # This class compares CUB results against NumPy's. ("fallback" is CuPy's
 # original kernel, also tested here to reduce code duplication.)
+# Non-empty shapes keep both the first and last axis >= 128 so the
+# contiguous reduction stays on the CUB block-reduction path rather than
+# the short-axis fallback.
 @pytest.mark.parametrize(
     "shape",
     [
-        (10,), (10, 20), (10, 20, 30), (10, 20, 30, 40),
+        (128,), (128, 128), (128, 2, 128), (128, 2, 2, 128),
         # skip (2, 3, 0) because it would not hit the CUB code path
         (0,), (2, 0), (0, 2), (0, 2, 3), (2, 3, 0)
     ]
