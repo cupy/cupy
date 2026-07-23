@@ -66,8 +66,6 @@ def label(input, structure=None, output=None):
             )
         else:
             output = cupy.empty(input.shape, output)
-    if output.dtype.kind not in 'iu':
-        raise TypeError("output dtype must be an integer type")
 
     # handle scalars, 0-D arrays
     if input.ndim == 0 or input.size == 0:
