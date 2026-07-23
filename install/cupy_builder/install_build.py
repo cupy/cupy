@@ -51,7 +51,21 @@ def get_rocm_path():
     if _rocm_path != 'NOT_INITIALIZED':
         return _rocm_path
 
-    _rocm_path = os.environ.get('ROCM_HOME', '')
+    # Prefer ROCM_HOME, else infer from hipcc on PATH (mirrors
+    # get_cuda_path()'s nvcc-based discovery).
+    rocm_home = os.environ.get('ROCM_HOME', '')
+    if rocm_home:
+        _rocm_path = rocm_home
+        return _rocm_path
+
+    hipcc_path = utils.search_on_path(('hipcc', 'hipcc.exe'))
+    if hipcc_path is not None:
+        hipcc_real = os.path.realpath(hipcc_path)
+        _rocm_path = os.path.normpath(
+            os.path.join(os.path.dirname(hipcc_real), '..'))
+        return _rocm_path
+
+    _rocm_path = ''
     return _rocm_path
 
 
