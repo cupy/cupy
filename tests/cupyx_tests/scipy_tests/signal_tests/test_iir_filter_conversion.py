@@ -63,6 +63,19 @@ class TestBilinear:
 #        assert_array_almost_equal(a_z, [1, -1.2158, 0.72826],
 #                                  decimal=4)
 
+    @pytest.mark.parametrize('lzn', range(4))
+    @pytest.mark.parametrize('lzd', range(4))
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_ignore_leading_zeros(self, xp, scp, lzn, lzd):
+        # regression for scipy gh-6606 / cupy gh-9404: leading zeros padded
+        # onto the numerator or denominator should not change the result.
+        b = xp.asarray([0.14879732743343033])
+        a = xp.asarray([1, 0.54552236880522209, 0.14879732743343033])
+        b = xp.pad(b, (lzn, 0))
+        a = xp.pad(a, (lzd, 0))
+        b_z, a_z = scp.signal.bilinear(b, a, 0.5)
+        return b_z, a_z
+
 
 @testing.with_requires("scipy")
 class TestNormalize:
