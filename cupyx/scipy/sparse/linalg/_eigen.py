@@ -8,10 +8,11 @@ from cupy._core import _dtype
 from cupy.cuda import device
 from cupy_backends.cuda.libs import cublas as _cublas
 from cupyx.scipy.sparse import _csr
+from cupyx.scipy.sparse import _construct
 from cupyx.scipy.sparse.linalg import _interface
 
 
-def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
+def eigsh(a, k=6, *, which='LM', sigma=None, v0=None, ncv=None, maxiter=None,
           tol=0, return_eigenvectors=True):
     """
     Find ``k`` eigenvalues and eigenvectors of the real symmetric square
@@ -27,11 +28,15 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
             :class:`cupyx.scipy.sparse.linalg.LinearOperator`.
         k (int): The number of eigenvalues and eigenvectors to compute. Must be
             ``1 <= k < n``.
-        which (str): 'LM' or 'LA' or 'SA'.
+        which (str): 'LM' or 'LA' or 'SA' or 'SM'.
             'LM': finds ``k`` largest (in magnitude) eigenvalues.
             'LA': finds ``k`` largest (algebraic) eigenvalues.
             'SA': finds ``k`` smallest (algebraic) eigenvalues.
-
+            'SM': finds ``k`` smallest (in magnitude) eigenvalues.
+        sigma (float): If not ``None``, finds the ``k`` eigenvalues nearest
+            ``sigma`` using shift-invert mode, which requires SciPy and
+            ``a`` to be a matrix (not a ``LinearOperator``). Cannot be
+            used together with ``which='SM'``.
         v0 (ndarray): Starting vector for iteration. If ``None``, a random
             unit vector is used.
         ncv (int): The number of Lanczos vectors generated. Must be
@@ -65,9 +70,9 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
         raise ValueError('k must be greater than 0 (actual: {})'.format(k))
     if k >= n:
         raise ValueError('k must be smaller than n (actual: {})'.format(k))
-    if which not in ('LM', 'LA', 'SA'):
-        raise ValueError('which must be \'LM\',\'LA\'or\'SA\' (actual: {})'
-                         ''.format(which))
+    if which not in ('LM', 'LA', 'SA', 'SM'):
+        raise ValueError('which must be \'LM\', \'LA\', \'SA\' or \'SM\' '
+                         '(actual: {})'.format(which))
     if ncv is None:
         ncv = min(max(2 * k, k + 32), n - 1)
     else:
@@ -76,6 +81,21 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
         maxiter = 10 * n
     if tol == 0:
         tol = numpy.finfo(a.dtype).eps
+
+    if which == 'SM':
+        if sigma is not None:
+            raise ValueError(
+                "which='SM' is not supported together with sigma"
+            )
+        sigma = 0
+        which = 'LM'
+        auto_shift = True
+    else:
+        auto_shift = False
+
+    if sigma is not None:
+        return _eigsh_shift_invert(a, k, sigma, which, v0, ncv, maxiter, tol,
+                                   return_eigenvectors, auto_shift=auto_shift)
 
     alpha = cupy.zeros((ncv,), dtype=a.dtype)
     beta = cupy.zeros((ncv,), dtype=a.dtype.char.lower())
@@ -143,6 +163,62 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
         return w[idx], x[:, idx]
     else:
         return cupy.sort(w)
+
+
+def _eigsh_shift_invert(a, k, sigma, which, v0, ncv, maxiter, tol,
+                        return_eigenvectors, auto_shift):
+    import scipy.linalg
+    import scipy.sparse.linalg
+
+    if isinstance(a, _interface.MatrixLinearOperator):
+        a = a.A
+    elif isinstance(a, _interface.LinearOperator):
+        raise TypeError(
+            'shift-invert requires an explicit matrix; pass a ndarray or '
+            'sparse matrix (support for OPinv is not implemented)')
+
+    n = a.shape[0]
+
+    if auto_shift:
+        # Use a small negative shift to keep the factorization nonsingular
+        if isinstance(a, cupy.ndarray):
+            scale = float(cupy.abs(a).max())
+        else:
+            scale = float(cupy.abs(a.data).max()) if a.nnz > 0 else 0.0
+        if scale == 0.0:
+            scale = 1.0
+        sigma = -numpy.sqrt(numpy.finfo(a.dtype).eps) * scale
+
+    # Factorize (a - sigma*I) and solve on the CPU
+    if isinstance(a, cupy.ndarray):
+        A_shifted = cupy.asnumpy(a) - sigma * numpy.eye(n, dtype=a.dtype)
+        lu_piv = scipy.linalg.lu_factor(A_shifted)
+
+        def solve(b):
+            return scipy.linalg.lu_solve(lu_piv, b)
+    else:
+        A_shifted = a - sigma * _construct.identity(n, dtype=a.dtype,
+                                                    format='csr')
+        solve = scipy.sparse.linalg.splu(A_shifted.tocsc().get()).solve
+
+    def matvec(b):
+        return cupy.asarray(solve(cupy.asnumpy(b)))
+
+    op = _interface.LinearOperator((n, n), matvec=matvec, dtype=a.dtype)
+
+    nu, v = eigsh(op, k=k, which=which, v0=v0,
+                  ncv=ncv, maxiter=maxiter, tol=tol)
+
+    # Transform back
+    w = sigma + 1.0 / nu
+
+    if not return_eigenvectors and auto_shift:
+        idx = cupy.argsort(cupy.absolute(w))[::-1]
+        return w[idx]
+    idx = cupy.argsort(w)
+    if return_eigenvectors:
+        return w[idx], v[:, idx]
+    return w[idx]
 
 
 def _lanczos_asis(a, V, u, alpha, beta, i_start, i_end):
@@ -322,15 +398,10 @@ def _eigsh_solve_ritz(alpha, beta, beta_k, k, which):
         idx = numpy.argsort(numpy.absolute(w))
         wk = w[idx[-k:]]
         sk = s[:, idx[-k:]]
-
     elif which == 'SA':
         idx = numpy.argsort(w)
         wk = w[idx[:k]]
         sk = s[:, idx[:k]]
-    # elif which == 'SM':  #dysfunctional
-    #   idx = cupy.argsort(abs(w))
-    #   wk = w[idx[:k]]
-    #   sk = s[:,idx[:k]]
     return cupy.array(wk), cupy.array(sk)
 
 
@@ -380,6 +451,8 @@ def svds(a, k=6, *, ncv=None, tol=0, which='LM', maxiter=None,
     if k >= min(m, n):
         raise ValueError('k must be smaller than min(m, n) (actual: {})'
                          ''.format(k))
+    if which != 'LM':
+        raise ValueError('which must be \'LM\' (actual: {})'.format(which))
 
     a = _interface.aslinearoperator(a)
     if m >= n:
