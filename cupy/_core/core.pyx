@@ -3004,6 +3004,8 @@ cdef inline _ndarray_base _try_skip_h2d_copy(
 cdef _ndarray_base _array_default(
         obj, dtype, copy, order, Py_ssize_t ndmin, bint blocking):
     cdef _ndarray_base a
+    cdef bint is_correct_contiguous
+    cdef int order_char = internal._normalize_order(order)
 
     # Fast path: zero-copy a NumPy array if possible
     if not blocking:
@@ -3011,24 +3013,30 @@ cdef _ndarray_base _array_default(
         if a is not None:
             return a
 
-    if order is not None and len(order) >= 1 and order[0] in 'KAka':
+    if order_char == b'K' or order_char == b'A':
         if isinstance(obj, numpy.ndarray) and obj.flags.fnc:
             order = 'F'
+            order_char = b'F'
         else:
             order = 'C'
+            order_char = b'C'
 
-    # Avoid copy when the passed object is a compatible numpy array
-    # A non-contiguous array can be let through without copy,
-    # as it will be copied to a pinned vector below
-    numpy_order = order
-    if (
-        isinstance(obj, numpy.ndarray)
-        and not pinned_memory.is_memory_pinned(obj.ctypes.data)
-        and not _is_ump_enabled
-    ):
-        numpy_order = 'K'
-    a_cpu = numpy.array(obj, dtype=dtype, copy=None, order=numpy_order,
-                        ndmin=ndmin)
+    # Avoid copy when the passed object is a numpy array, we'll copy
+    # it below. Copying (which may not be pinned) here is not useful.
+    # TODO(seberg): In principle even `dtype=` is not useful here, but
+    # I am hesitant to remove it for the dtype conversion/validation.
+    if isinstance(obj, numpy.ndarray) and not _is_ump_enabled:
+        a_cpu = numpy.array(obj, dtype=dtype, copy=None, ndmin=ndmin)
+        if order_char == b'C':
+            is_correct_contiguous = a_cpu.flags.c_contiguous
+        elif order_char == b'F':
+            is_correct_contiguous = a_cpu.flags.f_contiguous
+        else:
+            assert False  # assume above normalizes to C or F.
+    else:
+        a_cpu = numpy.array(obj, dtype=dtype, copy=None, order=order,
+                            ndmin=ndmin)
+        is_correct_contiguous = True
 
     a_cpu = a_cpu.astype(_dtype.normalize_dtype(a_cpu.dtype), copy=False)
     a_dtype = a_cpu.dtype
@@ -3050,7 +3058,9 @@ cdef _ndarray_base _array_default(
     stream = stream_module.get_current_stream()
 
     cdef intptr_t ptr_h = <intptr_t>(a_cpu.ctypes.data)
-    if pinned_memory.is_memory_pinned(ptr_h):
+    if is_correct_contiguous and pinned_memory.is_memory_pinned(ptr_h):
+        # The input data is already correctly contiguous so if it is pinned
+        # memory already we can directly copy it.
         a.data.copy_from_host_async(ptr_h, nbytes, stream)
         pinned_memory._add_to_watch_list(stream.record(), a_cpu)
     else:
@@ -3066,12 +3076,8 @@ cdef _ndarray_base _array_default(
             a.data.copy_from_host_async(mem.ptr, nbytes, stream)
             pinned_memory._add_to_watch_list(stream.record(), mem)
         else:
-            if order == 'C':
-                a_cpu = numpy.ascontiguousarray(a_cpu)
-            elif order == 'F':
-                a_cpu = numpy.asfortranarray(a_cpu)
-            else:
-                assert False  # order must be 'C' or 'F' here
+            if not is_correct_contiguous:
+                a_cpu = numpy.asarray(a_cpu, order=order)
             ptr_h = <intptr_t>(a_cpu.ctypes.data)
             a.data.copy_from_host_async(ptr_h, nbytes, stream)
 
