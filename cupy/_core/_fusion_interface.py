@@ -23,7 +23,7 @@ def _set_dtype_to_astype_dict():
     This function is called at most once.
     """
     global _dtype_to_astype_dict
-    _dtype_to_astype_dict = {}
+    dtype_to_astype_dict = {}
 
     dtype_list = [numpy.dtype(type_char) for type_char in '?bhilqBHILQefdFD']
 
@@ -31,7 +31,10 @@ def _set_dtype_to_astype_dict():
         name = 'astype_{}'.format(t)
         rules = tuple(['{}->{}'.format(s.char, t.char) for s in dtype_list])
         command = 'out0 = static_cast< {} >(in0)'.format(get_typename(t))
-        _dtype_to_astype_dict[t] = core.create_ufunc(name, rules, command)
+        dtype_to_astype_dict[t] = core.create_ufunc(name, rules, command)
+
+    # Update the global variable after dict is fully populated:
+    _dtype_to_astype_dict = dtype_to_astype_dict
 
 
 class _VariableProxy:

@@ -13,6 +13,7 @@ There are four differences compared to the original C API.
 """
 cimport cython  # NOQA
 from libc.stdint cimport intptr_t
+from libcpp cimport vector
 
 
 ###############################################################################
@@ -31,6 +32,11 @@ cdef extern from '../../cupy_backend.h' nogil:
     # Build-time version
     # Note: CUDA_VERSION is defined either in CUDA Python or _driver_extern.pxi
     enum: HIP_VERSION
+
+IF CUPY_HIP_VERSION > 0:
+    # Used by check_status() to drain HIP 7's sticky runtime-error slot.
+    cdef extern from '../../cupy_backend_runtime.h' nogil:
+        int cudaGetLastError()
 
 # Provide access to constants from Python.
 from cupy_backends.cuda.api._driver_enum import *
@@ -60,6 +66,11 @@ class CUDADriverError(RuntimeError):
 @cython.profile(False)
 cpdef inline check_status(int status):
     if status != 0:
+        IF CUPY_HIP_VERSION > 0:
+            # HIP 7 leaks failed driver-API status into the runtime
+            # sticky slot, poisoning subsequent kernel launches. Drain
+            # it. Compiled out entirely on CUDA.
+            cudaGetLastError()
         raise CUDADriverError(status)
 
 
@@ -255,6 +266,62 @@ cpdef intptr_t moduleGetGlobal(intptr_t module, str varname) except? 0:
         status = cuModuleGetGlobal(&var, &size, <Module>module, b_varname_ptr)
     check_status(status)
     return <intptr_t>var
+
+
+cdef unsigned int moduleGetFunctionCount(intptr_t module):
+    """Get the number of functions in a module (CUDA driver 12.4+)."""
+    initialize()
+    cdef unsigned int count = 0
+    with nogil:
+        status = cuModuleGetFunctionCount(&count, <Module>module)
+    check_status(status)
+    return count
+
+
+cdef int moduleEnumerateFunctions(
+        intptr_t module, unsigned int count,
+        vector.vector[Function]& result) except? -1:
+    """Enumerate functions in a module (CUDA driver 12.4+).
+
+    Args:
+        module: Module handle.
+        count: Number of function handles to retrieve (must match
+               the value returned by :func:`moduleGetFunctionCount`).
+        result: Output vector; cleared and resized internally.
+    """
+    initialize()
+    result.clear()
+    result.resize(count)
+
+    if count == 0:
+        return 0
+
+    with nogil:
+        status = cuModuleEnumerateFunctions(
+            result.data(), count, <Module>module)
+    check_status(status)
+
+    return 0
+
+
+cdef const char* funcGetName(intptr_t func) except? NULL:
+    """Get the name of a function (CUDA driver 12.3+).
+
+    Args:
+        func: Function handle.
+
+    Returns:
+        The (mangled) name of the function.
+
+    .. note::
+        This function requires CUDA driver 12.3 or later.
+    """
+    initialize()
+    cdef const char* name = NULL
+    with nogil:
+        status = cuFuncGetName(&name, <Function>func)
+    check_status(status)
+    return name
 
 
 cpdef launchKernel(

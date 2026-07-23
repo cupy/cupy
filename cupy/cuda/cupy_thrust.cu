@@ -8,6 +8,7 @@
 #include <thrust/sort.h>
 #include <thrust/tuple.h>
 #include <thrust/execution_policy.h>
+#include <new>
 #include <type_traits>
 
 
@@ -37,7 +38,15 @@ public:
     cupy_allocator(void* memory) : memory(memory) {}
 
     char *allocate(size_t num_bytes) {
-        return cupy_malloc(memory, num_bytes);
+        if (num_bytes == 0) return nullptr;
+        // cupy_malloc returns NULL on out-of-memory (see thrust.pyx).
+        // Without this check thrust would sort into a NULL workspace
+        // and produce corrupt results (cupy/cupy#9894).
+        char *ptr = cupy_malloc(memory, num_bytes);
+        if (ptr == nullptr) {
+            throw std::bad_alloc();
+        }
+        return ptr;
     }
 
     void deallocate(char *ptr, size_t n) {

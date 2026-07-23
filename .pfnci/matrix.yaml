@@ -19,8 +19,9 @@
   optuna: "3"
   ml_dtypes: "0.5"
   mpi4py: null
-  cython: "3.1"
+  cython: "3.2"
   cuda-python: null
+  nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
@@ -49,8 +50,9 @@
   optuna: "3"
   ml_dtypes: "0.5"
   mpi4py: null
-  cython: "3.1"
+  cython: "3.2"
   cuda-python: null
+  nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
@@ -79,8 +81,9 @@
   optuna: "3"
   ml_dtypes: "0.5"
   mpi4py: null
-  cython: "3.1"
+  cython: "3.2"
   cuda-python: null
+  nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
@@ -109,8 +112,9 @@
   optuna: "3"
   ml_dtypes: "0.5"
   mpi4py: null
-  cython: "3.1"
+  cython: "3.2"
   cuda-python: null
+  nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
@@ -139,8 +143,9 @@
   optuna: "3"
   ml_dtypes: null
   mpi4py: null
-  cython: "3.1"
+  cython: "3.2"
   cuda-python: null
+  nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
@@ -169,8 +174,9 @@
   optuna: "3"
   ml_dtypes: "0.5"
   mpi4py: null
-  cython: "3.1"
+  cython: "3.2"
   cuda-python: null
+  nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
@@ -199,8 +205,9 @@
   optuna: "4"
   ml_dtypes: "0.5"
   mpi4py: null
-  cython: "3.1"
+  cython: "3.2"
   cuda-python: null
+  nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
@@ -229,8 +236,9 @@
   optuna: "4"
   ml_dtypes: "0.5"
   mpi4py: null
-  cython: "3.1"
+  cython: "3.2"
   cuda-python: null
+  nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
@@ -259,8 +267,9 @@
   optuna: "4"
   ml_dtypes: "0.5"
   mpi4py: null
-  cython: "3.1"
+  cython: "3.2"
   cuda-python: null
+  nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
@@ -282,15 +291,16 @@
   rocm: null
   nccl: "2.28"
   cutensor: "2.4"
-  cusparselt: "0.8.1"
+  cusparselt: "0.9.1"
   python: "3.14"
   numpy: "2.4"
   scipy: "1.16"
   optuna: "4"
   ml_dtypes: "0.5"
   mpi4py: null
-  cython: "3.1"
+  cython: "3.2"
   cuda-python: null
+  nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
@@ -303,35 +313,80 @@
   test: "unit-multi"
 
 # CUDA 13.1 | Linux
-# The latest CUDA version matrix is intended to cover the highest supported combination.
 - project: "cupy.linux.cuda131"
   target: "cuda131"
-  tags: ["@push", "full", "mini", "linux", "cuda131"]
+  tags: ["@push", "full", "linux", "cuda131"]
   system: "linux"
   os: "ubuntu:22.04"
   cuda: "13.1"
   rocm: null
-  nccl: null
+  nccl: "2.28"
   cutensor: "2.4"
-  cusparselt: "0.8.1"
+  cusparselt: "0.9.1"
   python: "3.14"
   numpy: "2.3"
   scipy: "1.16"
   optuna: "4"
   ml_dtypes: "0.5"
   mpi4py: null
-  cython: "3.1"
+  cython: "3.2"
   cuda-python: null
+  nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
 # CUDA 13.1 (Multi-GPU) | Linux
 - project: "cupy.linux.cuda131.multi"
   _inherits: "cupy.linux.cuda131"
-  tags: ["@push", "full", "mini", "multi", "linux", "cuda131"]
+  tags: ["@push", "full", "multi", "linux", "cuda131"]
   target: "cuda131.multi"
   mpi4py: "4"
   test: "unit-multi"
+
+# CUDA 13.2 | Linux
+# The latest CUDA version matrix is intended to cover the highest supported combination.
+- project: "cupy.linux.cuda132"
+  target: "cuda132"
+  tags: ["@push", "full", "mini", "linux", "cuda132"]
+  system: "linux"
+  os: "ubuntu:22.04"
+  cuda: "13.2"
+  rocm: null
+  nccl: "2.29"
+  cutensor: "2.4"
+  cusparselt: "0.9.1"
+  python: "3.14"
+  numpy: "2.4"
+  scipy: "1.16"
+  optuna: "4"
+  ml_dtypes: "0.5"
+  mpi4py: null
+  cython: "3.2"
+  cuda-python: null
+  nvmath-python: null
+  env:CUPY_ACCELERATORS: "cutensor,cub"
+  test: "unit"
+
+# CUDA 13.2 (Multi-GPU) | Linux
+- project: "cupy.linux.cuda132.multi"
+  _inherits: "cupy.linux.cuda132"
+  tags: ["@push", "full", "mini", "multi", "linux", "cuda132"]
+  target: "cuda132.multi"
+  mpi4py: "4"
+  test: "unit-multi"
+
+# CUDA 13.x + Python 3.14 free-threaded | Linux
+- project: "cupy.linux.cuda13x-py314t"
+  _inherits: "cupy.linux.cuda131"
+  tags: ["@push", "full", "mini", "linux", "cuda131", "py314t"]
+  target: "cuda13x-py314t"
+  # Use newest support numpy/scipy versions for free-threaded tests:
+  numpy: "2.4"
+  scipy: "1.16"
+  python: "3.14t"
+  env:CUPY_TEST_RANDOM_SUBSAMPLE: "1"
+  env:CUPY_CI_PYTEST_EXTRA_OPTS: "--parallel-threads=2"
+  test: "unit"
 
 
 ###############################################################################
@@ -365,8 +420,9 @@
   optuna: "3"
   ml_dtypes: "0.5"
   mpi4py: null
-  cython: "3.1"
+  cython: "3.2"
   cuda-python: null
+  nvmath-python: null
   env:CUPY_ACCELERATORS: null
   test: "unit"
 
@@ -391,8 +447,9 @@
   optuna: "3"
   ml_dtypes: "0.5"
   mpi4py: null
-  cython: "3.1"
+  cython: "3.2"
   cuda-python: null
+  nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit-slow"
 
@@ -421,8 +478,9 @@
   optuna: "3"
   ml_dtypes: "0.5"
   mpi4py: null
-  cython: "3.1"
+  cython: "3.2"
   cuda-python: null
+  nvmath-python: null
   env:CUPY_ACCELERATORS: ""
   test: "example"
 
@@ -448,8 +506,9 @@
   optuna: "pre"
   ml_dtypes: "pre"
   mpi4py: null
-  cython: "3.1"
+  cython: "3.2"
   cuda-python: null
+  nvmath-python: null
   env:CUPY_ACCELERATORS: "cub,cutensor"
   test: "unit"
 
@@ -474,8 +533,9 @@
   optuna: "4"
   mpi4py: null
   ml_dtypes: null
-  cython: "3.1"
+  cython: "3.2"
   cuda-python: "12"
+  nvmath-python: "1"
   env:CUPY_ACCELERATORS: "cutensor,cub"
   env:CUPY_USE_CUDA_PYTHON: "1"
   test: "unit"
@@ -547,7 +607,13 @@
 - project: "cupy.win.cuda131"
   _extern: true
   target: "cuda131"
-  tags: ["@push", "full", "mini", "windows", "cuda131"]
+  tags: ["@push", "full", "windows", "cuda131"]
+  system: "windows"
+
+- project: "cupy.win.cuda132"
+  _extern: true
+  target: "cuda132"
+  tags: ["@push", "full", "mini", "windows", "cuda132"]
   system: "windows"
 
 - project: "cupy.linux.cuda-rapids"

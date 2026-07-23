@@ -221,21 +221,40 @@ fabs = _core.create_ufunc(
     ''')
 
 
+_signed_sign = 'out0 = (in0 > 0) - (in0 < 0)'
 _unsigned_sign = 'out0 = in0 > 0'
 _complex_sign = '''
-out0 = in0 / abs(in0)
+using real_t = in0_type::value_type;
+real_t abs_val = abs(in0);
+if (abs_val == 0) {
+  out0 = static_cast<in0_type>(0);
+} else {
+  out0 = in0 / abs_val;
+}
 '''
+_float_sign = '''
+if (in0 < 0 || in0 > 0) {
+  out0 = copysign(static_cast<in0_type>(1), in0);
+} else {
+  out0 = in0 - in0;
+}
+'''
+
 sign = _core.create_ufunc(
     'cupy_sign',
-    ('b->b', ('B->B', _unsigned_sign), 'h->h', ('H->H', _unsigned_sign),
-     'i->i', ('I->I', _unsigned_sign), 'l->l', ('L->L', _unsigned_sign),
-     'q->q', ('Q->Q', _unsigned_sign),
+    (('b->b', _signed_sign), ('B->B', _unsigned_sign),
+     ('h->h', _signed_sign), ('H->H', _unsigned_sign),
+     ('i->i', _signed_sign), ('I->I', _unsigned_sign),
+     ('l->l', _signed_sign), ('L->L', _unsigned_sign),
+     ('q->q', _signed_sign), ('Q->Q', _unsigned_sign),
      'e->e', *bf16_loop(), 'f->f', 'd->d',
      ('F->F', _complex_sign), ('D->D', _complex_sign)),
-    'out0 = (in0 > 0) - (in0 < 0)',
+    _float_sign,
     doc='''Elementwise sign function.
 
-    It returns -1, 0, or 1 depending on the sign of the input.
+    Returns -1, 0, or 1 depending on the sign of the input. NaN is returned
+    for NaN inputs.
+    For complex values, sign returns ``x/abs(x)`` (and ``0 if x == 0``).
 
     .. seealso:: :data:`numpy.sign`
 
@@ -491,6 +510,7 @@ def _get_interp_kernel(is_complex):
             y = fy[len - 1];
         }
         else if (x_idx >= len - 1) { y = right[0]; }
+        else if (x[i] == fx[x_idx]) { y = fy[x_idx]; }
         else {
             const Z slope = (value_t)(fy[x_idx+1] - fy[x_idx]) / \
                             ((real_t)fx[x_idx+1] - (real_t)fx[x_idx]);

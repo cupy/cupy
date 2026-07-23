@@ -12,6 +12,19 @@ except ImportError:
     pass
 
 
+@pytest.mark.skipif(
+    cupy.cuda.runtime.is_hip,
+    reason=(
+        'TestUnivariateSpline is skipped on ROCm/HIP because the '
+        'UnivariateSpline construction path goes through '
+        'cupyx.scipy.sparse.linalg.spsolve, which requires the '
+        'cuSOLVER csrlsvqr routine. hipSOLVER does not currently '
+        'expose an equivalent, so spsolve raises NotImplementedError '
+        'and every test that constructs a UnivariateSpline (i.e. '
+        'almost every test in this class) fails the '
+        'numpy_cupy_allclose harness with "Only cupy raises error". '
+        'Re-enable on HIP once cupyx.scipy.sparse.linalg.spsolve has '
+        'a hipSOLVER-backed path.'))
 @testing.with_requires("scipy")
 class TestUnivariateSpline:
 

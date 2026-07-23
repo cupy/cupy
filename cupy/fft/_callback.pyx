@@ -18,6 +18,9 @@ import tempfile
 import threading
 import warnings
 
+from cuda.pathfinder import find_nvidia_binary_utility
+from cuda.pathfinder import find_nvidia_header_directory
+
 from cupy import __version__ as _cupy_ver
 from cupy._environment import (get_nvcc_path, get_cuda_path)
 from cupy.cuda.compiler import (_get_bool_env_variable, CompileException)
@@ -82,11 +85,17 @@ cdef inline void _set_vars() except*:
 
     _cuda_path = get_cuda_path()
     if _cuda_path is not None:
-        _cuda_include = os.path.join(_cuda_path, 'include')
-        # TODO(leofang): this does not honor conda's new layout
-        _nvprune = os.path.join(_cuda_path, 'bin/nvprune')
-        if not os.path.isfile(_nvprune):
-            _nvprune = None
+        _nvprune = find_nvidia_binary_utility('nvprune')
+        if _nvprune is None:
+            _nvprune = os.path.join(_cuda_path, 'bin/nvprune')
+            if not os.path.isfile(_nvprune):
+                _nvprune = None
+    else:
+        # _prune() needs both nvprune and _cuda_path (for
+        # libcufft_static.a), so skip nvprune if there is no root.
+        _nvprune = None
+
+    _cuda_include = find_nvidia_header_directory('cudart')
 
     _build_ver = str(runtime.runtimeGetVersion())
     _cufft_ver = get_cufft_version()
@@ -214,9 +223,26 @@ cdef dict _cc_major_map = {
 
 cdef inline str _prune(str temp_dir, str cache_dir, str _cufft_ver, str arch):
     cdef str cufft_lib_full, cufft_lib_pruned, cufft_lib_temp, cufft_lib_cached
+    cdef str libdir, candidate
 
     if _nvprune:
-        cufft_lib_full = os.path.join(_cuda_path, 'lib64/libcufft_static.a')
+        # _cuda_path may point to either the CUDA Toolkit root (which has
+        # lib64/ on Linux) or a targets/<arch> directory (which has lib/
+        # only; e.g. conda, or a system CTK located via cuda.pathfinder),
+        # so probe both layouts.
+        cufft_lib_full = None
+        for libdir in ('lib64', 'lib'):
+            candidate = os.path.join(_cuda_path, libdir, 'libcufft_static.a')
+            if os.path.isfile(candidate):
+                cufft_lib_full = candidate
+                break
+        if cufft_lib_full is None:
+            # cannot locate the static library; fall back to linking the
+            # full one via nvcc's default library search paths
+            warnings.warn(
+                'libcufft_static.a not found under ' + _cuda_path,
+                RuntimeWarning)
+            return None
         cufft_lib_pruned = f'cufft_static_{_cufft_ver}_sm{arch[0]}'
         cufft_lib_temp = os.path.join(temp_dir,
                                       'lib' + cufft_lib_pruned + '.a')
@@ -571,10 +597,11 @@ cdef class _JITCallbackManager(_CallbackManager):
                 raise NotImplementedError
 
     cdef str _get_cuda_include(self):
-        global _cuda_path, _cuda_include
-        if _cuda_path is None or _cuda_include is None:
-            _cuda_path = get_cuda_path()
-            _cuda_include = os.path.join(_cuda_path, 'include')
+        global _cuda_include
+        if _cuda_include is None:
+            _cuda_include = find_nvidia_header_directory('cudart')
+            if _cuda_include is None:
+                raise RuntimeError('Failed to find CUDA headers.')
         return _cuda_include
 
     cdef _sanity_checks(self, cb_load, cb_store, cb_load_data, cb_store_data):

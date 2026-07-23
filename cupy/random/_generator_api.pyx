@@ -600,6 +600,15 @@ class Generator:
         cdef _ndarray_base nbad_a
         cdef _ndarray_base nsample_a
 
+        # Array inputs are not validated here; the kernel dispatcher
+        # handles out-of-range values safely.
+        if type(ngood) in (float, int) and ngood < 0:
+            raise ValueError('ngood < 0')
+        if type(nbad) in (float, int) and nbad < 0:
+            raise ValueError('nbad < 0')
+        if type(nsample) in (float, int) and nsample < 0:
+            raise ValueError('nsample < 0')
+
         if not isinstance(ngood, _ndarray_base):
             if type(ngood) in (float, int):
                 ngood_a = _core.ndarray((), numpy.int64)
@@ -632,7 +641,6 @@ class Generator:
                                 ' or a scalar')
         else:
             nsample = nsample.astype(numpy.int64, copy=False)
-
         if size is not None and not isinstance(size, tuple):
             size = (size,)
         if size is None:
@@ -1157,7 +1165,11 @@ cdef class FeistelBijection:
         global _feistel_bijection_with_cutoff_kernel
         if _feistel_bijection_with_cutoff_kernel is None:
             _feistel_bijection_with_cutoff_kernel = cupy.RawKernel(rf'''
+            #if defined(__HIPCC_RTC__) || defined(__HIPCC__)
+            #include <stdint.h>
+            #else
             #include <cuda/std/cstdint>
+            #endif
 
             struct FeistelParams {{
                 uint64_t __R_bits_;

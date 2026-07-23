@@ -252,6 +252,14 @@ class RandomState:
             - :func:`cupy.random.hypergeometric` for full documentation
             - :meth:`numpy.random.RandomState.hypergeometric`
         """  # NOQA
+        # Array inputs are not validated here; the kernel dispatcher
+        # handles out-of-range values safely.
+        if isinstance(ngood, (int, float)) and ngood < 0:
+            raise ValueError('ngood < 0')
+        if isinstance(nbad, (int, float)) and nbad < 0:
+            raise ValueError('nbad < 0')
+        if isinstance(nsample, (int, float)) and nsample < 1:
+            raise ValueError('nsample < 1')
         ngood, nbad, nsample = \
             cupy.asarray(ngood), cupy.asarray(nbad), cupy.asarray(nsample)
         if size is None:
@@ -1321,7 +1329,7 @@ def seed(seed=None):
 
 # CuPy specific functions
 
-_random_states = {}
+_random_states: dict[int, RandomState] = {}
 
 
 @atexit.register

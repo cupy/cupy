@@ -84,8 +84,14 @@ inline constexpr bool is_floating_point_v<thrust::complex<double>> = true;
 
 }  // namespace cuda
 
-template <> struct NumericTraits<complex<float>>  : BaseTraits<FLOATING_POINT, true, unsigned int, thrust::complex<float>> {};
-template <> struct NumericTraits<complex<double>> : BaseTraits<FLOATING_POINT, true, unsigned long long, thrust::complex<double>> {};
+// NumericTraits specializations for complex types were removed because
+// marking them as primitive (is_primitive=true) caused UB in CUB's
+// decoupled lookback scan (torn reads/writes for sizeof(T) >= 16).
+// CUB reduce/scan still works for complex types without these traits
+// because CuPy provides custom operator specializations (Max, Min,
+// ArgMax, ArgMin) below, and the dtype_dispatcher handles the type
+// dispatch at the C++ level.
+// See: https://github.com/NVIDIA/cccl/issues/8207
 
 // need specializations for initial values
 namespace std {
@@ -753,11 +759,18 @@ struct _cub_reduce_sum {
 struct _cub_segmented_reduce_sum {
     template <typename T>
     void operator()(void* workspace, size_t& workspace_size, void* x, void* y,
-        int num_segments, seg_offset_itr offset_start, cudaStream_t s)
+        int num_segments, int segment_size, seg_offset_itr offset_start,
+        cudaStream_t s)
     {
+#ifndef CUPY_USE_HIP
+        DeviceSegmentedReduce::Sum(workspace, workspace_size,
+            static_cast<T*>(x), static_cast<T*>(y), num_segments,
+            segment_size, s);
+#else
         DeviceSegmentedReduce::Sum(workspace, workspace_size,
             static_cast<T*>(x), static_cast<T*>(y), num_segments,
             offset_start, offset_start+1, s);
+#endif
     }
 };
 
@@ -780,15 +793,22 @@ struct _cub_reduce_prod {
 struct _cub_segmented_reduce_prod {
     template <typename T>
     void operator()(void* workspace, size_t& workspace_size, void* x, void* y,
-        int num_segments, seg_offset_itr offset_start, cudaStream_t s)
+        int num_segments, int segment_size, seg_offset_itr offset_start,
+        cudaStream_t s)
     {
         _multiply product_op;
         // the init value is cast from 1.0f because on host __half can only be
         // initialized by float or double; static_cast<__half>(1) = 0 on host.
+#ifndef CUPY_USE_HIP
+        DeviceSegmentedReduce::Reduce(workspace, workspace_size,
+            static_cast<T*>(x), static_cast<T*>(y), num_segments,
+            segment_size, product_op, static_cast<T>(1.0f), s);
+#else
         DeviceSegmentedReduce::Reduce(workspace, workspace_size,
             static_cast<T*>(x), static_cast<T*>(y), num_segments,
             offset_start, offset_start+1,
             product_op, static_cast<T>(1.0f), s);
+#endif
     }
 };
 
@@ -817,20 +837,34 @@ struct _cub_reduce_min {
 struct _cub_segmented_reduce_min {
     template <typename T>
     void operator()(void* workspace, size_t& workspace_size, void* x, void* y,
-        int num_segments, seg_offset_itr offset_start, cudaStream_t s)
+        int num_segments, int segment_size, seg_offset_itr offset_start,
+        cudaStream_t s)
     {
         if constexpr (std::numeric_limits<T>::has_infinity)
         {
+#ifndef CUPY_USE_HIP
+            DeviceSegmentedReduce::Reduce(workspace, workspace_size,
+                static_cast<T*>(x), static_cast<T*>(y), num_segments,
+                segment_size,
+                typename select_min<T>::type{}, std::numeric_limits<T>::infinity(), s);
+#else
             DeviceSegmentedReduce::Reduce(workspace, workspace_size,
                 static_cast<T*>(x), static_cast<T*>(y), num_segments,
                 offset_start, offset_start+1,
                 typename select_min<T>::type{}, std::numeric_limits<T>::infinity(), s);
+#endif
         }
         else
         {
+#ifndef CUPY_USE_HIP
+            DeviceSegmentedReduce::Min(workspace, workspace_size,
+                static_cast<T*>(x), static_cast<T*>(y), num_segments,
+                segment_size, s);
+#else
             DeviceSegmentedReduce::Min(workspace, workspace_size,
                 static_cast<T*>(x), static_cast<T*>(y), num_segments,
                 offset_start, offset_start+1, s);
+#endif
         }
     }
 };
@@ -871,31 +905,52 @@ struct _cub_reduce_max {
 struct _cub_segmented_reduce_max {
     template <typename T>
     void operator()(void* workspace, size_t& workspace_size, void* x, void* y,
-        int num_segments, seg_offset_itr offset_start, cudaStream_t s)
+        int num_segments, int segment_size, seg_offset_itr offset_start,
+        cudaStream_t s)
     {
         if constexpr (std::numeric_limits<T>::has_infinity)
         {
             // to avoid compiler error: invalid argument type '__half' to unary expression on HIP...
             if constexpr (std::is_same_v<T, __half>)
             {
+#ifndef CUPY_USE_HIP
+                DeviceSegmentedReduce::Reduce(workspace, workspace_size,
+                    static_cast<T*>(x), static_cast<T*>(y), num_segments,
+                    segment_size,
+                    typename select_max<T>::type{}, half_negate_inf(), s);
+#else
                 DeviceSegmentedReduce::Reduce(workspace, workspace_size,
                     static_cast<T*>(x), static_cast<T*>(y), num_segments,
                     offset_start, offset_start+1,
                     typename select_max<T>::type{}, half_negate_inf(), s);
+#endif
             }
             else
             {
+#ifndef CUPY_USE_HIP
+                DeviceSegmentedReduce::Reduce(workspace, workspace_size,
+                    static_cast<T*>(x), static_cast<T*>(y), num_segments,
+                    segment_size,
+                    typename select_max<T>::type{}, -std::numeric_limits<T>::infinity(), s);
+#else
                 DeviceSegmentedReduce::Reduce(workspace, workspace_size,
                     static_cast<T*>(x), static_cast<T*>(y), num_segments,
                     offset_start, offset_start+1,
                     typename select_max<T>::type{}, -std::numeric_limits<T>::infinity(), s);
+#endif
             }
         }
         else
         {
+#ifndef CUPY_USE_HIP
+            DeviceSegmentedReduce::Max(workspace, workspace_size,
+                static_cast<T*>(x), static_cast<T*>(y), num_segments,
+                segment_size, s);
+#else
             DeviceSegmentedReduce::Max(workspace, workspace_size,
                 static_cast<T*>(x), static_cast<T*>(y), num_segments,
                 offset_start, offset_start+1, s);
+#endif
         }
     }
 };
@@ -1073,16 +1128,20 @@ void cub_device_segmented_reduce(void* workspace, size_t& workspace_size,
     switch(op) {
     case CUPY_CUB_SUM:
         return dtype_dispatcher(dtype_id, _cub_segmented_reduce_sum(),
-                   workspace, workspace_size, x, y, num_segments, itr, stream);
+                   workspace, workspace_size, x, y, num_segments,
+                   segment_size, itr, stream);
     case CUPY_CUB_MIN:
         return dtype_dispatcher(dtype_id, _cub_segmented_reduce_min(),
-                   workspace, workspace_size, x, y, num_segments, itr, stream);
+                   workspace, workspace_size, x, y, num_segments,
+                   segment_size, itr, stream);
     case CUPY_CUB_MAX:
         return dtype_dispatcher(dtype_id, _cub_segmented_reduce_max(),
-                   workspace, workspace_size, x, y, num_segments, itr, stream);
+                   workspace, workspace_size, x, y, num_segments,
+                   segment_size, itr, stream);
     case CUPY_CUB_PROD:
         return dtype_dispatcher(dtype_id, _cub_segmented_reduce_prod(),
-                   workspace, workspace_size, x, y, num_segments, itr, stream);
+                   workspace, workspace_size, x, y, num_segments,
+                   segment_size, itr, stream);
     default:
         throw std::runtime_error("Unsupported operation");
     }

@@ -258,6 +258,8 @@ def device_segmented_reduce(_ndarray_base x, op, tuple reduce_axis,
     # get workspace size and then fire up
     ws_size = cub_device_segmented_reduce_get_workspace_size(
         x_ptr, y_ptr, n_segments, contiguous_size, s, op, dtype_id)
+    # CUB reports `ws_size == 1` when no scratch space is needed, because a
+    # NULL workspace pointer switches the call into size-query mode, so alloc.
     ws = memory.alloc(ws_size)
     ws_ptr = <void*>ws.ptr
     op_code = <int>op
@@ -390,10 +392,12 @@ cdef (bint, Py_ssize_t) can_use_device_segmented_reduce(  # noqa: E211
             return (False, 0)
     else:
         order = 'CF'  # for computing the contig size
-    # until we resolve cupy/cupy#3309
+    # CUB device segmented reduce uses int for num_items, segment_size,
+    # and the offset iterator (segment_size * segment_index). Check the
+    # total array size to ensure none of these overflow. (cupy/cupy#3309)
     cdef Py_ssize_t contiguous_size = _preprocess_array(
         x.shape, reduce_axis, out_axis, order)
-    return (contiguous_size <= 0x7fffffff, contiguous_size)
+    return (x.size <= 0x7fffffff, contiguous_size)
 
 
 cdef _cub_support_dtype(bint sum_mode, int dev_id):
@@ -511,13 +515,12 @@ cpdef cub_scan(_ndarray_base arr, op):
         return None
 
     x_dtype = arr.dtype
-    if x_dtype == numpy.complex128:
-        # cub_device_scan seems buggy for complex128:
-        # https://github.com/cupy/cupy/pull/2919#issuecomment-574633590
-        return None
 
     cdef int dev_id = device.get_device_id()
     if x_dtype in _cub_support_dtype(False, dev_id):
+        # CUB device scan uses int for num_items (cupy/cupy#3309)
+        if arr.size > 0x7fffffff:
+            return None
         return device_scan(arr, op)
 
     return None

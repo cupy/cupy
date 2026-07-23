@@ -18,7 +18,7 @@ jobs:
       uses: actions/setup-python@v5
       id: setup-python
       with:
-        python-version: '3.10'
+        python-version: '3.12'
 
     - name: Setup cache
       uses: actions/cache@v4
@@ -40,9 +40,9 @@ jobs:
     - name: Type Check
       run: |
         # TODO: Test against various NumPy/SciPy versions.
-        pip install 'numpy==1.25.*' 'scipy==1.10.*'
-        pip install 'mypy==1.5.*' 'types-setuptools==57.4.14' 'pytest>=7.2'
-        sed -i s/error::cupy.exceptions./error::numpy./ pyproject.toml  # Because no cupy here. See cupy#8346
+        pip install 'numpy==2.3.*' 'scipy==1.16.*'
+        pip install 'mypy==2.3.*' 'types-setuptools==57.4.14' 'pytest>=7.2'
+        sed -i s/error::cupy.exceptions./error::numpy.exceptions./ pyproject.toml  # Because no cupy here. See cupy#8346
         pytest -v tests/typing_tests/test_typing.py
 
   build-cuda:
@@ -88,7 +88,9 @@ jobs:
       # Cython does give a warning with all warnings enabled (but those are many).
       run: |
         result=$(grep -r 'Pyx_WriteUnraisable' --include='*.cpp' . \
-                | grep -v -E '(__dealloc__|const char \*name|pycapsule_deleter|cupy\.cuda\.thrust\.cupy_malloc)' || true)
+                | grep -v -E \
+                '(__dealloc__|const char \*name|pycapsule_deleter|cupy\.cuda\.thrust\.cupy_malloc|\._streamCallbackFunc|\._HostFnFunc)' \
+                || true)
         if [ -n "$result" ]; then
           echo "$result"
           echo "Found possibly bad functions (see above). If this check fails a function"

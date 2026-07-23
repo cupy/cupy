@@ -211,7 +211,9 @@ class LinuxGenerator:
             'ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"',
             f'RUN pyenv install {py_spec} && \\',
             f'    pyenv global {py_spec} && \\',
-            '    pip install -U setuptools pip wheel',
+            '    pip install -U setuptools pip wheel && \\',
+            # For GCP kernel cache backend
+            '    pip install -U google-cloud-storage',
             '',
         ]
 
@@ -219,7 +221,7 @@ class LinuxGenerator:
         pip_args = []
         pip_uninstall_args = []
         for pylib in ('numpy', 'scipy', 'optuna', 'mpi4py',
-                      'ml_dtypes', 'cython', 'cuda-python'):
+                      'ml_dtypes', 'cython', 'cuda-python', 'nvmath-python'):
             pylib_ver = getattr(matrix, pylib)
             if pylib_ver is None:
                 pip_uninstall_args.append(pylib)

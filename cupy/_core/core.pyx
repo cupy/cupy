@@ -10,7 +10,6 @@ import warnings
 import numpy
 
 import cupy
-from cupy import _environment
 from cupy._core._kernel import create_ufunc
 from cupy._core._kernel import ElementwiseKernel
 from cupy._core._ufuncs import elementwise_copy
@@ -29,6 +28,8 @@ cimport cpython
 from libc.stdint cimport int64_t, intptr_t, INT32_MAX
 from libc cimport stdlib
 from cpython cimport Py_buffer
+
+cimport numpy as cnp
 
 from cupy._core cimport _carray
 from cupy._core cimport _dtype
@@ -266,11 +267,13 @@ cdef class _ndarray_base:
                         f"contiguous size of {self.size * itemsize} but got "
                         f"{alloc_size}.")
             else:
-                alloc_size = self.size * itemsize
+                alloc_size = right - left  # actual memory extend
         else:
             self._set_contiguous_strides(itemsize, order_char == b'C')
-            alloc_size = self.size * itemsize
+            alloc_size = self.size * itemsize  # contiguous
 
+        # Arrays can e.g. broadcast, so check that all pointer offsets fit and
+        # the size fit int32. (seberg: `* itemsize` may be unnecessary)
         max_diff = max(alloc_size, self.size * itemsize)
         self._index_32_bits = max_diff <= <Py_ssize_t>(1 << 31)
 
@@ -803,7 +806,53 @@ cdef class _ndarray_base:
         copy_ = True if copy else None
         return self._astype(dtype, order, casting, subok, copy_)
 
-    # TODO(okuta): Implement byteswap
+    cpdef _ndarray_base byteswap(self, inplace=False):
+        """Swap the bytes of the array elements.
+
+        Toggle between low-endian and big-endian data representation by
+        returning a byteswapped array, optionally swapped in-place.
+
+        Args:
+            inplace (bool): If ``True``, swap bytes in-place. Default is
+                ``False``.
+
+        Returns:
+            cupy.ndarray: The byteswapped array. If ``inplace`` is ``True``,
+            this is a view to self.
+
+        .. seealso:: :meth:`numpy.ndarray.byteswap`
+
+        """
+        dtype = self.dtype
+        itemsize = dtype.itemsize
+
+        if dtype.names is not None:
+            raise TypeError(
+                'byteswap is not supported for structured dtypes')
+
+        if itemsize == 1:
+            if inplace:
+                return self
+            return self.copy()
+
+        # Complex types: byteswap real and imaginary components independently
+        if numpy.issubdtype(dtype, numpy.complexfloating):
+            component_dtype = numpy.finfo(dtype).dtype
+            contig = _internal_ascontiguousarray(self).ravel()
+            float_view = contig.view(component_dtype)
+            swapped = _byteswap_dispatch(float_view)
+            result = _internal_ascontiguousarray(swapped)
+            result = result.view(dtype).reshape(self.shape)
+            if inplace:
+                elementwise_copy(result, self)
+                return self
+            return result
+
+        result = _byteswap_dispatch(self)
+        if inplace:
+            elementwise_copy(result, self)
+            return self
+        return result
 
     cpdef _ndarray_base copy(self, order='C'):
         """Returns a copy of the array.
@@ -851,13 +900,23 @@ cdef class _ndarray_base:
 
         copy_context = _null_context
         if runtime._is_hip_environment:
-            # HIP requires changing the active device to the one where
-            # src data is before the copy. From the docs:
-            # it is recommended to set the current device to the device
-            # where the src data is physically located.
+            # From hip_runtime_api.h (hipMemcpyAsync): "For multi-gpu
+            # or peer-to-peer configurations, it is recommended to
+            # use a stream which is attached to the device where the
+            # src data is physically located."
             copy_context = self.device
         with copy_context:
             newarray.data.copy_from_device_async(x.data, x.nbytes)
+            if runtime._is_hip_environment:
+                # The copy ran on the source device's stream. Record an
+                # event so the destination device's stream waits for the
+                # copy to complete before any subsequent work uses
+                # newarray (e.g. .get() readback).
+                copy_event = stream_module.get_current_stream().record()
+        if runtime._is_hip_environment:
+            newarray.device.use()
+            stream_module.get_current_stream().wait_event(copy_event)
+            runtime.setDevice(prev_device)
         return newarray
 
     cpdef _ndarray_base view(self, dtype=None, array_class=None):
@@ -943,21 +1002,23 @@ cdef class _ndarray_base:
         .. seealso:: :meth:`numpy.ndarray.fill`
 
         """
-        if isinstance(value, cupy.ndarray):
-            if value.shape != ():
+        cupy_arr = _convert_from_cupy_like(value, error=False)
+        if cupy_arr is not None:
+            if cupy_arr.shape != ():
                 raise ValueError(
                     'non-scalar cupy.ndarray cannot be used for fill')
-            value = value.astype(self.dtype, copy=False)
-            fill_kernel(value, self)
-            return
-
-        if isinstance(value, numpy.ndarray):
+            value = cupy_arr.astype(self.dtype, copy=False)
+        else:
+            value = numpy.asarray(value, dtype=self.dtype)
             if value.shape != ():
                 raise ValueError(
                     'non-scalar numpy.ndarray cannot be used for fill')
-            value = value.astype(self.dtype, copy=False).item()
+            value = value[()]  # use scalar rather than NumPy array
 
-        if value == 0 and self._c_contiguous:
+        if ((<cnp.dtype>(self.dtype)).type_num != cnp.NPY_VOID
+                and value == 0 and self._c_contiguous):
+            # For most types, we can just memset if the value is zero.
+            # (Void also works mostly, but the `value == 0` could fail.)
             self.data.memset_async(0, self.nbytes)
         else:
             fill_kernel(value, self)
@@ -1570,6 +1631,37 @@ cdef class _ndarray_base:
 
     def __pow__(x, y, modulo):
         # Note that we ignore the modulo argument as well as NumPy.
+
+        # Explicit special cases for common powers. As of 14.2, we do not
+        # have further special cases in the ufunc implementation.
+        # TODO(seberg): it would be nice to move part (or all!) of this into
+        #     the ufunc, but that would require new ufunc infrastructure
+        #     (i.e. for specific scalar values compile hard-code the kernel).
+        fast_func = None
+        fast_func_dtype = None
+        if type(y) is int:
+            if y == 2:
+                fast_func = cupy.square
+                if x.dtype.kind not in "ifc":
+                    fast_func_dtype = cupy.result_type(x.dtype, y)
+        elif type(y) is float:
+            if y == 0.5:
+                # For **0.5 promotion should be the same as sqrt
+                # (true for all typical numerical types we currently have)
+                fast_func = cupy.sqrt
+            elif y == 2.0:
+                fast_func = cupy.square
+            elif y == -1.0:
+                fast_func = cupy.reciprocal
+
+            if fast_func is not None and x.dtype.kind not in "fc":
+                # If the inputs aren't floats/ints, assume power is just
+                # a result_type() call.
+                fast_func_dtype = cupy.result_type(x.dtype, y)
+
+        if fast_func is not None:
+            return fast_func(x, dtype=fast_func_dtype)
+
         if isinstance(y, ndarray):
             return _math._power(x, y)
         elif _should_use_rop(x, y):
@@ -1698,7 +1790,7 @@ cdef class _ndarray_base:
             runtime.setDevice(prev_device)
 
     def __reduce__(self):
-        return array, (self.get(),)
+        return array, (self.get(order="A"),)
 
     # Basic customization:
 
@@ -2353,9 +2445,8 @@ _HANDLED_TYPES = (ndarray, numpy.ndarray)
 # TODO(niboshi): Move it out of core.pyx
 
 cdef bint _is_hip = runtime._is_hip_environment
-cdef str _cuda_path = ''  # '' for uninitialized, None for non-existing
-cdef str _bundled_include = ''  # '' for uninitialized, None for non-existing
-_headers_from_wheel_available = False
+cdef str _cuda_include_dir = ''  # '' for uninitialized, None for non-existing
+cdef str _rocm_include_dir = ''  # '' for uninitialized, None for non-existing
 
 cdef list cupy_header_list = [
     'cupy/complex.cuh',
@@ -2495,50 +2586,30 @@ cpdef tuple assemble_cupy_compiler_options(tuple options):
 
     options += ('-I%s' % _get_header_dir_path(),)
 
-    global _cuda_path
-    if _cuda_path == '':
-        if not _is_hip:
-            _cuda_path = cuda.get_cuda_path()
-        else:
-            _cuda_path = cuda.get_rocm_path()
-
     if not _is_hip:
-        # CUDA Enhanced Compatibility
-        global _bundled_include, _headers_from_wheel_available
-        if _bundled_include == '':
-            major, minor = nvrtc.getVersion()
-            if major == 12 and minor < 2:
-                # Use bundled header for CUDA 12.0 and 12.1 only.
-                _bundled_include = 'cuda-12'
-            else:
-                # Do not use bundled includes dir after CUDA 12.2+.
-                _bundled_include = None
-
-            # Check if headers from cudart wheels are available.
-            wheel_dir_count = len(
-                _environment._get_include_dir_from_conda_or_wheel(
-                    major, minor))
-            _headers_from_wheel_available = (0 < wheel_dir_count)
-
-        if (_bundled_include is None and
-                _cuda_path is None and
-                not _headers_from_wheel_available):
+        global _cuda_include_dir
+        if _cuda_include_dir == '':
+            from cuda.pathfinder import find_nvidia_header_directory
+            _cuda_include_dir = find_nvidia_header_directory('cudart')
+        if _cuda_include_dir is None:
             raise RuntimeError(
-                'Failed to auto-detect CUDA root directory. '
-                'Please specify `CUDA_PATH` environment variable if you '
-                'are using CUDA versions not yet supported by CuPy.')
-
-        if _bundled_include is not None:
-            options += ('-I' + os.path.join(
-                _get_header_dir_path(), 'cupy', '_cuda', _bundled_include),)
-    elif _is_hip:
-        if _cuda_path is None:
+                'Failed to find CUDA headers. Please install CUDA toolkit '
+                'headers (e.g., pip install cupy-cuda12x[ctk]) or specify '
+                'CUDA_PATH environment variable.')
+        options += ('-I' + _cuda_include_dir,)
+    else:
+        global _rocm_include_dir
+        if _rocm_include_dir == '':
+            _rocm_path = cuda.get_rocm_path()
+            if _rocm_path is not None:
+                _rocm_include_dir = os.path.join(_rocm_path, 'include')
+            else:
+                _rocm_include_dir = None
+        if _rocm_include_dir is None:
             raise RuntimeError(
                 'Failed to auto-detect ROCm root directory. '
                 'Please specify `ROCM_HOME` environment variable.')
-
-    if _cuda_path is not None:
-        options += ('-I' + os.path.join(_cuda_path, 'include'),)
+        options += ('-I' + _rocm_include_dir,)
 
     return options
 
@@ -2575,6 +2646,56 @@ cpdef function.Module compile_with_cache(
 cdef str _id = 'out0 = in0'
 
 cdef fill_kernel = ElementwiseKernel('T x', 'T y', 'y = x', 'cupy_fill')
+
+cdef _byteswap_kernel = ElementwiseKernel(
+    'T x', 'T y',
+    'y = cupy_byteswap(x)',
+    'cupy_byteswap',
+    preamble='''
+#ifdef __HIPCC_RTC__
+// HIPRTC lacks <cuda/std/bit> and <bit>; use clang builtins.
+template <typename T>
+__device__ inline T cupy_byteswap(T x) {
+    if constexpr (sizeof(T) == 2) {
+        return static_cast<T>(
+            __builtin_bswap16(static_cast<unsigned short>(x)));
+    } else if constexpr (sizeof(T) == 4) {
+        return static_cast<T>(
+            __builtin_bswap32(static_cast<unsigned int>(x)));
+    } else if constexpr (sizeof(T) == 8) {
+        return static_cast<T>(
+            __builtin_bswap64(static_cast<unsigned long long>(x)));
+    } else {
+        static_assert(
+            false,
+            "cupy_byteswap: only 16, 32, and 64 bit integer types "
+            "are supported under HIPRTC");
+    }
+}
+#else
+#include <cuda/std/bit>
+#include <cuda/std/utility>
+template <typename T>
+__device__ inline auto cupy_byteswap(T&& x) {
+    return cuda::std::byteswap(cuda::std::forward<T>(x));
+}
+#endif
+''')
+
+
+cdef _byteswap_dispatch(_ndarray_base a):
+    cdef int itemsize = a.dtype.itemsize
+    cdef _ndarray_base u, result
+    dtype = a.dtype
+    if itemsize == 2 or itemsize == 4 or itemsize == 8:
+        uint_dtype = numpy.dtype('uint{}'.format(itemsize * 8))
+        u = _internal_ascontiguousarray(a).view(uint_dtype)
+        result = _byteswap_kernel(u)
+        return result.view(dtype)
+    raise TypeError(
+        'byteswap not supported for dtype with '
+        'itemsize {}'.format(itemsize))
+
 
 cdef str _divmod_float = '''
     out0_type a = _floor_divide(in0, in1);
@@ -2739,13 +2860,6 @@ cdef _ndarray_base _array_from_cupy_ndarray(
         a.shape = (1,) * (ndmin - ndim) + a.shape
 
     return a
-
-
-cdef _ndarray_base _array_from_cuda_array_interface(
-        obj, dtype, copy, order, bint subok, Py_ssize_t ndmin):
-    return array(
-        _convert_object_with_cuda_array_interface(obj),
-        dtype, copy, order, subok, ndmin)
 
 
 cdef _ndarray_base _array_from_nested_sequence(
@@ -2915,8 +3029,17 @@ cdef _ndarray_base _array_default(
         else:
             order = 'C'
 
-    copy = False if NUMPY_1x else None
-    a_cpu = numpy.array(obj, dtype=dtype, copy=copy, order=order,
+    # Avoid copy when the passed object is a compatible numpy array
+    # A non-contiguous array can be let through without copy,
+    # as it will be copied to a pinned vector below
+    numpy_order = order
+    if (
+        isinstance(obj, numpy.ndarray)
+        and not pinned_memory.is_memory_pinned(obj.ctypes.data)
+        and not _is_ump_enabled
+    ):
+        numpy_order = 'K'
+    a_cpu = numpy.array(obj, dtype=dtype, copy=None, order=numpy_order,
                         ndmin=ndmin)
 
     a_cpu = a_cpu.astype(_dtype.normalize_dtype(a_cpu.dtype), copy=False)
@@ -2950,10 +3073,18 @@ cdef _ndarray_base _array_default(
         mem = _alloc_async_transfer_buffer(nbytes)
         if mem is not None:
             src_cpu = numpy.frombuffer(mem, a_dtype, a_cpu.size)
-            src_cpu[:] = a_cpu.ravel(order)
+            src_cpu = src_cpu.reshape(a_cpu.shape, order=order)
+            src_cpu[...] = a_cpu
             a.data.copy_from_host_async(mem.ptr, nbytes, stream)
             pinned_memory._add_to_watch_list(stream.record(), mem)
         else:
+            if order == 'C':
+                a_cpu = numpy.ascontiguousarray(a_cpu)
+            elif order == 'F':
+                a_cpu = numpy.asfortranarray(a_cpu)
+            else:
+                assert False  # order must be 'C' or 'F' here
+            ptr_h = <intptr_t>(a_cpu.ctypes.data)
             a.data.copy_from_host_async(ptr_h, nbytes, stream)
 
     if blocking:
@@ -2987,7 +3118,7 @@ cdef tuple _compute_concat_info_impl(obj):
 
     if (cai := getattr(obj, '__cuda_array_interface__', None)) is not None:
         # Assume __cuda_array_interface__ is cheap enough to call twice
-        return cai['shape'], ndarray, numpy.dtype(cai['typestr'])
+        return cai['shape'], ndarray, get_cai_dtype(cai)
 
     if isinstance(obj, (list, tuple)):
         dim = len(obj)
@@ -3123,6 +3254,38 @@ cpdef _ndarray_base asfortranarray(_ndarray_base a, dtype=None):
     return newarray
 
 
+cdef inline get_cai_dtype(dict desc):
+    dtype = numpy.dtype(desc['typestr'])
+    if <cnp.dtype>(dtype).num != cnp.NPY_VOID:
+        return dtype
+
+    # extract dtype from descr, this is slightly "smarter" than some
+    # NumPy versions (at least 2.4), but much like `np.load` logic.
+    # (For CuPy it is much more likely to use aligned and thus padded dtypes.)
+    descr = desc.get('descr')  # allow missing 'descr'
+    if descr is None:
+        return dtype
+    if isinstance(descr, list):
+        offset = 0
+        names = []
+        offsets = []
+        formats = []
+        # Note, we just don't support "titles" here...
+        for name, fmt in descr:
+            field_dtype = numpy.dtype(fmt)
+            if name:  # ignore fields with empty names (assume padding)
+                names.append(name)
+                formats.append(field_dtype)
+                offsets.append(offset)
+            offset += field_dtype.itemsize
+
+        dtype = numpy.dtype(
+            {"names": names, "offsets": offsets, "formats": formats})
+    else:
+        pass  # should be unstructured (and already correct).
+    return dtype
+
+
 cpdef _ndarray_base _convert_object_with_cuda_array_interface(a):
     # NOTE: Most code should use this indirectly via `_convert_from_cupy_like`
 
@@ -3133,7 +3296,7 @@ cpdef _ndarray_base _convert_object_with_cuda_array_interface(a):
     cdef size_t nbytes
 
     ptr = desc['data'][0]
-    dtype = numpy.dtype(desc['typestr'])
+    dtype = get_cai_dtype(desc)
     if dtype.byteorder == '>':
         raise ValueError('CuPy does not support the big-endian byte-order')
     mask = desc.get('mask')

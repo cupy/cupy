@@ -86,6 +86,7 @@ class TestSearch:
         return a.argmax(axis=1)
 
     @testing.slow
+    @pytest.mark.thread_unsafe(reason="allocation too large.")
     def test_argmax_int32_overflow(self):
         a = cupy.arange(2 ** 32 + 1, dtype=cupy.float64)
         assert a.argmax().item() == 2 ** 32
@@ -165,6 +166,7 @@ class TestSearch:
         return a.argmin(axis=1)
 
     @testing.slow
+    @pytest.mark.thread_unsafe(reason="allocation too large.")
     def test_argmin_int32_overflow(self):
         a = cupy.arange(2 ** 32 + 1, dtype=cupy.float64)
         cupy.negative(a, out=a)
@@ -181,12 +183,15 @@ def _skip_cuda90(dtype):
 # This class compares CUB results against NumPy's
 # TODO(leofang): test axis after support is added
 @testing.parameterize(*testing.product({
-    'shape': [(10,), (10, 20), (10, 20, 30), (10, 20, 30, 40)],
+    # Keep the contiguous reduction axis (last for C, first for F) >= 128 so
+    # the CUB block-reduction path is used rather than the short-axis fallback.
+    'shape': [(128,), (128, 128), (128, 2, 128), (128, 2, 2, 128)],
     'order_and_axis': (('C', -1), ('C', None), ('F', 0), ('F', None)),
     'backend': ('device', 'block'),
 }))
 @pytest.mark.skipif(
     not cupy.cuda.cub.available, reason='The CUB routine is not enabled')
+@pytest.mark.thread_unsafe(reason="unsafe setUp and counts function calls.")
 class TestCubReduction:
 
     @pytest.fixture(autouse=True)
