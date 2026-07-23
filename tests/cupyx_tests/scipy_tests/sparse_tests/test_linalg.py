@@ -325,6 +325,53 @@ class TestSvds:
             sp.linalg.svds(a, k=self.k, which='SM')
 
 
+@testing.with_requires('scipy')
+class TestEigshSvdsSmallNcv:
+    # Regression tests for gh-9278: eigsh's thick-restart step wrote past
+    # the end of the Lanczos basis (`V[k+1]`) whenever the default `ncv`
+    # ended up <= k + 1, which the old `min(..., n - 1)` cap allowed for
+    # matrices small relative to k.
+    tol = {numpy.float32: 1e-4, numpy.complex64: 1e-4, 'default': 1e-8}
+
+    @pytest.mark.parametrize('n,k', [(3, 1), (4, 2), (5, 3)])
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=tol, atol=tol, sp_name='sp')
+    def test_eigsh(self, n, k, dtype, xp, sp):
+        aux = testing.shaped_random((n, n), xp, dtype=dtype, scale=1)
+        a = aux + aux.conj().T
+        w, _ = sp.linalg.eigsh(a, k=k)
+        return xp.sort(w)
+
+    @pytest.mark.parametrize(
+        'shape,k', [((4, 3), 1), ((5, 4), 2), ((6, 5), 3)])
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=tol, atol=tol, sp_name='sp')
+    def test_svds(self, shape, k, dtype, xp, sp):
+        a = testing.shaped_random(shape, xp, dtype=dtype, scale=1)
+        s = sp.linalg.svds(a, k=k, return_singular_vectors=False)
+        return xp.sort(s)
+
+    @testing.for_dtypes('fdFD')
+    def test_eigsh_k_equals_n_minus_1(self, dtype):
+        # k == n - 1 is the extreme case allowed by eigsh's own input
+        # validation (k < n). Even after capping ncv at n, the
+        # thick-restart step still has no room to restart (ncv == k + 1),
+        # so the fix also skips restarting once ncv == n, since that
+        # already spans the full Krylov space. scipy's own eigsh has an
+        # unrelated k >= N - 1 special case for complex Hermitian input
+        # (it falls back to a dense scipy.linalg.eig with a differently
+        # shaped result), so numpy.linalg.eigvalsh is the oracle here
+        # instead of scipy.
+        n, k = 3, 2
+        aux = testing.shaped_random((n, n), cupy, dtype=dtype, scale=1)
+        a = aux + aux.conj().T
+        w, _ = cupyx.scipy.sparse.linalg.eigsh(a, k=k, which='SA')
+        expected = numpy.sort(numpy.linalg.eigvalsh(cupy.asnumpy(a)))[:k]
+        tol = self.tol[dtype] if dtype in self.tol else self.tol['default']
+        testing.assert_allclose(
+            cupy.sort(w), expected, rtol=tol, atol=tol)
+
+
 @testing.parameterize(*testing.product({
     'x0': [None, 'ones'],
     'M': [None, 'jacobi'],
