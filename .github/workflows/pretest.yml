@@ -61,14 +61,18 @@ jobs:
       with:
         python-version: '3.12'
 
-    - name: Setup cache
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache
-        key: build-cuda-${{ github.sha }}
-        restore-keys: |
-          build-cuda-${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
-          build-cuda-
+    # Temporarily disabled: every run saves a fresh ~385 MB ~/.cache entry
+    # keyed on the merge SHA (build-cuda-<sha>), crowding the GHA Cache
+    # budget that the sccache-backed wheel builds rely on. A follow-up PR
+    # will rework the keying before re-enabling.
+    # - name: Setup cache
+    #   uses: actions/cache@v4
+    #   with:
+    #     path: ~/.cache
+    #     key: build-cuda-${{ github.sha }}
+    #     restore-keys: |
+    #       build-cuda-${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+    #       build-cuda-
 
     - name: Setup ccache
       run: |
