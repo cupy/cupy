@@ -16,11 +16,22 @@ from collections.abc import Mapping
 SchemaType = Mapping[str, Any]
 
 
+# Pinned version of the GitHub CLI installed into the test Dockerfiles. Used
+# by .pfnci/linux/tests/actions/build.sh to fetch wheel artifacts from
+# cupy/cupy CI. Bump as needed; required interface is just `gh run download`.
+GH_CLI_VERSION = '2.95.0'
+
+
 class Matrix:
     def __init__(self, record: Mapping[str, Any]):
         self._rec = {
             '_inherits': None,
             '_extern': False,
+            # Whether a CUDA target installs the GHA wheel (fetch-wheel.sh)
+            # instead of building from source (build.sh). Ignored for ROCm; set
+            # `wheel: false` on CUDA targets that must build from source (e.g.
+            # the cuda-python compile-time variant).
+            'wheel': True,
         }
         self._rec.update(record)
 
@@ -105,6 +116,11 @@ class LinuxGenerator:
                 '',
                 'ENV PATH "/usr/lib/ccache:${PATH}"',
                 '',
+                # gh CLI: used by .pfnci/linux/tests/actions/fetch-wheel.sh
+                # to fetch the GHA-built wheel artifact for the PR/merge SHA.
+                f'RUN curl -fsSL https://github.com/cli/cli/releases/download/v{GH_CLI_VERSION}/gh_{GH_CLI_VERSION}_linux_amd64.tar.gz \\',  # NOQA
+                f'        | tar -xz -C /usr/local --strip-components=1 gh_{GH_CLI_VERSION}_linux_amd64/bin/gh',  # NOQA
+                '',
             ]
         elif os_name == 'centos':
             assert os_version in ('7', '8')
@@ -134,6 +150,11 @@ class LinuxGenerator:
                 ),
                 '',
                 'ENV PATH "/usr/lib64/ccache:${PATH}"',
+                '',
+                # gh CLI: used by .pfnci/linux/tests/actions/fetch-wheel.sh
+                # to fetch the GHA-built wheel artifact for the PR/merge SHA.
+                f'RUN curl -fsSL https://github.com/cli/cli/releases/download/v{GH_CLI_VERSION}/gh_{GH_CLI_VERSION}_linux_amd64.tar.gz \\',  # NOQA
+                f'        | tar -xz -C /usr/local --strip-components=1 gh_{GH_CLI_VERSION}_linux_amd64/bin/gh',  # NOQA
                 '',
             ]
 
@@ -345,10 +366,17 @@ class LinuxGenerator:
             '',
         ]
 
+        # CUDA targets install the GHA wheel (fetch-wheel.sh); ROCm and
+        # source-only CUDA targets (`wheel: false`) build from source.
+        build_script = (
+            'fetch-wheel.sh'
+            if (matrix.cuda is not None and matrix.wheel)
+            else 'build.sh'
+        )
         lines += [
             '',
             'trap "$ACTIONS/cleanup.sh" EXIT',
-            '"$ACTIONS/build.sh"',
+            f'"$ACTIONS/{build_script}"',
         ]
         if matrix.test.startswith('unit'):
             if matrix.test == 'unit':

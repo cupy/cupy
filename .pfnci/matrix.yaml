@@ -492,6 +492,9 @@
 # This combination tests against pre-releases. Use the highest supported combination.
 - project: "cupy.linux.cuda-head"
   target: "cuda-head"
+  # 'head' builds against pre-release deps; a released wheel can't exercise
+  # that, so this target builds from source (build.sh) instead of fetching.
+  wheel: false
   tags: ["head", "linux"]
   system: "linux"
   os: "ubuntu:20.04"
@@ -519,6 +522,10 @@
 # CUDA 12.x / CUDA Python | Linux
 - project: "cupy.linux.cuda12x-cuda-python"
   target: "cuda12x-cuda-python"
+  # CUPY_USE_CUDA_PYTHON is a compile-time flag baked into the Cython
+  # extensions; the released wheels are not built with it, so this target must
+  # build from source (build.sh) instead of fetching a wheel.
+  wheel: false
   tags: ["@push", "full", "mini", "linux", "cuda-python"]
   system: "linux"
   os: "ubuntu:20.04"

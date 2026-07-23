@@ -1,0 +1,160 @@
+name: "CI Trigger"
+
+# Turns /test comments into ci:triggered label events -- which start the
+# build workflow (ci.yml) -- and keeps the label honest when the PR changes.
+# The full three-workflow flow is described in ci.yml's header comment.
+#
+# Every issue comment on the repository creates a (job-gated) run here; that
+# matches the old flexci.yml, which also triggered on issue_comment.
+on:
+  issue_comment:
+    types: [created]
+  pull_request_target:
+    types: [synchronize, reopened]
+
+permissions:
+  contents: read
+  issues: write  # label bounce / clearing
+
+jobs:
+  # Leg 1 of the /test flow: validate the request, record it for flexci.yml,
+  # and bounce the ci:triggered label so the build leg fires.
+  test-request:
+    name: Record /test request + trigger build
+    if: github.repository_owner == 'cupy' && github.event_name == 'issue_comment'
+    runs-on: ubuntu-latest
+    # CI_TRIGGER_APP_ID / CI_TRIGGER_APP_PRIVATE_KEY are scoped to this
+    # deployment environment (branch policy: main only -- which is the ref
+    # issue_comment runs execute on). Each /test records a deployment here.
+    environment: ci-trigger
+    concurrency:
+      group: ci-trigger-${{ github.event.issue.number }}
+      cancel-in-progress: false
+    steps:
+      - name: Validate the /test request
+        id: guard
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          ok=false
+          pr_number=""
+          head_sha=""
+          base_ref=""
+          if ! jq -e '.issue.pull_request' "$GITHUB_EVENT_PATH" >/dev/null; then
+            echo "Not a PR comment; skipping"
+          elif ! jq -r '.comment.body' "$GITHUB_EVENT_PATH" | grep -qE '^/test[[:space:]]+[^[:space:]]'; then
+            echo "Comment does not start with '/test <target>'; skipping"
+          else
+            assoc="$(jq -r '.comment.author_association' "$GITHUB_EVENT_PATH")"
+            if [[ "$assoc" != "OWNER" && "$assoc" != "MEMBER" ]]; then
+              echo "::warning::Comment author_association=$assoc is not OWNER/MEMBER; skipping"
+            else
+              pr_json="$(gh api "$(jq -r '.issue.pull_request.url' "$GITHUB_EVENT_PATH")")"
+              if [[ "$(jq -r '.state' <<< "$pr_json")" != "open" ]]; then
+                echo "PR is not open; skipping"
+              else
+                pr_number="$(jq -r '.number' <<< "$pr_json")"
+                head_sha="$(jq -r '.head.sha' <<< "$pr_json")"
+                base_ref="$(jq -r '.base.ref' <<< "$pr_json")"
+                ok=true
+              fi
+            fi
+          fi
+          {
+            echo "ok=${ok}"
+            echo "pr_number=${pr_number}"
+            echo "head_sha=${head_sha}"
+            echo "base_ref=${base_ref}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Save the dispatch request payload
+        if: steps.guard.outputs.ok == 'true'
+        env:
+          BASE_REF: ${{ steps.guard.outputs.base_ref }}
+        run: |
+          set -euo pipefail
+          mkdir -p "${RUNNER_TEMP}/request"
+          cp "${GITHUB_EVENT_PATH}" "${RUNNER_TEMP}/request/event.json"
+          echo "${GITHUB_EVENT_NAME}" > "${RUNNER_TEMP}/request/event_name"
+          echo "${BASE_REF}" > "${RUNNER_TEMP}/request/base_ref"
+
+      - name: Upload request artifact
+        if: steps.guard.outputs.ok == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: dispatch-request-${{ steps.guard.outputs.pr_number }}-${{ steps.guard.outputs.head_sha }}
+          path: ${{ runner.temp }}/request/
+          if-no-files-found: error
+          overwrite: true
+
+      # Labels added with the workflow's own GITHUB_TOKEN do not trigger
+      # workflow runs (GitHub's recursion prevention), so the bounce uses a
+      # short-lived token minted from a code-less GitHub App (webhook
+      # disabled, Issues:R/W only, installed on this repository alone).
+      # Requires repository configuration: variable CI_TRIGGER_APP_ID and
+      # secret CI_TRIGGER_APP_PRIVATE_KEY.
+      - name: Mint CI-trigger App token
+        id: app-token
+        if: steps.guard.outputs.ok == 'true'
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1  # v3.2.0
+        with:
+          app-id: ${{ vars.CI_TRIGGER_APP_ID }}
+          private-key: ${{ secrets.CI_TRIGGER_APP_PRIVATE_KEY }}
+
+      - name: Bounce the ci:triggered label
+        if: steps.guard.outputs.ok == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PR_NUMBER: ${{ steps.guard.outputs.pr_number }}
+        run: |
+          set -euo pipefail
+          # Remove the label so that re-adding fires a fresh `labeled` event
+          # even when it is still there from an earlier /test (adding an
+          # already-present label fires no event). Delete-by-name: HTTP 404
+          # just means it was not there; any other failure must abort the
+          # job rather than report success without triggering a build.
+          if ! out="$(gh api --method DELETE \
+              "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/labels/ci:triggered" 2>&1)"; then
+            if ! grep -q "HTTP 404" <<< "${out}"; then
+              echo "${out}" >&2
+              exit 1
+            fi
+          fi
+          gh api --method POST \
+            "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/labels" \
+            -f "labels[]=ci:triggered" >/dev/null
+
+  # Hygiene: a push to the PR (synchronize) or a reopen clears a stale
+  # ci:triggered label, so its presence keeps meaning "the current head was
+  # vouched". On synchronize, merely ENTERING the shared ci-build-<PR>
+  # concurrency group (also used by ci.yml's labeled build runs; concurrency
+  # groups are repo-scoped strings shared across workflows) cancels any
+  # in-flight build for the superseded head. This runs the default branch's
+  # workflow copy with a writable token and checks out no PR code.
+  hygiene:
+    name: Clear stale label
+    if: github.repository_owner == 'cupy' && github.event_name == 'pull_request_target'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ci-build-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    steps:
+      - name: Clear ci:triggered if present
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          # Delete-by-name: HTTP 404 just means there was no stale label;
+          # anything else is a real error. Removal with GITHUB_TOKEN fires
+          # no workflow, so there is no recursion.
+          if out="$(gh api --method DELETE \
+              "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/labels/ci:triggered" 2>&1)"; then
+            echo "Cleared stale ci:triggered label"
+          elif grep -q "HTTP 404" <<< "${out}"; then
+            echo "No ci:triggered label to clear"
+          else
+            echo "${out}" >&2
+            exit 1
+          fi
