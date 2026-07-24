@@ -221,7 +221,7 @@ class LinuxGenerator:
         pip_args = []
         pip_uninstall_args = []
         for pylib in ('numpy', 'scipy', 'optuna', 'mpi4py',
-                      'ml_dtypes', 'cython', 'cuda-python'):
+                      'ml_dtypes', 'cython', 'cuda-python', 'nvmath-python'):
             pylib_ver = getattr(matrix, pylib)
             if pylib_ver is None:
                 pip_uninstall_args.append(pylib)
