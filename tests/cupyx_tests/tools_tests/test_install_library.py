@@ -76,6 +76,10 @@ class TestInstallLibrary:
                     assert resp.getcode() == 200
 
     @pytest.mark.parametrize('library', _libraries)
+    @pytest.mark.skipif(
+        platform.system() == 'Windows'
+        and platform.machine().lower() in ('aarch64', 'arm64'),
+        reason='install_library.py is deprecated and does not support WoA')
     def test_main(self, library):
         install_library.main(
             ['--library', library, '--action', 'dump', '--cuda', 'null'])
