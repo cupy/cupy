@@ -89,6 +89,7 @@ IF CUPY_USE_CUDA_PYTHON:
     ctypedef cudaMemAllocationType MemAllocationType
     ctypedef cudaMemAllocationHandleType MemAllocationHandleType
     ctypedef cudaMemLocationType MemLocationType
+    ctypedef cudaMemLocation _MemLocation
 
 ELSE:
     include "_runtime_typedef.pxi"
