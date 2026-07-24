@@ -94,6 +94,21 @@ class TestResample:
         return (scp.signal.resample(fsig, num, domain='freq'),
                 scp.signal.resample(tsig, num, domain='time'))
 
+    @pytest.mark.parametrize("shape,axis", [
+        pytest.param((), -1, id="1D-negative-axis"),
+        pytest.param((100, 10000), 0, id="2D_zero-axis"),
+        pytest.param((100, 10000), 1, id="2D_positive-axis"),
+    ])
+    @pytest.mark.parametrize(
+        'dtype', ['float32', 'float64', 'complex64', 'complex128'])
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-7)
+    def test_strides(self, xp, scp, shape, axis, dtype):
+        arr = xp.linspace(0, 1, 1000000, dtype)
+        if shape:
+            arr = arr.reshape(shape)
+        idx = tuple(slice(dim - 1, 24, -5) for dim in arr.shape)
+        return scp.signal.resample_poly(arr[idx], 1, 2, axis=axis)
+
     @pytest.mark.parametrize('nx', (1, 2, 3, 5, 8))
     @pytest.mark.parametrize('ny', (1, 2, 3, 5, 8))
     @pytest.mark.parametrize('dtype', ('float', 'complex'))
