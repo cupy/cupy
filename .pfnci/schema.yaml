@@ -357,6 +357,13 @@ cuda-python:
     spec: null
   "12":
     spec: "==12.*"
+  "13.2":
+    spec: "==13.2.*"
+nvmath-python:
+  null:
+    spec: null
+  "1":
+    spec: "==1.*"
 
 ###############################################################################
 # Environment Variables

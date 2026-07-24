@@ -181,7 +181,8 @@ def _compressed_sparse_stack(blocks, axis):
     indices = cupy.empty(data.size, dtype=idx_dtype)
     indptr = cupy.empty(sum(b.shape[axis]
                             for b in blocks) + 1, dtype=idx_dtype)
-    last_indptr = idx_dtype(0)
+    # Keep ``last_indptr`` on device to avoid a per-block D2H sync.
+    last_indptr = cupy.zeros((), dtype=idx_dtype)
     sum_dim = 0
     sum_indices = 0
     for b in blocks:
@@ -194,7 +195,7 @@ def _compressed_sparse_stack(blocks, axis):
         indptr[idxs] = b.indptr[:-1]
         indptr[idxs] += last_indptr
         sum_dim += b.shape[axis]
-        last_indptr += b.indptr[-1]
+        last_indptr = last_indptr + b.indptr[-1]
     indptr[-1] = last_indptr
     use_array = _any_sparray(*blocks)
     if axis == 0:
@@ -234,25 +235,28 @@ def hstack(blocks, format=None, dtype=None):
         array([[1., 2., 5.],
                [3., 4., 6.]])
     """
+    # Promote 1-D array blocks to their (1, N) backing so they stack as
+    # rows (scipy semantics: ``hstack`` of 1-D arrays -> a single row).
+    blocks = [b._as_2d() if _base.issparse(b) and b.ndim == 1 else b
+              for b in blocks]
     return bmat([blocks], format=format, dtype=dtype)
 
 
 def vstack(blocks, format=None, dtype=None):
-    """Stacks sparse matrices vertically (row wise)
+    """Stacks sparse arrays/matrices vertically (row wise).
 
     Args:
-        blocks (sequence of cupyx.scipy.sparse.spmatrix)
-            sparse matrices to stack
-        format (str, optional):
-            sparse format of the result (e.g. "csr")
-            by default an appropriate sparse matrix format is returned.
-            This choice is subject to change.
-        dtype (dtype, optional):
-            The data-type of the output matrix.  If not given, the dtype is
-            determined from that of `blocks`.
+        blocks (sequence of cupyx.scipy.sparse): sparse objects to stack.
+        format (str, optional): sparse format of the result (e.g. ``'csr'``).
+            By default an appropriate sparse format is returned.  This
+            choice is subject to change.
+        dtype (dtype, optional): The data-type of the output.  If not
+            given, the dtype is determined from that of ``blocks``.
 
     Returns:
-        cupyx.scipy.sparse.spmatrix: the stacked sparse matrix
+        cupyx.scipy.sparse: The stacked sparse object.  Returns a sparse
+        array when *any* input is a sparse array, else a sparse matrix
+        (matches scipy).
 
     .. seealso:: :func:`scipy.sparse.vstack`
 
@@ -266,6 +270,10 @@ def vstack(blocks, format=None, dtype=None):
                [3., 4.],
                [5., 6.]])
     """
+    # Promote 1-D array blocks to their (1, N) backing so they stack as
+    # rows (scipy semantics: ``vstack`` of 1-D arrays -> one row each).
+    blocks = [b._as_2d() if _base.issparse(b) and b.ndim == 1 else b
+              for b in blocks]
     return bmat([[b] for b in blocks], format=format, dtype=dtype)
 
 
@@ -348,6 +356,9 @@ def bmat(blocks, format=None, dtype=None):
 
     # Check if any input block has int64 indices before conversion
     # to COO (the COO constructor may downcast via check_contents).
+    # Unlike scipy -- where the equivalent introspection is discarded by
+    # the final constructor call -- the dtype chosen here survives,
+    # because the result below is assembled with ``_from_parts``.
     # Each format stores indices in a different attribute: CSR/CSC use
     # ``indices``, COO uses ``row``, DIA uses ``offsets``.
     def _block_index_dtype(b):
@@ -371,22 +382,22 @@ def bmat(blocks, format=None, dtype=None):
                 if brow_lengths[i+1] == 0:
                     brow_lengths[i+1] = A.shape[0]
                 elif brow_lengths[i+1] != A.shape[0]:
-                    msg = ('blocks[{i},:] has incompatible row dimensions. '
-                           'Got blocks[{i},{j}].shape[0] == {got}, '
-                           'expected {exp}.'.format(i=i, j=j,
-                                                    exp=brow_lengths[i+1],
-                                                    got=A.shape[0]))
-                    raise ValueError(msg)
+                    exp = brow_lengths[i+1]
+                    got = A.shape[0]
+                    raise ValueError(
+                        f'blocks[{i},:] has incompatible row '
+                        f'dimensions. Got blocks[{i},{j}].shape[0] '
+                        f'== {got}, expected {exp}.')
 
                 if bcol_lengths[j+1] == 0:
                     bcol_lengths[j+1] = A.shape[1]
                 elif bcol_lengths[j+1] != A.shape[1]:
-                    msg = ('blocks[:,{j}] has incompatible row dimensions. '
-                           'Got blocks[{i},{j}].shape[1] == {got}, '
-                           'expected {exp}.'.format(i=i, j=j,
-                                                    exp=bcol_lengths[j+1],
-                                                    got=A.shape[1]))
-                    raise ValueError(msg)
+                    exp = bcol_lengths[j+1]
+                    got = A.shape[1]
+                    raise ValueError(
+                        f'blocks[:,{j}] has incompatible column '
+                        f'dimensions. Got blocks[{i},{j}].shape[1] '
+                        f'== {got}, expected {exp}.')
 
     # Rebuild blocks_flat after COO conversion so that .nnz and
     # .dtype are available for dense inputs that were converted.
@@ -477,8 +488,8 @@ def random(m, n, density=0.01, format='coo', dtype=None,
 
     mn = m * n
 
-    tp = numpy.int64 if mn > numpy.iinfo(numpy.int32).max \
-        else numpy.int32
+    # The flat sample indices lie in [0, mn), so mn - 1 is the max value.
+    tp = _sputils.get_index_dtype(maxval=mn - 1)
     ind = random_state.choice(mn, size=k, replace=False)
     ind = ind.astype(tp, copy=False)
     j = ind // m
@@ -917,6 +928,13 @@ def random_array(shape, *, density=0.01, format='coo', dtype=None,
     .. seealso:: :func:`scipy.sparse.random_array`
 
     """
+    if len(shape) == 1:
+        # Generate a random (1, N) then present it as a 1-D array.
+        (n,) = shape
+        base = random(1, n, density=density, dtype=dtype,
+                      random_state=rng, data_rvs=data_sampler)
+        arr = _coo.coo_array((base.data, (base.col,)), shape=(n,))
+        return arr.asformat(format)
     m, n = shape
     return _to_array(
         random(m, n, density=density, format=format, dtype=dtype,

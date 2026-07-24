@@ -3443,6 +3443,21 @@ class TestFromPartsValidation:
                 cupy.array([0], dtype=cupy.int32),
                 (2, 2**31 + 5))
 
+    def test_compressed_rejects_nnz_too_large_for_dtype(self):
+        # ``indptr[-1] == nnz`` must fit the index dtype even when every
+        # dimension does: int8 addresses <= 127, so 128 stored entries
+        # overflow the indptr side while max(shape) stays in range.  This
+        # is why the CSR/CSC guard checks ``data.size``, not just
+        # ``max(shape)`` (and why ``prod(shape)`` would be wrong -- a
+        # genuinely sparse matrix has nnz << prod(shape)).
+        n = 128
+        with pytest.raises(ValueError, match='nnz .* too large'):
+            sparse.csr_matrix._from_parts(
+                cupy.ones(n),
+                cupy.zeros(n, dtype=cupy.int8),
+                cupy.zeros(2, dtype=cupy.int8),
+                (1, 100))
+
 
 class TestCsr2CooCanonicalPreservation:
     """Canonical CSR (sorted columns within each row, no duplicates)
@@ -3502,7 +3517,7 @@ class TestCsr2CooCanonicalPreservation:
 
 class TestInt64TransposeCanonical:
     """The int64 CSR<->CSC transpose runs through
-    ``_cupy_transpose_compressed_int64`` which sorts via lexsort.
+    ``_cupy_transpose_compressed`` which sorts via lexsort.
     Canonical input stays canonical, but ``False`` / uncomputed must
     NOT propagate: even an unsorted input becomes canonical after
     lexsort, and caching ``False`` would mask that from the lazy

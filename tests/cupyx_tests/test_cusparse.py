@@ -1075,10 +1075,6 @@ class TestSpsm:
     def test_spsm(self, lower, unit_diag, transa, b_order, dtype, format):
         if not cusparse.check_availability('spsm'):
             pytest.skip('spsm is not available')
-        if not runtime.is_hip and _cusparse.get_build_version() < 11701:
-            # earlier than CUDA 11.6
-            if b_order == 'c':
-                pytest.skip("Older CUDA has a bug")
         if runtime.is_hip:
             if format == 'coo' or b_order == 'c':
                 pytest.skip('may be buggy or not supported')
