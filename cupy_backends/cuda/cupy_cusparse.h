@@ -4,6 +4,15 @@
 #include <cuda.h>
 #include <cusparse.h>
 
+// SpGEAM is public in cuSPARSE 12.8.5. CuPy loads the functions with
+// SoftLink, so older toolkits only need opaque fallback types.
+#if CUSPARSE_VERSION < 12805
+typedef void* cusparseSpGEAMDescr_t;
+typedef int cusparseSpGEAMAlg_t;
+#define CUSPARSE_SPGEAM_ALG_DEFAULT 0
+#define CUSPARSE_SPGEAM_ALG1 1
+#endif
+
 // Functions deleted in cuSparse 11.0
 
 // cuSPARSE Level2 Function
