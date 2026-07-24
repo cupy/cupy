@@ -540,6 +540,30 @@
   env:CUPY_USE_CUDA_PYTHON: "1"
   test: "unit"
 
+# CUDA 13.x / CUDA Python | Linux
+- project: "cupy.linux.cuda13x-cuda-python"
+  target: "cuda13x-cuda-python"
+  tags: ["@push", "full", "mini", "linux", "cuda-python"]
+  system: "linux"
+  os: "ubuntu:22.04"
+  cuda: "13.2"
+  rocm: null
+  nccl: "2.29"
+  cutensor: "2.4"
+  cusparselt: null
+  python: "3.14"
+  numpy: "2.4"
+  scipy: "1.16"
+  optuna: "4"
+  mpi4py: null
+  ml_dtypes: null
+  cython: "3.2"
+  cuda-python: "13.2"
+  nvmath-python: "1"
+  env:CUPY_ACCELERATORS: "cutensor,cub"
+  env:CUPY_USE_CUDA_PYTHON: "1"
+  test: "unit"
+
 ###############################################################################
 # Tests in hand-crafted environment (not managed by generate.py)
 ###############################################################################
