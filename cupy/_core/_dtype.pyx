@@ -342,7 +342,6 @@ def make_aligned_dtype(
         dtype, alignment=alignment, recurse=recurse)[0]
 
 
-
 cdef dict _num_to_str_and_descr = {}
 
 
