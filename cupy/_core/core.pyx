@@ -1014,7 +1014,7 @@ cdef class _ndarray_base:
     # -------------------------------------------------------------------------
     # Shape manipulation
     # -------------------------------------------------------------------------
-    def reshape(self, *shape, order='C'):
+    def reshape(self, *shape, order='C', copy=None):
         """Returns an array of a different shape and the same content.
 
         .. seealso::
@@ -1022,7 +1022,7 @@ cdef class _ndarray_base:
            :meth:`numpy.ndarray.reshape`
 
         """
-        return _manipulation._ndarray_reshape(self, shape, order)
+        return _manipulation._ndarray_reshape(self, shape, order, copy)
 
     # TODO(okuta): Implement resize
 
