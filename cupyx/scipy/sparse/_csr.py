@@ -79,8 +79,17 @@ class _csr_base(_compressed._compressed_sparse_matrix):
                 other, lambda a, o: a._comparison(o, op, op_name))
         cls = type(self)
         if _util.isscalarlike(other):
-            data = cupy.asarray(other, dtype=self.dtype).reshape(1)
-            if numpy.isnan(data[0]):
+            if self.dtype.kind in 'biu':
+                # Keep the scalar's own dtype: casting it into a narrow
+                # bool/integer matrix dtype would overflow (``int8 > 300``
+                # raises) or truncate (``int8 == 2.5`` matches the 2s),
+                # diverging from scipy, which compares in the promoted type.
+                data = cupy.asarray(other).reshape(1)
+            else:
+                data = cupy.asarray(other, dtype=self.dtype).reshape(1)
+            # ``isnan`` only applies to (and only accepts) float/complex
+            # scalars; an integer scalar kept above cannot be NaN.
+            if data.dtype.kind in 'fc' and numpy.isnan(data[0]):
                 if op_name == '_ne_':
                     return cls(cupy.ones(self.shape, dtype=numpy.bool_))
                 else:
@@ -198,11 +207,11 @@ class _csr_base(_compressed._compressed_sparse_matrix):
         if _is_csr(other):
             self.sum_duplicates()
             other.sum_duplicates()
-            # int64: always route through cusparse.spgemm, which has a
-            # pure-CuPy fallback when cuSPARSE lacks int64 SpGEMM.
-            is_int64 = (self.indices.dtype == cupy.int64
-                        or other.indices.dtype == cupy.int64)
-            if is_int64 or cusparse.check_availability('spgemm'):
+            # int64 indices and non-float value dtypes: always route
+            # through cusparse.spgemm, which has pure-CuPy fallbacks
+            # when cuSPARSE lacks the required SpGEMM support.
+            needs_spgemm = cusparse._needs_cupy_spgemm(self, other)
+            if needs_spgemm or cusparse.check_availability('spgemm'):
                 return self._as_csr_type(cusparse.spgemm(self, other))
             elif cusparse.check_availability('csrgemm2'):
                 return self._as_csr_type(cusparse.csrgemm2(self, other))
@@ -213,11 +222,10 @@ class _csr_base(_compressed._compressed_sparse_matrix):
         elif _is_csc(other):
             self.sum_duplicates()
             other.sum_duplicates()
-            is_int64 = (self.indices.dtype == cupy.int64
-                        or other.indices.dtype == cupy.int64)
-            if is_int64:
-                # csrgemm/csrgemm2 are int32-only; route via spgemm,
-                # which has a pure-CuPy fallback for older cuSPARSE.
+            needs_spgemm = cusparse._needs_cupy_spgemm(self, other)
+            if needs_spgemm:
+                # csrgemm/csrgemm2 are int32/float-only; route via
+                # spgemm, which has pure-CuPy fallbacks.
                 b = other.tocsr()
                 b.sum_duplicates()
                 return self._as_csr_type(cusparse.spgemm(self, b))
@@ -241,10 +249,30 @@ class _csr_base(_compressed._compressed_sparse_matrix):
             if other.ndim == 0:
                 self.sum_duplicates()
                 return self._with_data(self.data * other)
-            elif other.ndim == 1:
+            native_f16 = False
+            if other.ndim in (1, 2):
+                # cuSPARSE spmv/spmm accept float/complex plus a native
+                # float16 mixed mode (f16 data, f32 compute) that keeps the
+                # operand in float16 -- lower memory than upcasting.  bfloat16
+                # (native CUDA_R_16BF needs cc >= 8.0) and bool/integer
+                # results have no cuSPARSE path, so route them through a
+                # pure-CuPy scatter matmul instead.  Gated off HIP (like the
+                # CSC path): hipSPARSE float16 mixed-mode support is
+                # unverified, so fall back to the f32-upcast scatter there.
+                result_dtype = cupy.promote_types(self.dtype, other.dtype)
+                native_f16 = (
+                    result_dtype.char == 'e' and not runtime.is_hip
+                    and cusparse.check_availability(
+                        'spmv' if other.ndim == 1 else 'spmm'))
+                if (cusparse._needs_cupy_fallback(result_dtype)
+                        and not native_f16):
+                    return cusparse._cupy_csr_dense_matmul(self, other)
+            if other.ndim == 1:
                 self.sum_duplicates()
                 other = cupy.asfortranarray(other)
-                if cusparse.check_availability('csrmv'):
+                # csrmv (legacy) is float/complex-only; float16 must use the
+                # generic spmv, which carries the mixed-precision path.
+                if not native_f16 and cusparse.check_availability('csrmv'):
                     csrmv = cusparse.csrmv
                 elif cusparse.check_availability('spmv'):
                     csrmv = cusparse.spmv
@@ -253,7 +281,9 @@ class _csr_base(_compressed._compressed_sparse_matrix):
                 return csrmv(self, other)
             elif other.ndim == 2:
                 self.sum_duplicates()
-                if cusparse.check_availability('csrmm2'):
+                # csrmm2 (legacy) is float/complex-only; float16 must use the
+                # generic spmm, which carries the mixed-precision path.
+                if not native_f16 and cusparse.check_availability('csrmm2'):
                     csrmm = cusparse.csrmm2
                 elif cusparse.check_availability('spmm'):
                     csrmm = cusparse.spmm
@@ -274,19 +304,33 @@ class _csr_base(_compressed._compressed_sparse_matrix):
     def __truediv__(self, other):
         """Point-wise division by another matrix, vector or scalar"""
         if _util.isscalarlike(other):
-            # Pick the result dtype.  scipy upcasts any dtype that's
-            # castable to float64 (bool/int*/float16/float32/...) before
-            # dividing; mirror that behaviour, and additionally fall
-            # back to float64 for any non-cuSPARSE-supported dtype so
-            # the result remains usable with cuSPARSE-backed ops.
-            # Real-vs-complex follows numpy's natural promotion
-            # (``result_type(float64, complex64) -> complex128``).
+            # Division always yields a float/complex result.
             dtype = self.dtype
-            if dtype == numpy.float32:
-                dtype = numpy.float64
-            dtype = cupy.result_type(dtype, other)
+            if _sputils.is_16bit_float(dtype):
+                # scipy rejects the 16-bit floats, so cupy dense is the oracle.
+                # Probe the actual dense ufunc result: numpy's ``result_type``
+                # is inconsistent for bfloat16 (``result_type(bf16, 2.0)`` is
+                # float64 but ``bf16-array / 2.0`` is float32), so key off the
+                # division ufunc itself, not result_type.
+                dtype = (cupy.zeros(0, dtype) / other).dtype
+            else:
+                # scipy upcasts any dtype castable to float64 before dividing;
+                # mirror that by promoting bool/every integer width/float32 to
+                # float64 first -- otherwise ``reciprocal(2, dtype=int)`` is 0
+                # and an integer matrix divides to all zeros.  Real-vs-complex
+                # then follows numpy's natural promotion.
+                if dtype.kind in 'biu' or dtype == numpy.float32:
+                    dtype = numpy.dtype(numpy.float64)
+                dtype = cupy.result_type(dtype, other)
             if not _sputils.is_sparse_data_dtype(dtype):
-                dtype = numpy.dtype(numpy.float64)
+                # An exotic scalar (e.g. numpy.longdouble/clongdouble)
+                # can promote to a dtype the GPU cannot store
+                # (float128/complex256); fall back to the widest
+                # storable dtype of the same kind so a complex divisor
+                # keeps its imaginary part instead of collapsing to
+                # float64.
+                dtype = numpy.dtype(numpy.complex128 if dtype.kind == 'c'
+                                    else numpy.float64)
             d = cupy.reciprocal(other, dtype=dtype)
             return multiply_by_scalar(self, d)
         if self.ndim != 2:
@@ -295,12 +339,27 @@ class _csr_base(_compressed._compressed_sparse_matrix):
             return self._run_1d_backing_op(
                 other, lambda a, o: a.__truediv__(o))
         if _util.isdense(other):
-            other = cupy.atleast_2d(other)
+            # Division yields a float/complex result; the kernel shares one
+            # dtype ``T`` for the sparse data and the dense divisor, so
+            # promote both (int/bool -> float64, like the scalar path) before
+            # dividing -- otherwise the kernel rejects mismatched int/float
+            # operands and integer data would truncate.  promote_data_types
+            # (not numpy.promote_types) so a bfloat16 sparse / float16 dense
+            # pair resolves to dense's ufunc result (float32) instead of
+            # raising DTypePromotionError.
+            dtype = _sputils.promote_data_types(self.dtype, other.dtype)
+            if dtype.kind in 'biu':
+                dtype = numpy.promote_types(numpy.float64, dtype)
+            other = cupy.atleast_2d(other).astype(dtype, copy=False)
             other = cupy.broadcast_to(other, self.shape)
             check_shape_for_pointwise_op(self.shape, other.shape)
+            # Only ``data`` has to be restaged in ``dtype`` (the kernel writes
+            # a fresh output array); casting the whole matrix would copy the
+            # coordinate arrays too.
             ret = self.tocoo()
             ret.data = _cupy_divide_by_dense()(
-                ret.data, ret.row, ret.col, ret.shape[1], other)
+                ret.data.astype(dtype, copy=False),
+                ret.row, ret.col, ret.shape[1], other)
             return ret
         elif _base.issparse(other):
             # Note: If broadcasting is needed, an exception is raised here for
@@ -308,7 +367,10 @@ class _csr_base(_compressed._compressed_sparse_matrix):
             # in the "sparse / sparse" case.
             check_shape_for_pointwise_op(self.shape, other.shape,
                                          allow_broadcasting=False)
-            dtype = numpy.promote_types(self.dtype, other.dtype)
+            # promote_data_types so a bfloat16/float16 pair does not raise
+            # DTypePromotionError (this path densifies and divides, so the
+            # dense ufunc is the reference).
+            dtype = _sputils.promote_data_types(self.dtype, other.dtype)
             if dtype.char not in 'FD':
                 dtype = numpy.promote_types(numpy.float64, dtype)
             # Note: The following implementation converts two sparse matrices
@@ -339,49 +401,45 @@ class _csr_base(_compressed._compressed_sparse_matrix):
 
     def eliminate_zeros(self):
         """Removes zero entries in place."""
-        from cupyx import cusparse
-
         if self.ndim == 1:
             # Route through the (1, N) backing (rebuilds indptr as
             # [0, nnz]); the direct paths below assume a 2-D shape.
             return self._apply_2d_inplace(lambda m: m.eliminate_zeros())
 
-        if self.indices.dtype == cupy.int64:
-            # TODO(eriknw): cuSPARSE--csr2csr_compress doesn't support int64
-            mask = self.data != 0
-            if mask.all():  # synchronize!
-                return
-            new_data = self.data[mask]
-            new_indices = self.indices[mask]
-            nrows = self.shape[0]
-            idx_dtype = self.indptr.dtype
-            if len(new_data) == 0:
-                self.data = new_data
-                self.indices = new_indices
-                self.indptr = cupy.zeros(nrows + 1, dtype=idx_dtype)
-                return
-            row_of_each = cusparse._indptr_to_coo(
-                self.indptr, nnz=self.nnz)
-            kept_rows = row_of_each[mask]
-            new_indptr = cusparse._build_indptr(
-                kept_rows, nrows, idx_dtype)
-            self.data = new_data
-            self.indices = new_indices
-            self.indptr = new_indptr
+        # Pure-CuPy mask-and-rebuild for every dtype.  cuSPARSE's
+        # csr2csr_compress prunes by ``value > tol`` (a signed threshold), so
+        # at tol=0 it silently drops *negative* stored values, not just the
+        # zeros -- wrong for any signed data.  ``data != 0`` is the exact test
+        # and is also int64-index safe (csr2csr_compress is int32 only).
+        mask = self.data != 0
+        if mask.all():  # synchronize!
             return
-
-        compress = cusparse.csr2csr_compress(self, 0)
-        self.data = compress.data
-        self.indices = compress.indices
-        self.indptr = compress.indptr
+        idx_dtype = self.indptr.dtype
+        # New indptr = running count of survivors sampled at the old row
+        # boundaries (entries are grouped by row in CSR order): one cumsum
+        # plus a gather, no atomic histogram.  ``kept[k]`` is the number of
+        # survivors in ``data[:k]``, so ``kept[indptr]`` is the new indptr;
+        # an all-zero matrix falls out as an all-zero indptr automatically.
+        kept = cupy.empty(self.data.size + 1, dtype=idx_dtype)
+        kept[0] = 0
+        cupy.cumsum(mask, dtype=idx_dtype, out=kept[1:])
+        new_indptr = kept[self.indptr]
+        self.data = self.data[mask]
+        self.indices = self.indices[mask]
+        self.indptr = new_indptr
 
     def _maximum_minimum(self, other, cupy_op, op_name, dense_check):
         cls = type(self)
         if _util.isscalarlike(other):
-            dtype = cupy.result_type(self.dtype, other)
-            other = cupy.asarray(other)
+            dtype = _sputils.promote_scalar_data_type(self.dtype, other)
+            # Build the scalar array *in* the promoted dtype rather than
+            # casting afterwards.  Promotion against a Python scalar is
+            # value-based, so ``result_type(int8, 300)`` is still ``int8``;
+            # ``asarray(300).astype(int8)`` would then wrap to 44, while
+            # ``asarray(300, dtype=int8)`` raises OverflowError like numpy
+            # and scipy.
+            other = cupy.asarray(other, dtype=dtype)
             if dense_check(other):
-                other = other.astype(dtype, copy=False)
                 new_array = cupy_op(self.todense(), other)
                 return cls(new_array)
             else:
@@ -830,7 +888,16 @@ def multiply_by_dense(sp, dn):
     dn_m, dn_n = dn.shape
     m, n = max(sp_m, dn_m), max(sp_n, dn_n)
     nnz = sp.nnz * (m // sp_m) * (n // sp_n)
-    dtype = numpy.promote_types(sp.dtype, dn.dtype)
+    # promote_data_types (not numpy.promote_types) so a bfloat16 sparse
+    # mixed with a >= 16-bit int/float dense resolves to dense's ufunc
+    # result (e.g. float64) instead of raising DTypePromotionError.
+    dtype = _sputils.promote_data_types(sp.dtype, dn.dtype)
+    # The kernel multiplies the sparse and dense values through independent
+    # template parameters, and CUDA has no ``integer * thrust::complex``
+    # operator, so cast both operands to the promoted dtype first (mirrors
+    # ``binopt_csr``).
+    sp_data = sp.data.astype(dtype, copy=False)
+    dn = dn.astype(dtype, copy=False)
     data = cupy.empty(nnz, dtype=dtype)
     indices = cupy.empty(nnz, dtype=sp.indices.dtype)
     if m > sp_m:
@@ -847,7 +914,7 @@ def multiply_by_dense(sp, dn):
     idx_dtype = sp.indptr.dtype
     it = idx_dtype.type
     cupy_multiply_by_dense()(
-        sp.data, sp.indptr, sp.indices, it(sp_m), it(sp_n),
+        sp_data, sp.indptr, sp.indices, it(sp_m), it(sp_n),
         dn, it(dn_m), it(dn_n), indptr, it(m), it(n),
         data, indices)
 
@@ -971,7 +1038,15 @@ def multiply_by_csr(a, b, *, out_cls=None):
     b_indices = b.indices.astype(idx_dtype, copy=False)
     b_indptr = b.indptr.astype(idx_dtype, copy=False)
     c_nnz = a_nnz
-    dtype = numpy.promote_types(a.dtype, b.dtype)
+    # promote_data_types (not numpy.promote_types) so bfloat16 mixed with a
+    # >= 16-bit int resolves to dense's ufunc result instead of raising.
+    dtype = _sputils.promote_data_types(a.dtype, b.dtype)
+    # The kernel multiplies ``A_DATA * B_DATA`` through independent template
+    # parameters, and CUDA has no ``integer * thrust::complex`` (or
+    # ``complex<float> * complex<double>``) operator, so cast both operands
+    # to the promoted dtype first -- mirrors ``binopt_csr``.
+    a_data = a.data.astype(dtype, copy=False)
+    b_data = b.data.astype(dtype, copy=False)
     c_data = cupy.empty(c_nnz, dtype=dtype)
     c_indices = cupy.empty(c_nnz, dtype=idx_dtype)
     if m > a_m:
@@ -989,8 +1064,8 @@ def multiply_by_csr(a, b, *, out_cls=None):
     # compute c = a * b where necessary and get sparsity pattern of matrix d
     it = idx_dtype.type
     cupy_multiply_by_csr_step1()(
-        a.data, a_indptr, a_indices, it(a_m), it(a_n),
-        b.data, b_indptr, b_indices, it(b_m), it(b_n),
+        a_data, a_indptr, a_indices, it(a_m), it(a_n),
+        b_data, b_indptr, b_indices, it(b_m), it(b_n),
         c_indptr, it(m), it(n), c_data, c_indices, flags, nnz_each_row)
 
     flags = cupy.cumsum(flags, dtype=idx_dtype)
@@ -1128,7 +1203,9 @@ def binopt_csr(a, b, op_name):
     a_valid = cupy.zeros(a_nnz, dtype=numpy.int8)
     b_valid = cupy.zeros(b_nnz, dtype=numpy.int8)
     c_indptr = cupy.zeros(m + 1, dtype=idx_dtype)
-    in_dtype = numpy.promote_types(a.dtype, b.dtype)
+    # promote_data_types (not numpy.promote_types) so bfloat16 mixed with a
+    # >= 16-bit int resolves to dense's ufunc result instead of raising.
+    in_dtype = _sputils.promote_data_types(a.dtype, b.dtype)
     a_data = a.data.astype(in_dtype, copy=False)
     b_data = b.data.astype(in_dtype, copy=False)
     funcs = _GET_ROW_ID_
@@ -1368,6 +1445,18 @@ def cupy_binopt_csr_step2(op_name):
 
 
 def csr2dense(a, order):
+    if a.dtype.char in 'bBhH':
+        # 8/16-bit integers have no atomicAdd overload, so the kernel writes
+        # each entry directly -- correct only when duplicate coordinates have
+        # already been summed.  Force a canonicalization (clearing a
+        # possibly-stale ``has_canonical_format`` so ``sum_duplicates`` cannot
+        # no-op on it) so duplicates always sum, matching scipy and the
+        # atomicAdd dtypes.  The O(nnz log nnz) dedup is dominated by the
+        # O(M*N) densify, so this narrow path stays cheap (unlike an
+        # always-canonicalize densify for every dtype).
+        a = a.copy()
+        a.has_canonical_format = False
+        a.sum_duplicates()
     out = cupy.zeros(a.shape, dtype=a.dtype, order=order)
     m, n = a.shape
     idx_dtype = a.indptr.dtype
@@ -1380,8 +1469,20 @@ def csr2dense(a, order):
 @cupy._util.memoize(for_each_device=True)
 def _cupy_csr2dense(dtype):
     if dtype == '?':
+        # Idempotent store: any stored True (also from duplicates) wins.
         op = "if (DATA) OUT[index] = true;"
+    elif dtype.char in 'bBhH':
+        # int8/16 and uint8/16 have no atomicAdd overload.  Direct write
+        # is safe because ``csr2dense`` canonicalizes these dtypes first
+        # (each (row, col) then appears at most once).
+        op = "OUT[index] = DATA;"
     else:
+        # Everything routed here has an atomicAdd overload: int32/int64,
+        # uint32/uint64, and float16/bfloat16 (CuPy adds the int64/uint64/
+        # float16/bfloat16 ones in atomics.cuh).  float32/64 and complex go
+        # through cuSPARSE instead, never this path.  So duplicates sum
+        # correctly without the O(nnz log nnz) pre-canonicalization the
+        # narrow ints need.
         op = "atomicAdd(&OUT[index], DATA);"
 
     return cupy.ElementwiseKernel(

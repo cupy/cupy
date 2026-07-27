@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import functools as _functools
-
 import numpy as _numpy
 import platform as _platform
 
@@ -65,8 +63,13 @@ class MatDescriptor:
 
 
 def _cast_common_type(*xs):
+    # ``promote_data_types`` falls back to dense CuPy's ufunc promotion for
+    # pairs numpy cannot promote abstractly (bfloat16 with a >= 16-bit int);
+    # only the elementwise callers hit that -- matmul rejects the mix at its
+    # routing gate first.
+    from cupyx.scipy.sparse import _sputils
     dtypes = [x.dtype for x in xs if x is not None]
-    dtype = _functools.reduce(_numpy.promote_types, dtypes)
+    dtype = _sputils.promote_data_types(*dtypes)
     return [x.astype(dtype) if x is not None and x.dtype != dtype else x
             for x in xs]
 
@@ -141,6 +144,43 @@ def _build_indptr(row_indices, n_rows, dtype):
     _cupy.add.at(indptr[1:], row_indices, 1)
     _cupy.cumsum(indptr, out=indptr)
     return indptr
+
+
+def _argsort_major_minor(major, minor, major_count, minor_range):
+    """Return the permutation that sorts entries by ``(major, minor)``.
+
+    Encodes the two coordinates into a single ``major * minor_range + minor``
+    key and radix ``argsort``s it -- one sort instead of the two stable passes
+    ``lexsort`` runs, roughly an order of magnitude faster on millions of
+    entries.  ``minor`` must lie in ``[0, minor_range)`` so the key is
+    order-isomorphic to the ``(major, minor)`` pair.
+
+    ``major`` is cast to int64 before the multiply so an int32 ``major`` does
+    not wrap.  Falls back to a two-key ``lexsort`` when the largest possible
+    key ``major_count * minor_range`` could exceed int64 -- reachable in the
+    int64-index regime, where a sparse matrix may have a logical shape whose
+    product overflows even though it holds few entries.
+
+    Args:
+        major: Per-entry primary sort coordinate (values in
+            ``[0, major_count)``).
+        minor: Per-entry secondary sort coordinate (values in
+            ``[0, minor_range)``).
+        major_count (int): Exclusive upper bound on ``major``; with
+            ``minor_range`` it bounds the composite key.
+        minor_range (int): Exclusive upper bound on ``minor``; the key
+            multiplier.
+
+    Returns:
+        cupy.ndarray: Indices that sort the entries into canonical order.
+    """
+    # Coerce the bounds to Python ints so the overflow check runs in exact
+    # arbitrary precision: a numpy scalar would wrap the product mod 2**64 and
+    # could pass a guard that should have failed, silently corrupting the sort.
+    if int(major_count) * int(minor_range) < (1 << 63):
+        return _cupy.argsort(
+            major.astype(_cupy.int64, copy=False) * minor_range + minor)
+    return _cupy.lexsort(_cupy.stack([minor, major]))
 
 
 def _with_indices_dtype(m, dtype):
@@ -565,6 +605,34 @@ def csrgeam(a, b, alpha=1, beta=1):
         has_canonical_format=True)
 
 
+def _scale_geam_operand(data, coeff):
+    """Scale a geam/gemm operand's ``data`` by ``coeff``.
+
+    The ``+``/``-`` operators only ever pass ``coeff`` of +1 or -1; other
+    values reach here solely via the low-level ``spgemm``/``csrgeam2`` entry
+    points.  Negation wraps for signed and unsigned integers, so ``-data``
+    handles the -1 case.  A general coefficient multiplies through numpy
+    promotion so a fractional coefficient on integer data is not silently
+    truncated (``int64(0.5) == 0``).  ``coeff == 1`` is a no-op returned
+    up front, so it is safe for any dtype including bool (bool SpGEMM keeps
+    its operands as bool -- products are logical AND, sum_duplicates ORs --
+    and only reaches here with the default ``alpha == 1``).
+    """
+    if coeff == 1:
+        return data
+    if data.dtype.kind == 'b':
+        # bool has no negation/scaling; callers scaling bool by a non-unit
+        # coefficient must convert to int8 first.  Raise (rather than assert,
+        # which ``python -O`` strips) so a forgetful caller cannot silently
+        # get an int64 result or cupy's raw "boolean negative" error.
+        raise TypeError(
+            'bool operands must be cast to int8 before scaling by a '
+            'non-unit coefficient')
+    if coeff == -1:
+        return -data
+    return data * coeff
+
+
 def _cupy_csrgeam_int64(a, b, alpha, beta):
     # TODO(eriknw): cuSPARSE--remove once SpGEAM ships across all
     # supported CUDA versions.
@@ -577,11 +645,26 @@ def _cupy_csrgeam_int64(a, b, alpha, beta):
     # a.shape) instead of raising for incompatible operands.
     if a.shape != b.shape:
         raise ValueError('inconsistent shapes')
+    if a.dtype == _numpy.bool_ and b.dtype == _numpy.bool_:
+        # Compute bool +/- in int8 so subtraction follows C-style bool
+        # arithmetic like scipy (True - True -> 0 -> False), then cast back.
+        # The bool ``sum_duplicates`` kernel would instead OR the coalesced
+        # operands, which is wrong for subtraction.  Restage only ``data``:
+        # the coordinate arrays are read, never mutated, so a full ``astype``
+        # would copy them for nothing.
+        c = _cupy_csrgeam_int64(
+            a._with_data(a.data.astype(_numpy.int8), copy=False),
+            b._with_data(b.data.astype(_numpy.int8), copy=False),
+            alpha, beta)
+        return c._with_data(c.data.astype(_numpy.bool_), copy=False)
     idx_dtype = _numpy.result_type(a.indices.dtype, b.indices.dtype)
-    # ``dtype.type(alpha)`` returns a numpy scalar; a 0-d ndarray
-    # (e.g. from ``_numpy.array(alpha)``) would be rejected by CuPy's ufunc.
-    a_data = a.data * a.dtype.type(alpha) if alpha != 1 else a.data
-    b_data = b.data * b.dtype.type(beta) if beta != 1 else b.data
+    # ``alpha``/``beta`` are +1 or -1 (from ``+``/``-``).  Scale by negation
+    # rather than ``data * dtype.type(alpha)``: negating wraps correctly for
+    # every integer dtype (matching scipy), whereas ``uint8(-1)`` etc. raises
+    # an OverflowError.  ``dtype.type`` keeps a numpy scalar for other alphas
+    # (a 0-d ndarray would be rejected by CuPy's ufunc).
+    a_data = _scale_geam_operand(a.data, alpha)
+    b_data = _scale_geam_operand(b.data, beta)
 
     a_rows = _indptr_to_coo(a.indptr, idx_dtype, nnz=a.nnz)
     b_rows = _indptr_to_coo(b.indptr, idx_dtype, nnz=b.nnz)
@@ -616,6 +699,29 @@ def csrgeam2(a, b, alpha=1, beta=1):
         raise TypeError(f'unsupported type (actual: {type(a)})')
     if not _is_csr_type(b):
         raise TypeError(f'unsupported type (actual: {type(b)})')
+
+    from cupyx.scipy.sparse import _sputils
+    # bfloat16 mixed with a >= 16-bit integer has no numpy abstract promotion
+    # (ml_dtypes never registered it), but this is an elementwise op so it
+    # follows dense cupy/numpy, which resolve it through ufunc loops
+    # (-> float32/float64 by width); promote_data_types reproduces that.
+    result_dtype = _sputils.promote_data_types(a.dtype, b.dtype)
+    if _sputils.is_16bit_float(result_dtype):
+        # 16-bit float: upcast to float32, use native cuSPARSE, downcast
+        # (float32 is a lossless widening; keeps the sum in float32).
+        # Restage only ``data`` -- the coordinate arrays are read, never
+        # mutated, so a full ``astype`` would copy them for nothing.
+        c = csrgeam2(a._with_data(a.data.astype(_cupy.float32), copy=False),
+                     b._with_data(b.data.astype(_cupy.float32), copy=False),
+                     alpha, beta)
+        return c._with_data(c.data.astype(result_dtype), copy=False)
+    # Route through the pure-CuPy COO-concatenate fallback only when the
+    # *promoted* result is non-float (bool/integer): a mixed int x float pair
+    # promotes to a cuSPARSE-capable float, so it stays on the fast native
+    # path.  Integer add wraps on overflow, matching numpy/scipy.
+    if _needs_cupy_fallback(result_dtype):
+        a, b = _cast_common_type(a, b)
+        return _cupy_csrgeam_int64(a, b, alpha, beta)
 
     # TODO(eriknw): cuSPARSE--route int32 through spgeam() too when it
     # ships in a public release (see 'spgeam' in _available_cusparse_version).
@@ -1057,10 +1163,14 @@ def csrsort(x):
         return
     m, n = x.shape
 
-    if x.indices.dtype == _cupy.int64:
-        # TODO(eriknw): cuSPARSE--remove when xcsrsort supports int64
+    if x.indices.dtype == _cupy.int64 or _needs_cupy_fallback(x.dtype):
+        # TODO(eriknw): cuSPARSE--remove when xcsrsort supports int64.  The
+        # data-reorder gather (gthr/Gather) is also float/complex-only, so
+        # non-float data takes this pure-CuPy path too.
         row = _indptr_to_coo(x.indptr, nnz=nnz)
-        order = _cupy.lexsort(_cupy.stack([x.indices, row]))
+        # Canonical order sorts by (row, col); col (x.indices) is the minor
+        # coordinate, so its range is n.
+        order = _argsort_major_minor(row, x.indices, m, n)
         x.indices[:] = x.indices[order]
         x.data[:] = x.data[order]
         x.has_sorted_indices = True
@@ -1103,10 +1213,14 @@ def cscsort(x):
         return
     m, n = x.shape
 
-    if x.indices.dtype == _cupy.int64:
-        # TODO(eriknw): cuSPARSE--remove when xcscsort supports int64
+    if x.indices.dtype == _cupy.int64 or _needs_cupy_fallback(x.dtype):
+        # TODO(eriknw): cuSPARSE--remove when xcscsort supports int64.  The
+        # data-reorder gather is also float/complex-only, so non-float data
+        # takes this pure-CuPy path too.
         col = _indptr_to_coo(x.indptr, nnz=nnz)
-        order = _cupy.lexsort(_cupy.stack([x.indices, col]))
+        # Canonical order sorts by (col, row); row (x.indices) is the minor
+        # coordinate, so its range is m.
+        order = _argsort_major_minor(col, x.indices, n, m)
         x.indices[:] = x.indices[order]
         x.data[:] = x.data[order]
         x.has_sorted_indices = True
@@ -1152,16 +1266,20 @@ def coosort(x, sort_by='r'):
         return
     m, n = x.shape
 
-    if x.row.dtype == _cupy.int64:
-        # TODO(eriknw): cuSPARSE--remove when xcoosort supports int64
+    if x.row.dtype == _cupy.int64 or _needs_cupy_fallback(x.dtype):
+        # TODO(eriknw): cuSPARSE--remove when xcoosort supports int64.  The
+        # cuSPARSE data-reorder gather is float/complex + int32-index only,
+        # so bool/integer/16-bit-float data (and int64 indices) permute the
+        # data in pure CuPy here instead.
         if sort_by == 'r':
-            # Sort by (row, col): primary=row, secondary=col
-            order = _cupy.lexsort(_cupy.stack([x.col, x.row]))
+            # (row, col): minor is col, whose range is n.
+            major, minor, major_count, minor_range = x.row, x.col, m, n
         elif sort_by == 'c':
-            # Sort by (col, row): primary=col, secondary=row
-            order = _cupy.lexsort(_cupy.stack([x.row, x.col]))
+            # (col, row): minor is row, whose range is m.
+            major, minor, major_count, minor_range = x.col, x.row, n, m
         else:
             raise ValueError("sort_by must be either 'r' or 'c'")
+        order = _argsort_major_minor(major, minor, major_count, minor_range)
         x.row[:] = x.row[order]
         x.col[:] = x.col[order]
         x.data[:] = x.data[order]
@@ -1189,16 +1307,17 @@ def coosort(x, sort_by='r'):
     else:
         raise ValueError("sort_by must be either 'r' or 'c'")
 
-    if x.dtype.char != '?':
-        if check_availability('gthr'):
-            _call_cusparse(
-                'gthr', x.dtype,
-                handle, nnz, data_orig.data.ptr, x.data.data.ptr,
-                P.data.ptr, _cusparse.CUSPARSE_INDEX_BASE_ZERO)
-        else:
-            desc_x = SpVecDescriptor.create(P, x.data)
-            desc_y = DnVecDescriptor.create(data_orig)
-            _cusparse.gather(handle, desc_y.desc, desc_x.desc)
+    # Only float/complex data reaches here (bool and the other non-'fdFD'
+    # dtypes took the pure-CuPy branch above), so the gather always runs.
+    if check_availability('gthr'):
+        _call_cusparse(
+            'gthr', x.dtype,
+            handle, nnz, data_orig.data.ptr, x.data.data.ptr,
+            P.data.ptr, _cusparse.CUSPARSE_INDEX_BASE_ZERO)
+    else:
+        desc_x = SpVecDescriptor.create(P, x.data)
+        desc_y = DnVecDescriptor.create(data_orig)
+        _cusparse.gather(handle, desc_y.desc, desc_x.desc)
 
     if sort_by == 'c':  # coo canonical order is row-major
         x.has_canonical_format = False
@@ -1281,28 +1400,41 @@ def csr2coo(x, data, indices):
     return A
 
 
+def _needs_cupy_fallback(dtype):
+    """Whether cuSPARSE cannot compute on this *data* dtype.
+
+    cuSPARSE operates only on float32/float64/complex64/complex128
+    (``dtype.char in 'fdFD'``); bool and every integer dtype must route
+    through a pure-CuPy fallback.  This is the value-dtype axis only; int64
+    *indices* are a separate routing axis (``_check_int32_indices`` /
+    ``indices.dtype == int64``).  Some ops need the fallback when either
+    axis applies (see :func:`_transpose_needs_cupy`).
+    """
+    return _numpy.dtype(dtype).char not in 'fdFD'
+
+
 def _transpose_needs_cupy(x):
     """Whether a CSR<->CSC transpose must use the pure-CuPy fallback.
 
     cuSPARSE's ``Csr2cscEx2`` (and legacy ``csr2csc``) support only
     float/complex data with int32 indices, so both int64 indices and a
-    non-float (e.g. ``bool``) data dtype must route through the
+    non-float (e.g. ``bool`` or integer) data dtype must route through the
     dtype-agnostic :func:`_cupy_transpose_compressed`.
     """
-    return x.indices.dtype == _cupy.int64 or x.dtype.char not in 'fdFD'
+    return x.indices.dtype == _cupy.int64 or _needs_cupy_fallback(x.dtype)
 
 
 def _cupy_transpose_compressed(x, output_cls, out_dim):
     """Pure-CuPy CSR<->CSC transpose (int64 indices or non-float data).
 
-    Uses ``_build_indptr`` + ``lexsort`` -- O(nnz log nnz) time, and is
+    Uses ``_build_indptr`` plus a single composite-key radix argsort and is
     dtype-agnostic (it only gathers/reorders the data, never operating on
     the value dtype).  It is the fallback whenever cuSPARSE's float-only,
     int32-only ``Csr2cscEx2`` cannot be used: no Generic API CSR<->CSC
     transpose accepts 64-bit indices (newer sparse Generic APIs such as
     SpGEAM are addition, not transpose), and cuSPARSE has no bool support
-    at all.  For int64 this runs roughly an order of magnitude slower than
-    the int32 ``cusparseCsr2cscEx2`` path.
+    at all.  For int64 this runs a few times slower than the int32
+    ``cusparseCsr2cscEx2`` path.
 
     Args:
         x: Input compressed sparse matrix.
@@ -1325,13 +1457,16 @@ def _cupy_transpose_compressed(x, output_cls, out_dim):
     out_indptr = _build_indptr(x.indices, out_dim, idx_dtype)
     expanded = _indptr_to_coo(x.indptr, nnz=x.nnz)
 
-    # Sort by (output major, output minor) for canonical order.
-    order = _cupy.lexsort(_cupy.stack([expanded, x.indices]))
+    # Canonical order sorts by (output major, output minor): x.indices is the
+    # output major and ``expanded`` (the input's major per entry) is the
+    # output minor, so the input's major count is the output's minor range.
+    in_major = x.indptr.size - 1
+    order = _argsort_major_minor(x.indices, expanded, out_dim, in_major)
 
     # Propagate has_canonical_format only when known True: a canonical
-    # input transposes to a canonical output (lexsort guarantees sort;
+    # input transposes to a canonical output (the sort guarantees ordering;
     # output has duplicates iff input did).  False/None are not
-    # propagated -- the lexsort may make a non-canonical input canonical
+    # propagated -- the sort may make a non-canonical input canonical
     # in the output, so we let the lazy getter recompute.  Read the
     # private attr to avoid triggering ``x``'s lazy kernel ourselves.
     canonical = getattr(x, '_has_canonical_format', None)
@@ -1656,12 +1791,13 @@ class BaseDescriptor:
 class SpMatDescriptor(BaseDescriptor):
 
     @classmethod
-    def create(cls, a):
+    def create(cls, a, is_half_allowed=False):
         if not cupyx.scipy.sparse.issparse(a):
             raise TypeError('expected sparse matrix')
         rows, cols = a.shape
         idx_base = _cusparse.CUSPARSE_INDEX_BASE_ZERO
-        cuda_dtype = _dtype.to_cuda_dtype(a.dtype)
+        cuda_dtype = _dtype.to_cuda_dtype(
+            a.dtype, is_half_allowed=is_half_allowed)
         if a.format == 'csr':
             desc = _cusparse.createCsr(
                 rows, cols, a.nnz, a.indptr.data.ptr, a.indices.data.ptr,
@@ -1708,8 +1844,9 @@ class SpVecDescriptor(BaseDescriptor):
 class DnVecDescriptor(BaseDescriptor):
 
     @classmethod
-    def create(cls, x):
-        cuda_dtype = _dtype.to_cuda_dtype(x.dtype)
+    def create(cls, x, is_half_allowed=False):
+        cuda_dtype = _dtype.to_cuda_dtype(
+            x.dtype, is_half_allowed=is_half_allowed)
         desc = _cusparse.createDnVec(x.size, x.data.ptr, cuda_dtype)
         get = _cusparse.dnVecGet
         destroy = _cusparse.destroyDnVec
@@ -1719,14 +1856,15 @@ class DnVecDescriptor(BaseDescriptor):
 class DnMatDescriptor(BaseDescriptor):
 
     @classmethod
-    def create(cls, a):
+    def create(cls, a, is_half_allowed=False):
         if a.ndim != 2:
             raise ValueError('expected 2-D matrix')
         if not a.flags.f_contiguous:
             raise ValueError('expected F-contiguous array')
         rows, cols = a.shape
         ld = rows
-        cuda_dtype = _dtype.to_cuda_dtype(a.dtype)
+        cuda_dtype = _dtype.to_cuda_dtype(
+            a.dtype, is_half_allowed=is_half_allowed)
         desc = _cusparse.createDnMat(rows, cols, ld, a.data.ptr, cuda_dtype,
                                      _cusparse.CUSPARSE_ORDER_COL)
         get = _cusparse.dnMatGet
@@ -1781,15 +1919,30 @@ def spmv(a, x, y=None, alpha=1, beta=0, transa=False):
         y.fill(0)
         return y
 
-    desc_a = SpMatDescriptor.create(a)
-    desc_x = DnVecDescriptor.create(x)
-    desc_y = DnVecDescriptor.create(y)
+    desc_a = SpMatDescriptor.create(a, is_half_allowed=True)
+    desc_x = DnVecDescriptor.create(x, is_half_allowed=True)
+
+    # float16 has no native cuSPARSE accumulate type -- only the mixed
+    # hf16_hf16_f32 mode (data float16, compute float32) -- so stage y in
+    # float32 and downcast, keeping the sparse matrix and x in float16 (no
+    # float32 copy of the potentially large operand).  bfloat16 is not routed
+    # here: CUDA_R_16BF needs compute capability >= 8.0, so bfloat16 matmul
+    # upcasts to float32 upstream instead.
+    half = a.dtype.char == 'e'
+    if half:
+        y_f32 = y.astype(_cupy.float32)
+        desc_y = DnVecDescriptor.create(y_f32)
+        cuda_dtype = _runtime.CUDA_R_32F
+        alpha = _numpy.array(alpha, _numpy.float32).ctypes
+        beta = _numpy.array(beta, _numpy.float32).ctypes
+    else:
+        desc_y = DnVecDescriptor.create(y)
+        cuda_dtype = _dtype.to_cuda_dtype(a.dtype)
+        alpha = _numpy.array(alpha, a.dtype).ctypes
+        beta = _numpy.array(beta, a.dtype).ctypes
 
     handle = _device.get_cusparse_handle()
     op_a = _transpose_flag(transa)
-    alpha = _numpy.array(alpha, a.dtype).ctypes
-    beta = _numpy.array(beta, a.dtype).ctypes
-    cuda_dtype = _dtype.to_cuda_dtype(a.dtype)
     alg = _cusparse.CUSPARSE_MV_ALG_DEFAULT
     buff_size = _cusparse.spMV_bufferSize(handle, op_a, alpha.data,
                                           desc_a.desc, desc_x.desc, beta.data,
@@ -1798,6 +1951,8 @@ def spmv(a, x, y=None, alpha=1, beta=0, transa=False):
     _cusparse.spMV(handle, op_a, alpha.data, desc_a.desc, desc_x.desc,
                    beta.data, desc_y.desc, cuda_dtype, alg, buff.data.ptr)
 
+    if half:
+        y[...] = y_f32.astype(y.dtype)
     return y
 
 
@@ -1879,16 +2034,28 @@ def spmm(a, b, c=None, alpha=1, beta=0, transa=False, transb=False):
                  transa=transa, transb=transb)
         return c
 
-    desc_a = SpMatDescriptor.create(a)
-    desc_b = DnMatDescriptor.create(b)
-    desc_c = DnMatDescriptor.create(c)
+    desc_a = SpMatDescriptor.create(a, is_half_allowed=True)
+    desc_b = DnMatDescriptor.create(b, is_half_allowed=True)
+
+    # float16 mixed precision: hf16_hf16_f32 (see spmv).  Stage c in float32
+    # and downcast, keeping the sparse matrix and b in float16.  bfloat16
+    # upcasts to float32 upstream instead (CUDA_R_16BF needs cc >= 8.0).
+    half = a.dtype.char == 'e'
+    if half:
+        c_f32 = c.astype(_cupy.float32)
+        desc_c = DnMatDescriptor.create(c_f32)
+        cuda_dtype = _runtime.CUDA_R_32F
+        alpha = _numpy.array(alpha, _numpy.float32).ctypes
+        beta = _numpy.array(beta, _numpy.float32).ctypes
+    else:
+        desc_c = DnMatDescriptor.create(c)
+        cuda_dtype = _dtype.to_cuda_dtype(a.dtype)
+        alpha = _numpy.array(alpha, a.dtype).ctypes
+        beta = _numpy.array(beta, a.dtype).ctypes
 
     handle = _device.get_cusparse_handle()
     op_a = _transpose_flag(transa)
     op_b = _transpose_flag(transb)
-    alpha = _numpy.array(alpha, a.dtype).ctypes
-    beta = _numpy.array(beta, a.dtype).ctypes
-    cuda_dtype = _dtype.to_cuda_dtype(a.dtype)
     alg = _cusparse.CUSPARSE_MM_ALG_DEFAULT
     buff_size = _cusparse.spMM_bufferSize(handle, op_a, op_b, alpha.data,
                                           desc_a.desc, desc_b.desc, beta.data,
@@ -1898,6 +2065,8 @@ def spmm(a, b, c=None, alpha=1, beta=0, transa=False, transb=False):
                                desc_b.desc, beta.data, desc_c.desc,
                                cuda_dtype, alg, buff.data.ptr)
 
+    if half:
+        c[...] = c_f32.astype(c.dtype)
     return c
 
 
@@ -2153,7 +2322,18 @@ def denseToSparse(x, format='csr'):
     if x.ndim != 2:
         raise ValueError('expected 2-D matrix')
     if x.dtype.char not in 'fdFD':
-        raise ValueError('unsupported dtype')
+        # TODO(eriknw): cuSPARSE--remove when cusparseDenseToSparse
+        #   supports non-float value types.  The pure-CuPy CSR builder
+        #   and format conversions are dtype-agnostic.
+        from cupyx.scipy.sparse import _csr
+        y = _csr.dense2csr(x)
+        if format == 'csr':
+            return y
+        elif format == 'csc':
+            return y.tocsc()
+        elif format == 'coo':
+            return y.tocoo()
+        raise TypeError('unsupported format (actual: {})'.format(format))
     x = _cupy.asfortranarray(x)
     desc_x = DnMatDescriptor.create(x)
     if format == 'csr':
@@ -2418,6 +2598,16 @@ def spsm(a, b, alpha=1.0, lower=True, unit_diag=False, transa=False):
         _cusparse.spSM_destroyDescr(spsm_descr)
 
 
+def _needs_cupy_spgemm(a, b):
+    # int64 indices or a non-float value dtype must route through the
+    # pure-CuPy SpGEMM fallbacks: cuSPARSE csrgemm/csrgemm2 are
+    # int32/float-only and native SpGEMM lacks integer compute types.
+    return (
+        a.indices.dtype == _cupy.int64
+        or b.indices.dtype == _cupy.int64
+        or _numpy.promote_types(a.dtype, b.dtype).char not in 'fdFD')
+
+
 def _cupy_spgemm_int64(a, b, alpha):
     # TODO(eriknw): cuSPARSE--removable once all supported CUDA versions have
     # native int64 SpGEMM.  Verified working on CUDA 13.0+ (native is
@@ -2428,7 +2618,16 @@ def _cupy_spgemm_int64(a, b, alpha):
     Expands all (i,j,a*b) products into COO, then sum_duplicates.
     O(P log P) time, O(P + nnz_C) space, where P = total products.
     """
+    # Bool operands stay bool: the product ``a*b`` is a logical AND and the
+    # bool ``sum_duplicates`` ORs coincident products, so a cell is True iff
+    # any product is -- exact for any overlap count.  (Casting to int8 like
+    # csrgeam does would overflow: 256 True products wrap to int8(0) -> a
+    # spurious False; csrgeam is safe only because add sums at most 2 values.)
     idx_dtype = _cupy.int64
+    # The int64 expand below is internal; the output should keep the
+    # operands' index dtype (a int32-indexed product stays int32 like the
+    # native path) unless the result is too large to fit.
+    out_idx_dtype = _numpy.result_type(a.indices.dtype, b.indices.dtype)
     # Normalise both operands to int64 (no copy if already int64).
     a_indices = a.indices.astype(idx_dtype, copy=False)
     a_indptr = a.indptr.astype(idx_dtype, copy=False)
@@ -2446,8 +2645,8 @@ def _cupy_spgemm_int64(a, b, alpha):
     if total_products == 0:
         return cupyx.scipy.sparse.csr_matrix._from_parts(
             _cupy.empty(0, a.dtype),
-            _cupy.empty(0, idx_dtype),
-            _cupy.zeros(m + 1, idx_dtype),
+            _cupy.empty(0, out_idx_dtype),
+            _cupy.zeros(m + 1, out_idx_dtype),
             (m, n))
 
     a_src = _cupy.repeat(
@@ -2470,14 +2669,108 @@ def _cupy_spgemm_int64(a, b, alpha):
     c_rows = a_rows[a_src]
     c_vals = a.data[a_src] * b.data[b_col_pos]
     del a_src, b_offset, b_col_pos, a_rows, a_col_k  # free P-sized temporaries
-    if alpha != 1:
-        c_vals = c_vals * a.dtype.type(alpha)
+    # Uint-safe scaling: ``a.dtype.type(-1)`` would raise OverflowError.
+    c_vals = _scale_geam_operand(c_vals, alpha)
 
     # Merge products with the same (row, col) position.
     coo = cupyx.scipy.sparse.coo_matrix._from_parts(
         c_vals, c_rows, c_cols, shape=(m, n))
     coo.sum_duplicates()
-    return coo.tocsr()
+    c = coo.tocsr()
+    # Narrow the indices back to the operands' dtype when the result fits.
+    # ``nnz <= m*n`` and m, n are Python ints, so the cheap m*n bound settles
+    # the usual ``m*n < 2**31`` case without inspecting the result at all.
+    max_idx = _numpy.iinfo(out_idx_dtype).max
+    if c.indptr.dtype != out_idx_dtype and (
+            m * n <= max_idx or int(c.nnz) <= max_idx):
+        c = _with_indices_dtype(c, out_idx_dtype)
+    return c
+
+
+def _cupy_csr_dense_matmul(a, x):
+    """``A @ X`` for value dtypes cuSPARSE ``spmv``/``spmm`` cannot multiply.
+
+    ``a`` is CSR; ``x`` is a dense ``(K,)`` or ``(K, N)`` array.  A 16-bit
+    float result upcasts to float32, multiplies with native cuSPARSE, then
+    downcasts (float32 is a lossless widening) -- faster and lower-memory than
+    the scatter used for bool/integer results.  In practice only bfloat16
+    reaches this branch: float16 has its own native cuSPARSE mixed-precision
+    (f16 data, f32 compute) spmv/spmm path and never falls back here.
+
+    For a bool/integer result each nonzero ``a[i, k]`` scatters
+    ``a[i, k] * x[k]`` into output row ``i``; overlapping rows accumulate.
+    Narrow integers (and bool) accumulate in a 64-bit carrier and wrap on the
+    down-cast, matching numpy/scipy integer matmul (mod ``2**bits``); a bool
+    result becomes True where any product is nonzero.  This exact integer
+    path is why the result is not simply upcast to a float compute type,
+    which would lose precision past 2**53.  Duplicate entries in ``a`` sum
+    naturally, so no ``sum_duplicates`` is required.
+    """
+    from cupyx.scipy.sparse import _sputils
+    # cupy fancy-indexing does not bounds-check the ``x2[a.indices]`` gather
+    # (it clamps), so an unchecked mismatch would return a silently wrong
+    # result where the float path and scipy both raise.
+    if a.shape[1] != x.shape[0]:
+        raise ValueError('dimension mismatch')
+    res_dtype = _numpy.promote_types(a.dtype, x.dtype)
+    if _sputils.is_16bit_float(res_dtype):
+        # 16-bit floats: upcast to float32 and reuse the native cuSPARSE
+        # spmv/spmm path (via ``@``), then downcast.  float32 is a lossless
+        # widening and accumulates the products in float32 exactly like the
+        # scatter, but is faster and uses less peak memory (no nnz x N
+        # products array).  float16 normally uses cuSPARSE's native f16/f32
+        # mixed mode directly; bfloat16 reaches here because its native
+        # CUDA_R_16BF path needs compute capability >= 8.0.
+        return (a.astype(_cupy.float32)
+                @ x.astype(_cupy.float32)).astype(res_dtype)
+    x2 = x[:, None] if x.ndim == 1 else x
+    # cupy.add.at cannot target bool, narrow ints, or bfloat16; accumulate in
+    # a compatible carrier (bool -> int64, so "any product nonzero"; else the
+    # shared int/bfloat16 carrier) and cast back.  Widen the K x N source
+    # before the gather, not the larger nnz x N result of it.
+    acc_dtype = _sputils.add_at_accumulator_dtype(res_dtype)
+    rows = _indptr_to_coo(a.indptr, nnz=a.nnz)
+    n = x2.shape[1]
+    data_acc = a.data[:, None].astype(acc_dtype, copy=False)
+    # The per-nonzero products ``contrib`` are (nnz, block) -- up to
+    # ``nnz / m`` times larger than the (m, block) result -- so materialising
+    # them whole OOMs for a wide dense operand.  Split the dense columns into
+    # blocks sized to free memory; the scatter stays exact (no float64
+    # round-off) at any width.  Within a block ``contrib`` and its gather
+    # source are each (nnz, block) of ``acc_dtype`` and coexist during the
+    # multiply, so budget for 2x that with a safety margin (factor 4).
+    # ``contrib`` is passed straight into ``add.at`` (never name-bound), so it
+    # frees each pass and the peak stays one block.  Count the pool's free
+    # blocks as available -- ``memGetInfo`` alone reports them used and would
+    # over-chunk.  A single dense column cannot be split, so skip the probe
+    # (a host-blocking driver call) entirely for the matvec case.
+    if n == 1:
+        block = 1
+    else:
+        per_col = max(a.nnz * acc_dtype.itemsize, 1)
+        free = (int(_cupy.cuda.runtime.memGetInfo()[0])
+                + int(_cupy.get_default_memory_pool().free_bytes()))
+        block = max(1, min(n, free // (4 * per_col)))
+    if block >= n:
+        # Single block: accumulate straight into the wide carrier, then cast.
+        y = _cupy.zeros((a.shape[0], n), dtype=acc_dtype)
+        _cupy.add.at(y, rows,
+                     data_acc * x2.astype(acc_dtype, copy=False)[a.indices])
+        y = y.astype(res_dtype, copy=False)
+    else:
+        # Near-OOM: keep the (m, n) output in the narrow res_dtype and widen
+        # only each block slice of the operand, casting the block back on
+        # store -- avoids a full-width (m, n) accumulator and a full-width copy
+        # of the dense operand.  Each output column is fully accumulated within
+        # its block, so the per-block cast is exact.
+        y = _cupy.zeros((a.shape[0], n), dtype=res_dtype)
+        for j0 in range(0, n, block):
+            j1 = min(j0 + block, n)
+            yb = _cupy.zeros((a.shape[0], j1 - j0), dtype=acc_dtype)
+            xb = x2[:, j0:j1].astype(acc_dtype, copy=False)[a.indices]
+            _cupy.add.at(yb, rows, data_acc * xb)
+            y[:, j0:j1] = yb.astype(res_dtype, copy=False)
+    return y.ravel() if x.ndim == 1 else y
 
 
 def spgemm(a, b, alpha=1):
@@ -2502,6 +2795,34 @@ def spgemm(a, b, alpha=1):
     if not _is_csr_type(b):
         raise TypeError(f'unsupported type (actual: {type(b)})')
 
+    if a.shape[1] != b.shape[0]:
+        raise ValueError('mismatched shape')
+
+    from cupyx.scipy.sparse import _sputils
+    # See csrgeam2: bfloat16 mixed with a >= 16-bit integer raises
+    # DTypePromotionError here (an accepted ml_dtypes limitation) though dense
+    # computes it; cast one operand explicitly to work around it.
+    result_dtype = _numpy.result_type(a.dtype, b.dtype)
+    if _sputils.is_16bit_float(result_dtype):
+        # 16-bit float: upcast to float32, use native cuSPARSE spgemm, then
+        # downcast.  This accumulates the contraction in float32 (more
+        # accurate than rounding each product to 16 bits) and is faster than
+        # the pure-CuPy sort-merge; float32 is a lossless widening.
+        # Restage only ``data`` (spgemm reads indices/indptr without mutating,
+        # like spmv/spmm), so ``astype`` would needlessly copy them.
+        a32 = a._with_data(a.data.astype(_cupy.float32), copy=False)
+        b32 = b._with_data(b.data.astype(_cupy.float32), copy=False)
+        r = spgemm(a32, b32, alpha)
+        return r._with_data(r.data.astype(result_dtype), copy=False)
+    # Route through the pure-CuPy sort-merge fallback only when the
+    # *promoted* result is non-float (bool/integer), regardless of index
+    # dtype: a mixed int x float pair promotes to a cuSPARSE-capable float and
+    # stays native.  Integer products/sums use ordinary integer arithmetic
+    # (wrapping on overflow, matching numpy/scipy).
+    if _needs_cupy_fallback(result_dtype):
+        a, b = _cast_common_type(a, b)
+        return _cupy_spgemm_int64(a, b, alpha)
+
     # TODO(eriknw): cuSPARSE--remove pure-CuPy fallback when all supported CUDA
     # versions have native int64 SpGEMM.  Native int64 SpGEMM is ~14x
     # faster and within 1.6x of int32 (verified on CUDA 13.0+).
@@ -2510,8 +2831,6 @@ def spgemm(a, b, alpha=1):
     # the CUDA runtime version rather than check_availability().
     # Mixed int32/int64 inputs: upcast to int64, prefer cuSPARSE.
     if a.indices.dtype == _cupy.int64 or b.indices.dtype == _cupy.int64:
-        if a.shape[1] != b.shape[0]:
-            raise ValueError('mismatched shape')
         _native_int64 = (
             not _runtime.is_hip
             and _runtime.runtimeGetVersion() >= 13000
@@ -2534,8 +2853,6 @@ def spgemm(a, b, alpha=1):
         raise ValueError('expected canonical format for a')
     if not b.has_canonical_format:
         raise ValueError('expected canonical format for b')
-    if a.shape[1] != b.shape[0]:
-        raise ValueError('mismatched shape')
 
     m, k = a.shape
     _, n = b.shape

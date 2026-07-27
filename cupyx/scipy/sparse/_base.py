@@ -89,10 +89,11 @@ class _spbase:
         # Delegate to scipy via ``self.get()`` so the output (including
         # version-specific quirks like DIA's "(N diagonals)" annotation)
         # tracks the installed scipy.  Fall back to ``repr`` only when
-        # ``get()`` is unavailable.
+        # ``get()`` is unavailable or scipy cannot represent the dtype
+        # (``ValueError`` for float16/bfloat16, which scipy.sparse rejects).
         try:
             return str(self.get())
-        except (RuntimeError, NotImplementedError):
+        except (RuntimeError, NotImplementedError, ValueError):
             return repr(self)
 
     def __iter__(self):
@@ -644,14 +645,18 @@ class _spbase:
 
         if self.ndim == 1:
             # The only axis reduces everything to a scalar.  Implicit zeros
-            # contribute nothing, so summing the stored data suffices;
-            # duplicates of a non-bool dtype already sum to the right total,
-            # so no dedup (or in-place mutation) is needed here.  ``out=`` is
-            # forwarded to the reduction (which validates its shape and writes
-            # the result in place) and then returned explicitly: the cuTENSOR
-            # reduction backend returns a fresh 0-D array from a 1-D reduction
-            # even when ``out`` is given, which breaks numpy's out-identity
-            # contract (``a.sum(out=b) is b``).
+            # contribute nothing, so summing the stored data suffices.  This
+            # equals numpy/scipy for a canonical matrix (the common case); a
+            # non-canonical *integer* matrix is the one divergence -- when
+            # its duplicates overflow the storage width scipy coalesces at
+            # that width first while this widens the accumulator -- accepted
+            # rather than force a copy+sort (or a canonical-format D2H sync)
+            # onto every reduction.  ``out=`` is forwarded to the reduction
+            # (which validates its shape and writes the result in place) and
+            # then returned explicitly: the cuTENSOR reduction backend
+            # returns a fresh 0-D array from a 1-D reduction even when
+            # ``out`` is given, which breaks numpy's out-identity contract
+            # (``a.sum(out=b) is b``).
             _sputils.validate_axis_1d(axis)
             result = self.data.sum(dtype=dtype, out=out)
             return out if out is not None else result
@@ -666,17 +671,67 @@ class _spbase:
         _sputils.validateaxis(axis)
 
         if axis is None:
-            # ``ones``-vector matmul gives a 1-D vector; its final reduction
-            # to a scalar must return ``out`` explicitly (see the 1-D branch:
-            # cuTENSOR returns a fresh 0-D array from a 1-D reduction).
-            result = self.dot(cupy.ones(n, dtype=self.dtype)).sum(
-                dtype=dtype, out=out)
+            # Both branches end in a 1-D reduction to a scalar whose ``out``
+            # must be returned explicitly: the cuTENSOR reduction backend
+            # returns a fresh 0-D array from a 1-D reduction even when ``out``
+            # is given (see the 1-D branch), which breaks numpy's out-identity
+            # contract (``a.sum(out=b) is b``).
+            if self.dtype.kind in 'iu':
+                # cuSPARSE has no integer ones-vector matmul; summing the
+                # stored values widens the accumulator to int64/uint64 like
+                # numpy/scipy, with the same non-canonical-duplicate
+                # divergence the 1-D branch documents.  DIA's ``data`` holds
+                # off-matrix padding, so take the coalesced COO values there.
+                values = (self.data if self.format in ('csr', 'csc', 'coo')
+                          else self.tocoo().data)
+                result = values.sum(dtype=dtype, out=out)
+            else:
+                result = self.dot(cupy.ones(n, dtype=self.dtype)).sum(
+                    dtype=dtype, out=out)
             return out if out is not None else result
 
         if axis < 0:
             axis += 2
 
-        if isinstance(self, sparray):
+        if self.dtype.kind in 'iu':
+            # cuSPARSE has no integer arithmetic; reduce exactly into the
+            # numpy/scipy sum accumulator (int64/uint64 -- exact even past
+            # 2**53, unlike a float64 carrier) instead of the ones-vector
+            # matmul; duplicates accumulate there too, with the divergence
+            # the 1-D branch documents.  When the reduction axis is the
+            # format's already *contiguous* axis (CSR rows / CSC columns),
+            # sum each ``indptr`` segment with a contention-free cumsum -- no
+            # conversion, and it avoids the atomic pile-up a dense row/column
+            # would cause when scattered.  Otherwise scatter-add from COO:
+            # the cross axis would need a costly CSR<->CSC to make its groups
+            # contiguous, while its scatter has only light contention.
+            acc_dtype = _sputils.get_sum_dtype(self.dtype)
+            fmt = self.format
+            if (fmt == 'csr' and axis == 1) or (fmt == 'csc' and axis == 0):
+                csum = cupy.empty(self.data.size + 1, dtype=acc_dtype)
+                csum[0] = 0
+                cupy.cumsum(self.data, dtype=acc_dtype, out=csum[1:])
+                acc = csum[self.indptr[1:]] - csum[self.indptr[:-1]]
+            else:
+                if fmt in ('csr', 'csc'):
+                    # Reducing over the format's *minor* axis: ``indices``
+                    # already holds each entry's coordinate on it, so the
+                    # COO conversion (whose only extra output is the major
+                    # coordinate this branch never reads) is skipped.
+                    coord, data = self.indices, self.data
+                else:
+                    coo = self.tocoo()
+                    coord = coo.col if axis == 0 else coo.row
+                    data = coo.data
+                dim = n if axis == 0 else m
+                acc = cupy.zeros(dim, dtype=acc_dtype)
+                cupy.add.at(
+                    acc, coord, data.astype(acc_dtype, copy=False))
+            if isinstance(self, sparray):
+                ret = acc
+            else:
+                ret = acc.reshape(1, n) if axis == 0 else acc.reshape(m, 1)
+        elif isinstance(self, sparray):
             # Arrays: reduction along an axis returns 1D
             if axis == 0:
                 ret = self.T.dot(cupy.ones(m, dtype=self.dtype))
@@ -881,7 +936,7 @@ class spmatrix:
         Returns:
             cupyx.scipy.sparse.spmatrix: A matrix with float type.
         """
-        if self.dtype.kind == 'f':
+        if _sputils.is_float_dtype(self.dtype):
             return self
         typ = numpy.promote_types(self.dtype, 'f')
         return self.astype(typ)
