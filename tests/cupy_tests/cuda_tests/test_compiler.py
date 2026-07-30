@@ -145,6 +145,7 @@ class TestCompileWithCache:
 
 
 @pytest.mark.skipif(not compiler._win32, reason='Windows specific test')
+@pytest.mark.thread_unsafe
 def test_get_cl_exe_dir_vswhere():
     vswhere_output = os.path.join('C:\\', 'Visual Studio') + '\n'
     cl_exe = os.path.join(
