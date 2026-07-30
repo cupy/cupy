@@ -118,6 +118,47 @@ class TestNdarrayInit(unittest.TestCase):
 
 @testing.parameterize(
     *testing.product({
+        'np_order': ['C', 'F'],
+        'np_pinned': [False, True],
+        'pinned_alloc_fails': [False, True],
+        'cp_setup': [
+            ('C', False, (48, 16, 4)),
+            ('C', True, (16, 4)),
+            ('F', False, (4, 8, 24)),
+            ('F', True, (4, 8)),
+        ]
+    })
+)
+class TestAsarray(unittest.TestCase):
+    def test_asarray(self):
+        cp_order, view, strides = self.cp_setup
+        shape = (2, 3, 4)
+        if self.np_pinned:
+            count = numpy.prod(shape)
+            dtype = numpy.float32()
+            pinned_ptr = cupy.cuda.alloc_pinned_memory(count * dtype.itemsize)
+            a_cpu = numpy.frombuffer(
+                pinned_ptr, dtype=dtype, count=count).reshape(shape)
+        else:
+            a_cpu = numpy.ndarray(
+                shape, dtype=numpy.float32, order=self.np_order)
+        a_cpu[...] = numpy.arange(a_cpu.size).reshape(a_cpu.shape)
+        if view:
+            a_cpu = a_cpu[:, 1, :]
+        try:
+            if self.pinned_alloc_fails:
+                cupy.cuda.set_pinned_memory_allocator(lambda _: None)
+            a = cupy.asarray(a_cpu, order=cp_order)
+        finally:
+            cupy.cuda.set_pinned_memory_allocator(None)
+        assert a.flags.c_contiguous == (cp_order == 'C')
+        assert a.flags.f_contiguous == (cp_order == 'F')
+        assert a.strides == strides
+        testing.assert_array_equal(a_cpu, a)
+
+
+@testing.parameterize(
+    *testing.product({
         'shape': [(), (1,), (1, 2), (1, 2, 3)],
         'order': ['C', 'F'],
         'dtype': [

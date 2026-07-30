@@ -1014,7 +1014,7 @@ cdef class _ndarray_base:
     # -------------------------------------------------------------------------
     # Shape manipulation
     # -------------------------------------------------------------------------
-    def reshape(self, *shape, order='C'):
+    def reshape(self, *shape, order='C', copy=None):
         """Returns an array of a different shape and the same content.
 
         .. seealso::
@@ -1022,7 +1022,7 @@ cdef class _ndarray_base:
            :meth:`numpy.ndarray.reshape`
 
         """
-        return _manipulation._ndarray_reshape(self, shape, order)
+        return _manipulation._ndarray_reshape(self, shape, order, copy)
 
     # TODO(okuta): Implement resize
 
@@ -1625,6 +1625,37 @@ cdef class _ndarray_base:
 
     def __pow__(x, y, modulo):
         # Note that we ignore the modulo argument as well as NumPy.
+
+        # Explicit special cases for common powers. As of 14.2, we do not
+        # have further special cases in the ufunc implementation.
+        # TODO(seberg): it would be nice to move part (or all!) of this into
+        #     the ufunc, but that would require new ufunc infrastructure
+        #     (i.e. for specific scalar values compile hard-code the kernel).
+        fast_func = None
+        fast_func_dtype = None
+        if type(y) is int:
+            if y == 2:
+                fast_func = cupy.square
+                if x.dtype.kind not in "ifc":
+                    fast_func_dtype = cupy.result_type(x.dtype, y)
+        elif type(y) is float:
+            if y == 0.5:
+                # For **0.5 promotion should be the same as sqrt
+                # (true for all typical numerical types we currently have)
+                fast_func = cupy.sqrt
+            elif y == 2.0:
+                fast_func = cupy.square
+            elif y == -1.0:
+                fast_func = cupy.reciprocal
+
+            if fast_func is not None and x.dtype.kind not in "fc":
+                # If the inputs aren't floats/ints, assume power is just
+                # a result_type() call.
+                fast_func_dtype = cupy.result_type(x.dtype, y)
+
+        if fast_func is not None:
+            return fast_func(x, dtype=fast_func_dtype)
+
         if isinstance(y, ndarray):
             return _math._power(x, y)
         elif _should_use_rop(x, y):
@@ -2979,6 +3010,8 @@ cdef inline _ndarray_base _try_skip_h2d_copy(
 cdef _ndarray_base _array_default(
         obj, dtype, copy, order, Py_ssize_t ndmin, bint blocking):
     cdef _ndarray_base a
+    cdef bint is_correct_contiguous
+    cdef int order_char = internal._normalize_order(order)
 
     # Fast path: zero-copy a NumPy array if possible
     if not blocking:
@@ -2986,15 +3019,30 @@ cdef _ndarray_base _array_default(
         if a is not None:
             return a
 
-    if order is not None and len(order) >= 1 and order[0] in 'KAka':
+    if order_char == b'K' or order_char == b'A':
         if isinstance(obj, numpy.ndarray) and obj.flags.fnc:
             order = 'F'
+            order_char = b'F'
         else:
             order = 'C'
+            order_char = b'C'
 
-    copy = False if NUMPY_1x else None
-    a_cpu = numpy.array(obj, dtype=dtype, copy=copy, order=order,
-                        ndmin=ndmin)
+    # Avoid copy when the passed object is a numpy array, we'll copy
+    # it below. Copying (which may not be pinned) here is not useful.
+    # TODO(seberg): In principle even `dtype=` is not useful here, but
+    # I am hesitant to remove it for the dtype conversion/validation.
+    if isinstance(obj, numpy.ndarray) and not _is_ump_enabled:
+        a_cpu = numpy.array(obj, dtype=dtype, copy=None, ndmin=ndmin)
+        if order_char == b'C':
+            is_correct_contiguous = a_cpu.flags.c_contiguous
+        elif order_char == b'F':
+            is_correct_contiguous = a_cpu.flags.f_contiguous
+        else:
+            assert False  # assume above normalizes to C or F.
+    else:
+        a_cpu = numpy.array(obj, dtype=dtype, copy=None, order=order,
+                            ndmin=ndmin)
+        is_correct_contiguous = True
 
     a_cpu = a_cpu.astype(_dtype.normalize_dtype(a_cpu.dtype), copy=False)
     a_dtype = a_cpu.dtype
@@ -3016,7 +3064,9 @@ cdef _ndarray_base _array_default(
     stream = stream_module.get_current_stream()
 
     cdef intptr_t ptr_h = <intptr_t>(a_cpu.ctypes.data)
-    if pinned_memory.is_memory_pinned(ptr_h):
+    if is_correct_contiguous and pinned_memory.is_memory_pinned(ptr_h):
+        # The input data is already correctly contiguous so if it is pinned
+        # memory already we can directly copy it.
         a.data.copy_from_host_async(ptr_h, nbytes, stream)
         pinned_memory._add_to_watch_list(stream.record(), a_cpu)
     else:
@@ -3027,10 +3077,14 @@ cdef _ndarray_base _array_default(
         mem = _alloc_async_transfer_buffer(nbytes)
         if mem is not None:
             src_cpu = numpy.frombuffer(mem, a_dtype, a_cpu.size)
-            src_cpu[:] = a_cpu.ravel(order)
+            src_cpu = src_cpu.reshape(a_cpu.shape, order=order)
+            src_cpu[...] = a_cpu
             a.data.copy_from_host_async(mem.ptr, nbytes, stream)
             pinned_memory._add_to_watch_list(stream.record(), mem)
         else:
+            if not is_correct_contiguous:
+                a_cpu = numpy.asarray(a_cpu, order=order)
+            ptr_h = <intptr_t>(a_cpu.ctypes.data)
             a.data.copy_from_host_async(ptr_h, nbytes, stream)
 
     if blocking:

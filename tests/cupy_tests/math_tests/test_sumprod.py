@@ -207,9 +207,15 @@ class TestSumprod:
         return a.prod(dtype=dst_dtype)
 
 
-# This class compares CUB results against NumPy's
+# This class compares CUB results against NumPy's.
+# Use _min_cub to make sure that the CUB path is used on these files
+_MIN_CUB = _cub_reduction._CUB_REDUCE_SIZE_THRESHOLD
+
+
 @pytest.mark.parametrize(
-    "shape", [(10,), (10, 20), (10, 20, 30), (10, 20, 30, 40)]
+    "shape", [
+        (_MIN_CUB,), (_MIN_CUB, _MIN_CUB), (_MIN_CUB, 2, _MIN_CUB),
+        (_MIN_CUB, 2, 2, _MIN_CUB)]
 )
 @pytest.mark.parametrize(
     "order", ['C', 'F'],
