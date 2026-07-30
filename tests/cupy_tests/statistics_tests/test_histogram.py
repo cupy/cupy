@@ -421,8 +421,6 @@ class TestCubHistogram(unittest.TestCase):
         return xp.histogram(x, bins)[1]
 
     @testing.slow
-    @pytest.mark.skip(
-        reason='CUB DeviceHistogram overflows int private-histogram offsets')
     @testing.numpy_cupy_array_equal()
     def test_no_oom(self, xp):
         # ensure the workaround for NVIDIA/cub#613 kicks in
