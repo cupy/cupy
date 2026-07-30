@@ -93,8 +93,15 @@ Here are the environment variables that CuPy uses at runtime.
 
   Default: ``"cub"`` (In ROCm HIP environment, the default value is ``""``. i.e., no accelerators are used.)
 
-  A comma-separated string of backend names (``cub``, ``cutensor``, or ``cutensornet``) which indicates the acceleration backends used in CuPy operations and its priority (in descending order).
+  A comma-separated string of backend names (``cub``, ``cutensor``, ``hiptensor``, or ``cutensornet``) which indicates the acceleration backends used in CuPy operations and its priority (in descending order).
   By default, all accelerators are disabled on HIP and only CUB is enabled on CUDA.
+  The ``hiptensor`` backend requires hipTensor 2.3.0 or later. Unsupported
+  operations and GPU architectures fall back to CuPy's own implementation.
+  CuPy currently enables transparent hipTensor acceleration for supported
+  reductions. Elementwise operations, Einstein summation, and cuTENSORMg are
+  unavailable as transparent accelerators. The corresponding high-level
+  :mod:`cupyx.cutensor` elementwise and contraction APIs remain compatible on
+  HIP through correctness fallbacks implemented with CuPy operations.
 
 .. envvar:: CUPY_TF32
 
@@ -167,6 +174,11 @@ These environment variables are used during installation (building CuPy from sou
 .. envvar:: CUTENSOR_PATH
 
   Path to the cuTENSOR root directory that contains ``lib`` and ``include`` directories. (experimental)
+
+.. envvar:: HIPTENSOR_PATH
+
+  Path to a hipTensor 2.3.0 or later root directory that contains ``lib`` and
+  ``include`` directories. (experimental)
 
 .. envvar:: CUPY_INSTALL_USE_HIP
 

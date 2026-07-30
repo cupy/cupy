@@ -429,6 +429,18 @@ The following ROCm libraries are required:
 
   $ sudo apt install hipblas hipsparse rocsparse rocrand hiprand rocthrust rocsolver rocfft hipfft hipcub rocprim rccl roctracer-dev
 
+hipTensor 2.3.0 or later is optional. Installing ``hiptensor`` and
+``hiptensor-dev`` enables :mod:`cupyx.cutensor` and the ``hiptensor`` value of
+:envvar:`CUPY_ACCELERATORS`. Supported GPU architectures and data types are
+listed in the `hipTensor support matrix
+<https://rocm.docs.amd.com/projects/hipTensor/en/develop/api-reference/api-reference.html>`_.
+CuPy falls back to its own implementation when a transparent accelerator call
+reports an unsupported operation or architecture.
+
+hipTensor does not provide the cuTENSORMg API. Complex data types are not
+enabled in CuPy's hipTensor integration, and TF32 compute requests use the
+FP32 compute descriptor.
+
 Environment Variables
 ~~~~~~~~~~~~~~~~~~~~~
 
@@ -487,7 +499,7 @@ Limitations
 
 The following features are not available due to the limitation of ROCm or because that they are specific to CUDA:
 
-* cuTENSOR
+* cuTENSORMg (hipTensor does not provide the multi-GPU API)
 * Handling extremely large arrays whose size is around 32-bit boundary (HIP is known to fail with sizes `2**32-1024`)
 * Atomic addition in FP16 (``cupy.ndarray.scatter_add`` and ``cupyx.scatter_add``)
 * Multi-GPU FFT and FFT callback
