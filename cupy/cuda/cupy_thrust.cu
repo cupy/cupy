@@ -68,11 +68,8 @@ public:
  * it exists. Non-nan values are sorted as before."
  * Ref: https://numpy.org/doc/stable/reference/generated/numpy.sort.html
  *
- * Descending order reuses all of the same NaN-placement logic (NaN always sorts to the end,
- * per NumPy's `descending` semantics: "Values that are NaN are sorted to the end for both
- * orders") -- only the comparison between two non-NaN values flips. Every comparator below is
- * templated on a compile-time `Descending` bool instead of duplicating an ascending/descending
- * pair of functions.
+ * NumPy sorts NaN to the end for both directions, so descending flips only the comparison
+ * between two non-NaN values and reuses all of the NaN placement above.
  */
 
 #if ((__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
@@ -180,15 +177,36 @@ static bool complex_cmp(const T& lhs, const T& rhs) {
     }
 }
 
-// Type function giving us the right comparison operator for the requested sort direction.
-// We use a custom one for all the specializations below, but otherwise just default to
-// thrust::less/thrust::greater. We notably do not define a specialization for float and
-// double, since thrust uses radix sort for them and sorts NaNs to the back -- but that only
-// holds for ascending (thrust::greater radix would put NaN first), see the Descending branch
-// in _sort/_argsort below, which keeps the explicit comparator for the descending float path.
+// Comparison operator for the requested direction. Types whose order depends on NaN placement
+// are specialized below, everything else just uses thrust::less/thrust::greater.
 template <typename T, bool Descending>
 struct select_cmp {
     using type = std::conditional_t<Descending, thrust::greater<T>, thrust::less<T>>;
+};
+
+// We use tuple_desc_cmp for multi-dimensional sorts where the first entry is the row index.
+// So even for a descending sort, the row index is still compared first and ascending.
+// (For NaN-aware types, we have specializations below.)
+template <typename T>
+struct tuple_desc_cmp {
+    __host__ __device__ __forceinline__ constexpr
+    bool operator() (
+        const thrust::tuple<size_t, T>& lhs, const thrust::tuple<size_t, T>& rhs) const {
+        const size_t& lhs_k = thrust::get<0>(lhs);
+        const size_t& rhs_k = thrust::get<0>(rhs);
+        if (lhs_k != rhs_k) {
+            return lhs_k < rhs_k;
+        }
+        return thrust::get<1>(rhs) < thrust::get<1>(lhs);
+    }
+};
+
+// Tuple sorts cannot use thrust::greater for descending: that would also reverse
+// the segment-key order and scramble rows. Keep keys ascending; flip values only.
+template <typename T, bool Descending>
+struct select_cmp<thrust::tuple<size_t, T>, Descending> {
+    using type = std::conditional_t<Descending, tuple_desc_cmp<T>,
+                                    thrust::less<thrust::tuple<size_t, T>>>;
 };
 
 // complex numbers
@@ -310,15 +328,30 @@ struct select_cmp<thrust::tuple<size_t, __half>, Descending> {
  */
 
 
+// Comparator for a 1-D sort. Ascending floats use thrust::less to allow radix sort, which
+// already puts NaN last (radix with thrust::greater would put it first). This only holds when
+// thrust sorts the values themselves; a comparison sort needs the NaN aware select_cmp.
+template <typename T, bool Descending>
+using direct_cmp_t = std::conditional_t<
+    !Descending && std::is_floating_point<T>::value,
+    thrust::less<T>,
+    typename select_cmp<T, Descending>::type>;
+
+// Comparator for a segmented (multi-dimensional) sort, which zips a row index onto each value.
+template <typename T, bool Descending>
+using segment_cmp_t = typename select_cmp<thrust::tuple<size_t, T>, Descending>::type;
+
+
 /*
  * sort
  */
 
+template <bool Descending>
 struct _sort {
     template <typename T>
     __forceinline__ void operator()(void *data_start, size_t *keys_start,
                                     const std::vector<ptrdiff_t>& shape, intptr_t stream,
-                                    void* memory, bool descending) {
+                                    void* memory) {
         size_t ndim = shape.size();
         ptrdiff_t size;
         thrust::device_ptr<T> dp_data_first, dp_data_last;
@@ -336,13 +369,8 @@ struct _sort {
         dp_data_last  = thrust::device_pointer_cast(static_cast<T*>(data_start) + size);
 
         if (ndim == 1) {
-            if (descending) {
-                stable_sort(cuda::par_nosync(alloc).on(stream_), dp_data_first, dp_data_last, typename select_cmp<T, true>::type{});
-            } else {
-                // we use thrust::less directly to sort floating points, because then it can use radix sort, which happens to sort NaNs to the back
-                using compare_op = std::conditional_t<std::is_floating_point<T>::value, thrust::less<T>, typename select_cmp<T, false>::type>;
-                stable_sort(cuda::par_nosync(alloc).on(stream_), dp_data_first, dp_data_last, compare_op{});
-            }
+            stable_sort(cuda::par_nosync(alloc).on(stream_), dp_data_first, dp_data_last,
+                        direct_cmp_t<T, Descending>{});
         } else {
             // Generate key indices.
             dp_keys_first = thrust::device_pointer_cast(keys_start);
@@ -360,19 +388,11 @@ struct _sort {
                       dp_keys_first,
                       thrust::divides<size_t>());
 
-            if (descending) {
-                stable_sort(
-                    cuda::par_nosync(alloc).on(stream_),
-                    make_zip_iterator(dp_keys_first, dp_data_first),
-                    make_zip_iterator(dp_keys_last, dp_data_last),
-                    typename select_cmp<thrust::tuple<size_t, T>, true>::type{});
-            } else {
-                stable_sort(
-                    cuda::par_nosync(alloc).on(stream_),
-                    make_zip_iterator(dp_keys_first, dp_data_first),
-                    make_zip_iterator(dp_keys_last, dp_data_last),
-                    typename select_cmp<thrust::tuple<size_t, T>, false>::type{});
-            }
+            stable_sort(
+                cuda::par_nosync(alloc).on(stream_),
+                make_zip_iterator(dp_keys_first, dp_data_first),
+                make_zip_iterator(dp_keys_last, dp_data_last),
+                segment_cmp_t<T, Descending>{});
         }
     }
 };
@@ -422,12 +442,13 @@ struct _lexsort {
  * argsort
  */
 
+template <bool Descending>
 struct _argsort {
     template <typename T>
     __forceinline__ void operator()(size_t *idx_start, void *data_start,
                                     void *keys_start,
                                     const std::vector<ptrdiff_t>& shape,
-                                    intptr_t stream, void *memory, bool descending) {
+                                    intptr_t stream, void *memory) {
         /* idx_start is the beginning of the output array where the indexes that
            would sort the data will be placed. The original contents of idx_start
            will be destroyed. */
@@ -468,22 +489,12 @@ struct _argsort {
                   thrust::modulus<size_t>());
 
         if (ndim == 1) {
-            if (descending) {
-                stable_sort_by_key(cuda::par_nosync(alloc).on(stream_),
-                                   dp_data_first,
-                                   dp_data_last,
-                                   dp_idx_first,
-                                   typename select_cmp<T, true>::type{});
-            } else {
-                // we use thrust::less directly to sort floating points, because then it can use radix sort, which happens to sort NaNs to the back
-                using compare_op = std::conditional_t<std::is_floating_point<T>::value, thrust::less<T>, typename select_cmp<T, false>::type>;
-                // Sort the index sequence by data.
-                stable_sort_by_key(cuda::par_nosync(alloc).on(stream_),
-                                   dp_data_first,
-                                   dp_data_last,
-                                   dp_idx_first,
-                                   compare_op{});
-            }
+            // Sort the index sequence by data.
+            stable_sort_by_key(cuda::par_nosync(alloc).on(stream_),
+                               dp_data_first,
+                               dp_data_last,
+                               dp_idx_first,
+                               direct_cmp_t<T, Descending>{});
         } else {
             // Generate key indices.
             dp_keys_first = thrust::device_pointer_cast(static_cast<size_t*>(keys_start));
@@ -501,21 +512,12 @@ struct _argsort {
                       dp_keys_first,
                       thrust::divides<size_t>());
 
-            if (descending) {
-                stable_sort_by_key(
-                    cuda::par_nosync(alloc).on(stream_),
-                    make_zip_iterator(dp_keys_first, dp_data_first),
-                    make_zip_iterator(dp_keys_last, dp_data_last),
-                    dp_idx_first,
-                    typename select_cmp<thrust::tuple<size_t, T>, true>::type{});
-            } else {
-                stable_sort_by_key(
-                    cuda::par_nosync(alloc).on(stream_),
-                    make_zip_iterator(dp_keys_first, dp_data_first),
-                    make_zip_iterator(dp_keys_last, dp_data_last),
-                    dp_idx_first,
-                    typename select_cmp<thrust::tuple<size_t, T>, false>::type{});
-            }
+            stable_sort_by_key(
+                cuda::par_nosync(alloc).on(stream_),
+                make_zip_iterator(dp_keys_first, dp_data_first),
+                make_zip_iterator(dp_keys_last, dp_data_last),
+                dp_idx_first,
+                segment_cmp_t<T, Descending>{});
         }
     }
 };
@@ -530,8 +532,11 @@ struct _argsort {
 void thrust_sort(int dtype_id, void *data_start, size_t *keys_start,
     const std::vector<ptrdiff_t>& shape, intptr_t stream, void* memory, bool descending) {
 
-    _sort op;
-    return dtype_dispatcher(dtype_id, op, data_start, keys_start, shape, stream, memory, descending);
+    // Make the direction compile-time, so each sort below is written only once.
+    if (descending) {
+        return dtype_dispatcher(dtype_id, _sort<true>{}, data_start, keys_start, shape, stream, memory);
+    }
+    return dtype_dispatcher(dtype_id, _sort<false>{}, data_start, keys_start, shape, stream, memory);
 }
 
 
@@ -548,7 +553,10 @@ void thrust_lexsort(int dtype_id, size_t *idx_start, void *keys_start, size_t k,
 void thrust_argsort(int dtype_id, size_t *idx_start, void *data_start,
     void *keys_start, const std::vector<ptrdiff_t>& shape, intptr_t stream, void *memory, bool descending) {
 
-    _argsort op;
-    return dtype_dispatcher(dtype_id, op, idx_start, data_start, keys_start, shape,
-                            stream, memory, descending);
+    if (descending) {
+        return dtype_dispatcher(dtype_id, _argsort<true>{}, idx_start, data_start, keys_start,
+                                shape, stream, memory);
+    }
+    return dtype_dispatcher(dtype_id, _argsort<false>{}, idx_start, data_start, keys_start,
+                            shape, stream, memory);
 }

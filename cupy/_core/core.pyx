@@ -1129,7 +1129,7 @@ cdef class _ndarray_base:
         if kind is not None and kind != "stable":
             raise ValueError("kind can only be None or 'stable'")
 
-    cpdef sort(self, int axis=-1, kind=None, descending=False):
+    def sort(self, int axis=-1, kind=None, *, descending=False):
         """Sort an array, in-place with a stable sorting algorithm.
 
         Args:
@@ -1154,7 +1154,7 @@ cdef class _ndarray_base:
         self._check_kind_sort(kind)
         _sorting._ndarray_sort(self, axis, descending)
 
-    cpdef _ndarray_base argsort(self, axis=-1, kind=None, descending=False):
+    def argsort(self, axis=-1, kind=None, *, descending=False):
         """Returns the indices that would sort an array with stable sorting
 
         Args:

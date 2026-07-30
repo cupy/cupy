@@ -48,8 +48,6 @@ cdef class _ndarray_base:
     cpdef put(self, indices, values, mode=*)
     cpdef repeat(self, repeats, axis=*)
     cpdef choose(self, choices, out=*, mode=*)
-    cpdef sort(self, int axis=*, kind=*, descending=*)
-    cpdef _ndarray_base argsort(self, axis=*, kind=*, descending=*)
     cpdef partition(self, kth, int axis=*)
     cpdef _ndarray_base argpartition(self, kth, axis=*)
     cpdef tuple nonzero(self)

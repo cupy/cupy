@@ -221,15 +221,20 @@ class TestSort(unittest.TestCase):
         return self._sort(xp, a, use_method=False, descending=True)
 
     @testing.with_requires('numpy>=2.5')
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_sort_descending_axis(self, xp):
-        a = testing.shaped_random((2, 3, 4), xp)
+    def test_sort_descending_axis(self, xp, dtype):
+        # Enough rows, and long enough rows, that a segmented sort emitting
+        # them in the wrong order cannot coincidentally match -- including
+        # for bool, where each sorted row collapses to a count of `True`s.
+        a = testing.shaped_random((4, 5, 6), xp, dtype)
         return self._sort(xp, a, use_method=True, axis=1, descending=True)
 
     @testing.with_requires('numpy>=2.5')
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_external_sort_descending_axis(self, xp):
-        a = testing.shaped_random((2, 3, 4), xp)
+    def test_external_sort_descending_axis(self, xp, dtype):
+        a = testing.shaped_random((4, 5, 6), xp, dtype)
         return self._sort(xp, a, use_method=False, axis=1, descending=True)
 
     @testing.with_requires('numpy>=2.5')
@@ -245,6 +250,21 @@ class TestSort(unittest.TestCase):
         a = testing.shaped_random((10,), xp, dtype)
         a[2] = a[6] = xp.nan
         return self._sort(xp, a, use_method=False, descending=True)
+
+    @testing.with_requires('numpy>=2.5')
+    @testing.for_dtypes('efdFD')
+    @testing.numpy_cupy_array_equal()
+    def test_sort_descending_nan_axis(self, xp, dtype):
+        a = testing.shaped_random((4, 5, 6), xp, dtype)
+        a[0, 2, 1] = a[1, 0, 3] = a[3, 4, 5] = xp.nan
+        return self._sort(xp, a, use_method=False, axis=1, descending=True)
+
+    def test_sort_descending_keyword_only(self):
+        a = cupy.arange(3)
+        with pytest.raises(TypeError):
+            cupy.sort(a, -1, None, True)
+        with pytest.raises(TypeError):
+            a.sort(-1, None, True)
 
     # Large case
 
@@ -470,9 +490,10 @@ class TestArgsort(unittest.TestCase):
         return self.argsort(a, descending=True)
 
     @testing.with_requires('numpy>=2.5')
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_argsort_descending_axis(self, xp):
-        a = testing.shaped_random((2, 3, 3), xp)
+    def test_argsort_descending_axis(self, xp, dtype):
+        a = testing.shaped_random((4, 5, 6), xp, dtype)
         return self.argsort(a, axis=0, descending=True)
 
     @testing.with_requires('numpy>=2.5')
@@ -496,6 +517,21 @@ class TestArgsort(unittest.TestCase):
         a = testing.shaped_random((10,), xp, dtype)
         a[2] = a[6] = xp.nan
         return self.argsort(a, descending=True)
+
+    @testing.with_requires('numpy>=2.5')
+    @testing.for_dtypes('efdFD')
+    @testing.numpy_cupy_array_equal()
+    def test_argsort_descending_nan_axis(self, xp, dtype):
+        a = testing.shaped_random((4, 5, 6), xp, dtype)
+        a[0, 2, 1] = a[1, 0, 3] = a[3, 4, 5] = xp.nan
+        return self.argsort(a, axis=1, descending=True)
+
+    def test_argsort_descending_keyword_only(self):
+        a = cupy.arange(3)
+        with pytest.raises(TypeError):
+            cupy.argsort(a, -1, None, True)
+        with pytest.raises(TypeError):
+            a.argsort(-1, None, True)
 
 
 class TestSort_complex(unittest.TestCase):
