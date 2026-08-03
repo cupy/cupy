@@ -5,6 +5,7 @@ import pytest
 
 import cupy
 from cupy import testing
+from cupy.testing._helper import skip_if_after_baseline
 import cupyx
 import cupyx.scipy.stats  # NOQA
 
@@ -32,6 +33,8 @@ class TestTrim:
         return scp.stats.trim_mean(a, 2 / 6.)
 
     @testing.for_all_dtypes()
+    @skip_if_after_baseline(
+        scipy="1.17", reason="SciPy>=1.17 nan-wrapper does atleast_nd(1).")
     def test_zero_dim(self, dtype):
         for xp, scp in [(numpy, scipy), (cupy, cupyx.scipy)]:
             a = xp.array(0, dtype=dtype)
@@ -46,10 +49,10 @@ class TestTrim:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(scipy_name='scp')
-    @pytest.mark.parametrize('propotiontocut', [0.0, 0.6])
-    def test_empty(self, xp, scp, dtype, propotiontocut):
+    @pytest.mark.parametrize('proportiontocut', [0.0, 0.6])
+    def test_empty(self, xp, scp, dtype, proportiontocut):
         a = xp.array([])
-        return scp.stats.trim_mean(a, 2 / 6., propotiontocut)
+        return scp.stats.trim_mean(a, proportiontocut)
 
     @testing.for_CF_orders()
     @testing.for_all_dtypes()

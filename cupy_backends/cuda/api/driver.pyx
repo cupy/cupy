@@ -145,7 +145,10 @@ cpdef intptr_t ctxCreate(Device dev) except? 0:
     cdef Context ctx
     cdef unsigned int flags = 0
     with nogil:
-        status = cuCtxCreate(&ctx, flags, dev)
+        IF CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION >= 13000:
+            status = cuCtxCreate(&ctx, NULL, flags, dev)
+        ELSE:
+            status = cuCtxCreate(&ctx, flags, dev)
     check_status(status)
     return <intptr_t>ctx
 
