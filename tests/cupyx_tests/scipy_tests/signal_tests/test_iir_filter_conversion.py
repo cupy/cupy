@@ -64,6 +64,10 @@ class TestBilinear:
 #        assert_array_almost_equal(a_z, [1, -1.2158, 0.72826],
 #                                  decimal=4)
 
+    # SciPy only started trimming leading zeros here in 1.16 (gh-6606);
+    # older SciPy returns the untrimmed result, so comparing against it
+    # would fail even though CuPy is now the correct one.
+    @testing.with_requires("scipy>=1.16")
     @pytest.mark.parametrize('lzn', range(4))
     @pytest.mark.parametrize('lzd', range(4))
     @testing.numpy_cupy_allclose(scipy_name="scp")
