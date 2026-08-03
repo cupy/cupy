@@ -45,7 +45,7 @@ UPFIRDN_KERNEL = r'''
 
 template<typename T>
 __device__ void _cupy_upfirdn1D( const T *__restrict__ inp,
-                                 const int inp_stride,
+                                 const long long inp_stride,
                                  const T *__restrict__ h_trans_flip,
                                  const int up,
                                  const int down,
@@ -88,7 +88,7 @@ __device__ void _cupy_upfirdn1D( const T *__restrict__ inp,
 }
 
 extern "C" __global__ void __launch_bounds__( 512 ) _cupy_upfirdn1D_float32( const float *__restrict__ inp,
-                                                                             const int inp_stride,
+                                                                             const long long inp_stride,
                                                                              const float *__restrict__ h_trans_flip,
                                                                              const int up,
                                                                              const int down,
@@ -102,7 +102,7 @@ extern "C" __global__ void __launch_bounds__( 512 ) _cupy_upfirdn1D_float32( con
 }
 
 extern "C" __global__ void __launch_bounds__( 512 ) _cupy_upfirdn1D_float64( const double *__restrict__ inp,
-                                                                             const int inp_stride,
+                                                                             const long long inp_stride,
                                                                              const double *__restrict__ h_trans_flip,
                                                                              const int up,
                                                                              const int down,
@@ -117,7 +117,7 @@ extern "C" __global__ void __launch_bounds__( 512 ) _cupy_upfirdn1D_float64( con
 
 extern "C" __global__ void __launch_bounds__( 512 )
     _cupy_upfirdn1D_complex64( const thrust::complex<float> *__restrict__ inp,
-                               const int inp_stride,
+                               const long long inp_stride,
                                const thrust::complex<float> *__restrict__ h_trans_flip,
                                const int up,
                                const int down,
@@ -133,7 +133,7 @@ extern "C" __global__ void __launch_bounds__( 512 )
 
 extern "C" __global__ void __launch_bounds__( 512 )
     _cupy_upfirdn1D_complex128( const thrust::complex<double> *__restrict__ inp,
-                                const int inp_stride,
+                                const long long inp_stride,
                                 const thrust::complex<double> *__restrict__ h_trans_flip,
                                 const int up,
                                 const int down,
@@ -153,8 +153,8 @@ extern "C" __global__ void __launch_bounds__( 512 )
 
 template<typename T>
 __device__ void _cupy_upfirdn2D( const T *__restrict__ inp,
-                                 const int inp_strideW,
-                                 const int inp_strideH,
+                                 const long long inp_strideW,
+                                 const long long inp_strideH,
                                  const T *__restrict__ h_trans_flip,
                                  const int up,
                                  const int down,
@@ -215,8 +215,8 @@ __device__ void _cupy_upfirdn2D( const T *__restrict__ inp,
 }
 
 extern "C" __global__ void __launch_bounds__( 64 ) _cupy_upfirdn2D_float32( const float *__restrict__ inp,
-                                                                            const int inp_strideW,
-                                                                            const int inp_strideH,
+                                                                            const long long inp_strideW,
+                                                                            const long long inp_strideH,
                                                                             const float *__restrict__ h_trans_flip,
                                                                             const int up,
                                                                             const int down,
@@ -232,8 +232,8 @@ extern "C" __global__ void __launch_bounds__( 64 ) _cupy_upfirdn2D_float32( cons
 }
 
 extern "C" __global__ void _cupy_upfirdn2D_float64( const double *__restrict__ inp,
-                                                    const int inp_strideW,
-                                                    const int inp_strideH,
+                                                    const long long inp_strideW,
+                                                    const long long inp_strideH,
                                                     const double *__restrict__ h_trans_flip,
                                                     const int up,
                                                     const int down,
@@ -250,8 +250,8 @@ extern "C" __global__ void _cupy_upfirdn2D_float64( const double *__restrict__ i
 
 extern "C" __global__ void __launch_bounds__( 64 )
     _cupy_upfirdn2D_complex64( const thrust::complex<float> *__restrict__ inp,
-                               const int inp_strideW,
-                               const int inp_strideH,
+                               const long long inp_strideW,
+                               const long long inp_strideH,
                                const thrust::complex<float> *__restrict__ h_trans_flip,
                                const int up,
                                const int down,
@@ -268,8 +268,8 @@ extern "C" __global__ void __launch_bounds__( 64 )
 
 extern "C" __global__ void __launch_bounds__( 64 )
     _cupy_upfirdn2D_complex128( const thrust::complex<double> *__restrict__ inp,
-                                const int inp_strideW,
-                                const int inp_strideH,
+                                const long long inp_strideW,
+                                const long long inp_strideH,
                                 const thrust::complex<double> *__restrict__ h_trans_flip,
                                 const int up,
                                 const int down,
@@ -368,6 +368,9 @@ class _UpFIRDn:
         """Apply the prepared filter to the specified axis of a nD signal x"""
 
         x = cupy.asarray(x, self._output_type)
+        # Element strides require byte strides divisible by itemsize.
+        # CuPy arrays always satisfy this in practice.
+        assert all(s % x.itemsize == 0 for s in x.strides)
 
         output_len = _output_len(
             self._h_len_orig, x.shape[axis], self._up, self._down)

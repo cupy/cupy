@@ -95,19 +95,23 @@ class TestResample:
                 scp.signal.resample(tsig, num, domain='time'))
 
     @pytest.mark.parametrize("shape,axis", [
-        pytest.param((), -1, id="1D-negative-axis"),
-        pytest.param((100, 10000), 0, id="2D_zero-axis"),
-        pytest.param((100, 10000), 1, id="2D_positive-axis"),
+        pytest.param((64,), -1, id="1D"),
+        pytest.param((20, 50), 0, id="2D-axis0"),
+        pytest.param((20, 50), 1, id="2D-axis1"),
+        pytest.param((20, 50), -1, id="2D-axis-neg"),
     ])
+    @pytest.mark.parametrize("order", ["C", "F"])
     @pytest.mark.parametrize(
         'dtype', ['float32', 'float64', 'complex64', 'complex128'])
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-7)
-    def test_strides(self, xp, scp, shape, axis, dtype):
-        arr = xp.linspace(0, 1, 1000000, dtype)
-        if shape:
-            arr = arr.reshape(shape)
-        idx = tuple(slice(dim - 1, 24, -5) for dim in arr.shape)
-        return scp.signal.resample_poly(arr[idx], 1, 2, axis=axis)
+    def test_strides(self, xp, scp, shape, axis, order, dtype):
+        arr = xp.linspace(0, 1, int(np.prod(shape)), dtype=dtype)
+        arr = arr.reshape(shape, order=order)
+        # Pass an explicit same-dtype window: the default firwin design is
+        # float64, and CuPy's upfirdn promotes with the filter dtype while
+        # SciPy can preserve float32/complex64.
+        window = xp.asarray([0.25, 0.5, 0.25], dtype=dtype)
+        return scp.signal.resample_poly(arr, 1, 2, axis=axis, window=window)
 
     @pytest.mark.parametrize('nx', (1, 2, 3, 5, 8))
     @pytest.mark.parametrize('ny', (1, 2, 3, 5, 8))
