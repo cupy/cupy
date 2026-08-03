@@ -219,6 +219,14 @@ class TestCooMatrix:
         assert str(self.m.shape) in s
         assert s == str(self.m.get())
 
+    def test_repr(self):
+        r = repr(self.m)
+        assert 'COOrdinate' in r
+        assert 'sparse matrix' in r
+        assert str(self.m.dtype) in r
+        assert str(self.m.shape) in r
+        assert f'with {self.m.nnz} stored elements' in r
+
     def test_toarray(self):
         m = self.m.toarray()
         expect = numpy.array([

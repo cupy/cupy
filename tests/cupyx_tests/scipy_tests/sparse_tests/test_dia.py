@@ -106,6 +106,15 @@ class TestDiaMatrix(unittest.TestCase):
         # Delegation invariant.
         assert s == str(self.m.get())
 
+    def test_repr(self):
+        r = repr(self.m)
+        assert 'DIAgonal' in r
+        assert 'sparse matrix' in r
+        assert str(self.m.dtype) in r
+        assert str(self.m.shape) in r
+        assert f'with {self.m.nnz} stored elements' in r
+        assert f'({self.m.data.shape[0]} diagonals)' in r
+
     def test_toarray(self):
         m = self.m.toarray()
         expect = [

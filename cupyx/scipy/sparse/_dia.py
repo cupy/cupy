@@ -108,6 +108,10 @@ class _dia_base(_data._data_matrix):
             f"\twith {self.nnz} stored elements ({len(self.offsets)} "
             f"diagonals) and shape {self.shape}>")
 
+    def _repr_detail(self):
+        d = self.data.shape[0]
+        return f' ({d} diagonals)'
+
     def get(self, stream=None):
         """Returns a copy of the array on host memory.
 
