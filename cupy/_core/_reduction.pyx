@@ -3,6 +3,7 @@ from cpython cimport sequence
 from cupy._core cimport _carray
 from cupy._core cimport _accelerator
 from cupy._core._carray cimport shape_t
+from cupy._core cimport _cc_reduction
 from cupy._core cimport _cub_reduction
 from cupy._core._dtype cimport get_dtype
 from cupy._core cimport _kernel
@@ -311,7 +312,8 @@ cdef class _AbstractReductionKernel:
             list in_args, list out_args,
             const shape_t& a_shape, axis, dtype,
             bint keepdims, bint reduce_dims, int device_id,
-            stream, bint try_use_cub=False, bint sort_reduce_axis=True):
+            stream, bint try_use_cub=False, bint try_use_cuda_compute=False,
+            bint sort_reduce_axis=True):
         cdef tuple reduce_axis, out_axis, axis_permutes
         cdef tuple params, opt_params
         cdef tuple shape_and_strides
@@ -319,7 +321,7 @@ cdef class _AbstractReductionKernel:
         cdef Py_ssize_t block_size, block_stride, out_block_num = 0
         cdef shape_t in_shape, out_shape
         cdef _ndarray_base ret
-        cdef bint cub_success
+        cdef bint cub_success, cc_success
 
         if dtype is not None:
             dtype = get_dtype(dtype).type
@@ -372,8 +374,14 @@ cdef class _AbstractReductionKernel:
             key = (self.name, shape_and_strides,
                    in_types, out_types, reduce_type, device_id)
 
-        # Try to use CUB
         for accelerator in _accelerator._reduction_accelerators:
+            if (try_use_cuda_compute
+                    and accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE):
+                cc_success = _cc_reduction._try_to_call_cc_reduction(
+                    self, in_args, out_args, a_shape, stream,
+                    reduce_axis, out_axis, out_shape, ret)
+                if cc_success:
+                    return ret
             if try_use_cub and accelerator == _accelerator.ACCELERATOR_CUB:
                 cub_success = _cub_reduction._try_to_call_cub_reduction(
                     self, in_args, out_args, a_shape, stream, optimize_context,
@@ -617,7 +625,7 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
         return self._call(
             in_args, out_args,
             arr._shape, axis, dtype, keepdims, reduce_dims, dev_id,
-            None, True, self._sort_reduce_axis)
+            None, True, True, self._sort_reduce_axis)
 
     cdef tuple _get_expressions_and_types(
             self, list in_args, list out_args, dtype):
@@ -826,10 +834,13 @@ cdef class ReductionKernel(_AbstractReductionKernel):
         out_args = _preprocess_args(dev_id, out_args)
         in_args = _broadcast(in_args, self.in_params, False, broad_shape)
 
+        # try_use_cuda_compute=False: the cuda.compute accelerator
+        # dispatches on the built-in routine names (cupy_sum, ...) and
+        # cannot serve user-defined ReductionKernels.
         return self._call(
             in_args, out_args,
             broad_shape, axis, None,
-            keepdims, self.reduce_dims, dev_id, stream, True, True)
+            keepdims, self.reduce_dims, dev_id, stream, True, False, True)
 
     cdef tuple _get_expressions_and_types(
             self, list in_args, list out_args, dtype):
