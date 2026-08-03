@@ -3511,7 +3511,7 @@ class TestCsr2CooCanonicalPreservation:
 
 class TestInt64TransposeCanonical:
     """The int64 CSR<->CSC transpose runs through
-    ``_cupy_transpose_compressed_int64`` which sorts via lexsort.
+    ``_cupy_transpose_compressed`` which sorts via lexsort.
     Canonical input stays canonical, but ``False`` / uncomputed must
     NOT propagate: even an unsorted input becomes canonical after
     lexsort, and caching ``False`` would mask that from the lazy
