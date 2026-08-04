@@ -5,6 +5,29 @@ import cupy
 import operator
 
 
+def _add(c1, c2):
+    """Helper function used to implement the `<type>add` functions.
+
+    Parameters
+    ----------
+    c1, c2 : array_like
+        1-d arrays of polynomial coefficients to add.
+
+    Returns
+    -------
+    out : ndarray
+        The sum of the inputs, with trailing zeros removed.
+    """
+    [c1, c2] = as_series([c1, c2], trimseq=False)
+    if len(c1) > len(c2):
+        c1[:c2.size] += c2
+        ret = c1
+    else:
+        c2[:c1.size] += c1
+        ret = c2
+    return trimseq(ret)
+
+
 def _as_int(x, desc):
     """
     Like `operator.index`, but emits a custom exception when passed an
