@@ -31,6 +31,7 @@ import math
 import cupy
 
 from cupy._core._scalar import get_typename
+from cupy._core.internal import _normalize_axis_index
 from cupy_backends.cuda.api import runtime
 
 from cupyx import jit
@@ -1284,6 +1285,10 @@ def _boolrelextrema(data, comparator, axis=0, order=1, mode="clip"):
     """
     if (int(order) != order) or (order < 1):
         raise ValueError("Order must be an int >= 1")
+
+    # The 2-D kernel selects its walk direction with a literal ``axis == 0``
+    # test, so a negative axis must be normalized before it reaches it.
+    axis = _normalize_axis_index(axis, data.ndim)
 
     if data.ndim < 3:
         results = cupy.empty(data.shape, dtype=bool)
