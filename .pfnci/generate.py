@@ -80,7 +80,7 @@ class LinuxGenerator:
                 lines += [
                     'RUN export DEBIAN_FRONTEND=noninteractive && \\',
                     '    ( apt-get -qqy update || true ) && \\',
-                    '    apt-get -qqy install ca-certificates && \\',
+                    '    apt-get -qqy install ca-certificates gnupg && \\',
                     '    curl -qL https://repo.radeon.com/rocm/rocm.gpg.key | apt-key add -',  # NOQA
                 ]
 
