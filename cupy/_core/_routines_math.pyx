@@ -16,6 +16,8 @@ from cupy._util import bf16_loop
 
 from cupy_backends.cuda.api cimport runtime
 from cupy._core cimport _accelerator
+from cupy._core._cc_scan cimport CC_SCAN_SUM, CC_SCAN_PROD
+from cupy._core import _cc_scan
 from cupy._core._dtype cimport get_dtype
 from cupy._core.core cimport _ndarray_init
 from cupy._core.core cimport compile_with_cache
@@ -722,6 +724,17 @@ cpdef scan_core(
 
     if axis is None:
         for accelerator in _accelerator._routine_accelerators:
+            if accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE:
+                if op == scan_op.SCAN_SUM:
+                    cc_op = CC_SCAN_SUM
+                else:
+                    cc_op = CC_SCAN_PROD
+                # res will be None if the scan is not compatible with
+                # cuda.compute
+                res = _cc_scan.cc_scan(a, result, dtype, cc_op)
+                if res is not None:
+                    result = res
+                    break
             if accelerator == _accelerator.ACCELERATOR_CUB:
                 if result is None:
                     result = a.astype(dtype, order='C').ravel()
