@@ -6,21 +6,21 @@ import pytest
 import cupy
 from cupy import testing
 from cupy._core import _accelerator
-from cupy._core import _cc_scan
+from cupy._core import _cuda_compute_scan
 
 
 # This test class and its children below only test if the cuda.compute
 # backend can be used or not; they don't verify its correctness as it's
 # already extensively covered by existing tests (run with
 # CUPY_ACCELERATORS=cuda_compute).
-class CcScanTestBase:
+class CudaComputeScanTestBase:
 
     @pytest.fixture(autouse=True)
     def configure(self):
-        if _cc_scan.cuda_compute is None:
+        if _cuda_compute_scan._get_cuda_compute() is None:
             pytest.skip('cuda.compute (cuda-cccl) not found')
 
-        self.supports_dtype = _cc_scan._supports_dtype
+        self.supports_dtype = _cuda_compute_scan._supports_dtype
 
         self.old_routine_accelerators = (
             _accelerator.get_routine_accelerators())
@@ -29,25 +29,26 @@ class CcScanTestBase:
         _accelerator.set_routine_accelerators(self.old_routine_accelerators)
 
 
-class TestCcScanCanUseDtypes(CcScanTestBase):
+class TestCudaComputeScanDtypes(CudaComputeScanTestBase):
 
-    # scan_core promotes before dispatch, so only post-promotion dtypes
-    # reach the accelerator (e.g. int32 input arrives as int64)
+    # scan_core only promotes when dtype=None and out=None, so an
+    # explicit dtype=/out= reaches the accelerator unpromoted
     @pytest.mark.parametrize('dtype', [
-        'l', 'L', 'q', 'Q', 'e', 'f', 'd', 'F', 'D'])
+        'b', 'h', 'i', 'l', 'q', 'B', 'H', 'I', 'L', 'Q',
+        'e', 'f', 'd', 'F', 'D'])
     def test_supported_dtypes(self, dtype):
         assert self.supports_dtype(numpy.dtype(dtype)) is True
 
 
-class TestCcScanCanUseMisc(CcScanTestBase):
+class TestCudaComputeScanMisc(CudaComputeScanTestBase):
 
     @pytest.mark.thread_unsafe(
         reason="AssertFunctionIsCalled and accelerator mutation.")
     def test_can_use_accelerator_set_unset(self):
         a = cupy.ones((1000,), dtype='f')
 
-        func_name = 'cupy._core._cc_scan._cc_scan_arrays'
-        func = _cc_scan._cc_scan_arrays
+        func_name = 'cupy._core._cuda_compute_scan._cuda_compute_scan_arrays'
+        func = _cuda_compute_scan._cuda_compute_scan_arrays
         with testing.AssertFunctionIsCalled(
                 func_name, wraps=func, times_called=1):
             cupy.cumsum(a)
@@ -61,11 +62,11 @@ class TestCcScanCanUseMisc(CcScanTestBase):
                 func_name, wraps=func, times_called=1):  # strided: copied
             cupy.cumsum(cupy.ones((2000,), dtype='f')[::2])
         with testing.AssertFunctionIsCalled(
-                func_name, wraps=func, times_called=0):  # axis: falls back
-            cupy.cumsum(a.reshape(10, 100), axis=0)
-        with testing.AssertFunctionIsCalled(
                 func_name, wraps=func, times_called=1):  # cumprod
             cupy.cumprod(a)
+        with testing.AssertFunctionIsCalled(
+                func_name, wraps=func, times_called=0):  # axis: falls back
+            cupy.cumsum(a.reshape(10, 100), axis=0)
 
         _accelerator.set_routine_accelerators([])
         with testing.AssertFunctionIsCalled(
