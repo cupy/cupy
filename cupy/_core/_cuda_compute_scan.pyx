@@ -75,8 +75,7 @@ def _get_scanner(int op, dtype):
             scan_op = compute.OpKind.MULTIPLIES
         else:
             raise ValueError(f'unsupported scan op: {op}')
-    # TODO: use cuda.compute.ProxyArray
-    d = cupy.empty(1, dtype=dtype)
+    d = compute.ProxyArray(dtype)
     scanner = compute.make_inclusive_scan(d_in=d, d_out=d, op=scan_op)
     return scanner, scan_op
 

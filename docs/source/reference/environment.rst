@@ -95,7 +95,7 @@ Here are the environment variables that CuPy uses at runtime.
 
   A comma-separated string of backend names (``cub``, ``cutensor``, ``cutensornet``, or ``cuda_compute``) which indicates the acceleration backends used in CuPy operations and its priority (in descending order).
   By default, all accelerators are disabled on HIP and only CUB is enabled on CUDA.
-  The ``cuda_compute`` backend requires the optional `cuda-cccl <https://pypi.org/project/cuda-cccl/>`_ package and currently accelerates :func:`~cupy.cumsum` and :func:`~cupy.cumprod`.
+  The ``cuda_compute`` backend requires the `cuda-cccl <https://pypi.org/project/cuda-cccl/>`_ package and currently accelerates :func:`~cupy.cumsum` and :func:`~cupy.cumprod`.
 
 .. envvar:: CUPY_TF32
 

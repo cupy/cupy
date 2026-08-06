@@ -377,6 +377,13 @@ nvmath-python:
     spec: null
   "1":
     spec: "==1.*"
+cuda-cccl:
+  null:
+    spec: null
+  "cu12":
+    spec: "[cu12]>=1.1.1"
+  "cu13":
+    spec: "[cu13]>=1.1.1"
 
 ###############################################################################
 # Environment Variables
@@ -388,6 +395,7 @@ env:CUPY_ACCELERATORS:
   "cutensor":
   "cub,cutensor":
   "cutensor,cub":
+  "cuda_compute,cutensor,cub":
 
 ###############################################################################
 # Test Variant
