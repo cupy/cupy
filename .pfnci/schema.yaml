@@ -381,9 +381,9 @@ cuda-cccl:
   null:
     spec: null
   "cu12":
-    spec: "[minimal-cu12]>=1.1.1"
+    spec: "[minimal-sysctk12]>=1.1.1"
   "cu13":
-    spec: "[minimal-cu13]>=1.1.1"
+    spec: "[minimal-sysctk13]>=1.1.1"
 
 ###############################################################################
 # Environment Variables

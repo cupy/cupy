@@ -83,6 +83,11 @@ function Main {
     echo "Building..."
     $build_retval = 0
     RunOrDie python -m pip install "numpy==$numpy.*" "scipy==$scipy.*" "Cython==3.2.*,!=3.2.6"
+    if ($cuda.StartsWith("12.")) {
+        RunOrDie python -m pip install "cuda-cccl[minimal-sysctk12]>=1.1.1"
+    } else {
+        RunOrDie python -m pip install "cuda-cccl[minimal-sysctk13]>=1.1.1"
+    }
     python -m pip install --no-build-isolation ".[all,test]" -v > cupy_build_log.txt
     if (-not $?) {
         $build_retval = $LastExitCode
@@ -100,6 +105,7 @@ function Main {
     }
 
     $Env:CUPY_TEST_GPU_LIMIT = $Env:GPU
+    $Env:CUPY_ACCELERATORS = "cuda_compute,cub"
     $Env:CUPY_DUMP_CUDA_SOURCE_ON_ERROR = "1"
     $Env:CUPY_NVRTC_USE_PCH = "1"
 
