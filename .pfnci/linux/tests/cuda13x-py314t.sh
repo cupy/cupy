@@ -15,7 +15,7 @@ export CUPY_TEST_RANDOM_SUBSAMPLE="1"
 
 export CUPY_CI_PYTEST_EXTRA_OPTS="--parallel-threads=2"
 
-export CUPY_ACCELERATORS="cutensor,cub"
+export CUPY_ACCELERATORS="cuda_compute,cutensor,cub"
 
 echo "================ Environment Variables ================"
 env
