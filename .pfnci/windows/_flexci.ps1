@@ -1,7 +1,5 @@
 function ActivatePython($version) {
-    if ($version -eq "3.9") {
-        $pydir = "Python39"
-    } elseif ($version -eq "3.10") {
+    if ($version -eq "3.10") {
         $pydir = "Python310"
     } elseif ($version -eq "3.11") {
         $pydir = "Python311"
@@ -9,6 +7,8 @@ function ActivatePython($version) {
         $pydir = "Python312"
     } elseif ($version -eq "3.13") {
         $pydir = "Python313"
+    } elseif ($version -eq "3.14") {
+        $pydir = "Python314"
     } else {
         throw "Unsupported Python version: $version"
     }
@@ -16,23 +16,7 @@ function ActivatePython($version) {
 }
 
 function ActivateCUDA($version) {
-    if ($version -eq "11.2") {
-        $Env:CUDA_PATH = $Env:CUDA_PATH_V11_2
-    } elseif ($version -eq "11.3") {
-        $Env:CUDA_PATH = $Env:CUDA_PATH_V11_3
-    } elseif ($version -eq "11.4") {
-        $Env:CUDA_PATH = $Env:CUDA_PATH_V11_4
-    } elseif ($version -eq "11.5") {
-        $Env:CUDA_PATH = $Env:CUDA_PATH_V11_5
-    } elseif ($version -eq "11.6") {
-        $Env:CUDA_PATH = $Env:CUDA_PATH_V11_6
-    } elseif ($version -eq "11.7") {
-        $Env:CUDA_PATH = $Env:CUDA_PATH_V11_7
-    } elseif ($version -eq "11.8") {
-        $Env:CUDA_PATH = $Env:CUDA_PATH_V11_8
-    } elseif ($version -eq "11.x") {
-        $Env:CUDA_PATH = $Env:CUDA_PATH_V11_8
-    } elseif ($version -eq "12.0") {
+    if ($version -eq "12.0") {
         $Env:CUDA_PATH = $Env:CUDA_PATH_V12_0
     } elseif ($version -eq "12.1") {
         $Env:CUDA_PATH = $Env:CUDA_PATH_V12_1
@@ -54,16 +38,16 @@ function ActivateCUDA($version) {
         $Env:CUDA_PATH = $Env:CUDA_PATH_V12_9
     } elseif ($version -eq "13.0") {
         $Env:CUDA_PATH = $Env:CUDA_PATH_V13_0
+    } elseif ($version -eq "13.1") {
+        $Env:CUDA_PATH = $Env:CUDA_PATH_V13_1
+    } elseif ($version -eq "13.2") {
+        $Env:CUDA_PATH = $Env:CUDA_PATH_V13_2
     } elseif ($version -eq "13.x") {
-        $Env:CUDA_PATH = $Env:CUDA_PATH_V13_0
+        $Env:CUDA_PATH = $Env:CUDA_PATH_V13_2
     } else {
         throw "Unsupported CUDA version: $version"
     }
     $Env:PATH = "$Env:CUDA_PATH\bin;$Env:CUDA_PATH\bin\x64;" + $Env:PATH
-}
-
-function InstallZLIB() {
-    Copy-Item -Path "C:\Development\ZLIB\zlibwapi.dll" -Destination "C:\Windows\System32"
 }
 
 function IsPullRequestTest() {

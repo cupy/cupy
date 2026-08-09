@@ -86,26 +86,25 @@ class TestDiaMatrix(unittest.TestCase):
         n = _make_complex(cupy, sparse, self.dtype)
         cupy.testing.assert_array_equal(n.conjugate().data, n.data.conj())
 
-    @testing.with_requires('scipy>=1.14')
+    @testing.with_requires('scipy')
     def test_str(self):
-        dtype_name = numpy.dtype(self.dtype).name
-        if numpy.dtype(self.dtype).kind == 'f':
-            expect = f'''<DIAgonal sparse matrix of dtype '{dtype_name}'
-\twith 5 stored elements (2 diagonals) and shape (3, 4)>
-  Coords\tValues
-  (1, 1)\t1.0
-  (2, 2)\t2.0
-  (1, 0)\t3.0
-  (2, 1)\t4.0'''  # NOQA
-        else:
-            expect = f'''<DIAgonal sparse matrix of dtype '{dtype_name}'
-\twith 5 stored elements (2 diagonals) and shape (3, 4)>
-  Coords\tValues
-  (1, 1)\t(1+0j)
-  (2, 2)\t(2+0j)
-  (1, 0)\t(3+0j)
-  (2, 1)\t(4+0j)'''  # NOQA
-        assert str(self.m) == expect
+        # The exact DIA __str__ format differs across SciPy versions:
+        # SciPy 1.14-1.16 use diagonal-major order; SciPy 1.17 switched
+        # to row-major.  CuPy delegates ``__str__`` to ``str(self.get())``
+        # so the output automatically tracks the installed SciPy.
+        s = str(self.m)
+        # Sanity-check the format-, type-, and shape-bearing repr line.
+        assert 'DIAgonal' in s
+        assert 'sparse matrix' in s
+        assert str(self.m.shape) in s
+        assert '(2 diagonals)' in s
+        # Each stored value must show up exactly once.
+        for value in [1.0, 2.0, 3.0, 4.0]:
+            tok = (f'{value}' if numpy.dtype(self.dtype).kind == 'f'
+                   else f'({int(value)}+0j)')
+            assert tok in s, f'missing {tok!r} in {s!r}'
+        # Delegation invariant.
+        assert s == str(self.m.get())
 
     def test_toarray(self):
         m = self.m.toarray()
@@ -139,14 +138,45 @@ class TestDiaMatrix(unittest.TestCase):
         testing.assert_array_equal(
             self.m.diagonal(3), cupy.array([0], self.dtype))
 
+    def test_todia_returns_self(self):
+        # Base ``_spbase.todia`` round-trips via CSR which raises
+        # NotImplementedError for csr_matrix.todia, so DIA must override.
+        assert self.m.todia() is self.m
+        assert self.m.todia(copy=True) is not self.m
+        cupy.testing.assert_array_equal(
+            self.m.todia(copy=True).toarray(), self.m.toarray())
 
-@testing.parameterize(*testing.product({
-    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
-}))
-@unittest.skipUnless(scipy_available, 'requires scipy')
-class TestDiaMatrixInit(unittest.TestCase):
+    def test_empty_data_nnz(self):
+        # gh-23055: an "empty" DIA buffer (data.shape[1] == 0) with
+        # non-empty offsets should report nnz=0, not over-count.
+        m = sparse.dia_matrix(
+            (cupy.zeros((1, 0), self.dtype), cupy.array([0])),
+            shape=(2, 2))
+        assert m.nnz == 0
 
-    def setUp(self):
+    def test_tocsc_data_wider_than_matrix(self):
+        # When the DIA data buffer is wider than the matrix, columns
+        # beyond ``num_cols`` lie outside the matrix.  ``tocsc`` must
+        # truncate the indptr write rather than crashing on a broadcast
+        # mismatch.
+        m = sparse.dia_matrix(
+            (cupy.ones((1, 5), self.dtype), cupy.array([0])),
+            shape=(2, 2))
+        c = m.tocsc()
+        assert c.shape == (2, 2)
+        assert c.nnz == 2
+        cupy.testing.assert_array_equal(
+            c.toarray(), cupy.eye(2, dtype=self.dtype))
+
+
+@pytest.mark.parametrize(
+    'dtype', [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128])
+@pytest.mark.skipif(not scipy_available, reason='requires scipy')
+class TestDiaMatrixInit:
+
+    @pytest.fixture(autouse=True)
+    def _setup(self, dtype):
+        self.dtype = dtype
         self.shape = (3, 4)
 
     def data(self, xp):
@@ -213,6 +243,40 @@ class TestDiaMatrixInit(unittest.TestCase):
         n = _make_complex(xp, sp, self.dtype)
         cupy.testing.assert_array_equal(n.conj().data, n.data.conj())
 
+    @pytest.mark.parametrize('copy', [True, False])
+    def test_copy_kwarg(self, copy):
+        # If their dtypes are correct, data and offsets are copied only when
+        # copy=True; copy=False must share memory.
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            offsets = self.offsets(xp)
+            data = self.data(xp)
+            m = sp.dia_matrix((data, offsets), shape=self.shape, copy=copy)
+            shares_memory = not copy
+            assert xp.may_share_memory(m.data, data) == shares_memory
+            assert xp.may_share_memory(m.offsets, offsets) == shares_memory
+
+    def test_copy_false_dtype_mismatch(self):
+        # copy=False must not raise even when dtype conversion is needed.
+        # The arrays are copied (conversion requires it), but no error.
+        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
+            # Pass int64 offsets for a small matrix (constructor needs int32).
+            offsets64 = xp.array([0, -1], dtype=xp.int64)
+            data = self.data(xp)
+            m = sp.dia_matrix((data, offsets64), shape=self.shape, copy=False)
+            assert m.offsets.dtype == xp.dtype('i')  # converted to int32
+            xp.testing.assert_array_equal(m.offsets, offsets64)
+
+            # Pass float32 data; constructor should convert to self.dtype
+            # without raising.  (float32 → any sparse dtype is always safe.)
+            if self.dtype != numpy.float32:
+                data_f32 = xp.array([[1, 2, 3], [4, 5, 6]], dtype=xp.float32)
+                m2 = sp.dia_matrix(
+                    (data_f32, self.offsets(xp)), shape=self.shape,
+                    dtype=self.dtype, copy=False)
+                assert m2.dtype == xp.dtype(self.dtype)
+                xp.testing.assert_array_almost_equal(
+                    m2.data, data_f32.astype(self.dtype))
+
 
 @testing.parameterize(*testing.product({
     'make_method': ['_make', '_make_empty'],
@@ -234,6 +298,14 @@ class TestDiaMatrixScipyComparison(unittest.TestCase):
 
     @testing.numpy_cupy_equal(sp_name='sp')
     def test_nnz_axis(self, xp, sp):
+        # CuPy bounds the diagonal length by the actual data buffer
+        # length, matching the scipy 1.17 fix (scipy/scipy#23055).
+        # Earlier scipy returns the maximum potential count from
+        # offsets/shape, so empty-data cases would mismatch.
+        if self.make_method == '_make_empty':
+            from packaging.version import parse as _v
+            if _v(scipy.__version__) < _v('1.17'):
+                pytest.skip('scipy < 1.17 over-counts empty DIA nnz')
         m = self.make(xp, sp, self.dtype)
         return m.nnz
 
@@ -247,12 +319,6 @@ class TestDiaMatrixScipyComparison(unittest.TestCase):
     def test_toarray(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         return m.toarray()
-
-    @testing.with_requires('scipy<1.14')
-    @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_A(self, xp, sp):
-        m = self.make(xp, sp, self.dtype)
-        return m.A
 
     @testing.with_requires('scipy>=1.16')
     @testing.numpy_cupy_allclose(sp_name='sp')
@@ -313,10 +379,8 @@ class TestDiaMatrixScipyComparison(unittest.TestCase):
         m = self.make(xp, sp, self.dtype)
         return m.transpose()
 
-    @testing.with_requires('scipy>=1.5.0')
+    @testing.with_requires('scipy')
     def test_diagonal_error(self):
-        # Before scipy 1.5.0 dia_matrix diagonal raised
-        # `ValueError`, now returns empty array.
         # Check #3469
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             m = _make(xp, sp, self.dtype)

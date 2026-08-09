@@ -189,7 +189,7 @@ def gmres(A, b, x0=None, *, rtol=1e-5, atol=0.0, restart=None, maxiter=None,
         iters += restart
 
     info = 0
-    if iters == maxiter and not (r_norm <= atol):
+    if iters >= maxiter and not (r_norm <= atol):
         info = iters
     return mx, info
 
@@ -286,6 +286,121 @@ def cgs(A, b, x0=None, *, rtol=1e-5, atol=0.0, maxiter=None, M=None,
     return x, info
 
 
+def bicgstab(A, b, x0=None, *, rtol=1e-5, atol=0.0, maxiter=None, M=None,
+             callback=None):
+    """Uses BIConjugate Gradient STABilized iteration to solve ``Ax = b``.
+
+    Args:
+        A (ndarray, spmatrix or LinearOperator): The real or complex matrix of
+            the linear system with shape ``(n, n)``.
+        b (cupy.ndarray): Right hand side of the linear system with shape
+            ``(n,)`` or ``(n, 1)``.
+        x0 (cupy.ndarray): Starting guess for the solution.
+        rtol, atol (float): Tolerance for convergence.
+        maxiter (int): Maximum number of iterations.
+        M (ndarray, spmatrix or LinearOperator): Preconditioner for ``A``.
+            The preconditioner should approximate the inverse of ``A``.
+            ``M`` must be :class:`cupy.ndarray`,
+            :class:`cupyx.scipy.sparse.spmatrix` or
+            :class:`cupyx.scipy.sparse.linalg.LinearOperator`.
+        callback (function): User-specified function to call after each
+            iteration. It is called as ``callback(xk)``, where ``xk`` is the
+            current solution vector.
+
+    Returns:
+        tuple:
+            It returns ``x`` (cupy.ndarray) and ``info`` (int) where ``x`` is
+            the converged solution and ``info`` provides convergence
+            information.
+
+    .. seealso:: :func:`scipy.sparse.linalg.bicgstab`
+    """
+    A, M, x, b = _make_system(A, M, x0, b)
+
+    matvec = A.matvec
+    psolve = M.matvec
+
+    n = A.shape[0]
+    if n == 0:
+        return cupy.empty_like(b), 0
+
+    b_norm = cupy.linalg.norm(b)
+    if b_norm == 0:
+        return b, 0
+
+    atol = max(float(atol), rtol * float(b_norm))
+    if maxiter is None:
+        maxiter = 10 * n
+
+    # Complex inputs need the conjugate dot.
+    dotprod = cupy.vdot if x.dtype.kind == 'c' else cupy.dot
+
+    rhotol = cupy.finfo(x.dtype.char).eps ** 2
+    omegatol = rhotol
+
+    r = b - matvec(x)
+    rtilde = r.copy()
+
+    # Dummy values to silence linter warnings; first iteration sets them.
+    rho_prev, omega, alpha, p, v = None, None, None, None, None
+
+    info = 0
+    iters = 0
+    while True:
+        r_norm = cupy.linalg.norm(r)
+        if r_norm <= atol or iters >= maxiter:
+            break
+
+        rho = dotprod(rtilde, r).item()  # synchronize!
+        if abs(rho) < rhotol:  # rho breakdown
+            info = -10
+            break
+
+        if iters > 0:
+            if abs(omega) < omegatol:  # omega breakdown
+                info = -11
+                break
+            beta = (rho / rho_prev) * (alpha / omega)
+            p -= omega * v
+            p *= beta
+            p += r
+        else:
+            p = r.copy()
+
+        phat = psolve(p)
+        v = matvec(phat)
+        rv = dotprod(rtilde, v).item()  # synchronize!
+        if rv == 0:
+            info = -11
+            break
+        alpha = rho / rv
+        r -= alpha * v
+
+        # Half-step convergence check: commit the alpha-update and
+        # exit before computing shat / t / omega.
+        if cupy.linalg.norm(r) <= atol:
+            x += alpha * phat
+            break
+
+        shat = psolve(r)
+        t = matvec(shat)
+        omega = (dotprod(t, r) / dotprod(t, t)).item()  # synchronize!
+
+        x += alpha * phat
+        x += omega * shat
+        r -= omega * t
+
+        rho_prev = rho
+        iters += 1
+
+        if callback is not None:
+            callback(x)
+
+    if info == 0 and iters >= maxiter and not (r_norm <= atol):
+        info = iters
+    return x, info
+
+
 def _make_system(A, M, x0, b):
     """Make a linear system Ax = b
 
@@ -341,7 +456,7 @@ def _make_fast_matvec(A):
     from cupy_backends.cuda.libs import cusparse as _cusparse
     from cupyx import cusparse
 
-    if _csr.isspmatrix_csr(A) and cusparse.check_availability('spmv'):
+    if _csr._is_csr(A) and cusparse.check_availability('spmv'):
         handle = device.get_cusparse_handle()
         op_a = _cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
         alpha = numpy.array(1.0, A.dtype)

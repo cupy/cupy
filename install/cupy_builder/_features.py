@@ -143,7 +143,6 @@ _cuda_files = [
     'cupy.cuda.graph',
     'cupy.cuda.texture',
     'cupy.fft._cache',
-    'cupy.fft._callback',
     'cupy.lib._polynomial',
     'cupy._util',
     'cupyx.scipy.ndimage._bbox_slices',
@@ -167,7 +166,7 @@ def get_features(ctx: Context) -> dict[str, Feature]:
         'file': _cuda_files + [
             'cupy_backends.cuda.libs.nvtx',
             'cupy_backends.cuda.libs.cusolver',
-            'cupyx.cusolver',
+            'cupyx._cusolver',
         ],
         'include': [
             'hip/hip_runtime_api.h',
@@ -186,6 +185,7 @@ def get_features(ctx: Context) -> dict[str, Feature]:
             'hiprand',
             'hipsparse',
             'rocfft',
+            'roctracer64',  # cudaProfilerStart/Stop -> roctracer_start/stop
             'roctx64',
             'rocblas',
             'rocsolver',
@@ -199,7 +199,7 @@ def get_features(ctx: Context) -> dict[str, Feature]:
         'required': True,
         'file': [
             'cupy_backends.cuda.libs.cusolver',
-            'cupyx.cusolver',
+            'cupyx._cusolver',
         ],
         'include': [
             'cusolverDn.h',
@@ -239,7 +239,7 @@ def get_features(ctx: Context) -> dict[str, Feature]:
         'name': 'cutensor',
         'file': [
             'cupy_backends.cuda.libs.cutensor',
-            'cupyx.cutensor',
+            'cupyx._cutensor',
         ],
         'include': [
             'cutensor.h',
@@ -431,13 +431,16 @@ def get_features(ctx: Context) -> dict[str, Feature]:
 
 
 class CUDA_cuda(Feature):
-    minimum_cuda_version = 11020
+    _minimum_cuda_version = 12000
+    _minimum_cuda_version_str = "12.0"
 
     def __init__(self, ctx: Context):
         super().__init__(ctx)
         self.name = 'cuda'
         self.required = True
-        self.modules = _cuda_files
+        self.modules = _cuda_files + [
+            'cupy.fft._callback',
+        ]
         self.includes = [
             'cublas_v2.h',
             'cuda.h',
@@ -466,16 +469,17 @@ class CUDA_cuda(Feature):
               printf("%d", CUDA_VERSION);
               return 0;
             }
-            ''', include_dirs=settings['include_dirs'])  # type: ignore[no-untyped-call] # NOQA
+            ''', include_dirs=settings['include_dirs'],
+            extra_compile_args=settings['extra_compile_args'])  # type: ignore[no-untyped-call] # NOQA
         except Exception as e:
             utils.print_warning('Cannot check CUDA version', str(e))
             return False
 
         self._version = int(out)
 
-        if self._version < self.minimum_cuda_version:
+        if self._version < self._minimum_cuda_version:
             utils.print_warning(
-                'CUDA version is too old: %d' % self._version,
-                'CUDA 11.2 or newer is required')
+                f'CUDA version is too old: {self._version}',
+                f'CUDA {self._minimum_cuda_version_str} or newer is required')
             return False
         return True

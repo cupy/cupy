@@ -37,7 +37,8 @@ cdef extern from '../../cupy_backends/cupy_complex.h':
         double x, y
 
 
-cdef list compute_types = [COMPUTE_TYPE_TBD,  # float16
+cdef list compute_types = [COMPUTE_TYPE_TBD,  # bfloat16
+                           COMPUTE_TYPE_TBD,  # float16
                            COMPUTE_TYPE_TBD,  # float32
                            COMPUTE_TYPE_TBD]  # float64
 cdef dict compute_type_str = {
@@ -55,11 +56,13 @@ cdef dict compute_type_str = {
 cpdef int to_compute_type_index(dtype) except -1:
     cdef str dtype_char = numpy.dtype(dtype).char
     if dtype_char == 'e':
-        return 0
-    elif dtype_char in 'fF':
         return 1
-    elif dtype_char in 'dD':
+    elif dtype_char in 'fF':
         return 2
+    elif dtype_char in 'dD':
+        return 3
+    elif dtype.name == "bfloat16":
+        return 0
     else:
         raise TypeError('dtype is not supported: {}'.format(dtype))
 
@@ -545,10 +548,12 @@ cpdef _ndarray_base tensordot_core(
     cdef Py_ssize_t transa, transb, lda, ldb
     cdef intptr_t handle
     cdef _ndarray_base copy_to_out = None
-    cdef str dtype = a.dtype.char
+    cdef dtype = a.dtype
     cdef int compute_capability = int(device.get_compute_capability())
-    if dtype != b.dtype.char:
-        dtype = numpy.promote_types(dtype, b.dtype).char
+    cdef int c_cuda_dtype
+
+    if dtype != b.dtype:
+        dtype = numpy.promote_types(dtype, b.dtype)
     if not a.size or not b.size:
         if out is None:
             out = _ndarray_init(cupy.ndarray, ret_shape, dtype, None)
@@ -607,13 +612,13 @@ cpdef _ndarray_base tensordot_core(
         c = c.view()
         c.shape = (n, m)
 
-    if dtype not in 'efdFD':
+    if dtype.kind in 'biu':
         if transa:
             a = a.T
             a = _internal_ascontiguousarray(a)
         if transb:
             b = _internal_ascontiguousarray(b)
-        _integral_tensordot_core(b, a, c, m, n, k, dtype, ret_shape)
+        _integral_tensordot_core(b, a, c, m, n, k, dtype.char, ret_shape)
         if copy_to_out is not None:
             elementwise_copy(copy_to_out, out)
         return out
@@ -628,14 +633,17 @@ cpdef _ndarray_base tensordot_core(
         return out
 
     handle = device.get_cublas_handle()
-    if dtype == 'e':
+
+    c_cuda_dtype = to_cuda_dtype(dtype, is_half_allowed=True)
+
+    if c_cuda_dtype in {runtime.CUDA_R_16BF, runtime.CUDA_R_16F}:
         coef_dtype = 'f'
     else:
         coef_dtype = dtype
     one = numpy.array(1.0, dtype=coef_dtype)
     zero = numpy.array(0.0, dtype=coef_dtype)
 
-    if dtype == 'e':
+    if c_cuda_dtype in {runtime.CUDA_R_16BF, runtime.CUDA_R_16F}:
         use_tensor_core = (not runtime._is_hip_environment and
                            compute_capability >= 70
                            ) or runtime._is_hip_environment
@@ -650,9 +658,9 @@ cpdef _ndarray_base tensordot_core(
 
             cublas.gemmEx(
                 handle, <int>transb, <int> transa, <int>m, <int>n, <int>k,
-                one.ctypes.data, b.data.ptr, runtime.CUDA_R_16F, <int>ldb,
-                a.data.ptr, runtime.CUDA_R_16F, <int>lda, zero.ctypes.data,
-                c.data.ptr, runtime.CUDA_R_16F, <int>m, runtime.CUDA_R_32F,
+                one.ctypes.data, b.data.ptr, c_cuda_dtype, <int>ldb,
+                a.data.ptr, c_cuda_dtype, <int>lda, zero.ctypes.data,
+                c.data.ptr, c_cuda_dtype, <int>m, runtime.CUDA_R_32F,
                 algo)
 
             if can_opt_in_tensorcore:
@@ -660,26 +668,26 @@ cpdef _ndarray_base tensordot_core(
         else:
             cublas.sgemmEx(
                 handle, <int>transb, <int> transa, <int>m, <int>n, <int>k,
-                one.ctypes.data, b.data.ptr, runtime.CUDA_R_16F, <int>ldb,
-                a.data.ptr, runtime.CUDA_R_16F, <int>lda, zero.ctypes.data,
-                c.data.ptr, runtime.CUDA_R_16F, <int>m)
-    elif dtype == 'f':
+                one.ctypes.data, b.data.ptr, c_cuda_dtype, <int>ldb,
+                a.data.ptr, c_cuda_dtype, <int>lda, zero.ctypes.data,
+                c.data.ptr, c_cuda_dtype, <int>m)
+    elif c_cuda_dtype == runtime.CUDA_R_32F:
         cublas.sgemmEx(
             handle, <int>transb, <int> transa, <int>m, <int>n, <int>k,
             one.ctypes.data, b.data.ptr, runtime.CUDA_R_32F, <int>ldb,
             a.data.ptr, runtime.CUDA_R_32F, <int>lda, zero.ctypes.data,
             c.data.ptr, runtime.CUDA_R_32F, <int>m)
-    elif dtype == 'd':
+    elif c_cuda_dtype == runtime.CUDA_R_64F:
         cublas.dgemm(
             handle, <int>transb, <int>transa, <int>m, <int>n, <int>k,
             one.ctypes.data, b.data.ptr, <int>ldb, a.data.ptr, <int>lda,
             zero.ctypes.data, c.data.ptr, <int>m)
-    elif dtype == 'F':
+    elif c_cuda_dtype == runtime.CUDA_C_32F:
         cublas.cgemm(
             handle, <int>transb, <int>transa, <int>m, <int>n, <int>k,
             one.ctypes.data, b.data.ptr, <int>ldb, a.data.ptr, <int>lda,
             zero.ctypes.data, c.data.ptr, <int>m)
-    elif dtype == 'D':
+    elif c_cuda_dtype == runtime.CUDA_C_64F:
         cublas.zgemm(
             handle, <int>transb, <int>transa, <int>m, <int>n, <int>k,
             one.ctypes.data, b.data.ptr, <int>ldb, a.data.ptr, <int>lda,
@@ -703,17 +711,25 @@ cpdef _ndarray_base tensordot_core_v11(
     cdef cuDoubleComplex one_D, zero_D
     cdef size_t one_ptr, zero_ptr
 
+    cdef int a_cuda_dtype = to_cuda_dtype(a.dtype, is_half_allowed=True)
+    cdef int b_cuda_dtype = to_cuda_dtype(b.dtype, is_half_allowed=True)
+    cdef int c_cuda_dtype = to_cuda_dtype(c.dtype, is_half_allowed=True)
+
     cdef int compute_capability = int(device.get_compute_capability())
     cdef int compute_type = get_compute_type(c.dtype)
     cdef int cublas_compute_type = -1
-    if c.dtype.char in 'efF':
+
+    if (c_cuda_dtype in {
+            runtime.CUDA_R_16F, runtime.CUDA_R_16BF, runtime.CUDA_R_32F,
+            runtime.CUDA_C_32F}):
         if compute_type == COMPUTE_TYPE_PEDANTIC:
             cublas_compute_type = cublas.CUBLAS_COMPUTE_32F_PEDANTIC
-        elif compute_type == COMPUTE_TYPE_TF32 and c.dtype.char in 'fF':
+        elif compute_type == COMPUTE_TYPE_TF32 and c_cuda_dtype in {
+                runtime.CUDA_R_32F, runtime.CUDA_C_32F}:
             cublas_compute_type = cublas.CUBLAS_COMPUTE_32F_FAST_TF32
         else:
             cublas_compute_type = cublas.CUBLAS_COMPUTE_32F
-    elif c.dtype.char in 'dD':
+    elif c_cuda_dtype in {runtime.CUDA_R_64F, runtime.CUDA_C_64F}:
         if compute_type == COMPUTE_TYPE_PEDANTIC:
             cublas_compute_type = cublas.CUBLAS_COMPUTE_64F_PEDANTIC
         else:
@@ -729,7 +745,7 @@ cpdef _ndarray_base tensordot_core_v11(
     if cublas_compute_type in (cublas.CUBLAS_COMPUTE_32F,
                                cublas.CUBLAS_COMPUTE_32F_PEDANTIC,
                                cublas.CUBLAS_COMPUTE_32F_FAST_TF32):
-        if c.dtype.char in 'efd':
+        if c_cuda_dtype not in {runtime.CUDA_C_32F, runtime.CUDA_C_64F}:
             one_f = 1
             zero_f = 0
             one_ptr = <size_t>&one_f
@@ -741,7 +757,7 @@ cpdef _ndarray_base tensordot_core_v11(
             zero_ptr = <size_t>&zero_F
     elif cublas_compute_type in (cublas.CUBLAS_COMPUTE_64F,
                                  cublas.CUBLAS_COMPUTE_64F_PEDANTIC):
-        if c.dtype.char in 'efd':
+        if c_cuda_dtype not in {runtime.CUDA_C_32F, runtime.CUDA_C_64F}:
             one_d = 1
             zero_d = 0
             one_ptr = <size_t>&one_d
@@ -755,9 +771,6 @@ cpdef _ndarray_base tensordot_core_v11(
         raise ValueError('Invalid cublas compute type: {}'
                          .format(cublas_compute_type))
 
-    cdef int a_cuda_dtype = to_cuda_dtype(a.dtype, is_half_allowed=True)
-    cdef int b_cuda_dtype = to_cuda_dtype(b.dtype, is_half_allowed=True)
-    cdef int c_cuda_dtype = to_cuda_dtype(c.dtype, is_half_allowed=True)
     cdef intptr_t handle = device.get_cublas_handle()
     cublas.gemmEx(
         handle, <int>transa, <int>transb, <int>m, <int>n, <int>k, one_ptr,

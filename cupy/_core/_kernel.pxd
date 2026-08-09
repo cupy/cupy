@@ -66,13 +66,13 @@ cdef class _ArgInfo:
 
     cdef _ArgInfo as_ndarray_with_ndim(self, int ndim)
 
-    cdef bint is_ndarray(self)
+    cdef bint is_ndarray(self) noexcept
 
-    cdef bint is_scalar(self)
+    cdef bint is_scalar(self) noexcept
 
-    cdef str get_c_type(self)
+    cdef str get_c_type(self, type_decls=*)
 
-    cdef str get_param_c_type(self, ParameterInfo p)
+    cdef str get_param_c_type(self, ParameterInfo p, type_decls=*)
 
     cdef str get_c_var_name(self, ParameterInfo p)
 
@@ -84,7 +84,7 @@ cdef class _TypeMap:
     cdef public:
         tuple _pairs
 
-    cdef str get_typedef_code(self)
+    cdef str get_typedef_code(self, type_decls=*)
 
 
 cdef class _Op:
@@ -102,18 +102,19 @@ concrete dtype mapping.
         # disallowed, error_func must be set instead of routine.
         # It's called by check_valid() method.
         readonly object error_func
+        readonly object _resolution_func
+        readonly tuple _in_dtypes
+        readonly tuple _out_dtypes
 
     @staticmethod
     cdef _Op _from_type_and_routine_or_error_func(
-        str typ, object routine, object error_func)
+        typ, object routine, object error_func, object resolution_func)
 
     # Creates an op instance parsing a dtype mapping.
     @staticmethod
-    cdef _Op from_type_and_routine(str typ, routine)
+    cdef _Op from_type_and_routine(typ, routine, object resolution_func)
 
-    cpdef tuple get_in_dtypes(self)
-
-    cpdef tuple get_out_dtypes(self)
+    cpdef tuple resolve_dtypes(self, list in_args, list out_args)
 
     # Creates an op instance parsing a dtype mapping with given error function.
     @staticmethod
@@ -131,13 +132,14 @@ cdef class _Ops:
         readonly tuple ops
         readonly int nin
         readonly int nout
+        readonly object promote_types
 
     @staticmethod
-    cdef _Ops from_tuples(object ops, routine)
+    cdef _Ops from_tuples(object ops, routine, object promote_types=*)
 
     # Queries a single op from input arguments.
     cpdef _Op guess_routine(
-        self, str name, dict cache, list in_args, tuple weaks, dtype,
+        self, str name, dict cache, list in_args, dtype,
         _Ops out_ops)
 
     cpdef _Op _guess_routine_from_in_types(
@@ -148,11 +150,13 @@ cdef class _Ops:
 
 cpdef create_ufunc(name, ops, routine=*, preamble=*, doc=*,
                    default_casting=*, loop_prep=*, out_ops=*,
-                   cutensor_op=*, scatter_op=*)
+                   cutensor_op=*, scatter_op=*, promote_types=*)
+
+cpdef str _full_mask_hex()
 
 cdef tuple _get_arginfos(list args)
 
-cdef str _get_kernel_params(tuple params, tuple arginfos)
+cdef str _get_kernel_params(tuple params, tuple arginfos, type_decls=*)
 
 cdef list _broadcast(list args, tuple params, bint use_size, shape_t& shape)
 
@@ -166,6 +170,7 @@ cdef list _get_out_args_with_params(
 
 cpdef _check_peer_access(_ndarray_base arr, int device_id)
 
-cdef tuple _preprocess_args(int dev_id, args, bint use_c_scalar)
+cdef list _preprocess_args(int dev_id, args)
 
-cdef shape_t _reduce_dims(list args, tuple params, const shape_t& shape)
+cdef shape_t _reduce_dims(
+    list args, tuple params, const shape_t& shape) except *

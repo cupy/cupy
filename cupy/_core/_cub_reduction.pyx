@@ -1,3 +1,5 @@
+import cython
+
 from cupy._core._carray cimport shape_t
 from cupy._core cimport _kernel
 from cupy._core cimport _optimize_config
@@ -20,6 +22,12 @@ from cupy import _environment
 from cupy._core._kernel import _get_param_info
 from cupy.cuda import driver
 from cupy import _util
+
+
+# For reductions the CUB block kernel launches one block per segment with very
+# little work each, which is slower than the generic reduction kernel.
+cdef int CUB_REDUCE_SIZE_THRESHOLD = 128
+_CUB_REDUCE_SIZE_THRESHOLD = CUB_REDUCE_SIZE_THRESHOLD
 
 
 cdef function.Function _create_cub_reduction_function(
@@ -52,16 +60,13 @@ cdef function.Function _create_cub_reduction_function(
         options += ('-I' + _rocm_path + '/include', '-O2')
         backend = 'nvcc'  # this is confusing...
 
-    # We rely on the type traits in cccl to avoid using jitify
-    jitify = False
-
     # TODO(leofang): try splitting the for-loop into full tiles and partial
     # tiles to utilize LoadDirectBlockedVectorized? See, for example,
     # https://github.com/NVlabs/cub/blob/c3cceac115c072fb63df1836ff46d8c60d9eb304/cub/agent/agent_reduce.cuh#L311-L346
 
     cdef str module_code = _get_cub_header_include()
     module_code += '''
-${type_preamble}
+${type_decls}${type_preamble}
 ${preamble}
 
 typedef ${reduce_type} _type_reduce;
@@ -208,28 +213,32 @@ __global__ void ${name}(${params}) {
   }
 }
 '''
+    type_decls = set()
+    params = _get_cub_kernel_params(params, arginfos, type_decls)
+    type_preambles = type_map.get_typedef_code(type_decls)
 
     module_code = string.Template(module_code).substitute(
         name=name,
         block_size=block_size,
         items_per_thread=items_per_thread,
         reduce_type=reduce_type,
-        params=_get_cub_kernel_params(params, arginfos),
+        params=params,
+        type_decls=_scalar.format_type_decls(type_decls),
         identity=identity,
         reduce_expr=reduce_expr,
         pre_map_expr=pre_map_expr,
         post_map_expr=post_map_expr,
-        type_preamble=type_map.get_typedef_code(),
+        type_preamble=type_preambles,
         preamble=preamble)
 
     # To specify the backend, we have to explicitly spell out the default
     # values for arch, cachd, prepend_cupy_headers, ... to bypass cdef/cpdef
     # limitation...
     module = compile_with_cache(
-        module_code, options, arch=None, cachd_dir=None,
+        module_code, options, arch=None,
         prepend_cupy_headers=True, backend=backend, translate_cucomplex=False,
         enable_cooperative_groups=False, name_expressions=None,
-        log_stream=None, jitify=jitify)
+        log_stream=None, jitify=False)
     return module.get_function(name)
 
 
@@ -238,8 +247,7 @@ def _SimpleCubReductionKernel_get_cached_function(
         map_expr, reduce_expr, post_map_expr, reduce_type,
         params, arginfos, _kernel._TypeMap type_map,
         name, block_size, identity, preamble,
-        options, cub_params):
-    items_per_thread = cub_params[0]
+        options, items_per_thread):
     name = name.replace('cupy_', 'cupy_cub_')
     name = name.replace('cupyx_', 'cupyx_cub_')
     return _create_cub_reduction_function(
@@ -250,7 +258,6 @@ def _SimpleCubReductionKernel_get_cached_function(
 
 
 cdef str _cub_path = _environment.get_cub_path()
-cdef str _nvcc_path = _environment.get_nvcc_path()
 cdef str _rocm_path = _environment.get_rocm_path()
 cdef str _hipcc_path = _environment.get_hipcc_path()
 cdef str _cub_header = None
@@ -340,19 +347,24 @@ cpdef inline tuple _can_use_cub_block_reduction(
         if in_arr.size // contiguous_size > 0x7fffffff:
             return None
 
-    # rare event (mainly for conda-forge users): nvcc is not found!
+    # CUB headers must be available (always true for CUDA builds since CUB
+    # is bundled; on ROCm, hipCUB and hipcc must be present).
     if not runtime._is_hip_environment:
-        if _nvcc_path is None:
+        if _cub_path is None:
             return None
     else:
         if _hipcc_path is None:
             return None
 
+    # Use naive kernel for very small reductions (see threshold docs)
+    if contiguous_size < CUB_REDUCE_SIZE_THRESHOLD:
+        return None
+
     return (axis_permutes_cub, contiguous_size, full_reduction)
 
 
 # similar to cupy._core._kernel._get_kernel_params()
-cdef str _get_cub_kernel_params(tuple params, tuple arginfos):
+cdef str _get_cub_kernel_params(tuple params, tuple arginfos, type_decls):
     cdef _kernel.ParameterInfo p
     cdef _kernel._ArgInfo arginfo
     cdef lst = []
@@ -366,7 +378,7 @@ cdef str _get_cub_kernel_params(tuple params, tuple arginfos):
             c_type = 'const void*' if p.is_const else 'void*'
         else:
             # for segment size and array size
-            c_type = arginfo.get_param_c_type(p)
+            c_type = arginfo.get_param_c_type(p, type_decls)
         lst.append('{} {}'.format(c_type, c_name))
     return ', '.join(lst)
 
@@ -375,11 +387,13 @@ cdef Py_ssize_t _cub_default_block_size = (
     256 if runtime._is_hip_environment else 512)
 
 
+@cython.cdivision(True)
 cdef (Py_ssize_t, Py_ssize_t) _get_cub_block_specs(  # NOQA
-        Py_ssize_t contiguous_size):
+        Py_ssize_t contiguous_size) noexcept:
     # This is recommended in the CUB internal and should be an
-    # even number
-    items_per_thread = 4
+    # even number.
+    cdef Py_ssize_t block_size, warp_size
+    cdef Py_ssize_t items_per_thread = 4
 
     # Calculate the reduction block dimensions.
     # Ideally, we want each block to handle one segment, so:
@@ -399,7 +413,7 @@ cdef (Py_ssize_t, Py_ssize_t) _get_cub_block_specs(  # NOQA
 cdef _scalar.CScalar _cub_convert_to_c_scalar(
         Py_ssize_t segment_size, Py_ssize_t value):
     if segment_size > 0x7fffffff:
-        return _scalar.scalar_to_c_scalar(value)
+        return _scalar.CScalar(value)
     else:
         return _scalar.CScalar.from_int32(value)
 
@@ -424,7 +438,6 @@ cdef inline void _cub_two_pass_launch(
     cdef memory.MemoryPointer memptr
     cdef str post_map_expr1, post_map_expr2, f
     cdef list inout_args
-    cdef tuple cub_params
     cdef size_t gridx, blockx
     cdef _ndarray_base in_arr
 
@@ -443,7 +456,6 @@ cdef inline void _cub_two_pass_launch(
     inout_args = [in_args[0], out_args[0],
                   _cub_convert_to_c_scalar(segment_size, contiguous_size),
                   _cub_convert_to_c_scalar(segment_size, segment_size)]
-    cub_params = (items_per_thread,)
 
     if 'mean' in name:
         post_map_expr1 = post_map_expr.replace('_in_ind.size()', '1.0')
@@ -469,7 +481,7 @@ cdef inline void _cub_two_pass_launch(
         _kernel._get_arginfos(inout_args),
         type_map,
         name, block_size, identity, preamble,
-        ('-DFIRST_PASS=1',), cub_params)
+        ('-DFIRST_PASS=1',), items_per_thread)
 
     # Kernel arguments passed to the __global__ function.
     gridx = <size_t>(out_block_num * block_size)
@@ -503,7 +515,7 @@ cdef inline void _cub_two_pass_launch(
         _kernel._get_arginfos(inout_args),
         type_map,
         name, block_size, identity, preamble,
-        ('-DSECOND_PASS=1',), cub_params)
+        ('-DSECOND_PASS=1',), items_per_thread)
 
     # Kernel arguments passed to the __global__ function.
     gridx = <size_t>(out_block_num * block_size)
@@ -546,7 +558,7 @@ cdef inline void _launch_cub(
             map_expr, reduce_expr, post_map_expr, reduce_type,
             params, arginfos, type_map,
             self.name, block_size, self.identity, self.preamble,
-            (), cub_params)
+            (), items_per_thread)
 
         func.linear_launch(
             out_block_num * block_size, inout_args, 0, block_size, stream)

@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 import numpy
-import unittest
 import pytest
 import cupy
 from cupy import testing
 
 
-class TestPacking(unittest.TestCase):
+class TestPacking:
 
     @testing.for_int_dtypes()
     @testing.numpy_cupy_array_equal()

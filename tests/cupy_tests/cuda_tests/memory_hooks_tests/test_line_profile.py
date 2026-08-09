@@ -5,10 +5,13 @@ import io
 import unittest
 import re
 
+import pytest
+
 from cupy.cuda import memory
 from cupy.cuda import memory_hooks
 
 
+@pytest.mark.thread_unsafe(reason="uses global memory hook")
 class TestLineProfileHook(unittest.TestCase):
 
     def setUp(self):

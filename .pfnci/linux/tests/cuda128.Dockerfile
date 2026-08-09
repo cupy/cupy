@@ -14,7 +14,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
        && \
     apt-get -qqy install ccache git curl && \
     apt-get -qqy --allow-change-held-packages \
-            --allow-downgrades install 'libnccl2=2.26.*+cuda12.8' 'libnccl-dev=2.26.*+cuda12.8' 'libcusparselt0=0.7.1.*' 'libcusparselt-dev=0.7.1.*'
+            --allow-downgrades install 'libnccl2=2.26.*+cuda12.8' 'libnccl-dev=2.26.*+cuda12.8'
 
 ENV PATH "/usr/lib/ccache:${PATH}"
 
@@ -23,10 +23,11 @@ ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
 RUN pyenv install 3.12.11 && \
     pyenv global 3.12.11 && \
-    pip install -U setuptools pip wheel
+    pip install -U setuptools pip wheel && \
+    pip install -U google-cloud-storage
 
-RUN pip install -U 'numpy==2.3.*' 'scipy==1.15.*' 'optuna==4.*' 'cython==3.1.*'
-RUN pip uninstall -y mpi4py cuda-python && \
+RUN pip install -U 'numpy==2.3.*' 'scipy==1.15.*' 'optuna==4.*' 'ml_dtypes==0.5.*' 'cython==3.2.*,!=3.2.6'
+RUN pip uninstall -y mpi4py cuda-python nvmath-python && \
     pip check
 
 RUN mkdir /home/cupy-user && chmod 777 /home/cupy-user

@@ -19,7 +19,10 @@ CUresult cuGetErrorString(CUresult hipError, const char** pStr) {
 
 // Primary context management
 CUresult cuDevicePrimaryCtxRelease(CUdevice dev) {
-    return hipDevicePrimaryCtxRelease(dev);
+    // HIP documents this as a no-op that always returns hipSuccess;
+    // marked [[deprecated]] in recent ROCm. Replicate inline.
+    (void)dev;
+    return CUDA_SUCCESS;
 }
 
 // Context management

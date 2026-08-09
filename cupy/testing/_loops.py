@@ -14,8 +14,6 @@ import cupy
 from cupy.exceptions import AxisError
 from cupy.testing import _array
 from cupy.testing import _parameterized
-import cupyx
-import cupyx.scipy.sparse
 
 from cupy.testing._pytest_impl import is_available
 
@@ -28,6 +26,15 @@ if is_available():
 else:
     _is_pytest_available = False
     _skip_classes = unittest.SkipTest,
+
+
+_subsample_rng: random.Random | None = None
+
+# Set up a subsampling RNG to avoid tests from interfering with randomness.
+if int(os.environ.get('CUPY_TEST_RANDOM_SUBSAMPLE', '0')):
+    # Stabilize seed for `pytest-xdist` across workers:
+    seed = os.environ.get('_CUPY_TEST_SUBSAMPLE_SEED')
+    _subsample_rng = random.Random(None if seed is None else int(seed))
 
 
 def _format_exception(exc):
@@ -65,8 +72,10 @@ def _call_func_cupy(impl, args, kw, name, sp_name, scipy_name):
 
     # Run cupy
     if sp_name:
+        import cupyx.scipy.sparse
         kw[sp_name] = cupyx.scipy.sparse
     if scipy_name:
+        import cupyx
         kw[scipy_name] = cupyx.scipy
     kw[name] = cupy
     result, error = _call_func(impl, args, kw)
@@ -252,7 +261,7 @@ def _wraps_partial(wrapped, *names):
     return decorator
 
 
-def _wraps_partial_xp(wrapped, name, sp_name, scipy_name):
+def _wraps_partial_xp(wrapped, name, sp_name=None, scipy_name=None):
     names = [name, sp_name, scipy_name]
     names = [n for n in names if n is not None]
     return _wraps_partial(wrapped, *names)
@@ -383,6 +392,7 @@ def _convert_output_to_ndarray(c_out, n_out, sp_name, check_sparse_format):
     Returns:
         The tuple of cupy.ndarray and numpy.ndarray.
     """
+    import cupyx.scipy.sparse
     if sp_name is not None and cupyx.scipy.sparse.issparse(c_out):
         # Sparse output case.
         import scipy.sparse
@@ -838,6 +848,9 @@ def for_dtypes(dtypes, name='dtype'):
     by passing the each element of ``dtypes`` to the named
     argument.
     """
+    if _subsample_rng is not None:
+        dtypes = _subsample_rng.sample(dtypes, 1 + len(dtypes) // 15)
+
     def decorator(impl):
         @_wraps_partial(impl, name)
         def test_func(*args, **kw):
@@ -1077,6 +1090,10 @@ def for_dtypes_combination(types, names=('dtype',), full=None):
         # Remove duplicate entries
         combination = [dict(assoc_list) for assoc_list in set(combination)]
 
+    if _subsample_rng is not None:
+        combination = _subsample_rng.sample(
+            combination, 1 + len(combination) // 15)
+
     def decorator(impl):
         @_wraps_partial(impl, *names)
         def test_func(*args, **kw):
@@ -1228,8 +1245,8 @@ def for_contiguous_axes(name='axis'):
     def decorator(impl):
         @_wraps_partial(impl, name)
         def test_func(self, *args, **kw):
-            ndim = len(self.shape)
-            order = self.order
+            ndim = len(kw['shape'])
+            order = kw['order']
             for i in range(ndim):
                 a = ()
                 if order in ('c', 'C'):
@@ -1245,7 +1262,7 @@ def for_contiguous_axes(name='axis'):
                     impl(self, *args, **kw)
                 except Exception:
                     print(name, 'is', a, ', ndim is', ndim, ', shape is',
-                          self.shape, ', order is', order)
+                          kw['shape'], ', order is', order)
                     raise
         return test_func
     return decorator

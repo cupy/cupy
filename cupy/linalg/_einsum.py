@@ -14,13 +14,6 @@ from cupy.linalg._einsum_opt import _optimal_path
 from cupy.linalg._einsum_cutn import _try_use_cutensornet
 
 
-try:
-    import cupy_backends.cuda.libs.cutensor  # NOQA
-    from cupyx import cutensor
-except ImportError:
-    cutensor = None
-
-
 options = {
     'sum_ellipsis': False,
     'broadcast_diagonal': False,
@@ -308,17 +301,6 @@ def _flatten_transpose(a, axeses):
     )
 
 
-def _use_cutensor(dtype0, sub0, dtype1, sub1, batch_dims, contract_dims):
-    if not cutensor.check_availability('contraction'):
-        return False
-    if dtype0 != dtype1:
-        return False
-    if dtype0 not in (cupy.float32, cupy.float64,
-                      cupy.complex64, cupy.complex128):
-        return False
-    return True
-
-
 def _get_out_shape(shape0, sub0, shape1, sub1, sub_out):
     extent = {}
     for size, i in zip(shape0 + shape1, sub0 + sub1):
@@ -398,25 +380,35 @@ def reduced_binary_einsum(arr0, sub0, arr1, sub1, sub_others):
         return arr0 * arr1, sub_out
 
     for accelerator in _accelerator.get_routine_accelerators():
-        if (accelerator == _accelerator.ACCELERATOR_CUTENSOR and
-                cutensor is not None):
-            if _use_cutensor(arr0.dtype, sub0, arr1.dtype, sub1,
-                             batch_dims, contract_dims):
-                if len(sub_out) == len(sub_others):
-                    # to assure final output of einsum is C-contiguous
-                    sub_out = sub_others
-                out_shape = _get_out_shape(
-                    arr0.shape, sub0, arr1.shape, sub1, sub_out)
-                arr_out = cupy.empty(out_shape, arr0.dtype)
-                arr0 = cupy.ascontiguousarray(arr0)
-                arr1 = cupy.ascontiguousarray(arr1)
-                arr_out = cutensor.contraction(
-                    1.0,
-                    arr0, sub0,
-                    arr1, sub1,
-                    0.0,
-                    arr_out, sub_out)
-                return arr_out, sub_out
+        if accelerator != _accelerator.ACCELERATOR_CUTENSOR:
+            continue
+        try:
+            import cupy_backends.cuda.libs.cutensor  # NOQA
+            from cupyx import cutensor
+        except ImportError:
+            continue
+        else:
+            if (
+                arr0.dtype != arr1.dtype
+                or arr0.dtype not in (cupy.float32, cupy.float64,
+                                      cupy.complex64, cupy.complex128)
+            ):
+                continue
+            if len(sub_out) == len(sub_others):
+                # to assure final output of einsum is C-contiguous
+                sub_out = sub_others
+            out_shape = _get_out_shape(
+                arr0.shape, sub0, arr1.shape, sub1, sub_out)
+            arr_out = cupy.empty(out_shape, arr0.dtype)
+            arr0 = cupy.ascontiguousarray(arr0)
+            arr1 = cupy.ascontiguousarray(arr1)
+            arr_out = cutensor.contraction(
+                1.0,
+                arr0, sub0,
+                arr1, sub1,
+                0.0,
+                arr_out, sub_out)
+            return arr_out, sub_out
 
     tmp0, shapes0 = _flatten_transpose(arr0, [bs0, ts0, cs0])
     tmp1, shapes1 = _flatten_transpose(arr1, [bs1, cs1, ts1])

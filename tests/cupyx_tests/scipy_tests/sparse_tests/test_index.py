@@ -16,12 +16,6 @@ from cupy import testing
 from cupy.cuda import runtime
 from cupyx.scipy import sparse
 
-try:
-    import scipy
-    scipy_113_or_later = scipy.__version__ >= "1.13"
-except ImportError:
-    scipy_113_or_later = False
-
 
 def _get_index_combos(idx):
     return [dict['arr_fn'](idx, dtype=dict['dtype'])
@@ -45,18 +39,19 @@ def _check_shares_memory(xp, sp, x, y):
     'n_rows': [25, 150],
     'n_cols': [25, 150]
 }))
-@testing.with_requires('scipy>=1.4.0')
+@testing.with_requires('scipy')
 class TestSetitemIndexing:
 
-    def _run(self, maj, min=None, data=5):
-
+    def _run(self, maj, min=None, data=5, density=None):
+        if density is None:
+            density = self.density
         import scipy.sparse
         for i in range(2):
             shape = self.n_rows, self.n_cols
             a = testing.shaped_sparse_random(
-                shape, sparse, self.dtype, self.density, self.format)
+                shape, sparse, self.dtype, density, self.format)
             expected = testing.shaped_sparse_random(
-                shape, scipy.sparse, self.dtype, self.density, self.format)
+                shape, scipy.sparse, self.dtype, density, self.format)
 
             maj_h = maj.get() if isinstance(maj, cupy.ndarray) else maj
             min_h = min.get() if isinstance(min, cupy.ndarray) else min
@@ -118,8 +113,22 @@ class TestSetitemIndexing:
                             _get_index_combos(1)):
             self._run(maj, min, data=x)
 
-    @pytest.mark.xfail(scipy_113_or_later, reason="XXX: scipy1.13")
-    @testing.with_requires('scipy>=1.5.0')
+    def test_set_sparse_singleton(self):
+        # ``A[i, j] = sparse_1x1`` previously raised ValueError because
+        # ``cupy.asarray(sparse, dtype=...)`` doesn't densify; the
+        # __setitem__ scalar path now handles a sparse 1x1 RHS.
+        dtype = getattr(cupy, self.dtype)
+        m = sparse.csr_matrix(cupy.eye(3, dtype=dtype))
+        rhs = sparse.csr_matrix(cupy.array([[7.0]], dtype=dtype))
+        m[0, 0] = rhs
+        assert m.toarray()[0, 0] == 7.0
+
+    # scipy 1.13 tightened bool-mask shape validation in __setitem__;
+    # scipy raises ``IndexError: bool index N has shape X instead of Y``
+    # while cupy still accepts the looser broadcasting form.
+    @pytest.mark.xfail(reason="scipy >= 1.13 rejects this bool-mask shape; "
+                              "cupy still accepts it")
+    @testing.with_requires('scipy')
     def test_set_zero_dim_bool_mask(self):
 
         zero_dim_data = [numpy.array(5), cupy.array(5)]
@@ -287,14 +296,13 @@ class TestSetitemIndexing:
         self._run(slice(10, 2, 5), slice(None))
         self._run(slice(10, 0, 10), slice(None))
 
-    @pytest.mark.xfail(scipy_113_or_later,
-                       reason="XXX: scipy 1.13")
-    @testing.with_requires('scipy>=1.5.0')
+    # scipy 1.13 rejects column-vector bool fancy-set against (M, N)
+    # targets with ``IndexError: bool index N has shape X instead of Y``;
+    # cupy still accepts the older looser semantics.
+    @pytest.mark.xfail(reason="scipy >= 1.13 rejects column-vector bool "
+                              "fancy-set shapes; cupy still accepts them")
+    @testing.with_requires('scipy')
     def test_fancy_setting_bool(self):
-        # Unfortunately, boolean setting is implemented slightly
-        # differently between Scipy 1.4 and 1.5. Using the most
-        # up-to-date version in CuPy.
-
         for maj in _get_index_combos(
                 [[True], [False], [False], [True], [True], [True]]):
             self._run(maj, data=5)
@@ -320,11 +328,11 @@ class TestSetitemIndexing:
         # ref: https://github.com/cupy/cupy/issues/3836
         # Starting with an empty array for now, since insertions
         # use `last-in-wins`.
-        self.density = 0.0  # Zeroing out density to force only insertions
         for maj, min, data in zip(_get_index_combos([0, 5, 10, 2, 0, 10]),
                                   _get_index_combos([1, 2, 3, 4, 1, 3]),
                                   _get_index_combos([1, 2, 3, 4, 5, 6])):
-            self._run(maj, min, data)
+            # Zeroing out density to force only insertions:
+            self._run(maj, min, data, density=0.0)
 
 
 class IndexingTestBase:
@@ -389,7 +397,7 @@ _int_array_index = [
         ]
     ),
 }))
-@testing.with_requires('scipy>=1.4.0')
+@testing.with_requires('scipy')
 class TestSliceIndexing(IndexingTestBase):
 
     @testing.for_dtypes('fdFD')
@@ -514,21 +522,20 @@ class TestArrayIndexing(IndexingTestBase):
         ([True, False, True], [True, False, True]),
     ],
 }))
-@testing.with_requires('scipy>=1.4.0')
+@testing.with_requires('scipy')
 class TestBoolMaskIndexing(IndexingTestBase):
 
     n_rows = 3
     n_cols = 5
 
-    # In older environments (e.g., py35, scipy 1.4), scipy sparse arrays are
-    # crashing when indexed with native Python boolean list.
-    @testing.with_requires('scipy>=1.5.0')
+    @testing.with_requires('scipy')
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_array_equal(sp_name='sp', type_check=False)
     def test_bool_mask(self, xp, sp, dtype):
 
         if self.indices == ([True, False, True], [True, False, True]):
-            pytest.xfail(reason="XXX: np2.0: scipy 1.13 sparse raises")
+            pytest.xfail(reason="scipy >= 1.13 raises IndexError on "
+                                "bool-array x bool-array sparse indexing")
 
         a = self._make_matrix(sp, dtype)
         res = a[self.indices]
@@ -540,7 +547,8 @@ class TestBoolMaskIndexing(IndexingTestBase):
     def test_numpy_bool_mask(self, xp, sp, dtype):
 
         if self.indices == ([True, False, True], [True, False, True]):
-            pytest.xfail(reason="XXX: np2.0: scipy 1.13 sparse raises")
+            pytest.xfail(reason="scipy >= 1.13 raises IndexError on "
+                                "bool-array x bool-array sparse indexing")
 
         a = self._make_matrix(sp, dtype)
         indices = self._make_indices(numpy)
@@ -553,7 +561,8 @@ class TestBoolMaskIndexing(IndexingTestBase):
     def test_cupy_bool_mask(self, xp, sp, dtype):
 
         if self.indices == ([True, False, True], [True, False, True]):
-            pytest.xfail(reason="XXX: np2.0: scipy 1.13 sparse raises")
+            pytest.xfail(reason="scipy >= 1.13 raises IndexError on "
+                                "bool-array x bool-array sparse indexing")
 
         a = self._make_matrix(sp, dtype)
         indices = self._make_indices(xp)
@@ -574,7 +583,7 @@ class TestBoolMaskIndexing(IndexingTestBase):
         ([[0, 0], [1, 1]]),
     ],
 }))
-@testing.with_requires('scipy>=1.4.0')
+@testing.with_requires('scipy')
 class TestIndexingIndexError(IndexingTestBase):
 
     def test_indexing_index_error(self):
@@ -594,11 +603,14 @@ class TestIndexingIndexError(IndexingTestBase):
         ([1, 2, 3], [1, 2, 3, 4]),
     ],
 }))
-@testing.with_requires('scipy>=1.4.0')
+@testing.with_requires('scipy')
 class TestIndexingValueError(IndexingTestBase):
 
     def test_indexing_value_error(self):
+        # SciPy < 1.17 raised ValueError for shape-mismatch in fancy
+        # indexing; SciPy >= 1.17 raises IndexError.  Accept either to
+        # remain compatible with both.
         for xp, sp in [(numpy, scipy.sparse), (cupy, sparse)]:
             a = self._make_matrix(sp, numpy.float32)
-            with pytest.raises(ValueError):
+            with pytest.raises((ValueError, IndexError)):
                 a[self.indices]

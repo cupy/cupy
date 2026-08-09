@@ -22,7 +22,7 @@ from cupy_backends.cuda.api cimport runtime
 ###############################################################################
 
 IF CUPY_USE_CUDA_PYTHON:
-    from cuda.cnvrtc cimport *
+    from cuda.bindings.cynvrtc cimport *
     cdef inline void initialize():
         pass
 ELSE:
@@ -181,31 +181,6 @@ cpdef bytes getCUBIN(intptr_t prog):
 
     # Strip the trailing NULL.
     return cubin_ptr[:cubinSizeRet-1]
-
-
-cpdef bytes getNVVM(intptr_t prog):
-    initialize()
-    if runtime._is_hip_environment:
-        raise RuntimeError("HIP does not support getNVVM")
-    if runtime.runtimeGetVersion() < 11040:
-        raise RuntimeError("getNVVM is supported since CUDA 11.4")
-
-    cdef size_t nvvmSizeRet = 0
-    cdef vector.vector[char] nvvm
-    cdef char* nvvm_ptr = NULL
-
-    with nogil:
-        status = nvrtcGetNVVMSize(<Program>prog, &nvvmSizeRet)
-    check_status(status)
-
-    nvvm.resize(nvvmSizeRet)
-    nvvm_ptr = nvvm.data()
-    with nogil:
-        status = nvrtcGetNVVM(<Program>prog, nvvm_ptr)
-    check_status(status)
-
-    # Strip the trailing NULL.
-    return nvvm_ptr[:nvvmSizeRet-1]
 
 
 cpdef bytes getLTOIR(intptr_t prog):

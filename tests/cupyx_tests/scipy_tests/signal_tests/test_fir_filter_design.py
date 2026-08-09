@@ -408,7 +408,7 @@ class TestMinimumPhase:
         assert_raises(ValueError, signal.minimum_phase,
                       cupy.ones(10), method='foo')
 
-    @testing.with_requires("scipy>=1.14")
+    @testing.with_requires("scipy>=1.18.0")
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_homomorphic(self, xp, scp):
         # check that it can recover frequency responses of arbitrary
@@ -419,7 +419,7 @@ class TestMinimumPhase:
         h_new = scp.signal.minimum_phase(xp.convolve(h, h[::-1]))
         return h_new
 
-    @testing.with_requires("scipy>=1.14")
+    @testing.with_requires("scipy>=1.18.0")
     @pytest.mark.parametrize("half", [True, False])
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_homomorphic_half(self, xp, scp, half):
@@ -447,3 +447,19 @@ class TestMinimumPhase:
         if xp == cupy:
             h_linear = cupy.asarray(h_linear)
         return scp.signal.minimum_phase(h_linear, method="hilbert")
+
+    @testing.with_requires("scipy>=1.18.0")
+    @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-6)
+    @pytest.mark.parametrize("N", (963, 964))
+    @pytest.mark.parametrize("dtype", ("float32", "float64"))
+    def test_nyquist(self, N, dtype, xp, scp):
+        fc = xp.asarray(10)
+        fs = 100
+        h = scp.signal.firwin(
+            N, fc, window="hann", pass_zero="lowpass",
+            scale=False, fs=fs
+        )
+        h = h.astype(dtype)
+        return scp.signal.minimum_phase(
+            h, method="homomorphic", n_fft=N, half=False
+        )

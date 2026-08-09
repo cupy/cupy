@@ -80,7 +80,7 @@ class LinuxGenerator:
                 lines += [
                     'RUN export DEBIAN_FRONTEND=noninteractive && \\',
                     '    ( apt-get -qqy update || true ) && \\',
-                    '    apt-get -qqy install ca-certificates && \\',
+                    '    apt-get -qqy install ca-certificates gnupg && \\',
                     '    curl -qL https://repo.radeon.com/rocm/rocm.gpg.key | apt-key add -',  # NOQA
                 ]
 
@@ -152,7 +152,7 @@ class LinuxGenerator:
 
         # Define env vars to discover cuTENSOR during build/runtime.
         if matrix.cutensor is not None:
-            # The following assumes cuTENSOR 2.3+ package layout.
+            # The following assumes cuTENSOR 2.4+ package layout.
             cuda_major = matrix.cuda.split('.')[0]
             lines.append(
                 'ENV CUPY_INCLUDE_PATH='
@@ -167,6 +167,26 @@ class LinuxGenerator:
             lines.append(
                 'ENV LD_LIBRARY_PATH='
                 f'/usr/lib/x86_64-linux-gnu/libcutensor/{cuda_major}'
+                ':${LD_LIBRARY_PATH}'
+            )
+
+        # Define env vars to discover cuSPARSELt during build/runtime.
+        if matrix.cusparselt is not None:
+            # The following assumes cuSPARSELt 0.8.0+ package layout.
+            cuda_major = matrix.cuda.split('.')[0]
+            lines.append(
+                'ENV CUPY_INCLUDE_PATH='
+                f'/usr/include/libcusparseLt/{cuda_major}'
+                ':${CUPY_INCLUDE_PATH}'
+            )
+            lines.append(
+                'ENV CUPY_LIBRARY_PATH='
+                f'/usr/lib/x86_64-linux-gnu/libcusparseLt/{cuda_major}'
+                ':${CUPY_LIBRARY_PATH}'
+            )
+            lines.append(
+                'ENV LD_LIBRARY_PATH='
+                f'/usr/lib/x86_64-linux-gnu/libcusparseLt/{cuda_major}'
                 ':${LD_LIBRARY_PATH}'
             )
 
@@ -191,7 +211,9 @@ class LinuxGenerator:
             'ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"',
             f'RUN pyenv install {py_spec} && \\',
             f'    pyenv global {py_spec} && \\',
-            '    pip install -U setuptools pip wheel',
+            '    pip install -U setuptools pip wheel && \\',
+            # For GCP kernel cache backend
+            '    pip install -U google-cloud-storage',
             '',
         ]
 
@@ -199,7 +221,7 @@ class LinuxGenerator:
         pip_args = []
         pip_uninstall_args = []
         for pylib in ('numpy', 'scipy', 'optuna', 'mpi4py',
-                      'cython', 'cuda-python'):
+                      'ml_dtypes', 'cython', 'cuda-python', 'nvmath-python'):
             pylib_ver = getattr(matrix, pylib)
             if pylib_ver is None:
                 pip_uninstall_args.append(pylib)
@@ -261,13 +283,18 @@ class LinuxGenerator:
                     packages.append(f'libcutensor-devel-{spec}')
             if cusparselt is not None:
                 spec = self.schema['cusparselt'][cusparselt]['spec']
-                major = cusparselt.split('.')[0]
+                cudamajor = cuda.split('.')[0]
+                spltmajor = cusparselt.split('.')[0]
                 if apt:
-                    packages.append(f'libcusparselt{major}={spec}')
-                    packages.append(f'libcusparselt-dev={spec}')
+                    packages.append(
+                        f'libcusparselt{spltmajor}-cuda-{cudamajor}={spec}')
+                    packages.append(
+                        f'libcusparselt{spltmajor}-dev-cuda-{cudamajor}={spec}')
                 else:
-                    packages.append(f'libcusparselt{major}-{spec}')
-                    packages.append(f'libcusparselt-devel-{spec}')
+                    packages.append(
+                        f'libcusparselt{spltmajor}-cuda-{cudamajor}-{spec}')
+                    packages.append(
+                        f'libcusparselt{spltmajor}-devel-cuda-{cudamajor}-{spec}')
             return packages
         elif matrix.rocm is not None:
             return self.schema['rocm'][matrix.rocm]['packages']  # type: ignore[no-any-return] # NOQA
@@ -318,7 +345,11 @@ class LinuxGenerator:
             '',
         ]
 
-        lines += ['"$ACTIONS/build.sh"']
+        lines += [
+            '',
+            'trap "$ACTIONS/cleanup.sh" EXIT',
+            '"$ACTIONS/build.sh"',
+        ]
         if matrix.test.startswith('unit'):
             if matrix.test == 'unit':
                 spec = 'not slow and not multi_gpu'
@@ -342,7 +373,6 @@ class LinuxGenerator:
             raise AssertionError
 
         lines += [
-            '"$ACTIONS/cleanup.sh"',
             ''
         ]
 
@@ -456,7 +486,7 @@ def validate_schema(schema: SchemaType) -> None:
                         raise ValueError(
                             f'unknown CUDA version: {cuda} '
                             f'while parsing schema {key}:{value}')
-        elif key in ('numpy', 'scipy', 'mpi4py'):
+        elif key in ('numpy', 'scipy', 'mpi4py', 'ml_dtypes'):
             for value, value_schema in key_schema.items():
                 for python in value_schema.get('python', []):
                     if python not in schema['python'].keys():
@@ -525,7 +555,7 @@ def validate_matrixes(schema: SchemaType, matrixes: list[Matrix]) -> None:
                     errors.append(
                         f'{matrix.project}: CUDA {matrix.cuda} '
                         f'not supported by {key} {value}')
-            elif key in ('numpy', 'scipy', 'mpi4py'):
+            elif key in ('numpy', 'scipy', 'mpi4py', 'ml_dtypes'):
                 supports = schema[key][value].get('python', None)
                 if supports is not None and matrix.python not in supports:
                     errors.append(

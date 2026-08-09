@@ -38,6 +38,14 @@ cusparseStatus_t cusparseLtDestroy(...) {
     return CUSPARSE_STATUS_SUCCESS;
 }
 
+const char* cusparseLtGetErrorName(...) {
+    return "";
+}
+
+const char* cusparseLtGetErrorString(...) {
+    return "";
+}
+
 cusparseStatus_t cusparseLtGetVersion(...) {
     return CUSPARSE_STATUS_SUCCESS;
 }
@@ -79,6 +87,10 @@ cusparseStatus_t cusparseLtMatmulDescGetAttribute(...) {
 }
 
 cusparseStatus_t cusparseLtMatmulAlgSelectionInit(...) {
+    return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseLtMatmulAlgSelectionDestroy(...) {
     return CUSPARSE_STATUS_SUCCESS;
 }
 

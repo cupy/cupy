@@ -84,7 +84,6 @@ from cupyx.scipy.special._erf import erfcinv  # NOQA
 
 # Legendre functions
 from cupyx.scipy.special._lpmv import lpmv  # NOQA
-from cupyx.scipy.special._sph_harm import sph_harm  # NOQA
 from cupyx.scipy.special._sph_harm import sph_harm_y  # NOQA
 
 # Other special functions

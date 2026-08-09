@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import unittest
 
+import pytest
+
 from cupy.cuda import pinned_memory
 
 
@@ -26,6 +28,7 @@ def mock_alloc(size):
 # -----------------------------------------------------------------------------
 # Memory pointer
 
+@pytest.mark.thread_unsafe(reason="used MockAlloc is global")
 class TestMemoryPointer(unittest.TestCase):
 
     def test_int(self):
@@ -66,6 +69,7 @@ class TestMemoryPointer(unittest.TestCase):
 # Memory pool
 
 
+@pytest.mark.thread_unsafe(reason="tests self.pool on a low level")
 class TestSingleDeviceMemoryPool(unittest.TestCase):
 
     def setUp(self):

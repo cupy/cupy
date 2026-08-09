@@ -1,5 +1,7 @@
 # distutils: language = c++
 
+cimport cython
+
 from libc cimport errno
 from libc cimport stdlib
 from libc.stdint cimport intptr_t
@@ -25,7 +27,7 @@ ELSE:
 
 
 # CuPy mempool requirement, see ALLOCATION_UNIT_SIZE in cupy/cuda/memory.pyx
-DEF ALIGNMENT = 512
+cdef const int ALIGNMENT = 512
 
 
 cdef public void* _calloc(size_t nmemb, size_t size) noexcept nogil:
@@ -42,6 +44,7 @@ cdef public void* _malloc(size_t size) noexcept nogil:
     return aligned_alloc(ALIGNMENT, size)
 
 
+@cython.cdivision(True)
 cdef public void* _realloc(void *ptr, size_t size) noexcept nogil:
     errno.errno = 0
     cdef void* buf = stdlib.realloc(ptr, size)

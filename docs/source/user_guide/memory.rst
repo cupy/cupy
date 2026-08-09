@@ -245,4 +245,4 @@ With this setup change, all the data movement APIs such as :meth:`~cupy.ndarray.
 Essentially, the distinction of CPU/GPU *memory* spaces is gone, and ``np``/``cp`` are used to represent
 the *execution* space (whether the code should run on CPU or GPU).
 
-Apart from the setup configuration for NumPy/CuPy, no user code chage is required.
+Apart from the setup configuration for NumPy/CuPy, no user code change is required.

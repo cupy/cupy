@@ -4,6 +4,8 @@ import pickle
 import unittest
 from unittest import mock
 
+import pytest
+
 import cupy
 from cupy.cuda import compiler
 
@@ -13,6 +15,7 @@ def cuda_version():
 
 
 @unittest.skipIf(cupy.cuda.runtime.is_hip, 'CUDA specific tests')
+@pytest.mark.thread_unsafe(reason="Uses mock.patch for (for most tests).")
 class TestNvrtcArch(unittest.TestCase):
     def setUp(self):
         cupy.clear_memo()  # _get_arch result is cached

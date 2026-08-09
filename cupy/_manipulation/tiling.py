@@ -60,7 +60,8 @@ def repeat(a, repeats, axis=None):
 
     Args:
         a (cupy.ndarray): Array to transform.
-        repeats (int, list or tuple): The number of repeats.
+        repeats (int, list, tuple, or cupy.ndarray):
+            The number of repeats.
         axis (int): The axis to repeat.
 
     Returns:

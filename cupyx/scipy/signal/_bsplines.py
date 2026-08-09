@@ -27,6 +27,7 @@ DEALINGS IN THE SOFTWARE.
 """
 from __future__ import annotations
 
+import math
 
 import cupy
 import cupyx.scipy.ndimage
@@ -34,8 +35,6 @@ import cupyx.scipy.ndimage
 from cupyx.scipy.signal._iir_utils import apply_iir_sos
 from cupyx.scipy.signal._splines import _symiirorder1_nd, _symiirorder2_nd
 from cupyx.scipy.interpolate._bspline import BSpline
-
-import numpy as np
 
 
 def sepfir2d(input, hrow, hcol):
@@ -251,12 +250,12 @@ def _quadratic_coeff(signal):
 
 
 def compute_root_from_lambda(lamb):
-    tmp = np.sqrt(3 + 144 * lamb)
+    tmp = math.sqrt(3 + 144 * lamb)
     xi = 1 - 96 * lamb + 24 * lamb * tmp
-    omega = np.arctan(np.sqrt((144 * lamb - 1.0) / xi))
-    tmp2 = np.sqrt(xi)
+    omega = math.atan(math.sqrt((144 * lamb - 1.0) / xi))
+    tmp2 = math.sqrt(xi)
     r = ((24 * lamb - 1 - tmp2) / (24 * lamb) *
-         np.sqrt(48*lamb + 24 * lamb * tmp) / tmp2)
+         math.sqrt(48*lamb + 24 * lamb * tmp) / tmp2)
     return r, omega
 
 
@@ -357,6 +356,9 @@ def cspline1d_eval(cj, newx, dx=1.0, x0=0):
     cspline1d : Compute cubic spline coefficients for rank-1 array.
 
     """
+    if cj.size == 0:
+        raise ValueError("Spline coefficients 'cj' must not be empty.")
+
     newx = (cupy.asarray(newx) - x0) / float(dx)
     res = cupy.zeros_like(newx, dtype=cj.dtype)
     if res.size == 0:
@@ -415,6 +417,9 @@ def qspline1d_eval(cj, newx, dx=1.0, x0=0):
     Edges are handled using mirror-symmetric boundary conditions.
 
     """
+    if cj.size == 0:
+        raise ValueError("Spline coefficients 'cj' must not be empty.")
+
     newx = (cupy.asarray(newx) - x0) / dx
     res = cupy.zeros_like(newx)
     if res.size == 0:
@@ -463,7 +468,7 @@ def cspline2d(signal, lamb=0.0, precision=-1.0):
     """
     if lamb <= 1 / 144.0:
         # Normal cubic spline
-        r = -2 + np.sqrt(3.0)
+        r = -2 + math.sqrt(3.0)
         out = _symiirorder1_nd(signal, -r * 6.0, r, precision=precision,
                                axis=-1)
         out = _symiirorder1_nd(out, -r * 6.0, r, precision=precision,
@@ -503,7 +508,7 @@ def qspline2d(signal, lamb=0.0, precision=-1.0):
         raise ValueError('lambda must be negative or zero')
 
     # normal quadratic spline
-    r = -3 + 2 * np.sqrt(2.0)
+    r = -3 + 2 * math.sqrt(2.0)
 
     out = _symiirorder1_nd(signal, -r * 8.0, r, precision=precision, axis=-1)
     out = _symiirorder1_nd(out, -r * 8.0, r, precision=precision, axis=0)
@@ -521,7 +526,7 @@ def spline_filter(Iin, lmbda=5.0):
     Iin : array_like
         input data set
     lmbda : float, optional
-        spline smooghing fall-off value, default is `5.0`.
+        spline smoothing fall-off value, default is `5.0`.
 
     Returns
     -------

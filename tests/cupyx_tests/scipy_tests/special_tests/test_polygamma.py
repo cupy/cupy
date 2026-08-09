@@ -11,7 +11,7 @@ import pytest
 import warnings
 
 
-@testing.with_requires("scipy>=1.14")
+@testing.with_requires("scipy")
 class TestPolygamma(unittest.TestCase):
 
     @testing.for_all_dtypes(no_complex=True)

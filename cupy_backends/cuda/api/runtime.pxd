@@ -26,7 +26,7 @@ cdef class MemPoolProps:
 ###############################################################################
 
 IF CUPY_USE_CUDA_PYTHON:
-    from cuda.ccudart cimport *
+    from cuda.bindings.cyruntime cimport *
     # Aliases for compatibillity with existing CuPy codebase.
     # Keep in sync with names defined in `_runtime_typedef.pxi`.
     # TODO(kmaehashi): Remove these aliases.
@@ -89,6 +89,7 @@ IF CUPY_USE_CUDA_PYTHON:
     ctypedef cudaMemAllocationType MemAllocationType
     ctypedef cudaMemAllocationHandleType MemAllocationHandleType
     ctypedef cudaMemLocationType MemLocationType
+    ctypedef cudaMemLocation _MemLocation
 
 ELSE:
     include "_runtime_typedef.pxi"
@@ -250,6 +251,7 @@ cpdef memPrefetchAsync(intptr_t devPtr, size_t count, int dstDevice,
                        intptr_t stream)
 cpdef memAdvise(intptr_t devPtr, size_t count, int advice, int device)
 cpdef PointerAttributes pointerGetAttributes(intptr_t ptr)
+cpdef int pointerGetMemoryType(intptr_t ptr) except -1
 cpdef intptr_t deviceGetDefaultMemPool(int) except? 0
 cpdef intptr_t deviceGetMemPool(int) except? 0
 cpdef deviceSetMemPool(int, intptr_t)

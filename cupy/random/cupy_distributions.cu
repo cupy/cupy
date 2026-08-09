@@ -331,7 +331,8 @@ __device__ int64_t rk_hypergeometric_hrua(T& state, int64_t good, int64_t bad, i
 
 template<typename T>
 __device__ int64_t rk_hypergeometric(T& state, int64_t good, int64_t bad, int64_t sample) {
-    if (sample > 10) {
+    if (sample <= 0) return 0;
+    if ((sample > 10) && (sample <= good + bad - 10)) {
         return rk_hypergeometric_hrua(state, good, bad, sample);
     }
     else {

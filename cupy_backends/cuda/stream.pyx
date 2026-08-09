@@ -84,7 +84,7 @@ cdef set_current_stream_ptr(intptr_t ptr, int device_id=-1):
 
 
 # cpdef for unit testing
-cpdef intptr_t get_default_stream_ptr():
+cpdef intptr_t get_default_stream_ptr() noexcept:
     """Get the CUDA default stream pointer.
 
     Returns:
@@ -96,5 +96,5 @@ cpdef intptr_t get_default_stream_ptr():
         return runtime.streamLegacy
 
 
-cdef bint is_ptds_enabled():
+cdef bint is_ptds_enabled() noexcept:
     return _ptds

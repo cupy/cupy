@@ -18,6 +18,9 @@ import tempfile
 import threading
 import warnings
 
+from cuda.pathfinder import find_nvidia_binary_utility
+from cuda.pathfinder import find_nvidia_header_directory
+
 from cupy import __version__ as _cupy_ver
 from cupy._environment import (get_nvcc_path, get_cuda_path)
 from cupy.cuda.compiler import (_get_bool_env_variable, CompileException)
@@ -68,6 +71,7 @@ cdef inline void _set_vars() except*:
 
     global _cc, _python_include, _cuda_path, _cuda_include, _nvprune
     global _build_ver, _cufft_ver, _ext_suffix, _is_init
+    global _cc_major_map
 
     cdef str cxx = sysconfig.get_config_var('CXX')
     if cxx is not None:
@@ -81,14 +85,27 @@ cdef inline void _set_vars() except*:
 
     _cuda_path = get_cuda_path()
     if _cuda_path is not None:
-        _cuda_include = os.path.join(_cuda_path, 'include')
-        # TODO(leofang): this does not honor conda's new layout
-        _nvprune = os.path.join(_cuda_path, 'bin/nvprune')
-        if not os.path.isfile(_nvprune):
-            _nvprune = None
+        _nvprune = find_nvidia_binary_utility('nvprune')
+        if _nvprune is None:
+            _nvprune = os.path.join(_cuda_path, 'bin/nvprune')
+            if not os.path.isfile(_nvprune):
+                _nvprune = None
+    else:
+        # _prune() needs both nvprune and _cuda_path (for
+        # libcufft_static.a), so skip nvprune if there is no root.
+        _nvprune = None
+
+    _cuda_include = find_nvidia_header_directory('cudart')
 
     _build_ver = str(runtime.runtimeGetVersion())
     _cufft_ver = get_cufft_version()
+    # Many archs are removed since CUDA 13.0.0 (cuFFT 12.0.0).
+    if _cufft_ver < 12000:
+        _cc_major_map = {**_cc_major_map, **{
+            '7': ('70', '72', '75'),
+            '6': ('60', '61', '62'),
+            '5': ('50', '52', '53'),
+        }}
     _ext_suffix = sysconfig.get_config_var('EXT_SUFFIX')
 
     _set_cupy_paths()
@@ -201,18 +218,31 @@ cdef dict _cc_major_map = {
     '10': ('100', '103'),
     '9': ('90',),
     '8': ('80', '86', '87'),
-    '7': ('70', '72', '75'),
-    '6': ('60', '61', '62'),
-    '5': ('50', '52', '53'),
-    '3': ('35', '37'),
 }
 
 
 cdef inline str _prune(str temp_dir, str cache_dir, str _cufft_ver, str arch):
     cdef str cufft_lib_full, cufft_lib_pruned, cufft_lib_temp, cufft_lib_cached
+    cdef str libdir, candidate
 
     if _nvprune:
-        cufft_lib_full = os.path.join(_cuda_path, 'lib64/libcufft_static.a')
+        # _cuda_path may point to either the CUDA Toolkit root (which has
+        # lib64/ on Linux) or a targets/<arch> directory (which has lib/
+        # only; e.g. conda, or a system CTK located via cuda.pathfinder),
+        # so probe both layouts.
+        cufft_lib_full = None
+        for libdir in ('lib64', 'lib'):
+            candidate = os.path.join(_cuda_path, libdir, 'libcufft_static.a')
+            if os.path.isfile(candidate):
+                cufft_lib_full = candidate
+                break
+        if cufft_lib_full is None:
+            # cannot locate the static library; fall back to linking the
+            # full one via nvcc's default library search paths
+            warnings.warn(
+                'libcufft_static.a not found under ' + _cuda_path,
+                RuntimeWarning)
+            return None
         cufft_lib_pruned = f'cufft_static_{_cufft_ver}_sm{arch[0]}'
         cufft_lib_temp = os.path.join(temp_dir,
                                       'lib' + cufft_lib_pruned + '.a')
@@ -263,7 +293,7 @@ cdef inline void _nvcc_compile(
     cmd = _nvcc + ['-arch=sm_'+arch, '-dc',
                    '-I' + _cupy_include,
                    '-c', os.path.join(tempdir, 'cupy_cufftXt.cu'),
-                   '-Xcompiler', '-fPIC', '-O2', '-std=c++11']
+                   '-Xcompiler', '-fPIC', '-O2', '-std=c++17']
     if cb_load:
         cmd.append('-DHAS_LOAD_CALLBACK')
     if cb_store:
@@ -295,7 +325,8 @@ cdef inline void _nvcc_link(
 
     mod_temp = os.path.join(tempdir, mod_filename)
     mod_cached = os.path.join(cache_dir, mod_filename)
-    cmd = _nvcc + ['-shared', '-arch=sm_'+arch, obj_dev, obj_host]
+    cmd = _nvcc + ['-shared', '-arch=sm_'+arch, obj_dev, obj_host,
+                   '-Xlinker', '-Bsymbolic']
     if cufft_lib_pruned:
         cmd += ['-L'+cache_dir, '-l'+cufft_lib_pruned]
     else:
@@ -334,7 +365,7 @@ cdef class _CallbackManager:
     cdef set_caller_infos(self,
                           MemoryPointer cb_load_data=None,
                           MemoryPointer cb_store_data=None):
-        '''Set the auxilliary arrays to be used by the load/store callbacks.
+        '''Set the auxiliary arrays to be used by the load/store callbacks.
         Corresponding to the ``callerInfo`` field in cuFFT's callback API.
 
         Args:
@@ -463,13 +494,23 @@ cdef class _LegacyCallbackManager(_CallbackManager):
             follow.
 
         '''
-        from cupy.cuda.cufft import (
-            CUFFT_C2C, CUFFT_C2R, CUFFT_R2C,
-            CUFFT_Z2Z, CUFFT_Z2D, CUFFT_D2Z,
-            CUFFT_CB_LD_COMPLEX, CUFFT_CB_LD_COMPLEX_DOUBLE,
-            CUFFT_CB_LD_REAL, CUFFT_CB_LD_REAL_DOUBLE,
-            CUFFT_CB_ST_COMPLEX, CUFFT_CB_ST_COMPLEX_DOUBLE,
-            CUFFT_CB_ST_REAL, CUFFT_CB_ST_REAL_DOUBLE,)
+        # Note: Do NOT use any object/function from the global cupy.cuda.cufft
+        # module!
+        cufft = self.mod
+        CUFFT_C2C = cufft.CUFFT_C2C
+        CUFFT_C2R = cufft.CUFFT_C2R
+        CUFFT_R2C = cufft.CUFFT_R2C
+        CUFFT_Z2Z = cufft.CUFFT_Z2Z
+        CUFFT_Z2D = cufft.CUFFT_Z2D
+        CUFFT_D2Z = cufft.CUFFT_D2Z
+        CUFFT_CB_LD_COMPLEX = cufft.CUFFT_CB_LD_COMPLEX
+        CUFFT_CB_LD_COMPLEX_DOUBLE = cufft.CUFFT_CB_LD_COMPLEX_DOUBLE
+        CUFFT_CB_LD_REAL = cufft.CUFFT_CB_LD_REAL
+        CUFFT_CB_LD_REAL_DOUBLE = cufft.CUFFT_CB_LD_REAL_DOUBLE
+        CUFFT_CB_ST_COMPLEX = cufft.CUFFT_CB_ST_COMPLEX
+        CUFFT_CB_ST_COMPLEX_DOUBLE = cufft.CUFFT_CB_ST_COMPLEX_DOUBLE
+        CUFFT_CB_ST_REAL = cufft.CUFFT_CB_ST_REAL
+        CUFFT_CB_ST_REAL_DOUBLE = cufft.CUFFT_CB_ST_REAL_DOUBLE
 
         cdef MemoryPointer cb_load_data = self.cb_load_data
         cdef MemoryPointer cb_store_data = self.cb_store_data
@@ -500,12 +541,12 @@ cdef class _LegacyCallbackManager(_CallbackManager):
         if self.cb_load:
             if cb_load_data is not None:
                 cb_load_ptr = cb_load_data.ptr
-            self.mod.setCallback(
+            cufft.setCallback(
                 plan.handle, cb_load_type, True, cb_load_ptr)
         if self.cb_store:
             if cb_store_data is not None:
                 cb_store_ptr = cb_store_data.ptr
-            self.mod.setCallback(
+            cufft.setCallback(
                 plan.handle, cb_store_type, False, cb_store_ptr)
 
 
@@ -556,10 +597,11 @@ cdef class _JITCallbackManager(_CallbackManager):
                 raise NotImplementedError
 
     cdef str _get_cuda_include(self):
-        global _cuda_path, _cuda_include
-        if _cuda_path is None or _cuda_include is None:
-            _cuda_path = get_cuda_path()
-            _cuda_include = os.path.join(_cuda_path, 'include')
+        global _cuda_include
+        if _cuda_include is None:
+            _cuda_include = find_nvidia_header_directory('cudart')
+            if _cuda_include is None:
+                raise RuntimeError('Failed to find CUDA headers.')
         return _cuda_include
 
     cdef _sanity_checks(self, cb_load, cb_store, cb_load_data, cb_store_data):
@@ -584,7 +626,7 @@ cdef class _JITCallbackManager(_CallbackManager):
                 raise ValueError('store callback is not given')
 
     cdef bytes compile_lto(self, str source, tuple options):
-        options += ('--std=c++11', '-I' + self._get_cuda_include())
+        options += ('--std=c++17', '-I' + self._get_cuda_include())
         # TODO(leofang): support log_stream & jitify
         return _compile_with_cache_cuda(
             source, options, None, get_cache_dir(), to_ltoir=True)

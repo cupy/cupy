@@ -93,9 +93,9 @@ cdef extern from *:
         MemoryKind kind
 
     ctypedef struct TextureDesc 'cudaTextureDesc':
-        int addressMode[3]
-        int filterMode
-        int readMode
+        TextureAddressMode addressMode[3]
+        TextureFilterMode filterMode
+        TextureReadMode readMode
         int sRGB
         float borderColor[4]
         int normalizedCoords

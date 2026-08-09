@@ -45,9 +45,14 @@ def label(input, structure=None, output=None):
     structure = numpy.array(structure, dtype=bool)
     if structure.ndim != input.ndim:
         raise RuntimeError('structure and input must have equal rank')
-    for i in structure.shape:
-        if i != 3:
+    for ii in structure.shape:
+        if ii != 3:
             raise ValueError('structure dimensions must be equal to 3')
+
+    # Use 32 bits if it's large enough for this image.
+    # _ni_label.label() needs two entries for background and
+    # foreground tracking
+    need_64bits = input.size >= (2**31 - 2)
 
     if isinstance(output, cupy.ndarray):
         if output.shape != input.shape:
@@ -56,30 +61,45 @@ def label(input, structure=None, output=None):
     else:
         caller_provided_output = False
         if output is None:
-            output = cupy.empty(input.shape, numpy.int32)
+            output = cupy.empty(
+                input.shape, cupy.intp if need_64bits else cupy.int32
+            )
         else:
             output = cupy.empty(input.shape, output)
+    if output.dtype.kind not in 'iu':
+        raise TypeError("output dtype must be an integer type")
 
-    if input.size == 0:
-        # empty
-        maxlabel = 0
-    elif input.ndim == 0:
-        # 0-dim array
-        maxlabel = 0 if input.item() == 0 else 1
-        output.fill(maxlabel)
-    else:
-        if output.dtype != numpy.int32:
-            y = cupy.empty(input.shape, numpy.int32)
+    # handle scalars, 0-D arrays
+    if input.ndim == 0 or input.size == 0:
+        if input.ndim == 0:
+            # scalar
+            maxlabel = 1 if (input != 0) else 0
+            output.fill(maxlabel)
         else:
-            y = output
-        maxlabel = _label(input, structure, y)
-        if output.dtype != numpy.int32:
-            _core.elementwise_copy(y, output)
+            # 0-D
+            maxlabel = 0
+        if caller_provided_output:
+            return maxlabel
+        else:
+            return output, maxlabel
+
+    tmp_dtype = cupy.int64 if need_64bits else cupy.int32
+    if output.dtype == tmp_dtype or output.dtype == cupy.int64:
+        max_label = _label(input, structure, output)
+    else:
+        tmp_output = cupy.empty(input.shape, tmp_dtype)
+        max_label = _label(input, structure, tmp_output)
+        try:
+            output.dtype.type(max_label)
+        except (OverflowError, ValueError):
+            raise ValueError("insufficient bit-depth in output type")
+        _core.elementwise_copy(tmp_output, output)
 
     if caller_provided_output:
-        return maxlabel
+        # result was written in-place
+        return max_label
     else:
-        return output, maxlabel
+        return output, max_label
 
 
 def _generate_binary_structure(rank, connectivity):
@@ -103,15 +123,16 @@ def _label(x, structure, y):
     dirs = cupy.array(dirs, dtype=numpy.int32)
     ndirs = indxs.shape[0]
     y_shape = cupy.array(y.shape, dtype=numpy.int32)
-    count = cupy.zeros(2, dtype=numpy.int32)
+    count = cupy.zeros(2, dtype=y.dtype)
+
     _kernel_init()(x, y)
     _kernel_connect()(y_shape, dirs, ndirs, x.ndim, y, size=y.size)
     _kernel_count()(y, count, size=y.size)
-    maxlabel = int(count[0])
-    labels = cupy.empty(maxlabel, dtype=numpy.int32)
+    nlabels = int(count[0])
+    labels = cupy.empty(nlabels, dtype=y.dtype)
     _kernel_labels()(y, count, labels, size=y.size)
-    _kernel_finalize()(maxlabel, cupy.sort(labels), y, size=y.size)
-    return maxlabel
+    _kernel_finalize()(nlabels, cupy.sort(labels), y, size=y.size)
+    return nlabels
 
 
 def _kernel_init():
@@ -125,14 +146,19 @@ def _kernel_connect():
         'raw int32 shape, raw int32 dirs, int32 ndirs, int32 ndim',
         'raw Y y',
         '''
+        using atomic_t = typename cupy::type_traits::conditional<
+            cupy::type_traits::is_same<Y, long long>::value,
+            unsigned long long,
+            Y
+        >::type;
         if (y[i] < 0) continue;
         for (int dr = 0; dr < ndirs; dr++) {
-            int j = i;
-            int rest = j;
-            int stride = 1;
-            int k = 0;
-            for (int dm = ndim-1; dm >= 0; dm--) {
-                int pos = rest % shape[dm] + dirs[dm + dr * ndim];
+            Y j = i;
+            Y rest = j;
+            Y stride = 1;
+            Y k = 0;
+            for (int dm = ndim - 1; dm >= 0; dm--) {
+                Y pos = rest % shape[dm] + dirs[dm + dr * ndim];
                 if (pos < 0 || pos >= shape[dm]) {
                     k = -1;
                     break;
@@ -143,17 +169,18 @@ def _kernel_connect():
             }
             if (k < 0) continue;
             if (y[k] < 0) continue;
+
             while (1) {
                 while (j != y[j]) { j = y[j]; }
                 while (k != y[k]) { k = y[k]; }
                 if (j == k) break;
                 if (j < k) {
-                    int old = atomicCAS( &y[k], k, j );
+                    Y old = atomicCAS((atomic_t*)&y[k], k, j);
                     if (old == k) break;
                     k = old;
                 }
                 else {
-                    int old = atomicCAS( &y[j], j, k );
+                    Y old = atomicCAS((atomic_t*)&y[j], j, k);
                     if (old == j) break;
                     j = old;
                 }
@@ -165,10 +192,10 @@ def _kernel_connect():
 
 def _kernel_count():
     return _core.ElementwiseKernel(
-        '', 'raw Y y, raw int32 count',
+        '', 'raw Y y, raw Y count',
         '''
         if (y[i] < 0) continue;
-        int j = i;
+        Y j = i;
         while (j != y[j]) { j = y[j]; }
         if (j != i) y[i] = j;
         else atomicAdd(&count[0], 1);
@@ -178,10 +205,10 @@ def _kernel_count():
 
 def _kernel_labels():
     return _core.ElementwiseKernel(
-        '', 'raw Y y, raw int32 count, raw int32 labels',
+        '', 'raw Y y, raw Y count, raw Y labels',
         '''
         if (y[i] != i) continue;
-        int j = atomicAdd(&count[1], 1);
+        Y j = atomicAdd(&count[1], 1);
         labels[j] = i;
         ''',
         'cupyx_scipy_ndimage_label_labels')
@@ -189,16 +216,16 @@ def _kernel_labels():
 
 def _kernel_finalize():
     return _core.ElementwiseKernel(
-        'int32 maxlabel', 'raw int32 labels, raw Y y',
+        'Y maxlabel', 'raw Y labels, raw Y y',
         '''
         if (y[i] < 0) {
             y[i] = 0;
             continue;
         }
-        int yi = y[i];
-        int j_min = 0;
-        int j_max = maxlabel - 1;
-        int j = (j_min + j_max) / 2;
+        Y yi = y[i];
+        Y j_min = 0;
+        Y j_max = maxlabel - 1;
+        Y j = (j_min + j_max) / 2;
         while (j_min < j_max) {
             if (yi == labels[j]) break;
             if (yi < labels[j]) j_max = j - 1;

@@ -1,5 +1,3 @@
-from cupy._core cimport _accelerator
-from cupy._core._accelerator cimport ACCELERATOR_CUB
 from cupy._core._scalar cimport get_typename, _get_cuda_scalar_repr
 
 import functools
@@ -371,7 +369,7 @@ class _FusionVarArray(_FusionVarScalar):
 
 class _FusionHistory(object):
 
-    """History of operation exectuted in the target function of fusion.
+    """History of operation executed in the target function of fusion.
 
     Attributes:
         preamble_set (set of str): The preambles of submodules.
@@ -602,6 +600,9 @@ class _FusionHistory(object):
 
     def _emit_submodules_code(self):
         res = ''.join(self.preamble_set)
+        # TODO(seberg): The new fusion code injects this if needed, we should
+        # refactor the old one also to do this (or deprecate it?)
+        res += '#include "cupy/float16.cuh"\n'
         res += '\n'.join([_.code() for _ in self.submodules.values()])
         return res
 
@@ -760,10 +761,10 @@ class _FusionHistory(object):
                                      for s, t in zip(out_cvars, out_params))
 
             submodule_code += self._emit_premap_code(in_params, operation)
-            use_cub = ACCELERATOR_CUB in _accelerator._reduction_accelerators
-            if not use_cub:
-                submodule_code += 'typedef {} type_in0_raw;\n'.format(
-                    postmap_ctype)
+            # Always define `type_in0_raw` for non-CUB reductions paths
+            # as we do not know if CUB is used or not for sure.
+            submodule_code += 'typedef {} type_in0_raw;\n'.format(
+                postmap_ctype)
             submodule_code += 'typedef {} type_out0_raw;\n'.format(
                 postmap_ctype)
             submodule_code += self._emit_postmap_cast_code(
@@ -928,8 +929,11 @@ def _call_reduction(fusion_op, *args, **kwargs):
         raise TypeError(mes.format(fusion_op._ops.name, len(args)))
 
     arg = args[0]
-    kwargs = dict([(key, value) for key, value in kwargs.items()
-                   if (key in ('axis', 'out') and value is not None)])
+    kwargs = {
+        key: value
+        for key, value in kwargs.items()
+        if (key in ('axis', 'out') and value is not None)
+    }
 
     if arg._is_postmap:
         # Multiple reduction

@@ -406,7 +406,9 @@ class DistributedArray(ndarray):
                 np_array[idx] = cupy.asnumpy(chunk.array)
             else:
                 self._mode.numpy_func(
-                    np_array[idx], cupy.asnumpy(chunk.array), np_array[idx])
+                    np_array[idx],
+                    cupy.asnumpy(chunk.array),
+                    out=np_array[idx])
 
         # Undo numpy.atleast_1d
         return np_array.reshape(self.shape)
@@ -558,6 +560,11 @@ class DistributedArray(ndarray):
         """Not supported."""
         raise NotImplementedError(
             'DistributedArray currently does not support mean.')
+
+    def mdspan(self, *args, **kwargs):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support mdspan.')
 
     def min(self, axis=None, out=None, keepdims=False):
         """Return the minimum along a given axis.
@@ -749,6 +756,12 @@ class DistributedArray(ndarray):
         """Not supported."""
         raise NotImplementedError(
             'DistributedArray currently does not support T.')
+
+    @property
+    def mT(self):
+        """Not supported."""
+        raise NotImplementedError(
+            'DistributedArray currently does not support mT.')
 
     @property
     def base(self):

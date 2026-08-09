@@ -158,7 +158,7 @@ class TestBinaryErosionAndDilation1d:
         'output': [None, numpy.float32, numpy.int8]}
     )
 ))
-@testing.with_requires('scipy>=1.1.0')
+@testing.with_requires('scipy')
 class TestBinaryOpeningAndClosing:
     def _filter(self, xp, scp, x):
         filter = getattr(scp.ndimage, self.filter)
@@ -202,7 +202,7 @@ class TestBinaryOpeningAndClosing:
                    'binary_closing']}
     ))
 )
-@testing.with_requires('scipy>=1.1.0')
+@testing.with_requires('scipy')
 class TestBinaryMorphologyTupleFootprint:
     def _filter(self, x, structure):
         filter = getattr(cupyx.scipy.ndimage, self.filter)
@@ -489,13 +489,31 @@ class TestBinaryErosionAndDilation:
                       output=self.output, border_value=self.border_value,
                       origin=self.origin, brute_force=True)
 
+    @pytest.mark.parametrize(
+        "contiguity",
+        ['C', 'F', 'none'],
+    )
     @testing.numpy_cupy_array_equal(scipy_name='scp')
-    def test_binary_erosion_and_dilation(self, xp, scp):
+    def test_contiguity(self, xp, scp, contiguity):
         if self.x_dtype == self.output:
             pytest.skip('redundant')
         rstate = numpy.random.RandomState(5)
         x = rstate.randn(*self.shape) > self.density
         x = xp.asarray(x, dtype=self.x_dtype)
+        if contiguity == 'F':
+            x = xp.asfortranarray(x)
+        elif contiguity == 'none':
+            x = x[::-1]
+        return self._filter(xp, scp, x)
+
+    # SciPy bug prior to 1.16: https://github.com/scipy/scipy/pull/22421
+    @testing.with_requires('scipy>=1.16.0')
+    @testing.numpy_cupy_array_equal(scipy_name='scp')
+    def test_zero_strides(self, xp, scp):
+        if self.x_dtype == self.output:
+            pytest.skip('redundant')
+        x = xp.ones((1, ), dtype=self.x_dtype)
+        x = xp.broadcast_to(x, self.shape)
         return self._filter(xp, scp, x)
 
 
@@ -533,16 +551,18 @@ class TestBinaryMorphologyAxes:
                 structure = scp.ndimage.generate_binary_structure(
                     len(self.axes), self.connectivity)
         if len(self.origin) > len(self.axes):
-            self.origin = [self.origin[ax] for ax in self.axes]
+            origin = [self.origin[ax] for ax in self.axes]
+        else:
+            origin = self.origin
 
         if self.filter not in ["binary_hit_or_miss", "binary_fill_holes"]:
             kwargs["border_value"] = self.border_value
 
         if self.filter == "binary_hit_or_miss":
-            kwargs["origin1"] = self.origin
-            kwargs["origin2"] = self.origin
+            kwargs["origin1"] = origin
+            kwargs["origin2"] = origin
         else:
-            kwargs["origin"] = self.origin
+            kwargs["origin"] = origin
         return filter(x, structure, axes=self.axes, **kwargs)
 
     @testing.numpy_cupy_array_equal(scipy_name='scp')

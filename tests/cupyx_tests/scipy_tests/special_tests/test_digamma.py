@@ -7,7 +7,7 @@ import cupyx.scipy.special  # NOQA
 import numpy
 
 
-@testing.with_requires("scipy>=1.14")
+@testing.with_requires("scipy")
 class TestDigamma(unittest.TestCase):
 
     @testing.for_all_dtypes()
@@ -43,7 +43,7 @@ class TestDigamma(unittest.TestCase):
 
         return scp.special.digamma(dtype(1.5))
 
-    @testing.with_requires('scipy>=1.1.0')
+    @testing.with_requires('scipy')
     @testing.for_dtypes("efdFD")
     @testing.numpy_cupy_allclose(atol=1e-13, rtol=1e-10, scipy_name='scp')
     def test_inf_and_nan(self, xp, scp, dtype):

@@ -14,6 +14,7 @@ from cupy._core._ufuncs import elementwise_copy
 from cupy._core cimport _accelerator
 from cupy._core cimport _routines_math as _math
 from cupy._core.core cimport _ndarray_base
+from cupy._util import bf16_loop
 
 from cupy.cuda import cub
 
@@ -129,13 +130,16 @@ cdef _ndarray_base _ndarray_mean(
     cdef Py_ssize_t n
 
     dtype_sum = dtype_out = dtype
-    if dtype is None:
+    if dtype is None and self.dtype.char not in "dD":
         if self.dtype.kind in 'iub':
             dtype_out = numpy.float64
             dtype_sum = numpy.float64
         elif self.dtype.char == 'e':
             dtype_sum = numpy.float32
             dtype_out = numpy.float16
+        elif self.dtype.name == "bfloat16":
+            dtype_sum = numpy.float32
+            dtype_out = self.dtype
     elif numpy.dtype(dtype).kind in 'iub':
         # output will be the requested type, but compute the mean using float
         dtype_out = dtype
@@ -277,6 +281,7 @@ cdef _amin = create_reduction_func(
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q',
      ('e->e', (None, 'my_min_float(a, b)', None, None)),
+     *bf16_loop(code=(None, 'my_min_float(a, b)', None, None)),
      ('f->f', (None, 'my_min_float(a, b)', None, None)),
      ('d->d', (None, 'my_min_float(a, b)', None, None)),
      ('F->F', (None, 'my_min_float(a, b)', None, None)),
@@ -291,6 +296,7 @@ cdef _amax = create_reduction_func(
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q',
      ('e->e', (None, 'my_max_float(a, b)', None, None)),
+     *bf16_loop(code=(None, 'my_max_float(a, b)', None, None)),
      ('f->f', (None, 'my_max_float(a, b)', None, None)),
      ('d->d', (None, 'my_max_float(a, b)', None, None)),
      ('F->F', (None, 'my_max_float(a, b)', None, None)),
@@ -304,7 +310,7 @@ cdef _amax = create_reduction_func(
 nanmin = create_reduction_func(
     'cupy_nanmin',
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
-     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
+     'q->q', 'Q->Q', 'e->e', *bf16_loop(), 'f->f', 'd->d', 'F->F', 'D->D'),
     ('min_max_st<type_in0_raw>(in0)', 'my_min(a, b)', 'out0 = a.value',
      'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
@@ -313,7 +319,7 @@ nanmin = create_reduction_func(
 nanmax = create_reduction_func(
     'cupy_nanmax',
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
-     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
+     'q->q', 'Q->Q', 'e->e', *bf16_loop(), 'f->f', 'd->d', 'F->F', 'D->D'),
     ('min_max_st<type_in0_raw>(in0)', 'my_max(a, b)', 'out0 = a.value',
      'min_max_st<type_in0_raw>'),
     None, _min_max_preamble)
@@ -642,6 +648,7 @@ cdef _mean_core = create_reduction_func(
     'cupy_mean',
     ('?->d', 'B->d', 'h->d', 'H->d', 'i->d', 'I->d', 'l->d', 'L->d',
      'q->d', 'Q->d',
+     *bf16_loop(code=(None, None, None, 'float')),
      ('e->e', (None, None, None, 'float')),
      'f->f', 'd->d', 'F->F', 'D->D'),
     ('in0', 'a + b',
@@ -651,6 +658,7 @@ cdef _mean_core_empty = create_reduction_func(
     'cupy_mean_empty',
     ('?->d', 'B->d', 'h->d', 'H->d', 'i->d', 'I->d', 'l->d', 'L->d',
      'q->d', 'Q->d',
+     *bf16_loop(code=(None, None, None, 'float')),
      ('e->e', (None, None, None, 'float')),
      'f->f', 'd->d', 'F->F', 'D->D'),
     ('in0', 'a + b',
@@ -678,7 +686,9 @@ __device__ nanmean_st<T> my_nanmean(
 
 cdef _nanmean_func = create_reduction_func(
     'cupy_nanmean',
-    ('e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
+    ('e->e',
+     *bf16_loop(code=(None, None, None, 'float')),
+     'f->f', 'd->d', 'F->F', 'D->D'),
     ('in0', 'my_nanmean(a, b)',
      'out0 = a.value / type_out0_raw(a.count)', 'nanmean_st<type_out0_raw>'),
     None, _nanmean_preamble)
@@ -686,7 +696,7 @@ cdef _nanmean_func = create_reduction_func(
 
 _count_non_nan = create_reduction_func(
     'cupy_count_non_nan',
-    ('e->q', 'f->q', 'd->q', 'F->q', 'D->q'),
+    ('e->q', *bf16_loop(1, "q"), 'f->q', 'd->q', 'F->q', 'D->q'),
     ('isnan(in0) ? 0 : 1', 'a + b', 'out0 = a', None), 0)
 
 

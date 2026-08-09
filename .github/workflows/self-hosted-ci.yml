@@ -18,8 +18,9 @@ jobs:
           ( github.event_name == 'issue_comment' && github.event.issue.pull_request ) ||
           github.event_name == 'pull_request_review_comment'
         ) && (
+          github.event.comment.author_association == 'OWNER' ||
           github.event.comment.author_association == 'MEMBER' ||
-          github.event.comment.author_association == 'OWNER'
+          contains('|gpinkert|', github.event.comment.user.login)
         ) && (
           contains(github.event.comment.body, '/test ')
         )
@@ -92,7 +93,7 @@ jobs:
         token: ${{ steps.generate-token.outputs.token }}
         client-payload: |
           {
-            "targets": ["rocm-7-0"],
+            "targets": ["rocm-7-14"],
             "head_sha": "${{ needs.pre-dispatch.outputs.head_sha }}",
             "merge_commit_sha": "${{ needs.pre-dispatch.outputs.merge_commit_sha }}",
             "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",

@@ -93,6 +93,12 @@ class FilterTestCaseBase:
         args = [getattr(self, param)
                 for param in FilterTestCaseBase.ARGS_PARAMS
                 if hasattr(self, param)]
+
+        # Some tests use a different "function" for NumPy vs. CuPy.
+        if hasattr(self, "func_or_kernel"):
+            assert not hasattr(self, "function")
+            args.append(self.get_func_or_kernel(xp))
+
         if wghts is not None:
             args.append(wghts)
 
@@ -110,8 +116,10 @@ class FilterTestCaseBase:
         #
         # Many specialized filters have no weights and this returns None.
 
+        axes = getattr(self, "axes", None)
+
         if self.filter in ('convolve', 'correlate'):
-            if getattr(self, "axes", None) is None:
+            if axes is None:
                 # keep 0 values as-is, retain only first _ndim non-zero values
                 # (necessary for intended test from )
                 kshape = []
@@ -123,9 +131,9 @@ class FilterTestCaseBase:
                         num_non_zero += 1
                 kshape = tuple(kshape)
             else:
-                if numpy.isscalar(self.axes):
-                    self.axes = (self.axes,)
-                kshape = [self._kshape[ax] for ax in self.axes]
+                if numpy.isscalar(axes):
+                    axes = (axes,)
+                kshape = [self._kshape[ax] for ax in axes]
             return testing.shaped_random(kshape, xp, self._dtype)
 
         if self.filter in ('convolve1d', 'correlate1d'):
@@ -134,37 +142,35 @@ class FilterTestCaseBase:
         if self.filter in ('minimum_filter', 'maximum_filter', 'median_filter',
                            'rank_filter', 'percentile_filter'):
 
-            if getattr(self, "axes", None) is None:
+            if axes is None:
                 num_axes = len(self.shape)
             else:
-                if numpy.isscalar(self.axes):
-                    self.axes = (self.axes,)
-                num_axes = len(self.axes)
+                if numpy.isscalar(axes):
+                    axes = (axes,)
+                num_axes = len(axes)
             if not self.footprint:
-                if isinstance(self.ksize, tuple):
-                    self.ksize = self.ksize[:num_axes]
-                return self.ksize
+                ksize = self.ksize
+                if isinstance(ksize, tuple):
+                    ksize = ksize[:num_axes]
+                return ksize
             # generate footprint with same number of dimensions as axes
-            if getattr(self, "axes", None) is None:
+            if axes is None:
                 kshape = self._kshape[:self._ndim]
             else:
-                kshape = [self._kshape[ax] for ax in self.axes]
+                kshape = [self._kshape[ax] for ax in axes]
             footprint = testing.shaped_random(kshape, xp, scale=1) > 0.5
             if not footprint.any():
                 footprint = xp.ones(kshape)
-            if not isinstance(self.mode, str):
-                # need single mode, not sequence if footprint is non-separable
-                self.mode = self.mode[0]
             return None, footprint
 
         if self.filter in ('generic_filter',):
             if not self.footprint:
                 return self.ksize
             # generate footprint with same number of dimensions as axes
-            if getattr(self, "axes", None) is None:
+            if axes is None:
                 kshape = self._kshape[:self._ndim]
             else:
-                kshape = [self._kshape[ax] for ax in self.axes]
+                kshape = [self._kshape[ax] for ax in axes]
             footprint = testing.shaped_random(kshape, xp, scale=1) > 0.5
             if not footprint.any():
                 footprint = xp.ones(kshape)
@@ -438,7 +444,7 @@ class TestFilterFast(FilterTestCaseBase):
         })
     )
 ))
-@testing.with_requires('scipy>=1.11')
+@testing.with_requires('scipy')
 class TestFilterFastAxes(FilterTestCaseBase):
 
     def _hip_skip_invalid_condition(self):
@@ -566,7 +572,7 @@ class TestFilterFastAxesSciPy15(FilterTestCaseBase):
 class TestFilterComplexFast(FilterTestCaseBase):
 
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
-    @testing.with_requires('scipy>=1.6.0')
+    @testing.with_requires('scipy')
     def test_filter(self, xp, scp):
         return self._filter(xp, scp)
 
@@ -660,9 +666,6 @@ class TestGenericFilter(FilterTestCaseBase):
 
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_filter(self, xp, scp):
-        # Need to deal with the different versions of the functions given to
-        # numpy vs cupy
-        self.function = self.get_func_or_kernel(xp)
         return self._filter(xp, scp)
 
 
@@ -702,9 +705,6 @@ class TestGenericFilterAxes(FilterTestCaseBase):
 
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_filter(self, xp, scp):
-        # Need to deal with the different versions of the functions given to
-        # numpy vs cupy
-        self.function = self.get_func_or_kernel(xp)
         return self._filter(xp, scp)
 
 
@@ -762,13 +762,9 @@ class TestGeneric1DFilter(FilterTestCaseBase):
 
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_filter(self, xp, scp):
-        # Need to deal with the different versions of the functions given to
-        # numpy vs cupy
-        self.function = self.get_func_or_kernel(xp)
         return self._filter(xp, scp)
 
 
-# Tests things requiring scipy >= 1.5.0
 @testing.parameterize(*(
     testing.product_dict(
         # Filter-function specific params
@@ -789,8 +785,7 @@ class TestGeneric1DFilter(FilterTestCaseBase):
         })
     )
 ))
-# SciPy behavior fixed in 1.5.0: https://github.com/scipy/scipy/issues/11661
-@testing.with_requires('scipy>=1.5.0')
+@testing.with_requires('scipy')
 class TestMirrorWithDim1(FilterTestCaseBase):
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_filter(self, xp, scp):
@@ -897,7 +892,7 @@ class TestWeightDtype(FilterTestCaseBase):
         })
     )
 ))
-@testing.with_requires('scipy>=1.5.9')
+@testing.with_requires('scipy')
 class TestWeightComplexDtype(FilterTestCaseBase):
 
     def _skip_noncomplex(self):
@@ -911,12 +906,12 @@ class TestWeightComplexDtype(FilterTestCaseBase):
         return arr, weights
 
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
-    @testing.with_requires('scipy>=1.6.0')
+    @testing.with_requires('scipy')
     def test_filter_complex(self, xp, scp):
         self._skip_noncomplex()
         return self._filter(xp, scp)
 
-    @testing.with_requires('scipy>=1.6.0')
+    @testing.with_requires('scipy')
     def test_filter_complex_output_dtype_error(self):
         # raises RuntimeError if provided a real-valued output array
         self._skip_noncomplex()
@@ -927,7 +922,7 @@ class TestWeightComplexDtype(FilterTestCaseBase):
             with pytest.raises(RuntimeError):
                 func(arr, weights, output=output)
 
-    @testing.with_requires('scipy>=1.6.0')
+    @testing.with_requires('scipy')
     def test_filter_complex_output_dtype_warns(self):
         # warns if a real-valued dtype is specified for the output
         self._skip_noncomplex()
@@ -1046,8 +1041,7 @@ class TestInvalidMode(FilterTestCaseBase):
     'ksize': [3, 4],
     'shape': [(4, 5)], 'dtype': [numpy.float64],
 }))
-# SciPy behavior fixed in 1.2.0: https://github.com/scipy/scipy/issues/822
-@testing.with_requires('scipy>=1.2.0')
+@testing.with_requires('scipy')
 class TestInvalidOrigin(FilterTestCaseBase):
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
                                  accept_error=ValueError)
@@ -1060,3 +1054,52 @@ class TestInvalidOrigin(FilterTestCaseBase):
     def test_invalid_origin_pos(self, xp, scp):
         self.origin = self.ksize - self.ksize // 2
         return self._filter(xp, scp)
+
+
+# ReductionKernel for TestOutputOverlapsInput.test_generic_filter.
+mean_red = cupy.ReductionKernel('X x', 'Y y', 'x',
+                                'a + b', 'y = a / _in_ind.size()', '0',
+                                'mean')
+
+
+@testing.with_requires('scipy')
+class TestOutputOverlapsInput:
+    # Tests that `output` aliasing `input` still produces the filtered
+    # result instead of the unmodified input. See cupy/cupy#8406.
+
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_correlate(self, xp, scp):
+        a = testing.shaped_random((5, 6), xp, numpy.float64)
+        weights = testing.shaped_random((3, 3), xp, numpy.float64, seed=1)
+        return scp.ndimage.correlate(a, weights, output=a)
+
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_minimum_filter(self, xp, scp):
+        a = testing.shaped_random((5, 6), xp, numpy.float64)
+        # A rectangular (all-True) footprint is separable into independent
+        # 1D passes and takes a fast path that bypasses the aliasing guard
+        # entirely, so it wouldn't exercise the bug this test targets. A
+        # non-rectangular footprint forces the non-separable _call_kernel
+        # path instead.
+        footprint = xp.array(
+            [[0, 1, 0], [1, 1, 1], [0, 1, 0]], dtype=bool)
+        return scp.ndimage.minimum_filter(a, footprint=footprint, output=a)
+
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_rank_filter(self, xp, scp):
+        a = testing.shaped_random((5, 6), xp, numpy.int32, scale=100)
+        return scp.ndimage.rank_filter(a, 1, size=[2, 3], output=a)
+
+    def test_generic_filter(self):
+        # SciPy's generic_filter does not protect the Python-callback path
+        # against read-after-write when output aliases input (it processes
+        # cells sequentially with no double-buffering), so its own aliased
+        # output does not equal its own clean (non-aliased) output. CuPy's
+        # aliasing guard means CuPy's aliased result should equal SciPy's
+        # *clean* result instead, so that is what this compares against.
+        a = testing.shaped_random((5, 6), cupy, numpy.float64)
+        actual = cupyx.scipy.ndimage.generic_filter(
+            a, mean_red, size=3, output=a)
+        a_np = testing.shaped_random((5, 6), numpy, numpy.float64)
+        expected = scipy.ndimage.generic_filter(a_np, numpy.mean, size=3)
+        testing.assert_allclose(actual, expected, atol=1e-5, rtol=1e-5)

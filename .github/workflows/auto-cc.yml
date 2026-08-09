@@ -12,7 +12,7 @@ jobs:
         github.repository_owner == 'cupy' &&
         contains('|hip|array-api|', github.event.label.name)
     env:
-      NOTIFY_TARGETS: '{"hip": "@amathews-amd", "array-api": "@asmeurer @leofang"}'
+      NOTIFY_TARGETS: '{"hip": "@gpinkert", "array-api": "@asmeurer @leofang"}'
       ISSUE_NUMBER: ${{ (github.event_name == 'issues' && github.event.issue.number) || github.event.pull_request.number }}
       ISSUE_BODY_TAG: "<!-- Added by Auto Notify Bot (${{ github.event.label.name }}) -->"
     runs-on: ubuntu-22.04

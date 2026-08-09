@@ -1748,7 +1748,7 @@ def hilbert2(x, N=None):
     Xf = sp_fft.fft2(x, N, axes=(0, 1))
     h1 = cupy.zeros(N[0], dtype=Xf.dtype)
     h2 = cupy.zeros(N[1], dtype=Xf.dtype)
-    for h in (h1, h1):
+    for h in (h1, h2):
         N1 = h.shape[0]
         if N1 % 2 == 0:
             h[0] = h[N1 // 2] = 1

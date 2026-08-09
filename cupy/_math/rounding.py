@@ -5,6 +5,7 @@ import warnings
 from cupy import _core
 from cupy._core import fusion
 from cupy._math import ufunc
+from cupy._util import bf16_loop
 
 
 def around(a, decimals=0, out=None):
@@ -64,6 +65,7 @@ def create_rounding_ufunc(name, op, doc):
             "q->q",
             "Q->Q",
             ("e->e", op),
+            *bf16_loop(code=op),
             ("f->f", op),
             ("d->d", op),
         ),

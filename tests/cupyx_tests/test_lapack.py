@@ -7,7 +7,6 @@ import pytest
 
 import cupy
 from cupy import testing
-import cupyx
 from cupyx import cusolver, lapack
 
 
@@ -31,7 +30,7 @@ class TestGesv(unittest.TestCase):
             a = a + 1j * self._make_array(shape, alpha, beta)
         return a
 
-    def setUp(self):
+    def setup(self):
         self.dtype = numpy.dtype(self.dtype)
         n = self.n
         nrhs = 1 if self.nrhs is None else self.nrhs
@@ -47,43 +46,47 @@ class TestGesv(unittest.TestCase):
         if self.nrhs is not None:
             b_shape.append(nrhs)
         b = b.reshape(b_shape)
-        self.a = a
+
         if self.nrhs is None or self.nrhs == 1:
-            self.b = b.copy(order=self.order)
+            b = b.copy(order=self.order)
         else:
-            self.b = b.copy(order='F')
+            b = b.copy(order='F')
         self.x_ref = x.reshape(b_shape)
         self.tol = self._tol[self.dtype.char.lower()]
 
+        return a, b
+
     def test_gesv(self):
-        lapack.gesv(self.a, self.b)
-        cupy.testing.assert_allclose(self.b, self.x_ref,
+        a, b = self.setup()
+        lapack.gesv(a, b)
+        cupy.testing.assert_allclose(b, self.x_ref,
                                      rtol=self.tol, atol=self.tol)
 
     def test_invalid_cases(self):
+        a, b = self.setup()
         if self.nrhs is None or self.nrhs == 1:
             raise unittest.SkipTest()
-        ng_a = self.a.reshape(1, self.n, self.n)
+        ng_a = a.reshape(1, self.n, self.n)
         with pytest.raises(ValueError):
-            lapack.gesv(ng_a, self.b)
-        ng_b = self.b.reshape(1, self.n, self.nrhs)
+            lapack.gesv(ng_a, b)
+        ng_b = b.reshape(1, self.n, self.nrhs)
         with pytest.raises(ValueError):
-            lapack.gesv(self.a, ng_b)
+            lapack.gesv(a, ng_b)
         ng_a = cupy.ones((self.n, self.n+1), dtype=self.dtype)
         with pytest.raises(ValueError):
-            lapack.gesv(ng_a, self.b)
+            lapack.gesv(ng_a, b)
         ng_a = cupy.ones((self.n+1, self.n+1), dtype=self.dtype)
         with pytest.raises(ValueError):
-            lapack.gesv(ng_a, self.b)
-        ng_a = cupy.ones(self.a.shape, dtype='i')
+            lapack.gesv(ng_a, b)
+        ng_a = cupy.ones(a.shape, dtype='i')
         with pytest.raises(TypeError):
-            lapack.gesv(ng_a, self.b)
+            lapack.gesv(ng_a, b)
         ng_a = cupy.ones((2, self.n, self.n), dtype=self.dtype, order='F')[0]
         with pytest.raises(ValueError):
-            lapack.gesv(ng_a, self.b)
-        ng_b = self.b.copy(order='C')
+            lapack.gesv(ng_a, b)
+        ng_b = b.copy(order='C')
         with pytest.raises(ValueError):
-            lapack.gesv(self.a, ng_b)
+            lapack.gesv(a, ng_b)
 
 
 @testing.parameterize(*testing.product({
@@ -129,10 +132,6 @@ class TestPosv(unittest.TestCase):
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(atol=1e-5)
     def test_posv(self, xp, dtype):
-        # TODO: cusolver does not support nrhs > 1 for potrsBatched
-        if len(self.shape) > 2 and self.nrhs and self.nrhs > 1:
-            pytest.skip('cusolver does not support nrhs > 1 for potrsBatched')
-
         a = self._create_posdef_matrix(xp, self.shape, dtype)
         b_shape = list(self.shape[:-1])
         if self.nrhs is not None:
@@ -152,12 +151,13 @@ class TestPosv(unittest.TestCase):
         return a
 
 
-# TODO: cusolver does not support nrhs > 1 for potrsBatched
 @testing.parameterize(*testing.product({
     'shape': [(2, 3, 3)],
-    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
+    'dtype': [numpy.float32, numpy.float64,
+              numpy.complex64, numpy.complex128],
 }))
-class TestXFailBatchedPosv(unittest.TestCase):
+class TestBatchedPosvNrhsGt1(unittest.TestCase):
+    """Batched cupyx.lapack.posv with nrhs > 1."""
 
     def test_posv(self):
         if not cusolver.check_availability('potrsBatched'):
@@ -167,9 +167,69 @@ class TestXFailBatchedPosv(unittest.TestCase):
         identity_matrix = cupy.eye(n, dtype=a.dtype)
         b = cupy.empty(a.shape, a.dtype)
         b[...] = identity_matrix
-        with cupyx.errstate(linalg='ignore'):
-            with pytest.raises(cupy.cuda.cusolver.CUSOLVERError):
-                lapack.posv(a, b)
+        # Solve A @ X = I per batch element; X should be A^-1.
+        x = lapack.posv(a, b)
+        # Verify A @ X == I within tolerance. Use a moderately loose
+        # tolerance because the matrices are small (3x3) and the
+        # condition number, while bounded by the diagonal-shift in
+        # _create_posdef_matrix, is not specifically controlled.
+        reconstructed = a @ x
+        atol = 1e-4 if self.dtype in (numpy.float32,
+                                      numpy.complex64) else 1e-10
+        testing.assert_allclose(reconstructed, b, atol=atol)
+
+    def _create_posdef_matrix(self, xp, shape, dtype):
+        n = shape[-1]
+        a = testing.shaped_random(shape, xp, dtype, scale=1)
+        a = a @ a.swapaxes(-2, -1).conjugate()
+        a = a + n * xp.eye(n)
+        return a
+
+
+@testing.parameterize(*testing.product({
+    'shape': [(3, 4, 2, 2), (5, 3, 3), (7, 7)],
+    'nrhs': [None, 1, 8],
+    'lower': [True, False],
+    'order': ['F', 'C'],
+}))
+class TestPotrs(unittest.TestCase):
+
+    @staticmethod
+    def _solve(a, b):
+        if (
+            numpy.lib.NumpyVersion(numpy.__version__) < "2.0.0"
+            or a.shape[:-1] != b.shape
+        ):
+            return numpy.linalg.solve(a, b)
+        b = b[..., numpy.newaxis]
+        return numpy.linalg.solve(a, b)[..., 0]
+
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(atol=1e-5, contiguous_check=False)
+    def test_potrs(self, xp, dtype):
+
+        if (len(self.shape) > 2 and
+                not cusolver.check_availability('potrsBatched')):
+            pytest.skip('potrsBatched is not available')
+
+        a = self._create_posdef_matrix(xp, self.shape, dtype)
+        b_shape = list(self.shape[:-1])
+        if self.nrhs is not None:
+            b_shape.append(self.nrhs)
+        b = testing.shaped_random(b_shape, xp, dtype=dtype)
+
+        if xp == cupy:
+            L = xp.linalg.cholesky(a)
+            if self.lower:
+                indexes = numpy.triu_indices(L.shape[-1], 1)
+            else:
+                L = xp.moveaxis(L, -1, -2).conj()
+                indexes = numpy.tril_indices(L.shape[-1], -1)
+            L[..., indexes[0], indexes[1]] = numpy.nan
+            L = cupy.asarray(L, order=self.order)
+            return lapack.potrs(L, b, self.lower)
+        else:
+            return self._solve(a, b)
 
     def _create_posdef_matrix(self, xp, shape, dtype):
         n = shape[-1]

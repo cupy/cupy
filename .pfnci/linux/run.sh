@@ -25,6 +25,7 @@ Environment variables:
 - GPU: Number of GPUs available for testing.
 - CACHE_DIR: Path to the local directory to store cache files.
 - CACHE_GCS_DIR: Path to the GCS directory to store a cache archive.
+- CACHE_KERNEL_TO_GCS: Set to 1 to enable GCS bucket based kernel cache.
 - DOCKER_IMAGE: Base name of the Docker image (without a tag).
 - DOCKER_IMAGE_CACHE: Set to 0 to disable using cache when building a docker
                       image.
@@ -148,6 +149,9 @@ main() {
       fi
       if [[ "${CACHE_DIR:-}" != "" ]]; then
         docker_args+=(--volume="${CACHE_DIR}:${CACHE_DIR}" --env "CACHE_DIR=${CACHE_DIR}")
+      fi
+      if [[ "${CACHE_KERNEL_TO_GCS:-0}" == "1" ]]; then
+        docker_args+=(--env "CUPY_CI_ENABLE_GCP_KERNEL_CACHE=1")
       fi
       if [[ "${PULL_REQUEST:-}" != "" ]]; then
         docker_args+=(--env "PULL_REQUEST=${PULL_REQUEST}")
