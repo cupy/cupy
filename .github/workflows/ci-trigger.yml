@@ -143,8 +143,10 @@ jobs:
     if: github.repository_owner == 'cupy' && github.event_name == 'pull_request_target'
     runs-on: ubuntu-latest
     # Deletes the stale ci:triggered label via GITHUB_TOKEN; no checkout.
+    # Labels on a PR require pull-requests:write (issues:write only covers
+    # labels on issues), else DELETE .../issues/<pr>/labels/... returns 403.
     permissions:
-      issues: write
+      pull-requests: write
     concurrency:
       group: ci-build-${{ github.event.pull_request.number }}
       cancel-in-progress: true
