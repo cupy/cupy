@@ -144,6 +144,7 @@ cdef str demangle_cxx_name(
 # Matches CuPy's bundled Thrust internal namespace on the complex type,
 # e.g. "thrust::THRUST_300102_SM_890_NS::complex" or "thrust::complex".
 cdef object _thrust_complex_re = re.compile(r'thrust::(?:\w+::)?complex\b')
+cdef object _template_comma_re = re.compile(r'\s*,\s*')
 
 
 cdef inline str normalize_name_expr(str demangled):
@@ -161,7 +162,8 @@ cdef inline str normalize_name_expr(str demangled):
          (and any template arguments).
       3. Replace ``thrust::*::complex`` with ``complex`` (CuPy's bundled
          Thrust namespace).
-      4. Collapse whitespace before ``>`` so ``<double >`` becomes
+      4. Remove whitespace around commas between template arguments.
+      5. Collapse whitespace before ``>`` so ``<double >`` becomes
          ``<double>``.
 
     Args:
@@ -189,6 +191,7 @@ cdef inline str normalize_name_expr(str demangled):
             break
 
     s = _thrust_complex_re.sub('complex', s)
+    s = _template_comma_re.sub(',', s)
     s = s.replace(' >', '>')
 
     return s

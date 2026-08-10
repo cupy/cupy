@@ -951,6 +951,38 @@ class TestRaw:
             # check results
             assert cupy.allclose(in_arr, out_arr)
 
+    @pytest.mark.thread_unsafe(reason="clears the global memoization cache")
+    def test_multiparameter_template_disk_cache(
+            self, backend, in_memory, clean_up, jitify):
+        if backend != 'nvrtc' or in_memory or clean_up or jitify:
+            pytest.skip('only test the NVRTC disk cache without Jitify')
+        if not compiler._is_function_enum_supported():
+            pytest.skip('requires CUDA driver 12.4 or later')
+
+        code = r'''
+        template<typename Tv, typename Tp>
+        __global__ void kernel() { return; }
+        '''
+        name_expressions = ('kernel<float,float>',)
+
+        try:
+            mod = cupy.RawModule(
+                code=code, name_expressions=name_expressions)
+            mod.compile()
+            _util.clear_memo()
+
+            compile_kernel = compiler._compile_using_nvrtc_no_warning
+            with mock.patch.object(
+                    compiler, '_compile_using_nvrtc_no_warning',
+                    wraps=compile_kernel) as compile_mock:
+                cached_mod = cupy.RawModule(
+                    code=code, name_expressions=name_expressions)
+                cached_mod.compile()
+
+            assert compile_mock.call_count == 0
+        finally:
+            _util.clear_memo()
+
     def test_template_failure(self, backend, jitify):
         name_expressions = ['my_sqrt<int>']
 
