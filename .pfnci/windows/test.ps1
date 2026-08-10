@@ -144,8 +144,10 @@ function Main {
 
         # The artifact name is unique per (PR, commit, platform, Python), so
         # query it directly -- each match carries its producing run id, which is
-        # our Run ID (no run enumeration). gh failure is fatal.
-        $rows = (& gh api --paginate "repos/cupy/cupy/actions/artifacts?name=${expected_name}&per_page=100" --jq '.artifacts[] | select(.expired == false) | "\(.workflow_run.head_sha) \(.id) \(.workflow_run.id)"')
+        # our Run ID (no run enumeration). gh failure is fatal. Emit @tsv, not a
+        # "\(...)" jq format string: its embedded double-quotes get mangled by
+        # PowerShell when building gh.exe's command line (gh then sees stray args).
+        $rows = (& gh api --paginate "repos/cupy/cupy/actions/artifacts?name=${expected_name}&per_page=100" --jq '.artifacts[] | select(.expired == false) | [.workflow_run.head_sha, .id, .workflow_run.id] | @tsv')
         if ($LASTEXITCODE -ne 0) { throw "Failed to query wheel artifacts for ${sha}" }
         foreach ($row in $rows) {
             $parts = "$row".Trim() -split '\s+'
@@ -155,7 +157,7 @@ function Main {
             # Producer pin: confirm the producing run is a successful ci.yml run
             # for the expected event (the name is a free string any run could
             # pick); this also resolves the Run ID with no guessing.
-            $meta = (& gh api "repos/cupy/cupy/actions/runs/${cand_run}" --jq '"\(.path) \(.event) \(.conclusion)"')
+            $meta = (& gh api "repos/cupy/cupy/actions/runs/${cand_run}" --jq '[.path, .event, .conclusion] | @tsv')
             if ($LASTEXITCODE -ne 0) { throw "Failed to query producing run ${cand_run}" }
             $m = "$meta".Trim() -split '\s+'
             if ($m[0] -eq ".github/workflows/ci.yml" -and $m[1] -eq $event -and $m[2] -eq "success") {
