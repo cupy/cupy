@@ -21,6 +21,7 @@
   mpi4py: null
   cython: "3.2"
   cuda-python: null
+  nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
@@ -51,6 +52,7 @@
   mpi4py: null
   cython: "3.2"
   cuda-python: null
+  nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
@@ -81,6 +83,7 @@
   mpi4py: null
   cython: "3.2"
   cuda-python: null
+  nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
@@ -111,6 +114,7 @@
   mpi4py: null
   cython: "3.2"
   cuda-python: null
+  nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
@@ -141,6 +145,7 @@
   mpi4py: null
   cython: "3.2"
   cuda-python: null
+  nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
@@ -171,6 +176,7 @@
   mpi4py: null
   cython: "3.2"
   cuda-python: null
+  nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
@@ -201,6 +207,7 @@
   mpi4py: null
   cython: "3.2"
   cuda-python: null
+  nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
@@ -231,6 +238,7 @@
   mpi4py: null
   cython: "3.2"
   cuda-python: null
+  nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
@@ -261,6 +269,7 @@
   mpi4py: null
   cython: "3.2"
   cuda-python: null
+  nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
@@ -291,6 +300,7 @@
   mpi4py: null
   cython: "3.2"
   cuda-python: null
+  nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
@@ -314,13 +324,14 @@
   cutensor: "2.4"
   cusparselt: "0.9.1"
   python: "3.14"
-  numpy: "2.3"
-  scipy: "1.16"
+  numpy: "2.4"
+  scipy: "1.17"
   optuna: "4"
   ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.2"
   cuda-python: null
+  nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
@@ -352,6 +363,7 @@
   mpi4py: null
   cython: "3.2"
   cuda-python: null
+  nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
@@ -387,17 +399,17 @@
 # ROCm (Linux)
 ###############################################################################
 
-# ROCm 7.1 | Linux
+# ROCm 7.14 | Linux
 # The lowest ROCm version matrix is intended to cover the lowest supported combination.
 # The latest ROCm version matrix is intended to cover the highest supported combination.
-- project: "cupy.linux.rocm-7-1"
-  _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_main/TEST=rocm-7-1,label=mnj-mi50/"
+- project: "cupy.linux.rocm-7-14"
+  _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_main/TEST=rocm-7-14,label=mnj-mi50/"
   tags: null  # self-hosted
-  target: "rocm-7-1"
+  target: "rocm-7-14"
   system: "linux"
   os: "ubuntu:22.04"
   cuda: null
-  rocm: '7.1'
+  rocm: '7.14'
   nccl: null
   cutensor: null
   cusparselt: null
@@ -410,6 +422,7 @@
   mpi4py: null
   cython: "3.2"
   cuda-python: null
+  nvmath-python: null
   env:CUPY_ACCELERATORS: null
   test: "unit"
 
@@ -436,6 +449,7 @@
   mpi4py: null
   cython: "3.2"
   cuda-python: null
+  nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit-slow"
 
@@ -466,6 +480,7 @@
   mpi4py: null
   cython: "3.2"
   cuda-python: null
+  nvmath-python: null
   env:CUPY_ACCELERATORS: ""
   test: "example"
 
@@ -496,6 +511,7 @@
   mpi4py: null
   cython: "3.2"
   cuda-python: null
+  nvmath-python: null
   env:CUPY_ACCELERATORS: "cub,cutensor"
   test: "unit"
 
@@ -526,6 +542,31 @@
   ml_dtypes: null
   cython: "3.2"
   cuda-python: "12"
+  nvmath-python: "1"
+  env:CUPY_ACCELERATORS: "cutensor,cub"
+  env:CUPY_USE_CUDA_PYTHON: "1"
+  test: "unit"
+
+# CUDA 13.x / CUDA Python | Linux
+- project: "cupy.linux.cuda13x-cuda-python"
+  target: "cuda13x-cuda-python"
+  tags: ["@push", "full", "mini", "linux", "cuda-python"]
+  system: "linux"
+  os: "ubuntu:22.04"
+  cuda: "13.2"
+  rocm: null
+  nccl: "2.29"
+  cutensor: "2.4"
+  cusparselt: null
+  python: "3.14"
+  numpy: "2.4"
+  scipy: "1.16"
+  optuna: "4"
+  mpi4py: null
+  ml_dtypes: null
+  cython: "3.2"
+  cuda-python: "13.2"
+  nvmath-python: "1"
   env:CUPY_ACCELERATORS: "cutensor,cub"
   env:CUPY_USE_CUDA_PYTHON: "1"
   test: "unit"

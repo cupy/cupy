@@ -1,7 +1,11 @@
 # AUTO GENERATED: DO NOT EDIT!
-ARG BASE_IMAGE="nvidia/cuda:12.4.1-devel-ubuntu20.04"
+ARG BASE_IMAGE="rocm/dev-ubuntu-22.04:7.14.0-full"
 FROM ${BASE_IMAGE}
 
+RUN export DEBIAN_FRONTEND=noninteractive && \
+    ( apt-get -qqy update || true ) && \
+    apt-get -qqy install ca-certificates gnupg && \
+    curl -qL https://repo.radeon.com/rocm/rocm.gpg.key | apt-key add -
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get -qqy update && \
     apt-get -qqy install \
@@ -10,30 +14,32 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
        curl llvm libncursesw5-dev xz-utils tk-dev \
        libxml2-dev libxmlsec1-dev libffi-dev \
        liblzma-dev \
-       libopenmpi-dev \
+\
        && \
     apt-get -qqy install ccache git curl && \
     apt-get -qqy --allow-change-held-packages \
-            --allow-downgrades install 'libnccl2=2.20.*+cuda12.4' 'libnccl-dev=2.20.*+cuda12.4' 'libcutensor2-cuda-12=2.4.*' 'libcutensor2-dev-cuda-12=2.4.*'
+            --allow-downgrades install 
 
 ENV PATH "/usr/lib/ccache:${PATH}"
 
 RUN curl -fsSL https://github.com/cli/cli/releases/download/v2.95.0/gh_2.95.0_linux_amd64.tar.gz \
         | tar -xz -C /usr/local --strip-components=1 gh_2.95.0_linux_amd64/bin/gh
 
-ENV CUPY_INCLUDE_PATH=/usr/include/libcutensor/12:${CUPY_INCLUDE_PATH}
-ENV CUPY_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/libcutensor/12:${CUPY_LIBRARY_PATH}
-ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/libcutensor/12:${LD_LIBRARY_PATH}
+ENV ROCM_HOME "/opt/rocm"
+ENV LD_LIBRARY_PATH "${ROCM_HOME}/lib"
+ENV CPATH "${ROCM_HOME}/include"
+ENV LDFLAGS "-L${ROCM_HOME}/lib"
+
 RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
-RUN pyenv install 3.12.11 && \
-    pyenv global 3.12.11 && \
+RUN pyenv install 3.11.13 && \
+    pyenv global 3.11.13 && \
     pip install -U setuptools pip wheel && \
     pip install -U google-cloud-storage
 
-RUN pip install -U 'numpy==2.2.*' 'scipy==1.16.*' 'optuna==3.*' 'mpi4py==4.*' 'cython==3.2.*,!=3.2.6'
-RUN pip uninstall -y ml_dtypes cuda-python nvmath-python && \
+RUN pip install -U 'numpy==2.3.*' 'scipy==1.16.*' 'optuna==3.*' 'ml_dtypes==0.5.*' 'cython==3.2.*,!=3.2.6'
+RUN pip uninstall -y mpi4py cuda-python nvmath-python && \
     pip check
 
 RUN mkdir /home/cupy-user && chmod 777 /home/cupy-user
