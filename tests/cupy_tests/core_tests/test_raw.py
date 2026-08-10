@@ -1312,6 +1312,39 @@ class TestRawNameExpressionCache:
             mod.get_function(name_expression)
             assert backend.saves == saves_after_first
 
+    @pytest.mark.thread_unsafe(reason="mutates global cache directory")
+    def test_bare_cubin_entry_is_not_loaded_as_payload(self):
+        name = 'multi_param<float, double>'
+        with _counting_cache_dir() as backend:
+            mod = cupy.RawModule(code=_test_name_expr_cache,
+                                 name_expressions=[name],
+                                 options=('-std=c++17',))
+            mod.get_function(name)
+            saves_after_first = backend.saves
+
+            # rewrite the entry the way a CuPy predating this payload format
+            # would have: the bare cubin, with no mangled names in front
+            entries = [f for f in os.listdir(backend._cache_dir)
+                       if f.endswith('.cubin')]
+            assert len(entries) == 1
+            path = os.path.join(backend._cache_dir, entries[0])
+            with open(path, 'rb') as f:
+                stored = f.read()
+            _, cubin = compiler._decode_cache_payload(
+                stored[_compiler_cache._hash_length:], 1)
+            with open(path, 'wb') as f:
+                f.write(
+                    _compiler_cache._hash_hexdigest(cubin).encode('ascii')
+                    + cubin)
+
+            _util.clear_memo()
+            mod = cupy.RawModule(code=_test_name_expr_cache,
+                                 name_expressions=[name],
+                                 options=('-std=c++17',))
+            # must recompile rather than hand the bare cubin to the decoder
+            mod.get_function(name)
+            assert backend.saves == saves_after_first + 1
+
 
 @pytest.mark.parametrize("n", [10, 100, 1000])
 @pytest.mark.parametrize("block", [64, 256])

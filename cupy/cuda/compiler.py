@@ -542,11 +542,27 @@ def _preprocess(source, options, arch, backend):
 _empty_file_preprocess_cache: dict = {}
 
 
-# Cache entries for modules built with ``name_expressions`` carry the
-# mangled names NVRTC produced, ahead of the cubin.  The leading byte is
-# deliberately non-ASCII so the header can never be mistaken for a cubin
+# Cache entries for modules built with ``name_expressions`` store the mangled
+# names NVRTC produced ahead of the cubin.  Layout, little-endian::
+#
+#     magic   8 bytes    _cache_payload_magic
+#     count   uint32     number of mangled names
+#     names   count x (uint32 byte length + UTF-8 bytes)
+#     cubin   remainder of the payload
+#
+# The names are ordered by ``sorted(name_expressions)``, which is the order
+# the cache key is built from, so the association itself is not stored.  The
+# leading byte is non-ASCII so the header cannot be mistaken for a cubin
 # (ELF, ``\x7fELF``) or for PTX, which is stored as text.
+#
+# _cache_payload_version goes into the cache key, which keeps these entries
+# in a keyspace of their own.  That matters because CUPY_CACHE_KEY is only a
+# checksum of the bundled headers and so does not separate CuPy versions:
+# without the tag, a CuPy that predates this format could find a payload
+# where it expects a bare cubin and fail with CUDA_ERROR_INVALID_IMAGE.
+# Bump it whenever the layout above changes.
 _cache_payload_magic = b'\x93CUPYNE\x00'
+_cache_payload_version = 1
 
 
 def _encode_cache_payload(mangled_names: list, cubin: bytes) -> bytes:
@@ -685,8 +701,11 @@ def _compile_with_cache_cuda(
         # Include name_expressions in the cache key so different template
         # instantiations get separate cache entries.  The separator is NUL
         # rather than a comma because name expressions contain commas
-        # themselves, e.g. "kernel<float, double>".
-        key_src += ' ' + '\0'.join(sorted(name_expressions))
+        # themselves, e.g. "kernel<float, double>".  The version tag keeps
+        # these entries disjoint from those of a CuPy that stores a bare
+        # cubin here; see _cache_payload_version.
+        key_src += ' ne%d ' % _cache_payload_version
+        key_src += '\0'.join(sorted(name_expressions))
     key_src = key_src.encode('utf-8')
     # In the case of generating LTO IRs, we pass them around as chunks of
     # bytes, so the filename extension is arbitrary
