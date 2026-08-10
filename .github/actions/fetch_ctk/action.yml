@@ -1,0 +1,176 @@
+name: Fetch mini CTK
+
+description: Fetch (or create) a mini CUDA Toolkit from cache
+
+inputs:
+  host-platform:
+    required: true
+  cuda-version:
+    required: true
+  cuda-components:
+    description: "A list of the CTK components to install as a comma-separated list. e.g. 'cuda_nvcc,cuda_nvrtc,cuda_cudart'"
+    required: false
+    default: "cuda_nvcc,cuda_cudart,cuda_crt,libnvvm,cuda_nvrtc,cuda_profiler_api,cuda_cccl,cuda_cupti,libnvjitlink,libcufile,libnvfatbin,libcudla"
+  cuda-path:
+    description: "where the CTK components will be installed to, relative to $PWD"
+    required: false
+    default: "./cuda_toolkit"
+
+runs:
+  using: composite
+  steps:
+    - name: Set up CTK cache variable
+      shell: bash --noprofile --norc -xeuo pipefail {0}
+      run: |
+        # Pre-process the component list to ensure hash uniqueness
+        # Use the runtime workspace mount so this also works inside container jobs.
+        CTK_REDIST_TOOL="${GITHUB_WORKSPACE}/ci/tools/fetch_ctk_redistrib.py"
+        CTK_CACHE_COMPONENTS=${{ inputs.cuda-components }}
+        CTK_JSON_URL="https://developer.download.nvidia.com/compute/cuda/redist/redistrib_${{ inputs.cuda-version }}.json"
+        CTK_CACHE_COMPONENTS="$(python "$CTK_REDIST_TOOL" filter-components \
+          --host-platform "${{ inputs.host-platform }}" \
+          --cuda-version "${{ inputs.cuda-version }}" \
+          --components "$CTK_CACHE_COMPONENTS" \
+          --metadata-url "$CTK_JSON_URL")"
+
+        HASH=$(echo -n "${CTK_CACHE_COMPONENTS}" | sha256sum | awk '{print $1}')
+        echo "CTK_CACHE_KEY=mini-ctk-${{ inputs.cuda-version }}-${{ inputs.host-platform }}-$HASH" >> $GITHUB_ENV
+        echo "CTK_CACHE_FILENAME=mini-ctk-${{ inputs.cuda-version }}-${{ inputs.host-platform }}-$HASH.tar.gz" >> $GITHUB_ENV
+        echo "CTK_CACHE_COMPONENTS=${CTK_CACHE_COMPONENTS}" >> $GITHUB_ENV
+
+    - name: Install dependencies
+      uses: ./.github/actions/install_unix_deps
+      continue-on-error: false
+      with:
+        dependencies: "zstd curl xz-utils"
+        dependent_exes: "zstd curl xz"
+
+    - name: Download CTK cache
+      id: ctk-get-cache
+      uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7  # v5.0.4
+      continue-on-error: true
+      with:
+        key: ${{ env.CTK_CACHE_KEY }}
+        path: ./${{ env.CTK_CACHE_FILENAME }}
+        fail-on-cache-miss: false
+
+    - name: Get CUDA components
+      if: ${{ steps.ctk-get-cache.outputs.cache-hit != 'true' }}
+      shell: bash --noprofile --norc -xeuo pipefail {0}
+      run: |
+        # Everything under this folder is packed and stored in the GitHub Cache space,
+        # and unpacked after retrieving from the cache.
+        CACHE_TMP_DIR="./cache_tmp_dir"
+        rm -rf $CACHE_TMP_DIR
+        mkdir $CACHE_TMP_DIR
+
+        # The binary archives (redist) are guaranteed to be updated as part of the release posting.
+        # Use the runtime workspace mount so this also works inside container jobs.
+        CTK_REDIST_TOOL="${GITHUB_WORKSPACE}/ci/tools/fetch_ctk_redistrib.py"
+        CTK_BASE_URL="https://developer.download.nvidia.com/compute/cuda/redist/"
+        CTK_JSON_URL="$CTK_BASE_URL/redistrib_${{ inputs.cuda-version }}.json"
+        CTK_JSON_FILE="$CACHE_TMP_DIR/redistrib.json"
+        curl -LSs "$CTK_JSON_URL" -o "$CTK_JSON_FILE"
+        if [[ "${{ inputs.host-platform }}" == linux* ]]; then
+          function extract() {
+            tar -xvf $1 -C $CACHE_TMP_DIR --strip-components=1
+          }
+        elif [[ "${{ inputs.host-platform }}" == "win-64" ]]; then
+          function extract() {
+            _TEMP_DIR_=$(mktemp -d)
+            unzip $1 -d $_TEMP_DIR_
+            cp -r $_TEMP_DIR_/*/* $CACHE_TMP_DIR
+            rm -rf $_TEMP_DIR_
+            # see commit NVIDIA/cuda-python@69410f1d9228e775845ef6c8b4a9c7f37ffc68a5
+            chmod 644 $CACHE_TMP_DIR/LICENSE
+          }
+        fi
+        function populate_cuda_path() {
+          # take the component name as a argument
+          function download() {
+            curl -LSs $1 -o $2
+          }
+          CTK_COMPONENT=$1
+          CTK_COMPONENT_REL_PATH="$(python "$CTK_REDIST_TOOL" component-relative-path \
+            --host-platform "${{ inputs.host-platform }}" \
+            --component "$CTK_COMPONENT" \
+            --metadata-path "$CTK_JSON_FILE")"
+          CTK_COMPONENT_URL="${CTK_BASE_URL}/${CTK_COMPONENT_REL_PATH}"
+          CTK_COMPONENT_COMPONENT_FILENAME="$(basename $CTK_COMPONENT_REL_PATH)"
+          download $CTK_COMPONENT_URL $CTK_COMPONENT_COMPONENT_FILENAME
+          extract $CTK_COMPONENT_COMPONENT_FILENAME
+          rm $CTK_COMPONENT_COMPONENT_FILENAME
+        }
+
+        # Get headers and shared libraries in place
+        for item in $(echo $CTK_CACHE_COMPONENTS | tr ',' ' '); do
+            populate_cuda_path "$item"
+        done
+        # TODO: check Windows
+        if [[ "${{ inputs.host-platform }}" == linux* && -d "${CACHE_TMP_DIR}/lib" ]]; then
+          mv $CACHE_TMP_DIR/lib $CACHE_TMP_DIR/lib64
+        fi
+        ls -l $CACHE_TMP_DIR
+
+        # Prepare the cache
+        # Note: try to escape | and > ...
+        tar -czvf ${CTK_CACHE_FILENAME} ${CACHE_TMP_DIR}
+
+        # "Move" files from temp dir to CUDA_PATH
+        CUDA_PATH="./cuda_toolkit"
+        mkdir -p $CUDA_PATH
+        # Unfortunately we cannot use "rsync -av $CACHE_TMP_DIR/ $CUDA_PATH" because
+        # not all runners have rsync pre-installed (or even installable, such as
+        # Git Bash). We do it in the dumb way.
+        cp -r $CACHE_TMP_DIR/* $CUDA_PATH
+        rm -rf $CACHE_TMP_DIR
+        ls -l $CUDA_PATH
+
+    - name: Upload CTK cache
+      if: ${{ !cancelled() &&
+              steps.ctk-get-cache.outputs.cache-hit != 'true' }}
+      uses: actions/cache/save@668228422ae6a00e4ad889ee87cd7109ec5666a7  # v5.0.4
+      with:
+        key: ${{ env.CTK_CACHE_KEY }}
+        path: ./${{ env.CTK_CACHE_FILENAME }}
+
+    - name: Restore CTK cache
+      if: ${{ steps.ctk-get-cache.outputs.cache-hit == 'true' }}
+      shell: bash --noprofile --norc -xeuo pipefail {0}
+      run: |
+        ls -l
+        CACHE_TMP_DIR="./cache_tmp_dir"
+        CUDA_PATH="./cuda_toolkit"
+        mkdir -p $CUDA_PATH
+        tar -xzvf $CTK_CACHE_FILENAME
+        # Can't use rsync here, see above
+        cp -r $CACHE_TMP_DIR/* $CUDA_PATH
+        rm -rf $CACHE_TMP_DIR $CTK_CACHE_FILENAME
+        ls -l $CUDA_PATH
+        if [ ! -d "$CUDA_PATH/include" ]; then
+          exit 1
+        fi
+
+    - name: Move CTK to the specified location
+      if: ${{ inputs.cuda-path != './cuda_toolkit' }}
+      shell: bash --noprofile --norc -xeuo pipefail {0}
+      run: |
+        mv ./cuda_toolkit ${{ inputs.cuda-path }}
+
+    - name: Set output environment variables
+      shell: bash --noprofile --norc -xeuo pipefail {0}
+      run: |
+        # mimics actual CTK installation
+        if [[ "${{ inputs.host-platform }}" == linux* ]]; then
+          CUDA_PATH=$(realpath "${{ inputs.cuda-path }}")
+          echo "${CUDA_PATH}/bin" >> $GITHUB_PATH
+          echo "LD_LIBRARY_PATH=${CUDA_PATH}/lib64:${LD_LIBRARY_PATH:-}" >> $GITHUB_ENV
+        elif [[ "${{ inputs.host-platform }}" == win* ]]; then
+          function normpath() {
+            echo "$(echo $(cygpath -w $1) | sed 's/\\/\\\\/g')"
+          }
+          CUDA_PATH=$(normpath $(realpath "${{ inputs.cuda-path }}"))
+          echo "$(normpath ${CUDA_PATH}/bin)" >> $GITHUB_PATH
+        fi
+        echo "CUDA_PATH=${CUDA_PATH}" >> $GITHUB_ENV
+        echo "CUDA_HOME=${CUDA_PATH}" >> $GITHUB_ENV
