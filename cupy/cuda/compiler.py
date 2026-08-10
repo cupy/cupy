@@ -6,6 +6,7 @@ import os
 import platform
 import re
 import shutil
+import struct
 import subprocess
 import sys
 import tempfile
@@ -29,26 +30,6 @@ _cuda_hip_version = driver.get_build_version()
 
 
 _nvrtc_version = None
-_func_enum_supported = None
-
-
-def _is_function_enum_supported():
-    """Check if the CUDA driver supports function enumeration APIs.
-
-    cuModuleGetFunctionCount, cuModuleEnumerateFunctions, and cuFuncGetName
-    are required.  The first two were introduced in CUDA driver 12.4 (12040)
-    and cuFuncGetName in 12.3 (12030), so the effective minimum is 12040.
-
-    Returns False unconditionally on HIP/ROCm.
-    """
-    global _func_enum_supported
-    if _func_enum_supported is not None:
-        return _func_enum_supported
-    if not runtime.is_hip and runtime.driverGetVersion() >= 12040:
-        _func_enum_supported = True
-    else:
-        _func_enum_supported = False
-    return _func_enum_supported
 
 
 _win32 = sys.platform.startswith('win32')
@@ -561,6 +542,69 @@ def _preprocess(source, options, arch, backend):
 _empty_file_preprocess_cache: dict = {}
 
 
+# Cache entries for modules built with ``name_expressions`` carry the
+# mangled names NVRTC produced, ahead of the cubin.  The leading byte is
+# deliberately non-ASCII so the header can never be mistaken for a cubin
+# (ELF, ``\x7fELF``) or for PTX, which is stored as text.
+_cache_payload_magic = b'\x93CUPYNE\x00'
+
+
+def _encode_cache_payload(mangled_names: list, cubin: bytes) -> bytes:
+    """Prepend mangled names to a cubin for storage in the kernel cache.
+
+    Args:
+        mangled_names (list of str): Mangled names, ordered by the
+            corresponding ``sorted(name_expressions)``.
+        cubin (bytes): The compiled kernel binary data.
+
+    Returns:
+        bytes: The cache payload.
+    """
+    parts = [_cache_payload_magic, struct.pack('<I', len(mangled_names))]
+    for mangled_name in mangled_names:
+        encoded = mangled_name.encode('utf-8')
+        parts.append(struct.pack('<I', len(encoded)))
+        parts.append(encoded)
+    parts.append(cubin)
+    return b''.join(parts)
+
+
+def _decode_cache_payload(payload: bytes, count: int):
+    """Split a cache payload into its mangled names and the cubin.
+
+    Args:
+        payload (bytes): Bytes as returned by the cache backend.
+        count (int): Number of mangled names expected, i.e. the length of
+            the ``name_expressions`` being looked up.
+
+    Returns:
+        tuple or None: ``(mangled_names, cubin)``, or None if the payload
+            is not in this format or does not hold exactly *count* names.
+    """
+    if not payload.startswith(_cache_payload_magic):
+        return None
+    pos = len(_cache_payload_magic)
+    if len(payload) < pos + 4:
+        return None
+    stored_count = struct.unpack_from('<I', payload, pos)[0]
+    pos += 4
+    # A mismatch means the key collided with a different set of name
+    # expressions; treat it as a miss rather than mapping them by position.
+    if stored_count != count:
+        return None
+    mangled_names = []
+    for _ in range(stored_count):
+        if len(payload) < pos + 4:
+            return None
+        size = struct.unpack_from('<I', payload, pos)[0]
+        pos += 4
+        if len(payload) < pos + size:
+            return None
+        mangled_names.append(payload[pos:pos + size].decode('utf-8'))
+        pos += size
+    return mangled_names, payload[pos:]
+
+
 def _compile_module_with_cache(
         source, options=(), *, arch=None, extra_source=None,
         backend='nvrtc', enable_cooperative_groups=False,
@@ -635,16 +679,14 @@ def _compile_with_cache_cuda(
         base = _preprocess('', options, arch, backend)
         _empty_file_preprocess_cache[env] = base
 
-    can_enum = _is_function_enum_supported()
-
     key_src = '%s %s %s %s %s' % (
         env, base, source, extra_source, _get_cupy_cache_key())
-    if name_expressions and can_enum:
+    if name_expressions:
         # Include name_expressions in the cache key so different template
-        # instantiations get separate cache entries.
-        # Only when function enumeration is available (CUDA driver 12.4+);
-        # otherwise we force recompilation to retrieve mangled names.
-        key_src += ' ' + ','.join(sorted(name_expressions))
+        # instantiations get separate cache entries.  The separator is NUL
+        # rather than a comma because name expressions contain commas
+        # themselves, e.g. "kernel<float, double>".
+        key_src += ' ' + '\0'.join(sorted(name_expressions))
     key_src = key_src.encode('utf-8')
     # In the case of generating LTO IRs, we pass them around as chunks of
     # bytes, so the filename extension is arbitrary
@@ -654,29 +696,29 @@ def _compile_with_cache_cuda(
         mod = function.Module()
 
     if not cache_in_memory:
-        # When name_expressions is used but the driver is too old for
-        # function enumeration, skip the cache to force recompilation
-        # so that NVRTC can retrieve mangled names directly.
-        use_cache = not name_expressions or can_enum
-        if use_cache:
-            cubin = _kernel_cache_backend.load(name)
-            if cubin is not None:
-                if to_ltoir:
-                    return cubin
-                else:
+        payload = _kernel_cache_backend.load(name)
+        if payload is not None:
+            if to_ltoir:
+                return payload
+            elif name_expressions:
+                # Mangling erases typedefs and enumerator names, so the
+                # user's name expressions cannot be recovered from the
+                # cubin.  Use the mangled names recorded at compile time
+                # instead, ordered like the sorted name expressions the
+                # cache key was built from.
+                decoded = _decode_cache_payload(
+                    payload, len(name_expressions))
+                if decoded is not None:
+                    mangled_names, cubin = decoded
                     mod.load(cubin)
-                    if name_expressions:
-                        mod._enumerate_and_build_mapping(
-                            tuple(name_expressions))
-                        if not mod.mapping:
-                            if mod.ptr:
-                                driver.moduleUnload(mod.ptr)
-                                mod.ptr = 0
-                            # Continue to compilation below
-                        else:
-                            return mod
-                    else:
-                        return mod
+                    mod._set_mapping(
+                        dict(zip(sorted(name_expressions), mangled_names)))
+                    return mod
+                # Not a payload we can use (e.g. written by an older
+                # CuPy); fall through and recompile.
+            else:
+                mod.load(payload)
+                return mod
     else:
         # Enforce compiling -- the resulting kernel will be cached elsewhere,
         # so we do nothing
@@ -712,7 +754,12 @@ def _compile_with_cache_cuda(
 
     if not cache_in_memory:
         # Write to cache using global backend
-        _kernel_cache_backend.save(name, cubin, source)
+        if name_expressions and not to_ltoir:
+            payload = _encode_cache_payload(
+                [mod.mapping[ne] for ne in sorted(name_expressions)], cubin)
+        else:
+            payload = cubin
+        _kernel_cache_backend.save(name, payload, source)
     else:
         # we don't do any disk I/O
         pass
