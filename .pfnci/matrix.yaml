@@ -550,6 +550,10 @@
 # CUDA 13.x / CUDA Python | Linux
 - project: "cupy.linux.cuda13x-cuda-python"
   target: "cuda13x-cuda-python"
+  # CUPY_USE_CUDA_PYTHON is a compile-time flag baked into the Cython
+  # extensions; the released wheels are not built with it, so this target must
+  # build from source (build.sh) instead of fetching a wheel.
+  wheel: false
   tags: ["@push", "full", "mini", "linux", "cuda-python"]
   system: "linux"
   os: "ubuntu:22.04"
