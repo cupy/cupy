@@ -392,7 +392,18 @@ class LinuxGenerator:
                 spec = 'slow'
             else:
                 assert False
-            lines += [f'"$ACTIONS/unittest.sh" "{spec}"']
+            if matrix.cuda is not None and matrix.wheel:
+                # TODO (leofang): hard-coding test deselection in CI is not
+                # sustainable -- revisit after #10058 is merged. A fetched
+                # released wheel cannot satisfy build-environment tests, e.g.
+                # test_cupy_builder introspects the *local* CUDA, which differs
+                # from the CUDA the wheel was built with.
+                deselect = ('--deselect install_tests/test_cupy_builder/'
+                            'test_features.py::test_CUDA_cuda')
+                lines += [f'CUPY_CI_PYTEST_EXTRA_OPTS="{deselect}" '
+                          f'"$ACTIONS/unittest.sh" "{spec}"']
+            else:
+                lines += [f'"$ACTIONS/unittest.sh" "{spec}"']
         elif matrix.test == 'example':
             lines += ['"$ACTIONS/example.sh"']
         elif matrix.test == 'benchmark':

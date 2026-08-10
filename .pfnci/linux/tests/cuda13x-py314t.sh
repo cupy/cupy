@@ -24,4 +24,4 @@ echo "======================================================="
 
 trap "$ACTIONS/cleanup.sh" EXIT
 "$ACTIONS/fetch-wheel.sh"
-"$ACTIONS/unittest.sh" "not slow and not multi_gpu"
+CUPY_CI_PYTEST_EXTRA_OPTS="--deselect install_tests/test_cupy_builder/test_features.py::test_CUDA_cuda" "$ACTIONS/unittest.sh" "not slow and not multi_gpu"
