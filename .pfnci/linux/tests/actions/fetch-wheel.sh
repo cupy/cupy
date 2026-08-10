@@ -11,6 +11,8 @@ set -uex
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.."; pwd)"
 
+# CUPY_CI_GITHUB_TOKEN (see run.sh) is a fine-grained PAT scoped Actions:Read on
+# cupy/cupy -- enough to list and download the wheel artifacts below.
 # The token is delivered by run.sh as a mounted file (never an env var), so it
 # stays out of the container's `env` dump. Read it with xtrace off so the value
 # never reaches the trace log, then delete the file and (later) unset GH_TOKEN
