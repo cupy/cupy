@@ -32,7 +32,8 @@ CuPy differences from SciPy
   hence no ``expand_dims``.
 * Data dtypes: ``bool``, ``float32``, ``float64``, ``complex64``, and
   ``complex128``, matching what cuSPARSE supports.  SciPy additionally
-  supports the integer dtypes.
+  supports the integer dtypes and the extended-precision
+  ``longdouble`` / ``clongdouble``.
 * ``save_npz`` / ``load_npz`` are not implemented.
 
 Index dtype (int32 / int64)
