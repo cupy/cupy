@@ -96,6 +96,22 @@ function Main {
         throw "CUPY_CI_GITHUB_TOKEN env var is required to fetch wheel artifacts from cupy/cupy CI"
     }
     $Env:GH_TOKEN = $Env:CUPY_CI_GITHUB_TOKEN
+
+    # The FlexCI Windows image has no gh CLI (only the Linux Dockerfiles install
+    # it); fetch the pinned build and prepend it to PATH. Keep the version in
+    # sync with GH_CLI_VERSION in .pfnci/generate.py.
+    $gh_version = "2.95.0"
+    $gh_root = Join-Path $Env:TEMP "gh-$gh_version"
+    if (-not (Test-Path $gh_root)) {
+        $gh_zip = "$gh_root.zip"
+        Invoke-WebRequest -UseBasicParsing -Uri "https://github.com/cli/cli/releases/download/v$gh_version/gh_${gh_version}_windows_amd64.zip" -OutFile $gh_zip
+        Expand-Archive -Path $gh_zip -DestinationPath $gh_root -Force
+    }
+    $gh_exe = (Get-ChildItem -Path $gh_root -Recurse -Filter gh.exe | Select-Object -First 1).FullName
+    if (-not $gh_exe) { throw "gh.exe not found after extracting gh $gh_version" }
+    $Env:PATH = "$(Split-Path $gh_exe);$Env:PATH"
+    RunOrDie gh --version
+
     $py_ver = (& python -c "import sys, sysconfig; print(f'{sys.version_info.major}.{sys.version_info.minor}' + ('t' if sysconfig.get_config_var('Py_GIL_DISABLED') else ''))").Trim()
     $cuda_major = $cuda.Split(".")[0]
 

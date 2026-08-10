@@ -31,8 +31,17 @@ set -x
 # The free-threaded ABI ('t') is part of the artifact name build-wheel.yml
 # uploads (py3.14t, not py3.14); sys.version_info alone would drop it.
 PY_VER=$(python3 -c 'import sys, sysconfig; print(f"{sys.version_info.major}.{sys.version_info.minor}" + ("t" if sysconfig.get_config_var("Py_GIL_DISABLED") else ""))')
-CUDA_VER=$(python3 -c "import json; print(json.load(open('/usr/local/cuda/version.json'))['cuda']['version'])")
-CUDA_MAJOR="${CUDA_VER%%.*}"
+# Only the CUDA major is needed for the wheel name (cupy-cuda{12,13}x). Prefer
+# CUDA_VERSION, which the nvidia/cuda base image exports (e.g. 13.2.0); fall back
+# to version.json for older images that still ship it (CUDA 13 dropped it).
+if [[ -n "${CUDA_VERSION:-}" ]]; then
+    CUDA_MAJOR="${CUDA_VERSION%%.*}"
+elif [[ -r /usr/local/cuda/version.json ]]; then
+    CUDA_MAJOR=$(python3 -c "import json; print(json.load(open('/usr/local/cuda/version.json'))['cuda']['version'].split('.')[0])")
+else
+    echo "Error: cannot determine CUDA version (CUDA_VERSION unset and /usr/local/cuda/version.json absent)" >&2
+    exit 1
+fi
 
 # Derive the artifact suffix ci-guard.sh emits:
 #   PR (pull_request labeled):  pr<N>-<head sha>
