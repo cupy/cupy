@@ -43,9 +43,13 @@ jobs:
     runs-on: ${{ (inputs.host-platform == 'linux-64' && 'ubuntu-22.04') ||
                  (inputs.host-platform == 'win-64'   && 'windows-2022') }}
     steps:
-      - name: Enable symlinks on Windows (must precede checkout)
+      - name: Configure git on Windows (must precede checkout)
         if: ${{ inputs.host-platform == 'win-64' }}
-        run: git config --global core.symlinks true
+        run: |
+          git config --global core.symlinks true
+          # LF headers -> same CUPY_CACHE_KEY as Linux, so the win-64 /test job
+          # reuses the GCS kernel cache instead of recompiling every kernel.
+          git config --global core.autocrlf false
 
       - name: Verify LongPathsEnabled on Windows
         if: ${{ inputs.host-platform == 'win-64' }}
