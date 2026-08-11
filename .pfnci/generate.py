@@ -398,10 +398,18 @@ class LinuxGenerator:
                 # released wheel cannot satisfy build-environment tests, e.g.
                 # test_cupy_builder introspects the *local* CUDA, which differs
                 # from the CUDA the wheel was built with.
-                deselect = ('--deselect install_tests/test_cupy_builder/'
-                            'test_features.py::test_CUDA_cuda')
-                lines += [f'CUPY_CI_PYTEST_EXTRA_OPTS="{deselect}" '
-                          f'"$ACTIONS/unittest.sh" "{spec}"']
+                # Use the rootdir-relative nodeid (tests/...) that pytest
+                # --deselect matches -- NOT the cwd-relative form it prints
+                # under unittest.sh's `pushd tests`. Append rather than
+                # overwrite so a target's own opts survive (e.g.
+                # --parallel-threads=2 on free-threaded).
+                opts = 'CUPY_CI_PYTEST_EXTRA_OPTS'
+                deselect = (
+                    '--deselect tests/install_tests/'
+                    'test_cupy_builder/test_features.py::test_CUDA_cuda')
+                lines += [
+                    f'{opts}="${{{opts}:+${opts} }}{deselect}" '
+                    f'"$ACTIONS/unittest.sh" "{spec}"']
             else:
                 lines += [f'"$ACTIONS/unittest.sh" "{spec}"']
         elif matrix.test == 'example':
