@@ -248,9 +248,7 @@ function Main {
     RunOrDie python -c "import cupy; print(cupy); cupy.show_config()"
     echo "Running test..."
     # TODO(leofang): allow larger/adjustable timeout?
-    # DEBUG (revert me): 10-min cap to force the log to upload and localize
-    # where the Windows run stalls (normal per-PR runs are < 1.5h).
-    $test_retval = RunWithTimeout -timeout 600 -output ../cupy_test_log.txt -- python -m pytest -rfEX @pytest_opts .
+    $test_retval = RunWithTimeout -timeout 18000 -output ../cupy_test_log.txt -- python -m pytest -rfEX @pytest_opts .
     popd
 
     #if ($is_pull_request) {
