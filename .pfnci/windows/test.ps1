@@ -222,6 +222,13 @@ function Main {
         throw "Unsupported test target: $target"
     }
 
+    # The fetched wheel can be built with a different CUDA minor than this
+    # target's CUDA_PATH (cuda120/cuda130 install a cuda12x/13x wheel built with
+    # 12.9/13.2), so test_CUDA_cuda's build-vs-runtime CUDA check fails. Mirror
+    # the Linux wheel path (generate.py sets CUPY_CI_PYTEST_EXTRA_OPTS).
+    # TODO (leofang): hard-coding CI deselection is not sustainable.
+    $pytest_opts += "--deselect", "tests/install_tests/test_cupy_builder/test_features.py::test_CUDA_cuda"
+
     $base_branch = (Get-Content .pfnci\BRANCH)
     $is_pull_request = IsPullRequestTest
     $cache_archive = "windows-cuda${cuda}-${base_branch}.zip"
