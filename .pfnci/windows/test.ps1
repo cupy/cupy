@@ -67,9 +67,6 @@ function Main {
     ActivateCUDA $cuda
     ActivatePython $python
 
-    # Setup build environment variables
-    $Env:CUPY_NUM_BUILD_JOBS = "16"
-    $Env:CUPY_NVCC_GENERATE_CODE = "current"
     echo "Environment:"
     # Redact the wheel-fetch token (provisioned in the FlexCI job env) from the log.
     cmd.exe /C set | Where-Object { $_ -notmatch '^(CUPY_CI_GITHUB_TOKEN|GH_TOKEN)=' }
@@ -128,14 +125,15 @@ function Main {
         $event = "push"
     }
 
-    # The FlexCI checkout may be the tested commit directly, or a merge of that
-    # commit into its base -- in the merge case the tested commit is the second
-    # parent.
-    $candidate_shas = @((& git rev-parse HEAD).Trim())
-    $second_parent = (& git rev-parse --verify --quiet "HEAD^2")
-    if ($LASTEXITCODE -eq 0 -and $second_parent) {
-        $candidate_shas += $second_parent.Trim()
-    }
+    # The tested commit comes from FlexCI's job environment, not from the
+    # checkout's git history: FLEXCI_REFERENCE_COMMIT_ID is set on PR builds
+    # (refs/pull/N/merge) and FLEXCI_COMMIT_ID on push builds. This gives one
+    # unambiguous SHA instead of a HEAD/HEAD^2 guess. (The Windows checkout
+    # still keeps .git -- see the symlink re-checkout above -- so config.pbtxt
+    # keeps include_dot_git for these targets.)
+    $tested_sha = if ($Env:FLEXCI_REFERENCE_COMMIT_ID) { $Env:FLEXCI_REFERENCE_COMMIT_ID } else { $Env:FLEXCI_COMMIT_ID }
+    if (-not $tested_sha) { throw "Neither FLEXCI_REFERENCE_COMMIT_ID nor FLEXCI_COMMIT_ID is set (expected from the FlexCI job environment)" }
+    $candidate_shas = @($tested_sha.Trim())
 
     $artifact_id = $null
     $run_id = $null

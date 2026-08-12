@@ -9,8 +9,6 @@ set -uex
 # the wheel-build matrix does not cover this (CUDA, Python) tuple (by design,
 # until the matrix is expanded), or a fresh /test needs to be issued.
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.."; pwd)"
-
 # CUPY_CI_GITHUB_TOKEN (see run.sh) is a fine-grained PAT scoped Actions:Read on
 # cupy/cupy -- enough to list and download the wheel artifacts below.
 # The token is delivered by run.sh as a mounted file (never an env var), so it
@@ -57,13 +55,18 @@ else
     EVENT="push"
 fi
 
-# FlexCI's checkout may be the tested commit directly, or a merge of that
-# commit into its base -- in the merge case the tested commit is the second
-# parent.
-CANDIDATE_SHAS=("$(git -C "${REPO_ROOT}" rev-parse HEAD)")
-if SECOND_PARENT="$(git -C "${REPO_ROOT}" rev-parse --verify --quiet "HEAD^2")"; then
-    CANDIDATE_SHAS+=("${SECOND_PARENT}")
+# The tested commit comes from FlexCI's job environment, not from the
+# checkout's git history: FLEXCI_REFERENCE_COMMIT_ID is set on PR builds
+# (refs/pull/N/merge) and FLEXCI_COMMIT_ID on push builds (refs/heads/...).
+# Using it means the checkout needs no .git (so config.pbtxt drops
+# include_dot_git for these targets) and gives one unambiguous SHA instead of
+# a HEAD/HEAD^2 guess.
+SHA="${FLEXCI_REFERENCE_COMMIT_ID:-${FLEXCI_COMMIT_ID:-}}"
+if [[ -z "${SHA}" ]]; then
+    echo "Error: neither FLEXCI_REFERENCE_COMMIT_ID nor FLEXCI_COMMIT_ID is set (expected from the FlexCI job environment)" >&2
+    exit 1
 fi
+CANDIDATE_SHAS=("${SHA}")
 
 ARTIFACT_ID=""
 RUN_ID=""
