@@ -1057,8 +1057,6 @@ def _compile_with_cache_hip(source, options, arch, extra_source,
     if not cache_in_memory:
         # Read from cache using global backend
         # We force recompiling to retrieve C++ mangled names if so desired.
-        # TODO(leofang): Add support for function enumeration when HIP/ROCm
-        # provides equivalent APIs to cuModuleEnumerateFunctions/cuFuncGetName
         if not name_expressions:
             binary = _kernel_cache_backend.load(name)
             if binary is not None:
