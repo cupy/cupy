@@ -150,7 +150,9 @@ class TestAsarray(unittest.TestCase):
                 cupy.cuda.set_pinned_memory_allocator(lambda _: None)
             a = cupy.asarray(a_cpu, order=cp_order)
         finally:
-            cupy.cuda.set_pinned_memory_allocator(None)
+            # None means "no pool", not "the default pool"
+            cupy.cuda.set_pinned_memory_allocator(
+                cupy.get_default_pinned_memory_pool().malloc)
         assert a.flags.c_contiguous == (cp_order == 'C')
         assert a.flags.f_contiguous == (cp_order == 'F')
         assert a.strides == strides
