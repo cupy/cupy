@@ -99,7 +99,9 @@ def eye(m, n=None, k=0, dtype='d', format=None):
     Returns:
         cupyx.scipy.sparse.spmatrix: Created sparse matrix.
 
-    .. seealso:: :func:`scipy.sparse.eye`
+    .. seealso::
+       - :func:`scipy.sparse.eye`
+       - :func:`~cupyx.scipy.sparse.eye_array`
 
     """
     if n is None:
@@ -143,7 +145,9 @@ def identity(n, dtype='d', format=None):
     Returns:
         cupyx.scipy.sparse.spmatrix: Created identity matrix.
 
-    .. seealso:: :func:`scipy.sparse.identity`
+    .. seealso::
+       - :func:`scipy.sparse.identity`
+       - :func:`~cupyx.scipy.sparse.eye_array`
 
     """
     return eye(n, n, dtype=dtype, format=format)
@@ -162,7 +166,9 @@ def spdiags(data, diags, m, n, format=None):
     Returns:
         cupyx.scipy.sparse.spmatrix: Created sparse matrix.
 
-    .. seealso:: :func:`scipy.sparse.spdiags`
+    .. seealso::
+       - :func:`scipy.sparse.spdiags`
+       - :func:`~cupyx.scipy.sparse.diags_array`
 
     """
     return _dia.dia_matrix((data, diags), shape=(m, n)).asformat(format)
@@ -294,7 +300,9 @@ def bmat(blocks, format=None, dtype=None):
     Returns:
         bmat (sparse matrix)
 
-    .. seealso:: :func:`scipy.sparse.bmat`
+    .. seealso::
+       - :func:`scipy.sparse.bmat`
+       - :func:`~cupyx.scipy.sparse.block_array`
 
     Examples:
         >>> from cupy import array
@@ -467,7 +475,9 @@ def random(m, n, density=0.01, format='coo', dtype=None,
     Returns:
         cupyx.scipy.sparse.spmatrix: Generated matrix.
 
-    .. seealso:: :func:`scipy.sparse.random`
+    .. seealso::
+       - :func:`scipy.sparse.random`
+       - :func:`~cupyx.scipy.sparse.random_array`
 
     """
     if density < 0 or density > 1:
@@ -520,8 +530,10 @@ def rand(m, n, density=0.01, format='coo', dtype=None, random_state=None):
     Returns:
         cupyx.scipy.sparse.spmatrix: Generated matrix.
 
-    .. seealso:: :func:`scipy.sparse.rand`
-    .. seealso:: :func:`cupyx.scipy.sparse.random`
+    .. seealso::
+       - :func:`scipy.sparse.rand`
+       - :func:`~cupyx.scipy.sparse.random`
+       - :func:`~cupyx.scipy.sparse.random_array`
 
     """
     return random(m, n, density, format, dtype, random_state)
@@ -562,6 +574,10 @@ def diags(diagonals, offsets=0, shape=None, format=None, dtype=None):
             + cupy.diag(diagonals[k], offsets[k])
 
         Repeated diagonal offsets are disallowed.
+
+    .. seealso::
+       - :func:`scipy.sparse.diags`
+       - :func:`~cupyx.scipy.sparse.diags_array`
     """
     # if offsets is not a sequence, assume that there's only one diagonal
     if _sputils.isscalarlike(offsets):
@@ -767,7 +783,9 @@ def eye_array(m, n=None, *, k=0, dtype=float, format=None):
     Returns:
         cupyx.scipy.sparse.sparray
 
-    .. seealso:: :func:`scipy.sparse.eye_array`
+    .. seealso::
+       - :func:`scipy.sparse.eye_array`
+       - :func:`~cupyx.scipy.sparse.eye`
 
     """
     if n is None:
@@ -790,7 +808,9 @@ def diags_array(diagonals, /, *, offsets=0, shape=None, format=None,
     Returns:
         cupyx.scipy.sparse.sparray
 
-    .. seealso:: :func:`scipy.sparse.diags_array`
+    .. seealso::
+       - :func:`scipy.sparse.diags_array`
+       - :func:`~cupyx.scipy.sparse.diags`
 
     """
     return _to_array(
@@ -816,7 +836,9 @@ def block_array(blocks, *, format=None, dtype=None):
     Returns:
         cupyx.scipy.sparse.sparray: Stacked sparse array.
 
-    .. seealso:: :func:`scipy.sparse.block_array`, :func:`bmat`
+    .. seealso::
+       - :func:`scipy.sparse.block_array`
+       - :func:`~cupyx.scipy.sparse.bmat`
     """
     result = bmat(blocks, format=format, dtype=dtype)
     # Preserve sparse-array-ness even when all inputs were matrices/dense.
@@ -925,7 +947,9 @@ def random_array(shape, *, density=0.01, format='coo', dtype=None,
     Returns:
         cupyx.scipy.sparse.sparray
 
-    .. seealso:: :func:`scipy.sparse.random_array`
+    .. seealso::
+       - :func:`scipy.sparse.random_array`
+       - :func:`~cupyx.scipy.sparse.random`
 
     """
     if len(shape) == 1:

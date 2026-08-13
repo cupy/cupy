@@ -60,7 +60,8 @@ class _csc_base(_compressed._compressed_sparse_matrix):
                 copy runs asynchronously. Otherwise, the copy is synchronous.
 
         Returns:
-            scipy.sparse.csc_matrix: Copy of the array on host memory.
+            scipy.sparse.csc_array or scipy.sparse.csc_matrix:
+                Copy of the array on host memory.
 
         """
         if not _scipy_available:
@@ -460,7 +461,9 @@ class _csc_base(_compressed._compressed_sparse_matrix):
 class csc_matrix(_base.spmatrix, _csc_base):
     """Compressed Sparse Column matrix.
 
-    .. seealso:: :class:`scipy.sparse.csc_matrix`
+    .. seealso::
+       - :class:`scipy.sparse.csc_matrix`
+       - :class:`~cupyx.scipy.sparse.csc_array`
     """
     pass
 
@@ -468,7 +471,9 @@ class csc_matrix(_base.spmatrix, _csc_base):
 class csc_array(_csc_base, _base.sparray):
     """Compressed Sparse Column array.
 
-    .. seealso:: :class:`scipy.sparse.csc_array`
+    .. seealso::
+       - :class:`scipy.sparse.csc_array`
+       - :class:`~cupyx.scipy.sparse.csc_matrix`
     """
     pass
 
