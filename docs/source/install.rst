@@ -23,9 +23,9 @@ Requirements
 Python Dependencies
 ~~~~~~~~~~~~~~~~~~~
 
-NumPy/SciPy-compatible API in CuPy v14 is based on NumPy 2.3 and SciPy 1.17, and has been tested against the following versions:
+NumPy/SciPy-compatible API in CuPy v14 is based on NumPy 2.4 and SciPy 1.17, and has been tested against the following versions:
 
-* `NumPy <https://numpy.org/>`_: v2.0 / v2.1 / v2.2 / v2.3
+* `NumPy <https://numpy.org/>`_: v2.0 / v2.1 / v2.2 / v2.3 / v2.4
 
 * `SciPy <https://scipy.org/>`_ (*optional*): v1.14 / v1.15 / v1.16 / v1.17
 
