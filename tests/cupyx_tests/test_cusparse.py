@@ -539,47 +539,43 @@ class TestCoosort:
 @testing.with_requires('scipy')
 class TestCsrsort:
 
-    @pytest.fixture(autouse=True)
-    def setUp(self):
+    def test_csrsort(self):
         if not cusparse.check_availability('csrsort'):
             pytest.skip('csrsort is not available')
 
-        self.a = scipy.sparse.random(
+        a = scipy.sparse.random(
             1, 1000, density=0.9, dtype=numpy.float32, format='csr')
-        numpy.random.shuffle(self.a.indices)
-        self.a.has_sorted_indices = False
+        numpy.random.shuffle(a.indices)
+        a.has_sorted_indices = False
 
-    def test_csrsort(self):
-        a = sparse.csr_matrix(self.a)
-        cusparse.csrsort(a)
+        b = sparse.csr_matrix(a)
+        cusparse.csrsort(b)
 
-        self.a.sort_indices()
-        testing.assert_array_equal(self.a.indptr, a.indptr)
-        testing.assert_array_equal(self.a.indices, a.indices)
-        testing.assert_array_almost_equal(self.a.data, a.data)
+        a.sort_indices()
+        testing.assert_array_equal(a.indptr, b.indptr)
+        testing.assert_array_equal(a.indices, b.indices)
+        testing.assert_array_almost_equal(a.data, b.data)
 
 
 @testing.with_requires('scipy')
 class TestCscsort:
 
-    @pytest.fixture(autouse=True)
-    def setUp(self):
+    def test_cscsort(self):
         if not cusparse.check_availability('cscsort'):
             pytest.skip('cscsort is not available')
 
-        self.a = scipy.sparse.random(
+        a = scipy.sparse.random(
             1000, 1, density=0.9, dtype=numpy.float32, format='csc')
-        numpy.random.shuffle(self.a.indices)
-        self.a.has_sorted_indices = False
+        numpy.random.shuffle(a.indices)
+        a.has_sorted_indices = False
 
-    def test_cscsort(self):
-        a = sparse.csc_matrix(self.a)
-        cusparse.cscsort(a)
+        b = sparse.csc_matrix(a)
+        cusparse.cscsort(b)
 
-        self.a.sort_indices()
-        testing.assert_array_equal(self.a.indptr, a.indptr)
-        testing.assert_array_equal(self.a.indices, a.indices)
-        testing.assert_array_almost_equal(self.a.data, a.data)
+        a.sort_indices()
+        testing.assert_array_equal(a.indptr, b.indptr)
+        testing.assert_array_equal(a.indices, b.indices)
+        testing.assert_array_almost_equal(a.data, b.data)
 
 
 @testing.parameterize(*testing.product({
