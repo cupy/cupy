@@ -15,7 +15,6 @@ _MISSING = object()
 # otherwise document an attribute it cannot resolve on the class.
 _INSTANCE_ATTRS = {
     'coo_array': ('row', 'col'),
-    'coo_matrix': ('row', 'col'),
 }
 
 
