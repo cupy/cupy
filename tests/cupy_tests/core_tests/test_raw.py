@@ -1215,6 +1215,16 @@ __global__ void enum_param() { }
 '''
 
 
+# Deliberately a separate source from _test_name_expr_cache: _get_raw_module
+# is memoized on its arguments, so a test sharing both the source and a name
+# expression with another one can be handed that module and never reach the
+# cache directory it just set up.
+_test_bare_cubin_cache = r'''
+template<typename Tv, typename Tp>
+__global__ void bare_cubin_probe() { }
+'''
+
+
 class _CountingCacheBackend(_compiler_cache.DiskKernelCacheBackend):
 
     def __init__(self, path):
@@ -1314,9 +1324,9 @@ class TestRawNameExpressionCache:
 
     @pytest.mark.thread_unsafe(reason="mutates global cache directory")
     def test_bare_cubin_entry_is_not_loaded_as_payload(self):
-        name = 'multi_param<float, double>'
+        name = 'bare_cubin_probe<float, double>'
         with _counting_cache_dir() as backend:
-            mod = cupy.RawModule(code=_test_name_expr_cache,
+            mod = cupy.RawModule(code=_test_bare_cubin_cache,
                                  name_expressions=[name],
                                  options=('-std=c++17',))
             mod.get_function(name)
@@ -1338,7 +1348,7 @@ class TestRawNameExpressionCache:
                     + cubin)
 
             _util.clear_memo()
-            mod = cupy.RawModule(code=_test_name_expr_cache,
+            mod = cupy.RawModule(code=_test_bare_cubin_cache,
                                  name_expressions=[name],
                                  options=('-std=c++17',))
             # must recompile rather than hand the bare cubin to the decoder
