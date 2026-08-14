@@ -43,12 +43,6 @@ class _coo_base(sparse_data._data_matrix):
 
     format = 'coo'
 
-    #: Row coordinates of the stored entries.  All-zero for a 1-D array,
-    #: which is backed by a ``(1, N)`` row vector.
-    row: cupy.ndarray
-    #: Column coordinates of the stored entries.
-    col: cupy.ndarray
-
     _sum_duplicates_diff = _core.ElementwiseKernel(
         'raw T row, raw T col',
         'T diff',

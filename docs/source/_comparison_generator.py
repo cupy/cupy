@@ -6,25 +6,22 @@ import numpy
 
 _footnotes = {}
 
-# Sentinel for names that only exist on instances (see _get_names).
+# Sentinel for names CuPy only assigns per instance (see _INSTANCE_ATTRS).
 _MISSING = object()
 
-
-def _get_names(obj):
-    names = set(dir(obj))
-    # Attributes assigned per instance (``coo_array.row``, for one) are
-    # invisible to ``dir()`` of the class, so pick up the class-level
-    # annotations that declare them.  Bases are walked because a class
-    # does not inherit the entries of ``__annotations__``.
-    for klass in getattr(obj, '__mro__', ()):
-        names |= set(getattr(klass, '__annotations__', {}))
-    return names
+# Public attributes CuPy assigns per instance, which ``dir()`` of the class
+# cannot see, while SciPy exposes the same names as properties.  Declaring
+# them here rather than in ``cupyx`` keeps them out of autodoc, which would
+# otherwise document an attribute it cannot resolve on the class.
+_INSTANCE_ATTRS = {
+    'coo_array': ('row', 'col'),
+    'coo_matrix': ('row', 'col'),
+}
 
 
 def _get_functions(obj, exclude=None, keep_constants=False):
     return set([
-        n for n, target in [(n, getattr(obj, n, _MISSING))
-                            for n in _get_names(obj)]
+        n for n, target in [(n, getattr(obj, n, _MISSING)) for n in dir(obj)]
         if (
             # not in exclude list
             (exclude is None or n not in exclude)
@@ -65,6 +62,8 @@ def _generate_comparison_rst(
     base_funcs = _get_functions(base_obj, exclude, keep_constants)
     cp_obj, cp_fmt = _import(cupy_mod, klass)
     cp_funcs = _get_functions(cp_obj, keep_constants=keep_constants)
+    cp_funcs |= {n for n in _INSTANCE_ATTRS.get(klass, ())
+                 if exclude is None or n not in exclude}
 
     if exclude_mod:
         exclude_obj, _ = _import(exclude_mod, klass)
