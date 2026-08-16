@@ -279,7 +279,7 @@ def _find_static_library(name: str) -> str:
             cuda_path = build.get_cuda_path()
     elif PLATFORM_WIN32:
         filename = f'{name}.lib'
-        libdirs = ['lib\\x64', 'lib']
+        libdirs = [os.path.join('lib', build._get_win32_cuda_arch()), 'lib']
         cuda_path = build.get_cuda_path()
     else:
         raise Exception('not supported on this platform')
