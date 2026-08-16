@@ -9,6 +9,7 @@ https://github.com/scipy/scipy/blob/main/scipy/special/cephes/fdtr.c
 https://github.com/scipy/scipy/blob/main/scipy/special/cephes/gdtr.c
 https://github.com/scipy/scipy/blob/main/scipy/special/cephes/nbdtr.c
 https://github.com/scipy/scipy/blob/main/scipy/special/cephes/pdtr.c
+https://github.com/scipy/scipy/blob/main/scipy/special/cephes/stdtr.c
 
 Cephes Math Library, Release 2.3:  March, 1995
 Copyright 1984, 1995 by Stephen L. Moshier
@@ -1141,6 +1142,114 @@ pdtri = _core.create_ufunc(
     See Also
     --------
     :func:`scipy.special.pdtri`
+
+    """,
+)
+
+
+# Student's t distribution
+
+stdtr_definition = """
+
+__device__ double stdtr(int k, double t)
+{
+    double x, rk, z, f, tz, p, xsqk;
+    int j;
+
+    if (k <= 0) {
+    return CUDART_NAN;
+    }
+
+    if (t == 0) return 0.5;
+
+    if (t < -2.0) {
+    rk = k;
+    z = rk / (rk + t * t);
+    p = 0.5 * incbet(0.5 * rk, 0.5, z);
+    return p;
+    }
+
+    /* compute integral from -t to + t */
+
+    if (t < 0) x = -t;
+    else x = t;
+
+    rk = k;     /* degrees of freedom */
+    z = 1.0 + (x * x) / rk;
+
+    /* test if k is odd or even */
+
+    if ((k & 1) != 0) {
+    /* computation for odd k */
+    xsqk = x / sqrt(rk);
+    p = atan(xsqk);
+
+    if (k > 1) {
+    f = 1.0;
+    tz = 1.0;
+    j = 3;
+    while ((j <= (k - 2)) && ((tz / f) > MACHEP)) {
+    tz *= (j - 1) / (z * j);
+    f += tz;
+    j += 2;
+    }
+    p += f * xsqk / z;
+    }
+    p *= 2.0 / M_PI;
+    }
+
+
+    else {
+
+    /* computation for even k */
+
+    f = 1.0;
+    tz = 1.0;
+    j = 2;
+
+    while ((j <= (k - 2)) && ((tz / f) > MACHEP)) {
+    tz *= (j - 1) / (z * j);
+    f += tz;
+    j += 2;
+    }
+    p = f * x / sqrt(z * rk);
+    }
+
+    /* common exit */
+
+
+    if (t < 0) p = -p;			/* note destruction of relative accuracy */
+
+    p = 0.5 + 0.5 * p;
+    return (p);
+}
+
+"""
+
+
+stdtr = _core.create_ufunc(
+    "cupyx_scipy_stdtr",
+    ("ff->f", "dd->d"),
+    "out0 = out0_type(stdtr(in0, in1));",
+    preamble=incbet_preamble + stdtr_definition,
+    doc="""
+    Student t distribution cumulative distribution function.
+
+    Parameters
+    ----------
+    k : cupy.ndarray
+        Degrees of freedom.
+    m : cupy.ndarray
+        Upper bound of the integral.
+
+    Returns
+    -------
+    y : cupy.ndarray
+        Value of the Student t CDF at t.
+
+    See Also
+    --------
+    :func:`scipy.special.stdtr`
 
     """,
 )
