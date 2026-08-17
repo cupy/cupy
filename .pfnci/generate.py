@@ -667,7 +667,7 @@ def main(argv: list[str]) -> int:
         '# AUTO GENERATED: DO NOT EDIT!',
         '',
     ]
-    generated_files = sorted([*output, '.gitattributes'])
+    generated_files = [*output, '.gitattributes']
     gitattributes.extend(
         f'/{filename} linguist-generated' for filename in generated_files
     )
