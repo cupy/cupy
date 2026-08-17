@@ -221,35 +221,6 @@ def nancumprod(a, axis=None, dtype=None, out=None):
 
 
 def _cumulative_op(x, op, identity, axis, dtype, out, include_initial):
-    """Private shared implementation of :func:`cumulative_sum` and
-    :func:`cumulative_prod`.
-
-    Args:
-        x (cupy.ndarray): Input array.
-        op (callable): Underlying cumulative function to delegate to, either
-            :func:`cumsum` or :func:`cumprod`. Called as
-            ``op(x, axis=axis, dtype=dtype, out=...)``.
-        identity: Additive or multiplicative identity for ``op`` (``0`` for
-            sum, ``1`` for product) used to fill the leading slot along
-            ``axis`` when ``include_initial`` is ``True``.
-        axis (int or None): Axis along which the cumulative operation is
-            computed. ``None`` is only allowed for one-dimensional arrays and
-            defaults to ``0``; for higher-dimensional arrays ``axis`` is
-            required.
-        dtype: Type of the returned array and of the accumulator in which the
-            elements are combined. If ``None``, defaults to the dtype of
-            ``x``.
-        out (cupy.ndarray or None): Alternative output array. Its shape must
-            match the expected output shape (i.e. ``x.shape`` with
-            ``shape[axis] + 1`` when ``include_initial`` is ``True``).
-        include_initial (bool): If ``True``, prepend ``identity`` as the first
-            value along ``axis``, expanding the output length along that axis
-            by one.
-
-    Returns:
-        cupy.ndarray: The cumulative result. When ``out`` is provided, the
-        same array is returned.
-    """
     if not isinstance(x, cupy.ndarray):
         raise TypeError('`x` should be of type cupy.ndarray')
 
