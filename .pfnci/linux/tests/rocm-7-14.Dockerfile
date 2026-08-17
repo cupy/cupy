@@ -22,6 +22,9 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
 
 ENV PATH "/usr/lib/ccache:${PATH}"
 
+RUN curl -fsSL https://github.com/cli/cli/releases/download/v2.95.0/gh_2.95.0_linux_amd64.tar.gz \
+        | tar -xz -C /usr/local --strip-components=1 gh_2.95.0_linux_amd64/bin/gh
+
 ENV ROCM_HOME "/opt/rocm"
 ENV LD_LIBRARY_PATH "${ROCM_HOME}/lib"
 ENV CPATH "${ROCM_HOME}/include"

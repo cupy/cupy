@@ -4,7 +4,8 @@
 
 set -ue
 
-env
+# Redact the wheel-fetch token (if present in the FlexCI job env) from the log.
+env | grep -v -e '^CUPY_CI_GITHUB_TOKEN=' -e '^GH_TOKEN='
 
 gcloud auth configure-docker asia-northeast1-docker.pkg.dev
 
