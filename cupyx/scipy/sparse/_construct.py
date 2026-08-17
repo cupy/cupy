@@ -284,21 +284,24 @@ def vstack(blocks, format=None, dtype=None):
 
 
 def bmat(blocks, format=None, dtype=None):
-    """Builds a sparse matrix from sparse sub-blocks
+    """Builds a sparse array/matrix from sparse sub-blocks
 
     Args:
         blocks (array_like):
-            Grid of sparse matrices with compatible shapes.
-            An entry of None implies an all-zero matrix.
-        format ({'bsr', 'coo', 'csc', 'csr', 'dia', 'dok', 'lil'}, optional):
+            Grid of sparse objects with compatible shapes.
+            An entry of None implies an all-zero block.
+        format ({'coo', 'csc', 'csr', 'dia'}, optional):
             The sparse format of the result (e.g. "csr").  By default an
-            appropriate sparse matrix format is returned.
+            appropriate sparse format is returned.
             This choice is subject to change.
         dtype (dtype, optional):
-            The data-type of the output matrix.  If not given, the dtype is
+            The data-type of the output.  If not given, the dtype is
             determined from that of `blocks`.
+
     Returns:
-        bmat (sparse matrix)
+        cupyx.scipy.sparse: The assembled sparse object.  Returns a sparse
+        array when *any* block is a sparse array, else a sparse matrix
+        (matches scipy).
 
     .. seealso::
        - :func:`scipy.sparse.bmat`
@@ -554,7 +557,7 @@ def diags(diagonals, offsets=0, shape=None, format=None, dtype=None):
         shape (tuple of int):
             Shape of the result. If omitted, a square matrix large enough
             to contain the diagonals is returned.
-        format ({"dia", "csr", "csc", "lil", ...}):
+        format ({"coo", "csc", "csr", "dia"}):
             Matrix format of the result.  By default (format=None) an
             appropriate sparse matrix format is returned.  This choice is
             subject to change.
@@ -637,16 +640,17 @@ def diags(diagonals, offsets=0, shape=None, format=None, dtype=None):
 
 
 def kron(A, B, format=None):
-    """Kronecker product of sparse matrices A and B.
+    """Kronecker product of sparse arrays/matrices A and B.
 
     Args:
-        A (cupyx.scipy.sparse.spmatrix): a sparse matrix.
-        B (cupyx.scipy.sparse.spmatrix): a sparse matrix.
-        format (str): the format of the returned sparse matrix.
+        A (cupyx.scipy.sparse): a sparse object.
+        B (cupyx.scipy.sparse): a sparse object.
+        format (str): the format of the returned sparse object.
 
     Returns:
-        cupyx.scipy.sparse.spmatrix:
-            Generated sparse matrix with the specified ``format``.
+        cupyx.scipy.sparse: Generated sparse object with the specified
+        ``format``.  Returns a sparse array when *any* input is a sparse
+        array, else a sparse matrix (matches scipy).
 
     .. seealso:: :func:`scipy.sparse.kron`
 
@@ -704,20 +708,21 @@ def kron(A, B, format=None):
 
 
 def kronsum(A, B, format=None):
-    """Kronecker sum of sparse matrices A and B.
+    """Kronecker sum of sparse arrays/matrices A and B.
 
     Kronecker sum is the sum of two Kronecker products
     ``kron(I_n, A) + kron(B, I_m)``, where ``I_n`` and ``I_m`` are identity
     matrices.
 
     Args:
-        A (cupyx.scipy.sparse.spmatrix): a sparse matrix.
-        B (cupyx.scipy.sparse.spmatrix): a sparse matrix.
-        format (str): the format of the returned sparse matrix.
+        A (cupyx.scipy.sparse): a square sparse object.
+        B (cupyx.scipy.sparse): a square sparse object.
+        format (str): the format of the returned sparse object.
 
     Returns:
-        cupyx.scipy.sparse.spmatrix:
-            Generated sparse matrix with the specified ``format``.
+        cupyx.scipy.sparse: Generated sparse object with the specified
+        ``format``.  Returns a sparse array when *any* input is a sparse
+        array, else a sparse matrix (matches scipy).
 
     .. seealso:: :func:`scipy.sparse.kronsum`
 
