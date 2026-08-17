@@ -1,5 +1,6 @@
 # AUTO GENERATED: DO NOT EDIT!
 
+/.gitattributes linguist-generated
 /config.tags.json linguist-generated
 /coverage.rst linguist-generated
 /linux/tests/benchmark.Dockerfile linguist-generated
