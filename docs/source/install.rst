@@ -204,7 +204,7 @@ If you want to install the latest development version of CuPy from a cloned Git 
     $ export NVCC=$CONDA_PREFIX/bin/nvcc
 
    Conda CUDA 12+ packages place headers (``cuda_runtime.h``) and static libs
-   (e.g. ``libcufilt.a``) under ``$CONDA_PREFIX/targets/<target>/``, so
+   (e.g. ``libcudart_static.a``) under ``$CONDA_PREFIX/targets/<target>/``, so
    ``CUDA_PATH`` must point at that subdirectory. ``NVCC`` must be the real
    binary path: invoking ``nvcc`` through the symlink at
    ``$CUDA_PATH/bin/nvcc`` causes the build to fail with
