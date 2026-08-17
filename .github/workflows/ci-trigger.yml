@@ -97,7 +97,9 @@ jobs:
       # Labels added with the workflow's own GITHUB_TOKEN do not trigger
       # workflow runs (GitHub's recursion prevention), so the bounce uses a
       # short-lived token minted from a code-less GitHub App (webhook
-      # disabled, Issues:R/W only, installed on this repository alone).
+      # disabled, Pull requests: write -- needed to add/remove the ci:triggered
+      # label on a PR; Issues:write alone does not cover PR labels -- installed
+      # on this repository alone).
       # Requires repository configuration: variable CI_TRIGGER_APP_ID and
       # secret CI_TRIGGER_APP_PRIVATE_KEY.
       - name: Mint CI-trigger App token
