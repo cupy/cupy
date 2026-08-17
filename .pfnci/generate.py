@@ -662,6 +662,17 @@ def main(argv: list[str]) -> int:
     taggen = TagGenerator(matrixes)
     output['config.tags.json'] = taggen.generate()
 
+    # Generate attributes for generated files
+    gitattributes = [
+        '# AUTO GENERATED: DO NOT EDIT!',
+        '',
+    ]
+    gitattributes.extend(
+        f'/{filename} linguist-generated' for filename in sorted(output)
+    )
+    gitattributes.append('')
+    output['.gitattributes'] = '\n'.join(gitattributes)
+
     # Write output files.
     out_basedir = options.directory if options.directory else basedir
     retval = 0
