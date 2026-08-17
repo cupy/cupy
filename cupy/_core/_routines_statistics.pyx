@@ -697,7 +697,8 @@ cdef _nanmean_func = create_reduction_func(
 _count_non_nan = create_reduction_func(
     'cupy_count_non_nan',
     ('e->q', *bf16_loop(1, "q"), 'f->q', 'd->q', 'F->q', 'D->q'),
-    ('isnan(in0) ? 0 : 1', 'a + b', 'out0 = a', None), 0)
+    ('isnan(in0) ? 0 : 1', 'a + b', 'out0 = a', None), 0,
+    compute_opkind='PLUS')
 
 
 cpdef _ndarray_base _nanmean(_ndarray_base a, axis, dtype, out, keepdims):

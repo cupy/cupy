@@ -807,7 +807,8 @@ else:
 
 _sum_auto_dtype = create_reduction_func(
     'cupy_sum', _sumprod_types,
-    ('in0', 'a + b', 'out0 = type_out0_raw(a)', None), 0)
+    ('in0', 'a + b', 'out0 = type_out0_raw(a)', None), 0,
+    compute_opkind='PLUS')
 
 
 _sum_keep_dtype = create_reduction_func(
@@ -817,13 +818,14 @@ _sum_keep_dtype = create_reduction_func(
      ('e->e', (None, None, None, 'float')),
      *bf16_loop(code=(None, None, None, 'float')),
      'f->f', 'd->d', 'F->F', 'D->D'),
-    ('in0', 'a + b', 'out0 = type_out0_raw(a)', None), 0)
+    ('in0', 'a + b', 'out0 = type_out0_raw(a)', None), 0,
+    compute_opkind='PLUS')
 
 
 _nansum_auto_dtype = create_reduction_func(
     'cupy_nansum', _sumprod_types,
     ('(in0 == in0) ? in0 : type_in0_raw(0)',
-     'a + b', 'out0 = type_out0_raw(a)', None), 0)
+     'a + b', 'out0 = type_out0_raw(a)', None), 0, compute_opkind='PLUS')
 
 
 _nansum_keep_dtype = create_reduction_func(
@@ -834,7 +836,7 @@ _nansum_keep_dtype = create_reduction_func(
      *bf16_loop(code=(None, None, None, 'float')),
      'f->f', 'd->d', 'F->F', 'D->D'),
     ('(in0 == in0) ? in0 : type_in0_raw(0)',
-     'a + b', 'out0 = type_out0_raw(a)', None), 0)
+     'a + b', 'out0 = type_out0_raw(a)', None), 0, compute_opkind='PLUS')
 
 
 _nansum_complex_dtype = create_reduction_func(
@@ -844,12 +846,13 @@ _nansum_complex_dtype = create_reduction_func(
     type_in0_raw((in0.real() == in0.real()) ? in0.real() : 0,
                  (in0.imag() == in0.imag()) ? in0.imag() : 0)
     ''',
-     'a + b', 'out0 = type_out0_raw(a)', None), 0)
+     'a + b', 'out0 = type_out0_raw(a)', None), 0, compute_opkind='PLUS')
 
 
 _prod_auto_dtype = create_reduction_func(
     'cupy_prod', _sumprod_types,
-    ('in0', 'a * b', 'out0 = type_out0_raw(a)', None), 1)
+    ('in0', 'a * b', 'out0 = type_out0_raw(a)', None), 1,
+    compute_opkind='MULTIPLIES')
 
 
 _prod_keep_dtype = create_reduction_func(
@@ -859,13 +862,14 @@ _prod_keep_dtype = create_reduction_func(
      ('e->e', (None, None, None, 'float')),
      *bf16_loop(code=(None, None, None, 'float')),
      'f->f', 'd->d', 'F->F', 'D->D'),
-    ('in0', 'a * b', 'out0 = type_out0_raw(a)', None), 1)
+    ('in0', 'a * b', 'out0 = type_out0_raw(a)', None), 1,
+    compute_opkind='MULTIPLIES')
 
 
 _nanprod_auto_dtype = create_reduction_func(
     'cupy_nanprod', _sumprod_types,
     ('(in0 == in0) ? in0 : type_in0_raw(1)',
-     'a * b', 'out0 = type_out0_raw(a)', None), 1)
+     'a * b', 'out0 = type_out0_raw(a)', None), 1, compute_opkind='MULTIPLIES')
 
 
 _nanprod_keep_dtype = create_reduction_func(
@@ -876,7 +880,7 @@ _nanprod_keep_dtype = create_reduction_func(
      *bf16_loop(code=(None, None, None, 'float')),
      'f->f', 'd->d', 'F->F', 'D->D'),
     ('(in0 == in0) ? in0 : type_in0_raw(1)',
-     'a * b', 'out0 = type_out0_raw(a)', None), 1)
+     'a * b', 'out0 = type_out0_raw(a)', None), 1, compute_opkind='MULTIPLIES')
 
 
 _nanprod_complex_dtype = create_reduction_func(
@@ -886,7 +890,7 @@ _nanprod_complex_dtype = create_reduction_func(
     type_in0_raw((in0.real() == in0.real()) ? in0.real() : 1,
                  (in0.imag() == in0.imag()) ? in0.imag() : 1)
     ''',
-     'a * b', 'out0 = type_out0_raw(a)', None), 1)
+     'a * b', 'out0 = type_out0_raw(a)', None), 1, compute_opkind='MULTIPLIES')
 
 cdef create_arithmetic(
         name, op, boolop, doc, cutensor_op=None, scatter_op=None):

@@ -77,4 +77,5 @@ cdef tuple _get_shape_and_strides(list in_args, list out_args)
 cdef _optimizer_copy_arg(a)
 
 cpdef create_reduction_func(
-    name, ops, routine=*, identity=*, preamble=*, sort_reduce_axis=*)
+    name, ops, routine=*, identity=*, preamble=*, sort_reduce_axis=*,
+    compute_opkind=*)

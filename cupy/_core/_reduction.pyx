@@ -3,8 +3,8 @@ from cpython cimport sequence
 from cupy._core cimport _carray
 from cupy._core cimport _accelerator
 from cupy._core._carray cimport shape_t
-from cupy._core cimport _cc_reduction
 from cupy._core cimport _cub_reduction
+from cupy._core cimport _cuda_compute_reduction
 from cupy._core._dtype cimport get_dtype
 from cupy._core cimport _kernel
 from cupy._core._kernel cimport _broadcast
@@ -321,7 +321,7 @@ cdef class _AbstractReductionKernel:
         cdef Py_ssize_t block_size, block_stride, out_block_num = 0
         cdef shape_t in_shape, out_shape
         cdef _ndarray_base ret
-        cdef bint cub_success, cc_success
+        cdef bint cub_success, cuda_compute_success
 
         if dtype is not None:
             dtype = get_dtype(dtype).type
@@ -377,10 +377,13 @@ cdef class _AbstractReductionKernel:
         for accelerator in _accelerator._reduction_accelerators:
             if (try_use_cuda_compute
                     and accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE):
-                cc_success = _cc_reduction._try_to_call_cc_reduction(
-                    self, in_args, out_args, a_shape, stream,
-                    reduce_axis, out_axis, out_shape, ret)
-                if cc_success:
+                cuda_compute_success = (
+                    _cuda_compute_reduction
+                    ._try_to_call_cuda_compute_reduction(
+                        self, in_args, out_args, a_shape, stream,
+                        map_expr, reduce_expr, post_map_expr, reduce_type,
+                        type_map, reduce_axis, out_axis, out_shape, ret))
+                if cuda_compute_success:
                     return ret
             if try_use_cub and accelerator == _accelerator.ACCELERATOR_CUB:
                 cub_success = _cub_reduction._try_to_call_cub_reduction(
@@ -564,10 +567,10 @@ cdef class _AbstractReductionKernel:
 
 cpdef _SimpleReductionKernel create_reduction_func(
         name, ops, routine=None, identity=None, preamble='',
-        sort_reduce_axis=True):
+        sort_reduce_axis=True, compute_opkind=None):
     ops = _kernel._Ops.from_tuples(ops, routine)
     return _SimpleReductionKernel(
-        name, ops, identity, preamble, sort_reduce_axis)
+        name, ops, identity, preamble, sort_reduce_axis, compute_opkind)
 
 
 cdef class _SimpleReductionKernel(_AbstractReductionKernel):
@@ -581,10 +584,11 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
         readonly str _output_expr
         readonly dict _routine_cache
         readonly bint _sort_reduce_axis
+        readonly object compute_opkind
 
     def __init__(
             self, name, _kernel._Ops ops, identity, preamble,
-            sort_reduce_axis=True):
+            sort_reduce_axis=True, compute_opkind=None):
         super().__init__(
             name,
             '' if identity is None else str(identity),
@@ -598,6 +602,7 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
         self._input_expr = 'const type_in0_raw in0 = _raw_in0[_in_ind.get()];'
         self._output_expr = 'type_out0_raw &out0 = _raw_out0[_out_ind.get()];'
         self._routine_cache = {}
+        self.compute_opkind = compute_opkind
         self._sort_reduce_axis = sort_reduce_axis
 
     def __call__(self, object a, axis=None, dtype=None, _ndarray_base out=None,
