@@ -262,6 +262,15 @@ jobs:
   # groups are repo-scoped strings shared across workflows) cancels any
   # in-flight build for the superseded head. This runs the default branch's
   # workflow copy with a writable token and checks out no PR code.
+  #
+  # This deliberately does NOT fire on close/merge: a merged PR's ci:triggered
+  # is stripped in backport.yml (before the backport bot copies the source
+  # labels), not here -- doing it here would race the backport workflow, which
+  # runs on the same pull_request_target: closed event.
+  # TODO(leofang): when backporting is retired and backport.yml is removed,
+  # nothing races this hygiene job on close anymore -- at that point move the
+  # ci:triggered cleanup here: add `closed` to the pull_request_target trigger
+  # above and clear the label on merge in this job.
   hygiene:
     name: Clear stale label
     if: github.repository_owner == 'cupy' && github.event_name == 'pull_request_target'
