@@ -111,23 +111,21 @@ if [[ -z "${ARTIFACT_ID}" ]]; then
     echo "Re-issue /test on the PR (or check the ci.yml push run for the merge commit)." >&2
     exit 1
 fi
-echo "Resolved wheel artifact ${ARTIFACT_ID} from ci.yml run ${RUN_ID}"
+echo "Resolved wheel ${expected_name} from ci.yml run ${RUN_ID}"
 
 WHEEL_DIR="$(mktemp -d)"
 trap 'rm -rf "${WHEEL_DIR}"' EXIT
 
-# Download by immutable artifact ID -- name-scoped downloads are not
-# re-run-attempt-safe if build-wheel.yml's overwrite:true is ever reverted.
-if ! gh api "repos/cupy/cupy/actions/artifacts/${ARTIFACT_ID}/zip" > "${WHEEL_DIR}/artifact.zip"; then
-    echo "Error: failed to download wheel artifact ${ARTIFACT_ID}" >&2
+# Download (and extract) the wheel artifact by name from its producing run.
+# The name is unique within the run because build-wheel.yml uploads with
+# overwrite: true, and RUN_ID is the run the producer-pin above verified.
+if ! gh run download "${RUN_ID}" --repo cupy/cupy --name "${expected_name}" --dir "${WHEEL_DIR}"; then
+    echo "Error: failed to download wheel artifact ${expected_name} from run ${RUN_ID}" >&2
     exit 1
 fi
 
 # The token is no longer needed past this point.
 unset GH_TOKEN
-
-python3 -m zipfile -e "${WHEEL_DIR}/artifact.zip" "${WHEEL_DIR}"
-rm "${WHEEL_DIR}/artifact.zip"
 
 WHEEL="$(ls "${WHEEL_DIR}"/*.whl | head -n 1)"
 time python3 -m pip install --user -v "${WHEEL}[test]"

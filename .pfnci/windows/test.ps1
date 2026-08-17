@@ -169,18 +169,14 @@ function Main {
     if (-not $artifact_id) {
         throw "No wheel artifact from a successful ci.yml run for candidate SHAs: $($candidate_shas -join ', ') (name: cupy-cuda${cuda_major}x-py${py_ver}-win-64-${suffix_prefix}<sha>). Re-issue /test on the PR."
     }
-    Write-Output "Resolved wheel artifact $artifact_id from ci.yml run $run_id"
+    Write-Output "Resolved wheel $expected_name from ci.yml run $run_id"
 
     $wheel_dir = New-Item -ItemType Directory -Path ([System.IO.Path]::GetTempFileName() + ".d") -Force
-    $zip_path = Join-Path $wheel_dir.FullName "artifact.zip"
-    # Route the binary download through cmd.exe -- PowerShell's `>` uses
-    # UTF-16 encoding by default, which would corrupt the zip stream.
-    # Download is by immutable artifact ID.
-    $cmd = "gh api `"repos/cupy/cupy/actions/artifacts/${artifact_id}/zip`" > `"${zip_path}`""
-    & cmd.exe /c $cmd
-    if ($LASTEXITCODE -ne 0) { throw "gh api download of artifact ${artifact_id} failed (exit $LASTEXITCODE)" }
-    Expand-Archive -Path $zip_path -DestinationPath $wheel_dir.FullName -Force
-    Remove-Item $zip_path
+    $dl_dir = $wheel_dir.FullName
+    # Download (and extract) the wheel artifact by name from its producing run.
+    # The name is unique within the run (build-wheel.yml uploads with
+    # overwrite: true), and $run_id is the run the producer-pin above verified.
+    RunOrDie gh run download $run_id --repo cupy/cupy --name $expected_name --dir $dl_dir
     # Drop the token from the environment before any PR-controlled code (pip
     # install / pytest) runs, so the test process cannot read it back.
     Remove-Item Env:GH_TOKEN -ErrorAction SilentlyContinue
