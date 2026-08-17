@@ -74,9 +74,15 @@ jobs:
         if: ${{ inputs.host-platform == 'linux-64' && endsWith(matrix.python-version, 't') }}
         uses: ./.github/actions/free-disk-space
 
-      - name: Install latest rapidsai/sccache
+      # Pinned rather than `latest`: an sccache release can change its cache-key
+      # format (v0.17.0-rapids.0 split CUDA caching into per-sub-tool
+      # ptxas/cicc/cudafe++), which invalidates the warm GHA sccache cache and
+      # forces a full recompile on every PR until the shared cache re-warms.
+      # Bump SCCACHE_VERSION deliberately.
+      - name: Install pinned rapidsai/sccache
         env:
           HOST_PLATFORM: ${{ inputs.host-platform }}
+          SCCACHE_VERSION: v0.16.0-rapids.4
         run: |
           case "${HOST_PLATFORM}" in
             linux-*)  URL_TRIPLE="$(uname -m)-unknown-linux-musl"; SCCACHE_BIN="sccache" ;;
@@ -84,7 +90,7 @@ jobs:
             *)        echo "Unsupported host-platform: ${HOST_PLATFORM}" >&2; exit 1 ;;
           esac
           mkdir -p sccache_bin
-          curl -fsSL "https://github.com/rapidsai/sccache/releases/latest/download/sccache-${URL_TRIPLE}.tar.gz" \
+          curl -fsSL "https://github.com/rapidsai/sccache/releases/download/${SCCACHE_VERSION}/sccache-${URL_TRIPLE}.tar.gz" \
             | tar -C sccache_bin -xzf - --wildcards --strip-components=1 "*/${SCCACHE_BIN}"
           SCCACHE_BIN_DIR="$(pwd)/sccache_bin"
           SCCACHE_BIN_FULL="${SCCACHE_BIN_DIR}/${SCCACHE_BIN}"
