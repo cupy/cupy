@@ -9,6 +9,20 @@ from cupy._core._dtype import get_dtype
 supported_dtypes = [get_dtype(x) for x in
                     ('single', 'double', 'csingle', 'cdouble')]
 
+# dtype kind chars that cuSPARSE accepts for sparse ``data`` arrays:
+#   '?' bool, 'f' float32, 'd' float64, 'F' complex64, 'D' complex128.
+_SPARSE_DATA_KINDS = frozenset('?fdFD')
+
+
+def is_sparse_data_dtype(dtype):
+    """Return True if ``dtype`` can be stored in a sparse ``data`` array.
+
+    cuSPARSE-backed ops accept only bool, float32, float64, complex64,
+    and complex128 for ``data``.
+    """
+    return numpy.dtype(dtype).char in _SPARSE_DATA_KINDS
+
+
 _upcast_memo: dict = {}
 
 
@@ -19,6 +33,73 @@ def isdense(x):
 def isscalarlike(x):
     """Is x either a scalar, an array scalar, or a 0-dim array?"""
     return cupy.isscalar(x) or (isdense(x) and x.ndim == 0)
+
+
+def safely_cast_index_arrays(A, idx_dtype=numpy.int32, msg=""):
+    """Safely cast sparse array indices to ``idx_dtype``.
+
+    Check the shape of *A* to determine if it is safe to cast its index
+    arrays to dtype *idx_dtype*.  If any dimension in shape is larger than
+    fits in the dtype, casting is unsafe so raise :class:`ValueError`.
+    If safe, cast the index arrays to ``idx_dtype`` and return the result
+    without changing the input *A*.  The caller can assign the results to
+    *A*'s attributes if desired or use the recast index arrays directly.
+
+    Unless downcasting is needed, the original index arrays are returned.
+    You can test e.g. ``A.indptr is new_indptr`` to see if downcasting
+    occurred.
+
+    Args:
+        A (cupyx.scipy.sparse): The array for which index arrays should
+            be (potentially) downcast.
+        idx_dtype (dtype): Desired index dtype.  Defaults to ``numpy.int32``.
+        msg (str, optional): String appended to the ``ValueError`` message
+            when ``A.shape`` is too big to fit in ``idx_dtype``.
+
+    Returns:
+        ndarray or tuple of ndarrays:
+            For CSR/CSC, ``(indices, indptr)``.
+            For COO, ``(row, col)`` (CuPy is currently 2-D-only).
+            For DIA, ``offsets``.
+
+    Raises:
+        ValueError: When the dtype cannot represent ``A``'s shape or
+            existing index values.
+
+    .. seealso:: :func:`scipy.sparse.safely_cast_index_arrays`
+    """
+    idx_dtype = numpy.dtype(idx_dtype)
+    if not msg:
+        msg = f"dtype {idx_dtype}"
+    max_value = numpy.iinfo(idx_dtype).max
+
+    if A.format in ('csc', 'csr'):
+        # indptr is monotonically nondecreasing, so its last element is
+        # the largest representable value.
+        if int(A.indptr[-1]) > max_value:  # synchronize!
+            raise ValueError(f"indptr values too large for {msg}")
+        if max(A.shape) > max_value:
+            if bool((A.indices > max_value).any()):  # synchronize!
+                raise ValueError(f"indices values too large for {msg}")
+        return (A.indices.astype(idx_dtype, copy=False),
+                A.indptr.astype(idx_dtype, copy=False))
+
+    if A.format == 'coo':
+        if max(A.shape) > max_value:
+            if (bool((A.row > max_value).any())  # synchronize!
+                    or bool((A.col > max_value).any())):
+                raise ValueError(f"coords values too large for {msg}")
+        return (A.row.astype(idx_dtype, copy=False),
+                A.col.astype(idx_dtype, copy=False))
+
+    if A.format == 'dia':
+        if max(A.shape) > max_value:
+            if bool((A.offsets > max_value).any()):  # synchronize!
+                raise ValueError(f"offsets values too large for {msg}")
+        return A.offsets.astype(idx_dtype, copy=False)
+
+    raise TypeError(
+        f'Format {A.format} is not associated with index arrays.')
 
 
 def get_index_dtype(arrays=(), maxval=None, check_contents=False):
@@ -92,6 +173,49 @@ def validateaxis(axis):
             raise ValueError("axis out of range")
 
 
+def validate_axis_1d(axis):
+    """Validate a reduction ``axis`` for a 1-D sparse array.
+
+    Accepts ``None``, ``0``, ``-1``, or a length-1 tuple of ``0``/``-1``
+    (scipy allows a 1-tuple axis).  Raises otherwise.  A 1-D reduction
+    always collapses the single axis, so callers ignore the (absent)
+    return value and reduce over everything.
+    """
+    if isinstance(axis, tuple):
+        if len(axis) != 1:
+            raise ValueError('axis out of range for 1-D array')
+        # A tuple axis must hold an integer axis: numpy/scipy reject a
+        # non-integer element such as ``(None,)`` (mirrors collapse_2d_axis).
+        axis = operator.index(axis[0])
+    if axis not in (None, 0, -1):
+        raise ValueError(f'axis {axis} is out of bounds for 1-D array')
+
+
+def collapse_2d_axis(axis):
+    """Collapse a tuple ``axis`` for a 2-D reduction to a plain int / None.
+
+    scipy accepts tuple axes for 2-D array/matrix reductions: a length-1
+    tuple ``(i,)`` means axis ``i``, and a length-2 tuple spanning both
+    axes means a full reduction (``None``).  A non-tuple ``axis`` is
+    returned unchanged for the caller's normal validation.
+    """
+    if not isinstance(axis, tuple):
+        return axis
+    if len(axis) == 1:
+        # Validate the element like the length-2 branch: ``operator.index``
+        # rejects non-integers (e.g. ``(None,)`` / ``(0.0,)``) that would
+        # otherwise slip through as a bogus axis, matching numpy/scipy.
+        return operator.index(axis[0])
+    if len(axis) == 2:
+        norm = set()
+        for a in axis:
+            a = operator.index(a)  # rejects non-integers like numpy
+            norm.add(a + 2 if a < 0 else a)
+        if norm == {0, 1}:
+            return None
+    raise ValueError('axis out of range for 2-D reduction')
+
+
 def upcast(*args):
     """Returns the nearest supported sparse dtype for the
     combination of one or more types.
@@ -121,8 +245,14 @@ def upcast(*args):
     raise TypeError('no supported conversion for types: %r' % (args,))
 
 
-def check_shape(args, current_shape=None):
-    """Check validity of the shape"""
+def check_shape(args, current_shape=None, *, allow_nd=(2,)):
+    """Check validity of the shape.
+
+    Args:
+        allow_nd (tuple of int): Accepted dimensionalities (tuple
+            lengths).  Defaults to ``(2,)`` so 2-D-only callers are
+            unaffected; pass ``(1, 2)`` to also accept 1-D shapes.
+    """
 
     if len(args) == 0:
         raise TypeError("function missing 1 required positional argument: "
@@ -139,9 +269,10 @@ def check_shape(args, current_shape=None):
         new_shape = tuple(operator.index(arg) for arg in args)
 
     if current_shape is None:
-        if len(new_shape) != 2:
-            raise ValueError('shape must be a 2-tuple of positive integers')
-        elif new_shape[0] < 0 or new_shape[1] < 0:
+        if len(new_shape) not in allow_nd:
+            raise ValueError(f'shape must have length in {allow_nd}. '
+                             f'Got new_shape={new_shape}')
+        elif any(d < 0 for d in new_shape):
             raise ValueError("'shape' elements cannot be negative")
 
     else:
@@ -152,7 +283,7 @@ def check_shape(args, current_shape=None):
             new_size = numpy.prod(new_shape)
             if new_size != current_size:
                 raise ValueError('cannot reshape array of size {} into shape'
-                                 '{}'.format(current_size, new_shape))
+                                 ' {}'.format(current_size, new_shape))
         elif len(negative_indexes) == 1:
             skip = negative_indexes[0]
             specified = numpy.prod(new_shape[0:skip] + new_shape[skip+1:])
@@ -160,12 +291,14 @@ def check_shape(args, current_shape=None):
             if remainder != 0:
                 err_shape = tuple('newshape'if x < 0 else x for x in new_shape)
                 raise ValueError('cannot reshape array of size {} into shape'
-                                 '{}'.format(current_size, err_shape))
-            new_shape = new_shape[0:skip] + (unspecified,) + new_shape[skip+1:]
+                                 ' {}'.format(current_size, err_shape))
+            new_shape = (new_shape[0:skip] + (int(unspecified),)
+                         + new_shape[skip+1:])
         else:
             raise ValueError('can only specify one unknown dimension')
 
-    if len(new_shape) != 2:
-        raise ValueError('matrix shape must be two-dimensional')
+    if len(new_shape) not in allow_nd:
+        raise ValueError(f'shape must have length in {allow_nd}. '
+                         f'Got new_shape={new_shape}')
 
     return new_shape

@@ -8,6 +8,7 @@ from cupyx.scipy.signal._iir_filter_conversions import _cplxreal
 
 from cupy import testing
 from cupy.testing import assert_array_almost_equal
+from cupy.testing._helper import skip_if_after_baseline
 
 import numpy as np
 
@@ -62,6 +63,20 @@ class TestBilinear:
 #                                  decimal=4)
 #        assert_array_almost_equal(a_z, [1, -1.2158, 0.72826],
 #                                  decimal=4)
+
+    @testing.with_requires("scipy>=1.16")
+    @pytest.mark.parametrize('lzn', range(4))
+    @pytest.mark.parametrize('lzd', range(4))
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_ignore_leading_zeros(self, xp, scp, lzn, lzd):
+        # regression for scipy gh-6606 / cupy gh-9404: leading zeros padded
+        # onto the numerator or denominator should not change the result.
+        b = xp.asarray([0.14879732743343033])
+        a = xp.asarray([1, 0.54552236880522209, 0.14879732743343033])
+        b = xp.pad(b, (lzn, 0))
+        a = xp.pad(a, (lzd, 0))
+        b_z, a_z = scp.signal.bilinear(b, a, 0.5)
+        return b_z, a_z
 
 
 @testing.with_requires("scipy")
@@ -243,7 +258,7 @@ class TestLp2bs_zpk:
         return z_bs_s, p_bs_s, k_bs
 
 
-@testing.with_requires("scipy >= 1.8.0")
+@testing.with_requires("scipy")
 class TestZpk2Sos:
 
     @pytest.mark.parametrize('dt', 'fdFD')
@@ -635,6 +650,8 @@ class TestCplxReal:
 @testing.with_requires("scipy")
 class TestLowLevelAP:
     @testing.numpy_cupy_allclose(scipy_name="scp")
+    @skip_if_after_baseline(
+        scipy="1.17", reason="SciPy>=1.17 returns float for `k`, cupy int 1.")
     def test_buttap(self, xp, scp):
         return scp.signal.buttap(3)
 
@@ -647,5 +664,7 @@ class TestLowLevelAP:
         return scp.signal.cheb2ap(3, 1)
 
     @testing.numpy_cupy_allclose(scipy_name="scp", atol=2e-4, rtol=2e-4)
+    @skip_if_after_baseline(
+        scipy="1.17", reason="SciPy>=1.17 returns float, not array for `k`.")
     def test_ellipap(self, xp, scp):
         return scp.signal.ellipap(7, 1, 10)

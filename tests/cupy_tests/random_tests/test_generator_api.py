@@ -254,6 +254,46 @@ class TestIntegers(GeneratorTestCase):
             2**40, size=2000)
 
 
+@testing.parameterize(*[
+    # Check values around, 2**31 < high <= 2**32 (used to error).
+    {'high': 2**31, 'endpoint': False},
+    {'high': 2**31 + 1, 'endpoint': False},
+    {'high': 2**32, 'endpoint': False},  # full uint32 path
+    {'high': 2**31, 'endpoint': True},
+])
+@testing.fix_random()
+class TestIntegersLargeBound(GeneratorTestCase):
+    target_method = 'integers'
+
+    def test_integers_large_bound(self):
+        out = self.generate(
+            0, self.high, size=10000, dtype=numpy.int64,
+            endpoint=self.endpoint)
+        assert out.dtype == numpy.int64
+        assert (0 <= out).all()
+        if self.endpoint:
+            assert (out <= self.high).all()
+        else:
+            assert (out < self.high).all()
+
+
+@testing.parameterize(*[
+    # The spans are 1.5x a power of two, so the mask is one bit wider than
+    # the span and the rejection loop is exercised.  The 32-bit span also
+    # exceeds 2**31, the range that used to overflow the kernel parameter.
+    {'low': -2**30, 'high': 2**31 - 1},
+    {'low': -2**61, 'high': 2**62 - 1},
+])
+@testing.with_requires('numpy>=1.17.0')
+@testing.fix_random()
+class TestIntegersLargeBoundKS(GeneratorTestCase):
+    target_method = 'integers'
+
+    @_condition.repeat_with_success_at_least(10, 3)
+    def test_integers_large_bound_ks(self):
+        self.check_ks(0.05)(self.low, self.high, size=2000)
+
+
 @testing.with_requires('numpy>=1.17.0')
 @testing.fix_random()
 class TestRandom(InvalidOutsMixin, GeneratorTestCase):
@@ -310,10 +350,6 @@ class TestHypergeometricValidation:
         with pytest.raises(ValueError):
             self.gen.hypergeometric(10, 10, -1, size=10)
 
-    def test_hypergeometric_nsample_too_large(self):
-        with pytest.raises(ValueError):
-            self.gen.hypergeometric(5, 10, 16, size=10)
-
     def test_hypergeometric_nsample_zero(self):
         # Generator API allows nsample=0 (returns zeros), unlike legacy API
         out = self.gen.hypergeometric(5, 10, 0, size=10)
@@ -321,6 +357,13 @@ class TestHypergeometricValidation:
 
     def test_hypergeometric_nsample_equals_total(self):
         out = self.gen.hypergeometric(5, 10, 15, size=10)
+        testing.assert_array_equal(out, cupy.full(10, 5, dtype=cupy.int64))
+
+    def test_hypergeometric_nsample_exceeds_total(self):
+        # nsample > ngood + nbad would previously cause an infinite
+        # loop in the HRUA kernel. The kernel now routes this through
+        # the HYP path which handles it safely.
+        out = self.gen.hypergeometric(5, 10, 16, size=10)
         testing.assert_array_equal(out, cupy.full(10, 5, dtype=cupy.int64))
 
     def test_hypergeometric_ngood_zero(self):

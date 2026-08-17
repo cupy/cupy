@@ -7,15 +7,10 @@ import cupyx.scipy.fft as cp_fft
 from cupy import testing
 
 try:
-    # scipy.fft is available since scipy v1.4.0+
     import scipy.fft as scipy_fft  # noqa
-except ImportError:
-    scipy_fft = None
-
-try:
-    # fht, ifht, fhtoffset are available in scipy v1.7.0+
     from scipy.fft import fhtoffset
 except ImportError:
+    scipy_fft = None
     fhtoffset = None
 
 atol = {cupy.float64: 1e-10, 'default': 1e-5}
@@ -67,7 +62,7 @@ class TestFftlogScipyBackend:
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-5, accept_error=ValueError,
                                  contiguous_check=False)
-    @testing.with_requires('scipy>=1.9.0')
+    @testing.with_requires('scipy')
     def test_dct_backend(self, xp, dtype):
         backend = 'scipy' if xp is np else cp_fft
         with scipy_fft.set_backend(backend):

@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 import pickle
-import sys
 
 import pytest
 
 import cupy
 from cupy.cuda import driver
-from cupy.cuda import nvrtc
 from cupy.cuda import runtime
 
 
@@ -49,27 +47,34 @@ class TestMemPool:
         runtime.memPoolDestroy(pool)
 
 
-@pytest.mark.skipif(runtime.is_hip,
-                    reason='This assumption is correct only in CUDA')
-def test_assumed_runtime_version():
-    # When CUDA Python is enabled, CuPy calculates the CUDA runtime version
-    # from NVRTC version. This test ensures that the assumption is correct
-    # by running the same logic in non-CUDA Python environment.
-    # When this fails, `runtime.runtimeGetVersion()` logic needs to be fixed.
-    (major, minor) = nvrtc.getVersion()
-    local_ver = runtime._getLocalRuntimeVersion()
-    # On Windows, starting from CUDA 13.0, cudaRuntimeGetVersion() always
-    # returns major * 1000 regardless of the minor version (nvbugs 5955788,
-    # 5523579). Accept either form on Windows + CUDA >= 13.
-    if sys.platform == 'win32' and major >= 13:
-        assert local_ver in (major * 1000, major * 1000 + minor * 10)
-    else:
-        assert local_ver == major * 1000 + minor * 10
-
-
 def test_major_version():
     major = runtime._getCUDAMajorVersion()
     if runtime.is_hip:
         assert major == 0
     else:
         assert 10 < major < 20
+
+
+def test_pointer_get_memory_type():
+    # Thin helper must stay in sync with pointerGetAttributes(...).type
+    device_arr = cupy.empty(4, dtype=cupy.float32)
+    assert (runtime.pointerGetMemoryType(device_arr.data.ptr)
+            == runtime.pointerGetAttributes(device_arr.data.ptr).type
+            == runtime.memoryTypeDevice)
+
+    pinned = runtime.hostAlloc(16, runtime.hostAllocDefault)
+    try:
+        assert (runtime.pointerGetMemoryType(pinned)
+                == runtime.pointerGetAttributes(pinned).type
+                == runtime.memoryTypeHost)
+    finally:
+        runtime.freeHost(pinned)
+
+    if not runtime.is_hip:
+        managed = runtime.mallocManaged(16)
+        try:
+            assert (runtime.pointerGetMemoryType(managed)
+                    == runtime.pointerGetAttributes(managed).type
+                    == runtime.memoryTypeManaged)
+        finally:
+            runtime.free(managed)

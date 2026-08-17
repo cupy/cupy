@@ -1,17 +1,17 @@
 from __future__ import annotations
 
 import threading
-import unittest
+
 from unittest import mock
 
+import cupy
 import pytest
 
-import cupy
 from cupy import testing
 from cupy_tests.core_tests.fusion_tests import fusion_utils
 
 
-class FusionTestBase(unittest.TestCase):
+class FusionTestBase:
     def generate_inputs(self, xp, nargs, dtype):
         inputs = [
             testing.shaped_random((3, 4), xp, dtype, scale=10, seed=seed)
@@ -96,9 +96,9 @@ class TestFusionTuple(FusionTestBase):
 
         return func
 
-    @unittest.skipUnless(
-        fusion_utils.can_use_grid_synchronization(),
-        'Requires CUDA grid synchronization')
+    @pytest.mark.skipif(
+        not fusion_utils.can_use_grid_synchronization(),
+        reason='Requires CUDA grid synchronization')
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @fusion_utils.check_fusion(generate_inputs_args=(2,))
     def test_various_shape(self, xp, dtype):
@@ -137,7 +137,7 @@ class TestReturnNone(FusionTestBase):
         return impl
 
 
-class TestFusionNoneParams(unittest.TestCase):
+class TestFusionNoneParams:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -207,7 +207,7 @@ class TestSpecialValues(FusionTestBase):
         return func(points, mask)
 
 
-class TestFusionDecorator(unittest.TestCase):
+class TestFusionDecorator:
     def test_without_paren(self):
         @cupy.fuse
         def func_wo_paren(x):
@@ -228,7 +228,7 @@ class TestFusionDecorator(unittest.TestCase):
 
 
 @pytest.mark.thread_unsafe(reason="Uses mock.patch on global state")
-class TestFusionKernelName(unittest.TestCase):
+class TestFusionKernelName:
 
     def check(self, xp, func, expected_name, is_elementwise):
         a = xp.arange(0, 12, dtype='d').reshape(3, 4)
@@ -317,7 +317,7 @@ class TestFusionKernelName(unittest.TestCase):
         return self.check(xp, func, 'abc', False)
 
 
-class TestFusionComposition(unittest.TestCase):
+class TestFusionComposition:
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
@@ -342,7 +342,7 @@ class TestFusionComposition(unittest.TestCase):
         return h(x, y)
 
 
-class TestFusionCompile(unittest.TestCase):
+class TestFusionCompile:
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
@@ -369,7 +369,7 @@ class TestFusionGetArrayModule(FusionTestBase):
         return func
 
 
-class TestFusionThread(unittest.TestCase):
+class TestFusionThread:
 
     def test_thread(self):
         x = testing.shaped_arange((3, 3), cupy, cupy.int64)
@@ -430,7 +430,7 @@ class TestFusionThread(unittest.TestCase):
         return xp.concatenate(out)
 
 
-class TestFusionMultiDevice(unittest.TestCase):
+class TestFusionMultiDevice:
 
     @testing.multi_gpu(2)
     @testing.numpy_cupy_array_equal()

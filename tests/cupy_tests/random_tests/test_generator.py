@@ -267,13 +267,16 @@ class TestHypergeometricValidation:
         with pytest.raises(ValueError):
             self.rs.hypergeometric(10, 10, -1, size=10)
 
-    def test_hypergeometric_nsample_too_large(self):
-        with pytest.raises(ValueError):
-            self.rs.hypergeometric(5, 10, 16, size=10)
-
     def test_hypergeometric_nsample_equals_total(self):
         # nsample == ngood + nbad is valid (deterministic)
         out = self.rs.hypergeometric(5, 10, 15, size=10)
+        testing.assert_array_equal(out, cupy.full(10, 5))
+
+    def test_hypergeometric_nsample_exceeds_total(self):
+        # nsample > ngood + nbad would previously cause an infinite
+        # loop in the HRUA kernel. The kernel now routes this through
+        # the HYP path which handles it safely.
+        out = self.rs.hypergeometric(5, 10, 16, size=10)
         testing.assert_array_equal(out, cupy.full(10, 5))
 
     def test_hypergeometric_ngood_zero(self):
@@ -876,7 +879,6 @@ class TestChoiceChi(RandomGeneratorTestCase):
         assert _hypothesis.chi_square_test(counts, expected)
 
     @_condition.repeat(3, 10)
-    @pytest.mark.xfail(runtime.is_hip, reason='ROCm/HIP may have a bug')
     def test_goodness_of_fit_2(self):
         vals = self.generate(3, (5, 20), True, [0.3, 0.3, 0.4]).get()
         counts = numpy.histogram(vals, bins=numpy.arange(4))[0]

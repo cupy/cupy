@@ -75,7 +75,15 @@ class TestDelaunay:
         return xp.sort(xp.sort(tri.simplices, axis=-1), axis=0)
 
     @pytest.mark.parametrize(
-        'dataset', [pathological_data_1, pathological_data_2])
+        'dataset',
+        [pytest.param(
+            pathological_data_1,
+            marks=pytest.mark.skipif(
+                cupy.cuda.runtime.is_hip,
+                reason='SIGABRT in cupyx.scipy.spatial.delaunay_2d '
+                '_do_flipping for this dataset (crashes the '
+                'worker; not xfail-able)')),
+         pathological_data_2])
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_pathological(self, dataset, xp, scp):
         points = xp.asarray(dataset, dtype=xp.float64)

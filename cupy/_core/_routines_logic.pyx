@@ -1,3 +1,6 @@
+import numpy
+
+import cupy
 from cupy._core._kernel import create_ufunc
 from cupy._core._reduction import create_reduction_func
 from cupy._util import bf16_loop
@@ -53,21 +56,70 @@ cdef _any = create_reduction_func(
     'false', '')
 
 
-cpdef create_comparison(name, op, doc='', no_complex_dtype=True):
+def promote_weak_int(in_types, weaks):
+    if weaks is None:
+        return in_types, weaks
 
-    if no_complex_dtype:
-        ops = ('??->?', 'qq->?', 'qQ->?', 'Qq->?', 'QQ->?',
-               'ee->?', *bf16_loop(2, '?'), 'ff->?', 'dd->?')
-    else:
-        ops = ('??->?', 'qq->?', 'qQ->?', 'Qq->?', 'QQ->?',
-               'ee->?', *bf16_loop(2, '?'), 'ff->?', 'dd->?',
-               'FF->?', 'DD->?')
+    # Python integers can be originally discovered as uint or int.
+    # E.g. for int32(-2**31) == 2**32 we need to promote, rather than try
+    # to use the NEP 50 style and use int32 (failing the conversion).
+    # For float this is currently not what NumPy does (debatable).
+    # For bool, NumPy uses the default integer while we make it work (ignore).
+    if weaks[0] is int and weaks[1] is False and in_types[1].kind in "iu":
+        return in_types, (False, weaks[1])
+    elif weaks[1] is int and weaks[0] is False and in_types[0].kind in "iu":
+        return in_types, (weaks[0], False)
+
+    return in_types, weaks
+
+
+def struct_compare_resolution(op, in_dtypes, out_dtypes):
+    # NumPy ignores field names, so we'll do that as well.
+    dt1, dt2 = in_dtypes
+    if dt1.fields is None and dt2.fields is None:
+        if dt1.itemsize == dt2.itemsize and dt1.itemsize > 0:
+            out_dtypes = (numpy.dtype(bool),)
+            return (dt1, dt1), out_dtypes
+        raise TypeError(
+            f"cannot compare unstructured voids of different size "
+            f"({dt1.itemsize} vs {dt2.itemsize})")
+    if dt1.fields is None or dt2.fields is None:
+        raise TypeError("Cannot compare structured and non-structured dtypes")
+
+    try:
+        cmp_dtype = numpy.promote_types(dt1, dt2)
+    except TypeError:
+        raise TypeError(
+            "Cannot compare structured arrays unless they have a common "
+            "dtype.  I.e. `np.result_type(arr1, arr2)` must be defined.")
+
+    # Ensure the comparison dtype actually has sufficient alignment.
+    cmp_dtype = cupy.make_aligned_dtype(cmp_dtype)
+
+    out_dtypes = (numpy.dtype(bool),)
+    return (cmp_dtype, cmp_dtype), out_dtypes
+
+
+cpdef create_comparison(
+        name, op, doc='', no_complex_dtype=True, allow_structured=False):
+    ops = (
+        '??->?',
+        'qq->?', 'QQ->?',
+        ('qQ->?', f'out0 = in0 < 0 ? in0 {op} 0 : in0 {op} in1'),
+        ('Qq->?', f'out0 = in1 < 0 ? 0 {op} in1 : in0 {op} in1'),
+        'ee->?', *bf16_loop(2, '?'), 'ff->?', 'dd->?')
+
+    if not no_complex_dtype:
+        ops += ('FF->?', 'DD->?')
+
+    if allow_structured:
+        ops += (("VV->?", None, struct_compare_resolution),)
 
     return create_ufunc(
         'cupy_' + name,
         ops,
         'out0 = in0 %s in1' % op,
-        doc=doc)
+        doc=doc, promote_types=promote_weak_int)
 
 
 cdef _greater = create_comparison(
@@ -117,7 +169,7 @@ cdef _equal = create_comparison(
     .. seealso:: :data:`numpy.equal`
 
     ''',
-    no_complex_dtype=False)
+    no_complex_dtype=False, allow_structured=True)
 
 
 cdef _not_equal = create_comparison(
@@ -127,7 +179,7 @@ cdef _not_equal = create_comparison(
     .. seealso:: :data:`numpy.equal`
 
     ''',
-    no_complex_dtype=False)
+    no_complex_dtype=False, allow_structured=True)
 
 
 # Variables to expose to Python

@@ -177,13 +177,13 @@ def _call_kernel(kernel, input, weights, output, structure=None,
     output = _util._get_output(output, input, None, complex_output)
     needs_temp = cupy.shares_memory(output, input, 'MAY_SHARE_BOUNDS')
     if needs_temp:
-        output, temp = _util._get_output(output.dtype, input, None,
-                                         complex_output), output
+        output, orig_out = _util._get_output(output.dtype, input, None,
+                                             complex_output), output
     args.append(output)
     kernel(*args)
     if needs_temp:
-        _core.elementwise_copy(temp, output)
-        output = temp
+        _core.elementwise_copy(output, orig_out)
+        output = orig_out
     return output
 
 
@@ -191,13 +191,13 @@ if runtime.is_hip:
     includes = r'''
 // workaround for HIP: line begins with #include
 #include <cupy/math_constants.h>
-#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_headers?
+#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_decls?
 #include <type_traits>
 '''
 else:
     includes = r'''
 #include <cupy/cuda_workaround.h>  // provide C++ std:: coverage
-#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_headers?
+#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_decls?
 #include <cupy/math_constants.h>
 
 template<> struct std::is_floating_point<float16> : std::true_type {};
@@ -255,12 +255,12 @@ def _generate_nd_kernel(name, pre, found, post, modes, w_shape, int_type,
     constant_mode = (num_unique_modes == 1 and modes[0] == 'constant')
 
     # CArray: remove xstride_{j}=... from string
-    size = ('%s xsize_{j}=x.shape()[{j}], ysize_{j} = _raw_y.shape()[{j}]'
-            ', xstride_{j}=x.strides()[{j}];' % int_type)
+    size = ('%s xsize_{j} = x.shape()[{j}], ysize_{j} = _raw_y.shape()[{j}]'
+            ', xstride_{j} = x.strides()[{j}];' % int_type)
     sizes = [size.format(j=j) for j in range(ndim)]
     inds = _util._generate_indices_ops(ndim, int_type, offsets)
     # CArray: remove expr entirely
-    expr = ' + '.join([f'ix_{j}' for j in range(ndim)])
+    expr = ' + '.join([f'offset_{j}' for j in range(ndim)])
 
     ws_init = ws_pre = ws_post = ''
     if has_weights or has_structure:
@@ -277,7 +277,7 @@ def _generate_nd_kernel(name, pre, found, post, modes, w_shape, int_type,
     for j in range(ndim):
         if w_shape[j] == 1:
             # CArray: string becomes 'inds[{j}] = ind_{j};', remove (int_)type
-            loops.append(f'{{ {int_type} ix_{j} = ind_{j} * xstride_{j};')
+            loops.append(f'{{ {int_type} ix_{j} = ind_{j};')
         else:
             boundary = _util._generate_boundary_condition_ops(
                 modes[j], f'ix_{j}', f'xsize_{j}', int_type)
@@ -287,7 +287,10 @@ def _generate_nd_kernel(name, pre, found, post, modes, w_shape, int_type,
     {{
         {int_type} ix_{j} = ind_{j} + iw_{j};
         {boundary}
-        ix_{j} *= xstride_{j};
+            ''')
+
+        loops.append(f'''
+        {int_type} offset_{j} = ix_{j} * xstride_{j};
         ''')
 
     # CArray: string becomes 'x[inds]', no format call needed

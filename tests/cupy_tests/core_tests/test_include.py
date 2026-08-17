@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import os
-
 import cupy
 import pytest
 
@@ -56,12 +54,16 @@ class TestIncludesCompileCUDA:
         return archs
 
     def _get_options(self):
-        return (
+        from cuda.pathfinder import find_nvidia_header_directory
+        include_dir = find_nvidia_header_directory('cudart')
+        opts = [
             '-std=c++17',
             *cupy._core.core._get_cccl_include_options(),
             '-I{}'.format(cupy._core.core._get_header_dir_path()),
-            '-I{}'.format(os.path.join(cupy.cuda.get_cuda_path(), 'include')),
-        )
+        ]
+        if include_dir is not None:
+            opts.append('-I{}'.format(include_dir))
+        return tuple(opts)
 
     def test_nvcc(self):
         options = self._get_options()

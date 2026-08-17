@@ -94,6 +94,25 @@ class TestResample:
         return (scp.signal.resample(fsig, num, domain='freq'),
                 scp.signal.resample(tsig, num, domain='time'))
 
+    @pytest.mark.parametrize("shape,axis", [
+        pytest.param((64,), -1, id="1D"),
+        pytest.param((20, 50), 0, id="2D-axis0"),
+        pytest.param((20, 50), 1, id="2D-axis1"),
+        pytest.param((20, 50), -1, id="2D-axis-neg"),
+    ])
+    @pytest.mark.parametrize("order", ["C", "F"])
+    @pytest.mark.parametrize(
+        'dtype', ['float32', 'float64', 'complex64', 'complex128'])
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-7)
+    def test_strides(self, xp, scp, shape, axis, order, dtype):
+        arr = xp.linspace(0, 1, int(np.prod(shape)), dtype=dtype)
+        arr = arr.reshape(shape, order=order)
+        # Pass an explicit same-dtype window: the default firwin design is
+        # float64, and CuPy's upfirdn promotes with the filter dtype while
+        # SciPy can preserve float32/complex64.
+        window = xp.asarray([0.25, 0.5, 0.25], dtype=dtype)
+        return scp.signal.resample_poly(arr, 1, 2, axis=axis, window=window)
+
     @pytest.mark.parametrize('nx', (1, 2, 3, 5, 8))
     @pytest.mark.parametrize('ny', (1, 2, 3, 5, 8))
     @pytest.mark.parametrize('dtype', ('float', 'complex'))
@@ -363,7 +382,7 @@ class TestDecimate:
         x_out = scp.signal.decimate(x, 30, ftype='fir')
         return x_out
 
-    @testing.with_requires('scipy>=1.10')
+    @testing.with_requires('scipy')
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=5e-5, rtol=5e-5)
     def test_long_float32(self, xp, scp):
         # regression: gh-15072.  With 32-bit float and either lfilter
@@ -371,7 +390,7 @@ class TestDecimate:
         x = scp.signal.decimate(xp.ones(10_000, dtype=np.float32), 10)
         return x
 
-    @testing.with_requires('scipy>=1.10')
+    @testing.with_requires('scipy')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_float16_upcast(self, xp, scp):
         # float16 must be upcast to float64
