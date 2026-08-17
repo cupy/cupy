@@ -1348,3 +1348,47 @@ class TestCumulativeSumProd:
         out = cupy.zeros((3, 5), dtype=numpy.float32)
         with pytest.raises(ValueError):
             getattr(cupy, func)(a, axis=1, out=out)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_0d(self, xp, dtype, func):
+        # numpy accepts 0-D input; cupy matches via atleast_1d.
+        a = xp.asarray(3, dtype=dtype)
+        return getattr(xp, func)(a)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_0d_include_initial(self, xp, dtype, func):
+        a = xp.asarray(3, dtype=dtype)
+        return getattr(xp, func)(a, include_initial=True)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_empty_axis(self, xp, dtype, func):
+        a = xp.empty((3, 0, 4), dtype=dtype)
+        return getattr(xp, func)(a, axis=1)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_empty_axis_include_initial(self, xp, dtype, func):
+        a = xp.empty((3, 0, 4), dtype=dtype)
+        return getattr(xp, func)(a, axis=1, include_initial=True)
+
+    @pytest.mark.parametrize('in_dtype', [numpy.int8, numpy.uint16])
+    @testing.numpy_cupy_array_equal()
+    def test_narrow_int_promotion_include_initial(
+            self, xp, in_dtype, func):
+        # Narrow integer inputs must promote to int64 / uint64 (matches
+        # numpy's default-platform-integer rule) even when include_initial
+        # takes the internal-allocation path.
+        a = testing.shaped_arange((5,), xp, in_dtype)
+        return getattr(xp, func)(a, include_initial=True)
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_out_dtype_cast(self, xp, dtype, func):
+        # out has a different dtype than x -- result must be cast.
+        a = testing.shaped_arange((3, 4, 5), xp, numpy.int16)
+        out = xp.zeros((3, 4, 5), dtype=dtype)
+        getattr(xp, func)(a, axis=1, out=out)
+        return out

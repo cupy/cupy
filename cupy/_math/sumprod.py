@@ -281,6 +281,10 @@ def _cumulative_op(x, op, identity, axis, dtype, out, include_initial):
     if out is None:
         # Resolve dtype upfront (mirrors scan_core promotion) so we can
         # allocate once and write the scan directly into res[1:].
+        # TODO(leofang): dedup this promotion table with the identical one
+        # in cupy/_core/_routines_math.pyx::scan_core -- extract a shared
+        # helper (e.g. cpdef default_scan_dtype) so the rule lives in one
+        # place.
         if dtype is None:
             kind = x.dtype.kind
             if kind in 'bi':
@@ -313,12 +317,15 @@ def cumulative_prod(x, /, *, axis=None, dtype=None, out=None,
 
     Args:
         x (cupy.ndarray): Input array.
-        axis (int): Axis along which the cumulative product is computed.
-            The default (``None``) is only allowed for one-dimensional arrays.
-            For arrays with more than one dimension ``axis`` is required.
+        axis (int or None): Axis along which the cumulative product is
+            computed. The default (``None``) is only allowed for
+            one-dimensional arrays. For arrays with more than one dimension
+            ``axis`` is required.
         dtype: Type of the returned array and of the accumulator in which the
             elements are multiplied. If ``dtype`` is not specified, it
-            defaults to the dtype of ``x``.
+            defaults to the dtype of ``x``, unless ``x`` has an integer dtype
+            with a precision less than that of the default platform integer.
+            In that case, the default platform integer is used.
         out (cupy.ndarray): Alternative output array in which to place the
             result. It must have the same shape as the expected output but
             the type will be cast if necessary.
@@ -333,9 +340,7 @@ def cumulative_prod(x, /, *, axis=None, dtype=None, out=None,
     .. seealso:: :func:`numpy.cumulative_prod`
 
     """
-    result = _cumulative_op(x, cumprod, 1, axis, dtype, out, include_initial)
-
-    return out if out is not None else result
+    return _cumulative_op(x, cumprod, 1, axis, dtype, out, include_initial)
 
 
 def cumulative_sum(x, /, *, axis=None, dtype=None, out=None,
@@ -347,12 +352,14 @@ def cumulative_sum(x, /, *, axis=None, dtype=None, out=None,
 
     Args:
         x (cupy.ndarray): Input array.
-        axis (int): Axis along which the cumulative sum is computed.
+        axis (int or None): Axis along which the cumulative sum is computed.
             The default (``None``) is only allowed for one-dimensional arrays.
             For arrays with more than one dimension ``axis`` is required.
         dtype: Type of the returned array and of the accumulator in which the
-            elements are summed. If ``dtype`` is not specified, it defaults to
-            the dtype of ``x``.
+            elements are summed. If ``dtype`` is not specified, it defaults
+            to the dtype of ``x``, unless ``x`` has an integer dtype with a
+            precision less than that of the default platform integer. In
+            that case, the default platform integer is used.
         out (cupy.ndarray): Alternative output array in which to place the
             result. It must have the same shape as the expected output but
             the type will be cast if necessary.
@@ -367,9 +374,7 @@ def cumulative_sum(x, /, *, axis=None, dtype=None, out=None,
     .. seealso:: :func:`numpy.cumulative_sum`
 
     """
-    result = _cumulative_op(x, cumsum, 0, axis, dtype, out, include_initial)
-
-    return out if out is not None else result
+    return _cumulative_op(x, cumsum, 0, axis, dtype, out, include_initial)
 
 
 _replace_nan_kernel = cupy._core._kernel.ElementwiseKernel(
