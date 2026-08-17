@@ -65,6 +65,8 @@ class TestSpecialMatrices(TestSpecialMatricesBase):
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
                                  accept_error=ValueError)
     def test_special_matrix(self, xp, scp):
+        if self.function == "kron" and not testing.installed("scipy<1.17"):
+            self.skipTest("scipy.linalg.kron was removed in scipy 1.17")
         function = getattr(scp.linalg, self.function)
 
         if self.function == "kron":
