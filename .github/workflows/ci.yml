@@ -33,13 +33,17 @@ on:
       - "hotfix-*"
 
 concurrency:
-  # Labeled builds share ci-build-<PR> with ci-trigger.yml's hygiene runs: a
-  # second /test supersedes the first build, and any push cancels it. Push
-  # runs get a per-commit group (i.e. effectively none): a burst of merges
-  # must not cancel intermediate runs, each of which carries its own FlexCI
-  # dispatch.
-  group: ${{ github.event_name == 'pull_request' && format('ci-build-{0}', github.event.pull_request.number) || format('ci-push-{0}', github.sha) }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  # Only the ci:triggered build shares ci-build-<PR> (with ci-trigger.yml's
+  # hygiene runs): a second /test supersedes the first build, and a push to the
+  # PR cancels it via hygiene. Every labeled event runs this workflow (GitHub
+  # can't filter `labeled` by name), so any OTHER label must land in a unique,
+  # throwaway group -- otherwise it would enter ci-build-<PR> and cancel the
+  # in-flight vouched build before the guard no-ops it (concurrency is evaluated
+  # at queue time, ahead of the guard job). Push runs get a per-commit group
+  # (i.e. effectively none): a burst of merges must not cancel intermediate
+  # runs, each of which carries its own FlexCI dispatch.
+  group: ${{ github.event_name == 'push' && format('ci-push-{0}', github.sha) || github.event.label.name == 'ci:triggered' && format('ci-build-{0}', github.event.pull_request.number) || format('ci-noop-{0}', github.run_id) }}
+  cancel-in-progress: ${{ github.event.label.name == 'ci:triggered' }}
 
 # Least privilege: read-only by default; jobs that need more grant it
 # per-job below (only dispatch-flexci writes, via flexci_dispatcher.py).
