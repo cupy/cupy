@@ -636,10 +636,15 @@ class TestLinalgTensordot:
         ([1, 2], [0, 1]),
         ([-1, -2], [-2, -3]),
         (numpy.array([1, 2]), numpy.array([0, 1])),
+        pytest.param(lambda: (iter([1, 2]), iter([0, 1])), id='iterables'),
     ])
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
     def test_axes(self, xp, dtype, axes):
+        if callable(axes):
+            axes = axes()
+            if xp is numpy:
+                axes = tuple(map(list, axes))
         x1 = testing.shaped_arange((2, 3, 3), xp, dtype)
         x2 = testing.shaped_arange((3, 3, 5), xp, dtype)
         return xp.linalg.tensordot(x1, x2, axes=axes)
