@@ -437,11 +437,8 @@ def linalg_tensordot(x1, x2, /, *, axes=2):
     .. seealso:: :func:`numpy.linalg.tensordot`
 
     """
-    try:
+    if not numpy.isscalar(axes):
         x1_axes, x2_axes = axes
-    except TypeError:
-        pass  # integer axes
-    else:
         # numpy.linalg.tensordot accepts any iterable pair (lists,
         # ndarrays, ...) while cupy.tensordot requires a sequence of two
         # sequences, so normalize to a tuple of two tuples. This also maps

@@ -635,6 +635,7 @@ class TestLinalgTensordot:
         1,
         ([1, 2], [0, 1]),
         ([-1, -2], [-2, -3]),
+        (numpy.array([1, 2]), numpy.array([0, 1])),
     ])
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
