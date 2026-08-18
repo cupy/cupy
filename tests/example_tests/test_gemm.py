@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-import unittest
-
 from example_tests import example_test
 
 
-class TestGEMM(unittest.TestCase):
+class TestGEMM:
 
     def test_sgemm(self):
         example_test.run_example('gemm/sgemm.py')

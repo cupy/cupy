@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import itertools
-import unittest
+
+import pytest
 
 from cupy import testing
 from cupy_tests.core_tests.fusion_tests import fusion_utils
@@ -16,8 +17,9 @@ def _permutate_shapes(shapes_list):
     return list(permutated_shapes_set)
 
 
-@testing.parameterize(*testing.product({
-    'shapes': _permutate_shapes([
+@pytest.mark.parametrize(
+    "shapes",
+    _permutate_shapes([
         # Same shapes
         ((1,), (1,)),
         ((3, 4), (3, 4)),
@@ -50,57 +52,58 @@ def _permutate_shapes(shapes_list):
         ((256, 256), (256,)),
         ((256, 256), (256, 1)),
     ])
-}))
-class TestFusionBroadcast(unittest.TestCase):
+)
+class TestFusionBroadcast:
 
-    def generate_inputs(self, xp):
-        shape1, shape2 = self.shapes
+    def generate_inputs(self, xp, shapes):
+        shape1, shape2 = shapes
         x = testing.shaped_random(shape1, xp, 'int64', scale=10, seed=0)
         y = testing.shaped_random(shape2, xp, 'int64', scale=10, seed=1)
         return (x, y), {}
 
     @fusion_utils.check_fusion()
-    def test_broadcast(self, xp):
+    def test_broadcast(self, xp, shapes):
         return lambda x, y: x + y
 
     # TODO(asi1024): Uncomment after replace fusion implementation.
 
     # @fusion_utils.check_fusion(accept_error=ValueError)
-    # def test_broadcast_inplace(self, xp):
+    # def test_broadcast_inplace(self, xp, shapes):
     #     def impl(x, y):
     #         x += y
     #     return impl
 
 
-@testing.parameterize(*testing.product({
-    'shapes': _permutate_shapes([
+@pytest.mark.parametrize(
+    "shapes",
+    _permutate_shapes([
         ((2,), (3,)),
         ((2,), (0,)),
         ((3, 2), (3, 3)),
         ((3, 2), (2, 2)),
         ((3,), (1, 2)),
     ])
-}))
-class TestFusionBroadcastInvalid(unittest.TestCase):
+)
+class TestFusionBroadcastInvalid:
 
-    def generate_inputs(self, xp):
-        shape1, shape2 = self.shapes
+    def generate_inputs(self, xp, shapes):
+        shape1, shape2 = shapes
         x = testing.shaped_random(shape1, xp, 'int64', scale=10, seed=0)
         y = testing.shaped_random(shape2, xp, 'int64', scale=10, seed=1)
         return (x, y), {}
 
     @fusion_utils.check_fusion(accept_error=ValueError)
-    def test_broadcast(self, xp):
+    def test_broadcast(self, xp, shapes):
         return lambda x, y: x + y
 
     @fusion_utils.check_fusion(accept_error=ValueError)
-    def test_broadcast_inplace(self, xp):
+    def test_broadcast_inplace(self, xp, shapes):
         def impl(x, y):
             x += y
         return impl
 
 
-class TestFusionParseInput(unittest.TestCase):
+class TestFusionParseInput:
 
     def generate_inputs(self, xp):
         x = testing.shaped_random((3, 4), xp, 'int64', scale=10, seed=0)
@@ -168,7 +171,7 @@ class TestFusionParseInput(unittest.TestCase):
         return lambda x: xp.divmod(x, x)
 
 
-class TestFusionOutDtype(unittest.TestCase):
+class TestFusionOutDtype:
 
     def generate_inputs(self, xp, dtype1, dtype2):
         x = testing.shaped_random((3, 4), xp, dtype1, scale=10, seed=0)
@@ -187,7 +190,7 @@ class TestFusionOutDtype(unittest.TestCase):
         return impl
 
 
-class TestFusionScalar(unittest.TestCase):
+class TestFusionScalar:
 
     def generate_inputs(self, xp, dtype1, dtype2):
         array = testing.shaped_random((3, 4), xp, dtype1, scale=10, seed=0)

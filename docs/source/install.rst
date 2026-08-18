@@ -25,9 +25,9 @@ Python Dependencies
 
 NumPy/SciPy-compatible API in CuPy v14 is based on NumPy 2.3 and SciPy 1.16, and has been tested against the following versions:
 
-* `NumPy <https://numpy.org/>`_: v2.0 / v2.1 / v2.2 / v2.3
+* `NumPy <https://numpy.org/>`_: v2.0 / v2.1 / v2.2 / v2.3 / v2.4
 
-* `SciPy <https://scipy.org/>`_ (*optional*): v1.14 / v1.15 / v1.16
+* `SciPy <https://scipy.org/>`_ (*optional*): v1.14 / v1.15 / v1.16 / v1.17
 
     * Required only when copying sparse matrices from GPU to CPU (see :doc:`../reference/scipy_sparse`.)
 
@@ -58,7 +58,7 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 
     * The library to perform collective multi-GPU / multi-node computations.
 
-* `cuSPARSELt <https://docs.nvidia.com/cuda/cusparselt/>`_: v0.8.0 / v0.8.1 / v0.9.0
+* `cuSPARSELt <https://docs.nvidia.com/cuda/cusparselt/>`_: v0.8.0 / v0.8.1 / v0.9.0 / v0.9.1
 
     * The library to accelerate sparse matrix-matrix multiplication.
 
@@ -204,7 +204,7 @@ If you want to install the latest development version of CuPy from a cloned Git 
     $ export NVCC=$CONDA_PREFIX/bin/nvcc
 
    Conda CUDA 12+ packages place headers (``cuda_runtime.h``) and static libs
-   (e.g. ``libcufilt.a``) under ``$CONDA_PREFIX/targets/<target>/``, so
+   (e.g. ``libcudart_static.a``) under ``$CONDA_PREFIX/targets/<target>/``, so
    ``CUDA_PATH`` must point at that subdirectory. ``NVCC`` must be the real
    binary path: invoking ``nvcc`` through the symlink at
    ``$CUDA_PATH/bin/nvcc`` causes the build to fail with

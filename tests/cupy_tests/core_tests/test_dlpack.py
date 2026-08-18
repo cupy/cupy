@@ -225,6 +225,25 @@ class TestNewDLPackConversion:
                     testing.assert_array_equal(
                         orig_array.data.ptr, out_array.data.ptr)
 
+    @pytest.mark.skipif(cuda.runtime.is_hip,
+                        reason='stream=0 legacy compat is CUDA-only')
+    def test_stream_zero_legacy_compat(self):
+        # PyTorch historically exported the default stream as 0; CuPy accepts
+        # it with a warning and maps it to the legacy default stream.
+        orig_array = _gen_array(cupy.float32)
+        with pytest.warns(UserWarning, match='Stream 0'):
+            dltensor = orig_array.__dlpack__(stream=0)
+        out_array = cupy.from_dlpack(dltensor)
+        testing.assert_array_equal(orig_array, out_array)
+        testing.assert_array_equal(orig_array.data.ptr, out_array.data.ptr)
+
+    def test_conversion_0d(self):
+        orig_array = cupy.array(1.5, dtype=cupy.float32)
+        out_array = cupy.from_dlpack(orig_array)
+        assert out_array.shape == ()
+        testing.assert_array_equal(orig_array, out_array)
+        testing.assert_array_equal(orig_array.data.ptr, out_array.data.ptr)
+
 
 class TestDLTensorMemory:
 

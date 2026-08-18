@@ -546,10 +546,7 @@ class TestBicgstab:
             pytest.skip()
         a = xp.empty((0, 0), dtype=dtype)
         b = xp.empty((0,), dtype=dtype)
-        if self.atol is None and xp == numpy:
-            return sp.linalg.bicgstab(a, b)
-        else:
-            return sp.linalg.bicgstab(a, b)
+        return sp.linalg.bicgstab(a, b)
 
     @testing.for_dtypes('fdFD')
     def test_callback(self, dtype):
