@@ -182,18 +182,22 @@ class TestEigsh:
             a = sp.linalg.aslinearoperator(a)
         return self._test_eigsh(a, xp, sp)
 
-    def test_degenerate(self):
+    degenerate_tol = {'f': 1e-5, 'd': 1e-10}
+
+    @testing.for_dtypes('fdFD')
+    def test_degenerate(self, dtype):
         # A degenerate spectrum exhausts the Krylov space (beta -> 0).
         # Without a breakdown guard this normalized by ~0 and returned NaN
         # (gh-6446, gh-7495). Check the identity yields all-ones, no NaN.
         if self.use_linear_operator:
             pytest.skip()
-        a = sparse.identity(self.n, dtype='d', format='csr')
+        a = sparse.identity(self.n, dtype=dtype, format='csr')
         w = sparse.linalg.eigsh(a, k=self.k, which=self.which,
                                 return_eigenvectors=False)
         assert not bool(cupy.isnan(w).any())
+        tol = self.degenerate_tol[numpy.dtype(dtype).char.lower()]
         cupy.testing.assert_allclose(
-            cupy.sort(w), cupy.ones(self.k, dtype='d'), atol=1e-8)
+            cupy.sort(w), cupy.ones(self.k), rtol=tol, atol=tol)
 
     @pytest.mark.xfail(
         reason='eigsh works wrong (#5001)',
@@ -303,21 +307,26 @@ class TestSvds:
             a = sp.linalg.aslinearoperator(a)
         return self._test_svds(a, xp, sp)
 
-    def test_rank_deficient(self):
+    rank_deficient_tol = {'f': 1e-2, 'd': 1e-4}
+
+    @testing.for_dtypes('fdFD')
+    def test_rank_deficient(self, dtype):
         # A rank-deficient matrix gives A^H A a large null space, exhausting
         # the Krylov space; without a breakdown guard svds collapsed to all
-        # zeros (gh-8009, gh-7157). Check it recovers the true top-k values.
+        # zeros (gh-8009). Check it recovers the true top-k values.
         if self.use_linear_operator:
             pytest.skip()
         m, n = self.shape
         rank = min(m, n) // 2
-        a = (testing.shaped_random((m, rank), cupy, dtype='d')
-             @ testing.shaped_random((rank, n), cupy, dtype='d'))
+        a = (testing.shaped_random((m, rank), cupy, dtype=dtype, seed=0)
+             @ testing.shaped_random((rank, n), cupy, dtype=dtype, seed=1))
         s = sparse.linalg.svds(sparse.csr_matrix(a), k=self.k,
                                return_singular_vectors=False)
         assert not bool(cupy.isnan(s).any())
         ref = cupy.sort(cupy.linalg.svd(a, compute_uv=False)[:self.k])
-        cupy.testing.assert_allclose(cupy.sort(s), ref, rtol=1e-4, atol=1e-6)
+        tol = self.rank_deficient_tol[numpy.dtype(dtype).char.lower()]
+        cupy.testing.assert_allclose(
+            cupy.sort(s), ref, rtol=tol, atol=tol * float(ref.max()))
 
     @pytest.mark.xfail(
         reason='eigsh works wrong (#5001)',
