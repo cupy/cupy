@@ -437,6 +437,8 @@ def linalg_tensordot(x1, x2, /, *, axes=2):
     .. seealso:: :func:`numpy.linalg.tensordot`
 
     """
+    if getattr(axes, 'ndim', None) == 0:
+        axes = axes.item()
     if not numpy.isscalar(axes):
         x1_axes, x2_axes = axes
         # numpy.linalg.tensordot accepts any iterable pair (lists,

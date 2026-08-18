@@ -646,6 +646,21 @@ class TestLinalgTensordot:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
+    def test_iterator_axes(self, xp, dtype):
+        x1 = testing.shaped_arange((2, 3, 3), xp, dtype)
+        x2 = testing.shaped_arange((3, 3, 5), xp, dtype)
+        axes = iter(([1, 2], [0, 1]))
+        return xp.linalg.tensordot(x1, x2, axes=axes)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_zero_dimensional_array_axes(self, xp, dtype):
+        x1 = testing.shaped_arange((2, 3, 3), xp, dtype)
+        x2 = testing.shaped_arange((3, 3, 5), xp, dtype)
+        return xp.linalg.tensordot(x1, x2, axes=xp.array(2))
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
     def test_noncontiguous(self, xp, dtype):
         x1 = testing.shaped_arange((4, 3, 2), xp, dtype).transpose(2, 1, 0)
         x2 = testing.shaped_arange((5, 4, 3), xp, dtype).transpose(2, 1, 0)
