@@ -199,6 +199,32 @@ class TestEigsh:
         cupy.testing.assert_allclose(
             cupy.sort(w), cupy.ones(self.k), rtol=tol, atol=tol)
 
+    clustered_tol = {'f': 1e-4, 'd': 1e-6}
+
+    @testing.for_dtypes('fdFD')
+    def test_clustered_large_k(self, dtype):
+        # A spectrum with only a few distinct eigenvalues exhausts its
+        # Krylov space almost immediately (a 2-value spectrum has Krylov
+        # dimension ~2): without the breakdown guard this returned NaN or
+        # ghost/overflow Ritz values (~1e+217) at larger k (gh-7168,
+        # gh-6769). The top-k eigenvalues are k exact copies of 50.
+        if self.use_linear_operator or self.which != 'LA':
+            pytest.skip()
+        n, k = 200, 20
+        evals = cupy.concatenate(
+            [cupy.ones(n // 2, dtype='d'),
+             50.0 * cupy.ones(n // 2, dtype='d')])
+        q, _ = cupy.linalg.qr(testing.shaped_random((n, n), cupy,
+                                                    dtype=dtype))
+        a = ((q * evals) @ q.conj().T).astype(dtype)
+        w = sparse.linalg.eigsh(sparse.csr_matrix(a), k=k, which='LA',
+                                return_eigenvectors=False)
+        assert not bool(cupy.isnan(w).any())
+        assert bool((cupy.abs(w) < 1e3).all())      # no ghost / overflow
+        tol = self.clustered_tol[numpy.dtype(dtype).char.lower()]
+        cupy.testing.assert_allclose(
+            cupy.sort(w), cupy.full(k, 50.0), rtol=tol, atol=tol)
+
     @pytest.mark.xfail(
         reason='eigsh works wrong (#5001)',
         raises=AssertionError,
