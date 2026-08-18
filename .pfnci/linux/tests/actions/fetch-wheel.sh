@@ -9,8 +9,6 @@ set -uex
 # the wheel-build matrix does not cover this (CUDA, Python) tuple (by design,
 # until the matrix is expanded), or a fresh /test needs to be issued.
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.."; pwd)"
-
 # CUPY_CI_GITHUB_TOKEN (see run.sh) is a fine-grained PAT scoped Actions:Read on
 # cupy/cupy -- enough to list and download the wheel artifacts below.
 # The token is delivered by run.sh as a mounted file (never an env var), so it
@@ -57,13 +55,18 @@ else
     EVENT="push"
 fi
 
-# FlexCI's checkout may be the tested commit directly, or a merge of that
-# commit into its base -- in the merge case the tested commit is the second
-# parent.
-CANDIDATE_SHAS=("$(git -C "${REPO_ROOT}" rev-parse HEAD)")
-if SECOND_PARENT="$(git -C "${REPO_ROOT}" rev-parse --verify --quiet "HEAD^2")"; then
-    CANDIDATE_SHAS+=("${SECOND_PARENT}")
+# The tested commit comes from FlexCI's job environment, not from the
+# checkout's git history: FLEXCI_REFERENCE_COMMIT_ID is set on PR builds
+# (refs/pull/N/merge) and FLEXCI_COMMIT_ID on push builds (refs/heads/...).
+# Using it means the checkout needs no .git (so config.pbtxt drops
+# include_dot_git for these targets) and gives one unambiguous SHA instead of
+# a HEAD/HEAD^2 guess.
+SHA="${FLEXCI_REFERENCE_COMMIT_ID:-${FLEXCI_COMMIT_ID:-}}"
+if [[ -z "${SHA}" ]]; then
+    echo "Error: neither FLEXCI_REFERENCE_COMMIT_ID nor FLEXCI_COMMIT_ID is set (expected from the FlexCI job environment)" >&2
+    exit 1
 fi
+CANDIDATE_SHAS=("${SHA}")
 
 ARTIFACT_ID=""
 RUN_ID=""
@@ -108,23 +111,21 @@ if [[ -z "${ARTIFACT_ID}" ]]; then
     echo "Re-issue /test on the PR (or check the ci.yml push run for the merge commit)." >&2
     exit 1
 fi
-echo "Resolved wheel artifact ${ARTIFACT_ID} from ci.yml run ${RUN_ID}"
+echo "Resolved wheel ${expected_name} from ci.yml run ${RUN_ID}"
 
 WHEEL_DIR="$(mktemp -d)"
 trap 'rm -rf "${WHEEL_DIR}"' EXIT
 
-# Download by immutable artifact ID -- name-scoped downloads are not
-# re-run-attempt-safe if build-wheel.yml's overwrite:true is ever reverted.
-if ! gh api "repos/cupy/cupy/actions/artifacts/${ARTIFACT_ID}/zip" > "${WHEEL_DIR}/artifact.zip"; then
-    echo "Error: failed to download wheel artifact ${ARTIFACT_ID}" >&2
+# Download (and extract) the wheel artifact by name from its producing run.
+# The name is unique within the run because build-wheel.yml uploads with
+# overwrite: true, and RUN_ID is the run the producer-pin above verified.
+if ! gh run download "${RUN_ID}" --repo cupy/cupy --name "${expected_name}" --dir "${WHEEL_DIR}"; then
+    echo "Error: failed to download wheel artifact ${expected_name} from run ${RUN_ID}" >&2
     exit 1
 fi
 
 # The token is no longer needed past this point.
 unset GH_TOKEN
-
-python3 -m zipfile -e "${WHEEL_DIR}/artifact.zip" "${WHEEL_DIR}"
-rm "${WHEEL_DIR}/artifact.zip"
 
 WHEEL="$(ls "${WHEEL_DIR}"/*.whl | head -n 1)"
 time python3 -m pip install --user -v "${WHEEL}[test]"

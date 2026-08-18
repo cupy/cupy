@@ -156,6 +156,15 @@ main() {
       if [[ "${PULL_REQUEST:-}" != "" ]]; then
         docker_args+=(--env "PULL_REQUEST=${PULL_REQUEST}")
       fi
+      # actions/fetch-wheel.sh resolves the tested commit from these FlexCI
+      # env vars (PR builds set FLEXCI_REFERENCE_COMMIT_ID; push builds set
+      # FLEXCI_COMMIT_ID), so forward whichever is set into the container.
+      if [[ -n "${FLEXCI_REFERENCE_COMMIT_ID:-}" ]]; then
+        docker_args+=(--env "FLEXCI_REFERENCE_COMMIT_ID=${FLEXCI_REFERENCE_COMMIT_ID}")
+      fi
+      if [[ -n "${FLEXCI_COMMIT_ID:-}" ]]; then
+        docker_args+=(--env "FLEXCI_COMMIT_ID=${FLEXCI_COMMIT_ID}")
+      fi
       if [[ "${GPU:-}" != "" ]]; then
         docker_args+=(--env "GPU=${GPU}")
       fi

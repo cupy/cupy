@@ -20,7 +20,7 @@ jobs:
         ) && (
           github.event.comment.author_association == 'OWNER' ||
           github.event.comment.author_association == 'MEMBER' ||
-          contains('|gpinkert|', github.event.comment.user.login)
+          contains('|gpinkert|', format('|{0}|', github.event.comment.user.login))
         ) && (
           contains(github.event.comment.body, '/test ')
         )
