@@ -96,8 +96,16 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
     else:
         lanczos = _lanczos_asis
 
+    # Lucky-breakdown detection threshold (see _lanczos_checked): decoupling
+    # the tridiagonal at beta[i] perturbs the spectrum by at most beta[i], so
+    # an O(eps)*||A|| threshold is harmless by construction. (A sqrt(eps)
+    # threshold can exceed legitimate small couplings in float32 and corrupt
+    # the trailing Ritz values.)
+    break_rtol = 64.0 * float(numpy.finfo(a.dtype).eps)
+
     # Lanczos iteration
-    lanczos(a, V, u, alpha, beta, 0, ncv)
+    anorm = _lanczos_checked(a, lanczos, V, u, alpha, beta, 0, ncv,
+                             break_rtol)
 
     iter = ncv
     w, s = _eigsh_solve_ritz(alpha, beta, None, k, which)
@@ -118,17 +126,31 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
         # u -= u.T @ V[:k].conj().T @ V[:k]
         cublas.gemv(_cublas.CUBLAS_OP_C, 1, V[:k].T, u, 0, uu)
         cublas.gemv(_cublas.CUBLAS_OP_N, -1, V[:k].T, uu, 1, u)
-        V[k] = u / cublas.nrm2(u)
+        # The deflation above can eat nearly all of u (residual almost inside
+        # the locked Ritz span, common in single precision): dividing by the
+        # collapsed norm would inject a huge junk vector and wild Ritz values.
+        # Reseed with a fresh direction orthogonal to V[:k] instead. (One
+        # host float per restart cycle; solve_ritz syncs here anyway.)
+        nrm_u = float(cublas.nrm2(u))
+        if nrm_u > break_rtol * anorm:
+            V[k] = u / nrm_u
+        else:
+            V[k] = _restart_ortho(V, k, n, V.dtype)
 
         u[...] = a @ V[k]
         cublas.dotc(V[k], u, out=alpha[k])
         u -= alpha[k] * V[k]
         u -= V[:k].T @ beta_k
         cublas.nrm2(u, out=beta[k])
-        V[k+1] = u / beta[k]
+        # NaN-proof normalization: beta[k] = ||u||, so the division is finite
+        # for beta[k] > 0; an exact zero (restart subspace invariant) yields a
+        # zero column, then _lanczos_checked's boundary check (which covers
+        # index k) decouples and reseeds it.
+        V[k+1] = cupy.where(beta[k] > 0, u / beta[k], u * 0)
 
         # Lanczos iteration
-        lanczos(a, V, u, alpha, beta, k + 1, ncv)
+        anorm = _lanczos_checked(a, lanczos, V, u, alpha, beta, k + 1, ncv,
+                                 break_rtol)
 
         iter += ncv - k
         w, s = _eigsh_solve_ritz(alpha, beta, beta_k, k, which)
@@ -222,13 +244,6 @@ def _lanczos_fast(A, n, ncv):
             spmv_buff = cupy.empty(buff_size, cupy.int8)
 
         v[...] = V[i_start]
-        # Running ||A|| estimate and previous off-diagonal, for the
-        # lucky-breakdown test below. Kept on device so the healthy path
-        # syncs a single bool per iteration (this loop is otherwise built
-        # to avoid device->host syncs).
-        anorm = cupy.zeros((), dtype=beta.dtype)
-        prev_beta = cupy.zeros((), dtype=beta.dtype)
-        break_rtol = float(numpy.sqrt(numpy.finfo(A.dtype).eps))
         for i in range(i_start, i_end):
             # Matrix-vector multiplication
             if cusparse_handle is None:
@@ -293,22 +308,10 @@ def _lanczos_fast(A, n, ncv):
             if i >= i_end - 1:
                 break
 
-            # Lucky breakdown: beta[i] ~ 0 means A @ v landed in span(V), i.e.
-            # an invariant subspace was found. Normalizing by it (below) yields
-            # NaNs / wrong results on degenerate or rank-deficient spectra
-            # (gh-6446, gh-7495, gh-8009). Instead decouple the tridiagonal
-            # (beta[i] = 0) and restart V[i+1] with a fresh unit vector
-            # orthogonal to V[:i+1] so the iteration keeps exploring.
-            anorm = cupy.maximum(
-                anorm, cupy.abs(alpha[i]) + beta[i] + prev_beta)
-            prev_beta = beta[i]
-            if bool((beta[i] < break_rtol * anorm).item()):
-                beta[i] = 0
-                v[...] = _restart_ortho(V, i + 1, n, u.dtype)
-                V[i + 1] = v
-                continue
-
-            # Normalize
+            # Normalize. beta[i] = ||u||, so u/beta[i] stays finite for any
+            # beta[i] > 0; the kernel emits 0 instead of dividing when
+            # beta[i] == 0 (exact lucky breakdown), so the sweep completes
+            # NaN-free and _lanczos_checked repairs it at the sweep boundary.
             _kernel_normalize(u, beta, i, n, v, V)
 
     return aux
@@ -316,8 +319,66 @@ def _lanczos_fast(A, n, ncv):
 
 _kernel_normalize = cupy.ElementwiseKernel(
     'T u, raw S beta, int32 j, int32 n', 'T v, raw T V',
-    'v = u / beta[j]; V[i + (j+1) * n] = v;', 'cupy_eigsh_normalize'
+    # beta[j] = ||u||, so u/beta[j] is finite whenever beta[j] > 0; on an
+    # EXACT lucky breakdown (beta[j] == 0) emit 0 instead of 0/0 = NaN --
+    # the zero column is detected and repaired at the sweep boundary
+    # (_lanczos_checked), keeping this inner loop free of host syncs.
+    'S b = beta[j]; v = (b > (S)0) ? (u / b) : (u * (S)0);'
+    ' V[i + (j+1) * n] = v;', 'cupy_eigsh_normalize'
 )
+
+
+def _lanczos_checked(a, lanczos, V, u, alpha, beta, i_start, i_end,
+                     break_rtol):
+    """Run a Lanczos sweep; detect and repair lucky breakdowns at the sweep
+    boundary.
+
+    beta[i] ~ 0 means A @ v landed in span(V), i.e. an invariant subspace was
+    found; normalizing by it yields NaNs / wrong results on degenerate or
+    rank-deficient spectra (gh-6446, gh-7495, gh-8009). The inner loop stays
+    completely free of host syncs (its device-pointer-mode design): an exact
+    breakdown produces a zero column (see _kernel_normalize) and a near
+    breakdown a finite junk-but-orthonormalized column, both harmless within
+    the sweep. HERE, on the host copy of (alpha, beta) that the Ritz solve
+    needs anyway, positions with beta[i] < break_rtol * ||A||_est are
+    decoupled (beta[i] = 0 -- a spectrum perturbation of at most beta[i],
+    machine-level by the threshold choice) and V[i+1] is reseeded with a
+    deterministic fresh vector orthogonal to V[:i+1]; the sweep re-runs from
+    there so the iteration keeps exploring. Healthy problems detect nothing
+    and pay zero overhead; a fully degenerate spectrum costs at most
+    O(i_end - i_start) partial re-sweeps.
+
+    The check range starts at i_start - 1, so it also covers the thick
+    restart's own normalization V[k+1] = u / beta[k] (repaired the same way).
+    Returns the ||A|| estimate for the driver's own guard on V[k].
+    """
+    n = V.shape[1]
+    start = i_start
+    repaired = set()
+    while True:
+        lanczos(a, V, u, alpha, beta, start, i_end)
+        alpha_h = numpy.abs(cupy.asnumpy(alpha))
+        beta_h = numpy.abs(cupy.asnumpy(beta))
+        # Gershgorin-style row-sum estimate of ||T|| ~ ||A||, built by
+        # walking the rows IN ORDER and stopping at the first breakdown:
+        # rows past an exhausted subspace hold roundoff junk whose magnitude
+        # can dwarf ||A|| -- folding them into the estimate would inflate
+        # the threshold and misfire on legitimate large couplings.
+        anorm = 0.0
+        p = None
+        for i in range(i_end - 1):
+            anorm = max(anorm, alpha_h[i] + beta_h[i]
+                        + (beta_h[i - 1] if i else 0.0))
+            if (i >= max(i_start - 1, 0) and i not in repaired
+                    and beta_h[i] < break_rtol * anorm):
+                p = i
+                break
+        if p is None:
+            return anorm
+        beta[p] = 0
+        V[p + 1] = _restart_ortho(V, p + 1, n, V.dtype)
+        repaired.add(p)
+        start = p + 1
 
 
 def _restart_ortho(V, m, n, dtype):
