@@ -67,9 +67,6 @@ function Main {
     ActivateCUDA $cuda
     ActivatePython $python
 
-    # Setup build environment variables
-    $Env:CUPY_NUM_BUILD_JOBS = "16"
-    $Env:CUPY_NVCC_GENERATE_CODE = "current"
     echo "Environment:"
     # Redact the wheel-fetch token (provisioned in the FlexCI job env) from the log.
     cmd.exe /C set | Where-Object { $_ -notmatch '^(CUPY_CI_GITHUB_TOKEN|GH_TOKEN)=' }
@@ -128,14 +125,15 @@ function Main {
         $event = "push"
     }
 
-    # The FlexCI checkout may be the tested commit directly, or a merge of that
-    # commit into its base -- in the merge case the tested commit is the second
-    # parent.
-    $candidate_shas = @((& git rev-parse HEAD).Trim())
-    $second_parent = (& git rev-parse --verify --quiet "HEAD^2")
-    if ($LASTEXITCODE -eq 0 -and $second_parent) {
-        $candidate_shas += $second_parent.Trim()
-    }
+    # The tested commit comes from FlexCI's job environment, not from the
+    # checkout's git history: FLEXCI_REFERENCE_COMMIT_ID is set on PR builds
+    # (refs/pull/N/merge) and FLEXCI_COMMIT_ID on push builds. This gives one
+    # unambiguous SHA instead of a HEAD/HEAD^2 guess. (The Windows checkout
+    # still keeps .git -- see the symlink re-checkout above -- so config.pbtxt
+    # keeps include_dot_git for these targets.)
+    $tested_sha = if ($Env:FLEXCI_REFERENCE_COMMIT_ID) { $Env:FLEXCI_REFERENCE_COMMIT_ID } else { $Env:FLEXCI_COMMIT_ID }
+    if (-not $tested_sha) { throw "Neither FLEXCI_REFERENCE_COMMIT_ID nor FLEXCI_COMMIT_ID is set (expected from the FlexCI job environment)" }
+    $candidate_shas = @($tested_sha.Trim())
 
     $artifact_id = $null
     $run_id = $null
@@ -171,18 +169,14 @@ function Main {
     if (-not $artifact_id) {
         throw "No wheel artifact from a successful ci.yml run for candidate SHAs: $($candidate_shas -join ', ') (name: cupy-cuda${cuda_major}x-py${py_ver}-win-64-${suffix_prefix}<sha>). Re-issue /test on the PR."
     }
-    Write-Output "Resolved wheel artifact $artifact_id from ci.yml run $run_id"
+    Write-Output "Resolved wheel $expected_name from ci.yml run $run_id"
 
     $wheel_dir = New-Item -ItemType Directory -Path ([System.IO.Path]::GetTempFileName() + ".d") -Force
-    $zip_path = Join-Path $wheel_dir.FullName "artifact.zip"
-    # Route the binary download through cmd.exe -- PowerShell's `>` uses
-    # UTF-16 encoding by default, which would corrupt the zip stream.
-    # Download is by immutable artifact ID.
-    $cmd = "gh api `"repos/cupy/cupy/actions/artifacts/${artifact_id}/zip`" > `"${zip_path}`""
-    & cmd.exe /c $cmd
-    if ($LASTEXITCODE -ne 0) { throw "gh api download of artifact ${artifact_id} failed (exit $LASTEXITCODE)" }
-    Expand-Archive -Path $zip_path -DestinationPath $wheel_dir.FullName -Force
-    Remove-Item $zip_path
+    $dl_dir = $wheel_dir.FullName
+    # Download (and extract) the wheel artifact by name from its producing run.
+    # The name is unique within the run (build-wheel.yml uploads with
+    # overwrite: true), and $run_id is the run the producer-pin above verified.
+    RunOrDie gh run download $run_id --repo cupy/cupy --name $expected_name --dir $dl_dir
     # Drop the token from the environment before any PR-controlled code (pip
     # install / pytest) runs, so the test process cannot read it back.
     Remove-Item Env:GH_TOKEN -ErrorAction SilentlyContinue
