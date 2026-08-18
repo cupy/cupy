@@ -420,6 +420,19 @@ def tensordot(a, b, axes=2):
     return _core.tensordot_core(a, b, None, n, m, k, ret_shape)
 
 
+def _normalize_tensordot_axes(axes):
+    # Normalizes one side of an ``(x1_axes, x2_axes)`` axis specification to a
+    # tuple of Python ints. NumPy accepts array_like here, but iterating a
+    # cupy.ndarray yields 0-D arrays that cannot be used as axis indices, so
+    # arrays are converted with ``tolist``. This also unwraps a 0-D array into
+    # the single axis it denotes, matching how a scalar spec is handled.
+    if isinstance(axes, (numpy.ndarray, cupy.ndarray)):
+        axes = axes.tolist()
+    if numpy.isscalar(axes):
+        return (axes,)
+    return tuple(axes)
+
+
 def linalg_tensordot(x1, x2, /, *, axes=2):
     """Computes the tensor dot product along specified axes.
 
@@ -446,11 +459,8 @@ def linalg_tensordot(x1, x2, /, *, axes=2):
         # sequences, so normalize to a tuple of two tuples. This also maps
         # empty-axes spellings such as ([], []) to the exact ((), ()) that
         # cupy.tensordot's zero-dim guard expects.
-        if numpy.isscalar(x1_axes):
-            x1_axes = x1_axes,
-        if numpy.isscalar(x2_axes):
-            x2_axes = x2_axes,
-        axes = (tuple(x1_axes), tuple(x2_axes))
+        axes = (_normalize_tensordot_axes(x1_axes),
+                _normalize_tensordot_axes(x2_axes))
     return tensordot(x1, x2, axes=axes)
 
 

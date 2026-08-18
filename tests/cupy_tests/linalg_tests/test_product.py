@@ -666,6 +666,37 @@ class TestLinalgTensordot:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
+    def test_ndarray_axes(self, xp, dtype):
+        # Iterating an ndarray axis spec must not leak 0-D arrays into the
+        # axis indices.
+        x1 = testing.shaped_arange((2, 3, 3), xp, dtype)
+        x2 = testing.shaped_arange((3, 3, 5), xp, dtype)
+        axes = (xp.array([1, 2]), xp.array([0, 1]))
+        return xp.linalg.tensordot(x1, x2, axes=axes)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_one_dimensional_array_axes_pair(self, xp, dtype):
+        # A 1-D array of length two unpacks into a pair of 0-D arrays.
+        x1 = testing.shaped_arange((2, 3, 3), xp, dtype)
+        x2 = testing.shaped_arange((3, 3, 5), xp, dtype)
+        return xp.linalg.tensordot(x1, x2, axes=xp.array([1, 0]))
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_zero_dimensional_array_axes_pair(self, xp, dtype):
+        x1 = testing.shaped_arange((2, 3, 3), xp, dtype)
+        x2 = testing.shaped_arange((3, 3, 5), xp, dtype)
+        if xp is numpy:
+            # numpy.tensordot cannot hash a 0-D array axis spec, so compare
+            # against the equivalent scalar spelling.
+            axes = (1, 0)
+        else:
+            axes = (xp.array(1), xp.array(0))
+        return xp.linalg.tensordot(x1, x2, axes=axes)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
     def test_noncontiguous(self, xp, dtype):
         x1 = testing.shaped_arange((4, 3, 2), xp, dtype).transpose(2, 1, 0)
         x2 = testing.shaped_arange((5, 4, 3), xp, dtype).transpose(2, 1, 0)
