@@ -223,9 +223,11 @@ def _lanczos_fast(A, n, ncv):
 
         v[...] = V[i_start]
         # Running ||A|| estimate and previous off-diagonal, for the
-        # lucky-breakdown test below.
-        anorm = 0.0
-        prev_beta = 0.0
+        # lucky-breakdown test below. Kept on device so the healthy path
+        # syncs a single bool per iteration (this loop is otherwise built
+        # to avoid device->host syncs).
+        anorm = cupy.zeros((), dtype=beta.dtype)
+        prev_beta = cupy.zeros((), dtype=beta.dtype)
         break_rtol = float(numpy.sqrt(numpy.finfo(A.dtype).eps))
         for i in range(i_start, i_end):
             # Matrix-vector multiplication
@@ -294,13 +296,13 @@ def _lanczos_fast(A, n, ncv):
             # Lucky breakdown: beta[i] ~ 0 means A @ v landed in span(V), i.e.
             # an invariant subspace was found. Normalizing by it (below) yields
             # NaNs / wrong results on degenerate or rank-deficient spectra
-            # (gh-6446, gh-7495, gh-8009, gh-7157). Instead decouple the
-            # tridiagonal (beta[i] = 0) and restart V[i+1] with a fresh unit
-            # vector orthogonal to V[:i+1] so the iteration keeps exploring.
-            beta_i = float(beta[i])
-            anorm = max(anorm, float(abs(alpha[i])) + beta_i + prev_beta)
-            prev_beta = beta_i
-            if beta_i < break_rtol * anorm:
+            # (gh-6446, gh-7495, gh-8009). Instead decouple the tridiagonal
+            # (beta[i] = 0) and restart V[i+1] with a fresh unit vector
+            # orthogonal to V[:i+1] so the iteration keeps exploring.
+            anorm = cupy.maximum(
+                anorm, cupy.abs(alpha[i]) + beta[i] + prev_beta)
+            prev_beta = beta[i]
+            if bool((beta[i] < break_rtol * anorm).item()):
                 beta[i] = 0
                 v[...] = _restart_ortho(V, i + 1, n, u.dtype)
                 V[i + 1] = v
@@ -319,10 +321,17 @@ _kernel_normalize = cupy.ElementwiseKernel(
 
 
 def _restart_ortho(V, m, n, dtype):
-    # Fresh unit vector orthogonal to V[:m], used to restart the Lanczos
-    # recurrence after a lucky breakdown (two classical Gram-Schmidt passes).
-    w = cupy.random.random((n,)).astype(dtype)
+    # Deterministic fresh unit vector orthogonal to V[:m], used to restart
+    # the Lanczos recurrence after a lucky breakdown. Start from the
+    # canonical basis vector least represented in span(V[:m]) -- the rows of
+    # V[:m] are orthonormal, so the residual ||(I - P) e_j||^2 is
+    # 1 - ||V[:m, j]||^2 and its maximum over j is >= 1 - m/n > 0 -- then
+    # orthogonalize with two classical Gram-Schmidt passes. No RNG: the
+    # result depends only on V, keeping eigsh/svds output deterministic.
     Vm = V[:m]
+    j = int(cupy.argmin(cupy.sum(cupy.abs(Vm) ** 2, axis=0)))
+    w = cupy.zeros((n,), dtype=dtype)
+    w[j] = 1
     for _ in range(2):
         w = w - Vm.T @ (Vm.conj() @ w)
     return w / cupy.linalg.norm(w)
