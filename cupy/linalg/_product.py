@@ -420,6 +420,41 @@ def tensordot(a, b, axes=2):
     return _core.tensordot_core(a, b, None, n, m, k, ret_shape)
 
 
+def linalg_tensordot(x1, x2, /, *, axes=2):
+    """Computes the tensor dot product along specified axes.
+
+    This function is Array API compatible, contrary to
+    :func:`cupy.tensordot`.
+
+    Args:
+        x1 (cupy.ndarray): The first input array.
+        x2 (cupy.ndarray): The second input array.
+        axes (int or tuple of array_like, optional): The axes to contract.
+
+    Returns:
+        cupy.ndarray: The tensor dot product of ``x1`` and ``x2``.
+
+    .. seealso:: :func:`numpy.linalg.tensordot`
+
+    """
+    try:
+        x1_axes, x2_axes = axes
+    except TypeError:
+        pass  # integer axes
+    else:
+        # numpy.linalg.tensordot accepts any iterable pair (lists,
+        # ndarrays, ...) while cupy.tensordot requires a sequence of two
+        # sequences, so normalize to a tuple of two tuples. This also maps
+        # empty-axes spellings such as ([], []) to the exact ((), ()) that
+        # cupy.tensordot's zero-dim guard expects.
+        if numpy.isscalar(x1_axes):
+            x1_axes = x1_axes,
+        if numpy.isscalar(x2_axes):
+            x2_axes = x2_axes,
+        axes = (tuple(x1_axes), tuple(x2_axes))
+    return tensordot(x1, x2, axes=axes)
+
+
 # TODO: rename `M` to `a`
 def matrix_power(M, n):
     """Raise a square matrix to the (integer) power `n`.

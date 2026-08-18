@@ -621,6 +621,73 @@ class TestLinalgMatmul2D:
         return xp.linalg.matmul(a, b)
 
 
+class TestLinalgTensordot:
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_default_axes(self, xp, dtype):
+        x1 = testing.shaped_arange((2, 3, 4), xp, dtype)
+        x2 = testing.shaped_arange((3, 4, 5), xp, dtype)
+        return xp.linalg.tensordot(x1, x2)
+
+    @pytest.mark.parametrize('axes', [
+        0,
+        1,
+        ([1, 2], [0, 1]),
+        ([-1, -2], [-2, -3]),
+    ])
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_axes(self, xp, dtype, axes):
+        x1 = testing.shaped_arange((2, 3, 3), xp, dtype)
+        x2 = testing.shaped_arange((3, 3, 5), xp, dtype)
+        return xp.linalg.tensordot(x1, x2, axes=axes)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_noncontiguous(self, xp, dtype):
+        x1 = testing.shaped_arange((4, 3, 2), xp, dtype).transpose(2, 1, 0)
+        x2 = testing.shaped_arange((5, 4, 3), xp, dtype).transpose(2, 1, 0)
+        return xp.linalg.tensordot(x1, x2, axes=([-1, 1], [1, 0]))
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_zero_dim(self, xp, dtype):
+        x1 = xp.array(2, dtype=dtype)
+        x2 = testing.shaped_arange((3, 4), xp, dtype)
+        return xp.linalg.tensordot(x1, x2, axes=0)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_zero_length(self, xp, dtype):
+        x1 = xp.empty((2, 0, 3), dtype=dtype)
+        x2 = xp.empty((0, 3, 4), dtype=dtype)
+        return xp.linalg.tensordot(x1, x2, axes=([1, 2], [0, 1]))
+
+    @pytest.mark.parametrize('xp', [numpy, cupy])
+    def test_axes_keyword_only(self, xp):
+        x1 = xp.ones((2, 2))
+        x2 = xp.ones((2, 2))
+        with pytest.raises(TypeError):
+            xp.linalg.tensordot(x1, x2, 1)
+
+    @pytest.mark.parametrize('axes', [
+        ([1, 1], [0, 0]),
+        ([1], [0, 1]),
+    ])
+    @testing.numpy_cupy_array_equal(accept_error=ValueError)
+    def test_invalid_axes(self, xp, axes):
+        x1 = xp.ones((2, 2))
+        x2 = xp.ones((2, 2))
+        xp.linalg.tensordot(x1, x2, axes=axes)
+
+    @testing.numpy_cupy_array_equal(accept_error=ValueError)
+    def test_dimension_mismatch(self, xp):
+        x1 = xp.ones((2, 3))
+        x2 = xp.ones((4, 2))
+        xp.linalg.tensordot(x1, x2, axes=([1], [0]))
+
+
 class TestLinalgMatrixTranspose:
 
     @testing.for_all_dtypes()
