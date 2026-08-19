@@ -409,24 +409,42 @@ def _restart_ortho(V, m, n, dtype, bias_op=None):
     # instead (still deterministic); fall back to the unbiased e_j when the
     # result lies in span(V[:m]) -- then the nonzero spectrum is exhausted
     # and the null space is exactly what remains to explore.
+    # Robustness of the acceptance test: with orthonormal rows the argmin
+    # candidate's remainder is >= 1/sqrt(n) (sum of column norms^2 is
+    # m <= n-1), but transient repair states can hold zero or junk rows,
+    # for which CGS is not a projector and no lower bound exists -- a
+    # remainder can cancel arbitrarily small, and normalizing it would
+    # amplify CGS roundoff into a poorly-orthogonal noise direction (or
+    # 0/0 = NaN on exact cancellation). So: accept a remainder only above
+    # a dtype-aware floor (sqrt(eps), far above the CGS noise floor in
+    # both precisions), try a few canonical vectors in ascending
+    # column-norm order, and if all fail return the plain canonical
+    # vector: unit, finite and deterministic. Its lost orthogonality is
+    # absorbed by the sweep's own per-iteration reorthogonalization and
+    # the next boundary check -- always preferable to NaN or noise.
     Vm = V[:m]
-    j = int(cupy.argmin(cupy.sum(cupy.abs(Vm) ** 2, axis=0)))
+    colnorm = cupy.sum(cupy.abs(Vm) ** 2, axis=0)
+    order = [int(j) for j in cupy.asnumpy(cupy.argsort(colnorm)[:4])]
+    floor = float(numpy.sqrt(numpy.finfo(
+        numpy.dtype(dtype).char.lower()).eps))
     e = cupy.zeros((n,), dtype=dtype)
-    e[j] = 1
-    cands = (e,) if bias_op is None else (bias_op @ e, e)
-    for cand in cands:
-        nrm = float(cupy.linalg.norm(cand))
-        if nrm == 0.0:
-            continue
-        w = cand / nrm
-        for _ in range(2):
-            w = w - Vm.T @ (Vm.conj() @ w)
-        nrm = float(cupy.linalg.norm(w))
-        if nrm > 1e-6:
-            return w / nrm
-    # fully spanned candidates (can only happen transiently): keep e_j's
-    # orthogonalized remainder, however small -- never a zero vector
-    return w / cupy.linalg.norm(w)
+    for j in order:
+        e[...] = 0
+        e[j] = 1
+        cands = (e,) if bias_op is None else (bias_op @ e, e)
+        for cand in cands:
+            nrm = float(cupy.linalg.norm(cand))
+            if nrm == 0.0:
+                continue
+            w = cand / nrm
+            for _ in range(2):
+                w = w - Vm.T @ (Vm.conj() @ w)
+            nrm = float(cupy.linalg.norm(w))
+            if nrm > floor:
+                return w / nrm
+    e[...] = 0
+    e[order[0]] = 1
+    return e
 
 
 def _eigsh_solve_ritz(alpha, beta, beta_k, k, which):
