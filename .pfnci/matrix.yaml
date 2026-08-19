@@ -365,6 +365,7 @@
   cuda-python: null
   nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
+  env:CUPY_TEST_PER_FILE_TIMING: "1"
   test: "unit"
 
 # CUDA 13.2 (Multi-GPU) | Linux
@@ -573,6 +574,7 @@
   nvmath-python: "1"
   env:CUPY_ACCELERATORS: "cutensor,cub"
   env:CUPY_USE_CUDA_PYTHON: "1"
+  env:CUPY_TEST_PER_FILE_TIMING: "1"
   test: "unit"
 
 ###############################################################################
