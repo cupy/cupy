@@ -236,7 +236,7 @@ void {kernel_name}(T* __restrict__ y, const idx_t* __restrict__ info) {{
 @cupy.memoize(for_each_device=True)
 def get_raw_spline1d_kernel(axis, ndim, mode, order, index_type='int',
                             data_type='double', pole_type='double',
-                            block_size=128, type_decls=None):
+                            block_size=128, *, type_decls):
     """Generate a kernel for applying a spline prefilter along a given axis."""
     poles = get_poles(order)
 

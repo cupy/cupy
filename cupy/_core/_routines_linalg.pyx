@@ -898,7 +898,7 @@ cpdef _ndarray_base matmul(
     ret_dtype = numpy.promote_types(a.dtype, b.dtype)
     dtype = ret_dtype
 
-    cdef int cuda_dtype
+    cdef int cuda_dtype = -1
     if dtype.kind not in 'biu':
         cuda_dtype = to_cuda_dtype(dtype, is_half_allowed=True)
         if (cuda_dtype == runtime.CUDA_R_16F

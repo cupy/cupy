@@ -587,19 +587,22 @@ cdef _ndarray_base _var(
 
     arrmean = a.mean(axis=axis, dtype=dtype_mean, out=None, keepdims=True)
 
-    if out is None:
-        if dtype_out == 'float16':
-            var_core = _var_core_float16
-        elif dtype_out == 'float32':
-            var_core = _var_core_float32
-        elif BF16 is not None and BF16 == dtype_out:
-            var_core = _var_core_bfloat16
-        else:
-            var_core = _var_core_float64
-        return var_core(a, arrmean, alpha, axis=axis, keepdims=keepdims)
+    if dtype_out == 'float16':
+        var_core = _var_core_float16
+    elif dtype_out == 'float32':
+        var_core = _var_core_float32
+    elif BF16 is not None and dtype_out == BF16:
+        var_core = _var_core_bfloat16
+    else:
+        var_core = _var_core_float64
 
-    out = _var_core_out(a, arrmean, alpha, out, axis=axis, keepdims=keepdims)
-    return out.astype(dtype_out, copy=False)
+    if out is None or out.dtype == dtype_out:
+        return var_core(
+            a, arrmean, alpha, out=out, axis=axis, keepdims=keepdims)
+
+    var_res = var_core(a, arrmean, alpha, axis=axis, keepdims=keepdims)
+    elementwise_copy(var_res, out)
+    return out
 
 
 cdef _ndarray_base _std(
@@ -644,13 +647,6 @@ cdef _var_core_float64 = ReductionKernel(
     'S x, T mean, float64 alpha', 'float64 out',
     'my_norm(x - mean)',
     'a + b', 'out = alpha * a', '0', 'cupy_var_core_float64',
-    preamble=_norm_preamble)
-
-
-cdef _var_core_out = ReductionKernel(
-    'S x, T mean, U alpha', 'U out',
-    'my_norm(x - mean)',
-    'a + b', 'out = alpha * a', '0', 'cupy_var_core_out',
     preamble=_norm_preamble)
 
 

@@ -167,6 +167,8 @@ def test_ldexp(xp):
     ((30_000,), (30_000,)),
     # Batched matmul:
     ((2, 10, 20_000), (2, 20_000, 10)),
+    # Broadcast batched matmul (`_mat_ptrs` + `sgemmBatched`):
+    ((1, 10, 20_000), (2, 20_000, 10)),
 ])
 @testing.numpy_cupy_allclose(rtol=TOL, atol=TOL)
 @pytest.mark.skipif(runtime.is_hip, reason="Matrix version crashed CI.")
@@ -227,6 +229,39 @@ def test_reductions_large(xp, func, data):
     return res
 
 
+@pytest.mark.parametrize('func', ['var', 'std'])
+@testing.numpy_cupy_allclose(rtol=2 * TOL, atol=2 * TOL)
+def test_var_std(xp, func):
+    # Same as reduction test above, but with larger tolerance.
+    a = xp.asarray(TEST_VALUES.reshape(3, 4))
+    with numpy.errstate(all='ignore'):
+        return getattr(xp, func)(a)
+
+
+@pytest.mark.parametrize('func', ['var', 'std'])
+@testing.numpy_cupy_allclose(rtol=2 * TOL, atol=2 * TOL)
+def test_var_std_large(xp, func):
+    # Check float32 compute type (same as above but with larger tolerance).
+    a = xp.asarray(numpy.arange(1, 10_000), dtype=BF16)
+    if xp == numpy:
+        a = a.astype(numpy.float32)
+        res = getattr(xp, func)(a).astype(BF16)
+    else:
+        res = getattr(xp, func)(a)
+    return res
+
+
+@pytest.mark.parametrize('func', ['var', 'std'])
+def test_var_std_out(func):
+    # Using `out=` does not change computation precision.
+    a = cupy.arange(10_000, dtype=BF16)
+    no_out = getattr(cupy, func)(a)
+    out = cupy.empty((), dtype=BF16)
+    ret = getattr(cupy, func)(a, out=out)
+    assert ret is out
+    cupy.testing.assert_array_equal(out, no_out)
+
+
 @pytest.mark.parametrize('from_dtype', [
     numpy.float16, numpy.float32, numpy.float64, numpy.int8, numpy.int32])
 @testing.numpy_cupy_allclose(rtol=TOL, atol=TOL)
@@ -273,5 +308,7 @@ def test_fusion_basic(func, old_fusion):
         fused = cupy._core.new_fusion.Fusion(count_calls, 'bf16_fuse_test')
 
     actual = fused(arr)
+    # If old-fusion doesn't work, it would try again with new fusion and
+    # count_calls would be called twice, so ensure that isn't the case.
     assert count == 1
     cupy.testing.assert_allclose(actual, expected, rtol=TOL, atol=TOL)
