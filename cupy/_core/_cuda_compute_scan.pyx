@@ -32,20 +32,20 @@ def _make_raw_op(str src, str name):
 
 def _complex_plus_op(str ftype):
     src = '''
-    struct cplx { %(t)s re, im; };
+    struct __align__(%(a)d) cplx { %(t)s re, im; };
     extern "C" __device__ void op(void* a, void* b, void* result) {
         const cplx* pa = static_cast<const cplx*>(a);
         const cplx* pb = static_cast<const cplx*>(b);
         static_cast<cplx*>(result)->re = pa->re + pb->re;
         static_cast<cplx*>(result)->im = pa->im + pb->im;
     }
-    ''' % {'t': ftype}
+    ''' % {'t': ftype, 'a': 8 if ftype == 'float' else 16}
     return _make_raw_op(src, 'op')
 
 
 def _complex_multiplies_op(str ftype):
     src = '''
-    struct cplx { %(t)s re, im; };
+    struct __align__(%(a)d) cplx { %(t)s re, im; };
     extern "C" __device__ void op(void* a, void* b, void* result) {
         const cplx* pa = static_cast<const cplx*>(a);
         const cplx* pb = static_cast<const cplx*>(b);
@@ -54,7 +54,7 @@ def _complex_multiplies_op(str ftype):
         static_cast<cplx*>(result)->re = re;
         static_cast<cplx*>(result)->im = im;
     }
-    ''' % {'t': ftype}
+    ''' % {'t': ftype, 'a': 8 if ftype == 'float' else 16}
     return _make_raw_op(src, 'op')
 
 
