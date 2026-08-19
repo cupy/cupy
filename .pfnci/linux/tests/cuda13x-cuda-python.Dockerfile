@@ -1,5 +1,5 @@
 # AUTO GENERATED: DO NOT EDIT!
-ARG BASE_IMAGE="nvidia/cuda:13.2.0-devel-ubuntu22.04"
+ARG BASE_IMAGE="nvidia/cuda:13.3.0-devel-ubuntu22.04"
 FROM ${BASE_IMAGE}
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
@@ -14,7 +14,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
        && \
     apt-get -qqy install ccache git curl && \
     apt-get -qqy --allow-change-held-packages \
-            --allow-downgrades install 'libnccl2=2.29.*+cuda13.2' 'libnccl-dev=2.29.*+cuda13.2' 'libcutensor2-cuda-13=2.4.*' 'libcutensor2-dev-cuda-13=2.4.*'
+            --allow-downgrades install 'libnccl2=2.30.*+cuda13.3' 'libnccl-dev=2.30.*+cuda13.3' 'libcutensor2-cuda-13=2.4.*' 'libcutensor2-dev-cuda-13=2.4.*'
 
 ENV PATH "/usr/lib/ccache:${PATH}"
 
@@ -32,7 +32,7 @@ RUN pyenv install 3.14.6 && \
     pip install -U setuptools pip wheel && \
     pip install -U google-cloud-storage
 
-RUN pip install -U 'numpy==2.4.*' 'scipy==1.16.*' 'optuna==4.*' 'cython==3.2.*,!=3.2.6' 'cuda-python==13.2.*' 'nvmath-python==1.*'
+RUN pip install -U 'numpy==2.4.*' 'scipy==1.16.*' 'optuna==4.*' 'cython==3.2.*,!=3.2.6' 'cuda-python==13.3.*' 'nvmath-python==1.*'
 RUN pip uninstall -y mpi4py ml_dtypes && \
     pip check
 

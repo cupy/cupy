@@ -381,6 +381,8 @@ cuda-python:
     spec: "==12.*"
   "13.2":
     spec: "==13.2.*"
+  "13.3":
+    spec: "==13.3.*"
 nvmath-python:
   null:
     spec: null
