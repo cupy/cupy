@@ -102,10 +102,14 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
     # threshold can exceed legitimate small couplings in float32 and corrupt
     # the trailing Ritz values.)
     break_rtol = 64.0 * float(numpy.finfo(a.dtype).eps)
+    # Restart-reseed bias (see _restart_ortho): pull reseeds out of the
+    # operator's null space -- except for 'SA', where the smallest
+    # (possibly zero) eigenvalues are the ones being sought.
+    bias_op = a if which != 'SA' else None
 
     # Lanczos iteration
     anorm = _lanczos_checked(a, lanczos, V, u, alpha, beta, 0, ncv,
-                             break_rtol)
+                             break_rtol, bias_op)
 
     iter = ncv
     w, s = _eigsh_solve_ritz(alpha, beta, None, k, which)
@@ -135,7 +139,7 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
         if nrm_u > break_rtol * anorm:
             V[k] = u / nrm_u
         else:
-            V[k] = _restart_ortho(V, k, n, V.dtype)
+            V[k] = _restart_ortho(V, k, n, V.dtype, bias_op)
 
         u[...] = a @ V[k]
         cublas.dotc(V[k], u, out=alpha[k])
@@ -150,7 +154,7 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
 
         # Lanczos iteration
         anorm = _lanczos_checked(a, lanczos, V, u, alpha, beta, k + 1, ncv,
-                                 break_rtol)
+                                 break_rtol, bias_op)
 
         iter += ncv - k
         w, s = _eigsh_solve_ritz(alpha, beta, beta_k, k, which)
@@ -329,7 +333,7 @@ _kernel_normalize = cupy.ElementwiseKernel(
 
 
 def _lanczos_checked(a, lanczos, V, u, alpha, beta, i_start, i_end,
-                     break_rtol):
+                     break_rtol, bias_op=None):
     """Run a Lanczos sweep; detect and repair lucky breakdowns at the sweep
     boundary.
 
@@ -369,19 +373,22 @@ def _lanczos_checked(a, lanczos, V, u, alpha, beta, i_start, i_end,
         for i in range(i_end - 1):
             anorm = max(anorm, alpha_h[i] + beta_h[i]
                         + (beta_h[i - 1] if i else 0.0))
+            # Non-strict (<=) so an all-zero block (beta and anorm both 0,
+            # e.g. v0 in the null space of a singular A) is still caught
+            # and reseeded, not silently left as zero Ritz values.
             if (i >= max(i_start - 1, 0) and i not in repaired
-                    and beta_h[i] < break_rtol * anorm):
+                    and beta_h[i] <= break_rtol * anorm):
                 p = i
                 break
         if p is None:
             return anorm
         beta[p] = 0
-        V[p + 1] = _restart_ortho(V, p + 1, n, V.dtype)
+        V[p + 1] = _restart_ortho(V, p + 1, n, V.dtype, bias_op)
         repaired.add(p)
         start = p + 1
 
 
-def _restart_ortho(V, m, n, dtype):
+def _restart_ortho(V, m, n, dtype, bias_op=None):
     # Deterministic fresh unit vector orthogonal to V[:m], used to restart
     # the Lanczos recurrence after a lucky breakdown. Start from the
     # canonical basis vector least represented in span(V[:m]) -- the rows of
@@ -389,12 +396,33 @@ def _restart_ortho(V, m, n, dtype):
     # 1 - ||V[:m, j]||^2 and its maximum over j is >= 1 - m/n > 0 -- then
     # orthogonalize with two classical Gram-Schmidt passes. No RNG: the
     # result depends only on V, keeping eigsh/svds output deterministic.
+    #
+    # bias_op: when the operator has a large null space (e.g. svds on a
+    # low-rank matrix works through A^H A whose null fraction is
+    # 1 - rank/n), a canonical basis vector is almost entirely null and the
+    # restart wastes Krylov slots exploring eigenvalue-0 directions
+    # (gh-8009's reproducer: 100x1000 rank 5). One application of the
+    # operator kills all null components, so seed with bias_op @ e_j
+    # instead (still deterministic); fall back to the unbiased e_j when the
+    # result lies in span(V[:m]) -- then the nonzero spectrum is exhausted
+    # and the null space is exactly what remains to explore.
     Vm = V[:m]
     j = int(cupy.argmin(cupy.sum(cupy.abs(Vm) ** 2, axis=0)))
-    w = cupy.zeros((n,), dtype=dtype)
-    w[j] = 1
-    for _ in range(2):
-        w = w - Vm.T @ (Vm.conj() @ w)
+    e = cupy.zeros((n,), dtype=dtype)
+    e[j] = 1
+    cands = (e,) if bias_op is None else (bias_op @ e, e)
+    for cand in cands:
+        nrm = float(cupy.linalg.norm(cand))
+        if nrm == 0.0:
+            continue
+        w = cand / nrm
+        for _ in range(2):
+            w = w - Vm.T @ (Vm.conj() @ w)
+        nrm = float(cupy.linalg.norm(w))
+        if nrm > 1e-6:
+            return w / nrm
+    # fully spanned candidates (can only happen transiently): keep e_j's
+    # orthogonalized remainder, however small -- never a zero vector
     return w / cupy.linalg.norm(w)
 
 

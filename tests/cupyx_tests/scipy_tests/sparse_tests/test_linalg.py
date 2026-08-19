@@ -225,9 +225,37 @@ class TestEigsh:
         cupy.testing.assert_allclose(
             cupy.sort(w), cupy.full(k, 50.0), rtol=tol, atol=tol)
 
+    @testing.for_dtypes('fdFD')
+    def test_null_space_start(self, dtype):
+        # v0 exactly in the null space of a singular A: beta and the norm
+        # estimate both start at 0, so the breakdown test must be
+        # non-strict (<=) for the reseed to fire -- with strict < the
+        # whole Krylov space silently stays zero and eigsh returns zeros.
+        if self.use_linear_operator or self.which != 'LA':
+            pytest.skip()
+        n = 10
+        a = sparse.diags(cupy.arange(n).astype(dtype)).tocsr()
+        v0 = cupy.zeros(n, dtype=dtype)
+        v0[0] = 1                      # eigenvector of eigenvalue 0
+        w = sparse.linalg.eigsh(a, k=2, which='LA', v0=v0,
+                                return_eigenvectors=False)
+        # with '<' this returned [0, 0]; with '<=' the reseeds explore true
+        # eigendirections. (A dead v0 plus ncv = n - 1 leaves one dimension
+        # unexplored and the exact-invariant res = 0 stop ends there, so the
+        # result is genuine nonzero eigenvalues, not necessarily the
+        # extremal pair -- inherited Lanczos semantics.)
+        w = cupy.sort(w.real)
+        assert not bool(cupy.isnan(w).any())
+        assert float(w.min()) > 0.5
+        cupy.testing.assert_allclose(w, cupy.around(w), atol=1e-4)
+
+    # strict=False (pyproject sets xfail_strict): the breakdown guard fixes
+    # a run-dependent subset of these instances, so they XPASS
+    # intermittently; keep non-strict until gh-5001 is closed end-to-end.
     @pytest.mark.xfail(
         reason='eigsh works wrong (#5001)',
         raises=AssertionError,
+        strict=False,
     )
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=tol, atol=tol, sp_name='sp')
@@ -359,9 +387,40 @@ class TestSvds:
         cupy.testing.assert_allclose(
             cupy.sort(s), ref, rtol=cmp_tol, atol=cmp_tol * float(ref.max()))
 
+    low_rank_wide_tol = {'f': 1e-2, 'd': 1e-6}
+
+    @testing.for_dtypes('fdFD')
+    def test_low_rank_wide(self, dtype):
+        # gh-8009's exact regime: rank 5 in a 100x1000 matrix, so A^H A has
+        # a 95% null space. The breakdown reseed must be biased out of the
+        # null space (one application of the operator, see _restart_ortho)
+        # -- an unbiased canonical reseed wastes the Krylov slots on
+        # eigenvalue-0 directions and default ncv recovers only 1-3 of the
+        # 5 true values. Runs once (not per class parameter).
+        if (self.use_linear_operator or self.return_vectors
+                or self.shape != (30, 29) or self.k != 6):
+            pytest.skip()
+        rank = 5
+        a = (testing.shaped_random((100, rank), cupy, dtype=dtype, seed=0)
+             @ testing.shaped_random((rank, 1000), cupy, dtype=dtype,
+                                     seed=1))
+        s = cupy.sort(sparse.linalg.svds(sparse.csr_matrix(a), k=6,
+                      return_singular_vectors=False))
+        assert not bool(cupy.isnan(s).any())
+        ref = cupy.linalg.svd(a, compute_uv=False)[:rank]
+        tol = self.low_rank_wide_tol[numpy.dtype(dtype).char.lower()]
+        cupy.testing.assert_allclose(
+            cupy.sort(s[1:]), cupy.sort(ref), rtol=tol,
+            atol=tol * float(ref.max()))
+        assert float(s[0]) < 1e-3 * float(ref.max())   # the rank-6 value ~ 0
+
+    # strict=False (pyproject sets xfail_strict): the breakdown guard fixes
+    # a run-dependent subset of these instances, so they XPASS
+    # intermittently; keep non-strict until gh-5001 is closed end-to-end.
     @pytest.mark.xfail(
         reason='eigsh works wrong (#5001)',
         raises=AssertionError,
+        strict=False,
     )
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=tol, atol=tol, sp_name='sp')
