@@ -264,6 +264,26 @@ class TestEigsh:
                                 return_eigenvectors=False)
         cupy.testing.assert_allclose(w.real, cupy.zeros(5), atol=1e-5)
 
+    @testing.for_dtypes('fdFD')
+    def test_semidefinite_la_null_not_targeted(self, dtype):
+        # The mirror image of the test above: on a POSITIVE-semidefinite (or
+        # indefinite) operator with a null space, zero is NOT an LA target,
+        # so the reseed must keep annihilating null candidates rather than
+        # spending Krylov slots on them. The shift is therefore applied only
+        # when no positive Rayleigh quotient has been observed.
+        if self.use_linear_operator or self.which != 'LA':
+            pytest.skip()
+        for vals in ([1.0, 2.0, 3.0] + [0.0] * 7,
+                     [2.0, -3.0] + [0.0] * 8):
+            a = sparse.diags(
+                cupy.asarray(vals).astype(dtype)).tocsr()
+            w = sparse.linalg.eigsh(a, k=3, which='LA',
+                                    return_eigenvectors=False)
+            ref = cupy.sort(cupy.asarray(vals).astype(
+                cupy.asarray(vals).real.dtype))[-3:]
+            cupy.testing.assert_allclose(
+                cupy.sort(w.real), ref, atol=1e-4)
+
     # strict=False (pyproject sets xfail_strict): the breakdown guard fixes
     # a run-dependent subset of these instances, so they XPASS
     # intermittently; keep non-strict until gh-5001 is closed end-to-end.

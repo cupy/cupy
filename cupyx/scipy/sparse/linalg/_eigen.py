@@ -109,8 +109,8 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
     la_shift = (which == 'LA')
 
     # Lanczos iteration
-    anorm = _lanczos_checked(a, lanczos, V, u, alpha, beta, 0, ncv,
-                             break_rtol, bias_op, la_shift)
+    anorm, bias_shift = _lanczos_checked(a, lanczos, V, u, alpha, beta, 0,
+                                         ncv, break_rtol, bias_op, la_shift)
 
     iter = ncv
     w, s = _eigsh_solve_ritz(alpha, beta, None, k, which)
@@ -140,8 +140,7 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
         if nrm_u > break_rtol * anorm:
             V[k] = u / nrm_u
         else:
-            V[k] = _restart_ortho(V, k, n, V.dtype, bias_op,
-                                  anorm if la_shift else 0.0)
+            V[k] = _restart_ortho(V, k, n, V.dtype, bias_op, bias_shift)
 
         u[...] = a @ V[k]
         cublas.dotc(V[k], u, out=alpha[k])
@@ -155,8 +154,9 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
         V[k+1] = cupy.where(beta[k] > 0, u / beta[k], u * 0)
 
         # Lanczos iteration
-        anorm = _lanczos_checked(a, lanczos, V, u, alpha, beta, k + 1, ncv,
-                                 break_rtol, bias_op, la_shift)
+        anorm, bias_shift = _lanczos_checked(a, lanczos, V, u, alpha, beta,
+                                             k + 1, ncv, break_rtol, bias_op,
+                                             la_shift)
 
         iter += ncv - k
         w, s = _eigsh_solve_ritz(alpha, beta, beta_k, k, which)
@@ -363,30 +363,56 @@ def _lanczos_checked(a, lanczos, V, u, alpha, beta, i_start, i_end,
     repaired = set()
     while True:
         lanczos(a, V, u, alpha, beta, start, i_end)
-        alpha_h = numpy.abs(cupy.asnumpy(alpha))
+        alpha_np = cupy.asnumpy(alpha)
+        alpha_h = numpy.abs(alpha_np)
         beta_h = numpy.abs(cupy.asnumpy(beta))
         # Gershgorin-style row-sum estimate of ||T|| ~ ||A||, built by
         # walking the rows IN ORDER and stopping at the first breakdown:
         # rows past an exhausted subspace hold roundoff junk whose magnitude
         # can dwarf ||A|| -- folding them into the estimate would inflate
         # the threshold and misfire on legitimate large couplings.
-        anorm = 0.0
+        # Vectorized: the running max IS a cumulative maximum, so the whole
+        # ordered walk is one numpy pass -- no per-ncv Python loop on the
+        # healthy path (which produces no candidates at all).
+        m = i_end - 1
+        # float64 accumulation: alpha/beta past an exhausted subspace can be
+        # huge in float32 (the junk this walk exists to exclude) and the
+        # row sums would overflow to inf before we ever get to ignore them.
+        rows = alpha_h[:m].astype(numpy.float64) + beta_h[:m]
+        rows[1:] += beta_h[:m - 1]
+        anorm_run = numpy.maximum.accumulate(rows)
+        # Non-strict (<=) so an all-zero block (beta and anorm both 0, e.g.
+        # v0 in the null space of a singular A) is still caught and
+        # reseeded, not silently left as zero Ritz values.
+        # LA reseed shift: bias by (A + anorm*I) ONLY when zero may itself
+        # be an LA target, i.e. no positive Rayleigh quotient has been seen
+        # (v^H A v <= 0 for every Lanczos vector so far, so A looks negative
+        # semidefinite and its null space sits at the TOP of the spectrum).
+        # On a positive-semidefinite or indefinite operator the shift would
+        # instead let null-space candidates pass _accept and waste Krylov
+        # slots on eigenvalue-0 directions that are not targets, while the
+        # plain bias correctly annihilates them.
+        hits = numpy.flatnonzero(beta_h[:m] <= break_rtol * anorm_run)
+        lo = max(i_start - 1, 0)
         p = None
-        for i in range(i_end - 1):
-            anorm = max(anorm, alpha_h[i] + beta_h[i]
-                        + (beta_h[i - 1] if i else 0.0))
-            # Non-strict (<=) so an all-zero block (beta and anorm both 0,
-            # e.g. v0 in the null space of a singular A) is still caught
-            # and reseeded, not silently left as zero Ritz values.
-            if (i >= max(i_start - 1, 0) and i not in repaired
-                    and beta_h[i] <= break_rtol * anorm):
+        for i in hits:                       # typically empty
+            i = int(i)
+            if i >= lo and i not in repaired:
                 p = i
                 break
+        # ||A|| estimate and the shift decision must use only the PREFIX up
+        # to the breakdown -- rows after it hold roundoff junk (this is the
+        # same reason the walk is ordered). Equivalent to the scalar loop,
+        # which broke out at p and never looked further.
+        end = m - 1 if p is None else p
+        anorm = float(anorm_run[end])
+        shift = (anorm if (la_shift
+                           and float(alpha_np[:end + 1].real.max()) <= 0.0)
+                 else 0.0)
         if p is None:
-            return anorm
+            return anorm, shift
         beta[p] = 0
-        V[p + 1] = _restart_ortho(V, p + 1, n, V.dtype, bias_op,
-                                  anorm if la_shift else 0.0)
+        V[p + 1] = _restart_ortho(V, p + 1, n, V.dtype, bias_op, shift)
         repaired.add(p)
         start = p + 1
 
@@ -431,9 +457,8 @@ def _restart_ortho(V, m, n, dtype, bias_op=None, bias_shift=0.0):
     #   2. biased canonical walk over the least-represented columns;
     #   3. unbiased canonical walk (correct once the operator's range is
     #      exhausted: the null space is exactly what remains to explore);
-    #   4. plain canonical vector (unit, finite, deterministic; its lost
-    #      orthogonality is absorbed by the sweep's own per-iteration
-    #      reorthogonalization and the next boundary check).
+    #   4. nothing acceptable -> raise (fail closed) rather than store a
+    #      vector that is not numerically orthogonal to V[:m].
     # bias_shift: biasing by (bias_op + shift*I) instead of bias_op keeps
     # zero eigenvalues alive when they are legitimate targets -- 'LA' on a
     # negative-semidefinite operator has the null space at the TOP of the
@@ -476,9 +501,19 @@ def _restart_ortho(V, m, n, dtype, bias_op=None, bias_shift=0.0):
         w = _accept(e)
         if w is not None:
             return w
-    e[...] = 0
-    e[order[0]] = 1
-    return e
+    # Fail closed. Reaching here means no candidate produced a remainder
+    # above the sqrt(eps) floor, i.e. we cannot supply a vector that is
+    # numerically orthogonal to V[:m]. Returning a raw (unprojected) e_j
+    # would satisfy "unit, finite and deterministic" but not "safe to store
+    # in V": the caller would continue under an orthonormality invariant
+    # that no longer holds, producing silently wrong Ritz values. With
+    # orthonormal rows this is unreachable (the argmin-column remainder is
+    # >= sqrt(1 - m/n)), so it only fires from an already-corrupted basis.
+    raise RuntimeError(
+        'eigsh: Lanczos restart failed -- no direction orthogonal to the '
+        'current basis exceeds the {:.1e} floor after {} candidates. The '
+        'basis is numerically rank-deficient; try a smaller ncv or a '
+        'different v0.'.format(floor, 2 * len(order) + 1))
 
 
 def _eigsh_solve_ritz(alpha, beta, beta_k, k, which):
