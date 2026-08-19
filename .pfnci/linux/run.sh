@@ -197,6 +197,12 @@ main() {
         mkdir -p ${BENCHMARK_DIR}
         docker_args+=(--volume="${BENCHMARK_DIR}:/perf-results")
       fi
+      # Host and container path must match so pytest --junit-xml (absolute)
+      # survives docker --rm. Only FlexCI sets JUNIT_DIR today.
+      if [[ "${JUNIT_DIR:-}" != "" ]]; then
+        mkdir -p "${JUNIT_DIR}"
+        docker_args+=(--volume="${JUNIT_DIR}:${JUNIT_DIR}")
+      fi
 
       if [[ ${stage} = test || ${stage} = benchmark ]]; then
         "${docker_args[@]}" --volume="${repo_root}:/src:ro" --workdir "/src" \
