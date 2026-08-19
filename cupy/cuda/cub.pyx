@@ -531,6 +531,13 @@ cpdef cub_histogram(_ndarray_base x, _ndarray_base y, bins):
     to compute the histogram, otherwise return None. This is a workaround for
     NVIDIA/cub#613.
     """
+    # CUB uses int offsets into per-block privatized histograms. Use 1024 as a
+    # rough estimate of the maximum number of thread blocks to avoid
+    # overflowing these offsets.
+    # TODO: Remove this guard after bumping CCCL to a version that includes
+    # NVIDIA/cccl#9570.
+    if y.size > 0x7fffffff // 1024:
+        return None
     try:
         out = device_histogram(x, y, bins)
     except _memory.OutOfMemoryError:

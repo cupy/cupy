@@ -59,7 +59,9 @@ def safely_cast_index_arrays(A, idx_dtype=numpy.int32, msg=""):
     Returns:
         ndarray or tuple of ndarrays:
             For CSR/CSC, ``(indices, indptr)``.
-            For COO, ``(row, col)`` (CuPy is currently 2-D-only).
+            For COO, ``(row, col)`` -- CuPy exposes the two coordinate
+            arrays rather than SciPy's n-D ``coords`` tuple, and a 1-D
+            COO array carries an all-zero ``row``.
             For DIA, ``offsets``.
 
     Raises:

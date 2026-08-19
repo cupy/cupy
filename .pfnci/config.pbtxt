@@ -463,6 +463,24 @@ configs {
   }
 }
 
+# CUDA 13.x + CUDA Python
+configs {
+  key: "cupy.linux.cuda13x-cuda-python"
+  value {
+    requirement {
+      cpu: 8
+      memory: 60
+      disk: 30
+      gpu: 1
+    }
+    time_limit: {
+      seconds: 21600
+    }
+    environment_variables { key: "GPU" value: "1" }
+    command: ".pfnci/linux/main-flexci.sh cuda13x-cuda-python"
+  }
+}
+
 # CUDA + RAPIDS
 configs {
   key: "cupy.linux.cuda-rapids"

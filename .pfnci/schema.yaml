@@ -76,8 +76,8 @@ rocm:
   null:
     full_version: null
     packages: []
-  "7.1":
-    full_version: "7.1.1-complete"
+  "7.14":
+    full_version: "7.14.0-full"
     packages: []
 
 ###############################################################################
@@ -318,6 +318,19 @@ scipy:
       - "2.2"
       - "2.3"
       - "2.4"
+  "1.17":
+    spec: "==1.17.*"
+    python:
+      - "3.11"
+      - "3.12"
+      - "3.13"
+      - "3.14"
+    numpy:
+      - "2.0"
+      - "2.1"
+      - "2.2"
+      - "2.3"
+      - "2.4"
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
 optuna:
@@ -357,6 +370,8 @@ cuda-python:
     spec: null
   "12":
     spec: "==12.*"
+  "13.2":
+    spec: "==13.2.*"
 nvmath-python:
   null:
     spec: null

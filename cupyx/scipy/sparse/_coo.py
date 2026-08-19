@@ -591,7 +591,8 @@ class _coo_base(sparse_data._data_matrix):
                 copy runs asynchronously. Otherwise, the copy is synchronous.
 
         Returns:
-            scipy.sparse.coo_matrix: Copy of the array on host memory.
+            scipy.sparse.coo_array or scipy.sparse.coo_matrix:
+                Copy of the array on host memory.
 
         """
         if not _scipy_available:
@@ -925,7 +926,9 @@ class _coo_base(sparse_data._data_matrix):
 class coo_matrix(_base.spmatrix, _coo_base):
     """COOrdinate format sparse matrix.
 
-    .. seealso:: :class:`scipy.sparse.coo_matrix`
+    .. seealso::
+       - :class:`scipy.sparse.coo_matrix`
+       - :class:`~cupyx.scipy.sparse.coo_array`
     """
     pass
 
@@ -937,9 +940,11 @@ class coo_array(_coo_base, _base.sparray):
     in addition to 2-D, matching :class:`scipy.sparse.coo_array`.  A 1-D
     array of length ``N`` is stored as a ``(1, N)`` row vector
     (``row`` all-zeros, ``col`` the coordinate) and presents
-    ``shape == (N,)``; see :attr:`_spbase._shape_as_2d`.
+    ``shape == (N,)``.
 
-    .. seealso:: :class:`scipy.sparse.coo_array`
+    .. seealso::
+       - :class:`scipy.sparse.coo_array`
+       - :class:`~cupyx.scipy.sparse.coo_matrix`
     """
 
     _allow_nd = (1, 2)
