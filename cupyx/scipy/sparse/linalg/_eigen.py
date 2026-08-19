@@ -106,10 +106,11 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
     # operator's null space -- except for 'SA', where the smallest
     # (possibly zero) eigenvalues are the ones being sought.
     bias_op = a if which != 'SA' else None
+    la_shift = (which == 'LA')
 
     # Lanczos iteration
     anorm = _lanczos_checked(a, lanczos, V, u, alpha, beta, 0, ncv,
-                             break_rtol, bias_op)
+                             break_rtol, bias_op, la_shift)
 
     iter = ncv
     w, s = _eigsh_solve_ritz(alpha, beta, None, k, which)
@@ -139,7 +140,8 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
         if nrm_u > break_rtol * anorm:
             V[k] = u / nrm_u
         else:
-            V[k] = _restart_ortho(V, k, n, V.dtype, bias_op)
+            V[k] = _restart_ortho(V, k, n, V.dtype, bias_op,
+                                  anorm if la_shift else 0.0)
 
         u[...] = a @ V[k]
         cublas.dotc(V[k], u, out=alpha[k])
@@ -154,7 +156,7 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
 
         # Lanczos iteration
         anorm = _lanczos_checked(a, lanczos, V, u, alpha, beta, k + 1, ncv,
-                                 break_rtol, bias_op)
+                                 break_rtol, bias_op, la_shift)
 
         iter += ncv - k
         w, s = _eigsh_solve_ritz(alpha, beta, beta_k, k, which)
@@ -333,7 +335,7 @@ _kernel_normalize = cupy.ElementwiseKernel(
 
 
 def _lanczos_checked(a, lanczos, V, u, alpha, beta, i_start, i_end,
-                     break_rtol, bias_op=None):
+                     break_rtol, bias_op=None, la_shift=False):
     """Run a Lanczos sweep; detect and repair lucky breakdowns at the sweep
     boundary.
 
@@ -383,12 +385,13 @@ def _lanczos_checked(a, lanczos, V, u, alpha, beta, i_start, i_end,
         if p is None:
             return anorm
         beta[p] = 0
-        V[p + 1] = _restart_ortho(V, p + 1, n, V.dtype, bias_op)
+        V[p + 1] = _restart_ortho(V, p + 1, n, V.dtype, bias_op,
+                                  anorm if la_shift else 0.0)
         repaired.add(p)
         start = p + 1
 
 
-def _restart_ortho(V, m, n, dtype, bias_op=None):
+def _restart_ortho(V, m, n, dtype, bias_op=None, bias_shift=0.0):
     # Deterministic fresh unit vector orthogonal to V[:m], used to restart
     # the Lanczos recurrence after a lucky breakdown. Start from the
     # canonical basis vector least represented in span(V[:m]) -- the rows of
@@ -419,26 +422,60 @@ def _restart_ortho(V, m, n, dtype, bias_op=None):
     # vector: unit, finite and deterministic. Its lost orthogonality is
     # absorbed by the sweep's own per-iteration reorthogonalization and
     # the next boundary check -- always preferable to NaN or noise.
+    # Candidate ladder (all deterministic, first acceptable wins):
+    #   1. biased DENSE probe, varied with m -- a canonical e_j fails on
+    #      operators whose null space is coordinate-aligned (bias_op @ e_j
+    #      is then exactly 0: gh-8009's literal reproducer makes A^H A a
+    #      coordinate projector), and a FIXED dense probe is spanned after
+    #      its first acceptance, so the probe must change per reseed;
+    #   2. biased canonical walk over the least-represented columns;
+    #   3. unbiased canonical walk (correct once the operator's range is
+    #      exhausted: the null space is exactly what remains to explore);
+    #   4. plain canonical vector (unit, finite, deterministic; its lost
+    #      orthogonality is absorbed by the sweep's own per-iteration
+    #      reorthogonalization and the next boundary check).
+    # bias_shift: biasing by (bias_op + shift*I) instead of bias_op keeps
+    # zero eigenvalues alive when they are legitimate targets -- 'LA' on a
+    # negative-semidefinite operator has the null space at the TOP of the
+    # spectrum, so the driver passes shift ~ +||A|| there (null maps to
+    # shift != 0 while the anti-target bottom maps to ~0). 'LM' passes 0
+    # (plain bias_op preserves the |lambda| ordering exactly).
     Vm = V[:m]
     colnorm = cupy.sum(cupy.abs(Vm) ** 2, axis=0)
     order = [int(j) for j in cupy.asnumpy(cupy.argsort(colnorm)[:4])]
     floor = float(numpy.sqrt(numpy.finfo(
         numpy.dtype(dtype).char.lower()).eps))
+
+    def _accept(cand):
+        nrm = float(cupy.linalg.norm(cand))
+        if nrm == 0.0:
+            return None
+        w = cand / nrm
+        for _ in range(2):
+            w = w - Vm.T @ (Vm.conj() @ w)
+        nrm = float(cupy.linalg.norm(w))
+        return (w / nrm) if nrm > floor else None
+
+    if bias_op is not None:
+        d = cupy.cos((m + 1.0) * 0.7 * cupy.arange(1, n + 1)).astype(dtype)
+        d /= cupy.linalg.norm(d)
+        w = _accept(bias_op @ d + bias_shift * d)
+        if w is not None:
+            return w
     e = cupy.zeros((n,), dtype=dtype)
+    if bias_op is not None:
+        for j in order:
+            e[...] = 0
+            e[j] = 1
+            w = _accept(bias_op @ e + bias_shift * e)
+            if w is not None:
+                return w
     for j in order:
         e[...] = 0
         e[j] = 1
-        cands = (e,) if bias_op is None else (bias_op @ e, e)
-        for cand in cands:
-            nrm = float(cupy.linalg.norm(cand))
-            if nrm == 0.0:
-                continue
-            w = cand / nrm
-            for _ in range(2):
-                w = w - Vm.T @ (Vm.conj() @ w)
-            nrm = float(cupy.linalg.norm(w))
-            if nrm > floor:
-                return w / nrm
+        w = _accept(e)
+        if w is not None:
+            return w
     e[...] = 0
     e[order[0]] = 1
     return e

@@ -249,6 +249,21 @@ class TestEigsh:
         assert float(w.min()) > 0.5
         cupy.testing.assert_allclose(w, cupy.around(w), atol=1e-4)
 
+    @testing.for_dtypes('fdFD')
+    def test_negative_semidefinite_la(self, dtype):
+        # 'LA' on a negative-semidefinite operator with nullity >= k: the
+        # zero eigenvalues ARE the largest algebraic targets, so the reseed
+        # bias must not steer away from the null space -- 'LA' biases by
+        # (A + anorm*I), which keeps the null space alive (see
+        # _restart_ortho).
+        if self.use_linear_operator or self.which != 'LA':
+            pytest.skip()
+        a = sparse.diags(cupy.concatenate(
+            [cupy.zeros(5), -cupy.ones(5)]).astype(dtype)).tocsr()
+        w = sparse.linalg.eigsh(a, k=5, which='LA',
+                                return_eigenvectors=False)
+        cupy.testing.assert_allclose(w.real, cupy.zeros(5), atol=1e-5)
+
     # strict=False (pyproject sets xfail_strict): the breakdown guard fixes
     # a run-dependent subset of these instances, so they XPASS
     # intermittently; keep non-strict until gh-5001 is closed end-to-end.
@@ -413,6 +428,22 @@ class TestSvds:
             cupy.sort(s[1:]), cupy.sort(ref), rtol=tol,
             atol=tol * float(ref.max()))
         assert float(s[0]) < 1e-3 * float(ref.max())   # the rank-6 value ~ 0
+
+    def test_low_rank_coordinate_null(self):
+        # gh-8009's literal reproducer: eye(100, 1000) with rows 5+ zeroed
+        # makes A^H A a COORDINATE projector, so every canonical reseed
+        # lands exactly in the null space (bias_op @ e_j == 0); the varied
+        # dense probe in _restart_ortho is what recovers all five values.
+        if (self.use_linear_operator or self.return_vectors
+                or self.shape != (30, 29) or self.k != 6):
+            pytest.skip()
+        a = cupy.eye(100, 1000, dtype='d')
+        a[5:] = 0
+        s = cupy.sort(sparse.linalg.svds(sparse.csr_matrix(a), k=6,
+                      return_singular_vectors=False))
+        assert not bool(cupy.isnan(s).any())
+        cupy.testing.assert_allclose(s[1:], cupy.ones(5), atol=1e-8)
+        assert float(s[0]) < 1e-6
 
     # strict=False (pyproject sets xfail_strict): the breakdown guard fixes
     # a run-dependent subset of these instances, so they XPASS
