@@ -294,7 +294,12 @@ def check_availability(name):
             # all symbols are loaded at runtime, so use the runtime version.
             version = getVersion()
         else:
-            version = _cusparse.get_build_version()
+            # Symbol availability is bounded by the runtime cuSPARSE library
+            # (SoftLink resolves at runtime), not the build headers. Cap by
+            # whichever is older so a wheel built against a newer cuSPARSE
+            # (build-once, test-many-runtimes CI) doesn't advertise APIs the
+            # runtime lib doesn't ship (e.g. spGEAM in cuSPARSE 12.8.1+).
+            version = min(_cusparse.get_build_version(), getVersion())
     else:
         available_version = _available_hipsparse_version
         version = _driver.get_build_version()  # = HIP_VERSION
