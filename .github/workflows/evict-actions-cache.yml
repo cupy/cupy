@@ -1,0 +1,87 @@
+name: "Evict Actions Cache"
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  actions: write
+
+concurrency:
+  group: evict-actions-cache
+  cancel-in-progress: false
+
+jobs:
+  evict:
+    if: github.repository_owner == 'cupy'
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Evict old caches
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const owner = context.repo.owner
+            const repo = context.repo.repo
+            const CACHE_PREFIXES = [
+              'static-checks-',
+              'build-cuda-',
+              'build-rocm-',
+            ]
+            const PR_CACHE_RETENTION_MS = 24 * 60 * 60 * 1000
+            const now = new Date()
+
+            // Collect caches for every prefix, grouped by (prefix, ref)
+            const groups = {}
+            for (const prefix of CACHE_PREFIXES) {
+              const caches = await github.paginate(
+                github.rest.actions.getActionsCacheList, {
+                  owner, repo,
+                  key: prefix,
+                  sort: 'last_accessed_at',
+                  per_page: 100,
+                }
+              )
+              for (const cache of caches) {
+                const groupKey = `${prefix}||${cache.ref}`
+                if (!groups[groupKey]) groups[groupKey] = []
+                groups[groupKey].push(cache)
+              }
+            }
+
+            // Decide what to delete for each (prefix, ref) group.
+            // The API already returns caches sorted by last_accessed_at desc,
+            // so caches[0] is the most recently accessed.
+            const deleteTargets = []
+            for (const caches of Object.values(groups)) {
+              const newest = caches[0]
+              const newestLastAccessed =
+                new Date(newest.last_accessed_at || newest.created_at)
+              const isPR = newest.ref.startsWith('refs/pull/')
+
+              if (isPR &&
+                  (now - newestLastAccessed) > PR_CACHE_RETENTION_MS) {
+                // Newest PR cache is stale — delete the whole group
+                deleteTargets.push(...caches)
+              } else {
+                // Keep the newest; delete all older ones
+                deleteTargets.push(...caches.slice(1))
+              }
+            }
+
+            if (deleteTargets.length === 0) {
+              console.log('No caches to delete')
+              return
+            }
+
+            console.log(`Deleting ${deleteTargets.length} cache(s)`)
+            console.log(
+              deleteTargets.map(c => `${c.id} ${c.key} (${c.ref})`).join('\n')
+            )
+            await Promise.all(deleteTargets.map(cache =>
+              github.rest.actions.deleteActionsCacheById({
+                owner, repo,
+                cache_id: cache.id,
+              })
+            ))
