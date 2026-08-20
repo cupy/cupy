@@ -96,8 +96,21 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
     else:
         lanczos = _lanczos_asis
 
+    # Lucky-breakdown detection threshold (see _lanczos_checked): decoupling
+    # the tridiagonal at beta[i] perturbs the spectrum by at most beta[i], so
+    # an O(eps)*||A|| threshold is harmless by construction. (A sqrt(eps)
+    # threshold can exceed legitimate small couplings in float32 and corrupt
+    # the trailing Ritz values.)
+    break_rtol = 64.0 * float(numpy.finfo(a.dtype).eps)
+    # Restart-reseed bias (see _restart_ortho): pull reseeds out of the
+    # operator's null space -- except for 'SA', where the smallest
+    # (possibly zero) eigenvalues are the ones being sought.
+    bias_op = a if which != 'SA' else None
+    la_shift = (which == 'LA')
+
     # Lanczos iteration
-    lanczos(a, V, u, alpha, beta, 0, ncv)
+    anorm, bias_shift = _lanczos_checked(a, lanczos, V, u, alpha, beta, 0,
+                                         ncv, break_rtol, bias_op, la_shift)
 
     iter = ncv
     w, s = _eigsh_solve_ritz(alpha, beta, None, k, which)
@@ -118,17 +131,32 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
         # u -= u.T @ V[:k].conj().T @ V[:k]
         cublas.gemv(_cublas.CUBLAS_OP_C, 1, V[:k].T, u, 0, uu)
         cublas.gemv(_cublas.CUBLAS_OP_N, -1, V[:k].T, uu, 1, u)
-        V[k] = u / cublas.nrm2(u)
+        # The deflation above can eat nearly all of u (residual almost inside
+        # the locked Ritz span, common in single precision): dividing by the
+        # collapsed norm would inject a huge junk vector and wild Ritz values.
+        # Reseed with a fresh direction orthogonal to V[:k] instead. (One
+        # host float per restart cycle; solve_ritz syncs here anyway.)
+        nrm_u = float(cublas.nrm2(u))
+        if nrm_u > break_rtol * anorm:
+            V[k] = u / nrm_u
+        else:
+            V[k] = _restart_ortho(V, k, n, V.dtype, bias_op, bias_shift)
 
         u[...] = a @ V[k]
         cublas.dotc(V[k], u, out=alpha[k])
         u -= alpha[k] * V[k]
         u -= V[:k].T @ beta_k
         cublas.nrm2(u, out=beta[k])
-        V[k+1] = u / beta[k]
+        # NaN-proof normalization: beta[k] = ||u||, so the division is finite
+        # for beta[k] > 0; an exact zero (restart subspace invariant) yields a
+        # zero column, then _lanczos_checked's boundary check (which covers
+        # index k) decouples and reseeds it.
+        V[k+1] = cupy.where(beta[k] > 0, u / beta[k], u * 0)
 
         # Lanczos iteration
-        lanczos(a, V, u, alpha, beta, k + 1, ncv)
+        anorm, bias_shift = _lanczos_checked(a, lanczos, V, u, alpha, beta,
+                                             k + 1, ncv, break_rtol, bias_op,
+                                             la_shift)
 
         iter += ncv - k
         w, s = _eigsh_solve_ritz(alpha, beta, beta_k, k, which)
@@ -286,7 +314,10 @@ def _lanczos_fast(A, n, ncv):
             if i >= i_end - 1:
                 break
 
-            # Normalize
+            # Normalize. beta[i] = ||u||, so u/beta[i] stays finite for any
+            # beta[i] > 0; the kernel emits 0 instead of dividing when
+            # beta[i] == 0 (exact lucky breakdown), so the sweep completes
+            # NaN-free and _lanczos_checked repairs it at the sweep boundary.
             _kernel_normalize(u, beta, i, n, v, V)
 
     return aux
@@ -294,8 +325,195 @@ def _lanczos_fast(A, n, ncv):
 
 _kernel_normalize = cupy.ElementwiseKernel(
     'T u, raw S beta, int32 j, int32 n', 'T v, raw T V',
-    'v = u / beta[j]; V[i + (j+1) * n] = v;', 'cupy_eigsh_normalize'
+    # beta[j] = ||u||, so u/beta[j] is finite whenever beta[j] > 0; on an
+    # EXACT lucky breakdown (beta[j] == 0) emit 0 instead of 0/0 = NaN --
+    # the zero column is detected and repaired at the sweep boundary
+    # (_lanczos_checked), keeping this inner loop free of host syncs.
+    'S b = beta[j]; v = (b > (S)0) ? (u / b) : (u * (S)0);'
+    ' V[i + (j+1) * n] = v;', 'cupy_eigsh_normalize'
 )
+
+
+def _lanczos_checked(a, lanczos, V, u, alpha, beta, i_start, i_end,
+                     break_rtol, bias_op=None, la_shift=False):
+    """Run a Lanczos sweep; detect and repair lucky breakdowns at the sweep
+    boundary.
+
+    beta[i] ~ 0 means A @ v landed in span(V), i.e. an invariant subspace was
+    found; normalizing by it yields NaNs / wrong results on degenerate or
+    rank-deficient spectra (gh-6446, gh-7495, gh-8009). The inner loop stays
+    completely free of host syncs (its device-pointer-mode design): an exact
+    breakdown produces a zero column (see _kernel_normalize) and a near
+    breakdown a finite junk-but-orthonormalized column, both harmless within
+    the sweep. HERE, on the host copy of (alpha, beta) that the Ritz solve
+    needs anyway, positions with beta[i] < break_rtol * ||A||_est are
+    decoupled (beta[i] = 0 -- a spectrum perturbation of at most beta[i],
+    machine-level by the threshold choice) and V[i+1] is reseeded with a
+    deterministic fresh vector orthogonal to V[:i+1]; the sweep re-runs from
+    there so the iteration keeps exploring. Healthy problems detect nothing
+    and pay zero overhead; a fully degenerate spectrum costs at most
+    O(i_end - i_start) partial re-sweeps.
+
+    The check range starts at i_start - 1, so it also covers the thick
+    restart's own normalization V[k+1] = u / beta[k] (repaired the same way).
+    Returns the ||A|| estimate for the driver's own guard on V[k].
+    """
+    n = V.shape[1]
+    start = i_start
+    repaired = set()
+    while True:
+        lanczos(a, V, u, alpha, beta, start, i_end)
+        alpha_np = cupy.asnumpy(alpha)
+        alpha_h = numpy.abs(alpha_np)
+        beta_h = numpy.abs(cupy.asnumpy(beta))
+        # Gershgorin-style row-sum estimate of ||T|| ~ ||A||, built by
+        # walking the rows IN ORDER and stopping at the first breakdown:
+        # rows past an exhausted subspace hold roundoff junk whose magnitude
+        # can dwarf ||A|| -- folding them into the estimate would inflate
+        # the threshold and misfire on legitimate large couplings.
+        # Vectorized: the running max IS a cumulative maximum, so the whole
+        # ordered walk is one numpy pass -- no per-ncv Python loop on the
+        # healthy path (which produces no candidates at all).
+        m = i_end - 1
+        # float64 accumulation: alpha/beta past an exhausted subspace can be
+        # huge in float32 (the junk this walk exists to exclude) and the
+        # row sums would overflow to inf before we ever get to ignore them.
+        rows = alpha_h[:m].astype(numpy.float64) + beta_h[:m]
+        rows[1:] += beta_h[:m - 1]
+        anorm_run = numpy.maximum.accumulate(rows)
+        # Non-strict (<=) so an all-zero block (beta and anorm both 0, e.g.
+        # v0 in the null space of a singular A) is still caught and
+        # reseeded, not silently left as zero Ritz values.
+        # LA reseed shift: bias by (A + anorm*I) ONLY when zero may itself
+        # be an LA target, i.e. no positive Rayleigh quotient has been seen
+        # (v^H A v <= 0 for every Lanczos vector so far, so A looks negative
+        # semidefinite and its null space sits at the TOP of the spectrum).
+        # On a positive-semidefinite or indefinite operator the shift would
+        # instead let null-space candidates pass _accept and waste Krylov
+        # slots on eigenvalue-0 directions that are not targets, while the
+        # plain bias correctly annihilates them.
+        hits = numpy.flatnonzero(beta_h[:m] <= break_rtol * anorm_run)
+        lo = max(i_start - 1, 0)
+        p = None
+        for i in hits:                       # typically empty
+            i = int(i)
+            if i >= lo and i not in repaired:
+                p = i
+                break
+        # ||A|| estimate and the shift decision must use only the PREFIX up
+        # to the breakdown -- rows after it hold roundoff junk (this is the
+        # same reason the walk is ordered). Equivalent to the scalar loop,
+        # which broke out at p and never looked further.
+        end = m - 1 if p is None else p
+        anorm = float(anorm_run[end])
+        shift = (anorm if (la_shift
+                           and float(alpha_np[:end + 1].real.max()) <= 0.0)
+                 else 0.0)
+        if p is None:
+            return anorm, shift
+        beta[p] = 0
+        V[p + 1] = _restart_ortho(V, p + 1, n, V.dtype, bias_op, shift)
+        repaired.add(p)
+        start = p + 1
+
+
+def _restart_ortho(V, m, n, dtype, bias_op=None, bias_shift=0.0):
+    # Deterministic fresh unit vector orthogonal to V[:m], used to restart
+    # the Lanczos recurrence after a lucky breakdown. Start from the
+    # canonical basis vector least represented in span(V[:m]) -- the rows of
+    # V[:m] are orthonormal, so the residual ||(I - P) e_j||^2 is
+    # 1 - ||V[:m, j]||^2 and its maximum over j is >= 1 - m/n > 0 -- then
+    # orthogonalize with two classical Gram-Schmidt passes. No RNG: the
+    # result depends only on V, keeping eigsh/svds output deterministic.
+    #
+    # bias_op: when the operator has a large null space (e.g. svds on a
+    # low-rank matrix works through A^H A whose null fraction is
+    # 1 - rank/n), a canonical basis vector is almost entirely null and the
+    # restart wastes Krylov slots exploring eigenvalue-0 directions
+    # (gh-8009's reproducer: 100x1000 rank 5). One application of the
+    # operator kills all null components, so seed with bias_op @ e_j
+    # instead (still deterministic); fall back to the unbiased e_j when the
+    # result lies in span(V[:m]) -- then the nonzero spectrum is exhausted
+    # and the null space is exactly what remains to explore.
+    # Robustness of the acceptance test: with orthonormal rows the argmin
+    # candidate's remainder is >= 1/sqrt(n) (sum of column norms^2 is
+    # m <= n-1), but transient repair states can hold zero or junk rows,
+    # for which CGS is not a projector and no lower bound exists -- a
+    # remainder can cancel arbitrarily small, and normalizing it would
+    # amplify CGS roundoff into a poorly-orthogonal noise direction (or
+    # 0/0 = NaN on exact cancellation). So: accept a remainder only above
+    # a dtype-aware floor (sqrt(eps), far above the CGS noise floor in
+    # both precisions), try a few canonical vectors in ascending
+    # column-norm order, and if all fail return the plain canonical
+    # vector: unit, finite and deterministic. Its lost orthogonality is
+    # absorbed by the sweep's own per-iteration reorthogonalization and
+    # the next boundary check -- always preferable to NaN or noise.
+    # Candidate ladder (all deterministic, first acceptable wins):
+    #   1. biased DENSE probe, varied with m -- a canonical e_j fails on
+    #      operators whose null space is coordinate-aligned (bias_op @ e_j
+    #      is then exactly 0: gh-8009's literal reproducer makes A^H A a
+    #      coordinate projector), and a FIXED dense probe is spanned after
+    #      its first acceptance, so the probe must change per reseed;
+    #   2. biased canonical walk over the least-represented columns;
+    #   3. unbiased canonical walk (correct once the operator's range is
+    #      exhausted: the null space is exactly what remains to explore);
+    #   4. nothing acceptable -> raise (fail closed) rather than store a
+    #      vector that is not numerically orthogonal to V[:m].
+    # bias_shift: biasing by (bias_op + shift*I) instead of bias_op keeps
+    # zero eigenvalues alive when they are legitimate targets -- 'LA' on a
+    # negative-semidefinite operator has the null space at the TOP of the
+    # spectrum, so the driver passes shift ~ +||A|| there (null maps to
+    # shift != 0 while the anti-target bottom maps to ~0). 'LM' passes 0
+    # (plain bias_op preserves the |lambda| ordering exactly).
+    Vm = V[:m]
+    colnorm = cupy.sum(cupy.abs(Vm) ** 2, axis=0)
+    order = [int(j) for j in cupy.asnumpy(cupy.argsort(colnorm)[:4])]
+    floor = float(numpy.sqrt(numpy.finfo(
+        numpy.dtype(dtype).char.lower()).eps))
+
+    def _accept(cand):
+        nrm = float(cupy.linalg.norm(cand))
+        if nrm == 0.0:
+            return None
+        w = cand / nrm
+        for _ in range(2):
+            w = w - Vm.T @ (Vm.conj() @ w)
+        nrm = float(cupy.linalg.norm(w))
+        return (w / nrm) if nrm > floor else None
+
+    if bias_op is not None:
+        d = cupy.cos((m + 1.0) * 0.7 * cupy.arange(1, n + 1)).astype(dtype)
+        d /= cupy.linalg.norm(d)
+        w = _accept(bias_op @ d + bias_shift * d)
+        if w is not None:
+            return w
+    e = cupy.zeros((n,), dtype=dtype)
+    if bias_op is not None:
+        for j in order:
+            e[...] = 0
+            e[j] = 1
+            w = _accept(bias_op @ e + bias_shift * e)
+            if w is not None:
+                return w
+    for j in order:
+        e[...] = 0
+        e[j] = 1
+        w = _accept(e)
+        if w is not None:
+            return w
+    # Fail closed. Reaching here means no candidate produced a remainder
+    # above the sqrt(eps) floor, i.e. we cannot supply a vector that is
+    # numerically orthogonal to V[:m]. Returning a raw (unprojected) e_j
+    # would satisfy "unit, finite and deterministic" but not "safe to store
+    # in V": the caller would continue under an orthonormality invariant
+    # that no longer holds, producing silently wrong Ritz values. With
+    # orthonormal rows this is unreachable (the argmin-column remainder is
+    # >= sqrt(1 - m/n)), so it only fires from an already-corrupted basis.
+    raise RuntimeError(
+        'eigsh: Lanczos restart failed -- no direction orthogonal to the '
+        'current basis exceeds the {:.1e} floor after {} candidates. The '
+        'basis is numerically rank-deficient; try a smaller ncv or a '
+        'different v0.'.format(floor, 2 * len(order) + 1))
 
 
 def _eigsh_solve_ritz(alpha, beta, beta_k, k, which):
