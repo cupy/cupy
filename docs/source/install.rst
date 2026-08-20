@@ -353,17 +353,16 @@ For example, you can build CuPy using non-default CUDA directory by ``CUDA_PATH`
    CUDA installation discovery is also performed at runtime using the rule above.
    Depending on your system configuration, you may also need to set ``LD_LIBRARY_PATH`` environment variable to ``$CUDA_PATH/lib64`` at runtime.
 
-CuPy always raises ``NVRTC_ERROR_COMPILATION (6)``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+``Failed to find CUDA headers`` Error
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-On CUDA 12.2 or later, CUDA Runtime header files are required to compile kernels in CuPy.
-If CuPy raises a ``NVRTC_ERROR_COMPILATION`` with the error message saying ``catastrophic error: cannot open source file "vector_types.h"`` for almost everything, it is possible that CuPy cannot find the header files on your system correctly.
+CuPy requires CUDA Runtime header files to compile kernels on the fly.
 
-This problem does not happen if you have installed CuPy from conda-forge (i.e., ``conda install -c conda-forge cupy``), as the package ``cuda-cudart-dev_<platform>`` that contains the needed headers is correctly installed as a dependency.
-Please report to the CuPy repository if you encounter issues with Conda-installed CuPy.
+CuPy searches for CUDA headers using ``cuda.pathfinder.find_nvidia_header_directory("cudart")``; see the `cuda-pathfinder documentation <https://nvidia.github.io/cuda-python/cuda-pathfinder/latest/generated/cuda.pathfinder.find_nvidia_header_directory.html>`_ for the search order.
 
-If you have installed CuPy from PyPI (i.e., ``pip install cupy-cuda12x``), you can install CUDA headers by running ``pip install "nvidia-cuda-runtime-cu12==12.X.*"`` where ``12.X`` is the version of your CUDA installation.
-Once headers from the package is recognized, ``cupy.show_config()`` will display the path as ``CUDA Extra Include Dirs``:
+The easiest way to set up CUDA runtime headers is to use NVIDIA Python wheels.
+If you have installed CuPy from PyPI (i.e., ``pip install cupy-cuda13x``), you can install CUDA headers by running ``pip install "nvidia-cuda-runtime-cu13==13.X.*"`` where ``13.X`` is the version of your CUDA installation.
+Once the headers from the package are recognized, ``cupy.show_config()`` will display the path as ``CUDA Extra Include Dirs``:
 
 .. code:: console
 
@@ -371,9 +370,9 @@ Once headers from the package is recognized, ``cupy.show_config()`` will display
   ...
   CUDA Extra Include Dirs      : []
   ...
-  NVRTC Version                : (12, 6)
+  NVRTC Version                : (13, 0)
   ...
-  $ pip install "nvidia-cuda-runtime-cu12==12.6.*"
+  $ pip install "nvidia-cuda-runtime-cu13==13.0.*"
   ...
   $ python -c 'import cupy; cupy.show_config()'
   ...
@@ -381,13 +380,16 @@ Once headers from the package is recognized, ``cupy.show_config()`` will display
   ...
 
 Alternatively, you can install CUDA headers system-wide (``/usr/local/cuda``) using NVIDIA's Apt (or DNF) repository.
-Install the ``cuda-cudart-dev-12-X`` package where ``12-X`` is the version of your ``cuda-cudart`` package, e.g.:
+Install the ``cuda-cudart-dev-13-X`` package where ``13-X`` is the version of your ``cuda-cudart`` package, e.g.:
 
 .. code:: console
 
   $ apt list "cuda-cudart-*"
-  cuda-cudart-12-6/now 12.6.68-1 amd64 [installed,local]
-  $ sudo apt install "cuda-cudart-dev-12-6"
+  cuda-cudart-13-0/now 13.0.0-1 amd64 [installed,local]
+  $ sudo apt install "cuda-cudart-dev-13-0"
+
+This problem does not happen if you have installed CuPy from conda-forge (i.e., ``conda install -c conda-forge cupy``), as the package ``cuda-cudart-dev_<platform>`` that contains the needed headers is correctly installed as a dependency.
+Please report to the CuPy repository if you encounter issues with Conda-installed CuPy.
 
 CuPy always raises ``cupy.cuda.compiler.CompileException``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
