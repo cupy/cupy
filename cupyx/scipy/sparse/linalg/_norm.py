@@ -7,11 +7,13 @@ import cupyx.scipy.sparse
 
 
 def _sparse_frobenius_norm(x):
-    if cupy.issubdtype(x.dtype, cupy.complexfloating):
-        sqnorm = abs(x).power(2).sum()
-    else:
-        sqnorm = x.power(2).sum()
-    return cupy.sqrt(sqnorm)
+    # Reduce the stored values with ``linalg.norm`` (what scipy does) rather
+    # than ``x.power(2).sum()``: ``power`` keeps an integer matrix integral,
+    # so ``int8(100) ** 2`` would wrap to 16 and the norm would come out ~25x
+    # too small.  ``linalg.norm`` upcasts integers to float64 like numpy.
+    # DIA's ``data`` holds off-matrix padding, so take the COO values there.
+    data = x.data if x.format in ('csr', 'csc', 'coo') else x.tocoo().data
+    return cupy.linalg.norm(data)
 
 
 def norm(x, ord=None, axis=None):
