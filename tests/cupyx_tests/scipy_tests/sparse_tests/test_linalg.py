@@ -198,6 +198,28 @@ class TestEigsh:
             a = sp.linalg.aslinearoperator(a)
         return self._test_eigsh(a, xp, sp)
 
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=tol, atol=tol, sp_name='sp')
+    def test_shift_invert(self, dtype, xp, sp):
+        # shift-invert mode mirrors scipy for the 'eigenvalues nearest sigma'
+        # ('LM' on the inverted operator) case only.
+        if self.use_linear_operator or self.which != 'LM':
+            pytest.skip()
+        a = self._make_matrix(dtype, xp)          # PSD Hermitian
+        a = sp.csr_matrix(a)
+        # sigma = -1 keeps A - sigma*I = A + I positive definite (invertible);
+        # 'LM' then returns the k eigenvalues nearest sigma.
+        ret = sp.linalg.eigsh(a, k=self.k, sigma=-1.0, which='LM',
+                              return_eigenvectors=self.return_eigenvectors)
+        if self.return_eigenvectors:
+            w, x = ret
+            ax_xw = a @ x - xp.multiply(x, w.reshape(1, self.k))
+            res = xp.linalg.norm(ax_xw) / xp.linalg.norm(w)
+            assert res < self.res_tol[numpy.dtype(a.dtype).char.lower()]
+        else:
+            w = ret
+        return xp.sort(w)
+
     def test_invalid(self):
         if self.use_linear_operator is True:
             pytest.skip()
@@ -216,7 +238,36 @@ class TestEigsh:
         with pytest.raises(ValueError):
             sp.linalg.eigsh(a, k=self.n)
         with pytest.raises(ValueError):
+            sp.linalg.eigsh(a, k=self.k, which='XX')
+        with pytest.raises(TypeError):
+            # 'SM' routes through shift-invert at sigma=0, which needs a sparse
+            # 'a' to factorize (or an explicit OPinv); a dense 'a' must raise.
             sp.linalg.eigsh(a, k=self.k, which='SM')
+
+    @testing.for_dtypes('fdFD')
+    def test_smallest_magnitude(self, dtype):
+        # which='SM' is an alias for shift-invert at sigma=0 (eigenvalues
+        # nearest 0 == smallest in magnitude). Cupy-only: compare the alias to
+        # explicit sigma=0 shift-invert and to a dense reference (scipy's plain
+        # 'SM' Lanczos is unreliable, so it is not used as the oracle here).
+        if self.use_linear_operator or self.which != 'LM':
+            pytest.skip()
+        eigsh = cupyx.scipy.sparse.linalg.eigsh
+        rt = self.res_tol[numpy.dtype(dtype).char.lower()]
+        a = self._make_matrix(dtype, cupy)
+        a = a + cupy.eye(self.n, dtype=a.dtype)   # PD (invertible at sigma=0)
+        a = sparse.csr_matrix(a)
+        w_sm = eigsh(a, k=self.k, which='SM', return_eigenvectors=False)
+        w_si = eigsh(a, k=self.k, sigma=0, which='LM',
+                     return_eigenvectors=False)
+        # the alias must match explicit shift-invert at sigma=0 ...
+        testing.assert_allclose(
+            cupy.sort(w_sm), cupy.sort(w_si), rtol=rt, atol=rt)
+        # ... and both are the k smallest-magnitude eigenvalues (dense ref).
+        ref = numpy.linalg.eigvalsh(cupy.asnumpy(a.toarray()))
+        ref = numpy.sort(ref[numpy.argsort(numpy.abs(ref))[:self.k]])
+        testing.assert_allclose(
+            cupy.asnumpy(cupy.sort(w_sm)), ref, rtol=rt, atol=rt)
 
     def test_starting_vector(self):
         eigsh = cupyx.scipy.sparse.linalg.eigsh

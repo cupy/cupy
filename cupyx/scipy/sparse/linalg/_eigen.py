@@ -12,7 +12,7 @@ from cupyx.scipy.sparse.linalg import _interface
 
 
 def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
-          tol=0, return_eigenvectors=True):
+          tol=0, sigma=None, OPinv=None, return_eigenvectors=True):
     """
     Find ``k`` eigenvalues and eigenvectors of the real symmetric square
     matrix or complex Hermitian matrix ``A``.
@@ -27,10 +27,16 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
             :class:`cupyx.scipy.sparse.linalg.LinearOperator`.
         k (int): The number of eigenvalues and eigenvectors to compute. Must be
             ``1 <= k < n``.
-        which (str): 'LM' or 'LA' or 'SA'.
+        which (str): 'LM', 'LA', 'SA' or 'SM'.
             'LM': finds ``k`` largest (in magnitude) eigenvalues.
             'LA': finds ``k`` largest (algebraic) eigenvalues.
             'SA': finds ``k`` smallest (algebraic) eigenvalues.
+            'SM': finds ``k`` smallest (in magnitude) eigenvalues, as an alias
+            for shift-invert at ``sigma = 0`` (eigenvalues nearest 0). Plain
+            Lanczos does not converge to the smallest/interior eigenvalues, so
+            ``a`` must be sparse and non-singular, or an ``OPinv`` for
+            ``A^{-1}`` supplied; for a singular ``a`` (e.g. a graph Laplacian
+            with a zero eigenvalue) pass a small nonzero ``sigma`` instead.
 
         v0 (ndarray): Starting vector for iteration. If ``None``, a random
             unit vector is used.
@@ -40,6 +46,15 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
             If ``None``, default value is used.
         tol (float): Tolerance for residuals ``||Ax - wx||``. If ``0``, machine
             precision is used.
+        sigma (float or complex): If not ``None``, find eigenvalues near
+            ``sigma`` using shift-invert mode: the Lanczos iteration is run
+            on ``(A - sigma * I)^{-1}`` and the values are mapped back by
+            ``w = sigma + 1 / w_inv``. ``A`` must then be sparse (so that
+            ``A - sigma * I`` can be factorized) unless ``OPinv`` is given.
+        OPinv (LinearOperator): Operator applying ``(A - sigma * I)^{-1}``,
+            used in shift-invert mode instead of factorizing
+            ``A - sigma * I``. Required when ``sigma`` is given and ``A`` is
+            not sparse.
         return_eigenvectors (bool): If ``True``, returns eigenvectors in
             addition to eigenvalues.
 
@@ -59,15 +74,55 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
     n = a.shape[0]
     if a.ndim != 2 or a.shape[0] != a.shape[1]:
         raise ValueError('expected square matrix (shape: {})'.format(a.shape))
+
+    if which == 'SM' and sigma is None:
+        # 'SM' (smallest magnitude) == eigenvalues nearest 0: route through
+        # shift-invert at sigma = 0. Plain-Lanczos 'SM' does not converge to
+        # the smallest / interior eigenvalues, so shift-invert is used here.
+        sigma = 0
+
+    if sigma is not None:
+        # Shift-invert mode. Run the Lanczos iteration on the operator
+        # OPinv = (A - sigma * I)^{-1}: the eigenvalues of A nearest sigma
+        # become the largest-magnitude eigenvalues of OPinv, so they are well
+        # separated and recovered as the 'LM' eigenpairs; eigenvectors are
+        # shared and eigenvalues map back by w = sigma + 1 / w_inv. Mirrors
+        # scipy.sparse.linalg.eigsh's sigma (shift-invert) mode for the common
+        # "eigenvalues near sigma" case. 'which' selection among the near-sigma
+        # values is not yet mirrored (they are returned sorted ascending).
+        from cupyx.scipy.sparse import identity as _identity
+        from cupyx.scipy.sparse import issparse as _issparse
+        from cupyx.scipy.sparse.linalg._solve import splu as _splu
+        from cupyx.scipy.sparse.linalg._interface import LinearOperator as _LO
+        if OPinv is None:
+            if not _issparse(a):
+                raise TypeError(
+                    "sigma in shift-invert mode requires a sparse 'a' (to "
+                    "factorize A - sigma*I) or an explicit OPinv operator")
+            shifted = a - sigma * _identity(n, dtype=a.dtype, format='csc')
+            lu = _splu(shifted.tocsc())
+            OPinv = _LO((n, n), matvec=lu.solve, dtype=a.dtype)
+        elif not isinstance(OPinv, _LO):
+            OPinv = _interface.aslinearoperator(OPinv)
+        ret = eigsh(OPinv, k=k, which='LM', v0=v0, ncv=ncv, maxiter=maxiter,
+                    tol=tol, return_eigenvectors=return_eigenvectors)
+        w_inv, x = ret if return_eigenvectors else (ret, None)
+        w = (sigma + 1.0 / w_inv).real.astype(a.dtype.char.lower())
+        order = cupy.argsort(w)
+        w = w[order]
+        if return_eigenvectors:
+            return w, x[:, order]
+        return w
+
     if a.dtype.char not in 'fdFD':
         raise TypeError('unsupprted dtype (actual: {})'.format(a.dtype))
     if k <= 0:
         raise ValueError('k must be greater than 0 (actual: {})'.format(k))
     if k >= n:
         raise ValueError('k must be smaller than n (actual: {})'.format(k))
-    if which not in ('LM', 'LA', 'SA'):
-        raise ValueError('which must be \'LM\',\'LA\'or\'SA\' (actual: {})'
-                         ''.format(which))
+    if which not in ('LM', 'LA', 'SA', 'SM'):
+        raise ValueError('which must be \'LM\', \'LA\', \'SA\' or \'SM\' '
+                         '(actual: {})'.format(which))
     if ncv is None:
         ncv = min(max(2 * k, k + 32), n - 1)
     else:
@@ -327,10 +382,9 @@ def _eigsh_solve_ritz(alpha, beta, beta_k, k, which):
         idx = numpy.argsort(w)
         wk = w[idx[:k]]
         sk = s[:, idx[:k]]
-    # elif which == 'SM':  #dysfunctional
-    #   idx = cupy.argsort(abs(w))
-    #   wk = w[idx[:k]]
-    #   sk = s[:,idx[:k]]
+    # 'SM' (smallest magnitude) is handled in eigsh() via shift-invert at
+    # sigma = 0; plain-Lanczos Ritz selection does not converge to the
+    # smallest / interior eigenvalues, so it is intentionally not done here.
     return cupy.array(wk), cupy.array(sk)
 
 
