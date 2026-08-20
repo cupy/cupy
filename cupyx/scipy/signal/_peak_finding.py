@@ -357,7 +357,7 @@ __device__ __forceinline__ void clip_plus(
         }
     } else {
         if ( plus >= n ) {
-            plus -= n;
+            plus %= n;
         }
     }
 }
@@ -370,7 +370,7 @@ __device__ __forceinline__ void clip_minus(
         }
     } else {
         if ( minus < 0 ) {
-            minus += n;
+            minus = ( minus % n + n ) % n;
         }
     }
 }
