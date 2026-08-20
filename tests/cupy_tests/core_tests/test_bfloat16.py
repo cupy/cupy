@@ -56,6 +56,8 @@ def test_arange(xp, start, stop, step):
     # Misc:
     'cbrt', 'square', 'fabs', 'sign', 'reciprocal',
 ])
+@pytest.mark.filterwarnings(  # Fix deprecated in 2.5 (use trunc)
+    'ignore:numpy.fix is deprecated:DeprecationWarning')
 @numpy.errstate(all='ignore')
 @testing.numpy_cupy_allclose(rtol=TOL, atol=TOL)
 def test_unary(xp, func):
