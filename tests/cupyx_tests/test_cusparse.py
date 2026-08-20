@@ -1095,3 +1095,42 @@ class TestSpsm:
         else:
             tol = 1e-12
         testing.assert_allclose(lhs, rhs, rtol=tol, atol=tol)
+
+
+class TestCheckAvailabilityVersionSkew:
+    # Regression for the wheel-based CI: a wheel built against a newer
+    # cuSPARSE (e.g. CUDA 13.3 in the build stage) is tested against an
+    # older runtime cuSPARSE (e.g. CUDA 13.0). SoftLink resolves symbols
+    # at runtime, so check_availability must not advertise APIs that the
+    # runtime library does not expose.
+
+    _API = '__test_version_skew__'
+    _THRESHOLD = 12801
+
+    @pytest.fixture(autouse=True)
+    def _register(self, monkeypatch):
+        table = dict(cusparse._available_cusparse_version)
+        table[self._API] = (self._THRESHOLD, None)
+        monkeypatch.setattr(
+            cusparse, '_available_cusparse_version', table)
+        # Force the classic (non-cuda-python) branch; the cuda-python
+        # branch already uses runtime and is unaffected by this fix.
+        monkeypatch.setattr(
+            _cusparse, 'is_cuda_python_build', lambda: False,
+            raising=False)
+        cupy.clear_memo()
+        yield
+        cupy.clear_memo()
+
+    @pytest.mark.parametrize('build,runtime_,expected', [
+        (12801, 12801, True),   # both meet threshold
+        (12602, 12602, False),  # both below
+        (12602, 12801, False),  # build too old (already correct before fix)
+        (12801, 12602, False),  # newer wheel on older runtime -- the bug
+    ])
+    def test_min_of_build_and_runtime(
+            self, monkeypatch, build, runtime_, expected):
+        monkeypatch.setattr(
+            _cusparse, 'get_build_version', lambda: build)
+        monkeypatch.setattr(cusparse, 'getVersion', lambda: runtime_)
+        assert cusparse.check_availability(self._API) is expected
