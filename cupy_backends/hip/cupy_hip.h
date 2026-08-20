@@ -116,8 +116,9 @@ CUresult cuFuncGetAttribute(int* pi, CUfunction_attribute attrib, CUfunction hfu
     return hipFuncGetAttribute(pi, attrib, hfunc);
 }
 
-CUresult cuFuncSetAttribute(...) {
-    return hipErrorUnknown;
+CUresult cuFuncSetAttribute(CUfunction hfunc, CUfunction_attribute attrib, int value) {
+    return hipFuncSetAttribute(reinterpret_cast<const void*>(hfunc),
+                               static_cast<hipFuncAttribute>(attrib), value);
 }
 
 // Occupancy
