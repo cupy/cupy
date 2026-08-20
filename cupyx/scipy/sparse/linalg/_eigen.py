@@ -293,7 +293,10 @@ def _lanczos_fast(A, n, ncv):
 
 
 _kernel_normalize = cupy.ElementwiseKernel(
-    'T u, raw S beta, int32 j, int32 n', 'T v, raw T V',
+    # j and n are int64 so the strided write offset (j+1) * n is computed
+    # in 64-bit; an int32 product wraps for n * ncv >= 2**31 (e.g. dim
+    # 2**28 with the default ncv) and corrupts memory.
+    'T u, raw S beta, int64 j, int64 n', 'T v, raw T V',
     'v = u / beta[j]; V[i + (j+1) * n] = v;', 'cupy_eigsh_normalize'
 )
 
