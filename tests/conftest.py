@@ -146,3 +146,37 @@ if int(os.environ.get('CUPY_TEST_RANDOM_SUBSAMPLE', '0')):
                         kwargs['strict'] = False
                         node.own_markers[i] = pytest.mark.xfail(
                             *marker.args, **kwargs).mark
+
+
+if int(os.environ.get('CUPY_TEST_PER_FILE_TIMING', '0')):
+    import time as _perfile_time
+
+    _perfile_totals = collections.defaultdict(float)
+    _perfile_counts = collections.defaultdict(int)
+    _perfile_start = {}
+
+    def pytest_runtest_logstart(nodeid, location):
+        _perfile_start[nodeid] = _perfile_time.perf_counter()
+
+    def pytest_runtest_logfinish(nodeid, location):
+        s = _perfile_start.pop(nodeid, None)
+        if s is None:
+            return
+        path = location[0] if location and location[0] else nodeid.split('::')[0]
+        _perfile_totals[path] += _perfile_time.perf_counter() - s
+        _perfile_counts[path] += 1
+
+    def pytest_terminal_summary(terminalreporter, exitstatus, config):
+        if not _perfile_totals:
+            return
+        tr = terminalreporter
+        tr.write_sep('=', 'per-file wall time (CUPY_TEST_PER_FILE_TIMING)')
+        rows = sorted(_perfile_totals.items(), key=lambda x: -x[1])
+        for path, total in rows:
+            tr.write_line(
+                f'{total:>10.2f}s  {_perfile_counts[path]:>6d}  {path}'
+            )
+        tr.write_line(
+            f'{sum(_perfile_totals.values()):>10.2f}s  '
+            f'{sum(_perfile_counts.values()):>6d}  TOTAL'
+        )

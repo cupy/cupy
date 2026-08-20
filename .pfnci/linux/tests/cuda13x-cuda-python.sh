@@ -15,6 +15,8 @@ export CUPY_ACCELERATORS="cutensor,cub"
 
 export CUPY_USE_CUDA_PYTHON="1"
 
+export CUPY_TEST_PER_FILE_TIMING="1"
+
 echo "================ Environment Variables ================"
 env
 echo "======================================================="
