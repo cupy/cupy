@@ -32,7 +32,10 @@ template<int N> static __device__ double polevl(double x, double coef[])
 '''
 
 
-digamma_preamble = "#include <cupy/xsf/digamma.h>"
+digamma_preamble = """
+#include <cupy/xsf/digamma.h>
+#include <cupy/_xsf_thrust_complex_bridge.h>
+"""
 
 
 digamma = _core.create_ufunc(
