@@ -35,7 +35,7 @@ Matrix and vector products
    # matvec
    # vecmat
    tensordot
-   # linalg.tensordot (Array API compatible location)
+   linalg.tensordot (Array API compatible location)
    einsum
    # einsum_path
    linalg.matrix_power
