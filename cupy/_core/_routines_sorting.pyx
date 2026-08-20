@@ -17,7 +17,7 @@ from cupy._core.core cimport _ndarray_base
 from cupy._core cimport internal
 
 
-cdef _ndarray_sort(_ndarray_base self, int axis):
+cdef _ndarray_sort(_ndarray_base self, int axis, bint descending=False):
     cdef int ndim = self._shape.size()
     cdef _ndarray_base data
 
@@ -46,7 +46,7 @@ cdef _ndarray_sort(_ndarray_base self, int axis):
         data = _manipulation.rollaxis(self, axis, ndim).copy()
 
     if ndim == 1:
-        thrust.sort(self.dtype, data.data.ptr, 0, self.shape)
+        thrust.sort(self.dtype, data.data.ptr, 0, self.shape, descending)
     else:
         max_size = max(min(1 << 22, data.size) // data.shape[-1], 1)
         keys_array = core.ndarray(
@@ -59,6 +59,7 @@ cdef _ndarray_sort(_ndarray_base self, int axis):
                 data.data.ptr + offset * data.shape[-1] * data.itemsize,
                 keys_array.data.ptr,
                 (width, data.shape[-1]),
+                descending,
             )
 
     if axis == ndim - 1:
@@ -68,7 +69,8 @@ cdef _ndarray_sort(_ndarray_base self, int axis):
         elementwise_copy(data, self)
 
 
-cdef _ndarray_base _ndarray_argsort(_ndarray_base self, axis):
+cdef _ndarray_base _ndarray_argsort(_ndarray_base self, axis,
+                                    bint descending=False):
     cdef int _axis, ndim
     cdef _ndarray_base data
 
@@ -99,11 +101,11 @@ cdef _ndarray_base _ndarray_argsort(_ndarray_base self, axis):
 
     if ndim == 1:
         thrust.argsort(self.dtype, idx_array.data.ptr, data.data.ptr, 0,
-                       shape)
+                       shape, descending)
     else:
         keys_array = core.ndarray(shape, dtype=numpy.intp)
         thrust.argsort(self.dtype, idx_array.data.ptr, data.data.ptr,
-                       keys_array.data.ptr, shape)
+                       keys_array.data.ptr, shape, descending)
 
     if _axis == ndim - 1:
         return idx_array
