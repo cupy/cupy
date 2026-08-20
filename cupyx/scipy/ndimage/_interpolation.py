@@ -477,16 +477,14 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
     return output
 
 
-def _minmax(coor, minc, maxc):
-    if coor[0] < minc[0]:
-        minc[0] = coor[0]
-    if coor[0] > maxc[0]:
-        maxc[0] = coor[0]
-    if coor[1] < minc[1]:
-        minc[1] = coor[1]
-    if coor[1] > maxc[1]:
-        maxc[1] = coor[1]
-    return minc, maxc
+def _sincosdg(angle):
+    # We have no precise CPU sincosdg like SciPy, so reduce to 90 degrees
+    # and rotate quadrants for better accuracy.
+    # Python 3.16 will have sinpi/cospi which should be nicer.
+    q, rem = divmod(angle, 90.0)
+    s = math.sin(math.radians(rem))
+    c = math.cos(math.radians(rem))
+    return ((s, c), (c, -s), (-s, -c), (-c, s))[int(q) % 4]
 
 
 def rotate(input, angle, axes=(1, 0), reshape=True, output=None, order=3,
@@ -547,14 +545,12 @@ def rotate(input, angle, axes=(1, 0), reshape=True, output=None, order=3,
         raise ValueError('invalid rotation plane specified')
 
     ndim = input_arr.ndim
-    rad = numpy.deg2rad(angle)
-    sin = math.sin(rad)
-    cos = math.cos(rad)
+    sin, cos = _sincosdg(angle)
     float_dtype = cupy.promote_types(input_arr.real.dtype, cupy.float32)
 
     # determine offsets and output shape as in scipy.ndimage.rotate
     rot_matrix = numpy.array([[cos, sin],
-                              [-sin, cos]], dtype=float_dtype)
+                              [-sin, cos]])
 
     img_shape = numpy.asarray(input_arr.shape)
     in_plane_shape = img_shape[axes]
