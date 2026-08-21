@@ -759,8 +759,8 @@ def _eigsh_solve_ritz(alpha, beta, beta_k, k, which):
     return cupy.array(wk), cupy.array(sk), wk
 
 
-def svds(a, k=6, *, ncv=None, tol=0, which='LM', maxiter=None,
-         return_singular_vectors=True):
+def svds(a, k=6, *, ncv=None, tol=0, which='LM', v0=None,
+         maxiter=None, return_singular_vectors=True):
     """Finds the largest ``k`` singular values/vectors for a sparse matrix.
 
     Args:
@@ -776,6 +776,12 @@ def svds(a, k=6, *, ncv=None, tol=0, which='LM', maxiter=None,
             is used.
         which (str): Only 'LM' is supported. 'LM': finds ``k`` largest singular
             values.
+        v0 (ndarray): Starting vector for iteration, of length
+            ``min(a.shape)``. If ``None``, an unseeded random vector is
+            used, and repeated calls may follow different convergence
+            trajectories (matching the historical behavior). Passing a
+            fixed ``v0`` makes the solve reproducible, as in
+            :func:`scipy.sparse.linalg.svds`.
         maxiter (int): Maximum number of Lanczos update iterations.
             If ``None``, default value is used.
         return_singular_vectors (bool): If ``True``, returns singular vectors
@@ -814,10 +820,10 @@ def svds(a, k=6, *, ncv=None, tol=0, which='LM', maxiter=None,
 
     if return_singular_vectors:
         w, x = eigsh(aH @ a, k=k, which=which, ncv=ncv, maxiter=maxiter,
-                     tol=tol, return_eigenvectors=True)
+                     tol=tol, v0=v0, return_eigenvectors=True)
     else:
         w = eigsh(aH @ a, k=k, which=which, ncv=ncv, maxiter=maxiter, tol=tol,
-                  return_eigenvectors=False)
+                  v0=v0, return_eigenvectors=False)
 
     w = cupy.maximum(w, 0)
     t = w.dtype.char.lower()

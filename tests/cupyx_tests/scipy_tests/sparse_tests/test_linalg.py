@@ -477,6 +477,53 @@ class TestEigshDegenerateHermitian:
             rtol=1e-4, atol=64 * eps * anorm)
 
 
+@testing.with_requires('scipy')
+class TestSvdsV0:
+    """v0= passthrough (scipy-compatible): reproducibility + parity."""
+
+    def _mat(self, xp, m=60, n=45):
+        return testing.shaped_random((m, n), xp, dtype='d', scale=1)
+
+    def test_v0_deterministic(self):
+        # v0 pins the trajectory start, which removes the run-to-run TIME
+        # variance; it is NOT bitwise: the adjoint half of the Gram apply
+        # is a transpose-mode cuSPARSE SpMV whose default algorithm uses
+        # atomics, so accumulation order (and the last bits of the
+        # result) still varies between identical calls.
+        a = sparse.csr_matrix(self._mat(cupy))
+        v0 = testing.shaped_random((45,), cupy, dtype='d', scale=1, seed=7)
+        s1 = sparse.linalg.svds(a, k=5, v0=v0.copy(),
+                                return_singular_vectors=False)
+        s2 = sparse.linalg.svds(a, k=5, v0=v0.copy(),
+                                return_singular_vectors=False)
+        cupy.testing.assert_allclose(cupy.sort(s1), cupy.sort(s2),
+                                     rtol=1e-9, atol=1e-9)
+
+    def test_v0_matches_scipy(self):
+        import numpy
+        import scipy.sparse
+        import scipy.sparse.linalg
+        a_np = testing.shaped_random((60, 45), numpy, dtype='d', scale=1)
+        v0_np = testing.shaped_random((45,), numpy, dtype='d', scale=1,
+                                      seed=7)
+        s_sp = numpy.sort(scipy.sparse.linalg.svds(
+            scipy.sparse.csr_matrix(a_np), k=5, v0=v0_np,
+            return_singular_vectors=False))
+        s_cp = cupy.sort(sparse.linalg.svds(
+            sparse.csr_matrix(cupy.asarray(a_np)), k=5,
+            v0=cupy.asarray(v0_np), return_singular_vectors=False))
+        numpy.testing.assert_allclose(cupy.asnumpy(s_cp), s_sp, rtol=1e-8,
+                                      atol=1e-8)
+
+    def test_v0_wide_matrix_length(self):
+        # v0 length is min(a.shape) regardless of orientation
+        a = sparse.csr_matrix(self._mat(cupy, m=45, n=60))
+        v0 = testing.shaped_random((45,), cupy, dtype='d', scale=1, seed=3)
+        s = sparse.linalg.svds(a, k=5, v0=v0,
+                               return_singular_vectors=False)
+        assert not bool(cupy.isnan(s).any())
+
+
 @testing.parameterize(*testing.product({
     'shape': [(30, 29), (29, 29), (29, 30)],
     'k': [3, 6, 12],
