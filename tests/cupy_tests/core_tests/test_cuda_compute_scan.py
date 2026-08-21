@@ -33,9 +33,7 @@ class TestCudaComputeScanDtypes(CudaComputeScanTestBase):
 
     # scan_core only promotes when dtype=None and out=None, so an
     # explicit dtype=/out= reaches the accelerator unpromoted
-    @pytest.mark.parametrize('dtype', [
-        'b', 'h', 'i', 'l', 'q', 'B', 'H', 'I', 'L', 'Q',
-        'e', 'f', 'd', 'F', 'D'])
+    @testing.for_all_dtypes(no_bool=True)
     def test_supported_dtypes(self, dtype):
         assert self.supports_dtype(numpy.dtype(dtype)) is True
 
@@ -53,22 +51,22 @@ class TestCudaComputeScanMisc(CudaComputeScanTestBase):
                 func_name, wraps=func, times_called=1):
             cupy.cumsum(a)
         with testing.AssertFunctionIsCalled(
-                func_name, wraps=func, times_called=1):  # promoting int
+                func_name, wraps=func, times_called=1):
             cupy.cumsum(cupy.ones((1000,), dtype='i'))
         with testing.AssertFunctionIsCalled(
-                func_name, wraps=func, times_called=1):  # bool promotes too
+                func_name, wraps=func, times_called=1):
             cupy.cumsum(cupy.ones((1000,), dtype='?'))
         with testing.AssertFunctionIsCalled(
-                func_name, wraps=func, times_called=1):  # strided: copied
+                func_name, wraps=func, times_called=1):
             cupy.cumsum(cupy.ones((2000,), dtype='f')[::2])
         with testing.AssertFunctionIsCalled(
-                func_name, wraps=func, times_called=1):  # cumprod
+                func_name, wraps=func, times_called=1):
             cupy.cumprod(a)
         with testing.AssertFunctionIsCalled(
-                func_name, wraps=func, times_called=0):  # axis: falls back
+                func_name, wraps=func, times_called=0):
             cupy.cumsum(a.reshape(10, 100), axis=0)
 
         _accelerator.set_routine_accelerators([])
         with testing.AssertFunctionIsCalled(
-                func_name, wraps=func, times_called=0):  # disabled
+                func_name, wraps=func, times_called=0):
             cupy.cumsum(a)

@@ -21,9 +21,9 @@
   mpi4py: null
   cython: "3.2"
   cuda-python: null
-  cuda-cccl: "cu12"
+  cuda-cccl: null
   nvmath-python: null
-  env:CUPY_ACCELERATORS: "cuda_compute,cutensor,cub"
+  env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
 # CUDA 12.0 (Multi-GPU) | Linux
@@ -53,9 +53,9 @@
   mpi4py: null
   cython: "3.2"
   cuda-python: null
-  cuda-cccl: "cu12"
+  cuda-cccl: null
   nvmath-python: null
-  env:CUPY_ACCELERATORS: "cuda_compute,cutensor,cub"
+  env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
 # CUDA 12.1 (Multi-GPU) | Linux
@@ -85,9 +85,9 @@
   mpi4py: null
   cython: "3.2"
   cuda-python: null
-  cuda-cccl: "cu12"
+  cuda-cccl: null
   nvmath-python: null
-  env:CUPY_ACCELERATORS: "cuda_compute,cutensor,cub"
+  env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
 # CUDA 12.2 (Multi-GPU) | Linux
@@ -117,9 +117,9 @@
   mpi4py: null
   cython: "3.2"
   cuda-python: null
-  cuda-cccl: "cu12"
+  cuda-cccl: null
   nvmath-python: null
-  env:CUPY_ACCELERATORS: "cuda_compute,cutensor,cub"
+  env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
 # CUDA 12.3 (Multi-GPU) | Linux
@@ -149,9 +149,9 @@
   mpi4py: null
   cython: "3.2"
   cuda-python: null
-  cuda-cccl: "cu12"
+  cuda-cccl: null
   nvmath-python: null
-  env:CUPY_ACCELERATORS: "cuda_compute,cutensor,cub"
+  env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
 # CUDA 12.4 (Multi-GPU) | Linux
@@ -181,9 +181,9 @@
   mpi4py: null
   cython: "3.2"
   cuda-python: null
-  cuda-cccl: "cu12"
+  cuda-cccl: null
   nvmath-python: null
-  env:CUPY_ACCELERATORS: "cuda_compute,cutensor,cub"
+  env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
 # CUDA 12.5 (Multi-GPU) | Linux
@@ -213,9 +213,9 @@
   mpi4py: null
   cython: "3.2"
   cuda-python: null
-  cuda-cccl: "cu12"
+  cuda-cccl: null
   nvmath-python: null
-  env:CUPY_ACCELERATORS: "cuda_compute,cutensor,cub"
+  env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
 # CUDA 12.6 (Multi-GPU) | Linux
@@ -245,9 +245,9 @@
   mpi4py: null
   cython: "3.2"
   cuda-python: null
-  cuda-cccl: "cu12"
+  cuda-cccl: null
   nvmath-python: null
-  env:CUPY_ACCELERATORS: "cuda_compute,cutensor,cub"
+  env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
 # CUDA 12.8 (Multi-GPU) | Linux
@@ -277,9 +277,9 @@
   mpi4py: null
   cython: "3.2"
   cuda-python: null
-  cuda-cccl: "cu12"
+  cuda-cccl: null
   nvmath-python: null
-  env:CUPY_ACCELERATORS: "cuda_compute,cutensor,cub"
+  env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
 # CUDA 12.9 (Multi-GPU) | Linux
@@ -309,9 +309,9 @@
   mpi4py: null
   cython: "3.2"
   cuda-python: null
-  cuda-cccl: "cu13"
+  cuda-cccl: null
   nvmath-python: null
-  env:CUPY_ACCELERATORS: "cuda_compute,cutensor,cub"
+  env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
 # CUDA 13.0 (Multi-GPU) | Linux
@@ -341,9 +341,9 @@
   mpi4py: null
   cython: "3.2"
   cuda-python: null
-  cuda-cccl: "cu13"
+  cuda-cccl: null
   nvmath-python: null
-  env:CUPY_ACCELERATORS: "cuda_compute,cutensor,cub"
+  env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
 # CUDA 13.1 (Multi-GPU) | Linux
@@ -374,9 +374,9 @@
   mpi4py: null
   cython: "3.2"
   cuda-python: null
-  cuda-cccl: "cu13"
+  cuda-cccl: null
   nvmath-python: null
-  env:CUPY_ACCELERATORS: "cuda_compute,cutensor,cub"
+  env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
 # CUDA 13.2 (Multi-GPU) | Linux
@@ -558,9 +558,9 @@
   ml_dtypes: null
   cython: "3.2"
   cuda-python: "12"
-  cuda-cccl: null
+  cuda-cccl: "cu12"
   nvmath-python: "1"
-  env:CUPY_ACCELERATORS: "cutensor,cub"
+  env:CUPY_ACCELERATORS: "cuda_compute,cutensor,cub"
   env:CUPY_USE_CUDA_PYTHON: "1"
   test: "unit"
 
@@ -587,9 +587,9 @@
   ml_dtypes: null
   cython: "3.2"
   cuda-python: "13.2"
-  cuda-cccl: null
+  cuda-cccl: "cu13"
   nvmath-python: "1"
-  env:CUPY_ACCELERATORS: "cutensor,cub"
+  env:CUPY_ACCELERATORS: "cuda_compute,cutensor,cub"
   env:CUPY_USE_CUDA_PYTHON: "1"
   test: "unit"
 
