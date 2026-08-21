@@ -116,7 +116,10 @@ cpdef _ndarray_base array(
     bint blocking=*)
 cpdef _ndarray_base _convert_object_with_cuda_array_interface(a)
 
-cdef _ndarray_base _ndarray_init(subtype, const shape_t& shape, dtype, obj)
+cdef _ndarray_base _ndarray_init(
+    subtype, const shape_t& shape, dtype, obj, bint c_order=*)
+cpdef _ndarray_base _empty_like_fast(
+    _ndarray_base prototype, dtype, order)
 
 cdef _ndarray_base _create_ndarray_from_shape_strides(
     subtype, const shape_t& shape, const strides_t& strides, dtype, obj)

@@ -6,6 +6,7 @@ from typing import Any
 import numpy
 
 import cupy
+from cupy._core.core import _empty_like_fast
 from cupy._core.internal import _get_strides_for_order_K, _update_order_char
 from cupy.typing._types import (
     _OrderKACF, _OrderCF, _ShapeLike, DTypeLike, NDArray,
@@ -101,6 +102,14 @@ def empty_like(
         raise TypeError('subok is not supported yet')
     if dtype is None:
         dtype = prototype.dtype
+
+    # Fast path for a C-/F-contiguous result with the prototype's own shape.
+    # The Cython helper resolves the order and returns None when the general
+    # path is required (order='K' on a non-contiguous input, invalid order).
+    if shape is None and isinstance(prototype, cupy.ndarray):
+        result = _empty_like_fast(prototype, dtype, order)
+        if result is not None:
+            return result
 
     order, strides, memptr = _new_like_order_and_strides(
         prototype, dtype, order, shape)

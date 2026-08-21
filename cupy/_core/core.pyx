@@ -3335,14 +3335,50 @@ cpdef _ndarray_base _convert_object_with_cuda_array_interface(a):
     return ndarray(shape, dtype, memptr, strides)
 
 
-cdef _ndarray_base _ndarray_init(subtype, const shape_t& shape, dtype, obj):
+cdef _ndarray_base _ndarray_init(
+        subtype, const shape_t& shape, dtype, obj, bint c_order=True):
     # Use `_no_init=True` for fast init. Now calling `__array_finalize__` is
     # responsibility of this function.
     cdef _ndarray_base ret = ndarray.__new__(subtype, _obj=obj, _no_init=True)
-    ret._init_fast(shape, dtype, True)
+    ret._init_fast(shape, dtype, c_order)
     if subtype is not ndarray:
         ret.__array_finalize__(obj)
     return ret
+
+
+cpdef _ndarray_base _empty_like_fast(
+        _ndarray_base prototype, dtype, order):
+    """Fast path for ``empty_like`` when the result is plain C/F-contiguous.
+
+    Resolves ``order`` against the prototype's contiguity here (reading the
+    ``readonly`` ``_c_contiguous`` / ``_f_contiguous`` fields directly, i.e.
+    without allocating a ``Flags`` object per call) and returns ``None`` to
+    request the general fallback whenever that is not layout-equivalent to
+    the full path -- non-str/invalid ``order``, or ``order='K'``/``'A'`` on a
+    non-contiguous prototype that needs computed strides.
+    """
+    cdef int order_char
+    if not isinstance(order, str):
+        return None
+    order = order.upper()
+    if order == 'C':
+        order_char = b'C'
+    elif order == 'F':
+        order_char = b'F'
+    elif order == 'A':
+        order_char = b'A'
+    elif order == 'K':
+        order_char = b'K'
+    else:
+        return None
+    order_char = internal._update_order_char(
+        prototype._c_contiguous, prototype._f_contiguous, order_char)
+    if order_char != b'C' and order_char != b'F':
+        return None
+    if dtype is None:
+        dtype = prototype.dtype
+    return _ndarray_init(
+        ndarray, prototype._shape, dtype, None, order_char == b'C')
 
 
 cdef _ndarray_base _create_ndarray_from_shape_strides(
