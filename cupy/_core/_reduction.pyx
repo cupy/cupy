@@ -630,7 +630,8 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
         return self._call(
             in_args, out_args,
             arr._shape, axis, dtype, keepdims, reduce_dims, dev_id,
-            None, True, True, self._sort_reduce_axis)
+            None, try_use_cub=True, try_use_cuda_compute=True,
+            sort_reduce_axis=self._sort_reduce_axis)
 
     cdef tuple _get_expressions_and_types(
             self, list in_args, list out_args, dtype):
@@ -839,13 +840,13 @@ cdef class ReductionKernel(_AbstractReductionKernel):
         out_args = _preprocess_args(dev_id, out_args)
         in_args = _broadcast(in_args, self.in_params, False, broad_shape)
 
-        # try_use_cuda_compute=False: the cuda.compute accelerator
-        # dispatches on the built-in routine names (cupy_sum, ...) and
-        # cannot serve user-defined ReductionKernels.
+        # ReductionKernel not yet supported by the cuda.compute accelerator
         return self._call(
             in_args, out_args,
             broad_shape, axis, None,
-            keepdims, self.reduce_dims, dev_id, stream, True, False, True)
+            keepdims, self.reduce_dims, dev_id, stream,
+            try_use_cub=True, try_use_cuda_compute=False,
+            sort_reduce_axis=True)
 
     cdef tuple _get_expressions_and_types(
             self, list in_args, list out_args, dtype):

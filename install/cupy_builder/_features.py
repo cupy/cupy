@@ -107,6 +107,7 @@ _cuda_files = [
     'cupy._core._accelerator',
     'cupy._core._carray',
     'cupy._core._cuda_compute_reduction',
+    'cupy._core._cuda_compute_common',
     'cupy._core._cuda_compute_scan',
     'cupy._core._cub_reduction',
     'cupy._core._dtype',
