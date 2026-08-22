@@ -29,6 +29,9 @@ Supported Python built-in functions include: :obj:`range`, :func:`len`, :func:`m
    cupyx.jit.grid
    cupyx.jit.gridsize
    cupyx.jit.laneid
+   cupyx.jit.activemask
+   cupyx.jit.popc
+   cupyx.jit.ffs
    cupyx.jit.warpsize
    cupyx.jit.range
    cupyx.jit.syncthreads
@@ -37,6 +40,8 @@ Supported Python built-in functions include: :obj:`range`, :func:`len`, :func:`m
    cupyx.jit.shfl_up_sync
    cupyx.jit.shfl_down_sync
    cupyx.jit.shfl_xor_sync
+   cupyx.jit.match_any_sync
+   cupyx.jit.match_all_sync
    cupyx.jit.shared_memory
    cupyx.jit.atomic_add
    cupyx.jit.atomic_sub
