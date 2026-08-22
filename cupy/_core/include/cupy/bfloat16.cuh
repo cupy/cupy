@@ -78,50 +78,50 @@ public:
 };
 
 // Min/max functions
-__device__ bfloat16 min(bfloat16 x, bfloat16 y) {
+inline __device__ bfloat16 min(bfloat16 x, bfloat16 y) {
   return bfloat16(min(float(x), float(y)));
 }
 
-__device__ bfloat16 max(bfloat16 x, bfloat16 y) {
+inline __device__ bfloat16 max(bfloat16 x, bfloat16 y) {
   return bfloat16(max(float(x), float(y)));
 }
 
-__device__ bfloat16 fmin(bfloat16 x, bfloat16 y) {
+inline __device__ bfloat16 fmin(bfloat16 x, bfloat16 y) {
   return bfloat16(fmin(float(x), float(y)));
 }
 
-__device__ bfloat16 fmax(bfloat16 x, bfloat16 y) {
+inline __device__ bfloat16 fmax(bfloat16 x, bfloat16 y) {
   return bfloat16(fmax(float(x), float(y)));
 }
 
 // Special value checking functions (free functions for compatibility)
-__device__ int iszero(bfloat16 x) {
+inline __device__ int iszero(bfloat16 x) {
   return x.iszero();
 }
 
-__device__ int isnan(bfloat16 x) {
+inline __device__ int isnan(bfloat16 x) {
   return x.isnan();
 }
 
-__device__ int isinf(bfloat16 x) {
+inline __device__ int isinf(bfloat16 x) {
   return x.isinf();
 }
 
-__device__ int isfinite(bfloat16 x) {
+inline __device__ int isfinite(bfloat16 x) {
   return x.isfinite();
 }
 
-__device__ int signbit(bfloat16 x) {
+inline __device__ int signbit(bfloat16 x) {
   return (x.to_bits() & 0x8000u) != 0;
 }
 
-__device__ bfloat16 _floor_divide(bfloat16 x, bfloat16 y) {
+inline __device__ bfloat16 _floor_divide(bfloat16 x, bfloat16 y) {
   // Used for floor_divide and remainder ufuncs (a bit unclear what
   // the computation type should be for this and the rest/return).
   return bfloat16(floor(float(x) / float(y)));
 }
 
-__device__ bfloat16 nextafter(bfloat16 x, bfloat16 y) {
+inline __device__ bfloat16 nextafter(bfloat16 x, bfloat16 y) {
   unsigned short x_raw = x.to_bits();
   unsigned short y_raw = y.to_bits();
   unsigned short ret_raw;
