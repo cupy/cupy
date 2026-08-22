@@ -1019,7 +1019,30 @@ inline __device__ T integral_power(T in0, T in1) {
 
 template <typename T>
 inline __device__ T complex_power(T in0, T in1) {
-    return in1 == T(0) ? T(1): pow(in0, in1);
+    if (in1 == T(0)) {
+        return T(1);
+    }
+
+    if (in1 == T(1)) {
+        return in0;
+    }
+
+    using value_type = decltype(in0.real());
+    if (in0 == T(0)) {
+        if (in1.real() > value_type(0)) {
+            return T(0);
+        }
+
+        value_type nanv = value_type(nan(""));
+        return T(nanv, nanv);
+    }
+
+    if (in0.imag() == value_type(0) && in1.imag() == value_type(0) &&
+        (in0.real() > value_type(0) | in1.real() > value_type(1))) {
+        return T(pow(in0.real(), in1.real()), value_type(0));
+    }
+
+    return pow(in0, in1);
 }
 '''
 
