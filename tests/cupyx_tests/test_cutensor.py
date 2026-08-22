@@ -10,11 +10,13 @@ import cupyx
 from cupy._core import _routines_linalg as _linalg
 from cupy import testing
 from cupy.cuda import device
+from cupy_backends.cuda.api import runtime
 
 from cupy.cuda import cutensor as ct
 
 if ct.available:
     from cupyx import cutensor
+    from cupyx import _cutensor as _cutensor_module
 
 
 @testing.parameterize(
@@ -29,6 +31,10 @@ class TestCuTensor:
 
     @pytest.fixture(autouse=True)
     def setUp(self):
+        # hipTensor currently does not support complex kernels.
+        if (runtime.is_hip
+                and self.dtype in (numpy.complex64, numpy.complex128)):
+            pytest.skip('hipTensor does not support complex dtypes')
         self.a = testing.shaped_random(
             (20, 40, 30), cupy, self.dtype, seed=0)
         self.b = testing.shaped_random(
@@ -114,9 +120,10 @@ class TestCuTensor:
         )
 
     def test_contraction(self):
-        compute_capability = int(device.get_compute_capability())
-        if compute_capability < 70 and self.dtype == numpy.float16:
-            pytest.skip('Not supported.')
+        if not runtime.is_hip:
+            compute_capability = int(device.get_compute_capability())
+            if compute_capability < 70 and self.dtype == numpy.float16:
+                pytest.skip('Not supported.')
 
         c = self.c.copy("K")
         d = cutensor.contraction(
@@ -134,7 +141,7 @@ class TestCuTensor:
         )
 
     def test_reduction(self):
-        if self.dtype == numpy.float16:
+        if not runtime.is_hip and self.dtype == numpy.float16:
             pytest.skip('Not supported.')
 
         c = testing.shaped_random((30,), cupy, self.dtype, seed=2)
@@ -152,6 +159,226 @@ class TestCuTensor:
             d,
             rtol=self.tol, atol=self.tol
         )
+
+
+@pytest.mark.skipif(
+    not ct.available or not runtime.is_hip,
+    reason='hipTensor is unavailable')
+@pytest.mark.parametrize('mode_objects', [False, True])
+def test_hip_contraction_without_reduction(mode_objects):
+    a = testing.shaped_random((2, 3), cupy, numpy.float32, seed=0)
+    b = testing.shaped_random((3, 2), cupy, numpy.float32, seed=1)
+    c = testing.shaped_random((2, 3), cupy, numpy.float32, seed=2)
+    c_orig = c.copy()
+    mode_a = ('m', 'n')
+    mode_b = ('n', 'm')
+    mode_c = ('m', 'n')
+    if mode_objects:
+        mode_a = cutensor.create_mode(*mode_a)
+        mode_b = cutensor.create_mode(*mode_b)
+        mode_c = cutensor.create_mode(*mode_c)
+
+    out = cutensor.contraction(
+        1.25, a, mode_a, b, mode_b, 0.5, c, mode_c,
+        op_A=ct.OP_NEG, op_C=ct.OP_ABS)
+
+    assert out is c
+    expected = 1.25 * (-a) * b.T + 0.5 * cupy.abs(c_orig)
+    testing.assert_allclose(out, expected, rtol=1e-6, atol=1e-6)
+
+
+@pytest.mark.skipif(
+    not ct.available or not runtime.is_hip,
+    reason='hipTensor is unavailable')
+def test_hip_float16_contraction_beta_and_op_c():
+    a = testing.shaped_random((4, 3), cupy, numpy.float16, seed=0)
+    b = testing.shaped_random((3, 5), cupy, numpy.float16, seed=1)
+    c = testing.shaped_random((4, 5), cupy, numpy.float16, seed=2)
+    c_orig = c.copy()
+
+    out = cutensor.contraction(
+        1.0, a, ('m', 'k'), b, ('k', 'n'),
+        0.5, c, ('m', 'n'), op_C=ct.OP_NEG,
+        compute_desc=ct.COMPUTE_DESC_32F)
+
+    assert out is c
+    expected = cupy.matmul(a, b) - 0.5 * c_orig
+    testing.assert_allclose(out, expected, rtol=3e-3, atol=3e-3)
+
+
+@pytest.mark.skipif(
+    not ct.available or not runtime.is_hip,
+    reason='hipTensor is unavailable')
+@pytest.mark.parametrize('mode_objects', [False, True])
+def test_hip_elementwise_mode_broadcast(mode_objects):
+    a = testing.shaped_random((3,), cupy, numpy.float32, seed=0)
+    b = testing.shaped_random((2,), cupy, numpy.float32, seed=1)
+    c = testing.shaped_random((2, 3), cupy, numpy.float32, seed=2)
+    mode_a = ('n',)
+    mode_b = ('m',)
+    mode_c = ('m', 'n')
+    if mode_objects:
+        mode_a = cutensor.create_mode(*mode_a)
+        mode_b = cutensor.create_mode(*mode_b)
+        mode_c = cutensor.create_mode(*mode_c)
+
+    binary_out = cutensor.elementwise_binary(
+        1.25, a, mode_a, 0.5, c, mode_c)
+    testing.assert_allclose(
+        binary_out, 1.25 * a[None, :] + 0.5 * c,
+        rtol=1e-6, atol=1e-6)
+
+    trinary_out = cutensor.elementwise_trinary(
+        1.25, a, mode_a, 0.75, b, mode_b,
+        0.5, c, mode_c)
+    testing.assert_allclose(
+        trinary_out,
+        1.25 * a[None, :] + 0.75 * b[:, None] + 0.5 * c,
+        rtol=1e-6, atol=1e-6)
+
+
+@pytest.mark.skipif(
+    not ct.available or not runtime.is_hip,
+    reason='hipTensor is unavailable')
+def test_hip_fallback_compute_descriptor():
+    a = testing.shaped_random((100, 100), cupy, numpy.float16, seed=0)
+    b = testing.shaped_random((100, 100), cupy, numpy.float16, seed=1)
+    c = testing.shaped_random((100, 100), cupy, numpy.float16, seed=2)
+    c_orig = c.copy()
+
+    binary_out = cutensor.elementwise_binary(
+        1.1, a, ('m', 'n'), 0.7, c, ('m', 'n'),
+        compute_desc=ct.COMPUTE_DESC_32F)
+    expected_binary = (
+        numpy.float32(1.1) * a.astype(numpy.float32)
+        + numpy.float32(0.7) * c_orig.astype(numpy.float32)
+    ).astype(numpy.float16)
+    testing.assert_array_equal(binary_out, expected_binary)
+
+    trinary_out = cutensor.elementwise_trinary(
+        1.1, a, ('m', 'n'), 0.9, b, ('m', 'n'),
+        0.7, c, ('m', 'n'), compute_desc=ct.COMPUTE_DESC_32F)
+    expected_trinary = (
+        numpy.float32(1.1) * a.astype(numpy.float32)
+        + numpy.float32(0.9) * b.astype(numpy.float32)
+        + numpy.float32(0.7) * c_orig.astype(numpy.float32)
+    ).astype(numpy.float16)
+    testing.assert_array_equal(trinary_out, expected_trinary)
+
+    contraction_out = cutensor.contraction(
+        1.1, a, ('m', 'n'), b, ('m', 'n'),
+        0.7, c, ('m', 'n'), compute_desc=ct.COMPUTE_DESC_32F)
+    expected_contraction = (
+        numpy.float32(1.1) * a.astype(numpy.float32)
+        * b.astype(numpy.float32)
+        + numpy.float32(0.7) * c_orig.astype(numpy.float32)
+    ).astype(numpy.float16)
+    testing.assert_array_equal(contraction_out, expected_contraction)
+
+
+@pytest.mark.skipif(
+    not ct.available or not runtime.is_hip,
+    reason='hipTensor is unavailable')
+def test_hip_trinary_rejects_mixed_input_dtypes():
+    a = cupy.ones((2, 3), dtype=numpy.float32)
+    b = cupy.ones((2, 3), dtype=numpy.float64)
+    c = cupy.ones((2, 3), dtype=numpy.float32)
+
+    with pytest.raises(ValueError, match='dtype mismatch'):
+        cutensor.elementwise_trinary(
+            1, a, ('m', 'n'), 1, b, ('m', 'n'),
+            1, c, ('m', 'n'))
+
+
+@pytest.mark.skipif(
+    not ct.available or not runtime.is_hip,
+    reason='hipTensor is unavailable')
+def test_hip_zero_scalar_skips_unary_operator():
+    a = -cupy.ones((2, 3), dtype=numpy.float32)
+    b = -cupy.ones((2, 3), dtype=numpy.float32)
+    c = testing.shaped_random((2, 3), cupy, numpy.float32, seed=0)
+    expected = c.copy()
+
+    binary_out = cutensor.elementwise_binary(
+        0, a, ('m', 'n'), 1, c, ('m', 'n'),
+        op_A=ct.OP_SQRT)
+    testing.assert_array_equal(binary_out, expected)
+
+    trinary_out = cutensor.elementwise_trinary(
+        0, a, ('m', 'n'), 0, b, ('m', 'n'),
+        1, c, ('m', 'n'), op_A=ct.OP_SQRT, op_B=ct.OP_LOG)
+    testing.assert_array_equal(trinary_out, expected)
+
+    contraction_out = cutensor.contraction(
+        0, a, ('m', 'n'), b, ('m', 'n'),
+        1, c, ('m', 'n'), op_A=ct.OP_SQRT, op_B=ct.OP_LOG)
+    testing.assert_array_equal(contraction_out, expected)
+
+    positive = cupy.ones((2, 3), dtype=numpy.float32)
+    negative = -positive
+    binary_out = cutensor.elementwise_binary(
+        1, positive, ('m', 'n'), 0, negative, ('m', 'n'),
+        op_C=ct.OP_SQRT)
+    testing.assert_array_equal(binary_out, positive)
+
+    contraction_out = cutensor.contraction(
+        1, positive, ('m', 'n'), positive, ('m', 'n'),
+        0, negative, ('m', 'n'), op_C=ct.OP_SQRT)
+    testing.assert_array_equal(contraction_out, positive)
+
+
+@pytest.mark.skipif(
+    not ct.available or not runtime.is_hip,
+    reason='hipTensor is unavailable')
+def test_hip_batched_contraction_fallback():
+    a = cupy.arange(24, dtype=numpy.float32).reshape(3, 4, 2)
+    b = cupy.arange(24, dtype=numpy.float32).reshape(4, 3, 2)
+    c = cupy.zeros((3, 2), dtype=numpy.float32)
+
+    out = cutensor.contraction(
+        1, a, ('i', 'j', 'k'), b, ('j', 'i', 'k'),
+        0, c, ('i', 'k'))
+
+    expected = cupy.einsum('ijk,jik->ik', a, b)
+    testing.assert_array_equal(out, expected)
+
+
+@pytest.mark.skipif(
+    not ct.available or not runtime.is_hip,
+    reason='hipTensor is unavailable')
+def test_hip_fallback_input_validation():
+    a = cupy.ones((2, 3), dtype=numpy.float32)
+    c = cupy.ones((2, 3), dtype=numpy.float32)
+
+    with pytest.raises(ValueError, match='mode length'):
+        cutensor.elementwise_binary(
+            1, a, ('m', 'n'), 1, c, ('m',))
+    with pytest.raises(ValueError, match='mode length'):
+        cutensor.elementwise_trinary(
+            1, a, ('m', 'n'), 1, a, ('m', 'n'),
+            1, c, ('m',))
+    with pytest.raises(ValueError, match='unsupported unary operator'):
+        cutensor.contraction(
+            0, a, ('m', 'n'), a, ('m', 'n'),
+            1, c, ('m', 'n'), op_A=999)
+
+    a_i = cupy.ones((1,), dtype=numpy.float32)
+    b_i = cupy.ones((1,), dtype=numpy.float32)
+    c_i = cupy.ones((3,), dtype=numpy.float32)
+    with pytest.raises(ValueError, match='extent mismatch'):
+        cutensor.elementwise_binary(
+            0, a_i, ('i',), 1, c_i, ('i',))
+    with pytest.raises(ValueError, match='extent mismatch'):
+        cutensor.elementwise_trinary(
+            1, a_i, ('i',), 0, b_i, ('i',),
+            1, c_i, ('i',))
+
+    a_ij = cupy.ones((1, 2), dtype=numpy.float32)
+    b_j = cupy.ones((2,), dtype=numpy.float32)
+    with pytest.raises(ValueError, match='extent mismatch'):
+        cutensor.contraction(
+            0, a_ij, ('i', 'j'), b_j, ('j',),
+            1, c_i, ('i',))
 
 
 @pytest.mark.skipif(not ct.available, reason='cuTensor is unavailable')
@@ -176,6 +403,22 @@ class TestMode:
         m2 = cutensor.create_mode(12, 11, 10)
         assert m1 != m2
         assert m1.data != m2.data
+
+    def test_hip_unavailable_features(self):
+        if not runtime.is_hip:
+            pytest.skip('For ROCm/HIP environment')
+        assert not cutensor.check_availability('elementwise')
+        assert not cutensor.check_availability('contraction')
+        assert not cutensor.check_availability('copyMg')
+        assert not cutensor.check_availability('contractMg')
+
+    def test_unsupported_status_classification(self):
+        assert _cutensor_module._is_unsupported_status(
+            ct.STATUS_NOT_SUPPORTED)
+        assert _cutensor_module._is_unsupported_status(
+            ct.STATUS_ARCH_MISMATCH)
+        assert not _cutensor_module._is_unsupported_status(
+            ct.STATUS_INVALID_VALUE)
 
 
 @pytest.mark.skipif(not ct.available, reason='cuTensor is unavailable')
@@ -257,6 +500,41 @@ class TestCuTensorDescriptor:
             rtol=1e-6, atol=1e-6
         )
 
+    def test_plan_cache(self):
+        desc = cutensor.create_tensor_descriptor(self.c)
+        mode = cutensor.create_mode(*self.mode_c)
+        operator = cutensor.create_elementwise_binary(
+            desc, mode, ct.OP_IDENTITY,
+            desc, mode, ct.OP_IDENTITY,
+            desc, mode, ct.OP_ADD)
+        preference = cutensor.create_plan_preference()
+        plan = cutensor.create_plan(operator, preference)
+
+        assert cutensor.create_plan(operator, preference) is plan
+
+    def test_repeated_plan_execution(self):
+        a = self.a[:, :, 0]
+        b = self.b[:, :, 0]
+        expected_contraction = cupy.matmul(a, b)
+        contraction_out = cupy.empty_like(expected_contraction)
+        for _ in range(2):
+            cutensor.contraction(
+                1, a, ('m', 'k'), b, ('k', 'n'),
+                0, contraction_out, ('m', 'n'))
+            testing.assert_allclose(
+                contraction_out, expected_contraction,
+                rtol=1e-6, atol=1e-6)
+
+        reduction_out = cupy.empty((30,), dtype=self.a.dtype)
+        expected_reduction = self.a.sum(axis=(0, 1))
+        for _ in range(2):
+            cutensor.reduction(
+                1, self.a, self.mode_a,
+                0, reduction_out, ('x',))
+            testing.assert_allclose(
+                reduction_out, expected_reduction,
+                rtol=1e-6, atol=1e-6)
+
 
 @testing.parameterize(*testing.product({
     'dtype_combo': ['eee', 'fff', 'ddd', 'FFF', 'DDD', 'dDD', 'DdD'],
@@ -285,6 +563,14 @@ class TestCuTensorContraction:
 
     @pytest.fixture(autouse=True)
     def setUp(self):
+        if runtime.is_hip:
+            # hipTensor currently does not support complex kernels.
+            if any(c in 'FD' for c in self.dtype_combo):
+                pytest.skip('hipTensor does not support complex dtypes')
+            # hipTensor does not expose TF32 compute; CuPy maps TF32 to a
+            # CUDA-specific compute path.
+            if self.compute_type_hint == 'TF32':
+                pytest.skip('hipTensor does not support TF32 compute')
         compute_capability = int(device.get_compute_capability())
         if compute_capability < 70 and 'e' in self.dtype_combo:
             pytest.skip("Not supported")
@@ -357,6 +643,8 @@ class TestCuTensorIncontiguous:
 
     @pytest.fixture(autouse=True)
     def setUp(self):
+        if runtime.is_hip and self.dtype_char in ('F', 'D'):
+            pytest.skip('hipTensor does not support complex dtypes')
         compute_capability = int(device.get_compute_capability())
         if compute_capability < 70 and self.dtype_char == 'e':
             pytest.skip("Not supported")
@@ -483,6 +771,8 @@ class TestCuTensorMg:
 
     @pytest.fixture(autouse=True)
     def setUp(self):
+        if runtime.is_hip:
+            pytest.skip('cuTENSORMg is not available in hipTensor')
         compute_capability = int(device.get_compute_capability())
         if compute_capability < 70 and self.dtype_char == 'e':
             pytest.skip("Not supported")

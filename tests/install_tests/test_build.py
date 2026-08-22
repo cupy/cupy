@@ -4,6 +4,7 @@ from distutils import ccompiler
 from distutils import sysconfig
 import os
 import unittest
+from unittest import mock
 
 import pytest
 
@@ -39,3 +40,19 @@ class TestCheckVersion(unittest.TestCase):
             self.compiler, self.settings)
         assert isinstance(build.get_hip_version(), int)
         assert isinstance(build.get_hip_version(True), str)
+
+    def test_hiptensor_minimum_version(self):
+        assert not build._is_supported_hiptensor_version(0)
+        assert not build._is_supported_hiptensor_version(2_002_999)
+        assert build._is_supported_hiptensor_version(2_003_000)
+
+    def test_check_hiptensor_minimum_version(self):
+        for version, expected in (
+                ('0', False),
+                ('2002999', False),
+                ('2003000', True)):
+            with self.subTest(version=version):
+                with mock.patch.object(
+                        build, 'build_and_run', return_value=version):
+                    assert build.check_hiptensor_version(
+                        self.compiler, self.settings) is expected

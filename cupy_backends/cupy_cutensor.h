@@ -3,9 +3,7 @@
 
 #ifdef CUPY_USE_HIP
 
-// Since ROCm/HIP does not have cuTENSOR, we simply include the stubs here
-// to avoid code dup.
-#include "stub/cupy_cutensor.h"
+#include "hip/cupy_hiptensor.h"
 
 #elif !defined(CUPY_NO_CUDA)
 

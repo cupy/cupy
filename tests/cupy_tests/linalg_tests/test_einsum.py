@@ -6,10 +6,31 @@ import numpy
 import pytest
 
 import cupy
+from cupy._core import _accelerator
 from cupy import testing
+from cupy.cuda import cutensor as ct
+from cupy_backends.cuda.api import runtime
 
 
 rng = numpy.random.default_rng(seed=0)
+
+
+@pytest.mark.skipif(
+    not runtime.is_hip or not ct.available,
+    reason='hipTensor is unavailable')
+def test_hiptensor_einsum_falls_back():
+    old_accelerators = _accelerator.get_routine_accelerators()
+    try:
+        _accelerator.set_routine_accelerators(['hiptensor'])
+        a = testing.shaped_arange((3, 4, 2), cupy, numpy.float32)
+        b = testing.shaped_arange((4, 3, 2), cupy, numpy.float32)
+        actual = cupy.einsum('ij...,ji...->i...', a, b)
+    finally:
+        _accelerator.set_routine_accelerators(old_accelerators)
+
+    expected = numpy.einsum(
+        'ij...,ji...->i...', cupy.asnumpy(a), cupy.asnumpy(b))
+    testing.assert_array_equal(actual, expected)
 
 
 def _dec_shape(shape, dec):

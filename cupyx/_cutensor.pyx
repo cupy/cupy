@@ -2,6 +2,7 @@ import numpy as _numpy
 
 import cupy as _cupy
 from cupy import _util
+from cupy_backends.cuda.api import runtime as _runtime
 
 cimport cython
 from libcpp cimport vector
@@ -18,6 +19,7 @@ from cupy._core cimport _reduction
 from cupy.cuda cimport device
 from cupy.cuda.pinned_memory cimport alloc_pinned_memory, is_memory_pinned
 from cupy_backends.cuda.libs cimport cutensor
+from cupy_backends.cuda.libs import cutensor as _cutensor_py
 from cupy.cuda import Device
 
 cdef dict _modes = {}
@@ -73,6 +75,11 @@ cdef class CutensorHandle:
 
 @_util.memoize(for_each_device=True)
 def check_availability(name):
+    if _runtime.is_hip:
+        if name in (
+                'elementwise', 'contraction', 'copyMg', 'contractMg'):
+            return False
+        return True
     if name in _available_compute_capability:
         compute_capability = int(device.get_compute_capability())
         if compute_capability < _available_compute_capability[name]:
@@ -88,12 +95,22 @@ def check_availability(name):
 cdef class TensorDescriptor:
     cdef intptr_t _ptr
     cdef int _cutensor_dtype
+    cdef object _extent
+    cdef object _stride
 
-    def __init__(self, intptr_t handle, uint32_t num_modes, intptr_t extent,
-                 intptr_t stride, int cutensor_dtype,
+    def __init__(self, intptr_t handle, uint32_t num_modes, extent, stride,
+                 int cutensor_dtype,
                  uint32_t alignment_req=256):
+        # hipTensor appears to keep pointers to `extent`/`stride` arrays
+        # instead of copying them internally. Keep them alive for the
+        # descriptor's lifetime to avoid use-after-free and correctness issues.
+        self._extent = extent
+        self._stride = stride
         self._ptr = cutensor.createTensorDescriptor(
-            handle, num_modes, extent, stride, cutensor_dtype, alignment_req)
+            handle, num_modes,
+            extent.ctypes.data,
+            stride.ctypes.data,
+            cutensor_dtype, alignment_req)
         self._cutensor_dtype = cutensor_dtype
 
     def __dealloc__(self):
@@ -265,7 +282,7 @@ cpdef TensorDescriptor create_tensor_descriptor(_ndarray_base a):
         stride = _numpy.array(a.strides, dtype=_numpy.int64) // a.itemsize
         cutensor_dtype = _get_cutensor_dtype(a.dtype)
         handle._tensor_descriptors[key] = TensorDescriptor(
-            handle.ptr, num_modes, extent.ctypes.data, stride.ctypes.data,
+            handle.ptr, num_modes, extent, stride,
             cutensor_dtype, alignment_req=alignment_req)
     return handle._tensor_descriptors[key]
 
@@ -369,6 +386,182 @@ cdef inline Mode _auto_create_mode(_ndarray_base array, mode):
     return mode
 
 
+cdef tuple _get_mode_labels(mode):
+    if isinstance(mode, Mode):
+        return tuple(int(x) for x in (<Mode>mode)._array)
+    return tuple(
+        ord(x) if isinstance(x, str) else int(x)
+        for x in mode)
+
+
+cdef void _validate_mode_labels(x, tuple labels) except *:
+    if len(labels) != x.ndim:
+        raise ValueError(
+            'mode length does not match array ndim: {} != {}'.format(
+                len(labels), x.ndim))
+    if len(set(labels)) != len(labels):
+        raise ValueError('tensor modes must be unique')
+
+
+cdef void _validate_shared_mode_extents(tuple operands) except *:
+    cdef dict extents = {}
+    for x, labels in operands:
+        _validate_mode_labels(x, labels)
+        for axis, label in enumerate(labels):
+            extent = x.shape[axis]
+            if label in extents and extents[label] != extent:
+                raise ValueError(
+                    'extent mismatch for mode {}: {} != {}'.format(
+                        label, extents[label], extent))
+            extents[label] = extent
+
+
+cdef _align_array_to_modes(x, tuple labels, tuple output_labels):
+    _validate_mode_labels(x, labels)
+    if len(set(output_labels)) != len(output_labels):
+        raise ValueError('output tensor modes must be unique')
+    if not set(labels).issubset(set(output_labels)):
+        raise ValueError('input modes must be a subset of output modes')
+
+    axes = {label: axis for axis, label in enumerate(labels)}
+    permutation = tuple(
+        axes[label] for label in output_labels if label in axes)
+    if permutation != tuple(range(x.ndim)):
+        x = x.transpose(permutation)
+    shape = tuple(
+        x.shape[permutation.index(axes[label])] if label in axes else 1
+        for label in output_labels)
+    return x.reshape(shape)
+
+
+cdef _get_fallback_compute_dtype(int compute_desc, default_dtype):
+    default_dtype = _numpy.dtype(default_dtype)
+    if compute_desc == 0:
+        return default_dtype
+    if compute_desc == cutensor.COMPUTE_DESC_16F:
+        return _numpy.dtype(_numpy.float16)
+    if (compute_desc == cutensor.COMPUTE_DESC_TF32
+            or compute_desc == cutensor.COMPUTE_DESC_3xTF32):
+        return _numpy.dtype(_numpy.float32)
+    if compute_desc == cutensor.COMPUTE_DESC_32F:
+        if default_dtype.kind == 'c':
+            return _numpy.dtype(_numpy.complex64)
+        return _numpy.dtype(_numpy.float32)
+    if compute_desc == cutensor.COMPUTE_DESC_64F:
+        if default_dtype.kind == 'c':
+            return _numpy.dtype(_numpy.complex128)
+        return _numpy.dtype(_numpy.float64)
+    raise ValueError(
+        'unsupported fallback compute descriptor: {}'.format(compute_desc))
+
+
+cdef _apply_unary(int op, x):
+    if op == cutensor.OP_IDENTITY:
+        return x
+    if op == cutensor.OP_SQRT:
+        return _cupy.sqrt(x)
+    if op == cutensor.OP_RELU:
+        return _cupy.maximum(x, 0)
+    if op == cutensor.OP_CONJ:
+        return _cupy.conj(x)
+    if op == cutensor.OP_RCP:
+        return _cupy.reciprocal(x)
+    if op == cutensor.OP_SIGMOID:
+        return 1 / (1 + _cupy.exp(-x))
+    if op == cutensor.OP_TANH:
+        return _cupy.tanh(x)
+    if op == cutensor.OP_EXP:
+        return _cupy.exp(x)
+    if op == cutensor.OP_LOG:
+        return _cupy.log(x)
+    if op == cutensor.OP_ABS:
+        return _cupy.abs(x)
+    if op == cutensor.OP_NEG:
+        return -x
+    if op == cutensor.OP_SIN:
+        return _cupy.sin(x)
+    if op == cutensor.OP_COS:
+        return _cupy.cos(x)
+    if op == cutensor.OP_TAN:
+        return _cupy.tan(x)
+    if op == cutensor.OP_SINH:
+        return _cupy.sinh(x)
+    if op == cutensor.OP_COSH:
+        return _cupy.cosh(x)
+    if op == cutensor.OP_ASIN:
+        return _cupy.arcsin(x)
+    if op == cutensor.OP_ACOS:
+        return _cupy.arccos(x)
+    if op == cutensor.OP_ATAN:
+        return _cupy.arctan(x)
+    if op == cutensor.OP_ASINH:
+        return _cupy.arcsinh(x)
+    if op == cutensor.OP_ACOSH:
+        return _cupy.arccosh(x)
+    if op == cutensor.OP_ATANH:
+        return _cupy.arctanh(x)
+    if op == cutensor.OP_CEIL:
+        return _cupy.ceil(x)
+    if op == cutensor.OP_FLOOR:
+        return _cupy.floor(x)
+    raise ValueError('unsupported unary operator: {}'.format(op))
+
+
+cdef void _validate_unary_operator(int op) except *:
+    if op not in (
+            cutensor.OP_IDENTITY,
+            cutensor.OP_SQRT,
+            cutensor.OP_RELU,
+            cutensor.OP_CONJ,
+            cutensor.OP_RCP,
+            cutensor.OP_SIGMOID,
+            cutensor.OP_TANH,
+            cutensor.OP_EXP,
+            cutensor.OP_LOG,
+            cutensor.OP_ABS,
+            cutensor.OP_NEG,
+            cutensor.OP_SIN,
+            cutensor.OP_COS,
+            cutensor.OP_TAN,
+            cutensor.OP_SINH,
+            cutensor.OP_COSH,
+            cutensor.OP_ASIN,
+            cutensor.OP_ACOS,
+            cutensor.OP_ATAN,
+            cutensor.OP_ASINH,
+            cutensor.OP_ACOSH,
+            cutensor.OP_ATANH,
+            cutensor.OP_CEIL,
+            cutensor.OP_FLOOR):
+        raise ValueError('unsupported unary operator: {}'.format(op))
+
+
+cdef _scale_unary(scale, int op, x, compute_dtype):
+    _validate_unary_operator(op)
+    if scale == 0:
+        return compute_dtype.type(0)
+    x = x.astype(compute_dtype, copy=False)
+    return compute_dtype.type(scale) * _apply_unary(op, x)
+
+
+cdef _apply_binary(int op, x, y):
+    if op == cutensor.OP_ADD:
+        return x + y
+    if op == cutensor.OP_MUL:
+        return x * y
+    if op == cutensor.OP_MAX:
+        return _cupy.maximum(x, y)
+    if op == cutensor.OP_MIN:
+        return _cupy.minimum(x, y)
+    raise ValueError('unsupported binary operator: {}'.format(op))
+
+
+cpdef bint _is_unsupported_status(int status):
+    return (
+        status == cutensor.STATUS_NOT_SUPPORTED
+        or status == cutensor.STATUS_ARCH_MISMATCH)
+
+
 cdef class _Scalar:
     cdef:
         object _array
@@ -410,6 +603,19 @@ cdef dict _elementwise_binary_compute_descs = {
 }
 
 
+cdef int _resolve_elementwise_binary_compute_desc(
+        int ct_dtype_A, int ct_dtype_C, int compute_desc) except -1:
+    compute_descs = _elementwise_binary_compute_descs
+    if not (ct_dtype_A in compute_descs
+            and ct_dtype_C in compute_descs[ct_dtype_A]):
+        raise ValueError(
+            'This combination of cutensor dtype is not supported in '
+            'elementwise_binary ({}, {})'.format(ct_dtype_A, ct_dtype_C))
+    if compute_desc == 0:
+        return compute_descs[ct_dtype_A][ct_dtype_C]
+    return compute_desc
+
+
 cpdef OperationDescriptor create_elementwise_binary(
         TensorDescriptor desc_A, Mode mode_A, int op_A,
         TensorDescriptor desc_C, Mode mode_C, int op_C,
@@ -434,27 +640,23 @@ cpdef OperationDescriptor create_elementwise_binary(
     Returns:
         (Descriptor): A instance of class OperationDescriptor.
     """
-    compute_descs = _elementwise_binary_compute_descs
     ct_dtype_A = desc_A.cutensor_dtype
     ct_dtype_C = desc_C.cutensor_dtype
-    if not (ct_dtype_A in compute_descs and
-            ct_dtype_C in compute_descs[ct_dtype_A]):
-        raise ValueError(
-            'This combination of cutensor dtype is not supported in '
-            'elementwise_binary ({}, {})'.format(ct_dtype_A, ct_dtype_C))
-    if compute_desc == 0:
-        compute_desc = compute_descs[ct_dtype_A][ct_dtype_C]
+    compute_desc = _resolve_elementwise_binary_compute_desc(
+        ct_dtype_A, ct_dtype_C, compute_desc)
     cdef CutensorHandle handle = _get_handle()
     key = (desc_A.ptr, mode_A.data, op_A,
            desc_C.ptr, mode_C.data, op_C,
            desc_D.ptr, mode_D.data, op_AC, compute_desc)
     if key not in handle._elementwise_binary_operators:
-        handle._elementwise_binary_operators[key] = OperationDescriptor()
-        handle._elementwise_binary_operators[key].create_elementwise_binary(
+        # Avoid caching a partially-initialized descriptor if creation fails.
+        op = OperationDescriptor()
+        op.create_elementwise_binary(
             handle.ptr,
             desc_A.ptr, mode_A.data, op_A,
             desc_C.ptr, mode_C.data, op_C,
             desc_D.ptr, mode_D.data, op_AC, compute_desc)
+        handle._elementwise_binary_operators[key] = op
     return handle._elementwise_binary_operators[key]
 
 
@@ -489,6 +691,18 @@ def elementwise_binary(
     Examples:
         See examples/cutensor/elementwise_binary.py
     """
+    # hipTensor 2.3 elementwise execution is unreliable. Align tensor modes
+    # explicitly and preserve this direct API with CuPy elementwise kernels.
+    if _runtime.is_hip:
+        labels_A = _get_mode_labels(mode_A)
+        labels_C = _get_mode_labels(mode_C)
+        _validate_shared_mode_extents((
+            (A, labels_A), (C, labels_C)))
+        A = _align_array_to_modes(A, labels_A, labels_C)
+        compute_desc = _resolve_elementwise_binary_compute_desc(
+            _get_cutensor_dtype(A.dtype),
+            _get_cutensor_dtype(C.dtype), compute_desc)
+
     if out is None:
         out = core._ndarray_init(
             _cupy.ndarray, C._shape, dtype=C.dtype, obj=None)
@@ -496,6 +710,15 @@ def elementwise_binary(
         raise ValueError('dtype mismatch: {} != {}'.format(C.dtype, out.dtype))
     elif not internal.vector_equal(C._shape, out._shape):
         raise ValueError('shape mismatch: {} != {}'.format(C.shape, out.shape))
+
+    if _runtime.is_hip:
+        compute_dtype = _get_fallback_compute_dtype(
+            compute_desc, _numpy.result_type(A.dtype, C.dtype))
+        out[...] = _apply_binary(
+            op_AC,
+            _scale_unary(alpha, op_A, A, compute_dtype),
+            _scale_unary(gamma, op_C, C, compute_dtype))
+        return out
 
     desc_A = create_tensor_descriptor(A)
     desc_C = create_tensor_descriptor(C)
@@ -532,6 +755,24 @@ cdef dict _elementwise_trinary_compute_descs = {
 }
 
 
+cdef int _resolve_elementwise_trinary_compute_desc(
+        int ct_dtype_A, int ct_dtype_B, int ct_dtype_C,
+        int compute_desc) except -1:
+    if ct_dtype_A != ct_dtype_B:
+        raise ValueError(
+            'cutensor dtype mismatch: {} != {}'.format(
+                ct_dtype_A, ct_dtype_B))
+    compute_descs = _elementwise_trinary_compute_descs
+    if not (ct_dtype_A in compute_descs
+            and ct_dtype_C in compute_descs[ct_dtype_A]):
+        raise ValueError(
+            'This combination of cutensor dtype is not supported in '
+            'elementwise_trinary ({}, {})'.format(ct_dtype_A, ct_dtype_C))
+    if compute_desc == 0:
+        return compute_descs[ct_dtype_A][ct_dtype_C]
+    return compute_desc
+
+
 cpdef OperationDescriptor create_elementwise_trinary(
         TensorDescriptor desc_A, Mode mode_A, int op_A,
         TensorDescriptor desc_B, Mode mode_B, int op_B,
@@ -561,33 +802,26 @@ cpdef OperationDescriptor create_elementwise_trinary(
     Returns:
         (Descriptor): A instance of class OperationDescriptor.
     """
-    compute_descs = _elementwise_trinary_compute_descs
     ct_dtype_A = desc_A.cutensor_dtype
     ct_dtype_B = desc_B.cutensor_dtype
     ct_dtype_C = desc_C.cutensor_dtype
-    if not (ct_dtype_A == ct_dtype_B):
-        raise ValueError(
-            'cutensor dtype mismatch: {} != {}'.format(ct_dtype_A, ct_dtype_B))
-    if not (ct_dtype_A in compute_descs and
-            ct_dtype_C in compute_descs[ct_dtype_A]):
-        raise ValueError(
-            'This combination of cutensor dtype is not supported in '
-            'elementwise_trinary ({}, {})'.format(ct_dtype_A, ct_dtype_C))
-    if compute_desc == 0:
-        compute_desc = compute_descs[ct_dtype_A][ct_dtype_C]
+    compute_desc = _resolve_elementwise_trinary_compute_desc(
+        ct_dtype_A, ct_dtype_B, ct_dtype_C, compute_desc)
     cdef CutensorHandle handle = _get_handle()
     key = (desc_A.ptr, mode_A.data, op_A,
            desc_B.ptr, mode_B.data, op_B,
            desc_C.ptr, mode_C.data, op_C,
            desc_D.ptr, mode_D.data, op_AB, op_ABC, compute_desc)
     if key not in handle._elementwise_trinary_operators:
-        handle._elementwise_trinary_operators[key] = OperationDescriptor()
-        handle._elementwise_trinary_operators[key].create_elementwise_trinary(
+        # Avoid caching a partially-initialized descriptor if creation fails.
+        op = OperationDescriptor()
+        op.create_elementwise_trinary(
             handle.ptr,
             desc_A.ptr, mode_A.data, op_A,
             desc_B.ptr, mode_B.data, op_B,
             desc_C.ptr, mode_C.data, op_C,
             desc_D.ptr, mode_D.data, op_AB, op_ABC, compute_desc)
+        handle._elementwise_trinary_operators[key] = op
     return handle._elementwise_trinary_operators[key]
 
 
@@ -629,6 +863,20 @@ def elementwise_trinary(
     Examples:
         See examples/cutensor/elementwise_trinary.py
     """
+    if _runtime.is_hip:
+        # Align tensor modes explicitly for the CuPy elementwise fallback.
+        labels_A = _get_mode_labels(mode_A)
+        labels_B = _get_mode_labels(mode_B)
+        labels_C = _get_mode_labels(mode_C)
+        _validate_shared_mode_extents((
+            (A, labels_A), (B, labels_B), (C, labels_C)))
+        A = _align_array_to_modes(A, labels_A, labels_C)
+        B = _align_array_to_modes(B, labels_B, labels_C)
+        compute_desc = _resolve_elementwise_trinary_compute_desc(
+            _get_cutensor_dtype(A.dtype),
+            _get_cutensor_dtype(B.dtype),
+            _get_cutensor_dtype(C.dtype), compute_desc)
+
     if out is None:
         out = core._ndarray_init(
             _cupy.ndarray, C._shape, dtype=C.dtype, obj=None)
@@ -636,6 +884,18 @@ def elementwise_trinary(
         raise ValueError('dtype mismatch: {} != {}'.format(C.dtype, out.dtype))
     elif not internal.vector_equal(C._shape, out._shape):
         raise ValueError('shape mismatch: {} != {}'.format(C.shape, out.shape))
+
+    if _runtime.is_hip:
+        compute_dtype = _get_fallback_compute_dtype(
+            compute_desc, _numpy.result_type(A.dtype, B.dtype, C.dtype))
+        AB = _apply_binary(
+            op_AB,
+            _scale_unary(alpha, op_A, A, compute_dtype),
+            _scale_unary(beta, op_B, B, compute_dtype))
+        out[...] = _apply_binary(
+            op_ABC, AB, _scale_unary(
+                gamma, op_C, C, compute_dtype))
+        return out
 
     desc_A = create_tensor_descriptor(A)
     desc_B = create_tensor_descriptor(B)
@@ -682,6 +942,22 @@ cdef dict _contraction_compute_descs = {
 }
 
 
+cdef int _resolve_contraction_compute_desc(
+        int ct_dtype_A, int ct_dtype_B, int ct_dtype_C,
+        int compute_desc) except -1:
+    compute_descs = _contraction_compute_descs
+    if not (ct_dtype_A in compute_descs
+            and ct_dtype_B in compute_descs[ct_dtype_A]
+            and ct_dtype_C in compute_descs[ct_dtype_A][ct_dtype_B]):
+        raise ValueError(
+            'This cutensor dtype combination is not supported in contraction'
+            ' ({}, {}, {})'.format(
+                ct_dtype_A, ct_dtype_B, ct_dtype_C))
+    if compute_desc == 0:
+        return compute_descs[ct_dtype_A][ct_dtype_B][ct_dtype_C]
+    return compute_desc
+
+
 cpdef OperationDescriptor create_contraction(
         TensorDescriptor desc_A, Mode mode_A, int op_A,
         TensorDescriptor desc_B, Mode mode_B, int op_B,
@@ -707,31 +983,26 @@ cpdef OperationDescriptor create_contraction(
         (Descriptor): A instance of class Descriptor which holds a pointer to
         tensor descriptor and its destructor.
     """
-    compute_descs = _contraction_compute_descs
     ct_dtype_A = desc_A.cutensor_dtype
     ct_dtype_B = desc_B.cutensor_dtype
     ct_dtype_C = desc_C.cutensor_dtype
-    if not (ct_dtype_A in compute_descs and
-            ct_dtype_B in compute_descs[ct_dtype_A] and
-            ct_dtype_C in compute_descs[ct_dtype_A][ct_dtype_B]):
-        raise ValueError(
-            'This cutensor dtype combination is not supported in contraction'
-            ' ({}, {}, {})'.format(ct_dtype_A, ct_dtype_B, ct_dtype_C))
-    if compute_desc == 0:
-        compute_desc = compute_descs[ct_dtype_A][ct_dtype_B][ct_dtype_C]
+    compute_desc = _resolve_contraction_compute_desc(
+        ct_dtype_A, ct_dtype_B, ct_dtype_C, compute_desc)
     cdef CutensorHandle handle = _get_handle()
     key = (desc_A.ptr, mode_A.data, op_A,
            desc_B.ptr, mode_B.data, op_B,
            desc_C.ptr, mode_C.data, op_C,
            compute_desc)
     if key not in handle._contraction_operators:
-        handle._contraction_operators[key] = OperationDescriptor()
-        handle._contraction_operators[key].create_contraction(
+        # Avoid caching a partially-initialized descriptor if creation fails.
+        op = OperationDescriptor()
+        op.create_contraction(
             handle.ptr,
             desc_A.ptr, mode_A.data, op_A,
             desc_B.ptr, mode_B.data, op_B,
             desc_C.ptr, mode_C.data, op_C,
             desc_C.ptr, mode_C.data, compute_desc)
+        handle._contraction_operators[key] = op
     return handle._contraction_operators[key]
 
 
@@ -781,6 +1052,41 @@ def contraction(
     Examples:
         See examples/cutensor/contraction.py
     """
+    if _runtime.is_hip:
+        compute_desc = _resolve_contraction_compute_desc(
+            _get_cutensor_dtype(A.dtype),
+            _get_cutensor_dtype(B.dtype),
+            _get_cutensor_dtype(C.dtype), compute_desc)
+        labels_A = _get_mode_labels(mode_A)
+        labels_B = _get_mode_labels(mode_B)
+        labels_C = _get_mode_labels(mode_C)
+        _validate_shared_mode_extents((
+            (A, labels_A), (B, labels_B), (C, labels_C)))
+        if not set(labels_C).issubset(set(labels_A) | set(labels_B)):
+            raise ValueError(
+                'output modes must appear in at least one input tensor')
+        _validate_unary_operator(op_A)
+        _validate_unary_operator(op_B)
+        _validate_unary_operator(op_C)
+
+        compute_dtype = _get_fallback_compute_dtype(
+            compute_desc, _get_scalar_dtype(C.dtype))
+        if alpha == 0:
+            AB = compute_dtype.type(0)
+        else:
+            all_labels = dict.fromkeys(
+                labels_A + labels_B + labels_C)
+            remapped = {
+                label: index for index, label in enumerate(all_labels)}
+            A_u = _scale_unary(alpha, op_A, A, compute_dtype)
+            B_u = _scale_unary(1, op_B, B, compute_dtype)
+            AB = _cupy.einsum(
+                A_u, [remapped[label] for label in labels_A],
+                B_u, [remapped[label] for label in labels_B],
+                [remapped[label] for label in labels_C])
+        C_u = _scale_unary(beta, op_C, C, compute_dtype)
+        C[...] = AB + C_u
+        return C
     desc_A = create_tensor_descriptor(A)
     desc_B = create_tensor_descriptor(B)
     desc_C = create_tensor_descriptor(C)
@@ -858,13 +1164,15 @@ cpdef OperationDescriptor create_reduction(
            desc_C.ptr, mode_C.data, op_C,
            op_reduce, compute_desc)
     if key not in handle._reduction_operators:
-        handle._reduction_operators[key] = OperationDescriptor()
-        handle._reduction_operators[key].create_reduction(
+        # Avoid caching a partially-initialized descriptor if creation fails.
+        op = OperationDescriptor()
+        op.create_reduction(
             handle.ptr,
             desc_A.ptr, mode_A.data, op_A,
             desc_C.ptr, mode_C.data, op_C,
             desc_C.ptr, mode_C.data,
             op_reduce, compute_desc)
+        handle._reduction_operators[key] = op
     return handle._reduction_operators[key]
 
 
@@ -898,6 +1206,17 @@ def reduction(
     Examples:
         See examples/cutensor/reduction.py
     """
+    cdef _ndarray_base C_view = C
+    cdef bint copy_back_C = False
+    if _runtime.is_hip:
+        # hipTensor currently appears unstable on general strided views. As
+        # a safety fallback, materialize unsupported layouts as contiguous.
+        if not (A._c_contiguous or A._f_contiguous):
+            A = _cupy.ascontiguousarray(A)
+        if not (C._c_contiguous or C._f_contiguous):
+            C = _cupy.ascontiguousarray(C)
+            copy_back_C = True
+
     desc_A = create_tensor_descriptor(A)
     desc_C = create_tensor_descriptor(C)
     mode_A = _auto_create_mode(A, mode_A)
@@ -910,13 +1229,20 @@ def reduction(
         _get_handle().ptr, operator.ptr, plan_pref.ptr,
         cutensor.WORKSPACE_RECOMMENDED)
     plan = create_plan(operator, plan_pref, ws_limit=ws_size)
-    ws = core._ndarray_init(
-        _cupy.ndarray, shape_t(1, ws_size), dtype=_numpy.int8, obj=None)
+
+    cdef intptr_t ws_ptr = <intptr_t>0
+    if ws_size != 0:
+        ws = core._ndarray_init(
+            _cupy.ndarray, shape_t(1, ws_size), dtype=_numpy.int8, obj=None)
+        ws_ptr = ws.data.ptr
     cutensor.reduce(
         _get_handle().ptr, plan.ptr,
         _create_scalar(alpha, out.dtype).ptr, A.data.ptr,
         _create_scalar(beta, out.dtype).ptr, C.data.ptr, out.data.ptr,
-        ws.data.ptr, ws_size)
+        ws_ptr, ws_size)
+    if copy_back_C:
+        C_view[...] = out
+        return C_view
     return out
 
 
@@ -995,6 +1321,13 @@ def _try_reduction_routine(
             alpha, in_arg, _create_mode_with_cache(in_arg._shape.size()),
             beta, out_arg, _create_mode_with_cache(out_axis),
             op_reduce=reduce_op)
+    except _cutensor_py.CuTensorError as e:
+        # cuTENSOR/hipTensor can report "not supported" for otherwise-valid
+        # inputs (for example depending on dtype/operator support). In such
+        # cases, fall back to CuPy's implementation instead of raising.
+        if _is_unsupported_status(e.status):
+            return None
+        raise
     except ValueError:
         return None
 
@@ -1077,6 +1410,10 @@ def _try_elementwise_binary_routine(
             alpha, a, _create_mode_with_cache(a._shape.size()),
             gamma, c, _create_mode_with_cache(c._shape.size()),
             out=out, op_AC=op)
+    except _cutensor_py.CuTensorError as e:
+        if _is_unsupported_status(e.status):
+            return None
+        raise
     except ValueError:
         return None
 
