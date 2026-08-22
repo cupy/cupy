@@ -60,7 +60,8 @@ def _convert_1d_args(ndim, weights, origin, axis):
 
 
 def _check_nd_args(input, weights, mode, origin, wghts_name='filter weights',
-                   sizes=None, axes=None, raise_on_zero_size_weight=False):
+                   sizes=None, axes=None, raise_on_zero_size_weight=False,
+                   structure=False):
     axes = _util._check_axes(axes, input.ndim)
     num_axes = len(axes)
     modes = _util._fix_sequence_arg(mode, num_axes, 'origin', str)
@@ -88,7 +89,9 @@ def _check_nd_args(input, weights, mode, origin, wghts_name='filter weights',
         if len(weight_dims) != input.ndim:
             raise RuntimeError(f'{wghts_name} array has incorrect shape')
     elif sizes is None:
-        raise ValueError('must specify either weights array or sizes')
+        if structure is None:
+            raise ValueError('must specify either weights array or sizes')
+        weight_dims = [structure.shape[ax] for ax in range(len(origins))]
     else:
         if numpy.isscalar(sizes):
             sizes = (sizes,) * num_axes
