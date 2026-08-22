@@ -45,7 +45,7 @@ cdef _all = create_reduction_func(
     ('?->?', 'B->?', 'h->?', 'H->?', 'i->?', 'I->?', 'l->?', 'L->?',
      'q->?', 'Q->?', 'e->?', 'f->?', 'd->?', 'F->?', 'D->?'),
     ('in0 != type_in0_raw(0)', 'a & b', 'out0 = a', 'bool'),
-    'true', '')
+    'true', '', compute_opkind='BIT_AND')
 
 
 cdef _any = create_reduction_func(
@@ -53,7 +53,7 @@ cdef _any = create_reduction_func(
     ('?->?', 'B->?', 'h->?', 'H->?', 'i->?', 'I->?', 'l->?', 'L->?',
      'q->?', 'Q->?', 'e->?', 'f->?', 'd->?', 'F->?', 'D->?'),
     ('in0 != type_in0_raw(0)', 'a | b', 'out0 = a', 'bool'),
-    'false', '')
+    'false', '', compute_opkind='BIT_OR')
 
 
 def promote_weak_int(in_types, weaks):

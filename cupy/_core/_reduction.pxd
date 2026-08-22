@@ -30,7 +30,8 @@ cdef class _AbstractReductionKernel:
         list in_args, list out_args,
         const shape_t& a_shape, axis, dtype,
         bint keepdims, bint reduce_dims, int device_id,
-        stream, bint try_use_cub=*, bint sort_reduce_axis=*)
+        stream, bint try_use_cub=*, bint try_use_cuda_compute=*,
+        bint sort_reduce_axis=*)
 
     cdef bint _launch(
         self, out_block_num, block_size, block_stride,
@@ -76,4 +77,5 @@ cdef tuple _get_shape_and_strides(list in_args, list out_args)
 cdef _optimizer_copy_arg(a)
 
 cpdef create_reduction_func(
-    name, ops, routine=*, identity=*, preamble=*, sort_reduce_axis=*)
+    name, ops, routine=*, identity=*, preamble=*, sort_reduce_axis=*,
+    compute_opkind=*)
