@@ -6,6 +6,7 @@ import pytest
 import cupy
 from cupy import testing
 from cupy._core import _accelerator
+from cupy._core import _cuda_compute_common
 from cupy._core import _cuda_compute_reduction
 
 
@@ -17,7 +18,7 @@ class CudaComputeReductionTestBase:
 
     @pytest.fixture(autouse=True)
     def configure(self):
-        if _cuda_compute_reduction._get_cuda_compute() is None:
+        if _cuda_compute_common._get_cuda_compute() is None:
             pytest.skip('cuda.compute (cuda-cccl) not found')
 
         self.can_use = (
@@ -104,7 +105,7 @@ class TestCudaComputeReductionRoutines(CudaComputeReductionTestBase):
         a = numpy.arange(1, 33, dtype='f' if not kwargs else 'i')
         self._dispatch_and_compare(routine, kwargs, a)
 
-    @pytest.mark.parametrize('dtype', ['f', 'd', 'F', 'D'])
+    @pytest.mark.parametrize('dtype', ['e', 'f', 'd', 'F', 'D'])
     @pytest.mark.thread_unsafe(
         reason="AssertFunctionIsCalled and accelerator mutation.")
     def test_sum_dtypes(self, dtype):
@@ -154,6 +155,36 @@ class TestCudaComputeReductionRoutines(CudaComputeReductionTestBase):
                 wraps=must_succeed, times_called=1):
             result = cupy.linalg.norm(a)
         testing.assert_allclose(result, numpy.linalg.norm(a_np), rtol=1e-6)
+
+    @pytest.mark.thread_unsafe(
+        reason="AssertFunctionIsCalled and accelerator mutation.")
+    def test_strided_out_falls_back(self):
+        a_np = testing.shaped_random((3, 4), numpy, dtype='f', seed=0)
+        a = cupy.asarray(a_np)
+        big = cupy.zeros((4, 8), dtype='f')
+        strided_out = big[0, ::2]
+        func = _cuda_compute_reduction._cuda_compute_reduce
+        with testing.AssertFunctionIsCalled(
+                'cupy._core._cuda_compute_reduction._cuda_compute_reduce',
+                wraps=func, times_called=0):  # declined by can_use
+            cupy.sum(a, axis=0, out=strided_out)
+        testing.assert_allclose(
+            strided_out, numpy.sum(a_np, axis=0), rtol=1e-6)
+
+    @pytest.mark.thread_unsafe(
+        reason="AssertFunctionIsCalled and accelerator mutation.")
+    def test_accelerator_order_respected(self):
+        # with cuda_compute listed before cub in both lists (as the
+        # env var produces), cuda.compute must get first refusal
+        _accelerator.set_routine_accelerators(['cuda_compute', 'cub'])
+        _accelerator.set_reduction_accelerators(['cuda_compute', 'cub'])
+        a = cupy.ones((1000,), dtype='f')
+        func = _cuda_compute_reduction._cuda_compute_reduce
+        with testing.AssertFunctionIsCalled(
+                'cupy._core._cuda_compute_reduction._cuda_compute_reduce',
+                wraps=func, times_called=1):
+            result = a.sum()
+        assert result == 1000.0
 
     @pytest.mark.thread_unsafe(
         reason="AssertFunctionIsCalled and accelerator mutation.")

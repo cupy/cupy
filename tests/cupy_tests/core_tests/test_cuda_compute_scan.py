@@ -6,6 +6,7 @@ import pytest
 import cupy
 from cupy import testing
 from cupy._core import _accelerator
+from cupy._core import _cuda_compute_common
 from cupy._core import _cuda_compute_scan
 
 
@@ -17,7 +18,7 @@ class CudaComputeScanTestBase:
 
     @pytest.fixture(autouse=True)
     def configure(self):
-        if _cuda_compute_scan._get_cuda_compute() is None:
+        if _cuda_compute_common._get_cuda_compute() is None:
             pytest.skip('cuda.compute (cuda-cccl) not found')
 
         self.supports_dtype = _cuda_compute_scan._supports_dtype
