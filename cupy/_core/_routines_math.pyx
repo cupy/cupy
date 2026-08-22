@@ -90,6 +90,11 @@ cdef _ndarray_base _ndarray_prod(
         _ndarray_base self, axis, dtype, out, keepdims):
     for accelerator in _accelerator._routine_accelerators:
         result = None
+        if accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE:
+            # the cuda.compute hook runs in _AbstractReductionKernel._call;
+            # break so accelerators listed after it do not serve the call
+            # first
+            break
         if accelerator == _accelerator.ACCELERATOR_CUB:
             # result will be None if the reduction is not compatible with CUB
             result = cub.cub_reduction(
@@ -111,6 +116,11 @@ cdef _ndarray_base _ndarray_sum(
         _ndarray_base self, axis, dtype, out, keepdims):
     for accelerator in _accelerator._routine_accelerators:
         result = None
+        if accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE:
+            # the cuda.compute hook runs in _AbstractReductionKernel._call;
+            # break so accelerators listed after it do not serve the call
+            # first
+            break
         if accelerator == _accelerator.ACCELERATOR_CUB:
             # result will be None if the reduction is not compatible with CUB
             result = cub.cub_reduction(
