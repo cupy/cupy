@@ -1,7 +1,6 @@
 import string
 
 from cupy._core cimport _kernel
-from cupy._core._carray cimport shape_t
 from cupy._core.core cimport _ndarray_base
 from cupy._core._cuda_compute_common cimport _get_cuda_compute
 from cupy._core._cuda_compute_common import _make_raw_op
@@ -36,6 +35,25 @@ extern "C" __device__ void map(void* _in, void* _ret) {
 }
 ''').substitute(prelude=prelude, map_expr=map_expr)
     return compute.TransformIterator(d_in, _make_raw_op(src, 'map'),
+                                     acc_type)
+
+
+cdef _get_zip_map_iterator(compute, d_in, str prelude, str map_expr,
+                           acc_type, index_dtype):
+    src = string.Template('''
+${prelude}
+struct _zip_in { IndexT _idx; type_in0_raw _val; };
+extern "C" __device__ void map(void* _in, void* _ret) {
+    const _zip_in _z = *static_cast<const _zip_in*>(_in);
+    const type_in0_raw in0 = _z._val;
+    const IndexT _J = _z._idx;
+    *static_cast<_type_reduce*>(_ret) =
+        static_cast<_type_reduce>(${map_expr});
+}
+''').substitute(prelude=prelude, map_expr=map_expr)
+    ids = compute.CountingIterator(numpy.zeros((), dtype=index_dtype))
+    zipped = compute.ZipIterator(ids, d_in)
+    return compute.TransformIterator(zipped, _make_raw_op(src, 'map'),
                                      acc_type)
 
 
@@ -126,7 +144,8 @@ _CTYPE_TO_DTYPE = {
 _IDENTITY_VALUES = {'0': 0, '1': 1, 'true': True, 'false': False}
 
 
-cdef _try_accumulator(str reduce_type, str identity):
+cdef _try_accumulator(str reduce_type, str identity, in_dtype,
+                      out_dtype, index_dtype):
     """Map the kernel's _type_reduce C type onto a numpy dtype and build
     the matching h_init value for cuda.compute.
 
@@ -138,6 +157,26 @@ cdef _try_accumulator(str reduce_type, str identity):
         if value is None:
             return None
         return dt, numpy.full((), value, dtype=dt)
+
+    # currently cannot build a complex64 accumulator (host/JIT policy
+    # mismatch), and its zip puts a complex128 member at offset 8
+    # instead of the __align__(16) offset the struct expects (wrong
+    # argmax indices)
+    if reduce_type == 'min_max_st<type_in0_raw>':
+        if in_dtype.kind == 'c':
+            return None
+        acc = numpy.dtype([('value', in_dtype), ('index', index_dtype)],
+                          align=True)
+        h_init = numpy.zeros((), dtype=acc)
+        h_init['index'] = -1
+        return acc, h_init
+
+    if reduce_type == 'nanmean_st<type_out0_raw>':
+        if out_dtype.kind == 'c':
+            return None
+        acc = numpy.dtype([('value', out_dtype), ('count', numpy.int64)],
+                          align=True)
+        return acc, numpy.zeros((), dtype=acc)
 
     return None
 
@@ -153,8 +192,10 @@ def _try_reduction(x, out, str map_expr, str reduce_expr,
     """
     compute = _get_cuda_compute()
 
-    # TODO: support struct accumulators (e.g. (value, index) pair);
-    if '_J' in map_expr:
+    # a segmented reduction needs _J to be the index within each
+    # segment (_J % seg_size). seg_size is a host-side value, which
+    # ops passed to transform iterators never receive
+    if '_J' in map_expr and out.size > 1:
         return None
 
     # post_map_expr needs a host-side value (e.g. for mean: the
@@ -167,7 +208,9 @@ def _try_reduction(x, out, str map_expr, str reduce_expr,
     if map_expr == 'in0' and x.dtype.kind == 'c' and out.dtype.kind != 'c':
         return None
 
-    acc = _try_accumulator(reduce_type, identity)
+    index_dtype = numpy.dtype(dict(type_map._pairs).get('IndexT', 'q'))
+    acc = _try_accumulator(reduce_type, identity, x.dtype, out.dtype,
+                           index_dtype)
     if acc is None:
         return None
     acc_dtype, h_init = acc
@@ -176,10 +219,20 @@ def _try_reduction(x, out, str map_expr, str reduce_expr,
     prelude = _get_kernel_prelude(type_map, preamble, reduce_type,
                                   acc_dtype)
 
-    d_in = x.ravel(order='A')
+    if '_J' in map_expr and not x._c_contiguous:
+        # in NumPy the indices are always generated based on a C-order
+        # array, so _J must count in C order
+        d_in = cupy.ascontiguousarray(x).ravel()
+    else:
+        d_in = x.ravel(order='A')
     build_in = compute.ProxyArray(x.dtype)
     to_complex_acc = x.dtype != acc_dtype and acc_dtype.kind == 'c'
-    if map_expr != 'in0' or to_complex_acc:
+    struct_acc = acc_dtype.kind == 'V'
+    if '_J' in map_expr:
+        d_in = _get_zip_map_iterator(compute, d_in, prelude, map_expr,
+                                     acc_type, index_dtype)
+        build_in = d_in
+    elif map_expr != 'in0' or to_complex_acc or struct_acc:
         d_in = _get_input_map_iterator(compute, d_in, prelude,
                                        map_expr, acc_type)
         build_in = d_in
@@ -255,10 +308,9 @@ def _cuda_compute_reduce(x, out, str map_expr, str reduce_expr,
 
 
 cdef bint _try_to_call_cuda_compute_reduction(
-        self, list in_args, list out_args, const shape_t& a_shape,
-        stream, str map_expr, str reduce_expr, str post_map_expr,
-        str reduce_type, type_map, tuple reduce_axis, tuple out_axis,
-        const shape_t& out_shape, _ndarray_base ret) except *:
+        self, list in_args, list out_args, stream, str map_expr,
+        str reduce_expr, str post_map_expr, str reduce_type, type_map,
+        tuple reduce_axis, tuple out_axis, _ndarray_base ret) except *:
     """Try to use cuda.compute (CUB DeviceReduce).
 
     Updates `ret` and returns a boolean value

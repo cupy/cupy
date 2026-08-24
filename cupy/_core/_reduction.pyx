@@ -380,9 +380,9 @@ cdef class _AbstractReductionKernel:
                 cuda_compute_success = (
                     _cuda_compute_reduction
                     ._try_to_call_cuda_compute_reduction(
-                        self, in_args, out_args, a_shape, stream,
+                        self, in_args, out_args, stream,
                         map_expr, reduce_expr, post_map_expr, reduce_type,
-                        type_map, reduce_axis, out_axis, out_shape, ret))
+                        type_map, reduce_axis, out_axis, ret))
                 if cuda_compute_success:
                     return ret
             if try_use_cub and accelerator == _accelerator.ACCELERATOR_CUB:

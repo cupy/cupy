@@ -72,6 +72,10 @@ _scalar_acc_cases = [
     ('all', {}),
     ('any', {}),
     ('count_nonzero', {}),
+    ('min', {}),
+    ('max', {}),
+    ('argmin', {}),
+    ('argmax', {}),
 ]
 
 
@@ -191,6 +195,99 @@ class TestCudaComputeReductionRoutines(CudaComputeReductionTestBase):
     def test_full_reduction_f_order(self):
         a = testing.shaped_random((30, 40), numpy, dtype='d', seed=0)
         self._dispatch_and_compare('sum', {}, a, order='F')
+
+    @pytest.mark.parametrize('dtype', ['e', 'f', 'd'])
+    @pytest.mark.thread_unsafe(
+        reason="AssertFunctionIsCalled and accelerator mutation.")
+    def test_nanmean(self, dtype):
+        # nanmean_st carries the non-NaN count in the accumulator, so
+        # unlike mean no host-side divisor is needed
+        a = testing.shaped_random((1000,), numpy, dtype=dtype, seed=0)
+        a[::7] = numpy.nan
+        rtol = 1e-2 if dtype == 'e' else 1e-6
+        acc = cupy.asarray(a)
+        func = _cuda_compute_reduction._cuda_compute_reduce
+
+        def must_succeed(*args, **kw):
+            ret = func(*args, **kw)
+            assert ret, 'cuda.compute declined a supported reduction'
+            return ret
+
+        with testing.AssertFunctionIsCalled(
+                'cupy._core._cuda_compute_reduction._cuda_compute_reduce',
+                wraps=must_succeed, times_called=1):
+            result = cupy.nanmean(acc)
+        testing.assert_allclose(result, numpy.nanmean(a), rtol=rtol)
+
+    @pytest.mark.parametrize('routine', ['nanmin', 'nanmax'])
+    @pytest.mark.thread_unsafe(
+        reason="AssertFunctionIsCalled and accelerator mutation.")
+    def test_nan_min_max(self, routine):
+        # two dispatches: the reduction itself, then the wrapper's
+        # isnan(res).any() all-NaN check is also a served reduction
+        a = numpy.arange(1, 33, dtype='f')
+        a[::5] = numpy.nan
+        self._dispatch_and_compare(routine, {}, a, times_called=2)
+
+    @pytest.mark.thread_unsafe(
+        reason="AssertFunctionIsCalled and accelerator mutation.")
+    def test_argmax_f_order(self):
+        # _J indices are C-order; the F-contiguous input goes through
+        # ascontiguousarray
+        a_np = testing.shaped_random((30, 40), numpy, dtype='d', seed=0)
+        a = cupy.asarray(numpy.asfortranarray(a_np))
+        func = _cuda_compute_reduction._cuda_compute_reduce
+        with testing.AssertFunctionIsCalled(
+                'cupy._core._cuda_compute_reduction._cuda_compute_reduce',
+                wraps=func, times_called=1):
+            result = cupy.argmax(a)
+        assert int(result) == int(numpy.argmax(a_np))
+
+    @pytest.mark.thread_unsafe(
+        reason="AssertFunctionIsCalled and accelerator mutation.")
+    def test_segmented_argmin_declines(self):
+        # a segmented reduction wants within-segment indices; the zip
+        # provides global ones, so the resolver declines
+        a_np = testing.shaped_random((20, 30), numpy, dtype='f', seed=0)
+        a = cupy.asarray(a_np)
+        func = _cuda_compute_reduction._cuda_compute_reduce
+
+        def declines(*args, **kw):
+            ret = func(*args, **kw)
+            assert not ret
+            return ret
+
+        with testing.AssertFunctionIsCalled(
+                'cupy._core._cuda_compute_reduction._cuda_compute_reduce',
+                wraps=declines, times_called=1):
+            result = cupy.argmin(a, axis=1)
+        testing.assert_array_equal(result, numpy.argmin(a_np, axis=1))
+
+    @pytest.mark.thread_unsafe(
+        reason="AssertFunctionIsCalled and accelerator mutation.")
+    def test_segmented_min(self):
+        a_np = testing.shaped_random((50, 40), numpy, dtype='d', seed=0)
+        self._dispatch_and_compare('min', {'axis': 1}, a_np)
+
+    @pytest.mark.thread_unsafe(
+        reason="AssertFunctionIsCalled and accelerator mutation.")
+    def test_complex_min_declines(self):
+        # complex struct accumulators decline (see _try_accumulator)
+        a_np = (testing.shaped_random((1000,), numpy, dtype='f', seed=0)
+                + 1j).astype('F')
+        a = cupy.asarray(a_np)
+        func = _cuda_compute_reduction._cuda_compute_reduce
+
+        def declines(*args, **kw):
+            ret = func(*args, **kw)
+            assert not ret
+            return ret
+
+        with testing.AssertFunctionIsCalled(
+                'cupy._core._cuda_compute_reduction._cuda_compute_reduce',
+                wraps=declines, times_called=1):
+            result = cupy.min(a)
+        assert complex(result) == complex(numpy.min(a_np))
 
     @pytest.mark.parametrize(('routine', 'axis'), [
         ('sum', 1), ('sum', -1), ('prod', 1), ('all', 1), ('nansum', 1)])
