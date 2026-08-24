@@ -580,6 +580,61 @@ class TestPlanCtxManagerFftn:
         assert 'The cuFFT plan and a.shape do not match' in str(ex.value)
 
 
+@pytest.mark.thread_unsafe(reason="the current cuFFT plan is thread-local")
+def test_plan_nd_reuse_across_logical_batch_shapes():
+    from cupyx.scipy.fftpack import get_fft_plan
+
+    a = testing.shaped_random((2, 3, 8), cupy, cupy.float32)
+    plan = get_fft_plan(a, axes=(1, 2), value_type='R2C')
+
+    b = testing.shaped_random((1, 2, 3, 8), cupy, cupy.float32)
+    with plan:
+        actual = cupy.fft.rfftn(b, axes=(2, 3))
+    expected = np.fft.rfftn(cupy.asnumpy(b), axes=(2, 3))
+
+    assert actual.shape == (1, 2, 3, 5)
+    testing.assert_allclose(actual, expected, rtol=1e-3, atol=1e-7)
+
+
+@pytest.mark.thread_unsafe(reason="the FFT plan cache is thread-local")
+def test_plan_nd_cache_reuse_across_logical_batch_shapes():
+    cache = config.get_plan_cache()
+    cache.clear()
+    try:
+        a = testing.shaped_random((2, 3, 8), cupy, cupy.float32)
+        cupy.fft.rfftn(a, axes=(1, 2))
+        assert cache.get_curr_size() == 1
+        cached_plan = next(iter(cache))[1].plan
+
+        b = testing.shaped_random((1, 2, 3, 8), cupy, cupy.float32)
+        actual = cupy.fft.rfftn(b, axes=(2, 3))
+        expected = np.fft.rfftn(cupy.asnumpy(b), axes=(2, 3))
+
+        assert cache.get_curr_size() == 1
+        assert next(iter(cache))[1].plan is cached_plan
+        assert actual.shape == (1, 2, 3, 5)
+        testing.assert_allclose(actual, expected, rtol=1e-3, atol=1e-7)
+    finally:
+        cache.clear()
+
+
+@pytest.mark.thread_unsafe(reason="the current cuFFT plan is thread-local")
+def test_plan_nd_reuse_across_array_orders():
+    from cupyx.scipy.fftpack import get_fft_plan
+
+    a = testing.shaped_random((2, 3), cupy, cupy.complex64)
+    plan = get_fft_plan(a)
+
+    b = cupy.asfortranarray(
+        testing.shaped_random((3, 2), cupy, cupy.complex64))
+    with plan:
+        actual = cupy.fft.fftn(b)
+    expected = np.fft.fftn(cupy.asnumpy(b))
+
+    assert actual.flags.f_contiguous
+    testing.assert_allclose(actual, expected, rtol=1e-3, atol=1e-7)
+
+
 @testing.with_requires('numpy>=2.0')
 @pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*testing.product({
