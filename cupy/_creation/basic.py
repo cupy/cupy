@@ -231,6 +231,15 @@ def ones_like(
     if dtype is None:
         dtype = a.dtype
 
+    # Fast path for a C-/F-contiguous result with the prototype's own shape
+    # (see ``empty_like``); the helper returns None when the general path is
+    # required.
+    if shape is None and isinstance(a, cupy.ndarray):
+        result = _empty_like_fast(a, dtype, order)
+        if result is not None:
+            result.fill(1)
+            return result
+
     order, strides, memptr = _new_like_order_and_strides(a, dtype, order,
                                                          shape)
     shape = shape if shape else a.shape
@@ -297,6 +306,15 @@ def zeros_like(
         raise TypeError('subok is not supported yet')
     if dtype is None:
         dtype = a.dtype
+
+    # Fast path for a C-/F-contiguous result with the prototype's own shape
+    # (see ``empty_like``); the helper returns None when the general path is
+    # required.
+    if shape is None and isinstance(a, cupy.ndarray):
+        result = _empty_like_fast(a, dtype, order)
+        if result is not None:
+            result.data.memset_async(0, result.nbytes)
+            return result
 
     order, strides, memptr = _new_like_order_and_strides(a, dtype, order,
                                                          shape)
@@ -375,6 +393,15 @@ def full_like(
         raise TypeError('subok is not supported yet')
     if dtype is None:
         dtype = a.dtype
+
+    # Fast path for a C-/F-contiguous result with the prototype's own shape
+    # (see ``empty_like``); the helper returns None when the general path is
+    # required.
+    if shape is None and isinstance(a, cupy.ndarray):
+        result = _empty_like_fast(a, dtype, order)
+        if result is not None:
+            cupy.copyto(result, fill_value, casting='unsafe')
+            return result
 
     order, strides, memptr = _new_like_order_and_strides(a, dtype, order,
                                                          shape)
