@@ -91,10 +91,16 @@ cdef _ndarray_base _ndarray_prod(
     for accelerator in _accelerator._routine_accelerators:
         result = None
         if accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE:
-            # the cuda.compute hook runs in _AbstractReductionKernel._call;
-            # break so accelerators listed after it do not serve the call
-            # first
-            break
+            # result will be None if the reduction is not served by
+            # cuda.compute
+            if dtype is None:
+                result = _prod_auto_dtype(
+                    self, axis, dtype, out, keepdims,
+                    cuda_compute_only=True)
+            else:
+                result = _prod_keep_dtype(
+                    self, axis, dtype, out, keepdims,
+                    cuda_compute_only=True)
         if accelerator == _accelerator.ACCELERATOR_CUB:
             # result will be None if the reduction is not compatible with CUB
             result = cub.cub_reduction(
@@ -117,10 +123,16 @@ cdef _ndarray_base _ndarray_sum(
     for accelerator in _accelerator._routine_accelerators:
         result = None
         if accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE:
-            # the cuda.compute hook runs in _AbstractReductionKernel._call;
-            # break so accelerators listed after it do not serve the call
-            # first
-            break
+            # result will be None if the reduction is not served by
+            # cuda.compute
+            if dtype is None:
+                result = _sum_auto_dtype(
+                    self, axis, dtype, out, keepdims,
+                    cuda_compute_only=True)
+            else:
+                result = _sum_keep_dtype(
+                    self, axis, dtype, out, keepdims,
+                    cuda_compute_only=True)
         if accelerator == _accelerator.ACCELERATOR_CUB:
             # result will be None if the reduction is not compatible with CUB
             result = cub.cub_reduction(

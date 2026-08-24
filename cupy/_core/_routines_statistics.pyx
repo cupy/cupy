@@ -28,6 +28,11 @@ cdef _ndarray_base _ndarray_max(
         _ndarray_base self, axis, out, dtype, keepdims):
     for accelerator in _accelerator._routine_accelerators:
         result = None
+        if accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE:
+            # result will be None if the reduction is not served by
+            # cuda.compute
+            result = _amax(self, axis=axis, out=out, dtype=dtype,
+                           keepdims=keepdims, cuda_compute_only=True)
         if accelerator == _accelerator.ACCELERATOR_CUB:
             # result will be None if the reduction is not compatible with CUB
             result = cub.cub_reduction(
@@ -49,6 +54,11 @@ cdef _ndarray_base _ndarray_min(
         _ndarray_base self, axis, out, dtype, keepdims):
     for accelerator in _accelerator._routine_accelerators:
         result = None
+        if accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE:
+            # result will be None if the reduction is not served by
+            # cuda.compute
+            result = _amin(self, axis=axis, out=out, dtype=dtype,
+                           keepdims=keepdims, cuda_compute_only=True)
         if accelerator == _accelerator.ACCELERATOR_CUB:
             # result will be None if the reduction is not compatible with CUB
             result = cub.cub_reduction(
@@ -68,6 +78,11 @@ cdef _ndarray_base _ndarray_min(
 
 cdef _ndarray_base _ndarray_ptp(_ndarray_base self, axis, out, keepdims):
     for accelerator in _accelerator._routine_accelerators:
+        if accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE:
+            # max and min run their own accelerator dispatch
+            result = _ndarray_max(self, axis, out, None, keepdims)
+            result -= _ndarray_min(self, axis, None, None, keepdims)
+            return result
         if accelerator == _accelerator.ACCELERATOR_CUB:
             # result will be None if the reduction is not compatible with CUB
             result = cub.cub_reduction(
@@ -98,6 +113,13 @@ cdef _ndarray_base _ndarray_ptp(_ndarray_base self, axis, out, keepdims):
 cdef _ndarray_base _ndarray_argmax(
         _ndarray_base self, axis, out, dtype, keepdims):
     for accelerator in _accelerator._routine_accelerators:
+        if accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE:
+            # result will be None if the reduction is not served by
+            # cuda.compute
+            result = _argmax(self, axis=axis, out=out, dtype=dtype,
+                             keepdims=keepdims, cuda_compute_only=True)
+            if result is not None:
+                return result
         if accelerator == _accelerator.ACCELERATOR_CUB:
             # result will be None if the reduction is not compatible with CUB
             if self._f_contiguous and self.dtype == numpy.bool_:
@@ -116,6 +138,13 @@ cdef _ndarray_base _ndarray_argmax(
 cdef _ndarray_base _ndarray_argmin(
         _ndarray_base self, axis, out, dtype, keepdims):
     for accelerator in _accelerator._routine_accelerators:
+        if accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE:
+            # result will be None if the reduction is not served by
+            # cuda.compute
+            result = _argmin(self, axis=axis, out=out, dtype=dtype,
+                             keepdims=keepdims, cuda_compute_only=True)
+            if result is not None:
+                return result
         if accelerator == _accelerator.ACCELERATOR_CUB:
             # result will be None if the reduction is not compatible with CUB
             result = cub.cub_reduction(

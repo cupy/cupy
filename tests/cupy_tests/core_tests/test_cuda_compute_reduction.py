@@ -331,3 +331,33 @@ class TestCudaComputeReductionFallback(CudaComputeReductionTestBase):
         with testing.AssertFunctionIsCalled(
                 func_name, wraps=func, times_called=0):  # disabled
             a.sum()
+
+    @pytest.mark.thread_unsafe(
+        reason="AssertFunctionIsCalled and accelerator mutation.")
+    def test_declined_call_falls_back(self):
+        # cuda.compute declines complex min; accelerators listed after
+        # it must still get the call
+        a_np = (testing.shaped_random((1000,), numpy, dtype='f', seed=0)
+                + 1j).astype('F')
+        a = cupy.asarray(a_np)
+        _accelerator.set_routine_accelerators(['cuda_compute', 'cub'])
+        func = _cuda_compute_reduction._cuda_compute_reduce
+
+        def declines(*args, **kw):
+            ret = func(*args, **kw)
+            assert not ret
+            return ret
+
+        def cub_declines(*args, **kw):
+            return None
+
+        # cuda.compute is tried at its routine-level slot and once more
+        # ahead of the generic kernel
+        with testing.AssertFunctionIsCalled(
+                'cupy._core._cuda_compute_reduction._cuda_compute_reduce',
+                wraps=declines, times_called=2):
+            with testing.AssertFunctionIsCalled(
+                    'cupy.cuda.cub.cub_reduction',
+                    wraps=cub_declines, times_called=1):
+                result = cupy.min(a)
+        assert complex(result) == complex(numpy.min(a_np))

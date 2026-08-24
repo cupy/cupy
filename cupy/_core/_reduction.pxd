@@ -31,7 +31,7 @@ cdef class _AbstractReductionKernel:
         const shape_t& a_shape, axis, dtype,
         bint keepdims, bint reduce_dims, int device_id,
         stream, bint try_use_cub=*, bint try_use_cuda_compute=*,
-        bint sort_reduce_axis=*)
+        bint sort_reduce_axis=*, bint cuda_compute_only=*)
 
     cdef bint _launch(
         self, out_block_num, block_size, block_stride,
