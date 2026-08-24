@@ -54,8 +54,18 @@ def _new_like_order_and_strides(
     if order == 'K' and shape is not None and len(shape) != a.ndim:
         return 'C', None, None
 
-    order = chr(_update_order_char(
-        a.flags.c_contiguous, a.flags.f_contiguous, ord(order)))
+    # Read contiguity without allocating a ``Flags`` object per call: for a
+    # cupy.ndarray the ``readonly`` ``_c_contiguous`` / ``_f_contiguous``
+    # fields are directly readable, whereas ``a.flags`` constructs a new
+    # ``Flags`` object on every access. NumPy prototypes lack those fields,
+    # so use ``a.flags`` there.
+    if isinstance(a, cupy.ndarray):
+        c_contiguous = a._c_contiguous
+        f_contiguous = a._f_contiguous
+    else:
+        c_contiguous = a.flags.c_contiguous
+        f_contiguous = a.flags.f_contiguous
+    order = chr(_update_order_char(c_contiguous, f_contiguous, ord(order)))
 
     if order == 'K':
         strides = _get_strides_for_order_K(a, numpy.dtype(dtype), shape)
