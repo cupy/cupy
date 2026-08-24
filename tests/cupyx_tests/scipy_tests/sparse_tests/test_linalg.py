@@ -1454,6 +1454,44 @@ class TestSplu:
 
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    def test_splu_solve_repeated(self, dtype, xp, sp):
+        # Subsequent solves reuse the cached cusparseSpSM analysis (#8580)
+        # and must agree with scipy just like the first one.
+        a, b = self._make_matrix(dtype, xp, sp)
+        lu = sp.linalg.splu(a)
+        x0 = lu.solve(b)
+        x1 = lu.solve(2 * b)
+        x2 = lu.solve(b - x1)
+        return x0, x1, x2
+
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    def test_splu_solve_trans_interleaved(self, dtype, xp, sp):
+        # Each (factor, trans) pair keeps its own cached analysis; make
+        # sure interleaving them returns correct results throughout.
+        a, b = self._make_matrix(dtype, xp, sp)
+        lu = sp.linalg.splu(a)
+        results = []
+        for trans in ('N', 'T', 'H', 'N', 'T', 'H'):
+            results.append(lu.solve(b + len(results), trans=trans))
+        return results
+
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    def test_splu_solve_rhs_shape_change(self, dtype, xp, sp):
+        # Changing the rhs shape or layout between calls must re-run the
+        # cusparseSpSM analysis, then hit the cache again on the way back.
+        a, b = self._make_matrix(dtype, xp, sp)
+        b1 = b if b.ndim == 2 else b.reshape(-1, 1)
+        b2 = xp.concatenate([b1, 2 * b1], axis=1)
+        lu = sp.linalg.splu(a)
+        x0 = lu.solve(b)
+        x1 = lu.solve(b2)
+        x2 = lu.solve(b)
+        return x0, x1, x2
+
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
     def test_spilu(self, dtype, xp, sp):
         a, b = self._make_matrix(dtype, xp, sp)
         return sp.linalg.spilu(a).solve(b)
