@@ -77,13 +77,22 @@ jobs:
           name: cupy-sdist-${{ inputs.artifact-suffix }}
           path: ${{ runner.temp }}/sdist
 
-      # --strip-components=1 unpacks the sdist's ``cupy-<version>/`` root
-      # over the workspace, merging with the sparse checkout (which contains
-      # only .github/ + ci/ -- disjoint from sdist contents).
-      - name: Unpack sdist into workspace
+      # The sdist unpacks into ./srcpkg/ (a subdirectory, NOT the workspace
+      # root). This keeps the sparse checkout's .git/ + .github/ + ci/
+      # separate from the sdist tree, so cupy_builder/_preflight.py sees a
+      # normal sdist unpack (no .git under source_root -> third_party/
+      # submodules not required). Everything the wheel build touches --
+      # source, mini-CTK, preloads, generated metadata -- lives under
+      # ./srcpkg/, so cibuildwheel's package-dir mount = /project inside
+      # the container is self-contained.
+      # --strip-components=1 drops the sdist's leading ``cupy-<version>/``.
+      # --force-local stops Git Bash's tar on Windows from parsing the
+      # runner-temp drive letter (``D:\a\_temp``) as an SSH ``host:path``.
+      - name: Unpack sdist into ./srcpkg
         run: |
-          tar -xf "${RUNNER_TEMP}/sdist"/cupy-*.tar.gz --strip-components=1
-          ls -lah pyproject.toml setup.py MANIFEST.in cupy cupyx cupy_backends install 2>/dev/null
+          mkdir -p srcpkg
+          tar --force-local -xf "${RUNNER_TEMP}/sdist"/cupy-*.tar.gz -C srcpkg --strip-components=1
+          ls -lah srcpkg/pyproject.toml srcpkg/setup.py srcpkg/MANIFEST.in srcpkg/cupy srcpkg/cupyx srcpkg/cupy_backends srcpkg/install 2>/dev/null
 
       # Linux + free-threaded Python (e.g. 3.14t) blows the ~14 GiB default
       # runner disk during NVCC compilation -- the free-threaded ABI can't share
@@ -184,6 +193,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install tomli_w pyyaml twine
 
+      # mini-CTK stays at workspace root (./cuda_toolkit) -- cibuildwheel
+      # only copies srcpkg/ into /project, so the container reaches it
+      # through the /host mount (see CUDA_PATH in CIBW_ENVIRONMENT_LINUX
+      # below), same pattern the sccache binary already uses.
       - name: Set up mini CTK
         uses: ./.github/actions/fetch_ctk
         continue-on-error: false
@@ -196,33 +209,43 @@ jobs:
         env:
           INSTALL_LIB_ARCH: ${{ (inputs.host-platform == 'linux-aarch64' && 'aarch64') || 'x86_64' }}
         run: |
-          python cupyx/tools/install_library.py \
+          python srcpkg/cupyx/tools/install_library.py \
             --library cutensor --cuda ${{ env.BUILD_CUDA_MAJOR }}.x \
-            --arch "${INSTALL_LIB_ARCH}" --prefix ./preloads --action install
+            --arch "${INSTALL_LIB_ARCH}" --prefix ./srcpkg/preloads --action install
 
       - name: Install NCCL preload (Linux only)
         if: ${{ startsWith(inputs.host-platform, 'linux-') }}
         env:
           INSTALL_LIB_ARCH: ${{ (inputs.host-platform == 'linux-aarch64' && 'aarch64') || 'x86_64' }}
         run: |
-          python cupyx/tools/install_library.py \
+          python srcpkg/cupyx/tools/install_library.py \
             --library nccl --cuda ${{ env.BUILD_CUDA_MAJOR }}.x \
-            --arch "${INSTALL_LIB_ARCH}" --prefix ./preloads --action install
+            --arch "${INSTALL_LIB_ARCH}" --prefix ./srcpkg/preloads --action install
 
-      # --root-prefix /project re-anchors the emitted CUPY_INCLUDE_PATH /
-      # CUPY_LIBRARY_PATH under cibuildwheel's manylinux container mount;
-      # Windows builds run natively (no container) so the host paths are
-      # used verbatim -- hence the linux-only flag.
+      # --source-root ./srcpkg points prepare_wheel_build.py at the
+      # unpacked sdist tree so it rewrites srcpkg/pyproject.toml (not
+      # the sparse checkout at workspace root). --root-prefix
+      # /project/srcpkg re-anchors the emitted CUPY_INCLUDE_PATH /
+      # CUPY_LIBRARY_PATH / CUPY_INSTALL_LONG_DESCRIPTION /
+      # CUPY_INSTALL_WHEEL_METADATA to the in-container location:
+      # cibuildwheel copies the ENTIRE workspace to /project, then
+      # invokes `python -m build /project/srcpkg`, so srcpkg is at
+      # /project/srcpkg inside the container. Windows builds run
+      # natively (no container) so the host paths are used verbatim --
+      # hence the linux-only flag.
       - name: Prepare wheel build
         run: |
           python ci/tools/prepare_wheel_build.py \
             --cuda-major ${{ env.BUILD_CUDA_MAJOR }} \
             --host-platform ${{ inputs.host-platform }} \
-            ${{ startsWith(inputs.host-platform, 'linux-') && '--root-prefix /project' || '' }} >> "$GITHUB_ENV"
+            --source-root ./srcpkg \
+            --preload-dir ./srcpkg/preloads \
+            ${{ startsWith(inputs.host-platform, 'linux-') && '--root-prefix /project/srcpkg' || '' }} >> "$GITHUB_ENV"
 
       - name: Build cupy-cuda${{ env.BUILD_CUDA_MAJOR }}x wheel
         uses: pypa/cibuildwheel@8d2b08b68458a16aeb24b64e68a09ab1c8e82084  # v3.4.1
         with:
+          package-dir: ./srcpkg
           output-dir: wheelhouse
         env:
           CIBW_BUILD: ${{ env.CIBW_BUILD }}
@@ -243,11 +266,11 @@ jobs:
           # define a platform block, so keep shared variables duplicated in
           # BOTH platform blocks below.
           CIBW_ENVIRONMENT_LINUX: >
-            CUDA_PATH=/project/cuda_toolkit
-            LIBRARY_PATH=/project/cuda_toolkit/lib64/stubs
+            CUDA_PATH=/host/${{ github.workspace }}/cuda_toolkit
+            LIBRARY_PATH=/host/${{ github.workspace }}/cuda_toolkit/lib64/stubs
             CC="/host/${{ env.SCCACHE_PATH }} cc"
             CXX="/host/${{ env.SCCACHE_PATH }} c++"
-            NVCC="/host/${{ env.SCCACHE_PATH }} /project/cuda_toolkit/bin/nvcc"
+            NVCC="/host/${{ env.SCCACHE_PATH }} /host/${{ github.workspace }}/cuda_toolkit/bin/nvcc"
             SCCACHE_GHA_ENABLED=true
             ACTIONS_RUNTIME_TOKEN=${{ env.ACTIONS_RUNTIME_TOKEN }}
             ACTIONS_RUNTIME_URL=${{ env.ACTIONS_RUNTIME_URL }}
