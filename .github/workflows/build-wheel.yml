@@ -192,15 +192,13 @@ jobs:
           cuda-version: ${{ inputs.cuda-version }}
           cuda-components: "cuda_nvcc,cuda_cudart,cuda_crt,cuda_cuxxfilt,libnvvm,cuda_nvrtc,cuda_nvtx,cuda_profiler_api,cuda_cccl,libnvjitlink,libcublas,libcufft,libcurand,libcusparse,libcusolver"
 
-      # cuTENSOR redist ships linux-x86_64, windows-x86_64 only; there is no
-      # linux-sbsa asset, so the linux-aarch64 wheel skips it and preloads
-      # NCCL only (matches cupy-release-tools' historical aarch64 config).
       - name: Install cuTENSOR preload
-        if: ${{ inputs.host-platform != 'linux-aarch64' }}
+        env:
+          INSTALL_LIB_ARCH: ${{ (inputs.host-platform == 'linux-aarch64' && 'aarch64') || 'x86_64' }}
         run: |
           python cupyx/tools/install_library.py \
             --library cutensor --cuda ${{ env.BUILD_CUDA_MAJOR }}.x \
-            --arch x86_64 --prefix ./preloads --action install
+            --arch "${INSTALL_LIB_ARCH}" --prefix ./preloads --action install
 
       - name: Install NCCL preload (Linux only)
         if: ${{ startsWith(inputs.host-platform, 'linux-') }}

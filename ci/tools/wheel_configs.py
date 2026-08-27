@@ -15,18 +15,16 @@ WHEEL_PACKAGE_NAMES: dict[str, str] = {
 }
 
 # Preload libraries to bundle metadata for, by host platform per CTK major.
-# Matches what ``cupyx/tools/install_library.py`` can download. cuTENSOR's
-# NVIDIA redist has no Linux SBSA build, so linux-aarch64 gets NCCL only
-# (mirrors cupy-release-tools' historical dist_config.py aarch64 lines).
+# Matches what ``cupyx/tools/install_library.py`` can download.
 PRELOAD_LIBRARIES: dict[str, dict[str, tuple[str, ...]]] = {
     "12": {
         "linux-64": ("cutensor", "nccl"),
-        "linux-aarch64": ("nccl",),
+        "linux-aarch64": ("cutensor", "nccl"),
         "win-64": ("cutensor",),
     },
     "13": {
         "linux-64": ("cutensor", "nccl"),
-        "linux-aarch64": ("nccl",),
+        "linux-aarch64": ("cutensor", "nccl"),
         "win-64": ("cutensor",),
     },
 }
