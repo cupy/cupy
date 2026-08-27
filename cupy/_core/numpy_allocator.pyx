@@ -64,12 +64,20 @@ ELSE:
 cdef const int ALIGNMENT = 512
 
 
+cdef inline size_t _align_size(size_t size) noexcept nogil:
+    # POSIX aligned_alloc requires size to be a multiple of alignment.
+    if size == 0:
+        size = 1
+    return (size + <size_t>ALIGNMENT - 1) & ~(<size_t>ALIGNMENT - 1)
+
+
 cdef public void* _calloc(size_t nmemb, size_t size) noexcept nogil:
     errno.errno = 0
-    cdef void* buf = aligned_alloc(ALIGNMENT, nmemb * size)
+    cdef size_t nbytes = nmemb * size
+    cdef void* buf = aligned_alloc(ALIGNMENT, _align_size(nbytes))
     if buf and errno.errno == 0:
-        hint_hugepages(buf, nmemb * size)
-        buf = memset(buf, 0, nmemb * size)
+        hint_hugepages(buf, nbytes)
+        buf = memset(buf, 0, nbytes)
 
     return buf
 
@@ -78,14 +86,16 @@ cdef public void* _malloc(size_t size) noexcept nogil:
     cdef void *buf
     errno.errno = 0
     # TODO: Use madvise hugepages (for larger allocations at least)
-    buf = aligned_alloc(ALIGNMENT, size)
-    hint_hugepages(buf, size)
+    buf = aligned_alloc(ALIGNMENT, _align_size(size))
+    if buf:
+        hint_hugepages(buf, size)
     return buf
 
 
 @cython.cdivision(True)
 cdef public void* _realloc(void *ptr, size_t size) noexcept nogil:
     errno.errno = 0
+    size = _align_size(size)
     cdef void* buf = stdlib.realloc(ptr, size)
     cdef void* tmp
 
@@ -136,6 +146,10 @@ cdef void* _malloc_managed(void *ctx, size_t size) noexcept:
         mem = memory.malloc_managed(size)
     except MemoryError as e:
         # don't print out memory error, it adds nothing?
+        return NULL
+    except:  # noqa: E722
+        # noexcept would ensure this, but let's be explicit
+        cpython.PyErr_WriteUnraisable("CuPy malloc_managed")
         return NULL
 
     # TODO: Should managed memory also use hint_hugepages?
@@ -227,7 +241,7 @@ cdef array_uses_cupy_allocator(cnp.ndarray arr):
 cdef class CuPyNumPyAllocator:
     cdef object _handler
     cdef object _prev_handler
-    cdef object kind
+    cdef readonly str kind
 
     def __cinit__(self, kind=None):
         """Initialize the NumPy allcator.

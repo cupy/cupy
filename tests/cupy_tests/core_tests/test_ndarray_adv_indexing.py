@@ -39,7 +39,7 @@ class TestArrayAdvancedIndexingGetitemPerm:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
-    def test_adv_getitem(self, xp=numpy, dtype=None):
+    def test_adv_getitem(self, xp, dtype):
         a = testing.shaped_arange(self.shape, xp, dtype)
         return a[self.indexes]
 

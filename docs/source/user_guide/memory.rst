@@ -226,8 +226,11 @@ To activate this capability, currently you should:
     with CuPyNumPyAllocator():
         # NumPy code creating NumPy arrays.
 
-With this setup change, all the data movement APIs such as :meth:`~cupy.ndarray.get()`, :func:`~cupy.asnumpy`  and
-:func:`~cupy.asarray` become no-op (no copy is done), and the following code is accelerated:
+NumPy stores the handler in a context variable, so :meth:`~cupy._core.numpy_allocator.CuPyNumPyAllocator.use`
+applies to the current context and is currently not inherited by worker threads (except on free-threaded Python).
+
+With this setup change, :func:`~cupy.asarray` can wrap the NumPy buffer without an H2D copy, and the following
+code is accelerated:
 
 .. code-block:: py
 
@@ -243,10 +246,10 @@ the *execution* space (whether the code should run on CPU or GPU).
 Apart from the setup configuration for NumPy/CuPy, no user code change is required.
 
 You may also set the environment variable ``CUPY_ENABLE_UMP=1`` to relax checks further.
-CuPy will accept NumPy arrays not strictly backed by it's own allocator as well as support
+CuPy will accept NumPy arrays not strictly backed by its own allocator as well as support
 system memory allocations in ``UnownedMemory``.
 
 **Managed memory:** The above is also possible on systems without HMM support. In this
-case ``CuPyNumPyAllocator()`` defaults to ``CuPyNumPyAllocator("managed")`` backing the
+case ``CuPyNumPyAllocator()`` defaults to ``CuPyNumPyAllocator("managed")``, backing the
 NumPy allocations with managed rather than system memory (otherwise the default is
-``CuPyNumPyAllocator("system")``.
+``CuPyNumPyAllocator("system")``).

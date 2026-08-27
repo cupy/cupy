@@ -1,6 +1,4 @@
 from __future__ import annotations
-import cupy._core.numpy_allocator as ac
-import cupy as cp
 
 import collections
 import os
@@ -73,24 +71,17 @@ def pytest_configure(config):
                 devices = ','.join(devices)
                 os.environ['CUDA_VISIBLE_DEVICES'] = devices
 
+    if int(os.environ.get('CUPY_ENABLE_UMP', '0')) != 0:
+        # After CUDA_VISIBLE_DEVICES rotation so the CUDA context lands on
+        # this xdist worker's GPU. Match the historical UMP fixture: CuPy
+        # draws from a system-malloc pool, NumPy from the aligned system
+        # allocator (not managed).
+        import cupy as cp
+        from cupy._core.numpy_allocator import CuPyNumPyAllocator
 
-if int(os.environ.get('CUPY_ENABLE_UMP', 0)) != 0:
-    # Make sure malloc is used in a stream-ordered fashion
-    import cupy as cp
-    cp.cuda.set_allocator(cp.cuda.MemoryPool(
-        cp.cuda.memory.malloc_system).malloc)
-
-    import cupy._core.numpy_allocator as ac
-    import numpy_allocator
-    import ctypes
-    lib = ctypes.CDLL(ac.__file__)
-
-    class my_allocator(metaclass=numpy_allocator.type):
-        _calloc_ = ctypes.addressof(lib._calloc)
-        _malloc_ = ctypes.addressof(lib._malloc)
-        _realloc_ = ctypes.addressof(lib._realloc)
-        _free_ = ctypes.addressof(lib._free)
-    my_allocator.__enter__()
+        cp.cuda.set_allocator(cp.cuda.MemoryPool(
+            cp.cuda.memory.malloc_system).malloc)
+        CuPyNumPyAllocator("system").use()
 
 
 if int(os.environ.get('CUPY_CI_ENABLE_GCP_KERNEL_CACHE', 0)) != 0:
@@ -148,11 +139,3 @@ if int(os.environ.get('CUPY_TEST_RANDOM_SUBSAMPLE', '0')):
                         kwargs['strict'] = False
                         node.own_markers[i] = pytest.mark.xfail(
                             *marker.args, **kwargs).mark
-
-
-# TODO(seberg): Just for testing during development, remove again!
-cp.cuda.set_allocator(cp.cuda.MemoryPool(
-    cp.cuda.memory.malloc_managed).malloc)
-
-
-ac.CuPyNumPyAllocator("managed").use()
