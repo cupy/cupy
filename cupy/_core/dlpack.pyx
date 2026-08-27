@@ -262,6 +262,7 @@ cdef object _toDlpack(
 
     # Fill in the shape and strides information (depends on GPU vs CPU array).
     # (assumes strides are a multiple of itemsize, that should be OK for cupy.)
+    cdef itemsize = <int64_t>dtype_itemsize
     if owner is array:
         dl_tensor.data = <void *><intptr_t>(array.data.ptr)
 
@@ -269,8 +270,7 @@ cdef object _toDlpack(
             shape_strides[n] = array._shape[n]
 
         for n in range(ndim):
-            shape_strides[n + ndim] = (
-                array._strides[n] // <int64_t>dtype_itemsize)
+            shape_strides[n + ndim] = array._strides[n] // itemsize
     else:
         # Same as above, but we got a NumPy array, so go through Python
         # in the off-chance that the copy has changed the strides.
@@ -282,8 +282,7 @@ cdef object _toDlpack(
             shape_strides[n] = shape[n]
 
         for n in range(ndim):
-            shape_strides[n + ndim] = (
-                strides[n] // <int64_t>dtype_itemsize)
+            shape_strides[n + ndim] = strides[n] // itemsize
 
     return capsule
 

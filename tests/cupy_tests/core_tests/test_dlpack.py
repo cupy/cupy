@@ -355,7 +355,8 @@ class TestDLTensorMemory:
 
 class TestDLTensorContent:
     @pytest.fixture(scope='class')
-    def configure(self):
+    @classmethod
+    def configure(cls):
         arr = _gen_array("uint32")
         arr_flip = cupy.transpose(cupy.flip(arr, axis=1), (1, 0))
         info = _inspect_dlpack(arr_flip.__dlpack__())
