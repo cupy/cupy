@@ -209,20 +209,16 @@ jobs:
             --library nccl --cuda ${{ env.BUILD_CUDA_MAJOR }}.x \
             --arch "${INSTALL_LIB_ARCH}" --prefix ./preloads --action install
 
-      - name: Prepare wheel build (Linux)
-        if: ${{ startsWith(inputs.host-platform, 'linux-') }}
+      # --root-prefix /project re-anchors the emitted CUPY_INCLUDE_PATH /
+      # CUPY_LIBRARY_PATH under cibuildwheel's manylinux container mount;
+      # Windows builds run natively (no container) so the host paths are
+      # used verbatim -- hence the linux-only flag.
+      - name: Prepare wheel build
         run: |
           python ci/tools/prepare_wheel_build.py \
             --cuda-major ${{ env.BUILD_CUDA_MAJOR }} \
             --host-platform ${{ inputs.host-platform }} \
-            --root-prefix /project >> "$GITHUB_ENV"
-
-      - name: Prepare wheel build (Windows)
-        if: ${{ inputs.host-platform == 'win-64' }}
-        run: |
-          python ci/tools/prepare_wheel_build.py \
-            --cuda-major ${{ env.BUILD_CUDA_MAJOR }} \
-            --host-platform win-64 >> "$GITHUB_ENV"
+            ${{ startsWith(inputs.host-platform, 'linux-') && '--root-prefix /project' || '' }} >> "$GITHUB_ENV"
 
       - name: Build cupy-cuda${{ env.BUILD_CUDA_MAJOR }}x wheel
         uses: pypa/cibuildwheel@8d2b08b68458a16aeb24b64e68a09ab1c8e82084  # v3.4.1
