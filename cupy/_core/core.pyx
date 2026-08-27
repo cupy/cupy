@@ -3346,39 +3346,94 @@ cdef _ndarray_base _ndarray_init(
     return ret
 
 
-cpdef _ndarray_base _empty_like_fast(
-        _ndarray_base prototype, dtype, order):
-    """Fast path for ``empty_like`` when the result is plain C/F-contiguous.
+cpdef _ndarray_base empty_like(
+        prototype, dtype=None, order='K', subok=None, shape=None):
+    """Returns a new array with same shape and dtype of a given array.
 
-    Resolves ``order`` against the prototype's contiguity here (reading the
-    ``readonly`` ``_c_contiguous`` / ``_f_contiguous`` fields directly, i.e.
-    without allocating a ``Flags`` object per call) and returns ``None`` to
-    request the general fallback whenever that is not layout-equivalent to
-    the full path -- non-str/invalid ``order``, or ``order='K'``/``'A'`` on a
-    non-contiguous prototype that needs computed strides.
+    This function currently does not support ``subok`` option.
+
+    Args:
+        a (cupy.ndarray): Base array.
+        dtype (data-type, optional): Data type specifier.
+            The data type of ``a`` is used by default.
+        order ({'C', 'F', 'A', or 'K'}): Overrides the memory layout of the
+            result. ``'C'`` means C-order, ``'F'`` means F-order, ``'A'`` means
+            ``'F'`` if ``a`` is Fortran contiguous, ``'C'`` otherwise.
+            ``'K'`` means match the layout of ``a`` as closely as possible.
+        subok: Not supported yet, must be None.
+        shape (int or tuple of ints): Overrides the shape of the result. If
+            ``order='K'`` and the number of dimensions is unchanged, will try
+            to keep order, otherwise, ``order='C'`` is implied.
+
+    Returns:
+        cupy.ndarray: A new array with same shape and dtype of ``a`` with
+        elements not initialized.
+
+    .. seealso:: :func:`numpy.empty_like`
+
     """
     cdef int order_char
-    if not isinstance(order, str):
-        return None
-    order = order.upper()
-    if order == 'C':
+    cdef _ndarray_base a
+    cdef strides_t strides_v
+    cdef Py_ssize_t size, i
+    cdef memory.MemoryPointer memptr
+
+    if subok is not None:
+        raise TypeError('subok is not supported yet')
+
+    # Convert array-likes (e.g. __cuda_array_interface__) to a cupy
+    # ndarray; anything not cupy-like (NumPy arrays, lists, scalars,
+    # ...) is materialized via cupy.asarray.  This matches the previous
+    # Python implementation, which fell through to the general
+    # cupy.ndarray(...) constructor for non-cupy prototypes.
+    a = _convert_from_cupy_like(prototype, error=False)
+    if a is None:
+        a = array(prototype, dtype=None, copy=None, order='K')
+        # `array` already applied the dtype default; honor an explicit one
+        # only if the caller passed it.
+        if dtype is None:
+            dtype = a.dtype
+    elif dtype is None:
+        dtype = a.dtype
+
+    order_char = internal._normalize_order(order)
+
+    if numpy.isscalar(shape):
+        shape = (shape,)
+
+    # Fallback to c_contiguous if order='K' and the number of dimensions
+    # of the new shape mismatches the prototype's.
+    if (order_char == b'K' and shape is not None
+            and len(shape) != a._shape.size()):
         order_char = b'C'
-    elif order == 'F':
-        order_char = b'F'
-    elif order == 'A':
-        order_char = b'A'
-    elif order == 'K':
-        order_char = b'K'
-    else:
-        return None
+
     order_char = internal._update_order_char(
-        prototype._c_contiguous, prototype._f_contiguous, order_char)
-    if order_char != b'C' and order_char != b'F':
-        return None
-    if dtype is None:
-        dtype = prototype.dtype
-    return _ndarray_init(
-        ndarray, prototype._shape, dtype, None, order_char == b'C')
+        a._c_contiguous, a._f_contiguous, order_char)
+
+    if order_char == b'K':
+        # Non-contiguous prototype with order='K'/'A': compute NumPy-style
+        # strides and allocate a buffer that fits them.
+        strides_v = internal._get_strides_for_order_K(
+            a, numpy.dtype(dtype), shape)
+        if shape is not None:
+            size = 1
+            for i in shape:
+                size *= i
+        else:
+            size = a.size
+        memptr = cupy.empty(size, dtype=dtype).data
+        if shape is None:
+            shape = a.shape
+        return ndarray(shape, dtype, memptr, strides_v, 'C')
+
+    # order_char is now 'C' or 'F'.  When no shape override is requested, reuse
+    # the internal fast constructor that kernels use for output buffers (it
+    # copies prototype._shape and skips the general ndarray._init path).
+    if shape is None:
+        return _ndarray_init(
+            ndarray, a._shape, dtype, None, order_char == b'C')
+
+    return ndarray(shape, dtype, order=('C' if order_char == b'C' else 'F'))
 
 
 cdef _ndarray_base _create_ndarray_from_shape_strides(
