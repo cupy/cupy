@@ -15,15 +15,19 @@ WHEEL_PACKAGE_NAMES: dict[str, str] = {
 }
 
 # Preload libraries to bundle metadata for, by host platform per CTK major.
-# Matches what ``cupyx/tools/install_library.py`` can download.
+# Matches what ``cupyx/tools/install_library.py`` can download. cuTENSOR's
+# NVIDIA redist has no Linux SBSA build, so linux-aarch64 gets NCCL only
+# (mirrors cupy-release-tools' historical dist_config.py aarch64 lines).
 PRELOAD_LIBRARIES: dict[str, dict[str, tuple[str, ...]]] = {
     "12": {
-        "linux": ("cutensor", "nccl"),
-        "win": ("cutensor",),
+        "linux-64": ("cutensor", "nccl"),
+        "linux-aarch64": ("nccl",),
+        "win-64": ("cutensor",),
     },
     "13": {
-        "linux": ("cutensor", "nccl"),
-        "win": ("cutensor",),
+        "linux-64": ("cutensor", "nccl"),
+        "linux-aarch64": ("nccl",),
+        "win-64": ("cutensor",),
     },
 }
 
@@ -47,4 +51,16 @@ Alternatively, you can install this package together with all needed CUDA compon
    $ pip install cupy-cuda{wheel_suffix}[ctk]
 
 If you have another version of CUDA, or want to build from source, refer to the `Installation Guide <https://docs.cupy.dev/en/latest/install.html>`_ for instructions.
+"""
+
+SDIST_LONG_DESCRIPTION: str = _LONG_DESCRIPTION_HEADER + """\
+This package (``cupy``) is a source distribution.
+For most users, use of pre-build wheel distributions are recommended:
+
+- `cupy-cuda13x <https://pypi.org/project/cupy-cuda13x/>`_ (for NVIDIA CUDA 13.x)
+- `cupy-cuda12x <https://pypi.org/project/cupy-cuda12x/>`_ (for NVIDIA CUDA 12.x)
+
+- `cupy-rocm-7-0 <https://pypi.org/project/cupy-rocm-7-0/>`_ (for AMD ROCm 7.0)
+
+Please see `Installation Guide <https://docs.cupy.dev/en/latest/install.html>`_ for the detailed instructions.
 """

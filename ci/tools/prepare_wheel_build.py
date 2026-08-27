@@ -19,7 +19,7 @@ Local reproduction::
 
     python cupyx/tools/install_library.py --library cutensor --cuda 13.x --arch x86_64 --prefix ./preloads --action install
     python cupyx/tools/install_library.py --library nccl     --cuda 13.x --arch x86_64 --prefix ./preloads --action install
-    python ci/tools/prepare_wheel_build.py --cuda-major 13 --host-platform linux >> .env
+    python ci/tools/prepare_wheel_build.py --cuda-major 13 --host-platform linux-64 >> .env
     set -a; . ./.env; set +a
     pip wheel .
 """
@@ -72,8 +72,9 @@ def write_long_description(cuda_major: str) -> Path:
 
 def generate_wheel_metadata(cuda_major: str, host_platform: str) -> Path:
     target_system = {
-        "linux": "Linux:x86_64",
-        "win": "Windows:x86_64",
+        "linux-64": "Linux:x86_64",
+        "linux-aarch64": "Linux:aarch64",
+        "win-64": "Windows:x86_64",
     }[host_platform]
 
     libraries = PRELOAD_LIBRARIES[cuda_major][host_platform]
@@ -139,8 +140,9 @@ def main(argv: list[str] | None = None) -> int:
         "--cuda-major", required=True, choices=sorted(WHEEL_PACKAGE_NAMES),
     )
     parser.add_argument(
-        "--host-platform", required=True, choices=("linux", "win"),
-        help="Build host: linux = Linux x86_64, win = Windows x86_64.",
+        "--host-platform", required=True,
+        choices=("linux-64", "linux-aarch64", "win-64"),
+        help="Build host: linux-64 = Linux x86_64, linux-aarch64 = Linux ARM64, win-64 = Windows x86_64.",
     )
     parser.add_argument(
         "--preload-dir", type=Path, default=Path("./preloads"),
@@ -163,7 +165,7 @@ def main(argv: list[str] | None = None) -> int:
         args.preload_dir, args.cuda_major, args.host_platform,
     )
 
-    sep = ";" if args.host_platform == "win" else ":"
+    sep = ";" if args.host_platform == "win-64" else ":"
     env_lines = [
         "CUPY_INSTALL_NO_RPATH=1",
         f"CUPY_INSTALL_LONG_DESCRIPTION={_apply_prefix(description_path, args.root_prefix)}",
