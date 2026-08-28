@@ -366,7 +366,6 @@
   cuda-python: null
   nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
-  env:CUPY_CI_PYTEST_EXTRA_OPTS: "--junit-xml=/tmp/cupy_junit/junit.xml"
   test: "unit"
 
 # CUDA 13.2 (Multi-GPU) | Linux
@@ -375,7 +374,6 @@
   tags: ["@push", "full", "multi", "linux", "cuda132"]
   target: "cuda132.multi"
   mpi4py: "4"
-  env:CUPY_CI_PYTEST_EXTRA_OPTS: null
   test: "unit-multi"
 
 # CUDA 13.3 | Linux
@@ -400,6 +398,7 @@
   cuda-python: null
   nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
+  env:CUPY_CI_PYTEST_EXTRA_OPTS: "--junit-xml=/tmp/cupy_junit/junit.xml"
   test: "unit"
 
 # CUDA 13.3 (Multi-GPU) | Linux
@@ -408,6 +407,7 @@
   tags: ["@push", "full", "mini", "multi", "linux", "cuda133"]
   target: "cuda133.multi"
   mpi4py: "4"
+  env:CUPY_CI_PYTEST_EXTRA_OPTS: null
   test: "unit-multi"
 
 # CUDA 13.x + Python 3.14 free-threaded | Linux
