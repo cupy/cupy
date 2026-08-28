@@ -286,7 +286,7 @@
   target: "cuda130"
   tags: ["@push", "full", "mini", "linux", "cuda130"]
   system: "linux"
-  os: "ubuntu:22.04"
+  os: "ubuntu:24.04"
   cuda: "13.0"
   rocm: null
   nccl: "2.28"
@@ -317,7 +317,7 @@
   target: "cuda131"
   tags: ["@push", "full", "linux", "cuda131"]
   system: "linux"
-  os: "ubuntu:22.04"
+  os: "ubuntu:24.04"
   cuda: "13.1"
   rocm: null
   nccl: "2.28"
@@ -348,7 +348,7 @@
   target: "cuda132"
   tags: ["@push", "full", "linux", "cuda132"]
   system: "linux"
-  os: "ubuntu:22.04"
+  os: "ubuntu:24.04"
   cuda: "13.2"
   rocm: null
   nccl: "2.29"
@@ -380,7 +380,7 @@
   target: "cuda133"
   tags: ["@push", "full", "mini", "linux", "cuda133"]
   system: "linux"
-  os: "ubuntu:22.04"
+  os: "ubuntu:24.04"
   cuda: "13.3"
   rocm: null
   nccl: "2.30"
@@ -587,7 +587,7 @@
   wheel: false
   tags: ["@push", "full", "mini", "linux", "cuda-python"]
   system: "linux"
-  os: "ubuntu:22.04"
+  os: "ubuntu:24.04"
   cuda: "13.3"
   rocm: null
   nccl: "2.30"
