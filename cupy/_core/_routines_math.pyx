@@ -1023,6 +1023,8 @@ inline __device__ T complex_power(T in0, T in1) {
 }
 '''
 
+# NOTE(seberg): There is a __pow__ fastpath for python int/floats which
+# assumes (for floats) that power promotion is just result_type(x, y).
 _power = create_ufunc(
     'cupy_power',
     ('??->b', 'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',

@@ -156,8 +156,34 @@ main() {
       if [[ "${PULL_REQUEST:-}" != "" ]]; then
         docker_args+=(--env "PULL_REQUEST=${PULL_REQUEST}")
       fi
+      # actions/fetch-wheel.sh resolves the tested commit from these FlexCI
+      # env vars (PR builds set FLEXCI_REFERENCE_COMMIT_ID; push builds set
+      # FLEXCI_COMMIT_ID), so forward whichever is set into the container.
+      if [[ -n "${FLEXCI_REFERENCE_COMMIT_ID:-}" ]]; then
+        docker_args+=(--env "FLEXCI_REFERENCE_COMMIT_ID=${FLEXCI_REFERENCE_COMMIT_ID}")
+      fi
+      if [[ -n "${FLEXCI_COMMIT_ID:-}" ]]; then
+        docker_args+=(--env "FLEXCI_COMMIT_ID=${FLEXCI_COMMIT_ID}")
+      fi
       if [[ "${GPU:-}" != "" ]]; then
         docker_args+=(--env "GPU=${GPU}")
+      fi
+      if [[ -n "${CUPY_CI_GITHUB_TOKEN+x}" ]]; then
+        # Hand the token to actions/fetch-wheel.sh via a mounted file rather
+        # than an env var, so it never appears in the container's `env` dump.
+        # Write it with xtrace off so the value never reaches run.sh's trace
+        # log either. The mount is writable so fetch-wheel.sh can delete the
+        # file right after the fetch (before the PR-controlled test scripts
+        # run); the host copy is removed when run.sh exits.
+        set +x
+        token_dir="$(mktemp -d)"
+        printf '%s' "${CUPY_CI_GITHUB_TOKEN}" > "${token_dir}/token"
+        trap 'rm -rf "${token_dir:-}"' EXIT
+        set -x
+        docker_args+=(
+          --volume="${token_dir}:/run/secrets/cupy-ci"
+          --env "CUPY_CI_GITHUB_TOKEN_FILE=/run/secrets/cupy-ci/token"
+        )
       fi
       if [[ "${TARGET}" == *rocm* ]]; then
         docker_args+=(--device=/dev/kfd --device=/dev/dri)

@@ -18,6 +18,9 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
 
 ENV PATH "/usr/lib/ccache:${PATH}"
 
+RUN curl -fsSL https://github.com/cli/cli/releases/download/v2.95.0/gh_2.95.0_linux_amd64.tar.gz \
+        | tar -xz -C /usr/local --strip-components=1 gh_2.95.0_linux_amd64/bin/gh
+
 ENV CUPY_INCLUDE_PATH=/usr/include/libcutensor/13:${CUPY_INCLUDE_PATH}
 ENV CUPY_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/libcutensor/13:${CUPY_LIBRARY_PATH}
 ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/libcutensor/13:${LD_LIBRARY_PATH}
@@ -27,13 +30,13 @@ ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/libcusparseLt/13:${LD_LIBRARY_PATH
 RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
-RUN pyenv install 3.14.0 && \
-    pyenv global 3.14.0 && \
+RUN pyenv install 3.14.6 && \
+    pyenv global 3.14.6 && \
     pip install -U setuptools pip wheel && \
     pip install -U google-cloud-storage
 
 RUN pip install -U 'numpy==2.4.*' 'scipy==1.16.*' 'optuna==4.*' 'ml_dtypes==0.5.*' 'cython==3.2.*,!=3.2.6'
-RUN pip uninstall -y mpi4py cuda-python && \
+RUN pip uninstall -y mpi4py cuda-python nvmath-python && \
     pip check
 
 RUN mkdir /home/cupy-user && chmod 777 /home/cupy-user
