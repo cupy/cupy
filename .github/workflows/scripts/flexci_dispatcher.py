@@ -164,6 +164,11 @@ def parse_args(argv: Any) -> Any:
     parser.add_argument(
         '--external-tag', action='append', default=[],
         help='Test tags to be ignored by FlexCI Dispatcher')
+    parser.add_argument(
+        '--override-tags', type=str, default=None,
+        help='Comma-separated tag set to dispatch, replacing the tags derived '
+             'from the event. Intended for scheduled runs (e.g. ci-nightly.yml '
+             'passes "@nightly" to fire the nightly-only project set).')
     return parser.parse_args(argv[1:])
 
 
@@ -233,6 +238,12 @@ def main(argv: Any) -> int:
         _log(f'Invalid event name: {event_name}')
         return 1
 
+    if options.override_tags is not None:
+        requested_tags = {
+            t.strip() for t in options.override_tags.split(',') if t.strip()
+        }
+        _log(f'Overriding requested tags to: {requested_tags}')
+
     projects_dispatch: set[str] = set()
     projects_skip: set[str] = set()
     for project, tags in project_tags.items():
@@ -262,8 +273,17 @@ def main(argv: Any) -> int:
             _log('Failed to dispatch')
             return 1
 
+    # On push events, do NOT post a synthetic "Skipped" status for projects
+    # that are not dispatched by this run: main-HEAD is what ci-nightly.yml
+    # rehydrates for the wider set, and the merge-commit's checks tab should
+    # show real coverage (or nothing) rather than a misleading "Skipped" line
+    # for every non-mini lane. `_fill_commit_status` still runs to set the
+    # dashboard link and to preserve any pre-existing statuses on the SHA.
+    # /test (issue_comment) keeps the old behavior -- the user asked to run
+    # a specific subset and Skipped is a legit signal for the rest.
+    status_projects = set() if event_name == 'push' else projects_skip
     _fill_commit_status(
-        event_name, payload, github_token, projects_skip, force_skip,
+        event_name, payload, github_token, status_projects, force_skip,
         options.flexci_context, options.flexci_uri)
 
     return 0

@@ -1,0 +1,97 @@
+name: "Nightly CI"
+
+# Fires the wider FlexCI matrix (projects tagged @nightly in
+# .pfnci/matrix.yaml) once a day against main HEAD. On merge, ci.yml's
+# dispatch-flexci job fires only the @push subset (the 17 mini lanes: newest
+# and oldest CUDA per major, plus the multi/example/py314t entries); this
+# workflow fills in the rest (the middle-CUDA duplicates + cuda-rapids) so
+# that a nightly SHA on main gets full-matrix coverage without every merge
+# commit spawning a 45-lane queue.
+#
+# The dispatcher expects a GitHub push webhook payload; we synthesize one
+# for main HEAD and pass it to flexci_dispatcher.py with
+# `--override-tags @nightly` to replace the tags the dispatcher would
+# otherwise derive from the event.
+#
+# No wheels are rebuilt: FlexCI's fetch-wheel.sh finds the artifacts the
+# original merge-commit's ci.yml run uploaded (producer-pinned by SHA +
+# event=push), so this workflow is purely a dispatch.
+
+on:
+  schedule:
+    # 02:00 UTC = 21:00 EST / 22:00 EDT ("9pm ET" during winter; drifts 1h
+    # later in summer). GHA cron has no DST awareness.
+    - cron: '0 2 * * *'
+  workflow_dispatch:  # allow manual reruns
+
+# Least privilege: read-only by default; only the dispatch job elevates.
+permissions:
+  contents: read
+
+jobs:
+  dispatch:
+    name: Dispatch nightly FlexCI matrix
+    # Skip on forks: the FlexCI webhook secret and the pfn-public-ci status
+    # context both live on cupy/cupy.
+    if: github.repository_owner == 'cupy'
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read     # actions/checkout
+      statuses: write    # flexci_dispatcher.py commit statuses
+    steps:
+      - name: Checkout main HEAD
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Setup Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: '3.13'
+
+      - name: Setup Environment
+        run: pip install pygithub
+
+      # Synthesize the minimal push-event webhook payload the dispatcher
+      # (and FlexCI on the other end) expects. `after` and `head_commit.id`
+      # are the SHA under test; `repository.full_name` is what
+      # `_fill_commit_status` uses to post commit statuses.
+      - name: Build synthetic push payload for main HEAD
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          HEAD_SHA="$(git rev-parse HEAD)"
+          TIMESTAMP="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          cat > payload.json <<EOF
+          {
+            "ref": "refs/heads/main",
+            "after": "${HEAD_SHA}",
+            "head_commit": {
+              "id": "${HEAD_SHA}",
+              "message": "Nightly CI: fire @nightly matrix against main HEAD",
+              "url": "${RUN_URL}",
+              "timestamp": "${TIMESTAMP}"
+            },
+            "repository": {
+              "full_name": "${GITHUB_REPOSITORY}"
+            },
+            "sender": {
+              "login": "github-actions[bot]"
+            }
+          }
+          EOF
+          cat payload.json
+
+      - name: Dispatch
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          FLEXCI_WEBHOOK_SECRET: ${{ secrets.FLEXCI_WEBHOOK_SECRET }}
+        run: |
+          ./.github/workflows/scripts/flexci_dispatcher.py \
+              --event push \
+              --webhook payload.json \
+              --projects ".pfnci/config.tags.json" \
+              --external-tag jenkins \
+              --external-tag rocm \
+              --override-tags @nightly
