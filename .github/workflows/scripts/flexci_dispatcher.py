@@ -166,9 +166,8 @@ def parse_args(argv: Any) -> Any:
         help='Test tags to be ignored by FlexCI Dispatcher')
     parser.add_argument(
         '--override-tags', type=str, default=None,
-        help='Comma-separated tag set to dispatch, replacing the tags derived '
-             'from the event. Intended for scheduled runs (e.g. ci-nightly.yml '
-             'passes "@nightly" to fire the nightly-only project set).')
+        help='Comma-separated tag set to dispatch, replacing the tags '
+             'derived from the event (used by ci-nightly.yml).')
     return parser.parse_args(argv[1:])
 
 
@@ -273,14 +272,8 @@ def main(argv: Any) -> int:
             _log('Failed to dispatch')
             return 1
 
-    # On push events, do NOT post a synthetic "Skipped" status for projects
-    # that are not dispatched by this run: main-HEAD is what ci-nightly.yml
-    # rehydrates for the wider set, and the merge-commit's checks tab should
-    # show real coverage (or nothing) rather than a misleading "Skipped" line
-    # for every non-mini lane. `_fill_commit_status` still runs to set the
-    # dashboard link and to preserve any pre-existing statuses on the SHA.
-    # /test (issue_comment) keeps the old behavior -- the user asked to run
-    # a specific subset and Skipped is a legit signal for the rest.
+    # Push-time "Skipped" would drown the merge-commit checks tab in noise
+    # for nightly-only lanes; ci-nightly.yml posts real status later.
     status_projects = set() if event_name == 'push' else projects_skip
     _fill_commit_status(
         event_name, payload, github_token, status_projects, force_skip,

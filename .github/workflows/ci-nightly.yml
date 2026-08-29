@@ -1,44 +1,25 @@
 name: "Nightly CI"
 
-# Fires the wider FlexCI matrix (projects tagged @nightly in
-# .pfnci/matrix.yaml) once a day against main HEAD. On merge, ci.yml's
-# dispatch-flexci job fires only the @push subset (the 17 mini lanes: newest
-# and oldest CUDA per major, plus the multi/example/py314t entries); this
-# workflow fills in the rest (the middle-CUDA duplicates + cuda-rapids) so
-# that a nightly SHA on main gets full-matrix coverage without every merge
-# commit spawning a 45-lane queue.
-#
-# The dispatcher expects a GitHub push webhook payload; we synthesize one
-# for main HEAD and pass it to flexci_dispatcher.py with
-# `--override-tags @nightly` to replace the tags the dispatcher would
-# otherwise derive from the event.
-#
-# No wheels are rebuilt: FlexCI's fetch-wheel.sh finds the artifacts the
-# original merge-commit's ci.yml run uploaded (producer-pinned by SHA +
-# event=push), so this workflow is purely a dispatch.
+# Run the "non-mini" pipelines every night.
 
 on:
   schedule:
-    # 02:00 UTC = 21:00 EST / 22:00 EDT ("9pm ET" during winter; drifts 1h
-    # later in summer). GHA cron has no DST awareness.
+    # 02:00 UTC = 21:00 EST / 22:00 EDT
     - cron: '0 2 * * *'
-  workflow_dispatch:  # allow manual reruns
+  workflow_dispatch:
 
-# Least privilege: read-only by default; only the dispatch job elevates.
 permissions:
   contents: read
 
 jobs:
   dispatch:
     name: Dispatch nightly FlexCI matrix
-    # Skip on forks: the FlexCI webhook secret and the pfn-public-ci status
-    # context both live on cupy/cupy.
     if: github.repository_owner == 'cupy'
     runs-on: ubuntu-22.04
     permissions:
-      contents: read     # actions/checkout
-      actions: read      # gh api workflows/ci.yml/runs (SHA resolution)
-      statuses: write    # flexci_dispatcher.py commit statuses
+      contents: read
+      actions: read
+      statuses: write
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
@@ -53,14 +34,8 @@ jobs:
       - name: Setup Environment
         run: pip install pygithub
 
-      # Resolve the newest main SHA whose ci.yml push run finished
-      # successfully -- i.e., a SHA whose wheels are already sitting as
-      # producer-pinned GHA artifacts. Plain "main HEAD" would race a
-      # freshly-merged PR whose wheel build is still running: fetch-wheel.sh
-      # would then hard-fail all FlexCI lanes with "no artifact from a
-      # successful ci.yml run for candidate SHAs: <sha>". Querying the
-      # workflow-runs API by branch+event+status filters race-losing SHAs
-      # out at source.
+      # Newest main SHA whose wheels are already built (avoids racing an
+      # in-flight ci.yml push run whose artifacts aren't up yet).
       - name: Resolve most recent main SHA with successful ci.yml wheels
         id: resolve
         env:
@@ -77,10 +52,6 @@ jobs:
           echo "Resolved SHA: ${HEAD_SHA}"
           echo "sha=${HEAD_SHA}" >> "$GITHUB_OUTPUT"
 
-      # Synthesize the minimal push-event webhook payload the dispatcher
-      # (and FlexCI on the other end) expects. `after` and `head_commit.id`
-      # are the SHA under test; `repository.full_name` is what
-      # `_fill_commit_status` uses to post commit statuses.
       - name: Build synthetic push payload
         env:
           HEAD_SHA: ${{ steps.resolve.outputs.sha }}
