@@ -37,12 +37,12 @@ jobs:
     runs-on: ubuntu-22.04
     permissions:
       contents: read     # actions/checkout
+      actions: read      # gh api workflows/ci.yml/runs (SHA resolution)
       statuses: write    # flexci_dispatcher.py commit statuses
     steps:
-      - name: Checkout main HEAD
+      - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
         with:
-          ref: main
           fetch-depth: 1
 
       - name: Setup Python
@@ -53,15 +53,39 @@ jobs:
       - name: Setup Environment
         run: pip install pygithub
 
+      # Resolve the newest main SHA whose ci.yml push run finished
+      # successfully -- i.e., a SHA whose wheels are already sitting as
+      # producer-pinned GHA artifacts. Plain "main HEAD" would race a
+      # freshly-merged PR whose wheel build is still running: fetch-wheel.sh
+      # would then hard-fail all FlexCI lanes with "no artifact from a
+      # successful ci.yml run for candidate SHAs: <sha>". Querying the
+      # workflow-runs API by branch+event+status filters race-losing SHAs
+      # out at source.
+      - name: Resolve most recent main SHA with successful ci.yml wheels
+        id: resolve
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          HEAD_SHA="$(gh api \
+            "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs?branch=main&event=push&status=success&per_page=1" \
+            --jq '.workflow_runs[0].head_sha // ""')"
+          if [[ -z "${HEAD_SHA}" ]]; then
+            echo "::error::No successful ci.yml push run found on main; refusing to dispatch." >&2
+            exit 1
+          fi
+          echo "Resolved SHA: ${HEAD_SHA}"
+          echo "sha=${HEAD_SHA}" >> "$GITHUB_OUTPUT"
+
       # Synthesize the minimal push-event webhook payload the dispatcher
       # (and FlexCI on the other end) expects. `after` and `head_commit.id`
       # are the SHA under test; `repository.full_name` is what
       # `_fill_commit_status` uses to post commit statuses.
-      - name: Build synthetic push payload for main HEAD
+      - name: Build synthetic push payload
         env:
+          HEAD_SHA: ${{ steps.resolve.outputs.sha }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          HEAD_SHA="$(git rev-parse HEAD)"
           TIMESTAMP="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
           cat > payload.json <<EOF
           {
