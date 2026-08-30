@@ -530,3 +530,39 @@ def matrix_transpose(a):
     if ndim < 2:
         raise ValueError('Matrix dimension is less than 2')
     return a.swapaxes(ndim-1, ndim-2)
+
+
+def diagonal(x, /, *, offset=0):
+    """
+    Returns specified diagonals of a matrix (or a stack of matrices) ``x``.
+
+    This function is Array API compatible, contrary to
+    :py:func:`numpy.diagonal`, the matrix is assumed
+    to be defined by the last two dimensions.
+
+    Parameters
+    ----------
+    x : (...,M,N) array_like
+        Input array having shape (..., M, N) and whose innermost two
+        dimensions form MxN matrices.
+    offset : int, optional
+        Offset specifying the off-diagonal relative to the main diagonal,
+        where::
+
+            * offset = 0: the main diagonal.
+            * offset > 0: off-diagonal above the main diagonal.
+            * offset < 0: off-diagonal below the main diagonal.
+
+    Returns
+    -------
+    out : (...,min(N,M)) ndarray
+        An array containing the diagonals and whose shape is determined by
+        removing the last two dimensions and appending a dimension equal to
+        the size of the resulting diagonals. The returned array must have
+        the same data type as ``x``.
+
+    See Also
+    --------
+    numpy.linalg.diagonal
+    """
+    return x.diagonal(0, -2, -1)
