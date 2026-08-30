@@ -492,6 +492,11 @@ class TestFromData(unittest.TestCase):
         a = xp.ones((), dtype=numpy.float64)
         return xp.ascontiguousarray(a, dtype=numpy.int64)
 
+    def test_ascontiguousarray_none(self):
+        # Test that passing None raises TypeError instead of segfaulting
+        with pytest.raises(TypeError):
+            cupy.ascontiguousarray(None)
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_asarray_from_big_endian(self, xp, dtype):
@@ -540,6 +545,11 @@ class TestFromData(unittest.TestCase):
             self, xp, dtype_a, dtype_b):
         a = xp.ones((), dtype=dtype_a)
         return xp.asfortranarray(a, dtype=dtype_b)
+
+    def test_asfortranarray_none(self):
+        # Test that passing None raises TypeError instead of segfaulting
+        with pytest.raises(TypeError):
+            cupy.asfortranarray(None)
 
     @testing.numpy_cupy_array_equal()
     def test_fromfile(self, xp):
