@@ -4,7 +4,6 @@ import os
 import re
 import shutil
 import tempfile
-import unittest
 
 from cupy import testing
 
@@ -16,7 +15,7 @@ os.environ['MPLBACKEND'] = 'Agg'
 
 @testing.with_requires('matplotlib')
 @testing.with_requires('scipy')
-class TestGMM(unittest.TestCase):
+class TestGMM:
 
     def test_gmm(self):
         output = example_test.run_example('gmm/gmm.py', '--num', '10')

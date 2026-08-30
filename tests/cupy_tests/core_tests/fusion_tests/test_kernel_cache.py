@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import unittest
 from unittest import mock
 
 import numpy
-
 import cupy
+import pytest
+
 from cupy import testing
 
 
@@ -42,7 +42,7 @@ def mock_fusion_history():
     return wrapper
 
 
-class TestFusionCache(unittest.TestCase):
+class TestFusionCache:
 
     @mock_fusion_history()
     def test_same_array(self, xp, m):
@@ -140,7 +140,7 @@ class TestFusionCache(unittest.TestCase):
 
         x = testing.shaped_random((2, 5), xp, 'int32', scale=10, seed=10)
         y = testing.shaped_random((4, 5), xp, 'int32', scale=10, seed=11)
-        with self.assertRaises(ValueError, msg='could not be broadcast'):
+        with pytest.raises(ValueError, match='could not be broadcast'):
             f(x, y)
         m.check_call_count(xp, 4)
 
