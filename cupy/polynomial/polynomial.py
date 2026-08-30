@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import cupy
+from cupy._core import internal
 
 
 def polyvander(x, deg):
@@ -181,3 +182,128 @@ def polyvalfromroots(x, r, tensor=True):
         elif x.ndim >= r.ndim:
             raise ValueError("x.ndim must be < r.ndim when tensor == False")
     return cupy.prod(x - r, axis=0)
+
+
+def polyint(c, m=1, k=[], lbnd=0, scl=1, axis=0):
+    """Integrate a polynomial.
+
+    Returns the polynomial coefficients c integrated m times from
+    lbnd along axis. At each iteration the resulting series is
+    *multiplied* by scl and an integration constant, k, is added.
+    The scaling factor is for use in a linear change of variable.
+
+    Args:
+        c (cupy.ndarray): 1-D array of polynomial coefficients, ordered
+            from low to high.
+        m (int, optional): Order of integration, must be positive.
+            Default is 1.
+        k ({[], list, scalar}, optional): Integration constant(s). The value
+            of the first integral at zero is the first value in the list, the
+            value of the second integral at zero is the second value, etc. If
+            k == [] (the default), all constants are set to zero. If m == 1, a
+            single scalar can be given instead of a list.
+        lbnd (scalar, optional): The lower bound of the integral. Default is 0.
+        scl (scalar, optional): Following each integration the result is
+            multiplied by scl before the integration constant is added.
+            Default is 1.
+        axis (int, optional): Axis over which the integral is taken.
+            Default is 0.
+
+    Returns:
+        cupy.ndarray: Coefficient array of the integral.
+
+    .. seealso:: :func:`numpy.polynomial.polynomial.polyint`
+
+    """
+    import numpy  # Only for iterable function
+
+    c = cupy.array(c, ndmin=1, copy=True)
+    if c.dtype.char in '?bBhHiIlLqQpP':
+        # astype fails with NA
+        c = c + 0.0
+    cdt = c.dtype
+    if not numpy.iterable(k):
+        k = [k]
+    cnt = cupy.polynomial.polyutils._as_int(m, "the order of integration")
+    iaxis = cupy.polynomial.polyutils._as_int(axis, "the axis")
+    if cnt < 0:
+        raise ValueError("The order of integration must be non-negative")
+    if len(k) > cnt:
+        raise ValueError("Too many integration constants")
+    if cupy.ndim(lbnd) != 0:
+        raise ValueError("lbnd must be a scalar.")
+    if cupy.ndim(scl) != 0:
+        raise ValueError("scl must be a scalar.")
+    iaxis = internal._normalize_axis_index(iaxis, c.ndim)
+
+    if cnt == 0:
+        return c
+
+    k = list(k) + [0] * (cnt - len(k))
+    c = cupy.moveaxis(c, iaxis, 0)
+    for i in range(cnt):
+        n = len(c)
+        c *= scl
+        if n == 1 and cupy.all(c[0] == 0):
+            c[0] += k[i]
+        else:
+            tmp = cupy.empty((n + 1,) + c.shape[1:], dtype=cdt)
+            tmp[0] = c[0] * 0
+            tmp[1] = c[0]
+            for j in range(1, n):
+                tmp[j + 1] = c[j] / (j + 1)
+            tmp[0] += k[i] - polyval(lbnd, tmp)
+            c = tmp
+    c = cupy.moveaxis(c, 0, iaxis)
+    return c
+
+
+def polyder(c, m=1, scl=1, axis=0):
+    """Differentiates a polynomial.
+
+    Args:
+        c (cupy.ndarray): Array of polynomial coefficients. If c is
+            multidimensional the different axis correspond to different
+            variables with the degree in each axis given by the corresponding
+            index.
+        m (int, optional): Number of derivatives taken, must be non-negative.
+            Default is 1.
+        scl (scalar, optional): Each differentiation is multiplied by `scl`.
+            The end result is multiplication by ``scl**m``. Default is 1.
+        axis (int, optional): Axis over which the derivative is taken.
+            Default is 0.
+
+    Returns:
+        cupy.ndarray: Array of polynomial coefficients of the derivative.
+
+    .. seealso:: :func:`numpy.polynomial.polynomial.polyder`
+
+    """
+    c = cupy.array(c, ndmin=1, copy=True)
+    if c.dtype.char in '?bBhHiIlLqQpP':
+        # astype fails with NA
+        c = c + 0.0
+    cdt = c.dtype
+    cnt = cupy.polynomial.polyutils._as_int(m, "the order of derivation")
+    iaxis = cupy.polynomial.polyutils._as_int(axis, "the axis")
+    if cnt < 0:
+        raise ValueError("The order of derivation must be non-negative")
+    iaxis = internal._normalize_axis_index(iaxis, c.ndim)
+
+    if cnt == 0:
+        return c
+
+    c = cupy.moveaxis(c, iaxis, 0)
+    n = len(c)
+    if cnt >= n:
+        c = c[:1] * 0
+    else:
+        for i in range(cnt):
+            n = n - 1
+            c *= scl
+            der = cupy.empty((n,) + c.shape[1:], dtype=cdt)
+            for j in range(n, 0, -1):
+                der[j - 1] = j * c[j]
+            c = der
+    c = cupy.moveaxis(c, 0, iaxis)
+    return c
