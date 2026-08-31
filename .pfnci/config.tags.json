@@ -301,12 +301,6 @@
         "linux",
         "rapids"
     ],
-    "cupy.linux.cuda-build": [
-        "@push",
-        "full",
-        "mini",
-        "linux"
-    ],
     "cupy.linux.array-api": [
         "array-api",
         "linux"

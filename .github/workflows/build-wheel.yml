@@ -94,14 +94,12 @@ jobs:
           tar --force-local -xf "${RUNNER_TEMP}/sdist"/cupy-*.tar.gz -C srcpkg --strip-components=1
           ls -lah srcpkg/pyproject.toml srcpkg/setup.py srcpkg/MANIFEST.in srcpkg/cupy srcpkg/cupyx srcpkg/cupy_backends srcpkg/install 2>/dev/null
 
-      # Linux + free-threaded Python (e.g. 3.14t) blows the ~14 GiB default
-      # runner disk during NVCC compilation -- the free-threaded ABI can't share
-      # intermediates with the regular py3.14 build, doubling the footprint.
-      # Currently only `linux-64 + cu13 + py3.14t` OOMs in practice; widen the
-      # condition if other matrix entries start failing.
-      - name: Free disk space (Linux + free-threaded Python)
-        if: ${{ inputs.host-platform == 'linux-64' && endsWith(matrix.python-version, 't') }}
-        uses: ./.github/actions/free-disk-space
+      # Temporarily disabled: mini-CTK moved out of the workspace so
+      # cibuildwheel no longer copies ~1-2 GB into /project. Observing
+      # whether cu13 / py3.14t still OOMs; re-enable if it does.
+      # - name: Free disk space (Linux + free-threaded Python)
+      #   if: ${{ inputs.host-platform == 'linux-64' && endsWith(matrix.python-version, 't') }}
+      #   uses: ./.github/actions/free-disk-space
 
       # Pinned rather than `latest`: an sccache release can change its cache-key
       # format (v0.17.0-rapids.0 split CUDA caching into per-sub-tool
@@ -193,10 +191,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install tomli_w pyyaml twine
 
-      # mini-CTK stays at workspace root (./cuda_toolkit) -- cibuildwheel
-      # only copies srcpkg/ into /project, so the container reaches it
-      # through the /host mount (see CUDA_PATH in CIBW_ENVIRONMENT_LINUX
-      # below), same pattern the sccache binary already uses.
+      # On Linux install under RUNNER_TEMP so cibuildwheel doesn't copy the
+      # mini-CTK (~1-2 GB) into /project; the container reaches it through
+      # the /host mount instead (see CUDA_PATH in CIBW_ENVIRONMENT_LINUX
+      # below). Windows runs natively -- no container copy -- so the
+      # default ./cuda_toolkit is fine.
       - name: Set up mini CTK
         uses: ./.github/actions/fetch_ctk
         continue-on-error: false
@@ -204,6 +203,7 @@ jobs:
           host-platform: ${{ inputs.host-platform }}
           cuda-version: ${{ inputs.cuda-version }}
           cuda-components: "cuda_nvcc,cuda_cudart,cuda_crt,cuda_cuxxfilt,libnvvm,cuda_nvrtc,cuda_nvtx,cuda_profiler_api,cuda_cccl,libnvjitlink,libcublas,libcufft,libcurand,libcusparse,libcusolver"
+          cuda-path: ${{ startsWith(inputs.host-platform, 'linux-') && format('{0}/cuda_toolkit', runner.temp) || './cuda_toolkit' }}
 
       - name: Install cuTENSOR preload
         env:
@@ -266,11 +266,11 @@ jobs:
           # define a platform block, so keep shared variables duplicated in
           # BOTH platform blocks below.
           CIBW_ENVIRONMENT_LINUX: >
-            CUDA_PATH=/host/${{ github.workspace }}/cuda_toolkit
-            LIBRARY_PATH=/host/${{ github.workspace }}/cuda_toolkit/lib64/stubs
+            CUDA_PATH=/host/${{ env.CUDA_PATH }}
+            LIBRARY_PATH=/host/${{ env.CUDA_PATH }}/lib64/stubs
             CC="/host/${{ env.SCCACHE_PATH }} cc"
             CXX="/host/${{ env.SCCACHE_PATH }} c++"
-            NVCC="/host/${{ env.SCCACHE_PATH }} /host/${{ github.workspace }}/cuda_toolkit/bin/nvcc"
+            NVCC="/host/${{ env.SCCACHE_PATH }} /host/${{ env.CUDA_PATH }}/bin/nvcc"
             SCCACHE_GHA_ENABLED=true
             ACTIONS_RUNTIME_TOKEN=${{ env.ACTIONS_RUNTIME_TOKEN }}
             ACTIONS_RUNTIME_URL=${{ env.ACTIONS_RUNTIME_URL }}

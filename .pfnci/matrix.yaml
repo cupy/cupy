@@ -694,12 +694,6 @@
   tags: ["@nightly", "full", "linux", "rapids"]
   system: "linux"
 
-- project: "cupy.linux.cuda-build"
-  _extern: true
-  target: "cuda-build"
-  tags: ["@push", "full", "mini", "linux"]
-  system: "linux"
-
 - project: "cupy.linux.array-api"
   _extern: true
   target: "array-api"

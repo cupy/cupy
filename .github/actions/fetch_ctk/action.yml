@@ -134,6 +134,12 @@ runs:
         key: ${{ env.CTK_CACHE_KEY }}
         path: ./${{ env.CTK_CACHE_FILENAME }}
 
+    - name: Cleanup CTK cache tarball
+      if: ${{ !cancelled() &&
+              steps.ctk-get-cache.outputs.cache-hit != 'true' }}
+      shell: bash --noprofile --norc -xeuo pipefail {0}
+      run: rm -f "./${{ env.CTK_CACHE_FILENAME }}"
+
     - name: Restore CTK cache
       if: ${{ steps.ctk-get-cache.outputs.cache-hit == 'true' }}
       shell: bash --noprofile --norc -xeuo pipefail {0}
