@@ -160,7 +160,7 @@ runs:
       if: ${{ inputs.cuda-path != './cuda_toolkit' }}
       shell: bash --noprofile --norc -xeuo pipefail {0}
       run: |
-        mv ./cuda_toolkit ${{ inputs.cuda-path }}
+        mv ./cuda_toolkit "${{ inputs.cuda-path }}"
 
     - name: Set output environment variables
       shell: bash --noprofile --norc -xeuo pipefail {0}

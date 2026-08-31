@@ -308,7 +308,7 @@ jobs:
           # CIBW_ENVIRONMENT_PASS_LINUX, so this runs against an authentic
           # no-CTK env after `pip install {wheel}`.
           CIBW_TEST_COMMAND_LINUX: >
-            python {project}/tests/import_tests/test_import.py
+            python {package}/tests/import_tests/test_import.py
           CIBW_REPAIR_WHEEL_COMMAND_LINUX: >
             auditwheel repair -w {dest_dir}
             --exclude 'libcuda.so*'
