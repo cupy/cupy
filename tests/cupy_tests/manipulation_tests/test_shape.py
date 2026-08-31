@@ -61,6 +61,7 @@ class TestReshape:
 
         assert (cupy.reshape(arr, shape) == expected).all()
         assert (cupy.reshape(arr, shape, order="C") == expected).all()
+        assert (cupy.reshape(arr, shape, "C") == expected).all()
         assert (cupy.reshape(arr, shape=shape) == expected).all()
         assert (cupy.reshape(arr, shape=shape, order="C") == expected).all()
         with pytest.warns(DeprecationWarning):
