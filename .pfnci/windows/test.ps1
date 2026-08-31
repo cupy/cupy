@@ -82,7 +82,7 @@ function Main {
     $build_retval = 0
     RunOrDie python -m pip install "numpy==$numpy.*" "scipy==$scipy.*" "Cython==3.2.*,!=3.2.6"
     if ($cuda.StartsWith("12.")) {
-        RunOrDie python -m pip install "cuda-cccl[minimal-sysctk12]>=1.1.1"
+        RunOrDie python -m pip install "cuda-cccl[minimal-cu12]>=1.1.1"
     } else {
         RunOrDie python -m pip install "cuda-cccl[minimal-sysctk13]>=1.1.1"
     }
