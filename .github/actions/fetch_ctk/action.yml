@@ -153,13 +153,8 @@ runs:
     # on disk; drop them here so wheel-build steps that follow don't ship
     # them (~1-2 GB of tarball) into cibuildwheel's /project copy.
     - name: Cleanup CTK cache tarball and staging dir
-      if: ${{ always() }}
       shell: bash --noprofile --norc -xeuo pipefail {0}
-      run: |
-        rm -rf ./cache_tmp_dir
-        if [[ -n "${CTK_CACHE_FILENAME:-}" ]]; then
-          rm -f "./${CTK_CACHE_FILENAME}"
-        fi
+      run: rm -rf ./cache_tmp_dir "./${CTK_CACHE_FILENAME}"
 
     - name: Move CTK to the specified location
       if: ${{ inputs.cuda-path != './cuda_toolkit' }}

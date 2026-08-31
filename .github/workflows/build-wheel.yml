@@ -109,7 +109,7 @@ jobs:
       - name: Install pinned rapidsai/sccache
         env:
           HOST_PLATFORM: ${{ inputs.host-platform }}
-          SCCACHE_VERSION: v0.16.0-rapids.4
+          SCCACHE_VERSION: v0.17.0-rapids.4
         run: |
           case "${HOST_PLATFORM}" in
             linux-*)  URL_TRIPLE="$(uname -m)-unknown-linux-musl"; SCCACHE_BIN="sccache" ;;
@@ -191,11 +191,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install tomli_w pyyaml twine
 
-      # On Linux install under RUNNER_TEMP so cibuildwheel doesn't copy the
-      # mini-CTK (~1-2 GB) into /project; the container reaches it through
-      # the /host mount instead (see CUDA_PATH in CIBW_ENVIRONMENT_LINUX
-      # below). Windows runs natively -- no container copy -- so the
-      # default ./cuda_toolkit is fine.
+      # Install under RUNNER_TEMP so cibuildwheel doesn't copy the mini-CTK
+      # (~1-2 GB) into /project on Linux; the container reaches it through the
+      # /host mount instead (see CUDA_PATH in CIBW_ENVIRONMENT_LINUX). Windows
+      # runs natively so it doesn't gain the /project savings; using the same
+      # path keeps this step readable.
       - name: Set up mini CTK
         uses: ./.github/actions/fetch_ctk
         continue-on-error: false
@@ -203,7 +203,7 @@ jobs:
           host-platform: ${{ inputs.host-platform }}
           cuda-version: ${{ inputs.cuda-version }}
           cuda-components: "cuda_nvcc,cuda_cudart,cuda_crt,cuda_cuxxfilt,libnvvm,cuda_nvrtc,cuda_nvtx,cuda_profiler_api,cuda_cccl,libnvjitlink,libcublas,libcufft,libcurand,libcusparse,libcusolver"
-          cuda-path: ${{ startsWith(inputs.host-platform, 'linux-') && format('{0}/cuda_toolkit', runner.temp) || './cuda_toolkit' }}
+          cuda-path: ${{ runner.temp }}/cuda_toolkit
 
       - name: Install cuTENSOR preload
         env:
