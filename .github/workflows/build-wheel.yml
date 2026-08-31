@@ -265,8 +265,15 @@ jobs:
           # CIBW_ENVIRONMENT block would be silently ignored on platforms that
           # define a platform block, so keep shared variables duplicated in
           # BOTH platform blocks below.
+          # LDFLAGS=-Wl,--as-needed mirrors cupy-release-tools' build-wrapper;
+          # cupy_builder links every _cuda_files module against
+          # -lcublas -lcufft -lcurand -lcusparse. Without --as-needed, ld
+          # marks DT_NEEDED for all four on every .so even when unreferenced,
+          # so `import cupy._core.<mod>` dlopen-fails in a bare env before
+          # cuda-pathfinder can preload the libs.
           CIBW_ENVIRONMENT_LINUX: >
             CUDA_PATH=/host/${{ env.CUDA_PATH }}
+            LDFLAGS=-Wl,--as-needed
             LIBRARY_PATH=/host/${{ env.CUDA_PATH }}/lib64/stubs
             CC="/host/${{ env.SCCACHE_PATH }} cc"
             CXX="/host/${{ env.SCCACHE_PATH }} c++"
