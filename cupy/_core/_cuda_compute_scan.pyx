@@ -23,7 +23,10 @@ cpdef _get_cuda_compute():
         except ImportError:
             _cuda_compute = None
         else:
-            _cuda_compute = compute
+            if getattr(compute, '_BINDINGS_AVAILABLE', True):
+                _cuda_compute = compute
+            else:
+                _cuda_compute = None
     return _cuda_compute
 
 
