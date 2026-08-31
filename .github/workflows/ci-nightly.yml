@@ -19,6 +19,7 @@ on:
           Also the retry path: cron does not retry a leftover ci-nightly failure.
         type: string
         default: main
+        required: false
 
 concurrency:
   group: ci-nightly-${{ github.event.inputs.branch || 'main' }}
@@ -70,7 +71,7 @@ jobs:
           # on success, overwrites a prior failure so the next cron can skip.
           # A leftover failure is not skip-greened; retry with a manual trigger.
           SKIP=false
-          if [[ "${GITHUB_EVENT_NAME}" == "schedule" ]]; then
+          if [[ "${GITHUB_EVENT_NAME}" == "schedule" && "${GITHUB_RUN_ATTEMPT}" == "1" ]]; then
             STATUS_JSON="$(gh api \
               "repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}/status")"
             NIGHTLY_STATE="$(jq -r \
