@@ -273,7 +273,7 @@ jobs:
           # cuda-pathfinder can preload the libs.
           CIBW_ENVIRONMENT_LINUX: >
             CUDA_PATH=/host/${{ env.CUDA_PATH }}
-            LDFLAGS=-Wl,--as-needed
+            LDFLAGS="-Wl,--as-needed ${LDFLAGS}"
             LIBRARY_PATH=/host/${{ env.CUDA_PATH }}/lib64/stubs
             CC="/host/${{ env.SCCACHE_PATH }} cc"
             CXX="/host/${{ env.SCCACHE_PATH }} c++"
