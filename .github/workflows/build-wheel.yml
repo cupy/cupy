@@ -301,12 +301,14 @@ jobs:
             "${{ env.SCCACHE_PATH }}" --show-stats --stats-format=json > "${{ github.workspace }}\\sccache_cupy.json"
           CIBW_TEST_COMMAND: >
             echo "ok!"
-          # Preserves the invariant the retired .pfnci/linux/tests/cuda-build
-          # lane exercised: cupy imports and defines kernels in an env with
-          # no CTK on disk. cibuildwheel's manylinux test container has no
-          # /usr/local/cuda and we don't forward CUDA_PATH via
-          # CIBW_ENVIRONMENT_PASS_LINUX, so this runs against an authentic
-          # no-CTK env after `pip install {wheel}`.
+          # Exercises the [ctk] extra as a self-contained pypi install:
+          # pip install {wheel}[ctk] pulls the cuda-toolkit metapackage
+          # (nvidia-cudart-cu12, nvidia-cublas-cu12, ...); cuda-pathfinder
+          # locates them under site-packages/nvidia/*/lib at import time.
+          # Guards regressions in the [ctk] extra contents and cuda-pathfinder
+          # resolution. Distinct from the retired cuda-build lane's "system
+          # libcublas via apt after removing /usr/local/cuda" invariant.
+          CIBW_TEST_EXTRAS_LINUX: ctk
           CIBW_TEST_COMMAND_LINUX: >
             python {package}/tests/import_tests/test_import.py
           CIBW_REPAIR_WHEEL_COMMAND_LINUX: >
