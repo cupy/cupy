@@ -41,6 +41,32 @@ class TestReshape:
             return a.reshape((1, 1, 1, 4, 1, 2)).strides
         assert func(numpy) == func(cupy)
 
+    def test_reshape_shape_arg(self):
+        arr = cupy.arange(12)
+        shape = (3, 4)
+        expected = arr.reshape(shape)
+
+        with pytest.raises(
+            TypeError,
+            match="You cannot specify 'newshape' and 'shape' "
+                  "arguments at the same time."
+        ):
+            cupy.reshape(arr, shape=shape, newshape=shape)
+        with pytest.raises(
+            TypeError,
+            match=r"reshape\(\) missing 1 required positional "
+                  "argument: 'shape'"
+        ):
+            cupy.reshape(arr)
+
+        assert (cupy.reshape(arr, shape) == expected).all()
+        assert (cupy.reshape(arr, shape, order="C") == expected).all()
+        assert (cupy.reshape(arr, shape=shape) == expected).all()
+        assert (cupy.reshape(arr, shape=shape, order="C") == expected).all()
+        with pytest.warns(DeprecationWarning):
+            actual = cupy.reshape(arr, newshape=shape)
+            assert (actual == expected).all()
+
     @testing.for_orders('CFA')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
