@@ -301,6 +301,14 @@ jobs:
             "${{ env.SCCACHE_PATH }}" --show-stats --stats-format=json > "${{ github.workspace }}\\sccache_cupy.json"
           CIBW_TEST_COMMAND: >
             echo "ok!"
+          # Preserves the invariant the retired .pfnci/linux/tests/cuda-build
+          # lane exercised: cupy imports and defines kernels in an env with
+          # no CTK on disk. cibuildwheel's manylinux test container has no
+          # /usr/local/cuda and we don't forward CUDA_PATH via
+          # CIBW_ENVIRONMENT_PASS_LINUX, so this runs against an authentic
+          # no-CTK env after `pip install {wheel}`.
+          CIBW_TEST_COMMAND_LINUX: >
+            python {project}/tests/import_tests/test_import.py
           CIBW_REPAIR_WHEEL_COMMAND_LINUX: >
             auditwheel repair -w {dest_dir}
             --exclude 'libcuda.so*'
