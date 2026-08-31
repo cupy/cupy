@@ -2,90 +2,54 @@
 # changes are sync'd up!
 name: "CI"
 
-# The build workflow: builds wheels when a PR is vouched, or when a merge
-# lands. It is one of three single-purpose workflows:
-#
-#   ci-trigger.yml : turns /test comments from an OWNER/MEMBER into
-#                    ci:triggered label events (via a GitHub App token), and
-#                    keeps the label honest on pushes/reopens.
-#   ci.yml (this)  : pull_request/labeled -- build the vouched PR's pinned
-#                    merge commit in the PR's own cache scope (writes are
-#                    isolated per PR; restores fall back to the base/default
-#                    scope), then upload a build sentinel.
-#                    push (main, v*, hotfix-*) -- build the merged commit,
-#                    refreshing this branch's shared cache scope with merged
-#                    (reviewed) code only, then dispatch FlexCI in-run.
-#   flexci.yml     : after a successful /test build run completes
-#                    (workflow_run), dispatch FlexCI with the recorded
-#                    request.
-#
-# There is no automatic build on PR open/push: regular PR updates only run
-# the lightweight pre-flight checks. A push to a PR cancels any in-flight
-# labeled build (shared ci-build-<PR> concurrency group, entered by
-# ci-trigger.yml's hygiene job) and clears the stale label.
+# One of three single-purpose workflows:
+#   ci-trigger.yml : turns /test comments into ci:triggered label events.
+#   ci-preflight.yml : fires on labeled/push, decides whether to build, and
+#                      workflow_dispatch-fires this file when it should. That
+#                      keeps stale check-run entries off PRs when unrelated
+#                      labels are added (#10230).
+#   ci.yml (this)    : builds wheels + dispatches FlexCI post-merge. Fires only
+#                      via workflow_dispatch from ci-preflight.
+#   flexci.yml       : after a successful /test build run completes, dispatches
+#                      FlexCI with the recorded request.
+
 on:
-  pull_request:
-    types: [labeled]
-  push:
-    branches:
-      - main
-      - "v*"
-      - "hotfix-*"
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref (commit SHA) to build."
+        required: true
+        type: string
+      artifact_suffix:
+        description: "Suffix keying the wheel artifact name."
+        required: true
+        type: string
+      head_sha:
+        description: "PR head SHA (== ref for push events)."
+        required: true
+        type: string
+      pr_number:
+        description: "PR number, or '0' for push."
+        required: true
+        type: string
+      caller_event:
+        description: "Original event that triggered ci-preflight: pull_request or push."
+        required: true
+        type: string
 
 concurrency:
-  # Only the ci:triggered build shares ci-build-<PR> (with ci-trigger.yml's
-  # hygiene runs): a second /test supersedes the first build, and a push to the
-  # PR cancels it via hygiene. Every labeled event runs this workflow (GitHub
-  # can't filter `labeled` by name), so any OTHER label must land in a unique,
-  # throwaway group -- otherwise it would enter ci-build-<PR> and cancel the
-  # in-flight vouched build before the guard no-ops it (concurrency is evaluated
-  # at queue time, ahead of the guard job). Push runs get a per-commit group
-  # (i.e. effectively none): a burst of merges must not cancel intermediate
-  # runs, each of which carries its own FlexCI dispatch.
-  group: ${{ github.event_name == 'push' && format('ci-push-{0}', github.sha) || github.event.label.name == 'ci:triggered' && format('ci-build-{0}', github.event.pull_request.number) || format('ci-noop-{0}', github.run_id) }}
-  cancel-in-progress: ${{ github.event.label.name == 'ci:triggered' }}
+  # PR builds: a fresh /test supersedes the previous. Push builds: per-commit
+  # (no cancel -- each merge carries its own FlexCI dispatch).
+  group: ${{ inputs.caller_event == 'push' && format('ci-push-{0}', inputs.head_sha) || format('ci-build-{0}', inputs.pr_number) }}
+  cancel-in-progress: ${{ inputs.caller_event == 'pull_request' }}
 
-# Least privilege: read-only by default; jobs that need more grant it
-# per-job below (only dispatch-flexci writes, via flexci_dispatcher.py).
 permissions:
   contents: read
 
 jobs:
-  guard:
-    name: Guard (build decision)
-    runs-on: ubuntu-latest
-    if: github.repository_owner == 'cupy'
-    permissions:
-      contents: read       # actions/checkout (sparse ci/tools)
-      pull-requests: read  # ci-guard.sh reads commits/<sha>/pulls (push leg)
-    outputs:
-      should_run: ${{ steps.check.outputs.should_run }}
-      ref: ${{ steps.check.outputs.ref }}
-      artifact_suffix: ${{ steps.check.outputs.artifact_suffix }}
-      head_sha: ${{ steps.check.outputs.head_sha }}
-      pr_number: ${{ steps.check.outputs.pr_number }}
-    steps:
-      # Which copy of ci-guard.sh runs follows GitHub's rules for the
-      # workflow file itself: the pushed branch's copy for push events, the
-      # PR's own copy for pull_request events -- where the run holds no
-      # secrets and only PR-scoped cache access, so nothing
-      # security-critical rides on it.
-      - name: Checkout (ci/tools only)
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
-        with:
-          fetch-depth: 1
-          sparse-checkout: ci/tools
-      - name: Evaluate trigger
-        id: check
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: ./ci/tools/ci-guard.sh
-
   ci-vars:
-    needs: guard
-    if: needs.guard.outputs.should_run == 'true'
+    if: github.repository_owner == 'cupy'
     runs-on: ubuntu-latest
-    # Only reads ci/versions.yml from the pinned ref; no write scopes needed.
     permissions:
       contents: read
     outputs:
@@ -95,7 +59,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
         with:
-          ref: ${{ needs.guard.outputs.ref }}
+          ref: ${{ inputs.ref }}
           fetch-depth: 1
       - name: Get CUDA build versions
         id: get-vars
@@ -112,16 +76,14 @@ jobs:
   # fails this CI job, not a downstream user. Also eliminates the Windows
   # vendored-submodule symlink handling (the sdist has real files).
   build-sdist:
-    needs:
-      - guard
-    if: needs.guard.outputs.should_run == 'true'
+    if: github.repository_owner == 'cupy'
     permissions:
       contents: read
     name: Build sdist
     uses: ./.github/workflows/build-sdist.yml
     with:
-      ref: ${{ needs.guard.outputs.ref }}
-      artifact-suffix: ${{ needs.guard.outputs.artifact_suffix }}
+      ref: ${{ inputs.ref }}
+      artifact-suffix: ${{ inputs.artifact_suffix }}
 
   # NOTE: Build jobs are intentionally split by platform rather than using a
   # single matrix. This allows each test job to depend only on its
@@ -134,10 +96,9 @@ jobs:
   # of same-repo PRs would otherwise expose repository secrets to PR code.
   build-linux-64:
     needs:
-      - guard
       - ci-vars
       - build-sdist
-    if: needs.guard.outputs.should_run == 'true'
+    if: github.repository_owner == 'cupy'
     # Bounds the reusable build to a checkout-only token (no secrets, no writes).
     permissions:
       contents: read
@@ -154,16 +115,15 @@ jobs:
     with:
       host-platform: ${{ matrix.host-platform }}
       cuda-version: ${{ matrix.cuda-version }}
-      ref: ${{ needs.guard.outputs.ref }}
-      artifact-suffix: ${{ needs.guard.outputs.artifact_suffix }}
+      ref: ${{ inputs.ref }}
+      artifact-suffix: ${{ inputs.artifact_suffix }}
 
   # See build-linux-64 for why build jobs are split by platform.
   build-linux-aarch64:
     needs:
-      - guard
       - ci-vars
       - build-sdist
-    if: needs.guard.outputs.should_run == 'true'
+    if: github.repository_owner == 'cupy'
     permissions:
       contents: read
     strategy:
@@ -179,16 +139,15 @@ jobs:
     with:
       host-platform: ${{ matrix.host-platform }}
       cuda-version: ${{ matrix.cuda-version }}
-      ref: ${{ needs.guard.outputs.ref }}
-      artifact-suffix: ${{ needs.guard.outputs.artifact_suffix }}
+      ref: ${{ inputs.ref }}
+      artifact-suffix: ${{ inputs.artifact_suffix }}
 
   # See build-linux-64 for why build jobs are split by platform.
   build-windows:
     needs:
-      - guard
       - ci-vars
       - build-sdist
-    if: needs.guard.outputs.should_run == 'true'
+    if: github.repository_owner == 'cupy'
     # Bounds the reusable build to a checkout-only token (no secrets, no writes).
     permissions:
       contents: read
@@ -205,8 +164,8 @@ jobs:
     with:
       host-platform: ${{ matrix.host-platform }}
       cuda-version: ${{ matrix.cuda-version }}
-      ref: ${{ needs.guard.outputs.ref }}
-      artifact-suffix: ${{ needs.guard.outputs.artifact_suffix }}
+      ref: ${{ inputs.ref }}
+      artifact-suffix: ${{ inputs.artifact_suffix }}
 
   # Liveness proof for flexci.yml: uploaded only when every build succeeded,
   # only on /test builds. It deliberately carries NO identity (the v3 plan
@@ -217,11 +176,10 @@ jobs:
   build-sentinel:
     name: Upload build sentinel
     needs:
-      - guard
       - build-linux-64
       - build-linux-aarch64
       - build-windows
-    if: github.event_name == 'pull_request' && needs.guard.outputs.should_run == 'true' && needs.build-linux-64.result == 'success' && needs.build-linux-aarch64.result == 'success' && needs.build-windows.result == 'success'
+    if: inputs.caller_event == 'pull_request' && needs.build-linux-64.result == 'success' && needs.build-linux-aarch64.result == 'success' && needs.build-windows.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Create sentinel
@@ -231,7 +189,7 @@ jobs:
       - name: Upload sentinel
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
-          name: build-${{ needs.guard.outputs.head_sha }}
+          name: build-${{ inputs.head_sha }}
           path: ${{ runner.temp }}/sentinel/
           if-no-files-found: error
           overwrite: true
@@ -240,15 +198,17 @@ jobs:
   # code reaches these branches), carry secrets, and their payload is the
   # dispatcher's native push input -- so build and dispatch live in one run
   # with plain `needs:` ordering. The /test path dispatches from flexci.yml
-  # instead (its build runs hold no secrets).
+  # instead (its build runs hold no secrets). Since ci.yml now fires via
+  # workflow_dispatch, GITHUB_EVENT_PATH isn't the real push payload, so
+  # we synthesize a minimal one for flexci_dispatcher.py -- same trick
+  # ci-nightly.yml uses.
   dispatch-flexci:
     name: Dispatch FlexCI
     needs:
-      - guard
       - build-linux-64
       - build-linux-aarch64
       - build-windows
-    if: github.event_name == 'push' && needs.guard.outputs.should_run == 'true'
+    if: inputs.caller_event == 'push'
     runs-on: ubuntu-22.04
     permissions:
       contents: read       # actions/checkout
@@ -258,7 +218,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
         with:
-          ref: ${{ needs.guard.outputs.ref }}
+          ref: ${{ inputs.ref }}
 
       - name: Setup Python
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
@@ -268,24 +228,48 @@ jobs:
       - name: Setup Environment
         run: pip install pygithub
 
+      - name: Build synthetic push payload
+        env:
+          HEAD_SHA: ${{ inputs.head_sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          TIMESTAMP="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          jq -n \
+            --arg sha "${HEAD_SHA}" \
+            --arg url "${RUN_URL}" \
+            --arg ts "${TIMESTAMP}" \
+            --arg repo "${GITHUB_REPOSITORY}" \
+            '{
+              ref: "refs/heads/main",
+              after: $sha,
+              head_commit: {
+                id: $sha,
+                message: "Post-merge CI: dispatch FlexCI for pushed commit",
+                url: $url,
+                timestamp: $ts
+              },
+              repository: { full_name: $repo },
+              sender: { login: "github-actions[bot]" }
+            }' > payload.json
+          cat payload.json
+
       - name: Dispatch
         env:
           GITHUB_TOKEN: ${{ github.token }}
           FLEXCI_WEBHOOK_SECRET: ${{ secrets.FLEXCI_WEBHOOK_SECRET }}
         run: |
           ./.github/workflows/scripts/flexci_dispatcher.py \
-              --event "${GITHUB_EVENT_NAME}" \
-              --webhook "${GITHUB_EVENT_PATH}" \
+              --event push \
+              --webhook payload.json \
               --projects ".pfnci/config.tags.json" \
               --external-tag jenkins \
               --external-tag rocm
 
   checks:
     name: Check job status
-    if: always() && needs.guard.outputs.should_run == 'true'
+    if: always() && github.repository_owner == 'cupy'
     runs-on: ubuntu-latest
     needs:
-      - guard
       - build-linux-64
       - build-linux-aarch64
       - build-windows
@@ -304,11 +288,10 @@ jobs:
             fi
           }
 
-          check_result "guard"               "success" "${{ needs.guard.result }}"
           check_result "build-linux-64"      "success" "${{ needs.build-linux-64.result }}"
           check_result "build-linux-aarch64" "success" "${{ needs.build-linux-aarch64.result }}"
           check_result "build-windows"       "success" "${{ needs.build-windows.result }}"
-          case "${{ github.event_name }}" in
+          case "${{ inputs.caller_event }}" in
           pull_request)
             check_result "build-sentinel"  "success" "${{ needs.build-sentinel.result }}"
             check_result "dispatch-flexci" "skipped" "${{ needs.dispatch-flexci.result }}"

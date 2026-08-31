@@ -1,0 +1,71 @@
+name: "CI Preflight"
+
+# Decides whether ci.yml should build for a given event, and dispatches
+# ci.yml via workflow_dispatch when it should. Never firing ci.yml at all
+# on skipped events is what keeps stale check-run entries off PRs (see #10230).
+
+on:
+  pull_request:
+    types: [labeled]
+  push:
+    branches:
+      - main
+      - "v*"
+      - "hotfix-*"
+
+concurrency:
+  group: ${{ github.event_name == 'push' && format('ci-preflight-push-{0}', github.sha) || github.event.label.name == 'ci:triggered' && format('ci-preflight-{0}', github.event.pull_request.number) || format('ci-preflight-noop-{0}', github.run_id) }}
+  cancel-in-progress: ${{ github.event.label.name == 'ci:triggered' }}
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    name: Guard (build decision)
+    runs-on: ubuntu-latest
+    if: github.repository_owner == 'cupy'
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+      ref: ${{ steps.check.outputs.ref }}
+      artifact_suffix: ${{ steps.check.outputs.artifact_suffix }}
+      head_sha: ${{ steps.check.outputs.head_sha }}
+      pr_number: ${{ steps.check.outputs.pr_number }}
+    steps:
+      - name: Checkout (ci/tools only)
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        with:
+          fetch-depth: 1
+          sparse-checkout: ci/tools
+      - name: Evaluate trigger
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./ci/tools/ci-guard.sh
+
+  dispatch-ci:
+    name: Dispatch CI
+    needs: guard
+    if: needs.guard.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Fire ci.yml
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REF: ${{ needs.guard.outputs.ref }}
+          ARTIFACT_SUFFIX: ${{ needs.guard.outputs.artifact_suffix }}
+          HEAD_SHA: ${{ needs.guard.outputs.head_sha }}
+          PR_NUMBER: ${{ needs.guard.outputs.pr_number }}
+          CALLER_EVENT: ${{ github.event_name }}
+        run: |
+          gh workflow run ci.yml --repo "${GITHUB_REPOSITORY}" --ref main \
+            -f ref="${REF}" \
+            -f artifact_suffix="${ARTIFACT_SUFFIX}" \
+            -f head_sha="${HEAD_SHA}" \
+            -f pr_number="${PR_NUMBER:-0}" \
+            -f caller_event="${CALLER_EVENT}"

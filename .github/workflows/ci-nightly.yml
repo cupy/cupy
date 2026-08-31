@@ -52,7 +52,7 @@ jobs:
           set -euo pipefail
           RUN_JSON="$(gh api \
             -f branch="${BRANCH}" \
-            -f event=push \
+            -f event=workflow_dispatch \
             -f status=success \
             -f per_page=1 \
             "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs")"
