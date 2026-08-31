@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import math
 from typing import Any
 
 import numpy
 
 import cupy
 from cupy._core.core import empty_like
-from cupy._core.internal import _get_strides_for_order_K, _update_order_char
 from cupy.typing._types import (
     _OrderKACF, _OrderCF, _ShapeLike, DTypeLike, NDArray,
 )
@@ -33,48 +31,6 @@ def empty(
 
     """
     return cupy.ndarray(shape, dtype, order=order)
-
-
-def _new_like_order_and_strides(
-        a, dtype, order, shape=None, *, get_memptr=True):
-    """
-    Determine order and strides as in NumPy's PyArray_NewLikeArray.
-
-    (see: numpy/core/src/multiarray/ctors.c)
-    """
-    order = order.upper()
-    if order not in ['C', 'F', 'K', 'A']:
-        raise ValueError('order not understood: {}'.format(order))
-
-    if numpy.isscalar(shape):
-        shape = (shape,)
-
-    # Fallback to c_contiguous if keep order and number of dimensions
-    # of new shape mismatch
-    if order == 'K' and shape is not None and len(shape) != a.ndim:
-        return 'C', None, None
-
-    # Read contiguity without allocating a ``Flags`` object per call: for a
-    # cupy.ndarray the ``readonly`` ``_c_contiguous`` / ``_f_contiguous``
-    # fields are directly readable, whereas ``a.flags`` constructs a new
-    # ``Flags`` object on every access. NumPy prototypes lack those fields,
-    # so use ``a.flags`` there.
-    if isinstance(a, cupy.ndarray):
-        c_contiguous = a._c_contiguous
-        f_contiguous = a._f_contiguous
-    else:
-        c_contiguous = a.flags.c_contiguous
-        f_contiguous = a.flags.f_contiguous
-    order = chr(_update_order_char(c_contiguous, f_contiguous, ord(order)))
-
-    if order == 'K':
-        strides = _get_strides_for_order_K(a, numpy.dtype(dtype), shape)
-        order = 'C'
-        size = math.prod(shape) if shape is not None else a.size
-        memptr = cupy.empty(size, dtype=dtype).data if get_memptr else None
-        return order, strides, memptr
-    else:
-        return order, None, None
 
 
 def eye(
