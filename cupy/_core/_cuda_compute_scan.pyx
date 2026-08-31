@@ -24,7 +24,7 @@ cpdef _get_cuda_compute():
         except ImportError:
             _cuda_compute = None
         else:
-            if getattr(compute, '_BINDINGS_AVAILABLE', True):
+            if hasattr(compute, 'OpKind'):
                 _cuda_compute = compute
             else:
                 warnings.warn(
