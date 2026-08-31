@@ -1,4 +1,5 @@
 import threading
+import warnings
 
 from cupy._core._dtype cimport get_dtype
 from cupy._core.core cimport _ndarray_base
@@ -26,6 +27,10 @@ cpdef _get_cuda_compute():
             if getattr(compute, '_BINDINGS_AVAILABLE', True):
                 _cuda_compute = compute
             else:
+                warnings.warn(
+                    'cuda.compute is installed but its CUDA bindings '
+                    'could not be loaded, so the cuda_compute '
+                    'accelerator will be skipped', RuntimeWarning)
                 _cuda_compute = None
     return _cuda_compute
 
