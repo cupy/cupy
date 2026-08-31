@@ -35,10 +35,6 @@ def reshape(a, /, shape=None, order='C', *, newshape=None, copy=None):
             It should be compatible with ``a.size``. One of the elements can be
             -1, which is automatically replaced with the appropriate value to
             make the shape compatible with ``a.size``.
-        newshape (int or tuple of ints):
-            .. deprecated:: 14.3.0
-                Replaced by ``shape`` argument. Retained for backward
-                compatibility.
         order ({'C', 'F', 'A'}):
             Read the elements of ``a`` using this index order, and place the
             elements into the reshaped array using this index order.
@@ -51,6 +47,10 @@ def reshape(a, /, shape=None, order='C', *, newshape=None, copy=None):
             underlying array, and only refer to the order of indexing. 'A'
             means to read / write the elements in Fortran-like index order if
             a is Fortran contiguous in memory, C-like order otherwise.
+        newshape (int or tuple of ints):
+            .. deprecated:: 14.3.0
+                Replaced by ``shape`` argument. Retained for backward
+                compatibility.
         copy (bool or optional): If ``True``, then the array data is copied. If
             ``None``, a copy will only be made if it's required by ``order``.
             For ``False`` it raises a ``ValueError`` if a copy cannot be
