@@ -37,8 +37,8 @@ def reshape(a, /, shape=None, *, newshape=None, order='C', copy=None):
             make the shape compatible with ``a.size``.
         newshape (int or tuple of ints):
             .. deprecated:: 14.3.0
-            Replaced by ``shape`` argument. Retained for backward
-            compatibility.
+                Replaced by ``shape`` argument. Retained for backward
+                compatibility.
         order ({'C', 'F', 'A'}):
             Read the elements of ``a`` using this index order, and place the
             elements into the reshaped array using this index order.
