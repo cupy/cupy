@@ -634,3 +634,82 @@ class TestLinalgMatrixTranspose:
     def test_matrix_transpose_error(self, xp, dtype):
         a = testing.shaped_arange((10,), xp, dtype)
         return xp.linalg.matrix_transpose(a)
+
+
+@pytest.mark.parametrize('shapes', [
+    ((3,), (3,)),
+    ((5, 3), (5, 3)),
+    ((2, 1, 3), (4, 3)),
+    ((0, 3), (3,)),
+    ((3, 0), (3, 0)),
+])
+class TestVecdotShapes:
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)
+    def test_vecdot(self, xp, dtype, shapes):
+        shape_a, shape_b = shapes
+        # Distinct operands so a missing conjugation of x1 changes the
+        # complex results.
+        a = testing.shaped_random(shape_a, xp, dtype, seed=0)
+        b = testing.shaped_random(shape_b, xp, dtype, seed=1)
+        return xp.vecdot(a, b)
+
+
+class TestVecdot:
+
+    @testing.for_all_dtypes(name='dtype1')
+    @testing.for_all_dtypes(name='dtype2')
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)
+    def test_vecdot_dtype_combination(self, xp, dtype1, dtype2):
+        a = testing.shaped_random((4, 3), xp, dtype1, seed=0)
+        b = testing.shaped_random((4, 3), xp, dtype2, seed=1)
+        return xp.vecdot(a, b)
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)
+    def test_vecdot_axis(self, xp, dtype):
+        a = testing.shaped_random((3, 4), xp, dtype, seed=0)
+        b = testing.shaped_random((3, 4), xp, dtype, seed=1)
+        return xp.vecdot(a, b, axis=0)
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)
+    def test_vecdot_keepdims(self, xp, dtype):
+        a = testing.shaped_random((3, 4), xp, dtype, seed=0)
+        b = testing.shaped_random((3, 4), xp, dtype, seed=1)
+        return xp.vecdot(a, b, keepdims=True)
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)
+    def test_vecdot_out(self, xp, dtype):
+        a = testing.shaped_random((2, 3), xp, dtype, seed=0)
+        b = testing.shaped_random((2, 3), xp, dtype, seed=1)
+        out = xp.empty((2,), dtype=dtype)
+        xp.vecdot(a, b, out=out)
+        return out
+
+    @testing.numpy_cupy_allclose(accept_error=ValueError)
+    def test_vecdot_core_dim_mismatch(self, xp):
+        return xp.vecdot(xp.ones((3,)), xp.ones((4,)))
+
+    @testing.numpy_cupy_allclose(accept_error=ValueError)
+    def test_vecdot_zero_dim(self, xp):
+        return xp.vecdot(xp.asarray(3.0), xp.ones((4,)))
+
+
+class TestLinalgVecdot:
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)
+    def test_vecdot(self, xp, dtype):
+        a = testing.shaped_random((5, 3), xp, dtype, seed=0)
+        b = testing.shaped_random((3,), xp, dtype, seed=1)
+        return xp.linalg.vecdot(a, b)
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)
+    def test_vecdot_axis(self, xp, dtype):
+        a = testing.shaped_random((3, 4), xp, dtype, seed=0)
+        b = testing.shaped_random((3, 4), xp, dtype, seed=1)
+        return xp.linalg.vecdot(a, b, axis=0)

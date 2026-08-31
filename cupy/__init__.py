@@ -491,6 +491,7 @@ from cupy.linalg._product import matmul  # NOQA
 from cupy.linalg._product import outer  # NOQA
 from cupy.linalg._product import tensordot  # NOQA
 from cupy.linalg._product import vdot  # NOQA
+from cupy.linalg._product import vecdot  # NOQA
 
 from cupy.linalg._norms import trace  # NOQA
 
