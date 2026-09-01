@@ -94,14 +94,12 @@ jobs:
           tar --force-local -xf "${RUNNER_TEMP}/sdist"/cupy-*.tar.gz -C srcpkg --strip-components=1
           ls -lah srcpkg/pyproject.toml srcpkg/setup.py srcpkg/MANIFEST.in srcpkg/cupy srcpkg/cupyx srcpkg/cupy_backends srcpkg/install 2>/dev/null
 
-      # Linux + free-threaded Python (e.g. 3.14t) blows the ~14 GiB default
-      # runner disk during NVCC compilation -- the free-threaded ABI can't share
-      # intermediates with the regular py3.14 build, doubling the footprint.
-      # Currently only `linux-64 + cu13 + py3.14t` OOMs in practice; widen the
-      # condition if other matrix entries start failing.
-      - name: Free disk space (Linux + free-threaded Python)
-        if: ${{ inputs.host-platform == 'linux-64' && endsWith(matrix.python-version, 't') }}
-        uses: ./.github/actions/free-disk-space
+      # Temporarily disabled: mini-CTK moved out of the workspace so
+      # cibuildwheel no longer copies ~1-2 GB into /project. Observing
+      # whether cu13 / py3.14t still OOMs; re-enable if it does.
+      # - name: Free disk space (Linux + free-threaded Python)
+      #   if: ${{ inputs.host-platform == 'linux-64' && endsWith(matrix.python-version, 't') }}
+      #   uses: ./.github/actions/free-disk-space
 
       # Pinned rather than `latest`: an sccache release can change its cache-key
       # format (v0.17.0-rapids.0 split CUDA caching into per-sub-tool
@@ -111,7 +109,7 @@ jobs:
       - name: Install pinned rapidsai/sccache
         env:
           HOST_PLATFORM: ${{ inputs.host-platform }}
-          SCCACHE_VERSION: v0.16.0-rapids.4
+          SCCACHE_VERSION: v0.17.0-rapids.4
         run: |
           case "${HOST_PLATFORM}" in
             linux-*)  URL_TRIPLE="$(uname -m)-unknown-linux-musl"; SCCACHE_BIN="sccache" ;;
@@ -193,10 +191,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install tomli_w pyyaml twine
 
-      # mini-CTK stays at workspace root (./cuda_toolkit) -- cibuildwheel
-      # only copies srcpkg/ into /project, so the container reaches it
-      # through the /host mount (see CUDA_PATH in CIBW_ENVIRONMENT_LINUX
-      # below), same pattern the sccache binary already uses.
+      # Install under RUNNER_TEMP so cibuildwheel doesn't copy the mini-CTK
+      # (~1-2 GB) into /project on Linux; the container reaches it through the
+      # /host mount instead (see CUDA_PATH in CIBW_ENVIRONMENT_LINUX). Windows
+      # runs natively so it doesn't gain the /project savings; using the same
+      # path keeps this step readable.
       - name: Set up mini CTK
         uses: ./.github/actions/fetch_ctk
         continue-on-error: false
@@ -204,6 +203,7 @@ jobs:
           host-platform: ${{ inputs.host-platform }}
           cuda-version: ${{ inputs.cuda-version }}
           cuda-components: "cuda_nvcc,cuda_cudart,cuda_crt,cuda_cuxxfilt,libnvvm,cuda_nvrtc,cuda_nvtx,cuda_profiler_api,cuda_cccl,libnvjitlink,libcublas,libcufft,libcurand,libcusparse,libcusolver"
+          cuda-path: ${{ runner.temp }}/cuda_toolkit
 
       - name: Install cuTENSOR preload
         env:
@@ -265,12 +265,19 @@ jobs:
           # CIBW_ENVIRONMENT block would be silently ignored on platforms that
           # define a platform block, so keep shared variables duplicated in
           # BOTH platform blocks below.
+          # LDFLAGS=-Wl,--as-needed mirrors cupy-release-tools' build-wrapper;
+          # cupy_builder links every _cuda_files module against
+          # -lcublas -lcufft -lcurand -lcusparse. Without --as-needed, ld
+          # marks DT_NEEDED for all four on every .so even when unreferenced,
+          # so `import cupy._core.<mod>` dlopen-fails in a bare env before
+          # cuda-pathfinder can preload the libs.
           CIBW_ENVIRONMENT_LINUX: >
-            CUDA_PATH=/host/${{ github.workspace }}/cuda_toolkit
-            LIBRARY_PATH=/host/${{ github.workspace }}/cuda_toolkit/lib64/stubs
+            CUDA_PATH=/host/${{ env.CUDA_PATH }}
+            LDFLAGS="-Wl,--as-needed ${LDFLAGS}"
+            LIBRARY_PATH=/host/${{ env.CUDA_PATH }}/lib64/stubs
             CC="/host/${{ env.SCCACHE_PATH }} cc"
             CXX="/host/${{ env.SCCACHE_PATH }} c++"
-            NVCC="/host/${{ env.SCCACHE_PATH }} /host/${{ github.workspace }}/cuda_toolkit/bin/nvcc"
+            NVCC="/host/${{ env.SCCACHE_PATH }} /host/${{ env.CUDA_PATH }}/bin/nvcc"
             SCCACHE_GHA_ENABLED=true
             ACTIONS_RUNTIME_TOKEN=${{ env.ACTIONS_RUNTIME_TOKEN }}
             ACTIONS_RUNTIME_URL=${{ env.ACTIONS_RUNTIME_URL }}
@@ -301,6 +308,16 @@ jobs:
             "${{ env.SCCACHE_PATH }}" --show-stats --stats-format=json > "${{ github.workspace }}\\sccache_cupy.json"
           CIBW_TEST_COMMAND: >
             echo "ok!"
+          # Preserves the invariant the retired .pfnci/linux/tests/cuda-build
+          # lane exercised: `import cupy` succeeds in an env with no CUDA on
+          # disk. cibuildwheel's manylinux test container has no CTK, no
+          # driver, and no nvidia-* wheels (we deliberately do not set
+          # CIBW_TEST_EXTRAS_LINUX), so this catches any over-linked
+          # DT_NEEDED that would drag a missing libcublas/libcufft/... into
+          # `import cupy._core.<mod>` via ld before cuda-pathfinder can
+          # preload it. Interlocks with LDFLAGS=-Wl,--as-needed above.
+          CIBW_TEST_COMMAND_LINUX: >
+            python {package}/tests/import_tests/test_import.py
           CIBW_REPAIR_WHEEL_COMMAND_LINUX: >
             auditwheel repair -w {dest_dir}
             --exclude 'libcuda.so*'
