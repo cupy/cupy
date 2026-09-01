@@ -103,6 +103,7 @@ Matrix type (:class:`numpy.matrix`)
 -----------------------------------
 
 SciPy returns :class:`numpy.matrix` (a subclass of :class:`numpy.ndarray`) when dense matrices are computed from sparse matrices (e.g., ``coo_matrix + ndarray``). However, CuPy returns :class:`cupy.ndarray` for such operations.
+This affects the ``*_matrix`` classes only; both SciPy and CuPy return plain arrays for the ``*_array`` classes.
 
 There is no plan to provide :class:`numpy.matrix` equivalent in CuPy.
 This is because the use of :class:`numpy.matrix` is no longer recommended since NumPy 1.15.

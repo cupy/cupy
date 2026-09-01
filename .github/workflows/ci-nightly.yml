@@ -1,0 +1,185 @@
+name: "Nightly CI"
+
+# Run the "non-mini" pipelines every night.
+# Release branches: workflow_dispatch with `branch` (Use workflow from this
+# file / main — not the wheels branch — so --override-tags is present).
+
+run-name: "Nightly CI (${{ github.event.inputs.branch || 'main' }})"
+
+on:
+  schedule:
+    # 01:03 UTC = 20:03 EST / 21:03 EDT
+    - cron: '3 1 * * *'
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: >-
+          Branch whose latest successful ci.yml wheels to dispatch.
+          Use workflow from a revision that has this file, not from that branch.
+          Also the retry path: cron does not retry a leftover ci-nightly failure.
+        type: string
+        default: main
+        required: false
+
+concurrency:
+  group: ci-nightly-${{ github.event.inputs.branch || 'main' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  resolve:
+    name: Resolve SHA
+    if: github.repository_owner == 'cupy'
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      sha: ${{ steps.resolve.outputs.sha }}
+      skip: ${{ steps.resolve.outputs.skip }}
+      branch: ${{ steps.resolve.outputs.branch }}
+    steps:
+      # Newest SHA on the target branch whose wheels are already built
+      # (avoids racing an in-flight ci.yml push run).
+      - name: Resolve most recent SHA with successful ci.yml wheels
+        id: resolve
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ github.event.inputs.branch || 'main' }}
+        run: |
+          set -euo pipefail
+          # --method GET: gh api defaults to POST when any -f/-F flag is
+          # present, which returns 404 for this GET endpoint.
+          RUN_JSON="$(gh api --method GET \
+            -f branch="${BRANCH}" \
+            -f event=push \
+            -f status=success \
+            -f per_page=1 \
+            "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs")"
+          HEAD_SHA="$(jq -r '.workflow_runs[0].head_sha // ""' <<< "${RUN_JSON}")"
+          WHEELS_UPDATED="$(jq -r '.workflow_runs[0].updated_at // "unknown"' <<< "${RUN_JSON}")"
+          if [[ -z "${HEAD_SHA}" ]]; then
+            echo "::error::No successful ci.yml push run found on ${BRANCH}; refusing to dispatch." >&2
+            exit 1
+          fi
+          echo "Resolved ${BRANCH}@${HEAD_SHA} (wheels updated ${WHEELS_UPDATED})"
+          echo "sha=${HEAD_SHA}" >> "$GITHUB_OUTPUT"
+          echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
+
+          # Scheduled only: skip if this SHA was already dispatched (commit
+          # status context ci-nightly). A manual trigger always fires and,
+          # on success, overwrites a prior failure so the next cron can skip.
+          # A leftover failure is not skip-greened; retry with a manual trigger.
+          SKIP=false
+          if [[ "${GITHUB_EVENT_NAME}" == "schedule" && "${GITHUB_RUN_ATTEMPT}" == "1" ]]; then
+            STATUS_JSON="$(gh api \
+              "repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}/status")"
+            NIGHTLY_STATE="$(jq -r \
+              '[(.statuses // [])[] | select(.context == "ci-nightly")][0].state // empty' \
+              <<< "${STATUS_JSON}")"
+            NIGHTLY_URL="$(jq -r \
+              '[(.statuses // [])[] | select(.context == "ci-nightly")][0].target_url // empty' \
+              <<< "${STATUS_JSON}")"
+            echo "ci-nightly status on ${HEAD_SHA}: ${NIGHTLY_STATE:-none} ${NIGHTLY_URL}"
+            if [[ "${NIGHTLY_STATE}" == "success" ]]; then
+              echo "Already dispatched this SHA; skipping."
+              SKIP=true
+            elif [[ "${NIGHTLY_STATE}" == "failure" ]]; then
+              echo "::error::Last nightly dispatch of ${HEAD_SHA} failed (${NIGHTLY_URL:-unknown}). Not marking this run green; retry with a manual trigger." >&2
+              exit 1
+            fi
+          fi
+          echo "skip=${SKIP}" >> "$GITHUB_OUTPUT"
+
+  dispatch:
+    name: Dispatch nightly FlexCI matrix
+    needs: resolve
+    if: >-
+      github.repository_owner == 'cupy' &&
+      needs.resolve.result == 'success' &&
+      needs.resolve.outputs.skip != 'true'
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      statuses: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        with:
+          # This workflow revision (dispatcher + @nightly tags), not the wheel
+          # SHA. FlexCI tests the resolved SHA; checking it out here would
+          # break a main copy dispatched against v14 (or a lagging main SHA
+          # from before --override-tags).
+          fetch-depth: 1
+
+      - name: Setup Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: '3.13'
+
+      - name: Setup Environment
+        run: pip install pygithub
+
+      - name: Build synthetic push payload
+        env:
+          HEAD_SHA: ${{ needs.resolve.outputs.sha }}
+          BRANCH: ${{ needs.resolve.outputs.branch }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          TIMESTAMP="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          jq -n \
+            --arg ref "refs/heads/${BRANCH}" \
+            --arg sha "${HEAD_SHA}" \
+            --arg url "${RUN_URL}" \
+            --arg ts "${TIMESTAMP}" \
+            --arg repo "${GITHUB_REPOSITORY}" \
+            '{
+              ref: $ref,
+              after: $sha,
+              head_commit: {
+                id: $sha,
+                message: "Nightly CI: @nightly matrix against most recent wheel build",
+                url: $url,
+                timestamp: $ts
+              },
+              repository: { full_name: $repo },
+              sender: { login: "github-actions[bot]" }
+            }' > payload.json
+          cat payload.json
+
+      - name: Dispatch
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          FLEXCI_WEBHOOK_SECRET: ${{ secrets.FLEXCI_WEBHOOK_SECRET }}
+        run: |
+          ./.github/workflows/scripts/flexci_dispatcher.py \
+              --event push \
+              --webhook payload.json \
+              --projects ".pfnci/config.tags.json" \
+              --external-tag jenkins \
+              --external-tag rocm \
+              --override-tags @nightly
+
+      # Dispatch result on this SHA (not FlexCI lane results); cron skip keys on it.
+      - name: Record dispatch on the wheel SHA
+        if: success() || failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ needs.resolve.outputs.sha }}
+          BRANCH: ${{ needs.resolve.outputs.branch }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          STATE: ${{ job.status }}
+        run: |
+          set -euo pipefail
+          if [[ "${STATE}" == "success" ]]; then
+            DESC="Dispatched @nightly for ${BRANCH}"
+          else
+            DESC="Failed to dispatch @nightly for ${BRANCH}"
+          fi
+          gh api "repos/${GITHUB_REPOSITORY}/statuses/${HEAD_SHA}" \
+            -f state="${STATE}" \
+            -f context="ci-nightly" \
+            -f description="${DESC}" \
+            -f target_url="${RUN_URL}"

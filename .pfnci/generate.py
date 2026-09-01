@@ -16,11 +16,22 @@ from collections.abc import Mapping
 SchemaType = Mapping[str, Any]
 
 
+# Pinned version of the GitHub CLI installed into the test Dockerfiles. Used
+# by .pfnci/linux/tests/actions/build.sh to fetch wheel artifacts from
+# cupy/cupy CI. Bump as needed; required interface is just `gh run download`.
+GH_CLI_VERSION = '2.95.0'
+
+
 class Matrix:
     def __init__(self, record: Mapping[str, Any]):
         self._rec = {
             '_inherits': None,
             '_extern': False,
+            # Whether a CUDA target installs the GHA wheel (fetch-wheel.sh)
+            # instead of building from source (build.sh). Ignored for ROCm; set
+            # `wheel: false` on CUDA targets that must build from source (e.g.
+            # the cuda-python compile-time variant).
+            'wheel': True,
         }
         self._rec.update(record)
 
@@ -105,6 +116,11 @@ class LinuxGenerator:
                 '',
                 'ENV PATH "/usr/lib/ccache:${PATH}"',
                 '',
+                # gh CLI: used by .pfnci/linux/tests/actions/fetch-wheel.sh
+                # to fetch the GHA-built wheel artifact for the PR/merge SHA.
+                f'RUN curl -fsSL https://github.com/cli/cli/releases/download/v{GH_CLI_VERSION}/gh_{GH_CLI_VERSION}_linux_amd64.tar.gz \\',  # NOQA
+                f'        | tar -xz -C /usr/local --strip-components=1 gh_{GH_CLI_VERSION}_linux_amd64/bin/gh',  # NOQA
+                '',
             ]
         elif os_name == 'centos':
             assert os_version in ('7', '8')
@@ -134,6 +150,11 @@ class LinuxGenerator:
                 ),
                 '',
                 'ENV PATH "/usr/lib64/ccache:${PATH}"',
+                '',
+                # gh CLI: used by .pfnci/linux/tests/actions/fetch-wheel.sh
+                # to fetch the GHA-built wheel artifact for the PR/merge SHA.
+                f'RUN curl -fsSL https://github.com/cli/cli/releases/download/v{GH_CLI_VERSION}/gh_{GH_CLI_VERSION}_linux_amd64.tar.gz \\',  # NOQA
+                f'        | tar -xz -C /usr/local --strip-components=1 gh_{GH_CLI_VERSION}_linux_amd64/bin/gh',  # NOQA
                 '',
             ]
 
@@ -345,10 +366,17 @@ class LinuxGenerator:
             '',
         ]
 
+        # CUDA targets install the GHA wheel (fetch-wheel.sh); ROCm and
+        # source-only CUDA targets (`wheel: false`) build from source.
+        build_script = (
+            'fetch-wheel.sh'
+            if (matrix.cuda is not None and matrix.wheel)
+            else 'build.sh'
+        )
         lines += [
             '',
             'trap "$ACTIONS/cleanup.sh" EXIT',
-            '"$ACTIONS/build.sh"',
+            f'"$ACTIONS/{build_script}"',
         ]
         if matrix.test.startswith('unit'):
             if matrix.test == 'unit':
@@ -364,7 +392,26 @@ class LinuxGenerator:
                 spec = 'slow'
             else:
                 assert False
-            lines += [f'"$ACTIONS/unittest.sh" "{spec}"']
+            if matrix.cuda is not None and matrix.wheel:
+                # TODO (leofang): hard-coding test deselection in CI is not
+                # sustainable -- revisit after #10058 is merged. A fetched
+                # released wheel cannot satisfy build-environment tests, e.g.
+                # test_cupy_builder introspects the *local* CUDA, which differs
+                # from the CUDA the wheel was built with.
+                # Use the rootdir-relative nodeid (tests/...) that pytest
+                # --deselect matches -- NOT the cwd-relative form it prints
+                # under unittest.sh's `pushd tests`. Append rather than
+                # overwrite so a target's own opts survive (e.g.
+                # --parallel-threads=2 on free-threaded).
+                opts = 'CUPY_CI_PYTEST_EXTRA_OPTS'
+                deselect = (
+                    '--deselect tests/install_tests/'
+                    'test_cupy_builder/test_features.py::test_CUDA_cuda')
+                lines += [
+                    f'{opts}="${{{opts}:+${opts} }}{deselect}" '
+                    f'"$ACTIONS/unittest.sh" "{spec}"']
+            else:
+                lines += [f'"$ACTIONS/unittest.sh" "{spec}"']
         elif matrix.test == 'example':
             lines += ['"$ACTIONS/example.sh"']
         elif matrix.test == 'benchmark':
@@ -661,6 +708,18 @@ def main(argv: list[str]) -> int:
     # Generate tags
     taggen = TagGenerator(matrixes)
     output['config.tags.json'] = taggen.generate()
+
+    # Generate attributes for generated files
+    gitattributes = [
+        '# AUTO GENERATED: DO NOT EDIT!',
+        '',
+    ]
+    generated_files = [*output, '.gitattributes']
+    gitattributes.extend(
+        f'/{filename} linguist-generated' for filename in generated_files
+    )
+    gitattributes.append('')
+    output['.gitattributes'] = '\n'.join(gitattributes)
 
     # Write output files.
     out_basedir = options.directory if options.directory else basedir

@@ -1,0 +1,43 @@
+name: Install dependencies on Ubuntu
+
+description: Install needed dependencies, regardless if using GitHub- or self- hosted runners, container, sudo or not.
+
+inputs:
+  dependencies:
+    required: true
+  dependent_exes:
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Install dependencies
+      shell: bash --noprofile --norc -xeuo pipefail {0}
+      run: |
+        dependencies=(${{ inputs.dependencies }})
+        dependent_exes=(${{ inputs.dependent_exes }})
+
+        not_found=0
+        for dep in ${dependent_exes[@]}; do
+          if ! (command -v $dep 2>&1 >/dev/null); then
+            not_found=1
+            break
+          fi
+        done
+        if [[ $not_found == 0 ]]; then
+          echo "All dependencies are found. Do nothing."
+          exit 0
+        fi
+        if ! (command -v sudo 2>&1 >/dev/null); then
+          if [[ $EUID == 0 ]]; then
+            alias SUDO=""
+          else
+            echo "The following oprations require root access."
+            exit 1
+          fi
+        else
+          alias SUDO="sudo"
+        fi
+        shopt -s expand_aliases
+        SUDO apt update
+        SUDO apt install -y ${dependencies[@]}

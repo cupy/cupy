@@ -279,7 +279,7 @@ def _find_static_library(name: str) -> str:
             cuda_path = build.get_cuda_path()
     elif PLATFORM_WIN32:
         filename = f'{name}.lib'
-        libdirs = ['lib\\x64', 'lib']
+        libdirs = [os.path.join('lib', build._get_win32_cuda_arch()), 'lib']
         cuda_path = build.get_cuda_path()
     else:
         raise Exception('not supported on this platform')
@@ -486,13 +486,6 @@ def make_extensions(ctx: Context, compiler, use_cython):
                 ldflag += ','.join('-rpath,' + p for p in rpath)
                 args = s_file.setdefault('extra_link_args', [])
                 args.append(ldflag)
-
-            if (not no_cuda and not use_hip
-                    and PLATFORM_LINUX
-                    and f == 'cupy.cuda.function'):
-                s_file['extra_objects'] = (
-                    s_file.get('extra_objects', [])
-                    + [_find_static_library('cufilt')])
 
             sources = module_extension_sources(f, use_cython, no_cuda)
             extension = setuptools.Extension(name, sources, **s_file)
