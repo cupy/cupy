@@ -130,6 +130,7 @@ class TestNdarrayInit(unittest.TestCase):
     })
 )
 class TestAsarray(unittest.TestCase):
+    @pytest.mark.thread_unsafe(reason="mutates global pinned allocator.")
     def test_asarray(self):
         cp_order, view, strides = self.cp_setup
         shape = (2, 3, 4)
