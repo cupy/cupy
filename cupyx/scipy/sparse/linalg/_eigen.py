@@ -127,6 +127,20 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
     # Orthogonality tolerance, shared by the sweep-boundary check and the
     # locked-block check: far above a healthy basis (~eps*ncv) and far
     # below the failures it catches (O(1)).
+    #
+    # Scale note: this margin and the two above (64*eps, and the 8x
+    # headroom on the norm bound) are n-INDEPENDENT, while the roundoff
+    # they discriminate against grows with n -- worst case ~eps*sqrt(n)
+    # for a length-n inner product. In float64 the crossover is around
+    # n ~ 1e15, unreachable. In float32 the worst-case model crosses
+    # sqrt(eps) near n ~ 1e7, though blocked GPU reductions keep the real
+    # error far below that bound (degenerate and late-norm-discovery
+    # cases were checked at n = 3e7 float32 during review). Every one of
+    # these margins fails in a safe direction: too loose degrades to the
+    # pre-guard behaviour, which the orthogonality check still backstops,
+    # and too tight raises the documented RuntimeError -- neither returns
+    # silent garbage. If float32 at n >> 1e7 ever needs support, the
+    # explicit form is max(sqrt(eps), c*eps*sqrt(n)).
     ortho_rtol = float(numpy.sqrt(numpy.finfo(a.dtype).eps))
     # True upper bound on ||A|| for the divergence guard (None for a
     # LinearOperator, whose entries are not available).
@@ -138,14 +152,10 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
     la_shift = (which == 'LA')
 
     # Lanczos iteration
-    # Shared across sweeps so a later sweep is judged against the first,
-    # trusted ||A|| estimate rather than against its own corrupted one.
-    anorm_ref = [0.0]
     anorm, bias_shift, work = _lanczos_checked(a, lanczos, V, u, alpha, beta,
                                                0, ncv, break_rtol, bias_op,
                                                la_shift,
                                                ortho_rtol=ortho_rtol,
-                                               anorm_ref=anorm_ref,
                                                norm_bound=norm_bound)
 
     iter = work
@@ -206,7 +216,6 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
                                                    break_rtol, bias_op,
                                                    la_shift,
                                                    ortho_rtol=ortho_rtol,
-                                                   anorm_ref=anorm_ref,
                                                    norm_bound=norm_bound)
 
         # +1 for the u = a @ V[k] above; equals the former ncv - k when no
@@ -427,7 +436,7 @@ def _norm_upper_bound(a):
 
 def _lanczos_checked(a, lanczos, V, u, alpha, beta, i_start, i_end,
                      break_rtol, bias_op=None, la_shift=False,
-                     ortho_rtol=None, anorm_ref=None, norm_bound=None):
+                     ortho_rtol=None, norm_bound=None):
     """Run a Lanczos sweep; detect and repair lucky breakdowns at the sweep
     boundary.
 
@@ -455,8 +464,6 @@ def _lanczos_checked(a, lanczos, V, u, alpha, beta, i_start, i_end,
     if ortho_rtol is None:
         ortho_rtol = float(numpy.sqrt(numpy.finfo(
             numpy.dtype(V.dtype).char.lower()).eps))
-    if anorm_ref is None:
-        anorm_ref = [0.0]
     start = i_start
     repaired = set()
     # Matvecs actually performed, including repair re-sweeps, so the driver's
@@ -568,7 +575,6 @@ def _lanczos_checked(a, lanczos, V, u, alpha, beta, i_start, i_end,
                 'numerically rank-deficient; try a smaller ncv, a '
                 'different v0, or float64.'.format(
                     anorm, _DIVERGE_RTOL, norm_bound))
-        anorm_ref[0] = max(anorm_ref[0], anorm)
         shift = (anorm if (la_shift
                            and float(alpha_np[:end + 1].real.max()) <= 0.0)
                  else 0.0)
@@ -608,19 +614,25 @@ def _repair_locked(a, V, alpha, k, n, ortho_rtol, bias_op, bias_shift,
     if k < 2:
         return
     if w_host is not None:
-        ws = numpy.sort(numpy.abs(numpy.asarray(w_host, dtype=numpy.float64)))
-        scale = float(ws[-1]) if ws.size else 0.0
+        wr = numpy.asarray(w_host, dtype=numpy.float64).real
+        scale = float(numpy.abs(wr).max()) if wr.size else 0.0
+        # Sort the SIGNED values: a +/-lambda pair is not degenerate, and
+        # sorting magnitudes would make an indefinite spectrum (common
+        # under 'LM') fire this gate for nothing.
         if scale == 0.0 or not numpy.any(
-                numpy.diff(ws) <= ortho_rtol * scale):
+                numpy.diff(numpy.sort(wr)) <= ortho_rtol * scale):
             return
-    Vk = V[:k + 1]
+    # Only the locked rows: the driver overwrites V[k] a few lines below,
+    # and its overlap with the locked block is |s[k, j]|, normally far
+    # above the tolerance -- including it would reseed a row that is about
+    # to be discarded, at the cost of a matvec and a sync.
+    Vk = V[:k]
     gram = cupy.tril(cupy.abs(Vk @ Vk.conj().T), -1)
     worst = cupy.asnumpy(gram.max(axis=1))
     for j in numpy.flatnonzero(worst > ortho_rtol):
         j = int(j)
         V[j] = _restart_ortho(V, j, n, V.dtype, bias_op, bias_shift)
-        if j < k:
-            alpha[j] = cupy.inner(V[j].conj(), a @ V[j])
+        alpha[j] = cupy.inner(V[j].conj(), a @ V[j])
 
 
 def _restart_ortho(V, m, n, dtype, bias_op=None, bias_shift=0.0):
