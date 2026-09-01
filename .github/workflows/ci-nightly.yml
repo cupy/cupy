@@ -8,8 +8,8 @@ run-name: "Nightly CI (${{ github.event.inputs.branch || 'main' }})"
 
 on:
   schedule:
-    # 02:00 UTC = 21:00 EST / 22:00 EDT
-    - cron: '0 2 * * *'
+    # 01:03 UTC = 20:03 EST / 21:03 EDT
+    - cron: '3 1 * * *'
   workflow_dispatch:
     inputs:
       branch:
@@ -50,7 +50,9 @@ jobs:
           BRANCH: ${{ github.event.inputs.branch || 'main' }}
         run: |
           set -euo pipefail
-          RUN_JSON="$(gh api \
+          # --method GET: gh api defaults to POST when any -f/-F flag is
+          # present, which returns 404 for this GET endpoint.
+          RUN_JSON="$(gh api --method GET \
             -f branch="${BRANCH}" \
             -f event=push \
             -f status=success \
