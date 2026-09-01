@@ -13,6 +13,15 @@ from cupy.fft._cache import get_plan_cache
 _reduce = functools.reduce
 _prod = cupy._core.internal.prod
 
+_R2C_OUTPUT_DTYPES = {
+    np.dtype(np.float32): np.dtype(np.complex64),
+    np.dtype(np.float64): np.dtype(np.complex128),
+}
+_C2R_OUTPUT_DTYPES = {
+    complex_dtype: real_dtype
+    for real_dtype, complex_dtype in _R2C_OUTPUT_DTYPES.items()
+}
+
 
 @cupy._util.memoize()
 def _output_dtype(dtype, value_type):
@@ -514,10 +523,12 @@ def _get_fftn_output_shape_and_dtype(a, value_type, last_axis, out_size):
         dtype = a.dtype
     elif value_type == 'R2C':
         shape[last_axis] = out_size
-        dtype = np.dtype(a.dtype.char.upper())
-    else:  # C2R
+        dtype = _R2C_OUTPUT_DTYPES[a.dtype]
+    elif value_type == 'C2R':
         shape[last_axis] = out_size
-        dtype = np.dtype(a.dtype.char.lower())
+        dtype = _C2R_OUTPUT_DTYPES[a.dtype]
+    else:
+        raise ValueError('unsupported FFT value type: {}'.format(value_type))
     return tuple(shape), dtype
 
 
