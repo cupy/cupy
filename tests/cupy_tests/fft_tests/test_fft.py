@@ -580,7 +580,6 @@ class TestPlanCtxManagerFftn:
         assert 'The cuFFT plan and a.shape do not match' in str(ex.value)
 
 
-@pytest.mark.thread_unsafe(reason="the current cuFFT plan is thread-local")
 def test_plan_nd_reuse_across_logical_batch_shapes():
     from cupyx.scipy.fftpack import get_fft_plan
 
@@ -596,7 +595,6 @@ def test_plan_nd_reuse_across_logical_batch_shapes():
     testing.assert_allclose(actual, expected, rtol=1e-3, atol=1e-7)
 
 
-@pytest.mark.thread_unsafe(reason="the FFT plan cache is thread-local")
 def test_plan_nd_cache_reuse_across_logical_batch_shapes():
     cache = config.get_plan_cache()
     cache.clear()
@@ -618,7 +616,6 @@ def test_plan_nd_cache_reuse_across_logical_batch_shapes():
         cache.clear()
 
 
-@pytest.mark.thread_unsafe(reason="the current cuFFT plan is thread-local")
 def test_plan_nd_reuse_across_array_orders():
     from cupyx.scipy.fftpack import get_fft_plan
 
@@ -633,6 +630,18 @@ def test_plan_nd_reuse_across_array_orders():
 
     assert actual.flags.f_contiguous
     testing.assert_allclose(actual, expected, rtol=1e-3, atol=1e-7)
+
+
+def test_plan_nd_rejects_f_order_real_transform():
+    from cupyx.scipy.fftpack import get_fft_plan
+
+    a = testing.shaped_random((4, 4), cupy, cupy.float32)
+    plan = get_fft_plan(a, value_type='R2C')
+    b = cupy.asfortranarray(a)
+
+    with pytest.raises(ValueError):
+        with plan:
+            cupy.fft.rfftn(b)
 
 
 @testing.with_requires('numpy>=2.0')

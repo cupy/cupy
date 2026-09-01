@@ -355,6 +355,9 @@ def _get_cufft_plan_nd_args(
 
     if order not in ['C', 'F']:
         raise ValueError('order must be \'C\' or \'F\'')
+    if order == 'F' and value_type != 'C2C':
+        raise ValueError(
+            'C2R/R2C PlanNd for F-order arrays is not supported')
 
     """
     For full details on idist, istride, iembed, etc. see:
