@@ -36,7 +36,7 @@
 # CUDA 12.1 | Linux
 - project: "cupy.linux.cuda121"
   target: "cuda121"
-  tags: ["@push", "full", "linux", "cuda121"]
+  tags: ["@nightly", "full", "linux", "cuda121"]
   system: "linux"
   os: "ubuntu:20.04"
   cuda: "12.1"
@@ -59,7 +59,7 @@
 # CUDA 12.1 (Multi-GPU) | Linux
 - project: "cupy.linux.cuda121.multi"
   _inherits: "cupy.linux.cuda121"
-  tags: ["@push", "full", "multi", "linux", "cuda121"]
+  tags: ["@nightly", "full", "multi", "linux", "cuda121"]
   target: "cuda121.multi"
   mpi4py: "4"
   test: "unit-multi"
@@ -67,7 +67,7 @@
 # CUDA 12.2 | Linux
 - project: "cupy.linux.cuda122"
   target: "cuda122"
-  tags: ["@push", "full", "linux", "cuda122"]
+  tags: ["@nightly", "full", "linux", "cuda122"]
   system: "linux"
   os: "ubuntu:20.04"
   cuda: "12.2"
@@ -90,7 +90,7 @@
 # CUDA 12.2 (Multi-GPU) | Linux
 - project: "cupy.linux.cuda122.multi"
   _inherits: "cupy.linux.cuda122"
-  tags: ["@push", "full", "multi", "linux", "cuda122"]
+  tags: ["@nightly", "full", "multi", "linux", "cuda122"]
   target: "cuda122.multi"
   mpi4py: "4"
   test: "unit-multi"
@@ -98,7 +98,7 @@
 # CUDA 12.3 | Linux
 - project: "cupy.linux.cuda123"
   target: "cuda123"
-  tags: ["@push", "full", "linux", "cuda123"]
+  tags: ["@nightly", "full", "linux", "cuda123"]
   system: "linux"
   os: "ubuntu:20.04"
   cuda: "12.3"
@@ -121,7 +121,7 @@
 # CUDA 12.3 (Multi-GPU) | Linux
 - project: "cupy.linux.cuda123.multi"
   _inherits: "cupy.linux.cuda123"
-  tags: ["@push", "full", "multi", "linux", "cuda123"]
+  tags: ["@nightly", "full", "multi", "linux", "cuda123"]
   target: "cuda123.multi"
   mpi4py: "4"
   test: "unit-multi"
@@ -129,7 +129,7 @@
 # CUDA 12.4 | Linux
 - project: "cupy.linux.cuda124"
   target: "cuda124"
-  tags: ["@push", "full", "linux", "cuda124"]
+  tags: ["@nightly", "full", "linux", "cuda124"]
   system: "linux"
   os: "ubuntu:20.04"
   cuda: "12.4"
@@ -152,7 +152,7 @@
 # CUDA 12.4 (Multi-GPU) | Linux
 - project: "cupy.linux.cuda124.multi"
   _inherits: "cupy.linux.cuda124"
-  tags: ["@push", "full", "multi", "linux", "cuda124"]
+  tags: ["@nightly", "full", "multi", "linux", "cuda124"]
   target: "cuda124.multi"
   mpi4py: "4"
   test: "unit-multi"
@@ -160,7 +160,7 @@
 # CUDA 12.5 | Linux
 - project: "cupy.linux.cuda125"
   target: "cuda125"
-  tags: ["@push", "full", "linux", "cuda125"]
+  tags: ["@nightly", "full", "linux", "cuda125"]
   system: "linux"
   os: "ubuntu:20.04"
   cuda: "12.5"
@@ -183,7 +183,7 @@
 # CUDA 12.5 (Multi-GPU) | Linux
 - project: "cupy.linux.cuda125.multi"
   _inherits: "cupy.linux.cuda125"
-  tags: ["@push", "full", "multi", "linux", "cuda125"]
+  tags: ["@nightly", "full", "multi", "linux", "cuda125"]
   target: "cuda125.multi"
   mpi4py: "4"
   test: "unit-multi"
@@ -191,7 +191,7 @@
 # CUDA 12.6 | Linux
 - project: "cupy.linux.cuda126"
   target: "cuda126"
-  tags: ["@push", "full", "linux", "cuda126"]
+  tags: ["@nightly", "full", "linux", "cuda126"]
   system: "linux"
   os: "ubuntu:20.04"
   cuda: "12.6"
@@ -214,7 +214,7 @@
 # CUDA 12.6 (Multi-GPU) | Linux
 - project: "cupy.linux.cuda126.multi"
   _inherits: "cupy.linux.cuda126"
-  tags: ["@push", "full", "multi", "linux", "cuda126"]
+  tags: ["@nightly", "full", "multi", "linux", "cuda126"]
   target: "cuda126.multi"
   mpi4py: "4"
   test: "unit-multi"
@@ -222,7 +222,7 @@
 # CUDA 12.8 | Linux
 - project: "cupy.linux.cuda128"
   target: "cuda128"
-  tags: ["@push", "full", "linux", "cuda128"]
+  tags: ["@nightly", "full", "linux", "cuda128"]
   system: "linux"
   os: "ubuntu:20.04"
   cuda: "12.8"
@@ -245,7 +245,7 @@
 # CUDA 12.8 (Multi-GPU) | Linux
 - project: "cupy.linux.cuda128.multi"
   _inherits: "cupy.linux.cuda128"
-  tags: ["@push", "full", "multi", "linux", "cuda128"]
+  tags: ["@nightly", "full", "multi", "linux", "cuda128"]
   target: "cuda128.multi"
   mpi4py: "4"
   test: "unit-multi"
@@ -315,7 +315,7 @@
 # CUDA 13.1 | Linux
 - project: "cupy.linux.cuda131"
   target: "cuda131"
-  tags: ["@push", "full", "linux", "cuda131"]
+  tags: ["@nightly", "full", "linux", "cuda131"]
   system: "linux"
   os: "ubuntu:22.04"
   cuda: "13.1"
@@ -338,16 +338,15 @@
 # CUDA 13.1 (Multi-GPU) | Linux
 - project: "cupy.linux.cuda131.multi"
   _inherits: "cupy.linux.cuda131"
-  tags: ["@push", "full", "multi", "linux", "cuda131"]
+  tags: ["@nightly", "full", "multi", "linux", "cuda131"]
   target: "cuda131.multi"
   mpi4py: "4"
   test: "unit-multi"
 
 # CUDA 13.2 | Linux
-# The latest CUDA version matrix is intended to cover the highest supported combination.
 - project: "cupy.linux.cuda132"
   target: "cuda132"
-  tags: ["@push", "full", "mini", "linux", "cuda132"]
+  tags: ["@nightly", "full", "linux", "cuda132"]
   system: "linux"
   os: "ubuntu:22.04"
   cuda: "13.2"
@@ -370,8 +369,40 @@
 # CUDA 13.2 (Multi-GPU) | Linux
 - project: "cupy.linux.cuda132.multi"
   _inherits: "cupy.linux.cuda132"
-  tags: ["@push", "full", "mini", "multi", "linux", "cuda132"]
+  tags: ["@nightly", "full", "multi", "linux", "cuda132"]
   target: "cuda132.multi"
+  mpi4py: "4"
+  test: "unit-multi"
+
+# CUDA 13.3 | Linux
+# The latest CUDA version matrix is intended to cover the highest supported combination.
+- project: "cupy.linux.cuda133"
+  target: "cuda133"
+  tags: ["@push", "full", "mini", "linux", "cuda133"]
+  system: "linux"
+  os: "ubuntu:22.04"
+  cuda: "13.3"
+  rocm: null
+  nccl: "2.30"
+  cutensor: "2.4"
+  cusparselt: "0.9.1"
+  python: "3.14"
+  numpy: "2.4"
+  scipy: "1.16"
+  optuna: "4"
+  ml_dtypes: "0.5"
+  mpi4py: null
+  cython: "3.2"
+  cuda-python: null
+  nvmath-python: null
+  env:CUPY_ACCELERATORS: "cutensor,cub"
+  test: "unit"
+
+# CUDA 13.3 (Multi-GPU) | Linux
+- project: "cupy.linux.cuda133.multi"
+  _inherits: "cupy.linux.cuda133"
+  tags: ["@push", "full", "mini", "multi", "linux", "cuda133"]
+  target: "cuda133.multi"
   mpi4py: "4"
   test: "unit-multi"
 
@@ -399,17 +430,17 @@
 # ROCm (Linux)
 ###############################################################################
 
-# ROCm 7.1 | Linux
+# ROCm 7.14 | Linux
 # The lowest ROCm version matrix is intended to cover the lowest supported combination.
 # The latest ROCm version matrix is intended to cover the highest supported combination.
-- project: "cupy.linux.rocm-7-1"
-  _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_main/TEST=rocm-7-1,label=mnj-mi50/"
+- project: "cupy.linux.rocm-7-14"
+  _url: "https://jenkins.preferred.jp/job/chainer/job/cupy_main/TEST=rocm-7-14,label=mnj-mi50/"
   tags: null  # self-hosted
-  target: "rocm-7-1"
+  target: "rocm-7-14"
   system: "linux"
   os: "ubuntu:22.04"
   cuda: null
-  rocm: '7.1'
+  rocm: '7.14'
   nccl: null
   cutensor: null
   cusparselt: null
@@ -492,6 +523,9 @@
 # This combination tests against pre-releases. Use the highest supported combination.
 - project: "cupy.linux.cuda-head"
   target: "cuda-head"
+  # 'head' builds against pre-release deps; a released wheel can't exercise
+  # that, so this target builds from source (build.sh) instead of fetching.
+  wheel: false
   tags: ["head", "linux"]
   system: "linux"
   os: "ubuntu:20.04"
@@ -519,6 +553,10 @@
 # CUDA 12.x / CUDA Python | Linux
 - project: "cupy.linux.cuda12x-cuda-python"
   target: "cuda12x-cuda-python"
+  # CUPY_USE_CUDA_PYTHON is a compile-time flag baked into the Cython
+  # extensions; the released wheels are not built with it, so this target must
+  # build from source (build.sh) instead of fetching a wheel.
+  wheel: false
   tags: ["@push", "full", "mini", "linux", "cuda-python"]
   system: "linux"
   os: "ubuntu:20.04"
@@ -543,12 +581,16 @@
 # CUDA 13.x / CUDA Python | Linux
 - project: "cupy.linux.cuda13x-cuda-python"
   target: "cuda13x-cuda-python"
+  # CUPY_USE_CUDA_PYTHON is a compile-time flag baked into the Cython
+  # extensions; the released wheels are not built with it, so this target must
+  # build from source (build.sh) instead of fetching a wheel.
+  wheel: false
   tags: ["@push", "full", "mini", "linux", "cuda-python"]
   system: "linux"
   os: "ubuntu:22.04"
-  cuda: "13.2"
+  cuda: "13.3"
   rocm: null
-  nccl: "2.29"
+  nccl: "2.30"
   cutensor: "2.4"
   cusparselt: null
   python: "3.14"
@@ -558,7 +600,7 @@
   mpi4py: null
   ml_dtypes: null
   cython: "3.2"
-  cuda-python: "13.2"
+  cuda-python: "13.3"
   nvmath-python: "1"
   env:CUPY_ACCELERATORS: "cutensor,cub"
   env:CUPY_USE_CUDA_PYTHON: "1"
@@ -577,43 +619,43 @@
 - project: "cupy.win.cuda121"
   _extern: true
   target: "cuda121"
-  tags: ["@push", "full", "windows", "cuda121"]
+  tags: ["@nightly", "full", "windows", "cuda121"]
   system: "windows"
 
 - project: "cupy.win.cuda122"
   _extern: true
   target: "cuda122"
-  tags: ["@push", "full", "windows", "cuda122"]
+  tags: ["@nightly", "full", "windows", "cuda122"]
   system: "windows"
 
 - project: "cupy.win.cuda123"
   _extern: true
   target: "cuda123"
-  tags: ["@push", "full", "windows", "cuda123"]
+  tags: ["@nightly", "full", "windows", "cuda123"]
   system: "windows"
 
 - project: "cupy.win.cuda124"
   _extern: true
   target: "cuda124"
-  tags: ["@push", "full", "windows", "cuda124"]
+  tags: ["@nightly", "full", "windows", "cuda124"]
   system: "windows"
 
 - project: "cupy.win.cuda125"
   _extern: true
   target: "cuda125"
-  tags: ["@push", "full", "windows", "cuda125"]
+  tags: ["@nightly", "full", "windows", "cuda125"]
   system: "windows"
 
 - project: "cupy.win.cuda126"
   _extern: true
   target: "cuda126"
-  tags: ["@push", "full", "windows", "cuda126"]
+  tags: ["@nightly", "full", "windows", "cuda126"]
   system: "windows"
 
 - project: "cupy.win.cuda128"
   _extern: true
   target: "cuda128"
-  tags: ["@push", "full", "windows", "cuda128"]
+  tags: ["@nightly", "full", "windows", "cuda128"]
   system: "windows"
 
 - project: "cupy.win.cuda129"
@@ -631,25 +673,25 @@
 - project: "cupy.win.cuda131"
   _extern: true
   target: "cuda131"
-  tags: ["@push", "full", "windows", "cuda131"]
+  tags: ["@nightly", "full", "windows", "cuda131"]
   system: "windows"
 
 - project: "cupy.win.cuda132"
   _extern: true
   target: "cuda132"
-  tags: ["@push", "full", "mini", "windows", "cuda132"]
+  tags: ["@nightly", "full", "windows", "cuda132"]
+  system: "windows"
+
+- project: "cupy.win.cuda133"
+  _extern: true
+  target: "cuda133"
+  tags: ["@push", "full", "mini", "windows", "cuda133"]
   system: "windows"
 
 - project: "cupy.linux.cuda-rapids"
   _extern: true
   target: "cuda-rapids"
-  tags: ["@push", "full", "linux", "rapids"]
-  system: "linux"
-
-- project: "cupy.linux.cuda-build"
-  _extern: true
-  target: "cuda-build"
-  tags: ["@push", "full", "mini", "linux"]
+  tags: ["@nightly", "full", "linux", "rapids"]
   system: "linux"
 
 - project: "cupy.linux.array-api"

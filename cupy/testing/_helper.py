@@ -85,7 +85,13 @@ def installed(*specifiers: str) -> bool:
         try:
             found = importlib.metadata.version(req.name)
         except PackageNotFoundError:
-            return False
+            # The distribution name may differ from the import name -- notably
+            # cupy is installed as cupy-cudaXXx / cupy-rocm from a wheel. Fall
+            # back to the import-name -> distribution mapping.
+            dists = importlib.metadata.packages_distributions().get(req.name)
+            if not dists:
+                return False
+            found = importlib.metadata.version(dists[0])
         expected = req.specifier
         # If no constraint is given, skip
         if expected and (not expected.contains(found, prereleases=True)):

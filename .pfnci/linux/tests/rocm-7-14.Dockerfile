@@ -1,10 +1,10 @@
 # AUTO GENERATED: DO NOT EDIT!
-ARG BASE_IMAGE="rocm/dev-ubuntu-22.04:7.1.1-complete"
+ARG BASE_IMAGE="rocm/dev-ubuntu-22.04:7.14.0-full"
 FROM ${BASE_IMAGE}
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
     ( apt-get -qqy update || true ) && \
-    apt-get -qqy install ca-certificates && \
+    apt-get -qqy install ca-certificates gnupg && \
     curl -qL https://repo.radeon.com/rocm/rocm.gpg.key | apt-key add -
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get -qqy update && \
@@ -21,6 +21,9 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
             --allow-downgrades install 
 
 ENV PATH "/usr/lib/ccache:${PATH}"
+
+RUN curl -fsSL https://github.com/cli/cli/releases/download/v2.95.0/gh_2.95.0_linux_amd64.tar.gz \
+        | tar -xz -C /usr/local --strip-components=1 gh_2.95.0_linux_amd64/bin/gh
 
 ENV ROCM_HOME "/opt/rocm"
 ENV LD_LIBRARY_PATH "${ROCM_HOME}/lib"
