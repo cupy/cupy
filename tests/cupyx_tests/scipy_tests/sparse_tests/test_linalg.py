@@ -377,6 +377,31 @@ class TestEigsh:
 
 
 @testing.with_requires('scipy')
+class TestEigshLateNormDiscovery:
+    # An operator with wide dynamic range and a v0 orthogonal to its
+    # dominant eigenspace -- what a deflation workflow produces -- makes
+    # the first sweep honestly underestimate ||A||, and a later reseed
+    # legitimately discovers it. A divergence guard measured against the
+    # first sweep's own estimate mistakes that for corruption; one
+    # measured against a true bound on ||A|| cannot.
+    @testing.for_dtypes('fdFD')
+    @pytest.mark.parametrize('big', [1e4, 1e6])
+    def test_dominant_eigenvalue_hidden_from_v0(self, dtype, big):
+        n = 400
+        d = numpy.ones(n)
+        d[0] = big
+        a = sparse.diags(cupy.asarray(d.astype(
+            numpy.dtype(dtype).char.lower()))).tocsr().astype(dtype)
+        v0 = numpy.random.default_rng(0).random(n)
+        v0[0] = 0.0                        # exactly orthogonal to e_0
+        v0 = cupy.asarray((v0 / numpy.linalg.norm(v0)).astype(dtype))
+        w = sparse.linalg.eigsh(a, k=6, which='LA', v0=v0,
+                                return_eigenvectors=False)
+        assert not bool(cupy.isnan(w).any())
+        assert bool((cupy.abs(w) <= 8 * big).all())
+
+
+@testing.with_requires('scipy')
 class TestEigshTinyN:
     # n = 2 forces ncv = n - 1 = 1, so the sweep yields a single row and the
     # breakdown walk has no interior beta to inspect. Regression guard: the

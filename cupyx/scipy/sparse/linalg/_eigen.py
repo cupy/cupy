@@ -49,6 +49,20 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
             where ``w`` is eigenvalues and ``x`` is eigenvectors. Otherwise,
             it returns only ``w``.
 
+    Raises:
+        RuntimeError: If the Lanczos basis loses numerical orthogonality
+            beyond repair, so that no correct answer can be produced. This
+            replaces silently wrong output (NaN or overflowed Ritz values)
+            on such inputs, and is raised from three places: the operator
+            norm estimate exceeding what an orthonormal basis can give, a
+            restart probe that grows when projected out of the basis, and
+            exhaustion of the restart candidate ladder. Degenerate or
+            rank-deficient spectra in single precision are the usual
+            cause; a smaller ``ncv``, a different ``v0``, or ``float64``
+            input is the usual remedy. Note that
+            :func:`scipy.sparse.linalg.eigsh` signals its own failure mode
+            differently, with ``ArpackNoConvergence``.
+
     .. seealso:: :func:`scipy.sparse.linalg.eigsh`
 
     .. note::
@@ -110,6 +124,13 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
     # threshold can exceed legitimate small couplings in float32 and corrupt
     # the trailing Ritz values.)
     break_rtol = 64.0 * float(numpy.finfo(a.dtype).eps)
+    # Orthogonality tolerance, shared by the sweep-boundary check and the
+    # locked-block check: far above a healthy basis (~eps*ncv) and far
+    # below the failures it catches (O(1)).
+    ortho_rtol = float(numpy.sqrt(numpy.finfo(a.dtype).eps))
+    # True upper bound on ||A|| for the divergence guard (None for a
+    # LinearOperator, whose entries are not available).
+    norm_bound = _norm_upper_bound(a)
     # Restart-reseed bias (see _restart_ortho): pull reseeds out of the
     # operator's null space -- except for 'SA', where the smallest
     # (possibly zero) eigenvalues are the ones being sought.
@@ -123,10 +144,12 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
     anorm, bias_shift, work = _lanczos_checked(a, lanczos, V, u, alpha, beta,
                                                0, ncv, break_rtol, bias_op,
                                                la_shift,
-                                               anorm_ref=anorm_ref)
+                                               ortho_rtol=ortho_rtol,
+                                               anorm_ref=anorm_ref,
+                                               norm_bound=norm_bound)
 
     iter = work
-    w, s = _eigsh_solve_ritz(alpha, beta, None, k, which)
+    w, s, w_host = _eigsh_solve_ritz(alpha, beta, None, k, which)
     x = V.T @ s
 
     # Compute residual
@@ -140,6 +163,8 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
         beta[:k] = 0
         alpha[:k] = w
         V[:k] = x.T
+        _repair_locked(a, V, alpha, k, n, ortho_rtol, bias_op,
+                       bias_shift, w_host=w_host)
 
         # u -= u.T @ V[:k].conj().T @ V[:k]
         cublas.gemv(_cublas.CUBLAS_OP_C, 1, V[:k].T, u, 0, uu)
@@ -180,12 +205,15 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
                                                    beta, k + 1, ncv,
                                                    break_rtol, bias_op,
                                                    la_shift,
-                                                   anorm_ref=anorm_ref)
+                                                   ortho_rtol=ortho_rtol,
+                                                   anorm_ref=anorm_ref,
+                                                   norm_bound=norm_bound)
 
         # +1 for the u = a @ V[k] above; equals the former ncv - k when no
         # repair re-sweep ran.
         iter += work + 1
-        w, s = _eigsh_solve_ritz(alpha, beta, beta_k, k, which)
+        w, s, w_host = _eigsh_solve_ritz(alpha, beta, beta_k, k,
+                                         which)
         x = V.T @ s
 
         # Compute residual
@@ -363,15 +391,43 @@ _kernel_normalize = cupy.ElementwiseKernel(
 )
 
 
-# A healthy ||A|| estimate only creeps upward toward ||A||; anything past
-# this factor is divergence, not discovery (measured jump on a corrupted
-# basis: 1e5 in a single restart, then 1e40+ per restart).
-_DIVERGE_RTOL = 1e3
+# The row-sum estimate of ||T|| is bounded by 3 * ||T|| (a tridiagonal row
+# has at most three entries) and ||T|| <= ||A|| for orthonormal V, so a
+# healthy estimate can never exceed 3 * ||A||. Compared against a true
+# upper bound on ||A||, anything past this factor is therefore PROVABLE
+# corruption rather than a tuned threshold -- which matters because a
+# legitimate late discovery of ||A|| can be arbitrarily large: an operator
+# with wide dynamic range and a v0 orthogonal to its dominant eigenspace
+# (what deflation workflows produce) makes the first sweep honestly miss
+# ||A|| and a later reseed find it.
+_DIVERGE_RTOL = 8.0
+
+
+def _norm_upper_bound(a):
+    """Max absolute row sum of ``a``, an upper bound on ``||a||_2``.
+
+    Returns None when the operator's entries are not available (e.g. a
+    LinearOperator), in which case no absolute bound can be formed and the
+    caller falls back to checking only for non-finite estimates.
+    """
+    try:
+        if isinstance(a, cupy.ndarray):
+            return float(cupy.abs(a).sum(axis=1).max())
+        if _csr._is_csr(a) or getattr(a, 'format', None) in (
+                'csr', 'csc', 'coo'):
+            # |A| @ 1 gives the absolute row sums; A is Hermitian here, so
+            # a CSC/COO layout yields the same bound.
+            b = a.tocsr()
+            ones = cupy.ones(b.shape[1], dtype=b.dtype)
+            return float(cupy.abs(cupy.abs(b) @ ones).max())
+    except Exception:      # pragma: no cover - bound is optional
+        return None
+    return None
 
 
 def _lanczos_checked(a, lanczos, V, u, alpha, beta, i_start, i_end,
                      break_rtol, bias_op=None, la_shift=False,
-                     ortho_rtol=None, anorm_ref=None):
+                     ortho_rtol=None, anorm_ref=None, norm_bound=None):
     """Run a Lanczos sweep; detect and repair lucky breakdowns at the sweep
     boundary.
 
@@ -491,20 +547,27 @@ def _lanczos_checked(a, lanczos, V, u, alpha, beta, i_start, i_end,
         # which broke out at p and never looked further.
         end = m - 1 if p is None else p
         anorm = float(anorm_run[end])
-        # ||T|| <= ||A|| holds for any orthonormal V, so the estimate can
-        # only creep upward toward ||A|| as the subspace grows. A jump of
-        # orders of magnitude (or a non-finite row sum) means the
-        # recurrence itself diverged, and every value downstream -- Ritz
-        # pairs included -- is meaningless. Fail closed rather than return
-        # ghost eigenvalues that look like data.
-        if not numpy.isfinite(anorm) or (
-                anorm_ref[0] > 0.0
-                and anorm > _DIVERGE_RTOL * anorm_ref[0]):
+        # Fail closed on an estimate that cannot come from an orthonormal
+        # basis: with ||T|| <= ||A|| and the row-sum estimate <= 3 ||T||,
+        # exceeding 8x a true upper bound on ||A|| is impossible without
+        # corruption. A non-finite estimate is corrupt by inspection. When
+        # no bound is available (LinearOperator) only the latter applies --
+        # a relative test against the first sweep would misfire on the
+        # legitimate late-discovery case described at _DIVERGE_RTOL.
+        if not numpy.isfinite(anorm):
             raise RuntimeError(
-                'eigsh: Lanczos recurrence diverged (||A|| estimate went '
-                'from {:.3e} to {:.3e}). The Krylov basis is numerically '
+                'eigsh: Lanczos recurrence diverged (the ||A|| estimate is '
+                'not finite). The Krylov basis is numerically '
                 'rank-deficient; try a smaller ncv, a different v0, or '
-                'float64.'.format(anorm_ref[0], anorm))
+                'float64.')
+        if norm_bound is not None and anorm > _DIVERGE_RTOL * norm_bound:
+            raise RuntimeError(
+                'eigsh: Lanczos recurrence diverged (||A|| estimate {:.3e} '
+                'exceeds {:.0f}x the operator norm bound {:.3e}, which an '
+                'orthonormal basis cannot produce). The Krylov basis is '
+                'numerically rank-deficient; try a smaller ncv, a '
+                'different v0, or float64.'.format(
+                    anorm, _DIVERGE_RTOL, norm_bound))
         anorm_ref[0] = max(anorm_ref[0], anorm)
         shift = (anorm if (la_shift
                            and float(alpha_np[:end + 1].real.max()) <= 0.0)
@@ -515,6 +578,49 @@ def _lanczos_checked(a, lanczos, V, u, alpha, beta, i_start, i_end,
         V[p + 1] = _restart_ortho(V, p + 1, n, V.dtype, bias_op, shift)
         repaired.add(p)
         start = p + 1
+
+
+def _repair_locked(a, V, alpha, k, n, ortho_rtol, bias_op, bias_shift,
+                   w_host=None):
+    # The locked block V[:k] = (V.T @ s).T inherits orthonormality from V
+    # and from the Ritz basis s -- but only when BOTH are sound. On an
+    # eigenvalue of multiplicity > 1 the Ritz basis is degenerate by
+    # construction and several columns of s can name the same physical
+    # direction, so V[:k] can hold duplicate rows (measured: worst
+    # off-diagonal 4.0e-01 immediately after locking, where orthonormality
+    # demands ~1e-16). The sweep-boundary check cannot see this, because it
+    # only repairs positions at or after i_start - 1; a duplicate locked
+    # here would survive to poison every later reseed. So verify the block
+    # where it is created: one Gram of (k+1) x n per restart, far cheaper
+    # than the ncv x n check per sweep.
+    #
+    # A duplicated Ritz vector carries no information the block does not
+    # already have, so replacing it with a fresh orthogonal direction loses
+    # nothing. beta[:k] is zero here, i.e. T is block-decoupled, so each
+    # locked row is its own 1x1 block and alpha[j] must be updated to the
+    # new direction's Rayleigh quotient to keep T consistent.
+    #
+    # Gated on the Ritz values, which the driver already holds on the host:
+    # duplicate Ritz VECTORS can only arise from a degenerate Ritz basis,
+    # i.e. from (near-)repeated Ritz VALUES. That test is free -- k host
+    # floats -- whereas running the Gram unconditionally costs a device
+    # sync per restart, measured at +9-13% end to end on healthy problems.
+    if k < 2:
+        return
+    if w_host is not None:
+        ws = numpy.sort(numpy.abs(numpy.asarray(w_host, dtype=numpy.float64)))
+        scale = float(ws[-1]) if ws.size else 0.0
+        if scale == 0.0 or not numpy.any(
+                numpy.diff(ws) <= ortho_rtol * scale):
+            return
+    Vk = V[:k + 1]
+    gram = cupy.tril(cupy.abs(Vk @ Vk.conj().T), -1)
+    worst = cupy.asnumpy(gram.max(axis=1))
+    for j in numpy.flatnonzero(worst > ortho_rtol):
+        j = int(j)
+        V[j] = _restart_ortho(V, j, n, V.dtype, bias_op, bias_shift)
+        if j < k:
+            alpha[j] = cupy.inner(V[j].conj(), a @ V[j])
 
 
 def _restart_ortho(V, m, n, dtype, bias_op=None, bias_shift=0.0):
@@ -636,7 +742,9 @@ def _eigsh_solve_ritz(alpha, beta, beta_k, k, which):
     #   idx = cupy.argsort(abs(w))
     #   wk = w[idx[:k]]
     #   sk = s[:,idx[:k]]
-    return cupy.array(wk), cupy.array(sk)
+    # wk is already on the host here; handing it back lets the caller
+    # test for degeneracy without paying a device sync.
+    return cupy.array(wk), cupy.array(sk), wk
 
 
 def svds(a, k=6, *, ncv=None, tol=0, which='LM', maxiter=None,
