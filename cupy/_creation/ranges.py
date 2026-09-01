@@ -6,10 +6,11 @@ import numpy
 
 import cupy
 from cupy import _core
+from cupy._creation._device import _get_device_id, _on_device
 from cupy._util import bf16_loop
 
 
-def arange(start, stop=None, step=1, dtype=None):
+def arange(start, stop=None, step=1, dtype=None, *, device=None):
     """Returns an array with evenly spaced values within a given interval.
 
     Values are generated within the half-open interval [start, stop). The first
@@ -22,6 +23,8 @@ def arange(start, stop=None, step=1, dtype=None):
         step: Step width between each pair of consecutive values.
         dtype: Data type specifier. It is inferred from other arguments by
             default.
+        device (int or cupy.cuda.Device, optional): The device on which the
+            array is allocated. ``None`` (default) uses the current device.
 
     Returns:
         cupy.ndarray: The 1-D array of range values.
@@ -44,24 +47,30 @@ def arange(start, stop=None, step=1, dtype=None):
         step = 1
 
     size = int(numpy.ceil((stop - start) / step))
-    if size <= 0:
-        return cupy.empty((0,), dtype=dtype)
 
-    if numpy.dtype(dtype).type == numpy.bool_:
-        if size > 2:
-            raise TypeError(
-                'arange() is only supported for booleans '
-                'when the result has at most length 2.'
-            )
-        if size == 2:
-            return cupy.array([start, start - step], dtype=numpy.bool_)
-        else:
-            return cupy.array([start], dtype=numpy.bool_)
+    def _make():
+        if size <= 0:
+            return cupy.empty((0,), dtype=dtype)
 
-    ret = cupy.empty((size,), dtype=dtype)
-    typ = numpy.dtype(dtype).type
-    _arange_ufunc(typ(start), typ(step), ret, dtype=dtype)
-    return ret
+        if numpy.dtype(dtype).type == numpy.bool_:
+            if size > 2:
+                raise TypeError(
+                    'arange() is only supported for booleans '
+                    'when the result has at most length 2.'
+                )
+            if size == 2:
+                return cupy.array([start, start - step], dtype=numpy.bool_)
+            else:
+                return cupy.array([start], dtype=numpy.bool_)
+
+        ret = cupy.empty((size,), dtype=dtype)
+        typ = numpy.dtype(dtype).type
+        _arange_ufunc(typ(start), typ(step), ret, dtype=dtype)
+        return ret
+
+    if device is None:
+        return _make()
+    return _on_device(_get_device_id(device), _make)
 
 
 def _linspace_scalar(start, stop, num=50, endpoint=True, retstep=False,
@@ -123,7 +132,7 @@ def _linspace_scalar(start, stop, num=50, endpoint=True, retstep=False,
 
 
 def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None,
-             axis=0):
+             axis=0, *, device=None):
     """Returns an array with evenly-spaced values within a given interval.
 
     Instead of specifying the step width like :func:`cupy.arange`, this
@@ -147,6 +156,8 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None,
             only if start or stop are array-like.  By default ``0``, the
             samples will be along a new axis inserted at the beginning.
             Use ``-1`` to get an axis at the end.
+        device (int or cupy.cuda.Device, optional): The device on which the
+            array is allocated. ``None`` (default) uses the current device.
 
     Returns:
         cupy.ndarray: The 1-D array of ranged values.
@@ -158,65 +169,73 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None,
         raise ValueError('linspace with num<0 is not supported')
     div = (num - 1) if endpoint else num
 
-    scalar_start = cupy.isscalar(start)
-    scalar_stop = cupy.isscalar(stop)
-    if scalar_start and scalar_stop:
-        return _linspace_scalar(start, stop, num, endpoint, retstep, dtype)
+    def _make(start=start, stop=stop, dtype=dtype):
+        scalar_start = cupy.isscalar(start)
+        scalar_stop = cupy.isscalar(stop)
+        if scalar_start and scalar_stop:
+            return _linspace_scalar(
+                start, stop, num, endpoint, retstep, dtype)
 
-    if not scalar_start:
-        if not (isinstance(start, cupy.ndarray) and start.dtype.kind == 'f'):
-            start = cupy.asarray(start) * 1.0
+        if not scalar_start:
+            if not (isinstance(start, cupy.ndarray)
+                    and start.dtype.kind == 'f'):
+                start = cupy.asarray(start) * 1.0
 
-    if not scalar_stop:
-        if not (isinstance(stop, cupy.ndarray) and stop.dtype.kind == 'f'):
-            stop = cupy.asarray(stop) * 1.0
+        if not scalar_stop:
+            if not (isinstance(stop, cupy.ndarray)
+                    and stop.dtype.kind == 'f'):
+                stop = cupy.asarray(stop) * 1.0
 
-    dt = cupy.result_type(start, stop, float(num))
-    if dtype is None:
-        # In actual implementation, only float is used
-        dtype = dt
+        dt = cupy.result_type(start, stop, float(num))
+        if dtype is None:
+            # In actual implementation, only float is used
+            dtype = dt
 
-    delta = stop - start
+        delta = stop - start
 
-    # ret = cupy.arange(0, num, dtype=dt).reshape((-1,) + (1,) * delta.ndim)
-    ret = cupy.empty((num,), dtype=dt)
-    _arange_ufunc(0.0, 1.0, ret, dtype=dt)
-    ret = ret.reshape((-1,) + (1,) * delta.ndim)
+        # ret = cupy.arange(0, num, dtype=dt).reshape((-1,)+(1,)*delta.ndim)
+        ret = cupy.empty((num,), dtype=dt)
+        _arange_ufunc(0.0, 1.0, ret, dtype=dt)
+        ret = ret.reshape((-1,) + (1,) * delta.ndim)
 
-    # In-place multiplication y *= delta/div is faster, but prevents the
-    # multiplicant from overriding what class is produced, and thus prevents,
-    # e.g. use of Quantities, see numpy#7142. Hence, we multiply in place only
-    # for standard scalar types.
-    if num > 1:
-        step = delta / div
-        if cupy.any(step == 0):
-            # Special handling for denormal numbers, numpy#5437
-            ret /= div
-            ret = ret * delta
+        # In-place multiplication y *= delta/div is faster, but prevents the
+        # multiplicant from overriding what class is produced, and thus
+        # prevents, e.g. use of Quantities, see numpy#7142. Hence, we multiply
+        # in place only for standard scalar types.
+        if num > 1:
+            step = delta / div
+            if cupy.any(step == 0):
+                # Special handling for denormal numbers, numpy#5437
+                ret /= div
+                ret = ret * delta
+            else:
+                ret = ret * step
         else:
-            ret = ret * step
-    else:
-        # 0 and 1 item long sequences have an undefined step
-        step = float('nan')
-        # Multiply with delta to allow possible override of output class.
-        ret = ret * delta
+            # 0 and 1 item long sequences have an undefined step
+            step = float('nan')
+            # Multiply with delta to allow possible override of output class.
+            ret = ret * delta
 
-    ret += start
-    if endpoint and num > 1:
-        ret[-1] = stop
+        ret += start
+        if endpoint and num > 1:
+            ret[-1] = stop
 
-    if axis != 0:
-        ret = cupy.moveaxis(ret, 0, axis)
+        if axis != 0:
+            ret = cupy.moveaxis(ret, 0, axis)
 
-    if cupy.issubdtype(dtype, cupy.integer):
-        cupy.floor(ret, out=ret)
+        if cupy.issubdtype(dtype, cupy.integer):
+            cupy.floor(ret, out=ret)
 
-    ret = ret.astype(dtype, copy=False)
+        ret = ret.astype(dtype, copy=False)
 
-    if retstep:
-        return ret, step
-    else:
-        return ret
+        if retstep:
+            return ret, step
+        else:
+            return ret
+
+    if device is None:
+        return _make()
+    return _on_device(_get_device_id(device), _make)
 
 
 def logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None,
