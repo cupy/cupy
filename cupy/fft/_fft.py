@@ -334,6 +334,7 @@ def _get_cufft_plan_nd_args(
             Fortran ordered data layout.
         out_size (int): The output length along the last axis for R2C/C2R FFTs.
             For C2C FFT, this is ignored (and set to `None`).
+
     Returns:
         tuple: The ``PlanNd`` constructor arguments.
     """
