@@ -234,6 +234,17 @@ jobs:
         fi
         suite_id="$(jq -r '.check_suite_id' <<< "${run_json}")"
 
+        # Only a completed first attempt is reaped. A rerun (run_attempt > 1)
+        # or an attempt queued since the completion event means a human is
+        # interacting with the run: keep it. (The check-runs listing below
+        # shows only the latest attempt, while DELETE would remove every
+        # attempt at once.)
+        if [[ "$(jq -r '.status' <<< "${run_json}")" != "completed" ]] || \
+           [[ "$(jq -r '.run_attempt' <<< "${run_json}")" != "1" ]]; then
+          echo "Run ${RUN_ID} is not a completed first attempt; keeping."
+          exit 0
+        fi
+
         # No-op signature: exactly one successful check run (the guard) and
         # everything else skipped. Anything else -- a second success, a
         # failure, cancelled -- is a real build: keep it.
@@ -253,17 +264,30 @@ jobs:
           # guard's ::warning:: when a non-writer hand-applies ci:triggered).
           echo "Reaping run ${RUN_ID}: ${HEAD_REPO}:${HEAD_BRANCH}@${HEAD_SHA} (triggered by ${ACTOR})"
           # The single successful job is the guard, per the signature above.
+          # Its log must be secured before the run may be deleted: any
+          # failure to fetch it keeps the run and fails visibly
+          # (re-runnable), never erases the only record.
           guard_job="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/jobs" \
               --jq '[.jobs[] | select(.conclusion == "success")][0].id')"
+          if [[ -z "${guard_job}" || "${guard_job}" == "null" ]]; then
+            echo "::error::cannot identify the guard job of run ${RUN_ID}; keeping the run"
+            exit 1
+          fi
+          # gh refuses escape sequences on non-TTY output (runners included):
+          # allow them, strip on replay.
+          if ! gh api "repos/${GITHUB_REPOSITORY}/actions/jobs/${guard_job}/logs" \
+              --allow-escape-sequences > "${RUNNER_TEMP}/guard.log" \
+              || [[ ! -s "${RUNNER_TEMP}/guard.log" ]]; then
+            echo "::error::guard log of run ${RUN_ID} unavailable; keeping the run"
+            exit 1
+          fi
           echo "::group::Guard log (job ${guard_job})"
-          # Suspend workflow-command parsing while echoing untrusted log
-          # content: the legacy ##[cmd] parser matches anywhere in a line, so
-          # the timestamp prefix alone is not a defense. gh refuses escape
-          # sequences on non-TTY output (runners included): allow and strip.
+          # Suspend workflow-command parsing while replaying untrusted log
+          # content: the legacy ##[cmd] parser matches anywhere in a line,
+          # so the timestamp prefix alone is not a defense.
           stop_token="$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n')"
           echo "::stop-commands::${stop_token}"
-          gh api "repos/${GITHUB_REPOSITORY}/actions/jobs/${guard_job}/logs" --allow-escape-sequences \
-              | sed -E 's/\x1b\[[0-9;]*[A-Za-z]//g' || echo "(log unavailable)"
+          sed -E 's/\x1b\[[0-9;]*[A-Za-z]//g' "${RUNNER_TEMP}/guard.log"
           echo "::${stop_token}::"
           echo "::endgroup::"
           gh api -X DELETE "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}"
