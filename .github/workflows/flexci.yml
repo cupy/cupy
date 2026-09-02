@@ -52,8 +52,19 @@ jobs:
         #    Unrelated-label no-op runs have no sentinel. Fetch first so an
         #    API failure fails the job (visible, re-runnable) instead of
         #    reading as "sentinel absent" and silently dropping a dispatch.
-        trigger_artifacts="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${TRIGGER_RUN_ID}/artifacts" \
-            --jq '[.artifacts[].name]')"
+        #    One deliberate exception: HTTP 404 means ci-janitor.yml already
+        #    reaped the run as a no-op (it may win the race with this probe),
+        #    which is a clean nothing-to-dispatch, not an error.
+        if ! trigger_artifacts="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${TRIGGER_RUN_ID}/artifacts" \
+            --jq '[.artifacts[].name]' 2>"${RUNNER_TEMP}/probe_err")"; then
+          if grep -q 'HTTP 404' "${RUNNER_TEMP}/probe_err"; then
+            echo "Triggering run is gone (reaped no-op run); nothing to dispatch."
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          cat "${RUNNER_TEMP}/probe_err" >&2
+          exit 1
+        fi
         if ! jq -e --arg n "build-${HEAD_SHA}" 'index($n) != null' <<< "${trigger_artifacts}" >/dev/null; then
           echo "Triggering run has no build sentinel (no-op run); nothing to dispatch."
           echo "found=false" >> "$GITHUB_OUTPUT"

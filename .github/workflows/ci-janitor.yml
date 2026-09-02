@@ -1,0 +1,62 @@
+name: "CI Janitor"
+
+# Reaps no-op CI runs (#10230). Every label event fires ci.yml (GitHub can't
+# filter `labeled` by name at the trigger level); the guard no-ops unrelated
+# labels (triage, mergify, ...), but the skipped jobs still land as check
+# runs on the PR head -- with unexpanded `matrix.*` template names -- burying
+# the real signal. Actions-owned check runs can't be edited or removed from
+# outside Actions, but deleting the completed no-op run removes its whole
+# check suite from the PR.
+#
+# No ordering against flexci.yml (the other consumer of CI completions) is
+# needed: its artifact probe treats a 404 on the triggering run -- the only
+# trace a reap can leave -- as a clean nothing-to-dispatch. This run itself
+# is associated with the default branch head, so it adds nothing to the PR.
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+# Least privilege: read-only by default; the job elevates explicitly.
+permissions:
+  contents: read
+
+jobs:
+  reap:
+    name: Reap no-op run
+    if: |
+        github.repository_owner == 'cupy' &&
+        github.event.workflow_run.event == 'pull_request' &&
+        github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-22.04
+    permissions:
+      actions: write  # delete the no-op run
+      checks: read    # read the run's check suite to prove it no-op'd
+
+    steps:
+    - name: Delete the triggering run iff it no-op'd
+      env:
+        GH_TOKEN: ${{ github.token }}
+        RUN_ID: ${{ github.event.workflow_run.id }}
+      run: |
+        set -euo pipefail
+        # No-op signature: exactly one successful check run (the guard) and
+        # everything else skipped. Anything else -- a second success, a
+        # failure, cancelled -- is a real build: keep it. One page is
+        # authoritative: a no-op suite has ~9 check runs, and a run whose
+        # suite overflows the page has real activity (and any failure in it
+        # is already excluded by the conclusion gate above).
+        suite_id="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}" \
+            --jq '.check_suite_id')" \
+            || { echo "Run ${RUN_ID} already gone; nothing to reap."; exit 0; }
+        summary="$(gh api "repos/${GITHUB_REPOSITORY}/check-suites/${suite_id}/check-runs?per_page=100" \
+            --jq '[.check_runs[].conclusion // "pending"]
+                  | group_by(.) | map({(.[0]): length}) | add')"
+        echo "Run ${RUN_ID} check-run conclusions: ${summary}"
+        if [[ "$(jq -r '.success // 0' <<< "${summary}")" == "1" ]] && \
+           [[ "$(jq -r 'keys - ["success", "skipped"] | length' <<< "${summary}")" == "0" ]]; then
+          gh api -X DELETE "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}"
+          echo "Deleted no-op run ${RUN_ID}; its check runs are gone from the PR."
+        else
+          echo "Real build; keeping."
+        fi
