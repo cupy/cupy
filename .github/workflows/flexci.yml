@@ -256,11 +256,15 @@ jobs:
           guard_job="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/jobs" \
               --jq '[.jobs[] | select(.conclusion == "success")][0].id')"
           echo "::group::Guard log (job ${guard_job})"
-          # gh refuses escape sequences on non-TTY output (runners included),
-          # so allow and strip them; the timestamp prefix on every raw log
-          # line keeps embedded text from parsing as workflow commands.
+          # Suspend workflow-command parsing while echoing untrusted log
+          # content: the legacy ##[cmd] parser matches anywhere in a line, so
+          # the timestamp prefix alone is not a defense. gh refuses escape
+          # sequences on non-TTY output (runners included): allow and strip.
+          stop_token="$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+          echo "::stop-commands::${stop_token}"
           gh api "repos/${GITHUB_REPOSITORY}/actions/jobs/${guard_job}/logs" --allow-escape-sequences \
               | sed -E 's/\x1b\[[0-9;]*[A-Za-z]//g' || echo "(log unavailable)"
+          echo "::${stop_token}::"
           echo "::endgroup::"
           gh api -X DELETE "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}"
           echo "Deleted no-op run ${RUN_ID}; its check runs are gone from the PR."
