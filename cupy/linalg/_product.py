@@ -82,6 +82,7 @@ _vecdot_conj_mul_sum = _core.ReductionKernel(
     'a + b', 'out = a', '0', 'cupy_vecdot_conj_mul_sum'
 )
 
+
 def _vecdot_core(a, b, out=None):
     # Deferred to avoid import cycle with cupy.cublas (which then imports
     # cupy.linalg)
@@ -113,6 +114,7 @@ def _vecdot_core(a, b, out=None):
         _core.elementwise_copy(res, out)
         return out
     return res
+
 
 vecdot = _GUFunc(
     _vecdot_core,
@@ -146,7 +148,6 @@ vecdot = _GUFunc(
     .. seealso:: :func:`numpy.vecdot`
     """
 )
-
 
 
 def dot(a, b, out=None):
