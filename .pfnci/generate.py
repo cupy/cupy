@@ -230,7 +230,8 @@ class LinuxGenerator:
             'RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv',
             'ENV PYENV_ROOT "/opt/pyenv"',
             'ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"',
-            f'RUN pyenv install {py_spec} && \\',
+            f'RUN PYTHON_CONFIGURE_OPTS="--disable-shared"'
+            f' pyenv install {py_spec} && \\',
             f'    pyenv global {py_spec} && \\',
             '    pip install -U setuptools pip wheel && \\',
             # For GCP kernel cache backend
@@ -242,7 +243,8 @@ class LinuxGenerator:
         pip_args = []
         pip_uninstall_args = []
         for pylib in ('numpy', 'scipy', 'optuna', 'mpi4py',
-                      'ml_dtypes', 'cython', 'cuda-python', 'nvmath-python'):
+                      'ml_dtypes', 'cython', 'cuda-python', 'nvmath-python',
+                      'cuda-cccl'):
             pylib_ver = getattr(matrix, pylib)
             if pylib_ver is None:
                 pip_uninstall_args.append(pylib)

@@ -13,6 +13,15 @@ from cupy.fft._cache import get_plan_cache
 _reduce = functools.reduce
 _prod = cupy._core.internal.prod
 
+_R2C_OUTPUT_DTYPES = {
+    np.dtype(np.float32): np.dtype(np.complex64),
+    np.dtype(np.float64): np.dtype(np.complex128),
+}
+_C2R_OUTPUT_DTYPES = {
+    complex_dtype: real_dtype
+    for real_dtype, complex_dtype in _R2C_OUTPUT_DTYPES.items()
+}
+
 
 @cupy._util.memoize()
 def _output_dtype(dtype, value_type):
@@ -308,9 +317,9 @@ def _nd_plan_is_possible(axes_sorted, ndim):
                     for n in range(len(axes_sorted) - 1)))
 
 
-def _get_cufft_plan_nd(
-        shape, fft_type, axes=None, order='C', out_size=None, to_cache=True):
-    """Generate a CUDA FFT plan for transforming up to three axes.
+def _get_cufft_plan_nd_args(
+        shape, fft_type, axes=None, order='C', out_size=None):
+    """Generate backend plan arguments for transforming up to three axes.
 
     Args:
         shape (tuple of int): The shape of the array to transform
@@ -325,11 +334,9 @@ def _get_cufft_plan_nd(
             Fortran ordered data layout.
         out_size (int): The output length along the last axis for R2C/C2R FFTs.
             For C2C FFT, this is ignored (and set to `None`).
-        to_cache (bool): Whether to cache the generated plan. Default is
-            ``True``.
 
     Returns:
-        plan (cufft.PlanNd): A cuFFT Plan for the chosen `fft_type`.
+        tuple: The ``PlanNd`` constructor arguments.
     """
     from cupy.cuda import cufft
 
@@ -358,6 +365,9 @@ def _get_cufft_plan_nd(
 
     if order not in ['C', 'F']:
         raise ValueError('order must be \'C\' or \'F\'')
+    if order == 'F' and value_type != 'C2C':
+        raise ValueError(
+            'C2R/R2C PlanNd for F-order arrays is not supported')
 
     """
     For full details on idist, istride, iembed, etc. see:
@@ -447,9 +457,23 @@ def _get_cufft_plan_nd(
             raise ValueError(
                 'Invalid number of FFT data points specified.')
 
-    keys = (plan_dimensions, inembed, istride,
-            idist, onembed, ostride, odist,
-            fft_type, nbatch, order, fft_axes[-1], out_size)
+    plan_args = (plan_dimensions, inembed, istride,
+                 idist, onembed, ostride, odist,
+                 fft_type, nbatch)
+    return plan_args
+
+
+def _get_cufft_plan_nd(
+        shape, fft_type, axes=None, order='C', out_size=None, to_cache=True):
+    """Generate a CUDA FFT plan for transforming up to three axes."""
+    from cupy.cuda import cufft
+
+    plan_args = _get_cufft_plan_nd_args(
+        shape, fft_type, axes=axes, order=order, out_size=out_size)
+
+    # The cache identifies the backend plan plus any state bound to its handle.
+    # Without callbacks, the backend constructor arguments are the full key.
+    cache_key = plan_args
     mgr = config.get_current_callback_manager()
     if mgr is not None:
         # to avoid a weird segfault, we generate and cache distinct plans
@@ -457,26 +481,26 @@ def _get_cufft_plan_nd(
         # still generated from the same external Python module
         load_data = mgr.cb_load_data
         store_data = mgr.cb_store_data
-        keys += (mgr.cb_load, mgr.cb_store,
-                 0 if load_data is None else load_data.ptr,
-                 0 if store_data is None else store_data.ptr)
+        cache_key += (mgr.cb_load, mgr.cb_store,
+                      0 if load_data is None else load_data.ptr,
+                      0 if store_data is None else store_data.ptr)
     cache = get_plan_cache()
-    cached_plan = cache.get(keys)
+    cached_plan = cache.get(cache_key)
     if cached_plan is not None:
         plan = cached_plan
     elif mgr is None:
-        plan = cufft.PlanNd(*keys)
+        plan = cufft.PlanNd(*plan_args)
         if to_cache:
-            cache[keys] = plan
+            cache[cache_key] = plan
     else:  # has callback
         if mgr.identity == "legacy":
-            plan = mgr.create_plan(('PlanNd', keys[:-4]))
+            plan = mgr.create_plan(('PlanNd', plan_args))
             mgr.set_callbacks(plan)
         else:  # identity = "jit"
             plan = mgr.set_callbacks(fft_type)
-            plan = mgr.create_plan(plan, ('PlanNd', keys[:-4]))
+            plan = mgr.create_plan(plan, ('PlanNd', plan_args))
         if to_cache:
-            cache[keys] = plan
+            cache[cache_key] = plan
 
     return plan
 
@@ -492,6 +516,34 @@ def _get_fftn_out_size(in_shape, s, last_axis, value_type):
     else:  # C2C
         out_size = None
     return out_size
+
+
+def _get_fftn_output_shape_and_dtype(a, value_type, last_axis, out_size):
+    shape = list(a.shape)
+    if value_type == 'C2C':
+        dtype = a.dtype
+    elif value_type == 'R2C':
+        shape[last_axis] = out_size
+        dtype = _R2C_OUTPUT_DTYPES[a.dtype]
+    elif value_type == 'C2R':
+        shape[last_axis] = out_size
+        dtype = _C2R_OUTPUT_DTYPES[a.dtype]
+    else:
+        raise ValueError('unsupported FFT value type: {}'.format(value_type))
+    return tuple(shape), dtype
+
+
+def _check_fftn_output_array(
+        a, out, value_type, last_axis, out_size):
+    expected_shape, expected_dtype = _get_fftn_output_shape_and_dtype(
+        a, value_type, last_axis, out_size)
+    if out.shape != expected_shape:
+        raise ValueError('output shape mismatch')
+    if out.dtype != expected_dtype:
+        raise ValueError('output dtype mismatch')
+    if not ((out.flags.f_contiguous == a.flags.f_contiguous) and
+            (out.flags.c_contiguous == a.flags.c_contiguous)):
+        raise ValueError('output contiguity mismatch')
 
 
 def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x,
@@ -532,39 +584,23 @@ def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x,
     else:
         if not isinstance(plan, cufft.PlanNd):
             raise ValueError('expected plan to have type cufft.PlanNd')
-        if order != plan.order:
-            raise ValueError('array orders mismatch (plan: {}, input: {})'
-                             .format(plan.order, order))
-        if a.flags.c_contiguous:
-            expected_shape = [a.shape[ax] for ax in axes]
-            if value_type == 'C2R':
-                expected_shape[-1] = out_size
-        else:
-            # plan.shape will be reversed for Fortran-ordered inputs
-            expected_shape = [a.shape[ax] for ax in axes[::-1]]
-            # TODO(leofang): modify the shape for C2R
-        expected_shape = tuple(expected_shape)
-        if expected_shape != plan.shape:
+        expected_plan_key = _get_cufft_plan_nd_args(
+            a.shape, fft_type, axes=axes, order=order, out_size=out_size)
+        if expected_plan_key != plan.plan_key:
             raise ValueError(
-                'The cuFFT plan and a.shape do not match: '
-                'plan.shape = {}, expected_shape={}, a.shape = {}'.format(
-                    plan.shape, expected_shape, a.shape))
-        if fft_type != plan.fft_type:
-            raise ValueError('cuFFT plan dtype mismatch.')
-        if value_type != 'C2C':
-            if axes[-1] != plan.last_axis:
-                raise ValueError('The last axis for R2C/C2R mismatch')
-            if out_size != plan.last_size:
-                raise ValueError('The size along the last R2C/C2R axis '
-                                 'mismatch')
+                'The cuFFT plan and a.shape do not match the requested FFT '
+                'backend layout.')
 
     # TODO(leofang): support in-place transform for R2C/C2R
     if overwrite_x and value_type == 'C2C':
         out = a
     elif out is None:
-        out = plan.get_output_array(a, order=order)
+        shape, dtype = _get_fftn_output_shape_and_dtype(
+            a, value_type, axes[-1], out_size)
+        out = cupy.empty(shape, dtype, order=order)
     else:
-        plan.check_output_array(a, out)
+        _check_fftn_output_array(
+            a, out, value_type, axes[-1], out_size)
 
     if out.size != 0:
         plan.fft(a, out, direction)

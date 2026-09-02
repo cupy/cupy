@@ -27,13 +27,13 @@ ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/libcutensor/12:${LD_LIBRARY_PATH}
 RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
-RUN pyenv install 3.12.11 && \
+RUN PYTHON_CONFIGURE_OPTS="--disable-shared" pyenv install 3.12.11 && \
     pyenv global 3.12.11 && \
     pip install -U setuptools pip wheel && \
     pip install -U google-cloud-storage
 
 RUN pip install -U 'numpy==2.0.*' 'scipy==1.15.*' 'optuna==3.*' 'ml_dtypes==0.5.*' 'cython==3.2.*,!=3.2.6'
-RUN pip uninstall -y mpi4py cuda-python nvmath-python && \
+RUN pip uninstall -y mpi4py cuda-python nvmath-python cuda-cccl && \
     pip check
 
 RUN mkdir /home/cupy-user && chmod 777 /home/cupy-user
