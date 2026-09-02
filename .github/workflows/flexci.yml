@@ -9,6 +9,10 @@ name: "FlexCI"
 #
 # Post-merge dispatch does NOT go through the workflow_run leg: it lives in
 # ci.yml's push leg (single trusted run, plain `needs:` ordering).
+#
+# This workflow also reaps no-op label runs (#10230): after dispatch has
+# finished with the triggering run, reap-noop-run deletes it if the guard
+# declined it, removing its skipped check runs from the PR's checks display.
 on:
   workflow_run:
     workflows: ["CI"]
@@ -52,19 +56,8 @@ jobs:
         #    Unrelated-label no-op runs have no sentinel. Fetch first so an
         #    API failure fails the job (visible, re-runnable) instead of
         #    reading as "sentinel absent" and silently dropping a dispatch.
-        #    One deliberate exception: HTTP 404 means ci-janitor.yml already
-        #    reaped the run as a no-op (it may win the race with this probe),
-        #    which is a clean nothing-to-dispatch, not an error.
-        if ! trigger_artifacts="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${TRIGGER_RUN_ID}/artifacts" \
-            --jq '[.artifacts[].name]' 2>"${RUNNER_TEMP}/probe_err")"; then
-          if grep -q 'HTTP 404' "${RUNNER_TEMP}/probe_err"; then
-            echo "Triggering run is gone (reaped no-op run); nothing to dispatch."
-            echo "found=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          cat "${RUNNER_TEMP}/probe_err" >&2
-          exit 1
-        fi
+        trigger_artifacts="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${TRIGGER_RUN_ID}/artifacts" \
+            --jq '[.artifacts[].name]')"
         if ! jq -e --arg n "build-${HEAD_SHA}" 'index($n) != null' <<< "${trigger_artifacts}" >/dev/null; then
           echo "Triggering run has no build sentinel (no-op run); nothing to dispatch."
           echo "found=false" >> "$GITHUB_OUTPUT"
@@ -179,3 +172,56 @@ jobs:
               --external-tag jenkins \
               --external-tag rocm
         done
+
+  reap-noop-run:
+    name: Reap no-op run
+    # Unrelated-label events (triage, mergify, ...) still fire ci.yml (GitHub
+    # can't filter `labeled` by name at the trigger level); the guard no-ops
+    # them, but the skipped jobs land as check runs on the PR head -- with
+    # unexpanded `matrix.*` template names -- burying the real signal
+    # (#10230). Actions-owned check runs can't be edited or removed from
+    # outside Actions, but deleting the completed no-op run removes its whole
+    # check suite from the PR. Ordered after dispatch (needs:) so the
+    # sentinel probe above never races the deletion, and gated on dispatch
+    # succeeding -- the cleanup depends on the dispatch leg, never the
+    # reverse. This job's own runs are associated with the default branch
+    # head (like every workflow_run consumer), so it adds nothing to the PR.
+    needs: dispatch
+    if: |
+        always() &&
+        github.repository_owner == 'cupy' &&
+        github.event.workflow_run.event == 'pull_request' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        needs.dispatch.result == 'success'
+    runs-on: ubuntu-22.04
+    permissions:
+      actions: write  # delete the no-op run
+      checks: read    # read the run's check suite to prove it no-op'd
+
+    steps:
+    - name: Delete the triggering run iff it no-op'd
+      env:
+        GH_TOKEN: ${{ github.token }}
+        RUN_ID: ${{ github.event.workflow_run.id }}
+      run: |
+        set -euo pipefail
+        # No-op signature: exactly one successful check run (the guard) and
+        # everything else skipped. Anything else -- a second success, a
+        # failure, cancelled -- is a real build: keep it. One page is
+        # authoritative: a no-op suite has ~9 check runs, and a run whose
+        # suite overflows the page has real activity (and any failure in it
+        # is already excluded by the conclusion gate above).
+        suite_id="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}" \
+            --jq '.check_suite_id')" \
+            || { echo "Run ${RUN_ID} already gone; nothing to reap."; exit 0; }
+        summary="$(gh api "repos/${GITHUB_REPOSITORY}/check-suites/${suite_id}/check-runs?per_page=100" \
+            --jq '[.check_runs[].conclusion // "pending"]
+                  | group_by(.) | map({(.[0]): length}) | add')"
+        echo "Run ${RUN_ID} check-run conclusions: ${summary}"
+        if [[ "$(jq -r '.success // 0' <<< "${summary}")" == "1" ]] && \
+           [[ "$(jq -r 'keys - ["success", "skipped"] | length' <<< "${summary}")" == "0" ]]; then
+          gh api -X DELETE "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}"
+          echo "Deleted no-op run ${RUN_ID}; its check runs are gone from the PR."
+        else
+          echo "Real build; keeping."
+        fi
