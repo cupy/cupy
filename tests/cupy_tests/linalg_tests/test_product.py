@@ -638,6 +638,7 @@ class TestLinalgMatrixTranspose:
 
 @pytest.mark.parametrize('shapes', [
     ((3,), (3,)),
+    ((0,), (0,)),
     ((5, 3), (5, 3)),
     ((2, 1, 3), (4, 3)),
     ((0, 3), (3,)),
@@ -686,8 +687,31 @@ class TestVecdot:
         a = testing.shaped_random((2, 3), xp, dtype, seed=0)
         b = testing.shaped_random((2, 3), xp, dtype, seed=1)
         out = xp.empty((2,), dtype=dtype)
-        xp.vecdot(a, b, out=out)
+        result = xp.vecdot(a, b, out=out)
+        assert result is out
         return out
+
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_vecdot_out_complex_to_real(self, xp):
+        # Complex inputs with a real out must accumulate in complex and
+        # cast at the end (used to fail kernel compilation).
+        a = testing.shaped_random((2, 3), xp, numpy.complex128, seed=0)
+        b = testing.shaped_random((2, 3), xp, numpy.complex128, seed=1)
+        out = xp.empty((2,), dtype=numpy.float64)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', numpy.exceptions.ComplexWarning)
+            result = xp.vecdot(a, b, out=out, casting='unsafe')
+        assert result is out
+        return out
+
+    @testing.for_dtypes('dD')
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_vecdot_strided(self, xp, dtype):
+        # Non-contiguous 1-D inputs must not take the cuBLAS dot(c) path,
+        # which assumes unit stride and would be silently wrong.
+        a = testing.shaped_random((8,), xp, dtype, seed=0)[::2]
+        b = testing.shaped_random((8,), xp, dtype, seed=1)[::2]
+        return xp.vecdot(a, b)
 
     @testing.numpy_cupy_allclose(accept_error=ValueError)
     def test_vecdot_core_dim_mismatch(self, xp):
