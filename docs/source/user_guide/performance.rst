@@ -209,7 +209,7 @@ It also accelerates other routines, such as inclusive scans (ex: :func:`~cupy.cu
 sparse matrix-vector multiplications (not applicable in CUDA 11), and :class:`~cupy.ReductionKernel`.
 cuTENSOR offers optimized performance for binary elementwise ufuncs, reduction and tensor contraction.
 If cuTENSOR is installed, setting ``CUPY_ACCELERATORS=cub,cutensor``, for example, would try CUB first and fall back to cuTENSOR if CUB does not provide the needed support. In the case that both backends are not applicable, it falls back to CuPy's default implementation.
-The ``cuda_compute`` backend uses `cuda.compute <https://nvidia.github.io/cccl/python/compute.html>`_ (from the `cuda-cccl <https://pypi.org/project/cuda-cccl/>`_ package) and currently accelerates inclusive scans (:func:`~cupy.cumsum` and :func:`~cupy.cumprod`); setting ``CUPY_ACCELERATORS=cuda_compute,cub`` tries cuda.compute for cumsum/prod while keeping CUB for everything else.
+The ``cuda_compute`` backend uses `cuda.compute <https://nvidia.github.io/cccl/python/compute.html>`_ (from the `cuda-cccl <https://pypi.org/project/cuda-cccl/>`_ package) and currently accelerates inclusive scans (:func:`~cupy.cumsum` and :func:`~cupy.cumprod`) and :func:`~cupy.bincount`; setting ``CUPY_ACCELERATORS=cuda_compute,cub`` tries cuda.compute for these while keeping CUB for everything else.
 
 Note that while in general the accelerated reductions are faster, there could be exceptions
 depending on the data layout. In particular, the CUB reduction only supports reduction over

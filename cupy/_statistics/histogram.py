@@ -8,6 +8,7 @@ import numpy
 import cupy
 from cupy import _core
 from cupy._core import _accelerator
+from cupy._core import _cuda_compute_histogram
 from cupy.cuda import cub
 from cupy.cuda import common
 from cupy.cuda import runtime
@@ -565,6 +566,15 @@ def bincount(x, weights=None, minlength=None):
         b = cupy.zeros((size,), dtype=numpy.intp)
 
         for accelerator in _accelerator.get_routine_accelerators():
+            if (not runtime.is_hip
+                    and accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE):
+                out = _cuda_compute_histogram.cuda_compute_bincount(
+                    x, b, size)
+                if out is None:
+                    continue
+                else:
+                    b = out
+                    break
             # CUB uses int for bin counts
             # TODO(leofang): support >= 2^31 elements in x?
             if (not runtime.is_hip
