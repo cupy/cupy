@@ -1,5 +1,4 @@
 import threading
-import warnings
 
 from cupy._core._dtype cimport get_dtype
 from cupy._core.core cimport _ndarray_base
@@ -9,30 +8,10 @@ import numpy
 
 import cupy
 from cupy import _util
+from cupy._core._cuda_compute_common import _environment_cache_key_prefix
+from cupy._core._cuda_compute_common import _get_cuda_compute
 from cupy.cuda import compiler
 from cupy.cuda._compiler_cache import _hash_hexdigest
-
-_cuda_compute = False
-
-
-cpdef _get_cuda_compute():
-    global _cuda_compute
-
-    if _cuda_compute is False:
-        try:
-            from cuda import compute
-        except ImportError:
-            _cuda_compute = None
-        else:
-            if hasattr(compute, 'OpKind'):
-                _cuda_compute = compute
-            else:
-                warnings.warn(
-                    'cuda.compute is installed but its CUDA bindings '
-                    'could not be loaded, so the cuda_compute '
-                    'accelerator will be skipped', RuntimeWarning)
-                _cuda_compute = None
-    return _cuda_compute
 
 
 cdef _compile_cpp_to_ltoir(str src):
@@ -67,19 +46,12 @@ cdef str _complex_op_src(str op, str ftype):
 
 
 cdef object _thread_local = threading.local()
-_cache_key_prefix = None
 
 
 cdef str _scanner_cache_name(str op, dtype, str op_src):
-    global _cache_key_prefix
-    if _cache_key_prefix is None:
-        import cuda.cccl
-        _cache_key_prefix = '|'.join((
-            cuda.cccl.__version__,
-            str(cupy.cuda.runtime.runtimeGetVersion()),
-            compiler._get_cupy_cache_key()))
     cc = get_compute_capability()
-    key_src = f'{_cache_key_prefix}|{cc}|{op}|{dtype.str}|{op_src}'.encode()
+    key_src = (f'{_environment_cache_key_prefix()}'
+               f'|{cc}|{op}|{dtype.str}|{op_src}').encode()
     return _hash_hexdigest(key_src) + '.cc_scan'
 
 
