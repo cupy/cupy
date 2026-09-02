@@ -36,7 +36,7 @@ RUN PYTHON_CONFIGURE_OPTS="--disable-shared" pyenv install 3.14.6 && \
     pip install -U google-cloud-storage
 
 RUN pip install -U 'numpy==2.4.*' 'scipy==1.16.*' 'optuna==4.*' 'mpi4py==4.*' 'ml_dtypes==0.5.*' 'cython==3.2.*,!=3.2.6'
-RUN pip uninstall -y cuda-python nvmath-python && \
+RUN pip uninstall -y cuda-python nvmath-python cuda-cccl && \
     pip check
 
 RUN mkdir /home/cupy-user && chmod 777 /home/cupy-user

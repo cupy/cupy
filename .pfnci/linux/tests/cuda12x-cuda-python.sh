@@ -11,7 +11,7 @@ nvidia-smi
 
 export NVCC="ccache nvcc"
 
-export CUPY_ACCELERATORS="cutensor,cub"
+export CUPY_ACCELERATORS="cuda_compute,cutensor,cub"
 
 export CUPY_USE_CUDA_PYTHON="1"
 

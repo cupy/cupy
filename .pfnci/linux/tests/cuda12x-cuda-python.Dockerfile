@@ -32,7 +32,7 @@ RUN PYTHON_CONFIGURE_OPTS="--disable-shared" pyenv install 3.12.11 && \
     pip install -U setuptools pip wheel && \
     pip install -U google-cloud-storage
 
-RUN pip install -U 'numpy==2.3.*' 'scipy==1.16.*' 'optuna==4.*' 'cython==3.2.*,!=3.2.6' 'cuda-python==12.*' 'nvmath-python==1.*'
+RUN pip install -U 'numpy==2.3.*' 'scipy==1.16.*' 'optuna==4.*' 'cython==3.2.*,!=3.2.6' 'cuda-python==12.*' 'nvmath-python==1.*' 'cuda-cccl[minimal-sysctk12]>=1.1.1'
 RUN pip uninstall -y mpi4py ml_dtypes && \
     pip check
 
