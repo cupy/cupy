@@ -152,14 +152,13 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
     la_shift = (which == 'LA')
 
     # Lanczos iteration
-    anorm, bias_shift, work = _lanczos_checked(a, lanczos, V, u, alpha, beta,
-                                               0, ncv, break_rtol, bias_op,
-                                               la_shift,
-                                               ortho_rtol=ortho_rtol,
-                                               norm_bound=norm_bound)
+    anorm, bias_shift, work, a_h, b_h = _lanczos_checked(
+        a, lanczos, V, u, alpha, beta, 0, ncv, break_rtol, bias_op,
+        la_shift, ortho_rtol=ortho_rtol, norm_bound=norm_bound)
 
     iter = work
-    w, s, w_host = _eigsh_solve_ritz(alpha, beta, None, k, which)
+    w, s, w_host = _eigsh_solve_ritz(alpha, beta, None, k, which,
+                                     alpha_host=a_h, beta_host=b_h)
     x = V.T @ s
 
     # Compute residual
@@ -173,8 +172,7 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
         beta[:k] = 0
         alpha[:k] = w
         V[:k] = x.T
-        _repair_locked(a, V, alpha, k, n, ortho_rtol, bias_op,
-                       bias_shift, w_host=w_host)
+        _check_locked(V, k, ortho_rtol, w_host=w_host)
 
         # u -= u.T @ V[:k].conj().T @ V[:k]
         cublas.gemv(_cublas.CUBLAS_OP_C, 1, V[:k].T, u, 0, uu)
@@ -211,18 +209,15 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
         V[k+1] = cupy.where(beta[k] > 0, u / beta[k], u * 0)
 
         # Lanczos iteration
-        anorm, bias_shift, work = _lanczos_checked(a, lanczos, V, u, alpha,
-                                                   beta, k + 1, ncv,
-                                                   break_rtol, bias_op,
-                                                   la_shift,
-                                                   ortho_rtol=ortho_rtol,
-                                                   norm_bound=norm_bound)
+        anorm, bias_shift, work, a_h, b_h = _lanczos_checked(
+            a, lanczos, V, u, alpha, beta, k + 1, ncv, break_rtol, bias_op,
+            la_shift, ortho_rtol=ortho_rtol, norm_bound=norm_bound)
 
         # +1 for the u = a @ V[k] above; equals the former ncv - k when no
         # repair re-sweep ran.
         iter += work + 1
-        w, s, w_host = _eigsh_solve_ritz(alpha, beta, beta_k, k,
-                                         which)
+        w, s, w_host = _eigsh_solve_ritz(alpha, beta, beta_k, k, which,
+                                         alpha_host=a_h, beta_host=b_h)
         x = V.T @ s
 
         # Compute residual
@@ -419,18 +414,20 @@ def _norm_upper_bound(a):
     LinearOperator), in which case no absolute bound can be formed and the
     caller falls back to checking only for non-finite estimates.
     """
-    try:
-        if isinstance(a, cupy.ndarray):
-            return float(cupy.abs(a).sum(axis=1).max())
-        if _csr._is_csr(a) or getattr(a, 'format', None) in (
-                'csr', 'csc', 'coo'):
-            # |A| @ 1 gives the absolute row sums; A is Hermitian here, so
-            # a CSC/COO layout yields the same bound.
-            b = a.tocsr()
-            ones = cupy.ones(b.shape[1], dtype=b.dtype)
-            return float(cupy.abs(cupy.abs(b) @ ones).max())
-    except Exception:      # pragma: no cover - bound is optional
-        return None
+    if isinstance(a, cupy.ndarray):
+        # Row-wise, without materializing |A| (an n^2 temporary).
+        return float(cupy.abs(a).sum(axis=1).max())
+    if _csr._is_csr(a) or getattr(a, 'format', None) in ('csr', 'csc', 'coo'):
+        # |A| @ 1 gives the absolute row sums; A is Hermitian here, so a
+        # CSC/COO layout yields the same bound. NOTE: the builtin abs() is
+        # required -- it dispatches to the sparse matrix's __abs__, whereas
+        # cupy.abs() is a bare ufunc that rejects sparse input. A previous
+        # revision used cupy.abs() inside a blanket except and silently
+        # returned None for EVERY sparse operator, disabling this guard on
+        # the primary input type (cupy/cupy#10257).
+        b = a.tocsr()
+        ones = cupy.ones(b.shape[1], dtype=b.dtype)
+        return float(cupy.abs(abs(b) @ ones).max())
     return None
 
 
@@ -458,7 +455,8 @@ def _lanczos_checked(a, lanczos, V, u, alpha, beta, i_start, i_end,
     returned rather than assumed.
 
     Returns (||A|| estimate for the driver's guard on V[k], LA reseed shift,
-    matvecs performed including re-sweeps).
+    matvecs performed including re-sweeps, host copies of alpha and beta
+    for the Ritz solve).
     """
     n = V.shape[1]
     if ortho_rtol is None:
@@ -474,8 +472,9 @@ def _lanczos_checked(a, lanczos, V, u, alpha, beta, i_start, i_end,
         work += i_end - start
         lanczos(a, V, u, alpha, beta, start, i_end)
         alpha_np = cupy.asnumpy(alpha)
+        beta_np = cupy.asnumpy(beta)
         alpha_h = numpy.abs(alpha_np)
-        beta_h = numpy.abs(cupy.asnumpy(beta))
+        beta_h = numpy.abs(beta_np)
         # Gershgorin-style row-sum estimate of ||T|| ~ ||A||, built by
         # walking the rows IN ORDER and stopping at the first breakdown:
         # rows past an exhausted subspace hold roundoff junk whose magnitude
@@ -494,7 +493,7 @@ def _lanczos_checked(a, lanczos, V, u, alpha, beta, i_start, i_end,
             anorm = float(alpha_h[0] + beta_h[0])
             shift = (anorm if (la_shift and float(alpha_np[0].real) <= 0.0)
                      else 0.0)
-            return anorm, shift, work
+            return anorm, shift, work, alpha_np, beta_np
         # float64 accumulation: alpha/beta past an exhausted subspace can be
         # huge in float32 (the junk this walk exists to exclude) and the
         # row sums would overflow to inf before we ever get to ignore them.
@@ -579,60 +578,54 @@ def _lanczos_checked(a, lanczos, V, u, alpha, beta, i_start, i_end,
                            and float(alpha_np[:end + 1].real.max()) <= 0.0)
                  else 0.0)
         if p is None:
-            return anorm, shift, work
+            # Hand back the host copies: the Ritz solve needs the same two
+            # arrays and would otherwise transfer them a second time.
+            return anorm, shift, work, alpha_np, beta_np
         beta[p] = 0
         V[p + 1] = _restart_ortho(V, p + 1, n, V.dtype, bias_op, shift)
         repaired.add(p)
         start = p + 1
 
 
-def _repair_locked(a, V, alpha, k, n, ortho_rtol, bias_op, bias_shift,
-                   w_host=None):
-    # The locked block V[:k] = (V.T @ s).T inherits orthonormality from V
-    # and from the Ritz basis s -- but only when BOTH are sound. On an
-    # eigenvalue of multiplicity > 1 the Ritz basis is degenerate by
-    # construction and several columns of s can name the same physical
-    # direction, so V[:k] can hold duplicate rows (measured: worst
-    # off-diagonal 4.0e-01 immediately after locking, where orthonormality
-    # demands ~1e-16). The sweep-boundary check cannot see this, because it
-    # only repairs positions at or after i_start - 1; a duplicate locked
-    # here would survive to poison every later reseed. So verify the block
-    # where it is created: one Gram of (k+1) x n per restart, far cheaper
-    # than the ncv x n check per sweep.
+def _check_locked(V, k, ortho_rtol, w_host=None):
+    # Consistency check on the locked block V[:k] = (V.T @ s).T, run once
+    # per restart. Because numpy.linalg.eigh returns an orthonormal s
+    # regardless of eigenvalue multiplicity, V[:k] is orthonormal exactly
+    # when V was -- so from a sound basis this check is unreachable and
+    # costs nothing beyond the gate below. It fires only when V had already
+    # lost orthogonality without the sweep-boundary check catching it.
     #
-    # A duplicated Ritz vector carries no information the block does not
-    # already have, so replacing it with a fresh orthogonal direction loses
-    # nothing. beta[:k] is zero here, i.e. T is block-decoupled, so each
-    # locked row is its own 1x1 block and alpha[j] must be updated to the
-    # new direction's Rayleigh quotient to keep T consistent.
+    # In that state no local substitution can restore T = V A V^H: a
+    # replacement row would need beta_k[j] (the arrowhead coupling to
+    # position k) and its couplings to the other locked rows recomputed,
+    # which the driver has no consistent way to do, and an arbitrary
+    # reseed with a Rayleigh-quotient alpha[j] would be carried as a
+    # converged pair with an O(1) true residual (cupy/cupy#10257). So this
+    # fails closed, like the other guards, instead of fabricating a pair.
     #
     # Gated on the Ritz values, which the driver already holds on the host:
-    # duplicate Ritz VECTORS can only arise from a degenerate Ritz basis,
-    # i.e. from (near-)repeated Ritz VALUES. That test is free -- k host
-    # floats -- whereas running the Gram unconditionally costs a device
-    # sync per restart, measured at +9-13% end to end on healthy problems.
+    # duplicate rows can only come from a degenerate Ritz basis, i.e. from
+    # (near-)repeated Ritz VALUES -- k host floats, no device sync -- so a
+    # healthy restart never pays for the Gram.
     if k < 2:
         return
     if w_host is not None:
         wr = numpy.asarray(w_host, dtype=numpy.float64).real
         scale = float(numpy.abs(wr).max()) if wr.size else 0.0
-        # Sort the SIGNED values: a +/-lambda pair is not degenerate, and
-        # sorting magnitudes would make an indefinite spectrum (common
-        # under 'LM') fire this gate for nothing.
+        # Sort the SIGNED values: a +/-lambda pair is not degenerate.
         if scale == 0.0 or not numpy.any(
                 numpy.diff(numpy.sort(wr)) <= ortho_rtol * scale):
             return
-    # Only the locked rows: the driver overwrites V[k] a few lines below,
-    # and its overlap with the locked block is |s[k, j]|, normally far
-    # above the tolerance -- including it would reseed a row that is about
-    # to be discarded, at the cost of a matvec and a sync.
     Vk = V[:k]
     gram = cupy.tril(cupy.abs(Vk @ Vk.conj().T), -1)
-    worst = cupy.asnumpy(gram.max(axis=1))
-    for j in numpy.flatnonzero(worst > ortho_rtol):
-        j = int(j)
-        V[j] = _restart_ortho(V, j, n, V.dtype, bias_op, bias_shift)
-        alpha[j] = cupy.inner(V[j].conj(), a @ V[j])
+    worst = float(cupy.asnumpy(gram.max()))
+    if worst > ortho_rtol:
+        raise RuntimeError(
+            'eigsh: locked Ritz block lost orthogonality (worst '
+            'off-diagonal {:.3e} exceeds {:.1e}); the Lanczos basis is '
+            'numerically rank-deficient and cannot be restarted safely. '
+            'Try a smaller ncv, a different v0, or float64.'.format(
+                worst, ortho_rtol))
 
 
 def _restart_ortho(V, m, n, dtype, bias_op=None, bias_shift=0.0):
@@ -721,12 +714,15 @@ def _restart_ortho(V, m, n, dtype, bias_op=None, bias_shift=0.0):
         'different v0.'.format(floor, 2 * len(order) + 1))
 
 
-def _eigsh_solve_ritz(alpha, beta, beta_k, k, which):
+def _eigsh_solve_ritz(alpha, beta, beta_k, k, which,
+                      alpha_host=None, beta_host=None):
     # Note: This is done on the CPU, because there is an issue in
     # cupy.linalg.eigh with CUDA 9.2, which can return NaNs. It will has little
     # impact on performance, since the matrix size processed here is not large.
-    alpha = cupy.asnumpy(alpha)
-    beta = cupy.asnumpy(beta)
+    # alpha_host/beta_host: the copies _lanczos_checked already made, so the
+    # sweep boundary costs one device->host transfer of each, not two.
+    alpha = cupy.asnumpy(alpha) if alpha_host is None else alpha_host
+    beta = cupy.asnumpy(beta) if beta_host is None else beta_host
     t = numpy.diag(alpha)
     t = t + numpy.diag(beta[:-1], k=1)
     t = t + numpy.diag(beta[:-1], k=-1)
@@ -787,6 +783,13 @@ def svds(a, k=6, *, ncv=None, tol=0, which='LM', maxiter=None,
             and ``vt`` where ``u`` is left singular vectors, ``s`` is singular
             values and ``vt`` is right singular vectors. Otherwise, it returns
             only ``s``.
+
+    Raises:
+        RuntimeError: Propagated from :func:`eigsh` when the Lanczos basis
+            loses numerical orthogonality beyond repair on ``a.H @ a``;
+            see the ``Raises`` section of :func:`eigsh` for the causes and
+            remedies. Rank-deficient inputs in single precision are the
+            usual trigger.
 
     .. seealso:: :func:`scipy.sparse.linalg.svds`
 
