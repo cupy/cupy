@@ -194,6 +194,11 @@ jobs:
     # delete away from push runs -- ci-nightly.yml ships the newest
     # successful ci.yml push run, so deleting one would silently move what
     # nightly ships.
+    # The dispatch-succeeded gate is a fail-safe, not ordering (needs: plus
+    # always() already sequence this job): a failed dispatch is re-runnable
+    # by design, and deleting its triggering run would 404 every retry.
+    # Once a retry succeeds, this job re-evaluates and reaps then. Deleting
+    # is irreversible and cosmetic -- during an anomaly, do nothing.
     if: |
         always() &&
         github.repository_owner == 'cupy' &&
