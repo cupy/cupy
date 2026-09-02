@@ -108,6 +108,9 @@ cpdef Module compile_with_cache(str source, tuple options=*, arch=*,
                                 name_expressions=*, log_stream=*,
                                 bint jitify=*)
 
+cpdef bytes compile_to_ltoir(str source, tuple options=*, arch=*,
+                             bint prepend_cupy_headers=*, log_stream=*)
+
 
 # TODO(niboshi): Move to _routines_creation.pyx
 
