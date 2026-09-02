@@ -186,7 +186,14 @@ jobs:
     # succeeding -- the cleanup depends on the dispatch leg, never the
     # reverse. This job's own runs are associated with the default branch
     # head (like every workflow_run consumer), so it adds nothing to the PR.
+    # The reaped run's identity and the guard's log are copied into this
+    # job's (trusted, persistent) log before deletion, so reaping never
+    # destroys the only record of what an untrusted PR ran.
     needs: dispatch
+    # The event == 'pull_request' condition is load-bearing: it keeps the
+    # delete away from push runs -- ci-nightly.yml ships the newest
+    # successful ci.yml push run, so deleting one would silently move what
+    # nightly ships.
     if: |
         always() &&
         github.repository_owner == 'cupy' &&
@@ -195,6 +202,10 @@ jobs:
         needs.dispatch.result == 'success'
     runs-on: ubuntu-22.04
     permissions:
+      # actions: write is repo-wide (re-run/cancel/approve/delete caches).
+      # Safe only because this job runs no checked-out or third-party code,
+      # and untrusted values reach the shell via env only, never spliced
+      # into the script by ${{ }}. Keep it that way.
       actions: write  # delete the no-op run
       checks: read    # read the run's check suite to prove it no-op'd
 
@@ -203,23 +214,54 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
         RUN_ID: ${{ github.event.workflow_run.id }}
+        HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        HEAD_REPO: ${{ github.event.workflow_run.head_repository.full_name }}
+        HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+        ACTOR: ${{ github.event.workflow_run.triggering_actor.login }}
       run: |
         set -euo pipefail
+        # A 404 means an earlier reap already got the run. Anything else
+        # (rate limit, 5xx) fails visibly, matching the dispatch job's
+        # stance on API errors.
+        if ! run_json="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}" \
+            2>"${RUNNER_TEMP}/gh.err")"; then
+          if grep -q 'HTTP 404' "${RUNNER_TEMP}/gh.err"; then
+            echo "Run ${RUN_ID} already gone; nothing to reap."
+            exit 0
+          fi
+          cat "${RUNNER_TEMP}/gh.err" >&2
+          exit 1
+        fi
+        suite_id="$(jq -r '.check_suite_id' <<< "${run_json}")"
+
         # No-op signature: exactly one successful check run (the guard) and
         # everything else skipped. Anything else -- a second success, a
-        # failure, cancelled -- is a real build: keep it. One page is
-        # authoritative: a no-op suite has ~9 check runs, and a run whose
-        # suite overflows the page has real activity (and any failure in it
-        # is already excluded by the conclusion gate above).
-        suite_id="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}" \
-            --jq '.check_suite_id')" \
-            || { echo "Run ${RUN_ID} already gone; nothing to reap."; exit 0; }
-        summary="$(gh api "repos/${GITHUB_REPOSITORY}/check-suites/${suite_id}/check-runs?per_page=100" \
-            --jq '[.check_runs[].conclusion // "pending"]
-                  | group_by(.) | map({(.[0]): length}) | add')"
+        # failure, cancelled -- is a real build: keep it.
+        page="$(gh api "repos/${GITHUB_REPOSITORY}/check-suites/${suite_id}/check-runs?per_page=100")"
+        if [[ "$(jq -r '.total_count' <<< "${page}")" -gt 100 ]]; then
+          # A no-op suite has ~9 entries; never classify a truncated page.
+          echo "Suite has >100 check runs; real build, keeping."
+          exit 0
+        fi
+        summary="$(jq -c '[.check_runs[].conclusion // "pending"]
+                          | group_by(.) | map({(.[0]): length}) | add' <<< "${page}")"
         echo "Run ${RUN_ID} check-run conclusions: ${summary}"
         if [[ "$(jq -r '.success // 0' <<< "${summary}")" == "1" ]] && \
            [[ "$(jq -r 'keys - ["success", "skipped"] | length' <<< "${summary}")" == "0" ]]; then
+          # Preserve what the run knew before deleting it: the deleted run
+          # is the one record of untrusted code having executed (e.g. the
+          # guard's ::warning:: when a non-writer hand-applies ci:triggered).
+          echo "Reaping run ${RUN_ID}: ${HEAD_REPO}:${HEAD_BRANCH}@${HEAD_SHA} (triggered by ${ACTOR})"
+          # The single successful job is the guard, per the signature above.
+          guard_job="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/jobs" \
+              --jq '[.jobs[] | select(.conclusion == "success")][0].id')"
+          echo "::group::Guard log (job ${guard_job})"
+          # gh refuses escape sequences on non-TTY output (runners included),
+          # so allow and strip them; the timestamp prefix on every raw log
+          # line keeps embedded text from parsing as workflow commands.
+          gh api "repos/${GITHUB_REPOSITORY}/actions/jobs/${guard_job}/logs" --allow-escape-sequences \
+              | sed -E 's/\x1b\[[0-9;]*[A-Za-z]//g' || echo "(log unavailable)"
+          echo "::endgroup::"
           gh api -X DELETE "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}"
           echo "Deleted no-op run ${RUN_ID}; its check runs are gone from the PR."
         else
