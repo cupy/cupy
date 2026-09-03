@@ -401,7 +401,7 @@ Install the ``cuda-cudart-dev-13-X`` package where ``13-X`` is the version of yo
    You will not hit this error if the CUDA runtime headers were installed alongside CuPy:
 
    - **conda-forge** (``conda install -c conda-forge cupy``): the ``cuda-cudart-dev_<platform>`` dependency ships the headers.
-   - **PyPI with the** ``[ctk]`` **extras** (see :ref:`install_with_ctk_extras`, e.g. ``pip install "cupy-cuda13x[ctk]"``): the ``cuda-toolkit[cudart,...]`` metapackage pulls in ``nvidia-cuda-runtime``, which includes the headers.
+   - **PyPI with the** ``[ctk]`` **extras** (e.g. ``pip install "cupy-cuda13x[ctk]"``; see :ref:`Installing CuPy from PyPI <install_with_ctk_extras>`): the ``cuda-toolkit[cudart,...]`` metapackage pulls in ``nvidia-cuda-runtime``, which includes the headers.
 
    Please report any header-discovery issues in either path to the CuPy repository.
 
