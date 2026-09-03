@@ -40,6 +40,7 @@ jobs:
       sha: ${{ steps.resolve.outputs.sha }}
       skip: ${{ steps.resolve.outputs.skip }}
       branch: ${{ steps.resolve.outputs.branch }}
+      run_id: ${{ steps.resolve.outputs.run_id }}
     steps:
       # Newest SHA on the target branch whose wheels are already built
       # (avoids racing an in-flight ci.yml push run).
@@ -59,13 +60,15 @@ jobs:
             -f per_page=1 \
             "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs")"
           HEAD_SHA="$(jq -r '.workflow_runs[0].head_sha // ""' <<< "${RUN_JSON}")"
+          RUN_ID="$(jq -r '.workflow_runs[0].id // ""' <<< "${RUN_JSON}")"
           WHEELS_UPDATED="$(jq -r '.workflow_runs[0].updated_at // "unknown"' <<< "${RUN_JSON}")"
           if [[ -z "${HEAD_SHA}" ]]; then
             echo "::error::No successful ci.yml push run found on ${BRANCH}; refusing to dispatch." >&2
             exit 1
           fi
-          echo "Resolved ${BRANCH}@${HEAD_SHA} (wheels updated ${WHEELS_UPDATED})"
+          echo "Resolved ${BRANCH}@${HEAD_SHA} (run_id ${RUN_ID}, wheels updated ${WHEELS_UPDATED})"
           echo "sha=${HEAD_SHA}" >> "$GITHUB_OUTPUT"
+          echo "run_id=${RUN_ID}" >> "$GITHUB_OUTPUT"
           echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
 
           # Scheduled only: skip if this SHA was already dispatched (commit
@@ -186,5 +189,75 @@ jobs:
           gh api "repos/${GITHUB_REPOSITORY}/statuses/${HEAD_SHA}" \
             -f state="${STATE}" \
             -f context="ci-nightly" \
+            -f description="${DESC}" \
+            -f target_url="${RUN_URL}"
+
+  # Publish the wheels ci-nightly's FlexCI matrix is pinned to (same
+  # RUN_ID/HEAD_SHA the resolve job produced) to the scientific-python
+  # nightly wheels channel. Runs in parallel with dispatch (a FlexCI
+  # nightly matrix takes hours; the daily upload cadence should not wait).
+  # main-only: v* / hotfix-* pushes have their own wheel builds, but the
+  # nightly channel tracks main-tip only.
+  upload-nightly-wheels:
+    name: Upload wheels to scientific-python-nightly-wheels
+    needs: resolve
+    if: >-
+      github.repository_owner == 'cupy' &&
+      needs.resolve.result == 'success' &&
+      needs.resolve.outputs.skip != 'true' &&
+      needs.resolve.outputs.branch == 'main'
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      actions: read
+      statuses: write
+    steps:
+      - name: Download wheel artifacts from resolved ci.yml run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ needs.resolve.outputs.run_id }}
+          HEAD_SHA: ${{ needs.resolve.outputs.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist_raw dist
+          # cupy-cuda{12,13}x-* matches wheel artifacts only; the sdist
+          # artifact (cupy-sdist-<suffix>) does not match and is skipped.
+          gh run download "${RUN_ID}" \
+            -R "${GITHUB_REPOSITORY}" \
+            --pattern 'cupy-cuda12x-*' \
+            --pattern 'cupy-cuda13x-*' \
+            --dir dist_raw
+          # Flatten *.whl into dist/ so upload-nightly-action sees one dir.
+          find dist_raw -name '*.whl' -type f -exec mv {} dist/ \;
+          COUNT="$(find dist -maxdepth 1 -name '*.whl' -type f | wc -l)"
+          echo "Collected ${COUNT} wheels from run ${RUN_ID} (${HEAD_SHA})"
+          ls -la dist/
+
+      - name: Upload wheels to scientific-python-nightly-wheels
+        uses: scientific-python/upload-nightly-action@e76cfec8a4611fd02808a801b0ff5a7d7c1b2d99  # 0.6.4
+        with:
+          artifacts_path: dist
+          anaconda_nightly_upload_token: ${{ secrets.ANACONDA_ORG_UPLOAD_TOKEN }}
+
+      # Separate commit status so a failed upload is retryable (via manual
+      # workflow_dispatch) independently from a successful FlexCI dispatch.
+      - name: Record upload result on the wheel SHA
+        if: success() || failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ needs.resolve.outputs.sha }}
+          BRANCH: ${{ needs.resolve.outputs.branch }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          STATE: ${{ job.status }}
+        run: |
+          set -euo pipefail
+          if [[ "${STATE}" == "success" ]]; then
+            DESC="Uploaded nightly wheels for ${BRANCH} to scientific-python-nightly-wheels"
+          else
+            DESC="Failed to upload nightly wheels for ${BRANCH} to scientific-python-nightly-wheels"
+          fi
+          gh api "repos/${GITHUB_REPOSITORY}/statuses/${HEAD_SHA}" \
+            -f state="${STATE}" \
+            -f context="ci-nightly-upload" \
             -f description="${DESC}" \
             -f target_url="${RUN_URL}"
