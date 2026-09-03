@@ -1,20 +1,17 @@
 name: "FlexCI"
 
-# The /test dispatch point (see ci.yml's header for the three-workflow flow):
-# fires when a CI build run completes, and dispatches FlexCI for /test-vouched
-# PR builds. workflow_run gives guaranteed ordering (this run starts only
-# after the build run finished) and executes the default branch's copy of
-# this file with secrets available -- the standard pattern for reacting to
-# untrusted pull_request runs from a trusted context.
-#
-# Post-merge dispatch does NOT go through the workflow_run leg: it lives in
-# ci.yml's push leg (single trusted run, plain `needs:` ordering).
+# The sole dispatcher call site (see ci.yml's header for the three-workflow
+# flow). Fires on workflow_run for any successful ci.yml completion and
+# invokes flexci_dispatcher.py with either the vouched issue_comment
+# payload (PR /test path -- forward or skip per the comment body) or the
+# recorded push payload (post-merge dispatch). Runs the default-branch
+# copy of this file from a trusted context with secrets available.
 on:
   workflow_run:
     workflows: ["CI"]
     types: [completed]
 
-# Least privilege: read-only by default; each job below elevates explicitly.
+# Least privilege: read-only by default; the job below elevates explicitly.
 permissions:
   contents: read
 
@@ -22,10 +19,11 @@ jobs:
   dispatch:
     name: Dispatch FlexCI
     if: |
-        github.repository_owner == 'cupy' &&
-        github.event_name == 'workflow_run' &&
-        github.event.workflow_run.event == 'pull_request' &&
-        github.event.workflow_run.conclusion == 'success'
+      github.repository_owner == 'cupy' &&
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      (github.event.workflow_run.event == 'pull_request' ||
+       github.event.workflow_run.event == 'push')
     runs-on: ubuntu-22.04
     permissions:
       actions: read         # read triggering-run + request artifacts
@@ -34,10 +32,11 @@ jobs:
       statuses: write       # flexci_dispatcher.py commit statuses
 
     steps:
-    - name: Find the vouched request(s) for this build
+    - name: Find the request(s) for this run
       id: request
       env:
         GH_TOKEN: ${{ github.token }}
+        WORKFLOW_EVENT: ${{ github.event.workflow_run.event }}
         HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
         TRIGGER_RUN_ID: ${{ github.event.workflow_run.id }}
         HEAD_REPO_OWNER: ${{ github.event.workflow_run.head_repository.owner.login }}
@@ -47,72 +46,106 @@ jobs:
       run: |
         set -euo pipefail
 
-        # 1) Liveness: the triggering run must have actually built (the
-        #    sentinel is uploaded only after every build job succeeded).
-        #    Unrelated-label no-op runs have no sentinel. Fetch first so an
-        #    API failure fails the job (visible, re-runnable) instead of
-        #    reading as "sentinel absent" and silently dropping a dispatch.
+        # Liveness: fetch the triggering run's artifacts once and require
+        # the appropriate sentinel to be present. This is the per-run
+        # dispatch gate -- absent it, every no-op ci.yml completion on the
+        # same head (unrelated-label runs) would re-invoke the dispatcher.
+        # Fetch first so an API failure fails the job (visible,
+        # re-runnable) instead of reading as "sentinel absent".
         trigger_artifacts="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${TRIGGER_RUN_ID}/artifacts" \
             --jq '[.artifacts[].name]')"
-        if ! jq -e --arg n "build-${HEAD_SHA}" 'index($n) != null' <<< "${trigger_artifacts}" >/dev/null; then
-          echo "Triggering run has no build sentinel (no-op run); nothing to dispatch."
-          echo "found=false" >> "$GITHUB_OUTPUT"
-          exit 0
-        fi
 
-        # 2) Identity, from trusted API metadata only (never from artifacts,
-        #    which PR-controlled runs can name freely): the open PR(s) whose
-        #    head is the branch this run built.
-        candidates="$(gh api "repos/${GITHUB_REPOSITORY}/pulls?head=${HEAD_REPO_OWNER}:${HEAD_BRANCH}&state=open" \
-            --jq '.[].number')"
-        if [[ -z "${candidates}" ]]; then
-          echo "No open PR for ${HEAD_REPO_OWNER}:${HEAD_BRANCH}; nothing to dispatch."
-          echo "found=false" >> "$GITHUB_OUTPUT"
-          exit 0
-        fi
-
-        # 3) Per candidate PR: a trusted /test request must exist for
-        #    exactly this (PR, head), and the PR must still point where the
-        #    vouch pointed (head-pin) with the same base (base-ref pin).
         mkdir -p "${RUNNER_TEMP}/requests"
         dispatch_list=()
-        for pr in ${candidates}; do
-          name="dispatch-request-${pr}-${HEAD_SHA}"
-          # Newest artifact with this name produced by a run of this
-          # repository's own default branch: only trusted issue_comment
-          # runs qualify (fork runs carry the fork's head_repository_id).
+
+        case "${WORKFLOW_EVENT}" in
+        pull_request)
+          if ! jq -e --arg n "build-${HEAD_SHA}" 'index($n) != null' <<< "${trigger_artifacts}" >/dev/null; then
+            echo "Triggering run has no PR dispatch sentinel (no-op run); nothing to dispatch."
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Identity, from trusted API metadata only (never from artifacts,
+          # which PR-controlled runs can name freely): the open PR(s) whose
+          # head is the branch this run built.
+          candidates="$(gh api "repos/${GITHUB_REPOSITORY}/pulls?head=${HEAD_REPO_OWNER}:${HEAD_BRANCH}&state=open" \
+              --jq '.[].number')"
+          if [[ -z "${candidates}" ]]; then
+            echo "No open PR for ${HEAD_REPO_OWNER}:${HEAD_BRANCH}; nothing to dispatch."
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Per candidate PR: a trusted /test request must exist for
+          # exactly this (PR, head), and the PR must still point where the
+          # vouch pointed (head-pin) with the same base (base-ref pin).
+          for pr in ${candidates}; do
+            name="dispatch-request-${pr}-${HEAD_SHA}"
+            # Newest artifact with this name produced by a run of this
+            # repository's own default branch: only trusted issue_comment
+            # runs qualify (fork runs carry the fork's head_repository_id).
+            artifact_id="$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${name}&per_page=100" \
+                --jq "[.artifacts[] | select(.expired == false
+                       and .workflow_run.head_repository_id == ${REPO_ID}
+                       and .workflow_run.head_branch == \"${DEFAULT_BRANCH}\")]
+                      | sort_by(.created_at) | last | .id // empty")"
+            if [[ -z "${artifact_id}" ]]; then
+              echo "PR #${pr}: no vouched request for ${HEAD_SHA}; skipping"
+              continue
+            fi
+            # Download by immutable artifact id (unambiguous across re-runs).
+            gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" \
+                > "${RUNNER_TEMP}/requests/${pr}.zip"
+            mkdir -p "${RUNNER_TEMP}/requests/${pr}"
+            unzip -q -o "${RUNNER_TEMP}/requests/${pr}.zip" -d "${RUNNER_TEMP}/requests/${pr}"
+            if [[ "$(cat "${RUNNER_TEMP}/requests/${pr}/event_name")" != "issue_comment" ]]; then
+              echo "::warning::PR #${pr}: request is not an issue_comment recording; skipping"
+              continue
+            fi
+            pr_json="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${pr}")"
+            current_head="$(jq -r '.head.sha' <<< "${pr_json}")"
+            current_base="$(jq -r '.base.ref' <<< "${pr_json}")"
+            recorded_base="$(cat "${RUNNER_TEMP}/requests/${pr}/base_ref")"
+            if [[ "${current_head}" != "${HEAD_SHA}" ]]; then
+              echo "::warning::PR #${pr} moved (${HEAD_SHA} -> ${current_head}) since /test; re-issue."
+              continue
+            fi
+            if [[ "${current_base}" != "${recorded_base}" ]]; then
+              echo "::warning::PR #${pr} was retargeted (${recorded_base} -> ${current_base}) since /test; re-issue."
+              continue
+            fi
+            dispatch_list+=("${pr}")
+          done
+          echo "event=issue_comment" >> "$GITHUB_OUTPUT"
+          ;;
+        push)
+          # For push, ci.yml uploads a push-event-<sha> artifact carrying
+          # the pushed event payload. Its presence in this triggering run
+          # is the push-leg liveness gate.
+          name="push-event-${HEAD_SHA}"
+          if ! jq -e --arg n "${name}" 'index($n) != null' <<< "${trigger_artifacts}" >/dev/null; then
+            echo "Triggering push run has no push-event payload; nothing to dispatch."
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           artifact_id="$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${name}&per_page=100" \
               --jq "[.artifacts[] | select(.expired == false
-                     and .workflow_run.head_repository_id == ${REPO_ID}
-                     and .workflow_run.head_branch == \"${DEFAULT_BRANCH}\")]
+                     and .workflow_run.id == ${TRIGGER_RUN_ID})]
                     | sort_by(.created_at) | last | .id // empty")"
           if [[ -z "${artifact_id}" ]]; then
-            echo "PR #${pr}: no vouched request for ${HEAD_SHA}; skipping"
-            continue
+            echo "Push payload artifact not found; nothing to dispatch."
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
-          # Download by immutable artifact id (unambiguous across re-runs).
           gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" \
-              > "${RUNNER_TEMP}/requests/${pr}.zip"
-          mkdir -p "${RUNNER_TEMP}/requests/${pr}"
-          unzip -q -o "${RUNNER_TEMP}/requests/${pr}.zip" -d "${RUNNER_TEMP}/requests/${pr}"
-          if [[ "$(cat "${RUNNER_TEMP}/requests/${pr}/event_name")" != "issue_comment" ]]; then
-            echo "::warning::PR #${pr}: request is not an issue_comment recording; skipping"
-            continue
-          fi
-          pr_json="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${pr}")"
-          current_head="$(jq -r '.head.sha' <<< "${pr_json}")"
-          current_base="$(jq -r '.base.ref' <<< "${pr_json}")"
-          recorded_base="$(cat "${RUNNER_TEMP}/requests/${pr}/base_ref")"
-          if [[ "${current_head}" != "${HEAD_SHA}" ]]; then
-            echo "::warning::PR #${pr} moved (${HEAD_SHA} -> ${current_head}) since this build; re-issue /test."
-            continue
-          fi
-          if [[ "${current_base}" != "${recorded_base}" ]]; then
-            echo "::warning::PR #${pr} was retargeted (${recorded_base} -> ${current_base}) since /test; re-issue /test."
-            continue
-          fi
-          dispatch_list+=("${pr}")
-        done
+              > "${RUNNER_TEMP}/requests/push.zip"
+          mkdir -p "${RUNNER_TEMP}/requests/push"
+          unzip -q -o "${RUNNER_TEMP}/requests/push.zip" -d "${RUNNER_TEMP}/requests/push"
+          dispatch_list+=("push")
+          echo "event=push" >> "$GITHUB_OUTPUT"
+          ;;
+        esac
 
         if [[ ${#dispatch_list[@]} -eq 0 ]]; then
           echo "No dispatchable request; nothing to do."
@@ -127,7 +160,7 @@ jobs:
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
     - name: Checkout (Untrusted Pull-Request Code, data only)
-      if: steps.request.outputs.found == 'true'
+      if: steps.request.outputs.found == 'true' && steps.request.outputs.event == 'issue_comment'
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
         # Pinned to the tested revision, so the config.tags.json consumed
@@ -140,6 +173,15 @@ jobs:
         # from the trusted checkout above and merely json-loads
         # config.tags.json from here.
         allow-unsafe-pr-checkout: true
+
+    - name: Checkout (pushed commit config, trusted)
+      if: steps.request.outputs.found == 'true' && steps.request.outputs.event == 'push'
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      with:
+        # Pushed commits reach main/v*/hotfix-* only through review, so
+        # config.tags.json at the pushed SHA is trusted.
+        ref: ${{ github.event.workflow_run.head_sha }}
+        path: _push_config
 
     - name: Setup Python
       if: steps.request.outputs.found == 'true'
@@ -156,15 +198,20 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ github.token }}
         FLEXCI_WEBHOOK_SECRET: ${{ secrets.FLEXCI_WEBHOOK_SECRET }}
-        PROJECTS_ROOT_DIR: _pr_untrusted
+        EVENT: ${{ steps.request.outputs.event }}
         PRS: ${{ steps.request.outputs.prs }}
       run: |
         set -euo pipefail
+        if [[ "${EVENT}" == "issue_comment" ]]; then
+          projects="_pr_untrusted/.pfnci/config.tags.json"
+        else
+          projects="_push_config/.pfnci/config.tags.json"
+        fi
         for pr in ${PRS}; do
           ./.github/workflows/scripts/flexci_dispatcher.py \
-              --event issue_comment \
+              --event "${EVENT}" \
               --webhook "${RUNNER_TEMP}/requests/${pr}/event.json" \
-              --projects "${PROJECTS_ROOT_DIR}/.pfnci/config.tags.json" \
+              --projects "${projects}" \
               --external-tag jenkins \
               --external-tag rocm
         done
