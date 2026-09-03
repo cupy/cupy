@@ -355,73 +355,64 @@ For example, you can build CuPy using non-default CUDA directory by ``CUDA_PATH`
    CUDA installation discovery is also performed at runtime using the rule above.
    Depending on your system configuration, you may also need to set ``LD_LIBRARY_PATH`` environment variable to ``$CUDA_PATH/lib64`` at runtime.
 
-``Failed to find CUDA headers`` Error
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+CuPy fails to compile CUDA kernels
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-CuPy requires CUDA Runtime header files to compile kernels on the fly.
-If none can be located, CuPy raises ``RuntimeError: Failed to find CUDA headers. Please install CUDA toolkit headers (e.g., pip install cupy-cuda12x[ctk]) or specify CUDA_PATH environment variable.``.
-A partial or mismatched CUDA installation may instead surface at NVRTC time as ``NVRTC_ERROR_COMPILATION`` with ``catastrophic error: cannot open source file "vector_types.h"`` -- since ``vector_types.h`` ships with cudart, the fix (install the runtime headers) is the same.
+CuPy JIT-compiles CUDA kernels via NVRTC at runtime and needs the CUDA runtime (``cudart``) headers to do so.
+NVRTC and ``cudart`` are version-locked: both must come from the same CTK ``X.Y``.
+If the headers cannot be located, are incomplete, or come from a different CTK than NVRTC, kernel compilation fails with errors such as:
 
-CuPy searches for CUDA headers using ``cuda.pathfinder.find_nvidia_header_directory("cudart")``; see the `cuda-pathfinder documentation <https://nvidia.github.io/cuda-python/cuda-pathfinder/latest/generated/cuda.pathfinder.find_nvidia_header_directory.html>`_ for the search order.
+* ``RuntimeError: Failed to find CUDA headers. Please install CUDA toolkit headers (e.g., pip install cupy-cuda12x[ctk]) or specify CUDA_PATH environment variable.`` -- no ``cudart`` headers were located at all (raised directly by CuPy).
+* ``NVRTC_ERROR_COMPILATION`` with ``catastrophic error: cannot open source file "vector_types.h"`` or ``"cuda_fp16.h"`` -- a partial ``cudart`` header install; both files ship with ``cudart``.
+* ``nvrtc: error: failed to load builtins`` -- NVRTC cannot locate its own builtin headers.
+* ``error: cannot overload functions distinguished by return type alone``, ``error: identifier "__half_raw" is undefined``, or ``error: no instance of overloaded function "__half::__half" matches the specified type`` -- ``cudart`` headers and NVRTC came from different CTK versions.
 
-The easiest way to set up CUDA runtime headers is to use NVIDIA Python wheels.
-If you have installed CuPy from PyPI (i.e., ``pip install cupy-cuda13x``), you can install CUDA headers by running ``pip install "nvidia-cuda-runtime==13.X.*"`` where ``13.X`` is the version of your CUDA installation.
-Once the headers from the package are recognized, ``cupy.show_config()`` will display the path as ``CUDA Extra Include Dirs``:
+CuPy locates ``cudart`` headers via ``cuda.pathfinder.find_nvidia_header_directory("cudart")``; see the `cuda-pathfinder documentation <https://nvidia.github.io/cuda-python/cuda-pathfinder/latest/generated/cuda.pathfinder.find_nvidia_header_directory.html>`_ for the search order. Running ``python -c 'import cupy; cupy.show_config()'`` reports the resolved directory as ``CUDA Extra Include Dirs`` and the NVRTC version as ``NVRTC Version``, which is useful for confirming that both came from the same CTK.
 
-.. code:: console
+Resolution depends on how you installed CUDA:
 
-  $ python -c 'import cupy; cupy.show_config()'
-  ...
-  CUDA Extra Include Dirs      : []
-  ...
-  NVRTC Version                : (13, 3)
-  ...
-  $ pip install "nvidia-cuda-runtime==13.3.*"
-  ...
-  $ python -c 'import cupy; cupy.show_config()'
-  ...
-  CUDA Extra Include Dirs      : ['.../site-packages/nvidia/cuda_runtime/include']
-  ...
+**conda**
+   If CuPy came from conda-forge (``conda install -c conda-forge cupy``), the ``cuda-cudart-dev_<platform>`` dependency ships the headers automatically; if you see the error anyway, confirm your conda environment is activated and no stray ``CUDA_PATH`` is pointing elsewhere. If CuPy came from another source, install the headers explicitly with ``conda install -c conda-forge cuda-cudart-dev`` (optionally pinning ``cuda-version`` to keep NVRTC and ``cudart`` in lock-step).
 
-Alternatively, you can install CUDA headers system-wide (``/usr/local/cuda``) using NVIDIA's Apt (or DNF) repository.
-Install the ``cuda-cudart-dev-13-X`` package where ``13-X`` is the version of your ``cuda-cudart`` package, e.g.:
+**PyPI wheels**
+   The easiest path is the ``[ctk]`` extras: ``pip install "cupy-cuda13x[ctk]"`` pulls in ``cuda-toolkit[cudart,nvrtc,...]``, which co-installs matched ``nvidia-cuda-runtime`` and ``nvidia-cuda-nvrtc`` wheels. See :ref:`Installing CuPy from PyPI <install_with_ctk_extras>`.
 
-.. code:: console
+   Otherwise, install the runtime wheel manually: ``pip install "nvidia-cuda-runtime==13.X.*"`` where ``13.X`` matches the NVRTC version reported by ``cupy.show_config()``. For CUDA 12.x, use ``nvidia-cuda-runtime-cu12`` (the ``-cu12`` suffix was dropped starting with CUDA 13).
 
-  $ apt list "cuda-cudart-*"
-  cuda-cudart-13-3/now 13.3.0-1 amd64 [installed,local]
-  $ sudo apt install "cuda-cudart-dev-13-3"
+   After installation, ``cupy.show_config()`` displays the path under ``CUDA Extra Include Dirs``:
 
-.. note::
+   .. code:: console
 
-   For CuPy built against CUDA 12.x (``cupy-cuda12x``), use ``nvidia-cuda-runtime-cu12`` and ``cuda-cudart-dev-12-X`` in place of the CUDA 13 package names above.
+      $ python -c 'import cupy; cupy.show_config()'
+      ...
+      CUDA Extra Include Dirs      : []
+      ...
+      NVRTC Version                : (13, 3)
+      ...
+      $ pip install "nvidia-cuda-runtime==13.3.*"
+      ...
+      $ python -c 'import cupy; cupy.show_config()'
+      ...
+      CUDA Extra Include Dirs      : ['.../site-packages/nvidia/cuda_runtime/include']
+      ...
 
-.. tip::
+**Local (system) CUDA Toolkit**
+   Install the headers via NVIDIA's Apt (or DNF) repository, matching the major/minor of your ``cuda-cudart`` package (so the ``cudart`` headers align with NVRTC from the same CTK):
 
-   You will not hit this error if the CUDA runtime headers were installed alongside CuPy:
+   .. code:: console
 
-   - **conda-forge** (``conda install -c conda-forge cupy``): the ``cuda-cudart-dev_<platform>`` dependency ships the headers.
-   - **PyPI with the** ``[ctk]`` **extras** (e.g. ``pip install "cupy-cuda13x[ctk]"``; see :ref:`Installing CuPy from PyPI <install_with_ctk_extras>`): the ``cuda-toolkit[cudart,...]`` metapackage pulls in ``nvidia-cuda-runtime``, which includes the headers.
+      $ apt list "cuda-cudart-*"
+      cuda-cudart-13-3/now 13.3.0-1 amd64 [installed,local]
+      $ sudo apt install "cuda-cudart-dev-13-3"
 
-   Please report any header-discovery issues in either path to the CuPy repository.
+   Use ``cuda-cudart-dev-12-X`` for CUDA 12.
 
-CuPy always raises ``cupy.cuda.compiler.CompileException``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   If your CTK is installed at a non-default location, export ``CUDA_PATH`` and ``LD_LIBRARY_PATH`` before running Python:
 
-If CuPy raises a ``CompileException`` for almost everything, it is possible that CuPy cannot detect CUDA installed on your system correctly.
-The following are error messages commonly observed in such cases.
+   .. code:: console
 
-* ``nvrtc: error: failed to load builtins``
-* ``catastrophic error: cannot open source file "cuda_fp16.h"``
-* ``error: cannot overload functions distinguished by return type alone``
-* ``error: identifier "__half_raw" is undefined``
-* ``error: no instance of overloaded function "__half::__half" matches the specified type``
-
-Please try setting ``LD_LIBRARY_PATH`` and ``CUDA_PATH`` environment variable.
-For example, if you have CUDA installed at ``/usr/local/cuda-12.6``::
-
-  $ export CUDA_PATH=/usr/local/cuda-12.6
-  $ export LD_LIBRARY_PATH=$CUDA_PATH/lib64:$LD_LIBRARY_PATH
+      $ export CUDA_PATH=/usr/local/cuda-13.3
+      $ export LD_LIBRARY_PATH=$CUDA_PATH/lib64:$LD_LIBRARY_PATH
 
 Also see :ref:`install_cuda`.
 
