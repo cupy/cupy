@@ -524,6 +524,50 @@ class TestSvdsV0:
         assert not bool(cupy.isnan(s).any())
 
 
+class TestDefaultStartVector:
+    # The default start vector comes from a fixed seed, so a call with
+    # v0=None is reproducible and the global cupy.random state cannot leak
+    # into eigsh/svds results (gh-10239: the same test instance passed or
+    # failed depending on the draw).
+
+    @testing.for_dtypes('fdFD')
+    def test_default_v0_is_fixed(self, dtype):
+        from cupyx.scipy.sparse.linalg import _eigen
+        u1 = _eigen._default_v0(1000, dtype)
+        cupy.random.seed(1)
+        cupy.random.random(1000)         # advance the global generator
+        u2 = _eigen._default_v0(1000, dtype)
+        assert u1.dtype == cupy.dtype(dtype)
+        cupy.testing.assert_array_equal(u1, u2)
+        assert float(cupy.abs(u1 - u1.mean()).max()) > 0.1  # not constant
+
+    @testing.for_dtypes('fdFD')
+    def test_eigsh_repeatable(self, dtype):
+        b = testing.shaped_random((120, 120), cupy, dtype=dtype, seed=0)
+        a = sparse.csr_matrix(b + b.conj().T)
+        w1 = sparse.linalg.eigsh(a, k=6, return_eigenvectors=False)
+        cupy.random.seed(2)
+        w2 = sparse.linalg.eigsh(a, k=6, return_eigenvectors=False)
+        # Same start, same trajectory: only the parallel-reduction order in
+        # cuBLAS/cuSPARSE differs between the two runs.
+        tol = 1e-5 if numpy.dtype(dtype).char in 'fF' else 1e-10
+        cupy.testing.assert_allclose(cupy.sort(w1.real), cupy.sort(w2.real),
+                                     rtol=tol, atol=0)
+
+    def test_svds_augmented_vectors_repeatable(self):
+        # k above the rank: the missing singular vectors are completed by
+        # random orthonormal columns, which must be reproducible as well.
+        m, n, rank = 40, 30, 3
+        a = (testing.shaped_random((m, rank), cupy, dtype='d', seed=0)
+             @ testing.shaped_random((rank, n), cupy, dtype='d', seed=1))
+        u1, s1, vt1 = sparse.linalg.svds(sparse.csr_matrix(a), k=6)
+        cupy.random.seed(3)
+        u2, s2, vt2 = sparse.linalg.svds(sparse.csr_matrix(a), k=6)
+        cupy.testing.assert_allclose(s1, s2, rtol=1e-10, atol=1e-10)
+        cupy.testing.assert_allclose(u1, u2, rtol=1e-8, atol=1e-8)
+        cupy.testing.assert_allclose(vt1, vt2, rtol=1e-8, atol=1e-8)
+
+
 @testing.parameterize(*testing.product({
     'shape': [(30, 29), (29, 29), (29, 30)],
     'k': [3, 6, 12],

@@ -10,6 +10,23 @@ from cupy_backends.cuda.libs import cublas as _cublas
 from cupyx.scipy.sparse import _csr
 from cupyx.scipy.sparse.linalg import _interface
 
+# Seed of the default Lanczos start vector. Drawing it from a fixed seed
+# makes eigsh and svds deterministic for a given input, as ARPACK's default
+# start is, and independent of the global cupy.random state; the trajectory
+# can still be chosen explicitly through v0.
+_DEFAULT_V0_SEED = 0
+
+
+def _default_v0(n, dtype, rs=None):
+    """Pseudo-random start vector of length ``n`` drawn from a fixed seed.
+
+    A private ``RandomState`` is used so that neither ``cupy.random.seed``
+    nor any other consumer of the global generator changes the result.
+    """
+    if rs is None:
+        rs = cupy.random.RandomState(_DEFAULT_V0_SEED)
+    return rs.random_sample((n,)).astype(dtype)
+
 
 def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
           tol=0, return_eigenvectors=True):
@@ -32,8 +49,11 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
             'LA': finds ``k`` largest (algebraic) eigenvalues.
             'SA': finds ``k`` smallest (algebraic) eigenvalues.
 
-        v0 (ndarray): Starting vector for iteration. If ``None``, a random
-            unit vector is used.
+        v0 (ndarray): Starting vector for iteration. If ``None``, a
+            pseudo-random unit vector drawn from a fixed seed is used, so
+            repeated calls on the same input follow the same trajectory
+            regardless of the global :mod:`cupy.random` state (as with the
+            default start of ARPACK in SciPy).
         ncv (int): The number of Lanczos vectors generated. Must be
             ``k + 1 < ncv < n``. If ``None``, default value is used.
         maxiter (int): Maximum number of Lanczos update iterations.
@@ -105,7 +125,7 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
 
     # Set initial vector
     if v0 is None:
-        u = cupy.random.random((n,)).astype(a.dtype)
+        u = _default_v0(n, a.dtype)
         V[0] = u / cublas.nrm2(u)
     else:
         u = v0
@@ -777,11 +797,9 @@ def svds(a, k=6, *, ncv=None, tol=0, which='LM', v0=None,
         which (str): Only 'LM' is supported. 'LM': finds ``k`` largest singular
             values.
         v0 (ndarray): Starting vector for iteration, of length
-            ``min(a.shape)``. If ``None``, an unseeded random vector is
-            used, and repeated calls may follow different convergence
-            trajectories (matching the historical behavior). Passing a
-            fixed ``v0`` makes the solve reproducible, as in
-            :func:`scipy.sparse.linalg.svds`.
+            ``min(a.shape)`` as in :func:`scipy.sparse.linalg.svds`. If
+            ``None``, a pseudo-random vector drawn from a fixed seed is
+            used (see :func:`eigsh`).
         maxiter (int): Maximum number of Lanczos update iterations.
             If ``None``, default value is used.
         return_singular_vectors (bool): If ``True``, returns singular vectors
@@ -856,8 +874,9 @@ def _augmented_orthnormal_cols(x, n_aug):
     m, n = x.shape
     y = cupy.empty((m, n + n_aug), dtype=x.dtype)
     y[:, :n] = x
+    rs = cupy.random.RandomState(_DEFAULT_V0_SEED)
     for i in range(n, n + n_aug):
-        v = cupy.random.random((m, )).astype(x.dtype)
+        v = _default_v0(m, x.dtype, rs)
         v -= v @ y[:, :i].conj() @ y[:, :i].T
         y[:, i] = v / cupy.linalg.norm(v)
     return y
