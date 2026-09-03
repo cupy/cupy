@@ -113,3 +113,30 @@ def trimcoef(c, tol=0):
     if ind == 0:
         return cupy.zeros_like(c[:1])
     return c[: ind]
+
+
+def getdomain(x):
+    """Return a domain suitable for given abscissae.
+
+    Args:
+        x (array_like): 1-d array of abscissae whose domain will be
+            determined.
+
+    Returns:
+        cupy.ndarray: 1-d array containing two values. If the inputs are
+        complex, then the two returned points are the lower left and upper
+        right corners of the smallest rectangle in the complex plane
+        containing the points `x`. If the inputs are real, then the
+        two points are the ends of the smallest interval containing the
+        points `x`.
+
+    .. seealso:: :func:`numpy.polynomial.polyutils.getdomain`
+
+    """
+    [x] = as_series([x], trim=False)
+    if x.dtype.kind == 'c':  # 'c' for complex
+        rmin, rmax = x.real.min(), x.real.max()
+        imin, imax = x.imag.min(), x.imag.max()
+        return cupy.array((complex(rmin, imin), complex(rmax, imax)))
+    else:
+        return cupy.array((x.min(), x.max()))
