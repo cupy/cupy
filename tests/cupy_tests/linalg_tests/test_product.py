@@ -9,6 +9,7 @@ import pytest
 
 import cupy
 from cupy import testing
+from cupy.testing._helper import skip_if_after_baseline
 
 
 @testing.parameterize(*testing.product({
@@ -116,6 +117,7 @@ class TestCrossProduct(unittest.TestCase):
 class TestCrossProductDeprecated(unittest.TestCase):
     @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'])
     @testing.numpy_cupy_allclose()
+    @skip_if_after_baseline(numpy="2.5", reason="deprecation finalized.")
     def test_cross(self, xp, dtype_a, dtype_b):
         if dtype_a == dtype_b == numpy.bool_:
             # cross does not support bool-bool inputs.

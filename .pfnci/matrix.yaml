@@ -401,7 +401,7 @@
   cutensor: "2.4"
   cusparselt: "0.9.1"
   python: "3.14"
-  numpy: "2.4"
+  numpy: "2.5"
   scipy: "1.16"
   optuna: "4"
   ml_dtypes: "0.5"
