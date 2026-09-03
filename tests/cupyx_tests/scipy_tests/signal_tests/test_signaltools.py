@@ -351,9 +351,11 @@ class TestOrderFilter:
     @testing.numpy_cupy_allclose(atol=1e-8, rtol=1e-8, scipy_name='scp',
                                  accept_error=ValueError)  # for even kernels
     def test_order_filter(self, xp, scp, dtype):
-        if dtype == xp.longlong and "1.15.0" <= scipy_version < "1.17.0":
+        if dtype == xp.longlong and xp == np and scipy_version < "1.19.0":
+            # SciPy may unnecessarily reject longlong so use int64, see:
             # https://github.com/scipy/scipy/issues/22368
-            return xp.array([])  # Skip
+            dtype = np.dtype(np.int64)
+
         a = testing.shaped_random(self.a, xp, dtype)
         d = self.domain
         d = d[:a.ndim] if isinstance(d, tuple) else (d,)*a.ndim
@@ -373,9 +375,11 @@ class TestMedFilt:
         atol=1e-8, rtol=1e-8, scipy_name='scp',
         accept_error=ValueError)  # for even kernels
     def test_medfilt(self, xp, scp, dtype):
-        if dtype == xp.longlong and "1.15.0" <= scipy_version < "1.17.0":
+        if dtype == xp.longlong and xp == np and scipy_version < "1.19.0":
+            # SciPy may unnecessarily reject longlong, see:
             # https://github.com/scipy/scipy/issues/22368
-            return xp.array([])  # Skip
+            dtype = np.dtype(np.int64)
+
         if sys.platform == 'win32':
             pytest.xfail('medfilt broken for SciPy on windows')
         volume = testing.shaped_random(self.volume, xp, dtype)
@@ -594,7 +598,16 @@ class TestLFilter:
         return out
 
     @pytest.mark.parametrize(
-        'zeros', [(2,), (1,), (0,), (1, 2), (0, 1), (0, 2), (0, 1, 2)])
+        'zeros',
+        [(2,), (1,), (0,),
+         pytest.param(
+             (1, 2),
+             marks=pytest.mark.skipif(
+                 runtime.is_hip,
+                 reason='SIGABRT in rocSOLVER SVD for this specific '
+                        'IIR-coefficient pattern (crashes the worker; '
+                        'not xfail-able)')),
+         (0, 1), (0, 2), (0, 1, 2)])
     @testing.numpy_cupy_array_almost_equal(scipy_name='scp', decimal=5)
     def test_lfilter_zi_with_zeros(self, zeros, xp, scp):
         fir_order = 3
@@ -1093,6 +1106,11 @@ class TestHilbert2:
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-15)
     @pytest.mark.parametrize('shape', [(4, 5), (5, 4), (4, 4), (5, 5)])
     def test_quadrant_values(self, shape, xp, scp):
+        if 4 in shape and not testing.installed("scipy>=1.18.1"):
+            # See https://github.com/scipy/scipy/issues/25176, hope it is
+            # fixed by 1.18.1
+            pytest.skip("SciPy>=1.17 has wrong nyquist handling")
+
         x_f = xp.ones(shape, dtype=xp.complex128)  # FFT of input signal
         x_f[0, 0] += 7
         x = xp.real(scp.fft.ifft2(x_f))  # x.imag is zero

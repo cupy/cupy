@@ -879,7 +879,6 @@ class TestChoiceChi(RandomGeneratorTestCase):
         assert _hypothesis.chi_square_test(counts, expected)
 
     @_condition.repeat(3, 10)
-    @pytest.mark.xfail(runtime.is_hip, reason='ROCm/HIP may have a bug')
     def test_goodness_of_fit_2(self):
         vals = self.generate(3, (5, 20), True, [0.3, 0.3, 0.4]).get()
         counts = numpy.histogram(vals, bins=numpy.arange(4))[0]

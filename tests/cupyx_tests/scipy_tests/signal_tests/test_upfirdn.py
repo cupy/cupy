@@ -75,7 +75,7 @@ def make_case(up, down, h, x_dtype, case):
     return x, h
 
 
-def make_case_2D(up, down, h, x_dtype, case):
+def make_case_2D(up, down, h, x_dtype, case, xp):
     # replacement for the UpFIRDnCase class from the SciPy tests
     rng = np.random.RandomState(17)
     h = np.atleast_1d(h)
@@ -86,15 +86,15 @@ def make_case_2D(up, down, h, x_dtype, case):
         x = rng.randn(*size).astype(x_dtype)
         if x_dtype in (np.complex64, np.complex128):
             x += 1j * rng.randn(*size)
-        return x, h
+        return xp.asarray(x), xp.asarray(h)
     elif case == '2D_noncontig':
         # 2D, random, non-contiguous
         size = (3, 7)
         x = rng.randn(*size).astype(x_dtype)
         if x_dtype in (np.complex64, np.complex128):
             x += 1j * rng.randn(*size)
-        x = x[::2, 1::3].T
-        return x, h
+        x = xp.asarray(x)[::2, 1::3].T
+        return x, xp.asarray(h)
     else:
         raise ValueError(f"unknown 2D_case, {case}.")
 
@@ -219,11 +219,22 @@ class TestUpfirdn:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_vs_naive_delta_2D(self, axis, x_dtype, h, up, down,
                                case, xp, scp):
-        x, h = make_case_2D(up, down, h, x_dtype, case)
-        x = xp.asarray(x)
-        h = xp.asarray(h)
+        x, h = make_case_2D(up, down, h, x_dtype, case, xp)
         y = scp.signal.upfirdn(h, x, up, down, axis=axis)
         return y
+
+    @pytest.mark.parametrize('indexer', [
+        slice(None, None, 2),
+        slice(None, None, -1),
+        slice(None, None, -3),
+    ])
+    @pytest.mark.parametrize(
+        'dtype', [np.float32, np.float64, np.complex64, np.complex128])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_strides_1d(self, xp, scp, indexer, dtype):
+        x = xp.linspace(0, 1, 32, dtype=dtype)
+        h = xp.asarray([1., 1.], dtype=dtype)
+        return scp.signal.upfirdn(h, x[indexer], up=2, down=3)
 
     @pytest.mark.parametrize('x_dtype', _UPFIRDN_TYPES)
     @pytest.mark.parametrize('h', (1., 1j))

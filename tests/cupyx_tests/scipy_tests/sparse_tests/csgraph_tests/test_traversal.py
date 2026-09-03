@@ -25,23 +25,24 @@ from cupy import testing
     'directed': [True, False],
     'connection': ['weak', 'strong'],
     'return_labels': [True, False],
+    'use_array': [True, False],
 }))
 @unittest.skipUnless(scipy_available and pylibcugraph_available,
                      'requires scipy and pylibcugraph')
 class TestConnectedComponents(unittest.TestCase):
 
-    def _make_matrix(self, dtype, xp):
+    def _make_matrix(self, dtype, xp, sp):
         shape = (self.m, self.m)
         density = self.nnz_per_row / self.m
         a = testing.shaped_random(shape, xp, dtype=dtype, scale=1)
         a = a / density
         a[a > 1] = 0
-        return a
+        cls = sp.csr_array if self.use_array else sp.csr_matrix
+        return cls(a)
 
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_connected_components(self, xp, sp):
-        a = self._make_matrix(self.dtype, xp)
-        a = sp.csr_matrix(a)
+        a = self._make_matrix(self.dtype, xp, sp)
         if self.return_labels:
             n, labels = sp.csgraph.connected_components(
                 a, directed=self.directed, connection=self.connection,

@@ -19,7 +19,7 @@ if not runtime.is_hip:
     from cupy.fft._callback import (
         get_current_callback_manager, set_cufft_callbacks)
 else:
-    def get_current_callback_manager():
+    def get_current_callback_manager(*args, **kwargs):
         return None
 
     def set_cufft_callbacks(*args, **kwargs):

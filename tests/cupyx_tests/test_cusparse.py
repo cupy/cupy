@@ -503,51 +503,6 @@ class TestCsrmv:
         assert y is z
         testing.assert_array_almost_equal(y, expect)
 
-    def test_csrmvEx_aligned(self):
-        if not cusparse.check_availability('csrmvEx'):
-            pytest.skip('csrmvEx is not available')
-        a = sparse.csr_matrix(self.a)
-        x = cupy.array(self.x, order='f')
-
-        assert cusparse.csrmvExIsAligned(a, x)
-
-    def test_csrmvEx_not_aligned(self):
-        if not cusparse.check_availability('csrmvEx'):
-            pytest.skip('csrmvEx is not available')
-        a = sparse.csr_matrix(self.a)
-        tmp = cupy.array(numpy.hstack([self.x, self.y]), order='f')
-        x = tmp[0:len(self.x)]
-        y = tmp[len(self.x):]
-        assert not cusparse.csrmvExIsAligned(a, x, y)
-
-    def test_csrmvEx(self):
-        if not cusparse.check_availability('csrmvEx'):
-            pytest.skip('csrmvEx is not available')
-        if self.transa:
-            # no support for transa
-            return
-
-        a = sparse.csr_matrix(self.a)
-        x = cupy.array(self.x, order='f')
-        y = cusparse.csrmvEx(a, x, alpha=self.alpha)
-        expect = self.alpha * self.op_a.dot(self.x)
-        testing.assert_array_almost_equal(y, expect)
-
-    def test_csrmvEx_with_y(self):
-        if not cusparse.check_availability('csrmvEx'):
-            pytest.skip('csrmvEx is not available')
-        if self.transa:
-            # no support for transa
-            return
-        a = sparse.csr_matrix(self.a)
-        x = cupy.array(self.x, order='f')
-        y = cupy.array(self.y, order='f')
-        z = cusparse.csrmvEx(
-            a, x, y=y, alpha=self.alpha, beta=self.beta)
-        expect = self.alpha * self.op_a.dot(self.x) + self.beta * self.y
-        assert y is z
-        testing.assert_array_almost_equal(y, expect)
-
 
 @testing.with_requires('scipy')
 class TestCoosort:
@@ -584,47 +539,43 @@ class TestCoosort:
 @testing.with_requires('scipy')
 class TestCsrsort:
 
-    @pytest.fixture(autouse=True)
-    def setUp(self):
+    def test_csrsort(self):
         if not cusparse.check_availability('csrsort'):
             pytest.skip('csrsort is not available')
 
-        self.a = scipy.sparse.random(
+        a = scipy.sparse.random(
             1, 1000, density=0.9, dtype=numpy.float32, format='csr')
-        numpy.random.shuffle(self.a.indices)
-        self.a.has_sorted_indices = False
+        numpy.random.shuffle(a.indices)
+        a.has_sorted_indices = False
 
-    def test_csrsort(self):
-        a = sparse.csr_matrix(self.a)
-        cusparse.csrsort(a)
+        b = sparse.csr_matrix(a)
+        cusparse.csrsort(b)
 
-        self.a.sort_indices()
-        testing.assert_array_equal(self.a.indptr, a.indptr)
-        testing.assert_array_equal(self.a.indices, a.indices)
-        testing.assert_array_almost_equal(self.a.data, a.data)
+        a.sort_indices()
+        testing.assert_array_equal(a.indptr, b.indptr)
+        testing.assert_array_equal(a.indices, b.indices)
+        testing.assert_array_almost_equal(a.data, b.data)
 
 
 @testing.with_requires('scipy')
 class TestCscsort:
 
-    @pytest.fixture(autouse=True)
-    def setUp(self):
+    def test_cscsort(self):
         if not cusparse.check_availability('cscsort'):
             pytest.skip('cscsort is not available')
 
-        self.a = scipy.sparse.random(
+        a = scipy.sparse.random(
             1000, 1, density=0.9, dtype=numpy.float32, format='csc')
-        numpy.random.shuffle(self.a.indices)
-        self.a.has_sorted_indices = False
+        numpy.random.shuffle(a.indices)
+        a.has_sorted_indices = False
 
-    def test_cscsort(self):
-        a = sparse.csc_matrix(self.a)
-        cusparse.cscsort(a)
+        b = sparse.csc_matrix(a)
+        cusparse.cscsort(b)
 
-        self.a.sort_indices()
-        testing.assert_array_equal(self.a.indptr, a.indptr)
-        testing.assert_array_equal(self.a.indices, a.indices)
-        testing.assert_array_almost_equal(self.a.data, a.data)
+        a.sort_indices()
+        testing.assert_array_equal(a.indptr, b.indptr)
+        testing.assert_array_equal(a.indices, b.indices)
+        testing.assert_array_almost_equal(a.data, b.data)
 
 
 @testing.parameterize(*testing.product({
@@ -1120,10 +1071,6 @@ class TestSpsm:
     def test_spsm(self, lower, unit_diag, transa, b_order, dtype, format):
         if not cusparse.check_availability('spsm'):
             pytest.skip('spsm is not available')
-        if not runtime.is_hip and _cusparse.get_build_version() < 11701:
-            # earlier than CUDA 11.6
-            if b_order == 'c':
-                pytest.skip("Older CUDA has a bug")
         if runtime.is_hip:
             if format == 'coo' or b_order == 'c':
                 pytest.skip('may be buggy or not supported')
@@ -1148,3 +1095,42 @@ class TestSpsm:
         else:
             tol = 1e-12
         testing.assert_allclose(lhs, rhs, rtol=tol, atol=tol)
+
+
+class TestCheckAvailabilityVersionSkew:
+    # Regression for the wheel-based CI: a wheel built against a newer
+    # cuSPARSE (e.g. CUDA 13.3 in the build stage) is tested against an
+    # older runtime cuSPARSE (e.g. CUDA 13.0). SoftLink resolves symbols
+    # at runtime, so check_availability must not advertise APIs that the
+    # runtime library does not expose.
+
+    _API = '__test_version_skew__'
+    _THRESHOLD = 12801
+
+    @pytest.fixture(autouse=True)
+    def _register(self, monkeypatch):
+        table = dict(cusparse._available_cusparse_version)
+        table[self._API] = (self._THRESHOLD, None)
+        monkeypatch.setattr(
+            cusparse, '_available_cusparse_version', table)
+        # Force the classic (non-cuda-python) branch; the cuda-python
+        # branch already uses runtime and is unaffected by this fix.
+        monkeypatch.setattr(
+            _cusparse, 'is_cuda_python_build', lambda: False,
+            raising=False)
+        cupy.clear_memo()
+        yield
+        cupy.clear_memo()
+
+    @pytest.mark.parametrize('build,runtime_,expected', [
+        (12801, 12801, True),   # both meet threshold
+        (12602, 12602, False),  # both below
+        (12602, 12801, False),  # build too old (already correct before fix)
+        (12801, 12602, False),  # newer wheel on older runtime -- the bug
+    ])
+    def test_min_of_build_and_runtime(
+            self, monkeypatch, build, runtime_, expected):
+        monkeypatch.setattr(
+            _cusparse, 'get_build_version', lambda: build)
+        monkeypatch.setattr(cusparse, 'getVersion', lambda: runtime_)
+        assert cusparse.check_availability(self._API) is expected

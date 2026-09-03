@@ -43,6 +43,7 @@ Indexing-like operations
    select
    # TODO(kmaehashi): create a dedicated page for cupy.lib namespace
    lib.stride_tricks.as_strided
+   lib.stride_tricks.sliding_window_view
 
 Inserting data into arrays
 --------------------------

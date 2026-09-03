@@ -182,9 +182,144 @@ class TestEigsh:
             a = sp.linalg.aslinearoperator(a)
         return self._test_eigsh(a, xp, sp)
 
+    degenerate_tol = {'f': 1e-5, 'd': 1e-10}
+
+    @testing.for_dtypes('fdFD')
+    def test_degenerate(self, dtype):
+        # A degenerate spectrum exhausts the Krylov space (beta -> 0).
+        # Without a breakdown guard this normalized by ~0 and returned NaN
+        # (gh-6446, gh-7495). Check the identity yields all-ones, no NaN.
+        if self.use_linear_operator:
+            pytest.skip()
+        a = sparse.identity(self.n, dtype=dtype, format='csr')
+        w = sparse.linalg.eigsh(a, k=self.k, which=self.which,
+                                return_eigenvectors=False)
+        assert not bool(cupy.isnan(w).any())
+        tol = self.degenerate_tol[numpy.dtype(dtype).char.lower()]
+        cupy.testing.assert_allclose(
+            cupy.sort(w), cupy.ones(self.k), rtol=tol, atol=tol)
+
+    clustered_tol = {'f': 1e-4, 'd': 1e-6}
+
+    @testing.for_dtypes('fdFD')
+    def test_clustered_large_k(self, dtype):
+        # A spectrum with only a few distinct eigenvalues exhausts its
+        # Krylov space almost immediately (a 2-value spectrum has Krylov
+        # dimension ~2): without the breakdown guard this returned NaN or
+        # ghost/overflow Ritz values (~1e+217) at larger k (gh-7168,
+        # gh-6769). The top-k eigenvalues are k exact copies of 50.
+        if self.use_linear_operator or self.which != 'LA':
+            pytest.skip()
+        n, k = 200, 20
+        evals = cupy.concatenate(
+            [cupy.ones(n // 2, dtype='d'),
+             50.0 * cupy.ones(n // 2, dtype='d')])
+        q, _ = cupy.linalg.qr(testing.shaped_random((n, n), cupy,
+                                                    dtype=dtype, seed=0))
+        a = ((q * evals) @ q.conj().T).astype(dtype)
+        w = sparse.linalg.eigsh(sparse.csr_matrix(a), k=k, which='LA',
+                                return_eigenvectors=False)
+        assert not bool(cupy.isnan(w).any())
+        assert bool((cupy.abs(w) < 1e3).all())      # no ghost / overflow
+        tol = self.clustered_tol[numpy.dtype(dtype).char.lower()]
+        cupy.testing.assert_allclose(
+            cupy.sort(w), cupy.full(k, 50.0), rtol=tol, atol=tol)
+
+    @testing.for_dtypes('fdFD')
+    def test_clustered_large_k_gaussian(self, dtype):
+        # The same two-value spectrum under a gaussian-QR rotation, with a
+        # pinned start vector. Reported in review: this rotation returns
+        # ghost Ritz values up to ~1e307 (NaN on stock) where the rotation
+        # above happens to converge, because the restart locks duplicate
+        # rows into the basis once an eigenvalue is degenerate. Both the
+        # rotation and v0 are built on the host with seeded numpy, so the
+        # input does not depend on GPU RNG.
+        if self.use_linear_operator or self.which != 'LA':
+            pytest.skip()
+        n, k = 200, 20
+        rng = numpy.random.default_rng(1)
+        q, _ = numpy.linalg.qr(rng.standard_normal((n, n)))
+        evals = numpy.concatenate(
+            [numpy.ones(n // 2), 50.0 * numpy.ones(n // 2)])
+        a = cupy.asarray((q * evals) @ q.T).astype(dtype)
+        v0 = cupy.asarray(
+            numpy.random.default_rng(1).random(n)).astype(dtype)
+        w = sparse.linalg.eigsh(sparse.csr_matrix(a), k=k, which='LA',
+                                v0=v0, return_eigenvectors=False)
+        assert not bool(cupy.isnan(w).any())
+        assert bool((cupy.abs(w) < 1e3).all())      # no ghost / overflow
+        tol = self.clustered_tol[numpy.dtype(dtype).char.lower()]
+        cupy.testing.assert_allclose(
+            cupy.sort(w.real), cupy.full(k, 50.0), rtol=tol, atol=tol)
+
+    @testing.for_dtypes('fdFD')
+    def test_null_space_start(self, dtype):
+        # v0 exactly in the null space of a singular A: beta and the norm
+        # estimate both start at 0, so the breakdown test must be
+        # non-strict (<=) for the reseed to fire -- with strict < the
+        # whole Krylov space silently stays zero and eigsh returns zeros.
+        if self.use_linear_operator or self.which != 'LA':
+            pytest.skip()
+        n = 10
+        a = sparse.diags(cupy.arange(n).astype(dtype)).tocsr()
+        v0 = cupy.zeros(n, dtype=dtype)
+        v0[0] = 1                      # eigenvector of eigenvalue 0
+        w = sparse.linalg.eigsh(a, k=2, which='LA', v0=v0,
+                                return_eigenvectors=False)
+        # with '<' this returned [0, 0]; with '<=' the reseeds explore true
+        # eigendirections. (A dead v0 plus ncv = n - 1 leaves one dimension
+        # unexplored and the exact-invariant res = 0 stop ends there, so the
+        # result is genuine nonzero eigenvalues, not necessarily the
+        # extremal pair -- inherited Lanczos semantics.)
+        w = cupy.sort(w.real)
+        assert not bool(cupy.isnan(w).any())
+        assert float(w.min()) > 0.5
+        cupy.testing.assert_allclose(w, cupy.around(w), atol=1e-4)
+
+    @testing.for_dtypes('fdFD')
+    def test_negative_semidefinite_la(self, dtype):
+        # 'LA' on a negative-semidefinite operator with nullity >= k: the
+        # zero eigenvalues ARE the largest algebraic targets, so the reseed
+        # bias must not steer away from the null space -- 'LA' biases by
+        # (A + anorm*I), which keeps the null space alive (see
+        # _restart_ortho).
+        if self.use_linear_operator or self.which != 'LA':
+            pytest.skip()
+        a = sparse.diags(cupy.concatenate(
+            [cupy.zeros(5), -cupy.ones(5)]).astype(dtype)).tocsr()
+        w = sparse.linalg.eigsh(a, k=5, which='LA',
+                                return_eigenvectors=False)
+        cupy.testing.assert_allclose(w.real, cupy.zeros(5), atol=1e-5)
+
+    @testing.for_dtypes('fdFD')
+    def test_semidefinite_la_null_not_targeted(self, dtype):
+        # The mirror image of the test above: on a POSITIVE-semidefinite (or
+        # indefinite) operator with a null space, zero is NOT an LA target,
+        # so the reseed must keep annihilating null candidates rather than
+        # spending Krylov slots on them. The shift is therefore applied only
+        # when no positive Rayleigh quotient has been observed.
+        if self.use_linear_operator or self.which != 'LA':
+            pytest.skip()
+        for vals in ([1.0, 2.0, 3.0] + [0.0] * 7,
+                     [2.0, -3.0] + [0.0] * 8):
+            a = sparse.diags(
+                cupy.asarray(vals).astype(dtype)).tocsr()
+            w = sparse.linalg.eigsh(a, k=3, which='LA',
+                                    return_eigenvectors=False)
+            ref = cupy.sort(cupy.asarray(vals).astype(
+                cupy.asarray(vals).real.dtype))[-3:]
+            cupy.testing.assert_allclose(
+                cupy.sort(w.real), ref, atol=1e-4)
+
+    # strict=False (pyproject sets xfail_strict): the breakdown guard fixes
+    # a run-dependent subset of these instances, so they XPASS
+    # intermittently. The blocker is not gh-5001 itself but the unseeded
+    # default v0 (see the gh-5001 analysis in #10098): non-strict until the
+    # default v0 is seeded, after which these markers can go.
     @pytest.mark.xfail(
         reason='eigsh works wrong (#5001)',
         raises=AssertionError,
+        strict=False,
     )
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=tol, atol=tol, sp_name='sp')
@@ -241,6 +376,107 @@ class TestEigsh:
         assert cupy.linalg.norm(v - v_v0) < cupy.linalg.norm(v - v_aux)
 
 
+@testing.with_requires('scipy')
+class TestEigshLateNormDiscovery:
+    # An operator with wide dynamic range and a v0 orthogonal to its
+    # dominant eigenspace -- what a deflation workflow produces -- makes
+    # the first sweep honestly underestimate ||A||, and a later reseed
+    # legitimately discovers it. A divergence guard measured against the
+    # first sweep's own estimate mistakes that for corruption; one
+    # measured against a true bound on ||A|| cannot.
+    @testing.for_dtypes('fdFD')
+    @pytest.mark.parametrize('big', [1e4, 1e6])
+    def test_dominant_eigenvalue_hidden_from_v0(self, dtype, big):
+        n = 400
+        d = numpy.ones(n)
+        d[0] = big
+        a = sparse.diags(cupy.asarray(d.astype(
+            numpy.dtype(dtype).char.lower()))).tocsr().astype(dtype)
+        v0 = numpy.random.default_rng(0).random(n)
+        v0[0] = 0.0                        # exactly orthogonal to e_0
+        v0 = cupy.asarray((v0 / numpy.linalg.norm(v0)).astype(dtype))
+        w = sparse.linalg.eigsh(a, k=6, which='LA', v0=v0,
+                                return_eigenvectors=False)
+        assert not bool(cupy.isnan(w).any())
+        assert bool((cupy.abs(w) <= 8 * big).all())
+
+
+@testing.with_requires('scipy')
+class TestEigshTinyN:
+    # n = 2 forces ncv = n - 1 = 1, so the sweep yields a single row and the
+    # breakdown walk has no interior beta to inspect. Regression guard: the
+    # running-max array is empty there, and indexing it raised IndexError
+    # before the first Ritz solve. With v0 an exact eigenvector the first
+    # sweep converges (res = 0), which is the path that must keep working;
+    # a non-converging n = 2 input still hits the separate V[k+1] bound
+    # issue tracked in #10220.
+    @testing.for_dtypes('fdFD')
+    def test_n2_exact_v0(self, dtype):
+        a = cupy.array([[2, 0], [0, 1]], dtype=dtype)
+        v0 = cupy.array([1, 0], dtype=dtype)
+        w = sparse.linalg.eigsh(sparse.csr_matrix(a), k=1, which='LM',
+                                v0=v0, return_eigenvectors=False)
+        assert not bool(cupy.isnan(w).any())
+        cupy.testing.assert_allclose(w.real, cupy.array([2.0]),
+                                     rtol=1e-5, atol=1e-5)
+
+
+@testing.parameterize(*testing.product({
+    'which': ['LM', 'SA'],
+    'shift': [0.0, 0.5],
+}))
+@testing.with_requires('scipy')
+class TestEigshDegenerateHermitian:
+    # Hermitian, well-posed, and silently wrong on stock: B @ B^H with
+    # rank 5 << n has an eigenvalue of multiplicity n - 5, so the Krylov
+    # space is exhausted after ~5 steps and stock normalizes by ~0 --
+    # returning NaN, or ghost Ritz values, depending on the draw. The
+    # +0.5*I variant moves the degenerate block off zero, so a failure
+    # cannot be dismissed as a null-space artifact.
+    #
+    # The exact spectrum is known analytically, which matters here: a
+    # dense eigvalsh of the n x n matrix is LESS accurate than eigsh on
+    # the degenerate block (measured 1.9e-3 vs 3e-4 in float32), so it is
+    # not a usable reference. B^H B is only rank x rank and carries the
+    # nonzero eigenvalues exactly; everything else is the shift.
+    n = 100
+    rank = 5
+    k = 6
+
+    @testing.for_dtypes('fdFD')
+    def test_low_rank_gram(self, dtype):
+        b = testing.shaped_random((self.n, self.rank), cupy, dtype=dtype,
+                                  seed=0)
+        a = b @ b.conj().T
+        a = (a + a.conj().T) / 2              # exactly Hermitian
+        if self.shift:
+            a = a + self.shift * cupy.eye(self.n, dtype=dtype)
+
+        # Exact spectrum: rank nonzero eigenvalues from the small Gram,
+        # the rest are the shift (multiplicity n - rank).
+        nonzero = cupy.linalg.eigvalsh(b.conj().T @ b) + self.shift
+        if self.which == 'LM':
+            expected = cupy.sort(cupy.concatenate(
+                [nonzero, cupy.asarray([self.shift], dtype=nonzero.dtype)]))
+        else:                                  # 'SA': the degenerate block
+            expected = cupy.full((self.k,), self.shift,
+                                 dtype=nonzero.dtype)
+
+        w = sparse.linalg.eigsh(sparse.csr_matrix(a), k=self.k,
+                                which=self.which,
+                                return_eigenvectors=False)
+        assert not bool(cupy.isnan(w).any())
+        assert bool(cupy.isfinite(w).all())
+        # Absolute tolerance must scale with ||A||: the degenerate block
+        # sits at the roundoff floor of the largest eigenvalue, not at an
+        # absolute one. Same 64*eps*||A|| scale the solver itself uses.
+        anorm = float(cupy.abs(nonzero).max())
+        eps = float(numpy.finfo(numpy.dtype(dtype).char.lower()).eps)
+        cupy.testing.assert_allclose(
+            cupy.sort(w.real), cupy.sort(expected.real),
+            rtol=1e-4, atol=64 * eps * anorm)
+
+
 @testing.parameterize(*testing.product({
     'shape': [(30, 29), (29, 29), (29, 30)],
     'k': [3, 6, 12],
@@ -290,9 +526,84 @@ class TestSvds:
             a = sp.linalg.aslinearoperator(a)
         return self._test_svds(a, xp, sp)
 
+    @testing.for_dtypes('fdFD')
+    def test_rank_deficient(self, dtype):
+        # A rank-deficient matrix gives A^H A a large null space, exhausting
+        # the Krylov space; without a breakdown guard svds collapsed to all
+        # zeros (gh-8009). Check it recovers the true top-k values: to
+        # machine precision in d/D, and to ~1% in f/F GIVEN AN ACHIEVABLE
+        # tol -- the default tol = eps is an absolute residual that single
+        # precision cannot reach for a matrix of this norm, so the solve
+        # would run to maxiter and return a partially converged tail.
+        if self.use_linear_operator:
+            pytest.skip()
+        m, n = self.shape
+        rank = min(m, n) // 2
+        a = (testing.shaped_random((m, rank), cupy, dtype=dtype, seed=0)
+             @ testing.shaped_random((rank, n), cupy, dtype=dtype, seed=1))
+        if numpy.dtype(dtype).char.lower() == 'd':
+            svds_tol, cmp_tol = 0, 1e-4
+        else:
+            svds_tol, cmp_tol = 1e-6 * float(cupy.linalg.norm(a)) ** 2, 5e-2
+        s = sparse.linalg.svds(sparse.csr_matrix(a), k=self.k, tol=svds_tol,
+                               return_singular_vectors=False)
+        assert not bool(cupy.isnan(s).any())
+        ref = cupy.sort(cupy.linalg.svd(a, compute_uv=False)[:self.k])
+        cupy.testing.assert_allclose(
+            cupy.sort(s), ref, rtol=cmp_tol, atol=cmp_tol * float(ref.max()))
+
+    low_rank_wide_tol = {'f': 1e-2, 'd': 1e-6}
+
+    @testing.for_dtypes('fdFD')
+    def test_low_rank_wide(self, dtype):
+        # gh-8009's exact regime: rank 5 in a 100x1000 matrix, so A^H A has
+        # a 95% null space. The breakdown reseed must be biased out of the
+        # null space (one application of the operator, see _restart_ortho)
+        # -- an unbiased canonical reseed wastes the Krylov slots on
+        # eigenvalue-0 directions and default ncv recovers only 1-3 of the
+        # 5 true values. Runs once (not per class parameter).
+        if (self.use_linear_operator or self.return_vectors
+                or self.shape != (30, 29) or self.k != 6):
+            pytest.skip()
+        rank = 5
+        a = (testing.shaped_random((100, rank), cupy, dtype=dtype, seed=0)
+             @ testing.shaped_random((rank, 1000), cupy, dtype=dtype,
+                                     seed=1))
+        s = cupy.sort(sparse.linalg.svds(sparse.csr_matrix(a), k=6,
+                      return_singular_vectors=False))
+        assert not bool(cupy.isnan(s).any())
+        ref = cupy.linalg.svd(a, compute_uv=False)[:rank]
+        tol = self.low_rank_wide_tol[numpy.dtype(dtype).char.lower()]
+        cupy.testing.assert_allclose(
+            cupy.sort(s[1:]), cupy.sort(ref), rtol=tol,
+            atol=tol * float(ref.max()))
+        assert float(s[0]) < 1e-3 * float(ref.max())   # the rank-6 value ~ 0
+
+    def test_low_rank_coordinate_null(self):
+        # gh-8009's literal reproducer: eye(100, 1000) with rows 5+ zeroed
+        # makes A^H A a COORDINATE projector, so every canonical reseed
+        # lands exactly in the null space (bias_op @ e_j == 0); the varied
+        # dense probe in _restart_ortho is what recovers all five values.
+        if (self.use_linear_operator or self.return_vectors
+                or self.shape != (30, 29) or self.k != 6):
+            pytest.skip()
+        a = cupy.eye(100, 1000, dtype='d')
+        a[5:] = 0
+        s = cupy.sort(sparse.linalg.svds(sparse.csr_matrix(a), k=6,
+                      return_singular_vectors=False))
+        assert not bool(cupy.isnan(s).any())
+        cupy.testing.assert_allclose(s[1:], cupy.ones(5), atol=1e-8)
+        assert float(s[0]) < 1e-6
+
+    # strict=False (pyproject sets xfail_strict): the breakdown guard fixes
+    # a run-dependent subset of these instances, so they XPASS
+    # intermittently. The blocker is not gh-5001 itself but the unseeded
+    # default v0 (see the gh-5001 analysis in #10098): non-strict until the
+    # default v0 is seeded, after which these markers can go.
     @pytest.mark.xfail(
         reason='eigsh works wrong (#5001)',
         raises=AssertionError,
+        strict=False,
     )
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=tol, atol=tol, sp_name='sp')
@@ -546,10 +857,7 @@ class TestBicgstab:
             pytest.skip()
         a = xp.empty((0, 0), dtype=dtype)
         b = xp.empty((0,), dtype=dtype)
-        if self.atol is None and xp == numpy:
-            return sp.linalg.bicgstab(a, b)
-        else:
-            return sp.linalg.bicgstab(a, b)
+        return sp.linalg.bicgstab(a, b)
 
     @testing.for_dtypes('fdFD')
     def test_callback(self, dtype):

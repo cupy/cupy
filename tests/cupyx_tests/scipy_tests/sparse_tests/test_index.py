@@ -123,7 +123,11 @@ class TestSetitemIndexing:
         m[0, 0] = rhs
         assert m.toarray()[0, 0] == 7.0
 
-    @pytest.mark.xfail(reason="XXX: scipy1.13")
+    # scipy 1.13 tightened bool-mask shape validation in __setitem__;
+    # scipy raises ``IndexError: bool index N has shape X instead of Y``
+    # while cupy still accepts the looser broadcasting form.
+    @pytest.mark.xfail(reason="scipy >= 1.13 rejects this bool-mask shape; "
+                              "cupy still accepts it")
     @testing.with_requires('scipy')
     def test_set_zero_dim_bool_mask(self):
 
@@ -292,7 +296,11 @@ class TestSetitemIndexing:
         self._run(slice(10, 2, 5), slice(None))
         self._run(slice(10, 0, 10), slice(None))
 
-    @pytest.mark.xfail(reason="XXX: scipy 1.13")
+    # scipy 1.13 rejects column-vector bool fancy-set against (M, N)
+    # targets with ``IndexError: bool index N has shape X instead of Y``;
+    # cupy still accepts the older looser semantics.
+    @pytest.mark.xfail(reason="scipy >= 1.13 rejects column-vector bool "
+                              "fancy-set shapes; cupy still accepts them")
     @testing.with_requires('scipy')
     def test_fancy_setting_bool(self):
         for maj in _get_index_combos(
@@ -526,7 +534,8 @@ class TestBoolMaskIndexing(IndexingTestBase):
     def test_bool_mask(self, xp, sp, dtype):
 
         if self.indices == ([True, False, True], [True, False, True]):
-            pytest.xfail(reason="XXX: np2.0: scipy 1.13 sparse raises")
+            pytest.xfail(reason="scipy >= 1.13 raises IndexError on "
+                                "bool-array x bool-array sparse indexing")
 
         a = self._make_matrix(sp, dtype)
         res = a[self.indices]
@@ -538,7 +547,8 @@ class TestBoolMaskIndexing(IndexingTestBase):
     def test_numpy_bool_mask(self, xp, sp, dtype):
 
         if self.indices == ([True, False, True], [True, False, True]):
-            pytest.xfail(reason="XXX: np2.0: scipy 1.13 sparse raises")
+            pytest.xfail(reason="scipy >= 1.13 raises IndexError on "
+                                "bool-array x bool-array sparse indexing")
 
         a = self._make_matrix(sp, dtype)
         indices = self._make_indices(numpy)
@@ -551,7 +561,8 @@ class TestBoolMaskIndexing(IndexingTestBase):
     def test_cupy_bool_mask(self, xp, sp, dtype):
 
         if self.indices == ([True, False, True], [True, False, True]):
-            pytest.xfail(reason="XXX: np2.0: scipy 1.13 sparse raises")
+            pytest.xfail(reason="scipy >= 1.13 raises IndexError on "
+                                "bool-array x bool-array sparse indexing")
 
         a = self._make_matrix(sp, dtype)
         indices = self._make_indices(xp)
@@ -596,8 +607,8 @@ class TestIndexingIndexError(IndexingTestBase):
 class TestIndexingValueError(IndexingTestBase):
 
     def test_indexing_value_error(self):
-        # SciPy <1.17 raises ValueError for shape-mismatch in fancy
-        # indexing; SciPy >=1.17 raises IndexError.  Accept either to
+        # SciPy < 1.17 raised ValueError for shape-mismatch in fancy
+        # indexing; SciPy >= 1.17 raises IndexError.  Accept either to
         # remain compatible with both.
         for xp, sp in [(numpy, scipy.sparse), (cupy, sparse)]:
             a = self._make_matrix(sp, numpy.float32)

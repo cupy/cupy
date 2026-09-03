@@ -34,25 +34,41 @@ def delete(arr, indices, axis=None):
     .. seealso:: :func:`numpy.delete`.
     """
 
+    if not isinstance(arr, cupy.ndarray):
+        raise ValueError('delete(): arr must be a cupy.ndarray')
+
     if axis is None:
-
-        arr = arr.ravel()
-
-        if isinstance(indices, cupy.ndarray) and indices.dtype == cupy.bool_:
-            return arr[~indices]
-
-        mask = cupy.ones(arr.size, dtype=bool)
-        mask[indices] = False
-        return arr[mask]
-
+        if arr.ndim != 1:
+            arr = arr.ravel()
+        axis = 0
     else:
+        axis = _core.internal._normalize_axis_index(axis, arr.ndim)
 
-        if isinstance(indices, cupy.ndarray) and indices.dtype == cupy.bool_:
-            return cupy.compress(~indices, arr, axis=axis)
+    size = arr.shape[axis]
+    if not (
+            isinstance(indices, slice) or (
+                isinstance(indices, (int, numpy.integer))
+                and not isinstance(indices, bool)
+            )):
+        # NOTE(seberg): Delete is a utility function, but we could optimize
+        # it for slices and scalar integers (that are not bools).
+        # NumPy specializes slices, integers and boolean arrays.
+        idx_arr = cupy.asarray(indices)
+        if idx_arr.dtype == cupy.bool_:
+            if idx_arr.ndim != 1 or idx_arr.shape[0] != size:
+                raise ValueError(
+                    'boolean array argument indices to delete must be one '
+                    f'dimensional and match the axis length of {size}')
+            if arr.ndim == 1:
+                return arr[~idx_arr]
 
-        mask = cupy.ones(arr.shape[axis], dtype=bool)
-        mask[indices] = False
-        return cupy.compress(mask, arr, axis=axis)
+        # Use array unless it is e.g. an empty lists that indexing accepts.
+        if idx_arr.size != 0:
+            indices = idx_arr
+
+    mask = cupy.ones(size, dtype=cupy.bool_)
+    mask[indices,] = False
+    return cupy.compress(mask, arr, axis=axis)
 
 
 # TODO(okuta): Implement insert
