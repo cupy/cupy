@@ -311,11 +311,11 @@ class TestEigsh:
             cupy.testing.assert_allclose(
                 cupy.sort(w.real), ref, atol=1e-4)
 
-    # strict=False (pyproject sets xfail_strict): the breakdown guard fixes
-    # a run-dependent subset of these instances, so they XPASS
-    # intermittently. The blocker is not gh-5001 itself but the unseeded
-    # default v0 (see the gh-5001 analysis in #10098): non-strict until the
-    # default v0 is seeded, after which these markers can go.
+    # strict=False (pyproject sets xfail_strict): with the default v0 seeded
+    # the outcome no longer varies run to run (every instance fails on an
+    # A100), but the input B @ C is not symmetric, so what eigsh returns
+    # for it is unspecified and the comparison itself is what gh-5001 has
+    # to settle. Non-strict until the test is redefined.
     @pytest.mark.xfail(
         reason='eigsh works wrong (#5001)',
         raises=AssertionError,
@@ -686,11 +686,12 @@ class TestSvds:
         cupy.testing.assert_allclose(s[1:], cupy.ones(5), atol=1e-8)
         assert float(s[0]) < 1e-6
 
-    # strict=False (pyproject sets xfail_strict): the breakdown guard fixes
-    # a run-dependent subset of these instances, so they XPASS
-    # intermittently. The blocker is not gh-5001 itself but the unseeded
-    # default v0 (see the gh-5001 analysis in #10098): non-strict until the
-    # default v0 is seeded, after which these markers can go.
+    # strict=False (pyproject sets xfail_strict): with the default v0 seeded
+    # the split is deterministic -- on an A100 the 26 instances without
+    # singular vectors or with m < n pass and the 10 with vectors and
+    # m >= n fail, identically across runs -- so this is gh-5001 proper,
+    # not the start vector. Non-strict until the split is confirmed on
+    # CI hardware; the passing instances can then be asserted.
     @pytest.mark.xfail(
         reason='eigsh works wrong (#5001)',
         raises=AssertionError,
