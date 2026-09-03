@@ -16,6 +16,7 @@ from cupy._util import bf16_loop
 
 from cupy_backends.cuda.api cimport runtime
 from cupy._core cimport _accelerator
+from cupy._core._cuda_compute_scan cimport cuda_compute_scan
 from cupy._core._dtype cimport get_dtype
 from cupy._core.core cimport _ndarray_init
 from cupy._core.core cimport compile_with_cache
@@ -722,6 +723,18 @@ cpdef scan_core(
 
     if axis is None:
         for accelerator in _accelerator._routine_accelerators:
+            if accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE:
+                if op == scan_op.SCAN_SUM:
+                    cuda_compute_op = 'PLUS'
+                else:
+                    cuda_compute_op = 'MULTIPLIES'
+                # res will be None if the scan is not compatible with
+                # cuda.compute
+                res = cuda_compute_scan(
+                    a, result, dtype, cuda_compute_op)
+                if res is not None:
+                    result = res
+                    break
             if accelerator == _accelerator.ACCELERATOR_CUB:
                 if result is None:
                     result = a.astype(dtype, order='C').ravel()
@@ -1023,6 +1036,8 @@ inline __device__ T complex_power(T in0, T in1) {
 }
 '''
 
+# NOTE(seberg): There is a __pow__ fastpath for python int/floats which
+# assumes (for floats) that power promotion is just result_type(x, y).
 _power = create_ufunc(
     'cupy_power',
     ('??->b', 'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',

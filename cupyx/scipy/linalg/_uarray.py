@@ -15,7 +15,7 @@ except ImportError:
 
 __ua_domain__ = 'numpy.scipy.linalg'
 _implemented = {}  # type: ignore
-_notfound = []  # for test
+_notfound: list[str] = []  # for test
 
 
 def __ua_convert__(dispatchables, coerce):

@@ -60,7 +60,8 @@ class _csc_base(_compressed._compressed_sparse_matrix):
                 copy runs asynchronously. Otherwise, the copy is synchronous.
 
         Returns:
-            scipy.sparse.csc_matrix: Copy of the array on host memory.
+            scipy.sparse.csc_array or scipy.sparse.csc_matrix:
+                Copy of the array on host memory.
 
         """
         if not _scipy_available:
@@ -77,6 +78,16 @@ class _csc_base(_compressed._compressed_sparse_matrix):
     def _convert_dense(self, x):
         from cupyx import cusparse
 
+        if x.dtype.char not in 'fdFD':
+            # cuSPARSE dense->sparse conversion is float-only.  The CSC
+            # arrays of ``x`` are exactly the CSR arrays of ``x.T`` (same
+            # data/indices/indptr with the shape swapped), so reuse
+            # ``dense2csr``'s pure-CuPy non-float path.
+            # Function-level import: _csr and _csc cannot import each
+            # other at module level.
+            from cupyx.scipy.sparse._csr import dense2csr
+            m = dense2csr(x.T)
+            return m.data, m.indices, m.indptr
         if cusparse.check_availability('denseToSparse'):
             m = cusparse.denseToSparse(x, format='csc')
         else:
@@ -92,7 +103,10 @@ class _csc_base(_compressed._compressed_sparse_matrix):
         if cupy.isscalar(other):
             self.sum_duplicates()
             return self._with_data(self.data * other)
-        elif _base.issparse(other) and other.format == 'csr':
+        if self.ndim != 2 or (_base.issparse(other) and other.ndim != 2):
+            # A 1-D operand is involved: run on the (1, N)/(N, 1) backing.
+            return self._matmul_1d(other)
+        if _base.issparse(other) and other.format == 'csr':
             self.sum_duplicates()
             other.sum_duplicates()
             is_int64 = (self.indices.dtype == cupy.int64
@@ -245,8 +259,21 @@ class _csc_base(_compressed._compressed_sparse_matrix):
         if order is None:
             order = 'C'
         order = order.upper()
+        if order not in ('C', 'F'):
+            # Validate up front so every path (nnz==0, non-float, float)
+            # rejects a bad order identically, matching scipy and the CSR
+            # path rather than silently honoring only the non-float branch.
+            raise ValueError('order not understood')
         if self.nnz == 0:
             return cupy.zeros(shape=self.shape, dtype=self.dtype, order=order)
+
+        if self.dtype.char not in 'fdFD':
+            # cuSPARSE sparse->dense is float-only.  The transpose of
+            # this CSC is a CSR with the same arrays; densify through
+            # its pure-CuPy non-float path and transpose back (with the
+            # order flipped so the final result honors ``order``).
+            flipped = 'F' if order == 'C' else 'C'
+            return self.transpose().toarray(order=flipped).T
 
         x = self.copy()
         x.has_canonical_format = False  # need to enforce sum_duplicates
@@ -434,7 +461,9 @@ class _csc_base(_compressed._compressed_sparse_matrix):
 class csc_matrix(_base.spmatrix, _csc_base):
     """Compressed Sparse Column matrix.
 
-    .. seealso:: :class:`scipy.sparse.csc_matrix`
+    .. seealso::
+       - :class:`scipy.sparse.csc_matrix`
+       - :class:`~cupyx.scipy.sparse.csc_array`
     """
     pass
 
@@ -442,7 +471,9 @@ class csc_matrix(_base.spmatrix, _csc_base):
 class csc_array(_csc_base, _base.sparray):
     """Compressed Sparse Column array.
 
-    .. seealso:: :class:`scipy.sparse.csc_array`
+    .. seealso::
+       - :class:`scipy.sparse.csc_array`
+       - :class:`~cupyx.scipy.sparse.csc_matrix`
     """
     pass
 
