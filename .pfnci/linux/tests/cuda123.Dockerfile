@@ -24,7 +24,7 @@ RUN curl -fsSL https://github.com/cli/cli/releases/download/v2.95.0/gh_2.95.0_li
 RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
-RUN pyenv install 3.11.13 && \
+RUN PYTHON_CONFIGURE_OPTS="--disable-shared" pyenv install 3.11.13 && \
     pyenv global 3.11.13 && \
     pip install -U setuptools pip wheel && \
     pip install -U google-cloud-storage

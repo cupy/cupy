@@ -1,3 +1,5 @@
+import warnings
+
 from cupy import _util
 from cupy._core import core
 from cupy.cuda import compiler
@@ -15,7 +17,14 @@ cpdef _get_cuda_compute():
         except ImportError:
             _cuda_compute = None
         else:
-            _cuda_compute = compute
+            if hasattr(compute, 'OpKind'):
+                _cuda_compute = compute
+            else:
+                warnings.warn(
+                    'cuda.compute is installed but its CUDA bindings '
+                    'could not be loaded, so the cuda_compute '
+                    'accelerator will be skipped', RuntimeWarning)
+                _cuda_compute = None
     return _cuda_compute
 
 

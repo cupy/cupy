@@ -63,7 +63,7 @@ if ctx.long_description_path is not None:
 
 
 dependencies = [
-    "numpy>=2.0,<2.6",  # see #4773
+    "numpy>=2.0,<2.7",  # see #4773
 ]
 optional_dependencies = {
     "all": [

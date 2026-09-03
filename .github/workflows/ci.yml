@@ -39,11 +39,17 @@ concurrency:
   # can't filter `labeled` by name), so any OTHER label must land in a unique,
   # throwaway group -- otherwise it would enter ci-build-<PR> and cancel the
   # in-flight vouched build before the guard no-ops it (concurrency is evaluated
-  # at queue time, ahead of the guard job). Push runs get a per-commit group
-  # (i.e. effectively none): a burst of merges must not cancel intermediate
-  # runs, each of which carries its own FlexCI dispatch.
-  group: ${{ github.event_name == 'push' && format('ci-push-{0}', github.sha) || github.event.label.name == 'ci:triggered' && format('ci-build-{0}', github.event.pull_request.number) || format('ci-noop-{0}', github.run_id) }}
-  cancel-in-progress: ${{ github.event.label.name == 'ci:triggered' }}
+  # at queue time, ahead of the guard job). Push runs share ci-push-<ref>: a
+  # burst of merges lets the newest merge supersede any earlier in-flight run
+  # on the same branch, so we don't burn build minutes on intermediate SHAs
+  # whose wheels no one will consume. ci-nightly.yml already picks the newest
+  # successful ci.yml push run, so cancelled intermediates are naturally
+  # skipped there too.
+  group: >-
+    ${{ github.event_name == 'push' && format('ci-push-{0}', github.ref)
+        || github.event.label.name == 'ci:triggered' && format('ci-build-{0}', github.event.pull_request.number)
+        || format('ci-noop-{0}', github.run_id) }}
+  cancel-in-progress: ${{ github.event_name == 'push' || github.event.label.name == 'ci:triggered' }}
 
 # Least privilege: read-only by default; jobs that need more grant it
 # per-job below (only dispatch-flexci writes, via flexci_dispatcher.py).
@@ -106,6 +112,23 @@ jobs:
           cuda_prev_build_ver=$(yq '.cuda.prev_build.version' ci/versions.yml)
           echo "cuda_prev_build_ver=$cuda_prev_build_ver" >> $GITHUB_OUTPUT
 
+  # Producer of cupy-<version>.tar.gz for every wheel job below. Building
+  # wheels from the sdist (instead of a fresh checkout) makes the sdist the
+  # single source of truth for what ships to PyPI -- any MANIFEST.in gap
+  # fails this CI job, not a downstream user. Also eliminates the Windows
+  # vendored-submodule symlink handling (the sdist has real files).
+  build-sdist:
+    needs:
+      - guard
+    if: needs.guard.outputs.should_run == 'true'
+    permissions:
+      contents: read
+    name: Build sdist
+    uses: ./.github/workflows/build-sdist.yml
+    with:
+      ref: ${{ needs.guard.outputs.ref }}
+      artifact-suffix: ${{ needs.guard.outputs.artifact_suffix }}
+
   # NOTE: Build jobs are intentionally split by platform rather than using a
   # single matrix. This allows each test job to depend only on its
   # corresponding build, so faster platforms can proceed through build & test
@@ -119,6 +142,7 @@ jobs:
     needs:
       - guard
       - ci-vars
+      - build-sdist
     if: needs.guard.outputs.should_run == 'true'
     # Bounds the reusable build to a checkout-only token (no secrets, no writes).
     permissions:
@@ -139,34 +163,37 @@ jobs:
       ref: ${{ needs.guard.outputs.ref }}
       artifact-suffix: ${{ needs.guard.outputs.artifact_suffix }}
 
-  # TODO: enable once linux-64 + win-64 are green.
-  # # See build-linux-64 for why build jobs are split by platform.
-  # build-linux-aarch64:
-  #   needs:
-  #     - guard
-  #     - ci-vars
-  #   if: needs.guard.outputs.should_run == 'true'
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       host-platform:
-  #         - linux-aarch64
-  #       cuda-version:
-  #         - ${{ needs.ci-vars.outputs.CUDA_BUILD_VER }}
-  #         - ${{ needs.ci-vars.outputs.CUDA_PREV_BUILD_VER }}
-  #   name: Build ${{ matrix.host-platform }}, CUDA ${{ matrix.cuda-version }}
-  #   uses: ./.github/workflows/build-wheel.yml
-  #   with:
-  #     host-platform: ${{ matrix.host-platform }}
-  #     cuda-version: ${{ matrix.cuda-version }}
-  #     ref: ${{ needs.guard.outputs.ref }}
-  #     artifact-suffix: ${{ needs.guard.outputs.artifact_suffix }}
+  # See build-linux-64 for why build jobs are split by platform.
+  build-linux-aarch64:
+    needs:
+      - guard
+      - ci-vars
+      - build-sdist
+    if: needs.guard.outputs.should_run == 'true'
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        host-platform:
+          - linux-aarch64
+        cuda-version:
+          - ${{ needs.ci-vars.outputs.CUDA_BUILD_VER }}
+          - ${{ needs.ci-vars.outputs.CUDA_PREV_BUILD_VER }}
+    name: Build ${{ matrix.host-platform }}, CUDA ${{ matrix.cuda-version }}
+    uses: ./.github/workflows/build-wheel.yml
+    with:
+      host-platform: ${{ matrix.host-platform }}
+      cuda-version: ${{ matrix.cuda-version }}
+      ref: ${{ needs.guard.outputs.ref }}
+      artifact-suffix: ${{ needs.guard.outputs.artifact_suffix }}
 
   # See build-linux-64 for why build jobs are split by platform.
   build-windows:
     needs:
       - guard
       - ci-vars
+      - build-sdist
     if: needs.guard.outputs.should_run == 'true'
     # Bounds the reusable build to a checkout-only token (no secrets, no writes).
     permissions:
@@ -198,8 +225,9 @@ jobs:
     needs:
       - guard
       - build-linux-64
+      - build-linux-aarch64
       - build-windows
-    if: github.event_name == 'pull_request' && needs.guard.outputs.should_run == 'true' && needs.build-linux-64.result == 'success' && needs.build-windows.result == 'success'
+    if: github.event_name == 'pull_request' && needs.guard.outputs.should_run == 'true' && needs.build-linux-64.result == 'success' && needs.build-linux-aarch64.result == 'success' && needs.build-windows.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Create sentinel
@@ -224,6 +252,7 @@ jobs:
     needs:
       - guard
       - build-linux-64
+      - build-linux-aarch64
       - build-windows
     if: github.event_name == 'push' && needs.guard.outputs.should_run == 'true'
     runs-on: ubuntu-22.04
@@ -264,6 +293,7 @@ jobs:
     needs:
       - guard
       - build-linux-64
+      - build-linux-aarch64
       - build-windows
       - build-sentinel
       - dispatch-flexci
@@ -280,9 +310,10 @@ jobs:
             fi
           }
 
-          check_result "guard"          "success" "${{ needs.guard.result }}"
-          check_result "build-linux-64" "success" "${{ needs.build-linux-64.result }}"
-          check_result "build-windows"  "success" "${{ needs.build-windows.result }}"
+          check_result "guard"               "success" "${{ needs.guard.result }}"
+          check_result "build-linux-64"      "success" "${{ needs.build-linux-64.result }}"
+          check_result "build-linux-aarch64" "success" "${{ needs.build-linux-aarch64.result }}"
+          check_result "build-windows"       "success" "${{ needs.build-windows.result }}"
           case "${{ github.event_name }}" in
           pull_request)
             check_result "build-sentinel"  "success" "${{ needs.build-sentinel.result }}"

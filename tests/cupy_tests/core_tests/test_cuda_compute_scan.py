@@ -10,36 +10,31 @@ from cupy._core import _cuda_compute_common
 from cupy._core import _cuda_compute_scan
 
 
-# This test class and its children below only test if the cuda.compute
-# backend can be used or not; they don't verify its correctness as it's
-# already extensively covered by existing tests (run with
+# The tests in this module only test if the cuda.compute backend can
+# be used or not; they don't verify its correctness as it's already
+# extensively covered by existing tests (run with
 # CUPY_ACCELERATORS=cuda_compute).
-class CudaComputeScanTestBase:
+@pytest.fixture(autouse=True)
+def use_cuda_compute_accelerator():
+    if _cuda_compute_common._get_cuda_compute() is None:
+        pytest.skip('cuda.compute (cuda-cccl) not found')
 
-    @pytest.fixture(autouse=True)
-    def configure(self):
-        if _cuda_compute_common._get_cuda_compute() is None:
-            pytest.skip('cuda.compute (cuda-cccl) not found')
-
-        self.supports_dtype = _cuda_compute_scan._supports_dtype
-
-        self.old_routine_accelerators = (
-            _accelerator.get_routine_accelerators())
-        _accelerator.set_routine_accelerators(['cuda_compute'])
-        yield
-        _accelerator.set_routine_accelerators(self.old_routine_accelerators)
+    old_routine_accelerators = _accelerator.get_routine_accelerators()
+    _accelerator.set_routine_accelerators(['cuda_compute'])
+    yield
+    _accelerator.set_routine_accelerators(old_routine_accelerators)
 
 
-class TestCudaComputeScanDtypes(CudaComputeScanTestBase):
+class TestCudaComputeScanDtypes:
 
     # scan_core only promotes when dtype=None and out=None, so an
     # explicit dtype=/out= reaches the accelerator unpromoted
     @testing.for_all_dtypes(no_bool=True)
     def test_supported_dtypes(self, dtype):
-        assert self.supports_dtype(numpy.dtype(dtype)) is True
+        assert _cuda_compute_scan._supports_dtype(numpy.dtype(dtype)) is True
 
 
-class TestCudaComputeScanMisc(CudaComputeScanTestBase):
+class TestCudaComputeScanMisc:
 
     @pytest.mark.thread_unsafe(
         reason="AssertFunctionIsCalled and accelerator mutation.")
