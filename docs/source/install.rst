@@ -84,6 +84,8 @@ Package names are different depending on your CUDA Toolkit version.
    * - **v13.x** (x86_64 / aarch64)
      - ``pip install cupy-cuda13x``
 
+.. _install_with_ctk_extras:
+
 By default, the above command only installs CuPy itself, assuming a CUDA Toolkit is already installed on the system. To use NVIDIA's CUDA component wheels
 (so as to quickly spinning up a fresh virtual environment without installing a system-wide CUDA Toolkit -- only the CUDA driver is needed -- and allowing
 smaller installation footprint and better interoperability with other Python GPU libraries), you can pass ``[ctk]`` to install them all as
@@ -392,8 +394,14 @@ Install the ``cuda-cudart-dev-13-X`` package where ``13-X`` is the version of yo
 
    For CuPy built against CUDA 12.x (``cupy-cuda12x``), use ``nvidia-cuda-runtime-cu12`` and ``cuda-cudart-dev-12-X`` in place of the CUDA 13 package names above.
 
-This problem does not happen if you have installed CuPy from conda-forge (i.e., ``conda install -c conda-forge cupy``), as the package ``cuda-cudart-dev_<platform>`` that contains the needed headers is correctly installed as a dependency.
-Please report to the CuPy repository if you encounter issues with Conda-installed CuPy.
+.. tip::
+
+   You will not hit this error if the CUDA runtime headers were installed alongside CuPy:
+
+   - **conda-forge** (``conda install -c conda-forge cupy``): the ``cuda-cudart-dev_<platform>`` dependency ships the headers.
+   - **PyPI with the** ``[ctk]`` **extras** (see :ref:`install_with_ctk_extras`, e.g. ``pip install "cupy-cuda13x[ctk]"``): the ``cuda-toolkit[cudart,...]`` metapackage pulls in ``nvidia-cuda-runtime``, which includes the headers.
+
+   Please report any header-discovery issues in either path to the CuPy repository.
 
 CuPy always raises ``cupy.cuda.compiler.CompileException``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
