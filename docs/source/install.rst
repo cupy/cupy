@@ -359,6 +359,8 @@ For example, you can build CuPy using non-default CUDA directory by ``CUDA_PATH`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 CuPy requires CUDA Runtime header files to compile kernels on the fly.
+If none can be located, CuPy raises ``RuntimeError: Failed to find CUDA headers. Please install CUDA toolkit headers (e.g., pip install cupy-cuda12x[ctk]) or specify CUDA_PATH environment variable.``.
+A partial or mismatched CUDA installation may instead surface at NVRTC time as ``NVRTC_ERROR_COMPILATION`` with ``catastrophic error: cannot open source file "vector_types.h"`` -- since ``vector_types.h`` ships with cudart, the fix (install the runtime headers) is the same.
 
 CuPy searches for CUDA headers using ``cuda.pathfinder.find_nvidia_header_directory("cudart")``; see the `cuda-pathfinder documentation <https://nvidia.github.io/cuda-python/cuda-pathfinder/latest/generated/cuda.pathfinder.find_nvidia_header_directory.html>`_ for the search order.
 
