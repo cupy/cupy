@@ -394,8 +394,8 @@ cdef class _AbstractReductionKernel:
                     return ret
 
         if cuda_compute_only:
-            # cuda.compute declined; the caller's routine-level loop
-            # falls back to the accelerators listed after it
+            # when true, don't fall back to the generic kernel: return None so
+            # the caller can try the next accelerator
             return None
 
         axis_permutes = reduce_axis + out_axis
