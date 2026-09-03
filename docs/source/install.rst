@@ -361,7 +361,7 @@ CuPy requires CUDA Runtime header files to compile kernels on the fly.
 CuPy searches for CUDA headers using ``cuda.pathfinder.find_nvidia_header_directory("cudart")``; see the `cuda-pathfinder documentation <https://nvidia.github.io/cuda-python/cuda-pathfinder/latest/generated/cuda.pathfinder.find_nvidia_header_directory.html>`_ for the search order.
 
 The easiest way to set up CUDA runtime headers is to use NVIDIA Python wheels.
-If you have installed CuPy from PyPI (i.e., ``pip install cupy-cuda13x``), you can install CUDA headers by running ``pip install "nvidia-cuda-runtime-cu13==13.X.*"`` where ``13.X`` is the version of your CUDA installation.
+If you have installed CuPy from PyPI (i.e., ``pip install cupy-cuda13x``), you can install CUDA headers by running ``pip install "nvidia-cuda-runtime==13.X.*"`` where ``13.X`` is the version of your CUDA installation.
 Once the headers from the package are recognized, ``cupy.show_config()`` will display the path as ``CUDA Extra Include Dirs``:
 
 .. code:: console
@@ -370,9 +370,9 @@ Once the headers from the package are recognized, ``cupy.show_config()`` will di
   ...
   CUDA Extra Include Dirs      : []
   ...
-  NVRTC Version                : (13, 0)
+  NVRTC Version                : (13, 3)
   ...
-  $ pip install "nvidia-cuda-runtime-cu13==13.0.*"
+  $ pip install "nvidia-cuda-runtime==13.3.*"
   ...
   $ python -c 'import cupy; cupy.show_config()'
   ...
@@ -385,8 +385,12 @@ Install the ``cuda-cudart-dev-13-X`` package where ``13-X`` is the version of yo
 .. code:: console
 
   $ apt list "cuda-cudart-*"
-  cuda-cudart-13-0/now 13.0.0-1 amd64 [installed,local]
-  $ sudo apt install "cuda-cudart-dev-13-0"
+  cuda-cudart-13-3/now 13.3.0-1 amd64 [installed,local]
+  $ sudo apt install "cuda-cudart-dev-13-3"
+
+.. note::
+
+   For CuPy built against CUDA 12.x (``cupy-cuda12x``), use ``nvidia-cuda-runtime-cu12`` and ``cuda-cudart-dev-12-X`` in place of the CUDA 13 package names above.
 
 This problem does not happen if you have installed CuPy from conda-forge (i.e., ``conda install -c conda-forge cupy``), as the package ``cuda-cudart-dev_<platform>`` that contains the needed headers is correctly installed as a dependency.
 Please report to the CuPy repository if you encounter issues with Conda-installed CuPy.
