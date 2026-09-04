@@ -57,6 +57,12 @@ permissions:
   contents: read
 
 jobs:
+  # flexci.yml's reap-noop-run identifies no-op label runs by looking for
+  # a "CI no-op" check-run in the completed suite -- the dynamic name the
+  # `checks` job below evaluates to when guard.outputs.mode == 'no-op'.
+  # Renaming that check-run (or removing the checks job) silently
+  # disables reaping (fails safe -- runs are kept -- but the PR checks
+  # tab / ruleset UI displacement of #10230 returns).
   guard:
     name: Guard (build decision)
     runs-on: ubuntu-latest
