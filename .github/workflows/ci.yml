@@ -100,7 +100,6 @@ jobs:
         run: ./ci/tools/ci-guard.sh
       - name: Read CUDA build versions
         id: vars
-        if: steps.check.outputs.mode == 'test'
         run: |
           cuda_build_ver=$(yq '.cuda.build.version' ci/versions.yml)
           echo "cuda_build_ver=$cuda_build_ver" >> $GITHUB_OUTPUT
