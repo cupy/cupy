@@ -57,11 +57,6 @@ permissions:
   contents: read
 
 jobs:
-  # flexci.yml's reap-noop-run recognizes no-op label runs by their shape:
-  # guard is the only job that runs unconditionally, so a no-op run shows
-  # exactly one success with everything else skipped. Adding another
-  # unconditional job here silently disables reaping (fails safe -- runs
-  # are kept -- but the check-run noise of #10230 returns).
   guard:
     name: Guard (build decision)
     runs-on: ubuntu-latest
@@ -284,10 +279,8 @@ jobs:
   # it becomes "CI no-op" so it does NOT satisfy the required "Check job
   # status" context. GitHub treats conditionally skipped required checks as
   # passing, so keeping the name static would let an unrelated label event
-  # temporarily green a previously-failed head via a skipped check-run
-  # (the flexci.yml reaper deletes it eventually, but a merge can slip in
-  # before the reap fires -- merge correctness must not depend on eventual
-  # deletion). Only mode=test / mode=skip runs report as "Check job status".
+  # temporarily green a previously-failed head via a skipped check-run.
+  # Only mode=test / mode=skip runs report as "Check job status".
   checks:
     name: >-
       ${{ needs.guard.outputs.mode == 'no-op'
