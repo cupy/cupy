@@ -56,10 +56,24 @@ pull_request)
       # trusted checkout, so a hostile PR that spoofs the guard's decision
       # cannot forge the dispatcher's action (worst case is CI-time
       # misbehavior of its own build/skip).
-      artifact_id="$(gh api \
-          "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=dispatch-request-${pr_number}-${head_sha}&per_page=100" \
-          --jq '[.artifacts[] | select(.expired == false)]
-                | sort_by(.created_at) | last | .id // empty')"
+      #
+      # The upload-then-bounce ordering in ci-trigger.yml means the artifact
+      # is uploaded before the label event fires here, but the /actions/
+      # artifacts listing can lag a few seconds behind the upload. Retry
+      # 3 x 10s before treating absence as a stale-head race, so a healthy
+      # /test doesn't go red on a listing hiccup.
+      artifact_id=""
+      for attempt in 1 2 3; do
+        artifact_id="$(gh api \
+            "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=dispatch-request-${pr_number}-${head_sha}&per_page=100" \
+            --jq '[.artifacts[] | select(.expired == false)]
+                  | sort_by(.created_at) | last | .id // empty')"
+        [[ -n "${artifact_id}" ]] && break
+        if [[ ${attempt} -lt 3 ]]; then
+          echo "Vouched artifact for PR #${pr_number} at ${head_sha} not yet listed (attempt ${attempt}/3); waiting 10s..."
+          sleep 10
+        fi
+      done
       if [[ -z "${artifact_id}" ]]; then
         # Bot-applied ci:triggered with no vouched artifact means a stale
         # head race: ci-trigger.yml uploads the artifact BEFORE bouncing

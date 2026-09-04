@@ -280,9 +280,20 @@ jobs:
           if-no-files-found: error
           overwrite: true
 
+  # Merge-gating check. The job's NAME is dynamic on mode -- for mode=no-op
+  # it becomes "CI no-op" so it does NOT satisfy the required "Check job
+  # status" context. GitHub treats conditionally skipped required checks as
+  # passing, so keeping the name static would let an unrelated label event
+  # temporarily green a previously-failed head via a skipped check-run
+  # (the flexci.yml reaper deletes it eventually, but a merge can slip in
+  # before the reap fires -- merge correctness must not depend on eventual
+  # deletion). Only mode=test / mode=skip runs report as "Check job status".
   checks:
-    name: Check job status
-    if: always() && needs.guard.outputs.mode != 'no-op'
+    name: >-
+      ${{ needs.guard.outputs.mode == 'no-op'
+          && 'CI no-op'
+          || 'Check job status' }}
+    if: always()
     runs-on: ubuntu-latest
     needs:
       - guard
@@ -326,6 +337,11 @@ jobs:
             check_result "build-windows"       "skipped" "${{ needs.build-windows.result }}"
             check_result "build-sentinel"      "success" "${{ needs.build-sentinel.result }}"
             check_result "push-payload"        "skipped" "${{ needs.push-payload.result }}"
+            ;;
+          no-op/*)
+            # Reported under a different check-run name ("CI no-op") so
+            # this run does NOT satisfy the required "Check job status".
+            echo "No-op run; nothing to verify."
             ;;
           esac
 

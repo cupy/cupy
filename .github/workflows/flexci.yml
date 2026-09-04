@@ -55,12 +55,19 @@ jobs:
         # dispatch gate -- absent it, every no-op ci.yml completion on the
         # same head (unrelated-label runs) would re-invoke the dispatcher.
         # Fetch first so an API failure fails the job (visible,
-        # re-runnable) instead of reading as "sentinel absent".
-        trigger_artifacts="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${TRIGGER_RUN_ID}/artifacts" \
+        # re-runnable) instead of reading as "sentinel absent". per_page=100
+        # so a fully populated build run (many wheel artifacts) never
+        # truncates below the sentinel.
+        trigger_artifacts="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${TRIGGER_RUN_ID}/artifacts?per_page=100" \
             --jq '[.artifacts[].name]')"
 
         mkdir -p "${RUNNER_TEMP}/requests"
         dispatch_list=()
+        # Initialize to keep `set -u` happy when the loops below `continue`
+        # on every iteration (all candidates moved/retargeted, no vouch):
+        # we still fall through to the empty-list exit below.
+        event=""
+        config_ref=""
 
         case "${WORKFLOW_EVENT}" in
         pull_request)
@@ -127,8 +134,7 @@ jobs:
             # the last one's base (rare, not broken).
             config_ref="refs/heads/${recorded_base}"
           done
-          echo "event=issue_comment" >> "$GITHUB_OUTPUT"
-          echo "config_ref=${config_ref}" >> "$GITHUB_OUTPUT"
+          event=issue_comment
           ;;
         push)
           # For push, ci.yml uploads a push-event-<sha> artifact carrying
@@ -154,8 +160,8 @@ jobs:
           mkdir -p "${RUNNER_TEMP}/requests/push"
           unzip -q -o "${RUNNER_TEMP}/requests/push.zip" -d "${RUNNER_TEMP}/requests/push"
           dispatch_list+=("push")
-          echo "event=push" >> "$GITHUB_OUTPUT"
-          echo "config_ref=${HEAD_SHA}" >> "$GITHUB_OUTPUT"
+          event=push
+          config_ref="${HEAD_SHA}"
           ;;
         esac
 
@@ -166,6 +172,8 @@ jobs:
         fi
         echo "found=true" >> "$GITHUB_OUTPUT"
         echo "prs=${dispatch_list[*]}" >> "$GITHUB_OUTPUT"
+        echo "event=${event}" >> "$GITHUB_OUTPUT"
+        echo "config_ref=${config_ref}" >> "$GITHUB_OUTPUT"
 
     - name: Checkout (dispatcher, trusted)
       if: steps.request.outputs.found == 'true'
@@ -211,6 +219,26 @@ jobs:
               --external-tag jenkins \
               --external-tag rocm
         done
+
+    # Workflow_run check-suites attach to the default-branch head, not to
+    # HEAD_SHA, so a failed dispatch is invisible on the PR and on the merge
+    # commit unless we mirror the outcome as a commit status. The dispatcher
+    # already writes a pfn-public-ci (dashboard) success status on the head;
+    # this closes the negative side symmetrically for both PR and push legs.
+    - name: Report dispatch failure to HEAD_SHA
+      if: failure()
+      env:
+        GH_TOKEN: ${{ github.token }}
+        HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: |
+        set -euo pipefail
+        gh api "repos/${GITHUB_REPOSITORY}/statuses/${HEAD_SHA}" \
+          --method POST \
+          -f state=failure \
+          -f context="pfn-public-ci (dispatch)" \
+          -f description="FlexCI dispatch failed; see workflow_run logs" \
+          -f target_url="${RUN_URL}" >/dev/null
 
   reap-noop-run:
     name: Reap no-op run
