@@ -68,7 +68,7 @@ jobs:
     if: github.repository_owner == 'cupy'
     permissions:
       actions: read        # ci-guard.sh reads the vouched artifact
-      contents: read       # actions/checkout (sparse ci/tools)
+      contents: read       # actions/checkout (sparse ci/)
       pull-requests: read  # ci-guard.sh reads commits/<sha>/pulls (push leg)
     outputs:
       mode: ${{ steps.check.outputs.mode }}
@@ -76,6 +76,8 @@ jobs:
       artifact_suffix: ${{ steps.check.outputs.artifact_suffix }}
       head_sha: ${{ steps.check.outputs.head_sha }}
       pr_number: ${{ steps.check.outputs.pr_number }}
+      CUDA_BUILD_VER: ${{ steps.vars.outputs.cuda_build_ver }}
+      CUDA_PREV_BUILD_VER: ${{ steps.vars.outputs.cuda_prev_build_ver }}
     steps:
       # Which copy of ci-guard.sh runs follows GitHub's rules for the
       # workflow file itself: the pushed branch's copy for push events, the
@@ -85,39 +87,28 @@ jobs:
       # output is a routing hint only: the actual dispatcher call in
       # flexci.yml runs from a trusted checkout and re-reads the vouched
       # artifact independently.
-      - name: Checkout (ci/tools only)
+      #
+      # Sparse-checkout is `ci` (not `ci/tools`) so the same working tree
+      # also exposes ci/versions.yml for the CUDA-version read below; on
+      # pull_request events GITHUB_SHA is the merge commit and on push it
+      # is the pushed SHA, both of which match needs.guard.outputs.ref
+      # that downstream jobs pin to.
+      - name: Checkout (ci/)
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
         with:
           fetch-depth: 1
-          sparse-checkout: ci/tools
+          sparse-checkout: ci
       - name: Evaluate trigger
         id: check
         env:
           GH_TOKEN: ${{ github.token }}
         run: ./ci/tools/ci-guard.sh
-
-  ci-vars:
-    needs: guard
-    if: needs.guard.outputs.mode == 'test'
-    runs-on: ubuntu-latest
-    # Only reads ci/versions.yml from the pinned ref; no write scopes needed.
-    permissions:
-      contents: read
-    outputs:
-      CUDA_BUILD_VER: ${{ steps.get-vars.outputs.cuda_build_ver }}
-      CUDA_PREV_BUILD_VER: ${{ steps.get-vars.outputs.cuda_prev_build_ver }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
-        with:
-          ref: ${{ needs.guard.outputs.ref }}
-          fetch-depth: 1
-      - name: Get CUDA build versions
-        id: get-vars
+      - name: Read CUDA build versions
+        id: vars
+        if: steps.check.outputs.mode == 'test'
         run: |
           cuda_build_ver=$(yq '.cuda.build.version' ci/versions.yml)
           echo "cuda_build_ver=$cuda_build_ver" >> $GITHUB_OUTPUT
-
           cuda_prev_build_ver=$(yq '.cuda.prev_build.version' ci/versions.yml)
           echo "cuda_prev_build_ver=$cuda_prev_build_ver" >> $GITHUB_OUTPUT
 
@@ -150,7 +141,6 @@ jobs:
   build-linux-64:
     needs:
       - guard
-      - ci-vars
       - build-sdist
     if: needs.guard.outputs.mode == 'test'
     # Bounds the reusable build to a checkout-only token (no secrets, no writes).
@@ -162,8 +152,8 @@ jobs:
         host-platform:
           - linux-64
         cuda-version:
-          - ${{ needs.ci-vars.outputs.CUDA_BUILD_VER }}
-          - ${{ needs.ci-vars.outputs.CUDA_PREV_BUILD_VER }}
+          - ${{ needs.guard.outputs.CUDA_BUILD_VER }}
+          - ${{ needs.guard.outputs.CUDA_PREV_BUILD_VER }}
     name: Build ${{ matrix.host-platform }}, CUDA ${{ matrix.cuda-version }}
     uses: ./.github/workflows/build-wheel.yml
     with:
@@ -176,7 +166,6 @@ jobs:
   build-linux-aarch64:
     needs:
       - guard
-      - ci-vars
       - build-sdist
     if: needs.guard.outputs.mode == 'test'
     permissions:
@@ -187,8 +176,8 @@ jobs:
         host-platform:
           - linux-aarch64
         cuda-version:
-          - ${{ needs.ci-vars.outputs.CUDA_BUILD_VER }}
-          - ${{ needs.ci-vars.outputs.CUDA_PREV_BUILD_VER }}
+          - ${{ needs.guard.outputs.CUDA_BUILD_VER }}
+          - ${{ needs.guard.outputs.CUDA_PREV_BUILD_VER }}
     name: Build ${{ matrix.host-platform }}, CUDA ${{ matrix.cuda-version }}
     uses: ./.github/workflows/build-wheel.yml
     with:
@@ -201,7 +190,6 @@ jobs:
   build-windows:
     needs:
       - guard
-      - ci-vars
       - build-sdist
     if: needs.guard.outputs.mode == 'test'
     # Bounds the reusable build to a checkout-only token (no secrets, no writes).
@@ -213,8 +201,8 @@ jobs:
         host-platform:
           - win-64
         cuda-version:
-          - ${{ needs.ci-vars.outputs.CUDA_BUILD_VER }}
-          - ${{ needs.ci-vars.outputs.CUDA_PREV_BUILD_VER }}
+          - ${{ needs.guard.outputs.CUDA_BUILD_VER }}
+          - ${{ needs.guard.outputs.CUDA_PREV_BUILD_VER }}
     name: Build ${{ matrix.host-platform }}, CUDA ${{ matrix.cuda-version }}
     uses: ./.github/workflows/build-wheel.yml
     with:

@@ -61,6 +61,18 @@ pull_request)
           --jq '[.artifacts[] | select(.expired == false)]
                 | sort_by(.created_at) | last | .id // empty')"
       if [[ -z "${artifact_id}" ]]; then
+        # Bot-applied ci:triggered with no vouched artifact means a stale
+        # head race: ci-trigger.yml uploads the artifact BEFORE bouncing
+        # the label, so absence at label-event time means the artifact was
+        # keyed to a superseded SHA (issue #10258). Fail the guard so
+        # `Check job status` goes red and loud instead of coasting on a
+        # skipped-therefore-passing required check. Non-bot manual
+        # ci:triggered (admin/write hand-application) still degrades to
+        # mode=no-op below.
+        if [[ "${sender}" == "cupy-ci-trigger[bot]" ]]; then
+          echo "::error::Bot-applied ci:triggered on PR #${pr_number} at ${head_sha} has no vouched artifact (stale head or upload race); failing loud."
+          exit 1
+        fi
         echo "::warning::No vouched request for PR #${pr_number} at ${head_sha}; mode=no-op"
         pr_number=""
         head_sha=""

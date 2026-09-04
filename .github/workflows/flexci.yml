@@ -120,8 +120,15 @@ jobs:
               continue
             fi
             dispatch_list+=("${pr}")
+            # The vouched base becomes the trusted config source for the
+            # dispatch below (see "Checkout (config, trusted)"). All matched
+            # PRs share the same head branch and thus almost always the same
+            # base; if two PRs vouched against different bases, we'd take
+            # the last one's base (rare, not broken).
+            config_ref="refs/heads/${recorded_base}"
           done
           echo "event=issue_comment" >> "$GITHUB_OUTPUT"
+          echo "config_ref=${config_ref}" >> "$GITHUB_OUTPUT"
           ;;
         push)
           # For push, ci.yml uploads a push-event-<sha> artifact carrying
@@ -148,6 +155,7 @@ jobs:
           unzip -q -o "${RUNNER_TEMP}/requests/push.zip" -d "${RUNNER_TEMP}/requests/push"
           dispatch_list+=("push")
           echo "event=push" >> "$GITHUB_OUTPUT"
+          echo "config_ref=${HEAD_SHA}" >> "$GITHUB_OUTPUT"
           ;;
         esac
 
@@ -163,29 +171,18 @@ jobs:
       if: steps.request.outputs.found == 'true'
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
-    - name: Checkout (Untrusted Pull-Request Code, data only)
-      if: steps.request.outputs.found == 'true' && steps.request.outputs.event == 'issue_comment'
+    - name: Checkout (config, trusted)
+      if: steps.request.outputs.found == 'true'
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
-        # Pinned to the tested revision, so the config.tags.json consumed
-        # below matches the code that was built and vouched.
-        ref: ${{ github.event.workflow_run.head_sha }}
-        path: _pr_untrusted
-        # Deliberate security decision (checkout v7, and the 2026-07-20
-        # backports to older lines, refuses fork-PR code under workflow_run
-        # by default): this tree is data only -- the dispatcher executes
-        # from the trusted checkout above and merely json-loads
-        # config.tags.json from here.
-        allow-unsafe-pr-checkout: true
-
-    - name: Checkout (pushed commit config, trusted)
-      if: steps.request.outputs.found == 'true' && steps.request.outputs.event == 'push'
-      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-      with:
-        # Pushed commits reach main/v*/hotfix-* only through review, so
-        # config.tags.json at the pushed SHA is trusted.
-        ref: ${{ github.event.workflow_run.head_sha }}
-        path: _push_config
+        # PR path: the vouched base branch (recorded_base from the artifact,
+        # `refs/heads/<name>`). Pushes to main/v*/hotfix-* reach that branch
+        # only through review, so its config.tags.json is trusted -- a
+        # hostile PR head cannot redefine which contexts are marked skipped.
+        # Push path: the pushed commit SHA. The push itself is on a trusted
+        # branch, so the pushed tree's config is trusted.
+        ref: ${{ steps.request.outputs.config_ref }}
+        path: _config
 
     - name: Setup Python
       if: steps.request.outputs.found == 'true'
@@ -206,16 +203,11 @@ jobs:
         PRS: ${{ steps.request.outputs.prs }}
       run: |
         set -euo pipefail
-        if [[ "${EVENT}" == "issue_comment" ]]; then
-          projects="_pr_untrusted/.pfnci/config.tags.json"
-        else
-          projects="_push_config/.pfnci/config.tags.json"
-        fi
         for pr in ${PRS}; do
           ./.github/workflows/scripts/flexci_dispatcher.py \
               --event "${EVENT}" \
               --webhook "${RUNNER_TEMP}/requests/${pr}/event.json" \
-              --projects "${projects}" \
+              --projects _config/.pfnci/config.tags.json \
               --external-tag jenkins \
               --external-tag rocm
         done

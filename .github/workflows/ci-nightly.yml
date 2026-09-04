@@ -43,7 +43,11 @@ jobs:
       run_id: ${{ steps.resolve.outputs.run_id }}
     steps:
       # Newest SHA on the target branch whose wheels are already built
-      # (avoids racing an in-flight ci.yml push run).
+      # (avoids racing an in-flight ci.yml push run). A `conclusion=success`
+      # ci.yml push run does NOT prove wheels exist -- a merged PR labeled
+      # `skip-ci` completes green with everything skipped and no artifacts
+      # -- so we walk the recent runs and pick the first whose artifacts
+      # actually contain a wheel manifest (`cupy-cuda1{2,3}x-*`).
       - name: Resolve most recent SHA with successful ci.yml wheels
         id: resolve
         env:
@@ -52,18 +56,32 @@ jobs:
         run: |
           set -euo pipefail
           # --method GET: gh api defaults to POST when any -f/-F flag is
-          # present, which returns 404 for this GET endpoint.
-          RUN_JSON="$(gh api --method GET \
+          # present, which returns 404 for this GET endpoint. per_page=20
+          # is well above any expected skip-ci burst; if all 20 lack
+          # wheels, we fail loud rather than silently paging further.
+          RUNS_JSON="$(gh api --method GET \
             -f branch="${BRANCH}" \
             -f event=push \
             -f status=success \
-            -f per_page=1 \
+            -f per_page=20 \
             "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs")"
-          HEAD_SHA="$(jq -r '.workflow_runs[0].head_sha // ""' <<< "${RUN_JSON}")"
-          RUN_ID="$(jq -r '.workflow_runs[0].id // ""' <<< "${RUN_JSON}")"
-          WHEELS_UPDATED="$(jq -r '.workflow_runs[0].updated_at // "unknown"' <<< "${RUN_JSON}")"
+          HEAD_SHA=""
+          RUN_ID=""
+          WHEELS_UPDATED=""
+          while IFS=$'\t' read -r rid rsha rupdated; do
+            [[ -z "${rid}" ]] && continue
+            arts="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${rid}/artifacts?per_page=100" \
+                --jq '[.artifacts[].name]')"
+            if jq -e 'any(test("^cupy-cuda1[23]x-"))' <<< "${arts}" >/dev/null; then
+              RUN_ID="${rid}"
+              HEAD_SHA="${rsha}"
+              WHEELS_UPDATED="${rupdated}"
+              break
+            fi
+            echo "Run ${rid} (${rsha}) has no wheel artifacts; likely skip-ci or a non-build path. Trying next."
+          done < <(jq -r '.workflow_runs[] | [.id, .head_sha, .updated_at] | @tsv' <<< "${RUNS_JSON}")
           if [[ -z "${HEAD_SHA}" ]]; then
-            echo "::error::No successful ci.yml push run found on ${BRANCH}; refusing to dispatch." >&2
+            echo "::error::No successful ci.yml push run with wheel artifacts found on ${BRANCH} in the last 20 runs; refusing to dispatch." >&2
             exit 1
           fi
           echo "Resolved ${BRANCH}@${HEAD_SHA} (run_id ${RUN_ID}, wheels updated ${WHEELS_UPDATED})"
