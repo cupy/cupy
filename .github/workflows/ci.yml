@@ -57,6 +57,11 @@ permissions:
   contents: read
 
 jobs:
+  # flexci.yml's reap-noop-run recognizes no-op label runs by their shape:
+  # guard is the only job that runs unconditionally, so a no-op run shows
+  # exactly one success with everything else skipped. Adding another
+  # unconditional job here silently disables reaping (fails safe -- runs
+  # are kept -- but the check-run noise of #10230 returns).
   guard:
     name: Guard (build decision)
     runs-on: ubuntu-latest
