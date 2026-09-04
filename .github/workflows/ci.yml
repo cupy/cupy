@@ -205,10 +205,16 @@ jobs:
       ref: ${{ needs.guard.outputs.ref }}
       artifact-suffix: ${{ needs.guard.outputs.artifact_suffix }}
 
-  # PR-side dispatch marker for flexci.yml. Uploaded whenever this ci.yml
-  # run should end in a flexci.yml dispatch call: mode=test with all builds
-  # succeeded (forward to FlexCI), or mode=skip (post Skipped statuses via
-  # the dispatcher). Deliberately carries NO identity (a PR-forgeable
+  # Dispatch marker + payload for flexci.yml. Uploaded whenever this ci.yml
+  # run should end in a flexci.yml dispatch call: mode=skip on PR (post
+  # Skipped statuses via the dispatcher), or mode=test with all builds
+  # succeeded (forward the wheels or the pushed event). The artifact's
+  # presence in the triggering-run's own artifacts is the per-run dispatch
+  # gate flexci.yml checks. For push runs its content is the pushed event
+  # payload, which flexci.yml re-feeds to `flexci_dispatcher.py --event
+  # push`; for PR runs a minimal marker file (event.json comes from the
+  # vouched dispatch-request artifact ci-trigger.yml uploaded).
+  # Deliberately carries NO identity beyond the head SHA (a PR-forgeable
   # artifact would reopen same-head cross-wiring); flexci.yml derives the
   # PR identity from trusted API metadata instead. Overwrite keeps "re-run
   # all jobs" viable (v4+ artifacts are otherwise immutable across
@@ -221,8 +227,8 @@ jobs:
       - build-linux-aarch64
       - build-windows
     if: |
-      always() && github.event_name == 'pull_request' && (
-        needs.guard.outputs.mode == 'skip' ||
+      always() && (
+        (github.event_name == 'pull_request' && needs.guard.outputs.mode == 'skip') ||
         (needs.guard.outputs.mode == 'test' &&
          needs.build-linux-64.result == 'success' &&
          needs.build-linux-aarch64.result == 'success' &&
@@ -230,47 +236,22 @@ jobs:
       )
     runs-on: ubuntu-latest
     steps:
-      - name: Create sentinel
+      - name: Assemble artifact
         run: |
-          mkdir -p "${RUNNER_TEMP}/sentinel"
-          echo "dispatch" > "${RUNNER_TEMP}/sentinel/marker"
-      - name: Upload sentinel
+          mkdir -p "${RUNNER_TEMP}/artifact"
+          if [[ "${GITHUB_EVENT_NAME}" == "push" ]]; then
+            cp "${GITHUB_EVENT_PATH}" "${RUNNER_TEMP}/artifact/event.json"
+          else
+            echo "dispatch" > "${RUNNER_TEMP}/artifact/marker"
+          fi
+      - name: Upload
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
-          name: build-${{ needs.guard.outputs.head_sha }}
-          path: ${{ runner.temp }}/sentinel/
-          if-no-files-found: error
-          overwrite: true
-
-  # Push-side dispatch payload for flexci.yml. Records the pushed event
-  # payload so flexci.yml can invoke the dispatcher with --event push,
-  # matching the pre-consolidation in-run behavior. Its presence in the
-  # triggering-run's artifacts is what flexci.yml uses as the push-leg
-  # liveness gate.
-  push-payload:
-    name: Upload push payload
-    needs:
-      - guard
-      - build-linux-64
-      - build-linux-aarch64
-      - build-windows
-    if: |
-      github.event_name == 'push' &&
-      needs.guard.outputs.mode == 'test' &&
-      needs.build-linux-64.result == 'success' &&
-      needs.build-linux-aarch64.result == 'success' &&
-      needs.build-windows.result == 'success'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Save push event
-        run: |
-          mkdir -p "${RUNNER_TEMP}/push"
-          cp "${GITHUB_EVENT_PATH}" "${RUNNER_TEMP}/push/event.json"
-      - name: Upload push event
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
-        with:
-          name: push-event-${{ needs.guard.outputs.head_sha }}
-          path: ${{ runner.temp }}/push/
+          name: >-
+            ${{ github.event_name == 'push'
+                && format('push-event-{0}', needs.guard.outputs.head_sha)
+                || format('build-{0}', needs.guard.outputs.head_sha) }}
+          path: ${{ runner.temp }}/artifact/
           if-no-files-found: error
           overwrite: true
 
@@ -293,7 +274,6 @@ jobs:
       - build-linux-aarch64
       - build-windows
       - build-sentinel
-      - push-payload
     steps:
       - name: Exit
         run: |
@@ -308,29 +288,20 @@ jobs:
           }
 
           check_result "guard" "success" "${{ needs.guard.result }}"
-          case "${{ needs.guard.outputs.mode }}/${{ github.event_name }}" in
-          test/pull_request)
+          case "${{ needs.guard.outputs.mode }}" in
+          test)
             check_result "build-linux-64"      "success" "${{ needs.build-linux-64.result }}"
             check_result "build-linux-aarch64" "success" "${{ needs.build-linux-aarch64.result }}"
             check_result "build-windows"       "success" "${{ needs.build-windows.result }}"
             check_result "build-sentinel"      "success" "${{ needs.build-sentinel.result }}"
-            check_result "push-payload"        "skipped" "${{ needs.push-payload.result }}"
             ;;
-          test/push)
-            check_result "build-linux-64"      "success" "${{ needs.build-linux-64.result }}"
-            check_result "build-linux-aarch64" "success" "${{ needs.build-linux-aarch64.result }}"
-            check_result "build-windows"       "success" "${{ needs.build-windows.result }}"
-            check_result "build-sentinel"      "skipped" "${{ needs.build-sentinel.result }}"
-            check_result "push-payload"        "success" "${{ needs.push-payload.result }}"
-            ;;
-          skip/pull_request)
+          skip)
             check_result "build-linux-64"      "skipped" "${{ needs.build-linux-64.result }}"
             check_result "build-linux-aarch64" "skipped" "${{ needs.build-linux-aarch64.result }}"
             check_result "build-windows"       "skipped" "${{ needs.build-windows.result }}"
             check_result "build-sentinel"      "success" "${{ needs.build-sentinel.result }}"
-            check_result "push-payload"        "skipped" "${{ needs.push-payload.result }}"
             ;;
-          no-op/*)
+          no-op)
             # Reported under a different check-run name ("CI no-op") so
             # this run does NOT satisfy the required "Check job status".
             echo "No-op run; nothing to verify."
