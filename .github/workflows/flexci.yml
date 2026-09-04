@@ -63,7 +63,6 @@ jobs:
         # on every iteration (all candidates moved/retargeted, no vouch):
         # we still fall through to the empty-list exit below.
         event=""
-        config_ref=""
 
         case "${WORKFLOW_EVENT}" in
         pull_request)
@@ -123,12 +122,6 @@ jobs:
               continue
             fi
             dispatch_list+=("${pr}")
-            # The vouched base becomes the trusted config source for the
-            # dispatch below (see "Checkout (config, trusted)"). All matched
-            # PRs share the same head branch and thus almost always the same
-            # base; if two PRs vouched against different bases, we'd take
-            # the last one's base (rare, not broken).
-            config_ref="refs/heads/${recorded_base}"
           done
           event=issue_comment
           ;;
@@ -157,7 +150,6 @@ jobs:
           unzip -q -o "${RUNNER_TEMP}/requests/push.zip" -d "${RUNNER_TEMP}/requests/push"
           dispatch_list+=("push")
           event=push
-          config_ref="${HEAD_SHA}"
           ;;
         esac
 
@@ -169,24 +161,26 @@ jobs:
         echo "found=true" >> "$GITHUB_OUTPUT"
         echo "prs=${dispatch_list[*]}" >> "$GITHUB_OUTPUT"
         echo "event=${event}" >> "$GITHUB_OUTPUT"
-        echo "config_ref=${config_ref}" >> "$GITHUB_OUTPUT"
 
     - name: Checkout (dispatcher, trusted)
       if: steps.request.outputs.found == 'true'
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
-    - name: Checkout (config, trusted)
+    - name: Checkout (config from the tested revision)
       if: steps.request.outputs.found == 'true'
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
-        # PR path: the vouched base branch (recorded_base from the artifact,
-        # `refs/heads/<name>`). Pushes to main/v*/hotfix-* reach that branch
-        # only through review, so its config.tags.json is trusted -- a
-        # hostile PR head cannot redefine which contexts are marked skipped.
-        # Push path: the pushed commit SHA. The push itself is on a trusted
-        # branch, so the pushed tree's config is trusted.
-        ref: ${{ steps.request.outputs.config_ref }}
+        # Pinned to the tested revision (PR head for /test <target> or
+        # /test skip, pushed commit for push), so config.tags.json matches
+        # the code that was built and vouched. That lets a PR validate its
+        # own .pfnci changes -- adding a lane, retiring one, retagging --
+        # before merging. allow-unsafe-pr-checkout is required because
+        # checkout v7 refuses PR code under workflow_run by default; this
+        # tree is data only (the dispatcher runs from the trusted default-
+        # branch checkout above and merely json-loads config.tags.json).
+        ref: ${{ github.event.workflow_run.head_sha }}
         path: _config
+        allow-unsafe-pr-checkout: true
 
     - name: Setup Python
       if: steps.request.outputs.found == 'true'
