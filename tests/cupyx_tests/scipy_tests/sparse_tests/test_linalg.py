@@ -1725,7 +1725,8 @@ class TestLOBPCGForDiagInput:
     'order': ['C', 'F']
 }))
 @testing.with_requires('scipy')
-@pytest.mark.skipif(not cusparse.check_availability('csrsm2'),
+@pytest.mark.skipif(not (cusparse.check_availability('spsm')
+                         or cusparse.check_availability('csrsm2')),
                     reason='no working implementation')
 class TestSplu:
 
