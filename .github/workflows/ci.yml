@@ -2,22 +2,21 @@
 # changes are sync'd up!
 name: "CI"
 
-# The build workflow: builds wheels when a PR is vouched, or when a merge
-# lands. It is one of three single-purpose workflows:
+# The build workflow. Its role in the three-workflow flow:
 #
-#   ci-trigger.yml : turns /test comments from an OWNER/MEMBER into
-#                    ci:triggered label events (via a GitHub App token), and
-#                    keeps the label honest on pushes/reopens.
-#   ci.yml (this)  : pull_request/labeled -- build the vouched PR's pinned
-#                    merge commit in the PR's own cache scope (writes are
-#                    isolated per PR; restores fall back to the base/default
-#                    scope), then upload a build sentinel.
-#                    push (main, v*, hotfix-*) -- build the merged commit,
-#                    refreshing this branch's shared cache scope with merged
-#                    (reviewed) code only, then dispatch FlexCI in-run.
-#   flexci.yml     : after a successful /test build run completes
-#                    (workflow_run), dispatch FlexCI with the recorded
-#                    request.
+#   ci-trigger.yml : turns /test comments from an OWNER/MEMBER into a
+#                    ci:triggered label event and records the comment
+#                    payload as a vouched artifact for flexci.yml.
+#   ci.yml (this)  : pull_request/labeled -- builds the vouched PR's pinned
+#                    merge commit when the guard says mode=test; no-ops on
+#                    mode=skip (still uploads a dispatch sentinel so
+#                    flexci.yml fires) and on mode=no-op (unrelated label).
+#                    push (main, v*, hotfix-*) -- builds the merged commit
+#                    (mode=test) and uploads the push event for flexci.yml
+#                    to consume.
+#   flexci.yml     : the sole dispatcher call site. Fires on any successful
+#                    ci.yml workflow_run and forwards to FlexCI or posts
+#                    skip statuses per the recorded event payload.
 #
 # There is no automatic build on PR open/push: regular PR updates only run
 # the lightweight pre-flight checks. A push to a PR cancels any in-flight
@@ -52,63 +51,64 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'push' || github.event.label.name == 'ci:triggered' }}
 
 # Least privilege: read-only by default; jobs that need more grant it
-# per-job below (only dispatch-flexci writes, via flexci_dispatcher.py).
+# per-job below. All dispatcher writes happen in flexci.yml -- ci.yml
+# holds no `statuses: write` scope and no FLEXCI_WEBHOOK_SECRET reference.
 permissions:
   contents: read
 
 jobs:
+  # flexci.yml's reap-noop-run identifies no-op label runs by looking for
+  # a "CI no-op" check-run in the completed suite -- the dynamic name the
+  # `checks` job below evaluates to when guard.outputs.mode == 'no-op'.
+  # Renaming that check-run (or removing the checks job) silently
+  # disables reaping (fails safe -- runs are kept -- but the PR checks
+  # tab / ruleset UI displacement of #10230 returns).
   guard:
     name: Guard (build decision)
     runs-on: ubuntu-latest
     if: github.repository_owner == 'cupy'
     permissions:
-      contents: read       # actions/checkout (sparse ci/tools)
+      actions: read        # ci-guard.sh reads the vouched artifact
+      contents: read       # actions/checkout (sparse ci/)
       pull-requests: read  # ci-guard.sh reads commits/<sha>/pulls (push leg)
     outputs:
-      should_run: ${{ steps.check.outputs.should_run }}
+      mode: ${{ steps.check.outputs.mode }}
       ref: ${{ steps.check.outputs.ref }}
       artifact_suffix: ${{ steps.check.outputs.artifact_suffix }}
       head_sha: ${{ steps.check.outputs.head_sha }}
       pr_number: ${{ steps.check.outputs.pr_number }}
+      CUDA_BUILD_VER: ${{ steps.vars.outputs.cuda_build_ver }}
+      CUDA_PREV_BUILD_VER: ${{ steps.vars.outputs.cuda_prev_build_ver }}
     steps:
       # Which copy of ci-guard.sh runs follows GitHub's rules for the
       # workflow file itself: the pushed branch's copy for push events, the
       # PR's own copy for pull_request events -- where the run holds no
       # secrets and only PR-scoped cache access, so nothing
-      # security-critical rides on it.
-      - name: Checkout (ci/tools only)
+      # security-critical rides on it. In particular, the guard's `mode`
+      # output is a routing hint only: the actual dispatcher call in
+      # flexci.yml runs from a trusted checkout and re-reads the vouched
+      # artifact independently.
+      #
+      # Sparse-checkout is `ci` (not `ci/tools`) so the same working tree
+      # also exposes ci/versions.yml for the CUDA-version read below; on
+      # pull_request events GITHUB_SHA is the merge commit and on push it
+      # is the pushed SHA, both of which match needs.guard.outputs.ref
+      # that downstream jobs pin to.
+      - name: Checkout (ci/)
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
         with:
           fetch-depth: 1
-          sparse-checkout: ci/tools
+          sparse-checkout: ci
       - name: Evaluate trigger
         id: check
         env:
           GH_TOKEN: ${{ github.token }}
         run: ./ci/tools/ci-guard.sh
-
-  ci-vars:
-    needs: guard
-    if: needs.guard.outputs.should_run == 'true'
-    runs-on: ubuntu-latest
-    # Only reads ci/versions.yml from the pinned ref; no write scopes needed.
-    permissions:
-      contents: read
-    outputs:
-      CUDA_BUILD_VER: ${{ steps.get-vars.outputs.cuda_build_ver }}
-      CUDA_PREV_BUILD_VER: ${{ steps.get-vars.outputs.cuda_prev_build_ver }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
-        with:
-          ref: ${{ needs.guard.outputs.ref }}
-          fetch-depth: 1
-      - name: Get CUDA build versions
-        id: get-vars
+      - name: Read CUDA build versions
+        id: vars
         run: |
           cuda_build_ver=$(yq '.cuda.build.version' ci/versions.yml)
           echo "cuda_build_ver=$cuda_build_ver" >> $GITHUB_OUTPUT
-
           cuda_prev_build_ver=$(yq '.cuda.prev_build.version' ci/versions.yml)
           echo "cuda_prev_build_ver=$cuda_prev_build_ver" >> $GITHUB_OUTPUT
 
@@ -120,7 +120,7 @@ jobs:
   build-sdist:
     needs:
       - guard
-    if: needs.guard.outputs.should_run == 'true'
+    if: needs.guard.outputs.mode == 'test'
     permissions:
       contents: read
     name: Build sdist
@@ -141,9 +141,8 @@ jobs:
   build-linux-64:
     needs:
       - guard
-      - ci-vars
       - build-sdist
-    if: needs.guard.outputs.should_run == 'true'
+    if: needs.guard.outputs.mode == 'test'
     # Bounds the reusable build to a checkout-only token (no secrets, no writes).
     permissions:
       contents: read
@@ -153,8 +152,8 @@ jobs:
         host-platform:
           - linux-64
         cuda-version:
-          - ${{ needs.ci-vars.outputs.CUDA_BUILD_VER }}
-          - ${{ needs.ci-vars.outputs.CUDA_PREV_BUILD_VER }}
+          - ${{ needs.guard.outputs.CUDA_BUILD_VER }}
+          - ${{ needs.guard.outputs.CUDA_PREV_BUILD_VER }}
     name: Build ${{ matrix.host-platform }}, CUDA ${{ matrix.cuda-version }}
     uses: ./.github/workflows/build-wheel.yml
     with:
@@ -167,9 +166,8 @@ jobs:
   build-linux-aarch64:
     needs:
       - guard
-      - ci-vars
       - build-sdist
-    if: needs.guard.outputs.should_run == 'true'
+    if: needs.guard.outputs.mode == 'test'
     permissions:
       contents: read
     strategy:
@@ -178,8 +176,8 @@ jobs:
         host-platform:
           - linux-aarch64
         cuda-version:
-          - ${{ needs.ci-vars.outputs.CUDA_BUILD_VER }}
-          - ${{ needs.ci-vars.outputs.CUDA_PREV_BUILD_VER }}
+          - ${{ needs.guard.outputs.CUDA_BUILD_VER }}
+          - ${{ needs.guard.outputs.CUDA_PREV_BUILD_VER }}
     name: Build ${{ matrix.host-platform }}, CUDA ${{ matrix.cuda-version }}
     uses: ./.github/workflows/build-wheel.yml
     with:
@@ -192,9 +190,8 @@ jobs:
   build-windows:
     needs:
       - guard
-      - ci-vars
       - build-sdist
-    if: needs.guard.outputs.should_run == 'true'
+    if: needs.guard.outputs.mode == 'test'
     # Bounds the reusable build to a checkout-only token (no secrets, no writes).
     permissions:
       contents: read
@@ -204,8 +201,8 @@ jobs:
         host-platform:
           - win-64
         cuda-version:
-          - ${{ needs.ci-vars.outputs.CUDA_BUILD_VER }}
-          - ${{ needs.ci-vars.outputs.CUDA_PREV_BUILD_VER }}
+          - ${{ needs.guard.outputs.CUDA_BUILD_VER }}
+          - ${{ needs.guard.outputs.CUDA_PREV_BUILD_VER }}
     name: Build ${{ matrix.host-platform }}, CUDA ${{ matrix.cuda-version }}
     uses: ./.github/workflows/build-wheel.yml
     with:
@@ -214,12 +211,20 @@ jobs:
       ref: ${{ needs.guard.outputs.ref }}
       artifact-suffix: ${{ needs.guard.outputs.artifact_suffix }}
 
-  # Liveness proof for flexci.yml: uploaded only when every build succeeded,
-  # only on /test builds. It deliberately carries NO identity (the v3 plan
-  # review showed identity via a PR-forgeable artifact reopens same-head
-  # cross-wiring); flexci.yml derives the PR identity from trusted API
-  # metadata instead. Overwrite keeps "re-run all jobs" viable (v4+
-  # artifacts are otherwise immutable across attempts).
+  # Dispatch marker + payload for flexci.yml. Uploaded whenever this ci.yml
+  # run should end in a flexci.yml dispatch call: mode=skip on PR (post
+  # Skipped statuses via the dispatcher), or mode=test with all builds
+  # succeeded (forward the wheels or the pushed event). The artifact's
+  # presence in the triggering-run's own artifacts is the per-run dispatch
+  # gate flexci.yml checks. For push runs its content is the pushed event
+  # payload, which flexci.yml re-feeds to `flexci_dispatcher.py --event
+  # push`; for PR runs a minimal marker file (event.json comes from the
+  # vouched dispatch-request artifact ci-trigger.yml uploaded).
+  # Deliberately carries NO identity beyond the head SHA (a PR-forgeable
+  # artifact would reopen same-head cross-wiring); flexci.yml derives the
+  # PR identity from trusted API metadata instead. Overwrite keeps "re-run
+  # all jobs" viable (v4+ artifacts are otherwise immutable across
+  # attempts).
   build-sentinel:
     name: Upload build sentinel
     needs:
@@ -227,68 +232,47 @@ jobs:
       - build-linux-64
       - build-linux-aarch64
       - build-windows
-    if: github.event_name == 'pull_request' && needs.guard.outputs.should_run == 'true' && needs.build-linux-64.result == 'success' && needs.build-linux-aarch64.result == 'success' && needs.build-windows.result == 'success'
+    if: |
+      always() && (
+        (github.event_name == 'pull_request' && needs.guard.outputs.mode == 'skip') ||
+        (needs.guard.outputs.mode == 'test' &&
+         needs.build-linux-64.result == 'success' &&
+         needs.build-linux-aarch64.result == 'success' &&
+         needs.build-windows.result == 'success')
+      )
     runs-on: ubuntu-latest
     steps:
-      - name: Create sentinel
+      - name: Assemble artifact
         run: |
-          mkdir -p "${RUNNER_TEMP}/sentinel"
-          echo "built" > "${RUNNER_TEMP}/sentinel/built"
-      - name: Upload sentinel
+          mkdir -p "${RUNNER_TEMP}/artifact"
+          if [[ "${GITHUB_EVENT_NAME}" == "push" ]]; then
+            cp "${GITHUB_EVENT_PATH}" "${RUNNER_TEMP}/artifact/event.json"
+          else
+            echo "dispatch" > "${RUNNER_TEMP}/artifact/marker"
+          fi
+      - name: Upload
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
-          name: build-${{ needs.guard.outputs.head_sha }}
-          path: ${{ runner.temp }}/sentinel/
+          name: >-
+            ${{ github.event_name == 'push'
+                && format('push-event-{0}', needs.guard.outputs.head_sha)
+                || format('build-{0}', needs.guard.outputs.head_sha) }}
+          path: ${{ runner.temp }}/artifact/
           if-no-files-found: error
           overwrite: true
 
-  # Post-merge dispatcher: push events are trusted (only merged/reviewed
-  # code reaches these branches), carry secrets, and their payload is the
-  # dispatcher's native push input -- so build and dispatch live in one run
-  # with plain `needs:` ordering. The /test path dispatches from flexci.yml
-  # instead (its build runs hold no secrets).
-  dispatch-flexci:
-    name: Dispatch FlexCI
-    needs:
-      - guard
-      - build-linux-64
-      - build-linux-aarch64
-      - build-windows
-    if: github.event_name == 'push' && needs.guard.outputs.should_run == 'true'
-    runs-on: ubuntu-22.04
-    permissions:
-      contents: read       # actions/checkout
-      pull-requests: write  # flexci_dispatcher.py force-skip comments
-      statuses: write       # flexci_dispatcher.py commit statuses
-    steps:
-      - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
-        with:
-          ref: ${{ needs.guard.outputs.ref }}
-
-      - name: Setup Python
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
-        with:
-          python-version: '3.13'
-
-      - name: Setup Environment
-        run: pip install pygithub
-
-      - name: Dispatch
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          FLEXCI_WEBHOOK_SECRET: ${{ secrets.FLEXCI_WEBHOOK_SECRET }}
-        run: |
-          ./.github/workflows/scripts/flexci_dispatcher.py \
-              --event "${GITHUB_EVENT_NAME}" \
-              --webhook "${GITHUB_EVENT_PATH}" \
-              --projects ".pfnci/config.tags.json" \
-              --external-tag jenkins \
-              --external-tag rocm
-
+  # Merge-gating check. The job's NAME is dynamic on mode -- for mode=no-op
+  # it becomes "CI no-op" so it does NOT satisfy the required "Check job
+  # status" context. GitHub treats conditionally skipped required checks as
+  # passing, so keeping the name static would let an unrelated label event
+  # temporarily green a previously-failed head via a skipped check-run.
+  # Only mode=test / mode=skip runs report as "Check job status".
   checks:
-    name: Check job status
-    if: always() && needs.guard.outputs.should_run == 'true'
+    name: >-
+      ${{ needs.guard.outputs.mode == 'no-op'
+          && 'CI no-op'
+          || 'Check job status' }}
+    if: always()
     runs-on: ubuntu-latest
     needs:
       - guard
@@ -296,7 +280,6 @@ jobs:
       - build-linux-aarch64
       - build-windows
       - build-sentinel
-      - dispatch-flexci
     steps:
       - name: Exit
         run: |
@@ -310,18 +293,24 @@ jobs:
             fi
           }
 
-          check_result "guard"               "success" "${{ needs.guard.result }}"
-          check_result "build-linux-64"      "success" "${{ needs.build-linux-64.result }}"
-          check_result "build-linux-aarch64" "success" "${{ needs.build-linux-aarch64.result }}"
-          check_result "build-windows"       "success" "${{ needs.build-windows.result }}"
-          case "${{ github.event_name }}" in
-          pull_request)
-            check_result "build-sentinel"  "success" "${{ needs.build-sentinel.result }}"
-            check_result "dispatch-flexci" "skipped" "${{ needs.dispatch-flexci.result }}"
+          check_result "guard" "success" "${{ needs.guard.result }}"
+          case "${{ needs.guard.outputs.mode }}" in
+          test)
+            check_result "build-linux-64"      "success" "${{ needs.build-linux-64.result }}"
+            check_result "build-linux-aarch64" "success" "${{ needs.build-linux-aarch64.result }}"
+            check_result "build-windows"       "success" "${{ needs.build-windows.result }}"
+            check_result "build-sentinel"      "success" "${{ needs.build-sentinel.result }}"
             ;;
-          push)
-            check_result "build-sentinel"  "skipped" "${{ needs.build-sentinel.result }}"
-            check_result "dispatch-flexci" "success" "${{ needs.dispatch-flexci.result }}"
+          skip)
+            check_result "build-linux-64"      "skipped" "${{ needs.build-linux-64.result }}"
+            check_result "build-linux-aarch64" "skipped" "${{ needs.build-linux-aarch64.result }}"
+            check_result "build-windows"       "skipped" "${{ needs.build-windows.result }}"
+            check_result "build-sentinel"      "success" "${{ needs.build-sentinel.result }}"
+            ;;
+          no-op)
+            # Reported under a different check-run name ("CI no-op") so
+            # this run does NOT satisfy the required "Check job status".
+            echo "No-op run; nothing to verify."
             ;;
           esac
 
