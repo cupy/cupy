@@ -9,7 +9,7 @@ lambertw_preamble = "#include <cupy/xsf/lambertw.h>"
 
 _lambertw_scalar = _core.create_ufunc(
     "cupyx_scipy_lambertw_scalar",
-    ("Dld->D", "Fif->f"),
+    ("Dld->D", "Flf->F"),
     "out0 = xsf::lambertw(in0, in1, in2)",
     preamble=lambertw_preamble,
     doc='''Internal function. Do not use.''')
