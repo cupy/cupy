@@ -58,11 +58,38 @@ namespace cupy {
 
 #endif  // #ifdef __HIPCC_RTC__
 
+// mdspan to support xsf gufunc kernels in ElementwiseKernel.
+
+#if __cplusplus >= 201402L || (defined(_MSC_VER) && _MSC_VER >= 1910)
+#if defined(__HIPCC_RTC__) || defined(__HIPCC__)
+#define MDSPAN_IMPL_STANDARD_NAMESPACE cupy
+#include <cupy/xsf/third_party/kokkos/mdspan.hpp>
+#include <array>
+namespace cupy {
+  using std::array;
+  using std::ptrdiff_t;
+}
+#else
+#include <cuda/std/mdspan>
+#include <cuda/std/array>
+namespace cupy {
+  using cuda::std::layout_left;
+  using cuda::std::layout_right;
+  using cuda::std::layout_stride;
+  using cuda::std::default_accessor;
+  using cuda::std::dextents;
+  using cuda::std::extents;
+  using cuda::std::mdspan;
+  using cuda::std::array;
+  using cuda::std::ptrdiff_t;
+}
+#endif
+#endif // __cplusplus >= 201402L || (defined(_MSC_VER) && _MSC_VER >= 1910)
+
 
 // Forward declare our custom types here
 class bfloat16;
 class float16;
-
 
 // CArray
 #define CUPY_FOR(i, n) \
@@ -225,13 +252,14 @@ public:
   }
 };
 
-template <typename T, int _ndim, bool _c_contiguous=false, bool _use_32bit_indexing=false>
+template <typename T, int _ndim, bool _c_contiguous=false, bool _use_32bit_indexing=false, int _core_ndim=0>
 class CArray {
 public:
   static const int ndim = _ndim;
   static const bool c_contiguous = _c_contiguous;
   typedef typename cupy::type_traits::conditional<_use_32bit_indexing, int, ptrdiff_t>::type index_t;
   typedef typename cupy::type_traits::conditional<_c_contiguous, T*, CArrayIterator<T, index_t> >::type iterator;
+  static const int core_ndim = _core_ndim;
 
 private:
   T* data_;
@@ -264,7 +292,7 @@ public:
       this->shape_[i] = shape[i];
       this->strides_[i] = strides[i];
     }
-  } 
+  }
 
 #if __cplusplus >= 201103 || (defined(_MSC_VER) && _MSC_VER >= 1900)
   template <typename Int, typename U=T>
@@ -329,6 +357,24 @@ public:
   }
 #endif  // CUPY_JIT_MODE
 
+#if __cplusplus >= 201402L || (defined(_MSC_VER) && _MSC_VER >= 1910)
+  __device__ inline auto as_mdspan() const {
+    cupy::array<cupy::ptrdiff_t, ndim> exts;
+    cupy::array<cupy::ptrdiff_t, ndim> strs;
+
+    for (int i = 0; i < ndim; ++i) {
+      exts[i] = static_cast<cupy::ptrdiff_t>(shape_[i]);
+      strs[i] = static_cast<cupy::ptrdiff_t>(strides_[i]) / sizeof(T);
+    }
+
+    using Extents = cupy::dextents<cupy::ptrdiff_t, ndim>;
+    using Mapping = cupy::layout_stride::mapping<Extents>;
+
+    return cupy::mdspan<T, Extents, cupy::layout_stride>(data_, Mapping(Extents(exts), strs));
+  }
+#endif  // __cplusplus >= 201402L || (defined(_MSC_VER) && _MSC_VER >= 1910)
+
+
 #if __cplusplus >= 201103 || (defined(_MSC_VER) && _MSC_VER >= 1900)
   template <typename Int>
   __device__ T& operator[](const std::initializer_list<Int> idx_) {
@@ -344,6 +390,38 @@ public:
     Int idx[ndim];
     memcpy(idx, idx_.begin(), ndim*sizeof(Int));
     return this->operator[](idx);
+  }
+
+  template <typename Int, int C = _core_ndim>
+  __device__
+  typename cupy::type_traits::enable_if<(C > 0 && _ndim > C), CArray<T, C, _c_contiguous, _use_32bit_indexing, 0> >::type
+  operator[](const Int (&idx)[_ndim - C]) const {
+    // overload for case _core_ndim > 0. Indexing yields CArray for a core slice.
+    constexpr int batch_ndim = _ndim - C;
+    index_t diff = 0;
+    for (int dim = 0; dim < batch_ndim; ++dim) {
+      diff += static_cast<index_t>(strides_[dim]) * static_cast<index_t>(idx[dim]);
+    }
+
+    const char* ptr = reinterpret_cast<const char*>(data_);
+    T* new_head = const_cast<T*>(reinterpret_cast<const T*>(ptr + diff));
+
+    return CArray<T, C, _c_contiguous, _use_32bit_indexing, 0>(
+        new_head,
+        this->shape_ + batch_ndim,
+        this->strides_ + batch_ndim
+    );
+  }
+
+  template <typename Int, int C = _core_ndim>
+  __device__
+  typename cupy::type_traits::enable_if<(C > 0 && _ndim == C), CArray<T, C, _c_contiguous, _use_32bit_indexing, 0> >::type
+  operator[](const Int* idx) const {
+    return CArray<T, C, _c_contiguous, _use_32bit_indexing, 0>(
+        data_,
+        this->shape_,
+        this->strides_
+    );
   }
 #endif
 
@@ -459,7 +537,7 @@ public:
 
 template <typename T, bool _use_32bit_indexing>
 
-class CArray<T, 0, true, _use_32bit_indexing> {
+class CArray<T, 0, true, _use_32bit_indexing, 0> {
 private:
   T* data_;
   ptrdiff_t size_;
@@ -469,7 +547,7 @@ public:
   typedef typename cupy::type_traits::conditional<_use_32bit_indexing, int, ptrdiff_t>::type index_t;
 
   __device__ CArray() : data_(NULL), size_(1) { }
-  
+
   __device__ explicit CArray(T* data) : data_(data), size_(1) { }
 
   template <typename Int>
@@ -571,7 +649,7 @@ public:
   }
 #endif
 
-  __device__ CIndexer() : size_(1) 
+  __device__ CIndexer() : size_(1)
   {
     memset(this->shape_, 0, sizeof(this->shape_));
     memset(this->index_, 0, sizeof(this->index_));
