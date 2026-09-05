@@ -96,13 +96,15 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
             precision is used.
         return_eigenvectors (bool): If ``True``, returns eigenvectors in
             addition to eigenvalues.
-        random_state (int, cupy.random.RandomState, cupy.random.Generator,
-            numpy.random.RandomState or numpy.random.Generator): Source of
-            the default start vector when ``v0`` is ``None``. ``None`` (the
-            default) uses a fixed private seed, so identical calls give
-            identical results; an int seeds a new generator; a generator
-            object is used and advanced in place. Ignored when ``v0`` is
-            given, as in :func:`scipy.sparse.linalg.svds`.
+        random_state (int or generator): Source of the default start vector
+            when ``v0`` is ``None``. ``None`` (the default) uses a fixed
+            private seed, so identical calls give identical results; an int
+            seeds a new :class:`cupy.random.RandomState`; a
+            :class:`cupy.random.RandomState`, :class:`cupy.random.Generator`,
+            :class:`numpy.random.RandomState` or
+            :class:`numpy.random.Generator` is used and advanced in place.
+            Ignored when ``v0`` is given, as in
+            :func:`scipy.sparse.linalg.svds`.
 
     Returns:
         tuple:
@@ -845,14 +847,15 @@ def svds(a, k=6, *, ncv=None, tol=0, which='LM', v0=None,
             If ``None``, default value is used.
         return_singular_vectors (bool): If ``True``, returns singular vectors
             in addition to singular values.
-        random_state (int, cupy.random.RandomState, cupy.random.Generator,
-            numpy.random.RandomState or numpy.random.Generator): Source of
-            the default start vector when ``v0`` is ``None``, and of the
-            orthonormal columns that complete the singular vectors of a
-            rank-deficient input. ``None`` (the default) uses a fixed
-            private seed; an int seeds a new generator; a generator object
-            is used and advanced in place. Ignored for the start vector
-            when ``v0`` is given, as in :func:`scipy.sparse.linalg.svds`.
+        random_state (int or generator): Source of the default start vector
+            when ``v0`` is ``None``, and of the orthonormal columns that
+            complete the singular vectors of a rank-deficient input. Accepts
+            the same values as :func:`eigsh`: ``None`` (the default) uses a
+            fixed private seed, an int seeds a new
+            :class:`cupy.random.RandomState`, and a CuPy or NumPy
+            ``RandomState`` or ``Generator`` is used and advanced in place.
+            Ignored for the start vector when ``v0`` is given, as in
+            :func:`scipy.sparse.linalg.svds`.
 
     Returns:
         tuple:
