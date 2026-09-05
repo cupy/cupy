@@ -116,6 +116,7 @@ class TestCrossProduct(unittest.TestCase):
 }))
 class TestCrossProduct2DVectorError(unittest.TestCase):
     @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'])
+    @testing.with_requires('numpy>=2.5')
     @testing.numpy_cupy_allclose(accept_error=ValueError)
     def test_cross(self, xp, dtype_a, dtype_b):
         if dtype_a == dtype_b == numpy.bool_:

@@ -307,6 +307,7 @@ def eig(a):
 
     if a.size == 0:
         _, v_dtype = _util.linalg_common_type(a)
+        v_dtype = numpy.dtype(v_dtype.char.upper())
         w = cupy.empty(a.shape[:-1], v_dtype)
         v = cupy.empty(a.shape, v_dtype)
         return w, v
@@ -386,6 +387,7 @@ def eigvals(a):
 
     if a.size == 0:
         _, v_dtype = _util.linalg_common_type(a)
+        v_dtype = numpy.dtype(v_dtype.char.upper())
         w = cupy.empty(a.shape[:-1], v_dtype)
         return w
 
