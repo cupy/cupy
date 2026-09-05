@@ -1820,7 +1820,8 @@ class TestLOBPCGForDiagInput:
     'order': ['C', 'F']
 }))
 @testing.with_requires('scipy')
-@pytest.mark.skipif(not cusparse.check_availability('csrsm2'),
+@pytest.mark.skipif(not (cusparse.check_availability('spsm')
+                         or cusparse.check_availability('csrsm2')),
                     reason='no working implementation')
 class TestSplu:
 
@@ -1877,6 +1878,48 @@ class TestSplu:
         else:
             ainv = sp.linalg.spilu(a)
         return ainv.solve(b)
+
+    # gh-8570: a scipy matrix is factorized on the host as is, instead of
+    # being rejected and forcing the caller through a GPU round trip. The
+    # factors must be identical to those of the cupyx matrix.
+    def _assert_same_factors(self, lu_gpu, lu_host):
+        for attr in ('perm_r', 'perm_c'):
+            cupy.testing.assert_array_equal(
+                getattr(lu_gpu, attr), getattr(lu_host, attr))
+        for attr in ('L', 'U'):
+            cupy.testing.assert_array_equal(
+                getattr(lu_gpu, attr).toarray(),
+                getattr(lu_host, attr).toarray())
+
+    @testing.for_dtypes('fdFD')
+    def test_splu_scipy_input(self, dtype):
+        a, b = self._make_matrix(dtype, cupy, sparse)
+        lu_gpu = sparse.linalg.splu(a)
+        for a_host in (a.get(), scipy.sparse.csc_array(a.get())):
+            lu_host = sparse.linalg.splu(a_host)
+            self._assert_same_factors(lu_gpu, lu_host)
+            cupy.testing.assert_allclose(
+                lu_host.solve(b), lu_gpu.solve(b), rtol=1e-5, atol=1e-5)
+
+    @testing.for_dtypes('fdFD')
+    def test_spilu_scipy_input(self, dtype):
+        a, b = self._make_matrix(dtype, cupy, sparse)
+        lu_gpu = sparse.linalg.spilu(a)
+        lu_host = sparse.linalg.spilu(a.get())
+        self._assert_same_factors(lu_gpu, lu_host)
+        cupy.testing.assert_allclose(
+            lu_host.solve(b), lu_gpu.solve(b), rtol=1e-5, atol=1e-5)
+        # fill_factor=1 runs ILU(0) on the GPU: a scipy input is moved there.
+        a, b = self._make_matrix(dtype, cupy, sparse, density=1.0)
+        x_gpu = sparse.linalg.spilu(a, fill_factor=1).solve(b)
+        x_host = sparse.linalg.spilu(a.get(), fill_factor=1).solve(b)
+        cupy.testing.assert_allclose(x_host, x_gpu, rtol=1e-5, atol=1e-5)
+
+    def test_splu_invalid_input(self):
+        with pytest.raises(TypeError):
+            sparse.linalg.splu(numpy.eye(self.n))
+        with pytest.raises(TypeError):
+            sparse.linalg.spilu(cupy.eye(self.n))
 
 
 @testing.parameterize(*testing.product({
