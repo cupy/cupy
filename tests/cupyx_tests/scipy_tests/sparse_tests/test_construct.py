@@ -232,14 +232,17 @@ class TestBmat:
 
         A, B, C, D = self.data()
 
-        match = r'.*Got blocks\[{}\]\.shape\[{}\] == 1, expected 2'
-
-        # test failure cases
-        message1 = re.compile(match.format('1,0', '1'))
+        # blocks[:,0] mismatch: A is 2 cols, B is 1 col -> column dimensions
+        message1 = re.compile(
+            r'blocks\[:,0\] has incompatible column dimensions\. '
+            r'Got blocks\[1,0\]\.shape\[1\] == 1, expected 2')
         with pytest.raises(ValueError, match=message1):
             _construct.bmat([[A], [B]], dtype=self.dtype)
 
-        message2 = re.compile(match.format('0,1', '0'))
+        # blocks[0,:] mismatch: A is 2 rows, C is 1 row -> row dimensions
+        message2 = re.compile(
+            r'blocks\[0,:\] has incompatible row dimensions\. '
+            r'Got blocks\[0,1\]\.shape\[0\] == 1, expected 2')
         with pytest.raises(ValueError, match=message2):
             _construct.bmat([[A, C]], dtype=self.dtype)
 
@@ -476,3 +479,38 @@ class TestKronsum:
         assert kronsum.shape == (a.shape[0] * b.shape[0],
                                  a.shape[1] * b.shape[1])
         return kronsum
+
+
+# ---------------------------------------------------------------------------
+# Verify issparse accepts results from all construction functions
+# ---------------------------------------------------------------------------
+
+@testing.with_requires('scipy')
+class TestConstructIssparse:
+    """Construction functions should return objects that issparse() accepts."""
+
+    def test_eye_issparse(self):
+        x = sparse.eye(3)
+        assert sparse.issparse(x)
+        cupy.testing.assert_array_equal(x.toarray(), cupy.eye(3))
+
+    def test_identity_issparse(self):
+        x = sparse.identity(3)
+        assert sparse.issparse(x)
+        cupy.testing.assert_array_equal(x.toarray(), cupy.eye(3))
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_hstack_issparse(self, xp, sp):
+        a = sp.csr_matrix(xp.eye(2, dtype='d'))
+        b = sp.csr_matrix(xp.eye(2, dtype='d'))
+        x = sp.hstack([a, b])
+        assert sp.issparse(x)
+        return x.toarray()
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_vstack_issparse(self, xp, sp):
+        a = sp.csr_matrix(xp.eye(2, dtype='d'))
+        b = sp.csr_matrix(xp.eye(2, dtype='d'))
+        x = sp.vstack([a, b])
+        assert sp.issparse(x)
+        return x.toarray()

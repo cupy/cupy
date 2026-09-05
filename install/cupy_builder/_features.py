@@ -106,6 +106,7 @@ _cuda_files = [
     'cupy_backends.cuda._softlink',
     'cupy._core._accelerator',
     'cupy._core._carray',
+    'cupy._core._cuda_compute_scan',
     'cupy._core._cub_reduction',
     'cupy._core._dtype',
     'cupy._core._fusion_kernel',
@@ -166,7 +167,7 @@ def get_features(ctx: Context) -> dict[str, Feature]:
         'file': _cuda_files + [
             'cupy_backends.cuda.libs.nvtx',
             'cupy_backends.cuda.libs.cusolver',
-            'cupyx.cusolver',
+            'cupyx._cusolver',
         ],
         'include': [
             'hip/hip_runtime_api.h',
@@ -199,7 +200,7 @@ def get_features(ctx: Context) -> dict[str, Feature]:
         'required': True,
         'file': [
             'cupy_backends.cuda.libs.cusolver',
-            'cupyx.cusolver',
+            'cupyx._cusolver',
         ],
         'include': [
             'cusolverDn.h',
@@ -239,7 +240,7 @@ def get_features(ctx: Context) -> dict[str, Feature]:
         'name': 'cutensor',
         'file': [
             'cupy_backends.cuda.libs.cutensor',
-            'cupyx.cutensor',
+            'cupyx._cutensor',
         ],
         'include': [
             'cutensor.h',

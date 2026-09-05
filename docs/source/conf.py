@@ -367,7 +367,7 @@ autosummary_generate = True
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3/', None),
     'numpy': ('https://numpy.org/doc/stable/', None),
-    'scipy': ('https://docs.scipy.org/doc/scipy/', None),
+    'scipy': ('https://static.scipy.org/doc/scipy/', None),
     'numba': ('https://numba.readthedocs.io/en/stable', None),
     'cuquantum': ('https://docs.nvidia.com/cuda/cuquantum/latest', None),
     # blocked by data-apis/array-api#428

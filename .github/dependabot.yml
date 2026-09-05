@@ -1,0 +1,36 @@
+version: 2
+updates:
+  # GitHub Actions updates targeting the default branch (main)
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: "monthly"
+      time: "09:00"
+      timezone: "America/Los_Angeles"
+
+    # Keep churn down: only one open PR from this ecosystem at a time
+    open-pull-requests-limit: 1
+
+    groups:
+      actions-monthly:
+        applies-to: version-updates
+        patterns: ["*"]
+        update-types: ["major", "minor", "patch"]
+
+  # GitHub Actions updates targeting the v14 branch
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: "v14"
+    schedule:
+      interval: "monthly"
+      time: "09:00"
+      timezone: "America/Los_Angeles"
+
+    # Keep churn down: only one open PR from this ecosystem at a time
+    open-pull-requests-limit: 1
+
+    groups:
+      actions-monthly:
+        applies-to: version-updates
+        patterns: ["*"]
+        update-types: ["major", "minor", "patch"]
