@@ -527,6 +527,84 @@ class TestSvdsV0:
         assert not bool(cupy.isnan(s).any())
 
 
+class TestRandomState:
+    # random_state= selects the source of the default start vector (and, in
+    # svds, of the columns completing the singular vectors of a
+    # rank-deficient input), with scipy's semantics: None keeps the fixed
+    # private seed, an int seeds a fresh generator, a generator object is
+    # advanced in place, and v0 takes precedence.
+
+    def test_resolve_and_draw(self):
+        from cupyx.scipy.sparse.linalg import _eigen
+        n = 50
+        u_none = _eigen._default_v0(n, 'd', _eigen._resolve_random_state(None))
+        u_seed = _eigen._default_v0(
+            n, 'd', _eigen._resolve_random_state(_eigen._DEFAULT_V0_SEED))
+        cupy.testing.assert_array_equal(u_none, u_seed)
+        u7a = _eigen._default_v0(n, 'd', _eigen._resolve_random_state(7))
+        u7b = _eigen._default_v0(n, 'd', _eigen._resolve_random_state(7))
+        cupy.testing.assert_array_equal(u7a, u7b)
+        assert not bool((u7a == u_seed).all())
+        assert u7a.dtype == cupy.float64 and u7a.shape == (n,)
+        for rs in (cupy.random.RandomState(3), cupy.random.default_rng(3),
+                   numpy.random.RandomState(3), numpy.random.default_rng(3)):
+            rs = _eigen._resolve_random_state(rs)
+            first = _eigen._default_v0(n, 'f', rs)
+            second = _eigen._default_v0(n, 'f', rs)   # advanced in place
+            assert isinstance(first, cupy.ndarray)
+            assert first.dtype == cupy.float32 and first.shape == (n,)
+            assert not bool((first == second).all())
+        with pytest.raises(TypeError):
+            _eigen._resolve_random_state('seed')
+
+    @testing.for_dtypes('fdFD')
+    def test_eigsh(self, dtype):
+        b = testing.shaped_random((120, 120), cupy, dtype=dtype, seed=0)
+        a = sparse.csr_matrix(b + b.conj().T)
+        tol = 1e-5 if numpy.dtype(dtype).char in 'fF' else 1e-10
+        w1 = sparse.linalg.eigsh(a, k=6, return_eigenvectors=False,
+                                 random_state=11)
+        w2 = sparse.linalg.eigsh(a, k=6, return_eigenvectors=False,
+                                 random_state=11)
+        cupy.testing.assert_allclose(cupy.sort(w1.real), cupy.sort(w2.real),
+                                     rtol=tol, atol=0)
+        # v0 takes precedence over random_state
+        v0 = testing.shaped_random((120,), cupy, dtype=dtype, seed=1)
+        w3 = sparse.linalg.eigsh(a, k=6, v0=v0, return_eigenvectors=False)
+        w4 = sparse.linalg.eigsh(a, k=6, v0=v0, return_eigenvectors=False,
+                                 random_state=numpy.random.default_rng(2))
+        cupy.testing.assert_allclose(cupy.sort(w3.real), cupy.sort(w4.real),
+                                     rtol=tol, atol=0)
+
+    def test_svds(self):
+        a = sparse.csr_matrix(
+            testing.shaped_random((60, 45), cupy, dtype='d', seed=0))
+        s1 = sparse.linalg.svds(a, k=5, random_state=11,
+                                return_singular_vectors=False)
+        s2 = sparse.linalg.svds(a, k=5, random_state=11,
+                                return_singular_vectors=False)
+        cupy.testing.assert_allclose(cupy.sort(s1), cupy.sort(s2),
+                                     rtol=1e-9, atol=1e-9)
+        # The generator also drives the columns completing the singular
+        # vectors of a rank-deficient input: same seed, same completion;
+        # different seed, different completion.
+        m, n, rank = 40, 30, 3
+        b = (testing.shaped_random((m, rank), cupy, dtype='d', seed=0)
+             @ testing.shaped_random((rank, n), cupy, dtype='d', seed=1))
+        b = sparse.csr_matrix(b)
+        u1, _, _ = sparse.linalg.svds(b, k=6,
+                                      random_state=numpy.random.default_rng(5))
+        u2, _, _ = sparse.linalg.svds(b, k=6,
+                                      random_state=numpy.random.default_rng(5))
+        u3, _, _ = sparse.linalg.svds(b, k=6,
+                                      random_state=numpy.random.default_rng(6))
+        cupy.testing.assert_allclose(u1, u2, rtol=1e-8, atol=1e-8)
+        assert not bool(cupy.allclose(cupy.abs(u1[:, rank:]),
+                                      cupy.abs(u3[:, rank:])))
+        with pytest.raises(TypeError):
+            sparse.linalg.svds(a, k=5, random_state='seed')
+
+
 class TestDefaultStartVector:
     # The default start vector comes from a fixed seed, so a call with
     # v0=None is reproducible and the global cupy.random state cannot leak

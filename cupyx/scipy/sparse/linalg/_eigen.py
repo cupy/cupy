@@ -17,19 +17,52 @@ from cupyx.scipy.sparse.linalg import _interface
 _DEFAULT_V0_SEED = 0
 
 
-def _default_v0(n, dtype, rs=None):
-    """Pseudo-random start vector of length ``n`` drawn from a fixed seed.
+_RANDOM_STATE_TYPES = (cupy.random.RandomState, cupy.random.Generator,
+                       numpy.random.RandomState, numpy.random.Generator)
 
-    A private ``RandomState`` is used so that neither ``cupy.random.seed``
-    nor any other consumer of the global generator changes the result.
+
+def _resolve_random_state(random_state):
+    """Map a ``random_state`` argument to a generator, or ``None``.
+
+    ``None`` stays ``None`` (each draw then starts from the fixed private
+    seed); an int seeds a new ``cupy.random.RandomState``; a CuPy or NumPy
+    ``RandomState``/``Generator`` is returned as is, to be advanced in place.
+    """
+    if random_state is None:
+        return None
+    if isinstance(random_state, (int, numpy.integer)):
+        return cupy.random.RandomState(int(random_state))
+    if isinstance(random_state, _RANDOM_STATE_TYPES):
+        return random_state
+    raise TypeError(
+        'random_state must be None, an int, a cupy.random.RandomState or '
+        'Generator, or a numpy.random.RandomState or Generator (actual: '
+        '{})'.format(type(random_state)))
+
+
+def _default_v0(n, dtype, rs=None):
+    """Pseudo-random start vector of length ``n``.
+
+    Drawn from ``rs`` (see :func:`_resolve_random_state`), or from a private
+    ``RandomState`` with a fixed seed when ``rs`` is ``None``, so that neither
+    ``cupy.random.seed`` nor any other consumer of the global generator
+    changes the result.
     """
     if rs is None:
         rs = cupy.random.RandomState(_DEFAULT_V0_SEED)
-    return rs.random_sample((n,)).astype(dtype)
+    if isinstance(rs, cupy.random.RandomState):
+        u = rs.random_sample((n,))
+    elif isinstance(rs, cupy.random.Generator):
+        u = rs.random((n,))
+    elif isinstance(rs, numpy.random.RandomState):
+        u = cupy.asarray(rs.random_sample((n,)))
+    else:                                   # numpy.random.Generator
+        u = cupy.asarray(rs.random((n,)))
+    return u.astype(dtype, copy=False)
 
 
 def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
-          tol=0, return_eigenvectors=True):
+          tol=0, return_eigenvectors=True, random_state=None):
     """
     Find ``k`` eigenvalues and eigenvectors of the real symmetric square
     matrix or complex Hermitian matrix ``A``.
@@ -54,6 +87,7 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
             repeated calls on the same input follow the same trajectory
             regardless of the global :mod:`cupy.random` state (as
             :func:`scipy.sparse.linalg.svds` does for its default start).
+            See ``random_state`` to choose that draw.
         ncv (int): The number of Lanczos vectors generated. Must be
             ``k + 1 < ncv < n``. If ``None``, default value is used.
         maxiter (int): Maximum number of Lanczos update iterations.
@@ -62,6 +96,13 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
             precision is used.
         return_eigenvectors (bool): If ``True``, returns eigenvectors in
             addition to eigenvalues.
+        random_state (int, cupy.random.RandomState, cupy.random.Generator,
+            numpy.random.RandomState or numpy.random.Generator): Source of
+            the default start vector when ``v0`` is ``None``. ``None`` (the
+            default) uses a fixed private seed, so identical calls give
+            identical results; an int seeds a new generator; a generator
+            object is used and advanced in place. Ignored when ``v0`` is
+            given, as in :func:`scipy.sparse.linalg.svds`.
 
     Returns:
         tuple:
@@ -125,7 +166,7 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
 
     # Set initial vector
     if v0 is None:
-        u = _default_v0(n, a.dtype)
+        u = _default_v0(n, a.dtype, _resolve_random_state(random_state))
         V[0] = u / cublas.nrm2(u)
     else:
         u = v0.copy()          # the driver writes into u; do not mutate v0
@@ -780,7 +821,7 @@ def _eigsh_solve_ritz(alpha, beta, beta_k, k, which):
 
 
 def svds(a, k=6, *, ncv=None, tol=0, which='LM', v0=None,
-         maxiter=None, return_singular_vectors=True):
+         maxiter=None, return_singular_vectors=True, random_state=None):
     """Finds the largest ``k`` singular values/vectors for a sparse matrix.
 
     Args:
@@ -799,11 +840,19 @@ def svds(a, k=6, *, ncv=None, tol=0, which='LM', v0=None,
         v0 (ndarray): Starting vector for iteration, of length
             ``min(a.shape)`` as in :func:`scipy.sparse.linalg.svds`. If
             ``None``, a pseudo-random vector drawn from a fixed seed is
-            used (see :func:`eigsh`).
+            used (see :func:`eigsh` and ``random_state``).
         maxiter (int): Maximum number of Lanczos update iterations.
             If ``None``, default value is used.
         return_singular_vectors (bool): If ``True``, returns singular vectors
             in addition to singular values.
+        random_state (int, cupy.random.RandomState, cupy.random.Generator,
+            numpy.random.RandomState or numpy.random.Generator): Source of
+            the default start vector when ``v0`` is ``None``, and of the
+            orthonormal columns that complete the singular vectors of a
+            rank-deficient input. ``None`` (the default) uses a fixed
+            private seed; an int seeds a new generator; a generator object
+            is used and advanced in place. Ignored for the start vector
+            when ``v0`` is given, as in :func:`scipy.sparse.linalg.svds`.
 
     Returns:
         tuple:
@@ -836,12 +885,14 @@ def svds(a, k=6, *, ncv=None, tol=0, which='LM', v0=None,
     else:
         aH, a = a, a.H
 
+    rs = _resolve_random_state(random_state)
     if return_singular_vectors:
         w, x = eigsh(aH @ a, k=k, which=which, ncv=ncv, maxiter=maxiter,
-                     tol=tol, v0=v0, return_eigenvectors=True)
+                     tol=tol, v0=v0, return_eigenvectors=True,
+                     random_state=rs)
     else:
         w = eigsh(aH @ a, k=k, which=which, ncv=ncv, maxiter=maxiter, tol=tol,
-                  v0=v0, return_eigenvectors=False)
+                  v0=v0, return_eigenvectors=False, random_state=rs)
 
     w = cupy.maximum(w, 0)
     t = w.dtype.char.lower()
@@ -862,22 +913,25 @@ def svds(a, k=6, *, ncv=None, tol=0, which='LM', v0=None,
     else:
         u = x
         v = a @ u / s[:n_large]
-    u = _augmented_orthnormal_cols(u, k - n_large)
-    v = _augmented_orthnormal_cols(v, k - n_large)
+    u = _augmented_orthnormal_cols(u, k - n_large, rs)
+    v = _augmented_orthnormal_cols(v, k - n_large, rs)
 
     return u, s, v.conj().T
 
 
-def _augmented_orthnormal_cols(x, n_aug):
+def _augmented_orthnormal_cols(x, n_aug, rs=None):
     if n_aug <= 0:
         return x
     m, n = x.shape
     y = cupy.empty((m, n + n_aug), dtype=x.dtype)
     y[:, :n] = x
-    # svds calls this twice (for u and for v); each call restarts from the
-    # same seed, so for m == n the pre-projection draws coincide and only
-    # the projections onto the two different bases separate them.
-    rs = cupy.random.RandomState(_DEFAULT_V0_SEED)
+    if rs is None:
+        # svds calls this twice (for u and for v); with no random_state each
+        # call restarts from the same seed, so for m == n the pre-projection
+        # draws coincide and only the projections onto the two different
+        # bases separate them. A caller-supplied generator is advanced
+        # across both calls instead.
+        rs = cupy.random.RandomState(_DEFAULT_V0_SEED)
     for i in range(n, n + n_aug):
         v = _default_v0(m, x.dtype, rs)
         v -= v @ y[:, :i].conj() @ y[:, :i].T
