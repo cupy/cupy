@@ -81,6 +81,7 @@ from cupyx.scipy.special._erf import erfc  # NOQA
 from cupyx.scipy.special._erf import erfcx  # NOQA
 from cupyx.scipy.special._erf import erfinv  # NOQA
 from cupyx.scipy.special._erf import erfcinv  # NOQA
+from cupyx.scipy.special._wofz import wofz  # NOQA
 
 # Legendre functions
 from cupyx.scipy.special._lpmv import lpmv  # NOQA

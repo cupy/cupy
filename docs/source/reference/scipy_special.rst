@@ -138,6 +138,7 @@ Error function and Fresnel integrals
    erfcx
    erfinv
    erfcinv
+   wofz
 
 
 Legendre functions
