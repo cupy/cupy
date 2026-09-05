@@ -687,7 +687,7 @@ configs {
       cpu: 8
       memory: 36
       disk: 30
-      gpu: 2
+      gpu: 1
       image: "windows"
     }
     time_limit {
@@ -696,7 +696,7 @@ configs {
     checkout_strategy {
       include_dot_git: true
     }
-    environment_variables { key: "GPU" value: "2" }
+    environment_variables { key: "GPU" value: "1" }
     command: ".pfnci\\windows\\run.bat 12.0 3.10 2.1 1.14 test"
   }
 }
@@ -708,7 +708,7 @@ configs {
       cpu: 8
       memory: 36
       disk: 30
-      gpu: 2
+      gpu: 1
       image: "windows"
     }
     time_limit {
@@ -717,7 +717,7 @@ configs {
     checkout_strategy {
       include_dot_git: true
     }
-    environment_variables { key: "GPU" value: "2" }
+    environment_variables { key: "GPU" value: "1" }
     command: ".pfnci\\windows\\run.bat 12.1 3.11 2.1 1.14 test"
   }
 }
@@ -729,7 +729,7 @@ configs {
       cpu: 8
       memory: 36
       disk: 30
-      gpu: 2
+      gpu: 1
       image: "windows"
     }
     time_limit {
@@ -738,7 +738,7 @@ configs {
     checkout_strategy {
       include_dot_git: true
     }
-    environment_variables { key: "GPU" value: "2" }
+    environment_variables { key: "GPU" value: "1" }
     command: ".pfnci\\windows\\run.bat 12.2 3.12 2.1 1.14 test"
   }
 }
@@ -750,7 +750,7 @@ configs {
       cpu: 8
       memory: 36
       disk: 30
-      gpu: 2
+      gpu: 1
       image: "windows"
     }
     time_limit {
@@ -759,7 +759,7 @@ configs {
     checkout_strategy {
       include_dot_git: true
     }
-    environment_variables { key: "GPU" value: "2" }
+    environment_variables { key: "GPU" value: "1" }
     command: ".pfnci\\windows\\run.bat 12.3 3.12 2.1 1.14 test"
   }
 }
@@ -771,7 +771,7 @@ configs {
       cpu: 8
       memory: 36
       disk: 30
-      gpu: 2
+      gpu: 1
       image: "windows"
     }
     time_limit {
@@ -780,7 +780,7 @@ configs {
     checkout_strategy {
       include_dot_git: true
     }
-    environment_variables { key: "GPU" value: "2" }
+    environment_variables { key: "GPU" value: "1" }
     command: ".pfnci\\windows\\run.bat 12.4 3.12 2.1 1.14 test"
   }
 }
@@ -792,7 +792,7 @@ configs {
       cpu: 8
       memory: 36
       disk: 30
-      gpu: 2
+      gpu: 1
       image: "windows"
     }
     time_limit {
@@ -801,7 +801,7 @@ configs {
     checkout_strategy {
       include_dot_git: true
     }
-    environment_variables { key: "GPU" value: "2" }
+    environment_variables { key: "GPU" value: "1" }
     command: ".pfnci\\windows\\run.bat 12.5 3.12 2.1 1.14 test"
   }
 }
@@ -813,7 +813,7 @@ configs {
       cpu: 8
       memory: 36
       disk: 30
-      gpu: 2
+      gpu: 1
       image: "windows"
     }
     time_limit {
@@ -822,7 +822,7 @@ configs {
     checkout_strategy {
       include_dot_git: true
     }
-    environment_variables { key: "GPU" value: "2" }
+    environment_variables { key: "GPU" value: "1" }
     command: ".pfnci\\windows\\run.bat 12.6 3.12 2.1 1.14 test"
   }
 }
@@ -834,7 +834,7 @@ configs {
       cpu: 8
       memory: 36
       disk: 30
-      gpu: 2
+      gpu: 1
       image: "windows"
     }
     time_limit {
@@ -843,7 +843,7 @@ configs {
     checkout_strategy {
       include_dot_git: true
     }
-    environment_variables { key: "GPU" value: "2" }
+    environment_variables { key: "GPU" value: "1" }
     command: ".pfnci\\windows\\run.bat 12.8 3.13 2.3 1.15 test"
   }
 }
@@ -855,7 +855,7 @@ configs {
       cpu: 8
       memory: 36
       disk: 30
-      gpu: 2
+      gpu: 1
       image: "windows"
     }
     time_limit {
@@ -864,7 +864,7 @@ configs {
     checkout_strategy {
       include_dot_git: true
     }
-    environment_variables { key: "GPU" value: "2" }
+    environment_variables { key: "GPU" value: "1" }
     command: ".pfnci\\windows\\run.bat 12.9 3.14 2.3 1.16 test"
   }
 }
@@ -876,7 +876,7 @@ configs {
       cpu: 8
       memory: 36
       disk: 30
-      gpu: 2
+      gpu: 1
       image: "windows"
     }
     time_limit {
@@ -885,7 +885,7 @@ configs {
     checkout_strategy {
       include_dot_git: true
     }
-    environment_variables { key: "GPU" value: "2" }
+    environment_variables { key: "GPU" value: "1" }
     command: ".pfnci\\windows\\run.bat 13.0 3.14 2.3 1.16 test"
   }
 }
@@ -896,7 +896,7 @@ configs {
       cpu: 8
       memory: 36
       disk: 10
-      gpu: 2
+      gpu: 1
       image: "windows"
     }
     time_limit {
@@ -905,7 +905,7 @@ configs {
     checkout_strategy {
       include_dot_git: true
     }
-    environment_variables { key: "GPU" value: "2" }
+    environment_variables { key: "GPU" value: "1" }
     command: ".pfnci\\windows\\run.bat 13.1 3.14 2.3 1.16 test"
   }
 }
@@ -916,7 +916,7 @@ configs {
       cpu: 8
       memory: 36
       disk: 10
-      gpu: 2
+      gpu: 1
       image: "windows"
     }
     time_limit {
@@ -925,7 +925,7 @@ configs {
     checkout_strategy {
       include_dot_git: true
     }
-    environment_variables { key: "GPU" value: "2" }
+    environment_variables { key: "GPU" value: "1" }
     command: ".pfnci\\windows\\run.bat 13.2 3.14 2.4 1.16 test"
   }
 }
