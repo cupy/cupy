@@ -1,49 +1,16 @@
 import threading
-import warnings
 
 from cupy._core._dtype cimport get_dtype
 from cupy._core.core cimport _ndarray_base
 from cupy.cuda.device cimport get_compute_capability
+from cupy._core._cuda_compute_common cimport _get_cuda_compute
 
 import numpy
 
 import cupy
-from cupy import _util
+from cupy._core._cuda_compute_common import _make_raw_op
 from cupy.cuda import compiler
 from cupy.cuda._compiler_cache import _hash_hexdigest
-
-_cuda_compute = False
-
-
-cpdef _get_cuda_compute():
-    global _cuda_compute
-
-    if _cuda_compute is False:
-        try:
-            from cuda import compute
-        except ImportError:
-            _cuda_compute = None
-        else:
-            if hasattr(compute, 'OpKind'):
-                _cuda_compute = compute
-            else:
-                warnings.warn(
-                    'cuda.compute is installed but its CUDA bindings '
-                    'could not be loaded, so the cuda_compute '
-                    'accelerator will be skipped', RuntimeWarning)
-                _cuda_compute = None
-    return _cuda_compute
-
-
-cdef _compile_cpp_to_ltoir(str src):
-    return compiler._compile_module_with_cache(src, (), to_ltoir=True)
-
-
-@_util.memoize(for_each_device=True)
-def _make_raw_op(str src, str name):
-    ltoir = _compile_cpp_to_ltoir(src)
-    return _get_cuda_compute().op.RawOp(ltoir=ltoir, name=name)
-
 
 cdef str _complex_op_src(str op, str ftype):
     if op == 'PLUS':

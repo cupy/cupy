@@ -15,8 +15,10 @@ cdef dict _typenames_base = {
     numpy.dtype('float64'): ('double', None),
     numpy.dtype('float32'): ('float', None),
     numpy.dtype('float16'): ('float16', '#include "cupy/float16.cuh"'),
-    numpy.dtype('complex128'): ('thrust::complex<double>', None),
-    numpy.dtype('complex64'): ('thrust::complex<float>', None),
+    numpy.dtype('complex128'): (
+        'thrust::complex<double>', '#include "cupy/complex.cuh"'),
+    numpy.dtype('complex64'): (
+        'thrust::complex<float>', '#include "cupy/complex.cuh"'),
     numpy.dtype('int64'): ('long long', None),
     numpy.dtype('int32'): ('int', None),
     numpy.dtype('int16'): ('short', None),

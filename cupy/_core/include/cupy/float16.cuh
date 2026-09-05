@@ -117,7 +117,7 @@ public:
 
 #ifdef __HIPCC__
 
-__device__ float16 operator-() {
+inline __device__ float16 operator-() {
   return float16(-data_);
 }
 
@@ -189,20 +189,20 @@ private:
 };
 
 
-__device__ float16 min(float16 x, float16 y) {
+inline __device__ float16 min(float16 x, float16 y) {
   return float16(min(float(x), float(y)));
 }
-__device__ float16 max(float16 x, float16 y) {
+inline __device__ float16 max(float16 x, float16 y) {
   return float16(max(float(x), float(y)));
 }
-__device__ float16 fmin(float16 x, float16 y) {
+inline __device__ float16 fmin(float16 x, float16 y) {
   return float16(fmin(float(x), float(y)));
 }
-__device__ float16 fmax(float16 x, float16 y) {
+inline __device__ float16 fmax(float16 x, float16 y) {
   return float16(fmax(float(x), float(y)));
 }
-__device__ int iszero(float16 x) {return x.iszero();}
-__device__ int isnan(float16 x) {return x.isnan();}
-__device__ int isinf(float16 x) {return x.isinf();}
-__device__ int isfinite(float16 x) {return x.isfinite();}
-__device__ int signbit(float16 x) {return x.signbit();}
+inline __device__ int iszero(float16 x) {return x.iszero();}
+inline __device__ int isnan(float16 x) {return x.isnan();}
+inline __device__ int isinf(float16 x) {return x.isinf();}
+inline __device__ int isfinite(float16 x) {return x.isfinite();}
+inline __device__ int signbit(float16 x) {return x.signbit();}

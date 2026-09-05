@@ -6,6 +6,7 @@ import pytest
 import cupy
 from cupy import testing
 from cupy._core import _accelerator
+from cupy._core import _cuda_compute_common
 from cupy._core import _cuda_compute_scan
 
 
@@ -15,7 +16,7 @@ from cupy._core import _cuda_compute_scan
 # CUPY_ACCELERATORS=cuda_compute).
 @pytest.fixture(autouse=True)
 def use_cuda_compute_accelerator():
-    if _cuda_compute_scan._get_cuda_compute() is None:
+    if _cuda_compute_common._get_cuda_compute() is None:
         pytest.skip('cuda.compute (cuda-cccl) not found')
 
     old_routine_accelerators = _accelerator.get_routine_accelerators()
