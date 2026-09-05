@@ -52,8 +52,8 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
         v0 (ndarray): Starting vector for iteration. If ``None``, a
             pseudo-random unit vector drawn from a fixed seed is used, so
             repeated calls on the same input follow the same trajectory
-            regardless of the global :mod:`cupy.random` state (as with the
-            default start of ARPACK in SciPy).
+            regardless of the global :mod:`cupy.random` state (as
+            :func:`scipy.sparse.linalg.svds` does for its default start).
         ncv (int): The number of Lanczos vectors generated. Must be
             ``k + 1 < ncv < n``. If ``None``, default value is used.
         maxiter (int): Maximum number of Lanczos update iterations.
@@ -128,8 +128,8 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
         u = _default_v0(n, a.dtype)
         V[0] = u / cublas.nrm2(u)
     else:
-        u = v0
-        V[0] = v0 / cublas.nrm2(v0)
+        u = v0.copy()          # the driver writes into u; do not mutate v0
+        V[0] = u / cublas.nrm2(u)
 
     # Choose Lanczos implementation, unconditionally use 'fast' for now
     upadte_impl = 'fast'
@@ -874,6 +874,9 @@ def _augmented_orthnormal_cols(x, n_aug):
     m, n = x.shape
     y = cupy.empty((m, n + n_aug), dtype=x.dtype)
     y[:, :n] = x
+    # svds calls this twice (for u and for v); each call restarts from the
+    # same seed, so for m == n the pre-projection draws coincide and only
+    # the projections onto the two different bases separate them.
     rs = cupy.random.RandomState(_DEFAULT_V0_SEED)
     for i in range(n, n + n_aug):
         v = _default_v0(m, x.dtype, rs)

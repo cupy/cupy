@@ -492,12 +492,15 @@ class TestSvdsV0:
         # result) still varies between identical calls.
         a = sparse.csr_matrix(self._mat(cupy))
         v0 = testing.shaped_random((45,), cupy, dtype='d', scale=1, seed=7)
-        s1 = sparse.linalg.svds(a, k=5, v0=v0.copy(),
+        v0_in = v0.copy()
+        s1 = sparse.linalg.svds(a, k=5, v0=v0,
                                 return_singular_vectors=False)
-        s2 = sparse.linalg.svds(a, k=5, v0=v0.copy(),
+        s2 = sparse.linalg.svds(a, k=5, v0=v0,
                                 return_singular_vectors=False)
         cupy.testing.assert_allclose(cupy.sort(s1), cupy.sort(s2),
                                      rtol=1e-9, atol=1e-9)
+        # v0 is an input, not a workspace: the caller's array is unchanged.
+        cupy.testing.assert_array_equal(v0, v0_in)
 
     def test_v0_matches_scipy(self):
         import numpy
