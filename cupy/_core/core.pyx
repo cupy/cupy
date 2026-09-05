@@ -48,6 +48,7 @@ from cupy._core cimport _routines_statistics as _statistics
 from cupy._core cimport _scalar
 from cupy._core cimport dlpack
 from cupy._core cimport internal
+from cupy._core.numpy_allocator cimport array_uses_cupy_allocator
 from cupy.cuda cimport device
 from cupy.cuda cimport function
 from cupy.cuda cimport pinned_memory
@@ -129,6 +130,18 @@ cdef inline bint is_ump_supported(int device_id) except*:
         return True
     else:
         return False
+
+
+cdef inline bint is_device_accessible(cnp.ndarray arr) except*:
+    """True if the GPU can access this NumPy array's data."""
+    cdef int device_id = device.get_device_id()
+    allocator = array_uses_cupy_allocator(arr)
+    if allocator == "managed":
+        return True
+    if allocator == "system":
+        return runtime.deviceGetAttribute(
+            runtime.cudaDevAttrPageableMemoryAccess, device_id) != 0
+    return is_ump_supported(device_id)
 
 
 class ndarray(_ndarray_base):
@@ -481,7 +494,13 @@ cdef class _ndarray_base:
         cpython.Py_DECREF(self)
 
     cdef inline bint is_host_accessible(self) except*:
-        return self.data.mem.identity in ('SystemMemory', 'ManagedMemory')
+        # PooledMemory exposes `.identity`; from_external wraps are raw
+        # SystemMemory / ManagedMemory and have no such attribute.
+        mem = self.data.mem
+        if isinstance(mem, (memory.SystemMemory, memory.ManagedMemory)):
+            return True
+        identity = getattr(mem, 'identity', None)
+        return identity in ('SystemMemory', 'ManagedMemory')
 
     # The definition order of attributes and methods are borrowed from the
     # order of documentation at the following NumPy document.
@@ -501,8 +520,11 @@ cdef class _ndarray_base:
         .. seealso:: :attr:`numpy.ndarray.flags`
 
         """
-        return _flags.Flags(self._c_contiguous, self._f_contiguous,
-                            self.base is None)
+        return _flags.Flags(
+            self._c_contiguous, self._f_contiguous,
+            (self.base is None
+                # TODO(seberg): MemoryPointer should have a flag for "owning"?
+                and getattr(self.data.mem, '_owner', None) is None))
 
     property shape:
         """Lengths of axes.
@@ -2976,11 +2998,14 @@ cdef inline _ndarray_base _try_skip_h2d_copy(
     if copy:
         return None
 
-    if not is_ump_supported(device.get_device_id()):
-        return None
-
     if not isinstance(obj, numpy.ndarray):
         return None
+
+    if not is_device_accessible(<cnp.ndarray>obj):
+        return None
+    allocator = array_uses_cupy_allocator(<cnp.ndarray>obj)
+    if allocator is None:
+        allocator = "system"
 
     # dtype should not change
     obj_dtype = obj.dtype
@@ -3011,8 +3036,15 @@ cdef inline _ndarray_base _try_skip_h2d_copy(
         shape = (1,) * (ndmin - ndim) + shape
         strides = (shape[0] * strides[0],) * (ndmin - ndim) + strides
 
-    cdef memory.SystemMemory ext_mem = memory.SystemMemory.from_external(
-        ptr, nbytes, obj)
+    if allocator == "system":
+        ext_mem = memory.SystemMemory.from_external(
+            ptr, nbytes, obj)
+    elif allocator == "managed":
+        ext_mem = memory.ManagedMemory.from_external(
+            ptr, nbytes, obj)
+    else:
+        raise SystemError(f"internal error, bad allocator kind: {allocator}")
+
     cdef memory.MemoryPointer memptr = memory.MemoryPointer(ext_mem, 0)
     return ndarray(shape, obj_dtype, memptr, strides)
 
@@ -3041,7 +3073,9 @@ cdef _ndarray_base _array_default(
     # it below. Copying (which may not be pinned) here is not useful.
     # TODO(seberg): In principle even `dtype=` is not useful here, but
     # I am hesitant to remove it for the dtype conversion/validation.
-    if isinstance(obj, numpy.ndarray) and not _is_ump_enabled:
+    # Device-accessible buffers take the wrap path, so honor `copy` there.
+    if isinstance(obj, numpy.ndarray) and not is_device_accessible(
+            <cnp.ndarray>obj):
         a_cpu = numpy.array(obj, dtype=dtype, copy=None, ndmin=ndmin)
         if order_char == b'C':
             is_correct_contiguous = a_cpu.flags.c_contiguous
@@ -3050,18 +3084,21 @@ cdef _ndarray_base _array_default(
         else:
             assert False  # assume above normalizes to C or F.
     else:
-        a_cpu = numpy.array(obj, dtype=dtype, copy=None, order=order,
-                            ndmin=ndmin)
+        a_cpu = numpy.array(
+            obj, dtype=dtype, copy=True if copy else None, order=order,
+            ndmin=ndmin)
         is_correct_contiguous = True
 
     a_cpu = a_cpu.astype(_dtype.normalize_dtype(a_cpu.dtype), copy=False)
     a_dtype = a_cpu.dtype
 
     # We already made a copy, we should be able to use it
-    if _is_ump_enabled:
+    if is_device_accessible(<cnp.ndarray>a_cpu):
         a = _try_skip_h2d_copy(a_cpu, a_dtype, False, order, ndmin)
-        assert a is not None
-        return a
+        if a is not None:
+            return a
+        # should only fail if not a supported dtype.
+        assert not _dtype.check_supported_dtype(a_dtype, error=False)
 
     cdef shape_t a_shape = a_cpu.shape
     a = ndarray(a_shape, dtype=a_dtype, order=order)
