@@ -244,13 +244,18 @@ class TestEigsh:
         a = cupy.asarray((q * evals) @ q.T).astype(dtype)
         v0 = cupy.asarray(
             numpy.random.default_rng(1).random(n)).astype(dtype)
-        w = sparse.linalg.eigsh(sparse.csr_matrix(a), k=k, which='LA',
-                                v0=v0, return_eigenvectors=False)
+        w, x = sparse.linalg.eigsh(sparse.csr_matrix(a), k=k, which='LA',
+                                   v0=v0, return_eigenvectors=True)
         assert not bool(cupy.isnan(w).any())
         assert bool((cupy.abs(w) < 1e3).all())      # no ghost / overflow
         tol = self.clustered_tol[numpy.dtype(dtype).char.lower()]
         cupy.testing.assert_allclose(
             cupy.sort(w.real), cupy.full(k, 50.0), rtol=tol, atol=tol)
+        # True residual of every returned pair, not just the eigenvalues:
+        # this is the path where a fabricated locked pair would surface.
+        r = cupy.linalg.norm(sparse.csr_matrix(a) @ x - x * w[None, :],
+                             axis=0)
+        assert bool((r <= tol * 50.0).all())
 
     @testing.for_dtypes('fdFD')
     def test_null_space_start(self, dtype):
@@ -395,10 +400,68 @@ class TestEigshLateNormDiscovery:
         v0 = numpy.random.default_rng(0).random(n)
         v0[0] = 0.0                        # exactly orthogonal to e_0
         v0 = cupy.asarray((v0 / numpy.linalg.norm(v0)).astype(dtype))
-        w = sparse.linalg.eigsh(a, k=6, which='LA', v0=v0,
-                                return_eigenvectors=False)
+        w, x = sparse.linalg.eigsh(a, k=6, which='LA', v0=v0,
+                                   return_eigenvectors=True)
         assert not bool(cupy.isnan(w).any())
         assert bool((cupy.abs(w) <= 8 * big).all())
+        # The point of the test: the dominant eigenvalue hidden from v0
+        # must actually be discovered -- six copies of 1 would otherwise
+        # satisfy the two assertions above.
+        assert abs(float(cupy.abs(w).max()) - big) <= 1e-6 * big
+        # And every returned pair must be a true eigenpair, not a value
+        # that the projected residual alone declared converged.
+        r = cupy.linalg.norm(a @ x - x * w[None, :], axis=0)
+        tol = {'f': 1e-4, 'd': 1e-9}[numpy.dtype(dtype).char.lower()]
+        assert bool((r <= tol * big).all())
+
+
+@testing.with_requires('scipy')
+class TestEigshNormBound:
+    # The divergence guard compares the Lanczos ||A|| estimate against a
+    # true upper bound computed from the operator's entries. A previous
+    # revision used cupy.abs() on a sparse matrix, which raises and was
+    # swallowed, so the bound was None -- and the guard inert -- for every
+    # sparse operator (cupy/cupy#10257). Pin the bound on all three sparse
+    # formats and confirm it is unavailable (None) for a LinearOperator.
+    @testing.for_dtypes('fdFD')
+    @pytest.mark.parametrize('fmt', ['csr', 'csc', 'coo'])
+    def test_sparse_bound_matches_dense(self, dtype, fmt):
+        from cupyx.scipy.sparse.linalg import _eigen
+        a = testing.shaped_random((40, 40), cupy, dtype=dtype, seed=0)
+        a = a + a.conj().T
+        expected = float(cupy.abs(a).sum(axis=1).max())
+        sp_a = sparse.csr_matrix(a).asformat(fmt)
+        got = _eigen._norm_upper_bound(sp_a)
+        assert got is not None
+        assert abs(got - expected) <= 1e-5 * expected
+
+    def test_linear_operator_has_no_bound(self):
+        from cupyx.scipy.sparse.linalg import _eigen
+        a = sparse.csr_matrix(cupy.eye(8))
+        lo = sparse.linalg.aslinearoperator(a)
+        assert _eigen._norm_upper_bound(lo.H @ lo) is None
+
+
+@testing.with_requires('scipy')
+class TestEigshLockedBlockFailsClosed:
+    # A duplicated row in the locked block means the basis already lost
+    # orthogonality. Substituting a fresh direction cannot restore
+    # T = V A V^H (stale arrowhead coupling), so the check must raise
+    # rather than carry a fabricated pair as converged (cupy/cupy#10257).
+    def test_duplicate_locked_row_raises(self):
+        from cupyx.scipy.sparse.linalg import _eigen
+        V = cupy.zeros((3, 3), dtype=cupy.float64)
+        V[0] = cupy.asarray([1.0, 0.0, 0.0])
+        V[1] = cupy.asarray([1.0, 0.0, 0.0])        # exact duplicate
+        tol = float(numpy.sqrt(numpy.finfo(numpy.float64).eps))
+        with pytest.raises(RuntimeError, match='locked Ritz block'):
+            _eigen._check_locked(V, 2, tol, w_host=None)
+
+    def test_orthonormal_locked_block_passes(self):
+        from cupyx.scipy.sparse.linalg import _eigen
+        V = cupy.eye(3, dtype=cupy.float64)
+        tol = float(numpy.sqrt(numpy.finfo(numpy.float64).eps))
+        _eigen._check_locked(V, 2, tol, w_host=None)   # must not raise
 
 
 @testing.with_requires('scipy')
@@ -462,11 +525,17 @@ class TestEigshDegenerateHermitian:
             expected = cupy.full((self.k,), self.shift,
                                  dtype=nonzero.dtype)
 
-        w = sparse.linalg.eigsh(sparse.csr_matrix(a), k=self.k,
-                                which=self.which,
-                                return_eigenvectors=False)
+        w, x = sparse.linalg.eigsh(sparse.csr_matrix(a), k=self.k,
+                                   which=self.which,
+                                   return_eigenvectors=True)
         assert not bool(cupy.isnan(w).any())
         assert bool(cupy.isfinite(w).all())
+        # True residual of every pair, scaled by ||A|| rather than |w|
+        # because the degenerate block sits at the shift (possibly 0).
+        r = cupy.linalg.norm(sparse.csr_matrix(a) @ x - x * w[None, :],
+                             axis=0)
+        rtol = {'f': 1e-4, 'd': 1e-9}[numpy.dtype(dtype).char.lower()]
+        assert bool((r <= rtol * float(cupy.abs(nonzero).max())).all())
         # Absolute tolerance must scale with ||A||: the degenerate block
         # sits at the roundoff floor of the largest eigenvalue, not at an
         # absolute one. Same 64*eps*||A|| scale the solver itself uses.
