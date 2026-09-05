@@ -330,6 +330,7 @@ def dummy_deriv_func(input, axis, output, mode, cval, *args, **kwargs):
             'axis': [0, 1, -1],
             'sigma': [1.5, 2],
             'truncate': [2.75, 4],
+            'radius': [None, 2],
         }) + testing.product({
             'filter': ['gaussian_filter', 'gaussian_laplace',
                        'gaussian_gradient_magnitude'],
@@ -1053,6 +1054,27 @@ class TestInvalidOrigin(FilterTestCaseBase):
                                  accept_error=ValueError)
     def test_invalid_origin_pos(self, xp, scp):
         self.origin = self.ksize - self.ksize // 2
+        return self._filter(xp, scp)
+
+
+# Tests invalid radius values for gaussian_filter1d
+@testing.parameterize(*testing.product({
+    'filter': ['gaussian_filter1d'],
+    'sigma': [1.5],
+    'shape': [(4, 5)], 'dtype': [numpy.float64],
+}))
+@testing.with_requires('scipy>=1.10')
+class TestInvalidGaussianRadius(FilterTestCaseBase):
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
+                                 accept_error=ValueError)
+    def test_invalid_radius_neg(self, xp, scp):
+        self.radius = -1
+        return self._filter(xp, scp)
+
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
+                                 accept_error=ValueError)
+    def test_invalid_radius_float(self, xp, scp):
+        self.radius = 1.5
         return self._filter(xp, scp)
 
 

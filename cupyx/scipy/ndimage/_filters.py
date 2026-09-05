@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import numbers
+
 import numpy
 
 import cupy
@@ -319,7 +321,7 @@ def uniform_filter(input, size=3, output=None, mode="reflect", cval=0.0,
 
 
 def gaussian_filter1d(input, sigma, axis=-1, order=0, output=None,
-                      mode="reflect", cval=0.0, truncate=4.0):
+                      mode="reflect", cval=0.0, truncate=4.0, *, radius=None):
     """One-dimensional Gaussian filter along the given axis.
 
     The lines of the array along the given axis are filtered with a Gaussian
@@ -341,6 +343,9 @@ def gaussian_filter1d(input, sigma, axis=-1, order=0, output=None,
             ``'constant'``. Default is ``0.0``.
         truncate (float): Truncate the filter at this many standard deviations.
             Default is ``4.0``.
+        radius (int or None): Radius of the Gaussian kernel. If specified, the
+            size of the kernel will be ``2*radius + 1``, and ``truncate`` is
+            ignored. Default is ``None``.
 
     Returns:
         cupy.ndarray: The result of the filtering.
@@ -356,7 +361,11 @@ def gaussian_filter1d(input, sigma, axis=-1, order=0, output=None,
         and input is integral) the results may not perfectly match the results
         from SciPy due to floating-point rounding of intermediate results.
     """
-    radius = int(float(truncate) * float(sigma) + 0.5)
+    if radius is None:
+        radius = int(float(truncate) * float(sigma) + 0.5)
+    if not isinstance(radius, numbers.Integral) or radius < 0:
+        raise ValueError('Radius must be a nonnegative integer.')
+    radius = int(radius)
     weights_dtype = _util._init_weights_dtype(input)
     weights = _gaussian_kernel1d(
         sigma, int(order), radius, dtype=weights_dtype
