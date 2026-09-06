@@ -5,7 +5,10 @@ from __future__ import annotations
 from cupy import _core
 
 
-lambertw_preamble = "#include <cupy/xsf/lambertw.h>"
+lambertw_preamble = """
+#include <cupy/xsf/lambertw.h>
+#include <cupy/_xsf_thrust_complex_bridge.h>
+"""
 
 _lambertw_scalar = _core.create_ufunc(
     "cupyx_scipy_lambertw_scalar",
