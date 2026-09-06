@@ -43,7 +43,7 @@ sici = _core.create_ufunc(
     preamble="#include <cupy/xsf/sici.h>",
     doc="""Sine and cosine integrals.
 
-    .. seealso:: :meth:`scipy.special.sici`
+    .. seealso:: :func:`scipy.special.sici`
 
     """
 )
@@ -87,7 +87,7 @@ shichi = _core.create_ufunc(
     preamble="#include <cupy/xsf/sici.h>",
     doc="""Hyperbolic sine and cosine integrals.
 
-    .. seealso:: :meth:`scipy.special.shichi`
+    .. seealso:: :func:`scipy.special.shichi`
 
     """
 )

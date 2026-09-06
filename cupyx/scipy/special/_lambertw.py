@@ -18,7 +18,7 @@ _lambertw_scalar = _core.create_ufunc(
 def lambertw(z, k=0, tol=1e-8):
     """Lambert W function.
 
-    .. seealso:: :meth:`scipy.special.lambertw`
+    .. seealso:: :func:`scipy.special.lambertw`
 
     """
     return _lambertw_scalar(z, k, tol)

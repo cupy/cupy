@@ -96,7 +96,7 @@ ellipkm1 = _core.create_ufunc(
     Returns:
         cupy.ndarray: Computed value of the elliptic integral.
 
-    .. seealso:: :data:`scipy.special.ellipkm1`
+    .. seealso:: :func:`scipy.special.ellipkm1`
 
     """)
 
@@ -114,7 +114,7 @@ ellipk = _core.create_ufunc(
     Returns:
         cupy.ndarray: Computed value of the elliptic integral.
 
-    .. seealso:: :data:`scipy.special.ellipk`
+    .. seealso:: :func:`scipy.special.ellipk`
 
     """)
 
@@ -232,7 +232,7 @@ ellipj = _core.create_ufunc(
      Returns:
         sn, cn, dn, ph: Computed values.
 
-     .. seealso:: :data:`scipy.special.ellipj`
+     .. seealso:: :func:`scipy.special.ellipj`
     """
 )
 
@@ -245,7 +245,7 @@ ellipkinc = _core.create_ufunc(
     preamble=ellipkinc_preamble,
     doc="""Incomplete elliptic integral of the first kind.
 
-    .. seealso:: :meth:`scipy.special.ellipkinc`
+    .. seealso:: :func:`scipy.special.ellipkinc`
 
     """
 )
@@ -256,7 +256,7 @@ ellipeinc = _core.create_ufunc(
     preamble=ellipeinc_preamble,
     doc="""Incomplete elliptic integral of the second kind.
 
-    .. seealso:: :meth:`scipy.special.ellipeinc`
+    .. seealso:: :func:`scipy.special.ellipeinc`
 
     """
 )

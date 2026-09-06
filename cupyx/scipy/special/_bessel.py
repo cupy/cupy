@@ -16,7 +16,7 @@ j0 = _core.create_ufunc(
     'out0 = j0(out0_type(in0))',
     doc='''Bessel function of the first kind of order 0.
 
-    .. seealso:: :meth:`scipy.special.j0`
+    .. seealso:: :func:`scipy.special.j0`
 
     ''')
 
@@ -26,7 +26,7 @@ j1 = _core.create_ufunc(
     'out0 = j1(out0_type(in0))',
     doc='''Bessel function of the first kind of order 1.
 
-    .. seealso:: :meth:`scipy.special.j1`
+    .. seealso:: :func:`scipy.special.j1`
 
     ''')
 
@@ -36,7 +36,7 @@ y0 = _core.create_ufunc(
     'out0 = y0(out0_type(in0))',
     doc='''Bessel function of the second kind of order 0.
 
-    .. seealso:: :meth:`scipy.special.y0`
+    .. seealso:: :func:`scipy.special.y0`
 
     ''')
 
@@ -46,7 +46,7 @@ y1 = _core.create_ufunc(
     'out0 = y1(out0_type(in0))',
     doc='''Bessel function of the second kind of order 1.
 
-    .. seealso:: :meth:`scipy.special.y1`
+    .. seealso:: :func:`scipy.special.y1`
 
     ''')
 
@@ -70,7 +70,7 @@ yn = _core.create_ufunc(
     Unlike SciPy, no warning will be raised on unsafe casting of `order` to
     32-bit integer.
 
-    .. seealso:: :meth:`scipy.special.yn`
+    .. seealso:: :func:`scipy.special.yn`
     ''')
 
 
@@ -79,7 +79,7 @@ i0 = _core.create_ufunc(
     'out0 = cyl_bessel_i0(out0_type(in0))',
     doc='''Modified Bessel function of order 0.
 
-    .. seealso:: :meth:`scipy.special.i0`
+    .. seealso:: :func:`scipy.special.i0`
 
     ''')
 
@@ -89,7 +89,7 @@ i0e = _core.create_ufunc(
     'out0 = exp(-abs(out0_type(in0))) * cyl_bessel_i0(out0_type(in0))',
     doc='''Exponentially scaled modified Bessel function of order 0.
 
-    .. seealso:: :meth:`scipy.special.i0e`
+    .. seealso:: :func:`scipy.special.i0e`
 
     ''')
 
@@ -99,7 +99,7 @@ i1 = _core.create_ufunc(
     'out0 = cyl_bessel_i1(out0_type(in0))',
     doc='''Modified Bessel function of order 1.
 
-    .. seealso:: :meth:`scipy.special.i1`
+    .. seealso:: :func:`scipy.special.i1`
 
     ''')
 
@@ -109,7 +109,7 @@ i1e = _core.create_ufunc(
     'out0 = exp(-abs(out0_type(in0))) * cyl_bessel_i1(out0_type(in0))',
     doc='''Exponentially scaled modified Bessel function of order 1.
 
-    .. seealso:: :meth:`scipy.special.i1e`
+    .. seealso:: :func:`scipy.special.i1e`
 
     ''')
 
@@ -405,7 +405,7 @@ k0 = _core.create_ufunc(
     Returns:
         cupy.ndarray: Value of the modified Bessel function K of order 0 at x.
 
-    .. seealso:: :meth:`scipy.special.k0`
+    .. seealso:: :func:`scipy.special.k0`
 
     ''')
 
@@ -423,7 +423,7 @@ k0e = _core.create_ufunc(
     Returns:
         cupy.ndarray: Value at x.
 
-    .. seealso:: :meth:`scipy.special.k0e`
+    .. seealso:: :func:`scipy.special.k0e`
 
     ''')
 
@@ -441,7 +441,7 @@ k1 = _core.create_ufunc(
     Returns:
         cupy.ndarray: Value of the modified Bessel function K of order 1 at x.
 
-    .. seealso:: :meth:`scipy.special.k1`
+    .. seealso:: :func:`scipy.special.k1`
 
     ''')
 
@@ -459,6 +459,6 @@ k1e = _core.create_ufunc(
     Returns:
         cupy.ndarray: Value at x.
 
-    .. seealso:: :meth:`scipy.special.k1e`
+    .. seealso:: :func:`scipy.special.k1e`
 
     ''')

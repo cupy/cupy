@@ -1099,7 +1099,7 @@ gammaincc = _core.create_ufunc(
 
     Regularized upper incomplete gamma function.
 
-    .. seealso:: :meth:`scipy.special.gammaincc`
+    .. seealso:: :func:`scipy.special.gammaincc`
     """,
 )
 
@@ -1113,7 +1113,7 @@ gammainc = _core.create_ufunc(
 
     Regularized lower incomplete gamma function.
 
-    .. seealso:: :meth:`scipy.special.gammainc`
+    .. seealso:: :func:`scipy.special.gammainc`
     """,
 )
 
@@ -1127,7 +1127,7 @@ gammainccinv = _core.create_ufunc(
 
     Inverse to gammaincc.
 
-    .. seealso:: :meth:`scipy.special.gammainccinv`
+    .. seealso:: :func:`scipy.special.gammainccinv`
     """,
 )
 
@@ -1141,6 +1141,6 @@ gammaincinv = _core.create_ufunc(
 
     Inverse to gammainc.
 
-    .. seealso:: :meth:`scipy.special.gammaincinv`
+    .. seealso:: :func:`scipy.special.gammaincinv`
     """,
 )
