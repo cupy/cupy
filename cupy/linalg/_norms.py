@@ -56,12 +56,11 @@ def norm(x, ord=None, axis=None, keepdims=False):
         ndim = x.ndim
         if (ord is None or (ndim == 1 and ord == 2) or
                 (ndim == 2 and ord in ('f', 'fro'))):
+            x = x.ravel(order='A')
             if x.dtype.kind == 'c':
-                s = abs(x.ravel())
-                s *= s
-                ret = cupy.sqrt(s.sum())
+                ret = _norm_ord2_complex(x)
             else:
-                ret = cupy.sqrt((x * x).sum())
+                ret = _norm_ord2(x)
             if keepdims:
                 ret = ret.reshape((1,) * ndim)
             return ret
