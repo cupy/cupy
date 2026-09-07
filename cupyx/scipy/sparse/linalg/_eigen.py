@@ -10,46 +10,37 @@ from cupy_backends.cuda.libs import cublas as _cublas
 from cupyx.scipy.sparse import _csr
 from cupyx.scipy.sparse.linalg import _interface
 
-# Seed of the default Lanczos start vector. Drawing it from a fixed seed
-# makes eigsh and svds deterministic for a given input, as ARPACK's default
-# start is, and independent of the global cupy.random state; the trajectory
-# can still be chosen explicitly through v0.
-_DEFAULT_V0_SEED = 0
+_RNG_TYPES = (cupy.random.RandomState, cupy.random.Generator,
+              numpy.random.RandomState, numpy.random.Generator)
 
 
-_RANDOM_STATE_TYPES = (cupy.random.RandomState, cupy.random.Generator,
-                       numpy.random.RandomState, numpy.random.Generator)
+def _resolve_rng(rng):
+    """Map an ``rng`` argument to a generator object.
 
-
-def _resolve_random_state(random_state):
-    """Map a ``random_state`` argument to a generator, or ``None``.
-
-    ``None`` stays ``None`` (each draw then starts from the fixed private
-    seed); an int seeds a new ``cupy.random.RandomState``; a CuPy or NumPy
-    ``RandomState``/``Generator`` is returned as is, to be advanced in place.
+    ``None`` gives a fresh :func:`cupy.random.default_rng` (entropy from the
+    operating system, so each call starts differently, as
+    :func:`scipy.sparse.linalg.eigsh` does); the :mod:`cupy.random` module
+    itself means the global :class:`cupy.random.RandomState`, so that
+    :func:`cupy.random.seed` controls the draw; an int seeds a new
+    :func:`cupy.random.default_rng`; a CuPy or NumPy ``RandomState`` or
+    ``Generator`` is used as is and advanced in place.
     """
-    if random_state is None:
-        return None
-    if isinstance(random_state, (int, numpy.integer)):
-        return cupy.random.RandomState(int(random_state))
-    if isinstance(random_state, _RANDOM_STATE_TYPES):
-        return random_state
+    if rng is None:
+        return cupy.random.default_rng()
+    if rng is cupy.random:
+        return cupy.random.get_random_state()
+    if isinstance(rng, (int, numpy.integer)):
+        return cupy.random.default_rng(int(rng))
+    if isinstance(rng, _RNG_TYPES):
+        return rng
     raise TypeError(
-        'random_state must be None, an int, a cupy.random.RandomState or '
+        'rng must be None, an int, cupy.random, a cupy.random.RandomState or '
         'Generator, or a numpy.random.RandomState or Generator (actual: '
-        '{})'.format(type(random_state)))
+        '{})'.format(type(rng)))
 
 
-def _default_v0(n, dtype, rs=None):
-    """Pseudo-random start vector of length ``n``.
-
-    Drawn from ``rs`` (see :func:`_resolve_random_state`), or from a private
-    ``RandomState`` with a fixed seed when ``rs`` is ``None``, so that neither
-    ``cupy.random.seed`` nor any other consumer of the global generator
-    changes the result.
-    """
-    if rs is None:
-        rs = cupy.random.RandomState(_DEFAULT_V0_SEED)
+def _default_v0(n, dtype, rs):
+    """Random start vector of length ``n`` drawn from the resolved ``rs``."""
     if isinstance(rs, cupy.random.RandomState):
         u = rs.random_sample((n,))
     elif isinstance(rs, cupy.random.Generator):
@@ -62,7 +53,7 @@ def _default_v0(n, dtype, rs=None):
 
 
 def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
-          tol=0, return_eigenvectors=True, random_state=None):
+          tol=0, return_eigenvectors=True, rng=None):
     """
     Find ``k`` eigenvalues and eigenvectors of the real symmetric square
     matrix or complex Hermitian matrix ``A``.
@@ -82,12 +73,8 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
             'LA': finds ``k`` largest (algebraic) eigenvalues.
             'SA': finds ``k`` smallest (algebraic) eigenvalues.
 
-        v0 (ndarray): Starting vector for iteration. If ``None``, a
-            pseudo-random unit vector drawn from a fixed seed is used, so
-            repeated calls on the same input follow the same trajectory
-            regardless of the global :mod:`cupy.random` state (as
-            :func:`scipy.sparse.linalg.svds` does for its default start).
-            See ``random_state`` to choose that draw.
+        v0 (ndarray): Starting vector for iteration. If ``None``, a random
+            unit vector drawn from ``rng`` is used.
         ncv (int): The number of Lanczos vectors generated. Must be
             ``k + 1 < ncv < n``. If ``None``, default value is used.
         maxiter (int): Maximum number of Lanczos update iterations.
@@ -96,15 +83,16 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
             precision is used.
         return_eigenvectors (bool): If ``True``, returns eigenvectors in
             addition to eigenvalues.
-        random_state (int or generator): Source of the default start vector
-            when ``v0`` is ``None``. ``None`` (the default) uses a fixed
-            private seed, so identical calls give identical results; an int
-            seeds a new :class:`cupy.random.RandomState`; a
-            :class:`cupy.random.RandomState`, :class:`cupy.random.Generator`,
-            :class:`numpy.random.RandomState` or
-            :class:`numpy.random.Generator` is used and advanced in place.
-            Ignored when ``v0`` is given, as in
-            :func:`scipy.sparse.linalg.svds`.
+        rng (int or generator): Source of the default start vector when
+            ``v0`` is ``None``. ``None`` (the default) draws from a fresh
+            :func:`cupy.random.default_rng`, so repeated calls start
+            differently, as in :func:`scipy.sparse.linalg.eigsh`; pass an
+            int for a reproducible start, a :class:`cupy.random.Generator`,
+            :class:`cupy.random.RandomState`, :class:`numpy.random.Generator`
+            or :class:`numpy.random.RandomState` to use and advance that
+            object, or the :mod:`cupy.random` module to use the global state
+            (so that :func:`cupy.random.seed` applies). Ignored when ``v0``
+            is given.
 
     Returns:
         tuple:
@@ -168,7 +156,7 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
 
     # Set initial vector
     if v0 is None:
-        u = _default_v0(n, a.dtype, _resolve_random_state(random_state))
+        u = _default_v0(n, a.dtype, _resolve_rng(rng))
         V[0] = u / cublas.nrm2(u)
     else:
         u = v0.copy()          # the driver writes into u; do not mutate v0
@@ -823,7 +811,7 @@ def _eigsh_solve_ritz(alpha, beta, beta_k, k, which):
 
 
 def svds(a, k=6, *, ncv=None, tol=0, which='LM', v0=None,
-         maxiter=None, return_singular_vectors=True, random_state=None):
+         maxiter=None, return_singular_vectors=True, rng=None):
     """Finds the largest ``k`` singular values/vectors for a sparse matrix.
 
     Args:
@@ -841,21 +829,17 @@ def svds(a, k=6, *, ncv=None, tol=0, which='LM', v0=None,
             values.
         v0 (ndarray): Starting vector for iteration, of length
             ``min(a.shape)`` as in :func:`scipy.sparse.linalg.svds`. If
-            ``None``, a pseudo-random vector drawn from a fixed seed is
-            used (see :func:`eigsh` and ``random_state``).
+            ``None``, a random vector drawn from ``rng`` is used.
         maxiter (int): Maximum number of Lanczos update iterations.
             If ``None``, default value is used.
         return_singular_vectors (bool): If ``True``, returns singular vectors
             in addition to singular values.
-        random_state (int or generator): Source of the default start vector
-            when ``v0`` is ``None``, and of the orthonormal columns that
-            complete the singular vectors of a rank-deficient input. Accepts
-            the same values as :func:`eigsh`: ``None`` (the default) uses a
-            fixed private seed, an int seeds a new
-            :class:`cupy.random.RandomState`, and a CuPy or NumPy
-            ``RandomState`` or ``Generator`` is used and advanced in place.
-            Ignored for the start vector when ``v0`` is given, as in
-            :func:`scipy.sparse.linalg.svds`.
+        rng (int or generator): Source of the default start vector when
+            ``v0`` is ``None``, and of the orthonormal columns that complete
+            the singular vectors of a rank-deficient input. Accepts the same
+            values as :func:`eigsh`; ``None`` (the default) draws from a
+            fresh :func:`cupy.random.default_rng`, so repeated calls start
+            differently; pass an int for a reproducible result.
 
     Returns:
         tuple:
@@ -888,14 +872,13 @@ def svds(a, k=6, *, ncv=None, tol=0, which='LM', v0=None,
     else:
         aH, a = a, a.H
 
-    rs = _resolve_random_state(random_state)
+    rs = _resolve_rng(rng)
     if return_singular_vectors:
         w, x = eigsh(aH @ a, k=k, which=which, ncv=ncv, maxiter=maxiter,
-                     tol=tol, v0=v0, return_eigenvectors=True,
-                     random_state=rs)
+                     tol=tol, v0=v0, return_eigenvectors=True, rng=rs)
     else:
         w = eigsh(aH @ a, k=k, which=which, ncv=ncv, maxiter=maxiter, tol=tol,
-                  v0=v0, return_eigenvectors=False, random_state=rs)
+                  v0=v0, return_eigenvectors=False, rng=rs)
 
     w = cupy.maximum(w, 0)
     t = w.dtype.char.lower()
@@ -922,19 +905,14 @@ def svds(a, k=6, *, ncv=None, tol=0, which='LM', v0=None,
     return u, s, v.conj().T
 
 
-def _augmented_orthnormal_cols(x, n_aug, rs=None):
+def _augmented_orthnormal_cols(x, n_aug, rs):
     if n_aug <= 0:
         return x
     m, n = x.shape
     y = cupy.empty((m, n + n_aug), dtype=x.dtype)
     y[:, :n] = x
-    if rs is None:
-        # svds calls this twice (for u and for v); with no random_state each
-        # call restarts from the same seed, so for m == n the pre-projection
-        # draws coincide and only the projections onto the two different
-        # bases separate them. A caller-supplied generator is advanced
-        # across both calls instead.
-        rs = cupy.random.RandomState(_DEFAULT_V0_SEED)
+    # svds calls this twice (for u and for v) with the same generator, which
+    # is advanced across both calls.
     for i in range(n, n + n_aug):
         v = _default_v0(m, x.dtype, rs)
         v -= v @ y[:, :i].conj() @ y[:, :i].T
