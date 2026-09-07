@@ -47,7 +47,7 @@ gammasgn = _core.create_ufunc(
     preamble=gammasgn_definition,
     doc="""Elementwise function for scipy.special.gammasgn
 
-    .. seealso:: :meth:`scipy.special.gammasgn`
+    .. seealso:: :func:`scipy.special.gammasgn`
 
     """,
 )

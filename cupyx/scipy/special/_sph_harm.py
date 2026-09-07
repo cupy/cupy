@@ -82,7 +82,7 @@ _sph_harm = _core.create_ufunc(
     preamble=sph_harmonic_definition,
     doc="""Spherical Harmonic.
 
-    .. seealso:: :meth:`scipy.special.sph_harm`
+    .. seealso:: :func:`scipy.special.sph_harm`
 
     """,
 )
@@ -91,7 +91,7 @@ _sph_harm = _core.create_ufunc(
 def sph_harm(m, n, theta, phi, out=None):
     """Spherical Harmonic.
 
-    .. seealso:: :meth:`scipy.special.sph_harm`
+    .. seealso:: :func:`scipy.special.sph_harm`
 
     """
 
@@ -105,7 +105,7 @@ def sph_harm(m, n, theta, phi, out=None):
 def sph_harm_y(n, m, theta, phi, *, diff_n=0):
     """Spherical Harmonic.
 
-    .. seealso:: :meth:`scipy.special.sph_harm_y`
+    .. seealso:: :func:`scipy.special.sph_harm_y`
     """
     if diff_n != 0:
         raise NotImplementedError("Derivatives not implemented.")
