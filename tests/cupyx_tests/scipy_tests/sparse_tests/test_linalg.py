@@ -311,11 +311,11 @@ class TestEigsh:
             cupy.testing.assert_allclose(
                 cupy.sort(w.real), ref, atol=1e-4)
 
-    # strict=False (pyproject sets xfail_strict): the breakdown guard fixes
-    # a run-dependent subset of these instances, so they XPASS
-    # intermittently. The blocker is not gh-5001 itself but the unseeded
-    # default v0 (see the gh-5001 analysis in #10098): non-strict until the
-    # default v0 is seeded, after which these markers can go.
+    # strict=False (pyproject sets xfail_strict): with the default v0 seeded
+    # the outcome no longer varies run to run (every instance fails on an
+    # A100), but the input B @ C is not symmetric, so what eigsh returns
+    # for it is unspecified and the comparison itself is what gh-5001 has
+    # to settle. Non-strict until the test is redefined.
     @pytest.mark.xfail(
         reason='eigsh works wrong (#5001)',
         raises=AssertionError,
@@ -477,6 +477,100 @@ class TestEigshDegenerateHermitian:
             rtol=1e-4, atol=64 * eps * anorm)
 
 
+@testing.with_requires('scipy')
+class TestSvdsV0:
+    """v0= passthrough (scipy-compatible): reproducibility + parity."""
+
+    def _mat(self, xp, m=60, n=45):
+        return testing.shaped_random((m, n), xp, dtype='d', scale=1)
+
+    def test_v0_deterministic(self):
+        # v0 pins the trajectory start, which removes the run-to-run TIME
+        # variance; it is NOT bitwise: the adjoint half of the Gram apply
+        # is a transpose-mode cuSPARSE SpMV whose default algorithm uses
+        # atomics, so accumulation order (and the last bits of the
+        # result) still varies between identical calls.
+        a = sparse.csr_matrix(self._mat(cupy))
+        v0 = testing.shaped_random((45,), cupy, dtype='d', scale=1, seed=7)
+        v0_in = v0.copy()
+        s1 = sparse.linalg.svds(a, k=5, v0=v0,
+                                return_singular_vectors=False)
+        s2 = sparse.linalg.svds(a, k=5, v0=v0,
+                                return_singular_vectors=False)
+        cupy.testing.assert_allclose(cupy.sort(s1), cupy.sort(s2),
+                                     rtol=1e-9, atol=1e-9)
+        # v0 is an input, not a workspace: the caller's array is unchanged.
+        cupy.testing.assert_array_equal(v0, v0_in)
+
+    def test_v0_matches_scipy(self):
+        import numpy
+        import scipy.sparse
+        import scipy.sparse.linalg
+        a_np = testing.shaped_random((60, 45), numpy, dtype='d', scale=1)
+        v0_np = testing.shaped_random((45,), numpy, dtype='d', scale=1,
+                                      seed=7)
+        s_sp = numpy.sort(scipy.sparse.linalg.svds(
+            scipy.sparse.csr_matrix(a_np), k=5, v0=v0_np,
+            return_singular_vectors=False))
+        s_cp = cupy.sort(sparse.linalg.svds(
+            sparse.csr_matrix(cupy.asarray(a_np)), k=5,
+            v0=cupy.asarray(v0_np), return_singular_vectors=False))
+        numpy.testing.assert_allclose(cupy.asnumpy(s_cp), s_sp, rtol=1e-8,
+                                      atol=1e-8)
+
+    def test_v0_wide_matrix_length(self):
+        # v0 length is min(a.shape) regardless of orientation
+        a = sparse.csr_matrix(self._mat(cupy, m=45, n=60))
+        v0 = testing.shaped_random((45,), cupy, dtype='d', scale=1, seed=3)
+        s = sparse.linalg.svds(a, k=5, v0=v0,
+                               return_singular_vectors=False)
+        assert not bool(cupy.isnan(s).any())
+
+
+class TestDefaultStartVector:
+    # The default start vector comes from a fixed seed, so a call with
+    # v0=None is reproducible and the global cupy.random state cannot leak
+    # into eigsh/svds results (gh-10239: the same test instance passed or
+    # failed depending on the draw).
+
+    @testing.for_dtypes('fdFD')
+    def test_default_v0_is_fixed(self, dtype):
+        from cupyx.scipy.sparse.linalg import _eigen
+        u1 = _eigen._default_v0(1000, dtype)
+        cupy.random.seed(1)
+        cupy.random.random(1000)         # advance the global generator
+        u2 = _eigen._default_v0(1000, dtype)
+        assert u1.dtype == cupy.dtype(dtype)
+        cupy.testing.assert_array_equal(u1, u2)
+        assert float(cupy.abs(u1 - u1.mean()).max()) > 0.1  # not constant
+
+    @testing.for_dtypes('fdFD')
+    def test_eigsh_repeatable(self, dtype):
+        b = testing.shaped_random((120, 120), cupy, dtype=dtype, seed=0)
+        a = sparse.csr_matrix(b + b.conj().T)
+        w1 = sparse.linalg.eigsh(a, k=6, return_eigenvectors=False)
+        cupy.random.seed(2)
+        w2 = sparse.linalg.eigsh(a, k=6, return_eigenvectors=False)
+        # Same start, same trajectory: only the parallel-reduction order in
+        # cuBLAS/cuSPARSE differs between the two runs.
+        tol = 1e-5 if numpy.dtype(dtype).char in 'fF' else 1e-10
+        cupy.testing.assert_allclose(cupy.sort(w1.real), cupy.sort(w2.real),
+                                     rtol=tol, atol=0)
+
+    def test_svds_augmented_vectors_repeatable(self):
+        # k above the rank: the missing singular vectors are completed by
+        # random orthonormal columns, which must be reproducible as well.
+        m, n, rank = 40, 30, 3
+        a = (testing.shaped_random((m, rank), cupy, dtype='d', seed=0)
+             @ testing.shaped_random((rank, n), cupy, dtype='d', seed=1))
+        u1, s1, vt1 = sparse.linalg.svds(sparse.csr_matrix(a), k=6)
+        cupy.random.seed(3)
+        u2, s2, vt2 = sparse.linalg.svds(sparse.csr_matrix(a), k=6)
+        cupy.testing.assert_allclose(s1, s2, rtol=1e-10, atol=1e-10)
+        cupy.testing.assert_allclose(u1, u2, rtol=1e-8, atol=1e-8)
+        cupy.testing.assert_allclose(vt1, vt2, rtol=1e-8, atol=1e-8)
+
+
 @testing.parameterize(*testing.product({
     'shape': [(30, 29), (29, 29), (29, 30)],
     'k': [3, 6, 12],
@@ -595,11 +689,12 @@ class TestSvds:
         cupy.testing.assert_allclose(s[1:], cupy.ones(5), atol=1e-8)
         assert float(s[0]) < 1e-6
 
-    # strict=False (pyproject sets xfail_strict): the breakdown guard fixes
-    # a run-dependent subset of these instances, so they XPASS
-    # intermittently. The blocker is not gh-5001 itself but the unseeded
-    # default v0 (see the gh-5001 analysis in #10098): non-strict until the
-    # default v0 is seeded, after which these markers can go.
+    # strict=False (pyproject sets xfail_strict): with the default v0 seeded
+    # the split is deterministic -- on an A100 the 26 instances without
+    # singular vectors or with m < n pass and the 10 with vectors and
+    # m >= n fail, identically across runs -- so this is gh-5001 proper,
+    # not the start vector. Non-strict until the split is confirmed on
+    # CI hardware; the passing instances can then be asserted.
     @pytest.mark.xfail(
         reason='eigsh works wrong (#5001)',
         raises=AssertionError,
