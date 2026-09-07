@@ -9,6 +9,6 @@ wofz = _core.create_ufunc(
     preamble='#include <cupy/xsf/erf.h>',
     doc='''Faddeeva function.
 
-    .. seealso:: :meth:`scipy.special.wofz`
+    .. seealso:: :func:`scipy.special.wofz`
 
     ''')
