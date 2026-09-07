@@ -7,6 +7,7 @@ import cupy
 from cupy import testing
 from cupy import cuda
 from cupy.exceptions import AxisError
+from cupy.testing._helper import skip_if_after_baseline
 
 
 class TestJoin:
@@ -507,6 +508,7 @@ class TestJoin:
         return xp.stack((a, b), dtype=dtype2, casting=casting)
 
     @testing.with_requires("numpy>=2.0")
+    @skip_if_after_baseline(numpy="2.5", reason="row_stack is removed.")
     @testing.for_all_dtypes(name='dtype1')
     @testing.for_all_dtypes(name='dtype2')
     @testing.numpy_cupy_array_equal()

@@ -2643,6 +2643,24 @@ cpdef function.Module compile_with_cache(
         jitify=jitify)
 
 
+cpdef bytes compile_to_ltoir(
+        str source, tuple options=(), arch=None,
+        bint prepend_cupy_headers=False, log_stream=None):
+    """Compile ``source`` to LTO IR with the CuPy include paths available.
+
+    Unlike `compile_with_cache` this returns the LTO IR bytes rather than a
+    loaded module, so that it can be linked by a consumer such as
+    cuda.compute.
+    """
+    if prepend_cupy_headers:
+        source = _cupy_header + source
+
+    return cuda.compiler._compile_module_with_cache(
+        source, assemble_cupy_compiler_options(options), arch=arch,
+        extra_source=_get_header_source(), log_stream=log_stream,
+        to_ltoir=True)
+
+
 # =============================================================================
 # Routines
 # =============================================================================
@@ -3335,14 +3353,69 @@ cpdef _ndarray_base _convert_object_with_cuda_array_interface(a):
     return ndarray(shape, dtype, memptr, strides)
 
 
-cdef _ndarray_base _ndarray_init(subtype, const shape_t& shape, dtype, obj):
+cdef _ndarray_base _ndarray_init(
+        subtype, const shape_t& shape, dtype, obj, bint c_order=True):
     # Use `_no_init=True` for fast init. Now calling `__array_finalize__` is
     # responsibility of this function.
     cdef _ndarray_base ret = ndarray.__new__(subtype, _obj=obj, _no_init=True)
-    ret._init_fast(shape, dtype, True)
+    ret._init_fast(shape, dtype, c_order)
     if subtype is not ndarray:
         ret.__array_finalize__(obj)
     return ret
+
+
+cpdef _ndarray_base empty_like(
+        prototype, dtype=None, order='K', subok=None, shape=None):
+    """Returns a new array with same shape and dtype of a given array.
+
+    This function currently does not support ``subok`` option.
+
+    Args:
+        a (cupy.ndarray): Base array.
+        dtype (data-type, optional): Data type specifier.
+            The data type of ``a`` is used by default.
+        order ({'C', 'F', 'A', or 'K'}): Overrides the memory layout of the
+            result. ``'C'`` means C-order, ``'F'`` means F-order, ``'A'`` means
+            ``'F'`` if ``a`` is Fortran contiguous, ``'C'`` otherwise.
+            ``'K'`` means match the layout of ``a`` as closely as possible.
+        subok: Not supported yet, must be None.
+        shape (int or tuple of ints): Overrides the shape of the result. If
+            ``order='K'`` and the number of dimensions is unchanged, will try
+            to keep order, otherwise, ``order='C'`` is implied.
+
+    Returns:
+        cupy.ndarray: A new array with same shape and dtype of ``a`` with
+        elements not initialized.
+
+    .. seealso:: :func:`numpy.empty_like`
+
+    """
+    cdef _ndarray_base a
+    cdef memory.MemoryPointer memptr
+
+    if subok is not None:
+        raise TypeError('subok is not supported yet')
+    if dtype is None:
+        dtype = prototype.dtype
+
+    if shape is not None:
+        shape = internal.get_size(shape)
+
+    order, strides = internal._new_like_order_and_strides(
+        prototype, dtype, order, shape)
+
+    if (strides is None and shape is None
+            and isinstance(prototype, _ndarray_base)):
+        a = prototype
+        return _ndarray_init(
+            ndarray, a._shape, dtype, None, order == 'C')
+
+    if shape is None:
+        shape = prototype.shape
+    if strides is not None:
+        memptr = cupy.empty(internal.prod_sequence(shape), dtype=dtype).data
+        return ndarray(shape, dtype, memptr, strides, order)
+    return ndarray(shape, dtype, order=order)
 
 
 cdef _ndarray_base _create_ndarray_from_shape_strides(

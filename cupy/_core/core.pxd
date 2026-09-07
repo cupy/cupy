@@ -108,6 +108,9 @@ cpdef Module compile_with_cache(str source, tuple options=*, arch=*,
                                 name_expressions=*, log_stream=*,
                                 bint jitify=*)
 
+cpdef bytes compile_to_ltoir(str source, tuple options=*, arch=*,
+                             bint prepend_cupy_headers=*, log_stream=*)
+
 
 # TODO(niboshi): Move to _routines_creation.pyx
 
@@ -116,7 +119,10 @@ cpdef _ndarray_base array(
     bint blocking=*)
 cpdef _ndarray_base _convert_object_with_cuda_array_interface(a)
 
-cdef _ndarray_base _ndarray_init(subtype, const shape_t& shape, dtype, obj)
+cdef _ndarray_base _ndarray_init(
+    subtype, const shape_t& shape, dtype, obj, bint c_order=*)
+cpdef _ndarray_base empty_like(
+    prototype, dtype=*, order=*, subok=*, shape=*)
 
 cdef _ndarray_base _create_ndarray_from_shape_strides(
     subtype, const shape_t& shape, const strides_t& strides, dtype, obj)

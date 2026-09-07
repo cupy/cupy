@@ -123,7 +123,6 @@ runs:
         # not all runners have rsync pre-installed (or even installable, such as
         # Git Bash). We do it in the dumb way.
         cp -r $CACHE_TMP_DIR/* $CUDA_PATH
-        rm -rf $CACHE_TMP_DIR
         ls -l $CUDA_PATH
 
     - name: Upload CTK cache
@@ -145,17 +144,23 @@ runs:
         tar -xzvf $CTK_CACHE_FILENAME
         # Can't use rsync here, see above
         cp -r $CACHE_TMP_DIR/* $CUDA_PATH
-        rm -rf $CACHE_TMP_DIR $CTK_CACHE_FILENAME
         ls -l $CUDA_PATH
         if [ ! -d "$CUDA_PATH/include" ]; then
           exit 1
         fi
 
+    # Both hit and miss paths leave CACHE_TMP_DIR and CTK_CACHE_FILENAME
+    # on disk; drop them here so wheel-build steps that follow don't ship
+    # them (~1-2 GB of tarball) into cibuildwheel's /project copy.
+    - name: Cleanup CTK cache tarball and staging dir
+      shell: bash --noprofile --norc -xeuo pipefail {0}
+      run: rm -rf ./cache_tmp_dir "./${CTK_CACHE_FILENAME}"
+
     - name: Move CTK to the specified location
       if: ${{ inputs.cuda-path != './cuda_toolkit' }}
       shell: bash --noprofile --norc -xeuo pipefail {0}
       run: |
-        mv ./cuda_toolkit ${{ inputs.cuda-path }}
+        mv ./cuda_toolkit "${{ inputs.cuda-path }}"
 
     - name: Set output environment variables
       shell: bash --noprofile --norc -xeuo pipefail {0}

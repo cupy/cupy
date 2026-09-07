@@ -413,7 +413,7 @@ lpmv = _core.create_ufunc(
     preamble=lpmv_definition,
     doc="""Associated Legendre function of integer order and real degree.
 
-    .. seealso:: :meth:`scipy.special.lpmv`
+    .. seealso:: :func:`scipy.special.lpmv`
 
     """,
 )

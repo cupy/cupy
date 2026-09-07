@@ -282,6 +282,14 @@ numpy:
       - "3.13"
       - "3.14"
       - "3.14t"
+  "2.5":
+    spec: "==2.5.*"
+    python:
+      # Python 3.11 support was dropped in NumPy 2.5.
+      - "3.12"
+      - "3.13"
+      - "3.14"
+      - "3.14t"
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
 scipy:
@@ -327,6 +335,7 @@ scipy:
       - "2.2"
       - "2.3"
       - "2.4"
+      - "2.5"
   "1.17":
     spec: "==1.17.*"
     python:
@@ -340,6 +349,7 @@ scipy:
       - "2.2"
       - "2.3"
       - "2.4"
+      - "2.5"
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
 optuna:
@@ -388,6 +398,13 @@ nvmath-python:
     spec: null
   "1":
     spec: "==1.*"
+cuda-cccl:
+  null:
+    spec: null
+  "cu12":
+    spec: "[minimal-sysctk12]>=1.1.1"
+  "cu13":
+    spec: "[minimal-sysctk13]>=1.1.1"
 
 ###############################################################################
 # Environment Variables
@@ -399,6 +416,7 @@ env:CUPY_ACCELERATORS:
   "cutensor":
   "cub,cutensor":
   "cutensor,cub":
+  "cuda_compute,cutensor,cub":
 
 ###############################################################################
 # Test Variant
