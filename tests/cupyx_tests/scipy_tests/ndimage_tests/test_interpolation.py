@@ -492,7 +492,7 @@ class TestAffineTransformOpenCV:
 @testing.parameterize(*(
     testing.product({
         # Note that certain angles can lead to larger differences.
-        'angle': [-10, 30, 90, 195, 1000],
+        'angle': [-10, 30, 90, 180, 195, 1000],
         'axes': [(1, 0)],
         'reshape': [False, True],
         # Avoid float64 output so rtol dict keyed by result dtype picks up
