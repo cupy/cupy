@@ -161,7 +161,7 @@ jobs:
               after: $sha,
               head_commit: {
                 id: $sha,
-                message: "Nightly CI: @nightly matrix against most recent wheel build",
+                message: "Nightly CI: @nightly matrix against most recent wheel build (\($sha))",
                 url: $url,
                 timestamp: $ts
               },
