@@ -79,6 +79,7 @@ from cupyx.scipy.special._poch import poch  # NOQA
 from cupyx.scipy.special._erf import erf  # NOQA
 from cupyx.scipy.special._erf import erfc  # NOQA
 from cupyx.scipy.special._erf import erfcx  # NOQA
+from cupyx.scipy.special._erfi import erfi  # NOQA
 from cupyx.scipy.special._erf import erfinv  # NOQA
 from cupyx.scipy.special._erf import erfcinv  # NOQA
 from cupyx.scipy.special._wofz import wofz  # NOQA
