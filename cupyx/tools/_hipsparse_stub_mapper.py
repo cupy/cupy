@@ -92,7 +92,7 @@ default_return_code = r"""
 
 # keep track of typedefs that are already handled (as we move from older
 # to newer HIP version)
-processed_typedefs = set()
+processed_typedefs: set[str] = set()
 
 
 def get_idx_to_func(cu_h, cu_func):

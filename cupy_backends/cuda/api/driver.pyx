@@ -13,7 +13,6 @@ There are four differences compared to the original C API.
 """
 cimport cython  # NOQA
 from libc.stdint cimport intptr_t
-from libcpp cimport vector
 
 
 ###############################################################################
@@ -145,7 +144,10 @@ cpdef intptr_t ctxCreate(Device dev) except? 0:
     cdef Context ctx
     cdef unsigned int flags = 0
     with nogil:
-        status = cuCtxCreate(&ctx, flags, dev)
+        IF CUPY_USE_CUDA_PYTHON and CUPY_CUDA_VERSION >= 13000:
+            status = cuCtxCreate(&ctx, NULL, flags, dev)
+        ELSE:
+            status = cuCtxCreate(&ctx, flags, dev)
     check_status(status)
     return <intptr_t>ctx
 
@@ -266,62 +268,6 @@ cpdef intptr_t moduleGetGlobal(intptr_t module, str varname) except? 0:
         status = cuModuleGetGlobal(&var, &size, <Module>module, b_varname_ptr)
     check_status(status)
     return <intptr_t>var
-
-
-cdef unsigned int moduleGetFunctionCount(intptr_t module):
-    """Get the number of functions in a module (CUDA driver 12.4+)."""
-    initialize()
-    cdef unsigned int count = 0
-    with nogil:
-        status = cuModuleGetFunctionCount(&count, <Module>module)
-    check_status(status)
-    return count
-
-
-cdef int moduleEnumerateFunctions(
-        intptr_t module, unsigned int count,
-        vector.vector[Function]& result) except? -1:
-    """Enumerate functions in a module (CUDA driver 12.4+).
-
-    Args:
-        module: Module handle.
-        count: Number of function handles to retrieve (must match
-               the value returned by :func:`moduleGetFunctionCount`).
-        result: Output vector; cleared and resized internally.
-    """
-    initialize()
-    result.clear()
-    result.resize(count)
-
-    if count == 0:
-        return 0
-
-    with nogil:
-        status = cuModuleEnumerateFunctions(
-            result.data(), count, <Module>module)
-    check_status(status)
-
-    return 0
-
-
-cdef const char* funcGetName(intptr_t func) except? NULL:
-    """Get the name of a function (CUDA driver 12.3+).
-
-    Args:
-        func: Function handle.
-
-    Returns:
-        The (mangled) name of the function.
-
-    .. note::
-        This function requires CUDA driver 12.3 or later.
-    """
-    initialize()
-    cdef const char* name = NULL
-    with nogil:
-        status = cuFuncGetName(&name, <Function>func)
-    check_status(status)
-    return name
 
 
 cpdef launchKernel(

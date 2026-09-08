@@ -164,6 +164,10 @@ def parse_args(argv: Any) -> Any:
     parser.add_argument(
         '--external-tag', action='append', default=[],
         help='Test tags to be ignored by FlexCI Dispatcher')
+    parser.add_argument(
+        '--override-tags', type=str, default=None,
+        help='Comma-separated tag set to dispatch, replacing the tags '
+             'derived from the event (used by ci-nightly.yml).')
     return parser.parse_args(argv[1:])
 
 
@@ -233,6 +237,15 @@ def main(argv: Any) -> int:
         _log(f'Invalid event name: {event_name}')
         return 1
 
+    if options.override_tags is not None:
+        requested_tags = {
+            t.strip() for t in options.override_tags.split(',') if t.strip()
+        }
+        if not requested_tags:
+            _log('--override-tags parsed to an empty set')
+            return 1
+        _log(f'Overriding requested tags to: {requested_tags}')
+
     projects_dispatch: set[str] = set()
     projects_skip: set[str] = set()
     for project, tags in project_tags.items():
@@ -262,8 +275,12 @@ def main(argv: Any) -> int:
             _log('Failed to dispatch')
             return 1
 
+    # Push-time "Skipped" would drown the merge-commit checks tab in noise
+    # for nightly-only lanes. FlexCI posts those statuses when the lanes
+    # actually run (triggered later by ci-nightly.yml).
+    status_projects = set() if event_name == 'push' else projects_skip
     _fill_commit_status(
-        event_name, payload, github_token, projects_skip, force_skip,
+        event_name, payload, github_token, status_projects, force_skip,
         options.flexci_context, options.flexci_uri)
 
     return 0

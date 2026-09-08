@@ -31,6 +31,13 @@ fi
 # Add PATH for commands installed via `pip install --user`
 export PATH="${HOME}/.local/bin:${PATH}"
 
+# Confirm the interpreter was built with --disable-shared (static libpython),
+# as set by .pfnci/generate.py on the pyenv install line. Py_ENABLE_SHARED=0
+# and no libpython in ldd mean the flag took effect; if pyenv silently
+# dropped it, Py_ENABLE_SHARED=1 and a libpython3.x.so line will appear.
+python3 -c 'import sysconfig; print("Py_ENABLE_SHARED=" + str(sysconfig.get_config_var("Py_ENABLE_SHARED")))'
+ldd "$(readlink -f "$(command -v python3)")" | grep -i 'libpython' || echo 'no libpython in ldd (static interpreter)'
+
 # Switch to a temporary directory to run tests
 if [[ ${SHELL_MODE:-no} != yes ]]; then
     _src_dir="$(mktemp -d)"

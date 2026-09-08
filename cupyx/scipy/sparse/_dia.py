@@ -116,7 +116,8 @@ class _dia_base(_data._data_matrix):
                 copy runs asynchronously. Otherwise, the copy is synchronous.
 
         Returns:
-            scipy.sparse.dia_matrix: Copy of the array on host memory.
+            scipy.sparse.dia_array or scipy.sparse.dia_matrix:
+                Copy of the array on host memory.
 
         """
         if not _scipy_available:
@@ -299,7 +300,9 @@ class _dia_base(_data._data_matrix):
 class dia_matrix(_base.spmatrix, _dia_base):
     """Sparse matrix with DIAgonal storage.
 
-    .. seealso:: :class:`scipy.sparse.dia_matrix`
+    .. seealso::
+       - :class:`scipy.sparse.dia_matrix`
+       - :class:`~cupyx.scipy.sparse.dia_array`
     """
     pass
 
@@ -307,7 +310,9 @@ class dia_matrix(_base.spmatrix, _dia_base):
 class dia_array(_dia_base, _base.sparray):
     """Sparse array with DIAgonal storage.
 
-    .. seealso:: :class:`scipy.sparse.dia_array`
+    .. seealso::
+       - :class:`scipy.sparse.dia_array`
+       - :class:`~cupyx.scipy.sparse.dia_matrix`
     """
     pass
 

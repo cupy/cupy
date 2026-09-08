@@ -1,7 +1,6 @@
 """Thin wrapper of CUBLAS."""
 from libc.stdint cimport intptr_t
 
-
 ###############################################################################
 # Types
 ###############################################################################
@@ -10,19 +9,29 @@ cdef extern from *:
     ctypedef void* cuComplexPtr 'cuComplex*'
     ctypedef void* cuDoubleComplexPtr 'cuDoubleComplex*'
 
-
-cdef extern from *:
-    ctypedef void* Handle 'cublasHandle_t'
-
-    ctypedef int DiagType 'cublasDiagType_t'
-    ctypedef int FillMode 'cublasFillMode_t'
-    ctypedef int Operation 'cublasOperation_t'
-    ctypedef int PointerMode 'cublasPointerMode_t'
-    ctypedef int SideMode 'cublasSideMode_t'
-    ctypedef int GemmAlgo 'cublasGemmAlgo_t'
-    ctypedef int Math 'cublasMath_t'
-    ctypedef int ComputeType 'cublasComputeType_t'
-
+IF CUPY_USE_CUDA_PYTHON:
+    from nvmath.bindings.cycublas cimport (
+        cublasHandle_t as Handle,
+        cublasDiagType_t as DiagType,
+        cublasFillMode_t as FillMode,
+        cublasOperation_t as Operation,
+        cublasPointerMode_t as PointerMode,
+        cublasSideMode_t as SideMode,
+        cublasGemmAlgo_t as GemmAlgo,
+        cublasMath_t as Math,
+        cublasComputeType_t as ComputeType,
+    )
+ELSE:
+    cdef extern from *:
+        ctypedef void* Handle 'cublasHandle_t'
+        ctypedef int DiagType 'cublasDiagType_t'
+        ctypedef int FillMode 'cublasFillMode_t'
+        ctypedef int Operation 'cublasOperation_t'
+        ctypedef int PointerMode 'cublasPointerMode_t'
+        ctypedef int SideMode 'cublasSideMode_t'
+        ctypedef int GemmAlgo 'cublasGemmAlgo_t'
+        ctypedef int Math 'cublasMath_t'
+        ctypedef int ComputeType 'cublasComputeType_t'
 
 ###############################################################################
 # Enum
@@ -327,6 +336,7 @@ cpdef cgetriBatched(intptr_t handle, int n, size_t Aarray, int lda,
 cpdef zgetriBatched(intptr_t handle, int n, size_t Aarray, int lda,
                     size_t PivotArray, size_t Carray, int ldc,
                     size_t infoArray, int batchSize)
+
 cpdef gemmEx(intptr_t handle, int transa, int transb, int m, int n, int k,
              size_t alpha, size_t A, int Atype, int lda, size_t B,
              int Btype, int ldb, size_t beta, size_t C, int Ctype,

@@ -8,7 +8,9 @@ TARGET="${1}"
 LOG_FILE="/tmp/log.txt"
 
 echo "Environment Variables:"
-env
+# Redact the wheel-fetch token (provisioned in the FlexCI job env) from the
+# published log; fetch-wheel.sh receives it via a mounted file, not the env.
+env | grep -v -e '^CUPY_CI_GITHUB_TOKEN=' -e '^GH_TOKEN='
 
 pull_req=""
 if [[ "${FLEXCI_BRANCH:-}" == refs/pull/* ]]; then
@@ -28,7 +30,10 @@ STAGES="cache_get build test"
 if [[ "${TARGET}" == "benchmark" ]]; then
     STAGES="cache_get build benchmark"
 fi
-BENCHMARK_DIR=/tmp/benchmark CACHE_DIR=/tmp/cupy_cache CACHE_KERNEL_TO_GCS=1 PULL_REQUEST="${pull_req}" "$(dirname ${0})/run.sh" "${TARGET}" "${STAGES}" 2>&1 | tee "${LOG_FILE}"
+JUNIT_DIR=/tmp/cupy_junit
+mkdir -p "${JUNIT_DIR}"
+rm -f "${JUNIT_DIR}/junit.xml"
+BENCHMARK_DIR=/tmp/benchmark CACHE_DIR=/tmp/cupy_cache JUNIT_DIR="${JUNIT_DIR}" CACHE_KERNEL_TO_GCS=1 PULL_REQUEST="${pull_req}" "$(dirname ${0})/run.sh" "${TARGET}" "${STAGES}" 2>&1 | tee "${LOG_FILE}"
 test_retval=${PIPESTATUS[0]}
 
 echo "****************************************************************************************************"
@@ -55,9 +60,20 @@ fi
 echo "Uploading the log..."
 gsutil -m -q cp "${LOG_FILE}" "gs://chainer-artifacts-pfn-public-ci/cupy-ci/${CI_JOB_ID}/"
 
+junit_url=""
+if [[ -f "${JUNIT_DIR}/junit.xml" ]]; then
+    gzip -4 -c "${JUNIT_DIR}/junit.xml" > "${JUNIT_DIR}/junit.xml.gz"
+    gsutil -m -q cp "${JUNIT_DIR}/junit.xml.gz" "gs://chainer-artifacts-pfn-public-ci/cupy-ci/${CI_JOB_ID}/"
+    junit_url="https://storage.googleapis.com/chainer-artifacts-pfn-public-ci/cupy-ci/${CI_JOB_ID}/junit.xml.gz"
+fi
+
 echo "****************************************************************************************************"
 echo "Full log is available at:"
 echo "https://storage.googleapis.com/chainer-artifacts-pfn-public-ci/cupy-ci/${CI_JOB_ID}/log.txt"
+if [[ -n "${junit_url}" ]]; then
+    echo "JUnit XML is available at:"
+    echo "${junit_url}"
+fi
 echo "****************************************************************************************************"
 
 exit ${test_retval}
