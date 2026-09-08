@@ -648,6 +648,31 @@ def test_plan_nd_rejects_f_order_real_transform():
             cupy.fft.rfftn(b)
 
 
+@pytest.mark.parametrize('api', ['old', 'new'])
+def test_plan_nd_init_api(api):
+    # Test that PlanNd constructor accepts order, last_axis, and last_size.
+    from cupy.cuda.cufft import PlanNd, CUFFT_R2C
+    from cupy.fft._fft import _get_cufft_plan_nd_args
+
+    a = testing.shaped_random((2, 3, 8), cupy, cupy.float32)
+    axes = (1, 2)
+    # Get correct args via private helper (order is just checked)
+    relevant_args = _get_cufft_plan_nd_args(
+        a.shape, CUFFT_R2C, axes=axes, order='C', out_size=5)
+    # But additionally pass order, last_axis, and last_size to test old API.
+    if api == 'old':
+        plan = PlanNd(*relevant_args, 'C', 2, 5)
+    else:
+        plan = PlanNd(*relevant_args)
+
+    # These are not relevant and could probably be removed:
+    assert plan.order == ('C' if api == 'old' else None)
+    assert plan.last_axis == (2 if api == 'old' else None)
+    assert plan.last_size == (5 if api == 'old' else None)
+    with plan:
+        cupy.fft.rfftn(a, axes=axes)
+
+
 @testing.with_requires('numpy>=2.0')
 @pytest.mark.usefixtures('skip_forward_backward')
 @testing.parameterize(*testing.product({
