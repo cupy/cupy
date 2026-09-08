@@ -126,6 +126,7 @@ class TestDiskKernelCacheBackend:
             backend._write_encoded(name, backend._encode_cubin(cubin))
             assert backend.load(name) == cubin
 
+    @pytest.mark.thread_unsafe(reason="uses mock.patch")
     def test_write_encoded_tolerates_concurrent_replace_permission_error(
         self,
     ):
@@ -141,6 +142,7 @@ class TestDiskKernelCacheBackend:
 
     @pytest.mark.parametrize(
         'open_error', [PermissionError, FileNotFoundError])
+    @pytest.mark.thread_unsafe(reason="uses mock.patch")
     def test_load_tolerates_concurrent_replace_errors(self, open_error):
         """Test load treats a racing open() error as a cache miss."""
         with tempfile.TemporaryDirectory() as tmpdir:
