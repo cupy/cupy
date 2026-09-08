@@ -2,7 +2,8 @@ import string
 
 from cupy._core cimport _kernel
 from cupy._core.core cimport _ndarray_base, _internal_ascontiguousarray
-from cupy._core._cuda_compute_common cimport _get_cuda_compute
+from cupy._core._cuda_compute_common cimport (_get_cuda_compute,
+                                              cached_algorithm)
 from cupy._core._cuda_compute_common import _make_raw_ops
 
 import numpy
@@ -173,19 +174,23 @@ def _try_reduction(_ndarray_base input_array, _ndarray_base out,
     """Turn the routine's C++ expressions into cuda.compute ops
     and iterators.
 
-    Returns (d_in, d_out, build_in, build_out, op, h_init, ops) or None
+    Returns (d_in, d_out, build_in, build_out, op, h_init, ops, build_key)
+    or None
     """
     compute = _get_cuda_compute()
 
     # a segmented reduction needs _J to be the index within each
     # segment (_J % seg_size). seg_size is a host-side value, which
     # ops passed to transform iterators do not receive yet
-    # (NVIDIA/cccl#11142, fix in NVIDIA/cccl#11213)
+    # (fixed in NVIDIA/cccl#11213)
+    # TODO: pass seg_size as RawOp state once a cuda-cccl release has the fix
     if '_J' in map_expr and out.size > 1:
         return None
 
     # post_map_expr needs a host-side value (e.g. for mean: the
     # divisor _in_ind.size() / _out_ind.size()), same limitation as above
+    # TODO: pass the input and output sizes as RawOp state once a cuda-cccl
+    # release has the fix
     if '_in_ind' in post_map_expr or '_out_ind' in post_map_expr:
         return None
 
@@ -239,6 +244,10 @@ def _try_reduction(_ndarray_base input_array, _ndarray_base out,
         names += ['mul_offset', 'add_offset']
     ops = _make_raw_ops(src, tuple(names)) if names else {}
 
+    build_key = (out.size > 1, src, tuple(names), use_zip_map, use_map,
+                 use_post, compute_opkind if use_opkind else None,
+                 input_array.dtype.str, out.dtype.str, acc_dtype.str)
+
     acc_type_descriptor = compute.types.from_numpy_dtype(acc_dtype)
 
     build_in = compute.ProxyArray(input_array.dtype)
@@ -265,7 +274,7 @@ def _try_reduction(_ndarray_base input_array, _ndarray_base out,
     else:
         d_out = out_flat
 
-    return d_in, d_out, build_in, build_out, op, h_init, ops
+    return d_in, d_out, build_in, build_out, op, h_init, ops, build_key
 
 
 def _cuda_compute_reduce(_ndarray_base input_array, _ndarray_base out,
@@ -280,8 +289,8 @@ def _cuda_compute_reduce(_ndarray_base input_array, _ndarray_base out,
         type_map, identity, preamble, compute_opkind)
     if build_cuda_compute_reduce is None:
         return False
-    (d_in, d_out, build_in, build_out, op, h_init,
-     ops) = build_cuda_compute_reduce
+    (d_in, d_out, build_in, build_out, op, h_init, ops,
+     build_key) = build_cuda_compute_reduce
 
     if out.size > 1:
         num_segments = out.size
@@ -297,9 +306,11 @@ def _cuda_compute_reduce(_ndarray_base input_array, _ndarray_base out,
         end = compute.TransformIterator(
             compute.ZipIterator(start, size), ops['add_offset'],
             value_type=compute.types.int64)
-        reducer = compute.make_segmented_reduce(
-            d_in=build_in, d_out=build_out, op=op, h_init=h_init,
-            start_offsets_in=start, end_offsets_in=end)
+        reducer = cached_algorithm(
+            'segmented_reduce', build_key, repr(build_key),
+            lambda: compute.make_segmented_reduce(
+                d_in=build_in, d_out=build_out, op=op, h_init=h_init,
+                start_offsets_in=start, end_offsets_in=end))
         tmp_size = reducer(temp_storage=None, d_in=d_in, d_out=d_out,
                            num_segments=num_segments, op=op,
                            h_init=h_init, start_offsets_in=start,
@@ -311,8 +322,10 @@ def _cuda_compute_reduce(_ndarray_base input_array, _ndarray_base out,
                 max_segment_size=seg_size, stream=stream)
         return True
 
-    reducer = compute.make_reduce_into(
-        d_in=build_in, d_out=build_out, op=op, h_init=h_init)
+    reducer = cached_algorithm(
+        'reduce', build_key, repr(build_key),
+        lambda: compute.make_reduce_into(
+            d_in=build_in, d_out=build_out, op=op, h_init=h_init))
     tmp_size = reducer(temp_storage=None, d_in=d_in, d_out=d_out,
                        num_items=input_array.size, op=op, h_init=h_init)
     d_tmp = cupy.empty(tmp_size, dtype=numpy.uint8)
