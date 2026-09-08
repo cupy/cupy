@@ -160,8 +160,18 @@ class DiskKernelCacheBackend(KernelCacheBackend):
         if not os.path.exists(path):
             return None
 
-        with open(path, 'rb') as file:
-            data = file.read()
+        try:
+            with open(path, 'rb') as file:
+                data = file.read()
+        except (PermissionError, FileNotFoundError):
+            # Race with a concurrent _write_encoded() replacing the same
+            # file (mirrors the tolerance in _write_encoded() itself): on
+            # Windows, os.replace() can transiently make the destination
+            # inaccessible to a concurrent reader, raising PermissionError;
+            # the file can also disappear between the os.path.exists()
+            # check above and the open() call. Treat both as a cache miss
+            # so the caller falls back to recompiling.
+            return None
 
         return self._decode_cubin(data)
 
