@@ -141,6 +141,7 @@ Error function and Fresnel integrals
    erfcinv
    wofz
    dawsn
+   voigt_profile
 
 
 Legendre functions
