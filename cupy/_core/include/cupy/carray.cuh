@@ -668,33 +668,33 @@ public:
   }
 };
 
-inline __device__ int _floor_divide(int x, int y) {
+__device__ int _floor_divide(int x, int y) {
   if (y == 0) return 0;
   int q = x / y;
   return q - (((x < 0) != (y < 0)) && q * y != x);
 }
 
-inline __device__ long long _floor_divide(long long x, long long y) {
+__device__ long long _floor_divide(long long x, long long y) {
   if (y == 0) return 0;
   long long q = x / y;
   return q - (((x < 0) != (y < 0)) && q * y != x);
 }
 
-inline __device__ unsigned _floor_divide(unsigned x, unsigned y) {
+__device__ unsigned _floor_divide(unsigned x, unsigned y) {
   if (y == 0) return 0;
   return x / y;
 }
 
-inline __device__ unsigned long long _floor_divide(
+__device__ unsigned long long _floor_divide(
     unsigned long long x, unsigned long long y) {
   if (y == 0) return 0;
   return x / y;
 }
 
-inline __device__ float _floor_divide(float x, float y) {
+__device__ float _floor_divide(float x, float y) {
   return floor(x / y);
 }
 
-inline __device__ double _floor_divide(double x, double y) {
+__device__ double _floor_divide(double x, double y) {
   return floor(x / y);
 }

@@ -1,47 +1,41 @@
 import string
 
 from cupy._core cimport _kernel
-from cupy._core.core cimport _ndarray_base
+from cupy._core.core cimport _ndarray_base, _internal_ascontiguousarray
 from cupy._core._cuda_compute_common cimport _get_cuda_compute
-from cupy._core._cuda_compute_common import _make_raw_op
+from cupy._core._cuda_compute_common import _make_raw_ops
 
 import numpy
 
 import cupy
+from cupy._core._dtype import make_aligned_dtype
 from cupy._core._scalar import format_type_decls
 from cupy._core._scalar import get_typename
 
 
-cdef _get_reduce_op(str prelude, str reduce_expr):
-    src = string.Template('''
-${prelude}
+cdef str _get_reduce_op_src(str reduce_expr):
+    return string.Template('''
 extern "C" __device__ void op(void* _a, void* _b, void* _ret) {
     _type_reduce a = *static_cast<const _type_reduce*>(_a);
     _type_reduce b = *static_cast<const _type_reduce*>(_b);
     *static_cast<_type_reduce*>(_ret) = (${reduce_expr});
 }
-''').substitute(prelude=prelude, reduce_expr=reduce_expr)
-    return _make_raw_op(src, 'op')
+''').substitute(reduce_expr=reduce_expr)
 
 
-cdef _get_input_map_iterator(compute, d_in, str prelude, str map_expr,
-                             acc_type):
-    src = string.Template('''
-${prelude}
+cdef str _get_input_map_src(str map_expr):
+    return string.Template('''
 extern "C" __device__ void map(void* _in, void* _ret) {
     const type_in0_raw in0 = *static_cast<const type_in0_raw*>(_in);
     *static_cast<_type_reduce*>(_ret) =
         static_cast<_type_reduce>(${map_expr});
 }
-''').substitute(prelude=prelude, map_expr=map_expr)
-    return compute.TransformIterator(d_in, _make_raw_op(src, 'map'),
-                                     acc_type)
+''').substitute(map_expr=map_expr)
 
 
-cdef _get_zip_map_iterator(compute, d_in, str prelude, str map_expr,
-                           acc_type, index_dtype):
-    src = string.Template('''
-${prelude}
+cdef str _get_zip_map_src(str map_expr):
+    # member order matches ZipIterator(ids, d_in) in _try_reduction
+    return string.Template('''
 struct _zip_in { IndexT _idx; type_in0_raw _val; };
 extern "C" __device__ void map(void* _in, void* _ret) {
     const _zip_in _z = *static_cast<const _zip_in*>(_in);
@@ -50,17 +44,11 @@ extern "C" __device__ void map(void* _in, void* _ret) {
     *static_cast<_type_reduce*>(_ret) =
         static_cast<_type_reduce>(${map_expr});
 }
-''').substitute(prelude=prelude, map_expr=map_expr)
-    ids = compute.CountingIterator(numpy.zeros((), dtype=index_dtype))
-    zipped = compute.ZipIterator(ids, d_in)
-    return compute.TransformIterator(zipped, _make_raw_op(src, 'map'),
-                                     acc_type)
+''').substitute(map_expr=map_expr)
 
 
-cdef _get_output_map_iterator(compute, out_flat, str prelude,
-                              str post_map_expr, acc_type):
-    src = string.Template('''
-${prelude}
+cdef str _get_output_map_src(str post_map_expr):
+    return string.Template('''
 extern "C" __device__ void post(void* _acc, void* _ret) {
     _type_reduce a = *static_cast<const _type_reduce*>(_acc);
     type_out0_raw _out;
@@ -68,27 +56,22 @@ extern "C" __device__ void post(void* _acc, void* _ret) {
     (${post_map_expr});
     *static_cast<type_out0_raw*>(_ret) = _out;
 }
-''').substitute(prelude=prelude, post_map_expr=post_map_expr)
-    return compute.TransformOutputIterator(
-        out_flat, _make_raw_op(src, 'post'), acc_type)
+''').substitute(post_map_expr=post_map_expr)
 
 
-cdef _get_mul_offset_op():
-    return _make_raw_op("""
+cdef str _get_offset_ops_src():
+    # segment offsets for the segmented reduce: start = i * seg_size and
+    # end = start + seg_size, computed from a counting/constant iterator zip
+    return """
 extern "C" __device__ void mul_offset(void* a, void* result) {
     const long long* f = static_cast<const long long*>(a);
     *static_cast<long long*>(result) = f[0] * f[1];
 }
-""", 'mul_offset')
-
-
-cdef _get_add_offset_op():
-    return _make_raw_op("""
 extern "C" __device__ void add_offset(void* a, void* result) {
     const long long* f = static_cast<const long long*>(a);
     *static_cast<long long*>(result) = f[0] + f[1];
 }
-""", 'add_offset')
+"""
 
 
 cdef str _get_kernel_prelude(_kernel._TypeMap type_map, str preamble,
@@ -108,7 +91,7 @@ static_assert(sizeof(_type_reduce) == ${acc_size},
 
 cpdef _can_use_cuda_compute_reduction(
         list in_args, list out_args, tuple reduce_axis, tuple out_axis):
-    cdef _ndarray_base x
+    cdef _ndarray_base input_array
 
     if _get_cuda_compute() is None:
         return False
@@ -117,20 +100,21 @@ cpdef _can_use_cuda_compute_reduction(
     if len(in_args) != 1 or len(out_args) != 1:
         return False
 
-    x = in_args[0]
+    input_array = in_args[0]
 
     if not out_args[0]._c_contiguous:
         return False
 
     if len(out_axis) != 0:
-        if not x._c_contiguous:
+        if not input_array._c_contiguous:
             return False
-        if tuple(out_axis) + tuple(reduce_axis) != tuple(range(x.ndim)):
+        if (tuple(out_axis) + tuple(reduce_axis)
+                != tuple(range(input_array.ndim))):
             return False
         return True
 
     # TODO: add support for StridedIterator
-    if not (x._c_contiguous or x._f_contiguous):
+    if not (input_array._c_contiguous or input_array._f_contiguous):
         return False
 
     return True
@@ -158,15 +142,16 @@ cdef _try_accumulator(str reduce_type, str identity, in_dtype,
             return None
         return dt, numpy.full((), value, dtype=dt)
 
-    # currently cannot build a complex64 accumulator (host/JIT policy
-    # mismatch), and its zip puts a complex128 member at offset 8
-    # instead of the __align__(16) offset the struct expects (wrong
-    # argmax indices)
+    # the structured accumulators mirror device structs, so their member
+    # offsets must follow the device alignment (thrust::complex<double> is
+    # __align__(16) while numpy aligns complex128 to 8)
     if reduce_type == 'min_max_st<type_in0_raw>':
+        # complex64 accumulators fail to build in cuda.compute:
+        # "Host generated and JIT compiled reduce policy mismatch"
         if in_dtype.kind == 'c':
             return None
-        acc = numpy.dtype([('value', in_dtype), ('index', index_dtype)],
-                          align=True)
+        acc = make_aligned_dtype(
+            [('value', in_dtype), ('index', index_dtype)])
         h_init = numpy.zeros((), dtype=acc)
         h_init['index'] = -1
         return acc, h_init
@@ -174,114 +159,143 @@ cdef _try_accumulator(str reduce_type, str identity, in_dtype,
     if reduce_type == 'nanmean_st<type_out0_raw>':
         if out_dtype.kind == 'c':
             return None
-        acc = numpy.dtype([('value', out_dtype), ('count', numpy.int64)],
-                          align=True)
+        acc = make_aligned_dtype(
+            [('value', out_dtype), ('count', numpy.int64)])
         return acc, numpy.zeros((), dtype=acc)
 
     return None
 
 
-def _try_reduction(x, out, str map_expr, str reduce_expr,
-                   str post_map_expr, str reduce_type,
-                   _kernel._TypeMap type_map, str identity,
-                   str preamble, compute_opkind):
+def _try_reduction(_ndarray_base input_array, _ndarray_base out,
+                   str map_expr, str reduce_expr, str post_map_expr,
+                   str reduce_type, _kernel._TypeMap type_map,
+                   str identity, str preamble, compute_opkind):
     """Turn the routine's C++ expressions into cuda.compute ops
     and iterators.
 
-    Returns (d_in, d_out, op, h_init) or None
+    Returns (d_in, d_out, build_in, build_out, op, h_init, ops) or None
     """
     compute = _get_cuda_compute()
 
     # a segmented reduction needs _J to be the index within each
     # segment (_J % seg_size). seg_size is a host-side value, which
-    # ops passed to transform iterators never receive
+    # ops passed to transform iterators do not receive yet
+    # (NVIDIA/cccl#11142, fix in NVIDIA/cccl#11213)
     if '_J' in map_expr and out.size > 1:
         return None
 
     # post_map_expr needs a host-side value (e.g. for mean: the
-    # divisor _in_ind.size() / _out_ind.size()). Raw ops can carry
-    # state bytes but ops passed to transform iterators never receive them
+    # divisor _in_ind.size() / _out_ind.size()), same limitation as above
     if '_in_ind' in post_map_expr or '_out_ind' in post_map_expr:
         return None
 
     # complex -> real load cast fails to compile in CuPy
-    if map_expr == 'in0' and x.dtype.kind == 'c' and out.dtype.kind != 'c':
+    if (map_expr == 'in0' and input_array.dtype.kind == 'c'
+            and out.dtype.kind != 'c'):
         return None
 
     index_dtype = numpy.dtype(dict(type_map._pairs).get('IndexT', 'q'))
-    acc = _try_accumulator(reduce_type, identity, x.dtype, out.dtype,
-                           index_dtype)
+    acc = _try_accumulator(reduce_type, identity, input_array.dtype,
+                           out.dtype, index_dtype)
     if acc is None:
         return None
     acc_dtype, h_init = acc
-    acc_type = compute.types.from_numpy_dtype(acc_dtype)
 
     prelude = _get_kernel_prelude(type_map, preamble, reduce_type,
                                   acc_dtype)
 
-    if '_J' in map_expr and not x._c_contiguous:
+    if '_J' in map_expr and not input_array._c_contiguous:
         # in NumPy the indices are always generated based on a C-order
         # array, so _J must count in C order
-        d_in = cupy.ascontiguousarray(x).ravel()
+        d_in = _internal_ascontiguousarray(input_array).ravel()
     else:
-        d_in = x.ravel(order='A')
-    build_in = compute.ProxyArray(x.dtype)
-    to_complex_acc = x.dtype != acc_dtype and acc_dtype.kind == 'c'
+        d_in = input_array.ravel(order='A')
+    out_flat = out.ravel()
+
+    # every op linked into the reduction kernel comes from one module, so
+    # collect the sources first and compile them together
+    to_complex_acc = input_array.dtype != acc_dtype and acc_dtype.kind == 'c'
     struct_acc = acc_dtype.kind == 'V'
-    if '_J' in map_expr:
-        d_in = _get_zip_map_iterator(compute, d_in, prelude, map_expr,
-                                     acc_type, index_dtype)
+    use_zip_map = '_J' in map_expr
+    use_map = use_zip_map or map_expr != 'in0' or to_complex_acc or struct_acc
+    use_opkind = compute_opkind is not None and acc_dtype.kind in 'biuf'
+    use_post = not (post_map_expr in ('out0 = a', 'out0 = type_out0_raw(a)')
+                    and acc_dtype == out.dtype)
+
+    src = prelude
+    names = []
+    if use_map:
+        src += (_get_zip_map_src(map_expr) if use_zip_map
+                else _get_input_map_src(map_expr))
+        names.append('map')
+    if not use_opkind:
+        src += _get_reduce_op_src(reduce_expr)
+        names.append('op')
+    if use_post:
+        src += _get_output_map_src(post_map_expr)
+        names.append('post')
+    if out.size > 1:
+        src += _get_offset_ops_src()
+        names += ['mul_offset', 'add_offset']
+    ops = _make_raw_ops(src, tuple(names)) if names else {}
+
+    acc_type_descriptor = compute.types.from_numpy_dtype(acc_dtype)
+
+    build_in = compute.ProxyArray(input_array.dtype)
+    if use_zip_map:
+        ids = compute.CountingIterator(numpy.zeros((), dtype=index_dtype))
+        d_in = compute.TransformIterator(
+            compute.ZipIterator(ids, d_in), ops['map'], acc_type_descriptor)
         build_in = d_in
-    elif map_expr != 'in0' or to_complex_acc or struct_acc:
-        d_in = _get_input_map_iterator(compute, d_in, prelude,
-                                       map_expr, acc_type)
+    elif use_map:
+        d_in = compute.TransformIterator(d_in, ops['map'],
+                                         acc_type_descriptor)
         build_in = d_in
 
-    if compute_opkind is not None and acc_dtype.kind in 'biuf':
+    if use_opkind:
         op = getattr(compute.OpKind, compute_opkind)
     else:
-        op = _get_reduce_op(prelude, reduce_expr)
+        op = ops['op']
 
-    out_flat = out.ravel()
     build_out = compute.ProxyArray(out.dtype)
-    if (post_map_expr in ('out0 = a', 'out0 = type_out0_raw(a)')
-            and acc_dtype == out.dtype):
-        d_out = out_flat
-    else:
-        d_out = _get_output_map_iterator(compute, out_flat, prelude,
-                                         post_map_expr, acc_type)
+    if use_post:
+        d_out = compute.TransformOutputIterator(
+            out_flat, ops['post'], acc_type_descriptor)
         build_out = d_out
+    else:
+        d_out = out_flat
 
-    return d_in, d_out, build_in, build_out, op, h_init
+    return d_in, d_out, build_in, build_out, op, h_init, ops
 
 
-def _cuda_compute_reduce(x, out, str map_expr, str reduce_expr,
-                         str post_map_expr, str reduce_type, type_map,
-                         str identity, str preamble, compute_opkind,
-                         stream):
+def _cuda_compute_reduce(_ndarray_base input_array, _ndarray_base out,
+                         str map_expr, str reduce_expr, str post_map_expr,
+                         str reduce_type, type_map, str identity,
+                         str preamble, compute_opkind, stream):
     compute = _get_cuda_compute()
     if stream is None:
         stream = cupy.cuda.get_current_stream()
     build_cuda_compute_reduce = _try_reduction(
-        x, out, map_expr, reduce_expr, post_map_expr, reduce_type,
+        input_array, out, map_expr, reduce_expr, post_map_expr, reduce_type,
         type_map, identity, preamble, compute_opkind)
     if build_cuda_compute_reduce is None:
         return False
-    d_in, d_out, build_in, build_out, op, h_init = build_cuda_compute_reduce
+    (d_in, d_out, build_in, build_out, op, h_init,
+     ops) = build_cuda_compute_reduce
 
     if out.size > 1:
         num_segments = out.size
-        # NOTE: x.size == out.size * (elements reduced per output)
-        seg_size = x.size // num_segments
+        # NOTE: input_array.size == out.size * (elements per output)
+        seg_size = input_array.size // num_segments
         # TODO: use CUB's fixed-size segmented reduce when exposed
         # in cuda.compute
         ids = compute.CountingIterator(numpy.int64(0))
         size = compute.ConstantIterator(numpy.int64(seg_size))
         start = compute.TransformIterator(
-            compute.ZipIterator(ids, size), _get_mul_offset_op(),
+            compute.ZipIterator(ids, size), ops['mul_offset'],
             value_type=compute.types.int64)
         end = compute.TransformIterator(
-            compute.ZipIterator(start, size), _get_add_offset_op(),
+            compute.ZipIterator(start, size), ops['add_offset'],
             value_type=compute.types.int64)
         reducer = compute.make_segmented_reduce(
             d_in=build_in, d_out=build_out, op=op, h_init=h_init,
@@ -300,10 +314,10 @@ def _cuda_compute_reduce(x, out, str map_expr, str reduce_expr,
     reducer = compute.make_reduce_into(
         d_in=build_in, d_out=build_out, op=op, h_init=h_init)
     tmp_size = reducer(temp_storage=None, d_in=d_in, d_out=d_out,
-                       num_items=x.size, op=op, h_init=h_init)
+                       num_items=input_array.size, op=op, h_init=h_init)
     d_tmp = cupy.empty(tmp_size, dtype=numpy.uint8)
     reducer(temp_storage=d_tmp, d_in=d_in, d_out=d_out,
-            num_items=x.size, op=op, h_init=h_init, stream=stream)
+            num_items=input_array.size, op=op, h_init=h_init, stream=stream)
     return True
 
 

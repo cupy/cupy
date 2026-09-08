@@ -88,19 +88,14 @@ cdef _ndarray_base _ndarray_imag_setter(_ndarray_base self, value):
 
 cdef _ndarray_base _ndarray_prod(
         _ndarray_base self, axis, dtype, out, keepdims):
+    reduce_func = _prod_auto_dtype if dtype is None else _prod_keep_dtype
     for accelerator in _accelerator._routine_accelerators:
         result = None
         if accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE:
             # result will be None if the reduction is not served by
             # cuda.compute
-            if dtype is None:
-                result = _prod_auto_dtype(
-                    self, axis, dtype, out, keepdims,
-                    cuda_compute_only=True)
-            else:
-                result = _prod_keep_dtype(
-                    self, axis, dtype, out, keepdims,
-                    cuda_compute_only=True)
+            result = reduce_func(self, axis, dtype, out, keepdims,
+                                 cuda_compute_only=True)
         if accelerator == _accelerator.ACCELERATOR_CUB:
             # result will be None if the reduction is not compatible with CUB
             result = cub.cub_reduction(
@@ -112,27 +107,19 @@ cdef _ndarray_base _ndarray_prod(
                 self, axis, dtype, out, keepdims, cuda_cutensor.OP_MUL, 1, 0)
         if result is not None:
             return result
-    if dtype is None:
-        return _prod_auto_dtype(self, axis, dtype, out, keepdims)
-    else:
-        return _prod_keep_dtype(self, axis, dtype, out, keepdims)
+    return reduce_func(self, axis, dtype, out, keepdims)
 
 
 cdef _ndarray_base _ndarray_sum(
         _ndarray_base self, axis, dtype, out, keepdims):
+    reduce_func = _sum_auto_dtype if dtype is None else _sum_keep_dtype
     for accelerator in _accelerator._routine_accelerators:
         result = None
         if accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE:
             # result will be None if the reduction is not served by
             # cuda.compute
-            if dtype is None:
-                result = _sum_auto_dtype(
-                    self, axis, dtype, out, keepdims,
-                    cuda_compute_only=True)
-            else:
-                result = _sum_keep_dtype(
-                    self, axis, dtype, out, keepdims,
-                    cuda_compute_only=True)
+            result = reduce_func(self, axis, dtype, out, keepdims,
+                                 cuda_compute_only=True)
         if accelerator == _accelerator.ACCELERATOR_CUB:
             # result will be None if the reduction is not compatible with CUB
             result = cub.cub_reduction(
@@ -145,10 +132,7 @@ cdef _ndarray_base _ndarray_sum(
         if result is not None:
             return result
 
-    if dtype is None:
-        return _sum_auto_dtype(self, axis, dtype, out, keepdims)
-    else:
-        return _sum_keep_dtype(self, axis, dtype, out, keepdims)
+    return reduce_func(self, axis, dtype, out, keepdims)
 
 
 cdef _ndarray_base _ndarray_cumsum(_ndarray_base self, axis, dtype, out):

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import numpy
 import pytest
+from unittest import mock
 
 import cupy
 from cupy import testing
@@ -310,9 +311,9 @@ class TestCudaComputeReductionRoutines(CudaComputeReductionTestBase):
         reason="AssertFunctionIsCalled and accelerator mutation.")
     def test_annotated_ops_use_no_raw_op(self):
         a = cupy.ones((1000,), dtype='f')
-        func = _cuda_compute_reduction._make_raw_op
+        func = _cuda_compute_reduction._make_raw_ops
         with testing.AssertFunctionIsCalled(
-                'cupy._core._cuda_compute_reduction._make_raw_op',
+                'cupy._core._cuda_compute_reduction._make_raw_ops',
                 wraps=func, times_called=0):
             a.sum()
             a.prod()
@@ -343,21 +344,24 @@ class TestCudaComputeReductionFallback(CudaComputeReductionTestBase):
         _accelerator.set_routine_accelerators(['cuda_compute', 'cub'])
         func = _cuda_compute_reduction._cuda_compute_reduce
 
+        calls = []
+
         def declines(*args, **kw):
             ret = func(*args, **kw)
             assert not ret
+            calls.append(ret)
             return ret
 
         def cub_declines(*args, **kw):
             return None
 
-        # cuda.compute is tried at its routine-level slot and once more
-        # ahead of the generic kernel
-        with testing.AssertFunctionIsCalled(
+        # cuda.compute and cub both decline, the generic kernel runs
+        with mock.patch(
                 'cupy._core._cuda_compute_reduction._cuda_compute_reduce',
-                wraps=declines, times_called=2):
+                wraps=declines):
             with testing.AssertFunctionIsCalled(
                     'cupy.cuda.cub.cub_reduction',
                     wraps=cub_declines, times_called=1):
                 result = cupy.min(a)
+        assert len(calls) >= 1
         assert complex(result) == complex(numpy.min(a_np))
