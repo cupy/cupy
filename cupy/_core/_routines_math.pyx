@@ -521,7 +521,8 @@ cdef _ndarray_base scan(
 
 @_util.memoize(for_each_device=True)
 def _inclusive_batch_scan_kernel(
-        dtype, block_size, op, src_c_cont, out_c_cont):
+        dtype, block_size, op, src_c_cont, out_c_cont,
+        use_32bit_indexing, large_batch):
     """return Prefix Sum(Scan) cuda kernel
     for a 2d array over axis 1
     used for scanning over different axes
@@ -556,89 +557,84 @@ def _inclusive_batch_scan_kernel(
 
     source = string.Template("""
     ${type_decls}
+    // blocks_per_batch: blocks spanning a single row (1 unless large_batch)
+    // remaining: valid elements in the last (padded) chunk of a row
+    // pad_batch_size: padded row length inside a block; divides block_size
+    //     and equals it when large_batch
     extern "C" __global__ void ${name}(
-        const CArray<${dtype}, 2, ${src_c_cont}> src,
-        CArray<${dtype}, 2, ${out_c_cont}> dst, int batch_size){
-        long long n = src.size();
+        const CArray<${dtype}, 2, ${src_c_cont}, ${use_32bit_indexing}> src,
+        CArray<${dtype}, 2, ${out_c_cont}, ${use_32bit_indexing}> dst,
+        unsigned int blocks_per_batch, unsigned int remaining,
+        unsigned int pad_batch_size
+    ){
+        using index_t = decltype(src)::index_t;
 
         extern __shared__ ${dtype} temp[];
 
         unsigned int thid = threadIdx.x;
-        unsigned int block = blockIdx.x * blockDim.x;
+        int n_batches_block;
+        bool must_copy;
+        index_t row, col;
 
-        unsigned int pad_batch_size = batch_size;
-        bool must_copy = true;
-
-        if (batch_size & (batch_size -1)) {
-            pad_batch_size = 1 << (32 - __clz(batch_size));
-            must_copy = (thid & (pad_batch_size-1)) < batch_size;
+        if constexpr (${large_batch}) {
+            // blockIdx.x / gridDim.x are 32-bit, so row fits. col may not:
+            // widen before multiplying by block_size.
+            unsigned int block_in_row = blockIdx.x % blocks_per_batch;
+            n_batches_block = 1;  // pad_batch_size == block_size
+            must_copy = (block_in_row + 1 != blocks_per_batch)
+                        || (thid < remaining);
+            col = static_cast<index_t>(block_in_row) * ${block_size} + thid;
+            row = blockIdx.x / blocks_per_batch;
+        } else {
+            // Multiple rows per block and `pad_batch_size` is a power of two
+            // so col is lower bits while the row is the higher.
+            unsigned int pad_batch_bits = 31U - __clz(pad_batch_size);
+            n_batches_block = ${block_size} >> pad_batch_bits;
+            col = thid & (pad_batch_size - 1);
+            row = static_cast<index_t>(blockIdx.x) * n_batches_block
+                  + (thid >> pad_batch_bits);
+            must_copy = col < remaining && row < src.shape()[0];
         }
-        if (pad_batch_size > ${block_size}) {
-            int blocks_per_batch = (batch_size - 1) / ${block_size} + 1;
-            pad_batch_size = ${block_size} * blocks_per_batch;
+        const index_t idx[] = {row, col};
 
-            // Must copy enables for all blocks but the last one in the batch
-            bool last_block = (blockIdx.x + 1) % blocks_per_batch == 0;
-            int remaining_batch = batch_size % ${block_size};
-            if (remaining_batch == 0) {
-                remaining_batch = ${block_size};
+        temp[thid] = (must_copy) ? src[idx] : (${dtype}) ${identity};
+        __syncthreads();
+        for (int j = 0; j < n_batches_block; j++) {
+            int offset = j * pad_batch_size;
+            for (int i = 1; i < pad_batch_size; i <<= 1) {
+                int index = ((threadIdx.x + 1) * 2 * i - 1);
+                int index_block = offset + index;
+                if (index < (pad_batch_size)){
+                    temp[index_block] ${op}= temp[index_block - i];
+                }
+                __syncthreads();
             }
-            must_copy = !last_block || (thid < (remaining_batch));
+            for (int i = pad_batch_size >> 1; i > 0; i >>= 1) {
+                int index = ((threadIdx.x + 1) * 2 * i - 1);
+                int index_block = offset + index;
+                if ((index + i) < (pad_batch_size)){
+                    temp[index_block + i] ${op}= temp[index_block];
+                }
+                __syncthreads();
+            }
         }
-
-        int pad_per_batch = pad_batch_size-batch_size;
-        int n_batches_block = ${block_size} / pad_batch_size;
-
-        unsigned int idx0 = thid + block;
-
-        int batch_id = idx0 / pad_batch_size;
-        idx0 = idx0 - pad_per_batch * batch_id;
-
-        int row = idx0 / batch_size;
-        int col = idx0 % batch_size;
-        const ptrdiff_t idx0_idx[] = {row, col};
-
-        if(idx0 < n){
-            temp[thid] = (must_copy) ? src[idx0_idx] : (${dtype}) ${identity};
-            __syncthreads();
-            if (!n_batches_block) {
-                n_batches_block = 1;
-                pad_batch_size = ${block_size};
-            }
-            for (int j = 0; j < n_batches_block; j++) {
-                int offset = j * pad_batch_size;
-                for (int i = 1; i <= pad_batch_size; i <<= 1) {
-                    int index = ((threadIdx.x + 1) * 2 * i - 1);
-                    int index_block = offset + index;
-                    if (index < (pad_batch_size)){
-                        temp[index_block] ${op}= temp[index_block - i];
-                    }
-                    __syncthreads();
-                }
-                for(int i = pad_batch_size >> 1; i > 0; i >>= 1){
-                    int index = ((threadIdx.x + 1) * 2 * i - 1);
-                    int index_block = offset + index;
-                    if((index + i) < (pad_batch_size)){
-                        temp[index_block + i] ${op}= temp[index_block];
-                    }
-                    __syncthreads();
-                }
-            }
-            if(must_copy){
-                dst[idx0_idx] = temp[thid];
-            }
+        if (must_copy) {
+            dst[idx] = temp[thid];
         }
     }
     """).substitute(name=name, dtype=dtype, block_size=block_size,
                     op=op_char[op], identity=identity[op],
                     src_c_cont=src_c_cont, out_c_cont=out_c_cont,
+                    use_32bit_indexing=int(use_32bit_indexing),
+                    large_batch='true' if large_batch else 'false',
                     type_decls=format_type_decls(type_decls))
     module = compile_with_cache(source)
     return module.get_function(name)
 
 
 @_util.memoize(for_each_device=True)
-def _add_scan_batch_blocked_sum_kernel(dtype, op, block_size, c_cont):
+def _add_scan_batch_blocked_sum_kernel(
+        dtype, op, block_size, c_cont, use_32bit_indexing):
     name = 'cupy_add_scan_blocked_sum_kernel'
     type_decls = set()
     dtype = get_typename(dtype, type_decls)
@@ -646,32 +642,31 @@ def _add_scan_batch_blocked_sum_kernel(dtype, op, block_size, c_cont):
     ops = {scan_op.SCAN_SUM: '+', scan_op.SCAN_PROD: '*'}
     source = string.Template("""
     ${type_decls}
-    extern "C" __global__ void ${name}(CArray<${dtype}, 2, ${c_cont}> src_dst,
-        int batch_size){
-        long long n = src_dst.size();
+    extern "C" __global__ void ${name}(
+        CArray<${dtype}, 2, ${c_cont}, ${use_32bit_indexing}> src_dst,
+        unsigned int blocks_per_batch, unsigned int remaining
+    ){
+        using index_t = decltype(src_dst)::index_t;
 
         unsigned int thid = threadIdx.x;
-        unsigned int block = blockIdx.x * ${block_size};
+        unsigned int block_in_row = blockIdx.x % blocks_per_batch;
+        index_t row = blockIdx.x / blocks_per_batch;
+        index_t block_start =
+            static_cast<index_t>(block_in_row) * ${block_size};
 
-        unsigned int idx0 = thid + block;
-
-        // Respect padding
-        unsigned int row = idx0 / batch_size;
-        unsigned int col = idx0 % batch_size;
-        int my_block = ${block_size} * (col / ${block_size});
-        const ptrdiff_t dst_idx[] = {row, col};
-        const ptrdiff_t src_idx[] = {row, my_block - 1};
-
-        // Avoid for the first block of every row
-        // This can be tweaked with kernel launch settings
-        bool first = col < ${block_size};
-        bool is_block = (col % (${block_size})) == ${block_size} - 1;
-        if(idx0 < n && !first && !is_block){
+        bool in_range = (block_in_row + 1 != blocks_per_batch)
+                        || (thid < remaining);
+        // The first block of a row has nothing to add and the last thread of
+        // a block already holds the sum of its block.
+        if (in_range && block_in_row != 0 && thid != ${block_size} - 1){
+            const index_t dst_idx[] = {row, block_start + thid};
+            const index_t src_idx[] = {row, block_start - 1};
             src_dst[dst_idx] ${op}= src_dst[src_idx];
         }
     }
     """).substitute(name=name, dtype=dtype, op=ops[op], block_size=block_size,
                     c_cont=c_cont,
+                    use_32bit_indexing=int(use_32bit_indexing),
                     type_decls=format_type_decls(type_decls))
     module = compile_with_cache(source)
     return module.get_function(name)
@@ -683,32 +678,42 @@ cdef _ndarray_base _batch_scan_op(
     # TODO(ecastill) replace this with "_reduction._block_size" once it is
     # properly exposed
     block_size = 512
-    # Since we need to pad each batch we spawn more threads as some
-    # of them will be idle
-    # Calc the total number of blocks
-    padded_bs = 1 << ((batch_size - 1).bit_length())
-    if padded_bs > block_size:
+    cdef bint large_batch = batch_size > block_size
+    if large_batch:
+        # A row spans several blocks, the last one is only partially filled.
         blocks_per_batch = (batch_size - 1) // block_size + 1
-        padded_bs = block_size * blocks_per_batch
-    padded_size = a.size // batch_size * padded_bs
+        pad_batch_size = block_size
+        remaining = (batch_size - 1) % block_size + 1
+    else:
+        # Pad each row to the next power of two so several rows can share a
+        # block. pad_batch_size <= block_size.
+        blocks_per_batch = 1
+        pad_batch_size = 1 << ((batch_size - 1).bit_length())
+        remaining = batch_size
+    padded_size = a.shape[0] * blocks_per_batch * pad_batch_size
+    n_blocks = (padded_size - 1) // block_size + 1
 
     cdef int src_cont = int(a.flags.c_contiguous)
     cdef int out_cont = int(out.flags.c_contiguous)
-    kern_scan = _inclusive_batch_scan_kernel(a.dtype, block_size, op,
-                                             src_cont, out_cont)
-    kern_scan(grid=((padded_size - 1) // (block_size) + 1,),
-              block=(block_size,),
-              args=(a, out, batch_size),
+    cdef int use_32 = int(a._index_32_bits and out._index_32_bits)
+
+    # Convert to uint32 for kernel arguments (could error for huge matrices):
+    blocks_per_batch = numpy.uint32(blocks_per_batch)
+    remaining = numpy.uint32(remaining)
+    pad_batch_size = numpy.uint32(pad_batch_size)
+
+    kern_scan = _inclusive_batch_scan_kernel(
+        a.dtype, block_size, op, src_cont, out_cont, use_32, large_batch)
+    kern_scan(grid=(n_blocks,), block=(block_size,),
+              args=(a, out, blocks_per_batch, remaining, pad_batch_size),
               shared_mem=a.itemsize * block_size)
-    if batch_size > block_size:
+    if large_batch:
         blocked_sum = out[:, block_size-1::block_size]
         _batch_scan_op(blocked_sum, op, blocked_sum)
         kern_add = _add_scan_batch_blocked_sum_kernel(
-            out.dtype, op, block_size, out_cont)
-        kern_add(
-            grid=((out.size - 1) // (block_size) + 1,),
-            block=(block_size,),
-            args=(out, batch_size))
+            out.dtype, op, block_size, out_cont, use_32)
+        kern_add(grid=(n_blocks,), block=(block_size,),
+                 args=(out, blocks_per_batch, remaining))
     return out
 
 

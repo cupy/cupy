@@ -2,6 +2,7 @@ import threading
 
 from cupy._core._dtype cimport get_dtype
 from cupy._core.core cimport _ndarray_base
+from cupy._core cimport _scalar
 from cupy.cuda.device cimport get_compute_capability
 from cupy._core._cuda_compute_common cimport _get_cuda_compute
 
@@ -12,25 +13,31 @@ from cupy._core._cuda_compute_common import _make_raw_op
 from cupy.cuda import compiler
 from cupy.cuda._compiler_cache import _hash_hexdigest
 
-cdef str _complex_op_src(str op, str ftype):
+cdef str _get_generic_op(str op, dtype):
+    type_decls = set()
+    typename = _scalar.get_typename(dtype, type_decls)
+    type_decls = _scalar.format_type_decls(type_decls)
+
     if op == 'PLUS':
-        body = '''
-        static_cast<cplx*>(result)->re = pa->re + pb->re;
-        static_cast<cplx*>(result)->im = pa->im + pb->im;'''
+        op = '+'
+    elif op == 'MULTIPLIES':
+        op = '*'
     else:
-        body = '''
-        %(t)s re = pa->re * pb->re - pa->im * pb->im;
-        %(t)s im = pa->re * pb->im + pa->im * pb->re;
-        static_cast<cplx*>(result)->re = re;
-        static_cast<cplx*>(result)->im = im;'''
-    src = '''
-    struct __align__(%(a)d) cplx { %(t)s re, im; };
-    extern "C" __device__ void op(void* a, void* b, void* result) {
-        const cplx* pa = static_cast<const cplx*>(a);
-        const cplx* pb = static_cast<const cplx*>(b);''' + body + '''
-    }
+        raise ValueError(f'Unsupported operation: {op}')
+
+    src = f'''
+        #include <cupy/complex.cuh>
+        {type_decls}
+        using T = {typename};
+
+        extern "C" __device__ void op(void* a, void* b, void* result) {{
+            const T& pa = *static_cast<const T*>(a);
+            const T& pb = *static_cast<const T*>(b);
+            T& out = *static_cast<T*>(result);
+            out = pa {op} pb;
+        }}
     '''
-    return src % {'t': ftype, 'a': 8 if ftype == 'float' else 16}
+    return src
 
 
 cdef object _thread_local = threading.local()
@@ -60,13 +67,17 @@ cdef _get_scanner(str op, dtype):
         return cached
 
     compute = _get_cuda_compute()
-    if dtype.kind == 'c':
-        ftype = 'float' if dtype == numpy.dtype('complex64') else 'double'
-        op_src = _complex_op_src(op, ftype)
-        scan_op = _make_raw_op(op_src, 'op')
-    else:
-        op_src = ''
+
+    cc_dtype = compute.types.from_numpy_dtype(dtype)
+    # If the dtype is not a storage type in cuda-compute, assume that
+    # the OpKind will support +/* the same way that CuPy would.
+    # (For more complex handling, OpKind should be attached to loops)
+    if cc_dtype.info.typenum != cc_dtype.info.typenum.STORAGE:
         scan_op = getattr(compute.OpKind, op)
+        op_src = ''
+    else:
+        op_src = _get_generic_op(op, dtype)
+        scan_op = _make_raw_op(op_src, 'op')
 
     name = _scanner_cache_name(op, dtype, op_src)
     scanner = None
@@ -96,13 +107,6 @@ def _cuda_compute_scan_arrays(str op, x, out):
             stream=cupy.cuda.get_current_stream())
 
 
-cpdef bint _supports_dtype(dtype) except ?-1:
-    if dtype.kind not in 'iufc':
-        return False
-
-    return True
-
-
 cpdef cuda_compute_scan(_ndarray_base a, _ndarray_base result, dtype,
                         str op):
     """Perform an inclusive sum or product scan of `a` with cuda.compute.
@@ -112,9 +116,9 @@ cpdef cuda_compute_scan(_ndarray_base a, _ndarray_base result, dtype,
     if _get_cuda_compute() is None:
         return None
 
+    # Note, we currently assume a simple +/* works for all dtypes
+    # (and if it doesn't it fails the same for the default path).
     out_dtype = get_dtype(dtype) if result is None else result.dtype
-    if not _supports_dtype(out_dtype):
-        return None
 
     if result is None:
         if a.dtype == out_dtype and a._c_contiguous:
