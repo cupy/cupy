@@ -808,8 +808,7 @@ cdef class Plan1d:
 cdef class PlanNd:
     def __init__(self, object shape, object inembed, int istride,
                  int idist, object onembed, int ostride, int odist,
-                 int fft_type, int batch, str order, int last_axis, last_size,
-                 *, intptr_t prealloc_plan=0):
+                 int fft_type, int batch, *, intptr_t prealloc_plan=0):
         cdef Handle plan
         cdef size_t work_size
         cdef int ndim, result
@@ -880,10 +879,18 @@ cdef class PlanNd:
 
         self.shape = tuple(shape)
         self.fft_type = <Type>fft_type
+        self.plan_key = (
+            self.shape,
+            None if inembed is None else tuple(inembed),
+            istride,
+            idist,
+            None if onembed is None else tuple(onembed),
+            ostride,
+            odist,
+            fft_type,
+            batch,
+        )
         self.work_area = work_area
-        self.order = order  # either 'C' or 'F'
-        self.last_axis = last_axis  # ignored for C2C
-        self.last_size = last_size  # = None (and ignored) for C2C
 
     def __dealloc__(self):
         cdef Handle plan = <Handle>self.handle
@@ -925,57 +932,6 @@ cdef class PlanNd:
             execZ2D(plan, a.data.ptr, out.data.ptr)
         else:
             raise ValueError
-
-    def _output_dtype_and_shape(self, a):
-        shape = list(a.shape)
-        if self.fft_type == CUFFT_C2C:
-            dtype = numpy.complex64
-        elif self.fft_type == CUFFT_R2C:
-            shape[self.last_axis] = self.last_size
-            dtype = numpy.complex64
-        elif self.fft_type == CUFFT_C2R:
-            shape[self.last_axis] = self.last_size
-            dtype = numpy.float32
-        elif self.fft_type == CUFFT_Z2Z:
-            dtype = numpy.complex128
-        elif self.fft_type == CUFFT_D2Z:
-            shape[self.last_axis] = self.last_size
-            dtype = numpy.complex128
-        else:  # CUFFT_Z2D
-            shape[self.last_axis] = self.last_size
-            dtype = numpy.float64
-        return tuple(shape), dtype
-
-    def get_output_array(self, a, order='C'):
-        shape, dtype = self._output_dtype_and_shape(a)
-        return cupy.empty(shape, dtype, order=order)
-
-    def check_output_array(self, a, out):
-        if out is a:
-            # TODO(leofang): think about in-place transforms for C2R & R2C
-            return
-        if self.fft_type in (CUFFT_C2C, CUFFT_Z2Z):
-            if out.shape != a.shape:
-                raise ValueError('output shape mismatch')
-            if out.dtype != a.dtype:
-                raise ValueError('output dtype mismatch')
-        else:
-            if out.ndim != a.ndim:
-                raise ValueError('output dimension mismatch')
-            for i, size in enumerate(out.shape):
-                if (i != self.last_axis and size != a.shape[i]) or \
-                   (i == self.last_axis and size != self.last_size):
-                    raise ValueError('output shape is incorrecct')
-            if self.fft_type in (CUFFT_R2C, CUFFT_D2Z):
-                if out.dtype != cupy.dtype(a.dtype.char.upper()):
-                    raise ValueError('output dtype is unexpected')
-            else:  # CUFFT_C2R or CUFFT_Z2D
-                if out.dtype != cupy.dtype(a.dtype.char.lower()):
-                    raise ValueError('output dtype is unexpected')
-        if not ((out.flags.f_contiguous == a.flags.f_contiguous) and
-                (out.flags.c_contiguous == a.flags.c_contiguous)):
-            raise ValueError('output contiguity mismatch')
-
 
 # TODO(leofang): Unify with PlanND?!
 # TODO(leofang): support cufftXtSetGPUs?

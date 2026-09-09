@@ -465,3 +465,20 @@ class TestFusionInvalid:
         x = testing.shaped_random((3, 3), cupy, cupy.int64, seed=0)
         with pytest.raises(TypeError, match="Python scalar"):
             f(x)
+
+
+class TestOldFusionExplicit:
+    def test_weak_int(self):
+        count = 0
+
+        @cupy.fuse()
+        def f(x, y):
+            nonlocal count
+            count += 1
+            return cupy.equal(x, 1)
+
+        x = cupy.arange(10)
+        fuse = cupy._core.fusion.Fusion(f, 'test_weak_int')
+        fuse(x, 1)
+        # Check that fusion only called f once (i.e. old fusion)
+        assert count == 1

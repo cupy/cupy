@@ -743,19 +743,22 @@ class _spbase:
 
 
 class sparray:
-    """Namespace mixin for sparse array classes.
+    """Base class shared by all sparse array classes.
 
     Sparse array classes follow NumPy semantics: ``*`` is element-wise
     multiplication and ``**`` is element-wise power.  Use ``@`` for
-    matrix multiplication.
+    matrix multiplication.  Use ``isinstance(x, sparray)`` to test
+    whether ``x`` is a sparse array rather than a sparse matrix.
 
-    .. seealso:: :class:`scipy.sparse.sparray`
+    .. seealso::
+       - :class:`scipy.sparse.sparray`
+       - :class:`~cupyx.scipy.sparse.spmatrix`
     """
     pass
 
 
 class spmatrix:
-    """Mixin for sparse matrix classes.
+    """Base class shared by all sparse matrix classes.
 
     Sparse matrix classes follow legacy ``numpy.matrix`` semantics:
     ``*`` is matrix multiplication and ``**`` is matrix power.  Provides
@@ -763,7 +766,9 @@ class spmatrix:
     ``getcol``, etc.) that do not exist on sparse arrays.  These APIs
     are deprecated in favor of the sparse array interface.
 
-    .. seealso:: :class:`scipy.sparse.spmatrix`
+    .. seealso::
+       - :class:`scipy.sparse.spmatrix`
+       - :class:`~cupyx.scipy.sparse.sparray`
     """
 
     def __init__(self, *args, maxprint=50, **kwargs):

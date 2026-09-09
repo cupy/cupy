@@ -1,0 +1,27 @@
+# Stripped-down vendored version of https://github.com/jlumbroso/free-disk-space
+# (MIT-licensed, original Copyright (c) 2023 Jeremie Lumbroso). Only keeps the
+# four largest "always safe to drop on a Linux CI runner" paths and runs them
+# in parallel so the action finishes in ~30s instead of 2-3 min sequential.
+# Docker images intentionally left alone in case downstream steps need them.
+
+name: Free disk space (Linux)
+description: Remove pre-installed tooling we don't use to free ~50 GiB on ubuntu-* runners.
+
+runs:
+  using: composite
+  steps:
+    - name: Remove unused tooling
+      shell: bash
+      run: |
+        # Don't fail if a directory has already been removed in a future
+        # runner-image refresh.
+        set +e
+        echo "Before:"
+        df -h /
+        sudo rm -rf /usr/share/dotnet              &  # ~25 GiB
+        sudo rm -rf /usr/local/lib/android         &  # ~12 GiB
+        sudo rm -rf /opt/ghc                       &  # ~7 GiB
+        sudo rm -rf /opt/hostedtoolcache/CodeQL    &  # ~5 GiB
+        wait
+        echo "After:"
+        df -h /

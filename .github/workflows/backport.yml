@@ -32,6 +32,18 @@ jobs:
       run: |
         pip install pygithub
 
+    # TODO(leofang): the backport bot (cupy/backport) copies the source PR's
+    # labels onto the backport PR, so ci:triggered leaks over and immediately
+    # triggers CI on the fresh backport PR. Strip it from the source PR here,
+    # before the bot reads the labels (same workflow, so no race with
+    # ci-trigger.yml). Move this elsewhere when this workflow is retired.
+    - name: Strip ci:triggered before backporting
+      env:
+        GH_TOKEN: ${{ secrets.BACKPORT_TOKEN }}
+      run: |
+        gh api --method DELETE \
+          "repos/${{ github.repository }}/issues/${{ github.event.number }}/labels/ci:triggered" || true
+
     - name: Run Backport
       env:
         GH_TOKEN: ${{secrets.BACKPORT_TOKEN}}
