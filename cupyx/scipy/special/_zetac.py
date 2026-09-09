@@ -313,6 +313,6 @@ zetac = _core.create_ufunc(
     Returns:
         cupy.ndarray: Values of zeta(x)-1.
 
-    .. seealso:: :data:`scipy.special.zetac`
+    .. seealso:: :func:`scipy.special.zetac`
 
     """)

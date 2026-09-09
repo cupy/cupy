@@ -2643,6 +2643,24 @@ cpdef function.Module compile_with_cache(
         jitify=jitify)
 
 
+cpdef bytes compile_to_ltoir(
+        str source, tuple options=(), arch=None,
+        bint prepend_cupy_headers=False, log_stream=None):
+    """Compile ``source`` to LTO IR with the CuPy include paths available.
+
+    Unlike `compile_with_cache` this returns the LTO IR bytes rather than a
+    loaded module, so that it can be linked by a consumer such as
+    cuda.compute.
+    """
+    if prepend_cupy_headers:
+        source = _cupy_header + source
+
+    return cuda.compiler._compile_module_with_cache(
+        source, assemble_cupy_compiler_options(options), arch=arch,
+        extra_source=_get_header_source(), log_stream=log_stream,
+        to_ltoir=True)
+
+
 # =============================================================================
 # Routines
 # =============================================================================

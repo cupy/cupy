@@ -595,13 +595,19 @@ class TestRng:
         b = (testing.shaped_random((m, rank), cupy, dtype='d', seed=0)
              @ testing.shaped_random((rank, n), cupy, dtype='d', seed=1))
         b = sparse.csr_matrix(b)
-        u1, _, _ = sparse.linalg.svds(b, k=6, rng=numpy.random.default_rng(5))
-        u2, _, _ = sparse.linalg.svds(b, k=6, rng=numpy.random.default_rng(5))
+        u1, _, vt1 = sparse.linalg.svds(
+            b, k=6, rng=numpy.random.default_rng(5))
+        u2, _, vt2 = sparse.linalg.svds(
+            b, k=6, rng=numpy.random.default_rng(5))
         u3, _, _ = sparse.linalg.svds(b, k=6, rng=numpy.random.default_rng(6))
-        # singular vectors are defined up to sign (gh-10286): compare the
-        # cross-Gram to the identity rather than the arrays
-        g = cupy.abs(u1.conj().T @ u2)
-        cupy.testing.assert_allclose(g, cupy.eye(6), rtol=1e-8, atol=1e-8)
+        # A singular vector is defined up to sign, and the Ritz solve does
+        # not fix it between runs (gh-10286): compare each column up to its
+        # sign, i.e. require |u1^H u2| = I and |vt1 vt2^H| = I.
+        for x, y in ((u1, u2), (vt1.T, vt2.T)):
+            g = cupy.abs(x.conj().T @ y)
+            cupy.testing.assert_allclose(g, cupy.eye(g.shape[0]),
+                                         rtol=1e-8, atol=1e-8)
+        # A different seed completes the rank-deficient part differently.
         g3 = cupy.abs(u1[:, rank:].conj().T @ u3[:, rank:])
         assert not bool(cupy.allclose(g3, cupy.eye(6 - rank), atol=1e-6))
 

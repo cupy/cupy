@@ -55,6 +55,6 @@ digamma = _core.create_ufunc(
     Returns:
         cupy.ndarray: Computed value of digamma function.
 
-    .. seealso:: :data:`scipy.special.digamma`
+    .. seealso:: :func:`scipy.special.digamma`
 
     """)

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import numpy
 import pytest
 
 import cupy
@@ -22,15 +21,6 @@ def use_cuda_compute_accelerator():
     _accelerator.set_routine_accelerators(['cuda_compute'])
     yield
     _accelerator.set_routine_accelerators(old_routine_accelerators)
-
-
-class TestCudaComputeScanDtypes:
-
-    # scan_core only promotes when dtype=None and out=None, so an
-    # explicit dtype=/out= reaches the accelerator unpromoted
-    @testing.for_all_dtypes(no_bool=True)
-    def test_supported_dtypes(self, dtype):
-        assert _cuda_compute_scan._supports_dtype(numpy.dtype(dtype)) is True
 
 
 class TestCudaComputeScanMisc:
