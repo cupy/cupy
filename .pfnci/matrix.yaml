@@ -389,10 +389,9 @@
   test: "unit-multi"
 
 # CUDA 13.3 | Linux
-# The latest CUDA version matrix is intended to cover the highest supported combination.
 - project: "cupy.linux.cuda133"
   target: "cuda133"
-  tags: ["@push", "full", "mini", "linux", "cuda133"]
+  tags: ["@nightly", "full", "linux", "cuda133"]
   system: "linux"
   os: "ubuntu:22.04"
   cuda: "13.3"
@@ -411,14 +410,47 @@
   cuda-cccl: null
   nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
-  env:CUPY_CI_PYTEST_EXTRA_OPTS: "--junit-xml=/tmp/cupy_junit/junit.xml"
   test: "unit"
 
 # CUDA 13.3 (Multi-GPU) | Linux
 - project: "cupy.linux.cuda133.multi"
   _inherits: "cupy.linux.cuda133"
-  tags: ["@push", "full", "mini", "multi", "linux", "cuda133"]
+  tags: ["@nightly", "full", "multi", "linux", "cuda133"]
   target: "cuda133.multi"
+  mpi4py: "4"
+  test: "unit-multi"
+
+# CUDA 13.4 | Linux
+# The latest CUDA version matrix is intended to cover the highest supported combination.
+- project: "cupy.linux.cuda134"
+  target: "cuda134"
+  tags: ["@push", "full", "mini", "linux", "cuda134"]
+  system: "linux"
+  os: "ubuntu:22.04"
+  cuda: "13.4"
+  rocm: null
+  nccl: "2.30"
+  cutensor: "2.4"
+  cusparselt: "0.9.1"
+  python: "3.14"
+  numpy: "2.5"
+  scipy: "1.16"
+  optuna: "4"
+  ml_dtypes: "0.5"
+  mpi4py: null
+  cython: "3.2"
+  cuda-python: null
+  cuda-cccl: null
+  nvmath-python: null
+  env:CUPY_ACCELERATORS: "cutensor,cub"
+  env:CUPY_CI_PYTEST_EXTRA_OPTS: "--junit-xml=/tmp/cupy_junit/junit.xml"
+  test: "unit"
+
+# CUDA 13.4 (Multi-GPU) | Linux
+- project: "cupy.linux.cuda134.multi"
+  _inherits: "cupy.linux.cuda134"
+  tags: ["@push", "full", "mini", "multi", "linux", "cuda134"]
+  target: "cuda134.multi"
   mpi4py: "4"
   env:CUPY_CI_PYTEST_EXTRA_OPTS: null
   test: "unit-multi"
@@ -611,7 +643,7 @@
   tags: ["@push", "full", "mini", "linux", "cuda-python"]
   system: "linux"
   os: "ubuntu:22.04"
-  cuda: "13.3"
+  cuda: "13.4"
   rocm: null
   nccl: "2.30"
   cutensor: "2.4"
@@ -623,7 +655,7 @@
   mpi4py: null
   ml_dtypes: null
   cython: "3.2"
-  cuda-python: "13.3"
+  cuda-python: "13.4"
   cuda-cccl: "cu13"
   nvmath-python: "1"
   env:CUPY_ACCELERATORS: "cuda_compute,cutensor,cub"
@@ -710,7 +742,13 @@
 - project: "cupy.win.cuda133"
   _extern: true
   target: "cuda133"
-  tags: ["@push", "full", "mini", "windows", "cuda133"]
+  tags: ["@nightly", "full", "windows", "cuda133"]
+  system: "windows"
+
+- project: "cupy.win.cuda134"
+  _extern: true
+  target: "cuda134"
+  tags: ["@push", "full", "mini", "windows", "cuda134"]
   system: "windows"
 
 - project: "cupy.linux.cuda-rapids"

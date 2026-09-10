@@ -13,6 +13,8 @@ export NVCC="ccache nvcc"
 
 export CUPY_ACCELERATORS="cutensor,cub"
 
+export CUPY_CI_PYTEST_EXTRA_OPTS="--junit-xml=/tmp/cupy_junit/junit.xml"
+
 echo "================ Environment Variables ================"
 env
 echo "======================================================="
