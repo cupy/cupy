@@ -112,20 +112,16 @@ jobs:
       # ptxas/cicc/cudafe++), which invalidates the warm GHA sccache cache and
       # forces a full recompile on every PR until the shared cache re-warms.
       # Bump SCCACHE_VERSION deliberately.
-      # win-arm64: rapidsai/sccache has no Windows ARM64 build, so we skip the
-      # cache and let NVCC run cold. Cheaper than cross-compiling sccache; the
-      # wheel matrix is small enough (~5 wheels per push) that it's not a
-      # bottleneck. Revisit if a native win-arm64 sccache lands upstream.
       - name: Install pinned rapidsai/sccache
-        if: ${{ inputs.host-platform != 'win-arm64' }}
         env:
           HOST_PLATFORM: ${{ inputs.host-platform }}
           SCCACHE_VERSION: v0.17.0-rapids.4
         run: |
           case "${HOST_PLATFORM}" in
-            linux-*)  URL_TRIPLE="$(uname -m)-unknown-linux-musl"; SCCACHE_BIN="sccache" ;;
-            win-*)    URL_TRIPLE="x86_64-pc-windows-msvc";         SCCACHE_BIN="sccache.exe" ;;
-            *)        echo "Unsupported host-platform: ${HOST_PLATFORM}" >&2; exit 1 ;;
+            linux-*)    URL_TRIPLE="$(uname -m)-unknown-linux-musl"; SCCACHE_BIN="sccache" ;;
+            win-64)     URL_TRIPLE="x86_64-pc-windows-msvc";         SCCACHE_BIN="sccache.exe" ;;
+            win-arm64)  URL_TRIPLE="aarch64-pc-windows-msvc";        SCCACHE_BIN="sccache.exe" ;;
+            *)          echo "Unsupported host-platform: ${HOST_PLATFORM}" >&2; exit 1 ;;
           esac
           mkdir -p sccache_bin
           curl -fsSL "https://github.com/rapidsai/sccache/releases/download/${SCCACHE_VERSION}/sccache-${URL_TRIPLE}.tar.gz" \
@@ -308,13 +304,9 @@ jobs:
           # Windows builds run natively (no container), so the ACTIONS_*
           # values would flow in from the job environment -- but set them
           # explicitly anyway so both platform blocks are self-contained.
-          # On win-arm64 sccache is not installed (no rapidsai/sccache build);
-          # NVCC runs directly and the SCCACHE_* vars are simply unused --
-          # cibuildwheel accepts unresolved env vars in this block as long as
-          # the build itself doesn't reference them.
           CIBW_ENVIRONMENT_WINDOWS: >
             CUDA_PATH="$(cygpath -w ${{ env.CUDA_PATH }})"
-            NVCC="${{ (inputs.host-platform == 'win-arm64' && 'nvcc') || 'sccache nvcc' }}"
+            NVCC="sccache nvcc"
             SCCACHE_GHA_ENABLED=true
             ACTIONS_RUNTIME_TOKEN=${{ env.ACTIONS_RUNTIME_TOKEN }}
             ACTIONS_RUNTIME_URL=${{ env.ACTIONS_RUNTIME_URL }}
@@ -365,8 +357,6 @@ jobs:
           CIBW_BUILD_VERBOSITY: 1
 
       - name: Report sccache stats (cupy-cuda${{ env.BUILD_CUDA_MAJOR }}x)
-        # See "Install pinned rapidsai/sccache" above; no cache = no stats.
-        if: ${{ inputs.host-platform != 'win-arm64' }}
         uses: ./.github/actions/sccache-summary
         with:
           json-file: sccache_cupy.json
