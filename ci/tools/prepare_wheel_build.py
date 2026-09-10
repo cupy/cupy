@@ -82,6 +82,7 @@ def generate_wheel_metadata(
         "linux-64": "Linux:x86_64",
         "linux-aarch64": "Linux:aarch64",
         "win-64": "Windows:x86_64",
+        "win-arm64": "Windows:arm64",
     }[host_platform]
 
     libraries = PRELOAD_LIBRARIES[cuda_major][host_platform]
@@ -150,8 +151,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--host-platform", required=True,
-        choices=("linux-64", "linux-aarch64", "win-64"),
-        help="Build host: linux-64 = Linux x86_64, linux-aarch64 = Linux ARM64, win-64 = Windows x86_64.",
+        choices=("linux-64", "linux-aarch64", "win-64", "win-arm64"),
+        help="Build host: linux-64 = Linux x86_64, linux-aarch64 = Linux ARM64, win-64 = Windows x86_64, win-arm64 = Windows ARM64.",
     )
     parser.add_argument(
         "--source-root", type=Path, default=DEFAULT_SOURCE_ROOT,
