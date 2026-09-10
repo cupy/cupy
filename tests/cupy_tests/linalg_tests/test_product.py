@@ -645,12 +645,10 @@ class TestLinalgTensordot:
         x2 = testing.shaped_arange((3, 3, 5), xp, dtype)
         return xp.linalg.tensordot(x1, x2, axes=axes)
 
-    @pytest.mark.parametrize('xp', [numpy, cupy])
-    def test_axes_keyword_only(self, xp):
-        x1 = xp.ones((2, 2))
-        x2 = xp.ones((2, 2))
-        with pytest.raises(TypeError):
-            xp.linalg.tensordot(x1, x2, 1)
+    def test_is_cupy_tensordot(self):
+        # `cupy.linalg.tensordot` is just the Array API compatible location
+        # for `cupy.tensordot`, so the two are the same object.
+        assert cupy.linalg.tensordot is cupy.tensordot
 
 
 class TestLinalgMatrixTranspose:

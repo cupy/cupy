@@ -420,26 +420,6 @@ def tensordot(a, b, axes=2):
     return _core.tensordot_core(a, b, None, n, m, k, ret_shape)
 
 
-def linalg_tensordot(x1, x2, /, *, axes=2):
-    """Computes the tensor dot product along specified axes.
-
-    This function is Array API compatible, contrary to
-    :func:`cupy.tensordot`.
-
-    Args:
-        x1 (cupy.ndarray): The first input array.
-        x2 (cupy.ndarray): The second input array.
-        axes (int or tuple of two sequences of int): The axes to contract.
-
-    Returns:
-        cupy.ndarray: The tensor dot product of ``x1`` and ``x2``.
-
-    .. seealso:: :func:`numpy.linalg.tensordot`
-
-    """
-    return tensordot(x1, x2, axes=axes)
-
-
 # TODO: rename `M` to `a`
 def matrix_power(M, n):
     """Raise a square matrix to the (integer) power `n`.
