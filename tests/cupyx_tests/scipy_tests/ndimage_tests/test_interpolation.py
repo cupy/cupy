@@ -190,13 +190,9 @@ class TestMapCoordinatesHalfInteger:
     @testing.numpy_cupy_allclose(atol=1e-4, scipy_name='scp')
     def test_map_coordinates_float(self, xp, scp, dtype):
         if (self.mode in ('reflect', 'grid-mirror') and self.order > 2
-                and testing.installed('scipy>=1.18')):
-            # SciPy 1.18 fixed the spline prefilter for the 'reflect' and
-            # 'grid-mirror' boundary modes; CuPy still reproduces the old
-            # behaviour.  The residual only exceeds `atol` from order 3 on.
-            # TODO: port the SciPy fix to `cupyx.scipy.ndimage` before the
-            # minimum SciPy version is 1.18.
-            pytest.xfail('SciPy 1.18 fixed reflect/grid-mirror prefiltering')
+                and not testing.installed('scipy>=1.18')):
+            # SciPy <1.18 shared an aliasing bug with CuPy: scipy#24615
+            pytest.skip('SciPy < 1.18 spline prefilter is inexact here')
         # Half integer coordinate rounding test case from:
         # https://github.com/cupy/cupy/issues/4550
         a = testing.shaped_arange((4, 3), xp, dtype)
@@ -931,14 +927,9 @@ class TestZoomOutputSize1:
     @testing.with_requires('scipy')
     def test_zoom_output_size1(self, xp, scp, dtype):
         if (self.mode in ('reflect', 'grid-mirror') and self.order > 1
-                and testing.installed('scipy>=1.18')):
-            # SciPy 1.18 fixed the spline prefilter for the 'reflect' and
-            # 'grid-mirror' boundary modes on length-1 axes; it now returns
-            # the exact result where it used to be off by ~1e-3.  CuPy still
-            # reproduces the old, inexact behaviour.
-            # TODO: port the SciPy fix to `cupyx.scipy.ndimage` before the
-            # minimum SciPy version is 1.18.
-            pytest.xfail('SciPy 1.18 fixed spline boundaries on size-1 axes')
+                and not testing.installed('scipy>=1.18')):
+            # SciPy <1.18 shared an aliasing bug with CuPy: scipy#24615
+            pytest.skip('SciPy < 1.18 spline prefilter is inexact here')
         x = xp.zeros(self.shape, dtype=dtype)
         x[1, 1, 1] = 1
         return scp.ndimage.zoom(x, self.zoom, order=self.order, mode=self.mode,
