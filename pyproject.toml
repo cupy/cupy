@@ -118,6 +118,17 @@ filterwarnings = [
   "ignore:Absolute path '(.+?)' is being replaced with a relative path '(.+?)' for outputs:DeprecationWarning:distutils",
   # Older SciPy versions + NumPy 2.5+ do not avoid this warning.
   "ignore:Setting the shape on a NumPy:DeprecationWarning:scipy",
+  # SciPy 1.18 warns that `scipy.sparse.tril`/`triu` will return a sparse
+  # array instead of a sparse matrix when handed a dense input.  The switch
+  # happens no earlier than SciPy 1.20.  CuPy's `tril`/`triu` still return
+  # spmatrix, so the tests keep comparing against the current behaviour.
+  # TODO: return sparse arrays for dense inputs before allowing SciPy 1.20.
+  'ignore:`tri[lu]` is switching to the sparse array interface:DeprecationWarning',
+  # SciPy 1.18 deprecated calling `LinearOperator.matvec`/`rmatvec` with an
+  # `(N, 1)` "column vector"; it becomes an error in SciPy 1.20.  CuPy still
+  # accepts those, and the tests exercise them on both back-ends.
+  # TODO: move these tests to `matmat`/`rmatmat` before allowing SciPy 1.20.
+  "ignore:Calling `r?matvec` on 'column vectors':FutureWarning",
 ]
 
 [tool.coverage.run]

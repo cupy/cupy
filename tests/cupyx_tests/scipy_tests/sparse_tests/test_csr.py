@@ -1352,6 +1352,17 @@ class TestCsrMatrixSum:
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_mean_with_out(self, xp, sp):
+        # `out` below is float64 whenever `ret_dtype` is None.
+        out_dtype = numpy.float64 if self.ret_dtype is None else self.ret_dtype
+        if out_dtype != self.dtype and testing.installed('scipy>=1.18'):
+            # SciPy 1.18 reduces in the input dtype in `_compressed._sum()`
+            # (`dtype=res_dtype` rather than the requested `dtype`), so when
+            # `out=` is given, `mean()` now returns the input dtype and
+            # ignores both `out.dtype` and `dtype=`.  CuPy still honours the
+            # request, which matches SciPy <= 1.17.
+            # TODO: this looks like an upstream regression; report it and
+            # revisit before the minimum SciPy version is 1.18.
+            pytest.xfail('SciPy 1.18 ignores out/dtype in sparse mean()')
         m = _make(xp, sp, self.dtype)
         if self.axis is None:
             shape = ()

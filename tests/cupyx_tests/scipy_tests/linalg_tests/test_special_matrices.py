@@ -3,6 +3,8 @@ from __future__ import annotations
 import unittest
 import warnings
 
+import pytest
+
 from cupy import testing
 import cupyx.scipy.linalg  # NOQA
 
@@ -89,6 +91,16 @@ class TestSpecialMatrices_1_3_0(TestSpecialMatricesBase):
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
                                  accept_error=ValueError)
     def test_special_matrix(self, xp, scp):
+        # SciPy 1.18 returns a 2-D `(0, 0)` array for the degenerate inputs
+        # below, where it used to return a 1-D empty array; CuPy still
+        # returns the 1-D shape.
+        # TODO: return `(0, 0)` from `cupyx.scipy.linalg` before the minimum
+        # SciPy version is 1.18.
+        degenerate = ((self.function == 'fiedler' and self.args == ((0,),))
+                      or (self.function == 'fiedler_companion'
+                          and self.args == ((1,),)))
+        if degenerate and testing.installed('scipy>=1.18'):
+            pytest.xfail('SciPy 1.18 returns (0, 0) for degenerate input')
         function = getattr(scp.linalg, self.function)
         return function(*[self._get_arg(xp, arg) for arg in self.args])
 

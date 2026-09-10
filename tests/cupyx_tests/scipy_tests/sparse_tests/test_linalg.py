@@ -87,6 +87,16 @@ class TestMatrixNorm:
             pytest.xfail('csc spmv is buggy')
         if self.ord == 2:
             pytest.xfail('ord=2 is not implemented in cupy')
+        if (self.dtype == numpy.float32
+                and self.ord in (1, -1, numpy.inf, -numpy.inf)
+                and testing.installed('scipy>=1.18')):
+            # SciPy 1.18 upcasts anything that safely casts to float64
+            # (`np.can_cast(x.dtype, float)`) before reducing, so float32
+            # input now yields a float64 norm.  CuPy keeps float32.  Only
+            # these four orders are affected; the others return earlier.
+            # TODO: decide whether to follow the upcast when the minimum
+            # SciPy version reaches 1.18.
+            pytest.xfail('SciPy 1.18 upcasts float32 input to float64')
         a = xp.arange(9, dtype=self.dtype) - 4
         b = a.reshape((3, 3))
         b = sp.csr_matrix(b, dtype=self.dtype)
@@ -115,6 +125,31 @@ class TestVectorNorm:
             if (self.axis in (0, (-2,))
                     and self.ord in (-2, -1, 0, 1, 2, None)):
                 pytest.xfail('csc spmv is buggy')
+
+        if testing.installed('scipy>=1.18'):
+            # SciPy 1.18 rewrote `scipy.sparse.linalg.norm`; three of the
+            # changes are not mirrored in CuPy yet, one per condition below.
+            # TODO: adopt the first two, and check whether the third is an
+            # upstream regression, before the minimum SciPy version is 1.18.
+
+            # `ord=0` now goes through `count_nonzero(axis=...)`, whose
+            # integer dtype differs from CuPy's cast to `int_` when reducing
+            # along the minor axis of the stored format -- `b` below is CSR,
+            # or CSC once transposed.
+            row_axis = self.axis in (0, (-2,))
+            if self.ord == 0 and row_axis == self.transpose:
+                pytest.xfail('SciPy 1.18 uses count_nonzero() for ord=0')
+            # The generic `ord` path lost its `ravel()`, so for spmatrix
+            # input it returns `(1, n)` where CuPy returns `(n,)`.
+            if self.ord in (-1, -2):
+                pytest.xfail('SciPy 1.18 no longer ravels the generic ord '
+                             'result for spmatrix input')
+            # Everything that reaches the reduction is upcast beforehand
+            # (`np.can_cast(x.dtype, float)`), so float32 yields a float64
+            # norm.  `ord=0` returns before that, and `ord='fro'` raises a
+            # ValueError that both back-ends agree on.
+            if self.dtype == numpy.float32 and self.ord not in (0, 'fro'):
+                pytest.xfail('SciPy 1.18 upcasts float32 input to float64')
 
         a = xp.arange(9, dtype=self.dtype) - 4
         b = a.reshape((3, 3))
@@ -1232,8 +1267,7 @@ class TestLinearOperator:
         class BaseMatlike(sp.linalg.LinearOperator):
 
             def __init__(self):
-                self.dtype = A.dtype
-                self.shape = A.shape
+                super().__init__(A.dtype, A.shape)
 
             def _adjoint(self):
                 shape = self.shape[1], self.shape[0]
@@ -2136,7 +2170,14 @@ class TestMinres:
             x0 = xp.ones((self.m,))
         return sp.linalg.minres(a, b, x0=x0, M=M)[0]
 
-    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    # SciPy 1.18 keeps the intermediate Givens rotation in the system dtype
+    # (`norm([gbar, beta]).astype(xtype)`), so a float32 system now yields a
+    # float32 solution; before that it was silently promoted to float64,
+    # which is what CuPy still returns.
+    # TODO: preserve the input dtype in `cupyx.scipy.sparse.linalg.minres`
+    # and re-enable the dtype check when the minimum SciPy version is 1.18.
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
+                                 type_check=False)
     def test_sparse(self, xp, sp):
         if runtime.is_hip and self.format == 'csc':
             pytest.xfail('may be buggy')  # trans=True
@@ -2150,7 +2191,9 @@ class TestMinres:
                 M = sp.linalg.aslinearoperator(M)
         return self._test_minres(xp, sp, a, M)
 
-    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp')
+    # See `test_sparse` above for why the dtype check is disabled.
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5, sp_name='sp',
+                                 type_check=False)
     def test_dense(self, xp, sp):
         a, M = self._make_matrix(xp)
         if self.use_linear_operator:
