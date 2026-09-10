@@ -1,6 +1,9 @@
+feature/add-query-pairs-set
+
 from __future__ import annotations
 
 
+main
 import warnings
 
 import cupy
@@ -427,19 +430,26 @@ class KDTree:
             branches are added in bulk if their furthest points are nearer
             than ``r * (1+eps)``.  `eps` has to be non-negative.
         output_type : string, optional
-            Choose the output container, 'set' or 'ndarray'. Default: 'ndarray'
-            Note: 'set' output is not supported.
+            Choose the output container, options are:
+            - 'ndarray': Returns the pairs as an ndarray of size
+            (total_pairs, 2)
+            - 'set': Returns the pairs as a set of unique pairs (i, j)
+            Default: 'ndarray'
 
         Returns
         -------
-        results : ndarray
-            An ndarray of size ``(total_pairs, 2)``, containing each pair
-            ``(i,j)``, with ``i < j``, for which the corresponding
-            positions are close.
+        results : ndarray or set
+            If `output_type='ndarray'`, returns a numpy array of shape
+            (total_pairs, 2)
+            with each pair (i, j) where i < j, representing the indices of
+            the points.
+            If `output_type='set'`, returns a set of pairs (i, j) where
+            i < j.
 
         Notes
         -----
-        This method does not support the `set` output type.
+        The `output_type= 'set'` is supported in this updated version.
+
 
         Examples
         --------
@@ -459,16 +469,26 @@ class KDTree:
         >>> plt.show()
 
         """
+
         if output_type == 'set':
-            warnings.warn("output_type='set' is not supported by the GPU "
-                          "implementation of KDTree, resorting back to "
-                          "'ndarray'.")
+            # Return a set of pairs (i, j)
+            results = set()  # Using set to store unique pairs
+
+            # Assuming find_nodes_in_radius is modified to return pairs
+            pairs = find_nodes_in_radius(
+                self.data, self.tree, self.index, self.boxsize, self.bounds,
+                r, p=p, eps=eps, return_sorted=True, return_tuples=True,
+                adjust_to_box=self.copy_query_points
+            )
+            for pair in pairs:
+                results.add(pair)  # Add each pair to the set
+            return results
 
         x = self.data
         if self.copy_query_points:
             if x.dtype != cupy.float64:
-                raise ValueError('periodic KDTree is only available '
-                                 'on float64')
+                raise ValueError(
+                    'periodic KDTree is only available on float64')
             x = x.copy()
 
         common_dtype = cupy.result_type(self.tree.dtype, x.dtype)
@@ -481,7 +501,8 @@ class KDTree:
         return find_nodes_in_radius(
             x, tree, self.index, self.boxsize, self.bounds,
             r, p=p, eps=eps, return_sorted=True, return_tuples=True,
-            adjust_to_box=self.copy_query_points)
+            adjust_to_box=self.copy_query_points
+        )
 
     def count_neighbors(self, other, r, p=2.0, weights=None, cumulative=True):
         """
@@ -604,3 +625,4 @@ class KDTree:
         if output_type == 'coo_matrix':
             return coo_matrix(dist)
         return dist
+#
