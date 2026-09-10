@@ -455,9 +455,17 @@ def _gaussian_kernel1d(sigma, order, radius, dtype=cupy.float64):
     """
     if order < 0:
         raise ValueError('order must be non-negative')
+
+    if cupy.cuda.get_current_stream().is_capturing():
+        # CUDA graph capture can't have H2D operations.
+        # Perform all ops on the device.
+        xp = cupy
+    else:
+        xp = numpy
+
     sigma2 = sigma * sigma
-    x = numpy.arange(-radius, radius+1)
-    phi_x = numpy.exp(-0.5 / sigma2 * x ** 2)
+    x = xp.arange(-radius, radius+1)
+    phi_x = xp.exp(-0.5 / sigma2 * x ** 2)
     phi_x /= phi_x.sum()
 
     if order == 0:
@@ -468,11 +476,11 @@ def _gaussian_kernel1d(sigma, order, radius, dtype=cupy.float64):
     # p'(x) = -1 / sigma ** 2
     # Implement q'(x) + q(x) * p'(x) as a matrix operator and apply to the
     # coefficients of q(x)
-    exponent_range = numpy.arange(order + 1)
-    q = numpy.zeros(order + 1)
+    exponent_range = xp.arange(order + 1)
+    q = xp.zeros(order + 1)
     q[0] = 1
-    D = numpy.diag(exponent_range[1:], 1)  # D @ q(x) = q'(x)
-    P = numpy.diag(numpy.ones(order)/-sigma2, -1)  # P @ q(x) = q(x) * p'(x)
+    D = xp.diag(exponent_range[1:], 1)  # D @ q(x) = q'(x)
+    P = xp.diag(xp.ones(order)/-sigma2, -1)  # P @ q(x) = q(x) * p'(x)
     Q_deriv = D + P
     for _ in range(order):
         q = Q_deriv.dot(q)
