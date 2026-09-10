@@ -271,7 +271,7 @@
   cusparselt: "0.8.1"
   python: "3.12"
   numpy: "2.3"
-  scipy: "1.16"
+  scipy: "1.17"
   optuna: "4"
   ml_dtypes: "0.5"
   mpi4py: null
@@ -402,7 +402,7 @@
   cusparselt: "0.9.1"
   python: "3.14"
   numpy: "2.5"
-  scipy: "1.16"
+  scipy: "1.18"
   optuna: "4"
   ml_dtypes: "0.5"
   mpi4py: null
