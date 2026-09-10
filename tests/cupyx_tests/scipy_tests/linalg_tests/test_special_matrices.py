@@ -91,16 +91,14 @@ class TestSpecialMatrices_1_3_0(TestSpecialMatricesBase):
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp',
                                  accept_error=ValueError)
     def test_special_matrix(self, xp, scp):
-        # SciPy 1.18 returns a 2-D `(0, 0)` array for the degenerate inputs
-        # below, where it used to return a 1-D empty array; CuPy still
-        # returns the 1-D shape.
-        # TODO: return `(0, 0)` from `cupyx.scipy.linalg` before the minimum
-        # SciPy version is 1.18.
+        # Both functions build an `(n, n)` matrix, so the degenerate inputs
+        # below must give `(0, 0)`. CuPy returns that shape, as does SciPy
+        # 1.18 and later, but older SciPy returned a 1-D empty array.
         degenerate = ((self.function == 'fiedler' and self.args == ((0,),))
                       or (self.function == 'fiedler_companion'
                           and self.args == ((1,),)))
-        if degenerate and testing.installed('scipy>=1.18'):
-            pytest.xfail('SciPy 1.18 returns (0, 0) for degenerate input')
+        if degenerate and testing.installed('scipy<1.18'):
+            pytest.xfail('SciPy <1.18 returns a 1-D empty array here')
         function = getattr(scp.linalg, self.function)
         return function(*[self._get_arg(xp, arg) for arg in self.args])
 
@@ -111,6 +109,21 @@ class TestSpecialMatrices_1_3_0(TestSpecialMatricesBase):
 
         # Otherwise just pass the arg back
         return arg
+
+
+class TestFiedlerDegenerate:
+    # `TestSpecialMatrices_1_3_0` cannot compare these against SciPy <1.18,
+    # so pin the shape down here instead.
+    @pytest.mark.parametrize(('function', 'n'),
+                             [('fiedler', 0), ('fiedler_companion', 1)])
+    def test_empty_matrix(self, function, n):
+        a = testing.shaped_random((n,))
+        assert getattr(cupyx.scipy.linalg, function)(a).shape == (0, 0)
+
+    def test_fiedler_companion_empty_input(self):
+        # SciPy returns a 1-D empty array for a size-0 coefficient array.
+        assert cupyx.scipy.linalg.fiedler_companion(
+            testing.shaped_random((0,))).shape == (0,)
 
 
 @testing.parameterize(*(
