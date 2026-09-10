@@ -1310,6 +1310,10 @@ class TestLinearOperator:
             return self._inner_cases(xp, sp, A.T.conj()).H
         assert False
 
+    # The `(N, 1)` case below is deprecated in SciPy 1.18, an error in 1.20.
+    # TODO: call `matmat` for it before allowing SciPy 1.20.
+    @pytest.mark.filterwarnings(
+        "ignore:Calling `matvec` on 'column vectors':FutureWarning")
     @skip_HIP_spMM_error(outer=('transpose', 'hermitian'))
     @testing.numpy_cupy_allclose(sp_name='sp', rtol=1e-6)
     def test_matvec(self, xp, sp):
@@ -1326,6 +1330,10 @@ class TestLinearOperator:
         x = testing.shaped_random((self.N, 8), xp, self.dtype)
         return linop.matmat(x)
 
+    # The `(M, 1)` case below is deprecated in SciPy 1.18, an error in 1.20.
+    # TODO: call `rmatmat` for it before allowing SciPy 1.20.
+    @pytest.mark.filterwarnings(
+        "ignore:Calling `rmatvec` on 'column vectors':FutureWarning")
     @skip_HIP_spMM_error(outer=('normal',))
     @testing.numpy_cupy_allclose(sp_name='sp', rtol=1e-6)
     def test_rmatvec(self, xp, sp):

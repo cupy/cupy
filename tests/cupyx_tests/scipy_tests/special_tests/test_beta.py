@@ -6,6 +6,7 @@ import pytest
 import cupy
 from cupy import testing
 import cupyx.scipy.special  # NOQA
+from cupyx_tests.scipy_tests.special_tests import match_scipy_float32
 
 
 def _get_logspace_max(dtype):
@@ -18,17 +19,11 @@ def _get_logspace_max(dtype):
         return 4
 
 
-# NOTE: float16 is left out of the dtype sweeps below.  SciPy 1.18 resolves
-# float16 input to the float32 loop of the `scipy.special` ufuncs and returns
-# float32, whereas CuPy's ufuncs declare `e->d` and return float64.  The
-# float16 branch of `_get_logspace_max` is kept for when coverage returns.
-# TODO: switch those loops to `e->f` and restore float16 coverage before the
-# minimum SciPy version is 1.18.
 @testing.with_requires('scipy>=1.15')
 class TestBeta:
 
     @pytest.mark.parametrize('function', ['beta', 'betaln'])
-    @testing.for_all_dtypes(no_complex=True, no_float16=True)
+    @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_arange(self, xp, scp, dtype, function):
         import scipy.special  # NOQA
@@ -36,14 +31,15 @@ class TestBeta:
         func = getattr(scp.special, function)
         a = testing.shaped_arange((1, 10), xp, dtype)
         b = testing.shaped_arange((10, 1), xp, dtype)
-        return func(a, b)
+        out = func(a, b)
+        return match_scipy_float32(out, xp, dtype)
 
     @pytest.mark.skipif(
         cupy.cuda.runtime.is_hip and
         cupy.cuda.runtime.runtimeGetVersion() < 5_00_00000,
         reason='ROCm/HIP fails in ROCm 4.x')
     @pytest.mark.parametrize('function', ['beta', 'betaln'])
-    @testing.for_all_dtypes(no_complex=True, no_float16=True)
+    @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_linspace(self, xp, scp, dtype, function):
         import scipy.special  # NOQA
@@ -52,10 +48,11 @@ class TestBeta:
         # TODO: Some choices of start/stop value can give mismatched location
         #       of +inf or -inf values.
         x = testing.shaped_linspace(-20, 21, 50, xp=xp, dtype=dtype)
-        return func(x[:, xp.newaxis], x[xp.newaxis, :])
+        out = func(x[:, xp.newaxis], x[xp.newaxis, :])
+        return match_scipy_float32(out, xp, dtype)
 
     @pytest.mark.parametrize('function', ['beta', 'betaln'])
-    @testing.for_float_dtypes(no_float16=True)
+    @testing.for_float_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_logspace(self, xp, scp, dtype, function):
         import scipy.special  # NOQA
@@ -63,16 +60,18 @@ class TestBeta:
         func = getattr(scp.special, function)
         lmax = _get_logspace_max(xp.dtype(dtype))
         x = xp.logspace(-lmax, lmax, 32, dtype=dtype)
-        return func(x[:, xp.newaxis], x[xp.newaxis, :])
+        out = func(x[:, xp.newaxis], x[xp.newaxis, :])
+        return match_scipy_float32(out, xp, dtype)
 
     @pytest.mark.parametrize('function', ['beta', 'betaln'])
-    @testing.for_float_dtypes(no_float16=True)
+    @testing.for_float_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_inf_and_nan(self, xp, scp, dtype, function):
         import scipy.special  # NOQA
         func = getattr(scp.special, function)
         a = xp.array([-numpy.inf, numpy.nan, numpy.inf, 0], dtype=dtype)
-        return func(a[:, xp.newaxis], a[xp.newaxis, :])
+        out = func(a[:, xp.newaxis], a[xp.newaxis, :])
+        return match_scipy_float32(out, xp, dtype)
 
     def test_beta_specific_vals(self):
         # specific values borrowed from SciPy test suite

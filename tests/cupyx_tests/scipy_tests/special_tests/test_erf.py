@@ -7,6 +7,11 @@ import numpy
 import cupy
 from cupy import testing
 import cupyx.scipy.special  # NOQA
+from cupyx_tests.scipy_tests.special_tests import match_scipy_float32
+
+# `check_unary` below is shared with `erfinv`/`erfcinv`, which already had a
+# float32 loop before SciPy 1.18 and so still agree with CuPy on float16.
+_SCIPY_FLOAT32_LOOP = frozenset({'erf', 'erfc', 'erfcx'})
 
 
 def _boundary_inputs(boundary, rtol, atol):
@@ -43,21 +48,19 @@ class _TestBase:
         self.check_unary_boundary('erfcinv', boundary=2)
 
 
-# NOTE: float16 is left out of the dtype sweeps below.  SciPy 1.18 resolves
-# float16 input to the float32 loop of the `scipy.special` ufuncs and returns
-# float32, whereas CuPy's ufuncs declare `e->d` and return float64.
-# TODO: switch those loops to `e->f` and restore float16 coverage before the
-# minimum SciPy version is 1.18.
 @testing.with_requires('scipy')
 class TestSpecial(unittest.TestCase, _TestBase):
 
-    @testing.for_dtypes(['f', 'd'])
+    @testing.for_dtypes(['e', 'f', 'd'])
     @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
     def check_unary(self, name, xp, scp, dtype):
         import scipy.special  # NOQA
 
         a = testing.shaped_arange((2, 3), xp, dtype)
-        return getattr(scp.special, name)(a)
+        out = getattr(scp.special, name)(a)
+        if name in _SCIPY_FLOAT32_LOOP:
+            out = match_scipy_float32(out, xp, dtype)
+        return out
 
     @testing.for_dtypes(['f', 'd'])
     @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
@@ -116,8 +119,7 @@ class TestSpecial(unittest.TestCase, _TestBase):
 @testing.with_requires('scipy')
 class TestFusionSpecial(unittest.TestCase, _TestBase):
 
-    # See the note above `TestSpecial` about float16.
-    @testing.for_dtypes(['f', 'd'])
+    @testing.for_dtypes(['e', 'f', 'd'])
     @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
     def check_unary(self, name, xp, scp, dtype):
         import scipy.special  # NOQA
@@ -128,7 +130,10 @@ class TestFusionSpecial(unittest.TestCase, _TestBase):
         def f(x):
             return getattr(scp.special, name)(x)
 
-        return f(a)
+        out = f(a)
+        if name in _SCIPY_FLOAT32_LOOP:
+            out = match_scipy_float32(out, xp, dtype)
+        return out
 
     @testing.for_dtypes(['f', 'd'])
     @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')

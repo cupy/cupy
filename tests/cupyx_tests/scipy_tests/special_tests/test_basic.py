@@ -13,6 +13,7 @@ from cupy.testing import (
     assert_array_almost_equal,
 )
 from cupy.testing import numpy_cupy_allclose
+from cupyx_tests.scipy_tests.special_tests import match_scipy_float32
 
 rtol = {'default': 1e-5, cupy.float64: 1e-12, cupy.complex128: 1e-12}
 
@@ -46,22 +47,17 @@ class TestLegendreFunctions:
         return scp.special.lpmv(order, degree, vals)
 
 
-# NOTE: float16 is left out of the dtype sweeps below, as it already was for
-# `test_round`.  SciPy 1.18 gave most `scipy.special` ufuncs a float32 loop,
-# so float16 input now returns float32 instead of float64, whereas CuPy's
-# ufuncs declare `e->d` and still return float64.
-# TODO: switch those loops to `e->f` and restore float16 coverage before the
-# minimum SciPy version is 1.18.
 @testing.with_requires("scipy>=1.16")
 class TestBasic:
 
-    @testing.for_all_dtypes(no_complex=True, no_float16=True)
+    @testing.for_all_dtypes(no_complex=True)
     @numpy_cupy_allclose(scipy_name="scp")
     def test_gammasgn(self, xp, scp, dtype):
         vals = testing.shaped_linspace(-4, 4, 10, xp=xp, dtype=dtype)
-        return scp.special.gammasgn(vals)
+        out = scp.special.gammasgn(vals)
+        return match_scipy_float32(out, xp, dtype)
 
-    @testing.for_all_dtypes(no_float16=True)
+    @testing.for_all_dtypes()
     @numpy_cupy_allclose(scipy_name="scp", rtol=1e-5)
     def test_log1p_linspace(self, xp, scp, dtype):
         vals = testing.shaped_linspace(-100, 100, 1000, xp=xp, dtype=dtype)
@@ -69,9 +65,10 @@ class TestBasic:
         if dtype.kind == 'c':
             # broadcast to mix large and small real vs. imaginary
             vals = vals[::10, xp.newaxis] + 1j * vals[xp.newaxis, ::10]
-        return xp.abs(scp.special.log1p(vals))
+        out = xp.abs(scp.special.log1p(vals))
+        return match_scipy_float32(out, xp, dtype)
 
-    @testing.for_all_dtypes(no_float16=True)
+    @testing.for_all_dtypes()
     @numpy_cupy_allclose(scipy_name="scp", rtol=1e-5)
     def test_log1p_logspace(self, xp, scp, dtype):
         dtype = xp.dtype(dtype)
@@ -79,15 +76,17 @@ class TestBasic:
         if dtype.kind == 'c':
             # broadcast to mix large and small real vs. imaginary
             vals = vals[::10, xp.newaxis] + 1j * vals[xp.newaxis, ::10]
-        return xp.abs(scp.special.log1p(vals))
+        out = xp.abs(scp.special.log1p(vals))
+        return match_scipy_float32(out, xp, dtype)
 
-    @testing.for_all_dtypes(no_complex=True, no_float16=True)
+    @testing.for_all_dtypes(no_complex=True)
     @numpy_cupy_allclose(scipy_name="scp", rtol=rtol)
     def test_log1p_path2(self, xp, scp, dtype):
         # test values for code path corresponding to range [1/sqrt(2), sqrt(2)]
         vals = testing.shaped_linspace(
             1 / math.sqrt(2), math.sqrt(2), 1000, xp=xp, dtype=dtype)
-        return scp.special.log1p(vals)
+        out = scp.special.log1p(vals)
+        return match_scipy_float32(out, xp, dtype)
 
     def test_log1p_real(self):
         log1p = cupyx.scipy.special.log1p
@@ -99,7 +98,7 @@ class TestBasic:
         assert_array_equal(log1p(inf), inf)
 
     @pytest.mark.parametrize("function", ["xlogy", "xlog1py"])
-    @testing.for_all_dtypes(no_float16=True)
+    @testing.for_all_dtypes()
     @numpy_cupy_allclose(scipy_name="scp", rtol={'default': 1e-3,
                                                  cupy.float64: 1e-12})
     def test_xlogy(self, xp, scp, dtype, function):
@@ -109,10 +108,11 @@ class TestBasic:
         if x.dtype.kind == 'c':
             x -= 1j * x
             y += 1j * y
-        return getattr(scp.special, function)(x, y)
+        out = getattr(scp.special, function)(x, y)
+        return match_scipy_float32(out, xp, dtype)
 
     @pytest.mark.parametrize("function", ["xlogy", "xlog1py"])
-    @testing.for_all_dtypes(no_float16=True)
+    @testing.for_all_dtypes()
     @numpy_cupy_allclose(scipy_name="scp", rtol={'default': 1e-3,
                                                  cupy.float64: 1e-12})
     def test_xlogy_zeros(self, xp, scp, dtype, function):
@@ -121,7 +121,8 @@ class TestBasic:
         y = testing.shaped_linspace(-10, 10, 100, xp=xp, dtype=dtype)
         if y.dtype.kind == 'c':
             y += 1j * y
-        return getattr(scp.special, function)(x, y)
+        out = getattr(scp.special, function)(x, y)
+        return match_scipy_float32(out, xp, dtype)
 
     @pytest.mark.parametrize("function", ["xlogy", "xlog1py"])
     @testing.for_all_dtypes()
@@ -131,13 +132,14 @@ class TestBasic:
         assert cupy.all(cupy.isnan(func(cupy.nan, y)))
         assert cupy.all(cupy.isnan(func(y, cupy.nan)))
 
-    @testing.for_all_dtypes(no_complex=True, no_float16=True)
+    @testing.for_all_dtypes(no_complex=True)
     @numpy_cupy_allclose(scipy_name="scp", rtol=1e-6)
     def test_exp2(self, xp, scp, dtype):
         vals = testing.shaped_linspace(-100, 100, 200, xp=xp, dtype=dtype)
-        return scp.special.exp2(vals)
+        out = scp.special.exp2(vals)
+        return match_scipy_float32(out, xp, dtype)
 
-    @testing.for_all_dtypes(no_complex=True, no_float16=True)
+    @testing.for_all_dtypes(no_complex=True)
     @numpy_cupy_allclose(scipy_name="scp", rtol=1e-6)
     def test_exp10(self, xp, scp, dtype):
         if xp.dtype(dtype).char == 'd':
@@ -146,40 +148,45 @@ class TestBasic:
             # Note: comparisons start to fail outside this range
             #       np.finfo(np.float32).max is 3.4028235e+38
             vals = testing.shaped_linspace(-37, 37, 100, xp=xp, dtype=dtype)
-        return scp.special.exp10(vals)
+        out = scp.special.exp10(vals)
+        return match_scipy_float32(out, xp, dtype)
 
-    @testing.for_all_dtypes(no_float16=True)
+    @testing.for_all_dtypes()
     @numpy_cupy_allclose(scipy_name="scp", rtol=1e-6)
     def test_expm1(self, xp, scp, dtype):
         vals = testing.shaped_linspace(-50, 50, 200, xp=xp, dtype=dtype)
         if xp.dtype(dtype).kind == 'c':
             # broadcast to mix small and large real and imaginary parts
             vals = vals[:, xp.newaxis] + 1j * vals[xp.newaxis, :]
-        return scp.special.expm1(vals)
+        out = scp.special.expm1(vals)
+        return match_scipy_float32(out, xp, dtype)
 
-    @testing.for_all_dtypes(no_complex=True, no_float16=True)
+    @testing.for_all_dtypes(no_complex=True)
     @numpy_cupy_allclose(scipy_name="scp", rtol=1e-6)
     def test_cosm1(self, xp, scp, dtype):
         vals = testing.shaped_linspace(-50, 50, 200, xp=xp, dtype=dtype)
-        return scp.special.cosm1(vals)
+        out = scp.special.cosm1(vals)
+        return match_scipy_float32(out, xp, dtype)
 
-    @testing.for_all_dtypes(no_complex=True, no_float16=True)
+    @testing.for_all_dtypes(no_complex=True)
     @numpy_cupy_allclose(scipy_name="scp", rtol=1e-6)
     def test_cosm1_close_to_zero(self, xp, scp, dtype):
         vals = testing.shaped_linspace(-1e-8, 1e-8, 200, xp=xp, dtype=dtype)
-        return scp.special.cosm1(vals)
+        out = scp.special.cosm1(vals)
+        return match_scipy_float32(out, xp, dtype)
 
-    @testing.for_all_dtypes(no_complex=True, no_float16=True)
+    @testing.for_all_dtypes(no_complex=True)
     @numpy_cupy_allclose(scipy_name="scp", rtol=1e-6)
     def test_radian(self, xp, scp, dtype):
         tmp = testing.shaped_linspace(-100, 100, 10, xp=xp, dtype=dtype)
         d = tmp[:, xp.newaxis, xp.newaxis]
         m = tmp[xp.newaxis, : xp.newaxis]
         s = tmp[xp.newaxis, xp.newaxis, :]
-        return scp.special.radian(d, m, s)
+        out = scp.special.radian(d, m, s)
+        return match_scipy_float32(out, xp, dtype)
 
     @pytest.mark.parametrize('function', ['cosdg', 'sindg', 'tandg', 'cotdg'])
-    @testing.for_dtypes("fd")
+    @testing.for_dtypes("efd")
     @numpy_cupy_allclose(scipy_name="scp",
                          atol={'default': 1e-6, cupy.float64: 1e-12},
                          rtol=1e-6)
@@ -187,13 +194,15 @@ class TestBasic:
         vals = testing.shaped_linspace(-100, 100, 200, xp=xp, dtype=dtype)
         # test at exact multiples of 45 degrees
         vals = xp.concatenate((vals, xp.arange(-360, 361, 45, dtype=dtype)))
-        return getattr(scp.special, function)(vals)
+        out = getattr(scp.special, function)(vals)
+        return match_scipy_float32(out, xp, dtype)
 
-    @testing.for_all_dtypes(no_complex=True, no_float16=True)
+    @testing.for_all_dtypes(no_complex=True)
     @numpy_cupy_allclose(scipy_name="scp", rtol=1e-6)
     def test_cbrt(self, xp, scp, dtype):
         vals = testing.shaped_linspace(-100, 100, 200, xp=xp, dtype=dtype)
-        return scp.special.cbrt(vals)
+        out = scp.special.cbrt(vals)
+        return match_scipy_float32(out, xp, dtype)
 
     # TODO: omit "e" since SciPy will promote to "f", but CuPy does not
     @testing.for_dtypes("fd")

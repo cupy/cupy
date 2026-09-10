@@ -5,33 +5,31 @@ import pytest
 
 import cupy
 from cupy import testing
+from cupy.testing._helper import installed_but_not_baseline
 import cupyx.scipy.special  # NOQA
+from cupyx_tests.scipy_tests.special_tests import match_scipy_float32
 
 
-# NOTE: float16 is left out of the dtype sweeps below.  SciPy 1.18 resolves
-# float16 input to the float32 loop of the `scipy.special` ufuncs and returns
-# float32, whereas CuPy's ufuncs declare `e->d` and return float64.
-# TODO: switch those loops to `e->f` and restore float16 coverage before the
-# minimum SciPy version is 1.18.
 @testing.with_requires("scipy>=1.15")
 class TestGamma:
 
     @pytest.mark.parametrize('function', ['gamma', 'loggamma', 'rgamma'])
-    @testing.for_all_dtypes(no_complex=True, no_float16=True)
+    @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
     def test_arange(self, xp, scp, dtype, function):
         import scipy.special  # NOQA
 
         a = testing.shaped_arange((2, 3), xp, dtype)
         func = getattr(scp.special, function)
-        return func(a)
+        out = func(a)
+        return match_scipy_float32(out, xp, dtype)
 
     @pytest.mark.skipif(
         cupy.cuda.runtime.is_hip and
         cupy.cuda.runtime.runtimeGetVersion() < 5_00_00000,
         reason='ROCm/HIP fails in ROCm 4.x')
     @pytest.mark.parametrize('function', ['gamma', 'loggamma', 'rgamma'])
-    @testing.for_all_dtypes(no_bool=True, no_float16=True)
+    @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
     def test_linspace(self, xp, scp, dtype, function):
         import scipy.special  # NOQA
@@ -41,10 +39,11 @@ class TestGamma:
             a -= 1j * a
         a = xp.asarray(a)
         func = getattr(scp.special, function)
-        return func(a)
+        out = func(a)
+        return match_scipy_float32(out, xp, dtype)
 
     @pytest.mark.parametrize('function', ['gamma', 'loggamma', 'rgamma'])
-    @testing.for_all_dtypes(no_float16=True)
+    @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3, scipy_name='scp')
     def test_scalar(self, xp, scp, dtype, function):
         import scipy.special  # NOQA
@@ -54,16 +53,22 @@ class TestGamma:
         else:
             val = dtype(1.5)
         func = getattr(scp.special, function)
-        return func(val)
+        out = func(val)
+        return match_scipy_float32(out, xp, dtype)
 
     @pytest.mark.parametrize('function', ['gamma', 'loggamma', 'rgamma'])
-    @testing.for_dtypes("fdFD")
+    @testing.for_dtypes("efdFD")
     @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3, scipy_name='scp')
     @testing.with_requires('scipy')
     def test_inf_and_nan(self, xp, scp, dtype, function):
         import scipy.special  # NOQA
+        if (installed_but_not_baseline(scipy="1.18") and function == 'rgamma'
+                and xp.dtype(dtype).kind == 'c'):
+            pytest.skip("SciPy 1.18 returns nan for complex rgamma(-inf) "
+                        "where CuPy still returns 0.")
 
         a = numpy.array([-numpy.inf, numpy.nan, numpy.inf]).astype(dtype)
         a = xp.asarray(a)
         func = getattr(scp.special, function)
-        return func(a)
+        out = func(a)
+        return match_scipy_float32(out, xp, dtype)
