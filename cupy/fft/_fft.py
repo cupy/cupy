@@ -48,7 +48,7 @@ def _convert_dtype(a, value_type):
 
 
 def _cook_shape(a, s, axes, value_type, order='C'):
-    if s is None or s == a.shape:
+    if s is None:
         return a
     if (value_type == 'C2R') and (s[-1] is not None):
         s = list(s)
