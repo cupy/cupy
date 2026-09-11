@@ -3,6 +3,49 @@ from __future__ import annotations
 import cupy
 
 
+def polydiv(c1, c2):
+    """
+    Divide one polynomial by another.
+
+    Parameters
+    ----------
+    c1, c2 : cupy.ndarray
+        1-D arrays of polynomial coefficients ordered from low to high.
+
+    Returns
+    -------
+    (quo, rem) : tuple of cupy.ndarray
+        Quotient and remainder polynomials.
+    """
+    if c1.dtype.kind == 'b' or c2.dtype.kind == 'b':
+        raise ValueError("Coefficient arrays have no common type")
+
+    c1, c2 = cupy.polynomial.polyutils.as_series([c1, c2], trim=True)
+    c1 = c1.copy()
+
+    if c2[-1] == 0:
+        raise ZeroDivisionError()
+
+    lc1 = len(c1)
+    lc2 = len(c2)
+
+    if lc1 < lc2:
+        return c1[:1] * 0, c1
+    elif lc2 == 1:
+        return c1 / c2[-1], c1[:1] * 0
+    else:
+        dlen = lc1 - lc2
+        scl = c2[-1]
+        c2 = c2[:-1] / scl
+        i = dlen
+        j = lc1 - 1
+        while i >= 0:
+            c1[i:j] -= c2 * c1[j]
+            i -= 1
+            j -= 1
+        return c1[j + 1:] / scl, cupy.polynomial.polyutils.trimseq(c1[:j + 1])
+
+
 def polyvander(x, deg):
     """Computes the Vandermonde matrix of given degree.
 
