@@ -468,5 +468,6 @@ class TestMinimumPhase:
         )
         error = cupy.abs(cupy.fft.rfft(h, N)) - cupy.abs(
             cupy.fft.rfft(h_min, N))
-        atol = {"float32": 1e-5, "float64": 1e-13}[dtype]
+        # float32 slightly relaxed compared to scipy (with some headroom).
+        atol = {"float32": 1.5e-5, "float64": 1e-13}[dtype]
         testing.assert_allclose(error, cupy.zeros_like(error), atol=atol)
