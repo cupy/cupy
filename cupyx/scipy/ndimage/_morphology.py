@@ -1149,7 +1149,9 @@ def white_tophat(
     kwargs = dict(mode=mode, cval=cval, origin=origin, axes=axes)
     tmp = grey_erosion(input, size, footprint, structure, None, **kwargs)
     tmp = grey_dilation(tmp, size, footprint, structure, output, **kwargs)
-    if input.dtype == numpy.bool_ and tmp.dtype == numpy.bool_:
+    if tmp is None:
+        tmp = output
+    if input.dtype == cupy.bool_ and tmp.dtype == cupy.bool_:
         cupy.bitwise_xor(input, tmp, out=tmp)
     else:
         cupy.subtract(input, tmp, out=tmp)
@@ -1209,7 +1211,9 @@ def black_tophat(
     kwargs = dict(mode=mode, cval=cval, origin=origin, axes=axes)
     tmp = grey_dilation(input, size, footprint, structure, None, **kwargs)
     tmp = grey_erosion(tmp, size, footprint, structure, output, **kwargs)
-    if input.dtype == numpy.bool_ and tmp.dtype == numpy.bool_:
+    if tmp is None:
+        tmp = output
+    if input.dtype == cupy.bool_ and tmp.dtype == cupy.bool_:
         cupy.bitwise_xor(tmp, input, out=tmp)
     else:
         cupy.subtract(tmp, input, out=tmp)
