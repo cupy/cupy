@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import tempfile
+import threading
+
 import numpy
 import pytest
 from unittest import mock
@@ -9,6 +12,7 @@ from cupy import testing
 from cupy._core import _accelerator
 from cupy._core import _cuda_compute_common
 from cupy._core import _cuda_compute_reduction
+from cupy.cuda._compiler_cache import DiskKernelCacheBackend
 
 
 # This test class and its children below only test if the cuda.compute
@@ -80,6 +84,8 @@ _scalar_acc_cases = [
 ]
 
 
+@pytest.mark.thread_unsafe(
+    reason="AssertFunctionIsCalled and accelerator mutation.")
 class TestCudaComputeReductionRoutines(CudaComputeReductionTestBase):
 
     def _dispatch_and_compare(self, routine, kwargs, a_np, times_called=1,
@@ -104,28 +110,20 @@ class TestCudaComputeReductionRoutines(CudaComputeReductionTestBase):
         testing.assert_allclose(result, expected, rtol=1e-6)
 
     @pytest.mark.parametrize(('routine', 'kwargs'), _scalar_acc_cases)
-    @pytest.mark.thread_unsafe(
-        reason="AssertFunctionIsCalled and accelerator mutation.")
     def test_scalar_accumulator_routines(self, routine, kwargs):
         a = numpy.arange(1, 33, dtype='f' if not kwargs else 'i')
         self._dispatch_and_compare(routine, kwargs, a)
 
     @pytest.mark.parametrize('dtype', ['e', 'f', 'd', 'F', 'D'])
-    @pytest.mark.thread_unsafe(
-        reason="AssertFunctionIsCalled and accelerator mutation.")
     def test_sum_dtypes(self, dtype):
         a = testing.shaped_random((1000,), numpy, dtype=dtype, seed=0)
         self._dispatch_and_compare('sum', {}, a)
 
     @pytest.mark.parametrize('dtype', ['f', 'd', 'F'])
-    @pytest.mark.thread_unsafe(
-        reason="AssertFunctionIsCalled and accelerator mutation.")
     def test_sum_to_complex_accumulator(self, dtype):
         a = testing.shaped_random((1000,), numpy, dtype=dtype, seed=0)
         self._dispatch_and_compare('sum', {'dtype': 'D'}, a)
 
-    @pytest.mark.thread_unsafe(
-        reason="AssertFunctionIsCalled and accelerator mutation.")
     def test_sum_complex_to_real_declines(self):
         from cupy.cuda.compiler import CompileException
         a = cupy.ones((100,), dtype='F')
@@ -143,8 +141,6 @@ class TestCudaComputeReductionRoutines(CudaComputeReductionTestBase):
                 cupy.sum(a, dtype='q')
         assert seen['ret'] is False
 
-    @pytest.mark.thread_unsafe(
-        reason="AssertFunctionIsCalled and accelerator mutation.")
     def test_norm_uses_post_op(self):
         a_np = testing.shaped_random((1000,), numpy, dtype='d', seed=0)
         a = cupy.asarray(a_np)
@@ -161,8 +157,6 @@ class TestCudaComputeReductionRoutines(CudaComputeReductionTestBase):
             result = cupy.linalg.norm(a)
         testing.assert_allclose(result, numpy.linalg.norm(a_np), rtol=1e-6)
 
-    @pytest.mark.thread_unsafe(
-        reason="AssertFunctionIsCalled and accelerator mutation.")
     def test_strided_out_falls_back(self):
         a_np = testing.shaped_random((3, 4), numpy, dtype='f', seed=0)
         a = cupy.asarray(a_np)
@@ -176,8 +170,6 @@ class TestCudaComputeReductionRoutines(CudaComputeReductionTestBase):
         testing.assert_allclose(
             strided_out, numpy.sum(a_np, axis=0), rtol=1e-6)
 
-    @pytest.mark.thread_unsafe(
-        reason="AssertFunctionIsCalled and accelerator mutation.")
     def test_accelerator_order_respected(self):
         # with cuda_compute listed before cub in both lists (as the
         # env var produces), cuda.compute must get first refusal
@@ -191,15 +183,11 @@ class TestCudaComputeReductionRoutines(CudaComputeReductionTestBase):
             result = a.sum()
         assert result == 1000.0
 
-    @pytest.mark.thread_unsafe(
-        reason="AssertFunctionIsCalled and accelerator mutation.")
     def test_full_reduction_f_order(self):
         a = testing.shaped_random((30, 40), numpy, dtype='d', seed=0)
         self._dispatch_and_compare('sum', {}, a, order='F')
 
     @pytest.mark.parametrize('dtype', ['e', 'f', 'd'])
-    @pytest.mark.thread_unsafe(
-        reason="AssertFunctionIsCalled and accelerator mutation.")
     def test_nanmean(self, dtype):
         # nanmean_st carries the non-NaN count in the accumulator, so
         # unlike mean no host-side divisor is needed
@@ -221,8 +209,6 @@ class TestCudaComputeReductionRoutines(CudaComputeReductionTestBase):
         testing.assert_allclose(result, numpy.nanmean(a), rtol=rtol)
 
     @pytest.mark.parametrize('routine', ['nanmin', 'nanmax'])
-    @pytest.mark.thread_unsafe(
-        reason="AssertFunctionIsCalled and accelerator mutation.")
     def test_nan_min_max(self, routine):
         # two dispatches: the reduction itself, then the wrapper's
         # isnan(res).any() all-NaN check is also a served reduction
@@ -230,8 +216,6 @@ class TestCudaComputeReductionRoutines(CudaComputeReductionTestBase):
         a[::5] = numpy.nan
         self._dispatch_and_compare(routine, {}, a, times_called=2)
 
-    @pytest.mark.thread_unsafe(
-        reason="AssertFunctionIsCalled and accelerator mutation.")
     def test_argmax_f_order(self):
         # _J indices are C-order; the F-contiguous input goes through
         # ascontiguousarray
@@ -244,8 +228,6 @@ class TestCudaComputeReductionRoutines(CudaComputeReductionTestBase):
             result = cupy.argmax(a)
         assert int(result) == int(numpy.argmax(a_np))
 
-    @pytest.mark.thread_unsafe(
-        reason="AssertFunctionIsCalled and accelerator mutation.")
     def test_segmented_argmin_declines(self):
         # a segmented reduction wants within-segment indices; the zip
         # provides global ones, so the resolver declines
@@ -264,14 +246,10 @@ class TestCudaComputeReductionRoutines(CudaComputeReductionTestBase):
             result = cupy.argmin(a, axis=1)
         testing.assert_array_equal(result, numpy.argmin(a_np, axis=1))
 
-    @pytest.mark.thread_unsafe(
-        reason="AssertFunctionIsCalled and accelerator mutation.")
     def test_segmented_min(self):
         a_np = testing.shaped_random((50, 40), numpy, dtype='d', seed=0)
         self._dispatch_and_compare('min', {'axis': 1}, a_np)
 
-    @pytest.mark.thread_unsafe(
-        reason="AssertFunctionIsCalled and accelerator mutation.")
     def test_complex_min_declines(self):
         # complex struct accumulators decline (see _try_accumulator)
         a_np = (testing.shaped_random((1000,), numpy, dtype='f', seed=0)
@@ -292,8 +270,6 @@ class TestCudaComputeReductionRoutines(CudaComputeReductionTestBase):
 
     @pytest.mark.parametrize(('routine', 'axis'), [
         ('sum', 1), ('sum', -1), ('prod', 1), ('all', 1), ('nansum', 1)])
-    @pytest.mark.thread_unsafe(
-        reason="AssertFunctionIsCalled and accelerator mutation.")
     def test_segmented_routines(self, routine, axis):
         dt = '?' if routine == 'all' else 'd'
         a = testing.shaped_random((100, 50), numpy, dtype=dt, seed=0)
@@ -301,14 +277,10 @@ class TestCudaComputeReductionRoutines(CudaComputeReductionTestBase):
             a[::7] = numpy.nan
         self._dispatch_and_compare(routine, {'axis': axis}, a)
 
-    @pytest.mark.thread_unsafe(
-        reason="AssertFunctionIsCalled and accelerator mutation.")
     def test_segmented_3d_trailing_axes(self):
         a = testing.shaped_random((8, 9, 10), numpy, dtype='d', seed=0)
         self._dispatch_and_compare('sum', {'axis': (1, 2)}, a)
 
-    @pytest.mark.thread_unsafe(
-        reason="AssertFunctionIsCalled and accelerator mutation.")
     def test_annotated_ops_use_no_raw_op(self):
         a = cupy.ones((1000,), dtype='f')
         func = _cuda_compute_reduction._make_raw_ops
@@ -319,10 +291,10 @@ class TestCudaComputeReductionRoutines(CudaComputeReductionTestBase):
             a.prod()
 
 
+@pytest.mark.thread_unsafe(
+    reason="AssertFunctionIsCalled and accelerator mutation.")
 class TestCudaComputeReductionFallback(CudaComputeReductionTestBase):
 
-    @pytest.mark.thread_unsafe(
-        reason="AssertFunctionIsCalled and accelerator mutation.")
     def test_fallbacks(self):
         a = cupy.ones((1000,), dtype='f')
         func_name = ('cupy._core._cuda_compute_reduction'
@@ -333,8 +305,6 @@ class TestCudaComputeReductionFallback(CudaComputeReductionTestBase):
                 func_name, wraps=func, times_called=0):  # disabled
             a.sum()
 
-    @pytest.mark.thread_unsafe(
-        reason="AssertFunctionIsCalled and accelerator mutation.")
     def test_declined_call_falls_back(self):
         # cuda.compute declines complex min; accelerators listed after
         # it must still get the call
@@ -365,3 +335,66 @@ class TestCudaComputeReductionFallback(CudaComputeReductionTestBase):
                 result = cupy.min(a)
         assert len(calls) >= 1
         assert complex(result) == complex(numpy.min(a_np))
+
+
+class _CountingCacheBackend(DiskKernelCacheBackend):
+
+    def __init__(self, path):
+        super().__init__(path)
+        self.saves = 0
+        self.loads = 0
+
+    def load(self, name):
+        blob = super().load(name)
+        if blob is not None:
+            self.loads += 1
+        return blob
+
+    def save(self, name, cubin, source):
+        self.saves += 1
+        super().save(name, cubin, source)
+
+
+class TestCudaComputeCachedAlgorithm(CudaComputeReductionTestBase):
+
+    @pytest.mark.thread_unsafe(reason="mutates global cache directory")
+    def test_disk_cache_round_trip(self):
+        # build once into a temporary cache dir, then force a second build
+        # to consult the disk. The memo is per thread, so the second call
+        # runs in a new thread instead of clearing a memo
+        compute = _cuda_compute_common._get_cuda_compute()
+        d_in = cupy.arange(1000, dtype='f')
+        d_out = cupy.empty((), dtype='f')
+        h_init = numpy.zeros((), dtype='f')
+        builds = []
+
+        def build():
+            builds.append(1)
+            return compute.make_reduce_into(
+                d_in=d_in, d_out=d_out, op=compute.OpKind.PLUS,
+                h_init=h_init)
+
+        key = ('test_disk_cache_round_trip',)
+        loaded = []
+        with tempfile.TemporaryDirectory() as path:
+            backend = _CountingCacheBackend(path)
+            with mock.patch('cupy.cuda.compiler._kernel_cache_backend',
+                            backend):
+                algo = _cuda_compute_common.cached_algorithm(
+                    'test_reduce', key, repr(key), build)
+                assert builds == [1] and backend.saves == 1
+                t = threading.Thread(target=lambda: loaded.append(
+                    _cuda_compute_common.cached_algorithm(
+                        'test_reduce', key, repr(key), build)))
+                t.start()
+                t.join()
+            assert builds == [1] and backend.saves == 1
+            assert backend.loads == 1
+        assert loaded[0] is not algo
+        size = loaded[0](temp_storage=None, d_in=d_in, d_out=d_out,
+                         num_items=d_in.size, op=compute.OpKind.PLUS,
+                         h_init=h_init)
+        loaded[0](temp_storage=cupy.empty(size, dtype='B'), d_in=d_in,
+                  d_out=d_out, num_items=d_in.size, op=compute.OpKind.PLUS,
+                  h_init=h_init)
+        assert float(d_out) == float(cupy.arange(1000, dtype='f').sum())

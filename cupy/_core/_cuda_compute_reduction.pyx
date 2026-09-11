@@ -199,7 +199,7 @@ def _try_reduction(_ndarray_base input_array, _ndarray_base out,
             and out.dtype.kind != 'c'):
         return None
 
-    index_dtype = numpy.dtype(dict(type_map._pairs).get('IndexT', 'q'))
+    index_dtype = numpy.dtype(dict(type_map._pairs)['IndexT'])
     acc = _try_accumulator(reduce_type, identity, input_array.dtype,
                            out.dtype, index_dtype)
     if acc is None:
@@ -246,7 +246,7 @@ def _try_reduction(_ndarray_base input_array, _ndarray_base out,
 
     build_key = (out.size > 1, src, tuple(names), use_zip_map, use_map,
                  use_post, compute_opkind if use_opkind else None,
-                 input_array.dtype.str, out.dtype.str, acc_dtype.str)
+                 input_array.dtype, out.dtype, acc_dtype)
 
     acc_type_descriptor = compute.types.from_numpy_dtype(acc_dtype)
 
@@ -282,8 +282,12 @@ def _cuda_compute_reduce(_ndarray_base input_array, _ndarray_base out,
                          str reduce_type, type_map, str identity,
                          str preamble, compute_opkind, stream):
     compute = _get_cuda_compute()
-    if stream is None:
-        stream = cupy.cuda.get_current_stream()
+    # _SimpleReductionKernel.__call__ passes stream=None. The d_tmp
+    # cupy.empty in _cuda_compute_reduce allocates on the current stream,
+    # so a caller passing another stream would first have to move that
+    # allocation onto it
+    assert stream is None
+    stream = cupy.cuda.get_current_stream()
     build_cuda_compute_reduce = _try_reduction(
         input_array, out, map_expr, reduce_expr, post_map_expr, reduce_type,
         type_map, identity, preamble, compute_opkind)

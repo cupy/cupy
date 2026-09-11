@@ -66,7 +66,11 @@ cpdef str _environment_cache_key_prefix():
 
 cpdef cached_algorithm(str family, tuple key, str key_src, build):
     """Per-thread, per-device memo of a built cuda.compute algorithm object,
-    backed by the kernel cache on disk."""
+    backed by the kernel cache on disk.
+
+    Per thread because a built cuda.compute algorithm object is not safe to
+    call from several threads at once (same as the scan accelerator).
+    """
 
     cache = getattr(_thread_local, family, None)
     if cache is None:

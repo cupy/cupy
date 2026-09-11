@@ -79,10 +79,16 @@ cdef _ndarray_base _ndarray_min(
 cdef _ndarray_base _ndarray_ptp(_ndarray_base self, axis, out, keepdims):
     for accelerator in _accelerator._routine_accelerators:
         if accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE:
-            # max and min run their own accelerator dispatch
-            result = _ndarray_max(self, axis, out, None, keepdims)
-            result -= _ndarray_min(self, axis, None, None, keepdims)
-            return result
+            # result will be None if the reduction is not served by
+            # cuda.compute
+            result = _amax(self, axis=axis, out=out, keepdims=keepdims,
+                           cuda_compute_only=True)
+            if result is not None:
+                minimum = _amin(self, axis=axis, keepdims=keepdims,
+                                cuda_compute_only=True)
+                if minimum is not None:
+                    result -= minimum
+                    return result
         if accelerator == _accelerator.ACCELERATOR_CUB:
             # result will be None if the reduction is not compatible with CUB
             result = cub.cub_reduction(
