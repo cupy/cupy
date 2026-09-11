@@ -301,6 +301,30 @@ class TestPoly:
         a = xp.zeros((0), dtype)
         return xp.poly(a)
 
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose(rtol=1e-4)
+    def test_polyint(self, xp, dtype):
+        a = testing.shaped_arange((3,), xp, dtype)
+        return xp.polyint(a)
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose(rtol=1e-4)
+    def test_polyint_poly1d(self, xp, dtype):
+        a = testing.shaped_arange((3,), xp, dtype)
+        return xp.polyint(xp.poly1d(a)).coeffs
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose(rtol=1e-4)
+    def test_polyint_k(self, xp, dtype):
+        a = testing.shaped_arange((3,), xp, dtype)
+        return xp.polyint(a, 2, [1, 2])
+
+    @testing.for_all_dtypes(no_bool=True)
+    def test_polyint_negative_m(self, dtype):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                xp.polyint(testing.shaped_arange((3,), xp, dtype), -1)
+
 
 @testing.parameterize(*testing.product({
     'shape': [(), (0,), (5,)],
