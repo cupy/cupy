@@ -62,6 +62,16 @@ def nanmedian(a, axis=None, out=None, overwrite_input=False, keepdims=False):
     .. seealso:: :func:`numpy.nanmedian`
 
     """
+    a = cupy.asarray(a)
+    if a.ndim == 0 and axis is not None:
+        if isinstance(axis, (tuple, list)):
+            if len(axis) != 0:
+                raise ValueError(
+                    f"axis {axis} is out of bounds for array of dimension 0")
+        else:
+            raise ValueError(
+                f"axis {axis} is out of bounds for array of dimension 0")
+
     if a.dtype.char in 'efdFD':
         return _statistics._nanmedian(a, axis, out, overwrite_input, keepdims)
     else:
