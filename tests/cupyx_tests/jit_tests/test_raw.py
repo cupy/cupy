@@ -361,6 +361,46 @@ class TestRaw:
         assert bool((y == 15).all())
         assert bool((z == 28).all())
 
+    def test_pass_by_reference(self):
+        @jit.rawkernel(device=True)
+        def func(a, b, c):
+            a += 1
+            b = 1  # noqa: F841
+            c -= 1
+
+        @jit.rawkernel()
+        def f(x, y, z):
+            tid = jit.grid(1)
+
+            a = 4
+            b = 4
+            c = 4
+
+            if (tid == 1):
+                func(jit.ref(a), jit.ref(b), c)
+            else:
+                # func is already defined,
+                # a, b will still be passed by reference
+                # c will still be passed by value
+                func(a, b, jit.ref(c))
+
+            # still test pass-by-reference with c
+            d = jit.ref(c)
+            e = 7
+            d += e
+
+            x[tid] = a
+            y[tid] = b
+            z[tid] = c
+
+        x = cupy.zeros(2, dtype=int)
+        y = cupy.zeros(2, dtype=int)
+        z = cupy.zeros(2, dtype=int)
+        f[1, 2](x, y, z)
+        assert bool((x == 5).all())
+        assert bool((y == 1).all())
+        assert bool((z == 11).all())  # 4+7
+
     def test_shared_memory_static(self):
         @jit.rawkernel()
         def f(x, y):
