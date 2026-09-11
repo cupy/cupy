@@ -618,8 +618,13 @@ class TestDefaultStartVector:
         cupy.random.seed(3)
         u2, s2, vt2 = sparse.linalg.svds(sparse.csr_matrix(a), k=6)
         cupy.testing.assert_allclose(s1, s2, rtol=1e-10, atol=1e-10)
-        cupy.testing.assert_allclose(u1, u2, rtol=1e-8, atol=1e-8)
-        cupy.testing.assert_allclose(vt1, vt2, rtol=1e-8, atol=1e-8)
+        # A singular vector is defined up to sign, and the Ritz solve does
+        # not fix it between runs (gh-10286): compare each column up to its
+        # sign, i.e. require |u1^H u2| = I and |vt1 vt2^H| = I.
+        for x, y in ((u1, u2), (vt1.T, vt2.T)):
+            g = cupy.abs(x.conj().T @ y)
+            cupy.testing.assert_allclose(g, cupy.eye(g.shape[0]),
+                                         rtol=1e-8, atol=1e-8)
 
 
 @testing.parameterize(*testing.product({

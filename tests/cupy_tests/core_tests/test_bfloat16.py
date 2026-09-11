@@ -240,6 +240,14 @@ def test_var_std(xp, func):
         return getattr(xp, func)(a)
 
 
+@pytest.mark.parametrize('func', ['cumsum', 'cumprod'])
+@testing.numpy_cupy_allclose(rtol=TOL, atol=TOL)
+def test_scan(xp, func):
+    a = xp.asarray(TEST_VALUES.reshape(3, 4))
+    with numpy.errstate(all='ignore'):
+        return getattr(xp, func)(a)
+
+
 @pytest.mark.parametrize('func', ['var', 'std'])
 @testing.numpy_cupy_allclose(rtol=2 * TOL, atol=2 * TOL)
 def test_var_std_large(xp, func):
