@@ -143,3 +143,265 @@ class TestElementwiseType:
         a = xp.array([xp.iinfo(dtype).min + 1], dtype=dtype)
         b = xp.int8(-1)
         return a + b
+
+
+def _make_test_kernel(
+        in_shapes, out_shapes, no_return=False, return_tuple=False):
+    # Creates a toy kernel for testing gufunc-like capabilities of
+    # ElementwiseKernel. The core calculation takes the sum of the values
+    # in a core slice for each argument, and multiples these sums together.
+    # The output core slices are then filled with this product of sums
+    # multiplied elementwise by an ndarray of the appropriate core shape
+    # whose value at a given element is one more than the sum of indices
+    # associated to that element. ``in_shapes`` and ``out_shapes`` contain
+    # tuples containing info from the input and output parts of a gufunc
+    # signature.
+    in_params = [f'T{shape} in{i}' for i, shape in enumerate(in_shapes)]
+    out_params = [f'T{shape} out{i}' for i, shape in enumerate(out_shapes)]
+
+    in_params_str = ','.join(in_params)
+    out_params_str = ','.join(out_params)
+
+    operation = ''
+
+    for i, shape in enumerate(in_shapes):
+        if shape != '()':
+            operation += f'auto in{i}_mdspan = in{i}.as_mdspan(); '
+
+    for i, shape in enumerate(out_shapes):
+        if shape != '()':
+            operation += f'auto out{i}_mdspan = out{i}.as_mdspan(); '
+
+    operation += 'T result = 1; '
+
+    for i, shape in enumerate(in_shapes):
+        operation += f'T sum{i} = 0; '
+
+        if shape == '()':
+            operation += f'sum{i} += in{i}; '
+        else:
+            rank = shape.count(',') + 1
+            param = f'in{i}_mdspan'
+            for dim in range(rank):
+                operation += (
+                    f'for (int i{dim} = 0; i{dim} < {param}.extent({dim});'
+                    f' ++i{dim}) {{ '
+                )
+            indices = ', '.join(f'i{d}' for d in range(rank))
+            operation += f'sum{i} += {param}({indices}); '
+            for _ in range(rank):
+                operation += '} '
+
+        operation += f'result *= sum{i}; '
+
+    for i, shape in enumerate(out_shapes):
+        if shape == '()':
+            operation += f'out{i} = result; '
+        else:
+            rank = shape.count(',') + 1
+            param = f'out{i}_mdspan'
+
+            for dim in range(rank):
+                operation += (
+                    f'for (int j{dim} = 0; j{dim} < {param}.extent({dim});'
+                    f' ++j{dim}) {{ '
+                )
+            indices = ', '.join(f'j{d}' for d in range(rank))
+            index_sum = ' + '.join(f'T(j{d})' for d in range(rank))
+            operation += (
+                f'{param}({indices}) = result * ({index_sum} + T(1)); ')
+
+            for _ in range(rank):
+                operation += '} '
+
+    return cupy.ElementwiseKernel(
+        in_params=in_params_str,
+        out_params=out_params_str,
+        operation=operation,
+        options=("--std=c++17",),
+        return_tuple=return_tuple,
+        no_return=no_return,
+    )
+
+
+def _reference_func(*args, out_shape, in_core_ndims, out_core_ndim):
+    # Compute reference values for the toy kernel described above.
+    val = 1
+    for arg, ndim in zip(args, in_core_ndims):
+        if ndim == 0:
+            val = val * arg
+        else:
+            axis = tuple(range(-ndim, 0))
+            val = val * cupy.sum(arg, axis=axis)
+
+    if not out_shape:
+        return val
+
+    expanded_val = val
+    for _ in range(out_core_ndim):
+        expanded_val = cupy.expand_dims(expanded_val, axis=-1)
+
+    if out_core_ndim > 0:
+        core_shape = out_shape[-out_core_ndim:]
+        index_sum = sum(cupy.ogrid[tuple(slice(d) for d in core_shape)])
+        return expanded_val * (index_sum + 1)
+
+    return cupy.broadcast_to(expanded_val, out_shape)
+
+
+class TestElementwiseGUFuncLike:
+    def test_scalar(self):
+        # '(),()->()'
+        kern = _make_test_kernel(('()', '()'), ('()',))
+        in0 = cupy.random.uniform(size=(1, 10))
+        in1 = cupy.random.uniform(size=(10, 1))
+        out_shape = (10, 10)
+        actual = kern(in0, in1)
+        desired = _reference_func(
+            in0, in1, out_shape=out_shape, in_core_ndims=(0, 0),
+            out_core_ndim=0)
+        testing.assert_allclose(actual, desired)
+
+    def test_reduction(self):
+        # '(i)->()'
+        kern = _make_test_kernel(('(i)',), ('()',))
+        in0 = cupy.random.uniform(size=(30, 20, 100))
+        out_shape = (30, 20)
+        actual = kern(in0)
+        desired = _reference_func(
+            in0, out_shape=out_shape, in_core_ndims=(1,),
+            out_core_ndim=0)
+        testing.assert_allclose(actual, desired)
+
+    def test_matmul_like(self):
+        # '(m,n),(n,p)->(m,p)'
+        kern = _make_test_kernel(('(m,n)', '(n,p)'), ('(m,p)',))
+        in0 = cupy.random.uniform(size=(1, 10, 30, 20))
+        in1 = cupy.random.uniform(size=(2, 10, 20, 50))
+        out_shape = (2, 10, 30, 50)
+        actual = kern(in0, in1)
+        desired = _reference_func(
+            in0, in1, out_shape=out_shape, in_core_ndims=(2, 2),
+            out_core_ndim=2)
+        testing.assert_allclose(actual, desired)
+
+    def test_frozen_dims(self):
+        # '(3),(3)->(3)'
+        kern = _make_test_kernel(('(3)', '(3)'), ('(3)',))
+        in0 = cupy.random.uniform(size=(100, 3))
+        in1 = cupy.random.uniform(size=(100, 3))
+        out_shape = (100, 3)
+        actual = kern(in0, in1)
+        desired = _reference_func(
+            in0, in1, out_shape=out_shape, in_core_ndims=(1, 1),
+            out_core_ndim=1)
+        testing.assert_allclose(actual, desired)
+
+    def test_pdist_like(self):
+        # '(n, d)->(n * (n - 1) // 2)'
+        kern = _make_test_kernel(('(n, d)',), ('(n * (n - 1) // 2)',))
+        in0 = cupy.random.uniform(size=(100, 6, 10))
+        out_shape = (100, 15)
+        actual = kern(in0)
+        desired = _reference_func(
+            in0, out_shape=out_shape, in_core_ndims=(2,), out_core_ndim=1)
+        testing.assert_allclose(actual, desired)
+
+    def test_multiple_outputs(self):
+        # '(m,n),(n,p)->(m**2+p**2,2*n**2),(m*n*n*p)'
+        kern = _make_test_kernel(
+            ('(m,n)', '(n,p)'), ('(m**2+p**2, 2*n**2)', '(m*n*n*p)',))
+        in0 = cupy.random.uniform(size=(10, 1, 3, 2))
+        in1 = cupy.random.uniform(size=(1, 10, 2, 4))
+        out_shapes = ((10, 10, 25, 8), (10, 10, 48,))
+        actual0, actual1 = kern(in0, in1)
+        desired0, desired1 = (
+            _reference_func(
+                in0, in1, out_shape=out_shape, in_core_ndims=(2, 2),
+                out_core_ndim=ndim)
+            for out_shape, ndim in zip(out_shapes, (2, 1))
+        )
+        testing.assert_allclose(actual0, desired0)
+        testing.assert_allclose(actual1, desired1)
+
+    def test_with_preallocated_out(self):
+        # '(m,n),(n,p)->(m**2+p**2,2*n**2),(m*n*n*p)'
+        kern = _make_test_kernel(
+            ('(m,n)', '(n,p)'), ('(m**2+p**2, 2*n**2)', '(m*n*n*p)',))
+        in0 = cupy.random.uniform(size=(10, 1, 3, 2))
+        in1 = cupy.random.uniform(size=(1, 10, 2, 4))
+        out_shapes = ((10, 10, 25, 8), (10, 10, 48,))
+        out0, out1 = (cupy.empty(shape) for shape in out_shapes)
+        actual0, actual1 = kern(in0, in1, out0, out1)
+        assert actual0 is out0
+        assert actual1 is out1
+        desired0, desired1 = (
+            _reference_func(
+                in0, in1, out_shape=out_shape, in_core_ndims=(2, 2),
+                out_core_ndim=ndim)
+            for out_shape, ndim in zip(out_shapes, (2, 1))
+        )
+        testing.assert_allclose(actual0, desired0)
+        testing.assert_allclose(actual1, desired1)
+
+    def test_broadcast_against_out(self):
+        # '(m,n),(n,p)->(m,p)'
+        kern = _make_test_kernel(('(m,n)', '(n,p)'), ('(m,p)',))
+        in0 = cupy.random.uniform(size=(1, 10, 30, 20))
+        in1 = cupy.random.uniform(size=(1, 10, 20, 50))
+        out_shape = (10, 10, 30, 50)
+        actual = kern(in0, in1)
+        desired = _reference_func(
+            in0, in1, out_shape=out_shape, in_core_ndims=(2, 2),
+            out_core_ndim=2)
+        testing.assert_allclose(actual, desired)
+
+    def test_return_tuple(self):
+        # '(i)->()'
+        kern = _make_test_kernel(('(i)',), ('()',), return_tuple=True)
+        in0 = cupy.random.uniform(size=(30, 20, 100))
+        out_shape = (30, 20)
+        actual = kern(in0)
+        assert isinstance(actual, tuple)
+        assert len(actual) == 1
+        desired = _reference_func(
+            in0, out_shape=out_shape, in_core_ndims=(1,),
+            out_core_ndim=0)
+        testing.assert_allclose(actual[0], desired)
+
+    def test_no_return(self):
+        # '(n, d)->(n * (n - 1) // 2)'
+        kern = _make_test_kernel(
+            ('(n, d)',), ('(n * (n - 1) // 2)',), no_return=True)
+        in0 = cupy.random.uniform(size=(100, 6, 10))
+        out_shape = (100, 15)
+        actual = cupy.empty(out_shape)
+        result = kern(in0, actual)
+        assert result is None
+        desired = _reference_func(
+            in0, out_shape=out_shape, in_core_ndims=(2,), out_core_ndim=1)
+        testing.assert_allclose(actual, desired)
+
+    def test_indeterminate_out_shape(self):
+        # '(i)->(j)'
+        kern = _make_test_kernel(('(i)',), ('(j)',))
+        in0 = cupy.random.uniform(size=(100, 10))
+        out_shape = (100, 20)
+        actual = cupy.empty(out_shape)
+        _ = kern(in0, actual)
+        desired = _reference_func(
+            in0, out_shape=out_shape, in_core_ndims=(1,), out_core_ndim=1)
+        testing.assert_allclose(actual, desired)
+
+    @pytest.mark.parametrize('n', [5, 10])
+    def test_shape_validation1(self, n):
+        kern = _make_test_kernel(('(n)',), ('(n-10)',))
+        in0 = cupy.random.uniform(size=(20, n))
+        with pytest.raises(ValueError):
+            kern(in0)
+
+    def test_shape_validation2(self):
+        kern = _make_test_kernel(('(n)',), ('(n + 0.5)',))
+        in0 = cupy.random.uniform(size=(20, 10))
+        with pytest.raises(ValueError):
+            kern(in0)

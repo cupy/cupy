@@ -47,6 +47,7 @@ from cupyx.scipy.special._statistics import boxcox  # NOQA
 from cupyx.scipy.special._statistics import boxcox1p  # NOQA
 from cupyx.scipy.special._statistics import inv_boxcox  # NOQA
 from cupyx.scipy.special._statistics import inv_boxcox1p  # NOQA
+from cupyx.scipy.special import _spfun_stats  # NOQA
 
 # Information Theory functions
 from cupyx.scipy.special._convex_analysis import entr  # NOQA
