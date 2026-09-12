@@ -5,190 +5,13 @@ import os
 import os.path
 import platform
 import shutil
-import sys
 import subprocess
 from typing import Any
 
 from setuptools import Extension
 
 from cupy_builder._context import Context
-import cupy_builder.install_build as build
-
-
-def _nvcc_gencode_options(cuda_version: int) -> list[str]:
-    """Returns NVCC GPU code generation options."""
-
-    if sys.argv == ['setup.py', 'develop']:
-        return []
-
-    envcfg = os.getenv('CUPY_NVCC_GENERATE_CODE', None)
-    if envcfg is not None and envcfg != 'current':
-        return ['--generate-code={}'.format(arch)
-                for arch in envcfg.split(';') if len(arch) > 0]
-    if envcfg == 'current' and build.get_compute_capabilities() is not None:
-        ccs = build.get_compute_capabilities()
-        arch_list = [
-            f'compute_{cc}' if cc < 60 else (f'compute_{cc}', f'sm_{cc}')
-            for cc in ccs]
-    else:
-        # The arch_list specifies virtual architectures, such as 'compute_61',
-        # and real architectures, such as 'sm_61', for which the CUDA
-        # input files are to be compiled.
-        #
-        # The syntax of an entry of the list is
-        #
-        #     entry ::= virtual_arch | (virtual_arch, real_arch)
-        #
-        # where virtual_arch is a string which means a virtual architecture and
-        # real_arch is a string which means a real architecture.
-        #
-        # If a virtual architecture is supplied, NVCC generates a PTX code
-        # the virtual architecture. If a pair of a virtual architecture and a
-        # real architecture is supplied, NVCC generates a PTX code for the
-        # virtual architecture as well as a cubin code for the real one.
-        #
-        # For example, making NVCC generate a PTX code for 'compute_60' virtual
-        # architecture, the arch_list has an entry of 'compute_60'.
-        #
-        #     arch_list = ['compute_60']
-        #
-        # For another, making NVCC generate a PTX code for 'compute_61' virtual
-        # architecture and a cubin code for 'sm_61' real architecture, the
-        # arch_list has an entry of ('compute_61', 'sm_61').
-        #
-        #     arch_list = [('compute_61', 'sm_61')]
-        #
-        # See the documentation of each CUDA version for the list of supported
-        # architectures:
-        #
-        #   https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#options-for-steering-gpu-code-generation
-        #
-        # CuPy utilizes CUDA Minor Version Compatibility to support all CUDA
-        # minor versions in a single binary package (e.g., `cupy-cuda12x`). To
-        # achieve this, CUBIN must be generated for all supported compute
-        # capabilities instead of PTX. This is because executing PTX requires
-        # CUDA driver newer than the one used to compile the code, and we often
-        # use the latest CUDA Driver to build our binary package. See also:
-        #
-        #   https://docs.nvidia.com/deploy/cuda-compatibility/index.html#application-considerations-for-minor-version-compatibility
-        #
-        # In addition, to allow running CuPy with future (not yet released)
-        # GPUs, PTX for the latest architecture is also included as a
-        # fallback. c.f.:
-        #
-        #   https://forums.developer.nvidia.com/t/software-migration-guide-for-nvidia-blackwell-rtx-gpus-a-guide-to-cuda-12-8-pytorch-tensorrt-and-llama-cpp/321330
-        #
-        # Jetson platforms are also targetted when built under aarch64. c.f.:
-        #
-        #   https://docs.nvidia.com/cuda/cuda-for-tegra-appnote/index.html#deployment-considerations-for-cuda-upgrade-package
-
-        aarch64 = (platform.machine() == 'aarch64')
-        if cuda_version >= 13000:
-            arch_list = [('compute_75', 'sm_75'),
-                         ('compute_80', 'sm_80'),
-                         ('compute_86', 'sm_86'),
-                         ('compute_89', 'sm_89'),
-                         ('compute_90', 'sm_90'),
-                         ('compute_100f', 'sm_100'),
-                         ('compute_120f', 'sm_120'),
-                         'compute_120']
-            if aarch64:
-                # JetPack
-                arch_list += [
-                    ('compute_87', 'sm_87'),    # Jetson (Orin)
-                    ('compute_110', 'sm_110'),  # Jetson (Thor)
-                ]
-        elif cuda_version >= 12000:
-            arch_list = [('compute_50', 'sm_50'),
-                         ('compute_52', 'sm_52'),
-                         ('compute_60', 'sm_60'),
-                         ('compute_61', 'sm_61'),
-                         ('compute_70', 'sm_70'),
-                         ('compute_75', 'sm_75'),
-                         ('compute_80', 'sm_80'),
-                         ('compute_86', 'sm_86'),
-                         ('compute_89', 'sm_89'),
-                         ('compute_90', 'sm_90'),]
-            if cuda_version < 12080:
-                arch_list.append('compute_90')
-            elif 12080 <= cuda_version < 12090:
-                arch_list += [('compute_100', 'sm_100'),
-                              ('compute_120', 'sm_120'),
-                              'compute_100']
-            elif 12090 <= cuda_version:
-                arch_list += [('compute_100f', 'sm_100'),
-                              ('compute_120f', 'sm_120'),
-                              'compute_100']
-
-            if aarch64:
-                # JetPack 5 (CUDA 12.0-12.2) or JetPack 6 (CUDA 12.2+)
-                arch_list += [
-                    ('compute_72', 'sm_72'),  # Jetson (Xavier)
-                    ('compute_87', 'sm_87'),  # Jetson (Orin)
-                ]
-        elif cuda_version >= 11080:
-            arch_list = [('compute_35', 'sm_35'),
-                         ('compute_37', 'sm_37'),
-                         ('compute_50', 'sm_50'),
-                         ('compute_52', 'sm_52'),
-                         ('compute_60', 'sm_60'),
-                         ('compute_61', 'sm_61'),
-                         ('compute_70', 'sm_70'),
-                         ('compute_75', 'sm_75'),
-                         ('compute_80', 'sm_80'),
-                         ('compute_86', 'sm_86'),
-                         ('compute_89', 'sm_89'),
-                         ('compute_90', 'sm_90'),
-                         'compute_90']
-            if aarch64:
-                # JetPack 5 (CUDA 11.4/11.8)
-                arch_list += [
-                    ('compute_72', 'sm_72'),  # Jetson (Xavier)
-                    ('compute_87', 'sm_87'),  # Jetson (Orin)
-                ]
-        elif cuda_version >= 11040:
-            arch_list = [('compute_35', 'sm_35'),
-                         ('compute_37', 'sm_37'),
-                         ('compute_50', 'sm_50'),
-                         ('compute_52', 'sm_52'),
-                         ('compute_60', 'sm_60'),
-                         ('compute_61', 'sm_61'),
-                         ('compute_70', 'sm_70'),
-                         ('compute_75', 'sm_75'),
-                         ('compute_80', 'sm_80'),
-                         ('compute_86', 'sm_86'),
-                         'compute_86']
-            if aarch64:
-                # JetPack 5 (CUDA 11.4/11.8)
-                arch_list += [
-                    ('compute_72', 'sm_72'),  # Jetson (Xavier)
-                    ('compute_87', 'sm_87'),  # Jetson (Orin)
-                ]
-        elif cuda_version >= 11020:
-            arch_list = ['compute_35',
-                         'compute_50',
-                         ('compute_60', 'sm_60'),
-                         ('compute_61', 'sm_61'),
-                         ('compute_70', 'sm_70'),
-                         ('compute_75', 'sm_75'),
-                         ('compute_80', 'sm_80'),
-                         ('compute_86', 'sm_86'),
-                         'compute_86']
-        else:
-            # This should not happen.
-            assert False
-
-    options = []
-    for arch in arch_list:
-        if type(arch) is tuple:
-            virtual_arch, real_arch = arch
-            options.append('--generate-code=arch={},code={}'.format(
-                virtual_arch, real_arch))
-        else:
-            options.append('--generate-code=arch={},code={}'.format(
-                arch, arch))
-
-    return options
+from cupy_builder.backends.cuda import nvcc_gencode_options
 
 
 class DeviceCompilerBase:
@@ -215,80 +38,31 @@ class DeviceCompilerBase:
 class DeviceCompilerUnix(DeviceCompilerBase):
 
     def compile(self, obj: str, src: str, ext: Extension) -> None:
-        if self._context.use_hip:
-            self._compile_unix_hipcc(obj, src, ext)
-        elif self._context.use_ascend:
-            self._compile_unix_ascendcc(obj, src, ext)
-        else:
-            self._compile_unix_nvcc(obj, src, ext)
+        # All backend-specific compiler flags live in the backend descriptor,
+        # so this dispatches uniformly instead of knowing each backend.
+        from cupy_builder.backends import get_backend
 
-    def _compile_unix_nvcc(self, obj: str, src: str, ext: Extension) -> None:
+        backend = get_backend(self._context)
         cc_args = self._get_preprocess_options(ext) + ['-c']
-
-        # For CUDA C source files, compile them with NVCC.
-        nvcc_path = build.get_nvcc_path()
-        base_opts = build.get_compiler_base_options(nvcc_path)
-        compiler_so = nvcc_path
-
-        cuda_version = self._context.features['cuda'].get_version()
-        postargs = _nvcc_gencode_options(cuda_version) + [
-            '-Xfatbin=-compress-all', '-O2', '--compiler-options="-fPIC"',
-            '--expt-relaxed-constexpr']
-        num_threads = int(os.environ.get('CUPY_NUM_NVCC_THREADS', '2'))
-        # Note: we only support CUDA 11.2+ since CuPy v13.0.0.
-        # Bumping C++ standard from C++14 to C++17 for "if constexpr"
-        postargs += ['--std=c++17',
-                     f'-t{num_threads}',
-                     '-Xcompiler=-fno-gnu-unique']
-        print('NVCC options:', postargs)
-        self.spawn(compiler_so + base_opts + cc_args + [src, '-o', obj] +
-                   postargs)
-
-    def _compile_unix_hipcc(self, obj: str, src: str, ext: Extension) -> None:
-        cc_args = self._get_preprocess_options(ext) + ['-c']
-
-        # For CUDA C source files, compile them with HIPCC.
-        rocm_path = build.get_hipcc_path()
-        base_opts = build.get_compiler_base_options(rocm_path)
-        compiler_so = rocm_path
-
-        postargs = ['-O2', '-fPIC', '--include', 'hip_runtime.h']
-        # Note: we only support ROCm 4.3+ since CuPy v11.0.0.
-        # Bumping C++ standard from C++14 to C++17 for "if constexpr"
-        postargs += ['--std=c++17']
-        print('HIPCC options:', postargs)
-        self.spawn(compiler_so + base_opts + cc_args + [src, '-o', obj] +
-                   postargs)
-        
-    def _compile_unix_ascendcc(self, obj: str, src: str, ext: Extension) -> None:
-        cc_args = self._get_preprocess_options(ext) + ['-c']
-
-        # For Ascend ccec source files, compile with bisheng (clang-like compiler)
-        # --cce-soc-version=Ascend910B --cce-soc-core-type=AICore
-        sdk_path = build.get_cann_path()
-        base_opts = build.get_compiler_base_options(sdk_path)
-        compiler_so = sdk_path
-
-        postargs = ['-O2', '-fPIC', '--include', 'kernel_operator.h'] # TODO
-        # Note: we only support CANN 8.1+ since CuPy v11.0.0.
-        postargs += ['--std=c++17']
-        print('ASCEND C compiler options:', postargs)
-        self.spawn(compiler_so + base_opts + cc_args + [src, '-o', obj] +
-                   postargs)
+        device_args = backend.get_device_compile_args(self._context, src)
+        print('%s options:' % backend.compiler_name, device_args)
+        self.spawn(device_args + cc_args + [src, '-o', obj])
 
 
 class DeviceCompilerWin32(DeviceCompilerBase):
 
     def compile(self, obj: str, src: str, ext: Extension) -> None:
-        if self._context.use_hip:
-            raise RuntimeError('ROCm is not supported on Windows')
-        if self._context.use_ascend:
-            raise RuntimeError('Ascend CANN for cupy is not supported on Windows')
+        from cupy_builder.backends import get_backend
 
-        compiler_so = build.get_nvcc_path()
+        backend = get_backend(self._context)
+        if not backend.supports_platform('win32'):
+            raise RuntimeError(
+                '%s is not supported on Windows' % backend.name)
+
+        compiler = backend.get_device_compiler()
         cc_args = self._get_preprocess_options(ext) + ['-c']
         cuda_version = self._context.features['cuda'].get_version()
-        postargs = _nvcc_gencode_options(cuda_version) + [
+        postargs = nvcc_gencode_options(cuda_version) + [
             '-Xfatbin=-compress-all', '-O2']
         # Note: we only support CUDA 11.2+ since CuPy v13.0.0.
         # MSVC 14.0 (2015) is deprecated for CUDA 11.2 but we need it
@@ -307,7 +81,7 @@ class DeviceCompilerWin32(DeviceCompilerBase):
             print(f'Using host compiler at {cl_exe_path}')
             postargs += ['--compiler-bindir', cl_exe_path]
         print('NVCC options:', postargs)
-        self.spawn(compiler_so + cc_args + [src, '-o', obj] + postargs)
+        self.spawn(compiler + cc_args + [src, '-o', obj] + postargs)
 
     def _find_host_compiler_path(self) -> str | None:
         # c.f. cupy.cuda.compiler._get_extra_path_for_msvc

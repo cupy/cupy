@@ -123,6 +123,15 @@ def preconfigure_modules(ctx: Context, MODULES, compiler, settings):
         'Environment Variables:',
     ]
 
+    # Report the active backend and its SDK/compiler discovery results.
+    from cupy_builder.backends import get_backend
+    _backend = get_backend(ctx)
+    summary.insert(summary.index('Build Environment:') + 1, '  Backend            : {}'.format(_backend.name))
+    summary.insert(summary.index('Build Environment:') + 2, '  SDK path           : {}'.format(
+        _backend.get_sdk_path() or '(not found)'))
+    summary.insert(summary.index('Build Environment:') + 3, '  Device compiler    : {}'.format(
+        _backend.get_device_compiler() or '(not found)'))
+
     for key in ['CFLAGS', 'LDFLAGS', 'LIBRARY_PATH',
                 'CUDA_PATH', 'NVCC', # nvidia
                 'HIPCC', 'ROCM_HOME', # AMD
@@ -199,9 +208,15 @@ def preconfigure_modules(ctx: Context, MODULES, compiler, settings):
         #     installed = True
         #     errmsg = ['The library is installed but not supported.']
         elif (module['name'] in ('thrust', 'cub', 'random')
-                and (nvcc_path is None and hipcc_path is None)):
+                and (nvcc_path is None and hipcc_path is None
+                     and ascendcc is None)):
             installed = True
-            cmd = 'nvcc' if not ctx.use_hip else 'hipcc'
+            if ctx.use_ascend:
+                cmd = 'bisheng (ascendcc)'
+            elif ctx.use_hip:
+                cmd = 'hipcc'
+            else:
+                cmd = 'nvcc'
             errmsg = ['{} command could not be found in PATH.'.format(cmd),
                       'Check your PATH environment variable.']
         else:
@@ -353,18 +368,11 @@ def make_extensions(ctx: Context, compiler, use_cython):
         settings['define_macros'].append(('CYTHON_TRACE_NOGIL', '1'))
     if no_cuda:
         settings['define_macros'].append(('CUPY_NO_CUDA', '1'))
-    if ctx.use_hip:
-        settings['define_macros'].append(('CUPY_USE_HIP', '1'))
-        # introduced since ROCm 4.2.0
-        settings['define_macros'].append(('__HIP_PLATFORM_AMD__', '1'))
-        # deprecated since ROCm 4.2.0
-        settings['define_macros'].append(('__HIP_PLATFORM_HCC__', '1'))
-        # Fix for ROCm 6.3.0, See https://github.com/ROCm/rocThrust/issues/502
-        settings['define_macros'].append(
-            ('THRUST_DEVICE_SYSTEM', 'THRUST_DEVICE_SYSTEM_HIP'))
-    if ctx.use_ascend:
-        settings['define_macros'].append(('CUPY_USE_ASCEND', '1'))
-        settings['define_macros'].append(('CUPY_CANN_VERSION', '820')) # ASCEND: TODO
+    # Backend-specific macros (CUPY_USE_HIP, CUPY_USE_ASCEND, HIP platform
+    # defines, CUPY_CANN_VERSION, ...) are owned by the backend descriptor.
+    if not ctx.use_stub:
+        from cupy_builder.backends import get_backend
+        settings['define_macros'] += get_backend(ctx).get_define_macros()
 
     settings['define_macros'].append(('CUPY_CACHE_KEY', ctx.cupy_cache_key))
 

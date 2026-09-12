@@ -163,56 +163,26 @@ def get_ascendcc_path() -> list[str]:
         return None
 
 def get_compiler_setting(ctx: Context, backend: str):
-    cuda_path = None
-    rocm_path = None
-    cann_path = None
+    """Build the per-module compiler settings dict.
 
-    if backend == "hip":
-        rocm_path = get_rocm_path()
-    elif backend == "ascend":
-        cann_path = get_cann_path()
-    else:
-        cuda_path = get_cuda_path()
+    The backend-specific parts (SDK include/library dirs, extra compile flags)
+    are delegated to the matching :class:`cupy_builder.backends.Backend`,
+    keeping this function backend-agnostic.
+    """
+    # Imported lazily to avoid an import cycle at module load time
+    # (`backends` imports `install_build` for the path probes).
+    from cupy_builder.backends import get_backend_by_name
+
+    backend_obj = get_backend_by_name(backend)
 
     include_dirs = ctx.include_dirs.copy()
     library_dirs = ctx.library_dirs.copy()
     define_macros = []
     extra_compile_args = []
 
-    if cuda_path:
-        include_dirs.append(os.path.join(cuda_path, 'include'))
-        if PLATFORM_WIN32:
-            library_dirs.append(os.path.join(cuda_path, 'bin'))
-            library_dirs.append(os.path.join(cuda_path, 'lib', 'x64'))
-        else:
-            library_dirs.append(os.path.join(cuda_path, 'lib64'))
-            library_dirs.append(os.path.join(cuda_path, 'lib'))
-
-    elif backend == "hip":
-        include_dirs.append(os.path.join(rocm_path, 'include'))
-        include_dirs.append(os.path.join(rocm_path, 'include', 'hip'))
-        include_dirs.append(os.path.join(rocm_path, 'include', 'rocrand'))
-        include_dirs.append(os.path.join(rocm_path, 'include', 'hiprand'))
-        include_dirs.append(os.path.join(rocm_path, 'include', 'roctracer'))
-        include_dirs.append(os.path.join(rocm_path, 'include', 'hipblas'))
-        include_dirs.append(os.path.join(rocm_path, 'include', 'hipsparse'))
-        include_dirs.append(os.path.join(rocm_path, 'include', 'hipfft'))
-        include_dirs.append(os.path.join(rocm_path, 'include', 'rocsolver'))
-        include_dirs.append(os.path.join(rocm_path, 'include', 'rccl'))
-        library_dirs.append(os.path.join(rocm_path, 'lib'))
-
-        # ROCm 5.3 and above requires c++14
-        extra_compile_args.append('-std=c++14')
-    elif backend == "ascend":
-        extra_compile_args.append('-std=c++17')
-        include_dirs.append(os.path.join(cann_path, 'include'))
-        include_dirs.append(os.path.join(cann_path, 'include/aclnn'))
-        include_dirs.append(os.path.join(cann_path, 'x86_64-linux/pkg_inc')) # CANN 8.5 need this 
-        include_dirs.append(os.path.join(cann_path, 'include/experiment/platform'))
-        library_dirs.append(os.path.join(cann_path, 'lib64'))
-        library_dirs.append(os.path.join(cann_path, 'runtime/lib64'))
-        library_dirs.append(os.path.join(cann_path, '../../nnal/asdsip/latest/lib'))
-        include_dirs.append(os.path.join(cann_path, '../../nnal/asdsip/latest/include'))
+    include_dirs += backend_obj.get_include_dirs(ctx)
+    library_dirs += backend_obj.get_library_dirs(ctx)
+    extra_compile_args += backend_obj.get_extra_compile_args()
 
     if PLATFORM_WIN32:
         nvtx_path = _environment.get_nvtx_path()
@@ -227,15 +197,19 @@ def get_compiler_setting(ctx: Context, backend: str):
     #   - for ROCm: built-in CUB
     # Note that starting CuPy v8 we no longer use CUB_PATH, and starting v13
     # we no longer use Thrust/CUB bundled in CUDA.
+    #
+    # Backends without a CUB/Thrust equivalent (e.g. Ascend) opt out via
+    # `Backend.needs_cub_headers`.
 
-    if backend != "ascend":
+    if backend_obj.needs_cub_headers:
         # for <cupy/complex.cuh>
         cupy_header = os.path.join(
             cupy_builder.get_context().source_root, 'cupy/_core/include')
         global _jitify_path
         _jitify_path = os.path.join(cupy_header, 'cupy/_jitify')
         global _cub_path
-        if rocm_path:
+        if backend == 'rocm':
+            rocm_path = backend_obj.get_sdk_path()
             _cub_path = os.path.join(rocm_path, 'include', 'hipcub')
             if not os.path.exists(_cub_path):
                 raise Exception('Please install hipCUB and retry')

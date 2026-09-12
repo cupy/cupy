@@ -15,6 +15,7 @@ import cupy_builder
 import cupy_builder.install_build as build
 from cupy_builder._context import Context
 from cupy_builder._compiler import DeviceCompilerUnix, DeviceCompilerWin32
+from cupy_builder.backends import get_backend
 
 
 def filter_files_by_extension(
@@ -130,23 +131,17 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
 
         compile_time_env['CUPY_CUFFT_STATIC'] = False
         compile_time_env['CUPY_CYTHON_VERSION'] = Cython.__version__
+
+        # Backend-specific version constants (CUPY_CUDA_VERSION, etc.) are
+        # owned by the backend descriptor, so adding a backend does not
+        # require touching this file.
         if ctx.use_stub:  # on RTD
             compile_time_env['CUPY_CUDA_VERSION'] = 0
             compile_time_env['CUPY_HIP_VERSION'] = 0
             compile_time_env['CUPY_CANN_VERSION'] = 0
-        elif ctx.use_hip:  # on ROCm/HIP
-            compile_time_env['CUPY_CUDA_VERSION'] = 0
-            compile_time_env['CUPY_CANN_VERSION'] = 0
-            compile_time_env['CUPY_HIP_VERSION'] = build.get_hip_version()
-        elif ctx.use_ascend:  # on CANN/ascend
-            compile_time_env['CUPY_CUDA_VERSION'] = 0
-            compile_time_env['CUPY_HIP_VERSION'] = 0
-            compile_time_env['CUPY_CANN_VERSION'] = build.get_cann_version()
-        else:  # on CUDA
-            compile_time_env['CUPY_CUDA_VERSION'] = (
-                ctx.features['cuda'].get_version())
-            compile_time_env['CUPY_HIP_VERSION'] = 0
-            compile_time_env['CUPY_CANN_VERSION'] = 0
+        else:
+            compile_time_env.update(
+                get_backend(ctx).get_compile_time_env(ctx))
 
         print('Compile-time constants: ' +
               json.dumps(compile_time_env, indent=4))
