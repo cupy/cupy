@@ -44,6 +44,33 @@ def is_after_baseline(
     return Version(scipy) > Version(_SCIPY_BASELINE)
 
 
+def installed_but_not_baseline(
+    *, numpy: str | None = None, scipy: str | None = None
+) -> bool:
+    """Returns True if the cutoff is installed but is not yet the baseline.
+
+    That is exactly when a compatibility path for the cutoff is needed: a
+    workaround only applies when the installed package actually has the new
+    behaviour, so older versions keep their full coverage.  It is gated on
+    the baseline as well, so bumping the baseline to the cutoff removes the
+    workaround and the test fails until it is fixed properly::
+
+        if (installed_but_not_baseline(scipy="1.18")
+                and dtype == numpy.float16):
+            pytest.skip("SciPy 1.18 returns float32 here, CuPy float64.")
+
+    This is the runtime counterpart of `skip_if_after_baseline`, for guarding
+    a workaround inline rather than skipping the whole test.
+
+    Exactly one of ``numpy`` or ``scipy`` must be specified.
+    """
+    if (numpy is None) == (scipy is None):
+        raise ValueError("Exactly one of numpy or scipy must be specified.")
+    if numpy is not None:
+        return is_after_baseline(numpy=numpy) and installed(f"numpy>={numpy}")
+    return is_after_baseline(scipy=scipy) and installed(f"scipy>={scipy}")
+
+
 def with_requires(*requirements: str) -> Callable[[Callable], Callable]:
     """Run a test case only when given requirements are satisfied.
 

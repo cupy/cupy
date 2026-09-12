@@ -189,6 +189,10 @@ class TestMapCoordinatesHalfInteger:
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(atol=1e-4, scipy_name='scp')
     def test_map_coordinates_float(self, xp, scp, dtype):
+        if (self.mode in ('reflect', 'grid-mirror') and self.order > 2
+                and not testing.installed('scipy>=1.18')):
+            # SciPy <1.18 shared an aliasing bug with CuPy: scipy#24615
+            pytest.skip('SciPy < 1.18 spline prefilter is inexact here')
         # Half integer coordinate rounding test case from:
         # https://github.com/cupy/cupy/issues/4550
         a = testing.shaped_arange((4, 3), xp, dtype)
@@ -922,6 +926,10 @@ class TestZoomOutputSize1:
     @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
     @testing.with_requires('scipy')
     def test_zoom_output_size1(self, xp, scp, dtype):
+        if (self.mode in ('reflect', 'grid-mirror') and self.order > 1
+                and not testing.installed('scipy>=1.18')):
+            # SciPy <1.18 shared an aliasing bug with CuPy: scipy#24615
+            pytest.skip('SciPy < 1.18 spline prefilter is inexact here')
         x = xp.zeros(self.shape, dtype=dtype)
         x[1, 1, 1] = 1
         return scp.ndimage.zoom(x, self.zoom, order=self.order, mode=self.mode,

@@ -6,6 +6,7 @@ import pytest
 import cupy
 from cupy import testing
 import cupyx.scipy.special  # NOQA
+from cupyx_tests.scipy_tests.special_tests import match_scipy_float32
 
 
 def _get_logspace_max(dtype):
@@ -30,7 +31,8 @@ class TestBeta:
         func = getattr(scp.special, function)
         a = testing.shaped_arange((1, 10), xp, dtype)
         b = testing.shaped_arange((10, 1), xp, dtype)
-        return func(a, b)
+        out = func(a, b)
+        return match_scipy_float32(out, xp, dtype)
 
     @pytest.mark.skipif(
         cupy.cuda.runtime.is_hip and
@@ -46,7 +48,8 @@ class TestBeta:
         # TODO: Some choices of start/stop value can give mismatched location
         #       of +inf or -inf values.
         x = testing.shaped_linspace(-20, 21, 50, xp=xp, dtype=dtype)
-        return func(x[:, xp.newaxis], x[xp.newaxis, :])
+        out = func(x[:, xp.newaxis], x[xp.newaxis, :])
+        return match_scipy_float32(out, xp, dtype)
 
     @pytest.mark.parametrize('function', ['beta', 'betaln'])
     @testing.for_float_dtypes()
@@ -57,7 +60,8 @@ class TestBeta:
         func = getattr(scp.special, function)
         lmax = _get_logspace_max(xp.dtype(dtype))
         x = xp.logspace(-lmax, lmax, 32, dtype=dtype)
-        return func(x[:, xp.newaxis], x[xp.newaxis, :])
+        out = func(x[:, xp.newaxis], x[xp.newaxis, :])
+        return match_scipy_float32(out, xp, dtype)
 
     @pytest.mark.parametrize('function', ['beta', 'betaln'])
     @testing.for_float_dtypes()
@@ -66,7 +70,8 @@ class TestBeta:
         import scipy.special  # NOQA
         func = getattr(scp.special, function)
         a = xp.array([-numpy.inf, numpy.nan, numpy.inf, 0], dtype=dtype)
-        return func(a[:, xp.newaxis], a[xp.newaxis, :])
+        out = func(a[:, xp.newaxis], a[xp.newaxis, :])
+        return match_scipy_float32(out, xp, dtype)
 
     def test_beta_specific_vals(self):
         # specific values borrowed from SciPy test suite
