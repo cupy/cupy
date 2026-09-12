@@ -10,7 +10,8 @@ from cupy.linalg._product import matrix_power  # NOQA
 from cupy.linalg._product import linalg_cross as cross  # NOQA
 from cupy.linalg._product import matmul     # NOQA
 from cupy.linalg._product import matrix_transpose     # NOQA
-
+from cupy.linalg._product import outer     # NOQA
+from cupy.linalg._product import diagonal   # NOQA
 
 # -----------------------------------------------------------------------------
 # Decompositions
@@ -35,6 +36,7 @@ from cupy.linalg._norms import cond  # NOQA
 from cupy.linalg._norms import det  # NOQA
 from cupy.linalg._norms import matrix_rank  # NOQA
 from cupy.linalg._norms import slogdet  # NOQA
+from cupy.linalg._norms import matrix_norm  # NOQA
 
 # -----------------------------------------------------------------------------
 # Solving equations and inverting matrices
@@ -76,4 +78,7 @@ __all__ = [
     "LinAlgError",
     "matmul",
     "matrix_transpose",
+    "outer",
+    "diagonal",
+    "matrix_norm"
 ]
