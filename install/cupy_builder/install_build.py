@@ -384,52 +384,94 @@ def get_hip_version(formatted: bool = False) -> int:
     return _hip_version
 
 
+def _find_cann_version_file(cann_path: str) -> str:
+    """Locate the file that carries the CANN version string.
+
+    The file name/layout changed across CANN releases, so probe all known
+    locations instead of hardcoding a single one:
+
+    * ``<cann>/version.cfg``          - CANN 8.2 and earlier
+    * ``<cann>/compiler/version.info``- CANN 8.5+ (toolkit)
+    * ``<cann>/opp/version.info``     - CANN 8.5+ (opp, fallback)
+    """
+    candidates = [
+        os.path.join(cann_path, 'version.cfg'),
+        os.path.join(cann_path, 'compiler', 'version.info'),
+        os.path.join(cann_path, 'opp', 'version.info'),
+    ]
+    for path in candidates:
+        if os.path.isfile(path):
+            return path
+    return ''
+
+
 def check_cann_version(compiler, settings):
+    """Detect the installed CANN version and cache it in ``_cann_version``.
+
+    The value is encoded as ``major * 100 + minor * 10 + patch`` so that
+    comparisons such as ``>= 850`` work for versions 8.2 / 8.5 / 9.0.
+
+    Returns:
+        bool: True when a supported CANN version was detected.
+    """
     global _cann_version
-    global _cann_path 
-    info_file_path = f"{_cann_path}/version.cfg"
+
+    cann_path = _cann_path
+    if not cann_path or cann_path == 'NOT_INITIALIZED':
+        # `check_cann_version` may be called directly (e.g. from
+        # `CUPY_ascend.__init__`) without `get_cann_path()` being called first.
+        cann_path = get_cann_path()
+
+    info_file_path = _find_cann_version_file(cann_path)
+    if not info_file_path:
+        utils.print_warning(
+            "CANN version file not found (tried version.cfg, "
+            "compiler/version.info, opp/version.info) under: %s" % cann_path)
+        return False
+
     try:
         with open(info_file_path, 'r') as f:
             content = f.read()
-            # match 'version=[8.2.0.0.0.201:xxx]'
-            pattern = r'version=\[(\d+)\.(\d+)\.(\d+)'
-            match = re.search(pattern, content)
-            if match:
-                major = int(match.group(1))
-                minor = int(match.group(2))
-                patch = int(match.group(3))
-                _cann_version = major * 100 + minor * 10 + patch
-            else:
-                utils.print_warning(
-                    "CANN version found but specific version string not matched in info file."
-                )
-                return False
-    except FileNotFoundError:
-        utils.print_warning("CANN install version.cfg file not found. Please check the installation path.")
-        return False
-    except Exception as e:
-        utils.print_warning(f"Error reading and parsing CANN version: {e}")
+        # Match both 'version=[8.2.0.0.0.201:xxx]' (8.2) and
+        # plain 'Version=8.5.1' / 'version=8.5.1' (8.5+).
+        match = re.search(r'(\d+)\.(\d+)\.(\d+)', content)
+        if match:
+            major = int(match.group(1))
+            minor = int(match.group(2))
+            patch = int(match.group(3))
+            _cann_version = major * 100 + minor * 10 + patch
+        else:
+            utils.print_warning(
+                "CANN version file found but version string not matched: %s"
+                % info_file_path)
+            return False
+    except OSError as e:
+        utils.print_warning(f"Error reading CANN version file: {e}")
         return False
 
     if _cann_version < minimum_cann_version:
         utils.print_warning(
-            'CANN version %d is too old:' % _cann_version,
-            'CANN version or newer is required' % minimum_cann_version)
+            'CANN version %d is too old: %d or newer is required'
+            % (_cann_version, minimum_cann_version))
         return False
 
     return True
 
 
 def get_cann_version(formatted: bool = False) -> int:
-    """Return ascend CANN version cached in check_cann_version()."""
+    """Return the CANN version cached in check_cann_version().
+
+    If detection has not run (or failed) fall back to the minimum supported
+    version rather than a hardcoded, possibly-wrong number.
+    """
     global _cann_version
     if _cann_version is None:
-        msg = 'check_cann_version() must be called first.'
-        print(msg, "set can version to 850")
-        _cann_version = 850
-        #raise RuntimeError(msg)
+        utils.print_warning(
+            'check_cann_version() must be called first; '
+            'assuming minimum CANN version %d' % minimum_cann_version)
+        _cann_version = minimum_cann_version
     if formatted:
-        return str(_hip_version)
+        return str(_cann_version)
     return _cann_version
 
 

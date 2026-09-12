@@ -1,0 +1,321 @@
+"""NVIDIA CUDA backend feature.
+
+Defines the ``cuda`` feature itself (:class:`CUDA_cuda`) plus the helper dicts
+for the optional CUDA libraries (cuSOLVER, NCCL, NVTX, cuTENSOR, CUB, Jitify,
+cuRAND, Thrust, cuSPARSELt) and the shared DLPack feature.
+"""
+
+from __future__ import annotations
+
+import sys
+from typing import Any
+
+import cupy_builder.install_build as build
+import cupy_builder.install_utils as utils
+from cupy_builder import Context
+
+from cupy_builder.features._base import Feature
+
+
+# Libraries required for cudart_static
+_cudart_static_libs = (
+    ['pthread', 'rt', 'dl'] if sys.platform == 'linux' else []
+)
+
+
+# The value of the key 'file' is a list that contains extension names
+# or tuples of an extension name and a list of other sources files
+# required to build the extension such as .cpp files and .cu files.
+#
+#   <extension name> | (<extension name>, a list of <other source>)
+#
+# The extension name is also interpreted as the name of the Cython
+# source file required to build the extension with appending '.pyx'
+# file extension.
+
+# TODO (XPU refactor broken cuda build)
+cuda_files = [
+    'cupy.backends.cuda.api._driver_enum',  # JIT can be ignored
+    'cupy.backends.cuda.api._runtime_enum',
+    'cupy.backends.cuda.api._device_prop',
+    'cupy.backends.backend.api.driver',  # empty driver.pyx
+    'cupy.backends.backend.api.runtime',
+    'cupy.backends.cuda.libs.cublas',
+    'cupy.backends.cuda.libs.curand',
+    'cupy.backends.cuda.libs.cusparse',
+    'cupy.backends.cuda.libs.nvrtc',
+    'cupy.backends.backend.stream',
+    'cupy.backends.backend._softlink',
+    # python cude backend api
+    'cupy.cuda.common',
+    'cupy.cuda.cufft',
+    'cupy.xpu.device',
+    'cupy.xpu.memory',
+    'cupy.xpu.memory_hook',
+    'cupy.xpu.pinned_memory',
+    'cupy.xpu.function',
+    'cupy.xpu.stream',
+    'cupy._core._carray',
+    'cupy._core._dtype',
+    'cupy._core._scalar',
+    'cupy._core.core',
+    'cupy._core.flags',
+    'cupy._core.internal',
+    'cupy._core._memory_range',
+    'cupy._core._optimize_config',
+    'cupy._core._gpu._accelerator',
+    'cupy._core._gpu._cub_reduction',
+    'cupy._core._gpu._fusion_kernel',
+    'cupy._core._gpu._fusion_thread_local',
+    'cupy._core._gpu._fusion_trace',
+    'cupy._core._gpu._fusion_variable',
+    'cupy._core._gpu.fusion',
+    'cupy._core._gpu.new_fusion',
+    'cupy._core._gpu._kernel',
+    'cupy._core._gpu._compile_with_cache',
+    ('cupy._core._reduction', ['cupy/_core/_gpu/_reduction.pyx']),
+    'cupy._core._routines_binary',  # TODO
+    'cupy._core._routines_creation',
+    'cupy._core._routines_indexing',
+    'cupy._core._routines_linalg',
+    'cupy._core._routines_logic',
+    'cupy._core._routines_manipulation',
+    'cupy._core._routines_math',
+    'cupy._core._routines_sorting',
+    'cupy._core._routines_statistics',
+    'cupy._core.numpy_allocator',
+    ('cupy._core.raw', ['cupy/_core/_gpu/raw_kernel_stub.pyx']),
+    'cupy.cuda.graph',
+    'cupy.cuda.texture',
+    'cupy.fft._cache',
+    'cupy.fft._callback',
+    'cupy.lib._polynomial',
+    'cupy._util',
+    'cupyx.scipy.ndimage._bbox_slices',
+]
+
+
+class CUDA_cuda(Feature):
+    minimum_cuda_version = 11020
+
+    def __init__(self, ctx: Context):
+        super().__init__(ctx)
+        self.name = 'cuda'
+        self.required = True
+        self.modules = cuda_files
+        self.includes = [
+            'cublas_v2.h',
+            'cuda.h',
+            'cuda_profiler_api.h',
+            'cuda_runtime.h',
+            'cufft.h',
+            'curand.h',
+            'cusparse.h',
+        ]
+        self.libraries = (
+            # CUDA Runtime
+            _cudart_static_libs +
+
+            # CUDA Toolkit
+            ['cublas', 'cufft', 'curand', 'cusparse']
+        )
+        self.static_libraries = ['cudart_static']
+        self._version = self._UNDETERMINED
+
+    def configure(self, compiler: Any, settings: Any) -> bool:
+        try:
+            out = build.build_and_run(compiler, '''
+            #include <cuda.h>
+            #include <stdio.h>
+            int main() {
+              printf("%d", CUDA_VERSION);
+              return 0;
+            }
+            ''', include_dirs=settings['include_dirs'])  # type: ignore[no-untyped-call] # NOQA
+        except Exception as e:
+            utils.print_warning('Cannot check CUDA version', str(e))
+            return False
+
+        self._version = int(out)
+
+        if self._version < self.minimum_cuda_version:
+            utils.print_warning(
+                'CUDA version is too old: %d' % self._version,
+                'CUDA 11.2 or newer is required')
+            return False
+        return True
+
+
+def cuda_feature_dicts(cudart_static_libs: list[str]) -> dict[str, dict[str, Any]]:
+    """Return the optional CUDA library feature dicts.
+
+    Kept as a function (rather than module-level constants) so the
+    ``_cudart_static_libs`` list is evaluated once by the caller and shared.
+    """
+    return {
+        'CUDA_cusolver': {
+            'name': 'cusolver',
+            'required': True,
+            'file': [
+                'cupy.backends.cuda.libs.cusolver',
+                'cupyx.cusolver',
+            ],
+            'include': [
+                'cusolverDn.h',
+            ],
+            'libraries': [
+                'cusolver',
+            ],
+        },
+        'CUDA_nccl': {
+            'name': 'nccl',
+            'file': [
+                'cupy.backends.cuda.libs.nccl',
+            ],
+            'include': [
+                'nccl.h',
+            ],
+            'libraries': [
+                'nccl',
+            ],
+            'check_method': build.check_nccl_version,
+            'version_method': build.get_nccl_version,
+        },
+        'CUDA_nvtx': {
+            'name': 'nvtx',
+            'file': [
+                'cupy.backends.cuda.libs.nvtx',
+            ],
+            'include': [
+                'nvtx3/nvToolsExt.h',
+            ],
+            'libraries': [
+            ],
+            'check_method': build.check_nvtx,
+        },
+        'CUDA_cutensor': {
+            'name': 'cutensor',
+            'file': [
+                'cupy.backends.cuda.libs.cutensor',
+                'cupyx.cutensor',
+            ],
+            'include': [
+                'cutensor.h',
+            ],
+            'libraries': [
+                'cutensor',
+                'cutensorMg',
+                'cublas',
+            ],
+            'check_method': build.check_cutensor_version,
+            'version_method': build.get_cutensor_version,
+        },
+        'CUDA_cub': {
+            'name': 'cub',
+            'required': True,
+            'file': [
+                ('cupy.cuda.cub', ['cupy/cuda/cupy_cub.cu']),
+            ],
+            'include': [
+                'cub/util_namespace.cuh',  # dummy
+            ],
+            'libraries': list(cudart_static_libs),
+            'static_libraries': ['cudart_static'],
+            'check_method': build.check_cub_version,
+            'version_method': build.get_cub_version,
+        },
+        'CUDA_jitify': {
+            'name': 'jitify',
+            'required': True,
+            'file': [
+                'cupy.cuda.jitify',
+            ],
+            'include': [
+                'cuda.h',
+                'cuda_runtime.h',
+                'nvrtc.h',
+            ],
+            'libraries': [
+                # Dependency from Jitify header files
+                'cuda',
+                'nvrtc',
+            ] + list(cudart_static_libs),
+            'static_libraries': ['cudart_static'],
+            'check_method': build.check_jitify_version,
+            'version_method': build.get_jitify_version,
+        },
+        'CUDA_random': {
+            'name': 'random',
+            'required': True,
+            'file': [
+                'cupy.random._bit_generator',
+                ('cupy.random._generator_api',
+                 ['cupy/random/cupy_distributions.cu']),
+            ],
+            'include': [
+            ],
+            'libraries': [
+                'curand',
+            ] + list(cudart_static_libs),
+            'static_libraries': ['cudart_static'],
+        },
+        'CUDA_cusparselt': {
+            'name': 'cusparselt',
+            'file': [
+                'cupy.backends.cuda.libs.cusparselt',
+            ],
+            'include': [
+                'cusparseLt.h',
+            ],
+            'libraries': [
+                'cusparseLt',
+            ],
+            'check_method': build.check_cusparselt_version,
+            'version_method': build.get_cusparselt_version,
+        },
+        'CUDA_thrust': {
+            'name': 'thrust',
+            'required': True,
+            'file': [
+                ('cupy.cuda.thrust', ['cupy/cuda/cupy_thrust.cu']),
+            ],
+            'include': [
+                'thrust/version.h',
+            ],
+            'libraries': list(cudart_static_libs),
+            'static_libraries': ['cudart_static'],
+            'check_method': build.check_thrust_version,
+            'version_method': build.get_thrust_version,
+        },
+        'COMMON_dlpack': {
+            'name': 'dlpack',
+            'required': True,
+            'file': [
+                'cupy._core.dlpack',
+            ],
+            'include': [
+                'cupy/_dlpack/dlpack.h',
+            ],
+            'libraries': [],
+        },
+    }
+
+
+#: Order in which the CUDA features are combined by ``get_features``.
+CUDA_FEATURES_USED = [
+    'CUDA_cusolver',
+    'CUDA_nccl',
+    'CUDA_nvtx',
+    'CUDA_cutensor',
+    'CUDA_cub',
+    'CUDA_jitify',
+    'CUDA_random',
+    'CUDA_thrust',
+    'CUDA_cusparselt',
+    'COMMON_dlpack',
+]
+
+
+def get_cudart_static_libs() -> list[str]:
+    """Expose the ``cudart_static`` helper libs (Linux only)."""
+    return list(_cudart_static_libs)
