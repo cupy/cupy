@@ -9,232 +9,53 @@ import cupy as cp
 from cupyx.scipy.spatial import KDTree
 
 
-# Define the kernel functions.
-
-kernel_definitions = """
-static __device__ double linear(double r)
-{
-     return -r;
-}
-
-static __device__ float linear_f(float r)
-{
-    return -r;
-}
-
-
-static __device__ double cubic(double r)
-{
-     return r*r*r;
-}
-
-static __device__ float cubic_f(float r)
-{
-    return r*r*r;
+_KERNEL_EXPRESSIONS = {
+    "linear": "-sqrt(squared_distance)",
+    "thin_plate_spline": (
+        "squared_distance == 0 ? 0 : "
+        "0.5 * squared_distance * log(squared_distance)"
+    ),
+    "cubic": "squared_distance * sqrt(squared_distance)",
+    "quintic": (
+        "-squared_distance * squared_distance * sqrt(squared_distance)"
+    ),
+    "multiquadric": "-sqrt(squared_distance + 1)",
+    "inverse_multiquadric": "1 / sqrt(squared_distance + 1)",
+    "inverse_quadratic": "1 / (squared_distance + 1)",
+    "gaussian": "exp(-squared_distance)",
 }
 
 
-static __device__ double thin_plate_spline(double r)
-{
-    if (r == 0.0) {
-        return 0.0;
+def _make_kernel(name, expression):
+    return cp._core.ElementwiseKernel(
+        'raw T x, raw T y, int64 source_count, int32 ndim, T epsilon',
+        'T out',
+        r'''
+    const long long target = i / source_count;
+    const long long source = i - target * source_count;
+    T squared_distance = 0;
+    for (int dimension = 0; dimension < ndim; ++dimension) {
+        const T difference = epsilon * (
+            x[target * ndim + dimension]
+            - y[source * ndim + dimension]);
+        squared_distance += difference * difference;
     }
-    else {
-        return r*r*log(r);
-    }
-}
 
-static __device__ float thin_plate_spline_f(float r)
-{
-    if (r == 0.0) {
-        return 0.0;
-    }
-    else {
-        return r*r*log(r);
-    }
+    out = ''' + expression + ';',
+        f'cupyx_scipy_interpolate_{name}',
+    )
+
+
+_KERNELS = {
+    name: _make_kernel(name, expression)
+    for name, expression in _KERNEL_EXPRESSIONS.items()
 }
 
 
-static __device__ double multiquadric(double r)
-{
-    return -sqrt(r*r + 1);
-}
-
-static __device__ float multiquadric_f(float r)
-{
-    return -sqrt(r*r + 1);
-}
-
-
-static __device__ double inverse_multiquadric(double r)
-{
-    return 1.0 / sqrt(r*r + 1);
-}
-
-static __device__ float inverse_multiquadric_f(float r)
-{
-    return 1.0 / sqrt(r*r + 1);
-}
-
-
-static __device__ double inverse_quadratic(double r)
-{
-    return 1.0 / (r*r + 1);
-}
-
-static __device__ float inverse_quadrtic_f(float r)
-{
-    return 1.0 / (r*r + 1);
-}
-
-
-static __device__ double gaussian(double r)
-{
-    return exp(-r*r);
-}
-
-static __device__ float gaussian_f(float r)
-{
-    return exp(-r*r);
-}
-
-
-static __device__ double quintic(double r)
-{
-    double r2 = r*r;
-    return -r2*r2*r;
-}
-
-static __device__ float qunitic_f(float r)
-{
-    float r2 = r*r;
-    return -r2*r2*r;
-}
-
-"""
-
-linear = cp._core.create_ufunc(
-    'cupyx_scipy_interpolate_linear',
-    (('f->f', 'out0 = linear_f(in0)'),
-     'd->d'),
-    'out0 = linear(in0)',
-    preamble=kernel_definitions,
-    doc="""Linear kernel function.
-
-    ``-r``
-    """,
-)
-
-cubic = cp._core.create_ufunc(
-    'cupyx_scipy_interpolate_cubic',
-    (('f->f', 'out0 = cubic_f(in0)'),
-     'd->d'),
-    'out0 = cubic(in0)',
-    preamble=kernel_definitions,
-    doc="""Cubic kernel function.
-
-    ``r**3``
-    """,
-)
-
-thin_plate_spline = cp._core.create_ufunc(
-    'cupyx_scipy_interpolate_thin_plate_spline',
-    (('f->f', 'out0 = thin_plate_spline_f(in0)'),
-     'd->d'),
-    'out0 = thin_plate_spline(in0)',
-    preamble=kernel_definitions,
-    doc="""Thin-plate spline kernel function.
-
-    ``r**2 * log(r) if r != 0 else 0``
-    """,
-)
-
-
-multiquadric = cp._core.create_ufunc(
-    'cupyx_scipy_interpolate_multiquadric',
-    (('f->f', 'out0 = multiquadric_f(in0)'),
-     'd->d'),
-    'out0 = multiquadric(in0)',
-    preamble=kernel_definitions,
-    doc="""Multiquadric kernel function.
-
-    ``-sqrt(r**2 + 1)``
-    """,
-)
-
-
-inverse_multiquadric = cp._core.create_ufunc(
-    'cupyx_scipy_interpolate_inverse_multiquadric',
-    (('f->f', 'out0 = inverse_multiquadric_f(in0)'),
-     'd->d'),
-    'out0 = inverse_multiquadric(in0)',
-    preamble=kernel_definitions,
-    doc="""Inverse multiquadric kernel function.
-
-    ``1 / sqrt(r**2 + 1)``
-    """,
-)
-
-
-inverse_quadratic = cp._core.create_ufunc(
-    'cupyx_scipy_interpolate_inverse_quadratic',
-    (('f->f', 'out0 = inverse_quadratic_f(in0)'),
-     'd->d'),
-    'out0 = inverse_quadratic(in0)',
-    preamble=kernel_definitions,
-    doc="""Inverse quadratic kernel function.
-
-    ``1 / (r**2 + 1)``
-    """,
-)
-
-
-gaussian = cp._core.create_ufunc(
-    'cupyx_scipy_interpolate_gaussian',
-    (('f->f', 'out0 = gaussian_f(in0)'),
-     'd->d'),
-    'out0 = gaussian(in0)',
-    preamble=kernel_definitions,
-    doc="""Gaussian kernel function.
-
-    ``exp(-r**2)``
-    """,
-)
-
-
-quintic = cp._core.create_ufunc(
-    'cupyx_scipy_interpolate_quintic',
-    (('f->f', 'out0 = quintic_f(in0)'),
-     'd->d'),
-    'out0 = quintic(in0)',
-    preamble=kernel_definitions,
-    doc="""Quintic kernel function.
-
-    ``-r**5``
-    """,
-)
-
-
-NAME_TO_FUNC = {
-    "linear": linear,
-    "thin_plate_spline": thin_plate_spline,
-    "cubic": cubic,
-    "quintic": quintic,
-    "multiquadric": multiquadric,
-    "inverse_multiquadric": inverse_multiquadric,
-    "inverse_quadratic": inverse_quadratic,
-    "gaussian": gaussian
-}
-
-
-def kernel_matrix(x, kernel_func, out):
-    """Evaluate RBFs, with centers at `x`, at `x`."""
-    delta = x[None, :, :] - x[:, None, :]
-    out[...] = kernel_func(cp.linalg.norm(delta, axis=-1))
-# The above is equivalent to the original semi-scalar version:
-#        for j in range(i+1):
-#            out[i, j] = kernel_func(cp.linalg.norm(x[i] - x[j]))
-#            out[j, i] = out[i, j]
+def _kernel_matrix(x, y, kernel, epsilon, out):
+    """Evaluate RBFs, with centers at `y`, at the points `x`."""
+    _KERNELS[kernel](
+        x, y, y.shape[0], x.shape[1], epsilon, out)
 
 
 def polynomial_matrix(x, powers, out):
@@ -280,8 +101,6 @@ def _build_system(y, d, smoothing, kernel, epsilon, powers):
     p = d.shape[0]
     s = d.shape[1]
     r = powers.shape[0]
-    kernel_func = NAME_TO_FUNC[kernel]
-
     # Shift and scale the polynomial domain to be between -1 and 1
     mins = cp.min(y, axis=0)
     maxs = cp.max(y, axis=0)
@@ -292,13 +111,12 @@ def _build_system(y, d, smoothing, kernel, epsilon, powers):
     # zeros with ones.
     scale[scale == 0.0] = 1.0
 
-    yeps = y * epsilon
     yhat = (y - shift)/scale
 
     # Transpose to make the array fortran contiguous. This is required for
     # dgesv to not make a copy of lhs.
     lhs = cp.empty((p + r, p + r), dtype=float).T
-    kernel_matrix(yeps, kernel_func, lhs[:p, :p])
+    _kernel_matrix(y, y, kernel, epsilon, lhs[:p, :p])
     polynomial_matrix(yhat, powers, lhs[:p, p:])
     lhs[p:, :p] = lhs[:p, p:].T
     lhs[p:, p:] = 0.0
@@ -343,17 +161,12 @@ def _build_evaluation_coefficients(x, y, kernel, epsilon, powers,
     q = x.shape[0]
     p = y.shape[0]
     r = powers.shape[0]
-    kernel_func = NAME_TO_FUNC[kernel]
-
-    yeps = y*epsilon
-    xeps = x*epsilon
     xhat = (x - shift)/scale
 
     vec = cp.empty((q, p + r), dtype=float)
 
     # Evaluate RBFs, with centers at `y`, at the point `x`.
-    delta = xeps[:, None, :] - yeps[None, :, :]
-    vec[:, :p] = kernel_func(cp.linalg.norm(delta, axis=-1))
+    _kernel_matrix(x, y, kernel, epsilon, vec[:, :p])
 
     # Evaluate monomials, with exponents from `powers`, at the point `x`.
     pwr = xhat[:, None, :]**powers[None, :, :]
