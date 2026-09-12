@@ -79,7 +79,10 @@ cdef class PlanNd:
         readonly object work_area  # memory.MemoryPointer
         readonly tuple shape
         readonly Type fft_type
-        readonly tuple plan_key
+        readonly tuple _plan_key
+        readonly object order
+        readonly object last_axis  # once `int` but now exists only for BC
+        readonly object last_size
 
         # TODO(leofang): support multi-GPU transforms
         readonly list gpus

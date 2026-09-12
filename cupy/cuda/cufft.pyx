@@ -808,7 +808,10 @@ cdef class Plan1d:
 cdef class PlanNd:
     def __init__(self, object shape, object inembed, int istride,
                  int idist, object onembed, int ostride, int odist,
-                 int fft_type, int batch, *, intptr_t prealloc_plan=0):
+                 int fft_type, int batch,
+                 # order, last_axis, and last_size accepted for API stability
+                 str order=None, last_axis=None, last_size=None,
+                 *, intptr_t prealloc_plan=0):
         cdef Handle plan
         cdef size_t work_size
         cdef int ndim, result
@@ -879,7 +882,7 @@ cdef class PlanNd:
 
         self.shape = tuple(shape)
         self.fft_type = <Type>fft_type
-        self.plan_key = (
+        self._plan_key = (
             self.shape,
             None if inembed is None else tuple(inembed),
             istride,
@@ -891,6 +894,10 @@ cdef class PlanNd:
             batch,
         )
         self.work_area = work_area
+        # Copied over for API stability, users are unlikely to access these
+        self.order = order
+        self.last_axis = last_axis
+        self.last_size = last_size
 
     def __dealloc__(self):
         cdef Handle plan = <Handle>self.handle

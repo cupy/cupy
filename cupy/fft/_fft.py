@@ -586,7 +586,7 @@ def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x,
             raise ValueError('expected plan to have type cufft.PlanNd')
         expected_plan_key = _get_cufft_plan_nd_args(
             a.shape, fft_type, axes=axes, order=order, out_size=out_size)
-        if expected_plan_key != plan.plan_key:
+        if expected_plan_key != plan._plan_key:
             raise ValueError(
                 'The cuFFT plan and a.shape do not match the requested FFT '
                 'backend layout.')
