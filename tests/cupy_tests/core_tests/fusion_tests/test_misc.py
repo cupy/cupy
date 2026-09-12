@@ -154,6 +154,35 @@ class TestFusionNoneParams:
         return f(x, None, z) + f(x, y, z)
 
 
+class TestFusionCallableParams:
+
+    @testing.for_all_dtypes(no_complex=True)
+    @testing.numpy_cupy_allclose()
+    def test_python_callable_parameter(self, xp, dtype):
+        @cupy.fuse()
+        def f(x, func):
+            return func(x)
+
+        def kernel_func(x):
+            return xp.sqrt(x * x + 1)
+
+        x = testing.shaped_arange((10,), xp, dtype)
+        return f(x, kernel_func)
+
+    @testing.numpy_cupy_array_equal()
+    def test_cache_distinguishes_callables(self, xp):
+        # Two calls with the same array shape/dtype but different
+        # callables must not share a cached kernel.
+        @cupy.fuse()
+        def f(x, func):
+            return func(x)
+
+        x = testing.shaped_arange((10,), xp, 'float64')
+        out1 = f(x, lambda a: a + 1)
+        out2 = f(x, lambda a: a * 2)
+        return xp.concatenate([out1, out2])
+
+
 class TestSpecialValues(FusionTestBase):
 
     @testing.for_float_dtypes()
