@@ -10,40 +10,9 @@ By Qingfeng Xia
 4. cupy.backends.backend: abstraction of xpu low level backend api in c lang
 5. cupy.backends.ascend: impl in cython/c++
 
-## 1. Status
+## 1. Status of numpy-ascend Array API suport
 
-### 1.1 Progress
-- Oct 12: MVP for add, cos, matmul, benchmark 10-100X acceleration
-
-- Oct 23: benchmark.py 经过xpu重构后, NPU测试可以运行
-
-- Nov 08: reduction op such as `sum()` is working, 
-    90% math ops ACLOP supported has been added into numpy-ascend
-    UnitTest: `pytest tests/cupy_tests/logic_tests/test_truth.py `
-
-- Nov 15: concatenate(), clip(), copy(), non-math/irregular ops initially supported
-    + but `array()` seems not working properly 
-    > reason is async_copy, two arrays created without print the first will have the same value as the second array
-    + scalar 转化 not working, 可能是exp scalar op 没有注册   DONE
-    + matmul(a, b) 结果和np.matmul(b, a) 相同, 应该是代码某处有bug
-
-- Dec 06: 
-    + creation apis:  `arrange()` added, but test failed
-    + `concatenate` test passed
-- Dec 13:  sorting API
-    + `sort()/argosrt()` added, but no `partition()` alcop, 
-    + sort also depending on `rollaxis()`
-
-TODO:  
-- creation/manipulation/indexing/linalg ops
-    + statistics ops: passing string arg, 
-    it may need CANN 8.5 to construct aclScalar of string type
-
-- once CANN 8.5 stable released, and pyPTO will be used to write customised kernel
-
-
-## 2. 核心op支持情况 ( see also Array API standard)
-https://data-apis.org/array-api/latest/API_specification/index.html
+see  [Progress.md](./Progress.md)
 
 ### 2.1 introduction to Array API
 https://github.com/data-apis/array-api
@@ -81,64 +50,6 @@ device = "npu"  # can also "cuda" for torch-cuda
 a_xpu = cpx.asarray([1, 2, 3, 4], dtype=cp.int32).tensor.to(device)
 # here _numpy wrap/proxy  torch.Tensor into a ndarray class type 
 ```
-
-### 2.2 math ops: 
-+ 未注册  einsum, cbrt(cube root, not std api), fix (Trunc), rint (Round), round/around, convolve (?),
-+ 自己实现: radians (deg2rad), degrees (rad2deg), deg2rad, rad2deg. lcm, divmod 
-+ missing 数值计算: gradient, interp, trapezoid, diff
-+ missing: frexp, ldexp ()
-+ complex numpy ops: angle, conj,  缺少几个ops但是自己实现很简单,  real, complex
-+ scan (numpy has no such op), true_divide
-+ cupy.math_op(scalar, tensor), can aclop kernel broadcast deal with this?
-
-### 2.3 indexing ops
-- slicing ? working, but it does not use `Slice` aclop
-- `math.scan()` is a dummy/empty func, no such aclop
-- aclop has `take, put(InplacePut), slice`, but no `choose`
-
-### 2.4 manipulation ops
-可能有大量不兼容, 测试工作量不小
-+ CUPY `reshape, split` does not need kernel, it is done in cython code on host (Reshape api)
-+ ACLOP having: `roll, permute, flip, repeat` , while repeat/rollaxis() is written in cython, no kernel needed
-+ cupy uses `concatenate` to impl vstack, stack, hstack without using CUDA kernel
-+ `_manipulation/rearange.py`  slicing is used to flip, rotate
-+ `squeeze`: Removes size-one axes from the shape of an array
-
-### 2.5 logical/bitwise ops:  
-+ ACLOP misses numpy op: `_left_shift`, `_left_right`
-+ `cupy_is_close` should be used as `a.isclose(b)`
-+ `is_nan()`: 
-
-TODO   but why `aclnnEqual`has no tensor-scalar version?
-
-### 2.6 statistics reduction ops: 
-+ registered: median, var, mean, std,  bincount, histgram (histc), 主要是看nan怎么处理, 部分做了注册
-
-+ missing: average, quantile,  percentile, vecter op实现难度应该不太大
-+ ptp (Range of values (maximum - minimum) along an axis.) -> Aminmax
-
-TODO: passing keyword args
-
-### 2.7 set op
-+ `is1d`
-Array Std support only:
-+ unique_all
-+ unique_counts
-+ unique_inverse
-+ unique_values
-
-### 2.8 random and distribution
-
-AsNumpy project has impl
-
-### similar ops 需要验证numpy行为是否一致
-1. fmin, nanmin, min, amin
-2. remainder, fmod, modf
-3. rint, round, around
-4. dot, matmul, mm, gemm, inner
-5. fabs(real number only), abs
-
-
 
 ## 3. Extra user notes
 

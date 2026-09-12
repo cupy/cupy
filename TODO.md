@@ -1,44 +1,20 @@
 # TODO
 
-## short term todo (Nov 2025)
-1. fill_kernel() -> aclnnop_FillScalar  GeneralOp 类型
-
-2. backends -> cupy.backends,  git mv + _features.py
-disable _preflight, so ignore Cutensor submodule
-
-3. enable most of math api  (done), aclnnop register (almost done)
-matmul (done), dot 
-
-4. BitwiseAddScalar op register, _kernel.pyx need update (done)
-pytest
-
-5. reduction kernel, replaced by aclnnop
-===
-4. concat/pad/reshape op
-   numpy_to_acl_dtype ->  numpy_dtype_to_acl_dtype
-
-6. triton-fusion (add data adaptor API)
-
-7. aclBlas integration
-
-8. test build on diff OS,  hardware with float32 support  (310P?)
-
-9. testing (after eanble most numpy API)
-
-10. inplace op :  _kernel.pyx need update
+## Short term todo
+moved to [Progress.md](./Progress.md)
 
 ## intermediate (within 6 months)
 1. templated ascend kernel JIT
 2. compile customer kernel
 3. impl missing numpy op for ascend
 4. random
-5. FFT
+5. FFT (if CANN toolkit release ops)
 6. single node multiple NPU distribution test
 
-## longterm (within one year)
+## Longterm (within one year)
 
 1. multi-node multiple NPU
-2. double datatype (float32, int64)
+2. double datatype (float32, int64) emulation/wait for hardware suport of future NPU
 2. sparse matrix
 
 
@@ -48,9 +24,9 @@ pytest
 
 
 
-### 自定义算子JIT  ：编译和动态加载**Kernel**
+### 自定义算子JIT  ：编译和动态加载Kernel
 
- 不清楚CANN 和 triton-ascend  路标
+不清楚CANN 和 triton-ascend  路标
 
 ElementwiseKernel 可以做到类似 CUDA的层面,  就是有些工作量. 
 

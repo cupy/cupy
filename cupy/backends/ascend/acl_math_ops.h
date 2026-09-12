@@ -339,11 +339,13 @@ extern "C" {
     // ================================================================================
 
     aclError aclop_Matmul(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream) {
-        uint8_t math_type = 0; // 0 means keeping dtype precision KEEP_DTYPE
+        // aclnnMatmulGetWorkspaceSize(self, mat2, out, int8_t cubeMathType, ...)
+        int8_t math_type = 0; // 0 == KEEP_DTYPE, keep input precision
+        // row-major A @ B, no transpose trick (unlike cuBLAS column-major)
         return aclBinaryOpRun(self, other, out,
             aclnnMatmulGetWorkspaceSize, aclnnMatmul, stream, false, math_type); 
     }
-    // only bfloat, float32, float16 are supported
+    // aclnnDot(self, tensor, out): 1-D . 1-D -> 0-D, dtypes FLOAT/BF16/FLOAT16
     DECLARE_ACL_BINARY_OP(Dot)
 
     DECLARE_ACL_UNARY_OP(Inverse)
