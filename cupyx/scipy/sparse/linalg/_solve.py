@@ -675,12 +675,26 @@ def factorized(A):
     return splu(A).solve
 
 
+def _as_host_csc(A):
+    """Return ``A`` as a ``scipy.sparse.csc_matrix`` for host factorization.
+
+    A SciPy matrix is used as is: copying it to the GPU only to copy it back
+    for SuperLU would be a pointless round trip (gh-8570).
+    """
+    if scipy.sparse.issparse(A):
+        return scipy.sparse.csc_matrix(A)
+    return A.get().tocsc()
+
+
 def splu(A, permc_spec=None, diag_pivot_thresh=None, relax=None,
          panel_size=None, options={}):
     """Computes the LU decomposition of a sparse square matrix.
 
     Args:
-        A (cupyx.scipy.sparse.spmatrix): Sparse matrix to factorize.
+        A (cupyx.scipy.sparse.spmatrix or scipy.sparse.spmatrix): Sparse
+            matrix to factorize. A SciPy matrix is factorized as is, so a
+            matrix that already lives on the host does not need to be moved
+            to the GPU first.
         permc_spec (str): (For further augments, see
             :func:`scipy.sparse.linalg.splu`)
         diag_pivot_thresh (float):
@@ -703,15 +717,16 @@ def splu(A, permc_spec=None, diag_pivot_thresh=None, relax=None,
     """
     if not scipy_available:
         raise RuntimeError('scipy is not available')
-    if not sparse.issparse(A):
-        raise TypeError('A must be cupyx.scipy.sparse.spmatrix')
+    if not (sparse.issparse(A) or scipy.sparse.issparse(A)):
+        raise TypeError('A must be cupyx.scipy.sparse.spmatrix or '
+                        'scipy.sparse.spmatrix')
     if A.shape[0] != A.shape[1]:
         raise ValueError('A must be a square matrix (A.shape: {})'
                          .format(A.shape))
     if A.dtype.char not in 'fdFD':
         raise TypeError('Invalid dtype (actual: {})'.format(A.dtype))
 
-    a = A.get().tocsc()
+    a = _as_host_csc(A)
     a_inv = scipy.sparse.linalg.splu(
         a, permc_spec=permc_spec, diag_pivot_thresh=diag_pivot_thresh,
         relax=relax, panel_size=panel_size, options=options)
@@ -724,7 +739,10 @@ def spilu(A, drop_tol=None, fill_factor=None, drop_rule=None,
     """Computes the incomplete LU decomposition of a sparse square matrix.
 
     Args:
-        A (cupyx.scipy.sparse.spmatrix): Sparse matrix to factorize.
+        A (cupyx.scipy.sparse.spmatrix or scipy.sparse.spmatrix): Sparse
+            matrix to factorize. A SciPy matrix is factorized as is, so a
+            matrix that already lives on the host does not need to be moved
+            to the GPU first.
         drop_tol (float): (For further augments, see
             :func:`scipy.sparse.linalg.spilu`)
         fill_factor (float):
@@ -754,8 +772,9 @@ def spilu(A, drop_tol=None, fill_factor=None, drop_rule=None,
     """
     if not scipy_available:
         raise RuntimeError('scipy is not available')
-    if not sparse.issparse(A):
-        raise TypeError('A must be cupyx.scipy.sparse.spmatrix')
+    if not (sparse.issparse(A) or scipy.sparse.issparse(A)):
+        raise TypeError('A must be cupyx.scipy.sparse.spmatrix or '
+                        'scipy.sparse.spmatrix')
     if A.shape[0] != A.shape[1]:
         raise ValueError('A must be a square matrix (A.shape: {})'
                          .format(A.shape))
@@ -764,14 +783,16 @@ def spilu(A, drop_tol=None, fill_factor=None, drop_rule=None,
 
     if fill_factor == 1:
         # Computes ILU(0) on the GPU using cuSparse functions
-        if not (sparse.issparse(A) and A.format == "csr"):
+        if scipy.sparse.issparse(A):
+            a = sparse.csr_matrix(scipy.sparse.csr_matrix(A))
+        elif A.format != "csr":
             a = A.tocsr()
         else:
             a = A.copy()
         cusparse.csrilu02(a)
         return CusparseLU(a)
 
-    a = A.get().tocsc()
+    a = _as_host_csc(A)
     a_inv = scipy.sparse.linalg.spilu(
         a, fill_factor=fill_factor, drop_tol=drop_tol, drop_rule=drop_rule,
         permc_spec=permc_spec, diag_pivot_thresh=diag_pivot_thresh,
