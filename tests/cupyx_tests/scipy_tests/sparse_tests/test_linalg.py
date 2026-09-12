@@ -527,46 +527,79 @@ class TestSvdsV0:
         assert not bool(cupy.isnan(s).any())
 
 
-class TestDefaultStartVector:
-    # The default start vector comes from a fixed seed, so a call with
-    # v0=None is reproducible and the global cupy.random state cannot leak
-    # into eigsh/svds results (gh-10239: the same test instance passed or
-    # failed depending on the draw).
+class TestRng:
+    # rng= selects the source of the default start vector (and, in svds,
+    # of the columns completing the singular vectors of a rank-deficient
+    # input), with scipy's semantics: None draws from a fresh generator so
+    # calls start differently, an int is reproducible, a generator object
+    # is advanced in place, cupy.random means the global state, and v0
+    # takes precedence.
 
-    @testing.for_dtypes('fdFD')
-    def test_default_v0_is_fixed(self, dtype):
+    def test_resolve_and_draw(self):
         from cupyx.scipy.sparse.linalg import _eigen
-        u1 = _eigen._default_v0(1000, dtype)
-        cupy.random.seed(1)
-        cupy.random.random(1000)         # advance the global generator
-        u2 = _eigen._default_v0(1000, dtype)
-        assert u1.dtype == cupy.dtype(dtype)
-        cupy.testing.assert_array_equal(u1, u2)
-        assert float(cupy.abs(u1 - u1.mean()).max()) > 0.1  # not constant
+        n = 50
+        u1 = _eigen._default_v0(n, 'd', _eigen._resolve_rng(None))
+        u2 = _eigen._default_v0(n, 'd', _eigen._resolve_rng(None))
+        assert not bool((u1 == u2).all())                 # fresh entropy
+        u7a = _eigen._default_v0(n, 'd', _eigen._resolve_rng(7))
+        u7b = _eigen._default_v0(n, 'd', _eigen._resolve_rng(7))
+        cupy.testing.assert_array_equal(u7a, u7b)          # int reproduces
+        assert u7a.dtype == cupy.float64 and u7a.shape == (n,)
+        # cupy.random means the global state: cupy.random.seed controls it
+        cupy.random.seed(5)
+        g1 = _eigen._default_v0(n, 'd', _eigen._resolve_rng(cupy.random))
+        cupy.random.seed(5)
+        g2 = _eigen._default_v0(n, 'd', _eigen._resolve_rng(cupy.random))
+        cupy.testing.assert_array_equal(g1, g2)
+        for rs in (cupy.random.RandomState(3), cupy.random.default_rng(3),
+                   numpy.random.RandomState(3), numpy.random.default_rng(3)):
+            rs = _eigen._resolve_rng(rs)
+            first = _eigen._default_v0(n, 'f', rs)
+            second = _eigen._default_v0(n, 'f', rs)   # advanced in place
+            assert isinstance(first, cupy.ndarray)
+            assert first.dtype == cupy.float32 and first.shape == (n,)
+            assert not bool((first == second).all())
+        with pytest.raises(TypeError):
+            _eigen._resolve_rng('seed')
 
     @testing.for_dtypes('fdFD')
-    def test_eigsh_repeatable(self, dtype):
+    def test_eigsh(self, dtype):
         b = testing.shaped_random((120, 120), cupy, dtype=dtype, seed=0)
         a = sparse.csr_matrix(b + b.conj().T)
-        w1 = sparse.linalg.eigsh(a, k=6, return_eigenvectors=False)
-        cupy.random.seed(2)
-        w2 = sparse.linalg.eigsh(a, k=6, return_eigenvectors=False)
-        # Same start, same trajectory: only the parallel-reduction order in
-        # cuBLAS/cuSPARSE differs between the two runs.
         tol = 1e-5 if numpy.dtype(dtype).char in 'fF' else 1e-10
+        w1 = sparse.linalg.eigsh(a, k=6, return_eigenvectors=False, rng=11)
+        w2 = sparse.linalg.eigsh(a, k=6, return_eigenvectors=False, rng=11)
         cupy.testing.assert_allclose(cupy.sort(w1.real), cupy.sort(w2.real),
                                      rtol=tol, atol=0)
+        # v0 takes precedence over rng
+        v0 = testing.shaped_random((120,), cupy, dtype=dtype, seed=1)
+        w3 = sparse.linalg.eigsh(a, k=6, v0=v0, return_eigenvectors=False)
+        w4 = sparse.linalg.eigsh(a, k=6, v0=v0, return_eigenvectors=False,
+                                 rng=numpy.random.default_rng(2))
+        cupy.testing.assert_allclose(cupy.sort(w3.real), cupy.sort(w4.real),
+                                     rtol=tol, atol=0)
 
-    def test_svds_augmented_vectors_repeatable(self):
-        # k above the rank: the missing singular vectors are completed by
-        # random orthonormal columns, which must be reproducible as well.
+    def test_svds(self):
+        a = sparse.csr_matrix(
+            testing.shaped_random((60, 45), cupy, dtype='d', seed=0))
+        s1 = sparse.linalg.svds(a, k=5, rng=11, return_singular_vectors=False)
+        s2 = sparse.linalg.svds(a, k=5, rng=11, return_singular_vectors=False)
+        cupy.testing.assert_allclose(cupy.sort(s1), cupy.sort(s2),
+                                     rtol=1e-9, atol=1e-9)
+        with pytest.raises(TypeError):
+            sparse.linalg.svds(a, k=5, rng='seed')
+        # The generator also drives the columns completing the singular
+        # vectors of a rank-deficient input: same seed, same completion;
+        # different seed, different completion.
         m, n, rank = 40, 30, 3
-        a = (testing.shaped_random((m, rank), cupy, dtype='d', seed=0)
+        b = (testing.shaped_random((m, rank), cupy, dtype='d', seed=0)
              @ testing.shaped_random((rank, n), cupy, dtype='d', seed=1))
-        u1, s1, vt1 = sparse.linalg.svds(sparse.csr_matrix(a), k=6)
-        cupy.random.seed(3)
-        u2, s2, vt2 = sparse.linalg.svds(sparse.csr_matrix(a), k=6)
-        cupy.testing.assert_allclose(s1, s2, rtol=1e-10, atol=1e-10)
+        b = sparse.csr_matrix(b)
+        u1, _, vt1 = sparse.linalg.svds(
+            b, k=6, rng=numpy.random.default_rng(5))
+        u2, _, vt2 = sparse.linalg.svds(
+            b, k=6, rng=numpy.random.default_rng(5))
+        u3, _, _ = sparse.linalg.svds(b, k=6, rng=numpy.random.default_rng(6))
         # A singular vector is defined up to sign, and the Ritz solve does
         # not fix it between runs (gh-10286): compare each column up to its
         # sign, i.e. require |u1^H u2| = I and |vt1 vt2^H| = I.
@@ -574,6 +607,9 @@ class TestDefaultStartVector:
             g = cupy.abs(x.conj().T @ y)
             cupy.testing.assert_allclose(g, cupy.eye(g.shape[0]),
                                          rtol=1e-8, atol=1e-8)
+        # A different seed completes the rank-deficient part differently.
+        g3 = cupy.abs(u1[:, rank:].conj().T @ u3[:, rank:])
+        assert not bool(cupy.allclose(g3, cupy.eye(6 - rank), atol=1e-6))
 
 
 @testing.parameterize(*testing.product({
@@ -594,8 +630,12 @@ class TestSvds:
         return a
 
     def _test_svds(self, a, xp, sp):
+        # The default start is random (gh-10239): pin CuPy's draw so the
+        # comparison against the fixed scipy reference is deterministic.
+        kwargs = {'rng': 0} if xp is cupy else {}
         ret = sp.linalg.svds(a, k=self.k,
-                             return_singular_vectors=self.return_vectors)
+                             return_singular_vectors=self.return_vectors,
+                             **kwargs)
         if self.return_vectors:
             u, s, vt = ret
             # Check the results with u @ s @ vt, as singular vectors don't
