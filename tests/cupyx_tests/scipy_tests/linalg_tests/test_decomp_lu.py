@@ -155,3 +155,38 @@ class TestLUSolve(unittest.TestCase):
         with scipy.linalg.set_backend(backend):
             out = scipy.linalg.lu_solve(lu, b, trans=self.trans)
         return out
+
+
+class TestLUIndexOverflow(unittest.TestCase):
+
+    @testing.slow
+    def test_laswp_large_offset(self):
+        # _cupy_split_lu and _cupy_laswp share a get_index() device helper
+        # that used to compute flat offsets in 32-bit int, overflowing for
+        # any matrix with m * n > INT32_MAX (2,147,483,647). 46341 x 46341
+        # is the smallest square shape that crosses that threshold
+        # (46341**2 == 2,147,488,281). Using uint8 keeps the array at ~2GB
+        # instead of the 16GB+ a float64 matrix of this shape would need.
+        #
+        # Only _cupy_laswp is exercised directly here: _cupy_split_lu shares
+        # the same helper but needs three large buffers (LU, L, U) to run,
+        # which doesn't fit in this machine's VRAM budget.
+        from cupyx.scipy.linalg._decomp_lu import _cupy_laswp
+
+        m = n = 46341
+        assert m * n > 2**31 - 1
+        A = cupy.zeros((m, n), dtype=cupy.uint8)
+        A[0, :] = 1
+        A[m - 1, :] = 2
+
+        ipiv = cupy.arange(m, dtype=cupy.int32)
+        ipiv[m - 1] = 0
+
+        _cupy_laswp(A, m - 1, m - 1, ipiv, 1)
+
+        # The row-major flat offset for (row=m-1, col) crosses INT32_MAX
+        # partway through the row (around col == 41708), so checking the
+        # full row covers both the in-range and previously-overflowing
+        # columns.
+        assert bool(cupy.all(A[0, :] == 2))
+        assert bool(cupy.all(A[m - 1, :] == 1))
