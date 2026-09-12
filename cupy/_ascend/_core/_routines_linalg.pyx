@@ -150,9 +150,42 @@ cpdef _ndarray_base dot(_ndarray_base a, _ndarray_base b, _ndarray_base out=None
         if a_ndim == 2 and b_ndim == 2:
             return _ascend_matmul(a, b, out)
 
+        # (n,) . (n, ...)  -> (...):  reshape to (1, n) @ (n, tail)
+        if a_ndim == 1:
+            if a.size != b._shape[b_ndim - 2]:
+                raise ValueError('Axis dimension mismatch')
+            tail = 1
+            for i in range(b_ndim):
+                if i != b_ndim - 2:
+                    tail *= b._shape[i]
+            prod = _ascend_matmul(
+                _manipulation._reshape(a, [1, a.size]),
+                _manipulation._reshape(b, [b._shape[b_ndim - 2], tail]),
+                None)
+            result = _manipulation._reshape(prod, b._shape[1:])
+            if out is not None:
+                elementwise_copy(result, out)
+                return out
+            return result
+
+        # (..., n) . (n,)  -> (...):  reshape to (m, n) @ (n, 1)
+        if b_ndim == 1:
+            if a._shape[a_ndim - 1] != b.size:
+                raise ValueError('Axis dimension mismatch')
+            m = a.size // a._shape[a_ndim - 1]
+            prod = _ascend_matmul(
+                _manipulation._reshape(a, [m, a._shape[a_ndim - 1]]),
+                _manipulation._reshape(b, [b.size, 1]),
+                None)
+            result = _manipulation._reshape(prod, a._shape[:a_ndim - 1])
+            if out is not None:
+                elementwise_copy(result, out)
+                return out
+            return result
+
         raise NotImplementedError(
-            "ASCEND: dot() supports 1-D.1-D or 2-D@2-D only, "
-            "got ndim {} and {}".format(a_ndim, b_ndim))
+            "ASCEND: dot() supports 1-D/2-D operands; got ndim {} and {}"
+            .format(a_ndim, b_ndim))
         # unreachable generic path below is CUDA-only
     ELSE:
         if input_a_is_vec:
@@ -251,6 +284,94 @@ cpdef _ndarray_base tensordot_core(
     _ascend_dot(a, b, out)
     return out
 
+cdef _ndarray_base _ascend_batched_matmul(
+        _ndarray_base a, _ndarray_base b, _ndarray_base out,
+        int a_ndim, int b_ndim):
+    """numpy.matmul semantics for ndim > 2 (or with 1-D operands).
+
+    aclnnMatmul only handles 2-D operands, so the batch dimensions are folded
+    into the leading dimension and the batches are broadcast explicitly.
+    """
+    cdef int ndim = max(a_ndim, b_ndim)
+    cdef _ndarray_base a2, b2, prod, result
+    cdef list batch_shape = []
+    cdef list a_shape, b_shape
+    cdef Py_ssize_t i, a_batch, b_batch, batch, n, k, m
+    cdef bint a_is_vec, b_is_vec
+
+    a_is_vec = a_ndim == 1
+    b_is_vec = b_ndim == 1
+
+    if a_is_vec:
+        raise NotImplementedError(
+            'ASCEND: matmul with a 1-D operand is not supported')
+    if b_ndim < 2:
+        raise NotImplementedError(
+            'ASCEND: matmul with a 1-D operand is not supported')
+
+    # broadcast the batch shapes
+    a_shape = list(a.shape)
+    b_shape = list(b.shape)
+    for i in range(ndim - 2):
+        da = a_shape[i] if i < a_ndim - 2 else 1
+        db = b_shape[i] if i < b_ndim - 2 else 1
+        if da != db and da != 1 and db != 1:
+            raise ValueError(
+                'operands could not be broadcast together with remapped '
+                'shapes {} and {}'.format(tuple(a_shape), tuple(b_shape)))
+        batch_shape.append(max(da, db))
+
+    n = a_shape[a_ndim - 2]
+    k = a_shape[a_ndim - 1]
+    if k != b_shape[b_ndim - 2]:
+        raise ValueError(
+            'matmul: shape mismatch, {} != {}'
+            .format(k, b_shape[b_ndim - 2]))
+    m = b_shape[b_ndim - 1]
+
+    batch = 1
+    for i in range(len(batch_shape)):
+        batch *= batch_shape[i]
+
+    # normalise to (batch, n, k) and (batch, k, m) without copying when the
+    # leading batch dimensions are already explicit.
+    a_batch = 1
+    for i in range(a_ndim - 2):
+        a_batch *= a_shape[i]
+    b_batch = 1
+    for i in range(b_ndim - 2):
+        b_batch *= b_shape[i]
+
+    a2 = _manipulation._reshape(a, [a_batch, n, k])
+    b2 = _manipulation._reshape(b, [b_batch, k, m])
+
+    if a_batch != batch:
+        a2 = _manipulation.broadcast_to(
+            a2, [batch, n, k]).copy()
+    if b_batch != batch:
+        b2 = _manipulation.broadcast_to(
+            b2, [batch, k, m]).copy()
+
+    # fold the batch dimension into the row dimension: (batch*n, k) @ (k, m)
+    # is not equivalent for each batch, so loop over the batch instead.
+    result = _ndarray_init(
+        cupy.ndarray, batch_shape + [n, m],
+        numpy.promote_types(a.dtype, b.dtype), None)
+    result_flat = _manipulation._reshape(result, [batch, n, m])
+    a_flat = _manipulation._reshape(a2, [batch, n, k])
+    b_flat = _manipulation._reshape(b2, [batch, k, m])
+    for i in range(batch):
+        _ascend_matmul(
+            _manipulation._reshape(a_flat[i], [n, k]),
+            _manipulation._reshape(b_flat[i], [k, m]),
+            _manipulation._reshape(result_flat[i], [n, m]))
+
+    if out is not None:
+        elementwise_copy(result, out)
+        return out
+    return result
+
+
 cdef _ndarray_base _ascend_matmul(_ndarray_base a, _ndarray_base b, _ndarray_base out):
     """2-D matrix multiply via aclnnMatmul: out = a @ b.
 
@@ -319,10 +440,11 @@ cpdef _ndarray_base matmul(
         # "transpose trick" is needed. Return immediately, otherwise the code
         # below (which swaps a/b for the cuBLAS column-major convention) would
         # recompute B @ A and silently produce a transposed result.
-        if ndim == 2:
+        if ndim == 2 and orig_a_ndim == 2 and orig_b_ndim == 2:
+            # plain 2-D @ 2-D
             return _ascend_matmul(a, b, out)
-        else:
-            raise NotImplementedError("ASCEND: matmul only support dim=2 matrix mul")
+
+        return _ascend_batched_matmul(a, b, out, orig_a_ndim, orig_b_ndim)
 
     # ===================================================================
     # The block below is the CUDA/cuBLAS path. ASCEND never reaches here

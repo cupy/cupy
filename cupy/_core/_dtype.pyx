@@ -7,7 +7,7 @@ from cupy.backends.backend.api cimport runtime
 from cupy.exceptions import ComplexWarning
 
 # TODO: import can not been conditionally preprocessed
-from cupy.backends.ascend.api.acl_utils cimport numpy_to_acl_dtype
+from cupy.backends.ascend.api.acl_utils cimport numpy_dtype_to_acl_dtype
 
 cdef str all_type_chars = '?bhilqBHILQefdFD'
 # for c in '?bhilqBHILQefdFD':
@@ -91,7 +91,7 @@ cpdef int to_cuda_dtype(dtype, bint is_half_allowed=False) except -1:
         else:
             raise TypeError('dtype is not supported: {}'.format(dtype))
     ELSE:
-        return numpy_to_acl_dtype(dtype, is_half_allowed)
+        return numpy_dtype_to_acl_dtype(dtype, is_half_allowed)
 
 cdef _numpy_can_cast = numpy.can_cast
 

@@ -40,6 +40,7 @@
 #include "aclnnop/aclnn_put.h"
 
 #include "aclnnop/aclnn_flip.h"
+#include "aclnnop/aclnn_roll.h"
 //#include "aclnnop/aclnn_rot.h"
 #include "aclnnop/aclnn_stack.h"
 #include "aclnnop/aclnn_cat.h" // concatenate
@@ -120,6 +121,48 @@
             const aclIntArray* dims = nullptr; // default to axis = None
             return aclIrregularOpRun(aclnnFlipGetWorkspaceSize, aclnnFlip, stream,
                 ins[0], dims, outs[0]);
+    }
+
+    // numpy.permute(x, dims) -> aclnnPermute(self, dims, out)
+    aclError aclop_Permute(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        if (ins.empty() || outs.empty()) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        // `dims` is passed either as an aclIntArray argument or as a python
+        // sequence stored positionally in `args`.
+        aclIntArray* dims = nullptr;
+        if (!args.empty() && op::IsBasicType(args.back()->GetDataType())) {
+            // unlikely path: a single scalar axis
+            int64_t axis = ToScalarArg<int64_t>(args.back());
+            dims = aclCreateIntArray(&axis, 1);
+        }
+        aclError ret = aclIrregularOpRun(aclnnPermuteGetWorkspaceSize, aclnnPermute, stream,
+            ins[0], dims, outs[0]);
+        if (dims != nullptr) {
+            aclDestroyIntArray(dims);
+        }
+        return ret;
+    }
+
+    // numpy.roll(x, shift, axis) -> aclnnRoll(x, shifts, dims, out)
+    aclError aclop_Roll(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        if (ins.empty() || outs.empty()) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        const aclTensor* self = ins[0];
+        int64_t shift = GetScalarArg<int64_t>(args, 0, kwargs, "shift", 0);
+        int64_t axis = GetScalarArg<int64_t>(args, 1, kwargs, "axis", 0);
+        aclIntArray* shifts = aclCreateIntArray(&shift, 1);
+        aclIntArray* dims = aclCreateIntArray(&axis, 1);
+        aclError ret = aclIrregularOpRun(aclnnRollGetWorkspaceSize, aclnnRoll, stream,
+            self, shifts, dims, outs[0]);
+        aclDestroyIntArray(shifts);
+        aclDestroyIntArray(dims);
+        return ret;
     }
 
     // numpy has op resize, but diff from the scaling
@@ -246,14 +289,14 @@
         const aclTensor* self = ins[0];
         int64_t axis = GetScalarArg<int64_t>(args, 0, kwargs, "axis", -1); // -1 means last axis
         bool stable = GetScalarArg<bool>(args, 1, kwargs, "stable", true);
-        bool descending = GetScalarArg<bool>(args, 1, kwargs, "order", false);
-        aclTensor* indices = nullptr;  // alcop sort can accept nullptr for indexOut
+        bool descending = GetScalarArg<bool>(args, 2, kwargs, "descending", false);
+        // aclnnSort 的 indexOut 允许传 nullptr：只排序取值时不需要索引。
+        // 注意必须由调用方提供 indexOut（outs[1]），因为这里临时造出来的
+        // tensor 在 aclIrregularOpRun 内部就被销毁了。
+        aclTensor* indices = nullptr;
         if (outs.size() > 1) {
-            indices = outs[1];  // int64 tensor
-        } else {
-            indices = aclTensorLike(self, ACL_INT64);
+            indices = outs[1];
         }
-        PrintArgs(__func__, args, kwargs, std::cout);
         return aclIrregularOpRun(aclnnSortGetWorkspaceSize, aclnnSort, stream,
             self, stable, axis, descending, outs[0], indices); // value and index out arrays
     }
@@ -262,13 +305,12 @@
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
         const aclTensor* self = ins[0];
         int64_t dim = GetScalarArg<int64_t>(args, 0, kwargs, "dim", -1); // -1 means last axis
-        bool descending = GetScalarArg<bool>(args, 1, kwargs, "order", false);
-        aclTensor* indices = nullptr;  // alcop sort can accept nullptr for indexOut
-        if (outs.size() >= 1) {
-            indices = outs[0];  // int64 tensor output
-        } else {
-
+        bool descending = GetScalarArg<bool>(args, 1, kwargs, "descending", false);
+        if (outs.empty()) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
         }
+        aclTensor* indices = outs[0];  // int64 tensor output
         return aclIrregularOpRun(aclnnArgsortGetWorkspaceSize, aclnnArgsort, stream,
             self, dim, descending, indices); // index out arrays
     }
@@ -286,6 +328,26 @@
             PrintArgs(__func__, args, kwargs, std::cout);
             return ACL_ERROR_INVALID_PARAM;
         }
+    }
+
+    // numpy.nan_to_num(x, nan=0.0, posinf=None, neginf=None)
+    // aclnnNanToNum(self, float nan, float posinf, float neginf, out)
+    aclError aclop_NanToNum(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        const aclTensor* self = ins[0];
+        aclTensor* out = outs[0];
+        // defaults are the NumPy ones: nan=0, posinf=FLT_MAX, neginf=-FLT_MAX
+        float nan = GetScalarArg<float>(args, 0, kwargs, "nan", 0.0f);
+        float posinf = GetScalarArg<float>(args, 1, kwargs, "posinf", 0.0f);
+        float neginf = GetScalarArg<float>(args, 2, kwargs, "neginf", 0.0f);
+        if (posinf == 0.0f) {
+            posinf = std::numeric_limits<float>::max();
+        }
+        if (neginf == 0.0f) {
+            neginf = std::numeric_limits<float>::lowest();
+        }
+        return aclIrregularOpRun(aclnnNanToNumGetWorkspaceSize, aclnnNanToNum, stream,
+            self, nan, posinf, neginf, out);
     }
 
     // ufunc: cupy_clip -> aclnnClamp  'ddd->d'
@@ -339,7 +401,17 @@
     }
 
     // `cupy_copy` register it as ufunc,  numpy has extra order=K args
+    // cupy_copy / elementwise_copy: `out = src`.
+    // `aclnnInplaceCopy` requires both tensors to share a dtype, so when the
+    // dtypes differ (e.g. `ndarray.astype`) fall back to `aclnnCast`.
     aclError aclop_Copy(const aclTensor* src, aclTensor* out, aclrtStream stream) {
+        aclDataType src_dtype, out_dtype;
+        aclGetDataType(src, &src_dtype);
+        aclGetDataType(out, &out_dtype);
+        if (src_dtype != out_dtype) {
+            return aclIrregularOpRun(aclnnCastGetWorkspaceSize, aclnnCast, stream,
+                src, out_dtype, out);
+        }
         return aclIrregularOpRun(aclnnInplaceCopyGetWorkspaceSize, aclnnInplaceCopy, stream,
             out, src);
     }
