@@ -128,6 +128,8 @@ cdef function.Function _get_simple_elementwise_kernel(
 cpdef inline _check_peer_access(_ndarray_base arr, int device_id):
     if arr.data.device_id == device_id:
         return
+    elif arr.data.mem.size == 0:
+        return
 
     msg = (
         f'The device where the array resides ({arr.data.device_id}) is '
