@@ -621,6 +621,49 @@ class TestWelch:
 
 @testing.with_requires('scipy')
 class TestCSD:
+    @pytest.mark.parametrize('dtype_x,dtype_y', [
+        ('float32', 'float32'),
+        ('complex64', 'complex64'),
+        ('float32', 'float64'),
+        ('complex64', 'complex128'),
+        ('float32', 'complex64'),
+    ])
+    @pytest.mark.parametrize('lengths', [(32, 64), (64, 32)])
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
+    def test_padded_mean_dtype(self, dtype_x, dtype_y, lengths, xp, scp):
+        x = testing.shaped_random((lengths[0],), xp, dtype=dtype_x, seed=0)
+        y = testing.shaped_random((lengths[1],), xp, dtype=dtype_y, seed=1)
+        return scp.signal.csd(
+            x, y, nperseg=16, noverlap=8, average='mean',
+            return_onesided=False)
+
+    @pytest.mark.parametrize('same_data', [False, True])
+    @pytest.mark.parametrize('scaling', ['density', 'spectrum'])
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5)
+    def test_mean_large_amplitude(self, same_data, scaling, xp, scp):
+        x = xp.full(4096, 1e17, dtype=xp.float32)
+        y = x if same_data else x.copy()
+        f, p = scp.signal.csd(
+            x, y, window='boxcar', nperseg=16, noverlap=0,
+            detrend=False, scaling=scaling, average='mean')
+        assert bool(xp.isfinite(p).all())
+        return f, p
+
+    @pytest.mark.parametrize('average', [None, 'invalid'])
+    @pytest.mark.parametrize('length', [0, 16, 64])
+    def test_invalid_average(self, average, length):
+        x = cupy.ones(length)
+        with pytest.raises(ValueError, match='average must be'):
+            cupyx.scipy.signal.csd(x, x, nperseg=16, average=average)
+
+    @pytest.mark.parametrize('dtype', ['float32', 'float64'])
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
+    def test_broadcasted_mean(self, dtype, xp, scp):
+        x = testing.shaped_random((2, 1, 64), xp, dtype=dtype)
+        y = testing.shaped_random((1, 3, 64), xp, dtype=dtype)
+        return scp.signal.csd(
+            x, y, nperseg=16, noverlap=8, average='mean')
+
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
     def test_pad_shorter_x(self, xp, scp):
         x = xp.zeros(8)
