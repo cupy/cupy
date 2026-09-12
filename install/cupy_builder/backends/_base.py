@@ -93,6 +93,41 @@ class Backend(abc.ABC):
         """Return backend-specific extra link flags."""
         return []
 
+    # ------------------------------------------------------------------
+    # RPATH policy
+    # ------------------------------------------------------------------
+    #: Whether the SDK's ``library_dirs`` may be embedded into the built
+    #: extension modules' RPATH.
+    #:
+    #: ``True``  -- the SDK is normally a system install that will still be
+    #:              present at runtime (CUDA/ROCm under ``/usr/local``).
+    #: ``False`` -- the SDK is a relocatable, user-installed toolkit whose
+    #:              absolute path must never leak into a redistributable
+    #:              binary (Ascend/CANN).
+    #:
+    #: When ``False``, ``$ORIGIN``-relative entries are still emitted so that
+    #: libraries bundled under ``cupy/.data/lib`` remain discoverable.
+    embed_sdk_in_rpath: bool = True
+
+    def get_wheel_platform_tag(self) -> str | None:
+        """Return a platform-tag suffix identifying the SDK, or ``None``.
+
+        The value is appended to the wheel's platform tag, e.g. ``'cann8.5'``
+        producing ``manylinux_2_17_x86_64.cann8.5``. This lets several
+        mutually-incompatible SDK builds coexist on an index without being
+        mistaken for one another.
+        """
+        return None
+
+    def get_wheel_metadata(self) -> dict[str, Any]:
+        """Return extra entries for ``cupy/.data/_wheel.json``.
+
+        These are recorded in the wheel and checked again at runtime, so a
+        binary built against one SDK version refuses to load against an
+        incompatible one with a clear error instead of crashing.
+        """
+        return {}
+
     def get_define_macros(self) -> list[tuple[str, str]]:
         """Return backend-specific preprocessor macros."""
         return []

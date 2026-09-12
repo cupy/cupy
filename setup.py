@@ -68,11 +68,41 @@ if ctx.long_description_path is not None:
         long_description = f.read()
 
 
+# ASCEND: append the backend's SDK tag (e.g. `cann8.5`) to the wheel platform
+# tag so that wheels built against mutually-incompatible CANN releases can not
+# be confused with one another, giving e.g.
+#   cupy-14.0.0a1-cp311-cp311-manylinux_2_17_x86_64.cann8.5.whl
+_sdk_tag = cupy_setup_build.get_wheel_platform_tag(ctx)
+
+
+def _make_cmdclass():
+    cmds = {'build_ext': cupy_builder._command.custom_build_ext}
+    if _sdk_tag:
+        from wheel.bdist_wheel import bdist_wheel as _bdist_wheel
+
+        class bdist_wheel(_bdist_wheel):
+            def finalize_options(self):
+                super().finalize_options()
+                # The extensions are native, so never claim purity.
+                self.root_is_pure = False
+
+            def get_tag(self):
+                python, abi, plat = super().get_tag()
+                # Keep the python/abi tags untouched; only specialise the
+                # platform tag, appending the SDK tag.
+                if _sdk_tag not in plat:
+                    plat = f'{plat}.{_sdk_tag}'
+                return python, abi, plat
+
+        cmds['bdist_wheel'] = bdist_wheel
+    return cmds
+
+
 setup(
     long_description=long_description,
     long_description_content_type='text/x-rst',
     package_data=package_data,
     zip_safe=False,
     ext_modules=ext_modules,
-    cmdclass={'build_ext': cupy_builder._command.custom_build_ext},
+    cmdclass=_make_cmdclass(),
 )

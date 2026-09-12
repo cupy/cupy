@@ -109,6 +109,11 @@ def get_extra_link_args(self) -> list[str]:            # default []
 def get_define_macros(self) -> list[tuple[str, str]]:  # default []
 def get_compile_time_env(self, ctx) -> dict[str, Any]: # default {}
 def supports_platform(self, platform: str) -> bool:    # default: linux only
+
+# wheel packaging (see section 4.4)
+embed_sdk_in_rpath: bool = True                        # False for relocatable SDKs
+def get_wheel_platform_tag(self) -> str | None:        # default None, e.g. 'cann8.5'
+def get_wheel_metadata(self) -> dict[str, Any]:        # default {}
 ```
 
 ---
@@ -324,6 +329,107 @@ Do **not** hardcode a version anywhere. The same value must flow to:
 - the Cython compile-time env (`backend.get_compile_time_env()`).
 
 Both read from the backend's cached version, so they cannot drift.
+
+---
+
+## 4.4 Building redistributable wheels (RPATH policy)
+
+A wheel must import on a machine that is **not** the build machine. Two things
+must hold:
+
+1. no absolute SDK path is baked into any `.so`, and
+2. the runtime library search path can still be overridden by the user.
+
+### The `embed_sdk_in_rpath` flag
+
+`Backend.embed_sdk_in_rpath` controls whether `get_library_dirs()` results are
+copied into the extension modules' runtime search path:
+
+| Backend | Value | Rationale |
+|---------|-------|-----------|
+| CUDA / ROCm | `True` | SDK normally lives at a stable system location (`/usr/local/cuda/lib64`) that also exists at runtime. |
+| **Ascend / CANN** | **`False`** | CANN is a multi-GB, *user-installed* toolkit whose absolute path differs per machine. Embedding it produces a wheel that only imports where it was built. |
+
+When `False`, the `-L` flags are still passed to the linker (so it can resolve
+`-lascendcl` etc. at build time) but no `-rpath` entry is emitted for them.
+
+### DT_RUNPATH vs DT_RPATH
+
+`CUPY_INSTALL_LEGACY_RPATH=1` restores the legacy `--disable-new-dtags` flag,
+which produces `DT_RPATH`. **`DT_RPATH` takes precedence over
+`LD_LIBRARY_PATH`**, so a user can never point the wheel at a relocated CANN.
+The default is now `DT_RUNPATH` (i.e. the flag is omitted), so
+`LD_LIBRARY_PATH` and `source set_env.sh` work as expected.
+
+### Verifying a build
+
+```sh
+# No SDK path may appear anywhere:
+for f in $(find cupy cupyx -name "*.so"); do
+  readelf -d "$f" | grep -E 'RPATH|RUNPATH' | grep -i cann && echo "LEAK: $f"
+done
+```
+
+### Wheel naming and version safety
+
+`Backend.get_wheel_platform_tag()` appends an SDK identifier to the wheel's
+platform tag, and `Backend.get_wheel_metadata()` records the exact SDK version
+into `cupy/.data/_wheel.json`. Both are consumed by `setup.py`
+(`bdist_wheel` cmdclass) and `cupy/backends/ascend/__init__.py` respectively.
+
+Producing the two Ascend wheels:
+
+```sh
+# ---- CANN 8.5 ----
+export ASCEND_HOME_PATH=/usr/local/Ascend/ascend-toolkit/latest   # CANN 8.5.x
+export CUPY_INSTALL_USE_ASCEND=1
+python -m build --wheel
+# -> cupy-<ver>-cp311-cp311-manylinux_2_17_x86_64.cann8.5.whl
+
+# ---- CANN 9.0 ----
+export ASCEND_HOME_PATH=/usr/local/Ascend/ascend-toolkit/9.0      # CANN 9.0.x
+export CUPY_INSTALL_USE_ASCEND=1
+python -m build --wheel
+# -> cupy-<ver>-cp311-cp311-manylinux_2_17_x86_64.cann9.0.whl
+```
+
+Both wheels install into the same environment without clashing (different
+platform tags), and each refuses to silently run against the wrong CANN:
+
+```python
+import cupy                      # warns if CANN release train differs
+cupy.backends.ascend.check_cann_version()          # -> False on mismatch
+cupy.backends.ascend.get_wheel_metadata()          # build-time record
+```
+
+Set `CUPY_ASCEND_SKIP_VERSION_CHECK=1` to silence the warning (e.g. in CI where
+a patch-level difference is intentional).
+
+### Runtime requirements of the wheel
+
+The wheel still requires an external CANN installation. Users must:
+
+```sh
+source /usr/local/Ascend/ascend-toolkit/set_env.sh   # exports LD_LIBRARY_PATH
+export LD_PRELOAD=<cann>/opp/built-in/op_impl/ai_core/tbe/op_tiling/lib/linux/x86_64/liboptiling.so
+```
+
+The `LD_PRELOAD` works around a defect in CANN 8.5.1: `libop_common.so` has an
+undefined symbol `_ZN2ge19GetViewErrorCodeStrENS_13ViewErrorCodeE` that only
+`liboptiling.so` provides. This is a CANN problem, not a wheel problem, so it
+cannot be fixed by packaging — document it as a prerequisite.
+
+### Why not a single universal manylinux wheel
+
+* aclnn operator signatures change between CANN releases (hence the
+  version-specific tags);
+* `libop_common.so` is coupled to a matching `liboptiling.so` per release;
+* CANN mixes `__cxx11` and legacy `_ZNSs` C++ symbols and links `libstdc++.so.6`
+  dynamically, so the target machine's libstdc++ must be new enough. Build
+  inside a `manylinux_2_17` container (CANN's own glibc symbol requirement is
+  only `GLIBC_2.14`, so glibc itself is not the constraint).
+
+Recommended: build for a **CANN version + platform** pair, not for "any Linux".
 
 ---
 

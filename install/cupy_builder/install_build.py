@@ -449,6 +449,20 @@ def get_cann_version(formatted: bool = False) -> int:
     return _cann_version
 
 
+def format_cann_version(version: int) -> str:
+    """Render an encoded CANN version as a human-readable string.
+
+    The encoding is ``major * 100 + minor * 10 + patch``, so ``851`` becomes
+    ``'8.5.1'`` and ``900`` becomes ``'9.0.0'``. ``-1`` (not detected) renders
+    as ``'unknown'``.
+    """
+    if version is None or version < 0:
+        return 'unknown'
+    major, rest = divmod(version, 100)
+    minor, patch = divmod(rest, 10)
+    return f'{major}.{minor}.{patch}'
+
+
 def check_compute_capabilities(compiler, settings):
     """Return CUDA compute capabilities of the installed devices."""
     global _compute_capabilities

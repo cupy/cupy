@@ -42,6 +42,12 @@ class AscendBackend(Backend):
     #: Minimum supported CANN version, encoded as major*100 + minor*10 + patch.
     minimum_version = 820
 
+    #: CANN is a user-installed, relocatable toolkit (multi-GB, installed
+    #: *after* the wheel). Its absolute path must never be baked into a
+    #: redistributable extension module, or the wheel only ever imports on
+    #: the machine that built it.
+    embed_sdk_in_rpath = False
+
     def get_sdk_path(self) -> str | None:
         return build.get_cann_path()
 
@@ -109,6 +115,43 @@ class AscendBackend(Backend):
 
     def get_version(self) -> int:
         return build.get_cann_version()
+
+    # ------------------------------------------------------------------
+    # Wheel identity
+    # ------------------------------------------------------------------
+    def get_wheel_platform_tag(self) -> str | None:
+        """Return e.g. ``'cann8.5'`` so wheels for different CANN majors/minors
+        can not be confused with one another.
+
+        ``aclnn`` operator signatures change between CANN releases and
+        ``libop_common.so``/``liboptiling.so`` are coupled per release, so a
+        binary built against 8.5 is *not* a drop-in replacement for 9.0.
+        """
+        version = self.get_version()
+        if version in (self.NOT_AVAILABLE, 0):
+            return None
+        major, rest = divmod(version, 100)
+        minor = rest // 10
+        return f'cann{major}.{minor}'
+
+    def get_wheel_metadata(self) -> dict[str, Any]:
+        """Record the exact CANN version the wheel was built against.
+
+        ``cupy/.data/_wheel.json`` is written into the wheel and re-checked at
+        import time, so a version mismatch produces an actionable error rather
+        than a segfault or an ``undefined symbol`` traceback.
+        """
+        version = self.get_version()
+        sdk = self.get_sdk_path()
+        metadata: dict[str, Any] = {
+            'cupy_backend': self.name,
+            # raw encoded version, e.g. 851 for CANN 8.5.1
+            'cann_version': version,
+            'cann_version_str': build.format_cann_version(version),
+        }
+        if sdk:
+            metadata['cann_build_path'] = sdk
+        return metadata
 
     # ------------------------------------------------------------------
     @staticmethod

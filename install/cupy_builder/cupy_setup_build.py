@@ -341,6 +341,11 @@ def make_extensions(ctx: Context, compiler, use_cython):
     no_cuda = ctx.use_stub # TODO: this is not precise has more backends added
     settings = build.get_compiler_setting(ctx, ctx.get_backend_name())
 
+    # The active backend decides the RPATH policy (see `Backend`): SDKs that
+    # are relocatable user installs (CANN) must stay out of DT_RUNPATH.
+    from cupy_builder.backends import get_backend
+    backend_obj = get_backend(ctx)
+
     include_dirs = settings['include_dirs']
 
     settings['include_dirs'] = [
@@ -483,8 +488,24 @@ def make_extensions(ctx: Context, compiler, use_cython):
             rpath = []
             if not ctx.no_rpath:
                 # Add library directories (e.g., `/usr/local/cuda/lib64`) to
-                # RPATH.
-                rpath += s_file['library_dirs']
+                # the runtime search path.
+                #
+                # Backends whose SDK is a *relocatable, user-installed*
+                # toolkit (Ascend/CANN) set `embed_sdk_in_rpath = False`: their
+                # absolute build-machine paths must never end up in a
+                # redistributable binary, otherwise the wheel only imports on
+                # the machine that produced it. Such backends rely on the
+                # user's environment (`source set_env.sh`, which exports
+                # `LD_LIBRARY_PATH`) plus the `$ORIGIN` entries below.
+                if backend_obj.embed_sdk_in_rpath:
+                    rpath += s_file['library_dirs']
+                else:
+                    # Keep the directories reachable at build time only; the
+                    # linker still needs `-L` (already in `library_dirs`), but
+                    # they are deliberately kept out of DT_RUNPATH.
+                    logging.debug(
+                        'Backend %s: skipping SDK library_dirs in RPATH (%s)',
+                        backend_obj.name, s_file['library_dirs'])
 
             if use_wheel_libs_rpath:
                 # Add `cupy/.data/lib` (where shared libraries included in
@@ -497,10 +518,16 @@ def make_extensions(ctx: Context, compiler, use_cython):
                 rpath.append(
                     '{}{}/cupy/.data/lib'.format(_rpath_base(), '/..' * depth))
 
-            if (PLATFORM_LINUX and len(rpath) != 0):
-                ldflag = '-Wl,'
-                if PLATFORM_LINUX:
-                    ldflag += '--disable-new-dtags,'
+            if PLATFORM_LINUX and rpath:
+                # Use DT_RUNPATH (the modern default) instead of DT_RPATH so
+                # that a user's `LD_LIBRARY_PATH` still takes precedence. The
+                # previous `--disable-new-dtags` forced the legacy DT_RPATH,
+                # which silently ignored any runtime override and made it
+                # impossible to point a wheel at a relocated CANN install.
+                if ctx.legacy_rpath:
+                    ldflag = '-Wl,--disable-new-dtags,'
+                else:
+                    ldflag = '-Wl,'
                 ldflag += ','.join('-rpath,' + p for p in rpath)
                 args = s_file.setdefault('extra_link_args', [])
                 args.append(ldflag)
@@ -514,6 +541,69 @@ def make_extensions(ctx: Context, compiler, use_cython):
         with open(CACHE_FILE, "wb") as f:
             pickle.dump((ctx, ret), f)
     return ret
+
+
+def get_wheel_platform_tag(ctx: Context) -> str | None:
+    """Return the backend-specific wheel platform tag suffix, or ``None``.
+
+    For example ``'cann8.5'`` for an Ascend build against CANN 8.5.1, which is
+    combined with the normal manylinux tag to give
+    ``manylinux_2_17_x86_64.cann8.5``. Encodes the fact that aclnn operator
+    ABIs are not compatible across CANN releases.
+    """
+    from cupy_builder.backends import get_backend
+    if ctx.use_stub:
+        return None
+    return get_backend(ctx).get_wheel_platform_tag()
+
+
+def _read_cupy_version(ctx: Context) -> str:
+    """Read ``cupy._version.__version__`` without importing the package."""
+    path = os.path.join(ctx.source_root, 'cupy', '_version.py')
+    namespace: dict = {}
+    with open(path) as f:
+        exec(compile(f.read(), path, 'exec'), namespace)
+    return namespace['__version__']
+
+
+def write_wheel_metadata(ctx: Context) -> str | None:
+    """Write ``cupy/.data/_wheel.json`` describing the build environment.
+
+    The file is bundled in the wheel and re-read at import time so that a
+    wheel built for one CANN version refuses to load against an incompatible
+    one with a clear message instead of an ``undefined symbol`` error.
+
+    Returns the absolute path of the written file, or ``None`` when there is
+    nothing to record (stub builds).
+    """
+    import json
+    from cupy_builder.backends import get_backend
+    if ctx.use_stub:
+        return None
+
+    backend = get_backend(ctx)
+    metadata = {
+        # Consumed by `cupy._environment._can_attempt_preload()`; must be
+        # present so that lookups of the preload config never KeyError.
+        'packaging': 'pip',
+        'backend': backend.name,
+    }
+    try:
+        metadata['cupy_version'] = _read_cupy_version(ctx)
+    except Exception:  # noqa: BLE001 - metadata is best-effort
+        pass
+    metadata.update(backend.get_wheel_metadata())
+
+    # Write to a temp file *outside* `cupy/.data`: that directory is cleared by
+    # `prepare_wheel_libs()`, which then copies this file into place, so writing
+    # it directly there would make the copy a no-op onto itself.
+    import tempfile
+    fd, path = tempfile.mkstemp(prefix='cupy_wheel_', suffix='.json')
+    with os.fdopen(fd, 'w') as f:
+        json.dump(metadata, f, indent=2, sort_keys=True)
+    print(f'Writing wheel metadata: {path}')
+    print(json.dumps(metadata, indent=2, sort_keys=True))
+    return path
 
 
 def prepare_wheel_libs(ctx: Context):
@@ -548,10 +638,15 @@ def prepare_wheel_libs(ctx: Context):
         dstpath = os.path.join(data_dir, 'include', relpath)
         files_to_copy.append((srcpath, dstpath))
 
-    # Wheel meta data
-    if ctx.wheel_metadata_path:
+    # Wheel meta data: prefer an explicitly supplied path, otherwise generate
+    # one describing the active backend/SDK so the wheel can be validated at
+    # import time.
+    metadata_path = ctx.wheel_metadata_path
+    if not metadata_path:
+        metadata_path = write_wheel_metadata(ctx)
+    if metadata_path:
         files_to_copy.append(
-            (ctx.wheel_metadata_path, os.path.join(data_dir, '_wheel.json')))
+            (metadata_path, os.path.join(data_dir, '_wheel.json')))
 
     # Copy
     for srcpath, dstpath in files_to_copy:

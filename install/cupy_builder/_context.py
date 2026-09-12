@@ -44,6 +44,10 @@ class Context:
     linetrace: bool
     annotate: bool
     no_rpath: bool
+    # Emit the legacy DT_RPATH tag instead of the modern DT_RUNPATH. Only
+    # needed to reproduce pre-existing CUDA wheels; DT_RPATH takes precedence
+    # over LD_LIBRARY_PATH and therefore defeats user overrides.
+    legacy_rpath: bool
     features: dict[str, cupy_builder.Feature]
     cupy_cache_key: str | None
     win32_cl_exe_path: str | None
@@ -78,6 +82,8 @@ class Context:
         self.wheel_metadata_path = _env.get("CUPY_INSTALL_WHEEL_METADATA")
         # disable adding default library directories to RPATH
         self.no_rpath = _get_env_bool("CUPY_INSTALL_NO_RPATH", _env)
+        # emit legacy DT_RPATH (ignores LD_LIBRARY_PATH at runtime)
+        self.legacy_rpath = _get_env_bool("CUPY_INSTALL_LEGACY_RPATH", _env)
         # enable profiling for Cython code
         self.profile = _get_env_bool("CUPY_INSTALL_CYTHON_PROFILE", _env)
         # enable coverage for Cython code

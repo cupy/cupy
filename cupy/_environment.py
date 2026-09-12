@@ -295,7 +295,9 @@ def _can_attempt_preload(lib: str) -> bool:
     """Returns if the preload can be attempted."""
 
     config = get_preload_config()
-    if (config is None) or (config['packaging'] == 'conda'):
+    # NOTE: `.get()` rather than `[]` so that a hand-written or partial
+    # `_wheel.json` (e.g. from a source build) can not break `import cupy`.
+    if (config is None) or (config.get('packaging') == 'conda'):
         # We don't do preload if CuPy is installed from Conda-Forge, as we
         # cannot guarantee the version pinned in _wheel.json, which is
         # encoded in config[lib]['filenames'], is always available on

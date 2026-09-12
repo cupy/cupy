@@ -1,4 +1,4 @@
-# numpy for Ascend: fork from Cupy
+# numpy for Ascend NPU: forked from Cupy
 
 By Qingfeng Xia
 
@@ -14,7 +14,7 @@ By Qingfeng Xia
 
 see  [Progress.md](./Progress.md)
 
-### 2.1 introduction to Array API
+### 2.1 introduction to Python Array API standard
 https://github.com/data-apis/array-api
 
 ``` py
@@ -39,6 +39,7 @@ z_gpu = cpx.matmul(y_gpu, y_gpu)
 ```
 
 ### torch_npu used as numpy array API
+如果不需要兼容现有cupy/numpy代码, 对应新写的数据处理程序和AI数据预处理, 可以直接用torch的array API
 
 ```py
 import torch
@@ -88,10 +89,12 @@ currently, only support tensor op tensor, some op support tensor op scalar (aclS
 =====================================================
 # Developer Notes
 
+see also [Package.md](docs/Package.md) for build binary wheel for diff CANN version for manylinux, with minimum version requirement on libstdc++.so version
+
 ## 1. 开发环境
 没有NPU开发: 需要注释掉 runtime.pyx `initialize_backend(0)` 否则不能`import cupy`
 
-### 1.1 Ubuntu 24.04  in WSL2 (无昇腾硬件)
+### 1.1 Ubuntu 24.04 in WSL2 (无昇腾硬件)
 
 Ubuntu 22.04 似乎才是2025年推荐平台, 主要是python3.12不受支持, 但是通过conda安装得到pyhton3.10, 一样可以安装CANN
 
