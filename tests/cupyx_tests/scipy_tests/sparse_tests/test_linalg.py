@@ -333,6 +333,28 @@ class TestEigsh:
             a = sp.linalg.aslinearoperator(a)
         return self._test_eigsh(a, xp, sp)
 
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=tol, atol=tol, sp_name='sp')
+    def test_shift_invert(self, dtype, xp, sp):
+        # shift-invert mode mirrors scipy for the 'eigenvalues nearest sigma'
+        # ('LM' on the inverted operator) case only.
+        if self.use_linear_operator or self.which != 'LM':
+            pytest.skip()
+        a = self._make_matrix(dtype, xp)          # PSD Hermitian
+        a = sp.csr_matrix(a)
+        # sigma = -1 keeps A - sigma*I = A + I positive definite (invertible);
+        # 'LM' then returns the k eigenvalues nearest sigma.
+        ret = sp.linalg.eigsh(a, k=self.k, sigma=-1.0, which='LM',
+                              return_eigenvectors=self.return_eigenvectors)
+        if self.return_eigenvectors:
+            w, x = ret
+            ax_xw = a @ x - xp.multiply(x, w.reshape(1, self.k))
+            res = xp.linalg.norm(ax_xw) / xp.linalg.norm(w)
+            assert res < self.res_tol[numpy.dtype(a.dtype).char.lower()]
+        else:
+            w = ret
+        return xp.sort(w)
+
     def test_invalid(self):
         if self.use_linear_operator is True:
             pytest.skip()
@@ -351,7 +373,32 @@ class TestEigsh:
         with pytest.raises(ValueError):
             sp.linalg.eigsh(a, k=self.n)
         with pytest.raises(ValueError):
-            sp.linalg.eigsh(a, k=self.k, which='SM')
+            sp.linalg.eigsh(a, k=self.k, which='XX')
+
+    @testing.for_dtypes('fdFD')
+    def test_smallest_magnitude(self, dtype):
+        # which='SM' is an alias for shift-invert at sigma=0 (eigenvalues
+        # nearest 0 == smallest in magnitude). Cupy-only: compare the alias to
+        # explicit sigma=0 shift-invert and to a dense reference (scipy's plain
+        # 'SM' Lanczos is unreliable, so it is not used as the oracle here).
+        if self.use_linear_operator or self.which != 'LM':
+            pytest.skip()
+        eigsh = cupyx.scipy.sparse.linalg.eigsh
+        rt = self.res_tol[numpy.dtype(dtype).char.lower()]
+        a = self._make_matrix(dtype, cupy)
+        a = a + cupy.eye(self.n, dtype=a.dtype)   # PD (invertible at sigma=0)
+        a = sparse.csr_matrix(a)
+        w_sm = eigsh(a, k=self.k, which='SM', return_eigenvectors=False)
+        w_si = eigsh(a, k=self.k, sigma=0, which='LM',
+                     return_eigenvectors=False)
+        # the alias must match explicit shift-invert at sigma=0 ...
+        testing.assert_allclose(
+            cupy.sort(w_sm), cupy.sort(w_si), rtol=rt, atol=rt)
+        # ... and both are the k smallest-magnitude eigenvalues (dense ref).
+        ref = numpy.linalg.eigvalsh(cupy.asnumpy(a.toarray()))
+        ref = numpy.sort(ref[numpy.argsort(numpy.abs(ref))[:self.k]])
+        testing.assert_allclose(
+            cupy.asnumpy(cupy.sort(w_sm)), ref, rtol=rt, atol=rt)
 
     def test_starting_vector(self):
         eigsh = cupyx.scipy.sparse.linalg.eigsh
@@ -402,6 +449,138 @@ class TestEigshLateNormDiscovery:
 
 
 @testing.with_requires('scipy')
+@testing.parameterize(*testing.product({
+    'k': [3, 6, 12],
+    'return_eigenvectors': [True, False],
+    'use_linear_operator': [True, False],
+}))
+@testing.with_requires('scipy')
+class TestEigshSM:
+    # which='SM' against scipy, on sparse formats and dense, with and without
+    # a MatrixLinearOperator wrapper. The matrix is a*a^H: positive
+    # semidefinite and, at n=30 with density 0.33, generally rank-deficient,
+    # so this also exercises the automatic sub-zero shift -- a shift exactly
+    # at 0 would not factorize. (From cupy/cupy#10067.)
+    n = 30
+    density = 0.33
+    tol = {numpy.float32: 1e-4, numpy.complex64: 1e-4, 'default': 1e-10}
+    res_tol = {'f': 1e-5, 'd': 1e-12}
+
+    def _make_matrix(self, dtype, xp):
+        shape = (self.n, self.n)
+        a = testing.shaped_random(shape, xp, dtype=dtype)
+        mask = testing.shaped_random(shape, xp, dtype='f', scale=1)
+        a[mask > self.density] = 0
+        a = a * a.conj().T
+        return a
+
+    def _test_eigsh(self, a, a_norm, xp, sp):
+        ret = sp.linalg.eigsh(a, k=self.k, which='SM',
+                              return_eigenvectors=self.return_eigenvectors)
+        if self.return_eigenvectors:
+            w, x = ret
+            # Residual scaled by norm(a): norm(w) is ~0 for 'SM'.
+            ax_xw = a @ x - xp.multiply(x, w.reshape(1, self.k))
+            res = xp.linalg.norm(ax_xw) / a_norm
+            tol = self.res_tol[numpy.dtype(a.dtype).char.lower()]
+            assert (res < tol)
+        else:
+            w = ret
+        return xp.sort(w)
+
+    @pytest.mark.parametrize('format', ['csr', 'csc', 'coo'])
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=tol, atol=tol, sp_name='sp')
+    def test_sparse(self, format, dtype, xp, sp):
+        if runtime.is_hip and format == 'csc':
+            pytest.xfail('may be buggy')  # trans=True
+        a = self._make_matrix(dtype, xp)
+        a_norm = xp.linalg.norm(a)
+        a = sp.coo_matrix(a).asformat(format)
+        if self.use_linear_operator:
+            a = sp.linalg.aslinearoperator(a)
+        return self._test_eigsh(a, a_norm, xp, sp)
+
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=tol, atol=tol, sp_name='sp')
+    def test_dense(self, dtype, xp, sp):
+        a = self._make_matrix(dtype, xp)
+        a_norm = xp.linalg.norm(a)
+        if self.use_linear_operator:
+            a = sp.linalg.aslinearoperator(a)
+        return self._test_eigsh(a, a_norm, xp, sp)
+
+
+@testing.parameterize(*testing.product({
+    'which': ['LM', 'LA', 'SA'],
+    'k': [3, 6],
+    'return_eigenvectors': [True, False],
+    'format': ['dense', 'csr'],
+}))
+@testing.with_requires('scipy')
+class TestEigshSigma:
+    # sigma= against scipy: `which` applies to the transformed values
+    # 1 / (w - sigma), so 'LA'/'SA' pick the k eigenvalues nearest sigma from
+    # above / below. (From cupy/cupy#10067.)
+    n = 30
+    density = 0.33
+    sigma = 0.5
+    tol = {numpy.float32: 1e-4, numpy.complex64: 1e-4, 'default': 1e-10}
+    res_tol = {'f': 1e-5, 'd': 1e-12}
+
+    def _make_matrix(self, dtype, xp):
+        shape = (self.n, self.n)
+        a = testing.shaped_random(shape, xp, dtype=dtype)
+        mask = testing.shaped_random(shape, xp, dtype='f', scale=1)
+        a[mask > self.density] = 0
+        a = a * a.conj().T
+        return a
+
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=tol, atol=tol, sp_name='sp')
+    def test_sigma(self, dtype, xp, sp):
+        a = self._make_matrix(dtype, xp)
+        a_norm = xp.linalg.norm(a)
+        if self.format == 'csr':
+            a = sp.csr_matrix(a)
+        ret = sp.linalg.eigsh(a, k=self.k, sigma=self.sigma,
+                              which=self.which,
+                              return_eigenvectors=self.return_eigenvectors)
+        if self.return_eigenvectors:
+            w, x = ret
+            ax_xw = a @ x - xp.multiply(x, w.reshape(1, self.k))
+            res = xp.linalg.norm(ax_xw) / a_norm
+            tol = self.res_tol[numpy.dtype(a.dtype).char.lower()]
+            assert (res < tol)
+        else:
+            w = ret
+        if numpy.dtype(dtype).kind == 'c':
+            # scipy returns complex results in inconsistent order
+            w = xp.sort(w)
+        return w
+
+
+@testing.with_requires('scipy')
+class TestEigshShiftInvertInvalid:
+    n = 30
+
+    def test_sigma_with_sm(self):
+        a = cupy.diag(cupy.ones((self.n,), dtype='f'))
+        with pytest.raises(ValueError):
+            sparse.linalg.eigsh(a, k=3, which='SM', sigma=1.0)
+
+    def test_linear_operator_without_opinv(self):
+        # A matrix-free operator cannot be factorized; without OPinv this
+        # must raise rather than silently do something else.
+        a = cupy.diag(cupy.ones((self.n,), dtype='f'))
+        op = sparse.linalg.LinearOperator(
+            (self.n, self.n), matvec=lambda x: a @ x, dtype=a.dtype)
+        with pytest.raises(TypeError):
+            sparse.linalg.eigsh(op, k=3, which='SM')
+        with pytest.raises(TypeError):
+            sparse.linalg.eigsh(op, k=3, sigma=0.5)
+
+
 class TestEigshTinyN:
     # n = 2 forces ncv = n - 1 = 1, so the sweep yields a single row and the
     # breakdown walk has no interior beta to inspect. Regression guard: the
