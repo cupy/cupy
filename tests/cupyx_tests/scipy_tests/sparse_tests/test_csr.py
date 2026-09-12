@@ -1487,6 +1487,43 @@ class TestCsrMatrixScipyCompressedMinMax:
 
 
 @testing.parameterize(*testing.product({
+    'axis': [-2, -1, 0, 1],
+}))
+@testing.with_requires('scipy')
+class TestCsrMatrixArgMinMaxExplicitZero:
+    # An explicitly stored zero that occurs before the first implicit zero
+    # must win a tie, per the "first occurrence" contract of argmax/argmin.
+    # The dense view of the fixture is
+    #   [[0* -1  .  .]
+    #    [ 3  0*  2  .]
+    #    [ 5  .  7  .]
+    #    [ .  0*  .  .]]
+    # where . is an implicit zero and * marks explicitly stored zeros.
+    # The matrix is built directly in the compressed format the reduction
+    # runs on (CSR for axis 1, CSC for axis 0) so that both template
+    # instantiations of the kernel are exercised.
+
+    def _make(self, xp, sp):
+        if self.axis in (1, -1):
+            indptr = xp.array([0, 2, 5, 7, 8])
+            indices = xp.array([0, 1, 0, 1, 2, 0, 2, 1])
+            data = xp.array([0.0, -1.0, 3.0, 0.0, 2.0, 5.0, 7.0, 0.0])
+            return sp.csr_matrix((data, indices, indptr), shape=(4, 4))
+        indptr = xp.array([0, 3, 6, 8, 8])
+        indices = xp.array([0, 1, 2, 0, 1, 3, 1, 2])
+        data = xp.array([0.0, 3.0, 5.0, -1.0, 0.0, 0.0, 2.0, 7.0])
+        return sp.csc_matrix((data, indices, indptr), shape=(4, 4))
+
+    @testing.numpy_cupy_array_equal(sp_name='sp', type_check=False)
+    def test_argmax(self, xp, sp):
+        return xp.array(self._make(xp, sp).argmax(axis=self.axis))
+
+    @testing.numpy_cupy_array_equal(sp_name='sp', type_check=False)
+    def test_argmin(self, xp, sp):
+        return xp.array(self._make(xp, sp).argmin(axis=self.axis))
+
+
+@testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
 @testing.with_requires('scipy')
