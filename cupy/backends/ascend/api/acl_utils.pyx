@@ -6,7 +6,11 @@ from collections import namedtuple
 from cupy._core import _dtype
 from cupy._core.core import _ndarray_base
 from cupy._core._scalar cimport CScalar, scalar_to_c_scalar
-from libc.stdint cimport int32_t, int16_t
+from libc.stdint cimport (
+    int32_t, int16_t, int64_t,
+    uint8_t, uint16_t, uint32_t, uint64_t,
+    uintptr_t,
+)
 from libc.string cimport memcpy
 from libcpp.unordered_map cimport unordered_map as cpp_map
 from cython.operator cimport dereference as deref, preincrement as inc
@@ -51,7 +55,7 @@ cdef extern from "aclnn/opdev/common_types.h" nogil:
     aclnnStatus aclDestroyIntArray(const aclIntArray *array)
     const char *aclGetRecentErrMsg()
 
-cdef aclDataType numpy_to_acl_dtype(dtype,
+cdef aclDataType numpy_dtype_to_acl_dtype(dtype,
     bint is_half_allowed=True, bint is_double_supported=True):
     # double and complex128 is not supported on ASCEND910
     cdef str dtype_char
@@ -153,8 +157,24 @@ cdef aclScalar* cupy_scalar_to_acl_scalar(_cupy_scalar s) except*:
                 raise MemoryError("Failed to allocate memory for integer32 scalar")
             (<int16_t*>value_ptr)[0] = (<int16_t*>s.ptr)[0]
             dtype = ACL_INT16
-        elif s.kind == 'u':  # unsign 整数类型
-            raise TypeError("Unsigned integer scalar is not supported yet, TODO")
+        elif s.kind == 'u':  # unsigned 整数类型
+            value_ptr = PyMem_Malloc(s.size)
+            if value_ptr == NULL:
+                raise MemoryError("Failed to allocate memory for unsigned scalar")
+            if s.size == 1:
+                (<uint8_t*>value_ptr)[0] = (<uint8_t*>s.ptr)[0]
+                dtype = ACL_UINT8
+            elif s.size == 2:
+                (<uint16_t*>value_ptr)[0] = (<uint16_t*>s.ptr)[0]
+                dtype = ACL_UINT16
+            elif s.size == 4:
+                (<uint32_t*>value_ptr)[0] = (<uint32_t*>s.ptr)[0]
+                dtype = ACL_UINT32
+            elif s.size == 8:
+                (<uint64_t*>value_ptr)[0] = (<uint64_t*>s.ptr)[0]
+                dtype = ACL_UINT64
+            else:
+                raise TypeError(f"Unsigned scalar of size {s.size} is not supported")
         elif s.kind == 'f' and s.size == 8:  # 浮点类型
             value_ptr = PyMem_Malloc(sizeof(double))
             if value_ptr == NULL:
@@ -167,13 +187,13 @@ cdef aclScalar* cupy_scalar_to_acl_scalar(_cupy_scalar s) except*:
                 raise MemoryError("Failed to allocate memory for float32 scalar")
             (<float*>value_ptr)[0] = (<float*>s.ptr)[0]
             dtype = ACL_FLOAT
-        elif s.kind == 'f' and s.size == 2:  # 浮点类型
-            value_ptr = PyMem_Malloc(sizeof(unsigned short))
+        elif s.kind == 'f' and s.size == 2:  # float16: stored as raw bits
+            value_ptr = PyMem_Malloc(sizeof(uint16_t))
             if value_ptr == NULL:
                 raise MemoryError("Failed to allocate memory for float16 scalar")
-            (<float*>value_ptr)[0] = (<unsigned short*>s.ptr)[0]
+            (<uint16_t*>value_ptr)[0] = (<uint16_t*>s.ptr)[0]
             dtype = ACL_FLOAT16
-        elif s.kind == 'C':  # complex
+        elif s.kind == 'c' or s.kind == 'C':  # complex
             if s.size == 8:
                 value_ptr = PyMem_Malloc(s.size)
                 if value_ptr == NULL:
@@ -187,7 +207,7 @@ cdef aclScalar* cupy_scalar_to_acl_scalar(_cupy_scalar s) except*:
                 (<complex[double]*>value_ptr)[0] = (<complex[double]*>s.ptr)[0]
                 dtype = ACL_COMPLEX128
             else:
-                raise TypeError("Complex scalar is not supported yet, TODO")
+                raise TypeError(f"Complex scalar of size {s.size} is not supported")
         elif s.kind == 'S':  # string type is not supported by cupy.CScalar
             raise TypeError("string scalar is not supported yet, TODO")
         elif s.kind == 'b':  # bool
@@ -278,41 +298,57 @@ cdef aclTensor* cupy_ndarray_to_acl_tensor(_ndarray_base cupy_array) except *:
         void* tensor_data = NULL
         int i
         int64_t ndim
-    
+        object owner_ref = None
+        Py_ssize_t remaining
+
     try:
         # 1. 获取CuPy数组的形状和维度
         ndim = len(cupy_array._shape) # len() works for cython 3.1+ only
-        
+
+        # aclnnTensorData 的偏移必须以元素为单位从 buffer 起点计算, 而 CuPy
+        # 的 nbytes 是从 data.ptr 起算的剩余字节数（视图不包含前面的数据）,
+        # 因此视图无法用 offset 表达, 这里先物化成从 0 开始的新数组。
+        if cupy_array.size:
+            remaining = cupy_array.data.mem.size - cupy_array.data.ptr
+        else:
+            remaining = 0
+        if remaining < cupy_array.nbytes:
+            owner_ref = cupy_array
+            cupy_array = cupy_array.copy()
+        else:
+            owner_ref = cupy_array
+            cupy_array = cupy_array
+
         # 分配内存用于存储维度信息
         view_dims = <int64_t*>PyMem_Malloc(ndim * sizeof(int64_t))
         strides = <int64_t*>PyMem_Malloc(ndim * sizeof(int64_t))
         storage_dims = <int64_t*>PyMem_Malloc(ndim * sizeof(int64_t))
-        
+
         if view_dims == NULL or strides == NULL or storage_dims == NULL:
             raise MemoryError("Failed to allocate memory for dimension arrays")
-        
+
         # 填充维度信息
+        item_size = cupy_array.dtype.itemsize
         for i in range(ndim):
             view_dims[i] = cupy_array._shape[i]
-            # aclTensor strids using element size, not the byte size
-            strides[i] = cupy_array._strides[i] / cupy_array.dtype.itemsize
+            # aclTensor strides use element size, not the byte size
+            strides[i] = cupy_array._strides[i] // item_size
             storage_dims[i] = cupy_array._shape[i]  # 假设存储形状与视图形状相同
-        
+
         # 2. 映射数据类型
-        data_type = numpy_to_acl_dtype(cupy_array.dtype)
+        data_type = numpy_dtype_to_acl_dtype(cupy_array.dtype)
         if data_type == ACL_DT_UNDEFINED:
             raise ValueError(f"Unsupported dtype: {cupy_array.dtype}")
-        
+
         # 3. 获取数据指针
         tensor_data = <void*>cupy_array.data.ptr
-        
+
         # 4. 根据内存布局选择合适的格式
-        if cupy_array._c_contiguous:
-            format = ACL_FORMAT_ND
-        elif cupy_array._f_contiguous:
-            format = ACL_FORMAT_NHWC  # 假设Fortran连续对应NHWC格式
-        else:
-            format = ACL_FORMAT_ND  # 非连续数组使用默认格式
+        if cupy_array._f_contiguous and ndim > 1 and not cupy_array._c_contiguous:
+            raise NotImplementedError(
+                'Ascend does not support Fortran-contiguous arrays: '
+                'call cupy.ascontiguousarray() first')
+        format = ACL_FORMAT_ND
         
         # 5. 创建ACL Tensor
         acl_tensor = aclCreateTensor(
@@ -329,7 +365,9 @@ cdef aclTensor* cupy_ndarray_to_acl_tensor(_ndarray_base cupy_array) except *:
         
         if acl_tensor == NULL:
             raise RuntimeError("Failed to create ACL tensor")
-        
+
+        # 把物化后的数组/原数组挂到 tensor 上, 保证在 tensor 生命周期内数据不被释放
+        cupy_acl_tensor_owners[<uintptr_t>acl_tensor] = owner_ref
         return acl_tensor
         
     except Exception as e:
@@ -343,6 +381,16 @@ cdef aclTensor* cupy_ndarray_to_acl_tensor(_ndarray_base cupy_array) except *:
         if acl_tensor != NULL:
             aclDestroyTensor(acl_tensor)
         raise e
+
+
+# aclTensor* -> 持有其数据 buffer 的 Python 对象（可能是物化出来的临时数组）。
+# aclDestroyTensor 只释放 shape/stride 元数据，不释放数据，所以必须在这里保活。
+cdef dict cupy_acl_tensor_owners = {}
+
+
+cdef aclError cupy_destroy_acl_tensor(const aclTensor* tensor) except *:
+    cupy_acl_tensor_owners.pop(<uintptr_t>tensor, None)
+    return aclDestroyTensor(tensor)
 
 
 cdef extern from "../acl_opinfo.h":
@@ -505,9 +553,9 @@ cdef aclError launch_general_func(str opname, sequence ins, sequence outs, list 
         # aclDestroyTensor does not deallocate array buffer, but shapes, strides
         for i in range(intensors.size()):
             ct = <const aclTensor*>intensors.at(i)
-            aclDestroyTensor(ct)
+            cupy_destroy_acl_tensor(ct)
         for t in outtensors:
-            aclDestroyTensor(t)
+            cupy_destroy_acl_tensor(t)
         for acl_scalar in acl_args:
             aclDestroyScalar(acl_scalar)
         _delete_keyword_args(acl_kwargs)
@@ -604,7 +652,7 @@ cdef aclError launch_acl_func(str opname, sequence ins, sequence outs, list args
     finally:
         # does not deallocate array buffer, but shapes, strides
         for t in tensors:
-            aclDestroyTensor(t)  # 假设destroyAclTensor函数已存在
+            cupy_destroy_acl_tensor(t)
         if scalar_ptr:
             aclDestroyScalar(scalar_ptr)
 
@@ -661,7 +709,7 @@ cdef aclError launch_reduction_op(str opname, sequence ins, sequence outs, objec
     finally:
         # does not deallocate array buffer, but shapes, strides
         for t in tensors:
-            aclDestroyTensor(t)  # 假设destroyAclTensor函数已存在
+            cupy_destroy_acl_tensor(t)
         if dim:
             aclDestroyIntArray(dim)
         _delete_keyword_args(acl_kwargs)
@@ -716,8 +764,10 @@ cdef extern from "../acl_math_ops.h" nogil:
 
     aclError aclop_Maximum(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
     aclError aclop_Minimum(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_Hypot(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_Copysign(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
     aclError aclop_Gcd(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
-    aclError aclop_lcm(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_Lcm(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
     aclError aclop_PowTensorTensor(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
     aclError aclop_RemainderTensorTensor(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
 
@@ -736,10 +786,29 @@ cdef extern from "../acl_math_ops.h" nogil:
     aclError aclop_Signbit(const aclTensor* self,  aclTensor* out, aclrtStream stream)
     aclError aclop_Sign(const aclTensor* self,  aclTensor* out, aclrtStream stream)
     aclError aclop_Abs(const aclTensor* self,  aclTensor* out, aclrtStream stream)
+    aclError aclop_Fabs(const aclTensor* self,  aclTensor* out, aclrtStream stream)
     aclError aclop_Floor(const aclTensor* self,  aclTensor* out, aclrtStream stream)
     aclError aclop_InplaceFloor(aclTensor* self,  aclrtStream stream)
     aclError aclop_Ceil(const aclTensor* self,  aclTensor* out, aclrtStream stream)
     aclError aclop_InplaceCeil(aclTensor* self,  aclrtStream stream)
+
+    aclError aclop_Acosh(const aclTensor* self,  aclTensor* out, aclrtStream stream)
+    aclError aclop_InplaceAcosh(aclTensor* self,  aclrtStream stream)
+    aclError aclop_Asinh(const aclTensor* self,  aclTensor* out, aclrtStream stream)
+    aclError aclop_InplaceAsinh(aclTensor* self,  aclrtStream stream)
+    aclError aclop_Atanh(const aclTensor* self,  aclTensor* out, aclrtStream stream)
+    aclError aclop_InplaceAtanh(aclTensor* self,  aclrtStream stream)
+    aclError aclop_Exp2(const aclTensor* self,  aclTensor* out, aclrtStream stream)
+    aclError aclop_InplaceExp2(aclTensor* self,  aclrtStream stream)
+    aclError aclop_Sqrt(const aclTensor* self,  aclTensor* out, aclrtStream stream)
+    aclError aclop_InplaceSqrt(aclTensor* self,  aclrtStream stream)
+
+    aclError aclop_Trunc(const aclTensor* self,  aclTensor* out, aclrtStream stream)
+    aclError aclop_InplaceTrunc(aclTensor* self,  aclrtStream stream)
+    aclError aclop_Rint(const aclTensor* self,  aclTensor* out, aclrtStream stream)
+    aclError aclop_InplaceRint(aclTensor* self,  aclrtStream stream)
+    aclError aclop_Real(const aclTensor* self,  aclTensor* out, aclrtStream stream)
+    aclError aclop_Cbrt(const aclTensor* self,  aclTensor* out, aclrtStream stream)
 
     aclError aclop_Square(const aclTensor* self,  aclTensor* out, aclrtStream stream)
     aclError aclop_Rsqrt(const aclTensor* self,  aclTensor* out, aclrtStream stream)
@@ -891,6 +960,8 @@ cdef void register_math_operators():
     register_acl_ufunc("ascend_minimum", BINARY_OP, func_union)
     func_union.binary_op = aclop_Gcd
     register_acl_ufunc("ascend_gcd", BINARY_OP, func_union)
+    func_union.binary_op = aclop_Lcm
+    register_acl_ufunc("ascend_lcm", BINARY_OP, func_union)
     func_union.binary_op = aclop_RemainderTensorTensor
     register_acl_ufunc("ascend_remainder", BINARY_OP, func_union)
     func_union.binary_op = aclop_PowTensorTensor
@@ -910,6 +981,8 @@ cdef void register_math_operators():
     register_acl_ufunc("ascend_inplace_negative", INPLACE_UNARY_OP, func_union)
     func_union.unary_op = aclop_Abs
     register_acl_ufunc("ascend_absolute", UNARY_OP, func_union)
+    func_union.unary_op = aclop_Fabs
+    register_acl_ufunc("ascend_fabs", UNARY_OP, func_union)
     func_union.unary_op = aclop_Signbit
     register_acl_ufunc("ascend_signbit", UNARY_OP, func_union)
     func_union.unary_op = aclop_Sign
@@ -941,6 +1014,65 @@ cdef void register_math_operators():
     register_acl_ufunc("ascend_ceil", UNARY_OP, func_union)
     func_union.inplace_unary_op = aclop_InplaceCeil
     register_acl_ufunc("ascend_inplace_ceil", INPLACE_UNARY_OP, func_union)
+
+    func_union.unary_op = aclop_Trunc
+    register_acl_ufunc("ascend_trunc", UNARY_OP, func_union)
+    func_union.inplace_unary_op = aclop_InplaceTrunc
+    register_acl_ufunc("ascend_inplace_trunc", INPLACE_UNARY_OP, func_union)
+    func_union.unary_op = aclop_Rint
+    register_acl_ufunc("ascend_rint", UNARY_OP, func_union)
+    func_union.inplace_unary_op = aclop_InplaceRint
+    register_acl_ufunc("ascend_inplace_rint", INPLACE_UNARY_OP, func_union)
+    func_union.unary_op = aclop_Cbrt
+    register_acl_ufunc("ascend_cbrt", UNARY_OP, func_union)
+    func_union.unary_op = aclop_Real
+    register_acl_ufunc("ascend_real", UNARY_OP, func_union)
+    func_union.unary_op = aclop_Sqrt
+    register_acl_ufunc("ascend_sqrt", UNARY_OP, func_union)
+    func_union.inplace_unary_op = aclop_InplaceSqrt
+    register_acl_ufunc("ascend_inplace_sqrt", INPLACE_UNARY_OP, func_union)
+    func_union.unary_op = aclop_Exp2
+    register_acl_ufunc("ascend_exp2", UNARY_OP, func_union)
+    func_union.inplace_unary_op = aclop_InplaceExp2
+    register_acl_ufunc("ascend_inplace_exp2", INPLACE_UNARY_OP, func_union)
+    # cupy_arccosh / cupy_arcsinh / cupy_arctanh
+    func_union.unary_op = aclop_Acosh
+    register_acl_ufunc("ascend_arccosh", UNARY_OP, func_union)
+    func_union.inplace_unary_op = aclop_InplaceAcosh
+    register_acl_ufunc("ascend_inplace_arccosh", INPLACE_UNARY_OP, func_union)
+    func_union.unary_op = aclop_Asinh
+    register_acl_ufunc("ascend_arcsinh", UNARY_OP, func_union)
+    func_union.inplace_unary_op = aclop_InplaceAsinh
+    register_acl_ufunc("ascend_inplace_arcsinh", INPLACE_UNARY_OP, func_union)
+    func_union.unary_op = aclop_Atanh
+    register_acl_ufunc("ascend_arctanh", UNARY_OP, func_union)
+    func_union.inplace_unary_op = aclop_InplaceAtanh
+    register_acl_ufunc("ascend_inplace_arctanh", INPLACE_UNARY_OP, func_union)
+
+    # numpy.power / numpy.float_power reuse the aclnn pow kernels.
+    func_union.binary_op = aclop_PowTensorTensor
+    register_acl_ufunc("ascend_power", BINARY_OP, func_union)
+    func_union.scalar_binary_op = aclop_PowTensorScalar
+    register_acl_ufunc("ascend_power", SCALAR_BINARY_OP, func_union)
+    func_union.binary_op = aclop_PowTensorTensor
+    register_acl_ufunc("ascend_float_power", BINARY_OP, func_union)
+    func_union.scalar_binary_op = aclop_PowTensorScalar
+    register_acl_ufunc("ascend_float_power", SCALAR_BINARY_OP, func_union)
+
+    # numpy.fmax / numpy.fmin ignore NaN, which matches aclnnMaximum/Minimum.
+    func_union.binary_op = aclop_Maximum
+    register_acl_ufunc("ascend_fmax", BINARY_OP, func_union)
+    func_union.binary_op = aclop_Minimum
+    register_acl_ufunc("ascend_fmin", BINARY_OP, func_union)
+
+    # numpy.invert is the ufunc name for bitwise_not (alias in cupy).
+    func_union.unary_op = aclop_BitwiseNot
+    register_acl_ufunc("ascend_invert", UNARY_OP, func_union)
+
+    func_union.binary_op = aclop_Hypot
+    register_acl_ufunc("ascend_hypot", BINARY_OP, func_union)
+    func_union.binary_op = aclop_Copysign
+    register_acl_ufunc("ascend_copysign", BINARY_OP, func_union)
 
     func_union.unary_op = aclop_Exp
     register_acl_ufunc("ascend_exp", UNARY_OP, func_union)
@@ -984,25 +1116,27 @@ cdef void register_math_operators():
     func_union.inplace_unary_op = aclop_InplaceTan
     register_acl_ufunc("ascend_inplace_tan", INPLACE_UNARY_OP, func_union)
     ##################### arcXXX op ######################
+    # NOTE: cupy ufunc names use the `arc` prefix (cupy_arccos, cupy_arcsin,
+    # cupy_arctan, cupy_arctan2), so the registered opnames must match.
     func_union.unary_op = aclop_Acos
-    register_acl_ufunc("ascend_acos", UNARY_OP, func_union)
-    # 注册aclop_InplaceCos作为原地操作
+    register_acl_ufunc("ascend_arccos", UNARY_OP, func_union)
     func_union.inplace_unary_op = aclop_InplaceAcos
-    register_acl_ufunc("ascend_inplace_acos", INPLACE_UNARY_OP, func_union)
+    register_acl_ufunc("ascend_inplace_arccos", INPLACE_UNARY_OP, func_union)
 
     func_union.unary_op = aclop_Asin
-    register_acl_ufunc("ascend_asin", UNARY_OP, func_union)
+    register_acl_ufunc("ascend_arcsin", UNARY_OP, func_union)
     func_union.inplace_unary_op = aclop_InplaceAsin
-    register_acl_ufunc("ascend_inplace_asin", INPLACE_UNARY_OP, func_union)
+    register_acl_ufunc("ascend_inplace_arcsin", INPLACE_UNARY_OP, func_union)
 
     func_union.unary_op = aclop_Atan
-    register_acl_ufunc("ascend_atan", UNARY_OP, func_union)
+    register_acl_ufunc("ascend_arctan", UNARY_OP, func_union)
     func_union.inplace_unary_op = aclop_InplaceAtan
-    register_acl_ufunc("ascend_inplace_atan", INPLACE_UNARY_OP, func_union)
+    register_acl_ufunc("ascend_inplace_arctan", INPLACE_UNARY_OP, func_union)
+
+    # NOTE: aclnn has no arcsinh / arccosh / arctanh; emulated elsewhere.
     ###################### cosh op #####################
     func_union.unary_op = aclop_Cosh
     register_acl_ufunc("ascend_cosh", UNARY_OP, func_union)
-    # 注册aclop_InplaceCos作为原地操作
     func_union.inplace_unary_op = aclop_InplaceCosh
     register_acl_ufunc("ascend_inplace_cosh", INPLACE_UNARY_OP, func_union)
 
@@ -1017,7 +1151,7 @@ cdef void register_math_operators():
     register_acl_ufunc("ascend_inplace_tanh", INPLACE_UNARY_OP, func_union)
 
     func_union.binary_op = aclop_Atan2
-    register_acl_ufunc("ascend_tan2", BINARY_OP, func_union)
+    register_acl_ufunc("ascend_arctan2", BINARY_OP, func_union)
     func_union.unary_op = aclop_Sinc
     register_acl_ufunc("ascend_sinc", UNARY_OP, func_union)
     func_union.unary_op = aclop_Erf
@@ -1093,6 +1227,12 @@ cdef extern from "../acl_general_ops.h" nogil:
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
     aclError aclop_Flip(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_Permute(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_Roll(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_Cast(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
     aclError aclop_Sort(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
     aclError aclop_Argsort(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
@@ -1105,6 +1245,8 @@ cdef extern from "../acl_general_ops.h" nogil:
 
     # special math ops
     aclError aclop_Round(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_NanToNum(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
     aclError aclop_Divmod(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
@@ -1124,10 +1266,16 @@ cdef void register_irregular_operators():
     register_acl_ufunc("ascend_stack", GENERAL_OP, func_union)
     func_union.general_op = aclop_Flip
     register_acl_ufunc("ascend_flip", GENERAL_OP, func_union)
+    func_union.general_op = aclop_Permute
+    register_acl_ufunc("ascend_permute", GENERAL_OP, func_union)
+    func_union.general_op = aclop_Roll
+    register_acl_ufunc("ascend_roll", GENERAL_OP, func_union)
+    func_union.general_op = aclop_Cast
+    register_acl_ufunc("ascend_cast", GENERAL_OP, func_union)
 
     func_union.general_op = aclop_Sort
     register_acl_ufunc("ascend_sort", GENERAL_OP, func_union)
-    func_union.general_op = aclop_Sort
+    func_union.general_op = aclop_Argsort
     register_acl_ufunc("ascend_argsort", GENERAL_OP, func_union)
 
     func_union.general_op = aclop_Take
@@ -1143,6 +1291,9 @@ cdef void register_irregular_operators():
 
     func_union.general_op = aclop_Round
     register_acl_ufunc("ascend_round", GENERAL_OP, func_union)
+    func_union.general_op = aclop_NanToNum
+    register_acl_ufunc("ascend_nan_to_num", GENERAL_OP, func_union)
+    register_acl_ufunc("ascend_nan_to_num_", GENERAL_OP, func_union)
     func_union.general_op = aclop_Divmod
     register_acl_ufunc("ascend_divmod", GENERAL_OP, func_union)
     func_union.general_op = aclop_Clamp
@@ -1154,6 +1305,8 @@ cdef void register_irregular_operators():
 
     func_union.unary_op = aclop_Copy
     register_acl_ufunc("ascend_copy", UNARY_OP, func_union)
+    # numpy.positive(+x) is the identity for every non-bool dtype.
+    register_acl_ufunc("ascend_positive", UNARY_OP, func_union)
     func_union.general_op  = aclop_Fill
     register_acl_ufunc("ascend_fill", GENERAL_OP, func_union)
     func_union.unary_op = aclop_Nonzero
@@ -1186,6 +1339,25 @@ def py_launch_acl_func(str opname, tuple ops, bint inplace=False):
     cdef string c_opname = opname.encode('utf-8')
     return launch_acl_func(c_opname, ops, inplace)
 '''
+
+def py_list_acl_ufuncs():
+    """Return the list of registered aclnn op names as ``(opname, op_type)``.
+
+    Introspection helper for tooling/tests: it exposes the contents of the
+    internal ``_builtin_operators`` registry so that op coverage can be audited
+    without a device. `op_type` is the integer value of the ``OpType`` enum
+    (see ``acl_opinfo.h``).
+    """
+    cdef list result = []
+    cdef cpp_map[OpInfo, FuncPtrUnion, OpInfo.Hash].iterator it = _builtin_operators.begin()
+    cdef cpp_map[OpInfo, FuncPtrUnion, OpInfo.Hash].iterator end = _builtin_operators.end()
+    cdef OpInfo op_info
+    while it != end:
+        op_info = deref(it).first
+        result.append((op_info.op_name.decode('utf-8'), <int>op_info.op_type))
+        inc(it)
+    return result
+
 
 cdef void init_builtin_operators():
     register_math_operators()

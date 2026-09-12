@@ -5,6 +5,8 @@
 #include <type_traits>
 #include <limits>
 #include <cmath>
+#include <cstdint>
+#include <cstring>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -98,6 +100,74 @@ template<typename ToScalarType> ToScalarType CheckIntegerArg(double source_value
     }
 }
 
+// IEEE-754 binary16 位模式 -> float（aclnn 侧没有可直接使用的半精度转换工具）
+inline float HalfBitsToFloat(uint16_t bits) {
+    auto sign = static_cast<uint32_t>(bits & 0x8000u) << 16;
+    uint32_t exp = (bits >> 10) & 0x1fu;
+    uint32_t frac = bits & 0x3ffu;
+    uint32_t out;
+    if (exp == 0) {
+        if (frac == 0) {
+            out = sign;  // +/-0
+        } else {
+            // subnormal: normalize
+            exp = 127 - 15 + 1;
+            while ((frac & 0x400u) == 0) {
+                frac <<= 1;
+                --exp;
+            }
+            frac &= 0x3ffu;
+            out = sign | (exp << 23) | (frac << 13);
+        }
+    } else if (exp == 0x1fu) {
+        out = sign | 0x7f800000u | (frac << 13);  // Inf / NaN
+    } else {
+        out = sign | ((exp + (127 - 15)) << 23) | (frac << 13);
+    }
+    float f;
+    std::memcpy(&f, &out, sizeof(f));
+    return f;
+}
+
+// 提取 aclScalar 的值并统一转换成 double
+inline double AclScalarToDouble(const aclScalar* s) {
+    if (s == nullptr) {
+        throw std::invalid_argument("AclScalarToDouble: aclScalar pointer is null");
+    }
+    op::DataType dtype = s->GetDataType();
+    const void* vdata = s->GetData();
+    switch (dtype) {
+        case op::DataType::DT_BOOL:
+            return *static_cast<const bool*>(vdata) ? 1.0 : 0.0;
+        case op::DataType::DT_INT8:
+            return static_cast<double>(*static_cast<const int8_t*>(vdata));
+        case op::DataType::DT_UINT8:
+            return static_cast<double>(*static_cast<const uint8_t*>(vdata));
+        case op::DataType::DT_INT16:
+            return static_cast<double>(*static_cast<const int16_t*>(vdata));
+        case op::DataType::DT_UINT16:
+            return static_cast<double>(*static_cast<const uint16_t*>(vdata));
+        case op::DataType::DT_INT32:
+            return static_cast<double>(*static_cast<const int32_t*>(vdata));
+        case op::DataType::DT_UINT32:
+            return static_cast<double>(*static_cast<const uint32_t*>(vdata));
+        case op::DataType::DT_INT64:
+            return static_cast<double>(*static_cast<const int64_t*>(vdata));
+        case op::DataType::DT_UINT64:
+            return static_cast<double>(*static_cast<const uint64_t*>(vdata));
+        case op::DataType::DT_FLOAT:
+            return static_cast<double>(*static_cast<const float*>(vdata));
+        case op::DataType::DT_DOUBLE:
+            return *static_cast<const double*>(vdata);
+        case op::DataType::DT_FLOAT16:
+            // IEEE-754 binary16 -> float
+            return static_cast<double>(
+                HalfBitsToFloat(*static_cast<const uint16_t*>(vdata)));
+        default:
+            throw std::runtime_error("AclScalarToDouble: unsupported aclScalar dtype");
+    }
+}
+
 template<typename ToScalarType> ToScalarType CheckFloatArg(double source_value, op::DataType dtype,
     bool throw_on_error = true, bool warn_on_precision_loss = true) {
 
@@ -126,7 +196,8 @@ template<typename ToScalarType> ToScalarType CheckFloatArg(double source_value, 
     }
     
     // 检查精度损失（高精度浮点数转低精度）
-    if constexpr (std::is_same_v<ToScalarType, float> && 
+    // NOTE: `dtype` is a runtime value, so this can not be `if constexpr`.
+    if (std::is_same_v<ToScalarType, float> &&
                     (dtype == op::DataType::DT_DOUBLE)) {
         float converted = static_cast<float>(source_value);
         double round_trip = static_cast<double>(converted);
@@ -157,12 +228,10 @@ ToScalarType ToScalarArg(const aclScalar* s, bool throw_on_error = true) {
     op::DataType dtype = s->GetDataType();
     const char* target_type_name = typeid(ToScalarType).name();
     
-    // 用于存储源值的中间变量
-    double source_value = 0.0;
-    
     // 提取源值并转换为double进行统一处理
+    double source_value = 0.0;
     if (op::IsBasicType(dtype)) {
-        // source_value = dtype.ToDouble();  // TODO
+        source_value = AclScalarToDouble(s);
     } else {
         if (throw_on_error) {
             throw std::runtime_error("Unsupported aclScalar data type");

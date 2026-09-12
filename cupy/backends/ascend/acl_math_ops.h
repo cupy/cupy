@@ -42,7 +42,14 @@
 //#include "aclnnop/aclnn_pos.h" // no such op
 #include "aclnnop/aclnn_ceil.h"
 #include "aclnnop/aclnn_floor.h"
+#include "aclnnop/aclnn_trunc.h"   // numpy.fix / numpy.trunc
+#include "aclnnop/aclnn_round.h"   // numpy.rint / numpy.round / around
+#include "aclnnop/aclnn_real.h"    // complex related
+// numpy.conj / numpy.imag: CANN 8.5 has no dedicated aclnn op, they are
+// emulated in Cython (conj = conj-real + (-1)*imag, imag = view of the
+// imaginary part of a complex tensor).
 #include "aclnnop/aclnn_clamp.h" // numpy.clip
+#include "aclnnop/aclnn_s_where.h" // ternary select, used by copysign etc.
 #include "aclnnop/aclnn_signbit.h"
 #include "aclnnop/aclnn_sign.h"
 #include "aclnnop/aclnn_reciprocal.h"
@@ -62,7 +69,6 @@
 #include "aclnnop/aclnn_complex.h"
 //#include "aclnnop/aclnn_angle.h"
 // #include "aclnnop/aclnn_conjugate.h"
-#include "aclnnop/aclnn_real.h"
 //#include "aclnnop/aclnn_imaginary.h"
 
 // ge, eq, le, gt, lt, 
@@ -204,6 +210,31 @@ extern "C" {
     DECLARE_ACL_UNARY_OPS_FUNC(Cosh)
     DECLARE_ACL_UNARY_OPS_FUNC(Sinh)
     DECLARE_ACL_UNARY_OPS_FUNC(Tanh)
+    // cupy ufunc names: cupy_arccosh / cupy_arcsinh / cupy_arctanh
+    DECLARE_ACL_UNARY_OPS_FUNC(Acosh)
+    DECLARE_ACL_UNARY_OPS_FUNC(Asinh)
+    DECLARE_ACL_UNARY_OPS_FUNC(Atanh)
+
+    DECLARE_ACL_UNARY_OPS_FUNC(Trunc)  // numpy.fix / numpy.trunc
+    // numpy.rint(x) == round half to even; aclnnRound is the unary variant.
+    // NOTE: named Rint to avoid clashing with the irregular aclop_Round
+    // (aclnnRoundDecimals) declared in acl_general_ops.h.
+    aclError aclop_Rint(const aclTensor* self, aclTensor* out, aclrtStream stream) {
+        return aclUnaryOpRun(self, out,
+            aclnnRoundGetWorkspaceSize, aclnnRound, stream, false);
+    }
+    aclError aclop_InplaceRint(aclTensor* self, aclrtStream stream) {
+        return aclInplaceUnaryOpRun(self,
+            aclnnInplaceRoundGetWorkspaceSize, aclnnInplaceRound, stream, false);
+    }
+    DECLARE_ACL_UNARY_OP(Real)  // complex real part; no inplace version
+
+    // numpy.cbrt(x) = x ** (1/3): CANN has no cbrt op, use pow with 1/3.
+    aclError aclop_Cbrt(const aclTensor* self, aclTensor* out, aclrtStream stream) {
+        double exp = 1.0 / 3.0;
+        return aclBinaryOpRun(self, exp, out,
+            aclnnPowTensorScalarGetWorkspaceSize, aclnnPowTensorScalar, stream, false);
+    }
 
     DECLARE_ACL_BINARY_OP(Atan2)  // arctan(x1/x2)
     DECLARE_ACL_UNARY_OPS_FUNC(Sinc)
@@ -284,10 +315,61 @@ extern "C" {
     DECLARE_ACL_BINARY_OP(Minimum)
     // divmod has two outs
 
+    // numpy.hypot(x1, x2) = sqrt(x1**2 + x2**2); no aclnn op, compose it.
+    aclError aclop_Hypot(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream) {
+        aclDataType dtype;
+        aclGetDataType(self, &dtype);
+        aclTensor* sq1 = aclTensorLike(self, dtype);
+        aclTensor* sq2 = aclTensorLike(other, dtype);
+        auto ret = aclBinaryOpRun(self, self, sq1,
+            aclnnMulGetWorkspaceSize, aclnnMul, stream, false);
+        ret = aclBinaryOpRun(other, other, sq2,
+            aclnnMulGetWorkspaceSize, aclnnMul, stream, false);
+        double alpha = 1.0;
+        ret = aclTernaryOpRun(sq1, sq2, alpha, out,
+            aclnnAddGetWorkspaceSize, aclnnAdd, stream, false);
+        ret = aclUnaryOpRun(out, out,
+            aclnnSqrtGetWorkspaceSize, aclnnSqrt, stream, false);
+        aclDestroyTensor(sq1);
+        aclDestroyTensor(sq2);
+        return ret;
+    }
+
+    // numpy.copysign(x1, x2) = |x1| with the sign of x2 (sign of +0 / -0 counts).
+    // aclnnSign(0) == 0, so the sign bit is taken from `x2 >= 0` instead.
+    aclError aclop_Copysign(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream) {
+        aclDataType dtype;
+        aclGetDataType(self, &dtype);
+        aclTensor* mag = aclTensorLike(self, dtype);   // |x1|
+        aclTensor* neg = aclTensorLike(self, dtype);   // -|x1|
+        aclTensor* mask = aclTensorLike(other, ACL_BOOL);  // x2 >= 0
+        auto ret = aclUnaryOpRun(self, mag,
+            aclnnAbsGetWorkspaceSize, aclnnAbs, stream, false);
+        ret = aclUnaryOpRun(mag, neg,
+            aclnnNegGetWorkspaceSize, aclnnNeg, stream, false);
+        // 0.0 is treated as non-negative, matching the IEEE sign bit of +0
+        float zero = 0.0f;
+        const aclScalar* zero_scalar = aclCreateScalar(&zero, ACL_FLOAT);
+        ret = aclBinaryOpRun(other, zero_scalar, mask,
+            aclnnGeScalarGetWorkspaceSize, aclnnGeScalar, stream, false);
+        aclDestroyScalar(zero_scalar);
+        ret = aclIrregularOpRun(aclnnSWhereGetWorkspaceSize, aclnnSWhere, stream,
+            mask, mag, neg, out);
+        aclDestroyTensor(mag);
+        aclDestroyTensor(neg);
+        aclDestroyTensor(mask);
+        return ret;
+    }
+
     DECLARE_ACL_UNARY_OPS_FUNC(Reciprocal)
     DECLARE_ACL_UNARY_OPS_FUNC(Neg)
 
     aclError aclop_Abs(const aclTensor* self, aclTensor* out, aclrtStream stream) {
+        return aclUnaryOpRun(self, out,
+        aclnnAbsGetWorkspaceSize, aclnnAbs, stream, false);
+    }
+    // numpy.fabs is abs restricted to real floating point; aclnnAbs handles it.
+    aclError aclop_Fabs(const aclTensor* self, aclTensor* out, aclrtStream stream) {
         return aclUnaryOpRun(self, out,
         aclnnAbsGetWorkspaceSize, aclnnAbs, stream, false);
     }
@@ -313,7 +395,6 @@ extern "C" {
             aclnnMulsGetWorkspaceSize, aclnnMuls, stream, false); 
     }
 
-    DECLARE_ACL_UNARY_OP(Real)
     DECLARE_ACL_BINARY_OP(Complex)
 
     DECLARE_ACL_UNARY_OP(Signbit)  // no inplace version
@@ -326,8 +407,10 @@ extern "C" {
     // }
     DECLARE_ACL_UNARY_OPS_FUNC(Floor)
     DECLARE_ACL_UNARY_OPS_FUNC(Ceil)
-
+    // NOTE: aclnnSqrt supports real dtypes only (no complex).
+    DECLARE_ACL_UNARY_OPS_FUNC(Sqrt)
     DECLARE_ACL_UNARY_OPS_FUNC(Exp)
+    DECLARE_ACL_UNARY_OPS_FUNC(Exp2)
     DECLARE_ACL_UNARY_OPS_FUNC(Expm1)
     DECLARE_ACL_UNARY_OPS_FUNC(Log)
     DECLARE_ACL_UNARY_OPS_FUNC(Log2)
