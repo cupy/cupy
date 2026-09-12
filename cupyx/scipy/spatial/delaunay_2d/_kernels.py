@@ -2487,6 +2487,7 @@ RealType* det
 
     if(detFull >= errBound || -detFull >= errBound ) {
         *det = detFull;
+        return;
     }
 
     *det = 0;
