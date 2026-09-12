@@ -2254,6 +2254,233 @@ def sparseToDense(x, out=None):
     return out
 
 
+class SpSMDescriptor(BaseDescriptor):
+
+    @classmethod
+    def create(cls):
+        desc = _cusparse.spSM_createDescr()
+        return SpSMDescriptor(desc, None, _cusparse.spSM_destroyDescr)
+
+
+class SpSM:
+    """Sparse triangular solver with reusable analysis (cusparseSpSM).
+
+    Solves ``op(a) * x = alpha * op(b)`` for ``x``, where ``a`` is a sparse
+    triangular matrix. The cusparseSpSM analysis phase depends only on
+    ``a``, the operations, and the shape/layout of ``b`` -- not on the
+    values of ``b`` -- and typically dominates the cost of a one-shot
+    solve. This class runs the analysis at the first solve, and again only
+    when the shape/layout of ``b`` changes, so that repeated solves against
+    the same matrix pay for it once (see #8580).
+
+    Args:
+        a (cupyx.scipy.sparse.csr_matrix, cupyx.scipy.sparse.csc_matrix or
+            cupyx.scipy.sparse.coo_matrix): Sparse matrix with dimension
+            ``(M, M)``. Must not be modified (values or sparsity) while
+            this object is in use.
+        alpha (float or complex): Coefficient.
+        lower (bool):
+            True: ``a`` is lower triangle matrix.
+            False: ``a`` is upper triangle matrix.
+        unit_diag (bool):
+            True: diagonal part of ``a`` has unit elements.
+            False: diagonal part of ``a`` has non-unit elements.
+        transa (bool or str): True, False, 'N', 'T' or 'H'.
+            'N' or False: op(a) == ``a``.
+            'T' or True: op(a) == ``a.T``.
+            'H': op(a) == ``a.conj().T``.
+    """
+
+    def __init__(self, a, alpha=1.0, lower=True, unit_diag=False,
+                 transa=False):
+        if not check_availability('spsm'):
+            raise RuntimeError('spsm is not available.')
+
+        # Canonicalise transa
+        if transa is False:
+            transa = 'N'
+        elif transa is True:
+            transa = 'T'
+        elif transa not in 'NTH':
+            raise ValueError(f'Unknown transa (actual: {transa})')
+
+        # Check A's type and sparse format
+        if _is_csr_type(a):
+            pass
+        elif _is_csc_type(a):
+            if transa == 'N':
+                a = a.T
+                transa = 'T'
+            elif transa == 'T':
+                a = a.T
+                transa = 'N'
+            elif transa == 'H':
+                a = a.conj().T
+                transa = 'N'
+            lower = not lower
+        elif cupyx.scipy.sparse.issparse(a) and a.format == 'coo':
+            pass
+        else:
+            raise ValueError('a must be CSR, CSC or COO sparse matrix')
+        if not a.has_canonical_format:
+            raise ValueError('expected canonical format for a')
+        if a.shape[0] != a.shape[1]:
+            raise ValueError('mismatched shape')
+
+        # Check dtype
+        dtype = a.dtype
+        if dtype.char not in 'fdFD':
+            raise TypeError('Invalid dtype (actual: {})'.format(dtype))
+
+        # Prepare fill mode
+        if lower is True:
+            fill_mode = _cusparse.CUSPARSE_FILL_MODE_LOWER
+        elif lower is False:
+            fill_mode = _cusparse.CUSPARSE_FILL_MODE_UPPER
+        else:
+            raise ValueError('Unknown lower (actual: {})'.format(lower))
+
+        # Prepare diag type
+        if unit_diag is False:
+            diag_type = _cusparse.CUSPARSE_DIAG_TYPE_NON_UNIT
+        elif unit_diag is True:
+            diag_type = _cusparse.CUSPARSE_DIAG_TYPE_UNIT
+        else:
+            raise ValueError('Unknown unit_diag (actual: {})'.format(
+                unit_diag))
+
+        # Prepare op_a
+        if transa == 'N':
+            op_a = _cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
+        elif transa == 'T':
+            op_a = _cusparse.CUSPARSE_OPERATION_TRANSPOSE
+        else:  # transa == 'H'
+            if dtype.char in 'fd':
+                op_a = _cusparse.CUSPARSE_OPERATION_TRANSPOSE
+            else:
+                op_a = _cusparse.CUSPARSE_OPERATION_CONJUGATE_TRANSPOSE
+
+        # Keep a reference to ``a`` (including any CSC->CSR view created
+        # above): the cuSPARSE descriptor stores raw device pointers.
+        self._a = a
+        self._dtype = dtype
+        self._alpha = _numpy.array(alpha, dtype=dtype).ctypes
+        self._op_a = op_a
+        self._mat_a = SpMatDescriptor.create(a)
+
+        # Specify Lower|Upper fill mode
+        self._mat_a.set_attribute(_cusparse.CUSPARSE_SPMAT_FILL_MODE,
+                                  fill_mode)
+
+        # Specify Unit|Non-Unit diagonal type
+        self._mat_a.set_attribute(_cusparse.CUSPARSE_SPMAT_DIAG_TYPE,
+                                  diag_type)
+
+        # Analysis state, built at the first solve and rebuilt only when
+        # the shape/layout of ``b`` changes.
+        self._key = None
+        self._spsm_descr = None
+        self._buff = None
+        self._mat_b = None
+        self._mat_c = None
+
+    def solve(self, b):
+        """Solves the system for one or several right-hand sides.
+
+        Args:
+            b (cupy.ndarray): Dense matrix with dimension ``(M)`` or
+                ``(M, K)``.
+
+        Returns:
+            cupy.ndarray: Solution ``x`` (F-contiguous for a matrix ``b``).
+        """
+        # Check B's ndim
+        if b.ndim == 1:
+            is_b_vector = True
+            b = b.reshape(-1, 1)
+        elif b.ndim == 2:
+            is_b_vector = False
+        else:
+            raise ValueError('b.ndim must be 1 or 2')
+
+        # Check shapes
+        a = self._a
+        if not (a.shape[0] == a.shape[1] == b.shape[0]):
+            raise ValueError('mismatched shape')
+
+        # Check dtypes
+        if self._dtype != b.dtype:
+            raise TypeError('dtype mismatch')
+
+        # Prepare op_b
+        if b._f_contiguous:
+            op_b = _cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
+        elif b._c_contiguous:
+            b = b.T
+            op_b = _cusparse.CUSPARSE_OPERATION_TRANSPOSE
+        else:
+            raise ValueError('b must be F-contiguous or C-contiguous.')
+
+        # Allocate space for matrix C. Note that it is known cusparseSpSM
+        # requires the output matrix zero initialized.
+        m, _ = a.shape
+        if op_b == _cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE:
+            _, n = b.shape
+        else:
+            n, _ = b.shape
+        c_shape = m, n
+        c = _cupy.zeros(c_shape, dtype=self._dtype, order='f')
+
+        handle = _device.get_cusparse_handle()
+        cuda_dtype = _dtype.to_cuda_dtype(self._dtype)
+        algo = _cusparse.CUSPARSE_SPSM_ALG_DEFAULT
+
+        key = (n, op_b)
+        if key != self._key:
+            # (Re)run the analysis for this right-hand-side shape/layout.
+            self._key = None
+            self._spsm_descr = None
+            mat_b = DnMatDescriptor.create(b)
+            mat_c = DnMatDescriptor.create(c)
+            spsm_descr = SpSMDescriptor.create()
+
+            # Allocate the workspace needed by the succeeding phases
+            buff_size = _cusparse.spSM_bufferSize(
+                handle, self._op_a, op_b, self._alpha.data, self._mat_a.desc,
+                mat_b.desc, mat_c.desc, cuda_dtype, algo, spsm_descr.desc)
+            buff = _cupy.empty(buff_size, dtype=_cupy.int8)
+
+            # Perform the analysis phase
+            _cusparse.spSM_analysis(
+                handle, self._op_a, op_b, self._alpha.data, self._mat_a.desc,
+                mat_b.desc, mat_c.desc, cuda_dtype, algo, spsm_descr.desc,
+                buff.data.ptr)
+
+            self._mat_b = mat_b
+            self._mat_c = mat_c
+            self._spsm_descr = spsm_descr
+            self._buff = buff
+            self._key = key
+        else:
+            # Same shape/layout as the analysed system: only the values of
+            # B and C change. cusparseDnMatSetValues is the documented way
+            # to rebind them without re-running the analysis.
+            _cusparse.dnMatSetValues(self._mat_b.desc, b.data.ptr)
+            _cusparse.dnMatSetValues(self._mat_c.desc, c.data.ptr)
+
+        # Executes the solve phase
+        _cusparse.spSM_solve(
+            handle, self._op_a, op_b, self._alpha.data, self._mat_a.desc,
+            self._mat_b.desc, self._mat_c.desc, cuda_dtype, algo,
+            self._spsm_descr.desc, self._buff.data.ptr)
+
+        # Reshape back if B was a vector
+        if is_b_vector:
+            c = c.reshape(-1)
+
+        return c
+
+
 def spsm(a, b, alpha=1.0, lower=True, unit_diag=False, transa=False):
     """Solves a sparse triangular linear system op(a) * x = alpha * op(b).
 
@@ -2272,147 +2499,12 @@ def spsm(a, b, alpha=1.0, lower=True, unit_diag=False, transa=False):
             'N' or False: op(a) == ``a``.
             'T' or True: op(a) == ``a.T``.
             'H': op(a) == ``a.conj().T``.
+
+    .. seealso:: :class:`cupyx.cusparse.SpSM` for reusing the analysis
+        across repeated solves against the same matrix.
     """
-    if not check_availability('spsm'):
-        raise RuntimeError('spsm is not available.')
-
-    # Canonicalise transa
-    if transa is False:
-        transa = 'N'
-    elif transa is True:
-        transa = 'T'
-    elif transa not in 'NTH':
-        raise ValueError(f'Unknown transa (actual: {transa})')
-
-    # Check A's type and sparse format
-    if _is_csr_type(a):
-        pass
-    elif _is_csc_type(a):
-        if transa == 'N':
-            a = a.T
-            transa = 'T'
-        elif transa == 'T':
-            a = a.T
-            transa = 'N'
-        elif transa == 'H':
-            a = a.conj().T
-            transa = 'N'
-        lower = not lower
-    elif cupyx.scipy.sparse.issparse(a) and a.format == 'coo':
-        pass
-    else:
-        raise ValueError('a must be CSR, CSC or COO sparse matrix')
-    if not a.has_canonical_format:
-        raise ValueError('expected canonical format for a')
-
-    # Check B's ndim
-    if b.ndim == 1:
-        is_b_vector = True
-        b = b.reshape(-1, 1)
-    elif b.ndim == 2:
-        is_b_vector = False
-    else:
-        raise ValueError('b.ndim must be 1 or 2')
-
-    # Check shapes
-    if not (a.shape[0] == a.shape[1] == b.shape[0]):
-        raise ValueError('mismatched shape')
-
-    # Check dtypes
-    dtype = a.dtype
-    if dtype.char not in 'fdFD':
-        raise TypeError('Invalid dtype (actual: {})'.format(dtype))
-    if dtype != b.dtype:
-        raise TypeError('dtype mismatch')
-
-    # Prepare fill mode
-    if lower is True:
-        fill_mode = _cusparse.CUSPARSE_FILL_MODE_LOWER
-    elif lower is False:
-        fill_mode = _cusparse.CUSPARSE_FILL_MODE_UPPER
-    else:
-        raise ValueError('Unknown lower (actual: {})'.format(lower))
-
-    # Prepare diag type
-    if unit_diag is False:
-        diag_type = _cusparse.CUSPARSE_DIAG_TYPE_NON_UNIT
-    elif unit_diag is True:
-        diag_type = _cusparse.CUSPARSE_DIAG_TYPE_UNIT
-    else:
-        raise ValueError('Unknown unit_diag (actual: {})'.format(unit_diag))
-
-    # Prepare op_a
-    if transa == 'N':
-        op_a = _cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
-    elif transa == 'T':
-        op_a = _cusparse.CUSPARSE_OPERATION_TRANSPOSE
-    else:  # transa == 'H'
-        if dtype.char in 'fd':
-            op_a = _cusparse.CUSPARSE_OPERATION_TRANSPOSE
-        else:
-            op_a = _cusparse.CUSPARSE_OPERATION_CONJUGATE_TRANSPOSE
-
-    # Prepare op_b
-    if b._f_contiguous:
-        op_b = _cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
-    elif b._c_contiguous:
-        b = b.T
-        op_b = _cusparse.CUSPARSE_OPERATION_TRANSPOSE
-    else:
-        raise ValueError('b must be F-contiguous or C-contiguous.')
-
-    # Allocate space for matrix C. Note that it is known cusparseSpSM requires
-    # the output matrix zero initialized.
-    m, _ = a.shape
-    if op_b == _cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE:
-        _, n = b.shape
-    else:
-        n, _ = b.shape
-    c_shape = m, n
-    c = _cupy.zeros(c_shape, dtype=a.dtype, order='f')
-
-    # Prepare descriptors and other parameters
-    handle = _device.get_cusparse_handle()
-    mat_a = SpMatDescriptor.create(a)
-    mat_b = DnMatDescriptor.create(b)
-    mat_c = DnMatDescriptor.create(c)
-    spsm_descr = _cusparse.spSM_createDescr()
-    alpha = _numpy.array(alpha, dtype=c.dtype).ctypes
-    cuda_dtype = _dtype.to_cuda_dtype(c.dtype)
-    algo = _cusparse.CUSPARSE_SPSM_ALG_DEFAULT
-
-    try:
-        # Specify Lower|Upper fill mode
-        mat_a.set_attribute(_cusparse.CUSPARSE_SPMAT_FILL_MODE, fill_mode)
-
-        # Specify Unit|Non-Unit diagonal type
-        mat_a.set_attribute(_cusparse.CUSPARSE_SPMAT_DIAG_TYPE, diag_type)
-
-        # Allocate the workspace needed by the succeeding phases
-        buff_size = _cusparse.spSM_bufferSize(
-            handle, op_a, op_b, alpha.data, mat_a.desc, mat_b.desc,
-            mat_c.desc, cuda_dtype, algo, spsm_descr)
-        buff = _cupy.empty(buff_size, dtype=_cupy.int8)
-
-        # Perform the analysis phase
-        _cusparse.spSM_analysis(
-            handle, op_a, op_b, alpha.data, mat_a.desc, mat_b.desc,
-            mat_c.desc, cuda_dtype, algo, spsm_descr, buff.data.ptr)
-
-        # Executes the solve phase
-        _cusparse.spSM_solve(
-            handle, op_a, op_b, alpha.data, mat_a.desc, mat_b.desc,
-            mat_c.desc, cuda_dtype, algo, spsm_descr, buff.data.ptr)
-
-        # Reshape back if B was a vector
-        if is_b_vector:
-            c = c.reshape(-1)
-
-        return c
-
-    finally:
-        # Destroy matrix/vector descriptors
-        _cusparse.spSM_destroyDescr(spsm_descr)
+    return SpSM(a, alpha=alpha, lower=lower, unit_diag=unit_diag,
+                transa=transa).solve(b)
 
 
 def _cupy_spgemm_int64(a, b, alpha):

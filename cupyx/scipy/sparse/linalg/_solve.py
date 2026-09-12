@@ -587,8 +587,21 @@ class SuperLU:
             raise ValueError('trans must be \'N\', \'T\', or \'H\'')
 
         if cusparse.check_availability('spsm') and _should_use_spsm():
+            # Reuse the cusparseSpSM analysis across solve() calls: it
+            # depends only on the factor and the rhs shape/layout, and it
+            # dominates the cost of a one-shot solve (see #8580). Fetched
+            # lazily because subclasses do not call SuperLU.__init__.
+            cache = getattr(self, '_spsm_cache', None)
+            if cache is None:
+                cache = self._spsm_cache = {}
+
             def spsm(A, B, lower, transa):
-                return cusparse.spsm(A, B, lower=lower, transa=transa)
+                key = (lower, transa)
+                solver = cache.get(key)
+                if solver is None:
+                    solver = cache[key] = cusparse.SpSM(
+                        A, lower=lower, transa=transa)
+                return solver.solve(B)
             sm = spsm
         elif cusparse.check_availability('csrsm2'):
             def csrsm2(A, B, lower, transa):
