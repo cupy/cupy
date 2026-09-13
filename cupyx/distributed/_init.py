@@ -71,8 +71,8 @@ def init_process_group(
             information.
             defaults to `False`.
     Returns:
-        Backend: object used to perform communications, adheres to the
-            :class:`~cupyx.distributed.Backend` specification:
+        NCCLBackend: object used to perform communications, adheres to the
+            :class:`~cupyx.distributed.NCCLBackend` interface.
     """
     if n_devices <= 0:
         raise ValueError(f'Invalid number of devices {n_devices}')
