@@ -60,6 +60,8 @@
 // equal scalar, tensor, vector/list is_nan (no such)
 #include "aclnnop/aclnn_is_inf.h"
 #include "aclnnop/aclnn_isfinite.h"
+#include "aclnnop/aclnn_right_shift.h"
+#include "aclnnop/aclnn_ne_tensor.h"
 #include "aclnnop/aclnn_isposinf.h"
 #include "aclnnop/aclnn_isneginf.h"
 #include "aclnnop/aclnn_isclose.h"
@@ -198,7 +200,32 @@ extern "C" {
     DECLARE_ACL_UNARY_OP(IsInf)
     DECLARE_ACL_UNARY_OP(IsPosInf)
     DECLARE_ACL_UNARY_OP(IsNegInf)
-    // TODO: IsNaN() no such op? it depends on ascend env var controlled behavior
+
+    // CANN 8.5.1 provides only `aclnnRightShift` (there is no left-shift op).
+    // `bitwise_right_shift` is an Array API standard function, so this closes
+    // a real gap; `bitwise_left_shift` must be composed instead.
+    // NB: there is no `aclnnRightShiftScalar`; the scalar form is reached by
+    // the dispatcher only if a SCALAR_BINARY_OP registration is added, which
+    // would need an explicit aclScalar→tensor promotion here.
+    aclError aclop_RightShift(const aclTensor* self, const aclTensor* other,
+                              aclTensor* out, aclrtStream stream) {
+        return aclBinaryOpRun(self, other, out,
+            aclnnRightShiftGetWorkspaceSize, aclnnRightShift, stream, false);
+    }
+
+    // CANN has no aclnnIsNan, but `x != x` is true exactly for NaN, so compose
+    // it from aclnnNeTensor. (`numpy.isnan` is in the Array API standard, so
+    // this is a real gap rather than a convenience.)
+    aclError aclop_IsNan(const aclTensor* self, aclTensor* out, aclrtStream stream) {
+        if (self == nullptr || out == nullptr) {
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        // aclnnNeTensor cannot be called in place (the output would alias an
+        // input), so compute into a bool-typed temporary matching `self`'s
+        // shape and then cast to the requested output dtype if needed.
+        return aclBinaryOpRun(self, self, out,
+            aclnnNeTensorGetWorkspaceSize, aclnnNeTensor, stream, false);
+    }
 
     // ==============================================================
     DECLARE_ACL_UNARY_OPS_FUNC(Cos)

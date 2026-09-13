@@ -726,6 +726,7 @@ cdef extern from "../acl_math_ops.h" nogil:
     aclError aclop_BitwiseXorTensor(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
     aclError aclop_InplaceBitwiseXorTensor(aclTensor* self, const aclTensor* other, aclrtStream stream)
     aclError aclop_BitwiseNot(const aclTensor* self, aclTensor* out, aclrtStream stream) # no inplace version
+    aclError aclop_RightShift(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
 
     aclError aclop_LogicalAnd(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
     aclError aclop_LogicalXor(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
@@ -750,6 +751,7 @@ cdef extern from "../acl_math_ops.h" nogil:
     aclError aclop_IsPosInf(const aclTensor* self, aclTensor* out, aclrtStream stream)
     aclError aclop_IsNegInf(const aclTensor* self, aclTensor* out, aclrtStream stream)
     aclError aclop_IsFinite(const aclTensor* self, aclTensor* out, aclrtStream stream)
+    aclError aclop_IsNan(const aclTensor* self, aclTensor* out, aclrtStream stream)
     #############################################################################
     aclError aclop_Add(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
     aclError aclop_InplaceAdd(aclTensor* self, const aclTensor* other, aclrtStream stream)
@@ -881,6 +883,10 @@ cdef void register_math_operators():
     # func_union.inplace_unary_op = aclop_InplaceBitwiseNotTensor
     # register_acl_ufunc("ascend_inplace_bitwise_not", INPLACE_UNARY_OP, func_union)
 
+    # CANN has aclnnRightShift but no left-shift op.
+    func_union.binary_op = aclop_RightShift
+    register_acl_ufunc("ascend_right_shift", BINARY_OP, func_union)
+
     # 注册aclop_BitwiseAndScalar作为原地二元操作
     func_union.scalar_binary_op = aclop_BitwiseAndScalar
     register_acl_ufunc("ascend_bitwise_and", SCALAR_BINARY_OP, func_union)
@@ -997,14 +1003,25 @@ cdef void register_math_operators():
     func_union.unary_op = aclop_Rad2deg
     register_acl_ufunc("ascend_rad2deg", UNARY_OP, func_union)
 
+    # The ufuncs created by `_logic/content._create_float_test_ufunc` are named
+    # `cupy_isfinite` / `cupy_isinf`, so the dispatcher looks up
+    # `ascend_isfinite` / `ascend_isinf` (no underscore). Register both the
+    # correct spelling and the historical one so neither dispatch path breaks.
     func_union.unary_op = aclop_IsFinite
+    register_acl_ufunc("ascend_isfinite", UNARY_OP, func_union)
     register_acl_ufunc("ascend_is_finite", UNARY_OP, func_union)
     func_union.unary_op = aclop_IsInf
+    register_acl_ufunc("ascend_isinf", UNARY_OP, func_union)
     register_acl_ufunc("ascend_is_inf", UNARY_OP, func_union)
     func_union.unary_op = aclop_IsNegInf
+    register_acl_ufunc("ascend_isneginf", UNARY_OP, func_union)
     register_acl_ufunc("ascend_is_negnative_inf", UNARY_OP, func_union)
     func_union.unary_op = aclop_IsPosInf
+    register_acl_ufunc("ascend_isposinf", UNARY_OP, func_union)
     register_acl_ufunc("ascend_is_positive_inf", UNARY_OP, func_union)
+    func_union.unary_op = aclop_IsNan
+    register_acl_ufunc("ascend_isnan", UNARY_OP, func_union)
+    register_acl_ufunc("ascend_is_nan", UNARY_OP, func_union)
 
     func_union.unary_op = aclop_Floor
     register_acl_ufunc("ascend_floor", UNARY_OP, func_union)
@@ -1177,6 +1194,8 @@ cdef extern from "../acl_reduction_ops.h" nogil:
     #aclError aclop_Nanprod(const aclTensor* self, const aclIntArray* dim, bint keepdim, aclTensor* out, const KwargsType& kwargs, aclrtStream stream)
     aclError aclop_Nancumprod(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, const KwargsType& kwargs, aclrtStream stream)
     aclError aclop_Nancumsum(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_NanMin(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_NanMax(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, const KwargsType& kwargs, aclrtStream stream)
 
 cdef void register_reduction_operators():
     cdef FuncPtrUnion func_union
@@ -1206,6 +1225,11 @@ cdef void register_reduction_operators():
     register_acl_ufunc("ascend_nancumsum", REDUCTION_OP, func_union)
     func_union.reduction_op = aclop_Nancumprod
     register_acl_ufunc("ascend_nancumprod", REDUCTION_OP, func_union)
+    # composed: nan_to_num(+/-inf) followed by a plain min/max reduction
+    func_union.reduction_op = aclop_NanMin
+    register_acl_ufunc("ascend_nanmin", REDUCTION_OP, func_union)
+    func_union.reduction_op = aclop_NanMax
+    register_acl_ufunc("ascend_nanmax", REDUCTION_OP, func_union)
 
 
 # general ops
@@ -1241,6 +1265,34 @@ cdef extern from "../acl_general_ops.h" nogil:
     aclError aclop_Put(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
     aclError aclop_Take(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+
+    # set op: unique2 -> unique_all / unique_counts / unique_inverse / unique_values
+    aclError aclop_Unique2(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+
+    # linalg
+    aclError aclop_Trace(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_Tril(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_Triu(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_Qr(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_Svd(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_Inverse(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+
+    # statistics / histogram
+    aclError aclop_Aminmax(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_Histc(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+
+    # complex
+    aclError aclop_Complex(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
 
     # special math ops
@@ -1302,6 +1354,34 @@ cdef void register_irregular_operators():
     register_acl_ufunc("ascend_is_close", GENERAL_OP, func_union)
     func_union.general_op = aclop_Heaviside
     register_acl_ufunc("ascend_heaviside", GENERAL_OP, func_union)
+
+    # set op: unique2 covers unique_all/counts/inverse/values in one kernel
+    func_union.general_op = aclop_Unique2
+    register_acl_ufunc("ascend_unique2", GENERAL_OP, func_union)
+
+    # linalg (aclnn-backed; reached from cupy/_ascend/_core/_routines_linalg.pyx)
+    func_union.general_op = aclop_Trace
+    register_acl_ufunc("ascend_trace", GENERAL_OP, func_union)
+    func_union.general_op = aclop_Tril
+    register_acl_ufunc("ascend_tril", GENERAL_OP, func_union)
+    func_union.general_op = aclop_Triu
+    register_acl_ufunc("ascend_triu", GENERAL_OP, func_union)
+    func_union.general_op = aclop_Qr
+    register_acl_ufunc("ascend_qr", GENERAL_OP, func_union)
+    func_union.general_op = aclop_Svd
+    register_acl_ufunc("ascend_svd", GENERAL_OP, func_union)
+    func_union.general_op = aclop_Inverse
+    register_acl_ufunc("ascend_inverse", GENERAL_OP, func_union)
+
+    # statistics / histogram
+    func_union.general_op = aclop_Aminmax
+    register_acl_ufunc("ascend_aminmax", GENERAL_OP, func_union)
+    func_union.general_op = aclop_Histc
+    register_acl_ufunc("ascend_histc", GENERAL_OP, func_union)
+
+    # complex construction
+    func_union.general_op = aclop_Complex
+    register_acl_ufunc("ascend_complex", GENERAL_OP, func_union)
 
     func_union.unary_op = aclop_Copy
     register_acl_ufunc("ascend_copy", UNARY_OP, func_union)

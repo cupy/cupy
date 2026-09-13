@@ -9,6 +9,24 @@
 #include "aclnnop/aclnn_diag.h"  // UnaryScalarOp   not sure TODO
 #include "aclnnop/aclnn_trace.h" // UnaryOp
 
+// linalg: qr / svd / inverse (trace is a UnaryOp, declared above)
+#include "aclnnop/aclnn_qr.h"
+#include "aclnnop/aclnn_svd.h"
+#include "aclnnop/aclnn_inverse.h"
+
+// triangular part
+#include "aclnnop/aclnn_tril.h"
+#include "aclnnop/aclnn_triu.h"
+
+// history: ptp -> aminmax (min/max pair)
+#include "aclnnop/aclnn_aminmax.h"
+#include "aclnnop/aclnn_aminmax_all.h"
+#include "aclnnop/aclnn_aminmax_dim.h"
+#include "aclnnop/aclnn_histc.h"
+
+// complex construction: complex(real, imag)
+#include "aclnnop/aclnn_complex.h"
+
 // math ops, but it is irregular ops
 #include <aclnnop/aclnn_round.h>
 #include <aclnnop/aclnn_isclose.h>
@@ -419,6 +437,159 @@
     aclError aclop_Nonzero(const aclTensor* self, aclTensor* out, aclrtStream stream) {
         return aclIrregularOpRun(aclnnNonzeroGetWorkspaceSize, aclnnNonzero, stream,
             self, out);
+    }
+
+    // numpy.unique(ar, return_index, return_inverse, return_counts)
+    //   -> aclnnUnique2(self, sorted, returnInverse, returnCounts, valueOut, inverseOut, countsOut)
+    // A `nullptr` output slot means "not requested"; at least `valueOut` is required.
+    aclError aclop_Unique2(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        if (ins.empty() || outs.empty()) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        bool sorted = GetScalarArg<bool>(args, 0, kwargs, "sorted", true);
+        aclTensor* values = outs[0];
+        aclTensor* inverse = (outs.size() > 1) ? outs[1] : nullptr;
+        aclTensor* counts = (outs.size() > 2) ? outs[2] : nullptr;
+        bool returnInverse = (inverse != nullptr);
+        bool returnCounts = (counts != nullptr);
+        return aclIrregularOpRun(aclnnUnique2GetWorkspaceSize, aclnnUnique2, stream,
+            ins[0], sorted, returnInverse, returnCounts, values, inverse, counts);
+    }
+
+    // ------------------------------------------------------------------
+    // linalg: trace / tril / triu / qr / svd / inverse
+    // ------------------------------------------------------------------
+
+    // numpy.trace(a, offset=0) -> aclnnTrace(self, out)  (sum of diagonal)
+    aclError aclop_Trace(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        if (ins.empty() || outs.empty()) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        // NB: aclnnTrace has no `offset`; NumPy's nonzero `offset` is not covered.
+        return aclIrregularOpRun(aclnnTraceGetWorkspaceSize, aclnnTrace, stream,
+            ins[0], outs[0]);
+    }
+
+    // numpy.tril(m, k=0) -> aclnnTril(self, diagonal, out)
+    aclError aclop_Tril(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        if (ins.empty() || outs.empty()) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        int64_t diagonal = GetScalarArg<int64_t>(args, 0, kwargs, "k", 0);
+        return aclIrregularOpRun(aclnnTrilGetWorkspaceSize, aclnnTril, stream,
+            ins[0], diagonal, outs[0]);
+    }
+
+    // numpy.triu(m, k=0) -> aclnnTriu(self, diagonal, out)
+    aclError aclop_Triu(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        if (ins.empty() || outs.empty()) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        int64_t diagonal = GetScalarArg<int64_t>(args, 0, kwargs, "k", 0);
+        return aclIrregularOpRun(aclnnTriuGetWorkspaceSize, aclnnTriu, stream,
+            ins[0], diagonal, outs[0]);
+    }
+
+    // numpy.linalg.qr(a, mode='reduced') -> aclnnQr(self, some, Q, R)
+    // `some=true` is the reduced (default) mode; `some=false` is complete.
+    aclError aclop_Qr(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        if (ins.empty() || outs.size() < 2) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        bool some = GetScalarArg<bool>(args, 0, kwargs, "some", true);
+        return aclIrregularOpRun(aclnnQrGetWorkspaceSize, aclnnQr, stream,
+            ins[0], some, outs[0], outs[1]);
+    }
+
+    // numpy.linalg.svd(a, full_matrices=True) -> aclnnSvd(input, fullMatrices, computeUV, sigma, u, v)
+    // When `computeUV` is false only `sigma` is produced (numpy.linalg.svdvals).
+    aclError aclop_Svd(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        if (ins.empty() || outs.empty()) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        bool full_matrices = GetScalarArg<bool>(args, 0, kwargs, "full_matrices", true);
+        aclTensor* sigma = outs[0];
+        aclTensor* u = (outs.size() > 1) ? outs[1] : nullptr;
+        aclTensor* v = (outs.size() > 2) ? outs[2] : nullptr;
+        bool computeUV = (u != nullptr && v != nullptr);
+        return aclIrregularOpRun(aclnnSvdGetWorkspaceSize, aclnnSvd, stream,
+            ins[0], full_matrices, computeUV, sigma, u, v);
+    }
+
+    // numpy.linalg.inv(a) -> aclnnInverse(self, out)
+    aclError aclop_Inverse(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        if (ins.empty() || outs.empty()) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        return aclIrregularOpRun(aclnnInverseGetWorkspaceSize, aclnnInverse, stream,
+            ins[0], outs[0]);
+    }
+
+    // ------------------------------------------------------------------
+    // statistics: ptp -> aminmax, and histogram -> histc
+    // ------------------------------------------------------------------
+
+    // numpy.ptp(a) == max - min; exported through aclnnAminmax.
+    // `outs` = [minOut, maxOut] when both are wanted, else [minOut, maxOut]
+    // with only the requested side consumed by the caller.
+    aclError aclop_Aminmax(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        if (ins.empty() || outs.size() < 2) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        bool keepdim = GetScalarArg<bool>(args, 1, kwargs, "keepdim", false);
+        // `dim` may be given as a scalar axis or a sequence.
+        if (!args.empty() && args[0] != nullptr && op::IsBasicType(args[0]->GetDataType())) {
+            int64_t dim = ToScalarArg<int64_t>(args[0]);
+            return aclIrregularOpRun(aclnnAminmaxDimGetWorkspaceSize, aclnnAminmaxDim, stream,
+                ins[0], dim, keepdim, outs[0], outs[1]);
+        }
+        return aclIrregularOpRun(aclnnAminmaxAllGetWorkspaceSize, aclnnAminmaxAll, stream,
+            ins[0], outs[0], outs[1]);
+    }
+
+    // numpy.histogram(a, bins, range) -> aclnnHistc(self, bins, min, max, out)
+    aclError aclop_Histc(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        if (ins.empty() || outs.empty()) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        int64_t bins = GetScalarArg<int64_t>(args, 0, kwargs, "bins", 10);
+        aclDataType dtype;
+        aclGetDataType(ins[0], &dtype);
+        double dmin = GetScalarArg<double>(args, 1, kwargs, "min", 0.0);
+        double dmax = GetScalarArg<double>(args, 2, kwargs, "max", 0.0);
+        const aclScalar* min = CreateAclScalar(dmin, dtype);
+        const aclScalar* max = CreateAclScalar(dmax, dtype);
+        return aclIrregularOpRun(aclnnHistcGetWorkspaceSize, aclnnHistc, stream,
+            ins[0], bins, min, max, outs[0]);
+    }
+
+    // numpy.complex()/asarray from real+imag -> aclnnComplex(real, imag, out)
+    aclError aclop_Complex(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        if (ins.size() < 2 || outs.empty()) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        return aclIrregularOpRun(aclnnComplexGetWorkspaceSize, aclnnComplex, stream,
+            ins[0], ins[1], outs[0]);
     }
 
     // choose

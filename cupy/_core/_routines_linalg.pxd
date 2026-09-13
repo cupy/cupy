@@ -1,3 +1,5 @@
+from libc.stdint cimport intptr_t
+
 from cupy._core._carray cimport shape_t
 from cupy._core.core cimport _ndarray_base
 
@@ -14,6 +16,17 @@ cpdef _ndarray_base tensordot_core(
 
 cpdef _ndarray_base matmul(
     _ndarray_base a, _ndarray_base b, _ndarray_base out=*)
+
+# --- Ascend-only aclnn-backed linalg helpers (see _ascend/_core) ---
+cpdef _ndarray_base _ascend_trace(_ndarray_base a, intptr_t offset)
+
+cpdef _ndarray_base _ascend_inv(_ndarray_base a)
+
+cpdef _ndarray_base _ascend_tri(_ndarray_base a, intptr_t k, bint upper)
+
+cpdef tuple _ascend_qr(_ndarray_base a, bint complete)
+
+cpdef tuple _ascend_svd(_ndarray_base a, bint full_matrices, bint compute_uv)
 
 
 cpdef enum:

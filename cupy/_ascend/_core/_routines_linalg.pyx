@@ -580,3 +580,95 @@ cpdef _ndarray_base matmul(
         if out is not c:
             elementwise_copy(c, out)
         return out
+
+# ======================================================================
+# Ascend linalg helpers reachable from `cupy.linalg`.
+#
+# `cupy.linalg.*` is pure Python and dispatches to cuSOLVER via
+# `cupyx.lapack`, which is a stub on Ascend. Plain `.py` files cannot be
+# substituted by the build system (`features/ascend.py` only swaps `.pyx`),
+# so the aclnn-backed implementations live here and `cupy/linalg/*.py`
+# calls into them guarded by `cupy.backends.ascend.is_ascend()`.
+# ======================================================================
+
+
+cpdef _ndarray_base _ascend_trace(_ndarray_base a, intptr_t offset):
+    """numpy.trace: sum along the main diagonal (offset must be 0)."""
+    cdef _ndarray_base s = ascontiguousarray(a)
+    cdef list out_shape = [d for d in s.shape[:-2]]
+    cdef long m = min(s.shape[-2], s.shape[-1])
+    cdef _ndarray_base out = _ndarray_init(
+        cupy.ndarray, out_shape, numpy.promote_types(s.dtype, numpy.float32)
+        if s.dtype.kind == 'f' else s.dtype, None)
+    launch_general_func("ascend_trace", [s], [out], [offset], {}, 0)
+    return out
+
+
+cpdef _ndarray_base _ascend_inv(_ndarray_base a):
+    """numpy.linalg.inv for a single 2-D matrix via aclnnInverse."""
+    cdef _ndarray_base s = ascontiguousarray(a)
+    cdef _ndarray_base out = _ndarray_init(
+        cupy.ndarray, [s.shape[0], s.shape[1]], s.dtype, None)
+    launch_general_func("ascend_inverse", [s], [out], [], {}, 0)
+    return out
+
+
+cpdef _ndarray_base _ascend_tri(_ndarray_base a, intptr_t k, bint upper):
+    """numpy.tril / numpy.triu via aclnnTril / aclnnTriu."""
+    cdef _ndarray_base s = ascontiguousarray(a)
+    cdef _ndarray_base out = _ndarray_init(
+        cupy.ndarray, [d for d in s.shape], s.dtype, None)
+    if upper:
+        launch_general_func("ascend_triu", [s], [out], [k], {}, 0)
+    else:
+        launch_general_func("ascend_tril", [s], [out], [k], {}, 0)
+    return out
+
+
+cpdef tuple _ascend_qr(_ndarray_base a, bint complete):
+    """numpy.linalg.qr -> (Q, R) via aclnnQr.
+
+    ``some`` is the reduced mode, i.e. the NumPy default 'reduced'.
+    """
+    cdef _ndarray_base s = ascontiguousarray(a)
+    cdef Py_ssize_t m = s.shape[0]
+    cdef Py_ssize_t n = s.shape[1]
+    cdef Py_ssize_t k = m if m < n else n
+    cdef list q_shape, r_shape
+    if complete:
+        q_shape = [m, m]
+        r_shape = [m, n]
+    else:
+        q_shape = [m, k]
+        r_shape = [k, n]
+    cdef _ndarray_base q = _ndarray_init(cupy.ndarray, q_shape, s.dtype, None)
+    cdef _ndarray_base r = _ndarray_init(cupy.ndarray, r_shape, s.dtype, None)
+    # aclnnQr's `some` flag: true == reduced
+    launch_general_func("ascend_qr", [s], [q, r], [not complete], {}, 0)
+    return q, r
+
+
+cpdef tuple _ascend_svd(_ndarray_base a, bint full_matrices,
+                        bint compute_uv):
+    """numpy.linalg.svd.
+
+    When ``compute_uv`` is false only the singular values are returned
+    (equivalent to numpy.linalg.svdvals).
+    """
+    cdef _ndarray_base s = ascontiguousarray(a)
+    cdef Py_ssize_t m = s.shape[0]
+    cdef Py_ssize_t n = s.shape[1]
+    cdef Py_ssize_t k = m if m < n else n
+    cdef _ndarray_base sigma = _ndarray_init(cupy.ndarray, [k], s.dtype, None)
+    if not compute_uv:
+        launch_general_func("ascend_svd", [s], [sigma], [full_matrices], {}, 0)
+        return sigma,
+    cdef Py_ssize_t u_cols = m if full_matrices else k
+    cdef Py_ssize_t vt_rows = n if full_matrices else k
+    cdef _ndarray_base u = _ndarray_init(
+        cupy.ndarray, [m, u_cols], s.dtype, None)
+    cdef _ndarray_base v = _ndarray_init(
+        cupy.ndarray, [vt_rows, n], s.dtype, None)
+    launch_general_func("ascend_svd", [s], [sigma, u, v],
+                        [full_matrices], {}, 0)
+    return u, sigma, v

@@ -217,9 +217,7 @@ ops-cv
 ops-transfomer
 
 FFT ops 还是在nnal asdsip
-### v8.5 alpha2 算子二进制包 kernel (安装方法同CANN 8.2)
-二进制包,不确定是否开源版本构建的.
-https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/850alpha001/softwareinst/instg/instg_quick.html?Mode=PmIns&OS=openEuler&Software=cannToolKit
+### v8.5 算子二进制包 kernel (安装方法同CANN 8.2)
 
 ```py
 # cupy_builder will check if runtime dll/so file existing

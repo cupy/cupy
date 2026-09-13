@@ -169,6 +169,44 @@ aclError aclop_Nancumsum(const aclTensor* self, const aclIntArray* dim, bool kee
     aclDestroyTensor(temp);
     return ret;
 }
+
+// CANN has no aclnnNanmin/Nanmax. Substitute an infinity of the *opposite*
+// sign for NaN so the plain min/max reduction skips them. Passing +-inf as
+// the posinf/neginf replacements of aclnnNanToNum leaves genuine infinities
+// already present in the input untouched, preserving NumPy semantics.
+aclError aclop_NanMin(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out,
+    const KwargsType& kwargs, aclrtStream stream) {
+    aclDataType dtype = GetDataType(out, self);
+    aclTensor* temp = aclTensorLike(self, dtype);
+    if (temp == nullptr) {
+        return ACL_ERROR_INVALID_PARAM;
+    }
+    float scalar = std::numeric_limits<float>::infinity();
+    aclError ret = aclop_NanToNum(self, scalar, temp, stream);
+    if (ret == ACL_SUCCESS) {
+        ret = aclReductionOpRun(temp, out,
+            aclnnMinGetWorkspaceSize, aclnnMin, stream);
+    }
+    aclDestroyTensor(temp);
+    return ret;
+}
+
+aclError aclop_NanMax(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out,
+    const KwargsType& kwargs, aclrtStream stream) {
+    aclDataType dtype = GetDataType(out, self);
+    aclTensor* temp = aclTensorLike(self, dtype);
+    if (temp == nullptr) {
+        return ACL_ERROR_INVALID_PARAM;
+    }
+    float scalar = -std::numeric_limits<float>::infinity();
+    aclError ret = aclop_NanToNum(self, scalar, temp, stream);
+    if (ret == ACL_SUCCESS) {
+        ret = aclReductionOpRun(temp, out,
+            aclnnMaxGetWorkspaceSize, aclnnMax, stream);
+    }
+    aclDestroyTensor(temp);
+    return ret;
+}
     
 #ifdef __cplusplus
 }
