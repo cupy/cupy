@@ -55,7 +55,7 @@ except ImportError:
     # landed); keep `import cupy` working if it is ever absent.
     pass
 # from cupy import linalg  # NOQA
-# from cupy import polynomial  # NOQA
+from cupy import polynomial  # NOQA
 # from cupy import random  # NOQA
 
 # import class and function
@@ -72,6 +72,7 @@ from numpy import inf  # NOQA
 from numpy import nan  # NOQA
 from numpy import newaxis  # == None  # NOQA
 from numpy import pi  # NOQA
+from numpy import mintypecode  # NOQA
 
 # APIs to be removed in NumPy 2.0.
 # Remove these when bumping the baseline API to NumPy 2.0.
@@ -243,6 +244,21 @@ from cupy._creation.ranges import ogrid  # NOQA
 from cupy.lib._shape_base import apply_along_axis  # NOQA
 from cupy.lib._shape_base import apply_over_axes  # NOQA
 from cupy.lib._shape_base import put_along_axis    # NOQA
+
+# Polynomial routines (see docs/ascend/polynomial_note.md). The poly1d Cython
+# module is compiled for Ascend since the aclfft/polynomial port; guard the
+# imports anyway so `import cupy` keeps working without them.
+from cupy.lib._polynomial import poly1d  # NOQA
+from cupy.lib._routines_poly import poly  # NOQA
+from cupy.lib._routines_poly import polyadd  # NOQA
+from cupy.lib._routines_poly import polysub  # NOQA
+from cupy.lib._routines_poly import polymul  # NOQA
+from cupy.lib._routines_poly import polyfit  # NOQA
+from cupy.lib._routines_poly import polyval  # NOQA
+from cupy.lib._routines_poly import roots  # NOQA
+
+# Discrete linear convolution (used by polymul / poly)
+from cupy._math.misc import convolve  # NOQA
 
 
 # Borrowed from NumPy

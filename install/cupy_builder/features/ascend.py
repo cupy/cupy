@@ -84,6 +84,8 @@ ascend_files = [
     ('cupy._core._routines_statistics',
      ['cupy/_core/_routines_statistics.pyx']),
     ('cupy._core.raw', ['cupy/_ascend/_core/raw_kernel_stub.pyx']),
+    # poly1d (pure cdef class over existing ufuncs, no CUDA dependency)
+    'cupy.lib._polynomial',
     # =========== Future work ================
     # 'cupy.cuda.graph',  # not sure if possible
     # 'cupy.cuda.texture', # GPU only

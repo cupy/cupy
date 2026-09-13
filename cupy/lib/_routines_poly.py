@@ -9,6 +9,31 @@ import cupy
 from cupy.exceptions import RankWarning
 import cupyx.scipy.fft
 
+# cupy.linalg is not importable on the Ascend backend (cupy/linalg/_solve.py
+# depends on cupy.cuda.device), so polyfit's lstsq/inv resolve to a pure-ufunc
+# composition there. See docs/ascend/polynomial_note.md.
+try:
+    from cupy.linalg import lstsq as _lstsq  # NOQA
+    from cupy.linalg import inv as _inv  # NOQA
+except ImportError:
+    from cupy._ascend._poly_linalg import lstsq as _lstsq  # NOQA
+    from cupy._ascend._poly_linalg import inv as _inv  # NOQA
+
+
+def _eigvalsh():
+    """Return cupy.linalg.eigvalsh or raise a clear error on Ascend.
+
+    CANN has no ACLNN eigenvalue operator yet, and cupy.linalg is not
+    importable there, so roots()/poly(2-D) cannot run on the NPU.
+    """
+    try:
+        return cupy.linalg.eigvalsh
+    except AttributeError:
+        raise NotImplementedError(
+            'eigvalsh is not available on the Ascend backend yet (CANN has '
+            'no ACLNN eigenvalue operator); roots()/poly() of 2-D inputs '
+            'need it. See docs/ascend/polynomial_note.md') from None
+
 
 def _wraps_polyroutine(func):
     def _get_coeffs(x):
@@ -58,7 +83,7 @@ def poly(seq_of_zeros):
     x = seq_of_zeros
     if x.ndim == 2 and x.shape[0] == x.shape[1] and x.shape[0] != 0:
         if cupy.array_equal(x, x.conj().T):
-            x = cupy.linalg.eigvalsh(x)
+            x = _eigvalsh()(x)
         else:
             raise NotImplementedError('Only complex Hermitian and real '
                                       'symmetric 2d arrays are supported '
@@ -75,9 +100,18 @@ def poly(seq_of_zeros):
     a = cupy.zeros((size, 2), x.dtype)
     a[:, 0].fill(1)
     cupy.negative(x, out=a[:x.size, 1])
-    while size > 1:
-        size = size // 2
-        a = cupy._math.misc._fft_convolve(a[:size], a[size:], 'full')
+    if cupy._math.misc._fft_convolve_ok(a, a):
+        while size > 1:
+            size = size // 2
+            a = cupy._math.misc._fft_convolve(a[:size], a[size:], 'full')
+    else:
+        # ACLFFT (Ascend) has no double-precision support, so the batched
+        # FFT merge tree cannot run; accumulate the product
+        # (1 - r_0 z)(1 - r_1 z)... with direct 1-D convolutions instead.
+        coeffs = a[0]
+        for row in a[1:]:
+            coeffs = cupy.convolve(coeffs, row)
+        return coeffs
     return a[0, :x.size + 1]
 
 
@@ -274,7 +308,7 @@ def polyfit(x, y, deg, rcond=None, full=False, w=None, cov=False):
 
     scale = cupy.sqrt((cupy.square(lhs)).sum(axis=0))
     lhs /= scale
-    c, resids, rank, s = cupy.linalg.lstsq(lhs, rhs, rcond)
+    c, resids, rank, s = _lstsq(lhs, rhs, rcond)
     if y.ndim > 1:
         scale = scale.reshape(-1, 1)
     c /= scale
@@ -289,7 +323,7 @@ def polyfit(x, y, deg, rcond=None, full=False, w=None, cov=False):
             resids = cupy.absolute(resids)
         return c, resids, rank, s, rcond
     if cov:
-        base = cupy.linalg.inv(cupy.dot(lhs.T, lhs))
+        base = _inv(cupy.dot(lhs.T, lhs))
         base /= cupy.outer(scale, scale)
 
         if cov == 'unscaled':
@@ -393,7 +427,7 @@ def roots(p):
     cmatrix = cupy.polynomial.polynomial.polycompanion(p)
     # TODO(Dahlia-Chehata): Support after cupy.linalg.eigvals is supported
     if cupy.array_equal(cmatrix, cmatrix.conj().T):
-        out = cupy.linalg.eigvalsh(cmatrix)
+        out = _eigvalsh()(cmatrix)
     else:
         raise NotImplementedError('Only complex Hermitian and real '
                                   'symmetric 2d arrays are supported '

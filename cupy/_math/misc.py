@@ -70,6 +70,10 @@ def convolve(a, v, mode='full'):
     v = v.ravel()
 
     method = _choose_conv_method(a, v, mode)
+    if method == 'fft' and not _fft_convolve_ok(a, v):
+        # ACLFFT (Ascend) has no double-precision support; fall back to the
+        # direct method for dtypes it cannot handle.
+        method = 'direct'
     if method == 'direct':
         out = _dot_convolve(a, v, mode)
     elif method == 'fft':
@@ -77,6 +81,21 @@ def convolve(a, v, mode='full'):
     else:
         raise ValueError('Unsupported method')
     return out
+
+
+def _fft_convolve_ok(a1, a2):
+    """Whether the FFT-based convolution path can run on this backend.
+
+    aclfft (ops-fft on Ascend) supports only float32/complex64 transforms,
+    so any other result dtype must take the direct path.
+    """
+    try:
+        from cupy.backends.backend.api.runtime import is_ascend
+    except ImportError:
+        return True
+    if not is_ascend():
+        return True
+    return cupy.result_type(a1, a2) in (numpy.float32, numpy.complex64)
 
 
 def _fft_convolve(a1, a2, mode):
