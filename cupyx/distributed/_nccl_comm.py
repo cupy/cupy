@@ -456,41 +456,52 @@ class _DenseNCCLCommunicator:
         nccl.groupEnd()
 
 
-def _make_sparse_empty(dtype, sparse_type):
+def _make_sparse_empty(dtype, sparse_type, *, sparray=False):
     data = cupy.empty(1, dtype)
     a = cupy.empty(1, 'i')
     b = cupy.empty(1, 'i')
     if sparse_type == 'csr':
-        return sparse.csr_matrix((data, a, b), shape=(0, 0))
+        cls = sparse.csr_array if sparray else sparse.csr_matrix
+        return cls((data, a, b), shape=(0, 0))
     elif sparse_type == 'csc':
-        return sparse.csc_matrix((data, a, b), shape=(0, 0))
+        cls = sparse.csc_array if sparray else sparse.csc_matrix
+        return cls((data, a, b), shape=(0, 0))
     elif sparse_type == 'coo':
-        return sparse.coo_matrix((data, (a, b)), shape=(0, 0))
+        cls = sparse.coo_array if sparray else sparse.coo_matrix
+        return cls((data, (a, b)), shape=(0, 0))
     else:
         raise TypeError(
             'NCCL is not supported for this type of sparse matrix')
+
+
+def _empty_like(model):
+    """Return an empty sparse object that matches the type of ``model``.
+
+    Preserves the array-vs-matrix distinction so operator semantics
+    (``*`` is matmul on matrices, element-wise on arrays) stay
+    consistent when reductions combine ``model`` with the placeholder.
+    """
+    return _make_sparse_empty(
+        model.dtype, _get_sparse_type(model),
+        sparray=isinstance(model, sparse.sparray))
 
 
 def _get_sparse_type(matrix):
-    if sparse.isspmatrix_coo(matrix):
-        return 'coo'
-    elif sparse.isspmatrix_csr(matrix):
-        return 'csr'
-    elif sparse.isspmatrix_csc(matrix):
-        return 'csc'
-    else:
-        raise TypeError(
-            'NCCL is not supported for this type of sparse matrix')
+    if sparse.issparse(matrix) and matrix.format in ('coo', 'csr', 'csc'):
+        return matrix.format
+    raise TypeError(
+        'NCCL is not supported for this type of sparse matrix')
 
 
 class _SparseNCCLCommunicator:
 
     @classmethod
     def _get_internal_arrays(cls, array):
-        if sparse.isspmatrix_coo(array):
+        if sparse.issparse(array) and array.format == 'coo':
             array.sum_duplicates()  # set it to canonical form
             return (array.data, array.row, array.col)
-        elif sparse.isspmatrix_csr(array) or sparse.isspmatrix_csc(array):
+        elif (sparse.issparse(array)
+              and array.format in ('csr', 'csc')):
             return (array.data, array.indptr, array.indices)
         raise TypeError('NCCL is not supported for this type of sparse matrix')
 
@@ -579,12 +590,13 @@ class _SparseNCCLCommunicator:
                 raise RuntimeError('Unsupported method')
 
     def _assign_arrays(matrix, arrays, shape):
-        if sparse.isspmatrix_coo(matrix):
+        if sparse.issparse(matrix) and matrix.format == 'coo':
             matrix.data = arrays[0]
             matrix.row = arrays[1]
             matrix.col = arrays[2]
             matrix._shape = tuple(shape)
-        elif sparse.isspmatrix_csr(matrix) or sparse.isspmatrix_csc(matrix):
+        elif (sparse.issparse(matrix)
+              and matrix.format in ('csr', 'csc')):
             matrix.data = arrays[0]
             matrix.indptr = arrays[1]
             matrix.indices = arrays[2]
@@ -613,8 +625,7 @@ class _SparseNCCLCommunicator:
                 raise ValueError(
                     'in_array and out_array must be the same format')
             result = in_array
-            partial = _make_sparse_empty(
-                in_array.dtype, _get_sparse_type(in_array))
+            partial = _empty_like(in_array)
             # each device will send and array with a different size
             for peer, ss in enumerate(shape_and_sizes):
                 shape = tuple(ss[0:2])
@@ -683,8 +694,7 @@ class _SparseNCCLCommunicator:
             raise ValueError(
                 'in_array must be a list or a tuple of sparse matrices')
         for s_m in in_array:
-            partial_out_array = _make_sparse_empty(
-                s_m.dtype, _get_sparse_type(s_m))
+            partial_out_array = _empty_like(s_m)
             cls.reduce(comm, s_m, partial_out_array, root, op, stream)
             reduce_out_arrays.append(partial_out_array)
         cls.scatter(comm, reduce_out_arrays, out_array, root, stream)
@@ -702,7 +712,7 @@ class _SparseNCCLCommunicator:
         cls.gather(comm, in_array, gather_out_arrays, root, stream)
         if comm.rank != root:
             gather_out_arrays = [
-                _make_sparse_empty(in_array.dtype, _get_sparse_type(in_array))
+                _empty_like(in_array)
                 for _ in range(comm._n_devices)
             ]
         for arr in gather_out_arrays:
@@ -787,8 +797,7 @@ class _SparseNCCLCommunicator:
         # out_array is a list of sparse matrices
         if comm.rank == root:
             for peer in range(comm._n_devices):
-                res = _make_sparse_empty(
-                    in_array.dtype, _get_sparse_type(in_array))
+                res = _empty_like(in_array)
                 if peer != root:
                     cls.recv(comm, res, peer, stream)
                 else:
@@ -832,7 +841,5 @@ class _SparseNCCLCommunicator:
             for a in r_arrays:
                 cls._recv(comm, a, i, a.dtype, a.size, stream)
             nccl.groupEnd()
-            out_array.append(_make_sparse_empty(
-                in_array[i].dtype,
-                _get_sparse_type(in_array[i])))
+            out_array.append(_empty_like(in_array[i]))
             cls._assign_arrays(out_array[i], r_arrays, shape)

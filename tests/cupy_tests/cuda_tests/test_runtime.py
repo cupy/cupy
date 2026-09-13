@@ -53,3 +53,28 @@ def test_major_version():
         assert major == 0
     else:
         assert 10 < major < 20
+
+
+def test_pointer_get_memory_type():
+    # Thin helper must stay in sync with pointerGetAttributes(...).type
+    device_arr = cupy.empty(4, dtype=cupy.float32)
+    assert (runtime.pointerGetMemoryType(device_arr.data.ptr)
+            == runtime.pointerGetAttributes(device_arr.data.ptr).type
+            == runtime.memoryTypeDevice)
+
+    pinned = runtime.hostAlloc(16, runtime.hostAllocDefault)
+    try:
+        assert (runtime.pointerGetMemoryType(pinned)
+                == runtime.pointerGetAttributes(pinned).type
+                == runtime.memoryTypeHost)
+    finally:
+        runtime.freeHost(pinned)
+
+    if not runtime.is_hip:
+        managed = runtime.mallocManaged(16)
+        try:
+            assert (runtime.pointerGetMemoryType(managed)
+                    == runtime.pointerGetAttributes(managed).type
+                    == runtime.memoryTypeManaged)
+        finally:
+            runtime.free(managed)

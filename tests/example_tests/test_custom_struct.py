@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import re
-import unittest
 
 from example_tests import example_test
 
 
-class TestCustomStruct(unittest.TestCase):
+class TestCustomStruct:
 
     def test_builtin_vectors(self):
         output = example_test.run_example('custom_struct/builtin_vectors.py')

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import unittest
 from unittest import mock
 
 import pytest
@@ -59,7 +58,7 @@ def check_number_of_ops(
     return pytest.mark.thread_unsafe(reason="mocks TraceImpl.")(wrapper)
 
 
-class TestOptimizations(unittest.TestCase):
+class TestOptimizations:
 
     def generate_inputs(self, xp):
         x = testing.shaped_random((3, 4), xp, 'int64', scale=10, seed=0)

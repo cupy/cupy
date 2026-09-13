@@ -5,30 +5,57 @@ from libc.stdint cimport intptr_t, int64_t
 ###############################################################################
 # Types
 ###############################################################################
-cdef extern from *:
-    ctypedef int DataType 'cudaDataType'
+IF CUPY_USE_CUDA_PYTHON:
+    from nvmath.bindings.cycublas cimport (
+        cublasFillMode_t as FillMode,
+        cublasOperation_t as Operation,
+        cublasSideMode_t as SideMode,
+    )
+    from nvmath.bindings.cycusolver cimport (
+        cuComplex,
+        cuDoubleComplex,
+        cudaDataType as DataType,
+        cusolverEigMode_t as EigMode,
+        cusolverEigType_t as EigType,
+        libraryPropertyType as LibraryPropertyType,
+    )
+    from nvmath.bindings.cycusolverDn cimport (
+        cusolverDnHandle_t as Handle,
+        cusolverDnParams_t as Params,
+        gesvdjInfo_t as GesvdjInfo,
+        syevjInfo_t as SyevjInfo,
+    )
+    from nvmath.bindings.cycusolverSp cimport (
+        cusolverSpHandle_t as SpHandle,
+    )
+    from nvmath.bindings.cycusparse cimport (
+        cusparseMatDescr_t as MatDescr,
+    )
+ELSE:
+    cdef extern from *:
+        ctypedef int DataType 'cudaDataType'
 
-    ctypedef void* LibraryPropertyType 'libraryPropertyType_t'
+        ctypedef void* LibraryPropertyType 'libraryPropertyType_t'
 
-    ctypedef void* Handle 'cusolverDnHandle_t'
-    ctypedef void* SpHandle 'cusolverSpHandle_t'
+        ctypedef void* Handle 'cusolverDnHandle_t'
+        ctypedef void* SpHandle 'cusolverSpHandle_t'
 
-    ctypedef void* Params 'cusolverDnParams_t'
+        ctypedef void* Params 'cusolverDnParams_t'
 
-    ctypedef int Operation 'cublasOperation_t'
-    ctypedef int SideMode 'cublasSideMode_t'
-    ctypedef int FillMode 'cublasFillMode_t'
+        ctypedef int Operation 'cublasOperation_t'
+        ctypedef int SideMode 'cublasSideMode_t'
+        ctypedef int FillMode 'cublasFillMode_t'
 
-    ctypedef int EigType 'cusolverEigType_t'
-    ctypedef int EigMode 'cusolverEigMode_t'
+        ctypedef int EigType 'cusolverEigType_t'
+        ctypedef int EigMode 'cusolverEigMode_t'
 
-    ctypedef void* MatDescr 'cusparseMatDescr_t'
+        ctypedef void* MatDescr 'cusparseMatDescr_t'
 
-    ctypedef void* cuComplex 'cuComplex'
-    ctypedef void* cuDoubleComplex 'cuDoubleComplex'
+        ctypedef void* cuComplex 'cuComplex'
+        ctypedef void* cuDoubleComplex 'cuDoubleComplex'
 
-    ctypedef void* GesvdjInfo 'gesvdjInfo_t'
-    ctypedef void* SyevjInfo 'syevjInfo_t'
+        ctypedef void* GesvdjInfo 'gesvdjInfo_t'
+        ctypedef void* SyevjInfo 'syevjInfo_t'
 
 ###############################################################################
 # Enum

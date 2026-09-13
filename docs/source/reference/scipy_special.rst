@@ -138,6 +138,7 @@ Error function and Fresnel integrals
    erfcx
    erfinv
    erfcinv
+   wofz
 
 
 Legendre functions
@@ -147,7 +148,7 @@ Legendre functions
    :toctree: generated/
 
    lpmv
-   sph_harm_y
+   sph_harm
 
 
 Lambert W and related functions

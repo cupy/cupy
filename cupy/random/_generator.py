@@ -1329,7 +1329,7 @@ def seed(seed=None):
 
 # CuPy specific functions
 
-_random_states = {}
+_random_states: dict[int, RandomState] = {}
 
 
 @atexit.register

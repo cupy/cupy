@@ -70,7 +70,15 @@ cdef _ndarray_shape_setter(_ndarray_base self, newshape):
     self._set_shape_and_strides(shape, strides, False, True)
 
 
-cdef _ndarray_base _ndarray_reshape(_ndarray_base self, tuple shape, order):
+cdef _ndarray_base _ndarray_reshape(
+        _ndarray_base self, tuple shape, order, copy):
+    if copy is not None:
+        if isinstance(copy, str):
+            raise ValueError(
+                "strings are not allowed for 'copy' keyword. "
+                "Use True/False/None instead.")
+        copy = bool(copy)
+
     cdef int order_char = internal._normalize_order(order, False)
 
     if len(shape) == 1 and cpython.PySequence_Check(shape[0]):
@@ -82,7 +90,7 @@ cdef _ndarray_base _ndarray_reshape(_ndarray_base self, tuple shape, order):
         else:
             order_char = b'C'
     if order_char == b'C':
-        return _reshape(self, shape)
+        return _reshape(self, shape, copy)
     else:
         # TODO(grlee77): Support order within _reshape instead
 
@@ -90,7 +98,7 @@ cdef _ndarray_base _ndarray_reshape(_ndarray_base self, tuple shape, order):
         #     1.) reverse the axes via transpose
         #     2.) C-ordered reshape using reversed shape
         #     3.) reverse the axes via transpose
-        return _T(_reshape(_T(self), shape[::-1]))
+        return _T(_reshape(_T(self), shape[::-1], copy))
 
 
 cdef _ndarray_base _ndarray_transpose(_ndarray_base self, tuple axes):
@@ -348,17 +356,23 @@ cpdef _ndarray_base rollaxis(
     return _transpose(a, axes)
 
 
-cpdef _ndarray_base _reshape(_ndarray_base self, const shape_t &shape_spec):
+cpdef _ndarray_base _reshape(
+        _ndarray_base self, const shape_t &shape_spec, copy=None):
     cdef shape_t shape
     cdef strides_t strides
     cdef _ndarray_base newarray
     shape = internal.infer_unknown_dimension(shape_spec, self.size)
     if internal.vector_equal(shape, self._shape):
-        return self.view()
+        # numpy also returns a C-contiguous copy
+        return self.copy() if copy else self.view()
 
     _get_strides_for_nocopy_reshape(self, shape, strides)
     if strides.size() == shape.size():
-        return self._view(type(self), shape, strides, False, True, self)
+        newarray = self._view(type(self), shape, strides, False, True, self)
+        return newarray.copy() if copy else newarray
+
+    if copy is False:
+        raise ValueError("Unable to avoid creating a copy while reshaping.")
     newarray = self.copy()
     _get_strides_for_nocopy_reshape(newarray, shape, strides)
 

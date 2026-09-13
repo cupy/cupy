@@ -3,7 +3,7 @@ import cupy
 import cupy as xp
 
 
-x = cupy.array([1, 2, 3])
+x = cupy.array([1, 2, 3])  # type: ignore[no-untyped-call]
 
 xp.empty(10)
 xp.empty((10, 20))
@@ -32,7 +32,7 @@ xp.empty_like(x, float, 'C')
 xp.empty_like(x, float, 'F')
 xp.empty_like(x, float, 'K')
 xp.empty_like(x, float, 'A')
-xp.empty_like(prototype=x, dtype=float, order='C', shape=(10, 20))
+xp.empty_like(x, dtype=float, order='C', shape=(10, 20))
 
 xp.eye(10)
 xp.eye(10, 20)

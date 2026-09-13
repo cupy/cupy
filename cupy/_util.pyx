@@ -229,6 +229,8 @@ try:
         raise ImportError("NumPy had a critical result-type issue")
     import ml_dtypes
 except ImportError:
+    BF16 = None
+
     def bf16_loop(in_types=1, out_types=1, code=None):
         """No-op when bfloat16 is not available.
 
@@ -238,7 +240,7 @@ except ImportError:
         """
         return ()
 else:
-    _bf16_type = numpy.dtype(ml_dtypes.bfloat16).type
+    BF16 = numpy.dtype(ml_dtypes.bfloat16).type
 
     def bf16_loop(in_types=1, out_types=1, code=None):
         """Define bfloat16 loop for ufuncs.
@@ -257,18 +259,18 @@ else:
         """
         # Convert int to tuple of bfloat16 types
         if isinstance(in_types, int):
-            in_tuple = (_bf16_type,) * in_types
+            in_tuple = (BF16,) * in_types
         else:
             in_tuple = tuple(in_types)
             in_tuple = tuple(
-                _bf16_type if t is None else t for t in in_tuple)
+                BF16 if t is None else t for t in in_tuple)
 
         if isinstance(out_types, int):
-            out_tuple = (_bf16_type,) * out_types
+            out_tuple = (BF16,) * out_types
         else:
             out_tuple = tuple(out_types)
             out_tuple = tuple(
-                _bf16_type if t is None else t for t in out_tuple)
+                BF16 if t is None else t for t in out_tuple)
 
         signature = [in_tuple, out_tuple]
         return ((signature, code),)

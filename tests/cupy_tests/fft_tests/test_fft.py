@@ -420,6 +420,10 @@ class TestFft2:
         {'shape': (0, 5), 's': None, 'axes': None},
         {'shape': (2, 0, 5), 's': None, 'axes': None},
         {'shape': (0, 0, 5), 's': None, 'axes': None},
+        # s coincides with shape as a raw tuple, but axes is not the
+        # default order, so a real per-axis crop/pad is still required
+        {'shape': (3, 2), 's': (3, 2), 'axes': (1, 0)},
+        {'shape': (2, 3, 4), 's': (2, 3, 4), 'axes': (2, 1, 0)},
     ],
         testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
     )
@@ -578,6 +582,70 @@ class TestPlanCtxManagerFftn:
             fftn(a, s=self.s, axes=self.axes, norm=self.norm)
         # targeting a particular error
         assert 'The cuFFT plan and a.shape do not match' in str(ex.value)
+
+
+def test_plan_nd_reuse_across_logical_batch_shapes():
+    from cupyx.scipy.fftpack import get_fft_plan
+
+    a = testing.shaped_random((2, 3, 8), cupy, cupy.float32)
+    plan = get_fft_plan(a, axes=(1, 2), value_type='R2C')
+
+    b = testing.shaped_random((1, 2, 3, 8), cupy, cupy.float32)
+    with plan:
+        actual = cupy.fft.rfftn(b, axes=(2, 3))
+    expected = np.fft.rfftn(cupy.asnumpy(b), axes=(2, 3))
+
+    assert actual.shape == (1, 2, 3, 5)
+    testing.assert_allclose(actual, expected, rtol=1e-3, atol=1e-7)
+
+
+def test_plan_nd_cache_reuse_across_logical_batch_shapes():
+    cache = config.get_plan_cache()
+    cache.clear()
+    try:
+        a = testing.shaped_random((2, 3, 8), cupy, cupy.float32)
+        cupy.fft.rfftn(a, axes=(1, 2))
+        assert cache.get_curr_size() == 1
+        cached_plan = next(iter(cache))[1].plan
+
+        b = testing.shaped_random((1, 2, 3, 8), cupy, cupy.float32)
+        actual = cupy.fft.rfftn(b, axes=(2, 3))
+        expected = np.fft.rfftn(cupy.asnumpy(b), axes=(2, 3))
+
+        assert cache.get_curr_size() == 1
+        assert next(iter(cache))[1].plan is cached_plan
+        assert actual.shape == (1, 2, 3, 5)
+        testing.assert_allclose(actual, expected, rtol=1e-3, atol=1e-7)
+    finally:
+        cache.clear()
+
+
+def test_plan_nd_reuse_across_array_orders():
+    from cupyx.scipy.fftpack import get_fft_plan
+
+    a = testing.shaped_random((2, 3), cupy, cupy.complex64)
+    plan = get_fft_plan(a)
+
+    b = cupy.asfortranarray(
+        testing.shaped_random((3, 2), cupy, cupy.complex64))
+    with plan:
+        actual = cupy.fft.fftn(b)
+    expected = np.fft.fftn(cupy.asnumpy(b))
+
+    assert actual.flags.f_contiguous
+    testing.assert_allclose(actual, expected, rtol=1e-3, atol=1e-7)
+
+
+def test_plan_nd_rejects_f_order_real_transform():
+    from cupyx.scipy.fftpack import get_fft_plan
+
+    a = testing.shaped_random((4, 4), cupy, cupy.float32)
+    plan = get_fft_plan(a, value_type='R2C')
+    b = cupy.asfortranarray(a)
+
+    with pytest.raises(ValueError):
+        with plan:
+            cupy.fft.rfftn(b)
 
 
 @testing.with_requires('numpy>=2.0')
@@ -955,6 +1023,10 @@ class TestRfft2EmptyAxes:
         {'shape': (2, 3, 4), 's': None, 'axes': None},
         {'shape': (2, 3, 4), 's': (2, 3), 'axes': (0, 1, 2)},
         {'shape': (2, 3, 4, 5), 's': None, 'axes': None},
+        # s coincides with shape as a raw tuple, but axes is not the
+        # default order, so a real per-axis crop/pad is still required
+        {'shape': (3, 2), 's': (3, 2), 'axes': (1, 0)},
+        {'shape': (2, 3, 4), 's': (2, 3, 4), 'axes': (2, 1, 0)},
     ],
         testing.product({'norm': [None, 'backward', 'ortho', 'forward', '']})
     )

@@ -126,6 +126,6 @@ zeta = _core.create_ufunc(
     Returns:
         cupy.ndarray: Values of zeta(x, q).
 
-    .. seealso:: :data:`scipy.special.zeta`
+    .. seealso:: :func:`scipy.special.zeta`
 
     """)

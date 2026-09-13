@@ -1,15 +1,17 @@
 from __future__ import annotations
 
+import string
+from typing import Any
 
 import cupy
-from cupy._core._scalar import get_typename
+from cupy._core._scalar import get_typename, format_type_decls
 from cupy_backends.cuda.api import runtime
 
 import numpy as np
 
 
-def _get_typename(dtype):
-    typename = get_typename(dtype)
+def _get_typename(dtype, type_decls=None):
+    typename = get_typename(dtype, type_decls)
     if typename == 'float16':
         if runtime.is_hip:
             # 'half' in name_expressions weirdly raises
@@ -26,14 +28,15 @@ INT_TYPES = [cupy.int8, cupy.int16, cupy.int32, cupy.int64]
 UNSIGNED_TYPES = [cupy.uint8, cupy.uint16, cupy.uint32, cupy.uint64]
 COMPLEX_TYPES = [cupy.complex64, cupy.complex128]
 TYPES = FLOAT_TYPES + INT_TYPES + UNSIGNED_TYPES + COMPLEX_TYPES  # type: ignore  # NOQA
-TYPE_NAMES = [_get_typename(t) for t in TYPES]
+TYPE_DECLS: set[Any] = set()
+TYPE_NAMES = [_get_typename(t, TYPE_DECLS) for t in TYPES]
 
 
 KD_KERNEL = r'''
 #include <cupy/math_constants.h>
 #include <cupy/carray.cuh>
 #include <cupy/complex.cuh>
-#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_decls?
+${type_decls}
 
 __device__ long long sb(
         const long long s_level, const int n,
@@ -197,7 +200,7 @@ KNN_KERNEL = r'''
 #include <cupy/math_constants.h>
 #include <cupy/carray.cuh>
 #include <cupy/complex.cuh>
-#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_decls?
+${type_decls}
 
 __device__ unsigned long long abs(unsigned long long x) {
     return x;
@@ -693,12 +696,16 @@ __global__ void query_ball_periodic(
 
 
 KD_MODULE = cupy.RawModule(
-    code=KD_KERNEL, options=('-std=c++17',),
+    code=string.Template(KD_KERNEL).substitute(
+        type_decls=format_type_decls(TYPE_DECLS)),
+    options=('-std=c++17',),
     name_expressions=['update_tags', 'tag_pairs'] + [
         f'compute_bounds<{x}>' for x in TYPE_NAMES])
 
 KNN_MODULE = cupy.RawModule(
-    code=KNN_KERNEL, options=('-std=c++17',),
+    code=string.Template(KNN_KERNEL).substitute(
+        type_decls=format_type_decls(TYPE_DECLS)),
+    options=('-std=c++17',),
     name_expressions=['knn_periodic', 'query_ball_periodic'] +
     [f'knn<{x}>' for x in TYPE_NAMES] +
     [f'query_ball<{x}>' for x in TYPE_NAMES])

@@ -552,6 +552,11 @@ def bincount(x, weights=None, minlength=None):
         if minlength < 0:
             raise ValueError('minlength must be non-negative')
 
+    if x.size == 0:
+        size = minlength if minlength is not None else 0
+        # NumPy returns intp dtype for empty input even when weights is given
+        return cupy.zeros((size,), dtype=numpy.intp)
+
     size = int(cupy.max(x)) + 1  # synchronize!
     if minlength is not None:
         size = max(size, minlength)

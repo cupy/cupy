@@ -40,7 +40,9 @@ def _generate_binary_structure(rank, connectivity):
     'connectivity': [None, 2, 3],
     'x_dtype': [bool, numpy.int8, numpy.int32, numpy.int64,
                 numpy.float32, numpy.float64],
-    'output': [None, numpy.int32, numpy.int64],
+    # Mostly integers make sense, but SciPy allows a bit more
+    # (CuPy may allows most dtypes but checks label overflow.)
+    'output': [None, numpy.int32, numpy.int64, numpy.float32],
     'o_type': [None, 'ndarray']
 }))
 @testing.with_requires('scipy')

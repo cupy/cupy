@@ -3,7 +3,6 @@ from __future__ import annotations
 import functools
 import os
 
-import pytest
 import unittest
 
 
@@ -29,6 +28,7 @@ def repeat_with_success_at_least(times, min_success):
             case is regarded as passed.
 
     """
+    import pytest
 
     assert times >= min_success
 

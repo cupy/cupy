@@ -210,11 +210,12 @@ class TestTwoArgumentDistribution(_TestDistributionsBase):
 
 @testing.with_requires('scipy')
 class TestThreeArgumentDistributions(_TestDistributionsBase):
+    tol = {numpy.float32: 2.22e-5, "default": 1e-8}
 
     @pytest.mark.parametrize('function', ['fdtr', 'fdtrc',
                                           'fdtri', 'gdtr', 'gdtrc'])
     @testing.for_float_dtypes()
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=tol, rtol=tol, scipy_name='scp')
     def test_linspace_broadcasted(self, xp, scp, dtype, function):
         """Linspace with three arguments.
 

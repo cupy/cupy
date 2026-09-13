@@ -404,8 +404,7 @@ def _as_pairs(x, ndim, as_index=False):
 
     # Converting the array with `tolist` seems to improve performance
     # when iterating and indexing the result (see usage in `pad`)
-    x_view = x.view()
-    x_view.shape = (ndim, 2)
+    x_view = x.reshape(ndim, 2)
     return x_view.tolist()
 
 # def _pad_dispatcher(array, pad_width, mode=None, **kwargs):

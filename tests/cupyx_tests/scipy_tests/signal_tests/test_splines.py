@@ -69,3 +69,14 @@ class TestSymIIROrder:
         x = testing.shaped_random((size,), xp, dtype=dtype)
 
         return scp.signal.symiirorder2(x, r, omega, precision)
+
+    @testing.numpy_cupy_allclose(
+        atol=2e-5, rtol=2e-5, scipy_name='scp', accept_error=True)
+    def test_spline_filter_complex(self, xp, scp):
+        rng = numpy.random.RandomState(12457)
+        data_array_complex = rng.rand(7, 7) + rng.rand(7, 7)*1j
+        # make the magnitude exceed 1, and make some negative
+        data_array_complex = 10*(1+1j-2*data_array_complex)
+        data_array_complex = xp.asarray(data_array_complex)
+
+        return scp.signal.spline_filter(data_array_complex, 0)

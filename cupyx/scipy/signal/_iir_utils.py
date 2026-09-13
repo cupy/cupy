@@ -1,17 +1,19 @@
 from __future__ import annotations
 
 
+import string
 from itertools import product
+from typing import Any
 
 import cupy
 from cupy._core.internal import _normalize_axis_index
-from cupy._core._scalar import get_typename
+from cupy._core._scalar import get_typename, format_type_decls
 from cupy_backends.cuda.api import runtime
 from cupyx.scipy.signal._arraytools import axis_slice
 
 
-def _get_typename(dtype):
-    typename = get_typename(dtype)
+def _get_typename(dtype, type_decls=None):
+    typename = get_typename(dtype, type_decls)
     if typename == 'float16':
         if runtime.is_hip:
             # 'half' in name_expressions weirdly raises
@@ -31,15 +33,17 @@ TYPES = FLOAT_TYPES + INT_TYPES + UNSIGNED_TYPES + COMPLEX_TYPES  # type: ignore
 TYPE_PAIRS = [(x, y) for x, y in product(TYPES, TYPES)
               if cupy.promote_types(x, y) is cupy.dtype(x)]
 
-TYPE_NAMES = [_get_typename(t) for t in TYPES]
-TYPE_PAIR_NAMES = [(_get_typename(x), _get_typename(y)) for x, y in TYPE_PAIRS]
+TYPE_DECLS: set[Any] = set()
+TYPE_NAMES = [_get_typename(t, TYPE_DECLS) for t in TYPES]
+TYPE_PAIR_NAMES = [(_get_typename(x, TYPE_DECLS), _get_typename(y, TYPE_DECLS))
+                   for x, y in TYPE_PAIRS]
 
 
 IIR_KERNEL = r"""
 #include <cupy/math_constants.h>
 #include <cupy/carray.cuh>
 #include <cupy/complex.cuh>
-#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_decls?
+${type_decls}
 
 template<typename U, typename T>
 __global__ void compute_correction_factors(
@@ -195,7 +199,7 @@ IIR_SOS_KERNEL = r"""
 #include <cupy/math_constants.h>
 #include <cupy/carray.cuh>
 #include <cupy/complex.cuh>
-#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_decls?
+${type_decls}
 
 template<typename T>
 __global__ void pick_carries(
@@ -476,7 +480,8 @@ __global__ void fir_sos(
 """  # NOQA
 
 IIR_MODULE = cupy.RawModule(
-    code=IIR_KERNEL,
+    code=string.Template(IIR_KERNEL).substitute(
+        type_decls=format_type_decls(TYPE_DECLS)),
     name_expressions=[f'compute_correction_factors<{x}, {y}>'
                       for x, y in TYPE_PAIR_NAMES] +
                      [f'correct_carries<{x}>' for x in TYPE_NAMES] +
@@ -484,7 +489,8 @@ IIR_MODULE = cupy.RawModule(
                      [f'second_pass_iir<{x}>' for x in TYPE_NAMES])
 
 IIR_SOS_MODULE = cupy.RawModule(
-    code=IIR_SOS_KERNEL,
+    code=string.Template(IIR_SOS_KERNEL).substitute(
+        type_decls=format_type_decls(TYPE_DECLS)),
     name_expressions=[f'compute_correction_factors_sos<{x}, {y}>'
                       for x, y in TYPE_PAIR_NAMES] +
     [f'pick_carries<{x}>' for x in TYPE_NAMES] +

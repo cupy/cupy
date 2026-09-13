@@ -551,7 +551,7 @@ typedef long long ssize_t ;
  *
  */
 template<typename T>
-__global__ void
+__device__ void
 dlartg(T *f, T *g, T *cs, T *sn, T *r) {
 
     if (*g == 0) {
@@ -585,7 +585,7 @@ dlartg(T *f, T *g, T *cs, T *sn, T *r) {
  * Givens-rotate a pair [f, g] -> [f_out, g_out]
  */
 template<typename T>
-__global__ void
+__device__ void
 fprota(T c, T s, T f, T g, T *f_out, T *g_out) {
     *f_out =  c*f + s*g;
     *g_out = -s*f + c*g;
@@ -714,8 +714,7 @@ TYPES = ['double']
 
 QR_MODULE = cupy.RawModule(
     code=QR_KERNEL, options=('-std=c++17',),
-    name_expressions=[
-        f'dlartg<{type_name}>' for type_name in TYPES] + ['qr_reduce'],
+    name_expressions=['qr_reduce'],
 )
 
 

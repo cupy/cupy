@@ -6,6 +6,8 @@ from pytest import raises as assert_raises
 import cupy
 
 from cupy import testing
+from cupy.testing._helper import is_after_baseline
+from cupy.testing._helper import skip_if_after_baseline
 from cupyx.scipy import signal
 from cupyx.scipy.signal import iirdesign
 
@@ -17,6 +19,21 @@ except ImportError:
 
 nimpl = pytest.mark.xfail(reason="not implemented")
 prec_loss = pytest.mark.xfail(reason="zpk2tf loses precision")
+
+
+def _fix_iir_output_for_newer_scipy(zpk, N, ftype='ellip'):
+    if not is_after_baseline(scipy="1.17"):
+        # When the baseline is bumped, this compatibility path is obsolete.
+        return zpk
+    if not testing.installed("scipy>=1.17"):
+        return zpk
+
+    if (ftype == 'ellip' and N < 2) or (ftype.startswith('cheby') and N == 0):
+        pytest.skip(
+            "SciPy>=1.17 changed degenerate zpk return dtype vs baseline.")
+
+    z, p, k = zpk
+    return z, p, float(k)
 
 
 @testing.with_requires("scipy")
@@ -35,9 +52,10 @@ class TestIIRFilter:
         # symmetrical poles and zeros. Then ba representation (using
         # numpy.poly) will be purely real instead of having negligible
         # imaginary parts.
-        z, p, k = scp.signal.iirfilter(N, 1.1, 1, 20, 'low', analog=True,
-                                       ftype=ftype, output='zpk')
-        return z, p, k
+        return _fix_iir_output_for_newer_scipy(
+            scp.signal.iirfilter(
+                N, 1.1, 1, 20, 'low', analog=True, ftype=ftype, output='zpk'),
+            N, ftype)
 
     @pytest.mark.parametrize("N", list(range(1, 25)))
     @pytest.mark.parametrize("ftype", ['butter',
@@ -227,16 +245,17 @@ class TestCheby1:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_basic(self, xp, scp, N):
         wn = 0.01
-        z, p, k = scp.signal.cheby1(N, 1, wn, 'low', analog=True, output='zpk')
-        return z, p, k
+        return _fix_iir_output_for_newer_scipy(
+            scp.signal.cheby1(N, 1, wn, 'low', analog=True, output='zpk'),
+            N, 'cheby1')
 
     @pytest.mark.parametrize("N", list(range(25)))
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_basic_1(self, xp, scp, N):
         wn = 0.01
-        z, p, k = scp.signal.cheby1(
-            N, 1, wn, 'high', analog=False, output='zpk')
-        return z, p, k
+        return _fix_iir_output_for_newer_scipy(
+            scp.signal.cheby1(N, 1, wn, 'high', analog=False, output='zpk'),
+            N, 'cheby1')
 
     @pytest.mark.parametrize("arg, kwd",
                              [((8, 0.5, 0.048), {}),
@@ -327,9 +346,9 @@ class TestCheby2:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_basic(self, xp, scp, N):
         wn = 0.01
-        z, p, k = scp.signal.cheby2(
-            N, 40, wn, 'low', analog=True, output='zpk')
-        return z, p, k
+        return _fix_iir_output_for_newer_scipy(
+            scp.signal.cheby2(N, 40, wn, 'low', analog=True, output='zpk'),
+            N, 'cheby2')
         #    assert_(len(p) == N)
         #    assert_(all(np.real(p) <= 0))  # No poles in right half of S-plane
 
@@ -337,9 +356,9 @@ class TestCheby2:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_basic_1(self, xp, scp, N):
         wn = 0.01
-        z, p, k = scp.signal.cheby2(
-            N, 40, wn, 'high', analog=False, output='zpk')
-        return z, p, k
+        return _fix_iir_output_for_newer_scipy(
+            scp.signal.cheby2(N, 40, wn, 'high', analog=False, output='zpk'),
+            N, 'cheby2')
         #    assert_(all(np.abs(p) <= 1))  # No poles outside unit circle
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
@@ -411,6 +430,8 @@ class TestEllip:
         return b, a
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
+    @skip_if_after_baseline(
+        scipy="1.17", reason="SciPy >= 1.17 fixed return dtype to complex")
     def test_degenerate_2(self, xp, scp):
         z, p, k = scp.signal.ellip(1, 1, 55, 0.3, output='zpk')
         return z, p, k
@@ -419,17 +440,17 @@ class TestEllip:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_basic(self, xp, scp, N):
         wn = 0.01
-        z, p, k = scp.signal.ellip(
-            N, 1, 40, wn, 'low', analog=True, output='zpk')
-        return z, p, k
+        return _fix_iir_output_for_newer_scipy(
+            scp.signal.ellip(N, 1, 40, wn, 'low', analog=True, output='zpk'),
+            N, 'ellip')
 
     @pytest.mark.parametrize('N', list(range(20)))
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_basic_1(self, xp, scp, N):
         wn = 0.01
-        z, p, k = scp.signal.ellip(
-            N, 1, 40, wn, 'high', analog=False, output='zpk')
-        return z, p, k
+        return _fix_iir_output_for_newer_scipy(
+            scp.signal.ellip(N, 1, 40, wn, 'high', analog=False, output='zpk'),
+            N, 'ellip')
 
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-14, rtol=1e-14)
     def test_basic_2(self, xp, scp):

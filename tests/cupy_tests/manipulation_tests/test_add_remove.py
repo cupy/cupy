@@ -8,7 +8,7 @@ import cupy
 from cupy import testing
 
 
-class TestDelete(unittest.TestCase):
+class TestDelete:
 
     @testing.numpy_cupy_array_equal()
     def test_delete_with_no_axis(self, xp):
@@ -52,6 +52,40 @@ class TestDelete(unittest.TestCase):
         if cupy.cuda.runtime.is_hip:
             pytest.xfail('HIP may have a bug')
         return xp.delete(arr, indices)
+
+    def test_delete_array_like_input(self):
+        arr = [[0, 1, 2], [3, 4, 5]]
+        with pytest.raises(ValueError):
+            cupy.delete(arr, [1], axis=1)
+
+    @pytest.mark.parametrize('make_obj', [
+        pytest.param(lambda xp: [], id='empty_list'),
+        pytest.param(lambda xp: (), id='empty_tuple'),
+        pytest.param(lambda xp: [0, 2], id='int_list'),
+        pytest.param(lambda xp: [True, False, True], id='matching_bool_list'),
+        pytest.param(lambda xp: (0, True), id='mixed_tuple'),
+        pytest.param(lambda xp: xp.array([], dtype=xp.int_),
+                     id='empty_int_array'),
+        pytest.param(lambda xp: xp.array([0, 2]), id='int_array'),
+        pytest.param(lambda xp: xp.array([-1, -3]),
+                     id='negative_int_array'),
+        # The following raise ValueError (wrong-size or scalar bool masks).
+        pytest.param(lambda xp: True, id='scalar_true'),
+        pytest.param(lambda xp: False, id='scalar_false'),
+        pytest.param(lambda xp: [True, False], id='wrong_size_bool_list'),
+        pytest.param(lambda xp: xp.array(True), id='zerodim_bool_array'),
+        pytest.param(lambda xp: xp.array([True, False]),
+                     id='wrong_size_bool_array'),
+        pytest.param(lambda xp: xp.array([], dtype=xp.bool_),
+                     id='empty_bool_array'),
+        # The following raise IndexError (non-integer index arrays).
+        pytest.param(lambda xp: xp.array([1.5]), id='float_array_single'),
+        pytest.param(lambda xp: xp.array([0., 2.]), id='float_array_multi'),
+    ])
+    @testing.numpy_cupy_array_equal(accept_error=(ValueError, IndexError))
+    def test_delete_obj_variants(self, xp, make_obj):
+        arr = xp.array([10, 20, 30])
+        return xp.delete(arr, make_obj(xp))
 
 
 class TestAppend(unittest.TestCase):

@@ -7,6 +7,11 @@ from cupyx.scipy.spatial.delaunay_2d._schewchuk import SCHEWCHUK_DEF
 
 KERNEL_DIVISION = SCHEWCHUK_DEF + r"""
 
+// HIPRTC doesn't define NULL; kernel uses it as a sentinel pointer.
+#ifndef NULL
+#define NULL nullptr
+#endif
+
 #define INLINE_H_D __forceinline__ __device__
 #define DIM     2
 #define DEG     ( DIM + 1 )

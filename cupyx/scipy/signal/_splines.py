@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 
+import string
+from typing import Any
+
 import cupy
-from cupy._core._scalar import get_typename
+from cupy._core._scalar import get_typename, format_type_decls
 from cupy._core.internal import _normalize_axis_index
 
 from cupyx.scipy.signal._signaltools import lfilter
@@ -11,10 +14,14 @@ from cupyx.scipy.signal._arraytools import (
 from cupyx.scipy.signal._iir_utils import collapse_2d, apply_iir_sos
 
 
+SYMIIR2_TYPE_DECLS: set[Any] = set()
+SYMIIR2_TYPE_NAMES = [get_typename(t, SYMIIR2_TYPE_DECLS)
+                      for t in [cupy.float32, cupy.float64]]
+
 SYMIIR2_KERNEL = r"""
 #include <cupy/math_constants.h>
 #include <cupy/carray.cuh>
-#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_decls?
+${type_decls}
 
 template<typename T>
 __device__ T _compute_symiirorder2_fwd_hc(
@@ -112,11 +119,12 @@ __global__ void compute_symiirorder2_bwd_sc(
 """
 
 SYMIIR2_MODULE = cupy.RawModule(
-    code=SYMIIR2_KERNEL,
+    code=string.Template(SYMIIR2_KERNEL).substitute(
+        type_decls=format_type_decls(SYMIIR2_TYPE_DECLS)),
     name_expressions=[f'compute_symiirorder2_bwd_sc<{t}>'
-                      for t in ['float', 'double']] +
+                      for t in SYMIIR2_TYPE_NAMES] +
     [f'compute_symiirorder2_fwd_sc<{t}>'
-     for t in ['float', 'double']])
+     for t in SYMIIR2_TYPE_NAMES])
 
 
 def _get_module_func(module, func_name, *template_args):

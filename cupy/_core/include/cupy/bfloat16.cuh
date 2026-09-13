@@ -15,7 +15,7 @@
 
 
 class bfloat16 {
-private: 
+private:
   __nv_bfloat16 data_;
 public:
   // Default constructor
@@ -34,7 +34,7 @@ public:
   __device__ operator float() const {return float(data_);}
 
   // From float16: using template so it's ok if float16 is undefined
-  template<typename T, 
+  template<typename T,
     typename = typename cupy::type_traits::enable_if<
     cupy::type_traits::is_same<T, float16>::value>::type>
   explicit __device__ bfloat16(T v) : data_(float(v)) {}
@@ -43,6 +43,26 @@ public:
   // We may want a better solution for this (e.g. fix kernels to explicitly
   // convert)
   bfloat16& operator=(const bfloat16&) = default;
+
+  bfloat16& operator+=(const bfloat16 &rhs) {
+    data_ += rhs.data_;
+    return *this;
+  }
+
+  bfloat16& operator-=(const bfloat16 &rhs) {
+    data_ -= rhs.data_;
+    return *this;
+  }
+
+  bfloat16& operator*=(const bfloat16 &rhs) {
+    data_ *= rhs.data_;
+    return *this;
+  }
+
+  bfloat16& operator/=(const bfloat16 &rhs) {
+    data_ /= rhs.data_;
+    return *this;
+  }
 
   template <typename T>
   __device__ bfloat16& operator=(const T &rhs) {
@@ -125,7 +145,7 @@ __device__ bfloat16 nextafter(bfloat16 x, bfloat16 y) {
   unsigned short x_raw = x.to_bits();
   unsigned short y_raw = y.to_bits();
   unsigned short ret_raw;
-  
+
   if (x.isnan() || y.isnan()) {
     ret_raw = 0x7fc0u;  // NaN
   } else if (x == y) {
@@ -146,6 +166,6 @@ __device__ bfloat16 nextafter(bfloat16 x, bfloat16 y) {
   } else {
     ret_raw = x_raw + 1;
   }
-  
+
   return *reinterpret_cast<bfloat16*>(&ret_raw);
 }
