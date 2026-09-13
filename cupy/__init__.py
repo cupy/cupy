@@ -48,7 +48,12 @@ def is_available():
 __version__ = _version.__version__
 
 # ASCEND TODO
-# from cupy import fft  # NOQA
+try:
+    from cupy import fft  # NOQA
+except ImportError:
+    # FFT support needs cupy.fft._cache (compiled since the aclfft feature
+    # landed); keep `import cupy` working if it is ever absent.
+    pass
 # from cupy import linalg  # NOQA
 # from cupy import polynomial  # NOQA
 # from cupy import random  # NOQA

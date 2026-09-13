@@ -16,6 +16,7 @@ from cupy_builder import Context
 from cupy_builder.features._base import Feature
 from cupy_builder.features._base import from_dict as _from_dict
 from cupy_builder.features.ascend import CUPY_ascend
+from cupy_builder.features.ascend_fft import CUPY_ascend_fft
 from cupy_builder.features.cuda import CUDA_cuda
 from cupy_builder.features.cuda import cuda_feature_dicts
 from cupy_builder.features.cuda import CUDA_FEATURES_USED
@@ -36,6 +37,7 @@ def get_features(ctx: Context) -> dict[str, Feature]:
     elif ctx.use_ascend:
         features = [
             CUPY_ascend(ctx),
+            CUPY_ascend_fft(ctx),
             # _from_dict(_common_dlpack(), ctx)
         ]
     else:

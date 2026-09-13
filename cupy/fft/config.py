@@ -14,8 +14,19 @@ from cupy.fft._cache import show_plan_cache_info  # NOQA
 # on Linux, expose callback handles to this module
 import sys as _sys
 if _sys.platform.startswith('linux'):
-    from cupy.fft._callback import get_current_callback_manager  # NOQA
-    from cupy.fft._callback import set_cufft_callbacks  # NOQA
+    try:
+        from cupy.fft._callback import get_current_callback_manager  # NOQA
+        from cupy.fft._callback import set_cufft_callbacks  # NOQA
+    except ImportError:
+        # cuFFT callbacks are CUDA-only (cupy.fft._callback is not compiled
+        # for the Ascend backend); provide graceful stubs instead.
+        def get_current_callback_manager(*args, **kwargs):
+            return None
+
+        class set_cufft_callbacks:  # type: ignore
+            def __init__(self, *args, **kwargs):
+                raise RuntimeError(
+                    'cuFFT callbacks are not available in this build')
 else:
     def get_current_callback_manager(*args, **kwargs):
         return None

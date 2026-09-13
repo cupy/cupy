@@ -87,10 +87,13 @@ ascend_files = [
     # =========== Future work ================
     # 'cupy.cuda.graph',  # not sure if possible
     # 'cupy.cuda.texture', # GPU only
-    ('cupy._core._accelerator', ["cupy/_core/_gpu/_accelerator.pyx"])  # cuda only
+    ('cupy._core._accelerator', ["cupy/_core/_gpu/_accelerator.pyx"]),  # cuda only
     # 'cupy._core._cub_reduction', # cuda only
-    # 'cupy.fft._cache',  # TODO
-    # 'cupy.fft._callback', # TODO
+    # cupy.fft._cache is backend-portable (cimport resolves to the neutral
+    # runtime on Ascend, see the IF CUPY_CANN_VERSION guard in the pyx);
+    # cupy.fft._callback remains CUDA-only.
+    'cupy.fft._cache',
+    # 'cupy.fft._callback', # TODO (cuFFT callbacks, CUDA-only)
     # 'cupy.lib._polynomial', # TODO
     # 'cupyx.scipy.ndimage._bbox_slices', # possible, TODO
 ]

@@ -77,7 +77,22 @@ class AscendBackend(Backend):
             os.path.join(sdk, 'runtime/lib64'),
         ]
         dirs += self._nnal_dirs(sdk, 'lib')
+        # optional ops-fft (CANN FFT) library directory, if present
+        ops_fft_dir = self._ops_fft_lib_dir()
+        if ops_fft_dir and ops_fft_dir not in dirs:
+            dirs.append(ops_fft_dir)
         return [d for d in dirs if os.path.isdir(d)]
+
+    @staticmethod
+    def _ops_fft_lib_dir() -> str | None:
+        """Directory of ``libcann_ops_fft.so`` (optional ops-fft install)."""
+        # Imported lazily: features/ascend_fft.py has no backends dependency,
+        # but features/ is loaded lazily overall to keep import graphs simple.
+        try:
+            from cupy_builder.features.ascend_fft import find_ops_fft_lib
+        except ImportError:
+            return None
+        return find_ops_fft_lib()
 
     def get_extra_compile_args(self) -> list[str]:
         return ['-std=c++17']
