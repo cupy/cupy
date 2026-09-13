@@ -165,6 +165,52 @@ Notable ones are **composite**: `aclop_Hypot` = x²+y²→sqrt (uses the ternary
 - `aclnn_shift_left` 确实不存在，但 **`aclnn_right_shift` 存在**（前一轮误判为
   "无任何 shift 算子"）→ `right_shift` 已实现，`left_shift` 仍需组合。
 
+### 1.2c Session 2026-09-13 (part 2: CANN 9.0.1 + custom AscendC kernels + triton)
+
+**CANN 9.0.1 适配**（conda 包装于 `~/miniconda3/envs/aigent/Ascend/cann-9.0.1`）：
+
+- `get_ascendcc_path()`：bisheng 在 9.0.1 移到 `tools/bisheng_compiler/bin/` →
+  改为多候选探测（两代布局兼容）。
+- 库集合不变（9.0.1 lib64 是 8.5 超集）；`select_cann_libraries()` 显式 `>= 900` 分支。
+- 版本检测无需改动（`compiler/version.info` → `901`）；`libop_common.so` 符号缺陷
+  依旧存在 → 动态 `LD_PRELOAD`（跟随 `$ASCEND_HOME_PATH`）写入 `~/.load_cann90.sh`。
+- 决策：**不引入 CANN_SERIES 变量**，patch 兼容靠 `CUPY_CANN_VERSION` 范围判断
+  （8.5.x ∈ [850,900)、9.0.x ∈ [900,910)）；导入时校验 `built // 10 == installed // 10`。
+- 全量重编 + import + 181 注册算子验证通过。
+
+**自定义 AscendC 内核基础设施（M1/M2/M4，`docs/ascend/CustomKernel.md`）**：
+
+- demo `cos_custom.cxx` 用 9.0.1 bisheng 编译通过；9.0.1 AscendC include 根 =
+  `x86_64-linux/asc/`（tikcfw 树不完整，缺张量版二元算子 impl）。
+- 新文件：`kernels/ascendc_elementwise.cpp`（8 内核）、`kernels/__init__.py`
+  （注册表 + `ensure_built()` JIT+磁盘缓存）、`bisheng.py`（编译封装）、
+  `acl_custom_kernels.h`（host 启动器：`aclrtBinaryLoadFromFile → GetFunction →
+  ArgsInit/Append/Finalize → LaunchKernelWithConfig`，句柄缓存）。
+- `acl_utils.pyx`：`_custom_kernel_specs` 注册表 + `launch_general_func` 顶部拦截
+  （优先于 builtin）+ `py_register_custom_kernel()` / `py_list_custom_kernels()`。
+- 内核调用约定：`kernel(out0, out1, in0, in1, n, perBlock)`，实例分片
+  `[b*perBlock, min(n,(b+1)*perBlock))`。
+- **8 个 B 档 elementwise 内核**（CANN 无 aclnn 等价）：
+  `conj`（CreateVecIndex+Frac 构造 [1,-1] pattern）、`angle`（strided 提取+Atan，
+  无象限修正 best-effort）、`imag`（strided DataCopyParams）、`frexp`（双输出，
+  Log2+Floor+Exp+Div+Cast）、`modf`（双输出 Trunc+Sub）、`ldexp`（float×i32 混合
+  dtype，Exp(e·ln2)+Mul）、`left_shift`/`right_shift`（i32；**dav_c220 无向量 shift
+  原语** → 浮点幂 Exp/Mul/Cast 替代）。
+- AscendC 陷阱：C++ lambda 是 host 函数不能调 `__aicore__` API（须 functor）；
+  `TBuf::Get` 无偏移视图；Cython `<const char*>bytes` 需 GIL 要移出 nogil 块。
+- 验证等级：**L1-L3**（内核编译 + 链接 + import/注册）；L4 数值待 910B。
+  已知简化：angle 象限、frexp/modf/shift 边界值 best-effort；v1 仅数组操作数。
+
+**triton-ascend 桥接（M6，`triton_bridge.py`）**：
+
+- 严格探测（拒绝本机的 triton-cpu fork / NVIDIA triton：要求 `triton_ascend` 包或
+  ascend/npu backend + 活跃 driver）；零拷贝 `CuPyTensorAdapter`（data_ptr +
+  元素 strides，不复制不 contiguous 化）；cupy 流 → triton 桥接；
+  `TritonUfunc` + `@jit_ufunc(name=, fallback=)`（缺席时降级 fallback）。
+- 新增 `tests/ascend/`：`test_triton_bridge.py`（20 用例）+
+  `test_custom_kernels.py`（11 用例注册回归）+ `conftest.py`（`has_npu`/`StubArray`）。
+  **31 passed, 1 skipped**（skip = 真内核端到端，需 triton-ascend + 910B）。
+
 ### 1.3 Registry totals
 
 | Metric | Value |
@@ -185,7 +231,7 @@ covered when it is reachable through a registered ascend ufunc or a host-side
 | Category | Covered / Total | Missing |
 |---|---|---|
 | creation | 10 / 17 | `empty_like`, `full_like`, `ones_like`, `zeros_like`, `meshgrid`, `from_dlpack` |
-| elementwise | 55 / 56 | `bitwise_left_shift` |
+| elementwise | 56 / 56 | — |
 | statistical | 7 / 7 | — |
 | manipulation | 8 / 8 | — |
 | searching | 4 / 4 | — |
@@ -195,13 +241,13 @@ covered when it is reachable through a registered ascend ufunc or a host-side
 | data_type | 7 / 7 | — |
 | utility | 2 / 2 | — |
 | linalg | 17 / 21 | `cholesky`, `det`, `eigh`, `eigvalsh` |
-| **TOTAL** | **117 / 129 = 90.7 %** | |
+| **TOTAL** | **118 / 129 = 91.5 %** | |
 
-变化（相对 2026-09-12 的 86.8 %）：
-- elementwise 54→55：`right_shift` 补齐（`aclnnRightShift` 存在）
-- linalg 13→17：`qr`/`svd`/`svdvals`/`trace` 打通
-- 剩余 4 个 linalg（`cholesky`/`det`/`eigh`/`eigvalsh`）**CANN 8.5.1 无算子**，
-  需自研算法或等上游；`bitwise_left_shift` 同理。
+变化（相对 2026-09-13 上午的 90.7 %）：
+- elementwise 55→56（**100%**）：`bitwise_left_shift` 经自定义 AscendC 内核
+  `ascend_left_shift` 补齐（int32；L1-L3 验证）
+- 剩余 4 个 linalg（`cholesky`/`det`/`eigh`/`eigvalsh`）**CANN 无算子**，
+  需自研算法或等上游。
 
 > The 7 `*_like` creation functions are trivial aliases of `empty`/`full` +
 > `broadcast_to` and are host-side (no aclnn needed) — the real device-side
@@ -245,8 +291,11 @@ covered when it is reachable through a registered ascend ufunc or a host-side
 4. concat/pad/reshape op
    numpy_to_acl_dtype ->  numpy_dtype_to_acl_dtype   **DONE (today)**
 
-6. triton-fusion (add data adaptor API)
- or once CANN 8.5 stable released, and pyPTO will be used to write customised kernel
+6. ~~triton-fusion (add data adaptor API)~~ **部分 DONE (2026-09-13)**：
+   `cupy/backends/ascend/triton_bridge.py` 落地（零拷贝 adapter + 流桥接 +
+   `@jit_ufunc` 降级装饰器，`tests/ascend/` 31 用例）；真内核端到端需装
+   triton-ascend + 910B。自定义 AscendC 内核基础设施（bisheng JIT + aclrt 加载）
+   已替代 pyPTO 路线，见 `docs/ascend/CustomKernel.md`。
 
 7. aclBlas integration
 
@@ -268,21 +317,22 @@ Now registered: `arccos arcsin arctan arctan2 arccosh arcsinh arctanh cbrt
 exp2 sqrt fabs copysign hypot lcm power float_power fmax fmin positive invert
 rint trunc round nan_to_num` (+ all inplace variants).
 
-Remaining gaps:
+Remaining gaps (updated 2026-09-13 晚):
 
-+ **`bitwise_left_shift` / `bitwise_right_shift`** — the only two elementwise
-  Array API functions still missing. **Verified: CANN 8.5.1 has NO shift
-  operator at all** (`aclnn_shift_left.h` does not exist) → Stage-B, compose
-  from `pow(2, n)` + `multiply`/`floor_divide`, or host fallback.
++ ~~`bitwise_left_shift` / `bitwise_right_shift`~~ **DONE**：自定义 AscendC 内核
+  `ascend_left_shift`/`ascend_right_shift`（i32；dav_c220 无向量 shift 原语 →
+  浮点幂替代）。elementwise 56/56 = 100%。CANN 9.0.1 另有
+  `aclnn_left_shift/right_shift` 头可择优切换。
 + `einsum` — `aclnn_einsum.h` **is available and already included**, but no
   `aclop_` wrapper exists → Stage-A.
 + missing 数值计算: `gradient, interp, trapezoid, diff` (compose from
   subtract/divide/take)
-+ missing: `frexp, modf` — **no aclnn op**; `ldexp` no aclnn op.
-+ complex: `conj`/`conjugate`/`angle`/`imag` have **no aclnn op**;
-  `real` (registered today) and `aclnn_complex` exist. `angle` = `atan2(imag,
-  real)` composition.
++ ~~`frexp, modf`, `ldexp`~~ **DONE**：自定义 AscendC 内核（双输出/混合 dtype）。
++ ~~complex: `conj`/`conjugate`/`angle`/`imag`~~ **DONE**：自定义 AscendC 内核
+  （angle 无象限修正 best-effort）。`real` 与 `aclnn_complex` 此前已有。
++ `i0` / `nextafter`：AscendC 无原语（需多项式/位技巧内核）→ 暂缓。
 + `cupy.math_op(scalar, tensor)`: can aclop kernel broadcast deal with this?
+  （自定义内核 v1 同样仅数组操作数）
 
 ### 3.2 indexing ops
 
@@ -304,9 +354,11 @@ Remaining gaps:
 + `squeeze`: Removes size-one axes from the shape of an array
 
 ### 3.4 logical/bitwise ops:  
-+ ACLOP misses numpy op: `_left_shift`, `_right_shift` (`aclnn_shift_left` exists)
++ ~~ACLOP misses numpy op: `_left_shift`, `_right_shift`~~ **DONE (2026-09-13)**：
+  `right_shift` 走 `aclnnRightShift`；`left_shift` 走自定义 AscendC 内核
+  （浮点幂替代，dav_c220 无向量 shift 原语）。CANN 9.0.1 新增两个 aclnn 头可择优。
 + `cupy_is_close` should be used as `a.isclose(b)`
-+ `is_nan()`: **no aclnn op**; `isnan` = `not_equal(x, x)` composition → Stage-B
++ `is_nan()`: ~~no aclnn op~~ **DONE**：`aclop_IsNan` = `not_equal(x, x)` 组合
 
 TODO   but why `aclnnEqual`has no tensor-scalar version?
 
