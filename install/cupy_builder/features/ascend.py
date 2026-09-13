@@ -16,8 +16,11 @@ Known layouts
 * CANN 8.5      - ``opapi_nn``, ``opapi``, ``opapi_math``, ``op_common``,
                   ``ge_compiler``, ``ge_common``, ``gert``, ``graph``,
                   ``op_compile_adapter``, ``profapi``
-* CANN 9.0      - unknown yet; falls back to the 8.5 set filtered by
-                  existence on disk.
+* CANN 9.0      - same set as 8.5 (verified against 9.0.1: the lib64
+                  directory is a superset of 8.5; ``prof_common`` was
+                  removed but was never linked). The bisheng device
+                  compiler moved to ``tools/bisheng_compiler/bin/`` (see
+                  ``build.get_ascendcc_path``).
 """
 
 from __future__ import annotations
@@ -124,11 +127,22 @@ _CANN_LIBS_85 = _CANN_LIBS_COMMON + [
 _CANN_LIBS_NNAL = ['asdsip', 'asdsip_core', 'asdsip_host', 'mki']
 
 
+#: CANN 9.0 - aclnn op libraries kept the 8.5 naming (verified on 9.0.1:
+#: every library below is present; ``libprof_common.so`` was dropped from
+#: lib64 but was never part of this set). Keep as a separate alias so a
+#: future 9.x re-organisation only touches one place.
+_CANN_LIBS_90 = _CANN_LIBS_85
+
+
 def select_cann_libraries(version: int) -> list[str]:
     """Return the library list for a CANN ``version``.
 
     ``version`` is encoded as ``major * 100 + minor * 10 + patch``
-    (e.g. 820 for 8.2, 850 for 8.5, 900 for 9.0).
+    (e.g. 820 for 8.2, 851 for 8.5.1, 901 for 9.0.1).
+
+    The plain range comparisons below already cover every patch release of
+    a release train (any 8.5.x is ``850 <= x < 900``, any 9.0.x is
+    ``900 <= x < 910``), so no separate series variable is needed.
 
     Unknown/newer versions reuse the newest known set; the actual set is
     filtered against the filesystem in :meth:`CUPY_ascend.__init__`.
@@ -136,8 +150,11 @@ def select_cann_libraries(version: int) -> list[str]:
     if version < 850:
         # CANN 8.2 and earlier
         return list(_CANN_LIBS_82)
-    # CANN 8.5 and (best-effort) newer
-    return list(_CANN_LIBS_85)
+    if version < 900:
+        # CANN 8.5.x
+        return list(_CANN_LIBS_85)
+    # CANN 9.0 and newer (best-effort)
+    return list(_CANN_LIBS_90)
 
 
 def _cann_lib_dirs() -> list[str]:

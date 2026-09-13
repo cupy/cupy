@@ -151,16 +151,24 @@ def get_ascendcc_path() -> list[str]:
         return None
 
     if PLATFORM_WIN32:
-        ascendcc_bin = 'compiler/ccec_compiler/bin/bisheng.exe'
+        basename = 'bisheng.exe'
     else:
-        ascendcc_bin = 'compiler/ccec_compiler/bin/bisheng'
+        basename = 'bisheng'
 
-    ascendcc_bin = os.path.join(cann_path, ascendcc_bin)
-    if os.path.exists(ascendcc_bin):
-        return [ascendcc_bin]
-    else:
-        print("Warning: cann_path found, but compiler path not found")
-        return None
+    # The bisheng compiler moved between releases; probe all known layouts:
+    #   - CANN <= 8.5:  compiler/ccec_compiler/bin/bisheng
+    #   - CANN >= 9.0:  tools/bisheng_compiler/bin/bisheng
+    candidates = [
+        os.path.join(cann_path, 'compiler', 'ccec_compiler', 'bin', basename),
+        os.path.join(cann_path, 'tools', 'bisheng_compiler', 'bin', basename),
+    ]
+    for ascendcc_bin in candidates:
+        if os.path.exists(ascendcc_bin):
+            return [ascendcc_bin]
+
+    print("Warning: cann_path found, but compiler path not found "
+          "(tried: %s)" % ', '.join(candidates))
+    return None
 
 def get_compiler_setting(ctx: Context, backend: str):
     """Build the per-module compiler settings dict.
