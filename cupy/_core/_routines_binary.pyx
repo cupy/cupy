@@ -1,11 +1,13 @@
 from ._kernel import create_ufunc
 
-# This is only line changed from upstream cupy file, 
-# shift_left, shift_right is not found in aclnn yet
+# This is only line changed from upstream cupy file.
+# The prefix was previously inverted (the Ascend build used "cupy_", so no
+# ufunc created here ever dispatched). Keep "cupy_" for the normal backends —
+# the Ascend dispatcher rewrites `cupy_<name>` to `ascend_<name>` itself.
 IF CUPY_CANN_VERSION <= 0:
-    cdef str OP_PREFIX = "ascend_" # instead of 'cupy_'
+    cdef str OP_PREFIX = "cupy_"
 ELSE:
-    cdef str OP_PREFIX = "cupy_" # instead of 'cupy_'
+    cdef str OP_PREFIX = "ascend_"
 
 
 cdef _create_bit_op(name, op, no_bool, doc='', scatter_op=None):

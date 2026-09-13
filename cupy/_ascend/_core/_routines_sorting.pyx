@@ -14,27 +14,37 @@ from cupy._core.core cimport _ndarray_base
 from cupy._core cimport internal
 
 # TODO: cupy, not all numpy keyword API is supported by CUPY
+#
+# NOTE: aclnnSort / aclnnArgsort are "irregular" (GENERAL) ops, so they are
+# dispatched through `launch_general_func`:
+#   ins  = [self]                      the tensor to sort
+#   outs = [values[, indices]]         indices is optional (int64)
+#   args = [axis, stable, descending]  int64 / bool / bool
+# aclnnSort always returns ascending order when descending is false, and CuPy's
+# public sorting API is ascending only, so descending stays 0 here.
 
-cdef _ascend_sort(_ndarray_base self, int axis):
-    # inplace sort op
-    cdef _ndarray_base out
-    out = core.ndarray(self.shape, dtype=self.dtype)
-    launch_general_func("ascend_sort", [self], [out], [], {"axis": axis, "mode": "stable"}, 0)
-    elementwise_copy(out, self)
+
+cdef _ascend_sort(_ndarray_base self, _ndarray_base out, int axis):
+    """Sort `self` along `axis`; the sorted values are written into `out`."""
+    launch_general_func(
+        "ascend_sort",
+        [self], [out],
+        [axis, 1, 0],  # axis, stable, descending
+        {}, 0)
+
 
 cdef _ascend_argsort(_ndarray_base self, _ndarray_base out, int axis):
-    launch_general_func("ascend_argsort", [self], [out], [], {"axis": axis}, 0)
-
-cdef _ascend_partition(_ndarray_base self, kth, int axis):
-    print("Error: Ascend has no such aclop")
-
-cdef _ascend_partitionsort(_ndarray_base self, kth, int axis):
-    print("Error: Ascend has no such aclop")
+    """Write the argsort indices of `self` along `axis` into `out`."""
+    launch_general_func(
+        "ascend_argsort",
+        [self], [out],
+        [axis, 0],  # dim, descending
+        {}, 0)
 
 
 cdef _ndarray_sort(_ndarray_base self, int axis):
     cdef int ndim = self._shape.size()
-    cdef _ndarray_base data
+    cdef _ndarray_base data, out
 
     if ndim == 0:
         raise AxisError('Sorting arrays with the rank of zero is not '
@@ -47,54 +57,39 @@ cdef _ndarray_sort(_ndarray_base self, int axis):
 
     axis = internal._normalize_axis_index(axis, ndim)
 
+    # Move the target axis to the last position so that aclnn can always sort
+    # the innermost dimension.  `data` is a fresh contiguous buffer in that
+    # case, so the sorted result has to be copied back into `self` afterwards.
     if axis == ndim - 1:
         data = self
     else:
         data = _manipulation.rollaxis(self, axis, ndim).copy()
 
-    if ndim == 1:
-        #thrust.sort(self.dtype, data.data.ptr, 0, self.shape)
-        _ascend_sort(data, axis)
-    else:
-        """
-        max_size = max(min(1 << 22, data.size) // data.shape[-1], 1)
-        keys_array = core.ndarray(
-            (max_size * data.shape[-1],), dtype=numpy.intp)
-        stop = data.size // data.shape[-1]
-        for offset in range(0, stop, max_size):
-            width = min(max_size, stop - offset)
-            
-            thrust.sort(
-                self.dtype,
-                data.data.ptr + offset * data.shape[-1] * data.itemsize,
-                keys_array.data.ptr,
-                (width, data.shape[-1]),
-            )
-        """
-        _ascend_sort(data, axis)
+    # aclnnSort is not an inplace op: it returns the sorted values (and
+    # optionally the indices) in a separate output tensor.  `data` now has the
+    # sort axis as its last dimension, hence -1.
+    out = core.ndarray(data.shape, dtype=data.dtype)
+    _ascend_sort(data, out, -1)
 
     if axis == ndim - 1:
-        pass
+        # `data is self`, sorting in place through the temp output.
+        elementwise_copy(out, data)
     else:
         data = _manipulation.rollaxis(data, -1, axis)
+        elementwise_copy(out, data)
         elementwise_copy(data, self)
 
 
 cdef _ndarray_base _ndarray_argsort(_ndarray_base self, axis):
     cdef int _axis, ndim
-    cdef _ndarray_base data
-
-    if not cupy.xpu.thrust.available:
-        raise RuntimeError('Thrust is needed to use cupy.argsort. Please '
-                           'install CUDA Toolkit with Thrust then '
-                           'reinstall CuPy after uninstalling it.')
+    cdef _ndarray_base data, idx_view
 
     self = cupy.atleast_1d(self)
     ndim = self._shape.size()
 
     if axis is None:
         data = self.ravel()
-        _axis = -1
+        _axis = ndim - 1
     else:
         data = self
         _axis = axis
@@ -105,25 +100,21 @@ cdef _ndarray_base _ndarray_argsort(_ndarray_base self, axis):
         data = data.copy()
     else:
         data = _manipulation.rollaxis(data, _axis, ndim).copy()
-    shape = data.shape
 
-    idx_array = core.ndarray(shape, dtype=numpy.intp)
-
-    """
-    if ndim == 1:
-        thrust.argsort(self.dtype, idx_array.data.ptr, data.data.ptr, 0,
-                       shape)
-    else:
-        keys_array = core.ndarray(shape, dtype=numpy.intp)
-        thrust.argsort(self.dtype, idx_array.data.ptr, data.data.ptr,
-                       keys_array.data.ptr, shape)
-    """
-    _ascend_argsort(data, idx_array, _axis)
+    # aclnnArgsort requires an int64 index tensor on output (CuPy defaults to
+    # intp, which is int64 on Linux but not on all platforms) and always sorts
+    # the last dimension, which is exactly where the target axis has been
+    # moved to above.
+    idx_array = core.ndarray(data.shape, dtype=numpy.int64)
+    _ascend_argsort(data, idx_array, -1)
 
     if _axis == ndim - 1:
         return idx_array
-    else:
-        return _manipulation.rollaxis(idx_array, -1, _axis)
+
+    # The indices are relative to the last axis; roll them back so that they
+    # line up with the original `_axis` again.
+    idx_view = _manipulation.rollaxis(idx_array, -1, _axis)
+    return idx_view.copy()
 
 
 cdef _ndarray_partition(_ndarray_base self, kth, int axis):
@@ -144,7 +135,7 @@ cdef _ndarray_partition(_ndarray_base self, kth, int axis):
     """
 
     cdef int ndim = self._shape.size()
-    cdef Py_ssize_t k, max_k, length, s, sz, t
+    cdef Py_ssize_t k, length
     cdef _ndarray_base data
 
     if ndim == 0:
@@ -165,17 +156,16 @@ cdef _ndarray_partition(_ndarray_base self, kth, int axis):
     length = self._shape[axis]
     if isinstance(kth, int):
         kth = kth,
-    max_k = 0
     for k in kth:
         if k < 0:
             k += length
         if not (0 <= k < length):
             raise ValueError('kth(={}) out of bounds {}'.format(k, length))
-        if max_k < k:
-            max_k = k
 
-    # ASCEND: TODO later
-    _ascend_partition(data, kth, axis)
+    # ASCEND: no aclnn partition op yet.  A fully sorted array is also a valid
+    # partition (every k-th element is in its final position), so fall back to
+    # `sort`, which is implemented on top of aclnnSort.
+    data.sort(axis=-1)
 
     if axis != ndim - 1:
         data = _manipulation.rollaxis(data, -1, axis)
@@ -202,7 +192,7 @@ cdef _ndarray_base _ndarray_argpartition(self, kth, axis):
 
     """
     cdef int _axis, ndim
-    cdef Py_ssize_t k, max_k, length, s, sz, t
+    cdef Py_ssize_t k, length
     cdef _ndarray_base data
     if axis is None:
         data = self.ravel()
@@ -224,27 +214,13 @@ cdef _ndarray_base _ndarray_argpartition(self, kth, axis):
 
     if isinstance(kth, int):
         kth = kth,
-    max_k = 0
     for k in kth:
         if k < 0:
             k += length
         if not (0 <= k < length):
             raise ValueError('kth(={}) out of bounds {}'.format(k, length))
-        if max_k < k:
-            max_k = k
 
-    shape = data.shape
-    data = data.ravel()
-    indices = cupy.arange(0, data.shape[0], dtype=cupy.int64)
-    # TODO: create output ndarray
-    #_ascend_partitionsort(data, indices, kth, _axis)
-
-    # Rearrange indices w.r.t the original axis
-    axis_indices = cupy.unravel_index(indices, shape)
-    indices = axis_indices[-1]
-    indices = indices.reshape(shape)
-
-    if _axis != ndim - 1:
-        indices = _manipulation.rollaxis(indices, -1, _axis)
-
-    return indices
+    # ASCEND: no aclnn argpartition op yet; a full argsort is also a valid
+    # argpartition, so reuse `argsort` (implemented on top of aclnnArgsort).
+    # `data` already has the partition axis as its last dimension.
+    return data.argsort(axis=-1)
