@@ -408,6 +408,13 @@ cdef extern from "../acl_opinfo.h":
         TERNARY_OP = 8
         INPLACE_TERNARY_OP = 9
 
+cdef extern from "../acl_custom_kernels.h":
+    # custom AscendC kernel launcher (binary load + aclrtLaunchKernelWithConfig)
+    aclError aclop_LaunchCustomKernel(
+        const char* bin_path, const char* func_name,
+        void* out0, void* out1, void* in0, void* in1,
+        uint64_t n, aclrtStream stream) nogil
+
     cdef cppclass OpInfo:
         # 构造函数
         OpInfo() except +
@@ -511,6 +518,12 @@ cdef OpType get_op_type(object ops, bint inplace, bint has_scalar = False):
 cdef aclError launch_general_func(str opname, sequence ins, sequence outs, list args, dict kwargs, intptr_t stream_ptr) except *:
     if opname.startswith("cupy_"):
         opname = ASCEND_OP_PREFIX + opname[5:]
+    # custom AscendC kernel registry takes precedence (B-tier ops with no
+    # aclnn counterpart; see cupy/backends/ascend/kernels/__init__.py)
+    if _custom_kernel_specs:
+        cspec = _custom_kernel_specs.get(opname)
+        if cspec is not None:
+            return _launch_custom_ufunc(opname, cspec, ins, outs, stream_ptr)
     cdef OpInfo op_info
     cdef FuncPtrUnion func_ptr
     op_info.op_name = opname.encode("utf-8")
@@ -583,6 +596,84 @@ cdef vector[aclTensor*] _create_ops_vector(sequence ins, sequence outs) except *
             raise RuntimeError("Operand is not ndarray: ", op)
 
     return tensors
+
+# ---------------------------------------------------------------------------
+# custom AscendC kernel ufuncs (plan.md B-tier ops without an aclnn op)
+# spec: {'bin': str, 'entry': str, 'n_out': int, 'n_in': int, 'dtypes': tuple}
+# ---------------------------------------------------------------------------
+cdef dict _custom_kernel_specs = {}
+
+
+def py_register_custom_kernel(str opname, str bin_path, str entry,
+                              int n_out, int n_in, tuple dtypes=()):
+    """Register a custom AscendC kernel as an ``ascend_<name>`` ufunc impl."""
+    _custom_kernel_specs[opname] = {
+        'bin': bin_path, 'entry': entry,
+        'n_out': n_out, 'n_in': n_in, 'dtypes': dtypes,
+    }
+
+
+def py_list_custom_kernels() -> list:
+    return sorted(_custom_kernel_specs)
+
+
+cdef aclError _launch_custom_ufunc(str opname, dict spec, sequence ins,
+                                   sequence outs, intptr_t stream_ptr) except *:
+    cdef bytes bin_path = spec['bin'].encode('utf-8')
+    cdef bytes entry = spec['entry'].encode('utf-8')
+    cdef int n_out = spec['n_out']
+    cdef int n_in = spec['n_in']
+    cdef tuple dtypes = spec['dtypes']
+
+    # v1 limitation: array operands only; scalar promotion is not supported yet
+    cdef list a_ins = list(ins)[:n_in]
+    cdef list a_outs = list(outs)[:n_out]
+    for op in a_ins + a_outs:
+        if not isinstance(op, _ndarray_base):
+            raise NotImplementedError(
+                f'custom AscendC kernel {opname!r} supports array operands '
+                f'only (got {type(op).__name__}); wrap scalars with '
+                'cupy.asarray(...) explicitly')
+    if dtypes and a_outs and a_outs[0].dtype.char not in dtypes:
+        raise NotImplementedError(
+            f'custom AscendC kernel {opname!r} supports out dtype '
+            f'{dtypes} (got {a_outs[0].dtype})')
+
+    cdef uint64_t n = 1
+    if a_outs:
+        n = <uint64_t> a_outs[0].size
+    elif a_ins:
+        n = <uint64_t> a_ins[0].size
+    if n == 0:
+        return 0
+
+    cdef void* out0 = NULL
+    cdef void* out1 = NULL
+    cdef void* in0 = NULL
+    cdef void* in1 = NULL
+    if n_out > 0:
+        out0 = <void*><uintptr_t>a_outs[0].data.ptr
+    if n_out > 1:
+        out1 = <void*><uintptr_t>a_outs[1].data.ptr
+    if n_in > 0:
+        in0 = <void*><uintptr_t>a_ins[0].data.ptr
+    if n_in > 1:
+        in1 = <void*><uintptr_t>a_ins[1].data.ptr
+
+    cdef aclrtStream stream = <aclrtStream>NULL
+    if stream_ptr != <intptr_t>0:
+        stream = <aclrtStream>stream_ptr
+
+    cdef aclError ret = 0
+    cdef const char* bin_c = bin_path
+    cdef const char* entry_c = entry
+    with nogil:
+        ret = aclop_LaunchCustomKernel(
+            bin_c, entry_c, out0, out1, in0, in1, n, stream)
+    if ret != 0:
+        raise RuntimeError(f'custom AscendC kernel {opname!r} launch failed: {ret}')
+    return 0
+
 
 cdef aclError launch_acl_func(str opname, sequence ins, sequence outs, list args, dict kwargs, intptr_t stream_ptr) except *:
     # 

@@ -168,3 +168,31 @@ try:
     check_cann_version()
 except Exception:  # noqa: BLE001 - never break import
     pass
+
+
+# ---------------------------------------------------------------------------
+# custom AscendC kernels (docs/ascend/CustomKernel.md)
+# JIT-compiles the built-in AscendC sources (cached on disk) and registers
+# them as `ascend_<ufunc>` dispatch targets. Any failure disables the feature
+# with a warning instead of breaking the import.
+# ---------------------------------------------------------------------------
+def _register_custom_kernels() -> None:
+    if os.environ.get('CUPY_ASCEND_DISABLE_CUSTOM_KERNELS'):
+        return
+    try:
+        from cupy.backends.ascend.kernels import CUSTOM_UFUNCS, ensure_built
+        bins = ensure_built()
+        from cupy.backends.ascend.api import acl_utils
+        for name, spec in CUSTOM_UFUNCS.items():
+            acl_utils.py_register_custom_kernel(
+                'ascend_' + name, bins[spec['bin']], spec['entry'],
+                spec['n_out'], spec['n_in'], spec.get('dtypes', ()))
+    except Exception as e:  # noqa: BLE001 - never break import
+        import warnings
+        warnings.warn(f'custom AscendC kernels disabled: {e}', RuntimeWarning)
+
+
+try:
+    _register_custom_kernels()
+except Exception:  # noqa: BLE001 - never break import
+    pass
