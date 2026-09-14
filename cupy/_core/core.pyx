@@ -3370,9 +3370,6 @@ cdef _ndarray_base _ndarray_init(
     return ret
 
 
-cdef extern from '../../cupy_backends/cupy_backend.h':
-    pass
-
 cdef extern from '../../cupy_backends/cupy_backend_runtime.h' nogil:
     int cudaSetDevice(int device)
 
