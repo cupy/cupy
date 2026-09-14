@@ -87,6 +87,8 @@ cdef class PlanNd:
         # TODO(leofang): support multi-GPU transforms
         readonly list gpus
 
+        _require_output_metadata(self)
+
 
 cdef class XtPlanNd:
     cdef:

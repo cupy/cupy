@@ -669,6 +669,21 @@ def test_plan_nd_init_api(api):
     assert plan.order == ('C' if api == 'old' else None)
     assert plan.last_axis == (2 if api == 'old' else None)
     assert plan.last_size == (5 if api == 'old' else None)
+
+    # get/check_output_array are unused by CuPy and need last_axis/last_size.
+    out = cupy.empty((2, 3, 5), cupy.complex64)
+    if api == 'old':
+        assert plan.get_output_array(a).shape == out.shape
+        assert plan.get_output_array(a).dtype == out.dtype
+        plan.check_output_array(a, out)
+        with pytest.raises(ValueError):
+            plan.check_output_array(a, cupy.empty((2, 3, 8), cupy.complex64))
+    else:
+        with pytest.raises(RuntimeError):
+            plan.get_output_array(a)
+        with pytest.raises(RuntimeError):
+            plan.check_output_array(a, out)
+
     with plan:
         cupy.fft.rfftn(a, axes=axes)
 
