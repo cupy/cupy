@@ -40,6 +40,21 @@ cpdef int get_device_id() except? -1:
     return runtime.getDevice()
 
 
+cpdef int _normalize_device_id(device) except? -1:
+    """Returns the device id for a ``device=`` argument.
+
+    Accepts an ``int`` or a :class:`Device`. ``bool`` is rejected even though
+    it is a subclass of ``int``.
+    """
+    if isinstance(device, Device):
+        return (<Device>device).id
+    if isinstance(device, int) and not isinstance(device, bool):
+        return device
+    raise TypeError(
+        'device must be an int or cupy.cuda.Device, got '
+        f'{type(device).__name__!r}')
+
+
 cpdef Device _get_device():
     dev_id = runtime.getDevice()
     ret = _devices.get(dev_id, None)
