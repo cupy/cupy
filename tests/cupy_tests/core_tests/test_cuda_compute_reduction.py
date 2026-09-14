@@ -355,9 +355,10 @@ class _CountingCacheBackend(DiskKernelCacheBackend):
         super().save(name, cubin, source)
 
 
+@pytest.mark.thread_unsafe(
+    reason="accelerator mutation and global cache directory.")
 class TestCudaComputeCachedAlgorithm(CudaComputeReductionTestBase):
 
-    @pytest.mark.thread_unsafe(reason="mutates global cache directory")
     def test_disk_cache_round_trip(self):
         # build once into a temporary cache dir, then force a second build
         # to consult the disk. The memo is per thread, so the second call
@@ -398,3 +399,33 @@ class TestCudaComputeCachedAlgorithm(CudaComputeReductionTestBase):
                   d_out=d_out, num_items=d_in.size, op=compute.OpKind.PLUS,
                   h_init=h_init)
         assert float(d_out) == float(cupy.arange(1000, dtype='f').sum())
+
+    def test_segmented_build_shared_across_shapes(self):
+        # an empty cache directory forces a real build, and the memo is per
+        # thread, so run both calls in a fresh thread. The second shape must
+        # not build again: the segment size is passed only through the
+        # start and end offsets at call time
+        compute = _cuda_compute_common._get_cuda_compute()
+        shapes = [(100, 50), (37, 129)]
+        results = []
+
+        def run():
+            for shape in shapes:
+                a_np = testing.shaped_random(shape, numpy, dtype='d', seed=1)
+                results.append((a_np, cupy.sum(cupy.asarray(a_np), axis=1)))
+
+        with tempfile.TemporaryDirectory() as path:
+            backend = _CountingCacheBackend(path)
+            with mock.patch('cupy.cuda.compiler._kernel_cache_backend',
+                            backend), \
+                    mock.patch.object(
+                        compute, 'make_segmented_reduce',
+                        wraps=compute.make_segmented_reduce) as build:
+                t = threading.Thread(target=run)
+                t.start()
+                t.join()
+            assert build.call_count == 1
+            assert backend.saves == 1
+        assert len(results) == len(shapes)
+        for a_np, out in results:
+            testing.assert_allclose(out, a_np.sum(axis=1))

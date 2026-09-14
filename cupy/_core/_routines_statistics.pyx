@@ -27,16 +27,19 @@ except ImportError:
 cdef _ndarray_base _ndarray_max(
         _ndarray_base self, axis, out, dtype, keepdims):
     for accelerator in _accelerator._routine_accelerators:
-        result = None
         if accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE:
             # result will be None if the reduction is not served by
             # cuda.compute
             result = _amax(self, axis=axis, out=out, dtype=dtype,
                            keepdims=keepdims, cuda_compute_only=True)
+            if result is not None:
+                return result
         if accelerator == _accelerator.ACCELERATOR_CUB:
             # result will be None if the reduction is not compatible with CUB
             result = cub.cub_reduction(
                 self, cub.CUPY_CUB_MAX, axis, dtype, out, keepdims)
+            if result is not None:
+                return result
         if (accelerator == _accelerator.ACCELERATOR_CUTENSOR and
                 cuda_cutensor is not None):
             from cupyx import cutensor
@@ -45,24 +48,27 @@ cdef _ndarray_base _ndarray_max(
                 continue
             result = cutensor._try_reduction_routine(
                 self, axis, dtype, out, keepdims, cuda_cutensor.OP_MAX, 1, 0)
-        if result is not None:
-            return result
+            if result is not None:
+                return result
     return _amax(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 
 cdef _ndarray_base _ndarray_min(
         _ndarray_base self, axis, out, dtype, keepdims):
     for accelerator in _accelerator._routine_accelerators:
-        result = None
         if accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE:
             # result will be None if the reduction is not served by
             # cuda.compute
             result = _amin(self, axis=axis, out=out, dtype=dtype,
                            keepdims=keepdims, cuda_compute_only=True)
+            if result is not None:
+                return result
         if accelerator == _accelerator.ACCELERATOR_CUB:
             # result will be None if the reduction is not compatible with CUB
             result = cub.cub_reduction(
                 self, cub.CUPY_CUB_MIN, axis, out, dtype, keepdims)
+            if result is not None:
+                return result
         if (accelerator == _accelerator.ACCELERATOR_CUTENSOR and
                 cuda_cutensor is not None):
             from cupyx import cutensor
@@ -71,8 +77,8 @@ cdef _ndarray_base _ndarray_min(
                 continue
             result = cutensor._try_reduction_routine(
                 self, axis, dtype, out, keepdims, cuda_cutensor.OP_MIN, 1, 0)
-        if result is not None:
-            return result
+            if result is not None:
+                return result
     return _amin(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 

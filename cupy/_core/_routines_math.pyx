@@ -90,23 +90,26 @@ cdef _ndarray_base _ndarray_prod(
         _ndarray_base self, axis, dtype, out, keepdims):
     reduce_func = _prod_auto_dtype if dtype is None else _prod_keep_dtype
     for accelerator in _accelerator._routine_accelerators:
-        result = None
         if accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE:
             # result will be None if the reduction is not served by
             # cuda.compute
             result = reduce_func(self, axis, dtype, out, keepdims,
                                  cuda_compute_only=True)
+            if result is not None:
+                return result
         if accelerator == _accelerator.ACCELERATOR_CUB:
             # result will be None if the reduction is not compatible with CUB
             result = cub.cub_reduction(
                 self, cub.CUPY_CUB_PROD, axis, dtype, out, keepdims)
+            if result is not None:
+                return result
         if (accelerator == _accelerator.ACCELERATOR_CUTENSOR and
                 cuda_cutensor is not None):
             from cupyx import cutensor
             result = cutensor._try_reduction_routine(
                 self, axis, dtype, out, keepdims, cuda_cutensor.OP_MUL, 1, 0)
-        if result is not None:
-            return result
+            if result is not None:
+                return result
     return reduce_func(self, axis, dtype, out, keepdims)
 
 
@@ -114,23 +117,26 @@ cdef _ndarray_base _ndarray_sum(
         _ndarray_base self, axis, dtype, out, keepdims):
     reduce_func = _sum_auto_dtype if dtype is None else _sum_keep_dtype
     for accelerator in _accelerator._routine_accelerators:
-        result = None
         if accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE:
             # result will be None if the reduction is not served by
             # cuda.compute
             result = reduce_func(self, axis, dtype, out, keepdims,
                                  cuda_compute_only=True)
+            if result is not None:
+                return result
         if accelerator == _accelerator.ACCELERATOR_CUB:
             # result will be None if the reduction is not compatible with CUB
             result = cub.cub_reduction(
                 self, cub.CUPY_CUB_SUM, axis, dtype, out, keepdims)
+            if result is not None:
+                return result
         if (accelerator == _accelerator.ACCELERATOR_CUTENSOR and
                 cuda_cutensor is not None):
             from cupyx import cutensor
             result = cutensor._try_reduction_routine(
                 self, axis, dtype, out, keepdims, cuda_cutensor.OP_ADD, 1, 0)
-        if result is not None:
-            return result
+            if result is not None:
+                return result
 
     return reduce_func(self, axis, dtype, out, keepdims)
 
