@@ -8,11 +8,43 @@ import pytest
 import cupy
 from cupy import testing
 import cupyx.scipy.ndimage  # NOQA
+from cupyx.scipy.ndimage import _pba_2d
+from cupyx.scipy.ndimage import _pba_3d
 
 try:
     import scipy.ndimage  # NOQA
 except ImportError:
     pass
+
+
+def test_pba2_pack_kernel_writes_coordinates():
+    marker = -32768
+    arr = cupy.zeros((3, 2), dtype=bool)
+    arr[1, 1] = True
+    out = cupy.zeros(arr.shape + (2,), dtype=cupy.int16)
+    _pba_2d._get_pack_kernel(marker=marker)(arr, out, size=arr.size)
+
+    # Background elements store their own (column, row); sites store `marker`.
+    expected_x = cupy.array([[0, 1], [0, marker], [0, 1]], dtype=cupy.int16)
+    expected_y = cupy.array([[0, 0], [1, marker], [2, 2]], dtype=cupy.int16)
+    testing.assert_array_equal(out[..., 0], expected_x)
+    testing.assert_array_equal(out[..., 1], expected_y)
+
+
+@pytest.mark.parametrize('large_dist', [False, True])
+@pytest.mark.parametrize('int_type', ['int', 'ptrdiff_t'])
+def test_pba3_fused_decode_and_distance(int_type, large_dist):
+    # Every voxel encodes the site at (x, y, z) == (0, 0, 0), so the distance
+    # a voxel reports is just the norm of its own index.
+    kernel = _pba_3d._get_decode_as_distance_kernel(
+        size_max=1024, int_type=int_type, large_dist=large_dist)
+    encoded = cupy.zeros((2, 3, 4), dtype=cupy.int32)
+    dist = cupy.empty(encoded.shape, dtype=cupy.float32)
+    kernel(encoded, dist)
+
+    indices = numpy.indices(encoded.shape)
+    expected = numpy.sqrt((indices ** 2).sum(axis=0))
+    testing.assert_allclose(dist, expected, rtol=1e-6)
 
 
 @testing.with_requires('scipy')

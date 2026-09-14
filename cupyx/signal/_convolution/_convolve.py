@@ -29,11 +29,11 @@ import cupy
 
 
 _convolve1d2o_kernel = cupy.ElementwiseKernel(
-    'raw T in1, raw T in2, int32 W, int32 H', 'T out',
+    'raw T in1, raw T in2, int64 W, int64 H', 'T out',
     """
     T temp {};
-    for (int x = 0; x < W; x++) {
-      for (int y = 0; y < H; y++) {
+    for (ptrdiff_t x = 0; x < W; x++) {
+      for (ptrdiff_t y = 0; y < H; y++) {
         temp += in1[i + W - x - 1] * in1[i + H - y - 1] * in2[H * x + y];
       }
     }
@@ -132,12 +132,12 @@ def convolve1d2o(in1, in2, mode='valid', method='direct'):
 
 
 _convolve1d3o_kernel = cupy.ElementwiseKernel(
-    'raw T in1, raw T in2, int32 W, int32 H, int32 D', 'T out',
+    'raw T in1, raw T in2, int64 W, int64 H, int64 D', 'T out',
     """
     T temp {};
-    for (int x = 0; x < W; x++) {
-      for (int y = 0; y < H; y++) {
-        for (int z = 0; z < D; z++) {
+    for (ptrdiff_t x = 0; x < W; x++) {
+      for (ptrdiff_t y = 0; y < H; y++) {
+        for (ptrdiff_t z = 0; z < D; z++) {
           temp += in1[i + W - x - 1] * in1[i + H - y - 1] *
                   in1[i + D - z - 1] * in2[(H * x + y) * D + z];
         }

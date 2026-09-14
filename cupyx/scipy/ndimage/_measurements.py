@@ -120,7 +120,7 @@ def _label(x, structure, y):
     dirs = [[vecs[dm][dr] for dm in range(x.ndim)] for dr in indxs]
     dirs = cupy.array(dirs, dtype=numpy.int32)
     ndirs = indxs.shape[0]
-    y_shape = cupy.array(y.shape, dtype=numpy.int32)
+    y_shape = cupy.array(y.shape, dtype=numpy.int64)
     count = cupy.zeros(2, dtype=y.dtype)
 
     _kernel_init()(x, y)
@@ -141,7 +141,7 @@ def _kernel_init():
 
 def _kernel_connect():
     return _core.ElementwiseKernel(
-        'raw int32 shape, raw int32 dirs, int32 ndirs, int32 ndim',
+        'raw int64 shape, raw int32 dirs, int32 ndirs, int32 ndim',
         'raw Y y',
         '''
         using atomic_t = typename cupy::type_traits::conditional<
@@ -156,14 +156,15 @@ def _kernel_connect():
             Y stride = 1;
             Y k = 0;
             for (int dm = ndim - 1; dm >= 0; dm--) {
-                Y pos = rest % shape[dm] + dirs[dm + dr * ndim];
-                if (pos < 0 || pos >= shape[dm]) {
+                Y dim_size = static_cast<Y>(shape[dm]);
+                Y pos = rest % dim_size + dirs[dm + dr * ndim];
+                if (pos < 0 || pos >= dim_size) {
                     k = -1;
                     break;
                 }
                 k += pos * stride;
-                rest /= shape[dm];
-                stride *= shape[dm];
+                rest /= dim_size;
+                stride *= dim_size;
             }
             if (k < 0) continue;
             if (y[k] < 0) continue;

@@ -193,7 +193,7 @@ def choice(a, size=None, replace=True, p=None):
 
 
 _multinominal_kernel = _core.ElementwiseKernel(
-    'int64 x, int32 p, int32 n', 'raw U ys',
+    'int64 x, int64 p, int64 n', 'raw U ys',
     'atomicAdd(&ys[i / n * p + x], U(1))',
     'cupy_random_multinomial')
 

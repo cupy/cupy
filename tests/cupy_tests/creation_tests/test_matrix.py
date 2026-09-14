@@ -127,6 +127,40 @@ class TestTri(unittest.TestCase):
         return xp.tri(*self.shape, k=1, dtype=dtype)
 
 
+class TestTriLargeDimensions(unittest.TestCase):
+
+    @testing.slow
+    @pytest.mark.thread_unsafe(reason='Allocation too large.')
+    def test_large_number_of_rows(self):
+        out = None
+        try:
+            # k must be 0: a nonzero k lets a truncated 32-bit `row` wrap
+            # back onto the expected answer instead of failing.
+            out = cupy.tri(2**31 + 1, 1, k=0, dtype=cupy.uint8)
+            assert out[0, 0] == 1
+            assert out[-1, 0] == 1
+        except MemoryError:
+            pytest.skip('out of memory in test.')
+        finally:
+            del out
+            cupy.get_default_memory_pool().free_all_blocks()
+
+    @testing.slow
+    @pytest.mark.thread_unsafe(reason='Allocation too large.')
+    def test_large_number_of_columns(self):
+        out = None
+        try:
+            out = cupy.tri(
+                1, 2**31, k=2**31 - 1, dtype=cupy.uint8)
+            assert out[0, 0] == 1
+            assert out[0, -1] == 1
+        except MemoryError:
+            pytest.skip('out of memory in test.')
+        finally:
+            del out
+            cupy.get_default_memory_pool().free_all_blocks()
+
+
 @testing.parameterize(
     {'shape': (2,)},
     {'shape': (3, 3)},

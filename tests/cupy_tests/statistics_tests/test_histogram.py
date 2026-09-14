@@ -9,6 +9,7 @@ import pytest
 import cupy
 from cupy import testing
 from cupy._core import _accelerator
+from cupy._statistics import histogram as histogram_module
 
 
 # Note that numpy.bincount does not support uint64 on 64-bit environment
@@ -41,6 +42,24 @@ def for_all_dtypes_combination_bincount(names):
 
 
 class TestHistogram(unittest.TestCase):
+
+    def test_kernel_accepts_large_number_of_bins(self):
+        x = cupy.array([-1], dtype=cupy.float32)
+        bins = cupy.broadcast_to(
+            cupy.array([0], dtype=cupy.float32), (2**31,))
+        y = cupy.zeros(1, dtype=cupy.int64)
+        histogram_module._histogram_kernel(x, bins, bins.size, y)
+        assert y[0] == 0
+
+    def test_weighted_kernel_accepts_large_number_of_bins(self):
+        x = cupy.array([-1], dtype=cupy.float32)
+        bins = cupy.broadcast_to(
+            cupy.array([0], dtype=cupy.float32), (2**31,))
+        weights = cupy.ones(1, dtype=cupy.float32)
+        y = cupy.zeros(1, dtype=cupy.float32)
+        histogram_module._weighted_histogram_kernel(
+            x, bins, bins.size, weights, y)
+        assert y[0] == 0
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-7)

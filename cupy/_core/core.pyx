@@ -272,10 +272,11 @@ cdef class _ndarray_base:
             self._set_contiguous_strides(itemsize, order_char == b'C')
             alloc_size = self.size * itemsize  # contiguous
 
-        # Arrays can e.g. broadcast, so check that all pointer offsets fit and
-        # the size fit int32. (seberg: `* itemsize` may be unnecessary)
+        # Arrays can e.g. broadcast, so check that all pointer offsets and
+        # size-bound indexing quantities fit int32. (seberg: `* itemsize`
+        # may be unnecessary)
         max_diff = max(alloc_size, self.size * itemsize)
-        self._index_32_bits = max_diff <= <Py_ssize_t>(1 << 31)
+        self._index_32_bits = max_diff < <Py_ssize_t>(1 << 31)
 
         # data
         if memptr is None:
@@ -298,7 +299,7 @@ cdef class _ndarray_base:
             dtype, check_support=True)
         self._set_contiguous_strides(itemsize, c_order)
         self.data = memory.alloc(self.size * itemsize)
-        self._index_32_bits = (self.size * itemsize) <= <Py_ssize_t>(1 << 31)
+        self._index_32_bits = (self.size * itemsize) < <Py_ssize_t>(1 << 31)
 
     @property
     def __cuda_array_interface__(self):

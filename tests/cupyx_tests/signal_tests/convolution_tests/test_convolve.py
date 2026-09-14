@@ -6,6 +6,23 @@ import pytest
 import cupy
 from cupy import testing
 from cupyx import signal
+from cupyx.signal._convolution import _convolve
+
+
+def test_convolve1d2o_kernel_accepts_large_dimensions():
+    in1 = cupy.zeros(1, dtype=cupy.float32)
+    in2 = cupy.empty((0, 2**31), dtype=cupy.float32)
+    out = cupy.empty(1, dtype=cupy.float32)
+    _convolve._convolve1d2o_kernel(in1, in2, *in2.shape, out)
+    assert out[0] == 0
+
+
+def test_convolve1d3o_kernel_accepts_large_dimensions():
+    in1 = cupy.zeros(1, dtype=cupy.float32)
+    in2 = cupy.empty((0, 1, 2**31), dtype=cupy.float32)
+    out = cupy.empty(1, dtype=cupy.float32)
+    _convolve._convolve1d3o_kernel(in1, in2, *in2.shape, out)
+    assert out[0] == 0
 
 
 class TestConvolve1d2o:

@@ -15,8 +15,9 @@ cdef class _ndarray_base:
         public strides_t _strides
         readonly bint _c_contiguous
         readonly bint _f_contiguous
-        # Whether the array memory can be addressed with 32bit signed
-        # integers. To do fast indexing in the CArray class.
+        # Whether the array's memory span and size are below 2**31,
+        # enabling fast signed 32-bit indexing in the CArray class.
+        # The bound is strict so that sizes are also representable.
         readonly bint _index_32_bits
         readonly object dtype
         readonly memory.MemoryPointer data
