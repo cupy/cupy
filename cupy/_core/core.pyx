@@ -3431,12 +3431,25 @@ cpdef _ndarray_base empty_like(
     .. seealso:: :func:`numpy.empty_like`
 
     """
+    if device is not None:
+        return _empty_like_on_device(
+            device, prototype, dtype, order, subok, shape)
+    return _empty_like(prototype, dtype, order, subok, shape)
+
+
+cdef _ndarray_base _empty_like_on_device(
+        dev_arg, prototype, dtype, order, subok, shape):
+    # The guard lives here rather than in empty_like: constructing it costs
+    # ~15 ns even when it is never armed, and device=None must stay fast.
     cdef _DeviceGuard guard
+    _switch_device(&guard, dev_arg)
+    return _empty_like(prototype, dtype, order, subok, shape)
+
+
+cdef _ndarray_base _empty_like(prototype, dtype, order, subok, shape):
     cdef _ndarray_base a
     cdef memory.MemoryPointer memptr
 
-    if device is not None:
-        _switch_device(&guard, device)
     if subok is not None:
         raise TypeError('subok is not supported yet')
     if dtype is None:
