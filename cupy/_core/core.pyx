@@ -3370,8 +3370,40 @@ cdef _ndarray_base _ndarray_init(
     return ret
 
 
+cdef extern from '../../cupy_backends/cupy_backend.h':
+    pass
+
+cdef extern from '../../cupy_backends/cupy_backend_runtime.h' nogil:
+    int cudaSetDevice(int device)
+
+
+cdef cppclass _DeviceGuard:
+    # Restores the previous device when it goes out of scope, which also
+    # happens when an exception propagates. Armed by ``_switch_device``.
+    int prev
+    bint switched
+
+    __init__():
+        this.switched = False
+
+    __dealloc__():
+        if this.switched:
+            cudaSetDevice(this.prev)  # a destructor cannot raise
+
+
+cdef inline int _switch_device(_DeviceGuard* guard, dev_arg) except -1:
+    """Makes ``dev_arg`` the current device until ``guard`` is destroyed."""
+    cdef int dev_id = device._normalize_device_id(dev_arg)
+    guard.prev = runtime.getDevice()
+    if dev_id != guard.prev:
+        runtime.setDevice(dev_id)
+        guard.switched = True
+    return 0
+
+
 cpdef _ndarray_base empty_like(
-        prototype, dtype=None, order='K', subok=None, shape=None):
+        prototype, dtype=None, order='K', subok=None, shape=None,
+        device=None):
     """Returns a new array with same shape and dtype of a given array.
 
     This function currently does not support ``subok`` option.
@@ -3388,6 +3420,9 @@ cpdef _ndarray_base empty_like(
         shape (int or tuple of ints): Overrides the shape of the result. If
             ``order='K'`` and the number of dimensions is unchanged, will try
             to keep order, otherwise, ``order='C'`` is implied.
+        device (int or cupy.cuda.Device, optional): Device on which to create
+            the array. ``None`` (default) means the current device, not the
+            device of ``a``.
 
     Returns:
         cupy.ndarray: A new array with same shape and dtype of ``a`` with
@@ -3396,9 +3431,12 @@ cpdef _ndarray_base empty_like(
     .. seealso:: :func:`numpy.empty_like`
 
     """
+    cdef _DeviceGuard guard
     cdef _ndarray_base a
     cdef memory.MemoryPointer memptr
 
+    if device is not None:
+        _switch_device(&guard, device)
     if subok is not None:
         raise TypeError('subok is not supported yet')
     if dtype is None:
