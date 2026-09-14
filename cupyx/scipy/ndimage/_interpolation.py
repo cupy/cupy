@@ -379,10 +379,10 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
 
             - 2D and 3D float32 arrays as input
             - ``(ndim + 1, ndim + 1)`` homogeneous float32 transformation
-                matrix
+              matrix
             - ``mode='constant'`` and ``mode='nearest'``
             - ``order=0`` (nearest neighbor) and ``order=1`` (linear
-                interpolation)
+              interpolation)
             - NVIDIA CUDA GPUs
         float64_coords (bool): If True, force double precision computations
             internally as in scipy.ndimage.
