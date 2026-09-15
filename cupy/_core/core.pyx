@@ -3436,8 +3436,6 @@ cpdef _ndarray_base empty_like(
 
 cdef _ndarray_base _empty_like_on_device(
         dev_arg, prototype, dtype, order, subok, shape):
-    # The guard lives here rather than in empty_like: constructing it costs
-    # ~15 ns even when it is never armed, and device=None must stay fast.
     cdef _DeviceGuard guard
     _switch_device(&guard, dev_arg)
     return _empty_like(prototype, dtype, order, subok, shape)
