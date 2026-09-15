@@ -22,12 +22,13 @@ _norm_ord2 = _core.create_reduction_func(
      'q->q', 'Q->Q',
      ('e->e', (None, None, None, 'float')),
      'f->f', 'd->d'),
-    ('in0 * in0', 'a + b', 'out0 = sqrt(type_out0_raw(a))', None), 0)
+    ('in0 * in0', 'a + b', 'out0 = sqrt(type_out0_raw(a))', None), 0,
+    compute_opkind='PLUS')
 _norm_ord2_complex = _core.create_reduction_func(
     '_norm_ord2_complex',
     ('F->f', 'D->d'),
     ('in0.real() * in0.real() + in0.imag() * in0.imag()',
-     'a + b', 'out0 = sqrt(type_out0_raw(a))', None), 0)
+     'a + b', 'out0 = sqrt(type_out0_raw(a))', None), 0, compute_opkind='PLUS')
 
 
 def norm(x, ord=None, axis=None, keepdims=False):
@@ -56,12 +57,11 @@ def norm(x, ord=None, axis=None, keepdims=False):
         ndim = x.ndim
         if (ord is None or (ndim == 1 and ord == 2) or
                 (ndim == 2 and ord in ('f', 'fro'))):
+            x = x.ravel(order='A')
             if x.dtype.kind == 'c':
-                s = abs(x.ravel())
-                s *= s
-                ret = cupy.sqrt(s.sum())
+                ret = _norm_ord2_complex(x)
             else:
-                ret = cupy.sqrt((x * x).sum())
+                ret = _norm_ord2(x)
             if keepdims:
                 ret = ret.reshape((1,) * ndim)
             return ret

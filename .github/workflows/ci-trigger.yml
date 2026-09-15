@@ -19,7 +19,10 @@ permissions:
 
 jobs:
   # Leg 1 of the /test flow: validate the request, record it for flexci.yml,
-  # and bounce the ci:triggered label so the build leg fires.
+  # and bounce the ci:triggered label so the build leg fires. All /test
+  # variants (target, skip, force-skip) go through the same path: flexci.yml
+  # dispatches from the completed ci.yml run and its dispatcher decides
+  # forward vs. skip vs. force-skip from the recorded comment body.
   test-request:
     name: Record /test request + trigger build
     if: github.repository_owner == 'cupy' && github.event_name == 'issue_comment'
@@ -36,12 +39,6 @@ jobs:
     concurrency:
       group: ci-trigger-${{ github.event.issue.number }}
       cancel-in-progress: false
-    outputs:
-      ok: ${{ steps.guard.outputs.ok }}
-      skip_mode: ${{ steps.guard.outputs.skip_mode }}
-      pr_number: ${{ steps.guard.outputs.pr_number }}
-      head_sha: ${{ steps.guard.outputs.head_sha }}
-      base_ref: ${{ steps.guard.outputs.base_ref }}
     steps:
       - name: Validate the /test request
         id: guard
@@ -50,7 +47,6 @@ jobs:
         run: |
           set -euo pipefail
           ok=false
-          skip_mode=false
           pr_number=""
           head_sha=""
           base_ref=""
@@ -59,21 +55,6 @@ jobs:
           elif ! jq -r '.comment.body' "$GITHUB_EVENT_PATH" | grep -qE '^/test[[:space:]]+[^[:space:]]'; then
             echo "Comment does not start with '/test <target>'; skipping"
           else
-            # A /test skip | force-skip needs no wheel build -- the dispatcher
-            # just posts "skipped" (force-skip: override) statuses. Flag it so
-            # the build leg is short-circuited (see the dispatch-skip job); a
-            # real /test <target> falls through to the label bounce and builds.
-            # Read the FIRST /test line only, matching what the dispatcher acts
-            # on (flexci_dispatcher.extract_requested_tags returns the first
-            # match): otherwise a comment like "/test cuda120" then "/test skip"
-            # would bypass the build while the dispatcher forwards cuda120 with
-            # no wheel. A first line that is not exactly skip/force-skip leaves
-            # skip_mode false -> build-then-skip, the safe fallback.
-            first_test="$(jq -r '.comment.body' "$GITHUB_EVENT_PATH" \
-                | grep -m1 -E '^/test[[:space:]]+[^[:space:]]' || true)"
-            if [[ "${first_test}" =~ ^/test[[:space:]]+(skip|force-skip)[[:space:]]*$ ]]; then
-              skip_mode=true
-            fi
             assoc="$(jq -r '.comment.author_association' "$GITHUB_EVENT_PATH")"
             if [[ "$assoc" != "OWNER" && "$assoc" != "MEMBER" ]]; then
               echo "::warning::Comment author_association=$assoc is not OWNER/MEMBER; skipping"
@@ -91,18 +72,15 @@ jobs:
           fi
           {
             echo "ok=${ok}"
-            echo "skip_mode=${skip_mode}"
             echo "pr_number=${pr_number}"
             echo "head_sha=${head_sha}"
             echo "base_ref=${base_ref}"
           } >> "$GITHUB_OUTPUT"
 
-      # Recorded for BOTH paths: the build path (flexci.yml dispatches it
-      # post-build) and skip. Skip uploads too so its request overwrites a
-      # prior /test <target>'s (same dispatch-request-<pr>-<sha> name,
-      # overwrite: true) -- then if that target's build already finished,
-      # flexci.yml picks this skip request as newest and skips instead of
-      # dispatching the stale target.
+      # Recorded so flexci.yml can replay the exact issue_comment payload
+      # against the dispatcher (which forwards, skips, or force-skips based
+      # on the comment body). overwrite: true lets a later /test on the same
+      # (PR, head) supersede an earlier one -- flexci.yml picks the newest.
       - name: Save the dispatch request payload
         if: steps.guard.outputs.ok == 'true'
         env:
@@ -133,14 +111,14 @@ jobs:
       # secret CI_TRIGGER_APP_PRIVATE_KEY.
       - name: Mint CI-trigger App token
         id: app-token
-        if: steps.guard.outputs.ok == 'true' && steps.guard.outputs.skip_mode != 'true'
+        if: steps.guard.outputs.ok == 'true'
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1  # v3.2.0
         with:
           app-id: ${{ vars.CI_TRIGGER_APP_ID }}
           private-key: ${{ secrets.CI_TRIGGER_APP_PRIVATE_KEY }}
 
       - name: Bounce the ci:triggered label
-        if: steps.guard.outputs.ok == 'true' && steps.guard.outputs.skip_mode != 'true'
+        if: steps.guard.outputs.ok == 'true'
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           PR_NUMBER: ${{ steps.guard.outputs.pr_number }}
@@ -161,99 +139,6 @@ jobs:
           gh api --method POST \
             "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/labels" \
             -f "labels[]=ci:triggered" >/dev/null
-
-  # Leg 1b of the /test flow: a /test skip | force-skip needs no wheel, so
-  # short-circuit the build -- run the dispatcher HERE to post the "skipped"
-  # (or force-skip override) statuses, and deliberately do NOT bounce
-  # ci:triggered, so ci.yml never builds. This restores the old FlexCI, where
-  # skip was instant. A real /test <target> instead bounces the label above
-  # and its wheel is built then dispatched post-build in flexci.yml.
-  dispatch-skip:
-    name: Post skipped statuses (no build)
-    needs: test-request
-    if: |
-      github.repository_owner == 'cupy' &&
-      needs.test-request.outputs.ok == 'true' &&
-      needs.test-request.outputs.skip_mode == 'true'
-    runs-on: ubuntu-latest
-    # Join ci.yml's build concurrency group: a /test skip issued while an
-    # earlier /test <target> is still building cancels that in-flight build,
-    # and a cancelled build has conclusion != success, so flexci.yml never
-    # dispatches the superseded target. (The label-bounce path gets this for
-    # free -- its rebuild enters the same group; the skip path must opt in.)
-    concurrency:
-      group: ci-build-${{ github.event.issue.number }}
-      cancel-in-progress: true
-    # A separate job (not a step in test-request) so it gets its own
-    # statuses/PR-write token without the app-scoped ci-trigger environment.
-    permissions:
-      contents: read        # checkout the dispatcher + config.tags.json
-      statuses: write       # flexci_dispatcher.py writes commit statuses
-      pull-requests: write  # dispatcher reads PR head + posts force-skip note
-    steps:
-      - name: Pin to the vouched head and base
-        id: pin
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ needs.test-request.outputs.pr_number }}
-          VOUCHED_HEAD: ${{ needs.test-request.outputs.head_sha }}
-          VOUCHED_BASE: ${{ needs.test-request.outputs.base_ref }}
-        run: |
-          set -euo pipefail
-          # Head+base pin, mirroring flexci.yml's dispatch job: post skipped
-          # statuses only if the PR still points at the head AND base the /test
-          # comment vouched. The dispatcher writes statuses to the PR's *current*
-          # head, so a push (new head) or a retarget (new base) landing between
-          # the comment and this job would otherwise stamp skipped (green)
-          # statuses onto an unvouched commit or under the wrong base.
-          pr_json="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}")"
-          current_head="$(jq -r '.head.sha' <<< "${pr_json}")"
-          current_base="$(jq -r '.base.ref' <<< "${pr_json}")"
-          if [[ "${current_head}" != "${VOUCHED_HEAD}" ]]; then
-            echo "::warning::PR #${PR_NUMBER} moved (${VOUCHED_HEAD} -> ${current_head}) since /test skip; re-issue the command."
-            echo "moved=true" >> "$GITHUB_OUTPUT"
-          elif [[ "${current_base}" != "${VOUCHED_BASE}" ]]; then
-            echo "::warning::PR #${PR_NUMBER} was retargeted (${VOUCHED_BASE} -> ${current_base}) since /test skip; re-issue the command."
-            echo "moved=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "moved=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Checkout (dispatcher + project map, trusted default branch)
-        if: steps.pin.outputs.moved != 'true'
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-
-      - name: Setup Python
-        if: steps.pin.outputs.moved != 'true'
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
-        with:
-          python-version: '3.13'
-
-      - name: Setup Environment
-        if: steps.pin.outputs.moved != 'true'
-        run: pip install pygithub
-
-      - name: Post skipped statuses (no dispatch, no build)
-        if: steps.pin.outputs.moved != 'true'
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          # Unused on the skip path (nothing is forwarded to FlexCI), but the
-          # dispatcher reads it at startup, so pass it to match the flexci.yml
-          # invocation. Repo-level secret (flexci.yml consumes it with no
-          # environment), so this environment-less job can read it too.
-          FLEXCI_WEBHOOK_SECRET: ${{ secrets.FLEXCI_WEBHOOK_SECRET }}
-        run: |
-          set -euo pipefail
-          # Same issue_comment payload the guard vetted; for skip/force-skip
-          # the dispatcher posts statuses and forwards nothing. config.tags.json
-          # is the trusted default-branch copy -- a PR must not get to redefine
-          # which contexts are marked skipped.
-          ./.github/workflows/scripts/flexci_dispatcher.py \
-              --event issue_comment \
-              --webhook "${GITHUB_EVENT_PATH}" \
-              --projects .pfnci/config.tags.json \
-              --external-tag jenkins \
-              --external-tag rocm
 
   # Hygiene: a push to the PR (synchronize) or a reopen clears a stale
   # ci:triggered label, so its presence keeps meaning "the current head was

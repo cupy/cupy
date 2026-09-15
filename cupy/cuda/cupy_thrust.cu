@@ -67,6 +67,9 @@ public:
  * where R is a non-nan real value. Complex values with the same nan placements are sorted according to the non-nan part if
  * it exists. Non-nan values are sorted as before."
  * Ref: https://numpy.org/doc/stable/reference/generated/numpy.sort.html
+ *
+ * NumPy sorts NaN to the end for both directions, so descending flips only the comparison
+ * between two non-NaN values and reuses all of the NaN placement above.
  */
 
 #if ((__CUDACC_VER_MAJOR__ > 9 || (__CUDACC_VER_MAJOR__ == 9 && __CUDACC_VER_MINOR__ == 2)) \
@@ -84,25 +87,25 @@ __host__ __device__ __forceinline__ bool isnan(const __half& x) {
 }
 #endif // ENABLE_HALF
 
-template <typename T>
+template <bool Descending, typename T>
 __host__ __device__ __forceinline__ constexpr
-static bool real_less(const T& lhs, const T& rhs) {
+static bool real_cmp(const T& lhs, const T& rhs) {
 #if  (defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__))
     if (isnan(lhs)) {
         return false;
     } else if (isnan(rhs)) {
         return true;
     } else {
-        return lhs < rhs;
+        return Descending ? (rhs < lhs) : (lhs < rhs);
     }
 #else
     return false;  // This will be never executed in the host
 #endif
 }
 
-template <typename T>
+template <bool Descending, typename T>
 __host__ __device__ __forceinline__ constexpr
-static bool tuple_less(const thrust::tuple<size_t, T>& lhs,
+static bool tuple_cmp(const thrust::tuple<size_t, T>& lhs,
 		 const thrust::tuple<size_t, T>& rhs) {
     const size_t& lhs_k = thrust::get<0>(lhs);
     const size_t& rhs_k = thrust::get<0>(rhs);
@@ -110,13 +113,15 @@ static bool tuple_less(const thrust::tuple<size_t, T>& lhs,
     const T& rhs_v = thrust::get<1>(rhs);
 
     // tuple's comparison rule: compare the 1st member, then 2nd, then 3rd, ...,
-    // which should be respected
+    // which should be respected. The segment key (row index) always sorts
+    // ascending to keep rows grouped correctly; only the within-row value
+    // comparison flips with Descending.
     if (lhs_k < rhs_k) {
         return true;
     } else if (lhs_k == rhs_k) {
         // same key, compare values
         // note that we can't rely on native operator< due to NaN, so we rely on our custom comparison object
-        return real_less(lhs_v, rhs_v);
+        return real_cmp<Descending>(lhs_v, rhs_v);
     } else {
         return false;
     }
@@ -127,9 +132,9 @@ static bool tuple_less(const thrust::tuple<size_t, T>& lhs,
  * We need a custom comparator because we can't overload operator< for complex numbers...
  */
 
-template <typename T>
+template <bool Descending, typename T>
 __host__ __device__ __forceinline__ constexpr
-static bool complex_less(const T& lhs, const T& rhs) {
+static bool complex_cmp(const T& lhs, const T& rhs) {
     const bool lhsRe = isnan(lhs.real());
     const bool lhsIm = isnan(lhs.imag());
     const bool rhsRe = isnan(rhs.real());
@@ -137,10 +142,11 @@ static bool complex_less(const T& lhs, const T& rhs) {
 
     // neither side has nan
     if (!lhsRe && !lhsIm && !rhsRe && !rhsIm) {
-        return lhs < rhs;
+        return Descending ? (rhs < lhs) : (lhs < rhs);
     }
 
-    // one side has nan, and the other does not
+    // one side has nan, and the other does not: nan placement is the same
+    // regardless of sort direction
     if (!lhsRe && !lhsIm && (rhsRe || rhsIm)) {
         return true;
     }
@@ -148,7 +154,8 @@ static bool complex_less(const T& lhs, const T& rhs) {
         return false;
     }
 
-    // pick 2 from 3 possibilities (R + nanj, nan + Rj, nan + nanj)
+    // pick 2 from 3 possibilities (R + nanj, nan + Rj, nan + nanj): same
+    // relative ordering regardless of sort direction
     if (lhsRe && !rhsRe) {
         return false;
     }
@@ -163,126 +170,154 @@ static bool complex_less(const T& lhs, const T& rhs) {
     }
 
     // pick 1 from 3 and compare the numerical values (nan+nan*I compares to itself as false)
-    return (((lhsIm && rhsIm) && (lhs.real() < rhs.real())) || ((lhsRe && rhsRe) && (lhs.imag() < rhs.imag())));
+    if (Descending) {
+        return (((lhsIm && rhsIm) && (rhs.real() < lhs.real())) || ((lhsRe && rhsRe) && (rhs.imag() < lhs.imag())));
+    } else {
+        return (((lhsIm && rhsIm) && (lhs.real() < rhs.real())) || ((lhsRe && rhsRe) && (lhs.imag() < rhs.imag())));
+    }
 }
 
-// Type function giving us the right comparison operator. We use a custom one for all the specializations below,
-// but otherwise just default to thrust::less. We notable do not define a specialization for float and double, since
-// thrust uses radix sort for them and sorts NaNs to the back.
+// Comparison operator for the requested direction. Types whose order depends on NaN placement
+// are specialized below, everything else just uses thrust::less/thrust::greater.
+template <typename T, bool Descending>
+struct select_cmp {
+    using type = std::conditional_t<Descending, thrust::greater<T>, thrust::less<T>>;
+};
+
+// We use tuple_desc_cmp for multi-dimensional sorts where the first entry is the row index.
+// So even for a descending sort, the row index is still compared first and ascending.
+// (For NaN-aware types, we have specializations below.)
 template <typename T>
-struct select_less {
-    using type = thrust::less<T>;
+struct tuple_desc_cmp {
+    __host__ __device__ __forceinline__ constexpr
+    bool operator() (
+        const thrust::tuple<size_t, T>& lhs, const thrust::tuple<size_t, T>& rhs) const {
+        const size_t& lhs_k = thrust::get<0>(lhs);
+        const size_t& rhs_k = thrust::get<0>(rhs);
+        if (lhs_k != rhs_k) {
+            return lhs_k < rhs_k;
+        }
+        return thrust::get<1>(rhs) < thrust::get<1>(lhs);
+    }
+};
+
+// Tuple sorts cannot use thrust::greater for descending: that would also reverse
+// the segment-key order and scramble rows. Keep keys ascending; flip values only.
+template <typename T, bool Descending>
+struct select_cmp<thrust::tuple<size_t, T>, Descending> {
+    using type = std::conditional_t<Descending, tuple_desc_cmp<T>,
+                                    thrust::less<thrust::tuple<size_t, T>>>;
 };
 
 // complex numbers
 
-template <>
-struct select_less<complex<float>> {
+template <bool Descending>
+struct select_cmp<complex<float>, Descending> {
     struct type {
         __host__ __device__ __forceinline__ constexpr
         bool operator() (
             const complex<float>& lhs, const complex<float>& rhs) const {
-            return complex_less(lhs, rhs);
+            return complex_cmp<Descending>(lhs, rhs);
         }
     };
 };
 
-template <>
-struct select_less<complex<double>> {
+template <bool Descending>
+struct select_cmp<complex<double>, Descending> {
     struct type {
         __host__ __device__ __forceinline__ constexpr
         bool operator() (
             const complex<double>& lhs, const complex<double>& rhs) const {
-            return complex_less(lhs, rhs);
+            return complex_cmp<Descending>(lhs, rhs);
         }
     };
 };
 
-template <>
-struct select_less<thrust::tuple<size_t, complex<float>>> {
+template <bool Descending>
+struct select_cmp<thrust::tuple<size_t, complex<float>>, Descending> {
     struct type {
         __host__ __device__ __forceinline__ constexpr
         bool operator() (
             const thrust::tuple<size_t, complex<float>>& lhs, const thrust::tuple<size_t, complex<float>>& rhs) const {
-            return tuple_less(lhs, rhs);
+            return tuple_cmp<Descending>(lhs, rhs);
         }
     };
 };
 
-template <>
-struct select_less<thrust::tuple<size_t, complex<double>>> {
+template <bool Descending>
+struct select_cmp<thrust::tuple<size_t, complex<double>>, Descending> {
     struct type {
         __host__ __device__ __forceinline__ constexpr
         bool operator() (
             const thrust::tuple<size_t, complex<double>>& lhs, const thrust::tuple<size_t, complex<double>>& rhs) const {
-            return tuple_less(lhs, rhs);
+            return tuple_cmp<Descending>(lhs, rhs);
         }
     };
 };
 
-template <>
-struct select_less<thrust::tuple<size_t, float>> {
+template <bool Descending>
+struct select_cmp<thrust::tuple<size_t, float>, Descending> {
     struct type {
         __host__ __device__ __forceinline__ constexpr
         bool operator() (
             const thrust::tuple<size_t, float>& lhs, const thrust::tuple<size_t, float>& rhs) const {
-            return tuple_less(lhs, rhs);
+            return tuple_cmp<Descending>(lhs, rhs);
         }
     };
 };
 
-template <>
-struct select_less<thrust::tuple<size_t, double>> {
+template <bool Descending>
+struct select_cmp<thrust::tuple<size_t, double>, Descending> {
     struct type {
         __host__ __device__ __forceinline__ constexpr
         bool operator() (
             const thrust::tuple<size_t, double>& lhs, const thrust::tuple<size_t, double>& rhs) const {
-            return tuple_less(lhs, rhs);
+            return tuple_cmp<Descending>(lhs, rhs);
         }
     };
 };
 
 // floating points
 
-template <>
-struct select_less<float> {
+template <bool Descending>
+struct select_cmp<float, Descending> {
     struct type {
         __host__ __device__ __forceinline__ constexpr
         bool operator() (const float& lhs, const float& rhs) const {
-            return real_less(lhs, rhs);
+            return real_cmp<Descending>(lhs, rhs);
         }
     };
 };
 
-template <>
-struct select_less<double> {
+template <bool Descending>
+struct select_cmp<double, Descending> {
     struct type {
         __host__ __device__ __forceinline__ constexpr
         bool operator() (const double& lhs, const double& rhs) const {
-            return real_less(lhs, rhs);
+            return real_cmp<Descending>(lhs, rhs);
         }
     };
 };
 
 #ifdef ENABLE_HALF
-template <>
-struct select_less<__half> {
+template <bool Descending>
+struct select_cmp<__half, Descending> {
     struct type {
         __host__ __device__ __forceinline__ constexpr
         bool operator() (const __half& lhs, const __half& rhs) const {
-            return real_less(lhs, rhs);
+            return real_cmp<Descending>(lhs, rhs);
         }
     };
 };
 
-template <>
-struct select_less<thrust::tuple<size_t, __half>> {
+template <bool Descending>
+struct select_cmp<thrust::tuple<size_t, __half>, Descending> {
     struct type {
         __host__ __device__ __forceinline__ constexpr
         bool operator() (
             const thrust::tuple<size_t, __half>& lhs, const thrust::tuple<size_t, __half>& rhs) const {
 
-            return tuple_less(lhs, rhs);
+            return tuple_cmp<Descending>(lhs, rhs);
         }
     };
 };
@@ -293,10 +328,25 @@ struct select_less<thrust::tuple<size_t, __half>> {
  */
 
 
+// Comparator for a 1-D sort. Ascending floats use thrust::less to allow radix sort, which
+// already puts NaN last (radix with thrust::greater would put it first). This only holds when
+// thrust sorts the values themselves; a comparison sort needs the NaN aware select_cmp.
+template <typename T, bool Descending>
+using direct_cmp_t = std::conditional_t<
+    !Descending && std::is_floating_point<T>::value,
+    thrust::less<T>,
+    typename select_cmp<T, Descending>::type>;
+
+// Comparator for a segmented (multi-dimensional) sort, which zips a row index onto each value.
+template <typename T, bool Descending>
+using segment_cmp_t = typename select_cmp<thrust::tuple<size_t, T>, Descending>::type;
+
+
 /*
  * sort
  */
 
+template <bool Descending>
 struct _sort {
     template <typename T>
     __forceinline__ void operator()(void *data_start, size_t *keys_start,
@@ -319,9 +369,8 @@ struct _sort {
         dp_data_last  = thrust::device_pointer_cast(static_cast<T*>(data_start) + size);
 
         if (ndim == 1) {
-            // we use thrust::less directly to sort floating points, because then it can use radix sort, which happens to sort NaNs to the back
-            using compare_op = std::conditional_t<std::is_floating_point<T>::value, thrust::less<T>, typename select_less<T>::type>;
-            stable_sort(cuda::par_nosync(alloc).on(stream_), dp_data_first, dp_data_last, compare_op{});
+            stable_sort(cuda::par_nosync(alloc).on(stream_), dp_data_first, dp_data_last,
+                        direct_cmp_t<T, Descending>{});
         } else {
             // Generate key indices.
             dp_keys_first = thrust::device_pointer_cast(keys_start);
@@ -343,7 +392,7 @@ struct _sort {
                 cuda::par_nosync(alloc).on(stream_),
                 make_zip_iterator(dp_keys_first, dp_data_first),
                 make_zip_iterator(dp_keys_last, dp_data_last),
-                typename select_less<thrust::tuple<size_t, T>>::type{});
+                segment_cmp_t<T, Descending>{});
         }
     }
 };
@@ -358,7 +407,7 @@ class elem_less {
 public:
     elem_less(const T *data):_data(data) {}
     __device__ __forceinline__ bool operator()(size_t i, size_t j) const {
-        return typename select_less<T>::type{}(_data[i], _data[j]);
+        return typename select_cmp<T, false>::type{}(_data[i], _data[j]);
     }
 private:
     const T *_data;
@@ -393,6 +442,7 @@ struct _lexsort {
  * argsort
  */
 
+template <bool Descending>
 struct _argsort {
     template <typename T>
     __forceinline__ void operator()(size_t *idx_start, void *data_start,
@@ -439,14 +489,12 @@ struct _argsort {
                   thrust::modulus<size_t>());
 
         if (ndim == 1) {
-            // we use thrust::less directly to sort floating points, because then it can use radix sort, which happens to sort NaNs to the back
-            using compare_op = std::conditional_t<std::is_floating_point<T>::value, thrust::less<T>, typename select_less<T>::type>;
             // Sort the index sequence by data.
             stable_sort_by_key(cuda::par_nosync(alloc).on(stream_),
                                dp_data_first,
                                dp_data_last,
                                dp_idx_first,
-                               compare_op{});
+                               direct_cmp_t<T, Descending>{});
         } else {
             // Generate key indices.
             dp_keys_first = thrust::device_pointer_cast(static_cast<size_t*>(keys_start));
@@ -469,7 +517,7 @@ struct _argsort {
                 make_zip_iterator(dp_keys_first, dp_data_first),
                 make_zip_iterator(dp_keys_last, dp_data_last),
                 dp_idx_first,
-                typename select_less<thrust::tuple<size_t, T>>::type{});
+                segment_cmp_t<T, Descending>{});
         }
     }
 };
@@ -482,10 +530,13 @@ struct _argsort {
 /* -------- sort -------- */
 
 void thrust_sort(int dtype_id, void *data_start, size_t *keys_start,
-    const std::vector<ptrdiff_t>& shape, intptr_t stream, void* memory) {
+    const std::vector<ptrdiff_t>& shape, intptr_t stream, void* memory, bool descending) {
 
-    _sort op;
-    return dtype_dispatcher(dtype_id, op, data_start, keys_start, shape, stream, memory);
+    // Make the direction compile-time, so each sort below is written only once.
+    if (descending) {
+        return dtype_dispatcher(dtype_id, _sort<true>{}, data_start, keys_start, shape, stream, memory);
+    }
+    return dtype_dispatcher(dtype_id, _sort<false>{}, data_start, keys_start, shape, stream, memory);
 }
 
 
@@ -500,10 +551,12 @@ void thrust_lexsort(int dtype_id, size_t *idx_start, void *keys_start, size_t k,
 
 /* -------- argsort -------- */
 void thrust_argsort(int dtype_id, size_t *idx_start, void *data_start,
-    void *keys_start, const std::vector<ptrdiff_t>& shape, intptr_t stream, void *memory) {
+    void *keys_start, const std::vector<ptrdiff_t>& shape, intptr_t stream, void *memory, bool descending) {
 
-    _argsort op;
-    return dtype_dispatcher(dtype_id, op, idx_start, data_start, keys_start, shape,
-                            stream, memory);
+    if (descending) {
+        return dtype_dispatcher(dtype_id, _argsort<true>{}, idx_start, data_start, keys_start,
+                                shape, stream, memory);
+    }
+    return dtype_dispatcher(dtype_id, _argsort<false>{}, idx_start, data_start, keys_start,
+                            shape, stream, memory);
 }
-

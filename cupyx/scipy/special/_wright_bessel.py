@@ -11,6 +11,6 @@ wright_bessel = _core.create_ufunc(
     preamble=wright_bessel_preamble,
     doc="""Wright's generalized Bessel function
 
-    .. seealso:: :meth:`scipy.special.wright_bessel`
+    .. seealso:: :func:`scipy.special.wright_bessel`
 
     """)

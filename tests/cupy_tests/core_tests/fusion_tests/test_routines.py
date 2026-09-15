@@ -163,6 +163,10 @@ class TestFusionDegRad(FusionUnaryUfuncTestBase):
 )
 class TestFusionRounding(FusionUnaryUfuncTestBase):
 
+    # numpy.fix is deprecated starting NumPy 2.5 (use numpy.trunc); cupy.fix
+    # is still supported, so keep exercising it without failing on the warning.
+    @pytest.mark.filterwarnings(
+        'ignore:numpy.fix is deprecated:DeprecationWarning')
     @testing.for_all_dtypes(no_complex=True)
     @fusion_utils.check_fusion()
     def test_rounding(self, xp, dtype, func):
