@@ -43,23 +43,37 @@ def for_all_dtypes_combination_bincount(names):
 
 class TestHistogram(unittest.TestCase):
 
-    def test_kernel_accepts_large_number_of_bins(self):
-        x = cupy.array([-1], dtype=cupy.float32)
+    # Number of bins that makes the searched index exceed 2**31.
+    _n_bins = 2**31 + 1
+
+    def _large_bins_and_counters(self, dtype):
+        # Equal bins send the binary search to the last one, `n_bins - 2`,
+        # without needing the gigabytes a monotonic `bins` would take. `y`
+        # only has to be indexable that far, and cycling it over three
+        # counters keeps it free while still recording which bin was picked.
         bins = cupy.broadcast_to(
-            cupy.array([0], dtype=cupy.float32), (2**31,))
-        y = cupy.zeros(1, dtype=cupy.int64)
+            cupy.array([0], dtype=cupy.float32), (self._n_bins,))
+        counters = cupy.zeros(3, dtype=dtype)
+        y = cupy.lib.stride_tricks.as_strided(
+            counters, shape=(self._n_bins // counters.size + 1,
+                             counters.size),
+            strides=(0, counters.itemsize))
+        return bins, counters, y
+
+    def test_kernel_accepts_large_number_of_bins(self):
+        x = cupy.zeros(1, dtype=cupy.float32)
+        bins, counters, y = self._large_bins_and_counters(cupy.int64)
         histogram_module._histogram_kernel(x, bins, bins.size, y)
-        assert y[0] == 0
+        # (2**31 - 1) % 3 == 1
+        testing.assert_array_equal(counters, [0, 1, 0])
 
     def test_weighted_kernel_accepts_large_number_of_bins(self):
-        x = cupy.array([-1], dtype=cupy.float32)
-        bins = cupy.broadcast_to(
-            cupy.array([0], dtype=cupy.float32), (2**31,))
-        weights = cupy.ones(1, dtype=cupy.float32)
-        y = cupy.zeros(1, dtype=cupy.float32)
+        x = cupy.zeros(1, dtype=cupy.float32)
+        weights = cupy.full(1, 2, dtype=cupy.float32)
+        bins, counters, y = self._large_bins_and_counters(cupy.float32)
         histogram_module._weighted_histogram_kernel(
             x, bins, bins.size, weights, y)
-        assert y[0] == 0
+        testing.assert_array_equal(counters, [0, 2, 0])
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-7)
