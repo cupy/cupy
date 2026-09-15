@@ -6,7 +6,7 @@ import numpy
 
 import cupy
 from cupy import _core
-from cupy._creation._device import _on_device
+from cupy.cuda.device import _ensure_current_device
 from cupy._util import bf16_loop
 
 
@@ -33,7 +33,8 @@ def arange(start, stop=None, step=1, dtype=None, *, device=None):
 
     """
     if device is not None:
-        return _on_device(device, arange, start, stop, step, dtype)
+        with _ensure_current_device(device):
+            return arange(start, stop, step, dtype)
     if dtype is None:
         if any(numpy.dtype(type(val)).kind == 'f'
                for val in (start, stop, step)):
@@ -162,8 +163,8 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None,
 
     """
     if device is not None:
-        return _on_device(device, linspace, start, stop, num, endpoint,
-                          retstep, dtype, axis)
+        with _ensure_current_device(device):
+            return linspace(start, stop, num, endpoint, retstep, dtype, axis)
     if num < 0:
         raise ValueError('linspace with num<0 is not supported')
     div = (num - 1) if endpoint else num
