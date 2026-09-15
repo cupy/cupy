@@ -4,7 +4,6 @@ import numpy
 
 from cupy import _core
 from cupy._core import fusion
-from cupy._creation._device import _on_device
 
 
 def array(obj, dtype=None, copy=True, order='K', subok=False, ndmin=0, *,
@@ -58,12 +57,8 @@ def array(obj, dtype=None, copy=True, order='K', subok=False, ndmin=0, *,
     .. seealso:: :func:`numpy.array`
 
     """
-    if device is not None:
-        # Call _core.array directly with positional arguments only: keywords
-        # would be packed into a dict by _on_device and unpacked again.
-        return _on_device(device, _core.array, obj, dtype, copy, order,
-                          subok, ndmin, blocking)
-    return _core.array(obj, dtype, copy, order, subok, ndmin, blocking)
+    return _core.array(
+        obj, dtype, copy, order, subok, ndmin, blocking, device)
 
 
 def asarray(a, dtype=None, order=None, *, copy=None, blocking=False,
@@ -105,10 +100,8 @@ def asarray(a, dtype=None, order=None, *, copy=None, blocking=False,
     .. seealso:: :func:`numpy.asarray`
 
     """
-    if device is not None:
-        return _on_device(device, _core.array, a, dtype, copy, order, False,
-                          0, blocking)
-    return _core.array(a, dtype, copy, order, blocking=blocking)
+    return _core.array(a, dtype, copy, order, blocking=blocking,
+                       device=device)
 
 
 def asanyarray(a, dtype=None, order=None, *, copy=None, blocking=False,
@@ -123,10 +116,8 @@ def asanyarray(a, dtype=None, order=None, *, copy=None, blocking=False,
     .. seealso:: :func:`cupy.asarray`, :func:`numpy.asanyarray`
 
     """
-    if device is not None:
-        return _on_device(device, _core.array, a, dtype, copy, order, False,
-                          0, blocking)
-    return _core.array(a, dtype, copy, order, blocking=blocking)
+    return _core.array(a, dtype, copy, order, blocking=blocking,
+                       device=device)
 
 
 def ascontiguousarray(a, dtype=None):
