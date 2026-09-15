@@ -59,8 +59,10 @@ def array(obj, dtype=None, copy=True, order='K', subok=False, ndmin=0, *,
 
     """
     if device is not None:
-        return _on_device(device, array, obj, dtype, copy, order, subok,
-                          ndmin, blocking=blocking)
+        # Call _core.array directly with positional arguments only: keywords
+        # would be packed into a dict by _on_device and unpacked again.
+        return _on_device(device, _core.array, obj, dtype, copy, order,
+                          subok, ndmin, blocking)
     return _core.array(obj, dtype, copy, order, subok, ndmin, blocking)
 
 
@@ -104,8 +106,8 @@ def asarray(a, dtype=None, order=None, *, copy=None, blocking=False,
 
     """
     if device is not None:
-        return _on_device(device, asarray, a, dtype, order,
-                          copy=copy, blocking=blocking)
+        return _on_device(device, _core.array, a, dtype, copy, order, False,
+                          0, blocking)
     return _core.array(a, dtype, copy, order, blocking=blocking)
 
 
@@ -122,8 +124,8 @@ def asanyarray(a, dtype=None, order=None, *, copy=None, blocking=False,
 
     """
     if device is not None:
-        return _on_device(device, asanyarray, a, dtype, order,
-                          copy=copy, blocking=blocking)
+        return _on_device(device, _core.array, a, dtype, copy, order, False,
+                          0, blocking)
     return _core.array(a, dtype, copy, order, blocking=blocking)
 
 
