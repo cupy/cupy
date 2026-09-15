@@ -55,6 +55,51 @@ cpdef int _normalize_device_id(device) except? -1:
         f'{type(device).__name__!r}')
 
 
+cdef class _DeviceRestore:
+    """Restores ``prev`` as the current device on exit (``-1``: nothing)."""
+
+    cdef readonly int prev
+
+    def __init__(self, int prev):
+        self.prev = prev
+
+    def __enter__(self):
+        return None
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if self.prev != -1:
+            runtime.setDevice(self.prev)
+
+
+cdef dict _device_restores = {}
+
+
+cdef _DeviceRestore _get_device_restore(int prev):
+    # The objects only hold the device to restore, so one object per value
+    # is shared between calls and threads.
+    restore = _device_restores.get(prev)
+    if restore is None:
+        restore = _device_restores.setdefault(prev, _DeviceRestore(prev))
+    return restore
+
+
+def _ensure_current_device(device):
+    """Makes ``device`` the current device until the returned context exits.
+
+    Switches immediately; the returned context manager restores the previous
+    device on exit. ``None`` leaves the current device unchanged.
+    """
+    cdef int dev_id, prev
+    if device is None:
+        return _get_device_restore(-1)
+    dev_id = _normalize_device_id(device)
+    prev = runtime.getDevice()
+    if dev_id == prev:
+        return _get_device_restore(-1)
+    runtime.setDevice(dev_id)
+    return _get_device_restore(prev)
+
+
 cpdef Device _get_device():
     dev_id = runtime.getDevice()
     ret = _devices.get(dev_id, None)
