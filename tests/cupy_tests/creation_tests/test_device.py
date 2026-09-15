@@ -189,6 +189,11 @@ class TestDeviceArgument:
         _check(name, result, expected, 1)
         assert result.strides == expected.strides
 
+    def test_empty_like_device_is_keyword_only(self):
+        a = cupy.arange(3)
+        with pytest.raises(TypeError):
+            cupy.empty_like(a, None, 'K', None, None, 0)
+
     @testing.multi_gpu(2)
     def test_linspace_retstep(self):
         result, step = cupy.linspace(0, 1, 5, retstep=True, device=1)
