@@ -418,6 +418,9 @@ cpdef setDevice(int device):
     status = cudaSetDevice(device)
     check_status(status)
 
+cdef void _restore_device(int device) noexcept:
+    setDevice(device)
+
 cpdef deviceSynchronize():
     with nogil:
         status = cudaDeviceSynchronize()

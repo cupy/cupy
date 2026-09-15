@@ -337,3 +337,39 @@ cpdef graphDebugDotPrint(intptr_t graph, str path, unsigned int flags)
 
 cpdef profilerStart()
 cpdef profilerStop()
+
+
+##############################################################################
+# Device guard (private)
+##############################################################################
+
+cdef extern from *:
+    """
+    // prev == -1 means there is nothing to restore.
+    struct CupyDeviceGuard {
+        int prev = -1;
+        void (*restore)(int) = nullptr;
+        CupyDeviceGuard() = default;
+        CupyDeviceGuard(const CupyDeviceGuard&) = delete;
+        CupyDeviceGuard& operator=(const CupyDeviceGuard&) = delete;
+        ~CupyDeviceGuard() {
+            if (prev != -1) {
+                restore(prev);
+            }
+        }
+    };
+    """
+    cppclass _DeviceGuard 'CupyDeviceGuard':
+        int prev
+        void (*restore)(int) noexcept
+
+cdef void _restore_device(int device) noexcept
+
+cdef inline int _ensure_device(_DeviceGuard& guard, int device) except -1:
+    """Makes ``device`` current until ``guard`` goes out of scope."""
+    cdef int prev = getDevice()
+    if prev != device:
+        setDevice(device)
+        guard.prev = prev
+        guard.restore = _restore_device
+    return 0
