@@ -5,8 +5,8 @@ from typing import Any, TYPE_CHECKING
 import numpy
 
 import cupy
-from cupy._core.core import empty_like
-from cupy._creation._device import _on_device
+from cupy._core.core import empty_like as _empty_like
+from cupy.cuda.device import _ensure_current_device
 from cupy.typing._types import (
     _OrderKACF, _OrderCF, _ShapeLike, DTypeLike, NDArray,
 )
@@ -39,8 +39,49 @@ def empty(
 
     """
     if device is not None:
-        return _on_device(device, empty, shape, dtype, order)
+        with _ensure_current_device(device):
+            return empty(shape, dtype, order)
     return cupy.ndarray(shape, dtype, order=order)
+
+
+def empty_like(
+        prototype: NDArray[Any],
+        dtype: DTypeLike | None = None,
+        order: _OrderKACF = 'K',
+        subok: None = None,
+        shape: _ShapeLike | None = None,
+        *,
+        device: Device | int | None = None,
+) -> NDArray[Any]:
+    """Returns a new array with same shape and dtype of a given array.
+
+    This function currently does not support ``subok`` option.
+
+    Args:
+        prototype (cupy.ndarray): Base array.
+        dtype (data-type, optional): Data type specifier.
+            The data type of ``prototype`` is used by default.
+        order ({'C', 'F', 'A', or 'K'}): Overrides the memory layout of the
+            result. ``'C'`` means C-order, ``'F'`` means F-order, ``'A'`` means
+            ``'F'`` if ``prototype`` is Fortran contiguous, ``'C'`` otherwise.
+            ``'K'`` means match the layout of ``prototype`` as closely as
+            possible.
+        subok: Not supported yet, must be None.
+        shape (int or tuple of ints): Overrides the shape of the result. If
+            ``order='K'`` and the number of dimensions is unchanged, will try
+            to keep order, otherwise, ``order='C'`` is implied.
+        device (int or cupy.cuda.Device, optional): Device on which to create
+            the array. ``None`` (default) means the current device, not the
+            device of ``prototype``.
+
+    Returns:
+        cupy.ndarray: A new array with same shape and dtype of ``prototype``
+        with elements not initialized.
+
+    .. seealso:: :func:`numpy.empty_like`
+
+    """
+    return _empty_like(prototype, dtype, order, subok, shape, device)
 
 
 def eye(
@@ -74,7 +115,8 @@ def eye(
 
     """
     if device is not None:
-        return _on_device(device, eye, N, M, k, dtype, order)
+        with _ensure_current_device(device):
+            return eye(N, M, k, dtype, order)
     if M is None:
         M = N
     ret = zeros((N, M), dtype=dtype, order=order)
@@ -135,7 +177,8 @@ def ones(
 
     """
     if device is not None:
-        return _on_device(device, ones, shape, dtype, order)
+        with _ensure_current_device(device):
+            return ones(shape, dtype, order)
     a = cupy.ndarray(shape, dtype, order=order)
     a.fill(1)
     return a
@@ -177,8 +220,9 @@ def ones_like(
 
     """
     if device is not None:
-        return _on_device(device, ones_like, a, dtype, order, subok, shape)
-    result = empty_like(a, dtype, order, subok, shape)
+        with _ensure_current_device(device):
+            return ones_like(a, dtype, order, subok, shape)
+    result = _empty_like(a, dtype, order, subok, shape)
     result.fill(1)
     return result
 
@@ -207,7 +251,8 @@ def zeros(
 
     """
     if device is not None:
-        return _on_device(device, zeros, shape, dtype, order)
+        with _ensure_current_device(device):
+            return zeros(shape, dtype, order)
     a = cupy.ndarray(shape, dtype, order=order)
     a.data.memset_async(0, a.nbytes)
     return a
@@ -249,8 +294,9 @@ def zeros_like(
 
     """
     if device is not None:
-        return _on_device(device, zeros_like, a, dtype, order, subok, shape)
-    result = empty_like(a, dtype, order, subok, shape)
+        with _ensure_current_device(device):
+            return zeros_like(a, dtype, order, subok, shape)
+    result = _empty_like(a, dtype, order, subok, shape)
     result.data.memset_async(0, result.nbytes)
     return result
 
@@ -283,7 +329,8 @@ def full(
 
     """
     if device is not None:
-        return _on_device(device, full, shape, fill_value, dtype, order)
+        with _ensure_current_device(device):
+            return full(shape, fill_value, dtype, order)
     if dtype is None:
         if isinstance(fill_value, cupy.ndarray):
             dtype = fill_value.dtype
@@ -332,9 +379,9 @@ def full_like(
 
     """
     if device is not None:
-        return _on_device(
-            device, full_like, a, fill_value, dtype, order, subok, shape)
-    result = empty_like(a, dtype, order, subok, shape)
+        with _ensure_current_device(device):
+            return full_like(a, fill_value, dtype, order, subok, shape)
+    result = _empty_like(a, dtype, order, subok, shape)
     cupy.copyto(result, fill_value, casting='unsafe')
     return result
 
