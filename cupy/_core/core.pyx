@@ -2842,9 +2842,58 @@ _round_ufunc_neg_uint = create_ufunc(
 # Array creation routines
 # -----------------------------------------------------------------------------
 
+cdef extern from '../../cupy_backends/cupy_backend_runtime.h' nogil:
+    pass
+
+cdef extern from *:
+    """
+    // Restores the previous device when it goes out of scope, including when
+    // an exception propagates. prev == -1 means there is nothing to restore.
+    struct CupyDeviceGuard {
+        int prev = -1;
+        CupyDeviceGuard() = default;
+        CupyDeviceGuard(const CupyDeviceGuard&) = delete;
+        CupyDeviceGuard& operator=(const CupyDeviceGuard&) = delete;
+        ~CupyDeviceGuard() {
+            if (prev != -1) {
+                cudaSetDevice(prev);  // a destructor cannot raise
+            }
+        }
+        // Makes dev the current device. Returns a CUDA status.
+        int ensure_device(int dev) {
+            int cur = -1;
+            int status = (int)cudaGetDevice(&cur);
+            if (status != 0 || cur == dev) {
+                return status;
+            }
+            status = (int)cudaSetDevice(dev);
+            if (status == 0) {
+                prev = cur;
+            }
+            return status;
+        }
+    };
+    """
+    cppclass _DeviceGuard 'CupyDeviceGuard':
+        int ensure_device(int dev) nogil
+
+
+cdef inline int _ensure_device(_DeviceGuard& guard, dev_arg) except -1:
+    """Makes ``dev_arg`` current until ``guard`` goes out of scope.
+
+    ``None`` means no device was requested; the device is left unchanged.
+    """
+    if dev_arg is not None:
+        runtime.check_status(
+            guard.ensure_device(device._normalize_device_id(dev_arg)))
+    return 0
+
+
 cpdef _ndarray_base array(obj, dtype=None, copy=True, order='K',
                           bint subok=False, Py_ssize_t ndmin=0,
-                          bint blocking=False):
+                          bint blocking=False, device=None):
+    cdef _DeviceGuard guard
+    _ensure_device(guard, device)
     # TODO(beam2d): Support subok options
     if subok:
         raise NotImplementedError
@@ -3370,34 +3419,6 @@ cdef _ndarray_base _ndarray_init(
     return ret
 
 
-cdef extern from '../../cupy_backends/cupy_backend_runtime.h' nogil:
-    int cudaSetDevice(int device)
-
-
-cdef cppclass _DeviceGuard:
-    # Restores the previous device when it goes out of scope, which also
-    # happens when an exception propagates. Armed by ``_switch_device``.
-    int prev
-    bint switched
-
-    __init__():
-        this.switched = False
-
-    __dealloc__():
-        if this.switched:
-            cudaSetDevice(this.prev)  # a destructor cannot raise
-
-
-cdef inline int _switch_device(_DeviceGuard* guard, dev_arg) except -1:
-    """Makes ``dev_arg`` the current device until ``guard`` is destroyed."""
-    cdef int dev_id = device._normalize_device_id(dev_arg)
-    guard.prev = runtime.getDevice()
-    if dev_id != guard.prev:
-        runtime.setDevice(dev_id)
-        guard.switched = True
-    return 0
-
-
 cpdef _ndarray_base empty_like(
         prototype, dtype=None, order='K', subok=None, shape=None,
         device=None):
@@ -3428,22 +3449,11 @@ cpdef _ndarray_base empty_like(
     .. seealso:: :func:`numpy.empty_like`
 
     """
-    if device is not None:
-        return _empty_like_on_device(
-            device, prototype, dtype, order, subok, shape)
-    return _empty_like(prototype, dtype, order, subok, shape)
-
-
-cdef _ndarray_base _empty_like_on_device(
-        dev_arg, prototype, dtype, order, subok, shape):
     cdef _DeviceGuard guard
-    _switch_device(&guard, dev_arg)
-    return _empty_like(prototype, dtype, order, subok, shape)
-
-
-cdef _ndarray_base _empty_like(prototype, dtype, order, subok, shape):
     cdef _ndarray_base a
     cdef memory.MemoryPointer memptr
+
+    _ensure_device(guard, device)
 
     if subok is not None:
         raise TypeError('subok is not supported yet')

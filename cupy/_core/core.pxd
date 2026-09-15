@@ -114,7 +114,7 @@ cpdef bytes compile_to_ltoir(str source, tuple options=*, arch=*,
 
 cpdef _ndarray_base array(
     obj, dtype=*, copy=*, order=*, bint subok=*, Py_ssize_t ndmin=*,
-    bint blocking=*)
+    bint blocking=*, device=*)
 cpdef _ndarray_base _convert_object_with_cuda_array_interface(a)
 
 cdef _ndarray_base _ndarray_init(
