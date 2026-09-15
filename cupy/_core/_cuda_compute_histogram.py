@@ -9,6 +9,8 @@ from cupy.cuda import memory
 
 
 def _get_histogram(dtype, n_bins):
+    # TODO: key on the kernel variant instead of n_bins once cuda.compute's
+    # v2 backend takes the bin count at run time (NVIDIA/cccl#11418)
     compute = _get_cuda_compute()
     key = (dtype, n_bins)
     return cached_algorithm(
@@ -31,10 +33,13 @@ def cuda_compute_bincount(x, b, n_bins):
         return None
     if x.dtype.kind not in 'bui':
         return None
-    # num_samples and h_num_output_levels are int32 in histogram_even
+    # TODO: drop the x.size limit once cuda.compute's v2 backend takes
+    # num_samples at run time
     if x.size > 0x7fffffff or n_bins + 1 > 0x7fffffff:
         return None
 
+    # TODO: pass the strided view once cuda.compute exposes a 1-D strided
+    # iterator (NVIDIA/cccl#11417)
     x = cupy.ascontiguousarray(x)
     histogram = _get_histogram(x.dtype, n_bins)
     # histogram counters must be uint64 (there is no signed 64-bit
