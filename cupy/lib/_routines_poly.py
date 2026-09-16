@@ -16,8 +16,8 @@ try:
     from cupy.linalg import lstsq as _lstsq  # NOQA
     from cupy.linalg import inv as _inv  # NOQA
 except ImportError:
-    from cupy._ascend._poly_linalg import lstsq as _lstsq  # NOQA
-    from cupy._ascend._poly_linalg import inv as _inv  # NOQA
+    from cupy._core._ascend._poly_linalg import lstsq as _lstsq  # NOQA
+    from cupy._core._ascend._poly_linalg import inv as _inv  # NOQA
 
 
 def _eigvalsh():

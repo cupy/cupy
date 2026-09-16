@@ -299,11 +299,12 @@ Backend-specific implementations of a module are listed in the `Feature`'s
 `modules` as a tuple `(module_name, [source_path])`:
 
 ```python
-('cupy._core._routines_linalg', ['cupy/_ascend/_core/_routines_linalg.pyx']),
+('cupy._core._routines_linalg', ['cupy/_core/_ascend/_routines_linalg.pyx']),
 ```
 
 The build replaces the default source with the given path. Edit the file under
-the backend directory (e.g. `cupy/_ascend/_core/`), **not** `cupy/_core/`
+the backend directory (e.g. `cupy/_core/_ascend/`, symmetric with
+`cupy/_core/_gpu/`), **not** `cupy/_core/`
 (which may not even contain a `.pyx` anymore).
 
 ### 4.2 Compile-time constants

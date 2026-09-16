@@ -26,7 +26,7 @@ if not runtime.is_ascend():
     from cupy._core.raw import RawKernel  # NOQA
     from cupy._core.raw import RawModule  # NOQA
 else:
-    from cupy._ascend._core import fusion_stub as fusion
+    from cupy._core._ascend import fusion_stub as fusion
     from cupy._core.raw import RawKernel  # NOQA
     from cupy._core.raw import RawModule  # NOQA
     _fusion_thread_local = fusion

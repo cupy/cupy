@@ -1650,7 +1650,7 @@ cdef void register_irregular_operators():
     func_union.general_op = aclop_Unique2
     register_acl_ufunc("ascend_unique2", GENERAL_OP, func_union)
 
-    # linalg (aclnn-backed; reached from cupy/_ascend/_core/_routines_linalg.pyx)
+    # linalg (aclnn-backed; reached from cupy/_core/_ascend/_routines_linalg.pyx)
     func_union.general_op = aclop_Trace
     register_acl_ufunc("ascend_trace", GENERAL_OP, func_union)
     func_union.general_op = aclop_Tril
