@@ -676,24 +676,31 @@ cpdef _ndarray_base _concatenate(
 
     dtype = out.dtype
 
-    if len(arrays) > 8:
-        all_same_type = True
-        same_shape_and_contiguous = True
-        axis_size = shape[axis] // len(arrays)
-        total_bytes = 0
-        itemsize = dtype.itemsize
-        for a in arrays:
-            if a.dtype != dtype:
-                all_same_type = False
-                break
-            if same_shape_and_contiguous:
-                same_shape_and_contiguous = (
-                    a._c_contiguous and a._shape[axis] == axis_size)
-            total_bytes += a.size * itemsize
+    IF CUPY_CANN_VERSION <= 0:
+        # CUDA-only trick: `_concatenate_single_kernel` reinterprets a *host
+        # array of device pointers* as the data to concatenate. On Ascend the
+        # kernel name is dispatched to an aclnn op (review M2), which would
+        # happily concatenate the pointer array itself and return garbage
+        # without any error (review D4). So on Ascend `len(arrays) > 8` always
+        # takes the per-slice copy path below instead.
+        if len(arrays) > 8:
+            all_same_type = True
+            same_shape_and_contiguous = True
+            axis_size = shape[axis] // len(arrays)
+            total_bytes = 0
+            itemsize = dtype.itemsize
+            for a in arrays:
+                if a.dtype != dtype:
+                    all_same_type = False
+                    break
+                if same_shape_and_contiguous:
+                    same_shape_and_contiguous = (
+                        a._c_contiguous and a._shape[axis] == axis_size)
+                total_bytes += a.size * itemsize
 
-        if all_same_type and total_bytes < threshold_size * len(arrays):
-            return _concatenate_single_kernel(
-                arrays, axis, shape, dtype, same_shape_and_contiguous, out)
+            if all_same_type and total_bytes < threshold_size * len(arrays):
+                return _concatenate_single_kernel(
+                    arrays, axis, shape, dtype, same_shape_and_contiguous, out)
 
     i = 0
     slice_list = [slice(None)] * len(shape)
