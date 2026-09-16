@@ -246,7 +246,10 @@ def preconfigure_modules(ctx: Context, MODULES, compiler, settings):
         build.check_compute_capabilities(compiler, settings)
 
     if len(ret) != len(MODULES):
-        if 'cuda' in ret:
+        if 'cuda' in ret or ctx.use_ascend or ctx.use_hip:
+            # A missing *optional* module (e.g. ascend_fft -- ops-fft is not part
+            # of the base CANN SDK) is a warning on the non-CUDA backends; only a
+            # CUDA build without CUDA deserves the error text below.
             lines = [
                 'WARNING: Some modules could not be configured.',
                 'CuPy will be installed without these modules.',
