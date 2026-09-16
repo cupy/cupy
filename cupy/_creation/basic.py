@@ -214,8 +214,6 @@ def full(
 ) -> NDArray[Any]:
     """Returns a new array of given shape and dtype, filled with a given value.
 
-    This function currently does not support ``order`` option.
-
     Args:
         shape (int or tuple of ints): Dimensionalities of the array.
         fill_value: A scalar value to fill a new array.

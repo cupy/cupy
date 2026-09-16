@@ -127,7 +127,8 @@ def get_local_runtime_version() -> int:
     Use this method to probe the CUDA Runtime version installed in the
     environment.
     """
-    return runtime._getLocalRuntimeVersion()
+    from cupy_backends.cuda.api import runtime as _runtime
+    return _runtime._getLocalRuntimeVersion()
 
 
 # import class and function
