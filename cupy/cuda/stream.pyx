@@ -29,7 +29,7 @@ cdef class _ThreadLocal:
         for i in range(num_devices):
             default_stream = get_default_stream()
             self.current_stream.append(default_stream)
-            self.current_stream_stack.append([default_stream])
+            self.current_stream_stack.append([])
 
     @staticmethod
     cdef _ThreadLocal get():
@@ -41,28 +41,16 @@ cdef class _ThreadLocal:
 
     cdef void push_stream(self, stream, int device_id) except*:
         assert device_id >= 0
-        self.current_stream_stack[device_id].append(stream)
+        prev_stream = self.get_current_stream(device_id)
+        self.current_stream_stack[device_id].append(prev_stream)
         # record device_id to prevent from popping the wrong stream at exit
         self.current_device_id_stack.append(device_id)
         self.set_current_stream(stream)
 
     cdef void pop_stream(self) except*:
         cdef int device_id = self.current_device_id_stack.pop()
-        self.current_stream_stack[device_id].pop()
-        prev_stream = self.current_stream_stack[device_id][-1]
+        prev_stream = self.current_stream_stack[device_id].pop()
         self.set_current_stream(prev_stream)
-        assert len(self.current_stream_stack[device_id]) >= 1
-
-    cdef void replace_base_stream(self, stream, int device_id) except*:
-        assert device_id >= 0
-        # should not replace base stream if there are any other streams
-        # pushed onto the stack. e.g. .use() should not be called inside
-        # "with" blocks
-        if (len(self.current_stream_stack[device_id]) > 1):
-            raise RuntimeError(
-                'Calling .use() on a stream while using a stream context'
-                ' manager is no longer supported.')
-        self.current_stream_stack[device_id][0] = stream
 
     cdef set_current_stream(self, stream):
         cdef intptr_t ptr = <intptr_t>stream.ptr
@@ -269,8 +257,7 @@ class _BaseStream:
         """
         tls = _ThreadLocal.get()
         cdef int device_id = self.device_id
-        device_id = check_stream_device_match(device_id)
-        tls.replace_base_stream(self, device_id)
+        check_stream_device_match(device_id)
         tls.set_current_stream(self)
         return self
 
