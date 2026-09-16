@@ -93,8 +93,6 @@ def ones(
 ) -> NDArray[Any]:
     """Returns a new array of given shape and dtype, filled with ones.
 
-    This function currently does not support ``order`` option.
-
     Args:
         shape (int or tuple of ints): Dimensionalities of the array.
         dtype (data-type, optional): Data type specifier.
