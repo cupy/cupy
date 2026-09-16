@@ -45,6 +45,24 @@ class TestConvolveCorrelate:
     def test_correlate(self, xp, scp, dtype):
         return self._filter('correlate', dtype, xp, scp)
 
+    # Regression test for cupy/cupy#10303: a non-contiguous, negative-strided
+    # in1 (e.g. from xp.flip) must give the same result as a contiguous in1.
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(atol=tols, rtol=tols, scipy_name='scp',
+                                 accept_error=ValueError)
+    def test_convolve_flipped_in1(self, xp, scp, dtype):
+        in1 = xp.flip(testing.shaped_random(self.size1, xp, dtype))
+        in2 = testing.shaped_random((self.size2,)*in1.ndim, xp, dtype)
+        return scp.signal.convolve(in1, in2, self.mode, method='direct')
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(atol=tols, rtol=tols, scipy_name='scp',
+                                 accept_error=ValueError)
+    def test_correlate_flipped_in1(self, xp, scp, dtype):
+        in1 = xp.flip(testing.shaped_random(self.size1, xp, dtype))
+        in2 = testing.shaped_random((self.size2,)*in1.ndim, xp, dtype)
+        return scp.signal.correlate(in1, in2, self.mode, method='direct')
+
 
 @testing.parameterize(*testing.product({
     'size1': [(10,), (5, 10), (10, 3), (3, 4, 10)],
