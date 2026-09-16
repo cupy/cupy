@@ -22,3 +22,8 @@ cdef aclError launch_general_func(str opname, sequence ins, sequence outs,
     list args, dict kargs, intptr_t stream_ptr) except *
 cdef aclError launch_reduction_op(str opname, sequence ins, sequence outs,
     object axes, bint keepdims, dict kargs, intptr_t stream_ptr) except *
+
+# Whether `opname` (already `ascend_*`) has some implementation registered.
+# Consumed by `cupy/_core/_ascend/_kernel.pyx` to fail loudly on kernels that
+# have no Ascend implementation instead of raising a bare KeyError.
+cdef bint is_acl_ufunc_registered(str opname) except *

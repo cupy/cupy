@@ -15,6 +15,7 @@ from libc.stdint cimport (
 from libc.string cimport memcpy
 from libcpp.unordered_map cimport unordered_map as cpp_map
 from cython.operator cimport dereference as deref, preincrement as inc
+from libcpp.set cimport set as cpp_set
 from libcpp.vector cimport vector
 from libcpp.complex cimport complex
 
@@ -581,6 +582,12 @@ cdef extern from "../acl_custom_kernels.h":
 # unordered map for better performance
 cdef cpp_map[OpInfo, FuncPtrUnion, OpInfo.Hash] _builtin_operators
 
+# Every op name registered under *any* OpType (the map above is keyed by
+# (name, op_type)). Used by the "is this kernel callable on Ascend?" check in
+# `cupy/_core/_ascend/_kernel.pyx`; a std::set keeps the query O(log n) without
+# needing the GIL inside `register_acl_ufunc` (which is `nogil`).
+cdef cpp_set[string] _registered_op_names
+
 cdef extern from "<cstdbool>" namespace "std":
     ctypedef bint bool "bool"  # 将C++的bool映射到Cython的bint
 
@@ -627,7 +634,8 @@ cdef aclError register_acl_ufunc(string opname, OpType op_type, FuncPtrUnion fun
     cdef OpInfo op_info
     op_info.op_name = opname
     op_info.op_type = op_type
-    
+    _registered_op_names.insert(opname)
+
     if _builtin_operators.find(op_info) != _builtin_operators.end():
         # 操作已存在，可以选择覆盖或报错, 这里我们选择覆盖
         _builtin_operators[op_info] = func_ptr
@@ -1553,9 +1561,33 @@ cdef extern from "../acl_general_ops.h" nogil:
     aclError aclop_Argsort(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
 
-    aclError aclop_Put(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+    aclError aclop_PutRaise(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
     aclError aclop_Take(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+
+    # prefix scan: cumsum / cumprod (backing cupy.cumsum & the mask scan)
+    aclError aclop_Cumsum(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_Cumprod(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+
+    # setitem / boolean indexing
+    aclError aclop_ScatterUpdate(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_ScatterAdd(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_ScatterUpdateMask(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_ScatterAddMask(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_GetitemMask(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+
+    # numpy.searchsorted / numpy.where
+    aclError aclop_SearchSorted(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_Where(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
 
     # set op: unique2 -> unique_all / unique_counts / unique_inverse / unique_values
@@ -1624,8 +1656,36 @@ cdef void register_irregular_operators():
     func_union.general_op = aclop_Take
     register_acl_ufunc("ascend_take", GENERAL_OP, func_union)
     register_acl_ufunc("ascend_take_scalar", GENERAL_OP, func_union)
-    func_union.general_op = aclop_Put
-    register_acl_ufunc("ascend_raise_put", GENERAL_OP, func_union)
+    # `_put_raise_kernel` is an ElementwiseKernel named `cupy_put_raise`, and the
+    # Ascend dispatcher maps kernel names by prefix (`cupy_` -> `ascend_`), so the
+    # registration must use `ascend_put_raise` — the old `ascend_raise_put` never
+    # matched any caller (review §3 T1).
+    func_union.general_op = aclop_PutRaise
+    register_acl_ufunc("ascend_put_raise", GENERAL_OP, func_union)
+
+    # prefix scan (cupy.cumsum / cupy.cumprod / boolean-index mask scan)
+    func_union.general_op = aclop_Cumsum
+    register_acl_ufunc("ascend_cumsum", GENERAL_OP, func_union)
+    func_union.general_op = aclop_Cumprod
+    register_acl_ufunc("ascend_cumprod", GENERAL_OP, func_union)
+
+    # setitem / boolean indexing: `_scatter_*_kernel` / `_getitem_mask_kernel`
+    func_union.general_op = aclop_ScatterUpdate
+    register_acl_ufunc("ascend_scatter_update", GENERAL_OP, func_union)
+    func_union.general_op = aclop_ScatterAdd
+    register_acl_ufunc("ascend_scatter_add", GENERAL_OP, func_union)
+    func_union.general_op = aclop_ScatterUpdateMask
+    register_acl_ufunc("ascend_scatter_update_mask", GENERAL_OP, func_union)
+    func_union.general_op = aclop_ScatterAddMask
+    register_acl_ufunc("ascend_scatter_add_mask", GENERAL_OP, func_union)
+    func_union.general_op = aclop_GetitemMask
+    register_acl_ufunc("ascend_getitem_mask", GENERAL_OP, func_union)
+
+    # numpy.searchsorted / numpy.where(cond, x, y)
+    func_union.general_op = aclop_SearchSorted
+    register_acl_ufunc("ascend_searchsorted_kernel", GENERAL_OP, func_union)
+    func_union.general_op = aclop_Where
+    register_acl_ufunc("ascend_where", GENERAL_OP, func_union)
 
     func_union.general_op = aclop_Arange
     register_acl_ufunc("ascend_arange", GENERAL_OP, func_union)
@@ -1710,6 +1770,50 @@ def py_launch_acl_func(str opname, tuple ops, bint inplace=False):
     cdef string c_opname = opname.encode('utf-8')
     return launch_acl_func(c_opname, ops, inplace)
 '''
+
+cdef bint is_acl_ufunc_registered(str opname) except *:
+    """Whether ``opname`` (already ``ascend_*``) has an implementation at all.
+
+    The Ascend `ElementwiseKernel`/`ufunc` never compile their CUDA body; they
+    dispatch purely by name (``cupy_xxx`` -> ``ascend_xxx``). So "is there an
+    ``ascend_xxx``?" is exactly "will this kernel work on Ascend?". Used by
+    ``cupy/_core/_ascend/_kernel.pyx`` to fail with an actionable message instead
+    of a bare ``KeyError`` from the dispatcher.
+
+    Any arity/inplace/scalar variant counts, and custom AscendC kernels
+    (``py_register_custom_kernel``) count as well.
+    """
+    if opname in _custom_kernel_specs:
+        return True
+    cdef string cname = opname.encode("utf-8")
+    return _registered_op_names.find(cname) != _registered_op_names.end()
+
+
+def py_is_acl_ufunc_registered(str opname) -> bool:
+    """Python-visible wrapper around :func:`is_acl_ufunc_registered` (for tests)."""
+    return is_acl_ufunc_registered(opname)
+
+
+def _no_ascend_impl_msg(str opname) -> str:
+    """The explicit "this op is simply not implemented on Ascend" message.
+
+    Used by `launch_acl_func`/`launch_reduction_op` when the registry has no
+    entry at all.  Rationale (review P1/D3): on Ascend an
+    `ElementwiseKernel`/`ufunc` never compiles its CUDA body -- it is dispatched
+    purely by name (`cupy_xxx` -> `ascend_xxx`) -- so a missing registry entry
+    used to surface as a bare `KeyError` from deep inside the dispatcher. With
+    this message the ~47 op names that still lack an implementation fail loudly
+    and point at the place to fix.
+    """
+    return (
+        "Ascend backend: no implementation registered for %r. ElementwiseKernel/"
+        "ufunc bodies are not compiled on Ascend; kernels are dispatched by name "
+        "(cupy_xxx -> ascend_xxx), so this op needs an `ascend_*` registration in "
+        "cupy/backends/ascend/api/acl_utils.pyx (register_*_operators) plus a "
+        "wrapper in cupy/backends/ascend/acl_*.h. The list of op names still "
+        "missing an implementation is tracked in "
+        "docs/ascend/code_review_ascend_core.md." % (opname,))
+
 
 def py_list_acl_ufuncs():
     """Return the list of registered aclnn op names as ``(opname, op_type)``.
