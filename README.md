@@ -2,17 +2,19 @@
 
 By Qingfeng Xia
 
-`ascend-numpy` architecture from top to bottom
-
-1. numpy api in Python lang
-2. cupy._core in Cython lang
-3. cupy.xpu: high level backend api in cython lange
-4. cupy.backends.backend: abstraction of xpu low level backend api in c lang
-5. cupy.backends.ascend: impl in cython/c++
-
 ## 1. Status of numpy-ascend Array API suport
 
-see  [Progress.md](./Progress.md)
+see  [Progress.md](./Progress.md)  90% Array API, except for eigen
+
+### completed
+
+1. customed kernel (ascend c, triton-ascend python)
+2. all cupy major features, except for random (can be done)
+
+### limitation
+1. float32 only for all array API, similarly, default dtype float32, instead of float64 on CPU
+2. float64/int64 support add/substract/mul/div ops
+3. sparse array/matrix not supported
 
 ### 2.1 introduction to Python Array API standard
 https://github.com/data-apis/array-api

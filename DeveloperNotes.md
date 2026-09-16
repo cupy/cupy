@@ -3,6 +3,13 @@
 
 see also [Package.md](docs/Package.md) for build binary wheel for diff CANN version for manylinux, with minimum version requirement on libstdc++.so version
 
+### `ascend-numpy` architecture from top to bottom
+
+1. numpy api in Python lang
+2. cupy._core in Cython lang
+3. cupy.xpu: high level backend api in cython lange
+4. cupy.backends.backend: abstraction of xpu low level backend api in c lang
+5. cupy.backends.ascend: impl in cython/c++
 
 ## 1. 开发环境
 没有NPU开发: 需要注释掉 runtime.pyx `initialize_backend(0)` 否则不能`import cupy`
@@ -272,7 +279,10 @@ only float number can represent NaN (like inf, special value of float)
 + amin 数组沿给定轴的最小值，传播 NaN。 reduction op
 + nanmin 数组沿给定轴的最小值，忽略 NaN。reduction op
 
-## FFT
+## FFT (partially done)
+
+see docs/ascend/ notes on FFT
+
 ### cann_ops_fft.h , why this file must be copied from fft sdk?
 
 头文件cann_ops_fft.h的实际安装位置不可靠

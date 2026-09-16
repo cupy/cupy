@@ -5,6 +5,12 @@
 *.pyd
 *.cpp
 *.so
+# AscendC custom kernel SOURCES must be committed (wheel ships sources;
+# they are JIT-compiled by bisheng at import). Other *.cpp are
+# Cython-generated and stay ignored.
+!cupy/backends/ascend/kernels/*.cpp
+# built aicore fatbins are cache artifacts, never commit
+cupy/backends/ascend/kernels/_build/
 build
 \#*\#
 .\#*
