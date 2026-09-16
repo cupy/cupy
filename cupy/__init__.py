@@ -330,11 +330,12 @@ from cupy._manipulation.split import vsplit  # NOQA
 
 from cupy._manipulation.tiling import repeat  # NOQA
 from cupy._manipulation.tiling import tile  # NOQA
+
+from cupy._manipulation.add_remove import unique  # NOQA
 # TODO: relies on ReduceKernel
 # from cupy._manipulation.add_remove import delete  # NOQA
 # from cupy._manipulation.add_remove import append  # NOQA
 # from cupy._manipulation.add_remove import resize  # NOQA
-# from cupy._manipulation.add_remove import unique  # NOQA
 # from cupy._manipulation.add_remove import unique_all  # NOQA
 # from cupy._manipulation.add_remove import unique_counts  # NOQA
 # from cupy._manipulation.add_remove import unique_values  # NOQA
@@ -454,7 +455,9 @@ from numpy import typename  # NOQA
 # -----------------------------------------------------------------------------
 # Indexing routines
 # -----------------------------------------------------------------------------
-# TODO (ASCEND) not tested and enabled yet
+# ASCEND TODO: the remaining generate/indexing/iterate APIs are not ported yet
+from cupy._indexing.insert import put  # NOQA
+from cupy._indexing.insert import fill_diagonal  # NOQA
 
 # Borrowed from NumPy
 from numpy import index_exp  # NOQA
@@ -677,11 +680,16 @@ from numpy import iterable  # NOQA
 # -----------------------------------------------------------------------------
 # Padding
 # -----------------------------------------------------------------------------
-#from cupy._padding.pad import pad  # NOQA
+from cupy._padding.pad import pad  # NOQA
 
 # -----------------------------------------------------------------------------
 # Sorting, searching, and counting
 # -----------------------------------------------------------------------------
+from cupy._sorting.count import count_nonzero  # NOQA
+
+# ASCEND TODO: search/searchsorted and the remaining sort kernels are not
+# registered on Ascend yet; only `sort` is available.
+from cupy._sorting.sort import sort  # NOQA
 
 
 # -----------------------------------------------------------------------------
@@ -712,7 +720,7 @@ from cupy._statistics.meanvar import nanstd  # NOQA
 from cupy._statistics.meanvar import nanvar  # NOQA
 
 # from cupy._statistics.histogram import bincount  # NOQA
-# from cupy._statistics.histogram import digitize  # NOQA
+from cupy._statistics.histogram import digitize  # NOQA
 # from cupy._statistics.histogram import histogram  # NOQA
 # from cupy._statistics.histogram import histogram2d  # NOQA
 # from cupy._statistics.histogram import histogramdd  # NOQA

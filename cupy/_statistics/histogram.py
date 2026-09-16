@@ -9,8 +9,19 @@ import cupy
 from cupy import _core
 from cupy._core import _accelerator
 from cupy.cuda import cub
-from cupy.xpu import common
+try:
+    from cupy.xpu import common
+except ImportError:
+    # ASCEND: the xpu (Ascend) backend has no `common` module -- it only exists
+    # for CUDA. Its single use below guards the CUB histogram path, which the
+    # Ascend backend never reaches (no CUB accelerator is registered), so a
+    # "fp16 unsupported" stub is enough to keep the module importable.
+    common = None
 from cupy.xpu import runtime
+
+
+def _is_fp16_supported():
+    return common is not None and common._is_fp16_supported()
 
 
 # rename builtin range for use in functions that take a range argument
@@ -235,7 +246,7 @@ def histogram(x, bins=10, range=None, density=False, weights=None):
                 else:
                     bin_type = numpy.result_type(bin_edges.dtype, x.dtype)
                     if (bin_type == numpy.float16 and
-                            not common._is_fp16_supported()):
+                            not _is_fp16_supported()):
                         bin_type = numpy.float32
                     x = x.astype(bin_type, copy=False)
                 acc_bin_edge = bin_edges.astype(bin_type, copy=True)
