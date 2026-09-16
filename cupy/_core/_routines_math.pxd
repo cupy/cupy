@@ -22,9 +22,14 @@ cpdef enum scan_op:
     SCAN_SUM = 0
     SCAN_PROD = 1
 
-# TODO: ASCEND not yet impl, make a stub
+# ASCEND: implemented with aclnnCumsum/aclnnCumprod (`scan_core`); the
+# `incomplete`/`chunk_size` tuning knobs of the CUDA two-pass scan are ignored.
 cdef _ndarray_base scan(_ndarray_base a, op, dtype=*, _ndarray_base out=*,
                         incomplete=*, chunk_size=*)
+
+# Prefix sum/product along an axis; backs both `scan` above and
+# `cupy.cumsum`/`cupy.cumprod` (`cupy/_math/sumprod.py`).
+cpdef scan_core(_ndarray_base a, axis, scan_op op, dtype=*, _ndarray_base out=*)
 
 cdef object _sum_auto_dtype
 cdef object _add

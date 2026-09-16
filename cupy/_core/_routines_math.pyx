@@ -19,6 +19,10 @@ from cupy._core._routines_creation cimport _ndarray_init
 #from cupy._core._compile_with_cache cimport compile_with_cache
 from cupy._core.core cimport _ndarray_base
 from cupy.xpu cimport memory
+# Ascend aclnn dispatcher.  Already imported the same way (and unconditionally)
+# by `cupy/_core/_routines_indexing.pyx`; this module is compiled for the
+# Ascend build (see `install/cupy_builder/features/ascend.py`).
+from cupy.backends.ascend.api.acl_utils cimport launch_general_func
 
 # TODO: ASCEND not suported
 #from cupy.xpu import cub
@@ -86,7 +90,80 @@ cdef _ndarray_base _ndarray_imag_setter(_ndarray_base self, value):
 cdef _ndarray_base scan(
         _ndarray_base a, op, dtype=None, _ndarray_base out=None,
         incomplete=False, chunk_size=512):
-    pass
+    """Inclusive prefix sum/product of a 1-D array (Ascend implementation).
+
+    The CUDA implementation is a two-pass scheme (`_cupy_bsum_*` block partials,
+    then `_cupy_scan_*`) because CUDA has no scan primitive.  aclnn does
+    (`aclnnCumsum` / `aclnnCumprod`), so the whole axis is scanned by a single op
+    and the `incomplete` / `chunk_size` tuning knobs have no meaning here.
+
+    Used by boolean indexing (`_prepare_mask_indexing_single`,
+    `_ndarray_argwhere`) to turn a mask into its prefix sum.
+    """
+    if a._shape.size() != 1:
+        raise TypeError('Input array should be 1D array.')
+
+    if out is None:
+        if dtype is None:
+            dtype = a.dtype
+    else:
+        if a.size != out.size:
+            raise ValueError('Provided out is the wrong size')
+
+    return scan_core(a, 0, op, dtype, out)
+
+
+cpdef scan_core(
+        _ndarray_base a, axis, scan_op op, dtype=None, _ndarray_base out=None):
+    """Cumulative sum/product of `a` along `axis`, aclnn-backed.
+
+    Same contract as the CUDA implementation in
+    `cupy/_core/_gpu/_routines_math.pyx` (`cupy.cumsum` / `cupy.cumprod` and
+    `_math.scan`) but implemented with a single `aclnnCumsum`/`aclnnCumprod`
+    call instead of the CUB / batch-scan kernels.
+    """
+    cdef _ndarray_base work, result
+    cdef int ax
+    cdef object kind
+
+    if out is not None:
+        dtype = out.dtype
+    elif dtype is None:
+        # NumPy's accumulation dtype: bool/int -> int64, uint -> uint64,
+        # everything else keeps its own dtype.
+        kind = a.dtype.kind
+        if kind == 'b' or kind == 'i':
+            dtype = numpy.dtype('int64')
+        elif kind == 'u':
+            dtype = numpy.dtype('uint64')
+        else:
+            dtype = a.dtype
+    dtype = numpy.dtype(dtype)
+
+    if axis is None:
+        # NumPy semantics: flatten first, result is 1-D.
+        ax = 0
+        work = a.astype(dtype, order='C').reshape(-1)
+    else:
+        ax = internal._normalize_axis_index(axis, a.ndim)
+        work = a.astype(dtype, order='C')
+
+    if work.size == 0:
+        result = work
+    else:
+        # aclnn ops write into a preallocated output of the same shape.
+        result = core.ndarray(work.shape, dtype=dtype)
+        if op == scan_op.SCAN_SUM:
+            launch_general_func(
+                "ascend_cumsum", [work], [result], [ax], {}, 0)
+        else:
+            launch_general_func(
+                "ascend_cumprod", [work], [result], [ax], {}, 0)
+
+    if out is None:
+        return result
+    elementwise_copy(result.reshape(out.shape), out)
+    return out
 
 cdef _ndarray_base _ndarray_prod(
         _ndarray_base self, axis, dtype, out, keepdims):
