@@ -9,7 +9,8 @@ Key SDK layout (CANN 8.5.x)::
     <CANN>/
         include/                 # acl/acl.h, aclnn/...
         include/aclnn/
-        x86_64-linux/pkg_inc/    # base/dlog_pub.h (needed since 8.5)
+        <arch>-linux/pkg_inc/    # base/dlog_pub.h (needed since 8.5); CANN 9.x
+        pkg_inc/                 #   also installs this flat variant
         lib64/                   # libascendcl.so, libopapi*.so, ...
         runtime/lib64/
         compiler/ccec_compiler/bin/bisheng   # device compiler
@@ -20,7 +21,9 @@ package; when present its include/lib dirs are appended.
 
 from __future__ import annotations
 
+import glob
 import os
+import platform
 from typing import TYPE_CHECKING, Any
 
 import cupy_builder.install_build as build
@@ -29,6 +32,95 @@ from cupy_builder.backends._base import Backend
 
 if TYPE_CHECKING:
     from cupy_builder._context import Context
+
+
+# ---------------------------------------------------------------------------
+# CANN SDK layout helpers (shared with features/ascend.py -- keep the NNAL
+# detection logic in this one place; features/ascend.py imports from here).
+# ---------------------------------------------------------------------------
+def cann_arch_name() -> str:
+    """CANN's per-architecture directory stem for this host.
+
+    ``platform.machine()`` reports ``x86_64`` / ``aarch64`` (or ``arm64`` in
+    some environments) while CANN names its directories ``x86_64-linux`` and
+    ``aarch64-linux``.  Cf. ``build.conda_get_target_name`` for a similar
+    mapping; kept separate so the CUDA target-name logic stays untouched.
+    """
+    machine = platform.machine().lower()
+    return 'aarch64' if machine in ('aarch64', 'arm64') else 'x86_64'
+
+
+def cann_arch_dir(sdk: str, *subpath: str) -> str:
+    """``<sdk>/<arch>-linux/<subpath>`` for the host architecture."""
+    return os.path.join(sdk, cann_arch_name() + '-linux', *subpath)
+
+
+def cann_pkg_inc_dirs(sdk: str) -> list[str]:
+    """Candidate ``pkg_inc`` directories in preference order.
+
+    CANN 8.5 needs ``base/dlog_pub.h`` from ``pkg_inc``.  8.5.x only ships
+    the per-architecture layout (``<sdk>/<arch>-linux/pkg_inc``); 9.x also
+    installs a flat ``<sdk>/pkg_inc`` (9.0.1 has both).  The per-arch
+    directory wins when both exist; a ``*-linux`` glob is the last-resort
+    fallback for unexpected architecture directory names.
+    """
+    dirs = [
+        cann_arch_dir(sdk, 'pkg_inc'),
+        os.path.join(sdk, 'pkg_inc'),
+    ]
+    dirs += sorted(glob.glob(os.path.join(sdk, '*-linux', 'pkg_inc')))
+    # De-duplicate, preserving order (the glob may re-propose the per-arch
+    # directory listed above).
+    return list(dict.fromkeys(dirs))
+
+
+def nnal_root_dirs(cann_path: str) -> list[str]:
+    """Candidate NNAL installation roots for a CANN installation.
+
+    NNAL is installed under ``<CANN>/nnal`` (toolkit layout) or as a sibling
+    of the CANN directory.
+    """
+    return [
+        os.path.join(cann_path, 'nnal'),
+        os.path.join(os.path.dirname(cann_path), 'nnal'),
+    ]
+
+
+def nnal_dirs(cann_path: str, leaf: str) -> list[str]:
+    """``lib``/``lib64``/``include`` dirs of a *verified* NNAL install.
+
+    An NNAL directory that exists but is empty (or has no ``lib``/``lib64``
+    subtree holding ``*asdsip*`` files) is not an installation; reporting it
+    would add include/library dirs that do not exist and could make
+    ``_has_nnal`` lie.  ``leaf`` is ``'include'`` or ``'lib'``.
+    """
+    lib_patterns = ('*asdsip*', '*adsip*')  # libasdsip*.so (+ user spelling)
+    dirs: list[str] = []
+    for root in nnal_root_dirs(cann_path):
+        if not os.path.isdir(root):
+            continue
+        # lib/lib64 may sit directly under the root or nested
+        # (e.g. <root>/asdsip/latest/lib64), so search recursively.
+        libdirs = (glob.glob(os.path.join(root, '**', 'lib64'), recursive=True)
+                   + glob.glob(os.path.join(root, '**', 'lib'), recursive=True))
+        for libdir in libdirs:
+            files: list[str] = []
+            for pattern in lib_patterns:
+                files += glob.glob(os.path.join(libdir, pattern))
+            if not any(os.path.isfile(f) for f in files):
+                continue
+            if leaf in ('lib', 'lib64'):
+                dirs.append(libdir)
+            else:  # 'include' etc.: the sibling directory of the lib dir
+                dirs.append(os.path.join(os.path.dirname(libdir), leaf))
+    return list(dict.fromkeys(dirs))
+
+
+def has_nnal(cann_path: str | None) -> bool:
+    """True only when a *usable* NNAL install (asdsip libs) is present."""
+    if not cann_path or cann_path == 'NOT_INITIALIZED':
+        return False
+    return bool(nnal_dirs(cann_path, 'lib'))
 
 
 class AscendBackend(Backend):
@@ -61,8 +153,9 @@ class AscendBackend(Backend):
         dirs = [
             os.path.join(sdk, 'include'),
             os.path.join(sdk, 'include/aclnn'),
-            # CANN 8.5 needs `base/dlog_pub.h` from pkg_inc
-            os.path.join(sdk, 'x86_64-linux/pkg_inc'),
+            # CANN 8.5 needs `base/dlog_pub.h` from pkg_inc; the directory is
+            # arch-specific (<arch>-linux/pkg_inc) with a flat 9.x variant.
+            *cann_pkg_inc_dirs(sdk),
             os.path.join(sdk, 'include/experiment/platform'),
         ]
         dirs += self._nnal_dirs(sdk, 'include')
@@ -171,7 +264,9 @@ class AscendBackend(Backend):
     # ------------------------------------------------------------------
     @staticmethod
     def _nnal_dirs(sdk: str, leaf: str) -> list[str]:
-        """NNAL is a sibling install (``<CANN>/../../nnal``) when present."""
-        return [
-            os.path.join(sdk, '../../nnal/asdsip/latest', leaf),
-        ]
+        """NNAL include/lib dirs of a *verified* install (see ``nnal_dirs``).
+
+        NNAL is installed under ``<CANN>/nnal`` or as a sibling directory;
+        an empty ``nnal`` folder is not an installation.
+        """
+        return nnal_dirs(sdk, leaf)

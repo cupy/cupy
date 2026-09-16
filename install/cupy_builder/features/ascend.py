@@ -30,6 +30,9 @@ from typing import Any
 
 import cupy_builder.install_build as build
 
+# backends/ascend.py always loads before features/ (see cupy_builder/__init__),
+# so importing the shared CANN layout helpers here creates no import cycle.
+from cupy_builder.backends.ascend import cann_arch_dir, has_nnal
 from cupy_builder.features._base import Feature
 
 
@@ -167,11 +170,11 @@ def _cann_lib_dirs() -> list[str]:
     cann_path = build.get_cann_path()
     if not cann_path or cann_path == 'NOT_INITIALIZED':
         return []
-    # `lib64` is the canonical location; `x86_64-linux/lib64` appears in
-    # some packaged layouts.
+    # `lib64` is the canonical location; `<arch>-linux/lib64` appears in
+    # some packaged layouts (x86_64-linux / aarch64-linux).
     return [
         os.path.join(cann_path, 'lib64'),
-        os.path.join(cann_path, 'x86_64-linux', 'lib64'),
+        cann_arch_dir(cann_path, 'lib64'),
     ]
 
 
@@ -241,13 +244,10 @@ class CUPY_ascend(Feature):
         self.libraries = _filter_existing_libs(self.libraries)
 
     def _has_nnal(self) -> bool:
-        cann_path = build.get_cann_path()
-        if not cann_path or cann_path == 'NOT_INITIALIZED':
-            return False
-        # NNAL is installed under <cann>/nnal (toolkit) or a sibling dir.
-        for candidate in (
-                os.path.join(cann_path, 'nnal'),
-                os.path.join(os.path.dirname(cann_path), 'nnal'),):
-            if os.path.isdir(candidate):
-                return True
-        return False
+        """True only when NNAL actually ships its asdsip libraries.
+
+        A merely existing (possibly empty) ``nnal`` directory does not count:
+        the check requires a ``lib``/``lib64`` subtree that contains
+        ``*asdsip*`` files (see ``backends.ascend.has_nnal``).
+        """
+        return has_nnal(build.get_cann_path())
