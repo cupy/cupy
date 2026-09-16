@@ -36,6 +36,13 @@ def _direct_correlate(in1, in2, mode='full', output=float, convolution=False,
         in1, in2 = in2, in1
         swapped_inputs = True
 
+    # The correlate kernel indexes the primary input (in1) from its base data
+    # pointer using its raw strides. This produces wrong results (silently) for
+    # non-contiguous inputs such as negative-strided views (e.g. cupy.flip),
+    # because &x[0] points at the buffer start while the strides walk the other
+    # way. Normalize to a C-contiguous array before running the kernel.
+    in1 = cupy.ascontiguousarray(in1)
+
     # Due to several optimizations, the second array can only be 2 GiB
     if in2.nbytes >= (1 << 31):
         raise RuntimeError('smaller array must be 2 GiB or less, '
