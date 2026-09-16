@@ -1395,6 +1395,16 @@ cdef class ElementwiseKernel:
         runtime._ensure_context()
         s = _get_stream(None)
         pos_args = list(args[(self.nin + self.nout):]) # the rest of positional args
+        # NOTE (review P1 / D3): there is deliberately no "op is not registered ->
+        # raise" check here, nor in `ElementwiseKernel.__init__`. On Ascend the
+        # CUDA body above is never compiled: the kernel is dispatched purely by
+        # name (cupy_xxx -> ascend_xxx), and `import cupy` builds a couple of
+        # dozen module-level kernels whose ops are intentionally still unported
+        # (only reachable from CUDA-only paths), so a raise at construction time
+        # would make `import cupy` fail. The explicit failure is raised once, for
+        # every dispatch path, inside the dispatcher itself -- see
+        # `launch_acl_func` / `launch_reduction_op` -> `_no_ascend_impl_msg()` in
+        # cupy/backends/ascend/api/acl_utils.pyx.
         launch_general_func(self.name, list(in_args), list(out_args), pos_args, kwargs, s)
 
         #arginfos = _get_arginfos(inout_args)

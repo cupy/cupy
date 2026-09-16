@@ -903,7 +903,10 @@ cdef aclError launch_acl_func(str opname, sequence ins, sequence outs, list args
     if _builtin_operators.find(op_info) == _builtin_operators.end():
         # scalar 已经创建出来了，抛错前必须回收，否则泄漏
         _destroy_acl_scalar(scalar_ptr)
-        raise KeyError(f"Operator {opname} len(ops) = {len(ops)} not registered {inplace} {has_scalar}, {op_info.op_type}")
+        raise NotImplementedError(
+            _no_ascend_impl_msg(opname)
+            + f" (looked up {op_info.op_type} with len(ops)={len(ops)}, "
+              f"inplace={inplace}, has_scalar={has_scalar})")
     
     func_ptr = _builtin_operators[op_info]
     cdef aclError ret = 0
@@ -967,7 +970,7 @@ cdef aclError launch_reduction_op(str opname, sequence ins, sequence outs, objec
     op_info.op_name = opname.encode("utf-8")
     op_info.op_type = REDUCTION_OP
     if _builtin_operators.find(op_info) == _builtin_operators.end():
-        raise KeyError(f"Operator {opname} not registered")
+        raise NotImplementedError(_no_ascend_impl_msg(opname))
 
     cdef FuncPtrUnion func_ptr = _builtin_operators[op_info]
     cdef aclError ret = 0
