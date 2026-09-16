@@ -141,6 +141,12 @@ cdef _ndarray_base _ndarray_mean(
         elif self.dtype.char == 'e':
             dtype_sum = numpy.float32
             dtype_out = numpy.float16
+        # Upstream CUDA only reaches `_mean` through the accelerator loop's
+        # `for ... else`; here the loop lives in the `elif` branch below, so the
+        # fallback has to be explicit -- without it `result` stays unbound and
+        # `mean()` raises UnboundLocalError whenever `dtype is None`.
+        result = _mean(
+            self, axis=axis, dtype=dtype_sum, out=out, keepdims=keepdims)
     elif numpy.dtype(dtype).kind in 'iub':
         # output will be the requested type, but compute the mean using float
         dtype_out = dtype

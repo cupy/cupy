@@ -1517,6 +1517,12 @@ cdef void register_reduction_operators():
     register_acl_ufunc("ascend_argmin", REDUCTION_OP, func_union)
     func_union.reduction_op = aclop_Mean
     register_acl_ufunc("ascend_mean", REDUCTION_OP, func_union)
+    # `cupy_mean_empty` is `_mean_core_empty`, used by `cupy.mean` for zero-size
+    # input (it differs from `cupy_mean` only by having identity 0, so that the
+    # reduction is not rejected before it runs and 0/0 -> nan is produced).
+    # Same aclnn op as `ascend_mean`: aclnnMean sums and divides by the element
+    # count, which is 0/0 -> nan for an empty input, matching NumPy.
+    register_acl_ufunc("ascend_mean_empty", REDUCTION_OP, func_union)
     func_union.reduction_op = aclop_Sum
     register_acl_ufunc("ascend_sum", REDUCTION_OP, func_union)
     func_union.reduction_op = aclop_Prod
