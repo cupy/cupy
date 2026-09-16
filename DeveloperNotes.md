@@ -112,6 +112,25 @@ If you want to use asdsip module:
 -  To take effect for current user, you can exec command below: source /home/qingfeng/Ascend/nnal/asdsip/set_env.sh or add "source /home/qingfeng/Ascend/nnal/asdsip/set_env.sh" to ~/.bashrc.
 ```
 
+### 2.3b FFT: `ops-fft` 是独立算子包, 不属于基础 CANN SDK
+
+FFT 和 BLAS/NNAL 一样是**可选单独安装**的: CANN toolkit 只带 `ascendcl/runtime/opapi*`,
+`libcann_ops_fft.so` 来自单独的 `.run` 包 (例如 `cann-910b-ops-fft_9.0.0_linux-x86_64.run`),
+也可以从源码构建 (in-tree build 产物在 `build/` 下)。
+
+```bash
+# 方式 A: 装官方 .run 包 (会装进 CANN 树)
+./cann-910b-ops-fft_9.0.0_linux-x86_64.run --install
+# 方式 B: 源码构建 (开发用), 产出 ~/repos/ops-fft/build/libcann_ops_fft.so
+cd ~/repos/ops-fft && bash build.sh            # 或 cmake build
+# 构建时显式指定位置 (最稳):
+export ASCEND_OPS_FFT_PATH=~/repos/ops-fft/build
+```
+
+**没装 / 没编译也能正常编译 cupy**, 只是没有 FFT (详见 §3.5b 与 `docs/ascend/ascend_fft.md`)。
+注意 `import cupy.backends.ascend.api.aclfft` 还要求 `libcann_ops_fft.so` 在**运行时**
+的 loader 路径里 (`LD_LIBRARY_PATH` / `ldconfig`), 因为 CANN 绝对路径**不会**被写进 rpath。
+
 ### 2.4 install triton-ascend, torch-cpu (2.6) torch-npu
 
 ```bash
@@ -259,6 +278,100 @@ currently, only support tensor op tensor, some op support tensor op scalar (aclS
 4. masked tensor/ndarray: its possible using kargs, using aclnn op
 5. scalar op scalar: numpy/cupy 是不是也不支持这样的操作? 
 
+### 3.5 按 CANN 版本条件编译（构建期自动探测）✅
+
+**结论：不需要手工传任何参数。** CANN 版本在构建时自动探测，并同时下发到两条通道：
+
+| 通道 | 变量 | 写法 | 作用范围 |
+|---|---|---|---|
+| Cython 编译期常量 | `CUPY_CANN_VERSION` | `IF CUPY_CANN_VERSION >= 901:` | `.pyx` / `.pxd` |
+| C/C++ 预处理宏 | `CUPY_CANN_VERSION` | `#if CUPY_CANN_VERSION >= 901` | `.h` / `.cpp` |
+
+链路（单一来源，不要另起一套）：
+
+```
+build.check_cann_version()          # 读 <CANN>/version.cfg | compiler/version.info | opp/version.info
+  → 编码成 major*100 + minor*10 + patch      # 8.5.1 → 851, 9.0.1 → 901
+  → install/cupy_builder/backends/ascend.py  AscendBackend.get_version()
+       get_define_macros()     → -DCUPY_CANN_VERSION=901                  (C/C++)
+       get_compile_time_env()  → compile_time_env['CUPY_CANN_VERSION']=901 (Cython IF)
+  → 二者分别在 cupy_setup_build.py / _command.py 注入
+```
+
+验证（无 NPU 也能做）：
+
+```sh
+# 1) 宏是否真的进了编译命令行（touch 一个 pyx 强制重编）
+touch cupy/_util.pyx && python setup.py build_ext --inplace 2>&1 | grep -o -- '-DCUPY_CANN_VERSION=[0-9]*'
+# 2) python 侧取值
+python -c "import sys;sys.path.insert(0,'install');import cupy_builder.install_build as b;\
+b.check_cann_version(None,None);v=b.get_cann_version();print(v, b.format_cann_version(v))"
+```
+
+写法示例：
+
+```cython
+# .pyx / .pxd —— Cython 的编译期 IF，不是 Python 的 if
+IF CUPY_CANN_VERSION >= 901:
+    result = _use_new_aclnn_op(...)
+ELSE:
+    result = _use_legacy_path(...)
+```
+
+```cpp
+// .h / .cpp —— 高版本才存在的算子这样切
+#if CUPY_CANN_VERSION >= 900
+    // aclnnXxxV2 只在 CANN 9.0+ 提供
+    return aclIrregularOpRun(aclnnXxxV2GetWorkspaceSize, aclnnXxxV2, stream, ...);
+#else
+    return aclIrregularOpRun(aclnnXxxGetWorkspaceSize, aclnnXxx, stream, ...);
+#endif
+```
+
+注意事项：
+
+1. **必须写成数值比较**：`#if CUPY_CANN_VERSION >= N` / `IF CUPY_CANN_VERSION <= 0`。
+   非 Ascend 构建**不定义**该宏，C 预处理里未定义标识符按 0 求值，于是 `>= N` 为假（正确）；
+   但 `#ifdef CUPY_CANN_VERSION` 在非 Ascend 构建为假、在"定义为 0"的约定下又为真 ——
+   **所以不要用 `#ifdef`**。
+2. Cython 的 `IF` 是**编译期**分支：写法像 Python，但只能判断编译期常量（如版本号），
+   不能判断运行时值。`_routines_math.pyx` / `_routines_indexing.pyx` /
+   `_routines_manipulation.pyx` 里的 `IF CUPY_CANN_VERSION <= 0` 就是用来分离 CUDA/Ascend 代码路径的。
+3. 两条通道的值都来自 `AscendBackend.get_version()`，改版本编码（例如将来 CANN 10）
+   只需改 `check_cann_version()` 一处。
+4. `acl_*.h` **只被 Ascend 构建** include（`acl_utils.pyx` 的 `cdef extern from`），
+   所以头文件里用这个宏是安全的；共享给 CUDA 的头文件不要用。
+5. 版本是**构建时刻**的 SDK 版本，不是运行时版本：用高版本 CANN 编译的 wheel 拿到低版本
+   CANN 上跑会出现 `undefined symbol`。因此 wheel tag 带 `cannX.Y`
+   （`AscendBackend.get_wheel_platform_tag()`），并在 import 时校验 `cupy/.data/_wheel.json`。
+
+### 3.5b 可选依赖的优雅降级（以 ops-fft / FFT 为例）✅
+
+`libcann_ops_fft.so` **不属于基础 CANN SDK**（见 §2.3b），所以"没装/没编译"是常态，
+三个环节都必须优雅处理：
+
+| 环节 | 机制 | 缺 FFT 时的行为 |
+|---|---|---|
+| 检测 | `install/cupy_builder/features/ascend_fft.py`：`ASCEND_OPS_FFT_PATH` → CANN 树 → `~/repos/ops-fft/build` → `ldconfig` | `has_ops_fft() == False`，`modules = []` |
+| 构建 | `preconfigure_modules()` 对每个 feature 做 compile + **link** 探测（`check_library(libraries=['cann_ops_fft'])`），且 `feature.required = False` | 打印 `ascend_fft: No` + `Cannot link libraries`，**构建继续**、不生成 `aclfft.so`；`CUPY_ENABLE_ACLFFT=1` 改成硬失败，`=0` 完全跳过检测 |
+| 运行 | `cupy/fft/_backend.py::get_cufft()` 惰性解析（`lru_cache`），`_fft.py` 每个入口都经过它 | `import cupy` / `import cupy.fft` 正常；调用 FFT 抛 `RuntimeError`，提示装 ops-fft 或设 `ASCEND_OPS_FFT_PATH` |
+
+两个容易踩的点：
+
+1. **`find_ops_fft_lib()` 返回 `None` 有两种含义** —— "没找到"与"在默认 loader 路径里、
+   不需要额外 `-L`"。判断"有没有 FFT"必须用 `has_ops_fft()`；混用会导致：库其实可用
+   （只装在 `ldconfig` 路径）却被跳过，以及 `CUPY_ENABLE_ACLFFT=1` 误报失败。
+   另外"没找到"时仍要把依赖声明进 `feature.libraries`，否则通用探测会在空 library
+   列表上平凡通过，配置摘要会误报 `ascend_fft: Yes`。
+2. **构建期找到 ≠ 运行期能加载**：`aclfft.so` 只记录 `NEEDED libcann_ops_fft.so.1`，
+   而 CANN 绝对路径**故意不写进 rpath**（`embed_sdk_in_rpath = False`，避免 wheel 绑死构建机）。
+   运行环境要么把 ops-fft 装进 CANN 树 / `ldconfig`，要么设 `LD_LIBRARY_PATH`；
+   否则 `import aclfft` 报 `cannot open shared object file`，随后走上面的优雅路径。
+   （开发机当前就是这个状态：编译链接通过，但 loader 找不到 → `get_cufft()` 给出清晰错误。）
+
+回归测试：`tests/ascend/test_fft_optional.py`（8 用例，无 NPU、无 FFT 也能跑）——
+检测分支、`CUPY_ENABLE_ACLFFT` 两种取值、默认 loader 路径回归、构建期不产生模块、运行时清晰报错。
+
 
 ## 4. TODO
 
@@ -281,7 +394,8 @@ only float number can represent NaN (like inf, special value of float)
 
 ## FFT (partially done)
 
-see docs/ascend/ notes on FFT
+see docs/ascend/ notes on FFT; 安装见 §2.3b, 可选依赖的编译/运行期降级机制见 §3.5b,
+回归测试见 `tests/ascend/test_fft_optional.py`.
 
 ### cann_ops_fft.h , why this file must be copied from fft sdk?
 
