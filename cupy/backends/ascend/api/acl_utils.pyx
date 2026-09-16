@@ -1,4 +1,5 @@
 import cython
+import os
 cimport cpython
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from collections import namedtuple
@@ -273,7 +274,59 @@ cdef aclScalar* _convert_arg_to_acl_scalar(arg):
             print("ASCEND: arg can not be converted to aclScalar: ", arg)
             return NULL
 
-cdef KwargsType _create_keyword_args(dict kwargs) except *:
+# ---------------------------------------------------------------------------
+# 参数（args/kwargs）校验 —— 见 docs/ascend/arg_passing_plan.md 阶段 1
+#
+# 背景（code_review_ascend_backend.md §2.5）：无法转换的参数原来只是 print 一行
+# 然后静默丢弃 -> 算子照常执行但参数没生效 = 静默错误结果。
+# 现在：不可转换 / 未知 key 一律抛错；CUPY_ASCEND_LENIENT_ARGS=1 可临时恢复旧行为。
+# ---------------------------------------------------------------------------
+
+#: C++ 侧 `GetScalarArg` 实际消费的参数 key（cupy/backends/ascend/*.h 全量提取）
+_KNOWN_SCALAR_KEYS = frozenset((
+    'atol', 'axis', 'bins', 'descending', 'dim', 'full_matrices', 'k',
+    'keepdim', 'max', 'min', 'nan', 'neginf', 'order', 'posinf', 'rtol',
+    'shift', 'some', 'sorted', 'stable', 'start', 'step', 'stop',
+    # ufunc 路径注入的 key（_kernel.pyx:913）：语义实现见 arg_passing_plan.md M2，
+    # 在实现之前必须显式报错而不是静默丢弃（否则 where=mask 会算错）。
+    'where',
+))
+
+#: 声明允许透传 ACL_STRING 标量的算子（当前为空；字符串应优先在 host 侧解析）
+_STRING_ARG_OPS = frozenset()
+
+
+cdef inline bint _lenient_args():
+    """CUPY_ASCEND_LENIENT_ARGS=1 -> 恢复「打印并丢弃」的旧行为（迁移期用）。"""
+    return os.environ.get('CUPY_ASCEND_LENIENT_ARGS') == '1'
+
+
+cdef aclScalar* _convert_arg_strict(str opname, str name, arg) except *:
+    """转换单个参数为 aclScalar；不支持则抛错（而非静默丢弃）。
+
+    ``opname``/``name`` 只用于错误信息（name 形如 ``'axis'`` 或 ``'#0'``）。
+    """
+    cdef aclScalar* s
+    if type(arg) is str and opname not in _STRING_ARG_OPS:
+        # 字符串应优先在 host 侧解析为 int/bool（见 arg_passing_plan.md §2.3）；
+        # ACL_STRING 仅对显式声明的算子开放。
+        if _lenient_args():
+            return NULL
+        raise NotImplementedError(
+            f"{opname}: 字符串参数 {name}={arg!r} 不支持直接透传到 aclnn；"
+            f"请在 host 侧解析为数值/布尔（当前算子未声明 ARG_STRING）")
+    s = _convert_arg_to_acl_scalar(arg)
+    if s != NULL:
+        return s
+    if _lenient_args():
+        return NULL
+    raise NotImplementedError(
+        f"{opname}: 参数 {name} = {arg!r} (type {type(arg).__name__}) 无法转换为 "
+        f"aclScalar，当前不支持；为避免静默错误结果这里直接报错。"
+        f"（迁移期可设 CUPY_ASCEND_LENIENT_ARGS=1 恢复旧的丢弃行为）")
+
+
+cdef KwargsType _create_keyword_args(dict kwargs, str opname="<unknown>") except *:
     cdef KwargsType acl_kwargs
     cdef string cpp_str
     cdef const char* c_str
@@ -281,7 +334,12 @@ cdef KwargsType _create_keyword_args(dict kwargs) except *:
     if kwargs:
         try:
             for key, value in kwargs.items():
-                sarg = _convert_arg_to_acl_scalar(value)
+                if key not in _KNOWN_SCALAR_KEYS and not _lenient_args():
+                    raise ValueError(
+                        f"{opname}: 未知参数 key {key!r}（不在 C++ 侧消费的 key "
+                        f"白名单内）——它会被静默丢弃，所以这里直接报错。"
+                        f"已支持的 key 见 _KNOWN_SCALAR_KEYS")
+                sarg = _convert_arg_strict(opname, key, value)
                 if sarg:
                     py_bytes = key.encode("utf-8")
                     c_str = py_bytes
@@ -627,17 +685,17 @@ cdef aclError launch_general_func(str opname, sequence ins, sequence outs, list 
     # 否则已创建的 tensor 会滞留在 cupy_acl_tensor_owners 里，连同 ndarray
     # 一起永久泄漏（原来的 tensor 创建循环在 try 之外）。
     try:
-        acl_kwargs = _create_keyword_args(kwargs)
+        acl_kwargs = _create_keyword_args(kwargs, opname)
         for op in ins:
             typ = type(op)
             if issubclass(typ, _ndarray_base):
                 intensors.push_back(cupy_ndarray_to_acl_tensor(op))
             else:
-                ascalar = _convert_arg_to_acl_scalar(op)
+                ascalar = _convert_arg_strict(opname, <str>('operand %s' % type(op).__name__), op)
                 if ascalar:
                     acl_args.push_back(ascalar)
-        for pos_arg in args:
-            pscalar = _convert_arg_to_acl_scalar(pos_arg)
+        for i, pos_arg in enumerate(args):
+            pscalar = _convert_arg_strict(opname, <str>('#%d' % i), pos_arg)
             if pscalar:
                 acl_args.push_back(pscalar)
         for op in outs:
@@ -710,6 +768,42 @@ def py_list_custom_kernels() -> list:
     return sorted(_custom_kernel_specs)
 
 
+def py_describe_args(str opname, tuple args=(), dict kwargs=None) -> list:
+    """按 dispatch 路径的同一套规则校验/描述参数（测试与调试用，无需 NPU）。
+
+    返回 ``[(name, kind, repr), ...]``，其中 ``kind`` 为：
+
+    * ``'scalar'``      —— 可转换为 aclScalar（数值/布尔/numpy 标量）
+    * ``'string'``      —— 字符串且该算子已声明 ARG_STRING（透传 ACL_STRING）
+    * ``'unsupported'`` —— 仅当 ``CUPY_ASCEND_LENIENT_ARGS=1`` 时才会出现
+
+    与真实路径一致：不可转换的参数、未知 key、未声明的字符串参数都会**抛错**。
+    """
+    cdef list out = []
+    cdef aclScalar* s
+    if kwargs is None:
+        kwargs = {}
+    for i, value in enumerate(args):
+        s = _convert_arg_strict(opname, <str>('#%d' % i), value)
+        if s != NULL:
+            _destroy_acl_scalar(s)
+            out.append(('#%d' % i, 'scalar', repr(value)))
+        else:
+            out.append(('#%d' % i, 'unsupported', repr(value)))
+    for key, value in kwargs.items():
+        if key not in _KNOWN_SCALAR_KEYS and not _lenient_args():
+            raise ValueError(
+                f"{opname}: 未知参数 key {key!r}（不在 C++ 侧消费的 key 白名单内）")
+        s = _convert_arg_strict(opname, key, value)
+        if s != NULL:
+            _destroy_acl_scalar(s)
+            kind = 'string' if type(value) is str else 'scalar'
+            out.append((key, kind, repr(value)))
+        else:
+            out.append((key, 'unsupported', repr(value)))
+    return out
+
+
 cdef aclError _launch_custom_ufunc(str opname, dict spec, sequence ins,
                                    sequence outs, intptr_t stream_ptr) except *:
     cdef bytes bin_path = spec['bin'].encode('utf-8')
@@ -769,6 +863,15 @@ cdef aclError _launch_custom_ufunc(str opname, dict spec, sequence ins,
 
 
 cdef aclError launch_acl_func(str opname, sequence ins, sequence outs, list args, dict kwargs, intptr_t stream_ptr) except *:
+    # M1 止血：这条路径（UNARY/BINARY/SCALAR/INPLACE 注册表）目前**没有参数通道**，
+    # 原来 args/kwargs 被完全丢弃（生成代码里是 CYTHON_UNUSED，见 review §2.2）。
+    # 丢弃 = 参数没生效但算子照跑 = 静默错误结果，所以先显式报错；
+    # 统一参数通道（unified_op）在 arg_passing_plan.md M2 实现。
+    if (args or kwargs) and not _lenient_args():
+        raise NotImplementedError(
+            f"{opname}: 该算子走窄签名派发（无参数通道），但收到 args={list(args)!r} / "
+            f"kwargs={dict(kwargs)!r}；这些参数会被丢弃导致结果错误，故直接报错。"
+            f"（迁移期可设 CUPY_ASCEND_LENIENT_ARGS=1 恢复旧行为）")
     # 
     cdef aclScalar* scalar_ptr = NULL
     cdef OpInfo op_info
@@ -801,7 +904,9 @@ cdef aclError launch_acl_func(str opname, sequence ins, sequence outs, list args
         stream = <aclrtStream>stream_ptr
 
     # 转换为ACL张量列表
-    tensors = _create_ops_vector(ops, outs)
+    # NOTE: 传 (ins, outs) 而不是 (ops, outs) —— ops 已经等于 ins+outs，
+    # 传 ops 会让每个 out 被创建两个 aclTensor（review §2.3）。
+    tensors = _create_ops_vector(ins, outs)
 
     try:
         if len(ops) == 3 and not has_scalar and not inplace:  # 二元操作
@@ -809,7 +914,6 @@ cdef aclError launch_acl_func(str opname, sequence ins, sequence outs, list args
                 raise RuntimeError(f"Operator {opname} is not a binary operator")
             ret = func_ptr.binary_op(tensors[0], tensors[1], tensors[2], stream)
         elif len(ops) == 2 and inplace:  # 原地二元操作
-            print(f"ASCEND DEBUG: inplace operator {opname} called")
             if op_info.op_type != INPLACE_BINARY_OP:
                 raise RuntimeError(f"Operator {opname} is not an inplace binary operator")
             ret = func_ptr.inplace_binary_op(tensors[0], tensors[1], stream)
@@ -889,7 +993,7 @@ cdef aclError launch_reduction_op(str opname, sequence ins, sequence outs, objec
     cdef KwargsType acl_kwargs
     try:
         # 放进 try 内, 失败时由 finally 回收已创建的 dim/scalar
-        acl_kwargs = _create_keyword_args(kwargs)
+        acl_kwargs = _create_keyword_args(kwargs, opname)
         ret = func_ptr.reduction_op(tensors[0], dim, keepdims, tensors[1], acl_kwargs, stream)
         if ret != 0:
             print("Failed to run the reduction operator ", opname)
@@ -1394,11 +1498,11 @@ cdef void register_reduction_operators():
     register_acl_ufunc("ascend_max", REDUCTION_OP, func_union)
     func_union.reduction_op = aclop_Min
     register_acl_ufunc("ascend_min", REDUCTION_OP, func_union)
-    func_union.reduction_op = aclop_ArgMin
-    register_acl_ufunc("ascend_argmax", REDUCTION_OP, func_union)
-    func_union.reduction_op = aclop_Mean
-    register_acl_ufunc("ascend_argmin", REDUCTION_OP, func_union)
     func_union.reduction_op = aclop_ArgMax
+    register_acl_ufunc("ascend_argmax", REDUCTION_OP, func_union)
+    func_union.reduction_op = aclop_ArgMin
+    register_acl_ufunc("ascend_argmin", REDUCTION_OP, func_union)
+    func_union.reduction_op = aclop_Mean
     register_acl_ufunc("ascend_mean", REDUCTION_OP, func_union)
     func_union.reduction_op = aclop_Sum
     register_acl_ufunc("ascend_sum", REDUCTION_OP, func_union)

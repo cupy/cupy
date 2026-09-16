@@ -497,9 +497,9 @@ cdef class _AbstractReductionKernel:
 
             params = self._params
             cdef s = _get_stream(stream)
-            print(f"ASCEND: DEBUG reduction op {self.name}, axis = {axis}, {keepdims}, {self._params}")
-            # TODO(ASCEND): kargs
-            launch_reduction_op(self.name, list(in_args), [ret], axis, keepdims, None, s)
+            # NOTE: launch_reduction_op 的 kwargs 形参类型是 dict，传 None 会
+            # 直接 TypeError（reduction 全部不可用）。当前没有需要透传的关键字参数，传空 dict。
+            launch_reduction_op(self.name, list(in_args), [ret], axis, keepdims, {}, s)
             return ret
 
     def _get_optimized_params(
