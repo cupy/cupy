@@ -7,6 +7,7 @@ sources only; any machine with a CANN install has bisheng.
 """
 
 import os
+import platform
 import subprocess
 
 
@@ -42,28 +43,67 @@ def find_bisheng(cann_root: str | None = None) -> str | None:
     return None
 
 
+def _arch_roots(cann_root: str) -> list[str]:
+    """CANN's machine-specific sub-directories (``aarch64-linux``/``x86_64-linux``).
+
+    The AscendC headers live under the **host** arch dir: NPU boxes are usually
+    aarch64 while dev boxes are x86_64. Hard-coding ``x86_64-linux`` (what this
+    used to do) means ``kernel_operator.h`` is not found on an aarch64 machine
+    even though it is right there under ``aarch64-linux``.
+    """
+    machine = platform.machine().lower()
+    if machine in ('aarch64', 'arm64'):
+        preferred = 'aarch64-linux'
+    elif machine in ('x86_64', 'amd64'):
+        preferred = 'x86_64-linux'
+    else:
+        preferred = ''
+    roots = []
+    for name in dict.fromkeys((preferred, 'aarch64-linux', 'x86_64-linux')):
+        if not name:
+            continue
+        path = os.path.join(cann_root, name)
+        if os.path.isdir(path):
+            roots.append(path)
+    return roots
+
+
 def _ascendc_include_dirs(cann_root: str) -> list[str]:
     """AscendC header roots (layout differs between CANN releases; keep what exists)."""
     dirs = []
-    x86 = os.path.join(cann_root, 'x86_64-linux')
-    # CANN 9.0: full framework under x86_64-linux/asc
-    asc = os.path.join(x86, 'asc')
-    if os.path.isdir(asc):
-        dirs += [
-            os.path.join(asc, 'include'),
-            os.path.join(asc, 'include', 'basic_api'),
-            os.path.join(asc, 'impl', 'basic_api'),
-        ]
-    # highlevel math lib (Trunc/Frac/Floor/Log2/Atan/...)
-    for hl in (os.path.join(x86, 'ascendc', 'include', 'highlevel_api'),
-               os.path.join(asc, 'include', 'highlevel_api')):
-        if os.path.isdir(hl):
-            dirs.append(hl)
-    # CANN 8.5 layout fallback (tikcfw)
-    for tik in (os.path.join(x86, 'tikcpp', 'tikcfw'),):
+    # Bail out to the toolkit root itself when there is no per-arch dir, so that
+    # an unpacked AscendC SDK (<root>/include/...) still contributes -I paths.
+    for root in _arch_roots(cann_root) or [cann_root]:
+        # CANN 9.0 full SDK: framework under <arch>/asc, AscendC headers under
+        # <arch>/asc/include (that is where `kernel_operator.h` lives).
+        asc = os.path.join(root, 'asc')
+        if os.path.isdir(asc):
+            dirs += [
+                os.path.join(asc, 'include'),
+                os.path.join(asc, 'include', 'basic_api'),
+                os.path.join(asc, 'impl', 'basic_api'),
+            ]
+        # standalone AscendC SDK: the tarball ships an extra `include` level,
+        # i.e. <arch>/ascendc/include/include/basic_api
+        for ascendc in (
+                os.path.join(root, 'ascendc', 'include', 'include', 'basic_api'),
+                os.path.join(root, 'ascendc', 'include', 'include'),
+                os.path.join(root, 'ascendc', 'include', 'basic_api'),
+        ):
+            if os.path.isdir(ascendc):
+                dirs.append(ascendc)
+        # highlevel math lib (Trunc/Frac/Floor/Log2/Atan/...)
+        for hl in (os.path.join(root, 'ascendc', 'include', 'highlevel_api'),
+                   os.path.join(asc, 'include', 'highlevel_api')):
+            if os.path.isdir(hl):
+                dirs.append(hl)
+        # CANN 8.5 layout fallback (tikcfw) -- also the only place that carries
+        # `lib/math/*.h` on 9.0, so keep it after the asc dirs.
+        tik = os.path.join(root, 'tikcpp', 'tikcfw')
         if os.path.isdir(tik):
             dirs += [tik, os.path.join(tik, 'interface'), os.path.join(tik, 'impl')]
-    return [d for d in dirs if os.path.isdir(d)]
+    # de-duplicate (host arch + fallback arch dirs may both exist), drop missing
+    return [d for d in dict.fromkeys(dirs) if os.path.isdir(d)]
 
 
 def default_soc() -> str:
