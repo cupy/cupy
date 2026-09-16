@@ -1499,6 +1499,7 @@ cdef extern from "../acl_reduction_ops.h" nogil:
     aclError aclop_NanMin(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, const KwargsType& kwargs, aclrtStream stream)
     aclError aclop_NanMax(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, const KwargsType& kwargs, aclrtStream stream)
     aclError aclop_NanProd(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_CountNonNaN(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, const KwargsType& kwargs, aclrtStream stream)
 
 cdef void register_reduction_operators():
     cdef FuncPtrUnion func_union
@@ -1536,6 +1537,10 @@ cdef void register_reduction_operators():
     register_acl_ufunc("ascend_nanmin", REDUCTION_OP, func_union)
     func_union.reduction_op = aclop_NanMax
     register_acl_ufunc("ascend_nanmax", REDUCTION_OP, func_union)
+    # composed: (x != x) -> s_where(., 0, 1) -> sum, i.e. NumPy's count_non_nan
+    # (kernel name: cupy_count_non_nan -> ascend_count_non_nan; used by _nanvar)
+    func_union.reduction_op = aclop_CountNonNaN
+    register_acl_ufunc("ascend_count_non_nan", REDUCTION_OP, func_union)
 
 
 # general ops

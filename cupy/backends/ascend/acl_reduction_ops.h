@@ -18,6 +18,13 @@
 // missing quantile, percentile
 #include "aclnnop/aclnn_histc.h"
 #include "aclnnop/aclnn_reduce_nansum.h"
+#include "aclnnop/aclnn_reduce_sum.h"
+
+// count_non_nan (= sum(!isnan(x))) has no aclnn counterpart and is composed in
+// aclop_CountNonNaN below from ne_tensor + s_where + inplace fill + reduce_sum.
+#include "aclnnop/aclnn_ne_tensor.h"
+#include "aclnnop/aclnn_s_where.h"
+#include "aclnnop/aclnn_fill_scalar.h"
 
 #include "./acl_op_template.h"
 #include "acl/acl.h"
@@ -250,7 +257,86 @@ aclError aclop_NanMax(const aclTensor* self, const aclIntArray* dim, bool keepdi
     aclDestroyTensorLike(temp);
     return ret;
 }
-    
+
+// CANN has no aclnnIsNan and no "count" reduction (see acl_reduction_ops.h
+// includes), so NumPy's count_non_nan (= sum of `not isnan(x)`) is composed:
+//
+//   nan_mask = (x != x)               -> true exactly for NaN (same trick as
+//                                       aclop_IsNan, which CANN also lacks)
+//   mask     = s_where(nan_mask, 0, 1) -> 0/1 *in self's dtype*
+//   out      = reduce_sum(mask, ...)   -> cast to the (integer) output dtype
+//
+// The 0/1 detour through s_where avoids reducing a bool tensor and avoids a
+// bool->int aclnnCast, neither of which is verified on Ascend. Only the
+// NaN mask is bool; it is produced by a comparison, exactly like aclop_IsNan
+// and aclop_Copysign already do.
+//
+// NOTE: complex inputs are not supported -- the "1" sentinel and the sum are
+// built in self's dtype, and neither aclnnFillScalar nor aclnnReduceSum takes
+// complex. The only caller on Ascend is `_nanvar`, whose complex path needs
+// `ascend_nanvar_core_complex*` anyway (not registered).
+aclError aclop_CountNonNaN(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out,
+    const KwargsType& kwargs, aclrtStream stream) {
+    aclDataType dtype = ACL_DT_UNDEFINED;
+    aclError ret = aclGetDataType(self, &dtype);
+    if (ret != ACL_SUCCESS) {
+        return ret;
+    }
+    aclDataType out_dtype = ACL_DT_UNDEFINED;
+    ret = aclGetDataType(out, &out_dtype);
+    if (ret != ACL_SUCCESS) {
+        return ret;
+    }
+    aclTensor* nan_mask = aclTensorLike(self, ACL_BOOL);
+    aclTensor* zeros = aclTensorLike(self, dtype);
+    aclTensor* ones = aclTensorLike(self, dtype);
+    aclTensor* mask = aclTensorLike(self, dtype);
+    if (nan_mask == nullptr || zeros == nullptr || ones == nullptr || mask == nullptr) {
+        aclDestroyTensorLike(nan_mask);
+        aclDestroyTensorLike(zeros);
+        aclDestroyTensorLike(ones);
+        aclDestroyTensorLike(mask);
+        return ACL_ERROR_INVALID_PARAM;
+    }
+
+    float zero = 0.0f;
+    float one = 1.0f;
+    const aclScalar* zero_scalar = aclCreateScalar(&zero, ACL_FLOAT);
+    const aclScalar* one_scalar = aclCreateScalar(&one, ACL_FLOAT);
+
+    ret = aclBinaryOpRun(self, self, nan_mask,
+        aclnnNeTensorGetWorkspaceSize, aclnnNeTensor, stream, false);
+    if (ret == ACL_SUCCESS) {
+        ret = aclInplaceBinaryOpRun(zeros, zero_scalar,
+            aclnnInplaceFillScalarGetWorkspaceSize, aclnnInplaceFillScalar, stream, false);
+    }
+    if (ret == ACL_SUCCESS) {
+        ret = aclInplaceBinaryOpRun(ones, one_scalar,
+            aclnnInplaceFillScalarGetWorkspaceSize, aclnnInplaceFillScalar, stream, false);
+    }
+    if (ret == ACL_SUCCESS) {
+        // s_where(cond, self, other): the true branch gets 0 (NaN), the false
+        // branch 1 (not NaN) -- i.e. exactly `!isnan(x)` as a 0/1 array.
+        ret = aclIrregularOpRun(aclnnSWhereGetWorkspaceSize, aclnnSWhere, stream,
+            nan_mask, zeros, ones, mask);
+    }
+    if (ret == ACL_SUCCESS) {
+        // dtype is the *accumulator/output* dtype: passing out_dtype makes the
+        // op cast the 0/1 values and accumulate them as integers.
+        ret = aclReductionOpRun(mask, out,
+            aclnnReduceSumGetWorkspaceSize, aclnnReduceSum, stream, dim, keepdim, out_dtype);
+    }
+
+    aclDestroyScalar(zero_scalar);
+    aclDestroyScalar(one_scalar);
+    // aclTensorLike 会 aclrtMalloc 一块显存，必须用 DestroyTensorLike 成对释放
+    aclDestroyTensorLike(nan_mask);
+    aclDestroyTensorLike(zeros);
+    aclDestroyTensorLike(ones);
+    aclDestroyTensorLike(mask);
+    return ret;
+}
+
 #ifdef __cplusplus
 }
 #endif
