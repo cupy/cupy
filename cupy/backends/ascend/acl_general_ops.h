@@ -261,10 +261,10 @@
         if (args.size() >= 2) {
             start = args[0];
             step = args[1];
-            // stop can keep it as nullptr? or must have the same dtype as output tensor?
+            // aclnnArange treats steop as the exclusive bound (half open), matching numpy, otherwise the last elem uninitialized
             double dstart = GetScalarArg<double>(args, 0, kwargs, "start", 0.0);
             double dstep = GetScalarArg<double>(args, 1, kwargs, "step", 1.0);
-            const aclScalar* stop = CreateAclScalar(dstart + dstep * (numel - 1), dtype);
+            const aclScalar* stop = CreateAclScalar(dstart + dstep * numel, dtype);
             return aclIrregularOpRun(aclnnArangeGetWorkspaceSize, aclnnArange, stream,
                 start, stop, step, outs[0]);
         } else {
