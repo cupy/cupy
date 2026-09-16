@@ -512,6 +512,21 @@ cpdef _ndarray_base _median(
 cpdef _ndarray_base _nanmedian(
         _ndarray_base a, axis, out, overwrite_input, keepdims):
 
+    # Validate axis for 0-dim arrays
+    if a.ndim == 0:
+        if axis is not None:
+            if isinstance(axis, (list, tuple)):
+                for ax in axis:
+                    if ax != 0 and ax != -1:
+                        raise IndexError(
+                            f"axis {ax} is out of bounds for array of "
+                            f"dimension 0")
+            elif axis != 0 and axis != -1:
+                raise IndexError(
+                    f"axis {axis} is out of bounds for array of "
+                    f"dimension 0")
+        axis = ()
+
     if axis is None:
         axis = tuple(range(a.ndim))
     if not sequence.PySequence_Check(axis):
