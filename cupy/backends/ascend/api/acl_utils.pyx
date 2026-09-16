@@ -55,6 +55,25 @@ cdef extern from "aclnn/opdev/common_types.h" nogil:
     aclnnStatus aclDestroyIntArray(const aclIntArray *array)
     const char *aclGetRecentErrMsg()
 
+# aclScalar 需要一起保活的 host 侧资源：aclScalar* -> Python 对象。
+# 目前只有 ACL_STRING 用得上（见 create_acl_scalar_from_py_str）。
+# 注意：销毁 aclScalar 必须走 _destroy_acl_scalar()，否则这里的强引用会一直挂着。
+cdef dict _acl_scalar_owners = {}
+
+
+cdef void _destroy_acl_scalar(const aclScalar* scalar):
+    """aclDestroyScalar + 释放为它保活的 host 资源。
+
+    AscendCL 的 aclScalar 只拷贝标量值本身（common_types.h 里值存放在内联
+    union v_t 中，析构为空）；但字符串标量只能是指针语义，所以顺序必须是
+    「先销毁 aclScalar，再放开保活引用」。
+    """
+    if scalar == NULL:
+        return
+    aclDestroyScalar(scalar)
+    _acl_scalar_owners.pop(<uintptr_t>scalar, None)
+
+
 cdef aclDataType numpy_dtype_to_acl_dtype(dtype,
     bint is_half_allowed=True, bint is_double_supported=True):
     # double and complex128 is not supported on ASCEND910
@@ -100,25 +119,28 @@ cdef aclDataType numpy_dtype_to_acl_dtype(dtype,
         return aclDataType.ACL_DT_UNDEFINED
 
 cdef aclScalar* create_acl_scalar_from_py_str(str py_str):
+    """将 Python 字符串转换为 aclScalar。
+
+    ACL_STRING 的 aclScalar 内部没有任何存放字符串内容的位置（见
+    aclnn/opdev/common_types.h 的 `union v_t`），所以它保存的只能是指针
+    本身：aclScalar 的整个生命周期内字符串 buffer 必须保持有效。
+
+    这里直接使用 CPython bytes 对象内部那块「地址稳定且以 NUL 结尾」的
+    buffer，并把 bytes 对象登记到 `_acl_scalar_owners` 保活，销毁时由
+    `_destroy_acl_scalar` 放开引用。
+
+    （原实现把临时 `py_bytes` 的指针交给了 aclScalar，函数返回后该 bytes
+    被回收 -> aclScalar 里是野指针；同时 PyMem_Malloc 出来的 `buffer`
+    从头到尾没被使用也没被释放 -> 泄漏。）
     """
-    将Python字符串转换为aclScalar，其中存储的是字符串数据的指针地址。
-    注意：必须确保返回的aclScalar在使用时，原始字符串py_str未被销毁。
-    """
-    cdef:
-        # 转换为UTF-8编码的bytes，并获取C风格字符串指针
-        py_bytes = py_str.encode('utf-8') # not compilabl
-    # Get pointer to the underlying data
-    cdef const char* c_str = py_bytes
-    cdef aclScalar* scalar_ptr = NULL
-    cdef char* buffer = <char*>PyMem_Malloc(len(py_bytes) + 1)
-    if buffer == NULL:
-        raise MemoryError("Failed to allocate memory")
-    memcpy(buffer, c_str, len(py_bytes) + 1)
-    # 创建aclScalar，将指针地址作为值存入, not sure if str buffer will be copied
-    scalar_ptr = aclCreateScalar(<void*>c_str, aclDataType.ACL_STRING)
+    cdef bytes py_bytes = py_str.encode('utf-8')
+    cdef aclScalar* scalar_ptr = aclCreateScalar(
+        <void*><const char*>py_bytes, aclDataType.ACL_STRING)
     if scalar_ptr == NULL:
         raise MemoryError("Failed to create string aclScalar")
-    return scalar_ptr # 通常将aclScalar*本身也转换为整数在Python间传递
+    # aclScalar 内部可能持有该指针，必须保活到 aclScalar 被销毁
+    _acl_scalar_owners[<uintptr_t>scalar_ptr] = py_bytes
+    return scalar_ptr
 
 cdef aclScalar* cupy_scalar_to_acl_scalar(_cupy_scalar s) except*:
     """
@@ -222,14 +244,19 @@ cdef aclScalar* cupy_scalar_to_acl_scalar(_cupy_scalar s) except*:
         acl_scalar = aclCreateScalar(value_ptr, dtype)
         if acl_scalar == NULL:
             msg = aclGetRecentErrMsg()
-            raise RuntimeError("Failed to create aclScalar with error: %s", msg)
+            raise RuntimeError(
+                "Failed to create aclScalar with error: {}".format(msg))
+        # aclCreateScalar 会把值拷贝进 aclScalar 内部的内联 union
+        # (common_types.h: aclScalar 的析构为空)，所以这里必须立刻释放我们
+        # 自己的临时 buffer，否则每次标量算子调用都会泄漏一块。
+        PyMem_Free(value_ptr)
+        value_ptr = NULL
         return acl_scalar
     except Exception as e:
         # 异常处理：确保资源清理
         if value_ptr != NULL:
             PyMem_Free(value_ptr)
-        if acl_scalar != NULL:
-            aclDestroyScalar(acl_scalar)
+        _destroy_acl_scalar(acl_scalar)
         raise MemoryError("Failed to create aclScalar with error %s" % e)
 
 cdef aclScalar* _convert_arg_to_acl_scalar(arg):
@@ -250,14 +277,21 @@ cdef KwargsType _create_keyword_args(dict kwargs) except *:
     cdef KwargsType acl_kwargs
     cdef string cpp_str
     cdef const char* c_str
+    cdef aclScalar* sarg
     if kwargs:
-        for key, value in kwargs.items():
-            sarg = _convert_arg_to_acl_scalar(value)
-            if sarg:
-                py_bytes = key.encode("utf-8")
-                c_str = py_bytes
-                cpp_str = c_str
-                acl_kwargs[cpp_str] = sarg
+        try:
+            for key, value in kwargs.items():
+                sarg = _convert_arg_to_acl_scalar(value)
+                if sarg:
+                    py_bytes = key.encode("utf-8")
+                    c_str = py_bytes
+                    cpp_str = c_str
+                    acl_kwargs[cpp_str] = sarg
+        except Exception:
+            # 中途失败时，已放进局部 map 的 aclScalar 既不会随返回值交出去，
+            # 也没有别人还能拿到它的指针，必须就地回收，否则泄漏。
+            _delete_keyword_args(acl_kwargs)
+            raise
     return acl_kwargs
 
 cdef void _delete_keyword_args(KwargsType& my_map) except *:
@@ -271,11 +305,48 @@ cdef void _delete_keyword_args(KwargsType& my_map) except *:
     while it != end:
         scalar_ptr = deref(it).second
         if scalar_ptr != NULL:
-            aclDestroyScalar(<const aclScalar*>scalar_ptr)
+            _destroy_acl_scalar(scalar_ptr)
 
         # 3. 将迭代器指向下一个元素，并擦除当前元素。
         #    it = my_map.erase(it) 会返回指向下一个有效元素的迭代器，这是安全的方法。
         it = my_map.erase(it)
+
+
+cdef class _AclTensorOwner:
+    """aclTensor 生命周期内需要保活/释放的所有 host 侧资源。
+
+    * ``ref``                    —— 持有 aclTensor 数据 buffer 的 Python 对象
+      （视图无法用 offset 表达时物化出来的临时数组，或原数组本身）；
+    * ``view_dims``/``strides``/``storage_dims`` —— 传给 aclCreateTensor 的
+      三个维度数组。
+
+    aclDestroyTensor 只释放 aclTensor 自身的 shape/stride 元数据：
+    既不会释放设备数据，也不会释放我们用 PyMem_Malloc 出来的维度数组，
+    所以两者都必须由本对象负责回收（原实现在成功路径上完全没释放这三个数组）。
+    """
+
+    cdef object ref
+    cdef int64_t* view_dims
+    cdef int64_t* strides
+    cdef int64_t* storage_dims
+
+    # 必须用 cdef 方法而不是 __cinit__：__cinit__ 会生成 Python 调用入口，
+    # 裸指针参数会被当成「要转换成 Python 对象」而报错。
+    cdef void _init(self, object ref, int64_t* view_dims, int64_t* strides,
+                    int64_t* storage_dims):
+        self.ref = ref
+        self.view_dims = view_dims
+        self.strides = strides
+        self.storage_dims = storage_dims
+
+    def __dealloc__(self):
+        if self.view_dims != NULL:
+            PyMem_Free(self.view_dims)
+        if self.strides != NULL:
+            PyMem_Free(self.strides)
+        if self.storage_dims != NULL:
+            PyMem_Free(self.storage_dims)
+
 
 cdef aclTensor* cupy_ndarray_to_acl_tensor(_ndarray_base cupy_array) except *:
     """
@@ -300,6 +371,7 @@ cdef aclTensor* cupy_ndarray_to_acl_tensor(_ndarray_base cupy_array) except *:
         int64_t ndim
         object owner_ref = None
         Py_ssize_t remaining
+        _AclTensorOwner owner
 
     try:
         # 1. 获取CuPy数组的形状和维度
@@ -366,8 +438,15 @@ cdef aclTensor* cupy_ndarray_to_acl_tensor(_ndarray_base cupy_array) except *:
         if acl_tensor == NULL:
             raise RuntimeError("Failed to create ACL tensor")
 
-        # 把物化后的数组/原数组挂到 tensor 上, 保证在 tensor 生命周期内数据不被释放
-        cupy_acl_tensor_owners[<uintptr_t>acl_tensor] = owner_ref
+        # 所有权转移：数据保活引用 + 三个维度数组都交给 owner，在
+        # cupy_destroy_acl_tensor 里统一释放，避免每次转换泄漏 3*ndim*8 字节。
+        owner = _AclTensorOwner()
+        owner._init(owner_ref, view_dims, strides, storage_dims)
+        cupy_acl_tensor_owners[<uintptr_t>acl_tensor] = owner
+        # 置空以免（将来）异常路径重复释放
+        view_dims = NULL
+        strides = NULL
+        storage_dims = NULL
         return acl_tensor
         
     except Exception as e:
@@ -383,14 +462,17 @@ cdef aclTensor* cupy_ndarray_to_acl_tensor(_ndarray_base cupy_array) except *:
         raise e
 
 
-# aclTensor* -> 持有其数据 buffer 的 Python 对象（可能是物化出来的临时数组）。
+# aclTensor* -> _AclTensorOwner（数据保活引用 + 维度数组）
 # aclDestroyTensor 只释放 shape/stride 元数据，不释放数据，所以必须在这里保活。
 cdef dict cupy_acl_tensor_owners = {}
 
 
 cdef aclError cupy_destroy_acl_tensor(const aclTensor* tensor) except *:
+    # 顺序很重要：先销毁 aclTensor（它可能仍引用我们传进去的维度数组/数据），
+    # 再放开 Python 侧的保活引用。
+    cdef aclError ret = aclDestroyTensor(tensor)
     cupy_acl_tensor_owners.pop(<uintptr_t>tensor, None)
-    return aclDestroyTensor(tensor)
+    return ret
 
 
 cdef extern from "../acl_opinfo.h":
@@ -533,34 +615,36 @@ cdef aclError launch_general_func(str opname, sequence ins, sequence outs, list 
     func_ptr = _builtin_operators[op_info]
 
     cdef ArgsType acl_args
-    cdef KwargsType acl_kwargs = _create_keyword_args(kwargs)
+    cdef KwargsType acl_kwargs
     cdef const aclTensor* ct
     cdef vector[const aclTensor*] intensors
-    for op in ins:
-        typ = type(op)
-        if issubclass(typ, _ndarray_base):
-            intensors.push_back(cupy_ndarray_to_acl_tensor(op))
-        else:
-            ascalar = _convert_arg_to_acl_scalar(op)
-            if ascalar:
-                acl_args.push_back(ascalar)
-    for pos_arg in args:
-        pscalar = _convert_arg_to_acl_scalar(pos_arg)
-        if pscalar:
-            acl_args.push_back(pscalar)
-
     cdef vector[aclTensor*] outtensors
-    for op in outs:
-        typ = type(op)
-        if issubclass(typ, _ndarray_base):
-            outtensors.push_back(cupy_ndarray_to_acl_tensor(op)) 
-
     cdef aclError ret = 0
     cdef aclrtStream stream = <aclrtStream>NULL  # default stream always working
     if stream_ptr != <intptr_t>0:
         stream = <aclrtStream>stream_ptr
-
+    # NOTE: 所有资源获取都必须在 try 内，任何一步失败都由 finally 回收；
+    # 否则已创建的 tensor 会滞留在 cupy_acl_tensor_owners 里，连同 ndarray
+    # 一起永久泄漏（原来的 tensor 创建循环在 try 之外）。
     try:
+        acl_kwargs = _create_keyword_args(kwargs)
+        for op in ins:
+            typ = type(op)
+            if issubclass(typ, _ndarray_base):
+                intensors.push_back(cupy_ndarray_to_acl_tensor(op))
+            else:
+                ascalar = _convert_arg_to_acl_scalar(op)
+                if ascalar:
+                    acl_args.push_back(ascalar)
+        for pos_arg in args:
+            pscalar = _convert_arg_to_acl_scalar(pos_arg)
+            if pscalar:
+                acl_args.push_back(pscalar)
+        for op in outs:
+            typ = type(op)
+            if issubclass(typ, _ndarray_base):
+                outtensors.push_back(cupy_ndarray_to_acl_tensor(op))
+
         ret = func_ptr.general_op(intensors, outtensors, acl_args, acl_kwargs, stream)
     finally:
         # aclDestroyTensor does not deallocate array buffer, but shapes, strides
@@ -570,30 +654,39 @@ cdef aclError launch_general_func(str opname, sequence ins, sequence outs, list 
         for t in outtensors:
             cupy_destroy_acl_tensor(t)
         for acl_scalar in acl_args:
-            aclDestroyScalar(acl_scalar)
+            _destroy_acl_scalar(acl_scalar)
         _delete_keyword_args(acl_kwargs)
-        if ret != 0:
-            print("Failed to run the operator: ", opname)
+    if ret != 0:
+        print("Failed to run the operator: ", opname)
     return ret
 
 cdef vector[aclTensor*] _create_ops_vector(sequence ins, sequence outs) except *:
     cdef vector[aclTensor*] tensors
+    cdef aclTensor* t
 
-    for op in ins:
-        typ = type(op)
-        if issubclass(typ, _ndarray_base):
-            tensors.push_back(cupy_ndarray_to_acl_tensor(op))
-        elif typ is _cupy_scalar:
-            pass # scalar_ptr has been processed above
-        else:
-            raise RuntimeError("Operand is not ndarray or scalar: ", op)
+    # 中途失败时，已经建好的 aclTensor 只存在于这个局部 vector 里（C++ vector
+    # 的析构不会销毁 aclTensor），必须就地回收，否则它们会滞留在
+    # cupy_acl_tensor_owners 里，连同 ndarray 一起泄漏。
+    try:
+        for op in ins:
+            typ = type(op)
+            if issubclass(typ, _ndarray_base):
+                tensors.push_back(cupy_ndarray_to_acl_tensor(op))
+            elif typ is _cupy_scalar:
+                pass # scalar_ptr has been processed above
+            else:
+                raise RuntimeError("Operand is not ndarray or scalar: ", op)
 
-    for op in outs: # out is tensor
-        typ = type(op)
-        if issubclass(typ, _ndarray_base):
-            tensors.push_back(cupy_ndarray_to_acl_tensor(op))
-        else:
-            raise RuntimeError("Operand is not ndarray: ", op)
+        for op in outs: # out is tensor
+            typ = type(op)
+            if issubclass(typ, _ndarray_base):
+                tensors.push_back(cupy_ndarray_to_acl_tensor(op))
+            else:
+                raise RuntimeError("Operand is not ndarray: ", op)
+    except Exception:
+        for t in tensors:
+            cupy_destroy_acl_tensor(t)
+        raise
 
     return tensors
 
@@ -697,6 +790,8 @@ cdef aclError launch_acl_func(str opname, sequence ins, sequence outs, list args
 
     op_info.op_type = get_op_type(ops, inplace, has_scalar)
     if _builtin_operators.find(op_info) == _builtin_operators.end():
+        # scalar 已经创建出来了，抛错前必须回收，否则泄漏
+        _destroy_acl_scalar(scalar_ptr)
         raise KeyError(f"Operator {opname} len(ops) = {len(ops)} not registered {inplace} {has_scalar}, {op_info.op_type}")
     
     func_ptr = _builtin_operators[op_info]
@@ -744,8 +839,7 @@ cdef aclError launch_acl_func(str opname, sequence ins, sequence outs, list args
         # does not deallocate array buffer, but shapes, strides
         for t in tensors:
             cupy_destroy_acl_tensor(t)
-        if scalar_ptr:
-            aclDestroyScalar(scalar_ptr)
+        _destroy_acl_scalar(scalar_ptr)
 
         if ret != 0:
             print("Failed to run the operator ", opname)
@@ -792,8 +886,10 @@ cdef aclError launch_reduction_op(str opname, sequence ins, sequence outs, objec
     if not shape.size():
         shape.push_back(0)
     dim = aclCreateIntArray(shape.data(), shape.size())
-    cdef KwargsType acl_kwargs = _create_keyword_args(kwargs)
+    cdef KwargsType acl_kwargs
     try:
+        # 放进 try 内, 失败时由 finally 回收已创建的 dim/scalar
+        acl_kwargs = _create_keyword_args(kwargs)
         ret = func_ptr.reduction_op(tensors[0], dim, keepdims, tensors[1], acl_kwargs, stream)
         if ret != 0:
             print("Failed to run the reduction operator ", opname)

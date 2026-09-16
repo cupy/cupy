@@ -100,6 +100,9 @@ aclTensor* aclTensorLike(const aclTensor* source, aclDataType dtype) {
     size_t type_size = aclDataTypeSize(dtype);
     if (type_size == 0 || source_type_size == 0) {
         std::cerr << "Error: Invalid data type size" << std::endl;
+        delete[] viewDims;
+        delete[] storageDims;
+        delete[] strides;
         return nullptr;
     }
     float type_size_ratio = (float)type_size / (float)source_type_size;
@@ -117,6 +120,9 @@ aclTensor* aclTensorLike(const aclTensor* source, aclDataType dtype) {
     ret = aclrtMalloc(&device_addr, total_size, ACL_MEM_MALLOC_HUGE_FIRST);
     if (ret != ACL_SUCCESS || device_addr == nullptr) {
         std::cerr << "Error: Failed to allocate device memory, error code: " << ret << std::endl;
+        delete[] viewDims;
+        delete[] storageDims;
+        delete[] strides;
         return nullptr;
     }
     
@@ -127,12 +133,38 @@ aclTensor* aclTensorLike(const aclTensor* source, aclDataType dtype) {
     if (new_tensor == nullptr) {
         std::cerr << "Error: Failed to create new tensor" << std::endl;
         aclrtFree(device_addr);
+        delete[] viewDims;
+        delete[] storageDims;
+        delete[] strides;
         return nullptr;
     }
     delete[] viewDims;
     delete[] storageDims;
     delete[] strides;
     return new_tensor;
+}
+
+/**
+ * 释放由 aclTensorLike() 创建的临时张量。
+ *
+ * aclTensorLike() 在内部 aclrtMalloc 了一块设备内存，而 aclDestroyTensor() 只释放
+ * aclTensor 自身（shape/stride 元数据），不会释放这块设备内存。因此两者必须成对使用，
+ * 否则每次调用这类复合算子（lcm/hypot/copysign/nanmin/nanmax/nancumsum/nancumprod）
+ * 都会泄漏一块显存。
+ */
+inline void aclDestroyTensorLike(aclTensor* tensor) {
+    if (tensor == nullptr) {
+        return;
+    }
+    void* data = tensor->GetData();
+    aclDestroyTensor(tensor);
+    if (data != nullptr) {
+        aclError ret = aclrtFree(data);
+        if (ret != ACL_SUCCESS) {
+            std::cerr << "Error: aclrtFree failed for aclTensorLike tensor, "
+                      << "error code: " << ret << std::endl;
+        }
+    }
 }
 
 
@@ -172,6 +204,9 @@ aclError aclBinaryOpRun(
     if (ret != ACL_SUCCESS) {
         std::cout << "Failed to allocate workspace \n";
         CHECK_STATUS(ret);
+        if (alpha != nullptr) {
+            aclDestroyScalar(alpha);
+        }
         return ACL_ERROR_RT_FAILURE;
     }
 
@@ -185,6 +220,12 @@ aclError aclBinaryOpRun(
     if (ret != ACL_SUCCESS) {
         std::cout << "Failed to run the kernel\n";
         CHECK_STATUS(ret);
+        if (workspaceSize > 0 && workspaceAddr != nullptr) {
+            aclrtFree(workspaceAddr);
+        }
+        if (alpha != nullptr) {
+            aclDestroyScalar(alpha);
+        }
         return ACL_ERROR_RT_FAILURE;
     }
 
@@ -193,6 +234,10 @@ aclError aclBinaryOpRun(
     }
     if (workspaceSize > 0) {
         ret = aclrtFree(workspaceAddr);
+    }
+    // alpha 只在标量操作数分支由本函数创建，必须由本函数释放
+    if (alpha != nullptr) {
+        aclDestroyScalar(alpha);
     }
     return ACL_SUCCESS;
 }
@@ -226,6 +271,9 @@ aclError aclInplaceBinaryOpRun(
     if (ret != ACL_SUCCESS) {
         std::cout << "Failed to run the kernel\n";
         CHECK_STATUS(ret);
+        if (workspaceSize > 0 && workspaceAddr != nullptr) {
+            aclrtFree(workspaceAddr);
+        }
         return ACL_ERROR_RT_FAILURE;
     }
 
@@ -276,6 +324,14 @@ aclError aclTernaryOpRun(
     if (ret != ACL_SUCCESS) {
         std::cout << "Failed to run the kernel\n";
         CHECK_STATUS(ret);
+        if (workspaceSize > 0 && workspaceAddr != nullptr) {
+            aclrtFree(workspaceAddr);
+        }
+        if constexpr (std::is_scalar_v<Scalar> && !std::is_pointer_v<Scalar>) {
+            if (alpha != nullptr) {
+                aclDestroyScalar(alpha);
+            }
+        }
         return ACL_ERROR_RT_FAILURE;
     }
 
@@ -284,7 +340,13 @@ aclError aclTernaryOpRun(
     }
     if (workspaceSize > 0) {
         ret = aclrtFree(workspaceAddr);
-        aclDestroyScalar(alpha);
+    }
+    // alpha 只在标量操作数分支由本函数创建（原来被错误地嵌在 workspaceSize>0 里，
+    // workspaceSize==0 时会泄漏）
+    if constexpr (std::is_scalar_v<Scalar> && !std::is_pointer_v<Scalar>) {
+        if (alpha != nullptr) {
+            aclDestroyScalar(alpha);
+        }
     }
     return ACL_SUCCESS;
 }
@@ -328,6 +390,14 @@ aclError aclTernaryInplaceOpRun(
     if (ret != ACL_SUCCESS) {
         std::cout << "Failed to run the kernel\n";
         CHECK_STATUS(ret);
+        if (workspaceSize > 0 && workspaceAddr != nullptr) {
+            aclrtFree(workspaceAddr);
+        }
+        if constexpr (std::is_scalar_v<Scalar> && !std::is_pointer_v<Scalar>) {
+            if (alpha != nullptr) {
+                aclDestroyScalar(alpha);
+            }
+        }
         return ACL_ERROR_RT_FAILURE;
     }
 
@@ -336,6 +406,12 @@ aclError aclTernaryInplaceOpRun(
     }
     if (workspaceSize > 0) {
         ret = aclrtFree(workspaceAddr);
+    }
+    // 原来这里从不释放 alpha（标量操作数分支创建）
+    if constexpr (std::is_scalar_v<Scalar> && !std::is_pointer_v<Scalar>) {
+        if (alpha != nullptr) {
+            aclDestroyScalar(alpha);
+        }
     }
     return ACL_SUCCESS;
 }
@@ -376,6 +452,9 @@ aclError aclUnaryOpRun(
     if (ret != ACL_SUCCESS) {
         std::cout << "Failed to run the kernel\n";
         CHECK_STATUS(ret);
+        if (workspaceSize > 0 && workspaceAddr != nullptr) {
+            aclrtFree(workspaceAddr);
+        }
         return ACL_ERROR_RT_FAILURE;
     }
 
@@ -418,6 +497,9 @@ aclError aclInplaceUnaryOpRun(
     if (ret != ACL_SUCCESS) {
         std::cout << "Failed to run the kernel";
         CHECK_STATUS(ret);
+        if (workspaceSize > 0 && workspaceAddr != nullptr) {
+            aclrtFree(workspaceAddr);
+        }
         return ACL_ERROR_RT_FAILURE;
     }
 
@@ -459,6 +541,9 @@ aclError aclIrregularOpRun(
     if (ret != ACL_SUCCESS) {
         CHECK_STATUS(ret);
         std::cout << "Failed to run the irregular op kernel";
+        if (workspaceSize > 0 && workspaceAddr != nullptr) {
+            aclrtFree(workspaceAddr);
+        }
         return ACL_ERROR_RT_FAILURE;
     }
 
@@ -499,6 +584,9 @@ aclError aclReductionOpRun(
     if (ret != ACL_SUCCESS) {
         std::cout << "Failed to run the kernel";
         CHECK_STATUS(ret);
+        if (workspaceSize > 0 && workspaceAddr != nullptr) {
+            aclrtFree(workspaceAddr);
+        }
         return ACL_ERROR_RT_FAILURE;
     }
 

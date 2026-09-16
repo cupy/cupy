@@ -332,8 +332,9 @@ extern "C" {
             aclnnGcdGetWorkspaceSize, aclnnGcd, stream, false); 
         ret = aclBinaryOpRun(temp, gcd, out,
             aclnnDivGetWorkspaceSize, aclnnDiv, stream, false);
-        aclDestroyTensor(temp);
-        aclDestroyTensor(gcd);
+        // aclTensorLike 会 aclrtMalloc 一块显存，必须用 DestroyTensorLike 成对释放
+        aclDestroyTensorLike(temp);
+        aclDestroyTensorLike(gcd);
         return ret;
     }
 
@@ -357,8 +358,9 @@ extern "C" {
             aclnnAddGetWorkspaceSize, aclnnAdd, stream, false);
         ret = aclUnaryOpRun(out, out,
             aclnnSqrtGetWorkspaceSize, aclnnSqrt, stream, false);
-        aclDestroyTensor(sq1);
-        aclDestroyTensor(sq2);
+        // aclTensorLike 会 aclrtMalloc 一块显存，必须用 DestroyTensorLike 成对释放
+        aclDestroyTensorLike(sq1);
+        aclDestroyTensorLike(sq2);
         return ret;
     }
 
@@ -382,9 +384,10 @@ extern "C" {
         aclDestroyScalar(zero_scalar);
         ret = aclIrregularOpRun(aclnnSWhereGetWorkspaceSize, aclnnSWhere, stream,
             mask, mag, neg, out);
-        aclDestroyTensor(mag);
-        aclDestroyTensor(neg);
-        aclDestroyTensor(mask);
+        // aclTensorLike 会 aclrtMalloc 一块显存，必须用 DestroyTensorLike 成对释放
+        aclDestroyTensorLike(mag);
+        aclDestroyTensorLike(neg);
+        aclDestroyTensorLike(mask);
         return ret;
     }
 

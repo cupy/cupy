@@ -206,7 +206,14 @@ cdef class Plan1d:
         with nogil:
             result = aclfftPlan1d(&plan, nx, <aclfftType>acl_type, batch,
                                   ACLFFT_HORIZONTAL)
-        check_result(result)
+        if result != 0:
+            # aclfftPlan1d 失败时仍可能已经分配出 plan，报错前必须回收，
+            # 否则句柄泄漏（它既不会存进 self.handle，也不会被 __dealloc__ 看到）。
+            if plan != NULL:
+                with nogil:
+                    aclfftDestroy(plan)
+                plan = NULL
+            check_result(result)
 
         self.handle = plan
         self.handle_ptr = <intptr_t>plan

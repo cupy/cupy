@@ -152,7 +152,8 @@ aclError aclop_Nancumprod(const aclTensor* self, const aclIntArray* dim, bool ke
 
     ret = aclReductionOpRun(temp, out,
         aclnnCumprodGetWorkspaceSize, aclnnCumprod, stream, dim_index, dtype); 
-    aclDestroyTensor(temp);
+    // aclTensorLike 会 aclrtMalloc 一块显存，必须用 DestroyTensorLike 成对释放
+    aclDestroyTensorLike(temp);
     return ret;
 }
 
@@ -166,7 +167,8 @@ aclError aclop_Nancumsum(const aclTensor* self, const aclIntArray* dim, bool kee
 
     ret = aclReductionOpRun(temp, out,
         aclnnCumsumGetWorkspaceSize, aclnnCumsum, stream, dim_index, dtype); 
-    aclDestroyTensor(temp);
+    // aclTensorLike 会 aclrtMalloc 一块显存，必须用 DestroyTensorLike 成对释放
+    aclDestroyTensorLike(temp);
     return ret;
 }
 
@@ -187,7 +189,8 @@ aclError aclop_NanMin(const aclTensor* self, const aclIntArray* dim, bool keepdi
         ret = aclReductionOpRun(temp, out,
             aclnnMinGetWorkspaceSize, aclnnMin, stream);
     }
-    aclDestroyTensor(temp);
+    // aclTensorLike 会 aclrtMalloc 一块显存，必须用 DestroyTensorLike 成对释放
+    aclDestroyTensorLike(temp);
     return ret;
 }
 
@@ -204,7 +207,8 @@ aclError aclop_NanMax(const aclTensor* self, const aclIntArray* dim, bool keepdi
         ret = aclReductionOpRun(temp, out,
             aclnnMaxGetWorkspaceSize, aclnnMax, stream);
     }
-    aclDestroyTensor(temp);
+    // aclTensorLike 会 aclrtMalloc 一块显存，必须用 DestroyTensorLike 成对释放
+    aclDestroyTensorLike(temp);
     return ret;
 }
     
