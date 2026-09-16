@@ -116,24 +116,44 @@ IF CUPY_CANN_VERSION <= 0:
         return dst
 ELSE:
     cpdef _ndarray_base _ndarray_argwhere(_ndarray_base self):
+        # ASCEND: `aclnnNonzero` needs a *preallocated* output whose shape is
+        # data dependent ((count, ndim)), so this has to be two-stage: first the
+        # count of non-zero elements (a reduction, synchronised to host), then
+        # the actual index computation.
+        #
+        # This used to be a copy of the CUDA branch with the `scan`-based
+        # counting stage dropped, which left `count_nonzero` unbound (review D1)
+        # and also fell off the end without returning `dst`.
         cdef Py_ssize_t count_nonzero
         cdef int ndim
         cdef _ndarray_base nonzero
         numpy_int64 = numpy.int64
+
         if self.size == 0:
             count_nonzero = 0
         else:
             if self.dtype == numpy.bool_:
-                nonzero = self.ravel()
+                nonzero = self
             else:
                 nonzero = cupy._core.not_equal(self, 0)
-                nonzero = nonzero.ravel()
+            # Count the non-zero elements on the host: the output shape of
+            # `aclnnNonzero` ((count, ndim)) is data dependent, so it cannot be
+            # inferred on the device. This is one reduction plus a 1-element
+            # device->host copy.
+            # NOTE: `cupy.count_nonzero` is *not* usable here — its reduction
+            # (`cupy_count_nonzero`) has no `ascend_` registration — while the
+            # plain `cupy_sum` behind `cupy.sum` is registered (`ascend_sum`).
+            count_nonzero = int(cupy.sum(nonzero))  # synchronize!
 
         ndim = self._shape.size()
         dst = core.ndarray((count_nonzero, ndim), dtype=numpy_int64)
         if dst.size == 0:
             return dst
-        launch_general_func("ascend_nonzero", [self], [dst], None, None, 0)
+        # `[]`/`{}` (not None) so that the shape of the positional `args` and
+        # keyword `kwargs` arguments matches their declared types (review D7).
+        launch_general_func("ascend_nonzero", [self], [dst], [], {}, 0)
+
+        return dst
 
 cdef _ndarray_base _ndarray_take(_ndarray_base self, indices, axis, out):
     cdef Py_ssize_t ndim = self._shape.size()
@@ -787,7 +807,13 @@ cpdef _ndarray_base _getitem_mask_single(
     out = core.ndarray(masked_shape, dtype=a.dtype)
     if out.size == 0:
         return out
-    return _getitem_mask_kernel(a, mask, mask_scanned, out)
+    # `out` is declared `raw T out` in the kernel, i.e. the kernel only sees a
+    # flat pointer and writes selected values at `mask_scanned - 1`.  Passing a
+    # 1-D view of the very same buffer keeps the CUDA behaviour identical and
+    # additionally lets the Ascend backend hand the tensor straight to
+    # `aclnnMaskedSelect`, which always produces a flat 1-D result.
+    _getitem_mask_kernel(a, mask, mask_scanned, out.reshape(-1))
+    return out
 
 
 cdef _ndarray_base _take(
