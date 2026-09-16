@@ -43,6 +43,7 @@
 #include "aclnnop/aclnn_div.h"
 #include "aclnnop/aclnn_remainder.h"
 #include "aclnnop/aclnn_copy.h"
+#include "aclnnop/aclnn_add.h"   // aclnnInplaceAdd (masked scatter accumulate)
 
 // indexing: argsort, unique, unique2, sort
 // no count() , unique(), unique2() op
@@ -50,6 +51,18 @@
 #include "aclnnop/aclnn_index.h"
 #include "aclnnop/aclnn_sort.h"
 #include "aclnnop/aclnn_argsort.h"
+// prefix scan (cupy.cumsum / cupy.cumprod and the boolean-index prefix sums)
+#include "aclnnop/aclnn_cumsum.h"
+#include "aclnnop/aclnn_cumprod.h"
+// setitem / boolean indexing: a[idx] = v, a[idx] += v, a[mask] = v, a[mask]
+#include "aclnnop/aclnn_scatter_update.h"
+#include "aclnnop/aclnn_scatter_add.h"
+#include "aclnnop/aclnn_masked_scatter.h"
+#include "aclnnop/aclnn_masked_select.h"
+// numpy.where(cond, x, y)
+#include "aclnnop/aclnn_s_where.h"
+// numpy.searchsorted(sortedSequence, self, ...)
+#include "aclnnop/aclnn_searchsorted.h"
 
 // normal, uniform distributions:
 
@@ -134,11 +147,32 @@
     }
 
     // dims is a int/tuple of int/None
+    // Fix (review D8): `dims` used to be hardcoded to nullptr, so a single-axis
+    // `flip(a, 0)` flipped *every* axis. `dims == nullptr` is reserved for the
+    // `axis=None` case, which is what NumPy means by "flip all axes".
     aclError aclop_Flip(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
-            const aclIntArray* dims = nullptr; // default to axis = None
-            return aclIrregularOpRun(aclnnFlipGetWorkspaceSize, aclnnFlip, stream,
-                ins[0], dims, outs[0]);
+        if (ins.empty() || outs.empty()) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        // `axis` is either absent (None) or one scalar axis. Multi-axis tuples
+        // cannot be expressed through the positional-scalar arg channel yet
+        // (see arg_passing_plan.md M3), so they are rejected loudly instead of
+        // being silently dropped.
+        const aclIntArray* dims = nullptr;
+        aclIntArray* owned = nullptr;
+        if (HasScalarArg(args, 0, kwargs, "axis")) {
+            int64_t axis = GetScalarArg<int64_t>(args, 0, kwargs, "axis", 0);
+            owned = aclCreateIntArray(&axis, 1);
+            dims = owned;
+        }
+        aclError ret = aclIrregularOpRun(aclnnFlipGetWorkspaceSize, aclnnFlip, stream,
+            ins[0], dims, outs[0]);
+        if (owned != nullptr) {
+            aclDestroyIntArray(owned);
+        }
+        return ret;
     }
 
     // numpy.permute(x, dims) -> aclnnPermute(self, dims, out)
@@ -165,6 +199,11 @@
     }
 
     // numpy.roll(x, shift, axis) -> aclnnRoll(x, shifts, dims, out)
+    // Fix (review D8): `axis=None` means "flatten, roll, reshape back", which is
+    // what aclnn expresses with `dims == nullptr` — it used to be turned into
+    // `axis=0` and therefore rolled along the wrong axis. Multi-axis tuples are
+    // still not representable (positional-scalar arg channel, see
+    // arg_passing_plan.md M3) and are rejected loudly by the Cython side.
     aclError aclop_Roll(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
         if (ins.empty() || outs.empty()) {
@@ -173,13 +212,18 @@
         }
         const aclTensor* self = ins[0];
         int64_t shift = GetScalarArg<int64_t>(args, 0, kwargs, "shift", 0);
-        int64_t axis = GetScalarArg<int64_t>(args, 1, kwargs, "axis", 0);
         aclIntArray* shifts = aclCreateIntArray(&shift, 1);
-        aclIntArray* dims = aclCreateIntArray(&axis, 1);
+        aclIntArray* dims = nullptr;
+        if (HasScalarArg(args, 1, kwargs, "axis")) {
+            int64_t axis = GetScalarArg<int64_t>(args, 1, kwargs, "axis", 0);
+            dims = aclCreateIntArray(&axis, 1);
+        }
         aclError ret = aclIrregularOpRun(aclnnRollGetWorkspaceSize, aclnnRoll, stream,
             self, shifts, dims, outs[0]);
         aclDestroyIntArray(shifts);
-        aclDestroyIntArray(dims);
+        if (dims != nullptr) {
+            aclDestroyIntArray(dims);
+        }
         return ret;
     }
 
@@ -285,7 +329,7 @@
             PrintArgs(__func__, args, kwargs, std::cout);
             return ACL_ERROR_INVALID_PARAM;
         } else {
-            aclop_Arange(ins, outs, args, kwargs, stream);
+            return aclop_Arange(ins, outs, args, kwargs, stream);
         }
 
         // double dstart = GetScalarArg<double>(args, 0, kwargs, "start", 0);
@@ -611,34 +655,235 @@
     }
     // aclnnTakeGetWorkspaceSize(const aclTensor* self, const aclTensor* index, aclTensor* out, ...);
 
-    // numpy.put(a, ind, v, mode='raise'), while ACLOP has accumulate arg
-    // cupy support ('raise', 'wrap', 'clip') mode, by diff kernel
-    // cdef _put_raise_kernel = ElementwiseKernel('S ind, raw T vals, int64 n_vals, int64 n',
-    aclError aclop_Put(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+    // numpy.put(a, ind, v, mode='raise')
+    //
+    // `_put_raise_kernel(indices, values, values.size, n, self, err)`
+    //   ins  = [indices, values]      args = [n_vals, n]      outs = [self, err]
+    //
+    // NOTE: aclnnInplacePut() has no way to report an out-of-range index back to
+    // the host, so the `err` output of the CuPy kernel (which drives the
+    // `IndexError` of mode='raise') is intentionally left untouched. Indices out
+    // of range therefore do not raise any more, matching torch.put_ semantics.
+    // mode='wrap'/'clip' have no aclnn equivalent and stay unregistered.
+    aclError aclop_PutRaise(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
-        bool accumulate = false;
-        if (ins.size() + outs.size() == 3) {
-            aclTensor* self = outs[0];
-            return aclIrregularOpRun(aclnnInplacePutGetWorkspaceSize, aclnnInplacePut, stream,
-                self, ins[0], ins[1], accumulate);
-        } else {
-            std::cout << "Error:" <<  __FUNCTION__  << " put 3 input tensors put(self, index, value) \n";
+        if (ins.size() < 2 || outs.empty()) {
+            PrintArgs(__func__, args, kwargs, std::cout);
             return ACL_ERROR_INVALID_PARAM;
         }
+        bool accumulate = GetScalarArg<bool>(args, 2, kwargs, "accumulate", false);
+        return aclIrregularOpRun(aclnnInplacePutGetWorkspaceSize, aclnnInplacePut, stream,
+            outs[0], ins[0], ins[1], accumulate);
+    }
+
+    // ------------------------------------------------------------------
+    // prefix scan: cupy.cumsum / cupy.cumprod
+    // (also the per-element mask prefix sum used by boolean indexing)
+    // ------------------------------------------------------------------
+    // Called from `cupy/_core/_routines_math.pyx:scan_core()`; args=[axis].
+    // NB: `aclnnCumprod` takes `dim` as an aclScalar while `aclnnCumsum` takes
+    // an int64_t, and both need the accumulation dtype explicitly.
+    aclError aclop_Cumsum(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        if (ins.empty() || outs.empty()) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        int64_t dim = GetScalarArg<int64_t>(args, 0, kwargs, "dim", 0);
+        aclDataType dtype = ACL_DT_UNDEFINED;
+        if (aclGetDataType(outs[0], &dtype) != ACL_SUCCESS) {
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        return aclIrregularOpRun(aclnnCumsumGetWorkspaceSize, aclnnCumsum, stream,
+            ins[0], dim, dtype, outs[0]);
+    }
+
+    aclError aclop_Cumprod(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        if (ins.empty() || outs.empty()) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        int64_t dim = GetScalarArg<int64_t>(args, 0, kwargs, "dim", 0);
+        aclDataType dtype = ACL_DT_UNDEFINED;
+        if (aclGetDataType(outs[0], &dtype) != ACL_SUCCESS) {
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        const aclScalar* dim_scalar = CreateAclScalar(dim, ACL_INT64);
+        aclError ret = aclIrregularOpRun(aclnnCumprodGetWorkspaceSize, aclnnCumprod, stream,
+            ins[0], dim_scalar, dtype, outs[0]);
+        aclDestroyScalar(dim_scalar);
+        return ret;
+    }
+
+    // ------------------------------------------------------------------
+    // setitem / scatter:  a[idx] = v   (cupy_scatter_update)
+    //                     a[idx] += v  (cupy_scatter_add)
+    //   ins  = [values, indices]   args = [cdim, rdim, adim]   outs = [target]
+    //
+    // The CuPy kernel indexes `target[(li * adim + idx) * rdim + ri]` where
+    // `i = ((li * cdim + ci) * rdim + ri)` runs over the broadcast shape of
+    // `values`, i.e. numpy's `target[idx] = values` with `idx` starting at axis
+    // `len(lshape)`. `aclnnInplaceScatterUpdate(data, indices, updates, axis)`
+    // (torch `scatter_`) uses exactly the same convention.
+    //
+    // `axis` is not passed explicitly, but it is recoverable from
+    // `values.numel() == prod(lshape) * cdim * rdim`.
+    static int64_t ScatterAxis(const std::vector<const aclTensor*>& ins,
+        const ArgsType& args, const KwargsType& kwargs) {
+        int64_t cdim = GetScalarArg<int64_t>(args, 0, kwargs, "cdim", 0);
+        int64_t rdim = GetScalarArg<int64_t>(args, 1, kwargs, "rdim", 1);
+        if (cdim <= 0 || rdim <= 0) {
+            throw std::invalid_argument(
+                "aclop_Scatter*: cdim/rdim were not supplied, cannot derive axis");
+        }
+        return GetAclTensorElementCount(ins[0]) / (cdim * rdim);
+    }
+
+    aclError aclop_ScatterUpdate(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        if (ins.size() < 2 || outs.empty()) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        int64_t axis = ScatterAxis(ins, args, kwargs);
+        return aclIrregularOpRun(aclnnInplaceScatterUpdateGetWorkspaceSize, aclnnInplaceScatterUpdate, stream,
+            outs[0], ins[1], ins[0], axis);
+    }
+
+    aclError aclop_ScatterAdd(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        if (ins.size() < 2 || outs.empty()) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        int64_t axis = ScatterAxis(ins, args, kwargs);
+        // aclnnScatterAdd has no inplace variant; `self` and `out` deliberately
+        // alias so that the added result lands back in `a` (the CUDA kernel is
+        // `atomicAdd(&a[...], v)`).
+        return aclIrregularOpRun(aclnnScatterAddGetWorkspaceSize, aclnnScatterAdd, stream,
+            outs[0], axis, ins[1], ins[0], outs[0]);
+    }
+
+    // `_scatter_update_mask_kernel(src, mask, mask_scanned, a)` -> a[mask] = src
+    // `mask_scanned` (the mask prefix sum) is not needed: aclnnMaskedScatter
+    // already consumes source elements in row-major order.
+    aclError aclop_ScatterUpdateMask(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        if (ins.size() < 2 || outs.empty()) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        return aclIrregularOpRun(aclnnInplaceMaskedScatterGetWorkspaceSize, aclnnInplaceMaskedScatter, stream,
+            outs[0], ins[1], ins[0]);
+    }
+
+    // `_scatter_add_mask_kernel(src, mask, mask_scanned, a)` -> a[mask] += src
+    // There is no masked-add in aclnn, so it is composed as
+    //     tmp = 0 ; tmp[mask] = src ; a += tmp
+    // (`tmp` is zero elsewhere, hence the add leaves the other entries alone).
+    aclError aclop_ScatterAddMask(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        if (ins.size() < 2 || outs.empty()) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        aclTensor* self = outs[0];
+        aclDataType dtype = ACL_DT_UNDEFINED;
+        if (aclGetDataType(self, &dtype) != ACL_SUCCESS) {
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        aclTensor* tmp = aclTensorLike(self, dtype);
+        if (tmp == nullptr) {
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        const aclScalar* zero = CreateAclScalar(0.0, dtype);
+        const aclScalar* one = CreateAclScalar(1.0, dtype);
+        aclError ret = aclIrregularOpRun(aclnnInplaceFillScalarGetWorkspaceSize, aclnnInplaceFillScalar,
+            stream, tmp, zero);
+        if (ret == ACL_SUCCESS) {
+            ret = aclIrregularOpRun(aclnnInplaceMaskedScatterGetWorkspaceSize, aclnnInplaceMaskedScatter,
+                stream, tmp, ins[1], ins[0]);
+        }
+        if (ret == ACL_SUCCESS) {
+            ret = aclIrregularOpRun(aclnnInplaceAddGetWorkspaceSize, aclnnInplaceAdd,
+                stream, self, tmp, one);
+        }
+        aclDestroyScalar(zero);
+        aclDestroyScalar(one);
+        // aclDestroyTensorLike also frees the device buffer that aclTensorLike
+        // allocated (aclDestroyTensor alone would leak it).
+        aclDestroyTensorLike(tmp);
+        return ret;
+    }
+
+    // `_getitem_mask_kernel(a, mask, mask_scanned, out)` -> out = a[mask]
+    // `aclnnMaskedSelect` emits the selected values in row-major order, which is
+    // exactly what the CUDA kernel writes at `mask_scanned - 1`; `out` is passed
+    // as a 1-D view by `_getitem_mask_single` for that reason.
+    aclError aclop_GetitemMask(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        if (ins.size() < 2 || outs.empty()) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        return aclIrregularOpRun(aclnnMaskedSelectGetWorkspaceSize, aclnnMaskedSelect, stream,
+            ins[0], ins[1], outs[0]);
+    }
+
+    // `cupy_searchsorted_kernel(v, a, a.size, side_is_right, assume_increasing, y)`
+    //   ins = [v, a]  args = [n_bins, side_is_right, assume_increasing]  outs = [y]
+    // `assume_increasing` is irrelevant here: aclnnSearchSorted always performs a
+    // real binary search (NumPy's documented undefined behavior for
+    // non-monotonic input is not something we need to reproduce).
+    aclError aclop_SearchSorted(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        if (ins.size() < 2 || outs.empty()) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        bool right = GetScalarArg<bool>(args, 1, kwargs, "side_is_right", false);
+        return aclIrregularOpRun(aclnnSearchSortedGetWorkspaceSize, aclnnSearchSorted, stream,
+            ins[1], ins[0], false /* outInt32 */, right, nullptr /* sorter */, outs[0]);
+    }
+
+    // ufunc `cupy_where`: out = condition ? self : other
+    //   ins = [condition, self, other]  (upscalar operands are not supported yet:
+    //   the positional-scalar arg channel cannot rebuild a 0-d aclTensor, see
+    //   arg_passing_plan.md M3)
+    aclError aclop_Where(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        if (ins.size() < 3 || outs.empty()) {
+            std::cout << "Error: " << __FUNCTION__
+                      << " needs 3 tensor operands (condition, x, y); a scalar operand is"
+                         " not supported by the Ascend backend yet\n";
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        return aclIrregularOpRun(aclnnSWhereGetWorkspaceSize, aclnnSWhere, stream,
+            ins[0], ins[1], ins[2], outs[0]);
     }
 
     // random.normal(loc=0.0, scale=1.0, size=None), normal distribution
+    //
+    // Review D8: these two bodies were commented out entirely, i.e. a non-void
+    // function fell off the end (undefined behaviour) — a landmine waiting for
+    // the first caller. They are not registered, so return an error instead.
     aclError aclop_Normal(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
         // return aclIrregularOpRun(aclnnInplaceNormalGetWorkspaceSize, 
             // const aclTensor* selfRef, float mean, float std, int64_t seed,
             //                                              int64_t offset, uint64_t* workspaceSize,
             //                                              aclOpExecutor** executor);
+        PrintArgs(__func__, args, kwargs, std::cout);
+        return ACL_ERROR_INVALID_PARAM;
     }
     
     // random.rand() uniform distribution
     aclError aclop_Uniform(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        PrintArgs(__func__, args, kwargs, std::cout);
+        return ACL_ERROR_INVALID_PARAM;
     }
 
 #ifdef __cplusplus
