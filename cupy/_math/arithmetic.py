@@ -71,6 +71,10 @@ def angle(z, deg=False):
 
     '''
     if deg:
+        from cupy._core._ascend import composite as _composite
+        if _composite.active():
+            # Ascend: cupy_angle_deg 无注册 -> angle * (180/pi) 组合
+            return _composite.angle_deg(z)
         return _core.angle_deg(z)
     return _core.angle(z)
 

@@ -1498,6 +1498,7 @@ cdef extern from "../acl_reduction_ops.h" nogil:
     aclError aclop_Nancumsum(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, const KwargsType& kwargs, aclrtStream stream)
     aclError aclop_NanMin(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, const KwargsType& kwargs, aclrtStream stream)
     aclError aclop_NanMax(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_NanProd(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, const KwargsType& kwargs, aclrtStream stream)
 
 cdef void register_reduction_operators():
     cdef FuncPtrUnion func_union
@@ -1521,8 +1522,11 @@ cdef void register_reduction_operators():
     register_acl_ufunc("ascend_prod", REDUCTION_OP, func_union)
     func_union.reduction_op = aclop_Nansum
     register_acl_ufunc("ascend_nansum", REDUCTION_OP, func_union)
-    #func_union.reduction_op = aclop_Nanprod
-    #register_acl_ufunc("ascend_nanprod", REDUCTION_OP, func_union)
+    # composed: nan_to_num(nan=1) followed by a plain prod reduction
+    # (CANN has no aclnnNanprod; same pattern as aclop_NanMin/NanMax)
+    func_union.reduction_op = aclop_NanProd
+    register_acl_ufunc("ascend_nanprod", REDUCTION_OP, func_union)
+    register_acl_ufunc("ascend_nanprod_with_dtype", REDUCTION_OP, func_union)
     func_union.reduction_op = aclop_Nancumsum
     register_acl_ufunc("ascend_nancumsum", REDUCTION_OP, func_union)
     func_union.reduction_op = aclop_Nancumprod

@@ -231,6 +231,12 @@ def nanmean(a, axis=None, dtype=None, out=None, keepdims=False):
     if a.dtype.kind in 'biu':
         return a.mean(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
+    from cupy._core._ascend import composite as _composite
+    if _composite.active():
+        # Ascend: cupy_nanmean 无注册 -> nansum / 非 NaN 计数 组合
+        return _composite.nanmean(
+            a, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+
     # TODO(okuta): check type
     return _statistics._nanmean(
         a, axis=axis, dtype=dtype, out=out, keepdims=keepdims)

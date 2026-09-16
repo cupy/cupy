@@ -142,6 +142,45 @@ aclError aclop_Nansum(const aclTensor* self, const aclIntArray* dim, bool keepdi
 //     return aclReductionOpRun(self, out,
 //         aclnnReduceNanprodGetWorkspaceSize, aclnnReduceNanprod, stream, dim, keepdim, dtype); 
 // }
+// CANN has no aclnnNanprod / aclnn_reduce_nanprod.h (the block above is what a
+// dedicated op would look like). Compose it instead: NumPy's nanprod treats NaN
+// as 1.0 in the product, so substitute 1 for NaN and run a plain prod reduction
+// -- the same "NanToNum + plain reduction" composition as aclop_NanMin/NanMax
+// above and aclop_Nancumprod below.
+aclError aclop_NanProd(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out,
+    const KwargsType& kwargs, aclrtStream stream) {
+    aclDataType dtype = GetDataType(out, self);
+    // 整型/布尔没有 NaN (NumPy 的 nanprod 对它们等价于 prod), 且 aclnnNanToNum
+    // 只接受浮点输入 -> 跳过 nan_to_num, 直接 prod
+    switch (dtype) {
+        case ACL_INT8: case ACL_UINT8:
+        case ACL_INT16: case ACL_UINT16:
+        case ACL_INT32: case ACL_UINT32:
+        case ACL_INT64: case ACL_UINT64:
+        case ACL_BOOL:
+            return aclReductionOpRun(self, out,
+                aclnnProdDimGetWorkspaceSize, aclnnProdDim, stream,
+                dim->GetData()[0], keepdim, dtype);
+        default:
+            break;
+    }
+    aclTensor* temp = aclTensorLike(self, dtype);
+    if (temp == nullptr) {
+        return ACL_ERROR_INVALID_PARAM;
+    }
+    float scalar = 1.0f;
+    aclError ret = aclop_NanToNum(self, scalar, temp, stream);
+    if (ret == ACL_SUCCESS) {
+        // same single-axis limitation as aclop_Prod (aclnnProdDim takes one dim)
+        int64_t dim_index = dim->GetData()[0];
+        ret = aclReductionOpRun(temp, out,
+            aclnnProdDimGetWorkspaceSize, aclnnProdDim, stream, dim_index, keepdim, dtype);
+    }
+    // aclTensorLike 会 aclrtMalloc 一块显存，必须用 DestroyTensorLike 成对释放
+    aclDestroyTensorLike(temp);
+    return ret;
+}
+
 aclError aclop_Nancumprod(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out,
     const KwargsType& kwargs, aclrtStream stream) {
     aclScalar* dim_index = nullptr; // TODO, not sure how to convert

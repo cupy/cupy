@@ -12,9 +12,9 @@ CuPy（v14.0.0a1, fork 自 v14 alpha / NumPy 2.x）后端已从 CUDA 换为 **CA
 | 维度 | 现状 |
 |---|---|
 | Array API 标准覆盖（`cupy/array_api/`，129 个公共函数） | **118 / 129 = 91.5 %** |
-| 注册算子（`ascend_*`，唯一名） | **174**（public 147 / inplace 27） |
-| `cupy/_core` 派发链 ufunc 覆盖 | **103 / 151 = 68.2 %** |
-| 剩余可移植缺口 | **8**（见 §4.1） |
+| 注册算子（`ascend_*`，唯一名） | **176**（public 149 / inplace 27） |
+| `cupy/_core` 派发链 ufunc 覆盖 | **110 / 151 = 72.8 %** |
+| 剩余可移植缺口 | **2**（`i0`、`nextafter`，见 §4.1） |
 | 本机验证等级 | **L3**（编译 + import + 注册）；**无 NPU，L4 数值未验证** |
 
 ## 2. 里程碑（压缩）
@@ -29,23 +29,24 @@ CuPy（v14.0.0a1, fork 自 v14 alpha / NumPy 2.x）后端已从 CUDA 换为 **CA
 | 2025-12-13 | sorting（`sort / argsort`）；`fill_kernel → FillScalar`（GeneralOp） |
 | 2026-09-12 | math/dtype 大补（38 处注册、33 个新名）+ `matmul`/`dot` 修复；修正 4 个错误 ufunc 名 |
 | 2026-09-13 | CANN 9.0.1 适配 + Level A/B（14 个 aclnn 包装）+ 自定义 AscendC 内核（M1/M2）+ triton 桥接（M6）+ 打包/RPATH |
-| 2026-09-16 | `_core` 检视 P0/P1 落地；`_ascend → _core/_ascend` 迁移；import 免 `LD_PRELOAD`；**benchmark 重构**；**CST 数据库自动化**；**pytest dtype 过滤** |
+| 2026-09-16 | `_core` 检视 P0/P1 落地；`_ascend → _core/_ascend` 迁移；import 免 `LD_PRELOAD`；**benchmark 重构**；**CST 数据库自动化**；**pytest dtype 过滤**；**6 个缺失算子的组合实现**（缺口 8 → 2） |
 
 ## 3. 算子覆盖（实测 2026-09-16，CST 与运行时注册表交叉验证）
 
 | 指标 | 值 |
 |---|---|
-| `register_acl_ufunc` 注册条目（op × OpType） | **190** |
-| 唯一 `ascend_*` 算子 | **174**（public 147 / inplace 27） |
-| 运行时 `py_list_acl_ufuncs()` | 190 条 → 去重 174，**与静态 CST 完全一致**（互查 `only_static/only_runtime` 均为空） |
+| `register_acl_ufunc` 注册条目（op × OpType） | **192** |
+| 唯一 `ascend_*` 算子 | **176**（public 149 / inplace 27） |
+| 运行时 `py_list_acl_ufuncs()` | 192 条 → 去重 176，**与静态 CST 完全一致**（互查 `only_static/only_runtime` 均为空） |
 | cupy ufunc 声明（`cupy/_core` + `cupy/_math` 顶层） | **151** |
-| 已覆盖 | **103 = 68.2 %**（builtin 96 + AscendC 自定义内核 7） |
-| 未覆盖：可移植缺口 / 内核噪声 | **8 / 40** |
-| `aclop_*` C++ 包装 | **82** |
+| 已覆盖 | **110 = 72.8 %**（builtin 98 + AscendC 自定义内核 7 + 宿主端组合 5） |
+| 未覆盖：可移植缺口 / 内核噪声 | **2 / 39** |
+| `aclop_*` C++ 包装 | **83** |
+| 宿主端组合实现 | **5**（`nanargmax nanargmin nanmean choose angle_deg`）|
 | aclnn 头文件 include / CANN 9.0.1 可用 | **143 / 814** |
 | AscendC 自定义内核 | **8**（`angle conjugate frexp imag ldexp left_shift modf right_shift`）|
 | `IF CUPY_CANN_VERSION` 分支 | 66 |
-| CST 解析文件（cython / python / cpp） | 140 / 744 / 23（21 处 grammar 报错，均为 tree-sitter 语法限制，见 `tools/cst_db.md` §7） |
+| CST 解析文件（cython / python / cpp） | 140 / 748 / 23（21 处 grammar 报错，均为 tree-sitter 语法限制，见 `tools/cst_db.md` §7） |
 
 > 数据来源：`python tools/scan_ops.py --runtime` → `tools/cst_db.json|md`。
 > 手工 grep 得到的旧数字（183 调用/165 唯一名）已作废——grep 会把**注释掉的注册**算进去
@@ -71,12 +72,23 @@ CuPy（v14.0.0a1, fork 自 v14 alpha / NumPy 2.x）后端已从 CUDA 换为 **CA
 - `*_like` 系列是 `empty/full + broadcast_to` 的宿主端别名，**无需 aclnn**，实际设备端覆盖更高。
 - 剩余 4 个 linalg 在 **CANN 无算子**，需自研算法或等上游。
 
-### 4.1 仍缺的 8 个 ufunc（可移植缺口）
+### 4.1 仍缺的 2 个 ufunc（可移植缺口）
 
-`angle_deg`、`choose`、`i0`、`nanargmax`、`nanargmin`、`nanmean`、`nanprod`、`nextafter`
+`i0`、`nextafter` —— AscendC 无原语，需多项式/位技巧内核 → 暂缓（见 `docs/ascend/CustomKernel.md`）。
 
-- `nan*` / `choose` / `angle_deg` **可由现有算子组合**（`nan_to_num` + `argmax/min/mean/prod`、`take`+`where`）→ 成本低；
-- `i0` / `nextafter`：AscendC 无原语，需多项式/位技巧内核 → 暂缓（见 `docs/ascend/CustomKernel.md`）。
+**已补齐的 6 个（2026-09-16，全部"组合实现"）**：
+
+| 算子 | 实现位置 | 组合方式 |
+|---|---|---|
+| `nanprod` | C++ `aclop_NanProd`（`acl_reduction_ops.h`）| `NanToNum(nan=1)` + `Prod`；整型跳过 NanToNum 直接 `Prod`（同一 `aclop_NanMin/NanMax` 套路）|
+| `nanargmax` / `nanargmin` | `cupy/_core/_ascend/composite.py` | `where(isnan→±inf)` + `argmax/argmin` |
+| `nanmean` | 同上 | `nansum / 非NaN计数`（计数 = "1 数组 + NaN 占位" 再 `nansum`，避免 bool 归约/Cast）|
+| `choose` | 同上 | 逐 choice `where(index == k, candidate, result)`（`cupy_choose` 是带 `raw` 指针的 kernel，aclnn 无法表达）|
+| `angle(deg=True)` | 同上 | `angle(z) * 180/pi`（`cupy_angle` 已由自定义内核覆盖）|
+
+依赖清单是**机器可读**的（`composite.py: REQUIRED_OPS`），
+`tools/scan_ops.py` 会解析它并与运行时注册表对账（`missing_deps` 必须为空），
+`tests/ascend/test_composite_ops.py` 也会校验同一份清单。
 
 ## 5. 疑难 bug 修复清单（按"静默失效"优先）
 
@@ -99,10 +111,11 @@ CuPy（v14.0.0a1, fork 自 v14 alpha / NumPy 2.x）后端已从 CUDA 换为 **CA
 
 | 工具 | 用途 | 命令 |
 |---|---|---|
-| `tools/scan_ops.py` | **CST 数据库**：算子注册/覆盖缺口/`aclop→aclnn` 映射/CUDA 残留/`IF` 分支/导出缺口/解析自检 | `python tools/scan_ops.py --runtime`（`--check` 判断是否过期） |
+| `tools/scan_ops.py` | **CST 数据库**：算子注册/覆盖缺口/`aclop→aclnn` 映射/CUDA 残留/`IF` 分支/导出缺口/组合依赖对账/解析自检 | `python tools/scan_ops.py --runtime`（`--check` 判断是否过期） |
+| `cupy/_core/_ascend/composite.py` | **宿主端组合算子**（NPU 无 aclnn 实现时用已注册算子拼出来），`REQUIRED_OPS` 是机器可读依赖清单 | — |
 | `benchmark.py` | CPU(numpy) vs XPU(cupy) 加速比，**op × dtype 两个维度** | `python benchmark.py [--list\|--csv\|--category\|--matrix-elementwise]` |
 | `cupy/testing/_ascend_dtypes.py` | pytest 的 dtype 过滤策略（去掉 NPU 不支持的 float64/complex） | 默认 auto；`--ascend-dtype-filter=off` 跑全量 |
-| `tests/ascend/` | 无需 NPU 的回归测试（96 passed, 2 skipped） | `pytest tests/ascend -q` |
+| `tests/ascend/` | 无需 NPU 的回归测试（111 passed, 10 skipped） | `pytest tests/ascend -q` |
 
 **benchmark 要点**：12 组 / 119 个算子条目，默认 133 个用例（`--matrix-elementwise` → 203）；
 vector 10M、matrix 4K（matmul）；float32 全量 + float64/int64 四则运算 + int32 位运算 + bool；
@@ -115,5 +128,6 @@ dtype 过滤 off → **1312 failed**；on → **1312 skipped, 0 failed**。
 ## 7. 下一步
 
 优先级清单在 **[Memory.md §6](Memory.md)**（P0 打 910B 基线 → P1 补算子 → P2 组合实现 → P3 长期）。
-最高优先级仍是：**在 910B 上跑出 `pytest` 基线并验证 matmul/dot 与 8 个自定义内核的数值正确性**
-（本机只能到 L3）。
+最高优先级仍是：**在 910B 上跑出 `pytest` 基线，并验证 matmul/dot、8 个 AscendC 自定义内核与
+5 个宿主端组合算子的数值正确性**（本机只能到 L3；组合算子的对拍用例已在
+`tests/ascend/test_composite_ops.py` 里写好，`has_npu` 为真时自动执行）。

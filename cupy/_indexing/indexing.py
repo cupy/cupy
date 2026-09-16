@@ -71,6 +71,11 @@ def take_along_axis(a, indices, axis):
 
 
 def choose(a, choices, out=None, mode='raise'):
+    from cupy._core._ascend import composite as _composite
+    if _composite.active():
+        # Ascend: cupy_choose 是带 raw 指针的 ElementwiseKernel, aclnn 无法表达
+        # -> 逐 choice 用 where 组合
+        return _composite.choose(a, choices, out=out, mode=mode)
     return a.choose(choices, out, mode)
 
 
