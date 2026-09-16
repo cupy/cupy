@@ -177,8 +177,22 @@ def cholesky(a):
         configuration to a value that is not `ignore` in
         :func:`cupyx.errstate` or :func:`cupyx.seterr`.
 
+    .. note::
+        On the Ascend backend this falls back to NumPy on the host, because
+        CANN (aclnn and ops-blas) has no Cholesky routine. See
+        :mod:`cupy._core._ascend.cpu_fallback`.
+
     .. seealso:: :func:`numpy.linalg.cholesky`
     """
+    from cupy.backends.backend.api.runtime import is_ascend
+    if is_ascend():
+        # CANN 无 potrf（ops-blas 的 LAPACK 批量接口也不含）-> host NumPy。
+        from cupy._core._ascend import cpu_fallback
+        _util._assert_cupy_array(a)
+        _util._assert_stacked_2d(a)
+        _util._assert_stacked_square(a)
+        return cpu_fallback.call('linalg.cholesky', a)
+
     from cupy_backends.cuda.libs import cublas
     from cupy_backends.cuda.libs import cusolver
 

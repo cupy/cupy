@@ -11,9 +11,9 @@ CuPy（v14.0.0a1, fork 自 v14 alpha / NumPy 2.x）后端已从 CUDA 换为 **CA
 
 | 维度 | 现状 |
 |---|---|
-| Array API 标准覆盖（`cupy/array_api/`，129 个公共函数） | **118 / 129 = 91.5 %** |
-| 注册算子（`ascend_*`，唯一名） | **176**（public 149 / inplace 27） |
-| `cupy/_core` 派发链 ufunc 覆盖 | **110 / 151 = 72.8 %** |
+| Array API 标准覆盖（`cupy/array_api/`，129 个公共函数） | **122 / 129 = 94.6 %** |
+| 注册算子（`ascend_*`，唯一名） | **178**（public 151 / inplace 27） |
+| `cupy/_core` 派发链 ufunc 覆盖 | **112 / 151 = 74.2 %** |
 | 剩余可移植缺口 | **2**（`i0`、`nextafter`，见 §4.1） |
 | 本机验证等级 | **L3**（编译 + import + 注册）；**无 NPU，L4 数值未验证** |
 
@@ -35,13 +35,13 @@ CuPy（v14.0.0a1, fork 自 v14 alpha / NumPy 2.x）后端已从 CUDA 换为 **CA
 
 | 指标 | 值 |
 |---|---|
-| `register_acl_ufunc` 注册条目（op × OpType） | **192** |
-| 唯一 `ascend_*` 算子 | **176**（public 149 / inplace 27） |
-| 运行时 `py_list_acl_ufuncs()` | 192 条 → 去重 176，**与静态 CST 完全一致**（互查 `only_static/only_runtime` 均为空） |
+| `register_acl_ufunc` 注册条目（op × OpType） | **194** |
+| 唯一 `ascend_*` 算子 | **178**（public 151 / inplace 27） |
+| 运行时 `py_list_acl_ufuncs()` | 194 条 → 去重 178，**与静态 CST 完全一致**（互查 `only_static/only_runtime` 均为空） |
 | cupy ufunc 声明（`cupy/_core` + `cupy/_math` 顶层） | **151** |
-| 已覆盖 | **110 = 72.8 %**（builtin 98 + AscendC 自定义内核 7 + 宿主端组合 5） |
-| 未覆盖：可移植缺口 / 内核噪声 | **2 / 39** |
-| `aclop_*` C++ 包装 | **83** |
+| 已覆盖 | **112 = 74.2 %**（builtin 100 + AscendC 自定义内核 7 + 宿主端组合 5） |
+| 未覆盖：可移植缺口 / 内核噪声 | **2 / 37** |
+| `aclop_*` C++ 包装 | **84** |
 | 宿主端组合实现 | **5**（`nanargmax nanargmin nanmean choose angle_deg`）|
 | aclnn 头文件 include / CANN 9.0.1 可用 | **143 / 814** |
 | AscendC 自定义内核 | **8**（`angle conjugate frexp imag ldexp left_shift modf right_shift`）|
@@ -66,11 +66,13 @@ CuPy（v14.0.0a1, fork 自 v14 alpha / NumPy 2.x）后端已从 CUDA 换为 **CA
 | indexing | 1 / 1 | — |
 | data_type | 7 / 7 | — |
 | utility | 2 / 2 | — |
-| linalg | 17 / 21 | `cholesky`、`det`、`eigh`、`eigvalsh` |
-| **TOTAL** | **118 / 129 = 91.5 %** | |
+| linalg | 21 / 21 | —（`cholesky/det/eigh/eigvalsh` 走 CPU fallback，见 §4.2） |
+| **TOTAL** | **122 / 129 = 94.6 %** | |
 
 - `*_like` 系列是 `empty/full + broadcast_to` 的宿主端别名，**无需 aclnn**，实际设备端覆盖更高。
-- 剩余 4 个 linalg 在 **CANN 无算子**，需自研算法或等上游。
+- 剩余 7 个全在 creation（`*_like` ×4、`meshgrid`、`from_dlpack` 等），与算子无关。
+- linalg 的 4 个缺口（`cholesky/det/eigh/eigvalsh`，外加非 Array API 的
+  `slogdet/eig/eigvals`）在 **CANN 无算子**，已用 **CPU fallback** 补齐（§4.2）。
 
 ### 4.1 仍缺的 2 个 ufunc（可移植缺口）
 
@@ -90,6 +92,26 @@ CuPy（v14.0.0a1, fork 自 v14 alpha / NumPy 2.x）后端已从 CUDA 换为 **CA
 `tools/scan_ops.py` 会解析它并与运行时注册表对账（`missing_deps` 必须为空），
 `tests/ascend/test_composite_ops.py` 也会校验同一份清单。
 
+### 4.2 CPU fallback（第四条路：搬去 host 用 NumPy 算）
+
+先查 ops-blas（`~/repos/ops-blas/docs/zh/api_list.md`）：只有 BLAS L1/L2/L3 + LAPACK **批量**
+接口（`getrf/getri/getrs/geqrf/gels/matinv`，且尚未接入），
+`det/slogdet/eig/eigvals/eigh/eigvalsh/cholesky` **一个都没有**。
+
+基础设施 `cupy/_core/_ascend/cpu_fallback.py`（纯 `.py`，只用 XPU 中性 API）：
+
+| 能力 | 接口 |
+|---|---|
+| 注册表（算子名 ↔ NumPy 实现，可对账） | `FALLBACKS`（7 条 `linalg.*`） |
+| 一键 D2H → NumPy → H2D | `call('linalg.det', a)` / `run(numpy_func, ...)` |
+| 单步搬运 | `to_numpy`（`cupy.asnumpy`）/ `to_device`（`cupy.asarray`，保留 namedtuple） |
+| 开关 | `active()` / `CUPY_ASCEND_DISABLE_CPU_FALLBACK=1` 时算子**响亮失败** |
+
+接线（各 `is_ascend()` 分支）：`cupy/linalg/{_decomposition,_norms,_eigenvalue}.py`。
+已知偏差：NumPy 不接受 `float16`（fp16 在此路径上抛 `TypeError`，不静默降精度）；
+每次调用 2 次设备拷贝，适合小矩阵/低频 API。
+回归：`tests/ascend/test_cpu_fallback.py`（28 例无 NPU 可跑 + 6 例真机对拍）。
+
 ## 5. 疑难 bug 修复清单（按"静默失效"优先）
 
 | 症状 | 根因 | 修复 |
@@ -106,6 +128,7 @@ CuPy（v14.0.0a1, fork 自 v14 alpha / NumPy 2.x）后端已从 CUDA 换为 **CA
 | `import cupy` 失败（undefined symbol） | `libop_common.so` 未声明 `liboptiling.so` 依赖 | `cupy/__init__.py` 里 `ctypes` 预加载（见 Memory §3.3） |
 | `argwhere` 计数未赋值 | 用了未注册的 `count_nonzero` | 改 `cupy.sum(mask)` |
 | `_kernel.pyx` 里 `cimport` 新函数即 SIGSEGV | `acl_utils.pxd` 的 `__pyx_capi__` 静态解析 | 逻辑放进 `acl_utils` 内部或走 `launch_general_func` |
+| `linalg.det/eigvals/eigh/cholesky` 在 NPU 上不可用（CANN 无算子；`cholesky` 还会在 `from cupy_backends.cuda.libs import cublas` 处炸） | 无 aclnn 实现 | `is_ascend()` 分支改走 `cpu_fallback`（见 §4.2） |
 
 ## 6. 工具链（2026-09-16 新增，均已落地）
 
@@ -113,9 +136,10 @@ CuPy（v14.0.0a1, fork 自 v14 alpha / NumPy 2.x）后端已从 CUDA 换为 **CA
 |---|---|---|
 | `tools/scan_ops.py` | **CST 数据库**：算子注册/覆盖缺口/`aclop→aclnn` 映射/CUDA 残留/`IF` 分支/导出缺口/组合依赖对账/解析自检 | `python tools/scan_ops.py --runtime`（`--check` 判断是否过期） |
 | `cupy/_core/_ascend/composite.py` | **宿主端组合算子**（NPU 无 aclnn 实现时用已注册算子拼出来），`REQUIRED_OPS` 是机器可读依赖清单 | — |
+| `cupy/_core/_ascend/cpu_fallback.py` | **CPU fallback**（NPU 无算子时 D2H → NumPy → H2D），`FALLBACKS` 是机器可读算子↔实现表；开关 `CUPY_ASCEND_DISABLE_CPU_FALLBACK=1` | — |
 | `benchmark.py` | CPU(numpy) vs XPU(cupy) 加速比，**op × dtype 两个维度** | `python benchmark.py [--list\|--csv\|--category\|--matrix-elementwise]` |
 | `cupy/testing/_ascend_dtypes.py` | pytest 的 dtype 过滤策略（去掉 NPU 不支持的 float64/complex） | 默认 auto；`--ascend-dtype-filter=off` 跑全量 |
-| `tests/ascend/` | 无需 NPU 的回归测试（111 passed, 10 skipped） | `pytest tests/ascend -q` |
+| `tests/ascend/` | 无需 NPU 的回归测试（139 passed, 18 skipped） | `pytest tests/ascend -q` |
 
 **benchmark 要点**：12 组 / 119 个算子条目，默认 133 个用例（`--matrix-elementwise` → 203）；
 vector 10M、matrix 4K（matmul）；float32 全量 + float64/int64 四则运算 + int32 位运算 + bool；

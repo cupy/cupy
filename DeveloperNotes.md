@@ -372,6 +372,67 @@ ELSE:
 回归测试：`tests/ascend/test_fft_optional.py`（8 用例，无 NPU、无 FFT 也能跑）——
 检测分支、`CUPY_ENABLE_ACLFFT` 两种取值、默认 loader 路径回归、构建期不产生模块、运行时清晰报错。
 
+### 3.6 ops-blas 对标cuBLAS
+
+https://gitcode.com/cann/ops-blas  已经下载在 ~/repos/ops-blas
+API 文档可见: `docs/zh/api_list.md`
+./build_out/cann-${soc_name}-ops-blas_${version}_linux-${arch}.run --install  --install-path=$ASCEND_HOME_PATH/
+安装到$ASCEND_HOME_PATH 不用额外设置LD_LABRARY_PATH 复用CANN toolkit的set_env.sh
+$ASCEND_HOME_PATH/lib64, 安装之后会有libops_blasLt.so  libops_blas.so, 
+
+### 3.7 cpu-fallback ✅
+
+**判定**：先查 BLAS SDK（`~/repos/ops-blas/docs/zh/api_list.md`）。ops-blas 只提供
+BLAS L1/L2/L3 + LAPACK **批量**接口（`getrf/getri/getrs/geqrf/gels/matinv`，且本项目尚未接入），
+`det / slogdet / eig / eigvals / eigh / eigvalsh / cholesky` 这一族**都没有**。
+这类算子的第三条路（前两条：aclnn 包装、AscendC 自定义内核）就是"搬到 host 用 NumPy 算"。
+
+**基础设施**：`cupy/_core/_ascend/cpu_fallback.py`（纯 `.py`，无需编译）
+
+```
+np_in  = to_numpy(device_in)       # D2H: cupy.asnumpy(a)      -> cupy.xpu 抽象
+np_out = numpy_func(np_in, ...)    # host 计算
+out    = to_device(np_out)         # H2D: cupy.asarray(np_out) -> cupy.xpu 抽象
+```
+
+| 接口 | 作用 |
+|---|---|
+| `FALLBACKS` | `'linalg.det' -> numpy.linalg.det` 注册表（算子名 ↔ host 实现，可被工具/测试对账） |
+| `call(name, *args, **kwargs)` | 按注册名派发；`cupy.ndarray` 参数自动 D2H，返回值自动 H2D |
+| `run(numpy_func, ...)` | 不经注册表，临时用某个 NumPy 函数 |
+| `to_numpy` / `to_device` | 单步搬运；`to_device` 递归处理 tuple/list 并**保留 namedtuple**（`SlogdetResult` 等） |
+| `active()` / `reset_cache()` / `available()` | 开关与查询；`CUPY_ASCEND_DISABLE_CPU_FALLBACK=1` 可关闭 |
+| `DISABLE_ENV` | 关闭开关的环境变量名 |
+
+**只用 XPU 中性 API**：D2H 走 `cupy.asnumpy`、H2D 走 `cupy.asarray`，
+不直接碰 `cupy.cuda.*` / `cupy.xpu.device`（符合 §5「XPU API 中性化重构」）。
+
+**接线点**（都是 `is_ascend()` 分支，函数内惰性 import）：
+
+| 公开 API | 文件 | 注册名 |
+|---|---|---|
+| `cupy.linalg.cholesky` | `cupy/linalg/_decomposition.py` | `linalg.cholesky` |
+| `cupy.linalg.det` / `slogdet` | `cupy/linalg/_norms.py` | `linalg.det` / `linalg.slogdet` |
+| `cupy.linalg.eig` / `eigvals` / `eigh` / `eigvalsh` | `cupy/linalg/_eigenvalue.py` | `linalg.<同名>` |
+
+`cupy.array_api.linalg` 的 `cholesky/det/eigh/eigvalsh` 直接调 `cupy.linalg.*`，
+于是 Array API 的 linalg 缺口（4 个）**全部补上**。
+
+**约束 / 已知偏差**
+1. **只在 Ascend 后端开**（且未被 `CUPY_ASCEND_DISABLE_CPU_FALLBACK=1` 关闭）；
+   其它后端 `call()` 直接 `NotImplementedError`，避免悄悄顶替 cuSOLVER。
+2. **dtype 以 NumPy 为准**：NumPy 的 linalg 不接受 `float16`（`TypeError`），
+   而 CuPy 的 `eigh/eigvalsh` 允许 fp16（按 fp32 算）—— fallback 路径上 fp16 **响亮报错**，
+   不静默降精度。
+3. **性能**：每次调用 2 次拷贝；适合小矩阵/低频 API。大矩阵、批量场景应等 ops-blas 接入
+   （届时把 `FALLBACKS` 里的条目换成设备实现或删掉即可）。
+4. `cholesky` 的 `_assert_cupy_array` 仍在 fallback 前保留 —— 参数校验先于设备拷贝。
+
+**回归**：`tests/ascend/test_cpu_fallback.py`（无 NPU 可跑 28 例）
+—— 注册表 ↔ `numpy.linalg` 一一对应、搬运语义（用假 cupy 替身，不需要设备）、
+`DISABLE_ENV` 开关、接线层（打桩 `is_ascend` + 间谍 `call`）、源码级校验注册名拼写、
+真机数值对拍（`has_npu` 自动 skip）。
+
 
 ## 4. TODO
 

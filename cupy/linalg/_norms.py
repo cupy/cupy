@@ -231,8 +231,20 @@ def det(a):
     Returns:
         cupy.ndarray: Determinant of ``a``. Its shape is ``a.shape[:-2]``.
 
+    .. note::
+        On the Ascend backend this falls back to NumPy on the host, because
+        CANN (aclnn and ops-blas) has no LU/determinant routine. See
+        :mod:`cupy._core._ascend.cpu_fallback`.
+
     .. seealso:: :func:`numpy.linalg.det`
     """
+    from cupy.backends.backend.api.runtime import is_ascend
+    if is_ascend():
+        from cupy._core._ascend import cpu_fallback
+        _util._assert_stacked_2d(a)
+        _util._assert_stacked_square(a)
+        return cpu_fallback.call('linalg.det', a)
+
     sign, logdet = slogdet(a)
     return sign * cupy.exp(logdet)
 
@@ -293,10 +305,20 @@ def slogdet(a):
         To produce the same results as :func:`numpy.linalg.slogdet` for
         singular inputs, set the `linalg` configuration to `raise`.
 
+    .. note::
+        On the Ascend backend this falls back to NumPy on the host, because
+        CANN (aclnn and ops-blas) has no LU/determinant routine. See
+        :mod:`cupy._core._ascend.cpu_fallback`.
+
     .. seealso:: :func:`numpy.linalg.slogdet`
     """
     _util._assert_stacked_2d(a)
     _util._assert_stacked_square(a)
+
+    from cupy.backends.backend.api.runtime import is_ascend
+    if is_ascend():
+        from cupy._core._ascend import cpu_fallback
+        return cpu_fallback.call('linalg.slogdet', a)
 
     dtype, sign_dtype = _util.linalg_common_type(a)
     logdet_dtype = numpy.dtype(sign_dtype.char.lower())

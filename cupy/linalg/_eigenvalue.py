@@ -251,11 +251,22 @@ def eigh(a, UPLO='L'):
         configuration to a value that is not `ignore` in
         :func:`cupyx.errstate` or :func:`cupyx.seterr`.
 
+    .. note::
+        On the Ascend backend this falls back to NumPy on the host, because
+        CANN (aclnn and ops-blas) has no symmetric eigensolver. See
+        :mod:`cupy._core._ascend.cpu_fallback`.
+
     .. seealso:: :func:`numpy.linalg.eigh`
     """
-    import cupyx.cusolver
     _util._assert_stacked_2d(a)
     _util._assert_stacked_square(a)
+
+    from cupy.backends.backend.api.runtime import is_ascend
+    if is_ascend():
+        from cupy._core._ascend import cpu_fallback
+        return cpu_fallback.call('linalg.eigh', a, UPLO=UPLO)
+
+    import cupyx.cusolver
 
     if a.size == 0:
         _, v_dtype = _util.linalg_common_type(a)
@@ -300,10 +311,20 @@ def eig(a):
         configuration to a value that is not `ignore` in
         :func:`cupyx.errstate` or :func:`cupyx.seterr`.
 
+    .. note::
+        On the Ascend backend this falls back to NumPy on the host, because
+        CANN (aclnn and ops-blas) has no general eigensolver. See
+        :mod:`cupy._core._ascend.cpu_fallback`.
+
     .. seealso:: :func:`numpy.linalg.eig`
     """
     _util._assert_stacked_2d(a)
     _util._assert_stacked_square(a)
+
+    from cupy.backends.backend.api.runtime import is_ascend
+    if is_ascend():
+        from cupy._core._ascend import cpu_fallback
+        return cpu_fallback.call('linalg.eig', a)
 
     if a.size == 0:
         _, v_dtype = _util.linalg_common_type(a)
@@ -338,11 +359,22 @@ def eigvalsh(a, UPLO='L'):
         configuration to a value that is not `ignore` in
         :func:`cupyx.errstate` or :func:`cupyx.seterr`.
 
+    .. note::
+        On the Ascend backend this falls back to NumPy on the host, because
+        CANN (aclnn and ops-blas) has no symmetric eigensolver. See
+        :mod:`cupy._core._ascend.cpu_fallback`.
+
     .. seealso:: :func:`numpy.linalg.eigvalsh`
     """
-    import cupyx.cusolver
     _util._assert_stacked_2d(a)
     _util._assert_stacked_square(a)
+
+    from cupy.backends.backend.api.runtime import is_ascend
+    if is_ascend():
+        from cupy._core._ascend import cpu_fallback
+        return cpu_fallback.call('linalg.eigvalsh', a, UPLO=UPLO)
+
+    import cupyx.cusolver
 
     if a.size == 0:
         _, v_dtype = _util.linalg_common_type(a)
@@ -379,10 +411,20 @@ def eigvals(a):
         configuration to a value that is not `ignore` in
         :func:`cupyx.errstate` or :func:`cupyx.seterr`.
 
+    .. note::
+        On the Ascend backend this falls back to NumPy on the host, because
+        CANN (aclnn and ops-blas) has no general eigensolver. See
+        :mod:`cupy._core._ascend.cpu_fallback`.
+
     .. seealso:: :func:`numpy.linalg.eigvals`
     """
     _util._assert_stacked_2d(a)
     _util._assert_stacked_square(a)
+
+    from cupy.backends.backend.api.runtime import is_ascend
+    if is_ascend():
+        from cupy._core._ascend import cpu_fallback
+        return cpu_fallback.call('linalg.eigvals', a)
 
     if a.size == 0:
         _, v_dtype = _util.linalg_common_type(a)
