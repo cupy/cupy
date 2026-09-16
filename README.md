@@ -4,7 +4,8 @@ By Qingfeng Xia
 
 ## 1. Status of numpy-ascend Array API suport
 
-see  [Progress.md](./Progress.md)  90% Array API, except for eigen
+see  [Progress.md](./Progress.md)  91.5 % Array API（118/129），except for eigen；注册算子 174，
+细节见自动生成的 [tools/cst_db.md](./tools/cst_db.md)
 
 ### completed
 
@@ -15,6 +16,24 @@ see  [Progress.md](./Progress.md)  90% Array API, except for eigen
 1. float32 only for all array API, similarly, default dtype float32, instead of float64 on CPU
 2. float64/int64 support add/substract/mul/div ops
 3. sparse array/matrix not supported
+
+#### pytest 上的 dtype 过滤 (减少假失败)
+
+因为上面 1/2 条的限制, 直接在 NPU 上跑上游 CuPy 测试会因"dtype 本身不被支持"而大量
+FAIL (`float64`/`complex64`/`complex128`), 淹没真正的移植缺陷。Ascend 后端会自动把
+这些 dtype 从测试参数化中去掉, 只保留 NPU 能跑的用例:
+
+```sh
+pytest tests/cupy_tests/math_tests/test_arithmetic.py -q          # 默认: 跳过不支持的 dtype
+pytest ... --ascend-dtype-filter=off                              # 跑完整 dtype 矩阵(看真实失败)
+CUPY_TEST_ASCEND_SKIP_DTYPES=float64 pytest ...                   # 只跳过 float64, 其余照跑
+CUPY_TEST_ASCEND_DTYPE_FILTER=on pytest ...                       # 无 NPU 时模拟 Ascend 行为
+```
+
+策略集中在 `cupy/testing/_ascend_dtypes.py` (默认 `auto`: 仅 Ascend 生效),
+覆盖 `cupy.testing.for_all_dtypes()` 等装饰器与 `pytest.mark.parametrize` 两类参数化;
+单个测试/模块可用 `@pytest.mark.ascend_dtype_filter_off` 豁免。
+
 
 ### 2.1 introduction to Python Array API standard
 https://github.com/data-apis/array-api

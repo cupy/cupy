@@ -13,6 +13,7 @@ import numpy
 import cupy
 from cupy.exceptions import AxisError
 from cupy.testing import _array
+from cupy.testing import _ascend_dtypes
 from cupy.testing import _parameterized
 import cupyx
 import cupyx.scipy.sparse
@@ -854,11 +855,8 @@ def for_dtypes(dtypes, name='dtype'):
         return test_func
     return decorator
 
-# ASCEND does not support float64 and complex128, so disable those types
-#_complex_dtypes = (numpy.complex64, numpy.complex128)
-#_regular_float_dtypes = (numpy.float64, numpy.float32)
-_complex_dtypes = tuple()
-_regular_float_dtypes = (numpy.float32, )
+_complex_dtypes = (numpy.complex64, numpy.complex128)
+_regular_float_dtypes = (numpy.float64, numpy.float32)
 _float_dtypes = _regular_float_dtypes + (numpy.float16,)
 _signed_dtypes = tuple(numpy.dtype(i).type for i in 'bhilq')
 _unsigned_dtypes = tuple(numpy.dtype(i).type for i in 'BHILQ')
@@ -866,6 +864,23 @@ _int_dtypes = _signed_dtypes + _unsigned_dtypes
 _int_bool_dtypes = _int_dtypes + (numpy.bool_,)
 _regular_dtypes = _regular_float_dtypes + _int_bool_dtypes
 _dtypes = _float_dtypes + _int_bool_dtypes
+
+# Ascend (NPU) 不支持的 dtype 在**参数化阶段**就去掉, 避免 pytest 大面积 FAIL
+# (NPU 只保证 float32; float64 仅四则运算可用; complex 无算子 —— 见
+# README.md §limitation)。策略与开关见 `cupy/testing/_ascend_dtypes.py`:
+# 默认 auto (仅 Ascend 生效) 跳过 float64/complex64/complex128; CUDA/CPU
+# 仍使用上面这份完整列表。
+if _ascend_dtypes.enabled():
+    _complex_dtypes = _ascend_dtypes.filter_dtypes(_complex_dtypes)
+    _regular_float_dtypes = _ascend_dtypes.filter_dtypes(
+        _regular_float_dtypes)
+    _float_dtypes = _ascend_dtypes.filter_dtypes(_float_dtypes)
+    _signed_dtypes = _ascend_dtypes.filter_dtypes(_signed_dtypes)
+    _unsigned_dtypes = _ascend_dtypes.filter_dtypes(_unsigned_dtypes)
+    _int_dtypes = _ascend_dtypes.filter_dtypes(_int_dtypes)
+    _int_bool_dtypes = _ascend_dtypes.filter_dtypes(_int_bool_dtypes)
+    _regular_dtypes = _ascend_dtypes.filter_dtypes(_regular_dtypes)
+    _dtypes = _ascend_dtypes.filter_dtypes(_dtypes)
 
 
 def _make_all_dtypes(no_float16, no_bool, no_complex):
@@ -905,6 +920,12 @@ def for_all_dtypes(name='dtype', no_float16=False, no_bool=False,
     ``numpy.dtype('i')``, ``numpy.dtype('l')``, ``numpy.dtype('q')``,
     ``numpy.dtype('B')``, ``numpy.dtype('H')``, ``numpy.dtype('I')``,
     ``numpy.dtype('L')``, ``numpy.dtype('Q')``, and ``numpy.bool_`` (optional).
+
+    .. note::
+        在 Ascend 构建上, NPU 不支持的 dtype (``float64``/``complex64``/
+        ``complex128``) 会从候选列表里自动去掉, 见
+        :mod:`cupy.testing._ascend_dtypes`; 用
+        ``CUPY_TEST_ASCEND_DTYPE_FILTER=off`` 可恢复完整 dtype 矩阵。
 
     The usage is as follows.
     This test fixture checks if ``cPickle`` successfully reconstructs

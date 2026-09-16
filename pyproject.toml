@@ -80,7 +80,16 @@ disable_error_code = ["attr-defined"]
 xfail_strict = true
 testpaths = "tests"
 addopts = "--strict-markers"
-markers = ["slow", "multi_gpu"]
+markers = [
+  "slow",
+  "multi_gpu",
+  # 豁免 Ascend dtype 过滤 (见 tests/conftest.py::pytest_collection_modifyitems)
+  "ascend_dtype_filter_off",
+]
+# Ascend(NPU) 不支持的 dtype (float64/complex64/complex128) 是否从测试参数化里去掉;
+# auto=按后端判断(仅 Ascend 生效)。策略见 cupy/testing/_ascend_dtypes.py,
+# 命令行开关 --ascend-dtype-filter={auto,on,off}。
+ascend_dtype_filter = "auto"
 filterwarnings = [
   "error::FutureWarning",
   # ignore FutureWarning from cupy._util.experimental
