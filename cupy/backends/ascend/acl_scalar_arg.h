@@ -7,6 +7,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -28,6 +29,37 @@ inline aclTensorList* ToAclTensorList(const std::vector<const aclTensor*>& tempV
     );
     return tensorList;
 }
+
+/**
+ * aclCreateTensorList() 出来的 list 必须 aclDestroyTensorList()（review D5：
+ * 全仓库先前没有一处释放，concatenate/stack 每次调用泄漏一个 list 对象）。
+ * 这里用 RAII 包一层，把「创建 + 释放」绑在一起，调用点只需 get()。
+ */
+class AclTensorListGuard {
+public:
+    explicit AclTensorListGuard(const std::vector<const aclTensor*>& tensors)
+        : list_(ToAclTensorList(tensors)) {}
+
+    AclTensorListGuard(const AclTensorListGuard&) = delete;
+    AclTensorListGuard& operator=(const AclTensorListGuard&) = delete;
+
+    ~AclTensorListGuard() {
+        if (list_ != nullptr) {
+            aclDestroyTensorList(list_);
+        }
+    }
+
+    aclTensorList* get() const {
+        return list_;
+    }
+
+    explicit operator bool() const {
+        return list_ != nullptr;
+    }
+
+private:
+    aclTensorList* list_;
+};
 
 // check keyword kargs first then position args
 bool HasScalarArg(const ArgsType& args, int argIndex, const KwargsType& kargs, std::string key)
@@ -271,24 +303,34 @@ ToScalarType ToScalarArg(const aclScalar* s, bool throw_on_error = true) {
 }
 
 // dict kargs has priority than the list unnamed arg
+//
+// `defaultValue` is deliberately an `std::optional` (review D9): a call site that
+// supplies a fallback (e.g. `..., "stable", true`) may silently use it, but one
+// that does *not* now **throws** when the argument is missing. Previously every
+// missing argument was reported with a single std::cerr line and the op then ran
+// with a default-constructed value, which turned "the caller forgot to pass the
+// parameter" into a silently wrong result.
 template<typename ToScalarType>
-ToScalarType GetScalarArg(const ArgsType& args, int argIndex, const KwargsType& kargs, std::string key,
-    ToScalarType defaultValue = ToScalarType())
+ToScalarType GetScalarArg(const ArgsType& args, int argIndex, const KwargsType& kargs,
+    const std::string& key, std::optional<ToScalarType> defaultValue = std::nullopt)
 {
-    ToScalarType scalar = defaultValue;
     const aclScalar* arg = nullptr;
     if (kargs.find(key) != kargs.end()) {
         arg = kargs.at(key);
     } else if (argIndex >= 0 && argIndex < static_cast<int>(args.size())) {
         arg = args.at(argIndex);
-    } else {
-        std::cerr << "WARNING: Failed to get argument from args list or kargs dict, "
-        "use the default scalar value\n";
     }
-    if (arg) {
-        scalar = ToScalarArg<ToScalarType>(arg);
+
+    if (arg == nullptr) {
+        if (!defaultValue.has_value()) {
+            throw std::invalid_argument(
+                "GetScalarArg: required argument '" + key + "' (positional #" +
+                std::to_string(argIndex) + ") was not supplied to the aclnn op; "
+                "refusing to continue with a silent default");
+        }
+        return defaultValue.value();
     }
-    return scalar;
+    return ToScalarArg<ToScalarType>(arg);
 }
 
 

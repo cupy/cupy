@@ -108,10 +108,11 @@
     aclError aclop_Stack(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
         if (ins.size() >= 1) {
-            auto tl = ToAclTensorList(ins);
-            int64_t dim = GetScalarArg<int64_t>(args, 0, kwargs, "dim");
+            AclTensorListGuard tl(ins);
+            // numpy.stack() defaults to axis=0 -> a real default, keep it
+            int64_t dim = GetScalarArg<int64_t>(args, 0, kwargs, "dim", 0);
             return aclIrregularOpRun(aclnnStackGetWorkspaceSize, aclnnStack, stream,
-                tl, dim, outs[0]);
+                tl.get(), dim, outs[0]);
         } else {
             std::cout << "Error:" <<  __FUNCTION__  << " take args: tensorList, axis, out) \n";
             return ACL_ERROR_INVALID_PARAM;
@@ -121,11 +122,10 @@
     aclError aclop_Concat(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
         if (ins.size() >= 1) {
-            auto tl = ToAclTensorList(ins);
-            // TODO: default dim value
-            int64_t dim = GetScalarArg<int64_t>(args, 0, kwargs, "dim");
+            AclTensorListGuard tl(ins);
+            int64_t dim = GetScalarArg<int64_t>(args, 0, kwargs, "dim", 0);
             return aclIrregularOpRun(aclnnCatGetWorkspaceSize, aclnnCat, stream,
-                tl, dim, outs[0]);
+                tl.get(), dim, outs[0]);
         } else {
             std::cout << "Error:" <<  __FUNCTION__  << " take args: tensorList, axis, out) \n";
             PrintArgs(__func__, args, kwargs, std::cout);
@@ -190,7 +190,8 @@
     aclError aclop_Flatten(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
         if (outs.size() == 1) {
-            int64_t axis = GetScalarArg<int64_t>(args, 0, kwargs, "axis");
+            // ndarray.flatten()/ravel() flatten from axis 0
+            int64_t axis = GetScalarArg<int64_t>(args, 0, kwargs, "axis", 0);
             return aclIrregularOpRun(aclnnFlattenGetWorkspaceSize, aclnnFlatten, stream,
                 ins[0], axis, outs[0]);
         } else {
