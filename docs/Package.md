@@ -12,8 +12,11 @@ This document covers three things that are routinely confused with each other:
    verification commands for each.
 
 Related documents:
+* `README.md` §3 — install guide (wheel / from source) and the runtime
+  prerequisites of §3 of this document.
+* `DeveloperNotes.md` §1–§2 — CANN installation, including a machine without an
+  NPU, and the toolchain/dependency setup.
 * `install/README.md` §4.4 — the RPATH policy in build-system terms.
-* `README.md` §2 — CANN installation on a machine without an NPU.
 * `Progress.md` — which array-API ops are ported.
 
 ---
