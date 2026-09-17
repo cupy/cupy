@@ -6,6 +6,12 @@ import pytest
 import cupy
 from cupy import testing
 import cupyx.scipy.special
+from cupyx_tests.scipy_tests.special_tests import match_scipy_float32
+
+# The check helpers below are shared with `logit` and `ndtri`, which SciPy
+# 1.18 left on the float64 loop (`ndtri` already had a float32 one), so those
+# two still agree with CuPy on float16.
+_SCIPY_FLOAT32_LOOP = frozenset({'ndtr', 'log_ndtr', 'expit', 'log_expit'})
 
 
 class _TestBase:
@@ -61,13 +67,19 @@ class TestSpecial(_TestBase):
                                  scipy_name='scp')
     def check_unary_lower_precision(self, name, xp, scp, dtype):
         a = xp.linspace(-10, 10, 100, dtype=dtype)
-        return self._check_unary(a, name, scp)
+        out = self._check_unary(a, name, scp)
+        if name in _SCIPY_FLOAT32_LOOP:
+            out = match_scipy_float32(out, xp, dtype)
+        return out
 
     @testing.for_dtypes(['e', 'f', 'd'])
     @testing.numpy_cupy_allclose(atol=atol, rtol=rtol, scipy_name='scp')
     def check_unary_linspace0_1(self, name, xp, scp, dtype):
         p = xp.linspace(0, 1, 1000, dtype=dtype)
-        return self._check_unary(p, name, scp)
+        out = self._check_unary(p, name, scp)
+        if name in _SCIPY_FLOAT32_LOOP:
+            out = match_scipy_float32(out, xp, dtype)
+        return out
 
     def test_logit_nonfinite(self):
         logit = cupyx.scipy.special.logit
@@ -139,13 +151,19 @@ class TestFusionSpecial(_TestBase):
                                  scipy_name='scp')
     def check_unary_lower_precision(self, name, xp, scp, dtype):
         a = testing.shaped_arange((2, 3), xp, dtype)
-        return self._check_unary(a, name, scp)
+        out = self._check_unary(a, name, scp)
+        if name in _SCIPY_FLOAT32_LOOP:
+            out = match_scipy_float32(out, xp, dtype)
+        return out
 
     @testing.for_dtypes(['e', 'f', 'd'])
     @testing.numpy_cupy_allclose(atol=atol, rtol=rtol, scipy_name='scp')
     def check_unary_linspace0_1(self, name, xp, scp, dtype):
         a = xp.linspace(0, 1, 1000, dtype)
-        return self._check_unary(a, name, scp)
+        out = self._check_unary(a, name, scp)
+        if name in _SCIPY_FLOAT32_LOOP:
+            out = match_scipy_float32(out, xp, a.dtype)
+        return out
 
 
 class _TestDistributionsBase:
