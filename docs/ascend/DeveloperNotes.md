@@ -1,7 +1,7 @@
 
 # Developer Notes
 
-see also [Package.md](docs/Package.md) for build binary wheel for diff CANN version for manylinux, with minimum version requirement on libstdc++.so version
+see also [docs/ascend/Package.md](docs/ascend/Package.md) for build binary wheel for diff CANN version for manylinux, with minimum version requirement on libstdc++.so version; the user-facing install guide (which wheel to pick, runtime prerequisites, troubleshooting) is [README.md](README.md) §3.
 
 ### `ascend-numpy` architecture from top to bottom
 
@@ -245,6 +245,21 @@ clear && export CUPY_INSTALL_USE_ASCEND=1 && python setup.py develop && python b
 ```
 
 如果修改 .h 文件, 没有修改pyx文件, 可能导致不会触发编译, 这时候可以运行clean_cpp_so_files.sh 做全面清理. 
+
+**换平台 / 换 CANN 版本时的构建报错（补充）**：
+
+- 报 `kernel_operator.h: No such file or directory`（只在编译自定义 AscendC 内核时出现）：AscendC
+  include 根按**宿主架构**探测，`cupy/backends/ascend/bisheng.py::_arch_roots()/_ascendc_include_dirs()`
+  依次找 `<cann>/<arch>/asc/include`（full SDK，`arch` 为 `aarch64-linux`/`x86_64-linux`）、
+  `<cann>/<arch>/ascendc/include/include/basic_api`（独立 AscendC SDK 多一层 `include`）、
+  `<cann>/<arch>/tikcpp/tikcfw`（`lib/math/*.h` 只在这里）。报错时先 `ls` 确认你的 CANN 是哪种布局；
+  只想先跑通：`export CUPY_ASCEND_DISABLE_CUSTOM_KERNELS=1`。目标芯片用 `CUPY_ASCEND_SOC` 指定。
+- 报 `Compile-time name 'CUPY_CANN_VERSION' not defined`：手工 `cythonize()` 时没传
+  `compile_time_env`（`setup.py build_ext` 会自动注入，见 §3.5）。
+- `python setup.py develop --inplace` 在 setuptools ≥ 80 已不支持 → 用
+  `python setup.py build_ext --inplace`（打包用 `python -m build --wheel`）。
+- 无 NPU 的机器上 `import cupy` 需要先注释 `cupy/backends/backend/api/runtime.pyx` 的
+  `initialize_backend(0)`（见 §1）。
 
 
 ##  ascend backends notes

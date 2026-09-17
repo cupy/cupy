@@ -457,6 +457,7 @@ from numpy import typename  # NOQA
 # -----------------------------------------------------------------------------
 # ASCEND TODO: the remaining generate/indexing/iterate APIs are not ported yet
 from cupy._indexing.insert import put  # NOQA
+from cupy._indexing.indexing import take  # NOQA
 from cupy._indexing.insert import fill_diagonal  # NOQA
 
 # Borrowed from NumPy

@@ -53,6 +53,7 @@
 #include "aclnnop/aclnn_signbit.h"
 #include "aclnnop/aclnn_sign.h"
 #include "aclnnop/aclnn_reciprocal.h"
+#include "aclnnop/aclnn_cast.h"    // used by the left_shift composition
 // TODO: not yet register
 #include "aclnnop/aclnn_heaviside.h"
 // ldexp Returns x1 * 2**x2, element-wise.
@@ -100,7 +101,11 @@
 #include "aclnnop/aclnn_bitwise_xor_tensor.h"
 #include "aclnnop/aclnn_bitwise_xor_scalar.h"
 #include "aclnnop/aclnn_bitwise_not.h" // numpy op name: np.invert
-// #include "aclnnop/aclnn_shift_left.h"  // missing numpy op: _left_shift
+// CANN 9.0 provides aclnn_left_shift; CANN 8.5 has no left-shift op, so
+// aclop_LeftShift composes it as x * 2**n (see below).
+#if defined(CUPY_CANN_VERSION) && CUPY_CANN_VERSION >= 900
+#include "aclnnop/aclnn_left_shift.h"
+#endif
 
 // binary op
 #include "aclnnop/aclnn_add.h"
@@ -212,6 +217,49 @@ extern "C" {
         return aclBinaryOpRun(self, other, out,
             aclnnRightShiftGetWorkspaceSize, aclnnRightShift, stream, false);
     }
+
+    // numpy.left_shift(x, n): CANN 8.5.1 has no left-shift aclnn op, so it is
+    // composed as x * 2**n in double precision, then cast to the output dtype.
+    // Exact for 0 <= n while x and x * 2**n fit the double mantissa (int64
+    // inputs lose the low bits for |x| > 2**53). CANN 9.0 provides
+    // aclnnLeftShift, used via conditional compiling.
+#if defined(CUPY_CANN_VERSION) && CUPY_CANN_VERSION >= 900
+    aclError aclop_LeftShift(const aclTensor* self, const aclTensor* other,
+                             aclTensor* out, aclrtStream stream) {
+        return aclBinaryOpRun(self, other, out,
+            aclnnLeftShiftGetWorkspaceSize, aclnnLeftShift, stream, false);
+    }
+#else
+    aclError aclop_LeftShift(const aclTensor* self, const aclTensor* other,
+                             aclTensor* out, aclrtStream stream) {
+        if (self == nullptr || other == nullptr || out == nullptr) {
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        aclDataType out_dtype;
+        aclGetDataType(out, &out_dtype);
+        // t1 = double(other); t2 = 2**t1; t3 = double(self); t4 = t3 * t2
+        aclTensor* t1 = aclTensorLike(out, ACL_DOUBLE);
+        aclTensor* t2 = aclTensorLike(out, ACL_DOUBLE);
+        aclTensor* t3 = aclTensorLike(out, ACL_DOUBLE);
+        aclTensor* t4 = aclTensorLike(out, ACL_DOUBLE);
+        aclError ret = aclIrregularOpRun(aclnnCastGetWorkspaceSize, aclnnCast, stream,
+            other, ACL_DOUBLE, t1);
+        ret = aclUnaryOpRun(t1, t2,
+            aclnnExp2GetWorkspaceSize, aclnnExp2, stream, false);
+        ret = aclIrregularOpRun(aclnnCastGetWorkspaceSize, aclnnCast, stream,
+            self, ACL_DOUBLE, t3);
+        ret = aclBinaryOpRun(t3, t2, t4,
+            aclnnMulGetWorkspaceSize, aclnnMul, stream, false);
+        ret = aclIrregularOpRun(aclnnCastGetWorkspaceSize, aclnnCast, stream,
+            t4, out_dtype, out);
+        // aclTensorLike 会 aclrtMalloc 一块显存，必须用 DestroyTensorLike 成对释放
+        aclDestroyTensorLike(t1);
+        aclDestroyTensorLike(t2);
+        aclDestroyTensorLike(t3);
+        aclDestroyTensorLike(t4);
+        return ret;
+    }
+#endif
 
     // CANN has no aclnnIsNan, but `x != x` is true exactly for NaN, so compose
     // it from aclnnNeTensor. (`numpy.isnan` is in the Array API standard, so

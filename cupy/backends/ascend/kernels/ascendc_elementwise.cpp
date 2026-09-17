@@ -138,54 +138,10 @@ __aicore__ inline void BinaryKernel(GM_ADDR z, GM_ADDR x, GM_ADDR y,
     (void)base; (void)padded
 
 // ---------------------------------------------------------------------------
-// left_shift / right_shift: int32 x int32 -> int32
-//   dav_c220 has no vector tensor-tensor shift primitive, so use
-//   x * 2^b (resp. floor(x / 2^b)) via Exp/Mul/Cast. Exact for 0 <= b and
-//   results inside int32 range.
+// left_shift / right_shift were removed: cupy.left_shift / cupy.right_shift
+// are covered by the builtin aclnn registrations (aclop_LeftShift composes
+// x * 2**n on CANN 8.5, aclnnLeftShift on CANN 9.0).
 // ---------------------------------------------------------------------------
-struct LeftShiftI32Op {
-    __aicore__ inline void operator()(LocalTensor<int32_t>& dz, LocalTensor<int32_t>& dx,
-                                      LocalTensor<int32_t>& dy, uint32_t cnt, Scratch& scratch) {
-        LocalTensor<float> xf = scratch.a.Get<float>(SCRATCH);
-        LocalTensor<float> pf = scratch.b.Get<float>(SCRATCH);
-        LocalTensor<float> yf = scratch.c.Get<float>(SCRATCH);
-        Cast(xf, dx, RoundMode::CAST_NONE, cnt);
-        Cast(pf, dy, RoundMode::CAST_NONE, cnt);       // b as float
-        Muls(pf, pf, LN2, cnt);
-        Exp(pf, pf, cnt);                              // 2^b
-        Mul(yf, xf, pf, cnt);                          // x * 2^b
-        Cast(dz, yf, RoundMode::CAST_RINT, cnt);
-    }
-};
-
-extern "C" __global__ __aicore__ void ascendc_left_shift_i32(
-        GM_ADDR z, GM_ADDR o1, GM_ADDR x, GM_ADDR y, uint64_t n, uint64_t perBlock) {
-    (void)o1;
-    CUSTOM_KERNEL_GUARD;
-    BinaryKernel<int32_t, int32_t, int32_t>(z, x, y, myN, LeftShiftI32Op());
-}
-
-struct RightShiftI32Op {
-    __aicore__ inline void operator()(LocalTensor<int32_t>& dz, LocalTensor<int32_t>& dx,
-                                      LocalTensor<int32_t>& dy, uint32_t cnt, Scratch& scratch) {
-        LocalTensor<float> xf = scratch.a.Get<float>(SCRATCH);
-        LocalTensor<float> pf = scratch.b.Get<float>(SCRATCH);
-        LocalTensor<float> yf = scratch.c.Get<float>(SCRATCH);
-        Cast(xf, dx, RoundMode::CAST_NONE, cnt);
-        Cast(pf, dy, RoundMode::CAST_NONE, cnt);
-        Muls(pf, pf, -LN2, cnt);
-        Exp(pf, pf, cnt);                              // 2^-b
-        Mul(yf, xf, pf, cnt);                          // x / 2^b
-        Cast(dz, yf, RoundMode::CAST_FLOOR, cnt);      // arithmetic shift = floor
-    }
-};
-
-extern "C" __global__ __aicore__ void ascendc_right_shift_i32(
-        GM_ADDR z, GM_ADDR o1, GM_ADDR x, GM_ADDR y, uint64_t n, uint64_t perBlock) {
-    (void)o1;
-    CUSTOM_KERNEL_GUARD;
-    BinaryKernel<int32_t, int32_t, int32_t>(z, x, y, myN, RightShiftI32Op());
-}
 
 // ---------------------------------------------------------------------------
 // modf: float -> (frac, integral)

@@ -1029,6 +1029,7 @@ cdef extern from "../acl_math_ops.h" nogil:
     aclError aclop_InplaceBitwiseXorTensor(aclTensor* self, const aclTensor* other, aclrtStream stream)
     aclError aclop_BitwiseNot(const aclTensor* self, aclTensor* out, aclrtStream stream) # no inplace version
     aclError aclop_RightShift(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_LeftShift(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
 
     aclError aclop_LogicalAnd(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
     aclError aclop_LogicalXor(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
@@ -1188,6 +1189,11 @@ cdef void register_math_operators():
     # CANN has aclnnRightShift but no left-shift op.
     func_union.binary_op = aclop_RightShift
     register_acl_ufunc("ascend_right_shift", BINARY_OP, func_union)
+
+    # CANN 9.0 provides aclnnLeftShift; on 8.5 aclop_LeftShift composes
+    # x * 2**n from aclnnCast/Exp2/Mul (see acl_math_ops.h).
+    func_union.binary_op = aclop_LeftShift
+    register_acl_ufunc("ascend_left_shift", BINARY_OP, func_union)
 
     # 注册aclop_BitwiseAndScalar作为原地二元操作
     func_union.scalar_binary_op = aclop_BitwiseAndScalar

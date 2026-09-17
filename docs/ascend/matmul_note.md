@@ -242,7 +242,7 @@ INFO:root:building 'cupy._core._routines_linalg' extension              ✅
 > libop_common.so: undefined symbol: _ZN2ge19GetViewErrorCodeStrENS_13ViewErrorCodeE
 > ```
 > 实测该符号在库中定义于 `opcommon` 命名空间（`_ZN8opcommon19GetViewErrorCodeStr...`），
-> 而调用方期望 `ge` 命名空间。这是环境/版本问题（详见 `Memory.md` §3.3 与 `docs/Package.md` §3.4），
+> 而调用方期望 `ge` 命名空间。这是环境/版本问题（详见 `Memory.md` §3.3 与 `docs/ascend/Package.md` §3.4），
 > 现行版本已在 `cupy/__init__.py` 里用 `ctypes` 预加载 `liboptiling.so` 兜住，与本次代码修改无关。
 > 数值正确性需在带 NPU 的机器（910B）上跑 `pytest` 验证。
 

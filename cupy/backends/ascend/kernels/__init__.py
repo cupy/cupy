@@ -43,16 +43,10 @@ CUSTOM_UFUNCS = {
         'bin': 'elementwise', 'entry': 'ascendc_ldexp_f32',
         'n_out': 1, 'n_in': 2, 'dtypes': ('f',),
     },
-    # NOTE: CANN 9.0 ships aclnn_left_shift/right_shift headers; prefer the
-    # aclnn registration when available. These custom kernels cover 8.5.
-    'left_shift': {
-        'bin': 'elementwise', 'entry': 'ascendc_left_shift_i32',
-        'n_out': 1, 'n_in': 2, 'dtypes': ('i',),
-    },
-    'right_shift': {
-        'bin': 'elementwise', 'entry': 'ascendc_right_shift_i32',
-        'n_out': 1, 'n_in': 2, 'dtypes': ('i',),
-    },
+    # NOTE: left_shift / right_shift used to live here, but they are covered
+    # by the builtin aclnn registrations in acl_utils.pyx (aclop_LeftShift /
+    # aclop_RightShift), so the custom kernels were removed — a custom kernel
+    # registered here would silently overwrite the working builtin.
 }
 
 
