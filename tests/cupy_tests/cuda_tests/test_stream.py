@@ -207,6 +207,18 @@ class TestStream:
             assert cuda.get_current_stream() == s2
         assert cuda.get_current_stream() == s1
 
+    @testing.multi_gpu(2)
+    @restore_stream()
+    def test_bad_use_device(self):
+        # Test that a stray/bad `Device().use()` doesn't corrupt state.
+        with cuda.Device(0), cuda.Stream(null=True):
+            with cuda.Device(1), cuda.Stream(ptds=True):
+                with cuda.Stream(null=True):
+                    cuda.Device(0).use()  # switch current device!
+                # The above should have had no effect (except changing device)
+                assert cuda.get_current_stream(0) == cuda.Stream.null
+                assert cuda.get_current_stream(1) == cuda.Stream.ptds
+
     @restore_stream()
     def test_stream_thread(self):
         s1 = None
