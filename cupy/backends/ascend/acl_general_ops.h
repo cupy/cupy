@@ -465,18 +465,22 @@
 
     // `cupy_copy` register it as ufunc,  numpy has extra order=K args
     // cupy_copy / elementwise_copy: `out = src`.
-    // `aclnnInplaceCopy` requires both tensors to share a dtype, so when the
-    // dtypes differ (e.g. `ndarray.astype`) fall back to `aclnnCast`.
+    // NPU 实测 `aclnnInplaceCopy` 不可靠（同 dtype 拷贝也会失败），统一改用
+    // `aclnnCast`（同 dtype 时等价于纯拷贝，异 dtype 时完成转换）。
+    // src/out 任一 dtype 元数据未定义（ACL_DT_UNDEFINED）时直接拒绝，
+    // 否则 aclnnCast 第一段接口会以 EL0003 Invalid_Argument 深层报错。
     aclError aclop_Copy(const aclTensor* src, aclTensor* out, aclrtStream stream) {
         aclDataType src_dtype, out_dtype;
         aclGetDataType(src, &src_dtype);
         aclGetDataType(out, &out_dtype);
-        if (src_dtype != out_dtype) {
-            return aclIrregularOpRun(aclnnCastGetWorkspaceSize, aclnnCast, stream,
-                src, out_dtype, out);
+        if (src_dtype == ACL_DT_UNDEFINED || out_dtype == ACL_DT_UNDEFINED) {
+            std::cout << "Error:" << __FUNCTION__
+                      << " src/out dtype must be defined (src=" << src_dtype
+                      << ", out=" << out_dtype << ")" << std::endl;
+            return ACL_ERROR_INVALID_PARAM;
         }
-        return aclIrregularOpRun(aclnnInplaceCopyGetWorkspaceSize, aclnnInplaceCopy, stream,
-            out, src);
+        return aclIrregularOpRun(aclnnCastGetWorkspaceSize, aclnnCast, stream,
+            src, out_dtype, out);
     }
     // `argwhere` find nonzero index, similar as `nonzero`
     aclError aclop_Nonzero(const aclTensor* self, aclTensor* out, aclrtStream stream) {
