@@ -987,6 +987,52 @@ cdef class ufunc:
         else:
             raise NotImplementedError(f'`{self.name}.at` is not supported yet')
 
+    def reduce(self, array, axis=0, dtype=None, out=None, keepdims=False):
+        """Reduce ``array`` applying ufunc.
+
+        .. seealso::
+           :meth:`numpy.ufunc.reduce`
+
+        ASCEND: dispatched onto the registered aclnn reductions through the
+        ndarray methods instead of a compiled CUDA reduction kernel. Only the
+        ufuncs whose reduction has a registered aclnn counterpart are mapped.
+        """
+        if self.name == 'cupy_add':
+            return array.sum(axis, dtype, out, keepdims)
+        if self.name == 'cupy_multiply':
+            return array.prod(axis, dtype, out, keepdims)
+        if self.name == 'cupy_maximum':
+            return array.max(axis, out=out, keepdims=keepdims)
+        if self.name == 'cupy_minimum':
+            return array.min(axis, out=out, keepdims=keepdims)
+        raise NotImplementedError(f'`{self.name}.reduce` is not supported yet')
+
+    def accumulate(self, array, axis=0, dtype=None, out=None):
+        """Accumulate ``array`` applying ufunc.
+
+        .. seealso::
+           :meth:`numpy.ufunc.accumulate`
+
+        ASCEND: mapped onto the registered aclnn cumsum/cumprod.
+        """
+        if self.name == 'cupy_add':
+            return array.cumsum(axis, dtype, out)
+        if self.name == 'cupy_multiply':
+            return array.cumprod(axis, dtype, out)
+        raise NotImplementedError(
+            f'`{self.name}.accumulate` is not supported yet')
+
+    def reduceat(self, array, indices, axis=0, dtype=None, out=None):
+        """Reduce ``array`` applying ufunc with indices.
+
+        .. seealso::
+           :meth:`numpy.ufunc.reduceat`
+        """
+        if self.name == 'cupy_add':
+            return array._add_reduceat(indices, axis, dtype, out)
+        raise NotImplementedError(
+            f'`{self.name}.reduceat` is not supported yet')
+
 def _ufunc_doc_signature_formatter(ufunc, name):
     # Based on implementation in NumPy (numpy/_core/_internal.py)
 
