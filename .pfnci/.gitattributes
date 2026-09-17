@@ -54,6 +54,8 @@
 /linux/tests/cuda133.multi.sh linguist-generated
 /linux/tests/cuda13x-py314t.Dockerfile linguist-generated
 /linux/tests/cuda13x-py314t.sh linguist-generated
+/linux/tests/cuda13x-py315t.Dockerfile linguist-generated
+/linux/tests/cuda13x-py315t.sh linguist-generated
 /linux/tests/rocm-7-14.Dockerfile linguist-generated
 /linux/tests/rocm-7-14.sh linguist-generated
 /linux/tests/cuda-slow.Dockerfile linguist-generated
