@@ -26,6 +26,13 @@
 #include "aclnnop/aclnn_s_where.h"
 #include "aclnnop/aclnn_fill_scalar.h"
 
+// argmax/argmin are referenced by aclop_ArgMax/aclop_ArgMin/aclop_NanArgMax/
+// aclop_NanArgMin below. acl_math_ops.h also includes them, but the generated
+// acl_utils.cpp includes all backend headers and relies on include order, so
+// declare the dependency explicitly here.
+#include "aclnnop/aclnn_argmax.h"
+#include "aclnnop/aclnn_argmin.h"
+
 #include "./acl_op_template.h"
 #include "acl/acl.h"
 #include "acl_scalar_arg.h"
@@ -252,6 +259,78 @@ aclError aclop_NanMax(const aclTensor* self, const aclIntArray* dim, bool keepdi
     if (ret == ACL_SUCCESS) {
         ret = aclReductionOpRun(temp, out,
             aclnnMaxGetWorkspaceSize, aclnnMax, stream);
+    }
+    // aclTensorLike 会 aclrtMalloc 一块显存，必须用 DestroyTensorLike 成对释放
+    aclDestroyTensorLike(temp);
+    return ret;
+}
+
+// CANN has no aclnnNanArgMax/NanArgMin. Same composition as aclop_NanMax /
+// aclop_NanMin: substitute an infinity of the opposite sign for NaN, then run
+// the plain argmax/argmin. For integer/bool inputs there is no NaN, so the
+// plain op is applied directly (aclnnNanToNum only accepts floating point).
+aclError aclop_NanArgMax(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out,
+    const KwargsType& kwargs, aclrtStream stream) {
+    int64_t dim_index = dim->GetData()[0];  // same single-axis limitation as aclop_ArgMax
+    aclDataType dtype = ACL_DT_UNDEFINED;
+    aclError ret = aclGetDataType(self, &dtype);
+    if (ret != ACL_SUCCESS) {
+        return ret;
+    }
+    switch (dtype) {
+        case ACL_INT8: case ACL_UINT8:
+        case ACL_INT16: case ACL_UINT16:
+        case ACL_INT32: case ACL_UINT32:
+        case ACL_INT64: case ACL_UINT64:
+        case ACL_BOOL:
+            return aclReductionOpRun(self, out,
+                aclnnArgMaxGetWorkspaceSize, aclnnArgMax, stream, dim_index, keepdim);
+        default:
+            break;
+    }
+    aclTensor* temp = aclTensorLike(self, dtype);
+    if (temp == nullptr) {
+        return ACL_ERROR_INVALID_PARAM;
+    }
+    float scalar = -std::numeric_limits<float>::infinity();
+    ret = aclop_NanToNum(self, scalar, temp, stream);
+    if (ret == ACL_SUCCESS) {
+        ret = aclReductionOpRun(temp, out,
+            aclnnArgMaxGetWorkspaceSize, aclnnArgMax, stream, dim_index, keepdim);
+    }
+    // aclTensorLike 会 aclrtMalloc 一块显存，必须用 DestroyTensorLike 成对释放
+    aclDestroyTensorLike(temp);
+    return ret;
+}
+
+aclError aclop_NanArgMin(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out,
+    const KwargsType& kwargs, aclrtStream stream) {
+    int64_t dim_index = dim->GetData()[0];
+    aclDataType dtype = ACL_DT_UNDEFINED;
+    aclError ret = aclGetDataType(self, &dtype);
+    if (ret != ACL_SUCCESS) {
+        return ret;
+    }
+    switch (dtype) {
+        case ACL_INT8: case ACL_UINT8:
+        case ACL_INT16: case ACL_UINT16:
+        case ACL_INT32: case ACL_UINT32:
+        case ACL_INT64: case ACL_UINT64:
+        case ACL_BOOL:
+            return aclReductionOpRun(self, out,
+                aclnnArgMinGetWorkspaceSize, aclnnArgMin, stream, dim_index, keepdim);
+        default:
+            break;
+    }
+    aclTensor* temp = aclTensorLike(self, dtype);
+    if (temp == nullptr) {
+        return ACL_ERROR_INVALID_PARAM;
+    }
+    float scalar = std::numeric_limits<float>::infinity();
+    ret = aclop_NanToNum(self, scalar, temp, stream);
+    if (ret == ACL_SUCCESS) {
+        ret = aclReductionOpRun(temp, out,
+            aclnnArgMinGetWorkspaceSize, aclnnArgMin, stream, dim_index, keepdim);
     }
     // aclTensorLike 会 aclrtMalloc 一块显存，必须用 DestroyTensorLike 成对释放
     aclDestroyTensorLike(temp);

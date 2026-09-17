@@ -984,6 +984,17 @@ cdef aclError launch_reduction_op(str opname, sequence ins, sequence outs, objec
 
     tensors = _create_ops_vector(ins, outs)
 
+    # REDUCTION_OP 的 C++ 签名固定为 (self, dim, keepdim, out, kwargs, stream)，
+    # 即恰好 1 输入 1 输出。多输入/多输出的 ReductionKernel 若放行，tensors[1]
+    # 会拿到第二个输入（而非输出）并静默算错，必须在这里显式拒绝。
+    if tensors.size() != 2:
+        for t in tensors:
+            cupy_destroy_acl_tensor(t)
+        raise NotImplementedError(
+            _no_ascend_impl_msg(opname)
+            + f" (reduction requires exactly 1 input and 1 output, "
+              f"got {len(ins)} input(s) / {len(outs)} output(s))")
+
     typ = type(axes) 
     if hasattr(axes, 'size') and hasattr(axes, 'push_back'):
         # dim/axes info from `shape_t` which is `vector.vector[Py_ssize_t]`
@@ -1506,6 +1517,8 @@ cdef extern from "../acl_reduction_ops.h" nogil:
     aclError aclop_NanMax(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, const KwargsType& kwargs, aclrtStream stream)
     aclError aclop_NanProd(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, const KwargsType& kwargs, aclrtStream stream)
     aclError aclop_CountNonNaN(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_NanArgMax(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_NanArgMin(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, const KwargsType& kwargs, aclrtStream stream)
 
 cdef void register_reduction_operators():
     cdef FuncPtrUnion func_union
@@ -1553,6 +1566,28 @@ cdef void register_reduction_operators():
     # (kernel name: cupy_count_non_nan -> ascend_count_non_nan; used by _nanvar)
     func_union.reduction_op = aclop_CountNonNaN
     register_acl_ufunc("ascend_count_non_nan", REDUCTION_OP, func_union)
+    # `*_with_dtype` / `*_complex_dtype` kernels share the same aclnn op as the
+    # auto-dtype variants: the accumulator/output dtype is taken from the out
+    # tensor inside aclop_Sum/aclop_Prod/aclop_Nansum via GetDataType(out, self).
+    # (kernel names: cupy_sum_with_dtype / cupy_prod_with_dtype /
+    # cupy_nansum_with_dtype / cupy_nansum_complex_dtype /
+    # cupy_nanprod_complex_dtype -> ascend_*)
+    func_union.reduction_op = aclop_Sum
+    register_acl_ufunc("ascend_sum_with_dtype", REDUCTION_OP, func_union)
+    func_union.reduction_op = aclop_Prod
+    register_acl_ufunc("ascend_prod_with_dtype", REDUCTION_OP, func_union)
+    func_union.reduction_op = aclop_Nansum
+    register_acl_ufunc("ascend_nansum_with_dtype", REDUCTION_OP, func_union)
+    register_acl_ufunc("ascend_nansum_complex_dtype", REDUCTION_OP, func_union)
+    func_union.reduction_op = aclop_NanProd
+    register_acl_ufunc("ascend_nanprod_complex_dtype", REDUCTION_OP, func_union)
+    # composed: nan_to_num(-inf) -> argmax, i.e. NumPy's nanargmax (CANN has no
+    # aclnnNanArgMax); integer/bool inputs skip the substitution (no NaN).
+    func_union.reduction_op = aclop_NanArgMax
+    register_acl_ufunc("ascend_nanargmax", REDUCTION_OP, func_union)
+    # composed: nan_to_num(+inf) -> argmin, i.e. NumPy's nanargmin
+    func_union.reduction_op = aclop_NanArgMin
+    register_acl_ufunc("ascend_nanargmin", REDUCTION_OP, func_union)
 
 
 # general ops
