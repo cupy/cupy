@@ -197,6 +197,13 @@
         "cuda131",
         "py314t"
     ],
+    "cupy.linux.cuda13x-py315t": [
+        "@nightly",
+        "full",
+        "linux",
+        "cuda134",
+        "py315t"
+    ],
     "cupy.linux.cuda-slow": [
         "slow",
         "linux"
@@ -313,6 +320,18 @@
         "mini",
         "windows",
         "cuda134"
+    ],
+    "cupy.win.cuda13x-py314t": [
+        "@nightly",
+        "full",
+        "windows",
+        "py314t"
+    ],
+    "cupy.win.cuda13x-py315t": [
+        "@nightly",
+        "full",
+        "windows",
+        "py315t"
     ],
     "cupy.linux.cuda-rapids": [
         "@nightly",

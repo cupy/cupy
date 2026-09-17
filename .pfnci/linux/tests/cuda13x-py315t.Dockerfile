@@ -30,8 +30,8 @@ ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/libcusparseLt/13:${LD_LIBRARY_PATH
 RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
-RUN PYTHON_CONFIGURE_OPTS="--disable-shared" pyenv install 3.15.0rc2 && \
-    pyenv global 3.15.0rc2 && \
+RUN PYTHON_CONFIGURE_OPTS="--disable-shared" pyenv install 3.15.0rc2t && \
+    pyenv global 3.15.0rc2t && \
     pip install -U setuptools pip wheel && \
     pip install -U google-cloud-storage
 
