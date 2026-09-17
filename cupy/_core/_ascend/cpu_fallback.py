@@ -76,6 +76,11 @@ FALLBACKS: Dict[str, Callable[..., Any]] = {
     'linalg.eigvals': numpy.linalg.eigvals,
     'linalg.eigh': numpy.linalg.eigh,
     'linalg.eigvalsh': numpy.linalg.eigvalsh,
+    # percentile/quantile 的 'linear'/'midpoint' 插值走内联
+    # cupy_percentile_weightnening ElementwiseKernel（raw CUDA body），
+    # Ascend 后端无法执行，整个 quantile 改在 host 端用 NumPy 算
+    # （cupy._statistics.order._quantile_unchecked 接线）。
+    'statistics.quantile': numpy.quantile,
 }
 
 _ASCEND: Optional[bool] = None

@@ -182,6 +182,24 @@ def _quantile_unchecked(a, q, axis=None, out=None,
                         overwrite_input=False,
                         method='linear',
                         keepdims=False):
+    # Ascend: 'linear' / 'midpoint' reach the inline
+    # `cupy_percentile_weightnening` ElementwiseKernel below (a raw CUDA-style
+    # body using `_ind.get()`), which the Ascend backend cannot compile or
+    # run. Fall back to the host NumPy implementation for the whole call.
+    # This covers both percentile() and quantile(), which funnel through
+    # this helper. Note the fallback re-does the sort on host, so it suits
+    # small/medium inputs.
+    if method in ('linear', 'midpoint'):
+        try:
+            from cupy._core._ascend import cpu_fallback
+        except ImportError:
+            cpu_fallback = None
+        if cpu_fallback is not None and cpu_fallback.active():
+            return cpu_fallback.call(
+                'statistics.quantile', a, q, axis=axis, out=out,
+                overwrite_input=overwrite_input, method=method,
+                keepdims=keepdims)
+
     dtype = cupy.result_type(a, q)
     q = cupy.asarray(q)
 
