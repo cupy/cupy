@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import glob
 import os
-from setuptools import setup
 import sys
+
+from setuptools import setup
+from setuptools.dist import Distribution
 
 source_root = os.path.abspath(os.path.dirname(__file__))
 sys.path.append(os.path.join(source_root, 'install'))
@@ -15,6 +17,58 @@ from cupy_builder import cupy_setup_build  # NOQA
 
 ctx = cupy_builder.Context(source_root)
 cupy_builder.initialize(ctx)
+
+
+# Base distribution name used for the Ascend build. `pyproject.toml` keeps
+# `cupy` for the CUDA/HIP/CPU builds; the Ascend distribution adds the CANN
+# release train as a suffix (`numpy-ascend-cann85`, `numpy-ascend-cann90`),
+# mirroring upstream's `cupy-cuda11x` / `cupy-cuda12x` scheme so that
+# `pip list` / `pip freeze` / `pip uninstall` can tell the trains apart. The
+# import package is `cupy` on every backend.
+ASCEND_DISTRIBUTION_NAME = 'numpy-ascend'
+
+
+def _ascend_distribution_name() -> str:
+    """Return e.g. ``'numpy-ascend-cann85'`` for the active CANN release train.
+
+    Falls back to the bare ``'numpy-ascend'`` when the CANN version could not be
+    determined (no platform tag to derive the suffix from).
+    """
+    tag = cupy_setup_build.get_wheel_platform_tag(ctx)
+    if not tag:
+        return ASCEND_DISTRIBUTION_NAME
+    # 'cann8.5' -> 'cann85' (a dot is not a valid PEP 508 name character)
+    return f'{ASCEND_DISTRIBUTION_NAME}-{tag.replace(".", "")}'
+
+
+class _BackendAwareDistribution(Distribution):
+    """Rename the distribution when building for Ascend.
+
+    * Wheels and editable installs are named after the CANN release train,
+      e.g. ``numpy-ascend-cann85``.
+    * ``sdist`` is deliberately left as the bare ``numpy-ascend``: the source
+      tarball holds Cython sources only (``MANIFEST.in`` excludes the generated
+      ``.cpp``) and no CANN-specific artifact, so one tarball can build wheels
+      for every CPython and every CANN release train.
+
+    PEP 621 forbids a dynamic ``[project].name``, and a static ``[project]``
+    value silently wins over ``setup(name=...)``, so the rename has to be done
+    on the ``Distribution`` object itself. setuptools applies the ``[project]``
+    table in ``parse_config_files()``, hence the override is placed *after* that
+    call (doing it in ``__init__`` would be overwritten).
+    """
+
+    def parse_config_files(self, *args, **kwargs):
+        super().parse_config_files(*args, **kwargs)
+        if ctx.get_backend_name() != 'ascend':
+            return
+        if ctx.setup_command == 'sdist':
+            # One tarball for every CPython/CANN combination: keep the bare
+            # name instead of falling back to `[project].name` (which is
+            # `cupy`, the CUDA/HIP/CPU name).
+            self.metadata.name = ASCEND_DISTRIBUTION_NAME
+            return
+        self.metadata.name = _ascend_distribution_name()
 # ASCEND: temp disable third-party submodule, by add dlpack.h into source 
 # if not cupy_builder.preflight_check(ctx):
 #     sys.exit(1)
@@ -71,7 +125,11 @@ if ctx.long_description_path is not None:
 # ASCEND: append the backend's SDK tag (e.g. `cann8.5`) to the wheel platform
 # tag so that wheels built against mutually-incompatible CANN releases can not
 # be confused with one another, giving e.g.
-#   cupy-14.0.0a1-cp311-cp311-manylinux_2_17_x86_64.cann8.5.whl
+#   numpy_ascend_cann85-14.0.0a1-cp311-cp311-manylinux_2_17_x86_64.cann8.5.whl
+# (a CUDA/HIP build of the same tree still produces `cupy-14.0.0a1-...whl`, and
+# the `sdist` command produces the CANN-agnostic `numpy_ascend-14.0.0a1.tar.gz`;
+# see `_BackendAwareDistribution` above). Either way the importable packages are
+# `cupy`/`cupyx`/`cupy_backends`.
 _sdk_tag = cupy_setup_build.get_wheel_platform_tag(ctx)
 
 
@@ -105,4 +163,5 @@ setup(
     zip_safe=False,
     ext_modules=ext_modules,
     cmdclass=_make_cmdclass(),
+    distclass=_BackendAwareDistribution,
 )

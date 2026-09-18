@@ -568,9 +568,20 @@ def _get_include_dir_from_conda_or_wheel(major: int, minor: int) -> list[str]:
 
 
 def _detect_duplicate_installation():
-    # List of all CuPy packages, including out-dated ones.
+    # List of all CuPy packages, including out-dated ones, plus the
+    # distributions this fork ships. The Ascend builds are named after the CANN
+    # release train -- `numpy-ascend-cann85`, `numpy-ascend-cann90`, mirroring
+    # upstream's `cupy-cuda11x`/`cupy-cuda12x` scheme (see
+    # `ASCEND_DISTRIBUTION_NAME` in setup.py) -- while bare `numpy-ascend` is
+    # the CANN-agnostic name carried by the source tarball. The CUDA/HIP builds
+    # keep `cupy`. Every one of them provides the same top-level `cupy` package,
+    # so any two installed together shadow each other's files.
     known = (
         'cupy',
+        'numpy-ascend',
+        'numpy-ascend-cann82',
+        'numpy-ascend-cann85',
+        'numpy-ascend-cann90',
         'cupy-cuda102',
         'cupy-cuda110',
         'cupy-cuda111',

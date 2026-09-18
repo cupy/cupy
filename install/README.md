@@ -378,6 +378,15 @@ platform tag, and `Backend.get_wheel_metadata()` records the exact SDK version
 into `cupy/.data/_wheel.json`. Both are consumed by `setup.py`
 (`bdist_wheel` cmdclass) and `cupy/backends/ascend/__init__.py` respectively.
 
+The distribution *name* is also backend-dependent: `[project].name` in
+`pyproject.toml` is `cupy` (CUDA/HIP/CPU builds), while an Ascend build renames
+itself in `setup.py` (`_BackendAwareDistribution`) to
+`numpy-ascend-<platform tag without the dot>`, i.e. `numpy-ascend-cann85` /
+`numpy-ascend-cann90` — mirroring upstream's `cupy-cuda11x` scheme. The `sdist`
+command is exempt and keeps the bare `numpy-ascend`, because a source tarball is
+not tied to a CANN release (`docs/ascend/Package.md` §2.9). The import packages
+(`cupy`, `cupyx`, `cupy_backends`) never change, so `import cupy` works on both.
+
 Producing the two Ascend wheels:
 
 ```sh
@@ -385,17 +394,19 @@ Producing the two Ascend wheels:
 export ASCEND_HOME_PATH=/usr/local/Ascend/ascend-toolkit/latest   # CANN 8.5.x
 export CUPY_INSTALL_USE_ASCEND=1
 python -m build --wheel
-# -> cupy-<ver>-cp311-cp311-manylinux_2_17_x86_64.cann8.5.whl
+# -> numpy_ascend_cann85-<ver>-cp311-cp311-manylinux_2_17_x86_64.cann8.5.whl
 
 # ---- CANN 9.0 ----
 export ASCEND_HOME_PATH=/usr/local/Ascend/ascend-toolkit/9.0      # CANN 9.0.x
 export CUPY_INSTALL_USE_ASCEND=1
 python -m build --wheel
-# -> cupy-<ver>-cp311-cp311-manylinux_2_17_x86_64.cann9.0.whl
+# -> numpy_ascend_cann90-<ver>-cp311-cp311-manylinux_2_17_x86_64.cann9.0.whl
 ```
 
-Both wheels install into the same environment without clashing (different
-platform tags), and each refuses to silently run against the wrong CANN:
+The two wheels are distinct artifacts to `pip` (different distribution names
+*and* platform tags), but they must **not** be installed into the same
+environment: both provide the top-level `cupy` package and would overwrite each
+other's files. Each wheel refuses to silently run against the wrong CANN:
 
 ```python
 import cupy                      # warns if CANN release train differs

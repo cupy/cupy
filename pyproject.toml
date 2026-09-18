@@ -5,8 +5,14 @@ requires = ["setuptools>=77", "wheel", "Cython>=3,<3.2", "fastrlock>=0.5"]
 build-backend = "setuptools.build_meta"
 
 [project]
+# Default (CUDA / HIP / CPU-stub) distribution name. PEP 621 forbids a dynamic
+# `name`, so the Ascend build renames itself to `numpy-ascend` from `setup.py`
+# (`distclass`, see `cupy_setup_build`-adjacent code there). Either way the
+# *import* packages stay `cupy`/`cupyx`/`cupy_backends` — the same trick as
+# scikit-learn/sklearn or opencv-python/cv2 — so existing `import cupy` code
+# keeps working.
 name = "cupy"
-description = "CuPy: NumPy & SciPy for GPU"
+description = "NumPy & SciPy for GPU and Ascend NPU (CuPy-compatible)"
 authors = [{ name = "Seiya Tokui", email = "tokui@preferred.jp" }]
 maintainers = [{ name = "CuPy Developers" }]
 license = { text = "MIT" }
@@ -48,16 +54,19 @@ dynamic = [
 "test" = ["packaging", "pytest>=7.2", "hypothesis>=6.37.2,<6.55.0", "mpmath"]
 
 [project.urls]
-"Homepage" = "https://cupy.dev/"
-"Documentation" = "https://docs.cupy.dev/"
-"Bug Tracker" = "https://github.com/cupy/cupy/issues"
-"Source Code" = "https://github.com/cupy/cupy"
+"Homepage" = "https://github.com/qingfengxia/numpy-ascend"
+"Documentation" = "https://github.com/qingfengxia/numpy-ascend/tree/ascend/docs"
+"Bug Tracker" = "https://github.com/qingfengxia/numpy-ascend/issues"
+"Source Code" = "https://github.com/qingfengxia/numpy-ascend"
 
 [tool.setuptools]
 # Do not include files listed in MANIFEST.in to wheels.
 include-package-data = false
 
 [tool.setuptools.packages.find]
+# Import packages (NOT the distribution name). Renaming the distribution to
+# `numpy-ascend` on Ascend deliberately leaves these untouched, so
+# `import cupy` works on every backend.
 include = ["cupy*", "cupyx*", "cupy_backends*"]
 
 [tool.setuptools.dynamic]
