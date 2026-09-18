@@ -666,6 +666,22 @@ from cupy._math.arithmetic import remainder as mod  # NOQA
 from cupy._math.arithmetic import subtract  # NOQA
 from cupy._math.arithmetic import true_divide  # NOQA
 
+# `absolute` / `sqrt` are defined as public module-level names in
+# `_routines_math.pyx` (ufuncs `cupy_absolute` / `cupy_sqrt`); `power` is
+# re-exported above from `cupy._math.arithmetic`. The aclnn registrations use
+# the same spelling (`ascend_absolute` / `ascend_sqrt` / `ascend_power`), so
+# these dispatch straight through to aclnnAbs / aclnnSqrt / aclnnPow.
+from cupy._core._routines_math import absolute  # NOQA
+from cupy._core._routines_math import sqrt  # NOQA
+
+from cupy._math.misc import sign  # NOQA
+from cupy._math.misc import square  # NOQA
+
+# NumPy-compatible aliases: `np.abs` is the historical spelling of
+# `np.absolute`, and `np.pow` was added in NumPy 2.0 for `np.power`.
+abs = absolute  # NOQA
+pow = power  # NOQA
+
 # -----------------------------------------------------------------------------
 # Miscellaneous routines
 # -----------------------------------------------------------------------------
