@@ -90,6 +90,76 @@ def vdot(a, b):
     return _core.tensordot_core(a, b, None, 1, 1, a.size, ())
 
 
+def vecdot(x1, x2, /, out=None, *, axis=-1, keepdims=False):
+    """Computes the (vector) dot product of two arrays along ``axis``.
+
+    This is the NumPy 2.0 / Array API ``vecdot``: it contracts the given
+    ``axis`` (the last one by default) of two broadcastable arrays,
+    conjugating ``x1`` for complex dtypes, i.e. it is the batched form of
+    :func:`cupy.vdot`.
+
+    It is composed from already-dispatched primitives
+    (``moveaxis`` + ``conj`` + ``matmul``), so no dedicated aclnn operator is
+    needed; the contraction runs through ``ascend_matmul``.
+
+    Args:
+        x1 (cupy.ndarray): The first argument. Conjugated when complex.
+        x2 (cupy.ndarray): The second argument.
+        out (cupy.ndarray): Optional output array.
+        axis (int): The axis along which the dot product is taken.
+            Defaults to ``-1``.
+        keepdims (bool): If ``True``, the reduced axis is kept with size one.
+
+    Returns:
+        cupy.ndarray: The vector dot products.
+
+    .. seealso:: :func:`numpy.vecdot`, :func:`cupy.vdot`
+    """
+    x1 = cupy.asarray(x1)
+    x2 = cupy.asarray(x2)
+    if x1.ndim == 0 or x2.ndim == 0:
+        raise ValueError(
+            'vecdot: both inputs must be at least 1-dimensional, '
+            'got ndim {} and {}'.format(x1.ndim, x2.ndim))
+
+    ndim = max(x1.ndim, x2.ndim)
+    # Left-pad the shorter input with length-1 axes so that NumPy's
+    # right-aligned broadcasting rules apply.
+    if x1.ndim < ndim:
+        x1 = x1[(numpy.newaxis,) * (ndim - x1.ndim)]
+    if x2.ndim < ndim:
+        x2 = x2[(numpy.newaxis,) * (ndim - x2.ndim)]
+
+    if axis < 0:
+        axis += ndim
+    if not 0 <= axis < ndim:
+        raise ValueError(
+            'axis {} is out of bounds for arrays of dimension {}'.format(
+                axis, ndim))
+    if x1.shape[axis] != x2.shape[axis]:
+        raise ValueError(
+            'x1 and x2 must have the same size along axis {}: '
+            '{} vs {}'.format(axis, x1.shape[axis], x2.shape[axis]))
+
+    # Move the contracted axis last, then contract via matmul:
+    # [..., 1, n] @ [..., n, 1] -> [..., 1, 1]
+    x1 = cupy.moveaxis(x1, axis, -1)
+    x2 = cupy.moveaxis(x2, axis, -1)
+    if x1.dtype.kind == 'c':
+        x1 = x1.conj()
+    res = x1[..., None, :] @ x2[..., None]
+    res = res[..., 0, 0]
+
+    if keepdims:
+        shape = list(res.shape)
+        shape.insert(axis, 1)
+        res = res.reshape(shape)
+    if out is not None:
+        out[...] = res
+        return out
+    return res
+
+
 def cross(a, b, axisa=-1, axisb=-1, axisc=-1, axis=None):
     """Returns the cross product of two vectors.
 

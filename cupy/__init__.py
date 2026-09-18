@@ -296,6 +296,9 @@ from cupy._manipulation.transpose import moveaxis  # NOQA
 from cupy._manipulation.transpose import rollaxis  # NOQA
 from cupy._manipulation.transpose import swapaxes  # NOQA
 from cupy._manipulation.transpose import transpose  # NOQA
+# Array API: transpose of the two innermost axes (equivalent to ``x.mT``).
+# Pure host-side composition over swapaxes, no kernel needed.
+from cupy._manipulation.transpose import matrix_transpose  # NOQA
 
 # NumPy 2.0 aliases
 permute_dims = transpose
@@ -504,6 +507,10 @@ from numpy import printoptions  # NOQA
 #TODO (ASCEND)
 from cupy._core import matmul
 from cupy._core import dot
+# tensordot / vecdot are composed on top of the dispatched dot/matmul path
+# (`_core.tensordot_core` routes to ascend_dot / ascend_matmul on Ascend).
+from cupy.linalg._product import tensordot  # NOQA
+from cupy.linalg._product import vecdot  # NOQA
 
 # -----------------------------------------------------------------------------
 # Logic functions
