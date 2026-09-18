@@ -36,6 +36,11 @@
 7) 算子解析: numpy 用顶层 API; cupy 先查顶层, 再按 `_CUPY_SUBMODULES` 回退到子模块
    —— 本分支 `cupy/__init__.py` 裁剪过 (如 `cupy.absolute` 只在 `cupy._math.misc`),
    回退生效时 note 列会标出 `顶层未导出 (via cupy.xxx)`, 便于后续补齐导出。
+8) 内存 (长跑稳定性): 用例之间把结果数组真正释放, 并把 cupy pool 里的空闲块归还
+   驱动 (`_free_blocks()`); 换组时用 `DataCache.release(keep=...)` 丢掉后面不再用到
+   的输入数据。否则长跑时 10M 大数组会因为"设备上没有连续段"而分配失败 ——
+   本脚本的用例形状跨度很大 (10M 向量 / 4K 矩阵 / `tile`/`repeat`/`stack` 的 2x
+   展开 / `astype` 的 8 字节结果), pool 里会攒下一堆尺寸对不上的空闲块。
 
 ================================================================================
 用法
@@ -388,6 +393,20 @@ class DataCache:
             self._device[key] = tuple(cp.asarray(x) for x in host)
         return self._device[key]
 
+    def release(self, keep: Optional[set] = None) -> None:
+        """丢弃不再需要的缓存数据 (host 与 device 两侧)。
+
+        Args:
+            keep: 仍需保留的 ``(dtype, where)`` 集合; ``None`` 表示全部释放。
+
+        用途是长跑时的内存上限: 10M 向量与 4K 矩阵各 dtype 全缓存下来, host+device
+        可以到 GB 级, 而设备内存才是稀缺资源 —— 按"剩余用例还需要什么"裁剪, 既不
+        影响后续命中率, 也不会让缓存把显存占满, 导致下一次 10M 分配找不到连续段。
+        """
+        for store in (self._host, self._device):
+            for key in [k for k in store if keep is None or k not in keep]:
+                del store[key]
+
 
 # ---------------------------------------------------------------------------
 # 计时 / 调用 / 校验
@@ -396,6 +415,51 @@ def _sync() -> None:
     """等待 NPU 上所有已提交任务完成。"""
     if xpu is not None:
         xpu.Stream.null.synchronize()
+
+
+def _free_blocks() -> None:
+    """把 cupy pool 里已释放的空闲块归还驱动。
+
+    cupy 的分配器会保留 ``del`` 掉的数组以复用同尺寸请求, 但本脚本的用例形状跨度
+    很大 (10M 向量 / 4K 矩阵 / 2x 展开 / 8 字节结果), pool 里会攒下大量尺寸对不上
+    的空闲块 —— 不归还给驱动, 下一次 10M 分配仍可能因为拿不到连续段而失败。
+    后端没有该能力 (或没有设备) 时静默跳过。
+
+    注意这不是万能的: 被切分过的块要等各段合并回整体才会真正释放, 所以
+    `_print_memory` 看到的 free 可能仍有残留 —— 这也是为什么同时要裁剪
+    `DataCache` (活着的缓存数组无论如何都不会被归还)。
+    """
+    if cp is None:
+        return
+    for name in ("get_default_memory_pool", "get_default_pinned_memory_pool"):
+        getter = getattr(cp, name, None)
+        if getter is None:
+            continue
+        try:
+            getter().free_all_blocks()
+        except Exception:  # pragma: no cover - 取决于后端能力
+            pass
+
+
+def _pool_bytes() -> Optional[tuple]:
+    """返回 (已占用, 空闲, 总量) 字节数; 取不到时返回 None。"""
+    if cp is None:
+        return None
+    try:
+        pool = cp.get_default_memory_pool()
+        return pool.used_bytes(), pool.free_bytes(), pool.total_bytes()
+    except Exception:  # pragma: no cover - 取决于后端能力
+        return None
+
+
+def _print_memory(label: str) -> None:
+    """打印一次设备内存池占用 (长跑时用来判断显存是否被缓存/空闲块占住)。"""
+    stat = _pool_bytes()
+    if stat is None:
+        return
+    used, free, total = (v / (1024 * 1024) for v in stat)
+    print(f"{label}: device pool used={used:.1f} MB  free={free:.1f} MB  "
+          f"total={total:.1f} MB")
 
 
 def _bind(spec: OpSpec, xp: XpNamespace, a, b, c) -> tuple[Callable, str]:
@@ -569,6 +633,9 @@ def run_case(spec: OpSpec, dtype_label: str, where: str,
         if not ok:
             row.status = "MISMATCH"
             row.note = f"{row.note}; {why}" if row.note else why
+    # 结果数组到此用完 (此前要留着做 allclose): 显式释放, 让调用方的
+    # `_free_blocks()` 能真正把它们交还驱动, 而不是留在 pool 里占坑。
+    del cpu_out, xpu_out
     return row
 
 
@@ -753,6 +820,14 @@ def _selected_cases(args) -> list[tuple[str, OpSpec, str, str]]:
     return cases
 
 
+def _remaining_keys(cases: list, start: int) -> set:
+    """``cases[start:]`` 里还会用到的 ``(dtype, where)`` 集合。
+
+    换组时据此裁剪 ``DataCache``: 只丢掉后面确实不再需要的数据, 不会影响命中率。
+    """
+    return {(dtype_label, where) for _, _, dtype_label, where in cases[start:]}
+
+
 def device_probe() -> tuple[bool, str]:
     """本机是否可真正执行 NPU 运算。"""
     if cp is None:
@@ -794,20 +869,30 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     results: list[Result] = []
     last_category = None
+    _print_memory("device pool 初始")
     try:
-        for category, spec, dtype_label, where in cases:
+        for index, (category, spec, dtype_label, where) in enumerate(cases):
             if category != last_category:
                 if last_category is not None:
                     print()
+                    # 换组: 丢掉后面不再用到的输入数据, 别让缓存把显存占满
+                    cache.release(keep=_remaining_keys(cases, index))
+                    _print_memory(f"device pool [{last_category} 跑完]")
                 last_category = category
             row = run_case(spec, dtype_label, where, cache, args)
             row.category = category
             results.append(row)
             _print_result_row(row)
             sys.stdout.flush()
+            # 本用例的结果数组已在 run_case 内 del; 这里把空闲块交还驱动,
+            # 下一次 10M 分配才拿得到连续显存 (长跑稳定性, 见文件头 §8)
+            _free_blocks()
     except KeyboardInterrupt:
         print("\n中断, 输出已完成部分的结果。", file=sys.stderr)
+        cache.release()
+        _free_blocks()
 
+    _print_memory("device pool 结束")
     code = _print_summary(results, args) if results else 0
     if args.csv and results:
         _write_csv(args.csv, results)
