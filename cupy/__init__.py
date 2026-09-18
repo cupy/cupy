@@ -245,8 +245,11 @@ from cupy._creation.ranges import ogrid  # NOQA
 # from cupy._creation.matrix import diag  # NOQA
 # from cupy._creation.matrix import diagflat  # NOQA
 # from cupy._creation.matrix import tri  # NOQA
-# from cupy._creation.matrix import tril  # NOQA
-# from cupy._creation.matrix import triu  # NOQA
+# tril/triu are composed host-side from `tri` + `where` (both dispatched), and
+# map onto aclnnTril / aclnnTriu via the `ascend_tril` / `ascend_triu`
+# registrations for the direct kernel path.
+from cupy._creation.matrix import tril  # NOQA
+from cupy._creation.matrix import triu  # NOQA
 # from cupy._creation.matrix import vander  # NOQA
 
 # -----------------------------------------------------------------------------
@@ -703,6 +706,10 @@ from cupy._padding.pad import pad  # NOQA
 # Sorting, searching, and counting
 # -----------------------------------------------------------------------------
 from cupy._sorting.count import count_nonzero  # NOQA
+from cupy._sorting.search import argmax  # NOQA
+from cupy._sorting.search import argmin  # NOQA
+from cupy._sorting.search import nonzero  # NOQA
+from cupy._sorting.search import where  # NOQA
 
 # ASCEND TODO: search/searchsorted and the remaining sort kernels are not
 # registered on Ascend yet; only `sort` is available.
