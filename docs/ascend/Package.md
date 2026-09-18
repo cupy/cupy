@@ -429,6 +429,89 @@ Checklist:
 | Sources + headers present | `tar tzf dist/numpy_ascend-*.tar.gz '*.pyx'` → non-empty |
 | Build system can fetch Cython | `grep Cython pyproject.toml` |
 
+### 2.10 Custom-kernel fatbins: prebuilt per SoC, JIT only as a fallback
+
+The sdist (§2.9) covers every CPython and every CANN train, and a *binary* wheel
+also covers every Ascend model of a matching CANN train — every operator is
+dispatched by name to an `aclnn` entry point that the installed CANN resolves at
+runtime, so the wheel itself is model-agnostic.
+
+The built-in **custom AscendC kernels** are the exception
+(`cupy/backends/ascend/kernels/*.cpp`, the B-tier ops without an aclnn
+equivalent). They are not library calls: each compiles to an aicore fatbin, and
+the aicore ISA is SoC-specific, so a fatbin only runs on the model it was built
+for. A build machine normally has **no NPU** to probe the target SoC from, which
+is why those kernels used to be JIT-compiled on first import.
+
+The wheel now carries them pre-compiled, built by `setup.py build_ext`
+(`AscendBackend.prebuild_artifacts()` — see `install/cupy_builder/backends/`):
+
+```sh
+export CUPY_INSTALL_USE_ASCEND=1
+export ASCEND_HOME_PATH=/usr/local/Ascend/ascend-toolkit/latest
+export CUPY_ASCEND_KERNEL_SOCS=Ascend910B4,Ascend310P3   # default: CUPY_ASCEND_SOC
+python -m build --wheel
+# build_ext writes, and copies into the wheel:
+#   cupy/backends/ascend/kernels/_aot/ascendc_elementwise_Ascend910B4.o
+#   cupy/backends/ascend/kernels/_aot/ascendc_elementwise_Ascend310P3.o
+```
+
+`kernels.ensure_built()` then resolves each kernel in this order:
+
+| # | Lookup | Action |
+|---|---|---|
+| 1 | `_aot/<source stem>_<soc>.o` | load it — **bisheng is never invoked** (the point of the AOT step) |
+| 2 | `_build/<source stem>_<soc>.o` | JIT-compile with bisheng and cache it (first import pays the cost) |
+
+The SoC is part of the **file name**, so one directory — or a plain
+`unzip -l` of the wheel — can hold several hardware models without ambiguity.
+Note the artifact is named after the *source file* stem, not the registry key:
+`ascendc_elementwise.cpp` → `ascendc_elementwise_Ascend910B4.o`.
+
+| Variable | Side | Meaning |
+|---|---|---|
+| `CUPY_ASCEND_KERNEL_SOCS` | build | SoCs to prebuild, comma/space separated. Default: `CUPY_ASCEND_SOC` |
+| `CUPY_ASCEND_SOC` | build + run | Target SoC (default `Ascend910B4`). **Must agree between the two**, otherwise the wheel's fatbins do not match and the JIT path is taken |
+| `CUPY_ASCEND_AOT_KERNELS=0` | build | Ship sources only, exactly as before this feature |
+| `CUPY_ASCEND_DISABLE_CUSTOM_KERNELS` | run | Do not register the custom kernels at all |
+
+* Prebuilding needs **bisheng plus the AscendC headers** of the local CANN, but
+  **no NPU**: bisheng cross-compiles (`--cce-soc-version=<soc>`). A missing
+  bisheng or a compile error is a warning, never a failed build — the wheel then
+  JIT-compiles on first use, which is the pre-existing behaviour.
+* List a fatbin for every model you intend to support. An **uncovered SoC** falls
+  back to JIT on the *target* machine, which needs bisheng there *and* a writable
+  `kernels/_build/` next to the installed package; with a root-owned
+  `site-packages` that write fails, custom kernels are disabled with a warning,
+  and the affected ops report `no implementation registered`.
+* The blast radius is small: only the ops in `kernels.CUSTOM_UFUNCS` (B-tier, no
+  aclnn counterpart) use these fatbins, so a missing one degrades those ops
+  rather than the package.
+* The `_aot` lookup is by **existence only**, not by mtime (inside a wheel both
+  files carry the extraction time, so mtime would be arbitrary — and a
+  read-only `site-packages` can not write a JIT cache anyway). So in a **source
+  checkout**, `build_ext` keeps `_aot` fresh but editing
+  `cupy/backends/ascend/kernels/*.cpp` without rebuilding leaves a stale fatbin
+  in place: re-run `python setup.py build_ext --inplace`, or remove
+  `kernels/_aot/`, after editing a kernel.
+
+Verify:
+
+```sh
+unzip -l dist/*.whl | grep kernels/_aot     # one fatbin per requested SoC
+python -c "from cupy.backends.ascend.kernels import aot_socs; print(aot_socs())"
+# -> ['Ascend910B4']   (empty on a source build, or with CUPY_ASCEND_AOT_KERNELS=0)
+rm -rf cupy/backends/ascend/kernels/_build
+CUPY_ASCEND_SOC=Ascend910B4 python -c "import cupy"     # must not recreate _build/
+```
+
+| Check | Command |
+|---|---|
+| fatbins in the wheel | `unzip -l dist/*.whl \| grep kernels/_aot` |
+| SoC encoded in the name | must look like `ascendc_elementwise_Ascend910B4.o` |
+| not in the sdist | `tar tzf dist/numpy_ascend-*.tar.gz '*.o'` → empty |
+| zero compilation at import | `_build/` is not created when `_aot/` covers the SoC |
+
 ---
 
 ## 3. Hard runtime prerequisites
@@ -524,6 +607,7 @@ python -c "import cupy; print(cupy.__version__); \
 | `libstdc++.so.6: version 'GLIBCXX_3.4.32' not found` | older `libstdc++` on the target machine, typically conda | §3.2 (`ln -sf` the system `libstdc++.so.6` over `$CONDA_PREFIX/lib/`) |
 | `RuntimeWarning: installed CANN version differs from ...` | wheel tag and installed CANN are different release trains | install the matching wheel; `CUPY_ASCEND_SKIP_VERSION_CHECK=1` if the train differs only in patch level |
 | `cannot open shared object file: libcann_ops_fft.so` | `ops-fft` is an optional operator package, not part of the CANN SDK | install `ops-fft`, or set `ASCEND_OPS_FFT_PATH` + `LD_LIBRARY_PATH`; harmless when FFT is unused (`DeveloperNotes.md` §3.5b) |
+| `RuntimeWarning: custom AscendC kernels disabled: ...` | no prebuilt fatbin for **this** SoC and the JIT fallback could not run (bisheng absent, or `kernels/_build/` not writable) | install a wheel built with this SoC in `CUPY_ASCEND_KERNEL_SOCS` (§2.10), or make the install writable; only the B-tier ops in `CUSTOM_UFUNCS` are affected |
 | `NotImplementedError: Ascend backend: no implementation registered for 'ascend_xxx'` | that operator is not ported; dispatch is by name (`cupy_x` → `ascend_x`) | see the gap list in `tools/cst_db.md` / `Progress.md` §4 |
 | `cupy.show_config()` → `AttributeError: '_UnavailableModule' object has no attribute 'get_build_version'` | `cupyx/_runtime.py` still collects CUDA-only build info (CUB, …) | known gap; use `get_wheel_metadata()` / `check_cann_version()` / `py_list_acl_ufuncs()` instead |
 | `EL0003` or other device errors | no NPU on the machine (or the driver is missing) | compiling and importing do not need an NPU; real computation does |

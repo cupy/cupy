@@ -11,6 +11,9 @@
 !cupy/backends/ascend/kernels/*.cpp
 # built aicore fatbins are cache artifacts, never commit
 cupy/backends/ascend/kernels/_build/
+# AOT fatbins: built by `setup.py build_ext` (CUPY_ASCEND_KERNEL_SOCS) and
+# copied into the wheel; they are machine/SoC specific binaries, not sources.
+cupy/backends/ascend/kernels/_aot/
 build
 \#*\#
 .\#*

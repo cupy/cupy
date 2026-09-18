@@ -22,11 +22,13 @@ package; when present its include/lib dirs are appended.
 from __future__ import annotations
 
 import glob
+import importlib.util
 import os
 import platform
 from typing import TYPE_CHECKING, Any
 
 import cupy_builder.install_build as build
+import cupy_builder.install_utils as utils
 
 from cupy_builder.backends._base import Backend
 
@@ -121,6 +123,71 @@ def has_nnal(cann_path: str | None) -> bool:
     if not cann_path or cann_path == 'NOT_INITIALIZED':
         return False
     return bool(nnal_dirs(cann_path, 'lib'))
+
+
+# ---------------------------------------------------------------------------
+# AOT-compiled AscendC kernel fatbins (see docs/ascend/Package.md §2.10)
+# ---------------------------------------------------------------------------
+#: SoCs to compile the built-in custom kernels for. Comma/space separated.
+#: Defaults to ``CUPY_ASCEND_SOC`` -- the same value the runtime uses -- so the
+#: fatbins in the wheel are the ones a default install looks for.
+KERNEL_SOCS_ENV_VAR = 'CUPY_ASCEND_KERNEL_SOCS'
+
+#: Set to ``0`` to ship kernel *sources* only: the installed wheel then
+#: JIT-compiles them on first import (bisheng is present on every CANN box).
+AOT_KERNELS_ENV_VAR = 'CUPY_ASCEND_AOT_KERNELS'
+
+#: Fatbin sub-directory of the kernel source directory. Keep in sync with
+#: ``kernels.AOT_DIR_NAME`` in ``cupy/backends/ascend/kernels/__init__.py``.
+_KERNEL_AOT_DIR = '_aot'
+
+#: Where the built-in AscendC kernels and their registry live.
+_KERNEL_SRC_SUBDIR = os.path.join('cupy', 'backends', 'ascend', 'kernels')
+
+#: bisheng wrapper, shared with the runtime JIT path (loaded by path).
+_BISHENG_MODULE_PATH = os.path.join('cupy', 'backends', 'ascend', 'bisheng.py')
+
+
+def _env_flag(name: str, default: bool = False) -> bool:
+    """Read a boolean ``CUPY_*`` variable (``0``/``false``/``no``/``off`` = off)."""
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() not in ('0', 'false', 'no', 'off', '')
+
+
+def _kernel_socs(bisheng: Any) -> list[str]:
+    """SoCs to AOT-compile the built-in kernels for.
+
+    Falls back to :func:`bisheng.default_soc` (``CUPY_ASCEND_SOC``, default
+    ``Ascend910B4``) rather than inventing a list: the aicore ISA is
+    SoC-specific, so a fatbin is only useful if its SoC name matches what the
+    runtime asks for.
+    """
+    raw = os.environ.get(KERNEL_SOCS_ENV_VAR, '')
+    if not raw.strip():
+        return [bisheng.default_soc()]
+    for sep in (';', ' ', '\t', '\n'):
+        raw = raw.replace(sep, ',')
+    return [soc.strip() for soc in raw.split(',') if soc.strip()]
+
+
+def _load_bisheng(source_root: str) -> Any:
+    """Import ``cupy/backends/ascend/bisheng.py`` without importing ``cupy``.
+
+    ``setup.py`` can not import the package it is building (``cupy/__init__.py``
+    does far more than expose this module, and it needs the extensions being
+    built), while ``bisheng.py`` itself needs only the standard library. Loading
+    it by path keeps a single source of truth for the bisheng command line and
+    the AscendC include directory discovery.
+    """
+    path = os.path.join(source_root, _BISHENG_MODULE_PATH)
+    spec = importlib.util.spec_from_file_location('_cupy_ascend_bisheng', path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f'cannot load {path}')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 class AscendBackend(Backend):
@@ -260,6 +327,59 @@ class AscendBackend(Backend):
         if sdk:
             metadata['cann_build_path'] = sdk
         return metadata
+
+    # ------------------------------------------------------------------
+    # AOT-compiled AscendC kernel fatbins
+    # ------------------------------------------------------------------
+    def prebuild_artifacts(self, ctx: Context) -> list[str]:
+        """AOT-compile the built-in AscendC kernels for the wheel.
+
+        Those kernels are normally JIT-compiled on first import, because a
+        fatbin is SoC-specific and a build machine usually has no NPU to probe
+        the target SoC from. Compiling for an explicit SoC list here means the
+        installed wheel only needs to *load* a fatbin, for the SoCs it was built
+        for; any other SoC still falls back to JIT at runtime (see
+        ``kernels.ensure_built``).
+
+        SoCs come from ``CUPY_ASCEND_KERNEL_SOCS`` (default ``CUPY_ASCEND_SOC``,
+        i.e. ``Ascend910B4``); ``CUPY_ASCEND_AOT_KERNELS=0`` ships sources only.
+        bisheng cross-compiles from any host, so this needs no NPU -- but it
+        does need the AscendC headers of the local CANN install.
+
+        Never raises: a wheel without prebuilt fatbins is still functional, it
+        just pays the JIT cost for every user.
+        """
+        if not _env_flag(AOT_KERNELS_ENV_VAR, default=True):
+            print(f'Ascend: AOT kernels disabled ({AOT_KERNELS_ENV_VAR}=0); '
+                  'the wheel ships sources only and JIT-compiles on first use')
+            return []
+
+        kernels_dir = os.path.join(ctx.source_root, _KERNEL_SRC_SUBDIR)
+        srcs = sorted(glob.glob(os.path.join(kernels_dir, '*.cpp')))
+        if not srcs:
+            print(f'Ascend: no kernel sources under {kernels_dir}, '
+                  'nothing to prebuild')
+            return []
+
+        dest = os.path.join(kernels_dir, _KERNEL_AOT_DIR)
+        try:
+            bisheng = _load_bisheng(ctx.source_root)
+            socs = _kernel_socs(bisheng)
+            print(f'Ascend: AOT-compiling {len(srcs)} kernel source(s) for '
+                  f'{", ".join(socs)} ...')
+            built = bisheng.prebuild(srcs, dest, socs)
+        except Exception as e:
+            utils.print_warning(
+                f'could not prebuild the AscendC kernel fatbins ({e})',
+                'the wheel will JIT-compile them on first import, which needs '
+                'bisheng on the target machine',
+                f'to build for specific SoC(s), set {KERNEL_SOCS_ENV_VAR}')
+            return []
+
+        artifacts = [path for paths in built.values() for path in paths]
+        print(f'Ascend: prebuilt kernels ready: {len(artifacts)} fatbin(s) '
+              f'under {dest}')
+        return artifacts
 
     # ------------------------------------------------------------------
     @staticmethod

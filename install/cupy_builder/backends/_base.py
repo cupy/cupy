@@ -155,6 +155,29 @@ class Backend(abc.ABC):
         return {}
 
     # ------------------------------------------------------------------
+    # Extra artifacts carried by the wheel
+    # ------------------------------------------------------------------
+    def prebuild_artifacts(self, ctx: Context) -> list[str]:
+        """Build artifacts that must end up inside the wheel, and return them.
+
+        Called from ``build_ext``, and the returned absolute paths are copied
+        into the build tree (they are *not* ``package_data``: ``build_py`` runs
+        before ``build_ext``, so it would see an empty directory). The caller
+        must also be able to reach the files at runtime, so a backend that
+        builds them into its own package directory works for both wheels and
+        in-place/editable installs.
+
+        Intended for artifacts that can not be produced at install time -- i.e.
+        that need an SDK or a device-specific compiler -- while still being
+        small enough to ship. Returning a stale or empty list is not an error:
+        every artifact here should be an optimisation of the installed wheel,
+        and the caller never fails a build because of this hook.
+
+        The default backend has nothing to prebuild.
+        """
+        return []
+
+    # ------------------------------------------------------------------
     # Version detection
     # ------------------------------------------------------------------
     @abc.abstractmethod

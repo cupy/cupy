@@ -1,14 +1,28 @@
 """bisheng (AscendC device compiler) wrapper for numpy-ascend custom kernels.
 
 Compiles AscendC kernel sources into aicore fatbins (.o) that are loaded at
-runtime through the aclrt binary API (see acl_custom_kernels.h). This is the
-"JIT" half of the design in docs/ascend/CustomKernel.md -- the wheel ships
-sources only; any machine with a CANN install has bisheng.
+runtime through the aclrt binary API (see acl_custom_kernels.h).
+
+Two halves of the design in docs/ascend/CustomKernel.md:
+
+* :func:`prebuild` -- AOT: ``setup.py build_ext`` compiles the built-in kernels
+  for the SoCs named in ``CUPY_ASCEND_KERNEL_SOCS`` and the wheel ships the
+  fatbins (``cupy/backends/ascend/kernels/_aot/<soc>/``).
+* :func:`compile_kernel` -- JIT fallback for a SoC the wheel was not built for;
+  any machine with a CANN install has bisheng.
+
+Both write the same layout (:func:`compiled_path`), so the runtime lookup is a
+plain ``os.path.isfile``.
+
+This module deliberately imports only the standard library: the build system
+loads it by path (see ``cupy_builder.backends.ascend``), because importing
+``cupy`` from ``setup.py`` is not possible.
 """
 
 import os
 import platform
 import subprocess
+from typing import Iterable, Sequence
 
 
 def _cann_root() -> str | None:
@@ -121,6 +135,11 @@ def compile_kernel(src: str, out: str, soc: str | None = None,
             'bisheng compiler not found under CANN root; '
             'cannot build custom AscendC kernels')
     soc = soc or default_soc()
+    # bisheng's internal `ar` step does not create the output directory, and it
+    # reports the failure as "ar: ...: No such file or directory".
+    out_dir = os.path.dirname(out)
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
     cmd = [
         bisheng, '-O2', '-std=c++17', '-xcce',
         f'--cce-soc-version={soc}',
@@ -138,3 +157,50 @@ def compile_kernel(src: str, out: str, soc: str | None = None,
     if log_stream is not None and proc.stderr:
         log_stream.write(proc.stderr)
     return out
+
+
+# ---------------------------------------------------------------------------
+# Artifact layout / batch AOT build
+# ---------------------------------------------------------------------------
+# The aicore ISA is SoC-specific, so a fatbin only runs on the SoC it was
+# compiled for; that is why the SoC is part of the file name. Artifacts are
+# named after the *source file* stem (not the registry key of
+# `cupy/backends/ascend/kernels/__init__.py`) so that the build system can glob
+# `kernels/*.cpp` without importing the `cupy` package.
+def compiled_path(dest_dir: str, soc: str, stem: str) -> str:
+    """Return ``<dest_dir>/<stem>_<soc>.o``, the fatbin path for one source.
+
+    The SoC suffix is what tells the hardware apart: a wheel can carry fatbins
+    for several Ascend models side by side, and ``unzip -l`` / a plain ``ls`` of
+    the directory is self-describing (``ascendc_elementwise_Ascend910B4.o``).
+    """
+    return os.path.join(dest_dir, f'{stem}_{soc}.o')
+
+
+def is_stale(src: str, out: str) -> bool:
+    """Whether ``out`` is missing or older than its source ``src``."""
+    return (not os.path.isfile(out)
+            or os.path.getmtime(src) > os.path.getmtime(out))
+
+
+def prebuild(srcs: Iterable[str], dest_dir: str, socs: Sequence[str],
+             force: bool = False, log_stream=None) -> dict[str, list[str]]:
+    """Compile every source in ``srcs`` for every SoC in ``socs``.
+
+    Writes ``<dest_dir>/<source stem>_<soc>.o`` (:func:`compiled_path`) and skips
+    artifacts that are already newer than their source, unless ``force``. Can
+    populate a fresh ``_aot`` directory during a build, i.e. it does not need a
+    pre-existing destination.
+
+    Raises ``RuntimeError`` (via :func:`compile_kernel`) when bisheng is missing
+    or a compilation fails. Returns ``{soc: [artifact paths]}``.
+    """
+    built: dict[str, list[str]] = {}
+    for src in srcs:
+        stem = os.path.splitext(os.path.basename(src))[0]
+        for soc in socs:
+            out = compiled_path(dest_dir, soc, stem)
+            if force or is_stale(src, out):
+                compile_kernel(src, out, soc=soc, log_stream=log_stream)
+            built.setdefault(soc, []).append(out)
+    return built

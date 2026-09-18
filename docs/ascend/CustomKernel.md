@@ -85,14 +85,22 @@ tiling 框架与 ufunc 派发接入，另立项目重新评估。
 | 类别 | 位置 | 说明 |
 |---|---|---|
 | 内置补缺 kernel 源码 | `cupy/backends/ascend/kernels/*.cpp` | 随源码树走 git；纯 AscendC，不参与 host 编译 |
-| 内置 kernel 索引/注册 | `cupy/backends/ascend/kernels/__init__.py` | `KERNELS = {name: {'src': ..., 'entry': ..., 'options': ...}}` |
+| 内置 kernel 索引/注册 | `cupy/backends/ascend/kernels/__init__.py` | `KERNEL_SOURCES = {bin 名: 源文件名}` + `CUSTOM_UFUNCS` |
 | 用户 kernel | 用户代码字符串（`cupy.RawKernel(code, ...)`）或任意文件路径 | 不进包 |
-| JIT 缓存 | `~/.cache/cupy/cann_kernel_cache/` | 对标 cupy 的 `~/.cupy/kernel_cache/`；可用 `CUPY_CACHE_DIR` 覆盖 |
+| AOT 产物（随 wheel 分发） | `cupy/backends/ascend/kernels/_aot/<源文件 stem>_<soc>.o` | `setup.py build_ext` 生成；进 wheel、**不进** sdist；`.gitignore` |
+| JIT 缓存 | `cupy/backends/ascend/kernels/_build/<源文件 stem>_<soc>.o` | 首次 import 时只为 `_aot` 未覆盖的 SoC 编译，落盘复用 |
+
+产物名自带 SoC（`ascendc_elementwise_Ascend910B4.o`）—— 一个目录里可以并存多个硬件
+型号的 fatbin，`ls` / `unzip -l` 即可区分；查找逻辑见 `bisheng.compiled_path()`。
 
 缓存键 = sha256(源码 + options + SoC 型号 + CANN series + bisheng 版本)，
 产物 `{key}.o` + `{key}.json`（元数据：entry 名、SoC、编译命令、时间戳）。
 用 **CANN series**（major.minor）而非 patch 做键，保证 9.0.1 编的缓存对 9.0.2 仍可复用，
 跨 series 自动失效重编。
+
+> 实现状态（2026-09）：**内置 kernel** 目前用「源码 mtime + 产物文件名带 SoC」做失效与
+> 区分，够用且无需读写 sidecar；上面的 sha256 缓存键设计适用于 §3B 的
+> `RawModule` / 用户 kernel 路径（尚未实现）。
 
 ### 3.2 什么时候编译（三种时机并存）
 
@@ -100,14 +108,25 @@ tiling 框架与 ufunc 派发接入，另立项目重新评估。
    首次 `RawKernel.__call__` 时检查磁盘缓存 → 未命中则 spawn bisheng。
    bisheng 在装了 CANN 的机器上必然存在（复用 `get_ascendcc_path()`），
    所以**不需要分发 .so，只分发源码**。
-2. **构建时 AOT（可选开关，针对内置 kernel）**：
-   `CUPY_ASCEND_AOT_KERNELS=1` 时 setup.py 把 `kernels/*.cpp` 预编译进
-   `cupy/backends/ascend/kernels/_aot/<soc>/`，import 时优先加载 AOT 产物。
-   面向"wheel 想避免首调编译延迟"的场景；默认关（wheel 无 .so 分发负担）。
+2. **构建时 AOT（针对内置 kernel，Ascend wheel 默认开启）**：
+   `setup.py build_ext`（`AscendBackend.prebuild_artifacts()`）把 `kernels/*.cpp`
+   预编译进 `cupy/backends/ascend/kernels/_aot/<源文件 stem>_<soc>.o` 并拷入 wheel；
+   `ensure_built()` 命中即直接加载，**完全不调用 bisheng**。
+   SoC 列表来自 `CUPY_ASCEND_KERNEL_SOCS`（默认 `CUPY_ASCEND_SOC`，即 `Ascend910B4`）；
+   `CUPY_ASCEND_AOT_KERNELS=0` 退回"只分发源码"；bisheng 缺失时只告警不失败。
 3. **显式预热 API**：`cupy.RawModule(...).compile()`（对标 cupy 语义），供打包工具调用。
 
-> 分发策略结论：**wheel 只带源码**（与 cupy wheel 只带 .cu 源码、运行时 nvrtc 编译
-> 同构）。AOT 是优化项不是必需项——因为 CANN 机器必有 bisheng。
+> 分发策略：Ascend **二进制 wheel 默认自带 AOT fatbin**，覆盖
+> `CUPY_ASCEND_KERNEL_SOCS` 列出的 SoC；**未列出的型号仍在首次使用时 JIT** ——
+> 因为构建机通常没有 NPU，无法探测目标 SoC，而 aicore ISA 是分型号的。
+> 机理与 cupy wheel 只带 `.cu`、运行时 nvrtc 编译同构，只是把「首调延迟」提前到了
+> 构建期：默认安装（wheel）零编译，源码安装 / 非覆盖型号走 JIT 兜底。
+> sdist 仍只带源码（见 Package.md §2.9、§2.10）。
+
+> `_aot` 命中判断只看**文件是否存在**，不看 mtime：wheel 里两个文件的 mtime 都是解压
+> 时间，比较无意义，且只读 `site-packages` 根本写不了 JIT 缓存。因此**源码树开发时**，
+> 改完 `kernels/*.cpp` 必须重跑 `python setup.py build_ext --inplace`（它会按 mtime
+> 增量刷新 `_aot`），否则 `import cupy` 会继续用旧 fatbin。
 
 ### 3.3 如何加载（运行时，无需 dlopen）
 
@@ -230,8 +249,9 @@ uint64_t cuda_thread = tid % B;          // 反解 CUDA threadIdx
 ```
 cupy/backends/ascend/
   kernels/                    # 内置 AscendC 源码（新增）
-    __init__.py               # KERNELS 注册表
+    __init__.py               # KERNEL_SOURCES + CUSTOM_UFUNCS 注册表 + ensure_built()
     add.cpp, ...              # 缺失算子内核（M4 起逐个补）
+    _aot/                     # 构建期 AOT 产物（*.o 带 SoC 后缀；进 wheel 不进 git）
   api/
     acl_utils.pyx             # 派发表（不改动；无 CUSTOM_OP 预留）
 cupy/_ascend/_core/
@@ -455,7 +475,7 @@ aclrt 三连（`aclrtCreateBinary/BinaryLoad/BinaryGetFunction`）——
 | # | 决策点 | 结论 |
 |---|---|---|
 | 1 | 技术路线 | **只做路线 A**（RawKernel 直启）；路线 B（custom aclnn 插件）及 `CUSTOM_OP` 预留整体取消 |
-| 2 | 编译时机 | **JIT 优先 + AOT 可选**（`CUPY_ASCEND_AOT_KERNELS=1` 构建期预编译内置内核） |
+| 2 | 编译时机 | **AOT 默认（Ascend wheel）+ JIT 兜底**：`setup.py build_ext` 预编译 `CUPY_ASCEND_KERNEL_SOCS` 列出的 SoC，`CUPY_ASCEND_AOT_KERNELS=0` 关闭（2026-09 起默认开，落地见 Package.md §2.10） |
 | 3 | grid/block 映射 | **`numBlocks = grid × block` 乘积映射**，block 维度作内核首参注入；影响详见 §3.4.1（语义可反解 / 性能需原生风格 / 上限待 spike / 块内同步无对应物） |
 | 4 | 启动时机 | 文档先行评审（本文档），评审通过后启动 M1 |
 | 5 | 内置内核位置 / 缓存目录 | 按文档 §3.1（`cupy/backends/ascend/kernels/`、`~/.cache/cupy/cann_kernel_cache/`），评审时如有异议一并调整 |
