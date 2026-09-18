@@ -1,7 +1,7 @@
 
 # Developer Notes
 
-see also [docs/ascend/Package.md](docs/ascend/Package.md) for build binary wheel for diff CANN version for manylinux, with minimum version requirement on libstdc++.so version; the user-facing install guide (which wheel to pick, runtime prerequisites, troubleshooting) is [README.md](README.md) §3.
+see also [docs/ascend/Package.md](Package.md) for build binary wheel for diff CANN version for manylinux, with minimum version requirement on libstdc++.so version; the user-facing install guide (which wheel to pick, runtime prerequisites, troubleshooting) is [README.md](README.md) §3.
 
 ### `ascend-numpy` architecture from top to bottom
 
@@ -10,6 +10,24 @@ see also [docs/ascend/Package.md](docs/ascend/Package.md) for build binary wheel
 3. cupy.xpu: high level backend api in cython lange
 4. cupy.backends.backend: abstraction of xpu low level backend api in c lang
 5. cupy.backends.ascend: impl in cython/c++
+
+### 1.3 pytest 上的 dtype 过滤 (减少假失败)
+
+因为上面 1/2 条的限制, 直接在 NPU 上跑上游 CuPy 测试会因"dtype 本身不被支持"而大量
+FAIL (`float64`/`complex64`/`complex128`), 淹没真正的移植缺陷。Ascend 后端会自动把
+这些 dtype 从测试参数化中去掉, 只保留 NPU 能跑的用例:
+
+```sh
+pytest tests/cupy_tests/math_tests/test_arithmetic.py -q          # 默认: 跳过不支持的 dtype
+pytest ... --ascend-dtype-filter=off                              # 跑完整 dtype 矩阵(看真实失败)
+CUPY_TEST_ASCEND_SKIP_DTYPES=float64 pytest ...                   # 只跳过 float64, 其余照跑
+CUPY_TEST_ASCEND_DTYPE_FILTER=on pytest ...                       # 无 NPU 时模拟 Ascend 行为
+```
+
+策略集中在 `cupy/testing/_ascend_dtypes.py` (默认 `auto`: 仅 Ascend 生效),
+覆盖 `cupy.testing.for_all_dtypes()` 等装饰器与 `pytest.mark.parametrize` 两类参数化;
+单个测试/模块可用 `@pytest.mark.ascend_dtype_filter_off` 豁免。
+
 
 ## 1. 开发环境
 没有NPU开发: 需要注释掉 runtime.pyx `initialize_backend(0)` 否则不能`import cupy`
@@ -391,9 +409,12 @@ ELSE:
 
 https://gitcode.com/cann/ops-blas  已经下载在 ~/repos/ops-blas
 API 文档可见: `docs/zh/api_list.md`
-./build_out/cann-${soc_name}-ops-blas_${version}_linux-${arch}.run --install  --install-path=$ASCEND_HOME_PATH/
+`./build_out/cann-${soc_name}-ops-blas_${version}_linux-${arch}.run --install  --install-path=$ASCEND_HOME_PATH/`
 安装到$ASCEND_HOME_PATH 不用额外设置LD_LABRARY_PATH 复用CANN toolkit的set_env.sh
-$ASCEND_HOME_PATH/lib64, 安装之后会有libops_blasLt.so  libops_blas.so, 
+$ASCEND_HOME_PATH/lib64, 安装之后会有libops_blasLt.so  libops_blas.so
+
+ops-solver
+ops-sparse
 
 ### 3.7 cpu-fallback ✅
 

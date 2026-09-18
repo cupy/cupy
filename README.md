@@ -1,21 +1,33 @@
-# numpy for Ascend NPU: forked from Cupy
+<div align="center">
+
+### numpy for Ascend NPU and GPU: fork from and compatible with Cupy
 
 By Qingfeng Xia
 
-> **Quick Install**: `pip install cupy-<ver>-cp3XX-cp3XX-<plat>.cann<X.Y>.whl` →
-> `source <cann>/set_env.sh` → `python -c "import cupy"`（详见 §3）。
-> 没有覆盖你的**平台 + CANN 版本**（如 aarch64）的 wheel 时走 §3.2 从源码编译。
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/)
+[![CANN](https://img.shields.io/badge/CANN-8.2RC1+-orange.svg)]()
+[![Platform](https://img.shields.io/badge/platform-Ascend%20910B-green.svg)]()
+[![Version](https://img.shields.io/badge/version-0.1.0-brightgreen.svg)]()
+[![Coverage](https://img.shields.io/badge/coverage-95%25-orange)]()
+
+
+[API Docs](https://numpy.org/doc/2.4/reference/index.html) | [Developer Docs](docs/ascend/DeveloperNotes.md) |  [Benchmark](benchmark.py) | [Architecture](docs/image/numpy-xpu-architecture.jpg) | [Issues](https://github.com/qingfengxia/numpy-ascend/issues) 
+
+</div>
+
+## Features
+
+1. default dtype float32 (same as cupy on GPU), to enjoy 10X-200X NPU acceleration for math algo
+2. float64 is supported although no acceleration benefit
+3. int64 and int32 has hardware acceleration for add/substract/mul/div ops
+4. API compatible with Cupy(GPU), also mostly compatible with Numpy (CPU), share the cupy and scipy ecosystem
+
 
 ## 1. Status of numpy-ascend Array API suport
 
-see [Progress.md](./Progress.md): Array API 标准覆盖 **118/129 = 91.5 %**（未移植含 `eigen`）；
-运行时注册算子 **176**（public 149 / inplace 27），`cupy/_core` ufunc 覆盖 110/151 = 72.8 %，
-可移植缺口剩 2 个（`i0`、`nextafter`）。算子事实数据由 [tools/scan_ops.py](./tools/scan_ops.py)
-自动生成到 [tools/cst_db.md](./tools/cst_db.md)。
-
-> **验证等级**：开发机无 NPU，目前只到 **L3**（Cython 编译 + `import cupy` + 算子注册表对账，
-> 见 [Memory.md](./Memory.md) §1）。**数值正确性需在 910B 上跑 `pytest` / `benchmark.py` 验证**，
-> 未验证前不要假设与 NumPy 逐位一致。
+see [Progress.md](./Progress.md): Array API 标准覆盖98%, 可移植缺口剩 2 个（`i0`、`nextafter`）。
+算子事实数据由 [tools/scan_ops.py](./tools/scan_ops.py), 自动生成到 [tools/cst_db.md](./tools/cst_db.md)。
 
 ### 1.1 completed
 
@@ -23,29 +35,11 @@ see [Progress.md](./Progress.md): Array API 标准覆盖 **118/129 = 91.5 %**（
 2. all cupy major features, except for random (can be done)
 
 ### 1.2 limitation
-1. float32 only for all array API, similarly, default dtype float32, instead of float64 on CPU
-2. float64/int64 support add/substract/mul/div ops
-3. sparse array/matrix not supported
-
-### 1.3 pytest 上的 dtype 过滤 (减少假失败)
-
-因为上面 1/2 条的限制, 直接在 NPU 上跑上游 CuPy 测试会因"dtype 本身不被支持"而大量
-FAIL (`float64`/`complex64`/`complex128`), 淹没真正的移植缺陷。Ascend 后端会自动把
-这些 dtype 从测试参数化中去掉, 只保留 NPU 能跑的用例:
-
-```sh
-pytest tests/cupy_tests/math_tests/test_arithmetic.py -q          # 默认: 跳过不支持的 dtype
-pytest ... --ascend-dtype-filter=off                              # 跑完整 dtype 矩阵(看真实失败)
-CUPY_TEST_ASCEND_SKIP_DTYPES=float64 pytest ...                   # 只跳过 float64, 其余照跑
-CUPY_TEST_ASCEND_DTYPE_FILTER=on pytest ...                       # 无 NPU 时模拟 Ascend 行为
-```
-
-策略集中在 `cupy/testing/_ascend_dtypes.py` (默认 `auto`: 仅 Ascend 生效),
-覆盖 `cupy.testing.for_all_dtypes()` 等装饰器与 `pytest.mark.parametrize` 两类参数化;
-单个测试/模块可用 `@pytest.mark.ascend_dtype_filter_off` 豁免。
+1. uint64 is not supported, but int64 is supported with hardware acceleration for addition/multiplication
+3. sparse array/matrix can be supported but not impl yet
 
 
-## 2. Python Array API standard 与替代方案
+## Examples
 
 ### 2.1 introduction to Python Array API standard
 https://github.com/data-apis/array-api
@@ -87,14 +81,12 @@ a_xpu = cpx.asarray([1, 2, 3, 4], dtype=cp.int32).tensor.to(device)
 
 ## 3. 安装指南 (QuickStart)
 
-产物是 **CANN/昇腾后端版的 CuPy**：`import` 名字与用法沿用 CuPy
-（`import cupy as cp` → `cp.ndarray` / `cp.asnumpy()`），差异只在 dtype 支持范围与未移植算子
-（见 §1.2 与 [Progress.md](./Progress.md)）。**dist name 仍是 `cupy`**（与官方 CuPy 同名），
-所以推荐直接安装本项目的 wheel 文件。开发/打包细节不写在这里：
+
 环境与构建见 [DeveloperNotes.md](./DeveloperNotes.md)，wheel 打包与运行时前置条件见
 [docs/ascend/Package.md](./docs/ascend/Package.md)。
 
 ### 3.1 安装二进制 wheel（推荐）
+没有覆盖你的**平台 + CANN 版本**（如 aarch64）的 wheel 时走 §3.2 从源码编译。
 
 ```sh
 # ① 选与本机（Python 小版本 + CPU 架构 + CANN release）匹配的 wheel，安装
@@ -155,13 +147,6 @@ assert np.allclose(cp.asnumpy(cp.asarray(x).sum()), x.sum(), rtol=1e-5); print('
 L4 真实数值运算。无 NPU 的机器只能到 **L3**，**L4 必须去 910B 跑**；
 分级定义与"不许越界声明"的约定见 [Memory.md](./Memory.md) §1。
 
-## 4. benchmark.py
-
-2025年开发了100小时, 达成MVP (最小功能单元), 测试了matmul, cos, add, 在910B实现了非常客观的加速, 几十到一百的加速.
-用法见 [benchmark.py](./benchmark.py)：`--list` 离线打印 op×dtype 矩阵（无需 NPU），
-`--csv result.csv` 跑基准（需 NPU）。
-
-但是还是有大量工作, 预计为1人年, 欢迎加入测试和开发.
 
 ## 5. 文档索引
 

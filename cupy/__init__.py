@@ -241,23 +241,21 @@ from cupy._creation.ranges import meshgrid  # NOQA
 from cupy._creation.ranges import mgrid  # NOQA
 from cupy._creation.ranges import ogrid  # NOQA
 
-# ASCEND TODO
-# from cupy._creation.matrix import diag  # NOQA
-# from cupy._creation.matrix import diagflat  # NOQA
-# from cupy._creation.matrix import tri  # NOQA
+from cupy._creation.matrix import diag  # NOQA
+from cupy._creation.matrix import diagflat  # NOQA
+from cupy._creation.matrix import tri  # NOQA
 # tril/triu are composed host-side from `tri` + `where` (both dispatched), and
 # map onto aclnnTril / aclnnTriu via the `ascend_tril` / `ascend_triu`
 # registrations for the direct kernel path.
 from cupy._creation.matrix import tril  # NOQA
 from cupy._creation.matrix import triu  # NOQA
-# from cupy._creation.matrix import vander  # NOQA
+from cupy._creation.matrix import vander  # NOQA
 
 # -----------------------------------------------------------------------------
 # Functional routines
 # -----------------------------------------------------------------------------
-# ASCEND TODO:  ElementwiseKernel() not yet impl
-#from cupy._functional.piecewise import piecewise  # NOQA
-#from cupy._functional.vectorize import vectorize  # NOQA
+from cupy._functional.piecewise import piecewise  # NOQA
+from cupy._functional.vectorize import vectorize  # NOQA
 from cupy.lib._shape_base import apply_along_axis  # NOQA
 from cupy.lib._shape_base import apply_over_axes  # NOQA
 from cupy.lib._shape_base import put_along_axis    # NOQA
@@ -296,9 +294,9 @@ from cupy._manipulation.transpose import moveaxis  # NOQA
 from cupy._manipulation.transpose import rollaxis  # NOQA
 from cupy._manipulation.transpose import swapaxes  # NOQA
 from cupy._manipulation.transpose import transpose  # NOQA
-# Array API: transpose of the two innermost axes (equivalent to ``x.mT``).
-# Pure host-side composition over swapaxes, no kernel needed.
-from cupy._manipulation.transpose import matrix_transpose  # NOQA
+# NB: `matrix_transpose` exists in `cupy._manipulation.transpose` (Array API
+# support) but is NOT a cupy package-level API - upstream never exported it.
+# Use `x.mT` or `cupy.array_api.matrix_transpose` instead.
 
 # NumPy 2.0 aliases
 permute_dims = transpose
@@ -338,15 +336,14 @@ from cupy._manipulation.tiling import repeat  # NOQA
 from cupy._manipulation.tiling import tile  # NOQA
 
 from cupy._manipulation.add_remove import unique  # NOQA
-# TODO: relies on ReduceKernel
-# from cupy._manipulation.add_remove import delete  # NOQA
-# from cupy._manipulation.add_remove import append  # NOQA
-# from cupy._manipulation.add_remove import resize  # NOQA
-# from cupy._manipulation.add_remove import unique_all  # NOQA
-# from cupy._manipulation.add_remove import unique_counts  # NOQA
-# from cupy._manipulation.add_remove import unique_values  # NOQA
-# from cupy._manipulation.add_remove import unique_inverse  # NOQA
-# from cupy._manipulation.add_remove import trim_zeros  # NOQA
+from cupy._manipulation.add_remove import delete  # NOQA
+from cupy._manipulation.add_remove import append  # NOQA
+from cupy._manipulation.add_remove import resize  # NOQA
+from cupy._manipulation.add_remove import unique_all  # NOQA
+from cupy._manipulation.add_remove import unique_counts  # NOQA
+from cupy._manipulation.add_remove import unique_values  # NOQA
+from cupy._manipulation.add_remove import unique_inverse  # NOQA
+from cupy._manipulation.add_remove import trim_zeros  # NOQA
 
 from cupy._manipulation.rearrange import flip  # NOQA
 from cupy._manipulation.rearrange import fliplr  # NOQA
@@ -369,6 +366,9 @@ from cupy._binary.elementwise import bitwise_not  # NOQA
 from cupy._binary.elementwise import invert  # NOQA
 from cupy._binary.elementwise import left_shift  # NOQA
 from cupy._binary.elementwise import right_shift  # NOQA
+
+from cupy._binary.packing import packbits  # NOQA
+from cupy._binary.packing import unpackbits  # NOQA
 
 # NumPy 2.0 aliases
 bitwise_left_shift = left_shift
@@ -461,10 +461,35 @@ from numpy import typename  # NOQA
 # -----------------------------------------------------------------------------
 # Indexing routines
 # -----------------------------------------------------------------------------
-# ASCEND TODO: the remaining generate/indexing/iterate APIs are not ported yet
 from cupy._indexing.insert import put  # NOQA
 from cupy._indexing.indexing import take  # NOQA
 from cupy._indexing.insert import fill_diagonal  # NOQA
+
+from cupy._indexing.generate import c_  # NOQA
+from cupy._indexing.generate import indices  # NOQA
+from cupy._indexing.generate import ix_  # NOQA
+from cupy._indexing.generate import mask_indices  # NOQA
+from cupy._indexing.generate import tril_indices  # NOQA
+from cupy._indexing.generate import tril_indices_from  # NOQA
+from cupy._indexing.generate import triu_indices  # NOQA
+from cupy._indexing.generate import triu_indices_from  # NOQA
+from cupy._indexing.generate import r_  # NOQA
+from cupy._indexing.generate import ravel_multi_index  # NOQA
+from cupy._indexing.generate import unravel_index  # NOQA
+
+from cupy._indexing.indexing import choose  # NOQA
+from cupy._indexing.indexing import compress  # NOQA
+from cupy._indexing.indexing import diagonal  # NOQA
+from cupy._indexing.indexing import extract  # NOQA
+from cupy._indexing.indexing import select  # NOQA
+from cupy._indexing.indexing import take_along_axis  # NOQA
+
+from cupy._indexing.insert import place  # NOQA
+from cupy._indexing.insert import putmask  # NOQA
+from cupy._indexing.insert import diag_indices  # NOQA
+from cupy._indexing.insert import diag_indices_from  # NOQA
+
+from cupy._indexing.iterate import flatiter  # NOQA
 
 # Borrowed from NumPy
 from numpy import index_exp  # NOQA
@@ -507,10 +532,17 @@ from numpy import printoptions  # NOQA
 #TODO (ASCEND)
 from cupy._core import matmul
 from cupy._core import dot
-# tensordot / vecdot are composed on top of the dispatched dot/matmul path
+# tensordot is composed on top of the dispatched dot/matmul path
 # (`_core.tensordot_core` routes to ascend_dot / ascend_matmul on Ascend).
+# NB: `vecdot` is not a cupy package-level API (NumPy 2.0 / Array API only),
+# so it stays in `cupy.linalg._product` without a package export.
 from cupy.linalg._product import tensordot  # NOQA
-from cupy.linalg._product import vecdot  # NOQA
+from cupy.linalg._product import cross  # NOQA
+from cupy.linalg._product import inner  # NOQA
+from cupy.linalg._product import kron  # NOQA
+from cupy.linalg._product import outer  # NOQA
+from cupy.linalg._product import vdot  # NOQA
+from cupy.linalg._norms import trace  # NOQA
 
 # -----------------------------------------------------------------------------
 # Logic functions
@@ -687,6 +719,18 @@ from cupy._core._routines_math import sqrt  # NOQA
 from cupy._math.misc import sign  # NOQA
 from cupy._math.misc import square  # NOQA
 
+from cupy._math.misc import cbrt  # NOQA
+from cupy._math.misc import clip  # NOQA
+from cupy._math.misc import fabs  # NOQA
+from cupy._math.misc import fmax  # NOQA
+from cupy._math.misc import fmin  # NOQA
+from cupy._math.misc import maximum  # NOQA
+from cupy._math.misc import minimum  # NOQA
+from cupy._math.misc import nan_to_num  # NOQA
+from cupy._math.misc import heaviside  # NOQA
+
+from cupy._math.arithmetic import real  # NOQA
+
 # NumPy-compatible aliases: `np.abs` is the historical spelling of
 # `np.absolute`, and `np.pow` was added in NumPy 2.0 for `np.power`.
 abs = absolute  # NOQA
@@ -696,9 +740,9 @@ pow = power  # NOQA
 # Miscellaneous routines
 # -----------------------------------------------------------------------------
 from cupy._misc.byte_bounds import byte_bounds  # NOQA
-#from cupy._misc.memory_ranges import may_share_memory  # NOQA
-#from cupy._misc.memory_ranges import shares_memory  # NOQA
-#from cupy._misc.who import who  # NOQA
+from cupy._misc.memory_ranges import may_share_memory  # NOQA
+from cupy._misc.memory_ranges import shares_memory  # NOQA
+from cupy._misc.who import who  # NOQA
 
 # Borrowed from NumPy
 from numpy import iterable  # NOQA
@@ -717,18 +761,25 @@ from cupy._sorting.search import argmax  # NOQA
 from cupy._sorting.search import argmin  # NOQA
 from cupy._sorting.search import nonzero  # NOQA
 from cupy._sorting.search import where  # NOQA
+from cupy._sorting.search import argwhere  # NOQA
+from cupy._sorting.search import flatnonzero  # NOQA
+from cupy._sorting.search import searchsorted  # NOQA
 
-# ASCEND TODO: search/searchsorted and the remaining sort kernels are not
-# registered on Ascend yet; only `sort` is available.
 from cupy._sorting.sort import sort  # NOQA
+from cupy._sorting.sort import argsort  # NOQA
+from cupy._sorting.sort import argpartition  # NOQA
+from cupy._sorting.sort import partition  # NOQA
+from cupy._sorting.sort import lexsort  # NOQA
+from cupy._sorting.sort import msort  # NOQA
+from cupy._sorting.sort import sort_complex  # NOQA
 
 
 # -----------------------------------------------------------------------------
 # Statistics
 # -----------------------------------------------------------------------------
-# from cupy._statistics.correlation import corrcoef  # NOQA
-# from cupy._statistics.correlation import cov  # NOQA
-# from cupy._statistics.correlation import correlate  # NOQA
+from cupy._statistics.correlation import corrcoef  # NOQA
+from cupy._statistics.correlation import cov  # NOQA
+from cupy._statistics.correlation import correlate  # NOQA
 
 from cupy._statistics.order import amax  # NOQA
 from cupy._statistics.order import amax as max  # NOQA
@@ -750,11 +801,11 @@ from cupy._statistics.meanvar import nanmean  # NOQA
 from cupy._statistics.meanvar import nanstd  # NOQA
 from cupy._statistics.meanvar import nanvar  # NOQA
 
-# from cupy._statistics.histogram import bincount  # NOQA
+from cupy._statistics.histogram import bincount  # NOQA
 from cupy._statistics.histogram import digitize  # NOQA
-# from cupy._statistics.histogram import histogram  # NOQA
-# from cupy._statistics.histogram import histogram2d  # NOQA
-# from cupy._statistics.histogram import histogramdd  # NOQA
+from cupy._statistics.histogram import histogram  # NOQA
+from cupy._statistics.histogram import histogram2d  # NOQA
+from cupy._statistics.histogram import histogramdd  # NOQA
 
 # -----------------------------------------------------------------------------
 # Exceptions and Warnings
@@ -1121,6 +1172,11 @@ or earlier.
     def safe_eval(*args, **kwds):  # type: ignore [misc]
         mesg = _template.format(recommendation="`ast.literal_eval`")
         raise RuntimeError(mesg)
+
+
+# np 2.0 aliases kept for backwards compatibility with NumPy 1.x names.
+alltrue = all
+sometrue = any
 
 
 def __getattr__(name):
