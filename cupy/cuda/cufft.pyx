@@ -805,10 +805,56 @@ cdef class Plan1d:
                     out.dtype, dtype))
 
 
+# The output shape and dtype are not part of the cuFFT plan itself, so they
+# are derived from the transform type and the requested output length.
+cdef dict _R2C_OUTPUT_DTYPES = {
+    numpy.dtype(numpy.float32): numpy.dtype(numpy.complex64),
+    numpy.dtype(numpy.float64): numpy.dtype(numpy.complex128),
+}
+cdef dict _C2R_OUTPUT_DTYPES = {
+    complex_dtype: real_dtype
+    for real_dtype, complex_dtype in _R2C_OUTPUT_DTYPES.items()
+}
+
+
+def _get_output_shape_and_dtype(a, int fft_type, last_axis, out_size):
+    """Shape and dtype of the result of transforming ``a``.
+
+    ``last_axis`` and ``out_size`` are ignored for C2C transforms.
+    """
+    shape = list(a.shape)
+    if fft_type == CUFFT_C2C or fft_type == CUFFT_Z2Z:
+        dtype = a.dtype
+    elif fft_type == CUFFT_R2C or fft_type == CUFFT_D2Z:
+        shape[last_axis] = out_size
+        dtype = _R2C_OUTPUT_DTYPES[a.dtype]
+    elif fft_type == CUFFT_C2R or fft_type == CUFFT_Z2D:
+        shape[last_axis] = out_size
+        dtype = _C2R_OUTPUT_DTYPES[a.dtype]
+    else:
+        raise ValueError('unsupported cuFFT type: {}'.format(fft_type))
+    return tuple(shape), dtype
+
+
+def _check_output_array(a, out, int fft_type, last_axis, out_size):
+    expected_shape, expected_dtype = _get_output_shape_and_dtype(
+        a, fft_type, last_axis, out_size)
+    if out.shape != expected_shape:
+        raise ValueError('output shape mismatch')
+    if out.dtype != expected_dtype:
+        raise ValueError('output dtype mismatch')
+    if not ((out.flags.f_contiguous == a.flags.f_contiguous) and
+            (out.flags.c_contiguous == a.flags.c_contiguous)):
+        raise ValueError('output contiguity mismatch')
+
+
 cdef class PlanNd:
     def __init__(self, object shape, object inembed, int istride,
                  int idist, object onembed, int ostride, int odist,
-                 int fft_type, int batch, *, intptr_t prealloc_plan=0):
+                 int fft_type, int batch,
+                 # order, last_axis, and last_size accepted for API stability
+                 str order=None, last_axis=None, last_size=None,
+                 *, intptr_t prealloc_plan=0):
         cdef Handle plan
         cdef size_t work_size
         cdef int ndim, result
@@ -879,7 +925,7 @@ cdef class PlanNd:
 
         self.shape = tuple(shape)
         self.fft_type = <Type>fft_type
-        self.plan_key = (
+        self._plan_key = (
             self.shape,
             None if inembed is None else tuple(inembed),
             istride,
@@ -891,6 +937,10 @@ cdef class PlanNd:
             batch,
         )
         self.work_area = work_area
+        # Copied over for API stability, users are unlikely to access these
+        self.order = order
+        self.last_axis = last_axis
+        self.last_size = last_size
 
     def __dealloc__(self):
         cdef Handle plan = <Handle>self.handle
@@ -932,6 +982,32 @@ cdef class PlanNd:
             execZ2D(plan, a.data.ptr, out.data.ptr)
         else:
             raise ValueError
+
+    cdef _require_output_metadata(self):
+        # get/check_output_array() may require last_axis and last_size.
+        if self.fft_type in (CUFFT_C2C, CUFFT_Z2Z):
+            return  # last_axis and last_size are unused for C2C
+        if self.last_axis is None or self.last_size is None:
+            raise RuntimeError(
+                'The output shape of an R2C/C2R transform cannot be derived '
+                'from the plan; pass `last_axis` and `last_size` to the '
+                'constructor or allocate the output yourself. '
+                'Note that the plan object may be deprecated in the future, '
+                'we suggest using `nvmath.fft` instead.')
+
+    def get_output_array(self, a, order='C'):
+        # For backwards compatibility only.
+        self._require_output_metadata()
+        shape, dtype = _get_output_shape_and_dtype(
+            a, self.fft_type, self.last_axis, self.last_size)
+        return cupy.empty(shape, dtype, order=order)
+
+    def check_output_array(self, a, out):
+        # For backwards compatibility only.
+        self._require_output_metadata()
+        _check_output_array(
+            a, out, self.fft_type, self.last_axis, self.last_size)
+
 
 # TODO(leofang): Unify with PlanND?!
 # TODO(leofang): support cufftXtSetGPUs?
