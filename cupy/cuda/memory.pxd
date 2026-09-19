@@ -17,6 +17,16 @@ cdef class BaseMemory:
 
 
 @cython.no_gc
+cdef class ManagedMemory(BaseMemory):
+
+    cdef:
+        readonly object _owner
+
+    @staticmethod
+    cdef from_external(intptr_t ptr, size_t size, object owner)
+
+
+@cython.no_gc
 cdef class SystemMemory(BaseMemory):
 
     cdef:
@@ -49,7 +59,7 @@ cdef class MemoryPointer:
 
 
 cpdef MemoryPointer alloc(size)
-
+cpdef MemoryPointer malloc_managed(size_t size)
 
 cpdef set_allocator(allocator=*)
 cpdef get_allocator()

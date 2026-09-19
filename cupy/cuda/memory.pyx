@@ -240,8 +240,29 @@ cdef class ManagedMemory(BaseMemory):
         self.size = size
         self.device_id = device.get_device_id()
         self.ptr = 0
+        self._owner = None
         if size > 0:
             self.ptr = runtime.mallocManaged(size)
+
+    @staticmethod
+    cdef from_external(intptr_t ptr, size_t size, object owner):
+        cdef runtime.PointerAttributes attrs
+        cdef int device_id
+        # Note: Could also fetch this from the allocator (since it is our
+        # allocation.)
+        if size != 0:
+            attrs = runtime.pointerGetAttributes(ptr)
+            device_id = attrs.device
+        else:
+            # guess at current device:
+            device_id = device.get_device_id()
+
+        cdef ManagedMemory self = ManagedMemory.__new__(ManagedMemory)
+        self.size = size
+        self.device_id = device_id
+        self.ptr = ptr
+        self._owner = owner
+        return self
 
     def prefetch(self, stream, *, int device_id=runtime.cudaInvalidDeviceId):
         """(experimental) Prefetch memory.
@@ -266,7 +287,11 @@ cdef class ManagedMemory(BaseMemory):
 
     def __dealloc__(self):
         # Note: Cannot raise in the destructor! (cython/cython#1613)
-        if self.ptr:
+        if self._owner is not None:
+            # if we don't own the memory, we must sync before free to avoid
+            # any race condition
+            runtime.streamSynchronize(stream_module.get_current_stream_ptr())
+        elif self.ptr:
             runtime.free(self.ptr)
 
 
