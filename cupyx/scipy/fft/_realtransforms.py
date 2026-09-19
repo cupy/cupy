@@ -108,7 +108,7 @@ def _reshuffle_dct2(x, n, axis, dst=False):
 
 
 _mult_factor_dct2 = _core.ElementwiseKernel(
-    in_params='R xr, int32 N, R norm_factor',
+    in_params='R xr, int64 N, R norm_factor',
     out_params='C y',
     operation="""
     C j(0., -1.);
@@ -230,7 +230,7 @@ def _reshuffle_dct3(y, n, axis, dst):
 
 
 _mult_factor_dct3 = _core.ElementwiseKernel(
-    in_params='R xr, int32 N, R norm_factor',
+    in_params='R xr, int64 N, R norm_factor',
     out_params='C y',
     operation="""
     C j(0., 1.);

@@ -6,6 +6,7 @@ import numpy
 
 import cupy
 from cupy import _core
+from cupy import _util
 from cupy._core import _routines_statistics as _statistics
 from cupy._core import _fusion_thread_local
 from cupy._logic import content
@@ -18,6 +19,33 @@ _QUANTILE_PARAMS = {
     'median_unbiased': (1/3, 1/3),  # H&F type 8
     'normal_unbiased': (3/8, 3/8),  # H&F type 9
 }
+
+
+@_util.memoize()
+def _get_percentile_weightnening_kernel():
+    return cupy.ElementwiseKernel(
+        'S idx, raw T a, int64 offset_, int64 size_', 'U ret',
+        '''
+        using index_t = decltype(a)::index_t;
+        index_t offset = static_cast<index_t>(offset_);
+        index_t size = static_cast<index_t>(size_);
+
+        index_t idx_below = floor(idx);
+        U weight_above = idx - idx_below;
+
+        index_t max_idx = size - 1;
+        index_t offset_bottom = _ind.get()[0] * offset + idx_below;
+        index_t offset_top = min(offset_bottom + 1, max_idx);
+
+        U diff = a[offset_top] - a[offset_bottom];
+
+        if (weight_above < 0.5) {
+            ret = a[offset_bottom] + diff * weight_above;
+        } else {
+            ret = a[offset_top] - diff * (1 - weight_above);
+        }
+        ''',
+        'cupy_percentile_weightnening')
 
 
 def amin(a, axis=None, out=None, keepdims=False):
@@ -271,26 +299,8 @@ def _quantile_unchecked(a, q, axis=None, out=None,
         else:
             ret = cupy.rollaxis(out, 0, out.ndim)
 
-        cupy.ElementwiseKernel(
-            'S idx, raw T a, raw int32 offset, raw int32 size', 'U ret',
-            '''
-            ptrdiff_t idx_below = floor(idx);
-            U weight_above = idx - idx_below;
-
-            ptrdiff_t max_idx = size - 1;
-            ptrdiff_t offset_bottom = _ind.get()[0] * offset + idx_below;
-            ptrdiff_t offset_top = min(offset_bottom + 1, max_idx);
-
-            U diff = a[offset_top] - a[offset_bottom];
-
-            if (weight_above < 0.5) {
-                ret = a[offset_bottom] + diff * weight_above;
-            } else {
-                ret = a[offset_top] - diff * (1 - weight_above);
-            }
-            ''',
-            'cupy_percentile_weightnening'
-        )(indices, ap, ap.shape[-1] if ap.ndim > 1 else 0, ap.size, ret)
+        _get_percentile_weightnening_kernel()(
+            indices, ap, ap.shape[-1] if ap.ndim > 1 else 0, ap.size, ret)
         ret = cupy.rollaxis(ret, -1)  # Roll q dimension back to first axis
 
     if zerod:

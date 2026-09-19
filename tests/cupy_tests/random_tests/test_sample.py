@@ -9,6 +9,7 @@ import cupy
 from cupy import cuda
 from cupy import random
 from cupy import testing
+from cupy.random import _sample
 from cupy.testing import _condition
 from cupy.testing import _hypothesis
 
@@ -288,6 +289,21 @@ class TestRandomSample(unittest.TestCase):
 )
 @testing.fix_random()
 class TestMultinomial(unittest.TestCase):
+
+    def test_kernel_accepts_large_n(self):
+        xs = cupy.array([0], dtype=cupy.int64)
+        ys = cupy.zeros(1, dtype='l')
+        _sample._multinominal_kernel(xs, 1, 2**31, ys)
+        assert ys[0] == 1
+
+    def test_kernel_uses_large_p_for_output_offset(self):
+        xs = cupy.array([0, 0], dtype=cupy.int64)
+        ys = cupy.zeros(2, dtype='l')
+        ys_view = cupy.lib.stride_tricks.as_strided(
+            ys, shape=(2, 2**31), strides=(ys.itemsize, 0))
+        _sample._multinominal_kernel(xs, 2**31, 1, ys_view)
+        testing.assert_array_equal(ys, cupy.ones(2, dtype='l'))
+
     @_condition.repeat(3, 10)
     @testing.for_float_dtypes()
     @testing.numpy_cupy_allclose(rtol=0.05)

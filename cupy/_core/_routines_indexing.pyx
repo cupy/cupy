@@ -562,26 +562,26 @@ _nonzero_kernel = ElementwiseKernel(
 _take_kernel_core = '''
 using idx_t = decltype(a)::index_t;
 idx_t index_range = static_cast<idx_t>(index_range_);
-idx_t ldim = static_cast<idx_t>(ldim_);
-idx_t cdim = static_cast<idx_t>(cdim_);
 idx_t rdim = static_cast<idx_t>(rdim_);
 
 ptrdiff_t out_i = indices % index_range;
 if (out_i < 0) out_i += index_range;
-if (ldim != 1) out_i += (i / (cdim * rdim)) * index_range;
+if (_ind.size() > out_block_size) {
+    out_i += (i / out_block_size) * index_range;
+}
 if (rdim != 1) out_i = out_i * rdim + i % rdim;
 out = a[out_i];
 '''
 
 
 _take_kernel = ElementwiseKernel(
-    'raw T a, S indices, int64 ldim_, int64 cdim_, int64 rdim_, '
+    'raw T a, S indices, int64 out_block_size, int64 rdim_, '
     'int64 index_range_',
     'U out', _take_kernel_core, 'cupy_take')
 
 
 _take_kernel_scalar = ElementwiseKernel(
-    'raw T a, int64 indices, int64 ldim_, int64 cdim_, int64 rdim_, '
+    'raw T a, int64 indices, int64 out_block_size, int64 rdim_, '
     'int64 index_range_',
     'U out', _take_kernel_core, 'cupy_take_scalar')
 
@@ -847,7 +847,7 @@ cdef _ndarray_base _take(
     # When start + 1 == stop this function behaves similarly to np.take
     cdef tuple out_shape, indices_shape
     cdef int i, ndim = a._shape.size()
-    cdef Py_ssize_t ldim, cdim, rdim, index_range
+    cdef Py_ssize_t cdim, rdim, index_range, out_block_size
 
     assert start <= stop
 
@@ -860,7 +860,7 @@ cdef _ndarray_base _take(
         indices_shape = indices.shape
         cdim = indices.size
 
-    ldim = rdim = 1
+    rdim = 1
     if start == 0 and stop == ndim:
         out_shape = indices_shape
         index_range = a.size
@@ -871,8 +871,6 @@ cdef _ndarray_base _take(
             indices = _manipulation._reshape(
                 indices,
                 (1,) * start + indices_shape + (1,) * (ndim - stop))
-        for i in range(start):
-            ldim *= a._shape[i]
         for i in range(stop, ndim):
             rdim *= a._shape[i]
         index_range = 1
@@ -889,12 +887,13 @@ cdef _ndarray_base _take(
     if a.size == 0 and out.size != 0:
         raise IndexError('cannot do a non-empty take from an empty axes.')
 
+    out_block_size = cdim * rdim
     if isinstance(indices, _ndarray_base):
         return _take_kernel(
-            a.reduced_view(), indices, ldim, cdim, rdim, index_range, out)
+            a.reduced_view(), indices, out_block_size, rdim, index_range, out)
     else:
         return _take_kernel_scalar(
-            a.reduced_view(), indices, ldim, cdim, rdim, index_range, out)
+            a.reduced_view(), indices, out_block_size, rdim, index_range, out)
 
 
 cdef _scatter_op_single(
