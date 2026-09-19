@@ -14,7 +14,7 @@ Requirements
     * This requirement is optional if you install both CUDA and CuPy from either PyPI or conda-forge. However, you still need to have a compatible
       driver installed for your GPU. See :ref:`install_cupy_from_pypi` and :ref:`install_cupy_from_conda_forge` for details.
 
-* `Python <https://python.org/>`_: v3.10 / v3.11 / v3.12 / v3.13 / v3.14
+* `Python <https://python.org/>`_: v3.10 / v3.11 / v3.12 / v3.13 / v3.14 / v3.15
 
 .. note::
 
@@ -31,7 +31,7 @@ NumPy/SciPy-compatible API in CuPy v14 is based on NumPy 2.3 and SciPy 1.16, and
 
     * Required only when copying sparse matrices from GPU to CPU (see :doc:`../reference/scipy_sparse`.)
 
-* `Optuna <https://optuna.org/>`_ (*optional*): v3.x / v4.x
+* `Optuna <https://optuna.org/>`_ (*optional*): v3.x / v4.x / v5.x
 
     * Required only when using :ref:`kernel_param_opt`.
 

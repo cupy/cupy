@@ -400,10 +400,10 @@
   nccl: "2.30"
   cutensor: "2.4"
   cusparselt: "0.9.1"
-  python: "3.14"
+  python: "3.15"
   numpy: "2.5"
   scipy: "1.18"
-  optuna: "4"
+  optuna: "5"
   ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.2"
@@ -419,7 +419,8 @@
   _inherits: "cupy.linux.cuda133"
   tags: ["@push", "full", "mini", "multi", "linux", "cuda133"]
   target: "cuda133.multi"
-  mpi4py: "4"
+  # TODO(seberg): enable mpi4py when 3.15 wheels available
+  mpi4py: null
   env:CUPY_CI_PYTEST_EXTRA_OPTS: null
   test: "unit-multi"
 
@@ -432,6 +433,16 @@
   numpy: "2.4"
   scipy: "1.16"
   python: "3.14t"
+  env:CUPY_TEST_RANDOM_SUBSAMPLE: "1"
+  env:CUPY_CI_PYTEST_EXTRA_OPTS: "--parallel-threads=2"
+  test: "unit"
+
+# CUDA 13.x + Python 3.15 free-threaded | Linux
+- project: "cupy.linux.cuda13x-py315t"
+  _inherits: "cupy.linux.cuda133"
+  tags: ["@nightly", "full", "linux", "cuda133", "py315t"]
+  target: "cuda13x-py315t"
+  python: "3.15t"
   env:CUPY_TEST_RANDOM_SUBSAMPLE: "1"
   env:CUPY_CI_PYTEST_EXTRA_OPTS: "--parallel-threads=2"
   test: "unit"
@@ -711,6 +722,18 @@
   _extern: true
   target: "cuda133"
   tags: ["@push", "full", "mini", "windows", "cuda133"]
+  system: "windows"
+
+- project: "cupy.win.cuda13x-py314t"
+  _extern: true
+  target: "cuda13x-py314t"
+  tags: ["@nightly", "full", "windows", "py314t"]
+  system: "windows"
+
+- project: "cupy.win.cuda13x-py315t"
+  _extern: true
+  target: "cuda13x-py315t"
+  tags: ["@nightly", "full", "windows", "py315t"]
   system: "windows"
 
 - project: "cupy.linux.cuda-rapids"
