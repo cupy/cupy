@@ -25,8 +25,8 @@ Matrix and vector products
    dot
    # linalg.multi_dot
    vdot
-   # vecdot
-   # linalg.vecdot
+   vecdot
+   linalg.vecdot
    inner
    outer
    # linalg.outer
