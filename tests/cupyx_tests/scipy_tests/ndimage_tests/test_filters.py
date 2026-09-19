@@ -1103,3 +1103,93 @@ class TestOutputOverlapsInput:
         a_np = testing.shaped_random((5, 6), numpy, numpy.float64)
         expected = scipy.ndimage.generic_filter(a_np, numpy.mean, size=3)
         testing.assert_allclose(actual, expected, atol=1e-5, rtol=1e-5)
+
+
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.int64, numpy.uint64],
+    'func': ['minimum', 'maximum'],
+}))
+class TestMinMaxFilterLargeInt:
+    # Regression tests for AIOSS-5814: the separable 1D min/max filter path
+    # used a ``double`` intermediate, which corrupts 64-bit integer values
+    # greater than 2**53 via an ``int64 -> double -> int64`` round-trip.
+    #
+    # NumPy (not SciPy) is used as the correctness oracle here: SciPy's own
+    # ndimage min/max filters share the same double-intermediate bug, so they
+    # cannot be used as a reference for int64/uint64.
+
+    def _values(self, xp):
+        info = numpy.iinfo(self.dtype)
+        # A value that is NOT exactly representable in float64 (> 2**53),
+        # plus the type extremes where the double round-trip is UB.
+        return [
+            self.dtype(2 ** 62 + 12345),
+            self.dtype(info.max),
+            self.dtype(info.min),
+            self.dtype(2 ** 53 + 1),
+        ]
+
+    def test_constant_array_is_identity_1d(self):
+        # A min/max filter over a constant array must return that constant.
+        for val in self._values(cupy):
+            a = cupy.full(8, val, dtype=self.dtype)
+            for size in (2, 3, 5):
+                out = getattr(cupyx.scipy.ndimage,
+                              self.func + '_filter')(a, size=size)
+                expected = numpy.full(8, val, dtype=self.dtype)
+                testing.assert_array_equal(out, expected)
+
+    def test_constant_array_is_identity_footprint(self):
+        # Non-separable (footprint) path must also be exact.
+        for val in self._values(cupy):
+            a = cupy.full((5, 5), val, dtype=self.dtype)
+            footprint = cupy.array(
+                [[0, 1, 0], [1, 1, 1], [0, 1, 0]], dtype=bool)
+            out = getattr(cupyx.scipy.ndimage,
+                          self.func + '_filter')(a, footprint=footprint)
+            expected = numpy.full((5, 5), val, dtype=self.dtype)
+            testing.assert_array_equal(out, expected)
+
+    def test_matches_numpy_reference_1d(self):
+        # Compare against a brute-force NumPy reference (reflect mode).
+        rng = numpy.random.default_rng(0)
+        x = ((numpy.int64(1) << 60)
+             + rng.integers(0, 1 << 20, size=32)).astype(self.dtype)
+        r = 1  # size == 3
+        n = x.size
+        expected = numpy.empty_like(x)
+        red = numpy.minimum if self.func == 'minimum' else numpy.maximum
+        for i in range(n):
+            acc = None
+            for k in range(-r, r + 1):
+                j = i + k
+                if j < 0:
+                    j = -j - 1
+                elif j >= n:
+                    j = 2 * n - j - 1
+                acc = x[j] if acc is None else red(acc, x[j])
+            expected[i] = acc
+        func1d = getattr(cupyx.scipy.ndimage, self.func + '_filter1d')
+        out = func1d(cupy.asarray(x), size=3)
+        testing.assert_array_equal(out, expected)
+
+    def test_large_cval_not_truncated(self):
+        # mode='constant' fill value must not be truncated through float().
+        val = self.dtype(2 ** 62 + 12345)
+        cval = int(2 ** 61 + 777)
+        a = cupy.full(6, val, dtype=self.dtype)
+        n = a.size
+        r = 1
+        x = numpy.full(n, int(val), dtype=object)
+        red = min if self.func == 'minimum' else max
+        expected = numpy.empty(n, dtype=self.dtype)
+        for i in range(n):
+            acc = None
+            for k in range(-r, r + 1):
+                j = i + k
+                v = int(x[j]) if 0 <= j < n else cval
+                acc = v if acc is None else red(acc, v)
+            expected[i] = self.dtype(acc)
+        func1d = getattr(cupyx.scipy.ndimage, self.func + '_filter1d')
+        out = func1d(a, size=3, mode='constant', cval=cval)
+        testing.assert_array_equal(out, expected)

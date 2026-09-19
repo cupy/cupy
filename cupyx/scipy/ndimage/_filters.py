@@ -897,6 +897,21 @@ def maximum_filter(input, size=None, footprint=None, output=None,
                               cval, origin, 'max', axes)
 
 
+def _is_large_int_dtype(dtype):
+    # 64-bit integers cannot be represented exactly by a double intermediate
+    # (only a 53-bit mantissa), so the min/max filter kernels must use the
+    # native type for these. See AIOSS-5814.
+    return dtype.kind in 'iu' and dtype.itemsize > 4
+
+
+def _min_or_max_cval(cval, dtype):
+    # Embed the constant fill value using the native input type for integer
+    # inputs so that large 64-bit fill values are not truncated by float().
+    if dtype.kind in 'iu' and numpy.isfinite(cval):
+        return int(cval)
+    return float(cval)
+
+
 def _min_or_max_filter(input, size, ftprnt, structure, output, mode, cval,
                        origin, func, axes):
     # structure is used by morphology.grey_erosion() and grey_dilation()
@@ -937,10 +952,12 @@ def _min_or_max_filter(input, size, ftprnt, structure, output, mode, cval,
         )
 
     offsets = _filters_core._origins_to_offsets(origins, ftprnt.shape)
+    cval = _min_or_max_cval(cval, input.dtype)
     kernel = _get_min_or_max_kernel(modes, ftprnt.shape, func,
-                                    offsets, float(cval), int_type,
+                                    offsets, cval, int_type,
                                     has_structure=structure is not None,
-                                    has_central_value=bool(ftprnt[offsets]))
+                                    has_central_value=bool(ftprnt[offsets]),
+                                    large_int=_is_large_int_dtype(input.dtype))
     return _filters_core._call_kernel(kernel, input, ftprnt, output,
                                       structure, weights_dtype=bool)
 
@@ -1008,7 +1025,9 @@ def _min_or_max_1d(input, size, axis=-1, output=None, mode="reflect", cval=0.0,
         input, ftprnt, mode, origin, 'footprint', axes=None)
     offsets = _filters_core._origins_to_offsets(origins, ftprnt.shape)
     kernel = _get_min_or_max_kernel(modes, ftprnt.shape, func, offsets,
-                                    float(cval), int_type, has_weights=False)
+                                    _min_or_max_cval(cval, input.dtype),
+                                    int_type, has_weights=False,
+                                    large_int=_is_large_int_dtype(input.dtype))
     return _filters_core._call_kernel(kernel, input, None, output,
                                       weights_dtype=bool)
 
@@ -1016,13 +1035,20 @@ def _min_or_max_1d(input, size, axis=-1, output=None, mode="reflect", cval=0.0,
 @cupy._util.memoize(for_each_device=True)
 def _get_min_or_max_kernel(modes, w_shape, func, offsets, cval, int_type,
                            has_weights=True, has_structure=False,
-                           has_central_value=True):
+                           has_central_value=True, large_int=False):
     # When there are no 'weights' (the footprint, for the 1D variants) then
-    # we need to make sure intermediate results are stored as doubles for
-    # consistent results with scipy.
-    ctype = 'X' if has_weights else 'double'
+    # we normally store intermediate results as doubles for consistent results
+    # with scipy. However, for 64-bit integer inputs a double intermediate
+    # would silently corrupt values greater than 2**53 (and is undefined
+    # behavior at INT64_MAX) due to the limited 53-bit mantissa. In that case
+    # we keep the native input type ``X`` as the intermediate instead. Since
+    # min/max filters only ever select an existing element (no arithmetic on
+    # the values), using the native type is exact and does not change results
+    # for any other dtype. See AIOSS-5814.
+    use_double = not has_weights and not large_int
+    ctype = 'double' if use_double else 'X'
     value = '{value}'
-    if not has_weights:
+    if use_double:
         value = 'cast<double>({})'.format(value)
 
     # Having a non-flat structure biases the values
