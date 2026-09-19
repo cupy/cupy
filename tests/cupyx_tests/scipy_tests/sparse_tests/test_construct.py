@@ -326,9 +326,10 @@ class TestRandomInvalidArgument:
                 sp.random(3, 4, density=1.1)
 
     def test_invalid_dtype(self):
-        # Note: SciPy accepts integer (cupy does not yet).
-        with pytest.raises(NotImplementedError):
-            sparse.random(3, 4, dtype='i')
+        # Integers and the 16-bit floats are now supported; a non-numeric
+        # dtype ('U3') is not.
+        with pytest.raises(ValueError):
+            sparse.random(3, 4, dtype='U3')
 
 
 @testing.parameterize(*testing.product({
