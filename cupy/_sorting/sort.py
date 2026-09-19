@@ -8,7 +8,7 @@ import numpy
 from cupy.cuda import thrust
 
 
-def sort(a, axis=-1, kind=None):
+def sort(a, axis=-1, kind=None, *, descending=False):
     """Returns a sorted copy of an array with a stable sorting algorithm.
 
     Args:
@@ -18,6 +18,9 @@ def sort(a, axis=-1, kind=None):
             flattened before sorting.
         kind: Default is `None`, which is equivalent to 'stable'. Unlike in
             NumPy any other options are not accepted here.
+        descending (bool): Sort order. If ``True``, the returned array is
+            sorted in descending order. NaN values are sorted to the end
+            for both orders. Default is ``False``.
 
     Returns:
         cupy.ndarray: Array of the same type and shape as ``a``.
@@ -35,7 +38,7 @@ def sort(a, axis=-1, kind=None):
         axis = -1
     else:
         ret = a.copy()
-    ret.sort(axis=axis, kind=kind)
+    ret.sort(axis=axis, kind=kind, descending=descending)
     return ret
 
 
@@ -90,7 +93,7 @@ def lexsort(keys):
     return idx_array
 
 
-def argsort(a, axis=-1, kind=None):
+def argsort(a, axis=-1, kind=None, *, descending=False):
     """Returns the indices that would sort an array with a stable sorting.
 
     Args:
@@ -100,6 +103,9 @@ def argsort(a, axis=-1, kind=None):
             flattened before sorting.
         kind: Default is `None`, which is equivalent to 'stable'. Unlike in
             NumPy any other options are not accepted here.
+        descending (bool): Sort order. If ``True``, the returned indices
+            sort ``a`` in descending order. NaN values are sorted to the
+            end for both orders. Default is ``False``.
 
     Returns:
         cupy.ndarray: Array of indices that sort ``a``.
@@ -111,7 +117,7 @@ def argsort(a, axis=-1, kind=None):
     .. seealso:: :func:`numpy.argsort`
 
     """
-    return a.argsort(axis=axis, kind=kind)
+    return a.argsort(axis=axis, kind=kind, descending=descending)
 
 
 def msort(a):

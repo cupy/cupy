@@ -1035,6 +1035,9 @@ class TestSpsm:
             diag = numpy.diag(numpy.random.uniform(0.1, 1, m).astype(dtype))
         a = a - numpy.diag(a.diagonal()) + diag
 
+        # Avoid SciPy future warning to move to returning arrays:
+        a = scipy.sparse.csr_matrix(a)
+
         if lower:
             a = scipy.sparse.tril(a)
         else:

@@ -167,8 +167,7 @@ from cupy.cuda.graph import Graph  # NOQA
 
 @contextlib.contextmanager
 def using_allocator(allocator=None):
-    """Sets a thread-local allocator for GPU memory inside
-       context manager
+    """Sets a thread-local allocator for GPU memory inside a context manager.
 
     Args:
         allocator (function): CuPy memory allocator. It must have the same

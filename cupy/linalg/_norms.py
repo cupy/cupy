@@ -22,12 +22,13 @@ _norm_ord2 = _core.create_reduction_func(
      'q->q', 'Q->Q',
      ('e->e', (None, None, None, 'float')),
      'f->f', 'd->d'),
-    ('in0 * in0', 'a + b', 'out0 = sqrt(type_out0_raw(a))', None), 0)
+    ('in0 * in0', 'a + b', 'out0 = sqrt(type_out0_raw(a))', None), 0,
+    compute_opkind='PLUS')
 _norm_ord2_complex = _core.create_reduction_func(
     '_norm_ord2_complex',
     ('F->f', 'D->d'),
     ('in0.real() * in0.real() + in0.imag() * in0.imag()',
-     'a + b', 'out0 = sqrt(type_out0_raw(a))', None), 0)
+     'a + b', 'out0 = sqrt(type_out0_raw(a))', None), 0, compute_opkind='PLUS')
 
 
 def norm(x, ord=None, axis=None, keepdims=False):

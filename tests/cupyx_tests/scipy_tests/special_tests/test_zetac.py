@@ -5,6 +5,7 @@ import unittest
 from cupy import testing
 import cupyx.scipy.special  # NOQA
 import pytest
+from cupyx_tests.scipy_tests.special_tests import match_scipy_float32
 
 try:
     import scipy.special  # NOQA
@@ -21,7 +22,8 @@ class TestZetac(unittest.TestCase):
 
         a = testing.shaped_arange((2, 3), xp, dtype)
 
-        return scp.special.zetac(a)
+        out = scp.special.zetac(a)
+        return match_scipy_float32(out, xp, dtype)
 
     @testing.for_all_dtypes(no_complex=True, no_bool=True)
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-6, scipy_name='scp')
@@ -31,7 +33,8 @@ class TestZetac(unittest.TestCase):
             pytest.skip()
         a = xp.linspace(-30, 30, 1000, dtype=dtype)
 
-        return scp.special.zetac(a)
+        out = scp.special.zetac(a)
+        return match_scipy_float32(out, xp, dtype)
 
     @testing.for_all_dtypes(no_complex=True, no_bool=True)
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-6, scipy_name='scp')
@@ -41,13 +44,15 @@ class TestZetac(unittest.TestCase):
             pytest.skip()
         a = xp.linspace(-0.01, 0, 1000, dtype=dtype)
 
-        return scp.special.zetac(a)
+        out = scp.special.zetac(a)
+        return match_scipy_float32(out, xp, dtype)
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3, scipy_name='scp')
     def test_scalar(self, xp, scp, dtype):
 
-        return scp.special.zetac(dtype(3.5))
+        out = scp.special.zetac(dtype(3.5))
+        return match_scipy_float32(out, xp, dtype)
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3, scipy_name='scp')
@@ -57,4 +62,5 @@ class TestZetac(unittest.TestCase):
         x = xp.array([-xp.inf, xp.nan, xp.inf]).astype(dtype)
         a = xp.tile(x, (3, 3))
 
-        return scp.special.zetac(a)
+        out = scp.special.zetac(a)
+        return match_scipy_float32(out, xp, dtype)
