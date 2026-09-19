@@ -13,6 +13,7 @@ from cupy_backends.cuda.api cimport runtime
 
 
 cython_build_ver = CUPY_CYTHON_VERSION
+numpy_build_ver = CUPY_NUMPY_VERSION
 
 
 ENABLE_SLICE_COPY = bool(
