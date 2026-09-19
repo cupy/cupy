@@ -76,7 +76,7 @@ cuda:
     full_version: "13.3.0"
     repository: "nvidia/cuda"
   "13.4":
-    full_version: "13.4.0"
+    full_version: "13.4.1"
     repository: "nvidia/cuda"
 rocm:
   null:
