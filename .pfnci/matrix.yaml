@@ -429,7 +429,7 @@
   os: "ubuntu:22.04"
   cuda: "13.4"
   rocm: null
-  nccl: "2.30"
+  nccl: "2.31"
   cutensor: "2.4"
   cusparselt: "0.9.1"
   python: "3.14"
@@ -645,7 +645,7 @@
   os: "ubuntu:22.04"
   cuda: "13.4"
   rocm: null
-  nccl: "2.30"
+  nccl: "2.31"
   cutensor: "2.4"
   cusparselt: null
   python: "3.14"

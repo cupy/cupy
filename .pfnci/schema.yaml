@@ -181,6 +181,9 @@ nccl:
     spec: "2.30.*"
     cuda:
       "13.3":
+  "2.31":
+    spec: "2.31.*"
+    cuda:
       "13.4":
 cutensor:
   # https://docs.nvidia.com/cuda/cutensor/
