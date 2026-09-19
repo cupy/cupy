@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       host-platform:
-        description: "linux-64, linux-aarch64, or win-64"
+        description: "linux-64, linux-aarch64, win-64, or win-arm64"
         required: true
         type: string
       cuda-version:
@@ -39,10 +39,16 @@ jobs:
           - "3.13"
           - "3.14"
           - "3.14t"
+        exclude:
+          # CPython 3.10 has no official Windows ARM64 build (neither
+          # nuget-cpython nor actions/setup-python's manifest carries one),
+          # so it cannot be built or tested on win-arm64.
+          - python-version: ${{ (inputs.host-platform == 'win-arm64' && '3.10') || '' }}
     name: py${{ matrix.python-version }}
     runs-on: ${{ (inputs.host-platform == 'linux-64'      && 'ubuntu-22.04')     ||
                  (inputs.host-platform == 'linux-aarch64' && 'ubuntu-22.04-arm') ||
-                 (inputs.host-platform == 'win-64'        && 'windows-2022') }}
+                 (inputs.host-platform == 'win-64'        && 'windows-2022')     ||
+                 (inputs.host-platform == 'win-arm64'     && 'windows-11-arm') }}
     steps:
       - name: Verify LongPathsEnabled on Windows
         if: ${{ inputs.host-platform == 'win-64' }}
@@ -112,9 +118,10 @@ jobs:
           SCCACHE_VERSION: v0.17.0-rapids.4
         run: |
           case "${HOST_PLATFORM}" in
-            linux-*)  URL_TRIPLE="$(uname -m)-unknown-linux-musl"; SCCACHE_BIN="sccache" ;;
-            win-*)    URL_TRIPLE="x86_64-pc-windows-msvc";         SCCACHE_BIN="sccache.exe" ;;
-            *)        echo "Unsupported host-platform: ${HOST_PLATFORM}" >&2; exit 1 ;;
+            linux-*)    URL_TRIPLE="$(uname -m)-unknown-linux-musl"; SCCACHE_BIN="sccache" ;;
+            win-64)     URL_TRIPLE="x86_64-pc-windows-msvc";         SCCACHE_BIN="sccache.exe" ;;
+            win-arm64)  URL_TRIPLE="aarch64-pc-windows-msvc";        SCCACHE_BIN="sccache.exe" ;;
+            *)          echo "Unsupported host-platform: ${HOST_PLATFORM}" >&2; exit 1 ;;
           esac
           mkdir -p sccache_bin
           curl -fsSL "https://github.com/rapidsai/sccache/releases/download/${SCCACHE_VERSION}/sccache-${URL_TRIPLE}.tar.gz" \
@@ -147,10 +154,13 @@ jobs:
           # WAR: setup-python is not relocatable, and cibuildwheel hard-wires to 3.12...
           # see https://github.com/actions/setup-python/issues/871
           python-version: "3.12"
+          architecture: ${{ ((inputs.host-platform == 'linux-aarch64' || inputs.host-platform == 'win-arm64') && 'arm64') || 'x64' }}
 
       - name: Set up MSVC
         if: ${{ startsWith(inputs.host-platform, 'win') }}
         uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756  # v1
+        with:
+          arch: ${{ (inputs.host-platform == 'win-arm64' && 'arm64') || 'x64' }}
 
       - name: Set up yq
         # GitHub made an unprofessional decision to not provide it in their Windows VMs,
@@ -158,11 +168,12 @@ jobs:
         if: ${{ startsWith(inputs.host-platform, 'win') }}
         env:
           YQ_VERSION: v4.52.5
-          YQ_SHA256: 47594981f3848a4b4447494adeca9555f908f7cf0a89c4da3fd0243a4631da1c
+          YQ_ARCH: ${{ (inputs.host-platform == 'win-arm64' && 'arm64') || 'amd64' }}
+          YQ_SHA256: ${{ (inputs.host-platform == 'win-arm64' && '236867affa7f18701d4c763cf16b6df962cf4f7e89a8570a5954cf94a38f41c7') || '47594981f3848a4b4447494adeca9555f908f7cf0a89c4da3fd0243a4631da1c' }}
           YQ_DIR: yq
         shell: pwsh -command ". '{0}'"
         run: |
-          $yqUrl = "https://github.com/mikefarah/yq/releases/download/${env:YQ_VERSION}/yq_windows_amd64.exe"
+          $yqUrl = "https://github.com/mikefarah/yq/releases/download/${env:YQ_VERSION}/yq_windows_${env:YQ_ARCH}.exe"
           mkdir -Force -ErrorAction SilentlyContinue "${env:YQ_DIR}" | Out-Null
           Invoke-WebRequest -UseBasicParsing -OutFile "${env:YQ_DIR}/yq.exe" -Uri "$yqUrl"
           $hash = (Get-FileHash -Algorithm SHA256 "${env:YQ_DIR}/yq.exe").Hash.ToLower()
@@ -206,6 +217,10 @@ jobs:
           cuda-path: ${{ runner.temp }}/cuda_toolkit
 
       - name: Install cuTENSOR preload
+        # No cuTENSOR redist for win-arm64 yet (as of CTK 13.4); skip until
+        # NVIDIA ships one. wheel_configs.PRELOAD_LIBRARIES tracks the same
+        # gap and drives the wheel metadata accordingly.
+        if: ${{ inputs.host-platform != 'win-arm64' }}
         env:
           INSTALL_LIB_ARCH: ${{ (inputs.host-platform == 'linux-aarch64' && 'aarch64') || 'x86_64' }}
         run: |
