@@ -162,8 +162,9 @@ def _cupy_split_lu(LU, order='C'):
 
 
 _device_get_index = '''
-__device__ inline int get_index(int row, int col, int num_rows, int num_cols,
-                                bool c_contiguous)
+__device__ inline ptrdiff_t get_index(ptrdiff_t row, ptrdiff_t col,
+                                      ptrdiff_t num_rows, ptrdiff_t num_cols,
+                                      bool c_contiguous)
 {
     if (c_contiguous) {
         return col + num_cols * row;
@@ -244,8 +245,8 @@ _kernel_cupy_laswp = cupy.ElementwiseKernel(
     while (1) {
         int row2 = IPIV[row1];
         if (row1 != row2) {
-            int idx1 = get_index(row1, col, M, N, C_CONTIGUOUS);
-            int idx2 = get_index(row2, col, M, N, C_CONTIGUOUS);
+            ptrdiff_t idx1 = get_index(row1, col, M, N, C_CONTIGUOUS);
+            ptrdiff_t idx2 = get_index(row2, col, M, N, C_CONTIGUOUS);
             T tmp       = ptr_A[idx1];
             ptr_A[idx1] = ptr_A[idx2];
             ptr_A[idx2] = tmp;
