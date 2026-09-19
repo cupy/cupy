@@ -261,6 +261,8 @@ class TraceImpl:
         """
         if x is None:
             return None
+        if callable(x):
+            return x
         assert isinstance(x, _fusion_variable._TraceVariable)
         return x.as_interface()
 
@@ -531,6 +533,11 @@ class TraceImpl:
                         arg.dtype, arg.shape, None, input_index=input_index)
                 array_dict[arg_id] = input_index
                 memory_dict[base_id] = input_index
+            elif callable(arg):
+                # A user-supplied callable is not a kernel parameter; pass
+                # it through unchanged instead of abstracting it as a
+                # scalar so the traced function can call it directly.
+                var = arg
             else:
                 # Scalar input.
                 var = self.vc.generate_new_scalar(
