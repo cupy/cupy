@@ -13,10 +13,19 @@ enum OpType {
     REDUCTION_OP = 3,
     BINARY_OP = 4,
     INPLACE_BINARY_OP = 5,
+    // out = tensor <op> scalar
     SCALAR_BINARY_OP = 6,
     INPLACE_SCALAR_BINARY_OP = 7,
     TRI_OP = 8,
     INPLACE_TRI_OP = 9,
+    // out = scalar <op> tensor（标量在**左**操作数）。
+    // `1 - x` / `2 / x` / `1 > x` 这一类调用：以前只有 SCALAR_BINARY_OP 一种入口，
+    // 注册了的算子会把顺序算反（`2 / x` -> `x / 2`），没注册的则直接报错。
+    // C++ 侧实现见 acl_math_ops.h 的 aclop_R*（Rsubs / RDivs / RFloorDivides /
+    // RFmodScalar / RPowScalar / RRemainderScalar / RGtScalar ...）。
+    // NOTE: 故意不提供 inplace-reverse（没有 aclnnInplaceRsubs，且 `x = 1 - x`
+    // 无法用 inplace 语义表达）；真遇到时 dispatch 会显式报错。
+    REVERSE_SCALAR_BINARY_OP = 10,
 };
 
 // OpInfo结构体定义

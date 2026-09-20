@@ -118,6 +118,11 @@
 #include "aclnnop/aclnn_fmod_scalar.h"
 #include "aclnnop/aclnn_fmod_tensor.h" 
 #include "aclnnop/aclnn_floor_divide.h"
+// reverse (scalar <op> tensor) 用到的：aclnnRsubs 是唯一的原生「标量在左」算子，
+// 其余（div / floor_divide / fmod）没有 ScalarTensor 版本，用 AclScalarTensorGuard
+// 把标量物化成 1 元素张量后走原有的 tensor-tensor 接口。
+#include "aclnnop/aclnn_rsub.h"
+#include "aclnnop/aclnn_fill_scalar.h"
 #include <aclnnop/aclnn_maximum.h>  // find the bigger from two tensors
 #include <aclnnop/aclnn_minimum.h>
 
@@ -356,8 +361,172 @@ extern "C" {
 
     // true_divide == divide
     DECLARE_ACL_BINARY_OPS_FUNC(FloorDivide) // python  `//` int div op, output int
+    DECLARE_ACL_BINARY_SCALAR_OPS_FUNC(FloorDivides) // tensor // scalar
     DECLARE_ACL_BINARY_OPS_FUNC(FmodTensor)  // for float and ints
     DECLARE_ACL_BINARY_SCALAR_OPS_FUNC(FmodScalar)
+
+    // ======================================================================
+    // reverse scalar binary ops: out = scalar <op> tensor
+    //
+    // 为什么必须有：`1 - x` / `2 / x` / `1 > x` 这些调用的标量在**左**操作数，
+    // 而 dispatcher 以前的窄签名只有「tensor <op> scalar」一种入口 ——
+    //   * 没有注册的（subtract/floor_divide/...）会抛 NotImplementedError；
+    //   * 已经注册的（true_divide/power）会把操作数顺序搞反，**静默算错**
+    //     （`2 / x` 被算成 `x / 2`）。
+    // 现在 pyx 侧按操作数位置选 OpType（REVERSE_SCALAR_BINARY_OP），C++ 侧在这里
+    // 用「原生 ScalarTensor 接口」或「标量物化」给出正确语义。
+    // ======================================================================
+
+    // 把 aclScalar 物化成一个 1 元素设备张量（broadcast 语义），供没有
+    // ScalarTensor 变体的 aclnn 接口使用。RAII：析构时释放 tensor + 设备内存。
+    class AclScalarTensorGuard {
+    public:
+        AclScalarTensorGuard(const aclScalar* scalar, aclDataType dtype, aclrtStream stream) {
+            if (scalar == nullptr || dtype == ACL_DT_UNDEFINED) {
+                std::cerr << "ERROR: AclScalarTensorGuard: null scalar or undefined dtype\n";
+                return;
+            }
+            size_t type_size = aclDataTypeSize(dtype);
+            if (type_size == 0) {
+                std::cerr << "ERROR: AclScalarTensorGuard: unsupported dtype\n";
+                return;
+            }
+            if (aclrtMalloc(&device_addr_, type_size, ACL_MEM_MALLOC_HUGE_FIRST) != ACL_SUCCESS ||
+                device_addr_ == nullptr) {
+                std::cerr << "ERROR: AclScalarTensorGuard: aclrtMalloc failed\n";
+                device_addr_ = nullptr;
+                return;
+            }
+            int64_t dims[1] = {1};
+            int64_t strides[1] = {1};
+            tensor_ = aclCreateTensor(dims, 1, dtype, strides, 0, ACL_FORMAT_ND, dims, 1,
+                                      device_addr_);
+            if (tensor_ == nullptr) {
+                std::cerr << "ERROR: AclScalarTensorGuard: aclCreateTensor failed\n";
+                aclrtFree(device_addr_);
+                device_addr_ = nullptr;
+                return;
+            }
+            // 标量 dtype 与目标 dtype 不同（例如 `2 / float32_tensor`）时先转一次
+            const aclScalar* value = scalar;
+            bool owned = false;
+            if (static_cast<aclDataType>(scalar->GetDataType()) != dtype) {
+                value = CreateAclScalar(AclScalarToDouble(scalar), dtype);
+                owned = true;
+            }
+            aclError ret = aclIrregularOpRun(aclnnInplaceFillScalarGetWorkspaceSize,
+                aclnnInplaceFillScalar, stream, tensor_, value);
+            if (owned) {
+                aclDestroyScalar(value);
+            }
+            if (ret != ACL_SUCCESS) {
+                std::cerr << "ERROR: AclScalarTensorGuard: fill scalar failed\n";
+            }
+        }
+
+        AclScalarTensorGuard(const AclScalarTensorGuard&) = delete;
+        AclScalarTensorGuard& operator=(const AclScalarTensorGuard&) = delete;
+
+        ~AclScalarTensorGuard() {
+            if (tensor_ != nullptr) {
+                aclDestroyTensor(tensor_);
+            }
+            if (device_addr_ != nullptr) {
+                aclrtFree(device_addr_);
+            }
+        }
+
+        const aclTensor* get() const {
+            return tensor_;
+        }
+
+        explicit operator bool() const {
+            return tensor_ != nullptr;
+        }
+
+    private:
+        aclTensor* tensor_ = nullptr;
+        void* device_addr_ = nullptr;
+    };
+
+    // out = scalar - tensor：CANN 原生 aclnnRsubs 就是 `out = other - self*alpha`
+    aclError aclop_Rsubs(const aclScalar* self, const aclTensor* other, aclTensor* out,
+                         aclrtStream stream) {
+        double alpha = 1.0;
+        return aclTernaryOpRun(other, self, alpha, out,
+            aclnnRsubsGetWorkspaceSize, aclnnRsubs, stream, false);
+    }
+
+    // out = scalar / tensor：无 ScalarTensor 版本，物化后走 aclnnDiv（1 元素 broadcast）
+    aclError aclop_RDivs(const aclScalar* self, const aclTensor* other, aclTensor* out,
+                         aclrtStream stream) {
+        aclDataType dtype = ACL_DT_UNDEFINED;
+        aclGetDataType(out, &dtype);
+        AclScalarTensorGuard numerator(self, dtype, stream);
+        if (!numerator) {
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        return aclBinaryOpRun(numerator.get(), other, out,
+            aclnnDivGetWorkspaceSize, aclnnDiv, stream, false);
+    }
+
+    // out = scalar // tensor
+    aclError aclop_RFloorDivides(const aclScalar* self, const aclTensor* other, aclTensor* out,
+                                 aclrtStream stream) {
+        aclDataType dtype = ACL_DT_UNDEFINED;
+        aclGetDataType(out, &dtype);
+        AclScalarTensorGuard numerator(self, dtype, stream);
+        if (!numerator) {
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        return aclBinaryOpRun(numerator.get(), other, out,
+            aclnnFloorDivideGetWorkspaceSize, aclnnFloorDivide, stream, false);
+    }
+
+    // out = scalar % tensor（fmod 语义，符号跟被除数）
+    aclError aclop_RFmodScalar(const aclScalar* self, const aclTensor* other, aclTensor* out,
+                               aclrtStream stream) {
+        aclDataType dtype = ACL_DT_UNDEFINED;
+        aclGetDataType(out, &dtype);
+        AclScalarTensorGuard dividend(self, dtype, stream);
+        if (!dividend) {
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        return aclBinaryOpRun(dividend.get(), other, out,
+            aclnnFmodTensorGetWorkspaceSize, aclnnFmodTensor, stream, false);
+    }
+
+    // out = scalar ** tensor（CANN 有原生 aclnnPowScalarTensor）
+    aclError aclop_RPowScalar(const aclScalar* self, const aclTensor* other, aclTensor* out,
+                              aclrtStream stream) {
+        return aclIrregularOpRun(aclnnPowScalarTensorGetWorkspaceSize, aclnnPowScalarTensor,
+            stream, self, other, out);
+    }
+
+    // out = scalar % tensor（remainder 语义，符号跟除数；CANN 原生 ScalarTensor 版本）
+    aclError aclop_RRemainderScalar(const aclScalar* self, const aclTensor* other, aclTensor* out,
+                                    aclrtStream stream) {
+        return aclIrregularOpRun(aclnnRemainderScalarTensorGetWorkspaceSize,
+            aclnnRemainderScalarTensor, stream, self, other, out);
+    }
+
+    // 比较运算的 reverse 就是「换边」：`scalar > tensor` == `tensor < scalar`
+    aclError aclop_RGtScalar(const aclScalar* self, const aclTensor* other, aclTensor* out,
+                             aclrtStream stream) {
+        return aclop_LtScalar(other, self, out, stream);
+    }
+    aclError aclop_RGeScalar(const aclScalar* self, const aclTensor* other, aclTensor* out,
+                             aclrtStream stream) {
+        return aclop_LeScalar(other, self, out, stream);
+    }
+    aclError aclop_RLtScalar(const aclScalar* self, const aclTensor* other, aclTensor* out,
+                             aclrtStream stream) {
+        return aclop_GtScalar(other, self, out, stream);
+    }
+    aclError aclop_RLeScalar(const aclScalar* self, const aclTensor* other, aclTensor* out,
+                             aclrtStream stream) {
+        return aclop_GeScalar(other, self, out, stream);
+    }
 
     DECLARE_ACL_BINARY_OPS_FUNC(RemainderTensorTensor) // remainder has 4 version
     DECLARE_ACL_BINARY_SCALAR_OP(RemainderTensorScalar) // remainder has 4 version

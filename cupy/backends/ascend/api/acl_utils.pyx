@@ -649,8 +649,10 @@ cdef extern from "../acl_opinfo.h":
         INPLACE_BINARY_OP = 5
         SCALAR_BINARY_OP = 6
         INPLACE_SCALAR_BINARY_OP = 7
-        TERNARY_OP = 8
-        INPLACE_TERNARY_OP = 9
+        TRI_OP = 8
+        INPLACE_TRI_OP = 9
+        # out = scalar <op> tensor（标量在左操作数），见 acl_opinfo.h
+        REVERSE_SCALAR_BINARY_OP = 10
 
 cdef extern from "../acl_custom_kernels.h":
     # custom AscendC kernel launcher (binary load + aclrtLaunchKernelWithConfig)
@@ -731,6 +733,7 @@ ctypedef union FuncPtrUnion:
     InplaceBinaryOpFunc inplace_binary_op
     ScalarBinaryOpFunc scalar_binary_op
     InplaceScalarBinaryOpFunc inplace_scalar_binary_op
+    ReverseScalarBinaryOpFunc reverse_scalar_binary_op
     TernaryOpFunc tri_op
     InplaceTernaryOpFunc inplace_tri_op
     ReductionOpFunc reduction_op
@@ -750,10 +753,14 @@ cdef aclError register_acl_ufunc(string opname, OpType op_type, FuncPtrUnion fun
         _builtin_operators[op_info] = func_ptr
         return 0
 
-cdef OpType get_op_type(object ops, bint inplace, bint has_scalar = False):
+cdef OpType get_op_type(object ops, bint inplace, bint has_scalar = False,
+                        bint scalar_is_lhs = False):
     # TODO: Ternary op, has_scalar
     if has_scalar:
         if len(ops) == 3 and not inplace:  # 二元操作
+            # 标量在左还是右决定用哪个槽位：`x - 1`(SCALAR) vs `1 - x`(REVERSE)
+            if scalar_is_lhs:
+                return REVERSE_SCALAR_BINARY_OP
             return SCALAR_BINARY_OP
         elif len(ops) == 2 and inplace:  # 原地二元操作
             return INPLACE_SCALAR_BINARY_OP  
@@ -768,6 +775,18 @@ cdef OpType get_op_type(object ops, bint inplace, bint has_scalar = False):
             return INPLACE_UNARY_OP
         raise RuntimeError("Operator type can not be decided")
     return INVALID_OP
+
+#: 交换律成立的算子：`scalar <op> tensor` 与 `tensor <op> scalar` 结果相同，
+#: 因此没有注册 REVERSE 变体时可以直接回退到 SCALAR_BINARY_OP。
+#: 不在这张表里的（sub / div / floor_divide / fmod / remainder / pow /
+#: greater / less / ...）必须显式注册 reverse 实现，否则报错而不是算错。
+_COMMUTATIVE_OPS = frozenset((
+    'add', 'multiply', 'maximum', 'minimum', 'fmax', 'fmin',
+    'logical_and', 'logical_or', 'logical_xor',
+    'bitwise_and', 'bitwise_or', 'bitwise_xor',
+    'hypot', 'logaddexp', 'logaddexp2', 'gcd', 'lcm',
+    'equal', 'not_equal',
+))
 
 # ---------------------------------------------------------------------------
 # 错误传递：aclnn/acl 的非零返回码 -> Python 异常
@@ -1064,29 +1083,53 @@ cdef aclError launch_acl_func_raw(str opname, sequence ins, sequence outs, list 
     cdef aclScalar* scalar_ptr = NULL
     cdef OpInfo op_info
     cdef FuncPtrUnion func_ptr
+    cdef Py_ssize_t scalar_index = -1
+    cdef Py_ssize_t n_scalars = 0
+    cdef bint scalar_is_lhs
+    cdef OpType fallback_op_type
     op_info.op_name = opname.encode("utf-8")
     op_info.op_type = OpType.GENERAL_OP
 
     # 区分scalar 和tensor 操作数, 应该是Broadcast应该处理的事情
     # inplace op 是ASCEND引入的?
-    for op in ins:
+    # NOTE: 同时记录标量的**位置**：`1 - x` 与 `x - 1` 都是「二元 + 标量」，
+    # 但方向相反。以前只看「有没有标量」，于是 `2 / x` 被算成 `x / 2`（静默算错）。
+    for i, op in enumerate(ins):
         typ = type(op)
         if typ is _cupy_scalar:
+            if scalar_index < 0:
+                scalar_index = i
+            n_scalars += 1
             scalar_ptr = cupy_scalar_to_acl_scalar(op)
 
     cdef has_scalar = scalar_ptr != NULL
     # cupy inplace op does not generate a new op, but make self == out
     cdef bint inplace = ("inplace" in opname) or not outs
     cdef list ops = ins + outs
+    # 标量在左操作数（ins[0]），且是标准的 2-in/1-out 形式
+    scalar_is_lhs = has_scalar and n_scalars == 1 and scalar_index == 0
 
-    op_info.op_type = get_op_type(ops, inplace, has_scalar)
+    op_info.op_type = get_op_type(ops, inplace, has_scalar, scalar_is_lhs)
     if _builtin_operators.find(op_info) == _builtin_operators.end():
-        # scalar 已经创建出来了，抛错前必须回收，否则泄漏
-        _destroy_acl_scalar(scalar_ptr)
-        raise NotImplementedError(
-            _no_ascend_impl_msg(opname)
-            + f" (looked up {op_info.op_type} with len(ops)={len(ops)}, "
-              f"inplace={inplace}, has_scalar={has_scalar})")
+        # 交换律算子（add/multiply/maximum...）的 reverse 与正向等价，回退即可；
+        # 其余算子必须先注册 REVERSE 变体（C++ 侧 aclop_R*），否则宁可报错也不能算错。
+        if (scalar_is_lhs and opname[len(ASCEND_OP_PREFIX):] in _COMMUTATIVE_OPS):
+            fallback_op_type = SCALAR_BINARY_OP
+            op_info.op_type = fallback_op_type
+        if _builtin_operators.find(op_info) == _builtin_operators.end():
+            # scalar 已经创建出来了，抛错前必须回收，否则泄漏
+            _destroy_acl_scalar(scalar_ptr)
+            if scalar_is_lhs:
+                raise NotImplementedError(
+                    _no_ascend_impl_msg(opname)
+                    + f" (scalar-operand-on-the-left form: '{opname}' has no "
+                      f"REVERSE_SCALAR_BINARY_OP implementation; register one "
+                      f"with register_acl_ufunc(\"{opname}\", "
+                      f"REVERSE_SCALAR_BINARY_OP, ...) and an aclop_R* wrapper)")
+            raise NotImplementedError(
+                _no_ascend_impl_msg(opname)
+                + f" (looked up {op_info.op_type} with len(ops)={len(ops)}, "
+                  f"inplace={inplace}, has_scalar={has_scalar})")
     
     func_ptr = _builtin_operators[op_info]
     cdef aclError ret = 0
@@ -1109,10 +1152,15 @@ cdef aclError launch_acl_func_raw(str opname, sequence ins, sequence outs, list 
                 raise RuntimeError(f"Operator {opname} is not an inplace binary operator")
             ret = func_ptr.inplace_binary_op(tensors[0], tensors[1], stream)
 
-        elif len(ops) == 3 and has_scalar and not inplace:  #  out = self <biop> scalar
-            if op_info.op_type != SCALAR_BINARY_OP:
-                raise RuntimeError(f"Operator {opname} is not an scalar binary operator")
-            ret = func_ptr.scalar_binary_op(tensors[0], scalar_ptr, tensors[1], stream)
+        elif len(ops) == 3 and has_scalar and not inplace:
+            # tensors = [tensor_operand, out]（标量不建 tensor），顺序与 ins 中的
+            # ndarray 顺序一致，所以两种方向都能直接取用。
+            if op_info.op_type == REVERSE_SCALAR_BINARY_OP:  # out = scalar <biop> tensor
+                ret = func_ptr.reverse_scalar_binary_op(scalar_ptr, tensors[0], tensors[1], stream)
+            elif op_info.op_type == SCALAR_BINARY_OP:  # out = tensor <biop> scalar
+                ret = func_ptr.scalar_binary_op(tensors[0], scalar_ptr, tensors[1], stream)
+            else:
+                raise RuntimeError(f"Operator {opname} is not a scalar binary operator")
         elif len(ops) == 2 and has_scalar:  #  out = self <biop> scalar
             if op_info.op_type != INPLACE_SCALAR_BINARY_OP:
                 raise RuntimeError(f"Operator {opname} is not an inplace scalar binary operator")
@@ -1312,6 +1360,19 @@ cdef extern from "../acl_math_ops.h" nogil:
     aclError aclop_PowTensorScalar(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream)
     aclError aclop_RemainderTensorScalar(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream)
     aclError aclop_FmodScalar(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_FloorDivides(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream)
+
+    # reverse scalar binary: out = scalar <op> tensor（标量在左操作数）
+    aclError aclop_Rsubs(const aclScalar* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_RDivs(const aclScalar* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_RFloorDivides(const aclScalar* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_RFmodScalar(const aclScalar* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_RPowScalar(const aclScalar* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_RRemainderScalar(const aclScalar* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_RGtScalar(const aclScalar* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_RGeScalar(const aclScalar* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_RLtScalar(const aclScalar* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_RLeScalar(const aclScalar* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
 
     aclError aclop_Neg(const aclTensor* self,  aclTensor* out, aclrtStream stream)
     aclError aclop_InplaceNeg(aclTensor* self,  aclrtStream stream)
@@ -1489,13 +1550,51 @@ cdef void register_math_operators():
     func_union.scalar_binary_op = aclop_Adds
     register_acl_ufunc("ascend_add", SCALAR_BINARY_OP, func_union)
     func_union.scalar_binary_op = aclop_Subs
+    # `cupy_subtract` 才是 ufunc 名（create_arithmetic('subtract', ...)）；
+    # `ascend_sub` 是历史拼写，两个都注册，避免再出现「名字对不上 -> 静默不派发」。
+    register_acl_ufunc("ascend_subtract", SCALAR_BINARY_OP, func_union)
     register_acl_ufunc("ascend_sub", SCALAR_BINARY_OP, func_union)
     func_union.scalar_binary_op = aclop_Muls
     register_acl_ufunc("ascend_multiply", SCALAR_BINARY_OP, func_union)
     func_union.scalar_binary_op = aclop_Divs
     register_acl_ufunc("ascend_true_divide", SCALAR_BINARY_OP, func_union)
+    func_union.scalar_binary_op = aclop_FloorDivides
+    register_acl_ufunc("ascend_floor_divide", SCALAR_BINARY_OP, func_union)
     func_union.scalar_binary_op = aclop_FmodScalar
     register_acl_ufunc("ascend_fmod", SCALAR_BINARY_OP, func_union)
+
+    # -----------------------------------------------------------------------
+    # reverse scalar binary: out = scalar <op> tensor（标量在左操作数）
+    #
+    # dispatch 按操作数位置选 REVERSE_SCALAR_BINARY_OP（get_op_type），所以
+    # `x - 1` 走上面的 SCALAR_BINARY_OP，`1 - x` 走这里。以前 `2 / x` 会被算成
+    # `x / 2`（静默错误结果），`1 - x` 则直接报「未注册」。
+    # C++ 实现：aclnn 原生 ScalarTensor 接口（Rsubs/PowScalarTensor/
+    # RemainderScalarTensor）或标量物化（AclScalarTensorGuard）。
+    # -----------------------------------------------------------------------
+    func_union.reverse_scalar_binary_op = aclop_Rsubs
+    register_acl_ufunc("ascend_subtract", REVERSE_SCALAR_BINARY_OP, func_union)
+    register_acl_ufunc("ascend_sub", REVERSE_SCALAR_BINARY_OP, func_union)
+    func_union.reverse_scalar_binary_op = aclop_RDivs
+    register_acl_ufunc("ascend_true_divide", REVERSE_SCALAR_BINARY_OP, func_union)
+    func_union.reverse_scalar_binary_op = aclop_RFloorDivides
+    register_acl_ufunc("ascend_floor_divide", REVERSE_SCALAR_BINARY_OP, func_union)
+    func_union.reverse_scalar_binary_op = aclop_RFmodScalar
+    register_acl_ufunc("ascend_fmod", REVERSE_SCALAR_BINARY_OP, func_union)
+    func_union.reverse_scalar_binary_op = aclop_RPowScalar
+    register_acl_ufunc("ascend_power", REVERSE_SCALAR_BINARY_OP, func_union)
+    register_acl_ufunc("ascend_float_power", REVERSE_SCALAR_BINARY_OP, func_union)
+    func_union.reverse_scalar_binary_op = aclop_RRemainderScalar
+    register_acl_ufunc("ascend_remainder", REVERSE_SCALAR_BINARY_OP, func_union)
+    # 比较运算的 reverse 是「换边」：scalar > tensor == tensor < scalar
+    func_union.reverse_scalar_binary_op = aclop_RGtScalar
+    register_acl_ufunc("ascend_greater", REVERSE_SCALAR_BINARY_OP, func_union)
+    func_union.reverse_scalar_binary_op = aclop_RGeScalar
+    register_acl_ufunc("ascend_greater_equal", REVERSE_SCALAR_BINARY_OP, func_union)
+    func_union.reverse_scalar_binary_op = aclop_RLtScalar
+    register_acl_ufunc("ascend_less", REVERSE_SCALAR_BINARY_OP, func_union)
+    func_union.reverse_scalar_binary_op = aclop_RLeScalar
+    register_acl_ufunc("ascend_less_equal", REVERSE_SCALAR_BINARY_OP, func_union)
 
     func_union.binary_op = aclop_Maximum
     register_acl_ufunc("ascend_maximum", BINARY_OP, func_union)
@@ -2080,6 +2179,20 @@ cdef bint is_acl_ufunc_registered(str opname) except *:
 def py_is_acl_ufunc_registered(str opname) -> bool:
     """Python-visible wrapper around :func:`is_acl_ufunc_registered` (for tests)."""
     return is_acl_ufunc_registered(opname)
+
+
+def py_get_op_type(object ops, bint inplace, bint has_scalar=False,
+                   bint scalar_is_lhs=False) -> int:
+    """测试用：暴露 `get_op_type`，验证「操作数位置 -> OpType」的判定（无需 NPU）。"""
+    return <int>get_op_type(ops, inplace, has_scalar, scalar_is_lhs)
+
+
+def py_is_registered(str opname, int op_type) -> bool:
+    """测试用：查询 ``(opname, OpType)`` 是否已注册（无需 NPU）。"""
+    cdef OpInfo op_info
+    op_info.op_name = opname.encode("utf-8")
+    op_info.op_type = <OpType>op_type
+    return _builtin_operators.find(op_info) != _builtin_operators.end()
 
 
 def _no_ascend_impl_msg(str opname) -> str:
