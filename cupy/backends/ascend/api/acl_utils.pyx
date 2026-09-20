@@ -1,5 +1,6 @@
 import cython
 import os
+import operator as _operator
 cimport cpython
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from collections import namedtuple
@@ -25,16 +26,43 @@ from cupy.xpu import stream as stream_module
 
 ASCEND_OP_PREFIX = "ascend_"
 
-# 为vector[const aclScalar*]&创建类型别名
-ctypedef vector[const aclScalar*] ArgsType
-ctypedef cpp_map[string, const aclScalar*] KwargsType
+#include "backends/ascend/api/acl_types.pxi" # already included in pxd file
+
+# ---------------------------------------------------------------------------
+# 统一参数通道（docs/ascend/arg_passing_plan.md §2.2/§2.3）
+#
+# args/kwargs 的每个元素都是带 tag 的 AclArg：scalar / int 序列 / string /
+# tensor / none，定义在 cupy/backends/ascend/acl_scalar_arg.h。
+# ---------------------------------------------------------------------------
+cdef extern from "../acl_scalar_arg.h":
+    ctypedef enum AclArgKind:
+        ARG_NONE
+        ARG_SCALAR
+        ARG_INT_ARRAY
+        ARG_STRING
+        ARG_TENSOR
+
+    cdef cppclass AclArg:
+        AclArg()
+        AclArgKind kind
+        const aclScalar* scalar
+        const aclTensor* tensor
+        string str
+        vector[int64_t] ints
+
+    AclArg MakeNoneArg()
+    AclArg MakeScalarArg(const aclScalar* scalar)
+    AclArg MakeIntArrayArg(const vector[int64_t]& values)
+    AclArg MakeStringArg(const string& value)
+    AclArg MakeTensorArg(const aclTensor* tensor)
+
+# 为vector[AclArg]&创建类型别名
+ctypedef vector[AclArg] ArgsType
+ctypedef cpp_map[string, AclArg] KwargsType
 
 # 4. 为迭代器创建别名（便于遍历）
-ctypedef vector[const aclScalar*].iterator ArgsIterator
-ctypedef cpp_map[string, const aclScalar*].const_iterator KargsConstIterator
-#ctypedef pair[const string, const aclScalar*] KwargsItem
-
-#include "backends/ascend/api/acl_types.pxi" # already included in pxd file
+ctypedef cpp_map[string, AclArg].const_iterator KargsConstIterator
+ctypedef cpp_map[string, AclArg].iterator KargsIterator
 
 cdef extern from "aclnn/opdev/common_types.h" nogil:
     cdef cppclass aclTensor # declare/import externally declared C++ class
@@ -293,13 +321,91 @@ _KNOWN_SCALAR_KEYS = frozenset((
     'where',
 ))
 
-#: 声明允许透传 ACL_STRING 标量的算子（当前为空；字符串应优先在 host 侧解析）
-_STRING_ARG_OPS = frozenset()
+#: 声明允许透传 ACL_STRING 标量的算子（字符串应优先在 host 侧解析成 int/bool）
+#: `ascend_dump_args` 是参数通道探针（tests/ascend/test_unified_args.py），
+#: 用来证明 str 参数能按 ARG_STRING 送达 C++ 侧。
+_STRING_ARG_OPS = frozenset((
+    'ascend_dump_args',
+))
 
 
 cdef inline bint _lenient_args():
     """CUPY_ASCEND_LENIENT_ARGS=1 -> 恢复「打印并丢弃」的旧行为（迁移期用）。"""
     return os.environ.get('CUPY_ASCEND_LENIENT_ARGS') == '1'
+
+
+cdef void _destroy_arg(AclArg& arg) except *:
+    """释放一个参数持有的 host 资源。
+
+    只有 ARG_SCALAR 需要在 pyx 侧销毁（aclScalar 由这里创建）；
+    ARG_INT_ARRAY / ARG_STRING 是 C++ 侧按值持有的（vector/string），随容器析构。
+    """
+    if arg.kind == ARG_SCALAR:
+        _destroy_acl_scalar(arg.scalar)
+        arg.scalar = NULL
+    arg.kind = ARG_NONE
+
+
+cdef void _delete_args(ArgsType& args) except *:
+    """销毁位置参数列表里的全部参数。"""
+    cdef Py_ssize_t i
+    for i in range(args.size()):
+        _destroy_arg(args[i])
+
+
+cdef AclArg _convert_arg(str opname, str name, object arg) except *:
+    """把 Python 参数转成带 tag 的 AclArg —— 统一参数通道的唯一入口。
+
+    类型驱动，不做猜测：
+      * ``None``                    -> ARG_NONE（例如 axis=None 表示「全部轴」）
+      * ``str``                     -> ARG_STRING（仅 `_STRING_ARG_OPS` 白名单内的算子）
+      * ``list`` / ``tuple[int]``   -> ARG_INT_ARRAY（axis/dims/shape/shift...）
+      * 数值/布尔/numpy 标量         -> ARG_SCALAR
+    其余类型仍然响亮失败（ndarray 见 _convert_arg_strict 的说明）。
+    """
+    cdef aclScalar* s
+    cdef vector[int64_t] values
+    cdef list items
+    cdef object item
+    cdef bytes py_bytes
+
+    if arg is None:
+        return MakeNoneArg()
+
+    if type(arg) is str:
+        if opname in _STRING_ARG_OPS:
+            py_bytes = (<str>arg).encode('utf-8')
+            return MakeStringArg(py_bytes)
+        if _lenient_args():
+            return MakeNoneArg()
+        raise NotImplementedError(
+            f"{opname}: 字符串参数 {name}={arg!r} 不支持直接透传到 aclnn；"
+            f"请在 host 侧解析为数值/布尔（当前算子未声明 ARG_STRING）")
+
+    if isinstance(arg, (list, tuple)):
+        items = list(arg)
+        values.resize(len(items))
+        for i in range(len(items)):
+            item = items[i]
+            try:
+                # operator.index：只接受整数（含 numpy 整数），float/str 不静默截断
+                values[i] = <int64_t>_operator.index(item)
+            except TypeError:
+                raise NotImplementedError(
+                    f"{opname}: 参数 {name} 是序列，但第 {i} 个元素 {item!r} "
+                    f"(type {type(item).__name__}) 不是整数；"
+                    f"int 序列（ARG_INT_ARRAY）只接受整数元素")
+        return MakeIntArrayArg(values)
+
+    s = _convert_arg_to_acl_scalar(arg)
+    if s != NULL:
+        return MakeScalarArg(s)
+    if _lenient_args():
+        return MakeNoneArg()
+    raise NotImplementedError(
+        f"{opname}: 参数 {name} = {arg!r} (type {type(arg).__name__}) 无法转换为 "
+        f"aclScalar，当前不支持；为避免静默错误结果这里直接报错。"
+        f"（迁移期可设 CUPY_ASCEND_LENIENT_ARGS=1 恢复旧的丢弃行为）")
 
 
 cdef aclScalar* _convert_arg_strict(str opname, str name, arg) except *:
@@ -331,7 +437,8 @@ cdef KwargsType _create_keyword_args(dict kwargs, str opname="<unknown>") except
     cdef KwargsType acl_kwargs
     cdef string cpp_str
     cdef const char* c_str
-    cdef aclScalar* sarg
+    cdef bytes py_bytes
+    cdef AclArg sarg
     if kwargs:
         try:
             for key, value in kwargs.items():
@@ -340,14 +447,13 @@ cdef KwargsType _create_keyword_args(dict kwargs, str opname="<unknown>") except
                         f"{opname}: 未知参数 key {key!r}（不在 C++ 侧消费的 key "
                         f"白名单内）——它会被静默丢弃，所以这里直接报错。"
                         f"已支持的 key 见 _KNOWN_SCALAR_KEYS")
-                sarg = _convert_arg_strict(opname, key, value)
-                if sarg:
-                    py_bytes = key.encode("utf-8")
-                    c_str = py_bytes
-                    cpp_str = c_str
-                    acl_kwargs[cpp_str] = sarg
+                sarg = _convert_arg(opname, key, value)
+                py_bytes = key.encode("utf-8")
+                c_str = py_bytes
+                cpp_str = c_str
+                acl_kwargs[cpp_str] = sarg
         except Exception:
-            # 中途失败时，已放进局部 map 的 aclScalar 既不会随返回值交出去，
+            # 中途失败时，已放进局部 map 的参数既不会随返回值交出去，
             # 也没有别人还能拿到它的指针，必须就地回收，否则泄漏。
             _delete_keyword_args(acl_kwargs)
             raise
@@ -356,15 +462,12 @@ cdef KwargsType _create_keyword_args(dict kwargs, str opname="<unknown>") except
 cdef void _delete_keyword_args(KwargsType& my_map) except *:
     cdef:
         # 使用非常量迭代器，因为我们需要修改map（删除元素）
-        cpp_map[string, const aclScalar*].iterator it = my_map.begin()
-        cpp_map[string, const aclScalar*].iterator end = my_map.end()
-        const aclScalar* scalar_ptr
+        cpp_map[string, AclArg].iterator it = my_map.begin()
+        cpp_map[string, AclArg].iterator end = my_map.end()
 
     # 安全遍历并删除
     while it != end:
-        scalar_ptr = deref(it).second
-        if scalar_ptr != NULL:
-            _destroy_acl_scalar(scalar_ptr)
+        _destroy_arg(deref(it).second)
 
         # 3. 将迭代器指向下一个元素，并擦除当前元素。
         #    it = my_map.erase(it) 会返回指向下一个有效元素的迭代器，这是安全的方法。
@@ -602,6 +705,9 @@ ctypedef aclError (*InplaceBinaryOpFunc)(aclTensor* self, const aclTensor* other
 ctypedef aclError (*ScalarBinaryOpFunc)(const aclTensor* self, const aclScalar* other,
     aclTensor* out, aclrtStream stream) 
 ctypedef aclError (*InplaceScalarBinaryOpFunc)(aclTensor* self, const aclScalar* other, aclrtStream stream)
+# out = scalar <op> tensor（标量在左）：参数顺序刻意「标量在前」，避免和上面混淆
+ctypedef aclError (*ReverseScalarBinaryOpFunc)(const aclScalar* self, const aclTensor* other,
+    aclTensor* out, aclrtStream stream)
 
 ctypedef aclError (*UnaryOpFunc)(const aclTensor* self, aclTensor* out, aclrtStream stream)
 ctypedef aclError (*InplaceUnaryOpFunc)(aclTensor* self, aclrtStream stream)
@@ -733,13 +839,14 @@ cdef aclError launch_general_func(str opname, sequence ins, sequence outs, list 
             if issubclass(typ, _ndarray_base):
                 intensors.push_back(cupy_ndarray_to_acl_tensor(op))
             else:
+                # 操作数里的非 ndarray 只能是标量（-1 * x 之类），
+                # 其余类型仍然是响亮失败（_convert_arg_strict）
                 ascalar = _convert_arg_strict(opname, <str>('operand %s' % type(op).__name__), op)
                 if ascalar:
-                    acl_args.push_back(ascalar)
+                    acl_args.push_back(MakeScalarArg(ascalar))
         for i, pos_arg in enumerate(args):
-            pscalar = _convert_arg_strict(opname, <str>('#%d' % i), pos_arg)
-            if pscalar:
-                acl_args.push_back(pscalar)
+            # 统一参数通道：scalar / int 序列 / str / None（见 _convert_arg）
+            acl_args.push_back(_convert_arg(opname, <str>('#%d' % i), pos_arg))
         for op in outs:
             typ = type(op)
             if issubclass(typ, _ndarray_base):
@@ -753,12 +860,15 @@ cdef aclError launch_general_func(str opname, sequence ins, sequence outs, list 
             cupy_destroy_acl_tensor(ct)
         for t in outtensors:
             cupy_destroy_acl_tensor(t)
-        for acl_scalar in acl_args:
-            _destroy_acl_scalar(acl_scalar)
+        _delete_args(acl_args)
         _delete_keyword_args(acl_kwargs)
-    # 资源已回收，这里只负责把失败暴露给 Python（不再只是 print）
-    if ret != 0:
-        raise_acl_op_error(opname, ret)
+    # NOTE: acl/aclnn 的失败**不在这里抛**，而是把错误码原样返回给 caller
+    # （见本文件 §错误传递 与 docs/ascend/refactor_exception.md S2）：
+    #   * 这一层因此可以是 noexcept 的（C/C++ 调用方不承担跨语言异常）；
+    #   * Python 路径用「默认入口」launch_general_func（检查 + 抛，见本文件末
+    #     的派发入口说明）。
+    # 仍然会抛的是**调用方 bug**（参数不可转换、未知 key、op 未注册），
+    # 那些是 Cython 侧的参数校验，不属于 acl 错误码体系。
     return ret
 
 cdef vector[aclTensor*] _create_ops_vector(sequence ins, sequence outs) except *:
@@ -811,40 +921,74 @@ def py_list_custom_kernels() -> list:
     return sorted(_custom_kernel_specs)
 
 
+cdef str _arg_kind_name(AclArg& arg, object value):
+    """把 AclArg 的 tag 映射成测试可见的字符串。
+
+    宽松模式（CUPY_ASCEND_LENIENT_ARGS=1）下不可转换的值会退化成 ARG_NONE，
+    这里用 ``value is not None`` 把它和真正的 ``None`` 区分开（保留 'unsupported'）。
+    """
+    if arg.kind == ARG_NONE:
+        return 'none' if value is None else 'unsupported'
+    if arg.kind == ARG_SCALAR:
+        return 'scalar'
+    if arg.kind == ARG_INT_ARRAY:
+        return 'int_array'
+    if arg.kind == ARG_STRING:
+        return 'string'
+    if arg.kind == ARG_TENSOR:
+        return 'tensor'
+    return 'unknown'
+
+
 def py_describe_args(str opname, tuple args=(), dict kwargs=None) -> list:
     """按 dispatch 路径的同一套规则校验/描述参数（测试与调试用，无需 NPU）。
 
-    返回 ``[(name, kind, repr), ...]``，其中 ``kind`` 为：
+    返回 ``[(name, kind, repr), ...]``，其中 ``kind`` 为统一参数通道的 tag：
 
-    * ``'scalar'``      —— 可转换为 aclScalar（数值/布尔/numpy 标量）
-    * ``'string'``      —— 字符串且该算子已声明 ARG_STRING（透传 ACL_STRING）
+    * ``'scalar'``      —— 数值/布尔/numpy 标量（ARG_SCALAR）
+    * ``'int_array'``   —— int 序列（ARG_INT_ARRAY，例如 axis=(0, 1)）
+    * ``'string'``      —— 字符串且该算子已在 `_STRING_ARG_OPS` 白名单里（ARG_STRING）
+    * ``'none'``        —— 显式 None（ARG_NONE）
     * ``'unsupported'`` —— 仅当 ``CUPY_ASCEND_LENIENT_ARGS=1`` 时才会出现
 
     与真实路径一致：不可转换的参数、未知 key、未声明的字符串参数都会**抛错**。
     """
     cdef list out = []
-    cdef aclScalar* s
+    cdef AclArg arg
     if kwargs is None:
         kwargs = {}
     for i, value in enumerate(args):
-        s = _convert_arg_strict(opname, <str>('#%d' % i), value)
-        if s != NULL:
-            _destroy_acl_scalar(s)
-            out.append(('#%d' % i, 'scalar', repr(value)))
-        else:
-            out.append(('#%d' % i, 'unsupported', repr(value)))
+        arg = _convert_arg(opname, <str>('#%d' % i), value)
+        out.append(('#%d' % i, _arg_kind_name(arg, value), repr(value)))
+        _destroy_arg(arg)
     for key, value in kwargs.items():
         if key not in _KNOWN_SCALAR_KEYS and not _lenient_args():
             raise ValueError(
                 f"{opname}: 未知参数 key {key!r}（不在 C++ 侧消费的 key 白名单内）")
-        s = _convert_arg_strict(opname, key, value)
-        if s != NULL:
-            _destroy_acl_scalar(s)
-            kind = 'string' if type(value) is str else 'scalar'
-            out.append((key, kind, repr(value)))
-        else:
-            out.append((key, 'unsupported', repr(value)))
+        arg = _convert_arg(opname, key, value)
+        out.append((key, _arg_kind_name(arg, value), repr(value)))
+        _destroy_arg(arg)
     return out
+
+
+def py_dump_args(tuple args=(), dict kwargs=None) -> str:
+    """测试用：调用参数通道探针 ``ascend_dump_args``，返回 C++ 侧记录到的参数描述。
+
+    无 NPU 可跑（没有任何 aclnn 计算），用来证明 scalar / int 序列 / str / None
+    真的按 tag 送达了 C++ 层。
+    """
+    if kwargs is None:
+        kwargs = {}
+    launch_general_func("ascend_dump_args", [], [], list(args), dict(kwargs), 0)
+    return py_last_dump_args()
+
+
+def py_last_dump_args() -> str:
+    """测试用：上一次 ``ascend_dump_args`` 记录的内容（C++ 侧全局缓冲）。"""
+    cdef const char* msg = aclop_GetLastDumpArgs()
+    if msg == NULL:
+        return ''
+    return (<bytes>msg).decode('utf-8', 'replace')
 
 
 cdef aclError _launch_custom_ufunc(str opname, dict spec, sequence ins,
@@ -1632,6 +1776,11 @@ cdef extern from "../acl_general_ops.h" nogil:
     aclError aclop_Copy(const aclTensor* self,  aclTensor* out, aclrtStream stream)
     aclError aclop_Nonzero(const aclTensor* self,  aclTensor* out, aclrtStream stream)
 
+    # 参数通道探针（只记录参数，不做计算；见 acl_general_ops.h）
+    aclError aclop_DumpArgs(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    const char* aclop_GetLastDumpArgs()
+
     aclError aclop_Fill(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
 
@@ -1838,6 +1987,12 @@ cdef void register_irregular_operators():
     register_acl_ufunc("ascend_fill", GENERAL_OP, func_union)
     func_union.unary_op = aclop_Nonzero
     register_acl_ufunc("ascend_nonzero", UNARY_OP, func_union)
+
+    # 参数通道探针：只记录收到的参数（scalar / int 序列 / str / None 的 tag 与值），
+    # 不做任何计算，也没有对应的 numpy API。tests/ascend/test_unified_args.py 用它
+    # 在无 NPU 环境验证「统一参数通道」端到端可达（py_dump_args / py_last_dump_args）。
+    func_union.general_op = aclop_DumpArgs
+    register_acl_ufunc("ascend_dump_args", GENERAL_OP, func_union)
 
 def py_register_acl_ufunc(str opname, int func_type, long func_ptr):
     """Python层级的操作注册函数, func_type is OpType enum value"""

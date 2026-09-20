@@ -92,6 +92,10 @@
 #include "./acl_scalar_arg.h"
 #include "acl/acl.h"
 
+#include <algorithm>
+#include <sstream>
+#include <string>
+
     // aclnnEyeGetWorkspaceSize(int64_t n, int64_t m, aclTensor* out,
     // _creation.basic.py eye() use ndarray_base.diagnal() ->  _indexing._ndarray_diagonal -> _diagnal
     // no kernel is needed, but _transpose() used
@@ -150,29 +154,24 @@
     // Fix (review D8): `dims` used to be hardcoded to nullptr, so a single-axis
     // `flip(a, 0)` flipped *every* axis. `dims == nullptr` is reserved for the
     // `axis=None` case, which is what NumPy means by "flip all axes".
+    //
+    // M3 (docs/ascend/arg_passing_plan.md): `axis` 现在既可以是一个 int，也可以
+    // 是 int 序列 —— 统一参数通道（TryGetInt64List + AclIntArrayGuard）让
+    // `flip(a, (0, 2))` 这类 multi-axis 调用终于可达（以前在 pyx 侧就被拒绝）。
     aclError aclop_Flip(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
         if (ins.empty() || outs.empty()) {
             PrintArgs(__func__, args, kwargs, std::cout);
             return ACL_ERROR_INVALID_PARAM;
         }
-        // `axis` is either absent (None) or one scalar axis. Multi-axis tuples
-        // cannot be expressed through the positional-scalar arg channel yet
-        // (see arg_passing_plan.md M3), so they are rejected loudly instead of
-        // being silently dropped.
-        const aclIntArray* dims = nullptr;
-        aclIntArray* owned = nullptr;
-        if (HasScalarArg(args, 0, kwargs, "axis")) {
-            int64_t axis = GetScalarArg<int64_t>(args, 0, kwargs, "axis", 0);
-            owned = aclCreateIntArray(&axis, 1);
-            dims = owned;
+        std::vector<int64_t> axis;
+        if (!TryGetInt64List(args, 0, kwargs, "axis", &axis)) {
+            // axis=None -> dims == nullptr -> flip all axes（NumPy 语义）
+            axis.clear();
         }
-        aclError ret = aclIrregularOpRun(aclnnFlipGetWorkspaceSize, aclnnFlip, stream,
-            ins[0], dims, outs[0]);
-        if (owned != nullptr) {
-            aclDestroyIntArray(owned);
-        }
-        return ret;
+        AclIntArrayGuard dims(axis);
+        return aclIrregularOpRun(aclnnFlipGetWorkspaceSize, aclnnFlip, stream,
+            ins[0], dims.get(), outs[0]);
     }
 
     // numpy.permute(x, dims) -> aclnnPermute(self, dims, out)
@@ -182,49 +181,40 @@
             PrintArgs(__func__, args, kwargs, std::cout);
             return ACL_ERROR_INVALID_PARAM;
         }
-        // `dims` is passed either as an aclIntArray argument or as a python
-        // sequence stored positionally in `args`.
-        aclIntArray* dims = nullptr;
-        if (!args.empty() && op::IsBasicType(args.back()->GetDataType())) {
-            // unlikely path: a single scalar axis
-            int64_t axis = ToScalarArg<int64_t>(args.back());
-            dims = aclCreateIntArray(&axis, 1);
+        // `dims` 既可以是 int 序列（numpy.permute），也可以是单个 int
+        std::vector<int64_t> dims_values;
+        if (!TryGetInt64List(args, 0, kwargs, "dims", &dims_values)) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
         }
-        aclError ret = aclIrregularOpRun(aclnnPermuteGetWorkspaceSize, aclnnPermute, stream,
-            ins[0], dims, outs[0]);
-        if (dims != nullptr) {
-            aclDestroyIntArray(dims);
-        }
-        return ret;
+        AclIntArrayGuard dims(dims_values);
+        return aclIrregularOpRun(aclnnPermuteGetWorkspaceSize, aclnnPermute, stream,
+            ins[0], dims.get(), outs[0]);
     }
 
     // numpy.roll(x, shift, axis) -> aclnnRoll(x, shifts, dims, out)
     // Fix (review D8): `axis=None` means "flatten, roll, reshape back", which is
     // what aclnn expresses with `dims == nullptr` — it used to be turned into
-    // `axis=0` and therefore rolled along the wrong axis. Multi-axis tuples are
-    // still not representable (positional-scalar arg channel, see
-    // arg_passing_plan.md M3) and are rejected loudly by the Cython side.
+    // `axis=0` and therefore rolled along the wrong axis.
+    // M3: `shift` / `axis` 支持 int 序列（`roll(a, (1, 2), axis=(0, 1))`），
+    // 两侧长度由 aclnn 自己校验（numpy 是广播，长度不一致时这里交给 aclnn 报错）。
     aclError aclop_Roll(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
         if (ins.empty() || outs.empty()) {
             PrintArgs(__func__, args, kwargs, std::cout);
             return ACL_ERROR_INVALID_PARAM;
         }
-        const aclTensor* self = ins[0];
-        int64_t shift = GetScalarArg<int64_t>(args, 0, kwargs, "shift", 0);
-        aclIntArray* shifts = aclCreateIntArray(&shift, 1);
-        aclIntArray* dims = nullptr;
-        if (HasScalarArg(args, 1, kwargs, "axis")) {
-            int64_t axis = GetScalarArg<int64_t>(args, 1, kwargs, "axis", 0);
-            dims = aclCreateIntArray(&axis, 1);
+        std::vector<int64_t> shifts_vec;
+        if (!TryGetInt64List(args, 0, kwargs, "shift", &shifts_vec)) {
+            shifts_vec.push_back(0);
         }
-        aclError ret = aclIrregularOpRun(aclnnRollGetWorkspaceSize, aclnnRoll, stream,
-            self, shifts, dims, outs[0]);
-        aclDestroyIntArray(shifts);
-        if (dims != nullptr) {
-            aclDestroyIntArray(dims);
-        }
-        return ret;
+        std::vector<int64_t> dims_vec;
+        // axis=None -> dims == nullptr（先展平再 roll）
+        TryGetInt64List(args, 1, kwargs, "axis", &dims_vec);
+        AclIntArrayGuard shifts(shifts_vec);
+        AclIntArrayGuard dims(dims_vec);
+        return aclIrregularOpRun(aclnnRollGetWorkspaceSize, aclnnRoll, stream,
+            ins[0], shifts.get(), dims.get(), outs[0]);
     }
 
     // numpy has op resize, but diff from the scaling
@@ -265,8 +255,8 @@
     aclError aclop_Fill(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
         aclTensor* self = outs[0];
-        if (args.size()) {
-            return aclInplaceBinaryOpRun(self, args[0],
+        if (args.size() && args[0].scalar != nullptr) {
+            return aclInplaceBinaryOpRun(self, args[0].scalar,
                 aclnnInplaceFillScalarGetWorkspaceSize, aclnnInplaceFillScalar, stream, false);
         } else if (ins.size() >= 1) {
             return aclInplaceBinaryOpRun(self, ins[0],
@@ -304,8 +294,8 @@
         auto numel = GetAclTensorElementCount(outs[0]);
         PrintArgs(__func__, args, kwargs, std::cout);
         if (args.size() >= 2) {
-            start = args[0];
-            step = args[1];
+            start = args[0].scalar;
+            step = args[1].scalar;
             // aclnnArange treats steop as the exclusive bound (half open), matching numpy, otherwise the last elem uninitialized
             double dstart = GetScalarArg<double>(args, 0, kwargs, "start", 0.0);
             double dstep = GetScalarArg<double>(args, 1, kwargs, "step", 1.0);
@@ -381,10 +371,10 @@
     // This is a general function, aclnnRoundDecimals() still round to 0 decimal, why?
     aclError aclop_Round(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
-        if (args.size() && ins.size()) {
+        if (args.size() && args[0].scalar != nullptr && ins.size()) {
             const aclTensor* self = ins[0];
             aclTensor* out = outs[0];
-            int64_t decimals = ToScalarArg<int64_t>(args[0]); // will arithmetic scalar do static_cast?
+            int64_t decimals = ToScalarArg<int64_t>(args[0].scalar); // will arithmetic scalar do static_cast?
             return aclIrregularOpRun(aclnnRoundDecimalsGetWorkspaceSize, aclnnRoundDecimals, stream,
                 self, decimals, out);
         } else {
@@ -419,8 +409,8 @@
         const aclTensor* self = ins[0];
         aclTensor* out = outs[0];
         if (args.size() >= 2) {
-            const aclScalar* amin = args[0];
-            const aclScalar* amax = args[1];
+            const aclScalar* amin = args[0].scalar;
+            const aclScalar* amax = args[1].scalar;
             return aclTernaryOpRun(self, amin, amax, out,
                 aclnnClampGetWorkspaceSize, aclnnClamp, stream, false);
         } else if (ins.size() >= 3) {
@@ -602,11 +592,13 @@
             return ACL_ERROR_INVALID_PARAM;
         }
         bool keepdim = GetScalarArg<bool>(args, 1, kwargs, "keepdim", false);
-        // `dim` may be given as a scalar axis or a sequence.
-        if (!args.empty() && args[0] != nullptr && op::IsBasicType(args[0]->GetDataType())) {
-            int64_t dim = ToScalarArg<int64_t>(args[0]);
+        // `dim` may be given as a scalar axis or (via the unified arg channel) a
+        // sequence; aclnnAminmaxDim itself only takes a single int64_t, so a
+        // sequence is reduced to its first axis here (documented in the plan).
+        std::vector<int64_t> dims;
+        if (TryGetInt64List(args, 0, kwargs, "dim", &dims) && !dims.empty()) {
             return aclIrregularOpRun(aclnnAminmaxDimGetWorkspaceSize, aclnnAminmaxDim, stream,
-                ins[0], dim, keepdim, outs[0], outs[1]);
+                ins[0], dims[0], keepdim, outs[0], outs[1]);
         }
         return aclIrregularOpRun(aclnnAminmaxAllGetWorkspaceSize, aclnnAminmaxAll, stream,
             ins[0], outs[0], outs[1]);
@@ -888,6 +880,46 @@
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
         PrintArgs(__func__, args, kwargs, std::cout);
         return ACL_ERROR_INVALID_PARAM;
+    }
+
+    // -----------------------------------------------------------------------
+    // 参数通道探针（`ascend_dump_args`）：只记录收到的参数，不做任何计算。
+    //
+    // 用途：在没有 NPU 的环境里验证「统一参数通道」真的把
+    // scalar / int 序列 / str / None 按 tag 送达了 C++ 侧
+    // （tests/ascend/test_unified_args.py 通过 py_last_dump_args() 读取）。
+    // 生产路径不注册它给任何 numpy API。
+    // -----------------------------------------------------------------------
+    inline std::string& AclArgDumpBuffer() {
+        static std::string buffer;
+        return buffer;
+    }
+
+    aclError aclop_DumpArgs(const std::vector<const aclTensor*>& ins,
+        const std::vector<aclTensor*>& outs, const ArgsType& args, const KwargsType& kwargs,
+        aclrtStream stream) {
+        std::ostringstream oss;
+        oss << "ins=" << ins.size() << ",outs=" << outs.size();
+        for (size_t i = 0; i < args.size(); ++i) {
+            oss << ";arg[" << i << "]=";
+            PrintArg(args[i], oss);
+        }
+        // 按 key 排序，便于测试里做字符串断言
+        std::vector<std::string> keys;
+        for (const auto& pair : kwargs) {
+            keys.push_back(pair.first);
+        }
+        std::sort(keys.begin(), keys.end());
+        for (const std::string& key : keys) {
+            oss << ";kwarg[" << key << "]=";
+            PrintArg(kwargs.at(key), oss);
+        }
+        AclArgDumpBuffer() = oss.str();
+        return ACL_SUCCESS;
+    }
+
+    inline const char* aclop_GetLastDumpArgs() {
+        return AclArgDumpBuffer().c_str();
     }
 
 #ifdef __cplusplus

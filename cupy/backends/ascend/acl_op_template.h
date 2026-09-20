@@ -10,7 +10,9 @@
 
 using AclnnKernelFunc = aclnnStatus (*)(void* workspace, uint64_t workspaceSize, 
                                        aclOpExecutor* executor, aclrtStream stream);
-using KwargsType = std::unordered_map<std::string, const aclScalar*>;
+// ArgsType / KwargsType（带 tag 的统一参数通道）定义在 acl_scalar_arg.h 里；
+// 这里只 include 一次，避免两处定义漂移（以前两处各写了一份）。
+#include "acl_scalar_arg.h"
 
 #define CHECK_STATUS(status) \
 do { \

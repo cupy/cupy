@@ -51,7 +51,9 @@ def test_known_keys_accepted(acl_utils, strict_env):
 # ---------------------------------------------------------------------------
 # 值类型：不支持的（原来静默丢弃 -> 现在必须报错）
 # ---------------------------------------------------------------------------
-@pytest.mark.parametrize('value', [[1, 2, 3], {'a': 1}, None, object()])
+# NOTE: `[1, 2, 3]` 与 `None` 自 M3（统一参数通道）起是**合法**参数：
+# 前者 -> ARG_INT_ARRAY，后者 -> ARG_NONE（详见 test_unified_args.py）。
+@pytest.mark.parametrize('value', [{'a': 1}, object()])
 def test_unsupported_values_raise(acl_utils, strict_env, value):
     with pytest.raises(NotImplementedError, match='无法转换为'):
         acl_utils.py_describe_args('ascend_sort', (value,))
@@ -90,11 +92,14 @@ def test_where_is_known_key(acl_utils, strict_env):
 # 宽松模式（迁移期开关）
 # ---------------------------------------------------------------------------
 def test_lenient_mode_keeps_old_behaviour(acl_utils, lenient_env):
-    # 未知 key + 不可转换的值 -> 宽松模式下不再抛错，标记 unsupported 后跳过
-    desc = acl_utils.py_describe_args('ascend_sort', ([1, 2],), {'bogus': [3, 4]})
+    # 宽松模式：未知 key 不再抛错；不可转换的值标记 unsupported 后跳过。
+    # NOTE: int 序列（[1, 2]）自 M3 起是合法参数（ARG_INT_ARRAY），不再是 unsupported。
+    desc = acl_utils.py_describe_args('ascend_sort', ([1, 2], object()),
+                                      {'bogus': [3, 4]})
     kinds = {d[0]: d[1] for d in desc}
-    assert kinds['#0'] == 'unsupported'
-    assert kinds['bogus'] == 'unsupported'
+    assert kinds['#0'] == 'int_array'
+    assert kinds['#1'] == 'unsupported'
+    assert kinds['bogus'] == 'int_array'
 
 
 def test_lenient_mode_string(acl_utils, lenient_env):

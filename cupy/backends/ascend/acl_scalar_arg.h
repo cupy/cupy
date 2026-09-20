@@ -18,8 +18,128 @@
 #include "aclnn/opdev/data_type_utils.h"
 #include "acl_type_traits.h"
 
-using KwargsType = std::unordered_map<std::string, const aclScalar*>;
-using ArgsType = std::vector<const aclScalar*>;
+// ---------------------------------------------------------------------------
+// 统一参数通道：跨边界的参数不再是裸 `const aclScalar*`，而是**带 tag 的值**。
+//
+// 背景（docs/ascend/arg_passing_plan.md §2.2/§2.3）：
+//   * Python 侧的 args/kwargs 以前只能表达「aclScalar」，于是 sequence（IntArray）、
+//     str、None、ndarray 全部落到「无法转换 → 抛错 / 静默丢弃」；
+//   * C++ 侧也无从知道收到的指针到底是什么类型。
+// 现在所有参数都走同一条通路，并用 kind 明确标注：
+//
+//   ARG_NONE        None                      （例如 axis=None 表示「全部轴」）
+//   ARG_SCALAR      int/float/bool/np 标量    -> aclScalar*
+//   ARG_INT_ARRAY   list/tuple[int]           -> std::vector<int64_t>（axis/dims/shape/shift...）
+//   ARG_STRING      str                       -> std::string（自持所有权，见下）
+//   ARG_TENSOR      ndarray                   （预留：where= 等；pyx 侧暂未产出）
+//
+// 取值只用 GetScalarArg / GetInt64List / GetStringArg / GetTensorArg，
+// 类型不匹配时返回缺省值（或按调用方要求报错），**不做指针重新解释**。
+//
+// 所有权（重要）：
+//   * ARG_SCALAR 的 aclScalar 由 pyx 创建，必须由派发层在 finally 里销毁（_destroy_acl_arg）；
+//   * ARG_INT_ARRAY / ARG_STRING **按值持有**（vector/string 在 C++ 侧）。
+//     这里刻意不传 `aclIntArray*`：CANN 头文件里 aclIntArray 是不透明类型
+//     （只有 aclCreateIntArray/aclDestroyIntArray），C++ 侧读不出内容；
+//     需要 aclIntArray 的 aclnn 接口用 AclIntArrayGuard 现场构造（见下）。
+// ---------------------------------------------------------------------------
+enum AclArgKind {
+    ARG_NONE = 0,
+    ARG_SCALAR = 1,
+    ARG_INT_ARRAY = 2,
+    ARG_STRING = 3,
+    ARG_TENSOR = 4,
+};
+
+struct AclArg {
+    AclArgKind kind = ARG_NONE;
+    const aclScalar* scalar = nullptr;
+    const aclTensor* tensor = nullptr;
+    // 字符串自带所有权：aclScalar 的 ACL_STRING 只有指针语义，需要 host 侧保活，
+    // 这里直接存一份 std::string，把生命周期交给容器（避免 pointer-keyed keepalive）。
+    std::string str;
+    // int 序列（axis/dims/shape/shift...）按值保存，见文件头注释
+    std::vector<int64_t> ints;
+
+    AclArg() = default;
+};
+
+inline AclArg MakeNoneArg() {
+    return AclArg();
+}
+
+inline AclArg MakeScalarArg(const aclScalar* scalar) {
+    AclArg arg;
+    arg.kind = ARG_SCALAR;
+    arg.scalar = scalar;
+    return arg;
+}
+
+inline AclArg MakeIntArrayArg(const std::vector<int64_t>& values) {
+    AclArg arg;
+    arg.kind = ARG_INT_ARRAY;
+    arg.ints = values;
+    return arg;
+}
+
+inline AclArg MakeStringArg(const std::string& value) {
+    AclArg arg;
+    arg.kind = ARG_STRING;
+    arg.str = value;
+    return arg;
+}
+
+inline AclArg MakeTensorArg(const aclTensor* tensor) {
+    AclArg arg;
+    arg.kind = ARG_TENSOR;
+    arg.tensor = tensor;
+    return arg;
+}
+
+// 现场把 int 序列变成 aclnn 需要的 aclIntArray（values 为空 -> 保持 nullptr，
+// 例如 `axis=None` 表示「全部轴」，Flip/Roll 依赖这个语义）。
+class AclIntArrayGuard {
+public:
+    explicit AclIntArrayGuard(const std::vector<int64_t>& values) {
+        if (!values.empty()) {
+            array_ = aclCreateIntArray(values.data(), static_cast<uint64_t>(values.size()));
+        }
+    }
+
+    AclIntArrayGuard(const AclIntArrayGuard&) = delete;
+    AclIntArrayGuard& operator=(const AclIntArrayGuard&) = delete;
+
+    ~AclIntArrayGuard() {
+        if (array_ != nullptr) {
+            aclDestroyIntArray(array_);
+        }
+    }
+
+    const aclIntArray* get() const {
+        return array_;
+    }
+
+    explicit operator bool() const {
+        return array_ != nullptr;
+    }
+
+private:
+    aclIntArray* array_ = nullptr;
+};
+
+inline const char* AclArgKindToString(AclArgKind kind) {
+    switch (kind) {
+        case ARG_NONE: return "none";
+        case ARG_SCALAR: return "scalar";
+        case ARG_INT_ARRAY: return "int_array";
+        case ARG_STRING: return "string";
+        case ARG_TENSOR: return "tensor";
+        default: return "unknown";
+    }
+}
+
+using KwargsType = std::unordered_map<std::string, AclArg>;
+using ArgsType = std::vector<AclArg>;
 
 
 inline aclTensorList* ToAclTensorList(const std::vector<const aclTensor*>& tempVector) {
@@ -61,25 +181,132 @@ private:
     aclTensorList* list_;
 };
 
-// check keyword kargs first then position args
-bool HasScalarArg(const ArgsType& args, int argIndex, const KwargsType& kargs, std::string key)
+// ---------------------------------------------------------------------------
+// 统一参数通道的读取接口
+//
+// kwargs 优先于位置参数（语义与旧实现一致）；返回的指针指向容器内部，调用方不要保存。
+// ---------------------------------------------------------------------------
+// 前置声明：TryGetInt64List 需要把 aclScalar 转成 int64，而 ToScalarArg 的定义在
+// 本文件后面（它依赖 acl_type_traits.h 的转换工具）。默认值只能声明一次，放在这里。
+template<typename ToScalarType> ToScalarType ToScalarArg(const aclScalar* s,
+                                                         bool throw_on_error = true);
+
+inline const AclArg* FindArg(const ArgsType& args, int argIndex, const KwargsType& kargs,
+                             const std::string& key)
 {
-    if (kargs.find(key) != kargs.end()) {
-        return true;
-    } else if (argIndex < args.size()) {
-        return true;
-    } else {
-        return false;
+    KwargsType::const_iterator it = kargs.find(key);
+    if (it != kargs.end()) {
+        return &it->second;
     }
+    if (argIndex >= 0 && argIndex < static_cast<int>(args.size())) {
+        return &args[argIndex];
+    }
+    return nullptr;
 }
 
-bool HasScalarKwarg(const KwargsType& kargs, std::string key)
+inline bool HasArg(const ArgsType& args, int argIndex, const KwargsType& kargs,
+                   const std::string& key)
 {
-    if (kargs.find(key) != kargs.end()) {
-        return true;
-    } else {
+    const AclArg* arg = FindArg(args, argIndex, kargs, key);
+    return arg != nullptr && arg->kind != ARG_NONE;
+}
+
+// 是否是「标量」参数（旧 API 的名字保留：Flip/Roll 等调用点仍用它做存在性判断）
+inline bool HasScalarArg(const ArgsType& args, int argIndex, const KwargsType& kargs,
+                         std::string key)
+{
+    const AclArg* arg = FindArg(args, argIndex, kargs, key);
+    return arg != nullptr && arg->kind == ARG_SCALAR && arg->scalar != nullptr;
+}
+
+inline bool HasScalarKwarg(const KwargsType& kargs, std::string key)
+{
+    KwargsType::const_iterator it = kargs.find(key);
+    return it != kargs.end() && it->second.kind == ARG_SCALAR && it->second.scalar != nullptr;
+}
+
+inline bool HasIntArrayArg(const ArgsType& args, int argIndex, const KwargsType& kargs,
+                           const std::string& key)
+{
+    const AclArg* arg = FindArg(args, argIndex, kargs, key);
+    return arg != nullptr && arg->kind == ARG_INT_ARRAY;
+}
+
+inline bool HasStringArg(const ArgsType& args, int argIndex, const KwargsType& kargs,
+                         const std::string& key)
+{
+    const AclArg* arg = FindArg(args, argIndex, kargs, key);
+    return arg != nullptr && arg->kind == ARG_STRING;
+}
+
+inline bool HasTensorArg(const ArgsType& args, int argIndex, const KwargsType& kargs,
+                         const std::string& key)
+{
+    const AclArg* arg = FindArg(args, argIndex, kargs, key);
+    return arg != nullptr && arg->kind == ARG_TENSOR && arg->tensor != nullptr;
+}
+
+inline const char* GetStringArg(const ArgsType& args, int argIndex, const KwargsType& kargs,
+                               const std::string& key, const char* defaultValue = nullptr)
+{
+    const AclArg* arg = FindArg(args, argIndex, kargs, key);
+    if (arg == nullptr || arg->kind == ARG_NONE) {
+        return defaultValue;
+    }
+    if (arg->kind != ARG_STRING) {
+        std::cerr << "WARNING: GetStringArg: '" << key << "' is a "
+                  << AclArgKindToString(arg->kind) << ", not a string\n";
+        return defaultValue;
+    }
+    return arg->str.c_str();
+}
+
+inline const aclTensor* GetTensorArg(const ArgsType& args, int argIndex,
+                                     const KwargsType& kargs, const std::string& key,
+                                     const aclTensor* defaultValue = nullptr)
+{
+    const AclArg* arg = FindArg(args, argIndex, kargs, key);
+    if (arg == nullptr || arg->kind == ARG_NONE) {
+        return defaultValue;
+    }
+    if (arg->kind != ARG_TENSOR) {
+        std::cerr << "WARNING: GetTensorArg: '" << key << "' is a "
+                  << AclArgKindToString(arg->kind) << ", not a tensor\n";
+        return defaultValue;
+    }
+    return arg->tensor;
+}
+
+// 「int 标量 / int 序列 / None」三态的通用读取：
+//   * ARG_SCALAR     -> out = [value]
+//   * ARG_INT_ARRAY  -> out = 全部元素
+//   * ARG_NONE/缺省  -> 返回 false（例如 axis=None 表示「全部轴」）
+// 这是 multi-axis 参数（flip/roll/permute/aminmax 的 dim ...）接入 IntArray 的入口。
+inline bool TryGetInt64List(const ArgsType& args, int argIndex, const KwargsType& kargs,
+                            const std::string& key, std::vector<int64_t>* out)
+{
+    if (out == nullptr) {
         return false;
     }
+    out->clear();
+    const AclArg* arg = FindArg(args, argIndex, kargs, key);
+    if (arg == nullptr || arg->kind == ARG_NONE) {
+        return false;
+    }
+    if (arg->kind == ARG_SCALAR) {
+        if (arg->scalar == nullptr) {
+            return false;
+        }
+        out->push_back(ToScalarArg<int64_t>(arg->scalar, true));
+        return true;
+    }
+    if (arg->kind == ARG_INT_ARRAY) {
+        *out = arg->ints;
+        return !out->empty();
+    }
+    std::cerr << "WARNING: TryGetInt64List: '" << key << "' is a "
+              << AclArgKindToString(arg->kind) << ", expected int / sequence[int] / None\n";
+    return false;
 }
 
 
@@ -247,7 +474,7 @@ template<typename ToScalarType> ToScalarType CheckFloatArg(double source_value, 
 }
 
 template<typename ToScalarType>
-ToScalarType ToScalarArg(const aclScalar* s, bool throw_on_error = true) {
+ToScalarType ToScalarArg(const aclScalar* s, bool throw_on_error) {
     
     if (s == nullptr) {
         if (throw_on_error) {
@@ -314,14 +541,9 @@ template<typename ToScalarType>
 ToScalarType GetScalarArg(const ArgsType& args, int argIndex, const KwargsType& kargs,
     const std::string& key, std::optional<ToScalarType> defaultValue = std::nullopt)
 {
-    const aclScalar* arg = nullptr;
-    if (kargs.find(key) != kargs.end()) {
-        arg = kargs.at(key);
-    } else if (argIndex >= 0 && argIndex < static_cast<int>(args.size())) {
-        arg = args.at(argIndex);
-    }
+    const AclArg* arg = FindArg(args, argIndex, kargs, key);
 
-    if (arg == nullptr) {
+    if (arg == nullptr || arg->kind == ARG_NONE || arg->scalar == nullptr) {
         if (!defaultValue.has_value()) {
             throw std::invalid_argument(
                 "GetScalarArg: required argument '" + key + "' (positional #" +
@@ -330,41 +552,68 @@ ToScalarType GetScalarArg(const ArgsType& args, int argIndex, const KwargsType& 
         }
         return defaultValue.value();
     }
-    return ToScalarArg<ToScalarType>(arg);
+    if (arg->kind != ARG_SCALAR) {
+        // 以前这里会把一个非 aclScalar 的指针当成 aclScalar 用（UB）；现在显式报错
+        const std::string msg =
+            "GetScalarArg: argument '" + key + "' is a " +
+            std::string(AclArgKindToString(arg->kind)) + ", not a scalar";
+        if (defaultValue.has_value()) {
+            std::cerr << "WARNING: " << msg << ", using the default value\n";
+            return defaultValue.value();
+        }
+        throw std::invalid_argument(msg);
+    }
+    return ToScalarArg<ToScalarType>(arg->scalar);
 }
 
+// 打印一个参数（调试用，PrintArgs 与测试 op 共用）
+inline void PrintArg(const AclArg& arg, std::ostream& os) {
+    os << "kind=" << AclArgKindToString(arg.kind);
+    switch (arg.kind) {
+        case ARG_SCALAR:
+            os << ", type=";
+            PrintScalarType(arg.scalar, os);
+            os << ", value=";
+            PrintScalarValue(arg.scalar, os);
+            break;
+        case ARG_INT_ARRAY:
+            os << ", values=[";
+            for (size_t i = 0; i < arg.ints.size(); ++i) {
+                if (i) {
+                    os << ", ";
+                }
+                os << arg.ints[i];
+            }
+            os << "]";
+            break;
+        case ARG_STRING:
+            os << ", value=\"" << arg.str << "\"";
+            break;
+        case ARG_TENSOR:
+            os << ", tensor=" << static_cast<const void*>(arg.tensor);
+            break;
+        default:
+            break;
+    }
+}
 
-void PrintArgs(const char* func, const ArgsType& args, const KwargsType& kwargs, std::ostream& os) {
+inline void PrintArgs(const char* func, const ArgsType& args, const KwargsType& kwargs,
+                      std::ostream& os) {
     // 1. 打印位置参数信息
     os << "=== function name: " << func << " ===" << std::endl;
     os << "=== Positional Arguments (Args) ===" << "Count: " << args.size() << std::endl;
-    
+
     for (size_t i = 0; i < args.size(); ++i) {
         os << "  Args[" << i << "]: ";
-        if (args[i] == nullptr) {
-            os << "NULL pointer" << std::endl;
-            continue;
-        }
-        os << "Type=";
-        PrintScalarType(args[i], os);
-        os << ", Value=";
-        PrintScalarValue(args[i], os);
+        PrintArg(args[i], os);
         os << std::endl;
     }
-    
+
     // 2. 打印关键字参数信息
     os << "\n=== Keyword Arguments (Kwargs) ===" << "Count: " << kwargs.size() << std::endl;
     for (const auto& pair : kwargs) {
         os << "  Kwargs['" << pair.first << "']: ";
-        
-        if (pair.second == nullptr) {
-            os << "NULL pointer" << std::endl;
-            continue;
-        }
-        os << "Type=";
-        PrintScalarType(pair.second, os);
-        os << ", Value=";
-        PrintScalarValue(pair.second, os);
+        PrintArg(pair.second, os);
         os << std::endl;
     }
 }
