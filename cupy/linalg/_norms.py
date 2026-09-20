@@ -386,3 +386,53 @@ def trace(a, offset=0, axis1=0, axis2=1, dtype=None, out=None):
     """
     # TODO(okuta): check type
     return a.trace(offset, axis1, axis2, dtype, out)
+
+
+def vector_norm(x, /, *, ord=None, axis=None, keepdims=False):
+    """Computes the vector norm of an array.
+
+    This is the NumPy 2.0 / Array API ``vector_norm``: it is the vector
+    norm of ``x`` flattened (``axis=None``) or along the given ``axis``,
+    with ``ord`` selecting the norm order (default: Euclidean).
+
+    It is a thin wrapper around :func:`cupy.linalg.norm`; on the Ascend
+    backend it runs through the already-dispatched reduction ops
+    (``abs`` / ``sum`` / ``sqrt``, or ``svd`` for matrix ``ord``).
+
+    Args:
+        x (cupy.ndarray): Input array.
+        ord: Norm order (default: Euclidean). See :func:`numpy.linalg.norm`.
+        axis: Axis or axes over which to compute the norm (default: all).
+        keepdims (bool): If ``True``, the reduced axes are kept with
+            size one.
+
+    Returns:
+        cupy.ndarray: The vector norm(s) of ``x``.
+
+    .. seealso:: :func:`numpy.linalg.vector_norm`
+
+    """
+    return norm(cupy.asarray(x), ord=ord, axis=axis, keepdims=keepdims)
+
+
+def matrix_norm(x, /, *, ord='fro', keepdims=False):
+    """Computes the matrix norm of a matrix (or stack of matrices) ``x``.
+
+    This is the NumPy 2.0 / Array API ``matrix_norm``: the norm is computed
+    over the last two axes. It is a thin wrapper around
+    :func:`cupy.linalg.norm`.
+
+    Args:
+        x (cupy.ndarray): Input array of shape ``(..., M, N)``.
+        ord: Norm order. One of ``'fro'`` (default), ``'nuc'``, ``inf``,
+            ``-inf``, ``1``, ``-1``, ``2``, ``-2``.
+        keepdims (bool): If ``True``, the normed axes are kept with
+            size one.
+
+    Returns:
+        cupy.ndarray: The matrix norm(s) of ``x``.
+
+    .. seealso:: :func:`numpy.linalg.matrix_norm`
+
+    """
+    return norm(cupy.asarray(x), ord=ord, axis=(-2, -1), keepdims=keepdims)

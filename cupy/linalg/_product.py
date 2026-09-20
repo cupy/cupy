@@ -63,7 +63,7 @@ def dot(a, b, out=None):
 
     """
     # TODO(okuta): check type
-    return a.dot(b, out)
+    return cupy.asarray(a).dot(cupy.asarray(b), out)
 
 
 def vdot(a, b):
@@ -555,3 +555,162 @@ def _move_axes_to_head(a, axes):
 
     return a.transpose(
         axes + [i for i in range(a.ndim) if i not in axes])
+
+
+def diagonal(x, /, *, offset=0):
+    """Returns specified diagonals of a matrix (or a stack of matrices) ``x``.
+
+    This function is Array API compatible, contrary to :func:`cupy.diagonal`:
+    the matrix is assumed to be defined by the last two dimensions.
+
+    Args:
+        x (cupy.ndarray): Input array of shape ``(..., M, N)`` whose
+            innermost two dimensions form the matrices.
+        offset (int, optional): Off-diagonal relative to the main diagonal,
+            where ``0`` is the main diagonal, a positive value an upper
+            diagonal, and a negative value a lower diagonal.
+
+    Returns:
+        cupy.ndarray: An array containing the diagonals; the last two
+        dimensions are replaced by a single dimension of size
+        ``min(M, N)``.
+
+    .. seealso:: :func:`numpy.linalg.diagonal`
+
+    """
+    return cupy.diagonal(x, offset=offset, axis1=-2, axis2=-1)
+
+
+def matrix_transpose(x):
+    """Transposes a matrix (or a stack of matrices) ``x``.
+
+    This is the Array API / NumPy 2.0 ``matrix_transpose``: it swaps the
+    last two axes, contrary to :func:`cupy.transpose` which reverses all
+    axes.
+
+    Args:
+        x (cupy.ndarray): Input array of shape ``(..., M, N)``.
+
+    Returns:
+        cupy.ndarray: Array of shape ``(..., N, M)``.
+
+    .. seealso:: :func:`numpy.linalg.matrix_transpose`
+
+    """
+    x = cupy.asarray(x)
+    if x.ndim < 2:
+        raise ValueError(
+            'x must be at least two-dimensional for matrix_transpose')
+    return cupy.swapaxes(x, -1, -2)
+
+
+def multi_dot(arrays, *, out=None):
+    """Computes the dot product of two or more arrays in the optimal order.
+
+    While the result is numerically identical to chained
+    ``cupy.dot``/``cupy.matmul`` calls, the multiplication order is chosen
+    (matrix chain multiplication DP) to minimize the number of scalar
+    multiplications.
+
+    Args:
+        arrays (sequence of cupy.ndarray): If the first argument is 1-D it
+            is treated as a row vector, and if the last argument is 1-D it
+            is treated as a column vector. All others must be 2-D.
+        out (cupy.ndarray): Output array.
+
+    Returns:
+        cupy.ndarray: The dot product of the given arrays.
+
+    .. seealso:: :func:`numpy.linalg.multi_dot`
+
+    """
+    n = len(arrays)
+    # optimization only makes sense for len(arrays) > 2
+    if n < 2:
+        raise ValueError('Expecting at least two arrays.')
+    elif n == 2:
+        return dot(arrays[0], arrays[1], out=out)
+
+    arrays = [cupy.asarray(a) for a in arrays]
+
+    # save original ndim to reshape the result array into the proper form
+    # later
+    ndim_first, ndim_last = arrays[0].ndim, arrays[-1].ndim
+    # Explicitly convert vectors to 2D arrays to keep the logic of the
+    # internal _multi_dot_* functions as simple as possible.
+    if arrays[0].ndim == 1:
+        arrays[0] = cupy.atleast_2d(arrays[0])
+    if arrays[-1].ndim == 1:
+        arrays[-1] = cupy.atleast_2d(arrays[-1]).T
+    _util._assert_2d(*arrays)
+
+    # _multi_dot_three is much faster than _multi_dot_matrix_chain_order
+    if n == 3:
+        result = _multi_dot_three(arrays[0], arrays[1], arrays[2], out=out)
+    else:
+        order = _multi_dot_matrix_chain_order(arrays)
+        result = _multi_dot(arrays, order, 0, n - 1, out=out)
+
+    # return proper shape
+    if ndim_first == 1 and ndim_last == 1:
+        return result[0, 0]  # scalar
+    elif ndim_first == 1 or ndim_last == 1:
+        return result.ravel()  # 1-D
+    else:
+        return result
+
+
+def _multi_dot_three(A, B, C, out=None):
+    """Find the best order for three arrays and do the multiplication."""
+    a0, a1b0 = A.shape
+    b1c0, c1 = C.shape
+    # cost1 = cost((AB)C) = a0*a1b0*b1c0 + a0*b1c0*c1
+    cost1 = a0 * b1c0 * (a1b0 + c1)
+    # cost2 = cost(A(BC)) = a1b0*b1c0*c1 + a0*a1b0*c1
+    cost2 = a1b0 * c1 * (a0 + b1c0)
+
+    if cost1 < cost2:
+        return dot(dot(A, B), C, out=out)
+    else:
+        return dot(A, dot(B, C), out=out)
+
+
+def _multi_dot_matrix_chain_order(arrays):
+    """Return an array encoding the optimal order of multiplications.
+
+    The implementation closely follows Cormen, "Introduction to
+    Algorithms", Chapter 15.2, p. 370-378. Note that Cormen uses 1-based
+    indices. Pure host-side DP over shapes, no device work.
+    """
+    n = len(arrays)
+    # p stores the dimensions of the matrices
+    # Example for p: A_{10x100}, B_{100x5}, C_{5x50} --> p = [10, 100, 5, 50]
+    p = [a.shape[0] for a in arrays] + [arrays[-1].shape[1]]
+    # m[i, j]: min number of scalar multiplications needed for A_{i..j}
+    m = numpy.zeros((n, n), dtype=numpy.float64)
+    # s[i, j] is the value of k at which we split the product A_i..A_j
+    s = numpy.empty((n, n), dtype=numpy.intp)
+
+    for l in range(1, n):
+        for i in range(n - l):
+            j = i + l
+            m[i, j] = numpy.inf
+            for k in range(i, j):
+                q = m[i, k] + m[k + 1, j] + p[i] * p[k + 1] * p[j + 1]
+                if q < m[i, j]:
+                    m[i, j] = q
+                    s[i, j] = k
+
+    return s
+
+
+def _multi_dot(arrays, order, i, j, out=None):
+    """Actually do the multiplication with the given order."""
+    if i == j:
+        # the initial call with non-None out should never get here
+        assert out is None
+        return arrays[i]
+    else:
+        return dot(_multi_dot(arrays, order, i, order[i, j]),
+                   _multi_dot(arrays, order, order[i, j] + 1, j),
+                   out=out)
