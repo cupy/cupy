@@ -50,6 +50,12 @@ Original error:
 
 
 from cupy import xpu  # NOQA
+
+# NOTE: `cupy.cuda` 必须在这里导入（upstream 就是这一行）。`import cupy` 不会
+# 自动导入子模块，少了它 `cupy.cuda.Stream` / `cupy.cuda.device` 之类的访问会
+# AttributeError —— examples/ 和大量用户代码都直接这么写。
+from cupy import cuda  # NOQA
+
 # Do not make `cupy.cupyx` available because it is confusing.
 # TODO: ASCEND  usable only if this cupy module has been ported
 import cupyx as _cupyx  # NOQA

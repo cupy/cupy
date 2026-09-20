@@ -23,6 +23,52 @@ from cupy.xpu import pinned_memory  # NOQA
 from cupy.xpu import profiler  # NOQA
 from cupy.xpu import stream  # NOQA
 
+# ---------------------------------------------------------------------------
+# 兼容层：`cupy.cuda.<Class>` 是 CuPy 的历史公开路径，examples/ 与用户代码大量
+# 使用它（`cupy.cuda.Stream` / `cupy.cuda.Device` / `cupy.cuda.MemoryPool` ...）。
+# 本 fork 把设备 API 搬到了后端无关的 `cupy.xpu`，所以这里必须把**类和函数**也
+# 重新导出：只 import 子模块（上面那些 `from cupy.xpu import stream`）会让
+# `cupy.cuda.Stream` 变成 AttributeError —— 而且 `import cupy` 不会自动导入
+# 子模块，所以 cupy/__init__.py 里还要有 `from cupy import cuda`。
+# 只"新增名字、不删除"，CUDA/HIP 专有的部分按 is_ascend() 跳过（Ascend 上没有）。
+# ---------------------------------------------------------------------------
+from cupy.xpu import Device  # NOQA
+from cupy.xpu import get_cublas_handle  # NOQA
+from cupy.xpu import get_device_id  # NOQA
+from cupy.xpu import alloc  # NOQA
+from cupy.xpu import malloc_managed  # NOQA
+from cupy.xpu import malloc_async  # NOQA
+from cupy.xpu import BaseMemory  # NOQA
+from cupy.xpu import ManagedMemory  # NOQA
+from cupy.xpu import Memory  # NOQA
+from cupy.xpu import MemoryAsync  # NOQA
+from cupy.xpu import MemoryPointer  # NOQA
+from cupy.xpu import MemoryPool  # NOQA
+from cupy.xpu import PythonFunctionAllocator  # NOQA
+from cupy.xpu import CFunctionAllocator  # NOQA
+from cupy.xpu import set_allocator  # NOQA
+from cupy.xpu import get_allocator  # NOQA
+from cupy.xpu import UnownedMemory  # NOQA
+from cupy.xpu import MemoryHook  # NOQA
+from cupy.xpu import alloc_pinned_memory  # NOQA
+from cupy.xpu import PinnedMemory  # NOQA
+from cupy.xpu import PinnedMemoryPointer  # NOQA
+from cupy.xpu import PinnedMemoryPool  # NOQA
+from cupy.xpu import set_pinned_memory_allocator  # NOQA
+from cupy.xpu import Event  # NOQA
+from cupy.xpu import Stream  # NOQA
+from cupy.xpu import ExternalStream  # NOQA
+from cupy.xpu import get_current_stream  # NOQA
+from cupy.xpu import get_elapsed_time  # NOQA
+from cupy.xpu import using_allocator  # NOQA
+
+if not is_ascend():
+    # CUDA/HIP-only 的设备 API（Ascend 上没有对应的实现）
+    from cupy.xpu import Function  # NOQA
+    from cupy.xpu import Module  # NOQA
+    from cupy.xpu import Graph  # NOQA
+    from cupy.xpu import MemoryAsyncPool  # NOQA
+
 import cupy as _cupy
 _available = None
 
