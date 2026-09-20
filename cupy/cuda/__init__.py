@@ -69,6 +69,37 @@ if not is_ascend():
     from cupy.xpu import Graph  # NOQA
     from cupy.xpu import MemoryAsyncPool  # NOQA
 
+# ---------------------------------------------------------------------------
+# 模块路径兼容：upstream 与用户代码大量使用 `from cupy.cuda.device import ...`
+# 这类**模块路径**导入（cupyx/distributed/*、cupy/linalg/_einsum_cutn.py、
+# cupy/_core/_gpu/raw.pyx ...）。上面 `from cupy.xpu import device` 只绑定了
+# **属性**，`import cupy.cuda.device` 仍会失败（cupy/cuda/ 目录下没有这些
+# 子模块文件）。与 cupy/__init__.py 里 cupy_backends.cuda 的做法一致，用
+# sys.modules 别名把子模块路径指到 cupy.xpu 的实现（同一批对象，不复制）。
+# ---------------------------------------------------------------------------
+import sys
+
+import cupy.xpu.device as _xpu_device
+import cupy.xpu.function as _xpu_function
+import cupy.xpu.memory as _xpu_memory
+import cupy.xpu.memory_hook as _xpu_memory_hook
+import cupy.xpu.memory_hooks as _xpu_memory_hooks
+import cupy.xpu.pinned_memory as _xpu_pinned_memory
+import cupy.xpu.profiler as _xpu_profiler
+import cupy.xpu.stream as _xpu_stream
+
+sys.modules.setdefault('cupy.cuda.device', _xpu_device)
+sys.modules.setdefault('cupy.cuda.function', _xpu_function)
+sys.modules.setdefault('cupy.cuda.memory', _xpu_memory)
+sys.modules.setdefault('cupy.cuda.memory_hook', _xpu_memory_hook)
+sys.modules.setdefault('cupy.cuda.memory_hooks', _xpu_memory_hooks)
+sys.modules.setdefault('cupy.cuda.pinned_memory', _xpu_pinned_memory)
+sys.modules.setdefault('cupy.cuda.profiler', _xpu_profiler)
+sys.modules.setdefault('cupy.cuda.stream', _xpu_stream)
+# runtime/driver 的实现本体在 cupy_backends.cuda.api（见文件头两行 import）
+sys.modules.setdefault('cupy.cuda.runtime', runtime)
+sys.modules.setdefault('cupy.cuda.driver', driver)
+
 import cupy as _cupy
 _available = None
 

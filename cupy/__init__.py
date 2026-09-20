@@ -56,6 +56,32 @@ from cupy import xpu  # NOQA
 # AttributeError —— examples/ 和大量用户代码都直接这么写。
 from cupy import cuda  # NOQA
 
+# Device API 的顶层再导出：upstream 的顶层只保证 `cupy.cuda.<Class>`（兼容面见
+# cupy/cuda/__init__.py）；examples/ 与用户代码里还存在 `cupy.Stream` /
+# `cupy.Device` / `cupy.Memory` / `cupy.MemoryPool` 这类**顶层**写法。这里从后端
+# 无关的 cupy.xpu 统一再导出一遍（cupy.cuda.* / cupy.xpu.* / 顶层指向同一批对象）。
+from cupy.xpu import Device  # NOQA
+from cupy.xpu import Event  # NOQA
+from cupy.xpu import ExternalStream  # NOQA
+from cupy.xpu import Stream  # NOQA
+from cupy.xpu import BaseMemory  # NOQA
+from cupy.xpu import Memory  # NOQA
+from cupy.xpu import ManagedMemory  # NOQA
+from cupy.xpu import MemoryAsync  # NOQA
+from cupy.xpu import UnownedMemory  # NOQA
+from cupy.xpu import MemoryPointer  # NOQA
+from cupy.xpu import MemoryPool  # NOQA
+from cupy.xpu import PinnedMemory  # NOQA
+from cupy.xpu import PinnedMemoryPointer  # NOQA
+from cupy.xpu import PinnedMemoryPool  # NOQA
+from cupy.xpu import MemoryHook  # NOQA
+from cupy.xpu import get_current_stream  # NOQA
+from cupy.xpu import get_device_id  # NOQA
+from cupy.xpu import set_allocator  # NOQA
+from cupy.xpu import get_allocator  # NOQA
+from cupy.xpu import set_pinned_memory_allocator  # NOQA
+from cupy.xpu import using_allocator  # NOQA
+
 # Do not make `cupy.cupyx` available because it is confusing.
 # TODO: ASCEND  usable only if this cupy module has been ported
 import cupyx as _cupyx  # NOQA
@@ -74,13 +100,20 @@ except ImportError:
     # FFT support needs cupy.fft._cache (compiled since the aclfft feature
     # landed); keep `import cupy` working if it is ever absent.
     pass
-# from cupy import linalg  # NOQA
+from cupy import linalg  # NOQA
 from cupy import polynomial  # NOQA
 # from cupy import random  # NOQA
 
 # import class and function
 from cupy._core import ndarray  # NOQA
 from cupy._core import ufunc  # NOQA
+
+# kernel 编写接口（upstream 顶层同样导出；RawKernel/RawModule 在 Ascend 上
+# 构造时才需要 nvrtc/CANN 自定义核，import 类对象本身无害）
+from cupy._core import ElementwiseKernel  # NOQA
+from cupy._core import RawKernel  # NOQA
+from cupy._core import RawModule  # NOQA
+from cupy._core import ReductionKernel  # NOQA
 
 
 # =============================================================================
@@ -549,6 +582,9 @@ from cupy.linalg._product import kron  # NOQA
 from cupy.linalg._product import outer  # NOQA
 from cupy.linalg._product import vdot  # NOQA
 from cupy.linalg._norms import trace  # NOQA
+# einsum 走 _einsum_cutn / _einsum_opt；其 `from cupy.cuda.device import Handle`
+# 依赖 cupy/cuda/__init__.py 里的 sys.modules 模块路径别名。
+from cupy.linalg._einsum import einsum  # NOQA
 
 # -----------------------------------------------------------------------------
 # Logic functions
@@ -734,8 +770,14 @@ from cupy._math.misc import maximum  # NOQA
 from cupy._math.misc import minimum  # NOQA
 from cupy._math.misc import nan_to_num  # NOQA
 from cupy._math.misc import heaviside  # NOQA
+from cupy._math.misc import interp  # NOQA
 
 from cupy._math.arithmetic import real  # NOQA
+from cupy._math.arithmetic import angle  # NOQA
+from cupy._math.arithmetic import conjugate as conj  # NOQA
+from cupy._math.arithmetic import conjugate  # NOQA
+from cupy._math.arithmetic import imag  # NOQA
+from cupy._math.misc import real_if_close  # NOQA
 
 # NumPy-compatible aliases: `np.abs` is the historical spelling of
 # `np.absolute`, and `np.pow` was added in NumPy 2.0 for `np.power`.
@@ -765,6 +807,8 @@ from cupy._padding.pad import pad  # NOQA
 from cupy._sorting.count import count_nonzero  # NOQA
 from cupy._sorting.search import argmax  # NOQA
 from cupy._sorting.search import argmin  # NOQA
+from cupy._sorting.search import nanargmax  # NOQA
+from cupy._sorting.search import nanargmin  # NOQA
 from cupy._sorting.search import nonzero  # NOQA
 from cupy._sorting.search import where  # NOQA
 from cupy._sorting.search import argwhere  # NOQA
