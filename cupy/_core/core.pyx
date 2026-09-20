@@ -1687,8 +1687,8 @@ cdef class _ndarray_base:
             DeprecationWarning)
         self._scatter_op(slices, value, 'min')
 
-        def _scatter_op(self, slices, value, op):
-            _indexing._scatter_op(self, slices, value, op)
+    def _scatter_op(self, slices, value, op):
+        _indexing._scatter_op(self, slices, value, op)
 
     # TODO(okuta): Implement __getslice__
     # TODO(okuta): Implement __setslice__
