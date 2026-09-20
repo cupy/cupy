@@ -663,6 +663,40 @@ cdef OpType get_op_type(object ops, bint inplace, bint has_scalar = False):
         raise RuntimeError("Operator type can not be decided")
     return INVALID_OP
 
+# ---------------------------------------------------------------------------
+# 错误传递：aclnn/acl 的非零返回码 -> Python 异常
+#
+# 以前三个派发函数只 print 一行就 return ret，调用方（`_core/_ascend/_kernel.pyx`）
+# 连返回值都丢掉，于是「算子没跑成」和「结果是对的」在 Python 侧完全一样 ——
+# 典型的静默错误结果（例：`CreateAclScalar` 造不出 uint16 scalar 时把 nullptr
+# 交给 aclnn，只剩一段 stderr）。
+# 现在统一升级成 RuntimeError，消息带 opname、返回码和 aclGetRecentErrMsg()
+# （CANN 侧最近的错误描述，通常是「dtype 不支持 / 参数非法」）。
+# 完整的跨语言异常方案见 docs/ascend/refactor_exception.md。
+# ---------------------------------------------------------------------------
+cdef str _acl_recent_errmsg():
+    """aclGetRecentErrMsg() 的安全包装：取不到就返回空串，绝不抛。"""
+    cdef const char* msg = aclGetRecentErrMsg()
+    if msg == NULL:
+        return ''
+    try:
+        return (<bytes>msg).decode('utf-8', 'replace')
+    except Exception:
+        return ''
+
+
+cdef void raise_acl_op_error(str opname, long ret) except *:
+    """把算子失败转成 Python 异常（资源回收由调用方的 finally 负责）。"""
+    cdef str detail = _acl_recent_errmsg()
+    if detail:
+        raise RuntimeError(
+            '{}: aclnn/acl op failed with ret={} '
+            '(aclGetRecentErrMsg: {})'.format(opname, ret, detail))
+    raise RuntimeError(
+        '{}: aclnn/acl op failed with ret={} '
+        '(aclGetRecentErrMsg returned no detail)'.format(opname, ret))
+
+
 cdef aclError launch_general_func(str opname, sequence ins, sequence outs, list args, dict kwargs, intptr_t stream_ptr) except *:
     if opname.startswith("cupy_"):
         opname = ASCEND_OP_PREFIX + opname[5:]
@@ -722,8 +756,9 @@ cdef aclError launch_general_func(str opname, sequence ins, sequence outs, list 
         for acl_scalar in acl_args:
             _destroy_acl_scalar(acl_scalar)
         _delete_keyword_args(acl_kwargs)
+    # 资源已回收，这里只负责把失败暴露给 Python（不再只是 print）
     if ret != 0:
-        print("Failed to run the operator: ", opname)
+        raise_acl_op_error(opname, ret)
     return ret
 
 cdef vector[aclTensor*] _create_ops_vector(sequence ins, sequence outs) except *:
@@ -956,8 +991,9 @@ cdef aclError launch_acl_func(str opname, sequence ins, sequence outs, list args
             cupy_destroy_acl_tensor(t)
         _destroy_acl_scalar(scalar_ptr)
 
-        if ret != 0:
-            print("Failed to run the operator ", opname)
+    # NOTE: 放在 finally 之后，保证 tensor/scalar 都已回收再抛
+    if ret != 0:
+        raise_acl_op_error(opname, ret)
     return ret
 
 
@@ -1017,8 +1053,6 @@ cdef aclError launch_reduction_op(str opname, sequence ins, sequence outs, objec
         # 放进 try 内, 失败时由 finally 回收已创建的 dim/scalar
         acl_kwargs = _create_keyword_args(kwargs, opname)
         ret = func_ptr.reduction_op(tensors[0], dim, keepdims, tensors[1], acl_kwargs, stream)
-        if ret != 0:
-            print("Failed to run the reduction operator ", opname)
     finally:
         # does not deallocate array buffer, but shapes, strides
         for t in tensors:
@@ -1026,6 +1060,9 @@ cdef aclError launch_reduction_op(str opname, sequence ins, sequence outs, objec
         if dim:
             aclDestroyIntArray(dim)
         _delete_keyword_args(acl_kwargs)
+    # NOTE: 放在 finally 之后，保证 tensor/dim/kwargs 都已回收再抛
+    if ret != 0:
+        raise_acl_op_error(opname, ret)
     return ret
 
 cdef extern from "../acl_math_ops.h" nogil:
