@@ -19,8 +19,12 @@ enum OpType {
     TRI_OP = 8,
     INPLACE_TRI_OP = 9,
     // out = scalar <op> tensor（标量在**左**操作数）。
-    // `1 - x` / `2 / x` / `1 > x` 这一类调用：以前只有 SCALAR_BINARY_OP 一种入口，
-    // 注册了的算子会把顺序算反（`2 / x` -> `x / 2`），没注册的则直接报错。
+    // 落到这里的调用有两类：**算术的反射调用**（`1 - x` / `2 / x`：CPython 把原始顺序
+    // 交给同一个 nb_* 槽，见 core.pyx 顶部关于 op/rop 共享实现的注释）与**显式 ufunc
+    // 调用**（`cupy.greater(1, x)`）。以前只有 SCALAR_BINARY_OP 一种入口，注册了的算子
+    // 会把顺序算反（`2 / x` -> `x / 2`），没注册的则直接报错。
+    // NOTE: 比较运算的运算符写法**不会**走这里——CPython 的 do_richcompare 会交换操作数
+    // 并反转比较符（`1 > x` -> `x.__richcmp__(1, Py_LT)` -> `cupy.less(x, 1)`，标量仍在右）。
     // C++ 侧实现见 acl_math_ops.h 的 aclop_R*（Rsubs / RDivs / RFloorDivides /
     // RFmodScalar / RPowScalar / RRemainderScalar / RGtScalar ...）。
     // NOTE: 故意不提供 inplace-reverse（没有 aclnnInplaceRsubs，且 `x = 1 - x`

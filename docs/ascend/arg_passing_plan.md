@@ -93,13 +93,107 @@ func_union.unified_op = &AsGeneralOp<aclop_Sqrt>;   // 具体实例化 → 可�
 
 收益：
 - **只有一条参数通路**：arg 校验、`where`、nogil 改造、RAII 只需做一次；
-- 137 处注册**不用改写**（仍写 `register_acl_ufunc("ascend_sqrt", UNARY_OP, ...)`，
-  由注册函数内部按 `OpType` 选择 `unified_op = &AsGeneralOp<Fn>`）；
+- **所有既有注册不用改写**（实测 222 行调用 / 188 个名字 / 110 个 `aclop_*` wrapper，见 §2.2.1；
+  旧记的 137 应是只算了窄签名那批）。注册代码仍写 `register_acl_ufunc("ascend_sqrt", UNARY_OP, ...)`，
+  由注册函数内部按 `OpType` 选择 `unified_op = &AsGeneralOp<Fn>`。
 - `launch_acl_func` 退化为 `launch_general_func` 的薄包装（或直接删除）。
 
 **首个真实用例：`where`（ndarray 参数）**打通全链路。
 > 注意：把 mask 送进 C++ 只是第一步，"按 mask 选择输出"的语义实现（`aclnnSWhere` 或
 > mask 合成）是独立任务，需在 910B 上验证。
+
+### 2.2.1 M2 的 3 条硬约束（2026-09-20 评审补充）
+
+> 起因：讨论「`REVERSE_SCALAR_BINARY_OP` 能否被 `AclArg` 里的位置信息取代」时发现：全量
+> general_op 有 3 条必须显式写下来的约束，否则 M2 会把 M1 刚消灭的**静默错误结果**以新形式引回来。
+
+**现状规模（实测，供估算 M2 代价）**
+
+| 项 | 数量 |
+|---|---|
+| `register_acl_ufunc(...)` 调用 | 222 行 |
+| distinct 注册名 | 188 |
+| `aclop_*` wrapper | 110 |
+| OpType 分布 | UNARY 56 / GENERAL 41 / BINARY 37 / REDUCTION 25 / INPLACE_UNARY 21 / SCALAR 18 / REVERSE 12 / INPLACE_BINARY 7 / INPLACE_SCALAR 1 |
+| 同时注册 SCALAR + REVERSE 的名字（= 真正需要「方向」的） | **12**：`subtract`/`sub`、`true_divide`、`floor_divide`、`fmod`、`power`、`float_power`、`remainder`、`greater`、`greater_equal`、`less`、`less_equal` |
+| 按位置读参数的调用点 `GetScalarArg<T>(args, k, ...)` | 34 |
+
+#### 约束 1（必须）：操作数与参数**分区**，`ArgsType` 的位置语义固定为「参数区下标」
+
+`FindArg` 的取值顺序是「kwargs → `args[argIndex]`」（`acl_scalar_arg.h:194`），而 `GetScalarArg`
+**只校验 kind**（`acl_scalar_arg.h:555`）：
+
+```cpp
+// acl_scalar_arg.h:194  —— kwargs 缺失时回退到位置参数
+if (argIndex >= 0 && argIndex < static_cast<int>(args.size())) { return &args[argIndex]; }
+// acl_scalar_arg.h:555  —— 只要 kind 是 ARG_SCALAR 就照单全收
+if (arg->kind != ARG_SCALAR) { /* warn 或 throw */ }
+return ToScalarArg<ToScalarType>(arg->scalar);
+```
+
+而 pyx 侧今天已经会往 `acl_args` 里塞**标量操作数**（非 ndarray 的 `ins` 元素），位置参数随后追加
+（`acl_utils.pyx:857-869`）。于是「操作数 scalar 占 `args[0]`，参数被挤到 `args[1…]`」——此时那 34 处
+`GetScalarArg<T>(args, 0, kwargs, "axis", -1)` 会**安静地把操作数的值当成 `axis`**：kind 检查通过
+（它确实是 `ARG_SCALAR`），没有 warning、没有异常。例：`aclop_Sort` 的 `axis` 读的就是 `args[0]`。
+
+**规则**：
+
+1. 操作数（ndarray **和** scalar）一律不进 `ArgsType`：tensor 走 `intensors`，scalar 操作数继续留在
+   `ins` 里（由 pyx 的 `scalar_index` 记录位置，dispatch 决定是 `SCALAR_BINARY_OP` 还是 LHS 形态）。
+   **M2 不改这个布局**：`AsGeneralOp<Fn>` 解包时按 `ins` 取操作数。
+2. 若将来确实要让 C++ 侧看见操作数位置（例如自证方向），必须**另开区域或加显式标记**
+   （独立的 `operands` 向量，或 `AclArg::is_operand`），并保证 `FindArg` 的 `argIndex` 只指向参数区。
+   **不允许**用「前 N 个槽位是操作数」这类隐式约定。
+3. **自检**：import 期对每个注册的 unified op 做一次「只解包、不执行 aclnn」的 dry-run，校验 arg 形状
+   与 `Fn` 的签名一致（无 NPU 可跑）。
+
+#### 约束 2：方向走「元数据位 + 适配器模板」，不在 wrapper 里靠 `args[k].kind` 猜
+
+- `OpType` 继续作元数据，但把 `REVERSE_SCALAR_BINARY_OP` 表述为 **`SCALAR_BINARY_OP | SCALAR_IS_LHS`**
+  （方向是标志位，不是独立槽位），`FuncPtrUnion` 相应删掉 `reverse_scalar_binary_op` 成员；
+- 12 个双向算子的 `aclop_R*` 手写 wrapper 用一个适配器模板收敛掉（每算子零手写代码）：
+
+```cpp
+template <auto ForwardFn, auto ReverseFn>
+aclError AsScalarBinaryDirectional(const std::vector<const aclTensor*>& ins,
+                                   const std::vector<aclTensor*>& outs,
+                                   const ArgsType& params, const KwargsType& kwargs,
+                                   aclrtStream stream, bool scalar_is_lhs);
+```
+
+- **反例（不要做）**：把方向判断塞进每个 wrapper（`if (args[0].kind == ARG_SCALAR) aclop_Rsubs(...)`）。
+  代价有三：① 12 个算子各写一遍运行时分支；② 把「方向」和「实现策略（原生 ScalarTensor / 换边 /
+  物化标量）」两个正交维度压进同一个函数；③ aclnn 层面的不对齐不会因为 wrapper 统一而消失，只会从
+  「注册表分工」变成「函数内分支」——反向能力只有 12/188 个名字需要，不值得让 188 个都改协议。
+
+#### 约束 3：类型安全来自 `Fn` 的函数类型，不靠运行时 `kind` 判断
+
+窄签名 wrapper 的参数表本身就是「签名描述」。`AsGeneralOp<Fn>` 应从 `Fn` 的函数类型推导期望的
+（arity + 每个位置的 kind），在解包时做静态/解包期校验；wrapper 保持窄签名**零改动**。
+
+| 做法 | wrapper 改动 | 新增机制 | 静默错误风险 |
+|---|---|---|---|
+| **A（推荐）** `AsGeneralOp<Fn>` 自动解包 + 操作数/参数分区 | 0 | 1 个模板 + `Fn` trait 校验 | 低（解包期挡住） |
+| B 同上，但操作数混进 `args` | 0 | 「前 N 槽是操作数」隐式约定 | **高**（约束 1） |
+| C 手写 unified wrapper（每算子吃 `AclArg` 判方向） | 12 个算子各 +5~15 行 | 每函数内 `if` 分支 | 中（运行时才暴露） |
+
+#### 附：方向问题的 aclnn 事实（供 M2 定接口时参考）
+
+| numpy 运算 | `(t,t)` | `(t,s)` | `(s,t)` |
+|---|---|---|---|
+| subtract | `aclnnSub` | `aclnnSubs` | ✅ 原生 `aclnnRsubs`（`out = other - self*alpha`） |
+| multiply / divide / floor_divide | `aclnnMul` / `aclnnDiv` / `aclnnFloorDivide` | `aclnnMuls` / `aclnnDivs` / `aclnnFloorDivides` | ❌ 无 |
+| fmod | `aclnnFmodTensor` | `aclnnFmodScalar` | ❌ 无 |
+| remainder / power | `...TensorTensor` | `...TensorScalar` | ✅ 原生 `...ScalarTensor` |
+| gt / ge / lt / le | `aclnnGtTensor` … | `aclnnGtScalar` … | ❌ 无（reverse = **换边**：`scalar > x` ≡ `aclnnLtScalar(x, scalar)`） |
+| maximum / minimum | `aclnnMaximum` / `aclnnMinimum` | ❌ **无 scalar 变体** | ❌ 无 |
+
+> 注：比较运算的 `(s,t)` 形态**只有显式 ufunc 调用才会到达**——CPython 的 `do_richcompare` 会把
+> `1 > x` 交换成 `x.__richcmp__(1, Py_LT)` → `cupy.less(x, 1)`（标量仍在右）。详见 §2.4(c) 的备注。
+
+整个 CANN 里 `ScalarTensor` 家族只有 4 个（`Rsubs`、`PowScalarTensor`、`RemainderScalarTensor`、
+`IsInScalarTensor`）⇒ 反向实现只有三条路：**调原生 / 换边 / 物化标量（`AclScalarTensorGuard`）**。
+这三条路的分支必须留在**实现层**（wrapper / 适配器模板），不能变成「注册表键的第三维」。
 
 ### 2.3 阶段 3 —— 类型化 arg（"abstract arg"）
 
@@ -189,8 +283,27 @@ float/str 直接报错而不是截断）；`_destroy_arg` 只对 `ARG_SCALAR` �
 | `1 - x` | 同上 → 报错（若注册了会算成 `x - 1`） |
 | `2 / x` | `("ascend_true_divide", SCALAR)` 已注册 → `Divs(x, 2)` = **`x / 2`（静默算错）** |
 | `2 ** x` | `("ascend_power", SCALAR)` 已注册 → **`x ** 2`（静默算错）** |
-| `1 > x` | `GtScalar(x, 1)` = **`x > 1`（静默算错）** |
+| `cupy.greater(1, x)`（**显式 ufunc 调用**） | `GtScalar(x, 1)` = **`x > 1`（静默算错）** |
 | `x // 2` | `("ascend_floor_divide", SCALAR)` 未注册 → 报错 |
+
+> **触发条件（易错点，2026-09-20 订正）**：只有 `ins[0]` 是标量时才走 REVERSE。**算术**的反射调用
+> 会把**原始顺序**交给右操作数类型的同一个 `nb_*` 槽——`core.pyx:77-85` 的注释（"extension types
+> in Cython 0.x shares implementations of op and rop"）+ 生成的 C 代码可证：`nb_subtract` 就是
+> `__sub__` 的 wrapper 本身，没有任何交换：
+>
+> ```
+> /* cupy/_core/core.cpp */
+> #define __pyx_nb_subtract_4cupy_5_core_4core__ndarray_base __pyx_pw_...(ndarray_base)_121__sub__
+> static PyObject *__pyx_pw_..._121__sub__(PyObject *__pyx_v_x, PyObject *__pyx_v_y) { ... }
+> ```
+>
+> 所以 `1 - x` / `2 / x` / `2 ** x` 的 `ins` 确实是 `(标量, 张量)` → REVERSE ✓。
+>
+> **比较运算的运算符写法不走这条**：CPython 的 `do_richcompare` 会**交换操作数并反转比较符**
+> （`_Py_SwappedOp`），`1 > x` 实际到达的是 `__richcmp__(x, 1, Py_LT)` →
+> `numpy.less(x, 1)`（`core.pyx:1253-1257`）→ 标量在**右**，走 `SCALAR_BINARY_OP`，
+> **旧代码也不会算错**。比较类的 REVERSE 只能由**显式 ufunc 调用**触发：
+> `cupy.greater(1, x)`、`np.less(1, x)`、`cupy.less_equal(2, x)`、`cupy.not_equal(1, x)` …
 
 实现：
 
@@ -214,9 +327,12 @@ float/str 直接报错而不是截断）；`_destroy_arg` 只对 `ARG_SCALAR` �
 - 注册名修正：`cupy_subtract`（`create_arithmetic('subtract', ...)` 生成的 ufunc 名）的
   scalar 变体原来注册成 `ascend_sub` → 补 `ascend_subtract`（两个名字都保留）；
   `ascend_floor_divide` 补 `SCALAR_BINARY_OP`（`aclop_FloorDivides`）。
-- **仍未覆盖**：`atan2` / `copysign` 的 scalar 形态（aclnn 无 Scalar 变体，需要 materialization）；
-  `maximum`/`minimum`/`hypot` 等交换律算子只缺一个 `SCALAR_BINARY_OP` 注册（`cupy.maximum(x, 1)`
-  今天会报「未注册」）。
+- **仍未覆盖**：`atan2` / `copysign` 的 scalar 形态（aclnn 无对应算子，需要 materialization 或组合实现）；
+  `maximum` / `minimum` 今天 `cupy.maximum(x, 1)` 会报「未注册」，但**不是补一行注册能解决的**：
+  实测 CANN 只有 `aclnnMaximumGetWorkspaceSize` / `aclnnMinimumGetWorkspaceSize`（都是 tensor-tensor），
+  **没有 scalar 变体**，必须先物化标量（`AclScalarTensorGuard`）再走 `aclBinaryOpRun`；
+  `hypot` 连 aclnn 对应都没有（现为组合实现，见 `aclop_Hypot`）。另外 `_COMMUTATIVE_OPS` 的回退
+  只覆盖 `scalar <op> tensor → SCALAR_BINARY_OP` **一个方向**，反向缺注册不会回退（见 §2.2.1 约束 2）。
 
 ### (d) 测试与验证
 
@@ -290,7 +406,7 @@ typed channel 是 M2 的前置：`AsGeneralOp<Fn>` 解包时可以直接复用
 | M1 ✅ | 阶段 1（错位修复 + 严格校验 + arg spec + 测试 op） | 0.5d | `tests/ascend/` 新增用例；无 NPU |
 | **M3-lite ✅** | tagged `AclArg`（`ARG_SCALAR/INT_ARRAY/STRING/NONE`）+ `TryGetInt64List` + `AclIntArrayGuard` + 白名单字符串通道 + 探针 op + **reverse scalar**（§2.4） | 1d | `tests/ascend/test_unified_args.py`（无 NPU） |
 | **S2-lite ✅** | launch 原语返回错误码、`*_checked` 归位到 caller（§2.5） | 0.5d | 重编 + `pytest tests/ascend`；C 侧入口待建 |
-| M2 | 阶段 2（`unified_op` + `AsGeneralOp<>` 适配模板 + `where` 送达） | 2-3d | 重编 + import + 参数到达断言；`where` 语义待 910B |
+| M2 | 阶段 2（`unified_op` + `AsGeneralOp<>` 适配模板 + `where` 送达）；**必须满足 §2.2.1 的 3 条约束**（操作数与参数分区 / 方向走元数据位 + 适配器模板 / 类型安全来自 `Fn` trait） | 2-3d（+0.5d 启动期 dry-run 自检） | 重编 + import + 参数到达断言 + dry-run；`where` 语义待 910B |
 | M3-rest | `ARG_SPECS` 自动声明表（`GetScalarArg` 调用点生成）、`ARG_TENSOR` 启用（`where=`） | 1d | 类型矩阵单测 |
 | M5 | noexcept 深化：C++ 去异常（S3）→ 校验改返回码 → 统一 `check_acl_status`（§2.5 表 1-5） | 2-3d | 无 NPU 可测到「构造越界标量不再 abort」 |
 | M4 | 910B 基线：`tril(k=)`、`trace(offset=)`、`nan_to_num(nan=)`、`histc(bins=)`、`add(where=)`、`flip(axis=(0,1))`、`roll(shift,axis)`、`1-x`、`2/x`、`1>x` 逐个回归 | — | 数值正确性 |
@@ -301,7 +417,10 @@ typed channel 是 M2 的前置：`AsGeneralOp<Fn>` 解包时可以直接复用
 
 | 项 | 说明 |
 |---|---|
-| 严格校验会暴露既有静默错误 | 这是目的；但需一次性审计 137 处窄签名注册的 arg 需求（可用 `GetScalarArg` 调用点自动提取，成本可控） |
+| 严格校验会暴露既有静默错误 | 这是目的；但需一次性审计窄签名注册的 arg 需求（实测 188 个名字 / 222 行调用，见 §2.2.1；可用 `GetScalarArg` 调用点自动提取，成本可控） |
+| **操作数混入 `ArgsType`（M2 高危）** | `FindArg` 是「kwargs → `args[k]`」回退、`GetScalarArg` 只校验 kind，所以标量操作数一旦进了参数向量，34 处 `GetScalarArg<T>(args, k, ...)` 会**静默读到操作数的值**（kind 恰好也是 `ARG_SCALAR`，无 warning）。布局规则见 §2.2.1 约束 1。 |
+| M2 的「不丢类型安全」 | 窄签名的参数表是编译期约束；收敛到 general 形态后要保住它，只能靠 `AsGeneralOp<Fn>` 从 `Fn` 的函数类型推导签名 + 启动期 dry-run（§2.2.1 约束 3）。退化成 wrapper 内运行时 `kind` 判断 = 把 M1 消灭的一类错误重新打开。 |
+| 反向能力只有 12/188 需要 | 别为「方向」把 188 个注册都改成运行时协议：用适配器模板（`AsScalarBinaryDirectional<Fwd, Rev>`）覆盖那 12 个即可（§2.2.1 约束 2 与附录）。 |
 | `where` 语义 | 参数送到 C++ ≠ 语义正确；Ascend 无直接对应的一元 where，需合成或 `aclnnSWhere`。`ARG_TENSOR` 的 tag / `GetTensorArg` 已就绪，但 pyx 侧仍**显式拒绝** ndarray 参数（避免「送到了但不生效」的静默错误） |
 | reverse scalar 的设备侧正确性 | `AclScalarTensorGuard`（div/floor_divide/fmod）引入了一次 1 元素 `aclrtMalloc` + fill kernel，**只有 910B 上才能验证**；若 aclnn 对 1 元素广播有额外约束，需要回退到「Reciprocal+Muls」组合（已在 §2.4(c) 表里列出） |
 | executor 泄漏（review §L6） | 与 arg 无关，但 M2 改 C++ 模板时**顺带**补 `aclDestroyAclOpExecutor`（只调一段就 return 的路径） |

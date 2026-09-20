@@ -7,10 +7,16 @@ Covers the two things added in this milestone (docs/ascend/arg_passing_plan.md):
    C++ 侧记录真正收到的内容，所以「参数到底有没有按类型送达」可以在**没有 NPU**
    的环境里断言。
 
-2. **reverse scalar binary**（`scalar <op> tensor`）—— `1 - x` / `2 / x` /
-   `1 > x` 这类调用的标量在左操作数。以前 `2 / x` 会被算成 `x / 2`
-   （静默错误结果），`x - 1` 之外的组合要么没注册、要么方向反。现在 dispatch 按
-   操作数位置选 `REVERSE_SCALAR_BINARY_OP`，C++ 侧有对应的 aclop_R* 实现。
+2. **reverse scalar binary**（`scalar <op> tensor`）—— 标量在左操作数的调用。
+   来源有两类：**算术的反射调用**（`1 - x` / `2 / x` / `2 ** x`，CPython 把原始顺序交给
+   同一个 `nb_*` 槽）和**显式 ufunc 调用**（`cupy.greater(1, x)` / `np.less(1, x)`）。
+   以前 `2 / x` 会被算成 `x / 2`（静默错误结果），`x - 1` 之外的组合要么没注册、要么
+   方向反。现在 dispatch 按操作数位置选 `REVERSE_SCALAR_BINARY_OP`，C++ 侧有对应的
+   aclop_R* 实现。
+
+   注意**比较运算的运算符写法永远不会走这条路**：CPython 的 `do_richcompare` 会交换
+   操作数并反转比较符，`1 > x` 到达的是 `__richcmp__(x, 1, Py_LT)` →
+   `numpy.less(x, 1)`（标量在右 → `SCALAR_BINARY_OP`）。见 arg_passing_plan.md §2.4(c)。
 """
 
 from __future__ import annotations
