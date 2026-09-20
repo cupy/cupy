@@ -193,6 +193,34 @@ cdef extern from "../acl_math_ops.h" nogil:
 
 ---
 
+## 需留意, 是否要重构scalar转化
+
+```c++
+// ---------------------------------------------------------------------------
+// double -> 指定 dtype 的 aclScalar 创建
+//
+// 调用点（Arange / Histc / Fill / MaskedScatter / ternary 的 alpha / Clamp ...）
+// 都是「用 tensor 的 dtype 造 scalar」，所以这里**必须**覆盖全部基础类型：
+// 少一个分支就会返回 nullptr，而 nullptr 交给 aclnn 轻则
+// ACLNN_ERR_PARAM_INVALID（以前只剩 stdout 一行 WARNING），重则崩溃。
+// uint16/uint32 原先就落在这个坑里 —— 注意 aclScalar 本身是支持它们的
+// （common_types.h: v_t::ui16/ui32 + ToUint16()/ToUint32()，
+// opdev/data_type_utils.h 的 TypeSize/IsBasicType 也包含 DT_UINT16/32），
+// 缺的只是本函数。
+//
+// 另一条硬约束：本函数在「没有 `except +` 的 extern 边界」内被调用
+// （见 docs/ascend/refactor_exception.md），因此**不能 throw**：C++ 异常不会
+// 被翻译成 Python 异常，只会穿过 Cython 栈导致 std::terminate。越界/NaN
+// 一律饱和 + stderr 警告。
+// 返回值仍可能是 nullptr（dtype 真的无法用 double 表达，或 aclCreateScalar
+// 分配失败），调用方需要检查 —— 派发层已把 nullptr 引发的 aclnn 失败升级为
+// Python 异常。
+// ---------------------------------------------------------------------------
+namespace acl_type_traits_detail {
+   
+```
+
+
 ## 6. 分阶段落地顺序
 
 | 阶段 | 内容 | 无 NPU 下的验证 |

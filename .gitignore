@@ -15,6 +15,10 @@ cupy/backends/ascend/kernels/_build/
 # copied into the wheel; they are machine/SoC specific binaries, not sources.
 cupy/backends/ascend/kernels/_aot/
 build
+.codebuddy/**
+docs/references/**
+tests/logs/**
+
 \#*\#
 .\#*
 .coverage

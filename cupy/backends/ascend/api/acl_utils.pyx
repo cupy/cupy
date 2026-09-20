@@ -1187,7 +1187,7 @@ cdef aclError launch_acl_func_raw(str opname, sequence ins, sequence outs, list 
             cupy_destroy_acl_tensor(t)
         _destroy_acl_scalar(scalar_ptr)
 
-    # NOTE: 同 launch_general_func —— 返回错误码，不抛（Python 路径用 _checked 版本）
+    # NOTE: 同 launch_general_func —— 返回错误码，不抛（Python 路径用 checked 版本）
     return ret
 
 
@@ -1254,7 +1254,7 @@ cdef aclError launch_reduction_op_raw(str opname, sequence ins, sequence outs, o
         if dim:
             aclDestroyIntArray(dim)
         _delete_keyword_args(acl_kwargs)
-    # NOTE: 同 launch_general_func —— 返回错误码，不抛（Python 路径用 _checked 版本）
+    # NOTE: 同 launch_general_func —— 返回错误码，不抛（Python 路径用 checked 版本）
     return ret
 
 

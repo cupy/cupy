@@ -31,6 +31,7 @@ from cupy._core cimport _dtype
 from cupy._core._dtype cimport get_dtype
 from cupy._core._dtype cimport populate_format
 from cupy._core._kernel import ElementwiseKernel, create_ufunc # only fill_kernel use this
+from cupy._core._routines_creation imort array
 
 from cupy._core cimport _routines_binary as _binary
 from cupy._core cimport _routines_indexing as _indexing
