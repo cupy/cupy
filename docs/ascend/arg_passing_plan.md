@@ -219,7 +219,8 @@ cdef struct AclArg:            # C 侧
 - **字符串策略（正式规则）**：
   1. 能在 host 侧判定的一律 host 侧解析（`kind='stable'` → 1、`mode` → 枚举、`order` → flag）；
   2. op spec 未声明 `ARG_STRING` 而收到 `str` → **抛 `NotImplementedError`**（响亮失败）；
-  3. 仅当 aclnn 签名确为 `const char*` 时才允许 `ARG_STRING` 透传（当前 0 个在用）。
+  3. 仅当 aclnn 签名确为 `const char*` 时才允许 `ARG_STRING` 透传
+     （当前 1 个在用：`ascend_einsum`，见 §4 风险表）。
 
 ---
 
@@ -425,7 +426,7 @@ typed channel 是 M2 的前置：`AsGeneralOp<Fn>` 解包时可以直接复用
 | reverse scalar 的设备侧正确性 | `AclScalarTensorGuard`（div/floor_divide/fmod）引入了一次 1 元素 `aclrtMalloc` + fill kernel，**只有 910B 上才能验证**；若 aclnn 对 1 元素广播有额外约束，需要回退到「Reciprocal+Muls」组合（已在 §2.4(c) 表里列出） |
 | executor 泄漏（review §L6） | 与 arg 无关，但 M2 改 C++ 模板时**顺带**补 `aclDestroyAclOpExecutor`（只调一段就 return 的路径） |
 | nogil 计划耦合 | `AsGeneralOp` 的模板形态正好是 `ascend_backend_nogil_plan.md` §3 想要的 RAII guard 落点，两者应合并推进 |
-| 字符串需求将来出现 | `einsum` 的 equation（A3）是确定会来的：通道已就绪，但 C++ 侧消费者要等 `aclnnEinsum` 落地（tensor list + equation + output） |
+| 字符串需求将来出现 | ✅ **首个消费者已落地**：`ascend_einsum`（`aclnnEinsum`：tensor list + `const char*` equation + out），equation 走 ARG_STRING（`_STRING_ARG_OPS` 白名单，`aclop_Einsum` + `AclTensorListGuard`）。python 侧快速路径在 `cupy/linalg/_einsum.py`，**默认关闭**（`CUPY_ASCEND_NATIVE_EINSUM=1` 启用；dtype 不在 CANN 白名单/带 dtype kwarg/dtype 不统一时回退 python 组合实现）；CANN 白名单无 DOUBLE/INT8/BOOL，910B 数值验证待做 |
 
 ---
 

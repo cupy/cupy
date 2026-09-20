@@ -30,6 +30,7 @@
 // math ops, but it is irregular ops
 #include <aclnnop/aclnn_round.h>
 #include <aclnnop/aclnn_isclose.h>
+#include <aclnnop/aclnn_einsum.h>  // ascend_einsum: ARG_STRING 的第一个真实消费者
 #include <aclnnop/aclnn_clamp.h>
 #include <aclnnop/aclnn_nonzero.h>
 #include <aclnnop/aclnn_heaviside.h>
@@ -451,6 +452,35 @@
         bool equal_nan = GetScalarArg<bool>(args, 2, kwargs, "equal_nan", false);
         return aclIrregularOpRun(aclnnIsCloseGetWorkspaceSize, aclnnIsClose, stream,
             self, ins[1], rtol, atol, equal_nan, outs[0]);
+    }
+
+    // cupy.linalg.einsum(subscripts, *operands) 的 Ascend 原生路径：
+    //   ins  = operands（>=1 个张量，统一参数通道之外的操作数照旧走 intensors）
+    //   args = [subscripts] —— 统一参数通道 ARG_STRING 的**第一个真实消费者**
+    //          （arg_passing_plan.md A3 / §2.3 字符串策略）
+    //   outs = [out]（shape/dtype 由 python 侧 host 推导后分配，见
+    //          cupy/linalg/_einsum.py 的 Ascend 快速路径）
+    // NOTE: CANN 白名单只有 FLOAT16/FLOAT/INT16/UINT16/INT32/UINT32/INT64/UINT64
+    //（没有 DOUBLE/INT8/BOOL），dtype 检查与回退在 python 侧做。
+    aclError aclop_Einsum(const std::vector<const aclTensor*>& ins,
+                          const std::vector<aclTensor*>& outs,
+                          const ArgsType& args, const KwargsType& kwargs,
+                          aclrtStream stream) {
+        if (ins.empty() || outs.empty()) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        const char* equation = GetStringArg(args, 0, kwargs, "subscripts");
+        if (equation == nullptr || equation[0] == '\0') {
+            std::cerr << "ERROR: aclop_Einsum: subscripts (ARG_STRING) missing\n";
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        AclTensorListGuard tensors(ins);
+        if (!tensors) {
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        return aclIrregularOpRun(aclnnEinsumGetWorkspaceSize, aclnnEinsum, stream,
+            tensors.get(), equation, outs[0]);
     }
 
     // `cupy_copy` register it as ufunc,  numpy has extra order=K args

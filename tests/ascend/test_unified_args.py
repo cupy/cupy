@@ -83,6 +83,34 @@ def test_string_rejected_for_non_whitelisted_op(acl_utils, strict_env):
         acl_utils.py_describe_args('ascend_sort', ('stable',))
 
 
+# ---------------------------------------------------------------------------
+# 1b. einsum：ARG_STRING 的第一个真实消费者（aclnnEinsum = tensor list + equation + out）
+# ---------------------------------------------------------------------------
+def test_einsum_registered_as_general_op(acl_utils):
+    assert acl_utils.py_is_registered('ascend_einsum', GENERAL_OP)
+
+
+def test_einsum_subscripts_is_string_arg(acl_utils, strict_env):
+    """equation 走统一参数通道的 ARG_STRING（_STRING_ARG_OPS 白名单）。"""
+    desc = acl_utils.py_describe_args('ascend_einsum', ('ij,jk->ik',))
+    assert desc[0][1] == 'string'
+
+
+def test_native_einsum_disabled_by_default(monkeypatch):
+    """快速路径默认关闭：CANN 的 einsum kernel 未做 910B 数值验证。"""
+    import cupy.linalg._einsum as m
+    monkeypatch.delenv('CUPY_ASCEND_NATIVE_EINSUM', raising=False)
+    assert m._use_native_einsum(('ij,jk->ik',), None) is False
+
+
+def test_native_einsum_dtype_kwarg_falls_back(monkeypatch):
+    """dtype kwarg 在触碰设备之前就判定回退（aclnnEinsum 不支持强制计算 dtype）。"""
+    import cupy
+    import cupy.linalg._einsum as m
+    monkeypatch.setenv('CUPY_ASCEND_NATIVE_EINSUM', '1')
+    assert m._use_native_einsum(('ij,jk->ik',), cupy.float32) is False
+
+
 def test_int_array_rejects_non_integer_elements(acl_utils, strict_env):
     """序列里混入 float/str 时不能静默截断。"""
     with pytest.raises(NotImplementedError, match='不是整数'):

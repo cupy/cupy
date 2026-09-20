@@ -326,6 +326,9 @@ _KNOWN_SCALAR_KEYS = frozenset((
 #: 用来证明 str 参数能按 ARG_STRING 送达 C++ 侧。
 _STRING_ARG_OPS = frozenset((
     'ascend_dump_args',
+    # einsum 的 equation：aclnnEinsum 的签名就是 (tensor list, const char*, out)，
+    # 字符串无法在 host 侧降为数值 —— ARG_STRING 的第一个真实消费者。
+    'ascend_einsum',
 ))
 
 
@@ -2010,6 +2013,8 @@ cdef extern from "../acl_general_ops.h" nogil:
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
     aclError aclop_IsClose(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_Einsum(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
     aclError aclop_Heaviside(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
 
@@ -2084,6 +2089,10 @@ cdef void register_irregular_operators():
     register_acl_ufunc("ascend_clip", GENERAL_OP, func_union)
     func_union.general_op = aclop_IsClose
     register_acl_ufunc("ascend_is_close", GENERAL_OP, func_union)
+    # einsum：equation 走统一参数通道的 ARG_STRING（cupy/linalg/_einsum.py 的
+    # Ascend 快速路径，默认关闭，CUPY_ASCEND_NATIVE_EINSUM=1 启用）
+    func_union.general_op = aclop_Einsum
+    register_acl_ufunc("ascend_einsum", GENERAL_OP, func_union)
     func_union.general_op = aclop_Heaviside
     register_acl_ufunc("ascend_heaviside", GENERAL_OP, func_union)
 
@@ -2185,6 +2194,18 @@ def py_get_op_type(object ops, bint inplace, bint has_scalar=False,
                    bint scalar_is_lhs=False) -> int:
     """测试用：暴露 `get_op_type`，验证「操作数位置 -> OpType」的判定（无需 NPU）。"""
     return <int>get_op_type(ops, inplace, has_scalar, scalar_is_lhs)
+
+
+def py_launch_general(str opname, tuple ins, tuple outs, tuple args,
+                      dict kwargs, intptr_t stream_ptr=0):
+    """Python 层的 general-op 启动器（einsum 等纯 python routine 的 Ascend 快速路径用）。
+
+    与 pyx/C 调用方走同一张注册表和统一参数通道（args 按 tag 转换：str 需在
+    `_STRING_ARG_OPS` 白名单内）；错误传播语义同 ``launch_general_func``
+    （aclError != 0 -> RuntimeError，消息带 aclGetRecentErrMsg）。
+    """
+    return launch_general_func(opname, ins, outs, list(args), dict(kwargs),
+                               stream_ptr)
 
 
 def py_is_registered(str opname, int op_type) -> bool:

@@ -448,6 +448,79 @@ def _tuple_sorted_by_0(zs):
     return tuple(i for _, i in sorted(zs))
 
 
+# ---------------------------------------------------------------------------
+# Ascend 原生路径：aclnnEinsum（general_op + 统一参数通道的 ARG_STRING）。
+#
+# 默认**关闭**：CANN 的 einsum kernel 尚未在 910B 上做过数值验证。设
+# CUPY_ASCEND_NATIVE_EINSUM=1 启用；dtype 不在 CANN 白名单（无 DOUBLE/INT8/BOOL）、
+# 带 dtype kwarg、操作数 dtype 不统一时自动回退到下方上游 python 组合实现
+# （tensordot/transpose/sum，走已注册的 ascend 算子）。
+# 见 docs/ascend/arg_passing_plan.md §2.3（字符串策略 A3）与 §4 风险表。
+# ---------------------------------------------------------------------------
+def _use_native_einsum(operands, dtype):
+    """Ascend 原生 einsum 的启用判定（env/参数检查不触碰设备）。"""
+    import os
+    if os.environ.get('CUPY_ASCEND_NATIVE_EINSUM') != '1':
+        return False
+    if dtype is not None or len(operands) < 2:
+        return False
+    if not isinstance(operands[0], str):
+        return False
+    try:
+        from cupy.backends.backend.api.runtime import is_ascend
+        if not is_ascend():
+            return False
+    except Exception:
+        return False
+    arrs = [cupy.asanyarray(a) for a in operands[1:]]  # 这里起需要设备
+    # CANN aclnnEinsum 的 dtype 白名单（aclnn_einsum.h:27）
+    ok = (cupy.float16, cupy.float32, cupy.int16, cupy.uint16,
+          cupy.int32, cupy.uint32, cupy.int64, cupy.uint64)
+    dt = arrs[0].dtype
+    if dt.type not in ok:
+        return False
+    return all(a.dtype == dt for a in arrs)  # 混合 dtype 交给 python 组合路径
+
+
+def _einsum_native_ascend(operands):
+    """``CUPY_ASCEND_NATIVE_EINSUM=1`` 时的 aclnnEinsum 快速路径。
+
+    subscripts 原样透传（ARG_STRING，白名单 ``_STRING_ARG_OPS``）；out 的 shape
+    在 host 侧按解析结果推导，dtype 取操作数公共 dtype（守卫已保证统一）。
+    """
+    subscripts = operands[0]
+    arrs = [cupy.asanyarray(a) for a in operands[1:]]
+    input_subscripts, output_subscript, arrs = _parse_einsum_input(
+        [subscripts, *arrs])
+    arrs = [cupy.asanyarray(a) for a in arrs]
+    input_subscripts = [
+        _parse_ellipsis_subscript(sub, idx, ndim=arr.ndim)
+        for idx, (sub, arr) in enumerate(zip(input_subscripts, arrs))
+    ]
+    # 与主实现同一规则的 label -> dim（broadcast 时取最大）
+    dimension_dict = {}
+    for sub, arr in zip(input_subscripts, arrs):
+        for label, dim in zip(sub, arr.shape):
+            if label not in dimension_dict or dimension_dict[label] == 1:
+                dimension_dict[label] = dim
+    if output_subscript is None:
+        tmp = list(itertools.chain.from_iterable(input_subscripts))
+        output_labels = [label for label in sorted(set(tmp))
+                         if label < 0 or tmp.count(label) == 1]
+    else:
+        output_labels = _parse_ellipsis_subscript(
+            output_subscript, None,
+            ellipsis_len=sum(label < 0 for label in dimension_dict.keys()))
+    out_shape = tuple(dimension_dict[label] for label in output_labels)
+    out = cupy.empty(out_shape, dtype=arrs[0].dtype)
+
+    from cupy.backends.ascend.api import acl_utils
+    stream_ptr = cupy.cuda.get_current_stream().ptr
+    acl_utils.py_launch_general(
+        'ascend_einsum', tuple(arrs), (out,), (subscripts,), {}, stream_ptr)
+    return out
+
+
 def einsum(*operands, **kwargs):
     """einsum(subscripts, *operands, dtype=None, optimize=False)
 
@@ -494,6 +567,9 @@ def einsum(*operands, **kwargs):
     .. seealso:: :func:`numpy.einsum`
     .. _cuQuantum Python: https://docs.nvidia.com/cuda/cuquantum/python/
     """
+    if _use_native_einsum(operands, kwargs.get('dtype')):
+        return _einsum_native_ascend(operands)
+
     out = _try_use_cutensornet(*operands, **kwargs)
     if out is not None:
         return out
