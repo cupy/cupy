@@ -18,9 +18,23 @@ ctypedef fused sequence:
 
 
 # TODO: is size_t is the best type to pass C void* stream Pointer??
+#
+# 两层派发 API（见 docs/ascend/arg_passing_plan.md §2.5）：
+#   * `launch_*`      —— 默认入口：返回 aclError，非 0 时抛 RuntimeError
+#                        （带 aclGetRecentErrMsg()）；Python 路径用这个。
+#   * `launch_*_raw`  —— 原语：返回 aclError 且**不抛**，把 Ascend 错误码交给
+#                        caller（noexcept / C 侧入口方向）。
 cdef aclError launch_general_func(str opname, sequence ins, sequence outs,
     list args, dict kargs, intptr_t stream_ptr) except *
+cdef aclError launch_acl_func(str opname, sequence ins, sequence outs,
+    list args, dict kargs, intptr_t stream_ptr) except *
 cdef aclError launch_reduction_op(str opname, sequence ins, sequence outs,
+    object axes, bint keepdims, dict kargs, intptr_t stream_ptr) except *
+cdef aclError launch_general_func_raw(str opname, sequence ins, sequence outs,
+    list args, dict kargs, intptr_t stream_ptr) except *
+cdef aclError launch_acl_func_raw(str opname, sequence ins, sequence outs,
+    list args, dict kargs, intptr_t stream_ptr) except *
+cdef aclError launch_reduction_op_raw(str opname, sequence ins, sequence outs,
     object axes, bint keepdims, dict kargs, intptr_t stream_ptr) except *
 
 # Whether `opname` (already `ascend_*`) has some implementation registered.

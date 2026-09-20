@@ -803,7 +803,7 @@ cdef void raise_acl_op_error(str opname, long ret) except *:
         '(aclGetRecentErrMsg returned no detail)'.format(opname, ret))
 
 
-cdef aclError launch_general_func(str opname, sequence ins, sequence outs, list args, dict kwargs, intptr_t stream_ptr) except *:
+cdef aclError launch_general_func_raw(str opname, sequence ins, sequence outs, list args, dict kwargs, intptr_t stream_ptr) except *:
     if opname.startswith("cupy_"):
         opname = ASCEND_OP_PREFIX + opname[5:]
     # custom AscendC kernel registry takes precedence (B-tier ops with no
@@ -817,7 +817,8 @@ cdef aclError launch_general_func(str opname, sequence ins, sequence outs, list 
     op_info.op_name = opname.encode("utf-8")
     op_info.op_type = OpType.GENERAL_OP
     if _builtin_operators.find(op_info) == _builtin_operators.end():
-        return launch_acl_func(opname, ins, outs, args, kwargs, stream_ptr)
+        # 窄签名路径：同样只传错误码（检查在外层 launch_general_func 做）
+        return launch_acl_func_raw(opname, ins, outs, args, kwargs, stream_ptr)
     func_ptr = _builtin_operators[op_info]
 
     cdef ArgsType acl_args
@@ -1049,7 +1050,7 @@ cdef aclError _launch_custom_ufunc(str opname, dict spec, sequence ins,
     return 0
 
 
-cdef aclError launch_acl_func(str opname, sequence ins, sequence outs, list args, dict kwargs, intptr_t stream_ptr) except *:
+cdef aclError launch_acl_func_raw(str opname, sequence ins, sequence outs, list args, dict kwargs, intptr_t stream_ptr) except *:
     # M1 止血：这条路径（UNARY/BINARY/SCALAR/INPLACE 注册表）目前**没有参数通道**，
     # 原来 args/kwargs 被完全丢弃（生成代码里是 CYTHON_UNUSED，见 review §2.2）。
     # 丢弃 = 参数没生效但算子照跑 = 静默错误结果，所以先显式报错；
@@ -1135,13 +1136,11 @@ cdef aclError launch_acl_func(str opname, sequence ins, sequence outs, list args
             cupy_destroy_acl_tensor(t)
         _destroy_acl_scalar(scalar_ptr)
 
-    # NOTE: 放在 finally 之后，保证 tensor/scalar 都已回收再抛
-    if ret != 0:
-        raise_acl_op_error(opname, ret)
+    # NOTE: 同 launch_general_func —— 返回错误码，不抛（Python 路径用 _checked 版本）
     return ret
 
 
-cdef aclError launch_reduction_op(str opname, sequence ins, sequence outs, object axes, bint keepdims, dict kwargs, intptr_t stream_ptr) except *:
+cdef aclError launch_reduction_op_raw(str opname, sequence ins, sequence outs, object axes, bint keepdims, dict kwargs, intptr_t stream_ptr) except *:
     # 检查操作是否已注册
     if opname.startswith("cupy_"):
         opname = ASCEND_OP_PREFIX + opname[5:]
@@ -1204,7 +1203,45 @@ cdef aclError launch_reduction_op(str opname, sequence ins, sequence outs, objec
         if dim:
             aclDestroyIntArray(dim)
         _delete_keyword_args(acl_kwargs)
-    # NOTE: 放在 finally 之后，保证 tensor/dim/kwargs 都已回收再抛
+    # NOTE: 同 launch_general_func —— 返回错误码，不抛（Python 路径用 _checked 版本）
+    return ret
+
+
+# ---------------------------------------------------------------------------
+# 派发的两层 API（见 docs/ascend/arg_passing_plan.md §2.5）
+#
+#   `launch_*`（**默认、推荐**）
+#       返回 `aclError`，acl/aclnn 失败时抛 RuntimeError（带 `aclGetRecentErrMsg()`）。
+#       「检查」是默认行为，所以**没有后缀** —— Python 路径直接用这个，
+#       不会出现「算子没跑成但结果照用」的静默错误。
+#
+#   `launch_*_raw`（原语，noexcept 方向）
+#       返回 `aclError`，失败时**不抛**，把 Ascend 错误码原样交给 caller。
+#       给 C/C++ 侧（将来 noexcept 的边界）与「想自己决定怎么处理」的调用方用。
+#
+# 也就是：**错误码一定返回给 caller；抛不抛由选哪个入口决定**。
+# ---------------------------------------------------------------------------
+cdef aclError launch_general_func(str opname, sequence ins, sequence outs,
+                                  list args, dict kwargs, intptr_t stream_ptr) except *:
+    cdef aclError ret = launch_general_func_raw(opname, ins, outs, args, kwargs, stream_ptr)
+    if ret != 0:
+        raise_acl_op_error(opname, ret)
+    return ret
+
+
+cdef aclError launch_acl_func(str opname, sequence ins, sequence outs,
+                              list args, dict kwargs, intptr_t stream_ptr) except *:
+    cdef aclError ret = launch_acl_func_raw(opname, ins, outs, args, kwargs, stream_ptr)
+    if ret != 0:
+        raise_acl_op_error(opname, ret)
+    return ret
+
+
+cdef aclError launch_reduction_op(str opname, sequence ins, sequence outs,
+                                  object axes, bint keepdims, dict kwargs,
+                                  intptr_t stream_ptr) except *:
+    cdef aclError ret = launch_reduction_op_raw(
+        opname, ins, outs, axes, keepdims, kwargs, stream_ptr)
     if ret != 0:
         raise_acl_op_error(opname, ret)
     return ret
