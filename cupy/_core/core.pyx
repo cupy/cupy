@@ -31,7 +31,6 @@ from cupy._core cimport _dtype
 from cupy._core._dtype cimport get_dtype
 from cupy._core._dtype cimport populate_format
 from cupy._core._kernel import ElementwiseKernel, create_ufunc # only fill_kernel use this
-from cupy._core._routines_creation imort array
 
 from cupy._core cimport _routines_binary as _binary
 from cupy._core cimport _routines_indexing as _indexing
@@ -1649,45 +1648,44 @@ cdef class _ndarray_base:
         else:
             _indexing._ndarray_setitem(self, slices, value)
 
-    IF CUPY_CANN_VERSION <= 0:
-        def scatter_add(self, slices, value):
-            """Adds given values to specified elements of an array.
+    def scatter_add(self, slices, value):
+        """Adds given values to specified elements of an array.
 
-            .. seealso::
-                :func:`cupyx.scatter_add` for full documentation.
+        .. seealso::
+            :func:`cupyx.scatter_add` for full documentation.
 
-            """
-            warnings.warn(
-                '`ndarray.scatter_add` is deprecated. '
-                'Please use `cupy.add.at` instead.',
-                DeprecationWarning)
-            self._scatter_op(slices, value, 'add')
+        """
+        warnings.warn(
+            '`ndarray.scatter_add` is deprecated. '
+            'Please use `cupy.add.at` instead.',
+            DeprecationWarning)
+        self._scatter_op(slices, value, 'add')
 
-        def scatter_max(self, slices, value):
-            """Stores a maximum value of elements specified by indices to an array.
+    def scatter_max(self, slices, value):
+        """Stores a maximum value of elements specified by indices to an array.
 
-            .. seealso::
-                :func:`cupyx.scatter_max` for full documentation.
+        .. seealso::
+            :func:`cupyx.scatter_max` for full documentation.
 
-            """
-            warnings.warn(
-                '`ndarray.scatter_max` is deprecated '
-                'Please use `cupy.maximum.at` instead.',
-                DeprecationWarning)
-            self._scatter_op(slices, value, 'max')
+        """
+        warnings.warn(
+            '`ndarray.scatter_max` is deprecated '
+            'Please use `cupy.maximum.at` instead.',
+            DeprecationWarning)
+        self._scatter_op(slices, value, 'max')
 
-        def scatter_min(self, slices, value):
-            """Stores a minimum value of elements specified by indices to an array.
+    def scatter_min(self, slices, value):
+        """Stores a minimum value of elements specified by indices to an array.
 
-            .. seealso::
-                :func:`cupyx.scatter_min` for full documentation.
+        .. seealso::
+            :func:`cupyx.scatter_min` for full documentation.
 
-            """
-            warnings.warn(
-                '`ndarray.scatter_min` is deprecated '
-                'Please use `cupy.minimum.at` instead.',
-                DeprecationWarning)
-            self._scatter_op(slices, value, 'min')
+        """
+        warnings.warn(
+            '`ndarray.scatter_min` is deprecated '
+            'Please use `cupy.minimum.at` instead.',
+            DeprecationWarning)
+        self._scatter_op(slices, value, 'min')
 
         def _scatter_op(self, slices, value, op):
             _indexing._scatter_op(self, slices, value, op)
