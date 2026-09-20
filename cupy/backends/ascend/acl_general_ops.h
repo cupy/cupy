@@ -437,20 +437,20 @@
         return ret;
     }
 
-    // this aclnn api perfectly match cupy's, while `cupy_is_close`, `cupy_is_close_complex`
-    // TODO: dtype check
+    // cupy 的 ufunc 是 `_is_close(a, b, rtol, atol, equal_nan)`（nin=5，
+    // cupy/_logic/comparison.py:132），所以标量操作数按序落在 args[0..2]。
+    // aclnnIsClose 的签名是 (self, other, rtol, atol, equal_nan, out)。
+    // NOTE: CANN 头文件里 rtol/atol 的中文描述写反了（rtol 标成「绝对宽容」），
+    // 这里按参数名对齐 numpy 语义（rtol=相对、atol=绝对）。
+    // TODO: dtype check（CANN 白名单：self/other 整型+浮点+bool，out 只收 BOOL）
     aclError aclop_IsClose(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
         const aclTensor* self = ins[0];
-        double atol = GetScalarArg<double>(args, 0, kwargs, "rtol", 1e-5); 
-        double rtol = GetScalarArg<double>(args, 1, kwargs, "atol", 1e-8);
-        bool equal_nan = GetScalarArg<bool>(args, 1, kwargs, "order", false);
-        aclTensor* indices = nullptr;
-        if (outs.size() > 1) {
-            indices = outs[1];  // int64 tensor
-        }
+        double rtol = GetScalarArg<double>(args, 0, kwargs, "rtol", 1e-5);
+        double atol = GetScalarArg<double>(args, 1, kwargs, "atol", 1e-8);
+        bool equal_nan = GetScalarArg<bool>(args, 2, kwargs, "equal_nan", false);
         return aclIrregularOpRun(aclnnIsCloseGetWorkspaceSize, aclnnIsClose, stream,
-            self, ins[1], rtol, atol, equal_nan, outs[0]); // value and index out arrays
+            self, ins[1], rtol, atol, equal_nan, outs[0]);
     }
 
     // `cupy_copy` register it as ufunc,  numpy has extra order=K args

@@ -70,7 +70,7 @@ ufunc 的 loop 表没有混合类型 loop（`_routines_math.pyx:363-372`：
 | 3 | P2 | CUDA 的 kernel 内转换机制在 Ascend 是**死代码**：`type_map` 算出来只喂给一行注释掉的 `#kern = self._get_elementwise_kernel(dev_id, arginfos, type_map)` | `_kernel.pyx:1410-1457` | 维护误导（读代码会以为存在类型转换层）；也是「cast 插入点缺失」的根源 |
 | 4 | P2 | 派发层没有 dtype 一致性检查：`launch_acl_func_raw` / general 路径不校验 `(self, other, out)` 的 dtype 组合 | `acl_utils.pyx:1072+` | 错误组合只能靠 aclnn 的 EL 报错（消息在 CANN 内部，定位差、时机晚） |
 | 5 | P3 | 用户 `out=` 时 loop dtype 与 out dtype 可不同（`same_kind` 允许降位） | numpy 2.4 实测：`f32_arr += i64_arr` 与 `np.add(f32, i64, out=f32)` 均通过、结果 f32 | **与 numpy 一致** ✓；但意味着 aclnn 必须接受 out dtype ≠ 推导 dtype（仍属问题 2 的范畴） |
-| 6 | 顺带 | `aclop_IsClose` 参数读取疑似错位：`atol = GetScalarArg(args, 0, kwargs, "rtol", 1e-5)`、`rtol = (…, 1, "atol", 1e-8)`、`equal_nan = (…, 1, kwargs, "order", false)`（读 args[1]/"order"） | `acl_general_ops.h:445-447` | 变量名/默认值/键名交叉；`equal_nan` 大概率把 atol 的值当 bool；`// TODO: dtype check` 未做。**另行修复，不入本计划** |
+| 6 | 顺带 → ✅ 已修复（2026-09-20） | `aclop_IsClose` 参数读取错位：`atol` 读 `args[0]/"rtol"`、`rtol` 读 `args[1]/"atol"`、`equal_nan` 读 `args[1]/"order"`——三者交叉，`equal_nan` 实际拿到 atol 的值当 bool | 修复前 `acl_general_ops.h:445-447`；cupy 侧 ufunc 是 `_is_close(a, b, rtol, atol, equal_nan)`（nin=5，`cupy/_logic/comparison.py:132`），标量操作数按序落在 `args[0..2]` | **修复后**：`rtol/atol/equal_nan` 分别读 `args[0/1/2]`（键名 `rtol/atol/equal_nan`），aclnnIsClose 按签名 `(self, other, rtol, atol, equal_nan, out)` 传参；删除死代码 `indices`（nout 恒为 1）；注释说明 CANN 头文件里 rtol/atol 的中文描述写反、按参数名对齐 numpy。数值验证（rtol/atol 语义）归入 M-D5 |
 
 ---
 
