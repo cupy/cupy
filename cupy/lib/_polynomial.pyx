@@ -218,10 +218,12 @@ cdef class poly1d:
         return iter(self.coeffs)
 
     def integ(self, m=1, k=0):
-        raise NotImplementedError
+        return poly1d(_routines_poly.polyint(self.coeffs, m=m, k=k),
+                      self._variable)
 
     def deriv(self, m=1):
-        raise NotImplementedError
+        return poly1d(_routines_poly.polyder(self.coeffs, m=m),
+                      self._variable)
 
     # -------------------------------------------------------------------------
     # Cupy specific attributes and methods

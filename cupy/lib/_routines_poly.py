@@ -220,6 +220,123 @@ def _polypow(x, n):
         assert False
 
 
+def polyder(p, m=1):
+    """Returns the derivative of the specified order of a polynomial.
+
+    Args:
+        p (cupy.ndarray or cupy.poly1d): polynomial coefficients
+            from highest to lowest degree.
+        m (int, optional): order of differentiation (default: 1).
+
+    Returns:
+        cupy.ndarray or cupy.poly1d: a new polynomial representing
+        the derivative.
+
+    .. seealso:: :func:`numpy.polyder`
+
+    """
+    m = int(m)
+    if m < 0:
+        raise ValueError('Order of derivative must be positive (see polyint)')
+
+    truepoly = isinstance(p, cupy.poly1d)
+    p = cupy.asarray(p)
+    n = len(p) - 1
+    y = p[:-1] * cupy.arange(n, 0, -1)
+    if m == 0:
+        val = p
+    else:
+        val = polyder(y, m - 1)
+    if truepoly:
+        val = cupy.poly1d(val)
+    return val
+
+
+def polydiv(u, v):
+    """Returns the quotient and remainder of polynomial division.
+
+    Args:
+        u (cupy.ndarray or cupy.poly1d): dividend polynomial's coefficients.
+        v (cupy.ndarray or cupy.poly1d): divisor polynomial's coefficients.
+
+    Returns:
+        tuple of cupy.ndarray or tuple of cupy.poly1d:
+        ``(q, r)`` where ``q`` is the quotient and ``r`` is the remainder.
+
+    .. seealso:: :func:`numpy.polydiv`
+
+    """
+    truepoly = (isinstance(u, cupy.poly1d) or isinstance(v, cupy.poly1d))
+    if isinstance(u, cupy.poly1d):
+        u = u.coeffs
+    if isinstance(v, cupy.poly1d):
+        v = v.coeffs
+    u = cupy.atleast_1d(u) + 0.0
+    v = cupy.atleast_1d(v) + 0.0
+    # w has the common type
+    w = u[0] + v[0]
+    m = len(u) - 1
+    n = len(v) - 1
+    scale = 1. / v[0]
+    q = cupy.zeros((max(m - n + 1, 1),), w.dtype)
+    r = u.astype(w.dtype)
+    for k in range(m - n + 1):
+        d = scale * r[k]
+        q[k] = d
+        r[k:k + n + 1] -= d * v
+    while cupy.allclose(r[0], 0, rtol=1e-14) and (r.shape[-1] > 1):
+        r = r[1:]
+    if truepoly:
+        return cupy.poly1d(q), cupy.poly1d(r)
+    return q, r
+
+
+def polyint(p, m=1, k=None):
+    """Returns an antiderivative (indefinite integral) of a polynomial.
+
+    Args:
+        p (cupy.ndarray or cupy.poly1d): polynomial coefficients
+            from highest to lowest degree.
+        m (int, optional): order of the antiderivative (default: 1).
+        k (scalar or cupy.ndarray, optional): integration constants.
+            They are given in the order of integration: those corresponding
+            to highest-order terms come first. If ``None`` (default),
+            all constants are assumed to be zero. If ``m == 1``, a single
+            scalar can be given instead of a list.
+
+    Returns:
+        cupy.ndarray or cupy.poly1d: a new polynomial representing
+        the antiderivative.
+
+    .. seealso:: :func:`numpy.polyint`
+
+    """
+    m = int(m)
+    if m < 0:
+        raise ValueError('Order of integral must be positive (see polyder)')
+    if k is None:
+        k = cupy.zeros(m, float)
+    k = cupy.atleast_1d(k)
+    if k.size == 1 and m > 1:
+        k = k[0] * cupy.ones(m, float)
+    if k.size < m:
+        raise ValueError('k must be a scalar or a rank-1 array of '
+                         'length 1 or >m.')
+
+    truepoly = isinstance(p, cupy.poly1d)
+    p = cupy.asarray(p)
+    if m == 0:
+        if truepoly:
+            return cupy.poly1d(p)
+        return p
+    # Note: this must work also with object and integer arrays
+    y = cupy.concatenate((p / cupy.arange(len(p), 0, -1), k[:1]))
+    val = polyint(y, m - 1, k=k[1:])
+    if truepoly:
+        return cupy.poly1d(val)
+    return val
+
+
 def _polyfit_typecast(x):
     if x.dtype.kind == 'c':
         return x.astype(numpy.complex128, copy=False)

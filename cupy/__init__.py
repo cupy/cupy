@@ -305,6 +305,9 @@ from cupy.lib._shape_base import put_along_axis    # NOQA
 from cupy.lib._polynomial import poly1d  # NOQA
 from cupy.lib._routines_poly import poly  # NOQA
 from cupy.lib._routines_poly import polyadd  # NOQA
+from cupy.lib._routines_poly import polyder  # NOQA
+from cupy.lib._routines_poly import polydiv  # NOQA
+from cupy.lib._routines_poly import polyint  # NOQA
 from cupy.lib._routines_poly import polysub  # NOQA
 from cupy.lib._routines_poly import polymul  # NOQA
 from cupy.lib._routines_poly import polyfit  # NOQA
