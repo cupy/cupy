@@ -1959,6 +1959,10 @@ cdef extern from "../acl_general_ops.h" nogil:
     # setitem / boolean indexing
     aclError aclop_ScatterUpdate(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_ScatterMax(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_ScatterMin(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
     aclError aclop_ScatterAdd(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
     aclError aclop_ScatterUpdateMask(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
@@ -2060,6 +2064,13 @@ cdef void register_irregular_operators():
     register_acl_ufunc("ascend_scatter_update", GENERAL_OP, func_union)
     func_union.general_op = aclop_ScatterAdd
     register_acl_ufunc("ascend_scatter_add", GENERAL_OP, func_union)
+    # scatter_max/min：CANN 无原生 reduce=max/min，由 gather+Maximum/Minimum+
+    # InplaceScatterUpdate 三段组合（acl_general_ops.h ScatterMaxMin）。
+    # `cupy.maximum.at` / `cupy.minimum.at` / `cupyx.scatter_max/min` 的落点。
+    func_union.general_op = aclop_ScatterMax
+    register_acl_ufunc("ascend_scatter_max", GENERAL_OP, func_union)
+    func_union.general_op = aclop_ScatterMin
+    register_acl_ufunc("ascend_scatter_min", GENERAL_OP, func_union)
     func_union.general_op = aclop_ScatterUpdateMask
     register_acl_ufunc("ascend_scatter_update_mask", GENERAL_OP, func_union)
     func_union.general_op = aclop_ScatterAddMask

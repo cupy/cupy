@@ -9,6 +9,33 @@ from cupy.exceptions import AxisError
 from cupy._core._kernel import ElementwiseKernel, _get_warpsize
 from cupy._core._ufuncs import elementwise_copy
 
+# ---------------------------------------------------------------------------
+# Ascend 的 scatter dtype 门槛：aclnnScatterAdd 只支持
+# FLOAT16/FLOAT32/INT32/INT8/UINT8（aclnn_scatter_add.h:26-31），
+# scatter_max/min 的组合实现（acl_general_ops.h ScatterMaxMin）继承
+# Maximum/InplaceScatterUpdate 的白名单 —— 都比 CUDA atomic* 的窄。
+# dtype 不符时在 host 侧提前报错，而不是等 aclnn 的错误码。
+# ---------------------------------------------------------------------------
+cdef bint _ascend_checked = False
+cdef bint _ascend_flag = False
+
+
+cdef inline bint _ascend_runtime():
+    global _ascend_checked, _ascend_flag
+    if not _ascend_checked:
+        _ascend_checked = True
+        try:
+            from cupy.backends.backend.api.runtime import is_ascend
+            _ascend_flag = is_ascend()
+        except Exception:
+            _ascend_flag = False
+    return _ascend_flag
+
+
+def py_scatter_ascend_gate_active() -> bool:
+    """测试用：scatter 的 Ascend dtype 收窄门槛是否激活（无需设备/数组）。"""
+    return _ascend_runtime()
+
 from libcpp cimport vector
 
 from cupy._core._carray cimport shape_t
@@ -917,13 +944,19 @@ cdef _scatter_op_single(
     elif op == 'add':
         # There is constraints on types because atomicAdd() in CUDA 7.5
         # only supports int32, uint32, uint64, and float32.
-        if not issubclass(v.dtype.type,
-                          (numpy.int32, numpy.float16, numpy.float32,
-                           numpy.float64, numpy.uint32, numpy.uint64,
-                           numpy.intc, numpy.uintc, numpy.ulonglong)):
+        # Ascend: aclnnScatterAdd 只支持 FLOAT16/FLOAT32/INT32/INT8/UINT8，
+        # float64/uint32/int64/uint64 在 host 侧提前报错。
+        allowed = (numpy.int32, numpy.float16, numpy.float32,
+                   numpy.float64, numpy.uint32, numpy.uint64,
+                   numpy.intc, numpy.uintc, numpy.ulonglong)
+        if _ascend_runtime():
+            allowed = (numpy.int32, numpy.float16, numpy.float32)
+        if not issubclass(v.dtype.type, allowed):
             raise TypeError(
                 'cupy.add.at only supports int32, float16, float32, float64, '
-                'uint32, uint64, as data type')
+                'uint32, uint64, as data type'
+                + (' (Ascend/aclnnScatterAdd: int32, float16, float32)'
+                   if _ascend_runtime() else ''))
         _scatter_add_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
     elif op == 'sub':
@@ -935,23 +968,31 @@ cdef _scatter_op_single(
         _scatter_sub_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
     elif op == 'max':
-        if not issubclass(v.dtype.type,
-                          (numpy.int32, numpy.float32, numpy.float64,
-                           numpy.uint32, numpy.uint64,
-                           numpy.intc, numpy.uintc, numpy.ulonglong)):
+        allowed = (numpy.int32, numpy.float32, numpy.float64,
+                   numpy.uint32, numpy.uint64,
+                   numpy.intc, numpy.uintc, numpy.ulonglong)
+        if _ascend_runtime():
+            allowed = (numpy.int32, numpy.float16, numpy.float32)
+        if not issubclass(v.dtype.type, allowed):
             raise TypeError(
                 'cupy.maximum.at only supports int32, float32, float64, '
-                'uint32, uint64 as data type')
+                'uint32, uint64 as data type'
+                + (' (Ascend/gather+Maximum+ScatterUpdate: '
+                   'int32, float16, float32)' if _ascend_runtime() else ''))
         _scatter_max_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
     elif op == 'min':
-        if not issubclass(v.dtype.type,
-                          (numpy.int32, numpy.float32, numpy.float64,
-                           numpy.uint32, numpy.uint64,
-                           numpy.intc, numpy.uintc, numpy.ulonglong)):
+        allowed = (numpy.int32, numpy.float32, numpy.float64,
+                   numpy.uint32, numpy.uint64,
+                   numpy.intc, numpy.uintc, numpy.ulonglong)
+        if _ascend_runtime():
+            allowed = (numpy.int32, numpy.float16, numpy.float32)
+        if not issubclass(v.dtype.type, allowed):
             raise TypeError(
                 'cupy.minimum.at only supports int32, float32, float64, '
-                'uint32, uint64 as data type')
+                'uint32, uint64 as data type'
+                + (' (Ascend/gather+Minimum+ScatterUpdate: '
+                   'int32, float16, float32)' if _ascend_runtime() else ''))
         _scatter_min_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
     elif op == 'and':

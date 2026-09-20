@@ -31,6 +31,9 @@
 #include <aclnnop/aclnn_round.h>
 #include <aclnnop/aclnn_isclose.h>
 #include <aclnnop/aclnn_einsum.h>  // ascend_einsum: ARG_STRING 的第一个真实消费者
+#include <aclnnop/aclnn_gather.h>   // scatter_max/min 的组合实现用
+#include <aclnnop/aclnn_maximum.h>  // scatter_max 的组合实现用
+#include <aclnnop/aclnn_minimum.h>  // scatter_min 的组合实现用
 #include <aclnnop/aclnn_clamp.h>
 #include <aclnnop/aclnn_nonzero.h>
 #include <aclnnop/aclnn_heaviside.h>
@@ -789,6 +792,65 @@
         // `atomicAdd(&a[...], v)`).
         return aclIrregularOpRun(aclnnScatterAddGetWorkspaceSize, aclnnScatterAdd, stream,
             outs[0], axis, ins[1], ins[0], outs[0]);
+    }
+
+    // scatter_max / scatter_min（`cupy.maximum.at` / `cupy.minimum.at`）：
+    // CANN 没有原生的 scatter reduce=max/min —— aclnnScatter 的 reduce 只有
+    // (add,1)/(mul,2)/(none,0)，aclnnIndexPutImpl 只有 accumulate/replace，
+    // 也没有 ScatterMax/ScatterMin/ScatterElements —— 所以用三段组合：
+    //     existing = aclnnGather(a, axis, index)        # 被索引位置的现值
+    //     merged   = aclnnMaximum(existing, src)        # min 用 aclnnMinimum
+    //     a       &= aclnnInplaceScatterUpdate(a, index, merged)
+    // max/min 的合并幂等、与顺序无关，因此不需要原子性：同一位置被写多次时
+    // 最终值就是最大/最小，与 CUDA atomicMax/atomicMin 语义一致。
+    // 中间 buffer 用 aclTensorLike（连续新分配），析构成对释放。
+    static aclError ScatterMaxMin(const std::vector<const aclTensor*>& ins,
+        const std::vector<aclTensor*>& outs, const ArgsType& args,
+        const KwargsType& kwargs, aclrtStream stream, bool is_max) {
+        if (ins.size() < 2 || outs.empty()) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        int64_t axis = ScatterAxis(ins, args, kwargs);
+        aclDataType dtype = ACL_DT_UNDEFINED;
+        aclGetDataType(outs[0], &dtype);
+        aclTensor* existing = aclTensorLike(ins[0], dtype);
+        aclTensor* merged = aclTensorLike(ins[0], dtype);
+        if (existing == nullptr || merged == nullptr) {
+            aclDestroyTensorLike(existing);
+            aclDestroyTensorLike(merged);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        aclError ret = aclIrregularOpRun(aclnnGatherGetWorkspaceSize, aclnnGather,
+            stream, outs[0], axis, ins[1], existing);
+        if (ret == ACL_SUCCESS) {
+            if (is_max) {
+                ret = aclIrregularOpRun(aclnnMaximumGetWorkspaceSize, aclnnMaximum,
+                    stream, existing, ins[0], merged);
+            } else {
+                ret = aclIrregularOpRun(aclnnMinimumGetWorkspaceSize, aclnnMinimum,
+                    stream, existing, ins[0], merged);
+            }
+        }
+        if (ret == ACL_SUCCESS) {
+            ret = aclIrregularOpRun(aclnnInplaceScatterUpdateGetWorkspaceSize,
+                aclnnInplaceScatterUpdate, stream, outs[0], ins[1], merged, axis);
+        }
+        aclDestroyTensorLike(existing);
+        aclDestroyTensorLike(merged);
+        return ret;
+    }
+
+    aclError aclop_ScatterMax(const std::vector<const aclTensor*>& ins,
+        const std::vector<aclTensor*>& outs, const ArgsType& args,
+        const KwargsType& kwargs, aclrtStream stream) {
+        return ScatterMaxMin(ins, outs, args, kwargs, stream, true);
+    }
+
+    aclError aclop_ScatterMin(const std::vector<const aclTensor*>& ins,
+        const std::vector<aclTensor*>& outs, const ArgsType& args,
+        const KwargsType& kwargs, aclrtStream stream) {
+        return ScatterMaxMin(ins, outs, args, kwargs, stream, false);
     }
 
     // `_scatter_update_mask_kernel(src, mask, mask_scanned, a)` -> a[mask] = src
