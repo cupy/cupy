@@ -140,8 +140,8 @@ cdef aclDataType numpy_dtype_to_acl_dtype(dtype,
         return aclDataType.ACL_UINT32
     elif (dtype_char == 'q' or dtype_char == 'l') and is_double_supported:
         return aclDataType.ACL_INT64
-    elif dtype_char == 'Q' and is_double_supported:
-        return aclDataType.ACL_UINT64
+    elif (dtype_char == 'Q' or dtype_char == 'L') and is_double_supported:
+        return aclDataType.ACL_UINT64 # numpy 2.x change geh dtype char for uint64 to `L`
     elif dtype_char == '?':
         return aclDataType.ACL_BOOL
     else:
