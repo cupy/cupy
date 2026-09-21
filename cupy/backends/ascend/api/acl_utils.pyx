@@ -9,7 +9,7 @@ from cupy._core import _dtype
 from cupy._core.core import _ndarray_base
 from cupy._core._scalar cimport CScalar, scalar_to_c_scalar
 from libc.stdint cimport (
-    int32_t, int16_t, int64_t,
+    int8_t, int16_t, int32_t, int64_t,
     uint8_t, uint16_t, uint32_t, uint64_t,
     uintptr_t,
 )
@@ -1198,6 +1198,102 @@ cdef aclError launch_acl_func_raw(str opname, sequence ins, sequence outs, list 
     return ret
 
 
+cdef void _parse_reduction_axes(object axes, object in0, vector[int64_t]& shape) except *:
+    """把 reduction 的 ``axis`` 实参解析成 aclnn ``dim`` 用的整数列表（写入 shape）。
+
+    接受：shape_t（vector[Py_ssize_t]）/ 整型 CScalar / None（= 沿全部轴，按
+    ``in0`` 的 ndim 展开）/ int / tuple|list[int] / 0-d numpy 标量；其余
+    （float/bool/complex 轴、多元素 ndarray 等）响亮报错。
+
+    shape 可能为空：仅当 axis=None 且 in0 是 0-d（没有轴可归约）。
+    从 launch_reduction_op_raw 抽出，供其他需要 axis->dim 解析的路径共享
+    （测试入口见 py_parse_reduction_axes）。
+    """
+    cdef _cupy_scalar ax_scalar
+    cdef int64_t ax_val = 0
+    cdef Py_ssize_t n_dim = 0
+    cdef Py_ssize_t i
+    typ = type(axes)
+    if hasattr(axes, 'size') and hasattr(axes, 'push_back'):
+        # dim/axes info from `shape_t` which is `vector.vector[Py_ssize_t]`
+        for i in range(axes.size()):
+            shape.push_back(axes[i])
+    elif typ is _cupy_scalar:
+        # reduction 的 axis 以 CScalar 传入。旧实现是 `pass`：shape 落空后走
+        # 兜底 push_back(0) —— 无论请求哪个轴都按 0 归约（静默错误结果）。
+        # numpy 语义要求 axis 是整数：从 CScalar 的 kind/size 读出整数值；
+        # float/bool/complex 轴显式报错（cupy gpu 侧在 python 层就归一成 int，
+        # 见 _reduction.pyx::_get_axis -> internal._normalize_axis_index）。
+        ax_scalar = <_cupy_scalar>axes
+        ax_val = 0
+        if ax_scalar.kind == 'i':
+            if ax_scalar.size == 8:
+                ax_val = (<int64_t*>ax_scalar.ptr)[0]
+            elif ax_scalar.size == 4:
+                ax_val = (<int32_t*>ax_scalar.ptr)[0]
+            elif ax_scalar.size == 2:
+                ax_val = (<int16_t*>ax_scalar.ptr)[0]
+            elif ax_scalar.size == 1:
+                ax_val = (<int8_t*>ax_scalar.ptr)[0]
+            else:
+                raise TypeError(
+                    f'reduction axis: unsupported int width {ax_scalar.size}')
+        elif ax_scalar.kind == 'u':
+            if ax_scalar.size == 8:
+                ax_val = <int64_t>(<uint64_t*>ax_scalar.ptr)[0]
+            elif ax_scalar.size == 4:
+                ax_val = <int64_t>(<uint32_t*>ax_scalar.ptr)[0]
+            elif ax_scalar.size == 2:
+                ax_val = <int64_t>(<uint16_t*>ax_scalar.ptr)[0]
+            elif ax_scalar.size == 1:
+                ax_val = <int64_t>(<uint8_t*>ax_scalar.ptr)[0]
+            else:
+                raise TypeError(
+                    f'reduction axis: unsupported uint width {ax_scalar.size}')
+        else:
+            raise TypeError(
+                'reduction axis must be an integer scalar, got kind '
+                f'{ax_scalar.kind!r} ({type(axes).__name__})')
+        shape.push_back(ax_val)
+    elif axes is None:
+        # axis=None：numpy 语义 = 沿**全部轴**归约（_reduction._get_axis(None,
+        # ndim) 亦然）。旧实现 push_back(0) 只归约第 0 轴 —— ndim>=2 的
+        # `a.sum()` 会算错或被 aclnn 以 out 形状不符拒绝。展开成 range(ndim)；
+        # 0-d 输入留空 shape（由调用方决定兜底，通常 dim=[0] 会被 aclnn
+        # 响亮拒绝）。
+        n_dim = getattr(in0, 'ndim', 0)
+        for i in range(n_dim):
+            shape.push_back(<int64_t>i)
+    elif typ is int: # python integer object
+        shape.push_back(axes) # auto converstion from python int to c int64_t
+    elif isinstance(axes, (tuple, list)):  # TODO: not sure if numpy.ndarray/cupy.ndarray should be supported
+        for ax in axes:
+            shape.push_back(<int64_t>ax)
+    elif hasattr(axes, 'item') and hasattr(axes, 'dtype') and getattr(axes, 'ndim', 1) == 0:
+        # numpy 标量轴（np.int64(1) 等）：原先落到 else 的 RuntimeError。
+        # 仅接受整数（bool/float 拒绝，与 numpy 对 axis 的要求一致）；
+        # 多元素 ndarray 轴仍走 else 响亮失败。
+        ax_item = axes.item()
+        if not isinstance(ax_item, int):
+            raise TypeError(
+                f'reduction axis must be an integer, got {type(axes).__name__}')
+        shape.push_back(<int64_t>ax_item)
+    else:
+        raise TypeError(
+            f'reduction axis must be int / tuple[int] / None / shape_t, '
+            f'got {type(axes).__name__}: {axes!r}')
+
+
+def py_parse_reduction_axes(object axes, object in0=None) -> list:
+    """测试/调试用：暴露 reduction 的 axes -> dim 解析（无需 NPU）。
+
+    返回解析出的 dim 列表（list[int]）；解析失败抛 TypeError/RuntimeError。
+    """
+    cdef vector[int64_t] shape
+    _parse_reduction_axes(axes, in0, shape)
+    return [shape[i] for i in range(shape.size())]
+
+
 cdef aclError launch_reduction_op_raw(str opname, sequence ins, sequence outs, object axes, bint keepdims, dict kwargs, intptr_t stream_ptr) except *:
     # 检查操作是否已注册
     if opname.startswith("cupy_"):
@@ -1219,36 +1315,29 @@ cdef aclError launch_reduction_op_raw(str opname, sequence ins, sequence outs, o
     cdef aclIntArray* dim = NULL
     cdef vector[aclTensor*] tensors
 
-    tensors = _create_ops_vector(ins, outs)
-
     # REDUCTION_OP 的 C++ 签名固定为 (self, dim, keepdim, out, kwargs, stream)，
     # 即恰好 1 输入 1 输出。多输入/多输出的 ReductionKernel 若放行，tensors[1]
     # 会拿到第二个输入（而非输出）并静默算错，必须在这里显式拒绝。
-    if tensors.size() != 2:
-        for t in tensors:
-            cupy_destroy_acl_tensor(t)
+    # NOTE: 守卫与 axes 解析都放在 _create_ops_vector 之前 —— 本函数里任何
+    # raise 都不能发生在 aclTensor 创建之后（否则泄漏）。
+    if len(ins) != 1 or len(outs) != 1:
         raise NotImplementedError(
             _no_ascend_impl_msg(opname)
             + f" (reduction requires exactly 1 input and 1 output, "
               f"got {len(ins)} input(s) / {len(outs)} output(s))")
 
-    typ = type(axes) 
-    if hasattr(axes, 'size') and hasattr(axes, 'push_back'):
-        # dim/axes info from `shape_t` which is `vector.vector[Py_ssize_t]`
-        for i in range(axes.size()):
-            shape.push_back(axes[i])
-    elif typ is _cupy_scalar:
-        pass
-    elif axes is None:
-        shape.push_back(0)
-    elif typ is int: # TODO, not sure if it works/compilable
-        shape.push_back(axes)
-    else:
-        raise RuntimeError("axis/axis is not tuple, shape, int type", axes)
+    # axes -> dim(IntArray) 解析：所有分支要么填 shape、要么响亮报错。
+    # （抽成 _parse_reduction_axes 供其他 launch 路径共享；in0 只在 axis=None
+    # 时用于取 ndim。）
+    _parse_reduction_axes(axes, ins[0], shape)
 
+    # 兜底只应服务于 0-d 输入的 axis=None（空 shape）：dim=[0] 对 0-d 越界，
+    # aclnn 会响亮拒绝；其余分支的 shape 至少有一个元素。
     if not shape.size():
         shape.push_back(0)
     dim = aclCreateIntArray(shape.data(), shape.size())
+
+    tensors = _create_ops_vector(ins, outs)
     cdef KwargsType acl_kwargs
     try:
         # 放进 try 内, 失败时由 finally 回收已创建的 dim/scalar
