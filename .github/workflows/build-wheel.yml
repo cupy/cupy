@@ -51,7 +51,7 @@ jobs:
                  (inputs.host-platform == 'win-arm64'     && 'windows-11-arm') }}
     steps:
       - name: Verify LongPathsEnabled on Windows
-        if: ${{ inputs.host-platform == 'win-64' }}
+        if: ${{ startsWith(inputs.host-platform, 'win') }}
         shell: pwsh -command ". '{0}'"
         run: |
           $val = (Get-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem' -Name 'LongPathsEnabled').LongPathsEnabled

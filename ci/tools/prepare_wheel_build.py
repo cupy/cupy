@@ -186,7 +186,7 @@ def main(argv: list[str] | None = None) -> int:
         args.preload_dir, args.cuda_major, args.host_platform,
     )
 
-    sep = ";" if args.host_platform == "win-64" else ":"
+    sep = ";" if args.host_platform.startswith("win-") else ":"
     env_lines = [
         "CUPY_INSTALL_NO_RPATH=1",
         f"CUPY_INSTALL_LONG_DESCRIPTION={_apply_prefix(description_path, args.source_root, args.root_prefix)}",
