@@ -7,7 +7,6 @@
 #include "aclnnop/aclnn_all.h"
 #include "aclnnop/aclnn_any.h"
 
-// statistics, TODO: keyword args
 #include "aclnnop/aclnn_mean.h"
 #include "aclnnop/aclnn_std.h"
 #include "aclnnop/aclnn_var.h"
@@ -15,7 +14,12 @@
 #include "aclnnop/aclnn_median.h"
 #include "aclnnop/aclnn_median.h" // nan version
 #include "aclnnop/aclnn_aminmax.h" // ptp :  aminmax
-// missing quantile, percentile
+// AMax/Amin: reduction over the given axes (aclIntArray), keepDim controlled.
+// Passing ALL axes in dim == whole-tensor reduction with keepdim support,
+// which aclnnMax/aclnnMin (no dim, no keepdim) cannot express.
+#include "aclnnop/aclnn_amax.h"
+#include "aclnnop/aclnn_amin.h"
+// missing quantile, percentile, impl in Python
 #include "aclnnop/aclnn_histc.h"
 #include "aclnnop/aclnn_reduce_nansum.h"
 #include "aclnnop/aclnn_reduce_sum.h"
@@ -51,19 +55,22 @@ aclError aclop_Any(const aclTensor* self, const aclIntArray* dim, bool keepdim, 
 }
 DECLARE_ACL_REDUCTION_OP(All)
 
-// why this Min has no dim and keepdim control
+// aclnnMax/aclnnMin are whole-tensor reductions: no dim, no keepdim (they
+// ignore the dispatcher's dim/keepdim, so an axis-wise numpy.max was wrong).
+// aclnnAmax/aclnnAmin take the aclIntArray of dims + keepDim. NumPy semantics:
+// max over the given axes; the caller passes ALL axes for a global reduction.
 aclError aclop_Max(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out,
     const KwargsType& kwargs, aclrtStream stream) {
     return aclReductionOpRun(self, out,
-        aclnnMaxGetWorkspaceSize, aclnnMax, stream); 
+        aclnnAmaxGetWorkspaceSize, aclnnAmax, stream, dim, keepdim);
 }
 aclError aclop_Min(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out,
     const KwargsType& kwargs, aclrtStream stream) {
     return aclReductionOpRun(self, out,
-        aclnnMinGetWorkspaceSize, aclnnMin, stream); 
+        aclnnAminGetWorkspaceSize, aclnnAmin, stream, dim, keepdim);
 }
-//DECLARE_ACL_REDUCTION_OP(Amin)
-//DECLARE_ACL_REDUCTION_OP(Amax)
+
+// return index type is decided by input, if not specified, it should be int64
 aclError aclop_ArgMax(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out,
     const KwargsType& kwargs, aclrtStream stream) {
     int64_t dim_index = dim->GetData()[0];  // TODO, not sure how to convert
@@ -136,6 +143,7 @@ aclError aclop_Cumsum(const aclTensor* self, const aclIntArray* dim, bool keepdi
     return aclReductionOpRun(self, out,
         aclnnCumsumGetWorkspaceSize, aclnnCumsum, stream, dim_index, dtype); 
 }
+
 // dim: why it is a aclScalar?
 aclError aclop_Cumprod(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out,
     const KwargsType& kwargs, aclrtStream stream) {
@@ -144,12 +152,14 @@ aclError aclop_Cumprod(const aclTensor* self, const aclIntArray* dim, bool keepd
     return aclReductionOpRun(self, out,
         aclnnCumprodGetWorkspaceSize, aclnnCumprod, stream, dim_index, dtype); 
 }
+
 aclError aclop_Nansum(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out,
     const KwargsType& kwargs, aclrtStream stream) {
     aclDataType dtype = GetDataType(out, self);
     return aclReductionOpRun(self, out,
         aclnnReduceNansumGetWorkspaceSize, aclnnReduceNansum, stream, dim, keepdim, dtype); 
 }
+
 // aclError aclop_Nanprod(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out,
 //     const KwargsType& kwargs, aclrtStream stream) {
 //     aclDataType dtype; // self->GetDataType();
@@ -240,7 +250,7 @@ aclError aclop_NanMin(const aclTensor* self, const aclIntArray* dim, bool keepdi
     aclError ret = aclop_NanToNum(self, scalar, temp, stream);
     if (ret == ACL_SUCCESS) {
         ret = aclReductionOpRun(temp, out,
-            aclnnMinGetWorkspaceSize, aclnnMin, stream);
+            aclnnAminGetWorkspaceSize, aclnnAmin, stream, dim, keepdim);
     }
     // aclTensorLike 会 aclrtMalloc 一块显存，必须用 DestroyTensorLike 成对释放
     aclDestroyTensorLike(temp);
@@ -258,7 +268,7 @@ aclError aclop_NanMax(const aclTensor* self, const aclIntArray* dim, bool keepdi
     aclError ret = aclop_NanToNum(self, scalar, temp, stream);
     if (ret == ACL_SUCCESS) {
         ret = aclReductionOpRun(temp, out,
-            aclnnMaxGetWorkspaceSize, aclnnMax, stream);
+            aclnnAmaxGetWorkspaceSize, aclnnAmax, stream, dim, keepdim);
     }
     // aclTensorLike 会 aclrtMalloc 一块显存，必须用 DestroyTensorLike 成对释放
     aclDestroyTensorLike(temp);
