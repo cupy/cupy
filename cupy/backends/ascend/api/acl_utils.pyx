@@ -1038,6 +1038,26 @@ cdef aclError _launch_custom_ufunc(str opname, dict spec, sequence ins,
                 f'custom AscendC kernel {opname!r} supports array operands '
                 f'only (got {type(op).__name__}); wrap scalars with '
                 'cupy.asarray(...) explicitly')
+    # 实数输入分支：complex 专用 AscendC 内核按 complex64 的 f32 交错布局取
+    # 实/虚部，实数输入走不进来；但 NumPy 对实数输入的语义是平凡的，用已注册
+    # 的 aclnn 算子组合即可（与 cupy/_core/_routines_math.pyx 的 ufunc 体一致）：
+    #   conjugate(x) = x                       -> ascend_copy (aclnnCopy)
+    #   imag(x)      = 0                       -> ascend_fill (aclnnInplaceFillScalar)
+    #   angle(x)     = arctan2(0, x)           -> ascend_arctan2 (x>=0 -> 0,
+    #                  否则 pi, 与 'in0 >= 0 ? 0 : M_PI' 等价)
+    # 复数输入继续走 AscendC 内核（本分支不触发）。
+    # 注意必须在下面的 out-dtype 检查之前：实数输入的 out dtype 不在
+    # dtypes（complex/f32）白名单里，会被先拒掉。
+    if a_ins and a_ins[0].dtype.kind != 'c':
+        if opname == 'ascend_conjugate':
+            return launch_acl_func_raw('ascend_copy', ins, outs, [], {}, stream_ptr)
+        if opname == 'ascend_imag':
+            return launch_general_func_raw('ascend_fill', ins, outs, [0], {}, stream_ptr)
+        if opname == 'ascend_angle':
+            import cupy as _cupy_mod
+            zeros = _cupy_mod.zeros(a_ins[0].shape, a_ins[0].dtype)
+            return launch_acl_func_raw(
+                'ascend_arctan2', [zeros] + list(a_ins), outs, [], {}, stream_ptr)
     if dtypes and a_outs and a_outs[0].dtype.char not in dtypes:
         raise NotImplementedError(
             f'custom AscendC kernel {opname!r} supports out dtype '

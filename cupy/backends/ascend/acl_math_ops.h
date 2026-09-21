@@ -307,7 +307,23 @@ extern "C" {
         return aclInplaceUnaryOpRun(self,
             aclnnInplaceRoundGetWorkspaceSize, aclnnInplaceRound, stream, false);
     }
-    DECLARE_ACL_UNARY_OP(Real)  // complex real part; no inplace version
+    // numpy.real: aclnnReal only accepts complex input (complex64/128).
+    // NumPy semantics for a real array are the identity (out0 = in0), served
+    // by aclnnCast to the out dtype -- same dtype-preserving copy as
+    // aclop_Copy (aclnn_copy.h only has the inplace variant, no aclnnCopy).
+    // No inplace version.
+    aclError aclop_Real(const aclTensor* self, aclTensor* out, aclrtStream stream) {
+        aclDataType dtype = ACL_DT_UNDEFINED;
+        aclGetDataType(self, &dtype);
+        if (dtype == ACL_COMPLEX64 || dtype == ACL_COMPLEX128) {
+            return aclUnaryOpRun(self, out,
+                aclnnRealGetWorkspaceSize, aclnnReal, stream, false);
+        }
+        aclDataType out_dtype = ACL_DT_UNDEFINED;
+        aclGetDataType(out, &out_dtype);
+        return aclIrregularOpRun(aclnnCastGetWorkspaceSize, aclnnCast, stream,
+            self, out_dtype, out);
+    }
 
     // numpy.cbrt(x) = x ** (1/3): CANN has no cbrt op, use pow with 1/3.
     aclError aclop_Cbrt(const aclTensor* self, aclTensor* out, aclrtStream stream) {
