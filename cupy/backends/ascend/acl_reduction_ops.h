@@ -171,18 +171,11 @@ aclError aclop_NanProd(const aclTensor* self, const aclIntArray* dim, bool keepd
     const KwargsType& kwargs, aclrtStream stream) {
     aclDataType dtype = GetDataType(out, self);
     // 整型/布尔没有 NaN (NumPy 的 nanprod 对它们等价于 prod), 且 aclnnNanToNum
-    // 只接受浮点输入 -> 跳过 nan_to_num, 直接 prod
-    switch (dtype) {
-        case ACL_INT8: case ACL_UINT8:
-        case ACL_INT16: case ACL_UINT16:
-        case ACL_INT32: case ACL_UINT32:
-        case ACL_INT64: case ACL_UINT64:
-        case ACL_BOOL:
-            return aclReductionOpRun(self, out,
-                aclnnProdDimGetWorkspaceSize, aclnnProdDim, stream,
-                dim->GetData()[0], keepdim, dtype);
-        default:
-            break;
+    // 只接受浮点输入 -> 跳过 nan_to_num, 直接 prod (判断见 dtype_has_no_nan)
+    if (dtype_has_no_nan(dtype)) {
+        return aclReductionOpRun(self, out,
+            aclnnProdDimGetWorkspaceSize, aclnnProdDim, stream,
+            dim->GetData()[0], keepdim, dtype);
     }
     aclTensor* temp = aclTensorLike(self, dtype);
     if (temp == nullptr) {
@@ -283,16 +276,9 @@ aclError aclop_NanArgMax(const aclTensor* self, const aclIntArray* dim, bool kee
     if (ret != ACL_SUCCESS) {
         return ret;
     }
-    switch (dtype) {
-        case ACL_INT8: case ACL_UINT8:
-        case ACL_INT16: case ACL_UINT16:
-        case ACL_INT32: case ACL_UINT32:
-        case ACL_INT64: case ACL_UINT64:
-        case ACL_BOOL:
-            return aclReductionOpRun(self, out,
-                aclnnArgMaxGetWorkspaceSize, aclnnArgMax, stream, dim_index, keepdim);
-        default:
-            break;
+    if (dtype_has_no_nan(dtype)) {
+        return aclReductionOpRun(self, out,
+            aclnnArgMaxGetWorkspaceSize, aclnnArgMax, stream, dim_index, keepdim);
     }
     aclTensor* temp = aclTensorLike(self, dtype);
     if (temp == nullptr) {
@@ -317,16 +303,9 @@ aclError aclop_NanArgMin(const aclTensor* self, const aclIntArray* dim, bool kee
     if (ret != ACL_SUCCESS) {
         return ret;
     }
-    switch (dtype) {
-        case ACL_INT8: case ACL_UINT8:
-        case ACL_INT16: case ACL_UINT16:
-        case ACL_INT32: case ACL_UINT32:
-        case ACL_INT64: case ACL_UINT64:
-        case ACL_BOOL:
-            return aclReductionOpRun(self, out,
-                aclnnArgMinGetWorkspaceSize, aclnnArgMin, stream, dim_index, keepdim);
-        default:
-            break;
+    if (dtype_has_no_nan(dtype)) {
+        return aclReductionOpRun(self, out,
+            aclnnArgMinGetWorkspaceSize, aclnnArgMin, stream, dim_index, keepdim);
     }
     aclTensor* temp = aclTensorLike(self, dtype);
     if (temp == nullptr) {

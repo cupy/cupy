@@ -37,6 +37,32 @@ inline aclDataType GetDataType(const aclTensor* out, const aclTensor* self = nul
     return dtype;
 }
 
+// dtype 分类工具：整数/布尔没有 NaN。
+//
+// 为什么存在：CANN 没有原生的 nan* 归约算子，nanmax/nanmin/nanprod/
+// nanargmax 等（见 acl_reduction_ops.h 的 aclop_Nan* 系列）都用
+// "aclnnNanToNum 把 NaN 替换成 ±inf + 普通归约" 的组合来模拟。但
+//   1) NumPy 的 nan* 系列对整数/布尔输入等价于普通归约（根本没有 NaN）；
+//   2) aclnnNanToNum 只接受浮点输入，整型会在第一段 GetWorkspaceSize 报
+//      EL0003 Invalid_Argument。
+// 所以这类组合算子对整数/布尔必须跳过 NanToNum 步骤直接跑普通算子。
+// 该 switch 原来在 aclop_NanProd / aclop_NanArgMax / aclop_NanArgMin 三处
+// 逐字重复，抽到这里统一维护。以后再出现同类 dtype 分流需求（例如某
+// aclnn 算子不支持无符号类型需要转 int 的判断），也加成这里的工具函数，
+// 不要再抄 switch。
+inline bool dtype_has_no_nan(aclDataType dtype) {
+    switch (dtype) {
+        case ACL_INT8: case ACL_UINT8:
+        case ACL_INT16: case ACL_UINT16:
+        case ACL_INT32: case ACL_UINT32:
+        case ACL_INT64: case ACL_UINT64:
+        case ACL_BOOL:
+            return true;
+        default:
+            return false;  // 浮点/复数可能含 NaN，需要走 NanToNum 组合
+    }
+}
+
 int64_t GetAclTensorElementCount(const aclTensor* tensor) {
     std::vector<int64_t> shape_vec;
     int64_t numel = 0;
