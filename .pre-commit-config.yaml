@@ -23,11 +23,13 @@ repos:
     rev: v2.3.2
     hooks:
       - id: autopep8
+        exclude: ^ci/
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.14.9
     hooks:
       - id: ruff-check
+        exclude: ^ci/
 
   - repo: https://github.com/MarcoGorelli/cython-lint
     rev: v0.18.1

@@ -215,6 +215,7 @@ cdef inline void _mod_compile(str tempdir, str mod_name, str obj_host) except*:
 # specializations.
 cdef dict _cc_major_map = {
     '12': ('120', '121'),
+    '11': ('110',),
     '10': ('100', '103'),
     '9': ('90',),
     '8': ('80', '86', '87'),
@@ -243,7 +244,7 @@ cdef inline str _prune(str temp_dir, str cache_dir, str _cufft_ver, str arch):
                 'libcufft_static.a not found under ' + _cuda_path,
                 RuntimeWarning)
             return None
-        cufft_lib_pruned = f'cufft_static_{_cufft_ver}_sm{arch[0]}'
+        cufft_lib_pruned = f'cufft_static_{_cufft_ver}_sm{arch[:-1]}'
         cufft_lib_temp = os.path.join(temp_dir,
                                       'lib' + cufft_lib_pruned + '.a')
         cufft_lib_cached = os.path.join(cache_dir,

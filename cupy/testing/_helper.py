@@ -24,6 +24,53 @@ else:
     _skipif = unittest.skipIf
 
 
+_NUMPY_BASELINE = "2.3"
+_SCIPY_BASELINE = "1.14"
+
+
+def is_after_baseline(
+    *, numpy: str | None = None, scipy: str | None = None
+) -> bool:
+    """Returns True if the given cutoff is newer than its baseline.
+
+    Exactly one of ``numpy`` or ``scipy`` must be specified.
+    """
+    from packaging.version import Version
+
+    if (numpy is None) == (scipy is None):
+        raise ValueError("Exactly one of numpy or scipy must be specified.")
+    if numpy is not None:
+        return Version(numpy) > Version(_NUMPY_BASELINE)
+    return Version(scipy) > Version(_SCIPY_BASELINE)
+
+
+def installed_but_not_baseline(
+    *, numpy: str | None = None, scipy: str | None = None
+) -> bool:
+    """Returns True if the cutoff is installed but is not yet the baseline.
+
+    That is exactly when a compatibility path for the cutoff is needed: a
+    workaround only applies when the installed package actually has the new
+    behaviour, so older versions keep their full coverage.  It is gated on
+    the baseline as well, so bumping the baseline to the cutoff removes the
+    workaround and the test fails until it is fixed properly::
+
+        if (installed_but_not_baseline(scipy="1.18")
+                and dtype == numpy.float16):
+            pytest.skip("SciPy 1.18 returns float32 here, CuPy float64.")
+
+    This is the runtime counterpart of `skip_if_after_baseline`, for guarding
+    a workaround inline rather than skipping the whole test.
+
+    Exactly one of ``numpy`` or ``scipy`` must be specified.
+    """
+    if (numpy is None) == (scipy is None):
+        raise ValueError("Exactly one of numpy or scipy must be specified.")
+    if numpy is not None:
+        return is_after_baseline(numpy=numpy) and installed(f"numpy>={numpy}")
+    return is_after_baseline(scipy=scipy) and installed(f"scipy>={scipy}")
+
+
 def with_requires(*requirements: str) -> Callable[[Callable], Callable]:
     """Run a test case only when given requirements are satisfied.
 
@@ -44,6 +91,8 @@ def with_requires(*requirements: str) -> Callable[[Callable], Callable]:
             run a given test case.
 
     """
+    # NOTE: For CuPy internal use, see also `skip_if_after_baseline` which is
+    # similar but ensures an error is raised when the baseline is incremented.
     msg = f"requires: {','.join(requirements)}"
     return _skipif(not installed(*requirements), reason=msg)
 
@@ -63,12 +112,43 @@ def installed(*specifiers: str) -> bool:
         try:
             found = importlib.metadata.version(req.name)
         except PackageNotFoundError:
-            return False
+            # The distribution name may differ from the import name -- notably
+            # cupy is installed as cupy-cudaXXx / cupy-rocm from a wheel. Fall
+            # back to the import-name -> distribution mapping.
+            dists = importlib.metadata.packages_distributions().get(req.name)
+            if not dists:
+                return False
+            found = importlib.metadata.version(dists[0])
         expected = req.specifier
         # If no constraint is given, skip
         if expected and (not expected.contains(found, prereleases=True)):
             return False
     return True
+
+
+def skip_if_after_baseline(
+    *, numpy: str | None = None, scipy: str | None = None, reason: str = ""
+) -> Callable[[Callable], Callable]:
+    """Skip tests when numpy or scipy is at least the cutoff version
+    and the cutoff itself is newer than the current baseline.
+
+    This is similar to `with_requires` but the skip will be removed when
+    the baseline is incremented. Using this ensures that baseline differences
+    are not hidden due to a `with_requires("scipy>=1.17")` when 1.17 is the
+    baseline.
+
+    Either or both of ``numpy`` and ``scipy`` may be specified.
+    """
+    def wrapper(func: Callable) -> Callable:
+        if numpy is not None and is_after_baseline(numpy=numpy):
+            func = _skipif(
+                installed(f"numpy>={numpy}"), reason=reason)(func)
+        if scipy is not None and is_after_baseline(scipy=scipy):
+            func = _skipif(
+                installed(f"scipy>={scipy}"), reason=reason)(func)
+        return func
+
+    return wrapper
 
 
 def numpy_satisfies(version_range: str) -> bool:

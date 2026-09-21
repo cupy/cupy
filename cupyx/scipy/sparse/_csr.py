@@ -810,7 +810,8 @@ class csr_matrix(_base.spmatrix, _csr_base):
         copy (bool): If ``True``, copies of given arrays are always used.
 
     .. seealso::
-        :class:`scipy.sparse.csr_matrix`
+        - :class:`scipy.sparse.csr_matrix`
+        - :class:`~cupyx.scipy.sparse.csr_array`
 
     """
     pass
@@ -831,7 +832,9 @@ class csr_array(_csr_base, _base.sparray):
     indexing, and assignment.  ``diagonal``/``setdiag`` and conversion
     to CSC require two dimensions, as in scipy.
 
-    .. seealso:: :class:`scipy.sparse.csr_array`
+    .. seealso::
+       - :class:`scipy.sparse.csr_array`
+       - :class:`~cupyx.scipy.sparse.csr_matrix`
     """
 
     _allow_nd = (1, 2)

@@ -6,17 +6,32 @@ import numpy
 
 _footnotes = {}
 
+# Sentinel for names CuPy only assigns per instance (see _INSTANCE_ATTRS).
+_MISSING = object()
 
-def _get_functions(obj, exclude=None):
+# Public attributes CuPy assigns per instance, which ``dir()`` of the class
+# cannot see, while SciPy exposes the same names as properties.  Declaring
+# them here rather than in ``cupyx`` keeps them out of autodoc, which would
+# otherwise document an attribute it cannot resolve on the class.
+_INSTANCE_ATTRS = {
+    'coo_array': ('row', 'col'),
+}
+
+
+def _get_functions(obj, exclude=None, keep_constants=False):
     return set([
-        n for n, target in [(n, getattr(obj, n)) for n in dir(obj)]
+        n for n, target in [(n, getattr(obj, n, _MISSING)) for n in dir(obj)]
         if (
             # not in exclude list
             (exclude is None or n not in exclude)
             # not module:
             and not inspect.ismodule(target)
-            # not constant:
-            and not isinstance(target, (int, float, bool, str, numpy.bool_))
+            # not constant, unless comparing classes: ``format`` is a plain
+            # string attribute in CuPy but a property in SciPy, and dropping
+            # it on one side only would report it as missing
+            and (keep_constants
+                 or not isinstance(
+                     target, (int, float, bool, str, numpy.bool_)))
             # not exceptions or warning classes:
             and (not inspect.isclass(target) or
                  not issubclass(target, (BaseException,)))
@@ -39,14 +54,20 @@ def _import(mod, klass):
 def _generate_comparison_rst(
         base_mod, cupy_mod, base_type, klass, exclude_mod, exclude,
         footnotes=None):
+    # Constants are dropped from module-level tables (they would list every
+    # module-level constant of the base module) but kept for class tables.
+    keep_constants = klass is not None
     base_obj, base_fmt = _import(base_mod, klass)
-    base_funcs = _get_functions(base_obj, exclude)
+    base_funcs = _get_functions(base_obj, exclude, keep_constants)
     cp_obj, cp_fmt = _import(cupy_mod, klass)
-    cp_funcs = _get_functions(cp_obj)
+    cp_funcs = _get_functions(cp_obj, keep_constants=keep_constants)
+    cp_funcs |= {n for n in _INSTANCE_ATTRS.get(klass, ())
+                 if exclude is None or n not in exclude}
 
     if exclude_mod:
         exclude_obj, _ = _import(exclude_mod, klass)
-        exclude_funcs = _get_functions(exclude_obj)
+        exclude_funcs = _get_functions(
+            exclude_obj, keep_constants=keep_constants)
         base_funcs -= exclude_funcs
         cp_funcs -= exclude_funcs
 
@@ -66,7 +87,9 @@ def _generate_comparison_rst(
         cp_cell = r'\-'
         if f in cp_funcs:
             cp_cell = cp_fmt.format(f)
-            if getattr(base_obj, f) is getattr(cp_obj, f):
+            base_attr = getattr(base_obj, f, _MISSING)
+            if base_attr is not _MISSING and base_attr is getattr(
+                    cp_obj, f, _MISSING):
                 cp_cell = '{} (*alias of* {})'.format(cp_cell, base_cell)
         if footnote_id is not None:
             cp_cell += f' [#{footnote_id}]_'
@@ -268,23 +291,26 @@ def generate():
         'Signal processing',
         'scipy.signal', 'cupyx.scipy.signal', 'SciPy', exclude=['test'])
     buf += _section(
-        'Sparse Matrices',
+        'Sparse Arrays and Matrices',
         'scipy.sparse', 'cupyx.scipy.sparse', 'SciPy', exclude=['test'])
+    # Per-class tables cover the sparse array classes only: in CuPy each
+    # ``*_matrix`` shares its implementation with the matching ``*_array``
+    # and differs only by the deprecated spmatrix back-compat methods.
     buf += _section(
-        'Sparse Matrices: COOrdinate Format',
-        'scipy.sparse', 'cupyx.scipy.sparse', 'SciPy', klass='coo_matrix', 
+        'Sparse Arrays: COOrdinate Format',
+        'scipy.sparse', 'cupyx.scipy.sparse', 'SciPy', klass='coo_array',
         exclude=['test'])
     buf += _section(
-        'Sparse Matrices: Compressed Sparse Column',
-        'scipy.sparse', 'cupyx.scipy.sparse', 'SciPy', klass='csc_matrix', 
+        'Sparse Arrays: Compressed Sparse Column',
+        'scipy.sparse', 'cupyx.scipy.sparse', 'SciPy', klass='csc_array',
         exclude=['test'])
     buf += _section(
-        'Sparse Matrices: Compressed Sparse Row',
-        'scipy.sparse', 'cupyx.scipy.sparse', 'SciPy', klass='csr_matrix', 
+        'Sparse Arrays: Compressed Sparse Row',
+        'scipy.sparse', 'cupyx.scipy.sparse', 'SciPy', klass='csr_array',
         exclude=['test'])
     buf += _section(
-        'Sparse Matrices: DIAgonal Storage',
-        'scipy.sparse', 'cupyx.scipy.sparse', 'SciPy', klass='dia_matrix', 
+        'Sparse Arrays: DIAgonal Storage',
+        'scipy.sparse', 'cupyx.scipy.sparse', 'SciPy', klass='dia_array',
         exclude=['test'])
     buf += _section(
         'Sparse Linear Algebra',

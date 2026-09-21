@@ -6,6 +6,9 @@ on:
   pull_request_target:
     types: [labeled]
 
+permissions:
+  issues: write
+
 jobs:
   auto-notify:
     if: |

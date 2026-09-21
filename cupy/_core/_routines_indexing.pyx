@@ -14,6 +14,7 @@ from libcpp cimport vector
 
 from cupy._core._carray cimport shape_t
 from cupy._core._carray cimport strides_t
+from cupy._core._dtype cimport _raise_if_invalid_cast
 from cupy._core cimport core
 from cupy._core cimport _routines_math as _math
 from cupy._core cimport _routines_manipulation as _manipulation
@@ -576,13 +577,13 @@ out = a[out_i];
 _take_kernel = ElementwiseKernel(
     'raw T a, S indices, int64 ldim_, int64 cdim_, int64 rdim_, '
     'int64 index_range_',
-    'T out', _take_kernel_core, 'cupy_take')
+    'U out', _take_kernel_core, 'cupy_take')
 
 
 _take_kernel_scalar = ElementwiseKernel(
     'raw T a, int64 indices, int64 ldim_, int64 cdim_, int64 rdim_, '
     'int64 index_range_',
-    'T out', _take_kernel_core, 'cupy_take_scalar')
+    'U out', _take_kernel_core, 'cupy_take_scalar')
 
 
 _choose_kernel = ElementwiseKernel(
@@ -881,8 +882,8 @@ cdef _ndarray_base _take(
     if out is None:
         out = core.ndarray(out_shape, dtype=a.dtype)
     else:
-        if out.dtype != a.dtype:
-            raise TypeError('Output dtype mismatch')
+        _raise_if_invalid_cast(
+            a.dtype, out.dtype, 'same_kind', 'output operand')
         if out.shape != out_shape:
             raise ValueError('Output shape mismatch')
     if a.size == 0 and out.size != 0:

@@ -30,7 +30,7 @@ logit = _core.create_ufunc(
     Returns:
         cupy.ndarray: values of logit(x)
 
-    .. seealso:: :data:`scipy.special.logit`
+    .. seealso:: :func:`scipy.special.logit`
 
     ''')
 
@@ -61,7 +61,7 @@ expit = _core.create_ufunc(
     Returns:
         cupy.ndarray: values of expit(x)
 
-    .. seealso:: :data:`scipy.special.expit`
+    .. seealso:: :func:`scipy.special.expit`
 
     .. note::
         expit is the inverse of logit.
@@ -102,7 +102,7 @@ log_expit = _core.create_ufunc(
     Returns:
         cupy.ndarray: values of log(expit(x))
 
-    .. seealso:: :data:`scipy.special.log_expit`
+    .. seealso:: :func:`scipy.special.log_expit`
 
     .. note::
         The function is mathematically equivalent to ``log(expit(x))``, but
@@ -142,7 +142,7 @@ boxcox = _core.create_ufunc(
     Returns:
         cupy.ndarray: values of boxcox(x)
 
-    .. seealso:: :data:`scipy.special.boxcox`
+    .. seealso:: :func:`scipy.special.boxcox`
 
     ''')
 
@@ -178,7 +178,7 @@ boxcox1p = _core.create_ufunc(
     Returns:
         cupy.ndarray: values of boxcox1p(x)
 
-    .. seealso:: :data:`scipy.special.boxcox1p`
+    .. seealso:: :func:`scipy.special.boxcox1p`
 
     ''')
 
@@ -208,7 +208,7 @@ inv_boxcox = _core.create_ufunc(
     Returns:
         cupy.ndarray: values of inv_boxcox(x)
 
-    .. seealso:: :data:`scipy.special.inv_boxcox`
+    .. seealso:: :func:`scipy.special.inv_boxcox`
 
     ''')
 
@@ -240,5 +240,5 @@ inv_boxcox1p = _core.create_ufunc(
     Returns:
         cupy.ndarray: values of inv_boxcox1p(x)
 
-    .. seealso:: :data:`scipy.special.inv_boxcox1p`
+    .. seealso:: :func:`scipy.special.inv_boxcox1p`
 ''')

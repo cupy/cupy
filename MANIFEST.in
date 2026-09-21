@@ -1,7 +1,6 @@
 # Contents of sdist. See also `setup.py`.
 recursive-include cupy *.h *.hpp
 recursive-include cupy *.pyx *.pxd *.pxi
-include cupy/cuda/cupy_cufilt.c
 recursive-include cupyx *.pyx *.pxd *.pxi
 recursive-include cupy_backends *.h *.hpp
 recursive-include cupy_backends *.pyx *.pxd *.pxi

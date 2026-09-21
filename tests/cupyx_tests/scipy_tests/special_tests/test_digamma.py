@@ -5,6 +5,7 @@ import unittest
 from cupy import testing
 import cupyx.scipy.special  # NOQA
 import numpy
+from cupyx_tests.scipy_tests.special_tests import match_scipy_float32
 
 
 @testing.with_requires("scipy")
@@ -16,7 +17,8 @@ class TestDigamma(unittest.TestCase):
         import scipy.special  # NOQA
 
         a = testing.shaped_arange((2, 3), xp, dtype)
-        return scp.special.digamma(a)
+        out = scp.special.digamma(a)
+        return match_scipy_float32(out, xp, dtype)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-13, rtol=1e-10, scipy_name='scp')
@@ -25,7 +27,8 @@ class TestDigamma(unittest.TestCase):
 
         a = numpy.linspace(0, 30, 1000, dtype=dtype)
         a = xp.asarray(a)
-        return scp.special.digamma(a)
+        out = scp.special.digamma(a)
+        return match_scipy_float32(out, xp, dtype)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-13, rtol=1e-10, scipy_name='scp')
@@ -34,14 +37,16 @@ class TestDigamma(unittest.TestCase):
 
         a = numpy.linspace(-30, 0, 1000, dtype=dtype)
         a = xp.asarray(a)
-        return scp.special.digamma(a)
+        out = scp.special.digamma(a)
+        return match_scipy_float32(out, xp, dtype)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(atol=1e-13, rtol=1e-10, scipy_name='scp')
     def test_scalar(self, xp, scp, dtype):
         import scipy.special  # NOQA
 
-        return scp.special.digamma(dtype(1.5))
+        out = scp.special.digamma(dtype(1.5))
+        return match_scipy_float32(out, xp, dtype)
 
     @testing.with_requires('scipy')
     @testing.for_dtypes("efdFD")
@@ -51,7 +56,8 @@ class TestDigamma(unittest.TestCase):
 
         a = numpy.array([-numpy.inf, numpy.nan, numpy.inf]).astype(dtype)
         a = xp.asarray(a)
-        return scp.special.digamma(a)
+        out = scp.special.digamma(a)
+        return match_scipy_float32(out, xp, dtype)
 
     def test_psi(self):
         """Verify that psi exists and is the same as digamma"""
