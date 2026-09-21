@@ -31,6 +31,7 @@ from cupy._core cimport _dtype
 from cupy._core._dtype cimport get_dtype
 from cupy._core._dtype cimport populate_format
 from cupy._core._kernel import ElementwiseKernel, create_ufunc # only fill_kernel use this
+from cupy._core_routines_creation import array  # NOQA bitwise_and core.array used by _routines_indexing
 
 from cupy._core cimport _routines_binary as _binary
 from cupy._core cimport _routines_indexing as _indexing
@@ -46,7 +47,7 @@ from cupy._core cimport _scalar
 from cupy._core cimport dlpack
 from cupy._core cimport internal
 from cupy.xpu cimport device
-# TODO: ASCEND not yet impl
+
 from cupy.xpu cimport function
 from cupy.xpu cimport pinned_memory
 from cupy.xpu cimport memory

@@ -190,11 +190,6 @@ cdef aclScalar* cupy_scalar_to_acl_scalar(_cupy_scalar s) except*:
     
     try:
         # 根据数据类型分配内存并复制值
-        # NOTE: complex（kind == 'c'，numpy 的 complex64/complex128）已支持，
-        # 见下面的 'c' 分支：CScalar.apply_dtype 会把值/宽度归一到 loop dtype
-        #（complex64 -> 8 字节 float complex），py_dump_args 已验证
-        # aclCreateScalar 接受 ACL_COMPLEX64/128（CANN common_types.h:346 的
-        # v_t union 本身就有 std::complex<float>/<double>）。
         # 剩余：'S' 字符串（create_acl_scalar_from_py_str，仅白名单算子）、
         # 'O' object（不支持，也不该静默支持）。
         if s.kind == 'i' and s.size == 8:  # 整数类型
@@ -212,9 +207,15 @@ cdef aclScalar* cupy_scalar_to_acl_scalar(_cupy_scalar s) except*:
         elif s.kind == 'i' and s.size == 2:  # 整数类型
             value_ptr = PyMem_Malloc(sizeof(int16_t))
             if value_ptr == NULL:
-                raise MemoryError("Failed to allocate memory for integer32 scalar")
+                raise MemoryError("Failed to allocate memory for integer16 scalar")
             (<int16_t*>value_ptr)[0] = (<int16_t*>s.ptr)[0]
             dtype = ACL_INT16
+        elif s.kind == 'i' and s.size == 1:  # 整数类型int8
+            value_ptr = PyMem_Malloc(sizeof(signed char))
+            if value_ptr == NULL:
+                raise MemoryError("Failed to allocate memory for integer8 scalar")
+            (<signed char*>value_ptr)[0] = (<signed char*>s.ptr)[0]
+            dtype = ACL_INT8
         elif s.kind == 'u':  # unsigned 整数类型
             value_ptr = PyMem_Malloc(s.size)
             if value_ptr == NULL:
