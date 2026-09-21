@@ -190,7 +190,13 @@ cdef aclScalar* cupy_scalar_to_acl_scalar(_cupy_scalar s) except*:
     
     try:
         # 根据数据类型分配内存并复制值
-        #TODO: "S" for string, "O" for object, "C" for complex
+        # NOTE: complex（kind == 'c'，numpy 的 complex64/complex128）已支持，
+        # 见下面的 'c' 分支：CScalar.apply_dtype 会把值/宽度归一到 loop dtype
+        #（complex64 -> 8 字节 float complex），py_dump_args 已验证
+        # aclCreateScalar 接受 ACL_COMPLEX64/128（CANN common_types.h:346 的
+        # v_t union 本身就有 std::complex<float>/<double>）。
+        # 剩余：'S' 字符串（create_acl_scalar_from_py_str，仅白名单算子）、
+        # 'O' object（不支持，也不该静默支持）。
         if s.kind == 'i' and s.size == 8:  # 整数类型
             value_ptr = PyMem_Malloc(sizeof(int64_t))
             if value_ptr == NULL:

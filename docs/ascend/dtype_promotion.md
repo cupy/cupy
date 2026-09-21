@@ -151,6 +151,7 @@ M-D3 在 M-D2 之后才有意义（那时混合 dtype 本来就不该到达 acln
 | `astype` 的 order='K' | 非连续输入 cast 后保持布局类别；aclnnCast 对非连续 src 的支持要 910B 实测（拒绝则按 §3.2 规则 2 连续化）。 |
 | weak 标量极端值 | `f32_arr + 1e300`：host 物化成 f32 → inf，与 numpy（NEP 50 不看值）一致；M-D4 用测试锁住。 |
 | 大整数标量 | `int64_arr + 2**63` 的 loop 选择与 numpy 的报错行为需在 M-D4 对拍（低风险，列出备查）。 |
+| complex | **标量转换链已就绪并验证**（无 NPU 侧）：`CScalar.apply_dtype` 支持 complex64/128 的读写（`_scalar.pyx:213-215,275-281`，含 loop-dtype 归一）、`cupy_scalar_to_acl_scalar` 的 `'c'` 分支（size 8→ACL_COMPLEX64 / 16→ACL_COMPLEX128）、C++ alpha 路径 `CreateAclScalar(double, ACL_COMPLEX64/128)`；`py_dump_args` 证实 `aclCreateScalar` 接受（aclScalar 的 v_t union 本身有 `std::complex<float>/<double>`，common_types.h:346）。**真正的缺口在 op 层**：`aclnnAdd/Adds` 等四则的文档白名单只有「整型、浮点类型」——complex 运算是否支持需 910B 实测；不支持时需实部/虚部分别计算的合成方案。 |
 | inplace 的 out 降位 | `f32_arr += i64_arr`：numpy 2 允许（f64 里算、写回 f32），本项目 loop `dd->d` + `same_kind` 亦放行——行为一致，但意味着 aclnn 拿到 `out=f32` 而 loop 是 f64，M-D2 的 cast 规则要保证此时 `out` 不被 cast、输入按 in_types 处理。 |
 
 ---

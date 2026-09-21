@@ -141,6 +141,20 @@ void PrintScalarValue(const aclScalar* opscalar, std::ostream& os) {
         case ACL_BOOL:
             os << *static_cast<const bool*>(vdata);
             break;
+        case ACL_COMPLEX64: {
+            // aclScalar 内部是 std::complex<float>（common_types.h:346），
+            // 用 ToComplex64() 取值而不是直接解引用 GetData()。
+            const std::complex<float> v = opscalar->ToComplex64();
+            os << '(' << v.real() << (v.imag() < 0 ? '-' : '+')
+               << std::abs(v.imag()) << "j)";
+            break;
+        }
+        case ACL_COMPLEX128: {
+            const std::complex<double> v = opscalar->ToComplex128();
+            os << '(' << v.real() << (v.imag() < 0 ? '-' : '+')
+               << std::abs(v.imag()) << "j)";
+            break;
+        }
         case ACL_STRING:
             os << opscalar->ToString().GetString();
             break;
