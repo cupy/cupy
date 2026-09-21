@@ -31,7 +31,7 @@ from cupy._core cimport _dtype
 from cupy._core._dtype cimport get_dtype
 from cupy._core._dtype cimport populate_format
 from cupy._core._kernel import ElementwiseKernel, create_ufunc # only fill_kernel use this
-from cupy._core_routines_creation import array  # NOQA bitwise_and core.array used by _routines_indexing
+from cupy._core._routines_creation import array  # NOQA bitwise_and core.array used by _routines_indexing
 
 from cupy._core cimport _routines_binary as _binary
 from cupy._core cimport _routines_indexing as _indexing
@@ -788,6 +788,19 @@ cdef class _ndarray_base:
         if value == 0 and self._c_contiguous:
             self.data.memset_async(0, self.nbytes)
         else:
+            IF CUPY_CANN_VERSION > 0:
+                # cann 8.5/9.0 InplaceFillScalar/Tensor op deos not support uint8/16/32/64
+                # use cast, uint64 > 2^63 will be truncated when cast to int64
+                # similarly, uint32 -> int32
+                # cast back, so this is very inefficient, should be discouraged on ASCEND
+                if self.dtype in (numpy.uint8, numpy.uint16, numpy.uint32, numpy.uint64):
+                    working_dtype = (numpy.int64
+                                    if self.dtype is numpy.uint64
+                                    else numpy.int32)
+                    tmp = self.astype(working_dtype)
+                    tmp.fill(value)
+                    self[...] = tmp
+                    return
             fill_kernel(value, self)
 
     # -------------------------------------------------------------------------
