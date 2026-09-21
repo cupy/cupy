@@ -96,11 +96,7 @@ aclError aclop_Median(const aclTensor* self, const aclIntArray* dim, bool keepdi
     return aclReductionOpRun(self, out,
         aclnnMedianGetWorkspaceSize, aclnnMedian, stream); 
 }
-// aclError aclop_Bincount(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out, aclrtStream stream) {
-//     // need weights tensor, int64_t minLength 
-//     return aclReductionOpRun(self, out,
-//         aclnnBincountGetWorkspaceSize, aclnnBincount, stream, false); 
-// }
+
 
 aclError aclop_Std(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out,
     const KwargsType& kwargs, aclrtStream stream) {

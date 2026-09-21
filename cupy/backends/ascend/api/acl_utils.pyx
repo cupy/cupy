@@ -2071,6 +2071,8 @@ cdef extern from "../acl_general_ops.h" nogil:
     # numpy.searchsorted / numpy.where
     aclError aclop_SearchSorted(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_Bincount(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
     aclError aclop_Where(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
 
@@ -2177,6 +2179,13 @@ cdef void register_irregular_operators():
     # numpy.searchsorted / numpy.where(cond, x, y)
     func_union.general_op = aclop_SearchSorted
     register_acl_ufunc("ascend_searchsorted_kernel", GENERAL_OP, func_union)
+    # cupy.bincount (histogram.py) is not a ufunc: it launches the
+    # ElementwiseKernels cupy_bincount_kernel (unweighted) and
+    # cupy_bincount_with_weight_kernel. Both route here; the C++ side picks
+    # weights from ins[1] when present.
+    func_union.general_op = aclop_Bincount
+    register_acl_ufunc("ascend_bincount_kernel", GENERAL_OP, func_union)
+    register_acl_ufunc("ascend_bincount_with_weight_kernel", GENERAL_OP, func_union)
     func_union.general_op = aclop_Where
     register_acl_ufunc("ascend_where", GENERAL_OP, func_union)
 

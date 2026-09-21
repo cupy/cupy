@@ -67,6 +67,8 @@
 #include "aclnnop/aclnn_s_where.h"
 // numpy.searchsorted(sortedSequence, self, ...)
 #include "aclnnop/aclnn_searchsorted.h"
+// cupy.bincount (ElementwiseKernel cupy_bincount_kernel -> aclop_Bincount)
+#include "aclnnop/aclnn_bincount.h"
 
 // normal, uniform distributions:
 
@@ -933,6 +935,23 @@
         bool right = GetScalarArg<bool>(args, 1, kwargs, "side_is_right", false);
         return aclIrregularOpRun(aclnnSearchSortedGetWorkspaceSize, aclnnSearchSorted, stream,
             ins[1], ins[0], false /* outInt32 */, right, nullptr /* sorter */, outs[0]);
+    }
+
+    // `cupy_bincount_kernel(x, b)` / `cupy_bincount_with_weight_kernel(x, w, b)`
+    //   ins = [x] or [x, weights]  outs = [b]
+    // cupy's Python `bincount` (histogram.py) folds `minlength` into the output
+    // size host-side and pre-fills `b` with zeros, so minlength=0 is correct
+    // here; it is still read from args/kwargs for future-proofing.
+    aclError aclop_Bincount(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        if (ins.empty() || outs.empty()) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        const aclTensor* weights = (ins.size() > 1) ? ins[1] : nullptr;
+        int64_t minlength = GetScalarArg<int64_t>(args, 0, kwargs, "minlength", 0);
+        return aclIrregularOpRun(aclnnBincountGetWorkspaceSize, aclnnBincount, stream,
+            ins[0], weights, minlength, outs[0]);
     }
 
     // ufunc `cupy_where`: out = condition ? self : other
