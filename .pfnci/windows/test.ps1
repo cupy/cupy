@@ -81,13 +81,8 @@ function Main {
     echo "Building..."
     $build_retval = 0
     RunOrDie python -m pip install "numpy==$numpy.*" "scipy==$scipy.*" "Cython==3.2.*,!=3.2.6"
-    # Cap below 1.2.0: NVIDIA/cccl#11472 -- 1.2.0 access-violates in
-    # cuda.compute call_build on Windows on the first make_reduce_into.
-    if ($cuda.StartsWith("12.")) {
-        RunOrDie python -m pip install "cuda-cccl[minimal-sysctk12]>=1.1.1,<1.2"
-    } else {
-        RunOrDie python -m pip install "cuda-cccl[minimal-sysctk13]>=1.1.1,<1.2"
-    }
+    # cuda-cccl is installed below, after the gh CLI is set up, so the wheel
+    # can be fetched from NVIDIA/cccl CI (see the TEMPORARY block).
 
     # Fetch the CuPy wheel built by GHA (.github/workflows/ci.yml -> build-wheel.yml)
     # for the commit under test, then pip-install it. Artifacts are
@@ -184,6 +179,21 @@ function Main {
     # The name is unique within the run (build-wheel.yml uploads with
     # overwrite: true), and $run_id is the run the producer-pin above verified.
     RunOrDie gh run download $run_id --repo cupy/cupy --name $expected_name --dir $dl_dir
+
+    # TEMPORARY (do not merge): validate the cuda-cccl Windows fix from
+    # NVIDIA/cccl#11495 (bundles msvcp140.dll via delvewheel; fixes
+    # NVIDIA/cccl#11472) against CuPy CI before cuda-cccl 1.2.1 is cut. Fetch
+    # the wheel built by that PR's CI run instead of installing from PyPI. The
+    # run only built Windows wheels for py3.10, py3.14 and py3.14t; other
+    # lanes fall back to the PyPI pin below.
+    $cccl_run_id = "35375033659"
+    $cccl_artifact = "wheel-cccl-windows-amd64-py${py_ver}"
+    $cccl_dir = Join-Path $dl_dir "cccl"
+    $global:LastExitCode = 0
+    & gh run download $cccl_run_id --repo NVIDIA/cccl --name $cccl_artifact --dir $cccl_dir
+    if ($LASTEXITCODE -ne 0) {
+        Write-Output "WARNING: no cuda-cccl artifact ${cccl_artifact} in NVIDIA/cccl run ${cccl_run_id}; falling back to PyPI (fix NOT exercised on this lane)"
+    }
     # Drop the token from the environment before any PR-controlled code (pip
     # install / pytest) runs, so the test process cannot read it back.
     Remove-Item Env:GH_TOKEN -ErrorAction SilentlyContinue
@@ -191,6 +201,18 @@ function Main {
 
     $wheel = (Get-ChildItem -Path $wheel_dir.FullName -Filter '*.whl' | Select-Object -First 1).FullName
     if (-not $wheel) { throw "No wheel found under $($wheel_dir.FullName)" }
+
+    $cccl_extra = if ($cuda.StartsWith("12.")) { "minimal-sysctk12" } else { "minimal-sysctk13" }
+    $cccl_wheel = (Get-ChildItem -Path $cccl_dir -Recurse -Filter 'cuda_cccl-*.whl' -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
+    if ($cccl_wheel) {
+        Write-Output "Installing cuda-cccl from NVIDIA/cccl CI wheel: $cccl_wheel"
+        RunOrDie python -m pip install "${cccl_wheel}[${cccl_extra}]"
+    } else {
+        # Cap below 1.2.0: NVIDIA/cccl#11472 -- 1.2.0 access-violates in
+        # cuda.compute call_build on Windows on the first make_reduce_into.
+        RunOrDie python -m pip install "cuda-cccl[${cccl_extra}]>=1.1.1,<1.2"
+    }
+    RunOrDie python -m pip show cuda-cccl
 
     python -m pip install -v "${wheel}[all,test]" > cupy_build_log.txt
     if (-not $?) {
