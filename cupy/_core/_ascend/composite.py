@@ -234,6 +234,13 @@ def angle_deg(z):
     ``cupy_angle_deg`` ufunc 无 aclnn 注册，但 ``cupy_angle`` 已由自定义 AscendC
     内核覆盖（`CUSTOM_UFUNCS['angle']`），再乘一个常数即可（常数走已注册的
     `SCALAR_BINARY_OP`，即 `ascend_multiply`）。
+
+    常数必须收敛成 Python ``float``（强类型标量）：如果参与运算的是
+    ``numpy.float64`` 之类的 0-d 强类型标量，dtype 提升会无视输入 dtype
+    把整个结果强推成 float64——``angle(float32 输入)`` 本应返回 float32
+    （实数路径见 acl_utils.pyx `_launch_custom_ufunc` 的实数分支，arctan2
+    组合保持输入 dtype）。`numpy.pi` 虽是 Python float，但为防御后续改成
+    `numpy` 标量表达式，这里显式 ``float(...)`` 收敛。
     """
     from cupy import _core
-    return _core.angle(z) * (180.0 / numpy.pi)
+    return _core.angle(z) * float(180.0 / numpy.pi)
