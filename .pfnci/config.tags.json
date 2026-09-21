@@ -181,15 +181,15 @@
         "full",
         "mini",
         "linux",
-        "cuda131",
-        "py314t"
+        "cuda13x",
+        "free-threaded"
     ],
     "cupy.linux.cuda13x-py315t": [
         "@nightly",
         "full",
         "linux",
-        "cuda133",
-        "py315t"
+        "cuda13x",
+        "free-threaded"
     ],
     "cupy.linux.cuda-slow": [
         "slow",
@@ -218,7 +218,8 @@
         "full",
         "mini",
         "linux",
-        "cuda-python"
+        "cuda-python",
+        "cuda13x"
     ],
     "cupy.win.cuda120": [
         "@push",
@@ -306,13 +307,15 @@
         "@nightly",
         "full",
         "windows",
-        "py314t"
+        "cuda13x",
+        "free-threaded"
     ],
     "cupy.win.cuda13x-py315t": [
         "@nightly",
         "full",
         "windows",
-        "py315t"
+        "cuda13x",
+        "free-threaded"
     ],
     "cupy.linux.cuda-rapids": [
         "@nightly",

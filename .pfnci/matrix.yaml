@@ -427,7 +427,7 @@
 # CUDA 13.x + Python 3.14 free-threaded | Linux
 - project: "cupy.linux.cuda13x-py314t"
   _inherits: "cupy.linux.cuda131"
-  tags: ["@push", "full", "mini", "linux", "cuda131", "py314t"]
+  tags: ["@push", "full", "mini", "linux", "cuda13x", "free-threaded"]
   target: "cuda13x-py314t"
   # Use newest support numpy/scipy versions for free-threaded tests:
   numpy: "2.4"
@@ -440,7 +440,7 @@
 # CUDA 13.x + Python 3.15 free-threaded | Linux
 - project: "cupy.linux.cuda13x-py315t"
   _inherits: "cupy.linux.cuda133"
-  tags: ["@nightly", "full", "linux", "cuda133", "py315t"]
+  tags: ["@nightly", "full", "linux", "cuda13x", "free-threaded"]
   target: "cuda13x-py315t"
   python: "3.15t"
   env:CUPY_TEST_RANDOM_SUBSAMPLE: "1"
@@ -619,7 +619,7 @@
   # extensions; the released wheels are not built with it, so this target must
   # build from source (build.sh) instead of fetching a wheel.
   wheel: false
-  tags: ["@push", "full", "mini", "linux", "cuda-python"]
+  tags: ["@push", "full", "mini", "linux", "cuda-python", "cuda13x"]
   system: "linux"
   os: "ubuntu:22.04"
   cuda: "13.3"
@@ -727,13 +727,13 @@
 - project: "cupy.win.cuda13x-py314t"
   _extern: true
   target: "cuda13x-py314t"
-  tags: ["@nightly", "full", "windows", "py314t"]
+  tags: ["@nightly", "full", "windows", "cuda13x", "free-threaded"]
   system: "windows"
 
 - project: "cupy.win.cuda13x-py315t"
   _extern: true
   target: "cuda13x-py315t"
-  tags: ["@nightly", "full", "windows", "py315t"]
+  tags: ["@nightly", "full", "windows", "cuda13x", "free-threaded"]
   system: "windows"
 
 - project: "cupy.linux.cuda-rapids"
