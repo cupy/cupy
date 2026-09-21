@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import operator
 import unittest
+from unittest import mock
 
 import numpy
 import pytest
@@ -9,6 +10,56 @@ import pytest
 import cupy
 from cupy._core import _routines_linalg as _linalg
 from cupy import testing
+
+
+@pytest.mark.parametrize('dtype', ['float16', 'bfloat16'])
+@pytest.mark.parametrize('shape_pair,batched', [
+    (((2, 3, 64), (2, 64, 4)), False),
+    (((2, 5, 3, 64), (2, 5, 64, 4)), False),
+    (((2, 3, 64), (64, 4)), True),
+    (((2, 5, 3, 64), (64, 4)), True),
+    (((2, 1, 3, 64), (1, 5, 64, 4)), True),
+])
+@pytest.mark.parametrize('noncontiguous', [False, True])
+def test_matmul_16bit(dtype, shape_pair, batched, noncontiguous):
+    from cupy.cuda import runtime
+    from cupy_backends.cuda.libs import cublas
+
+    if runtime.is_hip:
+        pytest.skip('CUDA-specific GEMM dispatch')
+    if int(cupy.cuda.Device().compute_capability) < (
+            80 if dtype == 'bfloat16' else 70):
+        pytest.skip('16-bit tensor cores are not available')
+    if dtype == 'bfloat16':
+        if (numpy.lib.NumpyVersion(numpy.__version__) < '2.1.2'
+                or cupy.cuda.get_local_runtime_version() < 12020):
+            pytest.skip('bfloat16 is not supported')
+        dtype = pytest.importorskip('ml_dtypes').bfloat16
+    dtype = numpy.dtype(dtype)
+    a = testing.shaped_random(shape_pair[0], cupy, numpy.float32).astype(dtype)
+    b = testing.shaped_random(shape_pair[1], cupy, numpy.float32).astype(dtype)
+    if noncontiguous:
+        a = a[..., ::-1]
+        b = b[..., ::-1, :]
+    expected = numpy.matmul(
+        cupy.asnumpy(a.astype('f')), cupy.asnumpy(b.astype('f'))).astype(dtype)
+    out = cupy.empty(expected.shape, dtype=dtype)
+    if noncontiguous:
+        out = out[..., ::-1]
+    name = 'gemmBatchedEx' if batched else 'gemmStridedBatchedEx'
+    with mock.patch.object(cublas, name, wraps=getattr(cublas, name)) as gemm:
+        result = cupy.matmul(a, b, out=out)
+    assert result is out
+    gemm.assert_called_once()
+    args = gemm.call_args.args
+    cuda_dtype = (runtime.CUDA_R_16F if dtype == numpy.float16
+                  else runtime.CUDA_R_16BF)
+    indices = (8, 11, 15) if batched else (8, 12, 17)
+    assert all(args[i] == cuda_dtype for i in indices)
+    assert args[-2] == cublas.CUBLAS_COMPUTE_32F
+    assert result.dtype == dtype
+    testing.assert_allclose(
+        result.astype('f'), expected.astype('f'), rtol=1e-2, atol=1e-3)
 
 
 @testing.parameterize(

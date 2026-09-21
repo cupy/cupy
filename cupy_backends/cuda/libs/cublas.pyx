@@ -127,6 +127,7 @@ IF CUPY_USE_CUDA_PYTHON:
         cublasCgetriBatched,
         cublasZgetriBatched,
         cublasGemmEx,
+        cublasGemmBatchedEx,
         cublasGemmStridedBatchedEx,
         cublasStpttr,
         cublasDtpttr,
@@ -511,6 +512,15 @@ ELSE:
             const void *beta,
             void *C, DataType Ctype, int ldc,
             ComputeType computetype, GemmAlgo algo)
+        int cublasGemmBatchedEx_v11(
+            Handle handle, Operation transa, Operation transb,
+            int m, int n, int k,
+            const void *alpha,
+            const void *const *A, DataType Atype, int lda,
+            const void *const *B, DataType Btype, int ldb,
+            const void *beta,
+            void *const *C, DataType Ctype, int ldc,
+            int batchCount, ComputeType computetype, GemmAlgo algo)
         int cublasGemmStridedBatchedEx(
             Handle handle, Operation transa, Operation transb,
             int m, int n, int k,
@@ -1676,6 +1686,34 @@ cpdef gemmEx(
                     <const void*>beta,
                     <void*>C, <DataType>Ctype, ldc,
                     <DataType>computeType, <GemmAlgo>algo)
+    check_status(status)
+
+
+cpdef gemmBatchedEx(
+        intptr_t handle, int transa, int transb, int m, int n, int k,
+        size_t alpha, size_t A, int Atype, int lda, size_t B,
+        int Btype, int ldb, size_t beta, size_t C, int Ctype,
+        int ldc, int batchCount, int computeType, int algo):
+    _setStream(handle)
+    with nogil:
+        IF CUPY_USE_CUDA_PYTHON:
+            status = cublasGemmBatchedEx(
+                <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
+                <const void*>alpha,
+                <const void* const*>A, <DataType>Atype, lda,
+                <const void* const*>B, <DataType>Btype, ldb,
+                <const void*>beta,
+                <void* const*>C, <DataType>Ctype, ldc,
+                batchCount, <ComputeType>computeType, <GemmAlgo>algo)
+        ELSE:
+            status = cublasGemmBatchedEx_v11(
+                <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
+                <const void*>alpha,
+                <const void* const*>A, <DataType>Atype, lda,
+                <const void* const*>B, <DataType>Btype, ldb,
+                <const void*>beta,
+                <void* const*>C, <DataType>Ctype, ldc,
+                batchCount, <ComputeType>computeType, <GemmAlgo>algo)
     check_status(status)
 
 

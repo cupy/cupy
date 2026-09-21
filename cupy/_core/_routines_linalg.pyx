@@ -845,7 +845,7 @@ cpdef _ndarray_base matmul(
     cdef Py_ssize_t batchCount, a_part_outshape, b_part_outshape
     cdef int orig_a_ndim, orig_b_ndim, a_ndim, b_ndim, ndim
     cdef _ndarray_base ap, bp, cp, c_view
-    cdef bint use_broadcast
+    cdef bint use_broadcast, use_16bit_gemm = False
 
     orig_a_ndim = a._shape.size()
     orig_b_ndim = b._shape.size()
@@ -903,8 +903,13 @@ cpdef _ndarray_base matmul(
         cuda_dtype = to_cuda_dtype(dtype, is_half_allowed=True)
         if (cuda_dtype == runtime.CUDA_R_16F
                 or cuda_dtype == runtime.CUDA_R_16BF):
-            dtype = numpy.dtype('f')
-            cuda_dtype = runtime.CUDA_R_32F
+            if (not runtime._is_hip_environment
+                    and orig_a_ndim >= 2 and orig_b_ndim >= 2):
+                use_16bit_gemm = int(device.get_compute_capability()) >= (
+                    80 if cuda_dtype == runtime.CUDA_R_16BF else 70)
+            if not use_16bit_gemm:
+                dtype = numpy.dtype('f')
+                cuda_dtype = runtime.CUDA_R_32F
 
     a = ascontiguousarray(a, dtype)
     b = ascontiguousarray(b, dtype)
@@ -1008,14 +1013,21 @@ cpdef _ndarray_base matmul(
 
     cdef intptr_t handle = device.get_cublas_handle()
     cdef int algo = cublas.CUBLAS_GEMM_DEFAULT
+    cdef int compute_type = cuda_dtype
 
-    one = numpy.array(1, dtype=dtype)
-    zero = numpy.array(0, dtype=dtype)
+    if use_16bit_gemm:
+        compute_type = cublas.CUBLAS_COMPUTE_32F
+        if get_compute_type(dtype) == COMPUTE_TYPE_PEDANTIC:
+            compute_type = cublas.CUBLAS_COMPUTE_32F_PEDANTIC
+        algo = cublas.CUBLAS_GEMM_DEFAULT_TENSOR_OP
+
+    one = numpy.array(1, dtype='f' if use_16bit_gemm else dtype)
+    zero = numpy.array(0, dtype='f' if use_16bit_gemm else dtype)
     if not use_broadcast:
         strideA = _get_stride_for_strided_batched_gemm(a)
         strideB = _get_stride_for_strided_batched_gemm(b)
         strideC = _get_stride_for_strided_batched_gemm(c_view)
-        if dtype.char in 'fFdD':
+        if use_16bit_gemm or dtype.char in 'fFdD':
             cublas.gemmStridedBatchedEx(
                 handle,
                 0,  # transa
@@ -1025,14 +1037,25 @@ cpdef _ndarray_base matmul(
                 b.data.ptr, cuda_dtype, ldb, strideB,
                 zero.ctypes.data,
                 c_view.data.ptr, cuda_dtype, ldc, strideC,
-                batchCount, cuda_dtype, algo)
+                batchCount, compute_type, algo)
         else:
             raise TypeError(dtype, a.dtype, b.dtype)
     else:
         ap = _mat_ptrs(a)
         bp = _mat_ptrs(b)
         cp = _mat_ptrs(c_view)
-        if dtype == numpy.float32:
+        if use_16bit_gemm:
+            cublas.gemmBatchedEx(
+                handle,
+                0,  # transa
+                0,  # transb
+                n, m, ka, one.ctypes.data,
+                ap.data.ptr, cuda_dtype, lda,
+                bp.data.ptr, cuda_dtype, ldb,
+                zero.ctypes.data,
+                cp.data.ptr, cuda_dtype, ldc,
+                batchCount, compute_type, algo)
+        elif dtype == numpy.float32:
             cublas.sgemmBatched(
                 handle,
                 0,  # transa
