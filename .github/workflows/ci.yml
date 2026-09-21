@@ -211,6 +211,33 @@ jobs:
       ref: ${{ needs.guard.outputs.ref }}
       artifact-suffix: ${{ needs.guard.outputs.artifact_suffix }}
 
+  # Windows-on-Arm wheels. CUDA gained WoA host support in 13.4, so this
+  # lane only runs when the build-side CTK is 13.x -- there is no CUDA 12
+  # variant to pair with, hence the single-cuda-version matrix.
+  build-win-arm64:
+    needs:
+      - guard
+      - build-sdist
+    if: |
+      needs.guard.outputs.mode == 'test' &&
+      startsWith(needs.guard.outputs.CUDA_BUILD_VER, '13.')
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        host-platform:
+          - win-arm64
+        cuda-version:
+          - ${{ needs.guard.outputs.CUDA_BUILD_VER }}
+    name: Build ${{ matrix.host-platform }}, CUDA ${{ matrix.cuda-version }}
+    uses: ./.github/workflows/build-wheel.yml
+    with:
+      host-platform: ${{ matrix.host-platform }}
+      cuda-version: ${{ matrix.cuda-version }}
+      ref: ${{ needs.guard.outputs.ref }}
+      artifact-suffix: ${{ needs.guard.outputs.artifact_suffix }}
+
   # Dispatch marker + payload for flexci.yml. Uploaded whenever this ci.yml
   # run should end in a flexci.yml dispatch call: mode=skip on PR (post
   # Skipped statuses via the dispatcher), or mode=test with all builds
@@ -232,13 +259,16 @@ jobs:
       - build-linux-64
       - build-linux-aarch64
       - build-windows
+      - build-win-arm64
     if: |
       always() && (
         (github.event_name == 'pull_request' && needs.guard.outputs.mode == 'skip') ||
         (needs.guard.outputs.mode == 'test' &&
          needs.build-linux-64.result == 'success' &&
          needs.build-linux-aarch64.result == 'success' &&
-         needs.build-windows.result == 'success')
+         needs.build-windows.result == 'success' &&
+         (needs.build-win-arm64.result == 'success' ||
+          needs.build-win-arm64.result == 'skipped'))
       )
     runs-on: ubuntu-latest
     steps:
@@ -279,6 +309,7 @@ jobs:
       - build-linux-64
       - build-linux-aarch64
       - build-windows
+      - build-win-arm64
       - build-sentinel
     steps:
       - name: Exit
@@ -299,12 +330,21 @@ jobs:
             check_result "build-linux-64"      "success" "${{ needs.build-linux-64.result }}"
             check_result "build-linux-aarch64" "success" "${{ needs.build-linux-aarch64.result }}"
             check_result "build-windows"       "success" "${{ needs.build-windows.result }}"
+            # win-arm64 only runs on CUDA 13.x build lanes; treat "skipped"
+            # as OK when CUDA_BUILD_VER is 12.x so the pre-13.4 backport
+            # branches still pass this gate.
+            if [[ "${{ needs.guard.outputs.CUDA_BUILD_VER }}" == 13.* ]]; then
+              check_result "build-win-arm64" "success" "${{ needs.build-win-arm64.result }}"
+            else
+              check_result "build-win-arm64" "skipped" "${{ needs.build-win-arm64.result }}"
+            fi
             check_result "build-sentinel"      "success" "${{ needs.build-sentinel.result }}"
             ;;
           skip)
             check_result "build-linux-64"      "skipped" "${{ needs.build-linux-64.result }}"
             check_result "build-linux-aarch64" "skipped" "${{ needs.build-linux-aarch64.result }}"
             check_result "build-windows"       "skipped" "${{ needs.build-windows.result }}"
+            check_result "build-win-arm64"     "skipped" "${{ needs.build-win-arm64.result }}"
             check_result "build-sentinel"      "success" "${{ needs.build-sentinel.result }}"
             ;;
           no-op)
