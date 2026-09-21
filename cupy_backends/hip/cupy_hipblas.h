@@ -565,7 +565,7 @@ cublasStatus_t cublasGemmEx(cublasHandle_t handle, cublasOperation_t transa, cub
 cublasStatus_t cublasGemmEx_v11(...) {
     return HIPBLAS_STATUS_NOT_SUPPORTED;
 }
-cublasStatus_t cublasGemmBatchedEx_v11(...) {
+cublasStatus_t cublasGemmBatchedEx(...) {
     return HIPBLAS_STATUS_NOT_SUPPORTED;
 }
 cublasStatus_t cublasGemmStridedBatchedEx_v11(...) {

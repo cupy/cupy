@@ -336,7 +336,7 @@ cublasStatus_t cublasGemmEx_v11(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 
-cublasStatus_t cublasGemmBatchedEx_v11(...) {
+cublasStatus_t cublasGemmBatchedEx(...) {
     return CUBLAS_STATUS_SUCCESS;
 }
 

@@ -512,7 +512,7 @@ ELSE:
             const void *beta,
             void *C, DataType Ctype, int ldc,
             ComputeType computetype, GemmAlgo algo)
-        int cublasGemmBatchedEx_v11(
+        int cublasGemmBatchedEx(
             Handle handle, Operation transa, Operation transb,
             int m, int n, int k,
             const void *alpha,
@@ -1706,7 +1706,7 @@ cpdef gemmBatchedEx(
                 <void* const*>C, <DataType>Ctype, ldc,
                 batchCount, <ComputeType>computeType, <GemmAlgo>algo)
         ELSE:
-            status = cublasGemmBatchedEx_v11(
+            status = cublasGemmBatchedEx(
                 <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
                 <const void*>alpha,
                 <const void* const*>A, <DataType>Atype, lda,
