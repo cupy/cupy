@@ -408,6 +408,10 @@ class TestMatmulDispatch(unittest.TestCase):
 @testing.parameterize(
     *testing.product({
         'dtype_name': ['float16', 'bfloat16'],
+        'compute_type': [
+            _linalg.COMPUTE_TYPE_DEFAULT,
+            _linalg.COMPUTE_TYPE_PEDANTIC,
+        ],
         'shape_pair_batched': [
             (((2, 3, 64), (2, 64, 4)), False),
             (((2, 5, 3, 64), (2, 5, 64, 4)), False),
@@ -437,6 +441,11 @@ class TestMatmul16Bit(unittest.TestCase):
         else:
             self.dtype = numpy.dtype(numpy.float16)
             self.cuda_dtype = runtime.CUDA_R_16F
+
+        old_compute_type = cupy._core.get_compute_type(self.dtype)
+        self.addCleanup(
+            cupy._core.set_compute_type, self.dtype, old_compute_type)
+        cupy._core.set_compute_type(self.dtype, self.compute_type)
 
     def test_matmul(self):
         shape_pair, batched = self.shape_pair_batched
@@ -473,7 +482,11 @@ class TestMatmul16Bit(unittest.TestCase):
         dtype_indices = (8, 11, 15) if batched else (8, 12, 17)
         for index in dtype_indices:
             assert args[index] == self.cuda_dtype
-        assert args[-2] == cublas.CUBLAS_COMPUTE_32F
+        if self.compute_type == _linalg.COMPUTE_TYPE_PEDANTIC:
+            expected_compute_type = cublas.CUBLAS_COMPUTE_32F_PEDANTIC
+        else:
+            expected_compute_type = cublas.CUBLAS_COMPUTE_32F
+        assert args[-2] == expected_compute_type
 
         testing.assert_allclose(
             result.astype(numpy.float32),
