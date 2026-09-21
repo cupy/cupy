@@ -74,6 +74,10 @@ function Main {
     # Build
     echo "Setting up test environment"
     RunOrDie python -V
+    $gil_disabled = (& python -c "import sysconfig; print('1' if sysconfig.get_config_var('Py_GIL_DISABLED') else '0')").Trim() -eq '1'
+    if ($python.EndsWith("t") -xor $gil_disabled) {
+        throw "Python interpreter GIL mismatch: requested $python, Py_GIL_DISABLED=$gil_disabled"
+    }
     RunOrDie python -m pip install -U pip setuptools wheel
     RunOrDie python -m pip install -U google-cloud-storage  # For GCP kernel cache backend
     RunOrDie python -m pip freeze
@@ -222,6 +226,13 @@ function Main {
         $pytest_opts = "-m", "slow"
     } else {
         throw "Unsupported test target: $target"
+    }
+
+    RunOrDie python -m pip install pytest-run-parallel
+
+    if ($python.EndsWith("t")) {
+        $Env:CUPY_TEST_RANDOM_SUBSAMPLE = "1"
+        $pytest_opts += "--parallel-threads", "2"
     }
 
     # The fetched wheel can be built with a different CUDA minor than this

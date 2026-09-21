@@ -10,7 +10,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
        curl llvm libncursesw5-dev xz-utils tk-dev \
        libxml2-dev libxmlsec1-dev libffi-dev \
        liblzma-dev \
-       libopenmpi-dev \
+\
        && \
     apt-get -qqy install ccache git curl && \
     apt-get -qqy --allow-change-held-packages \
@@ -30,13 +30,13 @@ ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/libcusparseLt/13:${LD_LIBRARY_PATH
 RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
-RUN PYTHON_CONFIGURE_OPTS="--disable-shared" pyenv install 3.14.6 && \
-    pyenv global 3.14.6 && \
+RUN PYTHON_CONFIGURE_OPTS="--disable-shared" pyenv install 3.15.0rc2 && \
+    pyenv global 3.15.0rc2 && \
     pip install -U setuptools pip wheel && \
     pip install -U google-cloud-storage
 
-RUN pip install -U 'numpy==2.5.*' 'scipy==1.18.*' 'optuna==4.*' 'mpi4py==4.*' 'ml_dtypes==0.5.*' 'cython==3.2.*,!=3.2.6'
-RUN pip uninstall -y cuda-python nvmath-python cuda-cccl && \
+RUN pip install -U 'numpy==2.5.*' 'scipy==1.18.*' 'optuna==5.*' 'ml_dtypes==0.5.*' 'cython==3.2.*,!=3.2.6'
+RUN pip uninstall -y mpi4py cuda-python nvmath-python cuda-cccl && \
     pip check
 
 RUN mkdir /home/cupy-user && chmod 777 /home/cupy-user
