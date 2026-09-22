@@ -1103,3 +1103,11 @@ class TestOutputOverlapsInput:
         a_np = testing.shaped_random((5, 6), numpy, numpy.float64)
         expected = scipy.ndimage.generic_filter(a_np, numpy.mean, size=3)
         testing.assert_allclose(actual, expected, atol=1e-5, rtol=1e-5)
+
+
+class TestSequenceModeRegression:
+
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_prewitt_sequence_mode(self, xp, scp):
+        arr = xp.asarray([[1., 0., 0], [1, 1, 0], [0, 0, 0]])
+        return scp.ndimage.prewitt(arr, mode=['reflect', 'reflect'])
