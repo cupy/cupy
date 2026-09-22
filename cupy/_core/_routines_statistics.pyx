@@ -470,9 +470,9 @@ cpdef _ndarray_base _median(
     if part.dtype.kind in 'fc':
         IF CUPY_CANN_VERSION > 0:
             # ASCEND: `_exists_nan` is not registered as reduction kernel
-            # out = isnan + any 
+            # out = isnan + any
             # ASCEND TODO: find a way to export this kernel
-            isnam = cupy.any(cupy.isnan(part), axis=axis, keepdisms=keepdims)
+            isnan = cupy.any(cupy.isnan(part), axis=axis, keepdims=keepdims)
             tnan = out.dtype.type(numpy.nan)
             out = cupy.where(isnan, tnan, out)
         ELSE:
@@ -603,10 +603,19 @@ cdef _ndarray_base _var(
 
     arrmean = a.mean(axis=axis, dtype=dtype_mean, out=None, keepdims=True)
     IF CUPY_CANN_VERSION > 0:
-        # ASCEND: `_var_core_*` is ReductionKernel with 3 inputs and 1 output
-        # launch_reduction_op does not support
-        # var = sum((x - mean)^2) * alpha
-        pass # TODO: register as general/ternary op
+        # ASCEND: `_var_core_*` is ReductionKernel with 3 inputs and 1 output;
+        # launch_reduction_op does not support. Compose from registered ops
+        # (方案1, Python 层): subtract -> in-place square -> sum -> alpha.
+        # ascend_subtract / ascend_inplace_multiply / ascend_sum 均已注册；
+        # 底层 C++ aclop_VarCore（general op ascend_var_core）保留备用。
+        d = a - arrmean
+        d *= d
+        if out is None:
+            out = d.sum(axis=axis, dtype=dtype_out, keepdims=keepdims)
+        else:
+            d.sum(axis=axis, dtype=dtype_out, keepdims=keepdims, out=out)
+        out *= alpha
+        return out.astype(dtype_out, copy=False)
 
     if out is None:
         if dtype_out == 'float16':

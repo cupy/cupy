@@ -2302,6 +2302,8 @@ cdef extern from "../acl_general_ops.h" nogil:
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
     aclError aclop_Bincount(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_VarCore(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
     aclError aclop_Where(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
 
@@ -2417,6 +2419,11 @@ cdef void register_irregular_operators():
     register_acl_ufunc("ascend_bincount_with_weight_kernel", GENERAL_OP, func_union)
     func_union.general_op = aclop_Where
     register_acl_ufunc("ascend_where", GENERAL_OP, func_union)
+    # cupy_var_core_float*（ReductionKernel 3-in/1-out）的 Ascend 组合：
+    # ascend_var_core 算 sum((x - mean)^2)，alpha 乘法由
+    # py_launch_var_core（下）用 ascend_inplace_multiply 完成。
+    func_union.general_op = aclop_VarCore
+    register_acl_ufunc("ascend_var_core", GENERAL_OP, func_union)
 
     func_union.general_op = aclop_Arange
     register_acl_ufunc("ascend_arange", GENERAL_OP, func_union)

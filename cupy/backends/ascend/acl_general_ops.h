@@ -69,6 +69,10 @@
 #include "aclnnop/aclnn_searchsorted.h"
 // cupy.bincount (ElementwiseKernel cupy_bincount_kernel -> aclop_Bincount)
 #include "aclnnop/aclnn_bincount.h"
+// aclop_VarCore composition: sub + mul + reduce_sum
+#include "aclnnop/aclnn_sub.h"
+#include "aclnnop/aclnn_mul.h"
+#include "aclnnop/aclnn_reduce_sum.h"
 
 // normal, uniform distributions:
 
@@ -969,6 +973,65 @@
         }
         return aclIrregularOpRun(aclnnSWhereGetWorkspaceSize, aclnnSWhere, stream,
             ins[0], ins[1], ins[2], outs[0]);
+    }
+
+    // cupy_var_core_float*（ReductionKernel 3-in/1-out）的 Ascend 组合实现
+    // （AscendSpecialization 方案：register as general op）：
+    //   var_core: out = sum((x - mean)^2) over dim（keepdim 语义与 ReduceSum 一致）
+    //   ins  = [x, mean]      mean 来自 a.mean(keepdims=True)，形状为 keepdims
+    //                         归约形，aclnnSub 直接广播
+    //   outs = [out]          dtype 即归约累加 dtype（Python 侧按 dtype_out 分配）
+    //   args = [dim(IntArray 或 int), keepdim(bool), alpha(float, 此处忽略 ——
+    //          alpha 乘法由 Python 侧用已注册的 ascend_inplace_multiply 完成，
+    //          因为 CANN 没有 scalar-mul 算子且 ReduceSum 直写 out 后无法再做
+    //          形状受限的 muls)]
+    aclError aclop_VarCore(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        if (ins.size() < 2 || outs.empty()) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        const aclTensor* x = ins[0];
+        const aclTensor* mean = ins[1];
+        aclTensor* out = outs[0];
+        aclDataType dtype = ACL_DT_UNDEFINED;
+        aclGetDataType(x, &dtype);
+        aclDataType out_dtype = ACL_DT_UNDEFINED;
+        aclGetDataType(out, &out_dtype);
+
+        std::vector<int64_t> dim_vals;
+        if (!TryGetInt64List(args, 0, kwargs, "dim", &dim_vals)) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        bool keepdim = GetScalarArg<bool>(args, 1, kwargs, "keepdim", false);
+        AclIntArrayGuard dim(dim_vals);
+
+        // d = x - mean; sq = d * d; out = reduce_sum(sq)
+        aclTensor* d = aclTensorLike(x, dtype);
+        aclTensor* sq = aclTensorLike(x, dtype);
+        if (d == nullptr || sq == nullptr) {
+            aclDestroyTensorLike(d);
+            aclDestroyTensorLike(sq);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        // aclnnSub 带 alpha 标量位（同 aclnnAdd），须走 TernaryOpRun；
+        // aclnnMul 是纯 (self, other, out)，走 BinaryOpRun
+        aclError ret = aclTernaryOpRun(x, mean, 1.0, d,
+            aclnnSubGetWorkspaceSize, aclnnSub, stream, false);
+        if (ret == ACL_SUCCESS) {
+            ret = aclBinaryOpRun(d, d, sq,
+                aclnnMulGetWorkspaceSize, aclnnMul, stream, false);
+        }
+        if (ret == ACL_SUCCESS) {
+            ret = aclReductionOpRun(sq, out,
+                aclnnReduceSumGetWorkspaceSize, aclnnReduceSum,
+                stream, dim.get(), keepdim, out_dtype);
+        }
+        // aclTensorLike 会 aclrtMalloc 一块显存，必须用 DestroyTensorLike 成对释放
+        aclDestroyTensorLike(d);
+        aclDestroyTensorLike(sq);
+        return ret;
     }
 
     // random.normal(loc=0.0, scale=1.0, size=None), normal distribution
