@@ -468,9 +468,17 @@ cpdef _ndarray_base _median(
         part[indexer], axis=axis, dtype=None, out=out, keepdims=keepdims)
 
     if part.dtype.kind in 'fc':
-        isnan = _exists_nan(part, axis=axis, keepdims=keepdims)
-        tnan = out.dtype.type(numpy.nan)
-        out = cupy.where(isnan, tnan, out)
+        IF CUPY_CANN_VERSION > 0:
+            # ASCEND: `_exists_nan` is not registered as reduction kernel
+            # out = isnan + any 
+            # ASCEND TODO: find a way to export this kernel
+            isnam = cupy.any(cupy.isnan(part), axis=axis, keepdisms=keepdims)
+            tnan = out.dtype.type(numpy.nan)
+            out = cupy.where(isnan, tnan, out)
+        ELSE:
+            isnan = _exists_nan(part, axis=axis, keepdims=keepdims)
+            tnan = out.dtype.type(numpy.nan)
+            out = cupy.where(isnan, tnan, out)
     if out_shape is not None:
         out = out.reshape(out_shape)
     return out
@@ -594,6 +602,11 @@ cdef _ndarray_base _var(
     alpha = 1. / div if div != 0 else nan
 
     arrmean = a.mean(axis=axis, dtype=dtype_mean, out=None, keepdims=True)
+    IF CUPY_CANN_VERSION > 0:
+        # ASCEND: `_var_core_*` is ReductionKernel with 3 inputs and 1 output
+        # launch_reduction_op does not support
+        # var = sum((x - mean)^2) * alpha
+        pass # TODO: register as general/ternary op
 
     if out is None:
         if dtype_out == 'float16':
