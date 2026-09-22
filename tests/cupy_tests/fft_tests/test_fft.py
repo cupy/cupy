@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import functools
 import warnings
+from unittest import mock
 
 import numpy as np
 import pytest
@@ -12,6 +13,7 @@ from cupy.fft._fft import (_default_fft_func, _fft, _fftn,
                            _size_last_transform_axis)
 from cupy import testing
 from cupy.testing._loops import _wraps_partial
+from cupyx.scipy.fftpack import get_fft_plan
 
 
 @pytest.fixture
@@ -1064,6 +1066,34 @@ class TestRfftn:
         if order == 'F':
             a = xp.asfortranarray(a)
         return xp.fft.irfftn(a, s=self.s, axes=self.axes, norm=self.norm)
+
+
+@pytest.mark.parametrize('dtype', [np.float32, np.float64])
+@pytest.mark.parametrize('offset', [0, 1])
+def test_rfftn_input_alignment(
+        dtype: type[np.float32 | np.float64], offset: int) -> None:
+    a: cupy.ndarray = cupy.ones(shape=(2, 35, 35, 35), dtype=dtype)
+    x: cupy.ndarray = a[offset]
+    assert x.flags.c_contiguous
+    assert x.data.ptr % (2 * x.itemsize) == offset * x.itemsize
+
+    aligned: cupy.ndarray = cupy.fft.rfftn(a[0])
+    plan: cupy.cuda.cufft.PlanNd = get_fft_plan(a=x, value_type='R2C')
+    allocator: mock.Mock = mock.Mock(wraps=cupy.cuda.get_allocator())
+    with plan, cupy.cuda.using_allocator(allocator):
+        out: cupy.ndarray = cupy.fft.rfftn(x)
+    assert allocator.call_args_list == (
+        ([mock.call(x.nbytes)] if offset or cupy.cuda.runtime.is_hip else [])
+        + [mock.call(out.nbytes)])
+    expected: np.ndarray = np.fft.rfftn(np.ones(shape=x.shape, dtype=dtype))
+    for result in (aligned, out):
+        testing.assert_allclose(
+            actual=result, desired=expected,
+            rtol=1e-5 if dtype is np.float32 else 1e-12,
+            atol=1e-3 if dtype is np.float32 else 1e-9)
+    testing.assert_array_equal(
+        actual=a, desired=np.ones(shape=a.shape, dtype=dtype))
+    assert out.flags.c_contiguous
 
 
 # Only those tests in which a legit plan can be obtained are kept

@@ -41,6 +41,32 @@ def _correct_np_dtype(xp, dtype, out):
     return out
 
 
+@pytest.mark.parametrize('dtype', [np.float32, np.float64])
+@pytest.mark.parametrize('offset', [0, 1])
+@pytest.mark.parametrize('use_plan', [False, True])
+def test_rfftn_input_alignment(
+        dtype: type[np.float32 | np.float64], offset: int,
+        use_plan: bool) -> None:
+    a: cp.ndarray = cp.ones(shape=(2, 35, 35, 35), dtype=dtype)
+    x: cp.ndarray = a[offset]
+    assert x.flags.c_contiguous
+    assert x.data.ptr % (2 * x.itemsize) == offset * x.itemsize
+
+    plan: cp.cuda.cufft.PlanNd | None = (
+        cp_fft.get_fft_plan(a=x, value_type='R2C') if use_plan else None)
+    if use_plan:
+        assert isinstance(plan, cp.cuda.cufft.PlanNd)
+    out: cp.ndarray = cp_fft.rfftn(x=x, plan=plan)
+    testing.assert_allclose(
+        actual=out,
+        desired=np.fft.rfftn(np.ones(shape=x.shape, dtype=dtype)),
+        rtol=1e-5 if dtype is np.float32 else 1e-12,
+        atol=1e-3 if dtype is np.float32 else 1e-9)
+    testing.assert_array_equal(
+        actual=a, desired=np.ones(shape=a.shape, dtype=dtype))
+    assert out.flags.c_contiguous
+
+
 @testing.parameterize(*testing.product({
     'n': [None, 0, 5, 10, 15],
     'shape': [(9,), (10,), (10, 9), (10, 10)],
