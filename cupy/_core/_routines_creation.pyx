@@ -419,7 +419,6 @@ cpdef _ndarray_base _internal_ascontiguousarray(_ndarray_base a):
 
 
 cpdef _ndarray_base _internal_asfortranarray(_ndarray_base a):
-    from cupy.backends.backend.libs import cublas
 
     cdef _ndarray_base newarray
     cdef int m, n
@@ -429,29 +428,35 @@ cpdef _ndarray_base _internal_asfortranarray(_ndarray_base a):
         return a
 
     newarray = ndarray(a.shape, a.dtype, order='F')
-    if (a._c_contiguous and a._shape.size() == 2 and
-            (a.dtype == numpy.float32 or a.dtype == numpy.float64)):
-        m, n = a.shape
-        handle = device.get_cublas_handle()
-        one = numpy.array(1, dtype=a.dtype)
-        zero = numpy.array(0, dtype=a.dtype)
-        if a.dtype == numpy.float32:
-            cublas.sgeam(
-                handle,
-                1,  # transpose a
-                1,  # transpose newarray
-                m, n, one.ctypes.data, a.data.ptr, n,
-                zero.ctypes.data, a.data.ptr, n, newarray.data.ptr, m)
-        elif a.dtype == numpy.float64:
-            cublas.dgeam(
-                handle,
-                1,  # transpose a
-                1,  # transpose newarray
-                m, n, one.ctypes.data, a.data.ptr, n,
-                zero.ctypes.data, a.data.ptr, n, newarray.data.ptr, m)
-    else:
-        elementwise_copy(a, newarray)
-    return newarray
+    IF CUPY_CANN_VERSION > 0:
+        # ASCEND special NOTE:  f-order tensor is not working on cannot
+        # TODO: this is a temp solution must be review: to just return c-contiguous array
+        return _internal_ascontiguousarray(a)
+    ELSE:
+        from cupy.backends.backend.libs import cublas
+        if (a._c_contiguous and a._shape.size() == 2 and
+                (a.dtype == numpy.float32 or a.dtype == numpy.float64)):
+            m, n = a.shape
+            handle = device.get_cublas_handle()
+            one = numpy.array(1, dtype=a.dtype)
+            zero = numpy.array(0, dtype=a.dtype)
+            if a.dtype == numpy.float32:
+                cublas.sgeam(
+                    handle,
+                    1,  # transpose a
+                    1,  # transpose newarray
+                    m, n, one.ctypes.data, a.data.ptr, n,
+                    zero.ctypes.data, a.data.ptr, n, newarray.data.ptr, m)
+            elif a.dtype == numpy.float64:
+                cublas.dgeam(
+                    handle,
+                    1,  # transpose a
+                    1,  # transpose newarray
+                    m, n, one.ctypes.data, a.data.ptr, n,
+                    zero.ctypes.data, a.data.ptr, n, newarray.data.ptr, m)
+        else:
+            elementwise_copy(a, newarray)
+        return newarray
 
 
 cpdef _ndarray_base ascontiguousarray(_ndarray_base a, dtype=None):
