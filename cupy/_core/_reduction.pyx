@@ -491,9 +491,13 @@ cdef class _AbstractReductionKernel:
             in_shape = _set_permuted_args(
                 in_args, axis_permutes, a_shape, self.in_params)
 
-            if reduce_dims:
-                in_shape = _reduce_dims(in_args, self.in_params, in_shape)
-                out_shape = _reduce_dims(out_args, self.out_params, out_shape)
+            # NOTE: ASCEND special: reduce_dims sequeeze C-continguous dims (2, 3) -> (6,)
+            # which corrupts the shape semantics of the alcnn reduction ops
+            # which got 1D inptut but he original reduce_axis/dim, aclnn relies on real ndim
+            # so skip the dim-squashing optimization on ASCEND
+            #if reduce_dims:
+            #    in_shape = _reduce_dims(in_args, self.in_params, in_shape)
+            #    out_shape = _reduce_dims(out_args, self.out_params, out_shape)
 
             params = self._params
             cdef s = _get_stream(stream)
