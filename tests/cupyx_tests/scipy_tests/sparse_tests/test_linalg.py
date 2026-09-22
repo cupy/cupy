@@ -333,7 +333,7 @@ class TestEigshSvdsSmallNcv:
     # matrices small relative to k.
     tol = {numpy.float32: 1e-4, numpy.complex64: 1e-4, 'default': 1e-8}
 
-    @pytest.mark.parametrize('n,k', [(3, 1), (4, 2), (5, 3)])
+    @pytest.mark.parametrize('n,k', [(3, 1), (4, 2), (5, 3), (100, 98)])
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=tol, atol=tol, sp_name='sp')
     def test_eigsh(self, n, k, dtype, xp, sp):
@@ -352,6 +352,15 @@ class TestEigshSvdsSmallNcv:
         return xp.sort(s)
 
     @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(rtol=tol, atol=tol, sp_name='sp')
+    def test_svds_large_k(self, dtype, xp, sp):
+        m, n, k = 100, 99, 97
+        a = xp.zeros((m, n), dtype=dtype)
+        a[:n, :] = xp.diag(xp.linspace(1, 2, n, dtype=dtype))
+        s = sp.linalg.svds(a, k=k, return_singular_vectors=False)
+        return xp.sort(s)
+
+    @testing.for_dtypes('fdFD')
     def test_eigsh_k_equals_n_minus_1(self, dtype):
         # k == n - 1 is the extreme case allowed by eigsh's own input
         # validation (k < n). Even after capping ncv at n, the
@@ -362,7 +371,7 @@ class TestEigshSvdsSmallNcv:
         # (it falls back to a dense scipy.linalg.eig with a differently
         # shaped result), so numpy.linalg.eigvalsh is the oracle here
         # instead of scipy.
-        n, k = 3, 2
+        n, k = 100, 99
         aux = testing.shaped_random((n, n), cupy, dtype=dtype, scale=1)
         a = aux + aux.conj().T
         w, _ = cupyx.scipy.sparse.linalg.eigsh(a, k=k, which='SA')

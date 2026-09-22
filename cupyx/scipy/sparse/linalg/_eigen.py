@@ -35,7 +35,7 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
         v0 (ndarray): Starting vector for iteration. If ``None``, a random
             unit vector is used.
         ncv (int): The number of Lanczos vectors generated. Must be
-            ``k + 1 < ncv <= n``. If ``None``, default value is used.
+            ``k < ncv <= n``. If ``None``, default value is used.
         maxiter (int): Maximum number of Lanczos update iterations.
             If ``None``, default value is used.
         tol (float): Tolerance for residuals ``||Ax - wx||``. If ``0``, machine
@@ -346,7 +346,7 @@ def svds(a, k=6, *, ncv=None, tol=0, which='LM', maxiter=None,
         k (int): The number of singular values/vectors to compute. Must be
             ``1 <= k < min(m, n)``.
         ncv (int): The number of Lanczos vectors generated. Must be
-            ``k + 1 < ncv <= min(m, n)``. If ``None``, default value is used.
+            ``k < ncv <= min(m, n)``. If ``None``, default value is used.
         tol (float): Tolerance for singular values. If ``0``, machine precision
             is used.
         which (str): Only 'LM' is supported. 'LM': finds ``k`` largest singular
