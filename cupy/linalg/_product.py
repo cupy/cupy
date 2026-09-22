@@ -76,10 +76,21 @@ matmul = _GUFunc(
     """
 )
 
-_vecdot_conj_mul_sum = _core.ReductionKernel(
+# thrust's conj() only covers complex types, so a pass-through overload is
+# needed for the kernel below to compile for real ones as well.
+_vecdot_preamble = '''
+template <typename T>
+__device__ inline T _vecdot_conj(T x) { return x; }
+
+template <typename T>
+__device__ inline complex<T> _vecdot_conj(complex<T> x) { return conj(x); }
+'''
+
+_vecdot_mul_sum = _core.ReductionKernel(
     'S x, T y', 'U out',
-    'conj(static_cast<U>(x)) * static_cast<U>(y)',
-    'a + b', 'out = a', '0', 'cupy_vecdot_conj_mul_sum'
+    '_vecdot_conj(static_cast<U>(x)) * static_cast<U>(y)',
+    'a + b', 'out = a', '0', 'cupy_vecdot_mul_sum',
+    preamble=_vecdot_preamble,
 )
 
 
@@ -98,18 +109,16 @@ def _vecdot_core(a, b, out=None):
             a = a.conj()
         return _core.tensordot_core(a, b, out, 1, 1, a.size, ())
 
-    if a.dtype.kind != 'c' and b.dtype.kind != 'c':
-        return (a * b).sum(axis=-1, out=out)
-
-    # Accumulate in the promoted (complex) dtype: the kernel's output type
-    # drives both the accumulation precision and conj(), which does not
-    # compile for real out dtypes (e.g. out= with casting='unsafe').
+    # The kernel's output type drives the accumulation, so accumulate into a
+    # buffer of the promoted dtype and cast once at the end whenever `out`
+    # asks for something else (e.g. complex inputs with casting='unsafe',
+    # which would not even compile as an accumulator type).
     dtype = cupy.promote_types(a.dtype, b.dtype)
     if out is None or out.dtype != dtype:
         res = cupy.empty(cupy.broadcast_shapes(a.shape, b.shape)[:-1], dtype)
     else:
         res = out
-    _vecdot_conj_mul_sum(a, b, res, axis=-1)
+    _vecdot_mul_sum(a, b, res, axis=-1)
     if out is not None and res is not out:
         _core.elementwise_copy(res, out)
         return out
