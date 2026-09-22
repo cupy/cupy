@@ -487,9 +487,13 @@ cdef class _AbstractReductionKernel:
 
             key = ()
 
-            axis_permutes = reduce_axis + out_axis
-            in_shape = _set_permuted_args(
-                in_args, axis_permutes, a_shape, self.in_params)
+            # ASCEND: Special NOTE: aclnn reduction ops take the real ndim + the `original` axis pos
+            # so keep the input un-permuted and pass reduce_axis directly
+            # CUDA permutes axes to the front for the kernel contiguity
+            IF CUPY_CANN_VERSION <= 0:
+                axis_permutes = reduce_axis + out_axis
+                in_shape = _set_permuted_args(
+                    in_args, axis_permutes, a_shape, self.in_params)
 
             # NOTE: ASCEND special: reduce_dims sequeeze C-continguous dims (2, 3) -> (6,)
             # which corrupts the shape semantics of the alcnn reduction ops
