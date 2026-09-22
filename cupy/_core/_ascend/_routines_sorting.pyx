@@ -22,13 +22,13 @@ from cupy._core cimport internal
 #   args = [axis, stable, descending]  int64 / bool / bool
 # aclnnSort always returns ascending order when descending is false, and CuPy's
 # public sorting API is ascending only, so descending stays 0 here.
-
-
 cdef _ascend_sort(_ndarray_base self, _ndarray_base out, int axis):
     """Sort `self` along `axis`; the sorted values are written into `out`."""
+    # CANN 8.5 aclnnSort does not accept nullptr as indices, not in used after return
+    cdef _ndarray_base  indices = core.ndarray(out.shape, dtype=numpy.int64)
     launch_general_func(
         "ascend_sort",
-        [self], [out],
+        [self], [out, indices],
         [axis, 1, 0],  # axis, stable, descending
         {}, 0)
 
