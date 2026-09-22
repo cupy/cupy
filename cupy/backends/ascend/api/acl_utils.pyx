@@ -520,6 +520,68 @@ cdef class _AclTensorOwner:
             PyMem_Free(self.storage_dims)
 
 
+cdef object _materialize_host(_ndarray_base cupy_array):
+    """把视图/非连续数组物化成独立 C-连续新数组（host transfer 路径）。
+
+    为什么不能用 ``cupy_array.copy()`` / ``.get()``：它们会走 ElementwiseKernel/
+    ufunc 派发（``ascend_copy`` -> ``launch_general_func`` ->
+    ``cupy_ndarray_to_acl_tensor``），对同一个问题视图再次进入本函数，
+    无限递归。这里全程只用底层 memcpy：``MemoryPointer.copy_to_host`` 是
+    ``runtime.memcpy`` (D2H) 的裸封装；最后的 ``cupy.array(numpy数组)`` 走
+    创建路径的 H2D memcpy，同样不经过 ufunc。
+
+    步骤（host_view.copy() 后交给 cupy.array(...)，见调用方）：
+      1. 计算视图实际覆盖的字节区间 [data.ptr+min_off, data.ptr+max_off+itemsize)，
+         只拷这一段（负步长轴会把区间基址拉低）；
+      2. ``copy_to_host`` 把这段显存裸拷进 host 缓冲；
+      3. 在 host 缓冲的**元素 dtype 域**上用 ``numpy.as_strided`` 按原
+         shape / 元素步长重建视图（零拷贝）；
+      4. ``host_view.copy()`` 得到 C-连续 host 数组。
+
+    注意必须在元素 dtype 域而不是 uint8 域做 as_strided：uint8 域里每个
+    逻辑元素只占 1 字节，copy() 会丢掉其余 itemsize-1 字节，且随后
+    .view(dtype) 要求末轴字节数整除而失败。dtype 域要求缓冲偏移是
+    itemsize 的倍数——这里恒成立：分配 512B 对齐、切片偏移与步长都是
+    元素倍数，故 min_off 与 -min_off 都是 itemsize 的倍数。
+    """
+    import numpy
+    import cupy as _cupy_mod
+
+    cdef:
+        Py_ssize_t i, ndim = len(cupy_array._shape)
+        Py_ssize_t itemsize = cupy_array.dtype.itemsize
+        Py_ssize_t min_off = 0, max_off = 0, off
+        Py_ssize_t span, first_byte
+
+    # 各轴对字节区间的贡献：k in [0, n-1]，步长 s -> 最小/最大偏移
+    for i in range(ndim):
+        if cupy_array._shape[i] > 1:
+            off = (cupy_array._shape[i] - 1) * cupy_array._strides[i]
+            if off < 0:
+                min_off += off
+            else:
+                max_off += off
+    span = max_off - min_off + itemsize
+
+    # 2. 裸 memcpy D2H：只拷视图覆盖的区间（不含底层分配的其余部分）
+    host = numpy.empty(span, dtype=numpy.uint8)
+    cupy_array.data.mem.copy_to_host(host.ctypes.data, span)
+
+    # 3. 元素域视图：region 起点 = data.ptr + min_off，即第一个逻辑元素在
+    #    region 内字节偏移 -min_off（itemsize 的倍数，见 docstring）。
+    flat = numpy.frombuffer(host, dtype=cupy_array.dtype,
+                            offset=-min_off, count=span // itemsize)
+    # as_strided 的 strides 恒为字节单位（与 dtype 无关），cupy 的
+    # strides 也是字节单位，直接沿用，不能再除以 itemsize。
+    host_view = numpy.lib.stride_tricks.as_strided(
+        flat,
+        shape=tuple(cupy_array.shape),
+        strides=tuple(cupy_array.strides))
+
+    # 4. C-连续 host 拷贝，交给 cupy.array 走 H2D memcpy（不经 ufunc）
+    return _cupy_mod.array(host_view.copy(), dtype=cupy_array.dtype)
+
+
 cdef aclTensor* cupy_ndarray_to_acl_tensor(_ndarray_base cupy_array) except *:
     """
     将CuPy _ndarray_base转换为ACL Tensor
@@ -552,13 +614,14 @@ cdef aclTensor* cupy_ndarray_to_acl_tensor(_ndarray_base cupy_array) except *:
         # aclnnTensorData 的偏移必须以元素为单位从 buffer 起点计算, 而 CuPy
         # 的 nbytes 是从 data.ptr 起算的剩余字节数（视图不包含前面的数据）,
         # 因此视图无法用 offset 表达, 这里先物化成从 0 开始的新数组。
-        if cupy_array.size:
-            remaining = cupy_array.data.mem.size - cupy_array.data.ptr
-        else:
-            remaining = 0
-        if remaining < cupy_array.nbytes:
-            owner_ref = cupy_array
-            cupy_array = cupy_array.copy()
+        if (cupy_array.data.ptr != cupy_array.data.mem.ptr or not cupy_array._c_contiguous):
+            if cupy_array.size:
+                # 视图无法用 offset 表达：物化成独立 C-连续数组。
+                # 必须走 _materialize_host（裸 memcpy），不能用 .copy()——那会
+                # 经过 ufunc 派发（ascend_copy），对本视图再次进入本函数，
+                # 无限递归（见 _materialize_host 文档）。
+                cupy_array = _materialize_host(cupy_array)
+                owner_ref = cupy_array
         else:
             owner_ref = cupy_array
             cupy_array = cupy_array
@@ -832,6 +895,94 @@ cdef void raise_acl_op_error(str opname, long ret) except *:
         '(aclGetRecentErrMsg returned no detail)'.format(opname, ret))
 
 
+# ---------------------------------------------------------------------------
+# 无符号整型 I/O 提升（docs/ascend/AscendSpecialization.md §1）
+#
+# 部分 aclnn 算子不支持无符号整型（UINT8/16/32/64）。三个 launch_*_raw 派发
+# 入口在这里统一拦截：
+#   1. _promote_io_dtype —— uint 输入 astype 成有符号、uint 输出新建有符号
+#      临时数组（ascend_cast 豁免拦截：aclnnCast 原生支持 uint，且它是本机制
+#      的实现载体，不豁免会递归）；
+#   2. 算子在有符号 dtype 上执行；
+#   3. _cast_back_outs —— 把有符号临时 out 的结果 cast 回调用方原来的 uint
+#      数组（走已注册的 ascend_cast）。
+# 开销是每次调用多两次 cast kernel：migration analyzer 应建议用户直接用
+# 有符号 dtype 规避（见 AscendSpecialization.md）。
+# ---------------------------------------------------------------------------
+cdef dict _ASCEND_DTYPE_PROMOTE = {
+    'B': 'i',   # uint8 -> 平台 int；unsigned char 的算子支持性不确定
+    'H': 'i',   # uint16 -> int；部分算子连 int16 都不支持，不提升到 'h'
+    'I': 'i',   # uint32 -> int
+    'Q': 'q',   # uint64 -> int64
+}
+
+
+cdef bint _has_promotable_uint(sequence arrs):
+    cdef object a
+    for a in arrs:
+        if isinstance(a, _ndarray_base) and a.dtype.char in _ASCEND_DTYPE_PROMOTE:
+            return True
+    return False
+
+
+cdef tuple _promote_io_dtype(str opname, sequence ins, sequence outs):
+    """uint 输入提升为有符号、uint 输出新建有符号临时数组。
+
+    返回 ``(p_ins, p_outs, orig_outs, cast_src)``：
+
+    * ``p_ins``/``p_outs`` —— 提升后的 ins/outs（位置与原列表一一对应，
+      非 ndarray 操作数如标量原样保留）；
+    * ``orig_outs`` —— ``[(下标, 原 uint 数组), ...]``，供 _cast_back_outs
+      把结果写回调用方数组；
+    * ``cast_src`` —— cast-back 的来源列表：有 out 用提升后的 outs；
+      无 out 且算子名含 ``inplace``（如 ``ascend_inplace_add`` 的
+      ``a += b`` 形式）时结果写在提升后的 ``ins[0]`` 里，来源是 ins。
+
+    astype/empty 都走创建或 ascend_cast 路径（有符号目标），不会被本
+    拦截再次提升，无递归。
+    """
+    import cupy as _cupy_mod
+    cdef list p_ins = list(ins)
+    cdef list p_outs = list(outs)
+    cdef list orig_outs = []
+    cdef Py_ssize_t i
+    cdef object a, c, orig_in0 = None
+    # in-place 约定：outs 为空且算子名含 inplace 时，ins[0] 既是入参也是出参
+    cdef bint inplace = (not p_outs) and ('inplace' in opname) and (len(p_ins) > 0)
+    if inplace:
+        orig_in0 = p_ins[0]
+    for i in range(len(p_ins)):
+        a = p_ins[i]
+        if isinstance(a, _ndarray_base):
+            c = a.dtype.char
+            if c in _ASCEND_DTYPE_PROMOTE:
+                p_ins[i] = a.astype(_ASCEND_DTYPE_PROMOTE[c])
+    for i in range(len(p_outs)):
+        a = p_outs[i]
+        if isinstance(a, _ndarray_base):
+            c = a.dtype.char
+            if c in _ASCEND_DTYPE_PROMOTE:
+                orig_outs.append((i, a))
+                p_outs[i] = _cupy_mod.empty(a.shape, dtype=_ASCEND_DTYPE_PROMOTE[c])
+    if inplace and p_ins[0] is not orig_in0:
+        orig_outs.append((0, orig_in0))
+        return p_ins, p_outs, orig_outs, p_ins
+    return p_ins, p_outs, orig_outs, p_outs
+
+
+cdef aclError _cast_back_outs(list orig_outs, list cast_src, intptr_t stream_ptr) except *:
+    """把有符号临时结果 cast 回调用方原来的 uint 数组（ascend_cast）。"""
+    cdef aclError ret
+    cdef Py_ssize_t idx
+    cdef object orig, pout
+    for idx, orig in orig_outs:
+        pout = cast_src[idx]
+        ret = launch_general_func_raw('ascend_cast', [pout], [orig], [], {}, stream_ptr)
+        if ret != 0:
+            return ret
+    return 0
+
+
 cdef aclError launch_general_func_raw(str opname, sequence ins, sequence outs, list args, dict kwargs, intptr_t stream_ptr) except *:
     if opname.startswith("cupy_"):
         opname = ASCEND_OP_PREFIX + opname[5:]
@@ -849,6 +1000,17 @@ cdef aclError launch_general_func_raw(str opname, sequence ins, sequence outs, l
         # 窄签名路径：同样只传错误码（检查在外层 launch_general_func 做）
         return launch_acl_func_raw(opname, ins, outs, args, kwargs, stream_ptr)
     func_ptr = _builtin_operators[op_info]
+
+    # 无符号整型拦截（AscendSpecialization.md §1）：有符号执行，返回前写回。
+    # 放在 fall-through 之后：promote 后 ins/outs 已无 uint，即使落到下面的
+    # 分支路径再被拦截也是 no-op，cast-back 责任只属于发起 promote 的这一层。
+    cdef list _orig_outs
+    cdef list _cast_src
+    cdef aclError _cret
+    cdef bint _promoted = False
+    if opname != 'ascend_cast' and (_has_promotable_uint(ins) or _has_promotable_uint(outs)):
+        ins, outs, _orig_outs, _cast_src = _promote_io_dtype(opname, ins, outs)
+        _promoted = True
 
     cdef ArgsType acl_args
     cdef KwargsType acl_kwargs
@@ -899,6 +1061,11 @@ cdef aclError launch_general_func_raw(str opname, sequence ins, sequence outs, l
     #     的派发入口说明）。
     # 仍然会抛的是**调用方 bug**（参数不可转换、未知 key、op 未注册），
     # 那些是 Cython 侧的参数校验，不属于 acl 错误码体系。
+    # uint 提升：算子成功后把有符号临时结果 cast 回调用方的 uint 数组
+    if _promoted and ret == 0:
+        _cret = _cast_back_outs(_orig_outs, _cast_src, stream_ptr)
+        if _cret != 0:
+            ret = _cret
     return ret
 
 cdef vector[aclTensor*] _create_ops_vector(sequence ins, sequence outs) except *:
@@ -1109,7 +1276,15 @@ cdef aclError launch_acl_func_raw(str opname, sequence ins, sequence outs, list 
             f"{opname}: 该算子走窄签名派发（无参数通道），但收到 args={list(args)!r} / "
             f"kwargs={dict(kwargs)!r}；这些参数会被丢弃导致结果错误，故直接报错。"
             f"（迁移期可设 CUPY_ASCEND_LENIENT_ARGS=1 恢复旧行为）")
-    # 
+    #
+    # 无符号整型拦截（AscendSpecialization.md §1）：ascend_cast 豁免。
+    cdef list _orig_outs
+    cdef list _cast_src
+    cdef aclError _cret
+    cdef bint _promoted = False
+    if opname != 'ascend_cast' and (_has_promotable_uint(ins) or _has_promotable_uint(outs)):
+        ins, outs, _orig_outs, _cast_src = _promote_io_dtype(opname, ins, outs)
+        _promoted = True
     cdef aclScalar* scalar_ptr = NULL
     cdef OpInfo op_info
     cdef FuncPtrUnion func_ptr
@@ -1215,6 +1390,11 @@ cdef aclError launch_acl_func_raw(str opname, sequence ins, sequence outs, list 
         _destroy_acl_scalar(scalar_ptr)
 
     # NOTE: 同 launch_general_func —— 返回错误码，不抛（Python 路径用 checked 版本）
+    # uint 提升：算子成功后把有符号临时结果 cast 回调用方的 uint 数组
+    if _promoted and ret == 0:
+        _cret = _cast_back_outs(_orig_outs, _cast_src, stream_ptr)
+        if _cret != 0:
+            ret = _cret
     return ret
 
 
@@ -1346,6 +1526,15 @@ cdef aclError launch_reduction_op_raw(str opname, sequence ins, sequence outs, o
             + f" (reduction requires exactly 1 input and 1 output, "
               f"got {len(ins)} input(s) / {len(outs)} output(s))")
 
+    # 无符号整型拦截（AscendSpecialization.md §1）：ascend_cast 豁免
+    cdef list _orig_outs
+    cdef list _cast_src
+    cdef aclError _cret
+    cdef bint _promoted = False
+    if opname != 'ascend_cast' and (_has_promotable_uint(ins) or _has_promotable_uint(outs)):
+        ins, outs, _orig_outs, _cast_src = _promote_io_dtype(opname, ins, outs)
+        _promoted = True
+
     # axes -> dim(IntArray) 解析：所有分支要么填 shape、要么响亮报错。
     # （抽成 _parse_reduction_axes 供其他 launch 路径共享；in0 只在 axis=None
     # 时用于取 ndim。）
@@ -1371,6 +1560,11 @@ cdef aclError launch_reduction_op_raw(str opname, sequence ins, sequence outs, o
             aclDestroyIntArray(dim)
         _delete_keyword_args(acl_kwargs)
     # NOTE: 同 launch_general_func —— 返回错误码，不抛（Python 路径用 checked 版本）
+    # uint 提升：归约成功后把有符号临时结果 cast 回调用方的 uint 数组
+    if _promoted and ret == 0:
+        _cret = _cast_back_outs(_orig_outs, _cast_src, stream_ptr)
+        if _cret != 0:
+            ret = _cret
     return ret
 
 
