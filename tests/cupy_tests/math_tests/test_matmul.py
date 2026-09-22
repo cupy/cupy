@@ -483,6 +483,6 @@ class TestMatmul16Bit(unittest.TestCase):
         testing.assert_allclose(
             result.astype(numpy.float32),
             expected.astype(numpy.float32),
-            rtol=1e-2, # bfloat16 error range
+            rtol=1e-2,  # bfloat16 error range
             atol=1e-3,
         )
