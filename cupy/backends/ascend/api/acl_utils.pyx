@@ -995,6 +995,15 @@ cdef aclError _cast_back_outs(list orig_outs, list cast_src, intptr_t stream_ptr
     return 0
 
 
+#: 标量操作数按 0-d 张量物化的算子（M3「标量无法重建 0-d aclTensor」限制的
+#: 派发层豁免，见 launch_general_func_raw 的 ins 循环）。cupy.where 的标量
+#: x/y（如 where(mask, 0, 1)）由此可达 aclnnSWhere。需要同样处理的算子往
+#: 这个 set 加名字。
+_SCALAR_AS_TENSOR_OPS = {
+    'ascend_where',
+}
+
+
 cdef aclError launch_general_func_raw(str opname, sequence ins, sequence outs, list args, dict kwargs, intptr_t stream_ptr) except *:
     if opname.startswith("cupy_"):
         opname = ASCEND_OP_PREFIX + opname[5:]
@@ -1043,6 +1052,21 @@ cdef aclError launch_general_func_raw(str opname, sequence ins, sequence outs, l
             typ = type(op)
             if issubclass(typ, _ndarray_base):
                 intensors.push_back(cupy_ndarray_to_acl_tensor(op))
+            elif opname in _SCALAR_AS_TENSOR_OPS and typ is _cupy_scalar:
+                # 标量操作数物化成 0-d 设备数组：CScalar 已按 loop dtype
+                # 物化（M-D1），取回 numpy 标量后 cupy.array 走创建路径的
+                # H2D memcpy（不经 ufunc，无递归）。已知局限：混合 dtype
+                # （如 float 标量 + float32 数组）时 aclnnSWhere 仍会因
+                # x/y/out dtype 不一致拒绝 —— 与 CUDA 路径的 in-kernel cast
+                # 不同，这是 Ascend 派发层的已知差距。
+                s = <_cupy_scalar>op
+                import numpy as _numpy_mod
+                import cupy as _cupy_mod
+                buf = _numpy_mod.empty(s.size, dtype=_numpy_mod.uint8)
+                memcpy(<void*>buf.ctypes.data, <const void*>s.ptr, s.size)
+                ns = _numpy_mod.frombuffer(buf, dtype=s.get_numpy_type())[0]
+                intensors.push_back(cupy_ndarray_to_acl_tensor(
+                    _cupy_mod.array(ns)))
             else:
                 # 操作数里的非 ndarray 只能是标量（-1 * x 之类），
                 # 其余类型仍然是响亮失败（_convert_arg_strict）
