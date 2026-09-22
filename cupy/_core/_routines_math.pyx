@@ -719,6 +719,10 @@ cdef _proc_as_batch(_ndarray_base x, int axis, scan_op op):
 
 cpdef scan_core(
         _ndarray_base a, axis, scan_op op, dtype=None, _ndarray_base out=None):
+    if no_axis := axis is None:
+        a = a.ravel()
+        axis = 0
+
     if out is None:
         if dtype is None:
             kind = a.dtype.kind
@@ -738,7 +742,7 @@ cpdef scan_core(
         else:
             result = a.astype(out.dtype, order='C')
 
-    if axis is None:
+    if no_axis:
         for accelerator in _accelerator._routine_accelerators:
             if accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE:
                 if op == scan_op.SCAN_SUM:
@@ -754,7 +758,7 @@ cpdef scan_core(
                     break
             if accelerator == _accelerator.ACCELERATOR_CUB:
                 if result is None:
-                    result = a.astype(dtype, order='C').ravel()
+                    result = a.astype(dtype, order='C')
                 # result will be None if the scan is not compatible with CUB
                 if op == scan_op.SCAN_SUM:
                     cub_op = cub.CUPY_CUB_CUMSUM
@@ -765,7 +769,7 @@ cpdef scan_core(
                     break
         else:
             if result is None:
-                result = scan(a.ravel(), op, dtype=dtype)
+                result = scan(a, op, dtype=dtype)
             else:
                 scan(result, op, dtype=dtype, out=result)
     else:

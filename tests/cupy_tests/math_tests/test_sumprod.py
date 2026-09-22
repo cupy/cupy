@@ -737,6 +737,25 @@ class TestCumsum:
         a = testing.shaped_arange(tuple(range(4, 4 + n)), xp, dtype)
         return self._cumsum(xp, a, axis=axis)
 
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(contiguous_check=False)
+    @pytest.mark.parametrize(
+        "order", ['C', 'F'],
+    )
+    def test_cumsum_no_axis(self, xp, dtype, order):
+        a = testing.shaped_arange((4, 3), xp, dtype)
+        out = xp.empty((12,), dtype=dtype)
+
+        if order in ('c', 'C'):
+            out = xp.ascontiguousarray(out)
+        elif order in ('f', 'F'):
+            out = xp.asfortranarray(out)
+
+        b = a.copy()
+        xp.cumsum(a, out=out, dtype=dtype)
+        testing.assert_array_equal(a, b)  # Check if input array is overwritten
+        return out
+
     @pytest.mark.parametrize("axis", axes)
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
