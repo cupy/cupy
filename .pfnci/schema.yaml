@@ -75,6 +75,9 @@ cuda:
   "13.3":
     full_version: "13.3.0"
     repository: "nvidia/cuda"
+  "13.4":
+    full_version: "13.4.1"
+    repository: "nvidia/cuda"
 rocm:
   null:
     full_version: null
@@ -178,6 +181,10 @@ nccl:
     spec: "2.30.*"
     cuda:
       "13.3":
+  "2.31":
+    spec: "2.31.*"
+    cuda:
+      "13.4":
 cutensor:
   # https://docs.nvidia.com/cuda/cutensor/
   # https://developer.nvidia.com/cutensor/downloads
@@ -199,6 +206,7 @@ cutensor:
       "13.1":
       "13.2":
       "13.3":
+      "13.4":
 cusparselt:
   # https://docs.nvidia.com/cuda/cusparselt/
   # https://developer.nvidia.com/cusparselt/downloads
@@ -215,6 +223,7 @@ cusparselt:
       "13.1":
       "13.2":
       "13.3":
+      "13.4":
 
 ###############################################################################
 # Python
@@ -282,6 +291,14 @@ numpy:
       - "3.13"
       - "3.14"
       - "3.14t"
+  "2.5":
+    spec: "==2.5.*"
+    python:
+      # Python 3.11 support was dropped in NumPy 2.5.
+      - "3.12"
+      - "3.13"
+      - "3.14"
+      - "3.14t"
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
 scipy:
@@ -327,6 +344,7 @@ scipy:
       - "2.2"
       - "2.3"
       - "2.4"
+      - "2.5"
   "1.17":
     spec: "==1.17.*"
     python:
@@ -340,6 +358,21 @@ scipy:
       - "2.2"
       - "2.3"
       - "2.4"
+      - "2.5"
+  "1.18":
+    spec: "==1.18.*"
+    python:
+      # Python 3.11 support was dropped in SciPy 1.18.
+      - "3.12"
+      - "3.13"
+      - "3.14"
+    numpy:
+      - "2.0"
+      - "2.1"
+      - "2.2"
+      - "2.3"
+      - "2.4"
+      - "2.5"
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
 optuna:
@@ -383,11 +416,22 @@ cuda-python:
     spec: "==13.2.*"
   "13.3":
     spec: "==13.3.*"
+  "13.4":
+    spec: "==13.4.*"
 nvmath-python:
   null:
     spec: null
   "1":
     spec: "==1.*"
+cuda-cccl:
+  null:
+    spec: null
+  # Cap below 1.2.0: NVIDIA/cccl#11472 -- 1.2.0 access-violates in
+  # cuda.compute call_build on Windows on the first make_reduce_into.
+  "cu12":
+    spec: "[minimal-sysctk12]>=1.1.1,<1.2"
+  "cu13":
+    spec: "[minimal-sysctk13]>=1.1.1,<1.2"
 
 ###############################################################################
 # Environment Variables
@@ -399,6 +443,7 @@ env:CUPY_ACCELERATORS:
   "cutensor":
   "cub,cutensor":
   "cutensor,cub":
+  "cuda_compute,cutensor,cub":
 
 ###############################################################################
 # Test Variant

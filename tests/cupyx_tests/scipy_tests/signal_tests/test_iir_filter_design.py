@@ -6,7 +6,7 @@ from pytest import raises as assert_raises
 import cupy
 
 from cupy import testing
-from cupy.testing._helper import is_after_baseline
+from cupy.testing._helper import installed_but_not_baseline
 from cupy.testing._helper import skip_if_after_baseline
 from cupyx.scipy import signal
 from cupyx.scipy.signal import iirdesign
@@ -22,10 +22,7 @@ prec_loss = pytest.mark.xfail(reason="zpk2tf loses precision")
 
 
 def _fix_iir_output_for_newer_scipy(zpk, N, ftype='ellip'):
-    if not is_after_baseline(scipy="1.17"):
-        # When the baseline is bumped, this compatibility path is obsolete.
-        return zpk
-    if not testing.installed("scipy>=1.17"):
+    if not installed_but_not_baseline(scipy="1.17"):
         return zpk
 
     if (ftype == 'ellip' and N < 2) or (ftype.startswith('cheby') and N == 0):

@@ -388,7 +388,7 @@ def fiedler(a):
     if a.ndim != 1:
         raise ValueError('Input `a` must be a 1D array.')
     if a.size == 0:
-        return cupy.zeros(0)
+        return cupy.zeros((0, 0))
     if a.size == 1:
         return cupy.zeros((1, 1))
     a = a[:, None] - a
@@ -405,8 +405,9 @@ def fiedler_companion(a):
 
     Args:
         a (cupy.ndarray): 1-D array of polynomial coefficients in descending
-            order with a nonzero leading coefficient. For ``N < 2``, an empty
-            array is returned.
+            order with a nonzero leading coefficient. For ``N == 1`` an empty
+            ``(0, 0)`` array is returned, and for ``N == 0`` an empty 1-D
+            array.
 
     Returns:
         cupy.ndarray: Resulting companion matrix
@@ -422,8 +423,10 @@ def fiedler_companion(a):
     """
     if a.ndim != 1:
         raise ValueError('Input `a` must be a 1-D array.')
-    if a.size < 2:
+    if a.size == 0:
         return cupy.zeros((0,), a.dtype)
+    if a.size == 1:
+        return cupy.zeros((0, 0), a.dtype)
     if a.size == 2:
         return (-a[1]/a[0])[None, None]
     # Following check requires device-to-host synchronization so will we not

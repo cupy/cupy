@@ -24,13 +24,13 @@ RUN curl -fsSL https://github.com/cli/cli/releases/download/v2.95.0/gh_2.95.0_li
 RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
-RUN pyenv install 3.12.11 && \
+RUN PYTHON_CONFIGURE_OPTS="--disable-shared" pyenv install 3.12.11 && \
     pyenv global 3.12.11 && \
     pip install -U setuptools pip wheel && \
     pip install -U google-cloud-storage
 
 RUN pip install -U 'numpy==2.3.*' 'scipy==1.15.*' 'optuna==4.*' 'mpi4py==4.*' 'ml_dtypes==0.5.*' 'cython==3.2.*,!=3.2.6'
-RUN pip uninstall -y cuda-python nvmath-python && \
+RUN pip uninstall -y cuda-python nvmath-python cuda-cccl && \
     pip check
 
 RUN mkdir /home/cupy-user && chmod 777 /home/cupy-user

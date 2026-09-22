@@ -1106,10 +1106,10 @@ class TestHilbert2:
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-15)
     @pytest.mark.parametrize('shape', [(4, 5), (5, 4), (4, 4), (5, 5)])
     def test_quadrant_values(self, shape, xp, scp):
-        if 4 in shape and not testing.installed("scipy>=1.18.1"):
-            # See https://github.com/scipy/scipy/issues/25176, hope it is
-            # fixed by 1.18.1
-            pytest.skip("SciPy>=1.17 has wrong nyquist handling")
+        if 4 in shape and not testing.installed("scipy>=1.19"):
+            # See https://github.com/scipy/scipy/issues/25176, fix
+            # landed in SciPy 1.19.
+            pytest.skip("SciPy 1.17-1.19 have wrong nyquist handling")
 
         x_f = xp.ones(shape, dtype=xp.complex128)  # FFT of input signal
         x_f[0, 0] += 7

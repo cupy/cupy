@@ -17,6 +17,8 @@ cdef int _get_accelerator(accelerator) except -1:
         return ACCELERATOR_CUTENSOR
     if accelerator == 'cutensornet':
         return ACCELERATOR_CUTENSORNET
+    if accelerator == 'cuda_compute':
+        return ACCELERATOR_CUDA_COMPUTE
     raise ValueError('Unknown accelerator: {}'.format(accelerator))
 
 

@@ -187,8 +187,6 @@ main() {
       fi
       if [[ "${TARGET}" == *rocm* ]]; then
         docker_args+=(--device=/dev/kfd --device=/dev/dri)
-      elif [[ "${TARGET}" == cuda-build ]]; then
-        docker_args+=()
       else
         docker_args+=(--runtime=nvidia)
       fi
@@ -196,6 +194,12 @@ main() {
       if [[ "${stage}" = "benchmark" ]]; then
         mkdir -p ${BENCHMARK_DIR}
         docker_args+=(--volume="${BENCHMARK_DIR}:/perf-results")
+      fi
+      # Host and container path must match so pytest --junit-xml (absolute)
+      # survives docker --rm. Only FlexCI sets JUNIT_DIR today.
+      if [[ "${JUNIT_DIR:-}" != "" ]]; then
+        mkdir -p "${JUNIT_DIR}"
+        docker_args+=(--volume="${JUNIT_DIR}:${JUNIT_DIR}")
       fi
 
       if [[ ${stage} = test || ${stage} = benchmark ]]; then
