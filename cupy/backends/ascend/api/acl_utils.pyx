@@ -901,14 +901,26 @@ cdef void raise_acl_op_error(str opname, long ret) except *:
 # 部分 aclnn 算子不支持无符号整型（UINT8/16/32/64）。三个 launch_*_raw 派发
 # 入口在这里统一拦截：
 #   1. _promote_io_dtype —— uint 输入 astype 成有符号、uint 输出新建有符号
-#      临时数组（ascend_cast 豁免拦截：aclnnCast 原生支持 uint，且它是本机制
-#      的实现载体，不豁免会递归）；
+#      临时数组；
 #   2. 算子在有符号 dtype 上执行；
 #   3. _cast_back_outs —— 把有符号临时 out 的结果 cast 回调用方原来的 uint
 #      数组（走已注册的 ascend_cast）。
 # 开销是每次调用多两次 cast kernel：migration analyzer 应建议用户直接用
 # 有符号 dtype 规避（见 AscendSpecialization.md）。
 # ---------------------------------------------------------------------------
+
+# 豁免拦截的算子：本身原生支持 uint（或作为本机制的实现载体），提升反而
+# 多余/递归。后续发现新的原生支持 uint 的算子，直接往这个 set 里加名字。
+_UINT_PROMOTE_EXEMPT_OPS = {
+    # 本机制的实现载体：_promote_io_dtype 的 astype 与 _cast_back_outs 都
+    # 落到它，aclnnCast 原生支持 uint —— 不豁免会无限递归。
+    'ascend_cast',
+    # aclop_Copy 同样是 aclnnCast 实现（见 acl_general_ops.h），原生支持 uint
+    'ascend_copy',
+    # 参数通道探针：只记录不计算，无需提升
+    'ascend_dump_args',
+}
+
 cdef dict _ASCEND_DTYPE_PROMOTE = {
     'B': 'i',   # uint8 -> 平台 int；unsigned char 的算子支持性不确定
     'H': 'i',   # uint16 -> int；部分算子连 int16 都不支持，不提升到 'h'
@@ -1001,14 +1013,15 @@ cdef aclError launch_general_func_raw(str opname, sequence ins, sequence outs, l
         return launch_acl_func_raw(opname, ins, outs, args, kwargs, stream_ptr)
     func_ptr = _builtin_operators[op_info]
 
-    # 无符号整型拦截（AscendSpecialization.md §1）：有符号执行，返回前写回。
-    # 放在 fall-through 之后：promote 后 ins/outs 已无 uint，即使落到下面的
-    # 分支路径再被拦截也是 no-op，cast-back 责任只属于发起 promote 的这一层。
+    # 无符号整型拦截（AscendSpecialization.md §1）：豁免算子见
+    # _UINT_PROMOTE_EXEMPT_OPS。放在 fall-through 之后：promote 后 ins/outs
+    # 已无 uint，即使落到下面的分支路径再被拦截也是 no-op，cast-back 责任
+    # 只属于发起 promote 的这一层。
     cdef list _orig_outs
     cdef list _cast_src
     cdef aclError _cret
     cdef bint _promoted = False
-    if opname != 'ascend_cast' and (_has_promotable_uint(ins) or _has_promotable_uint(outs)):
+    if opname not in _UINT_PROMOTE_EXEMPT_OPS and (_has_promotable_uint(ins) or _has_promotable_uint(outs)):
         ins, outs, _orig_outs, _cast_src = _promote_io_dtype(opname, ins, outs)
         _promoted = True
 
@@ -1277,12 +1290,13 @@ cdef aclError launch_acl_func_raw(str opname, sequence ins, sequence outs, list 
             f"kwargs={dict(kwargs)!r}；这些参数会被丢弃导致结果错误，故直接报错。"
             f"（迁移期可设 CUPY_ASCEND_LENIENT_ARGS=1 恢复旧行为）")
     #
-    # 无符号整型拦截（AscendSpecialization.md §1）：ascend_cast 豁免。
+    # 无符号整型拦截（AscendSpecialization.md §1）：豁免算子见
+    # _UINT_PROMOTE_EXEMPT_OPS。
     cdef list _orig_outs
     cdef list _cast_src
     cdef aclError _cret
     cdef bint _promoted = False
-    if opname != 'ascend_cast' and (_has_promotable_uint(ins) or _has_promotable_uint(outs)):
+    if opname not in _UINT_PROMOTE_EXEMPT_OPS and (_has_promotable_uint(ins) or _has_promotable_uint(outs)):
         ins, outs, _orig_outs, _cast_src = _promote_io_dtype(opname, ins, outs)
         _promoted = True
     cdef aclScalar* scalar_ptr = NULL
@@ -1526,12 +1540,13 @@ cdef aclError launch_reduction_op_raw(str opname, sequence ins, sequence outs, o
             + f" (reduction requires exactly 1 input and 1 output, "
               f"got {len(ins)} input(s) / {len(outs)} output(s))")
 
-    # 无符号整型拦截（AscendSpecialization.md §1）：ascend_cast 豁免
+    # 无符号整型拦截（AscendSpecialization.md §1）：豁免算子见
+    # _UINT_PROMOTE_EXEMPT_OPS
     cdef list _orig_outs
     cdef list _cast_src
     cdef aclError _cret
     cdef bint _promoted = False
-    if opname != 'ascend_cast' and (_has_promotable_uint(ins) or _has_promotable_uint(outs)):
+    if opname not in _UINT_PROMOTE_EXEMPT_OPS and (_has_promotable_uint(ins) or _has_promotable_uint(outs)):
         ins, outs, _orig_outs, _cast_src = _promote_io_dtype(opname, ins, outs)
         _promoted = True
 
