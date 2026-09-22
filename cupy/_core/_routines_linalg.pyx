@@ -899,8 +899,11 @@ cpdef _ndarray_base matmul(
     dtype = ret_dtype
 
     cdef int cuda_dtype = -1
+    cdef int compute_dtype = -1
+    coef_dtype = dtype
     if dtype.kind not in 'biu':
         cuda_dtype = to_cuda_dtype(dtype, is_half_allowed=True)
+        compute_dtype = cuda_dtype
         if (cuda_dtype == runtime.CUDA_R_16F
                 or cuda_dtype == runtime.CUDA_R_16BF):
             if (not runtime._is_hip_environment
@@ -910,6 +913,10 @@ cpdef _ndarray_base matmul(
             if not use_16bit_gemm:
                 dtype = numpy.dtype('f')
                 cuda_dtype = runtime.CUDA_R_32F
+                compute_dtype = cuda_dtype
+            else:
+                compute_dtype = cublas.CUBLAS_COMPUTE_32F
+            coef_dtype = numpy.dtype('f')
 
     a = ascontiguousarray(a, dtype)
     b = ascontiguousarray(b, dtype)
@@ -1013,16 +1020,11 @@ cpdef _ndarray_base matmul(
 
     cdef intptr_t handle = device.get_cublas_handle()
     cdef int algo = cublas.CUBLAS_GEMM_DEFAULT
-    cdef int compute_type = cuda_dtype
-
     if use_16bit_gemm:
-        compute_type = cublas.CUBLAS_COMPUTE_32F
-        if get_compute_type(dtype) == COMPUTE_TYPE_PEDANTIC:
-            compute_type = cublas.CUBLAS_COMPUTE_32F_PEDANTIC
         algo = cublas.CUBLAS_GEMM_DEFAULT_TENSOR_OP
 
-    one = numpy.array(1, dtype='f' if use_16bit_gemm else dtype)
-    zero = numpy.array(0, dtype='f' if use_16bit_gemm else dtype)
+    one = numpy.array(1, dtype=coef_dtype)
+    zero = numpy.array(0, dtype=coef_dtype)
     if not use_broadcast:
         strideA = _get_stride_for_strided_batched_gemm(a)
         strideB = _get_stride_for_strided_batched_gemm(b)
@@ -1037,14 +1039,15 @@ cpdef _ndarray_base matmul(
                 b.data.ptr, cuda_dtype, ldb, strideB,
                 zero.ctypes.data,
                 c_view.data.ptr, cuda_dtype, ldc, strideC,
-                batchCount, compute_type, algo)
+                batchCount, compute_dtype, algo)
         else:
             raise TypeError(dtype, a.dtype, b.dtype)
     else:
         ap = _mat_ptrs(a)
         bp = _mat_ptrs(b)
         cp = _mat_ptrs(c_view)
-        if use_16bit_gemm:
+        if (cuda_dtype == runtime.CUDA_R_16F
+                or cuda_dtype == runtime.CUDA_R_16BF):
             cublas.gemmBatchedEx(
                 handle,
                 0,  # transa
@@ -1054,8 +1057,8 @@ cpdef _ndarray_base matmul(
                 bp.data.ptr, cuda_dtype, ldb,
                 zero.ctypes.data,
                 cp.data.ptr, cuda_dtype, ldc,
-                batchCount, compute_type, algo)
-        elif dtype == numpy.float32:
+                batchCount, compute_dtype, algo)
+        elif cuda_dtype == runtime.CUDA_R_32F:
             cublas.sgemmBatched(
                 handle,
                 0,  # transa
@@ -1064,7 +1067,7 @@ cpdef _ndarray_base matmul(
                 ap.data.ptr, lda,
                 bp.data.ptr, ldb,
                 zero.ctypes.data, cp.data.ptr, ldc, batchCount)
-        elif dtype == numpy.float64:
+        elif cuda_dtype == runtime.CUDA_R_64F:
             cublas.dgemmBatched(
                 handle,
                 0,  # transa
@@ -1073,7 +1076,7 @@ cpdef _ndarray_base matmul(
                 ap.data.ptr, lda,
                 bp.data.ptr, ldb,
                 zero.ctypes.data, cp.data.ptr, ldc, batchCount)
-        elif dtype == numpy.complex64:
+        elif cuda_dtype == runtime.CUDA_C_32F:
             cublas.cgemmBatched(
                 handle,
                 0,  # transa
@@ -1082,7 +1085,7 @@ cpdef _ndarray_base matmul(
                 ap.data.ptr, lda,
                 bp.data.ptr, ldb,
                 zero.ctypes.data, cp.data.ptr, ldc, batchCount)
-        elif dtype == numpy.complex128:
+        elif cuda_dtype == runtime.CUDA_C_64F:
             cublas.zgemmBatched(
                 handle,
                 0,  # transa
