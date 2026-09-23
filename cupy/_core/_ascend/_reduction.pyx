@@ -52,6 +52,65 @@ cdef inline size_t _get_stream(stream) except *:
     else:
         return stream.ptr
 
+cpdef tuple _get_axis(object axis, Py_ssize_t ndim):
+    cdef Py_ssize_t dim
+    if axis is None:
+        return (tuple(range(ndim)), ())
+    elif sequence.PySequence_Check(axis):
+        axis = tuple(axis)
+    else:
+        axis = axis,
+
+    reduce_axis = tuple(sorted(
+        [internal._normalize_axis_index(dim, ndim) for dim in axis]))
+    out_axis = tuple([dim for dim in range(ndim) if dim not in reduce_axis])
+    if len(reduce_axis) + len(out_axis) != ndim:
+        raise ValueError("duplicate value in 'axis'")
+    return reduce_axis, out_axis
+
+
+cpdef shape_t _get_out_shape(
+        const shape_t& shape, tuple reduce_axis, tuple out_axis,
+        bint keepdims):
+    cdef shape_t out_shape
+    if keepdims:
+        out_shape = shape
+        for i in reduce_axis:
+            out_shape[i] = 1
+    else:
+        out_shape.reserve(len(out_axis))
+        for i in out_axis:
+            out_shape.push_back(shape[i])
+    return out_shape
+
+
+cdef shape_t _set_permuted_args(
+        list args, tuple axis_permutes, const shape_t& shape, tuple params):
+    # This function updates `args`
+    cdef ParameterInfo p
+    cdef Py_ssize_t i, s
+    cdef bint need_permutation = False
+    cdef shape_t out_shape
+    for i, s in enumerate(axis_permutes):
+        if i != s:
+            need_permutation = True
+            break
+    if need_permutation:
+        for p in params:
+            if p.raw:
+                raise NotImplementedError('Illegal conditions')
+        for i, a in enumerate(args):
+            if isinstance(a, _ndarray_base):
+                args[i] = _manipulation._transpose(a, axis_permutes)
+        out_shape.reserve(len(axis_permutes))
+        for i in axis_permutes:
+            out_shape.push_back(shape[i])
+        return out_shape
+    else:
+        return shape
+
+
+
 cdef Py_ssize_t _get_contiguous_size(
         list args, tuple params, list out_shape, Py_ssize_t ndim) except -1:
     '''

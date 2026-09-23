@@ -259,3 +259,45 @@ def test_core_modules_do_not_bypass_the_check():
                 offenders.append((os.path.relpath(path), name))
     assert not offenders, (
         f'{offenders}: core 层请用默认入口（检查 + 抛），_raw 只给 C/noexcept 侧')
+
+
+# ---------------------------------------------------------------------------
+# 6. reduction 的 axes -> dim 解析（launch_reduction_op_raw 抽出的共享函数）
+# ---------------------------------------------------------------------------
+def test_parse_reduction_axes_basic(acl_utils):
+    import numpy as np
+    a = np.zeros((2, 3))  # 只用 ndim，无需设备
+    # int / tuple / list
+    assert acl_utils.py_parse_reduction_axes(1, a) == [1]
+    assert acl_utils.py_parse_reduction_axes((0, 1), a) == [0, 1]
+    assert acl_utils.py_parse_reduction_axes([1], a) == [1]
+    # numpy 整数标量（原先落到 RuntimeError）
+    assert acl_utils.py_parse_reduction_axes(np.int64(1), a) == [1]
+    assert acl_utils.py_parse_reduction_axes(np.int32(0), a) == [0]
+
+
+def test_parse_reduction_axes_none_means_all_axes(acl_utils):
+    """axis=None = 沿全部轴（旧实现只给 [0]，ndim>=2 的全量归约会算错）。"""
+    import numpy as np
+    a = np.zeros((2, 3))
+    assert acl_utils.py_parse_reduction_axes(None, a) == [0, 1]
+    b = np.zeros((2, 3, 4))
+    assert acl_utils.py_parse_reduction_axes(None, b) == [0, 1, 2]
+
+
+def test_parse_reduction_axes_rejects_non_integer(acl_utils):
+    """float/complex 轴必须响亮报错（numpy 要求 axis 是整数）。
+
+    注意 np.bool_ 被接受为 0/1：bool 是 int 子类，numpy 的
+    normalize_axis_index 同样接受 —— 与 numpy 保持一致。
+    """
+    import numpy as np
+    a = np.zeros((2, 3))
+    with pytest.raises(TypeError):
+        acl_utils.py_parse_reduction_axes(1.5, a)
+    with pytest.raises(TypeError):
+        acl_utils.py_parse_reduction_axes(np.float64(1), a)
+    with pytest.raises(TypeError):
+        acl_utils.py_parse_reduction_axes(3 - 1j, a)
+    # bool 轴按 int 处理（与 numpy 一致）
+    assert acl_utils.py_parse_reduction_axes(np.bool_(True), a) == [1]
