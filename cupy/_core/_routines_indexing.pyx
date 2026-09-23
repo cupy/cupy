@@ -20,6 +20,7 @@ cdef bint _ascend_checked = False
 cdef bint _ascend_flag = False
 
 
+# ASCEND: why not just use `is_ascend`
 cdef inline bint _ascend_runtime():
     global _ascend_checked, _ascend_flag
     if not _ascend_checked:
@@ -939,24 +940,38 @@ cdef _scatter_op_single(
     indices = _manipulation.broadcast_to(indices, v_shape)
 
     if op == 'update':
-        _scatter_update_kernel(
-            v, indices, cdim, rdim, adim, a.reduced_view())
+        IF CUPY_CANN_VERSION > 0:
+            # ASCEND: a.reduced_view() will reduce 2D into 1D, but v/indices keep
+            # aclnnScatterUpdate will report dim not matching eror, so jsut transfer a
+            launch_general_func("ascend_scatter_update", [v, indices], [a],
+                [cdim, rdim, adim], {}, 0) # TODO: stream selection instead of 0(NULLPTR)
+            return
+        ELSE:
+            _scatter_update_kernel(
+                v, indices, cdim, rdim, adim, a.reduced_view())
     elif op == 'add':
         # There is constraints on types because atomicAdd() in CUDA 7.5
         # only supports int32, uint32, uint64, and float32.
         # Ascend: aclnnScatterAdd 只支持 FLOAT16/FLOAT32/INT32/INT8/UINT8，
         # float64/uint32/int64/uint64 在 host 侧提前报错。
-        allowed = (numpy.int32, numpy.float16, numpy.float32,
-                   numpy.float64, numpy.uint32, numpy.uint64,
-                   numpy.intc, numpy.uintc, numpy.ulonglong)
-        if _ascend_runtime():
+        IF CUPY_CANN_VERSION > 0:
             allowed = (numpy.int32, numpy.float16, numpy.float32)
+        ELSE:
+            allowed = (numpy.int32, numpy.float16, numpy.float32,
+                    numpy.float64, numpy.uint32, numpy.uint64,
+                    numpy.intc, numpy.uintc, numpy.ulonglong)
         if not issubclass(v.dtype.type, allowed):
             raise TypeError(
                 'cupy.add.at only supports int32, float16, float32, float64, '
                 'uint32, uint64, as data type'
                 + (' (Ascend/aclnnScatterAdd: int32, float16, float32)'
                    if _ascend_runtime() else ''))
+        
+        IF CUPY_CANN_VERSION > 0:
+            # ASCEND: similarly as _scatter_update
+            launch_general_func("ascend_scatter_add", [v, indices], [a],
+                [cdim, rdim, adim], {}, 0) # TODO: stream selection
+            return
         _scatter_add_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
     elif op == 'sub':

@@ -762,17 +762,34 @@
     // `len(lshape)`. `aclnnInplaceScatterUpdate(data, indices, updates, axis)`
     // (torch `scatter_`) uses exactly the same convention.
     //
-    // `axis` is not passed explicitly, but it is recoverable from
-    // `values.numel() == prod(lshape) * cdim * rdim`.
+    // `axis` is not passed explicitly, but it is recoverable from the target array
+    // shape and `adim` (the size of the axis being scattered into):
+    //  the scattered axis is the righo-most axis of `a` whose size equals adim
     static int64_t ScatterAxis(const std::vector<const aclTensor*>& ins,
+        const std::vector<const aclTensor*>& outs,
         const ArgsType& args, const KwargsType& kwargs) {
         int64_t cdim = GetScalarArg<int64_t>(args, 0, kwargs, "cdim", 0);
         int64_t rdim = GetScalarArg<int64_t>(args, 1, kwargs, "rdim", 1);
-        if (cdim <= 0 || rdim <= 0) {
+        int64_t adim = GetScalarArg<int64_t>(args, 2, kwargs, "adim", -1);
+        if (cdim <= 0 || rdim <= 0 || adim <=0) {
             throw std::invalid_argument(
-                "aclop_Scatter*: cdim/rdim were not supplied, cannot derive axis");
+                "aclop_Scatter*: cdim/rdim/adim were not supplied, cannot derive axis");
         }
-        return GetAclTensorElementCount(ins[0]) / (cdim * rdim);
+        // target array a is outs[0] (ins is v/indices), from a's shape to infer axis
+        int64_t* shape = nullptr;
+        uint64_t ndim = 0;
+        int64_t axis = 0;
+        if (outs[0] != nullptr && aclGetViewShape(outs[0]. &shape, &dim) == ACL_SUCCESS &&
+                shape != nullptr) {
+            // search from right-to-left
+            for (uint64_t i = ndim; i-- > 0) {
+                if (shape[i] == adim) {
+                    axis = static_cast<int64_t>(i);
+                }
+            }
+            delete[] shape;
+        }
+        return axis;
     }
 
     aclError aclop_ScatterUpdate(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
@@ -781,7 +798,7 @@
             PrintArgs(__func__, args, kwargs, std::cout);
             return ACL_ERROR_INVALID_PARAM;
         }
-        int64_t axis = ScatterAxis(ins, args, kwargs);
+        int64_t axis = ScatterAxis(ins, outs, args, kwargs);
         return aclIrregularOpRun(aclnnInplaceScatterUpdateGetWorkspaceSize, aclnnInplaceScatterUpdate, stream,
             outs[0], ins[1], ins[0], axis);
     }
@@ -792,7 +809,7 @@
             PrintArgs(__func__, args, kwargs, std::cout);
             return ACL_ERROR_INVALID_PARAM;
         }
-        int64_t axis = ScatterAxis(ins, args, kwargs);
+        int64_t axis = ScatterAxis(ins, outs, args, kwargs);
         // aclnnScatterAdd has no inplace variant; `self` and `out` deliberately
         // alias so that the added result lands back in `a` (the CUDA kernel is
         // `atomicAdd(&a[...], v)`).
@@ -817,7 +834,7 @@
             PrintArgs(__func__, args, kwargs, std::cout);
             return ACL_ERROR_INVALID_PARAM;
         }
-        int64_t axis = ScatterAxis(ins, args, kwargs);
+        int64_t axis = ScatterAxis(ins, outs, outs, args, kwargs);
         aclDataType dtype = ACL_DT_UNDEFINED;
         aclGetDataType(outs[0], &dtype);
         aclTensor* existing = aclTensorLike(ins[0], dtype);
