@@ -567,9 +567,6 @@ def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x,
         # hipFFT's R2C would overwrite input
         # hipFFT's C2R PlanNd is actually not in use so it's fine here
         a = a.copy()
-    elif (value_type == 'R2C' and
-          a.data.ptr % _R2C_OUTPUT_DTYPES[a.dtype].itemsize):
-        a = a.copy(order=order)
 
     # plan search precedence:
     # 1. plan passed in as an argument
