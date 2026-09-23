@@ -766,7 +766,7 @@
     // shape and `adim` (the size of the axis being scattered into):
     //  the scattered axis is the righo-most axis of `a` whose size equals adim
     static int64_t ScatterAxis(const std::vector<const aclTensor*>& ins,
-        const std::vector<const aclTensor*>& outs,
+        const std::vector<aclTensor*>& outs,
         const ArgsType& args, const KwargsType& kwargs) {
         int64_t cdim = GetScalarArg<int64_t>(args, 0, kwargs, "cdim", 0);
         int64_t rdim = GetScalarArg<int64_t>(args, 1, kwargs, "rdim", 1);
@@ -779,10 +779,11 @@
         int64_t* shape = nullptr;
         uint64_t ndim = 0;
         int64_t axis = 0;
-        if (outs[0] != nullptr && aclGetViewShape(outs[0]. &shape, &dim) == ACL_SUCCESS &&
+        if (!outs.empty() && aclGetViewShape(outs[0], &shape, &ndim) == ACL_SUCCESS &&
                 shape != nullptr) {
             // search from right-to-left
-            for (uint64_t i = ndim; i-- > 0) {
+            for (uint64_t i = ndim; i> 0;) {
+                i--;
                 if (shape[i] == adim) {
                     axis = static_cast<int64_t>(i);
                 }
@@ -834,7 +835,7 @@
             PrintArgs(__func__, args, kwargs, std::cout);
             return ACL_ERROR_INVALID_PARAM;
         }
-        int64_t axis = ScatterAxis(ins, outs, outs, args, kwargs);
+        int64_t axis = ScatterAxis(ins, outs, args, kwargs);
         aclDataType dtype = ACL_DT_UNDEFINED;
         aclGetDataType(outs[0], &dtype);
         aclTensor* existing = aclTensorLike(ins[0], dtype);
