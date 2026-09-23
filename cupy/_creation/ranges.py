@@ -8,6 +8,13 @@ import cupy
 from cupy import _core
 
 
+#: aclnnArange 不支持的 dtype：Ascend 上先用 int32 生成再 cast 回目标 dtype
+#: （见 arange）。需要同样处理的 dtype 往这个 set 加名字。
+_ASCEND_ARANGE_INT32_FALLBACK = frozenset((
+    'int8', 'int16', 'uint16', 'uint32',
+))
+
+
 def arange(start, stop=None, step=1, dtype=None):
     """Returns an array with evenly spaced values within a given interval.
 
@@ -56,6 +63,15 @@ def arange(start, stop=None, step=1, dtype=None):
             return cupy.array([start, start - step], dtype=numpy.bool_)
         else:
             return cupy.array([start], dtype=numpy.bool_)
+
+    from cupy.backends.backend.api.runtime import is_ascend
+    if is_ascend() and numpy.dtype(dtype).name in _ASCEND_ARANGE_INT32_FALLBACK:
+        # aclnnArange 不支持 int8/int16/uint16/uint32：先用 int32 生成，
+        # 再 cast 回目标 dtype（cast 走已注册的 ascend_cast）。
+        # 已知限制：中间态为 int32，> 2**31-1 的 uint32 取值会溢出。
+        ret = cupy.empty((size,), dtype=numpy.int32)
+        _arange_ufunc(int(start), int(step), ret, dtype=numpy.int32)
+        return ret.astype(dtype)
 
     ret = cupy.empty((size,), dtype=dtype)
     typ = numpy.dtype(dtype).type
