@@ -564,13 +564,20 @@ cdef object _materialize_host(_ndarray_base cupy_array):
     span = max_off - min_off + itemsize
 
     # 2. 裸 memcpy D2H：只拷视图覆盖的区间（不含底层分配的其余部分）
+    # copy_to_host() not available in PooledMemory, but MemoryPointer
+    # msut copy from data.ptr, offset is the byte count from view starting addr
+    # e.g. part[5:7], ptr - mem.ptr =20, span is the stride inside view
+    # offset 0 will copy part[5:7] materialized into [0,1], not [5,6]
     host = numpy.empty(span, dtype=numpy.uint8)
-    cupy_array.data.mem.copy_to_host(host.ctypes.data, span)
+    from cupy.xpu.memory import MemoryPointer as _MemoryPointer
+    _mp = _MemoryPointer(cupy_array.data.meme,
+        (cupy_array.data.ptr - cupy_array.data.mem.ptr) + min_off)
+    _mp.copy_to_host(host.ctypes.data, span)
 
-    # 3. 元素域视图：region 起点 = data.ptr + min_off，即第一个逻辑元素在
-    #    region 内字节偏移 -min_off（itemsize 的倍数，见 docstring）。
+    # 3. 元素域视图：host 起点 = data.ptr + min_off，即物化区间第一个逻辑元素
+    #    所以 frombuffer 的offset为0
     flat = numpy.frombuffer(host, dtype=cupy_array.dtype,
-                            offset=-min_off, count=span // itemsize)
+                            offset=0, count=span // itemsize)
     # as_strided 的 strides 恒为字节单位（与 dtype 无关），cupy 的
     # strides 也是字节单位，直接沿用，不能再除以 itemsize。
     host_view = numpy.lib.stride_tricks.as_strided(
