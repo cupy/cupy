@@ -27,7 +27,7 @@ class TestExceptionPicklable(unittest.TestCase):
 
 
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
-                   reason='CUDA input alignment requirement')
+                    reason='CUDA input alignment requirement')
 @pytest.mark.parametrize('dtype', [numpy.float32, numpy.float64])
 @pytest.mark.parametrize('offset', [0, 1])
 @pytest.mark.parametrize('ndim', [1, 2])
@@ -65,9 +65,9 @@ def test_plan_r2c_input_alignment(
 
 
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
-                   reason='not supported by hipFFT')
+                    reason='not supported by hipFFT')
 @pytest.mark.skipif(int(cupy.cuda.device.get_compute_capability()) < 53,
-                   reason='half-precision FFT is not supported')
+                    reason='half-precision FFT is not supported')
 @pytest.mark.parametrize('offset', [0, 1])
 def test_xt_plan_half_r2c_input_alignment(offset: int) -> None:
     backing: cupy.ndarray = cupy.ones(shape=33, dtype=cupy.float16)
