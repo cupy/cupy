@@ -81,7 +81,7 @@ ascend_files = [
     ('cupy._core._routines_linalg', ['cupy/_core/_ascend/_routines_linalg.pyx']),
     ('cupy._core._routines_sorting', ['cupy/_core/_ascend/_routines_sorting.pyx']),
     ('cupy._core._routines_logic', ['cupy/_core/_routines_logic.pyx']),
-    ('cupy._core._reduction', ['cupy/_core/_reduction.pyx']),
+    ('cupy._core._reduction', ['cupy/_core/_ascend/_reduction.pyx']),
     ('cupy._core._routines_indexing', ['cupy/_core/_routines_indexing.pyx']),
     # ascend partially support
     ('cupy._core._routines_statistics',
