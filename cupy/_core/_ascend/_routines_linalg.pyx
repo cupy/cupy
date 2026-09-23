@@ -377,13 +377,43 @@ cdef _ndarray_base _ascend_matmul(_ndarray_base a, _ndarray_base b, _ndarray_bas
 
     aclnnMatmul is a plain row-major A @ B (no cuBLAS column-major
     transpose trick), so operands must NOT be swapped here.
+
+    aclnnMatmul 只接受浮点（float16/float32/...）输入，不支持整型/布尔：
+    这类输入先 astype(float32) 参与计算，结果再 cast 回目标 dtype
+    （cast 走已注册的 ascend_cast）。
+    NOTE: 中间态 float32 的精度有限（尾数 24 bit，> 2**24 的整数无法精确
+    表示），而 NumPy 的整型 matmul 是精确整数运算 —— 大值场景下本实现是
+    有损的，属已知差距。
     """
+    cdef _ndarray_base a_calc, b_calc, calc_out, result
+    cdef object ret_dtype
+    cdef bint int_fallback = (
+        a.dtype.kind in 'biu' or b.dtype.kind in 'biu')
+
     if out is None:
         if a.shape[1] != b.shape[0]:
             raise ValueError(
                 'shapes ({}) and ({}) not aligned'.format(a.shape, b.shape))
         ret_shape = [a.shape[0], b.shape[1]]
         ret_dtype = numpy.promote_types(a.dtype, b.dtype)
+    else:
+        ret_shape = out._shape
+        ret_dtype = out.dtype
+
+    if int_fallback:
+        a_calc = a.astype(numpy.float32, copy=False)
+        b_calc = b.astype(numpy.float32, copy=False)
+        calc_out = _ndarray_init(
+            cupy.ndarray, [a.shape[0], b.shape[1]], numpy.float32, None)
+        launch_general_func(
+            "ascend_matmul", [a_calc, b_calc], [calc_out], [], {}, 0)
+        result = calc_out.astype(ret_dtype)
+        if out is None:
+            return result
+        elementwise_copy(result, out)
+        return out
+
+    if out is None:
         out = _ndarray_init(cupy.ndarray, ret_shape, ret_dtype, None)
     launch_general_func("ascend_matmul", [a, b], [out], [], {}, 0)
     return out
