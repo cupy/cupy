@@ -3,7 +3,6 @@ from __future__ import annotations
 import numpy
 
 from cupy import cuda
-from cupy._creation.basic import _new_like_order_and_strides
 from cupy._core import internal
 
 
@@ -78,8 +77,8 @@ def empty_like_pinned(a, dtype=None, order='K', subok=None, shape=None):
     if dtype is None:
         dtype = a.dtype
     shape = _update_shape(a, shape)
-    order, strides, _ = _new_like_order_and_strides(
-        a, dtype, order, shape, get_memptr=False)
+    order, strides = internal._new_like_order_and_strides(
+        a, dtype, order, shape)
     nbytes = internal.prod(shape) * numpy.dtype(dtype).itemsize
     mem = cuda.alloc_pinned_memory(nbytes)
     out = numpy.ndarray(shape, dtype=dtype, buffer=mem,

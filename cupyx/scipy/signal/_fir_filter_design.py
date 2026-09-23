@@ -175,8 +175,6 @@ _firwin_kernel = cupy.ElementwiseKernel(
 )
 
 
-# Scipy <= 1.12 has a deprecated `nyq` argument (nyq = fs/2).
-# Remove it here, to be forward-looking.
 def firwin(
     numtaps,
     cutoff,
@@ -600,8 +598,6 @@ def firwin2(
     return out
 
 
-# Scipy <= 1.12 has a deprecated `nyq` argument (nyq = fs/2).
-# Remove it here, to be forward-looking.
 def firls(numtaps, bands, desired, weight=None, fs=2):
     """
     FIR filter design using least-squares error minimization.

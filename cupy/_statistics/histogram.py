@@ -8,6 +8,7 @@ import numpy
 import cupy
 from cupy import _core
 from cupy._core import _accelerator
+from cupy._core import _cuda_compute_histogram
 from cupy.cuda import cub
 from cupy.cuda import common
 from cupy.cuda import runtime
@@ -552,6 +553,11 @@ def bincount(x, weights=None, minlength=None):
         if minlength < 0:
             raise ValueError('minlength must be non-negative')
 
+    if x.size == 0:
+        size = minlength if minlength is not None else 0
+        # NumPy returns intp dtype for empty input even when weights is given
+        return cupy.zeros((size,), dtype=numpy.intp)
+
     size = int(cupy.max(x)) + 1  # synchronize!
     if minlength is not None:
         size = max(size, minlength)
@@ -559,11 +565,20 @@ def bincount(x, weights=None, minlength=None):
     if weights is None:
         b = cupy.zeros((size,), dtype=numpy.intp)
 
-        for accelerator in _accelerator.get_routine_accelerators():
+        accelerators = ([] if runtime.is_hip
+                        else _accelerator.get_routine_accelerators())
+        for accelerator in accelerators:
+            if accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE:
+                out = _cuda_compute_histogram.cuda_compute_bincount(
+                    x, b, size)
+                if out is None:
+                    continue
+                else:
+                    b = out
+                    break
             # CUB uses int for bin counts
             # TODO(leofang): support >= 2^31 elements in x?
-            if (not runtime.is_hip
-                    and accelerator == _accelerator.ACCELERATOR_CUB
+            if (accelerator == _accelerator.ACCELERATOR_CUB
                     and x.size <= 0x7fffffff and size <= 0x7fffffff):
                 out = cub.cub_histogram(x, b, size+1)
                 if out is None:

@@ -63,12 +63,12 @@ if ctx.long_description_path is not None:
 
 
 dependencies = [
-    "numpy>=2.0,<2.6",  # see #4773
+    "numpy>=2.0,<2.7",  # see #4773
 ]
 optional_dependencies = {
     "all": [
-        "scipy>=1.10,<1.17",  # see #4773
-        "Cython>=3",
+        "scipy>=1.14,<1.19",  # see #4773
+        "Cython>=3,!=3.2.6",
         "optuna>=2.0",
     ],
     "test": [
@@ -79,7 +79,7 @@ optional_dependencies = {
     ],
 }
 if not ctx.use_hip:
-    dependencies.append("cuda-pathfinder>=1.3.3,==1.*")
+    dependencies.append("cuda-pathfinder>=1.3.4,==1.*")
     if not ctx.use_stub:
         cuda_major = ctx.features["cuda"].get_version() // 1000
         optional_dependencies["ctk"] = [

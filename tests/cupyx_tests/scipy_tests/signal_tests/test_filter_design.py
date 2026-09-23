@@ -550,7 +550,7 @@ class TestFreqz_zpk:
             assert_array_almost_equal(h, [1])
 
 
-@testing.with_requires("scipy>=1.8")
+@testing.with_requires("scipy")
 class TestSOSFreqz:
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
@@ -796,7 +796,7 @@ class TestGroupDelay:
 
     @pytest.mark.parametrize('w', [8.0, 8.0+0j])
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
-    @testing.with_requires('scipy>=1.8')
+    @testing.with_requires('scipy')
     def test_w_types(self, w, xp, scp):
         # Measure at frequency 8 rad/sec
         w_out, gd = scp.signal.group_delay((1, 1), w)

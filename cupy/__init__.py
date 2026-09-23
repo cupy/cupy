@@ -10,7 +10,6 @@ from cupy import _version
 
 
 _environment._detect_duplicate_installation()  # NOQA
-_environment._setup_win32_dll_directory()  # NOQA
 _environment._preload_library('cutensor')  # NOQA
 
 
@@ -249,6 +248,7 @@ from cupy._manipulation.transpose import moveaxis  # NOQA
 from cupy._manipulation.transpose import rollaxis  # NOQA
 from cupy._manipulation.transpose import swapaxes  # NOQA
 from cupy._manipulation.transpose import transpose  # NOQA
+from cupy._manipulation.transpose import matrix_transpose  # NOQA
 
 # NumPy 2.0 aliases
 permute_dims = transpose
@@ -610,6 +610,8 @@ from cupy._math.sumprod import product  # NOQA
 from cupy._math.sumprod import sum  # NOQA
 from cupy._math.sumprod import cumprod  # NOQA
 from cupy._math.sumprod import cumproduct  # NOQA
+from cupy._math.sumprod import cumulative_prod  # NOQA
+from cupy._math.sumprod import cumulative_sum  # NOQA
 from cupy._math.sumprod import cumsum  # NOQA
 from cupy._math.sumprod import ediff1d  # NOQA
 from cupy._math.sumprod import nancumprod  # NOQA
@@ -811,6 +813,8 @@ from cupy._core import RawKernel  # NOQA
 from cupy._core import RawModule  # NOQA
 from cupy._core._reduction import ReductionKernel  # NOQA
 
+from cupy._core._dtype import make_aligned_dtype  # NOQA
+
 # -----------------------------------------------------------------------------
 # DLPack
 # -----------------------------------------------------------------------------
@@ -885,7 +889,7 @@ def get_array_module(*args):
     """
     import cupyx
     for arg in args:
-        if isinstance(arg, (ndarray, cupyx.scipy.sparse.spmatrix,
+        if isinstance(arg, (ndarray, cupyx.scipy.sparse._spbase,
                             _core.fusion._FusionVarArray,
                             _core.new_fusion._ArrayProxy)):
             return _cupy
@@ -940,13 +944,6 @@ def show_config(*, _full=False):
     import cupyx
     _sys.stdout.write(str(cupyx.get_runtime_info(full=_full)))
     _sys.stdout.flush()
-
-
-_deprecated_apis = [
-    'int0',
-    'uint0',
-    'bool8',
-]
 
 
 # np 2.0: XXX shims for things removed in np 2.0
@@ -1130,13 +1127,6 @@ Use {recommendation} instead.
     def safe_eval(*args, **kwds):  # type: ignore [misc]
         mesg = _template.format(recommendation="`ast.literal_eval`")
         raise RuntimeError(mesg)
-
-
-def __getattr__(name):
-    if name in _deprecated_apis:
-        return getattr(_numpy, name)
-
-    raise AttributeError(f"module 'cupy' has no attribute {name!r}")
 
 
 def _embed_signatures(dirs):

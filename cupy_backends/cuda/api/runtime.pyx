@@ -317,10 +317,9 @@ cpdef getDeviceProperties(int device):
             props.accessPolicyMaxWindowSize)
         properties['reservedSharedMemPerBlock'] = (
             props.reservedSharedMemPerBlock)
-    if (
-        CUPY_USE_CUDA_PYTHON
-        or (CUPY_CUDA_VERSION >= 9020 and CUPY_CUDA_VERSION < 13000)
-    ):
+    if 0 < CUPY_CUDA_VERSION < 13000:
+        # CUDA 12.x: these fields exist in cudaDeviceProp.
+        # "> 0" excludes HIP builds where CUPY_CUDA_VERSION == 0.
         properties['deviceOverlap'] = props.deviceOverlap
         properties['maxTexture1DLinear'] = props.maxTexture1DLinear
         properties['singleToDoublePrecisionPerfRatio'] = (
@@ -776,6 +775,24 @@ cpdef PointerAttributes pointerGetAttributes(intptr_t ptr):
             attrs.type)
     ELSE:  # for RTD
         return None
+
+
+cpdef int pointerGetMemoryType(intptr_t ptr) except -1:
+    '''Allocation-free replacement for ``pointerGetAttributes(ptr).type``.
+
+    Returns the CUDA/HIP memory type enum for ``ptr`` (e.g.
+    ``memoryTypeDevice`` / ``memoryTypeHost`` / ``memoryTypeManaged``).
+    '''
+    cdef _PointerAttributes attrs
+    status = cudaPointerGetAttributes(&attrs, <void*>ptr)
+    check_status(status)
+    IF CUPY_CUDA_VERSION > 0 or 60000000 <= CUPY_HIP_VERSION:
+        return attrs.type
+    ELIF 0 < CUPY_HIP_VERSION < 60000000:
+        return attrs.memoryType
+    ELSE:  # for RTD
+        raise ValueError('Fetching memory unsupported.')
+
 
 cpdef intptr_t deviceGetDefaultMemPool(int device) except? 0:
     '''Get the default mempool on the current device.'''

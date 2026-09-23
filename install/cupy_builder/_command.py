@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import itertools
 import json
 import os
 import os.path
@@ -70,7 +71,7 @@ def compile_device_code(
     return sources_cpp, objects
 
 
-def _get_timestamp(path: str) -> float:
+def _get_timestamp(path: str | os.PathLike[str]) -> float:
     stat = os.lstat(path)
     return max(stat.st_atime, stat.st_mtime, stat.st_ctime)
 
@@ -115,6 +116,7 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
             # https://github.com/cupy/cupy/pull/8457#issuecomment-2656568499
             'binding': False,
             'warn.deprecated.IF': False,   # suppress IF deprecation warning
+            'freethreading_compatible': True,
         }
 
         # Compile-time constants to be used in Cython code
@@ -223,7 +225,9 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
             ext_build_lib = self.get_ext_fullpath(ext.name)
             ext_inplace = os.path.relpath(ext_build_lib, self.build_lib)
             if (os.path.exists(ext_inplace) and
-                    max(_get_timestamp(f) for f in (ext.sources + ext.depends))
+                    max(_get_timestamp(f) for f in itertools.chain(
+                        ext.sources, ext.depends,
+                    ))
                     < _get_timestamp(ext_inplace)):
                 print(f'skip building \'{ext.name}\' extension (up-to-date)')
                 # Pretend as if it was just built.

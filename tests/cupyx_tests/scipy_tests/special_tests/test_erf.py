@@ -7,6 +7,11 @@ import numpy
 import cupy
 from cupy import testing
 import cupyx.scipy.special  # NOQA
+from cupyx_tests.scipy_tests.special_tests import match_scipy_float32
+
+# `check_unary` below is shared with `erfinv`/`erfcinv`, which already had a
+# float32 loop before SciPy 1.18 and so still agree with CuPy on float16.
+_SCIPY_FLOAT32_LOOP = frozenset({'erf', 'erfc', 'erfcx'})
 
 
 def _boundary_inputs(boundary, rtol, atol):
@@ -52,7 +57,10 @@ class TestSpecial(unittest.TestCase, _TestBase):
         import scipy.special  # NOQA
 
         a = testing.shaped_arange((2, 3), xp, dtype)
-        return getattr(scp.special, name)(a)
+        out = getattr(scp.special, name)(a)
+        if name in _SCIPY_FLOAT32_LOOP:
+            out = match_scipy_float32(out, xp, dtype)
+        return out
 
     @testing.for_dtypes(['f', 'd'])
     @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')
@@ -71,7 +79,7 @@ class TestSpecial(unittest.TestCase, _TestBase):
         a = xp.array(a, dtype=dtype)
         return getattr(scp.special, name)(a)
 
-    @testing.with_requires('scipy>=1.4.0')
+    @testing.with_requires('scipy')
     @testing.for_dtypes(['f', 'd'])
     def test_erfinv_behavior(self, dtype):
         a = cupy.empty((1,), dtype=dtype)
@@ -89,7 +97,7 @@ class TestSpecial(unittest.TestCase, _TestBase):
         a = cupyx.scipy.special.erfinv(a)
         assert numpy.isneginf(cupy.asnumpy(a))
 
-    @testing.with_requires('scipy>=1.4.0')
+    @testing.with_requires('scipy')
     @testing.for_dtypes(['f', 'd'])
     def test_erfcinv_behavior(self, dtype):
         a = cupy.empty((1,), dtype=dtype)
@@ -122,7 +130,10 @@ class TestFusionSpecial(unittest.TestCase, _TestBase):
         def f(x):
             return getattr(scp.special, name)(x)
 
-        return f(a)
+        out = f(a)
+        if name in _SCIPY_FLOAT32_LOOP:
+            out = match_scipy_float32(out, xp, dtype)
+        return out
 
     @testing.for_dtypes(['f', 'd'])
     @testing.numpy_cupy_allclose(atol=1e-5, scipy_name='scp')

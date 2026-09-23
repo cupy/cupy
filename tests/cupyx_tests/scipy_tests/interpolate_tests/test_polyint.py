@@ -131,7 +131,7 @@ class TestBarycentric:
         test_xs = xp.array(test_xs)
         return xp.shape(P(test_xs))
 
-    @testing.with_requires("scipy>=1.8.0")
+    @testing.with_requires("scipy")
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_large_chebyshev(self, xp, scp, dtype):
@@ -393,7 +393,7 @@ class TestKrogh:
         return D
 
 
-@testing.with_requires("scipy>=1.10.0")
+@testing.with_requires("scipy")
 class TestZeroSizeArrays:
     # regression tests for gh-17241 : CubicSpline et al must not segfault
     # when y.size == 0
@@ -692,7 +692,7 @@ class TestCubicSpline:
         S = scp.interpolate.CubicSpline(x, y, bc_type='periodic')
         return S.derivative(1)(x)
 
-    @testing.with_requires("scipy >= 1.13")
+    @testing.with_requires("scipy")
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_periodic_three_points_multidim(self, xp, scp):
         # make sure one multidimensional interpolator does the same as multiple
@@ -856,7 +856,7 @@ class TestInterp1D:
         yp = scp.interpolate.interp1d(x, y, kind='linear')(x)
         return yp
 
-    @testing.with_requires("scipy>=1.10")
+    @testing.with_requires("scipy")
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_linear_dtypes_2(self, xp, scp):
         # regression test for gh-14531, where 1D linear interpolation has been
@@ -890,7 +890,7 @@ class TestInterp1D:
         f = scp.interpolate.interp1d(x10, y10, kind='cubic')
         return f(x10), f(xp.asarray([2.4, 5.6, 6.0]))
 
-    @testing.with_requires("scipy>=1.10")
+    @testing.with_requires("scipy")
     @pytest.mark.parametrize('kind',
                              ['nearest', 'nearest-up', 'previous', 'next']
                              )
@@ -907,7 +907,7 @@ class TestInterp1D:
         xe = xp.asarray([-1., 0, 9, 11])
         return f(1.2), f(1.5), f(xval), fe(xe)
 
-    @testing.with_requires("scipy>=1.10")
+    @testing.with_requires("scipy")
     @pytest.mark.parametrize('kind', ['previous', 'next'])
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_previous_2(self, xp, scp, kind):
@@ -930,7 +930,7 @@ class TestInterp1D:
                 interpolator2D(xval),
                 interpolator2DAxis0(xval2))
 
-    @testing.with_requires("scipy>=1.10")
+    @testing.with_requires("scipy")
     @pytest.mark.parametrize('kind', ['previous', 'next'])
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_previous_3(self, xp, scp, kind):
@@ -1315,7 +1315,7 @@ class TestInterp1D:
         with assert_raises(ValueError):
             cupyx.scipy.interpolate.interp1d(x, y, kind='cubic')
 
-    @testing.with_requires("scipy>=1.10")
+    @testing.with_requires("scipy")
     @pytest.mark.parametrize(
         "kind", ("linear", "nearest", "nearest-up", "previous", "next")
     )

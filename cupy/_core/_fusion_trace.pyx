@@ -118,7 +118,10 @@ def _guess_routine(func, args, dtype):
 
     op = func._ops.guess_routine(
         func.name, func._routine_cache, dummy_args, dtype, None)
-    return op.get_in_dtypes(), op.get_out_dtypes(), op.routine
+
+    in_dtypes, out_dtypes = op.resolve_dtypes(
+        dummy_args[:func.nin], dummy_args[func.nin:])
+    return in_dtypes, out_dtypes, op.routine
 
 
 def _base(array):

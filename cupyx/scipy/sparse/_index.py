@@ -6,8 +6,9 @@ from __future__ import annotations
 import cupy
 from cupy import _core
 
-from cupyx.scipy.sparse._base import isspmatrix
-from cupyx.scipy.sparse._base import spmatrix
+from cupyx.scipy.sparse._base import _spbase
+from cupyx.scipy.sparse._base import issparse
+from cupyx.scipy.sparse._base import sparray
 
 from cupy.cuda import device
 from cupy.cuda import runtime
@@ -25,13 +26,13 @@ _bool_scalar_types = (bool, numpy.bool_)
 
 
 _compress_getitem_kern = _core.ElementwiseKernel(
-    'T d, S ind, int32 minor', 'raw T answer',
+    'T d, S ind, S minor', 'raw T answer',
     'if (ind == minor) atomicAdd(&answer[0], d);',
     'cupyx_scipy_sparse_compress_getitem')
 
 
 _compress_getitem_complex_kern = _core.ElementwiseKernel(
-    'T real, T imag, S ind, int32 minor',
+    'T real, T imag, S ind, S minor',
     'raw T answer_real, raw T answer_imag',
     '''
     if (ind == minor) {
@@ -59,7 +60,7 @@ def _get_csr_submatrix_major_axis(Ax, Aj, Ap, start, stop):
 
     """
     Ap = Ap[start:stop + 1]
-    start_offset, stop_offset = int(Ap[0]), int(Ap[-1])
+    start_offset, stop_offset = int(Ap[0]), int(Ap[-1])  # synchronize!
     Bp = Ap - start_offset
     Bj = Aj[start_offset:stop_offset]
     Bx = Ax[start_offset:stop_offset]
@@ -67,38 +68,10 @@ def _get_csr_submatrix_major_axis(Ax, Aj, Ap, start, stop):
     return Bx, Bj, Bp
 
 
-def _get_csr_submatrix_minor_axis(Ax, Aj, Ap, start, stop):
-    """Return a submatrix of the input sparse matrix by slicing minor axis.
-
-    Args:
-        Ax (cupy.ndarray): data array from input sparse matrix
-        Aj (cupy.ndarray): indices array from input sparse matrix
-        Ap (cupy.ndarray): indptr array from input sparse matrix
-        start (int): starting index of minor axis
-        stop (int): ending index of minor axis
-
-    Returns:
-        Bx (cupy.ndarray): data array of output sparse matrix
-        Bj (cupy.ndarray): indices array of output sparse matrix
-        Bp (cupy.ndarray): indptr array of output sparse matrix
-
-    """
-    mask = (start <= Aj) & (Aj < stop)
-    mask_sum = cupy.empty(Aj.size + 1, dtype=Aj.dtype)
-    mask_sum[0] = 0
-    mask_sum[1:] = mask
-    cupy.cumsum(mask_sum, out=mask_sum)
-    Bp = mask_sum[Ap]
-    Bj = Aj[mask] - start
-    Bx = Ax[mask]
-
-    return Bx, Bj, Bp
-
-
 _csr_row_index_ker = _core.ElementwiseKernel(
-    'int32 out_rows, raw I rows, '
-    'raw int32 Ap, raw int32 Aj, raw T Ax, raw int32 Bp',
-    'int32 Bj, T Bx',
+    'I out_rows, raw I rows, '
+    'raw I Ap, raw I Aj, raw T Ax, raw I Bp',
+    'I Bj, T Bx',
     '''
     const I row = rows[out_rows];
 
@@ -124,11 +97,14 @@ def _csr_row_index(Ax, Aj, Ap, rows):
         Bj (cupy.ndarray): indices array of output sparse matrix
         Bp (cupy.ndarray): indptr array for output sparse matrix
     """
+    # Ensure rows has the same dtype as Ap/Aj so the kernel type parameter I
+    # is consistent across all array arguments.
+    rows = rows.astype(Ap.dtype, copy=False)
     row_nnz = cupy.diff(Ap)
     Bp = cupy.empty(rows.size + 1, dtype=Ap.dtype)
     Bp[0] = 0
     cupy.cumsum(row_nnz[rows], out=Bp[1:])
-    nnz = int(Bp[-1])
+    nnz = int(Bp[-1])  # synchronize!
 
     out_rows = _csr_indptr_to_coo_rows(nnz, Bp)
 
@@ -136,7 +112,44 @@ def _csr_row_index(Ax, Aj, Ap, rows):
     return Bx, Bj, Bp
 
 
+def _get_csr_submatrix_minor_axis(Ax, Aj, Ap, start, stop):
+    """Return a submatrix of the input sparse matrix by slicing minor axis.
+
+    Args:
+        Ax (cupy.ndarray): data array from input sparse matrix
+        Aj (cupy.ndarray): indices array from input sparse matrix
+        Ap (cupy.ndarray): indptr array from input sparse matrix
+        start (int): starting index of minor axis
+        stop (int): ending index of minor axis
+
+    Returns:
+        Bx (cupy.ndarray): data array of output sparse matrix
+        Bj (cupy.ndarray): indices array of output sparse matrix
+        Bp (cupy.ndarray): indptr array of output sparse matrix
+
+    The three returned arrays share no memory with the inputs:
+    boolean masking (``Aj[mask]``, ``Ax[mask]``) and fancy indexing
+    (``mask_sum[Ap]``) both allocate.  Callers may treat the results
+    as independent buffers; ``_minor_slice`` relies on this contract
+    to satisfy ``copy=True`` without an explicit ``.copy()``.
+    """
+    mask = (start <= Aj) & (Aj < stop)
+    mask_sum = cupy.empty(Aj.size + 1, dtype=Ap.dtype)
+    mask_sum[0] = 0
+    mask_sum[1:] = mask
+    cupy.cumsum(mask_sum, out=mask_sum)
+    Bp = mask_sum[Ap]
+    Bj = Aj[mask] - start
+    Bx = Ax[mask]
+    return Bx, Bj, Bp
+
+
 def _csr_indptr_to_coo_rows(nnz, Bp):
+    if Bp.dtype == cupy.int64:
+        # TODO(eriknw): cuSPARSE--remove when xcsr2coo supports int64
+        from cupyx.cusparse import _indptr_to_coo
+        return _indptr_to_coo(Bp, nnz=nnz)
+
     from cupy_backends.cuda.libs import cusparse
 
     out_rows = cupy.empty(nnz, dtype=numpy.int32)
@@ -346,16 +359,121 @@ class IndexMixin:
     """
 
     def __getitem__(self, key):
-
-        # For testing- Scipy >= 1.4.0 is needed to guarantee
-        # results match.
-        if scipy_available and numpy.lib.NumpyVersion(
-                scipy.__version__) < '1.4.0':
-            raise NotImplementedError(
-                "Sparse __getitem__() requires Scipy >= 1.4.0")
+        if self.ndim == 1:
+            return self._getitem_1d(key)
 
         row, col = self._parse_indices(key)
+        result = self._getitem_2d(row, col)
+        # For sparse *arrays*, an integer index reduces that axis: exactly
+        # one integer -> 1-D, both integers -> scalar (already handled by
+        # _get_intXint).  Matrices keep the legacy 2-D result.  scipy
+        # returns a 1-D COO array for the reduced result; route through COO
+        # (the only format that supports a 1-D shape -- CSC's reshape would
+        # otherwise raise).
+        if isinstance(self, sparray) and issparse(result):
+            row_int = isinstance(row, _int_scalar_types)
+            col_int = isinstance(col, _int_scalar_types)
+            if row_int != col_int:
+                length = result.shape[1] if row_int else result.shape[0]
+                result = result.tocoo().reshape((length,))
+        return result
 
+    def _normalize_1d_key(self, key):
+        """Split a 1-D index key into its real axis and new-axis counts.
+
+        Returns ``(real_key, none_before, none_after)``: ``real_key`` is
+        the single index applied to the one real axis (a full slice when
+        the key is only ``None`` / ``Ellipsis``), and ``none_before`` /
+        ``none_after`` count the ``None`` (new-axis) entries positioned
+        before/after that real axis.  Follows numpy semantics -- an
+        ``Ellipsis`` expands to the real axis, and a key with no explicit
+        index appends the axis at the end.  Raises ``IndexError`` for more
+        than one ``Ellipsis`` or more than one real index (matching
+        numpy/scipy), so it is shared by ``__getitem__`` and
+        ``__setitem__``.
+        """
+        if not isinstance(key, tuple):
+            key = (key,)
+        if sum(k is Ellipsis for k in key) > 1:
+            raise IndexError(
+                "an index can only have a single ellipsis ('...')")
+        reals = [k for k in key if k is not None and k is not Ellipsis]
+        if len(reals) > 1:
+            raise IndexError(
+                'too many indices for array: array is 1-dimensional, '
+                f'but {len(reals)} were indexed')
+        has_real = len(reals) == 1
+        none_before = none_after = 0
+        placed = False
+        for k in key:
+            if k is None:
+                if placed:
+                    none_after += 1
+                else:
+                    none_before += 1
+            elif k is Ellipsis:
+                # Ellipsis marks the real axis only when no explicit index
+                # does (there it stands for a full slice).
+                if not has_real:
+                    placed = True
+            else:
+                placed = True
+        return (reals[0] if has_real else slice(None)), none_before, none_after
+
+    def _getitem_1d_axis(self, key):
+        """Index the single real axis of a 1-D array via its (1, N) backing.
+
+        A slice / 1-D array key yields a 1-D result whose format is
+        preserved (matching scipy); an integer key yields a 0-D scalar; a
+        2-D integer array key gathers into a same-shaped 2-D result
+        (matching numpy/scipy).
+        """
+        backing = self._as_2d()
+        row, col = backing._parse_indices((0, key))
+        if isinstance(col, cupy.ndarray) and col.ndim == 2:
+            flat = backing._getitem_2d(0, col.ravel())
+            return self._squeeze_to_1d(flat).reshape(col.shape)
+        result = backing._getitem_2d(row, col)
+        if issparse(result):
+            return self._squeeze_to_1d(result)
+        return result
+
+    def _getitem_1d(self, key):
+        """Index a 1-D array.
+
+        Delegates the real axis to :meth:`_getitem_1d_axis`, then re-adds
+        any ``None`` (new-axis) entries.  An integer real key collapses the
+        axis to a scalar that each new axis wraps back up, staying in the
+        source format (matching scipy); a surviving real axis promoted by a
+        new axis becomes 2-D COO (the only 1-D->2-D sparse promotion, also
+        matching scipy).  cupy sparse is at most 2-D, so keys implying more
+        dimensions raise ``IndexError``.
+        """
+        real_key, none_before, none_after = self._normalize_1d_key(key)
+        base = self._getitem_1d_axis(real_key)
+
+        if none_before == 0 and none_after == 0:
+            return base
+
+        if not issparse(base):
+            # Integer key collapsed the real axis to a scalar.
+            n_axes = none_before + none_after
+            if n_axes == 1:
+                return type(self)(cupy.atleast_1d(base))
+            if n_axes == 2:
+                return type(self)(cupy.atleast_2d(base))
+            raise IndexError(
+                'Indexing that leads to more than 2 dimensions is not '
+                'supported')
+
+        if base.ndim != 1 or none_before + none_after > 1:
+            raise IndexError(
+                'Indexing that leads to more than 2 dimensions is not '
+                'supported')
+        n = base.shape[0]
+        return base.reshape((1, n) if none_before else (n, 1))
+
+    def _getitem_2d(self, row, col):
         # Dispatch to specialized methods.
         if isinstance(row, _int_scalar_types):
             if isinstance(col, _int_scalar_types):
@@ -390,7 +508,16 @@ class IndexMixin:
                 return self._get_columnXarray(row[:, 0], col.ravel())
 
         # The only remaining case is inner (fancy) indexing
-        row, col = cupy.broadcast_arrays(row, col)
+        try:
+            row, col = cupy.broadcast_arrays(row, col)
+        except ValueError as e:
+            # Match scipy 1.17: shape-mismatch on fancy indexing
+            # raises IndexError, not ValueError.
+            raise IndexError(
+                f'shape mismatch: indexing arrays could not be '
+                f'broadcast together with shapes {row.shape} '
+                f'{col.shape}'
+            ) from e
         if row.shape != col.shape:
             raise IndexError('number of row and column indices differ')
         if row.size == 0:
@@ -398,11 +525,30 @@ class IndexMixin:
         return self._get_arrayXarray(row, col)
 
     def __setitem__(self, key, x):
+        if self.ndim == 1:
+            # Assign on the (1, N) backing (column axis), then adopt the
+            # mutated arrays back onto this 1-D array.  ``None`` new-axis
+            # entries are size-1 broadcast axes that do not change which
+            # elements are addressed, so the shared key normalizer reduces
+            # the key to its real axis (also rejecting too-many-indices and
+            # multi-ellipsis keys, matching __getitem__ and numpy/scipy).
+            # A 1-D sparse RHS is promoted to its (1, N) backing so the 2-D
+            # assignment code (which reads x.shape[1]) sees a 2-D operand.
+            real_key, _, _ = self._normalize_1d_key(key)
+            if issparse(x) and x.ndim == 1:
+                x = x._as_2d()
+            self._apply_2d_inplace(lambda m: m.__setitem__((0, real_key), x))
+            return
         row, col = self._parse_indices(key)
 
         if isinstance(row, _int_scalar_types) and\
                 isinstance(col, _int_scalar_types):
-            x = cupy.asarray(x, dtype=self.dtype)
+            # A 1x1 sparse RHS (scipy/cupy sparse) is a valid scalar
+            # source -- densify it before checking size.
+            if issparse(x):
+                x = cupy.asarray(x.toarray(), dtype=self.dtype)
+            else:
+                x = cupy.asarray(x, dtype=self.dtype)
             if x.size != 1:
                 raise ValueError('Trying to assign a sequence to an item')
             self._set_intXint(row, col, x.flat[0])
@@ -424,7 +570,7 @@ class IndexMixin:
         if i.shape != j.shape:
             raise IndexError('number of row and column indices differ')
 
-        if isspmatrix(x):
+        if issparse(x):
             if i.ndim == 1:
                 # Inner indexing, so treat them like row vectors.
                 i = i[None]
@@ -459,9 +605,9 @@ class IndexMixin:
         row, col = _unpack_index(key)
 
         if self._is_scalar(row):
-            row = row.item()
+            row = row.item()  # synchronize!
         if self._is_scalar(col):
-            col = col.item()
+            col = col.item()  # synchronize!
 
         # Scipy calls sputils.isintlike() rather than
         # isinstance(x, _int_scalar_types). Comparing directly to int
@@ -495,32 +641,6 @@ class IndexMixin:
             raise IndexError('Index dimension must be <= 2')
 
         return x % length
-
-    def getrow(self, i):
-        """Return a copy of row i of the matrix, as a (1 x n) row vector.
-
-        Args:
-            i (integer): Row
-
-        Returns:
-            cupyx.scipy.sparse.spmatrix: Sparse matrix with single row
-        """
-        M, N = self.shape
-        i = _normalize_index(i, M, 'index')
-        return self._get_intXslice(i, slice(None))
-
-    def getcol(self, i):
-        """Return a copy of column i of the matrix, as a (m x 1) column vector.
-
-        Args:
-            i (integer): Column
-
-        Returns:
-            cupyx.scipy.sparse.spmatrix: Sparse matrix with single column
-        """
-        M, N = self.shape
-        i = _normalize_index(i, N, 'index')
-        return self._get_sliceXint(slice(None), i)
 
     def _get_intXint(self, row, col):
         raise NotImplementedError()
@@ -565,9 +685,10 @@ class IndexMixin:
         self._set_arrayXarray(row, col, x)
 
 
-def _try_is_scipy_spmatrix(index):
+def _try_is_scipy_sparse(index):
+    """True for any scipy.sparse object (matrix or array)."""
     if scipy_available:
-        return isinstance(index, scipy.sparse.spmatrix)
+        return scipy.sparse.issparse(index)
     return False
 
 
@@ -583,9 +704,9 @@ def _unpack_index(index):
           assumed to be all (e.g., [maj, :]).
     """
     # First, check if indexing with single boolean matrix.
-    if ((isinstance(index, (spmatrix, cupy.ndarray,
+    if ((isinstance(index, (_spbase, cupy.ndarray,
                             numpy.ndarray))
-         or _try_is_scipy_spmatrix(index))
+         or _try_is_scipy_sparse(index))
             and index.ndim == 2 and index.dtype.kind == 'b'):
         return index.nonzero()
 
@@ -611,7 +732,7 @@ def _unpack_index(index):
         elif idx.ndim == 2:
             return idx.nonzero()
     # Next, check for validity and transform the index as needed.
-    if isspmatrix(row) or isspmatrix(col):
+    if issparse(row) or issparse(col):
         # Supporting sparse boolean indexing with both row and col does
         # not work because spmatrix.ndim is always 2.
         raise IndexError(

@@ -42,27 +42,34 @@ class KernelCacheBackend(abc.ABC):
 
     @abc.abstractmethod
     def load(self, name: str) -> bytes | None:
-        """Load a cached kernel binary.
+        """Load a cached payload.
 
         Args:
             name (str): The cache key (filename) for the compiled kernel.
 
         Returns:
-            bytes or None: The cubin binary data (without hash prefix) if
-                found and valid, None otherwise.
+            bytes or None: The stored payload (without hash prefix) if found
+                and valid, None otherwise.
+
+        .. note::
+            Backends must treat the payload as opaque bytes. It is usually
+            the cubin verbatim, but for modules compiled with
+            ``name_expressions`` it also carries the mangled names NVRTC
+            produced; see ``cupy.cuda.compiler._cache_payload_magic``.
         """
         raise NotImplementedError
 
     @abc.abstractmethod
     def save(self, name: str, cubin: bytes, source: str) -> None:
-        """Save a compiled kernel binary to cache.
+        """Save a payload to cache.
 
         This method may perform I/O asynchronously to avoid blocking
         kernel execution.
 
         Args:
             name (str): The cache key (filename) for the compiled kernel.
-            cubin (bytes): The compiled kernel binary data.
+            cubin (bytes): The payload to store, to be treated as opaque
+                bytes; see :meth:`load`.
             source (str): The CUDA source code.
         """
         raise NotImplementedError
@@ -153,8 +160,18 @@ class DiskKernelCacheBackend(KernelCacheBackend):
         if not os.path.exists(path):
             return None
 
-        with open(path, 'rb') as file:
-            data = file.read()
+        try:
+            with open(path, 'rb') as file:
+                data = file.read()
+        except (PermissionError, FileNotFoundError):
+            # Race with a concurrent _write_encoded() replacing the same
+            # file (mirrors the tolerance in _write_encoded() itself): on
+            # Windows, os.replace() can transiently make the destination
+            # inaccessible to a concurrent reader, raising PermissionError;
+            # the file can also disappear between the os.path.exists()
+            # check above and the open() call. Treat both as a cache miss
+            # so the caller falls back to recompiling.
+            return None
 
         return self._decode_cubin(data)
 

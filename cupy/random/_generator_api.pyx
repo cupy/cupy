@@ -1,4 +1,4 @@
-from libc.stdint cimport intptr_t, uint64_t, int32_t, int64_t, uint32_t
+from libc.stdint cimport intptr_t, uint64_t, uint32_t
 from libc.string cimport memcpy
 
 import numpy
@@ -31,10 +31,10 @@ cdef extern from 'cupy_distributions.cuh' nogil:
         ssize_t size, intptr_t stream)
     void interval_32(
         int generator, intptr_t state, ssize_t state_size, intptr_t out,
-        ssize_t size, intptr_t stream, int32_t mx, int32_t mask)
+        ssize_t size, intptr_t stream, uint32_t mx, uint32_t mask)
     void interval_64(
         int generator, intptr_t state, ssize_t state_size, intptr_t out,
-        ssize_t size, intptr_t stream, int64_t mx, int64_t mask)
+        ssize_t size, intptr_t stream, uint64_t mx, uint64_t mask)
     void beta(
         int generator, intptr_t state, ssize_t state_size, intptr_t out,
         ssize_t size, intptr_t stream, intptr_t a, intptr_t b)
@@ -1165,7 +1165,11 @@ cdef class FeistelBijection:
         global _feistel_bijection_with_cutoff_kernel
         if _feistel_bijection_with_cutoff_kernel is None:
             _feistel_bijection_with_cutoff_kernel = cupy.RawKernel(rf'''
+            #if defined(__HIPCC_RTC__) || defined(__HIPCC__)
+            #include <stdint.h>
+            #else
             #include <cuda/std/cstdint>
+            #endif
 
             struct FeistelParams {{
                 uint64_t __R_bits_;

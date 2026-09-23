@@ -13,7 +13,8 @@ import re
 import tempfile
 import warnings
 
-from cupy._environment import get_cuda_path
+from cuda.pathfinder import find_nvidia_header_directory
+
 from cupy.cuda import cub
 from cupy import _util
 
@@ -62,14 +63,14 @@ def get_build_version():
 cpdef str get_cuda_version():
     # Read CUDART version from header if it exists, otherwise use NVRTC version
     # as a proxy.
-    cdef str cuda_path = get_cuda_path()
     cdef str cuda_ver = None
 
-    if cuda_path is not None:
+    include_dir = find_nvidia_header_directory('cudart')
+    if include_dir is not None:
         try:
             with open(
-                    os.path.join(cuda_path,
-                                 'include/cuda_runtime_api.h')) as f:
+                    os.path.join(include_dir,
+                                 'cuda_runtime_api.h')) as f:
                 hdr = f.read()
             m = re.search(r'#define CUDART_VERSION\s+([0-9]*)', hdr)
             if m:

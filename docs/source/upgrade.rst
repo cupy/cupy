@@ -133,9 +133,16 @@ The following versions are no longer supported in CuPy v14.
 * CUDA 11.x or earlier (CUDA 12.0 or later is now required)
 * Python 3.9 or earlier (Python 3.10 or later is now required)
 * NumPy 1.x (NumPy 2.0 or later is now required)
+* SciPy 1.13 or earlier (SciPy 1.14 or later is now required)
 * ROCm 6.x or earlier (ROCm 7.0 or later is now required)
 * NCCL 2.17 or earlier (NCCL 2.18 or later is now required)
 * cuSPARSELt 0.8.0 or earlier (cuSPARSELt 0.8.1 is now required)
+
+NumPy/SciPy Baseline API Update
+-------------------------------
+
+Baseline API has been bumped from NumPy 1.26 and SciPy 1.11 to NumPy 2.3 and SciPy 1.16.
+CuPy v14 will follow the upstream products' specifications of these baseline versions.
 
 Other API Changes
 -----------------
