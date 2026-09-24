@@ -13,25 +13,25 @@ from cupy import testing
 class TestFlags(unittest.TestCase):
 
     def setUp(self):
-        self.flags = flags.Flags(1, 2, 3)
+        self.flags = flags.Flags(1, 2, 0)
 
     def test_c_contiguous(self):
-        assert 1 == self.flags['C_CONTIGUOUS']
+        assert self.flags['C_CONTIGUOUS'] is True
 
     def test_f_contiguous(self):
-        assert 2 == self.flags['F_CONTIGUOUS']
+        assert self.flags['F_CONTIGUOUS'] is True
 
     def test_owndata(self):
-        assert 3 == self.flags['OWNDATA']
+        assert self.flags['OWNDATA'] is False
 
     def test_key_error(self):
         with self.assertRaises(KeyError):
             self.flags['unknown key']
 
     def test_repr(self):
-        assert '''  C_CONTIGUOUS : 1
-  F_CONTIGUOUS : 2
-  OWNDATA : 3''' == repr(self.flags)
+        assert '''  C_CONTIGUOUS : True
+  F_CONTIGUOUS : True
+  OWNDATA : False''' == repr(self.flags)
 
 
 @testing.parameterize(
