@@ -33,11 +33,20 @@ _cudart_static_libs = (
 # source file required to build the extension with appending '.pyx'
 # file extension.
 
-# TODO (XPU refactor broken cuda build)
+# Extension name -> sources.  A plain string means the Cython source sits at
+# ``<pkg>/<mod>.pyx``; a tuple means "build this module from the sources in the
+# list" (see ``cupy_setup_build.module_extension_sources``), which is how the
+# backend-specific implementations below are selected.  The two layouts are:
+#
+#   ``cupy/_core/*.pyx``        backend-neutral / shared (CUDA code paths live
+#                               in `IF CUPY_CANN_VERSION <= 0` blocks)
+#   ``cupy/_core/_gpu/*.pyx``   CUDA implementation of a shared interface
+#                               declared in ``cupy/_core/<name>.pxd``
+#
+# Ascend counterparts are listed in ``features/ascend.py`` (``ascend_files``).
 cuda_files = [
     'cupy.backends.cuda.api._driver_enum',  # JIT can be ignored
     'cupy.backends.cuda.api._runtime_enum',
-    'cupy.backends.cuda.api._device_prop',
     'cupy.backends.backend.api.driver',  # empty driver.pyx
     'cupy.backends.backend.api.runtime',
     'cupy.backends.cuda.libs.cublas',
@@ -55,6 +64,7 @@ cuda_files = [
     'cupy.xpu.pinned_memory',
     'cupy.xpu.function',
     'cupy.xpu.stream',
+    'cupy.xpu.graph',
     'cupy._core._carray',
     'cupy._core._dtype',
     'cupy._core._scalar',
@@ -63,29 +73,35 @@ cuda_files = [
     'cupy._core.internal',
     'cupy._core._memory_range',
     'cupy._core._optimize_config',
-    'cupy._core._gpu._accelerator',
-    'cupy._core._gpu._cub_reduction',
-    'cupy._core._gpu._fusion_kernel',
-    'cupy._core._gpu._fusion_thread_local',
-    'cupy._core._gpu._fusion_trace',
-    'cupy._core._gpu._fusion_variable',
-    'cupy._core._gpu.fusion',
-    'cupy._core._gpu.new_fusion',
-    'cupy._core._gpu._kernel',
-    'cupy._core._gpu._compile_with_cache',
+    ('cupy._core._accelerator', ['cupy/_core/_gpu/_accelerator.pyx']),
+    ('cupy._core._fusion_kernel', ['cupy/_core/_gpu/_fusion_kernel.pyx']),
+    ('cupy._core._fusion_thread_local',
+     ['cupy/_core/_gpu/_fusion_thread_local.pyx']),
+    ('cupy._core._fusion_trace', ['cupy/_core/_gpu/_fusion_trace.pyx']),
+    ('cupy._core._fusion_variable', ['cupy/_core/_gpu/_fusion_variable.pyx']),
+    ('cupy._core.fusion', ['cupy/_core/_gpu/fusion.pyx']),
+    ('cupy._core.new_fusion', ['cupy/_core/_gpu/new_fusion.pyx']),
+    ('cupy._core._kernel', ['cupy/_core/_gpu/_kernel.pyx']),
+    # Canonical module names: `cupy/_core/<name>.pxd` is the shared interface
+    # (a copy of the `_gpu/<name>.pxd` one), which is exactly what callers
+    # cimport (`from cupy._core._compile_with_cache cimport ...`).
+    ('cupy._core._compile_with_cache',
+     ['cupy/_core/_gpu/_compile_with_cache.pyx']),
+    ('cupy._core._cub_reduction', ['cupy/_core/_gpu/_cub_reduction.pyx']),
     ('cupy._core._reduction', ['cupy/_core/_gpu/_reduction.pyx']),
-    'cupy._core._routines_binary',  # TODO
-    'cupy._core._routines_creation',
-    'cupy._core._routines_indexing',
-    'cupy._core._routines_linalg',
-    'cupy._core._routines_logic',
-    'cupy._core._routines_manipulation',
-    'cupy._core._routines_math',
-    'cupy._core._routines_sorting',
-    'cupy._core._routines_statistics',
+    'cupy._core._routines_binary',
+    ('cupy._core._routines_creation', ['cupy/_core/_routines_creation.pyx']),
+    ('cupy._core._routines_indexing', ['cupy/_core/_routines_indexing.pyx']),
+    ('cupy._core._routines_linalg', ['cupy/_core/_gpu/_routines_linalg.pyx']),
+    ('cupy._core._routines_logic', ['cupy/_core/_routines_logic.pyx']),
+    ('cupy._core._routines_manipulation',
+     ['cupy/_core/_routines_manipulation.pyx']),
+    ('cupy._core._routines_math', ['cupy/_core/_gpu/_routines_math.pyx']),
+    ('cupy._core._routines_sorting', ['cupy/_core/_gpu/_routines_sorting.pyx']),
+    ('cupy._core._routines_statistics',
+     ['cupy/_core/_routines_statistics.pyx']),
     'cupy._core.numpy_allocator',
-    ('cupy._core.raw', ['cupy/_core/_gpu/raw_kernel_stub.pyx']),
-    'cupy.cuda.graph',
+    ('cupy._core.raw', ['cupy/_core/_gpu/raw.pyx']),
     'cupy.cuda.texture',
     'cupy.fft._cache',
     'cupy.fft._callback',

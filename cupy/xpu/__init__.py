@@ -10,13 +10,16 @@ from cupy._environment import get_rocm_path  # NOQA
 from cupy._environment import get_hipcc_path  # NOQA
 from cupy._environment import get_cann_path # NOQA
 
-#from cupy.backends.backend.runtime import is_ascend as _is_ascend
+# Ascend builds skip the CUDA/HIP-only device API (Function/Module/Graph/
+# MemoryAsyncPool).  The runtime module is backend-neutral and does not import
+# `cupy.xpu`, so this is safe to resolve at import time (see also the
+# `cupy.cuda` compatibility layer, which re-exports these names).
+from cupy.backends.backend.api.runtime import is_ascend as _is_ascend_fn
 
-_is_ascend = True # TODO: ASCEND get from env?
+_is_ascend = _is_ascend_fn()
+
 if not _is_ascend:
-    from cupy.xpu import compiler  # NOQA
     from cupy.xpu import function  # NOQA
-    from cupy.xpu import texture  # NOQA
 from cupy.xpu import device  # NOQA
 from cupy.xpu import memory  # NOQA
 from cupy.xpu import memory_hook  # NOQA

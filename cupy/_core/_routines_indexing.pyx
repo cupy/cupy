@@ -9,6 +9,12 @@ from cupy.exceptions import AxisError
 from cupy._core._kernel import ElementwiseKernel, _get_warpsize
 from cupy._core._ufuncs import elementwise_copy
 
+# Ascend-only aclnn dispatcher.  Every call site below sits in an
+# `IF CUPY_CANN_VERSION > 0` block, so a CUDA/HIP build must not even
+# cimport it (the Ascend extension module is not compiled there).
+IF CUPY_CANN_VERSION > 0:
+    from cupy.backends.ascend.api.acl_utils cimport launch_general_func
+
 # ---------------------------------------------------------------------------
 # Ascend 的 scatter dtype 门槛：aclnnScatterAdd 只支持
 # FLOAT16/FLOAT32/INT32/INT8/UINT8（aclnn_scatter_add.h:26-31），
@@ -46,7 +52,6 @@ from cupy._core cimport _routines_math as _math
 from cupy._core cimport _routines_manipulation as _manipulation
 from cupy._core.core cimport _ndarray_base
 from cupy._core cimport internal
-from cupy.backends.ascend.api.acl_utils cimport launch_general_func
 
 # _ndarray_base members
 

@@ -7,6 +7,7 @@
 extern "C" {
 
 bool hip_environment = false;
+bool ascend_environment = false;  // backend name: CUDA/HIP/stub
 
 #if CUDA_VERSION < 10010
 const int cudaErrorContextIsDestroyed = 709;

@@ -9,6 +9,11 @@ from cupy._core._carray cimport shape_t
 from cupy._core.core cimport _ndarray_base
 from cupy.xpu cimport memory
 
+# CUDA/HIP-only: texture objects do not exist on Ascend, where
+# `_ArgInfo.from_texture` below is compiled out.
+IF CUPY_CANN_VERSION <= 0:
+    from cupy.cuda cimport texture
+
 
 cdef class ParameterInfo:
     cdef:
@@ -24,7 +29,9 @@ cdef enum _ArgKind:
     ARG_KIND_INDEXER
     ARG_KIND_SCALAR
     ARG_KIND_POINTER
-    #ARG_KIND_TEXTURE
+    # Appended last so the values above stay stable on every backend; only the
+    # CUDA/HIP implementation actually produces this kind.
+    ARG_KIND_TEXTURE
 
 
 cdef class _ArgInfo:

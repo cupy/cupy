@@ -7,6 +7,7 @@
 extern "C" {
 
 bool hip_environment = true;
+bool ascend_environment = false;  // backend name: CUDA/HIP/stub
 
 // Error handling
 const char* cudaGetErrorName(cudaError_t hipError) {

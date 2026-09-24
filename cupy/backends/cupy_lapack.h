@@ -11,13 +11,10 @@
 
 #include "hip/cupy_rocsolver.h"
 
-#ifdef defined(CUPY_USE_ASCEND)
-// not sure if CANN support solver, leave it later
-//#include "ascend/cupy_ascend_solver.h"
-#include "stub/cupy_cusolver.h"  // gracefully give error message
-
 #else // #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
 
+// Ascend: CANN solver support is not wired up yet, the stub gives a clear
+// error message instead of a link failure.
 #include "stub/cupy_cusolver.h"
 
 #endif // #if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)

@@ -18,15 +18,17 @@ cpdef _ndarray_base matmul(
     _ndarray_base a, _ndarray_base b, _ndarray_base out=*)
 
 # --- Ascend-only aclnn-backed linalg helpers (see _ascend/_core) ---
-cpdef _ndarray_base _ascend_trace(_ndarray_base a, intptr_t offset)
+IF CUPY_CANN_VERSION > 0:
+    cpdef _ndarray_base _ascend_trace(_ndarray_base a, intptr_t offset)
 
-cpdef _ndarray_base _ascend_inv(_ndarray_base a)
+    cpdef _ndarray_base _ascend_inv(_ndarray_base a)
 
-cpdef _ndarray_base _ascend_tri(_ndarray_base a, intptr_t k, bint upper)
+    cpdef _ndarray_base _ascend_tri(_ndarray_base a, intptr_t k, bint upper)
 
-cpdef tuple _ascend_qr(_ndarray_base a, bint complete)
+    cpdef tuple _ascend_qr(_ndarray_base a, bint complete)
 
-cpdef tuple _ascend_svd(_ndarray_base a, bint full_matrices, bint compute_uv)
+    cpdef tuple _ascend_svd(
+        _ndarray_base a, bint full_matrices, bint compute_uv)
 
 
 cpdef enum:

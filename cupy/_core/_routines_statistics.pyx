@@ -15,7 +15,10 @@ from cupy._core cimport _accelerator
 from cupy._core cimport _routines_math as _math
 from cupy._core.core cimport _ndarray_base
 
-#from cupy.cuda import cub
+IF CUPY_CANN_VERSION <= 0:
+    # CUB-backed reductions; Ascend has no CUB (the call sites below are
+    # already inside `IF CUPY_CANN_VERSION <= 0` blocks).
+    from cupy.cuda import cub
 
 try:
     import cupy.backends.backend.libs.cutensor as cuda_cutensor

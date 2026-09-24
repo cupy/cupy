@@ -92,9 +92,15 @@ IF CUPY_USE_CUDA_PYTHON:
 
 ELSE:
     include "_runtime_typedef.pxi"
+    # `DeviceProp` (cudaDeviceProp) was split out of `_runtime_typedef.pxi` into
+    # the CUDA-specific tree; `_runtime_extern.pxi` still needs it.  Must come
+    # after `_runtime_typedef.pxi`, which declares the types it relies on.
+    include "../../cuda/api/_device_prop.pxi"
     IF CUPY_CANN_VERSION <= 0:
-        # cudaDevAttr has no coresponding in Ascend CANN
-        from cupy.backends.backend.api._runtime_enum cimport *
+        # cudaDevAttr has no coresponding in Ascend CANN.
+        # The CUDA-specific enums live in `cupy/backends/cuda/api/` (the
+        # `backend/` tree only holds the backend-abstract runtime/driver).
+        from cupy.backends.cuda.api._runtime_enum cimport *
     ELSE:
         cpdef enum:
             cudaCpuDeviceId = -1

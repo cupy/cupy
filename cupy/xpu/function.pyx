@@ -17,7 +17,11 @@ from cupy.backends.backend.api cimport driver
 from cupy.backends.backend.api cimport runtime
 from cupy.xpu cimport stream as stream_module
 from cupy.xpu.memory cimport MemoryPointer
-#from cupy.xpu.texture cimport TextureObject, SurfaceObject
+# NOTE: texture/surface objects are CUDA-only and are imported lazily inside
+# `_pointer()` (see below) instead of with a module-level cimport: importing
+# `cupy.cuda.texture` here would pull in `cupy.cuda` at module init, and that
+# compatibility layer re-exports this very module -- a cycle while `cupy.xpu`
+# is still being initialised.
 from cupy.xpu import device
 
 
@@ -116,6 +120,7 @@ cdef inline CPointer _pointer(x):
     if isinstance(x, CPointer):
         return x
     IF CUPY_CANN_VERSION <= 0:
+        from cupy.cuda.texture import TextureObject, SurfaceObject
         if isinstance(x, (TextureObject, SurfaceObject)):
             return CUIntMax(x.ptr)
     if isinstance(x, numpy.ndarray):

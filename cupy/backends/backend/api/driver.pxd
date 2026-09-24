@@ -27,7 +27,9 @@ IF CUPY_USE_CUDA_PYTHON:
 ELSE:
     include "_driver_typedef.pxi"
     IF CUPY_CANN_VERSION <= 0:
-        from cupy.backends.backend.api._driver_enum cimport *
+        # The CUDA-specific enums live in `cupy/backends/cuda/api/` (the
+        # `backend/` tree only holds the backend-abstract runtime/driver).
+        from cupy.backends.cuda.api._driver_enum cimport *
 
 
 ###############################################################################

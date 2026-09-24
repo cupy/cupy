@@ -49,7 +49,15 @@ def module_extension_sources(file, use_cython, no_cuda):
         others = others1
 
     if others:
-        return others # pyx is put in different places
+        # `others` has two meanings, told apart by their extensions:
+        #   * a Cython source replaces the pyx implied by the module name
+        #     (backend-specific implementations, e.g. `_gpu/x.pyx` for CUDA and
+        #     `_ascend/x.pyx` for Ascend -- the module name stays canonical);
+        #   * plain C/CUDA sources are compiled *in addition* to the pyx
+        #     (upstream convention, e.g. `cupy/cuda/cupy_cub.cu`).
+        if any(os.path.splitext(src)[1] == '.pyx' for src in others):
+            return others
+        return [pyx] + others
     else:
         return [pyx] # single pyx file as the module name
 
@@ -203,10 +211,13 @@ def preconfigure_modules(ctx: Context, MODULES, compiler, settings):
                 extra_compile_args=settings['extra_compile_args']):
             errmsg = ['Cannot link libraries: %s' % module['libraries'],
                       'Check your LDFLAGS environment variable.']
-        # elif not module.configure(compiler, settings):
-        #     # Fail on per-library condition check (version requirements etc.)
-        #     installed = True
-        #     errmsg = ['The library is installed but not supported.']
+        elif not module.configure(compiler, settings):
+            # Fail on per-library condition check (version requirements etc.)
+            # NOTE: this is what fills in `module._version` (e.g. the CUDA/CANN
+            # version) for every non-stub build, so it must run even when the
+            # feature sets its version in `__init__`.
+            installed = True
+            errmsg = ['The library is installed but not supported.']
         elif (module['name'] in ('thrust', 'cub', 'random')
                 and (nvcc_path is None and hipcc_path is None
                      and ascendcc is None)):
@@ -501,7 +512,11 @@ def make_extensions(ctx: Context, compiler, use_cython):
                 # user's environment (`source set_env.sh`, which exports
                 # `LD_LIBRARY_PATH`) plus the `$ORIGIN` entries below.
                 if backend_obj.embed_sdk_in_rpath:
-                    rpath += s_file['library_dirs']
+                    # `<cuda>/lib64/stubs` only holds link-time stubs (see
+                    # `CudaBackend.get_library_dirs`); the runtime library comes
+                    # from the driver, so keep the path out of DT_RUNPATH.
+                    rpath += [p for p in s_file['library_dirs']
+                              if os.path.basename(p.rstrip(os.sep)) != 'stubs']
                 else:
                     # Keep the directories reachable at build time only; the
                     # linker still needs `-L` (already in `library_dirs`), but

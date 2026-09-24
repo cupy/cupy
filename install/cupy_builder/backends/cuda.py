@@ -177,7 +177,17 @@ class CudaBackend(Backend):
             return []
         if build.PLATFORM_WIN32:
             return [os.path.join(sdk, 'bin'), os.path.join(sdk, 'lib', 'x64')]
-        return [os.path.join(sdk, 'lib64'), os.path.join(sdk, 'lib')]
+        dirs = [os.path.join(sdk, 'lib64'), os.path.join(sdk, 'lib')]
+        # A build machine may have the toolkit but no driver (no GPU), in which
+        # case `libcuda.so` only exists as the linker stub shipped with the
+        # toolkit.  The `jitify` feature links `-lcuda`, so the stub directory is
+        # needed for the build to work at all.  It is deliberately kept out of
+        # the RPATH (see `cupy_setup_build.make_extensions`): the real
+        # `libcuda.so.1` always comes from the installed driver at runtime.
+        stubs = os.path.join(sdk, 'lib64', 'stubs')
+        if os.path.isdir(stubs):
+            dirs.append(stubs)
+        return dirs
 
     def get_device_compile_args(self, ctx: Context, src: str) -> list[str]:
         compiler = self.get_device_compiler()

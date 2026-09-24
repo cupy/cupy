@@ -6,8 +6,12 @@ import warnings
 from cupy.backends.backend.api cimport runtime
 from cupy.exceptions import ComplexWarning
 
-# TODO: import can not been conditionally preprocessed
-from cupy.backends.ascend.api.acl_utils cimport numpy_dtype_to_acl_dtype
+# Ascend-only dependency: the aclnn dtype mapping lives in the Ascend backend
+# extension, which is not built for CUDA/HIP.  `IF` (compile-time) keeps the
+# cimport out of those builds; it is only referenced by the ELSE branch of
+# `to_cuda_dtype()` below, which is Ascend-only as well.
+IF CUPY_CANN_VERSION > 0:
+    from cupy.backends.ascend.api.acl_utils cimport numpy_dtype_to_acl_dtype
 
 cdef str all_type_chars = '?bhilqBHILQefdFD'
 # for c in '?bhilqBHILQefdFD':

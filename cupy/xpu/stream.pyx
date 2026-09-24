@@ -3,7 +3,10 @@ import threading
 from cupy.backends.backend.api cimport runtime
 from cupy.backends.backend cimport stream as backends_stream
 # TODO: ASCEND not impl yet
-#from cupy.xpu cimport graph
+IF CUPY_CANN_VERSION <= 0:
+    # Stream capture / graphs are CUDA-only (usage in `end_capture` below is
+    # guarded as well).
+    from cupy.xpu cimport graph
 
 from cupy import _util
 

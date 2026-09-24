@@ -15,14 +15,14 @@ from cupy._core._reduction import ReductionKernel  # NOQA
 from cupy.backends.backend.api import runtime
 if not runtime.is_ascend():
     # internal APIs for testing and development
-    from cupy._core._gpu._accelerator import set_elementwise_accelerators  # NOQA
-    from cupy._core._gpu._accelerator import set_reduction_accelerators  # NOQA
-    from cupy._core._gpu._accelerator import set_routine_accelerators  # NOQA
-    from cupy._core._gpu._accelerator import get_elementwise_accelerators  # NOQA
-    from cupy._core._gpu._accelerator import get_reduction_accelerators  # NOQA
-    from cupy._core._gpu._accelerator import get_routine_accelerators  # NOQA
+    from cupy._core._accelerator import set_elementwise_accelerators  # NOQA
+    from cupy._core._accelerator import set_reduction_accelerators  # NOQA
+    from cupy._core._accelerator import set_routine_accelerators  # NOQA
+    from cupy._core._accelerator import get_elementwise_accelerators  # NOQA
+    from cupy._core._accelerator import get_reduction_accelerators  # NOQA
+    from cupy._core._accelerator import get_routine_accelerators  # NOQA
 
-    from cupy._core._gpu import fusion  # NOQA
+    from cupy._core import fusion  # NOQA
     from cupy._core.raw import RawKernel  # NOQA
     from cupy._core.raw import RawModule  # NOQA
 else:

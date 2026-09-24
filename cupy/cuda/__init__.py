@@ -12,8 +12,9 @@ from cupy._environment import get_cann_path # NOQA
 from cupy.backends.backend.api.runtime import is_ascend
 
 if not is_ascend():
-    from cupy.xpu import compiler  # NOQA
-    from cupy.xpu import texture  # NOQA
+    # CUDA/HIP-only modules, still living under `cupy.cuda` (not `cupy.xpu`).
+    from cupy.cuda import compiler  # NOQA
+    from cupy.cuda import texture  # NOQA
 from cupy.xpu import function  # NOQA
 from cupy.xpu import device  # NOQA
 from cupy.xpu import memory  # NOQA
