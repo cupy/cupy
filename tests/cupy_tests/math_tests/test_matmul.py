@@ -432,8 +432,7 @@ class TestMatmul16Bit(unittest.TestCase):
             pytest.skip('16-bit tensor cores are not available')
 
         if self.dtype_name == 'bfloat16':
-            if (numpy.lib.NumpyVersion(numpy.__version__) < '2.1.2'
-                    or cupy.cuda.get_local_runtime_version() < 12020):
+            if cupy.cuda.get_local_runtime_version() < 12020:
                 pytest.skip('bfloat16 is not supported')
             ml_dtypes = pytest.importorskip('ml_dtypes')
             self.dtype = numpy.dtype(ml_dtypes.bfloat16)
