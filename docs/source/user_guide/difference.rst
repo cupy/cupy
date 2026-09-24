@@ -55,6 +55,9 @@ NumPy handles them by raising an error, but CuPy wraps around them.
   >>> x
   array([10, 10,  2])
 
+A non-empty selection from an empty array raises :class:`IndexError` instead
+of wrapping. Empty selections remain valid.
+
 
 Duplicate values in indices
 ---------------------------
