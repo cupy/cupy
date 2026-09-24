@@ -97,6 +97,12 @@ def copyto(dst, src, casting='same_kind', where=None):
         return
 
     if src_is_scalar:
+        from cupy.backends.backend.api.runtime import is_ascend
+        if is_ascend():
+            # ASCEND: elementwise_copy(cupy_copy -> ascend_copy kernel)
+            # does not deal scalar (REVERSE_SCALAR_BINARY_OP)
+            # convert to 0D array/tensor, so can use tensor copy/cast
+            src = _core.array(src, dtype=dst.dtype)
         _core.elementwise_copy(src, dst)
         return
 
