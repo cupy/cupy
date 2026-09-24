@@ -27,6 +27,9 @@ if not runtime.is_ascend():
     from cupy._core.raw import RawModule  # NOQA
 else:
     from cupy._core._ascend import fusion_stub as fusion
+    # 共享代码还引用 `cupy._core.new_fusion`（cupy.get_array_module 里的
+    # `_core.new_fusion._ArrayProxy`）；Ascend 下同样指向 fusion_stub。
+    from cupy._core._ascend import fusion_stub as new_fusion  # NOQA
     from cupy._core.raw import RawKernel  # NOQA
     from cupy._core.raw import RawModule  # NOQA
     _fusion_thread_local = fusion
