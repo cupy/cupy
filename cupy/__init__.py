@@ -8,12 +8,23 @@ import numpy as _numpy
 from cupy import _environment
 from cupy import _version
 
-# module alias to keep compatible for cupy.cuda code
+# Module alias to keep compatible for cupy.cuda code
 from cupy import backends as cupy_backends
 _sys.modules["cupy_backends"] = cupy_backends
 _sys.modules.pop('cupy_backends.cuda', None)
 from cupy.backends import backend as xpu_backend
 _sys.modules["cupy_backends.cuda"] = xpu_backend
+
+# `cupy_backends/` used to be a single tree; it is now split in two
+# (`cupy/backends/backend/` for the backend-abstract runtime/driver/stream and
+# `cupy/backends/cuda/` for the CUDA specifics), so the *sub*-paths below have
+# to be aliased explicitly.  Registering the real module objects (instead of
+# relying on package paths) keeps module identity intact, i.e.
+# `cupy_backends.cuda.libs.cublas is cupy.backends.cuda.libs.cublas`.
+from cupy.backends.backend import api as _xpu_backend_api
+from cupy.backends.cuda import libs as _cuda_backend_libs
+_sys.modules["cupy_backends.cuda.api"] = _xpu_backend_api
+_sys.modules["cupy_backends.cuda.libs"] = _cuda_backend_libs
 
 # CANN 的 libop_common.so 引用了三个 ge:: 错误串辅助函数
 # (GetViewErrorCodeStr / TypeUtils::FormatToSerialString /
