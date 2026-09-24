@@ -1268,9 +1268,9 @@ cdef class _ndarray_base:
             if isinstance(other, numpy.ndarray) and other.ndim == 0:
                 other = other.item()  # Workaround for numpy<1.13
             if op == 0:
-                return numpy.less(self, other)
+                return cupy.less(self, other)
             if op == 1:
-                return numpy.less_equal(self, other)
+                return cupy.less_equal(self, other)
             if op == 2:
                 # cupy.ndarray does not support dtype=object, but
                 # allow comparison with None, Ellipsis, and etc.
@@ -1279,7 +1279,7 @@ cdef class _ndarray_base:
                     # ndarray. With object's default __eq__, it never
                     # equals to an element of cupy.ndarray.
                     return cupy.zeros(self._shape, dtype=cupy.bool_)
-                return numpy.equal(self, other)
+                return cupy.equal(self, other)
             if op == 3:
                 if (
                     type(other).__eq__ is object.__eq__
@@ -1287,11 +1287,11 @@ cdef class _ndarray_base:
                 ) or other is None:
                     # Similar to eq, but ne falls back to `not __eq__`.
                     return cupy.ones(self._shape, dtype=cupy.bool_)
-                return numpy.not_equal(self, other)
+                return cupy.not_equal(self, other)
             if op == 4:
-                return numpy.greater(self, other)
+                return cupy.greater(self, other)
             if op == 5:
-                return numpy.greater_equal(self, other)
+                return cupy.greater_equal(self, other)
         return NotImplemented
 
     # Truth value of an array (bool):
@@ -1337,7 +1337,7 @@ cdef class _ndarray_base:
         elif _should_use_rop(x, y):
             return NotImplemented
         else:
-            return numpy.add(x, y)
+            return cupy.add(x, y)
 
     def __sub__(x, y):
         if isinstance(y, ndarray):
@@ -1345,7 +1345,7 @@ cdef class _ndarray_base:
         elif _should_use_rop(x, y):
             return NotImplemented
         else:
-            return numpy.subtract(x, y)
+            return cupy.subtract(x, y)
 
     def __mul__(x, y):
         if isinstance(y, ndarray):
@@ -1353,7 +1353,7 @@ cdef class _ndarray_base:
         elif _should_use_rop(x, y):
             return NotImplemented
         else:
-            return numpy.multiply(x, y)
+            return cupy.multiply(x, y)
 
     def __matmul__(x, y):
         if isinstance(y, ndarray):
@@ -1361,7 +1361,7 @@ cdef class _ndarray_base:
         elif _should_use_rop(x, y):
             return NotImplemented
         else:
-            return numpy.matmul(x, y)
+            return cupy.matmul(x, y)
 
     def __div__(x, y):
         if isinstance(y, ndarray):
@@ -1369,7 +1369,7 @@ cdef class _ndarray_base:
         elif _should_use_rop(x, y):
             return NotImplemented
         else:
-            return numpy.divide(x, y)
+            return cupy.divide(x, y)
 
     def __truediv__(x, y):
         if isinstance(y, ndarray):
@@ -1377,7 +1377,7 @@ cdef class _ndarray_base:
         elif _should_use_rop(x, y):
             return NotImplemented
         else:
-            return numpy.true_divide(x, y)
+            return cupy.true_divide(x, y)
 
     def __floordiv__(x, y):
         if isinstance(y, ndarray):
@@ -1385,7 +1385,7 @@ cdef class _ndarray_base:
         elif _should_use_rop(x, y):
             return NotImplemented
         else:
-            return numpy.floor_divide(x, y)
+            return cupy.floor_divide(x, y)
 
     def __mod__(x, y):
         if isinstance(y, ndarray):
@@ -1393,7 +1393,7 @@ cdef class _ndarray_base:
         elif _should_use_rop(x, y):
             return NotImplemented
         else:
-            return numpy.remainder(x, y)
+            return cupy.remainder(x, y)
 
     def __divmod__(x, y):
         if isinstance(y, ndarray):
@@ -1401,7 +1401,7 @@ cdef class _ndarray_base:
         elif _should_use_rop(x, y):
             return NotImplemented
         else:
-            return numpy.divmod(x, y)
+            return cupy.divmod(x, y)
 
     def __pow__(x, y, modulo):
         # Note that we ignore the modulo argument as well as NumPy.
@@ -1410,7 +1410,7 @@ cdef class _ndarray_base:
         elif _should_use_rop(x, y):
             return NotImplemented
         else:
-            return numpy.power(x, y)
+            return cupy.power(x, y)
 
     def __lshift__(x, y):
         if isinstance(y, ndarray):
@@ -1418,7 +1418,7 @@ cdef class _ndarray_base:
         elif _should_use_rop(x, y):
             return NotImplemented
         else:
-            return numpy.left_shift(x, y)
+            return cupy.left_shift(x, y)
 
     def __rshift__(x, y):
         if isinstance(y, ndarray):
@@ -1426,7 +1426,7 @@ cdef class _ndarray_base:
         elif _should_use_rop(x, y):
             return NotImplemented
         else:
-            return numpy.right_shift(x, y)
+            return cupy.right_shift(x, y)
 
     def __and__(x, y):
         if isinstance(y, ndarray):
@@ -1434,7 +1434,7 @@ cdef class _ndarray_base:
         elif _should_use_rop(x, y):
             return NotImplemented
         else:
-            return numpy.bitwise_and(x, y)
+            return cupy.bitwise_and(x, y)
 
     def __or__(x, y):
         if isinstance(y, ndarray):
@@ -1442,7 +1442,7 @@ cdef class _ndarray_base:
         elif _should_use_rop(x, y):
             return NotImplemented
         else:
-            return numpy.bitwise_or(x, y)
+            return cupy.bitwise_or(x, y)
 
     def __xor__(x, y):
         if isinstance(y, ndarray):
@@ -1450,7 +1450,7 @@ cdef class _ndarray_base:
         elif _should_use_rop(x, y):
             return NotImplemented
         else:
-            return numpy.bitwise_xor(x, y)
+            return cupy.bitwise_xor(x, y)
 
     # Arithmetic, in-place:
 
