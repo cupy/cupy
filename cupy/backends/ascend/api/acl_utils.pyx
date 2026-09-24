@@ -1590,7 +1590,7 @@ cdef aclError launch_reduction_op_raw(str opname, sequence ins, sequence outs, o
     #   出的 out dtype），或做成算子声明表在 C++ 侧统一处理。
     if opname in _BOOL_CAST_INPUT_OPS and ins:
         a0 = ins[0]
-        if isinstance(a0, _ndarray_base) and a0.dtype.char in 'FDd':
+        if isinstance(a0, _ndarray_base) and a0.dtype.kind in 'fc':
             ins = [a0.astype('?')] + list(ins[1:])
 
 

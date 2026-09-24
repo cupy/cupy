@@ -141,12 +141,19 @@ cdef _ndarray_base _ndarray_mean(
         elif self.dtype.char == 'e':
             dtype_sum = numpy.float32
             dtype_out = numpy.float16
-        # Upstream CUDA only reaches `_mean` through the accelerator loop's
-        # `for ... else`; here the loop lives in the `elif` branch below, so the
-        # fallback has to be explicit -- without it `result` stays unbound and
-        # `mean()` raises UnboundLocalError whenever `dtype is None`.
-        result = _mean(
-            self, axis=axis, dtype=dtype_sum, out=out, keepdims=keepdims)
+        IF CUPY_CANN_VERSION > 0:
+            # ASCEND: aclnnMean() sum integer will not promote sum_result  to float before division
+            # methed 1: sum(integer), may overflow, then cast sum_result scalar float -> divide
+            # method 2: cast integer to float (slower but robust), so impl here
+            result = _mean(
+                self.asdtype(dtype_sum), axis=axis, dtype=None, out=out, keepdims=keepdims)
+        ELSE:
+            # Upstream CUDA only reaches `_mean` through the accelerator loop's
+            # `for ... else`; here the loop lives in the `elif` branch below, so the
+            # fallback has to be explicit -- without it `result` stays unbound and
+            # `mean()` raises UnboundLocalError whenever `dtype is None`.
+            result = _mean(
+                self, axis=axis, dtype=dtype_sum, out=out, keepdims=keepdims)
     elif numpy.dtype(dtype).kind in 'iub':
         # output will be the requested type, but compute the mean using float
         dtype_out = dtype
@@ -464,6 +471,11 @@ cpdef _ndarray_base _median(
         indexer[axis] = slice(index-1, index+1)
     indexer = tuple(indexer)
 
+    IF CUPY_CANN_VERSION > 0:
+        # ASCEND: `_mean` has no dtype promotion for create_reduction_func()
+        # int should be cast to float, after view is made contiguous
+        if _sel.dtype.kind in 'iub':
+            _sel = cupy.ascontiguousarray(_sel).astype(numpy.float64)
     out = _mean(
         part[indexer], axis=axis, dtype=None, out=out, keepdims=keepdims)
 
@@ -472,9 +484,10 @@ cpdef _ndarray_base _median(
             # ASCEND: `_exists_nan` is not registered as reduction kernel
             # out = isnan + any
             # ASCEND TODO: find a way to export this kernel
-            isnan = cupy.any(cupy.isnan(part), axis=axis, keepdims=keepdims)
-            tnan = out.dtype.type(numpy.nan)
-            out = cupy.where(isnan, tnan, out)
+            #isnan = cupy.any(cupy.isnan(part), axis=axis, keepdims=keepdims)
+            #tnan = out.dtype.type(numpy.nan)
+            #out = cupy.where(isnan, tnan, out)
+            pass # TODO: issue still not solved
         ELSE:
             isnan = _exists_nan(part, axis=axis, keepdims=keepdims)
             tnan = out.dtype.type(numpy.nan)
