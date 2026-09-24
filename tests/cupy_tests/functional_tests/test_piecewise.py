@@ -119,3 +119,11 @@ class TestPiecewise(unittest.TestCase):
         funclist = [-10, lambda x: -x, 10, lambda x: x]
         with pytest.raises(NotImplementedError):
             cupy.piecewise(x, condlist, funclist)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_piecewise_condition_boolean_list(self, xp, dtype):
+        x = xp.array([0, 0], dtype=dtype)
+        condlist = [True, False]
+        funclist = [1, 2]
+        return xp.piecewise(x, condlist, funclist)
