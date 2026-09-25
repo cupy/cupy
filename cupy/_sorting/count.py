@@ -23,6 +23,15 @@ def count_nonzero(a, axis=None):
         in the array is returned.
     """
 
+    try:
+        from cupy.backends.backend.api.runtime import is_ascend
+        import numpy
+        import cupy
+        if is_ascend():
+            # ASCEND: `_count_nonzero` is not registered
+            return cupy.sum((a != 0).astype(numpy.intp), axis=axis) 
+    except ImportError:
+        pass
     return _count_nonzero(a, axis=axis)
 
 
