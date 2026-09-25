@@ -59,5 +59,19 @@ def piecewise(x, condlist, funclist):
                 'Callable functions are not supported currently')
         if isinstance(func, cupy.ndarray):
             func = func.astype(x.dtype)
-        _piecewise_krnl(condition, func, out)
+    try:
+        from cupy.backends.backend.api.runtime import is_ascend
+        if is_ascend():
+            # ASCEND: `_piecewise_kernel` (ElementwiseKernel) is not
+            # registered; compose from already-dispatched ops instead:
+            # out = out*(~cond) + func*cond
+            cond = cupy.asarray(condition).astype(bool, copy=False)
+            value = func if isinstance(func, cupy.ndarray) \
+                else out.dtype.type(func)
+            out = out * ~cond + value * cond
+            return out
+    except ImportError:
+        pass
+
+    _piecewise_krnl(condition, func, out)
     return out
