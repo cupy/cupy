@@ -94,6 +94,16 @@ def norm(x, ord=None, axis=None, keepdims=False):
             # special case for speedup
             return abs(x).sum(axis=axis, keepdims=keepdims)
         elif ord is None or ord == 2:
+            try:
+                from cupy.backends.backend.api.runtime import is_ascend
+                if is_ascend():
+                    # ASCEND _norm_ord2 not registered, impl it using cupy APIs
+                    sq = x * x
+                    s = sq.sum(axis=axis, keepdims=keepdims)
+                    return cupy.sqrt(s)
+            except ImportError:
+                pass
+
             # special case for speedup
             if x.dtype.kind == 'c':
                 return _norm_ord2_complex(x, axis=axis, keepdims=keepdims)
