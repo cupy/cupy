@@ -50,30 +50,39 @@ _nccl_records = []
 library_records = {}
 
 
-def _make_cutensor_url(platform, filename):
+def _make_cutensor_url(platform_arch, filename):
     # https://developer.download.nvidia.com/compute/cutensor/redist/libcutensor/windows-x86_64/libcutensor-windows-x86_64-2.4.1.4_cuda13-archive.zip
+    # https://developer.download.nvidia.com/compute/cutensor/redist/libcutensor/linux-sbsa/libcutensor-linux-sbsa-2.4.1.4_cuda13-archive.tar.xz
     return (
         'https://developer.download.nvidia.com/compute/cutensor/' +
-        f'redist/libcutensor/{platform}-x86_64/{filename}')
+        f'redist/libcutensor/{platform_arch}/{filename}')
 
 
 def __make_cutensor_record(
         cuda_version, public_version, min_pypi_version,
-        filename_linux, filename_windows):
+        filename_linux_x86_64, filename_linux_sbsa, filename_windows):
+    linux_filenames = [
+        'libcutensor.so.{}'.format(public_version),
+        'libcutensorMg.so.{}'.format(public_version),
+    ]
     return {
         'cuda': cuda_version,
         'cutensor': public_version,
         'min_pypi_version': min_pypi_version,
         'assets': {
             'Linux:x86_64': {
-                'url': _make_cutensor_url('linux', filename_linux),
-                'filenames': [
-                    'libcutensor.so.{}'.format(public_version),
-                    'libcutensorMg.so.{}'.format(public_version),
-                ],
+                'url': _make_cutensor_url(
+                    'linux-x86_64', filename_linux_x86_64),
+                'filenames': linux_filenames,
+            },
+            'Linux:aarch64': {
+                'url': _make_cutensor_url(
+                    'linux-sbsa', filename_linux_sbsa),
+                'filenames': linux_filenames,
             },
             'Windows:x86_64': {
-                'url': _make_cutensor_url('windows', filename_windows),
+                'url': _make_cutensor_url(
+                    'windows-x86_64', filename_windows),
                 'filenames': ['cutensor.dll', 'cutensorMg.dll'],
             },
         }
@@ -89,6 +98,7 @@ def _make_cutensor_record(cuda_version):
     return __make_cutensor_record(
         cuda_version, '2.4.1', '2.3.0',
         f'libcutensor-linux-x86_64-2.4.1.4_cuda{cuda_major}-archive.tar.xz',
+        f'libcutensor-linux-sbsa-2.4.1.4_cuda{cuda_major}-archive.tar.xz',
         f'libcutensor-windows-x86_64-2.4.1.4_cuda{cuda_major}-archive.zip',
     )
 
@@ -129,9 +139,9 @@ def _make_nccl_record(
 
 # https://docs.nvidia.com/deeplearning/nccl/release-notes/overview.html
 _nccl_records.append(_make_nccl_record(
-    '13.x', '2.27.7', '2.27.7', '2.27.7',
-    'nccl_2.27.7-1+cuda13.0_x86_64.txz',
-    'nccl_2.27.7-1+cuda13.0_aarch64.txz'))
+    '13.x', '2.30.7', '2.30.7', '2.27.7',
+    'nccl_2.30.7-1+cuda13.3_x86_64.txz',
+    'nccl_2.30.7-1+cuda13.3_aarch64.txz'))
 _nccl_records.append(_make_nccl_record(
     '12.x', '2.25.1', '2.25.1', '2.18.1',
     'nccl_2.25.1-1+cuda12.8_x86_64.txz',
@@ -158,11 +168,10 @@ def _unpack_archive(filename, extract_dir):
 
 
 def install_lib(cuda, prefix, library, arch):
-    if library == 'nccl' and arch in ('x86_64', 'aarch64'):
-        pass  # Supported
-    elif arch != 'x86_64':
-        raise RuntimeError('''
-Currently this tool only supports x86_64 or aarch64 architecture for NCCL.''')
+    if arch not in ('x86_64', 'aarch64'):
+        raise RuntimeError(
+            f'Unsupported architecture: {arch}. '
+            'Supported: x86_64, aarch64.')
     record = None
     lib_records = library_records
     for record in lib_records[library]:

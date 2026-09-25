@@ -18,7 +18,7 @@ jobs:
       uses: actions/setup-python@v5
       id: setup-python
       with:
-        python-version: '3.10'
+        python-version: '3.12'
 
     - name: Setup cache
       uses: actions/cache@v4
@@ -40,8 +40,8 @@ jobs:
     - name: Type Check
       run: |
         # TODO: Test against various NumPy/SciPy versions.
-        pip install 'numpy==2.0.*' 'scipy==1.14.*'
-        pip install 'mypy==1.5.*' 'types-setuptools==57.4.14' 'pytest>=7.2'
+        pip install 'numpy==2.3.*' 'scipy==1.16.*'
+        pip install 'mypy==2.3.*' 'types-setuptools==57.4.14' 'pytest>=7.2'
         sed -i s/error::cupy.exceptions./error::numpy.exceptions./ pyproject.toml  # Because no cupy here. See cupy#8346
         pytest -v tests/typing_tests/test_typing.py
 
@@ -61,14 +61,18 @@ jobs:
       with:
         python-version: '3.12'
 
-    - name: Setup cache
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache
-        key: build-cuda-${{ github.sha }}
-        restore-keys: |
-          build-cuda-${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
-          build-cuda-
+    # Temporarily disabled: every run saves a fresh ~385 MB ~/.cache entry
+    # keyed on the merge SHA (build-cuda-<sha>), crowding the GHA Cache
+    # budget that the sccache-backed wheel builds rely on. A follow-up PR
+    # will rework the keying before re-enabling.
+    # - name: Setup cache
+    #   uses: actions/cache@v4
+    #   with:
+    #     path: ~/.cache
+    #     key: build-cuda-${{ github.sha }}
+    #     restore-keys: |
+    #       build-cuda-${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+    #       build-cuda-
 
     - name: Setup ccache
       run: |
@@ -124,4 +128,4 @@ jobs:
     - name: Build & Test
       run: |
         # Note: "-complete" Docker image variants exceeds disk size on GitHub hosted runners.
-        docker run --rm -v "${PWD}:/src" -w /src "rocm/dev-ubuntu-22.04:7.1.1" bash .github/workflows/scripts/pretest-rocm-test.sh
+        docker run --rm -v "${PWD}:/src" -w /src "rocm/dev-ubuntu-22.04:7.14.0-full" bash .github/workflows/scripts/pretest-rocm-test.sh

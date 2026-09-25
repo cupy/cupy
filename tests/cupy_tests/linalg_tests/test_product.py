@@ -9,6 +9,7 @@ import pytest
 
 import cupy
 from cupy import testing
+from cupy.testing._helper import skip_if_after_baseline
 
 
 @testing.parameterize(*testing.product({
@@ -116,6 +117,7 @@ class TestCrossProduct(unittest.TestCase):
 class TestCrossProductDeprecated(unittest.TestCase):
     @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'])
     @testing.numpy_cupy_allclose()
+    @skip_if_after_baseline(numpy="2.5", reason="deprecation finalized.")
     def test_cross(self, xp, dtype_a, dtype_b):
         if dtype_a == dtype_b == numpy.bool_:
             # cross does not support bool-bool inputs.
@@ -646,6 +648,34 @@ class TestLinalgMatmul2D:
         a = testing.shaped_random(shape_a, xp, dtype)
         b = testing.shaped_random(shape_b, xp, dtype)
         return xp.linalg.matmul(a, b)
+
+
+class TestLinalgTensordot:
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_default_axes(self, xp, dtype):
+        x1 = testing.shaped_arange((2, 3, 4), xp, dtype)
+        x2 = testing.shaped_arange((3, 4, 5), xp, dtype)
+        return xp.linalg.tensordot(x1, x2)
+
+    @pytest.mark.parametrize('axes', [
+        0,
+        1,
+        ([1, 2], [0, 1]),
+        ([-1, -2], [-2, -3]),
+    ])
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_axes(self, xp, dtype, axes):
+        x1 = testing.shaped_arange((2, 3, 3), xp, dtype)
+        x2 = testing.shaped_arange((3, 3, 5), xp, dtype)
+        return xp.linalg.tensordot(x1, x2, axes=axes)
+
+    def test_is_cupy_tensordot(self):
+        # `cupy.linalg.tensordot` is just the Array API compatible location
+        # for `cupy.tensordot`, so the two are the same object.
+        assert cupy.linalg.tensordot is cupy.tensordot
 
 
 class TestLinalgMatrixTranspose:

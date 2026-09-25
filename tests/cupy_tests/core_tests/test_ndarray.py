@@ -118,6 +118,50 @@ class TestNdarrayInit(unittest.TestCase):
 
 @testing.parameterize(
     *testing.product({
+        'np_order': ['C', 'F'],
+        'np_pinned': [False, True],
+        'pinned_alloc_fails': [False, True],
+        'cp_setup': [
+            ('C', False, (48, 16, 4)),
+            ('C', True, (16, 4)),
+            ('F', False, (4, 8, 24)),
+            ('F', True, (4, 8)),
+        ]
+    })
+)
+class TestAsarray(unittest.TestCase):
+    @pytest.mark.thread_unsafe(reason="mutates global pinned allocator.")
+    def test_asarray(self):
+        cp_order, view, strides = self.cp_setup
+        shape = (2, 3, 4)
+        if self.np_pinned:
+            count = numpy.prod(shape)
+            dtype = numpy.float32()
+            pinned_ptr = cupy.cuda.alloc_pinned_memory(count * dtype.itemsize)
+            a_cpu = numpy.frombuffer(
+                pinned_ptr, dtype=dtype, count=count).reshape(shape)
+        else:
+            a_cpu = numpy.ndarray(
+                shape, dtype=numpy.float32, order=self.np_order)
+        a_cpu[...] = numpy.arange(a_cpu.size).reshape(a_cpu.shape)
+        if view:
+            a_cpu = a_cpu[:, 1, :]
+        try:
+            if self.pinned_alloc_fails:
+                cupy.cuda.set_pinned_memory_allocator(lambda _: None)
+            a = cupy.asarray(a_cpu, order=cp_order)
+        finally:
+            # None means "no pool", not "the default pool"
+            cupy.cuda.set_pinned_memory_allocator(
+                cupy.get_default_pinned_memory_pool().malloc)
+        assert a.flags.c_contiguous == (cp_order == 'C')
+        assert a.flags.f_contiguous == (cp_order == 'F')
+        assert a.strides == strides
+        testing.assert_array_equal(a_cpu, a)
+
+
+@testing.parameterize(
+    *testing.product({
         'shape': [(), (1,), (1, 2), (1, 2, 3)],
         'order': ['C', 'F'],
         'dtype': [
@@ -256,6 +300,9 @@ class TestNdarrayCopy:
                     b, numpy.array([0, 0], dtype=numpy.uint64))
 
 
+@pytest.mark.filterwarnings(
+    # Shape setting is deprecated starting NumPy 2.5
+    'ignore:Setting the shape on a NumPy:DeprecationWarning')
 class TestNdarrayShape(unittest.TestCase):
 
     @testing.numpy_cupy_array_equal()
@@ -504,14 +551,38 @@ class TestNdarrayTakeErrorShapeMismatch(unittest.TestCase):
     {'shape': (3, 4, 5), 'indices': (2, 3), 'out_shape': (2, 3)},
     {'shape': (), 'indices': (), 'out_shape': ()}
 )
-class TestNdarrayTakeErrorTypeMismatch(unittest.TestCase):
+class TestNdarrayTakeTypeMismatch(unittest.TestCase):
+    # NOTE(seberg): Historically cupy was always fully restrictive
+    # while NumPy was just wrong: https://github.com/numpy/numpy/pull/30615
+    # As of CuPy 14.2, CuPy uses 2.5+ (future) behavior.
 
-    def test_output_type_mismatch(self):
+    @testing.with_requires('numpy>=2.5')
+    @testing.numpy_cupy_array_equal()
+    # incorrectly given by numpy (presumably until Deprecation is finalized)
+    @pytest.mark.filterwarnings('ignore::numpy.exceptions.ComplexWarning')
+    def test_output_dtype_same_kind_ok(self, xp):
+        # After NumPy 2.5, NumPy gets the cast safety right, the following
+        # is OK under same-kind casting rules.
+        a = testing.shaped_arange(self.shape, xp, numpy.int64)
+        i = testing.shaped_arange(self.indices, xp, numpy.int32) % 3
+        results = []
+        for out_dtype in (numpy.complex64, numpy.int32):
+            o = testing.shaped_arange(self.out_shape, xp, out_dtype)
+            results.append(wrap_take(a, i, out=o))
+        return results
+
+    @pytest.mark.filterwarnings(
+        'error:Implicit casting of output dtype:DeprecationWarning')
+    def test_output_dtype_unsafe_rejected(self):
         for xp in (numpy, cupy):
-            a = testing.shaped_arange(self.shape, xp, numpy.int32)
+            a = testing.shaped_arange(self.shape, xp, numpy.float32)
             i = testing.shaped_arange(self.indices, xp, numpy.int32) % 3
-            o = testing.shaped_arange(self.out_shape, xp, numpy.float32)
-            with pytest.raises(TypeError):
+            o = testing.shaped_arange(self.out_shape, xp, numpy.int32)
+            # As of NumPy 2.5 this is a deprecation warning, but CuPy never
+            # allowed it (so no deprecation required)
+            if xp is numpy and not testing.numpy_satisfies('>=2.5'):
+                continue
+            with pytest.raises((TypeError, DeprecationWarning)):
                 wrap_take(a, i, out=o)
 
 

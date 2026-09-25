@@ -26,7 +26,7 @@ gammaln = _core.create_ufunc(
     Returns:
         cupy.ndarray: Values of ``gammaln`` at x.
 
-    .. seealso:: :data:`scipy.special.gammaln`
+    .. seealso:: :func:`scipy.special.gammaln`
 
     """)
 

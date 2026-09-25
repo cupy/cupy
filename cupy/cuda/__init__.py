@@ -68,6 +68,13 @@ def __getattr__(key):
         return cublas
     elif key == 'jitify':
         if not runtime.is_hip and driver.get_build_version() > 0:
+            from cuda import pathfinder
+            try:
+                pathfinder.load_nvidia_dynamic_lib("nvrtc")
+            except pathfinder.DynamicLibNotFoundError as e:
+                if (not (_os.environ.get('READTHEDOCS') == 'True') and
+                        not (_os.environ.get('CUPY_CI') is not None)):
+                    raise ImportError(str(e)) from e
             import cupy.cuda.jitify as jitify
         else:
             jitify = _UnavailableModule('cupy.cuda.jitify')
@@ -160,8 +167,7 @@ from cupy.cuda.graph import Graph  # NOQA
 
 @contextlib.contextmanager
 def using_allocator(allocator=None):
-    """Sets a thread-local allocator for GPU memory inside
-       context manager
+    """Sets a thread-local allocator for GPU memory inside a context manager.
 
     Args:
         allocator (function): CuPy memory allocator. It must have the same

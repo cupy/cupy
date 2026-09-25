@@ -353,7 +353,8 @@ class TestHistogram(unittest.TestCase):
 @unittest.skipUnless(cupy.cuda.cub.available, 'The CUB routine is not enabled')
 class TestCubHistogram(unittest.TestCase):
     @pytest.fixture(autouse=True, scope='class')
-    def setup(self):
+    @classmethod
+    def setup(cls):
         old_accelerators = _accelerator.get_routine_accelerators()
         _accelerator.set_routine_accelerators(['cub'])
         yield

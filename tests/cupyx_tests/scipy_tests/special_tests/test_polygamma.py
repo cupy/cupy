@@ -5,6 +5,7 @@ import unittest
 
 from cupy import testing
 import cupyx.scipy.special  # NOQA
+from cupyx_tests.scipy_tests.special_tests import match_scipy_float32
 import numpy
 import pytest
 
@@ -21,7 +22,8 @@ class TestPolygamma(unittest.TestCase):
 
         a = testing.shaped_arange((2, 3), xp, dtype)
         b = testing.shaped_arange((2, 3), xp, dtype)
-        return scp.special.polygamma(a, b)
+        out = scp.special.polygamma(a, b)
+        return match_scipy_float32(out, xp, dtype, float16_only=True)
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-3, rtol=1e-3, scipy_name='scp')
@@ -32,7 +34,8 @@ class TestPolygamma(unittest.TestCase):
         b = numpy.linspace(-30, 30, 1000, dtype=dtype)
         a = xp.asarray(a)
         b = xp.asarray(b)
-        return scp.special.polygamma(a, b)
+        out = scp.special.polygamma(a, b)
+        return match_scipy_float32(out, xp, dtype, float16_only=True)
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-2, rtol=1e-3, scipy_name='scp')
@@ -59,4 +62,5 @@ class TestPolygamma(unittest.TestCase):
         b = xp.asarray(b)
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
-            return scp.special.polygamma(a, b)
+            out = scp.special.polygamma(a, b)
+        return match_scipy_float32(out, xp, dtype, float16_only=True)

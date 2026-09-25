@@ -4,6 +4,7 @@ import unittest
 
 import cupy
 from cupy import testing
+from cupyx_tests.scipy_tests.special_tests import match_scipy_float32
 import cupyx.scipy.special  # NOQA
 
 
@@ -16,7 +17,8 @@ class TestSpecial:
         import scipy.special  # NOQA
 
         a = testing.shaped_arange((2, 3), xp, dtype)
-        return getattr(scp.special, name)(a)
+        out = getattr(scp.special, name)(a)
+        return match_scipy_float32(out, xp, dtype)
 
     def test_j0(self):
         self.check_unary('j0')
@@ -79,7 +81,8 @@ class TestFusionSpecial(unittest.TestCase):
         def f(x):
             return getattr(scp.special, name)(x)
 
-        return f(a)
+        out = f(a)
+        return match_scipy_float32(out, xp, dtype)
 
     def test_j0(self):
         self.check_unary('j0')
@@ -134,4 +137,5 @@ class TestFusionSpecial(unittest.TestCase):
             return _k0 + _k0e + _k1 + _k1e + _rgamma
 
         a = xp.linspace(-10, 10, 50, dtype=dtype).reshape((2, -1))
-        return fused(a)
+        out = fused(a)
+        return match_scipy_float32(out, xp, dtype)

@@ -261,7 +261,7 @@ def _wraps_partial(wrapped, *names):
     return decorator
 
 
-def _wraps_partial_xp(wrapped, name, sp_name, scipy_name):
+def _wraps_partial_xp(wrapped, name, sp_name=None, scipy_name=None):
     names = [name, sp_name, scipy_name]
     names = [n for n in names if n is not None]
     return _wraps_partial(wrapped, *names)
@@ -1245,8 +1245,8 @@ def for_contiguous_axes(name='axis'):
     def decorator(impl):
         @_wraps_partial(impl, name)
         def test_func(self, *args, **kw):
-            ndim = len(self.shape)
-            order = self.order
+            ndim = len(kw['shape'])
+            order = kw['order']
             for i in range(ndim):
                 a = ()
                 if order in ('c', 'C'):
@@ -1262,7 +1262,7 @@ def for_contiguous_axes(name='axis'):
                     impl(self, *args, **kw)
                 except Exception:
                     print(name, 'is', a, ', ndim is', ndim, ', shape is',
-                          self.shape, ', order is', order)
+                          kw['shape'], ', order is', order)
                     raise
         return test_func
     return decorator

@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import os
 import tempfile
+from unittest import mock
+
+import pytest
 
 from cupy.cuda._compiler_cache import (
     DiskKernelCacheBackend,
@@ -122,3 +125,35 @@ class TestDiskKernelCacheBackend:
             name = 'test.cubin'
             backend._write_encoded(name, backend._encode_cubin(cubin))
             assert backend.load(name) == cubin
+
+    @pytest.mark.thread_unsafe(reason="uses mock.patch")
+    def test_write_encoded_tolerates_concurrent_replace_permission_error(
+        self,
+    ):
+        """Test _write_encoded swallows a racing os.replace() error."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            backend = DiskKernelCacheBackend(cache_dir=tmpdir)
+            with mock.patch(
+                'cupy.cuda._compiler_cache.os.replace',
+                side_effect=PermissionError,
+            ):
+                # Should not raise.
+                backend._write_encoded('test.cubin', b'data')
+
+    @pytest.mark.parametrize(
+        'open_error', [PermissionError, FileNotFoundError])
+    @pytest.mark.thread_unsafe(reason="uses mock.patch")
+    def test_load_tolerates_concurrent_replace_errors(self, open_error):
+        """Test load treats a racing open() error as a cache miss."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            backend = DiskKernelCacheBackend(cache_dir=tmpdir)
+            name = 'test.cubin'
+            backend._write_encoded(name, backend._encode_cubin(b'cubin'))
+
+            with mock.patch(
+                'cupy.cuda._compiler_cache.open',
+                side_effect=open_error,
+                create=True,
+            ):
+                result = backend.load(name)
+            assert result is None

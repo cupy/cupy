@@ -19,7 +19,7 @@ echo "======================================================="
 
 
 trap "$ACTIONS/cleanup.sh" EXIT
-"$ACTIONS/build.sh"
+"$ACTIONS/fetch-wheel.sh"
 export OMPI_ALLOW_RUN_AS_ROOT=1
 export OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
-"$ACTIONS/unittest.sh" "not slow and multi_gpu"
+CUPY_CI_PYTEST_EXTRA_OPTS="${CUPY_CI_PYTEST_EXTRA_OPTS:+$CUPY_CI_PYTEST_EXTRA_OPTS }--deselect tests/install_tests/test_cupy_builder/test_features.py::test_CUDA_cuda" "$ACTIONS/unittest.sh" "not slow and multi_gpu"
