@@ -242,18 +242,22 @@ def det(a):
         cupy.ndarray: Determinant of ``a``. Its shape is ``a.shape[:-2]``.
 
     .. note::
-        On the Ascend backend this falls back to NumPy on the host, because
-        CANN (aclnn and ops-blas) has no LU/determinant routine. See
+        On the Ascend backend real-valued inputs run on the NPU through
+        aclnnSlogdet (``det = sign * exp(logdet)``); complex/other dtypes
+        fall back to NumPy on the host. See
         :mod:`cupy._core._ascend.cpu_fallback`.
 
     .. seealso:: :func:`numpy.linalg.det`
     """
     from cupy.backends.backend.api.runtime import is_ascend
     if is_ascend():
-        from cupy._core._ascend import cpu_fallback
         _util._assert_stacked_2d(a)
         _util._assert_stacked_square(a)
-        return cpu_fallback.call('linalg.det', a)
+        if a.dtype.kind in 'fc':
+            sign, logdet = slogdet(a)
+            return sign * cupy.exp(logdet)
+        # integer/bool inputs: compute in float64 like numpy does
+        return det(a.astype(numpy.float64, copy=False))
 
     sign, logdet = slogdet(a)
     return sign * cupy.exp(logdet)
@@ -316,8 +320,9 @@ def slogdet(a):
         singular inputs, set the `linalg` configuration to `raise`.
 
     .. note::
-        On the Ascend backend this falls back to NumPy on the host, because
-        CANN (aclnn and ops-blas) has no LU/determinant routine. See
+        On the Ascend backend real float32/float64 inputs run on the NPU
+        through aclnnSlogdet; complex and other dtypes fall back to NumPy on
+        the host (CANN 9.0.1's aclnnSlogdet is real-valued only). See
         :mod:`cupy._core._ascend.cpu_fallback`.
 
     .. seealso:: :func:`numpy.linalg.slogdet`
@@ -327,6 +332,17 @@ def slogdet(a):
 
     from cupy.backends.backend.api.runtime import is_ascend
     if is_ascend():
+        if a.dtype.kind == 'f' and a.dtype in (numpy.float32, numpy.float64):
+            shape = a.shape[:-2]
+            if a.size == 0:
+                # empty matrices: det([[]]) == 1, like the CUDA path
+                sign = cupy.ones(shape, a.dtype)
+                return sign, cupy.zeros(shape, a.dtype)
+            sign = cupy.empty(shape, a.dtype)
+            logdet = cupy.empty(shape, a.dtype)
+            from cupy.backends.ascend.api.acl_utils import py_launch_general
+            py_launch_general('ascend_slogdet', (a,), (sign, logdet), (), {})
+            return sign, logdet
         from cupy._core._ascend import cpu_fallback
         return cpu_fallback.call('linalg.slogdet', a)
 
