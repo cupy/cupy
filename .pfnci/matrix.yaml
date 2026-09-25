@@ -7,10 +7,10 @@
   target: "cuda120"
   tags: ["@push", "full", "mini", "linux", "cuda120"]
   system: "linux"
-  os: "ubuntu:20.04"
+  os: "ubuntu:22.04"
   cuda: "12.0"
   rocm: null
-  nccl: "2.17"
+  nccl: "2.18"
   cutensor: "2.4"
   cusparselt: null
   python: "3.10"
@@ -39,7 +39,7 @@
   target: "cuda121"
   tags: ["@nightly", "full", "linux", "cuda121"]
   system: "linux"
-  os: "ubuntu:20.04"
+  os: "ubuntu:22.04"
   cuda: "12.1"
   rocm: null
   nccl: "2.17"
@@ -71,7 +71,7 @@
   target: "cuda122"
   tags: ["@nightly", "full", "linux", "cuda122"]
   system: "linux"
-  os: "ubuntu:20.04"
+  os: "ubuntu:22.04"
   cuda: "12.2"
   rocm: null
   nccl: "2.18"
@@ -103,7 +103,7 @@
   target: "cuda123"
   tags: ["@nightly", "full", "linux", "cuda123"]
   system: "linux"
-  os: "ubuntu:20.04"
+  os: "ubuntu:22.04"
   cuda: "12.3"
   rocm: null
   nccl: "2.19"
@@ -135,7 +135,7 @@
   target: "cuda124"
   tags: ["@nightly", "full", "linux", "cuda124"]
   system: "linux"
-  os: "ubuntu:20.04"
+  os: "ubuntu:22.04"
   cuda: "12.4"
   rocm: null
   nccl: "2.20"
@@ -167,7 +167,7 @@
   target: "cuda125"
   tags: ["@nightly", "full", "linux", "cuda125"]
   system: "linux"
-  os: "ubuntu:20.04"
+  os: "ubuntu:22.04"
   cuda: "12.5"
   rocm: null
   nccl: "2.21"
@@ -199,7 +199,7 @@
   target: "cuda126"
   tags: ["@nightly", "full", "linux", "cuda126"]
   system: "linux"
-  os: "ubuntu:20.04"
+  os: "ubuntu:24.04"
   cuda: "12.6"
   rocm: null
   nccl: "2.22"
@@ -231,7 +231,7 @@
   target: "cuda128"
   tags: ["@nightly", "full", "linux", "cuda128"]
   system: "linux"
-  os: "ubuntu:20.04"
+  os: "ubuntu:24.04"
   cuda: "12.8"
   rocm: null
   nccl: "2.26"
@@ -263,7 +263,7 @@
   target: "cuda129"
   tags: ["@push", "full", "mini", "linux", "cuda129"]
   system: "linux"
-  os: "ubuntu:20.04"
+  os: "ubuntu:24.04"
   cuda: "12.9"
   rocm: null
   nccl: "2.26"
@@ -297,7 +297,7 @@
   target: "cuda130"
   tags: ["@push", "full", "mini", "linux", "cuda130"]
   system: "linux"
-  os: "ubuntu:22.04"
+  os: "ubuntu:24.04"
   cuda: "13.0"
   rocm: null
   nccl: "2.28"
@@ -329,7 +329,7 @@
   target: "cuda131"
   tags: ["@nightly", "full", "linux", "cuda131"]
   system: "linux"
-  os: "ubuntu:22.04"
+  os: "ubuntu:24.04"
   cuda: "13.1"
   rocm: null
   nccl: "2.28"
@@ -361,7 +361,7 @@
   target: "cuda132"
   tags: ["@nightly", "full", "linux", "cuda132"]
   system: "linux"
-  os: "ubuntu:22.04"
+  os: "ubuntu:24.04"
   cuda: "13.2"
   rocm: null
   nccl: "2.29"
@@ -393,7 +393,7 @@
   target: "cuda133"
   tags: ["@nightly", "full", "linux", "cuda133"]
   system: "linux"
-  os: "ubuntu:22.04"
+  os: "ubuntu:24.04"
   cuda: "13.3"
   rocm: null
   nccl: "2.30"
@@ -426,7 +426,7 @@
   target: "cuda134"
   tags: ["@push", "full", "mini", "linux", "cuda134"]
   system: "linux"
-  os: "ubuntu:22.04"
+  os: "ubuntu:24.04"
   cuda: "13.4"
   rocm: null
   nccl: "2.31"
@@ -516,7 +516,7 @@
   target: "cuda-slow"
   tags: ["slow", "linux"]
   system: "linux"
-  os: "ubuntu:20.04"
+  os: "ubuntu:24.04"
   cuda: "12.9"
   rocm: null
   nccl: "2.27"
@@ -548,7 +548,7 @@
   target: "cuda-example"
   tags: ["@push", "full", "mini", "linux", "example"]
   system: "linux"
-  os: "ubuntu:20.04"
+  os: "ubuntu:24.04"
   cuda: "12.9"
   rocm: null
   nccl: "2.27"
@@ -580,7 +580,7 @@
   wheel: false
   tags: ["head", "linux"]
   system: "linux"
-  os: "ubuntu:20.04"
+  os: "ubuntu:24.04"
   cuda: "12.9"
   rocm: null
   nccl: "2.27"
@@ -612,7 +612,7 @@
   wheel: false
   tags: ["@push", "full", "mini", "linux", "cuda-python"]
   system: "linux"
-  os: "ubuntu:20.04"
+  os: "ubuntu:24.04"
   cuda: "12.9"
   rocm: null
   nccl: "2.26"
@@ -642,7 +642,7 @@
   wheel: false
   tags: ["@push", "full", "mini", "linux", "cuda-python"]
   system: "linux"
-  os: "ubuntu:22.04"
+  os: "ubuntu:24.04"
   cuda: "13.4"
   rocm: null
   nccl: "2.31"
