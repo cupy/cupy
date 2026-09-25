@@ -4,6 +4,14 @@ import cupy
 from cupy import _core
 
 
+def _is_ascend():
+    try:
+        from cupy.backends.backend.api.runtime import is_ascend
+        return is_ascend()
+    except ImportError:
+        return False
+
+
 def tile(A, reps):
     """Construct an array by repeating A the number of times given by reps.
 
@@ -33,6 +41,17 @@ def tile(A, reps):
     if d < c.ndim:
         tup = (1,) * (c.ndim - d) + tup
     shape_out = tuple(s * t for s, t in zip(c.shape, tup))
+    if _is_ascend():
+        # aclnnRepeat (ascend_repeat) implements torch.Tensor.repeat, which
+        # matches np.tile; len(reps) == c.ndim is guaranteed by the ndmin
+        # padding above. This replaces the reshape+elementwise_copy
+        # composition (and needs no aclnn_resize/repeat_interleave).
+        from cupy.backends.ascend.api.acl_utils import py_launch_general
+        ret = cupy.empty(shape_out, dtype=c.dtype)
+        if ret.size == 0:
+            return ret
+        py_launch_general('ascend_repeat', (c,), (ret,), (tup,), {})
+        return ret
     if c.size == 0:
         return cupy.empty(shape_out, dtype=c.dtype)
     c_shape = []
