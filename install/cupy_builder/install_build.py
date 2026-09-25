@@ -216,6 +216,9 @@ def get_compiler_setting(ctx: Context, use_hip):
         _thrust_path = os.path.join(cupy_header, 'cupy/_cccl/thrust')
         _libcudacxx_path = os.path.join(cupy_header, 'cupy/_cccl/libcudacxx')
     include_dirs.insert(0, cupy_header)
+    # for "cupy_public_c_api.h"
+    include_dirs.insert(0, os.path.join(
+        cupy_builder.get_context().source_root, 'cupy/include'))
     include_dirs.insert(0, _cub_path)
     if _thrust_path and _libcudacxx_path:
         include_dirs.insert(0, _thrust_path)
