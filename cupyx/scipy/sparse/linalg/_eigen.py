@@ -29,7 +29,8 @@ def _default_v0(n, dtype, rs=None):
 
 
 def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
-          tol=0, return_eigenvectors=True):
+          tol=0, sigma=None, OPinv=None, return_eigenvectors=True,
+          _reseed_bias=True):
     """
     Find ``k`` eigenvalues and eigenvectors of the real symmetric square
     matrix or complex Hermitian matrix ``A``.
@@ -44,10 +45,21 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
             :class:`cupyx.scipy.sparse.linalg.LinearOperator`.
         k (int): The number of eigenvalues and eigenvectors to compute. Must be
             ``1 <= k < n``.
-        which (str): 'LM' or 'LA' or 'SA'.
+        which (str): 'LM', 'LA', 'SA' or 'SM'.
             'LM': finds ``k`` largest (in magnitude) eigenvalues.
             'LA': finds ``k`` largest (algebraic) eigenvalues.
             'SA': finds ``k`` smallest (algebraic) eigenvalues.
+            'SM': finds ``k`` smallest (in magnitude) eigenvalues, through
+            shift-invert about 0 (plain Lanczos does not converge to the
+            smallest / interior eigenvalues). The shift is nudged slightly
+            below 0, so a singular positive-semidefinite ``a`` (a graph
+            Laplacian, say) still factorizes. ``a`` must be a sparse matrix
+            or a dense array, or ``OPinv`` must be supplied. Cannot be
+            combined with ``sigma``.
+            When ``sigma`` is given, ``which`` selects among the transformed
+            values ``1 / (w - sigma)``, as in SciPy: 'LM' gives the ``k``
+            eigenvalues nearest ``sigma``, 'LA' the ``k`` nearest from
+            above, 'SA' the ``k`` nearest from below.
 
         v0 (ndarray): Starting vector for iteration. If ``None``, a
             pseudo-random unit vector drawn from a fixed seed is used, so
@@ -60,6 +72,16 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
             If ``None``, default value is used.
         tol (float): Tolerance for residuals ``||Ax - wx||``. If ``0``, machine
             precision is used.
+        sigma (float or complex): If not ``None``, find eigenvalues near
+            ``sigma`` using shift-invert mode: the Lanczos iteration is run
+            on ``(A - sigma * I)^{-1}`` and the values are mapped back by
+            ``w = sigma + 1 / w_inv``. ``A`` must then be a sparse matrix or
+            a dense array (so that ``A - sigma * I`` can be factorized)
+            unless ``OPinv`` is given.
+        OPinv (LinearOperator): Operator applying ``(A - sigma * I)^{-1}``,
+            used in shift-invert mode instead of factorizing
+            ``A - sigma * I``. Required when ``sigma`` is given and ``A`` is
+            not sparse.
         return_eigenvectors (bool): If ``True``, returns eigenvectors in
             addition to eigenvalues.
 
@@ -101,15 +123,94 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
     n = a.shape[0]
     if a.ndim != 2 or a.shape[0] != a.shape[1]:
         raise ValueError('expected square matrix (shape: {})'.format(a.shape))
+
+    if which == 'SM':
+        if sigma is not None:
+            # SciPy gives which='SM' a different meaning together with
+            # sigma (smallest magnitude of the *transformed* values); refuse
+            # the combination rather than silently pick one reading.
+            raise ValueError("which='SM' cannot be combined with sigma; pass "
+                             "sigma alone to find the eigenvalues near it")
+        # Smallest magnitude == nearest 0: shift-invert about 0, selecting
+        # the largest transformed values. The shift itself is set below,
+        # once the operator scale is known.
+        sigma = 0
+        which = 'LM'
+        auto_shift = True
+    else:
+        auto_shift = False
+
+    if sigma is not None:
+        # Shift-invert mode. Run the Lanczos iteration on the operator
+        # OPinv = (A - sigma * I)^{-1}: the eigenvalues of A nearest sigma
+        # become the largest-magnitude eigenvalues of OPinv, so they are well
+        # separated; eigenvectors are shared and eigenvalues map back by
+        # w = sigma + 1 / w_inv. `which` applies to the transformed values,
+        # as in scipy.sparse.linalg.eigsh.
+        from cupyx.scipy.sparse import identity as _identity
+        from cupyx.scipy.sparse import issparse as _issparse
+        from cupyx.scipy.sparse.linalg._solve import splu as _splu
+        from cupyx.scipy.sparse.linalg._interface import LinearOperator as _LO
+        if OPinv is None:
+            mat = a.A if isinstance(a, _interface.MatrixLinearOperator) else a
+            if not (_issparse(mat) or isinstance(mat, cupy.ndarray)):
+                raise TypeError(
+                    "shift-invert mode requires a sparse matrix or a dense "
+                    "array 'a' (to factorize A - sigma*I), or an explicit "
+                    "OPinv operator for (A - sigma*I)^-1")
+            if auto_shift:
+                # A shift exactly at 0 makes A - sigma*I singular whenever A
+                # is (graph Laplacians, Gram matrices of rank-deficient
+                # data) and the factorization fails on the very inputs
+                # 'SM' is most used for. Nudge it below 0 by sqrt(eps) on
+                # the operator scale: far too small to change which
+                # eigenvalues are nearest, large enough to keep the LU
+                # away from the singularity.
+                vals = mat.data if _issparse(mat) else mat
+                scale = float(cupy.abs(vals).max()) if vals.size else 0.0
+                sigma = -float(numpy.sqrt(numpy.finfo(a.dtype).eps)) * (
+                    scale if scale > 0.0 else 1.0)
+            if _issparse(mat):
+                shifted = mat - sigma * _identity(n, dtype=a.dtype,
+                                                  format='csc')
+                solve = _splu(shifted.tocsc()).solve
+            else:
+                from cupyx.scipy.linalg import lu_factor, lu_solve
+                lu_piv = lu_factor(mat - sigma * cupy.eye(n, dtype=a.dtype))
+
+                def solve(b, lu_piv=lu_piv):
+                    return lu_solve(lu_piv, b)
+            OPinv = _LO((n, n), matvec=solve, dtype=a.dtype)
+        elif not isinstance(OPinv, _LO):
+            OPinv = _interface.aslinearoperator(OPinv)
+        # (A - sigma*I)^{-1} is nonsingular by construction, so the
+        # breakdown-reseed bias (one extra operator application per reseed)
+        # would cost a triangular solve and buy nothing: switch it off.
+        ret = eigsh(OPinv, k=k, which=which, v0=v0, ncv=ncv, maxiter=maxiter,
+                    tol=tol, return_eigenvectors=return_eigenvectors,
+                    _reseed_bias=False)
+        w_inv, x = ret if return_eigenvectors else (ret, None)
+        w = (sigma + 1.0 / w_inv).real.astype(a.dtype.char.lower())
+        if return_eigenvectors:
+            order = cupy.argsort(w)
+            return w[order], x[:, order]
+        # Eigenvalues only: SciPy returns which='SM' in descending magnitude
+        # and a sigma-mode result ascending (checked on 1.13, 1.16, 1.18).
+        if auto_shift:
+            order = cupy.argsort(cupy.abs(w))[::-1]
+        else:
+            order = cupy.argsort(w)
+        return w[order]
+
     if a.dtype.char not in 'fdFD':
         raise TypeError('unsupprted dtype (actual: {})'.format(a.dtype))
     if k <= 0:
         raise ValueError('k must be greater than 0 (actual: {})'.format(k))
     if k >= n:
         raise ValueError('k must be smaller than n (actual: {})'.format(k))
-    if which not in ('LM', 'LA', 'SA'):
-        raise ValueError('which must be \'LM\',\'LA\'or\'SA\' (actual: {})'
-                         ''.format(which))
+    if which not in ('LM', 'LA', 'SA', 'SM'):
+        raise ValueError('which must be \'LM\', \'LA\', \'SA\' or \'SM\' '
+                         '(actual: {})'.format(which))
     if ncv is None:
         ncv = min(max(2 * k, k + 32), n - 1)
     else:
@@ -168,7 +269,7 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
     # Restart-reseed bias (see _restart_ortho): pull reseeds out of the
     # operator's null space -- except for 'SA', where the smallest
     # (possibly zero) eigenvalues are the ones being sought.
-    bias_op = a if which != 'SA' else None
+    bias_op = a if (which != 'SA' and _reseed_bias) else None
     la_shift = (which == 'LA')
 
     # Lanczos iteration
@@ -770,10 +871,9 @@ def _eigsh_solve_ritz(alpha, beta, beta_k, k, which):
         idx = numpy.argsort(w)
         wk = w[idx[:k]]
         sk = s[:, idx[:k]]
-    # elif which == 'SM':  #dysfunctional
-    #   idx = cupy.argsort(abs(w))
-    #   wk = w[idx[:k]]
-    #   sk = s[:,idx[:k]]
+    # 'SM' (smallest magnitude) is handled in eigsh() via shift-invert at
+    # sigma = 0; plain-Lanczos Ritz selection does not converge to the
+    # smallest / interior eigenvalues, so it is intentionally not done here.
     # wk is already on the host here; handing it back lets the caller
     # test for degeneracy without paying a device sync.
     return cupy.array(wk), cupy.array(sk), wk
