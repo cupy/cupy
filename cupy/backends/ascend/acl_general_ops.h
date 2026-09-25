@@ -79,6 +79,7 @@
 // manipulation op:  sort select take put
 #include "aclnnop/aclnn_take.h"
 #include "aclnnop/aclnn_put.h"
+#include "aclnnop/aclnn_index_put_impl.h"  // ndarray.put via aclnnIndexPutImpl
 
 #include "aclnnop/aclnn_flip.h"
 #include "aclnnop/aclnn_roll.h"
@@ -672,28 +673,97 @@
             ins[0], ins[1], outs[0]);
     }
 
-    // choose
-    // numpy.take_along_axis(arr, indices, axis=-1)
-
-    // ElementwiseKernel('raw T a, S indices, uint32 ldim, uint32 cdim, uint32 rdim, int64 index_range', 'T out'
-    // axis=None, out=None, mode='raise',  there is _take_scalar_kernel, will not be supported
+    // numpy.take(a, indices, axis=None) — the FLAT case only.
+    //
+    // aclnnTakeGetWorkspaceSize(const aclTensor* self, const aclTensor* index,
+    //                           aclTensor* out, ...)
+    // Per aclnn_take.h, aclnnTake *treats self as a 1-D array* and gathers:
+    //     out[i] = self[index[i]],  out shape == index shape
+    // It is NOT take_along_axis and has no axis/mode parameter. Takes along
+    // an inner axis are composed with aclnnGather on the Cython side
+    // (`_take` in cupy/_core/_routines_indexing.pyx, Ascend branch) instead.
+    //
+    // ins  = [a, indices], outs = [out]
+    // args = [ldim, cdim, rdim, index_range] (the CUDA kernel's axis
+    //        arithmetic, ignored here), kwargs take priority.
+    // cupy's take wraps out-of-range indices (`indices % index_range` in the
+    // CUDA kernel); the Cython caller normalizes them before dispatch, so
+    // aclnnTake never sees a negative index.
     aclError aclop_Take(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
-        const aclTensor* self = ins[0];
-        if (ins.size() == 2) {
-            return aclIrregularOpRun(aclnnTakeGetWorkspaceSize, aclnnTake, stream,
-                self, ins[1], outs[0]);
-        } else {
-            std::cout << "Error:" <<  __FUNCTION__  << " take 3 input tensors take(self, index, out) \n";
+        if (ins.size() != 2 || outs.size() != 1) {
+            PrintArgs(__func__, args, kwargs, std::cout);
             return ACL_ERROR_INVALID_PARAM;
         }
+        return aclIrregularOpRun(aclnnTakeGetWorkspaceSize, aclnnTake, stream,
+            ins[0], ins[1], outs[0]);
     }
-    // aclnnTakeGetWorkspaceSize(const aclTensor* self, const aclTensor* index, aclTensor* out, ...);
 
-    // numpy.put(a, ind, v, mode='raise')
+    // torch.gather along a given dim:
+    // aclnnGatherGetWorkspaceSize(const aclTensor* self, int64_t dim,
+    //                             const aclTensor* index, aclTensor* out, ...)
+    //   out[i0,...,i_dim,...] = self[i0,...,index[i0,...,i_dim,...],...]
+    // `index` must have the same ndim as `self`; out shape == index shape.
+    // Registered as `ascend_gather` and consumed by `_take`'s axis branch.
+    // ins = [self, index], outs = [out], args = [dim].
+    aclError aclop_Gather(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        if (ins.size() != 2 || outs.size() != 1) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        int64_t dim = GetScalarArg<int64_t>(args, 0, kwargs, "dim", 0);
+        return aclIrregularOpRun(aclnnGatherGetWorkspaceSize, aclnnGather, stream,
+            ins[0], dim, ins[1], outs[0]);
+    }
+
+    // numpy.put(a, ind, v, mode) / ndarray.put — in-place update of `a` at
+    // the (flattened) positions `ind`, replacing aclop_PutRaise's
+    // aclnnInplacePut.
+    //
+    // aclnnIndexPutImplGetWorkspaceSize(
+    //     aclTensor* selfRef,             // MUTABLE, in-place -> outs[0]
+    //     const aclTensorList* indices,   // INT32/INT64, non-negative,
+    //                                     // in-bounds (torch index_put_ rules)
+    //     const aclTensor* values,        // broadcast to the indices shape
+    //     const bool accumulate,          // False: overwrite (numpy put)
+    //     const bool unsafe,              // True: skip bounds checking
+    //     uint64_t* workspaceSize, aclOpExecutor** executor)
+    //
+    // ins  = [indices, values], outs = [self]
+    // args = [accumulate, unsafe] (0/1 ints; kwargs take priority)
+    // All numpy-specific semantics (negative indices, wrap/clip modes,
+    // cycling a short `values`) are normalized on the Cython side in
+    // `_ndarray_put` (cupy/_core/_routines_indexing.pyx); this wrapper
+    // receives ready-to-use int64 indices. Duplicate indices follow torch
+    // index_put_ (accumulate=False) rather than the sequential CUDA kernels.
+    aclError aclop_IndexPutImpl(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        if (ins.size() != 2 || outs.size() != 1) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        int64_t accumulate = GetScalarArg<int64_t>(args, 0, kwargs, "accumulate", 0);
+        int64_t unsafe = GetScalarArg<int64_t>(args, 1, kwargs, "unsafe", 0);
+        // aclnnIndexPutImpl wants the indices as an aclTensorList; the caller
+        // passes a single flat index tensor.
+        std::vector<const aclTensor*> index_tensors = {ins[0]};
+        AclTensorListGuard indices(index_tensors);
+        return aclIrregularOpRun(aclnnIndexPutImplGetWorkspaceSize, aclnnIndexPutImpl, stream,
+            outs[0], indices.get(), ins[1], accumulate != 0, unsafe != 0);
+    }
+
+    // numpy.put(a, ind, v, mode='raise') -- LEGACY / FALLBACK path.
     //
     // `_put_raise_kernel(indices, values, values.size, n, self, err)`
     //   ins  = [indices, values]      args = [n_vals, n]      outs = [self, err]
+    //
+    // This used to back ndarray.put mode='raise' via the generic
+    // ElementwiseKernel dispatch (cupy_put_raise -> ascend_put_raise), but
+    // `_ndarray_put` now handles ALL modes on Ascend through
+    // aclop_IndexPutImpl (aclnnIndexPutImpl), so this registration is
+    // currently unreached. It is kept as a fallback in case aclnnIndexPutImpl
+    // proves problematic on hardware.
     //
     // NOTE: aclnnInplacePut() has no way to report an out-of-range index back to
     // the host, so the `err` output of the CuPy kernel (which drives the

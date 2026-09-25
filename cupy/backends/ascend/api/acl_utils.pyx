@@ -2328,6 +2328,10 @@ cdef extern from "../acl_general_ops.h" nogil:
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
     aclError aclop_Take(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_Gather(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_IndexPutImpl(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
 
     # prefix scan: cumsum / cumprod (backing cupy.cumsum & the mask scan)
     aclError aclop_Cumsum(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
@@ -2406,6 +2410,18 @@ cdef extern from "../acl_general_ops.h" nogil:
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
 
 
+cdef extern from "../acl_random_ops.h" nogil:
+    # cupy.random stateless fill ops (docs/ascend/DeveloperNotes.md §ops-rand):
+    # destination is outs[0], `ins` is empty, (from/to/mean/std/seed/offset)
+    # arrive as scalars through the unified args channel.
+    aclError aclop_RandomUniform(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_RandomNormal(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_RandomInt(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+
+
 cdef void register_irregular_operators():
     cdef FuncPtrUnion func_union
     func_union.general_op = aclop_Concat
@@ -2435,6 +2451,16 @@ cdef void register_irregular_operators():
     # matched any caller (review §3 T1).
     func_union.general_op = aclop_PutRaise
     register_acl_ufunc("ascend_put_raise", GENERAL_OP, func_union)
+
+    # gather along a dim: the building block of `_take`'s axis branch
+    # (aclnnTake is flatten-only, see aclop_Take)
+    func_union.general_op = aclop_Gather
+    register_acl_ufunc("ascend_gather", GENERAL_OP, func_union)
+
+    # ndarray.put / numpy.put (aclnnIndexPutImpl); consumed by `_ndarray_put`'s
+    # Ascend branch in cupy/_core/_routines_indexing.pyx
+    func_union.general_op = aclop_IndexPutImpl
+    register_acl_ufunc("ascend_index_put_impl", GENERAL_OP, func_union)
 
     # prefix scan (cupy.cumsum / cupy.cumprod / boolean-index mask scan)
     func_union.general_op = aclop_Cumsum
@@ -2501,6 +2527,16 @@ cdef void register_irregular_operators():
     register_acl_ufunc("ascend_einsum", GENERAL_OP, func_union)
     func_union.general_op = aclop_Heaviside
     register_acl_ufunc("ascend_heaviside", GENERAL_OP, func_union)
+
+    # cupy.random stateless fill ops (aclnnInplaceUniform/Normal/Random):
+    # launched from pure Python via py_launch_general("ascend_random_*",
+    # [], [out], [from, to, seed, offset], {}) — see cupy/random/_generator.py
+    func_union.general_op = aclop_RandomUniform
+    register_acl_ufunc("ascend_random_uniform", GENERAL_OP, func_union)
+    func_union.general_op = aclop_RandomNormal
+    register_acl_ufunc("ascend_random_normal", GENERAL_OP, func_union)
+    func_union.general_op = aclop_RandomInt
+    register_acl_ufunc("ascend_random_int", GENERAL_OP, func_union)
 
     # set op: unique2 covers unique_all/counts/inverse/values in one kernel
     func_union.general_op = aclop_Unique2

@@ -215,6 +215,40 @@ cdef _ndarray_base _ndarray_put(_ndarray_base self, indices, values, mode):
     if values.size == 0:
         return
 
+    IF CUPY_CANN_VERSION > 0:
+        # ASCEND: the `_put_*_kernel` ElementwiseKernels are replaced by
+        # aclnnIndexPutImpl (registered as `ascend_index_put_impl`, see
+        # aclop_IndexPutImpl). The aclnn op takes non-negative, in-bounds
+        # INT64 indices and a values tensor matching the index count, so the
+        # clipmode semantics are normalized here, exactly mirroring the CUDA
+        # kernels:
+        #   raise: indices in [-n, n) are valid (numpy allows negatives),
+        #          out-of-range raises IndexError; then `ind % n`
+        #   wrap:  `ind % n`   clip: clamp to [0, n)
+        # `values` is cycled to `indices.size` (numpy.put repeats a short v);
+        # duplicates follow torch index_put_ (accumulate=False) instead of the
+        # sequential CUDA kernels.
+        if indices.size == 0:
+            return
+        if indices.dtype != numpy.int64:
+            indices = indices.astype(numpy.int64)
+        if mode == 'raise':
+            if indices.max() >= n or indices.min() < -n:
+                raise IndexError('invalid entry in indices array')
+            indices = indices % n
+        elif mode == 'wrap':
+            indices = indices % n
+        else:
+            indices = cupy.clip(indices, 0, n - 1)
+        if values.size != indices.size:
+            values = cupy.resize(values, (indices.size,))
+        else:
+            values = values.ravel()
+        values = values.astype(self.dtype, copy=False)
+        launch_general_func("ascend_index_put_impl", [indices, values], [self],
+            [0, 0], {}, 0)  # accumulate=False, unsafe=False
+        return
+
     if mode == 'raise':
         err = cupy.zeros((), dtype=numpy.bool_)
         _put_raise_kernel(indices, values, values.size, n, self, err)
@@ -897,12 +931,50 @@ cdef _ndarray_base _take(
     if a.size == 0 and out.size != 0:
         raise IndexError('cannot do a non-empty take from an empty axes.')
 
-    if isinstance(indices, _ndarray_base):
-        return _take_kernel(
-            a.reduced_view(), indices, ldim, cdim, rdim, index_range, out)
-    else:
-        return _take_kernel_scalar(
-            a.reduced_view(), indices, ldim, cdim, rdim, index_range, out)
+    IF CUPY_CANN_VERSION > 0:
+        # ASCEND: `aclnnTake` treats `self` as a flat 1-D array and returns
+        # `out[i] = self[index[i]]` with out shape == index shape — i.e. it
+        # only implements the axis=None (ldim == rdim == 1) case of
+        # numpy.take (see aclop_Take). Takes along an inner axis are composed
+        # with `aclnnGather` instead (registered as `ascend_gather`):
+        #   self3 = view(a, (ldim, index_range, rdim))
+        #   idx3  = broadcast(view(indices, (1, cdim, 1)), (ldim, cdim, rdim))
+        #   out3  = gather(self3, idx3, dim=1)   # view of the same buffer as `out`
+        # Like the CUDA kernels, out-of-range indices wrap (`% index_range`),
+        # and indices are cast to int64 (aclnnGather accepts INT32/INT64).
+        if cdim == 0:
+            return out
+        if isinstance(indices, _ndarray_base):
+            if indices.dtype != numpy.int64:
+                indices = indices.astype(numpy.int64)
+            indices = indices % index_range
+        else:
+            indices = core.array(int(indices) % index_range,
+                                 dtype=numpy.int64)
+
+        if ldim == 1 and rdim == 1:
+            launch_general_func("ascend_take", [a, indices], [out],
+                [ldim, cdim, rdim, index_range], {}, 0)
+            return out
+        self3 = _manipulation._reshape(a, (ldim, index_range, rdim))
+        idx3 = _manipulation.broadcast_to(
+            _manipulation._reshape(indices, (1, cdim, 1)),
+            (ldim, cdim, rdim))
+        out3 = _manipulation._reshape(out, (ldim, cdim, rdim))
+        launch_general_func("ascend_gather", [self3, idx3], [out3],
+            [1], {}, 0)
+        if out3.data.ptr != out.data.ptr:
+            # `out` was not contiguous, so _reshape made a copy: write back
+            out[...] = out3
+        return out
+
+    ELSE:
+        if isinstance(indices, _ndarray_base):
+            return _take_kernel(
+                a.reduced_view(), indices, ldim, cdim, rdim, index_range, out)
+        else:
+            return _take_kernel_scalar(
+                a.reduced_view(), indices, ldim, cdim, rdim, index_range, out)
 
 
 cdef _scatter_op_single(

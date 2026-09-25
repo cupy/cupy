@@ -474,13 +474,14 @@ cpdef _ndarray_base _median(
         indexer[axis] = slice(index-1, index+1)
     indexer = tuple(indexer)
 
+    sel = part[indexer]
     IF CUPY_CANN_VERSION > 0:
         # ASCEND: `_mean` has no dtype promotion for create_reduction_func()
         # int should be cast to float, after view is made contiguous
-        if _sel.dtype.kind in 'iub':
-            _sel = cupy.ascontiguousarray(_sel).astype(numpy.float64)
+        if sel.dtype.kind in 'iub':
+            sel = cupy.ascontiguousarray(sel).astype(numpy.float64)
     out = _mean(
-        part[indexer], axis=axis, dtype=None, out=out, keepdims=keepdims)
+        sel, axis=axis, dtype=None, out=out, keepdims=keepdims)
 
     if part.dtype.kind in 'fc':
         IF CUPY_CANN_VERSION > 0:
@@ -761,7 +762,7 @@ cpdef _ndarray_base _nanvar(_ndarray_base a, axis, dtype, out, ddof, keepdims):
         _count = cupy.sum((~cupy.isnan(a)).astype(numpy.float32), axis=axis)
         nanmean = arrsum / _count
         sq = a - nanmean
-        sq = diff * diff
+        sq = sq * sq
         sq_sum = cupy.nansum(sq, axis=axis)
         result = sq_sum / (_count - ddof)
         if keepdims:
