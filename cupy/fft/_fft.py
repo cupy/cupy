@@ -13,15 +13,6 @@ from cupy.fft._cache import get_plan_cache
 _reduce = functools.reduce
 _prod = cupy._core.internal.prod
 
-_R2C_OUTPUT_DTYPES = {
-    np.dtype(np.float32): np.dtype(np.complex64),
-    np.dtype(np.float64): np.dtype(np.complex128),
-}
-_C2R_OUTPUT_DTYPES = {
-    complex_dtype: real_dtype
-    for real_dtype, complex_dtype in _R2C_OUTPUT_DTYPES.items()
-}
-
 
 @cupy._util.memoize()
 def _output_dtype(dtype, value_type):
@@ -518,34 +509,6 @@ def _get_fftn_out_size(in_shape, s, last_axis, value_type):
     return out_size
 
 
-def _get_fftn_output_shape_and_dtype(a, value_type, last_axis, out_size):
-    shape = list(a.shape)
-    if value_type == 'C2C':
-        dtype = a.dtype
-    elif value_type == 'R2C':
-        shape[last_axis] = out_size
-        dtype = _R2C_OUTPUT_DTYPES[a.dtype]
-    elif value_type == 'C2R':
-        shape[last_axis] = out_size
-        dtype = _C2R_OUTPUT_DTYPES[a.dtype]
-    else:
-        raise ValueError('unsupported FFT value type: {}'.format(value_type))
-    return tuple(shape), dtype
-
-
-def _check_fftn_output_array(
-        a, out, value_type, last_axis, out_size):
-    expected_shape, expected_dtype = _get_fftn_output_shape_and_dtype(
-        a, value_type, last_axis, out_size)
-    if out.shape != expected_shape:
-        raise ValueError('output shape mismatch')
-    if out.dtype != expected_dtype:
-        raise ValueError('output dtype mismatch')
-    if not ((out.flags.f_contiguous == a.flags.f_contiguous) and
-            (out.flags.c_contiguous == a.flags.c_contiguous)):
-        raise ValueError('output contiguity mismatch')
-
-
 def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x,
                plan=None, out=None, out_size=None):
     from cupy.cuda import cufft
@@ -586,7 +549,7 @@ def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x,
             raise ValueError('expected plan to have type cufft.PlanNd')
         expected_plan_key = _get_cufft_plan_nd_args(
             a.shape, fft_type, axes=axes, order=order, out_size=out_size)
-        if expected_plan_key != plan.plan_key:
+        if expected_plan_key != plan._plan_key:
             raise ValueError(
                 'The cuFFT plan and a.shape do not match the requested FFT '
                 'backend layout.')
@@ -595,12 +558,11 @@ def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x,
     if overwrite_x and value_type == 'C2C':
         out = a
     elif out is None:
-        shape, dtype = _get_fftn_output_shape_and_dtype(
-            a, value_type, axes[-1], out_size)
+        shape, dtype = cufft._get_output_shape_and_dtype(
+            a, fft_type, axes[-1], out_size)
         out = cupy.empty(shape, dtype, order=order)
     else:
-        _check_fftn_output_array(
-            a, out, value_type, axes[-1], out_size)
+        cufft._check_output_array(a, out, fft_type, axes[-1], out_size)
 
     if out.size != 0:
         plan.fft(a, out, direction)
