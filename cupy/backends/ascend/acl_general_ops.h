@@ -525,10 +525,17 @@ ACLNN_API aclnnStatus aclnnInplaceFillDiagonal(
     // `aclnnCast`（同 dtype 时等价于纯拷贝，异 dtype 时完成转换）。
     // src/out 任一 dtype 元数据未定义（ACL_DT_UNDEFINED）时直接拒绝，
     // 否则 aclnnCast 第一段接口会以 EL0003 Invalid_Argument 深层报错。
-    aclError aclop_Copy(const aclTensor* src, aclTensor* out, aclrtStream stream) {
+    // GENERAL_OP 签名：copy 是 manipulation 族算子（copyto /
+    // elementwise_copy / cast-back 的后端），与 ascend_cast 同族。
+    aclError aclop_Copy(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        if (ins.size() != 1 || outs.size() != 1) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
         aclDataType src_dtype, out_dtype;
-        aclGetDataType(src, &src_dtype);
-        aclGetDataType(out, &out_dtype);
+        aclGetDataType(ins[0], &src_dtype);
+        aclGetDataType(outs[0], &out_dtype);
         if (src_dtype == ACL_DT_UNDEFINED || out_dtype == ACL_DT_UNDEFINED) {
             std::cout << "Error:" << __FUNCTION__
                       << " src/out dtype must be defined (src=" << src_dtype
@@ -536,7 +543,7 @@ ACLNN_API aclnnStatus aclnnInplaceFillDiagonal(
             return ACL_ERROR_INVALID_PARAM;
         }
         return aclIrregularOpRun(aclnnCastGetWorkspaceSize, aclnnCast, stream,
-            src, out_dtype, out);
+            ins[0], out_dtype, outs[0]);
     }
     // `argwhere` find nonzero index, similar as `nonzero`
     aclError aclop_Nonzero(const aclTensor* self, aclTensor* out, aclrtStream stream) {

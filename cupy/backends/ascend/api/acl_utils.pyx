@@ -2274,7 +2274,8 @@ cdef void register_reduction_operators():
 
 # general ops
 cdef extern from "../acl_general_ops.h" nogil:
-    aclError aclop_Copy(const aclTensor* self,  aclTensor* out, aclrtStream stream)
+    aclError aclop_Copy(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
     aclError aclop_Nonzero(const aclTensor* self,  aclTensor* out, aclrtStream stream)
 
     # 参数通道探针（只记录参数，不做计算；见 acl_general_ops.h）
@@ -2642,12 +2643,17 @@ cdef void register_irregular_operators():
     func_union.general_op = aclop_Complex
     register_acl_ufunc("ascend_complex", GENERAL_OP, func_union)
 
-    func_union.unary_op = aclop_Copy
-    register_acl_ufunc("ascend_copy", UNARY_OP, func_union)
+    # copy 是 manipulation 族算子（copyto / elementwise_copy / cast-back 的
+    # 后端，实现即 aclnnCast），与 ascend_cast 同为 GENERAL_OP。
+    func_union.general_op = aclop_Copy
+    register_acl_ufunc("ascend_copy", GENERAL_OP, func_union)
     # numpy.positive(+x) is the identity for every non-bool dtype.
     register_acl_ufunc("ascend_positive", UNARY_OP, func_union)
     func_union.general_op  = aclop_Fill
     register_acl_ufunc("ascend_fill", GENERAL_OP, func_union)
+    # nonzero 不是 reduction：aclnnNonzero 无 dim/keepdim，输出 shape 是数据
+    # 依赖的 (count, ndim)（调用方先同步 count 再预分配）—— 提取类算子，
+    # 同族是 masked_select 而非归约。
     func_union.unary_op = aclop_Nonzero
     register_acl_ufunc("ascend_nonzero", UNARY_OP, func_union)
 
