@@ -71,7 +71,7 @@ _complex_cepstrum_kernel = cupy.ElementwiseKernel(
     """,
     "_complex_cepstrum_kernel",
     return_tuple=True,
-    loop_prep="const int center { static_cast<int>( 0.5 * \
+    loop_prep="const ptrdiff_t center { static_cast<ptrdiff_t>( 0.5 * \
         ( _ind.size() + 1 ) ) };",
 )
 
@@ -158,7 +158,7 @@ _minimum_phase_kernel = cupy.ElementwiseKernel(
     """,
     "_minimum_phase_kernel",
     loop_prep="const bool odd { (_ind.size() & 1) != 0 }; \
-               const int bend { static_cast<int>( 0.5 * \
+               const ptrdiff_t bend { static_cast<ptrdiff_t>( 0.5 * \
                     ( _ind.size() + odd ) ) };",
 )
 

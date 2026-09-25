@@ -20,17 +20,20 @@ _range = range
 
 # TODO(unno): use searchsorted
 _histogram_kernel = _core.ElementwiseKernel(
-    'S x, raw T bins, int32 n_bins',
+    'S x, raw T bins, int64 n_bins_',
     'raw U y',
     '''
+    using index_t = decltype(bins)::index_t;
+    index_t n_bins = static_cast<index_t>(n_bins_);
+
     if (x < bins[0] or bins[n_bins - 1] < x) {
         return;
     }
-    int high = n_bins - 1;
-    int low = 0;
+    index_t high = n_bins - 1;
+    index_t low = 0;
 
     while (high - low > 1) {
-        int mid = (high + low) / 2;
+        index_t mid = low + (high - low) / 2;
         if (bins[mid] <= x) {
             low = mid;
         } else {
@@ -43,17 +46,20 @@ _histogram_kernel = _core.ElementwiseKernel(
 
 
 _weighted_histogram_kernel = _core.ElementwiseKernel(
-    'S x, raw T bins, int32 n_bins, raw W weights',
+    'S x, raw T bins, int64 n_bins_, raw W weights',
     'raw Y y',
     '''
+    using index_t = decltype(bins)::index_t;
+    index_t n_bins = static_cast<index_t>(n_bins_);
+
     if (x < bins[0] or bins[n_bins - 1] < x) {
         return;
     }
-    int high = n_bins - 1;
-    int low = 0;
+    index_t high = n_bins - 1;
+    index_t low = 0;
 
     while (high - low > 1) {
-        int mid = (high + low) / 2;
+        index_t mid = low + (high - low) / 2;
         if (bins[mid] <= x) {
             low = mid;
         } else {

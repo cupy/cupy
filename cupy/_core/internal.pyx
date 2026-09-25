@@ -371,7 +371,7 @@ cdef _broadcast_core(list arrays, shape_t& shape):
 
         # TODO(niboshi): Confirm update_x_contiguity flags
         a = a._view(type(a), shape, strides, True, True, a)
-        if a.size * a.itemsize > 2**31:
+        if a.size * a.itemsize >= 2**31:
             a._index_32_bits = False
         arrays[i] = a
 
