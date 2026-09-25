@@ -935,11 +935,12 @@ cdef _ndarray_base _take(
         # ASCEND: `aclnnTake` treats `self` as a flat 1-D array and returns
         # `out[i] = self[index[i]]` with out shape == index shape — i.e. it
         # only implements the axis=None (ldim == rdim == 1) case of
-        # numpy.take (see aclop_Take). Takes along an inner axis are composed
-        # with `aclnnGather` instead (registered as `ascend_gather`):
+        # numpy.take (see aclop_Take). Takes along an inner axis go through
+        # aclnnIndexSelect (`ascend_index_select`, torch.index_select
+        # semantics) on a (ldim, index_range, rdim) view:
         #   self3 = view(a, (ldim, index_range, rdim))
-        #   idx3  = broadcast(view(indices, (1, cdim, 1)), (ldim, cdim, rdim))
-        #   out3  = gather(self3, idx3, dim=1)   # view of the same buffer as `out`
+        #   out3  = index_select(self3, dim=1, indices.ravel())
+        #        (= view of the same buffer as `out` when out is contiguous)
         # Like the CUDA kernels, out-of-range indices wrap (`% index_range`),
         # and indices are cast to int64 (aclnnGather accepts INT32/INT64).
         if cdim == 0:
@@ -956,12 +957,14 @@ cdef _ndarray_base _take(
             launch_general_func("ascend_take", [a, indices], [out],
                 [ldim, cdim, rdim, index_range], {}, 0)
             return out
+        # take along an inner axis: view self as (ldim, index_range, rdim)
+        # and use aclnnIndexSelect (torch.index_select semantics: out = self
+        # with `dim` replaced by len(index)) -- one op instead of the
+        # broadcast + aclnnGather pair used before.
         self3 = _manipulation._reshape(a, (ldim, index_range, rdim))
-        idx3 = _manipulation.broadcast_to(
-            _manipulation._reshape(indices, (1, cdim, 1)),
-            (ldim, cdim, rdim))
+        idx1 = indices.ravel()
         out3 = _manipulation._reshape(out, (ldim, cdim, rdim))
-        launch_general_func("ascend_gather", [self3, idx3], [out3],
+        launch_general_func("ascend_index_select", [self3, idx1], [out3],
             [1], {}, 0)
         if out3.data.ptr != out.data.ptr:
             # `out` was not contiguous, so _reshape made a copy: write back
