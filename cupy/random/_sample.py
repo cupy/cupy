@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+import numpy
+
+from cupy_backends.cuda.api import runtime
+
+import cupy
 from cupy import _core
 from cupy._creation import basic
 from cupy.random import _distributions
@@ -236,6 +241,49 @@ def multinomial(n, pvals, size=None):
     shape = size + (p,)
     ys = basic.zeros(shape, 'l')
     if ys.size > 0:
+        if runtime.is_ascend():
+            return _ascend_multinomial(n, pvals, m, p, shape)
         xs = choice(p, p=pvals, size=n * m)
         _multinominal_kernel(xs, p, n, ys)
     return ys
+
+
+def _ascend_multinomial(n, pvals, m, p, shape):
+    """``multinomial(n, pvals, size)`` on Ascend.
+
+    ``aclnnMultinomial`` has torch semantics — it draws ``numsamples``
+    category *indices* per row from an (N, C) probability tensor — while
+    numpy wants *counts*. So draw the indices with the aclnn kernel and
+    turn them into per-row counts with the flat-bincount offset trick;
+    every op involved (broadcast/copy, bincount, reshape) is registered on
+    the Ascend backend. Requires ``sum(pvals) == 1`` like the CUDA path
+    (the upstream kernel may normalise otherwise).
+    """
+    if getattr(n, 'ndim', 0) > 0:
+        raise ValueError('n must be a scalar integer')
+    n = int(n)
+    if n < 0:
+        raise ValueError('n < 0')
+    pv = cupy.asarray(pvals, dtype=numpy.float64)
+    if pv.ndim != 1 or pv.shape[0] != p:
+        raise ValueError('pvals must be a 1-D array-like of length p')
+    if n == 0:
+        return basic.zeros(shape, 'l')
+
+    # aclnnMultinomial input is (N, C): one row of pvals per multinomial draw
+    pv = cupy.ascontiguousarray(cupy.broadcast_to(pv, (m, p)))
+    out = cupy.empty((m, n), dtype=numpy.int64)
+    rs = _generator.get_random_state()
+    seed, offset = rs._ascend_seed_offset(m * n)
+    from cupy.backends.ascend.api import acl_utils
+    stream_ptr = cupy.cuda.get_current_stream().ptr
+    acl_utils.py_launch_general('ascend_multinomial', (pv,), (out,),
+                                (n, True, seed, offset), {}, stream_ptr)
+
+    # counts per row: indices are in [0, p) (sum(pvals) == 1), so adding the
+    # row offset keeps every row's counts inside its own slice of the flat
+    # bincount output
+    rows = cupy.arange(m, dtype=numpy.int64) * p
+    flat = (out + rows[:, None]).ravel()
+    counts = cupy.bincount(flat, minlength=m * p)
+    return counts.reshape(shape).astype('l', copy=False)

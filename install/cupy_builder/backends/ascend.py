@@ -257,11 +257,52 @@ class AscendBackend(Backend):
     def get_extra_compile_args(self) -> list[str]:
         return ['-std=c++17']
 
+    #: Headers of the stateless ``aclnn_rand`` op family backing cupy.random.
+    #: All three must be installed for the random ops to be compiled in.
+    _ACLRAND_HEADERS = ('aclnn_uniform.h', 'aclnn_normal.h', 'aclnn_random.h')
+
+    def has_aclnn_rand(self) -> bool:
+        """Feature-detect the stateless aclnn rand ops used by cupy.random.
+
+        The ``aclnn_rand`` family (``aclnnInplaceUniform/Normal/Random``) is
+        NOT available in every CANN release / SoC package, so it must not be
+        compiled unconditionally (docs/ascend/DeveloperNotes.md §ops-rand).
+
+        Detection is header-presence based, mirroring the two include roots
+        actually used at compile time (``<sdk>/include`` and the arch-specific
+        layout). ``CUPY_ENABLE_ACLRAND=0`` forces it off, ``=1`` skips the
+        header check (cross builds without the SDK at hand).
+
+        The result feeds BOTH conditional-compilation channels (see §3.5 of
+        DeveloperNotes.md): the C macro ``CUPY_CANN_HAS_RAND`` (``#if`` in
+        acl_random_ops.h) and the Cython compile-time constant of the same
+        name (``IF`` in acl_utils.pyx).
+        """
+        env = os.environ.get('CUPY_ENABLE_ACLRAND')
+        if env == '0':
+            return False
+        if env == '1':
+            return True
+        sdk = self.get_sdk_path()
+        if not sdk or sdk == 'NOT_INITIALIZED':
+            return False
+        for header in self._ACLRAND_HEADERS:
+            rel = os.path.join('aclnnop', header)
+            if os.path.isfile(os.path.join(sdk, 'include', rel)):
+                continue
+            arch_include = os.path.join(cann_arch_dir(sdk, 'include'), rel)
+            if os.path.isfile(arch_include):
+                continue
+            return False
+        return True
+
     def get_define_macros(self) -> list[tuple[str, str]]:
         return [
             ('CUPY_USE_ASCEND', '1'),
             # keep in sync with the Cython compile-time constant
             ('CUPY_CANN_VERSION', str(self.get_version())),
+            # keep in sync with the Cython compile-time constant
+            ('CUPY_CANN_HAS_RAND', str(int(self.has_aclnn_rand()))),
         ]
 
     def get_device_compile_args(self, ctx: Context, src: str) -> list[str]:
@@ -279,6 +320,9 @@ class AscendBackend(Backend):
             'CUPY_CUDA_VERSION': 0,
             'CUPY_HIP_VERSION': 0,
             'CUPY_CANN_VERSION': self.get_version(),
+            # keep in sync with the C macro of the same name; gates the
+            # `IF` blocks for cupy.random in acl_utils.pyx
+            'CUPY_CANN_HAS_RAND': int(self.has_aclnn_rand()),
         }
 
     def supports_platform(self, platform: str) -> bool:

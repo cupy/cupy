@@ -2411,15 +2411,28 @@ cdef extern from "../acl_general_ops.h" nogil:
 
 
 cdef extern from "../acl_random_ops.h" nogil:
-    # cupy.random stateless fill ops (docs/ascend/DeveloperNotes.md §ops-rand):
-    # destination is outs[0], `ins` is empty, (from/to/mean/std/seed/offset)
-    # arrive as scalars through the unified args channel.
-    aclError aclop_RandomUniform(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+    # BASE op, unconditional: aclnnMultinomial is part of the core CANN op
+    # library (libopapi), NOT the ops-rand family. torch semantics — draws
+    # numsamples category indices per row; numpy counts are derived by the
+    # caller via flat bincount (cupy/random/_sample.py).
+    aclError aclop_Multinomial(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
-    aclError aclop_RandomNormal(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
-        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
-    aclError aclop_RandomInt(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
-        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+
+IF CUPY_CANN_HAS_RAND:
+    cdef extern from "../acl_random_ops.h" nogil:
+        # cupy.random stateless fill ops (docs/ascend/DeveloperNotes.md
+        # §ops-rand): destination is outs[0], `ins` is empty, and
+        # (from/to/mean/std/seed/offset) arrive as scalars through the
+        # unified args channel. Compiled in only when the aclnn_rand op
+        # family is feature-detected in the SDK (CUPY_CANN_HAS_RAND, set by
+        # AscendBackend.has_aclnn_rand in cupy_builder); the C++ header
+        # additionally guards with __has_include.
+        aclError aclop_RandomUniform(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+            const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+        aclError aclop_RandomNormal(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+            const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+        aclError aclop_RandomInt(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+            const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
 
 
 cdef void register_irregular_operators():
@@ -2530,13 +2543,23 @@ cdef void register_irregular_operators():
 
     # cupy.random stateless fill ops (aclnnInplaceUniform/Normal/Random):
     # launched from pure Python via py_launch_general("ascend_random_*",
-    # [], [out], [from, to, seed, offset], {}) — see cupy/random/_generator.py
-    func_union.general_op = aclop_RandomUniform
-    register_acl_ufunc("ascend_random_uniform", GENERAL_OP, func_union)
-    func_union.general_op = aclop_RandomNormal
-    register_acl_ufunc("ascend_random_normal", GENERAL_OP, func_union)
-    func_union.general_op = aclop_RandomInt
-    register_acl_ufunc("ascend_random_int", GENERAL_OP, func_union)
+    # [], [out], [from, to, seed, offset], {}) — see cupy/random/_generator.py.
+    # Compiled in only when feature-detected (CUPY_CANN_HAS_RAND); when the
+    # ops are absent cupy.random fails at runtime via the py_is_acl_ufunc_
+    # registered check in _generator.py instead of here.
+    # cupy.random.multinomial — BASE op (core libopapi), unconditional:
+    # torch-style index sampling; counts are derived in
+    # cupy/random/_sample.py via flat bincount
+    func_union.general_op = aclop_Multinomial
+    register_acl_ufunc("ascend_multinomial", GENERAL_OP, func_union)
+
+    IF CUPY_CANN_HAS_RAND:
+        func_union.general_op = aclop_RandomUniform
+        register_acl_ufunc("ascend_random_uniform", GENERAL_OP, func_union)
+        func_union.general_op = aclop_RandomNormal
+        register_acl_ufunc("ascend_random_normal", GENERAL_OP, func_union)
+        func_union.general_op = aclop_RandomInt
+        register_acl_ufunc("ascend_random_int", GENERAL_OP, func_union)
 
     # set op: unique2 covers unique_all/counts/inverse/values in one kernel
     func_union.general_op = aclop_Unique2

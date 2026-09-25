@@ -13,6 +13,8 @@ import numpy
 import warnings
 from numpy.linalg import LinAlgError
 
+from cupy_backends.cuda.api import runtime
+
 import cupy
 from cupy import _core
 from cupy import cuda
@@ -25,6 +27,63 @@ import cupyx
 
 _UINT32_MAX = 0xffffffff
 _UINT64_MAX = 0xffffffffffffffff
+
+
+_ascend_rand_ops_available = None
+
+
+def _ascend_rand_ops_ok():
+    """Runtime feature check: is the aclnn_rand family compiled in?
+
+    Mirrors the build-time detection (``AscendBackend.has_aclnn_rand``,
+    CUPY_CANN_HAS_RAND): on SDKs without the aclnn rand ops the
+    ``ascend_random_*`` registrations are compiled out, and every
+    cupy.random entry point fails here with an actionable error instead of
+    a bare "no implementation registered" KeyError deep in the dispatcher.
+    """
+    global _ascend_rand_ops_available
+    if _ascend_rand_ops_available is None:
+        try:
+            from cupy.backends.ascend.api import acl_utils
+            _ascend_rand_ops_available = acl_utils.py_is_acl_ufunc_registered(
+                'ascend_random_uniform')
+        except ImportError:
+            _ascend_rand_ops_available = False
+    return _ascend_rand_ops_available
+
+
+def _ascend_random_fill(opname, out, args):
+    """Launch a stateless aclnn random-fill op on `out` (einsum-style bridge).
+
+    `opname` is one of the registered `ascend_random_*` GENERAL_OPs (see
+    cupy/backends/ascend/acl_random_ops.h); the destination tensor is outs[0]
+    and (from/to/seed/offset) travel through the unified args channel.
+    """
+    if not _ascend_rand_ops_ok():
+        raise NotImplementedError(
+            'cupy.random is not available on this Ascend SDK: the aclnn_rand '
+            'op family (aclnnInplaceUniform/Normal/Random) was not detected '
+            'at build time. CANN >= 8.5 ships it; check CUPY_ENABLE_ACLRAND '
+            'and rebuild (see docs/ascend/DeveloperNotes.md, ops-rand '
+            'section)')
+    from cupy.backends.ascend.api import acl_utils
+    stream_ptr = cupy.cuda.get_current_stream().ptr
+    acl_utils.py_launch_general(opname, (), (out,), args, {}, stream_ptr)
+
+
+def _ascend_raw_kernel_not_implemented(name):
+    """Raise for the distributions backed by CUDA RawKernels (_kernels.py).
+
+    Those kernels contain `__device__` code compiled by NVRTC, which does not
+    exist on Ascend; they need a custom AscendC kernel or an ops-rand
+    distribution extension.
+    """
+    raise NotImplementedError(
+        'cupy.random.%s is not supported on the Ascend backend yet: it is '
+        'implemented as a CUDA RawKernel (cupy/random/_kernels.py) with no '
+        'aclnn counterpart; it needs a custom AscendC kernel or an ops-rand '
+        'extension (see docs/ascend/DeveloperNotes.md, ops-rand section)'
+        % name)
 
 
 class RandomState:
@@ -56,6 +115,18 @@ class RandomState:
     """
 
     def __init__(self, seed=None, method=None):
+        if runtime.is_ascend():
+            # Ascend backend: no curand. Only the host-side (seed, offset)
+            # counter is kept; every generate call passes both explicitly to
+            # a stateless aclnn op (aclnnInplaceUniform/Normal/Random), see
+            # docs/ascend/DeveloperNotes.md, ops-rand section.
+            self._generator = None
+            self.method = None
+            self._finalizer = None
+            self._ascend_offset = 0
+            self.seed(seed)
+            return
+
         from cupy_backends.cuda.libs import curand
 
         if method is None:
@@ -65,6 +136,17 @@ class RandomState:
             self, curand.destroyGenerator, self._generator)
         self.method = method
         self.seed(seed)
+
+    def _ascend_seed_offset(self, n):
+        """Host-side (seed, offset) for one stateless aclnn random op call.
+
+        The aclnn rand ops take the generator state explicitly on every call;
+        advancing `offset` by the number of consumed values keeps successive
+        calls reproducible and non-overlapping (mirrors `_update_seed`).
+        """
+        seed_offset = (self._rk_seed, self._ascend_offset)
+        self._ascend_offset = (self._ascend_offset + n) % _UINT64_MAX
+        return seed_offset
 
     def _update_seed(self, size):
         self._rk_seed = (self._rk_seed + size) % _UINT64_MAX
@@ -99,6 +181,8 @@ class RandomState:
         if size is None:
             size = cupy.broadcast(a, b).shape
         y = cupy.empty(shape=size, dtype=dtype)
+        if runtime.is_ascend():
+            _ascend_raw_kernel_not_implemented('beta')
         _kernels.beta_kernel(a, b, self._rk_seed, y)
         self._update_seed(y.size)
         return y
@@ -114,6 +198,8 @@ class RandomState:
         if size is None:
             size = cupy.broadcast(n, p).shape
         y = cupy.empty(shape=size, dtype=dtype)
+        if runtime.is_ascend():
+            return self._ascend_binomial(n, p, size, dtype)
         _kernels.binomial_kernel(n, p, self._rk_seed, y)
         self._update_seed(y.size)
         return y
@@ -129,6 +215,8 @@ class RandomState:
         if size is None:
             size = df.shape
         y = cupy.empty(shape=size, dtype=dtype)
+        if runtime.is_ascend():
+            _ascend_raw_kernel_not_implemented('chisquare')
         _kernels.chisquare_kernel(df, self._rk_seed, y)
         self._update_seed(y.size)
         return y
@@ -148,6 +236,8 @@ class RandomState:
         else:
             size += alpha.shape
         y = cupy.empty(shape=size, dtype=dtype)
+        if runtime.is_ascend():
+            _ascend_raw_kernel_not_implemented('dirichlet')
         _kernels.standard_gamma_kernel(alpha, self._rk_seed, y)
         y /= y.sum(axis=-1, keepdims=True)
         self._update_seed(y.size)
@@ -184,6 +274,8 @@ class RandomState:
         if size is None:
             size = cupy.broadcast(dfnum, dfden).shape
         y = cupy.empty(shape=size, dtype=dtype)
+        if runtime.is_ascend():
+            _ascend_raw_kernel_not_implemented('f')
         _kernels.f_kernel(dfnum, dfden, self._rk_seed, y)
         self._update_seed(y.size)
         return y
@@ -199,6 +291,8 @@ class RandomState:
         if size is None:
             size = cupy.broadcast(shape, scale).shape
         y = cupy.empty(shape=size, dtype=dtype)
+        if runtime.is_ascend():
+            _ascend_raw_kernel_not_implemented('gamma')
         _kernels.standard_gamma_kernel(shape, self._rk_seed, y)
         y *= scale
         self._update_seed(y.size)
@@ -215,6 +309,8 @@ class RandomState:
         if size is None:
             size = p.shape
         y = cupy.empty(shape=size, dtype=dtype)
+        if runtime.is_ascend():
+            return self._ascend_geometric(p, size, dtype)
         _kernels.geometric_kernel(p, self._rk_seed, y)
         self._update_seed(y.size)
         return y
@@ -231,6 +327,8 @@ class RandomState:
         if size is None:
             size = cupy.broadcast(ngood, nbad, nsample).shape
         y = cupy.empty(shape=size, dtype=dtype)
+        if runtime.is_ascend():
+            _ascend_raw_kernel_not_implemented('hypergeometric')
         _kernels.hypergeometric_kernel(ngood, nbad, nsample, self._rk_seed, y)
         self._update_seed(y.size)
         return y
@@ -252,6 +350,12 @@ class RandomState:
         if size is None:
             size = cupy.broadcast(loc, scale).shape
         x = self._random_sample_raw(size, dtype)
+        if runtime.is_ascend():
+            # CUDA `_laplace_kernel` replaced with registered ufuncs
+            return cupy.where(
+                x <= 0.5,
+                loc + scale * cupy.log(x + x),
+                loc - scale * cupy.log(x + x - 1.0))
         RandomState._laplace_kernel(x, loc, scale, x)
         return x
 
@@ -283,6 +387,12 @@ class RandomState:
 
         """
         from cupy_backends.cuda.libs import curand
+
+        if runtime.is_ascend():
+            # lognormal = exp(normal); reuses the Ascend normal() branch
+            x = self.normal(mean, sigma, size, dtype)
+            cupy.exp(x, out=x)
+            return x
 
         if any(isinstance(arg, cupy.ndarray) for arg in (mean, sigma)):
             x = self.normal(mean, sigma, size, dtype)
@@ -317,6 +427,8 @@ class RandomState:
         if size is None:
             size = p.shape
         y = cupy.empty(shape=size, dtype=dtype)
+        if runtime.is_ascend():
+            _ascend_raw_kernel_not_implemented('logseries')
         _kernels.logseries_kernel(p, self._rk_seed, y)
         self._update_seed(y.size)
         return y
@@ -447,6 +559,9 @@ class RandomState:
             - :meth:`numpy.random.RandomState.normal`
 
         """
+        if runtime.is_ascend():
+            return self._ascend_normal(loc, scale, size, dtype)
+
         from cupy_backends.cuda.libs import curand
 
         dtype = _check_and_get_dtype(dtype)
@@ -465,6 +580,27 @@ class RandomState:
             cupy.add(x, loc, out=x)
         else:
             x = self._generate_normal(func, size, dtype, loc, scale)
+        return x
+
+    def _ascend_normal(self, loc, scale, size, dtype):
+        """normal() on Ascend: aclnnInplaceNormal for scalar params, standard
+        normal + arithmetic ufuncs when loc/scale are arrays."""
+        dtype = _check_and_get_dtype(dtype)
+        if size is None:
+            size = cupy.broadcast(loc, scale).shape
+        if (numpy.isscalar(loc) and numpy.isscalar(scale)
+                and not isinstance(loc, cupy.ndarray)
+                and not isinstance(scale, cupy.ndarray)):
+            out = cupy.empty(size, dtype=dtype)
+            if out.size:
+                seed, offset = self._ascend_seed_offset(out.size)
+                _ascend_random_fill('ascend_random_normal', out,
+                                    (float(loc), float(scale), seed, offset))
+            return out
+        # array loc/scale: draw standard normal, then rescale via ufuncs
+        x = self._ascend_normal(0.0, 1.0, size, dtype)
+        cupy.multiply(x, scale, out=x)
+        cupy.add(x, loc, out=x)
         return x
 
     def pareto(self, a, size=None, dtype=float):
@@ -502,6 +638,8 @@ class RandomState:
         if size is None:
             size = cupy.broadcast(df, nonc).shape
         y = cupy.empty(shape=size, dtype=dtype)
+        if runtime.is_ascend():
+            _ascend_raw_kernel_not_implemented('noncentral_chisquare')
         _kernels.noncentral_chisquare_kernel(df, nonc, self._rk_seed, y)
         self._update_seed(y.size)
         return y
@@ -528,6 +666,8 @@ class RandomState:
         if size is None:
             size = cupy.broadcast(dfnum, dfden, nonc).shape
         y = cupy.empty(shape=size, dtype=dtype)
+        if runtime.is_ascend():
+            _ascend_raw_kernel_not_implemented('noncentral_f')
         _kernels.noncentral_f_kernel(dfnum, dfden, nonc, self._rk_seed, y)
         self._update_seed(y.size)
         return y
@@ -543,6 +683,8 @@ class RandomState:
         if size is None:
             size = lam.shape
         y = cupy.empty(shape=size, dtype=dtype)
+        if runtime.is_ascend():
+            _ascend_raw_kernel_not_implemented('poisson')
         _kernels.poisson_kernel(lam, self._rk_seed, y)
         self._update_seed(y.size)
         return y
@@ -605,6 +747,12 @@ class RandomState:
 
         dtype = _check_and_get_dtype(dtype)
         out = cupy.empty(size, dtype=dtype)
+        if runtime.is_ascend():
+            if out.size:
+                seed, offset = self._ascend_seed_offset(out.size)
+                _ascend_random_fill('ascend_random_uniform', out,
+                                    (0.0, 1.0, seed, offset))
+            return out
         if dtype.char == 'f':
             func = curand.generateUniform
         else:
@@ -623,7 +771,9 @@ class RandomState:
         if size is None:
             size = ()
         out = self._random_sample_raw(size, dtype)
-        RandomState._mod1_kernel(out)
+        if not runtime.is_ascend():
+            # aclnnInplaceUniform already produces values in [0, 1)
+            RandomState._mod1_kernel(out)
         return out
 
     def rayleigh(self, scale=1.0, size=None, dtype=float):
@@ -680,6 +830,12 @@ class RandomState:
             size = size,
 
         is_mx_scalar = numpy.isscalar(mx)
+        if runtime.is_ascend() and not is_mx_scalar:
+            raise NotImplementedError(
+                'randint() with array bounds is not supported on the Ascend '
+                'backend yet: it needs raw uint32/uint64 sampling which the '
+                'aclnn rand ops do not provide (see docs/ascend/'
+                'DeveloperNotes.md, ops-rand section)')
         if is_mx_scalar:
             if mx == 0:
                 return cupy.zeros(size, dtype=numpy.uint32)
@@ -815,6 +971,11 @@ class RandomState:
                     raise ValueError(
                         'Seed must be an integer between 0 and 2**64 - 1')
 
+        if runtime.is_ascend():
+            self._rk_seed = seed
+            self._ascend_offset = 0
+            return
+
         curand.setPseudoRandomGeneratorSeed(self._generator, seed)
         if (self.method not in (curand.CURAND_RNG_PSEUDO_MT19937,
                                 curand.CURAND_RNG_PSEUDO_MTGP32)):
@@ -855,6 +1016,8 @@ class RandomState:
         if size is None:
             size = shape.shape
         y = cupy.empty(shape=size, dtype=dtype)
+        if runtime.is_ascend():
+            _ascend_raw_kernel_not_implemented('standard_gamma')
         _kernels.standard_gamma_kernel(shape, self._rk_seed, y)
         self._update_seed(y.size)
         return y
@@ -880,6 +1043,8 @@ class RandomState:
         if size is None:
             size = df.shape
         y = cupy.empty(shape=size, dtype=dtype)
+        if runtime.is_ascend():
+            _ascend_raw_kernel_not_implemented('standard_t')
         _kernels.standard_t_kernel(df, self._rk_seed, y)
         self._update_seed(y.size)
         return y
@@ -905,6 +1070,16 @@ class RandomState:
 
         if size is None:
             size = ()
+        if runtime.is_ascend():
+            # aclnnInplaceRandom draws from [0, INT64_MAX-1]; values are
+            # already non-negative, so the sign-bit mask is unnecessary
+            sample = cupy.empty(size, dtype=cupy.int_)
+            if sample.size:
+                seed, offset = self._ascend_seed_offset(sample.size)
+                _ascend_random_fill('ascend_random_int', sample,
+                                    (0, 2**63 - 1, seed, offset))
+            return sample
+
         sample = cupy.empty(size, dtype=cupy.int_)
         # cupy.random only uses int32 random generator
         size_in_int = sample.dtype.itemsize // 4
@@ -959,6 +1134,17 @@ class RandomState:
         if size is None:
             size = cupy.broadcast(left, mode, right).shape
         x = self.random_sample(size=size, dtype=dtype)
+        if runtime.is_ascend():
+            # CUDA `_triangular_kernel` replaced with registered ufuncs
+            base = right - left
+            leftbase = mode - left
+            ratio = leftbase / base
+            leftprod = leftbase * base
+            rightprod = (right - mode) * base
+            return cupy.where(
+                x <= ratio,
+                left + cupy.sqrt(x * leftprod),
+                right - cupy.sqrt((1.0 - x) * rightprod))
         return RandomState._triangular_kernel(left, mode, right, x)
 
     _scale_kernel = _core.ElementwiseKernel(
@@ -983,6 +1169,19 @@ class RandomState:
             size = cupy.broadcast(low, high).shape
 
         dtype = numpy.dtype(dtype)
+        if runtime.is_ascend():
+            if numpy.isscalar(low) and numpy.isscalar(high):
+                # scalar bounds: one aclnnInplaceUniform call over [low, high)
+                out = cupy.empty(size, dtype=dtype)
+                if out.size:
+                    seed, offset = self._ascend_seed_offset(out.size)
+                    _ascend_random_fill('ascend_random_uniform', out,
+                                        (float(low), float(high), seed, offset))
+                return out
+            # array bounds: uniform [0, 1) + registered arithmetic ufuncs
+            rand = self.random_sample(size=size, dtype=dtype)
+            return low + rand * (high - low)
+
         rand = self.random_sample(size=size, dtype=dtype)
         return RandomState._scale_kernel(low, high, rand)
 
@@ -997,6 +1196,8 @@ class RandomState:
         if size is None:
             size = cupy.broadcast(mu, kappa).shape
         y = cupy.empty(shape=size, dtype=dtype)
+        if runtime.is_ascend():
+            _ascend_raw_kernel_not_implemented('vonmises')
         _kernels.vonmises_kernel(mu, kappa, self._rk_seed, y)
         self._update_seed(y.size)
         return y
@@ -1029,6 +1230,12 @@ class RandomState:
             size = cupy.broadcast(mean, scale).shape
         x = self.normal(size=size, dtype=dtype)
         u = self.random_sample(size=size, dtype=dtype)
+        if runtime.is_ascend():
+            # CUDA `_wald_kernel` replaced with registered ufuncs
+            mean_2l = mean / (2 * scale)
+            y = mean * x * x
+            x = mean + mean_2l * (y - cupy.sqrt(4 * scale * y + y * y))
+            return cupy.where(u > mean / (mean + x), mean * mean / x, x)
         return RandomState._wald_kernel(mean, scale, u, x)
 
     def weibull(self, a, size=None, dtype=float):
@@ -1070,6 +1277,8 @@ class RandomState:
         if size is None:
             size = a.shape
         y = cupy.empty(shape=size, dtype=dtype)
+        if runtime.is_ascend():
+            _ascend_raw_kernel_not_implemented('zipf')
         _kernels.zipf_kernel(a, self._rk_seed, y)
         self._update_seed(y.size)
         return y
@@ -1178,6 +1387,17 @@ class RandomState:
 
     def _permutation(self, num):
         """Returns a permuted range."""
+        if runtime.is_ascend():
+            # CUDA curand path replaced with a discrete-uniform int32 fill
+            # (aclnnInplaceRandom) + argsort
+            sample = cupy.empty((num,), dtype=numpy.int32)
+            if num:
+                seed, offset = self._ascend_seed_offset(num)
+                _ascend_random_fill('ascend_random_int', sample,
+                                    (0, 2**31 - 1, seed, offset))
+            array = cupy.argsort(sample)
+            return array
+
         from cupy_backends.cuda.libs import curand
 
         sample = cupy.empty((num,), dtype=numpy.int32)
@@ -1204,6 +1424,9 @@ class RandomState:
         if size is None:
             size = cupy.broadcast(loc, scale).shape
         x = self._random_sample_raw(size=size, dtype=dtype)
+        if runtime.is_ascend():
+            # CUDA `_gumbel_kernel` replaced with registered ufuncs
+            return loc - scale * cupy.log(-cupy.log(x))
         RandomState._gumbel_kernel(x, loc, scale, x)
         return x
 
@@ -1254,9 +1477,80 @@ class RandomState:
                         cupy.dtype(dtype).name))
 
             diff = hi1 - lo
+            if runtime.is_ascend():
+                return self._ascend_random_int(lo, hi1, size, dtype)
             x = self._interval(diff, size).astype(dtype, copy=False)
             cupy.add(x, lo, out=x)
             return x
+
+    def _ascend_random_int(self, lo, hi1, size, dtype):
+        """randint (scalar bounds) on Ascend.
+
+        aclnnInplaceRandom fills discrete uniform ints over [from, to-1], so
+        draw [0, hi1-lo] and shift by `lo` (this also supports negative
+        bounds). If [0, hi1-lo] does not fit the output dtype, draw into
+        int64 and cast instead.
+        """
+        if size is None:
+            size = ()
+        out = cupy.empty(size, dtype=dtype)
+        if out.size:
+            diff = int(hi1) - int(lo)
+            if diff + 1 > _UINT64_MAX // 2:
+                raise NotImplementedError(
+                    'randint range too large for the Ascend stateless op')
+            seed, offset = self._ascend_seed_offset(out.size)
+            if diff <= numpy.iinfo(dtype).max:
+                _ascend_random_fill('ascend_random_int', out,
+                                    (0, diff + 1, seed, offset))
+            else:
+                wide = cupy.empty(size, dtype=numpy.int64)
+                _ascend_random_fill('ascend_random_int', wide,
+                                    (0, diff + 1, seed, offset))
+                out = wide.astype(dtype)
+            if lo:
+                cupy.add(out, lo, out=out)
+        return out
+
+    def _ascend_binomial(self, n, p, size, dtype):
+        """binomial(n, p) on Ascend.
+
+        Recipe borrowed from asnumpy (``~/repos/asnumpy/csrc/random/
+        distributions.cpp::Binomial``): draw ``n`` independent Bernoulli(p)
+        rows (uniform < p) of shape ``size`` and reduce-sum over axis 0.
+        Only scalar ``n`` is supported; memory is O(n * prod(size)), so this
+        suits small-to-moderate ``n``. Distribution-equivalent to the CUDA
+        rk_binomial kernel, not bit-exact.
+        """
+        if getattr(n, 'ndim', 0) > 0:
+            raise NotImplementedError(
+                'binomial(): array n is not supported on the Ascend backend '
+                'yet (needs a Bernoulli tensor per n element)')
+        n = int(n)
+        if n < 0:
+            raise ValueError('n < 0')
+        p = cupy.asarray(p, dtype=numpy.float64)
+        if size is None:
+            size = p.shape
+        # one uniform per Bernoulli trial; float64 keeps small p meaningful
+        u = self._random_sample_raw((n,) + tuple(size), numpy.float64)
+        y = (u < p).astype(cupy.int32)
+        y = y.sum(axis=0)
+        return y.astype(dtype, copy=False)
+
+    def _ascend_geometric(self, p, size, dtype):
+        """geometric(p) on Ascend via inverse CDF.
+
+        Same formula as the ``rk_geometric_inversion`` branch of
+        cupy/random/_kernels.py: ``k = ceil(log(1 - U) / log(1 - p))``,
+        support {1, 2, ...}. Used for every p here (the CUDA path switches
+        to a sequential search for p >= 1/3; both sample the same
+        distribution).
+        """
+        p = cupy.asarray(p)
+        u = self._random_sample_raw(size, numpy.float64)
+        y = cupy.ceil(cupy.log(1.0 - u) / cupy.log(1.0 - p))
+        return y.astype(dtype, copy=False)
 
 
 def seed(seed=None):

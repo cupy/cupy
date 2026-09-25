@@ -405,6 +405,106 @@ ELSE:
 回归测试：`tests/ascend/test_fft_optional.py`（8 用例，无 NPU、无 FFT 也能跑）——
 检测分支、`CUPY_ENABLE_ACLFFT` 两种取值、默认 loader 路径回归、构建期不产生模块、运行时清晰报错。
 
+`bash ./build_out/cann-910b-ops-fft_9.0.0_linux-x86_64.run --uninstall --install-path=/home/qingfeng/miniconda3/envs/aigent/Ascend/cann-9.0.1`
+
+### ops-rand 随机数库与 cupy.random 移植 ✅
+
+仓库 <https://gitcode.com/cann/ops-rand>（已 clone 到 `~/repos/ops-rand`），是 CANN 算子库中的
+**随机数生成库**，配套 CANN 9.0.0-beta.2+。
+
+**ops-rand 提供了什么**（2026-03 开源版本实测）：
+
+| 交付物 | 内容 | 限制 |
+|---|---|---|
+| Generator API (`include/cann_ops_rand.h` → `libaclrand`) | `aclrandCreateGenerator`（仅 `PHILOX4_32_10`）、`SetSeed/SetOffset/SetStream` | 只有一个生成函数 |
+| `aclrandGenerateUniform(gen, float*, n)` | uniform [0, 1) **float32** | 仅此一个分布 |
+| 自定义算子 `stateless_random_uniform_v2` | 上述 API 的底层 | **仅 Ascend950**（910B/310P 均不支持） |
+
+**结论：ops-rand 单独不足以实现 cupy.random**（cupy.random 有 ~40 个分布 API）。
+但移植 cupy.random 并不依赖它 —— 真正的基础是 **CANN toolkit 自带的 `aclnn_rand` 算子族**
+（8.5+ 的 `libopapi` 里就有，无需额外安装），全部是 **stateless（每次调用显式传 seed+offset）**，
+与 cupy `RandomState` 的 host 侧单调计数器（`_rk_seed`）一一对应：
+
+| aclnn 算子 | 语义 | 覆盖的 cupy.random API |
+|---|---|---|
+| `aclnnInplaceUniform(self, from, to, seed, offset)` | 均匀 [from, to) | `random_sample`/`uniform`/`rand` |
+| `aclnnInplaceNormal(self, mean, std, seed, offset)` | 正态 N(mean, std²) | `normal`/`standard_normal`/`randn` |
+| `aclnnInplaceRandom(self, from, to, seed, offset)` | 离散均匀 int [from, to-1] | `randint`、`_permutation` 的随机源 |
+| `aclnnBernoulli` / `aclnnMultinomial` / `aclnnSimThreadExponential` | 伯努利/多项/指数 | （phase 2，cupy 无直接 bernoulli API） |
+
+其余分布用**已注册的数学 ufunc 组合**（逆变换法），无需新算子：
+
+- `lognormal` = exp(normal)；`standard_exponential`/`exponential` = -log(U)
+- `rayleigh`/`pareto`/`logistic`/`weibull`/`power`/`standard_cauchy`：上游本来就是
+  `_random_sample_raw` + `cupy.log/exp/sqrt/tan` 组合，uniform 通了即自动可用
+- `laplace`/`gumbel`/`wald`/`triangular`：上游用 CUDA `ElementwiseKernel`
+  （`cupy_laplace_kernel` 等，Ascend 上无 NVRTC 必挂），Ascend 分支改用
+  `cupy.where` + 算术 ufunc 组合（`ascend_where`/`ascend_less_equal` 已注册）
+- `permutation`/`shuffle` = 随机 int 填充 + `argsort`
+
+**仍不支持的**（`_kernels.py` 的 CUDA RawKernel，aclnn 无对应算子）：
+`beta`/`chisquare`/`dirichlet`/`f`/`hypergeometric`/`logseries`/`negative_binomial`/
+`noncentral_*`/`poisson`/`standard_gamma`/`standard_t`/`vonmises`/`zipf`。
+后续路线：自定义 AscendC 内核（`py_register_custom_kernel`），
+或等 ops-rand 扩展更多分布（其"模块化设计"就是为此准备的）。
+`cupy.random.Generator`/`BitGenerator`（`_generator_api.pyx`）依赖 curand，Ascend 暂不支持。
+
+
+我们沿用cupy `RandomState` 的 host 侧 seed/offset 计数器（可复现）与异步 stream, 有较高的性能。
+它没有 gamma/poisson/beta/chisquare（Poisson 无免循环的组合法，仍需自定义内核）。
+
+#### `aclnnMultinomial` → `cupy.random.multinomial` ✅
+
+语义差异：`aclnnMultinomial(self, numsamples, replacement, seed, offset, out)` 是
+**torch.multinomial 语义** —— 从 `(N, C)` 概率张量每行抽 `numsamples` 个**类别索引**
+（out 是 INT64 索引），numpy 的 `multinomial` 要的是**计数**。组合方式
+（`cupy/random/_sample.py::_ascend_multinomial`，上游的 `atomicAdd`
+`_multinominal_kernel` 在 Ascend 必挂）：
+
+```
+pv (m, p) --aclnnMultinomial--> indices (m, n)             # 每行抽 n 个类别索引
+flat = indices + arange(m)[:,None] * p                     # 行偏移平铺
+counts = bincount(flat, minlength=m*p).reshape(size+(p,))  # numpy 计数
+```
+
+- 新增 `aclop_Multinomial`（`acl_random_ops.h`，**独立 `__has_include` 门** + stub 回退，
+  因该头与 uniform/normal/random 三件套独立），注册 `ascend_multinomial`
+- 依赖链全部已注册：`broadcast_to/copy`、`arange`、`add`、`bincount`（支持 minlength）、`reshape`
+- 约束：标量 int `n`；`sum(pvals) == 1`（上游文档同样声明，否则 aclnn 内部归一化会
+  偏离 numpy 的"剩余概率不计数"语义）；`replacement=True`（numpy 固定有放回）
+
+**实现落点**（phase 1 已完成）：
+
+1. `cupy/backends/ascend/acl_random_ops.h` —— `aclop_RandomUniform` / `aclop_RandomNormal` /
+   `aclop_RandomInt`，包装上面三个 aclnn 算子（irregular 签名，seed/offset 从统一参数通道读）
+2. `acl_utils.pyx` —— extern 原型 + `register_irregular_operators()` 里注册
+   `ascend_random_uniform` / `ascend_random_normal` / `ascend_random_int`（GENERAL_OP）。
+   Python 侧直接走 einsum 同款 `acl_utils.py_launch_general("ascend_random_uniform", [], [out],
+   [from, to, seed, offset], {})`，**不需要**新的桥接 .pyx
+3. `cupy/random/_generator.py` —— `RandomState` 各方法加 `is_ascend()` 分支：
+   `__init__`/`seed` 只维护 host 侧 `(seed, offset)` 计数器（无 curand）；
+   `_random_sample_raw`/`uniform`/`normal`/`randint`/`_permutation`/`tomaxint` 走 aclnn；
+   `_mod1_kernel`/`_scale_kernel`/`_laplace_kernel`/`_gumbel_kernel`/`_wald_kernel`/
+   `_triangular_kernel` 换成 ufunc 组合；16 个 RawKernel 分布响亮抛 `NotImplementedError`
+
+
+
+回归验证（无 NPU 即可做）：
+
+```sh
+# 正向: 宏=1, 注册表含 3 个 random 算子
+touch cupy/backends/ascend/api/acl_utils.pyx && python setup.py build_ext --inplace
+python -c "from cupy.backends.ascend.api.acl_utils import py_list_acl_ufuncs; \
+print([o for o,t in py_list_acl_ufuncs() if 'random' in o])"
+# 负向: 宏=0, 算子被编译剔除, import 仍正常, 运行时检查 False
+CUPY_ENABLE_ACLRAND=0 python setup.py build_ext --inplace   # 记得 touch pyx
+```
+
+**验证等级 L3**（本机无 NPU）：编译链接通过（CANN 9.0.1 下实测）、`import cupy.random` 成功、
+正/负两条路径的注册表行为符合预期（228 项含 3 个 random；`=0` 时 0 个且 import 正常）。
+数值正确性与 SoC 适配需 910B/950 真机（SoC 支持是运行时属性：aclnn 头文件/库存在但设备
+kernel 不支持时，会在派发时以 aclError 报错，由 `raise_acl_op_error` 转成带消息的 RuntimeError）。
+
 ### 3.6 ops-blas 对标cuBLAS
 
 https://gitcode.com/cann/ops-blas  已经下载在 ~/repos/ops-blas
@@ -499,3 +599,27 @@ see docs/ascend/ notes on FFT; 安装见 §2.3b, 可选依赖的编译/运行期
 头文件cann_ops_fft.h的实际安装位置不可靠
 aclfft.pyx 只依赖头文件里约 10 个函数原型 + 2 个枚举，这是 ops-fft 明确“借鉴 cuFFT”的公共稳定接口，漂移风险很低。
 vendored 副本保留了原始 license 头（CANN Open Software License 2.0），合规。
+
+
+_generator.py if has so many diff, may move into _generator_ascend.py  (or  ascend/_generator) and import for diff backend. 
+
+#### 条件编译 / 特性检测（aclnn_rand 不是所有 CANN 版本和 SoC 都有）✅
+
+参考 §3.5b（FFT 优雅降级）与 §3.5（双通道）的做法，**单一事实来源**是
+`install/cupy_builder/backends/ascend.py::AscendBackend.has_aclnn_rand()`：
+
+- 检测方式：`<sdk>/include/aclnnop/{aclnn_uniform,aclnn_normal,aclnn_random}.h`
+  三个头文件是否安装（外加 `<arch>-linux/include` 布局回退）；
+  环境变量 `CUPY_ENABLE_ACLRAND=0` 强制关闭、`=1` 跳过头文件探测（交叉编译用）
+- 结果注入两条通道（同名 `CUPY_CANN_HAS_RAND`）：
+  - C 宏：`get_define_macros()` → `acl_random_ops.h` 里 `#if defined(CUPY_CANN_HAS_RAND) && CUPY_CANN_HAS_RAND`
+    **嵌套** `__has_include(<aclnnop/...>)` 再兜底一层（双层门，嵌套 #if 保证探测只在门 1 通过后才执行；
+    两门不一致时宁可让链接期响亮失败，也不静默丢算子）
+  - Cython 编译期常量：`get_compile_time_env()` → `acl_utils.pyx` 的 extern 块与注册块用
+    `IF CUPY_CANN_HAS_RAND:` 包裹。**pyx 侧没有 `__has_include`**，Cython 只有编译期 `IF`
+    （§3.5），所以 pyx 的单一事实来源就是构建期算出的这个常量
+- 运行时：`cupy/random/_generator.py::_ascend_rand_ops_ok()` 惰性查
+  `py_is_acl_ufunc_registered('ascend_random_uniform')`（缓存），未编译进 SDK 时每个
+  cupy.random 入口抛带排查指引的 `NotImplementedError`，而不是派发器深处的裸 `KeyError`
+- 注意改了 `compile_time_env` 后 Cython **不会**自动重新生成 .cpp（mtime 缓存），
+  要 `touch cupy/backends/ascend/api/acl_utils.pyx` 强制重编（§1 命令速查同理）
