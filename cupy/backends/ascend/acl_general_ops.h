@@ -1,8 +1,22 @@
 #ifndef CUPY_ACL_GENERAL_OPS_HEADER
 #define CUPY_ACL_GENERAL_OPS_HEADER
 
+// NB: aclnn_fill_diagonal.h has a copy-pasted include guard
+// (OP_API_INC_ADD_H_, colliding with aclnn_add.h which other backend
+// headers include first), so its declarations never become visible here.
+// Declare the prototypes manually -- a compatible redeclaration is valid C++
+// even if the real header were to load later.
+extern "C" {
+ACLNN_API aclnnStatus aclnnInplaceFillDiagonalGetWorkspaceSize(
+    aclTensor* selfRef, const aclScalar* fillValue, bool wrap,
+    uint64_t* workspaceSize, aclOpExecutor** executor);
+ACLNN_API aclnnStatus aclnnInplaceFillDiagonal(
+    void* workspace, uint64_t workspaceSize, aclOpExecutor* executor,
+    aclrtStream stream);
+}
+
 // creation op:  with dim info
-// arange, eye, diag, linspace (no such) 
+// arange, eye, diag, linspace (no such)
 // ones(), zeros() are done by fill(), so does not need to call kernel
 #include "aclnnop/aclnn_arange.h"
 #include "aclnnop/aclnn_eye.h"  //  np.eye == np.identity(N)
@@ -80,6 +94,18 @@
 #include "aclnnop/aclnn_take.h"
 #include "aclnnop/aclnn_put.h"
 #include "aclnnop/aclnn_index_put_impl.h"  // ndarray.put via aclnnIndexPutImpl
+#include "aclnnop/aclnn_slogdet.h"          // linalg.slogdet (CANN 9.0.1)
+#include "aclnnop/aclnn_repeat.h"           // np.tile
+#include "aclnnop/aclnn_index_select.h"     // np.take(axis)
+#include "aclnnop/aclnn_masked_fill_scalar.h"  // copyto(where=)
+#include "aclnnop/aclnn_masked_fill_tensor.h"
+#include "aclnnop/aclnn_index_copy.h"       // building block
+#include "aclnnop/aclnn_gather_nd.h"        // building block
+#include "aclnnop/aclnn_unique_consecutive.h"  // building block
+#include "aclnnop/aclnn_multinomial.h"      // building block (random T5)
+#include "aclnnop/aclnn_maxn.h"             // building block
+#include "aclnnop/aclnn_minn.h"             // building block
+#include "aclnnop/aclnn_max_v2.h"           // building block (no min_v2)
 
 #include "aclnnop/aclnn_flip.h"
 #include "aclnnop/aclnn_roll.h"
@@ -1178,6 +1204,220 @@
         }
         AclArgDumpBuffer() = oss.str();
         return ACL_SUCCESS;
+    }
+
+    // ------------------------------------------------------------------
+    // Stage-A batch (CANN 9.0.1): registered building blocks, see
+    // docs/ascend/DeveloperNotes.md "Stage-A 审计 (2026-09-25)".
+    // ------------------------------------------------------------------
+
+    // linalg.slogdet: aclnnSlogdetGetWorkspaceSize(const aclTensor* self,
+    //     aclTensor* signOut, aclTensor* logOut, ...)
+    // Two outputs: sign of the determinant and its natural log. The caller
+    // (`_norms.slogdet`) preallocates both with shape a.shape[:-2].
+    // ins = [self], outs = [sign, logdet].
+    aclError aclop_Slogdet(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        if (ins.size() != 1 || outs.size() != 2) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        return aclIrregularOpRun(aclnnSlogdetGetWorkspaceSize, aclnnSlogdet, stream,
+            ins[0], outs[0], outs[1]);
+    }
+
+    // fill_diagonal: aclnnInplaceFillDiagonalGetWorkspaceSize(
+    //     aclTensor* selfRef, const aclScalar* fillValue, bool wrap, ...)
+    // Scalar fill only (numpy's array_like val keeps the Python path).
+    // ins = [], outs = [self], args = [fill_value (scalar), wrap (0/1)].
+    aclError aclop_FillDiagonal(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        if (!outs.empty() && ins.empty()) {
+            const AclArg* fv = FindArg(args, 0, kwargs, "fill_value");
+            if (fv == nullptr || fv->kind != ARG_SCALAR || fv->scalar == nullptr) {
+                PrintArgs(__func__, args, kwargs, std::cout);
+                return ACL_ERROR_INVALID_PARAM;
+            }
+            // pass the aclScalar through dtype-agnostically; aclnn casts
+            int64_t wrap = GetScalarArg<int64_t>(args, 1, kwargs, "wrap");
+            return aclIrregularOpRun(aclnnInplaceFillDiagonalGetWorkspaceSize,
+                aclnnInplaceFillDiagonal, stream, outs[0], fv->scalar, wrap != 0);
+        }
+        PrintArgs(__func__, args, kwargs, std::cout);
+        return ACL_ERROR_INVALID_PARAM;
+    }
+
+    // np.tile: aclnnRepeatGetWorkspaceSize(const aclTensor* self,
+    //     const aclIntArray* repeats, aclTensor* out, ...)
+    // torch.Tensor.repeat semantics: len(repeats) == self.ndim (the caller
+    // left-pads). ins = [self], outs = [out], args = [repeats (int list)].
+    aclError aclop_Repeat(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        if (ins.size() != 1 || outs.size() != 1) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        std::vector<int64_t> repeats_values;
+        if (!TryGetInt64List(args, 0, kwargs, "repeats", &repeats_values)) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        AclIntArrayGuard repeats(repeats_values);
+        return aclIrregularOpRun(aclnnRepeatGetWorkspaceSize, aclnnRepeat, stream,
+            ins[0], repeats.get(), outs[0]);
+    }
+
+    // np.take along a dim (1-D index): aclnnIndexSelectGetWorkspaceSize(
+    //     const aclTensor* self, int64_t dim, const aclTensor* index,
+    //     aclTensor* out, ...)
+    // out = self with `dim` replaced by len(index) (torch.index_select).
+    // `_take`'s Ascend branch normalizes indices to [0, index_range) and
+    // casts to int64 before dispatching. ins = [self, index], outs = [out],
+    // args = [dim].
+    aclError aclop_IndexSelect(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        if (ins.size() != 2 || outs.size() != 1) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        int64_t dim = GetScalarArg<int64_t>(args, 0, kwargs, "dim", 0);
+        return aclIrregularOpRun(aclnnIndexSelectGetWorkspaceSize, aclnnIndexSelect, stream,
+            ins[0], dim, ins[1], outs[0]);
+    }
+
+    // copyto(dst, src, where=mask): aclnnInplaceMaskedFillScalar/Tensor
+    //     (aclTensor* selfRef, const aclTensor* mask, value, ...)
+    // dst = where(mask, src(broadcast), dst). Scalar source uses the Scalar
+    // variant, tensor source the Tensor variant. ins = [mask, value],
+    // outs = [dst].
+    aclError aclop_MaskedFillScalar(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        if (ins.size() != 2 || outs.size() != 1) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        const AclArg* v = FindArg(args, 0, kwargs, "value");
+        if (v == nullptr || v->kind != ARG_SCALAR || v->scalar == nullptr) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        return aclIrregularOpRun(aclnnInplaceMaskedFillScalarGetWorkspaceSize,
+            aclnnInplaceMaskedFillScalar, stream, outs[0], ins[0], v->scalar);
+    }
+
+    aclError aclop_MaskedFillTensor(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        if (ins.size() != 2 || outs.size() != 1) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        return aclIrregularOpRun(aclnnInplaceMaskedFillTensorGetWorkspaceSize,
+            aclnnInplaceMaskedFillTensor, stream, outs[0], ins[0], ins[1]);
+    }
+
+    // a[idx] = v along a dim (building block, no consumer yet):
+    // aclnnInplaceIndexCopyGetWorkspaceSize(aclTensor* selfRef, int64_t dim,
+    //     const aclTensor* index, const aclTensor* source, ...)
+    // ins = [index, source], outs = [self], args = [dim].
+    aclError aclop_IndexCopy(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        if (ins.size() != 2 || outs.size() != 1) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        int64_t dim = GetScalarArg<int64_t>(args, 0, kwargs, "dim", 0);
+        return aclIrregularOpRun(aclnnInplaceIndexCopyGetWorkspaceSize, aclnnInplaceIndexCopy, stream,
+            outs[0], dim, ins[0], ins[1]);
+    }
+
+    // Multi-coordinate fancy indexing (building block, no consumer yet):
+    // aclnnGatherNdGetWorkspaceSize(const aclTensor* self,
+    //     const aclTensor* indices, bool negativeIndexSupport,
+    //     aclTensor* out, ...)
+    // indices[..., M] holds M coordinates into the first M dims of self.
+    // ins = [self, indices], outs = [out], args = [negative_index (0/1)].
+    aclError aclop_GatherNd(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        if (ins.size() != 2 || outs.size() != 1) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        int64_t negative_index = GetScalarArg<int64_t>(args, 0, kwargs, "negative_index", 0);
+        return aclIrregularOpRun(aclnnGatherNdGetWorkspaceSize, aclnnGatherNd, stream,
+            ins[0], ins[1], negative_index != 0, outs[0]);
+    }
+
+    // torch.unique_consecutive (building block, no consumer yet):
+    // aclnnUniqueConsecutiveGetWorkspaceSize(const aclTensor* self,
+    //     bool returnInverse, bool returnCounts, int64_t dim,
+    //     aclTensor* valueOut, aclTensor* inverseOut, aclTensor* countsOut, ...)
+    // ins = [self], outs = [values, inverse, counts],
+    // args = [return_inverse (0/1), return_counts (0/1), dim].
+    aclError aclop_UniqueConsecutive(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        if (ins.size() != 1 || outs.size() != 3) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        int64_t return_inverse = GetScalarArg<int64_t>(args, 0, kwargs, "return_inverse", 0);
+        int64_t return_counts = GetScalarArg<int64_t>(args, 1, kwargs, "return_counts", 0);
+        int64_t dim = GetScalarArg<int64_t>(args, 2, kwargs, "dim", 0);
+        return aclIrregularOpRun(aclnnUniqueConsecutiveGetWorkspaceSize, aclnnUniqueConsecutive, stream,
+            ins[0], return_inverse != 0, return_counts != 0, dim,
+            outs[0], outs[1], outs[2]);
+    }
+
+    // NB: aclnnMultinomial is wrapped in acl_random_ops.h (cupy.random WIP),
+    // registered as ascend_multinomial there -- no duplicate here.
+
+    // Elementwise max/min over a LIST of tensors (building block, no cupy
+    // public API -- would back maximum.reduce with >2 operands):
+    // aclnnMaxNGetWorkspaceSize(const aclTensorList* tensors, aclTensor* out,
+    //     ...) and the MinN counterpart. ins = N tensors, outs = [out].
+    aclError aclop_MaxN(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        if (ins.empty() || outs.size() != 1) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        AclTensorListGuard tensors(ins);
+        return aclIrregularOpRun(aclnnMaxNGetWorkspaceSize, aclnnMaxN, stream,
+            tensors.get(), outs[0]);
+    }
+
+    aclError aclop_MinN(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        if (ins.empty() || outs.size() != 1) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        AclTensorListGuard tensors(ins);
+        return aclIrregularOpRun(aclnnMinNGetWorkspaceSize, aclnnMinN, stream,
+            tensors.get(), outs[0]);
+    }
+
+    // Multi-dim max reduction (building block; redundant with the existing
+    // aclop_Max/Min which already take an IntArray of dims -- aclnn_min_v2.h
+    // does not exist in CANN 9.0.1, so there is no MinV2 counterpart):
+    // aclnnMaxV2GetWorkspaceSize(const aclTensor* self,
+    //     const aclIntArray* dims, bool keepDims, bool noopWithEmptyDims,
+    //     aclTensor* out, ...)
+    // ins = [self], outs = [out], args = [dims (int list), keepdims (0/1)].
+    aclError aclop_MaxV2(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        if (ins.size() != 1 || outs.size() != 1) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        std::vector<int64_t> dims_values;
+        if (!TryGetInt64List(args, 0, kwargs, "dims", &dims_values)) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        AclIntArrayGuard dims(dims_values);
+        int64_t keepdims = GetScalarArg<int64_t>(args, 1, kwargs, "keepdims", 0);
+        return aclIrregularOpRun(aclnnMaxV2GetWorkspaceSize, aclnnMaxV2, stream,
+            ins[0], dims.get(), keepdims != 0, false, outs[0]);
     }
 
     inline const char* aclop_GetLastDumpArgs() {

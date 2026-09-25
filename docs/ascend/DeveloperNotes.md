@@ -467,11 +467,31 @@ flat = indices + arange(m)[:,None] * p                     # 行偏移平铺
 counts = bincount(flat, minlength=m*p).reshape(size+(p,))  # numpy 计数
 ```
 
-- 新增 `aclop_Multinomial`（`acl_random_ops.h`，**独立 `__has_include` 门** + stub 回退，
-  因该头与 uniform/normal/random 三件套独立），注册 `ascend_multinomial`
+- 新增 `aclop_Multinomial`（`acl_random_ops.h`）。注意：`aclnnMultinomial` 是**基础算子**
+  （核心 `libopapi`，每个 CANN 版本都有），**不属于 ops-rand 家族**，所以**不做条件编译**
+  （不加 `CUPY_CANN_HAS_RAND`/`__has_include` 门，`CUPY_ENABLE_ACLRAND=0` 时仍注册可用）；
+  只有 uniform/normal/random 三件套走特性门
 - 依赖链全部已注册：`broadcast_to/copy`、`arange`、`add`、`bincount`（支持 minlength）、`reshape`
 - 约束：标量 int `n`；`sum(pvals) == 1`（上游文档同样声明，否则 aclnn 内部归一化会
   偏离 numpy 的"剩余概率不计数"语义）；`replacement=True`（numpy 固定有放回）
+
+#### cupy.random API 覆盖盘点（Ascend 后端）
+
+模块级函数 **48** 个，已实现 **33**（69%），分布类 34 个中 19 个：
+
+| 类别 | 已实现 ✅ | 未实现 ❌（CUDA RawKernel，需自定义 AscendC 内核） |
+|---|---|---|
+| 分布 34 | normal, standard_normal, uniform, exponential, standard_exponential, lognormal, rayleigh, pareto, logistic, weibull, power, standard_cauchy, laplace, gumbel, wald, triangular, binomial, geometric, multivariate_normal* （19） | beta, chisquare, dirichlet, f, gamma, hypergeometric, logseries, negative_binomial, noncentral_chisquare, noncentral_f, poisson, standard_gamma, standard_t, vonmises, zipf （15） |
+| 抽样 7 | rand, randn, random_sample（别名 random/ranf/sample）, randint¹, choice², multinomial, random_integers （7/7） | — |
+| 置换 2 | permutation, shuffle （2/2） | — |
+| 状态 4 | seed, get_random_state, set_random_state, reset_states （4/4） | — |
+| 其他 1 | bytes（host 侧 NumPy 包装） （1/1） | — |
+
+\* `multivariate_normal` 依赖链（cholesky 走 CPU fallback + dot + standard_normal）齐全，待真机验证。
+¹ `randint` 仅标量边界（数组边界需 uint32/uint64 无状态填充，aclnn 无对应算子）。
+² `choice` 限制与上游一致（`size=None`、`replace=False` 且带 `p` 上游即不支持）。
+类：`RandomState` ✅；`Generator`/`default_rng`/`BitGenerator`/`XORWOW`/`MRG32k3a`/`Philox4x3210`
+❌（依赖 curand/BitGenerator，Ascend 暂不支持）。
 
 **实现落点**（phase 1 已完成）：
 
@@ -623,3 +643,42 @@ _generator.py if has so many diff, may move into _generator_ascend.py  (or  asce
   cupy.random 入口抛带排查指引的 `NotImplementedError`，而不是派发器深处的裸 `KeyError`
 - 注意改了 `compile_time_env` 后 Cython **不会**自动重新生成 .cpp（mtime 缓存），
   要 `touch cupy/backends/ascend/api/acl_utils.pyx` 强制重编（§1 命令速查同理）
+## Stage-A 审计：CANN 9.0.1 新增 aclnn 算子盘点 (2026-09-25)
+
+> 构建已切到 CANN 9.0.1（`~/miniconda3/envs/aigent/Ascend/cann-9.0.1`），比 8.5.1
+> 新增了一批 8.5.1 审计时判"不存在"的算子。逐个核实如下。
+
+### 已有 cupy API 可接的（本轮已注册 + 接线）
+
+| aclnn 算子 | 签名要点 | 对应 cupy API | 落点 |
+|---|---|---|---|
+| `aclnnSlogdet` | (self) → (signOut, logOut)，**双输出** | `linalg.slogdet`（原 cpu_fallback）、`linalg.det`（sign\*exp(logdet)） | `aclop_Slogdet` / `ascend_slogdet`；复数输入保留 cpu_fallback |
+| `aclnnInplaceFillDiagonal` | (selfRef, fillValue aclScalar, wrap bool)，**仅标量** | `fill_diagonal`（val 为数组时走原 Python 路径） | `aclop_FillDiagonal` / `ascend_fill_diagonal`；`insert.py` |
+| `aclnnRepeat` | (self, repeats IntArray)，torch.repeat == np.tile | `tile`（原 reshape+copy 多跳组合 → 单算子） | `aclop_Repeat` / `ascend_repeat`；`tiling.py` |
+| `aclnnIndexSelect` | (self, dim, index 1-D)，out = self 且 dim 被替换 | `take(axis)`（替换 broadcast+gather 两跳） | `aclop_IndexSelect` / `ascend_index_select`；`_take` Ascend 分支 |
+| `aclnnInplaceMaskedFillScalar/Tensor` | (selfRef, mask, value) | `copyto(dst, src, where=mask)`（原 `_where` 参数通道未实现、直接报错） | `aclop_MaskedFillScalar/Tensor` / `ascend_masked_fill_*`；`basic.py` |
+
+### 仅注册为组合积木、暂无 cupy API 消费者的
+
+| aclnn 算子 | 语义 | 备注 |
+|---|---|---|
+| `aclnnIndexCopy` / Inplace | (selfRef, dim, index, source)：沿 dim 的 `a[idx]=v` | 与 `ascend_scatter_update`（cdim/rdim 路径）重叠，留作单 dim 场景的更直接后备 |
+| `aclnnGatherNd` | (self, indices, negativeIndexSupport)：末维是坐标的多维花式索引 | 未来接 `a[.MultiIndex]` 高级索引；`negativeIndexSupport=False` 保守 |
+| `aclnnUniqueConsecutive` | (self, returnInverse, returnCounts, dim) → 三输出 | 无 numpy 对应（torch.unique_consecutive）；`unique(return_index)` 的候选加速 |
+| `aclnnMultinomial` | (self, numSamples, replacement, seed, offset) | 归 random 子系统（T5 未移植），seed/offset 走 aclnn 的确定性种子约定 |
+| `aclnnMaxV2` / `aclnnMinV2` | (self, dims IntArray, keepDims, noopWithEmptyDims) | 与现有 `aclop_Max/Min`（IntArray dims）语义重复，冗余备选，不接线 |
+
+### maxn / minn 是什么？
+
+`aclnnMaxN/MinN(self = **aclTensorList**, out)`：对 **N 个张量做逐元素 max/min 归约**，
+即 `np.maximum.reduce([t1, t2, ...])` / 链式 `maximum(maximum(a,b),c)` 的单算子版本。
+**不是**"取前 N 大"（那是 topk）。cupy 公开 API 只有二元 `cupy.maximum`，无 N 元接口，
+暂无消费者；若未来实现 `maximum.reduce`（多输入 ufunc reduce）可一次调用替代 N-1 次
+kernel launch。
+
+### 核实为"已覆盖/无需动作"的
+
+- `signbit`：`cupy_signbit` → `ascend_signbit` **早已注册**，无需动作。
+- `pow` / `pow_tensor_tensor`：`ascend_pow` / `ascend_power` 已注册（BINARY +
+  SCALAR_BINARY 双路），`cupy.power` 已可用。
+- `maximum` / `minimum`：已注册（scatter_max/min 组合里也在用 aclnnMaximum/Minimum）。

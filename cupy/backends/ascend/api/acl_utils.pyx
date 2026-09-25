@@ -2333,6 +2333,32 @@ cdef extern from "../acl_general_ops.h" nogil:
     aclError aclop_IndexPutImpl(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
 
+    # Stage-A batch (CANN 9.0.1), see docs/ascend/DeveloperNotes.md
+    aclError aclop_Slogdet(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_FillDiagonal(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_Repeat(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_IndexSelect(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_MaskedFillScalar(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_MaskedFillTensor(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_IndexCopy(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_GatherNd(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_UniqueConsecutive(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_MaxN(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_MinN(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_MaxV2(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+
     # prefix scan: cumsum / cumprod (backing cupy.cumsum & the mask scan)
     aclError aclop_Cumsum(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
@@ -2474,6 +2500,50 @@ cdef void register_irregular_operators():
     # Ascend branch in cupy/_core/_routines_indexing.pyx
     func_union.general_op = aclop_IndexPutImpl
     register_acl_ufunc("ascend_index_put_impl", GENERAL_OP, func_union)
+
+    # --- Stage-A batch (CANN 9.0.1), see docs/ascend/DeveloperNotes.md ---
+    # linalg.slogdet (real float inputs; complex keeps the cpu_fallback path)
+    func_union.general_op = aclop_Slogdet
+    register_acl_ufunc("ascend_slogdet", GENERAL_OP, func_union)
+
+    # fill_diagonal (scalar val only; array_like val keeps the Python path)
+    func_union.general_op = aclop_FillDiagonal
+    register_acl_ufunc("ascend_fill_diagonal", GENERAL_OP, func_union)
+
+    # np.tile via aclnnRepeat (torch.repeat semantics); consumed by tiling.py
+    func_union.general_op = aclop_Repeat
+    register_acl_ufunc("ascend_repeat", GENERAL_OP, func_union)
+
+    # np.take along a dim; consumed by _take's Ascend branch
+    func_union.general_op = aclop_IndexSelect
+    register_acl_ufunc("ascend_index_select", GENERAL_OP, func_union)
+
+    # copyto(dst, src, where=mask): scalar vs tensor source
+    func_union.general_op = aclop_MaskedFillScalar
+    register_acl_ufunc("ascend_masked_fill_scalar", GENERAL_OP, func_union)
+    func_union.general_op = aclop_MaskedFillTensor
+    register_acl_ufunc("ascend_masked_fill_tensor", GENERAL_OP, func_union)
+
+    # --- building blocks without a cupy API consumer yet ---
+    # a[idx] = v along a dim (overlaps ascend_scatter_update)
+    func_union.general_op = aclop_IndexCopy
+    register_acl_ufunc("ascend_index_copy", GENERAL_OP, func_union)
+    # multi-coordinate fancy indexing
+    func_union.general_op = aclop_GatherNd
+    register_acl_ufunc("ascend_gather_nd", GENERAL_OP, func_union)
+    # torch.unique_consecutive (3 outputs)
+    func_union.general_op = aclop_UniqueConsecutive
+    register_acl_ufunc("ascend_unique_consecutive", GENERAL_OP, func_union)
+    # NB: ascend_multinomial is registered in the random-ops block
+    # (acl_random_ops.h / cupy.random WIP) -- no duplicate here.
+    # elementwise max/min over N tensors (would back maximum.reduce)
+    func_union.general_op = aclop_MaxN
+    register_acl_ufunc("ascend_maxn", GENERAL_OP, func_union)
+    func_union.general_op = aclop_MinN
+    register_acl_ufunc("ascend_minn", GENERAL_OP, func_union)
+    # multi-dim max reduction (redundant with ascend_max; no aclnn_min_v2)
+    func_union.general_op = aclop_MaxV2
+    register_acl_ufunc("ascend_max_v2", GENERAL_OP, func_union)
 
     # prefix scan (cupy.cumsum / cupy.cumprod / boolean-index mask scan)
     func_union.general_op = aclop_Cumsum
