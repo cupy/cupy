@@ -209,6 +209,14 @@ def fill_diagonal(a, val, wrap=False):
             raise ValueError('All dimensions of input must be of equal length')
         step = 1 + numpy.cumprod(a.shape[:-1]).sum()
 
+    if _is_ascend() and numpy.isscalar(val) and not numpy.iscomplexobj(val):
+        # aclnnInplaceFillDiagonal accepts a scalar fill value only; numpy's
+        # array_like / complex val keeps the Python path below.
+        from cupy.backends.ascend.api.acl_utils import py_launch_general
+        py_launch_general('ascend_fill_diagonal', (), (a,),
+                          (float(val), int(bool(wrap))), {})
+        return
+
     a.flat[:end:step] = val
 
 
