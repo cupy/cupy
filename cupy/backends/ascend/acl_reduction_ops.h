@@ -23,6 +23,7 @@
 #include "aclnnop/aclnn_histc.h"
 #include "aclnnop/aclnn_reduce_nansum.h"
 #include "aclnnop/aclnn_reduce_sum.h"
+#include "aclnnop/aclnn_cast.h"  // any/all dtype fallback: cast input -> BOOL
 
 // count_non_nan (= sum(!isnan(x))) has no aclnn counterpart and is composed in
 // aclop_CountNonNaN below from ne_tensor + s_where + inplace fill + reduce_sum.
@@ -47,13 +48,69 @@ extern "C" {
 #endif
 
 // ================================================================================================================
-// DECLARE_ACL_REDUCTION_OP(Any)
+// aclop_Any / aclop_All: aclnnAny/aclnnAll only accept a narrow dtype set
+// (BOOL / INT32 / INT64 / FLOAT16 / FLOAT32); complex, float64, int8/int16
+// and unsigned ints are rejected by aclnn. any/all only care about
+// non-zero-ness, so unsupported inputs are cast to BOOL on the device and
+// the reduction runs on the cast copy. This replaces the dispatch-layer
+// astype('?') patch that used to live in launch_reduction_op_raw
+// (_BOOL_CAST_INPUT_OPS) -- dtype handling now lives next to the op.
+#ifdef __cplusplus
+}  // leave extern "C": the helper below is a C++ template
+#endif
+
+static bool _any_all_dtype_ok(aclDataType dtype) {
+    switch (dtype) {
+        case ACL_BOOL:
+        case ACL_INT32:
+        case ACL_INT64:
+        case ACL_FLOAT16:
+        case ACL_FLOAT:
+            return true;
+        default:
+            return false;
+    }
+}
+
+template <typename WsFunc, typename KernFunc>
+static aclError _run_any_all(const aclTensor* self, const aclIntArray* dim, bool keepdim,
+    aclTensor* out, aclrtStream stream, WsFunc wsfunc, KernFunc kfunc) {
+    aclDataType dtype = ACL_DT_UNDEFINED;
+    aclGetDataType(self, &dtype);
+    if (_any_all_dtype_ok(dtype)) {
+        return aclReductionOpRun(self, out, wsfunc, kfunc, stream, dim, keepdim);
+    }
+    // cast self -> BOOL (aclnnCast handles the dtype conversion), reduce on
+    // the copy; the output is always BOOL for any/all either way.
+    aclTensor* temp = aclTensorLike(self, ACL_BOOL);
+    if (temp == nullptr) {
+        return ACL_ERROR_INVALID_PARAM;
+    }
+    aclError ret = aclIrregularOpRun(aclnnCastGetWorkspaceSize, aclnnCast, stream,
+        self, ACL_BOOL, temp);
+    if (ret == ACL_SUCCESS) {
+        ret = aclReductionOpRun(temp, out, wsfunc, kfunc, stream, dim, keepdim);
+    }
+    // aclTensorLike aclrtMallocs device memory; DestroyTensorLike frees it
+    aclDestroyTensorLike(temp);
+    return ret;
+}
+
+#ifdef __cplusplus
+extern "C" {  // re-enter extern "C" for the aclop_* wrappers
+#endif
+
 aclError aclop_Any(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out,
     const KwargsType& kwargs, aclrtStream stream) {
-    return aclReductionOpRun(self, out,
-        aclnnAnyGetWorkspaceSize, aclnnAny, stream, dim, keepdim); 
+    return _run_any_all(self, dim, keepdim, out, stream,
+        aclnnAnyGetWorkspaceSize, aclnnAny);
 }
-DECLARE_ACL_REDUCTION_OP(All)
+
+aclError aclop_All(const aclTensor* self, const aclIntArray* dim, bool keepdim, aclTensor* out,
+    const KwargsType& kwargs, aclrtStream stream) {
+    return _run_any_all(self, dim, keepdim, out, stream,
+        aclnnAllGetWorkspaceSize, aclnnAll);
+}
 
 // aclnnMax/aclnnMin are whole-tensor reductions: no dim, no keepdim (they
 // ignore the dispatcher's dim/keepdim, so an axis-wise numpy.max was wrong).

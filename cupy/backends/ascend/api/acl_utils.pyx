@@ -926,15 +926,18 @@ _UINT_PROMOTE_EXEMPT_OPS = {
     'ascend_copy',
     # 参数通道探针：只记录不计算，无需提升
     'ascend_dump_args',
+    'ascend_put', # aclInplacePut support uint8, but does not support uint18/uint32
+    # TODO: ascend_take and all manipulation ops should not support?
 }
 
+# arithmetic ops
 cdef dict _ASCEND_DTYPE_PROMOTE = {
     'B': 'i',   # uint8 -> 平台 int；unsigned char 的算子支持性不确定
     'H': 'i',   # uint16 -> int；部分算子连 int16 都不支持，不提升到 'h'
     'I': 'i',   # uint32 -> int
-    'Q': 'q',   # uint64 -> int64
+    'Q': 'q',   # uint64 -> int64 numpy 1.x char
+    'L': 'q',   # uint64 -> int64  numpy 2.x char
 }
-
 
 cdef bint _has_promotable_uint(sequence arrs):
     cdef object a
@@ -1539,14 +1542,16 @@ def py_parse_reduction_axes(object axes, object in0=None) -> list:
     return [shape[i] for i in range(shape.size())]
 
 
-#: aclnn 支持性补丁（见 launch_reduction_op_raw 的插入点）：aclnnAny/aclnnAll
-#: 不支持 complex64/128 与 float64 输入，派发前把输入 astype('?')。
-#: 语义等价（any/all 只关心是否为零）。需要同样处理的算子往这个 set 加名字。
-_BOOL_CAST_INPUT_OPS = frozenset((
-    'ascend_any',
-    'ascend_all',
-))
+# ASCEND reudction APIs" aclSum/Min/Max does not support int8/int16
+# but arithmetic ops support int8/int16, should only promote reduction ops
+# reduction dtype promote strategy
+cdef dict _ASCEND_REDUCTION_DTYPE_PROMOTE_NARROW = {
+    'b': 'i',
+    'h': 'i'
+}
 
+# TODO:  calc_result_dtype() should consider unsigned integer cast
+# (uint8, float32) got wrong result
 
 cdef aclError launch_reduction_op_raw(str opname, sequence ins, sequence outs, object axes, bint keepdims, dict kwargs, intptr_t stream_ptr) except *:
     # 检查操作是否已注册
@@ -1568,6 +1573,9 @@ cdef aclError launch_reduction_op_raw(str opname, sequence ins, sequence outs, o
     cdef vector[int64_t] shape
     cdef aclIntArray* dim = NULL
     cdef vector[aclTensor*] tensors
+    cdef object _in0
+    cdef bint _bv
+    cdef list _aa_orig_out = []
 
     # REDUCTION_OP 的 C++ 签名固定为 (self, dim, keepdim, out, kwargs, stream)，
     # 即恰好 1 输入 1 输出。多输入/多输出的 ReductionKernel 若放行，tensors[1]
@@ -1580,24 +1588,13 @@ cdef aclError launch_reduction_op_raw(str opname, sequence ins, sequence outs, o
             + f" (reduction requires exactly 1 input and 1 output, "
               f"got {len(ins)} input(s) / {len(outs)} output(s))")
 
-    # NOTE: 特殊处理的插入点（dtype 能力补丁）—— 未来重构时注意。
-    # aclnnAny/aclnnAll 不支持 complex64/128 与 float64 输入，这里在**派发层**
-    # 把输入 astype('?') 再派发（cast 走 ascend_cast，不经过本函数，无递归）。
-    # 语义等价：any/all 只关心元素是否为零，非零即真。
-    #   为什么放在这里：所有 reduction 入口都会经过本函数，补丁一处即全覆盖；
-    #   重构方向：这类「算子 dtype 能力补丁」更适合放进
-    #   _ascend/_reduction.pyx 的 _call（离 ufunc 语义更近、能拿到 ufunc 解析
-    #   出的 out dtype），或做成算子声明表在 C++ 侧统一处理。
-    if opname in _BOOL_CAST_INPUT_OPS and ins:
-        a0 = ins[0]
-        if isinstance(a0, _ndarray_base) and a0.dtype.kind in 'fc':
-            ins = [a0.astype('?')] + list(ins[1:])
-
-
+    # NOTE: all/any 的 dtype 能力补丁（aclnnAny/aclnnAll 只支持 BOOL/INT32/
+    # INT64/FLOAT16/FLOAT32）已下沉到 C++ 侧 aclop_Any/aclop_All
+    # （_run_any_all：不支持的输入先 aclnnCast 到 BOOL 再归约）。
     # 无符号整型拦截（AscendSpecialization.md §1）：豁免算子见
     # _UINT_PROMOTE_EXEMPT_OPS
-    cdef list _orig_outs
-    cdef list _cast_src
+    cdef list _orig_outs = []
+    cdef list _cast_src = []
     cdef aclError _cret
     cdef bint _promoted = False
     if opname not in _UINT_PROMOTE_EXEMPT_OPS and (_has_promotable_uint(ins) or _has_promotable_uint(outs)):
@@ -1634,6 +1631,12 @@ cdef aclError launch_reduction_op_raw(str opname, sequence ins, sequence outs, o
         _cret = _cast_back_outs(_orig_outs, _cast_src, stream_ptr)
         if _cret != 0:
             ret = _cret
+    # ASCEND: all/any cast result bool -> uint64 will fail if _promoted
+    if ret == 0 and _aa_orig_out:
+        import numpy as _np
+        _bv = outs[0].get().flat[0] != 0
+        _aa_orig_out[0].set(_np.full(_aa_orig_out[0].shape, 1 if _bv else 0,
+            dtype=_aa_orig_out[0].dtype))
     return ret
 
 
