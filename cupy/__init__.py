@@ -992,8 +992,7 @@ def get_array_module(*args):
             return _cupy
     return _numpy
 
-# TODO: ASCEND does not support fuse
-#fuse = _core.fusion.fuse
+fuse = _core.fusion.fuse
 
 disable_experimental_feature_warning = False
 

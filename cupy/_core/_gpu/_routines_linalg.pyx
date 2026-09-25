@@ -29,7 +29,7 @@ from cupy.xpu cimport device
 from cupy_backends.cuda.api cimport runtime
 
 
-cdef extern from '../../cupy/backends/cupy_complex.h':
+cdef extern from '../../backends/cupy_complex.h':
     ctypedef struct cuComplex 'cuComplex':
         float x, y
 

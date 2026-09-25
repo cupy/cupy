@@ -28,7 +28,7 @@ from cupy.backends.ascend.api.acl_utils cimport launch_general_func
 #from cupy.xpu import cub
 
 try:
-    import cupy.backends.backend.libs.cutensor as cuda_cutensor
+    import cupy.backends.cuda.libs.cutensor as cuda_cutensor
 except ImportError:
     cuda_cutensor = None
 

@@ -18,7 +18,7 @@ from cupy._core cimport core
 from cupy._core cimport _routines_creation as _creation
 from cupy._core cimport _reduction
 from cupy.cuda cimport device
-from cupy.cuda.pinned_memory cimport alloc_pinned_memory, is_memory_pinned
+from cupy.xpu.pinned_memory cimport alloc_pinned_memory, is_memory_pinned
 from cupy_backends.cuda.libs cimport cutensor
 from cupy.cuda import Device
 

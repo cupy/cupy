@@ -433,7 +433,7 @@ cpdef _ndarray_base _internal_asfortranarray(_ndarray_base a):
         # TODO: this is a temp solution must be review: to just return c-contiguous array
         return _internal_ascontiguousarray(a)
     ELSE:
-        from cupy.backends.backend.libs import cublas
+        from cupy.backends.cuda.libs import cublas
         if (a._c_contiguous and a._shape.size() == 2 and
                 (a.dtype == numpy.float32 or a.dtype == numpy.float64)):
             m, n = a.shape

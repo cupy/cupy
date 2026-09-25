@@ -2,7 +2,7 @@ from libc.stdint cimport intptr_t
 
 from cupy_backends.cuda.api cimport runtime
 from cupy._core.core cimport _ndarray_base
-from cupy.cuda.device cimport get_compute_capability
+from cupy.xpu.device cimport get_compute_capability
 
 import hashlib
 import importlib

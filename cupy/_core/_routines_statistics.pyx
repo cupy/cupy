@@ -21,7 +21,7 @@ IF CUPY_CANN_VERSION <= 0:
     from cupy.cuda import cub
 
 try:
-    import cupy.backends.backend.libs.cutensor as cuda_cutensor
+    import cupy.backends.cuda.libs.cutensor as cuda_cutensor
 except ImportError:
     cuda_cutensor = None
 

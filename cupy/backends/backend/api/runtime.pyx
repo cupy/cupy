@@ -105,7 +105,7 @@ IF CUPY_CANN_VERSION <= 0:
     # from cupy.backends.cuda.api._device_prop import *
     def _export_enum():
         import sys
-        import cupy.backends.backend.api._runtime_enum as _runtime_enum
+        import cupy.backends.cuda.api._runtime_enum as _runtime_enum
         this = sys.modules[__name__]
         for key in dir(_runtime_enum):
             if not key.startswith('_'):
