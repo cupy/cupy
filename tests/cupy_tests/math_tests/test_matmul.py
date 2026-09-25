@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import operator
 import unittest
+from unittest import mock
 
 import numpy
 import pytest
@@ -9,6 +10,8 @@ import pytest
 import cupy
 from cupy._core import _routines_linalg as _linalg
 from cupy import testing
+from cupy.cuda import runtime
+from cupy_backends.cuda.libs import cublas
 
 
 @testing.parameterize(
@@ -400,3 +403,85 @@ class TestMatmulDispatch(unittest.TestCase):
         assert isinstance(o_np, cupy.ndarray)
         o_cp = cupy.matmul(x1, x2, axes=[(0, 1), (0, 1), (0, 1)])
         testing.assert_allclose(o_np, o_cp)
+
+
+@testing.parameterize(
+    *testing.product({
+        'dtype_name': ['float16', 'bfloat16'],
+        'compute_type': [
+            _linalg.COMPUTE_TYPE_DEFAULT,
+            _linalg.COMPUTE_TYPE_PEDANTIC,
+        ],
+        'shape_pair_batched': [
+            (((2, 3, 64), (2, 64, 4)), False),
+            (((2, 5, 3, 64), (2, 5, 64, 4)), False),
+            (((2, 3, 64), (64, 4)), True),
+            (((2, 5, 3, 64), (64, 4)), True),
+            (((2, 1, 3, 64), (1, 5, 64, 4)), True),
+        ],
+        'noncontiguous': [False, True],
+    }))
+class TestMatmul16Bit(unittest.TestCase):
+
+    def setUp(self):
+        if runtime.is_hip:
+            pytest.skip('CUDA-specific GEMM dispatch')
+
+        min_capability = 80 if self.dtype_name == 'bfloat16' else 70
+        if int(cupy.cuda.Device().compute_capability) < min_capability:
+            pytest.skip('16-bit tensor cores are not available')
+
+        if self.dtype_name == 'bfloat16':
+            if cupy.cuda.get_local_runtime_version() < 12020:
+                pytest.skip('bfloat16 is not supported')
+            ml_dtypes = pytest.importorskip('ml_dtypes')
+            self.dtype = numpy.dtype(ml_dtypes.bfloat16)
+            self.cuda_dtype = runtime.CUDA_R_16BF
+        else:
+            self.dtype = numpy.dtype(numpy.float16)
+            self.cuda_dtype = runtime.CUDA_R_16F
+
+    @pytest.mark.thread_unsafe(reason="uses mock")
+    def test_matmul(self):
+        shape_pair, batched = self.shape_pair_batched
+        a = testing.shaped_random(
+            shape_pair[0], cupy, numpy.float32).astype(self.dtype)
+        b = testing.shaped_random(
+            shape_pair[1], cupy, numpy.float32).astype(self.dtype)
+
+        if self.noncontiguous:
+            a = a[..., ::-1]
+            b = b[..., ::-1, :]
+
+        # Compute the reference in float32 from the rounded inputs.
+        expected = numpy.matmul(
+            cupy.asnumpy(a.astype(numpy.float32)),
+            cupy.asnumpy(b.astype(numpy.float32)),
+        ).astype(self.dtype)
+
+        out = cupy.empty(expected.shape, dtype=self.dtype)
+        if self.noncontiguous:
+            out = out[..., ::-1]
+
+        name = 'gemmBatchedEx' if batched else 'gemmStridedBatchedEx'
+        with mock.patch.object(
+                cublas, name, wraps=getattr(cublas, name)) as gemm:
+            result = cupy.matmul(a, b, out=out)
+
+        assert result is out
+        assert result.dtype == self.dtype
+        assert gemm.call_count == 1
+
+        args = gemm.call_args.args
+        # Positions of Atype, Btype, and Ctype in each cuBLAS wrapper.
+        dtype_indices = (8, 11, 15) if batched else (8, 12, 17)
+        for index in dtype_indices:
+            assert args[index] == self.cuda_dtype
+        assert args[-2] == cublas.CUBLAS_COMPUTE_32F
+
+        testing.assert_allclose(
+            result.astype(numpy.float32),
+            expected.astype(numpy.float32),
+            rtol=1e-2,  # bfloat16 error range
+            atol=1e-3,
+        )
