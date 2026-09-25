@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pickle
 import unittest
+from math import prod
 
 import numpy
 import pytest
@@ -11,6 +12,7 @@ from cupy import testing
 from cupy.cuda import cufft
 from cupy.fft import config
 from cupy.fft._fft import _convert_fft_type
+from cupyx.scipy.fft import get_fft_plan
 
 from ..fft_tests.test_fft import multi_gpu_config
 
@@ -22,6 +24,67 @@ class TestExceptionPicklable(unittest.TestCase):
         e2 = pickle.loads(pickle.dumps(e1))
         assert e1.args == e2.args
         assert str(e1) == str(e2)
+
+
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                    reason='CUDA input alignment requirement')
+@pytest.mark.parametrize('dtype', [numpy.float32, numpy.float64])
+@pytest.mark.parametrize('offset', [0, 1])
+@pytest.mark.parametrize('ndim', [1, 2])
+@pytest.mark.parametrize('use_xt', [False, True])
+def test_plan_r2c_input_alignment(
+        dtype: type[numpy.float32 | numpy.float64], offset: int,
+        ndim: int, use_xt: bool) -> None:
+    shape = (35,) * ndim
+    backing: cupy.ndarray = cupy.ones(shape=(2,) + shape, dtype=dtype)
+    value: cupy.ndarray = backing[offset]
+    output_shape = shape[:-1] + (shape[-1] // 2 + 1,)
+    output_dtype = (
+        numpy.complex64 if dtype is numpy.float32 else numpy.complex128)
+    out: cupy.ndarray = cupy.empty(shape=output_shape, dtype=output_dtype)
+    assert value.data.ptr % (2 * value.itemsize) == offset * value.itemsize
+    plan: cufft.Plan1d | cufft.PlanNd | cufft.XtPlanNd
+    if use_xt:
+        plan = cufft.XtPlanNd(
+            shape=shape, inembed=shape, istride=1, idist=prod(shape),
+            idtype=numpy.dtype(dtype),
+            onembed=output_shape, ostride=1, odist=prod(output_shape),
+            odtype=numpy.dtype(output_dtype), batch=1,
+            edtype=numpy.dtype(output_dtype), order='C',
+            last_axis=-1, last_size=output_shape[-1])
+    else:
+        plan = get_fft_plan(a=value, value_type='R2C')
+    plan.fft(a=value, out=out, direction=cufft.CUFFT_FORWARD)
+    testing.assert_allclose(
+        actual=out,
+        desired=numpy.fft.rfftn(numpy.ones(shape=shape, dtype=dtype)),
+        rtol=1e-5 if dtype is numpy.float32 else 1e-12,
+        atol=1e-3 if dtype is numpy.float32 else 1e-9)
+    testing.assert_array_equal(
+        actual=backing, desired=numpy.ones(shape=backing.shape, dtype=dtype))
+
+
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
+                    reason='not supported by hipFFT')
+@pytest.mark.skipif(int(cupy.cuda.device.get_compute_capability()) < 53,
+                    reason='half-precision FFT is not supported')
+@pytest.mark.parametrize('offset', [0, 1])
+def test_xt_plan_half_r2c_input_alignment(offset: int) -> None:
+    backing: cupy.ndarray = cupy.ones(shape=33, dtype=cupy.float16)
+    value: cupy.ndarray = backing[offset:offset + 32]
+    out: cupy.ndarray = cupy.empty(shape=34, dtype=cupy.float16)
+    plan = cufft.XtPlanNd(
+        shape=(32,), inembed=(32,), istride=1, idist=32,
+        idtype='e', onembed=(17,), ostride=1, odist=17,
+        odtype='E', batch=1, edtype='E', order='C',
+        last_axis=-1, last_size=None)
+    plan.fft(a=value, out=out, direction=cufft.CUFFT_FORWARD)
+    testing.assert_allclose(
+        actual=out.astype(cupy.float32).view(cupy.complex64),
+        desired=numpy.fft.rfft(numpy.ones(shape=32)),
+        rtol=1e-3, atol=1e-3)
+    testing.assert_array_equal(
+        actual=backing, desired=numpy.ones(shape=33, dtype=numpy.float16))
 
 
 # This class tests multi-GPU Plan1d with data sitting on host.

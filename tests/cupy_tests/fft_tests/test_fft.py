@@ -1106,6 +1106,28 @@ class TestRfftn:
         return xp.fft.irfftn(a, s=self.s, axes=self.axes, norm=self.norm)
 
 
+@pytest.mark.parametrize('dtype', [np.float32, np.float64])
+@pytest.mark.parametrize('offset', [0, 1])
+@pytest.mark.parametrize('ndim', [1, 3])
+def test_rfft_input_alignment(
+        dtype: type[np.float32 | np.float64], offset: int, ndim: int) -> None:
+    a: cupy.ndarray = cupy.ones(shape=(2,) + (35,) * ndim, dtype=dtype)
+    x: cupy.ndarray = a[offset]
+    assert x.flags.c_contiguous
+    assert x.data.ptr % (2 * x.itemsize) == offset * x.itemsize
+
+    out: cupy.ndarray = (
+        cupy.fft.rfft(x) if ndim == 1 else cupy.fft.rfftn(x))
+    expected: np.ndarray = np.fft.rfftn(np.ones(shape=x.shape, dtype=dtype))
+    testing.assert_allclose(
+        actual=out, desired=expected,
+        rtol=1e-5 if dtype is np.float32 else 1e-12,
+        atol=1e-3 if dtype is np.float32 else 1e-9)
+    testing.assert_array_equal(
+        actual=a, desired=np.ones(shape=a.shape, dtype=dtype))
+    assert out.flags.c_contiguous
+
+
 # Only those tests in which a legit plan can be obtained are kept
 @testing.with_requires('numpy>=2.0')
 @pytest.mark.usefixtures('skip_forward_backward')
