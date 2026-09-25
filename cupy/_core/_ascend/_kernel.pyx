@@ -856,6 +856,42 @@ cdef class ufunc:
         else:
             where_args = []
 
+        # ASCEND: all-scalar math ufunc such as `cupy.add(2, 3)` has no
+        # ndarray operand -- aclnn cannot serve a pure-scalar call (the
+        # narrow channel rejects two scalars + out; the general channel has
+        # no tensor to attach them to). Compute on the host with the numpy
+        # counterpart instead and wrap the result as a 0-d array -- the CUDA
+        # path allocates a 0-d out and runs a kernel with scalar params, so
+        # the return type is a 0-d cupy.ndarray either way. Python scalars
+        # are passed to numpy as python scalars again so NEP50 weak promotion
+        # picks the same dtype the CUDA loop selection would.
+        if (in_args and not has_where and self.nout == 1
+                and not any(isinstance(x, _ndarray_base) for x in in_args)):
+            fname = self.name[len('cupy_'):] if self.name.startswith(
+                'cupy_') else self.name
+            numpy_ufunc = getattr(numpy, fname, None)
+            if not callable(numpy_ufunc):
+                raise NotImplementedError(
+                    f'{self.name}: all-scalar ufunc call has no host '
+                    f'fallback (numpy.{fname} not found)')
+            np_args = []
+            for x, weak_t in zip(in_args, weaks):
+                if weak_t:
+                    # weak scalar (originally a python int/float/complex):
+                    # restore the python scalar so numpy applies its weak
+                    # promotion rules instead of treating np.int64 as strong
+                    np_args.append(weak_t(x))
+                else:
+                    np_args.append(x)
+            np_kwargs = {'casting': casting}
+            if dtype is not None:
+                np_kwargs['dtype'] = dtype
+            result = numpy_ufunc(*np_args, **np_kwargs)
+            if given_out_args:
+                given_out_args[0][...] = result
+                return given_out_args[0]
+            return cupy.asarray(result)
+
         # _copy_in_args_if_needed updates in_args
         _copy_in_args_if_needed(in_args, given_out_args)
         _copy_in_args_if_needed(where_args, given_out_args)

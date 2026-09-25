@@ -930,7 +930,7 @@ _UINT_PROMOTE_EXEMPT_OPS = {
     # TODO: ascend_take and all manipulation ops should not support?
 }
 
-# arithmetic ops
+# arithmetic ops, uint8 有些ops支持, 还不能promote到int32
 cdef dict _ASCEND_DTYPE_PROMOTE = {
     'B': 'i',   # uint8 -> 平台 int；unsigned char 的算子支持性不确定
     'H': 'i',   # uint16 -> int；部分算子连 int16 都不支持，不提升到 'h'

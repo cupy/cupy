@@ -88,7 +88,6 @@ ACLNN_API aclnnStatus aclnnInplaceFillDiagonal(
 #include "aclnnop/aclnn_mul.h"
 #include "aclnnop/aclnn_reduce_sum.h"
 
-// normal, uniform distributions:
 
 // manipulation op:  sort select take put
 #include "aclnnop/aclnn_take.h"
