@@ -116,11 +116,12 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                 data_index = indices[x[tid]];
             } else if (block_length > 0)  {
                 // Block has at least one zero. Assign first occurrence as the
-                // starting reference
+                // starting reference. The loop is bounded by block_length so
+                // that the load stays inside the indices array even when the
+                // stored columns form a dense prefix.
                 data_value = 0;
-                for (data_index = 0; data_index < length; data_index++){
-                    if (data_index != indices[x[tid] + data_index] ||
-                        x[tid] + data_index >= y[tid]){
+                for (data_index = 0; data_index < block_length; data_index++){
+                    if (data_index != indices[x[tid] + data_index]){
                         break;
                     }
                 }
@@ -142,6 +143,22 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                     if (data[entry] ${op} data_value){
                         data_index = indices[entry];
                         data_value = data[entry];
+                    }
+                }
+            }
+
+            // A zero can never win the strict comparison above, so when the
+            // result is a zero it is the implicit zero the accumulator was
+            // seeded with. An explicitly stored zero at a smaller column
+            // must win that tie ("first occurrence").
+            if (data_value == 0){
+                for (TI entry = x[tid]; entry < y[tid]; entry++){
+                    if (indices[entry] >= data_index){
+                        break;
+                    }
+                    if (data[entry] == 0){
+                        data_index = indices[entry];
+                        break;
                     }
                 }
             }
