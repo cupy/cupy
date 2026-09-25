@@ -753,6 +753,24 @@ cpdef _ndarray_base _nanstd(_ndarray_base a, axis, dtype, out, ddof, keepdims):
 
 cpdef _ndarray_base _nanvar(_ndarray_base a, axis, dtype, out, ddof, keepdims):
 
+    IF CUPY_CANN_VERSION > 0:
+        # ASCEND: `_nanvar_core/_count_non_nan/_math._nansum(dtype=None)` not working
+        # keepdims=False to calc using cupy APIs, then reshape using keepdims
+        # TODO: This temp solution may have poor performance, custom kernel may be better
+        arrsum = cupy.nansum(a, axis=axis)
+        _count = cupy.sum((~cupy.isnan(a)).astype(numpy.float32), axis=axis)
+        nanmean = arrsum / _count
+        sq = a - nanmean
+        sq = diff * diff
+        sq_sum = cupy.nansum(sq, axis=axis)
+        result = sq_sum / (_count - ddof)
+        if keepdims:
+            result = cupy.reshape(result, (1,) * a.ndim)
+        if out is not None:
+            out[...] = result
+            result = out
+        return result
+
     _count = _count_non_nan(a, axis=axis, keepdims=True)
     arrsum = _math._nansum(a, axis=axis, dtype=dtype, out=None, keepdims=True)
 
