@@ -379,9 +379,11 @@ class WarpShuffleOp(BuiltinFunc):
             mask = mask.obj
         except Exception:
             raise TypeError('mask must be an integer')
-        if runtime.is_hip:
+
+        _hip_7_plus = cupy._core._is_hip_7_plus
+        if runtime.is_hip and not _hip_7_plus:
             warnings.warn(f'mask {mask} is ignored on HIP', RuntimeWarning)
-        elif not (0x0 <= mask <= 0xffffffff):
+        if not (0x0 <= mask <= cupy._core._full_mask()):
             raise ValueError('mask is out of range')
 
         # val_id refers to "delta" for shfl_{up, down}, "srcLane" for shfl, and
@@ -398,12 +400,14 @@ class WarpShuffleOp(BuiltinFunc):
                 if width.obj not in (2, 4, 8, 16, 32):
                     raise ValueError('width needs to be power of 2')
         else:
-            width = Constant(64) if runtime.is_hip else Constant(32)
+            width = Constant(cupy._core._get_warpsize())
         width = _compile._astype_scalar(
             width, _cuda_types.int32, 'same_kind', env)
         width = Data.init(width, env)
 
-        code = f'{name}({hex(mask)}, {var.code}, {val_id.code}'
+        mask_str = (f'(unsigned long long){hex(mask)}'
+                    if _hip_7_plus else hex(mask))
+        code = f'{name}({mask_str}, {var.code}, {val_id.code}'
         code += f', {width.code})'
         return Data(code, ctype)
 

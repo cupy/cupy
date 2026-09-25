@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import unittest
-
 import numpy
 import pytest
 
@@ -9,12 +7,14 @@ import cupy
 from cupy import testing
 
 
-class TestConj(unittest.TestCase):
+class TestConj:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_almost_equal()
     def test_conj(self, xp, dtype):
         x = testing.shaped_arange((2, 3), xp, dtype)
+        if xp is numpy and numpy.__version__ == "2.4.5" and x.dtype == bool:
+            return x  # NumPy 2.4.5 had a regression for bool_arr.conj()
         return x.conj()
 
     @testing.for_all_dtypes(no_complex=True)
@@ -22,6 +22,8 @@ class TestConj(unittest.TestCase):
     def test_conj_pass(self, xp, dtype):
         x = testing.shaped_arange((2, 3), xp, dtype)
         y = x.conj()
+        if xp is numpy and numpy.__version__ == "2.4.5":
+            return x  # NumPy 2.4.5 had a regression for bool_arr.conj()
         assert x is y
         return y
 
@@ -29,6 +31,8 @@ class TestConj(unittest.TestCase):
     @testing.numpy_cupy_array_almost_equal()
     def test_conjugate(self, xp, dtype):
         x = testing.shaped_arange((2, 3), xp, dtype)
+        if xp is numpy and numpy.__version__ == "2.4.5" and x.dtype == bool:
+            return x  # NumPy 2.4.5 had a regression for bool_arr.conj()
         return x.conjugate()
 
     @testing.for_all_dtypes(no_complex=True)
@@ -36,11 +40,13 @@ class TestConj(unittest.TestCase):
     def test_conjugate_pass(self, xp, dtype):
         x = testing.shaped_arange((2, 3), xp, dtype)
         y = x.conjugate()
+        if xp is numpy and numpy.__version__ == "2.4.5":
+            return x  # NumPy 2.4.5 had a regression for bool_arr.conj()
         assert x is y
         return y
 
 
-class TestAngle(unittest.TestCase):
+class TestAngle:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_almost_equal()
@@ -49,7 +55,7 @@ class TestAngle(unittest.TestCase):
         return xp.angle(x)
 
 
-class TestRealImag(unittest.TestCase):
+class TestRealImag:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_almost_equal(accept_error=False)
@@ -156,7 +162,7 @@ class TestRealImag(unittest.TestCase):
         assert cupy.all(x == expected)
 
 
-class TestScalarConversion(unittest.TestCase):
+class TestScalarConversion:
 
     @testing.for_all_dtypes()
     def test_scalar_conversion(self, dtype):

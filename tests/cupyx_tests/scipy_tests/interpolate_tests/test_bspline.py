@@ -296,7 +296,7 @@ class TestBSpline:
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(scipy_name='scp')
-    @testing.with_requires('scipy>=1.8.0')
+    @testing.with_requires('scipy')
     def test_design_matrix(self, xp, scp, dtype):
         if xp.dtype(dtype).kind == 'u':
             pytest.skip()
@@ -448,7 +448,7 @@ class TestBSpline:
 
     @testing.numpy_cupy_allclose(
         scipy_name='scp', rtol=3e-5, atol=3e-5)
-    @testing.with_requires('scipy>=1.8.0')
+    @testing.with_requires('scipy')
     def test_design_matrix_same_as_BSpline_call(self, xp, scp):
         """Test that design_matrix(x) is equivalent to BSpline(..)(x)."""
         ret = []

@@ -7,10 +7,17 @@ set -uex
 ACTIONS="$(dirname $0)/actions"
 . "$ACTIONS/_environment.sh"
 
+nvidia-smi
+
 export NVCC="ccache nvcc"
 
 export CUPY_ACCELERATORS=""
 
-"$ACTIONS/build.sh"
+echo "================ Environment Variables ================"
+env
+echo "======================================================="
+
+
+trap "$ACTIONS/cleanup.sh" EXIT
+"$ACTIONS/fetch-wheel.sh"
 "$ACTIONS/example.sh"
-"$ACTIONS/cleanup.sh"

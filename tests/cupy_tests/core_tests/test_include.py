@@ -1,10 +1,6 @@
 from __future__ import annotations
 
-import os
-from unittest import mock
-
 import cupy
-
 import pytest
 
 
@@ -58,12 +54,16 @@ class TestIncludesCompileCUDA:
         return archs
 
     def _get_options(self):
-        return (
+        from cuda.pathfinder import find_nvidia_header_directory
+        include_dir = find_nvidia_header_directory('cudart')
+        opts = [
             '-std=c++17',
             *cupy._core.core._get_cccl_include_options(),
             '-I{}'.format(cupy._core.core._get_header_dir_path()),
-            '-I{}'.format(os.path.join(cupy.cuda.get_cuda_path(), 'include')),
-        )
+        ]
+        if include_dir is not None:
+            opts.append('-I{}'.format(include_dir))
+        return tuple(opts)
 
     def test_nvcc(self):
         options = self._get_options()
@@ -71,18 +71,23 @@ class TestIncludesCompileCUDA:
             cupy.cuda.compiler.compile_using_nvcc(
                 _code_nvcc, options=options, arch=arch)
 
-    def test_nvrtc(self):
+    def test_nvrtc(self, monkeypatch):
         cuda_ver = cupy.cuda.runtime.runtimeGetVersion()
         options = self._get_options()
         for arch in self._get_cuda_archs():
-            with mock.patch(
-                    'cupy.cuda.compiler._get_arch_for_options_for_nvrtc',
-                    lambda _: (f'-arch=compute_{arch}', 'ptx')):
+            monkeypatch.setattr(
+                cupy.cuda.compiler,
+                "_get_arch_for_options_for_nvrtc",
+                lambda _: (f'-arch=compute_{arch}', 'ptx'),
+            )
+            cupy.cuda.compiler.compile_using_nvrtc(
+                _code_nvrtc, options=options)
+
+            if cuda_ver >= 11010:
+                monkeypatch.setattr(
+                    cupy.cuda.compiler,
+                    "_get_arch_for_options_for_nvrtc",
+                    lambda _: (f'-arch=sm_{arch}', 'cubin'),
+                )
                 cupy.cuda.compiler.compile_using_nvrtc(
                     _code_nvrtc, options=options)
-            if cuda_ver >= 11010:
-                with mock.patch(
-                        'cupy.cuda.compiler._get_arch_for_options_for_nvrtc',
-                        lambda _: (f'-arch=sm_{arch}', 'cubin')):
-                    cupy.cuda.compiler.compile_using_nvrtc(
-                        _code_nvrtc, options=options)

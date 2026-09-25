@@ -3,14 +3,79 @@ from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from libc.string cimport memset as c_memset
 from libcpp cimport vector
 
-import numpy
+from cupy_backends.cuda._softlink cimport SoftLink
+
 import threading
+
+import numpy
 
 import cupy
 from cupy.cuda import device
 from cupy.cuda import memory
 from cupy.cuda import runtime
 from cupy.cuda import stream
+
+
+ctypedef Result (*F_cufftXtSetJITCallback)(
+    Handle plan, const char* callback_name, const void* callback,
+    size_t callback_size, callbackType callback_type,
+    void **caller_info) noexcept nogil
+cdef F_cufftXtSetJITCallback _cufftXtSetJITCallback
+
+
+# ****************** SoftLink utilities ******************
+
+cdef SoftLink _L = None
+
+cdef inline void initialize() except *:
+    global _L
+    if _L is not None:
+        return
+    _L = _initialize()
+
+cdef SoftLink _initialize():
+    _L = _get_softlink()
+
+    global _cufftXtSetJITCallback
+    if CUPY_CUDA_VERSION < 13000:
+        # __cufftXtSetJITCallback_12_7
+        _cufftXtSetJITCallback = <F_cufftXtSetJITCallback>_L.get(
+            'XtSetJITCallback_12_7')
+    else:
+        _cufftXtSetJITCallback = <F_cufftXtSetJITCallback>_L.get(
+            'XtSetJITCallback')
+
+    return _L
+
+cdef SoftLink _get_softlink():
+    cdef int runtime_version
+    cdef str prefix = None
+    cdef str libname = None
+    cdef object handle = 0
+
+    if CUPY_CUDA_VERSION != 0:
+        # FIXME(leofang): we should use cuFFT version instead of cudart
+        # version.
+        runtime_version = runtime.runtimeGetVersion()
+        if 12080 <= runtime_version < 13000:
+            # CUDA 12.8+
+            prefix = '__cufft'
+        # TODO(leofang): we don't actually know the upper bound!
+        elif 13000 <= runtime_version < 14000:
+            # CUDA 13.0+
+            prefix = 'cufft'
+        else:
+            raise RuntimeError("This feature requires CUDA 12.8+ or CUDA 13")
+
+        # We let libname be None here to avoid loading the library twice,
+        # which could potentially be loading different versions of the library.
+        from cuda import pathfinder
+        loaded_dl = pathfinder.load_nvidia_dynamic_lib('cufft')
+        handle = loaded_dl._handle_uint
+
+    return SoftLink(libname, prefix, mandatory=True, handle=handle)
+
+####################################################
 
 
 cdef object _thread_local = threading.local()
@@ -127,8 +192,6 @@ cdef extern from 'cupy_cufft.h' nogil:
 IF CUPY_CUFFT_STATIC:
     # cuFFT callback
     cdef extern from 'cupy_cufftXt.h' nogil:
-        ctypedef enum callbackType 'cufftXtCallbackType':
-            pass
         Result set_callback(Handle, callbackType, bint, void**)
 
 
@@ -227,7 +290,7 @@ cdef _reorder_buffers(Handle plan, intptr_t xtArr, list xtArr_buffer):
 
 # This is meant to replace cufftXtMalloc().
 # We need to manage the buffers ourselves in order to 1. avoid excessive,
-# uncessary memory usage, and 2. use CuPy's memory pool.
+# unnecessary memory usage, and 2. use CuPy's memory pool.
 cdef _XtMalloc(list gpus, list sizes, XtSubFormat fmt):
     cdef XtArrayDesc* xtArr_desc
     cdef XtArray* xtArr
@@ -274,7 +337,7 @@ cdef _XtFree(intptr_t ptr):
 
 cdef class Plan1d:
     def __init__(self, int nx, int fft_type, int batch, *,
-                 devices=None, out=None):
+                 devices=None, out=None, intptr_t prealloc_plan=0):
         cdef Handle plan
         cdef bint use_multi_gpus = 0 if devices is None else 1
         cdef int result
@@ -283,11 +346,14 @@ cdef class Plan1d:
         self.xtArr = <intptr_t>0  # pointer to metadata for multi-GPU buffer
         self.xtArr_buffer = None  # actual multi-GPU intermediate buffer
 
-        with nogil:
-            result = cufftCreate(&plan)
-            if result == 0:
-                result = cufftSetAutoAllocation(plan, 0)
-        check_result(result)
+        if prealloc_plan:
+            plan = <Handle>prealloc_plan
+        else:
+            with nogil:
+                result = cufftCreate(&plan)
+                if result == 0:
+                    result = cufftSetAutoAllocation(plan, 0)
+            check_result(result)
 
         self.handle = <intptr_t>plan
         self.work_area = None
@@ -533,8 +599,8 @@ cdef class Plan1d:
 
         # First, get the buffers:
         # We need to manage the buffers ourselves in order to avoid excessive,
-        # uncessary memory usage. Note that these buffers are used for in-place
-        # transforms, and are re-used (lifetime tied to the plan).
+        # unnecessary memory usage. Note that these buffers are used for
+        # in-place transforms, and are re-used (lifetime tied to the plan).
 
         if isinstance(a, cupy.ndarray) or isinstance(a, numpy.ndarray):
             if self.xtArr == 0 and self.xtArr_buffer is None:
@@ -742,7 +808,7 @@ cdef class Plan1d:
 cdef class PlanNd:
     def __init__(self, object shape, object inembed, int istride,
                  int idist, object onembed, int ostride, int odist,
-                 int fft_type, int batch, str order, int last_axis, last_size):
+                 int fft_type, int batch, *, intptr_t prealloc_plan=0):
         cdef Handle plan
         cdef size_t work_size
         cdef int ndim, result
@@ -769,11 +835,14 @@ cdef class PlanNd:
             onembed_arr = onembed
             onembed_ptr = onembed_arr.data()
 
-        with nogil:
-            result = cufftCreate(&plan)
-            if result == 0:
-                result = cufftSetAutoAllocation(plan, 0)
-        check_result(result)
+        if prealloc_plan:
+            plan = <Handle>prealloc_plan
+        else:
+            with nogil:
+                result = cufftCreate(&plan)
+                if result == 0:
+                    result = cufftSetAutoAllocation(plan, 0)
+            check_result(result)
 
         self.handle = <intptr_t>plan
         self.gpus = None  # TODO(leofang): support multi-GPU PlanNd
@@ -810,10 +879,18 @@ cdef class PlanNd:
 
         self.shape = tuple(shape)
         self.fft_type = <Type>fft_type
+        self.plan_key = (
+            self.shape,
+            None if inembed is None else tuple(inembed),
+            istride,
+            idist,
+            None if onembed is None else tuple(onembed),
+            ostride,
+            odist,
+            fft_type,
+            batch,
+        )
         self.work_area = work_area
-        self.order = order  # either 'C' or 'F'
-        self.last_axis = last_axis  # ignored for C2C
-        self.last_size = last_size  # = None (and ignored) for C2C
 
     def __dealloc__(self):
         cdef Handle plan = <Handle>self.handle
@@ -856,57 +933,6 @@ cdef class PlanNd:
         else:
             raise ValueError
 
-    def _output_dtype_and_shape(self, a):
-        shape = list(a.shape)
-        if self.fft_type == CUFFT_C2C:
-            dtype = numpy.complex64
-        elif self.fft_type == CUFFT_R2C:
-            shape[self.last_axis] = self.last_size
-            dtype = numpy.complex64
-        elif self.fft_type == CUFFT_C2R:
-            shape[self.last_axis] = self.last_size
-            dtype = numpy.float32
-        elif self.fft_type == CUFFT_Z2Z:
-            dtype = numpy.complex128
-        elif self.fft_type == CUFFT_D2Z:
-            shape[self.last_axis] = self.last_size
-            dtype = numpy.complex128
-        else:  # CUFFT_Z2D
-            shape[self.last_axis] = self.last_size
-            dtype = numpy.float64
-        return tuple(shape), dtype
-
-    def get_output_array(self, a, order='C'):
-        shape, dtype = self._output_dtype_and_shape(a)
-        return cupy.empty(shape, dtype, order=order)
-
-    def check_output_array(self, a, out):
-        if out is a:
-            # TODO(leofang): think about in-place transforms for C2R & R2C
-            return
-        if self.fft_type in (CUFFT_C2C, CUFFT_Z2Z):
-            if out.shape != a.shape:
-                raise ValueError('output shape mismatch')
-            if out.dtype != a.dtype:
-                raise ValueError('output dtype mismatch')
-        else:
-            if out.ndim != a.ndim:
-                raise ValueError('output dimension mismatch')
-            for i, size in enumerate(out.shape):
-                if (i != self.last_axis and size != a.shape[i]) or \
-                   (i == self.last_axis and size != self.last_size):
-                    raise ValueError('output shape is incorrecct')
-            if self.fft_type in (CUFFT_R2C, CUFFT_D2Z):
-                if out.dtype != cupy.dtype(a.dtype.char.upper()):
-                    raise ValueError('output dtype is unexpected')
-            else:  # CUFFT_C2R or CUFFT_Z2D
-                if out.dtype != cupy.dtype(a.dtype.char.lower()):
-                    raise ValueError('output dtype is unexpected')
-        if not ((out.flags.f_contiguous == a.flags.f_contiguous) and
-                (out.flags.c_contiguous == a.flags.c_contiguous)):
-            raise ValueError('output contiguity mismatch')
-
-
 # TODO(leofang): Unify with PlanND?!
 # TODO(leofang): support cufftXtSetGPUs?
 cdef class XtPlanNd:
@@ -914,7 +940,8 @@ cdef class XtPlanNd:
                  inembed, long long int istride, long long int idist, idtype,
                  onembed, long long int ostride, long long int odist, odtype,
                  long long int batch, edtype, *,
-                 str order, int last_axis, last_size):
+                 str order, int last_axis, last_size,
+                 intptr_t prealloc_plan=0):
         # Note: we don't pass in fft_type here because it's redundant and
         # does not cover exotic types like complex32 or bf16
 
@@ -943,11 +970,14 @@ cdef class XtPlanNd:
             onembed_arr = onembed
             onembed_ptr = onembed_arr.data()
 
-        with nogil:
-            result = cufftCreate(&plan)
-            if result == 0:
-                result = cufftSetAutoAllocation(plan, 0)
-        check_result(result)
+        if prealloc_plan:
+            plan = <Handle>(prealloc_plan)
+        else:
+            with nogil:
+                result = cufftCreate(&plan)
+                if result == 0:
+                    result = cufftSetAutoAllocation(plan, 0)
+            check_result(result)
 
         self.handle = <intptr_t>plan
         self.gpus = None  # TODO(leofang): support multi-GPU plans
@@ -1186,7 +1216,8 @@ cpdef XtExec(intptr_t plan, intptr_t idata, intptr_t odata, int direction):
 
 
 cpdef intptr_t setCallback(
-        intptr_t plan, int cb_type, bint is_load, intptr_t aux_arr=0):
+        intptr_t plan, int cb_type, bint is_load,
+        intptr_t aux_arr=0) except?-1:
     cdef Handle h = <Handle>plan  # no-cython-lint
     cdef int result  # no-cython-lint
     cdef void** callerInfo  # no-cython-lint
@@ -1203,3 +1234,38 @@ cpdef intptr_t setCallback(
     ELSE:
         raise RuntimeError('cuFFT is dynamically linked and thus does not '
                            'support callback')
+
+
+cpdef intptr_t create() except?-1:
+    cdef Handle plan
+    with nogil:
+        result = cufftCreate(&plan)
+    check_result(result)
+    return <intptr_t>plan
+
+
+cpdef int setAutoAllocation(intptr_t plan, int autoAllocate) except?-1:
+    cdef Handle h = <Handle>plan
+    with nogil:
+        result = cufftSetAutoAllocation(h, autoAllocate)
+    check_result(result)
+    return 0
+
+
+cpdef int setJITCallback(
+        intptr_t plan, str callback_name, bytes callback, int callback_type,
+        intptr_t caller_info) except?-1:
+    initialize()
+    cdef Handle h = <Handle>plan  # no-cython-lint
+    cdef bytes callback_name_data = callback_name.encode()
+    cdef char* callback_name_ptr = callback_name_data
+    cdef char* callback_ptr = callback
+    cdef size_t callback_size = len(callback)
+    cdef void* caller_info_ptr = <void*>(caller_info)
+
+    with nogil:
+        result = _cufftXtSetJITCallback(
+            h, callback_name_ptr, callback_ptr, callback_size,
+            <callbackType>callback_type, &caller_info_ptr)
+    check_result(result)
+    return 0

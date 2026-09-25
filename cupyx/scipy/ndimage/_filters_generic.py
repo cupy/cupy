@@ -201,7 +201,7 @@ def _get_generic_filter1d(rk, length, n_lines, filter_size, origin, mode, cval,
 
     name = 'generic1d_{}_{}_{}'.format(length, filter_size, rk.name)
     if runtime.is_hip:
-        include_type_traits = ''
+        include_type_traits = '#include <type_traits>'
     else:
         include_type_traits = '''
 #include <cupy/cuda_workaround.h>  // provide C++ std:: coverage
@@ -271,4 +271,4 @@ void {name}(const byte* input, byte* output, const idx_t* x) {{
              rk_code=rk.code.replace('__global__', '__device__'),
              include_type_traits=include_type_traits,
              CAST=_filters_core._CAST_FUNCTION)
-    return cupy.RawKernel(code, name, ('--std=c++11',) + rk.options)
+    return cupy.RawKernel(code, name, rk.options)

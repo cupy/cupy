@@ -104,6 +104,7 @@ print('C[:, 0]: {}'.format(C[:, 0]))
 #
 cusparselt.matDescriptorDestroy(matA)
 cusparselt.matDescriptorDestroy(matB)
+cusparselt.matmulAlgSelectionDestroy(alg_sel)
 cusparselt.matDescriptorDestroy(matC)
 cusparselt.matmulPlanDestroy(plan)
 cusparselt.destroy(handle)

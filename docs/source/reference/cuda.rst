@@ -9,6 +9,7 @@ Device management
 .. autosummary::
    :toctree: generated/
 
+   cupy.is_available
    cupy.cuda.Device
 
 

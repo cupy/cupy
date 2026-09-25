@@ -36,17 +36,20 @@ class TestMisc:
             a += (a * 1j).astype(dtype)
         return getattr(xp, name)(a)
 
+    def _get_inf_array(self, xp, dtype):
+        inf = numpy.inf
+        if numpy.dtype(dtype).kind != 'c':
+            return xp.array([0, -1, 1, -inf, inf], dtype=dtype)
+        else:
+            return xp.array([complex(x, y)
+                             for x in [0, -1, 1, -inf, inf]
+                             for y in [0, -1, 1, -inf, inf]],
+                            dtype=dtype)
+
     @testing.for_dtypes(['e', 'f', 'd', 'F', 'D'])
     @testing.numpy_cupy_allclose(atol=1e-5)
     def check_unary_inf(self, name, xp, dtype, **kwargs):
-        inf = numpy.inf
-        if numpy.dtype(dtype).kind != 'c':
-            a = xp.array([0, -1, 1, -inf, inf], dtype=dtype)
-        else:
-            a = xp.array([complex(x, y)
-                          for x in [0, -1, 1, -inf, inf]
-                          for y in [0, -1, 1, -inf, inf]],
-                         dtype=dtype)
+        a = self._get_inf_array(xp, dtype)
         return getattr(xp, name)(a, **kwargs)
 
     @testing.for_dtypes(['e', 'f', 'd', 'F', 'D'])
@@ -173,7 +176,6 @@ class TestMisc:
         a = xp.array([2, 3, 4], dtype=dtype)
         return xp.fabs(a)
 
-    @testing.with_requires("numpy>=2.0")
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-5)
     def test_fabs_negative(self, xp, dtype):
@@ -182,13 +184,34 @@ class TestMisc:
         a = xp.array([-2.0, -4.0, 0.0, 4.0], dtype=dtype)
         return xp.fabs(a)
 
-    @testing.with_requires('numpy>=2.0')
     def test_sign(self):
         self.check_unary('sign', no_bool=True)
 
-    @testing.with_requires('numpy>=2.0')
     def test_sign_negative(self):
         self.check_unary_negative('sign', no_bool=True)
+
+    @pytest.mark.parametrize('dtype', ['e', 'f', 'd', 'F', 'D'])
+    @testing.numpy_cupy_array_equal()
+    def test_sign_signed_zero(self, xp, dtype):
+        a = xp.array([-0.0, 0.0], dtype=dtype)
+        sign = xp.sign(a)
+        signbit = xp.signbit(sign.real)
+        return sign, signbit
+
+    @pytest.mark.parametrize('dtype', [
+        'e', 'f', 'd',
+        pytest.param(
+            'F', marks=pytest.mark.xfail(reason='no inf special case')),
+        pytest.param(
+            'D', marks=pytest.mark.xfail(reason='no inf special case'))
+    ])
+    @testing.numpy_cupy_array_equal()
+    def test_sign_inf(self, xp, dtype):
+        a = self._get_inf_array(xp, dtype)
+        return xp.sign(a)
+
+    def test_sign_nan(self):
+        self.check_unary_nan('sign')
 
     def test_maximum(self):
         self.check_binary('maximum')
@@ -488,6 +511,18 @@ class TestMisc:
         x = xp.asarray([0.5], dtype=dtype_x)
         fx = xp.asarray([-numpy.inf, numpy.inf], dtype=dtype_x)
         fy = xp.asarray([0, 10], dtype=dtype_y)
+        return xp.interp(x, fx, fy)
+
+    @testing.for_float_dtypes(name='dtype_x')
+    @testing.for_dtypes('efdFD', name='dtype_y')
+    @testing.numpy_cupy_allclose(atol=1e-5)
+    def test_interp_inf_fy_at_knot(self, xp, dtype_y, dtype_x):
+        # Regression test: querying at an exact knot point should return the
+        # knot value, not nan, even when the adjacent fy value is inf.
+        # See https://github.com/cupy/cupy/issues/9823
+        x = xp.asarray([2.0], dtype=dtype_x)
+        fx = xp.asarray([1.0, 2.0, 3.0, 4.0], dtype=dtype_x)
+        fy = xp.asarray([1.0, 2.0, xp.inf, 4.0], dtype=dtype_y)
         return xp.interp(x, fx, fy)
 
     @testing.for_all_dtypes(name='dtype_2', no_bool=True, no_complex=True)

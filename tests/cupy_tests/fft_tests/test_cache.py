@@ -15,7 +15,7 @@ from cupy.cuda import device
 from cupy.cuda import runtime
 from cupy.fft import config
 
-from .test_fft import (multi_gpu_config, _skip_multi_gpu_bug)
+from .test_fft import multi_gpu_config
 
 
 def intercept_stdout(func):
@@ -29,26 +29,29 @@ n_devices = runtime.getDeviceCount()
 
 
 class TestPlanCache(unittest.TestCase):
-    def setUp(self):
-        self.caches = []
-        self.old_sizes = []
+    @contextlib.contextmanager
+    @staticmethod
+    def prepare_and_restore_caches():
+        old_sizes = []
         for i in range(n_devices):
             with device.Device(i):
                 cache = config.get_plan_cache()
-                self.old_sizes.append(cache.get_size())
+                old_sizes.append(cache.get_size())
                 cache.clear()
                 cache.set_memsize(-1)
                 cache.set_size(2)
-            self.caches.append(cache)
 
-    def tearDown(self):
-        for i in range(n_devices):
-            with device.Device(i):
-                cache = config.get_plan_cache()
-                cache.clear()
-                cache.set_size(self.old_sizes[i])
-                cache.set_memsize(-1)
+        try:
+            yield
+        finally:
+            for i in range(n_devices):
+                with device.Device(i):
+                    cache = config.get_plan_cache()
+                    cache.clear()
+                    cache.set_size(old_sizes[i])
+                    cache.set_memsize(-1)
 
+    @prepare_and_restore_caches()
     def test_LRU_cache1(self):
         # test if insertion and clean-up works
         cache = config.get_plan_cache()
@@ -61,6 +64,7 @@ class TestPlanCache(unittest.TestCase):
         cache.clear()
         assert cache.get_curr_size() == 0 <= cache.get_size()
 
+    @prepare_and_restore_caches()
     def test_LRU_cache2(self):
         # test if plan is reused
         cache = config.get_plan_cache()
@@ -82,6 +86,7 @@ class TestPlanCache(unittest.TestCase):
         # we should get the same plan
         assert plan0 is plan1
 
+    @prepare_and_restore_caches()
     def test_LRU_cache3(self):
         # test if cache size is limited
         cache = config.get_plan_cache()
@@ -107,6 +112,7 @@ class TestPlanCache(unittest.TestCase):
         for _, node in cache:
             assert plan is not node.plan
 
+    @prepare_and_restore_caches()
     def test_LRU_cache4(self):
         # test if fetching the plan will reorder it to the top
         cache = config.get_plan_cache()
@@ -148,6 +154,8 @@ class TestPlanCache(unittest.TestCase):
             cache[next(iterator)[0]]
 
     @testing.multi_gpu(2)
+    @prepare_and_restore_caches()
+    @pytest.mark.thread_unsafe(reason="intercepts stdout")
     def test_LRU_cache5(self):
         # test if the LRU cache is thread-local
 
@@ -200,10 +208,13 @@ class TestPlanCache(unittest.TestCase):
         assert stdout.count('uninitialized') == n_devices - 2
 
     @testing.multi_gpu(2)
-    def test_LRU_cache6(self):
+    @prepare_and_restore_caches()
+    def test_LRU_cache6(self, gpus=None):
         # test if each device has a separate cache
-        cache0 = self.caches[0]
-        cache1 = self.caches[1]
+        with device.Device(0):
+            cache0 = config.get_plan_cache()
+        with device.Device(1):
+            cache1 = config.get_plan_cache()
 
         # ensure a fresh state
         assert cache0.get_curr_size() == 0 <= cache0.get_size()
@@ -236,10 +247,13 @@ class TestPlanCache(unittest.TestCase):
     @testing.multi_gpu(2)
     @pytest.mark.skipif(runtime.is_hip,
                         reason="hipFFT doesn't support multi-GPU")
-    def test_LRU_cache7(self):
+    @prepare_and_restore_caches()
+    def test_LRU_cache7(self, gpus=None):
         # test accessing a multi-GPU plan
-        cache0 = self.caches[0]
-        cache1 = self.caches[1]
+        with device.Device(0):
+            cache0 = config.get_plan_cache()
+        with device.Device(1):
+            cache1 = config.get_plan_cache()
 
         # ensure a fresh state
         assert cache0.get_curr_size() == 0 <= cache0.get_size()
@@ -308,6 +322,7 @@ class TestPlanCache(unittest.TestCase):
         assert cache0.get_curr_size() == 1 <= cache0.get_size()
         assert cache1.get_curr_size() == 2 <= cache1.get_size()
 
+    @prepare_and_restore_caches()
     def test_LRU_cache8(self):
         # test if Plan1d and PlanNd can coexist in the same cache
         cache = config.get_plan_cache()
@@ -329,6 +344,7 @@ class TestPlanCache(unittest.TestCase):
         assert isinstance(next(iterator)[1].plan, cufft.PlanNd)
         assert isinstance(next(iterator)[1].plan, cufft.Plan1d)
 
+    @prepare_and_restore_caches()
     def test_LRU_cache9(self):
         # test if memsizes in the cache adds up
         cache = config.get_plan_cache()
@@ -347,6 +363,8 @@ class TestPlanCache(unittest.TestCase):
 
         assert memsize == cache.get_curr_memsize()
 
+    @prepare_and_restore_caches()
+    @pytest.mark.thread_unsafe(reason="intercepts stdout")
     def test_LRU_cache10(self):
         # test if deletion works and if show_info() is consistent with data
         cache = config.get_plan_cache()
@@ -394,11 +412,13 @@ class TestPlanCache(unittest.TestCase):
     @testing.multi_gpu(2)
     @pytest.mark.skipif(runtime.is_hip,
                         reason="hipFFT doesn't support multi-GPU")
+    @prepare_and_restore_caches()
     def test_LRU_cache11(self):
         # test if collectively deleting a multi-GPU plan works
-        _skip_multi_gpu_bug((128,), self.gpus)
-        cache0 = self.caches[0]
-        cache1 = self.caches[1]
+        with device.Device(0):
+            cache0 = config.get_plan_cache()
+        with device.Device(1):
+            cache1 = config.get_plan_cache()
 
         # ensure a fresh state
         assert cache0.get_curr_size() == 0 <= cache0.get_size()
@@ -428,11 +448,14 @@ class TestPlanCache(unittest.TestCase):
     @testing.multi_gpu(2)
     @pytest.mark.skipif(runtime.is_hip,
                         reason="hipFFT doesn't support multi-GPU")
+    @prepare_and_restore_caches()
     def test_LRU_cache12(self):
         # test if an error is raise when one of the caches is unable
         # to fit it a multi-GPU plan
-        cache0 = self.caches[0]
-        cache1 = self.caches[1]
+        with device.Device(0):
+            cache0 = config.get_plan_cache()
+        with device.Device(1):
+            cache1 = config.get_plan_cache()
 
         # ensure a fresh state
         assert cache0.get_curr_size() == 0 <= cache0.get_size()
@@ -452,6 +475,7 @@ class TestPlanCache(unittest.TestCase):
     @unittest.skipIf(runtime.is_hip, "rocFFT has different plan sizes")
     @unittest.skipIf(runtime.runtimeGetVersion() >= 11080,
                      "CUDA 11.8 has different plan size")
+    @prepare_and_restore_caches()
     def test_LRU_cache13(self):
         # test if plan insertion respect the memory size limit
         cache = config.get_plan_cache()

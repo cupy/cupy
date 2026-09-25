@@ -66,8 +66,8 @@ class TestUniqueRoots:
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_single_unique_root(self, xp, scp):
-        np.random.seed(1234)
-        p = np.random.rand(100) + 1j * np.random.rand(100)
+        rng = np.random.RandomState(1234)
+        p = rng.rand(100) + 1j * rng.rand(100)
         p = xp.asarray(p)
 
         unique, multiplicity = scp.signal.unique_roots(p, 2)

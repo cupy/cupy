@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import concurrent.futures
+
 import numpy
 import pytest
 
@@ -852,3 +854,116 @@ class TestDistributionsZipf(RandomDistributionsTestCase):
     def test_zipf(self, a_dtype, dtype):
         a = numpy.full(self.a_shape, 2, dtype=a_dtype)
         self.check_distribution('zipf', {'a': a}, dtype)
+
+
+@pytest.mark.parametrize('dist_func', [
+    pytest.param(lambda rs: rs.beta(3.0, 3.0, size=10),
+                 id='beta'),
+    pytest.param(lambda rs: rs.binomial(5, 0.5, size=10),
+                 id='binomial'),
+    pytest.param(lambda rs: rs.chisquare(5.0, size=10),
+                 id='chisquare'),
+    pytest.param(lambda rs: rs.dirichlet([1.0, 1.0, 1.0], size=10),
+                 id='dirichlet'),
+    pytest.param(lambda rs: rs.exponential(1.0, size=10),
+                 id='exponential'),
+    pytest.param(lambda rs: rs.f(5.0, 5.0, size=10),
+                 id='f'),
+    pytest.param(lambda rs: rs.gamma(5.0, 1.0, size=10),
+                 id='gamma'),
+    pytest.param(lambda rs: rs.geometric(0.5, size=10),
+                 id='geometric'),
+    pytest.param(lambda rs: rs.gumbel(0.0, 1.0, size=10),
+                 id='gumbel'),
+    pytest.param(lambda rs: rs.hypergeometric(10, 10, 5, size=10),
+                 id='hypergeometric'),
+    pytest.param(lambda rs: rs.laplace(0.0, 1.0, size=10),
+                 id='laplace'),
+    pytest.param(lambda rs: rs.logistic(0.0, 1.0, size=10),
+                 id='logistic'),
+    pytest.param(lambda rs: rs.lognormal(0.0, 1.0, size=10),
+                 id='lognormal'),
+    pytest.param(lambda rs: rs.logseries(0.5, size=10),
+                 id='logseries'),
+    pytest.param(
+        lambda rs: rs.multivariate_normal(
+            [0.0, 0.0], [[1.0, 0.0], [0.0, 1.0]], size=10),
+        id='multivariate_normal'),
+    pytest.param(lambda rs: rs.negative_binomial(5, 0.5, size=10),
+                 id='negative_binomial'),
+    pytest.param(lambda rs: rs.noncentral_chisquare(5.0, 1.0, size=10),
+                 id='noncentral_chisquare'),
+    pytest.param(lambda rs: rs.noncentral_f(5.0, 5.0, 1.0, size=10),
+                 id='noncentral_f'),
+    pytest.param(lambda rs: rs.normal(0.0, 1.0, size=10),
+                 id='normal'),
+    pytest.param(lambda rs: rs.pareto(3.0, size=10),
+                 id='pareto'),
+    pytest.param(lambda rs: rs.poisson(5.0, size=10),
+                 id='poisson'),
+    pytest.param(lambda rs: rs.power(0.5, size=10),
+                 id='power'),
+    pytest.param(lambda rs: rs.random_sample(size=10),
+                 id='random_sample'),
+    pytest.param(lambda rs: rs.rayleigh(1.0, size=10),
+                 id='rayleigh'),
+    pytest.param(lambda rs: rs.standard_cauchy(size=10),
+                 id='standard_cauchy'),
+    pytest.param(lambda rs: rs.standard_exponential(size=10),
+                 id='standard_exponential'),
+    pytest.param(lambda rs: rs.standard_gamma(5.0, size=10),
+                 id='standard_gamma'),
+    pytest.param(lambda rs: rs.standard_normal(size=10),
+                 id='standard_normal'),
+    pytest.param(lambda rs: rs.standard_t(5.0, size=10),
+                 id='standard_t'),
+    pytest.param(lambda rs: rs.triangular(-1.0, 0.0, 2.0, size=10),
+                 id='triangular'),
+    pytest.param(lambda rs: rs.uniform(0.0, 1.0, size=10),
+                 id='uniform'),
+    pytest.param(lambda rs: rs.vonmises(0.0, 1.0, size=10),
+                 id='vonmises'),
+    pytest.param(lambda rs: rs.wald(3.0, 3.0, size=10),
+                 id='wald'),
+    pytest.param(lambda rs: rs.weibull(1.0, size=10),
+                 id='weibull'),
+    pytest.param(lambda rs: rs.zipf(2.0, size=10),
+                 id='zipf'),
+    # Integers and shuffles
+    pytest.param(lambda rs: rs.choice(100, size=10),
+                 id='choice-number'),
+    pytest.param(lambda rs: rs.choice(cupy.arange(10), size=10),
+                 id='choice-array'),
+    pytest.param(lambda rs: rs.tomaxint(size=10),
+                 id='tomaxint'),
+    # skipping shuffle (doesn't fit lambda and uses permutation)
+    pytest.param(lambda rs: rs.permutation(cupy.arange(20)),
+                 id='permutation'),
+    pytest.param(lambda rs: rs.randint(0, 10, size=10),
+                 id='randint'),
+    pytest.param(lambda rs: rs.randn(10),
+                 id='randn'),
+])
+@pytest.mark.thread_unsafe("already multi-threaded")
+def test_multithreaded(dist_func):
+    n_threads = 10
+    rs = cupy.random.RandomState(seed=0)
+
+    def call_distribution(_):
+        return dist_func(rs)
+
+    # Run distribution in multiple threads with shared RandomState
+    with concurrent.futures.ThreadPoolExecutor(
+            max_workers=n_threads) as executor:
+        results = executor.map(call_distribution, range(n_threads))
+
+        results = list(results)
+
+    # Check that all results are finite
+    for result in results:
+        assert cupy.isfinite(result).all()
+
+    # Check that all results are different from each other
+    for i in range(len(results)):
+        for j in range(i + 1, len(results)):
+            assert not cupy.array_equal(results[i], results[j])

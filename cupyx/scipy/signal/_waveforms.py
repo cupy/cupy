@@ -27,15 +27,18 @@ DEALINGS IN THE SOFTWARE.
 from __future__ import annotations
 
 
+import string
+from typing import Any
+
 import cupy
-from cupy._core._scalar import get_typename
+from cupy._core._scalar import get_typename, format_type_decls
 from cupy_backends.cuda.api import runtime
 
 import numpy as np
 
 
-def _get_typename(dtype):
-    typename = get_typename(dtype)
+def _get_typename(dtype, type_decls=None):
+    typename = get_typename(dtype, type_decls)
     if typename == 'float16':
         if runtime.is_hip:
             # 'half' in name_expressions weirdly raises
@@ -52,7 +55,8 @@ INT_TYPES = [cupy.int8, cupy.int16, cupy.int32, cupy.int64]
 UNSIGNED_TYPES = [cupy.uint8, cupy.uint16, cupy.uint32, cupy.uint64]
 COMPLEX_TYPES = [cupy.complex64, cupy.complex128]
 TYPES = FLOAT_TYPES + INT_TYPES + UNSIGNED_TYPES + COMPLEX_TYPES  # type: ignore  # NOQA
-TYPE_NAMES = [_get_typename(t) for t in TYPES]
+TYPE_DECLS: set[Any] = set()
+TYPE_NAMES = [_get_typename(t, TYPE_DECLS) for t in TYPES]
 
 
 def _get_module_func(module, func_name, *template_args):
@@ -73,7 +77,12 @@ _sawtooth_kernel = cupy.ElementwiseKernel(
         out = nan("0xfff8000000000000ULL");
     }
 
-    const T tmod { fmod( t, 2.0 * M_PI ) };
+    // Use Python-compatible modulo: result is always in [0, 2*pi)
+    // C fmod can return negative values for negative inputs
+    T tmod { fmod( t, 2.0 * M_PI ) };
+    if ( tmod < 0 ) {
+        tmod += 2.0 * M_PI;
+    }
     const bool mask2 { ( ( 1 - mask1 ) && ( tmod < ( w * 2.0 * M_PI ) ) ) };
 
     if ( mask2 ) {
@@ -87,7 +96,6 @@ _sawtooth_kernel = cupy.ElementwiseKernel(
     y = out;
     """,
     "_sawtooth_kernel",
-    options=("-std=c++11",),
 )
 
 
@@ -142,7 +150,12 @@ _square_kernel = cupy.ElementwiseKernel(
         y = nan("0xfff8000000000000ULL");
     }
 
-    const T tmod { fmod( t, 2.0 * M_PI ) };
+    // Use Python-compatible modulo: result is always in [0, 2*pi)
+    // C fmod can return negative values for negative inputs
+    T tmod { fmod( t, 2.0 * M_PI ) };
+    if ( tmod < 0 ) {
+        tmod += 2.0 * M_PI;
+    }
     const bool mask2 { ( ( 1 - mask1 ) && ( tmod < ( w * 2.0 * M_PI ) ) ) };
 
     if ( mask2 ) {
@@ -156,7 +169,6 @@ _square_kernel = cupy.ElementwiseKernel(
 
     """,
     "_square_kernel",
-    options=("-std=c++11",),
 )
 
 
@@ -222,7 +234,6 @@ _gausspulse_kernel_F_F = cupy.ElementwiseKernel(
     yI = yenv * cos( 2 * M_PI * fc * t);
     """,
     "_gausspulse_kernel",
-    options=("-std=c++11",),
 )
 
 _gausspulse_kernel_F_T = cupy.ElementwiseKernel(
@@ -233,7 +244,6 @@ _gausspulse_kernel_F_T = cupy.ElementwiseKernel(
     yI = yenv * cos( 2 * M_PI * fc * t);
     """,
     "_gausspulse_kernel",
-    options=("-std=c++11",),
 )
 
 _gausspulse_kernel_T_F = cupy.ElementwiseKernel(
@@ -249,7 +259,6 @@ _gausspulse_kernel_T_F = cupy.ElementwiseKernel(
     yQ = yenv * l_yQ;
     """,
     "_gausspulse_kernel",
-    options=("-std=c++11",),
 )
 
 _gausspulse_kernel_T_T = cupy.ElementwiseKernel(
@@ -265,7 +274,6 @@ _gausspulse_kernel_T_T = cupy.ElementwiseKernel(
     yQ = yenv * l_yQ;
     """,
     "_gausspulse_kernel",
-    options=("-std=c++11",),
 )
 
 
@@ -381,7 +389,6 @@ _chirp_phase_lin_kernel_real = cupy.ElementwiseKernel(
     phase = cos(temp + phi);
     """,
     "_chirp_phase_lin_kernel",
-    options=("-std=c++11",),
 )
 
 _chirp_phase_lin_kernel_cplx = cupy.ElementwiseKernel(
@@ -394,7 +401,6 @@ _chirp_phase_lin_kernel_cplx = cupy.ElementwiseKernel(
     phase = Y(cos(temp + phi), cos(temp + phi + M_PI/2) * -1);
     """,
     "_chirp_phase_lin_kernel",
-    options=("-std=c++11",),
 )
 
 _chirp_phase_quad_kernel = cupy.ElementwiseKernel(
@@ -414,7 +420,6 @@ _chirp_phase_quad_kernel = cupy.ElementwiseKernel(
     phase = cos(temp + phi);
     """,
     "_chirp_phase_quad_kernel",
-    options=("-std=c++11",),
 )
 
 _chirp_phase_log_kernel = cupy.ElementwiseKernel(
@@ -432,7 +437,6 @@ _chirp_phase_log_kernel = cupy.ElementwiseKernel(
     phase = cos(temp + phi);
     """,
     "_chirp_phase_log_kernel",
-    options=("-std=c++11",),
 )
 
 _chirp_phase_hyp_kernel = cupy.ElementwiseKernel(
@@ -450,7 +454,6 @@ _chirp_phase_hyp_kernel = cupy.ElementwiseKernel(
     phase = cos(temp + phi);
     """,
     "_chirp_phase_hyp_kernel",
-    options=("-std=c++11",),
 )
 
 
@@ -667,7 +670,7 @@ UNIT_KERNEL = r'''
 #include <cupy/math_constants.h>
 #include <cupy/carray.cuh>
 #include <cupy/complex.cuh>
-
+${type_decls}
 
 template<typename T>
 __global__ void unit_impulse(const int n, const int iidx, T* out) {
@@ -686,7 +689,8 @@ __global__ void unit_impulse(const int n, const int iidx, T* out) {
 '''
 
 UNIT_MODULE = cupy.RawModule(
-    code=UNIT_KERNEL, options=('-std=c++11',),
+    code=string.Template(UNIT_KERNEL).substitute(
+        type_decls=format_type_decls(TYPE_DECLS)),
     name_expressions=[f'unit_impulse<{x}>' for x in TYPE_NAMES])
 
 

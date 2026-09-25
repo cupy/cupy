@@ -5,6 +5,10 @@ import pytest
 
 import cupy
 from cupy import testing
+try:
+    from ml_dtypes import bfloat16
+except ImportError:
+    bfloat16 = None
 
 
 class C(cupy.ndarray):
@@ -198,6 +202,10 @@ class TestUfunc:
                 # (c)longdouble, datetime, timedelta, and object.
                 if not any(t in sig for t in 'GgMmO')
             ))
+        if xp == cupy and bfloat16 is not None:
+            # Ugly, but fetch the char from the `loop` and remove it
+            # (at the time of writing the char was E, hopefully it'll change)
+            types = [t for t in types if numpy.dtype(bfloat16).char not in t]
         return types
 
     @testing.numpy_cupy_allclose()

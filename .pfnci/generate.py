@@ -16,11 +16,22 @@ from collections.abc import Mapping
 SchemaType = Mapping[str, Any]
 
 
+# Pinned version of the GitHub CLI installed into the test Dockerfiles. Used
+# by .pfnci/linux/tests/actions/build.sh to fetch wheel artifacts from
+# cupy/cupy CI. Bump as needed; required interface is just `gh run download`.
+GH_CLI_VERSION = '2.95.0'
+
+
 class Matrix:
     def __init__(self, record: Mapping[str, Any]):
         self._rec = {
             '_inherits': None,
             '_extern': False,
+            # Whether a CUDA target installs the GHA wheel (fetch-wheel.sh)
+            # instead of building from source (build.sh). Ignored for ROCm; set
+            # `wheel: false` on CUDA targets that must build from source (e.g.
+            # the cuda-python compile-time variant).
+            'wheel': True,
         }
         self._rec.update(record)
 
@@ -80,20 +91,9 @@ class LinuxGenerator:
                 lines += [
                     'RUN export DEBIAN_FRONTEND=noninteractive && \\',
                     '    ( apt-get -qqy update || true ) && \\',
-                    '    apt-get -qqy install ca-certificates && \\',
+                    '    apt-get -qqy install ca-certificates gnupg && \\',
                     '    curl -qL https://repo.radeon.com/rocm/rocm.gpg.key | apt-key add -',  # NOQA
                 ]
-            elif matrix.cudnn is not None:
-                major = matrix.cudnn.split('.')[0]
-                if major == '7':
-                    ubuntu_version = os_version.replace('.', '')
-                    lines += [
-                        'RUN export DEBIAN_FRONTEND=noninteractive && \\',
-                        '    apt-get -qqy update && \\',
-                        '    apt-get -qqy install software-properties-common && \\',  # NOQA
-                        f'    apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu{ubuntu_version}/x86_64/7fa2af80.pub && \\',  # NOQA
-                        f'    add-apt-repository "deb https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu{ubuntu_version}/x86_64/ /"',  # NOQA
-                        '']
 
             lines += [
                 'RUN export DEBIAN_FRONTEND=noninteractive && \\',
@@ -115,6 +115,11 @@ class LinuxGenerator:
                 ),
                 '',
                 'ENV PATH "/usr/lib/ccache:${PATH}"',
+                '',
+                # gh CLI: used by .pfnci/linux/tests/actions/fetch-wheel.sh
+                # to fetch the GHA-built wheel artifact for the PR/merge SHA.
+                f'RUN curl -fsSL https://github.com/cli/cli/releases/download/v{GH_CLI_VERSION}/gh_{GH_CLI_VERSION}_linux_amd64.tar.gz \\',  # NOQA
+                f'        | tar -xz -C /usr/local --strip-components=1 gh_{GH_CLI_VERSION}_linux_amd64/bin/gh',  # NOQA
                 '',
             ]
         elif os_name == 'centos':
@@ -146,6 +151,11 @@ class LinuxGenerator:
                 '',
                 'ENV PATH "/usr/lib64/ccache:${PATH}"',
                 '',
+                # gh CLI: used by .pfnci/linux/tests/actions/fetch-wheel.sh
+                # to fetch the GHA-built wheel artifact for the PR/merge SHA.
+                f'RUN curl -fsSL https://github.com/cli/cli/releases/download/v{GH_CLI_VERSION}/gh_{GH_CLI_VERSION}_linux_amd64.tar.gz \\',  # NOQA
+                f'        | tar -xz -C /usr/local --strip-components=1 gh_{GH_CLI_VERSION}_linux_amd64/bin/gh',  # NOQA
+                '',
             ]
 
             if os_version == '7':
@@ -161,13 +171,45 @@ class LinuxGenerator:
         else:
             raise AssertionError
 
-        # Update alternatives for cuTENSOR for the current CUDA version.
+        # Define env vars to discover cuTENSOR during build/runtime.
         if matrix.cutensor is not None:
-            lines += [
-                'COPY setup/update-alternatives-cutensor.sh /',
-                'RUN /update-alternatives-cutensor.sh',
-                '',
-            ]
+            # The following assumes cuTENSOR 2.4+ package layout.
+            cuda_major = matrix.cuda.split('.')[0]
+            lines.append(
+                'ENV CUPY_INCLUDE_PATH='
+                f'/usr/include/libcutensor/{cuda_major}'
+                ':${CUPY_INCLUDE_PATH}'
+            )
+            lines.append(
+                'ENV CUPY_LIBRARY_PATH='
+                f'/usr/lib/x86_64-linux-gnu/libcutensor/{cuda_major}'
+                ':${CUPY_LIBRARY_PATH}'
+            )
+            lines.append(
+                'ENV LD_LIBRARY_PATH='
+                f'/usr/lib/x86_64-linux-gnu/libcutensor/{cuda_major}'
+                ':${LD_LIBRARY_PATH}'
+            )
+
+        # Define env vars to discover cuSPARSELt during build/runtime.
+        if matrix.cusparselt is not None:
+            # The following assumes cuSPARSELt 0.8.0+ package layout.
+            cuda_major = matrix.cuda.split('.')[0]
+            lines.append(
+                'ENV CUPY_INCLUDE_PATH='
+                f'/usr/include/libcusparseLt/{cuda_major}'
+                ':${CUPY_INCLUDE_PATH}'
+            )
+            lines.append(
+                'ENV CUPY_LIBRARY_PATH='
+                f'/usr/lib/x86_64-linux-gnu/libcusparseLt/{cuda_major}'
+                ':${CUPY_LIBRARY_PATH}'
+            )
+            lines.append(
+                'ENV LD_LIBRARY_PATH='
+                f'/usr/lib/x86_64-linux-gnu/libcusparseLt/{cuda_major}'
+                ':${LD_LIBRARY_PATH}'
+            )
 
         # Set environment variables for ROCm.
         if matrix.rocm is not None:
@@ -188,9 +230,12 @@ class LinuxGenerator:
             'RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv',
             'ENV PYENV_ROOT "/opt/pyenv"',
             'ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"',
-            f'RUN pyenv install {py_spec} && \\',
+            f'RUN PYTHON_CONFIGURE_OPTS="--disable-shared"'
+            f' pyenv install {py_spec} && \\',
             f'    pyenv global {py_spec} && \\',
-            '    pip install -U setuptools pip wheel',
+            '    pip install -U setuptools pip wheel && \\',
+            # For GCP kernel cache backend
+            '    pip install -U google-cloud-storage',
             '',
         ]
 
@@ -198,7 +243,8 @@ class LinuxGenerator:
         pip_args = []
         pip_uninstall_args = []
         for pylib in ('numpy', 'scipy', 'optuna', 'mpi4py',
-                      'cython', 'fastrlock', 'cuda-python'):
+                      'ml_dtypes', 'cython', 'cuda-python', 'nvmath-python',
+                      'cuda-cccl'):
             pylib_ver = getattr(matrix, pylib)
             if pylib_ver is None:
                 pip_uninstall_args.append(pylib)
@@ -214,7 +260,13 @@ class LinuxGenerator:
                 f'RUN pip uninstall -y {shlex.join(pip_uninstall_args)} && \\',
                 '    pip check',
             ]
-        lines.append('')
+
+        # Setup for shell mode.
+        lines += [
+            '',
+            'RUN mkdir /home/cupy-user && chmod 777 /home/cupy-user',
+            '',
+        ]
         return '\n'.join(lines)
 
     def _additional_packages(self, kind: str) -> list[str]:
@@ -227,7 +279,6 @@ class LinuxGenerator:
             nccl = matrix.nccl
             cutensor = matrix.cutensor
             cusparselt = matrix.cusparselt
-            cudnn = matrix.cudnn
             if nccl is not None:
                 spec = self.schema['nccl'][nccl]['spec']
                 nccl_cuda_schema = self.schema['nccl'][nccl]['cuda'][cuda]
@@ -244,36 +295,29 @@ class LinuxGenerator:
             if cutensor is not None:
                 spec = self.schema['cutensor'][cutensor]['spec']
                 major = cutensor.split('.')[0]
+                cuda_major = cuda.split('.')[0]
                 if apt:
-                    packages.append(f'libcutensor{major}={spec}')
-                    packages.append(f'libcutensor-dev={spec}')
+                    packages.append(
+                        f'libcutensor{major}-cuda-{cuda_major}={spec}')
+                    packages.append(
+                        f'libcutensor{major}-dev-cuda-{cuda_major}={spec}')
                 else:
                     packages.append(f'libcutensor{major}-{spec}')
                     packages.append(f'libcutensor-devel-{spec}')
             if cusparselt is not None:
                 spec = self.schema['cusparselt'][cusparselt]['spec']
-                major = cusparselt.split('.')[0]
+                cudamajor = cuda.split('.')[0]
+                spltmajor = cusparselt.split('.')[0]
                 if apt:
-                    packages.append(f'libcusparselt{major}={spec}')
-                    packages.append(f'libcusparselt-dev={spec}')
-                else:
-                    packages.append(f'libcusparselt{major}-{spec}')
-                    packages.append(f'libcusparselt-devel-{spec}')
-            if cudnn is not None:
-                spec = self.schema['cudnn'][cudnn]['spec']
-                cudnn_cuda_schema = self.schema['cudnn'][cudnn]['cuda'][cuda]
-                alias = cuda
-                if cudnn_cuda_schema is not None:
-                    alias = cudnn_cuda_schema['alias']
-                major = cudnn.split('.')[0]
-                if apt:
-                    packages.append(f'libcudnn{major}={spec}+cuda{alias}')
-                    packages.append(f'libcudnn{major}-dev={spec}+cuda{alias}')
+                    packages.append(
+                        f'libcusparselt{spltmajor}-cuda-{cudamajor}={spec}')
+                    packages.append(
+                        f'libcusparselt{spltmajor}-dev-cuda-{cudamajor}={spec}')
                 else:
                     packages.append(
-                        f'libcudnn{major}-{spec}-*.cuda{alias}')
+                        f'libcusparselt{spltmajor}-cuda-{cudamajor}-{spec}')
                     packages.append(
-                        f'libcudnn{major}-devel-{spec}-*.cuda{alias}')
+                        f'libcusparselt{spltmajor}-devel-cuda-{cudamajor}-{spec}')
             return packages
         elif matrix.rocm is not None:
             return self.schema['rocm'][matrix.rocm]['packages']  # type: ignore[no-any-return] # NOQA
@@ -295,11 +339,15 @@ class LinuxGenerator:
 
         if matrix.cuda is not None:
             lines += [
+                'nvidia-smi',
+                '',
                 'export NVCC="ccache nvcc"',
                 '',
             ]
         elif matrix.rocm is not None:
             lines += [
+                'hipconfig',
+                '',
                 '# TODO(kmaehashi): Tentatively sparsen parameterization to make test run complete.',  # NOQA
                 'export CUPY_TEST_FULL_COMBINATION="0"',
                 'export CUPY_INSTALL_USE_HIP=1',
@@ -313,8 +361,25 @@ class LinuxGenerator:
                 f'export {key}="{value}"',
                 '',
             ]
+        lines += [
+            'echo "================ Environment Variables ================"',
+            'env',
+            'echo "======================================================="',
+            '',
+        ]
 
-        lines += ['"$ACTIONS/build.sh"']
+        # CUDA targets install the GHA wheel (fetch-wheel.sh); ROCm and
+        # source-only CUDA targets (`wheel: false`) build from source.
+        build_script = (
+            'fetch-wheel.sh'
+            if (matrix.cuda is not None and matrix.wheel)
+            else 'build.sh'
+        )
+        lines += [
+            '',
+            'trap "$ACTIONS/cleanup.sh" EXIT',
+            f'"$ACTIONS/{build_script}"',
+        ]
         if matrix.test.startswith('unit'):
             if matrix.test == 'unit':
                 spec = 'not slow and not multi_gpu'
@@ -329,7 +394,26 @@ class LinuxGenerator:
                 spec = 'slow'
             else:
                 assert False
-            lines += [f'"$ACTIONS/unittest.sh" "{spec}"']
+            if matrix.cuda is not None and matrix.wheel:
+                # TODO (leofang): hard-coding test deselection in CI is not
+                # sustainable -- revisit after #10058 is merged. A fetched
+                # released wheel cannot satisfy build-environment tests, e.g.
+                # test_cupy_builder introspects the *local* CUDA, which differs
+                # from the CUDA the wheel was built with.
+                # Use the rootdir-relative nodeid (tests/...) that pytest
+                # --deselect matches -- NOT the cwd-relative form it prints
+                # under unittest.sh's `pushd tests`. Append rather than
+                # overwrite so a target's own opts survive (e.g.
+                # --parallel-threads=2 on free-threaded).
+                opts = 'CUPY_CI_PYTEST_EXTRA_OPTS'
+                deselect = (
+                    '--deselect tests/install_tests/'
+                    'test_cupy_builder/test_features.py::test_CUDA_cuda')
+                lines += [
+                    f'{opts}="${{{opts}:+${opts} }}{deselect}" '
+                    f'"$ACTIONS/unittest.sh" "{spec}"']
+            else:
+                lines += [f'"$ACTIONS/unittest.sh" "{spec}"']
         elif matrix.test == 'example':
             lines += ['"$ACTIONS/example.sh"']
         elif matrix.test == 'benchmark':
@@ -338,7 +422,6 @@ class LinuxGenerator:
             raise AssertionError
 
         lines += [
-            '"$ACTIONS/cleanup.sh"',
             ''
         ]
 
@@ -445,14 +528,14 @@ def validate_schema(schema: SchemaType) -> None:
                     raise ValueError(
                         f'unknown system: {system} '
                         f'while parsing schema os:{value}')
-        if key in ('nccl', 'cutensor', 'cusparselt', 'cudnn'):
+        if key in ('nccl', 'cutensor', 'cusparselt'):
             for value, value_schema in key_schema.items():
                 for cuda, _ in value_schema.get('cuda', {}).items():
                     if cuda not in schema['cuda'].keys():
                         raise ValueError(
                             f'unknown CUDA version: {cuda} '
                             f'while parsing schema {key}:{value}')
-        elif key in ('numpy', 'scipy', 'mpi4py'):
+        elif key in ('numpy', 'scipy', 'mpi4py', 'ml_dtypes'):
             for value, value_schema in key_schema.items():
                 for python in value_schema.get('python', []):
                     if python not in schema['python'].keys():
@@ -515,13 +598,13 @@ def validate_matrixes(schema: SchemaType, matrixes: list[Matrix]) -> None:
                     f'{matrix.project}: {key} must be one of '
                     f'{possible_values} but got {value}')
 
-            if key in ('nccl', 'cutensor', 'cusparselt', 'cudnn'):
+            if key in ('nccl', 'cutensor', 'cusparselt'):
                 supports = schema[key][value].get('cuda', None)
                 if supports is not None and matrix.cuda not in supports:
                     errors.append(
                         f'{matrix.project}: CUDA {matrix.cuda} '
                         f'not supported by {key} {value}')
-            elif key in ('numpy', 'scipy', 'mpi4py'):
+            elif key in ('numpy', 'scipy', 'mpi4py', 'ml_dtypes'):
                 supports = schema[key][value].get('python', None)
                 if supports is not None and matrix.python not in supports:
                     errors.append(
@@ -627,6 +710,18 @@ def main(argv: list[str]) -> int:
     # Generate tags
     taggen = TagGenerator(matrixes)
     output['config.tags.json'] = taggen.generate()
+
+    # Generate attributes for generated files
+    gitattributes = [
+        '# AUTO GENERATED: DO NOT EDIT!',
+        '',
+    ]
+    generated_files = [*output, '.gitattributes']
+    gitattributes.extend(
+        f'/{filename} linguist-generated' for filename in generated_files
+    )
+    gitattributes.append('')
+    output['.gitattributes'] = '\n'.join(gitattributes)
 
     # Write output files.
     out_basedir = options.directory if options.directory else basedir

@@ -6,15 +6,15 @@ Requirements
 
 * `NVIDIA CUDA GPU <https://developer.nvidia.com/cuda-gpus>`_ with the Compute Capability 3.0 or larger.
 
-* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v11.2 / v11.3 / v11.4 / v11.5 / v11.6 / v11.7 / v11.8 / v12.0 / v12.1 / v12.2 / v12.3 / v12.4 / v12.5 / v12.6 / v12.8 / v12.9 / v13.0
+* `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_: v12.0 / v12.1 / v12.2 / v12.3 / v12.4 / v12.5 / v12.6 / v12.8 / v12.9 / v13.0 / v13.1 / v13.2 / v13.3
 
     * If you have multiple versions of CUDA Toolkit installed, CuPy will automatically choose one of the CUDA installations.
       See :ref:`install_cuda` for details.
 
-    * This requirement is optional if you install CuPy from ``conda-forge``. However, you still need to have a compatible
-      driver installed for your GPU. See :ref:`install_cupy_from_conda_forge` for details.
+    * This requirement is optional if you install both CUDA and CuPy from either PyPI or conda-forge. However, you still need to have a compatible
+      driver installed for your GPU. See :ref:`install_cupy_from_pypi` and :ref:`install_cupy_from_conda_forge` for details.
 
-* `Python <https://python.org/>`_: v3.10 / v3.11 / v3.12 / v3.13
+* `Python <https://python.org/>`_: v3.10 / v3.11 / v3.12 / v3.13 / v3.14
 
 .. note::
 
@@ -23,11 +23,11 @@ Requirements
 Python Dependencies
 ~~~~~~~~~~~~~~~~~~~
 
-NumPy/SciPy-compatible API in CuPy v14 is based on NumPy 2.3 and SciPy 1.14, and has been tested against the following versions:
+NumPy/SciPy-compatible API in CuPy v14 is based on NumPy 2.3 and SciPy 1.16, and has been tested against the following versions:
 
-* `NumPy <https://numpy.org/>`_: v1.24 / v1.25 / v1.26 / v2.0 / v2.1 / v2.2 / v2.3
+* `NumPy <https://numpy.org/>`_: v2.0 / v2.1 / v2.2 / v2.3 / v2.4 / v2.5
 
-* `SciPy <https://scipy.org/>`_ (*optional*): v1.10 / v1.11 / v1.12 / v1.13 / v1.14
+* `SciPy <https://scipy.org/>`_ (*optional*): v1.14 / v1.15 / v1.16 / v1.17 / v1.18
 
     * Required only when copying sparse matrices from GPU to CPU (see :doc:`../reference/scipy_sparse`.)
 
@@ -54,21 +54,19 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 
     * The library to accelerate tensor operations. See :doc:`../reference/environment` for the details.
 
-* `NCCL <https://developer.nvidia.com/nccl>`_: v2.16 / v2.17 / v2.18 / v2.19 / v2.20 / v2.21 / v2.22 / v2.25 / v2.26
+* `NCCL <https://developer.nvidia.com/nccl>`_: v2.16 / v2.17 / v2.18 / v2.19 / v2.20 / v2.21 / v2.22 / v2.25 / v2.26 / v2.27 / v2.28 / v2.29 / v2.30
 
     * The library to perform collective multi-GPU / multi-node computations.
 
-* `cuDNN <https://developer.nvidia.com/cudnn>`_: v8.8
-
-    * The library to accelerate deep neural network computations.
-
-* `cuSPARSELt <https://docs.nvidia.com/cuda/cusparselt/>`_: v0.7.0 / v0.7.1
+* `cuSPARSELt <https://docs.nvidia.com/cuda/cusparselt/>`_: v0.8.0 / v0.8.1 / v0.9.0 / v0.9.1
 
     * The library to accelerate sparse matrix-matrix multiplication.
 
 
 Installing CuPy
 ---------------
+
+.. _install_cupy_from_pypi:
 
 Installing CuPy from PyPI
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -81,19 +79,27 @@ Package names are different depending on your CUDA Toolkit version.
 
    * - CUDA
      - Command
-   * - **v11.2 ~ 11.8** (x86_64 / aarch64)
-     - ``pip install cupy-cuda11x``
    * - **v12.x** (x86_64 / aarch64)
      - ``pip install cupy-cuda12x``
    * - **v13.x** (x86_64 / aarch64)
      - ``pip install cupy-cuda13x``
 
+.. _install_with_ctk_extras:
+
+By default, the above command only installs CuPy itself, assuming a CUDA Toolkit is already installed on the system. To use NVIDIA's CUDA component wheels
+(so as to quickly spinning up a fresh virtual environment without installing a system-wide CUDA Toolkit -- only the CUDA driver is needed -- and allowing
+smaller installation footprint and better interoperability with other Python GPU libraries), you can pass ``[ctk]`` to install them all as
+optional dependencies, e.g.::
+
+   $ pip install "cupy-cuda12x[ctk]"
+
 .. note::
 
-   To enable features provided by additional CUDA libraries (cuTENSOR / NCCL / cuDNN), you need to install them manually.
-   If you installed CuPy via wheels, you can use the installer command below to setup these libraries in case you don't have a previous installation::
+   To enable features provided by additional CUDA libraries (cuTENSOR / NCCL), you need to install them manually.
+   If you installed CuPy via PyPI, the easiest way to setup these libraries is to use ``cutensor-cuXX`` and ``nvidia-nccl-cuXX`` PyPI packages, e.g.:::
 
-    $ python -m cupyx.tools.install_library --cuda 11.x --library cutensor
+    $ pip install "cutensor-cu13==2.3.*"
+    $ pip install "nvidia-nccl-cu13==2.27.*"
 
 .. note::
 
@@ -113,47 +119,44 @@ Installing CuPy from Conda-Forge
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Conda is a cross-language, cross-platform package management solution widely used in scientific computing and other fields.
-The above ``pip install`` instruction is compatible with ``conda`` environments. Alternatively, for both Linux (x86_64,
-ppc64le, aarch64-sbsa) and
-Windows once the CUDA driver is correctly set up, you can also install CuPy from the ``conda-forge`` channel::
+The above ``pip install`` instruction is compatible with ``conda`` environments. Alternatively, for both Linux (x86_64, aarch64) and
+Windows once the CUDA driver is correctly set up, you can also install CuPy from the conda-forge channel::
 
     $ conda install -c conda-forge cupy
 
-and ``conda`` will install a pre-built CuPy binary package for you, along with the CUDA runtime libraries
-(``cudatoolkit`` for CUDA 11 and below, or ``cuda-XXXXX`` for CUDA 12 and above). It is not necessary to install CUDA Toolkit in advance.
+and ``conda`` will install a pre-built CuPy binary package for you, along with all needed CUDA runtime libraries.
+It is not necessary to install CUDA Toolkit in advance, and is equivalent to the wheel counterpart ``pip install cupy-cudaXX[ctk]``,
+but with everything installed from conda-forge instead of PyPI.
 
 If you aim at minimizing the installation footprint, you can install the ``cupy-core`` package::
 
     $ conda install -c conda-forge cupy-core
 
 which only depends on ``numpy``. None of the CUDA libraries will be installed this way, and it is your responsibility to install the needed
-dependencies yourself, either from conda-forge or elsewhere. This is equivalent of the ``cupy-cudaXX`` wheel installation.
+dependencies yourself, either from conda-forge or elsewhere. This is equivalent to the wheel counterpart ``pip install cupy-cudaXX`` (without any extras).
 
-Conda has a built-in mechanism to determine and install the latest version of ``cudatoolkit`` or any other CUDA components supported by your driver.
-However, if for any reason you need to force-install a particular CUDA version (say 11.8), you can do::
+Conda has a built-in mechanism to determine and install the latest version of any CUDA components supported by your CUDA driver.
+However, if for any reason you need to force-install a particular CUDA version (say 12.9), you can do::
 
-    $ conda install -c conda-forge cupy cuda-version=11.8
+    $ conda install -c conda-forge cupy cuda-version=12.9
 
 .. note::
 
-    cuDNN, cuTENSOR, and NCCL are available on ``conda-forge`` as optional dependencies. The following command can install them all at once::
+    cuTENSOR and NCCL are available on conda-forge as optional dependencies. The following command can install them all at once::
 
-        $ conda install -c conda-forge cupy cudnn cutensor nccl
+        $ conda install -c conda-forge cupy cutensor nccl
 
     Each of them can also be installed separately as needed.
 
 .. note::
 
-    If you encounter any problem with CuPy installed from ``conda-forge``, please feel free to report to `cupy-feedstock
+    If you encounter any problem with CuPy installed from conda-forge, please feel free to report to `cupy-feedstock
     <https://github.com/conda-forge/cupy-feedstock/issues>`_, and we will help investigate if it is just a packaging
-    issue in ``conda-forge``'s recipe or a real issue in CuPy.
+    issue in conda-forge's recipe or a real issue in CuPy.
 
 .. note::
 
-    If you did not install CUDA Toolkit by yourself, for CUDA 11 and below the ``nvcc`` compiler might not be available, as
-    the ``cudatoolkit`` package from ``conda-forge`` does not include the ``nvcc`` compiler toolchain. If you would like to use
-    it from a local CUDA installation, you need to make sure the version of CUDA Toolkit matches that of ``cudatoolkit`` to
-    avoid surprises. For CUDA 12 and above, ``nvcc`` can be installed on a per-``conda`` environment basis via
+    If you did not install CUDA Toolkit by yourself, for CUDA 12 and above, ``nvcc`` can be installed on a per-``conda`` environment basis via
 
         $ conda install -c conda-forge cuda-nvcc
 
@@ -164,22 +167,16 @@ Installing CuPy from Source
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Use of wheel packages is recommended whenever possible.
-However, if wheels cannot meet your requirements (e.g., you are running non-Linux environment or want to use a version of CUDA / cuDNN / NCCL not supported by wheels), you can also build CuPy from source.
-
-.. note::
-
-   CuPy source build requires ``g++-6`` or later.
-   For Ubuntu 18.04, run ``apt-get install g++``.
-   For Ubuntu 16.04, CentOS 6 or 7, follow the instructions :ref:`here <install_gcc6>`.
+However, if wheels cannot meet your requirements (e.g., you are running non-Linux environment or want to use a version of CUDA / NCCL not supported by wheels), you can also build CuPy from source.
 
 .. note::
 
    When installing CuPy from source, features provided by additional CUDA libraries will be disabled if these libraries are not available at the build time.
-   See :ref:`install_cudnn` for the instructions.
+   See :ref:`install_nccl` for the instructions.
 
 .. note::
 
-   If you upgrade or downgrade the version of CUDA Toolkit, cuDNN, NCCL or cuTENSOR, you may need to reinstall CuPy.
+   If you upgrade or downgrade the version of CUDA Toolkit, NCCL or cuTENSOR, you may need to reinstall CuPy.
    See :ref:`install_reinstall` for details.
 
 You can install the latest stable release version of the `CuPy source package <https://pypi.python.org/pypi/cupy>`_ via ``pip``.
@@ -198,6 +195,38 @@ If you want to install the latest development version of CuPy from a cloned Git 
 
    Cython 3 is required to build CuPy from source.
    It will be automatically installed during the build process if not available.
+
+.. note::
+
+   When building CuPy from source inside a Conda environment that provides the
+   CUDA Toolkit (e.g. ``conda install -c conda-forge cuda-toolkit``), set both
+   ``CUDA_PATH`` and ``NVCC``::
+
+    $ export CUDA_PATH=$CONDA_PREFIX/targets/x86_64-linux/    # use sbsa-linux on aarch64
+    $ export NVCC=$CONDA_PREFIX/bin/nvcc
+
+   Conda CUDA 12+ packages place headers (``cuda_runtime.h``) and static libs
+   (e.g. ``libcudart_static.a``) under ``$CONDA_PREFIX/targets/<target>/``, so
+   ``CUDA_PATH`` must point at that subdirectory. ``NVCC`` must be the real
+   binary path: invoking ``nvcc`` through the symlink at
+   ``$CUDA_PATH/bin/nvcc`` causes the build to fail with
+   ``fatal error: cuda_runtime.h: No such file or directory``.
+
+.. note::
+
+   By default, the source build compiles CUDA kernels for every architecture
+   supported by your CUDA Toolkit, which can be very slow. To compile only
+   for the architecture of your installed GPU, set::
+
+    $ export CUPY_NVCC_GENERATE_CODE=current
+
+   You can also increase build parallelism::
+
+    $ export CUPY_NUM_BUILD_JOBS=8    # parallel C++ extension processes (default 4)
+    $ export CUPY_NUM_NVCC_THREADS=4  # nvcc threads per .cu file (default 2)
+
+   See :doc:`reference/environment` for the full list of build-time environment
+   variables.
 
 
 Uninstalling CuPy
@@ -285,26 +314,23 @@ If you are using certain versions of conda, it may fail to build CuPy with error
 This is due to a bug in conda (see `conda/conda#6030 <https://github.com/conda/conda/issues/6030>`_ for details).
 If you encounter this problem, please upgrade your conda.
 
-.. _install_cudnn:
+.. _install_nccl:
 
-Installing cuDNN and NCCL
-~~~~~~~~~~~~~~~~~~~~~~~~~
+Installing NCCL
+~~~~~~~~~~~~~~~
 
-We recommend installing cuDNN and NCCL using binary packages (i.e., using ``apt`` or ``yum``) provided by NVIDIA.
+We recommend installing NCCL using binary packages (i.e., using ``apt`` or ``yum``) provided by NVIDIA.
 
-If you want to install tar-gz version of cuDNN and NCCL, we recommend installing it under the ``CUDA_PATH`` directory.
-For example, if you are using Ubuntu, copy ``*.h`` files to ``include`` directory and ``*.so*`` files to ``lib64`` directory::
-
-  $ cp /path/to/cudnn.h $CUDA_PATH/include
-  $ cp /path/to/libcudnn.so* $CUDA_PATH/lib64
+If you want to install tar-gz version of NCCL, we recommend installing it under the ``CUDA_PATH`` directory.
+For example, if you are using Ubuntu, copy ``*.h`` files to ``include`` directory and ``*.so*`` files to ``lib64`` directory.
 
 The destination directories depend on your environment.
 
-If you want to use cuDNN or NCCL installed in another directory, please use ``CFLAGS``, ``LDFLAGS`` and ``LD_LIBRARY_PATH`` environment variables before installing CuPy::
+If you want to use NCCL installed in another directory, please use ``CFLAGS``, ``LDFLAGS`` and ``LD_LIBRARY_PATH`` environment variables before installing CuPy::
 
-  $ export CFLAGS=-I/path/to/cudnn/include
-  $ export LDFLAGS=-L/path/to/cudnn/lib
-  $ export LD_LIBRARY_PATH=/path/to/cudnn/lib:$LD_LIBRARY_PATH
+  $ export CFLAGS=-I/path/to/nccl/include
+  $ export LDFLAGS=-L/path/to/nccl/lib
+  $ export LD_LIBRARY_PATH=/path/to/nccl/lib:$LD_LIBRARY_PATH
 
 .. _install_cuda:
 
@@ -315,6 +341,7 @@ If you have installed CUDA on the non-default directory or multiple CUDA version
 
 CuPy uses the first CUDA installation directory found by the following order.
 
+#. ``cuda-pathfinder``'s `documented search order <https://nvidia.github.io/cuda-python/cuda-pathfinder/latest/generated/cuda.pathfinder.load_nvidia_dynamic_lib.html>`_.
 #. ``CUDA_PATH`` environment variable.
 #. The parent directory of ``nvcc`` command. CuPy looks for ``nvcc`` command from ``PATH`` environment variable.
 #. ``/usr/local/cuda``
@@ -328,82 +355,66 @@ For example, you can build CuPy using non-default CUDA directory by ``CUDA_PATH`
    CUDA installation discovery is also performed at runtime using the rule above.
    Depending on your system configuration, you may also need to set ``LD_LIBRARY_PATH`` environment variable to ``$CUDA_PATH/lib64`` at runtime.
 
-CuPy always raises ``NVRTC_ERROR_COMPILATION (6)``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+CuPy fails to compile CUDA kernels
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-On CUDA 12.2 or later, CUDA Runtime header files are required to compile kernels in CuPy.
-If CuPy raises a ``NVRTC_ERROR_COMPILATION`` with the error message saying ``catastrophic error: cannot open source file "vector_types.h"`` for almost everything, it is possible that CuPy cannot find the header files on your system correctly.
+CuPy JIT-compiles CUDA kernels via NVRTC at runtime and needs the CUDA runtime (``cudart``) headers to do so.
+NVRTC and ``cudart`` are version-locked: both must come from the same CTK ``X.Y``.
+If the headers cannot be located, are incomplete, or come from a different CTK than NVRTC, kernel compilation fails with errors such as:
 
-This problem does not happen if you have installed CuPy from conda-forge (i.e., ``conda install -c conda-forge cupy``), as the package ``cuda-cudart-dev_<platform>`` that contains the needed headers is correctly installed as a dependency.
-Please report to the CuPy repository if you encounter issues with Conda-installed CuPy.
+* ``RuntimeError: Failed to find CUDA headers. Please install CUDA toolkit headers (e.g., pip install cupy-cuda12x[ctk]) or specify CUDA_PATH environment variable.`` -- no ``cudart`` headers were located at all (raised directly by CuPy).
+* ``NVRTC_ERROR_COMPILATION`` with ``catastrophic error: cannot open source file "vector_types.h"`` or ``"cuda_fp16.h"`` -- a partial ``cudart`` header install; both files ship with ``cudart``.
+* ``nvrtc: error: failed to load builtins`` -- NVRTC cannot locate its own builtin headers.
+* ``error: cannot overload functions distinguished by return type alone``, ``error: identifier "__half_raw" is undefined``, or ``error: no instance of overloaded function "__half::__half" matches the specified type`` -- ``cudart`` headers and NVRTC came from different CTK versions.
 
-If you have installed CuPy from PyPI (i.e., ``pip install cupy-cuda12x``), you can install CUDA headers by running ``pip install "nvidia-cuda-runtime-cu12==12.X.*"`` where ``12.X`` is the version of your CUDA installation.
-Once headers from the package is recognized, ``cupy.show_config()`` will display the path as ``CUDA Extra Include Dirs``:
+CuPy locates ``cudart`` headers via ``cuda.pathfinder.find_nvidia_header_directory("cudart")``; see the `cuda-pathfinder documentation <https://nvidia.github.io/cuda-python/cuda-pathfinder/latest/generated/cuda.pathfinder.find_nvidia_header_directory.html>`_ for the search order. Running ``python -c 'import cupy; cupy.show_config()'`` reports the resolved directory as ``CUDA Extra Include Dirs`` and the NVRTC version as ``NVRTC Version``, which is useful for confirming that both came from the same CTK.
 
-.. code:: console
+Resolution depends on how you installed CUDA:
 
-  $ python -c 'import cupy; cupy.show_config()'
-  ...
-  CUDA Extra Include Dirs      : []
-  ...
-  NVRTC Version                : (12, 6)
-  ...
-  $ pip install "nvidia-cuda-runtime-cu12==12.6.*"
-  ...
-  $ python -c 'import cupy; cupy.show_config()'
-  ...
-  CUDA Extra Include Dirs      : ['.../site-packages/nvidia/cuda_runtime/include']
-  ...
+**conda**
+   If CuPy came from conda-forge (``conda install -c conda-forge cupy``), the ``cuda-cudart-dev_<platform>`` dependency ships the headers automatically; if you see the error anyway, confirm your conda environment is activated and no stray ``CUDA_PATH`` is pointing elsewhere. If CuPy came from another source, install the headers explicitly with ``conda install -c conda-forge cuda-cudart-dev`` (optionally pinning ``cuda-version`` to keep NVRTC and ``cudart`` in lock-step).
 
-Alternatively, you can install CUDA headers system-wide (``/usr/local/cuda``) using NVIDIA's Apt (or DNF) repository.
-Install the ``cuda-cudart-dev-12-X`` package where ``12-X`` is the version of your ``cuda-cudart`` package, e.g.:
+**PyPI wheels**
+   The easiest path is the ``[ctk]`` extras: ``pip install "cupy-cuda13x[ctk]"`` pulls in ``cuda-toolkit[cudart,nvrtc,...]``, which co-installs matched ``nvidia-cuda-runtime`` and ``nvidia-cuda-nvrtc`` wheels. See :ref:`Installing CuPy from PyPI <install_with_ctk_extras>`.
 
-.. code:: console
+   Otherwise, install the runtime wheel manually: ``pip install "nvidia-cuda-runtime==13.X.*"`` where ``13.X`` matches the NVRTC version reported by ``cupy.show_config()``. For CUDA 12.x, use ``nvidia-cuda-runtime-cu12`` (the ``-cu12`` suffix was dropped starting with CUDA 13).
 
-  $ apt list "cuda-cudart-*"
-  cuda-cudart-12-6/now 12.6.68-1 amd64 [installed,local]
-  $ sudo apt install "cuda-cudart-dev-12-6"
+   After installation, ``cupy.show_config()`` displays the path under ``CUDA Extra Include Dirs``:
 
-CuPy always raises ``cupy.cuda.compiler.CompileException``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   .. code:: console
 
-If CuPy raises a ``CompileException`` for almost everything, it is possible that CuPy cannot detect CUDA installed on your system correctly.
-The following are error messages commonly observed in such cases.
+      $ python -c 'import cupy; cupy.show_config()'
+      ...
+      CUDA Extra Include Dirs      : []
+      ...
+      NVRTC Version                : (13, 3)
+      ...
+      $ pip install "nvidia-cuda-runtime==13.3.*"
+      ...
+      $ python -c 'import cupy; cupy.show_config()'
+      ...
+      CUDA Extra Include Dirs      : ['.../site-packages/nvidia/cuda_runtime/include']
+      ...
 
-* ``nvrtc: error: failed to load builtins``
-* ``catastrophic error: cannot open source file "cuda_fp16.h"``
-* ``error: cannot overload functions distinguished by return type alone``
-* ``error: identifier "__half_raw" is undefined``
-* ``error: no instance of overloaded function "__half::__half" matches the specified type``
+**Local (system) CUDA Toolkit**
+   Install the headers via NVIDIA's Apt (or DNF) repository, matching the major/minor of your ``cuda-cudart`` package (so the ``cudart`` headers align with NVRTC from the same CTK):
 
-Please try setting ``LD_LIBRARY_PATH`` and ``CUDA_PATH`` environment variable.
-For example, if you have CUDA installed at ``/usr/local/cuda-12.6``::
+   .. code:: console
 
-  $ export CUDA_PATH=/usr/local/cuda-12.6
-  $ export LD_LIBRARY_PATH=$CUDA_PATH/lib64:$LD_LIBRARY_PATH
+      $ apt list "cuda-cudart-*"
+      cuda-cudart-13-3/now 13.3.0-1 amd64 [installed,local]
+      $ sudo apt install "cuda-cudart-dev-13-3"
+
+   Use ``cuda-cudart-dev-12-X`` for CUDA 12.
+
+   If your CTK is installed at a non-default location, export ``CUDA_PATH`` and ``LD_LIBRARY_PATH`` before running Python:
+
+   .. code:: console
+
+      $ export CUDA_PATH=/usr/local/cuda-13.3
+      $ export LD_LIBRARY_PATH=$CUDA_PATH/lib64:$LD_LIBRARY_PATH
 
 Also see :ref:`install_cuda`.
-
-.. _install_gcc6:
-
-Build fails on Ubuntu 16.04, CentOS 6 or 7
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-In order to build CuPy from source on systems with legacy GCC (g++-5 or earlier), you need to manually set up g++-6 or later and configure ``NVCC`` environment variable.
-
-On Ubuntu 16.04::
-
-  $ sudo add-apt-repository ppa:ubuntu-toolchain-r/test
-  $ sudo apt update
-  $ sudo apt install g++-6
-  $ export NVCC="nvcc --compiler-bindir gcc-6"
-
-On CentOS 6 / 7::
-
-  $ sudo yum install centos-release-scl
-  $ sudo yum install devtoolset-7-gcc-c++
-  $ source /opt/rh/devtoolset-7/enable
-  $ export NVCC="nvcc --compiler-bindir gcc"
 
 
 Using CuPy on AMD GPU (experimental)
@@ -416,7 +427,7 @@ Requirements
 
 * `AMD GPU supported by ROCm <https://rocm.docs.amd.com/projects/install-on-linux/en/latest/reference/system-requirements.html>`_
 
-* `ROCm <https://rocm.docs.amd.com/en/latest/>`_ 4.x / 5.x / 6.x
+* `ROCm <https://rocm.docs.amd.com/en/latest/>`_ 7.x
     * See the `Installation Guide <https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/quick-start.html>`_ for details.
 
 The following ROCm libraries are required:
@@ -425,17 +436,16 @@ The following ROCm libraries are required:
 
   $ sudo apt install hipblas hipsparse rocsparse rocrand hiprand rocthrust rocsolver rocfft hipfft hipcub rocprim rccl roctracer-dev
 
-.. note::
-
-   ROCm binary packages (wheels) and ROCm Docker images are unavailable in recent CuPy versions (v13.4.0+).
-   We are currently working on improving packaging to improve this situation. Follow `#8607 <https://github.com/cupy/cupy/issues/8607>`_ for the latest status.
-
 Environment Variables
 ~~~~~~~~~~~~~~~~~~~~~
 
-When building or running CuPy for ROCm, the following environment variables are effective.
+When building or running CuPy for ROCm, the following environment variables are necessary to set.
 
 * ``ROCM_HOME``: directory containing the ROCm software (e.g., ``/opt/rocm``).
+
+.. note::
+    It is recommended to always have ROCm installed to `/opt/rocm`. Non standard install locations have a tendency
+    to break some functionality.
 
 Docker
 ~~~~~~
@@ -451,29 +461,20 @@ You can try running CuPy for ROCm using Docker.
 Installing Binary Packages
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Wheels (precompiled binary packages) are available for Linux (x86_64).
-Package names are different depending on your ROCm version.
-
-.. list-table::
-   :header-rows: 1
-
-   * - ROCm
-     - Command
-   * - v4.3
-     - ``$ pip install cupy-rocm-4-3``
-   * - v5.0
-     - ``$ pip install cupy-rocm-5-0``
-
 .. note::
 
-   As of now, you need to build CuPy from source to use CuPy with ROCm 6+.
+   ROCm binary packages (wheels) and ROCm Docker images are unavailable in recent CuPy versions (v13.4.0+).
+   AMD is currently hosting ROCm 6.4 wheels and can be installed with `pip install amd-cupy --extra-index-url=https://pypi.amd.com/simple`.
+   This wheel supports PTDS, CAI, and other misc bug fixes in addition to other v13.4 functionality.
+   We are currently working on improving packaging to improve this situation. Follow `#8607 <https://github.com/cupy/cupy/issues/8607>`_ for the latest status.
+
 
 Building CuPy for ROCm From Source
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To build CuPy from source, set the ``CUPY_INSTALL_USE_HIP``, ``ROCM_HOME``, and ``HCC_AMDGPU_TARGET`` environment variables.
 (``HCC_AMDGPU_TARGET`` is the ISA name supported by your GPU.
-Run ``rocminfo`` and use the value displayed in ``Name:`` line (e.g., ``gfx900``).
+Run ``rocminfo`` and use the value displayed in ``Name:`` line (e.g., ``gfx942``).
 You can specify a comma-separated list of ISAs if you have multiple GPUs of different architectures.)
 
 ::
@@ -493,19 +494,16 @@ Limitations
 
 The following features are not available due to the limitation of ROCm or because that they are specific to CUDA:
 
-* CUDA Array Interface
 * cuTENSOR
 * Handling extremely large arrays whose size is around 32-bit boundary (HIP is known to fail with sizes `2**32-1024`)
 * Atomic addition in FP16 (``cupy.ndarray.scatter_add`` and ``cupyx.scatter_add``)
 * Multi-GPU FFT and FFT callback
 * Some random number generation algorithms
 * Several options in RawKernel/RawModule APIs: Jitify, dynamic parallelism
-* Per-thread default stream
 
 The following features are not yet supported:
 
 * Sparse matrices (``cupyx.scipy.sparse``)
-* cuDNN (hipDNN)
 * Hermitian/symmetric eigenvalue solver (``cupy.linalg.eigh``)
 * Polynomial roots (uses Hermitian/symmetric eigenvalue solver)
 * Splines in ``cupyx.scipy.interpolate`` (``make_interp_spline``, spline modes of ``RegularGridInterpolator``/``interpn``), as they depend on sparse matrices.

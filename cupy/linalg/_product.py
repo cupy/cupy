@@ -14,11 +14,45 @@ from cupy.linalg import _solve
 from cupy.linalg import _util
 
 
+def _try_fastcall_matmul(
+        a, b, out=None, axes=None, axis=None, keepdims=False,
+        casting=None, dtype=None, signature=None, order=None):
+    # Allow matmul to side-step gufunc machinery when no gufunc args
+    # are being used.  In theory e.g. dtype may be possible to handle.
+    # Matmul supports all inputs, but casting is tricky.
+    if (
+        axes is not None
+        or axis is not None
+        or keepdims
+        or casting != "same_kind"
+        or dtype is not None
+        or signature is not None
+        or order != 'K'
+    ):
+        return NotImplemented
+
+    if out is not None:
+        # Output casting would require passing on `casting=` so bail
+        # if there is any chance that casting may be needed.
+        if (
+                not isinstance(out, cupy.ndarray)
+                or not isinstance(a, cupy.ndarray)
+                or not isinstance(b, cupy.ndarray)
+        ):
+            return NotImplemented
+
+        if out.dtype != a.dtype or out.dtype != b.dtype:
+            return NotImplemented
+
+    return _core.matmul(a, b, out=out)
+
+
 matmul = _GUFunc(
     _core.matmul,
     '(n?,k),(k,m?)->(n?,m?)',
     supports_batched=True,
     supports_out=True,
+    try_fastcall_func=_try_fastcall_matmul,
     doc="""matmul(x1, x2, /, out=None, \\*\\*kwargs)
 
     Matrix product of two arrays.
@@ -456,23 +490,15 @@ def kron(a, b):
     if a_ndim == 0 or b_ndim == 0:
         return cupy.multiply(a, b)
 
-    ndim = b_ndim
-    a_shape = a.shape
-    b_shape = b.shape
-    if a_ndim != b_ndim:
-        if b_ndim > a_ndim:
-            a_shape = (1,) * (b_ndim - a_ndim) + a_shape
-        else:
-            b_shape = (1,) * (a_ndim - b_ndim) + b_shape
-            ndim = a_ndim
-
-    axis = ndim - 1
-    out = _core.tensordot_core(
-        a, b, None, a.size, b.size, 1, a_shape + b_shape)
-    for _ in range(ndim):
-        out = _core.concatenate_method(out, axis=axis)
-
-    return out
+    ndim = max(a_ndim, b_ndim)
+    a_shape = (1,) * (ndim - a_ndim) + a.shape
+    b_shape = (1,) * (ndim - b_ndim) + b.shape
+    a_arr = cupy.expand_dims(
+        a.reshape(a_shape), axis=tuple(range(1, ndim * 2, 2)))
+    b_arr = cupy.expand_dims(
+        b.reshape(b_shape), axis=tuple(range(0, ndim * 2, 2)))
+    out_shape = tuple(s_a * s_b for s_a, s_b in zip(a_shape, b_shape))
+    return cupy.multiply(a_arr, b_arr).reshape(out_shape)
 
 
 def _move_axes_to_head(a, axes):
@@ -485,3 +511,22 @@ def _move_axes_to_head(a, axes):
 
     return a.transpose(
         axes + [i for i in range(a.ndim) if i not in axes])
+
+
+def matrix_transpose(a):
+    """
+    Transposes the innermost 2 dimensions of ndarray
+
+    args:
+        x : (~cupy.ndarray) : (..., M, N)
+    Returns:
+        ~cupy.ndarray: (..., N, M)
+
+    Reference:
+        more details: func : numpy.linalg.matrix_transpose
+    """
+    ndim = a.ndim
+
+    if ndim < 2:
+        raise ValueError('Matrix dimension is less than 2')
+    return a.swapaxes(ndim-1, ndim-2)

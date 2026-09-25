@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-import unittest
-
 from cupy import testing
 
 
-class TestArrayContiguity(unittest.TestCase):
+class TestArrayContiguity:
 
     def test_is_contiguous(self):
         a = testing.shaped_arange((2, 3, 4))

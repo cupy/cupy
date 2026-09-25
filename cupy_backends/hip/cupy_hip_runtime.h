@@ -389,10 +389,6 @@ cudaError_t cudaStreamAddCallback(cudaStream_t stream,
     return hipStreamAddCallback(stream, callback, userData, flags);
 }
 
-cudaError_t cudaLaunchHostFunc(cudaStream_t stream, cudaHostFn_t fn, void* userData) {
-    return hipErrorUnknown;
-}
-
 cudaError_t cudaStreamQuery(cudaStream_t stream) {
     return hipStreamQuery(stream);
 }
@@ -452,6 +448,48 @@ cudaError_t cudaStreamIsCapturing(cudaStream_t stream,
                                   cudaStreamCaptureStatus* pCaptureStatus) {
 #if HIP_VERSION >= 50000000
     return hipStreamIsCapturing(stream, pCaptureStatus);
+#else
+    return hipErrorUnknown;
+#endif
+}
+
+cudaError_t cudaLaunchHostFunc(cudaStream_t stream, cudaHostFn_t fn, void* userData) {
+#if HIP_VERSION >= 50400000
+    return hipLaunchHostFunc(stream, fn, userData);
+#else
+    return hipErrorUnknown;
+#endif
+}
+
+cudaError_t cudaStreamGetCaptureInfo(cudaStream_t stream,
+                                     cudaStreamCaptureStatus* pCaptureStatus,
+                                     unsigned long long* pId) {
+#if HIP_VERSION >= 50000000
+    return hipStreamGetCaptureInfo(stream, pCaptureStatus, pId);
+#else
+    return hipErrorUnknown;
+#endif
+}
+
+cudaError_t cudaStreamGetCaptureInfo_v2(cudaStream_t stream,
+                                        cudaStreamCaptureStatus* pCaptureStatus,
+                                        unsigned long long* pId,
+                                        cudaGraph_t* pGraph,
+                                        const cudaGraphNode_t** ppDependencies,
+                                        size_t* pNumDependencies) {
+#if HIP_VERSION >= 50000000
+    return hipStreamGetCaptureInfo_v2(stream, pCaptureStatus, pId,
+                                      pGraph, ppDependencies, pNumDependencies);
+#else
+    return hipErrorUnknown;
+#endif
+}
+
+cudaError_t cudaStreamBeginCaptureToGraph(cudaStream_t stream,
+                                          cudaGraph_t graph,
+                                          cudaStreamCaptureMode mode) {
+#if defined(hipStreamBeginCaptureToGraph)
+    return hipStreamBeginCaptureToGraph(stream, graph, mode);
 #else
     return hipErrorUnknown;
 #endif

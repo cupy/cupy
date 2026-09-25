@@ -323,6 +323,10 @@ class TestBroadcast(unittest.TestCase):
             testing.shaped_arange(s, xp, dtype) for s in self.shapes]
         return xp.broadcast_arrays(*arrays)
 
+    def test_broadcast_arrays_tuple(self):
+        out = cupy.broadcast_arrays(cupy.ones(3), cupy.zeros(3))
+        assert isinstance(out, tuple)
+
 
 @testing.parameterize(
     {'shapes': [(3,), (2,)]},

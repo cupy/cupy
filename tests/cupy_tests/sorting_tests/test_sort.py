@@ -12,6 +12,14 @@ from cupy.exceptions import AxisError
 
 class TestSort(unittest.TestCase):
 
+    def _sort(self, xp, a, use_method, axis=-1, descending=None):
+        kwargs = {} if descending is None else {'descending': descending}
+        if use_method:
+            a.sort(axis=axis, **kwargs)
+            return a
+        else:
+            return xp.sort(a, axis=axis, **kwargs)
+
     # Test ranks
 
     def test_sort_zero_dim(self):
@@ -25,6 +33,11 @@ class TestSort(unittest.TestCase):
             a = testing.shaped_random((), xp)
             with pytest.raises(AxisError):
                 xp.sort(a)
+
+    @testing.numpy_cupy_array_equal()
+    def test_sort_zero_length_axis(self, xp):
+        """Sorting along a zero-length axis is a no-op (#9816)."""
+        return xp.sort(xp.empty((2, 0)), axis=-1)
 
     @testing.numpy_cupy_array_equal()
     def test_sort_two_or_more_dim(self, xp):
@@ -43,14 +56,13 @@ class TestSort(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_sort_dtype(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
-        a.sort()
-        return a
+        return self._sort(xp, a, use_method=True)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_external_sort_dtype(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
-        return xp.sort(a)
+        return self._sort(xp, a, use_method=False)
 
     # Test contiguous arrays
 
@@ -86,8 +98,7 @@ class TestSort(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_sort_axis2(self, xp):
         a = testing.shaped_random((2, 3, 4), xp)
-        a.sort(axis=1)
-        return a
+        return self._sort(xp, a, use_method=True, axis=1)
 
     @testing.numpy_cupy_array_equal()
     def test_sort_axis3(self, xp):
@@ -98,7 +109,7 @@ class TestSort(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_external_sort_axis(self, xp):
         a = testing.shaped_random((2, 3, 3), xp)
-        return xp.sort(a, axis=0)
+        return self._sort(xp, a, use_method=False, axis=0)
 
     @testing.numpy_cupy_array_equal()
     def test_sort_negative_axis(self, xp):
@@ -167,8 +178,7 @@ class TestSort(unittest.TestCase):
     def test_nan1(self, xp, dtype):
         a = testing.shaped_random((10,), xp, dtype)
         a[2] = a[6] = xp.nan
-        out = xp.sort(a)
-        return out
+        return self._sort(xp, a, use_method=False)
 
     @testing.for_dtypes('efdFD')
     @testing.numpy_cupy_array_equal()
@@ -193,6 +203,68 @@ class TestSort(unittest.TestCase):
         a[0, 2, 1] = a[1, 0, 3] = xp.nan
         out = xp.sort(a, axis=2)
         return out
+
+    # Test descending order
+
+    @testing.with_requires('numpy>=2.5')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_sort_descending_dtype(self, xp, dtype):
+        a = testing.shaped_random((10,), xp, dtype)
+        return self._sort(xp, a, use_method=True, descending=True)
+
+    @testing.with_requires('numpy>=2.5')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_external_sort_descending_dtype(self, xp, dtype):
+        a = testing.shaped_random((10,), xp, dtype)
+        return self._sort(xp, a, use_method=False, descending=True)
+
+    @testing.with_requires('numpy>=2.5')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_sort_descending_axis(self, xp, dtype):
+        # Enough rows, and long enough rows, that a segmented sort emitting
+        # them in the wrong order cannot coincidentally match -- including
+        # for bool, where each sorted row collapses to a count of `True`s.
+        a = testing.shaped_random((4, 5, 6), xp, dtype)
+        return self._sort(xp, a, use_method=True, axis=1, descending=True)
+
+    @testing.with_requires('numpy>=2.5')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_external_sort_descending_axis(self, xp, dtype):
+        a = testing.shaped_random((4, 5, 6), xp, dtype)
+        return self._sort(xp, a, use_method=False, axis=1, descending=True)
+
+    @testing.with_requires('numpy>=2.5')
+    @testing.numpy_cupy_array_equal()
+    def test_sort_descending_false_matches_default(self, xp):
+        a = testing.shaped_random((10,), xp)
+        return self._sort(xp, a, use_method=False, descending=False)
+
+    @testing.with_requires('numpy>=2.5')
+    @testing.for_dtypes('efdFD')
+    @testing.numpy_cupy_array_equal()
+    def test_sort_descending_nan(self, xp, dtype):
+        a = testing.shaped_random((10,), xp, dtype)
+        a[2] = a[6] = xp.nan
+        return self._sort(xp, a, use_method=False, descending=True)
+
+    @testing.with_requires('numpy>=2.5')
+    @testing.for_dtypes('efdFD')
+    @testing.numpy_cupy_array_equal()
+    def test_sort_descending_nan_axis(self, xp, dtype):
+        a = testing.shaped_random((4, 5, 6), xp, dtype)
+        a[0, 2, 1] = a[1, 0, 3] = a[3, 4, 5] = xp.nan
+        return self._sort(xp, a, use_method=False, axis=1, descending=True)
+
+    def test_sort_descending_keyword_only(self):
+        a = cupy.arange(3)
+        with pytest.raises(TypeError):
+            cupy.sort(a, -1, None, True)
+        with pytest.raises(TypeError):
+            a.sort(-1, None, True)
 
     # Large case
 
@@ -285,14 +357,23 @@ class TestLexsort(unittest.TestCase):
 }))
 class TestArgsort(unittest.TestCase):
 
-    def argsort(self, a, axis=-1):
-        if self.external:
+    def argsort(self, a, axis=-1, descending=None):
+        xp = cupy.get_array_module(a)
+        if descending is None:
             # Need to explicitly specify kind="stable"
             # numpy uses "quicksort" as default
-            xp = cupy.get_array_module(a)
-            return xp.argsort(a, axis=axis, kind="stable")
+            kwargs = {'kind': 'stable'}
         else:
-            return a.argsort(axis=axis, kind="stable")
+            # numpy rejects `kind` combined with `descending`; `stable=True`
+            # is its replacement for forcing determinism. cupy's argsort is
+            # always stable regardless, and doesn't accept `stable`.
+            kwargs = {'descending': descending}
+            if xp is numpy:
+                kwargs['stable'] = True
+        if self.external:
+            return xp.argsort(a, axis=axis, **kwargs)
+        else:
+            return a.argsort(axis=axis, **kwargs)
 
     # Test base cases
 
@@ -399,6 +480,59 @@ class TestArgsort(unittest.TestCase):
         a[0, 2, 1] = a[1, 1, 3] = xp.nan
         return self.argsort(a)
 
+    # Test descending order
+
+    @testing.with_requires('numpy>=2.5')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_argsort_descending_dtype(self, xp, dtype):
+        a = testing.shaped_random((10,), xp, dtype)
+        return self.argsort(a, descending=True)
+
+    @testing.with_requires('numpy>=2.5')
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_argsort_descending_axis(self, xp, dtype):
+        a = testing.shaped_random((4, 5, 6), xp, dtype)
+        return self.argsort(a, axis=0, descending=True)
+
+    @testing.with_requires('numpy>=2.5')
+    @testing.numpy_cupy_array_equal()
+    def test_argsort_descending_false_matches_default(self, xp):
+        a = testing.shaped_random((10,), xp)
+        return self.argsort(a, descending=False)
+
+    @testing.with_requires('numpy>=2.5')
+    @testing.numpy_cupy_array_equal()
+    def test_argsort_descending_stable(self, xp):
+        # Repeated values must keep their original relative (ascending
+        # index) order, not just be the reverse of the ascending argsort.
+        a = xp.array([3, 1, 3, 1, 2, 3, 1, 2])
+        return self.argsort(a, descending=True)
+
+    @testing.with_requires('numpy>=2.5')
+    @testing.for_dtypes('efdFD')
+    @testing.numpy_cupy_array_equal()
+    def test_argsort_descending_nan(self, xp, dtype):
+        a = testing.shaped_random((10,), xp, dtype)
+        a[2] = a[6] = xp.nan
+        return self.argsort(a, descending=True)
+
+    @testing.with_requires('numpy>=2.5')
+    @testing.for_dtypes('efdFD')
+    @testing.numpy_cupy_array_equal()
+    def test_argsort_descending_nan_axis(self, xp, dtype):
+        a = testing.shaped_random((4, 5, 6), xp, dtype)
+        a[0, 2, 1] = a[1, 0, 3] = a[3, 4, 5] = xp.nan
+        return self.argsort(a, axis=1, descending=True)
+
+    def test_argsort_descending_keyword_only(self):
+        a = cupy.arange(3)
+        with pytest.raises(TypeError):
+            cupy.argsort(a, -1, None, True)
+        with pytest.raises(TypeError):
+            a.argsort(-1, None, True)
+
 
 class TestSort_complex(unittest.TestCase):
 
@@ -426,6 +560,84 @@ class TestSort_complex(unittest.TestCase):
         a = testing.shaped_random((2, 3, 5), xp, dtype)
         a[0, 2, 1] = a[1, 0, 3] = xp.nan
         return a, xp.sort_complex(a)
+
+
+class TestThrustWorkspaceOOM:
+    """Regression tests for cupy/cupy#9894.
+
+    When thrust's workspace allocation fails, sort/argsort/lexsort must
+    raise ``MemoryError`` instead of silently producing corrupt results.
+
+    Each op may make several pre-thrust allocations (e.g. ``data.copy()``
+    and ``idx_array``) before reaching thrust.  Failing the *first*
+    allocation only exercises pre-existing OOM behavior, not this fix.
+    To target thrust's workspace specifically, we count allocations during
+    a successful run, then re-run with the *last* allocation forced to
+    fail.  Since thrust is called last in each routine, the final
+    allocation is always inside thrust's workspace request.
+    """
+
+    @staticmethod
+    def _verify_workspace_oom_raises(op):
+        pool = cupy.get_default_memory_pool()
+        n = [0]
+
+        def counting(size):
+            n[0] += 1
+            return pool.malloc(size)
+
+        with cupy.cuda.using_allocator(counting):
+            op()
+        assert n[0] >= 1, "expected at least one allocation"
+        total = n[0]
+
+        seen = [0]
+
+        def fail_on_last(size):
+            seen[0] += 1
+            if seen[0] >= total:
+                raise cupy.cuda.memory.OutOfMemoryError(size, 0, 0)
+            return pool.malloc(size)
+
+        with cupy.cuda.using_allocator(fail_on_last):
+            with pytest.raises(MemoryError):
+                op()
+
+    def test_sort_workspace_oom(self):
+        self._verify_workspace_oom_raises(
+            lambda: cupy.arange(100_000, dtype=cupy.float32).sort()
+        )
+
+    def test_argsort_workspace_oom(self):
+        self._verify_workspace_oom_raises(
+            lambda: cupy.arange(100_000, dtype=cupy.float32).argsort()
+        )
+
+    def test_lexsort_workspace_oom(self):
+        self._verify_workspace_oom_raises(
+            lambda: cupy.lexsort(
+                cupy.arange(100_000, dtype=cupy.float32).reshape(2, 50_000)
+            )
+        )
+
+    @pytest.mark.thread_unsafe(
+        reason="contextlib.redirect_stderr replaces sys.stderr globally")
+    def test_no_stderr_noise_on_workspace_oom(self):
+        # The thrust allocator's `noexcept`-driven stderr trace was
+        # confusing to users (cupy/cupy#9894).  After the fix, OOM produces a
+        # clean MemoryError with no "Exception ignored" trace and no
+        # OutOfMemoryError print on stderr.
+        import contextlib
+        import io
+
+        buf = io.StringIO()
+        with contextlib.redirect_stderr(buf):
+            self._verify_workspace_oom_raises(
+                lambda: cupy.arange(100_000, dtype=cupy.float32).sort()
+            )
+        stderr = buf.getvalue()
+        assert "Exception ignored" not in stderr, stderr
+        assert "OutOfMemoryError" not in stderr, stderr
 
 
 @testing.parameterize(*testing.product({

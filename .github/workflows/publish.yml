@@ -92,7 +92,17 @@ jobs:
         python-version: '3.10'
     - name: Check
       run: |
-        sleep 60s  # wait for PyPI to be updated
         pip install distlib
         CHECK_WHEEL="${{ inputs.branch != 'main' && '--pypi-wheel' || '' }}"
-        ./check_release_assets.py --version "${{ inputs.release }}" --pypi-sdist ${CHECK_WHEEL}
+
+        for i in 1 2 3 4 5; do
+          echo "Attempt ${i}: waiting for PyPI propagation..."
+          sleep 120s
+          if ./check_release_assets.py --version "${{ inputs.release }}" --pypi-sdist ${CHECK_WHEEL}; then
+            echo "Check succeeded on attempt ${i}."
+            exit 0
+          fi
+        done
+
+        echo "All attempts failed; consider rerunning after few minutes."
+        exit 1

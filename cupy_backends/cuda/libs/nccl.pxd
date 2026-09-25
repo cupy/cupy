@@ -23,3 +23,11 @@ cpdef enum:
     NCCL_FLOAT64 = 8
     NCCL_DOUBLE = 8
     NCCL_BFLOAT16 = 9
+
+
+cdef inline int NCCL_VERSION(int X, int Y, int Z):
+    return (
+        (X * 1000 + Y * 100 + Z)
+        if (X <= 2 and Y <= 8)
+        else (X * 10000 + Y * 100 + Z)
+    )

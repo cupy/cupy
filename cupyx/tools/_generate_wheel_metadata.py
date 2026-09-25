@@ -62,7 +62,7 @@ def main(args):
     parser.add_argument('--target', type=str, required=True,
                         help='Target system (e.g., Linux:x86_64')
     parser.add_argument('--library',
-                        choices=['cudnn', 'cutensor', 'nccl'],
+                        choices=['cutensor', 'nccl'],
                         action='append',
                         default=[])
     params = parser.parse_args(args)

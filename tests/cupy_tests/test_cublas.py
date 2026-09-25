@@ -186,55 +186,49 @@ class TestLevel1Functions:
         cupy.testing.assert_allclose(x, ref, rtol=self.tol, atol=self.tol)
 
 
-@testing.parameterize(*testing.product({
-    'dtype': ['float32', 'float64', 'complex64', 'complex128'],
-    'shape': [(10, 9), (9, 10)],
-    'trans': ['N', 'T', 'H'],
-    'order': ['C', 'F'],
-    'mode': [None, numpy, cupy],
-}))
+@pytest.mark.parametrize('dtype',
+                         ['float32', 'float64', 'complex64', 'complex128'])
+@pytest.mark.parametrize('shape', [(10, 9), (9, 10)])
+@pytest.mark.parametrize('trans', ['N', 'T', 'H'])
+@pytest.mark.parametrize('order', ['C', 'F'])
+@pytest.mark.parametrize('mode', [None, numpy, cupy])
 class TestGemv:
     _tol = {'f': 1e-5, 'd': 1e-12}
 
-    @pytest.fixture(autouse=True)
-    def setUp(self):
-        self.dtype = numpy.dtype(self.dtype)
-        self.tol = self._tol[self.dtype.char.lower()]
-
-    def test_gemv(self):
-        a = testing.shaped_random(self.shape, cupy, dtype=self.dtype,
-                                  order=self.order)
-        if self.trans == 'N':
-            ylen, xlen = self.shape
+    def test_gemv(self, dtype, shape, trans, order, mode):
+        dtype = numpy.dtype(dtype)
+        a = testing.shaped_random(shape, cupy, dtype=dtype, order=order)
+        if trans == 'N':
+            ylen, xlen = shape
         else:
-            xlen, ylen = self.shape
-        x = testing.shaped_random((xlen,), cupy, dtype=self.dtype)
-        y = testing.shaped_random((ylen,), cupy, dtype=self.dtype)
+            xlen, ylen = shape
+        x = testing.shaped_random((xlen,), cupy, dtype=dtype)
+        y = testing.shaped_random((ylen,), cupy, dtype=dtype)
         alpha = 0.9
         beta = 0.8
-        if self.dtype.char in 'FD':
+        if dtype.char in 'FD':
             alpha = alpha - 1j * 0.7
             beta = beta - 1j * 0.6
-        if self.trans == 'N':
+        if trans == 'N':
             ref = alpha * a.dot(x) + beta * y
-        elif self.trans == 'T':
+        elif trans == 'T':
             ref = alpha * a.T.dot(x) + beta * y
-        elif self.trans == 'H':
+        elif trans == 'H':
             ref = alpha * a.T.conj().dot(x) + beta * y
-        if self.mode is not None:
-            alpha = self.mode.array(alpha)
-            beta = self.mode.array(beta)
-        cupy.cublas.gemv(self.trans, alpha, a, x, beta, y)
-        cupy.testing.assert_allclose(y, ref, rtol=self.tol, atol=self.tol)
+        if mode is not None:
+            alpha = mode.array(alpha)
+            beta = mode.array(beta)
+
+        tol = self._tol[dtype.char.lower()]
+        cupy.cublas.gemv(trans, alpha, a, x, beta, y)
+        cupy.testing.assert_allclose(y, ref, rtol=tol, atol=tol)
 
 
-@testing.parameterize(*testing.product({
-    'rank': [5, 9],
-    'band': [0, 1, 3],
-    'lower': [0, 1],
-    'order': ['C', 'F'],
-    'mode': [None, numpy, cupy],
-}))
+@pytest.mark.parametrize('rank', [5, 9])
+@pytest.mark.parametrize('band', [0, 1, 3])
+@pytest.mark.parametrize('lower', [0, 1])
+@pytest.mark.parametrize('order', ['C', 'F'])
+@pytest.mark.parametrize('mode', [None, numpy, cupy])
 class TestSbmv:
     _tol = {'f': 1e-5, 'd': 1e-12}
 
@@ -250,11 +244,11 @@ class TestSbmv:
         return B
 
     @testing.for_dtypes('fd')
-    def test_sbmv(self, dtype):
+    def test_sbmv(self, rank, band, lower, order, mode, dtype):
         dtype = numpy.dtype(dtype)
         alpha, beta = 3.0, 2.0
-        n, k = self.rank, self.band
-        a = numpy.eye(n, n, 0, dtype, self.order)
+        n, k = rank, band
+        a = numpy.eye(n, n, 0, dtype, order)
         a *= numpy.random.randint(20)
         for i in range(1, k+1):
             band = numpy.random.randint(20, size=n-i)
@@ -263,78 +257,79 @@ class TestSbmv:
         x = numpy.random.randint(20, size=n).astype(a.dtype)
         y = numpy.random.randint(20, size=n).astype(a.dtype)
         ku, kl = k, 0
-        if self.lower == 1:
+        if lower == 1:
             ku, kl = kl, ku
         b = self._gen2band(a, ku, kl)
         a, b = cupy.asarray(a), cupy.asarray(b)
         x, y = cupy.asarray(x), cupy.asarray(y)
         ref = alpha * a.dot(x) + beta * y
-        if self.mode is not None:
-            alpha = self.mode.array(alpha)
-            beta = self.mode.array(beta)
-        y_ret = cupy.cublas.sbmv(k, alpha, b, x, beta, y, lower=self.lower)
+        if mode is not None:
+            alpha = mode.array(alpha)
+            beta = mode.array(beta)
+        y_ret = cupy.cublas.sbmv(k, alpha, b, x, beta, y, lower=lower)
         tol = self._tol[dtype.char.lower()]
         cupy.testing.assert_allclose(y, ref, rtol=tol, atol=tol)
         cupy.testing.assert_allclose(y_ret, ref, rtol=tol, atol=tol)
 
 
-@testing.parameterize(*testing.product({
-    'dtype': ['float32', 'float64', 'complex64', 'complex128'],
-    'shape': [(10, 9), (9, 10)],
-    'order': ['C', 'F'],
-    'mode': [None, numpy, cupy],
-}))
+@pytest.mark.parametrize('dtype',
+                         ['float32', 'float64', 'complex64', 'complex128'])
+@pytest.mark.parametrize('shape', [(10, 9), (9, 10)])
+@pytest.mark.parametrize('order', ['C', 'F'])
+@pytest.mark.parametrize('mode', [None, numpy, cupy])
 class TestGer:
     _tol = {'f': 1e-5, 'd': 1e-12}
 
-    @pytest.fixture(autouse=True)
-    def setUp(self):
-        self.dtype = numpy.dtype(self.dtype)
-        self.tol = self._tol[self.dtype.char.lower()]
-        self.a = testing.shaped_random(self.shape, cupy, dtype=self.dtype,
-                                       order=self.order)
-        self.x = testing.shaped_random((self.shape[0],), cupy,
-                                       dtype=self.dtype)
-        self.y = testing.shaped_random((self.shape[1],), cupy,
-                                       dtype=self.dtype)
-        self.alpha = 1.1
-        if self.dtype.char in 'FD':
-            self.alpha = self.alpha - 1j * 0.9
+    def get_data(self, dtype, shape, order):
+        # Could be a fixture via `request.getfixturevalue` but not worth it?
+        dtype = numpy.dtype(dtype)
+        tol = self._tol[dtype.char.lower()]
+        alpha = 1.1
+        if dtype.char in 'FD':
+            alpha = alpha - 1j * 0.9
 
-    def test_ger(self):
-        if self.dtype.char in 'FD':
+        x = testing.shaped_random((shape[0],), cupy, dtype=dtype)
+        y = testing.shaped_random((shape[1],), cupy, dtype=dtype)
+        a = testing.shaped_random(shape, cupy, dtype=dtype, order=order)
+        return alpha, tol, x, y, a
+
+    def test_ger(self, dtype, shape, order, mode):
+        alpha, tol, x, y, a = self.get_data(dtype, shape, order)
+
+        if dtype in {'complex64', 'complex128'}:
             with pytest.raises(TypeError):
-                cublas.ger(self.alpha, self.x, self.y, self.a)
+                cublas.ger(alpha, x, y, a)
             return
-        ref = self.alpha * cupy.outer(self.x, self.y) + self.a
-        if self.mode is not None:
-            self.alpha = self.mode.array(self.alpha)
-        cublas.ger(self.alpha, self.x, self.y, self.a)
-        cupy.testing.assert_allclose(self.a, ref, rtol=self.tol, atol=self.tol)
+        ref = alpha * cupy.outer(x, y) + a
+        if mode is not None:
+            alpha = mode.array(alpha)
+        cublas.ger(alpha, x, y, a)
+        cupy.testing.assert_allclose(a, ref, rtol=tol, atol=tol)
 
-    def test_geru(self):
-        ref = self.alpha * cupy.outer(self.x, self.y) + self.a
-        if self.mode is not None:
-            self.alpha = self.mode.array(self.alpha)
-        cublas.geru(self.alpha, self.x, self.y, self.a)
-        cupy.testing.assert_allclose(self.a, ref, rtol=self.tol, atol=self.tol)
+    def test_geru(self, dtype, shape, order, mode):
+        alpha, tol, x, y, a = self.get_data(dtype, shape, order)
 
-    def test_gerc(self):
-        ref = self.alpha * cupy.outer(self.x, self.y.conj()) + self.a
-        if self.mode is not None:
-            self.alpha = self.mode.array(self.alpha)
-        cublas.gerc(self.alpha, self.x, self.y, self.a)
-        cupy.testing.assert_allclose(self.a, ref, rtol=self.tol, atol=self.tol)
+        ref = alpha * cupy.outer(x, y) + a
+        if mode is not None:
+            alpha = mode.array(alpha)
+        cublas.geru(alpha, x, y, a)
+        cupy.testing.assert_allclose(a, ref, rtol=tol, atol=tol)
+
+    def test_gerc(self, dtype, shape, order, mode):
+        alpha, tol, x, y, a = self.get_data(dtype, shape, order)
+
+        ref = alpha * cupy.outer(x, y.conj()) + a
+        if mode is not None:
+            alpha = mode.array(alpha)
+        cublas.gerc(alpha, x, y, a)
+        cupy.testing.assert_allclose(a, ref, rtol=tol, atol=tol)
 
 
-@testing.parameterize(*testing.product({
-    'nk': [(5, 9), (9, 5)],
-    'transa': ['N', 'T'],
-    'ordera': ['F', 'C'],
-    'orderc': ['F', 'C'],
-    'lower': [0, 1],
-    'mode': [None, numpy, cupy]
-}))
+@pytest.mark.parametrize('n,k', [(5, 9), (9, 5)])
+@pytest.mark.parametrize('transa', ['N', 'T'])
+@pytest.mark.parametrize('ordera', ['F', 'C'])
+@pytest.mark.parametrize('orderc', ['F', 'C'])
+@pytest.mark.parametrize('lower', [0, 1])
 class TestSyrk:
     _tol = {'f': 1e-5, 'd': 1e-12}
 
@@ -352,21 +347,19 @@ class TestSyrk:
         return a.T
 
     @testing.for_dtypes('fdFD')
-    def test_syrk(self, dtype):
+    def test_syrk(self, n, k, transa, ordera, orderc, lower, dtype):
         dtype = numpy.dtype(dtype)
-        tol = self._tol[dtype.char.lower()]
         alpha, beta = 3.0, 2.0
         if dtype.char in 'FD':
             alpha = alpha - 1j * 2.0
             beta = beta + 1j * 5.0
-        n, k = self.nk
-        a = self._make_matrix(n, k, self.transa, self.ordera, dtype)
-        aa = self._trans_matrix(a, self.transa)
+        a = self._make_matrix(n, k, transa, ordera, dtype)
+        aa = self._trans_matrix(a, transa)
         ref = alpha * aa.dot(aa.T)  # beta is used as a placeholder only
-        c = cublas.syrk(self.transa, a, alpha=alpha, beta=beta,
-                        lower=self.lower)
+        c = cublas.syrk(transa, a, alpha=alpha, beta=beta,
+                        lower=lower)
         rr, cc = cupy.asnumpy(ref), cupy.asnumpy(c)
-        if self.lower:
+        if lower:
             rr[numpy.triu_indices_from(rr,  1)] = 0
         else:
             rr[numpy.tril_indices_from(rr, -1)] = 0
@@ -374,28 +367,28 @@ class TestSyrk:
         ccu = cc[numpy.triu_indices_from(cc)]
         rrl = rr[numpy.tril_indices_from(rr)]
         ccl = cc[numpy.tril_indices_from(cc)]
+
+        tol = self._tol[dtype.char.lower()]
         cupy.testing.assert_allclose(ccu, rru, rtol=tol, atol=tol)
         cupy.testing.assert_allclose(ccl, rrl, rtol=tol, atol=tol)
 
     @testing.for_dtypes('fdFD')
-    def test_syrk_out(self, dtype):
+    def test_syrk_out(self, n, k, transa, ordera, orderc, lower, dtype):
         dtype = numpy.dtype(dtype)
-        tol = self._tol[dtype.char.lower()]
         alpha, beta = 2.3, 1.7
         if dtype.char in 'FD':
             alpha = alpha - 1j * 0.7
             beta = beta + 1j * 2.3
-        n, k = self.nk
-        a = self._make_matrix(n, k, self.transa, self.ordera, dtype)
-        aa = self._trans_matrix(a, self.transa)
+        a = self._make_matrix(n, k, transa, ordera, dtype)
+        aa = self._trans_matrix(a, transa)
         m = aa.shape[0]
-        c = self._make_matrix(m, m, 'N', self.orderc, dtype)
+        c = self._make_matrix(m, m, 'N', orderc, dtype)
         c0 = cupy.array(c)
         ref = alpha * aa.dot(aa.T) + beta * c
-        cublas.syrk(self.transa, a, out=c, alpha=alpha, beta=beta,
-                    lower=self.lower)
+        cublas.syrk(transa, a, out=c, alpha=alpha, beta=beta,
+                    lower=lower)
         rr, c0, cc = cupy.asnumpy(ref), cupy.asnumpy(c0), cupy.asnumpy(c)
-        if self.lower:
+        if lower:
             trii = numpy.triu_indices_from(rr,  1)
         else:
             trii = numpy.tril_indices_from(rr, -1)
@@ -404,6 +397,8 @@ class TestSyrk:
         ccu = cc[numpy.triu_indices_from(cc)]
         rrl = rr[numpy.tril_indices_from(rr)]
         ccl = cc[numpy.tril_indices_from(cc)]
+
+        tol = self._tol[dtype.char.lower()]
         cupy.testing.assert_allclose(ccu, rru, rtol=tol, atol=tol)
         cupy.testing.assert_allclose(ccl, rrl, rtol=tol, atol=tol)
 
@@ -528,58 +523,61 @@ class TestGemmAndGeam:
 class TestDgmm:
     _tol = {'f': 1e-5, 'd': 1e-12}
 
-    def _setup(self, dtype, xdim=1):
-        self.dtype = numpy.dtype(dtype)
-        self.tol = self._tol[self.dtype.char.lower()]
-        self.a = testing.shaped_random(self.shape, cupy, dtype=dtype,
-                                       order=self.ordera, scale=1.0)
+    def get_data(self, dtype, xdim=1):
+        dtype = numpy.dtype(dtype)
+        tol = self._tol[dtype.char.lower()]
+        a = testing.shaped_random(self.shape, cupy, dtype=dtype,
+                                  order=self.ordera, scale=1.0)
         if self.side == 'L':
             xlen = self.shape[0]
         elif self.side == 'R':
             xlen = self.shape[1]
         if xdim == 0:
-            self.x = cupy.array(1.1, dtype=dtype)
+            x = cupy.array(1.1, dtype=dtype)
         elif xdim == 1:
-            self.x = testing.shaped_random(
+            x = testing.shaped_random(
                 (xlen,), cupy, dtype=dtype, scale=1.0)
         elif xdim == 2:
-            self.x = testing.shaped_random(
+            x = testing.shaped_random(
                 (xlen, xlen), cupy, dtype=dtype, scale=1.0)
+
+        return tol, a, x
 
     @testing.for_dtypes('fdFD')
     def test_dgmm(self, dtype):
+        tol, a, x = self.get_data(dtype)
         if self.orderc != 'F':
             pytest.skip()
-        self._setup(dtype)
         if self.side == 'L':
-            ref = cupy.diag(self.x) @ self.a
+            ref = cupy.diag(x) @ a
         elif self.side == 'R':
-            ref = self.a @ cupy.diag(self.x)
-        c = cublas.dgmm(self.side, self.a, self.x)
-        cupy.testing.assert_allclose(c, ref, rtol=self.tol, atol=self.tol)
+            ref = a @ cupy.diag(x)
+        c = cublas.dgmm(self.side, a, x)
+        cupy.testing.assert_allclose(c, ref, rtol=tol, atol=tol)
 
     @testing.for_dtypes('fdFD')
     def test_dgmm_out(self, dtype):
-        self._setup(dtype)
+        tol, a, x = self.get_data(dtype)
         if self.side == 'L':
-            ref = cupy.diag(self.x) @ self.a
+            ref = cupy.diag(x) @ a
         elif self.side == 'R':
-            ref = self.a @ cupy.diag(self.x)
+            ref = a @ cupy.diag(x)
         c = cupy.empty(self.shape, order=self.orderc, dtype=dtype)
-        cublas.dgmm(self.side, self.a, self.x, out=c)
-        cupy.testing.assert_allclose(c, ref, rtol=self.tol, atol=self.tol)
+        cublas.dgmm(self.side, a, x, out=c)
+        cupy.testing.assert_allclose(c, ref, rtol=tol, atol=tol)
 
     @testing.for_dtypes('fdFD')
     def test_dgmm_inplace(self, dtype):
         if self.orderc != 'F':
             pytest.skip()
-        self._setup(dtype)
+
+        tol, a, x = self.get_data(dtype)
         if self.side == 'L':
-            ref = cupy.diag(self.x) @ self.a
+            ref = cupy.diag(x) @ a
         elif self.side == 'R':
-            ref = self.a @ cupy.diag(self.x)
-        cublas.dgmm(self.side, self.a, self.x, out=self.a)
-        cupy.testing.assert_allclose(self.a, ref, rtol=self.tol, atol=self.tol)
+            ref = a @ cupy.diag(x)
+        cublas.dgmm(self.side, a, x, out=a)
+        cupy.testing.assert_allclose(a, ref, rtol=tol, atol=tol)
 
     _dgmm_incx_minus_one_hip_skip_condition = [
         ('C', 'F', (9, 10), 'R'),
@@ -599,33 +597,36 @@ class TestDgmm:
         if cupy.cuda.runtime.is_hip:
             if self._check_dgmm_incx_minus_one_hip_skip_condition():
                 pytest.xfail('HIP dgmm may have a bug')
-        self._setup(dtype)
+
+        tol, a, x = self.get_data(dtype)
         if self.side == 'L':
-            ref = cupy.diag(self.x[::-1]) @ self.a
+            ref = cupy.diag(x[::-1]) @ a
         elif self.side == 'R':
-            ref = self.a @ cupy.diag(self.x[::-1])
-        c = cublas.dgmm(self.side, self.a, self.x, incx=-1)
-        cupy.testing.assert_allclose(c, ref, rtol=self.tol, atol=self.tol)
+            ref = a @ cupy.diag(x[::-1])
+        c = cublas.dgmm(self.side, a, x, incx=-1)
+        cupy.testing.assert_allclose(c, ref, rtol=tol, atol=tol)
 
     @testing.for_dtypes('fdFD')
     def test_dgmm_x_scalar(self, dtype):
         if self.orderc != 'F':
             pytest.skip()
-        self._setup(dtype, xdim=0)
-        ref = self.x * self.a
-        c = cublas.dgmm(self.side, self.a, self.x, incx=0)
-        cupy.testing.assert_allclose(c, ref, rtol=self.tol, atol=self.tol)
+
+        tol, a, x = self.get_data(dtype, xdim=0)
+        ref = x * a
+        c = cublas.dgmm(self.side, a, x, incx=0)
+        cupy.testing.assert_allclose(c, ref, rtol=tol, atol=tol)
 
     @testing.for_dtypes('fdFD')
     def test_dgmm_x_matrix(self, dtype):
         if self.orderc != 'F':
             pytest.skip()
-        self._setup(dtype, xdim=2)
+
+        tol, a, x = self.get_data(dtype, xdim=2)
         if self.side == 'L':
-            ref = cupy.diag(cupy.diag(self.x)) @ self.a
+            ref = cupy.diag(cupy.diag(x)) @ a
             incx = self.shape[0] + 1
         elif self.side == 'R':
-            ref = self.a @ cupy.diag(cupy.diag(self.x))
+            ref = a @ cupy.diag(cupy.diag(x))
             incx = self.shape[1] + 1
-        c = cublas.dgmm(self.side, self.a, self.x, incx=incx)
-        cupy.testing.assert_allclose(c, ref, rtol=self.tol, atol=self.tol)
+        c = cublas.dgmm(self.side, a, x, incx=incx)
+        cupy.testing.assert_allclose(c, ref, rtol=tol, atol=tol)

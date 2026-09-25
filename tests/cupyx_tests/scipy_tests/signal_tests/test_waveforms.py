@@ -179,6 +179,12 @@ class TestSawtooth:
         t = xp.linspace(0, 1, 500)
         return scp.signal.sawtooth(t, width)
 
+    @pytest.mark.parametrize('width', [0.0, 0.5, 1.0])
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_sawtooth_negative_input(self, width, xp, scp):
+        t = xp.linspace(-2 * xp.pi, 2 * xp.pi, 500)
+        return scp.signal.sawtooth(t, width)
+
 
 @testing.with_requires('scipy')
 class TestSquare:
@@ -186,6 +192,12 @@ class TestSquare:
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_square(self, duty, xp, scp):
         t = xp.linspace(0, 1, 500)
+        return scp.signal.square(t, duty)
+
+    @pytest.mark.parametrize('duty', [0.0, 0.5, 1.0])
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_square_negative_input(self, duty, xp, scp):
+        t = xp.linspace(-2 * xp.pi, 2 * xp.pi, 500)
         return scp.signal.square(t, duty)
 
 

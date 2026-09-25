@@ -4,6 +4,7 @@ from cupy._core cimport _carray
 from cupy._core cimport _accelerator
 from cupy._core._carray cimport shape_t
 from cupy._core cimport _cub_reduction
+from cupy._core cimport _cuda_compute_reduction
 from cupy._core._dtype cimport get_dtype
 from cupy._core cimport _kernel
 from cupy._core._kernel cimport _broadcast
@@ -18,7 +19,7 @@ from cupy._core cimport _optimize_config
 from cupy._core cimport _routines_manipulation as _manipulation
 from cupy._core cimport _scalar
 from cupy._core._scalar import get_typename as _get_typename
-from cupy._core.core cimport _convert_object_with_cuda_array_interface
+from cupy._core.core cimport _convert_from_cupy_like
 from cupy._core.core cimport _create_ndarray_from_shape_strides
 from cupy._core.core cimport compile_with_cache
 from cupy._core.core cimport _ndarray_base
@@ -45,6 +46,11 @@ cpdef str _create_reduction_function_code(
         name, block_size, reduce_type, params, arginfos, identity,
         pre_map_expr, reduce_expr, post_map_expr,
         _kernel._TypeMap type_map, input_expr, output_expr, preamble, options):
+
+    type_decls = set()
+    params = _kernel._get_kernel_params(params, arginfos, type_decls)
+    type_preamble = type_map.get_typedef_code(type_decls)
+
     # A (incomplete) list of internal variables:
     # _J            : the index of an element in the array
     # _block_size   : the number of threads in a block; should be power of 2
@@ -52,7 +58,7 @@ cpdef str _create_reduction_function_code(
     #                 be power of 2 and <= _block_size
 
     module_code = string.Template('''
-${type_preamble}
+${type_decls}${type_preamble}
 ${preamble}
 #define REDUCE(a, b) (${reduce_expr})
 #define POST_MAP(a) (${post_map_expr})
@@ -108,12 +114,13 @@ extern "C" __global__ void ${name}(${params}) {
         name=name,
         block_size=block_size,
         reduce_type=reduce_type,
-        params=_kernel._get_kernel_params(params, arginfos),
+        params=params,
+        type_decls=_scalar.format_type_decls(type_decls),
         identity=identity,
         reduce_expr=reduce_expr,
         pre_map_expr=pre_map_expr,
         post_map_expr=post_map_expr,
-        type_preamble=type_map.get_typedef_code(),
+        type_preamble=type_preamble,
         input_expr=input_expr,
         output_expr=output_expr,
         preamble=preamble)
@@ -157,7 +164,7 @@ cpdef tuple _get_axis(object axis, Py_ssize_t ndim):
 
 cpdef shape_t _get_out_shape(
         const shape_t& shape, tuple reduce_axis, tuple out_axis,
-        bint keepdims):
+        bint keepdims) except *:
     cdef shape_t out_shape
     if keepdims:
         out_shape = shape
@@ -171,7 +178,8 @@ cpdef shape_t _get_out_shape(
 
 
 cdef shape_t _set_permuted_args(
-        list args, tuple axis_permutes, const shape_t& shape, tuple params):
+        list args, tuple axis_permutes, const shape_t& shape,
+        tuple params) except *:
     # This function updates `args`
     cdef ParameterInfo p
     cdef Py_ssize_t i, s
@@ -304,7 +312,8 @@ cdef class _AbstractReductionKernel:
             list in_args, list out_args,
             const shape_t& a_shape, axis, dtype,
             bint keepdims, bint reduce_dims, int device_id,
-            stream, bint try_use_cub=False, bint sort_reduce_axis=True):
+            stream, bint try_use_cub=False, bint try_use_cuda_compute=False,
+            bint sort_reduce_axis=True, bint cuda_compute_only=False):
         cdef tuple reduce_axis, out_axis, axis_permutes
         cdef tuple params, opt_params
         cdef tuple shape_and_strides
@@ -312,7 +321,7 @@ cdef class _AbstractReductionKernel:
         cdef Py_ssize_t block_size, block_stride, out_block_num = 0
         cdef shape_t in_shape, out_shape
         cdef _ndarray_base ret
-        cdef bint cub_success
+        cdef bint cub_success, cuda_compute_success
 
         if dtype is not None:
             dtype = get_dtype(dtype).type
@@ -352,9 +361,10 @@ cdef class _AbstractReductionKernel:
             index_type = ('IndexT', 'int32')
         type_map = _kernel._TypeMap(type_map._pairs + (index_type,))
 
-        in_args = [x if isinstance(x, _ndarray_base) else
-                   _scalar.CScalar.from_numpy_scalar_with_dtype(x, t)
-                   for x, t in zip(in_args, in_types)]
+        for x, t in zip(in_args, in_types):
+            # If necessary, cast scalars here (deals with Python ints also)
+            if type(x) is _scalar.CScalar:
+                (<_scalar.CScalar>x).apply_dtype(t)
 
         optimize_context = _optimize_config.get_current_context()
         key = ()
@@ -364,8 +374,17 @@ cdef class _AbstractReductionKernel:
             key = (self.name, shape_and_strides,
                    in_types, out_types, reduce_type, device_id)
 
-        # Try to use CUB
         for accelerator in _accelerator._reduction_accelerators:
+            if (try_use_cuda_compute
+                    and accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE):
+                cuda_compute_success = (
+                    _cuda_compute_reduction
+                    ._try_to_call_cuda_compute_reduction(
+                        self, in_args, out_args, stream,
+                        map_expr, reduce_expr, post_map_expr, reduce_type,
+                        type_map, reduce_axis, out_axis, ret))
+                if cuda_compute_success:
+                    return ret
             if try_use_cub and accelerator == _accelerator.ACCELERATOR_CUB:
                 cub_success = _cub_reduction._try_to_call_cub_reduction(
                     self, in_args, out_args, a_shape, stream, optimize_context,
@@ -373,6 +392,11 @@ cdef class _AbstractReductionKernel:
                     type_map, reduce_axis, out_axis, out_shape, ret)
                 if cub_success:
                     return ret
+
+        if cuda_compute_only:
+            # when true, don't fall back to the generic kernel: return None so
+            # the caller can try the next accelerator
+            return None
 
         axis_permutes = reduce_axis + out_axis
         in_shape = _set_permuted_args(
@@ -470,11 +494,11 @@ cdef class _AbstractReductionKernel:
             best.user_attrs['block_stride'],
             best.params['out_block_num'])
 
-    cdef inline void _launch(
+    cdef inline bint _launch(
             self, out_block_num, block_size, block_stride,
             in_args, out_args, in_shape, out_shape, type_map,
             map_expr, reduce_expr, post_map_expr, reduce_type,
-            stream, params):
+            stream, params) except -1:
         cdef function.Function func
 
         inout_args = (
@@ -518,20 +542,20 @@ cdef class _AbstractReductionKernel:
     def cached_codes(self):
         """Returns a dict that has input types as keys and codes values.
 
-        This proprety method is for debugging purpose.
+        This property method is for debugging purpose.
         The return value is not guaranteed to keep backward compatibility.
         """
         if len(self._cached_codes) == 0:
             warnings.warn(
                 'No codes are cached because compilation is deferred until '
                 'the first function call or CUB is enabled.')
-        return dict([(k, v) for k, v in self._cached_codes.items()])
+        return dict(self._cached_codes.items())
 
     @property
     def cached_code(self):
         """Returns `next(iter(self.cached_codes.values()))`.
 
-        This proprety method is for debugging purpose.
+        This property method is for debugging purpose.
         The return value is not guaranteed to keep backward compatibility.
         """
         codes = self._cached_codes
@@ -548,10 +572,10 @@ cdef class _AbstractReductionKernel:
 
 cpdef _SimpleReductionKernel create_reduction_func(
         name, ops, routine=None, identity=None, preamble='',
-        sort_reduce_axis=True):
+        sort_reduce_axis=True, compute_opkind=None):
     ops = _kernel._Ops.from_tuples(ops, routine)
     return _SimpleReductionKernel(
-        name, ops, identity, preamble, sort_reduce_axis)
+        name, ops, identity, preamble, sort_reduce_axis, compute_opkind)
 
 
 cdef class _SimpleReductionKernel(_AbstractReductionKernel):
@@ -565,10 +589,11 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
         readonly str _output_expr
         readonly dict _routine_cache
         readonly bint _sort_reduce_axis
+        readonly object compute_opkind
 
     def __init__(
             self, name, _kernel._Ops ops, identity, preamble,
-            sort_reduce_axis=True):
+            sort_reduce_axis=True, compute_opkind=None):
         super().__init__(
             name,
             '' if identity is None else str(identity),
@@ -582,27 +607,19 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
         self._input_expr = 'const type_in0_raw in0 = _raw_in0[_in_ind.get()];'
         self._output_expr = 'type_out0_raw &out0 = _raw_out0[_out_ind.get()];'
         self._routine_cache = {}
+        self.compute_opkind = compute_opkind
         self._sort_reduce_axis = sort_reduce_axis
 
     def __call__(self, object a, axis=None, dtype=None, _ndarray_base out=None,
-                 bint keepdims=False):
+                 bint keepdims=False, bint cuda_compute_only=False):
 
         if hasattr(a, '__cupy_override_reduction_kernel__'):
             return a.__cupy_override_reduction_kernel__(
                 self, axis, dtype, out, keepdims)
 
-        cdef _ndarray_base arr
+        cdef _ndarray_base arr = _convert_from_cupy_like(
+            a, error="Argument 'a'")
 
-        if isinstance(a, _ndarray_base):
-            arr = a
-        elif hasattr(a, '__cuda_array_interface__'):
-            arr = _convert_object_with_cuda_array_interface(a)
-        elif hasattr(a, '__cupy_get_ndarray__'):
-            arr = a.__cupy_get_ndarray__()
-        else:
-            raise TypeError(
-                'Argument \'a\' has incorrect type (expected %s, got %s)' %
-                (cupy.ndarray, type(a)))
         in_args = [arr]
 
         dev_id = device.get_device_id()
@@ -618,16 +635,17 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
         return self._call(
             in_args, out_args,
             arr._shape, axis, dtype, keepdims, reduce_dims, dev_id,
-            None, True, self._sort_reduce_axis)
+            None, try_use_cub=not cuda_compute_only,
+            try_use_cuda_compute=True,
+            sort_reduce_axis=self._sort_reduce_axis,
+            cuda_compute_only=cuda_compute_only)
 
     cdef tuple _get_expressions_and_types(
             self, list in_args, list out_args, dtype):
         cdef _kernel._Op op
 
-        # XXX: weaks
-        weaks = None
         op = self._ops.guess_routine(
-            self.name, self._routine_cache, in_args, weaks, dtype, self._ops)
+            self.name, self._routine_cache, in_args, dtype, self._ops)
         map_expr, reduce_expr, post_map_expr, reduce_type = op.routine
 
         if reduce_type is None:
@@ -822,16 +840,20 @@ cdef class ReductionKernel(_AbstractReductionKernel):
                                  "a positional and keyword argument")
             out_args = [out]
 
-        # XXX: needs to handle weak scalars from _preprocess_args?
+        # _preprocess args allows weak NEP 50 scalars, this isn't needed for
+        # reductions (but also does not matter).
         dev_id = device.get_device_id()
-        in_args, _ = _preprocess_args(dev_id, args[:self.nin], False)
-        out_args, _ = _preprocess_args(dev_id, out_args, False)
+        in_args = _preprocess_args(dev_id, args[:self.nin])
+        out_args = _preprocess_args(dev_id, out_args)
         in_args = _broadcast(in_args, self.in_params, False, broad_shape)
 
+        # ReductionKernel not yet supported by the cuda.compute accelerator
         return self._call(
             in_args, out_args,
             broad_shape, axis, None,
-            keepdims, self.reduce_dims, dev_id, stream, True, True)
+            keepdims, self.reduce_dims, dev_id, stream,
+            try_use_cub=True, try_use_cuda_compute=False,
+            sort_reduce_axis=True)
 
     cdef tuple _get_expressions_and_types(
             self, list in_args, list out_args, dtype):

@@ -1,5 +1,5 @@
 # AUTO GENERATED: DO NOT EDIT!
-ARG BASE_IMAGE="nvidia/cuda:12.3.0-devel-ubuntu20.04"
+ARG BASE_IMAGE="nvidia/cuda:12.3.0-devel-ubuntu22.04"
 FROM ${BASE_IMAGE}
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
@@ -14,20 +14,23 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
        && \
     apt-get -qqy install ccache git curl && \
     apt-get -qqy --allow-change-held-packages \
-            --allow-downgrades install 'libnccl2=2.19.*+cuda12.3' 'libnccl-dev=2.19.*+cuda12.3' 'libcutensor2=2.0.*' 'libcutensor-dev=2.0.*' 'libcudnn8=8.8.*+cuda12.0' 'libcudnn8-dev=8.8.*+cuda12.0'
+            --allow-downgrades install 'libnccl2=2.19.*+cuda12.3' 'libnccl-dev=2.19.*+cuda12.3'
 
 ENV PATH "/usr/lib/ccache:${PATH}"
 
-COPY setup/update-alternatives-cutensor.sh /
-RUN /update-alternatives-cutensor.sh
+RUN curl -fsSL https://github.com/cli/cli/releases/download/v2.95.0/gh_2.95.0_linux_amd64.tar.gz \
+        | tar -xz -C /usr/local --strip-components=1 gh_2.95.0_linux_amd64/bin/gh
 
 RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
-RUN pyenv install 3.11.10 && \
-    pyenv global 3.11.10 && \
-    pip install -U setuptools pip wheel
+RUN PYTHON_CONFIGURE_OPTS="--disable-shared" pyenv install 3.11.13 && \
+    pyenv global 3.11.13 && \
+    pip install -U setuptools pip wheel && \
+    pip install -U google-cloud-storage
 
-RUN pip install -U 'numpy==2.0.*' 'scipy==1.14.*' 'optuna==3.*' 'cython==3.0.*' 'fastrlock>=0.5'
-RUN pip uninstall -y mpi4py cuda-python && \
+RUN pip install -U 'numpy==2.1.*' 'scipy==1.16.*' 'optuna==3.*' 'ml_dtypes==0.5.*' 'cython==3.2.*,!=3.2.6'
+RUN pip uninstall -y mpi4py cuda-python nvmath-python cuda-cccl && \
     pip check
+
+RUN mkdir /home/cupy-user && chmod 777 /home/cupy-user

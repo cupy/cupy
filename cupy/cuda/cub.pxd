@@ -17,4 +17,5 @@ cpdef cub_reduction(_ndarray_base arr, op,
                     axis=*, dtype=*, _ndarray_base out=*, keepdims=*)
 cpdef cub_scan(_ndarray_base arr, op)
 
-cpdef bint _cub_device_segmented_reduce_axis_compatible(tuple, Py_ssize_t, str)
+cpdef bint _cub_device_segmented_reduce_axis_compatible(
+        tuple, Py_ssize_t, str) except -1

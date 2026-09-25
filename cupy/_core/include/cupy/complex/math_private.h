@@ -34,25 +34,23 @@
 
 #if defined(_MSC_VER)  // see #6823
 #include <cfloat>
+#else
+// from https://github.com/NVIDIA/cccl/blob/v3.1.2/libcudacxx/include/cuda/std/cfloat
+#  define FLT_MIN         1.17549435082228750796873653722224568e-38f
+#  define FLT_MAX         3.40282346638528859811704183484516925e+38f
+#  define FLT_EPSILON     1.19209289550781250000000000000000000e-7f
+#  define FLT_MAX_EXP     128
+#  define FLT_MANT_DIG    24
+#  define DBL_MIN         2.22507385850720138309023271733240406e-308
+#  define DBL_MAX         1.79769313486231570814527423731704357e+308
+#  define DBL_EPSILON     2.22044604925031308084726333618164062e-16
+#  define DBL_MAX_EXP     1024
+#  define DBL_MANT_DIG    53
 #endif  // defined(_MSC_VER)
 
 #include <cupy/complex/namespace.h>
 
 THRUST_NAMESPACE_BEGIN
-
-#if !defined(_MSC_VER)  // see #6823
-const float FLT_MIN = 1.17549435e-38F;
-const float FLT_MAX = 3.40282347e+38F;
-const float FLT_EPSILON = 1.19209290e-07F;
-const int FLT_MAX_EXP = 128;
-const int FLT_MANT_DIG = 24;
-
-const double DBL_MIN = 2.2250738585072014e-308;
-const double DBL_MAX = 1.7976931348623157e+308;
-const double DBL_EPSILON = 2.2204460492503131e-16;
-const int DBL_MAX_EXP = 1024;
-const int DBL_MANT_DIG = 53;
-#endif  // !defined(_MSC_VER)
 
 namespace detail {
 namespace complex {

@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+
+# A utility script to set up the GitHub environment variables for the CI.
+
+set -euo pipefail
+
+if [[ ${#} -ne 1 ]]; then
+  echo "Error: This script requires exactly 1 argument (the build mode). You provided ${#}"
+  echo "Usage: ${0} build_mode[build]"
+  exit 1
+fi
+
+PYTHON_VERSION_FORMATTED=$(echo "${PY_VER}" | tr -d '.')
+
+{
+  echo "PYTHON_VERSION_FORMATTED=${PYTHON_VERSION_FORMATTED}"
+  echo "CUPY_NUM_BUILD_JOBS=$(getconf _NPROCESSORS_ONLN || echo 4)"
+} >> "$GITHUB_ENV"
+
+if [[ "${1}" == "build" ]]; then
+  if [[ "${HOST_PLATFORM}" == "linux-64" ]]; then
+    CIBW_PLATFORM_TAG="manylinux_x86_64"
+  elif [[ "${HOST_PLATFORM}" == "linux-aarch64" ]]; then
+    CIBW_PLATFORM_TAG="manylinux_aarch64"
+  elif [[ "${HOST_PLATFORM}" == "win-64" ]]; then
+    CIBW_PLATFORM_TAG="win_amd64"
+  else
+    echo "Error: unsupported HOST_PLATFORM=${HOST_PLATFORM}" >&2
+    exit 1
+  fi
+  echo "CIBW_BUILD=cp${PYTHON_VERSION_FORMATTED}-${CIBW_PLATFORM_TAG}" >> "$GITHUB_ENV"
+  BUILD_CUDA_MAJOR="$(cut -d '.' -f 1 <<< ${CUDA_VER})"
+  echo "BUILD_CUDA_MAJOR=${BUILD_CUDA_MAJOR}" >> "$GITHUB_ENV"
+  # Enforce an explicit cache dir so that we can reuse this path later.
+  # On Windows, convert Git Bash's POSIX form to a native Windows path.
+  SCCACHE_DIR_PATH="${HOME}/.cache/sccache"
+  if [[ "${HOST_PLATFORM}" == win-* ]]; then
+    SCCACHE_DIR_PATH="$(cygpath -w "${SCCACHE_DIR_PATH}")"
+  fi
+  echo "SCCACHE_DIR=${SCCACHE_DIR_PATH}" >> "$GITHUB_ENV"
+  echo "SCCACHE_CACHE_SIZE=1G" >> "$GITHUB_ENV"
+else
+  echo "Error: unknown build mode '${1}' (expected: build)" >&2
+  exit 1
+fi

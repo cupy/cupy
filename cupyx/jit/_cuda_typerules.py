@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import ast
-from typing import Any, Callable
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
+from typing import Any
 
 import numpy
 import numpy.typing as npt

@@ -7,6 +7,7 @@ from cupy import cublas
 from cupy.cuda import device
 from cupy.cuda import runtime
 from cupy.linalg import _util
+from cupyx import cusparse
 from cupyx.scipy import sparse
 from cupyx.scipy.sparse.linalg import _interface
 from cupyx.scipy.sparse.linalg._iterative import _make_system
@@ -47,11 +48,14 @@ def lsqr(A, b):
 
     if runtime.is_hip:
         raise RuntimeError('HIP does not support lsqr')
-    if not sparse.isspmatrix_csr(A):
+    if not (sparse.issparse(A) and A.format == "csr"):
         A = sparse.csr_matrix(A)
     # csr_matrix is 2d
     _util._assert_stacked_square(A)
     _util._assert_cupy_array(b)
+    # cuSOLVER's csrlsvqr is int32-only; mirror the guard already
+    # present in spsolve (which dispatches to the same backend).
+    cusparse._check_int32_indices(A, 'lsqr')
     m = A.shape[0]
     if b.ndim != 1 or len(b) != m:
         raise ValueError('b must be 1-d array whose size is same as A')
@@ -396,15 +400,10 @@ def lsmr(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
     return x, istop, itn, normr, normar, normA, condA, normx
 
 
-def _should_use_spsm(b):
-    from cupy_backends.cuda.libs import cusparse as _cusparse
-
-    if not runtime.is_hip:
-        # Starting with CUDA 12.0, we use cusparseSpSM
-        return _cusparse.get_build_version() >= 12000
-    else:
-        # Keep using hipsparse<t>csrsm2 for ROCm before it is dropped
-        return False
+def _should_use_spsm():
+    # On CUDA (12.0+) use cusparseSpSM. ROCm keeps hipsparse<t>csrsm2 until it
+    # is dropped.
+    return not runtime.is_hip
 
 
 def spsolve_triangular(A, b, lower=True, overwrite_A=False, overwrite_b=False,
@@ -431,13 +430,11 @@ def spsolve_triangular(A, b, lower=True, overwrite_A=False, overwrite_b=False,
         cupy.ndarray:
             Solution to the system ``A x = b``. The shape is the same as ``b``.
     """
-    from cupyx import cusparse
-
     if not (cusparse.check_availability('spsm') or
             cusparse.check_availability('csrsm2')):
         raise NotImplementedError
 
-    if not sparse.isspmatrix(A):
+    if not sparse.issparse(A):
         raise TypeError('A must be cupyx.scipy.sparse.spmatrix')
     if not isinstance(b, cupy.ndarray):
         raise TypeError('b must be cupy.ndarray')
@@ -452,17 +449,20 @@ def spsolve_triangular(A, b, lower=True, overwrite_A=False, overwrite_b=False,
     if A.dtype.char not in 'fdFD':
         raise TypeError(f'unsupported dtype (actual: {A.dtype})')
 
-    if cusparse.check_availability('spsm') and _should_use_spsm(b):
-        if not (sparse.isspmatrix_csr(A) or
-                sparse.isspmatrix_csc(A) or
-                sparse.isspmatrix_coo(A)):
+    if cusparse.check_availability('spsm') and _should_use_spsm():
+        if not (sparse.issparse(A)
+                and A.format in ('csr', 'csc', 'coo')):
             warnings.warn('CSR, CSC or COO format is required. Converting to '
                           'CSR format.', sparse.SparseEfficiencyWarning)
             A = A.tocsr()
         A.sum_duplicates()
         x = cusparse.spsm(A, b, lower=lower, unit_diag=unit_diagonal)
     elif cusparse.check_availability('csrsm2'):
-        if not (sparse.isspmatrix_csr(A) or sparse.isspmatrix_csc(A)):
+        # csrsm2 is int32-only; raise with the user-facing function name
+        # rather than the internal "csrsm2" name.
+        cusparse._check_int32_indices(A, 'spsolve_triangular')
+        if not (sparse.issparse(A)
+                and A.format in ('csr', 'csc')):
             warnings.warn('CSR or CSC format is required. Converting to CSR '
                           'format.', sparse.SparseEfficiencyWarning)
             A = A.tocsr()
@@ -476,7 +476,8 @@ def spsolve_triangular(A, b, lower=True, overwrite_A=False, overwrite_b=False,
 
         cusparse.csrsm2(A, x, lower=lower, unit_diag=unit_diagonal)
     else:
-        assert False
+        raise RuntimeError(
+            'no cuSPARSE backend available for spsolve_triangular')
 
     if x.dtype.char in 'fF':
         # Note: This is for compatibility with SciPy.
@@ -502,7 +503,7 @@ def spsolve(A, b):
 
     if not cupyx.cusolver.check_availability('csrlsvqr'):
         raise NotImplementedError
-    if not sparse.isspmatrix(A):
+    if not sparse.issparse(A):
         raise TypeError('A must be cupyx.scipy.sparse.spmatrix')
     if not isinstance(b, cupy.ndarray):
         raise TypeError('b must be cupy.ndarray')
@@ -515,10 +516,13 @@ def spsolve(A, b):
         raise ValueError('matrix dimension mismatch (A.shape: {}, b.shape: {})'
                          .format(A.shape, b.shape))
 
-    if not sparse.isspmatrix_csr(A):
+    if not (sparse.issparse(A) and A.format == "csr"):
         warnings.warn('CSR format is required. Converting to CSR format.',
                       sparse.SparseEfficiencyWarning)
         A = A.tocsr()
+
+    cusparse._check_int32_indices(A, 'spsolve')
+
     A.sum_duplicates()
     b = b.astype(A.dtype, copy=False)
 
@@ -571,8 +575,6 @@ class SuperLU:
             cupy.ndarray:
                 Solution vector(s)
         """  # NOQA
-        from cupyx import cusparse
-
         if not isinstance(rhs, cupy.ndarray):
             raise TypeError('ojb must be cupy.ndarray')
         if rhs.ndim not in (1, 2):
@@ -584,7 +586,7 @@ class SuperLU:
         if trans not in ('N', 'T', 'H'):
             raise ValueError('trans must be \'N\', \'T\', or \'H\'')
 
-        if cusparse.check_availability('spsm') and _should_use_spsm(rhs):
+        if cusparse.check_availability('spsm') and _should_use_spsm():
             def spsm(A, B, lower, transa):
                 return cusparse.spsm(A, B, lower=lower, transa=transa)
             sm = spsm
@@ -635,7 +637,7 @@ class CusparseLU(SuperLU):
         """
         if not scipy_available:
             raise RuntimeError('scipy is not available')
-        if not sparse.isspmatrix_csr(a):
+        if not (sparse.issparse(a) and a.format == 'csr'):
             raise TypeError('a must be cupyx.scipy.sparse.csr_matrix')
 
         self.shape = a.shape
@@ -701,7 +703,7 @@ def splu(A, permc_spec=None, diag_pivot_thresh=None, relax=None,
     """
     if not scipy_available:
         raise RuntimeError('scipy is not available')
-    if not sparse.isspmatrix(A):
+    if not sparse.issparse(A):
         raise TypeError('A must be cupyx.scipy.sparse.spmatrix')
     if A.shape[0] != A.shape[1]:
         raise ValueError('A must be a square matrix (A.shape: {})'
@@ -750,11 +752,9 @@ def spilu(A, drop_tol=None, fill_factor=None, drop_rule=None,
 
     .. seealso:: :func:`scipy.sparse.linalg.spilu`
     """
-    from cupyx import cusparse
-
     if not scipy_available:
         raise RuntimeError('scipy is not available')
-    if not sparse.isspmatrix(A):
+    if not sparse.issparse(A):
         raise TypeError('A must be cupyx.scipy.sparse.spmatrix')
     if A.shape[0] != A.shape[1]:
         raise ValueError('A must be a square matrix (A.shape: {})'
@@ -764,7 +764,7 @@ def spilu(A, drop_tol=None, fill_factor=None, drop_rule=None,
 
     if fill_factor == 1:
         # Computes ILU(0) on the GPU using cuSparse functions
-        if not sparse.isspmatrix_csr(A):
+        if not (sparse.issparse(A) and A.format == "csr"):
             a = A.tocsr()
         else:
             a = A.copy()

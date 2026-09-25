@@ -7,403 +7,540 @@ cimport cython  # NOQA
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda cimport stream as stream_module
 
-###############################################################################
-# Extern
-###############################################################################
+IF CUPY_USE_CUDA_PYTHON:
+    from nvmath.bindings.cycublas cimport (
+        # Types
+        cuComplex,
+        cuDoubleComplex,
+        cudaStream_t as Stream,
+        cudaDataType as DataType,
 
-cdef extern from '../../cupy_complex.h':
-    ctypedef struct cuComplex 'cuComplex':
-        float x, y
+        # Context
+        cublasCreate,
+        cublasDestroy,
+        cublasGetVersion,
+        cublasGetPointerMode,
+        cublasSetPointerMode,
 
-    ctypedef struct cuDoubleComplex 'cuDoubleComplex':
-        double x, y
+        # Stream
+        cublasSetStream,
+        cublasGetStream,
 
-cdef extern from '../../cupy_blas.h' nogil:
-    ctypedef void* Stream 'cudaStream_t'
-    ctypedef int DataType 'cudaDataType'
+        # Math Mode
+        cublasSetMathMode,
+        cublasGetMathMode,
 
-    # Context
-    int cublasCreate(Handle* handle)
-    int cublasDestroy(Handle handle)
-    int cublasGetVersion(Handle handle, int* version)
-    int cublasGetPointerMode(Handle handle, PointerMode* mode)
-    int cublasSetPointerMode(Handle handle, PointerMode mode)
+        # BLAS Level 1
+        cublasIsamax,
+        cublasIdamax,
+        cublasIcamax,
+        cublasIzamax,
+        cublasIsamin,
+        cublasIdamin,
+        cublasIcamin,
+        cublasIzamin,
+        cublasSasum,
+        cublasDasum,
+        cublasScasum,
+        cublasDzasum,
+        cublasSaxpy,
+        cublasDaxpy,
+        cublasCaxpy,
+        cublasZaxpy,
+        cublasSdot,
+        cublasDdot,
+        cublasCdotu,
+        cublasCdotc,
+        cublasZdotu,
+        cublasZdotc,
+        cublasSnrm2,
+        cublasDnrm2,
+        cublasScnrm2,
+        cublasDznrm2,
+        cublasSscal,
+        cublasDscal,
+        cublasCscal,
+        cublasCsscal,
+        cublasZscal,
+        cublasZdscal,
 
-    # Stream
-    int cublasSetStream(Handle handle, Stream streamId)
-    int cublasGetStream(Handle handle, Stream* streamId)
+        # BLAS Level 2
+        cublasSgemv,
+        cublasDgemv,
+        cublasCgemv,
+        cublasZgemv,
+        cublasSger,
+        cublasDger,
+        cublasCgeru,
+        cublasCgerc,
+        cublasZgeru,
+        cublasZgerc,
+        cublasSsbmv,
+        cublasDsbmv,
 
-    # Math Mode
-    int cublasSetMathMode(Handle handle, Math mode)
-    int cublasGetMathMode(Handle handle, Math* mode)
+        # BLAS Level 3
+        cublasSgemm,
+        cublasDgemm,
+        cublasCgemm,
+        cublasZgemm,
+        cublasSgemmBatched,
+        cublasDgemmBatched,
+        cublasCgemmBatched,
+        cublasZgemmBatched,
+        cublasSgemmStridedBatched,
+        cublasDgemmStridedBatched,
+        cublasCgemmStridedBatched,
+        cublasZgemmStridedBatched,
+        cublasStrsm,
+        cublasDtrsm,
+        cublasCtrsm,
+        cublasZtrsm,
+        cublasStrsmBatched,
+        cublasDtrsmBatched,
+        cublasCtrsmBatched,
+        cublasZtrsmBatched,
+        cublasSsyrk,
+        cublasDsyrk,
+        cublasCsyrk,
+        cublasZsyrk,
 
-    # BLAS Level 1
-    int cublasIsamax(Handle handle, int n, float* x, int incx,
-                     int* result)
-    int cublasIdamax(Handle handle, int n, double* x, int incx,
-                     int* result)
-    int cublasIcamax(Handle handle, int n, cuComplex* x, int incx,
-                     int* result)
-    int cublasIzamax(Handle handle, int n, cuDoubleComplex* x, int incx,
-                     int* result)
-    int cublasIsamin(Handle handle, int n, float* x, int incx,
-                     int* result)
-    int cublasIdamin(Handle handle, int n, double* x, int incx,
-                     int* result)
-    int cublasIcamin(Handle handle, int n, cuComplex* x, int incx,
-                     int* result)
-    int cublasIzamin(Handle handle, int n, cuDoubleComplex* x, int incx,
-                     int* result)
-    int cublasSasum(Handle handle, int n, float* x, int incx,
-                    float* result)
-    int cublasDasum(Handle handle, int n, double* x, int incx,
-                    double* result)
-    int cublasScasum(Handle handle, int n, cuComplex* x, int incx,
-                     float* result)
-    int cublasDzasum(Handle handle, int n, cuDoubleComplex* x, int incx,
-                     double* result)
-    int cublasSaxpy(Handle handle, int n, float* alpha, float* x,
-                    int incx, float* y, int incy)
-    int cublasDaxpy(Handle handle, int n, double* alpha, double* x,
-                    int incx, double* y, int incy)
-    int cublasCaxpy(Handle handle, int n, cuComplex* alpha, cuComplex* x,
-                    int incx, cuComplex* y, int incy)
-    int cublasZaxpy(Handle handle, int n, cuDoubleComplex* alpha,
-                    cuDoubleComplex* x, int incx, cuDoubleComplex* y, int incy)
-    int cublasSdot(Handle handle, int n, float* x, int incx,
-                   float* y, int incy, float* result)
-    int cublasDdot(Handle handle, int n, double* x, int incx,
-                   double* y, int incy, double* result)
-    int cublasCdotu(Handle handle, int n, cuComplex* x, int incx,
-                    cuComplex* y, int incy, cuComplex* result)
-    int cublasCdotc(Handle handle, int n, cuComplex* x, int incx,
-                    cuComplex* y, int incy, cuComplex* result)
-    int cublasZdotu(Handle handle, int n, cuDoubleComplex* x, int incx,
-                    cuDoubleComplex* y, int incy,
-                    cuDoubleComplex* result)
-    int cublasZdotc(Handle handle, int n, cuDoubleComplex* x, int incx,
-                    cuDoubleComplex* y, int incy,
-                    cuDoubleComplex* result)
-    int cublasSnrm2(Handle handle, int n, float* x, int incx, float* result)
-    int cublasDnrm2(Handle handle, int n, double* x, int incx, double* result)
-    int cublasScnrm2(Handle handle, int n, cuComplex* x, int incx,
-                     float* result)
-    int cublasDznrm2(Handle handle, int n, cuDoubleComplex* x, int incx,
-                     double* result)
-    int cublasSscal(Handle handle, int n, float* alpha, float* x, int incx)
-    int cublasDscal(Handle handle, int n, double* alpha, double* x, int incx)
-    int cublasCscal(Handle handle, int n, cuComplex* alpha,
-                    cuComplex* x, int incx)
-    int cublasCsscal(Handle handle, int n, float* alpha,
-                     cuComplex* x, int incx)
-    int cublasZscal(Handle handle, int n, cuDoubleComplex* alpha,
-                    cuDoubleComplex* x, int incx)
-    int cublasZdscal(Handle handle, int n, double* alpha,
-                     cuDoubleComplex* x, int incx)
+        # BLAS extension
+        cublasSgeam,
+        cublasDgeam,
+        cublasCgeam,
+        cublasZgeam,
+        cublasSdgmm,
+        cublasDdgmm,
+        cublasCdgmm,
+        cublasZdgmm,
+        cublasSgemmEx,
+        cublasSgetrfBatched,
+        cublasDgetrfBatched,
+        cublasCgetrfBatched,
+        cublasZgetrfBatched,
+        cublasSgetrsBatched,
+        cublasDgetrsBatched,
+        cublasCgetrsBatched,
+        cublasZgetrsBatched,
+        cublasSgetriBatched,
+        cublasDgetriBatched,
+        cublasCgetriBatched,
+        cublasZgetriBatched,
+        cublasGemmEx,
+        cublasGemmStridedBatchedEx,
+        cublasStpttr,
+        cublasDtpttr,
+        cublasStrttp,
+        cublasDtrttp,
+    )
+ELSE:
+    ########################################################
+    # Extern
+    ########################################################
 
-    # BLAS Level 2
-    int cublasSgemv(
-        Handle handle, Operation trans, int m, int n, float* alpha,
-        float* A, int lda, float* x, int incx, float* beta,
-        float* y, int incy)
-    int cublasDgemv(
-        Handle handle, Operation trans, int m, int n, double* alpha,
-        double* A, int lda, double* x, int incx, double* beta,
-        double* y, int incy)
-    int cublasCgemv(
-        Handle handle, Operation trans, int m, int n, cuComplex* alpha,
-        cuComplex* A, int lda, cuComplex* x, int incx, cuComplex* beta,
-        cuComplex* y, int incy)
-    int cublasZgemv(
-        Handle handle, Operation trans, int m, int n, cuDoubleComplex* alpha,
-        cuDoubleComplex* A, int lda, cuDoubleComplex* x, int incx,
-        cuDoubleComplex* beta, cuDoubleComplex* y, int incy)
-    int cublasSger(
-        Handle handle, int m, int n, float* alpha, float* x, int incx,
-        float* y, int incy, float* A, int lda)
-    int cublasDger(
-        Handle handle, int m, int n, double* alpha, double* x,
-        int incx, double* y, int incy, double* A, int lda)
-    int cublasCgeru(
-        Handle handle, int m, int n, cuComplex* alpha, cuComplex* x,
-        int incx, cuComplex* y, int incy, cuComplex* A, int lda)
-    int cublasCgerc(
-        Handle handle, int m, int n, cuComplex* alpha, cuComplex* x,
-        int incx, cuComplex* y, int incy, cuComplex* A, int lda)
-    int cublasZgeru(
-        Handle handle, int m, int n, cuDoubleComplex* alpha,
-        cuDoubleComplex* x, int incx, cuDoubleComplex* y, int incy,
-        cuDoubleComplex* A, int lda)
-    int cublasZgerc(
-        Handle handle, int m, int n, cuDoubleComplex* alpha,
-        cuDoubleComplex* x, int incx, cuDoubleComplex* y, int incy,
-        cuDoubleComplex* A, int lda)
-    int cublasSsbmv(
-        Handle handle, FillMode uplo, int n, int k,
-        const float* alpha, const float* A, int lda,
-        const float* x, int incx, const float* beta, float* y, int incy)
-    int cublasDsbmv(
-        Handle handle, FillMode uplo, int n, int k,
-        const double* alpha, const double* A, int lda,
-        const double* x, int incx, const double* beta, double* y, int incy)
+    cdef extern from '../../cupy_complex.h':
+        ctypedef struct cuComplex 'cuComplex':
+            float x, y
 
-    # BLAS Level 3
-    int cublasSgemm(
-        Handle handle, Operation transa, Operation transb, int m,
-        int n, int k, float* alpha, float* A, int lda, float* B,
-        int ldb, float* beta, float* C, int ldc)
-    int cublasDgemm(
-        Handle handle, Operation transa, Operation transb, int m,
-        int n, int k, double* alpha, double* A, int lda, double* B,
-        int ldb, double* beta, double* C, int ldc)
-    int cublasCgemm(
-        Handle handle, Operation transa, Operation transb, int m,
-        int n, int k, cuComplex* alpha, cuComplex* A, int lda,
-        cuComplex* B, int ldb, cuComplex* beta, cuComplex* C,
-        int ldc)
-    int cublasZgemm(
-        Handle handle, Operation transa, Operation transb, int m,
-        int n, int k, cuDoubleComplex* alpha, cuDoubleComplex* A, int lda,
-        cuDoubleComplex* B, int ldb, cuDoubleComplex* beta,
-        cuDoubleComplex* C, int ldc)
-    int cublasSgemmBatched(
-        Handle handle, Operation transa, Operation transb, int m,
-        int n, int k, const float* alpha, const float** Aarray,
-        int lda, const float** Barray, int ldb, const float* beta,
-        float** Carray, int ldc, int batchCount)
-    int cublasDgemmBatched(
-        Handle handle, Operation transa, Operation transb, int m,
-        int n, int k, const double* alpha, const double** Aarray,
-        int lda, const double** Barray, int ldb, const double* beta,
-        double** Carray, int ldc, int batchCount)
-    int cublasCgemmBatched(
-        Handle handle, Operation transa, Operation transb, int m,
-        int n, int k, const cuComplex* alpha, const cuComplex** Aarray,
-        int lda, const cuComplex** Barray, int ldb, const cuComplex* beta,
-        cuComplex** Carray, int ldc, int batchCount)
-    int cublasZgemmBatched(
-        Handle handle, Operation transa, Operation transb, int m,
-        int n, int k, const cuDoubleComplex* alpha,
-        const cuDoubleComplex** Aarray, int lda,
-        const cuDoubleComplex** Barray, int ldb,
-        const cuDoubleComplex* beta, cuDoubleComplex** Carray, int ldc,
-        int batchCount)
-    int cublasSgemmStridedBatched(
-        Handle handle, Operation transa, Operation transb,
-        int m, int n, int k, const float* alpha,
-        const float* A, int lda, long long strideA,
-        const float* B, int ldb, long long strideB,
-        const float* beta,
-        float* C, int ldc, long long strideC, int batchCount)
-    int cublasDgemmStridedBatched(
-        Handle handle, Operation transa, Operation transb,
-        int m, int n, int k, const double* alpha,
-        const double* A, int lda, long long strideA,
-        const double* B, int ldb, long long strideB,
-        const double* beta,
-        double* C, int ldc, long long strideC, int batchCount)
-    int cublasCgemmStridedBatched(
-        Handle handle, Operation transa, Operation transb,
-        int m, int n, int k, const cuComplex* alpha,
-        const cuComplex* A, int lda, long long strideA,
-        const cuComplex* B, int ldb, long long strideB,
-        const cuComplex* beta,
-        cuComplex* C, int ldc, long long strideC, int batchCount)
-    int cublasZgemmStridedBatched(
-        Handle handle, Operation transa, Operation transb,
-        int m, int n, int k, const cuDoubleComplex* alpha,
-        const cuDoubleComplex* A, int lda, long long strideA,
-        const cuDoubleComplex* B, int ldb, long long strideB,
-        const cuDoubleComplex* beta,
-        cuDoubleComplex* C, int ldc, long long strideC, int batchCount)
-    int cublasStrsm(
-        Handle handle, SideMode size, FillMode uplo, Operation trans,
-        DiagType diag, int m, int n, const float* alpha,
-        const float* A, int lda, float* B, int ldb)
-    int cublasDtrsm(
-        Handle handle, SideMode size, FillMode uplo, Operation trans,
-        DiagType diag, int m, int n, const double* alpha,
-        const double* A, int lda, double* B, int ldb)
-    int cublasCtrsm(
-        Handle handle, SideMode size, FillMode uplo, Operation trans,
-        DiagType diag, int m, int n, const cuComplex* alpha,
-        const cuComplex* A, int lda, cuComplex* B, int ldb)
-    int cublasZtrsm(
-        Handle handle, SideMode size, FillMode uplo, Operation trans,
-        DiagType diag, int m, int n, const cuDoubleComplex* alpha,
-        const cuDoubleComplex* A, int lda, cuDoubleComplex* B, int ldb)
-    int cublasStrsmBatched(
-        Handle handle, SideMode size, FillMode uplo, Operation trans,
-        DiagType diag, int m, int n, const float* alpha,
-        const float* const* A, int lda, float* const* B, int ldb,
-        int batchCount)
-    int cublasDtrsmBatched(
-        Handle handle, SideMode size, FillMode uplo, Operation trans,
-        DiagType diag, int m, int n, const double* alpha,
-        const double* const* A, int lda, double* const* B, int ldb,
-        int batchCount)
-    int cublasCtrsmBatched(
-        Handle handle, SideMode size, FillMode uplo, Operation trans,
-        DiagType diag, int m, int n, const cuComplex* alpha,
-        const cuComplex* const* A, int lda, cuComplex* const* B, int ldb,
-        int batchCount)
-    int cublasZtrsmBatched(
-        Handle handle, SideMode size, FillMode uplo, Operation trans,
-        DiagType diag, int m, int n, const cuDoubleComplex* alpha,
-        const cuDoubleComplex* const* A, int lda, cuDoubleComplex* const* B,
-        int ldb, int batchCount)
-    int cublasSsyrk(
-        Handle handle, FillMode uplo, Operation trans, int n, int k,
-        float* alpha, float* A, int lda,
-        float* beta, float* C, int ldc)
-    int cublasDsyrk(
-        Handle handle, FillMode uplo, Operation trans, int n, int k,
-        double* alpha, double* A, int lda,
-        double* beta, double* C, int ldc)
-    int cublasCsyrk(
-        Handle handle, FillMode uplo, Operation trans, int n, int k,
-        cuComplex* alpha, cuComplex* A, int lda,
-        cuComplex* beta, cuComplex* C, int ldc)
-    int cublasZsyrk(
-        Handle handle, FillMode uplo, Operation trans, int n, int k,
-        cuDoubleComplex* alpha, cuDoubleComplex* A, int lda,
-        cuDoubleComplex* beta, cuDoubleComplex* C, int ldc)
+        ctypedef struct cuDoubleComplex 'cuDoubleComplex':
+            double x, y
 
-    # BLAS extension
-    int cublasSgeam(
-        Handle handle, Operation transa, Operation transb, int m, int n,
-        const float* alpha, const float* A, int lda,
-        const float* beta, const float* B, int ldb,
-        float* C, int ldc)
-    int cublasDgeam(
-        Handle handle, Operation transa, Operation transb, int m, int n,
-        const double* alpha, const double* A, int lda,
-        const double* beta, const double* B, int ldb,
-        double* C, int ldc)
-    int cublasCgeam(
-        Handle handle, Operation transa, Operation transb, int m, int n,
-        const cuComplex* alpha, const cuComplex* A, int lda,
-        const cuComplex* beta, const cuComplex* B, int ldb,
-        cuComplex* C, int ldc)
-    int cublasZgeam(
-        Handle handle, Operation transa, Operation transb, int m, int n,
-        const cuDoubleComplex* alpha, const cuDoubleComplex* A, int lda,
-        const cuDoubleComplex* beta, const cuDoubleComplex* B, int ldb,
-        cuDoubleComplex* C, int ldc)
-    int cublasSdgmm(
-        Handle handle, SideMode mode, int m, int n, const float* A, int lda,
-        const float* x, int incx, float* C, int ldc)
-    int cublasDdgmm(
-        Handle handle, SideMode mode, int m, int n, const double* A, int lda,
-        const double* x, int incx, double* C, int ldc)
-    int cublasCdgmm(
-        Handle handle, SideMode mode, int m, int n, const cuComplex* A,
-        int lda, const cuComplex* x, int incx, cuComplex* C, int ldc)
-    int cublasZdgmm(
-        Handle handle, SideMode mode, int m, int n, const cuDoubleComplex* A,
-        int lda, const cuDoubleComplex* x, int incx, cuDoubleComplex* C,
-        int ldc)
-    int cublasSgemmEx(
-        Handle handle, Operation transa,
-        Operation transb, int m, int n, int k,
-        const float *alpha, const void *A, DataType Atype,
-        int lda, const void *B, DataType Btype, int ldb,
-        const float *beta, void *C, DataType Ctype, int ldc)
-    int cublasSgetrfBatched(
-        Handle handle, int n, float **Aarray, int lda,
-        int *PivotArray, int *infoArray, int batchSize)
-    int cublasDgetrfBatched(
-        Handle handle, int n, double **Aarray, int lda,
-        int *PivotArray, int *infoArray, int batchSize)
-    int cublasCgetrfBatched(
-        Handle handle, int n, cuComplex **Aarray, int lda,
-        int *PivotArray, int *infoArray, int batchSize)
-    int cublasZgetrfBatched(
-        Handle handle, int n, cuDoubleComplex **Aarray, int lda,
-        int *PivotArray, int *infoArray, int batchSize)
+    cdef extern from '../../cupy_blas.h' nogil:
+        ctypedef void* Stream 'cudaStream_t'
+        ctypedef int DataType 'cudaDataType'
 
-    int cublasSgetrsBatched(
-        Handle handle, Operation trans, int n, int nrhs,
-        const float **Aarray, int lda, const int *devIpiv,
-        float **Barray, int ldb, int *info, int batchSize)
-    int cublasDgetrsBatched(
-        Handle handle, Operation trans, int n, int nrhs,
-        const double **Aarray, int lda, const int *devIpiv,
-        double **Barray, int ldb, int *info, int batchSize)
-    int cublasCgetrsBatched(
-        Handle handle, Operation trans, int n, int nrhs,
-        const cuComplex **Aarray, int lda, const int *devIpiv,
-        cuComplex **Barray, int ldb, int *info, int batchSize)
-    int cublasZgetrsBatched(
-        Handle handle, Operation trans, int n, int nrhs,
-        const cuDoubleComplex **Aarray, int lda, const int *devIpiv,
-        cuDoubleComplex **Barray, int ldb, int *info, int batchSize)
+        # Context
+        int cublasCreate(Handle* handle)
+        int cublasDestroy(Handle handle)
+        int cublasGetVersion(Handle handle, int* version)
+        int cublasGetPointerMode(Handle handle, PointerMode* mode)
+        int cublasSetPointerMode(Handle handle, PointerMode mode)
 
-    int cublasSgetriBatched(
-        Handle handle, int n, const float **Aarray, int lda,
-        int *PivotArray, float *Carray[], int ldc, int *infoArray,
-        int batchSize)
-    int cublasDgetriBatched(
-        Handle handle, int n, const double **Aarray, int lda,
-        int *PivotArray, double *Carray[], int ldc, int *infoArray,
-        int batchSize)
-    int cublasCgetriBatched(
-        Handle handle, int n, const cuComplex **Aarray, int lda,
-        int *PivotArray, cuComplex *Carray[], int ldc, int *infoArray,
-        int batchSize)
-    int cublasZgetriBatched(
-        Handle handle, int n, const cuDoubleComplex **Aarray, int lda,
-        int *PivotArray, cuDoubleComplex *Carray[], int ldc, int *infoArray,
-        int batchSize)
-    int cublasGemmEx(
-        Handle handle, Operation transa, Operation transb,
-        int m, int n, int k,
-        const void *alpha,
-        const void *A, DataType Atype, int lda,
-        const void *B, DataType Btype, int ldb,
-        const void *beta,
-        void *C, DataType Ctype, int ldc,
-        DataType computetype, GemmAlgo algo)
-    int cublasGemmEx_v11(
-        Handle handle, Operation transa, Operation transb,
-        int m, int n, int k,
-        const void *alpha,
-        const void *A, DataType Atype, int lda,
-        const void *B, DataType Btype, int ldb,
-        const void *beta,
-        void *C, DataType Ctype, int ldc,
-        ComputeType computetype, GemmAlgo algo)
-    int cublasGemmStridedBatchedEx(
-        Handle handle, Operation transa, Operation transb,
-        int m, int n, int k,
-        const void *alpha,
-        const void *A, DataType Atype, int lda, long long strideA,
-        const void *B, DataType Btype, int ldb, long long strideB,
-        const void *beta,
-        void *C, DataType Ctype, int ldc, long long strideC,
-        int batchCount, DataType computetype, GemmAlgo algo)
-    int cublasGemmStridedBatchedEx_v11(
-        Handle handle, Operation transa, Operation transb,
-        int m, int n, int k,
-        const void *alpha,
-        const void *A, DataType Atype, int lda, long long strideA,
-        const void *B, DataType Btype, int ldb, long long strideB,
-        const void *beta,
-        void *C, DataType Ctype, int ldc, long long strideC,
-        int batchCount, ComputeType computetype, GemmAlgo algo)
-    int cublasStpttr(
-        Handle handle, FillMode uplo, int n, const float *AP, float *A,
-        int lda)
-    int cublasDtpttr(
-        Handle handle, FillMode uplo, int n, const double *AP, double *A,
-        int lda)
-    int cublasStrttp(
-        Handle handle, FillMode uplo, int n, const float *A, int lda,
-        float *AP)
-    int cublasDtrttp(
-        Handle handle, FillMode uplo, int n, const double *A, int lda,
-        double *AP)
+        # Stream
+        int cublasSetStream(Handle handle, Stream streamId)
+        int cublasGetStream(Handle handle, Stream* streamId)
 
+        # Math Mode
+        int cublasSetMathMode(Handle handle, Math mode)
+        int cublasGetMathMode(Handle handle, Math* mode)
+
+        # BLAS Level 1
+        int cublasIsamax(Handle handle, int n, float* x, int incx,
+                         int* result)
+        int cublasIdamax(Handle handle, int n, double* x, int incx,
+                         int* result)
+        int cublasIcamax(Handle handle, int n, cuComplex* x, int incx,
+                         int* result)
+        int cublasIzamax(Handle handle, int n, cuDoubleComplex* x, int incx,
+                         int* result)
+        int cublasIsamin(Handle handle, int n, float* x, int incx,
+                         int* result)
+        int cublasIdamin(Handle handle, int n, double* x, int incx,
+                         int* result)
+        int cublasIcamin(Handle handle, int n, cuComplex* x, int incx,
+                         int* result)
+        int cublasIzamin(Handle handle, int n, cuDoubleComplex* x, int incx,
+                         int* result)
+        int cublasSasum(Handle handle, int n, float* x, int incx,
+                        float* result)
+        int cublasDasum(Handle handle, int n, double* x, int incx,
+                        double* result)
+        int cublasScasum(Handle handle, int n, cuComplex* x, int incx,
+                         float* result)
+        int cublasDzasum(Handle handle, int n, cuDoubleComplex* x, int incx,
+                         double* result)
+        int cublasSaxpy(Handle handle, int n, float* alpha, float* x,
+                        int incx, float* y, int incy)
+        int cublasDaxpy(Handle handle, int n, double* alpha, double* x,
+                        int incx, double* y, int incy)
+        int cublasCaxpy(Handle handle, int n, cuComplex* alpha, cuComplex* x,
+                        int incx, cuComplex* y, int incy)
+        int cublasZaxpy(Handle handle, int n, cuDoubleComplex* alpha,
+                        cuDoubleComplex* x, int incx,
+                        cuDoubleComplex* y, int incy)
+        int cublasSdot(Handle handle, int n, float* x, int incx,
+                       float* y, int incy, float* result)
+        int cublasDdot(Handle handle, int n, double* x, int incx,
+                       double* y, int incy, double* result)
+        int cublasCdotu(Handle handle, int n, cuComplex* x, int incx,
+                        cuComplex* y, int incy, cuComplex* result)
+        int cublasCdotc(Handle handle, int n, cuComplex* x, int incx,
+                        cuComplex* y, int incy, cuComplex* result)
+        int cublasZdotu(Handle handle, int n, cuDoubleComplex* x, int incx,
+                        cuDoubleComplex* y, int incy,
+                        cuDoubleComplex* result)
+        int cublasZdotc(Handle handle, int n, cuDoubleComplex* x, int incx,
+                        cuDoubleComplex* y, int incy,
+                        cuDoubleComplex* result)
+        int cublasSnrm2(Handle handle, int n, float* x, int incx,
+                        float* result)
+        int cublasDnrm2(Handle handle, int n, double* x, int incx,
+                        double* result)
+        int cublasScnrm2(Handle handle, int n, cuComplex* x, int incx,
+                         float* result)
+        int cublasDznrm2(Handle handle, int n, cuDoubleComplex* x, int incx,
+                         double* result)
+        int cublasSscal(Handle handle, int n, float* alpha, float* x,
+                        int incx)
+        int cublasDscal(Handle handle, int n, double* alpha, double* x,
+                        int incx)
+        int cublasCscal(Handle handle, int n, cuComplex* alpha,
+                        cuComplex* x, int incx)
+        int cublasCsscal(Handle handle, int n, float* alpha,
+                         cuComplex* x, int incx)
+        int cublasZscal(Handle handle, int n, cuDoubleComplex* alpha,
+                        cuDoubleComplex* x, int incx)
+        int cublasZdscal(Handle handle, int n, double* alpha,
+                         cuDoubleComplex* x, int incx)
+
+        # BLAS Level 2
+        int cublasSgemv(
+            Handle handle, Operation trans, int m, int n, float* alpha,
+            float* A, int lda, float* x, int incx, float* beta,
+            float* y, int incy)
+        int cublasDgemv(
+            Handle handle, Operation trans, int m, int n, double* alpha,
+            double* A, int lda, double* x, int incx, double* beta,
+            double* y, int incy)
+        int cublasCgemv(
+            Handle handle, Operation trans, int m, int n, cuComplex* alpha,
+            cuComplex* A, int lda, cuComplex* x, int incx, cuComplex* beta,
+            cuComplex* y, int incy)
+        int cublasZgemv(
+            Handle handle, Operation trans, int m, int n,
+            cuDoubleComplex* alpha,
+            cuDoubleComplex* A, int lda, cuDoubleComplex* x, int incx,
+            cuDoubleComplex* beta, cuDoubleComplex* y, int incy)
+        int cublasSger(
+            Handle handle, int m, int n, float* alpha, float* x, int incx,
+            float* y, int incy, float* A, int lda)
+        int cublasDger(
+            Handle handle, int m, int n, double* alpha, double* x,
+            int incx, double* y, int incy, double* A, int lda)
+        int cublasCgeru(
+            Handle handle, int m, int n, cuComplex* alpha, cuComplex* x,
+            int incx, cuComplex* y, int incy, cuComplex* A, int lda)
+        int cublasCgerc(
+            Handle handle, int m, int n, cuComplex* alpha, cuComplex* x,
+            int incx, cuComplex* y, int incy, cuComplex* A, int lda)
+        int cublasZgeru(
+            Handle handle, int m, int n, cuDoubleComplex* alpha,
+            cuDoubleComplex* x, int incx, cuDoubleComplex* y, int incy,
+            cuDoubleComplex* A, int lda)
+        int cublasZgerc(
+            Handle handle, int m, int n, cuDoubleComplex* alpha,
+            cuDoubleComplex* x, int incx, cuDoubleComplex* y, int incy,
+            cuDoubleComplex* A, int lda)
+        int cublasSsbmv(
+            Handle handle, FillMode uplo, int n, int k,
+            const float* alpha, const float* A, int lda,
+            const float* x, int incx, const float* beta, float* y, int incy)
+        int cublasDsbmv(
+            Handle handle, FillMode uplo, int n, int k,
+            const double* alpha, const double* A, int lda,
+            const double* x, int incx, const double* beta, double* y, int incy)
+
+        # BLAS Level 3
+        int cublasSgemm(
+            Handle handle, Operation transa, Operation transb, int m,
+            int n, int k, float* alpha, float* A, int lda, float* B,
+            int ldb, float* beta, float* C, int ldc)
+        int cublasDgemm(
+            Handle handle, Operation transa, Operation transb, int m,
+            int n, int k, double* alpha, double* A, int lda, double* B,
+            int ldb, double* beta, double* C, int ldc)
+        int cublasCgemm(
+            Handle handle, Operation transa, Operation transb, int m,
+            int n, int k, cuComplex* alpha, cuComplex* A, int lda,
+            cuComplex* B, int ldb, cuComplex* beta, cuComplex* C,
+            int ldc)
+        int cublasZgemm(
+            Handle handle, Operation transa, Operation transb, int m,
+            int n, int k, cuDoubleComplex* alpha, cuDoubleComplex* A, int lda,
+            cuDoubleComplex* B, int ldb, cuDoubleComplex* beta,
+            cuDoubleComplex* C, int ldc)
+        int cublasSgemmBatched(
+            Handle handle, Operation transa, Operation transb, int m,
+            int n, int k, const float* alpha, const float** Aarray,
+            int lda, const float** Barray, int ldb, const float* beta,
+            float** Carray, int ldc, int batchCount)
+        int cublasDgemmBatched(
+            Handle handle, Operation transa, Operation transb, int m,
+            int n, int k, const double* alpha, const double** Aarray,
+            int lda, const double** Barray, int ldb, const double* beta,
+            double** Carray, int ldc, int batchCount)
+        int cublasCgemmBatched(
+            Handle handle, Operation transa, Operation transb, int m,
+            int n, int k, const cuComplex* alpha, const cuComplex** Aarray,
+            int lda, const cuComplex** Barray, int ldb, const cuComplex* beta,
+            cuComplex** Carray, int ldc, int batchCount)
+        int cublasZgemmBatched(
+            Handle handle, Operation transa, Operation transb, int m,
+            int n, int k, const cuDoubleComplex* alpha,
+            const cuDoubleComplex** Aarray, int lda,
+            const cuDoubleComplex** Barray, int ldb,
+            const cuDoubleComplex* beta, cuDoubleComplex** Carray, int ldc,
+            int batchCount)
+        int cublasSgemmStridedBatched(
+            Handle handle, Operation transa, Operation transb,
+            int m, int n, int k, const float* alpha,
+            const float* A, int lda, long long strideA,
+            const float* B, int ldb, long long strideB,
+            const float* beta,
+            float* C, int ldc, long long strideC, int batchCount)
+        int cublasDgemmStridedBatched(
+            Handle handle, Operation transa, Operation transb,
+            int m, int n, int k, const double* alpha,
+            const double* A, int lda, long long strideA,
+            const double* B, int ldb, long long strideB,
+            const double* beta,
+            double* C, int ldc, long long strideC, int batchCount)
+        int cublasCgemmStridedBatched(
+            Handle handle, Operation transa, Operation transb,
+            int m, int n, int k, const cuComplex* alpha,
+            const cuComplex* A, int lda, long long strideA,
+            const cuComplex* B, int ldb, long long strideB,
+            const cuComplex* beta,
+            cuComplex* C, int ldc, long long strideC, int batchCount)
+        int cublasZgemmStridedBatched(
+            Handle handle, Operation transa, Operation transb,
+            int m, int n, int k, const cuDoubleComplex* alpha,
+            const cuDoubleComplex* A, int lda, long long strideA,
+            const cuDoubleComplex* B, int ldb, long long strideB,
+            const cuDoubleComplex* beta,
+            cuDoubleComplex* C, int ldc, long long strideC, int batchCount)
+        int cublasStrsm(
+            Handle handle, SideMode size, FillMode uplo, Operation trans,
+            DiagType diag, int m, int n, const float* alpha,
+            const float* A, int lda, float* B, int ldb)
+        int cublasDtrsm(
+            Handle handle, SideMode size, FillMode uplo, Operation trans,
+            DiagType diag, int m, int n, const double* alpha,
+            const double* A, int lda, double* B, int ldb)
+        int cublasCtrsm(
+            Handle handle, SideMode size, FillMode uplo, Operation trans,
+            DiagType diag, int m, int n, const cuComplex* alpha,
+            const cuComplex* A, int lda, cuComplex* B, int ldb)
+        int cublasZtrsm(
+            Handle handle, SideMode size, FillMode uplo, Operation trans,
+            DiagType diag, int m, int n, const cuDoubleComplex* alpha,
+            const cuDoubleComplex* A, int lda, cuDoubleComplex* B, int ldb)
+        int cublasStrsmBatched(
+            Handle handle, SideMode size, FillMode uplo, Operation trans,
+            DiagType diag, int m, int n, const float* alpha,
+            const float* const* A, int lda, float* const* B, int ldb,
+            int batchCount)
+        int cublasDtrsmBatched(
+            Handle handle, SideMode size, FillMode uplo, Operation trans,
+            DiagType diag, int m, int n, const double* alpha,
+            const double* const* A, int lda, double* const* B, int ldb,
+            int batchCount)
+        int cublasCtrsmBatched(
+            Handle handle, SideMode size, FillMode uplo, Operation trans,
+            DiagType diag, int m, int n, const cuComplex* alpha,
+            const cuComplex* const* A, int lda, cuComplex* const* B, int ldb,
+            int batchCount)
+        int cublasZtrsmBatched(
+            Handle handle, SideMode size, FillMode uplo, Operation trans,
+            DiagType diag, int m, int n, const cuDoubleComplex* alpha,
+            const cuDoubleComplex* const* A, int lda,
+            cuDoubleComplex* const* B,
+            int ldb, int batchCount)
+        int cublasSsyrk(
+            Handle handle, FillMode uplo, Operation trans, int n, int k,
+            float* alpha, float* A, int lda,
+            float* beta, float* C, int ldc)
+        int cublasDsyrk(
+            Handle handle, FillMode uplo, Operation trans, int n, int k,
+            double* alpha, double* A, int lda,
+            double* beta, double* C, int ldc)
+        int cublasCsyrk(
+            Handle handle, FillMode uplo, Operation trans, int n, int k,
+            cuComplex* alpha, cuComplex* A, int lda,
+            cuComplex* beta, cuComplex* C, int ldc)
+        int cublasZsyrk(
+            Handle handle, FillMode uplo, Operation trans, int n, int k,
+            cuDoubleComplex* alpha, cuDoubleComplex* A, int lda,
+            cuDoubleComplex* beta, cuDoubleComplex* C, int ldc)
+
+        # BLAS extension
+        int cublasSgeam(
+            Handle handle, Operation transa, Operation transb, int m, int n,
+            const float* alpha, const float* A, int lda,
+            const float* beta, const float* B, int ldb,
+            float* C, int ldc)
+        int cublasDgeam(
+            Handle handle, Operation transa, Operation transb, int m, int n,
+            const double* alpha, const double* A, int lda,
+            const double* beta, const double* B, int ldb,
+            double* C, int ldc)
+        int cublasCgeam(
+            Handle handle, Operation transa, Operation transb, int m, int n,
+            const cuComplex* alpha, const cuComplex* A, int lda,
+            const cuComplex* beta, const cuComplex* B, int ldb,
+            cuComplex* C, int ldc)
+        int cublasZgeam(
+            Handle handle, Operation transa, Operation transb, int m, int n,
+            const cuDoubleComplex* alpha, const cuDoubleComplex* A, int lda,
+            const cuDoubleComplex* beta, const cuDoubleComplex* B, int ldb,
+            cuDoubleComplex* C, int ldc)
+        int cublasSdgmm(
+            Handle handle, SideMode mode, int m, int n,
+            const float* A, int lda,
+            const float* x, int incx, float* C, int ldc)
+        int cublasDdgmm(
+            Handle handle, SideMode mode, int m, int n,
+            const double* A, int lda,
+            const double* x, int incx, double* C, int ldc)
+        int cublasCdgmm(
+            Handle handle, SideMode mode, int m, int n, const cuComplex* A,
+            int lda, const cuComplex* x, int incx, cuComplex* C, int ldc)
+        int cublasZdgmm(
+            Handle handle, SideMode mode, int m, int n,
+            const cuDoubleComplex* A,
+            int lda, const cuDoubleComplex* x, int incx, cuDoubleComplex* C,
+            int ldc)
+        int cublasSgemmEx(
+            Handle handle, Operation transa,
+            Operation transb, int m, int n, int k,
+            const float *alpha, const void *A, DataType Atype,
+            int lda, const void *B, DataType Btype, int ldb,
+            const float *beta, void *C, DataType Ctype, int ldc)
+        int cublasSgetrfBatched(
+            Handle handle, int n, float **Aarray, int lda,
+            int *PivotArray, int *infoArray, int batchSize)
+        int cublasDgetrfBatched(
+            Handle handle, int n, double **Aarray, int lda,
+            int *PivotArray, int *infoArray, int batchSize)
+        int cublasCgetrfBatched(
+            Handle handle, int n, cuComplex **Aarray, int lda,
+            int *PivotArray, int *infoArray, int batchSize)
+        int cublasZgetrfBatched(
+            Handle handle, int n, cuDoubleComplex **Aarray, int lda,
+            int *PivotArray, int *infoArray, int batchSize)
+
+        int cublasSgetrsBatched(
+            Handle handle, Operation trans, int n, int nrhs,
+            const float **Aarray, int lda, const int *devIpiv,
+            float **Barray, int ldb, int *info, int batchSize)
+        int cublasDgetrsBatched(
+            Handle handle, Operation trans, int n, int nrhs,
+            const double **Aarray, int lda, const int *devIpiv,
+            double **Barray, int ldb, int *info, int batchSize)
+        int cublasCgetrsBatched(
+            Handle handle, Operation trans, int n, int nrhs,
+            const cuComplex **Aarray, int lda, const int *devIpiv,
+            cuComplex **Barray, int ldb, int *info, int batchSize)
+        int cublasZgetrsBatched(
+            Handle handle, Operation trans, int n, int nrhs,
+            const cuDoubleComplex **Aarray, int lda, const int *devIpiv,
+            cuDoubleComplex **Barray, int ldb, int *info, int batchSize)
+
+        int cublasSgetriBatched(
+            Handle handle, int n, const float **Aarray, int lda,
+            int *PivotArray, float *Carray[], int ldc, int *infoArray,
+            int batchSize)
+        int cublasDgetriBatched(
+            Handle handle, int n, const double **Aarray, int lda,
+            int *PivotArray, double *Carray[], int ldc, int *infoArray,
+            int batchSize)
+        int cublasCgetriBatched(
+            Handle handle, int n, const cuComplex **Aarray, int lda,
+            int *PivotArray, cuComplex *Carray[], int ldc, int *infoArray,
+            int batchSize)
+        int cublasZgetriBatched(
+            Handle handle, int n, const cuDoubleComplex **Aarray, int lda,
+            int *PivotArray, cuDoubleComplex *Carray[], int ldc,
+            int *infoArray,
+            int batchSize)
+        int cublasGemmEx(
+            Handle handle, Operation transa, Operation transb,
+            int m, int n, int k,
+            const void *alpha,
+            const void *A, DataType Atype, int lda,
+            const void *B, DataType Btype, int ldb,
+            const void *beta,
+            void *C, DataType Ctype, int ldc,
+            DataType computetype, GemmAlgo algo)
+        int cublasGemmEx_v11(
+            Handle handle, Operation transa, Operation transb,
+            int m, int n, int k,
+            const void *alpha,
+            const void *A, DataType Atype, int lda,
+            const void *B, DataType Btype, int ldb,
+            const void *beta,
+            void *C, DataType Ctype, int ldc,
+            ComputeType computetype, GemmAlgo algo)
+        int cublasGemmStridedBatchedEx(
+            Handle handle, Operation transa, Operation transb,
+            int m, int n, int k,
+            const void *alpha,
+            const void *A, DataType Atype, int lda, long long strideA,
+            const void *B, DataType Btype, int ldb, long long strideB,
+            const void *beta,
+            void *C, DataType Ctype, int ldc, long long strideC,
+            int batchCount, DataType computetype, GemmAlgo algo)
+        int cublasGemmStridedBatchedEx_v11(
+            Handle handle, Operation transa, Operation transb,
+            int m, int n, int k,
+            const void *alpha,
+            const void *A, DataType Atype, int lda, long long strideA,
+            const void *B, DataType Btype, int ldb, long long strideB,
+            const void *beta,
+            void *C, DataType Ctype, int ldc, long long strideC,
+            int batchCount, ComputeType computetype, GemmAlgo algo)
+        int cublasStpttr(
+            Handle handle, FillMode uplo, int n, const float *AP, float *A,
+            int lda)
+        int cublasDtpttr(
+            Handle handle, FillMode uplo, int n, const double *AP, double *A,
+            int lda)
+        int cublasStrttp(
+            Handle handle, FillMode uplo, int n, const float *A, int lda,
+            float *AP)
+        int cublasDtrttp(
+            Handle handle, FillMode uplo, int n, const double *A, int lda,
+            double *AP)
 
 ###############################################################################
 # Error handling
@@ -1506,19 +1643,7 @@ cpdef gemmEx(
         int ldc, int computeType, int algo):
     _setStream(handle)
     with nogil:
-        if (
-            not runtime._is_hip_environment and
-            computeType >= CUBLAS_COMPUTE_16F
-        ):
-            status = cublasGemmEx_v11(
-                <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
-                <const void*>alpha,
-                <const void*>A, <DataType>Atype, lda,
-                <const void*>B, <DataType>Btype, ldb,
-                <const void*>beta,
-                <void*>C, <DataType>Ctype, ldc,
-                <ComputeType>computeType, <GemmAlgo>algo)
-        else:
+        IF CUPY_USE_CUDA_PYTHON:
             status = cublasGemmEx(
                 <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
                 <const void*>alpha,
@@ -1526,7 +1651,31 @@ cpdef gemmEx(
                 <const void*>B, <DataType>Btype, ldb,
                 <const void*>beta,
                 <void*>C, <DataType>Ctype, ldc,
-                <DataType>computeType, <GemmAlgo>algo)
+                <ComputeType>computeType, <GemmAlgo>algo)
+        ELSE:
+            if (
+                not runtime._is_hip_environment and
+                computeType >= CUBLAS_COMPUTE_16F
+            ):
+                status = cublasGemmEx_v11(
+                    <Handle>handle, <Operation>transa, <Operation>transb,
+                    m, n, k,
+                    <const void*>alpha,
+                    <const void*>A, <DataType>Atype, lda,
+                    <const void*>B, <DataType>Btype, ldb,
+                    <const void*>beta,
+                    <void*>C, <DataType>Ctype, ldc,
+                    <ComputeType>computeType, <GemmAlgo>algo)
+            else:
+                status = cublasGemmEx(
+                    <Handle>handle, <Operation>transa, <Operation>transb,
+                    m, n, k,
+                    <const void*>alpha,
+                    <const void*>A, <DataType>Atype, lda,
+                    <const void*>B, <DataType>Btype, ldb,
+                    <const void*>beta,
+                    <void*>C, <DataType>Ctype, ldc,
+                    <DataType>computeType, <GemmAlgo>algo)
     check_status(status)
 
 
@@ -1540,16 +1689,7 @@ cpdef gemmStridedBatchedEx(
         int batchCount, int computeType, int algo):
     _setStream(handle)
     with nogil:
-        if computeType >= CUBLAS_COMPUTE_16F:
-            status = cublasGemmStridedBatchedEx_v11(
-                <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
-                <const void*>alpha,
-                <const void*>A, <DataType>Atype, lda, <long long>strideA,
-                <const void*>B, <DataType>Btype, ldb, <long long>strideB,
-                <const void*>beta,
-                <void*>C, <DataType>Ctype, ldc, <long long>strideC,
-                batchCount, <ComputeType>computeType, <GemmAlgo>algo)
-        else:
+        IF CUPY_USE_CUDA_PYTHON:
             status = cublasGemmStridedBatchedEx(
                 <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
                 <const void*>alpha,
@@ -1557,7 +1697,28 @@ cpdef gemmStridedBatchedEx(
                 <const void*>B, <DataType>Btype, ldb, <long long>strideB,
                 <const void*>beta,
                 <void*>C, <DataType>Ctype, ldc, <long long>strideC,
-                batchCount, <DataType>computeType, <GemmAlgo>algo)
+                batchCount, <ComputeType>computeType, <GemmAlgo>algo)
+        ELSE:
+            if computeType >= CUBLAS_COMPUTE_16F:
+                status = cublasGemmStridedBatchedEx_v11(
+                    <Handle>handle, <Operation>transa, <Operation>transb,
+                    m, n, k,
+                    <const void*>alpha,
+                    <const void*>A, <DataType>Atype, lda, <long long>strideA,
+                    <const void*>B, <DataType>Btype, ldb, <long long>strideB,
+                    <const void*>beta,
+                    <void*>C, <DataType>Ctype, ldc, <long long>strideC,
+                    batchCount, <ComputeType>computeType, <GemmAlgo>algo)
+            else:
+                status = cublasGemmStridedBatchedEx(
+                    <Handle>handle, <Operation>transa, <Operation>transb,
+                    m, n, k,
+                    <const void*>alpha,
+                    <const void*>A, <DataType>Atype, lda, <long long>strideA,
+                    <const void*>B, <DataType>Btype, ldb, <long long>strideB,
+                    <const void*>beta,
+                    <void*>C, <DataType>Ctype, ldc, <long long>strideC,
+                    batchCount, <DataType>computeType, <GemmAlgo>algo)
     check_status(status)
 
 

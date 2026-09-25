@@ -20,6 +20,7 @@ def _get_harmonic_list(degree_max):
 @testing.with_requires("scipy")
 class TestBasic:
 
+    @testing.with_requires("scipy<1.17")
     @pytest.mark.filterwarnings('ignore::DeprecationWarning')
     @pytest.mark.parametrize("m, n", _get_harmonic_list(degree_max=5))
     @testing.for_dtypes(["e", "f", "d"])

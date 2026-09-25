@@ -1,0 +1,39 @@
+# AUTO GENERATED: DO NOT EDIT!
+ARG BASE_IMAGE="nvidia/cuda:12.9.1-devel-ubuntu24.04"
+FROM ${BASE_IMAGE}
+
+RUN export DEBIAN_FRONTEND=noninteractive && \
+    apt-get -qqy update && \
+    apt-get -qqy install \
+       make build-essential libssl-dev zlib1g-dev \
+       libbz2-dev libreadline-dev libsqlite3-dev wget \
+       curl llvm libncursesw5-dev xz-utils tk-dev \
+       libxml2-dev libxmlsec1-dev libffi-dev \
+       liblzma-dev \
+\
+       && \
+    apt-get -qqy install ccache git curl && \
+    apt-get -qqy --allow-change-held-packages \
+            --allow-downgrades install 'libnccl2=2.26.*+cuda12.9' 'libnccl-dev=2.26.*+cuda12.9' 'libcutensor2-cuda-12=2.4.*' 'libcutensor2-dev-cuda-12=2.4.*'
+
+ENV PATH "/usr/lib/ccache:${PATH}"
+
+RUN curl -fsSL https://github.com/cli/cli/releases/download/v2.95.0/gh_2.95.0_linux_amd64.tar.gz \
+        | tar -xz -C /usr/local --strip-components=1 gh_2.95.0_linux_amd64/bin/gh
+
+ENV CUPY_INCLUDE_PATH=/usr/include/libcutensor/12:${CUPY_INCLUDE_PATH}
+ENV CUPY_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/libcutensor/12:${CUPY_LIBRARY_PATH}
+ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/libcutensor/12:${LD_LIBRARY_PATH}
+RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
+ENV PYENV_ROOT "/opt/pyenv"
+ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
+RUN PYTHON_CONFIGURE_OPTS="--disable-shared" pyenv install 3.12.11 && \
+    pyenv global 3.12.11 && \
+    pip install -U setuptools pip wheel && \
+    pip install -U google-cloud-storage
+
+RUN pip install -U 'numpy==2.3.*' 'scipy==1.16.*' 'optuna==4.*' 'cython==3.2.*,!=3.2.6' 'cuda-python==12.*' 'nvmath-python==1.*' 'cuda-cccl[minimal-sysctk12]>=1.1.1,<1.2'
+RUN pip uninstall -y mpi4py ml_dtypes && \
+    pip check
+
+RUN mkdir /home/cupy-user && chmod 777 /home/cupy-user

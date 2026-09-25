@@ -10,6 +10,7 @@ Data type routines
 
    can_cast
    min_scalar_type
+   make_aligned_dtype
    result_type
    common_type
 
@@ -25,6 +26,7 @@ Creating data types
    :align: left
 
    ``dtype`` (alias of :class:`numpy.dtype`)
+   ``make_aligned_dtype`` CuPy utility to create structured dtypes with sufficient alignment for GPU use.
    ``format_parser`` (alias of :class:`numpy.rec.format_parser`)
 
 Data type information
@@ -43,6 +45,7 @@ Data type testing
    :align: left
 
    ``issubdtype`` (alias of :func:`numpy.issubdtype`)
+   ``isdtype`` (alias of :func:`numpy.isdtype`)
 
 Miscellaneous
 -------------

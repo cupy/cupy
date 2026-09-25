@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import pytest
 
-import numpy
-
 import cupy
 from cupy import testing
 import cupyx.scipy.special  # NOQA
@@ -40,7 +38,7 @@ class TestLogsumexp:
         a = xp.array([[100, 1000], [1e10, 1e-10]])
         return scp.special.logsumexp(a, axis=-1, keepdims=True)
 
-    @testing.with_requires('scipy>=1.13')
+    @testing.with_requires('scipy')
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-6)
     def test_array_inputs(self, xp, scp, dtype):
@@ -97,7 +95,7 @@ class TestLogsumexp:
         b = xp.array([1, 0], dtype=dtype)
         return scp.special.logsumexp(a, b=b)
 
-    @testing.with_requires('scipy>=1.13')
+    @testing.with_requires('scipy')
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_b_multi_dims(self, xp, scp, dtype):
@@ -111,12 +109,3 @@ class TestLogsumexp:
     def test_special_values(self, xp, scp):
         a = xp.array([cupy.inf, -cupy.inf, cupy.nan, -cupy.nan])
         return scp.special.logsumexp(a)
-
-    # TODO(asi1024): Fix after initial_value is supported in cupy.max
-    @testing.with_requires('scipy<1.14')
-    @testing.for_all_dtypes(no_bool=True)
-    def test_empty_array_inputs(self, dtype):
-        a = numpy.array([], dtype=dtype)
-        for xp in (scipy, cupyx.scipy):
-            with pytest.raises(ValueError):
-                xp.special.logsumexp(a)

@@ -12,7 +12,7 @@ export NVCC="ccache nvcc"
 git clone https://github.com/data-apis/array-api-tests
 pushd array-api-tests
 pip install -r requirements.txt
-ARRAY_API_TESTS_MODULE=cupy.array_api pytest
+ARRAY_API_TESTS_MODULE=cupy pytest
 popd
 
 "$ACTIONS/cleanup.sh"
