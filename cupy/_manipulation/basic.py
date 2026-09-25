@@ -90,6 +90,22 @@ def copyto(dst, src, casting='same_kind', where=None):
             src = src.squeeze(tuple(range(squeeze_ndim)))
 
     if where is not None:
+        from cupy.backends.backend.api.runtime import is_ascend
+        if is_ascend():
+            # ASCEND: the `where=` ufunc kwarg has no implementation in the
+            # dispatcher (it would be rejected there), so route to
+            # aclnnInplaceMaskedFill{Scalar,Tensor}:
+            # dst = where(mask, src(broadcast), dst).
+            from cupy.backends.ascend.api.acl_utils import py_launch_general
+            mask = cupy.broadcast_to(cupy.asarray(where), dst.shape)
+            if src_is_scalar:
+                py_launch_general('ascend_masked_fill_scalar',
+                                  (mask,), (dst,), (src,), {})
+            else:
+                value = cupy.broadcast_to(cupy.asarray(src), dst.shape)
+                py_launch_general('ascend_masked_fill_tensor',
+                                  (mask, value), (dst,), (), {})
+            return
         _core.elementwise_copy(src, dst, _where=where)
         return
 
