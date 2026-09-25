@@ -46,6 +46,19 @@ from cupy import _util
 from cupy.backends.ascend.api.acl_utils cimport launch_reduction_op
 
 from cupy.xpu cimport stream as stream_module
+
+# uint -> signed promotion for aclnn reductions (docs/ascend/
+# AscendSpecialization.md §1). Kept in sync with _ASCEND_DTYPE_PROMOTE in
+# cupy/backends/ascend/api/acl_utils.pyx, which now serves only the
+# elementwise/general launchers (the reduction dispatcher no longer
+# promotes). all/any handle their dtype needs in C++ (aclop_Any/aclop_All).
+cdef dict _UINT_PROMOTE = {
+    'B': 'i',   # uint8  -> int32
+    'H': 'i',   # uint16 -> int32
+    'I': 'i',   # uint32 -> int32
+    'Q': 'q',   # uint64 -> int64 (numpy 1.x char)
+    'L': 'q',   # uint64 -> int64 (numpy 2.x char)
+}
 cdef inline size_t _get_stream(stream) except *:
     if stream is None:
         return stream_module.get_current_stream_ptr()
@@ -291,6 +304,32 @@ cdef class _AbstractReductionKernel:
         cdef s = _get_stream(stream)
         # NOTE: launch_reduction_op 的 kwargs 形参类型是 dict，传 None 会
         # 直接 TypeError（reduction 全部不可用）。当前没有需要透传的关键字参数，传空 dict。
+
+        # ASCEND: aclnn reductions take no unsigned integer inputs. Promote
+        # uint -> signed per the table above, reduce into a promoted temp
+        # out, then cast the result back into `ret` (whose dtype is what the
+        # CUDA loop types selected). This replaces the uint-promotion block
+        # that used to live in launch_reduction_op_raw.
+        cdef list launch_ins = list(in_args)
+        cdef list launch_outs = [ret]
+        cdef bint promoted = False
+        cdef Py_ssize_t _pi
+        cdef object _x
+        cdef _ndarray_base promoted_out = None
+        for _pi in range(len(launch_ins)):
+            _x = launch_ins[_pi]
+            if isinstance(_x, _ndarray_base) and _x.dtype.char in _UINT_PROMOTE:
+                launch_ins[_pi] = _x.astype(_UINT_PROMOTE[_x.dtype.char])
+                promoted = True
+        if ret.dtype.char in _UINT_PROMOTE:
+            promoted_out = cupy.empty(ret.shape, _UINT_PROMOTE[ret.dtype.char])
+            launch_outs = [promoted_out]
+            promoted = True
+        if promoted:
+            launch_reduction_op(self.name, launch_ins, launch_outs,
+                                axis, keepdims, {}, s)
+            ret[...] = promoted_out
+            return ret
         launch_reduction_op(self.name, list(in_args), [ret], axis, keepdims, {}, s)
         return ret
 

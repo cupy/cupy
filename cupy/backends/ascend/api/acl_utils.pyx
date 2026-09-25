@@ -1573,9 +1573,6 @@ cdef aclError launch_reduction_op_raw(str opname, sequence ins, sequence outs, o
     cdef vector[int64_t] shape
     cdef aclIntArray* dim = NULL
     cdef vector[aclTensor*] tensors
-    cdef object _in0
-    cdef bint _bv
-    cdef list _aa_orig_out = []
 
     # REDUCTION_OP 的 C++ 签名固定为 (self, dim, keepdim, out, kwargs, stream)，
     # 即恰好 1 输入 1 输出。多输入/多输出的 ReductionKernel 若放行，tensors[1]
@@ -1588,18 +1585,12 @@ cdef aclError launch_reduction_op_raw(str opname, sequence ins, sequence outs, o
             + f" (reduction requires exactly 1 input and 1 output, "
               f"got {len(ins)} input(s) / {len(outs)} output(s))")
 
-    # NOTE: all/any 的 dtype 能力补丁（aclnnAny/aclnnAll 只支持 BOOL/INT32/
-    # INT64/FLOAT16/FLOAT32）已下沉到 C++ 侧 aclop_Any/aclop_All
-    # （_run_any_all：不支持的输入先 aclnnCast 到 BOOL 再归约）。
-    # 无符号整型拦截（AscendSpecialization.md §1）：豁免算子见
-    # _UINT_PROMOTE_EXEMPT_OPS
-    cdef list _orig_outs = []
-    cdef list _cast_src = []
-    cdef aclError _cret
-    cdef bint _promoted = False
-    if opname not in _UINT_PROMOTE_EXEMPT_OPS and (_has_promotable_uint(ins) or _has_promotable_uint(outs)):
-        ins, outs, _orig_outs, _cast_src = _promote_io_dtype(opname, ins, outs)
-        _promoted = True
+    # NOTE: 本派发器不再做任何 dtype 处理：
+    #   * all/any 的能力补丁在 C++ 侧 aclop_Any/aclop_All（_run_any_all，
+    #     不支持的输入先 aclnnCast 到 BOOL 再归约）；
+    #   * uint -> signed 提升与 cast-back 在调用方
+    #     cupy/_core/_ascend/_reduction.pyx::_call（_UINT_PROMOTE）。
+    # 这里只做纯粹的「注册表查找 + axes 解析 + 派发」。
 
     # axes -> dim(IntArray) 解析：所有分支要么填 shape、要么响亮报错。
     # （抽成 _parse_reduction_axes 供其他 launch 路径共享；in0 只在 axis=None
@@ -1626,17 +1617,6 @@ cdef aclError launch_reduction_op_raw(str opname, sequence ins, sequence outs, o
             aclDestroyIntArray(dim)
         _delete_keyword_args(acl_kwargs)
     # NOTE: 同 launch_general_func —— 返回错误码，不抛（Python 路径用 checked 版本）
-    # uint 提升：归约成功后把有符号临时结果 cast 回调用方的 uint 数组
-    if _promoted and ret == 0:
-        _cret = _cast_back_outs(_orig_outs, _cast_src, stream_ptr)
-        if _cret != 0:
-            ret = _cret
-    # ASCEND: all/any cast result bool -> uint64 will fail if _promoted
-    if ret == 0 and _aa_orig_out:
-        import numpy as _np
-        _bv = outs[0].get().flat[0] != 0
-        _aa_orig_out[0].set(_np.full(_aa_orig_out[0].shape, 1 if _bv else 0,
-            dtype=_aa_orig_out[0].dtype))
     return ret
 
 
