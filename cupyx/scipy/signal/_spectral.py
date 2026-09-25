@@ -31,7 +31,7 @@ import warnings
 import cupy
 from cupyx.scipy.signal.windows._windows import get_window
 from cupyx.scipy.signal._spectral_impl import (
-    _lombscargle, _spectral_helper, _median_bias, _triage_segments)
+    _lombscargle, _spectral_helper, _triage_segments)
 
 
 def lombscargle(x, y, freqs, precenter=False, normalize=False):
@@ -443,6 +443,11 @@ def csd(
     windows may require a larger overlap.
 
     """
+    if average not in ("mean", "median"):
+        raise ValueError(
+            'average must be "median" or "mean", got %s' % (average,)
+        )
+
     x = cupy.asarray(x)
     y = cupy.asarray(y)
     freqs, _, Pxy = _spectral_helper(
@@ -458,21 +463,8 @@ def csd(
         scaling,
         axis,
         mode="psd",
+        average=average,
     )
-
-    # Average over windows.
-    if len(Pxy.shape) >= 2 and Pxy.size > 0:
-        if Pxy.shape[-1] > 1:
-            if average == "median":
-                Pxy = cupy.median(Pxy, axis=-1) / _median_bias(Pxy.shape[-1])
-            elif average == "mean":
-                Pxy = Pxy.mean(axis=-1)
-            else:
-                raise ValueError(
-                    'average must be "median" or "mean", got %s' % (average,)
-                )
-        else:
-            Pxy = cupy.reshape(Pxy, Pxy.shape[:-1])
 
     return freqs, Pxy
 

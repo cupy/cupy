@@ -37,6 +37,17 @@ from cupyx.scipy.signal._arraytools import (
 from cupyx.scipy.signal.windows._windows import get_window
 
 
+_csd_mean_kernel = cupy.ReductionKernel(
+    'T x, T y, T scale, int64 segment_count',
+    'T z',
+    '(conj(x) * y) * scale',
+    'a + b',
+    'z = a / T(segment_count)',
+    'T(0)',
+    'cupyx_scipy_signal_csd_mean',
+)
+
+
 def _get_raw_typename(dtype):
     return cupy.dtype(dtype).name
 
@@ -224,14 +235,15 @@ def _spectral_helper(
     mode="psd",
     boundary=None,
     padded=False,
+    average=None,
 ):
     """
     Calculate various forms of windowed FFTs for PSD, CSD, etc.
 
     This is a helper function that implements the commonality between
     the stft, psd, csd, and spectrogram functions. It is not designed to
-    be called externally. The windows are not averaged over; the result
-    from each window is returned.
+    be called externally. If `average` is `None`, the windows are not averaged
+    over and the result from each window is returned.
 
     Parameters
     ---------
@@ -296,6 +308,9 @@ def _spectral_helper(
         segments, so that all of the signal is included in the output.
         Defaults to `False`. Padding occurs after boundary extension, if
         `boundary` is not `None`, and `padded` is `True`.
+    average : {None, 'mean', 'median'}, optional
+        Method used to average periodograms over segments when ``mode='psd'``.
+        Defaults to `None`, which returns every segment.
 
     Returns
     -------
@@ -316,7 +331,8 @@ def _spectral_helper(
             f"Unknown value for mode {mode}, must be one of: "
             "{'psd', 'stft'}"
         )
-
+    if average is not None and mode != "psd":
+        raise ValueError("average is only valid when mode='psd'")
     boundary_funcs = {
         "even": even_ext,
         "odd": odd_ext,
@@ -499,11 +515,24 @@ def _spectral_helper(
         # All the same operations on the y data
         result_y = _fft_helper(y, win, detrend_func,  # NOQA
                                nperseg, noverlap, nfft, sides)
-        result = cupy.conj(result) * result_y
     elif mode == "psd":
-        result = cupy.conj(result) * result
+        result_y = result
 
-    result *= scale
+    if mode == "psd" and average == "mean":
+        segment_count = result.shape[-2]
+        # Padding or detrending can give the two FFTs different precisions.
+        fft_dtype = cupy.result_type(result, result_y)
+        result = result.astype(fft_dtype, copy=False)
+        result_y = result_y.astype(fft_dtype, copy=False)
+        kernel_scale = cupy.asarray(scale, dtype=fft_dtype)
+        # Scale each periodogram before summing to avoid premature overflow.
+        result = _csd_mean_kernel(
+            result, result_y, kernel_scale, segment_count, axis=-2)
+    else:
+        if mode == "psd":
+            result = cupy.conj(result) * result_y
+        result *= scale
+
     if sides == "onesided" and mode == "psd":
         if nfft % 2:
             result[..., 1:] *= 2
@@ -519,13 +548,29 @@ def _spectral_helper(
 
     result = result.astype(outdtype)
 
+    if average is not None and average != "mean":
+        segment_count = result.shape[-2]
+        if segment_count > 1:
+            if average == "median":
+                result = (
+                    cupy.median(result, axis=-2) /
+                    _median_bias(segment_count)
+                )
+            else:
+                raise ValueError(
+                    'average must be "median" or "mean", got %s' %
+                    (average,)
+                )
+        else:
+            result = cupy.squeeze(result, axis=-2)
+
     # All imaginary parts are zero anyways
     if same_data and mode != "stft":
         result = result.real
 
-    # Output is going to have new last axis for time/window index, so a
-    # negative axis index shifts down one
-    if axis < 0:
+    # An unaveraged output has a new last axis for time/window index, so
+    # a negative axis index shifts down one.
+    if axis < 0 and average is None:
         axis -= 1
 
     # Roll frequency axis back to axis where the data came from
