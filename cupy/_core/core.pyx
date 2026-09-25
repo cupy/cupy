@@ -2842,9 +2842,19 @@ _round_ufunc_neg_uint = create_ufunc(
 # Array creation routines
 # -----------------------------------------------------------------------------
 
+cdef inline int _ensure_device(
+        runtime._DeviceGuard& guard, dev_arg) except -1:
+    """Makes ``dev_arg`` current until ``guard`` goes out of scope."""
+    if dev_arg is not None:
+        runtime._ensure_device(guard, device._normalize_device_id(dev_arg))
+    return 0
+
+
 cpdef _ndarray_base array(obj, dtype=None, copy=True, order='K',
                           bint subok=False, Py_ssize_t ndmin=0,
-                          bint blocking=False):
+                          bint blocking=False, device=None):
+    cdef runtime._DeviceGuard guard
+    _ensure_device(guard, device)
     # TODO(beam2d): Support subok options
     if subok:
         raise NotImplementedError
@@ -3371,7 +3381,8 @@ cdef _ndarray_base _ndarray_init(
 
 
 cpdef _ndarray_base empty_like(
-        prototype, dtype=None, order='K', subok=None, shape=None):
+        prototype, dtype=None, order='K', subok=None, shape=None,
+        device=None):
     """Returns a new array with same shape and dtype of a given array.
 
     This function currently does not support ``subok`` option.
@@ -3388,6 +3399,9 @@ cpdef _ndarray_base empty_like(
         shape (int or tuple of ints): Overrides the shape of the result. If
             ``order='K'`` and the number of dimensions is unchanged, will try
             to keep order, otherwise, ``order='C'`` is implied.
+        device (int or cupy.cuda.Device, optional): Device on which to create
+            the array. ``None`` (default) means the current device, not the
+            device of ``a``.
 
     Returns:
         cupy.ndarray: A new array with same shape and dtype of ``a`` with
@@ -3396,8 +3410,11 @@ cpdef _ndarray_base empty_like(
     .. seealso:: :func:`numpy.empty_like`
 
     """
+    cdef runtime._DeviceGuard guard
     cdef _ndarray_base a
     cdef memory.MemoryPointer memptr
+
+    _ensure_device(guard, device)
 
     if subok is not None:
         raise TypeError('subok is not supported yet')
