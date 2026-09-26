@@ -866,7 +866,8 @@ cdef class ufunc:
         # are passed to numpy as python scalars again so NEP50 weak promotion
         # picks the same dtype the CUDA loop selection would.
         if (in_args and not has_where and self.nout == 1
-                and not any(isinstance(x, _ndarray_base) for x in in_args)):
+                and not any(isinstance(x, _ndarray_base) for x in in_args)
+                and not given_out_args):
             fname = self.name[len('cupy_'):] if self.name.startswith(
                 'cupy_') else self.name
             numpy_ufunc = getattr(numpy, fname, None)
@@ -883,9 +884,16 @@ cdef class ufunc:
                     np_args.append(weak_t(x))
                 else:
                     np_args.append(x)
-            np_kwargs = {'casting': casting}
+            np_kwargs = {} # not all numpy ufunc support `casting`
             if dtype is not None:
                 np_kwargs['dtype'] = dtype
+            import inspect
+            try:
+                sig = inspect.signature(numpy_ufunc)
+                if 'casting' in sig.parameters:
+                    np_kwargs['casting'] = casting
+            except (ValueError, TypeError):
+                pass
             result = numpy_ufunc(*np_args, **np_kwargs)
             if given_out_args:
                 given_out_args[0][...] = result

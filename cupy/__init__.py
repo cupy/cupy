@@ -113,7 +113,7 @@ except ImportError:
     pass
 from cupy import linalg  # NOQA
 from cupy import polynomial  # NOQA
-# from cupy import random  # NOQA
+from cupy import random  # NOQA
 
 # import class and function
 from cupy._core import ndarray  # NOQA

@@ -570,7 +570,7 @@ cdef object _materialize_host(_ndarray_base cupy_array):
     # offset 0 will copy part[5:7] materialized into [0,1], not [5,6]
     host = numpy.empty(span, dtype=numpy.uint8)
     from cupy.xpu.memory import MemoryPointer as _MemoryPointer
-    _mp = _MemoryPointer(cupy_array.data.meme,
+    _mp = _MemoryPointer(cupy_array.data.mem,
         (cupy_array.data.ptr - cupy_array.data.mem.ptr) + min_off)
     _mp.copy_to_host(host.ctypes.data, span)
 
