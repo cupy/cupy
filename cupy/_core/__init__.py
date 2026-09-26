@@ -26,6 +26,13 @@ if not runtime.is_ascend:
     from cupy._core.raw import RawKernel  # NOQA
     from cupy._core.raw import RawModule  # NOQA
 else:
+    # Ascend 无 CUB/cuTENSOR 二级加速器（aclnn 在 dispatch 层默认接管），
+    # 用空实现保持 cupy._core 顶层名字与 CUDA 路径一致，见 accelerator_stub
+    from cupy._core._ascend.accelerator_stub import (  # NOQA
+        set_elementwise_accelerators, set_reduction_accelerators,
+        set_routine_accelerators, get_elementwise_accelerators,
+        get_reduction_accelerators, get_routine_accelerators)
+
     from cupy._core._ascend import fusion_stub as fusion
     # 共享代码还引用 `cupy._core.new_fusion`（cupy.get_array_module 里的
     # `_core.new_fusion._ArrayProxy`）；Ascend 下同样指向 fusion_stub。
