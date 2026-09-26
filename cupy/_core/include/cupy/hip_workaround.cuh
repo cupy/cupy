@@ -1,6 +1,15 @@
 #ifndef INCLUDE_GUARD_CUPY_HIP_WORKAROUND_H
 #define INCLUDE_GUARD_CUPY_HIP_WORKAROUND_H
 
+#ifdef __HIPCC_RTC__
+
+// Pull in libstdc++ headers so kernel code can use std::is_signed,
+// std::declval, etc. under HIPRTC just like on NVRTC.
+#include <type_traits>
+#include <utility>
+
+#endif  // __HIPCC_RTC__
+
 #ifdef __HIP_DEVICE_COMPILE__
 
 // Determine whether native __shfl_*_sync functions are available.
