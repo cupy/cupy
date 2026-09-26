@@ -44,20 +44,37 @@ from cupy._core._ufuncs import elementwise_copy
 from cupy import _util
 
 from cupy.backends.ascend.api.acl_utils cimport launch_reduction_op
+from cupy.backends.ascend.api.acl_utils cimport ascend_float64_promote_enabled
 
 from cupy.xpu cimport stream as stream_module
 
 # uint -> signed promotion for aclnn reductions (docs/ascend/
-# AscendSpecialization.md §1). Kept in sync with _ASCEND_DTYPE_PROMOTE in
-# cupy/backends/ascend/api/acl_utils.pyx, which now serves only the
-# elementwise/general launchers (the reduction dispatcher no longer
-# promotes). all/any handle their dtype needs in C++ (aclop_Any/aclop_All).
+# AscendSpecialization.md §A.1). Kept in sync with the always-on layer of
+# _ASCEND_DTYPE_PROMOTE in cupy/backends/ascend/api/acl_utils.pyx, which
+# serves only the elementwise/general launchers (the reduction dispatcher no
+# longer promotes). Narrow ints (b/h) are NOT promoted here: aclnnAmax/Amin/
+# mean/sum take them natively; all/any handle their dtype needs in C++
+# (aclop_Any/aclop_All). The optional float64/complex128 demotion layer DOES
+# apply here, live-gated by enable_float64_to_float32 (see _FLOAT64_DEMOTE).
 cdef dict _UINT_PROMOTE = {
     'B': 'i',   # uint8  -> int32
     'H': 'i',   # uint16 -> int32
     'I': 'i',   # uint32 -> int32
     'Q': 'q',   # uint64 -> int64 (numpy 1.x char)
     'L': 'q',   # uint64 -> int64 (numpy 2.x char)
+}
+
+# 可选层（enable_float64_to_float32 开关，见 AscendSpecialization.md A.1.1）：
+# float64 -> float32、complex128 -> complex64。开关打开后并入 `_call` 的有效
+# 提升表，结果经 `ret[...] = promoted_out`（elementwise copy，dtype 转换）
+# 写回原 float64/complex128 out —— 用户可见 dtype 不变，精度降为单精度。
+# 注意 aclnnAmax/Amin/mean/sum 本身原生收 DOUBLE：开关打开后这些归约也要多
+# 付两次 cast kernel；开关用于不收 DOUBLE 的归约/组合算子和 910B（无 float64
+# 硬件吞吐）。状态经 acl_utils.ascend_float64_promote_enabled() 实时读取，
+# py_enable_float64_to_float32 的运行时切换对 reduction 同样生效。
+cdef dict _FLOAT64_DEMOTE = {
+    'd': 'f',   # float64    -> float32
+    'G': 'F',   # complex128 -> complex64
 }
 cdef inline size_t _get_stream(stream) except *:
     if stream is None:
@@ -310,25 +327,37 @@ cdef class _AbstractReductionKernel:
         # out, then cast the result back into `ret` (whose dtype is what the
         # CUDA loop types selected). This replaces the uint-promotion block
         # that used to live in launch_reduction_op_raw.
+        # 可选层：enable_float64_to_float32 打开时（env var 或运行时 setter，
+        # 实时读取），float64->float32、complex128->complex64 并入有效表；
+        # 归约写进单精度临时 out，再经 `ret[...] = promoted_out` cast 回原
+        # float64/complex128 ret（用户可见 dtype 不变，精度单精度，
+        # AscendSpecialization.md §A.1.1）。
+        cdef dict _promote = _UINT_PROMOTE
         cdef list launch_ins = list(in_args)
         cdef list launch_outs = [ret]
         cdef bint promoted = False
         cdef Py_ssize_t _pi
         cdef object _x
         cdef _ndarray_base promoted_out = None
+        if ascend_float64_promote_enabled():
+            _promote = dict(_UINT_PROMOTE)
+            _promote.update(_FLOAT64_DEMOTE)
         for _pi in range(len(launch_ins)):
             _x = launch_ins[_pi]
-            if isinstance(_x, _ndarray_base) and _x.dtype.char in _UINT_PROMOTE:
-                launch_ins[_pi] = _x.astype(_UINT_PROMOTE[_x.dtype.char])
+            if isinstance(_x, _ndarray_base) and _x.dtype.char in _promote:
+                launch_ins[_pi] = _x.astype(_promote[_x.dtype.char])
                 promoted = True
-        if ret.dtype.char in _UINT_PROMOTE:
-            promoted_out = cupy.empty(ret.shape, _UINT_PROMOTE[ret.dtype.char])
+        if ret.dtype.char in _promote:
+            promoted_out = cupy.empty(ret.shape, _promote[ret.dtype.char])
             launch_outs = [promoted_out]
             promoted = True
         if promoted:
             launch_reduction_op(self.name, launch_ins, launch_outs,
                                 axis, keepdims, {}, s)
-            ret[...] = promoted_out
+            # 仅当 out 也被提升（promoted_out 非 None）才需要 cast-back：
+            # 只有输入被提升而 ret 本身不在提升表时，归约已直接写进 ret。
+            if promoted_out is not None:
+                ret[...] = promoted_out
             return ret
         launch_reduction_op(self.name, list(in_args), [ret], axis, keepdims, {}, s)
         return ret

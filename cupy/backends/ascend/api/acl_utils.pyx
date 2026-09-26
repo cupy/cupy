@@ -903,17 +903,25 @@ cdef void raise_acl_op_error(str opname, long ret) except *:
 
 
 # ---------------------------------------------------------------------------
-# 无符号整型 I/O 提升（docs/ascend/AscendSpecialization.md §1）
+# I/O dtype 提升（docs/ascend/AscendSpecialization.md §A.1）
 #
-# 部分 aclnn 算子不支持无符号整型（UINT8/16/32/64）。三个 launch_*_raw 派发
-# 入口在这里统一拦截：
-#   1. _promote_io_dtype —— uint 输入 astype 成有符号、uint 输出新建有符号
-#      临时数组；
-#   2. 算子在有符号 dtype 上执行；
-#   3. _cast_back_outs —— 把有符号临时 out 的结果 cast 回调用方原来的 uint
-#      数组（走已注册的 ascend_cast）。
-# 开销是每次调用多两次 cast kernel：migration analyzer 应建议用户直接用
-# 有符号 dtype 规避（见 AscendSpecialization.md）。
+# 部分 aclnn 算子不支持某些 dtype（uint 全系、int8/int16 窄整型，以及可选的
+# float64/complex128）。elementwise/general 两个 launch_*_raw 派发入口在这里
+# 统一拦截：
+#   1. _promote_io_dtype —— 不可支持 dtype 的输入 astype 成目标 dtype、
+#      对应输出新建目标 dtype 临时数组；
+#   2. 算子在提升 dtype 上执行；
+#   3. _cast_back_outs —— 把临时 out 的结果 cast 回调用方原来的数组
+#      （走已注册的 ascend_cast）。
+# 提升分两层：
+#   * 常开层 _ASCEND_DTYPE_PROMOTE：uint 全系 + int8/int16 -> int32。
+#     「不提升就算不了」的正确性规避；开销是每次调用多两次 cast kernel，
+#     migration analyzer 应建议用户直接用提升后的 dtype 规避。
+#   * 可选层 _FLOAT64_TO_FLOAT32_PROMOTE：float64 -> float32、
+#     complex128 -> complex64。由运行时开关 enable_float64_to_float32 控制
+#     （环境变量 CUPY_ASCEND_ENABLE_FLOAT64_TO_FLOAT32=1，或
+#     py_enable_float64_to_float32(True)），属于精度换兼容（910B 无
+#     float64 硬件吞吐，且部分算子不收 DOUBLE/COMPLEX128）。
 # ---------------------------------------------------------------------------
 
 # 豁免拦截的算子：本身原生支持 uint（或作为本机制的实现载体），提升反而
@@ -937,33 +945,81 @@ cdef dict _ASCEND_DTYPE_PROMOTE = {
     'I': 'i',   # uint32 -> int
     'Q': 'q',   # uint64 -> int64 numpy 1.x char
     'L': 'q',   # uint64 -> int64  numpy 2.x char
+    'b': 'i',   # int8  -> int32：部分算子不收窄整型（如 aclnnArgMax 只收 FLOAT/FLOAT16）
+    'h': 'i',   # int16 -> int32：部分算子不支持 int16（同 uint16 提升的理由）
 }
 
-cdef bint _has_promotable_uint(sequence arrs):
+# 可选层：float64/complex128 降档。由 enable_float64_to_float32 开关控制
+# （默认关；CUPY_ASCEND_ENABLE_FLOAT64_TO_FLOAT32=1 打开）。cast-back 落到
+# ascend_cast（aclnnCast 原生支持 DOUBLE/COMPLEX128），用户可见的 out dtype
+# 不变，只是计算精度降为单精度。
+cdef dict _FLOAT64_TO_FLOAT32_PROMOTE = {
+    'd': 'f',   # float64    -> float32
+    'G': 'F',   # complex128 -> complex64
+}
+
+cdef dict _ASCEND_DTYPE_PROMOTE_ALL = dict(_ASCEND_DTYPE_PROMOTE)
+_ASCEND_DTYPE_PROMOTE_ALL.update(_FLOAT64_TO_FLOAT32_PROMOTE)
+
+# 开关状态：模块导入时读环境变量，之后可用 py_enable_float64_to_float32 运行时切换
+cdef bint _float64_promote_enabled = os.environ.get(
+    'CUPY_ASCEND_ENABLE_FLOAT64_TO_FLOAT32', '0') == '1'
+
+
+def py_enable_float64_to_float32(bint enable=True):
+    """运行时开关：float64/complex128 的 I/O 降档为 float32/complex64。
+
+    打开后 elementwise/general 派发通道里 float64 输入会被提升为 float32
+    计算，结果经 ascend_cast 写回原 float64/complex128 out（out dtype 不变，
+    精度降为单精度）。影响范围与豁免表见本文件「I/O dtype 提升」注释块。
+    """
+    global _float64_promote_enabled
+    _float64_promote_enabled = enable
+
+
+def py_is_float64_to_float32_enabled() -> bint:
+    return _float64_promote_enabled
+
+
+cdef bint ascend_float64_promote_enabled():
+    """供其它模块 cimport 的实时开关读取（运行时切换立即生效）。"""
+    return _float64_promote_enabled
+
+
+cdef dict _promote_table():
+    """有效提升表 = 常开层 (+ 可选层 if enable_float64_to_float32)。"""
+    if _float64_promote_enabled:
+        return _ASCEND_DTYPE_PROMOTE_ALL
+    return _ASCEND_DTYPE_PROMOTE
+
+
+cdef bint _has_promotable_io(sequence arrs):
     cdef object a
+    cdef dict table = _promote_table()
     for a in arrs:
-        if isinstance(a, _ndarray_base) and a.dtype.char in _ASCEND_DTYPE_PROMOTE:
+        if isinstance(a, _ndarray_base) and a.dtype.char in table:
             return True
     return False
 
 
 cdef tuple _promote_io_dtype(str opname, sequence ins, sequence outs):
-    """uint 输入提升为有符号、uint 输出新建有符号临时数组。
+    """不可支持 dtype 的输入提升（uint/窄整型常开；float64 降档可选）。
 
     返回 ``(p_ins, p_outs, orig_outs, cast_src)``：
 
     * ``p_ins``/``p_outs`` —— 提升后的 ins/outs（位置与原列表一一对应，
       非 ndarray 操作数如标量原样保留）；
-    * ``orig_outs`` —— ``[(下标, 原 uint 数组), ...]``，供 _cast_back_outs
+    * ``orig_outs`` —— ``[(下标, 原数组), ...]``，供 _cast_back_outs
       把结果写回调用方数组；
     * ``cast_src`` —— cast-back 的来源列表：有 out 用提升后的 outs；
       无 out 且算子名含 ``inplace``（如 ``ascend_inplace_add`` 的
       ``a += b`` 形式）时结果写在提升后的 ``ins[0]`` 里，来源是 ins。
 
-    astype/empty 都走创建或 ascend_cast 路径（有符号目标），不会被本
-    拦截再次提升，无递归。
+    astype/empty 都走创建或 ascend_cast 路径（提升目标均在 aclnnCast 支持
+    列表内），不会被本拦截再次提升，无递归。
     """
     import cupy as _cupy_mod
+    cdef dict table = _promote_table()
     cdef list p_ins = list(ins)
     cdef list p_outs = list(outs)
     cdef list orig_outs = []
@@ -977,15 +1033,15 @@ cdef tuple _promote_io_dtype(str opname, sequence ins, sequence outs):
         a = p_ins[i]
         if isinstance(a, _ndarray_base):
             c = a.dtype.char
-            if c in _ASCEND_DTYPE_PROMOTE:
-                p_ins[i] = a.astype(_ASCEND_DTYPE_PROMOTE[c])
+            if c in table:
+                p_ins[i] = a.astype(table[c])
     for i in range(len(p_outs)):
         a = p_outs[i]
         if isinstance(a, _ndarray_base):
             c = a.dtype.char
-            if c in _ASCEND_DTYPE_PROMOTE:
+            if c in table:
                 orig_outs.append((i, a))
-                p_outs[i] = _cupy_mod.empty(a.shape, dtype=_ASCEND_DTYPE_PROMOTE[c])
+                p_outs[i] = _cupy_mod.empty(a.shape, dtype=table[c])
     if inplace and p_ins[0] is not orig_in0:
         orig_outs.append((0, orig_in0))
         return p_ins, p_outs, orig_outs, p_ins
@@ -1032,15 +1088,15 @@ cdef aclError launch_general_func_raw(str opname, sequence ins, sequence outs, l
         return launch_acl_func_raw(opname, ins, outs, args, kwargs, stream_ptr)
     func_ptr = _builtin_operators[op_info]
 
-    # 无符号整型拦截（AscendSpecialization.md §1）：豁免算子见
+    # I/O dtype 提升拦截（AscendSpecialization.md §A.1）：豁免算子见
     # _UINT_PROMOTE_EXEMPT_OPS。放在 fall-through 之后：promote 后 ins/outs
-    # 已无 uint，即使落到下面的分支路径再被拦截也是 no-op，cast-back 责任
-    # 只属于发起 promote 的这一层。
+    # 已无可提升 dtype，即使落到下面的分支路径再被拦截也是 no-op，cast-back
+    # 责任只属于发起 promote 的这一层。
     cdef list _orig_outs
     cdef list _cast_src
     cdef aclError _cret
     cdef bint _promoted = False
-    if opname not in _UINT_PROMOTE_EXEMPT_OPS and (_has_promotable_uint(ins) or _has_promotable_uint(outs)):
+    if opname not in _UINT_PROMOTE_EXEMPT_OPS and (_has_promotable_io(ins) or _has_promotable_io(outs)):
         ins, outs, _orig_outs, _cast_src = _promote_io_dtype(opname, ins, outs)
         _promoted = True
 
@@ -1108,7 +1164,8 @@ cdef aclError launch_general_func_raw(str opname, sequence ins, sequence outs, l
     #     的派发入口说明）。
     # 仍然会抛的是**调用方 bug**（参数不可转换、未知 key、op 未注册），
     # 那些是 Cython 侧的参数校验，不属于 acl 错误码体系。
-    # uint 提升：算子成功后把有符号临时结果 cast 回调用方的 uint 数组
+    # I/O dtype 提升：算子成功后把临时结果 cast 回调用方原来的数组
+    # （uint/窄整型常开；float64/complex128 降档仅在开关打开时发生）
     if _promoted and ret == 0:
         _cret = _cast_back_outs(_orig_outs, _cast_src, stream_ptr)
         if _cret != 0:
@@ -1324,13 +1381,13 @@ cdef aclError launch_acl_func_raw(str opname, sequence ins, sequence outs, list 
             f"kwargs={dict(kwargs)!r}；这些参数会被丢弃导致结果错误，故直接报错。"
             f"（迁移期可设 CUPY_ASCEND_LENIENT_ARGS=1 恢复旧行为）")
     #
-    # 无符号整型拦截（AscendSpecialization.md §1）：豁免算子见
+    # I/O dtype 提升拦截（AscendSpecialization.md §A.1）：豁免算子见
     # _UINT_PROMOTE_EXEMPT_OPS。
     cdef list _orig_outs
     cdef list _cast_src
     cdef aclError _cret
     cdef bint _promoted = False
-    if opname not in _UINT_PROMOTE_EXEMPT_OPS and (_has_promotable_uint(ins) or _has_promotable_uint(outs)):
+    if opname not in _UINT_PROMOTE_EXEMPT_OPS and (_has_promotable_io(ins) or _has_promotable_io(outs)):
         ins, outs, _orig_outs, _cast_src = _promote_io_dtype(opname, ins, outs)
         _promoted = True
     cdef aclScalar* scalar_ptr = NULL
@@ -1438,7 +1495,8 @@ cdef aclError launch_acl_func_raw(str opname, sequence ins, sequence outs, list 
         _destroy_acl_scalar(scalar_ptr)
 
     # NOTE: 同 launch_general_func —— 返回错误码，不抛（Python 路径用 checked 版本）
-    # uint 提升：算子成功后把有符号临时结果 cast 回调用方的 uint 数组
+    # I/O dtype 提升：算子成功后把临时结果 cast 回调用方原来的数组
+    # （uint/窄整型常开；float64/complex128 降档仅在开关打开时发生）
     if _promoted and ret == 0:
         _cret = _cast_back_outs(_orig_outs, _cast_src, stream_ptr)
         if _cret != 0:

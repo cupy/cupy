@@ -41,3 +41,8 @@ cdef aclError launch_reduction_op_raw(str opname, sequence ins, sequence outs,
 # Consumed by `cupy/_core/_ascend/_kernel.pyx` to fail loudly on kernels that
 # have no Ascend implementation instead of raising a bare KeyError.
 cdef bint is_acl_ufunc_registered(str opname) except *
+
+# Live state of the enable_float64_to_float32 switch (A.1.1). Cimported by
+# `cupy/_core/_ascend/_reduction.pyx` so the runtime setter
+# (py_enable_float64_to_float32) applies to the reduction channel as well.
+cdef bint ascend_float64_promote_enabled()
