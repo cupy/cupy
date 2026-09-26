@@ -54,7 +54,7 @@ def test_add_at_dtype_gate_is_narrowed_on_ascend():
     """Ascend 下 host 侧 dtype 白名单收窄为 aclnnScatterAdd 支持的类型。"""
     from cupy._core import _routines_indexing as idx
     # 本环境按 Ascend 构建，runtime 判定应为 True（is_ascend 来自 backend）
-    from cupy.backends.backend.api.runtime import is_ascend
-    if not is_ascend():
+    from cupy.backends.backend import is_ascend
+    if not is_ascend:
         pytest.skip('non-Ascend backend build')
     assert idx.py_scatter_ascend_gate_active()

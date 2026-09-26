@@ -24,10 +24,10 @@ def count_nonzero(a, axis=None):
     """
 
     try:
-        from cupy.backends.backend.api.runtime import is_ascend
+        from cupy.backends.backend import is_ascend
         import numpy
         import cupy
-        if is_ascend():
+        if is_ascend:
             # ASCEND: `_count_nonzero` is not registered
             return cupy.sum((a != 0).astype(numpy.intp), axis=axis) 
     except ImportError:

@@ -149,9 +149,9 @@ def test_run_computes_with_host_numpy(fallback_active, no_device_cupy):
 # 2. 接线层（cupy.linalg.* -> cpu_fallback.call）
 # ---------------------------------------------------------------------------
 def _install_ascend(monkeypatch):
-    """让 ``is_ascend()`` 在所有调用点都为 True。"""
-    import cupy.backends.backend.api.runtime as runtime
-    monkeypatch.setattr(runtime, 'is_ascend', lambda: True)
+    """让 ``is_ascend`` 属性在所有调用点都为 True。"""
+    import cupy.backends.backend as backend
+    monkeypatch.setattr(backend, 'is_ascend', True)
 
 
 def _install_call_spy(monkeypatch, calls):
@@ -202,7 +202,7 @@ def test_wiring_name_appears_in_source(name):
     func = getattr(cupy.linalg, name.split('.')[1])
     source = inspect.getsource(func)
     assert 'cpu_fallback.call({!r}'.format(name) in source, source
-    assert 'is_ascend()' in source
+    assert 'is_ascend' in source
 
 
 def test_cholesky_still_rejects_non_cupy_array(monkeypatch):
@@ -216,9 +216,9 @@ def test_cholesky_still_rejects_non_cupy_array(monkeypatch):
 
 
 def test_cuda_path_untouched(monkeypatch):
-    """``is_ascend()`` 为 False 时不能碰 fallback（CUDA 后端仍有 cuSOLVER 实现）。"""
-    import cupy.backends.backend.api.runtime as runtime
-    monkeypatch.setattr(runtime, 'is_ascend', lambda: False)
+    """``is_ascend`` 为 False 时不能碰 fallback（CUDA 后端仍有 cuSOLVER 实现）。"""
+    import cupy.backends.backend as backend
+    monkeypatch.setattr(backend, 'is_ascend', False)
     calls = []
     _install_call_spy(monkeypatch, calls)
     for name in ('det', 'eigvals', 'eigh'):

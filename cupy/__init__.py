@@ -26,21 +26,9 @@ from cupy.backends.cuda import libs as _cuda_backend_libs
 _sys.modules["cupy_backends.cuda.api"] = _xpu_backend_api
 _sys.modules["cupy_backends.cuda.libs"] = _cuda_backend_libs
 
-# CANN 的 libop_common.so 引用了三个 ge:: 错误串辅助函数
-# (GetViewErrorCodeStr / TypeUtils::FormatToSerialString /
-#  TypeUtils::DataTypeToSerialString)，其提供者是 OPP 包里的 liboptiling.so，
-# 但 libop_common 自身带 BIND_NOW(-z now)，而 CPython 默认以 RTLD_NOW dlopen
-# 我们链接了 op_common 的扩展，于是 import 阶段就解析失败。
-# 解决：先用 RTLD_GLOBAL 预加载 liboptiling.so，把符号放进全局名字空间，
-# 之后 libop_common 即可正常解析。非 Ascend 环境没有该库，静默跳过。
-try:
-    import ctypes as _ctypes
-    import os as _os
-    _ctypes.CDLL('liboptiling.so', mode=_os.RTLD_LAZY | _os.RTLD_GLOBAL)
-except (OSError, AttributeError):
-    pass
-
-from cupy.backends.backend.api.runtime import is_ascend
+# liboptiling.so 的 RTLD_GLOBAL 预加载已下沉到 cupy.backends.backend.__init__
+# （backend 扩展入口包，必须先于 api.runtime 的动态库解析完成，见该文件注释）。
+from cupy.backends.backend import is_ascend
 
 _environment._detect_duplicate_installation()  # NOQA
 _environment._setup_win32_dll_directory()  # NOQA

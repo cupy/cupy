@@ -96,8 +96,8 @@ def tri(N, M=None, k=0, dtype=float):
     """
     if M is None:
         M = N
-    from cupy.backends.backend.api.runtime import is_ascend
-    if is_ascend():
+    from cupy.backends.backend import is_ascend
+    if is_ascend:
         # tri == tril(ones)：cupy_tri 是 CUDA ElementwiseKernel（Ascend 上没有
         # 对应注册），用已注册的 ascend_tril (aclnnTril) 组合，见
         # _routines_linalg._ascend_tri。
@@ -123,8 +123,8 @@ def tril(m, k=0):
 
     """
     m = cupy.asarray(m)
-    from cupy.backends.backend.api.runtime import is_ascend
-    if is_ascend():
+    from cupy.backends.backend import is_ascend
+    if is_ascend:
         # 直接走已注册的 ascend_tril (aclnnTril)，免去 tri mask + where 组合；
         # upper=False 即下三角。批处理维度由 aclnnTril 自身支持。
         from cupy._core import _routines_linalg as _linalg
@@ -150,8 +150,8 @@ def triu(m, k=0):
 
     """
     m = cupy.asarray(m)
-    from cupy.backends.backend.api.runtime import is_ascend
-    if is_ascend():
+    from cupy.backends.backend import is_ascend
+    if is_ascend:
         # 同 tril：ascend_triu (aclnnTriu)，upper=True 即上三角
         from cupy._core import _routines_linalg as _linalg
         return _linalg._ascend_tri(m, k, True)

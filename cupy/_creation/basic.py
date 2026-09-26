@@ -7,17 +7,10 @@ import numpy
 
 import cupy
 from cupy._core.internal import _get_strides_for_order_K, _update_order_char
+from cupy.backends.backend import is_ascend
 from cupy.typing._types import (
     _OrderKACF, _OrderCF, _ShapeLike, DTypeLike, NDArray,
 )
-
-
-def _is_ascend():
-    try:
-        from cupy.backends.backend.api.runtime import is_ascend
-        return is_ascend()
-    except ImportError:
-        return False
 
 
 def empty(
@@ -147,7 +140,7 @@ def eye(
     ret = zeros((N, M), dtype=dtype, order=order)
     if k <= -N or k >= M:
         return ret
-    if _is_ascend():
+    if is_ascend:
         # diagonal(k) returns a non-contiguous view, which ndarray.fill
         # cannot handle correctly on Ascend. Route through
         # aclnnInplaceFillDiagonal instead (main diagonal only, so use

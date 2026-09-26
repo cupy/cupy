@@ -237,8 +237,8 @@ def inv(a):
     _util._assert_stacked_2d(a)
     _util._assert_stacked_square(a)
 
-    from cupy.backends.backend.api.runtime import is_ascend
-    if is_ascend():
+    from cupy.backends.backend import is_ascend
+    if is_ascend:
         # aclnnInverse only handles a single 2-D matrix; batch by looping.
         from cupy._core import _routines_linalg as _linalg
         if a.ndim == 2:

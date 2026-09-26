@@ -621,7 +621,7 @@ cpdef _ndarray_base matmul(
 # `cupyx.lapack`, which is a stub on Ascend. Plain `.py` files cannot be
 # substituted by the build system (`features/ascend.py` only swaps `.pyx`),
 # so the aclnn-backed implementations live here and `cupy/linalg/*.py`
-# calls into them guarded by `cupy.backends.ascend.is_ascend()`.
+# calls into them guarded by `cupy.backends.ascend.is_ascend`.
 # ======================================================================
 
 

@@ -75,8 +75,8 @@ class vectorize:
 
     def __call__(self, *args):
         try:
-            from cupy.backends.backend.api.runtime import is_ascend
-            if is_ascend():
+            from cupy.backends.backend import is_ascend
+            if is_ascend:
                 # ASCEND: use numpy host cpu to impl cupy_vectorize fallback
                 import numpy as _np
                 import cupy as _cp

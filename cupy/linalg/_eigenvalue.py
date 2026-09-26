@@ -261,8 +261,8 @@ def eigh(a, UPLO='L'):
     _util._assert_stacked_2d(a)
     _util._assert_stacked_square(a)
 
-    from cupy.backends.backend.api.runtime import is_ascend
-    if is_ascend():
+    from cupy.backends.backend import is_ascend
+    if is_ascend:
         from cupy._core._ascend import cpu_fallback
         return cpu_fallback.call('linalg.eigh', a, UPLO=UPLO)
 
@@ -321,8 +321,8 @@ def eig(a):
     _util._assert_stacked_2d(a)
     _util._assert_stacked_square(a)
 
-    from cupy.backends.backend.api.runtime import is_ascend
-    if is_ascend():
+    from cupy.backends.backend import is_ascend
+    if is_ascend:
         from cupy._core._ascend import cpu_fallback
         return cpu_fallback.call('linalg.eig', a)
 
@@ -369,8 +369,8 @@ def eigvalsh(a, UPLO='L'):
     _util._assert_stacked_2d(a)
     _util._assert_stacked_square(a)
 
-    from cupy.backends.backend.api.runtime import is_ascend
-    if is_ascend():
+    from cupy.backends.backend import is_ascend
+    if is_ascend:
         from cupy._core._ascend import cpu_fallback
         return cpu_fallback.call('linalg.eigvalsh', a, UPLO=UPLO)
 
@@ -421,8 +421,8 @@ def eigvals(a):
     _util._assert_stacked_2d(a)
     _util._assert_stacked_square(a)
 
-    from cupy.backends.backend.api.runtime import is_ascend
-    if is_ascend():
+    from cupy.backends.backend import is_ascend
+    if is_ascend:
         from cupy._core._ascend import cpu_fallback
         return cpu_fallback.call('linalg.eigvals', a)
 

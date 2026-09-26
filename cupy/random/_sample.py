@@ -241,7 +241,7 @@ def multinomial(n, pvals, size=None):
     shape = size + (p,)
     ys = basic.zeros(shape, 'l')
     if ys.size > 0:
-        if runtime.is_ascend():
+        if runtime.is_ascend:
             return _ascend_multinomial(n, pvals, m, p, shape)
         xs = choice(p, p=pvals, size=n * m)
         _multinominal_kernel(xs, p, n, ys)

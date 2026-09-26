@@ -4,14 +4,7 @@ import numpy
 
 import cupy
 from cupy import _core
-
-
-def _is_ascend():
-    try:
-        from cupy.backends.backend.api.runtime import is_ascend
-        return is_ascend()
-    except ImportError:
-        return False
+from cupy.backends.backend import is_ascend
 
 
 def place(arr, mask, vals):
@@ -146,7 +139,7 @@ def putmask(a, mask, values):
 
     else:
         values = values.ravel()
-        if _is_ascend():
+        if is_ascend:
             # `_putmask_kernel` (ElementwiseKernel `cupy_putmask_kernel`) has
             # no Ascend registration (`ascend_putmask_kernel` does not exist;
             # neither do `ascend_resize`/`ascend_repeat`). Compose the
@@ -209,7 +202,7 @@ def fill_diagonal(a, val, wrap=False):
             raise ValueError('All dimensions of input must be of equal length')
         step = 1 + numpy.cumprod(a.shape[:-1]).sum()
 
-    if _is_ascend() and numpy.isscalar(val) and not numpy.iscomplexobj(val):
+    if is_ascend and numpy.isscalar(val) and not numpy.iscomplexobj(val):
         # aclnnInplaceFillDiagonal accepts a scalar fill value only; numpy's
         # array_like / complex val keeps the Python path below.
         from cupy.backends.ascend.api.acl_utils import py_launch_general

@@ -8,7 +8,7 @@ AscendC 内核）。项目里的同类先例：
 * C++ 侧 `acl_reduction_ops.h` 的 `aclop_NanMin` / `aclop_NanMax` ——
   `NanToNum(±inf)` + `Min/Max`；本次新增的 `aclop_NanProd` —— `NanToNum(nan=1)` + `Prod`；
   以及 `aclop_IsNan` = `not_equal(x, x)`、`aclop_Copysign` = abs+neg+ge+s_where。
-* Python 侧 `cupy/linalg/_decomposition.py` 的 `is_ascend()` 分支 —— 组合已有算子实现
+* Python 侧 `cupy/linalg/_decomposition.py` 的 `is_ascend` 分支 —— 组合已有算子实现
   `qr/svd/inv`；`cupy/_core/_ascend/_routines_sorting.pyx` 的 `partition → sort` 回退。
 
 本模块集中放**纯 Python** 的组合实现，只在 :func:`active` 为真（Ascend 后端）时被公开
@@ -70,8 +70,8 @@ def active() -> bool:
     global _ASCEND
     if _ASCEND is None:
         try:
-            from cupy.backends.backend.api.runtime import is_ascend
-            _ASCEND = bool(is_ascend())
+            from cupy.backends.backend import is_ascend
+            _ASCEND = bool(is_ascend)
         except Exception:      # pragma: no cover - 非 ascend 环境
             _ASCEND = False
     return _ASCEND

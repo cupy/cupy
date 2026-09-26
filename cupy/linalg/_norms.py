@@ -95,8 +95,8 @@ def norm(x, ord=None, axis=None, keepdims=False):
             return abs(x).sum(axis=axis, keepdims=keepdims)
         elif ord is None or ord == 2:
             try:
-                from cupy.backends.backend.api.runtime import is_ascend
-                if is_ascend():
+                from cupy.backends.backend import is_ascend
+                if is_ascend:
                     # ASCEND _norm_ord2 not registered, impl it using cupy APIs
                     sq = x * x
                     s = sq.sum(axis=axis, keepdims=keepdims)
@@ -249,8 +249,8 @@ def det(a):
 
     .. seealso:: :func:`numpy.linalg.det`
     """
-    from cupy.backends.backend.api.runtime import is_ascend
-    if is_ascend():
+    from cupy.backends.backend import is_ascend
+    if is_ascend:
         _util._assert_stacked_2d(a)
         _util._assert_stacked_square(a)
         if a.dtype.kind in 'fc':
@@ -330,8 +330,8 @@ def slogdet(a):
     _util._assert_stacked_2d(a)
     _util._assert_stacked_square(a)
 
-    from cupy.backends.backend.api.runtime import is_ascend
-    if is_ascend():
+    from cupy.backends.backend import is_ascend
+    if is_ascend:
         if a.dtype.kind == 'f' and a.dtype in (numpy.float32, numpy.float64):
             shape = a.shape[:-2]
             if a.size == 0:

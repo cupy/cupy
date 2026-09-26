@@ -94,8 +94,8 @@ def active() -> bool:
     global _ASCEND
     if _ASCEND is None:
         try:
-            from cupy.backends.backend.api.runtime import is_ascend
-            _ASCEND = bool(is_ascend())
+            from cupy.backends.backend import is_ascend
+            _ASCEND = bool(is_ascend)
         except Exception:      # pragma: no cover - 非 ascend 环境
             _ASCEND = False
     if not _ASCEND:

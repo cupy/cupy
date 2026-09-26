@@ -13,7 +13,7 @@ from cupy._core._kernel import _get_warpsize  # NOQA
 from cupy._core._reduction import ReductionKernel  # NOQA
 
 from cupy.backends.backend.api import runtime
-if not runtime.is_ascend():
+if not runtime.is_ascend:
     # internal APIs for testing and development
     from cupy._core._accelerator import set_elementwise_accelerators  # NOQA
     from cupy._core._accelerator import set_reduction_accelerators  # NOQA

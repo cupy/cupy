@@ -196,8 +196,8 @@ def kaiser(M, beta):
         return cupy.array([])
 
     try:
-        from cupy.backends.backend.api.runtime import is_ascend
-        if is_ascend():
+        from cupy.backends.backend import is_ascend
+        if is_ascend:
             # ASCEND _kaiser_kernel not registered/compiled,  using numpy host to impl
             return cupy.asarray(numpy.kaiser(M, beta))
     except ImportError:

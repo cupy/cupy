@@ -122,10 +122,8 @@ IF CUPY_CANN_VERSION <= 0:
 _is_hip_environment = hip_environment  # for runtime being cimport'd
 is_hip = hip_environment  # for runtime being import'd
 
-_is_ascend = ascend_environment
-
-def is_ascend():
-    return _is_ascend
+_is_ascend = ascend_environment  # for runtime being cimport'd
+is_ascend = ascend_environment  # for runtime being import'd, like is_hip
 
 ###############################################################################
 # Error handling

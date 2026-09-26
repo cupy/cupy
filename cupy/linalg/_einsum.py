@@ -467,8 +467,8 @@ def _use_native_einsum(operands, dtype):
     if not isinstance(operands[0], str):
         return False
     try:
-        from cupy.backends.backend.api.runtime import is_ascend
-        if not is_ascend():
+        from cupy.backends.backend import is_ascend
+        if not is_ascend:
             return False
     except Exception:
         return False

@@ -60,8 +60,8 @@ def piecewise(x, condlist, funclist):
         if isinstance(func, cupy.ndarray):
             func = func.astype(x.dtype)
     try:
-        from cupy.backends.backend.api.runtime import is_ascend
-        if is_ascend():
+        from cupy.backends.backend import is_ascend
+        if is_ascend:
             # ASCEND: `_piecewise_kernel` (ElementwiseKernel) is not
             # registered; compose from already-dispatched ops instead:
             # out = out*(~cond) + func*cond

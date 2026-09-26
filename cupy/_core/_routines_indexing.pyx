@@ -32,8 +32,8 @@ cdef inline bint _ascend_runtime():
     if not _ascend_checked:
         _ascend_checked = True
         try:
-            from cupy.backends.backend.api.runtime import is_ascend
-            _ascend_flag = is_ascend()
+            from cupy.backends.backend import is_ascend
+            _ascend_flag = is_ascend
         except Exception:
             _ascend_flag = False
     return _ascend_flag

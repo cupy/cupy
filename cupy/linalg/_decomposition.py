@@ -184,8 +184,8 @@ def cholesky(a):
 
     .. seealso:: :func:`numpy.linalg.cholesky`
     """
-    from cupy.backends.backend.api.runtime import is_ascend
-    if is_ascend():
+    from cupy.backends.backend import is_ascend
+    if is_ascend:
         # CANN 无 potrf（ops-blas 的 LAPACK 批量接口也不含）-> host NumPy。
         from cupy._core._ascend import cpu_fallback
         _util._assert_cupy_array(a)
@@ -316,8 +316,8 @@ def qr(a, mode='reduced'):
             msg = 'Unrecognized mode \'{}\''.format(mode)
         raise ValueError(msg)
 
-    from cupy.backends.backend.api.runtime import is_ascend
-    if is_ascend():
+    from cupy.backends.backend import is_ascend
+    if is_ascend:
         # aclnnQr supports only the 'reduced'/'complete' 2-D cases.
         if a.ndim > 2:
             raise NotImplementedError(
@@ -544,8 +544,8 @@ def svd(a, full_matrices=True, compute_uv=True):
     from cupy_backends.cuda.libs import cusolver
     _util._assert_cupy_array(a)
 
-    from cupy.backends.backend.api.runtime import is_ascend
-    if is_ascend():
+    from cupy.backends.backend import is_ascend
+    if is_ascend:
         # aclnnSvd is 2-D only; `u` is returned (not `vh`), so transpose.
         if a.ndim > 2:
             raise NotImplementedError(

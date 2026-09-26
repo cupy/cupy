@@ -6,7 +6,7 @@ import numpy
 
 from cupy import _core
 from cupy.backends.backend.api import runtime
-if not runtime.is_ascend():
+if not runtime.is_ascend:
     # TODO(ASCEND) better deal with not supported feature
     from cupy._core import _fusion_interface
     from cupy._sorting import search
@@ -90,8 +90,8 @@ def copyto(dst, src, casting='same_kind', where=None):
             src = src.squeeze(tuple(range(squeeze_ndim)))
 
     if where is not None:
-        from cupy.backends.backend.api.runtime import is_ascend
-        if is_ascend():
+        from cupy.backends.backend import is_ascend
+        if is_ascend:
             # ASCEND: the `where=` ufunc kwarg has no implementation in the
             # dispatcher (it would be rejected there), so route to
             # aclnnInplaceMaskedFill{Scalar,Tensor}:
@@ -113,8 +113,8 @@ def copyto(dst, src, casting='same_kind', where=None):
         return
 
     if src_is_scalar:
-        from cupy.backends.backend.api.runtime import is_ascend
-        if is_ascend():
+        from cupy.backends.backend import is_ascend
+        if is_ascend:
             # ASCEND: elementwise_copy(cupy_copy -> ascend_copy kernel)
             # does not deal scalar (REVERSE_SCALAR_BINARY_OP)
             # convert to 0D array/tensor, so can use tensor copy/cast

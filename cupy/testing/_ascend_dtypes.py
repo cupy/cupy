@@ -98,8 +98,8 @@ def is_ascend() -> bool:
             _ASCEND_CACHE = override.lower() not in _FALSE_WORDS
         else:
             try:
-                from cupy.backends.backend.api.runtime import is_ascend as _f
-                _ASCEND_CACHE = bool(_f())
+                from cupy.backends.backend import is_ascend as _f
+                _ASCEND_CACHE = bool(_f)
             except Exception:
                 # 未安装 / 未编译时按"非 Ascend"处理, 不影响 CUDA/CPU 测试
                 _ASCEND_CACHE = False

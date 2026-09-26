@@ -90,10 +90,10 @@ def _fft_convolve_ok(a1, a2):
     so any other result dtype must take the direct path.
     """
     try:
-        from cupy.backends.backend.api.runtime import is_ascend
+        from cupy.backends.backend import is_ascend
     except ImportError:
         return True
-    if not is_ascend():
+    if not is_ascend:
         return True
     return cupy.result_type(a1, a2) in (numpy.float32, numpy.complex64)
 

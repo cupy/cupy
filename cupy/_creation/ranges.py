@@ -64,8 +64,8 @@ def arange(start, stop=None, step=1, dtype=None):
         else:
             return cupy.array([start], dtype=numpy.bool_)
 
-    from cupy.backends.backend.api.runtime import is_ascend
-    if is_ascend() and numpy.dtype(dtype).name in _ASCEND_ARANGE_INT32_FALLBACK:
+    from cupy.backends.backend import is_ascend
+    if is_ascend and numpy.dtype(dtype).name in _ASCEND_ARANGE_INT32_FALLBACK:
         # aclnnArange 不支持 int8/int16/uint16/uint32：先用 int32 生成，
         # 再 cast 回目标 dtype（cast 走已注册的 ascend_cast）。
         # 已知限制：中间态为 int32，> 2**31-1 的 uint32 取值会溢出。

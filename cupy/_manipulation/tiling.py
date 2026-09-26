@@ -2,14 +2,7 @@ from __future__ import annotations
 
 import cupy
 from cupy import _core
-
-
-def _is_ascend():
-    try:
-        from cupy.backends.backend.api.runtime import is_ascend
-        return is_ascend()
-    except ImportError:
-        return False
+from cupy.backends.backend import is_ascend
 
 
 def tile(A, reps):
@@ -41,7 +34,7 @@ def tile(A, reps):
     if d < c.ndim:
         tup = (1,) * (c.ndim - d) + tup
     shape_out = tuple(s * t for s, t in zip(c.shape, tup))
-    if _is_ascend():
+    if is_ascend:
         # aclnnRepeat (ascend_repeat) implements torch.Tensor.repeat, which
         # matches np.tile; len(reps) == c.ndim is guaranteed by the ndmin
         # padding above. This replaces the reshape+elementwise_copy

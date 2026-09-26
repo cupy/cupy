@@ -14,9 +14,9 @@ from cupy._environment import get_cann_path # NOQA
 # MemoryAsyncPool).  The runtime module is backend-neutral and does not import
 # `cupy.xpu`, so this is safe to resolve at import time (see also the
 # `cupy.cuda` compatibility layer, which re-exports these names).
-from cupy.backends.backend.api.runtime import is_ascend as _is_ascend_fn
+from cupy.backends.backend import is_ascend as _is_ascend_fn
 
-_is_ascend = _is_ascend_fn()
+_is_ascend = _is_ascend_fn
 
 if not _is_ascend:
     from cupy.xpu import function  # NOQA

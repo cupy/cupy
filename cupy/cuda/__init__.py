@@ -9,7 +9,7 @@ from cupy._environment import get_rocm_path  # NOQA
 from cupy._environment import get_hipcc_path  # NOQA
 from cupy._environment import get_cann_path # NOQA
 
-from cupy.backends.backend.api.runtime import is_ascend
+from cupy.backends.backend import is_ascend
 
 # ---------------------------------------------------------------------------
 # 模块路径兼容：upstream 与用户代码大量使用 `from cupy.cuda.device import ...`
@@ -42,7 +42,7 @@ sys.modules.setdefault('cupy.cuda.stream', _xpu_stream)
 sys.modules.setdefault('cupy.cuda.runtime', runtime)
 sys.modules.setdefault('cupy.cuda.driver', driver)
 
-if not is_ascend():
+if not is_ascend:
     # CUDA/HIP-only modules, still living under `cupy.cuda` (not `cupy.xpu`).
     from cupy.cuda import compiler  # NOQA
     from cupy.cuda import texture  # NOQA
@@ -62,7 +62,7 @@ from cupy.xpu import stream  # NOQA
 # 重新导出：只 import 子模块（上面那些 `from cupy.xpu import stream`）会让
 # `cupy.cuda.Stream` 变成 AttributeError —— 而且 `import cupy` 不会自动导入
 # 子模块，所以 cupy/__init__.py 里还要有 `from cupy import cuda`。
-# 只"新增名字、不删除"，CUDA/HIP 专有的部分按 is_ascend() 跳过（Ascend 上没有）。
+# 只"新增名字、不删除"，CUDA/HIP 专有的部分按 is_ascend 跳过（Ascend 上没有）。
 # ---------------------------------------------------------------------------
 from cupy.xpu import Device  # NOQA
 from cupy.xpu import get_cublas_handle  # NOQA
@@ -94,7 +94,7 @@ from cupy.xpu import get_current_stream  # NOQA
 from cupy.xpu import get_elapsed_time  # NOQA
 from cupy.xpu import using_allocator  # NOQA
 
-if not is_ascend():
+if not is_ascend:
     # CUDA/HIP-only 的设备 API（Ascend 上没有对应的实现）
     from cupy.xpu import Function  # NOQA
     from cupy.xpu import Module  # NOQA
