@@ -5,7 +5,7 @@
 `README.md` §limitation 写明 NPU 的 dtype 限制:
 
 * 全量算子只保证 ``float32``; ``float64`` 仅 add/subtract/multiply/true_divide 可用;
-* ``complex64`` / ``complex128`` 无算子支持。
+* ``complex128`` 无算子支持; ``complex64`` 已适配, 不再跳过。
 
 若不处理, ``pytest`` 跑上游 CuPy 测试时会因为"dtype 本身不被支持"而大面积 FAIL,
 真正的移植缺陷被淹没。本模块把"哪些 dtype 在 Ascend 上不该收集"集中定义一次,
@@ -62,7 +62,8 @@ __all__ = [
 ]
 
 #: Ascend 上默认不收集的 dtype (NPU 无算子, 或仅四则运算可用)
-DEFAULT_SKIP_DTYPES: tuple[str, ...] = ('float64', 'complex64', 'complex128')
+#: complex64 已适配 (aclnn 复数算子可用), 不再默认跳过
+DEFAULT_SKIP_DTYPES: tuple[str, ...] = ('float64', 'complex128')
 
 _ENV_FILTER = 'CUPY_TEST_ASCEND_DTYPE_FILTER'
 _ENV_SKIP = 'CUPY_TEST_ASCEND_SKIP_DTYPES'
