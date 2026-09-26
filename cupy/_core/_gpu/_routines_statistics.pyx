@@ -15,84 +15,78 @@ from cupy._core cimport _accelerator
 from cupy._core cimport _routines_math as _math
 from cupy._core.core cimport _ndarray_base
 
-IF CUPY_CANN_VERSION <= 0:
-    # CUB-backed reductions; Ascend has no CUB (the call sites below are
-    # already inside `IF CUPY_CANN_VERSION <= 0` blocks).
-    from cupy.cuda import cub
+from cupy.cuda import cub
 
 try:
-    import cupy.backends.cuda.libs.cutensor as cuda_cutensor
+    import cupy_backends.cuda.libs.cutensor as cuda_cutensor
 except ImportError:
     cuda_cutensor = None
 
 
 cdef _ndarray_base _ndarray_max(
         _ndarray_base self, axis, out, dtype, keepdims):
-    IF CUPY_CANN_VERSION <= 0:
-        for accelerator in _accelerator._routine_accelerators:
-            result = None
-            if accelerator == _accelerator.ACCELERATOR_CUB:
-                # result will be None if the reduction is not compatible with CUB
-                result = cub.cub_reduction(
-                    self, cub.CUPY_CUB_MAX, axis, dtype, out, keepdims)
-            if (accelerator == _accelerator.ACCELERATOR_CUTENSOR and
-                    cuda_cutensor is not None):
-                from cupyx import cutensor
-                if self.dtype.kind == 'c' or dtype in ('F', 'D'):
-                    # Complex dtype is not supported
-                    continue
-                result = cutensor._try_reduction_routine(
-                    self, axis, dtype, out, keepdims, cuda_cutensor.OP_MAX, 1, 0)
-            if result is not None:
-                return result
+    for accelerator in _accelerator._routine_accelerators:
+        result = None
+        if accelerator == _accelerator.ACCELERATOR_CUB:
+            # result will be None if the reduction is not compatible with CUB
+            result = cub.cub_reduction(
+                self, cub.CUPY_CUB_MAX, axis, dtype, out, keepdims)
+        if (accelerator == _accelerator.ACCELERATOR_CUTENSOR and
+                cuda_cutensor is not None):
+            from cupyx import cutensor
+            if self.dtype.kind == 'c' or dtype in ('F', 'D'):
+                # Complex dtype is not supported
+                continue
+            result = cutensor._try_reduction_routine(
+                self, axis, dtype, out, keepdims, cuda_cutensor.OP_MAX, 1, 0)
+        if result is not None:
+            return result
     return _amax(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 
 cdef _ndarray_base _ndarray_min(
         _ndarray_base self, axis, out, dtype, keepdims):
-    IF CUPY_CANN_VERSION <= 0:
-        for accelerator in _accelerator._routine_accelerators:
-            result = None
-            if accelerator == _accelerator.ACCELERATOR_CUB:
-                # result will be None if the reduction is not compatible with CUB
-                result = cub.cub_reduction(
-                    self, cub.CUPY_CUB_MIN, axis, out, dtype, keepdims)
-            if (accelerator == _accelerator.ACCELERATOR_CUTENSOR and
-                    cuda_cutensor is not None):
-                from cupyx import cutensor
-                if self.dtype.kind == 'c' or dtype in ('F', 'D'):
-                    # Complex dtype is not supported
-                    continue
-                result = cutensor._try_reduction_routine(
-                    self, axis, dtype, out, keepdims, cuda_cutensor.OP_MIN, 1, 0)
-            if result is not None:
-                return result
+    for accelerator in _accelerator._routine_accelerators:
+        result = None
+        if accelerator == _accelerator.ACCELERATOR_CUB:
+            # result will be None if the reduction is not compatible with CUB
+            result = cub.cub_reduction(
+                self, cub.CUPY_CUB_MIN, axis, out, dtype, keepdims)
+        if (accelerator == _accelerator.ACCELERATOR_CUTENSOR and
+                cuda_cutensor is not None):
+            from cupyx import cutensor
+            if self.dtype.kind == 'c' or dtype in ('F', 'D'):
+                # Complex dtype is not supported
+                continue
+            result = cutensor._try_reduction_routine(
+                self, axis, dtype, out, keepdims, cuda_cutensor.OP_MIN, 1, 0)
+        if result is not None:
+            return result
     return _amin(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 
 cdef _ndarray_base _ndarray_ptp(_ndarray_base self, axis, out, keepdims):
-    IF CUPY_CANN_VERSION <= 0:
-        for accelerator in _accelerator._routine_accelerators:
-            if accelerator == _accelerator.ACCELERATOR_CUB:
-                # result will be None if the reduction is not compatible with CUB
-                result = cub.cub_reduction(
-                    self, cub.CUPY_CUB_MAX, axis, out, None, keepdims)
-                if result is not None:
-                    result -= cub.cub_reduction(
-                        self, cub.CUPY_CUB_MIN, axis, None, None, keepdims)
-                    return result
-            if (accelerator == _accelerator.ACCELERATOR_CUTENSOR and
-                    cuda_cutensor is not None):
-                from cupyx import cutensor
-                if self.dtype.kind == 'c':
-                    # Complex dtype is not supported
-                    continue
-                maxv = cutensor._try_reduction_routine(
-                    self, axis, None, out, keepdims, cuda_cutensor.OP_MAX, 1, 0)
-                if maxv is None:
-                    continue
-                return cutensor._try_reduction_routine(
-                    self, axis, None, maxv, keepdims, cuda_cutensor.OP_MIN, -1, 1)
+    for accelerator in _accelerator._routine_accelerators:
+        if accelerator == _accelerator.ACCELERATOR_CUB:
+            # result will be None if the reduction is not compatible with CUB
+            result = cub.cub_reduction(
+                self, cub.CUPY_CUB_MAX, axis, out, None, keepdims)
+            if result is not None:
+                result -= cub.cub_reduction(
+                    self, cub.CUPY_CUB_MIN, axis, None, None, keepdims)
+                return result
+        if (accelerator == _accelerator.ACCELERATOR_CUTENSOR and
+                cuda_cutensor is not None):
+            from cupyx import cutensor
+            if self.dtype.kind == 'c':
+                # Complex dtype is not supported
+                continue
+            maxv = cutensor._try_reduction_routine(
+                self, axis, None, out, keepdims, cuda_cutensor.OP_MAX, 1, 0)
+            if maxv is None:
+                continue
+            return cutensor._try_reduction_routine(
+                self, axis, None, maxv, keepdims, cuda_cutensor.OP_MIN, -1, 1)
 
     result = _amax(self, axis=axis, out=out, keepdims=keepdims)
     result -= _amin(self, axis=axis, out=None, keepdims=keepdims)
@@ -102,33 +96,31 @@ cdef _ndarray_base _ndarray_ptp(_ndarray_base self, axis, out, keepdims):
 # TODO(leofang): this signature is incompatible with NumPy!
 cdef _ndarray_base _ndarray_argmax(
         _ndarray_base self, axis, out, dtype, keepdims):
-    IF CUPY_CANN_VERSION <= 0:
-        for accelerator in _accelerator._routine_accelerators:
-            if accelerator == _accelerator.ACCELERATOR_CUB:
-                # result will be None if the reduction is not compatible with CUB
-                if self._f_contiguous and self.dtype == numpy.bool_:
-                    # temporary workaround casting the inputs to int8
-                    # CUB argmax seems to return different values to
-                    # NumPy for F-order bool array inputs
-                    self = self.astype(numpy.int8)
-                result = cub.cub_reduction(
-                    self, cub.CUPY_CUB_ARGMAX, axis, dtype, out, keepdims)
-                if result is not None:
-                    return result
+    for accelerator in _accelerator._routine_accelerators:
+        if accelerator == _accelerator.ACCELERATOR_CUB:
+            # result will be None if the reduction is not compatible with CUB
+            if self._f_contiguous and self.dtype == numpy.bool_:
+                # temporary workaround casting the inputs to int8
+                # CUB argmax seems to return different values to
+                # NumPy for F-order bool array inputs
+                self = self.astype(numpy.int8)
+            result = cub.cub_reduction(
+                self, cub.CUPY_CUB_ARGMAX, axis, dtype, out, keepdims)
+            if result is not None:
+                return result
     return _argmax(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 
 # TODO(leofang): this signature is incompatible with NumPy!
 cdef _ndarray_base _ndarray_argmin(
         _ndarray_base self, axis, out, dtype, keepdims):
-    IF CUPY_CANN_VERSION <= 0:
-        for accelerator in _accelerator._routine_accelerators:
-            if accelerator == _accelerator.ACCELERATOR_CUB:
-                # result will be None if the reduction is not compatible with CUB
-                result = cub.cub_reduction(
-                    self, cub.CUPY_CUB_ARGMIN, axis, dtype, out, keepdims)
-                if result is not None:
-                    return result
+    for accelerator in _accelerator._routine_accelerators:
+        if accelerator == _accelerator.ACCELERATOR_CUB:
+            # result will be None if the reduction is not compatible with CUB
+            result = cub.cub_reduction(
+                self, cub.CUPY_CUB_ARGMIN, axis, dtype, out, keepdims)
+            if result is not None:
+                return result
     return _argmin(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 
@@ -144,48 +136,32 @@ cdef _ndarray_base _ndarray_mean(
         elif self.dtype.char == 'e':
             dtype_sum = numpy.float32
             dtype_out = numpy.float16
-        IF CUPY_CANN_VERSION > 0:
-            # ASCEND: aclnnMean() sum integer will not promote sum_result  to float before division
-            # methed 1: sum(integer), may overflow, then cast sum_result scalar float -> divide
-            # method 2: cast integer to float (slower but robust), so impl here
-            result = _mean(
-                self.asdtype(dtype_sum), axis=axis, dtype=None, out=out, keepdims=keepdims)
-        ELSE:
-            # Upstream CUDA only reaches `_mean` through the accelerator loop's
-            # `for ... else`; here the loop lives in the `elif` branch below, so the
-            # fallback has to be explicit -- without it `result` stays unbound and
-            # `mean()` raises UnboundLocalError whenever `dtype is None`.
-            result = _mean(
-                self, axis=axis, dtype=dtype_sum, out=out, keepdims=keepdims)
     elif numpy.dtype(dtype).kind in 'iub':
         # output will be the requested type, but compute the mean using float
         dtype_out = dtype
         dtype_sum = numpy.float64
-        IF CUPY_CANN_VERSION <= 0:
-            for accelerator in _accelerator._routine_accelerators:
-                if accelerator == _accelerator.ACCELERATOR_CUB and self.size != 0:
-                    result = cub.cub_reduction(
-                        self, cub.CUPY_CUB_SUM, axis, dtype_sum, out, keepdims)
-                    if result is not None:
-                        n = self.size // result.size
-                        cupy.true_divide(result, n, out=result, casting='unsafe')
-                        break
-                if (accelerator == _accelerator.ACCELERATOR_CUTENSOR and
-                        cuda_cutensor is not None):
-                    from cupyx import cutensor
-                    reduce_axis, _ = _reduction._get_axis(axis, self._shape.size())
-                    n = 1
-                    for i in reduce_axis:
-                        n *= self._shape[i]
-                    n = max(n, 1)
-                    result = cutensor._try_reduction_routine(
-                        self, axis, dtype_sum, out, keepdims,
-                        cuda_cutensor.OP_ADD, 1.0 / n, 0)
-                    if result is not None:
-                        break
-        ELSE:
-            result = _mean(
-                self, axis=axis, dtype=dtype_sum, out=out, keepdims=keepdims) 
+
+    for accelerator in _accelerator._routine_accelerators:
+        if accelerator == _accelerator.ACCELERATOR_CUB and self.size != 0:
+            result = cub.cub_reduction(
+                self, cub.CUPY_CUB_SUM, axis, dtype_sum, out, keepdims)
+            if result is not None:
+                n = self.size // result.size
+                cupy.true_divide(result, n, out=result, casting='unsafe')
+                break
+        if (accelerator == _accelerator.ACCELERATOR_CUTENSOR and
+                cuda_cutensor is not None):
+            from cupyx import cutensor
+            reduce_axis, _ = _reduction._get_axis(axis, self._shape.size())
+            n = 1
+            for i in reduce_axis:
+                n *= self._shape[i]
+            n = max(n, 1)
+            result = cutensor._try_reduction_routine(
+                self, axis, dtype_sum, out, keepdims,
+                cuda_cutensor.OP_ADD, 1.0 / n, 0)
+            if result is not None:
+                break
     else:
         result = _mean(
             self, axis=axis, dtype=dtype_sum, out=out, keepdims=keepdims)
@@ -474,28 +450,13 @@ cpdef _ndarray_base _median(
         indexer[axis] = slice(index-1, index+1)
     indexer = tuple(indexer)
 
-    sel = part[indexer]
-    IF CUPY_CANN_VERSION > 0:
-        # ASCEND: `_mean` has no dtype promotion for create_reduction_func()
-        # int should be cast to float, after view is made contiguous
-        if sel.dtype.kind in 'iub':
-            sel = cupy.ascontiguousarray(sel).astype(numpy.float64)
     out = _mean(
-        sel, axis=axis, dtype=None, out=out, keepdims=keepdims)
+        part[indexer], axis=axis, dtype=None, out=out, keepdims=keepdims)
 
     if part.dtype.kind in 'fc':
-        IF CUPY_CANN_VERSION > 0:
-            # ASCEND: `_exists_nan` is not registered as reduction kernel
-            # out = isnan + any
-            # ASCEND TODO: find a way to export this kernel
-            #isnan = cupy.any(cupy.isnan(part), axis=axis, keepdims=keepdims)
-            #tnan = out.dtype.type(numpy.nan)
-            #out = cupy.where(isnan, tnan, out)
-            pass # TODO: issue still not solved
-        ELSE:
-            isnan = _exists_nan(part, axis=axis, keepdims=keepdims)
-            tnan = out.dtype.type(numpy.nan)
-            out = cupy.where(isnan, tnan, out)
+        isnan = _exists_nan(part, axis=axis, keepdims=keepdims)
+        tnan = out.dtype.type(numpy.nan)
+        out = cupy.where(isnan, tnan, out)
     if out_shape is not None:
         out = out.reshape(out_shape)
     return out
@@ -619,20 +580,6 @@ cdef _ndarray_base _var(
     alpha = 1. / div if div != 0 else nan
 
     arrmean = a.mean(axis=axis, dtype=dtype_mean, out=None, keepdims=True)
-    IF CUPY_CANN_VERSION > 0:
-        # ASCEND: `_var_core_*` is ReductionKernel with 3 inputs and 1 output;
-        # launch_reduction_op does not support. Compose from registered ops
-        # (方案1, Python 层): subtract -> in-place square -> sum -> alpha.
-        # ascend_subtract / ascend_inplace_multiply / ascend_sum 均已注册；
-        # 底层 C++ aclop_VarCore（general op ascend_var_core）保留备用。
-        d = a - arrmean
-        d *= d
-        if out is None:
-            out = d.sum(axis=axis, dtype=dtype_out, keepdims=keepdims)
-        else:
-            d.sum(axis=axis, dtype=dtype_out, keepdims=keepdims, out=out)
-        out *= alpha
-        return out.astype(dtype_out, copy=False)
 
     if out is None:
         if dtype_out == 'float16':
@@ -753,24 +700,6 @@ cpdef _ndarray_base _nanstd(_ndarray_base a, axis, dtype, out, ddof, keepdims):
 
 
 cpdef _ndarray_base _nanvar(_ndarray_base a, axis, dtype, out, ddof, keepdims):
-
-    IF CUPY_CANN_VERSION > 0:
-        # ASCEND: `_nanvar_core/_count_non_nan/_math._nansum(dtype=None)` not working
-        # keepdims=False to calc using cupy APIs, then reshape using keepdims
-        # TODO: This temp solution may have poor performance, custom kernel may be better
-        arrsum = cupy.nansum(a, axis=axis)
-        _count = cupy.sum((~cupy.isnan(a)).astype(numpy.float32), axis=axis)
-        nanmean = arrsum / _count
-        sq = a - nanmean
-        sq = sq * sq
-        sq_sum = cupy.nansum(sq, axis=axis)
-        result = sq_sum / (_count - ddof)
-        if keepdims:
-            result = cupy.reshape(result, (1,) * a.ndim)
-        if out is not None:
-            out[...] = result
-            result = out
-        return result
 
     _count = _count_non_nan(a, axis=axis, keepdims=True)
     arrsum = _math._nansum(a, axis=axis, dtype=dtype, out=None, keepdims=True)

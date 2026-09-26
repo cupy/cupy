@@ -85,7 +85,7 @@ ascend_files = [
     ('cupy._core._routines_indexing', ['cupy/_core/_routines_indexing.pyx']),
     # ascend partially support
     ('cupy._core._routines_statistics',
-     ['cupy/_core/_routines_statistics.pyx']),
+     ['cupy/_core/_ascend/_routines_statistics.pyx']),
     ('cupy._core.raw', ['cupy/_core/_ascend/raw_kernel_stub.pyx']),
     # poly1d (pure cdef class over existing ufuncs, no CUDA dependency)
     'cupy.lib._polynomial',

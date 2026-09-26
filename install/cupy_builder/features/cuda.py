@@ -99,7 +99,7 @@ cuda_files = [
     ('cupy._core._routines_math', ['cupy/_core/_gpu/_routines_math.pyx']),
     ('cupy._core._routines_sorting', ['cupy/_core/_gpu/_routines_sorting.pyx']),
     ('cupy._core._routines_statistics',
-     ['cupy/_core/_routines_statistics.pyx']),
+     ['cupy/_core/_gpu/_routines_statistics.pyx']),
     'cupy._core.numpy_allocator',
     ('cupy._core.raw', ['cupy/_core/_gpu/raw.pyx']),
     'cupy.cuda.texture',
