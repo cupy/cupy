@@ -815,16 +815,16 @@ cdef class _ndarray_base:
                 # fill_diagonal (aclnnInplaceFillDiagonal) for this reason.
                 # non-C-contiguous will not be filled, workaround by do it on host
                 if not self._c_contiguous:
-                    np_val = numpy.full(self.shape, value, dtype=self.dtype)
                     _f_order = self._f_contiguous
-                    tmp = numpy.ascontiguousarray(np_val)
-                    ptr = tmp.ctypes.data
                     if _f_order:
+                        np_val = numpy.full(self.shape, value, dtype=self.dtype)
                         tmp_f = numpy.asfortranarray(np_val)
                         self.data.copy_from_host_async(
                             tmp_f.ravel(order='F').ctypes.data, self.nbytes)
-                    else:
-                        self.data.copy_from_host_async(ptr, self.nbytes)
+                        return
+                # c-contiguous, non-uint, non-zero: use inplace fill scalar
+                fill_kernel(value, self)
+                return
             ELSE:
                 fill_kernel(value, self)
 

@@ -123,24 +123,43 @@ def pytest_collection_modifyitems(config, items):
 
 
 # https://docs.pytest.org/en/latest/how-to/writing_hook_functions.html#optionally-using-hooks-from-3rd-party-plugins
+def _get_visible_devices_env_var():
+    """Return the device visibility env var for the installed backend.
+
+    Ascend NPU: CANN supports `ASCEND_RT_VISIBLE_DEVICES` (same semantics as
+    `CUDA_VISIBLE_DEVICES`: comma-separated device IDs, logically renumbered
+    from 0), so `cupy.xpu.Device(n)` addresses the n-th visible device.
+    """
+    try:
+        from cupy.backends.backend import is_ascend
+        if is_ascend:
+            return 'ASCEND_RT_VISIBLE_DEVICES'
+    except Exception:
+        pass
+    return 'CUDA_VISIBLE_DEVICES'
+
+
 class DeferPlugin:
     """Simple plugin to defer pytest-xdist hook functions."""
 
-    # Edit the environment variable `CUDA_VISIBLE_DEVICES` for each session.
+    # Edit the device visibility environment variable (`CUDA_VISIBLE_DEVICES`
+    # for CUDA, `ASCEND_RT_VISIBLE_DEVICES` for Ascend NPU) for each session.
     # Cannot use `pytest_configure_node` nor `pytest_testnodeready` hook,
     # because they are called in the `master` node (process).
     # See also https://github.com/pytest-dev/pytest-xdist/issues/179.
     @pytest.fixture(autouse=True, scope='session')
-    def _rotate_cuda_visible_devices(self, worker_id):
+    def _rotate_visible_devices(self, worker_id):
         if worker_id == 'master':
             # `worker_id` can be `master` if `pytest-xdist` is installed and
             # run without `-n` option.
             return
 
+        env_var = _get_visible_devices_env_var()
+
         n_gpu = os.environ.get('CUPY_TEST_GPU_LIMIT')
         if n_gpu is None:
             print('Tip: when using pytest-xdist, you can automatically rotate'
-                  ' CUDA_VISIBLE_DEVICES for each test worker by setting'
+                  f' {env_var} for each test worker by setting'
                   ' CUPY_TEST_GPU_LIMIT environment variable.')
             return
         n_gpu = int(n_gpu)
@@ -148,7 +167,7 @@ class DeferPlugin:
         assert worker_id.startswith('gw')
         w = int(worker_id[2:])
 
-        devices = os.environ.get('CUDA_VISIBLE_DEVICES')
+        devices = os.environ.get(env_var)
         if devices is None:
             devices = [str(k) for k in range(n_gpu)]
         else:
@@ -156,10 +175,10 @@ class DeferPlugin:
         devices = collections.deque(devices)
         devices.rotate(w)
         devices = ','.join(devices)
-        os.environ['CUDA_VISIBLE_DEVICES'] = devices
+        os.environ[env_var] = devices
         # With PyTest's default, the print will be shown as
         # "--- Captured stdout setup ---" on failure.
-        print(f'CUDA_VISIBLE_DEVICES={devices}')
+        print(f'{env_var}={devices}')
 
 
 if int(os.environ.get('CUPY_ENABLE_UMP', 0)) != 0:

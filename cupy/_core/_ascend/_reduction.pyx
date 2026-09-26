@@ -63,6 +63,10 @@ cdef dict _UINT_PROMOTE = {
     'I': 'i',   # uint32 -> int32
     'Q': 'q',   # uint64 -> int64 (numpy 1.x char)
     'L': 'q',   # uint64 -> int64 (numpy 2.x char)
+    '?': 'i',   # bool  -> int32
+    'b': 'i',   # int8  -> int32
+    'h': 'i',   # int16  -> int32
+    'i': 'i',   # int32  -> int32 (no op input, force out promote to int32)
 }
 
 # 可选层（enable_float64_to_float32 开关，见 AscendSpecialization.md A.1.1）：
@@ -359,6 +363,15 @@ cdef class _AbstractReductionKernel:
             promoted_out = cupy.empty(ret.shape, _promote[ret.dtype.char])
             launch_outs = [promoted_out]
             promoted = True
+        if promoted and ret.dtype.char in 'ilq':
+            # for sum(bool) return  int64
+            _promote_to = 'i'
+            for _x2 in launch_ins:
+                if isinstance(_x2, _ndarray_base) and _x2.dtype.char in "iq":
+                    _promote_to = _x2.dtype.char
+                    break
+            promoted_out = cupy.empty(ret.shape, _promote_to)
+            launch_outs = [promoted_out]
         if promoted:
             launch_reduction_op(self.name, launch_ins, launch_outs,
                                 axis, keepdims, {}, s)

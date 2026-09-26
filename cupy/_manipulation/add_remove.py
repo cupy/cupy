@@ -123,6 +123,14 @@ def resize(a, new_shape):
     a = cupy.asarray(a)
     if a.size == 0:
         return cupy.zeros(new_shape, dtype=a.dtype)
+    from cupy.backends.backend import is_ascend
+    if is_ascend:
+        # ASCEND: no such kernel registered, so impl for C-contiguous filling
+        if isinstance(new_shape, tuple):
+            size = numpy.prod(new_shape, dtype=numpy.int64)
+        else:
+            size = new_shape
+        return cupy.take(a.ravel(), cupy.arange(size) % a.size).reshape(new_shape)
     out = cupy.empty(new_shape, a.dtype)
     _resize_kernel(a, a.size, out)
     return out

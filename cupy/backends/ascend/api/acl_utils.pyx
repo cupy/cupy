@@ -2727,7 +2727,8 @@ cdef void register_irregular_operators():
     func_union.general_op = aclop_Copy
     register_acl_ufunc("ascend_copy", GENERAL_OP, func_union)
     # numpy.positive(+x) is the identity for every non-bool dtype.
-    register_acl_ufunc("ascend_positive", UNARY_OP, func_union)
+    # keep aligned with aclop_Copy, otherwise, segmentation fault
+    register_acl_ufunc("ascend_positive", GENERAL_OP, func_union)
     func_union.general_op  = aclop_Fill
     register_acl_ufunc("ascend_fill", GENERAL_OP, func_union)
     # nonzero 不是 reduction：aclnnNonzero 无 dim/keepdim，输出 shape 是数据

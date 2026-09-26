@@ -65,6 +65,29 @@ def arange(start, stop=None, step=1, dtype=None):
             return cupy.array([start], dtype=numpy.bool_)
 
     from cupy.backends.backend import is_ascend
+    if is_ascend and numpy.dtype(dtype).kind == 'c':
+        # ASCEND: special for complex number complex64 and complex128
+        # out [i] = start + i * step
+        # aclnnArange 只收实数（ascend_arange 拒绝 complex），分解为实部/
+        # 虚部两条实数标量运算，再用已注册的 ascend_complex
+        # (aclnnComplex(real, imag) -> complex) 组装：
+        #   re[i] = start.real + i * step.real
+        #   im[i] = start.imag + i * step.imag
+        # work dtype：complex64 -> float32、complex128 -> float64，与 numpy
+        # 在目标 dtype 内计算单精度/双精度的语义一致。
+        work_dtype = (numpy.float32
+                      if numpy.dtype(dtype).name == 'complex64'
+                      else numpy.float64)
+        cstart = complex(start)
+        cstep = complex(step)
+        idx = cupy.arange(0, size, 1, dtype=work_dtype)
+        re = idx * cstep.real + cstart.real
+        im = idx * cstep.imag + cstart.imag
+        from cupy.backends.ascend.api.acl_utils import py_launch_general
+        ret = cupy.empty((size,), dtype=dtype)
+        py_launch_general('ascend_complex', (re, im), (ret,), (), {})
+        return ret
+
     if is_ascend and numpy.dtype(dtype).name in _ASCEND_ARANGE_INT32_FALLBACK:
         # aclnnArange 不支持 int8/int16/uint16/uint32/uint64：先用 int32/64 生成，
         # 再 cast 回目标 dtype（cast 走已注册的 ascend_cast）。
