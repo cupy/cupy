@@ -422,7 +422,14 @@ def reduced_binary_einsum(arr0, sub0, arr1, sub1, sub_others):
     tmp1, shapes1 = _flatten_transpose(arr1, [bs1, cs1, ts1])
     shapes_out = shapes0[0] + shapes0[1] + shapes1[2]
     assert shapes0[0] == shapes1[0]
+    # ASCEND: aclnnMatmul rejects double dtype, so cast to float32 then back
+    need_float32_cast = tmp0.dtype.char == 'd'
+    if need_float32_cast:
+        tmp0 = tmp0.astype(cupy.float32)
+        tmp1 = tmp1.astype(cupy.float32)
     arr_out = cupy.matmul(tmp0, tmp1).reshape(shapes_out)
+    if need_float32_cast:
+        arr_out = arr_out.astype(cupy.float64)
     return arr_out, sub_out
 
 
