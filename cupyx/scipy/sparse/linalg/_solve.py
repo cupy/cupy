@@ -599,7 +599,7 @@ class SuperLU:
                 key = (lower, transa)
                 solver = cache.get(key)
                 if solver is None:
-                    solver = cache[key] = cusparse.SpSM(
+                    solver = cache[key] = cusparse._SpSM(
                         A, lower=lower, transa=transa)
                 return solver.solve(B)
             sm = spsm

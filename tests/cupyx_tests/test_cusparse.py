@@ -1106,9 +1106,8 @@ class TestSpsm:
             if format == 'coo' or b_order == 'c':
                 pytest.skip('may be buggy or not supported')
         a = self.sparse_matrix(self.a)
-        solver = cusparse.SpSM(
-            a, alpha=self.alpha, lower=lower, unit_diag=unit_diag,
-            transa=transa)
+        solver = cusparse._SpSM(
+            a, lower=lower, unit_diag=unit_diag, transa=transa)
 
         if transa == 'N':
             op_a = self.op_a
@@ -1125,7 +1124,7 @@ class TestSpsm:
         for k in range(3):
             op_b = (k + 1) * self.op_b
             b = cupy.array(op_b, order=b_order)
-            c = solver.solve(b)
+            c = solver.solve(b, alpha=self.alpha)
             lhs = op_a.dot(c.get())
             testing.assert_allclose(
                 lhs, self.alpha * op_b, rtol=tol, atol=tol)

@@ -2262,7 +2262,7 @@ class SpSMDescriptor(BaseDescriptor):
         return SpSMDescriptor(desc, None, _cusparse.spSM_destroyDescr)
 
 
-class SpSM:
+class _SpSM:
     """Sparse triangular solver with reusable analysis (cusparseSpSM).
 
     Solves ``op(a) * x = alpha * op(b)`` for ``x``, where ``a`` is a sparse
@@ -2278,7 +2278,6 @@ class SpSM:
             cupyx.scipy.sparse.coo_matrix): Sparse matrix with dimension
             ``(M, M)``. Must not be modified (values or sparsity) while
             this object is in use.
-        alpha (float or complex): Coefficient.
         lower (bool):
             True: ``a`` is lower triangle matrix.
             False: ``a`` is upper triangle matrix.
@@ -2291,8 +2290,7 @@ class SpSM:
             'H': op(a) == ``a.conj().T``.
     """
 
-    def __init__(self, a, alpha=1.0, lower=True, unit_diag=False,
-                 transa=False):
+    def __init__(self, a, lower=True, unit_diag=False, transa=False):
         if not check_availability('spsm'):
             raise RuntimeError('spsm is not available.')
 
@@ -2364,7 +2362,6 @@ class SpSM:
         # above): the cuSPARSE descriptor stores raw device pointers.
         self._a = a
         self._dtype = dtype
-        self._alpha = _numpy.array(alpha, dtype=dtype).ctypes
         self._op_a = op_a
         self._mat_a = SpMatDescriptor.create(a)
 
@@ -2384,12 +2381,15 @@ class SpSM:
         self._mat_b = None
         self._mat_c = None
 
-    def solve(self, b):
+    def solve(self, b, alpha=1.0):
         """Solves the system for one or several right-hand sides.
 
         Args:
             b (cupy.ndarray): Dense matrix with dimension ``(M)`` or
                 ``(M, K)``.
+            alpha (float or complex): Coefficient. Taken per solve rather
+                than per object: cuSPARSE only needs it to scale the
+                right-hand side, and the analysis does not depend on it.
 
         Returns:
             cupy.ndarray: Solution ``x`` (F-contiguous for a matrix ``b``).
@@ -2403,9 +2403,9 @@ class SpSM:
         else:
             raise ValueError('b.ndim must be 1 or 2')
 
-        # Check shapes
+        # Check shapes ('a' is square: checked in __init__)
         a = self._a
-        if not (a.shape[0] == a.shape[1] == b.shape[0]):
+        if a.shape[0] != b.shape[0]:
             raise ValueError('mismatched shape')
 
         # Check dtypes
@@ -2434,6 +2434,9 @@ class SpSM:
         handle = _device.get_cusparse_handle()
         cuda_dtype = _dtype.to_cuda_dtype(self._dtype)
         algo = _cusparse.CUSPARSE_SPSM_ALG_DEFAULT
+        # Held in a local until the solve returns: the pointer is read by
+        # cuSPARSE, so it must outlive the calls below.
+        alpha_p = _numpy.array(alpha, dtype=self._dtype).ctypes
 
         key = (n, op_b)
         if key != self._key:
@@ -2446,13 +2449,13 @@ class SpSM:
 
             # Allocate the workspace needed by the succeeding phases
             buff_size = _cusparse.spSM_bufferSize(
-                handle, self._op_a, op_b, self._alpha.data, self._mat_a.desc,
+                handle, self._op_a, op_b, alpha_p.data, self._mat_a.desc,
                 mat_b.desc, mat_c.desc, cuda_dtype, algo, spsm_descr.desc)
             buff = _cupy.empty(buff_size, dtype=_cupy.int8)
 
             # Perform the analysis phase
             _cusparse.spSM_analysis(
-                handle, self._op_a, op_b, self._alpha.data, self._mat_a.desc,
+                handle, self._op_a, op_b, alpha_p.data, self._mat_a.desc,
                 mat_b.desc, mat_c.desc, cuda_dtype, algo, spsm_descr.desc,
                 buff.data.ptr)
 
@@ -2470,7 +2473,7 @@ class SpSM:
 
         # Executes the solve phase
         _cusparse.spSM_solve(
-            handle, self._op_a, op_b, self._alpha.data, self._mat_a.desc,
+            handle, self._op_a, op_b, alpha_p.data, self._mat_a.desc,
             self._mat_b.desc, self._mat_c.desc, cuda_dtype, algo,
             self._spsm_descr.desc, self._buff.data.ptr)
 
@@ -2499,12 +2502,9 @@ def spsm(a, b, alpha=1.0, lower=True, unit_diag=False, transa=False):
             'N' or False: op(a) == ``a``.
             'T' or True: op(a) == ``a.T``.
             'H': op(a) == ``a.conj().T``.
-
-    .. seealso:: :class:`cupyx.cusparse.SpSM` for reusing the analysis
-        across repeated solves against the same matrix.
     """
-    return SpSM(a, alpha=alpha, lower=lower, unit_diag=unit_diag,
-                transa=transa).solve(b)
+    return _SpSM(a, lower=lower, unit_diag=unit_diag,
+                 transa=transa).solve(b, alpha=alpha)
 
 
 def _cupy_spgemm_int64(a, b, alpha):
