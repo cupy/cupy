@@ -26,13 +26,13 @@ ctypedef fused sequence:
 #                        caller（noexcept / C 侧入口方向）。
 cdef aclError launch_general_func(str opname, sequence ins, sequence outs,
     list args, dict kargs, intptr_t stream_ptr) except *
-cdef aclError launch_acl_func(str opname, sequence ins, sequence outs,
+cdef aclError launch_elementwise_func(str opname, sequence ins, sequence outs,
     list args, dict kargs, intptr_t stream_ptr) except *
 cdef aclError launch_reduction_op(str opname, sequence ins, sequence outs,
     object axes, bint keepdims, dict kargs, intptr_t stream_ptr) except *
 cdef aclError launch_general_func_raw(str opname, sequence ins, sequence outs,
     list args, dict kargs, intptr_t stream_ptr) except *
-cdef aclError launch_acl_func_raw(str opname, sequence ins, sequence outs,
+cdef aclError launch_elementwise_func_raw(str opname, sequence ins, sequence outs,
     list args, dict kargs, intptr_t stream_ptr) except *
 cdef aclError launch_reduction_op_raw(str opname, sequence ins, sequence outs,
     object axes, bint keepdims, dict kargs, intptr_t stream_ptr) except *

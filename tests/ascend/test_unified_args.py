@@ -227,7 +227,8 @@ def _acl_utils_src():
     return pyx, pxd
 
 
-@pytest.mark.parametrize('name', ['launch_general_func', 'launch_acl_func',
+@pytest.mark.parametrize('name', ['launch_general_func',
+                                  'launch_elementwise_func',
                                   'launch_reduction_op'])
 def test_launch_api_returns_error_code(name):
     """两层入口都必须返回 `aclError`（不是 void）。"""
@@ -253,7 +254,7 @@ def test_core_modules_do_not_bypass_the_check():
     offenders = []
     for path in glob.glob(os.path.join(core, '**', '*.pyx'), recursive=True):
         src = open(path).read()
-        for name in ('launch_general_func_raw', 'launch_acl_func_raw',
+        for name in ('launch_general_func_raw', 'launch_elementwise_func_raw',
                      'launch_reduction_op_raw'):
             if re.search(r'\b' + name + r'\(', src):
                 offenders.append((os.path.relpath(path), name))

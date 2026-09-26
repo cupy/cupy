@@ -1497,7 +1497,7 @@ cdef class ElementwiseKernel:
         # (only reachable from CUDA-only paths), so a raise at construction time
         # would make `import cupy` fail. The explicit failure is raised once, for
         # every dispatch path, inside the dispatcher itself -- see
-        # `launch_acl_func` / `launch_reduction_op` -> `_no_ascend_impl_msg()` in
+        # `launch_elementwise_func` / `launch_reduction_op` -> `_no_ascend_impl_msg()` in
         # cupy/backends/ascend/api/acl_utils.pyx.
         launch_general_func(self.name, list(in_args), list(out_args), pos_args, kwargs, s)
 

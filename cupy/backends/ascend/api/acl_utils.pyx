@@ -721,6 +721,10 @@ cdef aclError cupy_destroy_acl_tensor(const aclTensor* tensor) except *:
     return ret
 
 
+# TODO: out view write-back
+# _write_acl_out_to_view()
+
+
 cdef extern from "../acl_opinfo.h":
     # 操作类型枚举
     cdef enum OpType:
@@ -1089,7 +1093,7 @@ cdef aclError launch_general_func_raw(str opname, sequence ins, sequence outs, l
     op_info.op_type = OpType.GENERAL_OP
     if _builtin_operators.find(op_info) == _builtin_operators.end():
         # 窄签名路径：同样只传错误码（检查在外层 launch_general_func 做）
-        return launch_acl_func_raw(opname, ins, outs, args, kwargs, stream_ptr)
+        return launch_elementwise_func_raw(opname, ins, outs, args, kwargs, stream_ptr)
     func_ptr = _builtin_operators[op_info]
 
     # I/O dtype 提升拦截（AscendSpecialization.md §A.1）：豁免算子见
@@ -1325,13 +1329,13 @@ cdef aclError _launch_custom_ufunc(str opname, dict spec, sequence ins,
     # dtypes（complex/f32）白名单里，会被先拒掉。
     if a_ins and a_ins[0].dtype.kind != 'c':
         if opname == 'ascend_conjugate':
-            return launch_acl_func_raw('ascend_copy', ins, outs, [], {}, stream_ptr)
+            return launch_elementwise_func_raw('ascend_copy', ins, outs, [], {}, stream_ptr)
         if opname == 'ascend_imag':
             return launch_general_func_raw('ascend_fill', ins, outs, [0], {}, stream_ptr)
         if opname == 'ascend_angle':
             import cupy as _cupy_mod
             zeros = _cupy_mod.zeros(a_ins[0].shape, a_ins[0].dtype)
-            return launch_acl_func_raw(
+            return launch_elementwise_func_raw(
                 'ascend_arctan2', [zeros] + list(a_ins), outs, [], {}, stream_ptr)
     if dtypes and a_outs and a_outs[0].dtype.char not in dtypes:
         raise NotImplementedError(
@@ -1374,7 +1378,11 @@ cdef aclError _launch_custom_ufunc(str opname, dict spec, sequence ins,
     return 0
 
 
-cdef aclError launch_acl_func_raw(str opname, sequence ins, sequence outs, list args, dict kwargs, intptr_t stream_ptr) except *:
+cdef aclError launch_elementwise_func_raw(str opname, sequence ins, sequence outs, list args, dict kwargs, intptr_t stream_ptr) except *:
+    # 窄签名（elementwise）派发通道：UNARY/BINARY/SCALAR_BINARY/INPLACE/REVERSE
+    # 等 typed 注册槽位。走这条通道的全部是 elementwise 形态的 ufunc（算术、
+    # 逻辑、位运算、比较），调用链为 ElementwiseKernel.__call__ ->
+    # launch_general_func -> 未注册 GENERAL_OP 时 fall-through 到这里。
     # M1 止血：这条路径（UNARY/BINARY/SCALAR/INPLACE 注册表）目前**没有参数通道**，
     # 原来 args/kwargs 被完全丢弃（生成代码里是 CYTHON_UNUSED，见 review §2.2）。
     # 丢弃 = 参数没生效但算子照跑 = 静默错误结果，所以先显式报错；
@@ -1704,9 +1712,9 @@ cdef aclError launch_general_func(str opname, sequence ins, sequence outs,
     return ret
 
 
-cdef aclError launch_acl_func(str opname, sequence ins, sequence outs,
+cdef aclError launch_elementwise_func(str opname, sequence ins, sequence outs,
                               list args, dict kwargs, intptr_t stream_ptr) except *:
-    cdef aclError ret = launch_acl_func_raw(opname, ins, outs, args, kwargs, stream_ptr)
+    cdef aclError ret = launch_elementwise_func_raw(opname, ins, outs, args, kwargs, stream_ptr)
     if ret != 0:
         raise_acl_op_error(opname, ret)
     return ret
@@ -2747,10 +2755,10 @@ def py_register_acl_ufunc(str opname, int func_type, long func_ptr):
 
 '''
 # TODO: passing stream by intptr_t
-def py_launch_acl_func(str opname, tuple ops, bint inplace=False):
+def py_launch_elementwise_func(str opname, tuple ops, bint inplace=False):
     """Python层级的ACL函数启动器"""
     cdef string c_opname = opname.encode('utf-8')
-    return launch_acl_func(c_opname, ops, inplace)
+    return launch_elementwise_func(c_opname, ops, inplace)
 '''
 
 cdef bint is_acl_ufunc_registered(str opname) except *:
@@ -2790,7 +2798,7 @@ def py_launch_general(str opname, tuple ins, tuple outs, tuple args,
     `_STRING_ARG_OPS` 白名单内）；错误传播语义同 ``launch_general_func``
     （aclError != 0 -> RuntimeError，消息带 aclGetRecentErrMsg）。
     """
-    return launch_general_func(opname, ins, outs, list(args), dict(kwargs),
+    return launch_general_func(opname, list(ins), list(outs), list(args), dict(kwargs),
                                stream_ptr)
 
 
@@ -2805,7 +2813,7 @@ def py_is_registered(str opname, int op_type) -> bool:
 def _no_ascend_impl_msg(str opname) -> str:
     """The explicit "this op is simply not implemented on Ascend" message.
 
-    Used by `launch_acl_func`/`launch_reduction_op` when the registry has no
+    Used by `launch_elementwise_func`/`launch_reduction_op` when the registry has no
     entry at all.  Rationale (review P1/D3): on Ascend an
     `ElementwiseKernel`/`ufunc` never compiles its CUDA body -- it is dispatched
     purely by name (`cupy_xxx` -> `ascend_xxx`) -- so a missing registry entry
