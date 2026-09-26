@@ -530,3 +530,21 @@ def matrix_transpose(a):
     if ndim < 2:
         raise ValueError('Matrix dimension is less than 2')
     return a.swapaxes(ndim-1, ndim-2)
+
+
+def diagonal(x, /, *, offset=0):
+    """Returns the specified diagonal of the last two dimensions of an array.
+
+    Args:
+        x (~cupy.ndarray): Input array with shape ``(..., M, N)``.
+        offset (int): Offset of the diagonal from the main diagonal.
+            A positive value selects a diagonal above the main diagonal,
+            while a negative value selects a diagonal below it.
+
+    Returns:
+        ~cupy.ndarray: The selected diagonal with shape
+        ``(..., K)``, where ``K`` is the length of the diagonal.
+
+    .. seealso:: :func:`numpy.linalg.diagonal`
+    """
+    return x.diagonal(offset, -2, -1)
