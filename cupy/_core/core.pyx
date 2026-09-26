@@ -789,7 +789,7 @@ cdef class _ndarray_base:
             self.data.memset_async(0, self.nbytes)
         else:
             IF CUPY_CANN_VERSION > 0:
-                # cann 8.5/9.0 InplaceFillScalar/Tensor op deos not support uint8/16/32/64
+                # cann 8.5/9.0 InplaceFillScalar/Tensor op does not support uint8/16/32/64
                 # use cast, uint64 > 2^63 will be truncated when cast to int64
                 # similarly, uint32 -> int32
                 # cast back, so this is very inefficient, should be discouraged on ASCEND
@@ -801,7 +801,20 @@ cdef class _ndarray_base:
                     tmp.fill(value)
                     self[...] = tmp
                     return
-            fill_kernel(value, self)
+                # non-C-contiguous will not be filled, workaround by do it on host
+                if not self._c_contiguous:
+                    np_val = numpy.full(self.shape, value, dtype=self.dtype)
+                    _f_order = self._f_contiguous
+                    tmp = numpy.ascontiguousarray(np_val)
+                    ptr = tmp.ctypes.data
+                    if _f_order:
+                        tmp_f = numpy.asfortranarray(np_val)
+                        self.data.copy_from_host_async(
+                            tmp_f.ravel(order='F').ctypes.data, self.nbytes)
+                    else:
+                        self.data.copy_from_host_async(ptr, self.nbytes)
+            ELSE:
+                fill_kernel(value, self)
 
     # -------------------------------------------------------------------------
     # Shape manipulation
