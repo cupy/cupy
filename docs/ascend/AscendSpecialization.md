@@ -154,7 +154,7 @@ cast**（代价 0 → 2 次 cast kernel）；这也是 `_reduction.pyx::_call` �
 |---|---|---|---|---|
 | `arange` | 不支持 int8/int16/uint16/uint32 | int32 生成后 `astype` 回目标 dtype（`_ASCEND_ARANGE_INT32_FALLBACK`）；> 2³¹−1 的 uint32 中间态溢出 | `740534c70` | L3 |
 | `matmul` | 不支持整型/布尔 | 输入 → float32 计算 → 结果 cast 回；float32 尾数 24 bit，> 2²⁴ 不精确（NumPy 是精确整数运算） | `fd028e60e` | L3 |
-| `any` / `all` | 不支持 complex64/128、float64、int8/int16、uint 全系（实测 aclnn 稳定只收 BOOL/INT32/INT64/FLOAT16/FLOAT32） | **已下沉到 C++**：`aclop_Any/aclop_All` 内 `_run_any_all()` 检查 `aclGetDataType`，白名单外先 `aclnnCast` 到 BOOL 临时张量再归约（any/all 只关心非零，语义等价；输出恒为 BOOL）。派发层的 `_BOOL_CAST_INPUT_OPS` astype('?') 补丁已删除 | `3e6bef50a` | L3 |
+| `any` / `all` | 白名单外全被拒（实测 aclnn 稳定只收 BOOL/INT32/INT64/FLOAT16/FLOAT32；DOUBLE/COMPLEX64/128/int8/int16/uint 全系不行）；out 只收 BOOL | **已下沉到 C++**：`aclop_Any/aclop_All` 内 `_run_any_all()` 检查 `aclGetDataType`，白名单外 `aclnnCast` 到 **FLOAT32** 临时张量再归约（输出恒为 BOOL —— numpy 的 any/all 返回恒为 bool，全量归约 `numpy.bool_`、带 axis bool ndarray）。覆盖分工：uint 由 dispatcher（`_reduction._call` `_UINT_PROMOTE`）处理、C++ cast 仅防御；int8/int16 由 C++ 真实处理（dispatcher 刻意不提升窄整型）；DOUBLE cast FLOAT32 有 \|x\|<2⁻¹²⁶ 下溢的 any() 假阴性风险（开关 `enable_float64_to_float32` 打开时 dispatcher 已降档、不走此路由）；**COMPLEX 是已知差距** —— 8.5.1 无 aclnnImag/复数 abs，aclnnCast 输入 doc 未列 complex，纯虚数可能被取实部错判成 0（numpy any(1j)=True），精确语义待上层 real/imag 组合（TODO）。旧的 `_BOOL_CAST_INPUT_OPS` astype('?') 补丁已删除 | `3e6bef50a` + 本条 | L3 |
 | `real` | 只接受复数输入 | 实数输入走 `aclnnCast` 恒等拷贝（`aclnn_copy.h` 只有 inplace 版） | `1ae444ac7` | L3 |
 | `mean`（整型） | **aclnnMean 求和不会先提升为浮点再除** | method 2：整型输入先 `astype(float)` 再 mean（稳但慢）；method 1（sum 后把标量和转 float）会溢出，未采用 | `d0dcf58b3` | L3 |
 | `Max`/`Min` | 只有全量归约，无 dim/keepdim | 改用 `aclnnAmax/Amin`（axes + keepDim），全轴归约由调用方传全部轴 | `20e0ae7a1` | L3 |

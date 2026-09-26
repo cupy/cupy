@@ -48,13 +48,29 @@ extern "C" {
 #endif
 
 // ================================================================================================================
-// aclop_Any / aclop_All: aclnnAny/aclnnAll only accept a narrow dtype set
-// (BOOL / INT32 / INT64 / FLOAT16 / FLOAT32); complex, float64, int8/int16
-// and unsigned ints are rejected by aclnn. any/all only care about
-// non-zero-ness, so unsupported inputs are cast to BOOL on the device and
-// the reduction runs on the cast copy. This replaces the dispatch-layer
-// astype('?') patch that used to live in launch_reduction_op_raw
-// (_BOOL_CAST_INPUT_OPS) -- dtype handling now lives next to the op.
+// aclop_Any / aclop_All: aclnnAny/aclnnAll 直接接受的 dtype 白名单很窄
+// (BOOL / INT32 / INT64 / FLOAT16 / FLOAT32，实测)；DOUBLE、COMPLEX64/128、
+// 窄整型 (int8/int16) 被拒。分层处理（AscendSpecialization.md §A.1.1/A.2）：
+//
+//   * uint 全系：上层 dispatcher 已处理 —— cupy/_core/_ascend/_reduction.pyx
+//     ::_call 的 _UINT_PROMOTE 在 launch 前把 uint astype 成 int32/int64，
+//     这里正常收不到 uint；cast 兜底仅作防御。
+//   * int8/int16：dispatcher 刻意不提升（aclnnAmax/Amin/mean 原生收窄整型，
+//     见 _reduction.pyx 头注释），这里是它们的**真实处理器**。
+//   * DOUBLE：白名单无 DOUBLE，cast 到 FLOAT32 后归约。注意 |x| < 2^-126
+//     的下溢会把非零元素错判成 0（any() 假阴性）；enable_float64_to_float32
+//     打开时 dispatcher 已把 float64 降为 float32（直接命中白名单），本路由
+//     只服务开关关闭的场景。
+//   * COMPLEX64/128：已知差距 —— aclnnCast 的输入 doc 未列 complex（8.5.1
+//     也没有 aclnnImag/复数版 abs，无法在 C++ 内做精确的非零判断），设备上
+//     可能为取实部或直接报错：取实部会把纯虚数 (如 1j) 错判成 0，与
+//     numpy any(1j) == True 不符。精确语义需上层 real/imag 组合（TODO）。
+//   * out：aclnnAll doc 只列 BOOL（8.5.1 的 aclnn_any.h 无 dtype doc）。
+//     numpy 的 any/all 返回恒为 bool（全量归约 -> numpy.bool_ 标量、
+//     带 axis -> bool ndarray），out=BOOL 恒成立。
+//
+// 该 cast 兜底取代了曾在 launch_reduction_op_raw 的 astype('?') 补丁
+// (_BOOL_CAST_INPUT_OPS) —— dtype 处理现在跟算子放在一起。
 #ifdef __cplusplus
 }  // leave extern "C": the helper below is a C++ template
 #endif
@@ -80,14 +96,14 @@ static aclError _run_any_all(const aclTensor* self, const aclIntArray* dim, bool
     if (_any_all_dtype_ok(dtype)) {
         return aclReductionOpRun(self, out, wsfunc, kfunc, stream, dim, keepdim);
     }
-    // cast self -> BOOL (aclnnCast handles the dtype conversion), reduce on
-    // the copy; the output is always BOOL for any/all either way.
-    aclTensor* temp = aclTensorLike(self, ACL_BOOL);
+    // cast self -> FLOAT32（aclnnAny/aclnnAll 白名单内的浮点家族，用户真机
+    // 结论：BOOL 输入不可靠），归约跑在 cast 副本上；输出恒为 BOOL。
+    aclTensor* temp = aclTensorLike(self, ACL_FLOAT);
     if (temp == nullptr) {
         return ACL_ERROR_INVALID_PARAM;
     }
     aclError ret = aclIrregularOpRun(aclnnCastGetWorkspaceSize, aclnnCast, stream,
-        self, ACL_BOOL, temp);
+        self, ACL_FLOAT, temp);
     if (ret == ACL_SUCCESS) {
         ret = aclReductionOpRun(temp, out, wsfunc, kfunc, stream, dim, keepdim);
     }
