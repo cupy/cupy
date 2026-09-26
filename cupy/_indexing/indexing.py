@@ -59,6 +59,17 @@ def take_along_axis(a, indices, axis):
         raise ValueError(
             '`indices` and `a` must have the same number of dimensions')
 
+    from cupy.backends.backend import is_ascend
+    if is_ascend:
+        # ASCEND: a[tuple(fancy_index)] use _getitem_multiple
+        # take_along_axis: a[..., indices[..., j], ...], 
+        # equals `a.take(indices, axis)`` on ASCEND
+        # indices axis's dim could be diff from a
+        out_shape = list(a.shape)
+        out_shape[axis] = indices.shape[axis]
+        indices = cupy.broadcast_to(indices, tuple(out_shape))
+        return a.take(indices, axis=axis)
+
     fancy_index = []
     for i, n in enumerate(a.shape):
         if i == axis:

@@ -11,7 +11,7 @@ from cupy import _core
 #: aclnnArange 不支持的 dtype：Ascend 上先用 int32 生成再 cast 回目标 dtype
 #: （见 arange）。需要同样处理的 dtype 往这个 set 加名字。
 _ASCEND_ARANGE_INT32_FALLBACK = frozenset((
-    'int8', 'int16', 'uint16', 'uint32',
+    'int8', 'int16', 'uint8', 'uint16', 'uint32', 'uint64',
 ))
 
 

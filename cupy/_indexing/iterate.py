@@ -66,7 +66,23 @@ class flatiter:
             else:
                 size = (size + 1) // s_step + 1
             value = cupy.asarray(value, dtype=base.dtype)
-            _flatiter_setitem_slice(value, s_start, s_step, base, size=size)
+            
+            from cupy.backends.backend import is_ascend
+            if is_ascend:
+                # ASCEND: kernel not available, workaround
+                flat = base.reshape(-1)
+                vals = value.reshape(-1)
+                if vals.size == 1:
+                    target = cupy.broadcast_to(vals, (size,))
+                else:
+                    target = vals[cupy.arange(size) % vals.size]
+                flat[slice(s_start, None, s_step)][:size] = target
+                if flat is not base and base.flags.c_contiguous:
+                    # F-order / non-contiguous base, reshape() give a copy
+                    # write back to base
+                    base[...] = flat.reshape(base.shape)
+            else:
+                _flatiter_setitem_slice(value, s_start, s_step, base, size=size)
             return
 
         raise IndexError('unsupported iterator index')

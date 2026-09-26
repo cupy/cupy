@@ -169,14 +169,8 @@ ELSE:
                 nonzero = self
             else:
                 nonzero = cupy._core.not_equal(self, 0)
-            # Count the non-zero elements on the host: the output shape of
-            # `aclnnNonzero` ((count, ndim)) is data dependent, so it cannot be
-            # inferred on the device. This is one reduction plus a 1-element
-            # device->host copy.
-            # NOTE: `cupy.count_nonzero` is *not* usable here — its reduction
-            # (`cupy_count_nonzero`) has no `ascend_` registration — while the
-            # plain `cupy_sum` behind `cupy.sum` is registered (`ascend_sum`).
-            count_nonzero = int(cupy.sum(nonzero))  # synchronize!
+            # ASCEND: NOTE: `cupy.count_nonzero` now registered and usable
+            count_nonzero = int(cupy.count_nonzero(nonzero))  # synchronize!
 
         ndim = self._shape.size()
         dst = core.ndarray((count_nonzero, ndim), dtype=numpy_int64)

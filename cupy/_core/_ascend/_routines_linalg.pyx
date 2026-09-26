@@ -404,8 +404,9 @@ cdef _ndarray_base _ascend_matmul(_ndarray_base a, _ndarray_base b, _ndarray_bas
         # NB: `astype` is cimported from core.pxd where the defaults are
         # declared with `=*` (defined in core.pyx), so a static call cannot
         # use keyword defaults here — pass them positionally.
-        a_calc = a.astype(numpy.float32, 'K', 'unsafe', False, True)
-        b_calc = b.astype(numpy.float32, 'K', 'unsafe', False, True)
+        # ASCEND: `_astype` rejects casting and subok kwargs (not supported)
+        a_calc = a.astype(numpy.float32, 'K', None, None, True)
+        b_calc = b.astype(numpy.float32, 'K', None, None, True)
         calc_out = _ndarray_init(
             cupy.ndarray, [a.shape[0], b.shape[1]], numpy.float32, None)
         launch_general_func(

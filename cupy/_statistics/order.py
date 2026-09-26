@@ -195,10 +195,15 @@ def _quantile_unchecked(a, q, axis=None, out=None,
         except ImportError:
             cpu_fallback = None
         if cpu_fallback is not None and cpu_fallback.active():
-            return cpu_fallback.call(
+            ret = cpu_fallback.call(
                 'statistics.quantile', a, q, axis=axis, out=out,
                 overwrite_input=overwrite_input, method=method,
                 keepdims=keepdims)
+            if overwrite_input:
+                # cpu fallback an not change inut inplace
+                # numpy semantics: set zero for the defined input
+                a[...] = 0
+            return ret
 
     dtype = cupy.result_type(a, q)
     q = cupy.asarray(q)

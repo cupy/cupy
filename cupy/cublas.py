@@ -9,9 +9,14 @@ import warnings
 
 import cupy
 from cupy import _core
-from cupy_backends.cuda.libs import cublas
 from cupy.xpu import device
 from cupy.linalg import _util
+
+from cupy.backends.backend import is_ascend
+if is_ascend:
+    cublas = None
+else:
+    from cupy_backends.cuda.libs import cublas
 
 _batched_gesv_limit = 256
 
