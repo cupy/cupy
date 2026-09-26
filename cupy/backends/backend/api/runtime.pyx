@@ -555,6 +555,9 @@ cpdef intptr_t mallocManaged(
         size_t size, unsigned int flags=0) except? 0:
     if 0 < CUPY_HIP_VERSION < 40300000:
         raise RuntimeError('Managed memory requires ROCm 4.3+')
+    if _is_ascend:
+        # ASCEND: stub throw instead of terminate/SIGABRT
+        raise RuntimeError("MallocManaged not supported on ASCEND")
     cdef void* ptr
     with nogil:
         status = cudaMallocManaged(&ptr, size, flags)

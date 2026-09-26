@@ -578,6 +578,10 @@ cdef object _materialize_host(_ndarray_base cupy_array):
     #    所以 frombuffer 的offset为0
     flat = numpy.frombuffer(host, dtype=cupy_array.dtype,
                             offset=0, count=span // itemsize)
+    # as_strided base must lies on `data.ptr + 0`, so deal mimus stride
+    if min_off < 0:
+        flat = flat[(-min_off) // itemsize:]
+    
     # as_strided 的 strides 恒为字节单位（与 dtype 无关），cupy 的
     # strides 也是字节单位，直接沿用，不能再除以 itemsize。
     host_view = numpy.lib.stride_tricks.as_strided(

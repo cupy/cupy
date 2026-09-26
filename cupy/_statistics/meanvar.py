@@ -126,13 +126,25 @@ def average(a, axis=None, weights=None, returned=False, *, keepdims=False):
             wgt = cupy.broadcast_to(wgt, (a.ndim - 1) * (1,) + wgt.shape)
             wgt = wgt.swapaxes(-1, axis)
 
-        scl = wgt.sum(axis=axis, dtype=result_dtype, keepdims=keepdims)
+        # ASCEND: aclnn reduction does not support float16/int, cast to float32
+        # NOTE: this should be an issue of ASCEND CANN ops
+        from cupy.backends.backend import is_ascend
+        if is_ascend and numpy.dtype(result_dtype).kind in 'iube':
+            scl_dtype = numpy.float32
+        else:
+            scl_dtype = result_dtype
+        scl = wgt.sum(axis=axis, dtype=scl_dtype, keepdims=keepdims)
         if cupy.any(scl == 0.0):  # synchronize!
             raise ZeroDivisionError(
                 'Weights sum to zero, can\'t be normalized')
 
         avg = cupy.multiply(a, wgt, dtype=result_dtype).sum(
             axis, keepdims=keepdims) / scl
+
+        # dtype cast back
+        if scl_dtype is not result_dtype:
+            avg = avg.astype(result_dtype)
+            acl = acl.astype(result_dtype)
 
     if returned:
         if scl.shape != avg.shape:
