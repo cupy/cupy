@@ -10,45 +10,29 @@ from cupy_backends.cuda.libs import cublas as _cublas
 from cupyx.scipy.sparse import _csr
 from cupyx.scipy.sparse.linalg import _interface
 
-_RNG_TYPES = (cupy.random.RandomState, cupy.random.Generator,
-              numpy.random.RandomState, numpy.random.Generator)
+# Only CuPy's own generators: a NumPy generator would draw the start vector
+# on the host, and the global-state sentinel has no counterpart in scipy.
+_RNG_TYPES = (cupy.random.Generator, cupy.random.RandomState)
 
 
 def _resolve_rng(rng):
-    """Map an ``rng`` argument to a generator object.
-
-    ``None`` gives a fresh :func:`cupy.random.default_rng` (entropy from the
-    operating system, so each call starts differently, as
-    :func:`scipy.sparse.linalg.eigsh` does); the :mod:`cupy.random` module
-    itself means the global :class:`cupy.random.RandomState`, so that
-    :func:`cupy.random.seed` controls the draw; an int seeds a new
-    :func:`cupy.random.default_rng`; a CuPy or NumPy ``RandomState`` or
-    ``Generator`` is used as is and advanced in place.
-    """
     if rng is None:
         return cupy.random.default_rng()
-    if rng is cupy.random:
-        return cupy.random.get_random_state()
     if isinstance(rng, (int, numpy.integer)):
         return cupy.random.default_rng(int(rng))
     if isinstance(rng, _RNG_TYPES):
         return rng
     raise TypeError(
-        'rng must be None, an int, cupy.random, a cupy.random.RandomState or '
-        'Generator, or a numpy.random.RandomState or Generator (actual: '
-        '{})'.format(type(rng)))
+        'rng must be None, an int, or a cupy.random.Generator or '
+        'RandomState (actual: {})'.format(type(rng)))
 
 
 def _default_v0(n, dtype, rs):
     """Random start vector of length ``n`` drawn from the resolved ``rs``."""
     if isinstance(rs, cupy.random.RandomState):
         u = rs.random_sample((n,))
-    elif isinstance(rs, cupy.random.Generator):
+    else:                                   # cupy.random.Generator
         u = rs.random((n,))
-    elif isinstance(rs, numpy.random.RandomState):
-        u = cupy.asarray(rs.random_sample((n,)))
-    else:                                   # numpy.random.Generator
-        u = cupy.asarray(rs.random((n,)))
     return u.astype(dtype, copy=False)
 
 
@@ -87,12 +71,12 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
             ``v0`` is ``None``. ``None`` (the default) draws from a fresh
             :func:`cupy.random.default_rng`, so repeated calls start
             differently, as in :func:`scipy.sparse.linalg.eigsh`; pass an
-            int for a reproducible start, a :class:`cupy.random.Generator`,
-            :class:`cupy.random.RandomState`, :class:`numpy.random.Generator`
-            or :class:`numpy.random.RandomState` to use and advance that
-            object, or the :mod:`cupy.random` module to use the global state
-            (so that :func:`cupy.random.seed` applies). Ignored when ``v0``
-            is given.
+            int for a reproducible start, or a
+            :class:`cupy.random.Generator` or
+            :class:`cupy.random.RandomState` to use and advance that object.
+            Anything else raises :class:`TypeError`; in particular the draw
+            never follows :func:`cupy.random.seed`. Ignored when ``v0`` is
+            given.
 
     Returns:
         tuple:

@@ -530,10 +530,10 @@ class TestSvdsV0:
 class TestRng:
     # rng= selects the source of the default start vector (and, in svds,
     # of the columns completing the singular vectors of a rank-deficient
-    # input), with scipy's semantics: None draws from a fresh generator so
-    # calls start differently, an int is reproducible, a generator object
-    # is advanced in place, cupy.random means the global state, and v0
-    # takes precedence.
+    # input): None draws from a fresh generator so calls start differently,
+    # an int is reproducible, a CuPy generator is advanced in place, and v0
+    # takes precedence. Only CuPy's own generators are accepted -- a NumPy
+    # generator, the cupy.random module and anything else raise TypeError.
 
     def test_resolve_and_draw(self):
         from cupyx.scipy.sparse.linalg import _eigen
@@ -545,22 +545,19 @@ class TestRng:
         u7b = _eigen._default_v0(n, 'd', _eigen._resolve_rng(7))
         cupy.testing.assert_array_equal(u7a, u7b)          # int reproduces
         assert u7a.dtype == cupy.float64 and u7a.shape == (n,)
-        # cupy.random means the global state: cupy.random.seed controls it
-        cupy.random.seed(5)
-        g1 = _eigen._default_v0(n, 'd', _eigen._resolve_rng(cupy.random))
-        cupy.random.seed(5)
-        g2 = _eigen._default_v0(n, 'd', _eigen._resolve_rng(cupy.random))
-        cupy.testing.assert_array_equal(g1, g2)
-        for rs in (cupy.random.RandomState(3), cupy.random.default_rng(3),
-                   numpy.random.RandomState(3), numpy.random.default_rng(3)):
+        for rs in (cupy.random.RandomState(3), cupy.random.default_rng(3)):
             rs = _eigen._resolve_rng(rs)
             first = _eigen._default_v0(n, 'f', rs)
             second = _eigen._default_v0(n, 'f', rs)   # advanced in place
             assert isinstance(first, cupy.ndarray)
             assert first.dtype == cupy.float32 and first.shape == (n,)
             assert not bool((first == second).all())
-        with pytest.raises(TypeError):
-            _eigen._resolve_rng('seed')
+        # Only CuPy generators: a NumPy one would draw on the host, and the
+        # cupy.random module (the global state) has no scipy counterpart.
+        for bad in ('seed', cupy.random, numpy.random.RandomState(3),
+                    numpy.random.default_rng(3)):
+            with pytest.raises(TypeError):
+                _eigen._resolve_rng(bad)
 
     @testing.for_dtypes('fdFD')
     def test_eigsh(self, dtype):
@@ -575,7 +572,7 @@ class TestRng:
         v0 = testing.shaped_random((120,), cupy, dtype=dtype, seed=1)
         w3 = sparse.linalg.eigsh(a, k=6, v0=v0, return_eigenvectors=False)
         w4 = sparse.linalg.eigsh(a, k=6, v0=v0, return_eigenvectors=False,
-                                 rng=numpy.random.default_rng(2))
+                                 rng=cupy.random.default_rng(2))
         cupy.testing.assert_allclose(cupy.sort(w3.real), cupy.sort(w4.real),
                                      rtol=tol, atol=0)
 
@@ -596,10 +593,10 @@ class TestRng:
              @ testing.shaped_random((rank, n), cupy, dtype='d', seed=1))
         b = sparse.csr_matrix(b)
         u1, _, vt1 = sparse.linalg.svds(
-            b, k=6, rng=numpy.random.default_rng(5))
+            b, k=6, rng=cupy.random.default_rng(5))
         u2, _, vt2 = sparse.linalg.svds(
-            b, k=6, rng=numpy.random.default_rng(5))
-        u3, _, _ = sparse.linalg.svds(b, k=6, rng=numpy.random.default_rng(6))
+            b, k=6, rng=cupy.random.default_rng(5))
+        u3, _, _ = sparse.linalg.svds(b, k=6, rng=cupy.random.default_rng(6))
         # A singular vector is defined up to sign, and the Ritz solve does
         # not fix it between runs (gh-10286): compare each column up to its
         # sign, i.e. require |u1^H u2| = I and |vt1 vt2^H| = I.
