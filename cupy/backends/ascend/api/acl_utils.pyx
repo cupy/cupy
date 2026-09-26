@@ -721,8 +721,128 @@ cdef aclError cupy_destroy_acl_tensor(const aclTensor* tensor) except *:
     return ret
 
 
-# TODO: out view write-back
-# _write_acl_out_to_view()
+# ---------------------------------------------------------------------------
+# out view write-back（_materialize_host 的逆操作）
+#
+# 背景：cupy_ndarray_to_acl_tensor 对偏移视图 / 非 C-连续数组会先物化成
+# 独立 C-连续新数组，aclnn 算子的写出落在物化副本上，调用方的原视图
+# （out= 参数，或 inplace 语义下的 self）永远收不到结果。
+# 流程：launch_*_func_raw 先用 _wrap_materialize_outs 提前物化写目标，
+# 算子成功后再用 _write_acl_out_to_view 写回。
+# ---------------------------------------------------------------------------
+
+cdef bint _out_needs_materialize(_ndarray_base arr):
+    """与 cupy_ndarray_to_acl_tensor 的物化条件保持一致（判定必须同步改）。"""
+    return arr.data.ptr != arr.data.mem.ptr or not arr._c_contiguous
+
+
+cdef list _wrap_materialize_outs(list ins, list outs, bint inplace) except *:
+    """提前物化「会被 cupy_ndarray_to_acl_tensor 物化」的写目标。
+
+    返回 (原视图, 物化副本) 对列表，供算子成功后调 _write_acl_out_to_view
+    写回；ins / outs 中对应元素被原位替换成物化副本（后续 tensor 创建
+    自然指向物化副本）。覆盖两类写目标：
+
+      * 显式 outs（out= 参数 / 非原地 ufunc 的输出）；
+      * inplace 且 self 不在 outs 中：self == out，即 ins[0]
+        （len(ops)==2 的 INPLACE_BINARY / INPLACE_SCALAR_BINARY 与
+        len(ops)==1 的 INPLACE_UNARY 都是这种形态，写的是 tensors[0]）。
+
+    promote 产生的临时 out 是新分配数组，不会进本分支；其视图写回由
+    _cast_back_outs 的嵌套 ascend_cast launch 处理（嵌套 launch 同样走
+    这里的包装）。
+    """
+    cdef Py_ssize_t i
+    cdef bint self_in_outs = False
+    cdef object op, mat
+    cdef list pairs = []
+    if ins and isinstance(ins[0], _ndarray_base):
+        for o in outs:
+            if o is ins[0]:
+                self_in_outs = True
+                break
+    for i in range(len(outs)):
+        op = outs[i]
+        if not isinstance(op, _ndarray_base) or op.size == 0:
+            continue
+        if not _out_needs_materialize(op):
+            continue
+        mat = _materialize_host(op)
+        outs[i] = mat
+        pairs.append((op, mat))
+    if (inplace and not self_in_outs and ins
+            and isinstance(ins[0], _ndarray_base) and ins[0].size
+            and _out_needs_materialize(ins[0])):
+        mat = _materialize_host(ins[0])
+        pairs.append((ins[0], mat))
+        ins[0] = mat
+    return pairs
+
+
+cdef aclError _write_acl_out_to_view(object materialized, object view,
+                                     intptr_t stream_ptr) except *:
+    """把物化副本上的结果写回调用方原来的视图。
+
+    全程只用裸 memcpy + numpy 步长视图：**不能**用 elementwise_copy /
+    astype / .set()——它们经 ufunc 派发（ascend_copy ->
+    cupy_ndarray_to_acl_tensor）对同一个问题视图再次物化，写回丢失甚至
+    无限递归（同 _materialize_host 的约束）。
+
+    步骤（镜像 _materialize_host 的区间计算）：
+      1. D2H 原视图覆盖的字节区间
+         [data.ptr+min_off, data.ptr+max_off+itemsize) —— 跨步切片的
+         间隙字节（不属于视图但属于同一底层分配）必须保住，不能整块覆盖；
+      2. D2H 物化副本（C-连续，shape 与视图相同）；
+      3. host 上按原 shape / strides 重建视图并整体赋值（元素 dtype 域，
+         见 _materialize_host 关于 as_strided / 负步长的注释）；
+      4. H2D 整个区间写回设备。
+    """
+    import numpy
+    from cupy.backends.backend.api import runtime as _rt
+
+    cdef Py_ssize_t i, ndim = len(view._shape)
+    cdef Py_ssize_t itemsize = view.dtype.itemsize
+    cdef Py_ssize_t min_off = 0, max_off = 0, off, span
+    cdef intptr_t dst_dev
+
+    for i in range(ndim):
+        if view._shape[i] > 1:
+            off = (view._shape[i] - 1) * view._strides[i]
+            if off < 0:
+                min_off += off
+            else:
+                max_off += off
+    span = max_off - min_off + itemsize
+
+    # 物化副本是算子刚写完的：先同步，防止非默认 stream 上的 aclnn kernel
+    # 与裸 memcpy（同步语义）乱序，读到旧值。
+    if stream_ptr != <intptr_t>0:
+        _rt.streamSynchronize(stream_ptr)
+    else:
+        _rt.deviceSynchronize()
+
+    dst_dev = <intptr_t>view.data.ptr + min_off
+
+    # 1. 保住视图未覆盖的间隙字节
+    dst_buf = numpy.empty(span, dtype=numpy.uint8)
+    _rt.memcpy(dst_buf.ctypes.data, dst_dev, span, _rt.memcpyDeviceToHost)
+
+    # 2. 物化副本 D2H（C-连续，直接按 dtype 读）
+    host_res = numpy.empty(view.shape, dtype=view.dtype)
+    _rt.memcpy(host_res.ctypes.data, <intptr_t>materialized.data.ptr,
+               view.size * itemsize, _rt.memcpyDeviceToHost)
+
+    # 3. host 视图重建 + 整体赋值（元素 dtype 域，span 恒为 itemsize 整数倍）
+    flat = dst_buf.view(view.dtype)
+    if min_off < 0:
+        flat = flat[(-min_off) // itemsize:]
+    host_view = numpy.lib.stride_tricks.as_strided(
+        flat, shape=tuple(view.shape), strides=tuple(view.strides))
+    host_view[...] = host_res
+
+    # 4. 整个区间 H2D 写回
+    _rt.memcpy(dst_dev, dst_buf.ctypes.data, span, _rt.memcpyHostToDevice)
+    return 0
 
 
 cdef extern from "../acl_opinfo.h":
@@ -1117,6 +1237,13 @@ cdef aclError launch_general_func_raw(str opname, sequence ins, sequence outs, l
         ins, outs, _orig_outs, _cast_src = _promote_io_dtype(opname, ins, outs)
         _promoted = True
 
+    # out view write-back（见 _wrap_materialize_outs）：提前物化会被
+    # cupy_ndarray_to_acl_tensor 物化的写目标，算子成功后写回原视图。
+    # outs 为空的 general 算子是 inplace 形态（写 ins[0]），同样包装。
+    cdef list _wb_ins = list(ins)
+    cdef list _wb_outs = list(outs)
+    cdef list _wb_pairs = _wrap_materialize_outs(_wb_ins, _wb_outs, not _wb_outs)
+
     cdef ArgsType acl_args
     cdef KwargsType acl_kwargs
     cdef const aclTensor* ct
@@ -1131,7 +1258,7 @@ cdef aclError launch_general_func_raw(str opname, sequence ins, sequence outs, l
     # 一起永久泄漏（原来的 tensor 创建循环在 try 之外）。
     try:
         acl_kwargs = _create_keyword_args(kwargs, opname)
-        for op in ins:
+        for op in _wb_ins:
             typ = type(op)
             if issubclass(typ, _ndarray_base):
                 intensors.push_back(cupy_ndarray_to_acl_tensor(op))
@@ -1159,7 +1286,7 @@ cdef aclError launch_general_func_raw(str opname, sequence ins, sequence outs, l
         for i, pos_arg in enumerate(args):
             # 统一参数通道：scalar / int 序列 / str / None（见 _convert_arg）
             acl_args.push_back(_convert_arg(opname, <str>('#%d' % i), pos_arg))
-        for op in outs:
+        for op in _wb_outs:
             typ = type(op)
             if issubclass(typ, _ndarray_base):
                 outtensors.push_back(cupy_ndarray_to_acl_tensor(op))
@@ -1187,6 +1314,10 @@ cdef aclError launch_general_func_raw(str opname, sequence ins, sequence outs, l
         _cret = _cast_back_outs(_orig_outs, _cast_src, stream_ptr)
         if _cret != 0:
             ret = _cret
+    # out view write-back：把物化副本上的结果写回调用方原视图（成功时）。
+    if ret == 0 and _wb_pairs:
+        for _orig, _mat in _wb_pairs:
+            _write_acl_out_to_view(_mat, _orig, stream_ptr)
     return ret
 
 cdef vector[aclTensor*] _create_ops_vector(sequence ins, sequence outs) except *:
@@ -1326,6 +1457,11 @@ cdef aclError _launch_custom_ufunc(str opname, dict spec, sequence ins,
                 f'custom AscendC kernel {opname!r} supports array operands '
                 f'only (got {type(op).__name__}); wrap scalars with '
                 'cupy.asarray(...) explicitly')
+    # out view write-back：AscendC kernel 直接按 data.ptr 线性读写，只认
+    # C-连续内存。写目标若是偏移视图 / 非 C-连续数组，先物化成独立数组，
+    # kernel 写完后再写回原视图（_wrap_materialize_outs / _write_acl_out_to_view）。
+    # 已知限制：非连续**输入**同样按线性读取，读侧物化不在本次范围。
+    cdef list _wb_pairs = _wrap_materialize_outs([], a_outs, False)
     # 实数输入分支：complex 专用 AscendC 内核按 complex64 的 f32 交错布局取
     # 实/虚部，实数输入走不进来；但 NumPy 对实数输入的语义是平凡的，用已注册
     # 的 aclnn 算子组合即可（与 cupy/_core/_routines_math.pyx 的 ufunc 体一致）：
@@ -1384,6 +1520,10 @@ cdef aclError _launch_custom_ufunc(str opname, dict spec, sequence ins,
             bin_c, entry_c, out0, out1, in0, in1, n, stream)
     if ret != 0:
         raise RuntimeError(f'custom AscendC kernel {opname!r} launch failed: {ret}')
+    # out view write-back：kernel 直接写物化副本（线性布局），成功后写回原视图。
+    if _wb_pairs:
+        for _orig, _mat in _wb_pairs:
+            _write_acl_out_to_view(_mat, _orig, stream_ptr)
     return 0
 
 
@@ -1471,7 +1611,14 @@ cdef aclError launch_elementwise_func_raw(str opname, sequence ins, sequence out
     # 转换为ACL张量列表
     # NOTE: 传 (ins, outs) 而不是 (ops, outs) —— ops 已经等于 ins+outs，
     # 传 ops 会让每个 out 被创建两个 aclTensor（review §2.3）。
-    tensors = _create_ops_vector(ins, outs)
+    # out view write-back（见 _wrap_materialize_outs）：提前物化会被
+    # cupy_ndarray_to_acl_tensor 物化的写目标（显式 outs，以及 inplace
+    # 语义下的 self==ins[0]），算子成功后写回原视图。op_info/ops 已在
+    # 上面按原始 ins/outs 解析完，包装只替换数组对象，不影响派发判定。
+    cdef list _wb_ins = list(ins)
+    cdef list _wb_outs = list(outs)
+    cdef list _wb_pairs = _wrap_materialize_outs(_wb_ins, _wb_outs, inplace)
+    tensors = _create_ops_vector(_wb_ins, _wb_outs)
 
     try:
         if len(ops) == 3 and not has_scalar and not inplace:  # 二元操作
@@ -1522,6 +1669,10 @@ cdef aclError launch_elementwise_func_raw(str opname, sequence ins, sequence out
         _cret = _cast_back_outs(_orig_outs, _cast_src, stream_ptr)
         if _cret != 0:
             ret = _cret
+    # out view write-back：把物化副本上的结果写回调用方原视图（成功时）。
+    if ret == 0 and _wb_pairs:
+        for _orig, _mat in _wb_pairs:
+            _write_acl_out_to_view(_mat, _orig, stream_ptr)
     return ret
 
 

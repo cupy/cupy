@@ -102,7 +102,7 @@ INTERNAL_PATTERNS = (
 
 #: 直接派发函数
 DIRECT_DISPATCH_FUNCS = ("launch_general_func", "launch_reduction_op",
-                         "launch_acl_func")
+                         "launch_elementwise_func")
 
 _CUPY_UFUNC_LITERAL = re.compile(r"^cupy_[A-Za-z0-9_]+$")
 _ACLNN_INCLUDE = re.compile(r"aclnnop/(aclnn_[A-Za-z0-9_]+\.h)")
