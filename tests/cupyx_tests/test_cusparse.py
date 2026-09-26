@@ -1099,6 +1099,39 @@ class TestSpsm:
             tol = 1e-12
         testing.assert_allclose(lhs, rhs, rtol=tol, atol=tol)
 
+    def test_spsm_reuse(self, lower, unit_diag, transa, b_order, dtype,
+                        format):
+        # Solves after the first reuse the cached analysis (#8580); each
+        # must see the values of its own right-hand side.
+        if not cusparse.check_availability('spsm'):
+            pytest.skip('spsm is not available')
+        if runtime.is_hip:
+            if format == 'coo' or b_order == 'c':
+                pytest.skip('may be buggy or not supported')
+        a = self.sparse_matrix(self.a)
+        solver = cusparse._SpSM(
+            a, lower=lower, unit_diag=unit_diag, transa=transa)
+
+        if transa == 'N':
+            op_a = self.op_a
+        elif transa == 'T':
+            op_a = self.op_a.T
+        else:
+            op_a = self.op_a.conj().T
+
+        if dtype in (cupy.float32, cupy.complex64):
+            tol = 1e-5
+        else:
+            tol = 1e-12
+
+        for k in range(3):
+            op_b = (k + 1) * self.op_b
+            b = cupy.array(op_b, order=b_order)
+            c = solver.solve(b, alpha=self.alpha)
+            lhs = op_a.dot(c.get())
+            testing.assert_allclose(
+                lhs, self.alpha * op_b, rtol=tol, atol=tol)
+
 
 class TestCheckAvailabilityVersionSkew:
     # Regression for the wheel-based CI: a wheel built against a newer
