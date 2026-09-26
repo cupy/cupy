@@ -14,6 +14,10 @@ import warnings
 from numpy.linalg import LinAlgError
 
 from cupy_backends.cuda.api import runtime
+try:
+    from cupy_backends.cuda.libs import curand
+except ImportError:
+    curand = None
 
 import cupy
 from cupy import _core

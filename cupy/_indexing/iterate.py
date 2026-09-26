@@ -118,7 +118,11 @@ class flatiter:
                 size = (size - 1) // s_step + 1
             else:
                 size = (size + 1) // s_step + 1
-            return _flatiter_getitem_slice(base, s_start, s_step, size=size)
+            # ASCEND: reimpl in another way, due to missing kernel
+            #return _flatiter_getitem_slice(base, s_start, s_step, size=size)
+            flat = base.reshape(-1)
+            idx = cupy.arrange(size) * s_step + s_start
+            return flat[idx]
 
         raise IndexError('unsupported iterator index')
 

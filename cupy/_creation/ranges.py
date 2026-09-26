@@ -66,10 +66,11 @@ def arange(start, stop=None, step=1, dtype=None):
 
     from cupy.backends.backend import is_ascend
     if is_ascend and numpy.dtype(dtype).name in _ASCEND_ARANGE_INT32_FALLBACK:
-        # aclnnArange 不支持 int8/int16/uint16/uint32：先用 int32 生成，
+        # aclnnArange 不支持 int8/int16/uint16/uint32/uint64：先用 int32/64 生成，
         # 再 cast 回目标 dtype（cast 走已注册的 ascend_cast）。
         # 已知限制：中间态为 int32，> 2**31-1 的 uint32 取值会溢出。
-        ret = cupy.empty((size,), dtype=numpy.int32)
+        work_dtype = numpy.int64 if numpy.dtype(dtype).name == 'uint64' else numpy.int32
+        ret = cupy.empty((size,), dtype=work_dtype)
         _arange_ufunc(int(start), int(step), ret, dtype=numpy.int32)
         return ret.astype(dtype)
 

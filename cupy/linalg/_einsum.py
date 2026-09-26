@@ -711,8 +711,13 @@ def einsum(*operands, **kwargs):
                 if axis not in sum_axes
             ]
 
-            operands[idx] = operands[idx].sum(
-                axis=sum_axes, dtype=result_dtype)
+            from cupy.backends.backend import is_ascend
+            if is_ascend and operands[idx].dtype != result_dtype:
+                operands[idx] = operands[idx].astype(result_dtype)
+                operands[idx] = operands[idx].sum(axis=sum_axes)
+            else:
+                operands[idx] = operands[idx].sum(
+                    axis=sum_axes, dtype=result_dtype)
 
     if returns_view:
         operands = [a.view() for a in operands]
