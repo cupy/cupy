@@ -986,17 +986,26 @@ def py_enable_float64_to_float32(bint enable=True):
 
 
 def py_is_float64_to_float32_enabled() -> bint:
-    return _float64_promote_enabled
+    """诊断接口：降档层当前是否生效（含 CUPY_ASCEND_FLOAT64_MODE=float32）。"""
+    return ascend_float64_promote_enabled()
 
 
 cdef bint ascend_float64_promote_enabled():
-    """供其它模块 cimport 的实时开关读取（运行时切换立即生效）。"""
-    return _float64_promote_enabled
+    """供其它模块 cimport 的实时开关读取（运行时切换立即生效）。
+
+    除本模块的运行时 setter 外，三态开关 CUPY_ASCEND_FLOAT64_MODE=float32
+    也激活降档层（cpu 模式下 _kernel/_reduction 的拦截发生在本层之前，
+    不会走到这里，两模式天然互斥）。
+    """
+    if _float64_promote_enabled:
+        return True
+    from cupy._core._ascend.cpu_fallback import f64_mode
+    return f64_mode() == 'float32'
 
 
 cdef dict _promote_table():
     """有效提升表 = 常开层 (+ 可选层 if enable_float64_to_float32)。"""
-    if _float64_promote_enabled:
+    if ascend_float64_promote_enabled():
         return _ASCEND_DTYPE_PROMOTE_ALL
     return _ASCEND_DTYPE_PROMOTE
 

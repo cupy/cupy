@@ -26,6 +26,7 @@ from cupy._core.core cimport _ndarray_base
 from cupy._core cimport internal
 from cupy.backends.backend.api cimport runtime
 from cupy.backends.ascend.api.acl_utils cimport launch_general_func
+from cupy._core._ascend import cpu_fallback as _cpu_f64
 
 cdef inline size_t _get_stream(stream) except *:
     if stream is None:
@@ -972,6 +973,15 @@ cdef class ufunc:
         s = _get_stream(None)
         pos_args = list(args[(self.nin + self.nout):]) # the rest of positional args
 
+        # ASCEND: float64/complex128 CPU fallback（CUPY_ASCEND_FLOAT64_MODE=cpu）：
+        # NPU 无 float64 吞吐，cpu 模式下整 op 拦截，D2H -> NumPy（真 f64 精度）
+        # -> H2D。拦截发生在 acl_utils 的 float32 降档层之前，两模式互斥。
+        # 仅 create_ufunc 产物可回退（numpy 有同名 ufunc）；此处的 self 均为
+        # ufunc（自定义 ElementwiseKernel 走下方 __call__ 的独立派发口）。
+        if _cpu_f64.has_f64_io(inout_args, out_args):
+            _cpu_f64.run_elementwise_host(
+                self.name, inout_args, out_args, kwargs)
+            return ret
         launch_general_func(self.name, list(inout_args), list(out_args), pos_args, kwargs, s)
         #arginfos = _get_arginfos(inout_args.extend(out_args))
         #kern = self._get_ufunc_kernel(dev_id, op, arginfos, has_where)
@@ -1499,6 +1509,14 @@ cdef class ElementwiseKernel:
         # every dispatch path, inside the dispatcher itself -- see
         # `launch_elementwise_func` / `launch_reduction_op` -> `_no_ascend_impl_msg()` in
         # cupy/backends/ascend/api/acl_utils.pyx.
+
+        # ASCEND: 自定义 ElementwiseKernel（CUDA body）不能在 host 执行，
+        # cpu 模式下响亮报错并提示改用 float32 降档。
+        if _cpu_f64.has_f64_io(in_args, out_args):
+            raise NotImplementedError(
+                f'{self.name}: 自定义 elementwise kernel 无 host 实现，'
+                f'cpu 模式（CUPY_ASCEND_FLOAT64_MODE=cpu）不可用；'
+                f'可改用 CUPY_ASCEND_FLOAT64_MODE=float32 降档计算')
         launch_general_func(self.name, list(in_args), list(out_args), pos_args, kwargs, s)
 
         #arginfos = _get_arginfos(inout_args)

@@ -45,6 +45,7 @@ from cupy import _util
 
 from cupy.backends.ascend.api.acl_utils cimport launch_reduction_op
 from cupy.backends.ascend.api.acl_utils cimport ascend_float64_promote_enabled
+from cupy._core._ascend import cpu_fallback as _cpu_f64
 
 from cupy.xpu cimport stream as stream_module
 
@@ -327,6 +328,13 @@ cdef class _AbstractReductionKernel:
         # out, then cast the result back into `ret` (whose dtype is what the
         # CUDA loop types selected). This replaces the uint-promotion block
         # that used to live in launch_reduction_op_raw.
+        # ASCEND: float64/complex128 CPU fallback（CUPY_ASCEND_FLOAT64_MODE=cpu）：
+        # 整 op 拦截，D2H -> NumPy（真 float64 精度）-> H2D，写回已按 cupy
+        # 语义解析好 shape/dtype 的 ret。优先于下面的 float32 降档层，两模式互斥。
+        if _cpu_f64.has_f64_io(in_args, [ret]):
+            _cpu_f64.run_reduction_host(
+                self.name, in_args, ret, axis, keepdims, dtype)
+            return ret
         # 可选层：enable_float64_to_float32 打开时（env var 或运行时 setter，
         # 实时读取），float64->float32、complex128->complex64 并入有效表；
         # 归约写进单精度临时 out，再经 `ret[...] = promoted_out` cast 回原
