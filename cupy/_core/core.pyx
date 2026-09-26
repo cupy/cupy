@@ -801,6 +801,18 @@ cdef class _ndarray_base:
                     tmp.fill(value)
                     self[...] = tmp
                     return
+                # TODO(ascend): BUG - non-C-contiguous path silently corrupts
+                # memory for strided (neither C- nor F-contiguous) views, e.g.
+                # `a.diagonal(k).fill(1)` on a 2-D array: numpy.full is built
+                # with the *view's* shape, then self.nbytes is copied
+                # contiguously starting at the view's base pointer, so the
+                # diagonal values overwrite the leading elements of the base
+                # array linearly instead of following the strides.
+                # Fix by scattering with inverse strides (or raising
+                # NotImplementedError for strided views). Until then callers
+                # must avoid fill() on strided views on Ascend: eye() in
+                # cupy/_creation/basic.py routes k-diagonals through
+                # fill_diagonal (aclnnInplaceFillDiagonal) for this reason.
                 # non-C-contiguous will not be filled, workaround by do it on host
                 if not self._c_contiguous:
                     np_val = numpy.full(self.shape, value, dtype=self.dtype)
