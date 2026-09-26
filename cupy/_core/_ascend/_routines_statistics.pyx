@@ -323,11 +323,38 @@ cpdef _ndarray_base _nanmedian(
     n_reduce_each = cupy.full(out_shape, n_reduce, dtype='int32')
     if a_data_ptr == a.data.ptr and overwrite_input is False:
         a = a.copy()
-    _replace_nan_kernel(n_reduce, numpy.finfo(a.dtype).max, a, n_reduce_each)
-    a = cupy.sort(a, axis=-1)
 
-    b = cupy.full(out_shape, cupy.nan, dtype=a.dtype)
-    _pickup_median_kernel(n_reduce, n_reduce_each, a, b)
+    from cupy.backends.backend import is_ascend
+    if is_ascend:
+        # ASCEND has no such kernel, impl by cupy APIs.
+        # cupy.where three args not working, use mask setitem to replace nan
+        # (replaces `_replace_nan_kernel`: NaN -> finfo.max and per-row valid
+        # count decrement).
+        mask = cupy.isnan(a)
+        a[mask] = a.dtype.type(numpy.finfo(a.dtype).max)
+        n_valid_each = n_reduce_each - mask.sum(axis=-1).astype('int32')
+        a = cupy.sort(a, axis=-1)
+
+        # Pickup the median of each reduction row (replaces
+        # `_pickup_median_kernel`): gather the l-th / h-th element of every
+        # row with a flat take, then average the two middle values.
+        n_out = int(numpy.prod(out_shape))
+        rows = cupy.arange(n_out, dtype='int64')
+        l_idx = cupy.maximum((n_valid_each - 1) // 2, 0).reshape(n_out)
+        h_idx = (n_valid_each // 2).reshape(n_out)
+        flat = a.reshape(n_out, n_reduce).ravel()
+        al = flat.take(rows * n_reduce + l_idx.astype('int64'))
+        ah = flat.take(rows * n_reduce + h_idx.astype('int64'))
+        b = (al + ah) / 2
+        # Rows without any valid value evaluate to NaN
+        b[(n_valid_each == 0).reshape(n_out)] = b.dtype.type(nan)
+        b = b.reshape(out_shape)
+    else:
+        _replace_nan_kernel(n_reduce, numpy.finfo(a.dtype).max, a, n_reduce_each)
+        a = cupy.sort(a, axis=-1)
+
+        b = cupy.full(out_shape, cupy.nan, dtype=a.dtype)
+        _pickup_median_kernel(n_reduce, n_reduce_each, a, b)
 
     if keepdims:
         b = b.reshape(out_shape + [1, ] * len(reduce_axis))
