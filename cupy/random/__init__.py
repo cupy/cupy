@@ -111,7 +111,12 @@ from cupy.random._sample import random_sample  # NOQA
 from cupy.random._sample import random_sample as random  # NOQA
 from cupy.random._sample import random_sample as ranf  # NOQA
 from cupy.random._sample import random_sample as sample  # NOQA
-from cupy.random._bit_generator import BitGenerator  # NOQA
-from cupy.random._bit_generator import XORWOW  # NOQA
-from cupy.random._bit_generator import MRG32k3a  # NOQA
-from cupy.random._bit_generator import Philox4x3210  # NOQA
+
+# CUDA only module, only Generator default_rng() need these modules
+try:
+    from cupy.random._bit_generator import BitGenerator  # NOQA
+    from cupy.random._bit_generator import XORWOW  # NOQA
+    from cupy.random._bit_generator import MRG32k3a  # NOQA
+    from cupy.random._bit_generator import Philox4x3210  # NOQA
+except ImportError:
+    pass
