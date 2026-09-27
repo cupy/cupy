@@ -73,7 +73,7 @@ cdef _ndarray_base _ndarray_mean(
         # float before division.  Cast the input to the accumulation dtype
         # first, then reduce with dtype=None (slower but robust).
         result = _mean(
-            self.asdtype(dtype_sum), axis=axis, dtype=None, out=out,
+            self.astype(dtype_sum), axis=axis, dtype=None, out=out,
             keepdims=keepdims)
     elif numpy.dtype(dtype).kind in 'iub':
         # output will be the requested type, but compute the mean using float

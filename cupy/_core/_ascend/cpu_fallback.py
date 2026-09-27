@@ -229,6 +229,8 @@ _f64_mode_cache: Optional[str] = None
 _REDUCTION_HOST_MAP: Dict[str, Callable[..., Any]] = {
     'sum': numpy.sum,
     'prod': numpy.prod,
+    'sum_with_dtype': numpy.sum,
+    'prod_with_dtype': numpy.prod,
     'max': numpy.max,
     'min': numpy.min,
     'amax': numpy.amax,
@@ -245,6 +247,10 @@ _REDUCTION_HOST_MAP: Dict[str, Callable[..., Any]] = {
     'nanstd': numpy.nanstd,
     'nanargmax': numpy.nanargmax,
     'nanargmin': numpy.nanargmin,
+    'nansum': numpy.nansum,
+    'nan_with_dtype': numpy.nansum,
+    'nanprod': numpy.nanprod,
+    'nanprod_with_dtype': numpy.nanprod,
 }
 
 
@@ -285,9 +291,10 @@ def has_f64_io(args: Any) -> bool:
     if f64_mode() != 'cpu':
         return False
     cupy = _cupy()
-    for x in args:
-        if isinstance(x, cupy.ndarray) and x.dtype.char in F64_DTYPES:
-            return True
+    for seq in args:
+        for x in seq:
+            if isinstance(x, cupy.ndarray) and x.dtype.char in F64_DTYPES:
+                return True
     return False
 
 
@@ -296,15 +303,30 @@ def _to_host(value: Any) -> Any:
 
     CScalar 的物化方式与 acl_utils.pyx 的「标量物化成 0-d 数组」路径一致
     （ptr/size/get_numpy_type + memcpy），不过这里直接得到 numpy 标量。
+    非连续数据(non-contiguous), 不能直接用cupy.asnumpy, 会陷入无限递归,
+    需要用copy_to_host这样的底层API
     """
     cupy = _cupy()
     if isinstance(value, cupy.ndarray):
-        return cupy.asnumpy(value)
+        if value._c_contiguous:
+            return cupy.asnumpy(value)
+        if value.size == 0:
+            return numpy.empty(value.shape, dtype=value.dtype)
+        import ctypes
+        buf = numpy.empty(value.nbytes, dtype=numpy.uint8)
+        value.data.copy_to_host(ctypes.c_void_p(buf.ctypes.data), value.nbytes)
+        view = numpy.lib.stride_tricks.as_strided(
+            buf.view(value.dtype), shape=value.shape, strides=tuple(value.strides)
+        )
+        return numpy.array(view, dtype=value.dtype, order='c')
+
     get_numpy_type = getattr(value, 'get_numpy_type', None)
     if get_numpy_type is not None:
         import ctypes
-        buf = numpy.empty(value.size, dtype=numpy.uint8)
-        ctypes.memmove(buf.ctypes.data, value.ptr, value.size)
+        nbytes = numpy.dtype(get_numpy_type()).itemsize
+        # CScalar.size can not accessed from Python
+        buf = numpy.empty(nbytes, dtype=numpy.uint8)
+        ctypes.memmove(buf.ctypes.data, value.ptr, nbytes)
         return numpy.frombuffer(buf, dtype=get_numpy_type())[0]
     return value
 
@@ -348,7 +370,9 @@ def run_elementwise_host(name: str, ins: Any, outs: Any,
         result = np_ufunc(*np_ins, **np_kwargs)
         np_outs = list(result) if isinstance(result, tuple) else [result]
     for dev_out, np_out in zip(outs, np_outs):
-        dev_out[...] = np_out
+        # ndarray.set() instead of `dev_out[...]= np_out` will use cupy.fill
+        # may trigger `non-scalar numpy.ndarray` error
+        dev_out.set(np_out)
 
 
 def run_reduction_host(name: str, in_args: Any, ret: Any,
@@ -374,5 +398,7 @@ def run_reduction_host(name: str, in_args: Any, ret: Any,
     result = func(_to_host(in_args[0]), axis=axis,
                   keepdims=bool(keepdims), **np_kwargs)
     # ret 的 shape 已由 cupy 语义解析好；reshape 兜底（keepdims 布局差异）
-    ret[...] = numpy.reshape(result, ret.shape)
+    # do not use fill(value) as stated above,
+    # also  make sure 0-D is returned
+    ret.set(numpy.asarray(numpy.reshape(result, ret.shape)))
     return ret

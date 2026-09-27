@@ -14,6 +14,7 @@ from cupy._core._ufuncs import elementwise_copy
 # cimport it (the Ascend extension module is not compiled there).
 IF CUPY_CANN_VERSION > 0:
     from cupy.backends.ascend.api.acl_utils cimport launch_general_func
+    from cupy.backends.backend import is_ascend
 
 # ---------------------------------------------------------------------------
 # Ascend 的 scatter dtype 门槛：aclnnScatterAdd 只支持
@@ -22,26 +23,9 @@ IF CUPY_CANN_VERSION > 0:
 # Maximum/InplaceScatterUpdate 的白名单 —— 都比 CUDA atomic* 的窄。
 # dtype 不符时在 host 侧提前报错，而不是等 aclnn 的错误码。
 # ---------------------------------------------------------------------------
-cdef bint _ascend_checked = False
-cdef bint _ascend_flag = False
-
-
-# ASCEND: why not just use `is_ascend`
-cdef inline bint _ascend_runtime():
-    global _ascend_checked, _ascend_flag
-    if not _ascend_checked:
-        _ascend_checked = True
-        try:
-            from cupy.backends.backend import is_ascend
-            _ascend_flag = is_ascend
-        except Exception:
-            _ascend_flag = False
-    return _ascend_flag
-
-
 def py_scatter_ascend_gate_active() -> bool:
     """测试用：scatter 的 Ascend dtype 收窄门槛是否激活（无需设备/数组）。"""
-    return _ascend_runtime()
+    return is_ascend
 
 from libcpp cimport vector
 
@@ -239,8 +223,20 @@ cdef _ndarray_base _ndarray_put(_ndarray_base self, indices, values, mode):
         else:
             values = values.ravel()
         values = values.astype(self.dtype, copy=False)
-        launch_general_func("ascend_index_put_impl", [indices, values], [self],
-            [0, 0], {}, 0)  # accumulate=False, unsafe=False
+        if self.ndim == 1:
+            # ascend_index_put_impl is working for 1D array
+            launch_general_func("ascend_index_put_impl", [indices, values], [self],
+                [0, 0], {}, 0)  # accumulate=False, unsafe=False
+            return
+        # ASCEND: TODO aclnnIndexPutImpl failed for ndim>1, BroadcastTo failed
+        # fallback to numpy
+        import numpy as _np_put
+        a_host =self.get()
+        idx_host = indices.get()
+        v_host = values.get()
+        _np_put.put(a_host,idx_host, v_host, mode='raise')
+        # why not use `self.set()`?
+        self[...] = core.array(a_host, dtype=self.dtype)
         return
 
     if mode == 'raise':
@@ -865,6 +861,16 @@ cpdef _ndarray_base _getitem_mask_single(
 
     mask, mask_scanned, masked_shape = _prepare_mask_indexing_single(
         a, mask, axis)
+    IF CUPY_CANN_VERSION > 0:
+        # ASCEND hs no `_getitem_mask_kernel`
+        out = core.ndarray(masked_shape, dtype=a.dtype)
+        if out.size == 0:
+            return out
+        pos = _ndarray_nonzero(mask.ravel())[0] # iD flat index
+        sel = _take(a.ravel(), pos, 0, 1)
+        out.reshape(-1)[...] = sel.reshape(-1)
+        return out
+
     out = core.ndarray(masked_shape, dtype=a.dtype)
     if out.size == 0:
         return out
@@ -973,6 +979,68 @@ cdef _ndarray_base _take(
             return _take_kernel_scalar(
                 a.reduced_view(), indices, ldim, cdim, rdim, index_range, out)
 
+# ASCEND: does not support scatter ops, so fallback to CPU
+cdef void _scatter_op_host_fallback(
+        _ndarray_base a, _ndarray_base indices, _ndarray_base v,
+        Py_ssize_t start, Py_ssize_t stop, str op) except *:
+    # The `_*_kernel` ElementwiseKernels are CUDA-only, and on Ascend only
+    # 'update' (aclnnScatterUpdate) and a narrow-dtype 'add'
+    # (aclnnScatterAdd) are available.  The remaining `*.at`-style scatter
+    # variants land here: copy the operands to host, apply the numpy
+    # semantics (duplicate indices accumulate via ``numpy.<ufunc>.at``),
+    # then write the result back to the device array.
+    #
+    # At this point `v` and `indices` are already broadcast to
+    # ``lshape + indices_shape + rshape`` (see `_scatter_op_single`), so the
+    # target of the flat element ``v[l, c, r]`` is
+    # ``a[l, indices[l, c, 0], r]`` — the same (ldim, cdim, rdim) arithmetic
+    # the CUDA kernels perform with `cdim`/`rdim`/`adim`.
+    cdef Py_ssize_t i, ldim, cdim, rdim, adim
+    cdef tuple v_shape = v.shape
+    cdef _ndarray_base out
+
+    ldim = cdim = rdim = adim = 1
+    for i in range(start):
+        ldim *= v_shape[i]
+    for i in range(start, stop):
+        cdim *= v_shape[i]
+        adim *= a._shape[i]
+    for i in range(stop, len(v_shape)):
+        rdim *= v_shape[i]
+
+    a_host = cupy.asnumpy(a).reshape(ldim, adim * rdim)
+    v_host = cupy.asnumpy(v).reshape(ldim, cdim, rdim)
+    # indices are constant along `rdim` (they were broadcast with 1-strides
+    # there), so one index per (l, c) slice is enough
+    idx_host = cupy.asnumpy(indices).reshape(
+        ldim, cdim, rdim)[:, :, 0].astype(numpy.intp)
+
+    rows = numpy.arange(ldim, dtype=numpy.intp)[:, None, None]
+    cols = numpy.arange(rdim, dtype=numpy.intp)[None, None, :]
+    # (ldim, cdim, rdim) flat column offsets into a_host, one contiguous
+    # run of `rdim` elements per (l, c) slice
+    flat_idx = idx_host[:, :, None] * rdim + cols
+
+    if op == 'update':
+        a_host[rows, flat_idx] = v_host
+    else:
+        ufunc = {
+            'add': numpy.add,
+            'sub': numpy.subtract,
+            'max': numpy.maximum,
+            'min': numpy.minimum,
+            'and': numpy.bitwise_and,
+            'or': numpy.bitwise_or,
+            'xor': numpy.bitwise_xor,
+        }.get(op)
+        if ufunc is None:
+            raise ValueError('provided op is not supported')
+        # unbuffered: duplicates accumulate, negative indices wrap
+        ufunc.at(a_host, (rows, flat_idx), v_host)
+
+    out = cupy.asarray(a_host.reshape(a.shape), dtype=a.dtype)
+    a[...] = out
+
 
 cdef _scatter_op_single(
         _ndarray_base a, _ndarray_base indices, value, Py_ssize_t start,
@@ -1023,13 +1091,16 @@ cdef _scatter_op_single(
         ELSE:
             _scatter_update_kernel(
                 v, indices, cdim, rdim, adim, a.reduced_view())
+            return
     elif op == 'add':
-        # There is constraints on types because atomicAdd() in CUDA 7.5
-        # only supports int32, uint32, uint64, and float32.
-        # Ascend: aclnnScatterAdd 只支持 FLOAT16/FLOAT32/INT32/INT8/UINT8，
-        # float64/uint32/int64/uint64 在 host 侧提前报错。
         IF CUPY_CANN_VERSION > 0:
-            allowed = (numpy.int32, numpy.float16, numpy.float32)
+            if issubclass(v.dtype.type,
+                          (numpy.int32, numpy.float16, numpy.float32)):
+                launch_general_func("ascend_scatter_add", [v, indices], [a],
+                    [cdim, rdim, adim], {}, 0)
+                return
+            _scatter_op_host_fallback(a, indices, v, start, stop, "add")
+            return
         ELSE:
             allowed = (numpy.int32, numpy.float16, numpy.float32,
                     numpy.float64, numpy.uint32, numpy.uint64,
@@ -1039,16 +1110,14 @@ cdef _scatter_op_single(
                 'cupy.add.at only supports int32, float16, float32, float64, '
                 'uint32, uint64, as data type'
                 + (' (Ascend/aclnnScatterAdd: int32, float16, float32)'
-                   if _ascend_runtime() else ''))
+                   if is_ascend else ''))
         
-        IF CUPY_CANN_VERSION > 0:
-            # ASCEND: similarly as _scatter_update
-            launch_general_func("ascend_scatter_add", [v, indices], [a],
-                [cdim, rdim, adim], {}, 0) # TODO: stream selection
-            return
         _scatter_add_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
     elif op == 'sub':
+        IF CUPY_CANN_VERSION > 0:
+            _scatter_op_host_fallback(a, indices, v, start, stop, "sub")
+            return
         if not issubclass(v.dtype.type,
                           (numpy.int32, numpy.uint32,
                            numpy.intc, numpy.uintc)):
@@ -1057,34 +1126,43 @@ cdef _scatter_op_single(
         _scatter_sub_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
     elif op == 'max':
+        IF CUPY_CANN_VERSION > 0:
+            _scatter_op_host_fallback(a, indices, v, start, stop, "max")
+            return
         allowed = (numpy.int32, numpy.float32, numpy.float64,
                    numpy.uint32, numpy.uint64,
                    numpy.intc, numpy.uintc, numpy.ulonglong)
-        if _ascend_runtime():
+        if is_ascend:
             allowed = (numpy.int32, numpy.float16, numpy.float32)
         if not issubclass(v.dtype.type, allowed):
             raise TypeError(
                 'cupy.maximum.at only supports int32, float32, float64, '
                 'uint32, uint64 as data type'
                 + (' (Ascend/gather+Maximum+ScatterUpdate: '
-                   'int32, float16, float32)' if _ascend_runtime() else ''))
+                   'int32, float16, float32)' if is_ascend else ''))
         _scatter_max_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
     elif op == 'min':
+        IF CUPY_CANN_VERSION > 0:
+            _scatter_op_host_fallback(a, indices, v, start, stop, "min")
+            return
         allowed = (numpy.int32, numpy.float32, numpy.float64,
                    numpy.uint32, numpy.uint64,
                    numpy.intc, numpy.uintc, numpy.ulonglong)
-        if _ascend_runtime():
+        if is_ascend:
             allowed = (numpy.int32, numpy.float16, numpy.float32)
         if not issubclass(v.dtype.type, allowed):
             raise TypeError(
                 'cupy.minimum.at only supports int32, float32, float64, '
                 'uint32, uint64 as data type'
                 + (' (Ascend/gather+Minimum+ScatterUpdate: '
-                   'int32, float16, float32)' if _ascend_runtime() else ''))
+                   'int32, float16, float32)' if is_ascend else ''))
         _scatter_min_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
     elif op == 'and':
+        IF CUPY_CANN_VERSION > 0:
+            _scatter_op_host_fallback(a, indices, v, start, stop, "and")
+            return
         if not issubclass(v.dtype.type,
                           (numpy.int32, numpy.int64,
                            numpy.uint32, numpy.uint64,
@@ -1096,6 +1174,9 @@ cdef _scatter_op_single(
         _scatter_and_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
     elif op == 'or':
+        IF CUPY_CANN_VERSION > 0:
+            _scatter_op_host_fallback(a, indices, v, start, stop, "or")
+            return
         if not issubclass(v.dtype.type,
                           (numpy.int32, numpy.int64,
                            numpy.uint32, numpy.uint64,
@@ -1107,6 +1188,9 @@ cdef _scatter_op_single(
         _scatter_or_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
     elif op == 'xor':
+        IF CUPY_CANN_VERSION > 0:
+            _scatter_op_host_fallback(a, indices, v, start, stop, "xor")
+            return
         if not issubclass(v.dtype.type,
                           (numpy.int32, numpy.int64,
                            numpy.uint32, numpy.uint64,
