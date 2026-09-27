@@ -81,10 +81,12 @@ function Main {
     echo "Building..."
     $build_retval = 0
     RunOrDie python -m pip install "numpy==$numpy.*" "scipy==$scipy.*" "Cython==3.2.*,!=3.2.6"
+    # Cap below 1.2.0: NVIDIA/cccl#11472 -- 1.2.0 access-violates in
+    # cuda.compute call_build on Windows on the first make_reduce_into.
     if ($cuda.StartsWith("12.")) {
-        RunOrDie python -m pip install "cuda-cccl[minimal-sysctk12]>=1.1.1"
+        RunOrDie python -m pip install "cuda-cccl[minimal-sysctk12]>=1.1.1,<1.2"
     } else {
-        RunOrDie python -m pip install "cuda-cccl[minimal-sysctk13]>=1.1.1"
+        RunOrDie python -m pip install "cuda-cccl[minimal-sysctk13]>=1.1.1,<1.2"
     }
 
     # Fetch the CuPy wheel built by GHA (.github/workflows/ci.yml -> build-wheel.yml)

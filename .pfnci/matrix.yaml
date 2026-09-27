@@ -7,10 +7,10 @@
   target: "cuda120"
   tags: ["@push", "full", "mini", "linux", "cuda120"]
   system: "linux"
-  os: "ubuntu:20.04"
+  os: "ubuntu:22.04"
   cuda: "12.0"
   rocm: null
-  nccl: "2.17"
+  nccl: "2.18"
   cutensor: "2.4"
   cusparselt: null
   python: "3.10"
@@ -39,7 +39,7 @@
   target: "cuda121"
   tags: ["@nightly", "full", "linux", "cuda121"]
   system: "linux"
-  os: "ubuntu:20.04"
+  os: "ubuntu:22.04"
   cuda: "12.1"
   rocm: null
   nccl: "2.17"
@@ -71,7 +71,7 @@
   target: "cuda122"
   tags: ["@nightly", "full", "linux", "cuda122"]
   system: "linux"
-  os: "ubuntu:20.04"
+  os: "ubuntu:22.04"
   cuda: "12.2"
   rocm: null
   nccl: "2.18"
@@ -103,7 +103,7 @@
   target: "cuda123"
   tags: ["@nightly", "full", "linux", "cuda123"]
   system: "linux"
-  os: "ubuntu:20.04"
+  os: "ubuntu:22.04"
   cuda: "12.3"
   rocm: null
   nccl: "2.19"
@@ -135,7 +135,7 @@
   target: "cuda124"
   tags: ["@nightly", "full", "linux", "cuda124"]
   system: "linux"
-  os: "ubuntu:20.04"
+  os: "ubuntu:22.04"
   cuda: "12.4"
   rocm: null
   nccl: "2.20"
@@ -167,7 +167,7 @@
   target: "cuda125"
   tags: ["@nightly", "full", "linux", "cuda125"]
   system: "linux"
-  os: "ubuntu:20.04"
+  os: "ubuntu:22.04"
   cuda: "12.5"
   rocm: null
   nccl: "2.21"
@@ -199,7 +199,7 @@
   target: "cuda126"
   tags: ["@nightly", "full", "linux", "cuda126"]
   system: "linux"
-  os: "ubuntu:20.04"
+  os: "ubuntu:24.04"
   cuda: "12.6"
   rocm: null
   nccl: "2.22"
@@ -231,7 +231,7 @@
   target: "cuda128"
   tags: ["@nightly", "full", "linux", "cuda128"]
   system: "linux"
-  os: "ubuntu:20.04"
+  os: "ubuntu:24.04"
   cuda: "12.8"
   rocm: null
   nccl: "2.26"
@@ -263,7 +263,7 @@
   target: "cuda129"
   tags: ["@push", "full", "mini", "linux", "cuda129"]
   system: "linux"
-  os: "ubuntu:20.04"
+  os: "ubuntu:24.04"
   cuda: "12.9"
   rocm: null
   nccl: "2.26"
@@ -271,7 +271,7 @@
   cusparselt: "0.8.1"
   python: "3.12"
   numpy: "2.3"
-  scipy: "1.16"
+  scipy: "1.17"
   optuna: "4"
   ml_dtypes: "0.5"
   mpi4py: null
@@ -297,7 +297,7 @@
   target: "cuda130"
   tags: ["@push", "full", "mini", "linux", "cuda130"]
   system: "linux"
-  os: "ubuntu:22.04"
+  os: "ubuntu:24.04"
   cuda: "13.0"
   rocm: null
   nccl: "2.28"
@@ -329,7 +329,7 @@
   target: "cuda131"
   tags: ["@nightly", "full", "linux", "cuda131"]
   system: "linux"
-  os: "ubuntu:22.04"
+  os: "ubuntu:24.04"
   cuda: "13.1"
   rocm: null
   nccl: "2.28"
@@ -361,7 +361,7 @@
   target: "cuda132"
   tags: ["@nightly", "full", "linux", "cuda132"]
   system: "linux"
-  os: "ubuntu:22.04"
+  os: "ubuntu:24.04"
   cuda: "13.2"
   rocm: null
   nccl: "2.29"
@@ -389,15 +389,47 @@
   test: "unit-multi"
 
 # CUDA 13.3 | Linux
-# The latest CUDA version matrix is intended to cover the highest supported combination.
 - project: "cupy.linux.cuda133"
   target: "cuda133"
-  tags: ["@push", "full", "mini", "linux", "cuda133"]
+  tags: ["@nightly", "full", "linux", "cuda133"]
   system: "linux"
-  os: "ubuntu:22.04"
+  os: "ubuntu:24.04"
   cuda: "13.3"
   rocm: null
   nccl: "2.30"
+  cutensor: "2.4"
+  cusparselt: "0.9.1"
+  python: "3.14"
+  numpy: "2.5"
+  scipy: "1.18"
+  optuna: "4"
+  ml_dtypes: "0.5"
+  mpi4py: null
+  cython: "3.2"
+  cuda-python: null
+  cuda-cccl: null
+  nvmath-python: null
+  env:CUPY_ACCELERATORS: "cutensor,cub"
+  test: "unit"
+
+# CUDA 13.3 (Multi-GPU) | Linux
+- project: "cupy.linux.cuda133.multi"
+  _inherits: "cupy.linux.cuda133"
+  tags: ["@nightly", "full", "multi", "linux", "cuda133"]
+  target: "cuda133.multi"
+  mpi4py: "4"
+  test: "unit-multi"
+
+# CUDA 13.4 | Linux
+# The latest CUDA version matrix is intended to cover the highest supported combination.
+- project: "cupy.linux.cuda134"
+  target: "cuda134"
+  tags: ["@push", "full", "mini", "linux", "cuda134"]
+  system: "linux"
+  os: "ubuntu:24.04"
+  cuda: "13.4"
+  rocm: null
+  nccl: "2.31"
   cutensor: "2.4"
   cusparselt: "0.9.1"
   python: "3.14"
@@ -414,11 +446,11 @@
   env:CUPY_CI_PYTEST_EXTRA_OPTS: "--junit-xml=/tmp/cupy_junit/junit.xml"
   test: "unit"
 
-# CUDA 13.3 (Multi-GPU) | Linux
-- project: "cupy.linux.cuda133.multi"
-  _inherits: "cupy.linux.cuda133"
-  tags: ["@push", "full", "mini", "multi", "linux", "cuda133"]
-  target: "cuda133.multi"
+# CUDA 13.4 (Multi-GPU) | Linux
+- project: "cupy.linux.cuda134.multi"
+  _inherits: "cupy.linux.cuda134"
+  tags: ["@push", "full", "mini", "multi", "linux", "cuda134"]
+  target: "cuda134.multi"
   mpi4py: "4"
   env:CUPY_CI_PYTEST_EXTRA_OPTS: null
   test: "unit-multi"
@@ -484,7 +516,7 @@
   target: "cuda-slow"
   tags: ["slow", "linux"]
   system: "linux"
-  os: "ubuntu:20.04"
+  os: "ubuntu:24.04"
   cuda: "12.9"
   rocm: null
   nccl: "2.27"
@@ -516,7 +548,7 @@
   target: "cuda-example"
   tags: ["@push", "full", "mini", "linux", "example"]
   system: "linux"
-  os: "ubuntu:20.04"
+  os: "ubuntu:24.04"
   cuda: "12.9"
   rocm: null
   nccl: "2.27"
@@ -548,7 +580,7 @@
   wheel: false
   tags: ["head", "linux"]
   system: "linux"
-  os: "ubuntu:20.04"
+  os: "ubuntu:24.04"
   cuda: "12.9"
   rocm: null
   nccl: "2.27"
@@ -580,7 +612,7 @@
   wheel: false
   tags: ["@push", "full", "mini", "linux", "cuda-python"]
   system: "linux"
-  os: "ubuntu:20.04"
+  os: "ubuntu:24.04"
   cuda: "12.9"
   rocm: null
   nccl: "2.26"
@@ -610,10 +642,10 @@
   wheel: false
   tags: ["@push", "full", "mini", "linux", "cuda-python"]
   system: "linux"
-  os: "ubuntu:22.04"
-  cuda: "13.3"
+  os: "ubuntu:24.04"
+  cuda: "13.4"
   rocm: null
-  nccl: "2.30"
+  nccl: "2.31"
   cutensor: "2.4"
   cusparselt: null
   python: "3.14"
@@ -623,7 +655,7 @@
   mpi4py: null
   ml_dtypes: null
   cython: "3.2"
-  cuda-python: "13.3"
+  cuda-python: "13.4"
   cuda-cccl: "cu13"
   nvmath-python: "1"
   env:CUPY_ACCELERATORS: "cuda_compute,cutensor,cub"
@@ -710,7 +742,13 @@
 - project: "cupy.win.cuda133"
   _extern: true
   target: "cuda133"
-  tags: ["@push", "full", "mini", "windows", "cuda133"]
+  tags: ["@nightly", "full", "windows", "cuda133"]
+  system: "windows"
+
+- project: "cupy.win.cuda134"
+  _extern: true
+  target: "cuda134"
+  tags: ["@push", "full", "mini", "windows", "cuda134"]
   system: "windows"
 
 - project: "cupy.linux.cuda-rapids"

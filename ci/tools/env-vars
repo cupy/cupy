@@ -24,6 +24,8 @@ if [[ "${1}" == "build" ]]; then
     CIBW_PLATFORM_TAG="manylinux_aarch64"
   elif [[ "${HOST_PLATFORM}" == "win-64" ]]; then
     CIBW_PLATFORM_TAG="win_amd64"
+  elif [[ "${HOST_PLATFORM}" == "win-arm64" ]]; then
+    CIBW_PLATFORM_TAG="win_arm64"
   else
     echo "Error: unsupported HOST_PLATFORM=${HOST_PLATFORM}" >&2
     exit 1
