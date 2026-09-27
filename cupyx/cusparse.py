@@ -1681,7 +1681,22 @@ class SpMatDescriptor(BaseDescriptor):
             raise ValueError('csr, csc and coo format are supported '
                              '(actual: {}).'.format(a.format))
         destroy = _cusparse.destroySpMat
-        return SpMatDescriptor(desc, get, destroy)
+        descriptor = SpMatDescriptor(desc, get, destroy)
+        # The descriptor holds raw device pointers into a's value and index
+        # arrays, so it must keep those arrays alive for as long as it
+        # lives. Holding the matrix OBJECT is not enough: a structure
+        # change (sum_duplicates, tocsr, an arithmetic update) rebinds
+        # a.data / a.indices / a.indptr to new arrays and drops the last
+        # reference to the old ones, which the memory pool is then free to
+        # hand out while this descriptor still points at them. Anything
+        # that caches a descriptor across calls -- SpSM does -- would read
+        # recycled memory. Keeping the arrays makes that contract
+        # violation a stale result instead of a use-after-free.
+        if a.format == 'coo':
+            descriptor._arrays = (a.data, a.row, a.col)
+        else:
+            descriptor._arrays = (a.data, a.indices, a.indptr)
+        return descriptor
 
     def set_attribute(self, attribute, data):
         _cusparse.spMatSetAttribute(self.desc, attribute, data)
