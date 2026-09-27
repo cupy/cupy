@@ -97,6 +97,16 @@ def arange(start, stop=None, step=1, dtype=None):
         _arange_ufunc(int(start), int(step), ret, dtype=numpy.int32)
         return ret.astype(dtype)
 
+    if is_ascend and numpy.dtype(dtype).name == 'float64':
+        # aclnnArange 不支持 DOUBLE（Float64Workaround.md P2），且 promote
+        # 层不降标量 args 时 f64 start/step + f32 out 的组合在 CANN 侧段
+        # 错误（P1）。先用 float32 生成再 cast 回 float64 —— 精度语义与
+        # float32 降档一致（用户可见 dtype 不变，精度单精度）。
+        ret = cupy.empty((size,), dtype=numpy.float32)
+        _arange_ufunc(numpy.float32(start), numpy.float32(step), ret,
+                      dtype=numpy.float32)
+        return ret.astype(dtype)
+
     ret = cupy.empty((size,), dtype=dtype)
     typ = numpy.dtype(dtype).type
     _arange_ufunc(typ(start), typ(step), ret, dtype=dtype)
@@ -130,7 +140,15 @@ def _linspace_scalar(start, stop, num=50, endpoint=True, retstep=False,
         # In actual implementation, only float is used
         dtype = dt
 
-    ret = cupy.empty((num,), dtype=dt)
+    # ASCEND（Float64Workaround.md 修复 2）：aclnnLinspace/aclnnArange 不收
+    # DOUBLE。float64 时用 float32 work dtype 生成，末尾 astype(dtype) 已
+    # 有 cast 回 f64 的兜底；CUDA 路径 work_dtype == dt，行为不变。
+    work_dtype = dt
+    from cupy.backends.backend import is_ascend
+    if is_ascend and numpy.dtype(work_dtype).name == 'float64':
+        work_dtype = numpy.float32
+
+    ret = cupy.empty((num,), dtype=work_dtype)
     div = (num - 1) if endpoint else num
     if div <= 0:
         if num > 0:
@@ -142,9 +160,10 @@ def _linspace_scalar(start, stop, num=50, endpoint=True, retstep=False,
 
         if step == 0.0:
             # for underflow
-            _linspace_ufunc_underflow(start, stop - start, div, ret)
+            _linspace_ufunc_underflow(start, stop - start, div, ret,
+                                      dtype=work_dtype)
         else:
-            _linspace_ufunc(start, step, ret)
+            _linspace_ufunc(start, step, ret, dtype=work_dtype)
 
         if endpoint:
             # Here num == div + 1 > 1 is ensured.
@@ -475,10 +494,10 @@ _arange_ufunc = _core.create_ufunc(
 
 _linspace_ufunc = _core.create_ufunc(
     'cupy_linspace',
-    ('dd->d',),
+    ('dd->d', 'ff->f'),
     'out0 = in0 + i * in1')
 
 _linspace_ufunc_underflow = _core.create_ufunc(
     'cupy_linspace',
-    ('ddd->d',),
+    ('ddd->d', 'fff->f'),
     'out0 = in0 + i * in1 / in2')

@@ -303,8 +303,8 @@ def _to_host(value: Any) -> Any:
 
     CScalar 的物化方式与 acl_utils.pyx 的「标量物化成 0-d 数组」路径一致
     （ptr/size/get_numpy_type + memcpy），不过这里直接得到 numpy 标量。
-    非连续数据(non-contiguous), 不能直接用cupy.asnumpy, 会陷入无限递归,
-    需要用copy_to_host这样的底层API
+    非连续数据(non-contiguous): 先在设备侧物化成 C-连续副本再一次性 D2H
+    （docs/ascend/Float64Workaround.md 修复 3 / P4-1）。
     """
     cupy = _cupy()
     if isinstance(value, cupy.ndarray):
@@ -312,13 +312,17 @@ def _to_host(value: Any) -> Any:
             return cupy.asnumpy(value)
         if value.size == 0:
             return numpy.empty(value.shape, dtype=value.dtype)
-        import ctypes
-        buf = numpy.empty(value.nbytes, dtype=numpy.uint8)
-        value.data.copy_to_host(ctypes.c_void_p(buf.ctypes.data), value.nbytes)
-        view = numpy.lib.stride_tricks.as_strided(
-            buf.view(value.dtype), shape=value.shape, strides=tuple(value.strides)
-        )
-        return numpy.array(view, dtype=value.dtype, order='c')
+        # 非连续视图的 nbytes = size*itemsize **小于**数据实际跨度
+        # sum((shape[i]-1)*strides[i]) + itemsize。旧实现裸 memcpy nbytes
+        # 字节再 as_strided 按跨度寻址：数据本身是错的，且在 nbytes 大小
+        # 的 numpy 缓冲上越界读 -> 段错误。物化走 ascend_copy（实现即
+        # aclnnCast，DOUBLE 原生支持；在 promote 豁免表
+        # _UINT_PROMOTE_EXEMPT_OPS 内，且不经 ufunc 派发），不会递归回
+        # cpu fallback 的拦截口。
+        from cupy.backends.ascend.api.acl_utils import py_launch_general
+        contig = cupy.empty(value.shape, dtype=value.dtype)
+        py_launch_general('ascend_copy', (value,), (contig,), (), {})
+        return cupy.asnumpy(contig)
 
     get_numpy_type = getattr(value, 'get_numpy_type', None)
     if get_numpy_type is not None:
@@ -402,3 +406,143 @@ def run_reduction_host(name: str, in_args: Any, ret: Any,
     # also  make sure 0-D is returned
     ret.set(numpy.asarray(numpy.reshape(result, ret.shape)))
     return ret
+
+
+# ---------------------------------------------------------------------------
+# general 直发路径的 cpu 模式拦截（Float64Workaround.md §四-1 / 修复 4）
+#
+# 背景：general 直发调用点（_routines_indexing 的 take/index_select/
+# scatter/nonzero/index_put、tiling 的 repeat、linalg、random 等）绕过
+# _kernel.pyx/_reduction.pyx 的两个拦截口，cpu 模式下 f64 数组原样直达
+# aclnn —— 对不收 DOUBLE 的 op 是段错误而不是报错。
+#
+# 拦截点：launch_general_func（checked 入口）。判据是 **任一** ins/outs
+# 操作数为 float64/complex128 —— 不能只看第一个操作数：
+#   * ascend_index_put_impl 的 ins = [indices, values]，ins[0] 是 int64
+#     索引，f64 values 在 ins[1]（漏报 -> 段错误）；
+#   * ascend_scatter_update 的 ins = [v, indices]，self 在 outs[0]。
+# 误报方向是安全的：多拦（如 aclnnTake 原生支持 DOUBLE 也走 host）只是慢，
+# 漏报就是崩溃。豁免表排除 aclnnCast 载体（ascend_cast/copy/positive）：
+# 它们原生支持 DOUBLE，且是本模块 _to_host 与 acl_utils promote/cast-back
+# 的内部实现，拦截会递归/自我破坏。
+#
+# 拦截后的动作：general ops 的 args 语义逐 op 各异（dim 列表、axis、
+# accumulate 标志...），无法像 ufunc 那样 getattr(numpy, name) 通用回退，
+# 只能 per-op 注册 host adapter；未注册的响亮 NotImplementedError（提示
+# 改用 float32 降档）。
+# ---------------------------------------------------------------------------
+
+#: opname（ascend_ 前缀）-> host adapter ``(ins, outs, args, kwargs) -> None``。
+#: adapter 把结果写进 outs（经 :func:`_copy_host_into`，对非连续 out 由
+#: ascend_copy 的 general 通道 view write-back 负责回写）。
+_GENERAL_HOST_FALLBACKS: Dict[str, Callable[..., Any]] = {}
+
+#: aclnnCast 载体豁免（f64 合法；也是 cpu fallback 自身的内部通道）
+_GENERAL_CPU_EXEMPT_OPS = frozenset((
+    'ascend_cast', 'ascend_copy', 'ascend_positive',
+))
+
+
+def _normalize_opname(opname: str) -> str:
+    """cupy_xxx -> ascend_xxx；ascend_xxx 原样返回。"""
+    if opname.startswith('cupy_'):
+        return 'ascend_' + opname[len('cupy_'):]
+    return opname
+
+
+def _copy_host_into(out: Any, np_result: Any) -> None:
+    """host 结果 H2D 后经 ascend_copy 写进 out。
+
+    ascend_copy（= aclnnCast）在 _GENERAL_CPU_EXEMPT_OPS 豁免表内，不会
+    被本 gate 再次拦截；out 为偏移视图/非连续时由 general 通道的
+    _wrap_materialize_outs -> _write_acl_out_to_view 负责物化回写。
+    """
+    cupy = _cupy()
+    dev = cupy.asarray(
+        numpy.ascontiguousarray(numpy.asarray(np_result), dtype=out.dtype))
+    from cupy.backends.ascend.api.acl_utils import py_launch_general
+    py_launch_general('ascend_copy', (dev,), (out,), (), {})
+
+
+def _host_take(ins: Any, outs: Any, args: Any, kwargs: Any) -> None:
+    """aclnnTake：self 视为 1-D flat，``out[i] = self[index[i]]``。
+
+    调用点（_take 的 flat 分支）已保证 indices 非负且 in-bounds（wrap 过）。
+    """
+    np_a = numpy.asarray(_to_host(ins[0]))
+    np_idx = numpy.asarray(_to_host(ins[1]))
+    _copy_host_into(outs[0], np_a.ravel()[np_idx])
+
+
+def _host_index_select(ins: Any, outs: Any, args: Any, kwargs: Any) -> None:
+    """aclnnIndexSelect（torch.index_select 语义）：沿 dim 取行。"""
+    dim = int(args[0]) if args else int(kwargs.get('dim', 0))
+    np_self = numpy.asarray(_to_host(ins[0]))
+    np_idx = numpy.asarray(_to_host(ins[1])).ravel()
+    result = numpy.take(np_self, np_idx, axis=dim)
+    _copy_host_into(outs[0], result.reshape(outs[0].shape))
+
+
+def _host_nonzero(ins: Any, outs: Any, kwargs_ignored: Any = None,
+                  *_args: Any, **_kwargs: Any) -> None:
+    """aclnnNonzero：输出 (count, ndim) int64（调用方已同步 count 预分配）。
+
+    注意 0-d 输入不会到达这里：count 非 0 时 ndim=0 的 dst.size==0 在
+    调用点提前返回。
+    """
+    np_a = numpy.asarray(_to_host(ins[0]))
+    idx = numpy.nonzero(np_a)
+    _copy_host_into(outs[0], numpy.stack(idx, axis=1))
+
+
+def _host_complex(ins: Any, outs: Any, args: Any, kwargs: Any) -> None:
+    """aclnnComplex(re, im) -> complex（arange complex128 的 cpu 模式路径）。"""
+    re = numpy.asarray(_to_host(ins[0]))
+    im = numpy.asarray(_to_host(ins[1]))
+    out = outs[0]
+    result = numpy.empty(out.shape, dtype=out.dtype)
+    result.real = re.reshape(result.shape)
+    result.imag = im.reshape(result.shape)
+    _copy_host_into(out, result)
+
+
+_GENERAL_HOST_FALLBACKS.update({
+    'ascend_take': _host_take,
+    'ascend_index_select': _host_index_select,
+    'ascend_nonzero': _host_nonzero,
+    'ascend_complex': _host_complex,
+})
+
+
+def maybe_general_host(opname: str, ins: Any, outs: Any,
+                       args: Any, kwargs: Any) -> bool:
+    """``launch_general_func`` 的 cpu 模式拦截 gate（供 acl_utils.pyx 调用）。
+
+    Returns:
+        True  — 已在 host 端执行完毕（cpu 模式 + f64 操作数 + 有注册的
+                adapter），调用方直接返回；
+        False — 无需拦截（非 cpu 模式 / 无 f64 操作数 / op 在豁免表），
+                继续走 aclnn。
+
+    Raises:
+        NotImplementedError — cpu 模式 + f64 操作数 + 无 host adapter。
+        相比让 float64 直达 aclnn 段错误，这里响亮失败并给出指引。
+    """
+    if f64_mode() != 'cpu':
+        return False
+    if not has_f64_io((ins, outs)):
+        return False
+    key = _normalize_opname(opname)
+    if key in _GENERAL_CPU_EXEMPT_OPS:
+        return False
+    adapter = _GENERAL_HOST_FALLBACKS.get(key)
+    if adapter is None:
+        raise NotImplementedError(
+            '{}: cpu 模式（{}=cpu）下 general 直发路径没有注册 host 实现'
+            '（已注册: {}）。float64/complex128 操作数直达 aclnn 会段错误，'
+            '故响亮报错；可在 cpu_fallback._GENERAL_HOST_FALLBACKS 添加 '
+            'adapter，或改用 float32 降档模式'.format(
+                opname, F64_MODE_ENV,
+                ', '.join(sorted(_GENERAL_HOST_FALLBACKS))))
+    adapter(ins, outs, args, kwargs)
+    return True

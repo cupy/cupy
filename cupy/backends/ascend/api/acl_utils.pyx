@@ -1,6 +1,8 @@
 import cython
 import os
 import operator as _operator
+
+import numpy
 cimport cpython
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from collections import namedtuple
@@ -1185,6 +1187,39 @@ cdef tuple _promote_io_dtype(str opname, sequence ins, sequence outs):
     return p_ins, p_outs, orig_outs, p_outs
 
 
+cdef void _demote_scalar_operands(object ins, list args, dict kwargs) except *:
+    """标量参数按降档表原地降档（docs/ascend/Float64Workaround.md 修复 1）。
+
+    背景（P1）：promote 层此前只降 ins/outs 的 ndarray，标量保持 M-D1 的
+    loop dtype（arange f64 即 DOUBLE CScalar）直达 aclnn。aclnnArange /
+    aclnnInplaceFillScalar 这类算子的合同要求标量 dtype 与 tensor 一致，
+    「f64 标量 + f32 提升 out」的组合在 CANN 侧不是报错而是段错误。
+
+    仅在 promote 命中后调用（调用点两处：general / elementwise 通道）。
+    CScalar 是每次调用现场物化的对象，apply_dtype 原地改写无跨调用污染；
+    未命中降档表（uint/窄整型常开层只对 dtype 命中者生效）的标量原样保留。
+    """
+    cdef dict table = _promote_table()
+    cdef object x
+    cdef object c
+    for x in ins:
+        if isinstance(x, _cupy_scalar):
+            c = numpy.dtype((<_cupy_scalar>x).get_numpy_type()).char
+            if c in table:
+                (<_cupy_scalar>x).apply_dtype(numpy.dtype(table[c]).type)
+    for x in args:
+        if isinstance(x, _cupy_scalar):
+            c = numpy.dtype((<_cupy_scalar>x).get_numpy_type()).char
+            if c in table:
+                (<_cupy_scalar>x).apply_dtype(numpy.dtype(table[c]).type)
+    if kwargs:
+        for x in kwargs.values():
+            if isinstance(x, _cupy_scalar):
+                c = numpy.dtype((<_cupy_scalar>x).get_numpy_type()).char
+                if c in table:
+                    (<_cupy_scalar>x).apply_dtype(numpy.dtype(table[c]).type)
+
+
 cdef aclError _cast_back_outs(list orig_outs, list cast_src, intptr_t stream_ptr) except *:
     """把有符号临时结果 cast 回调用方原来的 uint 数组（ascend_cast）。"""
     cdef aclError ret
@@ -1235,6 +1270,10 @@ cdef aclError launch_general_func_raw(str opname, sequence ins, sequence outs, l
     cdef bint _promoted = False
     if opname not in _UINT_PROMOTE_EXEMPT_OPS and (_has_promotable_io(ins) or _has_promotable_io(outs)):
         ins, outs, _orig_outs, _cast_src = _promote_io_dtype(opname, ins, outs)
+        # 修复 1（Float64Workaround.md P1）：ins/args/kwargs 里的 CScalar
+        # 一并降档（arange 的 start/step、fill 的填充值都在这里），保证
+        # 「标量 dtype == tensor dtype」的 aclnn 合同在降档后仍成立。
+        _demote_scalar_operands(ins, args, kwargs)
         _promoted = True
 
     # out view write-back（见 _wrap_materialize_outs）：提前物化会被
@@ -1550,6 +1589,10 @@ cdef aclError launch_elementwise_func_raw(str opname, sequence ins, sequence out
     cdef bint _promoted = False
     if opname not in _UINT_PROMOTE_EXEMPT_OPS and (_has_promotable_io(ins) or _has_promotable_io(outs)):
         ins, outs, _orig_outs, _cast_src = _promote_io_dtype(opname, ins, outs)
+        # 修复 1（Float64Workaround.md P1）：标量操作数同步降档，使
+        # scalar_binary_op 的 aclScalar 与提升后的 tensor dtype 一致。
+        # （标量必须在下方 cupy_scalar_to_acl_scalar 之前降档。）
+        _demote_scalar_operands(ins, [], {})
         _promoted = True
     cdef aclScalar* scalar_ptr = NULL
     cdef OpInfo op_info
@@ -1864,8 +1907,25 @@ cdef aclError launch_reduction_op_raw(str opname, sequence ins, sequence outs, o
 #
 # 也就是：**错误码一定返回给 caller；抛不抛由选哪个入口决定**。
 # ---------------------------------------------------------------------------
+cdef object _general_host_gate = None  # cpu_fallback.maybe_general_host（懒加载缓存）
+
+
 cdef aclError launch_general_func(str opname, sequence ins, sequence outs,
                                   list args, dict kwargs, intptr_t stream_ptr) except *:
+    # CPU 模式的 general 直发拦截（docs/ascend/Float64Workaround.md §四-1）：
+    # 判据是**任一** ins/outs 操作数为 float64/complex128 —— 不能只看第一个
+    # 操作数（ascend_index_put_impl 的 ins[0] 是 int64 索引，f64 values 在
+    # ins[1]；ascend_scatter_update 的 self 在 outs[0]）。cast/copy 载体
+    # （promote 与 cpu_fallback._to_host 的内部通道）在 gate 内豁免。
+    # 非 cpu 模式下 gate 首判（f64_mode() 缓存读取）即短路，热路径开销
+    # 一次函数调用。未来按 §6.3 引入 op_class 标签后，B 类 structural ops
+    # 在 float32 模式也应改走「能力表 + host adapter」而非自动 promote。
+    global _general_host_gate
+    if _general_host_gate is None:
+        from cupy._core._ascend import cpu_fallback as _cpu_f64_mod
+        _general_host_gate = _cpu_f64_mod.maybe_general_host
+    if _general_host_gate(opname, ins, outs, args, kwargs):
+        return 0
     cdef aclError ret = launch_general_func_raw(opname, ins, outs, args, kwargs, stream_ptr)
     if ret != 0:
         raise_acl_op_error(opname, ret)
@@ -2675,224 +2735,229 @@ IF CUPY_CANN_HAS_RAND:
             const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
 
 
+# ---------------------------------------------------------------------------
+# GENERAL_OP 注册的 op_class 分类（docs/ascend/Float64Workaround.md §六）
+#
+# 派发形态说明：GENERAL_OP 全部经 FuncPtrUnion.general_op 槽、由
+# launch_general_func_raw 单入口派发，args/kwargs 走统一参数通道 ——
+# A/B 两类的**派发方式完全相同**，分类只表达 **float64/降档策略**：
+#
+#   * A 类 numeric    —— 数值计算（elementwise 带参 / scan / 统计 / 生成）：
+#     ins/outs/args 全部 dtype 耦合，promote 降档 + 标量降档
+#     （_demote_scalar_operands）+ cast-back 通用正确。缺省策略 = 自动
+#     promote（_promote_io_dtype），仅原生支持 DOUBLE 的 op 加豁免
+#     （_UINT_PROMOTE_EXEMPT_OPS）。
+#   * B 类 structural —— manipulation / index / creation：存在 int64
+#     index/shape 张量（不可进 promote 表）、别名写入（scatter 族
+#     self==out）、数据依赖形状（nonzero）。缺省策略 = **不**自动
+#     promote，查 per-op dtype 能力表，不支持的 dtype 走
+#     cpu_fallback._GENERAL_HOST_FALLBACKS host adapter
+#     （cpu 模式拦截 gate 即 launch_general_func 的 maybe_general_host）。
+#   * 探针            —— 无 numpy 语义，不参与任何策略。
+#
+# 实现为 `_STRUCTURAL_OPS` 旁表（B 类标签）而不是新增 OpType 枚举值：
+# _builtin_operators 的哈希键是 (op_name, op_type)，新枚举值要求所有
+# find() 点双查，漏一处 = 注册成功但永远派发不到（静默失配，§6.2）。
+# ---------------------------------------------------------------------------
+cdef set _STRUCTURAL_OPS = set()
+
+
+cdef void _register_general(str name, GeneralOpFunc fn, bint structural=False) except *:
+    """GENERAL_OP 注册 + B 类(structural)旁表标注。"""
+    cdef FuncPtrUnion func_union
+    func_union.general_op = fn
+    # 运行时 str 对象必须显式 encode（std::string 的 from_py 转换器只收
+    # bytes；字面量才会走编译期转换，故原有直传字面量的写法没有暴露此问题）
+    register_acl_ufunc(name.encode('utf-8'), GENERAL_OP, func_union)
+    if structural:
+        _STRUCTURAL_OPS.add(name)
+
+
 cdef void register_irregular_operators():
     cdef FuncPtrUnion func_union
-    func_union.general_op = aclop_Concat
-    register_acl_ufunc("ascend_concatenate", GENERAL_OP, func_union)
-    func_union.general_op = aclop_Stack
-    register_acl_ufunc("ascend_stack", GENERAL_OP, func_union)
-    func_union.general_op = aclop_Flip
-    register_acl_ufunc("ascend_flip", GENERAL_OP, func_union)
-    func_union.general_op = aclop_Permute
-    register_acl_ufunc("ascend_permute", GENERAL_OP, func_union)
-    func_union.general_op = aclop_Roll
-    register_acl_ufunc("ascend_roll", GENERAL_OP, func_union)
-    func_union.general_op = aclop_Cast
-    register_acl_ufunc("ascend_cast", GENERAL_OP, func_union)
 
-    func_union.general_op = aclop_Sort
-    register_acl_ufunc("ascend_sort", GENERAL_OP, func_union)
-    func_union.general_op = aclop_Argsort
-    register_acl_ufunc("ascend_argsort", GENERAL_OP, func_union)
+    # =====================================================================
+    # A 类 numeric：数值计算（promote 降档通用有效）
+    # =====================================================================
 
-    func_union.general_op = aclop_Take
-    register_acl_ufunc("ascend_take", GENERAL_OP, func_union)
-    register_acl_ufunc("ascend_take_scalar", GENERAL_OP, func_union)
-    # `_put_raise_kernel` is an ElementwiseKernel named `cupy_put_raise`, and the
-    # Ascend dispatcher maps kernel names by prefix (`cupy_` -> `ascend_`), so the
-    # registration must use `ascend_put_raise` — the old `ascend_raise_put` never
-    # matched any caller (review §3 T1).
-    func_union.general_op = aclop_PutRaise
-    register_acl_ufunc("ascend_put_raise", GENERAL_OP, func_union)
-
-    # gather along a dim: the building block of `_take`'s axis branch
-    # (aclnnTake is flatten-only, see aclop_Take)
-    func_union.general_op = aclop_Gather
-    register_acl_ufunc("ascend_gather", GENERAL_OP, func_union)
-
-    # ndarray.put / numpy.put (aclnnIndexPutImpl); consumed by `_ndarray_put`'s
-    # Ascend branch in cupy/_core/_routines_indexing.pyx
-    func_union.general_op = aclop_IndexPutImpl
-    register_acl_ufunc("ascend_index_put_impl", GENERAL_OP, func_union)
-
-    # --- Stage-A batch (CANN 9.0.1), see docs/ascend/DeveloperNotes.md ---
-    # linalg.slogdet (real float inputs; complex keeps the cpu_fallback path)
-    func_union.general_op = aclop_Slogdet
-    register_acl_ufunc("ascend_slogdet", GENERAL_OP, func_union)
-
-    # fill_diagonal (scalar val only; array_like val keeps the Python path)
-    func_union.general_op = aclop_FillDiagonal
-    register_acl_ufunc("ascend_fill_diagonal", GENERAL_OP, func_union)
-
-    # np.tile via aclnnRepeat (torch.repeat semantics); consumed by tiling.py
-    func_union.general_op = aclop_Repeat
-    register_acl_ufunc("ascend_repeat", GENERAL_OP, func_union)
-
-    # np.take along a dim; consumed by _take's Ascend branch
-    func_union.general_op = aclop_IndexSelect
-    register_acl_ufunc("ascend_index_select", GENERAL_OP, func_union)
-
+    # --- A1: 多元 elementwise 带参（数据 dtype 与标量参数耦合） ---
+    # numpy.where(cond, x, y)；标量 x/y 经 _SCALAR_AS_TENSOR_OPS 物化 0-d
+    _register_general("ascend_where", aclop_Where)
+    _register_general("ascend_clip", aclop_Clamp)
+    _register_general("ascend_is_close", aclop_IsClose)
+    _register_general("ascend_round", aclop_Round)
+    _register_general("ascend_nan_to_num", aclop_NanToNum)
+    _register_general("ascend_nan_to_num_", aclop_NanToNum)
+    _register_general("ascend_divmod", aclop_Divmod)
+    _register_general("ascend_heaviside", aclop_Heaviside)
+    # complex construction: (re, im) -> complex
+    _register_general("ascend_complex", aclop_Complex)
     # copyto(dst, src, where=mask): scalar vs tensor source
-    func_union.general_op = aclop_MaskedFillScalar
-    register_acl_ufunc("ascend_masked_fill_scalar", GENERAL_OP, func_union)
-    func_union.general_op = aclop_MaskedFillTensor
-    register_acl_ufunc("ascend_masked_fill_tensor", GENERAL_OP, func_union)
-
-    # --- building blocks without a cupy API consumer yet ---
-    # a[idx] = v along a dim (overlaps ascend_scatter_update)
-    func_union.general_op = aclop_IndexCopy
-    register_acl_ufunc("ascend_index_copy", GENERAL_OP, func_union)
-    # multi-coordinate fancy indexing
-    func_union.general_op = aclop_GatherNd
-    register_acl_ufunc("ascend_gather_nd", GENERAL_OP, func_union)
-    # torch.unique_consecutive (3 outputs)
-    func_union.general_op = aclop_UniqueConsecutive
-    register_acl_ufunc("ascend_unique_consecutive", GENERAL_OP, func_union)
-    # NB: ascend_multinomial is registered in the random-ops block
-    # (acl_random_ops.h / cupy.random WIP) -- no duplicate here.
+    _register_general("ascend_masked_fill_scalar", aclop_MaskedFillScalar)
+    _register_general("ascend_masked_fill_tensor", aclop_MaskedFillTensor)
     # elementwise max/min over N tensors (would back maximum.reduce)
-    func_union.general_op = aclop_MaxN
-    register_acl_ufunc("ascend_maxn", GENERAL_OP, func_union)
-    func_union.general_op = aclop_MinN
-    register_acl_ufunc("ascend_minn", GENERAL_OP, func_union)
+    _register_general("ascend_maxn", aclop_MaxN)
+    _register_general("ascend_minn", aclop_MinN)
     # multi-dim max reduction (redundant with ascend_max; no aclnn_min_v2)
-    func_union.general_op = aclop_MaxV2
-    register_acl_ufunc("ascend_max_v2", GENERAL_OP, func_union)
+    _register_general("ascend_max_v2", aclop_MaxV2)
+    # cupy_var_core_float*（ReductionKernel 3-in/1-out）的 Ascend 组合：
+    # ascend_var_core 算 sum((x - mean)^2)，alpha 乘法由
+    # py_launch_var_core（下）用 ascend_inplace_multiply 完成。
+    _register_general("ascend_var_core", aclop_VarCore)
 
-    # prefix scan (cupy.cumsum / cupy.cumprod / boolean-index mask scan)
-    func_union.general_op = aclop_Cumsum
-    register_acl_ufunc("ascend_cumsum", GENERAL_OP, func_union)
-    func_union.general_op = aclop_Cumprod
-    register_acl_ufunc("ascend_cumprod", GENERAL_OP, func_union)
+    # --- A2: scan（前缀扫描） ---
+    _register_general("ascend_cumsum", aclop_Cumsum)
+    _register_general("ascend_cumprod", aclop_Cumprod)
 
-    # setitem / boolean indexing: `_scatter_*_kernel` / `_getitem_mask_kernel`
-    func_union.general_op = aclop_ScatterUpdate
-    register_acl_ufunc("ascend_scatter_update", GENERAL_OP, func_union)
-    func_union.general_op = aclop_ScatterAdd
-    register_acl_ufunc("ascend_scatter_add", GENERAL_OP, func_union)
-    # scatter_max/min：CANN 无原生 reduce=max/min，由 gather+Maximum/Minimum+
-    # InplaceScatterUpdate 三段组合（acl_general_ops.h ScatterMaxMin）。
-    # `cupy.maximum.at` / `cupy.minimum.at` / `cupyx.scatter_max/min` 的落点。
-    func_union.general_op = aclop_ScatterMax
-    register_acl_ufunc("ascend_scatter_max", GENERAL_OP, func_union)
-    func_union.general_op = aclop_ScatterMin
-    register_acl_ufunc("ascend_scatter_min", GENERAL_OP, func_union)
-    func_union.general_op = aclop_ScatterUpdateMask
-    register_acl_ufunc("ascend_scatter_update_mask", GENERAL_OP, func_union)
-    func_union.general_op = aclop_ScatterAddMask
-    register_acl_ufunc("ascend_scatter_add_mask", GENERAL_OP, func_union)
-    func_union.general_op = aclop_GetitemMask
-    register_acl_ufunc("ascend_getitem_mask", GENERAL_OP, func_union)
-
-    # numpy.searchsorted / numpy.where(cond, x, y)
-    func_union.general_op = aclop_SearchSorted
-    register_acl_ufunc("ascend_searchsorted_kernel", GENERAL_OP, func_union)
+    # --- A3: 统计 / 归约形态（REDUCTION 通道不覆盖的变体） ---
+    _register_general("ascend_aminmax", aclop_Aminmax)
+    _register_general("ascend_histc", aclop_Histc)
     # cupy.bincount (histogram.py) is not a ufunc: it launches the
     # ElementwiseKernels cupy_bincount_kernel (unweighted) and
     # cupy_bincount_with_weight_kernel. Both route here; the C++ side picks
     # weights from ins[1] when present.
-    func_union.general_op = aclop_Bincount
-    register_acl_ufunc("ascend_bincount_kernel", GENERAL_OP, func_union)
-    register_acl_ufunc("ascend_bincount_with_weight_kernel", GENERAL_OP, func_union)
-    func_union.general_op = aclop_Where
-    register_acl_ufunc("ascend_where", GENERAL_OP, func_union)
-    # cupy_var_core_float*（ReductionKernel 3-in/1-out）的 Ascend 组合：
-    # ascend_var_core 算 sum((x - mean)^2)，alpha 乘法由
-    # py_launch_var_core（下）用 ascend_inplace_multiply 完成。
-    func_union.general_op = aclop_VarCore
-    register_acl_ufunc("ascend_var_core", GENERAL_OP, func_union)
+    _register_general("ascend_bincount_kernel", aclop_Bincount)
+    _register_general("ascend_bincount_with_weight_kernel", aclop_Bincount)
+    # numpy.searchsorted（值域查找，数值耦合）
+    _register_general("ascend_searchsorted_kernel", aclop_SearchSorted)
 
-    func_union.general_op = aclop_Arange
-    register_acl_ufunc("ascend_arange", GENERAL_OP, func_union)
-    func_union.general_op = aclop_Linspace
-    register_acl_ufunc("ascend_linspace", GENERAL_OP, func_union)
-
-    func_union.general_op = aclop_Round
-    register_acl_ufunc("ascend_round", GENERAL_OP, func_union)
-    func_union.general_op = aclop_NanToNum
-    register_acl_ufunc("ascend_nan_to_num", GENERAL_OP, func_union)
-    register_acl_ufunc("ascend_nan_to_num_", GENERAL_OP, func_union)
-    func_union.general_op = aclop_Divmod
-    register_acl_ufunc("ascend_divmod", GENERAL_OP, func_union)
-    func_union.general_op = aclop_Clamp
-    register_acl_ufunc("ascend_clip", GENERAL_OP, func_union)
-    func_union.general_op = aclop_IsClose
-    register_acl_ufunc("ascend_is_close", GENERAL_OP, func_union)
-    # einsum：equation 走统一参数通道的 ARG_STRING（cupy/linalg/_einsum.py 的
-    # Ascend 快速路径，默认关闭，CUPY_ASCEND_NATIVE_EINSUM=1 启用）
-    func_union.general_op = aclop_Einsum
-    register_acl_ufunc("ascend_einsum", GENERAL_OP, func_union)
-    func_union.general_op = aclop_Heaviside
-    register_acl_ufunc("ascend_heaviside", GENERAL_OP, func_union)
-
+    # --- A4: 生成类（start/step 标量与 out dtype 同耦合，修复 1/2） ---
+    _register_general("ascend_arange", aclop_Arange)
+    _register_general("ascend_linspace", aclop_Linspace)
+    # cupy.random.multinomial — BASE op (core libopapi), unconditional:
+    # torch-style index sampling; counts are derived in
+    # cupy/random/_sample.py via flat bincount
+    _register_general("ascend_multinomial", aclop_Multinomial)
     # cupy.random stateless fill ops (aclnnInplaceUniform/Normal/Random):
     # launched from pure Python via py_launch_general("ascend_random_*",
     # [], [out], [from, to, seed, offset], {}) — see cupy/random/_generator.py.
     # Compiled in only when feature-detected (CUPY_CANN_HAS_RAND); when the
     # ops are absent cupy.random fails at runtime via the py_is_acl_ufunc_
     # registered check in _generator.py instead of here.
-    # cupy.random.multinomial — BASE op (core libopapi), unconditional:
-    # torch-style index sampling; counts are derived in
-    # cupy/random/_sample.py via flat bincount
-    func_union.general_op = aclop_Multinomial
-    register_acl_ufunc("ascend_multinomial", GENERAL_OP, func_union)
-
     IF CUPY_CANN_HAS_RAND:
-        func_union.general_op = aclop_RandomUniform
-        register_acl_ufunc("ascend_random_uniform", GENERAL_OP, func_union)
-        func_union.general_op = aclop_RandomNormal
-        register_acl_ufunc("ascend_random_normal", GENERAL_OP, func_union)
-        func_union.general_op = aclop_RandomInt
-        register_acl_ufunc("ascend_random_int", GENERAL_OP, func_union)
+        _register_general("ascend_random_uniform", aclop_RandomUniform)
+        _register_general("ascend_random_normal", aclop_RandomNormal)
+        _register_general("ascend_random_int", aclop_RandomInt)
 
-    # set op: unique2 covers unique_all/counts/inverse/values in one kernel
-    func_union.general_op = aclop_Unique2
-    register_acl_ufunc("ascend_unique2", GENERAL_OP, func_union)
+    # =====================================================================
+    # B 类 structural：manipulation / index / creation
+    # （不自动 promote；dtype 能力表 + cpu_fallback host adapter）
+    # =====================================================================
 
-    # linalg (aclnn-backed; reached from cupy/_core/_ascend/_routines_linalg.pyx)
-    func_union.general_op = aclop_Trace
-    register_acl_ufunc("ascend_trace", GENERAL_OP, func_union)
-    func_union.general_op = aclop_Tril
-    register_acl_ufunc("ascend_tril", GENERAL_OP, func_union)
-    func_union.general_op = aclop_Triu
-    register_acl_ufunc("ascend_triu", GENERAL_OP, func_union)
-    func_union.general_op = aclop_Qr
-    register_acl_ufunc("ascend_qr", GENERAL_OP, func_union)
-    func_union.general_op = aclop_Svd
-    register_acl_ufunc("ascend_svd", GENERAL_OP, func_union)
-    func_union.general_op = aclop_Inverse
-    register_acl_ufunc("ascend_inverse", GENERAL_OP, func_union)
-
-    # statistics / histogram
-    func_union.general_op = aclop_Aminmax
-    register_acl_ufunc("ascend_aminmax", GENERAL_OP, func_union)
-    func_union.general_op = aclop_Histc
-    register_acl_ufunc("ascend_histc", GENERAL_OP, func_union)
-
-    # complex construction
-    func_union.general_op = aclop_Complex
-    register_acl_ufunc("ascend_complex", GENERAL_OP, func_union)
-
+    # --- B1: 拷贝/填充（aclnnCast 载体；cpu fallback 内部通道，gate 豁免） ---
+    _register_general("ascend_cast", aclop_Cast, structural=True)
     # copy 是 manipulation 族算子（copyto / elementwise_copy / cast-back 的
     # 后端，实现即 aclnnCast），与 ascend_cast 同为 GENERAL_OP。
-    func_union.general_op = aclop_Copy
-    register_acl_ufunc("ascend_copy", GENERAL_OP, func_union)
+    _register_general("ascend_copy", aclop_Copy, structural=True)
     # numpy.positive(+x) is the identity for every non-bool dtype.
     # keep aligned with aclop_Copy, otherwise, segmentation fault
-    register_acl_ufunc("ascend_positive", GENERAL_OP, func_union)
-    func_union.general_op  = aclop_Fill
-    register_acl_ufunc("ascend_fill", GENERAL_OP, func_union)
+    _register_general("ascend_positive", aclop_Copy, structural=True)
+    # fill_kernel = ElementwiseKernel('T x', 'T y', 'y = x', 'cupy_fill')
+    # （zeros/ones/full 的落点；标量参数按 out dtype 耦合 —— 修复 1）
+    _register_general("ascend_fill", aclop_Fill, structural=True)
+    # fill_diagonal (scalar val only; array_like val keeps the Python path)
+    _register_general("ascend_fill_diagonal", aclop_FillDiagonal, structural=True)
+
+    # --- B2: 索引取值 ---
+    # aclnnTake 把 self 视为 1-D flat（out[i] = self[index[i]]，调用点
+    # `_take` 的 flat 分支；axis 分支走 index_select）
+    _register_general("ascend_take", aclop_Take, structural=True)
+    _register_general("ascend_take_scalar", aclop_Take, structural=True)
+    # gather along a dim: the building block of `_take`'s axis branch
+    # (aclnnTake is flatten-only, see aclop_Take)
+    _register_general("ascend_gather", aclop_Gather, structural=True)
+    # np.take along a dim; consumed by _take's Ascend branch
+    _register_general("ascend_index_select", aclop_IndexSelect, structural=True)
+    # multi-coordinate fancy indexing（暂无 cupy API 消费方）
+    _register_general("ascend_gather_nd", aclop_GatherNd, structural=True)
+    # a[idx] = v along a dim（与 ascend_scatter_update 语义重叠，暂无消费方）
+    _register_general("ascend_index_copy", aclop_IndexCopy, structural=True)
+    # `_put_raise_kernel` is an ElementwiseKernel named `cupy_put_raise`, and the
+    # Ascend dispatcher maps kernel names by prefix (`cupy_` -> `ascend_`), so the
+    # registration must use `ascend_put_raise` — the old `ascend_raise_put` never
+    # matched any caller (review §3 T1).
+    _register_general("ascend_put_raise", aclop_PutRaise, structural=True)
+    # ndarray.put / numpy.put (aclnnIndexPutImpl); consumed by `_ndarray_put`'s
+    # Ascend branch in cupy/_core/_routines_indexing.pyx
+    # 注意 ins 顺序是 [indices, values]：f64 values 不在第一个操作数 ——
+    # cpu 模式拦截判据必须是「任一操作数」（launch_general_func gate）
+    _register_general("ascend_index_put_impl", aclop_IndexPutImpl, structural=True)
     # nonzero 不是 reduction：aclnnNonzero 无 dim/keepdim，输出 shape 是数据
     # 依赖的 (count, ndim)（调用方先同步 count 再预分配）—— 提取类算子，
-    # 同族是 masked_select 而非归约。
+    # 同族是 masked_select 而非归约。（UNARY_OP 槽，由 elementwise 通道解析；
+    # 策略上属 B 类，同样标注。）
     func_union.unary_op = aclop_Nonzero
     register_acl_ufunc("ascend_nonzero", UNARY_OP, func_union)
+    _STRUCTURAL_OPS.add("ascend_nonzero")
 
+    # --- B3: 散写（别名写入 self==out；aclnnScatterAdd 不收 DOUBLE，见 P2） ---
+    # setitem / boolean indexing: `_scatter_*_kernel` / `_getitem_mask_kernel`
+    _register_general("ascend_scatter_update", aclop_ScatterUpdate, structural=True)
+    _register_general("ascend_scatter_add", aclop_ScatterAdd, structural=True)
+    # scatter_max/min：CANN 无原生 reduce=max/min，由 gather+Maximum/Minimum+
+    # InplaceScatterUpdate 三段组合（acl_general_ops.h ScatterMaxMin）。
+    # `cupy.maximum.at` / `cupy.minimum.at` / `cupyx.scatter_max/min` 的落点。
+    _register_general("ascend_scatter_max", aclop_ScatterMax, structural=True)
+    _register_general("ascend_scatter_min", aclop_ScatterMin, structural=True)
+    _register_general("ascend_scatter_update_mask", aclop_ScatterUpdateMask, structural=True)
+    _register_general("ascend_scatter_add_mask", aclop_ScatterAddMask, structural=True)
+    _register_general("ascend_getitem_mask", aclop_GetitemMask, structural=True)
+
+    # --- B4: 形状 / 装配 ---
+    _register_general("ascend_concatenate", aclop_Concat, structural=True)
+    _register_general("ascend_stack", aclop_Stack, structural=True)
+    _register_general("ascend_flip", aclop_Flip, structural=True)
+    _register_general("ascend_permute", aclop_Permute, structural=True)
+    _register_general("ascend_roll", aclop_Roll, structural=True)
+    # np.tile via aclnnRepeat (torch.repeat semantics); consumed by tiling.py
+    _register_general("ascend_repeat", aclop_Repeat, structural=True)
+
+    # --- B5: 排序 / 去重（dtype 限制多，host 排序可靠） ---
+    _register_general("ascend_sort", aclop_Sort, structural=True)
+    _register_general("ascend_argsort", aclop_Argsort, structural=True)
+    # set op: unique2 covers unique_all/counts/inverse/values in one kernel
+    _register_general("ascend_unique2", aclop_Unique2, structural=True)
+    # torch.unique_consecutive (3 outputs，暂无 cupy API 消费方)
+    _register_general("ascend_unique_consecutive", aclop_UniqueConsecutive, structural=True)
+
+    # --- B6: 矩阵结构 ---
+    _register_general("ascend_trace", aclop_Trace, structural=True)
+    _register_general("ascend_tril", aclop_Tril, structural=True)
+    _register_general("ascend_triu", aclop_Triu, structural=True)
+
+    # --- B7: 稠密线代 / 收缩（数值上似 A，但 host fallback 已是常态
+    # （cpu_fallback.FALLBACKS / linalg），策略上归 B） ---
+    # --- Stage-A batch (CANN 9.0.1), see docs/ascend/DeveloperNotes.md ---
+    # linalg.slogdet (real float inputs; complex keeps the cpu_fallback path)
+    _register_general("ascend_slogdet", aclop_Slogdet, structural=True)
+    _register_general("ascend_qr", aclop_Qr, structural=True)
+    _register_general("ascend_svd", aclop_Svd, structural=True)
+    _register_general("ascend_inverse", aclop_Inverse, structural=True)
+    # einsum：equation 走统一参数通道的 ARG_STRING（cupy/linalg/_einsum.py 的
+    # Ascend 快速路径，默认关闭，CUPY_ASCEND_NATIVE_EINSUM=1 启用）
+    _register_general("ascend_einsum", aclop_Einsum, structural=True)
+
+    # =====================================================================
+    # 探针：无 numpy 语义，不参与 A/B 策略
+    # =====================================================================
     # 参数通道探针：只记录收到的参数（scalar / int 序列 / str / None 的 tag 与值），
     # 不做任何计算，也没有对应的 numpy API。tests/ascend/test_unified_args.py 用它
     # 在无 NPU 环境验证「统一参数通道」端到端可达（py_dump_args / py_last_dump_args）。
-    func_union.general_op = aclop_DumpArgs
-    register_acl_ufunc("ascend_dump_args", GENERAL_OP, func_union)
+    _register_general("ascend_dump_args", aclop_DumpArgs)
+
+
+def py_is_structural_op(str opname) -> bool:
+    """测试/审计用：op 是否 B 类 structural（Float64Workaround.md §六）。
+
+    B 类缺省不做自动 promote，float64 策略走能力表 + host adapter。
+    """
+    return opname in _STRUCTURAL_OPS
+
+
+def py_list_structural_ops() -> list:
+    """测试/审计用：返回全部 B 类 structural op 名（排序后）。"""
+    return sorted(_STRUCTURAL_OPS)
+
 
 def py_register_acl_ufunc(str opname, int func_type, long func_ptr):
     """Python层级的操作注册函数, func_type is OpType enum value"""
