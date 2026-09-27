@@ -1,0 +1,42 @@
+{
+  "api.unsupported": {
+    "message": "API {api} is not supported by the Ascend backend ({reason}).",
+    "suggestion": "{suggestion}"
+  },
+  "api.cpu_fallback": {
+    "message": "{api} is executed via CPU fallback on Ascend; this may introduce host/device memory transfers and device synchronization.",
+    "suggestion": "{suggestion}"
+  },
+  "api.semantic_difference": {
+    "message": "{api} behaves differently from NumPy on Ascend: {reason}",
+    "suggestion": "{suggestion}"
+  },
+  "api.unknown": {
+    "message": "{api} is not present in the rule database; compatibility cannot be determined statically.",
+    "suggestion": ""
+  },
+  "arg.unsupported_value": {
+    "message": "argument {argument}={value} of {api} is not supported on Ascend ({reason}).",
+    "suggestion": "{suggestion}"
+  },
+  "arg.presence_unsupported": {
+    "message": "argument {argument} of {api} is not supported on Ascend ({reason}).",
+    "suggestion": "{suggestion}"
+  },
+  "dtype.unsupported": {
+    "message": "dtype {dtype} is not supported by the Ascend backend ({reason}).",
+    "suggestion": "Consider {replacement} if the value range / semantics permit."
+  },
+  "dtype.discouraged": {
+    "message": "dtype {dtype} is discouraged on Ascend ({reason}).",
+    "suggestion": "Consider {replacement}."
+  },
+  "dtype.cpu_fallback": {
+    "message": "dtype {dtype} is handled via CPU fallback ({reason}).",
+    "suggestion": "Consider {replacement}."
+  },
+  "dtype.unknown": {
+    "message": "dtype cannot be statically determined.",
+    "suggestion": "Runtime analysis is recommended."
+  }
+}

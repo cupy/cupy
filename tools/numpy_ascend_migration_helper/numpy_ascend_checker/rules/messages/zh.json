@@ -1,0 +1,42 @@
+{
+  "api.unsupported": {
+    "message": "API {api} 不被 Ascend 后端支持（{reason}）。",
+    "suggestion": "{suggestion}"
+  },
+  "api.cpu_fallback": {
+    "message": "{api} 在 Ascend 上通过 CPU fallback 执行，可能引入主机/设备内存拷贝与设备同步。",
+    "suggestion": "{suggestion}"
+  },
+  "api.semantic_difference": {
+    "message": "{api} 在 Ascend 上的行为与 NumPy 不一致：{reason}",
+    "suggestion": "{suggestion}"
+  },
+  "api.unknown": {
+    "message": "{api} 不在规则数据库中，无法静态判定兼容性。",
+    "suggestion": ""
+  },
+  "arg.unsupported_value": {
+    "message": "{api} 的参数 {argument}={value} 在 Ascend 上不支持（{reason}）。",
+    "suggestion": "{suggestion}"
+  },
+  "arg.presence_unsupported": {
+    "message": "{api} 的参数 {argument} 在 Ascend 上不支持（{reason}）。",
+    "suggestion": "{suggestion}"
+  },
+  "dtype.unsupported": {
+    "message": "Ascend 后端不支持 dtype {dtype}（{reason}）。",
+    "suggestion": "如果数值范围/语义允许，可考虑 {replacement}。"
+  },
+  "dtype.discouraged": {
+    "message": "在 Ascend 上不建议使用 dtype {dtype}（{reason}）。",
+    "suggestion": "建议改用 {replacement}。"
+  },
+  "dtype.cpu_fallback": {
+    "message": "dtype {dtype} 通过 CPU fallback 处理（{reason}）。",
+    "suggestion": "{suggestion}"
+  },
+  "dtype.unknown": {
+    "message": "dtype 无法静态确定。",
+    "suggestion": "建议进行运行时（runtime）分析。"
+  }
+}
