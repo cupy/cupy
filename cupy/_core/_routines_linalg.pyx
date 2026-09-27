@@ -864,6 +864,27 @@ cpdef _ndarray_base matmul(
         elementwise_copy(c, out)
         return out
 
+    # (..., M, K) @ (K, N): fold the batch dims of `a` into its rows and run
+    # one 2-D GEMM. The batched path below issues a pointer-array batched
+    # GEMM against a broadcast `b`, which is ~15x slower for large shapes
+    # (#8174).
+    if (
+        orig_b_ndim == 2 and a._shape[orig_a_ndim - 1] == b._shape[0]
+        and (out is None or (
+            out._c_contiguous
+            and out.shape == a.shape[:-1] + (b._shape[1],)
+            and not _memory_range.may_share_bounds(out, a)
+            and not _memory_range.may_share_bounds(out, b)))
+    ):
+        # Explicit row count: -1 is ambiguous when K or N is 0.
+        rows = math.prod(a.shape[:-1])
+        a2 = _manipulation._reshape(a, (rows, b._shape[0]))
+        if out is None:
+            return _manipulation._reshape(
+                matmul(a2, b), a.shape[:-1] + (b._shape[1],))
+        matmul(a2, b, _manipulation._reshape(out, (rows, b._shape[1])))
+        return out
+
     orig_a = a
     orig_b = b
     a_part_outshape = b_part_outshape = 0

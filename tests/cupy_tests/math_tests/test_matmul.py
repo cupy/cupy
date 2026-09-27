@@ -30,6 +30,8 @@ from cupy import testing
             ((0, 3, 2), (0, 2, 4)),
             ((5, 3, 2), (2, 4)),
             ((0, 3, 2), (2, 4)),
+            ((5, 3, 0), (0, 4)),
+            ((5, 3, 2), (2, 0)),
             ((3, 2), (5, 2, 4)),
             ((3, 2), (0, 2, 4)),
             ((5, 3, 2), (1, 2, 4)),
@@ -85,6 +87,7 @@ class TestMatmul(unittest.TestCase):
             # matmul test
             ((5, 3, 2), (5, 2, 4), (5, 3, 4)),
             ((0, 3, 2), (0, 2, 4), (0, 3, 4)),
+            ((5, 3, 2), (2, 4), (5, 3, 4)),
         ],
     }))
 class TestMatmulOut(unittest.TestCase):
@@ -117,6 +120,15 @@ class TestMatmulOut(unittest.TestCase):
         assert xp.allclose(ret, out)
         return ret
 
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)  # required for uint8
+    def test_cupy_matmul_out_contiguous(self, xp, dtype):
+        x1 = testing.shaped_arange(self.shape_pair[0], xp, dtype)
+        x2 = testing.shaped_arange(self.shape_pair[1], xp, dtype)
+        out = xp.zeros(self.shape_pair[2], dtype)
+        xp.matmul(x1, x2, out=out)
+        return out
+
 
 class TestMatmulOutOverlap:
 
@@ -130,6 +142,12 @@ class TestMatmulOutOverlap:
         a = xp.ones(shape, dtype)
         return xp.matmul(a, a, out=a)
 
+    @testing.for_dtypes([numpy.int32, numpy.float64])
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5)
+    def test_overlap_batched_2d(self, xp, dtype):
+        a = testing.shaped_arange((2, 30, 30), xp, dtype)
+        return xp.matmul(a, a[0], out=a)
+
 
 class TestMatmulStrides:
 
@@ -138,6 +156,13 @@ class TestMatmulStrides:
     def test_relaxed_c_contiguous_input(self, xp, dtype):
         x1 = testing.shaped_arange((2, 2, 3), xp, dtype)[:, None, :, :]
         x2 = testing.shaped_arange((2, 1, 3, 1), xp, dtype)
+        return x1 @ x2
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)  # required for uint8
+    def test_noncontiguous_batched_2d(self, xp, dtype):
+        x1 = testing.shaped_arange((5, 2, 3), xp, dtype).transpose(0, 2, 1)
+        x2 = testing.shaped_arange((2, 4), xp, dtype)
         return x1 @ x2
 
 
@@ -253,6 +278,7 @@ class _TestMatmulComputeTypes(unittest.TestCase):
             ((32, 64), (64, 96)),
             ((64, 96), (96, 32)),
             ((96, 32), (32, 64)),
+            ((4, 32, 64), (64, 96)),
         ],
     }))
 class TestMatmulFp16ComputeTypes(_TestMatmulComputeTypes):
@@ -280,6 +306,7 @@ class TestMatmulFp16ComputeTypes(_TestMatmulComputeTypes):
             ((100, 200), (200, 300)),
             ((200, 300), (300, 100)),
             ((300, 100), (100, 200)),
+            ((4, 100, 200), (200, 300)),
         ],
         'dtype_pair': [
             (numpy.float16, numpy.float32),
