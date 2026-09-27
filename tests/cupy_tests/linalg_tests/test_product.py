@@ -529,6 +529,20 @@ class TestInt8Tensordot:
         b = xp.asarray(rng.integers(-5, 5, (7, 8), dtype=numpy.int8))
         return xp.tensordot(a, b, axes=1)
 
+    @testing.numpy_cupy_array_equal()
+    def test_int8_inner_multidim(self, xp):
+        """ret_shape (2, 3, 3, 2) differs from the 2-D (6, 6) GEMM output."""
+        a = testing.shaped_arange((2, 3, 4), xp, numpy.int8)
+        b = testing.shaped_arange((3, 2, 4), xp, numpy.int8)
+        return xp.inner(a, b)
+
+    @testing.numpy_cupy_array_equal()
+    def test_int8_tensordot_multidim(self, xp):
+        rng = numpy.random.default_rng(seed=21)
+        a = xp.asarray(rng.integers(-5, 5, (2, 3, 8), dtype=numpy.int8))
+        b = xp.asarray(rng.integers(-5, 5, (8, 4, 5), dtype=numpy.int8))
+        return xp.tensordot(a, b, axes=1)
+
 
 @testing.parameterize(*testing.product({
     'params': [

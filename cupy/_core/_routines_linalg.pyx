@@ -57,14 +57,17 @@ cdef dict compute_type_str = {
 
 
 cpdef int to_compute_type_index(dtype) except -1:
-    cdef str dtype_char = numpy.dtype(dtype).char
+    # Normalize once: callers pass dtype instances and scalar types
+    # (e.g. numpy.int8), and only the former have `.name`.
+    dtype = numpy.dtype(dtype)
+    cdef str dtype_char = dtype.char
     if dtype_char == 'e':
         return 1
     elif dtype_char in 'fF':
         return 2
     elif dtype_char in 'dD':
         return 3
-    elif numpy.dtype(dtype).name == "bfloat16":
+    elif dtype.name == "bfloat16":
         return 0
     elif dtype_char == 'b':
         return 4
@@ -626,7 +629,32 @@ cpdef _ndarray_base tensordot_core(
         c = c.view()
         c.shape = (n, m)
 
-    if dtype.kind in 'biu' and dtype.char != 'b':
+    # int8 uses cublasGemmEx with int32 accumulation (IMMA Tensor Cores on
+    # sm_75+). CUBLAS_COMPUTE_32I needs sm_61+ and IMMA needs k, lda and ldb
+    # aligned to 4; otherwise fall through to the integer kernel below.
+    if (
+        dtype.char == 'b'
+        and not runtime._is_hip_environment
+        and compute_capability >= 61
+        and k % 4 == 0 and lda % 4 == 0 and ldb % 4 == 0
+    ):
+        c_int32 = _ndarray_init(cupy.ndarray, (n, m), numpy.int32, None)
+        try:
+            tensordot_core_v11(
+                transb, transa, m, n, k, b, ldb, a, lda, c_int32, m)
+        except cublas.CUBLASError as exc:
+            warnings.warn(
+                'cublasGemmEx int8 path failed ({}); falling back to '
+                'CUDA integer kernel.'.format(exc),
+                _util.PerformanceWarning)
+        else:
+            # int32 -> int8 wraps mod 256, matching NumPy's matmul semantics.
+            elementwise_copy(c_int32, c)
+            if copy_to_out is not None:
+                elementwise_copy(copy_to_out, out)
+            return out
+
+    if dtype.kind in 'biu':
         if transa:
             a = a.T
             a = _internal_ascontiguousarray(a)
@@ -641,54 +669,7 @@ cpdef _ndarray_base tensordot_core(
         not runtime._is_hip_environment and
         compute_capability >= 50
     ):
-        if dtype == 'b':
-            if k % 4 != 0 or lda % 4 != 0 or ldb % 4 != 0:
-                # IMMA requires k and leading dimensions aligned to 4;
-                # skip the cuBLAS launch and use the CUDA kernel directly.
-                if transa:
-                    a = a.T
-                    a = _internal_ascontiguousarray(a)
-                if transb:
-                    b = _internal_ascontiguousarray(b)
-                _integral_tensordot_core(
-                    b, a, c, m, n, k, dtype.char, ret_shape)
-                if copy_to_out is not None:
-                    elementwise_copy(copy_to_out, out)
-                return out
-            c_int32 = _ndarray_init(
-                cupy.ndarray, ret_shape, numpy.int32, None)
-            try:
-                tensordot_core_v11(
-                    transb, transa, m, n, k,
-                    b, ldb, a, lda, c_int32, m)
-                # int32 -> int8 wraps mod 256, matching NumPy's matmul
-                # semantics.
-                elementwise_copy(c_int32, c)
-            except cublas.CUBLASError as exc:
-                warnings.warn(
-                    'cublasGemmEx int8 path failed ({}); falling back to '
-                    'CUDA integer kernel.'.format(exc),
-                    _util.PerformanceWarning)
-                if transa:
-                    a = a.T
-                    a = _internal_ascontiguousarray(a)
-                if transb:
-                    b = _internal_ascontiguousarray(b)
-                _integral_tensordot_core(
-                    b, a, c, m, n, k, dtype.char, ret_shape)
-        else:
-            tensordot_core_v11(transb, transa, m, n, k, b, ldb, a, lda, c, m)
-        if copy_to_out is not None:
-            elementwise_copy(copy_to_out, out)
-        return out
-
-    if dtype == 'b':
-        if transa:
-            a = a.T
-            a = _internal_ascontiguousarray(a)
-        if transb:
-            b = _internal_ascontiguousarray(b)
-        _integral_tensordot_core(b, a, c, m, n, k, dtype.char, ret_shape)
+        tensordot_core_v11(transb, transa, m, n, k, b, ldb, a, lda, c, m)
         if copy_to_out is not None:
             elementwise_copy(copy_to_out, out)
         return out
