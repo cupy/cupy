@@ -898,13 +898,27 @@ cpdef _ndarray_base matmul(
     ret_dtype = numpy.promote_types(a.dtype, b.dtype)
     dtype = ret_dtype
 
+    # Half inputs stay half on the strided batched path (fp32 accumulation,
+    # Tensor Cores), like the 2-D path. The pointer-array path used for
+    # broadcast batches has no half variant, so those still upcast to fp32.
+    cdef bint keep_half = not runtime._is_hip_environment
+    for i in range(ndim - 2):
+        a_sh = a._shape[i]
+        b_sh = b._shape[i]
+        if a_sh != b_sh and a_sh != 0 and b_sh != 0:
+            keep_half = False
+
     cdef int cuda_dtype = -1
+    cdef bint is_half = False
     if dtype.kind not in 'biu':
         cuda_dtype = to_cuda_dtype(dtype, is_half_allowed=True)
         if (cuda_dtype == runtime.CUDA_R_16F
                 or cuda_dtype == runtime.CUDA_R_16BF):
-            dtype = numpy.dtype('f')
-            cuda_dtype = runtime.CUDA_R_32F
+            if keep_half:
+                is_half = True
+            else:
+                dtype = numpy.dtype('f')
+                cuda_dtype = runtime.CUDA_R_32F
 
     a = ascontiguousarray(a, dtype)
     b = ascontiguousarray(b, dtype)
@@ -1009,13 +1023,19 @@ cpdef _ndarray_base matmul(
     cdef intptr_t handle = device.get_cublas_handle()
     cdef int algo = cublas.CUBLAS_GEMM_DEFAULT
 
-    one = numpy.array(1, dtype=dtype)
-    zero = numpy.array(0, dtype=dtype)
+    one = numpy.array(1, dtype='f' if is_half else dtype)
+    zero = numpy.array(0, dtype='f' if is_half else dtype)
+    cdef int compute_type = cuda_dtype
+    if is_half:
+        if get_compute_type(dtype) == COMPUTE_TYPE_PEDANTIC:
+            compute_type = cublas.CUBLAS_COMPUTE_32F_PEDANTIC
+        else:
+            compute_type = cublas.CUBLAS_COMPUTE_32F
     if not use_broadcast:
         strideA = _get_stride_for_strided_batched_gemm(a)
         strideB = _get_stride_for_strided_batched_gemm(b)
         strideC = _get_stride_for_strided_batched_gemm(c_view)
-        if dtype.char in 'fFdD':
+        if is_half or dtype.char in 'fFdD':
             cublas.gemmStridedBatchedEx(
                 handle,
                 0,  # transa
@@ -1025,7 +1045,7 @@ cpdef _ndarray_base matmul(
                 b.data.ptr, cuda_dtype, ldb, strideB,
                 zero.ctypes.data,
                 c_view.data.ptr, cuda_dtype, ldc, strideC,
-                batchCount, cuda_dtype, algo)
+                batchCount, compute_type, algo)
         else:
             raise TypeError(dtype, a.dtype, b.dtype)
     else:

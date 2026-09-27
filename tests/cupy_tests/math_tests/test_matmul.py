@@ -253,6 +253,9 @@ class _TestMatmulComputeTypes(unittest.TestCase):
             ((32, 64), (64, 96)),
             ((64, 96), (96, 32)),
             ((96, 32), (32, 64)),
+            ((4, 32, 64), (4, 64, 96)),
+            ((2, 3, 32, 64), (2, 3, 64, 96)),
+            ((4, 32, 64), (1, 64, 96)),
         ],
     }))
 class TestMatmulFp16ComputeTypes(_TestMatmulComputeTypes):
