@@ -489,7 +489,9 @@ ToScalarType ToScalarArg(const aclScalar* s, bool throw_on_error) {
     
     // 提取源值并转换为double进行统一处理
     double source_value = 0.0;
-    if (op::IsBasicType(dtype)) {
+    // ASCEND: DT_BOOL is not basic type, but cupy_scalar_to_acl_scalar() neeed to accept `bool`
+    // also, numpy treat bool as an arithmetic type for matrix op / sum op
+    if (op::IsBasicType(dtype) || dtype == op::DataType::DT_BOOL) {
         source_value = AclScalarToDouble(s);
     } else {
         if (throw_on_error) {
