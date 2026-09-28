@@ -207,22 +207,54 @@ cdef class CScalar(CPointer):
 
     cpdef apply_dtype(self, dtype):
         cdef Scalar* s = <Scalar*>self.ptr
+        # 读旧值：CScalar 可能已经是窄 dtype 存储（from_numpy_scalar_with_dtype
+        # / _demote_scalar_operands 先转过一次，elementwise 派发
+        # _kernel.pyx 再 apply_dtype(in_types[i])），不能假设 size==8。
+        # 按 kind/size 解引用（与 to_numpy_scalar 的映射一致），统一读成
+        # Python 对象再走下方写侧转换。
         if self.kind == b'b':
             val = s.bool_
-            assert self.size == 1
         elif self.kind == b'c':
-            assert self.size == 16
-            val = (<double complex*>self.ptr)[0]
-        else:
-            assert self.size == 8
-            if self.kind == b'i':
+            if self.size == 8:
+                val = (<float complex*>self.ptr)[0]
+            elif self.size == 16:
+                val = (<double complex*>self.ptr)[0]
+            else:
+                assert False
+        elif self.kind == b'i':
+            if self.size == 1:
+                val = s.int8_
+            elif self.size == 2:
+                val = s.int16_
+            elif self.size == 4:
+                val = s.int32_
+            elif self.size == 8:
                 val = s.int64_
-            elif self.kind == b'u':
+            else:
+                assert False
+        elif self.kind == b'u':
+            if self.size == 1:
+                val = s.uint8_
+            elif self.size == 2:
+                val = s.uint16_
+            elif self.size == 4:
+                val = s.uint32_
+            elif self.size == 8:
                 val = s.uint64_
-            elif self.kind == b'f':
+            else:
+                assert False
+        elif self.kind == b'f':
+            if self.size == 2:
+                # float16 以 uint16 半精度位模式存储（见写侧 to_float16）
+                val = internal.from_float16((<uint16_t*>self.ptr)[0])
+            elif self.size == 4:
+                val = s.float32_
+            elif self.size == 8:
                 val = s.float64_
             else:
                 assert False
+        else:
+            assert False
         cdef char kind
         cdef int size
         kind, size = <tuple>_dtype_kind_size_dict[dtype]
@@ -348,8 +380,9 @@ cdef class CScalar(CPointer):
                 return _numpy_uint64((<uint64_t*>self.ptr)[0])
         elif self.kind == b'f':
             if self.size == 2:
-                # float16 无 C 类型，经 C float 构造（NumPy 负责舍入到半精度）
-                return _numpy_float16((<float*>self.ptr)[0])
+                # float16 以 uint16 半精度位模式存储（见 apply_dtype 的
+                # internal.to_float16），需 from_float16 解码，不能按 C float 读
+                return _numpy_float16(internal.from_float16((<uint16_t*>self.ptr)[0]))
             elif self.size == 4:
                 return _numpy_float32((<float*>self.ptr)[0])
             elif self.size == 8:
