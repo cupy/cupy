@@ -701,8 +701,24 @@ class _coo_base(sparse_data._data_matrix):
         # the cuSPARSE functions such as cusparseSpMV() assume this sorting
         # order.
         # See https://docs.nvidia.com/cuda/cusparse/index.html#coo-format
-        keys = cupy.stack([self.col, self.row])
-        order = cupy.lexsort(keys)
+        #
+        # Only the (row, col) order matters here; within-duplicate order is
+        # irrelevant to the sum below.  A 1-D array's backing COO keeps ``row``
+        # all-zero, so ``nrow == 1`` and the composite key reduces to ``col``.
+        #
+        # That key is injective only for in-bounds coordinates (``col <
+        # ncol``), which every valid matrix and every internal ``_from_parts``
+        # caller guarantees.  A malformed matrix with out-of-bounds indices --
+        # already undefined for toarray/matmul, since the CSR ``(data,
+        # indices, indptr)`` constructor does not validate bounds -- could
+        # collide two distinct pairs onto one key and fail to coalesce them
+        # (the lexsort fallback is robust to it).  Not guarded here: detecting
+        # it would cost a D2H sync (``col.max()``) on this hot path, and the
+        # matrix is garbage regardless.
+        from cupyx import cusparse
+        ncol = self.shape[-1]
+        nrow = self.shape[0] if self.ndim > 1 else 1
+        order = cusparse._argsort_major_minor(self.row, self.col, nrow, ncol)
         src_data = self.data[order]
         src_row = self.row[order]
         src_col = self.col[order]

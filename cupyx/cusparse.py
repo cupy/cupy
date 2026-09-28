@@ -143,6 +143,43 @@ def _build_indptr(row_indices, n_rows, dtype):
     return indptr
 
 
+def _argsort_major_minor(major, minor, major_count, minor_range):
+    """Return the permutation that sorts entries by ``(major, minor)``.
+
+    Encodes the two coordinates into a single ``major * minor_range + minor``
+    key and radix ``argsort``s it -- one sort instead of the two stable passes
+    ``lexsort`` runs, roughly an order of magnitude faster on millions of
+    entries.  ``minor`` must lie in ``[0, minor_range)`` so the key is
+    order-isomorphic to the ``(major, minor)`` pair.
+
+    ``major`` is cast to int64 before the multiply so an int32 ``major`` does
+    not wrap.  Falls back to a two-key ``lexsort`` when the largest possible
+    key ``major_count * minor_range`` could exceed int64 -- reachable in the
+    int64-index regime, where a sparse matrix may have a logical shape whose
+    product overflows even though it holds few entries.
+
+    Args:
+        major: Per-entry primary sort coordinate (values in
+            ``[0, major_count)``).
+        minor: Per-entry secondary sort coordinate (values in
+            ``[0, minor_range)``).
+        major_count (int): Exclusive upper bound on ``major``; with
+            ``minor_range`` it bounds the composite key.
+        minor_range (int): Exclusive upper bound on ``minor``; the key
+            multiplier.
+
+    Returns:
+        cupy.ndarray: Indices that sort the entries into canonical order.
+    """
+    # Coerce the bounds to Python ints so the overflow check runs in exact
+    # arbitrary precision: a numpy scalar would wrap the product mod 2**64 and
+    # could pass a guard that should have failed, silently corrupting the sort.
+    if int(major_count) * int(minor_range) < (1 << 63):
+        return _cupy.argsort(
+            major.astype(_cupy.int64, copy=False) * minor_range + minor)
+    return _cupy.lexsort(_cupy.stack([minor, major]))
+
+
 def _with_indices_dtype(m, dtype):
     """Return a CSR/CSC matrix with indices and indptr cast to *dtype*.
 
@@ -564,6 +601,34 @@ def csrgeam(a, b, alpha=1, beta=1):
         has_canonical_format=True)
 
 
+def _scale_geam_operand(data, coeff):
+    """Scale a geam/gemm operand's ``data`` by ``coeff``.
+
+    The ``+``/``-`` operators only ever pass ``coeff`` of +1 or -1; other
+    values reach here solely via the low-level ``spgemm``/``csrgeam2`` entry
+    points.  Negation wraps for signed and unsigned integers, so ``-data``
+    handles the -1 case.  A general coefficient multiplies through numpy
+    promotion so a fractional coefficient on integer data is not silently
+    truncated (``int64(0.5) == 0``).  ``coeff == 1`` is a no-op returned
+    up front, so it is safe for any dtype including bool (bool SpGEMM keeps
+    its operands as bool -- products are logical AND, sum_duplicates ORs --
+    and only reaches here with the default ``alpha == 1``).
+    """
+    if coeff == 1:
+        return data
+    if data.dtype.kind == 'b':
+        # bool has no negation/scaling; callers scaling bool by a non-unit
+        # coefficient must convert to int8 first.  Raise (rather than assert,
+        # which ``python -O`` strips) so a forgetful caller cannot silently
+        # get an int64 result or cupy's raw "boolean negative" error.
+        raise TypeError(
+            'bool operands must be cast to int8 before scaling by a '
+            'non-unit coefficient')
+    if coeff == -1:
+        return -data
+    return data * coeff
+
+
 def _cupy_csrgeam_int64(a, b, alpha, beta):
     # TODO(eriknw): cuSPARSE--remove once SpGEAM ships across all
     # supported CUDA versions.
@@ -576,11 +641,26 @@ def _cupy_csrgeam_int64(a, b, alpha, beta):
     # a.shape) instead of raising for incompatible operands.
     if a.shape != b.shape:
         raise ValueError('inconsistent shapes')
+    if a.dtype == _numpy.bool_ and b.dtype == _numpy.bool_:
+        # Compute bool +/- in int8 so subtraction follows C-style bool
+        # arithmetic like scipy (True - True -> 0 -> False), then cast back.
+        # The bool ``sum_duplicates`` kernel would instead OR the coalesced
+        # operands, which is wrong for subtraction.  Restage only ``data``:
+        # the coordinate arrays are read, never mutated, so a full ``astype``
+        # would copy them for nothing.
+        c = _cupy_csrgeam_int64(
+            a._with_data(a.data.astype(_numpy.int8), copy=False),
+            b._with_data(b.data.astype(_numpy.int8), copy=False),
+            alpha, beta)
+        return c._with_data(c.data.astype(_numpy.bool_), copy=False)
     idx_dtype = _numpy.result_type(a.indices.dtype, b.indices.dtype)
-    # ``dtype.type(alpha)`` returns a numpy scalar; a 0-d ndarray
-    # (e.g. from ``_numpy.array(alpha)``) would be rejected by CuPy's ufunc.
-    a_data = a.data * a.dtype.type(alpha) if alpha != 1 else a.data
-    b_data = b.data * b.dtype.type(beta) if beta != 1 else b.data
+    # ``alpha``/``beta`` are +1 or -1 (from ``+``/``-``).  Scale by negation
+    # rather than ``data * dtype.type(alpha)``: negating wraps correctly for
+    # every integer dtype (matching scipy), whereas ``uint8(-1)`` etc. raises
+    # an OverflowError.  ``dtype.type`` keeps a numpy scalar for other alphas
+    # (a 0-d ndarray would be rejected by CuPy's ufunc).
+    a_data = _scale_geam_operand(a.data, alpha)
+    b_data = _scale_geam_operand(b.data, beta)
 
     a_rows = _indptr_to_coo(a.indptr, idx_dtype, nnz=a.nnz)
     b_rows = _indptr_to_coo(b.indptr, idx_dtype, nnz=b.nnz)
@@ -1054,10 +1134,14 @@ def csrsort(x):
         return
     m, n = x.shape
 
-    if x.indices.dtype == _cupy.int64:
-        # TODO(eriknw): cuSPARSE--remove when xcsrsort supports int64
+    if x.indices.dtype == _cupy.int64 or _needs_cupy_fallback(x.dtype):
+        # TODO(eriknw): cuSPARSE--remove when xcsrsort supports int64.  The
+        # data-reorder gather (gthr/Gather) is also float/complex-only, so
+        # non-float data takes this pure-CuPy path too.
         row = _indptr_to_coo(x.indptr, nnz=nnz)
-        order = _cupy.lexsort(_cupy.stack([x.indices, row]))
+        # Canonical order sorts by (row, col); col (x.indices) is the minor
+        # coordinate, so its range is n.
+        order = _argsort_major_minor(row, x.indices, m, n)
         x.indices[:] = x.indices[order]
         x.data[:] = x.data[order]
         x.has_sorted_indices = True
@@ -1100,10 +1184,14 @@ def cscsort(x):
         return
     m, n = x.shape
 
-    if x.indices.dtype == _cupy.int64:
-        # TODO(eriknw): cuSPARSE--remove when xcscsort supports int64
+    if x.indices.dtype == _cupy.int64 or _needs_cupy_fallback(x.dtype):
+        # TODO(eriknw): cuSPARSE--remove when xcscsort supports int64.  The
+        # data-reorder gather is also float/complex-only, so non-float data
+        # takes this pure-CuPy path too.
         col = _indptr_to_coo(x.indptr, nnz=nnz)
-        order = _cupy.lexsort(_cupy.stack([x.indices, col]))
+        # Canonical order sorts by (col, row); row (x.indices) is the minor
+        # coordinate, so its range is m.
+        order = _argsort_major_minor(col, x.indices, n, m)
         x.indices[:] = x.indices[order]
         x.data[:] = x.data[order]
         x.has_sorted_indices = True
@@ -1149,16 +1237,20 @@ def coosort(x, sort_by='r'):
         return
     m, n = x.shape
 
-    if x.row.dtype == _cupy.int64:
-        # TODO(eriknw): cuSPARSE--remove when xcoosort supports int64
+    if x.row.dtype == _cupy.int64 or _needs_cupy_fallback(x.dtype):
+        # TODO(eriknw): cuSPARSE--remove when xcoosort supports int64.  The
+        # cuSPARSE data-reorder gather is float/complex + int32-index only,
+        # so bool/integer/16-bit-float data (and int64 indices) permute the
+        # data in pure CuPy here instead.
         if sort_by == 'r':
-            # Sort by (row, col): primary=row, secondary=col
-            order = _cupy.lexsort(_cupy.stack([x.col, x.row]))
+            # (row, col): minor is col, whose range is n.
+            major, minor, major_count, minor_range = x.row, x.col, m, n
         elif sort_by == 'c':
-            # Sort by (col, row): primary=col, secondary=row
-            order = _cupy.lexsort(_cupy.stack([x.row, x.col]))
+            # (col, row): minor is row, whose range is m.
+            major, minor, major_count, minor_range = x.col, x.row, n, m
         else:
             raise ValueError("sort_by must be either 'r' or 'c'")
+        order = _argsort_major_minor(major, minor, major_count, minor_range)
         x.row[:] = x.row[order]
         x.col[:] = x.col[order]
         x.data[:] = x.data[order]
@@ -1186,16 +1278,17 @@ def coosort(x, sort_by='r'):
     else:
         raise ValueError("sort_by must be either 'r' or 'c'")
 
-    if x.dtype.char != '?':
-        if check_availability('gthr'):
-            _call_cusparse(
-                'gthr', x.dtype,
-                handle, nnz, data_orig.data.ptr, x.data.data.ptr,
-                P.data.ptr, _cusparse.CUSPARSE_INDEX_BASE_ZERO)
-        else:
-            desc_x = SpVecDescriptor.create(P, x.data)
-            desc_y = DnVecDescriptor.create(data_orig)
-            _cusparse.gather(handle, desc_y.desc, desc_x.desc)
+    # Only float/complex data reaches here (bool and the other non-'fdFD'
+    # dtypes took the pure-CuPy branch above), so the gather always runs.
+    if check_availability('gthr'):
+        _call_cusparse(
+            'gthr', x.dtype,
+            handle, nnz, data_orig.data.ptr, x.data.data.ptr,
+            P.data.ptr, _cusparse.CUSPARSE_INDEX_BASE_ZERO)
+    else:
+        desc_x = SpVecDescriptor.create(P, x.data)
+        desc_y = DnVecDescriptor.create(data_orig)
+        _cusparse.gather(handle, desc_y.desc, desc_x.desc)
 
     if sort_by == 'c':  # coo canonical order is row-major
         x.has_canonical_format = False
@@ -1278,28 +1371,41 @@ def csr2coo(x, data, indices):
     return A
 
 
+def _needs_cupy_fallback(dtype):
+    """Whether cuSPARSE cannot compute on this *data* dtype.
+
+    cuSPARSE operates only on float32/float64/complex64/complex128
+    (``dtype.char in 'fdFD'``); bool and every integer dtype must route
+    through a pure-CuPy fallback.  This is the value-dtype axis only; int64
+    *indices* are a separate routing axis (``_check_int32_indices`` /
+    ``indices.dtype == int64``).  Some ops need the fallback when either
+    axis applies (see :func:`_transpose_needs_cupy`).
+    """
+    return _numpy.dtype(dtype).char not in 'fdFD'
+
+
 def _transpose_needs_cupy(x):
     """Whether a CSR<->CSC transpose must use the pure-CuPy fallback.
 
     cuSPARSE's ``Csr2cscEx2`` (and legacy ``csr2csc``) support only
     float/complex data with int32 indices, so both int64 indices and a
-    non-float (e.g. ``bool``) data dtype must route through the
+    non-float (e.g. ``bool`` or integer) data dtype must route through the
     dtype-agnostic :func:`_cupy_transpose_compressed`.
     """
-    return x.indices.dtype == _cupy.int64 or x.dtype.char not in 'fdFD'
+    return x.indices.dtype == _cupy.int64 or _needs_cupy_fallback(x.dtype)
 
 
 def _cupy_transpose_compressed(x, output_cls, out_dim):
     """Pure-CuPy CSR<->CSC transpose (int64 indices or non-float data).
 
-    Uses ``_build_indptr`` + ``lexsort`` -- O(nnz log nnz) time, and is
+    Uses ``_build_indptr`` plus a single composite-key radix argsort and is
     dtype-agnostic (it only gathers/reorders the data, never operating on
     the value dtype).  It is the fallback whenever cuSPARSE's float-only,
     int32-only ``Csr2cscEx2`` cannot be used: no Generic API CSR<->CSC
     transpose accepts 64-bit indices (newer sparse Generic APIs such as
     SpGEAM are addition, not transpose), and cuSPARSE has no bool support
-    at all.  For int64 this runs roughly an order of magnitude slower than
-    the int32 ``cusparseCsr2cscEx2`` path.
+    at all.  For int64 this runs a few times slower than the int32
+    ``cusparseCsr2cscEx2`` path.
 
     Args:
         x: Input compressed sparse matrix.
@@ -1322,13 +1428,16 @@ def _cupy_transpose_compressed(x, output_cls, out_dim):
     out_indptr = _build_indptr(x.indices, out_dim, idx_dtype)
     expanded = _indptr_to_coo(x.indptr, nnz=x.nnz)
 
-    # Sort by (output major, output minor) for canonical order.
-    order = _cupy.lexsort(_cupy.stack([expanded, x.indices]))
+    # Canonical order sorts by (output major, output minor): x.indices is the
+    # output major and ``expanded`` (the input's major per entry) is the
+    # output minor, so the input's major count is the output's minor range.
+    in_major = x.indptr.size - 1
+    order = _argsort_major_minor(x.indices, expanded, out_dim, in_major)
 
     # Propagate has_canonical_format only when known True: a canonical
-    # input transposes to a canonical output (lexsort guarantees sort;
+    # input transposes to a canonical output (the sort guarantees ordering;
     # output has duplicates iff input did).  False/None are not
-    # propagated -- the lexsort may make a non-canonical input canonical
+    # propagated -- the sort may make a non-canonical input canonical
     # in the output, so we let the lazy getter recompute.  Read the
     # private attr to avoid triggering ``x``'s lazy kernel ourselves.
     canonical = getattr(x, '_has_canonical_format', None)
@@ -2514,6 +2623,16 @@ def spsm(a, b, alpha=1.0, lower=True, unit_diag=False, transa=False):
                  transa=transa).solve(b, alpha=alpha)
 
 
+def _needs_cupy_spgemm(a, b):
+    # int64 indices or a non-float value dtype must route through the
+    # pure-CuPy SpGEMM fallbacks: cuSPARSE csrgemm/csrgemm2 are
+    # int32/float-only and native SpGEMM lacks integer compute types.
+    return (
+        a.indices.dtype == _cupy.int64
+        or b.indices.dtype == _cupy.int64
+        or _numpy.promote_types(a.dtype, b.dtype).char not in 'fdFD')
+
+
 def _cupy_spgemm_int64(a, b, alpha):
     # TODO(eriknw): cuSPARSE--removable once all supported CUDA versions have
     # native int64 SpGEMM.  Verified working on CUDA 13.0+ (native is
@@ -2524,7 +2643,16 @@ def _cupy_spgemm_int64(a, b, alpha):
     Expands all (i,j,a*b) products into COO, then sum_duplicates.
     O(P log P) time, O(P + nnz_C) space, where P = total products.
     """
+    # Bool operands stay bool: the product ``a*b`` is a logical AND and the
+    # bool ``sum_duplicates`` ORs coincident products, so a cell is True iff
+    # any product is -- exact for any overlap count.  (Casting to int8 like
+    # csrgeam does would overflow: 256 True products wrap to int8(0) -> a
+    # spurious False; csrgeam is safe only because add sums at most 2 values.)
     idx_dtype = _cupy.int64
+    # The int64 expand below is internal; the output should keep the
+    # operands' index dtype (a int32-indexed product stays int32 like the
+    # native path) unless the result is too large to fit.
+    out_idx_dtype = _numpy.result_type(a.indices.dtype, b.indices.dtype)
     # Normalise both operands to int64 (no copy if already int64).
     a_indices = a.indices.astype(idx_dtype, copy=False)
     a_indptr = a.indptr.astype(idx_dtype, copy=False)
@@ -2542,8 +2670,8 @@ def _cupy_spgemm_int64(a, b, alpha):
     if total_products == 0:
         return cupyx.scipy.sparse.csr_matrix._from_parts(
             _cupy.empty(0, a.dtype),
-            _cupy.empty(0, idx_dtype),
-            _cupy.zeros(m + 1, idx_dtype),
+            _cupy.empty(0, out_idx_dtype),
+            _cupy.zeros(m + 1, out_idx_dtype),
             (m, n))
 
     a_src = _cupy.repeat(
@@ -2566,8 +2694,8 @@ def _cupy_spgemm_int64(a, b, alpha):
     c_rows = a_rows[a_src]
     c_vals = a.data[a_src] * b.data[b_col_pos]
     del a_src, b_offset, b_col_pos, a_rows, a_col_k  # free P-sized temporaries
-    if alpha != 1:
-        c_vals = c_vals * a.dtype.type(alpha)
+    # Uint-safe scaling: ``a.dtype.type(-1)`` would raise OverflowError.
+    c_vals = _scale_geam_operand(c_vals, alpha)
 
     # Merge products with the same (row, col) position.
     coo = cupyx.scipy.sparse.coo_matrix._from_parts(

@@ -189,13 +189,17 @@ class TestInt64FormatConversion:
 
 
 class TestInt64Sort:
-    """Lexsort-based fallbacks for csrsort, cscsort, sum_duplicates.
+    """Pure-CuPy sort fallbacks for csrsort, cscsort, sum_duplicates.
 
     cuSPARSE xcsrsort / xcscsort / xcoosort accept only int32 index pointers.
+    The primary path encodes ``(major, minor)`` into one int64 key and radix
+    ``argsort``s it; a two-key ``lexsort`` backs it up when that key could
+    overflow int64 (see the huge-shape fallback tests below).
     """
 
     def test_csr_sort_indices_int64(self):
-        # csrsort int64 path: expand indptr via searchsorted, then lexsort.
+        # csrsort int64 path: expand indptr via searchsorted, then sort by a
+        # composite (row, col) key.
         # Row 0 has columns [_LARGE+1, _LARGE] (deliberately unsorted).
         data = cupy.array([1.0, 2.0])
         indices = cupy.array([_LARGE + 1, _LARGE], dtype=cupy.int64)
@@ -257,6 +261,85 @@ class TestInt64Sort:
         assert m.has_sorted_indices
         testing.assert_array_equal(m.indices, cupy.array([0, 1, 2]))
         testing.assert_array_equal(m.data, cupy.array([2.0, 3.0, 1.0]))
+
+    def test_coosort_lexsort_fallback_huge_shape(self):
+        # A logical shape so large that the composite key ``row * ncol + col``
+        # would overflow int64 must fall back to a two-key lexsort.  Small
+        # major (3 rows), huge minor: 3 * ncol > 2**63 trips the guard, yet
+        # only a handful of entries are allocated (no dense-size arrays).
+        ncol = 2**62
+        assert 3 * ncol >= (1 << 63)      # guard trips -> lexsort fallback
+        row = cupy.array([2, 0, 2, 0], dtype=cupy.int64)
+        col = cupy.array([ncol - 1, ncol - 2, 5, ncol - 2], dtype=cupy.int64)
+        data = cupy.array([10.0, 20.0, 30.0, 40.0])
+        for sort_by in ('r', 'c'):
+            m = sparse.coo_matrix((data, (row, col)), shape=(3, ncol))
+            cusparse.coosort(m, sort_by)
+            r, c = cupy.asnumpy(m.row), cupy.asnumpy(m.col)
+            pairs = list(zip(r, c)) if sort_by == 'r' else list(zip(c, r))
+            assert pairs == sorted(pairs), sort_by
+            assert m.col.dtype == cupy.int64
+            assert int(c.max()) == ncol - 1   # huge col not truncated
+
+    def test_csrsort_lexsort_fallback_huge_shape(self):
+        # csrsort's within-row composite key would overflow int64 for a huge
+        # column count; the lexsort fallback keeps the sort correct.
+        ncol = 2**62
+        assert 2 * ncol >= (1 << 63)
+        # row 0: cols [ncol-1, 5] (unsorted); row 1: [ncol-2]
+        data = cupy.array([1.0, 2.0, 3.0])
+        indices = cupy.array([ncol - 1, 5, ncol - 2], dtype=cupy.int64)
+        indptr = cupy.array([0, 2, 3], dtype=cupy.int64)
+        m = sparse.csr_matrix((data, indices, indptr), shape=(2, ncol))
+        m.has_sorted_indices = False
+        m.sort_indices()
+        assert m.has_sorted_indices
+        si = cupy.asnumpy(m.indices)
+        assert list(si[:2]) == [5, ncol - 1]           # row 0 sorted
+        assert float(cupy.asnumpy(m.data)[0]) == 2.0    # data followed indices
+
+
+class TestArgsortMajorMinor:
+    """The composite sort key shared by the pure-CuPy sort fallbacks.
+
+    ``cusparse._argsort_major_minor`` encodes ``(major, minor)`` into one
+    int64 key and radix-argsorts it, falling back to a two-key ``lexsort``
+    when ``major_count * minor_range`` could overflow int64.  Both branches
+    must produce the same canonical order.
+    """
+
+    @staticmethod
+    def _sorted_pairs(major, minor, order):
+        o = cupy.asnumpy(order)
+        return list(zip(cupy.asnumpy(major)[o].tolist(),
+                        cupy.asnumpy(minor)[o].tolist()))
+
+    @pytest.mark.parametrize('dtype', [cupy.int32, cupy.int64])
+    def test_both_branches_agree(self, dtype):
+        major = cupy.array([2, 0, 1, 2, 0], dtype=dtype)
+        minor = cupy.array([4, 7, 0, 1, 3], dtype=dtype)
+        want = sorted(zip(cupy.asnumpy(major).tolist(),
+                          cupy.asnumpy(minor).tolist()))
+        order = cusparse._argsort_major_minor(major, minor, 3, 8)
+        assert self._sorted_pairs(major, minor, order) == want
+        # 2**60 * 8 == 2**63: the key would overflow, so lexsort runs instead
+        order = cusparse._argsort_major_minor(major, minor, 2**60, 8)
+        assert self._sorted_pairs(major, minor, order) == want
+
+    def test_int32_major_widened_before_multiply(self):
+        # 3000 * 10**6 exceeds int32 but not int64; without the widening cast
+        # the key would wrap negative and sort the pairs backwards.
+        major = cupy.array([3000, 1], dtype=cupy.int32)
+        minor = cupy.array([7, 5], dtype=cupy.int32)
+        order = cusparse._argsort_major_minor(major, minor, 2**31 - 1, 10**6)
+        assert self._sorted_pairs(major, minor, order) == [(1, 5), (3000, 7)]
+
+    def test_empty(self):
+        empty = cupy.empty(0, dtype=cupy.int64)
+        for major_count in (4, 2**60):    # composite-key, then lexsort
+            order = cusparse._argsort_major_minor(
+                empty, empty, major_count, 8)
+            assert order.size == 0
 
 
 class TestInt64Arithmetic:
