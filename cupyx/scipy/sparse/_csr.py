@@ -344,27 +344,17 @@ class _csr_base(_compressed._compressed_sparse_matrix):
             # [0, nnz]); the direct paths below assume a 2-D shape.
             return self._apply_2d_inplace(lambda m: m.eliminate_zeros())
 
-        # Pure-CuPy mask-and-rebuild for every dtype.  cuSPARSE's
-        # csr2csr_compress prunes by ``value > tol`` (a signed threshold), so
-        # at tol=0 it silently drops *negative* stored values, not just the
-        # zeros -- wrong for any signed data.  ``data != 0`` is the exact test
-        # and is also int64-index safe (csr2csr_compress is int32 only).
         mask = self.data != 0
         if mask.all():  # synchronize!
             return
         idx_dtype = self.indptr.dtype
-        # New indptr = running count of survivors sampled at the old row
-        # boundaries (entries are grouped by row in CSR order): one cumsum
-        # plus a gather, no atomic histogram.  ``kept[k]`` is the number of
-        # survivors in ``data[:k]``, so ``kept[indptr]`` is the new indptr;
-        # an all-zero matrix falls out as an all-zero indptr automatically.
         kept = cupy.empty(self.data.size + 1, dtype=idx_dtype)
         kept[0] = 0
         cupy.cumsum(mask, dtype=idx_dtype, out=kept[1:])
-        new_indptr = kept[self.indptr]
+        # Sample survivor counts at the old row boundaries.
+        self.indptr = kept[self.indptr]
         self.data = self.data[mask]
         self.indices = self.indices[mask]
-        self.indptr = new_indptr
 
     def _maximum_minimum(self, other, cupy_op, op_name, dense_check):
         cls = type(self)
