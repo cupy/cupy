@@ -258,7 +258,7 @@ configs {
   value {
     requirement {
       cpu: 8
-      memory: 60
+      memory: 52
       disk: 30
       gpu: 1
     }
@@ -275,7 +275,7 @@ configs {
   value {
     requirement {
       cpu: 8
-      memory: 60
+      memory: 52
       disk: 30
       gpu: 2
     }
@@ -293,7 +293,7 @@ configs {
   value {
     requirement {
       cpu: 8
-      memory: 60
+      memory: 52
       disk: 30
       gpu: 1
     }
@@ -310,7 +310,7 @@ configs {
   value {
     requirement {
       cpu: 8
-      memory: 60
+      memory: 52
       disk: 30
       gpu: 2
     }
@@ -328,7 +328,7 @@ configs {
   value {
     requirement {
       cpu: 8
-      memory: 60
+      memory: 52
       disk: 30
       gpu: 1
     }
@@ -345,7 +345,7 @@ configs {
   value {
     requirement {
       cpu: 8
-      memory: 60
+      memory: 52
       disk: 30
       gpu: 2
     }
@@ -363,7 +363,7 @@ configs {
   value {
     requirement {
       cpu: 8
-      memory: 60
+      memory: 52
       disk: 30
       gpu: 1
     }
@@ -380,7 +380,7 @@ configs {
   value {
     requirement {
       cpu: 8
-      memory: 60
+      memory: 52
       disk: 30
       gpu: 2
     }
@@ -398,7 +398,7 @@ configs {
   value {
     requirement {
       cpu: 8
-      memory: 60
+      memory: 52
       disk: 30
       gpu: 1
     }
@@ -415,7 +415,7 @@ configs {
   value {
     requirement {
       cpu: 8
-      memory: 60
+      memory: 52
       disk: 30
       gpu: 2
     }
@@ -432,7 +432,7 @@ configs {
   value {
     requirement {
       cpu: 8
-      memory: 60
+      memory: 52
       disk: 30
       gpu: 1
     }
@@ -449,7 +449,7 @@ configs {
   value {
     requirement {
       cpu: 8
-      memory: 60
+      memory: 52
       disk: 30
       gpu: 2
     }
@@ -466,7 +466,7 @@ configs {
   value {
     requirement {
       cpu: 8
-      memory: 60
+      memory: 52
       disk: 30
       gpu: 1
     }
@@ -483,7 +483,7 @@ configs {
   value {
     requirement {
       cpu: 8
-      memory: 60
+      memory: 52
       disk: 30
       gpu: 2
     }
@@ -500,7 +500,7 @@ configs {
   value {
     requirement {
       cpu: 8
-      memory: 60
+      memory: 52
       disk: 30
       gpu: 1
     }
@@ -519,7 +519,7 @@ configs {
   value {
     requirement {
       cpu: 8
-      memory: 60
+      memory: 52
       disk: 30
       gpu: 1
     }
@@ -537,7 +537,7 @@ configs {
   value {
     requirement {
       cpu: 8
-      memory: 60
+      memory: 52
       disk: 30
       gpu: 1
     }
