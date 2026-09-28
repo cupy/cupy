@@ -446,6 +446,13 @@ def nan_to_num(x, copy=True, nan=0.0, posinf=None, neginf=None):
     .. seealso:: :func:`numpy.nan_to_num`
 
     """
+    # ASCEND: aclop_NanToNum() reads nan/posinf/neginf from scalar arg
+    # not from ins, so it siliently use numpy defaults and ignore user inputs
+    # scalar ops are aborted on device, so handle scalar (0D) on host
+    from cupy.backends.backend import is_ascend
+    if is_ascend:
+        import numpy as _np
+        return _np.nan_to_num(x, copy=copy, nan=nan, posinf=posinf, neginf=neginf)
     if not isinstance(x, cupy.ndarray):
         out = cupy.full((), x)
     else:
