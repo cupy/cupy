@@ -624,7 +624,68 @@ extern "C" {
         return ret;
     }
 
-    DECLARE_ACL_UNARY_OPS_FUNC(Reciprocal)
+    // aclnnReciprocal only accepts floating dtypes, but NumPy's reciprocal
+    // accepts integers (1/x truncated to int). Cast integer input to float32,
+    // run reciprocal, then cast back to the output dtype.
+    inline bool ReciprocalIsIntegerDType(aclDataType dtype) {
+        switch (dtype) {
+            case ACL_BOOL:
+            case ACL_INT8:  case ACL_UINT8:
+            case ACL_INT16: case ACL_UINT16:
+            case ACL_INT32: case ACL_UINT32:
+            case ACL_INT64: case ACL_UINT64:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    aclError aclop_Reciprocal(const aclTensor* self, aclTensor* out, aclrtStream stream) {
+        aclDataType in_dtype = ACL_DT_UNDEFINED;
+        aclGetDataType(self, &in_dtype);
+        if (!ReciprocalIsIntegerDType(in_dtype)) {
+            return aclUnaryOpRun(self, out,
+                aclnnReciprocalGetWorkspaceSize, aclnnReciprocal, stream, false);
+        }
+        aclDataType out_dtype = ACL_DT_UNDEFINED;
+        aclGetDataType(out, &out_dtype);
+        aclTensor* tmp = aclTensorLike(self, ACL_FLOAT);
+        if (tmp == nullptr) {
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        aclError ret = aclIrregularOpRun(aclnnCastGetWorkspaceSize, aclnnCast, stream,
+            self, ACL_FLOAT, tmp);
+        ret = aclUnaryOpRun(tmp, tmp,
+            aclnnReciprocalGetWorkspaceSize, aclnnReciprocal, stream, false);
+        ret = aclIrregularOpRun(aclnnCastGetWorkspaceSize, aclnnCast, stream,
+            tmp, out_dtype, out);
+        // aclTensorLike 会 aclrtMalloc 一块显存，必须用 DestroyTensorLike 成对释放
+        aclDestroyTensorLike(tmp);
+        return ret;
+    }
+
+    aclError aclop_InplaceReciprocal(aclTensor* self, aclrtStream stream) {
+        aclDataType in_dtype = ACL_DT_UNDEFINED;
+        aclGetDataType(self, &in_dtype);
+        if (!ReciprocalIsIntegerDType(in_dtype)) {
+            return aclInplaceUnaryOpRun(self,
+                aclnnInplaceReciprocalGetWorkspaceSize, aclnnInplaceReciprocal, stream, false);
+        }
+        aclTensor* tmp = aclTensorLike(self, ACL_FLOAT);
+        if (tmp == nullptr) {
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        aclError ret = aclIrregularOpRun(aclnnCastGetWorkspaceSize, aclnnCast, stream,
+            self, ACL_FLOAT, tmp);
+        ret = aclUnaryOpRun(tmp, tmp,
+            aclnnReciprocalGetWorkspaceSize, aclnnReciprocal, stream, false);
+        ret = aclIrregularOpRun(aclnnCastGetWorkspaceSize, aclnnCast, stream,
+            tmp, in_dtype, self);
+        // aclTensorLike 会 aclrtMalloc 一块显存，必须用 DestroyTensorLike 成对释放
+        aclDestroyTensorLike(tmp);
+        return ret;
+    }
+
     DECLARE_ACL_UNARY_OPS_FUNC(Neg)
 
     aclError aclop_Abs(const aclTensor* self, aclTensor* out, aclrtStream stream) {
