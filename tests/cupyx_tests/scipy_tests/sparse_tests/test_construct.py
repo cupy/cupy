@@ -327,7 +327,7 @@ class TestRandomInvalidArgument:
 
     def test_invalid_dtype(self):
         # Note: SciPy accepts integer (cupy does not yet).
-        with pytest.raises(NotImplementedError):
+        with pytest.raises(ValueError):
             sparse.random(3, 4, dtype='i')
 
 

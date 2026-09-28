@@ -14,6 +14,7 @@ from cupy_backends.cuda.api import runtime
 import cupyx.scipy.sparse
 from cupyx.scipy.sparse import _base
 from cupyx.scipy.sparse import _compressed
+from cupyx.scipy.sparse import _sputils
 
 
 class _csc_base(_compressed._compressed_sparse_matrix):
@@ -171,10 +172,40 @@ class _csc_base(_compressed._compressed_sparse_matrix):
             if other.ndim == 0:
                 self.sum_duplicates()
                 return self._with_data(self.data * other)
-            elif other.ndim == 1:
+            native_f16 = False
+            if other.ndim in (1, 2):
+                # cuSPARSE spmv/spmm accept float/complex plus a native
+                # float16 mixed mode (f16 data, f32 compute).  bfloat16 and
+                # bool/integer results have no cuSPARSE path and route through
+                # the pure-CuPy scatter.  float16 must NOT: it has to reach the
+                # native spmv/spmm via ``self.T`` (transa), because routing it
+                # through ``_cupy_csr_dense_matmul(self.tocsr())`` would pay a
+                # full CSC->CSR conversion (~25x slower).  The transa path is
+                # buggy on HIP, so keep the fallback there.
+                result_dtype = cupy.promote_types(self.dtype, other.dtype)
+                native_f16 = (
+                    result_dtype.char == 'e' and not runtime.is_hip
+                    and cusparse.check_availability(
+                        'spmv' if other.ndim == 1 else 'spmm'))
+                if (_sputils.is_16bit_float(result_dtype)
+                        and not native_f16 and not runtime.is_hip):
+                    # bfloat16 has no native cuSPARSE type (and float16 lands
+                    # here only if the native path is unavailable): upcast to
+                    # float32 and reuse the native CSC spmv/spmm, which is
+                    # cheap via ``self.T``, then downcast.  Routing through
+                    # ``_cupy_csr_dense_matmul(self.tocsr())`` would pay a full
+                    # CSC->CSR conversion (~25x slower) first.
+                    return (self.astype(cupy.float32)
+                            @ other.astype(cupy.float32)).astype(result_dtype)
+                if (cusparse._needs_cupy_fallback(result_dtype)
+                        and not native_f16):
+                    return cusparse._cupy_csr_dense_matmul(
+                        self.tocsr(), other)
+            if other.ndim == 1:
                 self.sum_duplicates()
                 if (
-                    cusparse.check_availability('csrmv')
+                    not native_f16
+                    and cusparse.check_availability('csrmv')
                     and (
                         not runtime.is_hip
                         or driver.get_build_version() >= 5_00_00000
@@ -193,7 +224,8 @@ class _csc_base(_compressed._compressed_sparse_matrix):
             elif other.ndim == 2:
                 self.sum_duplicates()
                 if (
-                    cusparse.check_availability('csrmm2')
+                    not native_f16
+                    and cusparse.check_availability('csrmm2')
                     and (
                         not runtime.is_hip
                         or driver.get_build_version() >= 5_00_00000

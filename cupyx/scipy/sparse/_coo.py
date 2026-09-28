@@ -226,10 +226,7 @@ class _coo_base(sparse_data._data_matrix):
         else:
             dtype = numpy.dtype(dtype)
 
-        if not _sputils.is_sparse_data_dtype(dtype):
-            raise ValueError(
-                'Only bool, float32, float64, complex64 and complex128'
-                ' are supported')
+        _sputils.check_data_dtype(dtype)
 
         data = data.astype(dtype, copy=copy)
         # Choose index dtype: int32 when values fit, int64 when they don't.
@@ -437,10 +434,12 @@ class _coo_base(sparse_data._data_matrix):
             mask = ((self.row == _normalize_index(key[0], m, 'row'))
                     & (self.col == _normalize_index(key[1], n, 'column')))
         # Sum the stored values at the coordinate (duplicates included,
-        # like scipy); absent entries contribute nothing.  ``sum`` upcasts
-        # bool to int, so restore the bool dtype to match the CSR path.
-        s = self.data[mask].sum()
-        return s.astype(self.dtype) if self.dtype.kind == 'b' else s
+        # like scipy); absent entries contribute nothing.  Accumulate in the
+        # matrix's own dtype: a bare ``sum`` widens bool and every narrow
+        # integer to the platform int, which both changes the result dtype
+        # and lets duplicates that should wrap (``int8`` 100 + 100 -> -56,
+        # what ``toarray`` and the CSR path give) survive at 64-bit width.
+        return self.data[mask].sum(dtype=self.dtype)
 
     def diagonal(self, k=0):
         """Returns the k-th diagonal of the matrix.
@@ -727,10 +726,10 @@ class _coo_base(sparse_data._data_matrix):
             idx_dtype = self.row.dtype
             index = cupy.cumsum(diff, dtype=idx_dtype)
             size = int(index[-1]) + 1  # synchronize!
-            data = cupy.zeros(size, dtype=self.data.dtype)
             row = cupy.empty(size, dtype=idx_dtype)
             col = cupy.empty(size, dtype=idx_dtype)
             if self.data.dtype.kind == 'b':
+                data = cupy.zeros(size, dtype=self.data.dtype)
                 cupy.ElementwiseKernel(
                     'T src_data, I src_row, I src_col, I index',
                     'raw T data, raw I row, raw I col',
@@ -741,7 +740,11 @@ class _coo_base(sparse_data._data_matrix):
                     ''',
                     'cupyx_scipy_sparse_coo_sum_duplicates_assign'
                 )(src_data, src_row, src_col, index, data, row, col)
-            elif self.data.dtype.kind == 'f':
+            elif (self.data.dtype.kind == 'f'
+                  and self.data.dtype.itemsize >= 4):
+                # float32/float64: atomicAdd handles these directly.  The
+                # 16-bit floats fall through to the carrier branch below.
+                data = cupy.zeros(size, dtype=self.data.dtype)
                 cupy.ElementwiseKernel(
                     'T src_data, I src_row, I src_col, I index',
                     'raw T data, raw I row, raw I col',
@@ -753,6 +756,7 @@ class _coo_base(sparse_data._data_matrix):
                     'cupyx_scipy_sparse_coo_sum_duplicates_assign'
                 )(src_data, src_row, src_col, index, data, row, col)
             elif self.data.dtype.kind == 'c':
+                data = cupy.zeros(size, dtype=self.data.dtype)
                 cupy.ElementwiseKernel(
                     'T src_real, T src_imag, I src_row, I src_col, '
                     'I index',
@@ -767,8 +771,20 @@ class _coo_base(sparse_data._data_matrix):
                 )(src_data.real, src_data.imag, src_row, src_col, index,
                   data.real, data.imag, row, col)
             else:
-                raise NotImplementedError(
-                    'sum_duplicates does not support this data dtype yet')
+                # Integer or 16-bit-float data: cuSPARSE-free segment sum.
+                # ``atomicAdd``/``add.at`` cannot target int8/int16/int64 or
+                # the 16-bit floats, so accumulate in an ``add.at``-compatible
+                # carrier (a 64-bit integer for the narrow ints, float32 for
+                # float16/bfloat16), then cast back -- integer casts wrap
+                # modulo 2**n like numpy/scipy (e.g. int8 100+100+100 -> 44),
+                # the floats round.  Duplicate coordinates share a segment
+                # index, so the plain ``row``/``col`` scatter is unambiguous.
+                acc_dtype = _sputils.add_at_accumulator_dtype(self.data.dtype)
+                acc = cupy.zeros(size, dtype=acc_dtype)
+                cupy.add.at(acc, index, src_data.astype(acc_dtype, copy=False))
+                data = acc.astype(self.data.dtype, copy=False)
+                row[index] = src_row
+                col[index] = src_col
 
         self.data = data
         self.row = row

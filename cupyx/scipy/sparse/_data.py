@@ -68,12 +68,11 @@ class _data_matrix(_base._spbase):
     def _scalar_op_dtype(self_dtype, other):
         """Pick the dtype for ``self.data * other`` / ``... / other``.
 
-        numpy's natural promotion can land outside the cuSPARSE-supported
-        set (e.g. ``bool * int -> int64``).  Upcast to ``float64`` in
-        that case so the result remains usable.  Mirrors scipy which
-        promotes bool / int sparse to float on division.
+        numpy's natural promotion can land on a dtype sparse cannot store
+        (e.g. ``float64 * numpy.longdouble -> longdouble``).  Upcast to
+        ``float64`` in that case so the result remains usable.
         """
-        out = np.result_type(self_dtype, other)
+        out = _sputils.promote_scalar_data_type(self_dtype, other)
         if not _sputils.is_sparse_data_dtype(out):
             out = np.dtype(np.float64)
         return out
@@ -124,6 +123,9 @@ class _data_matrix(_base._spbase):
             Sparse object with the requested dtype and the same format.
         """
         dtype = np.dtype(dtype)
+        # Reject targets the GPU cannot store (float8, extended precision) so
+        # ``astype`` cannot bypass the construction-time dtype policy.
+        _sputils.check_data_dtype(dtype)
         if self.dtype != dtype:
             return self._with_data(self.data.astype(dtype, copy=copy))
         if copy:
@@ -214,19 +216,27 @@ class _data_matrix(_base._spbase):
             # empty axis, like scipy.
             _sputils.validate_axis_1d(axis)
             total = self.data.sum() * (1.0 / self.shape[0])
-            return total.sum(dtype=dtype, out=out)
-
-        axis = _sputils.collapse_2d_axis(axis)
-        _sputils.validateaxis(axis)
-        nRow, nCol = self.shape
-        if axis is None:
-            n = nRow * nCol
-        elif axis in (0, -2):
-            n = nRow
+            result = total.sum(dtype=dtype, out=out)
         else:
-            n = nCol
+            axis = _sputils.collapse_2d_axis(axis)
+            _sputils.validateaxis(axis)
+            nRow, nCol = self.shape
+            if axis is None:
+                n = nRow * nCol
+            elif axis in (0, -2):
+                n = nRow
+            else:
+                n = nCol
+            result = self._with_data(self.data * (1.0 / n)).sum(
+                axis, dtype, out)
 
-        return self._with_data(self.data * (1.0 / n)).sum(axis, dtype, out)
+        if (dtype is None and out is None
+                and _sputils.is_extra_float_dtype(self.dtype)):
+            # dense bfloat16.mean() stays bfloat16, but scaling by the
+            # float64 ``1/n`` promoted the data to float32; round back so the
+            # result dtype matches the dense array (float16 already does).
+            result = result.astype(self.dtype)
+        return result
 
     def power(self, n, dtype=None):
         """Elementwise power function.
@@ -245,12 +255,23 @@ class _data_matrix(_base._spbase):
                 'zero power is not supported as it would densify the '
                 'matrix.\n'
                 'Use cupy.ones(A.shape, dtype=A.dtype) for this case.')
-        if dtype is None:
-            data = self.data.copy()
-        else:
-            data = self.data.astype(dtype, copy=True)
-        data **= n
-        return self._with_data(data)
+        # Out-of-place so the result can widen (the in-place ``**=`` could not
+        # cast a promoted result back into a narrow buffer).  Integer/float/
+        # complex keep their own dtype.
+        data = self.data if dtype is None else self.data.astype(
+            dtype, copy=False)
+        if data.dtype.kind == 'b':
+            # scipy/numpy give ``bool ** n`` a per-exponent dtype -- int8 at
+            # n == 2 but int64 for n >= 3 (a numpy promotion quirk).  cupy's
+            # own ``bool ** n`` would give int64 for every n; as a
+            # scipy-compatible sparse type, derive the exact carrier from
+            # numpy so a scipy port sees identical result dtypes.  ``n`` is
+            # scalar-like but may be a 0-D cupy array (e.g. ``coef[0]``);
+            # read it to host for the host-side numpy power, which rejects
+            # a device array.
+            n_host = n.get() if isinstance(n, cupy.ndarray) else n
+            data = data.astype((np.ones(1, np.bool_) ** n_host).dtype)
+        return self._with_data(data ** n)
 
 
 def _find_missing_index(ind, n):
@@ -325,6 +346,10 @@ class _minmax_mixin:
             _sputils.validate_axis_1d(axis)
             axis = None
         else:
+            # scipy accepts a tuple axis for a 2-D reduction (a length-2
+            # tuple spanning both axes is a full reduction); collapse it to
+            # a plain int / None first, matching sum/mean.
+            axis = _sputils.collapse_2d_axis(axis)
             _sputils.validateaxis(axis)
 
         if axis is None:
@@ -383,6 +408,9 @@ class _minmax_mixin:
             _sputils.validate_axis_1d(axis)
             axis = None
         else:
+            # scipy accepts a tuple axis for a 2-D reduction (see
+            # _min_or_max); collapse it to a plain int / None first.
+            axis = _sputils.collapse_2d_axis(axis)
             _sputils.validateaxis(axis)
 
         if axis is None:
@@ -493,7 +521,8 @@ class _minmax_mixin:
         Implicit zero elements are taken into account. If there are several
         maximum values, the index of the first occurrence is returned. If
         ``NaN`` values occur in the matrix, the output defaults to a zero entry
-        for the row/column in which the NaN occurs.
+        for the row/column in which the NaN occurs. Complex inputs are
+        compared by their real part (like the ``min``/``max`` reductions).
 
         Args:
             axis (int): {-2, -1, 0, 1, ``None``} (optional)
@@ -518,7 +547,8 @@ class _minmax_mixin:
         Implicit zero elements are taken into account. If there are several
         minimum values, the index of the first occurrence is returned. If
         ``NaN`` values occur in the matrix, the output defaults to a zero entry
-        for the row/column in which the NaN occurs.
+        for the row/column in which the NaN occurs. Complex inputs are
+        compared by their real part (like the ``min``/``max`` reductions).
 
         Args:
             axis (int): {-2, -1, 0, 1, ``None``} (optional)
