@@ -248,7 +248,7 @@ _REDUCTION_HOST_MAP: Dict[str, Callable[..., Any]] = {
     'nanargmax': numpy.nanargmax,
     'nanargmin': numpy.nanargmin,
     'nansum': numpy.nansum,
-    'nan_with_dtype': numpy.nansum,
+    'nansum_with_dtype': numpy.nansum,
     'nanprod': numpy.nanprod,
     'nanprod_with_dtype': numpy.nanprod,
 }
@@ -259,14 +259,19 @@ def f64_mode() -> str:
 
     首次调用读取环境变量并缓存；用 :func:`reset_f64_mode` 清缓存。
     非法取值响亮报错（比静默忽略更安全）。
+    default to float32, validated by pytest on 910B (only a few overflow failure)
     """
     global _f64_mode_cache
     if _f64_mode_cache is None:
         mode = os.getenv(F64_MODE_ENV, '').strip().lower()
         if mode == '':
             # 兼容旧开关：CUPY_ASCEND_ENABLE_FLOAT64_TO_FLOAT32=1 -> float32
-            mode = ('float32'
-                    if os.getenv(LEGACY_F32_ENV, '0') == '1' else 'off')
+            if os.getenv(LEGACY_F32_ENV, '0') == '1':
+                mode = 'float32'
+            elif active():
+                mode = "float32" # default to float32 domoted
+            else:
+                mode = 'off'
         if mode not in ('off', 'float32', 'cpu'):
             raise ValueError(
                 '{}={!r} 无效，可选 off / float32 / cpu'.format(
@@ -281,12 +286,13 @@ def reset_f64_mode() -> None:
     _f64_mode_cache = None
 
 
-def has_f64_io(args: Any) -> bool:
+def has_f64_io(*args: Any) -> bool:
     """``cpu`` 模式下 args 里是否有 float64/complex128 的设备数组。
 
     非 ``cpu`` 模式恒为 False（float32 降档由 acl_utils / _reduction 的
     既有 promote 层负责，与此互斥）。CScalar 等非 ndarray 跳过 —— 标量
     与 f32 数组混合时由 out 的 dtype 兜底判定。
+    接受(in_args, out_args), (in_args, [ret])
     """
     if f64_mode() != 'cpu':
         return False
