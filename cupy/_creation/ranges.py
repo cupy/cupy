@@ -158,14 +158,28 @@ def _linspace_scalar(start, stop, num=50, endpoint=True, retstep=False,
         step = float(stop - start) / div
         stop = float(stop)
 
-        if step == 0.0:
+        # ASCEND: when work_type is demoted from f64 to f32
+        # huge start, step overflow float32 to inf and abort aclnn linspace
+        # so fallback to host numpy
+        _host_overflow = (is_ascend and numpy.dtype(work_type).name == 'float32')
+        if _host_overflow:
+            ret = cupy.asarray(numpy.linspace(start, stop if endpoint else stop - step, num, 
+                                              endpoint=endpoint, dtype=work_dtype))
+        elif step == 0.0:
             # for underflow
             _linspace_ufunc_underflow(start, stop - start, div, ret,
                                       dtype=work_dtype)
         else:
-            _linspace_ufunc(start, step, ret, dtype=work_dtype)
+            # ASCEND: work_dtype may be float32 while start/step are float64
+            # there may be scalars mismatched types (py scalar -> CScalar)
+            if is_ascend and numpy.dtype(work_dtype).name != numpy.dtype(
+                numpy.asarray(start).dtype).name:
+                wdtype = numpy.dtype(work_dtype).type
+                _linspace_ufunc(wdtype(start), wdtype(step), ret, dtype=work_dtype)
+            else:
+                _linspace_ufunc(start, step, ret, dtype=work_dtype)
 
-        if endpoint:
+        if endpoint and not _host_overflow:
             # Here num == div + 1 > 1 is ensured.
             ret[-1] = stop
 
