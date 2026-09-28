@@ -191,6 +191,12 @@ def stacked_identity_like(x):
     Precondition: ``x`` is `cupy.ndarray` of shape ``(..., N, N)``
     """
     n = x.shape[-1]
+    # ASCEND: advanced indexing setitem `x[..., idx, idx] = 1` is not supported
+    # workaround
+    from cupy.backends.backend import is_ascend
+    if is_ascend:
+        eye = cupy.asarray(numpy.eys(n, dtype=x.dtype))
+        return cupy.broadcast_to(eye, x.shape).copy()
     idx = cupy.arange(n)
     x = cupy.zeros_like(x)
     x[..., idx, idx] = 1

@@ -541,7 +541,10 @@ def svd(a, full_matrices=True, compute_uv=True):
 
     .. seealso:: :func:`numpy.linalg.svd`
     """
-    from cupy_backends.cuda.libs import cusolver
+    try:
+        from cupy_backends.cuda.libs import cusolver
+    except ImportError:
+        pass # ASCEND does not support cusolver yet
     _util._assert_cupy_array(a)
 
     from cupy.backends.backend import is_ascend

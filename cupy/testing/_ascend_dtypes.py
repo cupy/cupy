@@ -62,8 +62,8 @@ __all__ = [
 ]
 
 #: Ascend 上默认不收集的 dtype (NPU 无算子, 或仅四则运算可用)
-#: complex64 已适配 (aclnn 复数算子可用), 不再默认跳过
-DEFAULT_SKIP_DTYPES: tuple[str, ...] = ('float64', 'complex128')
+#: complex64, double, complex128 已适配 (aclnn 复数算子可用)
+DEFAULT_SKIP_DTYPES: tuple[str, ...] = ()
 
 _ENV_FILTER = 'CUPY_TEST_ASCEND_DTYPE_FILTER'
 _ENV_SKIP = 'CUPY_TEST_ASCEND_SKIP_DTYPES'

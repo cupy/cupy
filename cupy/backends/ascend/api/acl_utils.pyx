@@ -1077,6 +1077,7 @@ cdef dict _ASCEND_DTYPE_PROMOTE = {
     'L': 'q',   # uint64 -> int64  numpy 2.x char
     'b': 'i',   # int8  -> int32：部分算子不收窄整型（如 aclnnArgMax 只收 FLOAT/FLOAT16）
     'h': 'i',   # int16 -> int32：部分算子不支持 int16（同 uint16 提升的理由）
+    '?': 'i',   # bool -> int32, power/remainder/fmod does not accept DT_BOOL
 }
 
 # 可选层：float64/complex128 降档。由 enable_float64_to_float32 开关控制

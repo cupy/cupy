@@ -94,9 +94,16 @@ def copyto(dst, src, casting='same_kind', where=None):
         if is_ascend:
             # ASCEND: the `where=` ufunc kwarg has no impl in the dispatcher 
             # use mask getitem (nonzero + take) on ASCEND
-            mask = cupy.broadcast_to(cupy.asarray(where), dst.shape)
+            # `where` may be a scalar (complex) or bool/non-bool array,
+            # normalized to bool so dst[mask] is valid
+            mask = cupy.asarray(where)
+            if mask.dtype.kind in 'biu':
+                pass
+            else:
+                mask = mask != 0
+            mask = cupy.broadcast_to(cupy.asarray(mask), dst.shape)
             if src_is_scalar:
-                dst[mark] = src
+                dst[mask] = src
             else:
                 value = cupy.broadcast_to(cupy.asarray(src), dst.shape)
                 dst[mask] = value[mask]
