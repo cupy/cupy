@@ -77,7 +77,10 @@ extern "C" {
 
 static bool _any_all_dtype_ok(aclDataType dtype) {
     switch (dtype) {
-        case ACL_BOOL:
+        // excluded bool on purpose, aclnnAll/Any accept BOOL (stated in doc)
+        // but return 500003 error code on NPU, this must be bug somewhere
+        // temporal solution, cast to float32 fallback reliable keep out BOOL
+        //case ACL_BOOL:
         case ACL_INT32:
         case ACL_INT64:
         case ACL_FLOAT16:

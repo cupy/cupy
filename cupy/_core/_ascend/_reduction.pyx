@@ -351,6 +351,19 @@ cdef class _AbstractReductionKernel:
         cdef Py_ssize_t _pi
         cdef object _x
         cdef _ndarray_base promoted_out = None
+        # ASCEND: aclnnAll/aclnnAny accept only DT_BOOL/DT_UINT8 on CANN 8.5.1
+        # promotion block will promote bool -> int32, so the ret is int32 dtype
+        # always reduce into bool tmp out and copy back back to ret
+        # bypass the promote block below, 
+        # to avoid error `Tensor out not implemented for DT_INT32`
+        # this, also, fix isclose().all(), allclose()
+        cdef _ndarray_base _bool_ret = None
+        if self.name in ('cupy_all', 'cupy_any'):
+            _bool_ret = cupy.empty(ret.shape, cupy.bool_)
+            launch_reduction_op(self.name, list(in_args), [_bool_ret], axis, keepdims, {}, s)
+            ret[...] = _bool_ret
+            return ret
+    
         if ascend_float64_promote_enabled():
             _promote = dict(_UINT_PROMOTE)
             _promote.update(_FLOAT64_DEMOTE)
@@ -380,6 +393,9 @@ cdef class _AbstractReductionKernel:
             if promoted_out is not None:
                 ret[...] = promoted_out
             return ret
+        
+        # ASCEND:
+
         launch_reduction_op(self.name, list(in_args), [ret], axis, keepdims, {}, s)
         return ret
 
