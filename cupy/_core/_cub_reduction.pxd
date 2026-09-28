@@ -9,4 +9,4 @@ cdef bint _try_to_call_cub_reduction(
     map_expr, reduce_expr, post_map_expr,
     reduce_type, _TypeMap type_map,
     tuple reduce_axis, tuple out_axis, const shape_t& out_shape,
-    _ndarray_base ret) except *
+    _ndarray_base ret, bint out_from_user) except *

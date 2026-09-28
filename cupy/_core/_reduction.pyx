@@ -322,6 +322,7 @@ cdef class _AbstractReductionKernel:
         cdef shape_t in_shape, out_shape
         cdef _ndarray_base ret
         cdef bint cub_success, cuda_compute_success
+        cdef bint out_from_user = len(out_args) > 0 and out_args[0] is not None
 
         if dtype is not None:
             dtype = get_dtype(dtype).type
@@ -389,7 +390,8 @@ cdef class _AbstractReductionKernel:
                 cub_success = _cub_reduction._try_to_call_cub_reduction(
                     self, in_args, out_args, a_shape, stream, optimize_context,
                     key, map_expr, reduce_expr, post_map_expr, reduce_type,
-                    type_map, reduce_axis, out_axis, out_shape, ret)
+                    type_map, reduce_axis, out_axis, out_shape, ret,
+                    out_from_user)
                 if cub_success:
                     return ret
 

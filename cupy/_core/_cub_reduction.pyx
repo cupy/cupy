@@ -613,7 +613,7 @@ cdef bint _try_to_call_cub_reduction(
         map_expr, reduce_expr, post_map_expr,
         reduce_type, _kernel._TypeMap type_map,
         tuple reduce_axis, tuple out_axis, const shape_t& out_shape,
-        _ndarray_base ret) except *:
+        _ndarray_base ret, bint out_from_user) except *:
     """Try to use cub.
 
     Updates `ret` and returns a boolean value whether cub is used.
@@ -636,10 +636,17 @@ cdef bint _try_to_call_cub_reduction(
 
     axis_permutes, contiguous_size, full_reduction = can_use_cub
 
+    if out_from_user:
+        if in_args[0]._f_contiguous:
+            if not ret._f_contiguous:
+                return False
+        elif not ret._c_contiguous:
+            return False
+
     in_shape = _reduction._set_permuted_args(
         in_args, axis_permutes, a_shape, self.in_params)
 
-    if in_args[0]._f_contiguous:
+    if not out_from_user and in_args[0]._f_contiguous:
         ret._set_contiguous_strides(ret.dtype.itemsize, False)
         out_args[0] = ret
 
