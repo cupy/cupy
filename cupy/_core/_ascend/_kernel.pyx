@@ -1511,8 +1511,14 @@ cdef class ElementwiseKernel:
         # cupy/backends/ascend/api/acl_utils.pyx.
 
         # ASCEND: 自定义 ElementwiseKernel（CUDA body）不能在 host 执行，
-        # cpu 模式下响亮报错并提示改用 float32 降档。
+        # CPU mode: 对于知识等价op走aclnn(double原生支持, 且在豁免列表中)
+        # CPU mode: 其余的响亮报错并提示改用 float32 降档。
         if _cpu_f64.has_f64_io(in_args, out_args):
+            if self.name == 'cupy_fill':
+                # cupy_fill = ElementwiseKernel('T x', 'T y', 'y = x')
+                # can be done by aclnnInplaceFillScalar
+                launch_general_func('ascend_fill', list(in_args), list(out_args), [], {}, s)
+                return ret
             raise NotImplementedError(
                 f'{self.name}: 自定义 elementwise kernel 无 host 实现，'
                 f'cpu 模式（CUPY_ASCEND_FLOAT64_MODE=cpu）不可用；'

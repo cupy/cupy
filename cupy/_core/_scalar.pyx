@@ -319,6 +319,48 @@ cdef class CScalar(CPointer):
                 return _numpy_complex128
         assert False
 
+    cpdef to_numpy_scalar(self):
+        """CScalar -> NumPy 标量（Python 层读取 CScalar 值的唯一合法入口）。
+
+        ``ptr``/``size`` 是 cdef 属性，Python 层访问不到（cpu_fallback 旧
+        实现用 ctypes.memmove 读 ``value.ptr`` 直接 AttributeError）。这里
+        在 C 层按 kind/size 解引用后包成对应 NumPy 标量，零拷贝。
+        """
+        if self.kind == b'b':
+            return _numpy_bool_((<bint*>self.ptr)[0])
+        elif self.kind == b'i':
+            if self.size == 1:
+                return _numpy_int8((<int8_t*>self.ptr)[0])
+            elif self.size == 2:
+                return _numpy_int16((<int16_t*>self.ptr)[0])
+            elif self.size == 4:
+                return _numpy_int32((<int32_t*>self.ptr)[0])
+            elif self.size == 8:
+                return _numpy_int64((<int64_t*>self.ptr)[0])
+        elif self.kind == b'u':
+            if self.size == 1:
+                return _numpy_uint8((<uint8_t*>self.ptr)[0])
+            elif self.size == 2:
+                return _numpy_uint16((<uint16_t*>self.ptr)[0])
+            elif self.size == 4:
+                return _numpy_uint32((<uint32_t*>self.ptr)[0])
+            elif self.size == 8:
+                return _numpy_uint64((<uint64_t*>self.ptr)[0])
+        elif self.kind == b'f':
+            if self.size == 2:
+                # float16 无 C 类型，经 C float 构造（NumPy 负责舍入到半精度）
+                return _numpy_float16((<float*>self.ptr)[0])
+            elif self.size == 4:
+                return _numpy_float32((<float*>self.ptr)[0])
+            elif self.size == 8:
+                return _numpy_float64((<double*>self.ptr)[0])
+        elif self.kind == b'c':
+            if self.size == 8:
+                return _numpy_complex64((<float complex*>self.ptr)[0])
+            elif self.size == 16:
+                return _numpy_complex128((<double complex*>self.ptr)[0])
+        assert False
+
 
 cdef CScalar scalar_to_c_scalar(object x):
     # Converts a Python or NumPy scalar to a CScalar.

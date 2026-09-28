@@ -307,8 +307,8 @@ def has_f64_io(*args: Any) -> bool:
 def _to_host(value: Any) -> Any:
     """设备数组 / CScalar / 其他 -> host 值。
 
-    CScalar 的物化方式与 acl_utils.pyx 的「标量物化成 0-d 数组」路径一致
-    （ptr/size/get_numpy_type + memcpy），不过这里直接得到 numpy 标量。
+    CScalar 经 ``CScalar.to_numpy_scalar``（cpdef，C 级解引用 ptr）得到
+    NumPy 标量——ptr/size 是 cdef 属性，Python 层无法访问。
     非连续数据(non-contiguous): 先在设备侧物化成 C-连续副本再一次性 D2H
     （docs/ascend/Float64Workaround.md 修复 3 / P4-1）。
     """
@@ -330,14 +330,11 @@ def _to_host(value: Any) -> Any:
         py_launch_general('ascend_copy', (value,), (contig,), (), {})
         return cupy.asnumpy(contig)
 
-    get_numpy_type = getattr(value, 'get_numpy_type', None)
-    if get_numpy_type is not None:
-        import ctypes
-        nbytes = numpy.dtype(get_numpy_type()).itemsize
-        # CScalar.size can not accessed from Python
-        buf = numpy.empty(nbytes, dtype=numpy.uint8)
-        ctypes.memmove(buf.ctypes.data, value.ptr, nbytes)
-        return numpy.frombuffer(buf, dtype=get_numpy_type())[0]
+    to_numpy_scalar = getattr(value, 'to_numpy_scalar', None)
+    if to_numpy_scalar is not None:
+        # CScalar: ptr/size 是 cdef 属性 Python 层访问不到，必须走
+        # _scalar.pyx 的 cpdef 方法（C 级解引用）拿 NumPy 标量。
+        return to_numpy_scalar()
     return value
 
 
@@ -445,7 +442,10 @@ _GENERAL_HOST_FALLBACKS: Dict[str, Callable[..., Any]] = {}
 
 #: aclnnCast 载体豁免（f64 合法；也是 cpu fallback 自身的内部通道）
 _GENERAL_CPU_EXEMPT_OPS = frozenset((
-    'ascend_cast', 'ascend_copy', 'ascend_positive',
+    'ascend_cast',
+    'ascend_copy', 
+    'ascend_positive',
+    'ascend_fill', # aclnnInplaceFillScalar support double/complex128 natively
 ))
 
 
