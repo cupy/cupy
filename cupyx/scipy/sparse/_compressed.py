@@ -968,14 +968,18 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         if self.nnz == 0 or n_idx == 0:
             return self._empty_like(new_shape)
 
-        # Histogram path uses int32 counters internally; fall back to
-        # the sort-based path when either ``N`` (count-buffer size) or
-        # ``n_idx`` (cumulative-sum end value) overflows int32.  The
-        # ``n_idx`` arm needs an idx array > 8 GB to trigger, so it has
-        # no direct unit test -- correctness rests on the existing
+        # The histogram path uses int32 counters internally and launches one
+        # block per major-axis entry, so fall back to the sort-based path
+        # when ``N`` (count-buffer size), ``n_idx`` (cumulative-sum end
+        # value) or ``M`` overflows int32.  Past int32 ``M`` exceeds the CUDA
+        # ``gridDim.x`` limit, and the kernels' ``const int n_row`` / ``int
+        # row = blockIdx.x`` would both wrap, so their bounds check could not
+        # filter correctly even if the launch were accepted.  The ``n_idx``
+        # arm needs an idx array > 8 GB to trigger, so it has no direct unit
+        # test -- correctness rests on the existing
         # ``_minor_index_fancy_sorted`` coverage.
         int32_max = numpy.iinfo(numpy.int32).max
-        if N > int32_max or n_idx > int32_max:
+        if N > int32_max or n_idx > int32_max or M > int32_max:
             return self._minor_index_fancy_sorted(
                 idx, M, n_idx, new_shape)
 
