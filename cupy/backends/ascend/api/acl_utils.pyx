@@ -627,7 +627,8 @@ cdef aclTensor* cupy_ndarray_to_acl_tensor(_ndarray_base cupy_array) except *:
         # aclnnTensorData 的偏移必须以元素为单位从 buffer 起点计算, 而 CuPy
         # 的 nbytes 是从 data.ptr 起算的剩余字节数（视图不包含前面的数据）,
         # 因此视图无法用 offset 表达, 这里先物化成从 0 开始的新数组。
-        if (cupy_array.data.ptr != cupy_array.data.mem.ptr or not cupy_array._c_contiguous):
+        # 判据用共享谓词 _needs_materialize（与写侧/读侧包装必须同步）。
+        if _needs_materialize(cupy_array):
             if cupy_array.size:
                 # 视图无法用 offset 表达：物化成独立 C-连续数组。
                 # 必须走 _materialize_host（裸 memcpy），不能用 .copy()——那会
@@ -733,9 +734,38 @@ cdef aclError cupy_destroy_acl_tensor(const aclTensor* tensor) except *:
 # 算子成功后再用 _write_acl_out_to_view 写回。
 # ---------------------------------------------------------------------------
 
-cdef bint _out_needs_materialize(_ndarray_base arr):
-    """与 cupy_ndarray_to_acl_tensor 的物化条件保持一致（判定必须同步改）。"""
+cdef bint _needs_materialize(_ndarray_base arr):
+    """「会被 cupy_ndarray_to_acl_tensor 物化」的唯一判据（共享谓词）。
+
+    条件（语义见 cupy_ndarray_to_acl_tensor 内注释）：
+      * ``data.ptr != data.mem.ptr`` —— 偏移视图，aclnnTensorData 的 offset
+        无法表达「从 data.ptr 起算的 nbytes」；
+      * 非 C-连续 —— aclnn 只认线性布局，非连续/负步长读会 abort。
+
+    调用方（判定必须同步改）：
+      * cupy_ndarray_to_acl_tensor（转换器兜底物化）；
+      * _wrap_materialize_outs（写侧：物化 + 算子后写回原视图）；
+      * _wrap_materialize_ins（读侧：仅物化，无写回）。
+    """
     return arr.data.ptr != arr.data.mem.ptr or not arr._c_contiguous
+
+
+cdef list _wrap_materialize_ins(list ins) except *:
+    """读侧物化：把「会被转换器物化」的入参提前替换成 C-连续副本。
+
+    aclnn 部分算子（最早在 reduction 上发现）对非 C-连续/偏移视图入参
+    直接 abort。读侧没有写回概念（只读），在 launch 前统一替换列表元素
+    即可；副本由替换后的列表项持有，调用方在算子调用结束前保持列表
+    存活。AscendC 自定义 kernel 这类不走转换器、按 data.ptr 线性读取的
+    路径也用本 util（见 _launch_custom_ufunc）。
+    """
+    cdef Py_ssize_t i
+    cdef object x
+    for i in range(len(ins)):
+        x = ins[i]
+        if isinstance(x, _ndarray_base) and x.size and _needs_materialize(x):
+            ins[i] = _materialize_host(x)
+    return ins
 
 
 cdef list _wrap_materialize_outs(list ins, list outs, bint inplace) except *:
@@ -767,14 +797,14 @@ cdef list _wrap_materialize_outs(list ins, list outs, bint inplace) except *:
         op = outs[i]
         if not isinstance(op, _ndarray_base) or op.size == 0:
             continue
-        if not _out_needs_materialize(op):
+        if not _needs_materialize(op):
             continue
         mat = _materialize_host(op)
         outs[i] = mat
         pairs.append((op, mat))
     if (inplace and not self_in_outs and ins
             and isinstance(ins[0], _ndarray_base) and ins[0].size
-            and _out_needs_materialize(ins[0])):
+            and _needs_materialize(ins[0])):
         mat = _materialize_host(ins[0])
         pairs.append((ins[0], mat))
         ins[0] = mat
@@ -1500,7 +1530,9 @@ cdef aclError _launch_custom_ufunc(str opname, dict spec, sequence ins,
     # out view write-back：AscendC kernel 直接按 data.ptr 线性读写，只认
     # C-连续内存。写目标若是偏移视图 / 非 C-连续数组，先物化成独立数组，
     # kernel 写完后再写回原视图（_wrap_materialize_outs / _write_acl_out_to_view）。
-    # 已知限制：非连续**输入**同样按线性读取，读侧物化不在本次范围。
+    # 读侧同理：kernel 只按 data.ptr 线性读取，非连续入参先物化
+    # （_wrap_materialize_ins，共享 util）。
+    _wrap_materialize_ins(a_ins)
     cdef list _wb_pairs = _wrap_materialize_outs([], a_outs, False)
     # 实数输入分支：complex 专用 AscendC 内核按 complex64 的 f32 交错布局取
     # 实/虚部，实数输入走不进来；但 NumPy 对实数输入的语义是平凡的，用已注册
@@ -1877,7 +1909,17 @@ cdef aclError launch_reduction_op_raw(str opname, sequence ins, sequence outs, o
         shape.push_back(0)
     dim = aclCreateIntArray(shape.data(), shape.size())
 
-    tensors = _create_ops_vector(ins, outs)
+    # 读侧物化 + out 写回（共享 util，同 launch_general_func 通道）：
+    # * aclnn reduction 对非 C-连续入参 abort —— 先物化（_wrap_materialize_ins）；
+    # * ret 为偏移视图 / 非连续时，算子写进转换器物化的副本，调用方原视图
+    #   收不到结果 —— 提前物化写目标，成功后 _write_acl_out_to_view 写回。
+    # 物化在 aclTensor 创建之前，失败 raise 不会泄漏 aclTensor。
+    cdef list _wb_ins = list(ins)
+    cdef list _wb_outs = list(outs)
+    _wrap_materialize_ins(_wb_ins)
+    cdef list _wb_pairs = _wrap_materialize_outs(_wb_ins, _wb_outs, False)
+
+    tensors = _create_ops_vector(_wb_ins, _wb_outs)
     cdef KwargsType acl_kwargs
     try:
         # 放进 try 内, 失败时由 finally 回收已创建的 dim/scalar
@@ -1890,6 +1932,10 @@ cdef aclError launch_reduction_op_raw(str opname, sequence ins, sequence outs, o
         if dim:
             aclDestroyIntArray(dim)
         _delete_keyword_args(acl_kwargs)
+    # out view write-back：把物化副本上的结果写回调用方原视图（成功时）。
+    if ret == 0 and _wb_pairs:
+        for _orig, _mat in _wb_pairs:
+            _write_acl_out_to_view(_mat, _orig, stream_ptr)
     # NOTE: 同 launch_general_func —— 返回错误码，不抛（Python 路径用 checked 版本）
     return ret
 

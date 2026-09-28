@@ -394,7 +394,12 @@ cdef class _AbstractReductionKernel:
                 ret[...] = promoted_out
             return ret
         
-        # ASCEND:
+        # ASCEND: aclnn reduction ops abort on non-contiguous in-args, and a
+        # non-contiguous ret would silently lose the result (the op writes
+        # into the converter-materialized copy). Handled inside
+        # launch_reduction_op via the shared utils in acl_utils.pyx
+        # (_wrap_materialize_ins for in-args, _wrap_materialize_outs +
+        # _write_acl_out_to_view for out write-back).
 
         launch_reduction_op(self.name, list(in_args), [ret], axis, keepdims, {}, s)
         return ret
