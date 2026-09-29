@@ -113,6 +113,9 @@ FALLBACKS: Dict[str, Callable[..., Any]] = {
     # （接线见 histogram._ascend_bincount / histogramdd）。
     'statistics.bincount': numpy.bincount,
     'statistics.histogramdd': numpy.histogramdd,
+    # cupy._statistics.histogram.digitize：aclnnSearchSorted 只支持升序 bins，
+    # numpy.digitize 还接受降序（接线见 histogram.digitize，2-scalar 探测方向）
+    'statistics.digitize': numpy.digitize,
 }
 
 _ASCEND: Optional[bool] = None

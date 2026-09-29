@@ -782,6 +782,26 @@ def digitize(x, bins, right=False):
     if bins.ndim < 1:
         raise ValueError('object of too small depth for desired array')
 
+    # ASCEND: aclnnSearchSorted assumes *ascending* `bins`, but
+    # numpy.digitize also accepts monotonically DECREASING bins (numpy
+    # detects the direction and mirrors the search). Probe the direction
+    # with a 2-scalar D2H (digitize() already documents that it may
+    # synchronize) and run the whole call on host via numpy.digitize for
+    # descending bins -- the host path also performs the monotonicity
+    # validation that numpy semantics require.
+    try:
+        from cupy.backends.backend import is_ascend
+    except ImportError:
+        is_ascend = False
+    if is_ascend and bins.size > 1 and bins[0] > bins[-1]:  # 2-scalar sync
+        try:
+            from cupy._core._ascend import cpu_fallback
+        except ImportError:
+            cpu_fallback = None
+        if cpu_fallback is not None and cpu_fallback.active():
+            return cpu_fallback.call('statistics.digitize', x, bins,
+                                     right=right)
+
     # As the order of the arguments are reversed, the side must be too.
     side = 'left' if right else 'right'
     return cupy._sorting.search._searchsorted(bins, x, side, None, False)
