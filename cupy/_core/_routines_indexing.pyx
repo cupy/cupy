@@ -1270,6 +1270,21 @@ cdef _scatter_op(_ndarray_base a, slices, value, op):
 
     if op == 'update':
         if not isinstance(value, _ndarray_base):
+            # ASCEND: fill(numpy_array) failed for non-scalar numpy arrays
+            # this may be used by cpu fallback only
+            if is_ascend and isinstance(value, _ndarray_base):
+                value = cupy.asarray(value)
+                x = value
+                if (internal.vector_equal(y._shape, x._shape) and
+                    internal.vector_equal(y._strides, x._strides)):
+                    if y.daa.ptr == x.data.ptr:
+                        return
+                    elif y._c_contiguous and x.dtype == y.dtype:
+                        y.data.copy_from_device_async(x.data, x.nbytes)
+                        return
+                elementwise_copy(x, y)
+                return
+
             y.fill(value)
             return
         x = value
