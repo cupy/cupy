@@ -98,6 +98,10 @@ FALLBACKS: Dict[str, Callable[..., Any]] = {
     'logic.in1d': _host_in1d,
     'logic.intersect1d': numpy.intersect1d,
     'logic.setxor1d': numpy.setxor1d,
+    # cupy._statistics.histogram 的非等宽 bin / weights / f64 等情形
+    # aclnnHistc 表达不了（接线见 histogram._ascend_histogram）；
+    # 等宽无权重且 dtype 受支持的主路径走 ascend_histc 设备直发。
+    'statistics.histogram': numpy.histogram,
 }
 
 _ASCEND: Optional[bool] = None

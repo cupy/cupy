@@ -139,11 +139,18 @@ def _get_bin_edges(a, bins, range):
         range (None or tuple): Forwarded argument from `histogram`.
 
     Returns:
-        bin_edges (ndarray): Array of bin edges
+        Tuple ``(bin_edges, n_equal_bins, first_edge, last_edge)``:
+
+        - ``bin_edges``: array of bin edges
+        - ``n_equal_bins``: number of uniform bins when `bins` was an
+          integer, else ``None``
+        - ``first_edge`` / ``last_edge``: outer edges (only meaningful in
+          the uniform-bin case, else ``None``)
     """
     # parse the overloaded bins argument
     n_equal_bins = None
     bin_edges = None
+    first_edge = last_edge = None
 
     if isinstance(bins, str):
         raise NotImplementedError(
@@ -185,7 +192,71 @@ def _get_bin_edges(a, bins, range):
         bin_edges = cupy.linspace(
             first_edge, last_edge, n_equal_bins + 1,
             endpoint=True, dtype=bin_type)
-    return bin_edges
+    return bin_edges, n_equal_bins, first_edge, last_edge
+
+
+def _ascend_histogram(x, weights, bins, range, density):
+    """Ascend route for :func:`histogram`.
+
+    aclnnHistc (exported as ``ascend_histc``, see
+    ``cupy/backends/ascend/acl_general_ops.h``) computes the equal-width-bin
+    histogram over an inclusive ``[min, max]`` range, which matches the
+    NumPy semantics of ``histogram(x, bins=<int>)`` exactly (last bin
+    closed on the right edge). The dispatcher wrapper takes
+    ``ins=[x], outs=[counts], args=(n_bins, min, max)``.
+
+    Everything aclnnHistc cannot express -- array (non-uniform) bins,
+    weights, and dtypes it rejects (float64, uint16/32/64) -- runs the
+    whole call on host via cpu_fallback (registered as
+    ``'statistics.histogram'``), matching numpy.histogram exactly.
+
+    Returns:
+        ``(hist, bin_edges)`` when handled here, or ``None`` to let the
+        caller use the portable (CUB/ElementwiseKernel) path, which is the
+        correct behavior for non-Ascend backends and for Ascend with
+        CUPY_ASCEND_DISABLE_CPU_FALLBACK=1 (loud failure instead of a
+        silent change).
+    """
+    try:
+        from cupy.backends.backend import is_ascend
+    except ImportError:
+        return None
+    if not is_ascend:
+        return None
+
+    try:
+        from cupy.backends.ascend.api import acl_utils
+        histc_available = acl_utils.py_is_acl_ufunc_registered('ascend_histc')
+    except ImportError:
+        histc_available = False
+
+    if histc_available and weights is None and numpy.ndim(bins) == 0 \
+            and x.dtype.char in 'efbhilqB':
+        # uniform-bin, unweighted, Histc-supported dtype -> device path
+        bin_edges, n_equal_bins, first_edge, last_edge = \
+            _get_bin_edges(x, bins, range)
+        y = cupy.zeros((n_equal_bins,), dtype=cupy.int64)
+        # float() on the edges syncs when `range` is None (0-d device
+        # scalars from a.min()/a.max()); histogram() already documents
+        # that it may synchronize.
+        acl_utils.py_launch_general(
+            'ascend_histc', (x,), (y,),
+            (int(n_equal_bins), float(first_edge), float(last_edge)), {},
+            cupy.cuda.get_current_stream().ptr)
+        if density:
+            db = cupy.array(cupy.diff(bin_edges), cupy.float64)
+            return y / db / y.sum(), bin_edges
+        return y, bin_edges
+
+    try:
+        from cupy._core._ascend import cpu_fallback
+    except ImportError:
+        cpu_fallback = None
+    if cpu_fallback is not None and cpu_fallback.active():
+        return cpu_fallback.call(
+            'statistics.histogram', x, bins, range=range,
+            density=density, weights=weights)
+    return None
 
 
 def histogram(x, bins=10, range=None, density=False, weights=None):
@@ -229,7 +300,16 @@ def histogram(x, bins=10, range=None, density=False, weights=None):
         raise ValueError('x must be a cupy.ndarray')
 
     x, weights = _ravel_and_check_weights(x, weights)
-    bin_edges = _get_bin_edges(x, bins, range)
+
+    # ASCEND: aclnnHistc device path for uniform unweighted bins; CPU
+    # fallback for the cases aclnnHistc cannot express. Returns None on
+    # non-Ascend backends.
+    ret = _ascend_histogram(x, weights, bins, range, density)
+    if ret is not None:
+        return ret
+
+    bin_edges, n_equal_bins, first_edge, last_edge = \
+        _get_bin_edges(x, bins, range)
 
     if weights is None:
         y = cupy.zeros(bin_edges.size - 1, dtype=cupy.int64)
