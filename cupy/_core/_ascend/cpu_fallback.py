@@ -66,6 +66,13 @@ __all__ = [
 #: 设为 ``1`` 时关闭全部 CPU fallback（算子会退回"显式失败"）。
 DISABLE_ENV = 'CUPY_ASCEND_DISABLE_CPU_FALLBACK'
 
+def _host_in1d(ar1: Any, ar2: Any, assume_unique: bool = False,
+               invert: bool = False) -> Any:
+    """numpy.in1d 的 ravel 语义；用 numpy.isin 规避 numpy 2.x 的弃用告警。"""
+    return numpy.isin(
+        ar1, ar2, assume_unique=assume_unique, invert=invert).ravel()
+
+
 #: 算子名 -> host 端 NumPy 实现。
 #: 命名约定：``<模块>.<公开名>``（``linalg.`` 前缀对应 ``cupy.linalg.*``）。
 #: ``tools/`` / 测试可以据此对账"接线里调用的名字一定在注册表里"。
@@ -82,6 +89,15 @@ FALLBACKS: Dict[str, Callable[..., Any]] = {
     # Ascend 后端无法执行，整个 quantile 改在 host 端用 NumPy 算
     # （cupy._statistics.order._quantile_unchecked 接线）。
     'statistics.quantile': numpy.quantile,
+    # cupy._logic.truth 的 set 系建立在 raw-CUDA ElementwiseKernel 上
+    # （cupy_exists_kernel / cupy_exists_and_searchsorted_kernel /
+    # setxorkernel），Ascend 没有对应 aclnn 算子，整个公开调用走 host
+    # （接线见 truth._ascend_set_host_fallback；setdiff1d/isin 经 in1d
+    # 自动覆盖，union1d 用 unique+concatenate，aclnn 已覆盖不需回退）。
+    # in1d 的 ravel 语义用 numpy.isin 实现，规避 numpy 2.x 弃用告警。
+    'logic.in1d': _host_in1d,
+    'logic.intersect1d': numpy.intersect1d,
+    'logic.setxor1d': numpy.setxor1d,
 }
 
 _ASCEND: Optional[bool] = None

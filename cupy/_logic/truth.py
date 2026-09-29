@@ -3,8 +3,59 @@ from __future__ import annotations
 import cupy
 from cupy._core import _routines_logic as _logic
 from cupy._core import _fusion_thread_local
-#from cupy._sorting import search as _search  # intersect1d need _search
 from cupy import _util
+
+# `cupy._sorting.search` is imported lazily inside in1d/intersect1d:
+# cupy/__init__.py imports cupy._logic.truth before cupy._sorting, so a
+# module-level import here would risk an import cycle (the kernels are only
+# needed at call time).
+
+
+_ascend_kernel_cache: dict = {}
+
+
+def _ascend_kernel_registered(name):
+    """True if `name` has an aclnn registration in the Ascend dispatcher."""
+    if name not in _ascend_kernel_cache:
+        try:
+            from cupy.backends.ascend.api import acl_utils
+            _ascend_kernel_cache[name] = (
+                acl_utils.py_is_acl_ufunc_registered(name))
+        except Exception:
+            # non-Ascend backend (acl_utils absent) or older build without
+            # the introspection API -> treat as not registered
+            _ascend_kernel_cache[name] = False
+    return _ascend_kernel_cache[name]
+
+
+def _ascend_set_host_fallback(name, kernels, *args, **kwargs):
+    """Set-logic host fallback for the Ascend backend.
+
+    in1d/intersect1d/setxor1d are built on raw-CUDA ElementwiseKernels
+    (``cupy_exists_kernel``, ``cupy_exists_and_searchsorted_kernel``,
+    ``setxorkernel``) which have no aclnn counterpart. When any of the
+    required `kernels` (dispatch names, e.g. ``ascend_exists_kernel``) is
+    missing from the registry, run the whole public call on host via
+    cpu_fallback (D2H -> NumPy -> H2D) instead of failing deep in the
+    dispatcher with a KeyError.
+
+    Returns the fallback result, or None when the caller should proceed
+    with the normal device path (op registered, or backend not Ascend).
+    """
+    # NB: cannot use the builtin all() here — it is shadowed by cupy.all
+    # in this module namespace.
+    for k in kernels:
+        if not _ascend_kernel_registered(k):
+            break
+    else:
+        return None
+    try:
+        from cupy._core._ascend import cpu_fallback
+    except ImportError:
+        return None
+    if not cpu_fallback.active():
+        return None
+    return cpu_fallback.call(name, *args, **kwargs)
 
 
 _setxorkernel = cupy._core.ElementwiseKernel(
@@ -115,6 +166,11 @@ def in1d(ar1, ar2, assume_unique=False, invert=False):
         The values ``ar1[in1d]`` are in ``ar2``.
 
     """
+    ret = _ascend_set_host_fallback(
+        'logic.in1d', ('ascend_exists_kernel',),
+        ar1, ar2, assume_unique=assume_unique, invert=invert)
+    if ret is not None:
+        return ret
     # Ravel both arrays, behavior for the first array could be different
     ar1 = ar1.ravel()
     ar2 = ar2.ravel()
@@ -125,6 +181,7 @@ def in1d(ar1, ar2, assume_unique=False, invert=False):
             return cupy.zeros(ar1.shape, dtype=cupy.bool_)
     # Use brilliant searchsorted trick
     # https://github.com/cupy/cupy/pull/4018#discussion_r495790724
+    from cupy._sorting import search as _search
     ar2 = cupy.sort(ar2)
     return _search._exists_kernel(ar1, ar2, ar2.size, invert)
 
@@ -162,6 +219,14 @@ def intersect1d(arr1, arr2, assume_unique=False, return_indices=False):
     numpy.intersect1d
 
     """
+    ret = _ascend_set_host_fallback(
+        'logic.intersect1d',
+        ('ascend_exists_kernel', 'ascend_exists_and_searchsorted_kernel'),
+        arr1, arr2, assume_unique=assume_unique,
+        return_indices=return_indices)
+    if ret is not None:
+        return ret
+    from cupy._sorting import search as _search
     if not assume_unique:
         if return_indices:
             arr1, ind1 = cupy.unique(arr1, return_index=True)
@@ -280,6 +345,11 @@ def setxor1d(ar1, ar2, assume_unique=False):
     numpy.setxor1d
 
     """
+    ret = _ascend_set_host_fallback(
+        'logic.setxor1d', ('setxorkernel',),
+        ar1, ar2, assume_unique=assume_unique)
+    if ret is not None:
+        return ret
     if not assume_unique:
         ar1 = cupy.unique(ar1)
         ar2 = cupy.unique(ar2)
