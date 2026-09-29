@@ -137,6 +137,31 @@ def _fft_convolve(a1, a2, mode):
     return out.astype(dtype, copy=False)
 
 
+def dot_product(x1, x2):
+    """Returns the dot product of two arrays (inner product, no conjugation).
+
+    Equivalent to ``(x1 * x2).sum()``; unlike :func:`numpy.vdot` the first
+    argument is **not** conjugated. The name has been listed in this module's
+    ``__all__`` upstream but was never actually defined; it is implemented
+    here as a composition of registered ops so it works on every backend,
+    including Ascend (where the raw-CUDA ``_dot_kernel`` cannot compile; for
+    1-D equal-length inputs the single-op ``ascend_dot``/aclnnDot alternative
+    exists in ``tensordot_core``).
+
+    Args:
+        x1 (cupy.ndarray): first array.
+        x2 (cupy.ndarray): second array, broadcastable to ``x1``.
+
+    Returns:
+        cupy.ndarray: 0-D array with the sum of the elementwise product.
+
+    .. seealso:: :func:`numpy.vdot`
+    """
+    x1 = cupy.asarray(x1)
+    x2 = cupy.asarray(x2)
+    return (x1 * x2).sum()
+
+
 def _dot_convolve(a1, a2, mode):
 
     offset = 0
@@ -161,6 +186,18 @@ def _dot_convolve(a1, a2, mode):
 
     stride = a1.strides[0]
     a1 = stride_tricks.as_strided(a1, (out_size, n2), (stride, stride))
+    try:
+        from cupy.backends.backend import is_ascend
+    except ImportError:
+        is_ascend = False
+    if is_ascend:
+        # ASCEND: `_dot_kernel` is a raw-CUDA ReductionKernel (NVRTC) with no
+        # aclnn counterpart. Run the sliding-window dot as a GEMV-shaped
+        # matmul (aclnnMatmul via `@`), which also avoids materializing the
+        # (out_size, n2) elementwise-product temporary that
+        # `(a1 * a2[::-1]).sum(axis=1)` would need.
+        kernel = a2[::-1]
+        return (a1 @ kernel.reshape(n2, 1)).reshape(out_size)
     output = _dot_kernel(a1, a2[::-1], axis=1)
     return output
 

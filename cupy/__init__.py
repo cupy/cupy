@@ -315,6 +315,7 @@ from cupy.lib._routines_poly import roots  # NOQA
 
 # Discrete linear convolution (used by polymul / poly)
 from cupy._math.misc import convolve  # NOQA
+from cupy._math.misc import dot_product  # NOQA
 
 
 # Borrowed from NumPy
