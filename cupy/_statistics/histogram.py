@@ -8,7 +8,13 @@ import numpy
 import cupy
 from cupy import _core
 from cupy._core import _accelerator
-from cupy.cuda import cub
+try:
+    from cupy.cuda import cub
+except ImportError:
+    # ASCEND: cupy.cuda.cub is CUDA-only (CUB headers/NVRTC); the CUB
+    # accelerator branches below are gated on `cub is not None` and Ascend
+    # takes the aclnn/host paths instead.
+    cub = None
 try:
     from cupy.xpu import common
 except ImportError:
@@ -316,7 +322,8 @@ def histogram(x, bins=10, range=None, density=False, weights=None):
         for accelerator in _accelerator.get_routine_accelerators():
             # CUB uses int for bin counts
             # TODO(leofang): support >= 2^31 elements in x?
-            if (accelerator == _accelerator.ACCELERATOR_CUB
+            if (cub is not None
+                    and accelerator == _accelerator.ACCELERATOR_CUB
                     and x.size <= 0x7fffffff and bin_edges.size <= 0x7fffffff):
                 # Need to ensure the dtype of bin_edges as it's needed for both
                 # the CUB call and the correction later
@@ -438,6 +445,24 @@ def histogramdd(sample, bins=10, range=None, weights=None, density=False):
     else:
         sample = cupy.stack(sample, axis=-1)
         nsamples, ndim = sample.shape
+
+    # ASCEND: the histogramdd pipeline (searchsorted + ravel_multi_index +
+    # bincount) leans on the raw-CUDA _bincount kernels; there is no single
+    # aclnn kernel for the N-D histogram, so run the whole call on host
+    # (numpy.histogramdd, exact same semantics).
+    try:
+        from cupy.backends.backend import is_ascend
+    except ImportError:
+        is_ascend = False
+    if is_ascend:
+        try:
+            from cupy._core._ascend import cpu_fallback
+        except ImportError:
+            cpu_fallback = None
+        if cpu_fallback is not None and cpu_fallback.active():
+            return cpu_fallback.call(
+                'statistics.histogramdd', sample, bins, range=range,
+                weights=weights, density=density)
 
     nbin = numpy.empty(ndim, int)
     edges = ndim * [None]
@@ -608,6 +633,58 @@ _bincount_with_weight_kernel = _core.ElementwiseKernel(
     'cupy_bincount_with_weight_kernel')
 
 
+def _ascend_bincount(x, weights, minlength, size):
+    """Ascend route for :func:`bincount`.
+
+    aclnnBincount(self, weights, minlength, out) covers the common cases
+    natively (int8/16/32/64/uint8 input, float/int/bool weights, minlength).
+    Inputs it rejects -- uint16/32/64 and complex weights -- run on host via
+    cpu_fallback (``'statistics.bincount'`` -> numpy.bincount). Returns
+    None when the caller should use the portable path (non-Ascend backend,
+    or Ascend with CUPY_ASCEND_DISABLE_CPU_FALLBACK=1).
+    """
+    try:
+        from cupy.backends.backend import is_ascend
+    except ImportError:
+        return None
+    if not is_ascend:
+        return None
+
+    x_ok = x.dtype.kind == 'i' or x.dtype.char == 'B'
+    # aclnn weights: INT8-64/UINT8, BOOL, FLOAT16/32/64 (no uint16/32/64,
+    # no complex); cupy only reaches here with can_cast-to-float/complex
+    # weights, so 'c' (complex) is the kind that must fall back.
+    weights_ok = (weights is None
+                  or weights.dtype.kind in 'bif'
+                  or weights.dtype.char == 'B')
+    try:
+        from cupy.backends.ascend.api import acl_utils
+        bincount_available = acl_utils.py_is_acl_ufunc_registered(
+            'ascend_bincount')
+    except ImportError:
+        bincount_available = False
+
+    if bincount_available and x_ok and weights_ok:
+        out_dtype = numpy.intp if weights is None else numpy.float64
+        y = cupy.zeros((size,), dtype=out_dtype)
+        ins = (x,) if weights is None else (x, weights)
+        acl_utils.py_launch_general(
+            'ascend_bincount', ins, (y,),
+            (0 if minlength is None else int(minlength),), {},
+            cupy.cuda.get_current_stream().ptr)
+        return y
+
+    try:
+        from cupy._core._ascend import cpu_fallback
+    except ImportError:
+        cpu_fallback = None
+    if cpu_fallback is not None and cpu_fallback.active():
+        return cpu_fallback.call(
+            'statistics.bincount', x, weights=weights,
+            minlength=0 if minlength is None else minlength)
+    return None
+
+
 def bincount(x, weights=None, minlength=None):
     """Count number of occurrences of each value in array of non-negative ints.
 
@@ -646,6 +723,10 @@ def bincount(x, weights=None, minlength=None):
     size = int(cupy.max(x)) + 1  # synchronize!
     if minlength is not None:
         size = max(size, minlength)
+
+    ret = _ascend_bincount(x, weights, minlength, size)
+    if ret is not None:
+        return ret
 
     if weights is None:
         b = cupy.zeros((size,), dtype=numpy.intp)

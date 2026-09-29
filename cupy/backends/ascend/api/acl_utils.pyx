@@ -2876,6 +2876,9 @@ cdef void register_irregular_operators():
     # weights from ins[1] when present.
     _register_general("ascend_bincount_kernel", aclop_Bincount)
     _register_general("ascend_bincount_with_weight_kernel", aclop_Bincount)
+    # 直连名（histogram._ascend_bincount 经 py_launch_general 显式调用，
+    # 附带 dtype 门控与不支持 dtype 的 cpu fallback）
+    _register_general("ascend_bincount", aclop_Bincount)
     # numpy.searchsorted（值域查找，数值耦合）
     _register_general("ascend_searchsorted_kernel", aclop_SearchSorted)
 

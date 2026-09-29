@@ -107,6 +107,12 @@ FALLBACKS: Dict[str, Callable[..., Any]] = {
     'statistics.var': numpy.var,
     'statistics.std': numpy.std,
     'statistics.nanmedian': numpy.nanmedian,
+    # cupy._statistics.histogram：bincount 的 aclnnBincount 不收 uint16/32/64
+    # 输入与 complex 权重；histogramdd 的多段管线（searchsorted +
+    # ravel_multi_index + bincount）没有单一 aclnn kernel，整调用走 host
+    # （接线见 histogram._ascend_bincount / histogramdd）。
+    'statistics.bincount': numpy.bincount,
+    'statistics.histogramdd': numpy.histogramdd,
 }
 
 _ASCEND: Optional[bool] = None
