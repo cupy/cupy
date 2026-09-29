@@ -9,6 +9,27 @@ import cupy
 from cupy import _core
 
 
+def _ascend_host_fallback(name, *args, **kwargs):
+    """ASCEND: 把整个公开调用搬到 host（D2H -> NumPy -> H2D）。
+
+    返回 fallback 结果；None 表示继续设备路径（非 Ascend / 未启用
+    cpu_fallback -> 按约定响亮失败）。
+    """
+    try:
+        from cupy.backends.backend import is_ascend
+    except ImportError:
+        return None
+    if not is_ascend:
+        return None
+    try:
+        from cupy._core._ascend import cpu_fallback
+    except ImportError:
+        return None
+    if not cpu_fallback.active():
+        return None
+    return cpu_fallback.call(name, *args, **kwargs)
+
+
 def corrcoef(a, y=None, rowvar=True, bias=None, ddof=None, *, dtype=None):
     """Returns the Pearson product-moment correlation coefficients of an array.
 
@@ -34,6 +55,14 @@ def corrcoef(a, y=None, rowvar=True, bias=None, ddof=None, *, dtype=None):
     if bias is not None or ddof is not None:
         warnings.warn('bias and ddof have no effect and are deprecated',
                       DeprecationWarning)
+
+    # ASCEND: corrcoef = cov + 复数 diag/sqrt/clip 归一化，aclnn 的
+    # 统计族对 complex 支持不全；整调用走 host（NumPy 语义）。
+    ret = _ascend_host_fallback(
+        'statistics.corrcoef', a, y, rowvar=rowvar, bias=bias, ddof=ddof,
+        dtype=dtype)
+    if ret is not None:
+        return ret
 
     out = cov(a, y, rowvar, dtype=dtype)
     try:
@@ -138,6 +167,16 @@ def cov(a, y=None, rowvar=True, bias=False, ddof=None,
                 numpy.promote_types,
                 (a.dtype, y.dtype, numpy.float64)
             )
+
+    # ASCEND: 仅 complex dtype 时整调用走 host —— cov 的管线
+    # （average/mean 归约 + conj + matmul）里 aclnn 统计族不收 complex；
+    # float32/float64 保持 matmul 设备路径不变。
+    if numpy.issubdtype(dtype, numpy.complexfloating):
+        ret = _ascend_host_fallback(
+            'statistics.cov', a, y, rowvar=rowvar, bias=bias, ddof=ddof,
+            fweights=fweights, aweights=aweights, dtype=dtype)
+        if ret is not None:
+            return ret
 
     X = cupy.array(a, ndmin=2, dtype=dtype)
     if not rowvar and a.ndim != 1:

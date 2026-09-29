@@ -116,6 +116,10 @@ FALLBACKS: Dict[str, Callable[..., Any]] = {
     # cupy._statistics.histogram.digitize：aclnnSearchSorted 只支持升序 bins，
     # numpy.digitize 还接受降序（接线见 histogram.digitize，2-scalar 探测方向）
     'statistics.digitize': numpy.digitize,
+    # cupy._statistics.correlation：corrcoef 整调用（cov + 复数归一化）；
+    # cov 仅 complex dtype（aclnn 统计族不收 complex，f32/f64 走 matmul）
+    'statistics.corrcoef': numpy.corrcoef,
+    'statistics.cov': numpy.cov,
 }
 
 _ASCEND: Optional[bool] = None
