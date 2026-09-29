@@ -102,6 +102,11 @@ FALLBACKS: Dict[str, Callable[..., Any]] = {
     # aclnnHistc 表达不了（接线见 histogram._ascend_histogram）；
     # 等宽无权重且 dtype 受支持的主路径走 ascend_histc 设备直发。
     'statistics.histogram': numpy.histogram,
+    # cupy._statistics.meanvar 的 var/std/nanmedian：aclnn 归约不收 complex
+    # 输入，complex dtype 时整调用走 host（接线见 meanvar._ascend_complex_to_host）。
+    'statistics.var': numpy.var,
+    'statistics.std': numpy.std,
+    'statistics.nanmedian': numpy.nanmedian,
 }
 
 _ASCEND: Optional[bool] = None
