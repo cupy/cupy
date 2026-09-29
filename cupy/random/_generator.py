@@ -134,7 +134,14 @@ class RandomState:
             self.seed(seed)
             return
 
-        from cupy_backends.cuda.libs import curand
+        # ASCEND: no curand; the import must not abort methods that have an
+        # Ascend branch below (RandomState.__init__/seed are called at
+        # init time on Ascend). On CUDA the module-level try-import already
+        # provides the same binding; None means the backend lacks curand.
+        try:
+            from cupy_backends.cuda.libs import curand
+        except ImportError:
+            curand = None
 
         if method is None:
             method = curand.CURAND_RNG_PSEUDO_DEFAULT
@@ -393,7 +400,14 @@ class RandomState:
             - :meth:`numpy.random.RandomState.lognormal`
 
         """
-        from cupy_backends.cuda.libs import curand
+        # ASCEND: no curand; the import must not abort methods that have an
+        # Ascend branch below (RandomState.__init__/seed are called at
+        # init time on Ascend). On CUDA the module-level try-import already
+        # provides the same binding; None means the backend lacks curand.
+        try:
+            from cupy_backends.cuda.libs import curand
+        except ImportError:
+            curand = None
 
         if runtime.is_ascend:
             # lognormal = exp(normal); reuses the Ascend normal() branch
@@ -569,7 +583,14 @@ class RandomState:
         if runtime.is_ascend:
             return self._ascend_normal(loc, scale, size, dtype)
 
-        from cupy_backends.cuda.libs import curand
+        # ASCEND: no curand; the import must not abort methods that have an
+        # Ascend branch below (RandomState.__init__/seed are called at
+        # init time on Ascend). On CUDA the module-level try-import already
+        # provides the same binding; None means the backend lacks curand.
+        try:
+            from cupy_backends.cuda.libs import curand
+        except ImportError:
+            curand = None
 
         dtype = _check_and_get_dtype(dtype)
         if size is None:
@@ -750,7 +771,14 @@ class RandomState:
         '', 'T x', 'x = (x == (T)1) ? 0 : x', 'cupy_random_x_mod_1')
 
     def _random_sample_raw(self, size, dtype):
-        from cupy_backends.cuda.libs import curand
+        # ASCEND: no curand; the import must not abort methods that have an
+        # Ascend branch below (RandomState.__init__/seed are called at
+        # init time on Ascend). On CUDA the module-level try-import already
+        # provides the same binding; None means the backend lacks curand.
+        try:
+            from cupy_backends.cuda.libs import curand
+        except ImportError:
+            curand = None
 
         dtype = _check_and_get_dtype(dtype)
         out = cupy.empty(size, dtype=dtype)
@@ -922,7 +950,14 @@ class RandomState:
         return sample.reshape(size)
 
     def _curand_generate(self, num, dtype):
-        from cupy_backends.cuda.libs import curand
+        # ASCEND: no curand; the import must not abort methods that have an
+        # Ascend branch below (RandomState.__init__/seed are called at
+        # init time on Ascend). On CUDA the module-level try-import already
+        # provides the same binding; None means the backend lacks curand.
+        try:
+            from cupy_backends.cuda.libs import curand
+        except ImportError:
+            curand = None
 
         sample = cupy.empty((num,), dtype=dtype)
         # Call 32-bit RNG to fill 32-bit or 64-bit `sample`
@@ -956,7 +991,14 @@ class RandomState:
             - :meth:`numpy.random.RandomState.seed`
 
         """
-        from cupy_backends.cuda.libs import curand
+        # ASCEND: no curand; the import must not abort methods that have an
+        # Ascend branch below (RandomState.__init__/seed are called at
+        # init time on Ascend). On CUDA the module-level try-import already
+        # provides the same binding; None means the backend lacks curand.
+        try:
+            from cupy_backends.cuda.libs import curand
+        except ImportError:
+            curand = None
 
         if seed is None:
             try:
@@ -1073,7 +1115,14 @@ class RandomState:
             :meth:`numpy.random.RandomState.tomaxint`
 
         """
-        from cupy_backends.cuda.libs import curand
+        # ASCEND: no curand; the import must not abort methods that have an
+        # Ascend branch below (RandomState.__init__/seed are called at
+        # init time on Ascend). On CUDA the module-level try-import already
+        # provides the same binding; None means the backend lacks curand.
+        try:
+            from cupy_backends.cuda.libs import curand
+        except ImportError:
+            curand = None
 
         if size is None:
             size = ()
@@ -1405,7 +1454,14 @@ class RandomState:
             array = cupy.argsort(sample)
             return array
 
-        from cupy_backends.cuda.libs import curand
+        # ASCEND: no curand; the import must not abort methods that have an
+        # Ascend branch below (RandomState.__init__/seed are called at
+        # init time on Ascend). On CUDA the module-level try-import already
+        # provides the same binding; None means the backend lacks curand.
+        try:
+            from cupy_backends.cuda.libs import curand
+        except ImportError:
+            curand = None
 
         sample = cupy.empty((num,), dtype=numpy.int32)
         curand.generate(self._generator, sample.data.ptr, num)
