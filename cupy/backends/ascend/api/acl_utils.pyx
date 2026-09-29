@@ -2048,6 +2048,9 @@ cdef extern from "../acl_math_ops.h" nogil:
 
     aclError aclop_Maximum(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
     aclError aclop_Minimum(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
+    # 标量变体：标量物化为 1 元素张量后走 tensor-tensor（acl_math_ops.h）
+    aclError aclop_Maximums(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_Minimums(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream)
     aclError aclop_Hypot(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
     aclError aclop_Copysign(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
     aclError aclop_Gcd(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
@@ -2300,8 +2303,12 @@ cdef void register_math_operators():
 
     func_union.binary_op = aclop_Maximum
     register_acl_ufunc("ascend_maximum", BINARY_OP, func_union)
+    func_union.scalar_binary_op = aclop_Maximums
+    register_acl_ufunc("ascend_maximum", SCALAR_BINARY_OP, func_union)
     func_union.binary_op = aclop_Minimum
     register_acl_ufunc("ascend_minimum", BINARY_OP, func_union)
+    func_union.scalar_binary_op = aclop_Minimums
+    register_acl_ufunc("ascend_minimum", SCALAR_BINARY_OP, func_union)
     func_union.binary_op = aclop_Gcd
     register_acl_ufunc("ascend_gcd", BINARY_OP, func_union)
     func_union.binary_op = aclop_Lcm
@@ -2417,8 +2424,12 @@ cdef void register_math_operators():
     # numpy.fmax / numpy.fmin ignore NaN, which matches aclnnMaximum/Minimum.
     func_union.binary_op = aclop_Maximum
     register_acl_ufunc("ascend_fmax", BINARY_OP, func_union)
+    func_union.scalar_binary_op = aclop_Maximums
+    register_acl_ufunc("ascend_fmax", SCALAR_BINARY_OP, func_union)
     func_union.binary_op = aclop_Minimum
     register_acl_ufunc("ascend_fmin", BINARY_OP, func_union)
+    func_union.scalar_binary_op = aclop_Minimums
+    register_acl_ufunc("ascend_fmin", SCALAR_BINARY_OP, func_union)
 
     # numpy.invert is the ufunc name for bitwise_not (alias in cupy).
     func_union.unary_op = aclop_BitwiseNot

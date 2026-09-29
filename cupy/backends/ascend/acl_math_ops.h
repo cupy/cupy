@@ -574,6 +574,37 @@ extern "C" {
 
     DECLARE_ACL_BINARY_OP(Maximum)
     DECLARE_ACL_BINARY_OP(Minimum)
+
+    // out = tensor max/min scalar：本 SDK 的 aclnn_maximum.h 没有
+    // aclnnMaximums/Minimums 标量变体（grep 确认为 0 个符号），与 reverse 侧
+    // （aclop_RDivs 等）同一策略：用 AclScalarTensorGuard 把标量物化成
+    // 1 元素张量，再走 tensor-tensor 接口（1 元素广播，语义等价）。
+    // dtype 取 out（dispatcher 已按 NumPy 提升规则解析，与 self 一致）。
+    // 注册为 ascend_maximum/ascend_minimum/ascend_fmax/ascend_fmin 的
+    // SCALAR_BINARY_OP（`cp.maximum(x, 2.0)` 之类 tensor-op-scalar 调用）。
+    aclError aclop_Maximums(const aclTensor* self, const aclScalar* other,
+                            aclTensor* out, aclrtStream stream) {
+        aclDataType dtype = ACL_DT_UNDEFINED;
+        aclGetDataType(out, &dtype);
+        AclScalarTensorGuard guard(other, dtype, stream);
+        if (!guard) {
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        return aclBinaryOpRun(self, guard.get(), out,
+            aclnnMaximumGetWorkspaceSize, aclnnMaximum, stream, false);
+    }
+
+    aclError aclop_Minimums(const aclTensor* self, const aclScalar* other,
+                            aclTensor* out, aclrtStream stream) {
+        aclDataType dtype = ACL_DT_UNDEFINED;
+        aclGetDataType(out, &dtype);
+        AclScalarTensorGuard guard(other, dtype, stream);
+        if (!guard) {
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        return aclBinaryOpRun(self, guard.get(), out,
+            aclnnMinimumGetWorkspaceSize, aclnnMinimum, stream, false);
+    }
     // divmod has two outs
 
     // numpy.hypot(x1, x2) = sqrt(x1**2 + x2**2); no aclnn op, compose it.
