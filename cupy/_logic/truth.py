@@ -385,4 +385,9 @@ def union1d(arr1, arr2):
     numpy.union1d
 
     """
+    # ASCEND: cupy.unique is unreliable on Ascend (sort/lexsort issues)
+    # TODO: this conclusion should be reviewed
+    from cupy.backends.backend import is_ascend
+    if is_ascend:
+        return _ascend_set_host_fallback(_np_union1d, arr1, arr2)
     return cupy.unique(cupy.concatenate((arr1, arr2), axis=None))

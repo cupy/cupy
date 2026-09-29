@@ -123,7 +123,13 @@ def isposinf(x, out=None):
 
     is_inf = isinf(x)
     try:
-        signbit = ~cupy.signbit(x)
+        # ASCEND: cupy.invert(bool) return all True (aclnnInvert bool bug)
+        # TODO: this conclusion should be reviewed, maybe we use it incorrectly
+        from cupy.backends.backend import is_ascend
+        if is_ascend:
+            signbit = cupy.logical_not(signbit(x))
+        else:
+            signbit = ~cupy.signbit(x)
     except TypeError as e:
         dtype = x.dtype
         raise TypeError(f'This operation is not supported for {dtype} values '
