@@ -7,6 +7,28 @@ import cupy
 from cupy._core import _routines_statistics as _statistics
 
 
+def _ascend_complex_to_host(name, a, *args, **kwargs):
+    """ASCEND: aclnn 的 var/std/nanmedian 不收 complex 输入（设备端报错），
+    complex dtype 时把整个调用搬到 host（NumPy 语义，D2H -> NumPy -> H2D）。
+
+    返回 fallback 结果；None 表示继续设备路径（非 Ascend / 非 complex /
+    cpu_fallback 被环境变量关闭 -> 按既有约定响亮失败）。
+    """
+    try:
+        from cupy.backends.backend import is_ascend
+    except ImportError:
+        return None
+    if not is_ascend or a.dtype.kind != 'c':
+        return None
+    try:
+        from cupy._core._ascend import cpu_fallback
+    except ImportError:
+        return None
+    if not cpu_fallback.active():
+        return None
+    return cpu_fallback.call(name, a, *args, **kwargs)
+
+
 def median(a, axis=None, out=None, overwrite_input=False, keepdims=False):
     """Compute the median along the specified axis.
 
@@ -62,6 +84,11 @@ def nanmedian(a, axis=None, out=None, overwrite_input=False, keepdims=False):
     .. seealso:: :func:`numpy.nanmedian`
 
     """
+    ret = _ascend_complex_to_host(
+        'statistics.nanmedian', a, axis=axis, out=out,
+        overwrite_input=overwrite_input, keepdims=keepdims)
+    if ret is not None:
+        return ret
     if a.dtype.char in 'efdFD':
         return _statistics._nanmedian(a, axis, out, overwrite_input, keepdims)
     else:
@@ -195,6 +222,11 @@ def var(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
 
     """
     # TODO(okuta): check type
+    ret = _ascend_complex_to_host(
+        'statistics.var', a, axis=axis, dtype=dtype, out=out, ddof=ddof,
+        keepdims=keepdims)
+    if ret is not None:
+        return ret
     return a.var(axis=axis, dtype=dtype, out=out, ddof=ddof,
                  keepdims=keepdims)
 
@@ -218,6 +250,11 @@ def std(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
 
     """
     # TODO(okuta): check type
+    ret = _ascend_complex_to_host(
+        'statistics.std', a, axis=axis, dtype=dtype, out=out, ddof=ddof,
+        keepdims=keepdims)
+    if ret is not None:
+        return ret
     return a.std(axis=axis, dtype=dtype, out=out, ddof=ddof,
                  keepdims=keepdims)
 
