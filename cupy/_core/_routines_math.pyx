@@ -56,7 +56,11 @@ cdef _ndarray_base _ndarray_real_getter(_ndarray_base self):
 
 
 cdef _ndarray_base _ndarray_real_setter(_ndarray_base self, value):
-    elementwise_copy(value, _ndarray_real_getter(self))
+    if self.dtype.kind == 'c':
+        _set_complex_view(self, _ndarray_real_getter(self), value)
+    else:
+        # non-complex: the getter returns self itself (contiguous write)
+        elementwise_copy(value, self)
 
 
 cdef _ndarray_base _ndarray_imag_getter(_ndarray_base self):
@@ -81,9 +85,38 @@ cdef _ndarray_base _ndarray_imag_getter(_ndarray_base self):
     return new_array
 
 
+cdef void _set_complex_view(_ndarray_base self, _ndarray_base view, value):
+    """ set real/image view of a complex array
+    The view is non-contiguous and misaligned (element stride 2), so
+    elementwise_copy (ascend_copy/aclnnCast) rejects it as a destination.
+
+    - scalar `value` (python/numpy scalar): view.fill(value) --
+      aclnnInplaceFillScalar accepts strided views (ascend_fill is also
+      f64-native and on the cpu-fallback exempt list).
+    - array `value` (cupy.ndarray, incl. 0-d broadcast): READS of the
+      misaligned view are fine, only writes were broken -- so materialize
+      the delta on contiguous temporaries and apply it to the whole
+      complex array with an inplace add:
+          self += (value - old_part)        (real part)
+          self += 1j * (value - old_part)   (imag part)
+      The astype(view.dtype) matches the numpy real/imag setter casting
+      semantics (a complex value keeps only the component being set).
+    """
+    cdef _ndarray_base delta
+    cdef bint imag_part = view.data.ptr != self.data.ptr
+    if not isinstance(value, core.ndarray):
+        view.fill(value)
+        return
+    delta = value - view
+    delta = delta.astype(view.dtype)
+    if imag_part:
+        delta = delta * 1j
+    self += delta
+
+
 cdef _ndarray_base _ndarray_imag_setter(_ndarray_base self, value):
     if self.dtype.kind == 'c':
-        elementwise_copy(value, _ndarray_imag_getter(self))
+        _set_complex_view(self, _ndarray_imag_getter(self), value)
     else:
         raise TypeError('cupy.ndarray does not have imaginary part to set')
 
