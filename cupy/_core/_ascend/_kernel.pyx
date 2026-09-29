@@ -966,6 +966,8 @@ cdef class ufunc:
         # indexer = _carray._indexer_init(indexer_shape)
         # TODO: ASCEND does not support indexer yet. indexer is CUDA only?
         # inout_args.append(indexer)
+        # the rest of positional args (needed by the f64-cpu host path below)
+        pos_args = list(args[(self.nin + self.nout):])
 
         _BOOL_PROMOTE_EXEMPT_OPS = {
             "ascend_isfinite", "ascend_is_finite", 
@@ -981,19 +983,18 @@ cdef class ufunc:
                     _has_f64_io = True
                     break
         if _has_f64_io:
-            _cpu_f64.run_elementwise_host(slef.name, inout_args, out_args,
+            _cpu_f64.run_elementwise_host(self.name, inout_args, out_args,
                 kwargs, dtype, casting, pos_args)
             return ret
 
         # ASCEND: cupy_nextafter has no corresponding aclnn op
         if self.name == "cupy_nextafter":
-            _cpu_f64.run_elementwise_host(slef.name, inout_args, out_args,
+            _cpu_f64.run_elementwise_host(self.name, inout_args, out_args,
                 kwargs, dtype, casting, pos_args)
             return ret
 
         runtime._ensure_context()
         s = _get_stream(None)
-        pos_args = list(args[(self.nin + self.nout):]) # the rest of positional args
 
         # ASCEND: float64/complex128 CPU fallback（CUPY_ASCEND_FLOAT64_MODE=cpu）：
         # NPU 无 float64 吞吐，cpu 模式下整 op 拦截，D2H -> NumPy（真 f64 精度）

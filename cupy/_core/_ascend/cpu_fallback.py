@@ -377,7 +377,10 @@ def _to_host(value: Any) -> Any:
 
 
 def run_elementwise_host(name: str, ins: Any, outs: Any,
-                         kwargs: Dict[str, Any]) -> None:
+                         kwargs: Dict[str, Any],
+                         dtype: Any = None,
+                         casting: Any = None,
+                         pos_args: Any = ()) -> None:
     """在 host 端用 NumPy 执行一个 elementwise ufunc，结果写回设备 out。
 
     Args:
@@ -385,6 +388,12 @@ def run_elementwise_host(name: str, ins: Any, outs: Any,
         ins: 输入（ndarray / CScalar / python 标量混合）。
         outs: 设备端 out 数组（shape/dtype 已由 cupy 解析好）。
         kwargs: 透传关键字（``where`` 设备数组会被搬到 host）。
+        dtype: ufunc ``dtype=`` kwarg (None), ``out=`` cast only on result
+            ``dtype=`` will promote inputs before calc
+        casting: ufunc ``casting=`` kwarg, ``casting=unsafe`` when out dtype
+            and result dtype are diff, so leading to unsafe out cast
+        pos_args: ufunc 调用中 nin/nout 之后剩余的位置参数（如位置形式
+            的 ``where``），原样追加到 numpy 调用的输入尾部。
 
     不支持的 ufunc（numpy 无同名函数）响亮报错，并提示可切 float32 模式。
     """
@@ -400,6 +409,19 @@ def run_elementwise_host(name: str, ins: Any, outs: Any,
     # 避免逐元素 H2D，且 out 与输入重叠（inplace）时语义与 NumPy 一致。
     np_outs = [_to_host(o) for o in outs]
     np_kwargs = {key: _to_host(val) for key, val in kwargs.items()}
+    np_pos = [_to_host(x) for x in (pos_args or ())]
+    call_kwargs = dict(np_kwargs)
+    if dtype is not None and isinstance(np_ufunc, numpy.ufunc):
+        # `floor_divide(int, 0, dtype=f64) -> inf`：ufunc dtype= 的语义是
+        # 「先把输入提升/cast 到 dtype 再计算」。numpy ufunc 原生接受
+        # dtype= kwarg，转发即得与设备端一致的语义（int 先 cast 成 f64，
+        # 除零得 inf 而不是整数除零报错）。
+        call_kwargs.setdefault('dtype', dtype)
+    if casting is not None and isinstance(np_ufunc, numpy.ufunc):
+        # 设备端已决定 out dtype（可能与结果 dtype 不同，需 unsafe cast）；
+        # 转发 casting=，避免 numpy 默认 same_kind 在 out= 写回时抛
+        # UFuncOutputCastingError。
+        call_kwargs.setdefault('casting', casting)
     # numpy.where 等函数不支持 out=（与 _kernel.pyx all-scalar 路径的
     # inspect.signature 探测同一模式）：直接计算，结果写回 host 缓冲。
     try:
@@ -408,11 +430,11 @@ def run_elementwise_host(name: str, ins: Any, outs: Any,
         supports_out = True
     if supports_out:
         if len(np_outs) == 1:
-            np_ufunc(*np_ins, out=np_outs[0], **np_kwargs)
+            np_ufunc(*np_ins, *np_pos, out=np_outs[0], **call_kwargs)
         else:
-            np_ufunc(*np_ins, out=tuple(np_outs), **np_kwargs)
+            np_ufunc(*np_ins, *np_pos, out=tuple(np_outs), **call_kwargs)
     else:
-        result = np_ufunc(*np_ins, **np_kwargs)
+        result = np_ufunc(*np_ins, *np_pos, **call_kwargs)
         np_outs = list(result) if isinstance(result, tuple) else [result]
     for dev_out, np_out in zip(outs, np_outs):
         # ndarray.set() instead of `dev_out[...]= np_out` will use cupy.fill
