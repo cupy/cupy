@@ -1665,37 +1665,29 @@ class SpMatDescriptor(BaseDescriptor):
                 a.data.data.ptr, _dtype_to_IndexType(a.indptr.dtype),
                 _dtype_to_IndexType(a.indices.dtype), idx_base, cuda_dtype)
             get = _cusparse.csrGet
+            # Keep backing arrays alive, e.g. sum_duplicates() would
+            # replace them.
+            owning_arrs = (a.data, a.indices, a.indptr)
         elif a.format == 'coo':
             desc = _cusparse.createCoo(
                 rows, cols, a.nnz, a.row.data.ptr, a.col.data.ptr,
                 a.data.data.ptr, _dtype_to_IndexType(a.row.dtype),
                 idx_base, cuda_dtype)
             get = _cusparse.cooGet
+            owning_arrs = (a.data, a.row, a.col)
         elif a.format == 'csc':
             desc = _cusparse.createCsc(
                 rows, cols, a.nnz, a.indptr.data.ptr, a.indices.data.ptr,
                 a.data.data.ptr, _dtype_to_IndexType(a.indptr.dtype),
                 _dtype_to_IndexType(a.indices.dtype), idx_base, cuda_dtype)
             get = None
+            owning_arrs = (a.data, a.indices, a.indptr)
         else:
             raise ValueError('csr, csc and coo format are supported '
                              '(actual: {}).'.format(a.format))
         destroy = _cusparse.destroySpMat
         descriptor = SpMatDescriptor(desc, get, destroy)
-        # The descriptor holds raw device pointers into a's value and index
-        # arrays, so it must keep those arrays alive for as long as it
-        # lives. Holding the matrix OBJECT is not enough: a structure
-        # change (sum_duplicates, tocsr, an arithmetic update) rebinds
-        # a.data / a.indices / a.indptr to new arrays and drops the last
-        # reference to the old ones, which the memory pool is then free to
-        # hand out while this descriptor still points at them. Anything
-        # that caches a descriptor across calls -- SpSM does -- would read
-        # recycled memory. Keeping the arrays makes that contract
-        # violation a stale result instead of a use-after-free.
-        if a.format == 'coo':
-            descriptor._arrays = (a.data, a.row, a.col)
-        else:
-            descriptor._arrays = (a.data, a.indices, a.indptr)
+        descriptor._owning_arrs = owning_arrs
         return descriptor
 
     def set_attribute(self, attribute, data):

@@ -4,6 +4,7 @@ import functools
 import gc
 import pickle
 import sys
+import weakref
 
 import numpy
 import pytest
@@ -1007,36 +1008,24 @@ class TestSparseMatrixConversion:
 
 @testing.with_requires('scipy')
 class TestSpMatDescriptorOwnership:
-    # A descriptor stores raw device pointers into the matrix's arrays.
-    # Holding only the matrix object is not enough: a structure change
-    # rebinds a.data / a.indices / a.indptr and frees the old buffers
-    # while the descriptor still points at them, so anything that caches
-    # a descriptor (SpSM) would read pool-recycled memory.
+    # A descriptor stores raw device pointers into the matrix's arrays, and
+    # sparse matrices are mutable: a structure change rebinds a.data /
+    # a.indices / a.indptr, so the descriptor has to own what it points at.
 
     @pytest.mark.parametrize('fmt', ['csr', 'csc', 'coo'])
     def test_descriptor_keeps_arrays_alive(self, fmt):
         a = sparse.random(200, 200, density=0.05, format=fmt,
                           dtype=numpy.float64)
+        arrs = ((a.data, a.row, a.col) if fmt == 'coo'
+                else (a.data, a.indices, a.indptr))
+        owners = [weakref.ref(x) for x in arrs]
         desc = cusparse.SpMatDescriptor.create(a)
-        if fmt == 'coo':
-            held = (a.data, a.row, a.col)
-        else:
-            held = (a.data, a.indices, a.indptr)
-        ptrs = {x.data.ptr for x in held}
-        # Drop every other reference to those arrays.
-        a.data = a.data.copy()
-        if fmt == 'coo':
-            a.row, a.col = a.row.copy(), a.col.copy()
-        else:
-            a.indices, a.indptr = a.indices.copy(), a.indptr.copy()
-        del held
+        del a, arrs
         gc.collect()
-        # The descriptor still owns them, so the blocks cannot be reissued.
-        assert hasattr(desc, '_arrays')
-        assert {x.data.ptr for x in desc._arrays} == ptrs
-        keep = [cupy.empty(a.data.size, dtype=a.data.dtype)
-                for _ in range(16)]
-        assert all(k.data.ptr not in ptrs for k in keep)
+        assert all(o() is not None for o in owners)
+        del desc
+        gc.collect()
+        assert all(o() is None for o in owners)
 
     def test_unsupported_format_still_raises_value_error(self):
         # The ownership bookkeeping reads format-specific attributes, so
