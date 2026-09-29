@@ -1105,7 +1105,7 @@ _UINT_PROMOTE_EXEMPT_OPS = {
     'ascend_dump_args',
     'ascend_put', # aclInplacePut support uint8, but does not support uint18/uint32
     # TODO: ascend_take and all manipulation ops should not support?
-} + _BOOL_PROMOTE_EXEMPT_OPS
+} | _BOOL_PROMOTE_EXEMPT_OPS
 
 
 # arithmetic ops, uint8 有些ops支持, 还不能promote到int32

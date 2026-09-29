@@ -121,6 +121,14 @@ def average(a, axis=None, weights=None, returned=False, *, keepdims=False):
 
     .. seealso:: :func:`numpy.average`
     """
+    # ASCEND: mean/sum where aclnnSum rejects narrow-int weights 
+    # (int8 sum wiht int32 out), use host numpy
+    ret = _ascend_complex_to_host(
+        'statistics.average', a, axis=axis, weights=weights, returned=returned,
+        keepdims=keepdims)
+    if ret is not None:
+        return ret
+
     # TODO(niboshi): Avoid synchronization.
     a = cupy.asarray(a)
 
@@ -221,12 +229,14 @@ def var(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
     .. seealso:: :func:`numpy.var`
 
     """
-    # TODO(okuta): check type
+
     ret = _ascend_complex_to_host(
         'statistics.var', a, axis=axis, dtype=dtype, out=out, ddof=ddof,
         keepdims=keepdims)
     if ret is not None:
         return ret
+        
+    # TODO(okuta): check type
     return a.var(axis=axis, dtype=dtype, out=out, ddof=ddof,
                  keepdims=keepdims)
 
@@ -277,8 +287,13 @@ def nanmean(a, axis=None, dtype=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.nanmean`
 
     """
-    if a.dtype.kind in 'biu':
-        return a.mean(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+
+    # ASCEND: nan + mean is unstable on ASCEND npu, use cpu
+    ret = _ascend_complex_to_host(
+        'statistics.nanmean', a, axis=axis, dtype=dtype, out=out,
+        keepdims=keepdims)
+    if ret is not None:
+        return ret
 
     from cupy._core._ascend import composite as _composite
     if _composite.active():
@@ -309,9 +324,12 @@ def nanvar(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
     .. seealso:: :func:`numpy.nanvar`
 
     """
-    if a.dtype.kind in 'biu':
-        return a.var(axis=axis, dtype=dtype, out=out, ddof=ddof,
-                     keepdims=keepdims)
+
+    ret = _ascend_complex_to_host(
+        'statistics.nanvar', a, axis=axis, dtype=dtype, out=out, ddof=ddof,
+        keepdims=keepdims)
+    if ret is not None:
+        return ret
 
     # TODO(okuta): check type
     return _statistics._nanvar(
@@ -336,10 +354,13 @@ def nanstd(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
     .. seealso:: :func:`numpy.nanstd`
 
     """
-    if a.dtype.kind in 'biu':
-        return a.std(axis=axis, dtype=dtype, out=out, ddof=ddof,
-                     keepdims=keepdims)
 
+    ret = _ascend_complex_to_host(
+        'statistics.nanstd', a, axis=axis, dtype=dtype, out=out, ddof=ddof,
+        keepdims=keepdims)
+    if ret is not None:
+        return ret
+    
     # TODO(okuta): check type
     return _statistics._nanstd(
         a, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
