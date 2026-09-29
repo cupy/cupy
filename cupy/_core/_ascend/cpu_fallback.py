@@ -512,11 +512,89 @@ def _host_complex(ins: Any, outs: Any, args: Any, kwargs: Any) -> None:
     _copy_host_into(out, result)
 
 
+# ---------------------------------------------------------------------------
+# 稠密线代（B 类 structural：ascend_svd/qr/inverse/slogdet/trace/tril/triu）
+#
+# 这些 op 经 launch_general_func 直发，cpu 模式下 f64 操作数会被
+# maybe_general_host 拦截 —— 此前没有 adapter，响亮 NotImplementedError。
+# 但矩阵分解在 host 上「天然支持 float64」（numpy.linalg 原生双精度，
+# LAPACK），注册 host adapter 后 cpu 模式即得到真 float64/complex128 结果，
+# 与 linalg.eig/eigh 的既有 FALLBACKS 通道同一语义（D2H -> NumPy -> H2D，
+# out dtype 由调用方按 cupy 语义预分配，_copy_host_into 保 dtype 回写）。
+# ---------------------------------------------------------------------------
+
+def _host_svd(ins: Any, outs: Any, args: Any, kwargs: Any) -> None:
+    """aclnnSvd：ins=[a]，outs=[sigma]（svdvals）或 [sigma, u, v(=Vh)]，
+    args=[full_matrices]（见 _routines_linalg._ascend_svd 的预分配）。"""
+    np_a = numpy.asarray(_to_host(ins[0]))
+    full_matrices = bool(args[0]) if args else True
+    if len(outs) == 3:
+        u, s, vh = numpy.linalg.svd(
+            np_a, full_matrices=full_matrices, compute_uv=True)
+        _copy_host_into(outs[0], s)
+        _copy_host_into(outs[1], u)
+        _copy_host_into(outs[2], vh)   # aclnn/cupy 的第三个 out 即 Vh
+    else:
+        s = numpy.linalg.svd(
+            np_a, full_matrices=full_matrices, compute_uv=False)
+        _copy_host_into(outs[0], s)
+
+
+def _host_qr(ins: Any, outs: Any, args: Any, kwargs: Any) -> None:
+    """aclnnQr：ins=[a]，outs=[q, r]，args=[some]（true == reduced）。"""
+    np_a = numpy.asarray(_to_host(ins[0]))
+    reduced = bool(args[0]) if args else True
+    q, r = numpy.linalg.qr(
+        np_a, mode='reduced' if reduced else 'complete')
+    _copy_host_into(outs[0], q)
+    _copy_host_into(outs[1], r)
+
+
+def _host_inverse(ins: Any, outs: Any, args: Any, kwargs: Any) -> None:
+    """aclnnInverse：ins=[a]，outs=[out]。"""
+    np_a = numpy.asarray(_to_host(ins[0]))
+    _copy_host_into(outs[0], numpy.linalg.inv(np_a))
+
+
+def _host_slogdet(ins: Any, outs: Any, args: Any, kwargs: Any) -> None:
+    """aclnnSlogdet：ins=[self]，outs=[sign, logdet]（见 _norms.slogdet）。"""
+    np_a = numpy.asarray(_to_host(ins[0]))
+    sign, logdet = numpy.linalg.slogdet(np_a)
+    _copy_host_into(outs[0], sign)
+    _copy_host_into(outs[1], logdet)
+
+
+def _host_trace(ins: Any, outs: Any, args: Any, kwargs: Any) -> None:
+    """aclnnTrace：ins=[a]，outs=[out]，args=[offset]（批量轴由
+    numpy.trace 的 axis1=-2/axis2=-1 默认值覆盖）。"""
+    np_a = numpy.asarray(_to_host(ins[0]))
+    offset = int(args[0]) if args else 0
+    _copy_host_into(outs[0], numpy.trace(np_a, offset=offset))
+
+
+def _host_tril_triu(upper: bool) -> Callable[..., Any]:
+    """aclnnTril/Triu：ins=[a]，outs=[out]，args=[k]。"""
+    def _impl(ins: Any, outs: Any, args: Any, kwargs: Any) -> None:
+        np_a = numpy.asarray(_to_host(ins[0]))
+        k = int(args[0]) if args else 0
+        fn = numpy.triu if upper else numpy.tril
+        _copy_host_into(outs[0], fn(np_a, k))
+    return _impl
+
+
 _GENERAL_HOST_FALLBACKS.update({
     'ascend_take': _host_take,
     'ascend_index_select': _host_index_select,
     'ascend_nonzero': _host_nonzero,
     'ascend_complex': _host_complex,
+    # 稠密线代：cpu 模式 f64 走 numpy.linalg（真双精度），f32 照常直达 aclnn
+    'ascend_svd': _host_svd,
+    'ascend_qr': _host_qr,
+    'ascend_inverse': _host_inverse,
+    'ascend_slogdet': _host_slogdet,
+    'ascend_trace': _host_trace,
+    'ascend_tril': _host_tril_triu(False),
+    'ascend_triu': _host_tril_triu(True),
 })
 
 
