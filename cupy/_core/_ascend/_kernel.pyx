@@ -929,7 +929,6 @@ cdef class ufunc:
         # print(f"ASCEND: DEBUG, the output shape dim = {shape.size()}, {shape.at(0)}")
         out_args = _get_out_args_from_optionals(
             subtype, out_args, op.out_types, shape, casting, template)
-        # print(f"ASCEND: DEBUG, the output args are {out_args}")
 
         if self.nout == 1:
             ret = out_args[0]
@@ -967,8 +966,31 @@ cdef class ufunc:
         # indexer = _carray._indexer_init(indexer_shape)
         # TODO: ASCEND does not support indexer yet. indexer is CUDA only?
         # inout_args.append(indexer)
-  
-        # TODO: ASCEND launch_kernel, inplace, scalar as op detection
+
+        _BOOL_PROMOTE_EXEMPT_OPS = {
+            "ascend_isfinite", "ascend_is_finite", 
+            "ascend_isinf", "ascend_is_inf", "ascend_isneginf", "ascend_is_negnative_inf",
+            "ascend_isposinf", "ascend_is_positive_inf", "ascend_isnan", "ascend_is_nan"
+        }
+
+        # ASCEND: ops below does not support double input, not promoted/demoted
+        if self.name in _BOOL_PROMOTE_EXEMPT_OPS:
+            _has_f64_io = False
+            for _x in inout_args:
+                if isinstance(_x, _ndarray_base) and _x.dtype.kind in 'fc':
+                    _has_f64_io = True
+                    break
+        if _has_f64_io:
+            _cpu_f64.run_elementwise_host(slef.name, inout_args, out_args,
+                kwargs, dtype, casting, pos_args)
+            return ret
+
+        # ASCEND: cupy_nextafter has no corresponding aclnn op
+        if self.name == "cupy_nextafter":
+            _cpu_f64.run_elementwise_host(slef.name, inout_args, out_args,
+                kwargs, dtype, casting, pos_args)
+            return ret
+
         runtime._ensure_context()
         s = _get_stream(None)
         pos_args = list(args[(self.nin + self.nout):]) # the rest of positional args
@@ -983,9 +1005,7 @@ cdef class ufunc:
                 self.name, inout_args, out_args, kwargs)
             return ret
         launch_general_func(self.name, list(inout_args), list(out_args), pos_args, kwargs, s)
-        #arginfos = _get_arginfos(inout_args.extend(out_args))
-        #kern = self._get_ufunc_kernel(dev_id, op, arginfos, has_where)
-        #kern.linear_launch(indexer.size, inout_args)
+
         return ret
 
     cdef str _get_name_with_type(self, tuple arginfos, bint has_where):

@@ -1084,6 +1084,15 @@ cdef void raise_acl_op_error(str opname, long ret) except *:
 #     float64 硬件吞吐，且部分算子不收 DOUBLE/COMPLEX128）。
 # ---------------------------------------------------------------------------
 
+
+# 逻辑判断  out 比如是bool(?), promote到int32是不合适的
+# TODO: 为什么ascend注册这么多的同类的ops?
+_BOOL_PROMOTE_EXEMPT_OPS = {
+    "ascend_isfinite", "ascend_is_finite", 
+    "ascend_isinf", "ascend_is_inf", "ascend_isneginf", "ascend_is_negnative_inf",
+    "ascend_isposinf", "ascend_is_positive_inf", "ascend_isnan", "ascend_is_nan"
+}
+
 # 豁免拦截的算子：本身原生支持 uint（或作为本机制的实现载体），提升反而
 # 多余/递归。后续发现新的原生支持 uint 的算子，直接往这个 set 里加名字。
 _UINT_PROMOTE_EXEMPT_OPS = {
@@ -1096,7 +1105,8 @@ _UINT_PROMOTE_EXEMPT_OPS = {
     'ascend_dump_args',
     'ascend_put', # aclInplacePut support uint8, but does not support uint18/uint32
     # TODO: ascend_take and all manipulation ops should not support?
-}
+} + _BOOL_PROMOTE_EXEMPT_OPS
+
 
 # arithmetic ops, uint8 有些ops支持, 还不能promote到int32
 cdef dict _ASCEND_DTYPE_PROMOTE = {
@@ -1107,6 +1117,7 @@ cdef dict _ASCEND_DTYPE_PROMOTE = {
     'L': 'q',   # uint64 -> int64  numpy 2.x char
     'b': 'i',   # int8  -> int32：部分算子不收窄整型（如 aclnnArgMax 只收 FLOAT/FLOAT16）
     'h': 'i',   # int16 -> int32：部分算子不支持 int16（同 uint16 提升的理由）
+    # bool -> int32 这种在这里promote可能不合适, TODO: 需要未来统一考虑
     '?': 'i',   # bool -> int32, power/remainder/fmod does not accept DT_BOOL
 }
 
