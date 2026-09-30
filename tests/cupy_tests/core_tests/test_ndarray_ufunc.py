@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import concurrent.futures
+
 import numpy
 import pytest
 
@@ -107,8 +109,9 @@ class TestArrayUfunc:
         a += b
         return a
 
-    def test_subclass_unary_op(self):
-        a = cupy.array([0, 1, 2]).view(C)
+    @pytest.mark.parametrize('shape', [(3,), (2, 3)])
+    def test_subclass_unary_op(self, shape):
+        a = cupy.arange(numpy.prod(shape)).reshape(shape).view(C)
         a.info = 1
         outa = cupy.sin(a)
         assert isinstance(outa, C)
@@ -290,3 +293,144 @@ class TestUfunc:
         ret = xp.divmod(a, b, out=(None, out1))
         assert ret[1] is out1
         return ret
+
+    @pytest.mark.parametrize('shape', [(), (6,), (2, 3), (1, 2, 1, 3), (0, 2)])
+    @testing.for_dtypes([numpy.int32, numpy.float32, numpy.float64,
+                         numpy.complex64])
+    @testing.numpy_cupy_array_equal()
+    def test_inplace_scalar(self, xp, dtype, shape):
+        a = testing.shaped_arange(shape, xp, dtype)
+        metadata = a.shape, a.strides, a.dtype
+        ret = xp.add(a, 2, out=a)
+        assert ret is a
+        assert (a.shape, a.strides, a.dtype) == metadata
+        return a
+
+    @pytest.mark.parametrize('layout', [
+        'contiguous', 'leading_singleton', 'broadcast', 'transpose',
+        'reverse'])
+    @testing.numpy_cupy_array_equal()
+    def test_mixed_dtype_inputs(self, xp, layout):
+        a = testing.shaped_arange((2, 3), xp, numpy.float32)
+        if layout == 'contiguous':
+            b = testing.shaped_arange((2, 3), xp, numpy.float64)
+        elif layout == 'leading_singleton':
+            b = testing.shaped_arange((1, 2, 3), xp, numpy.float64)
+        elif layout == 'broadcast':
+            b = xp.arange(3, dtype=xp.float64)
+        elif layout == 'transpose':
+            b = testing.shaped_arange((3, 2), xp, numpy.float64).T
+        else:
+            b = testing.shaped_arange((2, 3), xp, numpy.float64)[:, ::-1]
+        return xp.add(a, b)
+
+    @testing.numpy_cupy_array_equal()
+    def test_overlapping_output(self, xp):
+        a = testing.shaped_arange((3, 4), xp, numpy.int32)
+        out = a[1:]
+        ret = xp.add(a[:-1], 3, out=out)
+        assert ret is out
+        return a
+
+    @testing.numpy_cupy_array_equal()
+    def test_noncontiguous_output(self, xp):
+        a = testing.shaped_arange((2, 3), xp, numpy.float32)
+        out = xp.empty((3, 2), dtype=xp.float32).T
+        ret = xp.add(a, 2, out=out)
+        assert ret is out
+        return out
+
+    @testing.numpy_cupy_array_equal()
+    def test_where(self, xp):
+        a = testing.shaped_arange((2, 3), xp, numpy.float32)
+        out = xp.full((2, 3), -1, dtype=xp.float32)
+        where = xp.array([[True, False, True], [False, True, False]])
+        kwargs = {'_where' if xp is cupy else 'where': where}
+        return xp.add(a, 2, out=out, **kwargs)
+
+    @pytest.mark.thread_unsafe(reason='modifies the core ndarray binding')
+    @pytest.mark.parametrize('module_getattr', [False, True])
+    def test_missing_ndarray_binding(self, monkeypatch, module_getattr):
+        a = cupy.empty((2, 3))
+        with monkeypatch.context() as patcher:
+            patcher.delattr(cupy._core.core, 'ndarray')
+            if module_getattr:
+                def get_missing(name):
+                    if name == 'ndarray':
+                        return cupy.ndarray
+                    raise AttributeError(name)
+
+                patcher.setattr(cupy._core.core, '__getattr__', get_missing,
+                                raising=False)
+            with pytest.raises(
+                    NameError, match="name 'ndarray' is not defined"):
+                cupy.add(a, 1, out=a)
+
+    @pytest.mark.thread_unsafe(reason='modifies the core module class')
+    def test_module_attribute_hook(self, monkeypatch):
+        core_module = cupy._core.core
+
+        class CoreModule(type(core_module)):
+            def __getattribute__(self, name):
+                if name == 'ndarray':
+                    raise AssertionError('unexpected module attribute lookup')
+                return super().__getattribute__(name)
+
+        a = cupy.zeros((2, 3), dtype=cupy.int32)
+        with monkeypatch.context() as patcher:
+            patcher.setattr(core_module, '__class__', CoreModule)
+            ret = cupy.add(a, 1, out=a)
+        assert ret is a
+        testing.assert_array_equal(a, numpy.ones((2, 3), dtype=numpy.int32))
+
+    @pytest.mark.thread_unsafe(reason='modifies ndarray bindings')
+    def test_rebound_subclass_metaclass(self, monkeypatch):
+        base = cupy.ndarray.__base__
+
+        class Meta(type):
+            def __getattribute__(cls, name):
+                if name == '__base__':
+                    return base
+                return super().__getattribute__(name)
+
+        class ReboundArray(cupy.ndarray, metaclass=Meta):
+            def __new__(cls, *args, **kwargs):
+                if kwargs.get('_no_init', False):
+                    raise RuntimeError('reduced view constructor')
+                return super().__new__(cls, *args, **kwargs)
+
+        a = ReboundArray((2, 3), dtype=cupy.int32)
+        with monkeypatch.context() as patcher:
+            patcher.setattr(cupy._core.core, 'ndarray', ReboundArray)
+            patcher.setattr(cupy, 'ndarray', ReboundArray)
+            with pytest.raises(RuntimeError, match='reduced view constructor'):
+                cupy.add(a, 1, out=a)
+
+    @pytest.mark.thread_unsafe(reason='explicitly multithreaded test')
+    def test_thread_local_temporary_inputs(self):
+        device_id = cupy.cuda.runtime.getDevice()
+
+        def worker(offset):
+            with cupy.cuda.Device(device_id):
+                with cupy.cuda.Stream(non_blocking=True):
+                    a = cupy.arange(48, dtype=cupy.int32).reshape(6, 8)
+                    for _ in range(20):
+                        cupy.add(a, offset, out=a)
+                    out = cupy.add(a, cupy.ones(a.shape, dtype=a.dtype))
+                    del a
+                    return out.get()
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+            results = list(pool.map(worker, range(4)))
+        for offset, result in enumerate(results):
+            expected = numpy.arange(48).reshape(6, 8) + 20 * offset + 1
+            numpy.testing.assert_array_equal(result, expected)
+
+    @testing.slow
+    def test_contiguous_large_index(self):
+        try:
+            a = cupy.zeros((2, 2**30 + 1), dtype=cupy.uint8)
+        except MemoryError:
+            pytest.skip('out of memory in test')
+        cupy.add(a, 1, out=a)
+        assert int(a.sum()) == a.size
