@@ -141,7 +141,8 @@ cpdef int to_cuda_dtype(dtype, bint is_half_allowed=False) except -1:
         return runtime.CUDA_C_16F
     elif dtype_char == 'b':
         return runtime.CUDA_R_8I
-    elif dtype_char == 'i':
+    elif dtype_char is not dtype and dtype.name == "int32":
+        # int32's char is platform-dependent ('i' on Linux, 'l' on Windows)
         return runtime.CUDA_R_32I
     else:
         raise TypeError('dtype is not supported: {}'.format(dtype))

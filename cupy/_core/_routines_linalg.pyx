@@ -71,7 +71,7 @@ cpdef int to_compute_type_index(dtype) except -1:
         return 0
     elif dtype_char == 'b':
         return 4
-    elif dtype_char == 'i':
+    elif dtype.name == "int32":
         return 5
     else:
         raise TypeError('dtype is not supported: {}'.format(dtype))
@@ -79,8 +79,7 @@ cpdef int to_compute_type_index(dtype) except -1:
 
 cpdef set_compute_type(dtype, compute_type):
     global compute_types
-    cdef str dtype_char = numpy.dtype(dtype).char
-    if dtype_char in 'bi' and compute_type not in (
+    if numpy.dtype(dtype).name in ('int8', 'int32') and compute_type not in (
             COMPUTE_TYPE_TBD, COMPUTE_TYPE_DEFAULT):
         raise ValueError(
             'Only COMPUTE_TYPE_DEFAULT is supported for integer dtypes '
