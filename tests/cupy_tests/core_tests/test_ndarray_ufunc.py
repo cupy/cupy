@@ -294,6 +294,29 @@ class TestUfunc:
         assert ret[1] is out1
         return ret
 
+    @pytest.mark.thread_unsafe(reason='modifies ndarray construction')
+    def test_contiguous_ufunc_avoids_views(self, monkeypatch):
+        a = cupy.arange(6, dtype=cupy.int32).reshape(2, 3)
+        cupy.add(a, 0, out=a)
+        original_new = cupy.ndarray.__new__
+        view_count = 0
+
+        def counting_new(cls, *args, **kwargs):
+            nonlocal view_count
+            if kwargs.get('_no_init', False):
+                view_count += 1
+            return original_new(cls, *args, **kwargs)
+
+        with monkeypatch.context() as patcher:
+            patcher.setattr(cupy.ndarray, '__new__',
+                            staticmethod(counting_new))
+            ret = cupy.add(a, 1, out=a)
+
+        assert view_count == 0
+        assert ret is a
+        expected = numpy.arange(1, 7, dtype=numpy.int32).reshape(2, 3)
+        testing.assert_array_equal(a, expected)
+
     @pytest.mark.parametrize('shape', [(), (6,), (2, 3), (1, 2, 1, 3), (0, 2)])
     @testing.for_dtypes([numpy.int32, numpy.float32, numpy.float64,
                          numpy.complex64])
