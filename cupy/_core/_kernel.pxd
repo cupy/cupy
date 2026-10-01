@@ -109,10 +109,12 @@ cdef class KernelArguments:
     cdef _preprocess_args(self, dev_id)
 
     cdef find_and_apply_shape(
-        self, tuple params, shape_t& shape, bint shape_fixed)
+        self, tuple params, shape_t& shape, bint shape_fixed,
+        bint include_outputs=*)
 
     cdef create_out_args_with_types(
-        self, tuple out_types, casting, const shape_t& shape)
+        self, tuple out_types, casting, const shape_t& shape,
+        subtype=*, template=*)
     cdef create_out_args_with_params(
         self, tuple out_types, tuple out_params, bint is_size_specified,
         const shape_t& shape)

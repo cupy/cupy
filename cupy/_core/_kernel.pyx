@@ -562,8 +562,8 @@ cdef class KernelArguments:
 
     cdef _copy_in_args_if_needed(self):
         cdef _ndarray_base inp, outp
-        for i in range(self.nin):
-            a = self.get_in(i)
+        for i in range(self.nin + self.has_where):
+            a = self.args[i]
             if isinstance(a, _ndarray_base):
                 inp = a
                 for j in range(self.nout):
@@ -573,7 +573,7 @@ cdef class KernelArguments:
                         # but may not be best for many inputs.
                         continue
                     if inp is not outp and may_share_bounds(inp, outp):
-                        self.set_in(i, inp.copy())
+                        self.args[i] = inp.copy()
                         break
 
     cdef _preprocess_args(self, dev_id):
@@ -605,30 +605,31 @@ cdef class KernelArguments:
             self.set_where(_scalar.CScalar(bool(x.value)))
 
     cdef find_and_apply_shape(
-            self, tuple params, shape_t& shape, bint shape_fixed):
+            self, tuple params, shape_t& shape, bint shape_fixed,
+            bint include_outputs=True):
         """
         Find the broadcast shape of the arguments and adjust it into `shape`.
         Then broadcast all inputs+where to the new shape. Output arguments
         are checked later, since reductions find a different shape.
         If `shape_fixed=True` then the shape will NOT be broadcast.
+        Reduction outputs do not participate in finding the input shape.
 
         `params` is either the ParameterInfo tuple or None. If None, we assume
         all parameters are non-raw arrays.
         """
         assert shape.size() == 0 or shape_fixed
-        cdef Py_ssize_t i
-        cdef bint any_raw_array = False
+        cdef Py_ssize_t i, nargs = self.nin + self.has_where
         cdef bint shape_discovered = shape_fixed
 
         # Broadcast non-raw arrays.
-        # TODO(seberg): broadcasting outputs isn't really quite right here.
-        for i in range(self.nin + self.has_where + self.nout):
+        if include_outputs:
+            nargs += self.nout
+        for i in range(nargs):
             a = self.args[i]
             if not isinstance(a, _ndarray_base):
                 continue
             if params is not None and (<ParameterInfo>params[i]).raw:
                 # Ignore raw arrays params (assume no raw if params is None)
-                any_raw_array = True
                 continue
 
             if shape_fixed:
@@ -644,9 +645,9 @@ cdef class KernelArguments:
                     [a for a in self.args[:self.nin + self.has_where]
                      if params is None or not params[i].raw])
 
-        if any_raw_array and not shape_discovered:
-            # If there are raw arrays we require a shape discovery. For ufuncs
-            # there will be no raw arrays but scalar inputs are OK.
+        if not self.is_ufunc and not shape_discovered:
+            # Custom kernels need a non-raw array or an explicit size.
+            # Ufuncs also accept scalar-only inputs.
             raise ValueError('Loop size is undecided.')
 
         # TODO(seberg): It would be cool to defer this to CArray creation.
@@ -663,25 +664,15 @@ cdef class KernelArguments:
                     <_ndarray_base>a, shape)
 
     cdef create_out_args_with_types(
-            self, tuple out_types, casting, const shape_t& shape):
+            self, tuple out_types, casting, const shape_t& shape,
+            subtype=None, template=None):
         # TODO(seberg): Moved code, merge with below.  Differences are just
         # that this checks casting and the other allows `p.raw`.
         assert self.is_ufunc
         cdef _ndarray_base arr
 
-        # Determine a template object from which we initialize the output when
-        # inputs have subclass instances
-        def issubclass1(cls, classinfo):
-            return issubclass(cls, classinfo) and cls is not classinfo
-        subtype = cupy.ndarray
-        template = None
-        for i in range(self.nin):
-            in_arg = self.get_in(i)
-            in_arg_type = type(in_arg)
-            if issubclass1(in_arg_type, cupy.ndarray):
-                subtype = in_arg_type
-                template = in_arg
-                break
+        if subtype is None:
+            subtype = cupy.ndarray
 
         for i in range(self.nout):
             a = self.get_out(i)
@@ -1423,6 +1414,20 @@ cdef class ufunc:
         kargs = KernelArguments.create(
             self.nin, self.nout, args, out, where, True, dev_id, self.name)
 
+        # Keep the original input as the subclass initialization template,
+        # before broadcasting replaces it with a view.
+        def issubclass1(cls, classinfo):
+            return issubclass(cls, classinfo) and cls is not classinfo
+        subtype = cupy.ndarray
+        template = None
+        for i in range(self.nin):
+            in_arg = kargs.get_in(i)
+            in_arg_type = type(in_arg)
+            if issubclass1(in_arg_type, cupy.ndarray):
+                subtype = in_arg_type
+                template = in_arg
+                break
+
         kargs.find_and_apply_shape(None, shape, shape_fixed=False)
 
         if (self._cutensor_op is not None
@@ -1449,7 +1454,8 @@ cdef class ufunc:
 
         core_in_dtypes, core_out_dtypes = op.resolve_dtypes(
             kargs.in_args, kargs.out_args)
-        kargs.create_out_args_with_types(core_out_dtypes, casting, shape)
+        kargs.create_out_args_with_types(
+            core_out_dtypes, casting, shape, subtype, template)
 
         ret = kargs.result(self.nout > 1)
 

@@ -843,7 +843,8 @@ cdef class ReductionKernel(_AbstractReductionKernel):
             self.nin, self.nout, args, out, None, False, dev_id, self.name)
 
         kargs.find_and_apply_shape(
-            self._params, broad_shape, shape_fixed=False)
+            self._params, broad_shape, shape_fixed=False,
+            include_outputs=False)
 
         # ReductionKernel not yet supported by the cuda.compute accelerator
         return self._call(
