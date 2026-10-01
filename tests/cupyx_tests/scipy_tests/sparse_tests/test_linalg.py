@@ -822,6 +822,21 @@ class TestRng:
         g3 = cupy.abs(u1[:, rank:].conj().T @ u3[:, rank:])
         assert not bool(cupy.allclose(g3, cupy.eye(6 - rank), atol=1e-6))
 
+    @pytest.mark.parametrize('kw', [{'sigma': 5.5}, {'which': 'SM'}])
+    def test_shift_invert_forwards_rng(self, kw):
+        # Shift-invert returns before drawing a start vector and recurses
+        # into eigsh on (A - sigma*I)^-1, so it is the INNER call that
+        # draws. rng has to travel with it or sigma= and which='SM'
+        # silently ignore it. Asserting on the eigenvalues would not catch
+        # that: this problem converges to the same spectrum from any
+        # start. Assert instead that the generator was consumed.
+        n = 40
+        a = sparse.diags(cupy.arange(1, n + 1, dtype='d')).tocsr()
+        rs = cupy.random.default_rng(11)
+        sparse.linalg.eigsh(a, k=4, rng=rs, return_eigenvectors=False, **kw)
+        untouched = cupy.random.default_rng(11).random((4,))
+        assert not bool((rs.random((4,)) == untouched).all())
+
 
 @testing.parameterize(*testing.product({
     'shape': [(30, 29), (29, 29), (29, 30)],

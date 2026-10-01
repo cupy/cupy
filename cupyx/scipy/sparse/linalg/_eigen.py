@@ -203,7 +203,7 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
         # would cost a triangular solve and buy nothing: switch it off.
         ret = eigsh(OPinv, k=k, which=which, v0=v0, ncv=ncv, maxiter=maxiter,
                     tol=tol, return_eigenvectors=return_eigenvectors,
-                    _reseed_bias=False)
+                    rng=rng, _reseed_bias=False)
         w_inv, x = ret if return_eigenvectors else (ret, None)
         w = (sigma + 1.0 / w_inv).real.astype(a.dtype.char.lower())
         if return_eigenvectors:
