@@ -623,6 +623,34 @@ class TestLinalgMatmul2D:
         return xp.linalg.matmul(a, b)
 
 
+class TestLinalgTensordot:
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_default_axes(self, xp, dtype):
+        x1 = testing.shaped_arange((2, 3, 4), xp, dtype)
+        x2 = testing.shaped_arange((3, 4, 5), xp, dtype)
+        return xp.linalg.tensordot(x1, x2)
+
+    @pytest.mark.parametrize('axes', [
+        0,
+        1,
+        ([1, 2], [0, 1]),
+        ([-1, -2], [-2, -3]),
+    ])
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_axes(self, xp, dtype, axes):
+        x1 = testing.shaped_arange((2, 3, 3), xp, dtype)
+        x2 = testing.shaped_arange((3, 3, 5), xp, dtype)
+        return xp.linalg.tensordot(x1, x2, axes=axes)
+
+    def test_is_cupy_tensordot(self):
+        # `cupy.linalg.tensordot` is just the Array API compatible location
+        # for `cupy.tensordot`, so the two are the same object.
+        assert cupy.linalg.tensordot is cupy.tensordot
+
+
 class TestLinalgMatrixTranspose:
 
     @testing.for_all_dtypes()
