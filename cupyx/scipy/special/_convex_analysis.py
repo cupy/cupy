@@ -73,7 +73,7 @@ entr = _core.create_ufunc(
     preamble=_float_preamble,
     doc='''Elementwise function for computing entropy.
 
-    .. seealso:: :meth:`scipy.special.entr`
+    .. seealso:: :func:`scipy.special.entr`
 
     ''')
 
@@ -84,7 +84,7 @@ kl_div = _core.create_ufunc(
     preamble=_float_preamble,
     doc='''Elementwise function for computing Kullback-Leibler divergence.
 
-    .. seealso:: :meth:`scipy.special.kl_div`
+    .. seealso:: :func:`scipy.special.kl_div`
 
     ''')
 
@@ -95,7 +95,7 @@ rel_entr = _core.create_ufunc(
     preamble=_float_preamble,
     doc='''Elementwise function for computing relative entropy.
 
-    .. seealso:: :meth:`scipy.special.rel_entr`
+    .. seealso:: :func:`scipy.special.rel_entr`
 
     ''')
 
@@ -106,7 +106,7 @@ huber = _core.create_ufunc(
     preamble=_float_preamble,
     doc='''Elementwise function for computing the Huber loss.
 
-    .. seealso:: :meth:`scipy.special.huber`
+    .. seealso:: :func:`scipy.special.huber`
 
     ''')
 
@@ -117,6 +117,6 @@ pseudo_huber = _core.create_ufunc(
     preamble=_float_preamble,
     doc='''Elementwise function for computing the Pseudo-Huber loss.
 
-    .. seealso:: :meth:`scipy.special.pseudo_huber`
+    .. seealso:: :func:`scipy.special.pseudo_huber`
 
     ''')

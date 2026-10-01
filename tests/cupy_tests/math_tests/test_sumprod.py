@@ -674,6 +674,24 @@ class TestNansumNanprodHuge:
 
 axes = [0, 1, 2]
 
+# Our scan (cumsum/cumprod) has two branches, for axes longer or shorter
+# than 512.  Vary the length around that (and its multiples) and the axis.
+_BATCH_SCAN_AXIS_CASES = [
+    ((4, 1), 1),           # 1-wide: many rows per 512-thread block
+    ((3, 7), 1),           # non-power-of-two padding
+    ((17, 256), 1),        # power-of-two, leftover rows in last block
+    ((2, 511), 1),
+    ((2, 512), 1),
+    ((7, 5), 0),           # scan axis 0 (rolled to last)
+    ((2, 8, 3), 1),        # 3d, middle axis
+    ((1, 513), 1),         # remaining = 1
+    ((3, 513), 1),
+    ((2, 1000), 1),        # remaining = 488
+    ((1, 1024), 1),        # exact two blocks
+    ((1024, 2), 0),
+    ((2, 513, 2), 1),
+]
+
 
 class TestCumsum:
 
@@ -793,6 +811,12 @@ class TestCumsum:
         with pytest.raises(TypeError):
             return cupy.cumsum(a_numpy)
 
+    @pytest.mark.parametrize('shape, axis', _BATCH_SCAN_AXIS_CASES)
+    @testing.numpy_cupy_allclose(contiguous_check=False)
+    def test_cumsum_axis_batch_kernels(self, xp, shape, axis):
+        a = testing.shaped_arange(shape, xp, numpy.float64)
+        return self._cumsum(xp, a, axis=axis)
+
 
 class TestCumprod:
 
@@ -891,6 +915,69 @@ class TestCumprod:
         a_numpy = numpy.arange(1, 6, dtype=dtype)
         with pytest.raises(TypeError):
             return cupy.cumprod(a_numpy)
+
+    @pytest.mark.parametrize('shape, axis', _BATCH_SCAN_AXIS_CASES)
+    @testing.numpy_cupy_allclose(contiguous_check=False)
+    def test_cumprod_axis_batch_kernels(self, xp, shape, axis):
+        a = testing.shaped_arange(shape, xp, numpy.float64)
+        a *= 2 / a.size  # scale to (0, 2] to avoid overflow
+        return self._cumprod(xp, a, axis=axis)
+
+
+@testing.slow
+@pytest.mark.thread_unsafe(reason="too large allocations")
+class TestBatchScanSizeOverInt32Max:
+    # Test both branches of _batch_scan_op for very large arrays.
+    # (1, n): large-batch kernel, axis longer than INT32_MAX
+    # (n, 2): small-batch kernel, more rows than INT32_MAX (its padded size
+    #         also exceeds UINT32_MAX)
+    # (2**23 + 1, 512): small-batch kernel with a single row per padded block
+    shapes = [
+        (1, INT32_MAX + 1024),
+        (INT32_MAX + 1024, 2),
+        ((1 << 23) + 1, 512),
+    ]
+
+    @pytest.fixture(autouse=True)
+    def _free_memory(self):
+        cupy.get_default_memory_pool().free_all_blocks()
+        cupy.get_default_pinned_memory_pool().free_all_blocks()
+        yield
+        cupy.get_default_memory_pool().free_all_blocks()
+        cupy.get_default_pinned_memory_pool().free_all_blocks()
+
+    def _spot_check(self, a, expected):
+        # Spot check result (to avoid the full cost).
+        n_rows, n_cols = a.shape
+        # col 512 lands in the second block, i.e. checks the add kernel
+        for row in [r for r in (0, INT32_MAX, n_rows - 1) if r < n_rows]:
+            for col in [c for c in (0, 255, 512, INT32_MAX, n_cols - 1)
+                        if c < n_cols]:
+                assert int(a[row, col]) == expected(col)
+
+    @pytest.mark.parametrize('shape', shapes)
+    def test_cumsum_axis(self, shape):
+        try:
+            a = cupy.zeros(shape, dtype=numpy.uint8)
+            a[:, 0] = 1
+            a[:, -1] = 1
+            cupy.cumsum(a, axis=1, out=a)
+        except MemoryError:
+            pytest.skip("out of memory in test.")
+        # leading 1 plus trailing 1: 1 everywhere, last column is 2
+        n_cols = a.shape[1]
+        self._spot_check(a, lambda col: 2 if col == n_cols - 1 else 1)
+
+    @pytest.mark.parametrize('shape', shapes)
+    def test_cumprod_axis(self, shape):
+        try:
+            a = cupy.ones(shape, dtype=numpy.uint8)
+            a[:, 0] = 2
+            cupy.cumprod(a, axis=1, out=a)
+        except MemoryError:
+            pytest.skip("out of memory in test.")
+        # a leading 2 followed by ones gives 2 everywhere
+        self._spot_check(a, lambda col: 2)
 
 
 @pytest.mark.parametrize("shape", [(20,), (7, 6), (3, 4, 5)])

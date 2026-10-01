@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import numpy
 import pytest
 
 import cupy
 from cupy import testing
 from cupy._core import _accelerator
+from cupy._core import _cuda_compute_common
 from cupy._core import _cuda_compute_scan
 
 
@@ -15,22 +15,13 @@ from cupy._core import _cuda_compute_scan
 # CUPY_ACCELERATORS=cuda_compute).
 @pytest.fixture(autouse=True)
 def use_cuda_compute_accelerator():
-    if _cuda_compute_scan._get_cuda_compute() is None:
+    if _cuda_compute_common._get_cuda_compute() is None:
         pytest.skip('cuda.compute (cuda-cccl) not found')
 
     old_routine_accelerators = _accelerator.get_routine_accelerators()
     _accelerator.set_routine_accelerators(['cuda_compute'])
     yield
     _accelerator.set_routine_accelerators(old_routine_accelerators)
-
-
-class TestCudaComputeScanDtypes:
-
-    # scan_core only promotes when dtype=None and out=None, so an
-    # explicit dtype=/out= reaches the accelerator unpromoted
-    @testing.for_all_dtypes(no_bool=True)
-    def test_supported_dtypes(self, dtype):
-        assert _cuda_compute_scan._supports_dtype(numpy.dtype(dtype)) is True
 
 
 class TestCudaComputeScanMisc:

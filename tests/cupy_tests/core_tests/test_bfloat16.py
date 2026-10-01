@@ -56,6 +56,8 @@ def test_arange(xp, start, stop, step):
     # Misc:
     'cbrt', 'square', 'fabs', 'sign', 'reciprocal',
 ])
+@pytest.mark.filterwarnings(  # Fix deprecated in 2.5 (use trunc)
+    'ignore:numpy.fix is deprecated:DeprecationWarning')
 @numpy.errstate(all='ignore')
 @testing.numpy_cupy_allclose(rtol=TOL, atol=TOL)
 def test_unary(xp, func):
@@ -233,6 +235,14 @@ def test_reductions_large(xp, func, data):
 @testing.numpy_cupy_allclose(rtol=2 * TOL, atol=2 * TOL)
 def test_var_std(xp, func):
     # Same as reduction test above, but with larger tolerance.
+    a = xp.asarray(TEST_VALUES.reshape(3, 4))
+    with numpy.errstate(all='ignore'):
+        return getattr(xp, func)(a)
+
+
+@pytest.mark.parametrize('func', ['cumsum', 'cumprod'])
+@testing.numpy_cupy_allclose(rtol=TOL, atol=TOL)
+def test_scan(xp, func):
     a = xp.asarray(TEST_VALUES.reshape(3, 4))
     with numpy.errstate(all='ignore'):
         return getattr(xp, func)(a)
