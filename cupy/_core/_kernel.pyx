@@ -1464,7 +1464,9 @@ cdef class ufunc:
         kargs.set_indexer(indexer)
 
         arginfos = _get_arginfos(kargs.args)
-        kern = self._get_ufunc_kernel(dev_id, op, arginfos, kargs.has_where)
+        kern = self._get_ufunc_kernel(
+            core_in_dtypes, core_out_dtypes, dev_id, op, arginfos,
+            kargs.has_where)
         kern.linear_launch(indexer.size, kargs.args)
         return ret
 
