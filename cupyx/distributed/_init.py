@@ -19,9 +19,9 @@ def init_process_group(
     This call initializes the distributed environment, it needs to be
     called for every process that is involved in the communications.
 
-    A single device per returned communication is only allowed. It is the user
-    responsibility of setting the appropiated gpu to be used before creating
-    and using the communicator.
+    A single device per returned communication is only allowed. It is the
+    user's responsibility to select the appropriate GPU before creating and
+    using the communicator.
 
     Currently the user needs to specify each process rank and the total
     number of processes, and start all the processes in different hosts
