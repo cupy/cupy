@@ -8,7 +8,6 @@ import cupy
 from cupy import _core
 from cupy._core import _routines_statistics as _statistics
 from cupy._core import _fusion_thread_local
-from cupy._logic import content
 
 # Quantile method parameters (alpha, beta) from Hyndman & Fan (1996)
 # Used for continuous interpolation methods in percentile/quantile
@@ -17,6 +16,7 @@ _QUANTILE_PARAMS = {
     'weibull': (0, 0),              # H&F type 6
     'median_unbiased': (1/3, 1/3),  # H&F type 8
     'normal_unbiased': (3/8, 3/8),  # H&F type 9
+    'interpolated_inverted_cdf': (0, 1),  # H&F type 4
 }
 
 
@@ -94,7 +94,99 @@ def amax(a, axis=None, out=None, keepdims=False):
     return a.max(axis=axis, out=out, keepdims=keepdims)
 
 
-def nanmin(a, axis=None, out=None, keepdims=False):
+def _nanmin_max(a, axis, out, keepdims, initial, where, is_min):
+    if keepdims is numpy._NoValue:
+        keepdims = False
+
+    a = cupy.asanyarray(a)
+
+    if where is not numpy._NoValue and where is not None:
+        if initial is numpy._NoValue:
+            raise ValueError(
+                "reduction operation '{}' does not have an identity, "
+                "so to use a where mask one has to specify 'initial'".format(
+                    'fmin' if is_min else 'fmax'))
+        where = cupy.asanyarray(where, dtype=bool)
+
+    if a.dtype.kind in 'fc':
+        isnan_mask = cupy.isnan(a)
+        if where is not numpy._NoValue and where is not None:
+            valid = where & ~isnan_mask
+        else:
+            valid = ~isnan_mask
+
+        fill_val = float('inf') if is_min else float('-inf')
+        if valid is not None:
+            a_clean = cupy.where(valid, a, fill_val)
+        else:
+            a_clean = a
+    else:
+        if where is not numpy._NoValue and where is not None:
+            a_clean = cupy.where(where, a, initial)
+            valid = where
+        else:
+            a_clean = a
+            valid = None
+
+    try:
+        if is_min:
+            res = a_clean.min(axis=axis, keepdims=keepdims)
+        else:
+            res = a_clean.max(axis=axis, keepdims=keepdims)
+    except ValueError as e:
+        if "zero-size array" in str(e):
+            if initial is numpy._NoValue:
+                raise ValueError(
+                    "zero-size array to reduction operation {} "
+                    "which has no identity".format(
+                        'nanmin' if is_min else 'nanmax'))
+            dummy = cupy.ones(a.shape, dtype=a.dtype)
+            if is_min:
+                out_shape = dummy.min(axis=axis, keepdims=keepdims).shape
+            else:
+                out_shape = dummy.max(axis=axis, keepdims=keepdims).shape
+
+            if a.dtype.kind in 'fc' and initial is numpy._NoValue:
+                res = cupy.full(out_shape, cupy.nan, dtype=a.dtype)
+                warnings.warn("All-NaN slice encountered",
+                              RuntimeWarning, stacklevel=2)
+            else:
+                res = cupy.full(out_shape, initial, dtype=a.dtype)
+
+            if out is not None:
+                cupy.copyto(out, res)
+                return out
+            return res
+        else:
+            raise
+
+    if initial is not numpy._NoValue:
+        if is_min:
+            res = cupy.minimum(res, initial)
+        else:
+            res = cupy.maximum(res, initial)
+
+    if a.dtype.kind in 'fc':
+        if valid is not None:
+            all_invalid = ~valid.any(axis=axis, keepdims=keepdims)
+        else:
+            all_invalid = isnan_mask.all(axis=axis, keepdims=keepdims)
+
+        if initial is numpy._NoValue and all_invalid.any():
+            res = cupy.where(all_invalid, cupy.nan, res)
+            warnings.warn("All-NaN slice encountered",
+                          RuntimeWarning, stacklevel=2)
+
+    if out is not None:
+        cupy.copyto(out, res)
+        return out
+    return res
+
+
+def nanmin(
+    a, axis=None, out=None, keepdims=numpy._NoValue,
+    initial=numpy._NoValue, where=numpy._NoValue
+):
     """Returns the minimum of an array along an axis ignoring NaN.
 
     When there is a slice whose elements are all NaN, a :class:`RuntimeWarning`
@@ -118,14 +210,13 @@ def nanmin(a, axis=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.nanmin`
 
     """
-    # TODO(niboshi): Avoid synchronization.
-    res = _core.nanmin(a, axis=axis, out=out, keepdims=keepdims)
-    if content.isnan(res).any():  # synchronize!
-        warnings.warn('All-NaN slice encountered', RuntimeWarning)
-    return res
+    return _nanmin_max(a, axis, out, keepdims, initial, where, is_min=True)
 
 
-def nanmax(a, axis=None, out=None, keepdims=False):
+def nanmax(
+    a, axis=None, out=None, keepdims=numpy._NoValue,
+    initial=numpy._NoValue, where=numpy._NoValue
+):
     """Returns the maximum of an array along an axis ignoring NaN.
 
     When there is a slice whose elements are all NaN, a :class:`RuntimeWarning`
@@ -149,11 +240,7 @@ def nanmax(a, axis=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.nanmax`
 
     """
-    # TODO(niboshi): Avoid synchronization.
-    res = _core.nanmax(a, axis=axis, out=out, keepdims=keepdims)
-    if content.isnan(res).any():  # synchronize!
-        warnings.warn('All-NaN slice encountered', RuntimeWarning)
-    return res
+    return _nanmin_max(a, axis, out, keepdims, initial, where, is_min=False)
 
 
 def ptp(a, axis=None, out=None, keepdims=False):
@@ -235,11 +322,18 @@ def _quantile_unchecked(a, q, axis=None, out=None,
     Nx = ap.shape[axis]
     indices = q * (Nx - 1.)
 
-    if method in ['averaged_inverted_cdf',
-                  'closest_observation', 'interpolated_inverted_cdf']:
-        # TODO(takagi) Implement new methods introduced in NumPy 1.22
-        raise ValueError(f'\'{method}\' method is not yet supported. '
-                         'Please use any other method.')
+    if method == 'averaged_inverted_cdf':
+        index = q * Nx - 1
+        j = cupy.floor(index)
+        is_int = (index == j)
+        indices = cupy.where(is_int, j + 0.5, j + 1.0)
+        indices = cupy.clip(indices, 0, Nx - 1)
+    elif method == 'closest_observation':
+        index = q * Nx - 1.5
+        j = cupy.floor(index)
+        cond = (index == j) & (j % 2 == 1)
+        indices = cupy.where(cond, j, j + 1)
+        indices = cupy.clip(indices, 0, Nx - 1).astype(cupy.int32)
     elif method in _QUANTILE_PARAMS:
         alpha, beta = _QUANTILE_PARAMS[method]
         indices = q * (Nx - alpha - beta + 1) + alpha - 1
@@ -259,8 +353,12 @@ def _quantile_unchecked(a, q, axis=None, out=None,
     else:
         raise ValueError('Unexpected interpolation method.\n'
                          'Actual: \'{}\' not in (\'linear\', \'lower\','
-                         ' \'higher\',\'midpoint\', \'inverted_cdf\', '
-                         '\'nearest\')'.format(method))
+                         ' \'higher\', \'midpoint\', \'inverted_cdf\', '
+                         '\'nearest\', \'hazen\', \'weibull\', '
+                         '\'median_unbiased\', \'normal_unbiased\', '
+                         '\'interpolated_inverted_cdf\', '
+                         '\'averaged_inverted_cdf\', '
+                         '\'closest_observation\')'.format(method))
 
     if indices.dtype == cupy.int32:
         ret = cupy.rollaxis(ap, axis)
