@@ -740,6 +740,11 @@ def _get_elementwise_kernel(
     return _get_simple_elementwise_kernel_from_code(name, code, options)
 
 
+def _construct(cls, args, kwargs):
+    # __reduce__ cannot pass keyword arguments to a class, but it can to this.
+    return cls(*args, **kwargs)
+
+
 cdef class ElementwiseKernel:
 
     """User-defined elementwise kernel.
@@ -795,6 +800,7 @@ cdef class ElementwiseKernel:
         readonly bint no_return
         readonly bint return_tuple
         readonly dict kwargs
+        readonly tuple _init_args
         readonly dict _params_type_memo
         readonly dict _elementwise_kernel_memo
         readonly dict _cached_codes
@@ -806,6 +812,9 @@ cdef class ElementwiseKernel:
             raise ValueError(
                 'Invalid kernel name: "%s"' % name)
 
+        self._init_args = (
+            in_params, out_params, operation, name, reduce_dims, preamble,
+            no_return, return_tuple)
         self.in_params = _get_param_info(in_params, True)
         self.out_params = _get_param_info(out_params, False)
         self.nin = len(self.in_params)
@@ -829,38 +838,10 @@ cdef class ElementwiseKernel:
         # This is for profiling mechanisms to auto infer a name
         self.__name__ = name
 
-    def __getstate__(self):
-        # Leave out the kernel caches: their modules belong to this process.
-        return {
-            'in_params': self.in_params,
-            'out_params': self.out_params,
-            'params': self.params,
-            'operation': self.operation,
-            'name': self.name,
-            'reduce_dims': self.reduce_dims,
-            'preamble': self.preamble,
-            'no_return': self.no_return,
-            'return_tuple': self.return_tuple,
-            'kwargs': self.kwargs,
-        }
-
-    def __setstate__(self, dict state):
-        self.in_params = state['in_params']
-        self.out_params = state['out_params']
-        self.nin = len(self.in_params)
-        self.nout = len(self.out_params)
-        self.nargs = self.nin + self.nout
-        self.params = state['params']
-        self.operation = state['operation']
-        self.name = self.__name__ = state['name']
-        self.reduce_dims = state['reduce_dims']
-        self.preamble = state['preamble']
-        self.no_return = state['no_return']
-        self.return_tuple = state['return_tuple']
-        self.kwargs = state['kwargs']
-        self._params_type_memo = {}
-        self._elementwise_kernel_memo = {}
-        self._cached_codes = {}
+    def __reduce__(self):
+        # Rebuild from the constructor arguments rather than copying the kernel
+        # caches, whose modules belong to this process.
+        return _construct, (type(self), self._init_args, self.kwargs)
 
     def __call__(self, *args, **kwargs):
         """Compiles and invokes the elementwise kernel.
@@ -1211,11 +1192,18 @@ cdef class ufunc:
         readonly object _doc
         public object __doc__
         readonly object __name__
+        readonly tuple _init_args
+        readonly dict _init_kwargs
 
     def __init__(
             self, name, nin, nout, _Ops ops, preamble='', loop_prep='', doc='',
             default_casting=None, *, _Ops out_ops=None, cutensor_op=None,
             scatter_op=None):
+        self._init_args = (
+            name, nin, nout, ops, preamble, loop_prep, doc, default_casting)
+        self._init_kwargs = {
+            'out_ops': out_ops, 'cutensor_op': cutensor_op,
+            'scatter_op': scatter_op}
         self.name = name
         self.__name__ = name
         self.nin = nin
@@ -1253,47 +1241,10 @@ cdef class ufunc:
         self._routine_cache = {}
         self._kernel_memo = {}
 
-    def __getstate__(self):
-        # Leave out the kernel caches: their modules belong to this process.
-        return {
-            'name': self.name,
-            'nin': self.nin,
-            'nout': self.nout,
-            'ops': self._ops,
-            'out_ops': self._out_ops,
-            'preamble': self._preamble,
-            'loop_prep': self._loop_prep,
-            'doc': self._doc,
-            '__doc__': self.__doc__,
-            'default_casting': self._default_casting,
-            'cutensor_op': self._cutensor_op,
-            'cutensor_alpha': self._cutensor_alpha,
-            'cutensor_gamma': self._cutensor_gamma,
-            'scatter_op': self._scatter_op,
-            'params': self._params,
-            'params_with_where': self._params_with_where,
-        }
-
-    def __setstate__(self, dict state):
-        self.name = self.__name__ = state['name']
-        self.nin = state['nin']
-        self.nout = state['nout']
-        self.nargs = self.nin + self.nout
-        self._ops = state['ops']
-        self._out_ops = state['out_ops']
-        self._preamble = state['preamble']
-        self._loop_prep = state['loop_prep']
-        self._doc = state['doc']
-        self.__doc__ = state['__doc__']
-        self._default_casting = state['default_casting']
-        self._cutensor_op = state['cutensor_op']
-        self._cutensor_alpha = state['cutensor_alpha']
-        self._cutensor_gamma = state['cutensor_gamma']
-        self._scatter_op = state['scatter_op']
-        self._params = state['params']
-        self._params_with_where = state['params_with_where']
-        self._routine_cache = {}
-        self._kernel_memo = {}
+    def __reduce__(self):
+        # Rebuild from the constructor arguments rather than copying the kernel
+        # caches, whose modules belong to this process.
+        return _construct, (type(self), self._init_args, self._init_kwargs)
 
     def __repr__(self):
         return '<ufunc \'%s\'>' % self.name

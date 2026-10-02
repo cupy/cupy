@@ -94,7 +94,8 @@ class TestUserkernel(unittest.TestCase):
 
     def test_pickle_after_call(self):
         user_kernel = cupy.ElementwiseKernel(
-            'T x', 'T y', 'y = x * x', 'user_kernel_pickle')
+            'T x', 'T y', 'y = x * scale', 'user_kernel_pickle',
+            loop_prep='const int scale = 2;')
         x = testing.shaped_arange((4,), cupy, cupy.float32)
         expected = user_kernel(x)
         copy = pickle.loads(pickle.dumps(user_kernel))
