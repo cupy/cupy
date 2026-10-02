@@ -10,6 +10,8 @@ import pytest
 import cupy
 from cupy._core import _routines_linalg as _linalg
 from cupy import testing
+from cupy.cuda import runtime
+from cupy_backends.cuda.libs import cublas
 
 
 @testing.parameterize(
@@ -496,3 +498,108 @@ class TestMatmulDispatch(unittest.TestCase):
         assert isinstance(o_np, cupy.ndarray)
         o_cp = cupy.matmul(x1, x2, axes=[(0, 1), (0, 1), (0, 1)])
         testing.assert_allclose(o_np, o_cp)
+
+
+@pytest.mark.parametrize('dtype_name', ['float16', 'bfloat16'])
+@pytest.mark.parametrize('shape_pair, batched', [
+    (((2, 3, 64), (2, 64, 4)), False),
+    (((2, 5, 3, 64), (2, 5, 64, 4)), False),
+    (((2, 3, 64), (64, 4)), True),
+    (((2, 5, 3, 64), (64, 4)), True),
+    (((2, 1, 3, 64), (1, 5, 64, 4)), True),
+])
+@pytest.mark.parametrize(
+    'layout', ['contiguous', 'noncontiguous', 'misaligned'])
+class TestMatmul16Bit:
+
+    @pytest.fixture
+    def dtype_info(self, dtype_name):
+        if runtime.is_hip:
+            pytest.skip('CUDA-specific GEMM dispatch')
+
+        min_capability = 80 if dtype_name == 'bfloat16' else 70
+        if int(cupy.cuda.Device().compute_capability) < min_capability:
+            pytest.skip('16-bit tensor cores are not available')
+
+        if dtype_name == 'bfloat16':
+            if cupy.cuda.get_local_runtime_version() < 12020:
+                pytest.skip('bfloat16 is not supported')
+            ml_dtypes = pytest.importorskip('ml_dtypes')
+            dtype = numpy.dtype(ml_dtypes.bfloat16)
+            cuda_dtype = runtime.CUDA_R_16BF
+        else:
+            dtype = numpy.dtype(numpy.float16)
+            cuda_dtype = runtime.CUDA_R_16F
+        return dtype, cuda_dtype
+
+    @pytest.mark.thread_unsafe(reason="patches cuBLAS dispatch")
+    def test_matmul(
+            self, dtype_info, shape_pair, batched, layout, monkeypatch):
+        dtype, cuda_dtype = dtype_info
+        a = testing.shaped_random(
+            shape_pair[0], cupy, numpy.float32).astype(dtype)
+        b = testing.shaped_random(
+            shape_pair[1], cupy, numpy.float32).astype(dtype)
+
+        if layout == 'misaligned':
+            # Contiguous views retain this two-byte offset through
+            # ascontiguousarray, including when the contraction size is 64.
+            a_offset = self._misaligned_empty(a.shape, dtype)
+            b_offset = self._misaligned_empty(b.shape, dtype)
+            a_offset[...] = a
+            b_offset[...] = b
+            a, b = a_offset, b_offset
+        elif layout == 'noncontiguous':
+            a = a[..., ::-1]
+            b = b[..., ::-1, :]
+
+        # Compute the reference in float32 from the rounded inputs.
+        expected = numpy.matmul(
+            cupy.asnumpy(a.astype(numpy.float32)),
+            cupy.asnumpy(b.astype(numpy.float32)),
+        ).astype(dtype)
+
+        if layout == 'misaligned':
+            out = self._misaligned_empty(expected.shape, dtype)
+        else:
+            out = cupy.empty(expected.shape, dtype=dtype)
+        if layout == 'noncontiguous':
+            out = out[..., ::-1]
+
+        name = 'gemmBatchedEx' if batched else 'gemmStridedBatchedEx'
+        gemm = getattr(cublas, name)
+        calls = []
+
+        def record_gemm(*args):
+            calls.append(args)
+            return gemm(*args)
+
+        monkeypatch.setattr(cublas, name, record_gemm)
+        result = cupy.matmul(a, b, out=out)
+
+        assert result is out
+        assert result.dtype == dtype
+        assert len(calls) == 1
+
+        args = calls[0]
+        # Positions of Atype, Btype, and Ctype in each cuBLAS wrapper.
+        dtype_indices = (8, 11, 15) if batched else (8, 12, 17)
+        for index in dtype_indices:
+            assert args[index] == cuda_dtype
+        assert args[-2] == cublas.CUBLAS_COMPUTE_32F
+        assert args[-1] == cublas.CUBLAS_GEMM_DEFAULT
+
+        testing.assert_allclose(
+            result.astype(numpy.float32),
+            expected.astype(numpy.float32),
+            rtol=1e-2,  # bfloat16 error range
+        )
+
+    @staticmethod
+    def _misaligned_empty(shape, dtype):
+        out = cupy.empty(int(numpy.prod(shape)) + 1, dtype=dtype)
+        assert out.data.ptr % 16 == 0
+        out = out[1:].reshape(shape)
+        assert out.flags.c_contiguous
+        assert out.data.ptr % 16 == 2
+        return out

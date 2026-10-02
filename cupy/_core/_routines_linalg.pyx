@@ -949,12 +949,23 @@ cpdef _ndarray_base matmul(
     dtype = ret_dtype
 
     cdef int cuda_dtype = -1
+    cdef int compute_dtype = -1
+    coef_dtype = dtype
     if dtype.kind not in 'biu':
         cuda_dtype = to_cuda_dtype(dtype, is_half_allowed=True)
+        compute_dtype = cuda_dtype
         if (cuda_dtype == runtime.CUDA_R_16F
                 or cuda_dtype == runtime.CUDA_R_16BF):
-            dtype = numpy.dtype('f')
-            cuda_dtype = runtime.CUDA_R_32F
+            if (runtime._is_hip_environment
+                    or orig_a_ndim < 2 or orig_b_ndim < 2
+                    or int(device.get_compute_capability()) < (
+                        80 if cuda_dtype == runtime.CUDA_R_16BF else 70)):
+                dtype = numpy.dtype('f')
+                cuda_dtype = runtime.CUDA_R_32F
+                compute_dtype = cuda_dtype
+            else:
+                compute_dtype = cublas.CUBLAS_COMPUTE_32F
+            coef_dtype = numpy.dtype('f')
 
     a = ascontiguousarray(a, dtype)
     b = ascontiguousarray(b, dtype)
@@ -1057,15 +1068,15 @@ cpdef _ndarray_base matmul(
         return out
 
     cdef intptr_t handle = device.get_cublas_handle()
-    cdef int algo = cublas.CUBLAS_GEMM_DEFAULT
 
-    one = numpy.array(1, dtype=dtype)
-    zero = numpy.array(0, dtype=dtype)
+    one = numpy.array(1, dtype=coef_dtype)
+    zero = numpy.array(0, dtype=coef_dtype)
     if not use_broadcast:
         strideA = _get_stride_for_strided_batched_gemm(a)
         strideB = _get_stride_for_strided_batched_gemm(b)
         strideC = _get_stride_for_strided_batched_gemm(c_view)
-        if dtype.char in 'fFdD':
+        if (cuda_dtype in (runtime.CUDA_R_16F, runtime.CUDA_R_16BF)
+                or dtype.char in 'fFdD'):
             cublas.gemmStridedBatchedEx(
                 handle,
                 0,  # transa
@@ -1075,14 +1086,26 @@ cpdef _ndarray_base matmul(
                 b.data.ptr, cuda_dtype, ldb, strideB,
                 zero.ctypes.data,
                 c_view.data.ptr, cuda_dtype, ldc, strideC,
-                batchCount, cuda_dtype, algo)
+                batchCount, compute_dtype, cublas.CUBLAS_GEMM_DEFAULT)
         else:
             raise TypeError(dtype, a.dtype, b.dtype)
     else:
         ap = _mat_ptrs(a)
         bp = _mat_ptrs(b)
         cp = _mat_ptrs(c_view)
-        if dtype == numpy.float32:
+        if (cuda_dtype == runtime.CUDA_R_16F
+                or cuda_dtype == runtime.CUDA_R_16BF):
+            cublas.gemmBatchedEx(
+                handle,
+                0,  # transa
+                0,  # transb
+                n, m, ka, one.ctypes.data,
+                ap.data.ptr, cuda_dtype, lda,
+                bp.data.ptr, cuda_dtype, ldb,
+                zero.ctypes.data,
+                cp.data.ptr, cuda_dtype, ldc,
+                batchCount, compute_dtype, cublas.CUBLAS_GEMM_DEFAULT)
+        elif cuda_dtype == runtime.CUDA_R_32F:
             cublas.sgemmBatched(
                 handle,
                 0,  # transa
@@ -1091,7 +1114,7 @@ cpdef _ndarray_base matmul(
                 ap.data.ptr, lda,
                 bp.data.ptr, ldb,
                 zero.ctypes.data, cp.data.ptr, ldc, batchCount)
-        elif dtype == numpy.float64:
+        elif cuda_dtype == runtime.CUDA_R_64F:
             cublas.dgemmBatched(
                 handle,
                 0,  # transa
@@ -1100,7 +1123,7 @@ cpdef _ndarray_base matmul(
                 ap.data.ptr, lda,
                 bp.data.ptr, ldb,
                 zero.ctypes.data, cp.data.ptr, ldc, batchCount)
-        elif dtype == numpy.complex64:
+        elif cuda_dtype == runtime.CUDA_C_32F:
             cublas.cgemmBatched(
                 handle,
                 0,  # transa
@@ -1109,7 +1132,7 @@ cpdef _ndarray_base matmul(
                 ap.data.ptr, lda,
                 bp.data.ptr, ldb,
                 zero.ctypes.data, cp.data.ptr, ldc, batchCount)
-        elif dtype == numpy.complex128:
+        elif cuda_dtype == runtime.CUDA_C_64F:
             cublas.zgemmBatched(
                 handle,
                 0,  # transa
