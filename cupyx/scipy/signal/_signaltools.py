@@ -162,8 +162,9 @@ def fftconvolve(in1, in2, mode='full', axes=None):
                            not rely on the zero-padding. Either ``in1`` or \
                            ``in2`` must be at least as large as the other in \
                            every dimension.
-            - ``'same'``: output is the same size as ``in1``, centered \
-                          with respect to the 'full' output
+            - ``'same'``: output is the same size as ``in1`` along the \
+                          convolution axes, centered with respect to the \
+                          ``'full'`` output. Other axes are broadcast.
 
         axes (scalar or tuple of scalar or None): Axes over which to compute
             the convolution. The default is over all axes.
@@ -181,11 +182,13 @@ def fftconvolve(in1, in2, mode='full', axes=None):
     out = _st_core._check_conv_inputs(in1, in2, mode)
     if out is not None:
         return out
-    in1, in2, axes = _st_core._init_freq_conv_axes(in1, in2, mode, axes, False)
+    in1, in2, axes, all_axes = _st_core._init_freq_conv_axes(
+        in1, in2, mode, axes, False)
     shape = [max(x1, x2) if a not in axes else x1 + x2 - 1
              for a, (x1, x2) in enumerate(zip(in1.shape, in2.shape))]
     out = _st_core._freq_domain_conv(in1, in2, axes, shape, calc_fast_len=True)
-    return _st_core._apply_conv_mode(out, in1.shape, in2.shape, mode, axes)
+    return _st_core._apply_conv_mode(
+        out, in1.shape, in2.shape, mode, axes, all_axes)
 
 
 def choose_conv_method(in1, in2, mode='full'):
@@ -234,8 +237,9 @@ def oaconvolve(in1, in2, mode="full", axes=None):
                            not rely on the zero-padding. Either ``in1`` or \
                            ``in2`` must be at least as large as the other in \
                            every dimension.
-            - ``'same'``: output is the same size as ``in1``, centered \
-                          with respect to the ``'full'`` output
+            - ``'same'``: output is the same size as ``in1`` along the \
+                          convolution axes, centered with respect to the \
+                          ``'full'`` output. Other axes are broadcast.
 
         axes (scalar or tuple of scalar or None): Axes over which to compute
             the convolution. The default is over all axes.
@@ -254,11 +258,11 @@ def oaconvolve(in1, in2, mode="full", axes=None):
     if in1.shape == in2.shape:  # Equivalent to fftconvolve
         return fftconvolve(in1, in2, mode=mode, axes=axes)
 
-    in1, in2, axes = _st_core._init_freq_conv_axes(in1, in2, mode, axes,
-                                                   sorted_axes=True)
+    in1, in2, axes, all_axes = _st_core._init_freq_conv_axes(
+        in1, in2, mode, axes, sorted_axes=True)
     s1, s2 = in1.shape, in2.shape
     if not axes:
-        return _st_core._apply_conv_mode(in1*in2, s1, s2, mode, axes)
+        return _st_core._apply_conv_mode(in1*in2, s1, s2, mode, axes, all_axes)
 
     # Calculate the block sizes for the output, steps, first and second inputs.
     # It is simpler to calculate them all together than doing them in separate
@@ -269,7 +273,7 @@ def oaconvolve(in1, in2, mode="full", axes=None):
 
     # Fall back to fftconvolve if there is only one block in every dimension
     if in1_step == s1 and in2_step == s2:
-        return fftconvolve(in1, in2, mode=mode, axes=axes)
+        return fftconvolve(in1, in2, mode=mode, axes=all_axes)
 
     # Pad and reshape the inputs for overlapping and adding
     shape_final = [s1[i]+s2[i]-1 if i in axes else None
@@ -309,7 +313,7 @@ def oaconvolve(in1, in2, mode="full", axes=None):
     # Slice to the correct size
     ret = ret[tuple([slice(islice) for islice in shape_final])]
 
-    return _st_core._apply_conv_mode(ret, s1, s2, mode, axes)
+    return _st_core._apply_conv_mode(ret, s1, s2, mode, axes, all_axes)
 
 
 def convolve2d(in1, in2, mode='full', boundary='fill', fillvalue=0):
