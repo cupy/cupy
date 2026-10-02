@@ -17,10 +17,10 @@ def init_process_group(
     """Start `cupyx.distributed` and obtain a communicator.
 
     This call initializes the distributed environment, it needs to be
-    called for every process that is involved in the communications.
+    called in every process that is involved in the communications.
 
-    A single device per returned communication is only allowed. It is the
-    user's responsibility to select the appropriate GPU before creating and
+    Only one device per process is allowed. It is the user's responsibility
+    to set the appropriate GPU as the current device before creating and
     using the communicator.
 
     Currently the user needs to specify each process rank and the total
