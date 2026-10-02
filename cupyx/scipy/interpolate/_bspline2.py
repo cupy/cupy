@@ -114,7 +114,8 @@ def make_interp_spline(x, y, k=3, t=None, bc_type=None, axis=0,
         * ``"natural"``: The second derivatives at ends are zero. This is
           equivalent to ``bc_type=([(2, 0.0)], [(2, 0.0)])``.
         * ``"not-a-knot"`` (default): The first and second segments are the
-          same polynomial. This is equivalent to having ``bc_type=None``.
+          same polynomial. This is equivalent to having ``bc_type=None``
+          for ``k > 1``.
         * ``"periodic"``: The values and the first ``k-1`` derivatives at the
           ends are equivalent.
 
@@ -167,21 +168,25 @@ def make_interp_spline(x, y, k=3, t=None, bc_type=None, axis=0,
     if k == 0:
         if any(_ is not None for _ in (t, deriv_l, deriv_r)):
             raise ValueError("Too much info for k=0: t and bc_type can only "
-                             "be None.")
+                             "be None or 'periodic'.")
         t = cupy.r_[x, x[-1]]
         c = cupy.asarray(y)
         c = cupy.ascontiguousarray(c, dtype=_get_dtype(c.dtype))
-        return BSpline.construct_fast(t, c, k, axis=axis)
+        extrapolate = "periodic" if bc_type == "periodic" else True
+        return BSpline.construct_fast(
+            t, c, k, extrapolate=extrapolate, axis=axis)
 
     # special-case k=1 (e.g., Lyche and Morken, Eq.(2.16))
     if k == 1 and t is None:
         if not (deriv_l is None and deriv_r is None):
-            raise ValueError(
-                "Too much info for k=1: bc_type can only be None.")
+            raise ValueError("Too much info for k=1: bc_type can only be none "
+                             "or 'periodic'.")
         t = cupy.r_[x[0], x, x[-1]]
         c = cupy.asarray(y)
         c = cupy.ascontiguousarray(c, dtype=_get_dtype(c.dtype))
-        return BSpline.construct_fast(t, c, k, axis=axis)
+        extrapolate = "periodic" if bc_type == "periodic" else True
+        return BSpline.construct_fast(
+            t, c, k, extrapolate=extrapolate, axis=axis)
 
     k = operator.index(k)
 
