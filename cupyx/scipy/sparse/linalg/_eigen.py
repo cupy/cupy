@@ -60,7 +60,7 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
         v0 (ndarray): Starting vector for iteration. If ``None``, a random
             unit vector drawn from ``rng`` is used.
         ncv (int): The number of Lanczos vectors generated. Must be
-            ``k + 1 < ncv < n``. If ``None``, default value is used.
+            ``k < ncv <= n``. If ``None``, default value is used.
         maxiter (int): Maximum number of Lanczos update iterations.
             If ``None``, default value is used.
         tol (float): Tolerance for residuals ``||Ax - wx||``. If ``0``, machine
@@ -126,9 +126,9 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
         raise ValueError('which must be \'LM\',\'LA\'or\'SA\' (actual: {})'
                          ''.format(which))
     if ncv is None:
-        ncv = min(max(2 * k, k + 32), n - 1)
+        ncv = min(max(2 * k, k + 32), n)
     else:
-        ncv = min(max(ncv, k + 2), n - 1)
+        ncv = min(max(ncv, k + 2), n)
     if maxiter is None:
         maxiter = 10 * n
     if tol == 0:
@@ -203,7 +203,7 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
 
     uu = cupy.empty((k,), dtype=a.dtype)
 
-    while res > tol and iter < maxiter:
+    while res > tol and iter < maxiter and k + 1 < ncv:
         # Setup for thick-restart
         beta[:k] = 0
         alpha[:k] = w
@@ -806,7 +806,7 @@ def svds(a, k=6, *, ncv=None, tol=0, which='LM', v0=None,
         k (int): The number of singular values/vectors to compute. Must be
             ``1 <= k < min(m, n)``.
         ncv (int): The number of Lanczos vectors generated. Must be
-            ``k + 1 < ncv < min(m, n)``. If ``None``, default value is used.
+            ``k < ncv <= min(m, n)``. If ``None``, default value is used.
         tol (float): Tolerance for singular values. If ``0``, machine precision
             is used.
         which (str): Only 'LM' is supported. 'LM': finds ``k`` largest singular
