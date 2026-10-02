@@ -245,8 +245,12 @@ python:
     spec: "3.14.6"
   "3.14t":
     spec: "3.14t"
+  "3.15":
+    spec: "3.15.0rc2"
+  "3.15t":
+    spec: "3.15.0rc2t"
   "pre":
-    spec: "3.15-dev"  # note that dependency python libraies may not work
+    spec: "3.16-dev"  # note that dependency python libraies may not work
 
 ###############################################################################
 # Python Libraries
@@ -299,6 +303,8 @@ numpy:
       - "3.13"
       - "3.14"
       - "3.14t"
+      - "3.15"
+      - "3.15t"
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
 scipy:
@@ -366,6 +372,8 @@ scipy:
       - "3.12"
       - "3.13"
       - "3.14"
+      - "3.15"
+      - "3.15t"
     numpy:
       - "2.0"
       - "2.1"
@@ -382,6 +390,8 @@ optuna:
     spec: "==3.*"
   "4":
     spec: "==4.*"
+  "5":
+    spec: "==5.*"
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
 ml_dtypes:
@@ -402,6 +412,7 @@ mpi4py:
       - "3.12"
       - "3.13"
       - "3.14"
+      - "3.15"
 cython:
   "3.2":
     spec: "==3.2.*,!=3.2.6"
