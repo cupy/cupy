@@ -928,6 +928,8 @@ cdef _scatter_op_single(
     indices_shape = indices.shape
     v_shape = lshape + indices_shape + rshape
     v = _manipulation.broadcast_to(v, v_shape)
+    if a.size == 0 and v.size != 0:
+        raise IndexError('cannot scatter into an empty array.')
 
     cdim = indices.size
     rdim = internal.prod_sequence(rshape)
