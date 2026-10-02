@@ -312,9 +312,9 @@ _CHANNELIZER_8X8_KERNEL = _CHANNELIZER_KERNEL_PREAMBLE + r"""
 // T is input type
 // U is output type
 template<typename T, typename U, int M = 8, int WARPSIZE = 32>
-__global__ void _cupy_channelizer_8x8( const int n_chans,
+__global__ void _cupy_channelizer_8x8( const long long n_chans,
                                        const int n_taps,
-                                       const int n_pts,
+                                       const long long n_pts,
                                        const T *__restrict__ x,
                                        const T *__restrict__ h,
                                        U *__restrict__ y ) {
@@ -324,7 +324,7 @@ __global__ void _cupy_channelizer_8x8( const int n_chans,
     const auto tile_32 { cg::tiled_partition<WARPSIZE>( block ) };
     const auto tile { cg::tiled_partition<M>( tile_32 ) };
 
-    const auto btx { blockIdx.x * blockDim.x + threadIdx.x };
+    const long long btx { static_cast<long long>(blockIdx.x) * blockDim.x + threadIdx.x };
 
     const auto tx { threadIdx.x };
     const auto ty { threadIdx.y };
@@ -349,7 +349,7 @@ __global__ void _cupy_channelizer_8x8( const int n_chans,
 
     T local_h { s_mem[ty][tx] };
 
-    for ( auto bid = blockIdx.y; bid < n_pts; bid += gridDim.y ) {
+    for ( long long bid = blockIdx.y; bid < n_pts; bid += gridDim.y ) {
         block.sync( );
         // Load data
         if ( bid >= n_taps ) {
@@ -388,7 +388,7 @@ __global__ void _cupy_channelizer_8x8( const int n_chans,
         U vv {};
 
         // Perform compute
-        if ( ( blockIdx.x * M + ty ) < n_chans ) {
+        if ( ( static_cast<long long>(blockIdx.x) * M + ty ) < n_chans ) {
             temp = local_h * local_reg;
             if constexpr ( std::is_same_v<T, thrust::complex<float>> || std::is_same_v<T, thrust::complex<double>> ) {
                 vv.real( cg::reduce( tile, temp.real( ), cg::plus<typename U::value_type>( ) ) );
@@ -399,8 +399,8 @@ __global__ void _cupy_channelizer_8x8( const int n_chans,
         }
 
         // Store output
-        if ( tx == 0 && ( blockIdx.x * M + ty ) < n_chans ) {
-            y[bid * n_chans + ( blockIdx.x * M + ty )] = vv;
+        if ( tx == 0 && ( static_cast<long long>(blockIdx.x) * M + ty ) < n_chans ) {
+            y[bid * n_chans + ( static_cast<long long>(blockIdx.x) * M + ty )] = vv;
         }
     }
 }
@@ -427,9 +427,9 @@ _CHANNELIZER_16X16_KERNEL = _CHANNELIZER_KERNEL_PREAMBLE + r"""
 // T is input type
 // U is output type
 template<typename T, typename U, int M = 16, int WARPSIZE = 32>
-__global__ void _cupy_channelizer_16x16( const int n_chans,
+__global__ void _cupy_channelizer_16x16( const long long n_chans,
                                          const int n_taps,
-                                         const int n_pts,
+                                         const long long n_pts,
                                          const T *__restrict__ x,
                                          const T *__restrict__ h,
                                          U *__restrict__ y ) {
@@ -439,7 +439,7 @@ __global__ void _cupy_channelizer_16x16( const int n_chans,
     const auto tile_32 { cg::tiled_partition<WARPSIZE>( block ) };
     const auto tile { cg::tiled_partition<M>( tile_32 ) };
 
-    const auto btx { blockIdx.x * blockDim.x + threadIdx.x };
+    const long long btx { static_cast<long long>(blockIdx.x) * blockDim.x + threadIdx.x };
 
     const auto tx { threadIdx.x };
     const auto ty { threadIdx.y };
@@ -464,7 +464,7 @@ __global__ void _cupy_channelizer_16x16( const int n_chans,
 
     T local_h { s_mem[ty][tx] };
 
-    for ( auto bid = blockIdx.y; bid < n_pts; bid += gridDim.y ) {
+    for ( long long bid = blockIdx.y; bid < n_pts; bid += gridDim.y ) {
         block.sync( );
         // Load data
         if ( bid >= n_taps ) {
@@ -503,7 +503,7 @@ __global__ void _cupy_channelizer_16x16( const int n_chans,
         U vv {};
 
         // Perform compute
-        if ( ( blockIdx.x * M + ty ) < n_chans ) {
+        if ( ( static_cast<long long>(blockIdx.x) * M + ty ) < n_chans ) {
             temp = local_h * local_reg;
             if constexpr ( std::is_same_v<T, thrust::complex<float>> || std::is_same_v<T, thrust::complex<double>> ) {
                 vv.real( cg::reduce( tile, temp.real( ), cg::plus<typename U::value_type>( ) ) );
@@ -514,8 +514,8 @@ __global__ void _cupy_channelizer_16x16( const int n_chans,
         }
 
         // Store output
-        if ( tx == 0 && ( blockIdx.x * M + ty ) < n_chans ) {
-            y[bid * n_chans + ( blockIdx.x * M + ty )] = vv;
+        if ( tx == 0 && ( static_cast<long long>(blockIdx.x) * M + ty ) < n_chans ) {
+            y[bid * n_chans + ( static_cast<long long>(blockIdx.x) * M + ty )] = vv;
         }
     }
 }
@@ -542,9 +542,9 @@ _CHANNELIZER_32X32_KERNEL = _CHANNELIZER_KERNEL_PREAMBLE + r"""
 // T is input type
 // U is output type
 template<typename T, typename U, int M = 32, int WARPSIZE = 32>
-__global__ void _cupy_channelizer_32x32( const int n_chans,
+__global__ void _cupy_channelizer_32x32( const long long n_chans,
                                          const int n_taps,
-                                         const int n_pts,
+                                         const long long n_pts,
                                          const T *__restrict__ x,
                                          const T *__restrict__ h,
                                          U *__restrict__ y ) {
@@ -553,7 +553,7 @@ __global__ void _cupy_channelizer_32x32( const int n_chans,
     const auto block { cg::this_thread_block( ) };
     const auto tile { cg::tiled_partition<WARPSIZE>( block ) };
 
-    const auto btx { blockIdx.x * blockDim.x + threadIdx.x };
+    const long long btx { static_cast<long long>(blockIdx.x) * blockDim.x + threadIdx.x };
 
     const auto tx { threadIdx.x };
     const auto ty { threadIdx.y };
@@ -578,7 +578,7 @@ __global__ void _cupy_channelizer_32x32( const int n_chans,
 
     T local_h { s_mem[ty][tx] };
 
-    for ( auto bid = blockIdx.y; bid < n_pts; bid += gridDim.y ) {
+    for ( long long bid = blockIdx.y; bid < n_pts; bid += gridDim.y ) {
         block.sync( );
         // Load data
         if ( bid >= n_taps ) {
@@ -617,7 +617,7 @@ __global__ void _cupy_channelizer_32x32( const int n_chans,
         U vv {};
 
         // Perform compute
-        if ( ( blockIdx.x * M + ty ) < n_chans ) {
+        if ( ( static_cast<long long>(blockIdx.x) * M + ty ) < n_chans ) {
             temp = local_h * local_reg;
             if constexpr ( std::is_same_v<T, thrust::complex<float>> || std::is_same_v<T, thrust::complex<double>> ) {
                 vv.real( cg::reduce( tile, temp.real( ), cg::plus<typename U::value_type>( ) ) );
@@ -628,8 +628,8 @@ __global__ void _cupy_channelizer_32x32( const int n_chans,
         }
 
         // Store output
-        if ( tx == 0 && ( blockIdx.x * M + ty ) < n_chans ) {
-            y[bid * n_chans + ( blockIdx.x * M + ty )] = vv;
+        if ( tx == 0 && ( static_cast<long long>(blockIdx.x) * M + ty ) < n_chans ) {
+            y[bid * n_chans + ( static_cast<long long>(blockIdx.x) * M + ty )] = vv;
         }
     }
 }
@@ -717,13 +717,14 @@ def channelize_poly(x, h, n_chans):
     Number of filter taps (len of filter / n_chans) must be <=32.
 
     """
+    n_chans = int(n_chans)
     dtype = cupy.promote_types(x.dtype, h.dtype)
 
     x = cupy.asarray(x, dtype=dtype)
     h = cupy.asarray(h, dtype=dtype)
 
     # number of taps in each h_n filter
-    n_taps = int(len(h) / n_chans)
+    n_taps = len(h) // n_chans
     if n_taps > 32:
         raise NotImplementedError(
             "The number of calculated taps ({}) in  \
@@ -734,7 +735,7 @@ def channelize_poly(x, h, n_chans):
         )
 
     # number of outputs
-    n_pts = int(len(x) / n_chans)
+    n_pts = len(x) // n_chans
 
     if x.dtype == cupy.float32 or x.dtype == cupy.complex64:
         y = cupy.empty((n_pts, n_chans), dtype=cupy.complex64)

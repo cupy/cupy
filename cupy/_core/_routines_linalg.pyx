@@ -116,7 +116,7 @@ def _tensordot_core_int_kernel_impl(config, dtype, code, name):
 
 template<typename T>
 __device__ void _tensordot_core_int_kernel_impl(
-        int M, int N, int K,
+        long long M, long long N, long long K,
         const T* A,
         const T* B,
         T * C)
@@ -132,8 +132,8 @@ __device__ void _tensordot_core_int_kernel_impl(
     int idxB = idt % DIM_XB;
     int idyB = idt / DIM_XB;
 
-    int blx = blockIdx.x;
-    int bly = blockIdx.y;
+    long long blx = blockIdx.x;
+    long long bly = blockIdx.y;
 
     __shared__ T sA[BLK_K][BLK_M + 1];
     __shared__ T sB[BLK_N][BLK_K + 1];
@@ -147,11 +147,13 @@ __device__ void _tensordot_core_int_kernel_impl(
     T rb[BLK_N / DIM_YB][BLK_K / DIM_XB];
 
     const T* offs_dA = A + blx * BLK_M       + idyA * M + idxA;
-    int boundA = (M * (K - 1) + M) - (blx * BLK_M + idyA * M + idxA) - 1;
+    long long boundA = (M * (K - 1) + M) - (blx * BLK_M + idyA * M + idxA) - 1;
     const T* offs_dB = B + bly * BLK_N * K + idyB * K + idxB;
-    int boundB = (K * (N - 1) + K) - (bly * BLK_N * K + idyB * K + idxB) - 1;
+    long long boundB = (
+        K * (N - 1) + K) - (bly * BLK_N * K + idyB * K + idxB) - 1;
 
-    int m, n, k, kk;
+    int m, n, k;
+    long long kk;
 
     #pragma unroll
     for (n = 0; n < THR_N; n++) {
@@ -289,10 +291,10 @@ __device__ void _tensordot_core_int_kernel_impl(
 
     #pragma unroll
     for (n = 0; n < THR_N; n++) {
-        int coord_dCn = bly * BLK_N + n * DIM_Y + idy;
+        long long coord_dCn = bly * BLK_N + n * DIM_Y + idy;
         #pragma unroll
         for (m = 0; m < THR_M; m++) {
-            int coord_dCm = blx * BLK_M + m * DIM_X + idx;
+            long long coord_dCm = blx * BLK_M + m * DIM_X + idx;
             if (coord_dCm < M && coord_dCn < N) {
                 C[coord_dCn * M + coord_dCm] = rC[n][m];
             }
@@ -323,7 +325,7 @@ def _tensordot_core_int_kernel(config, dtype):
     code = '''
 template<typename T>
 __global__ void _tensordot_core_int_kernel(
-        int M, int N, int K,
+        long long M, long long N, long long K,
         const T* A,
         const T* B,
         T * C)
@@ -340,7 +342,7 @@ def _tensordot_core_int_batched_kernel(config, dtype):
     code = '''
 template<typename T>
 __global__ void _tensordot_core_int_batched_kernel(
-        int M, int N, int K,
+        long long M, long long N, long long K,
         const T* A[], const T* B[],
         T* C[])
 {
@@ -359,7 +361,7 @@ def _tensordot_core_int_strided_batched_kernel(config, dtype):
     code = '''
 template<typename T>
 __global__ void _tensordot_core_int_strided_batched_kernel(
-        int M, int N, int K,
+        long long M, long long N, long long K,
         const T* A, long long strideA,
         const T* B, long long strideB,
         T * C, long long strideC)

@@ -17,6 +17,23 @@ except ImportError:
     scipy = None
 
 
+@testing.slow
+@pytest.mark.thread_unsafe(reason='Allocation too large.')
+def test_lombscargle_large_frequency_array():
+    freqs = out = None
+    try:
+        x = cupy.array([0, np.pi / 2])
+        y = cupy.array([1, 0])
+        freqs = cupy.ones(2**31 + 1, dtype=cupy.float64)
+        out = cupyx.scipy.signal.lombscargle(x, y, freqs)
+        testing.assert_allclose(out[-2:], 0.5)
+    except MemoryError:
+        pytest.skip('out of memory in test.')
+    finally:
+        del out, freqs
+        cupy.get_default_memory_pool().free_all_blocks()
+
+
 @pytest.mark.xfail(
     runtime.is_hip and driver.get_build_version() < 5_00_00000,
     reason='name_expressions with ROCm 4.3 may not work')
