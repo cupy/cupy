@@ -192,13 +192,13 @@ class TestReductionKernelInvalidArgument(unittest.TestCase):
                 'T x', 'T y', 'x', 'a + b', 'y = a', '0', name='1')
 
 
-@pytest.mark.thread_unsafe(reason='Accelerator mutation.')
 @testing.parameterize(*testing.product({
     'order': ['C', 'F', 'strided'],
     'backend': [[], ['cub'], ['cuda_compute']],
     'axis': [0, 1, 2, ()],
     'keepdims': [False, True],
 }))
+@pytest.mark.thread_unsafe(reason='Accelerator mutation.')
 class TestReductionOutputOrder(unittest.TestCase):
 
     def setUp(self):
