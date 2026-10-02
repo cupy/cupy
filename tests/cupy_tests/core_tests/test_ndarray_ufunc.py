@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pickle
+
 import numpy
 import pytest
 
@@ -207,6 +209,16 @@ class TestUfunc:
             # (at the time of writing the char was E, hopefully it'll change)
             types = [t for t in types if numpy.dtype(bfloat16).char not in t]
         return types
+
+    @pytest.mark.parametrize('ufunc', ['abs', 'exp', 'add'])
+    def test_pickle_after_call(self, ufunc):
+        f = getattr(cupy, ufunc)
+        args = (testing.shaped_arange((4,), cupy, cupy.float32),) * f.nin
+        expected = f(*args)
+        copy = pickle.loads(pickle.dumps(f))
+        testing.assert_array_equal(copy(*args), expected)
+        del copy
+        testing.assert_array_equal(f(*args), expected)
 
     @testing.numpy_cupy_allclose()
     def test_unary_out_tuple(self, xp):
