@@ -335,15 +335,6 @@ cdef _XtFree(intptr_t ptr):
     PyMem_Free(xtArr)
 
 
-cdef object _get_aligned_fft_input(object a, bint is_r2c):
-    # cuFFT requires real inputs to have complex-element alignment.
-    if (is_r2c and not runtime.is_hip
-            and a.data.ptr % (2 * a.itemsize)
-            and (a.flags.c_contiguous or a.flags.f_contiguous)):
-        return a.copy(order='A')
-    return a
-
-
 cdef class Plan1d:
     def __init__(self, int nx, int fft_type, int batch, *,
                  devices=None, out=None, intptr_t prealloc_plan=0):
@@ -583,8 +574,6 @@ cdef class Plan1d:
             result = cufftSetStream(<Handle>plan, <Stream>s)
         check_result(result)
 
-        a = _get_aligned_fft_input(
-            a, self.fft_type == CUFFT_R2C or self.fft_type == CUFFT_D2Z)
         if self.fft_type == CUFFT_C2C:
             execC2C(plan, a.data.ptr, out.data.ptr, direction)
         elif self.fft_type == CUFFT_R2C:
@@ -929,8 +918,6 @@ cdef class PlanNd:
             result = cufftSetStream(<Handle>plan, <Stream>s)
         check_result(result)
 
-        a = _get_aligned_fft_input(
-            a, self.fft_type == CUFFT_R2C or self.fft_type == CUFFT_D2Z)
         if self.fft_type == CUFFT_C2C:
             execC2C(plan, a.data.ptr, out.data.ptr, direction)
         elif self.fft_type == CUFFT_R2C:
@@ -1073,9 +1060,6 @@ cdef class XtPlanNd:
         with nogil:
             result = cufftSetStream(<Handle>plan, <Stream>s)
         check_result(result)
-        a = _get_aligned_fft_input(
-            a, self.itype in (
-                runtime.CUDA_R_16F, runtime.CUDA_R_32F, runtime.CUDA_R_64F))
         XtExec(plan, a.data.ptr, out.data.ptr, direction)
 
     def _sanity_checks(self, int itype, int otype, int etype,

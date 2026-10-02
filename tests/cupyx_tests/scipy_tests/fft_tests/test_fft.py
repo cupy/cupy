@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+
 import numpy as np
 try:
     import scipy
@@ -44,24 +46,35 @@ def _correct_np_dtype(xp, dtype, out):
 @pytest.mark.parametrize('dtype', [np.float32, np.float64])
 @pytest.mark.parametrize('offset', [0, 1])
 @pytest.mark.parametrize('ndim', [1, 3])
+@pytest.mark.parametrize('layout', ['view', 'strided', 'pointer'])
 def test_rfft_input_alignment(
         dtype: type[np.float32 | np.float64], offset: int,
-        ndim: int) -> None:
-    a: cp.ndarray = cp.ones(shape=(2,) + (35,) * ndim, dtype=dtype)
-    x: cp.ndarray = a[offset]
-    assert x.flags.c_contiguous
+        ndim: int, layout: str) -> None:
+    shape: tuple[int, ...] = (35,) * ndim
+    backing: cp.ndarray
+    x: cp.ndarray
+    if layout == 'view':
+        backing = cp.ones(shape=(2,) + shape, dtype=dtype)
+        x = backing[offset]
+    elif layout == 'strided':
+        backing = cp.ones(shape=shape[:-1] + (2 * shape[-1],), dtype=dtype)
+        x = backing[..., offset::2]
+    else:
+        backing = cp.ones(shape=math.prod(shape) + 1, dtype=dtype)
+        x = cp.ndarray(
+            shape=shape, dtype=dtype,
+            memptr=backing.data + offset * backing.itemsize)
     assert x.data.ptr % (2 * x.itemsize) == offset * x.itemsize
 
     out: cp.ndarray = (
         cp_fft.rfft(x=x) if ndim == 1 else cp_fft.rfftn(x=x))
     testing.assert_allclose(
         actual=out,
-        desired=np.fft.rfftn(np.ones(shape=x.shape, dtype=dtype)),
+        desired=np.fft.rfftn(np.ones(shape=shape, dtype=dtype)),
         rtol=1e-5 if dtype is np.float32 else 1e-12,
         atol=1e-3 if dtype is np.float32 else 1e-9)
     testing.assert_array_equal(
-        actual=a, desired=np.ones(shape=a.shape, dtype=dtype))
-    assert out.flags.c_contiguous
+        actual=backing, desired=np.ones(shape=backing.shape, dtype=dtype))
 
 
 @testing.parameterize(*testing.product({
