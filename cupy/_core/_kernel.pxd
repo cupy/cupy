@@ -13,6 +13,8 @@ cdef class ParameterInfo:
         readonly str name
         readonly object dtype
         readonly str ctype
+        readonly tuple core_shape
+        readonly int core_ndim
         readonly bint raw
         readonly bint is_const
 
@@ -36,6 +38,7 @@ cdef class _ArgInfo:
         readonly int ndim
         readonly bint c_contiguous
         readonly bint index_32_bits
+        readonly int core_ndim
 
     cdef _ArgInfo _init(
         self,
@@ -44,13 +47,14 @@ cdef class _ArgInfo:
         object dtype,
         int ndim,
         bint c_contiguous,
-        bint index_32_bits)
+        bint index_32_bits,
+        int core_ndim=*)
 
     @staticmethod
-    cdef _ArgInfo from_arg(object arg)
+    cdef _ArgInfo from_arg(object arg, int core_ndim=*)
 
     @staticmethod
-    cdef _ArgInfo from_ndarray(_ndarray_base arg)
+    cdef _ArgInfo from_ndarray(_ndarray_base arg, int core_ndim=*)
 
     @staticmethod
     cdef _ArgInfo from_scalar(_scalar.CScalar arg)
@@ -154,7 +158,7 @@ cpdef create_ufunc(name, ops, routine=*, preamble=*, doc=*,
 
 cpdef str _full_mask_hex()
 
-cdef tuple _get_arginfos(list args)
+cdef tuple _get_arginfos(list args, object core_ndims=*)
 
 cdef str _get_kernel_params(tuple params, tuple arginfos, type_decls=*)
 
