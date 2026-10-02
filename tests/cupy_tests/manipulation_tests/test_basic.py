@@ -92,6 +92,12 @@ class TestBasic:
         xp.copyto(a, b, where=c)
         return a
 
+    @testing.numpy_cupy_array_equal()
+    def test_copyto_overlapping_where(self, xp):
+        a = xp.ones((1024, 1024), dtype=bool)
+        xp.copyto(a, False, where=a[::-1, ::-1])
+        return a
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_copyto_where_squeeze_broadcast(self, xp, dtype):

@@ -133,6 +133,18 @@ class TestElementwiseKernelSize(unittest.TestCase):
         with self.raises_size_required():
             kernel2(self.arr1, self.arr2)
 
+    def test_all_scalars(self):
+        kernel = self.create_kernel((False,), (False,))
+        with self.raises_size_required():
+            kernel(1)
+        assert kernel(1, size=2).shape == (2,)
+
+    def test_no_arguments(self):
+        kernel = self.create_kernel((), (False,))
+        with self.raises_size_required():
+            kernel()
+        assert kernel(size=2).shape == (2,)
+
     def test_all_nonraws(self):
         # All arrays are not raw -> size not allowed
         kernel1 = self.create_kernel((False, False), (False,))

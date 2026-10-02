@@ -56,6 +56,15 @@ class SimpleReductionFunctionTestBase(AbstractReductionTestBase):
 
 class TestSimpleReductionFunction(
         unittest.TestCase, SimpleReductionFunctionTestBase):
+    def test_subclass_output(self):
+        class Array(cupy.ndarray):
+            pass
+
+        a = cupy.arange(6, dtype='int8').view(Array)
+        result = self.get_sum_func()(a)
+        assert type(result) is cupy.ndarray
+        testing.assert_array_equal(result, 15)
+
     def test_shape1(self):
         for i in range(1, 10):
             self.check_int8_sum((2 ** i,))
@@ -148,6 +157,22 @@ class ReductionKernelTestBase(AbstractReductionTestBase):
 
 
 class TestReductionKernel(ReductionKernelTestBase, unittest.TestCase):
+
+    def test_supplied_output_shape(self):
+        kernel = self.get_sum_func()
+        for shape in ((2, 1), (2, 3), (0, 3)):
+            a = cupy.arange(numpy.prod(shape), dtype='float32').reshape(shape)
+            out = cupy.empty(shape[0], dtype='float32')
+            result = kernel(a, axis=1, out=out)
+            assert result is out
+            testing.assert_array_equal(result, a.get().sum(axis=1))
+
+    def test_scalar_input_without_shape(self):
+        kernel = cupy.ReductionKernel(
+            'float32 x', 'float32 y', 'x', 'a + b', 'y = a', '0',
+            'scalar_sum')
+        with pytest.raises(ValueError, match='Loop size is undecided'):
+            kernel(1)
 
     def test_shape1(self):
         for i in range(1, 10):
