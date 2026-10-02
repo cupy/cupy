@@ -455,10 +455,12 @@ class TestCooMatrixInit:
                     shape=self.shape)
 
     def test_unsupported_dtype(self):
+        # A non-numeric dtype ('U3') is unsupported; integers and the
+        # 16-bit floats (float16/bfloat16) now are.
         with pytest.raises(ValueError):
             sparse.coo_matrix(
                 (self.data(cupy), (self.row(cupy), self.col(cupy))),
-                shape=self.shape, dtype='i')
+                shape=self.shape, dtype='U3')
 
     @testing.numpy_cupy_equal(sp_name='sp')
     def test_conj(self, xp, sp):
