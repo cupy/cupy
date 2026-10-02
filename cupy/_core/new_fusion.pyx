@@ -72,7 +72,8 @@ class Fusion:
 
         # Check for invalid argument types
         for i in range(nargs):
-            if not isinstance(args[i], _fusion_argument_types):
+            if not isinstance(args[i], _fusion_argument_types) \
+                    and not callable(args[i]):
                 mes = 'Invalid argument type for \'{}\': ({})'
                 arg_types = ', '.join(repr(type(a)) for a in args)
                 raise TypeError(mes.format(self.name, arg_types))
@@ -110,6 +111,11 @@ class Fusion:
                 params_info.append('?')
             elif isinstance(arg, complex):
                 params_info.append('D')
+            elif callable(arg):
+                # Include the callable itself (not id(arg), which can be
+                # reused after garbage collection) so kernels compiled for
+                # different callables never collide in the cache.
+                params_info.append(arg)
             else:
                 raise TypeError('Unsupported input type {}.'.format(type(arg)))
 
