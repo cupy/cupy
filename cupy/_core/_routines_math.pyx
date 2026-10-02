@@ -719,9 +719,11 @@ cdef _proc_as_batch(_ndarray_base x, int axis, scan_op op):
 
 cpdef scan_core(
         _ndarray_base a, axis, scan_op op, dtype=None, _ndarray_base out=None):
-    if no_axis := axis is None:
+    if axis is None:
         a = a.ravel()
         axis = 0
+    else:
+        axis = internal._normalize_axis_index(axis, a.ndim)
 
     if out is None:
         if dtype is None:
@@ -742,7 +744,7 @@ cpdef scan_core(
         else:
             result = a.astype(out.dtype, order='C')
 
-    if no_axis:
+    if a.ndim == 1 and axis == 0:
         for accelerator in _accelerator._routine_accelerators:
             if accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE:
                 if op == scan_op.SCAN_SUM:
@@ -775,7 +777,6 @@ cpdef scan_core(
     else:
         if result is None:
             result = a.astype(dtype, order='C')
-        axis = internal._normalize_axis_index(axis, a.ndim)
         result = _proc_as_batch(result, axis, op)
     # This is for when the original out param was not contiguous
     if out is not None and out.data != result.data:
