@@ -469,6 +469,7 @@ configs {
       memory: 60
       disk: 30
       gpu: 1
+      machine_family: "g2"  # NVIDIA L4
     }
     time_limit: {
       seconds: 21600
