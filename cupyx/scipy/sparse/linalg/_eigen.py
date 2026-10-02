@@ -7,8 +7,11 @@ from cupy import cublas
 from cupy._core import _dtype
 from cupy.cuda import device
 from cupy_backends.cuda.libs import cublas as _cublas
+from cupyx.scipy.linalg import lu_factor, lu_solve
 from cupyx.scipy.sparse import _csr
+from cupyx.scipy.sparse import identity, issparse
 from cupyx.scipy.sparse.linalg import _interface
+from cupyx.scipy.sparse.linalg._solve import splu
 
 # Only CuPy's own generators: a NumPy generator would draw the start vector
 # on the host, and the global-state sentinel has no counterpart in scipy.
@@ -37,8 +40,8 @@ def _default_v0(n, dtype, rs):
 
 
 def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
-          tol=0, sigma=None, OPinv=None, return_eigenvectors=True,
-          rng=None, _reseed_bias=True):
+          tol=0, sigma=None, M=None, Minv=None, OPinv=None,
+          mode='normal', return_eigenvectors=True, rng=None):
     """
     Find ``k`` eigenvalues and eigenvectors of the real symmetric square
     matrix or complex Hermitian matrix ``A``.
@@ -83,10 +86,19 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
             ``w = sigma + 1 / w_inv``. ``A`` must then be a sparse matrix or
             a dense array (so that ``A - sigma * I`` can be factorized)
             unless ``OPinv`` is given.
+        M (ndarray or spmatrix): Accepted for signature compatibility with
+            :func:`scipy.sparse.linalg.eigsh`. The generalized eigenproblem
+            is not implemented, so any value other than ``None`` raises
+            :class:`NotImplementedError`.
+        Minv (ndarray or spmatrix): Accepted for signature compatibility
+            with :func:`scipy.sparse.linalg.eigsh`; any value other than
+            ``None`` raises :class:`NotImplementedError`.
         OPinv (LinearOperator): Operator applying ``(A - sigma * I)^{-1}``,
             used in shift-invert mode instead of factorizing
             ``A - sigma * I``. Required when ``sigma`` is given and ``A`` is
             not sparse.
+        mode (str): Only ``'normal'`` is implemented; ``'buckling'`` and
+            ``'cayley'`` raise :class:`NotImplementedError`.
         return_eigenvectors (bool): If ``True``, returns eigenvectors in
             addition to eigenvalues.
         rng (int or generator): Source of the default start vector when
@@ -135,9 +147,32 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
         several times longer than the nominal iteration count suggests.
 
     """
+    if M is not None:
+        raise NotImplementedError(
+            'M (generalized eigenproblem) is not yet supported')
+    if Minv is not None:
+        raise NotImplementedError('Minv is not yet supported')
+    if mode != 'normal':
+        raise NotImplementedError(
+            "mode={!r} is not supported; only 'normal' is "
+            'implemented'.format(mode))
+
     n = a.shape[0]
     if a.ndim != 2 or a.shape[0] != a.shape[1]:
         raise ValueError('expected square matrix (shape: {})'.format(a.shape))
+    # Validate before the shift-invert dispatch, so that a bad dtype, k or
+    # which reports against 'a' instead of surfacing from the recursion as
+    # an error about OPinv (or, for an int dtype under 'SM', as a ValueError
+    # out of numpy.finfo while computing the automatic shift).
+    if a.dtype.char not in 'fdFD':
+        raise TypeError('unsupprted dtype (actual: {})'.format(a.dtype))
+    if k <= 0:
+        raise ValueError('k must be greater than 0 (actual: {})'.format(k))
+    if k >= n:
+        raise ValueError('k must be smaller than n (actual: {})'.format(k))
+    if which not in ('LM', 'LA', 'SA', 'SM'):
+        raise ValueError('which must be \'LM\', \'LA\', \'SA\' or \'SM\' '
+                         '(actual: {})'.format(which))
 
     if which == 'SM':
         if sigma is not None:
@@ -162,13 +197,9 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
         # separated; eigenvectors are shared and eigenvalues map back by
         # w = sigma + 1 / w_inv. `which` applies to the transformed values,
         # as in scipy.sparse.linalg.eigsh.
-        from cupyx.scipy.sparse import identity as _identity
-        from cupyx.scipy.sparse import issparse as _issparse
-        from cupyx.scipy.sparse.linalg._solve import splu as _splu
-        from cupyx.scipy.sparse.linalg._interface import LinearOperator as _LO
         if OPinv is None:
             mat = a.A if isinstance(a, _interface.MatrixLinearOperator) else a
-            if not (_issparse(mat) or isinstance(mat, cupy.ndarray)):
+            if not (issparse(mat) or isinstance(mat, cupy.ndarray)):
                 raise TypeError(
                     "shift-invert mode requires a sparse matrix or a dense "
                     "array 'a' (to factorize A - sigma*I), or an explicit "
@@ -181,29 +212,30 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
                 # the operator scale: far too small to change which
                 # eigenvalues are nearest, large enough to keep the LU
                 # away from the singularity.
-                vals = mat.data if _issparse(mat) else mat
+                vals = mat.data if issparse(mat) else mat
                 scale = float(cupy.abs(vals).max()) if vals.size else 0.0
                 sigma = -float(numpy.sqrt(numpy.finfo(a.dtype).eps)) * (
                     scale if scale > 0.0 else 1.0)
-            if _issparse(mat):
-                shifted = mat - sigma * _identity(n, dtype=a.dtype,
-                                                  format='csc')
-                solve = _splu(shifted.tocsc()).solve
+            if issparse(mat):
+                shifted = mat - sigma * identity(n, dtype=a.dtype,
+                                                 format='csc')
+                solve = splu(shifted.tocsc()).solve
             else:
-                from cupyx.scipy.linalg import lu_factor, lu_solve
                 lu_piv = lu_factor(mat - sigma * cupy.eye(n, dtype=a.dtype))
 
                 def solve(b, lu_piv=lu_piv):
                     return lu_solve(lu_piv, b)
-            OPinv = _LO((n, n), matvec=solve, dtype=a.dtype)
-        elif not isinstance(OPinv, _LO):
+            OPinv = _interface.LinearOperator(
+                (n, n), matvec=solve, dtype=a.dtype)
+        elif not isinstance(OPinv, _interface.LinearOperator):
             OPinv = _interface.aslinearoperator(OPinv)
         # (A - sigma*I)^{-1} is nonsingular by construction, so the
-        # breakdown-reseed bias (one extra operator application per reseed)
-        # would cost a triangular solve and buy nothing: switch it off.
-        ret = eigsh(OPinv, k=k, which=which, v0=v0, ncv=ncv, maxiter=maxiter,
-                    tol=tol, return_eigenvectors=return_eigenvectors,
-                    rng=rng, _reseed_bias=False)
+        # breakdown-reseed bias would cost a triangular solve and buy
+        # nothing: pass bias_op=None.
+        ret = _eigsh_impl(OPinv, k, which=which, v0=v0, ncv=ncv,
+                          maxiter=maxiter, tol=tol,
+                          return_eigenvectors=return_eigenvectors,
+                          rng=rng, bias_op=None)
         w_inv, x = ret if return_eigenvectors else (ret, None)
         w = (sigma + 1.0 / w_inv).real.astype(a.dtype.char.lower())
         if return_eigenvectors:
@@ -217,15 +249,20 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
             order = cupy.argsort(w)
         return w[order]
 
-    if a.dtype.char not in 'fdFD':
-        raise TypeError('unsupprted dtype (actual: {})'.format(a.dtype))
-    if k <= 0:
-        raise ValueError('k must be greater than 0 (actual: {})'.format(k))
-    if k >= n:
-        raise ValueError('k must be smaller than n (actual: {})'.format(k))
-    if which not in ('LM', 'LA', 'SA', 'SM'):
-        raise ValueError('which must be \'LM\', \'LA\', \'SA\' or \'SM\' '
-                         '(actual: {})'.format(which))
+    # Restart-reseed bias (see _restart_ortho): pull reseeds out of the
+    # operator's null space, except for 'SA', where the smallest (possibly
+    # zero) eigenvalues are the ones being sought.
+    return _eigsh_impl(a, k, which=which, v0=v0, ncv=ncv, maxiter=maxiter,
+                       tol=tol, return_eigenvectors=return_eigenvectors,
+                       rng=rng, bias_op=a if which != 'SA' else None)
+
+
+def _eigsh_impl(a, k, *, which, v0, ncv, maxiter, tol,
+                return_eigenvectors, rng, bias_op):
+    # The thick-restart driver. Callers have already validated their
+    # arguments and resolved which operator to iterate on; the shift-invert
+    # branch of eigsh enters here directly with OPinv.
+    n = a.shape[0]
     if ncv is None:
         ncv = min(max(2 * k, k + 32), n - 1)
     else:
@@ -284,7 +321,6 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
     # Restart-reseed bias (see _restart_ortho): pull reseeds out of the
     # operator's null space -- except for 'SA', where the smallest
     # (possibly zero) eigenvalues are the ones being sought.
-    bias_op = a if (which != 'SA' and _reseed_bias) else None
     la_shift = (which == 'LA')
 
     # Lanczos iteration
@@ -949,6 +985,12 @@ def svds(a, k=6, *, ncv=None, tol=0, which='LM', v0=None,
     if k >= min(m, n):
         raise ValueError('k must be smaller than min(m, n) (actual: {})'
                          ''.format(k))
+    # eigsh accepts 'SM' (shift-invert about 0); on a.H @ a that would hunt
+    # the smallest eigenvalues while everything below assumes the largest,
+    # so reject anything but 'LM' here instead of returning wrong values.
+    if which != 'LM':
+        raise ValueError(
+            "which must be 'LM' (actual: {})".format(which))
 
     a = _interface.aslinearoperator(a)
     if m >= n:
