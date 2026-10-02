@@ -48,6 +48,67 @@ class TestChirp:
             t=0, f0=10.0, f1=1.0, t1=1.0, method='hyperbolic')
         return w
 
+    @pytest.mark.parametrize('method, f0, f1, vertex_zero', [
+        ('linear', -3.0, 3.0, True),
+        ('lin', -3.0, 3.0, True),
+        ('li', -3.0, 3.0, True),
+        ('quadratic', 1.0, 3.0, True),
+        ('quadratic', 1.0, 3.0, False),
+        ('quad', 1.0, 3.0, True),
+        ('q', 1.0, 3.0, True),
+        ('logarithmic', 1.0, 3.0, True),
+        ('log', 1.0, 3.0, True),
+        ('lo', 1.0, 3.0, True),
+        ('hyperbolic', 3.0, 1.0, True),
+        ('hyp', 3.0, 1.0, True),
+    ])
+    @testing.with_requires('scipy>=1.15.0')
+    @testing.numpy_cupy_allclose(
+        scipy_name='scp', rtol=1e-6, atol=1e-6)
+    def test_complex(
+            self, method, f0, f1, vertex_zero, xp, scp):
+        t = xp.linspace(-0.25, 1.0, 101)
+        return scp.signal.chirp(
+            t, f0, 1.0, f1, method=method, phi=37.0,
+            vertex_zero=vertex_zero, complex=True)
+
+    @pytest.mark.parametrize('dtype, expected_dtype, tol', [
+        (cupy.float32, cupy.complex64, 1e-5),
+        (cupy.float64, cupy.complex128, 1e-12),
+    ])
+    def test_complex_properties(self, dtype, expected_dtype, tol):
+        t = cupy.linspace(0.0, 1.0, 101, dtype=dtype)
+        actual = cupyx.scipy.signal.chirp(
+            t, 1.0, 1.0, 3.0, complex=True)
+        expected_real = cupyx.scipy.signal.chirp(t, 1.0, 1.0, 3.0)
+
+        assert actual.dtype == expected_dtype
+        testing.assert_allclose(
+            actual.real, expected_real, rtol=tol, atol=tol)
+        testing.assert_allclose(
+            cupy.abs(actual), cupy.ones_like(expected_real),
+            rtol=tol, atol=tol)
+
+    @pytest.mark.parametrize('method, f0, f1', [
+        ('logarithmic', 0.0, 1.0),
+        ('hyperbolic', 0.0, 1.0),
+    ])
+    @testing.with_requires('scipy>=1.15.0')
+    def test_complex_invalid_frequency(self, method, f0, f1):
+        for xp, scp in [(cupy, cupyx.scipy), (np, scipy)]:
+            t = xp.linspace(0.0, 1.0, 5)
+            with pytest.raises(ValueError):
+                scp.signal.chirp(
+                    t, f0, 1.0, f1, method=method, complex=True)
+
+    @testing.with_requires('scipy>=1.15.0')
+    def test_complex_keyword_only(self):
+        for xp, scp in [(cupy, cupyx.scipy), (np, scipy)]:
+            t = xp.linspace(0.0, 1.0, 5)
+            with pytest.raises(TypeError):
+                scp.signal.chirp(
+                    t, 1.0, 1.0, 3.0, 'linear', 0.0, True, True)
+
     def test_hyperbolic_zero_freq(self):
         # f0=0 or f1=0 must raise a ValueError.
         method = 'hyperbolic'
