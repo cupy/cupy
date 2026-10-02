@@ -1696,24 +1696,14 @@ cpdef gemmBatchedEx(
         int ldc, int batchCount, int computeType, int algo):
     _setStream(handle)
     with nogil:
-        IF CUPY_USE_CUDA_PYTHON:
-            status = cublasGemmBatchedEx(
-                <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
-                <const void*>alpha,
-                <const void* const*>A, <DataType>Atype, lda,
-                <const void* const*>B, <DataType>Btype, ldb,
-                <const void*>beta,
-                <void* const*>C, <DataType>Ctype, ldc,
-                batchCount, <ComputeType>computeType, <GemmAlgo>algo)
-        ELSE:
-            status = cublasGemmBatchedEx(
-                <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
-                <const void*>alpha,
-                <const void* const*>A, <DataType>Atype, lda,
-                <const void* const*>B, <DataType>Btype, ldb,
-                <const void*>beta,
-                <void* const*>C, <DataType>Ctype, ldc,
-                batchCount, <ComputeType>computeType, <GemmAlgo>algo)
+        status = cublasGemmBatchedEx(
+            <Handle>handle, <Operation>transa, <Operation>transb, m, n, k,
+            <const void*>alpha,
+            <const void* const*>A, <DataType>Atype, lda,
+            <const void* const*>B, <DataType>Btype, ldb,
+            <const void*>beta,
+            <void* const*>C, <DataType>Ctype, ldc,
+            batchCount, <ComputeType>computeType, <GemmAlgo>algo)
     check_status(status)
 
 
