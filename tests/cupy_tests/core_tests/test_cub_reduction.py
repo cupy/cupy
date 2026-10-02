@@ -228,6 +228,8 @@ class TestCubReductionUserOutput(CubReductionTestBase):
         func = _cub_reduction._SimpleCubReductionKernel_get_cached_function
         with testing.AssertFunctionIsCalled(func_name, wraps=func):
             result = cupy.nansum(a, axis=axis)
+        assert result.flags.c_contiguous == (order == 'C')
+        assert result.flags.f_contiguous == (order == 'F')
         import numpy
 
         testing.assert_array_equal(result, numpy.nansum(cupy.asnumpy(a),

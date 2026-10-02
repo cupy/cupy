@@ -291,7 +291,7 @@ cpdef inline tuple _can_use_cub_block_reduction(
     parameters, otherwise returns None.
     '''
     cdef tuple axis_permutes_cub
-    cdef _ndarray_base in_arr
+    cdef _ndarray_base in_arr, out_arr
     cdef Py_ssize_t contiguous_size = 1
     cdef str order
 
@@ -306,6 +306,7 @@ cpdef inline tuple _can_use_cub_block_reduction(
         return None
 
     in_arr = in_args[0]
+    out_arr = out_args[0]
 
     # the axes might not be sorted when we arrive here...
     reduce_axis = tuple(sorted(reduce_axis))
@@ -313,12 +314,16 @@ cpdef inline tuple _can_use_cub_block_reduction(
 
     # check reduction axes, if not contiguous then fall back to old kernel
     if in_arr._f_contiguous:
+        if not out_arr._f_contiguous:
+            return None
         order = 'F'
         if not cub._cub_device_segmented_reduce_axis_compatible(
                 reduce_axis, in_arr.ndim, order):
             return None
         axis_permutes_cub = reduce_axis + out_axis
     elif in_arr._c_contiguous:
+        if not out_arr._c_contiguous:
+            return None
         order = 'C'
         if not cub._cub_device_segmented_reduce_axis_compatible(
                 reduce_axis, in_arr.ndim, order):
@@ -613,7 +618,7 @@ cdef bint _try_to_call_cub_reduction(
         map_expr, reduce_expr, post_map_expr,
         reduce_type, _kernel._TypeMap type_map,
         tuple reduce_axis, tuple out_axis, const shape_t& out_shape,
-        _ndarray_base ret, bint out_from_user) except *:
+        _ndarray_base ret) except *:
     """Try to use cub.
 
     Updates `ret` and returns a boolean value whether cub is used.
@@ -636,19 +641,8 @@ cdef bint _try_to_call_cub_reduction(
 
     axis_permutes, contiguous_size, full_reduction = can_use_cub
 
-    if out_from_user:
-        if in_args[0]._f_contiguous:
-            if not ret._f_contiguous:
-                return False
-        elif not ret._c_contiguous:
-            return False
-
     in_shape = _reduction._set_permuted_args(
         in_args, axis_permutes, a_shape, self.in_params)
-
-    if not out_from_user and in_args[0]._f_contiguous:
-        ret._set_contiguous_strides(ret.dtype.itemsize, False)
-        out_args[0] = ret
 
     if not full_reduction:  # just need one pass
         out_block_num = 1  # = number of segments

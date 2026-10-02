@@ -8,7 +8,9 @@ import pytest
 import cupy
 import cupy._core._accelerator as _acc
 from cupy import _core
+from cupy import _environment
 from cupy import testing
+from cupy._core import _cuda_compute_common
 from cupy.exceptions import ComplexWarning, AxisError
 
 from cupy.testing._protocol_helpers import (
@@ -188,6 +190,58 @@ class TestReductionKernelInvalidArgument(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Invalid kernel name'):
             cupy.ReductionKernel(
                 'T x', 'T y', 'x', 'a + b', 'y = a', '0', name='1')
+
+
+@pytest.mark.thread_unsafe(reason='Accelerator mutation.')
+@testing.parameterize(*testing.product({
+    'order': ['C', 'F', 'strided'],
+    'backend': [[], ['cub'], ['cuda_compute']],
+    'axis': [0, 1, 2, ()],
+    'keepdims': [False, True],
+}))
+class TestReductionOutputOrder(unittest.TestCase):
+
+    def setUp(self):
+        if self.backend == ['cub'] and _environment.get_cub_path() is None:
+            self.skipTest('CUB not found')
+        if (self.backend == ['cuda_compute']
+                and _cuda_compute_common._get_cuda_compute() is None):
+            self.skipTest('cuda.compute (cuda-cccl) not found')
+        self.routine_accelerators = _acc.get_routine_accelerators()
+        self.reduction_accelerators = _acc.get_reduction_accelerators()
+        _acc.set_routine_accelerators([])
+        _acc.set_reduction_accelerators(self.backend)
+
+    def tearDown(self):
+        _acc.set_routine_accelerators(self.routine_accelerators)
+        _acc.set_reduction_accelerators(self.reduction_accelerators)
+
+    def _check_output(self, kernel):
+        host = numpy.arange(128 * 2 * 128, dtype=numpy.float32)
+        host = host.reshape(128, 2, 128) % 17
+        a = cupy.array(host, order='F' if self.order == 'F' else 'C')
+        if self.order == 'strided':
+            a = a[..., ::2]
+            host = host[..., ::2]
+        result = kernel(a, axis=self.axis, keepdims=self.keepdims)
+        expected = host.sum(axis=self.axis, keepdims=self.keepdims)
+        testing.assert_array_equal(result, expected)
+        if self.order == 'F':
+            assert result.flags.f_contiguous
+        else:
+            assert result.flags.c_contiguous
+
+    def test_simple_reduction(self):
+        kernel = _core.create_reduction_func(
+            'output_order_sum', ('f->f',),
+            ('in0', 'a + b', 'out0 = a', None), 0)
+        self._check_output(kernel)
+
+    def test_reduction_kernel(self):
+        kernel = cupy.ReductionKernel(
+            'T x', 'T out', 'x', 'a + b', 'out = a', '0',
+            name='output_order_sum_kernel')
+        self._check_output(kernel)
 
 
 class TestReductionKernelCachedCode:
