@@ -55,6 +55,9 @@ from cupy import random  # NOQA
 from cupy._core import ndarray  # NOQA
 from cupy._core import ufunc  # NOQA
 
+# expose the public C-API capsule
+from cupy._core.public_c_api import _public_c_api  # NOQA
+
 
 # =============================================================================
 # Constants (borrowed from NumPy)
