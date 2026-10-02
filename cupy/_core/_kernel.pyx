@@ -740,6 +740,11 @@ def _get_elementwise_kernel(
     return _get_simple_elementwise_kernel_from_code(name, code, options)
 
 
+def _construct(cls, args, kwargs):
+    # __reduce__ cannot pass keyword arguments to a class, but it can to this.
+    return cls(*args, **kwargs)
+
+
 cdef class ElementwiseKernel:
 
     """User-defined elementwise kernel.
@@ -795,6 +800,7 @@ cdef class ElementwiseKernel:
         readonly bint no_return
         readonly bint return_tuple
         readonly dict kwargs
+        readonly tuple _init_args
         readonly dict _params_type_memo
         readonly dict _elementwise_kernel_memo
         readonly dict _cached_codes
@@ -806,6 +812,9 @@ cdef class ElementwiseKernel:
             raise ValueError(
                 'Invalid kernel name: "%s"' % name)
 
+        self._init_args = (
+            in_params, out_params, operation, name, reduce_dims, preamble,
+            no_return, return_tuple)
         self.in_params = _get_param_info(in_params, True)
         self.out_params = _get_param_info(out_params, False)
         self.nin = len(self.in_params)
@@ -828,6 +837,11 @@ cdef class ElementwiseKernel:
         self._elementwise_kernel_memo = {}
         # This is for profiling mechanisms to auto infer a name
         self.__name__ = name
+
+    def __reduce__(self):
+        # Rebuild from the constructor arguments rather than copying the kernel
+        # caches, whose modules belong to this process.
+        return _construct, (type(self), self._init_args, self.kwargs)
 
     def __call__(self, *args, **kwargs):
         """Compiles and invokes the elementwise kernel.
@@ -1178,11 +1192,18 @@ cdef class ufunc:
         readonly object _doc
         public object __doc__
         readonly object __name__
+        readonly tuple _init_args
+        readonly dict _init_kwargs
 
     def __init__(
             self, name, nin, nout, _Ops ops, preamble='', loop_prep='', doc='',
             default_casting=None, *, _Ops out_ops=None, cutensor_op=None,
             scatter_op=None):
+        self._init_args = (
+            name, nin, nout, ops, preamble, loop_prep, doc, default_casting)
+        self._init_kwargs = {
+            'out_ops': out_ops, 'cutensor_op': cutensor_op,
+            'scatter_op': scatter_op}
         self.name = name
         self.__name__ = name
         self.nin = nin
@@ -1219,6 +1240,11 @@ cdef class ufunc:
             + _out_params + _other_params)
         self._routine_cache = {}
         self._kernel_memo = {}
+
+    def __reduce__(self):
+        # Rebuild from the constructor arguments rather than copying the kernel
+        # caches, whose modules belong to this process.
+        return _construct, (type(self), self._init_args, self._init_kwargs)
 
     def __repr__(self):
         return '<ufunc \'%s\'>' % self.name
