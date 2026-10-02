@@ -1352,6 +1352,12 @@ class TestCsrMatrixSum:
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_mean_with_out(self, xp, sp):
+        # `out` below is float64 whenever `ret_dtype` is None.
+        out_dtype = numpy.float64 if self.ret_dtype is None else self.ret_dtype
+        if out_dtype != self.dtype and testing.installed('scipy>=1.18,<1.19'):
+            # SciPy's `mean()` sometimes doesn't return out as identity hope
+            # for fix by 1.19 (https://github.com/scipy/scipy/issues/26149)
+            pytest.xfail('SciPy 1.18 mean() fails to return out as identity')
         m = _make(xp, sp, self.dtype)
         if self.axis is None:
             shape = ()

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import functools
+import gc
 import pickle
 import sys
+import weakref
 
 import numpy
 import pytest
@@ -1004,6 +1006,37 @@ class TestSparseMatrixConversion:
         testing.assert_array_equal(x.todense(), y)
 
 
+@testing.with_requires('scipy')
+class TestSpMatDescriptorOwnership:
+    # A descriptor stores raw device pointers into the matrix's arrays, and
+    # sparse matrices are mutable: a structure change rebinds a.data /
+    # a.indices / a.indptr, so the descriptor has to own what it points at.
+
+    @pytest.mark.parametrize('fmt', ['csr', 'csc', 'coo'])
+    def test_descriptor_keeps_arrays_alive(self, fmt):
+        a = sparse.random(200, 200, density=0.05, format=fmt,
+                          dtype=numpy.float64)
+        arrs = ((a.data, a.row, a.col) if fmt == 'coo'
+                else (a.data, a.indices, a.indptr))
+        owners = [weakref.ref(x) for x in arrs]
+        desc = cusparse.SpMatDescriptor.create(a)
+        del a, arrs
+        gc.collect()
+        assert all(o() is not None for o in owners)
+        del desc
+        gc.collect()
+        assert all(o() is None for o in owners)
+
+    def test_unsupported_format_still_raises_value_error(self):
+        # The ownership bookkeeping reads format-specific attributes, so
+        # it must not turn an unsupported format into AttributeError.
+        offsets = cupy.array([0], dtype=numpy.int32)
+        data = cupy.ones((1, 20), dtype=numpy.float64)
+        a = sparse.dia_matrix((data, offsets), shape=(20, 20))
+        with pytest.raises(ValueError):
+            cusparse.SpMatDescriptor.create(a)
+
+
 @pytest.mark.parametrize('dims', [(3, 4), (4, 3), (3, None)])
 @pytest.mark.parametrize(
     'dtype', [cupy.float32, cupy.float64, cupy.complex64, cupy.complex128])
@@ -1034,6 +1067,9 @@ class TestSpsm:
         else:
             diag = numpy.diag(numpy.random.uniform(0.1, 1, m).astype(dtype))
         a = a - numpy.diag(a.diagonal()) + diag
+
+        # Avoid SciPy future warning to move to returning arrays:
+        a = scipy.sparse.csr_matrix(a)
 
         if lower:
             a = scipy.sparse.tril(a)
@@ -1095,6 +1131,39 @@ class TestSpsm:
         else:
             tol = 1e-12
         testing.assert_allclose(lhs, rhs, rtol=tol, atol=tol)
+
+    def test_spsm_reuse(self, lower, unit_diag, transa, b_order, dtype,
+                        format):
+        # Solves after the first reuse the cached analysis (#8580); each
+        # must see the values of its own right-hand side.
+        if not cusparse.check_availability('spsm'):
+            pytest.skip('spsm is not available')
+        if runtime.is_hip:
+            if format == 'coo' or b_order == 'c':
+                pytest.skip('may be buggy or not supported')
+        a = self.sparse_matrix(self.a)
+        solver = cusparse._SpSM(
+            a, lower=lower, unit_diag=unit_diag, transa=transa)
+
+        if transa == 'N':
+            op_a = self.op_a
+        elif transa == 'T':
+            op_a = self.op_a.T
+        else:
+            op_a = self.op_a.conj().T
+
+        if dtype in (cupy.float32, cupy.complex64):
+            tol = 1e-5
+        else:
+            tol = 1e-12
+
+        for k in range(3):
+            op_b = (k + 1) * self.op_b
+            b = cupy.array(op_b, order=b_order)
+            c = solver.solve(b, alpha=self.alpha)
+            lhs = op_a.dot(c.get())
+            testing.assert_allclose(
+                lhs, self.alpha * op_b, rtol=tol, atol=tol)
 
 
 class TestCheckAvailabilityVersionSkew:

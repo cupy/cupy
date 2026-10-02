@@ -10,26 +10,34 @@ from cupy_backends.cuda.libs import cublas as _cublas
 from cupyx.scipy.sparse import _csr
 from cupyx.scipy.sparse.linalg import _interface
 
-# Seed of the default Lanczos start vector. Drawing it from a fixed seed
-# makes eigsh and svds deterministic for a given input, as ARPACK's default
-# start is, and independent of the global cupy.random state; the trajectory
-# can still be chosen explicitly through v0.
-_DEFAULT_V0_SEED = 0
+# Only CuPy's own generators: a NumPy generator would draw the start vector
+# on the host, and the global-state sentinel has no counterpart in scipy.
+_RNG_TYPES = (cupy.random.Generator, cupy.random.RandomState)
 
 
-def _default_v0(n, dtype, rs=None):
-    """Pseudo-random start vector of length ``n`` drawn from a fixed seed.
+def _resolve_rng(rng):
+    if rng is None:
+        return cupy.random.default_rng()
+    if isinstance(rng, (int, numpy.integer)):
+        return cupy.random.default_rng(int(rng))
+    if isinstance(rng, _RNG_TYPES):
+        return rng
+    raise TypeError(
+        'rng must be None, an int, or a cupy.random.Generator or '
+        'RandomState (actual: {})'.format(type(rng)))
 
-    A private ``RandomState`` is used so that neither ``cupy.random.seed``
-    nor any other consumer of the global generator changes the result.
-    """
-    if rs is None:
-        rs = cupy.random.RandomState(_DEFAULT_V0_SEED)
-    return rs.random_sample((n,)).astype(dtype)
+
+def _default_v0(n, dtype, rs):
+    """Random start vector of length ``n`` drawn from the resolved ``rs``."""
+    if isinstance(rs, cupy.random.RandomState):
+        u = rs.random_sample((n,))
+    else:                                   # cupy.random.Generator
+        u = rs.random((n,))
+    return u.astype(dtype, copy=False)
 
 
 def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
-          tol=0, return_eigenvectors=True):
+          tol=0, return_eigenvectors=True, rng=None):
     """
     Find ``k`` eigenvalues and eigenvectors of the real symmetric square
     matrix or complex Hermitian matrix ``A``.
@@ -49,11 +57,8 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
             'LA': finds ``k`` largest (algebraic) eigenvalues.
             'SA': finds ``k`` smallest (algebraic) eigenvalues.
 
-        v0 (ndarray): Starting vector for iteration. If ``None``, a
-            pseudo-random unit vector drawn from a fixed seed is used, so
-            repeated calls on the same input follow the same trajectory
-            regardless of the global :mod:`cupy.random` state (as
-            :func:`scipy.sparse.linalg.svds` does for its default start).
+        v0 (ndarray): Starting vector for iteration. If ``None``, a random
+            unit vector drawn from ``rng`` is used.
         ncv (int): The number of Lanczos vectors generated. Must be
             ``k + 1 < ncv < n``. If ``None``, default value is used.
         maxiter (int): Maximum number of Lanczos update iterations.
@@ -62,6 +67,16 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
             precision is used.
         return_eigenvectors (bool): If ``True``, returns eigenvectors in
             addition to eigenvalues.
+        rng (int or generator): Source of the default start vector when
+            ``v0`` is ``None``. ``None`` (the default) draws from a fresh
+            :func:`cupy.random.default_rng`, so repeated calls start
+            differently, as in :func:`scipy.sparse.linalg.eigsh`; pass an
+            int for a reproducible start, or a
+            :class:`cupy.random.Generator` or
+            :class:`cupy.random.RandomState` to use and advance that object.
+            Anything else raises :class:`TypeError`; in particular the draw
+            never follows :func:`cupy.random.seed`. Ignored when ``v0`` is
+            given.
 
     Returns:
         tuple:
@@ -125,7 +140,7 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
 
     # Set initial vector
     if v0 is None:
-        u = _default_v0(n, a.dtype)
+        u = _default_v0(n, a.dtype, _resolve_rng(rng))
         V[0] = u / cublas.nrm2(u)
     else:
         u = v0.copy()          # the driver writes into u; do not mutate v0
@@ -780,7 +795,7 @@ def _eigsh_solve_ritz(alpha, beta, beta_k, k, which):
 
 
 def svds(a, k=6, *, ncv=None, tol=0, which='LM', v0=None,
-         maxiter=None, return_singular_vectors=True):
+         maxiter=None, return_singular_vectors=True, rng=None):
     """Finds the largest ``k`` singular values/vectors for a sparse matrix.
 
     Args:
@@ -798,12 +813,17 @@ def svds(a, k=6, *, ncv=None, tol=0, which='LM', v0=None,
             values.
         v0 (ndarray): Starting vector for iteration, of length
             ``min(a.shape)`` as in :func:`scipy.sparse.linalg.svds`. If
-            ``None``, a pseudo-random vector drawn from a fixed seed is
-            used (see :func:`eigsh`).
+            ``None``, a random vector drawn from ``rng`` is used.
         maxiter (int): Maximum number of Lanczos update iterations.
             If ``None``, default value is used.
         return_singular_vectors (bool): If ``True``, returns singular vectors
             in addition to singular values.
+        rng (int or generator): Source of the default start vector when
+            ``v0`` is ``None``, and of the orthonormal columns that complete
+            the singular vectors of a rank-deficient input. Accepts the same
+            values as :func:`eigsh`; ``None`` (the default) draws from a
+            fresh :func:`cupy.random.default_rng`, so repeated calls start
+            differently; pass an int for a reproducible result.
 
     Returns:
         tuple:
@@ -836,12 +856,13 @@ def svds(a, k=6, *, ncv=None, tol=0, which='LM', v0=None,
     else:
         aH, a = a, a.H
 
+    rs = _resolve_rng(rng)
     if return_singular_vectors:
         w, x = eigsh(aH @ a, k=k, which=which, ncv=ncv, maxiter=maxiter,
-                     tol=tol, v0=v0, return_eigenvectors=True)
+                     tol=tol, v0=v0, return_eigenvectors=True, rng=rs)
     else:
         w = eigsh(aH @ a, k=k, which=which, ncv=ncv, maxiter=maxiter, tol=tol,
-                  v0=v0, return_eigenvectors=False)
+                  v0=v0, return_eigenvectors=False, rng=rs)
 
     w = cupy.maximum(w, 0)
     t = w.dtype.char.lower()
@@ -862,22 +883,20 @@ def svds(a, k=6, *, ncv=None, tol=0, which='LM', v0=None,
     else:
         u = x
         v = a @ u / s[:n_large]
-    u = _augmented_orthnormal_cols(u, k - n_large)
-    v = _augmented_orthnormal_cols(v, k - n_large)
+    u = _augmented_orthnormal_cols(u, k - n_large, rs)
+    v = _augmented_orthnormal_cols(v, k - n_large, rs)
 
     return u, s, v.conj().T
 
 
-def _augmented_orthnormal_cols(x, n_aug):
+def _augmented_orthnormal_cols(x, n_aug, rs):
     if n_aug <= 0:
         return x
     m, n = x.shape
     y = cupy.empty((m, n + n_aug), dtype=x.dtype)
     y[:, :n] = x
-    # svds calls this twice (for u and for v); each call restarts from the
-    # same seed, so for m == n the pre-projection draws coincide and only
-    # the projections onto the two different bases separate them.
-    rs = cupy.random.RandomState(_DEFAULT_V0_SEED)
+    # svds calls this twice (for u and for v) with the same generator, which
+    # is advanced across both calls.
     for i in range(n, n + n_aug):
         v = _default_v0(m, x.dtype, rs)
         v -= v @ y[:, :i].conj() @ y[:, :i].T

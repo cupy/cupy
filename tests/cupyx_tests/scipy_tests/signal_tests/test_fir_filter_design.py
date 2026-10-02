@@ -448,18 +448,26 @@ class TestMinimumPhase:
             h_linear = cupy.asarray(h_linear)
         return scp.signal.minimum_phase(h_linear, method="hilbert")
 
-    @testing.with_requires("scipy>=1.18.0")
-    @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-6)
     @pytest.mark.parametrize("N", (963, 964))
     @pytest.mark.parametrize("dtype", ("float32", "float64"))
-    def test_nyquist(self, N, dtype, xp, scp):
-        fc = xp.asarray(10)
+    def test_nyquist(self, N, dtype):
+        # Check that the magnitude spectrum is preserved, as SciPy's own
+        # test does.  The filter cannot be compared against SciPy's: even
+        # `N` puts a true 0 at Nyquist so CuPy can disagree a lot in absolute
+        # terms (the difference in `h_temp += 1e-7 * h_temp[h_temp > 0].min()`
+        # blows up in the following log)
+        fc = cupy.asarray(10)
         fs = 100
-        h = scp.signal.firwin(
+        h = signal.firwin(
             N, fc, window="hann", pass_zero="lowpass",
             scale=False, fs=fs
         )
         h = h.astype(dtype)
-        return scp.signal.minimum_phase(
+        h_min = signal.minimum_phase(
             h, method="homomorphic", n_fft=N, half=False
         )
+        error = cupy.abs(cupy.fft.rfft(h, N)) - cupy.abs(
+            cupy.fft.rfft(h_min, N))
+        # float32 slightly relaxed compared to scipy (with some headroom).
+        atol = {"float32": 1.5e-5, "float64": 1e-13}[dtype]
+        testing.assert_allclose(error, cupy.zeros_like(error), atol=atol)
