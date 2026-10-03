@@ -392,6 +392,8 @@ def fiedler(a):
     if a.size == 1:
         return cupy.zeros((1, 1))
     a = a[:, None] - a
+    if a.dtype.kind == 'c':
+        return cupy.abs(a)
     return cupy.abs(a, out=a)
 
 

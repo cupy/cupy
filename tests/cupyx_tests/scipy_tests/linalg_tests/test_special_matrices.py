@@ -3,6 +3,7 @@ from __future__ import annotations
 import unittest
 import warnings
 
+import numpy
 import pytest
 
 from cupy import testing
@@ -109,6 +110,25 @@ class TestSpecialMatrices_1_3_0(TestSpecialMatricesBase):
 
         # Otherwise just pass the arg back
         return arg
+
+
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.int32, numpy.float32, numpy.float64,
+              numpy.complex64, numpy.complex128],
+    'strided': [False, True],
+}))
+@testing.with_requires('scipy')
+class TestFiedlerMagnitude:
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_fiedler(self, xp, scp):
+        a = testing.shaped_random((12,), xp, self.dtype, seed=10297)
+        if self.strided:
+            a = a[::2]
+        before = a.copy()
+        result = scp.linalg.fiedler(a)
+        assert result.dtype == xp.abs(a).dtype
+        testing.assert_array_equal(a, before)
+        return result
 
 
 class TestFiedlerDegenerate:
