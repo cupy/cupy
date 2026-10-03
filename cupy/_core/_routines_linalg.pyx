@@ -868,6 +868,16 @@ cpdef _ndarray_base _mat_ptrs(_ndarray_base a):
     return idx
 
 
+cdef bint _batch_strides_are_aligned(
+        _ndarray_base a, Py_ssize_t alignment) noexcept:
+    cdef Py_ssize_t axis
+
+    for axis in range(<Py_ssize_t>a._shape.size() - 2):
+        if a._shape[axis] > 1 and a._strides[axis] % alignment != 0:
+            return False
+    return True
+
+
 cpdef _ndarray_base matmul(
         _ndarray_base a, _ndarray_base b, _ndarray_base out=None):
     """Matrix product of two arrays.
@@ -896,6 +906,12 @@ cpdef _ndarray_base matmul(
     cdef int orig_a_ndim, orig_b_ndim, a_ndim, b_ndim, ndim
     cdef _ndarray_base ap, bp, cp, c_view
     cdef bint use_broadcast
+    cdef Py_ssize_t alignment
+    cdef bint force_temporary_output = False
+    cdef bint input_layout_ok, output_layout_ok
+    cdef Py_ssize_t padded_output_stride = 0
+    cdef Py_ssize_t alignment_elements, output_byte_stride
+    cdef _ndarray_base output_storage
 
     orig_a_ndim = a._shape.size()
     orig_b_ndim = b._shape.size()
@@ -1029,16 +1045,78 @@ cpdef _ndarray_base matmul(
             out.fill(0)
             return out
 
+    if cuda_dtype in (runtime.CUDA_R_16F, runtime.CUDA_R_16BF):
+        if ka % 8 == 0:
+            alignment = 16
+        elif ka % 2 == 0:
+            alignment = 4
+        else:
+            alignment = 2
+
+        input_layout_ok = (
+            _batch_strides_are_aligned(a, alignment)
+            and _batch_strides_are_aligned(b, alignment)
+        )
+        output_layout_ok = (
+            batchCount <= 1
+            or (n * m * 2) % alignment == 0
+        )
+
+        if not input_layout_ok:
+            dtype = numpy.dtype('f')
+            cuda_dtype = runtime.CUDA_R_32F
+            compute_dtype = cuda_dtype
+            coef_dtype = dtype
+
+            a = ascontiguousarray(a, dtype)
+            b = ascontiguousarray(b, dtype)
+        else:
+            if a.data.ptr % alignment != 0:
+                a = a.copy(order='C')
+            if b.data.ptr % alignment != 0:
+                b = b.copy(order='C')
+
+            if not output_layout_ok:
+                alignment_elements = alignment // 2
+                padded_output_stride = (
+                    (n * m + alignment_elements - 1)
+                    // alignment_elements * alignment_elements
+                )
+                force_temporary_output = True
+
+            if out is not None:
+                force_temporary_output = (
+                    force_temporary_output
+                    or out.data.ptr % alignment != 0
+                )
+
     if (
         out is not None and out.dtype == dtype and out.flags.c_contiguous
+        and not force_temporary_output
         and not _memory_range.may_share_bounds(out, a)
         and not _memory_range.may_share_bounds(out, b)
     ):
         c = out
     else:
-        c = core.ndarray(out_shape, dtype=dtype)
+        if padded_output_stride != 0:
+            output_storage = core.ndarray(
+                (batchCount, padded_output_stride), dtype=dtype)
+
+            output_strides = [n * 2, 2]
+            output_byte_stride = padded_output_stride * 2
+            for i in range(ndim - 3, -1, -1):
+                output_strides.insert(0, output_byte_stride)
+                output_byte_stride *= out_shape[i]
+
+            c = core.ndarray(
+                out_shape, dtype=dtype,
+                memptr=output_storage.data,
+                strides=tuple(output_strides))
+        else:
+            c = core.ndarray(out_shape, dtype=dtype)
+
         if out is None:
-            if dtype == ret_dtype:
+            if dtype == ret_dtype and padded_output_stride == 0:
                 out = c
             else:
                 out = core.ndarray(out_shape, dtype=ret_dtype)
@@ -1074,7 +1152,10 @@ cpdef _ndarray_base matmul(
     if not use_broadcast:
         strideA = _get_stride_for_strided_batched_gemm(a)
         strideB = _get_stride_for_strided_batched_gemm(b)
-        strideC = _get_stride_for_strided_batched_gemm(c_view)
+        if padded_output_stride != 0:
+            strideC = padded_output_stride
+        else:
+            strideC = _get_stride_for_strided_batched_gemm(c_view)
         if (cuda_dtype in (runtime.CUDA_R_16F, runtime.CUDA_R_16BF)
                 or dtype.char in 'fFdD'):
             cublas.gemmStridedBatchedEx(
