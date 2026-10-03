@@ -131,6 +131,33 @@ class TestFiedlerMagnitude:
         return result
 
 
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.complex64, numpy.complex128],
+    'strided': [False, True],
+}))
+@testing.with_requires('scipy')
+class TestFiedlerSpectralPipeline:
+    @testing.numpy_cupy_allclose(atol=1e-4, rtol=1e-4, scipy_name='scp')
+    def test_pipeline(self, xp, scp):
+        rng = numpy.random.default_rng(10297)
+        host = (rng.normal(size=64)
+                + 1j * rng.normal(size=64)).astype(self.dtype)
+        data = xp.asarray(host)
+        if self.strided:
+            data = data[::2]
+        before = data.copy()
+        distances = scp.linalg.fiedler(data)
+        affinity = xp.exp(-distances)
+        laplacian = xp.diag(affinity.sum(axis=1)) - affinity
+        assert laplacian.dtype == data.real.dtype
+        values, vectors = xp.linalg.eigh(laplacian)
+        embedding = vectors[:, 1:4]
+        projection = embedding @ embedding.T
+        assert projection.dtype == data.real.dtype
+        testing.assert_array_equal(data, before)
+        return values, projection
+
+
 class TestFiedlerDegenerate:
     # `TestSpecialMatrices_1_3_0` cannot compare these against SciPy <1.18,
     # so pin the shape down here instead.
