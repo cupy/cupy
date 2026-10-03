@@ -1690,6 +1690,12 @@ def _check_ftz(backend, raw_module, options, flush):
     (('-ftz=false',), False),
     (('--ftz=false', '--ftz=true'), True),
     (('--ftz=true', '--ftz=false'), False),
+    (('--ftz', 'true'), True),
+    (('--ftz', 'false'), False),
+    (('-ftz', 'true'), True),
+    (('-ftz', 'false'), False),
+    (('--ftz', 'false', '-ftz', 'true'), True),
+    (('-ftz', 'true', '--ftz', 'false'), False),
 ])
 def test_ftz_options(backend, raw_module, in_memory, options, flush):
     if backend == 'nvcc' and cupy.cuda.get_nvcc_path() is None:
@@ -1753,7 +1759,10 @@ def test_ftz_native_options(backend, raw_module, options):
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='CUDA FTZ options')
 @pytest.mark.parametrize('backend', ['nvrtc', 'nvcc'])
 @pytest.mark.parametrize('raw_module', [False, True])
-def test_ftz_signal_pipeline(backend, raw_module):
+@pytest.mark.parametrize('options', [
+    ('--ftz=false',), ('--ftz', 'false'), ('-ftz', 'false'),
+])
+def test_ftz_signal_pipeline(backend, raw_module, options):
     if backend == 'nvcc' and cupy.cuda.get_nvcc_path() is None:
         pytest.skip('nvcc is unavailable')
     code = r'''
@@ -1763,7 +1772,6 @@ def test_ftz_signal_pipeline(backend, raw_module):
         if (i < n) y[i] = x[i] * factor;
     }
     '''
-    options = ('--ftz=false',)
     if raw_module:
         module = cupy.RawModule(code=code, options=options, backend=backend)
         kernel = module.get_function('scale_signal')
