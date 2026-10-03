@@ -966,6 +966,29 @@ class TestComplexConstantCval:
         return result
 
 
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.int16, numpy.float64],
+    'function': ['correlate', 'convolve', 'correlate1d', 'convolve1d'],
+    'cval': [5-3j, complex(2, 0)],
+    'mode': ['constant', 'reflect'],
+}))
+@testing.with_requires('scipy')
+class TestRealInputComplexCval:
+    @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=ValueError)
+    def test_invalid_cval(self, xp, scp):
+        filters = {
+            'correlate': scp.ndimage.correlate,
+            'convolve': scp.ndimage.convolve,
+            'correlate1d': scp.ndimage.correlate1d,
+            'convolve1d': scp.ndimage.convolve1d,
+        }
+        array = testing.shaped_random((4, 5), xp, self.dtype)
+        shape = (3,) if self.function.endswith('1d') else (3, 3)
+        weights = testing.shaped_random(shape, xp, numpy.complex64)
+        return filters[self.function](array, weights, mode=self.mode,
+                                       cval=self.cval)
+
+
 # Tests special weights (ND)
 @testing.parameterize(*testing.product({
     'filter': ['convolve', 'correlate', 'minimum_filter', 'maximum_filter'],

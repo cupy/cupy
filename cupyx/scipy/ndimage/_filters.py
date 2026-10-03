@@ -126,6 +126,7 @@ def correlate1d(input, weights, axis=-1, output=None, mode="reflect", cval=0.0,
         and input is integral) the results may not perfectly match the results
         from SciPy due to floating-point rounding of intermediate results.
     """
+    _check_complex_cval(input, cval)
     weights, origins = _filters_core._convert_1d_args(input.ndim, weights,
                                                       origin, axis)
     return _correlate_or_convolve(input, weights, output, mode, cval, origins)
@@ -161,14 +162,22 @@ def convolve1d(input, weights, axis=-1, output=None, mode="reflect", cval=0.0,
         and input is integral) the results may not perfectly match the results
         from SciPy due to floating-point rounding of intermediate results.
     """
+    _check_complex_cval(input, cval)
     weights, origins = _filters_core._convert_1d_args(input.ndim, weights,
                                                       origin, axis)
     return _correlate_or_convolve(input, weights, output, mode, cval, origins,
                                   True)
 
 
+def _check_complex_cval(input, cval):
+    if input.dtype.kind != 'c' and numpy.iscomplexobj(cval):
+        raise ValueError('Cannot provide a complex-valued cval when the '
+                         'input is real.')
+
+
 def _correlate_or_convolve(input, weights, output, mode, cval, origin,
                            convolution=False, axes=None):
+    _check_complex_cval(input, cval)
     axes, weights, origins, modes, int_type = _filters_core._check_nd_args(
         input, weights, mode, origin, axes=axes)
     if weights.size == 0:
