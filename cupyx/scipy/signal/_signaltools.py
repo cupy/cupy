@@ -748,6 +748,8 @@ def lfilter(b, a, x, axis=-1, zi=None):
            SIGPLAN Not. 53, 2 (February 2018), 128-138.
            `10.1145/3173162.3173168 <https://doi.org/10.1145/3173162.3173168>`_
     """
+    if a.ndim != 1 or b.ndim != 1 or a.size == 0 or b.size == 0:
+        raise ValueError('a and b must be nonempty one-dimensional arrays')
     a0 = a[0]
     a_r = - a[1:] / a0
     b = b / a0
@@ -758,6 +760,18 @@ def lfilter(b, a, x, axis=-1, zi=None):
     axis = internal._normalize_axis_index(axis, x_ndim)
     n = x.shape[axis]
     fir_dtype = cupy.result_type(x, b)
+
+    if x.size == 0:
+        dtype = cupy.result_type(fir_dtype, a) if num_a else fir_dtype
+        out = cupy.empty_like(x, dtype=dtype)
+        if zi is None:
+            return out
+        zi = cupy.atleast_1d(zi)
+        state_shape = list(x.shape)
+        state_shape[axis] = num_b + num_a
+        if zi.shape != tuple(state_shape):
+            raise ValueError('zi has an incorrect shape')
+        return out, zi.astype(dtype, copy=True)
 
     prev_in = None
     prev_out = None

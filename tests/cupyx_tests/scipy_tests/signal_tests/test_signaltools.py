@@ -18,6 +18,96 @@ except ImportError:
     pass
 
 
+class TestLfilterEmpty:
+    @pytest.mark.parametrize('dtype', [np.float32, np.float64,
+                                      np.complex64, np.complex128])
+    @pytest.mark.parametrize('b,a', [
+        ([0.5, 0.25], [1]), ([0.5], [1, -0.2]),
+        ([0.5, 0.25], [1, -0.2]), ([1], [1]),
+    ])
+    @pytest.mark.parametrize('shape,axis', [
+        ((2, 0), -1), ((0, 8), -1), ((0, 2), 0), ((8, 0), 0), ((0,), -1),
+    ])
+    @pytest.mark.parametrize('with_zi', [False, True])
+    def test_empty(self, dtype, b, a, shape, axis, with_zi):
+        x = cupy.empty(shape, dtype=dtype)
+        b, a = cupy.asarray(b, dtype=dtype), cupy.asarray(a, dtype=dtype)
+        if with_zi:
+            state_shape = list(shape)
+            state_shape[axis] = b.size + a.size - 2
+            zi = cupy.arange(np.prod(state_shape), dtype=dtype).reshape(
+                state_shape)
+            before = zi.copy()
+            out, zf = cupyx.scipy.signal.lfilter(b, a, x, axis=axis, zi=zi)
+            testing.assert_array_equal(zi, before)
+            testing.assert_array_equal(zf, before)
+            if zf.size:
+                assert zf.data.ptr != zi.data.ptr
+        else:
+            out = cupyx.scipy.signal.lfilter(b, a, x, axis=axis)
+        assert out.shape == shape
+        assert out.dtype == dtype
+        cupy.cuda.get_current_stream().synchronize()
+
+    @pytest.mark.parametrize('dtype', [np.float32, np.float64,
+                                      np.complex64, np.complex128])
+    @pytest.mark.parametrize('b,a', [
+        ([0.5, 0.25], [1]), ([0.5], [1, -0.2]),
+        ([0.5, 0.25], [1, -0.2]), ([1], [1]),
+    ])
+    @pytest.mark.parametrize('axis', [-1, 0])
+    @testing.with_requires('scipy')
+    def test_stream(self, dtype, b, a, axis):
+        host = np.moveaxis(np.arange(32, dtype=dtype).reshape(2, 16), -1, axis)
+        x = cupy.asarray(host)
+        b, a = cupy.asarray(b, dtype=dtype), cupy.asarray(a, dtype=dtype)
+        state_shape = list(x.shape)
+        state_shape[axis] = b.size + a.size - 2
+        state = cupy.zeros(state_shape, dtype=dtype)
+        split = [slice(None)] * x.ndim
+        split[axis] = slice(0, 8)
+        first, za = cupyx.scipy.signal.lfilter(
+            b, a, x[tuple(split)], axis=axis, zi=state)
+        split[axis] = slice(8, 8)
+        _, ze = cupyx.scipy.signal.lfilter(
+            b, a, x[tuple(split)], axis=axis, zi=za)
+        split[axis] = slice(8, None)
+        direct, zd = cupyx.scipy.signal.lfilter(
+            b, a, x[tuple(split)], axis=axis, zi=za)
+        resumed, zr = cupyx.scipy.signal.lfilter(
+            b, a, x[tuple(split)], axis=axis, zi=ze)
+        testing.assert_array_equal(ze, za)
+        testing.assert_allclose(resumed, direct, rtol=1e-5, atol=1e-5)
+        testing.assert_allclose(zr, zd, rtol=1e-5, atol=1e-5)
+        actual = cupy.concatenate((first, resumed), axis=axis)
+        expected = scipy.signal.lfilter(b.get(), a.get(), host, axis=axis)
+        testing.assert_allclose(actual, expected, rtol=1e-5, atol=1e-5)
+
+    @pytest.mark.parametrize('b,a,zi', [
+        ([], [1], None), ([1], [], None), ([[1]], [1], None),
+        ([1], [[1]], None), ([1, 1], [1, -0.2], np.zeros((2, 1))),
+        ([1, 1], [1, -0.2], np.zeros(2)),
+    ])
+    def test_invalid_arguments(self, b, a, zi):
+        b, a = cupy.asarray(b), cupy.asarray(a)
+        zi = None if zi is None else cupy.asarray(zi)
+        with pytest.raises(ValueError):
+            cupyx.scipy.signal.lfilter(b, a, cupy.empty((2, 0)), zi=zi)
+
+    def test_invalid_axis(self):
+        with pytest.raises(cupy.AxisError):
+            cupyx.scipy.signal.lfilter(
+                cupy.asarray([1]), cupy.asarray([1]),
+                cupy.empty((2, 0)), axis=2)
+
+    def test_dtype_promotion(self):
+        out, zf = cupyx.scipy.signal.lfilter(
+            cupy.asarray([0.5, 0.25]), cupy.asarray([1., -0.2]),
+            cupy.empty((2, 0), dtype=cupy.float32),
+            zi=cupy.ones((2, 2), dtype=cupy.float32))
+        assert out.dtype == zf.dtype == cupy.float64
+
+
 @testing.parameterize(*testing.product({
     'size1': [(10,), (5, 10), (10, 3), (3, 4, 10)],
     'size2': [3, 4, 5, 10],
