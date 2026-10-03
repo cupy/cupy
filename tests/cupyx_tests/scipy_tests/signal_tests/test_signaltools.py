@@ -86,8 +86,11 @@ class TestLfilterEmpty:
     @pytest.mark.parametrize('dtype', [np.float32, np.float64,
                                        np.complex64, np.complex128])
     @pytest.mark.parametrize('axis', [-1, 0])
+    @pytest.mark.parametrize('capture_empty', [False, True])
     @testing.with_requires('scipy')
-    def test_stream_spectrum_pipeline(self, dtype, axis):
+    def test_stream_spectrum_pipeline(self, dtype, axis, capture_empty):
+        if capture_empty and runtime.is_hip:
+            pytest.skip('CUDA graph capture')
         rng = np.random.default_rng(10199)
         host = rng.normal(size=(4, 256))
         if np.issubdtype(dtype, np.complexfloating):
@@ -98,19 +101,31 @@ class TestLfilterEmpty:
         state_shape = list(host.shape)
         state_shape[axis] = b.size + a.size - 2
         state = cupy.zeros(state_shape, dtype=dtype)
+        stream = cupy.cuda.Stream(non_blocking=True)
+        cupy.cuda.get_current_stream().synchronize()
         outputs = []
         for start, stop in [(0, 0), (0, 17), (17, 17), (17, 65),
                             (65, 65), (65, 256), (256, 256)]:
             selection = [slice(None)] * host.ndim
             selection[axis] = slice(start, stop)
-            chunk = cupy.asarray(host[tuple(selection)])
-            previous = state
-            out, state = cupyx.scipy.signal.lfilter(
-                b, a, chunk, axis=axis, zi=state)
-            if start == stop:
-                testing.assert_array_equal(state, previous)
-            assert out.dtype == state.dtype == dtype
-            outputs.append(out)
+            with stream:
+                chunk = cupy.asarray(host[tuple(selection)])
+                previous = state
+                if capture_empty and start == stop:
+                    cupyx.scipy.signal.lfilter(
+                        b, a, chunk, axis=axis, zi=state)
+                    stream.synchronize()
+                    stream.begin_capture()
+                out, state = cupyx.scipy.signal.lfilter(
+                    b, a, chunk, axis=axis, zi=state)
+                if capture_empty and start == stop:
+                    graph = stream.end_capture()
+                    graph.launch(stream)
+                if start == stop:
+                    testing.assert_array_equal(state, previous)
+                assert out.dtype == state.dtype == dtype
+                outputs.append(out)
+        stream.synchronize()
         actual = cupy.concatenate(outputs, axis=axis)
         direct, direct_state = cupyx.scipy.signal.lfilter(
             b, a, cupy.asarray(host), axis=axis,
