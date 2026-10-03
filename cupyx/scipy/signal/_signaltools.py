@@ -750,12 +750,14 @@ def lfilter(b, a, x, axis=-1, zi=None):
     """
     if a.ndim != 1 or b.ndim != 1 or a.size == 0 or b.size == 0:
         raise ValueError('a and b must be nonempty one-dimensional arrays')
+    num_b, num_a = b.size - 1, a.size - 1
     a0 = a[0]
+    if x.size == 0:
+        # Resolve coefficient promotion without normalization kernels.
+        a, b = a[:0], b[:0]
     a_r = - a[1:] / a0
     b = b / a0
 
-    num_b = b.size - 1
-    num_a = a_r.size
     x_ndim = x.ndim
     axis = internal._normalize_axis_index(axis, x_ndim)
     n = x.shape[axis]

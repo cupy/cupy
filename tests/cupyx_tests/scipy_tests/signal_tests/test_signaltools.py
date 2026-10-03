@@ -20,7 +20,7 @@ except ImportError:
 
 class TestLfilterEmpty:
     @pytest.mark.parametrize('dtype', [np.float32, np.float64,
-                                      np.complex64, np.complex128])
+                                       np.complex64, np.complex128])
     @pytest.mark.parametrize('b,a', [
         ([0.5, 0.25], [1]), ([0.5], [1, -0.2]),
         ([0.5, 0.25], [1, -0.2]), ([1], [1]),
@@ -50,7 +50,7 @@ class TestLfilterEmpty:
         cupy.cuda.get_current_stream().synchronize()
 
     @pytest.mark.parametrize('dtype', [np.float32, np.float64,
-                                      np.complex64, np.complex128])
+                                       np.complex64, np.complex128])
     @pytest.mark.parametrize('b,a', [
         ([0.5, 0.25], [1]), ([0.5], [1, -0.2]),
         ([0.5, 0.25], [1, -0.2]), ([1], [1]),
@@ -84,7 +84,7 @@ class TestLfilterEmpty:
         testing.assert_allclose(actual, expected, rtol=1e-5, atol=1e-5)
 
     @pytest.mark.parametrize('dtype', [np.float32, np.float64,
-                                      np.complex64, np.complex128])
+                                       np.complex64, np.complex128])
     @pytest.mark.parametrize('axis', [-1, 0])
     @testing.with_requires('scipy')
     def test_stream_spectrum_pipeline(self, dtype, axis):
@@ -93,8 +93,8 @@ class TestLfilterEmpty:
         if np.issubdtype(dtype, np.complexfloating):
             host = host + 1j * rng.normal(size=host.shape)
         host = np.moveaxis(host.astype(dtype), -1, axis)
-        b = cupy.asarray([0.25, 0.5, 0.25], dtype=dtype)
-        a = cupy.asarray([1, -0.3, 0.1], dtype=dtype)
+        b = cupy.asarray([0.5, 1, 0.5], dtype=dtype)
+        a = cupy.asarray([2, -0.6, 0.2], dtype=dtype)
         state_shape = list(host.shape)
         state_shape[axis] = b.size + a.size - 2
         state = cupy.zeros(state_shape, dtype=dtype)
@@ -158,6 +158,27 @@ class TestLfilterEmpty:
             cupy.empty((2, 0), dtype=cupy.float32),
             zi=cupy.ones((2, 2), dtype=cupy.float32))
         assert out.dtype == zf.dtype == cupy.float64
+
+    @pytest.mark.parametrize('b_dtype,a_dtype', [
+        (np.int16, np.int16), (np.float32, np.float64),
+        (np.float64, np.float32), (np.float32, np.complex64),
+        (np.complex64, np.float32), (np.complex64, np.complex128),
+    ])
+    @pytest.mark.parametrize('x_dtype', [np.int16, np.float32, np.complex64])
+    @pytest.mark.parametrize('a_size', [1, 2])
+    def test_empty_mixed_dtypes(self, b_dtype, a_dtype, x_dtype, a_size):
+        b = cupy.asarray([2, 1], dtype=b_dtype)
+        a = cupy.asarray([2, -0.25][:a_size], dtype=a_dtype)
+        x = cupy.ones((2, 16), dtype=x_dtype)
+        zi = cupy.ones((2, a_size), dtype=x_dtype)
+        before = zi.copy()
+        direct, _ = cupyx.scipy.signal.lfilter(b, a, x, zi=zi)
+        out, state = cupyx.scipy.signal.lfilter(b, a, x[:, :0], zi=zi)
+        assert out.shape == (2, 0)
+        assert out.dtype == state.dtype == direct.dtype
+        testing.assert_array_equal(state, before.astype(direct.dtype))
+        testing.assert_array_equal(zi, before)
+        assert state.data.ptr != zi.data.ptr
 
 
 @testing.parameterize(*testing.product({
