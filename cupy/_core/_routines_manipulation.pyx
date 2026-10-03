@@ -662,8 +662,8 @@ cpdef _ndarray_base concatenate_method(
         dtype = get_dtype(dtype)
 
     arrays = [_convert_from_cupy_like(
-                  a, error="Only cupy arrays can be concatenated: argument")
-              for a in tup]
+                  x, error="Only cupy arrays can be concatenated: argument")
+              for x in tup]
 
     # Check if the input is not an empty sequence
     if len(arrays) == 0:

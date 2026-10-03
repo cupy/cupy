@@ -56,6 +56,18 @@ class SimpleReductionFunctionTestBase(AbstractReductionTestBase):
 
 class TestSimpleReductionFunction(
         unittest.TestCase, SimpleReductionFunctionTestBase):
+    def test_overlapping_output(self):
+        kernel = _core.create_reduction_func(
+            'overlapping_sum', ('q->q',),
+            ('in0', 'a + b', 'out0 = a', None), 0)
+        a = cupy.arange(64 * 64, dtype='int64').reshape(64, 64)
+        expected = a.get()
+        numpy.sum(expected, axis=1, out=expected[0])
+        out = a[0]
+        result = kernel(a, axis=1, out=out)
+        assert result is out
+        testing.assert_array_equal(a, expected)
+
     def test_subclass_output(self):
         class Array(cupy.ndarray):
             pass
@@ -157,6 +169,11 @@ class ReductionKernelTestBase(AbstractReductionTestBase):
 
 
 class TestReductionKernel(ReductionKernelTestBase, unittest.TestCase):
+
+    def test_explicit_none_output(self):
+        a = cupy.arange(6, dtype='float32').reshape(2, 3)
+        result = self.get_sum_func()(a, None, axis=1)
+        testing.assert_array_equal(result, a.get().sum(axis=1))
 
     def test_supplied_output_shape(self):
         kernel = self.get_sum_func()

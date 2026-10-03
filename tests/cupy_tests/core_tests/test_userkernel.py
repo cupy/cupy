@@ -15,6 +15,17 @@ from cupy.cuda.texture import (ChannelFormatDescriptor, CUDAarray,
 
 class TestUserkernel(unittest.TestCase):
 
+    def test_explicit_none_output(self):
+        kernel = cupy.ElementwiseKernel(
+            'T x', 'T y, T z', 'y = x + 1; z = x + 2',
+            'optional_outputs')
+        a = cupy.arange(6, dtype='float32')
+        out = cupy.empty_like(a)
+        y, z = kernel(a, None, out)
+        assert z is out
+        testing.assert_array_equal(y, a.get() + 1)
+        testing.assert_array_equal(z, a.get() + 2)
+
     def test_manual_indexing(self, n=100):
         in1 = cupy.random.uniform(-1, 1, n).astype(cupy.float32)
         in2 = cupy.random.uniform(-1, 1, n).astype(cupy.float32)
