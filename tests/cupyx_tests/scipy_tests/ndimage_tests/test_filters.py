@@ -989,6 +989,35 @@ class TestRealInputComplexCval:
                                        cval=self.cval)
 
 
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.complex64, numpy.complex128],
+    'strided': [False, True],
+}))
+@testing.with_requires('scipy')
+class TestComplexCvalImagePipeline:
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_pipeline(self, xp, scp):
+        rng = numpy.random.default_rng(8405)
+        host = (rng.normal(size=(32, 64))
+                + 1j * rng.normal(size=(32, 64))).astype(self.dtype)
+        data = xp.asarray(host)
+        if self.strided:
+            data = data[:, ::2]
+        before = data.copy()
+        weights = xp.asarray([[0, 1, 0], [1, 2, 1], [0, 1, 0]]) / 6
+        taps = xp.asarray([0.25+0.125j, 0.5, 0.25-0.125j], dtype=self.dtype)
+        first = scp.ndimage.correlate(data, weights, mode='constant',
+                                      cval=5-3j)
+        filtered = xp.empty_like(first)
+        scp.ndimage.convolve1d(first, taps, axis=1, output=filtered,
+                               mode='constant', cval=5-3j)
+        profile = xp.mean(xp.abs(filtered)**2, axis=0)
+        assert filtered.dtype == data.dtype
+        assert profile.dtype == data.real.dtype
+        testing.assert_array_equal(data, before)
+        return filtered, profile, xp.argmax(profile)
+
+
 # Tests special weights (ND)
 @testing.parameterize(*testing.product({
     'filter': ['convolve', 'correlate', 'minimum_filter', 'maximum_filter'],
