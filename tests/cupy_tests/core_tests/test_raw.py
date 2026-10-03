@@ -11,6 +11,7 @@ import tempfile
 import threading
 from unittest import mock
 
+import numpy
 import pytest
 
 import cupy
@@ -1710,3 +1711,41 @@ def test_ftz_options_cache(backend, raw_module, in_memory):
         for flush in [False, True, False]:
             options = ('--ftz=true',) if flush else ('--ftz=false',)
             _check_ftz(backend, raw_module, options, flush)
+
+
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='CUDA FTZ options')
+@pytest.mark.parametrize('backend', ['nvrtc', 'nvcc'])
+@pytest.mark.parametrize('raw_module', [False, True])
+def test_ftz_signal_pipeline(backend, raw_module):
+    if backend == 'nvcc' and cupy.cuda.get_nvcc_path() is None:
+        pytest.skip('nvcc is unavailable')
+    code = r'''
+    extern "C" __global__
+    void scale_signal(const float* x, float* y, float factor, int n) {
+        int i = blockIdx.x * blockDim.x + threadIdx.x;
+        if (i < n) y[i] = x[i] * factor;
+    }
+    '''
+    options = ('--ftz=false',)
+    if raw_module:
+        module = cupy.RawModule(code=code, options=options, backend=backend)
+        kernel = module.get_function('scale_signal')
+    else:
+        kernel = cupy.RawKernel(code, 'scale_signal', options=options,
+                                backend=backend)
+    amplitudes = numpy.tile(numpy.array([1, -1, 2, -2], numpy.float32), 1024)
+    host = amplitudes * numpy.float32(2**-126)
+    data = cupy.asarray(host)
+    damped, restored = cupy.empty_like(data), cupy.empty_like(data)
+    grid = ((data.size + 255) // 256,)
+    n = numpy.int32(data.size)
+    kernel(grid, (256,), (data, damped, numpy.float32(0.5), n))
+    kernel(grid, (256,), (damped, restored, numpy.float32(2**126), n))
+    spectrum = cupy.fft.rfft(restored)
+    power = (cupy.abs(spectrum)**2).get()
+    testing.assert_array_equal(damped.get().view(numpy.uint32),
+                               (host * numpy.float32(0.5)).view(numpy.uint32))
+    testing.assert_array_equal(restored.get(), amplitudes * 0.5)
+    testing.assert_allclose(power,
+                            numpy.abs(numpy.fft.rfft(amplitudes * 0.5))**2,
+                            rtol=1e-5, atol=1e-5)
