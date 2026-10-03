@@ -83,6 +83,58 @@ class TestLfilterEmpty:
         expected = scipy.signal.lfilter(b.get(), a.get(), host, axis=axis)
         testing.assert_allclose(actual, expected, rtol=1e-5, atol=1e-5)
 
+    @pytest.mark.parametrize('dtype', [np.float32, np.float64,
+                                      np.complex64, np.complex128])
+    @pytest.mark.parametrize('axis', [-1, 0])
+    @testing.with_requires('scipy')
+    def test_stream_spectrum_pipeline(self, dtype, axis):
+        rng = np.random.default_rng(10199)
+        host = rng.normal(size=(4, 256))
+        if np.issubdtype(dtype, np.complexfloating):
+            host = host + 1j * rng.normal(size=host.shape)
+        host = np.moveaxis(host.astype(dtype), -1, axis)
+        b = cupy.asarray([0.25, 0.5, 0.25], dtype=dtype)
+        a = cupy.asarray([1, -0.3, 0.1], dtype=dtype)
+        state_shape = list(host.shape)
+        state_shape[axis] = b.size + a.size - 2
+        state = cupy.zeros(state_shape, dtype=dtype)
+        outputs = []
+        for start, stop in [(0, 0), (0, 17), (17, 17), (17, 65),
+                            (65, 65), (65, 256), (256, 256)]:
+            selection = [slice(None)] * host.ndim
+            selection[axis] = slice(start, stop)
+            chunk = cupy.asarray(host[tuple(selection)])
+            previous = state
+            out, state = cupyx.scipy.signal.lfilter(
+                b, a, chunk, axis=axis, zi=state)
+            if start == stop:
+                testing.assert_array_equal(state, previous)
+            assert out.dtype == state.dtype == dtype
+            outputs.append(out)
+        actual = cupy.concatenate(outputs, axis=axis)
+        direct, direct_state = cupyx.scipy.signal.lfilter(
+            b, a, cupy.asarray(host), axis=axis,
+            zi=cupy.zeros(state_shape, dtype=dtype))
+        expected = scipy.signal.lfilter(b.get(), a.get(), host, axis=axis)
+        testing.assert_allclose(actual.get(), expected, rtol=1e-5, atol=1e-5)
+        testing.assert_allclose(actual, direct, rtol=1e-5, atol=1e-5)
+        testing.assert_allclose(state, direct_state, rtol=1e-5, atol=1e-5)
+        power = (cupy.abs(cupy.fft.fft(actual, axis=axis))**2).get()
+        expected_power = np.abs(np.fft.fft(expected, axis=axis))**2
+        testing.assert_allclose(power, expected_power,
+                                rtol=1e-4, atol=1e-4)
+        channel_slice = [slice(None)] * host.ndim
+        channel_slice[1 if axis == 0 else 0] = slice(0, 0)
+        empty = cupy.asarray(host[tuple(channel_slice)])
+        history = state[tuple(channel_slice)]
+        out, final = cupyx.scipy.signal.lfilter(
+            b, a, empty, axis=axis, zi=history)
+        assert out.shape == empty.shape
+        assert final.shape == history.shape
+        assert out.dtype == final.dtype == dtype
+        out.get()
+        final.get()
+
     @pytest.mark.parametrize('b,a,zi', [
         ([], [1], None), ([1], [], None), ([[1]], [1], None),
         ([1], [[1]], None), ([1, 1], [1, -0.2], np.zeros((2, 1))),
