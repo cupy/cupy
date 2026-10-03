@@ -6,6 +6,7 @@ import warnings
 import numpy
 import pytest
 
+import cupy
 from cupy import testing
 import cupyx.scipy.linalg  # NOQA
 
@@ -129,6 +130,23 @@ class TestFiedlerMagnitude:
         assert result.dtype == xp.abs(a).dtype
         testing.assert_array_equal(a, before)
         return result
+
+    def test_complex_boundaries(self):
+        if not numpy.issubdtype(self.dtype, numpy.complexfloating):
+            pytest.skip('complex magnitude boundaries')
+        real_dtype = numpy.empty((), dtype=self.dtype).real.dtype
+        large = numpy.finfo(real_dtype).max / 4
+        host = numpy.array([0, 1 + 2j, complex(large, large),
+                            complex(-large, -large), complex(numpy.inf, 1),
+                            complex(numpy.nan, 1), complex(1, numpy.nan)],
+                           dtype=self.dtype)
+        data = cupy.asarray(host)
+        if self.strided:
+            data = data[::-1]
+        expected = cupy.abs(data[:, None] - data)
+        actual = cupyx.scipy.linalg.fiedler(data)
+        assert actual.dtype == real_dtype
+        testing.assert_array_equal(actual, expected)
 
 
 @testing.parameterize(*testing.product({
