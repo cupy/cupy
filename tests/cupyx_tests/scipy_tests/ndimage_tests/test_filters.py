@@ -959,7 +959,7 @@ class TestComplexConstantCval:
         weights = testing.shaped_random(shape, xp, self.wdtype, seed=8406)
         out = xp.empty_like(array) if self.provided_output else None
         result = filters[self.function](array, weights, output=out,
-                                         mode='constant', cval=self.cval)
+                                        mode='constant', cval=self.cval)
         if out is not None:
             assert result is out
         testing.assert_array_equal(array, before)
@@ -986,7 +986,7 @@ class TestRealInputComplexCval:
         shape = (3,) if self.function.endswith('1d') else (3, 3)
         weights = testing.shaped_random(shape, xp, numpy.complex64)
         return filters[self.function](array, weights, mode=self.mode,
-                                       cval=self.cval)
+                                      cval=self.cval)
 
 
 @testing.parameterize(*testing.product({
