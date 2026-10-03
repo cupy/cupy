@@ -1649,3 +1649,64 @@ def test_jitify_deprecation_warning(jitify, match):
     # Not technically part of the rawkernel, but test warning in compile here:
     with pytest.warns(DeprecationWarning, match=match):
         compiler.compile_using_nvrtc("", options=(), jitify=jitify)
+
+
+_ftz_source = r'''
+extern "C" __global__
+void scale_ftz(const float* x, float* y) {
+    int i = threadIdx.x;
+    if (i < 4) y[i] = x[i] * 0.5f;
+}
+'''
+
+
+def _check_ftz(backend, raw_module, options, flush):
+    if raw_module:
+        module = cupy.RawModule(code=_ftz_source, options=options,
+                                backend=backend)
+        kernel = module.get_function('scale_ftz')
+    else:
+        kernel = cupy.RawKernel(_ftz_source, 'scale_ftz', options=options,
+                                backend=backend)
+    x = cupy.asarray([2.0**-126, -2.0**-126, 1.0, -1.0],
+                     dtype=cupy.float32)
+    y = cupy.empty_like(x)
+    kernel((1,), (32,), (x, y))
+    expected = [0, 0x80000000] if flush else [0x00400000, 0x80400000]
+    testing.assert_array_equal(y.view(cupy.uint32).get(),
+                               expected + [0x3F000000, 0xBF000000])
+
+
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='CUDA FTZ options')
+@pytest.mark.thread_unsafe(reason='uses temporary cache and compile mode')
+@pytest.mark.parametrize('backend', ['nvrtc', 'nvcc'])
+@pytest.mark.parametrize('raw_module', [False, True])
+@pytest.mark.parametrize('in_memory', [False, True])
+@pytest.mark.parametrize('options,flush', [
+    ((), True),
+    (('--ftz=true',), True),
+    (('--ftz=false',), False),
+    (('-ftz=false',), False),
+    (('--ftz=false', '--ftz=true'), True),
+    (('--ftz=true', '--ftz=false'), False),
+])
+def test_ftz_options(backend, raw_module, in_memory, options, flush):
+    if backend == 'nvcc' and cupy.cuda.get_nvcc_path() is None:
+        pytest.skip('nvcc is unavailable')
+    with use_temporary_cache_dir(), compile_in_memory(in_memory):
+        for _ in range(2):
+            _check_ftz(backend, raw_module, options, flush)
+
+
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='CUDA FTZ options')
+@pytest.mark.thread_unsafe(reason='uses temporary cache and compile mode')
+@pytest.mark.parametrize('backend', ['nvrtc', 'nvcc'])
+@pytest.mark.parametrize('raw_module', [False, True])
+@pytest.mark.parametrize('in_memory', [False, True])
+def test_ftz_options_cache(backend, raw_module, in_memory):
+    if backend == 'nvcc' and cupy.cuda.get_nvcc_path() is None:
+        pytest.skip('nvcc is unavailable')
+    with use_temporary_cache_dir(), compile_in_memory(in_memory):
+        for flush in [False, True, False]:
+            options = ('--ftz=true',) if flush else ('--ftz=false',)
+            _check_ftz(backend, raw_module, options, flush)

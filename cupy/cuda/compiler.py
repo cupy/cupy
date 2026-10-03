@@ -664,7 +664,7 @@ def _compile_with_cache_cuda(
 
     # TODO(leofang): consider move --device-as-default-execution-space
     # (-default-device) to here to avoid double definition error
-    options += ('-ftz=true',)
+    options = ('-ftz=true',) + options
 
     if to_ltoir:
         options += ('-dlto',)
