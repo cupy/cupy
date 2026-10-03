@@ -7,7 +7,7 @@ import cupy
 
 from cupy_backends.cuda.api import runtime
 from cupy import _core
-from cupy._core import internal
+from cupy._core import internal, _scalar
 from cupyx.scipy.ndimage import _util
 
 
@@ -296,7 +296,12 @@ def _generate_nd_kernel(name, pre, found, post, modes, w_shape, int_type,
     if constant_mode:
         cond = ' || '.join([f'(ix_{j} < 0)' for j in range(ndim)])
 
-    if cval is numpy.nan:
+    if numpy.iscomplexobj(cval):
+        dtype = numpy.dtype(numpy.float64)
+        real = _scalar._get_cuda_scalar_repr(cval.real, dtype)
+        imag = _scalar._get_cuda_scalar_repr(cval.imag, dtype)
+        cval = f'thrust::complex<double>({real}, {imag})'
+    elif cval is numpy.nan:
         cval = 'CUDART_NAN'
     elif cval == numpy.inf:
         cval = 'CUDART_INF'
