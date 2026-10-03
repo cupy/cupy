@@ -618,7 +618,7 @@ cdef class KernelArguments:
         all parameters are non-raw arrays.
         """
         assert shape.size() == 0 or shape_fixed
-        cdef Py_ssize_t i, nargs = self.nin + self.has_where
+        cdef Py_ssize_t i, j, nargs = self.nin + self.has_where
         cdef bint shape_discovered = shape_fixed
 
         # Broadcast non-raw arrays.
@@ -642,8 +642,10 @@ cdef class KernelArguments:
             if not internal._broadcast_shape(
                         shape, (<_ndarray_base>a)._shape):
                 internal._raise_broadcast_error(
-                    [a for a in self.args[:self.nin + self.has_where]
-                     if params is None or not params[i].raw])
+                    [self.args[j]
+                     if params is None or not (<ParameterInfo>params[j]).raw
+                     else None for j in range(nargs)
+                     if self.args[j] is not None])
 
         if not self.is_ufunc and not shape_discovered:
             # Custom kernels need a non-raw array or an explicit size.

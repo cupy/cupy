@@ -199,6 +199,15 @@ class TestArrayUfunc:
 
 
 class TestUfunc:
+    def test_broadcast_error_includes_output(self):
+        a = cupy.empty((0, 3))
+        out = cupy.empty((2, 3))
+        with pytest.raises(ValueError) as error:
+            cupy.add(a, 1, out=out)
+        assert str(error.value) == (
+            'operands could not be broadcast together with shapes '
+            '(0, 3) () (2, 3)')
+
     @pytest.mark.parametrize('ufunc', [
         'add',
         'sin',

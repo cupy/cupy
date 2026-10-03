@@ -38,6 +38,19 @@ class TestUserkernel(unittest.TestCase):
 
         testing.assert_array_equal(out1, out2)
 
+    def test_broadcast_error_ignores_raw_shape(self):
+        kernel = cupy.ElementwiseKernel(
+            'raw float32 raw_x, float32 x, float32 y', 'float32 z',
+            'z = x + y', 'raw_broadcast_error')
+        raw = cupy.empty(17, dtype='float32')
+        x = cupy.empty(2, dtype='float32')
+        y = cupy.empty(3, dtype='float32')
+        with pytest.raises(ValueError) as error:
+            kernel(raw, x, y)
+        assert str(error.value) == (
+            'operands could not be broadcast together with shapes '
+            '() (2,) (3,)')
+
     def test_python_scalar(self):
         for typ in (int, float, bool):
             dtype = numpy.dtype(typ).type
