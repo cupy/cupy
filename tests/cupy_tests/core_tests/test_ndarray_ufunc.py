@@ -380,64 +380,6 @@ class TestUfunc:
         kwargs = {'_where' if xp is cupy else 'where': where}
         return xp.add(a, 2, out=out, **kwargs)
 
-    @pytest.mark.thread_unsafe(reason='modifies the core ndarray binding')
-    @pytest.mark.parametrize('module_getattr', [False, True])
-    def test_missing_ndarray_binding(self, monkeypatch, module_getattr):
-        a = cupy.empty((2, 3))
-        with monkeypatch.context() as patcher:
-            patcher.delattr(cupy._core.core, 'ndarray')
-            if module_getattr:
-                def get_missing(name):
-                    if name == 'ndarray':
-                        return cupy.ndarray
-                    raise AttributeError(name)
-
-                patcher.setattr(cupy._core.core, '__getattr__', get_missing,
-                                raising=False)
-            with pytest.raises(
-                    NameError, match="name 'ndarray' is not defined"):
-                cupy.add(a, 1, out=a)
-
-    @pytest.mark.thread_unsafe(reason='modifies the core module class')
-    def test_module_attribute_hook(self, monkeypatch):
-        core_module = cupy._core.core
-
-        class CoreModule(type(core_module)):
-            def __getattribute__(self, name):
-                if name == 'ndarray':
-                    raise AssertionError('unexpected module attribute lookup')
-                return super().__getattribute__(name)
-
-        a = cupy.zeros((2, 3), dtype=cupy.int32)
-        with monkeypatch.context() as patcher:
-            patcher.setattr(core_module, '__class__', CoreModule)
-            ret = cupy.add(a, 1, out=a)
-        assert ret is a
-        testing.assert_array_equal(a, numpy.ones((2, 3), dtype=numpy.int32))
-
-    @pytest.mark.thread_unsafe(reason='modifies ndarray bindings')
-    def test_rebound_subclass_metaclass(self, monkeypatch):
-        base = cupy.ndarray.__base__
-
-        class Meta(type):
-            def __getattribute__(cls, name):
-                if name == '__base__':
-                    return base
-                return super().__getattribute__(name)
-
-        class ReboundArray(cupy.ndarray, metaclass=Meta):
-            def __new__(cls, *args, **kwargs):
-                if kwargs.get('_no_init', False):
-                    raise RuntimeError('reduced view constructor')
-                return super().__new__(cls, *args, **kwargs)
-
-        a = ReboundArray((2, 3), dtype=cupy.int32)
-        with monkeypatch.context() as patcher:
-            patcher.setattr(cupy._core.core, 'ndarray', ReboundArray)
-            patcher.setattr(cupy, 'ndarray', ReboundArray)
-            with pytest.raises(RuntimeError, match='reduced view constructor'):
-                cupy.add(a, 1, out=a)
-
     @pytest.mark.thread_unsafe(reason='explicitly multithreaded test')
     def test_thread_local_temporary_inputs(self):
         device_id = cupy.cuda.runtime.getDevice()

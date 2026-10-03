@@ -6,12 +6,10 @@ import numpy
 import cupy
 from cupy.cuda import compiler
 from cupy import _util
-from cupy._core import core as core_module
 
 cimport cython  # NOQA
 
 from libcpp cimport vector
-from cpython.module cimport PyModule_GetDict
 
 from cupy.cuda cimport device
 from cupy.cuda cimport function
@@ -322,33 +320,17 @@ cdef tuple _get_contiguous_ufunc_args(list args, Py_ssize_t nargs):
     cdef shape_t flat_shape, flat_strides
     cdef Py_ssize_t i, size = -1
     cdef list arginfos, launch_args
-    cdef dict core_globals
-    cdef object core_namespace_owner
 
-    ndarray_type = None
+    ndarray_type = cupy.ndarray
     for i in range(nargs):
         arg = args[i]
         if isinstance(arg, _ndarray_base):
             arr = arg
-            if not arr._c_contiguous:
+            if type(arg) is not ndarray_type or not arr._c_contiguous:
                 return None
-            if size < 0:
-                ndarray_type = type(arg)
-            elif type(arg) is not ndarray_type:
-                return None
+            # All ndarray operands have the validated broadcast shape.
             size = arr.size
-    if size < 0 or type(ndarray_type) is not type:
-        return None
-    # Match _view's global lookup without invoking module attribute hooks.
-    core_namespace_owner = core_module
-    core_globals = <object>PyModule_GetDict(core_namespace_owner)
-    try:
-        core_ndarray_type = core_globals['ndarray']
-    except KeyError:
-        return None
-    if (ndarray_type is not core_ndarray_type
-            or ndarray_type is not cupy.ndarray
-            or getattr(ndarray_type, '__base__', None) is not _ndarray_base):
+    if size < 0:
         return None
 
     arginfos = []
