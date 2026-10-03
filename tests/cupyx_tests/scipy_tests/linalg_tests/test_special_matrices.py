@@ -176,6 +176,44 @@ class TestFiedlerSpectralPipeline:
         return values, projection
 
 
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='CUDA graph capture')
+@pytest.mark.parametrize('dtype', [numpy.complex64, numpy.complex128])
+@pytest.mark.parametrize('layout', ['strided', 'reversed', 'broadcast'])
+@testing.with_requires('scipy')
+def test_fiedler_graph_replay(dtype, layout):
+    host = (numpy.arange(12) + 1j * numpy.linspace(-2, 2, 12)).astype(dtype)
+    stream = cupy.cuda.Stream(non_blocking=True)
+    with stream:
+        base = cupy.asarray(host)
+        if layout == 'broadcast':
+            data = cupy.broadcast_to(base[:1], (6,))
+        else:
+            data = base[::2] if layout == 'strided' else base[::-2]
+
+        def laplacian():
+            affinity = cupy.exp(-cupyx.scipy.linalg.fiedler(data))
+            return cupy.diag(affinity.sum(axis=1)) - affinity
+
+        laplacian()
+        stream.synchronize()
+        stream.begin_capture()
+        result = laplacian()
+        graph = stream.end_capture()
+        for factor in (2, 0.5):
+            changed = host * factor
+            base.set(changed)
+            graph.launch(stream)
+            actual = result.get()
+            selected = (numpy.broadcast_to(changed[:1], (6,))
+                        if layout == 'broadcast' else
+                        changed[::2] if layout == 'strided' else changed[::-2])
+            affinity = numpy.exp(-scipy.linalg.fiedler(selected))
+            expected = numpy.diag(affinity.sum(axis=1)) - affinity
+            assert actual.dtype == selected.real.dtype
+            testing.assert_allclose(actual, expected, rtol=1e-5, atol=1e-5)
+            testing.assert_array_equal(base.get(), changed)
+
+
 class TestFiedlerDegenerate:
     # `TestSpecialMatrices_1_3_0` cannot compare these against SciPy <1.18,
     # so pin the shape down here instead.
