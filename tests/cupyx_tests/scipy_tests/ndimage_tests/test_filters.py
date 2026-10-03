@@ -933,6 +933,91 @@ class TestWeightComplexDtype(FilterTestCaseBase):
                 func(arr, weights, output=numpy.float64)
 
 
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.complex64, numpy.complex128],
+    'wdtype': [numpy.int8, numpy.float32, numpy.complex64],
+    'function': ['correlate', 'convolve', 'correlate1d', 'convolve1d'],
+    'cval': [5-3j, 2j, complex(2, 0), numpy.complex64(5-3j)],
+    'strided': [False, True],
+    'provided_output': [False, True],
+}))
+@testing.with_requires('scipy')
+class TestComplexConstantCval:
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_filter(self, xp, scp):
+        filters = {
+            'correlate': scp.ndimage.correlate,
+            'convolve': scp.ndimage.convolve,
+            'correlate1d': scp.ndimage.correlate1d,
+            'convolve1d': scp.ndimage.convolve1d,
+        }
+        array = testing.shaped_random((4, 8), xp, self.dtype, seed=8405)
+        if self.strided:
+            array = array[:, ::2]
+        before = array.copy()
+        shape = (3,) if self.function.endswith('1d') else (3, 3)
+        weights = testing.shaped_random(shape, xp, self.wdtype, seed=8406)
+        out = xp.empty_like(array) if self.provided_output else None
+        result = filters[self.function](array, weights, output=out,
+                                        mode='constant', cval=self.cval)
+        if out is not None:
+            assert result is out
+        testing.assert_array_equal(array, before)
+        return result
+
+
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.int16, numpy.float64],
+    'function': ['correlate', 'convolve', 'correlate1d', 'convolve1d'],
+    'cval': [5-3j, complex(2, 0)],
+    'mode': ['constant', 'reflect'],
+}))
+@testing.with_requires('scipy')
+class TestRealInputComplexCval:
+    @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=ValueError)
+    def test_invalid_cval(self, xp, scp):
+        filters = {
+            'correlate': scp.ndimage.correlate,
+            'convolve': scp.ndimage.convolve,
+            'correlate1d': scp.ndimage.correlate1d,
+            'convolve1d': scp.ndimage.convolve1d,
+        }
+        array = testing.shaped_random((4, 5), xp, self.dtype)
+        shape = (3,) if self.function.endswith('1d') else (3, 3)
+        weights = testing.shaped_random(shape, xp, numpy.complex64)
+        return filters[self.function](array, weights, mode=self.mode,
+                                      cval=self.cval)
+
+
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.complex64, numpy.complex128],
+    'strided': [False, True],
+}))
+@testing.with_requires('scipy')
+class TestComplexCvalImagePipeline:
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_pipeline(self, xp, scp):
+        rng = numpy.random.default_rng(8405)
+        host = (rng.normal(size=(32, 64))
+                + 1j * rng.normal(size=(32, 64))).astype(self.dtype)
+        data = xp.asarray(host)
+        if self.strided:
+            data = data[:, ::2]
+        before = data.copy()
+        weights = xp.asarray([[0, 1, 0], [1, 2, 1], [0, 1, 0]]) / 6
+        taps = xp.asarray([0.25+0.125j, 0.5, 0.25-0.125j], dtype=self.dtype)
+        first = scp.ndimage.correlate(data, weights, mode='constant',
+                                      cval=5-3j)
+        filtered = xp.empty_like(first)
+        scp.ndimage.convolve1d(first, taps, axis=1, output=filtered,
+                               mode='constant', cval=5-3j)
+        profile = xp.mean(xp.abs(filtered)**2, axis=0)
+        assert filtered.dtype == data.dtype
+        assert profile.dtype == data.real.dtype
+        testing.assert_array_equal(data, before)
+        return filtered, profile, xp.argmax(profile)
+
+
 # Tests special weights (ND)
 @testing.parameterize(*testing.product({
     'filter': ['convolve', 'correlate', 'minimum_filter', 'maximum_filter'],
