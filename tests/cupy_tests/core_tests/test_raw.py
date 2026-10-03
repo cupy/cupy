@@ -1716,6 +1716,43 @@ def test_ftz_options_cache(backend, raw_module, in_memory):
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='CUDA FTZ options')
 @pytest.mark.parametrize('backend', ['nvrtc', 'nvcc'])
 @pytest.mark.parametrize('raw_module', [False, True])
+@pytest.mark.parametrize('options', [
+    ('--use_fast_math',),
+    ('--use_fast_math', '--ftz=false'),
+    ('--ftz=false', '--use_fast_math'),
+    ('--use_fast_math', '--ftz=false', '--ftz=true'),
+    ('--ftz=false', '--ftz=true', '--use_fast_math'),
+    ('--ftz=true', '--use_fast_math', '--ftz=false'),
+])
+def test_ftz_native_options(backend, raw_module, options):
+    if backend == 'nvcc' and cupy.cuda.get_nvcc_path() is None:
+        pytest.skip('nvcc is unavailable')
+    if backend == 'nvrtc':
+        binary, _ = compiler.compile_using_nvrtc(_ftz_source, options)
+    else:
+        binary = compiler.compile_using_nvcc(_ftz_source, options)
+    native = cupy.cuda.function.Module()
+    native.load(binary)
+    x = cupy.asarray([2.0**-126, -2.0**-126, 1.0, -1.0],
+                     dtype=cupy.float32)
+    expected = cupy.empty_like(x)
+    native.get_function('scale_ftz')((1,), (32,), (x, expected))
+    if raw_module:
+        module = cupy.RawModule(code=_ftz_source, options=options,
+                                backend=backend)
+        kernel = module.get_function('scale_ftz')
+    else:
+        kernel = cupy.RawKernel(_ftz_source, 'scale_ftz', options=options,
+                                backend=backend)
+    actual = cupy.empty_like(x)
+    kernel((1,), (32,), (x, actual))
+    testing.assert_array_equal(actual.view(cupy.uint32),
+                               expected.view(cupy.uint32))
+
+
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='CUDA FTZ options')
+@pytest.mark.parametrize('backend', ['nvrtc', 'nvcc'])
+@pytest.mark.parametrize('raw_module', [False, True])
 def test_ftz_signal_pipeline(backend, raw_module):
     if backend == 'nvcc' and cupy.cuda.get_nvcc_path() is None:
         pytest.skip('nvcc is unavailable')
