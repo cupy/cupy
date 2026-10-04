@@ -1,0 +1,161 @@
+name: "Docs: Build and publish"
+
+# Fires after ci.yml finishes building wheels (same chain as flexci.yml).
+# Downloads the py3.12 linux-64 cu13 wheel from the triggering CI run, builds
+# the Sphinx HTML with RTD env vars mimicked, uploads it as the
+# `docs-html-<sha>` artifact, and tells readthedocs.org to publish it.
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+concurrency:
+  group: docs-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  actions: read
+
+defaults:
+  run:
+    shell: bash --noprofile --norc -xeuo pipefail {0}
+
+jobs:
+  build:
+    name: Build docs
+    runs-on: ubuntu-22.04
+    if: >-
+      github.repository_owner == 'cupy' &&
+      github.event.workflow_run.conclusion == 'success'
+    outputs:
+      head_sha: ${{ steps.compute.outputs.head_sha }}
+      rtd_slug: ${{ steps.compute.outputs.rtd_slug }}
+    steps:
+      - name: Resolve wheel artifact + RTD version from triggering CI run
+        id: compute
+        env:
+          EVENT: ${{ github.event.workflow_run.event }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+          PUSH_SHA: ${{ github.event.workflow_run.head_sha }}
+          PRS: ${{ toJSON(github.event.workflow_run.pull_requests) }}
+        run: |
+          if [[ "${EVENT}" == "pull_request" ]]; then
+            PR_NUMBER=$(jq -r '.[0].number // empty' <<<"${PRS}")
+            PR_HEAD_SHA=$(jq -r '.[0].head.sha // empty' <<<"${PRS}")
+            if [[ -z "${PR_NUMBER}" || -z "${PR_HEAD_SHA}" ]]; then
+              echo "::error::pull_request event missing PR metadata"
+              exit 1
+            fi
+            HEAD_SHA="${PR_HEAD_SHA}"
+            SUFFIX="pr${PR_NUMBER}-${PR_HEAD_SHA}"
+            RTD_SLUG="${PR_NUMBER}"
+            RTD_TYPE="external"
+          else
+            HEAD_SHA="${PUSH_SHA}"
+            SUFFIX="${PUSH_SHA}"
+            # RTD slug conventions: main -> `latest`; release branches keep
+            # their branch name (RTD creates one version per activated branch).
+            if [[ "${BRANCH}" == "main" ]]; then
+              RTD_SLUG="latest"
+            else
+              RTD_SLUG="${BRANCH}"
+            fi
+            RTD_TYPE="branch"
+          fi
+          {
+            echo "head_sha=${HEAD_SHA}"
+            echo "wheel_artifact=cupy-cuda13x-py3.12-linux-64-${SUFFIX}"
+            echo "rtd_slug=${RTD_SLUG}"
+            echo "rtd_type=${RTD_TYPE}"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Checkout cupy at the documented SHA
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        with:
+          ref: ${{ steps.compute.outputs.head_sha }}
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: "3.12"
+
+      - name: Download cupy wheel from triggering CI run
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0  # v5.0.0
+        with:
+          name: ${{ steps.compute.outputs.wheel_artifact }}
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ./wheel
+
+      - name: Install docs requirements + cupy[ctk]
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r docs/requirements.txt
+          WHEEL=$(ls wheel/cupy_cuda13x-*.whl)
+          python -m pip install "${WHEEL}[ctk]"
+
+      # Keyed by (docs sources + wheel sha) so a wheel rebuild invalidates the
+      # cache (new cupy binary -> autodoc output can change). Restore-keys fall
+      # back to any prior build on this branch, then any prior build at all.
+      - name: Restore sphinx doctrees cache
+        uses: actions/cache@v4
+        with:
+          path: docs/build/.doctrees
+          key: doctrees-${{ hashFiles('docs/source/**') }}-${{ steps.compute.outputs.head_sha }}
+          restore-keys: |
+            doctrees-${{ hashFiles('docs/source/**') }}-
+            doctrees-
+
+      - name: Build HTML docs
+        env:
+          # Mimic the RTD build env so docs/source/conf.py's extlinks tag
+          # resolution and cupy/cuda/__init__.py's RTD import guards behave
+          # identically to a RTD-run build.
+          READTHEDOCS: "True"
+          READTHEDOCS_PROJECT: cupy
+          READTHEDOCS_LANGUAGE: en
+          READTHEDOCS_VERSION: ${{ steps.compute.outputs.rtd_slug }}
+          READTHEDOCS_VERSION_TYPE: ${{ steps.compute.outputs.rtd_type }}
+          READTHEDOCS_GIT_COMMIT_HASH: ${{ steps.compute.outputs.head_sha }}
+        run: |
+          python -m sphinx -T -j auto -b html docs/source docs/build/html
+
+      - name: Upload HTML artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: docs-html-${{ steps.compute.outputs.head_sha }}
+          path: docs/build/html
+          if-no-files-found: error
+          retention-days: 90
+
+      # Non-fatal: if RTD_API_TOKEN is unset or the version slug isn't
+      # activated on RTD, log and continue -- the HTML artifact is still
+      # available for a manual RTD rebuild.
+      - name: Trigger RTD build
+        env:
+          RTD_API_TOKEN: ${{ secrets.RTD_API_TOKEN }}
+          RTD_SLUG: ${{ steps.compute.outputs.rtd_slug }}
+        run: |
+          if [[ -z "${RTD_API_TOKEN}" ]]; then
+            echo "::warning::RTD_API_TOKEN not set; skipping trigger"
+            exit 0
+          fi
+          HTTP_CODE=$(curl -sS -o /tmp/rtd_trigger.json -w '%{http_code}' \
+            -X POST \
+            -H "Authorization: Token ${RTD_API_TOKEN}" \
+            "https://readthedocs.org/api/v3/projects/cupy/versions/${RTD_SLUG}/builds/")
+          echo "RTD responded ${HTTP_CODE}"
+          cat /tmp/rtd_trigger.json || true
+          # 202 is the documented success; treat 404 (unactivated version) as a
+          # warning so release-tag docs can be opted in on RTD independently.
+          if [[ "${HTTP_CODE}" == "202" ]]; then
+            echo "RTD build triggered for version '${RTD_SLUG}'"
+          elif [[ "${HTTP_CODE}" == "404" ]]; then
+            echo "::warning::RTD version '${RTD_SLUG}' is not activated; skipping"
+          else
+            echo "::error::RTD trigger failed (${HTTP_CODE})"
+            exit 1
+          fi

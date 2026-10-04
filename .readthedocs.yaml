@@ -1,18 +1,31 @@
 # See https://docs.readthedocs.io/en/stable/config-file/v2.html for details
+#
+# The actual docs are built by the GHA `Docs: Build and publish` workflow,
+# which chains off `CI` via workflow_run and uploads a `docs-html-<sha>`
+# artifact. This config overrides RTD's default build so the RTD runner
+# does nothing but fetch that artifact and expose it as the published HTML.
+# `GH_TOKEN` must be set in the RTD project environment variables (a
+# fine-grained PAT scoped to cupy/cupy with `actions:read` + `metadata:read`).
 
 version: 2
-submodules:
-    include: all
-    recursive: true
+
 build:
-    os: ubuntu-22.04
-    tools:
-        python: "3.12"
-formats: all
-sphinx:
-    configuration: docs/source/conf.py
-python:
-    install:
-    - requirements: docs/requirements.txt
-    - method: pip
-      path: .
+  os: ubuntu-22.04
+  tools:
+    python: "3.12"
+  commands:
+    - |
+      set -euo pipefail
+      curl -fsSL https://github.com/cli/cli/releases/download/v2.63.0/gh_2.63.0_linux_amd64.tar.gz | tar xz -C /tmp
+      export PATH="/tmp/gh_2.63.0_linux_amd64/bin:${PATH}"
+      mkdir -p "${READTHEDOCS_OUTPUT}/html"
+      RUN_ID=$(gh api \
+          "/repos/cupy/cupy/actions/artifacts?name=docs-html-${READTHEDOCS_GIT_COMMIT_HASH}" \
+          --jq '.artifacts | sort_by(.created_at) | reverse | .[0].workflow_run.id // empty')
+      if [ -z "${RUN_ID}" ]; then
+          echo "No docs-html-${READTHEDOCS_GIT_COMMIT_HASH} artifact found in cupy/cupy" >&2
+          exit 1
+      fi
+      gh run download -R cupy/cupy "${RUN_ID}" \
+          -n "docs-html-${READTHEDOCS_GIT_COMMIT_HASH}" \
+          --dir "${READTHEDOCS_OUTPUT}/html"
