@@ -32,13 +32,10 @@ build:
       tar xzf /tmp/gh.tgz -C /tmp
       export PATH="/tmp/gh_2.63.0_linux_amd64/bin:${PATH}"
       mkdir -p "${READTHEDOCS_OUTPUT}/html"
-      RUN_ID=$(gh api \
-          "/repos/cupy/cupy/actions/artifacts?name=${ARTIFACT_NAME}" \
-          --jq '.artifacts | sort_by(.created_at) | reverse | .[0].workflow_run.id // empty')
+      gh api "/repos/cupy/cupy/actions/artifacts?name=${ARTIFACT_NAME}" --jq ".artifacts | sort_by(.created_at) | last.workflow_run.id // empty" > /tmp/run_id.txt
+      RUN_ID=$(cat /tmp/run_id.txt)
       if [ -z "${RUN_ID}" ]; then
           echo "No ${ARTIFACT_NAME} artifact in cupy/cupy yet; cancelling build" >&2
           exit 183
       fi
-      gh run download -R cupy/cupy "${RUN_ID}" \
-          -n "${ARTIFACT_NAME}" \
-          --dir "${READTHEDOCS_OUTPUT}/html"
+      gh run download -R cupy/cupy "${RUN_ID}" -n "${ARTIFACT_NAME}" --dir "${READTHEDOCS_OUTPUT}/html"
