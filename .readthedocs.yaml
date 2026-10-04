@@ -1,12 +1,3 @@
-# See https://docs.readthedocs.io/en/stable/config-file/v2.html for details
-#
-# The actual docs are built by the GHA `Docs: Build and publish` workflow,
-# which chains off `CI` via workflow_run and uploads a `docs-html-<sha>`
-# artifact. This config overrides RTD's default build so the RTD runner
-# does nothing but fetch that artifact and expose it as the published HTML.
-# `GH_TOKEN` must be set in the RTD project environment variables (a
-# fine-grained PAT scoped to cupy/cupy with `actions:read` + `metadata:read`).
-
 version: 2
 
 build:
@@ -14,31 +5,6 @@ build:
   tools:
     python: "3.12"
   commands:
-    # RTD runs each `commands` entry under dash (/bin/sh), not bash, so `-o
-    # pipefail` is unavailable; we `set -eu` and download to a file instead of
-    # piping.
     - |
-      set -eu
-      if [ "${READTHEDOCS_VERSION_TYPE}" = "external" ]; then
-          SUFFIX="pr${READTHEDOCS_VERSION}-${READTHEDOCS_GIT_COMMIT_HASH}"
-      else
-          SUFFIX="${READTHEDOCS_GIT_COMMIT_HASH}"
-      fi
-      ARTIFACT_NAME="docs-html-${SUFFIX}"
-      curl -fsSL -o /tmp/gh.tgz https://github.com/cli/cli/releases/download/v2.63.0/gh_2.63.0_linux_amd64.tar.gz
-      tar xzf /tmp/gh.tgz -C /tmp
-      export PATH="/tmp/gh_2.63.0_linux_amd64/bin:${PATH}"
-      mkdir -p "${READTHEDOCS_OUTPUT}/html"
-      RUN_ID=$(gh api \
-          "/repos/cupy/cupy/actions/artifacts?name=${ARTIFACT_NAME}" \
-          --jq '.artifacts | sort_by(.created_at) | reverse | .[0].workflow_run.id // empty')
-      if [ -z "${RUN_ID}" ]; then
-          # Cancel (not fail) when GHA hasn't uploaded yet -- the race-condition
-          # path for webhook-triggered builds that fire before docs.yml finishes.
-          # RTD treats exit 183 as "cancelled" rather than "failed".
-          echo "No ${ARTIFACT_NAME} artifact in cupy/cupy yet; cancelling build" >&2
-          exit 183
-      fi
-      gh run download -R cupy/cupy "${RUN_ID}" \
-          -n "${ARTIFACT_NAME}" \
-          --dir "${READTHEDOCS_OUTPUT}/html"
+      echo "probe: TYPE=$READTHEDOCS_VERSION_TYPE VER=$READTHEDOCS_VERSION SHA=$READTHEDOCS_GIT_COMMIT_HASH"
+      exit 183
