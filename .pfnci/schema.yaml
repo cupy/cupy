@@ -11,9 +11,9 @@ system:
 ###############################################################################
 # Name and version of the operating system to test on.
 os:
-  "ubuntu:20.04":
-    system: "linux"
   "ubuntu:22.04":    # CUDA 11.7+
+    system: "linux"
+  "ubuntu:24.04":    # CUDA 12.5.1+
     system: "linux"
   "centos:7":
     system: "linux"
@@ -426,12 +426,10 @@ nvmath-python:
 cuda-cccl:
   null:
     spec: null
-  # Cap below 1.2.0: NVIDIA/cccl#11472 -- 1.2.0 access-violates in
-  # cuda.compute call_build on Windows on the first make_reduce_into.
   "cu12":
-    spec: "[minimal-sysctk12]>=1.1.1,<1.2"
+    spec: "[minimal-sysctk12]>=1.1.1,!=1.2.0"
   "cu13":
-    spec: "[minimal-sysctk13]>=1.1.1,<1.2"
+    spec: "[minimal-sysctk13]>=1.1.1,!=1.2.0"
 
 ###############################################################################
 # Environment Variables
