@@ -14,18 +14,31 @@ build:
   tools:
     python: "3.12"
   commands:
+    # RTD runs each `commands` entry under dash (/bin/sh), not bash, so `-o
+    # pipefail` is unavailable; we `set -eu` and download to a file instead of
+    # piping.
     - |
-      set -euo pipefail
-      curl -fsSL https://github.com/cli/cli/releases/download/v2.63.0/gh_2.63.0_linux_amd64.tar.gz | tar xz -C /tmp
+      set -eu
+      if [ "${READTHEDOCS_VERSION_TYPE}" = "external" ]; then
+          SUFFIX="pr${READTHEDOCS_VERSION}-${READTHEDOCS_GIT_COMMIT_HASH}"
+      else
+          SUFFIX="${READTHEDOCS_GIT_COMMIT_HASH}"
+      fi
+      ARTIFACT_NAME="docs-html-${SUFFIX}"
+      curl -fsSL -o /tmp/gh.tgz https://github.com/cli/cli/releases/download/v2.63.0/gh_2.63.0_linux_amd64.tar.gz
+      tar xzf /tmp/gh.tgz -C /tmp
       export PATH="/tmp/gh_2.63.0_linux_amd64/bin:${PATH}"
       mkdir -p "${READTHEDOCS_OUTPUT}/html"
       RUN_ID=$(gh api \
-          "/repos/cupy/cupy/actions/artifacts?name=docs-html-${READTHEDOCS_GIT_COMMIT_HASH}" \
+          "/repos/cupy/cupy/actions/artifacts?name=${ARTIFACT_NAME}" \
           --jq '.artifacts | sort_by(.created_at) | reverse | .[0].workflow_run.id // empty')
       if [ -z "${RUN_ID}" ]; then
-          echo "No docs-html-${READTHEDOCS_GIT_COMMIT_HASH} artifact found in cupy/cupy" >&2
-          exit 1
+          # Cancel (not fail) when GHA hasn't uploaded yet -- the race-condition
+          # path for webhook-triggered builds that fire before docs.yml finishes.
+          # RTD treats exit 183 as "cancelled" rather than "failed".
+          echo "No ${ARTIFACT_NAME} artifact in cupy/cupy yet; cancelling build" >&2
+          exit 183
       fi
       gh run download -R cupy/cupy "${RUN_ID}" \
-          -n "docs-html-${READTHEDOCS_GIT_COMMIT_HASH}" \
+          -n "${ARTIFACT_NAME}" \
           --dir "${READTHEDOCS_OUTPUT}/html"
