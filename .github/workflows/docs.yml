@@ -29,9 +29,6 @@ jobs:
     if: >-
       github.repository_owner == 'cupy' &&
       github.event.workflow_run.conclusion == 'success'
-    outputs:
-      head_sha: ${{ steps.compute.outputs.head_sha }}
-      rtd_slug: ${{ steps.compute.outputs.rtd_slug }}
     steps:
       - name: Resolve wheel artifact + RTD version from triggering CI run
         id: compute
