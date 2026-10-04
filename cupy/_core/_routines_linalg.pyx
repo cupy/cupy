@@ -871,7 +871,6 @@ cpdef _ndarray_base _mat_ptrs(_ndarray_base a):
 cdef bint _batch_strides_are_aligned(
         _ndarray_base a, Py_ssize_t alignment) noexcept:
     cdef Py_ssize_t axis
-
     for axis in range(<Py_ssize_t>a._shape.size() - 2):
         if a._shape[axis] > 1 and a._strides[axis] % alignment != 0:
             return False
@@ -907,8 +906,8 @@ cpdef _ndarray_base matmul(
     cdef _ndarray_base ap, bp, cp, c_view
     cdef bint use_broadcast
     cdef Py_ssize_t alignment
-    cdef bint force_temporary_output = False
-    cdef bint input_layout_ok, output_layout_ok
+    cdef bint input_stride_ok, output_stride_ok
+    cdef bint force_temp_aligned_output = False
     cdef Py_ssize_t padded_output_stride = 0
     cdef Py_ssize_t alignment_elements, output_byte_stride
     cdef _ndarray_base output_storage
@@ -1053,16 +1052,16 @@ cpdef _ndarray_base matmul(
         else:
             alignment = 2
 
-        input_layout_ok = (
+        input_stride_ok = (
             _batch_strides_are_aligned(a, alignment)
             and _batch_strides_are_aligned(b, alignment)
         )
-        output_layout_ok = (
+        output_stride_ok = (
             batchCount <= 1
             or (n * m * 2) % alignment == 0
         )
 
-        if not input_layout_ok:
+        if not input_stride_ok:
             dtype = numpy.dtype('f')
             cuda_dtype = runtime.CUDA_R_32F
             compute_dtype = cuda_dtype
@@ -1076,23 +1075,23 @@ cpdef _ndarray_base matmul(
             if b.data.ptr % alignment != 0:
                 b = b.copy(order='C')
 
-            if not output_layout_ok:
+            if not output_stride_ok:
                 alignment_elements = alignment // 2
                 padded_output_stride = (
                     (n * m + alignment_elements - 1)
                     // alignment_elements * alignment_elements
                 )
-                force_temporary_output = True
+                force_temp_aligned_output = True
 
             if out is not None:
-                force_temporary_output = (
-                    force_temporary_output
+                force_temp_aligned_output = (
+                    force_temp_aligned_output
                     or out.data.ptr % alignment != 0
                 )
 
     if (
         out is not None and out.dtype == dtype and out.flags.c_contiguous
-        and not force_temporary_output
+        and not force_temp_aligned_output
         and not _memory_range.may_share_bounds(out, a)
         and not _memory_range.may_share_bounds(out, b)
     ):
