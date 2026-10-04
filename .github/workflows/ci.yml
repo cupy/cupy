@@ -8,9 +8,11 @@ name: "CI"
 #                    ci:triggered label event and records the comment
 #                    payload as a vouched artifact for flexci.yml.
 #   ci.yml (this)  : pull_request/labeled -- builds the vouched PR's pinned
-#                    merge commit when the guard says mode=test; no-ops on
-#                    mode=skip (still uploads a dispatch sentinel so
-#                    flexci.yml fires) and on mode=no-op (unrelated label).
+#                    merge commit when the guard says mode=test, builds
+#                    only the py<doc>+cu13 linux-64 wheel when
+#                    mode=doc-only, no-ops on mode=skip (still uploads a
+#                    dispatch sentinel so flexci.yml fires) and on
+#                    mode=no-op (unrelated label).
 #                    push (main, v*, hotfix-*) -- builds the merged commit
 #                    (mode=test) and uploads the push event for flexci.yml
 #                    to consume.
@@ -79,6 +81,8 @@ jobs:
       pr_number: ${{ steps.check.outputs.pr_number }}
       CUDA_BUILD_VER: ${{ steps.vars.outputs.cuda_build_ver }}
       CUDA_PREV_BUILD_VER: ${{ steps.vars.outputs.cuda_prev_build_ver }}
+      PYTHON_SUPPORTED: ${{ steps.vars.outputs.python_supported }}
+      PYTHON_DOC_VER: ${{ steps.vars.outputs.python_doc_ver }}
     steps:
       # Which copy of ci-guard.sh runs follows GitHub's rules for the
       # workflow file itself: the pushed branch's copy for push events, the
@@ -104,13 +108,19 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: ./ci/tools/ci-guard.sh
-      - name: Read CUDA build versions
+      - name: Read CUDA + Python versions
         id: vars
         run: |
           cuda_build_ver=$(yq '.cuda.build.version' ci/versions.yml)
           echo "cuda_build_ver=$cuda_build_ver" >> $GITHUB_OUTPUT
           cuda_prev_build_ver=$(yq '.cuda.prev_build.version' ci/versions.yml)
           echo "cuda_prev_build_ver=$cuda_prev_build_ver" >> $GITHUB_OUTPUT
+          # yq -o json -I 0 flattens to one-line JSON so the string is safe
+          # to pass through GHA outputs + fromJSON on the receiving side.
+          python_supported=$(yq -o json -I 0 '.python.supported' ci/versions.yml)
+          echo "python_supported=$python_supported" >> $GITHUB_OUTPUT
+          python_doc_ver=$(yq '.python.doc.version' ci/versions.yml)
+          echo "python_doc_ver=$python_doc_ver" >> $GITHUB_OUTPUT
 
   # Producer of cupy-<version>.tar.gz for every wheel job below. Building
   # wheels from the sdist (instead of a fresh checkout) makes the sdist the
@@ -120,7 +130,7 @@ jobs:
   build-sdist:
     needs:
       - guard
-    if: needs.guard.outputs.mode == 'test'
+    if: needs.guard.outputs.mode == 'test' || needs.guard.outputs.mode == 'doc-only'
     permissions:
       contents: read
     name: Build sdist
@@ -159,6 +169,35 @@ jobs:
     with:
       host-platform: ${{ matrix.host-platform }}
       cuda-version: ${{ matrix.cuda-version }}
+      python-versions: ${{ needs.guard.outputs.PYTHON_SUPPORTED }}
+      ref: ${{ needs.guard.outputs.ref }}
+      artifact-suffix: ${{ needs.guard.outputs.artifact_suffix }}
+
+  # /test doc-only lane: build only the single wheel docs.yml needs
+  # (py<doc> + cu13 + linux-64), reusing the same build-wheel.yml plumbing.
+  # No other platforms, no cu-prev, no GPU tests. The artifact lands under
+  # the same `cupy-cuda13x-py<doc>-linux-64-<suffix>` name docs.yml looks
+  # up unconditionally, so no downstream wiring changes.
+  build-linux-64-doc:
+    needs:
+      - guard
+      - build-sdist
+    if: needs.guard.outputs.mode == 'doc-only'
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        host-platform:
+          - linux-64
+        cuda-version:
+          - ${{ needs.guard.outputs.CUDA_BUILD_VER }}
+    name: Build ${{ matrix.host-platform }} for docs, CUDA ${{ matrix.cuda-version }}
+    uses: ./.github/workflows/build-wheel.yml
+    with:
+      host-platform: ${{ matrix.host-platform }}
+      cuda-version: ${{ matrix.cuda-version }}
+      python-versions: '["${{ needs.guard.outputs.PYTHON_DOC_VER }}"]'
       ref: ${{ needs.guard.outputs.ref }}
       artifact-suffix: ${{ needs.guard.outputs.artifact_suffix }}
 
@@ -183,6 +222,7 @@ jobs:
     with:
       host-platform: ${{ matrix.host-platform }}
       cuda-version: ${{ matrix.cuda-version }}
+      python-versions: ${{ needs.guard.outputs.PYTHON_SUPPORTED }}
       ref: ${{ needs.guard.outputs.ref }}
       artifact-suffix: ${{ needs.guard.outputs.artifact_suffix }}
 
@@ -208,6 +248,7 @@ jobs:
     with:
       host-platform: ${{ matrix.host-platform }}
       cuda-version: ${{ matrix.cuda-version }}
+      python-versions: ${{ needs.guard.outputs.PYTHON_SUPPORTED }}
       ref: ${{ needs.guard.outputs.ref }}
       artifact-suffix: ${{ needs.guard.outputs.artifact_suffix }}
 
@@ -235,6 +276,7 @@ jobs:
     with:
       host-platform: ${{ matrix.host-platform }}
       cuda-version: ${{ matrix.cuda-version }}
+      python-versions: ${{ needs.guard.outputs.PYTHON_SUPPORTED }}
       ref: ${{ needs.guard.outputs.ref }}
       artifact-suffix: ${{ needs.guard.outputs.artifact_suffix }}
 
@@ -257,12 +299,15 @@ jobs:
     needs:
       - guard
       - build-linux-64
+      - build-linux-64-doc
       - build-linux-aarch64
       - build-windows
       - build-win-arm64
     if: |
       always() && (
         (github.event_name == 'pull_request' && needs.guard.outputs.mode == 'skip') ||
+        (needs.guard.outputs.mode == 'doc-only' &&
+         needs.build-linux-64-doc.result == 'success') ||
         (needs.guard.outputs.mode == 'test' &&
          needs.build-linux-64.result == 'success' &&
          needs.build-linux-aarch64.result == 'success' &&
@@ -296,7 +341,8 @@ jobs:
   # status" context. GitHub treats conditionally skipped required checks as
   # passing, so keeping the name static would let an unrelated label event
   # temporarily green a previously-failed head via a skipped check-run.
-  # Only mode=test / mode=skip runs report as "Check job status".
+  # Only mode=test / mode=skip / mode=doc-only runs report as "Check job
+  # status".
   checks:
     name: >-
       ${{ needs.guard.outputs.mode == 'no-op'
@@ -307,6 +353,7 @@ jobs:
     needs:
       - guard
       - build-linux-64
+      - build-linux-64-doc
       - build-linux-aarch64
       - build-windows
       - build-win-arm64
@@ -328,6 +375,7 @@ jobs:
           case "${{ needs.guard.outputs.mode }}" in
           test)
             check_result "build-linux-64"      "success" "${{ needs.build-linux-64.result }}"
+            check_result "build-linux-64-doc"  "skipped" "${{ needs.build-linux-64-doc.result }}"
             check_result "build-linux-aarch64" "success" "${{ needs.build-linux-aarch64.result }}"
             check_result "build-windows"       "success" "${{ needs.build-windows.result }}"
             # win-arm64 only runs on CUDA 13.x build lanes; treat "skipped"
@@ -340,8 +388,17 @@ jobs:
             fi
             check_result "build-sentinel"      "success" "${{ needs.build-sentinel.result }}"
             ;;
+          doc-only)
+            check_result "build-linux-64-doc"  "success" "${{ needs.build-linux-64-doc.result }}"
+            check_result "build-linux-64"      "skipped" "${{ needs.build-linux-64.result }}"
+            check_result "build-linux-aarch64" "skipped" "${{ needs.build-linux-aarch64.result }}"
+            check_result "build-windows"       "skipped" "${{ needs.build-windows.result }}"
+            check_result "build-win-arm64"     "skipped" "${{ needs.build-win-arm64.result }}"
+            check_result "build-sentinel"      "success" "${{ needs.build-sentinel.result }}"
+            ;;
           skip)
             check_result "build-linux-64"      "skipped" "${{ needs.build-linux-64.result }}"
+            check_result "build-linux-64-doc"  "skipped" "${{ needs.build-linux-64-doc.result }}"
             check_result "build-linux-aarch64" "skipped" "${{ needs.build-linux-aarch64.result }}"
             check_result "build-windows"       "skipped" "${{ needs.build-windows.result }}"
             check_result "build-win-arm64"     "skipped" "${{ needs.build-win-arm64.result }}"

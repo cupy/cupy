@@ -69,18 +69,43 @@ jobs:
             echo "rtd_type=${RTD_TYPE}"
           } >> "${GITHUB_OUTPUT}"
 
+      # ci.yml succeeds in modes test, doc-only, AND skip -- skip mode
+      # publishes a dispatch sentinel but no wheel. Rather than letting
+      # the download step fail red, check whether the expected wheel
+      # artifact exists on the triggering run; if not, exit the job
+      # cleanly so `/test skip` really skips everything downstream.
+      - name: Check wheel artifact exists in triggering CI run
+        id: preflight
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          WHEEL_ARTIFACT: ${{ steps.compute.outputs.wheel_artifact }}
+        run: |
+          count=$(gh api \
+            "repos/${{ github.repository }}/actions/runs/${RUN_ID}/artifacts?per_page=100" \
+            --jq "[.artifacts[] | select(.name == \"${WHEEL_ARTIFACT}\")] | length")
+          if [[ "${count}" == "0" ]]; then
+            echo "::notice::${WHEEL_ARTIFACT} not present in triggering CI run; skipping docs build (likely /test skip)."
+            echo "proceed=false" >> "${GITHUB_OUTPUT}"
+          else
+            echo "proceed=true" >> "${GITHUB_OUTPUT}"
+          fi
+
       - name: Checkout cupy at the documented SHA
+        if: steps.preflight.outputs.proceed == 'true'
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
         with:
           ref: ${{ steps.compute.outputs.head_sha }}
           fetch-depth: 1
 
       - name: Set up Python
+        if: steps.preflight.outputs.proceed == 'true'
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
         with:
           python-version: "3.12"
 
       - name: Download cupy wheel from triggering CI run
+        if: steps.preflight.outputs.proceed == 'true'
         uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0  # v5.0.0
         with:
           name: ${{ steps.compute.outputs.wheel_artifact }}
@@ -89,6 +114,7 @@ jobs:
           path: ./wheel
 
       - name: Install docs requirements + cupy[ctk]
+        if: steps.preflight.outputs.proceed == 'true'
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r docs/requirements.txt
@@ -99,6 +125,7 @@ jobs:
       # cache (new cupy binary -> autodoc output can change). Restore-keys fall
       # back to any prior build on this branch, then any prior build at all.
       - name: Restore sphinx doctrees cache
+        if: steps.preflight.outputs.proceed == 'true'
         uses: actions/cache@v4
         with:
           path: docs/build/.doctrees
@@ -108,6 +135,7 @@ jobs:
             doctrees-
 
       - name: Build HTML docs
+        if: steps.preflight.outputs.proceed == 'true'
         env:
           # Mimic the RTD build env so docs/source/conf.py's extlinks tag
           # resolution and cupy/cuda/__init__.py's RTD import guards behave
@@ -122,6 +150,7 @@ jobs:
           python -m sphinx -T -j auto -b html docs/source docs/build/html
 
       - name: Upload HTML artifact
+        if: steps.preflight.outputs.proceed == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: ${{ steps.compute.outputs.html_artifact }}
@@ -133,6 +162,7 @@ jobs:
       # activated on RTD, log and continue -- the HTML artifact is still
       # available for a manual RTD rebuild.
       - name: Trigger RTD build
+        if: steps.preflight.outputs.proceed == 'true'
         env:
           RTD_API_TOKEN: ${{ secrets.RTD_API_TOKEN }}
           RTD_SLUG: ${{ steps.compute.outputs.rtd_slug }}

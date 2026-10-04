@@ -10,6 +10,10 @@
 #            and the dispatcher posts skip statuses. Set for
 #            pull_request/labeled runs whose vouched artifact records a
 #            `/test skip` or `/test force-skip` comment.
+#   doc-only: builds only the sdist + the single wheel docs.yml needs
+#            (py3.12, linux-64, cu13) so RTD gets a preview without the
+#            full matrix or GPU tests. Set for pull_request/labeled runs
+#            whose vouched artifact records a `/test doc-only` comment.
 #   no-op  : nothing runs downstream. Unrelated labels, non-vouched
 #            ci:triggered, branch deletions, skip-ci merged PRs, etc.
 #
@@ -103,6 +107,8 @@ pull_request)
         first_test="$(printf '%s\n' "${body}" | grep -m1 -E '^/test[[:space:]]+[^[:space:]]' || true)"
         if [[ "${first_test}" =~ ^/test[[:space:]]+(skip|force-skip)[[:space:]]*$ ]]; then
           mode=skip
+        elif [[ "${first_test}" =~ ^/test[[:space:]]+doc-only[[:space:]]*$ ]]; then
+          mode=doc-only
         else
           mode=test
         fi
