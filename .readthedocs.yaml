@@ -4,8 +4,9 @@
 # which chains off `CI` via workflow_run and uploads a `docs-html-<sha>`
 # artifact. This config overrides RTD's default build so the RTD runner
 # does nothing but fetch that artifact and expose it as the published HTML.
-# `GH_TOKEN` must be set in the RTD project environment variables (a
-# fine-grained PAT scoped to cupy/cupy with `actions:read` + `metadata:read`).
+# `CUPY_CI_GITHUB_TOKEN` must be set in the RTD project environment variables
+# (a fine-grained PAT scoped to cupy/cupy with `actions:read` + `metadata:read`);
+# the shell block below exports it as `GH_TOKEN` so `gh` picks it up.
 #
 # RTD runs each build.commands entry under dash (/bin/sh), not bash, so we
 # `set -eu` (no -o pipefail) and download tarballs to a file instead of
@@ -22,6 +23,7 @@ build:
   commands:
     - |
       set -eu
+      export GH_TOKEN="${CUPY_CI_GITHUB_TOKEN}"
       if [ "${READTHEDOCS_VERSION_TYPE}" = "external" ]; then
           SUFFIX="pr${READTHEDOCS_VERSION}-${READTHEDOCS_GIT_COMMIT_HASH}"
       else
