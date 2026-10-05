@@ -57,6 +57,27 @@ except Exception as e:
         assert stdoutdata in (b'', b'RuntimeError\n')
 
 
+def test_testing_import_does_not_require_pytest():
+    # cupy.testing import is lazy, but some environments tend to inspect
+    # it anyway.  Check that even an * import doesn't require pytest.
+    returncode, stdoutdata, stderrdata = _run_script('''
+import sys
+
+class BlockPytest:
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname == 'pytest' or fullname.startswith('_pytest'):
+            raise ModuleNotFoundError(fullname)
+        return None
+import sys
+sys.meta_path.insert(0, BlockPytest())
+
+# non-lazy import should succeed even if pytest is not available
+from cupy.testing import *
+''')
+    assert returncode == 0, 'stderr: {!r}'.format(stderrdata)
+    assert stdoutdata == b''
+
+
 if not cupy.cuda.runtime.is_hip:
     visible = 'CUDA_VISIBLE_DEVICES'
 else:

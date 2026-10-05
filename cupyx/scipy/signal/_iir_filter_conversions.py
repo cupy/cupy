@@ -861,6 +861,10 @@ def bilinear(b, a, fs=1.0):
     """
     fs = float(fs)
     a, b = map(cupy.atleast_1d, (a, b))
+    # Remove leading zeros so they don't inflate the polynomial degrees and
+    # change the result (matches ``scipy.signal.bilinear``; see scipy gh-6606).
+    b = cupy.trim_zeros(b, 'f')
+    a = cupy.trim_zeros(a, 'f')
     D = a.shape[0] - 1
     N = b.shape[0] - 1
 

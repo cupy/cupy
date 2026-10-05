@@ -9,6 +9,7 @@ import cupy
 import cupy._core._accelerator as _acc
 from cupy import cuda
 from cupy import testing
+from cupy._statistics import order as order_module
 
 
 _all_methods = (
@@ -48,6 +49,16 @@ def _fix_gamma(monkeypatch):
 
 def for_all_methods(name='method'):
     return pytest.mark.parametrize(name, _all_methods)
+
+
+def test_percentile_kernel_accepts_large_dimensions():
+    indices = cupy.array([0], dtype=cupy.float64)
+    a = cupy.broadcast_to(
+        cupy.array([1], dtype=cupy.float64), (2**31,))
+    out = cupy.empty(1, dtype=cupy.float64)
+    order_module._get_percentile_weightnening_kernel()(
+        indices, a, 0, a.size, out)
+    assert out[0] == 1
 
 
 @testing.with_requires('numpy>=1.22.0rc1')

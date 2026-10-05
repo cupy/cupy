@@ -14,7 +14,7 @@ from cupy._core._ufuncs import elementwise_copy
 from cupy._core cimport _accelerator
 from cupy._core cimport _routines_math as _math
 from cupy._core.core cimport _ndarray_base
-from cupy._util import bf16_loop
+from cupy._util import BF16, bf16_loop
 
 from cupy.cuda import cub
 
@@ -27,11 +27,19 @@ except ImportError:
 cdef _ndarray_base _ndarray_max(
         _ndarray_base self, axis, out, dtype, keepdims):
     for accelerator in _accelerator._routine_accelerators:
-        result = None
+        if accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE:
+            # result will be None if the reduction is not served by
+            # cuda.compute
+            result = _amax(self, axis=axis, out=out, dtype=dtype,
+                           keepdims=keepdims, cuda_compute_only=True)
+            if result is not None:
+                return result
         if accelerator == _accelerator.ACCELERATOR_CUB:
             # result will be None if the reduction is not compatible with CUB
             result = cub.cub_reduction(
                 self, cub.CUPY_CUB_MAX, axis, dtype, out, keepdims)
+            if result is not None:
+                return result
         if (accelerator == _accelerator.ACCELERATOR_CUTENSOR and
                 cuda_cutensor is not None):
             from cupyx import cutensor
@@ -40,19 +48,27 @@ cdef _ndarray_base _ndarray_max(
                 continue
             result = cutensor._try_reduction_routine(
                 self, axis, dtype, out, keepdims, cuda_cutensor.OP_MAX, 1, 0)
-        if result is not None:
-            return result
+            if result is not None:
+                return result
     return _amax(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 
 cdef _ndarray_base _ndarray_min(
         _ndarray_base self, axis, out, dtype, keepdims):
     for accelerator in _accelerator._routine_accelerators:
-        result = None
+        if accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE:
+            # result will be None if the reduction is not served by
+            # cuda.compute
+            result = _amin(self, axis=axis, out=out, dtype=dtype,
+                           keepdims=keepdims, cuda_compute_only=True)
+            if result is not None:
+                return result
         if accelerator == _accelerator.ACCELERATOR_CUB:
             # result will be None if the reduction is not compatible with CUB
             result = cub.cub_reduction(
                 self, cub.CUPY_CUB_MIN, axis, out, dtype, keepdims)
+            if result is not None:
+                return result
         if (accelerator == _accelerator.ACCELERATOR_CUTENSOR and
                 cuda_cutensor is not None):
             from cupyx import cutensor
@@ -61,13 +77,24 @@ cdef _ndarray_base _ndarray_min(
                 continue
             result = cutensor._try_reduction_routine(
                 self, axis, dtype, out, keepdims, cuda_cutensor.OP_MIN, 1, 0)
-        if result is not None:
-            return result
+            if result is not None:
+                return result
     return _amin(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
 
 
 cdef _ndarray_base _ndarray_ptp(_ndarray_base self, axis, out, keepdims):
     for accelerator in _accelerator._routine_accelerators:
+        if accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE:
+            # result will be None if the reduction is not served by
+            # cuda.compute
+            result = _amax(self, axis=axis, out=out, keepdims=keepdims,
+                           cuda_compute_only=True)
+            if result is not None:
+                minimum = _amin(self, axis=axis, keepdims=keepdims,
+                                cuda_compute_only=True)
+                if minimum is not None:
+                    result -= minimum
+                    return result
         if accelerator == _accelerator.ACCELERATOR_CUB:
             # result will be None if the reduction is not compatible with CUB
             result = cub.cub_reduction(
@@ -98,6 +125,13 @@ cdef _ndarray_base _ndarray_ptp(_ndarray_base self, axis, out, keepdims):
 cdef _ndarray_base _ndarray_argmax(
         _ndarray_base self, axis, out, dtype, keepdims):
     for accelerator in _accelerator._routine_accelerators:
+        if accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE:
+            # result will be None if the reduction is not served by
+            # cuda.compute
+            result = _argmax(self, axis=axis, out=out, dtype=dtype,
+                             keepdims=keepdims, cuda_compute_only=True)
+            if result is not None:
+                return result
         if accelerator == _accelerator.ACCELERATOR_CUB:
             # result will be None if the reduction is not compatible with CUB
             if self._f_contiguous and self.dtype == numpy.bool_:
@@ -116,6 +150,13 @@ cdef _ndarray_base _ndarray_argmax(
 cdef _ndarray_base _ndarray_argmin(
         _ndarray_base self, axis, out, dtype, keepdims):
     for accelerator in _accelerator._routine_accelerators:
+        if accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE:
+            # result will be None if the reduction is not served by
+            # cuda.compute
+            result = _argmin(self, axis=axis, out=out, dtype=dtype,
+                             keepdims=keepdims, cuda_compute_only=True)
+            if result is not None:
+                return result
         if accelerator == _accelerator.ACCELERATOR_CUB:
             # result will be None if the reduction is not compatible with CUB
             result = cub.cub_reduction(
@@ -587,17 +628,22 @@ cdef _ndarray_base _var(
 
     arrmean = a.mean(axis=axis, dtype=dtype_mean, out=None, keepdims=True)
 
-    if out is None:
-        if dtype_out == 'float16':
-            var_core = _var_core_float16
-        elif dtype_out == 'float32':
-            var_core = _var_core_float32
-        else:
-            var_core = _var_core_float64
-        return var_core(a, arrmean, alpha, axis=axis, keepdims=keepdims)
+    if dtype_out == 'float16':
+        var_core = _var_core_float16
+    elif dtype_out == 'float32':
+        var_core = _var_core_float32
+    elif BF16 is not None and dtype_out == BF16:
+        var_core = _var_core_bfloat16
+    else:
+        var_core = _var_core_float64
 
-    out = _var_core_out(a, arrmean, alpha, out, axis=axis, keepdims=keepdims)
-    return out.astype(dtype_out, copy=False)
+    if out is None or out.dtype == dtype_out:
+        return var_core(
+            a, arrmean, alpha, out=out, axis=axis, keepdims=keepdims)
+
+    var_res = var_core(a, arrmean, alpha, axis=axis, keepdims=keepdims)
+    elementwise_copy(var_res, out)
+    return out
 
 
 cdef _ndarray_base _std(
@@ -622,6 +668,15 @@ cdef _var_core_float16 = ReductionKernel(
     preamble=_norm_preamble)
 
 
+cdef _var_core_bfloat16 = None
+if BF16 is not None:
+    _var_core_bfloat16 = ReductionKernel(
+        'S x, T mean, float32 alpha', 'bfloat16 out',
+        'my_norm(x - mean)',
+        'a + b', 'out = alpha * a', '0', 'cupy_var_core_bfloat16',
+        preamble=_norm_preamble)
+
+
 cdef _var_core_float32 = ReductionKernel(
     'S x, T mean, float32 alpha', 'float32 out',
     'my_norm(x - mean)',
@@ -633,13 +688,6 @@ cdef _var_core_float64 = ReductionKernel(
     'S x, T mean, float64 alpha', 'float64 out',
     'my_norm(x - mean)',
     'a + b', 'out = alpha * a', '0', 'cupy_var_core_float64',
-    preamble=_norm_preamble)
-
-
-cdef _var_core_out = ReductionKernel(
-    'S x, T mean, U alpha', 'U out',
-    'my_norm(x - mean)',
-    'a + b', 'out = alpha * a', '0', 'cupy_var_core_out',
     preamble=_norm_preamble)
 
 
@@ -697,7 +745,8 @@ cdef _nanmean_func = create_reduction_func(
 _count_non_nan = create_reduction_func(
     'cupy_count_non_nan',
     ('e->q', *bf16_loop(1, "q"), 'f->q', 'd->q', 'F->q', 'D->q'),
-    ('isnan(in0) ? 0 : 1', 'a + b', 'out0 = a', None), 0)
+    ('isnan(in0) ? 0 : 1', 'a + b', 'out0 = a', None), 0,
+    compute_opkind='PLUS')
 
 
 cpdef _ndarray_base _nanmean(_ndarray_base a, axis, dtype, out, keepdims):

@@ -32,6 +32,12 @@ _rocm_path = 'NOT_INITIALIZED'
 _compiler_base_options = None
 
 
+def _get_win32_cuda_arch():
+    if platform.machine().lower() in ('arm64', 'aarch64'):
+        return 'arm64'
+    return 'x64'
+
+
 # Using tempfile.TemporaryDirectory would cause an error during cleanup
 # due to a bug: https://bugs.python.org/issue26660
 @contextlib.contextmanager
@@ -148,7 +154,8 @@ def get_compiler_setting(ctx: Context, use_hip):
         include_dirs.append(os.path.join(cuda_path, 'include'))
         if PLATFORM_WIN32:
             library_dirs.append(os.path.join(cuda_path, 'bin'))
-            library_dirs.append(os.path.join(cuda_path, 'lib', 'x64'))
+            library_dirs.append(os.path.join(
+                cuda_path, 'lib', _get_win32_cuda_arch()))
         else:
             library_dirs.append(os.path.join(cuda_path, 'lib64'))
             library_dirs.append(os.path.join(cuda_path, 'lib'))

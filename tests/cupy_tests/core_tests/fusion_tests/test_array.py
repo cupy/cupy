@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import unittest
+import pytest
 
 import numpy
 
@@ -8,7 +8,7 @@ from cupy import testing
 from cupy_tests.core_tests.fusion_tests import fusion_utils
 
 
-class FusionArrayTestBase(unittest.TestCase):
+class FusionArrayTestBase:
 
     def _get_argument(self, xp, dtype, seed, value_type):
         dtype = numpy.dtype(dtype)
@@ -24,61 +24,69 @@ class FusionArrayTestBase(unittest.TestCase):
             return dtype.type(3).tolist()
         assert False
 
-    def generate_inputs(self, xp, dtype1, dtype2):
-        x = self._get_argument(xp, dtype1, 0, self.left_value)
-        y = self._get_argument(xp, dtype2, 1, self.right_value)
+    def generate_inputs(self, xp, dtype1, dtype2, left_value, right_value):
+        x = self._get_argument(xp, dtype1, 0, left_value)
+        y = self._get_argument(xp, dtype2, 1, right_value)
         return (x, y), {}
 
 
-@testing.parameterize(*testing._parameterized.product_dict(
+@pytest.mark.parametrize(
+    "func",
     [
-        {'name': 'neg', 'func': lambda x, y: -x},
-        {'name': 'add', 'func': lambda x, y: x + y},
-        {'name': 'sub', 'func': lambda x, y: x - y},
-        {'name': 'mul', 'func': lambda x, y: x * y},
-        {'name': 'div', 'func': lambda x, y: x / y},
-        {'name': 'pow', 'func': lambda x, y: x ** y},
-        {'name': 'eq', 'func': lambda x, y: x == y},
-        {'name': 'ne', 'func': lambda x, y: x != y},
-        {'name': 'lt', 'func': lambda x, y: x < y},
-        {'name': 'le', 'func': lambda x, y: x <= y},
-        {'name': 'gt', 'func': lambda x, y: x > y},
-        {'name': 'ge', 'func': lambda x, y: x >= y},
-    ],
-    [
-        {'left_value': 'array', 'right_value': 'array'},
-        {'left_value': 'array', 'right_value': 'scalar'},
-        {'left_value': 'array', 'right_value': 'primitive'},
-        {'left_value': 'scalar', 'right_value': 'array'},
-        {'left_value': 'primitive', 'right_value': 'array'},
+        pytest.param(lambda x, y: -x, id='neg'),
+        pytest.param(lambda x, y: x + y, id='add'),
+        pytest.param(lambda x, y: x - y, id='sub'),
+        pytest.param(lambda x, y: x * y, id='mul'),
+        pytest.param(lambda x, y: x / y, id='div'),
+        pytest.param(lambda x, y: x ** y, id='pow'),
+        pytest.param(lambda x, y: x == y, id='eq'),
+        pytest.param(lambda x, y: x != y, id='ne'),
+        pytest.param(lambda x, y: x < y, id='lt'),
+        pytest.param(lambda x, y: x <= y, id='le'),
+        pytest.param(lambda x, y: x > y, id='gt'),
+        pytest.param(lambda x, y: x >= y, id='ge'),
     ]
-))
+)
+@pytest.mark.parametrize(
+    "left_value,right_value",
+    [
+        ('array', 'array'),
+        ('array', 'scalar'),
+        ('array', 'primitive'),
+        ('scalar', 'array'),
+        ('primitive', 'array'),
+    ]
+)
 class TestFusionArrayOperator(FusionArrayTestBase):
 
     @testing.for_all_dtypes_combination(
         names=('dtype1', 'dtype2'), no_bool=True)
     @fusion_utils.check_fusion()
-    def test_operator(self, xp, dtype1, dtype2):
-        return self.func
+    def test_operator(self, xp, dtype1, dtype2, func, left_value, right_value):
+        return func
 
 
-@testing.parameterize(*testing._parameterized.product_dict(
+@pytest.mark.parametrize(
+    "func",
     [
-        {'name': 'lshift', 'func': lambda x, y: x << y},
-        {'name': 'rshift', 'func': lambda x, y: x >> y},
-        {'name': 'and', 'func': lambda x, y: x & y},
-        {'name': 'or', 'func': lambda x, y: x | y},
-        {'name': 'xor', 'func': lambda x, y: x ^ y},
-        {'name': 'invert', 'func': lambda x, y: ~x},
-    ],
-    [
-        {'left_value': 'array', 'right_value': 'array'},
-        {'left_value': 'array', 'right_value': 'scalar'},
-        {'left_value': 'array', 'right_value': 'primitive'},
-        {'left_value': 'scalar', 'right_value': 'array'},
-        {'left_value': 'primitive', 'right_value': 'array'},
+        pytest.param(lambda x, y: x << y, id='lshift'),
+        pytest.param(lambda x, y: x >> y, id='rshift'),
+        pytest.param(lambda x, y: x & y, id='and'),
+        pytest.param(lambda x, y: x | y, id='or'),
+        pytest.param(lambda x, y: x ^ y, id='xor'),
+        pytest.param(lambda x, y: ~x, id='invert'),
     ]
-))
+)
+@pytest.mark.parametrize(
+    "left_value,right_value",
+    [
+        ('array', 'array'),
+        ('array', 'scalar'),
+        ('array', 'primitive'),
+        ('scalar', 'array'),
+        ('primitive', 'array'),
+    ]
+)
 class TestFusionArrayBitwiseOperator(FusionArrayTestBase):
 
     def _is_uint64(self, x):
@@ -90,51 +98,55 @@ class TestFusionArrayBitwiseOperator(FusionArrayTestBase):
     @testing.for_int_dtypes_combination(
         names=('dtype1', 'dtype2'), no_bool=True)
     @fusion_utils.check_fusion()
-    def test_operator(self, xp, dtype1, dtype2):
-        def func(x, y):
+    def test_operator(self, xp, dtype1, dtype2, func, left_value, right_value):
+        def impl(x, y):
             if ((self._is_uint64(x) and self._is_signed_int(y))
                     or (self._is_uint64(y) and self._is_signed_int(x))):
                 # Skip TypeError case.
                 return
-            return self.func(x, y)
+            return func(x, y)
 
-        return func
+        return impl
 
 
-@testing.parameterize(
-    {'left_value': 'array', 'right_value': 'array'},
-    {'left_value': 'array', 'right_value': 'scalar'},
-    {'left_value': 'array', 'right_value': 'primitive'},
-    {'left_value': 'scalar', 'right_value': 'array'},
-    {'left_value': 'primitive', 'right_value': 'array'},
+@pytest.mark.parametrize(
+    "left_value,right_value",
+    [
+        ('array', 'array'),
+        ('array', 'scalar'),
+        ('array', 'primitive'),
+        ('scalar', 'array'),
+        ('primitive', 'array'),
+    ]
 )
 class TestFusionArrayFloorDivide(FusionArrayTestBase):
 
     @testing.for_all_dtypes_combination(
         names=('dtype1', 'dtype2'), no_bool=True, no_complex=True)
     @fusion_utils.check_fusion()
-    def test_floor_divide(self, xp, dtype1, dtype2):
+    def test_floor_divide(self, xp, dtype1, dtype2, left_value, right_value):
         return lambda x, y: x // y
 
 
 # TODO(imanishi): Fix TypeError in use of dtypes_combination test.
-@testing.parameterize(*testing._parameterized.product_dict(
+@pytest.mark.parametrize(
+    "left_value,right_value",
     [
-        {'left_value': 'array', 'right_value': 'array'},
-        {'left_value': 'array', 'right_value': 'scalar'},
-        {'left_value': 'array', 'right_value': 'primitive'},
+        ('array', 'array'),
+        ('array', 'scalar'),
+        ('array', 'primitive'),
     ]
-))
+)
 class TestFusionArrayInplaceOperator(FusionArrayTestBase):
 
-    def generate_inputs(self, xp, dtype):
-        x = self._get_argument(xp, dtype, 0, self.left_value)
-        y = self._get_argument(xp, dtype, 1, self.right_value)
+    def generate_inputs(self, xp, dtype, left_value, right_value):
+        x = self._get_argument(xp, dtype, 0, left_value)
+        y = self._get_argument(xp, dtype, 1, right_value)
         return (x, y), {}
 
     @testing.for_all_dtypes(no_bool=True)
     @fusion_utils.check_fusion()
-    def test_iadd(self, xp, dtype):
+    def test_iadd(self, xp, dtype, left_value, right_value):
         def func(x, y):
             x += y
 
@@ -142,7 +154,7 @@ class TestFusionArrayInplaceOperator(FusionArrayTestBase):
 
     @testing.for_all_dtypes(no_bool=True)
     @fusion_utils.check_fusion()
-    def test_isub(self, xp, dtype):
+    def test_isub(self, xp, dtype, left_value, right_value):
         def func(x, y):
             x -= y
 
@@ -150,7 +162,7 @@ class TestFusionArrayInplaceOperator(FusionArrayTestBase):
 
     @testing.for_all_dtypes(no_bool=True)
     @fusion_utils.check_fusion()
-    def test_imul(self, xp, dtype):
+    def test_imul(self, xp, dtype, left_value, right_value):
         def func(x, y):
             x *= y
 
@@ -158,7 +170,7 @@ class TestFusionArrayInplaceOperator(FusionArrayTestBase):
 
     @testing.for_float_dtypes()
     @fusion_utils.check_fusion()
-    def test_itruediv_py3(self, xp, dtype):
+    def test_itruediv_py3(self, xp, dtype, left_value, right_value):
         def func(x, y):
             x /= y
 
@@ -166,7 +178,7 @@ class TestFusionArrayInplaceOperator(FusionArrayTestBase):
 
     @testing.for_int_dtypes(no_bool=True)
     @fusion_utils.check_fusion(accept_error=(TypeError,))
-    def test_int_itruediv_py3_raises(self, xp, dtype):
+    def test_int_itruediv_py3_raises(self, xp, dtype, left_value, right_value):
         def func(x, y):
             x /= y
 
@@ -174,7 +186,7 @@ class TestFusionArrayInplaceOperator(FusionArrayTestBase):
 
     @testing.for_int_dtypes(no_bool=True)
     @fusion_utils.check_fusion()
-    def test_imod(self, xp, dtype):
+    def test_imod(self, xp, dtype, left_value, right_value):
         def func(x, y):
             x %= y
 
@@ -182,7 +194,7 @@ class TestFusionArrayInplaceOperator(FusionArrayTestBase):
 
     @testing.for_all_dtypes(no_bool=True)
     @fusion_utils.check_fusion()
-    def test_ipow(self, xp, dtype):
+    def test_ipow(self, xp, dtype, left_value, right_value):
         def func(x, y):
             x **= y
 
@@ -190,7 +202,7 @@ class TestFusionArrayInplaceOperator(FusionArrayTestBase):
 
     @testing.for_int_dtypes(no_bool=True)
     @fusion_utils.check_fusion()
-    def test_ilshift(self, xp, dtype):
+    def test_ilshift(self, xp, dtype, left_value, right_value):
         def func(x, y):
             x <<= y
 
@@ -198,7 +210,7 @@ class TestFusionArrayInplaceOperator(FusionArrayTestBase):
 
     @testing.for_int_dtypes(no_bool=True)
     @fusion_utils.check_fusion()
-    def test_irshift(self, xp, dtype):
+    def test_irshift(self, xp, dtype, left_value, right_value):
         def func(x, y):
             x >>= y
 
@@ -206,7 +218,7 @@ class TestFusionArrayInplaceOperator(FusionArrayTestBase):
 
     @testing.for_int_dtypes(no_bool=True)
     @fusion_utils.check_fusion()
-    def test_iand(self, xp, dtype):
+    def test_iand(self, xp, dtype, left_value, right_value):
         def func(x, y):
             x &= y
 
@@ -214,7 +226,7 @@ class TestFusionArrayInplaceOperator(FusionArrayTestBase):
 
     @testing.for_int_dtypes(no_bool=True)
     @fusion_utils.check_fusion()
-    def test_ior(self, xp, dtype):
+    def test_ior(self, xp, dtype, left_value, right_value):
         def func(x, y):
             x |= y
 
@@ -222,14 +234,14 @@ class TestFusionArrayInplaceOperator(FusionArrayTestBase):
 
     @testing.for_int_dtypes(no_bool=True)
     @fusion_utils.check_fusion()
-    def test_ixor(self, xp, dtype):
+    def test_ixor(self, xp, dtype, left_value, right_value):
         def func(x, y):
             x ^= y
 
         return func
 
 
-class TestFusionArraySetItem(unittest.TestCase):
+class TestFusionArraySetItem:
 
     def generate_inputs(self, xp):
         x = testing.shaped_random((3, 4), xp, 'int32', scale=10, seed=0)
@@ -255,7 +267,7 @@ class TestFusionArraySetItem(unittest.TestCase):
         return func
 
 
-class TestFusionArrayMethods(unittest.TestCase):
+class TestFusionArrayMethods:
 
     def generate_inputs(self, xp, dtype):
         x = testing.shaped_random((3, 4), xp, dtype, scale=10, seed=0)
@@ -297,7 +309,7 @@ class TestFusionArrayMethods(unittest.TestCase):
         return lambda x: x.any()
 
 
-class TestFusionArrayAsType(unittest.TestCase):
+class TestFusionArrayAsType:
 
     def generate_inputs(self, xp, dtype1, dtype2):
         x = testing.shaped_random((3, 4), xp, dtype1, scale=10, seed=0)

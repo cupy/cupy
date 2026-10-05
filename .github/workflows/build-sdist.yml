@@ -1,0 +1,77 @@
+name: Build CuPy sdist
+
+# Producer of `cupy-<version>.tar.gz`, the source distribution consumed by
+# `build-wheel.yml` (per-variant wheels build from this sdist, not from a
+# fresh checkout -- so a MANIFEST.in gap fails the CI wheel build, not a
+# downstream user). The same tarball is what publish.yml uploads to PyPI.
+#
+# Design notes:
+#   * ``submodules: recursive`` at checkout materializes third_party/
+#     submodules. setuptools resolves the vendored-header symlinks under
+#     ``cupy/_core/include/cupy/{_cccl,xsf,_jitify,_dlpack}`` and packs the
+#     real files into the tarball, so downstream wheel builds (including
+#     Windows) get portable, symlink-free source.
+#   * CUPY_INSTALL_USE_STUB=1 skips CUDA extension detection during the
+#     sdist build (see install/cupy_builder/_context.py).
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: "Git ref to check out (e.g. refs/pull/N/merge, or a merge_commit_sha)"
+        required: true
+        type: string
+      artifact-suffix:
+        description: "Suffix keying the sdist artifact name (pr<N>-<head sha> for /test builds, the push SHA post-merge)"
+        required: true
+        type: string
+
+defaults:
+  run:
+    shell: bash --noprofile --norc -xeuo pipefail {0}
+
+permissions:
+  contents: read  # This is required for actions/checkout
+
+jobs:
+  build:
+    name: Build sdist
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout ${{ github.event.repository.name }}
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 1
+          submodules: recursive
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: "3.12"
+
+      - name: Install Python build deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      - name: Prepare sdist build
+        run: python ci/tools/prepare_sdist_build.py >> "$GITHUB_ENV"
+
+      - name: Build sdist
+        run: python -m build --sdist
+
+      - name: Check sdist
+        run: twine check --strict dist/*.tar.gz
+
+      - name: List the dist contents
+        run: ls -lahR dist
+
+      - name: Upload sdist artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: cupy-sdist-${{ inputs.artifact-suffix }}
+          path: dist/*.tar.gz
+          if-no-files-found: error
+          # Keep "re-run all jobs" viable: v4+ artifacts are immutable, so a
+          # second attempt's upload would otherwise collide and fail.
+          overwrite: true

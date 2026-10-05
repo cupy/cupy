@@ -4,7 +4,6 @@ import os
 import re
 import shutil
 import tempfile
-import unittest
 
 from cupy import testing
 
@@ -15,7 +14,7 @@ os.environ['MPLBACKEND'] = 'Agg'
 
 
 @testing.with_requires('matplotlib')
-class TestKmeans(unittest.TestCase):
+class TestKmeans:
 
     def test_default(self):
         output = example_test.run_example(

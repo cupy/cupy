@@ -333,7 +333,7 @@ class TestCsrMatrix:
 
     def test_reshape_2(self):
         m = self.m.reshape((1, 12), order='F').toarray()
-        expect = [[1, 0, 0, 0, 0, 2, 0, 0, 0, 0, 3, 0]]
+        expect = [[0, 0, 0, 1, 0, 0, 0, 0, 3, 0, 2, 0]]
         cupy.testing.assert_allclose(m, expect)
 
 
@@ -525,6 +525,7 @@ class TestCsrMatrixScipyComparison:
         assert len(rows) == 3
         return xp.concatenate([r.toarray() for r in rows])
 
+    @pytest.mark.filterwarnings("ignore:.*asfptype.*:DeprecationWarning")
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_asfptype(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
@@ -1351,6 +1352,12 @@ class TestCsrMatrixSum:
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_mean_with_out(self, xp, sp):
+        # `out` below is float64 whenever `ret_dtype` is None.
+        out_dtype = numpy.float64 if self.ret_dtype is None else self.ret_dtype
+        if out_dtype != self.dtype and testing.installed('scipy>=1.18,<1.19'):
+            # SciPy's `mean()` sometimes doesn't return out as identity hope
+            # for fix by 1.19 (https://github.com/scipy/scipy/issues/26149)
+            pytest.xfail('SciPy 1.18 mean() fails to return out as identity')
         m = _make(xp, sp, self.dtype)
         if self.axis is None:
             shape = ()
@@ -1372,6 +1379,7 @@ class TestCsrMatrixSum:
 @testing.with_requires('scipy')
 class TestCsrMatrixScipyCompressed:
 
+    @pytest.mark.filterwarnings("ignore:.*get_shape.*:DeprecationWarning")
     @testing.numpy_cupy_equal(sp_name='sp')
     def test_get_shape(self, xp, sp):
         return _make(xp, sp, self.dtype).get_shape()

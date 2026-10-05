@@ -59,6 +59,8 @@ cpdef strides_t _get_strides_for_order_K(x, dtype, shape=*) except *
 cpdef int _update_order_char(
     bint is_c_contiguous, bint is_f_contiguous, int order_char) noexcept
 
+cpdef tuple _new_like_order_and_strides(a, dtype, order, shape=*)
+
 cpdef tuple _broadcast_shapes(shapes)
 
 cdef bint _is_layout_expected(

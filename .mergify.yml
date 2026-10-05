@@ -1,3 +1,6 @@
+merge_queue:
+  queue_controls_comment: false
+
 pull_request_rules:
   - name: Notify conflict
     conditions:

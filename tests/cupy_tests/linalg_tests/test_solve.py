@@ -63,13 +63,29 @@ class TestSolve(unittest.TestCase):
             with pytest.raises(error_type):
                 xp.linalg.solve(a, b)
 
-    @testing.with_requires('numpy<2.4')
+    def test_solve_singular_empty(self):
+        a = cupy.zeros((3, 3))  # singular
+        b = cupy.empty((3, 0))  # nrhs = 0
+        c = cupy.linalg.solve(a, b)
+        assert c.size == 0
+
     @testing.numpy_cupy_allclose()
-    def test_solve_singular_empty(self, xp):
-        a = xp.zeros((3, 3))  # singular
+    def test_solve_non_singular_empty(self, xp):
+        a = xp.eye(3)  # non-singular
         b = xp.empty((3, 0))  # nrhs = 0
-        # LinAlgError("Singular matrix") is not raised
         return xp.linalg.solve(a, b)
+
+    def test_solve_singular_empty__assert_raises(self):
+        # OpenBLAS with NumPy 2.4.3 started raising a LinAlgError here,
+        # which seems correct.  We raise currently (do not test against
+        # NumPy as the behavior may depend on the BLAS version used)
+        a = cupy.zeros((3, 3))  # singular
+        b = cupy.empty((3, 0))  # nrhs = 0
+        # errstate is 'ignore' by default since enabling it causes
+        # synchronization
+        with cupyx.errstate(linalg='raise'):
+            with pytest.raises(numpy.linalg.LinAlgError):
+                cupy.linalg.solve(a, b)
 
     @testing.with_requires("numpy>=2.0")
     def test_invalid_shape(self):

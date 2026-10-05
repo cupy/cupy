@@ -132,9 +132,10 @@ cdef class _Ops:
         readonly tuple ops
         readonly int nin
         readonly int nout
+        readonly object promote_types
 
     @staticmethod
-    cdef _Ops from_tuples(object ops, routine)
+    cdef _Ops from_tuples(object ops, routine, object promote_types=*)
 
     # Queries a single op from input arguments.
     cpdef _Op guess_routine(
@@ -149,7 +150,7 @@ cdef class _Ops:
 
 cpdef create_ufunc(name, ops, routine=*, preamble=*, doc=*,
                    default_casting=*, loop_prep=*, out_ops=*,
-                   cutensor_op=*, scatter_op=*)
+                   cutensor_op=*, scatter_op=*, promote_types=*)
 
 cpdef str _full_mask_hex()
 

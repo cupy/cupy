@@ -1,7 +1,7 @@
 [build-system]
 # Need to be installed manually when using `--no-build-isolation`.
 # Keep in sync with `docs/source/contribution.rst`.
-requires = ["setuptools>=77", "wheel", "Cython>=3.1,<3.2", "numpy>=2.0"]
+requires = ["setuptools>=77", "wheel", "Cython>=3.2,<3.3", "numpy>=2.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -116,6 +116,8 @@ filterwarnings = [
   # setuptools 65+
   # TODO(kmaehashi): Remove distutils from cupy_builder to remove this
   "ignore:Absolute path '(.+?)' is being replaced with a relative path '(.+?)' for outputs:DeprecationWarning:distutils",
+  # Older SciPy versions + NumPy 2.5+ do not avoid this warning.
+  "ignore:Setting the shape on a NumPy:DeprecationWarning:scipy",
 ]
 
 [tool.coverage.run]
