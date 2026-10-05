@@ -1111,3 +1111,23 @@ class TestSequenceModeRegression:
     def test_prewitt_sequence_mode(self, xp, scp):
         arr = xp.asarray([[1., 0., 0], [1, 1, 0], [0, 0, 0]])
         return scp.ndimage.prewitt(arr, mode=['reflect', 'reflect'])
+
+
+class TestFloat16ConstantMode:
+
+    @pytest.mark.parametrize('func, kwargs', [
+        ('grey_dilation', {'size': 3}),
+        ('uniform_filter', {'size': 3}),
+        ('gaussian_filter', {'sigma': 1}),
+    ])
+    def test_float16_constant_mode(self, func, kwargs):
+        # float16 input with mode='constant' failed to compile, see
+        # cupy/cupy#9122. SciPy does not support float16, so compare
+        # against CuPy's float32 result.
+        f = getattr(cupyx.scipy.ndimage, func)
+        a = testing.shaped_random((5, 6), cupy, numpy.float16)
+        result = f(a, mode='constant', cval=1.5, **kwargs)
+        expected = f(a.astype(numpy.float32), mode='constant', cval=1.5,
+                     **kwargs)
+        assert result.dtype == numpy.float16
+        testing.assert_allclose(result, expected, rtol=1e-3, atol=1e-3)
