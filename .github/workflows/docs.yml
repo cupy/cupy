@@ -32,6 +32,7 @@ jobs:
     outputs:
       proceed: ${{ steps.compute.outputs.proceed }}
       rtd_slug: ${{ steps.compute.outputs.rtd_slug }}
+      version_type: ${{ steps.compute.outputs.version_type }}
     steps:
       # workflow_run.pull_requests[] is empty for fork PRs, so instead of
       # parsing the event payload we download the per-run sentinel artifact
@@ -70,6 +71,7 @@ jobs:
           test -f "${META}" || { echo "::error::docs-meta.json missing from sentinel"; exit 1; }
           MODE=$(jq -r .mode "${META}")
           PR_NUMBER=$(jq -r .pr_number "${META}")
+          REF=$(jq -r .ref "${META}")
 
           # Only `test` and `doc-only` produce the wheel docs.yml needs;
           # on skip / no-op we still emit every output (so the job-level
@@ -79,17 +81,26 @@ jobs:
             echo "::notice::mode=${MODE}; nothing to build"
             PROCEED=false
             RTD_SLUG=""
+            VERSION_TYPE=""
           else
             PROCEED=true
             if [[ -n "${PR_NUMBER}" ]]; then
               RTD_SLUG="${PR_NUMBER}"
+              VERSION_TYPE="external"
+            elif [[ "${REF}" == refs/tags/* ]]; then
+              # Release tag push: slug is the tag name verbatim (e.g.
+              # v14.1.2); RTD's version taxonomy keys off that.
+              RTD_SLUG="${REF#refs/tags/}"
+              VERSION_TYPE="tag"
             elif [[ "${BRANCH}" == "main" ]]; then
               RTD_SLUG="latest"
+              VERSION_TYPE="branch"
             else
               # v*/hotfix-* branches: compute slug anyway (so the HTML
               # artifact is still produced for debugging) but the publish
               # job's `if:` gates them out below.
               RTD_SLUG="${BRANCH}"
+              VERSION_TYPE="branch"
             fi
           fi
 
@@ -99,6 +110,7 @@ jobs:
             echo "merge_sha=$(jq -r .merge_sha "${META}")"
             echo "suffix=$(jq -r .artifact_suffix "${META}")"
             echo "rtd_slug=${RTD_SLUG}"
+            echo "version_type=${VERSION_TYPE}"
           } >> "${GITHUB_OUTPUT}"
 
       # Every step below is gated on proceed == 'true' so skip-mode runs
@@ -152,7 +164,7 @@ jobs:
           READTHEDOCS_PROJECT: cupy
           READTHEDOCS_LANGUAGE: en
           READTHEDOCS_VERSION: ${{ steps.compute.outputs.rtd_slug }}
-          READTHEDOCS_VERSION_TYPE: ${{ github.event.workflow_run.event == 'pull_request' && 'external' || 'branch' }}
+          READTHEDOCS_VERSION_TYPE: ${{ steps.compute.outputs.version_type }}
           READTHEDOCS_GIT_COMMIT_HASH: ${{ steps.compute.outputs.head_sha }}
         run: |
           python -m sphinx -T -j auto -b html source build/html
@@ -172,13 +184,16 @@ jobs:
   publish:
     name: Publish docs to RTD
     needs: build
-    # Publish only on main pushes and PR previews. v*/hotfix-* branches
-    # skip until RTD has those versions activated.
+    # Publish on PR previews (external), main push (latest), and
+    # release-tag push (vX.Y.Z). v*/hotfix-* branch pushes still skip:
+    # the branches tie back to pre-release work and RTD doesn't carry
+    # per-branch versions for them.
     if: >-
       needs.build.outputs.proceed == 'true' &&
       (github.event.workflow_run.event == 'pull_request' ||
        (github.event.workflow_run.event == 'push' &&
-        github.event.workflow_run.head_branch == 'main'))
+        (needs.build.outputs.version_type == 'tag' ||
+         github.event.workflow_run.head_branch == 'main')))
     runs-on: ubuntu-22.04
     permissions:
       contents: read

@@ -32,6 +32,11 @@ on:
       - main
       - "v*"
       - "hotfix-*"
+    # Tag push produces the release-version RTD docs; the full build
+    # matrix also runs (guard falls through to mode=test) so release
+    # artifacts are re-verified at the tagged SHA.
+    tags:
+      - "v*"
 
 concurrency:
   # Only the ci:triggered build shares ci-build-<PR> (with ci-trigger.yml's
@@ -319,6 +324,10 @@ jobs:
           # version metadata without parsing workflow_run.pull_requests[]
           # (empty for fork PRs). docs.yml reads python.doc.version from
           # ci/versions.yml itself after it checks out at merge_sha.
+          # `ref` is the raw GITHUB_REF so docs.yml can disambiguate tag
+          # pushes (refs/tags/v*) from branch pushes to a branch that
+          # happens to share a tag's name -- workflow_run.head_branch
+          # alone would collide.
           jq -n \
             --arg mode "${MODE}" \
             --arg pr_number "${PR_NUMBER}" \
@@ -326,9 +335,10 @@ jobs:
             --arg merge_sha "${MERGE_SHA}" \
             --arg artifact_suffix "${ARTIFACT_SUFFIX}" \
             --arg event "${GITHUB_EVENT_NAME}" \
+            --arg ref "${GITHUB_REF}" \
             '{mode: $mode, pr_number: $pr_number, head_sha: $head_sha,
               merge_sha: $merge_sha, artifact_suffix: $artifact_suffix,
-              event: $event}' \
+              event: $event, ref: $ref}' \
             > "${RUNNER_TEMP}/artifact/docs-meta.json"
       - name: Upload
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
