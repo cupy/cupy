@@ -112,11 +112,13 @@ def _tensordot_core_int_kernel_impl(config, dtype, code, name):
     # This code is based in the GEMM implementation from MAGMA
     # (http://icl.cs.utk.edu/magma/)
     code = '''
+typedef INDEX_TYPE index_t;
+
 #define fetch(arr, col, m, n, bound) arr[min(n*col + m, bound)]
 
 template<typename T>
 __device__ void _tensordot_core_int_kernel_impl(
-        long long M, long long N, long long K,
+        index_t M, index_t N, index_t K,
         const T* A,
         const T* B,
         T * C)
@@ -132,8 +134,8 @@ __device__ void _tensordot_core_int_kernel_impl(
     int idxB = idt % DIM_XB;
     int idyB = idt / DIM_XB;
 
-    long long blx = blockIdx.x;
-    long long bly = blockIdx.y;
+    index_t blx = blockIdx.x;
+    index_t bly = blockIdx.y;
 
     __shared__ T sA[BLK_K][BLK_M + 1];
     __shared__ T sB[BLK_N][BLK_K + 1];
@@ -147,13 +149,13 @@ __device__ void _tensordot_core_int_kernel_impl(
     T rb[BLK_N / DIM_YB][BLK_K / DIM_XB];
 
     const T* offs_dA = A + blx * BLK_M       + idyA * M + idxA;
-    long long boundA = (M * (K - 1) + M) - (blx * BLK_M + idyA * M + idxA) - 1;
+    index_t boundA = (M * (K - 1) + M) - (blx * BLK_M + idyA * M + idxA) - 1;
     const T* offs_dB = B + bly * BLK_N * K + idyB * K + idxB;
-    long long boundB = (
+    index_t boundB = (
         K * (N - 1) + K) - (bly * BLK_N * K + idyB * K + idxB) - 1;
 
     int m, n, k;
-    long long kk;
+    index_t kk;
 
     #pragma unroll
     for (n = 0; n < THR_N; n++) {
@@ -291,10 +293,10 @@ __device__ void _tensordot_core_int_kernel_impl(
 
     #pragma unroll
     for (n = 0; n < THR_N; n++) {
-        long long coord_dCn = bly * BLK_N + n * DIM_Y + idy;
+        index_t coord_dCn = bly * BLK_N + n * DIM_Y + idy;
         #pragma unroll
         for (m = 0; m < THR_M; m++) {
-            long long coord_dCm = blx * BLK_M + m * DIM_X + idx;
+            index_t coord_dCm = blx * BLK_M + m * DIM_X + idx;
             if (coord_dCm < M && coord_dCn < N) {
                 C[coord_dCn * M + coord_dCm] = rC[n][m];
             }
@@ -325,7 +327,7 @@ def _tensordot_core_int_kernel(config, dtype):
     code = '''
 template<typename T>
 __global__ void _tensordot_core_int_kernel(
-        long long M, long long N, long long K,
+        index_t M, index_t N, index_t K,
         const T* A,
         const T* B,
         T * C)
@@ -342,7 +344,7 @@ def _tensordot_core_int_batched_kernel(config, dtype):
     code = '''
 template<typename T>
 __global__ void _tensordot_core_int_batched_kernel(
-        long long M, long long N, long long K,
+        index_t M, index_t N, index_t K,
         const T* A[], const T* B[],
         T* C[])
 {
@@ -361,7 +363,7 @@ def _tensordot_core_int_strided_batched_kernel(config, dtype):
     code = '''
 template<typename T>
 __global__ void _tensordot_core_int_strided_batched_kernel(
-        long long M, long long N, long long K,
+        index_t M, index_t N, index_t K,
         const T* A, long long strideA,
         const T* B, long long strideB,
         T * C, long long strideC)
@@ -379,7 +381,8 @@ __global__ void _tensordot_core_int_strided_batched_kernel(
     return _tensordot_core_int_kernel_impl(config, dtype, code, name)
 
 
-cdef tuple _integral_tensordot_core_config():
+cdef tuple _integral_tensordot_core_config(
+        Py_ssize_t m, Py_ssize_t n, Py_ssize_t k):
     # TODO(leofang): autotune the tuning parameters here? See the discussion
     # in this thread: https://groups.google.com/a/icl.utk.edu/g/magma-user/c/igc66uduTfI  # NOQA
     dim_x=16
@@ -391,11 +394,27 @@ cdef tuple _integral_tensordot_core_config():
     dim_ya=2
     dim_xb=2
     dim_yb=128
+
+    cdef Py_ssize_t limit = 2**31 - 1
+    cdef Py_ssize_t padded_m, padded_n, padded_k
+    index_type = 'long long'
+    if m <= limit and n <= limit and k <= limit:
+        # While the precise bounds differ, roughly speaking, the kernel
+        # pads all dims, and all indices must fit after padding:
+        padded_m = ((m - 1) // blk_m + 1) * blk_m
+        padded_n = ((n - 1) // blk_n + 1) * blk_n
+        padded_k = ((k - 1) // blk_k + 1) * blk_k
+        if (padded_m * padded_k <= limit
+                and padded_n * padded_k <= limit
+                and padded_m * padded_n <= limit):
+            index_type = 'int'
+
     config = (('DIM_X', dim_x), ('DIM_Y', dim_y),
               ('BLK_M', blk_m), ('BLK_N', blk_n), ('BLK_K', blk_k),
               ('DIM_XA', dim_xa), ('DIM_YA', dim_ya),
               ('DIM_XB', dim_xb), ('DIM_YB', dim_yb),
-              ('THR_M', blk_m // dim_x), ('THR_N', blk_n // dim_y))
+              ('THR_M', blk_m // dim_x), ('THR_N', blk_n // dim_y),
+              ('INDEX_TYPE', index_type))
     return config, dim_x, dim_y, blk_m, blk_n
 
 
@@ -403,7 +422,8 @@ cdef _ndarray_base _integral_tensordot_core(
         _ndarray_base a, _ndarray_base b, _ndarray_base out, Py_ssize_t m,
         Py_ssize_t n, Py_ssize_t k, str dtype, const shape_t& ret_shape):
 
-    config, dim_x, dim_y, blk_m, blk_n = _integral_tensordot_core_config()
+    config, dim_x, dim_y, blk_m, blk_n = _integral_tensordot_core_config(
+        m, n, k)
     kern = _tensordot_core_int_kernel(config, dtype)
     args = (m, n, k, a, b, out)
     grid = (int(math.ceil(m / blk_m)), int(math.ceil(n / blk_n)), 1)
@@ -416,7 +436,8 @@ cdef _ndarray_base _integral_tensordot_core_batched(
         _ndarray_base a, _ndarray_base b, _ndarray_base out, Py_ssize_t m,
         Py_ssize_t n, Py_ssize_t k, str dtype, Py_ssize_t batch_count):
 
-    config, dim_x, dim_y, blk_m, blk_n = _integral_tensordot_core_config()
+    config, dim_x, dim_y, blk_m, blk_n = _integral_tensordot_core_config(
+        m, n, k)
     kern = _tensordot_core_int_batched_kernel(config, dtype)
     block = (dim_x, dim_y, 1)
     matPtrA = _mat_ptrs(a)
@@ -437,7 +458,8 @@ cdef _ndarray_base _integral_tensordot_core_strided_batched(
         _ndarray_base a, _ndarray_base b, _ndarray_base out, Py_ssize_t m,
         Py_ssize_t n, Py_ssize_t k, str dtype, Py_ssize_t batch_count):
 
-    config, dim_x, dim_y, blk_m, blk_n = _integral_tensordot_core_config()
+    config, dim_x, dim_y, blk_m, blk_n = _integral_tensordot_core_config(
+        m, n, k)
     kern = _tensordot_core_int_strided_batched_kernel(config, dtype)
     block = (dim_x, dim_y, 1)
     a = a.reshape((-1,) + a.shape[-2:])
