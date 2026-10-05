@@ -896,6 +896,12 @@ cpdef _ndarray_base matmul(
     cdef int orig_a_ndim, orig_b_ndim, a_ndim, b_ndim, ndim
     cdef _ndarray_base ap, bp, cp, c_view
     cdef bint use_broadcast
+    cdef Py_ssize_t alignment
+    cdef bint output_stride_ok
+    cdef bint force_temp_aligned_output = False
+    cdef Py_ssize_t padded_output_stride = 0
+    cdef Py_ssize_t alignment_elements, output_byte_stride
+    cdef _ndarray_base output_storage
 
     orig_a_ndim = a._shape.size()
     orig_b_ndim = b._shape.size()
@@ -1029,16 +1035,63 @@ cpdef _ndarray_base matmul(
             out.fill(0)
             return out
 
+    if (use_broadcast
+            and cuda_dtype in (runtime.CUDA_R_16F, runtime.CUDA_R_16BF)):
+        if ka % 8 == 0:
+            alignment = 16
+        elif ka % 2 == 0:
+            alignment = 4
+        else:
+            alignment = 2
+
+        output_stride_ok = (n * m * 2) % alignment == 0
+
+        if a.data.ptr % alignment != 0:
+            a = a.copy(order='C')
+        if b.data.ptr % alignment != 0:
+            b = b.copy(order='C')
+
+        if not output_stride_ok:
+            alignment_elements = alignment // 2
+            padded_output_stride = (
+                (n * m + alignment_elements - 1)
+                // alignment_elements * alignment_elements
+            )
+            force_temp_aligned_output = True
+
+        if out is not None:
+            force_temp_aligned_output = (
+                force_temp_aligned_output
+                or out.data.ptr % alignment != 0
+            )
+
     if (
         out is not None and out.dtype == dtype and out.flags.c_contiguous
+        and not force_temp_aligned_output
         and not _memory_range.may_share_bounds(out, a)
         and not _memory_range.may_share_bounds(out, b)
     ):
         c = out
     else:
-        c = core.ndarray(out_shape, dtype=dtype)
+        if padded_output_stride != 0:
+            output_storage = core.ndarray(
+                (batchCount, padded_output_stride), dtype=dtype)
+
+            output_strides = [n * 2, 2]
+            output_byte_stride = padded_output_stride * 2
+            for i in range(ndim - 3, -1, -1):
+                output_strides.insert(0, output_byte_stride)
+                output_byte_stride *= out_shape[i]
+
+            c = core.ndarray(
+                out_shape, dtype=dtype,
+                memptr=output_storage.data,
+                strides=tuple(output_strides))
+        else:
+            c = core.ndarray(out_shape, dtype=dtype)
+
         if out is None:
-            if dtype == ret_dtype:
+            if dtype == ret_dtype and padded_output_stride == 0:
                 out = c
             else:
                 out = core.ndarray(out_shape, dtype=ret_dtype)
