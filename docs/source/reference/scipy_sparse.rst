@@ -34,7 +34,10 @@ CuPy differences from SciPy
   ``complex128``, matching what cuSPARSE supports.  SciPy additionally
   supports the integer dtypes and the extended-precision
   ``longdouble`` / ``clongdouble``.
-* ``save_npz`` / ``load_npz`` are not implemented.
+* ``save_npz`` is not implemented.  :func:`~cupyx.scipy.sparse.load_npz`
+  reads archives written by ``scipy.sparse.save_npz`` and returns a
+  device-backed CuPy object; a file whose format is BSR raises
+  ``ValueError`` because CuPy has no BSR class.
 
 Index dtype (int32 / int64)
 ---------------------------
@@ -191,6 +194,7 @@ Sparse tools
 
    find
    get_index_dtype
+   load_npz
    safely_cast_index_arrays
 
 
