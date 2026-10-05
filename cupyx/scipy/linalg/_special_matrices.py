@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import warnings
 
 import cupy
 from cupy import _core
@@ -159,6 +160,36 @@ def leslie(f, s):
     a[0] = f
     cupy.fill_diagonal(a[1:], s)
     return a
+
+
+@_uarray.implements('kron')
+def kron(a, b):
+    """Kronecker product.
+
+    The result is the block matrix::
+        a[0,0]*b    a[0,1]*b  ... a[0,-1]*b
+        a[1,0]*b    a[1,1]*b  ... a[1,-1]*b
+        ...
+        a[-1,0]*b   a[-1,1]*b ... a[-1,-1]*b
+
+    Args:
+        a (cupy.ndarray): Input array
+        b (cupy.ndarray): Input array
+
+    Returns:
+        cupy.ndarray: Kronecker product of ``a`` and ``b``.
+
+    .. seealso:: :func:`scipy.linalg.kron`
+    """
+    warnings.warn(
+        '`cupyx.scipy.linalg.kron` has been deprecated in CuPy v14 and will '
+        'be removed in the near future. Please use `cupy.kron` instead.',
+        DeprecationWarning,
+    )
+
+    o = cupy.outer(a, b)
+    o = o.reshape(a.shape + b.shape)
+    return cupy.concatenate(cupy.concatenate(o, axis=1), axis=1)
 
 
 @_uarray.implements('block_diag')
@@ -357,7 +388,7 @@ def fiedler(a):
     if a.ndim != 1:
         raise ValueError('Input `a` must be a 1D array.')
     if a.size == 0:
-        return cupy.zeros(0)
+        return cupy.zeros((0, 0))
     if a.size == 1:
         return cupy.zeros((1, 1))
     a = a[:, None] - a
@@ -374,8 +405,9 @@ def fiedler_companion(a):
 
     Args:
         a (cupy.ndarray): 1-D array of polynomial coefficients in descending
-            order with a nonzero leading coefficient. For ``N < 2``, an empty
-            array is returned.
+            order with a nonzero leading coefficient. For ``N == 1`` an empty
+            ``(0, 0)`` array is returned, and for ``N == 0`` an empty 1-D
+            array.
 
     Returns:
         cupy.ndarray: Resulting companion matrix
@@ -391,8 +423,10 @@ def fiedler_companion(a):
     """
     if a.ndim != 1:
         raise ValueError('Input `a` must be a 1-D array.')
-    if a.size < 2:
+    if a.size == 0:
         return cupy.zeros((0,), a.dtype)
+    if a.size == 1:
+        return cupy.zeros((0, 0), a.dtype)
     if a.size == 2:
         return (-a[1]/a[0])[None, None]
     # Following check requires device-to-host synchronization so will we not

@@ -11,7 +11,15 @@ from cupy.cuda import compiler
 
 
 def cuda_version():
-    return cupy.cuda.runtime.runtimeGetVersion()
+    # These NVRTC tests must gate on what compiler._get_arch() /
+    # compile_using_nvrtc actually key on -- the NVRTC version -- not
+    # runtimeGetVersion(), which reports the *build-time* cudart. The two
+    # coincide for a source build but differ when a prebuilt wheel is tested
+    # on a CUDA image of a different minor version.
+    if cupy.cuda.runtime.is_hip:
+        return 0
+    major, minor = compiler._get_nvrtc_version()
+    return major * 1000 + minor * 10
 
 
 @unittest.skipIf(cupy.cuda.runtime.is_hip, 'CUDA specific tests')

@@ -58,8 +58,13 @@ def collect_xfails(tests: list[Path]) -> dict[Pos, MypyError]:
     return xfails
 
 
-def run_mypy(tests: list[Path]) -> dict[Pos, MypyError]:
-    result = mypy.api.run([str(t) for t in tests])
+def run_mypy(tests: list[Path], config: Path) -> dict[Pos, MypyError]:
+    # Pass config explicitly: mypy otherwise picks cwd's pyproject.toml.
+    # --no-incremental: temp paths change every run; a persistent cache
+    # otherwise mixes stale error paths into the next invocation.
+    result = mypy.api.run(
+        [str(t) for t in tests]
+        + ["--config-file", str(config), "--no-incremental"])
     mypy_fails: dict[Pos, MypyError] = {}
     for line in result[0].strip().split("\n"):
         if re.match(
@@ -92,7 +97,8 @@ def test_typecheck() -> None:
         generate_test_code(Path(tmpdir))
         tests = list(Path(tmpdir).glob("**/*.pyi"))
         xpass = collect_xfails(tests)
-        mypy_fails = run_mypy(tests)
+        mypy_fails = run_mypy(tests, Path(tmpdir) /
+                              "typing_tests" / "mypy.ini")
 
     fails: dict[Pos, MypyError] = {}
     invalid: dict[Pos, MypyError] = {}

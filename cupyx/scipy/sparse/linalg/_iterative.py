@@ -332,7 +332,7 @@ def bicgstab(A, b, x0=None, *, rtol=1e-5, atol=0.0, maxiter=None, M=None,
     if maxiter is None:
         maxiter = 10 * n
 
-    # Handle complex dot products appropriately like SciPy version
+    # Complex inputs need the conjugate dot.
     dotprod = cupy.vdot if x.dtype.kind == 'c' else cupy.dot
 
     rhotol = cupy.finfo(x.dtype.char).eps ** 2
@@ -341,28 +341,25 @@ def bicgstab(A, b, x0=None, *, rtol=1e-5, atol=0.0, maxiter=None, M=None,
     r = b - matvec(x)
     rtilde = r.copy()
 
-    # Initialize vars to prevent linter warnings
-    rho_prev, omega, alpha, p, v = 0.0, 0.0, 0.0, 0.0, 0.0
+    # Dummy values to silence linter warnings; first iteration sets them.
+    rho_prev, omega, alpha, p, v = None, None, None, None, None
 
+    info = 0
     iters = 0
     while True:
         r_norm = cupy.linalg.norm(r)
-        if r_norm <= atol:  # reached abs tol
-            break
-        if iters >= maxiter:  # reached max iters
+        if r_norm <= atol or iters >= maxiter:
             break
 
-        # pull from device to host
-        rho = dotprod(rtilde, r).item()
-
-        # Breakdown checks ensure no NaNs
-        if abs(rho) < rhotol:  # rho tol breakdown on host
-            return x, -10
+        rho = dotprod(rtilde, r).item()  # synchronize!
+        if abs(rho) < rhotol:  # rho breakdown
+            info = -10
+            break
 
         if iters > 0:
-            if abs(omega) < omegatol:  # omega tol breakdown
-                return x, -11
-
+            if abs(omega) < omegatol:  # omega breakdown
+                info = -11
+                break
             beta = (rho / rho_prev) * (alpha / omega)
             p -= omega * v
             p *= beta
@@ -372,25 +369,23 @@ def bicgstab(A, b, x0=None, *, rtol=1e-5, atol=0.0, maxiter=None, M=None,
 
         phat = psolve(p)
         v = matvec(phat)
-        rv = dotprod(rtilde, v).item()  # pull to host
-
+        rv = dotprod(rtilde, v).item()  # synchronize!
         if rv == 0:
-            return x, -11
-
+            info = -11
+            break
         alpha = rho / rv
         r -= alpha * v
 
-        # does a half-step check
+        # Half-step convergence check: commit the alpha-update and
+        # exit before computing shat / t / omega.
         if cupy.linalg.norm(r) <= atol:
             x += alpha * phat
             break
 
         shat = psolve(r)
         t = matvec(shat)
+        omega = (dotprod(t, r) / dotprod(t, t)).item()  # synchronize!
 
-        omega = (dotprod(t, r) / dotprod(t, t)).item()
-
-        # host scalar times device array
         x += alpha * phat
         x += omega * shat
         r -= omega * t
@@ -401,12 +396,8 @@ def bicgstab(A, b, x0=None, *, rtol=1e-5, atol=0.0, maxiter=None, M=None,
         if callback is not None:
             callback(x)
 
-    info = 0
-    # If the loop maxed out and it didn't converge,
-    # return iter count as error code
-    if iters >= maxiter and not (r_norm <= atol):
+    if info == 0 and iters >= maxiter and not (r_norm <= atol):
         info = iters
-
     return x, info
 
 

@@ -815,7 +815,7 @@ class RandomState:
     _kernel_get_indices = _core.ElementwiseKernel(
         'raw U csum', 'raw U indices',
         '''
-        int j = 0;
+        U j = 0;
         if (i > 0) { j = csum[i-1]; }
         if (csum[i] > j) { indices[j] = i; }
         ''',
@@ -1329,7 +1329,7 @@ def seed(seed=None):
 
 # CuPy specific functions
 
-_random_states = {}
+_random_states: dict[int, RandomState] = {}
 
 
 @atexit.register

@@ -5,7 +5,9 @@ import pytest
 
 import cupy
 from cupy import testing
+from cupy.testing._helper import installed_but_not_baseline
 import cupyx.scipy.special  # NOQA
+from cupyx_tests.scipy_tests.special_tests import match_scipy_float32
 
 
 @testing.with_requires("scipy>=1.15")
@@ -19,7 +21,8 @@ class TestGamma:
 
         a = testing.shaped_arange((2, 3), xp, dtype)
         func = getattr(scp.special, function)
-        return func(a)
+        out = func(a)
+        return match_scipy_float32(out, xp, dtype)
 
     @pytest.mark.skipif(
         cupy.cuda.runtime.is_hip and
@@ -36,7 +39,8 @@ class TestGamma:
             a -= 1j * a
         a = xp.asarray(a)
         func = getattr(scp.special, function)
-        return func(a)
+        out = func(a)
+        return match_scipy_float32(out, xp, dtype)
 
     @pytest.mark.parametrize('function', ['gamma', 'loggamma', 'rgamma'])
     @testing.for_all_dtypes()
@@ -49,7 +53,8 @@ class TestGamma:
         else:
             val = dtype(1.5)
         func = getattr(scp.special, function)
-        return func(val)
+        out = func(val)
+        return match_scipy_float32(out, xp, dtype)
 
     @pytest.mark.parametrize('function', ['gamma', 'loggamma', 'rgamma'])
     @testing.for_dtypes("efdFD")
@@ -57,8 +62,13 @@ class TestGamma:
     @testing.with_requires('scipy')
     def test_inf_and_nan(self, xp, scp, dtype, function):
         import scipy.special  # NOQA
+        if (installed_but_not_baseline(scipy="1.18") and function == 'rgamma'
+                and xp.dtype(dtype).kind == 'c'):
+            pytest.skip("SciPy 1.18 returns nan for complex rgamma(-inf) "
+                        "where CuPy still returns 0.")
 
         a = numpy.array([-numpy.inf, numpy.nan, numpy.inf]).astype(dtype)
         a = xp.asarray(a)
         func = getattr(scp.special, function)
-        return func(a)
+        out = func(a)
+        return match_scipy_float32(out, xp, dtype)

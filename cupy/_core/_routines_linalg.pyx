@@ -6,6 +6,7 @@ import cython
 import numpy
 
 import cupy
+from cupy import _util
 from cupy._core._kernel import ElementwiseKernel
 from cupy._core._reduction import ReductionKernel
 from cupy._core._ufuncs import elementwise_copy
@@ -40,7 +41,9 @@ cdef extern from '../../cupy_backends/cupy_complex.h':
 cdef list compute_types = [COMPUTE_TYPE_TBD,  # bfloat16
                            COMPUTE_TYPE_TBD,  # float16
                            COMPUTE_TYPE_TBD,  # float32
-                           COMPUTE_TYPE_TBD]  # float64
+                           COMPUTE_TYPE_TBD,  # float64
+                           COMPUTE_TYPE_TBD,  # int8
+                           COMPUTE_TYPE_TBD]  # int32
 cdef dict compute_type_str = {
     0: 'COMPUTE_TYPE_TBD',
     1: 'COMPUTE_TYPE_DEFAULT',
@@ -54,7 +57,10 @@ cdef dict compute_type_str = {
 
 
 cpdef int to_compute_type_index(dtype) except -1:
-    cdef str dtype_char = numpy.dtype(dtype).char
+    # Normalize once: callers pass dtype instances and scalar types
+    # (e.g. numpy.int8), and only the former have `.name`.
+    dtype = numpy.dtype(dtype)
+    cdef str dtype_char = dtype.char
     if dtype_char == 'e':
         return 1
     elif dtype_char in 'fF':
@@ -63,12 +69,22 @@ cpdef int to_compute_type_index(dtype) except -1:
         return 3
     elif dtype.name == "bfloat16":
         return 0
+    elif dtype_char == 'b':
+        return 4
+    elif dtype.name == "int32":
+        return 5
     else:
         raise TypeError('dtype is not supported: {}'.format(dtype))
 
 
 cpdef set_compute_type(dtype, compute_type):
     global compute_types
+    if numpy.dtype(dtype).name in ('int8', 'int32') and compute_type not in (
+            COMPUTE_TYPE_TBD, COMPUTE_TYPE_DEFAULT):
+        raise ValueError(
+            'Only COMPUTE_TYPE_DEFAULT is supported for integer dtypes '
+            '(got {} for dtype {!r})'.format(
+                compute_type_to_str(compute_type), dtype))
     if compute_type in (COMPUTE_TYPE_TBD, COMPUTE_TYPE_DEFAULT,
                         COMPUTE_TYPE_PEDANTIC, COMPUTE_TYPE_FP16,
                         COMPUTE_TYPE_FP32, COMPUTE_TYPE_FP64):
@@ -612,6 +628,31 @@ cpdef _ndarray_base tensordot_core(
         c = c.view()
         c.shape = (n, m)
 
+    # int8 uses cublasGemmEx with int32 accumulation (IMMA Tensor Cores on
+    # sm_75+). CUBLAS_COMPUTE_32I needs sm_61+ and IMMA needs k, lda and ldb
+    # aligned to 4; otherwise fall through to the integer kernel below.
+    if (
+        dtype.char == 'b'
+        and not runtime._is_hip_environment
+        and compute_capability >= 61
+        and k % 4 == 0 and lda % 4 == 0 and ldb % 4 == 0
+    ):
+        c_int32 = _ndarray_init(cupy.ndarray, (n, m), numpy.int32, None)
+        try:
+            tensordot_core_v11(
+                transb, transa, m, n, k, b, ldb, a, lda, c_int32, m)
+        except cublas.CUBLASError as exc:
+            warnings.warn(
+                'cublasGemmEx int8 path failed ({}); falling back to '
+                'CUDA integer kernel.'.format(exc),
+                _util.PerformanceWarning)
+        else:
+            # int32 -> int8 wraps mod 256, matching NumPy's matmul semantics.
+            elementwise_copy(c_int32, c)
+            if copy_to_out is not None:
+                elementwise_copy(copy_to_out, out)
+            return out
+
     if dtype.kind in 'biu':
         if transa:
             a = a.T
@@ -709,6 +750,7 @@ cpdef _ndarray_base tensordot_core_v11(
     cdef double one_d, zero_d
     cdef cuComplex one_F, zero_F
     cdef cuDoubleComplex one_D, zero_D
+    cdef int one_i, zero_i
     cdef size_t one_ptr, zero_ptr
 
     cdef int a_cuda_dtype = to_cuda_dtype(a.dtype, is_half_allowed=True)
@@ -734,12 +776,15 @@ cpdef _ndarray_base tensordot_core_v11(
             cublas_compute_type = cublas.CUBLAS_COMPUTE_64F_PEDANTIC
         else:
             cublas_compute_type = cublas.CUBLAS_COMPUTE_64F
+    elif a.dtype.char == 'b':
+        cublas_compute_type = cublas.CUBLAS_COMPUTE_32I
     else:
         raise ValueError('Invalid dtype: {}'.format(c.dtype))
 
     cdef int algo = cublas.CUBLAS_GEMM_DEFAULT
     if ((compute_capability >= 80) or
-            (compute_capability >= 70 and c.dtype == 'e')):
+            (compute_capability >= 70 and c.dtype == 'e') or
+            (compute_capability >= 70 and a.dtype.char == 'b')):
         algo = cublas.CUBLAS_GEMM_DEFAULT_TENSOR_OP
 
     if cublas_compute_type in (cublas.CUBLAS_COMPUTE_32F,
@@ -767,6 +812,11 @@ cpdef _ndarray_base tensordot_core_v11(
             zero_D = cuDoubleComplex(0, 0)
             one_ptr = <size_t>&one_D
             zero_ptr = <size_t>&zero_D
+    elif cublas_compute_type == cublas.CUBLAS_COMPUTE_32I:
+        one_i = 1
+        zero_i = 0
+        one_ptr = <size_t>&one_i
+        zero_ptr = <size_t>&zero_i
     else:
         raise ValueError('Invalid cublas compute type: {}'
                          .format(cublas_compute_type))
@@ -897,8 +947,14 @@ cpdef _ndarray_base matmul(
 
     ret_dtype = numpy.promote_types(a.dtype, b.dtype)
     dtype = ret_dtype
-    if dtype.char == 'e':
-        dtype = numpy.dtype('f')
+
+    cdef int cuda_dtype = -1
+    if dtype.kind not in 'biu':
+        cuda_dtype = to_cuda_dtype(dtype, is_half_allowed=True)
+        if (cuda_dtype == runtime.CUDA_R_16F
+                or cuda_dtype == runtime.CUDA_R_16BF):
+            dtype = numpy.dtype('f')
+            cuda_dtype = runtime.CUDA_R_32F
 
     a = ascontiguousarray(a, dtype)
     b = ascontiguousarray(b, dtype)
@@ -989,7 +1045,7 @@ cpdef _ndarray_base matmul(
     else:
         c_view = c
 
-    if dtype.char not in 'efdFD':
+    if dtype.kind in 'biu':
         if not use_broadcast:
             _integral_tensordot_core_strided_batched(
                 a, b, c_view, n, m, ka, dtype.char, batchCount)
@@ -1001,7 +1057,6 @@ cpdef _ndarray_base matmul(
         return out
 
     cdef intptr_t handle = device.get_cublas_handle()
-    cdef int cuda_dtype = to_cuda_dtype(dtype)
     cdef int algo = cublas.CUBLAS_GEMM_DEFAULT
 
     one = numpy.array(1, dtype=dtype)

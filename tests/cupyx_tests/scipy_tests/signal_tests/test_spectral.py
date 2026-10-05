@@ -8,6 +8,7 @@ import cupy
 from cupy.cuda import driver
 from cupy.cuda import runtime
 from cupy import testing
+from cupy.testing._helper import skip_if_after_baseline
 import cupyx.scipy.signal  # NOQA
 
 try:
@@ -87,6 +88,8 @@ class TestLombscargle:
 
     @pytest.mark.parametrize('dtype', ['float32', 'float64'])
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
+    @skip_if_after_baseline(
+        scipy="1.17", reason="SciPy>=1.17 deprecates precenter kwarg")
     def test_precenter(self, dtype, xp, scp):
         # Test if precenter gives the same result as manually precentering.
         dtype = xp.dtype(dtype)

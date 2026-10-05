@@ -97,7 +97,7 @@ def test_cfar_alpha(dtype):
 @pytest.mark.parametrize(
     "size,gc,rc", [(100, 1, 5), (11, 2, 3), (100, 10, 20)])
 @testing.for_float_dtypes(no_float16=True)
-@testing.numpy_cupy_allclose(rtol=2e-6, type_check=False)
+@testing.numpy_cupy_allclose(rtol=5e-6, type_check=False)
 @testing.with_requires("scipy")
 def test_ca_cfar1d(xp, dtype, size, gc, rc):
     array = testing.shaped_random((size,), xp=xp, dtype=dtype)

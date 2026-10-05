@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import functools
+import gc
 import pickle
 import sys
+import weakref
 
 import numpy
 import pytest
@@ -539,47 +541,43 @@ class TestCoosort:
 @testing.with_requires('scipy')
 class TestCsrsort:
 
-    @pytest.fixture(autouse=True)
-    def setUp(self):
+    def test_csrsort(self):
         if not cusparse.check_availability('csrsort'):
             pytest.skip('csrsort is not available')
 
-        self.a = scipy.sparse.random(
+        a = scipy.sparse.random(
             1, 1000, density=0.9, dtype=numpy.float32, format='csr')
-        numpy.random.shuffle(self.a.indices)
-        self.a.has_sorted_indices = False
+        numpy.random.shuffle(a.indices)
+        a.has_sorted_indices = False
 
-    def test_csrsort(self):
-        a = sparse.csr_matrix(self.a)
-        cusparse.csrsort(a)
+        b = sparse.csr_matrix(a)
+        cusparse.csrsort(b)
 
-        self.a.sort_indices()
-        testing.assert_array_equal(self.a.indptr, a.indptr)
-        testing.assert_array_equal(self.a.indices, a.indices)
-        testing.assert_array_almost_equal(self.a.data, a.data)
+        a.sort_indices()
+        testing.assert_array_equal(a.indptr, b.indptr)
+        testing.assert_array_equal(a.indices, b.indices)
+        testing.assert_array_almost_equal(a.data, b.data)
 
 
 @testing.with_requires('scipy')
 class TestCscsort:
 
-    @pytest.fixture(autouse=True)
-    def setUp(self):
+    def test_cscsort(self):
         if not cusparse.check_availability('cscsort'):
             pytest.skip('cscsort is not available')
 
-        self.a = scipy.sparse.random(
+        a = scipy.sparse.random(
             1000, 1, density=0.9, dtype=numpy.float32, format='csc')
-        numpy.random.shuffle(self.a.indices)
-        self.a.has_sorted_indices = False
+        numpy.random.shuffle(a.indices)
+        a.has_sorted_indices = False
 
-    def test_cscsort(self):
-        a = sparse.csc_matrix(self.a)
-        cusparse.cscsort(a)
+        b = sparse.csc_matrix(a)
+        cusparse.cscsort(b)
 
-        self.a.sort_indices()
-        testing.assert_array_equal(self.a.indptr, a.indptr)
-        testing.assert_array_equal(self.a.indices, a.indices)
-        testing.assert_array_almost_equal(self.a.data, a.data)
+        a.sort_indices()
+        testing.assert_array_equal(a.indptr, b.indptr)
+        testing.assert_array_equal(a.indices, b.indices)
+        testing.assert_array_almost_equal(a.data, b.data)
 
 
 @testing.parameterize(*testing.product({
@@ -1008,6 +1006,37 @@ class TestSparseMatrixConversion:
         testing.assert_array_equal(x.todense(), y)
 
 
+@testing.with_requires('scipy')
+class TestSpMatDescriptorOwnership:
+    # A descriptor stores raw device pointers into the matrix's arrays, and
+    # sparse matrices are mutable: a structure change rebinds a.data /
+    # a.indices / a.indptr, so the descriptor has to own what it points at.
+
+    @pytest.mark.parametrize('fmt', ['csr', 'csc', 'coo'])
+    def test_descriptor_keeps_arrays_alive(self, fmt):
+        a = sparse.random(200, 200, density=0.05, format=fmt,
+                          dtype=numpy.float64)
+        arrs = ((a.data, a.row, a.col) if fmt == 'coo'
+                else (a.data, a.indices, a.indptr))
+        owners = [weakref.ref(x) for x in arrs]
+        desc = cusparse.SpMatDescriptor.create(a)
+        del a, arrs
+        gc.collect()
+        assert all(o() is not None for o in owners)
+        del desc
+        gc.collect()
+        assert all(o() is None for o in owners)
+
+    def test_unsupported_format_still_raises_value_error(self):
+        # The ownership bookkeeping reads format-specific attributes, so
+        # it must not turn an unsupported format into AttributeError.
+        offsets = cupy.array([0], dtype=numpy.int32)
+        data = cupy.ones((1, 20), dtype=numpy.float64)
+        a = sparse.dia_matrix((data, offsets), shape=(20, 20))
+        with pytest.raises(ValueError):
+            cusparse.SpMatDescriptor.create(a)
+
+
 @pytest.mark.parametrize('dims', [(3, 4), (4, 3), (3, None)])
 @pytest.mark.parametrize(
     'dtype', [cupy.float32, cupy.float64, cupy.complex64, cupy.complex128])
@@ -1038,6 +1067,9 @@ class TestSpsm:
         else:
             diag = numpy.diag(numpy.random.uniform(0.1, 1, m).astype(dtype))
         a = a - numpy.diag(a.diagonal()) + diag
+
+        # Avoid SciPy future warning to move to returning arrays:
+        a = scipy.sparse.csr_matrix(a)
 
         if lower:
             a = scipy.sparse.tril(a)
@@ -1075,10 +1107,6 @@ class TestSpsm:
     def test_spsm(self, lower, unit_diag, transa, b_order, dtype, format):
         if not cusparse.check_availability('spsm'):
             pytest.skip('spsm is not available')
-        if not runtime.is_hip and _cusparse.get_build_version() < 11701:
-            # earlier than CUDA 11.6
-            if b_order == 'c':
-                pytest.skip("Older CUDA has a bug")
         if runtime.is_hip:
             if format == 'coo' or b_order == 'c':
                 pytest.skip('may be buggy or not supported')
@@ -1103,3 +1131,75 @@ class TestSpsm:
         else:
             tol = 1e-12
         testing.assert_allclose(lhs, rhs, rtol=tol, atol=tol)
+
+    def test_spsm_reuse(self, lower, unit_diag, transa, b_order, dtype,
+                        format):
+        # Solves after the first reuse the cached analysis (#8580); each
+        # must see the values of its own right-hand side.
+        if not cusparse.check_availability('spsm'):
+            pytest.skip('spsm is not available')
+        if runtime.is_hip:
+            if format == 'coo' or b_order == 'c':
+                pytest.skip('may be buggy or not supported')
+        a = self.sparse_matrix(self.a)
+        solver = cusparse._SpSM(
+            a, lower=lower, unit_diag=unit_diag, transa=transa)
+
+        if transa == 'N':
+            op_a = self.op_a
+        elif transa == 'T':
+            op_a = self.op_a.T
+        else:
+            op_a = self.op_a.conj().T
+
+        if dtype in (cupy.float32, cupy.complex64):
+            tol = 1e-5
+        else:
+            tol = 1e-12
+
+        for k in range(3):
+            op_b = (k + 1) * self.op_b
+            b = cupy.array(op_b, order=b_order)
+            c = solver.solve(b, alpha=self.alpha)
+            lhs = op_a.dot(c.get())
+            testing.assert_allclose(
+                lhs, self.alpha * op_b, rtol=tol, atol=tol)
+
+
+class TestCheckAvailabilityVersionSkew:
+    # Regression for the wheel-based CI: a wheel built against a newer
+    # cuSPARSE (e.g. CUDA 13.3 in the build stage) is tested against an
+    # older runtime cuSPARSE (e.g. CUDA 13.0). SoftLink resolves symbols
+    # at runtime, so check_availability must not advertise APIs that the
+    # runtime library does not expose.
+
+    _API = '__test_version_skew__'
+    _THRESHOLD = 12801
+
+    @pytest.fixture(autouse=True)
+    def _register(self, monkeypatch):
+        table = dict(cusparse._available_cusparse_version)
+        table[self._API] = (self._THRESHOLD, None)
+        monkeypatch.setattr(
+            cusparse, '_available_cusparse_version', table)
+        # Force the classic (non-cuda-python) branch; the cuda-python
+        # branch already uses runtime and is unaffected by this fix.
+        monkeypatch.setattr(
+            _cusparse, 'is_cuda_python_build', lambda: False,
+            raising=False)
+        cupy.clear_memo()
+        yield
+        cupy.clear_memo()
+
+    @pytest.mark.parametrize('build,runtime_,expected', [
+        (12801, 12801, True),   # both meet threshold
+        (12602, 12602, False),  # both below
+        (12602, 12801, False),  # build too old (already correct before fix)
+        (12801, 12602, False),  # newer wheel on older runtime -- the bug
+    ])
+    def test_min_of_build_and_runtime(
+            self, monkeypatch, build, runtime_, expected):
+        monkeypatch.setattr(
+            _cusparse, 'get_build_version', lambda: build)
+        monkeypatch.setattr(cusparse, 'getVersion', lambda: runtime_)
+        assert cusparse.check_availability(self._API) is expected

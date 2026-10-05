@@ -29,6 +29,24 @@ class _data_matrix(_base._spbase):
     def _with_data(self, data, copy=True):
         raise NotImplementedError
 
+    def _bool_reduction_carrier(self):
+        """Non-mutating float64 carrier for reducing a bool array.
+
+        cuSPARSE has no bool arithmetic, so bool ``sum``/``mean`` reduce
+        through a float64 carrier.  Bool duplicates coalesce by logical-or
+        (densify semantics, matching :meth:`toarray`), so the carrier is
+        deduplicated -- but on a *copy*, never mutating ``self`` (a
+        reduction must not compact its operand).  An already-canonical
+        array, or a format that cannot hold duplicates (DIA), skips the
+        copy; the raw flag is read without a device sync.
+        """
+        src = self
+        if (getattr(self, '_has_canonical_format', None) is not True
+                and hasattr(self, 'sum_duplicates')):
+            src = self.copy()
+            src.sum_duplicates()
+        return src._with_data(src.data.astype(cupy.float64), copy=False)
+
     def __abs__(self):
         """Elementwise absolute."""
         return self._with_data(abs(self.data))
@@ -168,16 +186,39 @@ class _data_matrix(_base._spbase):
                 Select from ``{None, 0, 1, -2, -1}``.
 
         Returns:
-            cupy.ndarray: Summed array.
+            cupy.ndarray: The computed mean.
 
         .. seealso::
            :meth:`scipy.sparse.spmatrix.mean`
 
         """
+        # Scale by the Python-level reciprocal like scipy does: the mean
+        # of a zero-length axis then raises ZeroDivisionError instead of
+        # silently returning 0.
+        if self.dtype == bool:
+            # Densify-consistent mean: reduce the coalesced float64 carrier
+            # so bool duplicates OR together (matching sum()/toarray()).
+            # (scipy's mean instead counts duplicates -- inconsistent with
+            # its own coalescing sum -- so this deliberately diverges from
+            # scipy for a non-canonical bool array.)
+            return self._bool_reduction_carrier().mean(
+                axis=axis, dtype=dtype, out=out)
+        if self.ndim == 1:
+            # Collapse the single axis to a scalar mean directly, without
+            # building a throwaway sparse object.  Accumulate the sum in
+            # floating point and scale *before* the final cast: casting each
+            # ``1/N``-scaled term to an integer ``dtype`` mid-reduction would
+            # truncate it (matches the 2-D path and numpy).  ``out=`` is
+            # forwarded to that final reduction, which validates its shape;
+            # the Python-level ``1.0 / N`` raises ZeroDivisionError on an
+            # empty axis, like scipy.
+            _sputils.validate_axis_1d(axis)
+            total = self.data.sum() * (1.0 / self.shape[0])
+            return total.sum(dtype=dtype, out=out)
+
+        axis = _sputils.collapse_2d_axis(axis)
         _sputils.validateaxis(axis)
         nRow, nCol = self.shape
-        data = self.data.copy()
-
         if axis is None:
             n = nRow * nCol
         elif axis in (0, -2):
@@ -185,7 +226,7 @@ class _data_matrix(_base._spbase):
         else:
             n = nCol
 
-        return self._with_data(data / n).sum(axis, dtype, out)
+        return self._with_data(self.data * (1.0 / n)).sum(axis, dtype, out)
 
     def power(self, n, dtype=None):
         """Elementwise power function.
@@ -261,11 +302,15 @@ class _minmax_mixin:
         n = len(value)
         zeros = cupy.zeros(n, dtype=idx_dtype)
         value = value.astype(self.dtype, copy=False)
-        # Use the appropriate container so the result inherits the
-        # array vs matrix type from ``self``.  CuPy COO is 2-D-only, so
-        # reductions return (1, M) / (M, 1) for both array and matrix
-        # (scipy sparse arrays return shape (M,)).
+        # Use the appropriate container so the result inherits the array
+        # vs matrix type from ``self``.
         coo_cls = self._coo_container
+        if isinstance(self, _base.sparray):
+            # Sparse arrays reduce a dimension: return a 1-D coo_array
+            # of shape ``(M,)`` (matching scipy), stored as a (1, M) row
+            # vector (row=zeros, col=major_index).
+            return coo_cls._from_parts(value, zeros, major_index, shape=(M,))
+        # Matrices keep the legacy 2-D shape (1, M) / (M, 1).
         row, col = (zeros, major_index) if axis == 0 else (major_index, zeros)
         shape = (1, M) if axis == 0 else (M, 1)
         return coo_cls._from_parts(value, row, col, shape=shape)
@@ -275,7 +320,12 @@ class _minmax_mixin:
             raise ValueError("Sparse matrices do not support "
                              "an 'out' parameter.")
 
-        _sputils.validateaxis(axis)
+        if self.ndim == 1:
+            # The only axis reduces everything to a scalar.
+            _sputils.validate_axis_1d(axis)
+            axis = None
+        else:
+            _sputils.validateaxis(axis)
 
         if axis is None:
             if 0 in self.shape:
@@ -294,7 +344,8 @@ class _minmax_mixin:
                 elif min_or_max is cupy.max:
                     m = cupy.maximum(zero, m)
                 else:
-                    assert False
+                    raise AssertionError(
+                        f'unexpected min_or_max ufunc: {min_or_max}')
             return m
 
         if axis < 0:
@@ -327,7 +378,12 @@ class _minmax_mixin:
             raise ValueError("Sparse matrices do not support "
                              "an 'out' parameter.")
 
-        _sputils.validateaxis(axis)
+        if self.ndim == 1:
+            # The only axis reduces everything to a scalar index.
+            _sputils.validate_axis_1d(axis)
+            axis = None
+        else:
+            _sputils.validateaxis(axis)
 
         if axis is None:
             if 0 in self.shape:
@@ -345,6 +401,11 @@ class _minmax_mixin:
                 am = op(mat.data)
                 m = mat.data[am]
 
+                if mat.ndim == 1:
+                    # Use the (1, N) backing: ``row`` is all-zeros, so the
+                    # flat index reduces to ``col`` and the 2-D helper
+                    # applies unchanged.
+                    mat = mat._as_2d()
                 return cupy.where(
                     compare(m, zero), mat.row[am] * mat.shape[1] + mat.col[am],
                     _non_zero_cmp(mat, am, zero, m))

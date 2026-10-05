@@ -400,15 +400,10 @@ def lsmr(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
     return x, istop, itn, normr, normar, normA, condA, normx
 
 
-def _should_use_spsm(b):
-    from cupy_backends.cuda.libs import cusparse as _cusparse
-
-    if not runtime.is_hip:
-        # Starting with CUDA 12.0, we use cusparseSpSM
-        return _cusparse.get_build_version() >= 12000
-    else:
-        # Keep using hipsparse<t>csrsm2 for ROCm before it is dropped
-        return False
+def _should_use_spsm():
+    # On CUDA (12.0+) use cusparseSpSM. ROCm keeps hipsparse<t>csrsm2 until it
+    # is dropped.
+    return not runtime.is_hip
 
 
 def spsolve_triangular(A, b, lower=True, overwrite_A=False, overwrite_b=False,
@@ -454,7 +449,7 @@ def spsolve_triangular(A, b, lower=True, overwrite_A=False, overwrite_b=False,
     if A.dtype.char not in 'fdFD':
         raise TypeError(f'unsupported dtype (actual: {A.dtype})')
 
-    if cusparse.check_availability('spsm') and _should_use_spsm(b):
+    if cusparse.check_availability('spsm') and _should_use_spsm():
         if not (sparse.issparse(A)
                 and A.format in ('csr', 'csc', 'coo')):
             warnings.warn('CSR, CSC or COO format is required. Converting to '
@@ -481,7 +476,8 @@ def spsolve_triangular(A, b, lower=True, overwrite_A=False, overwrite_b=False,
 
         cusparse.csrsm2(A, x, lower=lower, unit_diag=unit_diagonal)
     else:
-        assert False
+        raise RuntimeError(
+            'no cuSPARSE backend available for spsolve_triangular')
 
     if x.dtype.char in 'fF':
         # Note: This is for compatibility with SciPy.
@@ -590,9 +586,22 @@ class SuperLU:
         if trans not in ('N', 'T', 'H'):
             raise ValueError('trans must be \'N\', \'T\', or \'H\'')
 
-        if cusparse.check_availability('spsm') and _should_use_spsm(rhs):
+        if cusparse.check_availability('spsm') and _should_use_spsm():
+            # Reuse the cusparseSpSM analysis across solve() calls: it
+            # depends only on the factor and the rhs shape/layout, and it
+            # dominates the cost of a one-shot solve (see #8580). Fetched
+            # lazily because subclasses do not call SuperLU.__init__.
+            cache = getattr(self, '_spsm_cache', None)
+            if cache is None:
+                cache = self._spsm_cache = {}
+
             def spsm(A, B, lower, transa):
-                return cusparse.spsm(A, B, lower=lower, transa=transa)
+                key = (lower, transa)
+                solver = cache.get(key)
+                if solver is None:
+                    solver = cache[key] = cusparse._SpSM(
+                        A, lower=lower, transa=transa)
+                return solver.solve(B)
             sm = spsm
         elif cusparse.check_availability('csrsm2'):
             def csrsm2(A, B, lower, transa):
