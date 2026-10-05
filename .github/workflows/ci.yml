@@ -277,6 +277,30 @@ jobs:
       ref: ${{ needs.guard.outputs.ref }}
       artifact-suffix: ${{ needs.guard.outputs.artifact_suffix }}
 
+  # TEMPORARY: in-line docs build via workflow_call so this PR can exercise
+  # it end-to-end before docs.yml lands on main. The companion revert
+  # commit on this branch moves docs.yml back to its workflow_run trigger
+  # and drops this job; see the branch log for the revert.
+  docs:
+    name: Build docs
+    needs:
+      - guard
+      - build-linux-64
+    if: >-
+      (needs.guard.outputs.mode == 'test' || needs.guard.outputs.mode == 'doc-only') &&
+      needs.build-linux-64.result == 'success'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/docs.yml
+    with:
+      head_sha: ${{ needs.guard.outputs.head_sha }}
+      artifact_suffix: ${{ needs.guard.outputs.artifact_suffix }}
+      pr_number: ${{ needs.guard.outputs.pr_number }}
+      event_name: ${{ github.event_name }}
+      head_branch: ${{ github.event.pull_request.head.ref || github.ref_name }}
+    secrets:
+      RTD_API_TOKEN: ${{ secrets.RTD_API_TOKEN }}
+
   # Dispatch marker + payload for flexci.yml. Uploaded whenever this ci.yml
   # run should end in a flexci.yml dispatch call: mode=skip on PR (post
   # Skipped statuses via the dispatcher), or mode=test with all builds
@@ -352,6 +376,7 @@ jobs:
       - build-linux-aarch64
       - build-windows
       - build-win-arm64
+      - docs
       - build-sentinel
     steps:
       - name: Exit
@@ -380,6 +405,7 @@ jobs:
             else
               check_result "build-win-arm64" "skipped" "${{ needs.build-win-arm64.result }}"
             fi
+            check_result "docs"                "success" "${{ needs.docs.result }}"
             check_result "build-sentinel"      "success" "${{ needs.build-sentinel.result }}"
             ;;
           doc-only)
@@ -389,6 +415,7 @@ jobs:
             check_result "build-linux-aarch64" "skipped" "${{ needs.build-linux-aarch64.result }}"
             check_result "build-windows"       "skipped" "${{ needs.build-windows.result }}"
             check_result "build-win-arm64"     "skipped" "${{ needs.build-win-arm64.result }}"
+            check_result "docs"                "success" "${{ needs.docs.result }}"
             check_result "build-sentinel"      "success" "${{ needs.build-sentinel.result }}"
             ;;
           skip)
@@ -396,6 +423,7 @@ jobs:
             check_result "build-linux-aarch64" "skipped" "${{ needs.build-linux-aarch64.result }}"
             check_result "build-windows"       "skipped" "${{ needs.build-windows.result }}"
             check_result "build-win-arm64"     "skipped" "${{ needs.build-win-arm64.result }}"
+            check_result "docs"                "skipped" "${{ needs.docs.result }}"
             check_result "build-sentinel"      "success" "${{ needs.build-sentinel.result }}"
             ;;
           no-op)
