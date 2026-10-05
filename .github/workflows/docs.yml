@@ -71,27 +71,30 @@ jobs:
           MODE=$(jq -r .mode "${META}")
           PR_NUMBER=$(jq -r .pr_number "${META}")
 
-          # Only `test` and `doc-only` produce the wheel docs.yml needs.
-          # skip / no-op exit cleanly with no artifact.
+          # Only `test` and `doc-only` produce the wheel docs.yml needs;
+          # on skip / no-op we still emit every output (so the job-level
+          # outputs block is well-defined) and let `proceed=false` gate
+          # the rest of the job + the publish lane.
           if [[ "${MODE}" != "test" && "${MODE}" != "doc-only" ]]; then
             echo "::notice::mode=${MODE}; nothing to build"
-            echo "proceed=false" >> "${GITHUB_OUTPUT}"
-            exit 0
-          fi
-
-          if [[ -n "${PR_NUMBER}" ]]; then
-            RTD_SLUG="${PR_NUMBER}"
-          elif [[ "${BRANCH}" == "main" ]]; then
-            RTD_SLUG="latest"
+            PROCEED=false
+            RTD_SLUG=""
           else
-            # v*/hotfix-* branches: compute slug anyway (so the HTML
-            # artifact is still produced for debugging) but the publish
-            # job's `if:` gates them out below.
-            RTD_SLUG="${BRANCH}"
+            PROCEED=true
+            if [[ -n "${PR_NUMBER}" ]]; then
+              RTD_SLUG="${PR_NUMBER}"
+            elif [[ "${BRANCH}" == "main" ]]; then
+              RTD_SLUG="latest"
+            else
+              # v*/hotfix-* branches: compute slug anyway (so the HTML
+              # artifact is still produced for debugging) but the publish
+              # job's `if:` gates them out below.
+              RTD_SLUG="${BRANCH}"
+            fi
           fi
 
           {
-            echo "proceed=true"
+            echo "proceed=${PROCEED}"
             echo "head_sha=$(jq -r .head_sha "${META}")"
             echo "merge_sha=$(jq -r .merge_sha "${META}")"
             echo "suffix=$(jq -r .artifact_suffix "${META}")"
