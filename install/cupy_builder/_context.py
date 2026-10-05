@@ -34,7 +34,6 @@ class Context:
 
     use_cuda_python: bool
     use_hip: bool
-    use_stub: bool
     include_dirs: list[str]
     library_dirs: list[str]
     long_description_path: str | None
@@ -63,9 +62,6 @@ class Context:
         self.use_cuda_python = _get_env_bool('CUPY_USE_CUDA_PYTHON', _env)
         self.use_hip = _get_env_bool('CUPY_INSTALL_USE_HIP', _env)
 
-        # Build CuPy with stub header file
-        self.use_stub = _get_env_bool("CUPY_INSTALL_USE_STUB", _env)
-
         # Extra paths to search for libraries/headers during build
         self.include_dirs = _get_env_path('CUPY_INCLUDE_PATH', _env)
         self.library_dirs = _get_env_path('CUPY_LIBRARY_PATH', _env)
@@ -81,9 +77,6 @@ class Context:
         # enable coverage for Cython code
         self.annotate = self.linetrace = _get_env_bool(
             "CUPY_INSTALL_CYTHON_COVERAGE", _env)
-
-        if os.environ.get('READTHEDOCS', None) == 'True':
-            self.use_stub = True
 
         self.features = cupy_builder.get_features(self)
 

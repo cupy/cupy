@@ -3,16 +3,12 @@
 
 #ifdef CUPY_USE_HIP
 
-#include "stub/cupy_cusparselt.h"
-
-#elif !defined(CUPY_NO_CUDA)
-
-#include <cusparseLt.h>
+#include "hip/cupy_cusparselt.h"
 
 #else
 
-#include "stub/cupy_cusparselt.h"
+#include <cusparseLt.h>
 
-#endif // #ifndef CUPY_NO_CUDA
+#endif
 
 #endif // #ifndef INCLUDE_GUARD_CUPY_CUSPARSELT_H

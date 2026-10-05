@@ -33,22 +33,10 @@ def module_extension_name(file):
     return ensure_module_file(file)[0]
 
 
-def module_extension_sources(file, use_cython, no_cuda):
+def module_extension_sources(file, use_cython):
     pyx, others = ensure_module_file(file)
     base = os.path.join(*pyx.split('.'))
     pyx = base + ('.pyx' if use_cython else '.cpp')
-
-    # If CUDA SDK is not available, remove CUDA C files from extension sources
-    # and use stubs defined in header files.
-    if no_cuda:
-        others1 = []
-        for source in others:
-            base, ext = os.path.splitext(source)
-            if ext == '.cu':
-                continue
-            others1.append(source)
-        others = others1
-
     return [pyx] + others
 
 
@@ -317,8 +305,7 @@ def make_extensions(ctx: Context, compiler, use_cython):
 
     MODULES = ctx.features.values()
 
-    no_cuda = ctx.use_stub
-    use_hip = not no_cuda and ctx.use_hip
+    use_hip = ctx.use_hip
     settings = build.get_compiler_setting(ctx, use_hip)
 
     include_dirs = settings['include_dirs']
@@ -351,8 +338,6 @@ def make_extensions(ctx: Context, compiler, use_cython):
     if ctx.linetrace:
         settings['define_macros'].append(('CYTHON_TRACE', '1'))
         settings['define_macros'].append(('CYTHON_TRACE_NOGIL', '1'))
-    if no_cuda:
-        settings['define_macros'].append(('CUPY_NO_CUDA', '1'))
     if use_hip:
         settings['define_macros'].append(('CUPY_USE_HIP', '1'))
         # introduced since ROCm 4.2.0
@@ -401,16 +386,12 @@ def make_extensions(ctx: Context, compiler, use_cython):
             compiler.archiver = [ar, 'rcs']
             compiler.ranlib = None
 
-        available_modules = []
-        if no_cuda:
-            available_modules = [m['name'] for m in MODULES]
-        else:
-            available_modules, settings = preconfigure_modules(
-                ctx, MODULES, compiler, settings)
-            required_modules = get_required_modules(MODULES)
-            if not (set(required_modules) <= set(available_modules)):
-                raise Exception('Your CUDA environment is invalid. '
-                                'Please check above error log.')
+        available_modules, settings = preconfigure_modules(
+            ctx, MODULES, compiler, settings)
+        required_modules = get_required_modules(MODULES)
+        if not (set(required_modules) <= set(available_modules)):
+            raise Exception('Your CUDA environment is invalid. '
+                            'Please check above error log.')
     finally:
         compiler = host_compiler
         if build.is_conda_cross_compiling():
@@ -422,11 +403,10 @@ def make_extensions(ctx: Context, compiler, use_cython):
             continue
 
         s = copy.deepcopy(settings)
-        if not no_cuda:
-            s['libraries'] = module.libraries
-            s['extra_objects'] = [
-                _find_static_library(name) for name in module.static_libraries
-            ]
+        s['libraries'] = module.libraries
+        s['extra_objects'] = [
+            _find_static_library(name) for name in module.static_libraries
+        ]
 
         compile_args = s.setdefault('extra_compile_args', [])
         link_args = s.setdefault('extra_link_args', [])
@@ -487,7 +467,7 @@ def make_extensions(ctx: Context, compiler, use_cython):
                 args = s_file.setdefault('extra_link_args', [])
                 args.append(ldflag)
 
-            sources = module_extension_sources(f, use_cython, no_cuda)
+            sources = module_extension_sources(f, use_cython)
             extension = setuptools.Extension(name, sources, **s_file)
             ret.append(extension)
 

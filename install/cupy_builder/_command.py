@@ -131,10 +131,7 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
 
         compile_time_env['CUPY_CUFFT_STATIC'] = False
         compile_time_env['CUPY_CYTHON_VERSION'] = Cython.__version__
-        if ctx.use_stub:  # on RTD
-            compile_time_env['CUPY_CUDA_VERSION'] = 0
-            compile_time_env['CUPY_HIP_VERSION'] = 0
-        elif ctx.use_hip:  # on ROCm/HIP
+        if ctx.use_hip:  # on ROCm/HIP
             compile_time_env['CUPY_CUDA_VERSION'] = 0
             compile_time_env['CUPY_HIP_VERSION'] = build.get_hip_version()
         else:  # on CUDA

@@ -5,13 +5,9 @@
 
 #include "hip/cupy_profiler.h"
 
-#elif !defined(CUPY_NO_CUDA)
+#else
 
 #include "cuda/cupy_cuda_profiler_api.h"
 
-#else // #ifndef CUPY_NO_CUDA
-
-#include "stub/cupy_profiler.h"
-
-#endif // #ifndef CUPY_NO_CUDA
+#endif
 #endif // #ifndef INCLUDE_GUARD_CUPY_PROFILER_H
