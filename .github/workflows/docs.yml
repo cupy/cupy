@@ -254,7 +254,12 @@ jobs:
           READTHEDOCS_VERSION_TYPE: ${{ steps.compute.outputs.version_type }}
           READTHEDOCS_GIT_COMMIT_HASH: ${{ steps.compute.outputs.head_sha }}
         run: |
-          python -m sphinx -T -j auto -b html source build/html
+          # -W --keep-going turns Sphinx warnings into errors but walks
+          # the full build before failing so one iteration surfaces the
+          # whole backlog. Once #10361 removes pretest's `-W` build,
+          # this is the only docs lint; the nccl install step above
+          # already addresses one class of autodoc warning.
+          python -m sphinx -T -j auto -W --keep-going -b html source build/html
 
       - name: Upload HTML artifact
         if: steps.compute.outputs.proceed == 'true'
@@ -391,24 +396,44 @@ jobs:
                 ;;
             esac
 
-            # Build the -F arg list from the presigned URL's fields.
-            # Fetch each value via a keyed jq call so values with
-            # spaces or quotes survive without a bespoke delimiter.
+            # Build the field arg list from the presigned URL's fields.
+            # --form-string (vs -F) keeps values literal: `-F` would
+            # reinterpret an `@` or `<` as a file reference and `;` as
+            # a type modifier. AWS field values don't carry those
+            # today, but --form-string is free and future-proof.
             local -a field_args=()
             local key value
             while IFS= read -r key; do
               value=$(jq -r --arg k "${key}" '.upload_url.fields[$k]' "${initiate_file}")
-              field_args+=("-F" "${key}=${value}")
+              field_args+=("--form-string" "${key}=${value}")
             done < <(jq -r '.upload_url.fields | keys[]' "${initiate_file}")
 
-            local s3_code
-            s3_code=$(curl -sS -o "${s3_file}" -w '%{http_code}' \
-              -X POST \
-              "${field_args[@]}" \
-              -F "file=@${RUNNER_TEMP}/build.zip;type=application/zip" \
-              "${upload_url}")
+            # Retry on transport failures (curl error -> code 000) and
+            # 5xx server errors; stop on 2xx (done) or 4xx (client-side,
+            # won't improve). Matches readthedocs-cli's upload_artifacts
+            # loop (UPLOAD_ATTEMPTS=3, exponential backoff). The
+            # `|| echo 000` fallback keeps a connection reset during
+            # the ~100 MB POST from aborting the function (set -e)
+            # before _rtd_complete ... failed can run; otherwise the
+            # pending build sits against RTD's upload cap.
+            local attempt s3_code=000 delay
+            for attempt in 1 2 3; do
+              s3_code=$(curl -sS -o "${s3_file}" -w '%{http_code}' \
+                -X POST \
+                "${field_args[@]}" \
+                -F "file=@${RUNNER_TEMP}/build.zip;type=application/zip" \
+                "${upload_url}" || echo 000)
+              if [[ "${s3_code}" == 2* ]] || [[ "${s3_code}" == 4* ]]; then
+                break
+              fi
+              if [[ ${attempt} -lt 3 ]]; then
+                delay=$((attempt * 2))
+                echo "::notice::S3 upload (${label}) returned ${s3_code}; retrying in ${delay}s"
+                sleep "${delay}"
+              fi
+            done
             if [[ "${s3_code}" != 2* ]]; then
-              echo "::error::S3 upload (${label}) failed (${s3_code})"
+              echo "::error::S3 upload (${label}) failed after ${attempt} attempt(s) (${s3_code})"
               cat "${s3_file}" || true
               _rtd_complete "${build_id}" failed "${complete_file}" || true
               return 1
