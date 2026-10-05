@@ -1044,7 +1044,8 @@ cpdef _ndarray_base matmul(
             out.fill(0)
             return out
 
-    if cuda_dtype in (runtime.CUDA_R_16F, runtime.CUDA_R_16BF):
+    if (use_broadcast
+            and cuda_dtype in (runtime.CUDA_R_16F, runtime.CUDA_R_16BF)):
         if ka % 8 == 0:
             alignment = 16
         elif ka % 2 == 0:
