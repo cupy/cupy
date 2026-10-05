@@ -57,13 +57,13 @@ def load_npz(file):
     Examples:
         Store a sparse array on disk with SciPy and load it onto the GPU::
 
-        >>> import scipy.sparse
-        >>> scipy.sparse.save_npz(  # doctest: +SKIP
-        ...     '/tmp/sparse_array.npz',
-        ...     scipy.sparse.csc_array([[0, 0, 3], [4, 0, 0]]))
-        >>> import cupyx.scipy.sparse
-        >>> sparse_array = cupyx.scipy.sparse.load_npz(  # doctest: +SKIP
-        ...     '/tmp/sparse_array.npz')
+            import scipy.sparse
+            import cupyx.scipy.sparse
+
+            scipy.sparse.save_npz(
+                '/tmp/sparse_array.npz',
+                scipy.sparse.csc_array([[0, 0, 3], [4, 0, 0]]))
+            sparse_array = cupyx.scipy.sparse.load_npz('/tmp/sparse_array.npz')
 
     """
     with numpy.load(file, **PICKLE_KWARGS) as loaded:
