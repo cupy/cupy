@@ -9,6 +9,7 @@ import pytest
 import cupy
 from cupy import testing
 from cupy._core import _accelerator
+from cupy._statistics import histogram as histogram_module
 
 
 # Note that numpy.bincount does not support uint64 on 64-bit environment
@@ -41,6 +42,38 @@ def for_all_dtypes_combination_bincount(names):
 
 
 class TestHistogram(unittest.TestCase):
+
+    # Number of bins that makes the searched index exceed 2**31.
+    _n_bins = 2**31 + 1
+
+    def _large_bins_and_counters(self, dtype):
+        # Equal bins send the binary search to the last one, `n_bins - 2`,
+        # without needing the gigabytes a monotonic `bins` would take. `y`
+        # only has to be indexable that far, and cycling it over three
+        # counters keeps it free while still recording which bin was picked.
+        bins = cupy.broadcast_to(
+            cupy.array([0], dtype=cupy.float32), (self._n_bins,))
+        counters = cupy.zeros(3, dtype=dtype)
+        y = cupy.lib.stride_tricks.as_strided(
+            counters, shape=(self._n_bins // counters.size + 1,
+                             counters.size),
+            strides=(0, counters.itemsize))
+        return bins, counters, y
+
+    def test_kernel_accepts_large_number_of_bins(self):
+        x = cupy.zeros(1, dtype=cupy.float32)
+        bins, counters, y = self._large_bins_and_counters(cupy.int64)
+        histogram_module._histogram_kernel(x, bins, bins.size, y)
+        # (2**31 - 1) % 3 == 1
+        testing.assert_array_equal(counters, [0, 1, 0])
+
+    def test_weighted_kernel_accepts_large_number_of_bins(self):
+        x = cupy.zeros(1, dtype=cupy.float32)
+        weights = cupy.full(1, 2, dtype=cupy.float32)
+        bins, counters, y = self._large_bins_and_counters(cupy.float32)
+        histogram_module._weighted_histogram_kernel(
+            x, bins, bins.size, weights, y)
+        testing.assert_array_equal(counters, [0, 2, 0])
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-7)
