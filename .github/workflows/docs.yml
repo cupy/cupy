@@ -1,9 +1,9 @@
 name: "Docs: Build and publish"
 
 # Fires after ci.yml finishes building wheels (same chain as flexci.yml).
-# Downloads the py3.12 linux-64 cu13 wheel from the triggering CI run, builds
-# the Sphinx HTML with RTD env vars mimicked, uploads it as the
-# `docs-html-<sha>` artifact, and tells readthedocs.org to publish it.
+# Downloads the py<doc> linux-64 cu13 wheel from the triggering CI run,
+# builds the Sphinx HTML with RTD env vars mimicked, and -- in a separate
+# job with no PR code checked out -- POSTs to RTD's build-trigger API.
 
 on:
   workflow_run:
@@ -29,83 +29,102 @@ jobs:
     if: >-
       github.repository_owner == 'cupy' &&
       github.event.workflow_run.conclusion == 'success'
+    outputs:
+      proceed: ${{ steps.compute.outputs.proceed }}
+      rtd_slug: ${{ steps.compute.outputs.rtd_slug }}
+      html_artifact: ${{ steps.compute.outputs.html_artifact }}
     steps:
-      - name: Resolve wheel artifact + RTD version from triggering CI run
-        id: compute
+      # workflow_run.pull_requests[] is empty for fork PRs, so instead of
+      # parsing the event payload we download the per-run sentinel artifact
+      # ci.yml's build-sentinel uploaded (name is `push-event-<sha>` for
+      # push, `build-<sha>` for PR). The sentinel carries docs-meta.json
+      # with mode / pr_number / head_sha / merge_sha / python_doc_ver /
+      # artifact_suffix, which is enough to drive the rest of this job.
+      - name: Determine sentinel artifact name
+        id: sentinel
         env:
           EVENT: ${{ github.event.workflow_run.event }}
-          BRANCH: ${{ github.event.workflow_run.head_branch }}
-          PUSH_SHA: ${{ github.event.workflow_run.head_sha }}
-          PRS: ${{ toJSON(github.event.workflow_run.pull_requests) }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
-          if [[ "${EVENT}" == "pull_request" ]]; then
-            PR_NUMBER=$(jq -r '.[0].number // empty' <<<"${PRS}")
-            PR_HEAD_SHA=$(jq -r '.[0].head.sha // empty' <<<"${PRS}")
-            if [[ -z "${PR_NUMBER}" || -z "${PR_HEAD_SHA}" ]]; then
-              echo "::error::pull_request event missing PR metadata"
-              exit 1
-            fi
-            HEAD_SHA="${PR_HEAD_SHA}"
-            SUFFIX="pr${PR_NUMBER}-${PR_HEAD_SHA}"
+          if [[ "${EVENT}" == "push" ]]; then
+            NAME="push-event-${HEAD_SHA}"
+          else
+            NAME="build-${HEAD_SHA}"
+          fi
+          echo "name=${NAME}" >> "${GITHUB_OUTPUT}"
+
+      - name: Download sentinel
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0  # v5.0.0
+        with:
+          name: ${{ steps.sentinel.outputs.name }}
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ./sentinel
+
+      - name: Parse docs-meta + compute artifact names and RTD slug
+        id: compute
+        env:
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          META=./sentinel/docs-meta.json
+          test -f "${META}" || { echo "::error::docs-meta.json missing from sentinel"; exit 1; }
+          MODE=$(jq -r .mode "${META}")
+          PR_NUMBER=$(jq -r .pr_number "${META}")
+          HEAD_SHA=$(jq -r .head_sha "${META}")
+          MERGE_SHA=$(jq -r .merge_sha "${META}")
+          PYTHON_DOC_VER=$(jq -r .python_doc_ver "${META}")
+          SUFFIX=$(jq -r .artifact_suffix "${META}")
+
+          # Only `test` and `doc-only` produce the wheel docs.yml needs.
+          # skip / no-op exit cleanly with no artifact.
+          if [[ "${MODE}" != "test" && "${MODE}" != "doc-only" ]]; then
+            echo "::notice::mode=${MODE}; nothing to build"
+            echo "proceed=false" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          if [[ -n "${PR_NUMBER}" ]]; then
             RTD_SLUG="${PR_NUMBER}"
             RTD_TYPE="external"
+          elif [[ "${BRANCH}" == "main" ]]; then
+            RTD_SLUG="latest"
+            RTD_TYPE="branch"
           else
-            HEAD_SHA="${PUSH_SHA}"
-            SUFFIX="${PUSH_SHA}"
-            # RTD slug conventions: main -> `latest`; release branches keep
-            # their branch name (RTD creates one version per activated branch).
-            if [[ "${BRANCH}" == "main" ]]; then
-              RTD_SLUG="latest"
-            else
-              RTD_SLUG="${BRANCH}"
-            fi
+            # v*/hotfix-* branches: compute slug anyway (so the HTML artifact
+            # is still produced for debugging) but the publish job's `if:`
+            # gates them out below.
+            RTD_SLUG="${BRANCH}"
             RTD_TYPE="branch"
           fi
+
           {
+            echo "proceed=true"
             echo "head_sha=${HEAD_SHA}"
-            echo "wheel_artifact=cupy-cuda13x-py3.12-linux-64-${SUFFIX}"
+            echo "merge_sha=${MERGE_SHA}"
+            echo "python_doc_ver=${PYTHON_DOC_VER}"
+            echo "wheel_artifact=cupy-cuda13x-py${PYTHON_DOC_VER}-linux-64-${SUFFIX}"
             echo "html_artifact=docs-html-${SUFFIX}"
             echo "rtd_slug=${RTD_SLUG}"
             echo "rtd_type=${RTD_TYPE}"
           } >> "${GITHUB_OUTPUT}"
 
-      # ci.yml succeeds in modes test, doc-only, AND skip -- skip mode
-      # publishes a dispatch sentinel but no wheel. Rather than letting
-      # the download step fail red, check whether the expected wheel
-      # artifact exists on the triggering run; if not, exit the job
-      # cleanly so `/test skip` really skips everything downstream.
-      - name: Check wheel artifact exists in triggering CI run
-        id: preflight
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RUN_ID: ${{ github.event.workflow_run.id }}
-          WHEEL_ARTIFACT: ${{ steps.compute.outputs.wheel_artifact }}
-        run: |
-          count=$(gh api \
-            "repos/${{ github.repository }}/actions/runs/${RUN_ID}/artifacts?per_page=100" \
-            --jq "[.artifacts[] | select(.name == \"${WHEEL_ARTIFACT}\")] | length")
-          if [[ "${count}" == "0" ]]; then
-            echo "::notice::${WHEEL_ARTIFACT} not present in triggering CI run; skipping docs build (likely /test skip)."
-            echo "proceed=false" >> "${GITHUB_OUTPUT}"
-          else
-            echo "proceed=true" >> "${GITHUB_OUTPUT}"
-          fi
-
-      - name: Checkout cupy at the documented SHA
-        if: steps.preflight.outputs.proceed == 'true'
+      # Every step below is gated on proceed == 'true' so skip-mode runs
+      # end here cleanly.
+      - name: Checkout cupy at the tested revision (same ref ci.yml built)
+        if: steps.compute.outputs.proceed == 'true'
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
         with:
-          ref: ${{ steps.compute.outputs.head_sha }}
+          ref: ${{ steps.compute.outputs.merge_sha }}
           fetch-depth: 1
 
       - name: Set up Python
-        if: steps.preflight.outputs.proceed == 'true'
+        if: steps.compute.outputs.proceed == 'true'
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
         with:
-          python-version: "3.12"
+          python-version: ${{ steps.compute.outputs.python_doc_ver }}
 
       - name: Download cupy wheel from triggering CI run
-        if: steps.preflight.outputs.proceed == 'true'
+        if: steps.compute.outputs.proceed == 'true'
         uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0  # v5.0.0
         with:
           name: ${{ steps.compute.outputs.wheel_artifact }}
@@ -114,31 +133,18 @@ jobs:
           path: ./wheel
 
       - name: Install docs requirements + cupy[ctk]
-        if: steps.preflight.outputs.proceed == 'true'
+        if: steps.compute.outputs.proceed == 'true'
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r docs/requirements.txt
           WHEEL=$(ls wheel/cupy_cuda13x-*.whl)
           python -m pip install "${WHEEL}[ctk]"
 
-      # Keyed by (docs sources + wheel sha) so a wheel rebuild invalidates the
-      # cache (new cupy binary -> autodoc output can change). Restore-keys fall
-      # back to any prior build on this branch, then any prior build at all.
-      - name: Restore sphinx doctrees cache
-        if: steps.preflight.outputs.proceed == 'true'
-        uses: actions/cache@v4
-        with:
-          path: docs/build/.doctrees
-          key: doctrees-${{ hashFiles('docs/source/**') }}-${{ steps.compute.outputs.head_sha }}
-          restore-keys: |
-            doctrees-${{ hashFiles('docs/source/**') }}-
-            doctrees-
-
       # Run sphinx from docs/ (not the repo root): CWD is on sys.path and
       # `./cupy/` would shadow the installed wheel, so autodoc would import
       # the uncompiled source tree and fail on the Cython extensions.
       - name: Build HTML docs
-        if: steps.preflight.outputs.proceed == 'true'
+        if: steps.compute.outputs.proceed == 'true'
         working-directory: docs
         env:
           # Mimic the RTD build env so docs/source/conf.py's extlinks tag
@@ -154,7 +160,7 @@ jobs:
           python -m sphinx -T -j auto -b html source build/html
 
       - name: Upload HTML artifact
-        if: steps.preflight.outputs.proceed == 'true'
+        if: steps.compute.outputs.proceed == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: ${{ steps.compute.outputs.html_artifact }}
@@ -162,14 +168,29 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
+  # Separate job so PR code never shares a runner with RTD_API_TOKEN:
+  # `build` above checks out PR code and runs sphinx (no secrets);
+  # `publish` runs on a fresh runner with no checkout, only the token.
+  publish:
+    name: Publish docs to RTD
+    needs: build
+    # Publish only on main pushes and PR previews. v*/hotfix-* branches
+    # skip until RTD has those versions activated.
+    if: >-
+      needs.build.outputs.proceed == 'true' &&
+      (github.event.workflow_run.event == 'pull_request' ||
+       (github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_branch == 'main'))
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    steps:
       # Non-fatal: if RTD_API_TOKEN is unset or the version slug isn't
-      # activated on RTD, log and continue -- the HTML artifact is still
-      # available for a manual RTD rebuild.
+      # activated on RTD, log and continue.
       - name: Trigger RTD build
-        if: steps.preflight.outputs.proceed == 'true'
         env:
           RTD_API_TOKEN: ${{ secrets.RTD_API_TOKEN }}
-          RTD_SLUG: ${{ steps.compute.outputs.rtd_slug }}
+          RTD_SLUG: ${{ needs.build.outputs.rtd_slug }}
         run: |
           if [[ -z "${RTD_API_TOKEN}" ]]; then
             echo "::warning::RTD_API_TOKEN not set; skipping trigger"
@@ -181,8 +202,6 @@ jobs:
             "https://readthedocs.org/api/v3/projects/cupy/versions/${RTD_SLUG}/builds/")
           echo "RTD responded ${HTTP_CODE}"
           cat /tmp/rtd_trigger.json || true
-          # 202 is the documented success; treat 404 (unactivated version) as a
-          # warning so release-tag docs can be opted in on RTD independently.
           if [[ "${HTTP_CODE}" == "202" ]]; then
             echo "RTD build triggered for version '${RTD_SLUG}'"
           elif [[ "${HTTP_CODE}" == "404" ]]; then

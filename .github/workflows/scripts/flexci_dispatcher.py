@@ -263,12 +263,6 @@ def main(argv: Any) -> int:
         elif requested_tags == {'force-skip'}:
             _log('Force skipping all projects as requested')
             force_skip = True
-        elif requested_tags == {'doc-only'}:
-            # ci.yml routes `/test doc-only` to a single-cell build-linux-64
-            # + the inline docs build; GPU projects on FlexCI are
-            # intentionally skipped. Post Skipped statuses so the PR's
-            # required FlexCI checks resolve.
-            _log('Doc-only run; FlexCI projects are not needed.')
         else:
             _log('No projects matched with the requested tag')
             return 1

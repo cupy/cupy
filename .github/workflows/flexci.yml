@@ -212,7 +212,8 @@ jobs:
               --webhook "${RUNNER_TEMP}/requests/${pr}/event.json" \
               --projects _config/.pfnci/config.tags.json \
               --external-tag jenkins \
-              --external-tag rocm
+              --external-tag rocm \
+              --external-tag doc-only
         done
 
     # Workflow_run check-suites attach to the default-branch head, not to
