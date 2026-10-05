@@ -1,24 +1,17 @@
 function ActivatePython($version) {
-    if ($version -eq "3.10") {
-        $pydir = "Python310"
-    } elseif ($version -eq "3.11") {
-        $pydir = "Python311"
-    } elseif ($version -eq "3.12") {
-        $pydir = "Python312"
-    } elseif ($version -eq "3.13") {
-        $pydir = "Python313"
-    } elseif ($version -eq "3.14") {
-        $pydir = "Python314"
-    } elseif ($version -eq "3.14t") {
-        $pydir = "Python314t"
-    } elseif ($version -eq "3.15") {
-        $pydir = "Python315"
-    } elseif ($version -eq "3.15t") {
-        $pydir = "Python315t"
-    } else {
-        throw "Unsupported Python version: $version"
+    # Bootstrap uv.
+    $uv_root = Join-Path $Env:TEMP "cupy-ci-uv"
+    if (-not (Test-Path "$uv_root\uv.exe")) {
+        $Env:UV_UNMANAGED_INSTALL = $uv_root
+        RunOrDie powershell -NoProfile -ExecutionPolicy Bypass -Command `
+            "Invoke-RestMethod -ErrorAction Stop https://astral.sh/uv/install.ps1 | Invoke-Expression"
     }
-    $Env:PATH = "C:\Development\Python\$pydir;C:\Development\Python\$pydir\Scripts;" + $Env:PATH
+
+    # Download the requested interpreter and seed pip for the existing install steps.
+    $venv = Join-Path $Env:TEMP "cupy-ci-venv-$version"
+    RunOrDie "$uv_root\uv.exe" venv --clear --seed --managed-python --python $version $venv
+    $Env:VIRTUAL_ENV = $venv
+    $Env:PATH = "$venv\Scripts;" + $Env:PATH
 }
 
 function ActivateCUDA($version) {
