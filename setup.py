@@ -53,13 +53,18 @@ package_data = {
 package_data['cupy'] += cupy_setup_build.prepare_wheel_libs(ctx)
 
 
-# Metadata-only setup.py invocations (direct `sdist` + PEP 517's
-# get_requires_for_build_sdist / prepare_metadata_* phases, which run
-# with sys.argv[1] in {egg_info, dist_info}) must not touch the CUDA
-# toolkit: the sdist builder deliberately runs on a CUDA-less runner.
-# bdist_wheel is a separate setup() invocation on the wheel builders,
-# where the probe + [ctk] both run normally.
-_sdist_phase = ctx.setup_command in {'sdist', 'egg_info', 'dist_info'}
+# CUDA-less setup.py invocations: direct `sdist`, and PEP 517's
+# get_requires_for_build_sdist, which setuptools backs with
+# `setup.py egg_info`. Both must skip the CUDA probe + [ctk] so the
+# sdist builder can run without a CUDA toolkit.
+#
+# Do NOT add `dist_info` here: that's the subcommand setuptools uses
+# for `prepare_metadata_for_build_wheel` (and _for_build_editable).
+# Pip resolves extras (`pip install .[ctk]`) from that prepared
+# metadata, so skipping [ctk] in dist_info silently drops the toolkit
+# wheels. bdist_wheel is a separate setup() invocation on the wheel
+# builders where the probe + [ctk] both run normally.
+_sdist_phase = ctx.setup_command in {'sdist', 'egg_info'}
 
 ext_modules = [] if _sdist_phase else cupy_setup_build.get_ext_modules(
     True, ctx)
