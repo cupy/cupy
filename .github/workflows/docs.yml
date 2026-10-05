@@ -52,37 +52,18 @@ jobs:
       #
       # mode=no-op runs (unrelated label events, branch deletes, skip-ci
       # pushes) upload NO sentinel but still succeed, so workflow_run
-      # fires here. Look up the artifact list on the triggering run first;
-      # if the sentinel isn't present, no-op this whole workflow cleanly.
-      - name: Preflight -- locate sentinel artifact
-        id: sentinel
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          EVENT: ${{ github.event.workflow_run.event }}
-          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
-          TRIGGER_RUN_ID: ${{ github.event.workflow_run.id }}
-        run: |
-          if [[ "${EVENT}" == "push" ]]; then
-            NAME="push-event-${HEAD_SHA}"
-          else
-            NAME="build-${HEAD_SHA}"
-          fi
-          FOUND=$(gh api \
-            "repos/${GITHUB_REPOSITORY}/actions/runs/${TRIGGER_RUN_ID}/artifacts?per_page=100" \
-            --jq "[.artifacts[] | select(.name == \"${NAME}\")] | length")
-          if [[ "${FOUND}" == "0" ]]; then
-            echo "::notice::Sentinel '${NAME}' not present on run ${TRIGGER_RUN_ID}; mode=no-op"
-            echo "present=false" >> "${GITHUB_OUTPUT}"
-          else
-            echo "present=true" >> "${GITHUB_OUTPUT}"
-            echo "name=${NAME}" >> "${GITHUB_OUTPUT}"
-          fi
-
+      # fires here. continue-on-error turns a missing artifact into a
+      # non-fatal step; the compute step below reads steps.sentinel.outcome
+      # and no-ops the whole workflow cleanly when the download failed.
       - name: Download sentinel
-        if: steps.sentinel.outputs.present == 'true'
+        id: sentinel
+        continue-on-error: true
         uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0  # v5.0.0
         with:
-          name: ${{ steps.sentinel.outputs.name }}
+          name: >-
+            ${{ github.event.workflow_run.event == 'push'
+                && format('push-event-{0}', github.event.workflow_run.head_sha)
+                || format('build-{0}', github.event.workflow_run.head_sha) }}
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: ./sentinel
@@ -90,7 +71,7 @@ jobs:
       - name: Parse docs-meta + compute RTD slug
         id: compute
         env:
-          SENTINEL_PRESENT: ${{ steps.sentinel.outputs.present }}
+          SENTINEL_OUTCOME: ${{ steps.sentinel.outcome }}
           BRANCH: ${{ github.event.workflow_run.head_branch }}
           EVENT: ${{ github.event.workflow_run.event }}
         run: |
@@ -104,7 +85,7 @@ jobs:
           MERGE_SHA=""
           SUFFIX=""
 
-          if [[ "${SENTINEL_PRESENT}" == "true" ]]; then
+          if [[ "${SENTINEL_OUTCOME}" == "success" ]]; then
             META=./sentinel/docs-meta.json
             test -f "${META}" || { echo "::error::docs-meta.json missing from sentinel"; exit 1; }
             MODE=$(jq -r .mode "${META}")
