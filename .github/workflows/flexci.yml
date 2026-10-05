@@ -153,6 +153,24 @@ jobs:
               > "${RUNNER_TEMP}/requests/push.zip"
           mkdir -p "${RUNNER_TEMP}/requests/push"
           unzip -q -o "${RUNNER_TEMP}/requests/push.zip" -d "${RUNNER_TEMP}/requests/push"
+          # Gate dispatch on mode == test. ci-guard.sh sets mode=doc-only
+          # on tag pushes (the tagged SHA was already fully tested on the
+          # branch push preceding the tag); re-dispatching FlexCI's full
+          # GPU matrix on that SHA burns ~16 lanes with no coverage gain.
+          # The sentinel we just extracted carries docs-meta.json with the
+          # trusted guard mode.
+          meta="${RUNNER_TEMP}/requests/push/docs-meta.json"
+          if [[ ! -f "${meta}" ]]; then
+            echo "::warning::push sentinel missing docs-meta.json; treating as no-dispatch."
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          mode="$(jq -r '.mode // ""' "${meta}")"
+          if [[ "${mode}" != "test" ]]; then
+            echo "push mode=${mode:-unknown}; nothing to dispatch."
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           dispatch_list+=("push")
           event=push
           ;;

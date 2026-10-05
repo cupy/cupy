@@ -39,9 +39,11 @@ jobs:
     outputs:
       proceed: ${{ steps.compute.outputs.proceed }}
       rtd_slug: ${{ steps.compute.outputs.rtd_slug }}
+      rtd_version_name: ${{ steps.compute.outputs.rtd_version_name }}
       version_type: ${{ steps.compute.outputs.version_type }}
       suffix: ${{ steps.compute.outputs.suffix }}
       head_sha: ${{ steps.compute.outputs.head_sha }}
+      promote_stable: ${{ steps.stable.outputs.promote_stable }}
     steps:
       # workflow_run.pull_requests[] is empty for fork PRs, so instead of
       # parsing the event payload we download the per-run sentinel artifact
@@ -80,6 +82,7 @@ jobs:
           # `proceed`.
           PROCEED=false
           RTD_SLUG=""
+          RTD_VERSION_NAME=""
           VERSION_TYPE=""
           HEAD_SHA=""
           MERGE_SHA=""
@@ -95,6 +98,21 @@ jobs:
             MERGE_SHA=$(jq -r .merge_sha "${META}")
             SUFFIX=$(jq -r .artifact_suffix "${META}")
 
+            # Defense-in-depth validation: SUFFIX / HEAD_SHA / MERGE_SHA
+            # get interpolated into shell + API payloads downstream, so
+            # reject anything with shell metacharacters even though the
+            # trusted builder currently only produces hex SHAs / PR
+            # numbers. Keeps the rules loose enough to tolerate future
+            # format tweaks (dots, underscores) while blocking $, `, ;,
+            # quotes, spaces, etc.
+            for field_name in SUFFIX HEAD_SHA MERGE_SHA; do
+              value="${!field_name}"
+              if ! [[ "${value}" =~ ^[A-Za-z0-9._-]+$ ]]; then
+                echo "::error::docs-meta ${field_name} is malformed: ${value}"
+                exit 1
+              fi
+            done
+
             if [[ "${MODE}" != "test" && "${MODE}" != "doc-only" ]]; then
               echo "::notice::mode=${MODE}; nothing to build"
             else
@@ -102,17 +120,33 @@ jobs:
               # pr_number on main-push for the merged PR (needed for the
               # skip-ci check), and classifying every main-push as an
               # external preview would mean `latest` never updates.
+              #
+              # rtd_slug is what conf.py reads via READTHEDOCS_VERSION
+              # (and what the sphinx extlinks tag resolves against).
+              # rtd_version_name is what the RTD /api/v3/upload/
+              # initiate payload uses: for main the upload must be
+              # name=main / type=branch so RTD's
+              # UploadInitiateView._get_or_create_version matches the
+              # existing machine-managed `latest` alias on
+              # `latest.identifier == name` -- uploading with
+              # name=latest misses that check, falls through to the
+              # verbose-name match, and rewrites the alias with
+              # identifier=latest / machine=False (the alias stops
+              # tracking main).
               if [[ "${EVENT}" == "pull_request" ]]; then
                 PROCEED=true
                 RTD_SLUG="${PR_NUMBER}"
+                RTD_VERSION_NAME="${PR_NUMBER}"
                 VERSION_TYPE="external"
               elif [[ "${REF}" == refs/tags/* ]]; then
                 PROCEED=true
                 RTD_SLUG="${REF#refs/tags/}"
+                RTD_VERSION_NAME="${RTD_SLUG}"
                 VERSION_TYPE="tag"
               elif [[ "${BRANCH}" == "main" ]]; then
                 PROCEED=true
                 RTD_SLUG="latest"
+                RTD_VERSION_NAME="main"
                 VERSION_TYPE="branch"
               else
                 # v*/hotfix-* branches: emit outputs for the HTML artifact
@@ -120,6 +154,7 @@ jobs:
                 # `if:` gates them out.
                 PROCEED=true
                 RTD_SLUG="${BRANCH}"
+                RTD_VERSION_NAME="${BRANCH}"
                 VERSION_TYPE="branch"
               fi
             fi
@@ -131,6 +166,7 @@ jobs:
             echo "merge_sha=${MERGE_SHA}"
             echo "suffix=${SUFFIX}"
             echo "rtd_slug=${RTD_SLUG}"
+            echo "rtd_version_name=${RTD_VERSION_NAME}"
             echo "version_type=${VERSION_TYPE}"
           } >> "${GITHUB_OUTPUT}"
 
@@ -142,6 +178,33 @@ jobs:
         with:
           ref: ${{ steps.compute.outputs.merge_sha }}
           fetch-depth: 1
+          # tag refs needed by the "Decide stable promotion" step below;
+          # we only need the names, not the tag commits themselves.
+          fetch-tags: true
+
+      # Promote stable to this upload when the current tag is the highest
+      # final `vX.Y.Z` in the repo. Backport-safe: sort -V picks v14.1.0
+      # over v13.6.0 even if v13.6.0 is pushed later. Prereleases
+      # (vX.Y.ZaN / bN / rcN / etc.) are filtered out.
+      - name: Decide stable promotion
+        id: stable
+        if: >-
+          steps.compute.outputs.proceed == 'true' &&
+          steps.compute.outputs.version_type == 'tag'
+        env:
+          TAG_NAME: ${{ steps.compute.outputs.rtd_slug }}
+        run: |
+          highest=$(git tag -l 'v*' \
+            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+            | sort -V \
+            | tail -1)
+          if [[ "${TAG_NAME}" == "${highest}" ]]; then
+            echo "::notice::${TAG_NAME} is the highest final tag; promoting stable"
+            echo "promote_stable=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "::notice::${TAG_NAME} is not the highest final tag (highest=${highest:-none}); keeping stable as-is"
+            echo "promote_stable=false" >> "${GITHUB_OUTPUT}"
+          fi
 
       - name: Read python.doc.version from ci/versions.yml
         if: steps.compute.outputs.proceed == 'true'
@@ -223,31 +286,35 @@ jobs:
       contents: read
     steps:
       - name: Download HTML artifact
+        # Same-run default: the build job above uploaded this artifact
+        # into the current docs.yml run, not into the triggering CI run.
         uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0  # v5.0.0
         with:
           name: docs-html-${{ needs.build.outputs.suffix }}
-          run-id: ${{ github.event.workflow_run.id }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
           path: ./html
 
-      # Three-step RTD upload (see readthedocs/readthedocs-cli for
-      # the reference implementation):
+      # Three-step RTD upload per readthedocs/readthedocs-cli's reference
+      # flow:
       #   1. POST /api/v3/upload/initiate/ -- RTD creates a draft build,
-      #      returns a presigned S3 URL + required form fields and the
-      #      new build id.
-      #   2. POST <presigned S3 URL> -- multipart form with the fields
-      #      from step 1 and the zip. RTD never sees the token here.
-      #   3. POST /api/v3/upload/complete/ -- mark the build success /
+      #      returns a presigned S3 URL + required form fields + the new
+      #      build id + the resolved version slug.
+      #   2. POST <presigned S3 URL> -- multipart with the fields from
+      #      step 1 and the zip. RTD never sees the token here.
+      #   3. POST /api/v3/upload/complete/ -- mark the build success or
       #      failed so RTD processes (or discards) it.
       # Archive layout is dictated by the API: html files under html/**
       # at the zip root. Non-fatal when the token is unset so stage 1
-      # can land before the secret is wired.
+      # can land before the secret is wired. All PR-origin values
+      # (SUFFIX, HEAD_SHA, RTD_VERSION_NAME, RTD_VERSION_TYPE) flow via
+      # the env to avoid interpolating `${{ ... }}` into the script.
       - name: Upload HTML to RTD
         env:
           RTD_API_TOKEN: ${{ secrets.RTD_API_TOKEN }}
-          RTD_VERSION_NAME: ${{ needs.build.outputs.rtd_slug }}
+          RTD_VERSION_NAME: ${{ needs.build.outputs.rtd_version_name }}
           RTD_VERSION_TYPE: ${{ needs.build.outputs.version_type }}
           HEAD_SHA: ${{ needs.build.outputs.head_sha }}
+          SUFFIX: ${{ needs.build.outputs.suffix }}
+          PROMOTE_STABLE: ${{ needs.build.outputs.promote_stable }}
         run: |
           if [[ -z "${RTD_API_TOKEN}" ]]; then
             echo "::warning::RTD_API_TOKEN not set; skipping upload"
@@ -258,66 +325,127 @@ jobs:
           cp -a ./html/. stage/html/
           (cd stage && zip -qr "${RUNNER_TEMP}/build.zip" .)
 
-          PAYLOAD=$(jq -nc \
-            --arg name "${RTD_VERSION_NAME}" \
-            --arg type "${RTD_VERSION_TYPE}" \
-            --arg commit "${HEAD_SHA}" \
-            '{project: "cupy", version: {name: $name, type: $type, commit: $commit}}')
+          # Returns 0 on a successful round-trip (initiate 2xx + S3 2xx +
+          # complete 2xx), non-zero otherwise with the error already
+          # logged via ::error::. Safe to call multiple times with
+          # different (name, type) to publish the same zip to the
+          # primary slug and to the `stable` alias.
+          upload_version() {
+            local name="$1"
+            local type="$2"
+            local label="${type}/${name}"
+            local initiate_file="${RUNNER_TEMP}/rtd_initiate_${type}_${name}.json"
+            local s3_file="${RUNNER_TEMP}/rtd_s3_${type}_${name}.txt"
+            local complete_file="${RUNNER_TEMP}/rtd_complete_${type}_${name}.json"
 
-          INITIATE_FILE="${RUNNER_TEMP}/rtd_initiate.json"
-          INITIATE_CODE=$(curl -sS -o "${INITIATE_FILE}" -w '%{http_code}' \
-            -X POST \
-            -H "Authorization: Token ${RTD_API_TOKEN}" \
-            -H "Content-Type: application/json" \
-            -d "${PAYLOAD}" \
-            "https://app.readthedocs.org/api/v3/upload/initiate/")
+            local payload
+            payload=$(jq -nc \
+              --arg name "${name}" \
+              --arg type "${type}" \
+              --arg commit "${HEAD_SHA}" \
+              '{project: "cupy", version: {name: $name, type: $type, commit: $commit}}')
 
-          if [[ "${INITIATE_CODE}" != 2* ]]; then
-            echo "::error::RTD initiate failed (${INITIATE_CODE})"
-            cat "${INITIATE_FILE}" || true
-            exit 1
-          fi
-
-          BUILD_ID=$(jq -r '.build.id' "${INITIATE_FILE}")
-          UPLOAD_URL=$(jq -r '.upload_url.url' "${INITIATE_FILE}")
-          if [[ "${BUILD_ID}" == "null" || -z "${BUILD_ID}" ]]; then
-            echo "::error::RTD initiate response missing build.id"
-            cat "${INITIATE_FILE}"
-            exit 1
-          fi
-
-          # Build the -F arg list from the presigned URL's fields. Fetch
-          # each value via a keyed jq call so values with spaces or
-          # quotes survive without a bespoke delimiter.
-          FIELD_ARGS=()
-          while IFS= read -r key; do
-            value=$(jq -r --arg k "${key}" '.upload_url.fields[$k]' "${INITIATE_FILE}")
-            FIELD_ARGS+=("-F" "${key}=${value}")
-          done < <(jq -r '.upload_url.fields | keys[]' "${INITIATE_FILE}")
-
-          S3_FILE="${RUNNER_TEMP}/rtd_s3.txt"
-          S3_CODE=$(curl -sS -o "${S3_FILE}" -w '%{http_code}' \
-            -X POST \
-            "${FIELD_ARGS[@]}" \
-            -F "file=@${RUNNER_TEMP}/build.zip;type=application/zip" \
-            "${UPLOAD_URL}")
-
-          complete_build() {
-            local status="$1"
-            curl -sS \
+            local initiate_code
+            initiate_code=$(curl -sS -o "${initiate_file}" -w '%{http_code}' \
               -X POST \
               -H "Authorization: Token ${RTD_API_TOKEN}" \
               -H "Content-Type: application/json" \
-              -d "{\"build\": ${BUILD_ID}, \"status\": \"${status}\"}" \
-              "https://app.readthedocs.org/api/v3/upload/complete/" > "${RUNNER_TEMP}/rtd_complete.json" || true
+              -d "${payload}" \
+              "https://app.readthedocs.org/api/v3/upload/initiate/")
+            if [[ "${initiate_code}" != 2* ]]; then
+              echo "::error::RTD initiate (${label}) failed (${initiate_code})"
+              cat "${initiate_file}" || true
+              return 1
+            fi
+
+            local build_id upload_url resolved_slug
+            build_id=$(jq -r '.build.id' "${initiate_file}")
+            upload_url=$(jq -r '.upload_url.url' "${initiate_file}")
+            resolved_slug=$(jq -r '.version.slug // ""' "${initiate_file}")
+            if [[ "${build_id}" == "null" || -z "${build_id}" ]]; then
+              echo "::error::RTD initiate (${label}) response missing build.id"
+              cat "${initiate_file}"
+              return 1
+            fi
+
+            # Safety net suggested in review: if an upload of
+            # (main, branch) does NOT resolve to the `latest` alias,
+            # RTD's machine-managed state has drifted (someone edited
+            # it by hand); fail loudly rather than publish a new
+            # /en/main/ public version. Same guard for the stable
+            # alias upload.
+            case "${label}" in
+              branch/main)
+                if [[ "${resolved_slug}" != "latest" ]]; then
+                  echo "::error::upload of main resolved to '${resolved_slug}', expected 'latest' (RTD alias drifted?)"
+                  _rtd_complete "${build_id}" failed "${complete_file}" || true
+                  return 1
+                fi
+                ;;
+              tag/stable)
+                if [[ "${resolved_slug}" != "stable" ]]; then
+                  echo "::error::upload of stable resolved to '${resolved_slug}', expected 'stable' (RTD alias drifted?)"
+                  _rtd_complete "${build_id}" failed "${complete_file}" || true
+                  return 1
+                fi
+                ;;
+            esac
+
+            # Build the -F arg list from the presigned URL's fields.
+            # Fetch each value via a keyed jq call so values with
+            # spaces or quotes survive without a bespoke delimiter.
+            local -a field_args=()
+            local key value
+            while IFS= read -r key; do
+              value=$(jq -r --arg k "${key}" '.upload_url.fields[$k]' "${initiate_file}")
+              field_args+=("-F" "${key}=${value}")
+            done < <(jq -r '.upload_url.fields | keys[]' "${initiate_file}")
+
+            local s3_code
+            s3_code=$(curl -sS -o "${s3_file}" -w '%{http_code}' \
+              -X POST \
+              "${field_args[@]}" \
+              -F "file=@${RUNNER_TEMP}/build.zip;type=application/zip" \
+              "${upload_url}")
+            if [[ "${s3_code}" != 2* ]]; then
+              echo "::error::S3 upload (${label}) failed (${s3_code})"
+              cat "${s3_file}" || true
+              _rtd_complete "${build_id}" failed "${complete_file}" || true
+              return 1
+            fi
+
+            if ! _rtd_complete "${build_id}" success "${complete_file}"; then
+              return 1
+            fi
+
+            echo "::notice::Uploaded docs-html-${SUFFIX} to RTD build #${build_id} (${label}, slug=${resolved_slug})"
           }
 
-          if [[ "${S3_CODE}" != 2* ]]; then
-            echo "::error::S3 upload failed (${S3_CODE})"
-            cat "${S3_FILE}" || true
-            complete_build failed
-            exit 1
-          fi
+          # Separate out the complete step so it can both signal the
+          # happy path AND be reused by error-path cleanup. Returns 0
+          # on 2xx, non-zero on anything else -- but a failure here on
+          # the error path is already logged, so the caller discards
+          # with `|| true`.
+          _rtd_complete() {
+            local build_id="$1"
+            local status="$2"
+            local out="$3"
+            local code
+            code=$(curl -sS -o "${out}" -w '%{http_code}' \
+              -X POST \
+              -H "Authorization: Token ${RTD_API_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d "{\"build\": ${build_id}, \"status\": \"${status}\"}" \
+              "https://app.readthedocs.org/api/v3/upload/complete/" || echo 000)
+            if [[ "${code}" != 2* ]]; then
+              echo "::error::RTD complete (build #${build_id}, status=${status}) failed (${code})"
+              cat "${out}" || true
+              return 1
+            fi
+          }
 
-          complete_build success
-          echo "::notice::Uploaded docs-html-${{ needs.build.outputs.suffix }} to RTD build #${BUILD_ID} (${RTD_VERSION_TYPE}/${RTD_VERSION_NAME})"
+          upload_version "${RTD_VERSION_NAME}" "${RTD_VERSION_TYPE}"
+
+          if [[ "${PROMOTE_STABLE}" == "true" ]]; then
+            upload_version stable tag
+          fi
