@@ -868,15 +868,6 @@ cpdef _ndarray_base _mat_ptrs(_ndarray_base a):
     return idx
 
 
-cdef bint _batch_strides_are_aligned(
-        _ndarray_base a, Py_ssize_t alignment) noexcept:
-    cdef Py_ssize_t axis
-    for axis in range(<Py_ssize_t>a._shape.size() - 2):
-        if a._shape[axis] > 1 and a._strides[axis] % alignment != 0:
-            return False
-    return True
-
-
 cpdef _ndarray_base matmul(
         _ndarray_base a, _ndarray_base b, _ndarray_base out=None):
     """Matrix product of two arrays.
@@ -906,7 +897,7 @@ cpdef _ndarray_base matmul(
     cdef _ndarray_base ap, bp, cp, c_view
     cdef bint use_broadcast
     cdef Py_ssize_t alignment
-    cdef bint input_stride_ok, output_stride_ok
+    cdef bint output_stride_ok
     cdef bint force_temp_aligned_output = False
     cdef Py_ssize_t padded_output_stride = 0
     cdef Py_ssize_t alignment_elements, output_byte_stride
@@ -1053,42 +1044,26 @@ cpdef _ndarray_base matmul(
         else:
             alignment = 2
 
-        input_stride_ok = (
-            _batch_strides_are_aligned(a, alignment)
-            and _batch_strides_are_aligned(b, alignment)
-        )
-        output_stride_ok = (
-            batchCount <= 1
-            or (n * m * 2) % alignment == 0
-        )
+        output_stride_ok = (n * m * 2) % alignment == 0
 
-        if not input_stride_ok:
-            dtype = numpy.dtype('f')
-            cuda_dtype = runtime.CUDA_R_32F
-            compute_dtype = cuda_dtype
-            coef_dtype = dtype
+        if a.data.ptr % alignment != 0:
+            a = a.copy(order='C')
+        if b.data.ptr % alignment != 0:
+            b = b.copy(order='C')
 
-            a = ascontiguousarray(a, dtype)
-            b = ascontiguousarray(b, dtype)
-        else:
-            if a.data.ptr % alignment != 0:
-                a = a.copy(order='C')
-            if b.data.ptr % alignment != 0:
-                b = b.copy(order='C')
+        if not output_stride_ok:
+            alignment_elements = alignment // 2
+            padded_output_stride = (
+                (n * m + alignment_elements - 1)
+                // alignment_elements * alignment_elements
+            )
+            force_temp_aligned_output = True
 
-            if not output_stride_ok:
-                alignment_elements = alignment // 2
-                padded_output_stride = (
-                    (n * m + alignment_elements - 1)
-                    // alignment_elements * alignment_elements
-                )
-                force_temp_aligned_output = True
-
-            if out is not None:
-                force_temp_aligned_output = (
-                    force_temp_aligned_output
-                    or out.data.ptr % alignment != 0
-                )
+        if out is not None:
+            force_temp_aligned_output = (
+                force_temp_aligned_output
+                or out.data.ptr % alignment != 0
+            )
 
     if (
         out is not None and out.dtype == dtype and out.flags.c_contiguous
@@ -1152,10 +1127,7 @@ cpdef _ndarray_base matmul(
     if not use_broadcast:
         strideA = _get_stride_for_strided_batched_gemm(a)
         strideB = _get_stride_for_strided_batched_gemm(b)
-        if padded_output_stride != 0:
-            strideC = padded_output_stride
-        else:
-            strideC = _get_stride_for_strided_batched_gemm(c_view)
+        strideC = _get_stride_for_strided_batched_gemm(c_view)
         if (cuda_dtype in (runtime.CUDA_R_16F, runtime.CUDA_R_16BF)
                 or dtype.char in 'fFdD'):
             cublas.gemmStridedBatchedEx(
