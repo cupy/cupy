@@ -121,6 +121,18 @@ push)
   if [[ "$(jq -r '.deleted' "$GITHUB_EVENT_PATH")" == "true" ]] || \
      [[ "$(jq -r '.after' "$GITHUB_EVENT_PATH")" =~ ^0+$ ]]; then
     echo "Branch deletion; mode=no-op"
+  elif [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+    # Tag push: the tagged commit was already built + tested on the
+    # branch push that preceded the tag, so re-running the full matrix
+    # (and FlexCI GPU dispatch) at the same SHA is redundant. Run just
+    # the docs lane so docs.yml can publish `vX.Y.Z` to RTD. The push
+    # leg below also sets `pr_number` for the merged PR; clear it here
+    # so docs.yml classifies this as a tag event, not an external PR.
+    mode=doc-only
+    ref="${GITHUB_SHA}"
+    artifact_suffix="${GITHUB_SHA}"
+    head_sha="${GITHUB_SHA}"
+    pr_number=""
   else
     # Honor skip-ci on the merged PR. The commit->PRs endpoint can return
     # open/unrelated associations, so require a PR that was really merged

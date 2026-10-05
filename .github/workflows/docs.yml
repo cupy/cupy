@@ -3,15 +3,22 @@ name: "Docs: Build and publish"
 # Fires after ci.yml finishes building wheels (same chain as flexci.yml).
 # Downloads the py<doc> linux-64 cu13 wheel from the triggering CI run,
 # builds the Sphinx HTML with RTD env vars mimicked, and -- in a separate
-# job with no PR code checked out -- POSTs to RTD's build-trigger API.
+# job with no PR code checked out -- uploads the HTML to RTD via the
+# three-step /api/v3/upload/ REST flow (initiate -> presigned S3 POST ->
+# complete). RTD serves what we uploaded; it does not run a build of its
+# own after .readthedocs.yaml is removed in stage 2 (#10351).
 
 on:
   workflow_run:
     workflows: ["CI"]
     types: [completed]
 
+# Keyed on the triggering workflow_run id, not head_sha: distinct CI runs
+# (same main-push + its tag-push, or a no-op label event + the real PR
+# build at the same SHA) each get their own group and don't cancel each
+# other.
 concurrency:
-  group: docs-${{ github.event.workflow_run.head_sha }}
+  group: docs-${{ github.event.workflow_run.id }}
   cancel-in-progress: true
 
 permissions:
@@ -33,28 +40,46 @@ jobs:
       proceed: ${{ steps.compute.outputs.proceed }}
       rtd_slug: ${{ steps.compute.outputs.rtd_slug }}
       version_type: ${{ steps.compute.outputs.version_type }}
+      suffix: ${{ steps.compute.outputs.suffix }}
+      head_sha: ${{ steps.compute.outputs.head_sha }}
     steps:
       # workflow_run.pull_requests[] is empty for fork PRs, so instead of
       # parsing the event payload we download the per-run sentinel artifact
       # ci.yml's build-sentinel uploaded (name is `push-event-<sha>` for
       # push, `build-<sha>` for PR). The sentinel carries docs-meta.json
-      # with mode / pr_number / head_sha / merge_sha / artifact_suffix,
-      # which is enough to drive the rest of this job. python_doc_ver is
-      # read from ci/versions.yml after checkout below.
-      - name: Determine sentinel artifact name
+      # with mode / pr_number / head_sha / merge_sha / artifact_suffix /
+      # event / ref, which is enough to drive the rest of this job.
+      #
+      # mode=no-op runs (unrelated label events, branch deletes, skip-ci
+      # pushes) upload NO sentinel but still succeed, so workflow_run
+      # fires here. Look up the artifact list on the triggering run first;
+      # if the sentinel isn't present, no-op this whole workflow cleanly.
+      - name: Preflight -- locate sentinel artifact
         id: sentinel
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           EVENT: ${{ github.event.workflow_run.event }}
           HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          TRIGGER_RUN_ID: ${{ github.event.workflow_run.id }}
         run: |
           if [[ "${EVENT}" == "push" ]]; then
             NAME="push-event-${HEAD_SHA}"
           else
             NAME="build-${HEAD_SHA}"
           fi
-          echo "name=${NAME}" >> "${GITHUB_OUTPUT}"
+          FOUND=$(gh api \
+            "repos/${GITHUB_REPOSITORY}/actions/runs/${TRIGGER_RUN_ID}/artifacts?per_page=100" \
+            --jq "[.artifacts[] | select(.name == \"${NAME}\")] | length")
+          if [[ "${FOUND}" == "0" ]]; then
+            echo "::notice::Sentinel '${NAME}' not present on run ${TRIGGER_RUN_ID}; mode=no-op"
+            echo "present=false" >> "${GITHUB_OUTPUT}"
+          else
+            echo "present=true" >> "${GITHUB_OUTPUT}"
+            echo "name=${NAME}" >> "${GITHUB_OUTPUT}"
+          fi
 
       - name: Download sentinel
+        if: steps.sentinel.outputs.present == 'true'
         uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0  # v5.0.0
         with:
           name: ${{ steps.sentinel.outputs.name }}
@@ -65,50 +90,65 @@ jobs:
       - name: Parse docs-meta + compute RTD slug
         id: compute
         env:
+          SENTINEL_PRESENT: ${{ steps.sentinel.outputs.present }}
           BRANCH: ${{ github.event.workflow_run.head_branch }}
+          EVENT: ${{ github.event.workflow_run.event }}
         run: |
-          META=./sentinel/docs-meta.json
-          test -f "${META}" || { echo "::error::docs-meta.json missing from sentinel"; exit 1; }
-          MODE=$(jq -r .mode "${META}")
-          PR_NUMBER=$(jq -r .pr_number "${META}")
-          REF=$(jq -r .ref "${META}")
+          # Always emit every output so the job-level outputs block is
+          # well-defined; downstream steps + the publish job gate on
+          # `proceed`.
+          PROCEED=false
+          RTD_SLUG=""
+          VERSION_TYPE=""
+          HEAD_SHA=""
+          MERGE_SHA=""
+          SUFFIX=""
 
-          # Only `test` and `doc-only` produce the wheel docs.yml needs;
-          # on skip / no-op we still emit every output (so the job-level
-          # outputs block is well-defined) and let `proceed=false` gate
-          # the rest of the job + the publish lane.
-          if [[ "${MODE}" != "test" && "${MODE}" != "doc-only" ]]; then
-            echo "::notice::mode=${MODE}; nothing to build"
-            PROCEED=false
-            RTD_SLUG=""
-            VERSION_TYPE=""
-          else
-            PROCEED=true
-            if [[ -n "${PR_NUMBER}" ]]; then
-              RTD_SLUG="${PR_NUMBER}"
-              VERSION_TYPE="external"
-            elif [[ "${REF}" == refs/tags/* ]]; then
-              # Release tag push: slug is the tag name verbatim (e.g.
-              # v14.1.2); RTD's version taxonomy keys off that.
-              RTD_SLUG="${REF#refs/tags/}"
-              VERSION_TYPE="tag"
-            elif [[ "${BRANCH}" == "main" ]]; then
-              RTD_SLUG="latest"
-              VERSION_TYPE="branch"
+          if [[ "${SENTINEL_PRESENT}" == "true" ]]; then
+            META=./sentinel/docs-meta.json
+            test -f "${META}" || { echo "::error::docs-meta.json missing from sentinel"; exit 1; }
+            MODE=$(jq -r .mode "${META}")
+            PR_NUMBER=$(jq -r .pr_number "${META}")
+            REF=$(jq -r .ref "${META}")
+            HEAD_SHA=$(jq -r .head_sha "${META}")
+            MERGE_SHA=$(jq -r .merge_sha "${META}")
+            SUFFIX=$(jq -r .artifact_suffix "${META}")
+
+            if [[ "${MODE}" != "test" && "${MODE}" != "doc-only" ]]; then
+              echo "::notice::mode=${MODE}; nothing to build"
             else
-              # v*/hotfix-* branches: compute slug anyway (so the HTML
-              # artifact is still produced for debugging) but the publish
-              # job's `if:` gates them out below.
-              RTD_SLUG="${BRANCH}"
-              VERSION_TYPE="branch"
+              # Route by EVENT first, not PR_NUMBER: ci-guard.sh sets
+              # pr_number on main-push for the merged PR (needed for the
+              # skip-ci check), and classifying every main-push as an
+              # external preview would mean `latest` never updates.
+              if [[ "${EVENT}" == "pull_request" ]]; then
+                PROCEED=true
+                RTD_SLUG="${PR_NUMBER}"
+                VERSION_TYPE="external"
+              elif [[ "${REF}" == refs/tags/* ]]; then
+                PROCEED=true
+                RTD_SLUG="${REF#refs/tags/}"
+                VERSION_TYPE="tag"
+              elif [[ "${BRANCH}" == "main" ]]; then
+                PROCEED=true
+                RTD_SLUG="latest"
+                VERSION_TYPE="branch"
+              else
+                # v*/hotfix-* branches: emit outputs for the HTML artifact
+                # (still produced for debugging) but the publish job's
+                # `if:` gates them out.
+                PROCEED=true
+                RTD_SLUG="${BRANCH}"
+                VERSION_TYPE="branch"
+              fi
             fi
           fi
 
           {
             echo "proceed=${PROCEED}"
-            echo "head_sha=$(jq -r .head_sha "${META}")"
-            echo "merge_sha=$(jq -r .merge_sha "${META}")"
-            echo "suffix=$(jq -r .artifact_suffix "${META}")"
+            echo "head_sha=${HEAD_SHA}"
+            echo "merge_sha=${MERGE_SHA}"
+            echo "suffix=${SUFFIX}"
             echo "rtd_slug=${RTD_SLUG}"
             echo "version_type=${VERSION_TYPE}"
           } >> "${GITHUB_OUTPUT}"
@@ -142,13 +182,16 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: ./wheel
 
-      - name: Install docs requirements + cupy[ctk]
+      # nvidia-nccl-cu13 isn't pulled in by cupy[ctk]; autodoc on
+      # cupyx.distributed otherwise emits "libnccl.so.* not found"
+      # warnings that bubble up as unresolved references in the HTML.
+      - name: Install docs requirements + cupy[ctk] + nccl
         if: steps.compute.outputs.proceed == 'true'
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r docs/requirements.txt
           WHEEL=$(ls wheel/cupy_cuda13x-*.whl)
-          python -m pip install "${WHEEL}[ctk]"
+          python -m pip install "${WHEEL}[ctk]" nvidia-nccl-cu13
 
       # Run sphinx from docs/ (not the repo root): CWD is on sys.path and
       # `./cupy/` would shadow the installed wheel, so autodoc would import
@@ -190,36 +233,110 @@ jobs:
     # per-branch versions for them.
     if: >-
       needs.build.outputs.proceed == 'true' &&
-      (github.event.workflow_run.event == 'pull_request' ||
-       (github.event.workflow_run.event == 'push' &&
-        (needs.build.outputs.version_type == 'tag' ||
-         github.event.workflow_run.head_branch == 'main')))
+      (needs.build.outputs.version_type == 'external' ||
+       needs.build.outputs.version_type == 'tag' ||
+       (needs.build.outputs.version_type == 'branch' &&
+        github.event.workflow_run.head_branch == 'main'))
     runs-on: ubuntu-22.04
     permissions:
       contents: read
     steps:
-      # Non-fatal: if RTD_API_TOKEN is unset or the version slug isn't
-      # activated on RTD, log and continue.
-      - name: Trigger RTD build
+      - name: Download HTML artifact
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0  # v5.0.0
+        with:
+          name: docs-html-${{ needs.build.outputs.suffix }}
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ./html
+
+      # Three-step RTD upload (see readthedocs/readthedocs-cli for
+      # the reference implementation):
+      #   1. POST /api/v3/upload/initiate/ -- RTD creates a draft build,
+      #      returns a presigned S3 URL + required form fields and the
+      #      new build id.
+      #   2. POST <presigned S3 URL> -- multipart form with the fields
+      #      from step 1 and the zip. RTD never sees the token here.
+      #   3. POST /api/v3/upload/complete/ -- mark the build success /
+      #      failed so RTD processes (or discards) it.
+      # Archive layout is dictated by the API: html files under html/**
+      # at the zip root. Non-fatal when the token is unset so stage 1
+      # can land before the secret is wired.
+      - name: Upload HTML to RTD
         env:
           RTD_API_TOKEN: ${{ secrets.RTD_API_TOKEN }}
-          RTD_SLUG: ${{ needs.build.outputs.rtd_slug }}
+          RTD_VERSION_NAME: ${{ needs.build.outputs.rtd_slug }}
+          RTD_VERSION_TYPE: ${{ needs.build.outputs.version_type }}
+          HEAD_SHA: ${{ needs.build.outputs.head_sha }}
         run: |
           if [[ -z "${RTD_API_TOKEN}" ]]; then
-            echo "::warning::RTD_API_TOKEN not set; skipping trigger"
+            echo "::warning::RTD_API_TOKEN not set; skipping upload"
             exit 0
           fi
-          HTTP_CODE=$(curl -sS -o /tmp/rtd_trigger.json -w '%{http_code}' \
+
+          mkdir -p stage/html
+          cp -a ./html/. stage/html/
+          (cd stage && zip -qr "${RUNNER_TEMP}/build.zip" .)
+
+          PAYLOAD=$(jq -nc \
+            --arg name "${RTD_VERSION_NAME}" \
+            --arg type "${RTD_VERSION_TYPE}" \
+            --arg commit "${HEAD_SHA}" \
+            '{project: "cupy", version: {name: $name, type: $type, commit: $commit}}')
+
+          INITIATE_FILE="${RUNNER_TEMP}/rtd_initiate.json"
+          INITIATE_CODE=$(curl -sS -o "${INITIATE_FILE}" -w '%{http_code}' \
             -X POST \
             -H "Authorization: Token ${RTD_API_TOKEN}" \
-            "https://readthedocs.org/api/v3/projects/cupy/versions/${RTD_SLUG}/builds/")
-          echo "RTD responded ${HTTP_CODE}"
-          cat /tmp/rtd_trigger.json || true
-          if [[ "${HTTP_CODE}" == "202" ]]; then
-            echo "RTD build triggered for version '${RTD_SLUG}'"
-          elif [[ "${HTTP_CODE}" == "404" ]]; then
-            echo "::warning::RTD version '${RTD_SLUG}' is not activated; skipping"
-          else
-            echo "::error::RTD trigger failed (${HTTP_CODE})"
+            -H "Content-Type: application/json" \
+            -d "${PAYLOAD}" \
+            "https://app.readthedocs.org/api/v3/upload/initiate/")
+
+          if [[ "${INITIATE_CODE}" != 2* ]]; then
+            echo "::error::RTD initiate failed (${INITIATE_CODE})"
+            cat "${INITIATE_FILE}" || true
             exit 1
           fi
+
+          BUILD_ID=$(jq -r '.build.id' "${INITIATE_FILE}")
+          UPLOAD_URL=$(jq -r '.upload_url.url' "${INITIATE_FILE}")
+          if [[ "${BUILD_ID}" == "null" || -z "${BUILD_ID}" ]]; then
+            echo "::error::RTD initiate response missing build.id"
+            cat "${INITIATE_FILE}"
+            exit 1
+          fi
+
+          # Build the -F arg list from the presigned URL's fields. Fetch
+          # each value via a keyed jq call so values with spaces or
+          # quotes survive without a bespoke delimiter.
+          FIELD_ARGS=()
+          while IFS= read -r key; do
+            value=$(jq -r --arg k "${key}" '.upload_url.fields[$k]' "${INITIATE_FILE}")
+            FIELD_ARGS+=("-F" "${key}=${value}")
+          done < <(jq -r '.upload_url.fields | keys[]' "${INITIATE_FILE}")
+
+          S3_FILE="${RUNNER_TEMP}/rtd_s3.txt"
+          S3_CODE=$(curl -sS -o "${S3_FILE}" -w '%{http_code}' \
+            -X POST \
+            "${FIELD_ARGS[@]}" \
+            -F "file=@${RUNNER_TEMP}/build.zip;type=application/zip" \
+            "${UPLOAD_URL}")
+
+          complete_build() {
+            local status="$1"
+            curl -sS \
+              -X POST \
+              -H "Authorization: Token ${RTD_API_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d "{\"build\": ${BUILD_ID}, \"status\": \"${status}\"}" \
+              "https://app.readthedocs.org/api/v3/upload/complete/" > "${RUNNER_TEMP}/rtd_complete.json" || true
+          }
+
+          if [[ "${S3_CODE}" != 2* ]]; then
+            echo "::error::S3 upload failed (${S3_CODE})"
+            cat "${S3_FILE}" || true
+            complete_build failed
+            exit 1
+          fi
+
+          complete_build success
+          echo "::notice::Uploaded docs-html-${{ needs.build.outputs.suffix }} to RTD build #${BUILD_ID} (${RTD_VERSION_TYPE}/${RTD_VERSION_NAME})"
