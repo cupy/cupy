@@ -32,14 +32,14 @@ jobs:
     outputs:
       proceed: ${{ steps.compute.outputs.proceed }}
       rtd_slug: ${{ steps.compute.outputs.rtd_slug }}
-      html_artifact: ${{ steps.compute.outputs.html_artifact }}
     steps:
       # workflow_run.pull_requests[] is empty for fork PRs, so instead of
       # parsing the event payload we download the per-run sentinel artifact
       # ci.yml's build-sentinel uploaded (name is `push-event-<sha>` for
       # push, `build-<sha>` for PR). The sentinel carries docs-meta.json
-      # with mode / pr_number / head_sha / merge_sha / python_doc_ver /
-      # artifact_suffix, which is enough to drive the rest of this job.
+      # with mode / pr_number / head_sha / merge_sha / artifact_suffix,
+      # which is enough to drive the rest of this job. python_doc_ver is
+      # read from ci/versions.yml after checkout below.
       - name: Determine sentinel artifact name
         id: sentinel
         env:
@@ -61,7 +61,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: ./sentinel
 
-      - name: Parse docs-meta + compute artifact names and RTD slug
+      - name: Parse docs-meta + compute RTD slug
         id: compute
         env:
           BRANCH: ${{ github.event.workflow_run.head_branch }}
@@ -70,10 +70,6 @@ jobs:
           test -f "${META}" || { echo "::error::docs-meta.json missing from sentinel"; exit 1; }
           MODE=$(jq -r .mode "${META}")
           PR_NUMBER=$(jq -r .pr_number "${META}")
-          HEAD_SHA=$(jq -r .head_sha "${META}")
-          MERGE_SHA=$(jq -r .merge_sha "${META}")
-          PYTHON_DOC_VER=$(jq -r .python_doc_ver "${META}")
-          SUFFIX=$(jq -r .artifact_suffix "${META}")
 
           # Only `test` and `doc-only` produce the wheel docs.yml needs.
           # skip / no-op exit cleanly with no artifact.
@@ -85,27 +81,21 @@ jobs:
 
           if [[ -n "${PR_NUMBER}" ]]; then
             RTD_SLUG="${PR_NUMBER}"
-            RTD_TYPE="external"
           elif [[ "${BRANCH}" == "main" ]]; then
             RTD_SLUG="latest"
-            RTD_TYPE="branch"
           else
-            # v*/hotfix-* branches: compute slug anyway (so the HTML artifact
-            # is still produced for debugging) but the publish job's `if:`
-            # gates them out below.
+            # v*/hotfix-* branches: compute slug anyway (so the HTML
+            # artifact is still produced for debugging) but the publish
+            # job's `if:` gates them out below.
             RTD_SLUG="${BRANCH}"
-            RTD_TYPE="branch"
           fi
 
           {
             echo "proceed=true"
-            echo "head_sha=${HEAD_SHA}"
-            echo "merge_sha=${MERGE_SHA}"
-            echo "python_doc_ver=${PYTHON_DOC_VER}"
-            echo "wheel_artifact=cupy-cuda13x-py${PYTHON_DOC_VER}-linux-64-${SUFFIX}"
-            echo "html_artifact=docs-html-${SUFFIX}"
+            echo "head_sha=$(jq -r .head_sha "${META}")"
+            echo "merge_sha=$(jq -r .merge_sha "${META}")"
+            echo "suffix=$(jq -r .artifact_suffix "${META}")"
             echo "rtd_slug=${RTD_SLUG}"
-            echo "rtd_type=${RTD_TYPE}"
           } >> "${GITHUB_OUTPUT}"
 
       # Every step below is gated on proceed == 'true' so skip-mode runs
@@ -117,17 +107,22 @@ jobs:
           ref: ${{ steps.compute.outputs.merge_sha }}
           fetch-depth: 1
 
+      - name: Read python.doc.version from ci/versions.yml
+        if: steps.compute.outputs.proceed == 'true'
+        id: pyver
+        run: echo "value=$(yq '.python.doc.version' ci/versions.yml)" >> "${GITHUB_OUTPUT}"
+
       - name: Set up Python
         if: steps.compute.outputs.proceed == 'true'
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
         with:
-          python-version: ${{ steps.compute.outputs.python_doc_ver }}
+          python-version: ${{ steps.pyver.outputs.value }}
 
       - name: Download cupy wheel from triggering CI run
         if: steps.compute.outputs.proceed == 'true'
         uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0  # v5.0.0
         with:
-          name: ${{ steps.compute.outputs.wheel_artifact }}
+          name: cupy-cuda13x-py${{ steps.pyver.outputs.value }}-linux-64-${{ steps.compute.outputs.suffix }}
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: ./wheel
@@ -154,7 +149,7 @@ jobs:
           READTHEDOCS_PROJECT: cupy
           READTHEDOCS_LANGUAGE: en
           READTHEDOCS_VERSION: ${{ steps.compute.outputs.rtd_slug }}
-          READTHEDOCS_VERSION_TYPE: ${{ steps.compute.outputs.rtd_type }}
+          READTHEDOCS_VERSION_TYPE: ${{ github.event.workflow_run.event == 'pull_request' && 'external' || 'branch' }}
           READTHEDOCS_GIT_COMMIT_HASH: ${{ steps.compute.outputs.head_sha }}
         run: |
           python -m sphinx -T -j auto -b html source build/html
@@ -163,7 +158,7 @@ jobs:
         if: steps.compute.outputs.proceed == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
-          name: ${{ steps.compute.outputs.html_artifact }}
+          name: docs-html-${{ steps.compute.outputs.suffix }}
           path: docs/build/html
           if-no-files-found: error
           retention-days: 90

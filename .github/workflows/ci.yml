@@ -79,15 +79,13 @@ jobs:
       artifact_suffix: ${{ steps.check.outputs.artifact_suffix }}
       head_sha: ${{ steps.check.outputs.head_sha }}
       pr_number: ${{ steps.check.outputs.pr_number }}
-      CUDA_BUILD_VER: ${{ steps.vars.outputs.cuda_build_ver }}
-      CUDA_PREV_BUILD_VER: ${{ steps.vars.outputs.cuda_prev_build_ver }}
-      PYTHON_SUPPORTED: ${{ steps.vars.outputs.python_supported }}
-      PYTHON_DOC_VER: ${{ steps.vars.outputs.python_doc_ver }}
-      # Mode-aware JSON arrays consumed by build-linux-64's matrix /
-      # build-wheel.yml's python-versions input. Full matrix for mode=test,
-      # single-cell for mode=doc-only.
-      BUILD_LINUX_64_CUDA_VERSIONS: ${{ steps.vars.outputs.build_linux_64_cuda_versions }}
-      BUILD_LINUX_64_PYTHON_VERSIONS: ${{ steps.vars.outputs.build_linux_64_python_versions }}
+      # Mode-aware JSON arrays of the CUDA / Python versions this run
+      # builds. Full matrix on `test` (both CUDA versions, full python
+      # list); collapsed to the single docs cell on `doc-only`
+      # (`[cuda.build.version]`, `[python.doc.version]`). Not "all
+      # project-supported versions" -- read as "this run's versions".
+      cuda_versions: ${{ steps.vars.outputs.cuda_versions }}
+      python_versions: ${{ steps.vars.outputs.python_versions }}
     steps:
       # Which copy of ci-guard.sh runs follows GitHub's rules for the
       # workflow file itself: the pushed branch's copy for push events, the
@@ -113,7 +111,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: ./ci/tools/ci-guard.sh
-      - name: Read CUDA + Python versions
+      - name: Resolve this run's CUDA + Python matrix
         id: vars
         env:
           MODE: ${{ steps.check.outputs.mode }}
@@ -122,27 +120,23 @@ jobs:
           cuda_prev_build_ver=$(yq '.cuda.prev_build.version' ci/versions.yml)
           # yq -o json -I 0 flattens to one-line JSON so the string is safe
           # to pass through GHA outputs + fromJSON on the receiving side.
-          python_supported=$(yq -o json -I 0 '.python.supported' ci/versions.yml)
+          python_full=$(yq -o json -I 0 '.python.supported' ci/versions.yml)
           python_doc_ver=$(yq '.python.doc.version' ci/versions.yml)
 
-          # Mode-aware JSON arrays feeding build-linux-64. mode=doc-only
-          # collapses the matrix to the single cell docs.yml consumes
-          # (one CUDA, one Python); mode=test keeps the full matrix.
+          # Mode-aware: `test` builds the full matrix; `doc-only` collapses
+          # to the single wheel docs.yml needs. On `skip` / `no-op` the
+          # build jobs don't fire anyway, so the else branch is fine.
           if [[ "${MODE}" == "doc-only" ]]; then
-            build_linux_64_cuda_versions="[\"${cuda_build_ver}\"]"
-            build_linux_64_python_versions="[\"${python_doc_ver}\"]"
+            cuda_versions="[\"${cuda_build_ver}\"]"
+            python_versions="[\"${python_doc_ver}\"]"
           else
-            build_linux_64_cuda_versions="[\"${cuda_build_ver}\",\"${cuda_prev_build_ver}\"]"
-            build_linux_64_python_versions="${python_supported}"
+            cuda_versions="[\"${cuda_build_ver}\",\"${cuda_prev_build_ver}\"]"
+            python_versions="${python_full}"
           fi
 
           {
-            echo "cuda_build_ver=${cuda_build_ver}"
-            echo "cuda_prev_build_ver=${cuda_prev_build_ver}"
-            echo "python_supported=${python_supported}"
-            echo "python_doc_ver=${python_doc_ver}"
-            echo "build_linux_64_cuda_versions=${build_linux_64_cuda_versions}"
-            echo "build_linux_64_python_versions=${build_linux_64_python_versions}"
+            echo "cuda_versions=${cuda_versions}"
+            echo "python_versions=${python_versions}"
           } >> "$GITHUB_OUTPUT"
 
   # Producer of cupy-<version>.tar.gz for every wheel job below. Building
@@ -171,10 +165,8 @@ jobs:
   # The reusable build workflow deliberately receives NO secrets: it needs
   # none (sccache uses the runner's ambient cache token), and labeled runs
   # of same-repo PRs would otherwise expose repository secrets to PR code.
-  # Also runs for mode=doc-only, with the matrix collapsed by the guard to
-  # just (CUDA_BUILD_VER x PYTHON_DOC_VER) so a `/test doc-only` run
-  # produces exactly the one wheel docs.yml needs. mode=test keeps the
-  # full (build + prev-build) x PYTHON_SUPPORTED matrix.
+  # Also runs for mode=doc-only; guard collapses cuda_versions /
+  # python_versions to the single wheel docs.yml needs on that mode.
   build-linux-64:
     needs:
       - guard
@@ -188,13 +180,13 @@ jobs:
       matrix:
         host-platform:
           - linux-64
-        cuda-version: ${{ fromJSON(needs.guard.outputs.BUILD_LINUX_64_CUDA_VERSIONS) }}
+        cuda-version: ${{ fromJSON(needs.guard.outputs.cuda_versions) }}
     name: Build ${{ matrix.host-platform }}, CUDA ${{ matrix.cuda-version }}
     uses: ./.github/workflows/build-wheel.yml
     with:
       host-platform: ${{ matrix.host-platform }}
       cuda-version: ${{ matrix.cuda-version }}
-      python-versions: ${{ needs.guard.outputs.BUILD_LINUX_64_PYTHON_VERSIONS }}
+      python-versions: ${{ needs.guard.outputs.python_versions }}
       ref: ${{ needs.guard.outputs.ref }}
       artifact-suffix: ${{ needs.guard.outputs.artifact_suffix }}
 
@@ -211,15 +203,13 @@ jobs:
       matrix:
         host-platform:
           - linux-aarch64
-        cuda-version:
-          - ${{ needs.guard.outputs.CUDA_BUILD_VER }}
-          - ${{ needs.guard.outputs.CUDA_PREV_BUILD_VER }}
+        cuda-version: ${{ fromJSON(needs.guard.outputs.cuda_versions) }}
     name: Build ${{ matrix.host-platform }}, CUDA ${{ matrix.cuda-version }}
     uses: ./.github/workflows/build-wheel.yml
     with:
       host-platform: ${{ matrix.host-platform }}
       cuda-version: ${{ matrix.cuda-version }}
-      python-versions: ${{ needs.guard.outputs.PYTHON_SUPPORTED }}
+      python-versions: ${{ needs.guard.outputs.python_versions }}
       ref: ${{ needs.guard.outputs.ref }}
       artifact-suffix: ${{ needs.guard.outputs.artifact_suffix }}
 
@@ -237,15 +227,13 @@ jobs:
       matrix:
         host-platform:
           - win-64
-        cuda-version:
-          - ${{ needs.guard.outputs.CUDA_BUILD_VER }}
-          - ${{ needs.guard.outputs.CUDA_PREV_BUILD_VER }}
+        cuda-version: ${{ fromJSON(needs.guard.outputs.cuda_versions) }}
     name: Build ${{ matrix.host-platform }}, CUDA ${{ matrix.cuda-version }}
     uses: ./.github/workflows/build-wheel.yml
     with:
       host-platform: ${{ matrix.host-platform }}
       cuda-version: ${{ matrix.cuda-version }}
-      python-versions: ${{ needs.guard.outputs.PYTHON_SUPPORTED }}
+      python-versions: ${{ needs.guard.outputs.python_versions }}
       ref: ${{ needs.guard.outputs.ref }}
       artifact-suffix: ${{ needs.guard.outputs.artifact_suffix }}
 
@@ -258,7 +246,7 @@ jobs:
       - build-sdist
     if: |
       needs.guard.outputs.mode == 'test' &&
-      startsWith(needs.guard.outputs.CUDA_BUILD_VER, '13.')
+      startsWith(fromJSON(needs.guard.outputs.cuda_versions)[0], '13.')
     permissions:
       contents: read
     strategy:
@@ -267,13 +255,13 @@ jobs:
         host-platform:
           - win-arm64
         cuda-version:
-          - ${{ needs.guard.outputs.CUDA_BUILD_VER }}
+          - ${{ fromJSON(needs.guard.outputs.cuda_versions)[0] }}
     name: Build ${{ matrix.host-platform }}, CUDA ${{ matrix.cuda-version }}
     uses: ./.github/workflows/build-wheel.yml
     with:
       host-platform: ${{ matrix.host-platform }}
       cuda-version: ${{ matrix.cuda-version }}
-      python-versions: ${{ needs.guard.outputs.PYTHON_SUPPORTED }}
+      python-versions: ${{ needs.guard.outputs.python_versions }}
       ref: ${{ needs.guard.outputs.ref }}
       artifact-suffix: ${{ needs.guard.outputs.artifact_suffix }}
 
@@ -319,7 +307,6 @@ jobs:
           PR_NUMBER: ${{ needs.guard.outputs.pr_number }}
           HEAD_SHA: ${{ needs.guard.outputs.head_sha }}
           MERGE_SHA: ${{ needs.guard.outputs.ref }}
-          PYTHON_DOC_VER: ${{ needs.guard.outputs.PYTHON_DOC_VER }}
           ARTIFACT_SUFFIX: ${{ needs.guard.outputs.artifact_suffix }}
         run: |
           mkdir -p "${RUNNER_TEMP}/artifact"
@@ -328,20 +315,20 @@ jobs:
           else
             echo "dispatch" > "${RUNNER_TEMP}/artifact/marker"
           fi
-          # docs-meta.json is consumed by docs.yml so it can look up the
-          # wheel artifact and compute RTD version metadata without parsing
-          # workflow_run.pull_requests[] (empty for fork PRs).
+          # docs-meta.json is consumed by docs.yml so it can compute RTD
+          # version metadata without parsing workflow_run.pull_requests[]
+          # (empty for fork PRs). docs.yml reads python.doc.version from
+          # ci/versions.yml itself after it checks out at merge_sha.
           jq -n \
             --arg mode "${MODE}" \
             --arg pr_number "${PR_NUMBER}" \
             --arg head_sha "${HEAD_SHA}" \
             --arg merge_sha "${MERGE_SHA}" \
-            --arg python_doc_ver "${PYTHON_DOC_VER}" \
             --arg artifact_suffix "${ARTIFACT_SUFFIX}" \
             --arg event "${GITHUB_EVENT_NAME}" \
             '{mode: $mode, pr_number: $pr_number, head_sha: $head_sha,
-              merge_sha: $merge_sha, python_doc_ver: $python_doc_ver,
-              artifact_suffix: $artifact_suffix, event: $event}' \
+              merge_sha: $merge_sha, artifact_suffix: $artifact_suffix,
+              event: $event}' \
             > "${RUNNER_TEMP}/artifact/docs-meta.json"
       - name: Upload
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
@@ -395,9 +382,9 @@ jobs:
             check_result "build-linux-aarch64" "success" "${{ needs.build-linux-aarch64.result }}"
             check_result "build-windows"       "success" "${{ needs.build-windows.result }}"
             # win-arm64 only runs on CUDA 13.x build lanes; treat "skipped"
-            # as OK when CUDA_BUILD_VER is 12.x so the pre-13.4 backport
+            # as OK when cuda_versions[0] is 12.x so the pre-13.4 backport
             # branches still pass this gate.
-            if [[ "${{ needs.guard.outputs.CUDA_BUILD_VER }}" == 13.* ]]; then
+            if [[ "${{ fromJSON(needs.guard.outputs.cuda_versions)[0] }}" == 13.* ]]; then
               check_result "build-win-arm64" "success" "${{ needs.build-win-arm64.result }}"
             else
               check_result "build-win-arm64" "skipped" "${{ needs.build-win-arm64.result }}"
