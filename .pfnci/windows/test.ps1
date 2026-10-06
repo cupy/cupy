@@ -207,7 +207,15 @@ function Main {
     }
 
     $Env:CUPY_TEST_GPU_LIMIT = $Env:GPU
-    $Env:CUPY_ACCELERATORS = "cuda_compute,cub"
+    # cuda-cccl 1.2.1 fails to NVVM-link cuda.compute reductions against
+    # CTK 12.4 on Windows (duplicate __half(__nv_bfloat16) symbol — see
+    # NVIDIA/cccl#11885). Disable cuda_compute on the 12.4 lane only;
+    # keep it on every other Windows lane.
+    if ($cuda -eq "12.4") {
+        $Env:CUPY_ACCELERATORS = "cub"
+    } else {
+        $Env:CUPY_ACCELERATORS = "cuda_compute,cub"
+    }
     $Env:CUPY_DUMP_CUDA_SOURCE_ON_ERROR = "1"
     $Env:CUPY_NVRTC_USE_PCH = "1"
 
