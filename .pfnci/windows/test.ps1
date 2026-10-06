@@ -222,6 +222,15 @@ function Main {
         throw "Unsupported test target: $target"
     }
 
+    # Diagnostic (temporary): win.cuda124 has been failing nightly since
+    # #10331 unpinned cuda-cccl; the 5h timeout kills pytest before any
+    # summary is printed, hiding the actual error. Cap failures and
+    # shorten tracebacks so the first errors land in the log. Revert
+    # once the root cause is pinned down. See #10355.
+    if ($cuda -eq "12.4") {
+        $pytest_opts += "--maxfail=10", "--tb=short"
+    }
+
     # The fetched wheel can be built with a different CUDA minor than this
     # target's CUDA_PATH (cuda120/cuda130 install a cuda12x/13x wheel built with
     # 12.9/13.2), so test_CUDA_cuda's build-vs-runtime CUDA check fails. Mirror
