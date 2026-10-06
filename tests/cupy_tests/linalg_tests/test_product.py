@@ -503,6 +503,35 @@ class TestProduct:
         return xp.kron(a, b)
 
 
+@testing.slow
+@pytest.mark.thread_unsafe(reason='Allocation too large.')
+def test_integer_tensordot_large_indexing():
+    # Dimensions fit int32, but the integer kernel's M * K does not.
+    # This needs just over 4 GiB; uint8 also avoids the int8 cuBLAS path.
+    # At this size the old bounds wrap to a small positive value, keeping
+    # its reads inside the allocation instead of causing invalid accesses.
+    k, m = 2**16 + 1, 2**16
+    a = b = out = None
+    try:
+        try:
+            a = cupy.zeros((2, k), dtype=cupy.uint8)
+            b = cupy.zeros((k, m), dtype=cupy.uint8)
+        except MemoryError:
+            pytest.skip('out of memory in test.')
+
+        # Select the second row, which is zero. The overflowing bound clamps
+        # its reads to the last element of the first row, which is one.
+        # A single contribution avoids masking the error via uint8 wraparound.
+        a[:, 1] = 1
+        b[0, :] = 1
+        out = cupy.tensordot(a, b, axes=1)
+        expected = numpy.zeros((2, m), dtype=numpy.uint8)
+        testing.assert_array_equal(out, expected)
+    finally:
+        del out, b, a
+        cupy.get_default_memory_pool().free_all_blocks()
+
+
 class TestInt8Tensordot:
     """Smoke test for cupy.tensordot with int8 dtype via tensordot_core."""
 
