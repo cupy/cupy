@@ -207,7 +207,7 @@ function Main {
     }
 
     $Env:CUPY_TEST_GPU_LIMIT = $Env:GPU
-    $Env:CUPY_ACCELERATORS = "cuda_compute,cub"
+    $Env:CUPY_ACCELERATORS = "cub"
     $Env:CUPY_DUMP_CUDA_SOURCE_ON_ERROR = "1"
     $Env:CUPY_NVRTC_USE_PCH = "1"
 
