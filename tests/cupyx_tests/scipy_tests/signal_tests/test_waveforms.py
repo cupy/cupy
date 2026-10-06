@@ -57,32 +57,51 @@ class TestChirp:
         ('quad', 1.0, 3.0, True),
         ('q', 1.0, 3.0, True),
         ('logarithmic', 1.0, 3.0, True),
+        ('logarithmic', 1.0, 1.0, True),
         ('log', 1.0, 3.0, True),
         ('lo', 1.0, 3.0, True),
         ('hyperbolic', 3.0, 1.0, True),
+        ('hyperbolic', 1.0, 1.0, True),
         ('hyp', 3.0, 1.0, True),
     ])
     @testing.with_requires('scipy>=1.15.0')
+    @testing.for_dtypes([np.float32, np.float64])
     @testing.numpy_cupy_allclose(
-        scipy_name='scp', rtol=1e-6, atol=1e-6)
+        scipy_name='scp',
+        rtol={np.complex64: 1e-5, 'default': 1e-6},
+        atol={np.complex64: 1e-5, 'default': 1e-6})
     def test_complex(
-            self, method, f0, f1, vertex_zero, xp, scp):
-        t = xp.linspace(-0.25, 1.0, 101)
+            self, method, f0, f1, vertex_zero, xp, scp, dtype):
+        t = xp.linspace(-0.25, 1.0, 101, dtype=dtype)
         return scp.signal.chirp(
             t, f0, 1.0, f1, method=method, phi=37.0,
             vertex_zero=vertex_zero, complex=True)
 
+    @pytest.mark.parametrize('method, vertex_zero', [
+        ('linear', True),
+        ('quadratic', True),
+        ('quadratic', False),
+        ('logarithmic', True),
+        ('hyperbolic', True),
+    ])
+    @pytest.mark.parametrize('phi', [0.0, 37.0])
     @pytest.mark.parametrize('dtype, expected_dtype, tol', [
         (cupy.float32, cupy.complex64, 1e-5),
         (cupy.float64, cupy.complex128, 1e-12),
+        (cupy.int64, cupy.complex128, 1e-12),
     ])
-    def test_complex_properties(self, dtype, expected_dtype, tol):
+    def test_complex_properties(
+            self, method, vertex_zero, phi, dtype, expected_dtype, tol):
         t = cupy.linspace(0.0, 1.0, 101, dtype=dtype)
         actual = cupyx.scipy.signal.chirp(
-            t, 1.0, 1.0, 3.0, complex=True)
-        expected_real = cupyx.scipy.signal.chirp(t, 1.0, 1.0, 3.0)
+            t, 1.0, 1.0, 3.0, method=method, phi=phi,
+            vertex_zero=vertex_zero, complex=True)
+        expected_real = cupyx.scipy.signal.chirp(
+            t, 1.0, 1.0, 3.0, method=method, phi=phi,
+            vertex_zero=vertex_zero)
 
         assert actual.dtype == expected_dtype
+        assert expected_real.dtype == actual.real.dtype
         testing.assert_allclose(
             actual.real, expected_real, rtol=tol, atol=tol)
         testing.assert_allclose(

@@ -379,50 +379,32 @@ def gausspulse(t, fc=1000, bw=0.5, bwr=-6, tpr=-60, retquad=False,
         return _gausspulse_kernel_T_T(t, a, fc)
 
 
-_chirp_phase_lin_kernel_real = cupy.ElementwiseKernel(
-    "T t, T f0, T t1, T f1, T phi",
-    "T phase",
-    """
-    const T beta { (f1 - f0) / t1 };
-    const T temp { 2 * M_PI * (f0 * t + 0.5 * beta * t * t) };
-    // Convert  phi to radians.
-    phase = cos(temp + phi);
-    """,
-    "_chirp_phase_lin_kernel",
-)
+_chirp_phase_preamble = """
+template<typename T, typename U>
+__device__ void chirp_phase(T angle, U& out) {
+    out = cos(angle);
+}
 
-_chirp_phase_lin_kernel_cplx = cupy.ElementwiseKernel(
+template<typename T, typename U>
+__device__ void chirp_phase(T angle, complex<U>& out) {
+    out = complex<U>(cos(angle), sin(angle));
+}
+"""
+
+_chirp_phase_lin_kernel = cupy.ElementwiseKernel(
     "T t, T f0, T t1, T f1, T phi",
     "Y phase",
     """
     const T beta { (f1 - f0) / t1 };
-    const T temp { 2 * M_PI * (f0 * t + 0.5 * beta * t * t) + phi };
-    phase = Y(cos(temp), sin(temp));
+    const T temp { 2 * M_PI * (f0 * t + 0.5 * beta * t * t) };
+    chirp_phase(temp + phi, phase);
     """,
-    "_chirp_phase_lin_kernel_cplx",
+    "_chirp_phase_lin_kernel",
+    preamble=_chirp_phase_preamble,
 )
 
 _chirp_phase_quad_kernel = cupy.ElementwiseKernel(
     "T t, T f0, T t1, T f1, T phi, bool vertex_zero",
-    "T phase",
-    """
-    T temp {};
-    const T beta { (f1 - f0) / (t1 * t1) };
-    if ( vertex_zero ) {
-        temp = 2 * M_PI * (f0 * t + beta * (t * t * t) / 3);
-    } else {
-        temp = 2 * M_PI *
-            ( f1 * t + beta *
-            ( ( (t1 - t) * (t1 - t) * (t1 - t) ) - (t1 * t1 * t1)) / 3);
-    }
-    // Convert  phi to radians.
-    phase = cos(temp + phi);
-    """,
-    "_chirp_phase_quad_kernel",
-)
-
-_chirp_phase_quad_kernel_cplx = cupy.ElementwiseKernel(
-    "T t, T f0, T t1, T f1, T phi, bool vertex_zero",
     "Y phase",
     """
     T temp {};
@@ -434,31 +416,14 @@ _chirp_phase_quad_kernel_cplx = cupy.ElementwiseKernel(
             ( f1 * t + beta *
             ( ( (t1 - t) * (t1 - t) * (t1 - t) ) - (t1 * t1 * t1)) / 3);
     }
-    temp += phi;
-    phase = Y(cos(temp), sin(temp));
+    chirp_phase(temp + phi, phase);
     """,
-    "_chirp_phase_quad_kernel_cplx",
+    "_chirp_phase_quad_kernel",
+    preamble=_chirp_phase_preamble,
 )
 
 _chirp_phase_log_kernel = cupy.ElementwiseKernel(
     "T t, T f0, T t1, T f1, T phi",
-    "T phase",
-    """
-    T temp {};
-    if ( f0 == f1 ) {
-        temp = 2 * M_PI * f0 * t;
-    } else {
-        T beta { t1 / log(f1 / f0) };
-        temp = 2 * M_PI * beta * f0 * ( pow(f1 / f0, t / t1) - 1.0 );
-    }
-    // Convert  phi to radians.
-    phase = cos(temp + phi);
-    """,
-    "_chirp_phase_log_kernel",
-)
-
-_chirp_phase_log_kernel_cplx = cupy.ElementwiseKernel(
-    "T t, T f0, T t1, T f1, T phi",
     "Y phase",
     """
     T temp {};
@@ -468,31 +433,14 @@ _chirp_phase_log_kernel_cplx = cupy.ElementwiseKernel(
         T beta { t1 / log(f1 / f0) };
         temp = 2 * M_PI * beta * f0 * ( pow(f1 / f0, t / t1) - 1.0 );
     }
-    temp += phi;
-    phase = Y(cos(temp), sin(temp));
+    chirp_phase(temp + phi, phase);
     """,
-    "_chirp_phase_log_kernel_cplx",
+    "_chirp_phase_log_kernel",
+    preamble=_chirp_phase_preamble,
 )
 
 _chirp_phase_hyp_kernel = cupy.ElementwiseKernel(
     "T t, T f0, T t1, T f1, T phi",
-    "T phase",
-    """
-    T temp {};
-    if ( f0 == f1 ) {
-        temp = 2 * M_PI * f0 * t;
-    } else {
-        T sing { -f1 * t1 / (f0 - f1) };
-        temp = 2 * M_PI * ( -sing * f0 ) * log( abs( 1 - t / sing ) );
-    }
-    // Convert  phi to radians.
-    phase = cos(temp + phi);
-    """,
-    "_chirp_phase_hyp_kernel",
-)
-
-_chirp_phase_hyp_kernel_cplx = cupy.ElementwiseKernel(
-    "T t, T f0, T t1, T f1, T phi",
     "Y phase",
     """
     T temp {};
@@ -502,23 +450,16 @@ _chirp_phase_hyp_kernel_cplx = cupy.ElementwiseKernel(
         T sing { -f1 * t1 / (f0 - f1) };
         temp = 2 * M_PI * ( -sing * f0 ) * log( abs( 1 - t / sing ) );
     }
-    temp += phi;
-    phase = Y(cos(temp), sin(temp));
+    chirp_phase(temp + phi, phase);
     """,
-    "_chirp_phase_hyp_kernel_cplx",
+    "_chirp_phase_hyp_kernel",
+    preamble=_chirp_phase_preamble,
 )
-
-
-def _run_chirp_complex_kernel(kernel, t, *args):
-    dtype = cupy.result_type(t.dtype, cupy.complex64)
-    out = cupy.empty(t.shape, dtype=dtype)
-    kernel(t, *args, out)
-    return out
 
 
 def chirp(t, f0, t1, f1, method="linear", phi=0, vertex_zero=True, *,
           complex=False):
-    """Frequency-swept cosine generator.
+    """Frequency-swept cosine or complex exponential generator.
 
     In the following, 'Hz' should be interpreted as 'cycles per unit';
     there is no requirement here that the unit is one second.  The
@@ -602,20 +543,18 @@ def chirp(t, f0, t1, f1, method="linear", phi=0, vertex_zero=True, *,
     if cupy.issubdtype(t.dtype, cupy.integer):
         t = t.astype(cupy.float64)
 
+    dtype = cupy.result_type(t.dtype, 1j) if complex else t.dtype
+    out = cupy.empty_like(t, dtype=dtype)
+
+    # Convert phi to radians.
     phi *= np.pi / 180
 
     if method in ["linear", "lin", "li"]:
-        if complex:
-            return _run_chirp_complex_kernel(
-                _chirp_phase_lin_kernel_cplx, t, f0, t1, f1, phi)
-        return _chirp_phase_lin_kernel_real(t, f0, t1, f1, phi)
+        return _chirp_phase_lin_kernel(t, f0, t1, f1, phi, out)
 
     elif method in ["quadratic", "quad", "q"]:
-        if complex:
-            return _run_chirp_complex_kernel(
-                _chirp_phase_quad_kernel_cplx,
-                t, f0, t1, f1, phi, vertex_zero)
-        return _chirp_phase_quad_kernel(t, f0, t1, f1, phi, vertex_zero)
+        return _chirp_phase_quad_kernel(
+            t, f0, t1, f1, phi, vertex_zero, out)
 
     elif method in ["logarithmic", "log", "lo"]:
         if f0 * f1 <= 0.0:
@@ -623,19 +562,13 @@ def chirp(t, f0, t1, f1, method="linear", phi=0, vertex_zero=True, *,
                 "For a logarithmic chirp, f0 and f1 must be "
                 "nonzero and have the same sign."
             )
-        if complex:
-            return _run_chirp_complex_kernel(
-                _chirp_phase_log_kernel_cplx, t, f0, t1, f1, phi)
-        return _chirp_phase_log_kernel(t, f0, t1, f1, phi)
+        return _chirp_phase_log_kernel(t, f0, t1, f1, phi, out)
 
     elif method in ["hyperbolic", "hyp"]:
         if f0 == 0 or f1 == 0:
             raise ValueError(
                 "For a hyperbolic chirp, f0 and f1 must be " "nonzero.")
-        if complex:
-            return _run_chirp_complex_kernel(
-                _chirp_phase_hyp_kernel_cplx, t, f0, t1, f1, phi)
-        return _chirp_phase_hyp_kernel(t, f0, t1, f1, phi)
+        return _chirp_phase_hyp_kernel(t, f0, t1, f1, phi, out)
 
     else:
         raise ValueError(
