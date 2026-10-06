@@ -32,7 +32,7 @@ RUN PYTHON_CONFIGURE_OPTS="--disable-shared" pyenv install 3.12.11 && \
     pip install -U setuptools pip wheel && \
     pip install -U google-cloud-storage
 
-RUN pip install -U --extra-index-url=https://pypi.anaconda.org/scientific-python-nightly-wheels/simple 'numpy>=0a0' 'scipy>=0a0' 'optuna>=0a0' 'ml_dtypes>=0a0' 'cython==3.2.*,!=3.2.6'
+RUN pip install -U --extra-index-url=https://pypi.anaconda.org/scientific-python-nightly-wheels/simple 'numpy>=0a0,<2.6' 'scipy>=0a0,<2.0' 'optuna>=0a0' 'ml_dtypes>=0a0' 'cython==3.2.*,!=3.2.6'
 RUN pip uninstall -y mpi4py cuda-python nvmath-python cuda-cccl && \
     pip check
 
