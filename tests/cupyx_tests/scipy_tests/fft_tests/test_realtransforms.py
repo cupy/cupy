@@ -3,6 +3,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+import cupy
+from cupyx.scipy.fft import _realtransforms
 from cupyx.scipy import fft as cp_fft
 from cupy import testing
 
@@ -12,6 +14,18 @@ except ImportError:
     scipy_fft = None
 
 all_dct_norms = [None, 'ortho', 'forward', 'backward']
+
+
+@pytest.mark.parametrize(
+    'kernel, expected',
+    [(_realtransforms._mult_factor_dct2, 2),
+     (_realtransforms._mult_factor_dct3, 2 * 2**31)])
+def test_mult_factor_accepts_large_transform_length(kernel, expected):
+    # At i == 0 the exponential is 1, so this pins the N-dependent prefactor.
+    x = cupy.empty(1, dtype=cupy.float32)
+    out = cupy.empty(1, dtype=cupy.complex64)
+    kernel(x, 2**31, cupy.float32(1), out)
+    assert out[0] == expected
 
 
 @testing.parameterize(
