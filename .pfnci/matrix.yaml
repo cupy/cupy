@@ -514,7 +514,7 @@
 # Slow | Linux
 - project: "cupy.linux.cuda-slow"
   target: "cuda-slow"
-  tags: ["slow", "linux"]
+  tags: ["@nightly", "slow", "linux"]
   system: "linux"
   os: "ubuntu:24.04"
   cuda: "12.9"
@@ -575,10 +575,9 @@
 # This combination tests against pre-releases. Use the highest supported combination.
 - project: "cupy.linux.cuda-head"
   target: "cuda-head"
-  # 'head' builds against pre-release deps; a released wheel can't exercise
-  # that, so this target builds from source (build.sh) instead of fetching.
-  wheel: false
-  tags: ["head", "linux"]
+  pip_extra_args:
+    - "--extra-index-url=https://pypi.anaconda.org/scientific-python-nightly-wheels/simple"
+  tags: ["@nightly", "head", "linux"]
   system: "linux"
   os: "ubuntu:24.04"
   cuda: "12.9"
