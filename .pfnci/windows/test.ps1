@@ -85,7 +85,10 @@ function Main {
     echo "Building..."
     $build_retval = 0
     RunOrDie python -m pip install "numpy==$numpy.*" "scipy==$scipy.*" "Cython==3.2.*,!=3.2.6"
-    if ($cuda.StartsWith("12.")) {
+    # TODO(seberg): Install cuda-cccl on Python 3.15 once releases are available.
+    if ($python.StartsWith("3.15")) {
+        echo "Skipping cuda-cccl: no Python 3.15 release available"
+    } elseif ($cuda.StartsWith("12.")) {
         RunOrDie python -m pip install "cuda-cccl[minimal-sysctk12]>=1.1.1,!=1.2.0"
     } else {
         RunOrDie python -m pip install "cuda-cccl[minimal-sysctk13]>=1.1.1,!=1.2.0"
