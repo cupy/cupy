@@ -1174,6 +1174,20 @@ cdef dict _promote_table():
     return _ASCEND_DTYPE_PROMOTE
 
 
+cdef dict ascend_dtype_promote_table():
+    """常开提升表的**单一事实来源**访问器（只读约定，不得改写）。
+
+    `_core/_ascend/_reduction.pyx` 的归约通道经此复用同一份表，消除
+    「kept in sync 靠注释」的漂移风险（历史 bug：归约表漏 'b'/'h'）。
+    """
+    return _ASCEND_DTYPE_PROMOTE
+
+
+cdef dict ascend_float64_demote_table():
+    """可选层 float64/complex128 降档表的单一事实来源访问器（只读约定）。"""
+    return _FLOAT64_TO_FLOAT32_PROMOTE
+
+
 cdef bint _has_promotable_io(sequence arrs):
     cdef object a
     cdef dict table = _promote_table()

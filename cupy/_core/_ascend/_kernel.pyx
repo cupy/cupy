@@ -969,23 +969,11 @@ cdef class ufunc:
         # the rest of positional args (needed by the f64-cpu host path below)
         pos_args = list(args[(self.nin + self.nout):])
 
-        _BOOL_PROMOTE_EXEMPT_OPS = {
-            "ascend_isfinite", "ascend_is_finite", 
-            "ascend_isinf", "ascend_is_inf", "ascend_isneginf", "ascend_is_negnative_inf",
-            "ascend_isposinf", "ascend_is_positive_inf", "ascend_isnan", "ascend_is_nan"
-        }
-
-        # ASCEND: ops below does not support double input, not promoted/demoted
-        if self.name in _BOOL_PROMOTE_EXEMPT_OPS:
-            _has_f64_io = False
-            for _x in inout_args:
-                if isinstance(_x, _ndarray_base) and _x.dtype.kind in 'fc':
-                    _has_f64_io = True
-                    break
-        if _has_f64_io:
-            _cpu_f64.run_elementwise_host(self.name, inout_args, out_args,
-                kwargs, dtype, casting, pos_args)
-            return ret
+        # NOTE: 曾有一个 isfinite/isnan 族 + f64 -> host 的特判块，但因前缀
+        # 笔误（self.name 是 'cupy_*'，集合是 'ascend_*'）从未生效。这些
+        # bool-out 算子已列入 acl_utils 的 _BOOL_PROMOTE_EXEMPT_OPS（豁免
+        # promote/demote 拦截，且 aclnnIsFinite 等原生收 DOUBLE），设备
+        # 原生直发即可，无需在此路由到 host。
 
         # ASCEND: cupy_nextafter has no corresponding aclnn op
         if self.name == "cupy_nextafter":

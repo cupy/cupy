@@ -45,29 +45,21 @@ from cupy import _util
 
 from cupy.backends.ascend.api.acl_utils cimport launch_reduction_op
 from cupy.backends.ascend.api.acl_utils cimport ascend_float64_promote_enabled
+from cupy.backends.ascend.api.acl_utils cimport ascend_dtype_promote_table
+from cupy.backends.ascend.api.acl_utils cimport ascend_float64_demote_table
 from cupy._core._ascend import cpu_fallback as _cpu_f64
 
 from cupy.xpu cimport stream as stream_module
 
 # uint -> signed promotion for aclnn reductions (docs/ascend/
-# AscendSpecialization.md §A.1). Kept in sync with the always-on layer of
-# _ASCEND_DTYPE_PROMOTE in cupy/backends/ascend/api/acl_utils.pyx, which
-# serves only the elementwise/general launchers (the reduction dispatcher no
-# longer promotes). Narrow ints (b/h) are NOT promoted here: aclnnAmax/Amin/
-# mean/sum take them natively; all/any handle their dtype needs in C++
-# (aclop_Any/aclop_All). The optional float64/complex128 demotion layer DOES
-# apply here, live-gated by enable_float64_to_float32 (see _FLOAT64_DEMOTE).
-cdef dict _UINT_PROMOTE = {
-    'B': 'i',   # uint8  -> int32
-    'H': 'i',   # uint16 -> int32
-    'I': 'i',   # uint32 -> int32
-    'Q': 'q',   # uint64 -> int64 (numpy 1.x char)
-    'L': 'q',   # uint64 -> int64 (numpy 2.x char)
-    '?': 'i',   # bool  -> int32
-    'b': 'i',   # int8  -> int32
-    'h': 'i',   # int16  -> int32
-    'i': 'i',   # int32  -> int32 (no op input, force out promote to int32)
-}
+# AscendSpecialization.md §A.1). 单一事实来源是 acl_utils 的
+# _ASCEND_DTYPE_PROMOTE（uint 全系 + int8/int16/bool -> int32，同时服务
+# elementwise/general 启动器）；经 ascend_dtype_promote_table() 取副本后
+# 只叠加归约通道特有的一项：'i' -> 'i'（sum(bool) 强制 out 走 int32 tmp，
+# 见 _call 内的 promoted_out 逻辑）。all/any 的 bool-out 特例在 _call 里
+# 整体 bypass promote（aclnnAll/Any 只收 BOOL/UINT8）。
+cdef dict _UINT_PROMOTE = dict(ascend_dtype_promote_table())
+_UINT_PROMOTE['i'] = 'i'
 
 # 可选层（enable_float64_to_float32 开关，见 AscendSpecialization.md A.1.1）：
 # float64 -> float32、complex128 -> complex64。开关打开后并入 `_call` 的有效
@@ -77,10 +69,8 @@ cdef dict _UINT_PROMOTE = {
 # 付两次 cast kernel；开关用于不收 DOUBLE 的归约/组合算子和 910B（无 float64
 # 硬件吞吐）。状态经 acl_utils.ascend_float64_promote_enabled() 实时读取，
 # py_enable_float64_to_float32 的运行时切换对 reduction 同样生效。
-cdef dict _FLOAT64_DEMOTE = {
-    'd': 'f',   # float64    -> float32
-    'D': 'F',   # complex128 -> complex64  numpy's dtype.char
-}
+# 表内容与 acl_utils 的可选层同源（ascend_float64_demote_table）。
+cdef dict _FLOAT64_DEMOTE = dict(ascend_float64_demote_table())
 cdef inline size_t _get_stream(stream) except *:
     if stream is None:
         return stream_module.get_current_stream_ptr()

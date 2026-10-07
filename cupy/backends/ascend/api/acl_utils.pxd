@@ -46,3 +46,10 @@ cdef bint is_acl_ufunc_registered(str opname) except *
 # `cupy/_core/_ascend/_reduction.pyx` so the runtime setter
 # (py_enable_float64_to_float32) applies to the reduction channel as well.
 cdef bint ascend_float64_promote_enabled()
+
+# Promote/demote tables, single source of truth (A.1). Cimported by
+# `cupy/_core/_ascend/_reduction.pyx`; return values are shared module state
+# and must be treated as read-only (copy before mutating, e.g. the reduction
+# channel overlays an extra 'i' entry).
+cdef dict ascend_dtype_promote_table()
+cdef dict ascend_float64_demote_table()
