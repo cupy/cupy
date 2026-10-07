@@ -42,7 +42,7 @@ def _default_v0(n, dtype, rs):
 
 
 def _check_hermitian(a, n):
-    """Cheap probabilistic Hermitian check with one fixed probe vector z:
+    """Cheap Hermitian check with one fixed probe vector z:
     compare a @ z against a^H z = conj(a.T @ conj(z)) (a.T is a free view
     for dense and for CSR<->CSC). The Lanczos recurrence assumes a Hermitian
     operator; a non-Hermitian input either yields invalid results or trips
@@ -215,6 +215,11 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
         raise ValueError('which must be \'LM\', \'LA\', \'SA\' or \'SM\' '
                          '(actual: {})'.format(which))
 
+    # Probe before the shift-invert dispatch: that path drives _eigsh_impl on
+    # OPinv, a LinearOperator, which is trusted and so never probed, leaving
+    # the caller's own matrix unchecked.
+    _check_hermitian(a, n)
+
     if which == 'SM':
         if sigma is not None:
             # SciPy gives which='SM' a different meaning together with
@@ -312,8 +317,6 @@ def _eigsh_impl(a, k, *, which, v0, ncv, maxiter, tol,
         maxiter = 10 * n
     if tol == 0:
         tol = numpy.finfo(a.dtype).eps
-
-    _check_hermitian(a, n)
 
     alpha = cupy.zeros((ncv,), dtype=a.dtype)
     beta = cupy.zeros((ncv,), dtype=a.dtype.char.lower())

@@ -516,6 +516,20 @@ class TestEigshHermitianCheck:
                 sparse.linalg.eigsh(a, k=6, return_eigenvectors=False)
         assert any('non-Hermitian' in str(w.message) for w in log)
 
+    @testing.with_requires('scipy')
+    @pytest.mark.parametrize('kwargs', [{'sigma': 0.5}, {'which': 'SM'}])
+    def test_shift_invert_probes_the_input_matrix(self, kwargs):
+        # Shift-invert drives _eigsh_impl on OPinv, a LinearOperator, which
+        # is trusted and so never probed. The probe has to run on the
+        # caller's own matrix, before that dispatch.
+        a = self._mk('d', hermitian=False)
+        with pytest.warns(UserWarning, match='non-Hermitian'):
+            try:
+                sparse.linalg.eigsh(a, k=3, return_eigenvectors=False,
+                                    **kwargs)
+            except RuntimeError:
+                pass
+
     def test_linear_operator_not_probed(self):
         # LinearOperator inputs cannot be probed cheaply; trusted (SciPy
         # behaviour). Must not warn.
