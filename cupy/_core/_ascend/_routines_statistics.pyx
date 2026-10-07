@@ -353,8 +353,14 @@ cpdef _ndarray_base _nanmedian(
         # row with a flat take, then average the two middle values.
         n_out = int(numpy.prod(out_shape))
         rows = cupy.arange(n_out, dtype='int64')
-        l_idx = cupy.maximum((n_valid_each - 1) // 2, 0).reshape(n_out)
-        h_idx = (n_valid_each // 2).reshape(n_out)
+        # ASCEND: cupy.maximum(x, scalar) fails for 0D input
+        # aclnnMaximum 0-dim broadcast
+        # reshape to 1D at first, then clamp with max(0)
+        nv = cupy.asarray(n_valid_each).reshape(-1)
+        l_idx = cupy.maximum((nv - 1) // 2, 0)
+        h_idx = (nv // 2)
+        l_idx = l_idx.reshape(n_out)
+        h_idx = (h_idx // 2).reshape(n_out)
         flat = a.reshape(n_out, n_reduce).ravel()
         al = flat.take(rows * n_reduce + l_idx.astype('int64'))
         ah = flat.take(rows * n_reduce + h_idx.astype('int64'))
