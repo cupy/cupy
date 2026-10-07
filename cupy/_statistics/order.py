@@ -24,7 +24,7 @@ _QUANTILE_PARAMS = {
 @_util.memoize()
 def _get_percentile_weightnening_kernel():
     return cupy.ElementwiseKernel(
-        'S idx, raw T a, int64 offset_, int64 size_', 'U ret',
+        'S idx, raw T a, int64 offset_, int64 size_, int64 nq', 'U ret',
         '''
         using index_t = decltype(a)::index_t;
         index_t offset = static_cast<index_t>(offset_);
@@ -33,8 +33,13 @@ def _get_percentile_weightnening_kernel():
         index_t idx_below = floor(idx);
         U weight_above = idx - idx_below;
 
+        // The loop runs over ``ret`` in C order with ``q`` on its last
+        // axis. ``_ind`` does not give the lane, because the loop drops the
+        // axes of length 1.
+        index_t lane = i / nq;
+
         index_t max_idx = size - 1;
-        index_t offset_bottom = _ind.get()[0] * offset + idx_below;
+        index_t offset_bottom = lane * offset + idx_below;
         index_t offset_top = min(offset_bottom + 1, max_idx);
 
         U diff = a[offset_top] - a[offset_bottom];
@@ -300,7 +305,8 @@ def _quantile_unchecked(a, q, axis=None, out=None,
             ret = cupy.rollaxis(out, 0, out.ndim)
 
         _get_percentile_weightnening_kernel()(
-            indices, ap, ap.shape[-1] if ap.ndim > 1 else 0, ap.size, ret)
+            indices, ap, ap.shape[-1] if ap.ndim > 1 else 0, ap.size,
+            q.size, ret)
         ret = cupy.rollaxis(ret, -1)  # Roll q dimension back to first axis
 
     if zerod:

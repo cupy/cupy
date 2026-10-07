@@ -57,7 +57,7 @@ def test_percentile_kernel_accepts_large_dimensions():
         cupy.array([1], dtype=cupy.float64), (2**31,))
     out = cupy.empty(1, dtype=cupy.float64)
     order_module._get_percentile_weightnening_kernel()(
-        indices, a, 0, a.size, out)
+        indices, a, 0, a.size, 1, out)
     assert out[0] == 1
 
 
@@ -297,6 +297,18 @@ class TestQuantileMethods:
         a = testing.shaped_random((1, 6, 3, 2), xp, dtype)
         q = testing.shaped_random((5,), xp, scale=1)
         return xp.quantile(a, q, axis=0, keepdims=True, method=method)
+
+    # See gh-9508
+    @pytest.mark.parametrize('shape, axis', [
+        ((1, 10), 1), ((10, 1), 0), ((1, 1, 10), -1), ((1, 10, 1), 1),
+    ])
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_quantile_single_lane(self, xp, dtype, method, shape, axis):
+        # Every dimension that is not reduced has length 1
+        a = testing.shaped_random(shape, xp, dtype)
+        q = testing.shaped_random((5,), xp, scale=1)
+        return xp.quantile(a, q, axis=axis, method=method)
 
 
 class TestOrder:
