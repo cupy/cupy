@@ -34,6 +34,22 @@ def _output_dtype(dtype, value_type):
 
 def _convert_dtype(a, value_type):
     out_dtype = _output_dtype(a.dtype, value_type)
+    # ASCEND: alcfft only support single precision
+    from cupy.backends.backend import is_ascend
+    if is_ascend and out_dtype in (np.complex128, np.float64):
+        try:
+            from cupy._core._ascend.cpu_fallback import f64_mode
+        except ImportError:
+            f64_mode = None
+        if f64_mode is not None and f64_mode() == 'float32':
+            if out_dtype == np.complex128:
+                out_dtype = np.complex64
+            else:
+                out_dtype = np.float32
+        else:
+            raise NotImplementedError(
+                "ASCEND: aclfft does not support float64"
+                + "set CUPY_ASCEND_FLOAT64_MODE=float32 to demote")
     if out_dtype != a.dtype:
         a = a.astype(out_dtype)
     return a
