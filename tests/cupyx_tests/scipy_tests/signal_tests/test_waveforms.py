@@ -78,9 +78,14 @@ class TestChirp:
             self, method, f0, f1, vertex_zero, scalar, xp, scp, dtype):
         t = xp.asarray(0.25, dtype=dtype) if scalar else xp.linspace(
             -0.25, 1.0, 101, dtype=dtype)
-        return scp.signal.chirp(
+        result = scp.signal.chirp(
             t, f0, 1.0, f1, method=method, phi=37.0,
             vertex_zero=vertex_zero, complex=True)
+        if xp is np:
+            # SciPy computes the phase in float64 even for float32 times.
+            # Compare its reference at CuPy's corresponding complex precision.
+            result = result.astype(np.result_type(dtype, 1j), copy=False)
+        return result
 
     @pytest.mark.parametrize('method, vertex_zero', [
         ('linear', True),

@@ -495,6 +495,8 @@ def chirp(t, f0, t1, f1, method="linear", phi=0, vertex_zero=True, *,
     complex : bool, optional
         If True, return a complex-valued analytic signal instead of a
         real-valued signal. Default is False.
+        Float32 and float64 time inputs produce complex64 and complex128
+        output, respectively. Integer time inputs produce complex128 output.
 
     Returns
     -------
