@@ -30,8 +30,8 @@ class TestInstallLibrary:
         self._test_install('nccl', cuda)
 
     @pytest.mark.skipif(
-        platform.machine() == "aarch64",
-        reason="FIXME")  # TODO(leofang)
+        platform.machine().lower() in ('aarch64', 'arm64'),
+        reason='cuTENSOR packages are unavailable on ARM64')
     @pytest.mark.parametrize('cuda', _get_supported_cuda_versions('cutensor'))
     @testing.slow
     def test_install_cutensor(self, cuda):
@@ -76,6 +76,10 @@ class TestInstallLibrary:
                     assert resp.getcode() == 200
 
     @pytest.mark.parametrize('library', _libraries)
+    @pytest.mark.skipif(
+        platform.system() == 'Windows'
+        and platform.machine().lower() in ('aarch64', 'arm64'),
+        reason='install_library.py is deprecated and does not support WoA')
     def test_main(self, library):
         install_library.main(
             ['--library', library, '--action', 'dump', '--cuda', 'null'])

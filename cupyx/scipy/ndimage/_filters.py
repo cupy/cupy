@@ -545,7 +545,7 @@ def _prewitt_or_sobel(input, axis, output, mode, cval, weights):
         return cupy.array([-1, 0, 1], dtype=weights.dtype) if is_diff else weights  # noqa
 
     axes = tuple(range(input.ndim))
-    modes = (mode,) * input.ndim
+    modes = _util._fix_sequence_arg(mode, input.ndim, 'mode')
     return _run_1d_correlates(input, axes,
                               [a == axis for a in range(input.ndim)], get,
                               output, modes, cval)
@@ -906,12 +906,14 @@ def _min_or_max_filter(input, size, ftprnt, structure, output, mode, cval,
         size = ftprnt
         ftprnt = None
 
-    axes, ftprnt, origins, modes, int_type = _filters_core._check_nd_args(
-        input, ftprnt, mode, origin, 'footprint', sizes=size, axes=axes,
-        raise_on_zero_size_weight=True)
-    num_axes = len(axes)
+    orig_axes = _util._check_axes(axes, input.ndim)
+    orig_num_axes = len(orig_axes)
     sizes, ftprnt, structure = _filters_core._check_size_footprint_structure(
-        num_axes, size, ftprnt, structure)
+        orig_num_axes, size, ftprnt, structure)
+
+    axes, ftprnt, origins, modes, int_type = _filters_core._check_nd_args(
+        input, ftprnt, mode, origin, 'footprint', sizes=sizes, axes=orig_axes,
+        raise_on_zero_size_weight=True)
     if cval is cupy.nan:
         raise NotImplementedError("NaN cval is unsupported")
 
@@ -925,15 +927,9 @@ def _min_or_max_filter(input, size, ftprnt, structure, output, mode, cval,
     if ftprnt.size == 0:
         return cupy.zeros_like(input)
 
-    if num_axes < input.ndim:
-        # expand origins ,footprint and structure if num_axes < input.ndim
-        ftprnt = _util._expand_footprint(input.ndim, axes, ftprnt)
-        origins = _util._expand_origin(input.ndim, axes, origin)
-        modes = tuple(_util._expand_mode(input.ndim, axes, modes))
-
     if structure is not None:
         structure = _util._expand_footprint(
-            input.ndim, axes, structure, footprint_name="structure"
+            input.ndim, orig_axes, structure, footprint_name="structure"
         )
 
     offsets = _filters_core._origins_to_offsets(origins, ftprnt.shape)

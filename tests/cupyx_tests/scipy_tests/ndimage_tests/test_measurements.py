@@ -12,6 +12,7 @@ from cupy import testing
 from cupy import _util
 from cupy._core import _accelerator
 import cupyx.scipy.ndimage  # NOQA
+from cupyx.scipy.ndimage import _measurements
 
 try:
     import scipy
@@ -21,6 +22,18 @@ except ImportError:
 
 stats_ops = ['sum', 'mean', 'variance', 'standard_deviation', 'center_of_mass',
              'sum_labels']
+
+
+def test_label_connect_accepts_int64_shape():
+    shape = cupy.array([2**31 + 1], dtype=cupy.int64)
+    dirs = cupy.array([1], dtype=cupy.int32)
+    labels_base = cupy.array([0, 1], dtype=cupy.int64)
+    # size=1 visits only element 0 and its single neighbour, so the
+    # oversized view is never dereferenced past `labels_base`.
+    labels = cupy.lib.stride_tricks.as_strided(
+        labels_base, shape=(2**31 + 1,), strides=labels_base.strides)
+    _measurements._kernel_connect()(shape, dirs, 1, 1, labels, size=1)
+    assert labels_base[1] == 0
 
 
 def _generate_binary_structure(rank, connectivity):
@@ -40,7 +53,9 @@ def _generate_binary_structure(rank, connectivity):
     'connectivity': [None, 2, 3],
     'x_dtype': [bool, numpy.int8, numpy.int32, numpy.int64,
                 numpy.float32, numpy.float64],
-    'output': [None, numpy.int32, numpy.int64],
+    # Mostly integers make sense, but SciPy allows a bit more
+    # (CuPy may allows most dtypes but checks label overflow.)
+    'output': [None, numpy.int32, numpy.int64, numpy.float32],
     'o_type': [None, 'ndarray']
 }))
 @testing.with_requires('scipy')

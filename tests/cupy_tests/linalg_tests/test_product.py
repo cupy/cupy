@@ -9,6 +9,7 @@ import pytest
 
 import cupy
 from cupy import testing
+from cupy.testing._helper import skip_if_after_baseline
 
 
 @testing.parameterize(*testing.product({
@@ -116,6 +117,7 @@ class TestCrossProduct(unittest.TestCase):
 class TestCrossProductDeprecated(unittest.TestCase):
     @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'])
     @testing.numpy_cupy_allclose()
+    @skip_if_after_baseline(numpy="2.5", reason="deprecation finalized.")
     def test_cross(self, xp, dtype_a, dtype_b):
         if dtype_a == dtype_b == numpy.bool_:
             # cross does not support bool-bool inputs.
@@ -501,6 +503,76 @@ class TestProduct:
         return xp.kron(a, b)
 
 
+@testing.slow
+@pytest.mark.thread_unsafe(reason='Allocation too large.')
+def test_integer_tensordot_large_indexing():
+    # Dimensions fit int32, but the integer kernel's M * K does not.
+    # This needs just over 4 GiB; uint8 also avoids the int8 cuBLAS path.
+    # At this size the old bounds wrap to a small positive value, keeping
+    # its reads inside the allocation instead of causing invalid accesses.
+    k, m = 2**16 + 1, 2**16
+    a = b = out = None
+    try:
+        try:
+            a = cupy.zeros((2, k), dtype=cupy.uint8)
+            b = cupy.zeros((k, m), dtype=cupy.uint8)
+        except MemoryError:
+            pytest.skip('out of memory in test.')
+
+        # Select the second row, which is zero. The overflowing bound clamps
+        # its reads to the last element of the first row, which is one.
+        # A single contribution avoids masking the error via uint8 wraparound.
+        a[:, 1] = 1
+        b[0, :] = 1
+        out = cupy.tensordot(a, b, axes=1)
+        expected = numpy.zeros((2, m), dtype=numpy.uint8)
+        testing.assert_array_equal(out, expected)
+    finally:
+        del out, b, a
+        cupy.get_default_memory_pool().free_all_blocks()
+
+
+class TestInt8Tensordot:
+    """Smoke test for cupy.tensordot with int8 dtype via tensordot_core."""
+
+    def setup_method(self):
+        if cupy.cuda.runtime.is_hip:
+            pytest.skip('int8 cublasGemmEx path is NVIDIA-only')
+        if int(cupy.cuda.Device().compute_capability) < 61:
+            pytest.skip(
+                'CUBLAS_COMPUTE_32I requires compute capability >= 6.1')
+
+    @testing.numpy_cupy_array_equal()
+    def test_int8_tensordot_aligned(self, xp):
+        """k=16 is IMMA-aligned; exercises the cuBLAS Tensor Core path."""
+        rng = numpy.random.default_rng(seed=7)
+        a = xp.asarray(rng.integers(-5, 5, (8, 16), dtype=numpy.int8))
+        b = xp.asarray(rng.integers(-5, 5, (16, 8), dtype=numpy.int8))
+        return xp.tensordot(a, b, axes=1)
+
+    @testing.numpy_cupy_array_equal()
+    def test_int8_tensordot_unaligned(self, xp):
+        """k=7 is not IMMA-aligned; exercises the alignment-guard fallback."""
+        rng = numpy.random.default_rng(seed=13)
+        a = xp.asarray(rng.integers(-5, 5, (8, 7), dtype=numpy.int8))
+        b = xp.asarray(rng.integers(-5, 5, (7, 8), dtype=numpy.int8))
+        return xp.tensordot(a, b, axes=1)
+
+    @testing.numpy_cupy_array_equal()
+    def test_int8_inner_multidim(self, xp):
+        """ret_shape (2, 3, 3, 2) differs from the 2-D (6, 6) GEMM output."""
+        a = testing.shaped_arange((2, 3, 4), xp, numpy.int8)
+        b = testing.shaped_arange((3, 2, 4), xp, numpy.int8)
+        return xp.inner(a, b)
+
+    @testing.numpy_cupy_array_equal()
+    def test_int8_tensordot_multidim(self, xp):
+        rng = numpy.random.default_rng(seed=21)
+        a = xp.asarray(rng.integers(-5, 5, (2, 3, 8), dtype=numpy.int8))
+        b = xp.asarray(rng.integers(-5, 5, (8, 4, 5), dtype=numpy.int8))
+        return xp.tensordot(a, b, axes=1)
+
+
 @testing.parameterize(*testing.product({
     'params': [
         ((0, 0), 2),
@@ -619,6 +691,34 @@ class TestLinalgMatmul2D:
         a = testing.shaped_random(shape_a, xp, dtype)
         b = testing.shaped_random(shape_b, xp, dtype)
         return xp.linalg.matmul(a, b)
+
+
+class TestLinalgTensordot:
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_default_axes(self, xp, dtype):
+        x1 = testing.shaped_arange((2, 3, 4), xp, dtype)
+        x2 = testing.shaped_arange((3, 4, 5), xp, dtype)
+        return xp.linalg.tensordot(x1, x2)
+
+    @pytest.mark.parametrize('axes', [
+        0,
+        1,
+        ([1, 2], [0, 1]),
+        ([-1, -2], [-2, -3]),
+    ])
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_axes(self, xp, dtype, axes):
+        x1 = testing.shaped_arange((2, 3, 3), xp, dtype)
+        x2 = testing.shaped_arange((3, 3, 5), xp, dtype)
+        return xp.linalg.tensordot(x1, x2, axes=axes)
+
+    def test_is_cupy_tensordot(self):
+        # `cupy.linalg.tensordot` is just the Array API compatible location
+        # for `cupy.tensordot`, so the two are the same object.
+        assert cupy.linalg.tensordot is cupy.tensordot
 
 
 class TestLinalgMatrixTranspose:

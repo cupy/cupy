@@ -259,20 +259,16 @@ class TestInt64Sort:
         testing.assert_array_equal(m.data, cupy.array([2.0, 3.0, 1.0]))
 
 
-class TestInt64ArithmeticFallback:
-    """Sparse addition with int64 indices -- pure-CuPy fallback.
+class TestInt64Arithmetic:
+    """Sparse addition with int64 indices.
 
-    csrgeam2 routes int64 inputs to _cupy_csrgeam_int64 *before* checking
-    cuSPARSE availability, so the path works on any CUDA version.
+    csrgeam2 routes int64 inputs through cusparseSpGEAM when available,
+    otherwise through _cupy_csrgeam_int64, so the path works on any CUDA
+    version.
 
-    The fallback: expand indptr→row via searchsorted, concatenate COO entries
-    from both matrices, call sum_duplicates() to merge overlapping positions,
-    then convert back to CSR.  Index dtype is
+    On cuSPARSE 12.8.1+ this can use native cusparseSpGEAM; older builds use
+    the pure-CuPy fallback. Both paths preserve
     numpy.result_type(a.indices.dtype, b.indices.dtype) throughout.
-
-    Note: cusparseSpGEAM (the Generic API path) is absent from all public
-    cuSPARSE releases through 12.7.9, so the pure-CuPy fallback is always
-    active on current installations.
     """
 
     # Shape has _LARGE+2 columns so a column index of _LARGE is valid and
@@ -323,9 +319,8 @@ class TestInt64ArithmeticFallback:
         assert float(c.data[0]) == pytest.approx(7.0)
 
     def test_add_int64_alpha_beta_scaling(self):
-        # _cupy_csrgeam_int64 scales a.data by alpha and b.data by beta before
-        # concatenation.  Verify through the direct cusparse.csrgeam2 interface
-        # since the __add__ operator always uses alpha=1, beta=1.
+        # Verify alpha/beta scaling through the direct cusparse.csrgeam2
+        # interface since the __add__ operator always uses alpha=1, beta=1.
         # (This test caught a bug where _numpy.array(alpha, ...) returned a
         # 0-d ndarray that CuPy's __mul__ rejected with TypeError.)
         a = self._make_int64_csr(0, value=1.0)
@@ -337,10 +332,9 @@ class TestInt64ArithmeticFallback:
         assert float(c.data[0]) == pytest.approx(3.0)
         assert float(c.data[1]) == pytest.approx(4.0)
 
-    def test_spgeam_int64_fallback(self):
-        # cusparse.spgeam() routes int64 directly to
-        # _cupy_csrgeam_int64 when cusparseSpGEAM is unavailable
-        # (absent from all public releases <=12.7.9).
+    def test_spgeam_int64(self):
+        # cusparse.spgeam() uses native cusparseSpGEAM when available and
+        # _cupy_csrgeam_int64 otherwise; both paths preserve int64 indices.
         a = self._make_int64_csr(0, value=1.0)
         b = self._make_int64_csr(_LARGE, value=2.0)
         c = cusparse.spgeam(a, b)
@@ -3443,6 +3437,21 @@ class TestFromPartsValidation:
                 cupy.array([0], dtype=cupy.int32),
                 (2, 2**31 + 5))
 
+    def test_compressed_rejects_nnz_too_large_for_dtype(self):
+        # ``indptr[-1] == nnz`` must fit the index dtype even when every
+        # dimension does: int8 addresses <= 127, so 128 stored entries
+        # overflow the indptr side while max(shape) stays in range.  This
+        # is why the CSR/CSC guard checks ``data.size``, not just
+        # ``max(shape)`` (and why ``prod(shape)`` would be wrong -- a
+        # genuinely sparse matrix has nnz << prod(shape)).
+        n = 128
+        with pytest.raises(ValueError, match='nnz .* too large'):
+            sparse.csr_matrix._from_parts(
+                cupy.ones(n),
+                cupy.zeros(n, dtype=cupy.int8),
+                cupy.zeros(2, dtype=cupy.int8),
+                (1, 100))
+
 
 class TestCsr2CooCanonicalPreservation:
     """Canonical CSR (sorted columns within each row, no duplicates)
@@ -3502,7 +3511,7 @@ class TestCsr2CooCanonicalPreservation:
 
 class TestInt64TransposeCanonical:
     """The int64 CSR<->CSC transpose runs through
-    ``_cupy_transpose_compressed_int64`` which sorts via lexsort.
+    ``_cupy_transpose_compressed`` which sorts via lexsort.
     Canonical input stays canonical, but ``False`` / uncomputed must
     NOT propagate: even an unsorted input becomes canonical after
     lexsort, and caching ``False`` would mask that from the lazy

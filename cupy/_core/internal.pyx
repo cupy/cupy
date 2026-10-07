@@ -371,7 +371,7 @@ cdef _broadcast_core(list arrays, shape_t& shape):
 
         # TODO(niboshi): Confirm update_x_contiguity flags
         a = a._view(type(a), shape, strides, True, True, a)
-        if a.size * a.itemsize > 2**31:
+        if a.size * a.itemsize >= 2**31:
             a._index_32_bits = False
         arrays[i] = a
 
@@ -482,6 +482,36 @@ cpdef int _update_order_char(
         elif is_f_contiguous:
             order_char = b'F'
     return order_char
+
+
+cpdef tuple _new_like_order_and_strides(a, dtype, order, shape=None):
+    """Determine order and strides as in NumPy's PyArray_NewLikeArray.
+
+    (see: numpy/core/src/multiarray/ctors.c)
+
+    Returns ``(order, strides)`` where ``order`` is ``'C'`` or ``'F'`` and
+    ``strides`` is set only when the result is neither C- nor F-contiguous
+    (order ``'K'`` on a non-contiguous prototype).
+
+    Shape must be normalized to a sequence or None by the caller.
+    """
+    cdef int order_char = _normalize_order(order)
+    cdef bint c_contiguous, f_contiguous
+
+    if order_char == b'K' and shape is not None and len(shape) != a.ndim:
+        return 'C', None
+    if isinstance(a, _ndarray_base):
+        c_contiguous = (<_ndarray_base>a)._c_contiguous
+        f_contiguous = (<_ndarray_base>a)._f_contiguous
+    else:
+        c_contiguous = a.flags.c_contiguous
+        f_contiguous = a.flags.f_contiguous
+
+    # Update order char from A/K -> C/F/K (K is preserved if not contiguous).
+    order_char = _update_order_char(c_contiguous, f_contiguous, order_char)
+    if order_char == b'K':
+        return 'C', _get_strides_for_order_K(a, numpy.dtype(dtype), shape)
+    return chr(order_char), None
 
 
 cpdef tuple _broadcast_shapes(shapes):

@@ -8,6 +8,7 @@ import numpy
 import cupy
 from cupy import _core
 from cupy._core import _accelerator
+from cupy._core import _cuda_compute_histogram
 from cupy.cuda import cub
 from cupy.cuda import common
 from cupy.cuda import runtime
@@ -19,17 +20,20 @@ _range = range
 
 # TODO(unno): use searchsorted
 _histogram_kernel = _core.ElementwiseKernel(
-    'S x, raw T bins, int32 n_bins',
+    'S x, raw T bins, int64 n_bins_',
     'raw U y',
     '''
+    using index_t = decltype(bins)::index_t;
+    index_t n_bins = static_cast<index_t>(n_bins_);
+
     if (x < bins[0] or bins[n_bins - 1] < x) {
         return;
     }
-    int high = n_bins - 1;
-    int low = 0;
+    index_t high = n_bins - 1;
+    index_t low = 0;
 
     while (high - low > 1) {
-        int mid = (high + low) / 2;
+        index_t mid = low + (high - low) / 2;
         if (bins[mid] <= x) {
             low = mid;
         } else {
@@ -42,17 +46,20 @@ _histogram_kernel = _core.ElementwiseKernel(
 
 
 _weighted_histogram_kernel = _core.ElementwiseKernel(
-    'S x, raw T bins, int32 n_bins, raw W weights',
+    'S x, raw T bins, int64 n_bins_, raw W weights',
     'raw Y y',
     '''
+    using index_t = decltype(bins)::index_t;
+    index_t n_bins = static_cast<index_t>(n_bins_);
+
     if (x < bins[0] or bins[n_bins - 1] < x) {
         return;
     }
-    int high = n_bins - 1;
-    int low = 0;
+    index_t high = n_bins - 1;
+    index_t low = 0;
 
     while (high - low > 1) {
-        int mid = (high + low) / 2;
+        index_t mid = low + (high - low) / 2;
         if (bins[mid] <= x) {
             low = mid;
         } else {
@@ -564,11 +571,20 @@ def bincount(x, weights=None, minlength=None):
     if weights is None:
         b = cupy.zeros((size,), dtype=numpy.intp)
 
-        for accelerator in _accelerator.get_routine_accelerators():
+        accelerators = ([] if runtime.is_hip
+                        else _accelerator.get_routine_accelerators())
+        for accelerator in accelerators:
+            if accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE:
+                out = _cuda_compute_histogram.cuda_compute_bincount(
+                    x, b, size)
+                if out is None:
+                    continue
+                else:
+                    b = out
+                    break
             # CUB uses int for bin counts
             # TODO(leofang): support >= 2^31 elements in x?
-            if (not runtime.is_hip
-                    and accelerator == _accelerator.ACCELERATOR_CUB
+            if (accelerator == _accelerator.ACCELERATOR_CUB
                     and x.size <= 0x7fffffff and size <= 0x7fffffff):
                 out = cub.cub_histogram(x, b, size+1)
                 if out is None:

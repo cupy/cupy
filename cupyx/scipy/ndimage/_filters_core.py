@@ -177,13 +177,13 @@ def _call_kernel(kernel, input, weights, output, structure=None,
     output = _util._get_output(output, input, None, complex_output)
     needs_temp = cupy.shares_memory(output, input, 'MAY_SHARE_BOUNDS')
     if needs_temp:
-        output, temp = _util._get_output(output.dtype, input, None,
-                                         complex_output), output
+        output, orig_out = _util._get_output(output.dtype, input, None,
+                                             complex_output), output
     args.append(output)
     kernel(*args)
     if needs_temp:
-        _core.elementwise_copy(temp, output)
-        output = temp
+        _core.elementwise_copy(output, orig_out)
+        output = orig_out
     return output
 
 
@@ -191,13 +191,11 @@ if runtime.is_hip:
     includes = r'''
 // workaround for HIP: line begins with #include
 #include <cupy/math_constants.h>
-#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_decls?
 #include <type_traits>
 '''
 else:
     includes = r'''
 #include <cupy/cuda_workaround.h>  // provide C++ std:: coverage
-#include <cupy/float16.cuh>  // TODO(seberg): Add this via type_decls?
 #include <cupy/math_constants.h>
 
 template<> struct std::is_floating_point<float16> : std::true_type {};
