@@ -42,15 +42,16 @@ jobs:
       rtd_version_name: ${{ steps.compute.outputs.rtd_version_name }}
       version_type: ${{ steps.compute.outputs.version_type }}
       suffix: ${{ steps.compute.outputs.suffix }}
-      head_sha: ${{ steps.compute.outputs.head_sha }}
       promote_stable: ${{ steps.stable.outputs.promote_stable }}
     steps:
       # workflow_run.pull_requests[] is empty for fork PRs, so instead of
       # parsing the event payload we download the per-run sentinel artifact
       # ci.yml's build-sentinel uploaded (name is `push-event-<sha>` for
       # push, `build-<sha>` for PR). The sentinel carries docs-meta.json
-      # with mode / pr_number / head_sha / merge_sha / artifact_suffix /
-      # event / ref, which is enough to drive the rest of this job.
+      # with mode / pr_number / merge_sha / artifact_suffix / ref; the
+      # head SHA needs no field because workflow_run.head_sha is the same
+      # value (it is what names the sentinel, so a mismatch could not
+      # even download it).
       #
       # mode=no-op runs (unrelated label events, branch deletes, skip-ci
       # pushes) upload NO sentinel but still succeed, so workflow_run
@@ -84,7 +85,6 @@ jobs:
           RTD_SLUG=""
           RTD_VERSION_NAME=""
           VERSION_TYPE=""
-          HEAD_SHA=""
           MERGE_SHA=""
           SUFFIX=""
 
@@ -94,18 +94,17 @@ jobs:
             MODE=$(jq -r .mode "${META}")
             PR_NUMBER=$(jq -r .pr_number "${META}")
             REF=$(jq -r .ref "${META}")
-            HEAD_SHA=$(jq -r .head_sha "${META}")
             MERGE_SHA=$(jq -r .merge_sha "${META}")
             SUFFIX=$(jq -r .artifact_suffix "${META}")
 
-            # Defense-in-depth validation: SUFFIX / HEAD_SHA / MERGE_SHA
-            # get interpolated into shell + API payloads downstream, so
+            # Defense-in-depth validation: SUFFIX / MERGE_SHA get
+            # interpolated into shell + API payloads downstream, so
             # reject anything with shell metacharacters even though the
             # trusted builder currently only produces hex SHAs / PR
             # numbers. Keeps the rules loose enough to tolerate future
             # format tweaks (dots, underscores) while blocking $, `, ;,
             # quotes, spaces, etc.
-            for field_name in SUFFIX HEAD_SHA MERGE_SHA; do
+            for field_name in SUFFIX MERGE_SHA; do
               value="${!field_name}"
               if ! [[ "${value}" =~ ^[A-Za-z0-9._-]+$ ]]; then
                 echo "::error::docs-meta ${field_name} is malformed: ${value}"
@@ -162,7 +161,6 @@ jobs:
 
           {
             echo "proceed=${PROCEED}"
-            echo "head_sha=${HEAD_SHA}"
             echo "merge_sha=${MERGE_SHA}"
             echo "suffix=${SUFFIX}"
             echo "rtd_slug=${RTD_SLUG}"
@@ -252,7 +250,7 @@ jobs:
           READTHEDOCS_LANGUAGE: en
           READTHEDOCS_VERSION: ${{ steps.compute.outputs.rtd_slug }}
           READTHEDOCS_VERSION_TYPE: ${{ steps.compute.outputs.version_type }}
-          READTHEDOCS_GIT_COMMIT_HASH: ${{ steps.compute.outputs.head_sha }}
+          READTHEDOCS_GIT_COMMIT_HASH: ${{ github.event.workflow_run.head_sha }}
         run: |
           # -W --keep-going turns Sphinx warnings into errors but walks
           # the full build before failing so one iteration surfaces the
@@ -323,7 +321,7 @@ jobs:
           READTHEDOCS_TOKEN: ${{ secrets.RTD_API_TOKEN }}
           RTD_VERSION_NAME: ${{ needs.build.outputs.rtd_version_name }}
           RTD_VERSION_TYPE: ${{ needs.build.outputs.version_type }}
-          HEAD_SHA: ${{ needs.build.outputs.head_sha }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
           PROMOTE_STABLE: ${{ needs.build.outputs.promote_stable }}
         run: |
           if [[ -z "${READTHEDOCS_TOKEN}" ]]; then

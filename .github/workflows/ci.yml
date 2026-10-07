@@ -82,7 +82,6 @@ jobs:
       mode: ${{ steps.check.outputs.mode }}
       ref: ${{ steps.check.outputs.ref }}
       artifact_suffix: ${{ steps.check.outputs.artifact_suffix }}
-      head_sha: ${{ steps.check.outputs.head_sha }}
       pr_number: ${{ steps.check.outputs.pr_number }}
       # Mode-aware JSON arrays of the CUDA / Python versions this run
       # builds. Full matrix on `test` (both CUDA versions, full python
@@ -310,7 +309,6 @@ jobs:
         env:
           MODE: ${{ needs.guard.outputs.mode }}
           PR_NUMBER: ${{ needs.guard.outputs.pr_number }}
-          HEAD_SHA: ${{ needs.guard.outputs.head_sha }}
           MERGE_SHA: ${{ needs.guard.outputs.ref }}
           ARTIFACT_SUFFIX: ${{ needs.guard.outputs.artifact_suffix }}
         run: |
@@ -320,33 +318,38 @@ jobs:
           else
             echo "dispatch" > "${RUNNER_TEMP}/artifact/marker"
           fi
-          # docs-meta.json is consumed by docs.yml so it can compute RTD
-          # version metadata without parsing workflow_run.pull_requests[]
-          # (empty for fork PRs). docs.yml reads python.doc.version from
-          # ci/versions.yml itself after it checks out at merge_sha.
-          # `ref` is the raw GITHUB_REF so docs.yml can disambiguate tag
-          # pushes (refs/tags/v*) from branch pushes to a branch that
-          # happens to share a tag's name -- workflow_run.head_branch
-          # alone would collide.
+          # docs-meta.json is consumed by docs.yml (and flexci.yml, which
+          # reads .mode) without parsing workflow_run.pull_requests[]
+          # (empty for fork PRs). It carries only what docs.yml cannot
+          # derive on its side: mode (skip/no-op signal), pr_number
+          # (external version name), merge_sha (the tested rev --
+          # refs/pull/N/merge moves if the base advances after CI ran),
+          # artifact_suffix (artifact-name source of truth), and ref (raw
+          # GITHUB_REF, disambiguating refs/tags/v* from a branch that
+          # shares the tag's name, where workflow_run.head_branch alone
+          # would collide). The head SHA is deliberately absent: docs.yml
+          # takes it from workflow_run.head_sha. docs.yml reads
+          # python.doc.version from ci/versions.yml after checkout.
           jq -n \
             --arg mode "${MODE}" \
             --arg pr_number "${PR_NUMBER}" \
-            --arg head_sha "${HEAD_SHA}" \
             --arg merge_sha "${MERGE_SHA}" \
             --arg artifact_suffix "${ARTIFACT_SUFFIX}" \
-            --arg event "${GITHUB_EVENT_NAME}" \
             --arg ref "${GITHUB_REF}" \
-            '{mode: $mode, pr_number: $pr_number, head_sha: $head_sha,
-              merge_sha: $merge_sha, artifact_suffix: $artifact_suffix,
-              event: $event, ref: $ref}' \
+            '{mode: $mode, pr_number: $pr_number, merge_sha: $merge_sha,
+              artifact_suffix: $artifact_suffix, ref: $ref}' \
             > "${RUNNER_TEMP}/artifact/docs-meta.json"
       - name: Upload
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
+          # Same values ci-guard.sh derives from this event (GITHUB_SHA on
+          # push, pull_request.head.sha on PR) -- and exactly what GitHub
+          # sets workflow_run.head_sha to, which is how docs.yml and
+          # flexci.yml look the sentinel up.
           name: >-
             ${{ github.event_name == 'push'
-                && format('push-event-{0}', needs.guard.outputs.head_sha)
-                || format('build-{0}', needs.guard.outputs.head_sha) }}
+                && format('push-event-{0}', github.sha)
+                || format('build-{0}', github.event.pull_request.head.sha) }}
           path: ${{ runner.temp }}/artifact/
           if-no-files-found: error
           overwrite: true
