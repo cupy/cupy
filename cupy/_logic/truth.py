@@ -383,7 +383,7 @@ def union1d(arr1, arr2):
     from cupy.backends.backend import is_ascend
     if is_ascend:
         ret = _ascend_set_host_fallback(
-            'logic.union1d', None, arr1, arr2)
+            'logic.union1d', ('ascend_unique',), arr1, arr2)
         if ret is not None:
             return ret
     return cupy.unique(cupy.concatenate((arr1, arr2), axis=None))

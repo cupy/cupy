@@ -158,8 +158,11 @@ def _first_nonzero_index(a, size):
     """
     from cupy.backends.backend import is_ascend
     if is_ascend:
-        nz = cupy.nonzero(a)[0]
-        return int(nz[0].item()) if nz.size else int(size)
+        # accasionally, ret=500003 for poly1d reverse/flit view on CANN 9.0.1
+        # so fallback to CPU, for caclnnNonzero bug on boundary input
+        np_a = cupy.asnumpy(a)
+        nz = numpy.nonzero(np_a)[0]
+        return int(nz[0]) if nz.size else int(size)
     return int(_first_nonzero_krnl(a, size).item())
 
 

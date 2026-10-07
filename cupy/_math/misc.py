@@ -95,7 +95,16 @@ def _fft_convolve_ok(a1, a2):
         return True
     if not is_ascend:
         return True
-    return cupy.result_type(a1, a2) in (numpy.float32, numpy.complex64)
+    if cupy.result_type(a1, a2) not in (numpy.float32, numpy.complex64):
+        return False
+    # even for right dtype, FFT may be not available at runtime
+    try:
+        from cupy.fft._backend import get_cufft
+        get_cufft()
+        return True
+    except RuntimeError:
+        # CUPY_ENABLE_ACLFFT=0 / libcann_ops_fft.so not found will throw
+        return False
 
 
 def _fft_convolve(a1, a2, mode):

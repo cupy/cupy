@@ -93,20 +93,25 @@ def copyto(dst, src, casting='same_kind', where=None):
         from cupy.backends.backend import is_ascend
         if is_ascend:
             # ASCEND: the `where=` ufunc kwarg has no impl in the dispatcher 
-            # use mask getitem (nonzero + take) on ASCEND
+            # Device mask setitem (`dst[mask]= v`) on ASCEND use
+            # cupy_scatter_update_mask which is unrealiable on CANN 8.5 ret=500003
+            # so, use cpu fallback
             # `where` may be a scalar (complex) or bool/non-bool array,
             # normalized to bool so dst[mask] is valid
+            import cupy
             mask = cupy.asarray(where)
             if mask.dtype.kind in 'biu':
                 pass
             else:
                 mask = mask != 0
             mask = cupy.broadcast_to(cupy.asarray(mask), dst.shape)
+            dst_host = cupy.asnumpy(dst)
             if src_is_scalar:
-                dst[mask] = src
+                dst_host[mask.get()] = src
             else:
                 value = cupy.broadcast_to(cupy.asarray(src), dst.shape)
-                dst[mask] = value[mask]
+                dst_host[mask.get()] = cupy.asnumpy(value)[mask.get()]
+            dst.set(dst_host)
             return
         _core.elementwise_copy(src, dst, _where=where)
         return

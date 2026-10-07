@@ -64,6 +64,19 @@ cdef _ndarray_base _ndarray_getitem(_ndarray_base self, slices):
 cdef _ndarray_setitem(_ndarray_base self, slices, value):
     if isinstance(value, _ndarray_base):
         value = _squeeze_leading_unit_dims(value)
+    from cupy.backends.backend import is_ascend
+    if is_ascend:
+        # ASCEND: boolean mask setitem (a[mask] = c) is unreliable
+        # fallback to CPU
+        import cupy as _cp
+        host = _cp.asnumpy(self)
+        mask = _cp.asarray(slices)
+        if isinstance(value, _ndarray_base):
+            host[mask] = _cp.asnumpy(value)
+        else:
+            host[mask] = value
+        self.set(host)
+        return
     _scatter_op(self, slices, value, 'update')
 
 

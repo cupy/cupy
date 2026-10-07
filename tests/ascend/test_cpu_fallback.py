@@ -26,13 +26,37 @@ from cupy._core._ascend import cpu_fallback
 
 
 EXPECTED_FALLBACKS = {
-    'linalg.cholesky': 'cholesky',
-    'linalg.det': 'det',
-    'linalg.slogdet': 'slogdet',
-    'linalg.eig': 'eig',
-    'linalg.eigvals': 'eigvals',
-    'linalg.eigh': 'eigh',
-    'linalg.eigvalsh': 'eigvalsh',
+    'linalg.cholesky': numpy.linalg.cholesky,
+    'linalg.det': numpy.linalg.det,
+    'linalg.slogdet': numpy.linalg.slogdet,
+    'linalg.eig': numpy.linalg.eig,
+    'linalg.eigvals': numpy.linalg.eigvals,
+    'linalg.eigh': numpy.linalg.eigh,
+    'linalg.eigvalsh': numpy.linalg.eigvalsh,
+    'logic.in1d': cpu_fallback._host_in1d,
+    'logic.intersect1d': numpy.intersect1d,
+    'logic.setdiff1d': numpy.setdiff1d,
+    'logic.setxor1d': numpy.setxor1d,
+    'logic.union1d': numpy.union1d,
+    'math.round': numpy.round,
+    'statistics.average': numpy.average,
+    'statistics.bincount': numpy.bincount,
+    'statistics.corrcoef': numpy.corrcoef,
+    'statistics.correlate': numpy.correlate,
+    'statistics.cov': numpy.cov,
+    'statistics.digitize': numpy.digitize,
+    'statistics.histogram': numpy.histogram,
+    'statistics.histogramdd': numpy.histogramdd,
+    'statistics.nanmax': numpy.nanmax,
+    'statistics.nanmean': numpy.nanmean,
+    'statistics.nanmedian': numpy.nanmedian,
+    'statistics.nanmin': numpy.nanmin,
+    'statistics.nanstd': numpy.nanstd,
+    'statistics.nanvar': numpy.nanvar,
+    'statistics.ptp': numpy.ptp,
+    'statistics.quantile': numpy.quantile,
+    'statistics.std': numpy.std,
+    'statistics.var': numpy.var,
 }
 
 
@@ -72,11 +96,11 @@ def test_public_api():
     assert isinstance(cpu_fallback.available('linalg.det'), bool)
 
 
-def test_registry_matches_numpy_linalg():
-    """每个注册项都必须指向真的 ``numpy.linalg`` 实现（防止名字写错/指向自己）。"""
+def test_registry_matches_numpy():
+    """每个注册项都必须指向真的 NumPy 实现（防止名字写错/指向自己）。"""
     assert set(cpu_fallback.FALLBACKS) == set(EXPECTED_FALLBACKS)
-    for key, attr in EXPECTED_FALLBACKS.items():
-        assert cpu_fallback.FALLBACKS[key] is getattr(numpy.linalg, attr), key
+    for key, expected in EXPECTED_FALLBACKS.items():
+        assert cpu_fallback.FALLBACKS[key] is expected, key
 
 
 def test_active_cache_reset():
@@ -192,7 +216,8 @@ def test_uplo_forwarded(monkeypatch, name):
     assert calls[0][2] == {'UPLO': 'U'}
 
 
-@pytest.mark.parametrize('name', sorted(EXPECTED_FALLBACKS))
+@pytest.mark.parametrize(
+    'name', sorted(k for k in EXPECTED_FALLBACKS if k.startswith('linalg.')))
 def test_wiring_name_appears_in_source(name):
     """源码级校验：函数体里确实调用了 ``cpu_fallback.call('<name>')``。
 
@@ -203,6 +228,19 @@ def test_wiring_name_appears_in_source(name):
     source = inspect.getsource(func)
     assert 'cpu_fallback.call({!r}'.format(name) in source, source
     assert 'is_ascend' in source
+
+
+def test_round_wiring_name_appears_in_source():
+    """round 的接线在 Cython（_routines_math._ndarray_round），校验 .pyx 源文件。
+
+    cpdef 函数是 builtin，``inspect.getsource`` 拿不到，只能读 .pyx。
+    """
+    import cupy._core._routines_math as mod
+    pyx = os.path.join(os.path.dirname(os.path.abspath(mod.__file__)),
+                       '_routines_math.pyx')
+    with open(pyx, encoding='utf-8') as f:
+        source = f.read()
+    assert "cpu_fallback.call('math.round'" in source, source
 
 
 def test_cholesky_still_rejects_non_cupy_array(monkeypatch):
@@ -290,6 +328,17 @@ def test_slogdet_matches_numpy(has_npu):
     assert isinstance(sign, cupy.ndarray) and isinstance(logdet, cupy.ndarray)
     numpy.testing.assert_allclose(cupy.asnumpy(sign), exp_sign)
     numpy.testing.assert_allclose(cupy.asnumpy(logdet), exp_logdet, rtol=1e-5)
+
+
+@pytest.mark.parametrize('dtype', [numpy.float32, numpy.float64])
+def test_round_matches_numpy(dtype, has_npu):
+    """aclnnRound 是 half-away-from-zero，numpy 是 banker's rounding（half-to-even）。"""
+    if not has_npu:
+        pytest.skip('需要 NPU 才能数值对拍')
+    # 0.5/1.5/2.5/-0.5/-1.5 全是 .5 边界：banker's rounding 会取偶数
+    data = numpy.array([0.5, 1.5, 2.5, -0.5, -1.5], dtype=dtype)
+    got = cupy.asarray(data).round()
+    numpy.testing.assert_array_equal(cupy.asnumpy(got), numpy.round(data))
 
 
 def test_disable_env_makes_linalg_fail_loudly(monkeypatch, has_npu):
