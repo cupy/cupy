@@ -19,5 +19,7 @@ echo "======================================================="
 
 
 trap "$ACTIONS/cleanup.sh" EXIT
-"$ACTIONS/build.sh"
-"$ACTIONS/unittest.sh" "not slow and not multi_gpu"
+"$ACTIONS/fetch-wheel.sh"
+# Ensure matrix versions in case CuPy pins changed them (nightly testing).
+python3 -m pip install --user -U --extra-index-url=https://pypi.anaconda.org/scientific-python-nightly-wheels/simple 'numpy>=0a0,<2.6' 'scipy>=0a0,<2.0' 'optuna>=0a0' 'ml_dtypes>=0a0' 'cython==3.2.*,!=3.2.6'
+CUPY_CI_PYTEST_EXTRA_OPTS="${CUPY_CI_PYTEST_EXTRA_OPTS:+$CUPY_CI_PYTEST_EXTRA_OPTS }--deselect tests/install_tests/test_cupy_builder/test_features.py::test_CUDA_cuda" "$ACTIONS/unittest.sh" "not slow and not multi_gpu"

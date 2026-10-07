@@ -73,6 +73,8 @@ testpaths = "tests"
 addopts = "--strict-markers"
 markers = [
   "slow", "multi_gpu",
+  # If pytest-timeout is not available
+  "timeout",
   # If pytest-run-parallel is not available
   "parallel_threads", "iterations", "thread_unsafe",
 ]
