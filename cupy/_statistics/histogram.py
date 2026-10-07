@@ -797,7 +797,10 @@ def digitize(x, bins, right=False):
         from cupy.backends.backend import is_ascend
     except ImportError:
         is_ascend = False
-    if is_ascend and bins.size > 1 and bins[0] > bins[-1]:  # 2-scalar sync
+    cond1 = bins.size > 1 and bins[0] > bins[-1] # 2-scalar sync
+    # aclnnSearchSorted produces wrong indices for NaN bins edges
+    cond2 = bins.dtype.kind == 'f' and bool(cupy.isnan(bins).any())
+    if is_ascend and (cond1 or cond2):
         try:
             from cupy._core._ascend import cpu_fallback
         except ImportError:

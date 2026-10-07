@@ -30,6 +30,17 @@ from cupy._core cimport _routines_math as _math
 from cupy._core.core cimport _ndarray_base
 
 
+cdef _ascend_sync():
+    # ASCEND: aclnn launches are async on the default stream; force a
+    # device-wide sync before host-side slicing/reduction reads the
+    # buffer (docs/ascend/Float64Workaround.md async-pipeline-hazard).
+    # Backend-neutral: cudaDeviceSynchronize maps to aclrtSynchronizeDevice
+    # on the Ascend backend. NOTE: default stream only; needs per-stream
+    # sync if user-provided streams must be honored.
+    from cupy.backends.backend.api import runtime as _rt
+    _rt.deviceSynchronize()
+
+
 cdef _ndarray_base _ndarray_max(
         _ndarray_base self, axis, out, dtype, keepdims):
     return _amax(self, axis=axis, out=out, dtype=dtype, keepdims=keepdims)
@@ -271,6 +282,11 @@ cpdef _ndarray_base _median(
     else:
         part.partition(kth, axis=axis)
 
+    # ASCEND: partition falls back to aclnnSort(async) + elementwise_copy,
+    # must sync before slicing / reducing
+    # (docs/ascend/Float64Workaround.md async-pipeline-hazard)
+    _ascend_sync() 
+
     if part.shape == ():
         return part
     if axis is None:
@@ -347,6 +363,10 @@ cpdef _ndarray_base _nanmedian(
         a[mask] = a.dtype.type(numpy.finfo(a.dtype).max)
         n_valid_each = n_reduce_each - mask.sum(axis=-1).astype('int32')
         a = cupy.sort(a, axis=-1)
+
+        # ASCEND: aclnnSort is async, the `take()` below may read `a`'s
+        # stale buffer
+        _ascend_sync() 
 
         # Pickup the median of each reduction row (replaces
         # `_pickup_median_kernel`): gather the l-th / h-th element of every
@@ -462,6 +482,9 @@ cdef _ndarray_base _var(
     # which launch_reduction_op does not support.  Compose the variance from
     # already-registered ops instead: subtract -> in-place square -> sum
     # -> alpha (the C++ aclop_VarCore general op is kept as a fallback).
+    #
+    # ASCEND: aclnnMean is async, the ops below may read `a`'s stale buffer
+    _ascend_sync() 
     d = a - arrmean
     d *= d
     if out is None:
