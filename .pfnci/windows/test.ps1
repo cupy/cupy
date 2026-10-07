@@ -82,13 +82,12 @@ function Main {
     $build_retval = 0
     RunOrDie python -m pip install "numpy==$numpy.*" "scipy==$scipy.*" "Cython==3.2.*,!=3.2.6"
     # TODO(leofang): remove this win.cuda124 carve-out once NVIDIA/cccl#11885
-    # is fixed and a cuda-cccl release ships a Windows build that NVVM-links
-    # cleanly against CTK 12.4.
+    # is fixed and a cuda-cccl release NVVM-links cleanly against CTK 12.4.
     if ($cuda -eq "12.4") {
         # cccl 1.2.1's bitcode trips a duplicate __half(__nv_bfloat16)
-        # symbol when NVVM-linked against CTK 12.4 on Windows. Skip the
-        # install so cuda.compute is unavailable on this lane, matching
-        # linux.cuda124 (which pip-uninstalls cccl in its Dockerfile).
+        # symbol when NVVM-linked against CTK 12.4. Skip the install so
+        # cuda.compute is unavailable on this lane, matching linux.cuda124
+        # (which pip-uninstalls cccl in its Dockerfile).
     } elseif ($cuda.StartsWith("12.")) {
         RunOrDie python -m pip install "cuda-cccl[minimal-sysctk12]>=1.1.1,!=1.2.0"
     } else {
