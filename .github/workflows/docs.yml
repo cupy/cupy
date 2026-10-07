@@ -3,10 +3,10 @@ name: "Docs: Build and publish"
 # Fires after ci.yml finishes building wheels (same chain as flexci.yml).
 # Downloads the py<doc> linux-64 cu13 wheel from the triggering CI run,
 # builds the Sphinx HTML with RTD env vars mimicked, and -- in a separate
-# job with no PR code checked out -- uploads the HTML to RTD via the
-# three-step /api/v3/upload/ REST flow (initiate -> presigned S3 POST ->
-# complete). RTD serves what we uploaded; it does not run a build of its
-# own after .readthedocs.yaml is removed in stage 2 (#10351).
+# job with no PR code checked out -- uploads the HTML to RTD with the
+# readthedocs-upload CLI (pinned PyPI release). RTD serves what we
+# uploaded; it does not run a build of its own after .readthedocs.yaml
+# is removed in stage 2 (#10351).
 
 on:
   workflow_run:
@@ -298,179 +298,53 @@ jobs:
           name: docs-html-${{ needs.build.outputs.suffix }}
           path: ./html
 
-      # Three-step RTD upload per readthedocs/readthedocs-cli's reference
-      # flow:
-      #   1. POST /api/v3/upload/initiate/ -- RTD creates a draft build,
-      #      returns a presigned S3 URL + required form fields + the new
-      #      build id + the resolved version slug.
-      #   2. POST <presigned S3 URL> -- multipart with the fields from
-      #      step 1 and the zip. RTD never sees the token here.
-      #   3. POST /api/v3/upload/complete/ -- mark the build success or
-      #      failed so RTD processes (or discards) it.
-      # Archive layout is dictated by the API: html files under html/**
-      # at the zip root. Non-fatal when the token is unset so stage 1
-      # can land before the secret is wired. All PR-origin values
-      # (SUFFIX, HEAD_SHA, RTD_VERSION_NAME, RTD_VERSION_TYPE) flow via
-      # the env to avoid interpolating `${{ ... }}` into the script.
+      # Publish with the readthedocs-upload CLI (the client behind
+      # readthedocs/upload-action, used directly: the action has no
+      # release tag and tracks git@main, while the PyPI release is a
+      # pinned, immutable artifact). The CLI drives the same
+      # /api/v3/upload/ flow (initiate -> presigned S3 POST -> complete)
+      # and covers what the previous bash implementation hand-rolled: it
+      # retries the S3 POST 3x with backoff on transport errors/5xx,
+      # fails fast on 4xx, POSTs complete(failed) on any error so no
+      # pending build counts against RTD's upload cap, builds the zip
+      # layout from --html itself, and reads the token only from
+      # READTHEDOCS_TOKEN (never argv). The explicit
+      # --version-name/--version-type/--commit flags bypass its GitHub
+      # env inference, which would resolve every workflow_run to
+      # main/branch.
+      - name: Install readthedocs-upload
+        run: python3 -m pip install --user readthedocs-upload==1.0.0a1
+
+      # Non-fatal when the token is unset so stage 1 can land before the
+      # secret is wired. PR-origin values flow via env, not ${{ }}
+      # interpolation into the script.
       - name: Upload HTML to RTD
         env:
-          RTD_API_TOKEN: ${{ secrets.RTD_API_TOKEN }}
+          READTHEDOCS_TOKEN: ${{ secrets.RTD_API_TOKEN }}
           RTD_VERSION_NAME: ${{ needs.build.outputs.rtd_version_name }}
           RTD_VERSION_TYPE: ${{ needs.build.outputs.version_type }}
           HEAD_SHA: ${{ needs.build.outputs.head_sha }}
-          SUFFIX: ${{ needs.build.outputs.suffix }}
           PROMOTE_STABLE: ${{ needs.build.outputs.promote_stable }}
         run: |
-          if [[ -z "${RTD_API_TOKEN}" ]]; then
+          if [[ -z "${READTHEDOCS_TOKEN}" ]]; then
             echo "::warning::RTD_API_TOKEN not set; skipping upload"
             exit 0
           fi
 
-          mkdir -p stage/html
-          cp -a ./html/. stage/html/
-          (cd stage && zip -qr "${RUNNER_TEMP}/build.zip" .)
+          python3 -m readthedocs_cli upload \
+            --project-slug cupy \
+            --html ./html \
+            --version-name "${RTD_VERSION_NAME}" \
+            --version-type "${RTD_VERSION_TYPE}" \
+            --commit "${HEAD_SHA}"
 
-          # Returns 0 on a successful round-trip (initiate 2xx + S3 2xx +
-          # complete 2xx), non-zero otherwise with the error already
-          # logged via ::error::. Safe to call multiple times with
-          # different (name, type) to publish the same zip to the
-          # primary slug and to the `stable` alias.
-          upload_version() {
-            local name="$1"
-            local type="$2"
-            local label="${type}/${name}"
-            local initiate_file="${RUNNER_TEMP}/rtd_initiate_${type}_${name}.json"
-            local s3_file="${RUNNER_TEMP}/rtd_s3_${type}_${name}.txt"
-            local complete_file="${RUNNER_TEMP}/rtd_complete_${type}_${name}.json"
-
-            local payload
-            payload=$(jq -nc \
-              --arg name "${name}" \
-              --arg type "${type}" \
-              --arg commit "${HEAD_SHA}" \
-              '{project: "cupy", version: {name: $name, type: $type, commit: $commit}}')
-
-            local initiate_code
-            initiate_code=$(curl -sS -o "${initiate_file}" -w '%{http_code}' \
-              -X POST \
-              -H "Authorization: Token ${RTD_API_TOKEN}" \
-              -H "Content-Type: application/json" \
-              -d "${payload}" \
-              "https://app.readthedocs.org/api/v3/upload/initiate/")
-            if [[ "${initiate_code}" != 2* ]]; then
-              echo "::error::RTD initiate (${label}) failed (${initiate_code})"
-              cat "${initiate_file}" || true
-              return 1
-            fi
-
-            local build_id upload_url resolved_slug
-            build_id=$(jq -r '.build.id' "${initiate_file}")
-            upload_url=$(jq -r '.upload_url.url' "${initiate_file}")
-            resolved_slug=$(jq -r '.version.slug // ""' "${initiate_file}")
-            if [[ "${build_id}" == "null" || -z "${build_id}" ]]; then
-              echo "::error::RTD initiate (${label}) response missing build.id"
-              cat "${initiate_file}"
-              return 1
-            fi
-
-            # Safety net suggested in review: if an upload of
-            # (main, branch) does NOT resolve to the `latest` alias,
-            # RTD's machine-managed state has drifted (someone edited
-            # it by hand); fail loudly rather than publish a new
-            # /en/main/ public version. Same guard for the stable
-            # alias upload.
-            case "${label}" in
-              branch/main)
-                if [[ "${resolved_slug}" != "latest" ]]; then
-                  echo "::error::upload of main resolved to '${resolved_slug}', expected 'latest' (RTD alias drifted?)"
-                  _rtd_complete "${build_id}" failed "${complete_file}" || true
-                  return 1
-                fi
-                ;;
-              tag/stable)
-                if [[ "${resolved_slug}" != "stable" ]]; then
-                  echo "::error::upload of stable resolved to '${resolved_slug}', expected 'stable' (RTD alias drifted?)"
-                  _rtd_complete "${build_id}" failed "${complete_file}" || true
-                  return 1
-                fi
-                ;;
-            esac
-
-            # Build the field arg list from the presigned URL's fields.
-            # --form-string (vs -F) keeps values literal: `-F` would
-            # reinterpret an `@` or `<` as a file reference and `;` as
-            # a type modifier. AWS field values don't carry those
-            # today, but --form-string is free and future-proof.
-            local -a field_args=()
-            local key value
-            while IFS= read -r key; do
-              value=$(jq -r --arg k "${key}" '.upload_url.fields[$k]' "${initiate_file}")
-              field_args+=("--form-string" "${key}=${value}")
-            done < <(jq -r '.upload_url.fields | keys[]' "${initiate_file}")
-
-            # Retry on transport failures (curl error -> code 000) and
-            # 5xx server errors; stop on 2xx (done) or 4xx (client-side,
-            # won't improve). Matches readthedocs-cli's upload_artifacts
-            # loop (UPLOAD_ATTEMPTS=3, exponential backoff). The
-            # `|| echo 000` fallback keeps a connection reset during
-            # the ~100 MB POST from aborting the function (set -e)
-            # before _rtd_complete ... failed can run; otherwise the
-            # pending build sits against RTD's upload cap.
-            local attempt s3_code=000 delay
-            for attempt in 1 2 3; do
-              s3_code=$(curl -sS -o "${s3_file}" -w '%{http_code}' \
-                -X POST \
-                "${field_args[@]}" \
-                -F "file=@${RUNNER_TEMP}/build.zip;type=application/zip" \
-                "${upload_url}" || echo 000)
-              if [[ "${s3_code}" == 2* ]] || [[ "${s3_code}" == 4* ]]; then
-                break
-              fi
-              if [[ ${attempt} -lt 3 ]]; then
-                delay=$((attempt * 2))
-                echo "::notice::S3 upload (${label}) returned ${s3_code}; retrying in ${delay}s"
-                sleep "${delay}"
-              fi
-            done
-            if [[ "${s3_code}" != 2* ]]; then
-              echo "::error::S3 upload (${label}) failed after ${attempt} attempt(s) (${s3_code})"
-              cat "${s3_file}" || true
-              _rtd_complete "${build_id}" failed "${complete_file}" || true
-              return 1
-            fi
-
-            if ! _rtd_complete "${build_id}" success "${complete_file}"; then
-              return 1
-            fi
-
-            echo "::notice::Uploaded docs-html-${SUFFIX} to RTD build #${build_id} (${label}, slug=${resolved_slug})"
-          }
-
-          # Separate out the complete step so it can both signal the
-          # happy path AND be reused by error-path cleanup. Returns 0
-          # on 2xx, non-zero on anything else -- but a failure here on
-          # the error path is already logged, so the caller discards
-          # with `|| true`.
-          _rtd_complete() {
-            local build_id="$1"
-            local status="$2"
-            local out="$3"
-            local code
-            code=$(curl -sS -o "${out}" -w '%{http_code}' \
-              -X POST \
-              -H "Authorization: Token ${RTD_API_TOKEN}" \
-              -H "Content-Type: application/json" \
-              -d "{\"build\": ${build_id}, \"status\": \"${status}\"}" \
-              "https://app.readthedocs.org/api/v3/upload/complete/" || echo 000)
-            if [[ "${code}" != 2* ]]; then
-              echo "::error::RTD complete (build #${build_id}, status=${status}) failed (${code})"
-              cat "${out}" || true
-              return 1
-            fi
-          }
-
-          upload_version "${RTD_VERSION_NAME}" "${RTD_VERSION_TYPE}"
-
+          # Promote the same HTML to the `stable` alias when this tag is
+          # the highest final vX.Y.Z (decided in the build job).
           if [[ "${PROMOTE_STABLE}" == "true" ]]; then
-            upload_version stable tag
+            python3 -m readthedocs_cli upload \
+              --project-slug cupy \
+              --html ./html \
+              --version-name stable \
+              --version-type tag \
+              --commit "${HEAD_SHA}"
           fi
