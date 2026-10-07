@@ -776,6 +776,19 @@ cpdef _ndarray_base _ndarray_round(_ndarray_base self, decimals, out):
     :meth:`numpy.ndarray.round`
 
     """  # NOQA
+    from cupy.backends.backend import is_ascend
+    if is_ascend:
+        # ASCEND: aclnnRound rounds half-away-from-zero while numpy.round
+        # uses banker's rounding (half-to-even) -> run the whole call on
+        # host (D2H -> numpy.round -> H2D); `out` is written back at the
+        # call site because cpu_fallback returns a fresh device array.
+        from cupy._core._ascend import cpu_fallback
+        if cpu_fallback.active():
+            ret = cpu_fallback.call('math.round', self, decimals)
+            if out is not None:
+                out[...] = ret
+                return out
+            return ret
     if decimals < 0 and issubclass(self.dtype.type, numpy.integer):
         return _round_ufunc_neg_uint(self, -decimals, out=out)
     else:
