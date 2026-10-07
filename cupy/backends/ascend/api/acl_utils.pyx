@@ -1571,7 +1571,7 @@ cdef aclError _launch_custom_ufunc(str opname, dict spec, sequence ins,
     # dtypes（complex/f32）白名单里，会被先拒掉。
     if a_ins and a_ins[0].dtype.kind != 'c':
         if opname == 'ascend_conjugate':
-            return launch_elementwise_func_raw('ascend_copy', ins, outs, [], {}, stream_ptr)
+            return launch_general_func_raw('ascend_copy', ins, outs, [], {}, stream_ptr)
         if opname == 'ascend_imag':
             return launch_general_func_raw('ascend_fill', ins, outs, [0], {}, stream_ptr)
         if opname == 'ascend_angle':
@@ -1616,6 +1616,27 @@ cdef aclError _launch_custom_ufunc(str opname, dict spec, sequence ins,
         ret = aclop_LaunchCustomKernel(
             bin_c, entry_c, out0, out1, in0, in1, n, stream)
     if ret != 0:
+        # fall back to CPU, why not impl in custom kernel?
+        if opname in ('ascend_conjugate', 'ascend_angle', 'ascend_imag'):
+            import cupy as _cupy
+            import numpy as _numpy
+            _in = _cupy.asnumpy(a_ins[0])
+            if opname == 'ascend_conjugate':
+                _res = _numpy.conjugate(_in)
+            elif opname == 'ascend_angle':
+                _res = _numpy.angle(_in)
+            else:
+                _res = _numpy.imag(_in)
+            _res = _numpy.asarray(_res)
+            # write into materialized Out
+            _out_dev = _cupy.asarray(_res)
+            if _out_dev.shape != a_outs[0].shape or _out_dev.dtype != a_outs[0].dtype:
+                _out_dev = _out_dev.astype(a_outs[0].dtype).rehape(a_outs[0].shape)
+            _cupy.copyto(a_outs[0], _out_dev)
+            if _wb_pairs:
+                for _orig, _mat in _wb_pairs:
+                    _write_acl_out_to_view(_mat, _orig, stream_ptr)
+            return 0
         raise RuntimeError(f'custom AscendC kernel {opname!r} launch failed: {ret}')
     # out view write-back：kernel 直接写物化副本（线性布局），成功后写回原视图。
     if _wb_pairs:

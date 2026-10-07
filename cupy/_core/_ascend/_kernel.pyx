@@ -28,6 +28,13 @@ from cupy.backends.backend.api cimport runtime
 from cupy.backends.ascend.api.acl_utils cimport launch_general_func
 from cupy._core._ascend import cpu_fallback as _cpu_f64
 
+# ASCEND: unsigned int and narrow int, bool cast
+_UINT_PROMOTE_CHARS = frozenset('BHILQbh?')
+_UINT_PROMOTE_EXEMPT = frozenset({
+'ascend_copy', 'ascend_cast', 'cupy_copy', 'cupy_cast'
+'ascend_astype', 'cupy_astype'
+})
+
 cdef inline size_t _get_stream(stream) except *:
     if stream is None:
         return stream_module.get_current_stream_ptr()
@@ -993,6 +1000,30 @@ cdef class ufunc:
             _cpu_f64.run_elementwise_host(
                 self.name, inout_args, out_args, kwargs)
             return ret
+
+        # ASCEND: aclnn ops does not support unsigned integer
+        _needs_uint_promote = False
+        if self.name not in _UINT_PROMOTE_EXEMPT:
+            for _x in inout_args:
+                if isinstance(_x, _ndarray_base) and _x.dtype.char in _UINT_PROMOTE_CHARS:
+                    _needs_uint_promote = True
+                    break
+        if _needs_uint_promote:
+            _type_list = []
+            for _x in inout_args:
+                if isinstance(_x, _ndarray_base):
+                    _type_list.append(_x.dtype)
+                elif isinstance(_x, _scalar.CScalar):
+                    _type_list.append(_x.get_numpy_type())
+            if _type_list:
+                _result_dt = numpy.result_type(*_type_list)
+                # if result_type gives complex/float, cast uint to result dtype directly
+                _new_args = list(inout_args)
+                for _i in range(len(inout_args)):
+                    _x = _new_args[_i]
+                    if isinstance(_x, _ndarray_base) and _x.dtype.char in _UINT_PROMOTE_CHARS:
+                        _new_args[_i] = _x.astype(_result_dt)
+
         launch_general_func(self.name, list(inout_args), list(out_args), pos_args, kwargs, s)
 
         return ret
