@@ -9,25 +9,23 @@ import cupy
 from cupy import _core
 
 
-def _ascend_host_fallback(name, *args, **kwargs):
-    """ASCEND: 把整个公开调用搬到 host（D2H -> NumPy -> H2D）。
+# 非 Ascend 打包可能不含 _ascend 包，模块级守卫导入
+try:
+    from cupy._core._ascend import cpu_fallback
+except ImportError:      # pragma: no cover
+    cpu_fallback = None
 
-    返回 fallback 结果；None 表示继续设备路径（非 Ascend / 未启用
-    cpu_fallback -> 按约定响亮失败）。
+
+def _ascend_host_fallback(name, *args, **kwargs):
+    """ASCEND: 软派发 host fallback（D2H -> NumPy -> H2D）。
+
+    判定（Ascend 后端 / fallback 开关 / 注册表查找）统一在
+    cpu_fallback.maybe_call；这里只处理本模块不可用的情形。
+    返回 fallback 结果；None 表示继续设备路径。
     """
-    try:
-        from cupy.backends.backend import is_ascend
-    except ImportError:
+    if cpu_fallback is None:
         return None
-    if not is_ascend:
-        return None
-    try:
-        from cupy._core._ascend import cpu_fallback
-    except ImportError:
-        return None
-    if not cpu_fallback.active():
-        return None
-    return cpu_fallback.call(name, *args, **kwargs)
+    return cpu_fallback.maybe_call(name, *args, **kwargs)
 
 
 def corrcoef(a, y=None, rowvar=True, bias=None, ddof=None, *, dtype=None):

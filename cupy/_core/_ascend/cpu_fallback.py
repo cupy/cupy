@@ -58,6 +58,7 @@ __all__ = [
     'active',
     'available',
     'call',
+    'maybe_call',
     'reset_cache',
     'run',
     'to_device',
@@ -72,6 +73,41 @@ def _host_in1d(ar1: Any, ar2: Any, assume_unique: bool = False,
     """numpy.in1d 的 ravel 语义；用 numpy.isin 规避 numpy 2.x 的弃用告警。"""
     return numpy.isin(
         ar1, ar2, assume_unique=assume_unique, invert=invert).ravel()
+
+
+#: 归约内核名（去 cupy_ 前缀）-> NumPy 实现。服务 **f64-cpu 模式**的
+#: ``run_reduction_host``（CUPY_ASCEND_FLOAT64_MODE=cpu 时整 op 搬 host），
+#: 与 _kernel.pyx 的 `.reduce()` 名字映射（cupy_max -> array.max）同一约定。
+#: 与下方 :data:`FALLBACKS` 是**两个注册表**：key 域不同（内核名 vs
+#: ``<模块>.<公开名>``）、调用契约不同（固定 (a, axis, keepdims, dtype) vs
+#: 公开 API kwargs 透传），故不能合并；但重叠项（var/std/...）统一引用
+#: 本表，保证 value 单一来源不漂移。
+_REDUCTION_HOST_MAP: Dict[str, Callable[..., Any]] = {
+    'sum': numpy.sum,
+    'prod': numpy.prod,
+    'sum_with_dtype': numpy.sum,
+    'prod_with_dtype': numpy.prod,
+    'max': numpy.max,
+    'min': numpy.min,
+    'amax': numpy.amax,
+    'amin': numpy.amin,
+    'argmax': numpy.argmax,
+    'argmin': numpy.argmin,
+    'mean': numpy.mean,
+    'var': numpy.var,
+    'std': numpy.std,
+    'nanmax': numpy.nanmax,
+    'nanmin': numpy.nanmin,
+    'nanmean': numpy.nanmean,
+    'nanvar': numpy.nanvar,
+    'nanstd': numpy.nanstd,
+    'nanargmax': numpy.nanargmax,
+    'nanargmin': numpy.nanargmin,
+    'nansum': numpy.nansum,
+    'nansum_with_dtype': numpy.nansum,
+    'nanprod': numpy.nanprod,
+    'nanprod_with_dtype': numpy.nanprod,
+}
 
 
 #: 算子名 -> host 端 NumPy 实现。
@@ -114,8 +150,8 @@ FALLBACKS: Dict[str, Callable[..., Any]] = {
     'statistics.average': numpy.average,
     # cupy._statistics.order's ptp/nanmin/nanmax aclnn reduction does not support some dtype
     # ret code 500003, not reliable, so use cpu host fallback
-    'statistics.nanmax': numpy.nanmin,
-    'statistics.nanmin': numpy.nanmax,
+    'statistics.nanmax': numpy.nanmax,
+    'statistics.nanmin': numpy.nanmin,
     'statistics.ptp': numpy.ptp,
 
     # cupy._statistics.histogram：bincount 的 aclnnBincount 不收 uint16/32/64
@@ -230,7 +266,7 @@ def to_numpy(value: Any) -> Any:
     cupy = _cupy()
     if isinstance(value, cupy.ndarray):
         return cupy.asnumpy(value)
-    if isinstance(value, (list, tuple))):
+    if isinstance(value, (list, tuple)):
         return type(value)(to_numpy(item) for item in value)
     return value
 
@@ -284,6 +320,20 @@ def call(name: str, *args: Any, **kwargs: Any) -> Any:
     return run(func, *args, **kwargs)
 
 
+def maybe_call(name: str, *args: Any, **kwargs: Any) -> Any:
+    """:func:`call` 的软派发版：fallback 不可用时返回 ``None`` 而不抛错。
+
+    供公开 API 的接线点（``cupy/_statistics`` / ``cupy/_logic`` 等）使用：
+    返回 ``None`` 表示继续设备路径（非 Ascend 后端 / fallback 被环境变量
+    关闭）；否则返回 host 计算结果。后端判断走 :func:`active`（含
+    ``is_ascend`` 缓存），注册名未知仍响亮 ``KeyError`` —— 接线对账
+    错误应当场暴露，而不是静默走设备路径。
+    """
+    if not active():
+        return None
+    return call(name, *args, **kwargs)
+
+
 # ---------------------------------------------------------------------------
 # float64 / complex128 CPU fallback（三态模式）
 #
@@ -310,36 +360,6 @@ LEGACY_F32_ENV = 'CUPY_ASCEND_ENABLE_FLOAT64_TO_FLOAT32'
 F64_DTYPES = frozenset('dD')
 
 _f64_mode_cache: Optional[str] = None
-
-#: 归约名（去 cupy_ 前缀）-> NumPy 实现。与 _kernel.pyx 的
-#: `.reduce()` 名字映射（cupy_max -> array.max）同一约定。
-_REDUCTION_HOST_MAP: Dict[str, Callable[..., Any]] = {
-    'sum': numpy.sum,
-    'prod': numpy.prod,
-    'sum_with_dtype': numpy.sum,
-    'prod_with_dtype': numpy.prod,
-    'max': numpy.max,
-    'min': numpy.min,
-    'amax': numpy.amax,
-    'amin': numpy.amin,
-    'argmax': numpy.argmax,
-    'argmin': numpy.argmin,
-    'mean': numpy.mean,
-    'var': numpy.var,
-    'std': numpy.std,
-    'nanmax': numpy.nanmax,
-    'nanmin': numpy.nanmin,
-    'nanmean': numpy.nanmean,
-    'nanvar': numpy.nanvar,
-    'nanstd': numpy.nanstd,
-    'nanargmax': numpy.nanargmax,
-    'nanargmin': numpy.nanargmin,
-    'nansum': numpy.nansum,
-    'nansum_with_dtype': numpy.nansum,
-    'nanprod': numpy.nanprod,
-    'nanprod_with_dtype': numpy.nanprod,
-}
-
 
 def f64_mode() -> str:
     """返回当前 float64 处理模式：``'off'`` / ``'float32'`` / ``'cpu'``。

@@ -12,7 +12,7 @@ from cupy import _util
 
 
 def _ascend_set_host_fallback(name, kernels, *args, **kwargs):
-    """Set-logic host fallback for the Ascend backend.
+    """Set-logic host fallback for the Ascend backend (set ops 专用).
 
     in1d/intersect1d/setxor1d are built on raw-CUDA ElementwiseKernels
     (``cupy_exists_kernel``, ``cupy_exists_and_searchsorted_kernel``,
@@ -21,6 +21,11 @@ def _ascend_set_host_fallback(name, kernels, *args, **kwargs):
     missing from the registry, run the whole public call on host via
     cpu_fallback (D2H -> NumPy -> H2D) instead of failing deep in the
     dispatcher with a KeyError.
+
+    与通用软派发 ``cpu_fallback.maybe_call`` 的分工：后端/开关/注册表
+    查找集中在 maybe_call；这里只保留 set ops 特有的「按调用点依赖的
+    设备内核探测是否回退」策略（kernel 列表是各函数自己的知识，无法
+    上收）。``kernels=None`` 表示无条件回退（如 union1d）。
 
     Returns the fallback result, or None when the caller should proceed
     with the normal device path (op registered, or backend not Ascend).
@@ -31,19 +36,14 @@ def _ascend_set_host_fallback(name, kernels, *args, **kwargs):
         return None
     # NB: cannot use the builtin all() here — it is shadowed by cupy.all
     # in this module namespace.
-    for k in kernels:
-        if not cpu_fallback.acl_ufunc_registered(k):
-            break
-    else:
-        return None
-    if not cpu_fallback.active():
-        return None
-    return cpu_fallback.call(name, *args, **kwargs)
+    if kernels:
+        for k in kernels:
+            if not cpu_fallback.acl_ufunc_registered(k):
+                break
+        else:
+            return None
+    return cpu_fallback.maybe_call(name, *args, **kwargs)
 
-
-def _np_union1d(arr1, arr2):
-    import numpy as _np
-    return _np.union1d(arr1, arr2)
 
 _setxorkernel = cupy._core.ElementwiseKernel(
     'raw T X, int64 len',
@@ -301,6 +301,12 @@ def setdiff1d(ar1, ar2, assume_unique=False):
     numpy.setdiff1d
 
     """
+    from cupy.backends.backend import is_ascend
+    if is_ascend:
+        ret = _ascend_set_host_fallback('logic.setdiff1d', ('ascend_unique',), ar1, ar2,
+                                        assume_unique=assume_unique)
+        if ret is not None:
+            return ret
     if assume_unique:
         ar1 = cupy.ravel(ar1)
     else:
@@ -376,5 +382,8 @@ def union1d(arr1, arr2):
     # TODO: this conclusion should be reviewed
     from cupy.backends.backend import is_ascend
     if is_ascend:
-        return _ascend_set_host_fallback(_np_union1d, arr1, arr2)
+        ret = _ascend_set_host_fallback(
+            'logic.union1d', None, arr1, arr2)
+        if ret is not None:
+            return ret
     return cupy.unique(cupy.concatenate((arr1, arr2), axis=None))

@@ -11,26 +11,23 @@ from cupy._core import _fusion_thread_local
 from cupy._logic import content
 
 
-def _ascend_host_fallback(name, *args, **kwargs):
-    """ASCEND: 把整个公开调用搬到 host（D2H -> NumPy -> H2D）。
+# 非 Ascend 打包可能不含 _ascend 包，模块级守卫导入
+try:
+    from cupy._core._ascend import cpu_fallback
+except ImportError:      # pragma: no cover
+    cpu_fallback = None
 
-    aclnn 归约族对部分 dtype 触发 ret code 500003（结果不可靠），
-    nanmin/nanmax/ptp 整调用走 host。返回 fallback 结果；None 表示
-    继续设备路径（非 Ascend / 未启用 cpu_fallback -> 按约定响亮失败）。
+
+def _ascend_host_fallback(name, *args, **kwargs):
+    """ASCEND: 软派发 host fallback（D2H -> NumPy -> H2D）。
+
+    判定（Ascend 后端 / fallback 开关 / 注册表查找）统一在
+    cpu_fallback.maybe_call；这里只处理本模块不可用的情形。
+    返回 fallback 结果；None 表示继续设备路径。
     """
-    try:
-        from cupy.backends.backend import is_ascend
-    except ImportError:
+    if cpu_fallback is None:
         return None
-    if not is_ascend:
-        return None
-    try:
-        from cupy._core._ascend import cpu_fallback
-    except ImportError:
-        return None
-    if not cpu_fallback.active():
-        return None
-    return cpu_fallback.call(name, *args, **kwargs)
+    return cpu_fallback.maybe_call(name, *args, **kwargs)
 
 
 def amin(a, axis=None, out=None, keepdims=False):
@@ -227,17 +224,13 @@ def _quantile_unchecked(a, q, axis=None, out=None,
     # this helper. Note the fallback re-does the sort on host, so it suits
     # small/medium inputs.
     if method in ('linear', 'midpoint'):
-        try:
-            from cupy._core._ascend import cpu_fallback
-        except ImportError:
-            cpu_fallback = None
-        if cpu_fallback is not None and cpu_fallback.active():
-            ret = cpu_fallback.call(
-                'statistics.quantile', a, q, axis=axis, out=out,
-                overwrite_input=overwrite_input, method=method,
-                keepdims=keepdims)
+        ret = _ascend_host_fallback(
+            'statistics.quantile', a, q, axis=axis, out=out,
+            overwrite_input=overwrite_input, method=method,
+            keepdims=keepdims)
+        if ret is not None:
             if overwrite_input:
-                # cpu fallback an not change inut inplace
+                # cpu fallback cannot change input inplace
                 # numpy semantics: set zero for the defined input
                 a[...] = 0
             return ret

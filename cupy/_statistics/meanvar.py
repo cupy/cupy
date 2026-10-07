@@ -7,6 +7,20 @@ import cupy
 from cupy._core import _routines_statistics as _statistics
 
 
+# 非 Ascend 打包可能不含 _ascend 包，模块级守卫导入
+try:
+    from cupy._core._ascend import cpu_fallback
+except ImportError:      # pragma: no cover
+    cpu_fallback = None
+
+
+def _maybe_host_fallback(name, *args, **kwargs):
+    """ASCEND: 软派发 host fallback；判定与派发统一在 cpu_fallback.maybe_call。"""
+    if cpu_fallback is None:
+        return None
+    return cpu_fallback.maybe_call(name, *args, **kwargs)
+
+
 def _ascend_complex_to_host(name, a, *args, _force_host=False, **kwargs):
     """ASCEND: aclnn 的 var/std/nanmedian 不收 complex 输入（设备端报错），
     complex dtype 时把整个调用搬到 host（NumPy 语义，D2H -> NumPy -> H2D）。
@@ -15,23 +29,11 @@ def _ascend_complex_to_host(name, a, *args, _force_host=False, **kwargs):
     权重 dtype 自行决定是否回退的场景使用。
 
     返回 fallback 结果；None 表示继续设备路径（非 Ascend / 非 complex /
-    cpu_fallback 被环境变量关闭 -> 按既有约定响亮失败）。
+    cpu_fallback 被环境变量关闭）。
     """
-    try:
-        from cupy.backends.backend import is_ascend
-    except ImportError:
+    if a.dtype.kind != 'c' and not _force_host:
         return None
-    if not is_ascend:
-        return None
-    if not _force_host and a.dtype.kind != 'c':
-        return None
-    try:
-        from cupy._core._ascend import cpu_fallback
-    except ImportError:
-        return None
-    if not cpu_fallback.active():
-        return None
-    return cpu_fallback.call(name, a, *args, **kwargs)
+    return _maybe_host_fallback(name, a, *args, **kwargs)
 
 
 def median(a, axis=None, out=None, overwrite_input=False, keepdims=False):
