@@ -42,8 +42,9 @@ def _check_hermitian(a, n):
     """Cheap probabilistic Hermitian check with one fixed probe vector z:
     compare a @ z against a^H z = conj(a.T @ conj(z)) (a.T is a free view
     for dense and for CSR<->CSC). The Lanczos recurrence assumes a Hermitian
-    operator; a non-Hermitian input silently yields invalid results (NaN /
-    overflow Ritz values, gh-9019) -- warn instead of returning garbage.
+    operator; a non-Hermitian input either yields invalid results or trips
+    the breakdown guard, which reports lost orthogonality and names remedies
+    that cannot help (gh-9019) -- warn so the cause is stated first.
     Matrices Hermitian up to roundoff pass (sqrt(eps) relative tolerance).
     LinearOperator inputs cannot be probed cheaply and are trusted, matching
     SciPy. Cost: two matvecs, negligible next to the solve."""
@@ -60,7 +61,8 @@ def _check_hermitian(a, n):
         warnings.warn(
             'eigsh assumes a Hermitian operator, but the input appears '
             'non-Hermitian (||A z - A^H z|| = {:.3e} vs ||A z|| = {:.3e} '
-            'for a probe vector z); results will be invalid'.format(
+            'for a probe vector z); the result will be invalid, or the '
+            'Lanczos recurrence will break down'.format(
                 diff, nrm), UserWarning)
 
 
