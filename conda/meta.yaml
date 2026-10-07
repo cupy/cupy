@@ -1,0 +1,96 @@
+{% set version = load_file_regex(
+       load_file="cupy/_version.py",
+       regex_pattern="__version__ = ['\"]([^'\"]+)['\"]").group(1) %}
+
+# Conda packaging for the Ascend/CANN backend of the cupy fork.
+#
+# Naming mirrors the wheel scheme in setup.py (`numpy-ascend-cann85` /
+# `numpy-ascend-cann90`): CANN release trains are mutually ABI-incompatible
+# (library sets are re-selected per train, see
+# install/cupy_builder/features/ascend.py), so each train gets its own
+# conda package name instead of a build-string-only distinction.
+# The importable packages stay `cupy` / `cupyx` / `cupy_backends`.
+#
+# CANN itself is consumed as a conda package, so the recipe can declare it
+# as a real host/run dependency and inherit its activate scripts
+# (ASCEND_HOME_PATH / LD_LIBRARY_PATH) both at build and run time.
+#
+# Channel notes (verified 2026-10-07):
+# * https://conda.anaconda.org/ascend      -> cann-toolkit / cann-950-ops
+#   (9.0.0 / 9.0.1 available; this is the CANN 9.0.1 pair used here)
+# * https://repo.huaweicloud.com/ascend/repos/conda
+#   -> ascend-cann-toolkit / ascend-cann-950-ops (toolkit has 9.0.1, but
+#   cann-950-ops only from 9.1.0; NOT usable for a 9.0-train pin)
+#
+# Build with:
+#   conda build conda/ --output-folder dist/conda \
+#       -c https://conda.anaconda.org/ascend -c defaults
+# (pass the ascend channel explicitly; do NOT rely on the channel *name*
+# "ascend", which is ambiguous between the two hosts above).
+
+package:
+  name: numpy-ascend-cann90
+  version: "{{ version }}"
+
+source:
+  path: ..
+
+build:
+  number: 0
+  skip: true  # [win or osx]
+  script_env:
+    - CUPY_INSTALL_USE_ASCEND=1
+    # Allow an externally-configured CANN tree to win over the conda
+    # cann-toolkit's activate scripts (e.g. system /usr/local/Ascend).
+    - ASCEND_HOME_PATH
+
+requirements:
+  build:
+    - {{ compiler('c') }}
+    - {{ compiler('cxx') }}
+  host:
+    - python
+    - pip
+    - setuptools >=77
+    - wheel
+    - cython >=3,<3.2
+    - fastrlock >=0.5
+    - numpy >=2.0,<2.6
+    # CANN 9.0 train: toolkit (compiler/runtime libs) + ops packages,
+    # published as cann-* on conda.anaconda.org/ascend (see channel notes
+    # above). cann-toolkit's activate.d exports ASCEND_HOME_PATH /
+    # LD_LIBRARY_PATH.
+    - cann-toolkit >=9.0.1,<9.1.0a0
+    - cann-950-ops >=9.0.1,<9.1.0a0
+  run:
+    - python
+    - numpy >=1.24,<2.6  # see cupy #4773
+    - fastrlock >=0.5
+    # The compiled extensions link CANN's lib64 directly; keep the same
+    # 9.0 train at run time. NOTE: `<9.1.0a0` (not `<9.1`) — conda treats
+    # "9.1.0.beta.x" as a prerelease satisfying "<9.1", which would pull
+    # the 9.1 train into a 9.0-built package.
+    - {{ pin_compatible('cann-toolkit', max_pin='x.x') }}
+    - {{ pin_compatible('cann-950-ops', max_pin='x.x') }}
+
+test:
+  imports:
+    - cupy
+    - cupyx
+    - cupy_backends
+  commands:
+    # L3 smoke: registry introspection must work without an NPU device.
+    - python -c "import cupy; print(cupy.__version__); from cupy.backends.ascend.api import acl_utils; print(len(acl_utils.py_list_acl_ufuncs()), 'aclnn ops registered')"
+
+about:
+  home: https://github.com/qingfengxia/numpy-ascend
+  license: MIT
+  license_file: LICENSE
+  summary: "NumPy & SciPy for Ascend NPU (CuPy-compatible), built against CANN 9.0"
+  description: |
+    CuPy v14 fork ported to Huawei Ascend NPU via CANN's aclnn operator
+    library. Import package remains `cupy`, so existing CuPy code runs on
+    the NPU unchanged. This build targets the CANN 9.0 release train and
+    requires `cann-toolkit` / `cann-950-ops` conda packages at run time.
+  doc_url: https://github.com/qingfengxia/numpy-ascend/tree/ascend/docs
+  dev_url: https://github.com/qingfengxia/numpy-ascend
