@@ -65,12 +65,12 @@ cdef _ndarray_setitem(_ndarray_base self, slices, value):
     if isinstance(value, _ndarray_base):
         value = _squeeze_leading_unit_dims(value)
     from cupy.backends.backend import is_ascend
-    if is_ascend:
+    if is_ascend and isinstance(slices, _ndarray_base) and slices.dtype == numpy.bool_:
         # ASCEND: boolean mask setitem (a[mask] = c) is unreliable
         # fallback to CPU
         import cupy as _cp
         host = _cp.asnumpy(self)
-        mask = _cp.asarray(slices)
+        mask = _cp.asnumpy(slices)
         if isinstance(value, _ndarray_base):
             host[mask] = _cp.asnumpy(value)
         else:

@@ -11,12 +11,12 @@ cdef _ndarray_base _ascend_all_any(_ndarray_base a, axis, out, keepdims,
     import cupy
     import numpy
 
-    nz = cupy.count_zero(a != 0, axis=axis)
+    nz = cupy.count_nonzero(a != 0, axis=axis)
     if keepdims:
         if axis is not None:
             axes = axis if isinstance(axis, tuple) else (axis,)
             for ax in axes:
-                nz = cupy.extend_dims(nz, ax)
+                nz = cupy.expand_dims(nz, ax)
         else:
             # axis is None + keepdims: numpy keeps ALL dims as size-1
             # e.g. (1,3, 4) -> (1, 1, 1)
