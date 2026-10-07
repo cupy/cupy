@@ -33,9 +33,6 @@ _UINT32_MAX = 0xffffffff
 _UINT64_MAX = 0xffffffffffffffff
 
 
-_ascend_rand_ops_available = None
-
-
 def _ascend_rand_ops_ok():
     """Runtime feature check: is the aclnn_rand family compiled in?
 
@@ -45,15 +42,11 @@ def _ascend_rand_ops_ok():
     cupy.random entry point fails here with an actionable error instead of
     a bare "no implementation registered" KeyError deep in the dispatcher.
     """
-    global _ascend_rand_ops_available
-    if _ascend_rand_ops_available is None:
-        try:
-            from cupy.backends.ascend.api import acl_utils
-            _ascend_rand_ops_available = acl_utils.py_is_acl_ufunc_registered(
-                'ascend_random_uniform')
-        except ImportError:
-            _ascend_rand_ops_available = False
-    return _ascend_rand_ops_available
+    try:
+        from cupy._core._ascend import cpu_fallback
+    except ImportError:
+        return False
+    return cpu_fallback.acl_ufunc_registered('ascend_random_uniform')
 
 
 def _ascend_random_fill(opname, out, args):

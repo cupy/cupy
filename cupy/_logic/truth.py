@@ -11,23 +11,6 @@ from cupy import _util
 # needed at call time).
 
 
-_ascend_kernel_cache: dict = {}
-
-
-def _ascend_kernel_registered(name):
-    """True if `name` has an aclnn registration in the Ascend dispatcher."""
-    if name not in _ascend_kernel_cache:
-        try:
-            from cupy.backends.ascend.api import acl_utils
-            _ascend_kernel_cache[name] = (
-                acl_utils.py_is_acl_ufunc_registered(name))
-        except Exception:
-            # non-Ascend backend (acl_utils absent) or older build without
-            # the introspection API -> treat as not registered
-            _ascend_kernel_cache[name] = False
-    return _ascend_kernel_cache[name]
-
-
 def _ascend_set_host_fallback(name, kernels, *args, **kwargs):
     """Set-logic host fallback for the Ascend backend.
 
@@ -42,21 +25,25 @@ def _ascend_set_host_fallback(name, kernels, *args, **kwargs):
     Returns the fallback result, or None when the caller should proceed
     with the normal device path (op registered, or backend not Ascend).
     """
-    # NB: cannot use the builtin all() here — it is shadowed by cupy.all
-    # in this module namespace.
-    for k in kernels:
-        if not _ascend_kernel_registered(k):
-            break
-    else:
-        return None
     try:
         from cupy._core._ascend import cpu_fallback
     except ImportError:
+        return None
+    # NB: cannot use the builtin all() here — it is shadowed by cupy.all
+    # in this module namespace.
+    for k in kernels:
+        if not cpu_fallback.acl_ufunc_registered(k):
+            break
+    else:
         return None
     if not cpu_fallback.active():
         return None
     return cpu_fallback.call(name, *args, **kwargs)
 
+
+def _np_union1d(arr1, arr2):
+    import numpy as _np
+    return _np.union1d(arr1, arr2)
 
 _setxorkernel = cupy._core.ElementwiseKernel(
     'raw T X, int64 len',

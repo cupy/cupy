@@ -54,6 +54,7 @@ import numpy
 __all__ = [
     'DISABLE_ENV',
     'FALLBACKS',
+    'acl_ufunc_registered',
     'active',
     'available',
     'call',
@@ -143,9 +144,34 @@ def active() -> bool:
 
 
 def reset_cache() -> None:
-    """清掉 :func:`active` 的后端判断缓存（环境变量不缓存）。"""
+    """清掉 :func:`active` 与 :func:`acl_ufunc_registered` 的缓存（环境变量不缓存）。"""
     global _ASCEND
     _ASCEND = None
+    _ACL_UFUNC_CACHE.clear()
+
+
+#: :func:`acl_ufunc_registered` 的探测缓存。aclnn 注册表在 acl_utils 模块
+#: 初始化时静态写入（构建期决定），运行期不会变化，因此可安全缓存。
+_ACL_UFUNC_CACHE: Dict[str, bool] = {}
+
+
+def acl_ufunc_registered(name: str) -> bool:
+    """``name`` 是否已注册进 Ascend aclnn 派发表（结果缓存）。
+
+    即探测 ``acl_utils.py_is_acl_ufunc_registered``：非 Ascend 后端、
+    ``acl_utils`` 未编译或旧构建没有该内省 API 时一律按"未注册"处理。
+    用于"设备路径是否可用"的接线判断：已注册则设备直发，否则走
+    :func:`call` / :func:`run` 的 host 路径，避免派发器深处的裸 ``KeyError``。
+    """
+    if name not in _ACL_UFUNC_CACHE:
+        try:
+            from cupy.backends.ascend.api import acl_utils
+            ok = bool(acl_utils.py_is_acl_ufunc_registered(name))
+        except Exception:
+            # 非 Ascend 后端（acl_utils 不存在）或旧构建没有内省 API
+            ok = False
+        _ACL_UFUNC_CACHE[name] = ok
+    return _ACL_UFUNC_CACHE[name]
 
 
 def available(name: str) -> bool:

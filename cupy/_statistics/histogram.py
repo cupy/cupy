@@ -231,14 +231,16 @@ def _ascend_histogram(x, weights, bins, range, density):
         return None
 
     try:
-        from cupy.backends.ascend.api import acl_utils
-        histc_available = acl_utils.py_is_acl_ufunc_registered('ascend_histc')
+        from cupy._core._ascend import cpu_fallback
     except ImportError:
-        histc_available = False
+        cpu_fallback = None
+    histc_available = (cpu_fallback is not None
+                       and cpu_fallback.acl_ufunc_registered('ascend_histc'))
 
     if histc_available and weights is None and numpy.ndim(bins) == 0 \
             and x.dtype.char in 'efbhilqB':
         # uniform-bin, unweighted, Histc-supported dtype -> device path
+        from cupy.backends.ascend.api import acl_utils
         bin_edges, n_equal_bins, first_edge, last_edge = \
             _get_bin_edges(x, bins, range)
         y = cupy.zeros((n_equal_bins,), dtype=cupy.int64)
@@ -658,13 +660,15 @@ def _ascend_bincount(x, weights, minlength, size):
                   or weights.dtype.kind in 'bif'
                   or weights.dtype.char == 'B')
     try:
-        from cupy.backends.ascend.api import acl_utils
-        bincount_available = acl_utils.py_is_acl_ufunc_registered(
-            'ascend_bincount')
+        from cupy._core._ascend import cpu_fallback
     except ImportError:
-        bincount_available = False
+        cpu_fallback = None
+    bincount_available = (cpu_fallback is not None
+                          and cpu_fallback.acl_ufunc_registered(
+                              'ascend_bincount'))
 
     if bincount_available and x_ok and weights_ok:
+        from cupy.backends.ascend.api import acl_utils
         out_dtype = numpy.intp if weights is None else numpy.float64
         y = cupy.zeros((size,), dtype=out_dtype)
         ins = (x,) if weights is None else (x, weights)
