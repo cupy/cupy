@@ -554,11 +554,30 @@ def svd(a, full_matrices=True, compute_uv=True):
             raise NotImplementedError(
                 'cupy.linalg.svd: batched (ndim > 2) input is not supported '
                 'on Ascend yet (aclnnSvd is 2-D only).')
+        # aclnnSvd aborts on empy matrix
+        from cupy._core._ascend import cpu_fallback
+        if a.size == 0 or min(a.shape[-2:] == 0):
+            return cpu_fallback.call('linalg.svd', a, full_matrices=full_matrices,
+                                     compute_uv=compute_uv)
         dtype, uv_dtype = _util.linalg_common_type(a)
         s_dtype = uv_dtype.char.lower()
         from cupy._core import _routines_linalg as _linalg
-        s = _linalg._ascend_svd(
-            a.astype(dtype, copy=False), full_matrices, compute_uv)
+        try:
+            s_host = _linalg._ascend_svd(
+                a.astype(dtype, copy=False), full_matrices, compute_uv=False)
+        except RuntimeError:
+            # aclnnSvd accasionlly returns ret=500003 on certain shape/dtype
+            # combination on CANN 9.0 (e.g. polyfit's reduced vandermonde)
+            # fallback to CPU
+            host_a = cupy.asnumpy(a.astype(dtype, copy=False))
+            if not compute_uv:
+                s_host = numpy.linalg.svd(host_a, )
+                return cupy.asarray(s_host).astype(s_dtype, copy=False)
+            u_host, s_host, vh_host = numpy.linalg.svd(host_a, full_matrices, compute_uv=True)
+            return (cupy.asarray(u_host).astype(uv_dtype, copy=False),
+                    cupy.asarray(s_host).astype(s_dtype, copy=False),
+                    cupy.asarray(vh_host).astype(uv_dtype, copy=False))
+
         if not compute_uv:
             return s[0].astype(s_dtype, copy=False)
         u, sigma, v = s   # aclnnSvd gives U and V; numpy wants U and Vh

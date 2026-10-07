@@ -196,7 +196,12 @@ def lstsq(a, b, rcond=None):
     if s.size > 0:
         cutoff = rcond * s.max()
         sing_vals = s <= cutoff
-        s1[sing_vals] = 0
+        from cupy.backends.backend import is_ascend
+        if is_ascend:
+            keep = (~sing_vals).astype(s1.dtype)
+            s1 = s1 * keep
+        else:
+            s1[sing_vals] = 0
         rank -= sing_vals.sum(dtype=numpy.int32)
 
     # Solve the least-squares solution
