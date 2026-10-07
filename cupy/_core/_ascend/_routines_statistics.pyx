@@ -69,6 +69,13 @@ cdef _ndarray_base _ndarray_mean(
         elif self.dtype.char == 'e':
             dtype_sum = numpy.float32
             dtype_out = numpy.float16
+        # ASCEND: cast back result(out) complex and float
+        elif self.dtype.char == 'f':
+            dtype_sum = self.dtype
+            dtype_out = self.dtype
+        elif self.dtype.char == 'c':
+            dtype_sum = self.dtype
+            dtype_out = self.dtype
         # ASCEND: aclnnMean() does not promote the integer sum result to
         # float before division.  Cast the input to the accumulation dtype
         # first, then reduce with dtype=None (slower but robust).
@@ -81,6 +88,12 @@ cdef _ndarray_base _ndarray_mean(
         dtype_sum = numpy.float64
         result = _mean(
             self, axis=axis, dtype=dtype_sum, out=out, keepdims=keepdims)
+    elif self.dtype.kind in 'iub' and numpy.dtype(dtype).kind in 'fc':
+        # ASCEND: cast integer input to float/complex
+        # aclnnMean() does integer division for int input, even out dtype is float
+        dtype_sum = dtype
+        result = _mean(
+            self, axis=axis, dtype=None, out=out, keepdims=keepdims)
     else:
         result = _mean(
             self, axis=axis, dtype=dtype_sum, out=out, keepdims=keepdims)
