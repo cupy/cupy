@@ -81,7 +81,15 @@ function Main {
     echo "Building..."
     $build_retval = 0
     RunOrDie python -m pip install "numpy==$numpy.*" "scipy==$scipy.*" "Cython==3.2.*,!=3.2.6"
-    if ($cuda.StartsWith("12.")) {
+    # TODO(leofang): remove this win.cuda124 carve-out once NVIDIA/cccl#11885
+    # is fixed and a cuda-cccl release ships a Windows build that NVVM-links
+    # cleanly against CTK 12.4.
+    if ($cuda -eq "12.4") {
+        # cccl 1.2.1's bitcode trips a duplicate __half(__nv_bfloat16)
+        # symbol when NVVM-linked against CTK 12.4 on Windows. Skip the
+        # install so cuda.compute is unavailable on this lane, matching
+        # linux.cuda124 (which pip-uninstalls cccl in its Dockerfile).
+    } elseif ($cuda.StartsWith("12.")) {
         RunOrDie python -m pip install "cuda-cccl[minimal-sysctk12]>=1.1.1,!=1.2.0"
     } else {
         RunOrDie python -m pip install "cuda-cccl[minimal-sysctk13]>=1.1.1,!=1.2.0"
@@ -207,15 +215,7 @@ function Main {
     }
 
     $Env:CUPY_TEST_GPU_LIMIT = $Env:GPU
-    # cuda-cccl 1.2.1 fails to NVVM-link cuda.compute reductions against
-    # CTK 12.4 on Windows (duplicate __half(__nv_bfloat16) symbol — see
-    # NVIDIA/cccl#11885). Disable cuda_compute on the 12.4 lane only;
-    # keep it on every other Windows lane.
-    if ($cuda -eq "12.4") {
-        $Env:CUPY_ACCELERATORS = "cub"
-    } else {
-        $Env:CUPY_ACCELERATORS = "cuda_compute,cub"
-    }
+    $Env:CUPY_ACCELERATORS = "cuda_compute,cub"
     $Env:CUPY_DUMP_CUDA_SOURCE_ON_ERROR = "1"
     $Env:CUPY_NVRTC_USE_PCH = "1"
 
