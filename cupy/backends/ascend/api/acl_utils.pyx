@@ -1127,7 +1127,7 @@ cdef dict _ASCEND_DTYPE_PROMOTE = {
 # 不变，只是计算精度降为单精度。
 cdef dict _FLOAT64_TO_FLOAT32_PROMOTE = {
     'd': 'f',   # float64    -> float32
-    'G': 'F',   # complex128 -> complex64
+    'D': 'F',   # complex128 -> complex64
 }
 
 cdef dict _ASCEND_DTYPE_PROMOTE_ALL = dict(_ASCEND_DTYPE_PROMOTE)

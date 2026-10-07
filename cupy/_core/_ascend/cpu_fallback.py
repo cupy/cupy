@@ -121,6 +121,10 @@ FALLBACKS: Dict[str, Callable[..., Any]] = {
     # cov 仅 complex dtype（aclnn 统计族不收 complex，f32/f64 走 matmul）
     'statistics.corrcoef': numpy.corrcoef,
     'statistics.cov': numpy.cov,
+    # cupy.around / ndarray.round：aclnnRound 是 half-away-from-zero，
+    # numpy 是 banker's rounding（half-to-even），整调用走 host
+    # （接线见 _core._routines_math._ndarray_round；out 由接线侧写回）。
+    'math.round': numpy.round,
 }
 
 _ASCEND: Optional[bool] = None
@@ -284,7 +288,7 @@ F64_MODE_ENV = 'CUPY_ASCEND_FLOAT64_MODE'
 LEGACY_F32_ENV = 'CUPY_ASCEND_ENABLE_FLOAT64_TO_FLOAT32'
 
 #: 参与 cpu fallback 判定的 dtype（float64、complex128 的 dtype char）
-F64_DTYPES = frozenset('dG')
+F64_DTYPES = frozenset('dD')
 
 _f64_mode_cache: Optional[str] = None
 

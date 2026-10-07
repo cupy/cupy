@@ -79,7 +79,7 @@ cdef dict _UINT_PROMOTE = {
 # py_enable_float64_to_float32 的运行时切换对 reduction 同样生效。
 cdef dict _FLOAT64_DEMOTE = {
     'd': 'f',   # float64    -> float32
-    'G': 'F',   # complex128 -> complex64
+    'D': 'F',   # complex128 -> complex64  numpy's dtype.char
 }
 cdef inline size_t _get_stream(stream) except *:
     if stream is None:
