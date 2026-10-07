@@ -457,6 +457,13 @@ _chirp_phase_hyp_kernel = cupy.ElementwiseKernel(
 )
 
 
+def _run_chirp_kernel(kernel, complex, t, *args):
+    """Allocate the requested output type and launch a shared chirp kernel."""
+    dtype = cupy.result_type(t.dtype, 1j) if complex else t.dtype
+    out = cupy.empty_like(t, dtype=dtype)
+    return kernel(t, *args, out)
+
+
 def chirp(t, f0, t1, f1, method="linear", phi=0, vertex_zero=True, *,
           complex=False):
     """Frequency-swept cosine or complex exponential generator.
@@ -543,18 +550,16 @@ def chirp(t, f0, t1, f1, method="linear", phi=0, vertex_zero=True, *,
     if cupy.issubdtype(t.dtype, cupy.integer):
         t = t.astype(cupy.float64)
 
-    dtype = cupy.result_type(t.dtype, 1j) if complex else t.dtype
-    out = cupy.empty_like(t, dtype=dtype)
-
     # Convert phi to radians.
     phi *= np.pi / 180
 
     if method in ["linear", "lin", "li"]:
-        return _chirp_phase_lin_kernel(t, f0, t1, f1, phi, out)
+        return _run_chirp_kernel(
+            _chirp_phase_lin_kernel, complex, t, f0, t1, f1, phi)
 
     elif method in ["quadratic", "quad", "q"]:
-        return _chirp_phase_quad_kernel(
-            t, f0, t1, f1, phi, vertex_zero, out)
+        return _run_chirp_kernel(
+            _chirp_phase_quad_kernel, complex, t, f0, t1, f1, phi, vertex_zero)
 
     elif method in ["logarithmic", "log", "lo"]:
         if f0 * f1 <= 0.0:
@@ -562,13 +567,15 @@ def chirp(t, f0, t1, f1, method="linear", phi=0, vertex_zero=True, *,
                 "For a logarithmic chirp, f0 and f1 must be "
                 "nonzero and have the same sign."
             )
-        return _chirp_phase_log_kernel(t, f0, t1, f1, phi, out)
+        return _run_chirp_kernel(
+            _chirp_phase_log_kernel, complex, t, f0, t1, f1, phi)
 
     elif method in ["hyperbolic", "hyp"]:
         if f0 == 0 or f1 == 0:
             raise ValueError(
                 "For a hyperbolic chirp, f0 and f1 must be " "nonzero.")
-        return _chirp_phase_hyp_kernel(t, f0, t1, f1, phi, out)
+        return _run_chirp_kernel(
+            _chirp_phase_hyp_kernel, complex, t, f0, t1, f1, phi)
 
     else:
         raise ValueError(
