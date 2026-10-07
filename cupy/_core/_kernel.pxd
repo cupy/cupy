@@ -162,11 +162,12 @@ cdef list _broadcast(list args, tuple params, bint use_size, shape_t& shape)
 
 cdef list _get_out_args_from_optionals(
     subtype, list out_args, tuple out_types, const shape_t& out_shape, casting,
-    obj)
+    obj, bint c_order=*)
 
 cdef list _get_out_args_with_params(
     list out_args, tuple out_types,
-    const shape_t& out_shape, tuple out_params, bint is_size_specified)
+    const shape_t& out_shape, tuple out_params, bint is_size_specified,
+    bint c_order=*)
 
 cpdef _check_peer_access(_ndarray_base arr, int device_id)
 

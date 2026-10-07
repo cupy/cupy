@@ -43,7 +43,8 @@ cdef class _AbstractReductionKernel:
         self, list in_args, list out_args, dtype)
 
     cdef list _get_out_args(
-        self, list out_args, tuple out_types, const shape_t& out_shape)
+        self, list out_args, tuple out_types, const shape_t& out_shape,
+        bint c_order)
 
     cdef function.Function _get_function(
         self,

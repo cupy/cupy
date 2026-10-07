@@ -645,7 +645,7 @@ cdef _numpy_result_type = numpy.result_type
 
 cdef list _get_out_args_from_optionals(
     subtype, list out_args, tuple out_types, const shape_t& out_shape, casting,
-    obj
+    obj, bint c_order=True
 ):
     cdef _ndarray_base arr
 
@@ -655,7 +655,7 @@ cdef list _get_out_args_from_optionals(
     for i, a in enumerate(out_args):
         if a is None:
             out_args[i] = _ndarray_init(
-                subtype, out_shape, out_types[i], obj)
+                subtype, out_shape, out_types[i], obj, c_order)
             continue
 
         if not isinstance(a, _ndarray_base):
@@ -685,7 +685,7 @@ cdef _copy_in_args_if_needed(list in_args, list out_args):
 
 cdef list _get_out_args_with_params(
         list out_args, tuple out_types, const shape_t& out_shape,
-        tuple out_params, bint is_size_specified):
+        tuple out_params, bint is_size_specified, bint c_order=True):
     cdef ParameterInfo p
     cdef _ndarray_base arr
     if not out_args:
@@ -693,7 +693,7 @@ cdef list _get_out_args_with_params(
             if p.raw and not is_size_specified:
                 raise ValueError('Output array size is Undecided')
         return [_ndarray_init(
-            cupy.ndarray, out_shape, t, None) for t in out_types]
+            cupy.ndarray, out_shape, t, None, c_order) for t in out_types]
 
     for i, p in enumerate(out_params):
         a = out_args[i]

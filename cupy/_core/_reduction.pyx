@@ -322,6 +322,7 @@ cdef class _AbstractReductionKernel:
         cdef shape_t in_shape, out_shape
         cdef _ndarray_base ret
         cdef bint cub_success, cuda_compute_success
+        cdef bint c_order = True
 
         if dtype is not None:
             dtype = get_dtype(dtype).type
@@ -346,7 +347,10 @@ cdef class _AbstractReductionKernel:
             out_axis = _sort_axis(out_axis, strides)
 
         out_shape = _get_out_shape(a_shape, reduce_axis, out_axis, keepdims)
-        out_args = self._get_out_args(out_args, out_types, out_shape)
+        # Allocate in the input's order before choosing a reduction backend.
+        if len(in_args) == 1 and isinstance(in_args[0], _ndarray_base):
+            c_order = not in_args[0]._f_contiguous
+        out_args = self._get_out_args(out_args, out_types, out_shape, c_order)
         ret = out_args[0]
         if ret.size == 0:
             return ret
@@ -528,7 +532,8 @@ cdef class _AbstractReductionKernel:
         raise NotImplementedError()
 
     cdef list _get_out_args(
-            self, list out_args, tuple out_types, const shape_t& out_shape):
+            self, list out_args, tuple out_types, const shape_t& out_shape,
+            bint c_order):
         raise NotImplementedError()
 
     cdef function.Function _get_function(
@@ -675,9 +680,11 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
             type_map)
 
     cdef list _get_out_args(
-            self, list out_args, tuple out_types, const shape_t& out_shape):
+            self, list out_args, tuple out_types, const shape_t& out_shape,
+            bint c_order):
         return _get_out_args_from_optionals(
-            cupy.ndarray, out_args, out_types, out_shape, 'unsafe', None)
+            cupy.ndarray, out_args, out_types, out_shape, 'unsafe', None,
+            c_order)
 
     cdef function.Function _get_function(
             self,
@@ -873,9 +880,10 @@ cdef class ReductionKernel(_AbstractReductionKernel):
             type_map)
 
     cdef list _get_out_args(
-            self, list out_args, tuple out_types, const shape_t& out_shape):
+            self, list out_args, tuple out_types, const shape_t& out_shape,
+            bint c_order):
         return _get_out_args_with_params(
-            out_args, out_types, out_shape, self.out_params, False)
+            out_args, out_types, out_shape, self.out_params, False, c_order)
 
     cdef function.Function _get_function(
             self,
