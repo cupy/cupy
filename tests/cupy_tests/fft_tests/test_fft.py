@@ -300,20 +300,29 @@ class TestDefaultPlanType:
 class TestFftAllocate:
     @pytest.mark.thread_unsafe(reason="does large allocations")
     def test_fft_allocate(self):
-        # Check CuFFTError is not raised when the GPU memory is enough.
-        # See https://github.com/cupy/cupy/issues/1063
-        # TODO(mizuno): Simplify "a" after memory compaction is implemented.
-        a = []
-        for i in range(10):
-            a.append(cupy.empty(100000000))
-        del a
-        b = cupy.empty(100000007, dtype=cupy.float32)
-        cupy.fft.fft(b)
-        # Free huge memory for slow test
-        del b
-        cupy.get_default_memory_pool().free_all_blocks()
-        # Clean up FFT plan cache
+        # Check that a huge FFT succeeds when GPU memory is sufficient.
+        # TODO(mizuno): Revisit this workaround after memory compaction is
+        # implemented.
+        pool = cupy.get_default_memory_pool()
+        n = 100000007
         cupy.fft.config.clear_plan_cache()
+        pool.free_all_blocks()
+        free_memory, _ = cupy.cuda.Device().mem_info
+        # Float32 input, complex64 input/output, and cuFFT's worst-case
+        # workspace of eight complex64 arrays need n*(4 + 2*8 + 8*8) bytes
+        # (~8.4 GB). Round up to 10 GiB for planning allocations and alignment.
+        # https://docs.nvidia.com/cuda/cufft/index.html#fourier-transform-setup
+        required_memory = 10 * 1024 ** 3
+        if free_memory < required_memory:
+            pytest.skip('Not enough GPU memory for cuFFT planning')
+
+        b = cupy.empty(n, dtype=cupy.float32)
+        try:
+            cupy.fft.fft(b)
+        finally:
+            del b
+            cupy.fft.config.clear_plan_cache()
+            pool.free_all_blocks()
 
 
 @testing.with_requires('numpy>=2.0')
