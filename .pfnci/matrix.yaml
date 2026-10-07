@@ -461,9 +461,9 @@
   _inherits: "cupy.linux.cuda131"
   tags: ["@push", "full", "mini", "linux", "cuda13x", "free-threaded"]
   target: "cuda13x-py314t"
-  # Use newest support numpy/scipy versions for free-threaded tests:
+  # SciPy 1.18 includes the ARPACK thread-safety fixes.
   numpy: "2.4"
-  scipy: "1.16"
+  scipy: "1.18"
   python: "3.14t"
   env:CUPY_TEST_RANDOM_SUBSAMPLE: "1"
   env:CUPY_CI_PYTEST_EXTRA_OPTS: "--parallel-threads=2"

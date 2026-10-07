@@ -1020,7 +1020,7 @@ configs {
       include_dot_git: true
     }
     environment_variables { key: "GPU" value: "2" }
-    command: ".pfnci\\windows\\run.bat 13.1 3.14t 2.4 1.16 test"
+    command: ".pfnci\\windows\\run.bat 13.1 3.14t 2.4 1.18 test"
   }
 }
 # CUDA 13.x + Python 3.15 free-threaded | Windows
