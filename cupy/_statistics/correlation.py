@@ -99,6 +99,11 @@ def correlate(a, v, mode='valid'):
         raise ValueError('Array arguments cannot be empty')
     if a.ndim != 1 or v.ndim != 1:
         raise ValueError('object too deep for desired array')
+    # ASCEND: direct/fft 相关管线（_dot_convolve / _fft_convolve）在
+    # Ascend 后端没有对应的 aclnn 算子，整调用走 host（NumPy 语义）。
+    ret = _ascend_host_fallback('statistics.correlate', a, v, mode=mode)
+    if ret is not None:
+        return ret
     # choose_conv_method does not choose from the values in
     # the input array, so no need to apply conj.
     method = cupy._math.misc._choose_conv_method(a, v, mode)

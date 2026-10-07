@@ -85,11 +85,7 @@ FALLBACKS: Dict[str, Callable[..., Any]] = {
     'linalg.eigvals': numpy.linalg.eigvals,
     'linalg.eigh': numpy.linalg.eigh,
     'linalg.eigvalsh': numpy.linalg.eigvalsh,
-    # percentile/quantile 的 'linear'/'midpoint' 插值走内联
-    # cupy_percentile_weightnening ElementwiseKernel（raw CUDA body），
-    # Ascend 后端无法执行，整个 quantile 改在 host 端用 NumPy 算
-    # （cupy._statistics.order._quantile_unchecked 接线）。
-    'statistics.quantile': numpy.quantile,
+
     # cupy._logic.truth 的 set 系建立在 raw-CUDA ElementwiseKernel 上
     # （cupy_exists_kernel / cupy_exists_and_searchsorted_kernel /
     # setxorkernel），Ascend 没有对应 aclnn 算子，整个公开调用走 host
@@ -98,7 +94,10 @@ FALLBACKS: Dict[str, Callable[..., Any]] = {
     # in1d 的 ravel 语义用 numpy.isin 实现，规避 numpy 2.x 弃用告警。
     'logic.in1d': _host_in1d,
     'logic.intersect1d': numpy.intersect1d,
+    'logic.setdiff1d': numpy.setdiff1d,
     'logic.setxor1d': numpy.setxor1d,
+    'logic.union1d': numpy.union1d, # for complex input dtype
+
     # cupy._statistics.histogram 的非等宽 bin / weights / f64 等情形
     # aclnnHistc 表达不了（接线见 histogram._ascend_histogram）；
     # 等宽无权重且 dtype 受支持的主路径走 ascend_histc 设备直发。
@@ -107,7 +106,18 @@ FALLBACKS: Dict[str, Callable[..., Any]] = {
     # 输入，complex dtype 时整调用走 host（接线见 meanvar._ascend_complex_to_host）。
     'statistics.var': numpy.var,
     'statistics.std': numpy.std,
+    'statistics.nanmean': numpy.nanmean,
+    'statistics.nanvar': numpy.nanvar,
+    'statistics.nanstd': numpy.nanstd,
     'statistics.nanmedian': numpy.nanmedian,
+    # aclnnSum does not accept int8/int16 weihts, also some axis broadcast not supprorted
+    'statistics.average': numpy.average,
+    # cupy._statistics.order's ptp/nanmin/nanmax aclnn reduction does not support some dtype
+    # ret code 500003, not reliable, so use cpu host fallback
+    'statistics.nanmax': numpy.nanmin,
+    'statistics.nanmin': numpy.nanmax,
+    'statistics.ptp': numpy.ptp,
+
     # cupy._statistics.histogram：bincount 的 aclnnBincount 不收 uint16/32/64
     # 输入与 complex 权重；histogramdd 的多段管线（searchsorted +
     # ravel_multi_index + bincount）没有单一 aclnn kernel，整调用走 host
@@ -120,11 +130,18 @@ FALLBACKS: Dict[str, Callable[..., Any]] = {
     # cupy._statistics.correlation：corrcoef 整调用（cov + 复数归一化）；
     # cov 仅 complex dtype（aclnn 统计族不收 complex，f32/f64 走 matmul）
     'statistics.corrcoef': numpy.corrcoef,
+    'statistics.correlate': numpy.correlate,
     'statistics.cov': numpy.cov,
     # cupy.around / ndarray.round：aclnnRound 是 half-away-from-zero，
     # numpy 是 banker's rounding（half-to-even），整调用走 host
     # （接线见 _core._routines_math._ndarray_round；out 由接线侧写回）。
-    'math.round': numpy.round,
+    # percentile/quantile 的 'linear'/'midpoint' 插值走内联
+    # cupy_percentile_weightnening ElementwiseKernel（raw CUDA body），
+    # Ascend 后端无法执行，整个 quantile 改在 host 端用 NumPy 算
+    # （cupy._statistics.order._quantile_unchecked 接线）。
+    'statistics.quantile': numpy.quantile,
+
+    'math.round': numpy.round, # rounding behavior is diff from aclnnRound
 }
 
 _ASCEND: Optional[bool] = None
@@ -213,6 +230,8 @@ def to_numpy(value: Any) -> Any:
     cupy = _cupy()
     if isinstance(value, cupy.ndarray):
         return cupy.asnumpy(value)
+    if isinstance(value, (list, tuple))):
+        return type(value)(to_numpy(item) for item in value)
     return value
 
 

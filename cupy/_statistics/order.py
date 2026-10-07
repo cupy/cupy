@@ -11,6 +11,28 @@ from cupy._core import _fusion_thread_local
 from cupy._logic import content
 
 
+def _ascend_host_fallback(name, *args, **kwargs):
+    """ASCEND: 把整个公开调用搬到 host（D2H -> NumPy -> H2D）。
+
+    aclnn 归约族对部分 dtype 触发 ret code 500003（结果不可靠），
+    nanmin/nanmax/ptp 整调用走 host。返回 fallback 结果；None 表示
+    继续设备路径（非 Ascend / 未启用 cpu_fallback -> 按约定响亮失败）。
+    """
+    try:
+        from cupy.backends.backend import is_ascend
+    except ImportError:
+        return None
+    if not is_ascend:
+        return None
+    try:
+        from cupy._core._ascend import cpu_fallback
+    except ImportError:
+        return None
+    if not cpu_fallback.active():
+        return None
+    return cpu_fallback.call(name, *args, **kwargs)
+
+
 def amin(a, axis=None, out=None, keepdims=False):
     """Returns the minimum of an array or the minimum along an axis.
 
@@ -109,6 +131,11 @@ def nanmin(a, axis=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.nanmin`
 
     """
+    # ASCEND: aclnn 归约部分 dtype 触发 ret 500003（结果不可靠），整调用走 host
+    ret = _ascend_host_fallback(
+        'statistics.nanmin', a, axis=axis, out=out, keepdims=keepdims)
+    if ret is not None:
+        return ret
     # TODO(niboshi): Avoid synchronization.
     res = _core.nanmin(a, axis=axis, out=out, keepdims=keepdims)
     if content.isnan(res).any():  # synchronize!
@@ -140,6 +167,11 @@ def nanmax(a, axis=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.nanmax`
 
     """
+    # ASCEND: aclnn 归约部分 dtype 触发 ret 500003（结果不可靠），整调用走 host
+    ret = _ascend_host_fallback(
+        'statistics.nanmax', a, axis=axis, out=out, keepdims=keepdims)
+    if ret is not None:
+        return ret
     # TODO(niboshi): Avoid synchronization.
     res = _core.nanmax(a, axis=axis, out=out, keepdims=keepdims)
     if content.isnan(res).any():  # synchronize!
@@ -175,6 +207,11 @@ def ptp(a, axis=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.amin`
 
     """
+    # ASCEND: aclnn 归约部分 dtype 触发 ret 500003（结果不可靠），整调用走 host
+    ret = _ascend_host_fallback(
+        'statistics.ptp', a, axis=axis, out=out, keepdims=keepdims)
+    if ret is not None:
+        return ret
     return a.ptp(axis=axis, out=out, keepdims=keepdims)
 
 

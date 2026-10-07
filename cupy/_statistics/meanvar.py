@@ -7,9 +7,12 @@ import cupy
 from cupy._core import _routines_statistics as _statistics
 
 
-def _ascend_complex_to_host(name, a, *args, **kwargs):
+def _ascend_complex_to_host(name, a, *args, _force_host=False, **kwargs):
     """ASCEND: aclnn 的 var/std/nanmedian 不收 complex 输入（设备端报错），
     complex dtype 时把整个调用搬到 host（NumPy 语义，D2H -> NumPy -> H2D）。
+
+    ``_force_host=True`` 跳过 complex 判定，供 average 等由调用方按
+    权重 dtype 自行决定是否回退的场景使用。
 
     返回 fallback 结果；None 表示继续设备路径（非 Ascend / 非 complex /
     cpu_fallback 被环境变量关闭 -> 按既有约定响亮失败）。
@@ -18,7 +21,9 @@ def _ascend_complex_to_host(name, a, *args, **kwargs):
         from cupy.backends.backend import is_ascend
     except ImportError:
         return None
-    if not is_ascend or a.dtype.kind != 'c':
+    if not is_ascend:
+        return None
+    if not _force_host and a.dtype.kind != 'c':
         return None
     try:
         from cupy._core._ascend import cpu_fallback
@@ -121,11 +126,17 @@ def average(a, axis=None, weights=None, returned=False, *, keepdims=False):
 
     .. seealso:: :func:`numpy.average`
     """
-    # ASCEND: mean/sum where aclnnSum rejects narrow-int weights 
-    # (int8 sum wiht int32 out), use host numpy
+    # ASCEND: aclnnSum 拒绝 int8/int16 权重（部分 axis 广播也不支持）；
+    # 权重为窄整型/复数，或输入为 complex 时整调用走 host（NumPy 语义）
+    _force = False
+    if weights is not None:
+        wdt = getattr(weights, 'dtype', None)
+        if wdt is not None:
+            _force = (wdt.kind == 'c'
+                      or (wdt.kind in 'iub' and wdt.itemsize <= 2))
     ret = _ascend_complex_to_host(
         'statistics.average', a, axis=axis, weights=weights, returned=returned,
-        keepdims=keepdims)
+        keepdims=keepdims, _force_host=_force)
     if ret is not None:
         return ret
 
@@ -179,7 +190,7 @@ def average(a, axis=None, weights=None, returned=False, *, keepdims=False):
         # dtype cast back
         if scl_dtype is not result_dtype:
             avg = avg.astype(result_dtype)
-            acl = acl.astype(result_dtype)
+            scl = scl.astype(result_dtype)
 
     if returned:
         if scl.shape != avg.shape:
