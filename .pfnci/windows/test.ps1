@@ -239,6 +239,9 @@ function Main {
     RunOrDie python -m pip install pytest-run-parallel
 
     if ($python.EndsWith("t")) {
+        # Limit OpenBLAS threads when running free-threaded tests in parallel.
+        # To avoid apparent threading issue in sparse eighs tests.
+        $Env:OMP_NUM_THREADS = "1"
         $Env:CUPY_TEST_RANDOM_SUBSAMPLE = "1"
         $pytest_opts += "--parallel-threads", "2"
     }
