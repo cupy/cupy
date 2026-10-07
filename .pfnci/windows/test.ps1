@@ -88,6 +88,13 @@ function Main {
     # TODO(seberg): Install cuda-cccl on Python 3.15 once releases are available.
     if ($python.StartsWith("3.15")) {
         echo "Skipping cuda-cccl: no Python 3.15 release available"
+    # TODO(leofang): remove this win.cuda124 carve-out once NVIDIA/cccl#11885
+    # is fixed and a cuda-cccl release NVVM-links cleanly against CTK 12.4.
+    } elseif ($cuda -eq "12.4") {
+        # cccl 1.2.1's bitcode trips a duplicate __half(__nv_bfloat16)
+        # symbol when NVVM-linked against CTK 12.4. Skip the install so
+        # cuda.compute is unavailable on this lane, matching linux.cuda124
+        # (which pip-uninstalls cccl in its Dockerfile).
     } elseif ($cuda.StartsWith("12.")) {
         RunOrDie python -m pip install "cuda-cccl[minimal-sysctk12]>=1.1.1,!=1.2.0"
     } else {
