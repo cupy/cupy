@@ -139,6 +139,17 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
         (https://sdm.lbl.gov/~kewu/ps/trlan.html).
 
     .. note::
+        In shift-invert mode (``sigma`` is not ``None``, which ``which='SM'``
+        also selects), where ``A - sigma * I`` is factorized depends on the
+        input type. A sparse ``a`` goes through
+        :func:`cupyx.scipy.sparse.linalg.splu`, which LU-decomposes on the
+        CPU using `scipy.sparse.linalg.splu` and is therefore not accelerated
+        on the GPU. A dense ``a`` is factorized on the GPU with
+        :func:`cupyx.scipy.linalg.lu_factor`. The triangular solves that the
+        Lanczos iteration performs are done on the GPU in both cases. Pass
+        ``OPinv`` to supply your own operator instead.
+
+    .. note::
         Degenerate and tightly clustered spectra exhaust the Krylov space
         early (a lucky breakdown). Those breakdowns are detected and
         repaired, which keeps the result correct but costs extra sweeps:
