@@ -97,9 +97,8 @@ pull_request)
             > "${RUNNER_TEMP}/dispatch-request.zip"
         unzip -q -o "${RUNNER_TEMP}/dispatch-request.zip" -d "${RUNNER_TEMP}/dispatch-request"
         body="$(jq -r '.comment.body' "${RUNNER_TEMP}/dispatch-request/event.json")"
-        # Match the first-line convention used by the dispatcher's
-        # extract_requested_tags: a comment mixing "/test cuda120" and
-        # "/test skip" is treated as the first line's intent.
+        # Skip directives must be standalone; the dispatcher rejects
+        # comments combining them with other /test lines.
         first_test="$(printf '%s\n' "${body}" | grep -m1 -E '^/test[[:space:]]+[^[:space:]]' || true)"
         if [[ "${first_test}" =~ ^/test[[:space:]]+(skip|force-skip)[[:space:]]*$ ]]; then
           mode=skip

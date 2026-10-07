@@ -673,8 +673,9 @@ UNIT_KERNEL = r'''
 ${type_decls}
 
 template<typename T>
-__global__ void unit_impulse(const int n, const int iidx, T* out) {
-    const int idx = blockIdx.x * blockDim.x + threadIdx.x;
+__global__ void unit_impulse(const long long n, const long long iidx, T* out) {
+    const long long idx =
+        static_cast<long long>(blockIdx.x) * blockDim.x + threadIdx.x;
 
     if(idx >= n) {
         return;
