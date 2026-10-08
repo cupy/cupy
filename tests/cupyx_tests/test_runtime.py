@@ -3,6 +3,8 @@ from __future__ import annotations
 import unittest
 from unittest import mock
 
+import numpy
+
 import cupy
 import cupyx
 
@@ -18,6 +20,21 @@ class TestRuntime(unittest.TestCase):
         runtime = cupyx.get_runtime_info()
         assert cupy.__version__ == runtime.cupy_version
         assert cupy.__version__ in str(runtime)
+
+    def test_build_and_runtime_versions(self):
+        runtime = cupyx.get_runtime_info()
+        assert runtime.numpy_build_version is not None
+        assert numpy.version.full_version == runtime.numpy_version
+        output = str(runtime)
+        for record in (
+                'NumPy Build Version',
+                'NumPy Runtime Version',
+                'cuTENSOR Build Version',
+                'cuTENSOR Runtime Version',
+                'cuSPARSELt Build Version',
+                'cuSPARSELt Runtime Version',
+        ):
+            assert record in output
 
     def test_error(self):
         runtime = cupyx.get_runtime_info()
