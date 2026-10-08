@@ -60,7 +60,7 @@ requirements:
     # published as cann-* on conda.anaconda.org/ascend (see channel notes
     # above). cann-toolkit's activate.d exports ASCEND_HOME_PATH /
     # LD_LIBRARY_PATH.
-    - cann-toolkit >=9.0.1,<9.1.0a0
+    - cann-toolkit >=8.5.0,<9.1.0a0
     - cann-950-ops >=9.0.1,<9.1.0a0
   run:
     - python
@@ -86,7 +86,7 @@ about:
   home: https://github.com/qingfengxia/numpy-ascend
   license: MIT
   license_file: LICENSE
-  summary: "NumPy & SciPy for Ascend NPU (CuPy-compatible), built against CANN 9.0"
+  summary: "NumPy & SciPy for Ascend NPU (CuPy-compatible), built against CANN"
   description: |
     CuPy v14 fork ported to Huawei Ascend NPU via CANN's aclnn operator
     library. Import package remains `cupy`, so existing CuPy code runs on
