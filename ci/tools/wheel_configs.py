@@ -19,7 +19,8 @@ WHEEL_PACKAGE_NAMES: dict[str, str] = {
 # Wheel flavors. ``native`` is the wheel that is released to PyPI.
 # ``cuda-python`` is a CI-only build of the same sdist with
 # ``CUPY_USE_CUDA_PYTHON=1`` (CuPy built against and running on
-# cuda.bindings / nvmath.bindings); it is never published.
+# cuda.bindings / nvmath.bindings). It is the only CI-only flavor: its
+# artifact name keeps it out of the nightly and release patterns.
 WHEEL_FLAVORS: tuple[str, ...] = ("native", "cuda-python")
 
 # Requirements of the ``cuda-python`` flavor, per CTK major. CuPy cimports

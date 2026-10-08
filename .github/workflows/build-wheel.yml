@@ -24,7 +24,7 @@ on:
         required: true
         type: string
       flavor:
-        description: "native (the wheel released to PyPI) or cuda-python (CI-only build of the same sdist with CUPY_USE_CUDA_PYTHON=1; linux-64 only, never published). Selects the artifact name via ci/tools/wheel_configs.py."
+        description: "native (the wheel released to PyPI) or cuda-python (CI-only build of the same sdist with CUPY_USE_CUDA_PYTHON=1; linux-64 only; its artifact name excludes it from the nightly/release patterns). Selects the artifact name via ci/tools/wheel_configs.py."
         required: false
         default: native
         type: string

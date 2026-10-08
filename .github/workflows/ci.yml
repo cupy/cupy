@@ -289,8 +289,10 @@ jobs:
   # CI-only cuda-python flavor of the linux-64 wheel: the same sdist, builder
   # image and flags as build-linux-64, with CUPY_USE_CUDA_PYTHON=1 as the only
   # intended difference. Consumed by the cuda12x/cuda13x-cuda-python FlexCI
-  # lanes (never published; see wheel_configs.wheel_artifact_name). Built only
-  # for the Python versions those lanes use (ci/versions.yml).
+  # lanes. Unlike the native wheels above this is a CI-only flavor, kept out
+  # of the nightly/release patterns by its artifact name (see
+  # wheel_configs.wheel_artifact_name). Built only for the Python versions
+  # those lanes use (ci/versions.yml).
   build-linux-64-cuda-python:
     needs:
       - guard
