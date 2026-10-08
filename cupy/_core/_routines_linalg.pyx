@@ -853,6 +853,59 @@ cpdef _ndarray_base tensordot_core_v11(
         algo)
 
 
+cdef tuple _align_16bit_broadcast(
+        _ndarray_base a, _ndarray_base b, _ndarray_base out,
+        Py_ssize_t n, Py_ssize_t m, Py_ssize_t k):
+    cdef Py_ssize_t alignment, alignment_elements
+    cdef Py_ssize_t padded_output_stride = 0
+    cdef bint force_temp_output = False
+
+    if k % 8 == 0:
+        alignment = 16
+    elif k % 2 == 0:
+        alignment = 4
+    else:
+        alignment = 2
+
+    if a.data.ptr % alignment != 0:
+        a = a.copy(order='C')
+    if b.data.ptr % alignment != 0:
+        b = b.copy(order='C')
+
+    if (n * m * 2) % alignment != 0:
+        alignment_elements = alignment // 2
+        padded_output_stride = (
+            (n * m + alignment_elements - 1)
+            // alignment_elements * alignment_elements
+        )
+        force_temp_output = True
+
+    if out is not None:
+        force_temp_output = (
+            force_temp_output or out.data.ptr % alignment != 0
+        )
+
+    return a, b, padded_output_stride, force_temp_output
+
+
+cdef _ndarray_base _allocate_padded_matmul_output(
+        list out_shape, dtype, Py_ssize_t batch_count,
+        Py_ssize_t padded_output_stride):
+    cdef Py_ssize_t itemsize = dtype.itemsize
+    cdef Py_ssize_t byte_stride = padded_output_stride * itemsize
+    cdef _ndarray_base storage = core.ndarray(
+        (batch_count, padded_output_stride), dtype=dtype)
+
+    strides = [out_shape[-1] * itemsize, itemsize]
+    for i in range(len(out_shape) - 3, -1, -1):
+        strides.insert(0, byte_stride)
+        byte_stride *= out_shape[i]
+
+    return core.ndarray(
+        out_shape, dtype=dtype,
+        memptr=storage.data, strides=tuple(strides))
+
+
 cdef Py_ssize_t _get_stride_for_strided_batched_gemm(
         _ndarray_base a) except? 0:
     cdef int ndim = a._shape.size()
@@ -920,6 +973,8 @@ cpdef _ndarray_base matmul(
     cdef int orig_a_ndim, orig_b_ndim, a_ndim, b_ndim, ndim
     cdef _ndarray_base ap, bp, cp, c_view
     cdef bint use_broadcast
+    cdef bint force_temp_aligned_output = False
+    cdef Py_ssize_t padded_output_stride = 0
 
     orig_a_ndim = a._shape.size()
     orig_b_ndim = b._shape.size()
@@ -973,12 +1028,23 @@ cpdef _ndarray_base matmul(
     dtype = ret_dtype
 
     cdef int cuda_dtype = -1
+    cdef int compute_dtype = -1
+    coef_dtype = dtype
     if dtype.kind not in 'biu':
         cuda_dtype = to_cuda_dtype(dtype, is_half_allowed=True)
+        compute_dtype = cuda_dtype
         if (cuda_dtype == runtime.CUDA_R_16F
                 or cuda_dtype == runtime.CUDA_R_16BF):
-            dtype = numpy.dtype('f')
-            cuda_dtype = runtime.CUDA_R_32F
+            if (runtime._is_hip_environment
+                    or orig_a_ndim < 2 or orig_b_ndim < 2
+                    or int(device.get_compute_capability()) < (
+                        80 if cuda_dtype == runtime.CUDA_R_16BF else 70)):
+                dtype = numpy.dtype('f')
+                cuda_dtype = runtime.CUDA_R_32F
+                compute_dtype = cuda_dtype
+            else:
+                compute_dtype = cublas.CUBLAS_COMPUTE_32F
+            coef_dtype = numpy.dtype('f')
 
     a = ascontiguousarray(a, dtype)
     b = ascontiguousarray(b, dtype)
@@ -1042,16 +1108,28 @@ cpdef _ndarray_base matmul(
             out.fill(0)
             return out
 
+    if (use_broadcast
+            and cuda_dtype in (runtime.CUDA_R_16F, runtime.CUDA_R_16BF)):
+        a, b, padded_output_stride, force_temp_aligned_output = (
+            _align_16bit_broadcast(a, b, out, n, m, ka)
+        )
+
     if (
         out is not None and out.dtype == dtype and out.flags.c_contiguous
+        and not force_temp_aligned_output
         and not _memory_range.may_share_bounds(out, a)
         and not _memory_range.may_share_bounds(out, b)
     ):
         c = out
     else:
-        c = core.ndarray(out_shape, dtype=dtype)
+        if padded_output_stride == 0:
+            c = core.ndarray(out_shape, dtype=dtype)
+        else:
+            c = _allocate_padded_matmul_output(
+                out_shape, dtype, batchCount, padded_output_stride)
+
         if out is None:
-            if dtype == ret_dtype:
+            if dtype == ret_dtype and padded_output_stride == 0:
                 out = c
             else:
                 out = core.ndarray(out_shape, dtype=ret_dtype)
@@ -1081,15 +1159,15 @@ cpdef _ndarray_base matmul(
         return out
 
     cdef intptr_t handle = device.get_cublas_handle()
-    cdef int algo = cublas.CUBLAS_GEMM_DEFAULT
 
-    one = numpy.array(1, dtype=dtype)
-    zero = numpy.array(0, dtype=dtype)
+    one = numpy.array(1, dtype=coef_dtype)
+    zero = numpy.array(0, dtype=coef_dtype)
     if not use_broadcast:
         strideA = _get_stride_for_strided_batched_gemm(a)
         strideB = _get_stride_for_strided_batched_gemm(b)
         strideC = _get_stride_for_strided_batched_gemm(c_view)
-        if dtype.char in 'fFdD':
+        if (cuda_dtype in (runtime.CUDA_R_16F, runtime.CUDA_R_16BF)
+                or dtype.char in 'fFdD'):
             cublas.gemmStridedBatchedEx(
                 handle,
                 0,  # transa
@@ -1099,14 +1177,26 @@ cpdef _ndarray_base matmul(
                 b.data.ptr, cuda_dtype, ldb, strideB,
                 zero.ctypes.data,
                 c_view.data.ptr, cuda_dtype, ldc, strideC,
-                batchCount, cuda_dtype, algo)
+                batchCount, compute_dtype, cublas.CUBLAS_GEMM_DEFAULT)
         else:
             raise TypeError(dtype, a.dtype, b.dtype)
     else:
         ap = _mat_ptrs(a)
         bp = _mat_ptrs(b)
         cp = _mat_ptrs(c_view)
-        if dtype == numpy.float32:
+        if (cuda_dtype == runtime.CUDA_R_16F
+                or cuda_dtype == runtime.CUDA_R_16BF):
+            cublas.gemmBatchedEx(
+                handle,
+                0,  # transa
+                0,  # transb
+                n, m, ka, one.ctypes.data,
+                ap.data.ptr, cuda_dtype, lda,
+                bp.data.ptr, cuda_dtype, ldb,
+                zero.ctypes.data,
+                cp.data.ptr, cuda_dtype, ldc,
+                batchCount, compute_dtype, cublas.CUBLAS_GEMM_DEFAULT)
+        elif cuda_dtype == runtime.CUDA_R_32F:
             cublas.sgemmBatched(
                 handle,
                 0,  # transa
@@ -1115,7 +1205,7 @@ cpdef _ndarray_base matmul(
                 ap.data.ptr, lda,
                 bp.data.ptr, ldb,
                 zero.ctypes.data, cp.data.ptr, ldc, batchCount)
-        elif dtype == numpy.float64:
+        elif cuda_dtype == runtime.CUDA_R_64F:
             cublas.dgemmBatched(
                 handle,
                 0,  # transa
@@ -1124,7 +1214,7 @@ cpdef _ndarray_base matmul(
                 ap.data.ptr, lda,
                 bp.data.ptr, ldb,
                 zero.ctypes.data, cp.data.ptr, ldc, batchCount)
-        elif dtype == numpy.complex64:
+        elif cuda_dtype == runtime.CUDA_C_32F:
             cublas.cgemmBatched(
                 handle,
                 0,  # transa
@@ -1133,7 +1223,7 @@ cpdef _ndarray_base matmul(
                 ap.data.ptr, lda,
                 bp.data.ptr, ldb,
                 zero.ctypes.data, cp.data.ptr, ldc, batchCount)
-        elif dtype == numpy.complex128:
+        elif cuda_dtype == runtime.CUDA_C_64F:
             cublas.zgemmBatched(
                 handle,
                 0,  # transa
