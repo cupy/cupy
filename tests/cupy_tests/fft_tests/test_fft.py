@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import functools
+import math
 import warnings
 
 import numpy as np
@@ -299,20 +300,29 @@ class TestDefaultPlanType:
 class TestFftAllocate:
     @pytest.mark.thread_unsafe(reason="does large allocations")
     def test_fft_allocate(self):
-        # Check CuFFTError is not raised when the GPU memory is enough.
-        # See https://github.com/cupy/cupy/issues/1063
-        # TODO(mizuno): Simplify "a" after memory compaction is implemented.
-        a = []
-        for i in range(10):
-            a.append(cupy.empty(100000000))
-        del a
-        b = cupy.empty(100000007, dtype=cupy.float32)
-        cupy.fft.fft(b)
-        # Free huge memory for slow test
-        del b
-        cupy.get_default_memory_pool().free_all_blocks()
-        # Clean up FFT plan cache
+        # Check that a huge FFT succeeds when GPU memory is sufficient.
+        # TODO(mizuno): Revisit this workaround after memory compaction is
+        # implemented.
+        pool = cupy.get_default_memory_pool()
+        n = 100000007
         cupy.fft.config.clear_plan_cache()
+        pool.free_all_blocks()
+        free_memory, _ = cupy.cuda.Device().mem_info
+        # Float32 input, complex64 input/output, and cuFFT's worst-case
+        # workspace of eight complex64 arrays need n*(4 + 2*8 + 8*8) bytes
+        # (~8.4 GB). Round up to 10 GiB for planning allocations and alignment.
+        # https://docs.nvidia.com/cuda/cufft/index.html#fourier-transform-setup
+        required_memory = 10 * 1024 ** 3
+        if free_memory < required_memory:
+            pytest.skip('Not enough GPU memory for cuFFT planning')
+
+        b = cupy.empty(n, dtype=cupy.float32)
+        try:
+            cupy.fft.fft(b)
+        finally:
+            del b
+            cupy.fft.config.clear_plan_cache()
+            pool.free_all_blocks()
 
 
 @testing.with_requires('numpy>=2.0')
@@ -1104,6 +1114,40 @@ class TestRfftn:
         if order == 'F':
             a = xp.asfortranarray(a)
         return xp.fft.irfftn(a, s=self.s, axes=self.axes, norm=self.norm)
+
+
+@pytest.mark.parametrize('dtype', [np.float32, np.float64])
+@pytest.mark.parametrize('offset', [0, 1])
+@pytest.mark.parametrize('ndim', [1, 3])
+@pytest.mark.parametrize('layout', ['view', 'strided', 'pointer'])
+def test_rfft_input_alignment(
+        dtype: type[np.float32 | np.float64], offset: int, ndim: int,
+        layout: str) -> None:
+    shape: tuple[int, ...] = (35,) * ndim
+    backing: cupy.ndarray
+    x: cupy.ndarray
+    if layout == 'view':
+        backing = cupy.ones(shape=(2,) + shape, dtype=dtype)
+        x = backing[offset]
+    elif layout == 'strided':
+        backing = cupy.ones(shape=shape[:-1] + (2 * shape[-1],), dtype=dtype)
+        x = backing[..., offset::2]
+    else:
+        backing = cupy.ones(shape=math.prod(shape) + 1, dtype=dtype)
+        x = cupy.ndarray(
+            shape=shape, dtype=dtype,
+            memptr=backing.data + offset * backing.itemsize)
+    assert x.data.ptr % (2 * x.itemsize) == offset * x.itemsize
+
+    out: cupy.ndarray = (
+        cupy.fft.rfft(x) if ndim == 1 else cupy.fft.rfftn(x))
+    expected: np.ndarray = np.fft.rfftn(np.ones(shape=shape, dtype=dtype))
+    testing.assert_allclose(
+        actual=out, desired=expected,
+        rtol=1e-5 if dtype is np.float32 else 1e-12,
+        atol=1e-3 if dtype is np.float32 else 1e-9)
+    testing.assert_array_equal(
+        actual=backing, desired=np.ones(shape=backing.shape, dtype=dtype))
 
 
 # Only those tests in which a legit plan can be obtained are kept

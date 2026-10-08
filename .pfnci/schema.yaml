@@ -300,7 +300,7 @@ numpy:
       - "3.14"
       - "3.14t"
   "pre":
-    spec: ">=0a0"  # latest, including pre-releases
+    spec: ">=0a0,<2.6"  # TODO(seberg): allow nightlies
 scipy:
   # https://docs.scipy.org/doc/scipy/dev/toolchain.html#numpy
   null:
@@ -374,7 +374,7 @@ scipy:
       - "2.4"
       - "2.5"
   "pre":
-    spec: ">=0a0"  # latest, including pre-releases
+    spec: ">=0a0,<2.0"  # TODO(seberg): allow nightlies
 optuna:
   null:
     spec: null

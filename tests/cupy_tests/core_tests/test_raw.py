@@ -407,6 +407,7 @@ no_jitify_markers = [
 ]
 jitify_markers = [
     testing.slow(),
+    pytest.mark.timeout(1200),  # Cold header initialization can take minutes.
     pytest.mark.filterwarnings(
         "ignore:jitify=True is deprecated:DeprecationWarning"),
     pytest.mark.thread_unsafe(
