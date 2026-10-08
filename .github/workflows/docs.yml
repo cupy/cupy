@@ -1,0 +1,348 @@
+name: "Docs: Build and publish"
+
+# Fires after ci.yml finishes building wheels (same chain as flexci.yml).
+# Downloads the py<doc> linux-64 cu13 wheel from the triggering CI run,
+# builds the Sphinx HTML with RTD env vars mimicked, and -- in a separate
+# job with no PR code checked out -- uploads the HTML to RTD with the
+# readthedocs-upload CLI (pinned PyPI release). RTD serves what we
+# uploaded; it does not run a build of its own after .readthedocs.yaml
+# is removed in stage 2 (#10351).
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+# Keyed on the triggering workflow_run id, not head_sha: distinct CI runs
+# (same main-push + its tag-push, or a no-op label event + the real PR
+# build at the same SHA) each get their own group and don't cancel each
+# other.
+concurrency:
+  group: docs-${{ github.event.workflow_run.id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  actions: read
+
+defaults:
+  run:
+    shell: bash --noprofile --norc -xeuo pipefail {0}
+
+jobs:
+  build:
+    name: Build docs
+    runs-on: ubuntu-22.04
+    if: >-
+      github.repository_owner == 'cupy' &&
+      github.event.workflow_run.conclusion == 'success'
+    outputs:
+      proceed: ${{ steps.compute.outputs.proceed }}
+      rtd_slug: ${{ steps.compute.outputs.rtd_slug }}
+      rtd_version_name: ${{ steps.compute.outputs.rtd_version_name }}
+      version_type: ${{ steps.compute.outputs.version_type }}
+      suffix: ${{ steps.compute.outputs.suffix }}
+      promote_stable: ${{ steps.stable.outputs.promote_stable }}
+    steps:
+      # workflow_run.pull_requests[] is empty for fork PRs, so instead of
+      # parsing the event payload we download the per-run sentinel artifact
+      # ci.yml's build-sentinel uploaded (name is `push-event-<sha>` for
+      # push, `build-<sha>` for PR). The sentinel carries docs-meta.json
+      # with mode / pr_number / merge_sha / artifact_suffix / ref; the
+      # head SHA needs no field because workflow_run.head_sha is the same
+      # value (it is what names the sentinel, so a mismatch could not
+      # even download it).
+      #
+      # mode=no-op runs (unrelated label events, branch deletes, skip-ci
+      # pushes) upload NO sentinel but still succeed, so workflow_run
+      # fires here. continue-on-error turns a missing artifact into a
+      # non-fatal step; the compute step below reads steps.sentinel.outcome
+      # and no-ops the whole workflow cleanly when the download failed.
+      - name: Download sentinel
+        id: sentinel
+        continue-on-error: true
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0  # v5.0.0
+        with:
+          name: >-
+            ${{ github.event.workflow_run.event == 'push'
+                && format('push-event-{0}', github.event.workflow_run.head_sha)
+                || format('build-{0}', github.event.workflow_run.head_sha) }}
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ./sentinel
+
+      - name: Parse docs-meta + compute RTD slug
+        id: compute
+        env:
+          SENTINEL_OUTCOME: ${{ steps.sentinel.outcome }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+          EVENT: ${{ github.event.workflow_run.event }}
+        run: |
+          # Always emit every output so the job-level outputs block is
+          # well-defined; downstream steps + the publish job gate on
+          # `proceed`.
+          PROCEED=false
+          RTD_SLUG=""
+          RTD_VERSION_NAME=""
+          VERSION_TYPE=""
+          MERGE_SHA=""
+          SUFFIX=""
+
+          if [[ "${SENTINEL_OUTCOME}" == "success" ]]; then
+            META=./sentinel/docs-meta.json
+            test -f "${META}" || { echo "::error::docs-meta.json missing from sentinel"; exit 1; }
+            MODE=$(jq -r .mode "${META}")
+            PR_NUMBER=$(jq -r .pr_number "${META}")
+            REF=$(jq -r .ref "${META}")
+            MERGE_SHA=$(jq -r .merge_sha "${META}")
+            SUFFIX=$(jq -r .artifact_suffix "${META}")
+
+            # Defense-in-depth validation: SUFFIX / MERGE_SHA get
+            # interpolated into shell + API payloads downstream, so
+            # reject anything with shell metacharacters even though the
+            # trusted builder currently only produces hex SHAs / PR
+            # numbers. Keeps the rules loose enough to tolerate future
+            # format tweaks (dots, underscores) while blocking $, `, ;,
+            # quotes, spaces, etc.
+            for field_name in SUFFIX MERGE_SHA; do
+              value="${!field_name}"
+              if ! [[ "${value}" =~ ^[A-Za-z0-9._-]+$ ]]; then
+                echo "::error::docs-meta ${field_name} is malformed: ${value}"
+                exit 1
+              fi
+            done
+
+            if [[ "${MODE}" != "test" && "${MODE}" != "doc-only" ]]; then
+              echo "::notice::mode=${MODE}; nothing to build"
+            else
+              # Route by EVENT first, not PR_NUMBER: ci-guard.sh sets
+              # pr_number on main-push for the merged PR (needed for the
+              # skip-ci check), and classifying every main-push as an
+              # external preview would mean `latest` never updates.
+              #
+              # rtd_slug is what conf.py reads via READTHEDOCS_VERSION
+              # (and what the sphinx extlinks tag resolves against).
+              # rtd_version_name is what the RTD /api/v3/upload/
+              # initiate payload uses: for main the upload must be
+              # name=main / type=branch so RTD's
+              # UploadInitiateView._get_or_create_version matches the
+              # existing machine-managed `latest` alias on
+              # `latest.identifier == name` -- uploading with
+              # name=latest misses that check, falls through to the
+              # verbose-name match, and rewrites the alias with
+              # identifier=latest / machine=False (the alias stops
+              # tracking main).
+              if [[ "${EVENT}" == "pull_request" ]]; then
+                PROCEED=true
+                RTD_SLUG="${PR_NUMBER}"
+                RTD_VERSION_NAME="${PR_NUMBER}"
+                VERSION_TYPE="external"
+              elif [[ "${REF}" == refs/tags/* ]]; then
+                PROCEED=true
+                RTD_SLUG="${REF#refs/tags/}"
+                RTD_VERSION_NAME="${RTD_SLUG}"
+                VERSION_TYPE="tag"
+              elif [[ "${BRANCH}" == "main" ]]; then
+                PROCEED=true
+                RTD_SLUG="latest"
+                RTD_VERSION_NAME="main"
+                VERSION_TYPE="branch"
+              else
+                # v*/hotfix-* branches: emit outputs for the HTML artifact
+                # (still produced for debugging) but the publish job's
+                # `if:` gates them out.
+                PROCEED=true
+                RTD_SLUG="${BRANCH}"
+                RTD_VERSION_NAME="${BRANCH}"
+                VERSION_TYPE="branch"
+              fi
+            fi
+          fi
+
+          {
+            echo "proceed=${PROCEED}"
+            echo "merge_sha=${MERGE_SHA}"
+            echo "suffix=${SUFFIX}"
+            echo "rtd_slug=${RTD_SLUG}"
+            echo "rtd_version_name=${RTD_VERSION_NAME}"
+            echo "version_type=${VERSION_TYPE}"
+          } >> "${GITHUB_OUTPUT}"
+
+      # Every step below is gated on proceed == 'true' so skip-mode runs
+      # end here cleanly.
+      - name: Checkout cupy at the tested revision (same ref ci.yml built)
+        if: steps.compute.outputs.proceed == 'true'
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        with:
+          ref: ${{ steps.compute.outputs.merge_sha }}
+          fetch-depth: 1
+          # tag refs needed by the "Decide stable promotion" step below;
+          # we only need the names, not the tag commits themselves.
+          fetch-tags: true
+
+      # Promote stable to this upload when the current tag is the highest
+      # final `vX.Y.Z` in the repo. Backport-safe: sort -V picks v14.1.0
+      # over v13.6.0 even if v13.6.0 is pushed later. Prereleases
+      # (vX.Y.ZaN / bN / rcN / etc.) are filtered out.
+      - name: Decide stable promotion
+        id: stable
+        if: >-
+          steps.compute.outputs.proceed == 'true' &&
+          steps.compute.outputs.version_type == 'tag'
+        env:
+          TAG_NAME: ${{ steps.compute.outputs.rtd_slug }}
+        run: |
+          highest=$(git tag -l 'v*' \
+            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+            | sort -V \
+            | tail -1)
+          if [[ "${TAG_NAME}" == "${highest}" ]]; then
+            echo "::notice::${TAG_NAME} is the highest final tag; promoting stable"
+            echo "promote_stable=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "::notice::${TAG_NAME} is not the highest final tag (highest=${highest:-none}); keeping stable as-is"
+            echo "promote_stable=false" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Read python.doc.version from ci/versions.yml
+        if: steps.compute.outputs.proceed == 'true'
+        id: pyver
+        run: echo "value=$(yq '.python.doc.version' ci/versions.yml)" >> "${GITHUB_OUTPUT}"
+
+      - name: Set up Python
+        if: steps.compute.outputs.proceed == 'true'
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: ${{ steps.pyver.outputs.value }}
+
+      - name: Download cupy wheel from triggering CI run
+        if: steps.compute.outputs.proceed == 'true'
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0  # v5.0.0
+        with:
+          name: cupy-cuda13x-py${{ steps.pyver.outputs.value }}-linux-64-${{ steps.compute.outputs.suffix }}
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ./wheel
+
+      # nvidia-nccl-cu13 isn't pulled in by cupy[ctk]; autodoc on
+      # cupyx.distributed otherwise emits "libnccl.so.* not found"
+      # warnings that bubble up as unresolved references in the HTML.
+      - name: Install docs requirements + cupy[ctk] + nccl
+        if: steps.compute.outputs.proceed == 'true'
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r docs/requirements.txt
+          WHEEL=$(ls wheel/cupy_cuda13x-*.whl)
+          python -m pip install "${WHEEL}[ctk]" nvidia-nccl-cu13
+
+      # Run sphinx from docs/ (not the repo root): CWD is on sys.path and
+      # `./cupy/` would shadow the installed wheel, so autodoc would import
+      # the uncompiled source tree and fail on the Cython extensions.
+      - name: Build HTML docs
+        if: steps.compute.outputs.proceed == 'true'
+        working-directory: docs
+        env:
+          # Mimic the RTD build env so docs/source/conf.py's extlinks tag
+          # resolution and cupy/cuda/__init__.py's RTD import guards behave
+          # identically to a RTD-run build.
+          READTHEDOCS: "True"
+          READTHEDOCS_PROJECT: cupy
+          READTHEDOCS_LANGUAGE: en
+          READTHEDOCS_VERSION: ${{ steps.compute.outputs.rtd_slug }}
+          READTHEDOCS_VERSION_TYPE: ${{ steps.compute.outputs.version_type }}
+          READTHEDOCS_GIT_COMMIT_HASH: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          # -W --keep-going turns Sphinx warnings into errors but walks
+          # the full build before failing so one iteration surfaces the
+          # whole backlog. Once #10361 removes pretest's `-W` build,
+          # this is the only docs lint; the nccl install step above
+          # already addresses one class of autodoc warning.
+          python -m sphinx -T -j auto -W --keep-going -b html source build/html
+
+      - name: Upload HTML artifact
+        if: steps.compute.outputs.proceed == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: docs-html-${{ steps.compute.outputs.suffix }}
+          path: docs/build/html
+          if-no-files-found: error
+          retention-days: 90
+
+  # Separate job so PR code never shares a runner with RTD_API_TOKEN:
+  # `build` above checks out PR code and runs sphinx (no secrets);
+  # `publish` runs on a fresh runner with no checkout, only the token.
+  publish:
+    name: Publish docs to RTD
+    needs: build
+    # Publish on PR previews (external), main push (latest), and
+    # release-tag push (vX.Y.Z). v*/hotfix-* branch pushes still skip:
+    # the branches tie back to pre-release work and RTD doesn't carry
+    # per-branch versions for them.
+    if: >-
+      needs.build.outputs.proceed == 'true' &&
+      (needs.build.outputs.version_type == 'external' ||
+       needs.build.outputs.version_type == 'tag' ||
+       (needs.build.outputs.version_type == 'branch' &&
+        github.event.workflow_run.head_branch == 'main'))
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    steps:
+      - name: Download HTML artifact
+        # Same-run default: the build job above uploaded this artifact
+        # into the current docs.yml run, not into the triggering CI run.
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0  # v5.0.0
+        with:
+          name: docs-html-${{ needs.build.outputs.suffix }}
+          path: ./html
+
+      # Publish with the readthedocs-upload CLI (the client behind
+      # readthedocs/upload-action, used directly: the action has no
+      # release tag and tracks git@main, while the PyPI release is a
+      # pinned, immutable artifact). The CLI drives the same
+      # /api/v3/upload/ flow (initiate -> presigned S3 POST -> complete)
+      # and covers what the previous bash implementation hand-rolled: it
+      # retries the S3 POST 3x with backoff on transport errors/5xx,
+      # fails fast on 4xx, POSTs complete(failed) on any error so no
+      # pending build counts against RTD's upload cap, builds the zip
+      # layout from --html itself, and reads the token only from
+      # READTHEDOCS_TOKEN (never argv). The explicit
+      # --version-name/--version-type/--commit flags bypass its GitHub
+      # env inference, which would resolve every workflow_run to
+      # main/branch.
+      - name: Install readthedocs-upload
+        run: python3 -m pip install --user readthedocs-upload==1.0.0a1
+
+      # Non-fatal when the token is unset so stage 1 can land before the
+      # secret is wired. PR-origin values flow via env, not ${{ }}
+      # interpolation into the script.
+      - name: Upload HTML to RTD
+        env:
+          READTHEDOCS_TOKEN: ${{ secrets.RTD_API_TOKEN }}
+          RTD_VERSION_NAME: ${{ needs.build.outputs.rtd_version_name }}
+          RTD_VERSION_TYPE: ${{ needs.build.outputs.version_type }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          PROMOTE_STABLE: ${{ needs.build.outputs.promote_stable }}
+        run: |
+          if [[ -z "${READTHEDOCS_TOKEN}" ]]; then
+            echo "::warning::RTD_API_TOKEN not set; skipping upload"
+            exit 0
+          fi
+
+          python3 -m readthedocs_cli upload \
+            --project-slug cupy \
+            --html ./html \
+            --version-name "${RTD_VERSION_NAME}" \
+            --version-type "${RTD_VERSION_TYPE}" \
+            --commit "${HEAD_SHA}"
+
+          # Promote the same HTML to the `stable` alias when this tag is
+          # the highest final vX.Y.Z (decided in the build job).
+          if [[ "${PROMOTE_STABLE}" == "true" ]]; then
+            python3 -m readthedocs_cli upload \
+              --project-slug cupy \
+              --html ./html \
+              --version-name stable \
+              --version-type tag \
+              --commit "${HEAD_SHA}"
+          fi

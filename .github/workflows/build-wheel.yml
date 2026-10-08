@@ -19,6 +19,10 @@ on:
         description: "Suffix keying the wheel artifact name (pr<N>-<head sha> for /test builds, the push SHA post-merge); what the test stage looks up. The sdist artifact (cupy-sdist-<suffix>) MUST already exist under the same suffix."
         required: true
         type: string
+      python-versions:
+        description: "JSON-array string of Python versions to build (e.g. '[\"3.12\"]'). The full default list lives in ci/versions.yml under .python.supported; ci.yml's guard reads it and passes it here."
+        required: true
+        type: string
 
 defaults:
   run:
@@ -32,13 +36,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version:
-          - "3.10"
-          - "3.11"
-          - "3.12"
-          - "3.13"
-          - "3.14"
-          - "3.14t"
+        python-version: ${{ fromJSON(inputs.python-versions) }}
         exclude:
           # CPython 3.10 has no official Windows ARM64 build (neither
           # nuget-cpython nor actions/setup-python's manifest carries one),
