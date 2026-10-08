@@ -1126,7 +1126,10 @@ class TestMemoryAsyncPool(unittest.TestCase):
         self.pool.free_all_blocks()
         with cupy.cuda.Device() as d:
             _, mem_total = d.mem_info
-            mem = self.pool.malloc(int(0.7 * mem_total)).mem  # 70% memory
+            try:
+                mem = self.pool.malloc(int(0.7 * mem_total)).mem  # 70% memory
+            except MemoryError:
+                pytest.skip('Not enough GPU memory for the initial allocation')
             del mem
             mem = self.pool.malloc(int(0.3 * mem_total)).mem  # 30% memory # noqa
 
@@ -1143,7 +1146,10 @@ class TestMemoryAsyncPool(unittest.TestCase):
         default_pool = cupy.get_default_memory_pool()
         with cupy.cuda.Device() as d:
             _, mem_total = d.mem_info
-            mem = self.pool.malloc(int(0.7 * mem_total)).mem  # 70% memory
+            try:
+                mem = self.pool.malloc(int(0.7 * mem_total)).mem  # 70% memory
+            except MemoryError:
+                pytest.skip('Not enough GPU memory for the initial allocation')
             del mem
             with pytest.raises(memory.OutOfMemoryError):
                 default_pool.malloc(int(0.3 * mem_total))  # 30% memory
@@ -1156,7 +1162,10 @@ class TestMemoryAsyncPool(unittest.TestCase):
         default_pool = cupy.get_default_memory_pool()
         with cupy.cuda.Device() as d:
             _, mem_total = d.mem_info
-            mem = default_pool.malloc(int(0.7 * mem_total)).mem  # 70% memory
+            try:
+                mem = default_pool.malloc(int(0.7 * mem_total)).mem  # 70%
+            except MemoryError:
+                pytest.skip('Not enough GPU memory for the initial allocation')
             del mem
             with pytest.raises(memory.OutOfMemoryError):
                 self.pool.malloc(int(0.3 * mem_total))  # 30% memory

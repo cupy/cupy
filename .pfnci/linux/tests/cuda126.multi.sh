@@ -20,6 +20,8 @@ echo "======================================================="
 
 trap "$ACTIONS/cleanup.sh" EXIT
 "$ACTIONS/fetch-wheel.sh"
+# Ensure matrix versions in case CuPy pins changed them (nightly testing).
+python3 -m pip install --user -U 'numpy==2.2.*' 'scipy==1.14.*' 'optuna==4.*' 'mpi4py==4.*' 'ml_dtypes==0.5.*' 'cython==3.2.*,!=3.2.6'
 export OMPI_ALLOW_RUN_AS_ROOT=1
 export OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
 CUPY_CI_PYTEST_EXTRA_OPTS="${CUPY_CI_PYTEST_EXTRA_OPTS:+$CUPY_CI_PYTEST_EXTRA_OPTS }--deselect tests/install_tests/test_cupy_builder/test_features.py::test_CUDA_cuda" "$ACTIONS/unittest.sh" "not slow and multi_gpu"
