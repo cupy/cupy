@@ -10,7 +10,7 @@ from cupy._environment import get_rocm_path  # NOQA
 from cupy._environment import get_hipcc_path  # NOQA
 from cupy._environment import get_cann_path # NOQA
 
-# Ascend builds skip the CUDA/HIP-only device API (Function/Module/Graph/
+# Ascend builds skip the CUDA/HIP-only device API (Graph/
 # MemoryAsyncPool).  The runtime module is backend-neutral and does not import
 # `cupy.xpu`, so this is safe to resolve at import time (see also the
 # `cupy.cuda` compatibility layer, which re-exports these names).
@@ -18,8 +18,10 @@ from cupy.backends.backend import is_ascend as _is_ascend_fn
 
 _is_ascend = _is_ascend_fn
 
-if not _is_ascend:
-    from cupy.xpu import function  # NOQA
+# `cupy.xpu.function` is compiled on every backend (against the shared
+# `cupy/xpu/function.pxd`); only the pyx source file differs per backend
+# (CUDA: `cupy/cuda/function.pyx`, Ascend: `cupy/xpu/ascend/function.pyx`).
+from cupy.xpu import function  # NOQA
 from cupy.xpu import device  # NOQA
 from cupy.xpu import memory  # NOQA
 from cupy.xpu import memory_hook  # NOQA
@@ -35,9 +37,8 @@ from cupy.backends.backend.api import runtime  # NOQA
 from cupy.xpu.device import Device  # NOQA
 from cupy.xpu.device import get_cublas_handle  # NOQA
 from cupy.xpu.device import get_device_id  # NOQA
-if not _is_ascend:
-    from cupy.xpu.function import Function  # NOQA
-    from cupy.xpu.function import Module  # NOQA
+from cupy.xpu.function import Function  # NOQA
+from cupy.xpu.function import Module  # NOQA
 from cupy.xpu.memory import alloc  # NOQA
 from cupy.xpu.memory import BaseMemory  # NOQA
 from cupy.xpu.memory import malloc_managed  # NOQA

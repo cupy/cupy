@@ -62,7 +62,9 @@ cuda_files = [
     'cupy.xpu.memory',
     'cupy.xpu.memory_hook',
     'cupy.xpu.pinned_memory',
-    'cupy.xpu.function',
+    # compiled as module `cupy.xpu.function` against the shared pxd
+    # `cupy/xpu/function.pxd`; the file stays at its upstream location
+    ('cupy.xpu.function', ['cupy/cuda/function.pyx']),
     'cupy.xpu.stream',
     'cupy.xpu.graph',
     'cupy._core._carray',

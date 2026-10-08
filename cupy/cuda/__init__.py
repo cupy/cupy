@@ -103,10 +103,11 @@ from cupy.xpu import get_current_stream  # NOQA
 from cupy.xpu import get_elapsed_time  # NOQA
 from cupy.xpu import using_allocator  # NOQA
 
+from cupy.xpu import Function  # NOQA
+from cupy.xpu import Module  # NOQA
+
 if not _is_ascend:
     # CUDA/HIP-only 的设备 API（Ascend 上没有对应的实现）
-    from cupy.xpu import Function  # NOQA
-    from cupy.xpu import Module  # NOQA
     from cupy.xpu import Graph  # NOQA
     from cupy.xpu import MemoryAsyncPool  # NOQA
 

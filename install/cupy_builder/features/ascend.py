@@ -58,7 +58,9 @@ ascend_files = [
     'cupy.xpu.memory',  # MemoryAsyncPool is not supported
     'cupy.xpu.memory_hook',  # backend independent
     'cupy.xpu.pinned_memory',
-    'cupy.xpu.function',  # only compile code for CPointer
+    # compiled as module `cupy.xpu.function` against the shared pxd
+    # `cupy/xpu/function.pxd`; AscendC implementation (aclrt binary/launch API)
+    ('cupy.xpu.function', ['cupy/xpu/ascend/function.pyx']),
     'cupy.xpu.stream',
     'cupy._util',  # backend independent:  context manager, memoise
     'cupy.backends.ascend.api.acl_utils',
