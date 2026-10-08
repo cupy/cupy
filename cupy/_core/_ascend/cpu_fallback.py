@@ -178,6 +178,14 @@ FALLBACKS: Dict[str, Callable[..., Any]] = {
     'statistics.quantile': numpy.quantile,
 
     'math.round': numpy.round, # rounding behavior is diff from aclnnRound
+
+    # cupy._creation.ranges：arange/linspace 的 complex / float64 情形，
+    # aclnnArange/aclnnLinspace 不支持（Float64Workaround.md P2 表）；接线
+    # 见 ranges.py（complex 一律、f64 在 CUPY_ASCEND_FLOAT64_MODE=cpu 时
+    # 整调用走 host）。注意 numpy.arange 不支持复数 step（返回空数组），
+    # 复数 arange 由 ranges.py 的实部/虚部分解路径负责，不经本表。
+    'creation.arange': numpy.arange,
+    'creation.linspace': numpy.linspace,
 }
 
 _ASCEND: Optional[bool] = None
@@ -445,6 +453,15 @@ def _to_host(value: Any) -> Any:
     return value
 
 
+#: numpy 有同名函数但调用约定不同的内部 ufunc（去 cupy_ 前缀后的名字）。
+#: 见 :func:`run_elementwise_host` 的 P4-2 黑名单说明。
+_UFUNC_HOST_NAME_MISMATCH = frozenset((
+    'arange',
+    'linspace',
+    'bincount_kernel',
+))
+
+
 def run_elementwise_host(name: str, ins: Any, outs: Any,
                          kwargs: Dict[str, Any],
                          dtype: Any = None,
@@ -467,6 +484,18 @@ def run_elementwise_host(name: str, ins: Any, outs: Any,
     不支持的 ufunc（numpy 无同名函数）响亮报错，并提示可切 float32 模式。
     """
     fname = name[len('cupy_'):] if name.startswith('cupy_') else name
+    if fname in _UFUNC_HOST_NAME_MISMATCH:
+        # Float64Workaround.md P4-2 / 遗留事项 3：numpy 有同名函数但调用
+        # 约定不同，naive getattr 映射会静默算错 —— cupy_arange(start, step)
+        # 会被当成 np.arange(start, step)（step 被当成 stop，shape 必然
+        # 不对）；cupy_linspace 被当成 np.linspace(start, step) 默认
+        # num=50，50 个元素写进更小的 out（堆越界写）。这类内部 ufunc 的
+        # f64 情形必须由公开 API 层（cupy._creation.ranges 等）整调用回退。
+        raise NotImplementedError(
+            '{}: 内部 ufunc 与 numpy.{} 的调用约定不同，不能 naive host '
+            '映射（会静默算错/越界写）；应由公开 API 层整调用走 host '
+            '（见 cpu_fallback.FALLBACKS，如 creation.arange/creation.'
+            'linspace）'.format(name, fname))
     np_ufunc = getattr(numpy, fname, None)
     if not callable(np_ufunc):
         raise NotImplementedError(
@@ -641,6 +670,30 @@ def _host_complex(ins: Any, outs: Any, args: Any, kwargs: Any) -> None:
     _copy_host_into(out, result)
 
 
+def _host_scatter_update(ins: Any, outs: Any, args: Any, kwargs: Any) -> None:
+    """aclnnScatterUpdate（``a[indices] = v`` 的 cpu 模式路径）。
+
+    调用点 ``_routines_indexing._scatter_op_single``（op='update'）：
+    ``ins = [v, indices]``（两者已 broadcast 到 ``lshape + indices_shape +
+    rshape``），``outs = [a]``，``args = [cdim, rdim, adim]``。语义等价于
+    ``a.reshape(lprod, adim, rdim)`` 上沿 axis=1 的 ``put_along_axis``：
+    ``a3[l, idx3[l, c, r], r] = v3[l, c, r]``。a 是别名写入目标，先整体
+    D2H、host 端改完再整体写回。
+    """
+    v = numpy.asarray(_to_host(ins[0]))
+    idx = numpy.asarray(_to_host(ins[1]))
+    a = outs[0]
+    cdim, rdim, adim = (int(x) for x in args[:3])
+    if a.size == 0 or cdim == 0:
+        return
+    lprod = a.size // (adim * rdim)
+    a_host = numpy.asarray(_to_host(a)).reshape(lprod, adim, rdim)
+    v3 = v.reshape(lprod, cdim, rdim)
+    idx3 = idx.reshape(lprod, cdim, rdim)
+    numpy.put_along_axis(a_host, idx3, v3, axis=1)
+    _copy_host_into(a, a_host)
+
+
 # ---------------------------------------------------------------------------
 # 稠密线代（B 类 structural：ascend_svd/qr/inverse/slogdet/trace/tril/triu）
 #
@@ -716,6 +769,10 @@ _GENERAL_HOST_FALLBACKS.update({
     'ascend_index_select': _host_index_select,
     'ascend_nonzero': _host_nonzero,
     'ascend_complex': _host_complex,
+    # setitem（a[indices] = v / cupy.indices 的 res[i] = arange 等）：
+    # cpu 模式 f64 数组的 setitem 依赖此 adapter，否则 mgrid/ogrid 的
+    # f64 路径在 _scatter_op_single 处响亮 NotImplementedError。
+    'ascend_scatter_update': _host_scatter_update,
     # 稠密线代：cpu 模式 f64 走 numpy.linalg（真双精度），f32 照常直达 aclnn
     'ascend_svd': _host_svd,
     'ascend_qr': _host_qr,

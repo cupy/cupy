@@ -89,7 +89,7 @@ cdef class _TypeMap:
 
 cdef class _Op:
     """Simple data structure that represents a kernel routine with single \
-    concrete dtype mapping.
+concrete dtype mapping.
     """
 
     cdef:

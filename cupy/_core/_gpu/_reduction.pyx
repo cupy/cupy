@@ -792,7 +792,7 @@ cdef class ReductionKernel(_AbstractReductionKernel):
                 reduction is performed.
             keepdims (bool): If ``True``, the specified axes are remained as
                 axes of length one.
-            stream (cupy.xpu.Stream, optional): The CUDA stream to launch the
+            stream (cupy.cuda.Stream, optional): The CUDA stream to launch the
                 kernel on. If not given, the current stream will be used.
 
         Returns:

@@ -17,6 +17,7 @@ verification on real hardware (see docs/ascend/polynomial_note.md).
 """
 from __future__ import annotations
 
+import numpy
 import cupy
 from cupy._core import _routines_linalg as _linalg
 
@@ -39,9 +40,10 @@ def inv(a):
 def lstsq(a, b, rcond=None):
     """``cupy.linalg.lstsq`` replacement via the SVD pseudo-inverse.
 
-    Returns ``(x, resids, rank, s)`` like ``numpy.linalg.lstsq``. Deviation
-    from NumPy: ``resids`` is always the sum of squared residuals of the fit
-    (NumPy returns an empty array when ``rank < n`` or ``m <= n``).
+    Returns ``(x, resids, rank, s)`` like ``numpy.linalg.lstsq``.
+    NumPy semantics for `resides` is the sum of sequared residuals,
+    returns only for over-determined ``m <= n`` and full rank ```rank == n`
+    Otherwise, an empty array is returned
     """
     a = cupy.asarray(a)
     b = cupy.asarray(b)
@@ -58,7 +60,14 @@ def lstsq(a, b, rcond=None):
     one_d = b.ndim == 1
     bb = b.reshape(m, -1)
 
-    u, s, vh = _svd_reduced(a)
+    try:
+        u, s, vh = _svd_reduced(a)
+    except RuntimeError:
+        # aclnnSvd accaionally return ret=500003
+        from cupy._core._ascend import cpu_fallback
+        u_np, s_np, vh_np = cpu_fallback.call(
+            numpy.linalg.svd, cupy.asnumpy(a), fullmatrices=False, compute_uv=True)
+        u, s, vh = (cupy.asarray(u_np), cupy.asarray(s_np), cupy.asarray(vh_np))
 
     if rcond is None:
         eps = cupy.finfo(s.dtype).eps
@@ -73,5 +82,10 @@ def lstsq(a, b, rcond=None):
     # minimum-norm solution: x = Vh^H diag(1/s) U^H b
     x = (vh.conj().T * sinv) @ (u.conj().T @ bb)   # (n, k)
 
-    resids = ((a @ x - bb) ** 2).sum(axis=0)
+    # NumPy semantics: resids is empty when not over-determined or
+    # when the coeff matrix is rank-deficient.
+    if m > n and rank == n:
+        resids = ((a @ x - bb) ** 2).sum(axis=0)
+    else:
+        resids = cupy.empty((0,), dtype=s.dtype)
     return (x[:, 0] if one_d else x), resids, rank, s

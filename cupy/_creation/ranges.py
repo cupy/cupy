@@ -8,11 +8,38 @@ import cupy
 from cupy import _core
 
 
-#: aclnnArange 不支持的 dtype：Ascend 上先用 int32 生成再 cast 回目标 dtype
-#: （见 arange）。需要同样处理的 dtype 往这个 set 加名字。
-_ASCEND_ARANGE_INT32_FALLBACK = frozenset((
-    'int8', 'int16', 'uint8', 'uint16', 'uint32', 'uint64',
-))
+#: aclnnArange 不可靠支持的 dtype -> 生成用的 work dtype（Ascend 上先按
+#: work dtype 生成再 cast 回目标 dtype，见 arange）。aclnnArange 头文件无
+#: dtype 文档，内核只可靠支持 FLOAT/INT32/INT64 一族
+#: （docs/ascend/Float64Workaround.md P2 表）。
+_ASCEND_ARANGE_WORK_DTYPE = {
+    'int8': numpy.int32,
+    'int16': numpy.int32,
+    'uint8': numpy.int32,
+    'uint16': numpy.int32,
+    # int64 是 aclnnArange 原生支持的 dtype（默认 arange(10) 即 int64 路径，
+    # 已在 910B 验证）；int32 中间态在 2**31 以上会静默溢出，故 u32/u64
+    # 一律用 int64 生成。
+    'uint32': numpy.int64,
+    'uint64': numpy.int64,
+    # FLOAT16 无 aclnnArange 支持依据（promote 层 _UINT_PROMOTE_CHARS 也不
+    # 含 'e'，f16 原样直达 aclnn），用 float32 生成再 cast 回半精度。
+    'float16': numpy.float32,
+}
+
+
+def _ascend_cpu_fallback():
+    """cpu_fallback 模块（延迟导入：非 Ascend 构建下不存在）。"""
+    from cupy._core._ascend import cpu_fallback
+    return cpu_fallback
+
+
+def _ascend_f64_cpu_mode() -> bool:
+    """CUPY_ASCEND_FLOAT64_MODE=cpu（float64 走 host 真双精度）是否生效。"""
+    try:
+        return _ascend_cpu_fallback().f64_mode() == 'cpu'
+    except ImportError:      # pragma: no cover - 非 ascend 环境
+        return False
 
 
 def arange(start, stop=None, step=1, dtype=None):
@@ -65,6 +92,8 @@ def arange(start, stop=None, step=1, dtype=None):
             return cupy.array([start], dtype=numpy.bool_)
 
     from cupy.backends.backend import is_ascend
+    dtype_name = numpy.dtype(dtype).name
+
     if is_ascend and numpy.dtype(dtype).kind == 'c':
         # ASCEND: special for complex number complex64 and complex128
         # out [i] = start + i * step
@@ -75,9 +104,11 @@ def arange(start, stop=None, step=1, dtype=None):
         #   im[i] = start.imag + i * step.imag
         # work dtype：complex64 -> float32、complex128 -> float64，与 numpy
         # 在目标 dtype 内计算单精度/双精度的语义一致。
+        # cpu 模式（CUPY_ASCEND_FLOAT64_MODE=cpu）下 float64 work dtype 会
+        # 走 arange 的 host fallback，逐元素 mul/add 与 ascend_complex 由
+        # cpu_fallback 的拦截口接管，得到真 complex128 精度。
         work_dtype = (numpy.float32
-                      if numpy.dtype(dtype).name == 'complex64'
-                      else numpy.float64)
+                      if dtype_name == 'complex64' else numpy.float64)
         cstart = complex(start)
         cstep = complex(step)
         idx = cupy.arange(0, size, 1, dtype=work_dtype)
@@ -88,23 +119,29 @@ def arange(start, stop=None, step=1, dtype=None):
         py_launch_general('ascend_complex', (re, im), (ret,), (), {})
         return ret
 
-    if is_ascend and numpy.dtype(dtype).name in _ASCEND_ARANGE_INT32_FALLBACK:
-        # aclnnArange 不支持 int8/int16/uint16/uint32/uint64：先用 int32/64 生成，
-        # 再 cast 回目标 dtype（cast 走已注册的 ascend_cast）。
-        # 已知限制：中间态为 int32，> 2**31-1 的 uint32 取值会溢出。
-        work_dtype = numpy.int64 if numpy.dtype(dtype).name == 'uint64' else numpy.int32
-        ret = cupy.empty((size,), dtype=work_dtype)
-        _arange_ufunc(int(start), int(step), ret, dtype=numpy.int32)
-        return ret.astype(dtype)
-
-    if is_ascend and numpy.dtype(dtype).name == 'float64':
-        # aclnnArange 不支持 DOUBLE（Float64Workaround.md P2），且 promote
-        # 层不降标量 args 时 f64 start/step + f32 out 的组合在 CANN 侧段
-        # 错误（P1）。先用 float32 生成再 cast 回 float64 —— 精度语义与
-        # float32 降档一致（用户可见 dtype 不变，精度单精度）。
+    if is_ascend and dtype_name == 'float64':
+        if _ascend_f64_cpu_mode():
+            # cpu 模式：整调用走 host numpy.arange，真 float64 精度
+            # （float32 降档会丢精度，见 docs/ascend/Float64Workaround.md）。
+            # 注意 numpy.arange 不支持复数 step，复数不进本分支。
+            return _ascend_cpu_fallback().call(
+                'creation.arange', start, stop, step, dtype=dtype)
+        # float32 模式（默认）：aclnnArange 不收 DOUBLE，用 float32 生成
+        # 再 cast 回 float64 —— 精度语义与 float32 降档一致（用户可见
+        # dtype 不变，精度单精度）。
         ret = cupy.empty((size,), dtype=numpy.float32)
         _arange_ufunc(numpy.float32(start), numpy.float32(step), ret,
                       dtype=numpy.float32)
+        return ret.astype(dtype)
+
+    work_dtype = _ASCEND_ARANGE_WORK_DTYPE.get(dtype_name)
+    if is_ascend and work_dtype is not None:
+        # aclnnArange 不收小整型/f16：按 work dtype 生成再 cast 回目标
+        # dtype（cast 走已注册的 ascend_cast，原生支持）。此前 uint64
+        # 分配了 int64 out 却硬编码 dtype=int32，实际按 int32 计算后溢出。
+        ret = cupy.empty((size,), dtype=work_dtype)
+        _arange_ufunc(work_dtype(start), work_dtype(step), ret,
+                      dtype=work_dtype)
         return ret.astype(dtype)
 
     ret = cupy.empty((size,), dtype=dtype)
@@ -135,16 +172,28 @@ def _linspace_scalar(start, stop, num=50, endpoint=True, retstep=False,
         cupy.ndarray: The 1-D array of ranged values.
 
     """
+    from cupy.backends.backend import is_ascend
     dt = cupy.result_type(start, stop, float(num))
     if dtype is None:
         # In actual implementation, only float is used
         dtype = dt
 
+    if is_ascend and numpy.dtype(dt).kind == 'c':
+        # ASCEND（原 TODO host fallback）：aclnnLinspace 只收实数，且
+        # complex start/stop 在下方 float(stop - start) 处直接 TypeError
+        # —— 设备路径对 complex 完全不可达。整调用走 host numpy.linspace
+        #（complex、retstep 原生支持）；retstep 时 numpy 返回复数 step
+        # 标量（to_device 会转成 0-d cupy 标量），与此前"直接崩"相比是
+        # 行为改善。fallback 被环境变量关闭时 cpu_fallback.call 响亮
+        # NotImplementedError，符合"显式失败优于静默错误"的约定。
+        return _ascend_cpu_fallback().call(
+            'creation.linspace', start, stop, num, endpoint, retstep,
+            dtype=dtype)
+
     # ASCEND（Float64Workaround.md 修复 2）：aclnnLinspace/aclnnArange 不收
     # DOUBLE。float64 时用 float32 work dtype 生成，末尾 astype(dtype) 已
     # 有 cast 回 f64 的兜底；CUDA 路径 work_dtype == dt，行为不变。
     work_dtype = dt
-    from cupy.backends.backend import is_ascend
     if is_ascend and numpy.dtype(work_dtype).name == 'float64':
         work_dtype = numpy.float32
 
@@ -158,21 +207,24 @@ def _linspace_scalar(start, stop, num=50, endpoint=True, retstep=False,
         step = float(stop - start) / div
         stop = float(stop)
 
-        # ASCEND: when work_type is demoted from f64 to f32
-        # huge start, step overflow float32 to inf and abort aclnn linspace
-        # so fallback to host numpy
-        _host_overflow = (is_ascend and numpy.dtype(work_type).name == 'float32')
+        # ASCEND: work dtype 降为 f32 后，巨大的 start/step 会溢出成 inf
+        # 使 aclnnLinspace abort（不止 f64 降档的请求，原生 f32 大数值请求
+        # 同样命中），所以 Ascend 上所有 f32 work dtype 的 linspace 都走
+        # host numpy.linspace（f64 计算，末尾 astype 回目标 dtype，精度
+        # 只升不降）。
+        _host_overflow = (is_ascend and numpy.dtype(work_dtype).name == 'float32')
         if _host_overflow:
-            ret = cupy.asarray(numpy.linspace(start, stop if endpoint else stop - step, num, 
-                                              endpoint=endpoint, dtype=work_dtype))
+            ret = _ascend_cpu_fallback().call(
+                'creation.linspace', start, stop, num, endpoint, False,
+                dtype=numpy.float64)
         elif step == 0.0:
             # for underflow
             _linspace_ufunc_underflow(start, stop - start, div, ret,
                                       dtype=work_dtype)
         else:
-            # ASCEND: work_dtype may be float32 while start/step are float64
-            # there may be scalars mismatched types (py scalar -> CScalar)
-            if is_ascend and numpy.dtype(work_dtype).name != numpy.dtype(
+            # work_dtype 可能与标量 start/step 的 dtype 不一致（py 标量
+            # -> CScalar），按 work dtype 物化标量再派发。
+            if numpy.dtype(work_dtype).name != numpy.dtype(
                 numpy.asarray(start).dtype).name:
                 wdtype = numpy.dtype(work_dtype).type
                 _linspace_ufunc(wdtype(start), wdtype(step), ret, dtype=work_dtype)
@@ -247,6 +299,23 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None,
     if dtype is None:
         # In actual implementation, only float is used
         dtype = dt
+
+    # ASCEND：数组 start/stop 的设备路径由
+    # _arange_ufunc + 逐元素 mul/add 拼装，其中
+    #   * complex：aclnn 侧无对应支持（ascend_arange 拒绝 complex），必崩；
+    #   * float64：cpu 模式下 cupy_arange 的 host 名字映射语义错误
+    #     （cpu_fallback P4-2：np.arange(start, step)），不能放行。
+    # 故 complex 一律、float64 在 cpu 模式下整调用走 host numpy.linspace
+    #（原生支持数组 start/stop / axis / retstep）；float32 模式沿用设备端
+    # 降档路径（promote 层处理，已在 910B 验证）。
+    from cupy.backends.backend import is_ascend
+    if is_ascend:
+        _kind = numpy.dtype(dt).kind
+        if (_kind == 'c'
+                or (numpy.dtype(dt).name == 'float64' and _ascend_f64_cpu_mode())):
+            return _ascend_cpu_fallback().call(
+                'creation.linspace', start, stop, num, endpoint, retstep,
+                dtype=dtype, axis=axis)
 
     delta = stop - start
 
@@ -430,6 +499,11 @@ class nd_grid:
         self.sparse = sparse
 
     def __getitem__(self, key):
+        # ASCEND: float64 结果的精度由底层原语统一保证——complex step 分支
+        # 走 cupy.arange(…, float)（f64），cpu 模式下 arange/mul/add 已由
+        # cpu_fallback 接管（真 f64，可过 array_equal UT）；float32 模式
+        # 降档为单精度（与全库 f64 策略一致，见 Float64Workaround.md）。
+
         if isinstance(key, slice):
             step = key.step
             stop = key.stop

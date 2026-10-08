@@ -1150,21 +1150,21 @@ cdef class ufunc:
         readonly Py_ssize_t nin
         readonly Py_ssize_t nout
         readonly Py_ssize_t nargs
-        readonly object name # such as "cupy_add"
+        readonly object name
         readonly _Ops _ops  # normal routines
         # routines based on explicitly given output dtype
         readonly _Ops _out_ops
-        readonly object _preamble # string, prefix for kernel source
-        readonly object _loop_prep # string, code insert at the beginning of loop
+        readonly object _preamble
+        readonly object _loop_prep
         readonly object _default_casting
-        readonly object _cutensor_op # cutensor only, ignore
+        readonly object _cutensor_op
         readonly int _cutensor_alpha
         readonly int _cutensor_gamma
-        readonly str _scatter_op # inplace op
-        readonly tuple _params #
-        readonly tuple _params_with_where # where?
-        readonly dict _routine_cache # what is the difference between _kernel_memo
-        readonly dict _kernel_memo # cache dict of key->kernel
+        readonly str _scatter_op
+        readonly tuple _params
+        readonly tuple _params_with_where
+        readonly dict _routine_cache
+        readonly dict _kernel_memo
         readonly object _doc
         public object __doc__
         readonly object __name__
