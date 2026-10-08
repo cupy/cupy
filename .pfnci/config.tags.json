@@ -198,6 +198,7 @@
         "py314t"
     ],
     "cupy.linux.cuda-slow": [
+        "@nightly",
         "slow",
         "linux"
     ],
@@ -209,6 +210,7 @@
         "example"
     ],
     "cupy.linux.cuda-head": [
+        "@nightly",
         "head",
         "linux"
     ],
