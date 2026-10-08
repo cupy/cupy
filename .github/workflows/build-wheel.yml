@@ -71,7 +71,7 @@ jobs:
       # that the wheel is built from the SAME bytes we'd publish to PyPI, so
       # a MANIFEST.in gap fails this CI job (not a downstream user).
       - name: Checkout workflow-scoped files
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           ref: ${{ inputs.ref }}
           fetch-depth: 1
@@ -80,7 +80,7 @@ jobs:
             ci
 
       - name: Download sdist artifact
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0  # v5.0.0
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
         with:
           name: cupy-sdist-${{ inputs.artifact-suffix }}
           path: ${{ runner.temp }}/sdist
@@ -140,7 +140,7 @@ jobs:
 
       # xref: https://github.com/orgs/community/discussions/42856#discussioncomment-7678867
       - name: Adding addtional GHA cache-related env vars
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
         with:
           script: |
             core.exportVariable('ACTIONS_CACHE_SERVICE_V2', 'on');
@@ -151,7 +151,7 @@ jobs:
 
       - name: Set up Python
         id: setup-python1
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           # WAR: setup-python is not relocatable, and cibuildwheel hard-wires to 3.12...
           # see https://github.com/actions/setup-python/issues/871
@@ -260,7 +260,7 @@ jobs:
             ${{ startsWith(inputs.host-platform, 'linux-') && '--root-prefix /project/srcpkg' || '' }} >> "$GITHUB_ENV"
 
       - name: Build cupy-cuda${{ env.BUILD_CUDA_MAJOR }}x wheel
-        uses: pypa/cibuildwheel@e090b81e30c4d855ea63bf4b6e59204c09a101ae  # v4.2.1
+        uses: pypa/cibuildwheel@adba99c781d3746d38b3a09b1cf797965bcb7fe6  # v4.3.0
         with:
           package-dir: ./srcpkg
           output-dir: wheelhouse
