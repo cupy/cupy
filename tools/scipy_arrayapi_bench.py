@@ -224,10 +224,9 @@ class Backend:
         For CPU this is a no-op.
 
         numpy-ascend may expose one of:
-            synchronize()
+            xpu.runtime.deviceSynchronize()
             device.synchronize()
-            cuda.synchronize()
-            acl.synchronize()
+            cuda.runtime.deviceSynchronize()
 
         Add your real Ascend synchronization entry here.
         """
@@ -240,21 +239,25 @@ class Backend:
             self.module.synchronize()
             return
 
-        # Some projects expose device.synchronize()
-        device = getattr(self.module, "device", None)
+        # xpu synchronize()
+        device = getattr(self.module, "xpu", None)
         if device is not None:
-            sync = getattr(device, "synchronize", None)
-            if sync is not None:
-                sync()
-                return
+            rt = getattr(device, "runtime", None)
+            if rt is not None:
+                sync = getattr(rt, "deviceSynchronize", None)
+                if sync:
+                    sync()
+                    return
 
-        # CANN/ACL adapter possibility
-        acl = getattr(self.module, "acl", None)
-        if acl is not None:
-            sync = getattr(acl, "synchronize", None)
-            if sync is not None:
-                sync()
-                return
+        # cuda synchronize()
+        device = getattr(self.module, "cuda", None)
+        if device is not None:
+            rt = getattr(device, "runtime", None)
+            if rt is not None:
+                sync = getattr(rt, "deviceSynchronize", None)
+                if sync:
+                    sync()
+                    return
 
         # IMPORTANT:
         # If numpy-ascend operations are asynchronous, you MUST implement

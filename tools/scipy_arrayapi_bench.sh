@@ -1,5 +1,11 @@
 #!/bin/sh
 
+# non-interactive shell (tmax/nohup) does not load ~/.bashrc
+# so need to explicitly source these ~/.bashrc
+# run this script from tools/ directory, if numpy-ascend/cupy has been installed
+set +u
+cd "$(dirname "$0")"
+
 # SCIPY_ARRAY_API must be set BEFORE importing scipy.
 # 第一台/第一次：Ascend,  module name still cupy, maybe renamed to numpy_ascend
 python scipy_arrayapi_bench.py run \
