@@ -27,19 +27,46 @@ PYTHON_LIBRARIES = (
 )
 
 
+# Variant lanes are derived from a parent lane (`_inherits`) and may override
+# only the keys that make up the variant. Everything else must come from the
+# parent so that the two lanes cannot silently drift apart. `_variant` in
+# matrix.yaml selects the entry; `validate_matrixes` enforces it.
+VARIANT_OVERRIDES: Mapping[str, frozenset[str]] = {
+    # Same configuration as the parent, but CuPy is built against and runs on
+    # cuda.bindings (CUPY_USE_CUDA_PYTHON=1).
+    'cuda-python': frozenset({
+        # Lane identity.
+        'project', 'target', 'tags', '_inherits', '_variant',
+        # Bindings-specific requirements and build flag.
+        'cuda-python', 'nvmath-python', 'env:CUPY_USE_CUDA_PYTHON',
+        # Source build instead of the GHA wheel; removed once the bindings
+        # wheel is built in GHA.
+        'wheel',
+    }),
+}
+
+
 class Matrix:
+    # Values used when a key is set neither by the matrix nor by its parent.
+    # They are deliberately kept out of `_rec` so that a child matrix does not
+    # shadow its parent's explicit settings with these defaults.
+    _DEFAULTS: Mapping[str, Any] = {
+        '_inherits': None,
+        '_variant': None,
+        '_extern': False,
+        # Whether a CUDA target installs the GHA wheel (fetch-wheel.sh)
+        # instead of building from source (build.sh). Ignored for ROCm; set
+        # `wheel: false` on CUDA targets that must build from source (e.g.
+        # the cuda-python compile-time variant).
+        'wheel': True,
+        'pip_extra_args': [],
+    }
+
     def __init__(self, record: Mapping[str, Any]):
-        self._rec: dict[str, Any] = {
-            '_inherits': None,
-            '_extern': False,
-            # Whether a CUDA target installs the GHA wheel (fetch-wheel.sh)
-            # instead of building from source (build.sh). Ignored for ROCm; set
-            # `wheel: false` on CUDA targets that must build from source (e.g.
-            # the cuda-python compile-time variant).
-            'wheel': True,
-            'pip_extra_args': [],
-        }
-        self._rec.update(record)
+        self._rec: dict[str, Any] = dict(record)
+        # Keys written in matrix.yaml for this matrix itself, as opposed to
+        # the ones filled in from its parent by `expand_inherited_matrixes`.
+        self.explicit_keys: frozenset[str] = frozenset(record)
 
     def env(self) -> dict[str, Any]:
         envvars = {}
@@ -52,6 +79,8 @@ class Matrix:
     def __getattr__(self, key: str) -> Any:
         if key in self._rec:
             return self._rec[key]
+        if key in self._DEFAULTS:
+            return self._DEFAULTS[key]
         raise AttributeError(f'"{key}" not defined in matrix {self._rec}')
 
     def copy(self) -> Matrix:
@@ -590,6 +619,24 @@ def validate_matrixes(schema: SchemaType, matrixes: list[Matrix]) -> None:
 
         if not hasattr(matrix, 'tags'):
             errors.append(f'{matrix.project}: tags is missing')
+
+        if matrix._variant is not None:
+            if matrix._variant not in VARIANT_OVERRIDES:
+                errors.append(
+                    f'{matrix.project}: unknown _variant {matrix._variant}')
+            elif matrix._inherits is None:
+                errors.append(
+                    f'{matrix.project}: _variant requires _inherits')
+            else:
+                extra = sorted(
+                    matrix.explicit_keys - VARIANT_OVERRIDES[matrix._variant])
+                if extra:
+                    errors.append(
+                        f'{matrix.project}: a "{matrix._variant}" variant '
+                        f'may only override '
+                        f'{sorted(VARIANT_OVERRIDES[matrix._variant])}, '
+                        f'but also sets {extra}; set them on '
+                        f'{matrix._inherits} instead')
 
     # Validate consistency for each matrix
     for matrix in matrixes:

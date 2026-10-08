@@ -1809,7 +1809,7 @@ CuPy CI Test Coverage
      - ✅
    * - cusparselt
      - null
-     - 22
+     - 20
      - ✅
      - ✅
      - ✅
@@ -1843,13 +1843,13 @@ CuPy CI Test Coverage
      - ✅
      - ✅
      - ✅
-     - ✅
-     - ✅
+     - 
+     - 
      - 
      - 
    * - 
      - 0.8.1
-     - 2
+     - 3
      - 
      - 
      - 
@@ -1883,13 +1883,13 @@ CuPy CI Test Coverage
      - 
      - 
      - 
-     - 
+     - ✅
      - 
      - 
      - 
    * - 
      - 0.9.1
-     - 13
+     - 14
      - 
      - 
      - 
@@ -1924,7 +1924,7 @@ CuPy CI Test Coverage
      - 
      - 
      - 
-     - 
+     - ✅
      - ✅
      - ✅
    * - python
@@ -2369,7 +2369,7 @@ CuPy CI Test Coverage
      - 
    * - 
      - 2.4
-     - 10
+     - 9
      - 
      - 
      - 
@@ -2404,12 +2404,12 @@ CuPy CI Test Coverage
      - 
      - 
      - 
-     - ✅
+     - 
      - ✅
      - ✅
    * - 
      - 2.5
-     - 4
+     - 5
      - 
      - 
      - 
@@ -2444,7 +2444,7 @@ CuPy CI Test Coverage
      - 
      - 
      - 
-     - 
+     - ✅
      - 
      - 
    * - 
@@ -2609,7 +2609,7 @@ CuPy CI Test Coverage
      - 
    * - 
      - 1.16
-     - 20
+     - 19
      - 
      - 
      - 
@@ -2643,13 +2643,13 @@ CuPy CI Test Coverage
      - ✅
      - ✅
      - 
-     - ✅
+     - 
      - ✅
      - ✅
      - ✅
    * - 
      - 1.17
-     - 4
+     - 5
      - 
      - 
      - 
@@ -2683,7 +2683,7 @@ CuPy CI Test Coverage
      - 
      - 
      - 
-     - 
+     - ✅
      - 
      - 
      - 
@@ -2929,7 +2929,7 @@ CuPy CI Test Coverage
      - 
    * - ml_dtypes
      - null
-     - 4
+     - 2
      - 
      - 
      - 
@@ -2963,13 +2963,13 @@ CuPy CI Test Coverage
      - 
      - 
      - 
-     - ✅
-     - ✅
+     - 
+     - 
      - 
      - 
    * - 
      - 0.5
-     - 32
+     - 34
      - ✅
      - ✅
      - ✅
@@ -3003,8 +3003,8 @@ CuPy CI Test Coverage
      - ✅
      - ✅
      - 
-     - 
-     - 
+     - ✅
+     - ✅
      - ✅
      - ✅
    * - 
@@ -3489,7 +3489,7 @@ CuPy CI Test Coverage
      - 
    * - cuda-cccl
      - null
-     - 35
+     - 31
      - ✅
      - ✅
      - ✅
@@ -3506,6 +3506,8 @@ CuPy CI Test Coverage
      - ✅
      - ✅
      - ✅
+     - 
+     - 
      - ✅
      - ✅
      - ✅
@@ -3514,10 +3516,8 @@ CuPy CI Test Coverage
      - ✅
      - ✅
      - ✅
-     - ✅
-     - ✅
-     - ✅
-     - ✅
+     - 
+     - 
      - ✅
      - ✅
      - ✅
@@ -3529,7 +3529,7 @@ CuPy CI Test Coverage
      - ✅
    * - 
      - cu12
-     - 1
+     - 3
      - 
      - 
      - 
@@ -3546,8 +3546,8 @@ CuPy CI Test Coverage
      - 
      - 
      - 
-     - 
-     - 
+     - ✅
+     - ✅
      - 
      - 
      - 
@@ -3569,7 +3569,7 @@ CuPy CI Test Coverage
      - 
    * - 
      - cu13
-     - 1
+     - 3
      - 
      - 
      - 
@@ -3596,8 +3596,8 @@ CuPy CI Test Coverage
      - 
      - 
      - 
-     - 
-     - 
+     - ✅
+     - ✅
      - 
      - 
      - 
@@ -3769,7 +3769,7 @@ CuPy CI Test Coverage
      - 
    * - 
      - cutensor,cub
-     - 32
+     - 28
      - ✅
      - ✅
      - ✅
@@ -3786,6 +3786,8 @@ CuPy CI Test Coverage
      - ✅
      - ✅
      - ✅
+     - 
+     - 
      - ✅
      - ✅
      - ✅
@@ -3794,10 +3796,8 @@ CuPy CI Test Coverage
      - ✅
      - ✅
      - ✅
-     - ✅
-     - ✅
-     - ✅
-     - ✅
+     - 
+     - 
      - ✅
      - 
      - ✅
@@ -3809,7 +3809,7 @@ CuPy CI Test Coverage
      - ✅
    * - 
      - cuda_compute,cutensor,cub
-     - 2
+     - 6
      - 
      - 
      - 
@@ -3826,6 +3826,8 @@ CuPy CI Test Coverage
      - 
      - 
      - 
+     - ✅
+     - ✅
      - 
      - 
      - 
@@ -3834,10 +3836,8 @@ CuPy CI Test Coverage
      - 
      - 
      - 
-     - 
-     - 
-     - 
-     - 
+     - ✅
+     - ✅
      - 
      - 
      - 
