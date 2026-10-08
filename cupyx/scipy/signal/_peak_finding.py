@@ -37,6 +37,7 @@ from cupy._core.internal import _normalize_axis_index
 from cupy_backends.cuda.api import runtime
 
 from cupyx import jit
+from cupyx.scipy._lib._util import _get_index_type
 
 
 def _get_typename(dtype, type_decls=None):
@@ -77,12 +78,22 @@ PEAKS_KERNEL = r"""
 ${type_decls}
 
 template<typename T>
+__device__ T peak_difference(T peak, T left, T right) {
+    return peak - max(left, right);
+}
+
+template<>
+__device__ half peak_difference(half peak, half left, half right) {
+    return peak - __hmax(left, right);
+}
+
+template<typename T, typename index_t>
 __global__ void local_maxima_1d(
-        const int n, const T* __restrict__ x, long long* midpoints,
+        const index_t n, const T* __restrict__ x, long long* midpoints,
         long long* left_edges, long long* right_edges) {
 
-    const int orig_idx = blockDim.x * blockIdx.x + threadIdx.x;
-    const int idx = orig_idx + 1;
+    const index_t orig_idx = static_cast<index_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+    const index_t idx = orig_idx + 1;
 
     if(idx >= n - 1) {
         return;
@@ -93,7 +104,7 @@ __global__ void local_maxima_1d(
     long long right = -1;
 
     if(x[idx - 1] < x[idx]) {
-        int i_ahead = idx + 1;
+        index_t i_ahead = idx + 1;
 
         while(i_ahead < n - 1 && x[i_ahead] == x[idx]) {
             i_ahead++;
@@ -111,13 +122,13 @@ __global__ void local_maxima_1d(
     right_edges[orig_idx] = right;
 }
 
-template<typename T>
+template<typename T, typename index_t>
 __global__ void peak_prominences(
-        const int n, const int n_peaks, const T* __restrict__ x,
+        const index_t n, const index_t n_peaks, const T* __restrict__ x,
         const long long* __restrict__ peaks, const long long wlen,
         T* prominences, long long* left_bases, long long* right_bases) {
 
-    const int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    const index_t idx = static_cast<index_t>(blockIdx.x) * blockDim.x + threadIdx.x;
     if(idx >= n_peaks) {
         return;
     }
@@ -155,59 +166,13 @@ __global__ void peak_prominences(
         i++;
     }
 
-    prominences[idx] = x[peak] - max(left_min, right_min);
+    prominences[idx] = peak_difference(x[peak], left_min, right_min);
 }
 
-template<>
-__global__ void peak_prominences<half>(
-        const int n, const int n_peaks, const half* __restrict__ x,
-        const long long* __restrict__ peaks, const long long wlen,
-        half* prominences, long long* left_bases, long long* right_bases) {
 
-    const int idx = blockDim.x * blockIdx.x + threadIdx.x;
-    if(idx >= n_peaks) {
-        return;
-    }
-
-    const long long peak = peaks[idx];
-    long long i_min = 0;
-    long long i_max = n - 1;
-
-    if(wlen >= 2) {
-        i_min = max(peak - wlen / 2, i_min);
-        i_max = min(peak + wlen / 2, i_max);
-    }
-
-    left_bases[idx] = peak;
-    long long i = peak;
-    half left_min = x[peak];
-
-    while(i_min <= i && x[i] <= x[peak]) {
-        if(x[i] < left_min) {
-            left_min = x[i];
-            left_bases[idx] = i;
-        }
-        i--;
-    }
-
-    right_bases[idx] = peak;
-    i = peak;
-    half right_min = x[peak];
-
-    while(i <= i_max && x[i] <= x[peak]) {
-        if(x[i] < right_min) {
-            right_min = x[i];
-            right_bases[idx] = i;
-        }
-        i++;
-    }
-
-    prominences[idx] = x[peak] - __hmax(left_min, right_min);
-}
-
-template<typename T>
+template<typename T, typename index_t>
 __global__ void peak_widths(
-        const int n, const T* __restrict__ x,
+        const index_t n, const T* __restrict__ x,
         const long long* __restrict__ peaks,
         const double rel_height,
         const T* __restrict__ prominences,
@@ -216,7 +181,7 @@ __global__ void peak_widths(
         double* widths, double* width_heights,
         double* left_ips, double* right_ips) {
 
-    const int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    const index_t idx = static_cast<index_t>(blockIdx.x) * blockDim.x + threadIdx.x;
     if(idx >= n) {
         return;
     }
@@ -225,31 +190,31 @@ __global__ void peak_widths(
     long long i_max = right_bases[idx];
     long long peak = peaks[idx];
 
-    double height = x[peak] - prominences[idx] * rel_height;
+    double height = double(x[peak]) - double(prominences[idx]) * rel_height;
     width_heights[idx] = height;
 
     // Find intersection point on left side
     long long i = peak;
-    while (i_min < i && height < x[i]) {
+    while (i_min < i && height < double(x[i])) {
         i--;
     }
 
     double left_ip = (double) i;
-    if(x[i] < height) {
+    if(double(x[i]) < height) {
         // Interpolate if true intersection height is between samples
-        left_ip += (height - x[i]) / (x[i + 1] - x[i]);
+        left_ip += (height - double(x[i])) / double(x[i + 1] - x[i]);
     }
 
     // Find intersection point on right side
     i = peak;
-    while(i < i_max && height < x[i]) {
+    while(i < i_max && height < double(x[i])) {
         i++;
     }
 
     double right_ip = (double) i;
-    if(x[i] < height) {
+    if(double(x[i]) < height) {
         // Interpolate if true intersection height is between samples
-        right_ip -= (height - x[i]) / (x[i - 1] - x[i]);
+        right_ip -= (height - double(x[i])) / double(x[i - 1] - x[i]);
     }
 
     widths[idx] = right_ip - left_ip;
@@ -257,65 +222,17 @@ __global__ void peak_widths(
     right_ips[idx] = right_ip;
 }
 
-template<>
-__global__ void peak_widths<half>(
-        const int n, const half* __restrict__ x,
-        const long long* __restrict__ peaks,
-        const double rel_height,
-        const half* __restrict__ prominences,
-        const long long* __restrict__ left_bases,
-        const long long* __restrict__ right_bases,
-        double* widths, double* width_heights,
-        double* left_ips, double* right_ips) {
-
-    const int idx = blockDim.x * blockIdx.x + threadIdx.x;
-    if(idx >= n) {
-        return;
-    }
-
-    long long i_min = left_bases[idx];
-    long long i_max = right_bases[idx];
-    long long peak = peaks[idx];
-
-    double height = ((double) x[peak]) - ((double) prominences[idx]) * rel_height;
-    width_heights[idx] = height;
-
-    // Find intersection point on left side
-    long long i = peak;
-    while (i_min < i && height < ((double) x[i])) {
-        i--;
-    }
-
-    double left_ip = (double) i;
-    if(((double) x[i]) < height) {
-        // Interpolate if true intersection height is between samples
-        left_ip += (height - ((double) x[i])) / ((double) (x[i + 1] - x[i]));
-    }
-
-    // Find intersection point on right side
-    i = peak;
-    while(i < i_max && height < ((double) x[i])) {
-        i++;
-    }
-
-    double right_ip = (double) i;
-    if(((double) x[i]) < height) {
-        // Interpolate if true intersection height is between samples
-        right_ip -= (height - ((double) x[i])) / ((double) (x[i - 1] - x[i]));
-    }
-
-    widths[idx] = right_ip - left_ip;
-    left_ips[idx] = left_ip;
-    right_ips[idx] = right_ip;
-}
 """  # NOQA
 
 PEAKS_MODULE = cupy.RawModule(
     code=string.Template(PEAKS_KERNEL).substitute(
         type_decls=format_type_decls(TYPE_DECLS)),
-    name_expressions=[f'local_maxima_1d<{x}>' for x in TYPE_NAMES] +
-    [f'peak_prominences<{x}>' for x in TYPE_NAMES] +
-    [f'peak_widths<{x}>' for x in TYPE_NAMES])
+    name_expressions=[f'local_maxima_1d<{x}, {i}>'
+                      for x in TYPE_NAMES for i in ('int', 'long long')] +
+    [f'peak_prominences<{x}, {i}>'
+     for x in TYPE_NAMES for i in ('int', 'long long')] +
+    [f'peak_widths<{x}, {i}>'
+     for x in TYPE_NAMES for i in ('int', 'long long')])
 
 
 ARGREL_KERNEL = r"""
@@ -354,8 +271,9 @@ __device__ __forceinline__ bool not_equal( const T &a, const T &b ) {
     return ( a != b );
 }
 
+template<typename index_t>
 __device__ __forceinline__ void clip_plus(
-        const bool &clip, const int &n, int &plus ) {
+        const bool &clip, const index_t &n, index_t &plus ) {
     if ( clip ) {
         if ( plus >= n ) {
             plus = n - 1;
@@ -367,8 +285,9 @@ __device__ __forceinline__ void clip_plus(
     }
 }
 
+template<typename index_t>
 __device__ __forceinline__ void clip_minus(
-        const bool &clip, const int &n, int &minus ) {
+        const bool &clip, const index_t &n, index_t &minus ) {
     if ( clip ) {
         if ( minus < 0 ) {
             minus = 0;
@@ -397,25 +316,25 @@ __device__ bool compare(const int comp, const T &a, const T &b) {
     }
 }
 
-template<typename T>
-__global__ void boolrelextrema_1D( const int  n,
-                                   const int  order,
+template<typename T, typename index_t>
+__global__ void boolrelextrema_1D( const index_t  n,
+                                   const index_t  order,
                                    const bool clip,
                                    const int  comp,
                                    const T *__restrict__ inp,
                                    bool *__restrict__ results) {
 
-    const int tx { static_cast<int>( blockIdx.x * blockDim.x + threadIdx.x ) };
-    const int stride { static_cast<int>( blockDim.x * gridDim.x ) };
+    const index_t tx { index_t(blockIdx.x) * blockDim.x + threadIdx.x };
+    const index_t stride { index_t(blockDim.x) * gridDim.x };
 
-    for ( int tid = tx; tid < n; tid += stride ) {
+    for ( index_t tid = tx; tid < n; tid += stride ) {
 
         const T data { inp[tid] };
         bool    temp { true };
 
-        for ( int o = 1; o < ( order + 1 ); o++ ) {
-            int plus { tid + o };
-            int minus { tid - o };
+        for ( index_t o = 1; o < ( order + 1 ); o++ ) {
+            index_t plus { tid + o };
+            index_t minus { tid - o };
 
             clip_plus( clip, n, plus );
             clip_minus( clip, n, minus );
@@ -427,54 +346,58 @@ __global__ void boolrelextrema_1D( const int  n,
     }
 }
 
-template<typename T>
-__global__ void boolrelextrema_2D( const int  in_x,
-                                   const int  in_y,
-                                   const int  order,
+template<typename T, typename index_t>
+__global__ void boolrelextrema_2D( const index_t  in_x,
+                                   const index_t  in_y,
+                                   const index_t  order,
                                    const bool clip,
                                    const int  comp,
                                    const int  axis,
                                    const T *__restrict__ inp,
                                    bool *__restrict__ results) {
 
-    const int ty { static_cast<int>( blockIdx.x * blockDim.x + threadIdx.x ) };
-    const int tx { static_cast<int>( blockIdx.y * blockDim.y + threadIdx.y ) };
+    const index_t ty { index_t(blockIdx.x) * blockDim.x + threadIdx.x };
+    const index_t tx { index_t(blockIdx.y) * blockDim.y + threadIdx.y };
 
-    if ( ( tx < in_y ) && ( ty < in_x ) ) {
-        int tid { tx * in_x + ty };
+    for (index_t row = tx; row < in_y;
+         row += index_t(blockDim.y) * gridDim.y) {
+      for (index_t col = ty; col < in_x;
+           col += index_t(blockDim.x) * gridDim.x) {
+        index_t tid { row * in_x + col };
 
         const T data { inp[tid] };
         bool    temp { true };
 
-        for ( int o = 1; o < ( order + 1 ); o++ ) {
+        for ( index_t o = 1; o < ( order + 1 ); o++ ) {
 
-            int plus {};
-            int minus {};
+            index_t plus {};
+            index_t minus {};
 
             if ( axis == 0 ) {
-                plus  = tx + o;
-                minus = tx - o;
+                plus  = row + o;
+                minus = row - o;
 
                 clip_plus( clip, in_y, plus );
                 clip_minus( clip, in_y, minus );
 
-                plus  = plus * in_x + ty;
-                minus = minus * in_x + ty;
+                plus  = plus * in_x + col;
+                minus = minus * in_x + col;
             } else {
-                plus  = ty + o;
-                minus = ty - o;
+                plus  = col + o;
+                minus = col - o;
 
                 clip_plus( clip, in_x, plus );
                 clip_minus( clip, in_x, minus );
 
-                plus  = tx * in_x + plus;
-                minus = tx * in_x + minus;
+                plus  = row * in_x + plus;
+                minus = row * in_x + minus;
             }
 
             temp &= compare<T>( comp, data, inp[plus] );
             temp &= compare<T>( comp, data, inp[minus] );
         }
         results[tid] = temp;
+      }
     }
 }
 """
@@ -483,14 +406,21 @@ __global__ void boolrelextrema_2D( const int  in_x,
 ARGREL_MODULE = cupy.RawModule(
     code=string.Template(ARGREL_KERNEL).substitute(
         type_decls=format_type_decls(TYPE_DECLS)),
-    name_expressions=[f'boolrelextrema_1D<{x}>' for x in FLOAT_INT_NAMES] +
-    [f'boolrelextrema_2D<{x}>' for x in FLOAT_INT_NAMES])
+    name_expressions=[f'boolrelextrema_1D<{x}, {i}>'
+                      for x in FLOAT_INT_NAMES
+                      for i in ('int', 'long long')] +
+    [f'boolrelextrema_2D<{x}, {i}>'
+     for x in FLOAT_INT_NAMES
+     for i in ('int', 'long long')])
 
 
-def _get_module_func(module, func_name, *template_args):
+def _get_module_func(module, func_name, *template_args,
+                     index_type=None):
     args_dtypes = [_get_typename(arg.dtype) for arg in template_args]
+    if index_type is not None:
+        args_dtypes.append(index_type)
     template = ', '.join(args_dtypes)
-    kernel_name = f'{func_name}<{template}>' if template_args else func_name
+    kernel_name = f'{func_name}<{template}>' if args_dtypes else func_name
     kernel = module.get_function(kernel_name)
     return kernel
 
@@ -504,7 +434,9 @@ def _local_maxima_1d(x):
     left_edges = cupy.empty(samples, dtype=cupy.int64)
     right_edges = cupy.empty(samples, dtype=cupy.int64)
 
-    local_max_kernel = _get_module_func(PEAKS_MODULE, 'local_maxima_1d', x)
+    local_max_kernel = _get_module_func(
+        PEAKS_MODULE, 'local_maxima_1d', x,
+        index_type=_get_index_type(x, midpoints, left_edges, right_edges))
     local_max_kernel((n_blocks,), (block_sz,),
                      (x.shape[0], x, midpoints, left_edges, right_edges))
 
@@ -790,7 +722,10 @@ def _peak_prominences(x, peaks, wlen=None, check=False):
     block_sz = 128
     n_blocks = (n + block_sz - 1) // block_sz
 
-    peak_prom_kernel = _get_module_func(PEAKS_MODULE, 'peak_prominences', x)
+    peak_prom_kernel = _get_module_func(
+        PEAKS_MODULE, 'peak_prominences', x,
+        index_type=_get_index_type(x, peaks, prominences,
+                                   left_bases, right_bases))
     peak_prom_kernel(
         (n_blocks,), (block_sz,),
         (x.shape[0], n, x, peaks, wlen, prominences, left_bases, right_bases))
@@ -830,7 +765,10 @@ def _peak_widths(x, peaks, rel_height, prominences, left_bases, right_bases,
     left_ips = cupy.empty(peaks.shape[0], dtype=cupy.float64)
     right_ips = cupy.empty(peaks.shape[0], dtype=cupy.float64)
 
-    peak_widths_kernel = _get_module_func(PEAKS_MODULE, 'peak_widths', x)
+    peak_widths_kernel = _get_module_func(
+        PEAKS_MODULE, 'peak_widths', x,
+        index_type=_get_index_type(x, peaks, widths, prominences,
+                                   left_bases, right_bases))
     peak_widths_kernel(
         (n_blocks,), (block_sz,),
         (n, x, peaks, rel_height, prominences, left_bases, right_bases,
@@ -1246,11 +1184,16 @@ def _peak_finding(data, comparator, axis, order, mode, results):
         n_blocks_x = (data.shape[1] + block_sz_x - 1) // block_sz_x
         n_blocks_y = (data.shape[0] + block_sz_y - 1) // block_sz_y
         block_sz = (block_sz_x, block_sz_y)
-        num_blocks = (n_blocks_x, n_blocks_y)
+        num_blocks = (min(n_blocks_x, 65535), min(n_blocks_y, 65535))
         call_args = (data.shape[1], data.shape[0], order, clip, comp, axis,
                      data, results)
 
-    boolrelextrema = _get_module_func(ARGREL_MODULE, kernel_name, data)
+    boolrelextrema = _get_module_func(
+        ARGREL_MODULE, kernel_name, data,
+        index_type=_get_index_type(data, results,
+                                   max_size=data.size + order + max(
+                                       b * t for b, t in
+                                       zip(num_blocks, block_sz))))
     boolrelextrema(num_blocks, block_sz, call_args)
 
 

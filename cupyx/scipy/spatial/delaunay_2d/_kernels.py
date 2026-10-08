@@ -2801,7 +2801,7 @@ __device__ bool visitedAlready(int v, int* visited, int maxLen) {
 __global__ void kerFindClosestTri
 (
 Point2*             queries,
-int                 nQueries,
+long long           nQueries,
 Tri*                tri,
 int                 nTri,
 TriOpp*             triOpp,
@@ -2821,7 +2821,8 @@ RealType*           coords
     // For debugging
     // int* debug = NULL;
 
-    for (int idx = getCurThreadIdx(); idx < nQueries; idx += getThreadNum()) {
+    for (long long idx = getCurThreadIdx(); idx < nQueries;
+         idx += getThreadNum()) {
         Point2 query = queries[idx];
 
         if(!isQueryInRange(query, minAxis[0], maxAxis[0])) {

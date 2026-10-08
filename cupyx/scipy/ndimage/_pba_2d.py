@@ -5,6 +5,7 @@ import numbers
 import os
 
 import cupy
+from cupyx.scipy._lib._util import _get_index_type
 
 from ._util import _get_inttype
 
@@ -60,7 +61,8 @@ def _init_marker(int_dtype):
 
 
 @cupy.memoize(True)
-def get_pba2d_src(block_size_2d=64, marker=-32768, pixel_int2_t="short2"):
+def get_pba2d_src(block_size_2d=64, marker=-32768, pixel_int2_t="short2",
+                  index_type="int"):
     make_pixel_func = "make_" + pixel_int2_t
 
     pba2d_code = pba2d_defines_template.format(
@@ -73,6 +75,7 @@ def get_pba2d_src(block_size_2d=64, marker=-32768, pixel_int2_t="short2"):
     with open(os.path.join(kernel_directory, "pba_kernels_2d.h")) as f:
         pba2d_kernels = "\n".join(f.readlines())
 
+    pba2d_code += f"typedef {index_type} index_t;\n"
     pba2d_code += pba2d_kernels
     return pba2d_code
 
@@ -356,6 +359,7 @@ def _pba_2d(arr, sampling=None, return_distances=True, return_indices=False,
             block_size_2d=block_size,
             marker=marker,
             pixel_int2_t=pixel_int2_type,
+            index_type=_get_index_type(input_arr, output, margin),
         )
     )
     kernelFloodDown = pba2d.get_function("kernelFloodDown")
