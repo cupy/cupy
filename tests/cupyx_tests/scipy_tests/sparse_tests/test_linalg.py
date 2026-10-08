@@ -497,10 +497,10 @@ class TestEigshLateNormDiscovery:
 @testing.with_requires('scipy')
 class TestEigshSM:
     # which='SM' against scipy, on sparse formats and dense, with and without
-    # a MatrixLinearOperator wrapper. The matrix is a*a^H: positive
-    # semidefinite and, at n=30 with density 0.33, generally rank-deficient,
-    # so this also exercises the automatic sub-zero shift -- a shift exactly
-    # at 0 would not factorize. (From cupy/cupy#10067.)
+    # a MatrixLinearOperator wrapper. a * a.conj().T is the ELEMENTWISE
+    # product, so the matrix is Hermitian but indefinite and 'SM' asks for an
+    # interior eigenvalue; the automatic sub-zero shift therefore lands inside
+    # the spectrum, not below it. (From cupy/cupy#10067.)
     n = 30
     density = 0.33
     tol = {numpy.float32: 1e-4, numpy.complex64: 1e-4, 'default': 1e-10}
@@ -515,7 +515,15 @@ class TestEigshSM:
         return a
 
     def _test_eigsh(self, a, a_norm, xp, sp):
-        ret = sp.linalg.eigsh(a, k=self.k, which='SM',
+        # Fixed start vector, so neither arm depends on its library's RNG.
+        # SciPy now draws the ARPACK start vector from a fresh default_rng
+        # per call (1.13 left it to ARPACK, which was deterministic), and
+        # cupy has drawn its own from fresh entropy since #10275. On this
+        # matrix that picks the wrong triple a fraction of a percent of the
+        # time (gh-10375).
+        v0 = xp.asarray(
+            numpy.random.default_rng(0).random(self.n)).astype(a.dtype)
+        ret = sp.linalg.eigsh(a, k=self.k, which='SM', v0=v0,
                               return_eigenvectors=self.return_eigenvectors)
         if self.return_eigenvectors:
             w, x = ret
