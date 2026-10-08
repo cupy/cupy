@@ -9,7 +9,7 @@ from cupy._environment import get_rocm_path  # NOQA
 from cupy._environment import get_hipcc_path  # NOQA
 from cupy._environment import get_cann_path # NOQA
 
-from cupy.backends.backend import is_ascend
+from cupy.backends.backend import is_ascend as _is_ascend
 
 # ---------------------------------------------------------------------------
 # 模块路径兼容：upstream 与用户代码大量使用 `from cupy.cuda.device import ...`
@@ -42,10 +42,19 @@ sys.modules.setdefault('cupy.cuda.stream', _xpu_stream)
 sys.modules.setdefault('cupy.cuda.runtime', runtime)
 sys.modules.setdefault('cupy.cuda.driver', driver)
 
-if not is_ascend:
+if not _is_ascend:
     # CUDA/HIP-only modules, still living under `cupy.cuda` (not `cupy.xpu`).
     from cupy.cuda import compiler  # NOQA
     from cupy.cuda import texture  # NOQA
+else:
+    # On Ascend, texture.pyx is not compiled. Provide a pure-Python stub with
+    # the same class names (constructors raise NotImplementedError) so that
+    # `from cupy.cuda import texture` succeeds — e.g. cupyx.scipy.ndimage (via
+    # cupyx._texture) and scipy's array-API mode import it at module load time
+    # even when the texture code path is never used.
+    import cupy.xpu.texture_stub as _texture_stub
+    sys.modules.setdefault('cupy.cuda.texture', _texture_stub)
+    texture = _texture_stub  # NOQA
 from cupy.xpu import function  # NOQA
 from cupy.xpu import device  # NOQA
 from cupy.xpu import memory  # NOQA
@@ -94,7 +103,7 @@ from cupy.xpu import get_current_stream  # NOQA
 from cupy.xpu import get_elapsed_time  # NOQA
 from cupy.xpu import using_allocator  # NOQA
 
-if not is_ascend:
+if not _is_ascend:
     # CUDA/HIP-only 的设备 API（Ascend 上没有对应的实现）
     from cupy.xpu import Function  # NOQA
     from cupy.xpu import Module  # NOQA
