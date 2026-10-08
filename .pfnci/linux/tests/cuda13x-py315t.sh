@@ -11,9 +11,11 @@ nvidia-smi
 
 export NVCC="ccache nvcc"
 
-export CUPY_ACCELERATORS="cutensor,cub"
+export CUPY_TEST_RANDOM_SUBSAMPLE="1"
 
-export CUPY_CI_PYTEST_EXTRA_OPTS="--junit-xml=/tmp/cupy_junit/junit.xml"
+export CUPY_CI_PYTEST_EXTRA_OPTS="--parallel-threads=2"
+
+export CUPY_ACCELERATORS="cutensor,cub"
 
 echo "================ Environment Variables ================"
 env
