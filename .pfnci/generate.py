@@ -46,9 +46,8 @@ VARIANT_OVERRIDES: Mapping[str, frozenset[str]] = {
         'project', 'target', 'tags', '_inherits', '_variant',
         # Bindings-specific requirements and build flag.
         'cuda-python', 'nvmath-python', 'env:CUPY_USE_CUDA_PYTHON',
-        # Source build instead of the GHA wheel; removed once the bindings
-        # wheel is built in GHA.
-        'wheel',
+        # Which GHA-built wheel flavor is installed.
+        'wheel_flavor',
     }),
 }
 
@@ -63,9 +62,11 @@ class Matrix:
         '_extern': False,
         # Whether a CUDA target installs the GHA wheel (fetch-wheel.sh)
         # instead of building from source (build.sh). Ignored for ROCm; set
-        # `wheel: false` on CUDA targets that must build from source (e.g.
-        # the cuda-python compile-time variant).
+        # `wheel: false` on CUDA targets that must build from source.
         'wheel': True,
+        # Flavor of the GHA-built wheel to install (see
+        # ci/tools/wheel_configs.py WHEEL_FLAVORS). Only used with `wheel`.
+        'wheel_flavor': 'native',
         'pip_extra_args': [],
     }
 
@@ -424,7 +425,9 @@ class LinuxGenerator:
         lines += [
             '',
             'trap "$ACTIONS/cleanup.sh" EXIT',
-            f'"$ACTIONS/{build_script}"',
+            f'"$ACTIONS/{build_script}"' + (
+                f' {shlex.quote(matrix.wheel_flavor)}'
+                if build_script == 'fetch-wheel.sh' else ''),
         ]
         if build_script == 'fetch-wheel.sh':
             lines += [
@@ -626,6 +629,22 @@ def validate_matrixes(schema: SchemaType, matrixes: list[Matrix]) -> None:
 
         if not hasattr(matrix, 'tags'):
             errors.append(f'{matrix.project}: tags is missing')
+
+        if not matrix._extern:
+            if matrix.wheel_flavor not in wheel_configs.WHEEL_FLAVORS:
+                errors.append(
+                    f'{matrix.project}: wheel_flavor must be one of '
+                    f'{wheel_configs.WHEEL_FLAVORS} but got '
+                    f'{matrix.wheel_flavor}')
+            elif matrix.system == 'linux' and matrix.cuda is not None \
+                    and matrix.wheel:
+                # CUPY_USE_CUDA_PYTHON is a compile-time flag, so the lane
+                # must fetch the wheel flavor built with it (and only then).
+                env_flag = matrix.env().get('CUPY_USE_CUDA_PYTHON')
+                if (env_flag == '1') != (matrix.wheel_flavor == 'cuda-python'):
+                    errors.append(
+                        f'{matrix.project}: CUPY_USE_CUDA_PYTHON={env_flag} '
+                        f'does not match wheel_flavor={matrix.wheel_flavor}')
 
         if matrix._variant is not None:
             if matrix._variant not in VARIANT_OVERRIDES:

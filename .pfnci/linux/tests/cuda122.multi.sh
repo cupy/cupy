@@ -19,7 +19,7 @@ echo "======================================================="
 
 
 trap "$ACTIONS/cleanup.sh" EXIT
-"$ACTIONS/fetch-wheel.sh"
+"$ACTIONS/fetch-wheel.sh" native
 # Ensure matrix versions in case CuPy pins changed them (nightly testing).
 python3 -m pip install --user -U 'numpy==2.0.*' 'scipy==1.16.*' 'optuna==3.*' 'mpi4py==4.*' 'ml_dtypes==0.5.*' 'cython==3.2.*,!=3.2.6'
 export OMPI_ALLOW_RUN_AS_ROOT=1

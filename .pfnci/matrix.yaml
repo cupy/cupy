@@ -610,9 +610,9 @@
   _variant: "cuda-python"
   target: "cuda12x-cuda-python"
   # CUPY_USE_CUDA_PYTHON is a compile-time flag baked into the Cython
-  # extensions; the released wheels are not built with it, so this target must
-  # build from source (build.sh) instead of fetching a wheel.
-  wheel: false
+  # extensions, so this lane installs the CI-only wheel flavor that GHA builds
+  # with it (build-wheel.yml `flavor: cuda-python`).
+  wheel_flavor: "cuda-python"
   tags: ["@push", "full", "mini", "linux", "cuda-python"]
   cuda-python: "12"
   nvmath-python: "1"
@@ -625,7 +625,7 @@
   _variant: "cuda-python"
   target: "cuda13x-cuda-python"
   # See cuda12x-cuda-python.
-  wheel: false
+  wheel_flavor: "cuda-python"
   tags: ["@push", "full", "mini", "linux", "cuda-python"]
   cuda-python: "13.4"
   nvmath-python: "1"

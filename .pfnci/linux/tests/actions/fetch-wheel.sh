@@ -9,6 +9,23 @@ set -uex
 # the wheel-build matrix does not cover this (CUDA, Python) tuple (by design,
 # until the matrix is expanded), or a fresh /test needs to be issued.
 
+# Usage: fetch-wheel.sh FLAVOR
+# FLAVOR is the wheel flavor the target requires: "native" (the released
+# wheel) or "cuda-python" (CI-only build with CUPY_USE_CUDA_PYTHON=1). It comes
+# from the target's `wheel_flavor` in .pfnci/matrix.yaml. The installed wheel
+# is verified to be of that flavor.
+if [[ $# -ne 1 ]]; then
+    echo "Usage: $0 FLAVOR (native | cuda-python)" >&2
+    exit 1
+fi
+FLAVOR="$1"
+case "${FLAVOR}" in
+    native) EXPECTED_IS_CUDA_PYTHON=False ;;
+    cuda-python) EXPECTED_IS_CUDA_PYTHON=True ;;
+    *) echo "Error: unknown wheel flavor '${FLAVOR}'" >&2; exit 1 ;;
+esac
+REPO_ROOT="$(cd "$(dirname "$0")/../../../.." && pwd)"
+
 # CUPY_CI_GITHUB_TOKEN (see run.sh) is a fine-grained PAT scoped Actions:Read on
 # cupy/cupy -- enough to list and download the wheel artifacts below.
 # The token is delivered by run.sh as a mounted file (never an env var), so it
@@ -71,7 +88,14 @@ CANDIDATE_SHAS=("${SHA}")
 ARTIFACT_ID=""
 RUN_ID=""
 for sha in "${CANDIDATE_SHAS[@]}"; do
-    expected_name="cupy-cuda${CUDA_MAJOR}x-py${PY_VER}-linux-64-${SUFFIX_PREFIX}${sha}"
+    # The name comes from the same helper build-wheel.yml uses to name the
+    # artifact it uploads, so the producer and consumer cannot disagree.
+    expected_name="$(python3 "${REPO_ROOT}/ci/tools/wheel_configs.py" artifact-name \
+        --cuda-major "${CUDA_MAJOR}" \
+        --flavor "${FLAVOR}" \
+        --python-version "${PY_VER}" \
+        --host-platform linux-64 \
+        --artifact-suffix "${SUFFIX_PREFIX}${sha}")"
 
     # The artifact name is unique per (PR, commit, platform, Python), so query
     # it directly -- each match carries its producing run id, which is our Run
@@ -107,7 +131,7 @@ done
 
 if [[ -z "${ARTIFACT_ID}" ]]; then
     echo "Error: no wheel artifact from a successful ci.yml run for candidate SHAs: ${CANDIDATE_SHAS[*]}" >&2
-    echo "Expected name: cupy-cuda${CUDA_MAJOR}x-py${PY_VER}-linux-64-${SUFFIX_PREFIX}<sha>." >&2
+    echo "Expected name: ${expected_name} (flavor ${FLAVOR})." >&2
     echo "Re-issue /test on the PR (or check the ci.yml push run for the merge commit)." >&2
     exit 1
 fi
@@ -129,3 +153,15 @@ unset GH_TOKEN
 
 WHEEL="$(ls "${WHEEL_DIR}"/*.whl | head -n 1)"
 time python3 -m pip install --user -v "${WHEEL}[test]"
+
+# Verify the flavor we installed. Run outside the source tree so that the
+# installed cupy is imported, not the (uncompiled) source package.
+(
+    cd "${WHEEL_DIR}"
+    actual="$(python3 -c 'from cupy_backends.cuda.api import driver; print(driver._is_cuda_python())')"
+    if [[ "${actual}" != "${EXPECTED_IS_CUDA_PYTHON}" ]]; then
+        echo "Error: installed wheel has driver._is_cuda_python()=${actual}, but the '${FLAVOR}' flavor requires ${EXPECTED_IS_CUDA_PYTHON}" >&2
+        exit 1
+    fi
+)
+echo "Verified: ${FLAVOR} wheel (driver._is_cuda_python() == ${EXPECTED_IS_CUDA_PYTHON})"
