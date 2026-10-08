@@ -37,7 +37,7 @@ jobs:
       if: |
         github.event_name == 'issue_comment' ||
         github.event_name == 'pull_request_review_comment'
-      uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b  # v7.1.0
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
       with:
         script: |
           // Check if the comment contain "/test rocm" request.
@@ -79,14 +79,14 @@ jobs:
     steps:
     - name: Generate Token
       id: generate-token
-      uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547  # v1.12.0
+      uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1  # v3.2.0
       with:
         app-id: ${{ vars.GH_APP_SELF_HOSTED_CI_ID }}
         private-key: ${{ secrets.GH_APP_SELF_HOSTED_CI_PEM }}
         owner: ${{ env.CI_REPO_OWNER }}
         repositories: ${{ env.CI_REPO_NAME }}
     - name: Dispach Self-Hosted CI
-      uses: peter-evans/repository-dispatch@ff45666b9427631e3450c54a1bcbee4d9ff4d7c0  # v3.0.0
+      uses: peter-evans/repository-dispatch@28959ce8df70de7be546dd1250a005dd32156697  # v4.0.1
       with:
         repository: ${{ env.CI_REPO_OWNER }}/${{ env.CI_REPO_NAME }}
         event-type: ci-linux
