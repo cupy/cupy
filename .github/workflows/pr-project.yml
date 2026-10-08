@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Generate Token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547  # v1.12.0
         id: token
         with:
           app-id: 349488
@@ -25,7 +25,7 @@ jobs:
 
       # Get the pull-request number.
       - name: Download artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
         with:
           name: PULL_REQUEST_NUMBER
           github-token: ${{ steps.token.outputs.token }}
