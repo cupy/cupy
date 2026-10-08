@@ -246,9 +246,9 @@ python:
   "3.14t":
     spec: "3.14t"
   "3.15":
-    spec: "3.15.0rc2"
+    spec: "3.15.0rc3"
   "3.15t":
-    spec: "3.15.0rc2t"
+    spec: "3.15.0rc3t"
   "pre":
     spec: "3.16-dev"  # note that dependency python libraies may not work
 
