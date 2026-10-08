@@ -829,6 +829,59 @@ cpdef _ndarray_base tensordot_core_v11(
         algo)
 
 
+cdef tuple _align_16bit_broadcast(
+        _ndarray_base a, _ndarray_base b, _ndarray_base out,
+        Py_ssize_t n, Py_ssize_t m, Py_ssize_t k):
+    cdef Py_ssize_t alignment, alignment_elements
+    cdef Py_ssize_t padded_output_stride = 0
+    cdef bint force_temp_output = False
+
+    if k % 8 == 0:
+        alignment = 16
+    elif k % 2 == 0:
+        alignment = 4
+    else:
+        alignment = 2
+
+    if a.data.ptr % alignment != 0:
+        a = a.copy(order='C')
+    if b.data.ptr % alignment != 0:
+        b = b.copy(order='C')
+
+    if (n * m * 2) % alignment != 0:
+        alignment_elements = alignment // 2
+        padded_output_stride = (
+            (n * m + alignment_elements - 1)
+            // alignment_elements * alignment_elements
+        )
+        force_temp_output = True
+
+    if out is not None:
+        force_temp_output = (
+            force_temp_output or out.data.ptr % alignment != 0
+        )
+
+    return a, b, padded_output_stride, force_temp_output
+
+
+cdef _ndarray_base _allocate_padded_matmul_output(
+        list out_shape, dtype, Py_ssize_t batch_count,
+        Py_ssize_t padded_output_stride):
+    cdef Py_ssize_t itemsize = dtype.itemsize
+    cdef Py_ssize_t byte_stride = padded_output_stride * itemsize
+    cdef _ndarray_base storage = core.ndarray(
+        (batch_count, padded_output_stride), dtype=dtype)
+
+    strides = [out_shape[-1] * itemsize, itemsize]
+    for i in range(len(out_shape) - 3, -1, -1):
+        strides.insert(0, byte_stride)
+        byte_stride *= out_shape[i]
+
+    return core.ndarray(
+        out_shape, dtype=dtype,
+        memptr=storage.data, strides=tuple(strides))
+
+
 cdef Py_ssize_t _get_stride_for_strided_batched_gemm(
         _ndarray_base a) except? 0:
     cdef int ndim = a._shape.size()
@@ -896,12 +949,8 @@ cpdef _ndarray_base matmul(
     cdef int orig_a_ndim, orig_b_ndim, a_ndim, b_ndim, ndim
     cdef _ndarray_base ap, bp, cp, c_view
     cdef bint use_broadcast
-    cdef Py_ssize_t alignment
-    cdef bint output_stride_ok
     cdef bint force_temp_aligned_output = False
     cdef Py_ssize_t padded_output_stride = 0
-    cdef Py_ssize_t alignment_elements, output_byte_stride
-    cdef _ndarray_base output_storage
 
     orig_a_ndim = a._shape.size()
     orig_b_ndim = b._shape.size()
@@ -1037,33 +1086,9 @@ cpdef _ndarray_base matmul(
 
     if (use_broadcast
             and cuda_dtype in (runtime.CUDA_R_16F, runtime.CUDA_R_16BF)):
-        if ka % 8 == 0:
-            alignment = 16
-        elif ka % 2 == 0:
-            alignment = 4
-        else:
-            alignment = 2
-
-        output_stride_ok = (n * m * 2) % alignment == 0
-
-        if a.data.ptr % alignment != 0:
-            a = a.copy(order='C')
-        if b.data.ptr % alignment != 0:
-            b = b.copy(order='C')
-
-        if not output_stride_ok:
-            alignment_elements = alignment // 2
-            padded_output_stride = (
-                (n * m + alignment_elements - 1)
-                // alignment_elements * alignment_elements
-            )
-            force_temp_aligned_output = True
-
-        if out is not None:
-            force_temp_aligned_output = (
-                force_temp_aligned_output
-                or out.data.ptr % alignment != 0
-            )
+        a, b, padded_output_stride, force_temp_aligned_output = (
+            _align_16bit_broadcast(a, b, out, n, m, ka)
+        )
 
     if (
         out is not None and out.dtype == dtype and out.flags.c_contiguous
@@ -1073,22 +1098,11 @@ cpdef _ndarray_base matmul(
     ):
         c = out
     else:
-        if padded_output_stride != 0:
-            output_storage = core.ndarray(
-                (batchCount, padded_output_stride), dtype=dtype)
-
-            output_strides = [n * 2, 2]
-            output_byte_stride = padded_output_stride * 2
-            for i in range(ndim - 3, -1, -1):
-                output_strides.insert(0, output_byte_stride)
-                output_byte_stride *= out_shape[i]
-
-            c = core.ndarray(
-                out_shape, dtype=dtype,
-                memptr=output_storage.data,
-                strides=tuple(output_strides))
-        else:
+        if padded_output_stride == 0:
             c = core.ndarray(out_shape, dtype=dtype)
+        else:
+            c = _allocate_padded_matmul_output(
+                out_shape, dtype, batchCount, padded_output_stride)
 
         if out is None:
             if dtype == ret_dtype and padded_output_stride == 0:
