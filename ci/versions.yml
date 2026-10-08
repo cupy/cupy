@@ -3,6 +3,15 @@ cuda:
     version: "13.4.1"
   prev_build:
     version: "12.9.2"
+# CI-only ``cuda-python`` wheel flavor (CuPy built with CUPY_USE_CUDA_PYTHON=1,
+# see ci/tools/wheel_configs.py). Only the Python versions the paired
+# ``cuda12x-cuda-python`` / ``cuda13x-cuda-python`` FlexCI lanes use are built,
+# one list per build-side CTK above. .pfnci/generate.py checks that those lanes
+# use a Python version listed here.
+cuda_python_flavor:
+  python:
+    build: ["3.14"]
+    prev_build: ["3.12"]
 python:
   # Python versions the wheel matrix is built across. ci.yml reads this
   # list and passes it to build-wheel.yml as the `python-versions` input.

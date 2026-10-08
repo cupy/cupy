@@ -23,6 +23,11 @@ on:
         description: "JSON-array string of Python versions to build (e.g. '[\"3.12\"]'). The full default list lives in ci/versions.yml under .python.supported; ci.yml's guard reads it and passes it here."
         required: true
         type: string
+      flavor:
+        description: "native (the wheel released to PyPI) or cuda-python (CI-only build of the same sdist with CUPY_USE_CUDA_PYTHON=1; linux-64 only, never published). Selects the artifact name via ci/tools/wheel_configs.py."
+        required: false
+        default: native
+        type: string
 
 defaults:
   run:
@@ -42,12 +47,18 @@ jobs:
           # nuget-cpython nor actions/setup-python's manifest carries one),
           # so it cannot be built or tested on win-arm64.
           - python-version: ${{ (inputs.host-platform == 'win-arm64' && '3.10') || '' }}
-    name: py${{ matrix.python-version }}
+    name: py${{ matrix.python-version }}${{ inputs.flavor != 'native' && format(' ({0})', inputs.flavor) || '' }}
     runs-on: ${{ (inputs.host-platform == 'linux-64'      && 'ubuntu-22.04')     ||
                  (inputs.host-platform == 'linux-aarch64' && 'ubuntu-22.04-arm') ||
                  (inputs.host-platform == 'win-64'        && 'windows-2022')     ||
                  (inputs.host-platform == 'win-arm64'     && 'windows-11-arm') }}
     steps:
+      - name: Reject unsupported flavor
+        if: ${{ (inputs.flavor != 'native' && inputs.flavor != 'cuda-python') || (inputs.flavor == 'cuda-python' && inputs.host-platform != 'linux-64') }}
+        run: |
+          echo "::error::Unsupported flavor '${{ inputs.flavor }}' on ${{ inputs.host-platform }}"
+          exit 1
+
       - name: Verify LongPathsEnabled on Windows
         if: ${{ startsWith(inputs.host-platform, 'win') }}
         shell: pwsh -command ". '{0}'"
@@ -253,7 +264,19 @@ jobs:
             --host-platform ${{ inputs.host-platform }} \
             --source-root ./srcpkg \
             --preload-dir ./srcpkg/preloads \
+            --flavor ${{ inputs.flavor }} \
             ${{ startsWith(inputs.host-platform, 'linux-') && '--root-prefix /project/srcpkg' || '' }} >> "$GITHUB_ENV"
+
+      # The single definition of the artifact name (shared with
+      # .pfnci/linux/tests/actions/fetch-wheel.sh, which asks the same helper).
+      - name: Compute wheel artifact name
+        run: |
+          echo "WHEEL_ARTIFACT_NAME=$(python ci/tools/wheel_configs.py artifact-name \
+            --cuda-major ${{ env.BUILD_CUDA_MAJOR }} \
+            --flavor ${{ inputs.flavor }} \
+            --python-version ${{ matrix.python-version }} \
+            --host-platform ${{ inputs.host-platform }} \
+            --artifact-suffix ${{ inputs.artifact-suffix }})" >> "$GITHUB_ENV"
 
       - name: Build cupy-cuda${{ env.BUILD_CUDA_MAJOR }}x wheel
         uses: pypa/cibuildwheel@adba99c781d3746d38b3a09b1cf797965bcb7fe6  # v4.3.0
@@ -272,6 +295,7 @@ jobs:
             CUPY_LIBRARY_PATH
             CUPY_PACKAGE_NAME
             CUPY_NUM_BUILD_JOBS
+            CUPY_USE_CUDA_PYTHON
           # NOTE: cibuildwheel resolves CIBW_ENVIRONMENT_<PLATFORM> *in place
           # of* CIBW_ENVIRONMENT (last-match-wins, no merging -- see
           # OptionsReader.get() in cibuildwheel/options.py). A generic
@@ -378,7 +402,7 @@ jobs:
       - name: Upload wheel artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
-          name: cupy-cuda${{ env.BUILD_CUDA_MAJOR }}x-py${{ matrix.python-version }}-${{ inputs.host-platform }}-${{ inputs.artifact-suffix }}
+          name: ${{ env.WHEEL_ARTIFACT_NAME }}
           path: wheelhouse/*.whl
           if-no-files-found: error
           # Keep "re-run all jobs" viable: v4+ artifacts are immutable, so a

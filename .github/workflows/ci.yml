@@ -90,6 +90,9 @@ jobs:
       # project-supported versions" -- read as "this run's versions".
       cuda_versions: ${{ steps.vars.outputs.cuda_versions }}
       python_versions: ${{ steps.vars.outputs.python_versions }}
+      # JSON array of {cuda-version, python-versions} cells for the CI-only
+      # cuda-python wheel flavor (see ci/versions.yml). Only used on `test`.
+      cuda_python_matrix: ${{ steps.vars.outputs.cuda_python_matrix }}
     steps:
       # Which copy of ci-guard.sh runs follows GitHub's rules for the
       # workflow file itself: the pushed branch's copy for push events, the
@@ -138,9 +141,23 @@ jobs:
             python_versions="${python_full}"
           fi
 
+          # One cell per build-side CTK; python-versions is a JSON *string*
+          # because build-wheel.yml takes it as a string input.
+          cell() {
+            jq -cn --arg cuda "$1" --argjson py "$2" \
+              '{"cuda-version": $cuda, "python-versions": ($py | tojson)}'
+          }
+          cuda_python_matrix=$(
+            {
+              cell "${cuda_build_ver}" "$(yq -o json -I 0 '.cuda_python_flavor.python.build' ci/versions.yml)"
+              cell "${cuda_prev_build_ver}" "$(yq -o json -I 0 '.cuda_python_flavor.python.prev_build' ci/versions.yml)"
+            } | jq -cs .
+          )
+
           {
             echo "cuda_versions=${cuda_versions}"
             echo "python_versions=${python_versions}"
+            echo "cuda_python_matrix=${cuda_python_matrix}"
           } >> "$GITHUB_OUTPUT"
 
   # Producer of cupy-<version>.tar.gz for every wheel job below. Building
@@ -269,6 +286,32 @@ jobs:
       ref: ${{ needs.guard.outputs.ref }}
       artifact-suffix: ${{ needs.guard.outputs.artifact_suffix }}
 
+  # CI-only cuda-python flavor of the linux-64 wheel: the same sdist, builder
+  # image and flags as build-linux-64, with CUPY_USE_CUDA_PYTHON=1 as the only
+  # intended difference. Consumed by the cuda12x/cuda13x-cuda-python FlexCI
+  # lanes (never published; see wheel_configs.wheel_artifact_name). Built only
+  # for the Python versions those lanes use (ci/versions.yml).
+  build-linux-64-cuda-python:
+    needs:
+      - guard
+      - build-sdist
+    if: needs.guard.outputs.mode == 'test'
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.guard.outputs.cuda_python_matrix) }}
+    name: Build linux-64 (cuda-python), CUDA ${{ matrix.cuda-version }}
+    uses: ./.github/workflows/build-wheel.yml
+    with:
+      host-platform: linux-64
+      flavor: cuda-python
+      cuda-version: ${{ matrix.cuda-version }}
+      python-versions: ${{ matrix.python-versions }}
+      ref: ${{ needs.guard.outputs.ref }}
+      artifact-suffix: ${{ needs.guard.outputs.artifact_suffix }}
+
   # Dispatch marker + payload for flexci.yml. Uploaded whenever this ci.yml
   # run should end in a flexci.yml dispatch call: mode=skip on PR (post
   # Skipped statuses via the dispatcher), or mode=test with all builds
@@ -288,6 +331,7 @@ jobs:
     needs:
       - guard
       - build-linux-64
+      - build-linux-64-cuda-python
       - build-linux-aarch64
       - build-windows
       - build-win-arm64
@@ -298,6 +342,7 @@ jobs:
          needs.build-linux-64.result == 'success') ||
         (needs.guard.outputs.mode == 'test' &&
          needs.build-linux-64.result == 'success' &&
+         needs.build-linux-64-cuda-python.result == 'success' &&
          needs.build-linux-aarch64.result == 'success' &&
          needs.build-windows.result == 'success' &&
          (needs.build-win-arm64.result == 'success' ||
@@ -371,6 +416,7 @@ jobs:
     needs:
       - guard
       - build-linux-64
+      - build-linux-64-cuda-python
       - build-linux-aarch64
       - build-windows
       - build-win-arm64
@@ -392,6 +438,7 @@ jobs:
           case "${{ needs.guard.outputs.mode }}" in
           test)
             check_result "build-linux-64"      "success" "${{ needs.build-linux-64.result }}"
+            check_result "build-linux-64-cuda-python" "success" "${{ needs.build-linux-64-cuda-python.result }}"
             check_result "build-linux-aarch64" "success" "${{ needs.build-linux-aarch64.result }}"
             check_result "build-windows"       "success" "${{ needs.build-windows.result }}"
             # win-arm64 only runs on CUDA 13.x build lanes; treat "skipped"
@@ -408,6 +455,7 @@ jobs:
             # Only the single build-linux-64 cell (collapsed matrix) runs
             # on doc-only; every other build-* job is gated to mode=test.
             check_result "build-linux-64"      "success" "${{ needs.build-linux-64.result }}"
+            check_result "build-linux-64-cuda-python" "skipped" "${{ needs.build-linux-64-cuda-python.result }}"
             check_result "build-linux-aarch64" "skipped" "${{ needs.build-linux-aarch64.result }}"
             check_result "build-windows"       "skipped" "${{ needs.build-windows.result }}"
             check_result "build-win-arm64"     "skipped" "${{ needs.build-win-arm64.result }}"
@@ -415,6 +463,7 @@ jobs:
             ;;
           skip)
             check_result "build-linux-64"      "skipped" "${{ needs.build-linux-64.result }}"
+            check_result "build-linux-64-cuda-python" "skipped" "${{ needs.build-linux-64-cuda-python.result }}"
             check_result "build-linux-aarch64" "skipped" "${{ needs.build-linux-aarch64.result }}"
             check_result "build-windows"       "skipped" "${{ needs.build-windows.result }}"
             check_result "build-win-arm64"     "skipped" "${{ needs.build-win-arm64.result }}"

@@ -6,6 +6,9 @@ This script:
 
 * Rewrites ``pyproject.toml``'s ``project.name`` to the CTK-major-specific
   package (``cupy-cuda12x`` / ``cupy-cuda13x``).
+* For the CI-only ``cuda-python`` flavor, adds ``cuda-python`` and
+  ``nvmath-python`` to ``build-system.requires`` and emits
+  ``CUPY_USE_CUDA_PYTHON=1`` (see ``wheel_configs.WHEEL_FLAVORS``).
 * Writes ``description.rst`` (becomes the wheel's ``long_description``).
 * Generates ``_wheel.json`` preload metadata for the ``[ctk]`` runtime extras.
 * Globs ``--preload-dir`` for include/lib subdirs to point CuPy at.
@@ -46,8 +49,10 @@ import tomli_w
 # Make sibling wheel_configs.py importable when invoked from anywhere.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from wheel_configs import (  # noqa: E402
+    BINDINGS_REQUIREMENTS,
     PRELOAD_LIBRARIES,
     WHEEL_LONG_DESCRIPTION_CUDA,
+    WHEEL_FLAVORS,
     WHEEL_PACKAGE_NAMES,
 )
 
@@ -63,6 +68,23 @@ def rename_project(source_root: Path, cuda_major: str) -> str:
     with pyproject.open("wb") as f:
         tomli_w.dump(data, f)
     return package_name
+
+
+def add_bindings_build_requirements(
+    source_root: Path, cuda_major: str
+) -> tuple[str, ...]:
+    """Make the ``cuda-python`` flavor's build environment provide cuda.bindings.
+
+    CuPy cimports ``cuda.bindings`` / ``nvmath.bindings`` when built with
+    ``CUPY_USE_CUDA_PYTHON=1``, so the isolated build environment needs them.
+    """
+    requirements = BINDINGS_REQUIREMENTS[cuda_major]
+    pyproject = source_root / "pyproject.toml"
+    data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+    data["build-system"]["requires"].extend(requirements)
+    with pyproject.open("wb") as f:
+        tomli_w.dump(data, f)
+    return requirements
 
 
 def write_long_description(source_root: Path, cuda_major: str) -> Path:
@@ -175,7 +197,17 @@ def main(argv: list[str] | None = None) -> int:
             "Default: emit absolute host paths."
         ),
     )
+    parser.add_argument(
+        "--flavor", choices=WHEEL_FLAVORS, default="native",
+        help=(
+            "native: the wheel released to PyPI. cuda-python: CI-only build "
+            "of the same sdist with CUPY_USE_CUDA_PYTHON=1."
+        ),
+    )
     args = parser.parse_args(argv)
+
+    if args.flavor == "cuda-python" and args.host_platform != "linux-64":
+        parser.error("the cuda-python flavor is only built for linux-64")
 
     package_name = rename_project(args.source_root, args.cuda_major)
     description_path = write_long_description(args.source_root, args.cuda_major)
@@ -193,6 +225,16 @@ def main(argv: list[str] | None = None) -> int:
         f"CUPY_INSTALL_WHEEL_METADATA={_apply_prefix(metadata_path, args.source_root, args.root_prefix)}",
         f"CUPY_PACKAGE_NAME={package_name}",
     ]
+    if args.flavor == "cuda-python":
+        requirements = add_bindings_build_requirements(
+            args.source_root, args.cuda_major,
+        )
+        env_lines += [
+            "CUPY_USE_CUDA_PYTHON=1",
+            # The wheel imports cuda.bindings / nvmath.bindings, so the
+            # cibuildwheel import test needs them installed too.
+            "CIBW_TEST_REQUIRES=" + " ".join(requirements),
+        ]
     if include_dirs:
         env_lines.append(
             "CUPY_INCLUDE_PATH=" + sep.join(

@@ -15,6 +15,13 @@ from collections.abc import Mapping
 
 SchemaType = Mapping[str, Any]
 
+# The GHA workflows (ci/) define the wheels that FlexCI lanes install.
+CI_TOOLS_DIR = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), '..', 'ci', 'tools')
+CI_VERSIONS = os.path.join(CI_TOOLS_DIR, '..', 'versions.yml')
+sys.path.insert(0, CI_TOOLS_DIR)
+import wheel_configs  # NOQA: E402
+
 
 # Pinned version of the GitHub CLI installed into the test Dockerfiles. Used
 # by .pfnci/linux/tests/actions/build.sh to fetch wheel artifacts from
@@ -678,10 +685,52 @@ def validate_matrixes(schema: SchemaType, matrixes: list[Matrix]) -> None:
                     errors.append(
                         f'{matrix.project}: NumPy {matrix.numpy} '
                         f'not supported by {key} {value}')
+    errors += validate_cuda_python_wheels(schema, matrixes)
     if len(errors) != 0:
         raise ValueError(
             'CI matrix is invalid:\n' +
             '\n'.join([f'  * {err}' for err in errors]))
+
+
+def validate_cuda_python_wheels(
+        schema: SchemaType, matrixes: list[Matrix]) -> list[str]:
+    """Check the `cuda-python` variant lanes against what GHA builds.
+
+    These lanes install the wheel built by build-wheel.yml with
+    `flavor: cuda-python`; its build requirements
+    (`wheel_configs.BINDINGS_REQUIREMENTS`) and Python versions
+    (`ci/versions.yml`) are defined on the GHA side and must match the lane.
+    """
+    with open(CI_VERSIONS) as f:
+        versions = yaml.safe_load(f)
+    wheel_pythons = versions['cuda_python_flavor']['python']
+    build_cuda = versions['cuda']['build']['version'].split('.')[0]
+    prev_build_cuda = versions['cuda']['prev_build']['version'].split('.')[0]
+    python_by_cuda_major = {
+        build_cuda: wheel_pythons['build'],
+        prev_build_cuda: wheel_pythons['prev_build'],
+    }
+
+    errors = []
+    for matrix in matrixes:
+        if matrix._variant != 'cuda-python':
+            continue
+        cuda_major = matrix.cuda.split('.')[0]
+        expected = wheel_configs.BINDINGS_REQUIREMENTS[cuda_major]
+        actual = tuple(
+            f'{lib}{schema[lib][getattr(matrix, lib)]["spec"]}'
+            for lib in ('cuda-python', 'nvmath-python'))
+        if actual != expected:
+            errors.append(
+                f'{matrix.project}: {actual} differs from the requirements '
+                f'of the wheel built by GHA {expected}; update '
+                f'BINDINGS_REQUIREMENTS in ci/tools/wheel_configs.py')
+        if matrix.python not in python_by_cuda_major.get(cuda_major, []):
+            errors.append(
+                f'{matrix.project}: Python {matrix.python} is not built for '
+                f'the cuda-python wheel flavor of CUDA {cuda_major}; update '
+                f'cuda_python_flavor in ci/versions.yml')
+    return errors
 
 
 def expand_inherited_matrixes(matrixes: list[Matrix]) -> None:
