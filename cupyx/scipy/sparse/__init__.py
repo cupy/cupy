@@ -56,6 +56,9 @@ from cupyx.scipy.sparse._extract import find  # NOQA
 from cupyx.scipy.sparse._extract import tril  # NOQA
 from cupyx.scipy.sparse._extract import triu  # NOQA
 
+# I/O
+from cupyx.scipy.sparse._io import load_npz  # NOQA
+
 # Index-dtype utilities (re-exported to match scipy.sparse)
 from cupyx.scipy.sparse._sputils import get_index_dtype  # NOQA
 from cupyx.scipy.sparse._sputils import safely_cast_index_arrays  # NOQA
@@ -65,5 +68,5 @@ from cupyx.scipy.sparse._sputils import safely_cast_index_arrays  # NOQA
 # - dok_array / dok_matrix (Dictionary of Keys)
 # - lil_array / lil_matrix (List of Lists)
 # - isspmatrix_bsr / isspmatrix_lil / isspmatrix_dok
-# - save_npz / load_npz
+# - save_npz
 # - expand_dims (would require nD sparse-array support)
