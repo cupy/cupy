@@ -1021,15 +1021,12 @@ cdef tuple _prepare_batched_matmul_operands(
         out, outer_dims=batch_ndim, core_size=m * n,
         batch_count=layout.batch_count)
 
-    cdef bint use_batched_pointers = (
-        a_outer_stride < 0 or b_outer_stride < 0 or c_outer_stride < 0)
-
     # Alignment is checked only after core layout and dispatch are settled.
     # Pointer-batched FP16/BF16 requires every matrix start to be aligned;
     # the strided API does not document this additional k-dependent rule.
     cdef Py_ssize_t itemsize = dtype.itemsize
     cdef Py_ssize_t alignment = itemsize
-    if (use_batched_pointers
+    if ((a_outer_stride < 0 or b_outer_stride < 0 or c_outer_stride < 0)
             and cuda_dtype in (runtime.CUDA_R_16F, runtime.CUDA_R_16BF)):
         # https://docs.nvidia.com/cuda/cublas/index.html#cublasgemmbatchedex
         alignment = 16 if k % 8 == 0 else (4 if k % 2 == 0 else 2)
@@ -1093,7 +1090,8 @@ cdef tuple _prepare_batched_matmul_operands(
     layout.a_outer_stride = a_outer_stride
     layout.b_outer_stride = b_outer_stride
     layout.c_outer_stride = c_outer_stride
-    layout.use_batched_pointers = use_batched_pointers
+    layout.use_batched_pointers = (
+        a_outer_stride < 0 or b_outer_stride < 0 or c_outer_stride < 0)
     return a, b, c
 
 
