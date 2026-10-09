@@ -118,6 +118,18 @@ class TestArrayUfunc:
         outb = numpy.sin(b)
         testing.assert_allclose(outa, outb)
 
+    @pytest.mark.parametrize('rows', [0, 2])
+    def test_subclass_broadcast_template(self, rows):
+        class Array(cupy.ndarray):
+            def __array_finalize__(self, parent):
+                self.parent = parent
+
+        a = cupy.ones((1, 3)).view(Array)
+        result = cupy.add(a, cupy.ones((rows, 3)))
+        assert isinstance(result, Array)
+        assert result.parent is a
+        testing.assert_array_equal(result, numpy.full((rows, 3), 2.0))
+
     def test_subclass_binary_op(self):
         a0 = cupy.array([0, 1, 2]).view(C)
         a0.info = 1
@@ -187,6 +199,15 @@ class TestArrayUfunc:
 
 
 class TestUfunc:
+    def test_broadcast_error_includes_output(self):
+        a = cupy.empty((0, 3))
+        out = cupy.empty((2, 3))
+        with pytest.raises(ValueError) as error:
+            cupy.add(a, 1, out=out)
+        assert str(error.value) == (
+            'operands could not be broadcast together with shapes '
+            '(0, 3) () (2, 3)')
+
     @pytest.mark.parametrize('ufunc', [
         'add',
         'sin',
