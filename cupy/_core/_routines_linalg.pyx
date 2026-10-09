@@ -12,7 +12,7 @@ from cupy._core._reduction import ReductionKernel
 from cupy._core._ufuncs import elementwise_copy
 
 
-from libc.stdint cimport intptr_t
+from libc.stdint cimport INT64_MIN, int64_t, intptr_t
 
 from cupy._core cimport _accelerator
 from cupy._core cimport internal
@@ -413,7 +413,7 @@ cdef struct _MatmulLayout:
     # Dimensions and operations are in cuBLAS operand order. Keeping this
     # metadata in C avoids manufacturing array views to convey it.
     Py_ssize_t m, n, k, lda, ldb, batch_count
-    Py_ssize_t a_outer_stride, b_outer_stride, c_outer_stride
+    int64_t a_outer_stride, b_outer_stride, c_outer_stride
     bint transpose_a, transpose_b, use_batched_pointers
 
 
@@ -879,14 +879,14 @@ cdef bint _batched_matmul_aligned(
     return True
 
 
-cdef Py_ssize_t _batched_matmul_stride(
+cdef int64_t _batched_matmul_stride(
         _ndarray_base arr, int outer_dims, Py_ssize_t core_size,
-        Py_ssize_t batch_count) except? -2:
-    """Return a collapsed batch step in elements, or -1 for pointers."""
+        Py_ssize_t batch_count) except? -9223372036854775808:  # INT64_MIN
+    """Return a signed batch step in elements, or INT64_MIN for pointers."""
     if arr.size == 0 or arr.size == core_size:
         return 0  # A single matrix can broadcast with a zero step.
     if arr.size != batch_count * core_size:
-        return -1  # Partial broadcasting needs pointers.
+        return INT64_MIN  # Partial broadcasting needs pointers.
     if arr._c_contiguous:
         return core_size
 
@@ -899,9 +899,9 @@ cdef Py_ssize_t _batched_matmul_stride(
         if count == 1:
             step = stride
         elif stride != step * count:
-            return -1
+            return INT64_MIN
         count *= arr._shape[i]
-    return -1 if step < 0 else step // itemsize
+    return step // itemsize
 
 
 cdef tuple _prepare_batched_matmul_operands(
@@ -1005,12 +1005,11 @@ cdef tuple _prepare_batched_matmul_operands(
             out, outer_dims=batch_ndim, allow_transpose=allow_transpose,
             transpose=&transpose_out)
 
-    # Use strided batching if every operand has a constant nonnegative
-    # batch step.
+    # Use strided batching if every operand has a constant batch step.
     batch_shape = out_shape
     batch_shape.resize(batch_ndim)
     layout.batch_count = internal.prod(batch_shape)
-    cdef Py_ssize_t a_outer_stride, b_outer_stride, c_outer_stride
+    cdef int64_t a_outer_stride, b_outer_stride, c_outer_stride
     a_outer_stride = _batched_matmul_stride(
         a, outer_dims=a_outer_dims, core_size=m * k,
         batch_count=layout.batch_count)
@@ -1026,7 +1025,8 @@ cdef tuple _prepare_batched_matmul_operands(
     # the strided API does not document this additional k-dependent rule.
     cdef Py_ssize_t itemsize = dtype.itemsize
     cdef Py_ssize_t alignment = itemsize
-    if ((a_outer_stride < 0 or b_outer_stride < 0 or c_outer_stride < 0)
+    if ((a_outer_stride == INT64_MIN or b_outer_stride == INT64_MIN
+         or c_outer_stride == INT64_MIN)
             and cuda_dtype in (runtime.CUDA_R_16F, runtime.CUDA_R_16BF)):
         # https://docs.nvidia.com/cuda/cublas/index.html#cublasgemmbatchedex
         alignment = 16 if k % 8 == 0 else (4 if k % 2 == 0 else 2)
@@ -1091,7 +1091,8 @@ cdef tuple _prepare_batched_matmul_operands(
     layout.b_outer_stride = b_outer_stride
     layout.c_outer_stride = c_outer_stride
     layout.use_batched_pointers = (
-        a_outer_stride < 0 or b_outer_stride < 0 or c_outer_stride < 0)
+        a_outer_stride == INT64_MIN or b_outer_stride == INT64_MIN
+        or c_outer_stride == INT64_MIN)
     return a, b, c
 
 
