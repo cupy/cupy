@@ -116,12 +116,16 @@ cdef class KernelArguments:
         self, tuple params, shape_t& shape, bint shape_fixed,
         bint include_outputs=*)
 
+    cdef find_and_apply_shape_gu(self, tuple params, shape_t& shape)
+
     cdef create_out_args_with_types(
         self, tuple out_types, casting, const shape_t& shape,
         subtype=*, template=*)
     cdef create_out_args_with_params(
         self, tuple out_types, tuple out_params, bint is_size_specified,
         const shape_t& shape)
+    cdef create_out_args_with_params_gu(
+        self, tuple out_types, tuple out_params, tuple out_shapes)
 
     cdef result(self, bint tuple_return)
     cdef finalize_scalars(self, tuple in_types)
