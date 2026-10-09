@@ -60,11 +60,20 @@ def lsqr(A, b):
     if b.ndim != 1 or len(b) != m:
         raise ValueError('b must be 1-d array whose size is same as A')
 
-    # Cast to float32 or float64
-    if A.dtype == 'f' or A.dtype == 'd':
+    # Cast to float32 or float64.  cuSOLVER reads ``A.data``/``b`` through raw
+    # pointers, so the operands must actually be converted -- picking the
+    # kernel from a promoted dtype while leaving a narrower buffer in place
+    # makes it read past the end and return garbage.
+    if A.dtype.char in 'fd':
         dtype = A.dtype
     else:
         dtype = numpy.promote_types(A.dtype, 'f')
+        if dtype.char not in 'fd':
+            # complex: ``scsrlsvqr``/``dcsrlsvqr`` are real-only (mirrors
+            # ``cupyx.cusolver.csrlsvqr``'s rejection).
+            raise TypeError('Invalid dtype (actual: {})'.format(A.dtype))
+        A = A.astype(dtype)
+    b = b.astype(dtype, copy=False)
 
     handle = device.get_cusolver_sp_handle()
     nnz = A.nnz
