@@ -38,6 +38,7 @@ jobs:
       github.event.workflow_run.conclusion == 'success'
     outputs:
       proceed: ${{ steps.compute.outputs.proceed }}
+      mode: ${{ steps.compute.outputs.mode }}
       rtd_slug: ${{ steps.compute.outputs.rtd_slug }}
       rtd_version_name: ${{ steps.compute.outputs.rtd_version_name }}
       version_type: ${{ steps.compute.outputs.version_type }}
@@ -82,6 +83,7 @@ jobs:
           # well-defined; downstream steps + the publish job gate on
           # `proceed`.
           PROCEED=false
+          MODE=""
           RTD_SLUG=""
           RTD_VERSION_NAME=""
           VERSION_TYPE=""
@@ -161,6 +163,7 @@ jobs:
 
           {
             echo "proceed=${PROCEED}"
+            echo "mode=${MODE}"
             echo "merge_sha=${MERGE_SHA}"
             echo "suffix=${SUFFIX}"
             echo "rtd_slug=${RTD_SLUG}"
@@ -346,3 +349,61 @@ jobs:
               --version-type tag \
               --commit "${HEAD_SHA}"
           fi
+
+  # workflow_run check-suites attach to the default-branch head, not to
+  # the triggering run's head SHA, so build/publish outcomes are invisible
+  # on the PR and on the merge commit unless mirrored as a commit status
+  # -- the same reason flexci.yml posts the pfn-public-ci statuses. The
+  # status is posted from this job and never from `build`: build executes
+  # the PR's conf.py under autodoc, and `statuses: write` there would let
+  # a hostile PR spoof states on arbitrary commits.
+  report:
+    name: Report docs status
+    needs: [build, publish]
+    # One status for every run that had a sentinel (mode test / doc-only /
+    # skip) plus early build-job failures; silent when there is nothing to
+    # report on (mode=no-op runs and failed-CI runs leave mode empty with
+    # build skipped or successful).
+    if: >-
+      always() &&
+      (needs.build.outputs.mode != '' || needs.build.result == 'failure')
+    runs-on: ubuntu-22.04
+    permissions:
+      statuses: write
+    steps:
+      - name: Post docs/build commit status
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MODE: ${{ needs.build.outputs.mode }}
+          PROCEED: ${{ needs.build.outputs.proceed }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          PUBLISH_RESULT: ${{ needs.publish.result }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [[ "${BUILD_RESULT}" != "success" ]]; then
+            STATE=failure
+            DESCRIPTION="Docs build job failed (${BUILD_RESULT})"
+          elif [[ "${PROCEED}" != "true" ]]; then
+            # /test skip | force-skip: deliberate, report as passing so a
+            # required docs/build context cannot wedge a skip-mode PR at
+            # "Expected".
+            STATE=success
+            DESCRIPTION="Docs build skipped (mode=${MODE})"
+          elif [[ "${PUBLISH_RESULT}" == "success" ]]; then
+            STATE=success
+            DESCRIPTION="Docs built and published to RTD"
+          elif [[ "${PUBLISH_RESULT}" == "skipped" ]]; then
+            # The publish gate (v*/hotfix-* branch pushes), not an error;
+            # the HTML artifact is still on the run.
+            STATE=success
+            DESCRIPTION="Docs built (publish gated for this ref)"
+          else
+            STATE=failure
+            DESCRIPTION="RTD publish failed (${PUBLISH_RESULT})"
+          fi
+          gh api "repos/${GITHUB_REPOSITORY}/statuses/${HEAD_SHA}" \
+            -f state="${STATE}" \
+            -f context="docs/build" \
+            -f description="${DESCRIPTION}" \
+            -f target_url="${RUN_URL}"
