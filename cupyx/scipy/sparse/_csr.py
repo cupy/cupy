@@ -339,41 +339,22 @@ class _csr_base(_compressed._compressed_sparse_matrix):
 
     def eliminate_zeros(self):
         """Removes zero entries in place."""
-        from cupyx import cusparse
-
         if self.ndim == 1:
             # Route through the (1, N) backing (rebuilds indptr as
             # [0, nnz]); the direct paths below assume a 2-D shape.
             return self._apply_2d_inplace(lambda m: m.eliminate_zeros())
 
-        if self.indices.dtype == cupy.int64:
-            # TODO(eriknw): cuSPARSE--csr2csr_compress doesn't support int64
-            mask = self.data != 0
-            if mask.all():  # synchronize!
-                return
-            new_data = self.data[mask]
-            new_indices = self.indices[mask]
-            nrows = self.shape[0]
-            idx_dtype = self.indptr.dtype
-            if len(new_data) == 0:
-                self.data = new_data
-                self.indices = new_indices
-                self.indptr = cupy.zeros(nrows + 1, dtype=idx_dtype)
-                return
-            row_of_each = cusparse._indptr_to_coo(
-                self.indptr, nnz=self.nnz)
-            kept_rows = row_of_each[mask]
-            new_indptr = cusparse._build_indptr(
-                kept_rows, nrows, idx_dtype)
-            self.data = new_data
-            self.indices = new_indices
-            self.indptr = new_indptr
+        mask = self.data != 0
+        if mask.all():  # synchronize!
             return
-
-        compress = cusparse.csr2csr_compress(self, 0)
-        self.data = compress.data
-        self.indices = compress.indices
-        self.indptr = compress.indptr
+        idx_dtype = self.indptr.dtype
+        kept = cupy.empty(self.data.size + 1, dtype=idx_dtype)
+        kept[0] = 0
+        cupy.cumsum(mask, dtype=idx_dtype, out=kept[1:])
+        # Sample survivor counts at the old row boundaries.
+        self.indptr = kept[self.indptr]
+        self.data = self.data[mask]
+        self.indices = self.indices[mask]
 
     def _maximum_minimum(self, other, cupy_op, op_name, dense_check):
         cls = type(self)

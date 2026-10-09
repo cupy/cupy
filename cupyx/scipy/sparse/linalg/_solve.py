@@ -60,11 +60,16 @@ def lsqr(A, b):
     if b.ndim != 1 or len(b) != m:
         raise ValueError('b must be 1-d array whose size is same as A')
 
-    # Cast to float32 or float64
-    if A.dtype == 'f' or A.dtype == 'd':
-        dtype = A.dtype
-    else:
-        dtype = numpy.promote_types(A.dtype, 'f')
+    dtype = cupy.result_type(A.data, b, numpy.float32)
+    if dtype.char not in 'fd':
+        # ``scsrlsvqr``/``dcsrlsvqr`` are real-only (mirrors
+        # ``cupyx.cusolver.csrlsvqr``'s rejection).
+        raise TypeError('Invalid dtype (actual: {}, {})'.format(
+            A.dtype, b.dtype))
+    if A.dtype != dtype:
+        A = A.astype(dtype)
+    # cuSOLVER receives a raw pointer and assumes a contiguous vector.
+    b = cupy.ascontiguousarray(b, dtype=dtype)
 
     handle = device.get_cusolver_sp_handle()
     nnz = A.nnz

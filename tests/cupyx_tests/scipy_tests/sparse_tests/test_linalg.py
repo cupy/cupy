@@ -50,10 +50,11 @@ class TestLsqr(unittest.TestCase):
                 sp.linalg.lsqr(A, b)
 
     @_condition.retry(10)
+    @testing.for_dtypes([numpy.float32, numpy.float64], name='b_dtype')
     @testing.numpy_cupy_allclose(atol=1e-1, sp_name='sp')
-    def test_csrmatrix(self, xp, sp):
+    def test_csrmatrix(self, xp, sp, b_dtype):
         A = sp.csr_matrix(self.A, dtype=self.dtype)
-        b = xp.array(self.b, dtype=self.dtype)
+        b = xp.array(self.b, dtype=b_dtype)
         x = sp.linalg.lsqr(A, b)
         return x[0]
 
@@ -64,6 +65,25 @@ class TestLsqr(unittest.TestCase):
         b = xp.array(self.b, dtype=self.dtype)
         x = sp.linalg.lsqr(A, b)
         return x[0]
+
+    def test_strided_rhs(self):
+        A = sparse.csr_matrix(numpy.diag([2.0, 3.0]), dtype=self.dtype)
+        b = cupy.array([2.0, 0.0, 6.0, 0.0], dtype=self.dtype)[::2]
+        assert not b.flags.c_contiguous
+        x = sparse.linalg.lsqr(A, b)[0]
+        testing.assert_array_almost_equal(x, [1.0, 2.0], decimal=3)
+
+
+@pytest.mark.skipif(runtime.is_hip, reason='lsqr not supported')
+@pytest.mark.parametrize('a_dtype,b_dtype', [
+    (cupy.complex64, cupy.float32),
+    (cupy.float32, cupy.complex128),
+])
+def test_lsqr_rejects_complex(a_dtype, b_dtype):
+    A = sparse.eye(2, format='csr', dtype=a_dtype)
+    b = cupy.ones(2, dtype=b_dtype)
+    with pytest.raises(TypeError, match='Invalid dtype'):
+        sparse.linalg.lsqr(A, b)
 
 
 @testing.parameterize(*testing.product({
