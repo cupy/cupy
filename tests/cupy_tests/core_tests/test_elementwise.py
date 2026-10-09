@@ -244,76 +244,123 @@ def _reference_func(*args, out_shape, in_core_ndims, out_core_ndim):
 
     if out_core_ndim > 0:
         core_shape = out_shape[-out_core_ndim:]
-        index_sum = sum(cupy.ogrid[tuple(slice(d) for d in core_shape)])
+        index_sum = sum(
+            cupy.ogrid[tuple(slice(d) for d in core_shape)]).astype(val.dtype)
         return cupy.broadcast_to(expanded_val * (index_sum + 1), out_shape)
 
     return cupy.broadcast_to(expanded_val, out_shape)
 
 
 class TestElementwiseGUFuncLike:
-    def test_scalar(self):
+    @staticmethod
+    def assert_result_matches(actual, desired):
+        rtol = 1e-5 if actual.dtype == numpy.float32 else 1e-7
+        assert actual.dtype == desired.dtype
+        assert actual.shape == desired.shape
+        testing.assert_allclose(actual, desired, rtol=rtol)
+
+    @staticmethod
+    def make_input(shape, order, dtype, reverse=False, *, core_ndim):
+        a = cupy.asarray(
+            cupy.random.uniform(size=shape), dtype=dtype, order=order)
+        # reverse every other batch dimension and every other core dimension.
+        if reverse:
+            slices = [slice(None)] * len(shape)
+            split = len(shape) - core_ndim
+            for axes in (range(split), range(split, len(shape))):
+                nontrivial_axes = [i for i in axes if shape[i] > 1]
+                for i in nontrivial_axes[::2]:
+                    slices[i] = slice(None, None, -1)
+            a = a[tuple(slices)]
+        return a
+
+    @testing.for_orders('CF')
+    @testing.for_dtypes('fd')
+    @pytest.mark.parametrize("reverse", [True, False])
+    def test_scalar(self, order, dtype, reverse):
         # '(),()->()'
         kern = _make_test_kernel(('()', '()'), ('()',))
-        in0 = cupy.random.uniform(size=(1, 10))
-        in1 = cupy.random.uniform(size=(10, 1))
+        in0 = self.make_input((1, 10), order, dtype, reverse, core_ndim=0)
+        in1 = self.make_input((10, 1), order, dtype, reverse, core_ndim=0)
+
         out_shape = (10, 10)
         actual = kern(in0, in1)
         desired = _reference_func(
             in0, in1, out_shape=out_shape, in_core_ndims=(0, 0),
             out_core_ndim=0)
-        testing.assert_allclose(actual, desired)
+        self.assert_result_matches(actual, desired)
 
-    def test_reduction(self):
+    @testing.for_orders('CF')
+    @testing.for_dtypes('fd')
+    @pytest.mark.parametrize("reverse", [True, False])
+    def test_reduction(self, order, dtype, reverse):
         # '(i)->()'
         kern = _make_test_kernel(('(i)',), ('()',))
-        in0 = cupy.random.uniform(size=(30, 20, 100))
+        in0 = self.make_input(
+            (30, 20, 100), order, dtype, reverse, core_ndim=1)
         out_shape = (30, 20)
         actual = kern(in0)
         desired = _reference_func(
             in0, out_shape=out_shape, in_core_ndims=(1,),
             out_core_ndim=0)
-        testing.assert_allclose(actual, desired)
+        self.assert_result_matches(actual, desired)
 
-    def test_matmul_like(self):
+    @testing.for_orders('CF')
+    @testing.for_dtypes('fd')
+    @pytest.mark.parametrize("reverse", [True, False])
+    def test_matmul_like(self, order, dtype, reverse):
         # '(m,n),(n,p)->(m,p)'
         kern = _make_test_kernel(('(m,n)', '(n,p)'), ('(m,p)',))
-        in0 = cupy.random.uniform(size=(1, 10, 30, 20))
-        in1 = cupy.random.uniform(size=(2, 10, 20, 50))
+        in0 = self.make_input(
+            (1, 10, 30, 20), order, dtype, reverse, core_ndim=2)
+        in1 = self.make_input(
+            (2, 10, 20, 50), order, dtype, reverse, core_ndim=2)
         out_shape = (2, 10, 30, 50)
         actual = kern(in0, in1)
         desired = _reference_func(
             in0, in1, out_shape=out_shape, in_core_ndims=(2, 2),
             out_core_ndim=2)
-        testing.assert_allclose(actual, desired)
+        self.assert_result_matches(actual, desired)
 
-    def test_frozen_dims(self):
+    @testing.for_orders('CF')
+    @testing.for_dtypes('fd')
+    @pytest.mark.parametrize("reverse", [True, False])
+    def test_frozen_dims(self, order, dtype, reverse):
         # '(3),(3)->(3)'
         kern = _make_test_kernel(('(3)', '(3)'), ('(3)',))
-        in0 = cupy.random.uniform(size=(100, 3))
-        in1 = cupy.random.uniform(size=(100, 3))
+        in0 = self.make_input((100, 3), order, dtype, reverse, core_ndim=1)
+        in1 = self.make_input((100, 3), order, dtype, reverse, core_ndim=1)
         out_shape = (100, 3)
         actual = kern(in0, in1)
         desired = _reference_func(
             in0, in1, out_shape=out_shape, in_core_ndims=(1, 1),
             out_core_ndim=1)
-        testing.assert_allclose(actual, desired)
+        self.assert_result_matches(actual, desired)
 
-    def test_pdist_like(self):
+    @testing.for_orders('CF')
+    @testing.for_dtypes('fd')
+    @pytest.mark.parametrize("reverse", [True, False])
+    def test_pdist_like(self, order, dtype, reverse):
         # '(n, d)->(n * (n - 1) // 2)'
         kern = _make_test_kernel(('(n, d)',), ('(n * (n - 1) // 2)',))
-        in0 = cupy.random.uniform(size=(100, 6, 10))
+        in0 = self.make_input((100, 6, 10), order, dtype, reverse, core_ndim=2)
         out_shape = (100, 15)
         actual = kern(in0)
         desired = _reference_func(
             in0, out_shape=out_shape, in_core_ndims=(2,), out_core_ndim=1)
-        testing.assert_allclose(actual, desired)
+        self.assert_result_matches(actual, desired)
 
-    def test_multiple_outputs(self):
+    @testing.for_orders('CF')
+    @testing.for_dtypes('fd')
+    @pytest.mark.parametrize("reverse", [True, False])
+    def test_multiple_outputs(self, order, dtype, reverse):
         # '(m,n),(n,p)->(m**2+p**2,2*n**2),(m*n*n*p)'
         kern = _make_test_kernel(
             ('(m,n)', '(n,p)'), ('(m**2+p**2, 2*n**2)', '(m*n*n*p)',))
-        in0 = cupy.random.uniform(size=(10, 1, 3, 2))
-        in1 = cupy.random.uniform(size=(1, 10, 2, 4))
+        in0 = self.make_input(
+            (10, 1, 3, 2), order, dtype, reverse, core_ndim=2)
+        in1 = self.make_input(
+            (1, 10, 2, 4), order, dtype, reverse, core_ndim=2)
         out_shapes = ((10, 10, 25, 8), (10, 10, 48,))
         actual0, actual1 = kern(in0, in1)
         desired0, desired1 = (
@@ -322,17 +369,27 @@ class TestElementwiseGUFuncLike:
                 out_core_ndim=ndim)
             for out_shape, ndim in zip(out_shapes, (2, 1))
         )
-        testing.assert_allclose(actual0, desired0)
-        testing.assert_allclose(actual1, desired1)
+        self.assert_result_matches(actual0, desired0)
+        self.assert_result_matches(actual1, desired1)
 
-    def test_with_preallocated_out(self):
+    @testing.for_orders('CF')
+    @testing.for_dtypes('fd')
+    @pytest.mark.parametrize("reverse", [True, False])
+    def test_with_preallocated_out(self, order, dtype, reverse):
         # '(m,n),(n,p)->(m**2+p**2,2*n**2),(m*n*n*p)'
         kern = _make_test_kernel(
             ('(m,n)', '(n,p)'), ('(m**2+p**2, 2*n**2)', '(m*n*n*p)',))
-        in0 = cupy.random.uniform(size=(10, 1, 3, 2))
-        in1 = cupy.random.uniform(size=(1, 10, 2, 4))
+        in0 = self.make_input(
+            (10, 1, 3, 2), order, dtype, reverse, core_ndim=2)
+        in1 = self.make_input(
+            (1, 10, 2, 4), order, dtype, reverse, core_ndim=2)
         out_shapes = ((10, 10, 25, 8), (10, 10, 48,))
-        out0, out1 = (cupy.empty(shape) for shape in out_shapes)
+        out0, out1 = (
+            cupy.empty(shape, order=order, dtype=dtype)
+            for shape in out_shapes)
+        if reverse:
+            out0 = out0[::-1, :, ::-1, :]
+            out1 = out1[::-1, :, ::-1]
         actual0, actual1 = kern(in0, in1, out0, out1)
         assert actual0 is out0
         assert actual1 is out1
@@ -342,22 +399,27 @@ class TestElementwiseGUFuncLike:
                 out_core_ndim=ndim)
             for out_shape, ndim in zip(out_shapes, (2, 1))
         )
-        testing.assert_allclose(actual0, desired0)
-        testing.assert_allclose(actual1, desired1)
+        self.assert_result_matches(actual0, desired0)
+        self.assert_result_matches(actual1, desired1)
 
-    def test_broadcast_against_out(self):
+    @testing.for_orders('CF')
+    @testing.for_dtypes('fd')
+    @pytest.mark.parametrize("reverse", [True, False])
+    def test_broadcast_against_out(self, order, dtype, reverse):
         # '(m,n),(n,p)->(m,p)'
         kern = _make_test_kernel(('(m,n)', '(n,p)'), ('(m,p)',))
-        in0 = cupy.random.uniform(size=(1, 10, 30, 20))
-        in1 = cupy.random.uniform(size=(1, 10, 20, 50))
+        in0 = self.make_input(
+            (1, 10, 30, 20), order, dtype, reverse, core_ndim=2)
+        in1 = self.make_input(
+            (1, 10, 20, 50), order, dtype, reverse, core_ndim=2)
         out_shape = (10, 10, 30, 50)
-        out = cupy.empty(out_shape)
+        out = cupy.empty(out_shape, dtype=dtype)
         actual = kern(in0, in1, out)
         desired = _reference_func(
             in0, in1, out_shape=out_shape, in_core_ndims=(2, 2),
             out_core_ndim=2)
         assert actual is out
-        testing.assert_allclose(actual, desired)
+        self.assert_result_matches(actual, desired)
 
     def test_invalid_out_shape(self):
         kern = _make_test_kernel(('(n)',), ('(n)',))
@@ -393,16 +455,20 @@ class TestElementwiseGUFuncLike:
             in0, out_shape=out_shape, in_core_ndims=(2,), out_core_ndim=1)
         testing.assert_allclose(actual, desired)
 
-    def test_indeterminate_out_shape(self):
+    @testing.for_orders('CF')
+    @testing.for_dtypes('fd')
+    @pytest.mark.parametrize("reverse", [True, False])
+    def test_indeterminate_out_shape(self, order, dtype, reverse):
         # '(i)->(j)'
         kern = _make_test_kernel(('(i)',), ('(j)',))
-        in0 = cupy.random.uniform(size=(100, 10))
+        in0 = self.make_input(
+            (100, 10), order, dtype, reverse, core_ndim=1)
         out_shape = (100, 20)
-        actual = cupy.empty(out_shape)
+        actual = cupy.empty(out_shape, dtype=dtype)
         _ = kern(in0, actual)
         desired = _reference_func(
             in0, out_shape=out_shape, in_core_ndims=(1,), out_core_ndim=1)
-        testing.assert_allclose(actual, desired)
+        self.assert_result_matches(actual, desired)
 
     @pytest.mark.parametrize('n', [5, 10])
     def test_shape_validation1(self, n):
