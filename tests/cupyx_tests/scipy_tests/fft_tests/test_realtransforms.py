@@ -84,6 +84,9 @@ class TestDctDst:
         fft_func = getattr(scp.fft, self.function)
         return self._run_transform(fft_func, xp, dtype)
 
+    @pytest.mark.thread_unsafe(
+        reason="scipy's set_backend() not fully thread-safe: "
+        "https://github.com/scipy/scipy/issues/25878#issuecomment-6033943581")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-5, accept_error=ValueError,
                                  contiguous_check=False)
@@ -164,6 +167,9 @@ class TestDctnDstn:
         fft_func = getattr(scp.fft, self.function)
         return self._run_transform(fft_func, xp, dtype)
 
+    @pytest.mark.thread_unsafe(
+        reason="scipy's set_backend() not fully thread-safe: "
+        "https://github.com/scipy/scipy/issues/25878#issuecomment-6033943581")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-5, accept_error=ValueError,
                                  contiguous_check=False)
