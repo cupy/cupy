@@ -312,6 +312,53 @@ cdef tuple _get_arginfos(list args):
     return tuple([_ArgInfo.from_arg(a) for a in args])
 
 
+cdef tuple _get_contiguous_ufunc_args(list args, Py_ssize_t nargs):
+    cdef _ndarray_base arr
+    cdef _ArgInfo arginfo
+    cdef _carray.CArray carr
+    cdef _carray.Indexer indexer
+    cdef shape_t flat_shape, flat_strides
+    cdef Py_ssize_t i, size = -1
+    cdef list arginfos, launch_args
+
+    ndarray_type = cupy.ndarray
+    for i in range(nargs):
+        arg = args[i]
+        if isinstance(arg, _ndarray_base):
+            arr = arg
+            if type(arg) is not ndarray_type or not arr._c_contiguous:
+                return None
+            # All ndarray operands have the validated broadcast shape.
+            size = arr.size
+    if size < 0:
+        return None
+
+    arginfos = []
+    launch_args = []
+    flat_shape.assign(1, size)
+    flat_strides.resize(1)
+    for i in range(nargs):
+        arg = args[i]
+        if isinstance(arg, _ndarray_base):
+            arr = arg
+            arginfo = _ArgInfo.from_ndarray(arr)
+            # Match the metadata of the reduced view without creating it.
+            arginfo.ndim = 1
+            flat_strides[0] = arr.dtype.itemsize
+            carr = _carray.CArray.__new__(_carray.CArray)
+            carr.init(<void*>arr.data.ptr, arr.size, flat_shape, flat_strides)
+            launch_args.append(carr)
+        else:
+            arginfo = _ArgInfo.from_arg(arg)
+            launch_args.append(arg)
+        arginfos.append(arginfo)
+
+    indexer = _carray._indexer_init(flat_shape)
+    launch_args.append(indexer)
+    arginfos.append(_ArgInfo.from_indexer(indexer))
+    return indexer, tuple(arginfos), launch_args
+
+
 cdef str _get_kernel_params(tuple params, tuple arginfos, type_decls=None):
     cdef ParameterInfo p
     cdef _ArgInfo arginfo
@@ -1399,6 +1446,9 @@ cdef class ufunc:
         cdef KernelArguments kargs
         cdef function.Function kern
         cdef int dev_id
+        cdef list launch_args
+        cdef tuple arginfos, prepared_args
+        cdef _carray.Indexer indexer
         cdef shape_t shape
 
         out = kwargs.pop('out', None)
@@ -1466,16 +1516,27 @@ cdef class ufunc:
 
         kargs.finalize_scalars(core_in_dtypes)
 
-        _params = self._params_with_where if kargs.has_where else self._params
-        shape = _reduce_dims(kargs.args, _params, shape)
-        indexer = _carray._indexer_init(shape)
-        kargs.set_indexer(indexer)
+        prepared_args = None
+        if shape.size() > 1 and not kargs.has_where:
+            # Exclude the reserved indexer slot from the operand list.
+            prepared_args = _get_contiguous_ufunc_args(
+                kargs.args, len(kargs.args) - 1)
+        if prepared_args is None:
+            _params = (self._params_with_where if kargs.has_where
+                       else self._params)
+            shape = _reduce_dims(kargs.args, _params, shape)
+            indexer = _carray._indexer_init(shape)
+            kargs.set_indexer(indexer)
+            arginfos = _get_arginfos(kargs.args)
+            launch_args = kargs.args
+        else:
+            indexer, arginfos, launch_args = prepared_args
 
-        arginfos = _get_arginfos(kargs.args)
         kern = self._get_ufunc_kernel(
             core_in_dtypes, core_out_dtypes, dev_id, op, arginfos,
             kargs.has_where)
-        kern.linear_launch(indexer.size, kargs.args)
+        # Keep kargs alive: packed CArray arguments do not own array data.
+        kern.linear_launch(indexer.size, launch_args)
         return ret
 
     cdef str _get_name_with_type(self, tuple arginfos, bint has_where):
