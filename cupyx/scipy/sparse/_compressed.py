@@ -30,37 +30,40 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
     _max_min_reduction_code = r'''
         template<typename TI> __global__
-        void ${func}(double* data, TI* x, TI* y, TI length, double* z) {
+        void ${func}(double* data, TI* x, TI* y, TI length, double* z,
+            long long n_rows) {
             // Get the index of the block
-            int tid = blockIdx.x * blockDim.x + threadIdx.x;
+            for (long long tid = blockIdx.x; tid < n_rows;
+                 tid += gridDim.x) {
 
-            // Calculate the block length
-            TI block_length = y[tid] - x[tid];
+                // Calculate the block length
+                TI block_length = y[tid] - x[tid];
 
-            // Select initial value based on the block density
-            double running_value = 0;
-            if (${cond}){
-                running_value = data[x[tid]];
-            } else {
-                running_value = 0;
-            }
-
-            // Iterate over the block and update
-            for (TI entry = x[tid]; entry < y[tid]; entry++){
-                if (data[entry] != data[entry]){
-                    // Check for NaN
-                    running_value = nan("");
-                    break;
+                // Select initial value based on the block density
+                double running_value = 0;
+                if (${cond}){
+                    running_value = data[x[tid]];
                 } else {
-                    // Check for a value update
-                    if (data[entry] ${op} running_value){
-                        running_value = data[entry];
+                    running_value = 0;
+                }
+
+                // Iterate over the block and update
+                for (TI entry = x[tid]; entry < y[tid]; entry++){
+                    if (data[entry] != data[entry]){
+                        // Check for NaN
+                        running_value = nan("");
+                        break;
+                    } else {
+                        // Check for a value update
+                        if (data[entry] ${op} running_value){
+                            running_value = data[entry];
+                        }
                     }
                 }
-            }
 
-            // Store in the return function
-            z[tid] = running_value;
+                // Store in the return function
+                z[tid] = running_value;
+            }
         }'''
 
     # Index type specializations: int (int32) and long long (int64).
@@ -99,55 +102,56 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
     _argmax_argmin_code = r'''
         template<typename T1, typename T2, typename TI> __global__ void
         ${func}_arg_reduction(T1* data, TI* indices, TI* x, TI* y,
-                              TI length, T2* z) {
+                              TI length, T2* z, long long n_rows) {
             // Get the index of the block
-            int tid = blockIdx.x * blockDim.x + threadIdx.x;
+            for (long long tid = blockIdx.x; tid < n_rows;
+                 tid += gridDim.x) {
 
-            // Calculate the block length
-            TI block_length = y[tid] - x[tid];
+                // Calculate the block length
+                TI block_length = y[tid] - x[tid];
 
-            // Select initial value based on the block density
-            TI data_index = 0;
-            double data_value = 0;
+                // Select initial value based on the block density
+                TI data_index = 0;
+                double data_value = 0;
 
-            if (block_length == length){
-                // Block is dense. Fill the first value
-                data_value = data[x[tid]];
-                data_index = indices[x[tid]];
-            } else if (block_length > 0)  {
-                // Block has at least one zero. Assign first occurrence as the
-                // starting reference
-                data_value = 0;
-                for (data_index = 0; data_index < length; data_index++){
-                    if (data_index != indices[x[tid] + data_index] ||
-                        x[tid] + data_index >= y[tid]){
-                        break;
+                if (block_length == length){
+                    // Block is dense. Fill the first value
+                    data_value = data[x[tid]];
+                    data_index = indices[x[tid]];
+                } else if (block_length > 0)  {
+                    // Block has a zero. Use its first occurrence as reference.
+                    data_value = 0;
+                    for (data_index = 0; data_index < length; data_index++){
+                        if (data_index != indices[x[tid] + data_index] ||
+                            x[tid] + data_index >= y[tid]){
+                            break;
+                        }
                     }
-                }
-            } else {
-                // Zero valued array
-                data_value = 0;
-                data_index = 0;
-            }
-
-            // Iterate over the section of the sparse matrix
-            for (TI entry = x[tid]; entry < y[tid]; entry++){
-                if (data[entry] != data[entry]){
-                    // Check for NaN
-                    data_value = nan("");
-                    data_index = 0;
-                    break;
                 } else {
-                    // Check for a value update
-                    if (data[entry] ${op} data_value){
-                        data_index = indices[entry];
-                        data_value = data[entry];
+                    // Zero valued array
+                    data_value = 0;
+                    data_index = 0;
+                }
+
+                // Iterate over the section of the sparse matrix
+                for (TI entry = x[tid]; entry < y[tid]; entry++){
+                    if (data[entry] != data[entry]){
+                        // Check for NaN
+                        data_value = nan("");
+                        data_index = 0;
+                        break;
+                    } else {
+                        // Check for a value update
+                        if (data[entry] ${op} data_value){
+                            data_index = indices[entry];
+                            data_value = data[entry];
+                        }
                     }
                 }
-            }
 
-            // Store in the return function
-            z[tid] = (T2)data_index;
+                // Store in the return function
+                z[tid] = (T2)data_index;
+            }
         }'''
 
     # T1=data type, T2=output type, TI=index type
@@ -774,7 +778,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                             const I* __restrict__ idx,
                             int*       __restrict__ col_cnt)
     {
-        int k = blockIdx.x * blockDim.x + threadIdx.x;
+        long long k = static_cast<long long>(blockIdx.x) * blockDim.x
+                      + threadIdx.x;
         if (k >= n_idx) return;
         atomicAdd(col_cnt + idx[k], 1);
     }
@@ -935,8 +940,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             int cnt   = stop - start;
             if (cnt == 0) continue;
 
-            T v = Ax[p*2];
-            T i = Ax[p*2+1];
+            T v = Ax[static_cast<long long>(p)*2];
+            T i = Ax[static_cast<long long>(p)*2+1];
             unsigned long long my_out = atomicAdd(
                 &row_ptr, static_cast<unsigned long long>(cnt));
             for (int k = 0; k < cnt; ++k)
@@ -968,14 +973,11 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         if self.nnz == 0 or n_idx == 0:
             return self._empty_like(new_shape)
 
-        # Histogram path uses int32 counters internally; fall back to
-        # the sort-based path when either ``N`` (count-buffer size) or
-        # ``n_idx`` (cumulative-sum end value) overflows int32.  The
-        # ``n_idx`` arm needs an idx array > 8 GB to trigger, so it has
-        # no direct unit test -- correctness rests on the existing
-        # ``_minor_index_fancy_sorted`` coverage.
+        # The histogram path uses int32 counts and one block per row.
+        # Bound the output count as well, including repeated columns.
         int32_max = numpy.iinfo(numpy.int32).max
-        if N > int32_max or n_idx > int32_max:
+        if (M > int32_max or N > int32_max or n_idx > int32_max or
+                self.nnz * n_idx > int32_max):
             return self._minor_index_fancy_sorted(
                 idx, M, n_idx, new_shape)
 
@@ -1090,7 +1092,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         out_data = out_data[sort_key]
 
         out_idx_dtype = _sputils.get_index_dtype(
-            arrays=(self.indices,), maxval=max(M, n_idx))
+            arrays=(self.indices,), maxval=max(M, n_idx, total_nnz))
         out_indptr = _cusparse_mod._build_indptr(
             out_major, M, out_idx_dtype)
 
@@ -1606,11 +1608,11 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             # caller silently getting a min result for another ufunc.
             raise ValueError(f'unsupported reduction ufunc: {ufunc}')
         ker = mod.get_function(f'{fname}<{tname}>')
-        ker((out_shape,), (1,),
+        ker((min(out_shape, 65535),), (1,),
             (self.data.astype(cupy.float64),
              self.indptr[:-1], self.indptr[1:],
              idx_dtype.type(self.shape[axis]),
-             out))
+             out, out_shape))
 
         return out
 
@@ -1655,10 +1657,10 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         elif ufunc == cupy.argmin:
             ker = self._min_arg_reduction_mod.get_function('min' + ker_name)
 
-        ker((out_shape,), (1,),
+        ker((min(out_shape, 65535),), (1,),
             (self.data, self.indices,
              indptr_x, indptr_y,
              idx_dtype.type(self.shape[axis]),
-             out))
+             out, out_shape))
 
         return out

@@ -4,6 +4,7 @@ import math
 import os
 
 import cupy
+from cupyx.scipy._lib._util import _get_index_type
 import numpy as np
 
 from ._util import _get_inttype
@@ -69,7 +70,7 @@ pba3d_defines_encode_64bit = """
 
 @cupy.memoize(True)
 def get_pba3d_src(block_size_3d=32, marker=-2147483648, max_int=2147483647,
-                  size_max=1024):
+                  size_max=1024, index_type="int"):
     pba3d_code = pba3d_defines_template.format(
         block_size_3d=block_size_3d, marker=marker, max_int=max_int
     )
@@ -80,6 +81,7 @@ def get_pba3d_src(block_size_3d=32, marker=-2147483648, max_int=2147483647,
     kernel_directory = os.path.join(os.path.dirname(__file__), "cuda")
     with open(os.path.join(kernel_directory, "pba_kernels_3d.h")) as f:
         pba3d_kernels = "\n".join(f.readlines())
+    pba3d_code += f"typedef {index_type} index_t;\n"
     pba3d_code += pba3d_kernels
     return pba3d_code
 
@@ -376,7 +378,9 @@ def _pba_3d(arr, sampling=None, return_distances=True, return_indices=False,
     block = (blockx, blocky, 1)
     grid = (size // block[0], size // block[1], 1)
     pba3d = cupy.RawModule(
-        code=get_pba3d_src(block_size_3d=block_size, size_max=size_max)
+        code=get_pba3d_src(
+            block_size_3d=block_size, size_max=size_max,
+            index_type=_get_index_type(input_arr, output))
     )
 
     kernelFloodZ = pba3d.get_function("kernelFloodZ")
