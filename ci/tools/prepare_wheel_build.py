@@ -37,10 +37,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-try:
-    import tomllib  # Python 3.11+
-except ImportError:  # Python 3.10
-    import tomli as tomllib  # type: ignore[no-redef]
+import tomllib
 import tomli_w
 
 # Make sibling wheel_configs.py importable when invoked from anywhere.
