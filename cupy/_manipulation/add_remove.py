@@ -267,7 +267,7 @@ def unique(ar, return_index=False, return_inverse=False,
     is_complex = cupy.iscomplexobj(ar)
 
     ar_cmp = ar
-    if is_unsigned:
+    if is_unsigned or ar.dtype == cupy.bool_:
         ar_cmp = ar.astype(cupy.intp)
 
     def compare_axis_elems(idx1, idx2):

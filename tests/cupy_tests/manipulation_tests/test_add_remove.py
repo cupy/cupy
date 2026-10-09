@@ -194,6 +194,18 @@ class TestUnique:
         a = testing.shaped_random((100, 100), xp, dtype)
         return xp.unique(a, axis=1)
 
+    @testing.numpy_cupy_array_equal()
+    def test_unique_bool(self, xp):
+        a = testing.shaped_random((100, 3), xp, xp.bool_)
+        return xp.unique(a, axis=0)
+
+    @testing.with_requires("numpy>=2.1")
+    @testing.numpy_cupy_array_equal()
+    def test_unique_bool_return_all(self, xp):
+        a = testing.shaped_random((3, 100), xp, xp.bool_)
+        return xp.unique(a, return_index=True, return_inverse=True,
+                         return_counts=True, axis=1)
+
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_unique_return_index_no_axis(self, xp, dtype):
