@@ -1105,13 +1105,13 @@ def _make_core_shape_mapper(in_core_shape_info, out_core_shape_info, name):
             lines.append(f'    out_shape_{i} = ({out_str})')
             for j, part in enumerate(out_shape_parts):
                 # Validate that all computed out dims are actually
-                # positive integers. Skip this if the dim is the
+                # non-negative integers. Skip this if the dim is the
                 # None sentinel, signaling dim should be resolved by
                 # user passing out args.
                 if part != 'None':
                     lines.append(
                         f'    if not isinstance(out_shape_{i}[{j}], int)'
-                        f' or out_shape_{i}[{j}] <= 0:')
+                        f' or out_shape_{i}[{j}] < 0:')
                     lines.append('        raise ValueError')
             out_returns.append(f'out_shape_{i}')
 
@@ -1400,25 +1400,42 @@ cdef class ElementwiseKernel:
                 batch_shape_tuple + expected_core_shape
                 for expected_core_shape in out_core_shapes)
 
-        result = []
+        # Resolve output-only dimension variables from supplied outputs.
+        inferred_dims = {}
         for expected_shape, p, out_arg in zip(
                 out_core_shapes, self.out_params, out_args):
-            if None in expected_shape:
-                if out_arg is None:
-                    raise RuntimeError(
-                        'Out shape is indeterminate and no explicit out '
-                        'argument was passed.')
-                if not isinstance(out_arg, _ndarray_base):
-                    raise TypeError(
-                        'Output arguments type must be cupy.ndarray')
+            if None not in expected_shape or out_arg is None:
+                continue
 
-                out_core_shape = out_arg.shape[-p.core_ndim:]
-                expected_shape = tuple(
-                    out_core_shape[j] if dim is None else dim
-                    for j, dim in enumerate(expected_shape)
-                )
+            if not isinstance(out_arg, _ndarray_base):
+                raise TypeError(
+                    'Output arguments type must be cupy.ndarray')
+            if out_arg.ndim < p.core_ndim:
+                raise ValueError('Out shape is mismatched')
 
-            result.append(batch_shape_tuple + expected_shape)
+            out_core_shape = out_arg.shape[-p.core_ndim:]
+            for name, dim, size in zip(
+                    p.core_shape, expected_shape, out_core_shape):
+                if dim is None:
+                    if name in inferred_dims and inferred_dims[name] != size:
+                        raise ValueError(
+                            f'Inconsistent output core dimension: {name}')
+                    inferred_dims[name] = size
+
+        result = []
+        for expected_shape, p in zip(out_core_shapes, self.out_params):
+            resolved_shape = []
+            for name, dim in zip(p.core_shape or (), expected_shape):
+                if dim is None:
+                    if name not in inferred_dims:
+                        raise RuntimeError(
+                            'Out shape is indeterminate and no explicit '
+                            'out argument was passed.')
+                    dim = inferred_dims[name]
+                resolved_shape.append(dim)
+
+            result.append(batch_shape_tuple + tuple(resolved_shape))
+
         return tuple(result)
 
     @property

@@ -353,6 +353,21 @@ class TestElementwiseGUFuncLike:
     @testing.for_orders('CF')
     @testing.for_dtypes('fd')
     @pytest.mark.parametrize("reverse", [True, False])
+    def test_no_batch_dims(self, order, dtype, reverse):
+        # '(n)->()' with no batch dimensions
+        kern = _make_test_kernel(('(n)',), ('()',))
+        in0 = self.make_input(
+            (100,), order, dtype, reverse, core_ndim=1)
+
+        actual = kern(in0)
+        desired = _reference_func(
+            in0, out_shape=(), in_core_ndims=(1,), out_core_ndim=0)
+
+        self.assert_result_matches(actual, desired)
+
+    @testing.for_orders('CF')
+    @testing.for_dtypes('fd')
+    @pytest.mark.parametrize("reverse", [True, False])
     def test_multiple_outputs(self, order, dtype, reverse):
         # '(m,n),(n,p)->(m**2+p**2,2*n**2),(m*n*n*p)'
         kern = _make_test_kernel(
@@ -470,10 +485,9 @@ class TestElementwiseGUFuncLike:
             in0, out_shape=out_shape, in_core_ndims=(1,), out_core_ndim=1)
         self.assert_result_matches(actual, desired)
 
-    @pytest.mark.parametrize('n', [5, 10])
-    def test_shape_validation1(self, n):
+    def test_shape_validation1(self):
         kern = _make_test_kernel(('(n)',), ('(n-10)',))
-        in0 = cupy.random.uniform(size=(20, n))
+        in0 = cupy.random.uniform(size=(20, 5))
         with pytest.raises(ValueError):
             kern(in0)
 
@@ -482,3 +496,32 @@ class TestElementwiseGUFuncLike:
         in0 = cupy.random.uniform(size=(20, 10))
         with pytest.raises(ValueError):
             kern(in0)
+
+    def test_repeated_output_dimension(self):
+        kern = _make_test_kernel(('(n)',), ('(m,m)',))
+        x = cupy.ones((5, 3))
+        out = cupy.empty((5, 2, 4))
+
+        with pytest.raises(ValueError, match='Inconsistent output core'):
+            kern(x, out)
+
+    def test_shared_output_dimension(self):
+        kern = _make_test_kernel(('(n)',), ('(m)', '(m)',))
+        x = cupy.ones((5, 3))
+        out0 = cupy.empty((5, 2))
+        out1 = cupy.empty((5, 4))
+
+        with pytest.raises(ValueError, match='Inconsistent output core'):
+            kern(x, out0, out1)
+
+    def test_shared_output_dimension_valid(self):
+        kern = _make_test_kernel(('(n)',), ('(m)', '(m)',))
+        x = cupy.ones((5, 3))
+        out0 = cupy.empty((5, 4))
+        out1 = cupy.empty((5, 4))
+
+        actual0, actual1 = kern(x, out0, out1)
+
+        assert actual0 is out0
+        assert actual1 is out1
+        assert actual0.shape == actual1.shape == (5, 4)
