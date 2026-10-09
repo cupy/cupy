@@ -5,6 +5,7 @@ from cupy._core import ElementwiseKernel
 
 preamble = """
 #include <cupy/xsf/stats.h>
+#include <cupy/xsf/cupy.h>
 """
 
 _poisson_binom_cdf_all = ElementwiseKernel(
