@@ -44,7 +44,8 @@ def lschol(A, b):
             # ``scsrlsvchol``/``dcsrlsvchol`` are real-only.
             raise TypeError('Invalid dtype (actual: {})'.format(A.dtype))
         A = A.astype(dtype)
-    b = b.astype(dtype, copy=False)
+    # cuSOLVER receives a raw pointer and assumes a contiguous vector.
+    b = cupy.ascontiguousarray(b, dtype=dtype)
 
     handle = device.get_cusolver_sp_handle()
     nnz = A.nnz

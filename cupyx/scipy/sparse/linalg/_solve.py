@@ -69,7 +69,8 @@ def lsqr(A, b):
             # ``cupyx.cusolver.csrlsvqr``'s rejection).
             raise TypeError('Invalid dtype (actual: {})'.format(A.dtype))
         A = A.astype(dtype)
-    b = b.astype(dtype, copy=False)
+    # cuSOLVER receives a raw pointer and assumes a contiguous vector.
+    b = cupy.ascontiguousarray(b, dtype=dtype)
 
     handle = device.get_cusolver_sp_handle()
     nnz = A.nnz

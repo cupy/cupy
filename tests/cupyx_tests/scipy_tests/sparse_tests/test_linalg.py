@@ -65,6 +65,13 @@ class TestLsqr(unittest.TestCase):
         x = sp.linalg.lsqr(A, b)
         return x[0]
 
+    def test_strided_rhs(self):
+        A = sparse.csr_matrix(numpy.diag([2.0, 3.0]), dtype=self.dtype)
+        b = cupy.array([2.0, 0.0, 6.0, 0.0], dtype=self.dtype)[::2]
+        assert not b.flags.c_contiguous
+        x = sparse.linalg.lsqr(A, b)[0]
+        testing.assert_array_almost_equal(x, [1.0, 2.0], decimal=3)
+
 
 @pytest.mark.skipif(runtime.is_hip, reason='lsqr not supported')
 def test_lsqr_rejects_complex():

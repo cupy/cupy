@@ -68,6 +68,13 @@ class TestLschol(unittest.TestCase):
         x = cupyx.linalg.sparse.lschol(A, b)
         testing.assert_array_almost_equal(x, self.x, decimal=self.decimal)
 
+    def test_strided_rhs(self):
+        A = sp.csr_matrix(numpy.diag([2.0, 3.0]), dtype=self.dtype)
+        b = cp.array([2.0, 0.0, 6.0, 0.0], dtype=self.dtype)[::2]
+        assert not b.flags.c_contiguous
+        x = cupyx.linalg.sparse.lschol(A, b)
+        testing.assert_array_almost_equal(x, [1.0, 2.0], decimal=self.decimal)
+
 
 def test_lschol_rejects_complex():
     A = sp.eye(2, format='csr', dtype=cp.complex64)
