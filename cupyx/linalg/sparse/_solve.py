@@ -36,13 +36,12 @@ def lschol(A, b):
     if b.ndim != 1 or len(b) != m:
         raise ValueError('b must be 1-d array whose size is same as A')
 
-    if A.dtype.char in 'fd':
-        dtype = A.dtype
-    else:
-        dtype = numpy.promote_types(A.dtype, 'f')
-        if dtype.char not in 'fd':
-            # ``scsrlsvchol``/``dcsrlsvchol`` are real-only.
-            raise TypeError('Invalid dtype (actual: {})'.format(A.dtype))
+    dtype = cupy.result_type(A.data, b, numpy.float32)
+    if dtype.char not in 'fd':
+        # ``scsrlsvchol``/``dcsrlsvchol`` are real-only.
+        raise TypeError('Invalid dtype (actual: {}, {})'.format(
+            A.dtype, b.dtype))
+    if A.dtype != dtype:
         A = A.astype(dtype)
     # cuSOLVER receives a raw pointer and assumes a contiguous vector.
     b = cupy.ascontiguousarray(b, dtype=dtype)

@@ -50,10 +50,11 @@ class TestLsqr(unittest.TestCase):
                 sp.linalg.lsqr(A, b)
 
     @_condition.retry(10)
+    @testing.for_dtypes([numpy.float32, numpy.float64], name='b_dtype')
     @testing.numpy_cupy_allclose(atol=1e-1, sp_name='sp')
-    def test_csrmatrix(self, xp, sp):
+    def test_csrmatrix(self, xp, sp, b_dtype):
         A = sp.csr_matrix(self.A, dtype=self.dtype)
-        b = xp.array(self.b, dtype=self.dtype)
+        b = xp.array(self.b, dtype=b_dtype)
         x = sp.linalg.lsqr(A, b)
         return x[0]
 

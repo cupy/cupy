@@ -55,11 +55,16 @@ class TestLschol(unittest.TestCase):
             cupyx.linalg.sparse.lschol(A, b)
 
     @_condition.retry(10)
-    def test_csrmatrix(self):
+    @testing.for_dtypes([numpy.float32, numpy.float64], name='b_dtype')
+    def test_csrmatrix(self, b_dtype):
+        A_host = scipy.sparse.csr_matrix(self.A, dtype=self.dtype)
         A = sp.csr_matrix(self.A, dtype=self.dtype)
-        b = cp.array(self.b, dtype=self.dtype)
+        b_host = numpy.array(self.b, dtype=b_dtype)
+        b = cp.array(b_host)
         x = cupyx.linalg.sparse.lschol(A, b)
-        testing.assert_array_almost_equal(x, self.x, decimal=self.decimal)
+        expected = scipy.linalg.solve(A_host.toarray(), b_host)
+        decimal = 3 if self.dtype == b_dtype == numpy.float32 else 8
+        testing.assert_array_almost_equal(x, expected, decimal=decimal)
 
     @_condition.retry(10)
     def test_ndarray(self):
