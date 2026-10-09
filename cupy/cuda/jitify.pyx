@@ -7,6 +7,8 @@ from libcpp.map cimport map as cpp_map
 from libcpp.string cimport string as cpp_str
 from libcpp.vector cimport vector
 
+cimport cython
+
 import json
 import os
 import re
@@ -92,6 +94,7 @@ cpdef str get_cuda_version():
 cdef cpp_map[cpp_str, cpp_str] cupy_headers
 
 # Module-level constants
+cdef cython.pymutex _jitify_init_mutex
 cdef bint _jitify_init = False
 cdef str _jitify_cache_dir = None
 cdef str _jitify_cache_versions = None
@@ -218,7 +221,7 @@ cdef inline void _init_cupy_headers() except*:
     _init_cupy_headers_from_scratch()
 
 
-cpdef void _init_module() except*:
+cpdef void _init_module_locked() except*:
     if _jitify_init:
         return
 
@@ -243,6 +246,11 @@ cpdef void _init_module() except*:
             f"{get_cuda_version()}_{build_num}_{cupy_cache_key.decode()}")
 
     _init_cupy_headers()
+
+
+cpdef void _init_module() except*:
+    with _jitify_init_mutex:
+        _init_module_locked()
 
 
 # Use Jitify's internal mechanism to search all included headers, and return
