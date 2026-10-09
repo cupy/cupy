@@ -2,8 +2,12 @@
 
 set -uex
 
+# Ubuntu 24.04 marks the system Python as PEP 668 externally-managed; this
+# container runs as root with no venv, so let pip install into it directly.
+export PIP_BREAK_SYSTEM_PACKAGES=1
+
 # The ROCm math/comm libraries (hipblas, rccl, rocfft, etc.) are already
-# shipped in the rocm/dev-ubuntu-22.04:*-full base image, so we only need to
+# shipped in the rocm/dev-ubuntu-24.04:*-full base image, so we only need to
 # make sure Python's dev headers and pip are available.
 apt-get -y update
 DEBIAN_FRONTEND=noninteractive apt-get -y install \
