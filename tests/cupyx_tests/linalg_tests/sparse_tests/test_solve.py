@@ -76,8 +76,12 @@ class TestLschol(unittest.TestCase):
         testing.assert_array_almost_equal(x, [1.0, 2.0], decimal=self.decimal)
 
 
-def test_lschol_rejects_complex():
-    A = sp.eye(2, format='csr', dtype=cp.complex64)
-    b = cp.ones(2, dtype=cp.complex64)
+@pytest.mark.parametrize('a_dtype,b_dtype', [
+    (cp.complex64, cp.float32),
+    (cp.float32, cp.complex128),
+])
+def test_lschol_rejects_complex(a_dtype, b_dtype):
+    A = sp.eye(2, format='csr', dtype=a_dtype)
+    b = cp.ones(2, dtype=b_dtype)
     with pytest.raises(TypeError, match='Invalid dtype'):
         cupyx.linalg.sparse.lschol(A, b)

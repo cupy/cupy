@@ -74,9 +74,13 @@ class TestLsqr(unittest.TestCase):
 
 
 @pytest.mark.skipif(runtime.is_hip, reason='lsqr not supported')
-def test_lsqr_rejects_complex():
-    A = sparse.eye(2, format='csr', dtype=cupy.complex64)
-    b = cupy.ones(2, dtype=cupy.complex64)
+@pytest.mark.parametrize('a_dtype,b_dtype', [
+    (cupy.complex64, cupy.float32),
+    (cupy.float32, cupy.complex128),
+])
+def test_lsqr_rejects_complex(a_dtype, b_dtype):
+    A = sparse.eye(2, format='csr', dtype=a_dtype)
+    b = cupy.ones(2, dtype=b_dtype)
     with pytest.raises(TypeError, match='Invalid dtype'):
         sparse.linalg.lsqr(A, b)
 
