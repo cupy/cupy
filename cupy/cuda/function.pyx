@@ -3,6 +3,7 @@
 import numpy
 import warnings
 
+cimport cython  # NOQA
 from libc.stdint cimport intptr_t
 from libc.stdint cimport uintmax_t
 from libcpp cimport vector
@@ -171,6 +172,8 @@ cdef class Function:
             shared_mem, s, enable_cooperative_groups)
 
 
+# A copy would own the same module handle and unload it when deleted.
+@cython.auto_pickle(False)
 cdef class Module:
 
     """CUDA kernel module."""
