@@ -11,6 +11,7 @@ import tempfile
 import threading
 from unittest import mock
 
+import numpy
 import pytest
 
 import cupy
@@ -1650,3 +1651,147 @@ def test_jitify_deprecation_warning(jitify, match):
     # Not technically part of the rawkernel, but test warning in compile here:
     with pytest.warns(DeprecationWarning, match=match):
         compiler.compile_using_nvrtc("", options=(), jitify=jitify)
+
+
+_ftz_source = r'''
+extern "C" __global__
+void scale_ftz(const float* x, float* y) {
+    int i = threadIdx.x;
+    if (i < 4) y[i] = x[i] * 0.5f;
+}
+'''
+
+
+def _check_ftz(backend, raw_module, options, flush):
+    if raw_module:
+        module = cupy.RawModule(code=_ftz_source, options=options,
+                                backend=backend)
+        kernel = module.get_function('scale_ftz')
+    else:
+        kernel = cupy.RawKernel(_ftz_source, 'scale_ftz', options=options,
+                                backend=backend)
+    x = cupy.asarray([2.0**-126, -2.0**-126, 1.0, -1.0],
+                     dtype=cupy.float32)
+    y = cupy.empty_like(x)
+    kernel((1,), (32,), (x, y))
+    expected = [0, 0x80000000] if flush else [0x00400000, 0x80400000]
+    testing.assert_array_equal(y.view(cupy.uint32).get(),
+                               expected + [0x3F000000, 0xBF000000])
+
+
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='CUDA FTZ options')
+@pytest.mark.thread_unsafe(reason='uses temporary cache and compile mode')
+@pytest.mark.parametrize('backend', ['nvrtc', 'nvcc'])
+@pytest.mark.parametrize('raw_module', [False, True])
+@pytest.mark.parametrize('in_memory', [False, True])
+@pytest.mark.parametrize('options,flush', [
+    ((), True),
+    (('--ftz=true',), True),
+    (('--ftz=false',), False),
+    (('-ftz=false',), False),
+    (('--ftz=false', '--ftz=true'), True),
+    (('--ftz=true', '--ftz=false'), False),
+    (('--ftz', 'true'), True),
+    (('--ftz', 'false'), False),
+    (('-ftz', 'true'), True),
+    (('-ftz', 'false'), False),
+    (('--ftz', 'false', '-ftz', 'true'), True),
+    (('-ftz', 'true', '--ftz', 'false'), False),
+])
+def test_ftz_options(backend, raw_module, in_memory, options, flush):
+    if backend == 'nvcc' and cupy.cuda.get_nvcc_path() is None:
+        pytest.skip('nvcc is unavailable')
+    with use_temporary_cache_dir(), compile_in_memory(in_memory):
+        for _ in range(2):
+            _check_ftz(backend, raw_module, options, flush)
+
+
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='CUDA FTZ options')
+@pytest.mark.thread_unsafe(reason='uses temporary cache and compile mode')
+@pytest.mark.parametrize('backend', ['nvrtc', 'nvcc'])
+@pytest.mark.parametrize('raw_module', [False, True])
+@pytest.mark.parametrize('in_memory', [False, True])
+def test_ftz_options_cache(backend, raw_module, in_memory):
+    if backend == 'nvcc' and cupy.cuda.get_nvcc_path() is None:
+        pytest.skip('nvcc is unavailable')
+    with use_temporary_cache_dir(), compile_in_memory(in_memory):
+        for flush in [False, True, False]:
+            options = ('--ftz=true',) if flush else ('--ftz=false',)
+            _check_ftz(backend, raw_module, options, flush)
+
+
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='CUDA FTZ options')
+@pytest.mark.parametrize('backend', ['nvrtc', 'nvcc'])
+@pytest.mark.parametrize('raw_module', [False, True])
+@pytest.mark.parametrize('options', [
+    ('--use_fast_math',),
+    ('--use_fast_math', '--ftz=false'),
+    ('--ftz=false', '--use_fast_math'),
+    ('--use_fast_math', '--ftz=false', '--ftz=true'),
+    ('--ftz=false', '--ftz=true', '--use_fast_math'),
+    ('--ftz=true', '--use_fast_math', '--ftz=false'),
+])
+def test_ftz_native_options(backend, raw_module, options):
+    if backend == 'nvcc' and cupy.cuda.get_nvcc_path() is None:
+        pytest.skip('nvcc is unavailable')
+    if backend == 'nvrtc':
+        binary, _ = compiler.compile_using_nvrtc(_ftz_source, options)
+    else:
+        binary = compiler.compile_using_nvcc(_ftz_source, options)
+    native = cupy.cuda.function.Module()
+    native.load(binary)
+    x = cupy.asarray([2.0**-126, -2.0**-126, 1.0, -1.0],
+                     dtype=cupy.float32)
+    expected = cupy.empty_like(x)
+    native.get_function('scale_ftz')((1,), (32,), (x, expected))
+    if raw_module:
+        module = cupy.RawModule(code=_ftz_source, options=options,
+                                backend=backend)
+        kernel = module.get_function('scale_ftz')
+    else:
+        kernel = cupy.RawKernel(_ftz_source, 'scale_ftz', options=options,
+                                backend=backend)
+    actual = cupy.empty_like(x)
+    kernel((1,), (32,), (x, actual))
+    testing.assert_array_equal(actual.view(cupy.uint32),
+                               expected.view(cupy.uint32))
+
+
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='CUDA FTZ options')
+@pytest.mark.parametrize('backend', ['nvrtc', 'nvcc'])
+@pytest.mark.parametrize('raw_module', [False, True])
+@pytest.mark.parametrize('options', [
+    ('--ftz=false',), ('--ftz', 'false'), ('-ftz', 'false'),
+])
+def test_ftz_signal_pipeline(backend, raw_module, options):
+    if backend == 'nvcc' and cupy.cuda.get_nvcc_path() is None:
+        pytest.skip('nvcc is unavailable')
+    code = r'''
+    extern "C" __global__
+    void scale_signal(const float* x, float* y, float factor, int n) {
+        int i = blockIdx.x * blockDim.x + threadIdx.x;
+        if (i < n) y[i] = x[i] * factor;
+    }
+    '''
+    if raw_module:
+        module = cupy.RawModule(code=code, options=options, backend=backend)
+        kernel = module.get_function('scale_signal')
+    else:
+        kernel = cupy.RawKernel(code, 'scale_signal', options=options,
+                                backend=backend)
+    amplitudes = numpy.tile(numpy.array([1, -1, 2, -2], numpy.float32), 1024)
+    host = amplitudes * numpy.float32(2**-126)
+    data = cupy.asarray(host)
+    damped, restored = cupy.empty_like(data), cupy.empty_like(data)
+    grid = ((data.size + 255) // 256,)
+    n = numpy.int32(data.size)
+    kernel(grid, (256,), (data, damped, numpy.float32(0.5), n))
+    kernel(grid, (256,), (damped, restored, numpy.float32(2**126), n))
+    spectrum = cupy.fft.rfft(restored)
+    power = (cupy.abs(spectrum)**2).get()
+    testing.assert_array_equal(damped.get().view(numpy.uint32),
+                               (host * numpy.float32(0.5)).view(numpy.uint32))
+    testing.assert_array_equal(restored.get(), amplitudes * 0.5)
+    testing.assert_allclose(power,
+                            numpy.abs(numpy.fft.rfft(amplitudes * 0.5))**2,
+                            rtol=1e-5, atol=1e-5)
