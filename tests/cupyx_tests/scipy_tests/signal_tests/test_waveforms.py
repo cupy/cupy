@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 
+from unittest import mock
+
 import pytest
 
 import cupy
 from cupy import testing
 import cupyx.scipy.signal  # NOQA
+from cupyx.scipy.signal import _waveforms
 
 import numpy as np
 
@@ -47,6 +50,124 @@ class TestChirp:
         w = scp.signal.chirp(
             t=0, f0=10.0, f1=1.0, t1=1.0, method='hyperbolic')
         return w
+
+    @pytest.mark.parametrize('method, f0, f1, vertex_zero', [
+        ('linear', -3.0, 3.0, True),
+        ('lin', -3.0, 3.0, True),
+        ('li', -3.0, 3.0, True),
+        ('quadratic', 1.0, 3.0, True),
+        ('quadratic', 1.0, 3.0, False),
+        ('quad', 1.0, 3.0, True),
+        ('q', 1.0, 3.0, True),
+        ('logarithmic', 1.0, 3.0, True),
+        ('logarithmic', 1.0, 1.0, True),
+        ('log', 1.0, 3.0, True),
+        ('lo', 1.0, 3.0, True),
+        ('hyperbolic', 3.0, 1.0, True),
+        ('hyperbolic', 1.0, 1.0, True),
+        ('hyp', 3.0, 1.0, True),
+    ])
+    @pytest.mark.parametrize('scalar', [False, True])
+    @testing.with_requires('scipy>=1.15.0')
+    @testing.for_dtypes([np.float32, np.float64])
+    @testing.numpy_cupy_allclose(
+        scipy_name='scp',
+        rtol={np.complex64: 1e-5, 'default': 1e-6},
+        atol={np.complex64: 1e-5, 'default': 1e-6})
+    def test_complex(
+            self, method, f0, f1, vertex_zero, scalar, xp, scp, dtype):
+        t = xp.asarray(0.25, dtype=dtype) if scalar else xp.linspace(
+            -0.25, 1.0, 101, dtype=dtype)
+        result = scp.signal.chirp(
+            t, f0, 1.0, f1, method=method, phi=37.0,
+            vertex_zero=vertex_zero, complex=True)
+        if xp is np:
+            # SciPy computes the phase in float64 even for float32 times.
+            # Compare its reference at CuPy's corresponding complex precision.
+            result = result.astype(np.result_type(dtype, 1j), copy=False)
+        return result
+
+    @pytest.mark.parametrize('method, vertex_zero', [
+        ('linear', True),
+        ('quadratic', True),
+        ('quadratic', False),
+        ('logarithmic', True),
+        ('hyperbolic', True),
+    ])
+    @pytest.mark.parametrize('phi', [0.0, 37.0])
+    @pytest.mark.parametrize('dtype, expected_dtype, tol', [
+        (cupy.float32, cupy.complex64, 1e-5),
+        (cupy.float64, cupy.complex128, 1e-12),
+        (cupy.int64, cupy.complex128, 1e-12),
+    ])
+    def test_complex_properties(
+            self, method, vertex_zero, phi, dtype, expected_dtype, tol):
+        t = cupy.linspace(0.0, 1.0, 101, dtype=dtype)
+        actual = cupyx.scipy.signal.chirp(
+            t, 1.0, 1.0, 3.0, method=method, phi=phi,
+            vertex_zero=vertex_zero, complex=True)
+        expected_real = cupyx.scipy.signal.chirp(
+            t, 1.0, 1.0, 3.0, method=method, phi=phi,
+            vertex_zero=vertex_zero)
+
+        assert actual.dtype == expected_dtype
+        assert expected_real.dtype == actual.real.dtype
+        testing.assert_allclose(
+            actual.real, expected_real, rtol=tol, atol=tol)
+        testing.assert_allclose(
+            cupy.abs(actual), cupy.ones_like(expected_real),
+            rtol=tol, atol=tol)
+
+    @pytest.mark.parametrize('method, kernel_name, vertex_zero', [
+        ('linear', '_chirp_phase_lin_kernel', True),
+        ('quadratic', '_chirp_phase_quad_kernel', True),
+        ('quadratic', '_chirp_phase_quad_kernel', False),
+        ('logarithmic', '_chirp_phase_log_kernel', True),
+        ('hyperbolic', '_chirp_phase_hyp_kernel', True),
+    ])
+    @pytest.mark.parametrize('complex', [False, True])
+    @pytest.mark.parametrize('scalar', [False, True])
+    @testing.for_dtypes([np.float32, np.float64])
+    def test_single_output_and_kernel(
+            self, method, kernel_name, vertex_zero, complex, scalar, dtype):
+        t = cupy.asarray(0.25, dtype=dtype) if scalar else cupy.linspace(
+            0.0, 1.0, 101, dtype=dtype)
+        kernel = getattr(_waveforms, kernel_name)
+        with mock.patch.object(
+                cupy, 'empty_like', wraps=cupy.empty_like) as alloc:
+            with mock.patch.object(
+                    _waveforms, kernel_name, wraps=kernel) as launch:
+                actual = cupyx.scipy.signal.chirp(
+                    t, 1.0, 1.0, 3.0, method=method, phi=37.0,
+                    vertex_zero=vertex_zero, complex=complex)
+
+        expected_dtype = cupy.result_type(dtype, 1j) if complex else dtype
+        assert actual.dtype == expected_dtype
+        assert actual.shape == t.shape
+        alloc.assert_called_once_with(t, dtype=expected_dtype)
+        launch.assert_called_once()
+        assert launch.call_args.args[0] is t
+        assert launch.call_args.args[-1] is actual
+
+    @pytest.mark.parametrize('method, f0, f1', [
+        ('logarithmic', 0.0, 1.0),
+        ('hyperbolic', 0.0, 1.0),
+    ])
+    @testing.with_requires('scipy>=1.15.0')
+    def test_complex_invalid_frequency(self, method, f0, f1):
+        for xp, scp in [(cupy, cupyx.scipy), (np, scipy)]:
+            t = xp.linspace(0.0, 1.0, 5)
+            with pytest.raises(ValueError):
+                scp.signal.chirp(
+                    t, f0, 1.0, f1, method=method, complex=True)
+
+    @testing.with_requires('scipy>=1.15.0')
+    def test_complex_keyword_only(self):
+        for xp, scp in [(cupy, cupyx.scipy), (np, scipy)]:
+            t = xp.linspace(0.0, 1.0, 5)
+            with pytest.raises(TypeError):
+                scp.signal.chirp(
+                    t, 1.0, 1.0, 3.0, 'linear', 0.0, True, True)
 
     def test_hyperbolic_zero_freq(self):
         # f0=0 or f1=0 must raise a ValueError.
