@@ -166,11 +166,11 @@ def _make_test_kernel(
 
     for i, shape in enumerate(in_shapes):
         if shape != '()':
-            operation += f'auto in{i}_mdspan = in{i}.as_mdspan(); '
+            operation += f'auto in{i}_mdspan = xsf::as_mdspan(in{i}); '
 
     for i, shape in enumerate(out_shapes):
         if shape != '()':
-            operation += f'auto out{i}_mdspan = out{i}.as_mdspan(); '
+            operation += f'auto out{i}_mdspan = xsf::as_mdspan(out{i}); '
 
     operation += 'T result = 1; '
 
@@ -218,6 +218,7 @@ def _make_test_kernel(
         in_params=in_params_str,
         out_params=out_params_str,
         operation=operation,
+        preamble="#include <cupy/xsf/cupy.h>",
         options=("--std=c++17",),
         return_tuple=return_tuple,
         no_return=no_return,
