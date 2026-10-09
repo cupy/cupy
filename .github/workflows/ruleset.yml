@@ -1,0 +1,99 @@
+name: "Code Freeze"
+run-name: "${{ inputs.action }} code freeze"
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Action to perform"
+        required: true
+        type: choice
+        options:
+          - enable
+          - disable
+
+permissions: {}
+
+concurrency:
+  group: code-freeze
+  cancel-in-progress: false
+
+jobs:
+  update:
+    name: Update code freeze
+    if: >-
+      github.repository_owner == 'cupy' &&
+      github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    # Restrict this environment to the default branch.
+    # Configure RULESET_APP_CLIENT_ID and CODE_FREEZE_RULESET_ID as environment
+    # variables and RULESET_APP_PRIVATE_KEY as a secret. The App needs
+    # Administration (write) permission.
+    environment: ruleset
+
+    steps:
+      - name: Mint ruleset App token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1  # v3.2.0
+        with:
+          client-id: ${{ vars.RULESET_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RULESET_APP_PRIVATE_KEY }}
+          permission-administration: write
+
+      - name: Update code freeze
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          RULESET_ID: ${{ vars.CODE_FREEZE_RULESET_ID }}
+          RULESET_ACTION: ${{ inputs.action }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ ! "${RULESET_ID}" =~ ^[1-9][0-9]*$ ]]; then
+            echo "::error::Invalid CODE_FREEZE_RULESET_ID: ${RULESET_ID}"
+            exit 1
+          fi
+
+          case "${RULESET_ACTION}" in
+            enable)
+              enforcement="active"
+              ;;
+            disable)
+              enforcement="disabled"
+              ;;
+            *)
+              echo "::error::Unsupported action: ${RULESET_ACTION}"
+              exit 1
+              ;;
+          esac
+
+          ruleset_endpoint="repos/${GITHUB_REPOSITORY}/rulesets/${RULESET_ID}"
+          api_headers=(
+            -H "Accept: application/vnd.github+json"
+            -H "X-GitHub-Api-Version: 2026-03-10"
+          )
+
+          current_enforcement="$(
+            gh api "${ruleset_endpoint}" \
+              --jq ".enforcement" \
+              "${api_headers[@]}"
+          )"
+          if [[ "${current_enforcement}" == "${enforcement}" ]]; then
+            echo "::notice::Ruleset ${RULESET_ID} is already ${enforcement}"
+          else
+            updated_enforcement="$(
+              gh api "${ruleset_endpoint}" \
+                --method PUT \
+                -f "enforcement=${enforcement}" \
+                --jq ".enforcement" \
+                "${api_headers[@]}"
+            )"
+            if [[ "${updated_enforcement}" != "${enforcement}" ]]; then
+              echo "::error::Ruleset ${RULESET_ID} has unexpected enforcement status: ${updated_enforcement}"
+              exit 1
+            fi
+          fi
+
+          echo "Ruleset ${RULESET_ID} is ${enforcement}."
