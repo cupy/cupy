@@ -515,12 +515,7 @@ class TestEigshSM:
         return a
 
     def _test_eigsh(self, a, a_norm, xp, sp):
-        # Fixed start vector, so neither arm depends on its library's RNG.
-        # SciPy now draws the ARPACK start vector from a fresh default_rng
-        # per call (1.13 left it to ARPACK, which was deterministic), and
-        # cupy has drawn its own from fresh entropy since #10275. On this
-        # matrix that picks the wrong triple a fraction of a percent of the
-        # time (gh-10375).
+        # Fix start vector as SciPy defaults to a random one (gh-10375).
         v0 = xp.asarray(
             numpy.random.default_rng(0).random(self.n)).astype(a.dtype)
         ret = sp.linalg.eigsh(a, k=self.k, which='SM', v0=v0,
