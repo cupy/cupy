@@ -223,6 +223,12 @@ public:
   }
 };
 
+namespace xsf {
+    template <typename T, int ndim, bool is_c_contiguous, bool index_32_bits, int core_ndim>
+    __device__ auto as_mdspan(const CArray<T, ndim, is_c_contiguous, index_32_bits, core_ndim>& arr);
+}
+
+
 template <typename T, int _ndim, bool _c_contiguous=false, bool _use_32bit_indexing=false, int _core_ndim=0>
 class CArray {
 public:
