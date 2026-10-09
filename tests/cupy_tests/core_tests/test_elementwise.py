@@ -245,7 +245,7 @@ def _reference_func(*args, out_shape, in_core_ndims, out_core_ndim):
     if out_core_ndim > 0:
         core_shape = out_shape[-out_core_ndim:]
         index_sum = sum(cupy.ogrid[tuple(slice(d) for d in core_shape)])
-        return expanded_val * (index_sum + 1)
+        return cupy.broadcast_to(expanded_val * (index_sum + 1), out_shape)
 
     return cupy.broadcast_to(expanded_val, out_shape)
 
@@ -351,11 +351,21 @@ class TestElementwiseGUFuncLike:
         in0 = cupy.random.uniform(size=(1, 10, 30, 20))
         in1 = cupy.random.uniform(size=(1, 10, 20, 50))
         out_shape = (10, 10, 30, 50)
-        actual = kern(in0, in1)
+        out = cupy.empty(out_shape)
+        actual = kern(in0, in1, out)
         desired = _reference_func(
             in0, in1, out_shape=out_shape, in_core_ndims=(2, 2),
             out_core_ndim=2)
+        assert actual is out
         testing.assert_allclose(actual, desired)
+
+    def test_invalid_out_shape(self):
+        kern = _make_test_kernel(('(n)',), ('(n)',))
+        x = cupy.ones((5, 3))
+        out = cupy.empty((1, 3))
+
+        with pytest.raises(ValueError, match='Out shape is mismatched'):
+            kern(x, out)
 
     def test_return_tuple(self):
         # '(i)->()'
