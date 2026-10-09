@@ -307,7 +307,7 @@ def _generate_nd_kernel(name, pre, found, post, modes, w_shape, int_type,
         found = found.format(cond=cond, value=value)
     else:
         if constant_mode:
-            value = f'(({cond}) ? cast<{ctype}>({cval}) : {value})'
+            value = f'(({cond}) ? cast<{ctype}>({cval}) : cast<{ctype}>({value}))'
         found = found.format(value=value)
 
     # CArray: replace comment and next line in string with
