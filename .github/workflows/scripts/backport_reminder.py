@@ -87,7 +87,7 @@ def main():
     org = g.get_organization(args.owner)
     repo = org.get_repo(args.repo)
 
-    now = datetime.datetime.now(tz=datetime.timezone.utc)
+    now = datetime.datetime.now(tz=datetime.UTC)
     after_dt = now - datetime.timedelta(args.within_days)
     grace_dt = now - datetime.timedelta(args.inactive_days)
     print(f'"to-be-backported" pull-requests updated after {after_dt} will be '

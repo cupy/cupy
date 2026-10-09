@@ -163,6 +163,12 @@ Update of Docker Images
 
 CuPy official Docker images (see :doc:`install` for details) are now updated to use CUDA 13.x and Ubuntu 24.04.
 
+Dropping Python 3.10
+--------------------
+
+Starting with CuPy v14.3.0, Python 3.10 is no longer supported.
+Python 3.10 reaches end-of-life in October 2026; users on Python 3.10 can continue to use CuPy v14.2.x or earlier.
+
 
 CuPy v13
 ========
