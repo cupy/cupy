@@ -516,8 +516,7 @@ class TestEigshSM:
 
     def _test_eigsh(self, a, a_norm, xp, sp):
         # Fix start vector as SciPy defaults to a random one (gh-10375).
-        v0 = xp.asarray(
-            numpy.random.default_rng(0).random(self.n)).astype(a.dtype)
+        v0 = testing.shaped_random(self.n, xp, a.dtype)
         ret = sp.linalg.eigsh(a, k=self.k, which='SM', v0=v0,
                               return_eigenvectors=self.return_eigenvectors)
         if self.return_eigenvectors:
