@@ -141,18 +141,10 @@ def eye(
     if k <= -N or k >= M:
         return ret
     if is_ascend:
-        # diagonal(k) returns a non-contiguous view, which ndarray.fill
-        # cannot handle correctly on Ascend. Route through
-        # aclnnInplaceFillDiagonal instead (main diagonal only, so use
-        # sliced views for nonzero offsets).
-        from cupy._indexing.insert import fill_diagonal
-        if k > 0:
-            fill_diagonal(ret[:, k:], 1)
-        elif k < 0:
-            fill_diagonal(ret.T[:, -k:], 1)
-        else:
-            fill_diagonal(ret, 1)
-        return ret
+        # ASCEND: aclnnInplaceFillDiagonal also not reliable
+        # however, F order should be rejected
+        return cupy.asarray(numpy.eye(N, M, k=k, dtype=dtype, order=order))
+
     ret.diagonal(k).fill(1)
     return ret
 

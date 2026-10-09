@@ -31,8 +31,8 @@ from cupy._core._ascend import cpu_fallback as _cpu_f64
 # ASCEND: unsigned int and narrow int, bool cast
 _UINT_PROMOTE_CHARS = frozenset('BHILQbh?')
 _UINT_PROMOTE_EXEMPT = frozenset({
-'ascend_copy', 'ascend_cast', 'cupy_copy', 'cupy_cast'
-'ascend_astype', 'cupy_astype'
+    'ascend_copy', 'ascend_cast', 'cupy_copy', 'cupy_cast',
+    'ascend_astype', 'cupy_astype'
 })
 
 cdef inline size_t _get_stream(stream) except *:

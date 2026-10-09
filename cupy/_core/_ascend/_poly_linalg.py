@@ -65,8 +65,8 @@ def lstsq(a, b, rcond=None):
     except RuntimeError:
         # aclnnSvd accaionally return ret=500003
         from cupy._core._ascend import cpu_fallback
-        u_np, s_np, vh_np = cpu_fallback.call(
-            numpy.linalg.svd, cupy.asnumpy(a), fullmatrices=False, compute_uv=True)
+        u_np, s_np, vh_np = cpu_fallback.run(
+            numpy.linalg.svd, cupy.asnumpy(a), full_matrices=False, compute_uv=True)
         u, s, vh = (cupy.asarray(u_np), cupy.asarray(s_np), cupy.asarray(vh_np))
 
     if rcond is None:

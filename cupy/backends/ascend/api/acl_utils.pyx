@@ -1631,7 +1631,7 @@ cdef aclError _launch_custom_ufunc(str opname, dict spec, sequence ins,
             # write into materialized Out
             _out_dev = _cupy.asarray(_res)
             if _out_dev.shape != a_outs[0].shape or _out_dev.dtype != a_outs[0].dtype:
-                _out_dev = _out_dev.astype(a_outs[0].dtype).rehape(a_outs[0].shape)
+                _out_dev = _out_dev.astype(a_outs[0].dtype).reshape(a_outs[0].shape)
             _cupy.copyto(a_outs[0], _out_dev)
             if _wb_pairs:
                 for _orig, _mat in _wb_pairs:
