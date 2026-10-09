@@ -15,6 +15,15 @@ Abstract linear operators
    aslinearoperator
 
 
+Matrix operations
+-----------------
+
+.. autosummary::
+   :toctree: generated/
+
+   matrix_power
+
+
 Matrix norms
 ------------
 
@@ -41,9 +50,10 @@ Iterative methods for linear equation systems:
 .. autosummary::
    :toctree: generated/
 
+   bicgstab
    cg
-   gmres
    cgs
+   gmres
    minres
 
 Iterative methods for least-squares problems:

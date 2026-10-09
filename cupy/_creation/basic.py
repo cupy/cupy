@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import math
 from typing import Any
 
 import numpy
 
 import cupy
-from cupy._core.internal import _get_strides_for_order_K, _update_order_char
+from cupy._core.core import empty_like
 from cupy.typing._types import (
     _OrderKACF, _OrderCF, _ShapeLike, DTypeLike, NDArray,
 )
@@ -32,80 +31,6 @@ def empty(
 
     """
     return cupy.ndarray(shape, dtype, order=order)
-
-
-def _new_like_order_and_strides(
-        a, dtype, order, shape=None, *, get_memptr=True):
-    """
-    Determine order and strides as in NumPy's PyArray_NewLikeArray.
-
-    (see: numpy/core/src/multiarray/ctors.c)
-    """
-    order = order.upper()
-    if order not in ['C', 'F', 'K', 'A']:
-        raise ValueError('order not understood: {}'.format(order))
-
-    if numpy.isscalar(shape):
-        shape = (shape,)
-
-    # Fallback to c_contiguous if keep order and number of dimensions
-    # of new shape mismatch
-    if order == 'K' and shape is not None and len(shape) != a.ndim:
-        return 'C', None, None
-
-    order = chr(_update_order_char(
-        a.flags.c_contiguous, a.flags.f_contiguous, ord(order)))
-
-    if order == 'K':
-        strides = _get_strides_for_order_K(a, numpy.dtype(dtype), shape)
-        order = 'C'
-        size = math.prod(shape) if shape is not None else a.size
-        memptr = cupy.empty(size, dtype=dtype).data if get_memptr else None
-        return order, strides, memptr
-    else:
-        return order, None, None
-
-
-def empty_like(
-        prototype: NDArray[Any],
-        dtype: DTypeLike | None = None,
-        order: _OrderKACF = 'K',
-        subok: None = None,
-        shape: _ShapeLike | None = None,
-) -> NDArray[Any]:
-    """Returns a new array with same shape and dtype of a given array.
-
-    This function currently does not support ``subok`` option.
-
-    Args:
-        a (cupy.ndarray): Base array.
-        dtype (data-type, optional): Data type specifier.
-            The data type of ``a`` is used by default.
-        order ({'C', 'F', 'A', or 'K'}): Overrides the memory layout of the
-            result. ``'C'`` means C-order, ``'F'`` means F-order, ``'A'`` means
-            ``'F'`` if ``a`` is Fortran contiguous, ``'C'`` otherwise.
-            ``'K'`` means match the layout of ``a`` as closely as possible.
-        subok: Not supported yet, must be None.
-        shape (int or tuple of ints): Overrides the shape of the result. If
-            ``order='K'`` and the number of dimensions is unchanged, will try
-            to keep order, otherwise, ``order='C'`` is implied.
-
-    Returns:
-        cupy.ndarray: A new array with same shape and dtype of ``a`` with
-        elements not initialized.
-
-    .. seealso:: :func:`numpy.empty_like`
-
-    """
-    if subok is not None:
-        raise TypeError('subok is not supported yet')
-    if dtype is None:
-        dtype = prototype.dtype
-
-    order, strides, memptr = _new_like_order_and_strides(
-        prototype, dtype, order, shape)
-    shape = shape if shape else prototype.shape
-    return cupy.ndarray(shape, dtype, memptr, strides, order)
 
 
 def eye(
@@ -217,17 +142,9 @@ def ones_like(
     .. seealso:: :func:`numpy.ones_like`
 
     """
-    if subok is not None:
-        raise TypeError('subok is not supported yet')
-    if dtype is None:
-        dtype = a.dtype
-
-    order, strides, memptr = _new_like_order_and_strides(a, dtype, order,
-                                                         shape)
-    shape = shape if shape else a.shape
-    a = cupy.ndarray(shape, dtype, memptr, strides, order)
-    a.fill(1)
-    return a
+    result = empty_like(a, dtype, order, subok, shape)
+    result.fill(1)
+    return result
 
 
 def zeros(
@@ -284,17 +201,9 @@ def zeros_like(
     .. seealso:: :func:`numpy.zeros_like`
 
     """
-    if subok is not None:
-        raise TypeError('subok is not supported yet')
-    if dtype is None:
-        dtype = a.dtype
-
-    order, strides, memptr = _new_like_order_and_strides(a, dtype, order,
-                                                         shape)
-    shape = shape if shape else a.shape
-    a = cupy.ndarray(shape, dtype, memptr, strides, order)
-    a.data.memset_async(0, a.nbytes)
-    return a
+    result = empty_like(a, dtype, order, subok, shape)
+    result.data.memset_async(0, result.nbytes)
+    return result
 
 
 def full(
@@ -362,17 +271,9 @@ def full_like(
     .. seealso:: :func:`numpy.full_like`
 
     """
-    if subok is not None:
-        raise TypeError('subok is not supported yet')
-    if dtype is None:
-        dtype = a.dtype
-
-    order, strides, memptr = _new_like_order_and_strides(a, dtype, order,
-                                                         shape)
-    shape = shape if shape else a.shape
-    a = cupy.ndarray(shape, dtype, memptr, strides, order)
-    cupy.copyto(a, fill_value, casting='unsafe')
-    return a
+    result = empty_like(a, dtype, order, subok, shape)
+    cupy.copyto(result, fill_value, casting='unsafe')
+    return result
 
 
 # Array API compatible array.astype wrapper

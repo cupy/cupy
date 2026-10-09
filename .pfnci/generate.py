@@ -16,11 +16,28 @@ from collections.abc import Mapping
 SchemaType = Mapping[str, Any]
 
 
+# Pinned version of the GitHub CLI installed into the test Dockerfiles. Used
+# by .pfnci/linux/tests/actions/build.sh to fetch wheel artifacts from
+# cupy/cupy CI. Bump as needed; required interface is just `gh run download`.
+GH_CLI_VERSION = '2.95.0'
+
+PYTHON_LIBRARIES = (
+    'numpy', 'scipy', 'optuna', 'mpi4py', 'ml_dtypes', 'cython',
+    'cuda-python', 'nvmath-python', 'cuda-cccl',
+)
+
+
 class Matrix:
     def __init__(self, record: Mapping[str, Any]):
-        self._rec = {
+        self._rec: dict[str, Any] = {
             '_inherits': None,
             '_extern': False,
+            # Whether a CUDA target installs the GHA wheel (fetch-wheel.sh)
+            # instead of building from source (build.sh). Ignored for ROCm; set
+            # `wheel: false` on CUDA targets that must build from source (e.g.
+            # the cuda-python compile-time variant).
+            'wheel': True,
+            'pip_extra_args': [],
         }
         self._rec.update(record)
 
@@ -49,6 +66,18 @@ class LinuxGenerator:
         assert matrix.system == 'linux'
         self.schema = schema
         self.matrix = matrix
+
+    def _python_packages(self) -> list[str]:
+        return [
+            f'{pylib}{self.schema[pylib][getattr(self.matrix, pylib)]["spec"]}'
+            for pylib in PYTHON_LIBRARIES
+            if getattr(self.matrix, pylib) is not None
+        ]
+
+    def _pip_install_command(self, *, user: bool = False) -> str:
+        args = shlex.join([
+            *self.matrix.pip_extra_args, *self._python_packages()])
+        return f'pip install{" --user" if user else ""} -U {args}'
 
     def generate_dockerfile(self) -> str:
         matrix = self.matrix
@@ -80,7 +109,7 @@ class LinuxGenerator:
                 lines += [
                     'RUN export DEBIAN_FRONTEND=noninteractive && \\',
                     '    ( apt-get -qqy update || true ) && \\',
-                    '    apt-get -qqy install ca-certificates && \\',
+                    '    apt-get -qqy install ca-certificates gnupg && \\',
                     '    curl -qL https://repo.radeon.com/rocm/rocm.gpg.key | apt-key add -',  # NOQA
                 ]
 
@@ -104,6 +133,11 @@ class LinuxGenerator:
                 ),
                 '',
                 'ENV PATH "/usr/lib/ccache:${PATH}"',
+                '',
+                # gh CLI: used by .pfnci/linux/tests/actions/fetch-wheel.sh
+                # to fetch the GHA-built wheel artifact for the PR/merge SHA.
+                f'RUN curl -fsSL https://github.com/cli/cli/releases/download/v{GH_CLI_VERSION}/gh_{GH_CLI_VERSION}_linux_amd64.tar.gz \\',  # NOQA
+                f'        | tar -xz -C /usr/local --strip-components=1 gh_{GH_CLI_VERSION}_linux_amd64/bin/gh',  # NOQA
                 '',
             ]
         elif os_name == 'centos':
@@ -134,6 +168,11 @@ class LinuxGenerator:
                 ),
                 '',
                 'ENV PATH "/usr/lib64/ccache:${PATH}"',
+                '',
+                # gh CLI: used by .pfnci/linux/tests/actions/fetch-wheel.sh
+                # to fetch the GHA-built wheel artifact for the PR/merge SHA.
+                f'RUN curl -fsSL https://github.com/cli/cli/releases/download/v{GH_CLI_VERSION}/gh_{GH_CLI_VERSION}_linux_amd64.tar.gz \\',  # NOQA
+                f'        | tar -xz -C /usr/local --strip-components=1 gh_{GH_CLI_VERSION}_linux_amd64/bin/gh',  # NOQA
                 '',
             ]
 
@@ -209,7 +248,9 @@ class LinuxGenerator:
             'RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv',
             'ENV PYENV_ROOT "/opt/pyenv"',
             'ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"',
-            f'RUN pyenv install {py_spec} && \\',
+            'RUN git -C /opt/pyenv pull --ff-only && \\',
+            f'    PYTHON_CONFIGURE_OPTS="--disable-shared"'
+            f' pyenv install {py_spec} && \\',
             f'    pyenv global {py_spec} && \\',
             '    pip install -U setuptools pip wheel && \\',
             # For GCP kernel cache backend
@@ -217,19 +258,12 @@ class LinuxGenerator:
             '',
         ]
 
-        # Setup Python libraries.
-        pip_args = []
-        pip_uninstall_args = []
-        for pylib in ('numpy', 'scipy', 'optuna', 'mpi4py',
-                      'ml_dtypes', 'cython', 'cuda-python'):
-            pylib_ver = getattr(matrix, pylib)
-            if pylib_ver is None:
-                pip_uninstall_args.append(pylib)
-            else:
-                pip_spec = self.schema[pylib][pylib_ver]['spec']
-                pip_args.append(f'{pylib}{pip_spec}')
-        lines += [
-            f'RUN pip install -U {shlex.join(pip_args)}',
+        # Cache matrix dependencies in the image. Wheel jobs ensure these
+        # versions again after installing the wheel and its test extras.
+        lines += [f'RUN {self._pip_install_command()}']
+        pip_uninstall_args = [
+            pylib for pylib in PYTHON_LIBRARIES
+            if getattr(matrix, pylib) is None
         ]
         if len(pip_uninstall_args) != 0:
             # Ensure that packages are not installed.
@@ -345,11 +379,24 @@ class LinuxGenerator:
             '',
         ]
 
+        # CUDA targets install the GHA wheel (fetch-wheel.sh); ROCm and
+        # source-only CUDA targets (`wheel: false`) build from source.
+        build_script = (
+            'fetch-wheel.sh'
+            if (matrix.cuda is not None and matrix.wheel)
+            else 'build.sh'
+        )
         lines += [
             '',
             'trap "$ACTIONS/cleanup.sh" EXIT',
-            '"$ACTIONS/build.sh"',
+            f'"$ACTIONS/{build_script}"',
         ]
+        if build_script == 'fetch-wheel.sh':
+            lines += [
+                '# Ensure matrix versions in case CuPy pins changed them '
+                '(nightly testing).',
+                f'python3 -m {self._pip_install_command(user=True)}',
+            ]
         if matrix.test.startswith('unit'):
             if matrix.test == 'unit':
                 spec = 'not slow and not multi_gpu'
@@ -364,7 +411,26 @@ class LinuxGenerator:
                 spec = 'slow'
             else:
                 assert False
-            lines += [f'"$ACTIONS/unittest.sh" "{spec}"']
+            if matrix.cuda is not None and matrix.wheel:
+                # TODO (leofang): hard-coding test deselection in CI is not
+                # sustainable -- revisit after #10058 is merged. A fetched
+                # released wheel cannot satisfy build-environment tests, e.g.
+                # test_cupy_builder introspects the *local* CUDA, which differs
+                # from the CUDA the wheel was built with.
+                # Use the rootdir-relative nodeid (tests/...) that pytest
+                # --deselect matches -- NOT the cwd-relative form it prints
+                # under unittest.sh's `pushd tests`. Append rather than
+                # overwrite so a target's own opts survive (e.g.
+                # --parallel-threads=2 on free-threaded).
+                opts = 'CUPY_CI_PYTEST_EXTRA_OPTS'
+                deselect = (
+                    '--deselect tests/install_tests/'
+                    'test_cupy_builder/test_features.py::test_CUDA_cuda')
+                lines += [
+                    f'{opts}="${{{opts}:+${opts} }}{deselect}" '
+                    f'"$ACTIONS/unittest.sh" "{spec}"']
+            else:
+                lines += [f'"$ACTIONS/unittest.sh" "{spec}"']
         elif matrix.test == 'example':
             lines += ['"$ACTIONS/example.sh"']
         elif matrix.test == 'benchmark':
@@ -661,6 +727,18 @@ def main(argv: list[str]) -> int:
     # Generate tags
     taggen = TagGenerator(matrixes)
     output['config.tags.json'] = taggen.generate()
+
+    # Generate attributes for generated files
+    gitattributes = [
+        '# AUTO GENERATED: DO NOT EDIT!',
+        '',
+    ]
+    generated_files = [*output, '.gitattributes']
+    gitattributes.extend(
+        f'/{filename} linguist-generated' for filename in generated_files
+    )
+    gitattributes.append('')
+    output['.gitattributes'] = '\n'.join(gitattributes)
 
     # Write output files.
     out_basedir = options.directory if options.directory else basedir

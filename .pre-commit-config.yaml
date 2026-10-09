@@ -23,20 +23,25 @@ repos:
     rev: v2.3.2
     hooks:
       - id: autopep8
+        exclude: ^ci/
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.14.9
     hooks:
       - id: ruff-check
+        exclude: ^ci/
 
   - repo: https://github.com/MarcoGorelli/cython-lint
     rev: v0.18.1
     hooks:
       - id: cython-lint
         args: ["--max-line-length", "79"]
+        # Cython 3.3 added a DictComprehensionAppendNode layout that
+        # cython-lint < 0.21 crashes on. Pin until we upgrade cython-lint.
+        additional_dependencies: ["Cython<3.3"]
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.19.1
+    rev: v2.3.0
     hooks:
       - id: mypy
         # Keep in sync with the list in pyproject.toml

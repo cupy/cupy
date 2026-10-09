@@ -10,7 +10,6 @@ from cupy import _version
 
 
 _environment._detect_duplicate_installation()  # NOQA
-_environment._setup_win32_dll_directory()  # NOQA
 _environment._preload_library('cutensor')  # NOQA
 
 
@@ -610,6 +609,8 @@ from cupy._math.sumprod import product  # NOQA
 from cupy._math.sumprod import sum  # NOQA
 from cupy._math.sumprod import cumprod  # NOQA
 from cupy._math.sumprod import cumproduct  # NOQA
+from cupy._math.sumprod import cumulative_prod  # NOQA
+from cupy._math.sumprod import cumulative_sum  # NOQA
 from cupy._math.sumprod import cumsum  # NOQA
 from cupy._math.sumprod import ediff1d  # NOQA
 from cupy._math.sumprod import nancumprod  # NOQA
@@ -887,7 +888,7 @@ def get_array_module(*args):
     """
     import cupyx
     for arg in args:
-        if isinstance(arg, (ndarray, cupyx.scipy.sparse.spmatrix,
+        if isinstance(arg, (ndarray, cupyx.scipy.sparse._spbase,
                             _core.fusion._FusionVarArray,
                             _core.new_fusion._ArrayProxy)):
             return _cupy

@@ -46,7 +46,7 @@ log1p = _core.create_ufunc(
     -----
     This implementation currently does not support complex-valued `x`.
 
-    .. seealso:: :meth:`scipy.special.log1p`
+    .. seealso:: :func:`scipy.special.log1p`
 
     """,
 )
@@ -58,7 +58,7 @@ cbrt = _core.create_ufunc(
     'out0 = cbrt(double(in0))',
     doc='''Cube root.
 
-    .. seealso:: :meth:`scipy.special.cbrt`
+    .. seealso:: :func:`scipy.special.cbrt`
 
     ''')
 
@@ -72,7 +72,7 @@ exp2 = _core.create_ufunc(
     'out0 = exp2(in0)',
     doc='''Computes ``2**x``.
 
-    .. seealso:: :meth:`scipy.special.exp2`
+    .. seealso:: :func:`scipy.special.exp2`
 
     ''')
 
@@ -86,7 +86,7 @@ exp10 = _core.create_ufunc(
     'out0 = exp10(in0)',
     doc='''Computes ``10**x``.
 
-    .. seealso:: :meth:`scipy.special.exp10`
+    .. seealso:: :func:`scipy.special.exp10`
 
     ''')
 
@@ -100,7 +100,7 @@ expm1 = _core.create_ufunc(
     'out0 = expm1(in0)',
     doc='''Computes ``exp(x) - 1``.
 
-    .. seealso:: :meth:`scipy.special.expm1`
+    .. seealso:: :func:`scipy.special.expm1`
 
     ''')
 
@@ -119,7 +119,7 @@ exprel = _core.create_ufunc(
     'out0 = abs(in0) >= 1e-16 ? expm1(in0) / in0 : 1',
     doc='''Computes ``(exp(x) - 1) / x``.
 
-    .. seealso:: :meth:`scipy.special.exprel`
+    .. seealso:: :func:`scipy.special.exprel`
 
     ''')
 
@@ -172,7 +172,7 @@ cosm1 = _core.create_ufunc(
     preamble=cosm1_implementation,
     doc='''Computes ``cos(x) - 1``.
 
-    .. seealso:: :meth:`scipy.special.cosm1`
+    .. seealso:: :func:`scipy.special.cosm1`
 
     ''')
 
@@ -187,7 +187,7 @@ cosdg = _core.create_ufunc(
     preamble=pi180_preamble,
     doc='''Cosine of x with x in degrees.
 
-    .. seealso:: :meth:`scipy.special.cosdg`
+    .. seealso:: :func:`scipy.special.cosdg`
 
     ''')
 
@@ -199,7 +199,7 @@ sindg = _core.create_ufunc(
     preamble=pi180_preamble,
     doc='''Sine of x with x in degrees.
 
-    .. seealso:: :meth:`scipy.special.sindg`
+    .. seealso:: :func:`scipy.special.sindg`
 
     ''')
 
@@ -282,7 +282,7 @@ tandg = _core.create_ufunc(
     preamble=tancot_implementation,
     doc='''Tangent of x with x in degrees.
 
-    .. seealso:: :meth:`scipy.special.tandg`
+    .. seealso:: :func:`scipy.special.tandg`
 
     ''')
 
@@ -293,7 +293,7 @@ cotdg = _core.create_ufunc(
     preamble=tancot_implementation,
     doc='''Cotangent of x with x in degrees.
 
-    .. seealso:: :meth:`scipy.special.cotdg`
+    .. seealso:: :func:`scipy.special.cotdg`
 
     ''')
 
@@ -316,6 +316,6 @@ radian = _core.create_ufunc(
     preamble=radian_implementation,
     doc='''Degrees, minutes, seconds to radians:
 
-    .. seealso:: :meth:`scipy.special.radian`
+    .. seealso:: :func:`scipy.special.radian`
 
     ''')

@@ -44,6 +44,12 @@ cpdef size_t clp2(size_t x) noexcept
 
 cdef int _normalize_order(order, cpp_bool allow_k=*) except? 0
 
+# Low-level broadcasting helpers:
+cdef bint _broadcast_shape(shape_t& bshape, const shape_t& next_shape)
+cdef _raise_broadcast_error(list arrays)
+cdef _ndarray_base _broadcast_to_unchecked(
+        _ndarray_base a, const shape_t& shape)
+
 cdef _broadcast_core(list arrays, shape_t& shape)
 
 cpdef bint _contig_axes(tuple axes) except -1
@@ -58,6 +64,8 @@ cpdef strides_t _get_strides_for_order_K(x, dtype, shape=*) except *
 
 cpdef int _update_order_char(
     bint is_c_contiguous, bint is_f_contiguous, int order_char) noexcept
+
+cpdef tuple _new_like_order_and_strides(a, dtype, order, shape=*)
 
 cpdef tuple _broadcast_shapes(shapes)
 

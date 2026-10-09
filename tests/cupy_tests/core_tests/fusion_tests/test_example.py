@@ -10,6 +10,10 @@ from cupy_tests.core_tests.fusion_tests import fusion_utils
 @testing.slow
 @pytest.mark.skipif(
     cupy.cuda.runtime.is_hip, reason='HIP does not support this')
+@pytest.mark.skipif(
+    not fusion_utils.can_use_grid_synchronization(),
+    reason='Requires CUDA grid synchronization'
+)
 class TestFusionExample:
     def generate_inputs(self, xp):
         shape = (8, 64, 112, 112)

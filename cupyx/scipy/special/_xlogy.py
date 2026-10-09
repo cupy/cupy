@@ -36,7 +36,7 @@ xlogy = _core.create_ufunc(
     Returns:
         cupy.ndarray: values of ``x * log(y)``
 
-    .. seealso:: :data:`scipy.special.xlogy`
+    .. seealso:: :func:`scipy.special.xlogy`
 
     ''')
 
@@ -71,6 +71,6 @@ xlog1py = _core.create_ufunc(
     Returns:
         cupy.ndarray: values of ``x * log1p(y)``
 
-    .. seealso:: :data:`scipy.special.xlog1py`
+    .. seealso:: :func:`scipy.special.xlog1py`
 
     ''')

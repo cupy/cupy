@@ -19,7 +19,7 @@ from cupy._core cimport core
 from cupy._core.core cimport _ndarray_base
 from cupy._core.core cimport _convert_from_cupy_like
 from cupy._core cimport internal
-from cupy._core._kernel cimport _check_peer_access, _preprocess_args
+from cupy._core._kernel cimport _check_peer_access
 
 from cupy.cuda import device
 
@@ -70,7 +70,15 @@ cdef _ndarray_shape_setter(_ndarray_base self, newshape):
     self._set_shape_and_strides(shape, strides, False, True)
 
 
-cdef _ndarray_base _ndarray_reshape(_ndarray_base self, tuple shape, order):
+cdef _ndarray_base _ndarray_reshape(
+        _ndarray_base self, tuple shape, order, copy):
+    if copy is not None:
+        if isinstance(copy, str):
+            raise ValueError(
+                "strings are not allowed for 'copy' keyword. "
+                "Use True/False/None instead.")
+        copy = bool(copy)
+
     cdef int order_char = internal._normalize_order(order, False)
 
     if len(shape) == 1 and cpython.PySequence_Check(shape[0]):
@@ -82,7 +90,7 @@ cdef _ndarray_base _ndarray_reshape(_ndarray_base self, tuple shape, order):
         else:
             order_char = b'C'
     if order_char == b'C':
-        return _reshape(self, shape)
+        return _reshape(self, shape, copy)
     else:
         # TODO(grlee77): Support order within _reshape instead
 
@@ -90,7 +98,7 @@ cdef _ndarray_base _ndarray_reshape(_ndarray_base self, tuple shape, order):
         #     1.) reverse the axes via transpose
         #     2.) C-ordered reshape using reversed shape
         #     3.) reverse the axes via transpose
-        return _T(_reshape(_T(self), shape[::-1]))
+        return _T(_reshape(_T(self), shape[::-1], copy))
 
 
 cdef _ndarray_base _ndarray_transpose(_ndarray_base self, tuple axes):
@@ -348,17 +356,23 @@ cpdef _ndarray_base rollaxis(
     return _transpose(a, axes)
 
 
-cpdef _ndarray_base _reshape(_ndarray_base self, const shape_t &shape_spec):
+cpdef _ndarray_base _reshape(
+        _ndarray_base self, const shape_t &shape_spec, copy=None):
     cdef shape_t shape
     cdef strides_t strides
     cdef _ndarray_base newarray
     shape = internal.infer_unknown_dimension(shape_spec, self.size)
     if internal.vector_equal(shape, self._shape):
-        return self.view()
+        # numpy also returns a C-contiguous copy
+        return self.copy() if copy else self.view()
 
     _get_strides_for_nocopy_reshape(self, shape, strides)
     if strides.size() == shape.size():
-        return self._view(type(self), shape, strides, False, True, self)
+        newarray = self._view(type(self), shape, strides, False, True, self)
+        return newarray.copy() if copy else newarray
+
+    if copy is False:
+        raise ValueError("Unable to avoid creating a copy while reshaping.")
     newarray = self.copy()
     _get_strides_for_nocopy_reshape(newarray, shape, strides)
 
@@ -503,7 +517,7 @@ cpdef _ndarray_base broadcast_to(_ndarray_base array, shape):
     view = array.view()
     # TODO(niboshi): Confirm update_x_contiguity flags
     view._set_shape_and_strides(_shape, strides, True, True)
-    if view.size * view.itemsize > 2**31:
+    if view.size * view.itemsize >= 2**31:
         view._index_32_bits = False
     return view
 
@@ -640,26 +654,25 @@ cpdef _ndarray_base concatenate_method(
         casting='same_kind'):
     cdef int ndim0
     cdef int i
+    cdef int dev_id = device.get_device_id()
     cdef _ndarray_base a, a0
+    cdef list arrays
 
     if dtype is not None:
         dtype = get_dtype(dtype)
 
-    dev_id = device.get_device_id()
-    arrays = _preprocess_args(dev_id, tup)
+    arrays = [_convert_from_cupy_like(
+                  x, error="Only cupy arrays can be concatenated: argument")
+              for x in tup]
 
     # Check if the input is not an empty sequence
     if len(arrays) == 0:
         raise ValueError('Cannot concatenate from empty tuple')
 
-    # Check types of the input arrays
-    for o in arrays:
-        if not isinstance(o, _ndarray_base):
-            raise TypeError('Only cupy arrays can be concatenated')
-
     # Check ndim > 0 for the input arrays
     for o in arrays:
         a = o
+        _check_peer_access(a, dev_id)
         if a._shape.size() == 0:
             raise TypeError('zero-dimensional arrays cannot be concatenated')
 

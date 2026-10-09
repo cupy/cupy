@@ -8,12 +8,30 @@ import cupy
 from cupy.cuda import driver
 from cupy.cuda import runtime
 from cupy import testing
+from cupy.testing._helper import skip_if_after_baseline
 import cupyx.scipy.signal  # NOQA
 
 try:
     import scipy.signal  # NOQA
 except ImportError:
     scipy = None
+
+
+@testing.slow
+@pytest.mark.thread_unsafe(reason='Allocation too large.')
+def test_lombscargle_large_frequency_array():
+    freqs = out = None
+    try:
+        x = cupy.array([0, np.pi / 2])
+        y = cupy.array([1, 0])
+        freqs = cupy.ones(2**31 + 1, dtype=cupy.float64)
+        out = cupyx.scipy.signal.lombscargle(x, y, freqs)
+        testing.assert_allclose(out[-2:], 0.5)
+    except MemoryError:
+        pytest.skip('out of memory in test.')
+    finally:
+        del out, freqs
+        cupy.get_default_memory_pool().free_all_blocks()
 
 
 @pytest.mark.xfail(
@@ -87,6 +105,8 @@ class TestLombscargle:
 
     @pytest.mark.parametrize('dtype', ['float32', 'float64'])
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
+    @skip_if_after_baseline(
+        scipy="1.17", reason="SciPy>=1.17 deprecates precenter kwarg")
     def test_precenter(self, dtype, xp, scp):
         # Test if precenter gives the same result as manually precentering.
         dtype = xp.dtype(dtype)

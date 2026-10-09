@@ -50,7 +50,6 @@ typedef hipsparseOperation_t cusparseOperation_t;
 typedef hipsparsePointerMode_t cusparsePointerMode_t;
 typedef hipsparseAction_t cusparseAction_t;
 typedef hipsparseDirection_t cusparseDirection_t;
-typedef enum {} cusparseAlgMode_t;
 typedef hipsparseSolvePolicy_t cusparseSolvePolicy_t;
 
 // Version
@@ -223,14 +222,6 @@ cusparseStatus_t cusparseZcsrmv(cusparseHandle_t         handle,
                                 const cuDoubleComplex*   beta,
                                 cuDoubleComplex*         y) {
   return hipsparseZcsrmv(handle, transA, m, n, nnz, reinterpret_cast<const hipDoubleComplex*>(alpha), descrA, reinterpret_cast<const hipDoubleComplex*>(csrSortedValA), csrSortedRowPtrA, csrSortedColIndA, reinterpret_cast<const hipDoubleComplex*>(x), reinterpret_cast<const hipDoubleComplex*>(beta), reinterpret_cast<hipDoubleComplex*>(y));
-}
-
-cusparseStatus_t cusparseCsrmvEx_bufferSize(...) {
-  return HIPSPARSE_STATUS_NOT_SUPPORTED;
-}
-
-cusparseStatus_t cusparseCsrmvEx(...) {
-  return HIPSPARSE_STATUS_NOT_SUPPORTED;
 }
 
 cusparseStatus_t cusparseCreateCsrsv2Info(csrsv2Info_t* info) {
@@ -3340,10 +3331,6 @@ cusparseStatus_t cusparseSpMatGetStridedBatch(...) {
   return HIPSPARSE_STATUS_NOT_SUPPORTED;
 }
 
-cusparseStatus_t cusparseSpMatSetStridedBatch(...) {
-  return HIPSPARSE_STATUS_NOT_SUPPORTED;
-}
-
 cusparseStatus_t cusparseSpMatSetAttribute(cusparseSpMatDescr_t     spMatDescr,
                                            cusparseSpMatAttribute_t attribute,
                                            void*                    data,
@@ -3645,14 +3632,6 @@ cusparseStatus_t cusparseSpMM(cusparseHandle_t     handle,
 #else
   return HIPSPARSE_STATUS_NOT_SUPPORTED;
 #endif
-}
-
-cusparseStatus_t cusparseConstrainedGeMM_bufferSize(...) {
-  return HIPSPARSE_STATUS_NOT_SUPPORTED;
-}
-
-cusparseStatus_t cusparseConstrainedGeMM(...) {
-  return HIPSPARSE_STATUS_NOT_SUPPORTED;
 }
 
 cusparseStatus_t cusparseSparseToDense_bufferSize(cusparseHandle_t           handle,

@@ -22,6 +22,7 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
   "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Cython",
   "Topic :: Software Development",
@@ -72,6 +73,8 @@ testpaths = "tests"
 addopts = "--strict-markers"
 markers = [
   "slow", "multi_gpu",
+  # If pytest-timeout is not available
+  "timeout",
   # If pytest-run-parallel is not available
   "parallel_threads", "iterations", "thread_unsafe",
 ]
@@ -116,6 +119,8 @@ filterwarnings = [
   # setuptools 65+
   # TODO(kmaehashi): Remove distutils from cupy_builder to remove this
   "ignore:Absolute path '(.+?)' is being replaced with a relative path '(.+?)' for outputs:DeprecationWarning:distutils",
+  # Older SciPy versions + NumPy 2.5+ do not avoid this warning.
+  "ignore:Setting the shape on a NumPy:DeprecationWarning:scipy",
 ]
 
 [tool.coverage.run]

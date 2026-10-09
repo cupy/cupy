@@ -1,0 +1,21 @@
+cuda:
+  build:
+    version: "13.4.1"
+  prev_build:
+    version: "12.9.2"
+python:
+  # Python versions the wheel matrix is built across. ci.yml reads this
+  # list and passes it to build-wheel.yml as the `python-versions` input.
+  supported:
+    - "3.10"
+    - "3.11"
+    - "3.12"
+    - "3.13"
+    - "3.14"
+    - "3.14t"
+    - "3.15"
+    - "3.15t"
+  # Single Python version used by the `/test doc-only` lane and by RTD's
+  # docs.yml wheel install step.
+  doc:
+    version: "3.12"

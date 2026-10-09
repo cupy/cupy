@@ -121,7 +121,7 @@ However, there are occasions when users may *not* want to manage the FFT plans b
     hits / misses: 0 / 1 (counts)
     
     cached plans (most recently used first):
-    key: ((64, 64), (64, 64), 1, 4096, (64, 64), 1, 4096, 105, 4, 'C', 2, None), plan type: PlanNd, memory usage: 262144
+    key: ((64, 64), (64, 64), 1, 4096, (64, 64), 1, 4096, 105, 4), plan type: PlanNd, memory usage: 262144
     
     >>> # perform the same transform again, the plan is looked up from cache and reused
     >>> out = cp.fft.fftn(a, axes=(1, 2))
@@ -133,7 +133,7 @@ However, there are occasions when users may *not* want to manage the FFT plans b
     hits / misses: 1 / 1 (counts)
     
     cached plans (most recently used first):
-    key: ((64, 64), (64, 64), 1, 4096, (64, 64), 1, 4096, 105, 4, 'C', 2, None), plan type: PlanNd, memory usage: 262144
+    key: ((64, 64), (64, 64), 1, 4096, (64, 64), 1, 4096, 105, 4), plan type: PlanNd, memory usage: 262144
     
     >>> # clear the cache
     >>> cache.clear()

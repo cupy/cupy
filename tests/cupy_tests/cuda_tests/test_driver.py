@@ -65,3 +65,20 @@ class TestExceptionPicklable(unittest.TestCase):
         e2 = pickle.loads(pickle.dumps(e1))
         assert e1.args == e2.args
         assert str(e1) == str(e2)
+
+
+class TestCheckStatusClearsStickyError(unittest.TestCase):
+    """Regression test for the HIP 7+ driver-API sticky-error leak fixed
+    in cupy_backends/cuda/api/driver.pyx::check_status."""
+
+    def test_failed_get_function_does_not_poison_subsequent_launch(self):
+        mod = cupy.RawModule(
+            code='extern "C" __global__ void k(float *x) {}')
+        with self.assertRaises(cupy.cuda.driver.CUDADriverError):
+            mod.get_function('no_such_kernel')
+        # cupy.random.* would raise CURAND_STATUS_LAUNCH_FAILURE pre-fix.
+        result = cupy.random.uniform(-1, 1, 100).astype(cupy.float32)
+        self.assertEqual(result.shape, (100,))
+        self.assertEqual(result.dtype, cupy.float32)
+        # Same poisoning via the ufunc path.
+        _ = (result * 2.0).sum()

@@ -19,18 +19,30 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
         repository: 'cupy/backport'
 
     - name: Setup Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
       with:
         python-version: '3.10'
 
     - name: Install Dependencies
       run: |
         pip install pygithub
+
+    # TODO(leofang): the backport bot (cupy/backport) copies the source PR's
+    # labels onto the backport PR, so ci:triggered leaks over and immediately
+    # triggers CI on the fresh backport PR. Strip it from the source PR here,
+    # before the bot reads the labels (same workflow, so no race with
+    # ci-trigger.yml). Move this elsewhere when this workflow is retired.
+    - name: Strip ci:triggered before backporting
+      env:
+        GH_TOKEN: ${{ secrets.BACKPORT_TOKEN }}
+      run: |
+        gh api --method DELETE \
+          "repos/${{ github.repository }}/issues/${{ github.event.number }}/labels/ci:triggered" || true
 
     - name: Run Backport
       env:
