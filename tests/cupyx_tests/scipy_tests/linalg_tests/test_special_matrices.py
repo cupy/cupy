@@ -3,8 +3,10 @@ from __future__ import annotations
 import unittest
 import warnings
 
+import numpy
 import pytest
 
+import cupy
 from cupy import testing
 import cupyx.scipy.linalg  # NOQA
 
@@ -109,6 +111,107 @@ class TestSpecialMatrices_1_3_0(TestSpecialMatricesBase):
 
         # Otherwise just pass the arg back
         return arg
+
+
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.int32, numpy.float32, numpy.float64,
+              numpy.complex64, numpy.complex128],
+    'strided': [False, True],
+}))
+@testing.with_requires('scipy')
+class TestFiedlerMagnitude:
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_fiedler(self, xp, scp):
+        a = testing.shaped_random((12,), xp, self.dtype, seed=10297)
+        if self.strided:
+            a = a[::2]
+        before = a.copy()
+        result = scp.linalg.fiedler(a)
+        assert result.dtype == xp.abs(a).dtype
+        testing.assert_array_equal(a, before)
+        return result
+
+    def test_complex_boundaries(self):
+        if not numpy.issubdtype(self.dtype, numpy.complexfloating):
+            pytest.skip('complex magnitude boundaries')
+        real_dtype = numpy.empty((), dtype=self.dtype).real.dtype
+        large = numpy.finfo(real_dtype).max / 4
+        host = numpy.array([0, 1 + 2j, complex(large, large),
+                            complex(-large, -large), complex(numpy.inf, 1),
+                            complex(numpy.nan, 1), complex(1, numpy.nan)],
+                           dtype=self.dtype)
+        data = cupy.asarray(host)
+        if self.strided:
+            data = data[::-1]
+        expected = cupy.abs(data[:, None] - data)
+        actual = cupyx.scipy.linalg.fiedler(data)
+        assert actual.dtype == real_dtype
+        testing.assert_array_equal(actual, expected)
+
+
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.complex64, numpy.complex128],
+    'strided': [False, True],
+}))
+@testing.with_requires('scipy')
+class TestFiedlerSpectralPipeline:
+    @testing.numpy_cupy_allclose(atol=1e-4, rtol=1e-4, scipy_name='scp')
+    def test_pipeline(self, xp, scp):
+        rng = numpy.random.default_rng(10297)
+        host = (rng.normal(size=64)
+                + 1j * rng.normal(size=64)).astype(self.dtype)
+        data = xp.asarray(host)
+        if self.strided:
+            data = data[::2]
+        before = data.copy()
+        distances = scp.linalg.fiedler(data)
+        affinity = xp.exp(-distances)
+        laplacian = xp.diag(affinity.sum(axis=1)) - affinity
+        assert laplacian.dtype == data.real.dtype
+        values, vectors = xp.linalg.eigh(laplacian)
+        embedding = vectors[:, 1:4]
+        projection = embedding @ embedding.T
+        assert projection.dtype == data.real.dtype
+        testing.assert_array_equal(data, before)
+        return values, projection
+
+
+@pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason='CUDA graph capture')
+@pytest.mark.parametrize('dtype', [numpy.complex64, numpy.complex128])
+@pytest.mark.parametrize('layout', ['strided', 'reversed', 'broadcast'])
+@testing.with_requires('scipy')
+def test_fiedler_graph_replay(dtype, layout):
+    host = (numpy.arange(12) + 1j * numpy.linspace(-2, 2, 12)).astype(dtype)
+    stream = cupy.cuda.Stream(non_blocking=True)
+    with stream:
+        base = cupy.asarray(host)
+        if layout == 'broadcast':
+            data = cupy.broadcast_to(base[:1], (6,))
+        else:
+            data = base[::2] if layout == 'strided' else base[::-2]
+
+        def laplacian():
+            affinity = cupy.exp(-cupyx.scipy.linalg.fiedler(data))
+            return cupy.diag(affinity.sum(axis=1)) - affinity
+
+        laplacian()
+        stream.synchronize()
+        stream.begin_capture()
+        result = laplacian()
+        graph = stream.end_capture()
+        for factor in (2, 0.5):
+            changed = host * factor
+            base.set(changed)
+            graph.launch(stream)
+            actual = result.get()
+            selected = (numpy.broadcast_to(changed[:1], (6,))
+                        if layout == 'broadcast' else
+                        changed[::2] if layout == 'strided' else changed[::-2])
+            affinity = numpy.exp(-scipy.linalg.fiedler(selected))
+            expected = numpy.diag(affinity.sum(axis=1)) - affinity
+            assert actual.dtype == selected.real.dtype
+            testing.assert_allclose(actual, expected, rtol=1e-5, atol=1e-5)
+            testing.assert_array_equal(base.get(), changed)
 
 
 class TestFiedlerDegenerate:
