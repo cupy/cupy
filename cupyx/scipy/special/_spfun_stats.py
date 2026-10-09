@@ -12,7 +12,7 @@ _poisson_binom_pmf_all = ElementwiseKernel(
     in_params="T(n) p",
     out_params="T(n+1) out",
     operation=(
-        "xsf::poisson_binom_pmf_all(p.as_mdspan(), out.as_mdspan());"
+        "xsf::poisson_binom_pmf_all(xsf::as_mdspan(p), xsf::as_mdspan(out));"
     ),
     name="cupy_poisson_binom_pmf_all",
     preamble=preamble,
@@ -22,7 +22,7 @@ _poisson_binom_pmf_all = ElementwiseKernel(
 _take_from_pmf = ElementwiseKernel(
     in_params="T(n) pmf, int64 k",
     out_params="T out",
-    operation="out = xsf::take_from_pmf(pmf.as_mdspan(), k);",
+    operation="out = xsf::take_from_pmf(xsf::as_mdspan(pmf), k);",
     name="cupy_take_from_pmf",
     preamble=preamble,
 )
@@ -32,7 +32,7 @@ _poisson_binom_cdf_all = ElementwiseKernel(
     in_params="T(n) p",
     out_params="T(n+1) out",
     operation=(
-        "xsf::poisson_binom_cdf_all(p.as_mdspan(), out.as_mdspan());"
+        "xsf::poisson_binom_cdf_all(xsf::as_mdspan(p), xsf::as_mdspan(out));"
     ),
     name="cupy_poisson_binom_cdf_all",
     preamble=preamble,
@@ -42,7 +42,7 @@ _poisson_binom_cdf_all = ElementwiseKernel(
 _take_from_discrete_cdf = ElementwiseKernel(
     in_params="T(n) cdf, int64 k",
     out_params="T out",
-    operation="out = xsf::take_from_discrete_cdf(cdf.as_mdspan(), k);",
+    operation="out = xsf::take_from_discrete_cdf(xsf::as_mdspan(cdf), k);",
     name="cupy_take_from_discrete_cdf",
     preamble=preamble,
 )
