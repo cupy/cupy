@@ -653,6 +653,82 @@ class TestEigshShiftInvertInvalid:
 
 
 @testing.with_requires('scipy')
+class TestLanczosThreeTermUpdate:
+    # On the first step of the first sweep jb is -1: there is no previous
+    # vector, and on a raw argument beta[-1] reads one element before the
+    # buffer. axpy's alpha == 0 quick return used to cover both; an
+    # elementwise kernel has no quick return, so the skip is explicit.
+    # The tests poison what an unguarded kernel would read, so they
+    # cannot pass by luck.
+
+    def _tol(self, dtype):
+        return 1e-5 if numpy.dtype(dtype).char in 'fF' else 1e-12
+
+    @testing.for_dtypes('fdFD')
+    def test_first_step_skips_the_previous_vector_term(self, dtype):
+        from cupyx.scipy.sparse.linalg import _eigen
+        n, ncv, ja = 64, 8, 0
+        real = numpy.dtype(dtype).char.lower()
+        v = testing.shaped_random((n,), cupy, dtype=dtype, seed=0)
+        u = testing.shaped_random((n,), cupy, dtype=dtype, seed=1)
+        alpha = testing.shaped_random((ncv,), cupy, dtype=dtype, seed=2)
+        # Neither of these may be touched when jb < 0.
+        beta = cupy.full((ncv,), numpy.nan, dtype=real)
+        v_prev = cupy.full((n,), numpy.nan, dtype=dtype)
+        expected = u - alpha[ja] * v
+        _eigen._kernel_three_term(v, v_prev, alpha, beta, ja, -1, u)
+        assert bool(cupy.isfinite(u).all())
+        cupy.testing.assert_allclose(u, expected, rtol=self._tol(dtype),
+                                     atol=0)
+
+    @testing.for_dtypes('fdFD')
+    def test_later_steps_apply_both_terms(self, dtype):
+        from cupyx.scipy.sparse.linalg import _eigen
+        n, ncv, ja, jb = 64, 8, 3, 2
+        real = numpy.dtype(dtype).char.lower()
+        v = testing.shaped_random((n,), cupy, dtype=dtype, seed=0)
+        v_prev = testing.shaped_random((n,), cupy, dtype=dtype, seed=1)
+        u = testing.shaped_random((n,), cupy, dtype=dtype, seed=2)
+        alpha = testing.shaped_random((ncv,), cupy, dtype=dtype, seed=3)
+        beta = testing.shaped_random((ncv,), cupy, dtype=real, seed=4)
+        expected = u - (alpha[ja] * v + beta[jb].astype(dtype) * v_prev)
+        _eigen._kernel_three_term(v, v_prev, alpha, beta, ja, jb, u)
+        cupy.testing.assert_allclose(u, expected, rtol=self._tol(dtype),
+                                     atol=0)
+
+    @testing.for_dtypes('fdFD')
+    def test_first_sweep_reads_neither_v_prev_nor_beta(self, dtype):
+        # beta starts one element into a NaN-filled buffer, so the
+        # out-of-bounds beta[-1] lands on a NaN; the basis is NaN-filled
+        # because the row the update reaches for on step 0 is V[-1].
+        from cupyx.scipy.sparse.linalg import _eigen
+        n, ncv = 128, 8
+        real = numpy.dtype(dtype).char.lower()
+        b = testing.shaped_random((n, n), cupy, dtype=dtype, seed=0)
+        a = sparse.csr_matrix(b + b.conj().T)
+        V = cupy.full((ncv, n), numpy.nan, dtype=dtype)
+        v0 = testing.shaped_random((n,), cupy, dtype=dtype, seed=1)
+        V[0] = v0 / cupy.linalg.norm(v0)
+        u = cupy.zeros((n,), dtype=dtype)
+        alpha = cupy.zeros((ncv,), dtype=dtype)
+        beta_buf = cupy.full((ncv + 1,), numpy.nan, dtype=real)
+        beta = beta_buf[1:]
+        beta[...] = 0
+        _eigen._lanczos_fast(a, n, ncv)(a, V, u, alpha, beta, 0, 1)
+        # A spurious beta[-1] * v term is projected straight back out of u
+        # by the reorthogonalization that follows, but it survives in
+        # alpha[0] -- so alpha, not u, is what pins the guard.
+        v = V[0]
+        av = a @ v
+        rq = cupy.sum(v.conj() * av)
+        atol = self._tol(dtype) * float(cupy.linalg.norm(av))
+        assert bool(cupy.isfinite(u).all())
+        cupy.testing.assert_allclose(alpha[0], rq, rtol=0, atol=atol)
+        cupy.testing.assert_allclose(beta[0], cupy.linalg.norm(av - rq * v),
+                                     rtol=0, atol=atol)
+
+
+@testing.with_requires('scipy')
 class TestEigshTinyN:
     # n = 2 forces ncv = n - 1 = 1, so the sweep yields a single row and the
     # breakdown walk has no interior beta to inspect. Regression guard: the
