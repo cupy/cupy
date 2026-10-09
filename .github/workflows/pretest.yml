@@ -93,7 +93,7 @@ jobs:
       run: |
         result=$(grep -r 'Pyx_WriteUnraisable' --include='*.cpp' . \
                 | grep -v -E \
-                '(__dealloc__|const char \*name|pycapsule_deleter|cupy\.cuda\.thrust\.cupy_malloc|\._streamCallbackFunc|\._HostFnFunc)' \
+                '(__dealloc__|const char \*name|pycapsule_deleter|cupy\.cuda\.thrust\.cupy_malloc|\._streamCallbackFunc|\._HostFnFunc|\._restore_device)' \
                 || true)
         if [ -n "$result" ]; then
           echo "$result"
