@@ -80,8 +80,12 @@ cudaError_t cudaDeviceGetLimit(size_t* pValue, cudaLimit limit) {
 }
 
 cudaError_t cudaDeviceSetLimit(cudaLimit limit, size_t value) {
+#if HIP_VERSION >= 60000000
+    return hipDeviceSetLimit(limit, value);
+#else
     // see https://github.com/ROCm-Developer-Tools/HIP/issues/1632
     return hipErrorUnknown;
+#endif
 }
 
 // IPC operations
@@ -90,11 +94,14 @@ cudaError_t cudaIpcCloseMemHandle(void* devPtr) {
 }
 
 cudaError_t cudaIpcGetEventHandle(cudaIpcEventHandle_t* handle, cudaEvent_t event) {
+#if HIP_VERSION >= 40300000
+    return hipIpcGetEventHandle(handle, event);
+#else
     return hipErrorUnknown;
 
     // TODO(leofang): this is supported after ROCm-Developer-Tools/HIP#1996 is released;
     // as of ROCm 3.5.0 it is still not supported
-    //return hipIpcGetEventHandle(handle, event);
+#endif
 }
 
 cudaError_t cudaIpcGetMemHandle(cudaIpcMemHandle_t* handle, void* devPtr) {
@@ -102,11 +109,14 @@ cudaError_t cudaIpcGetMemHandle(cudaIpcMemHandle_t* handle, void* devPtr) {
 }
 
 cudaError_t cudaIpcOpenEventHandle(cudaEvent_t* event, cudaIpcEventHandle_t handle) {
+#if HIP_VERSION >= 40300000
+    return hipIpcOpenEventHandle(event, handle);
+#else
     return hipErrorUnknown;
 
     // TODO(leofang): this is supported after ROCm-Developer-Tools/HIP#1996 is released;
     // as of ROCm 3.5.0 it is still not supported
-    //return hipIpcOpenEventHandle(event, handle);
+#endif
 }
 
 cudaError_t cudaIpcOpenMemHandle(void** devPtr, cudaIpcMemHandle_t handle, unsigned int flags) {
