@@ -433,9 +433,11 @@ cdef _ndarray_base _integral_tensordot_core_batched(
     if layout.use_batched_pointers:
         kern = _tensordot_core_int_batched_kernel(config, dtype)
         matPtrA = _matmul_matrix_ptrs(
-            a, batch_shape=batch_shape, core_ndim=1 if a.ndim == 1 else 2)
+            a, batch_shape=batch_shape,
+            core_ndim=1 if a._shape.size() == 1 else 2)
         matPtrB = _matmul_matrix_ptrs(
-            b, batch_shape=batch_shape, core_ndim=1 if b.ndim == 1 else 2)
+            b, batch_shape=batch_shape,
+            core_ndim=1 if b._shape.size() == 1 else 2)
         matPtrOut = _matmul_matrix_ptrs(
             out, batch_shape=batch_shape, core_ndim=1 if out_vector else 2)
     else:
@@ -839,7 +841,7 @@ cdef bint _matmul_core_needs_copy(
     """Check whether the core of the arrays are contiguous.
     """
     transpose[0] = False
-    cdef Py_ssize_t nd = arr.ndim, itemsize = arr.itemsize
+    cdef Py_ssize_t nd = arr._shape.size(), itemsize = arr.itemsize
     cdef bint c_contig = True, f_contig = allow_transpose
 
     if arr._c_contiguous:  # arr.size == 0 is contiguous
@@ -913,13 +915,14 @@ cdef tuple _prepare_batched_matmul_operands(
     operands in cuBLAS order and a logical output array; vectors and
     broadcasting are represented by metadata, not new array views.
     """
-    cdef bint a_vector = a.ndim == 1
-    cdef bint b_vector = b.ndim == 1
+    cdef int a_ndim = a._shape.size(), b_ndim = b._shape.size()
+    cdef bint a_vector = a_ndim == 1
+    cdef bint b_vector = b_ndim == 1
     cdef bint has_vector = a_vector or b_vector
     cdef Py_ssize_t m, n, k, kb  # contraction sizes.
     cdef Py_ssize_t i, a_sh, b_sh, c_sh
     cdef shape_t out_shape
-    cdef int max_ndim = max(a.ndim, b.ndim)
+    cdef int max_ndim = max(a_ndim, b_ndim)
     cdef int batch_ndim = max_ndim - 2
 
     # Resolve input dtypes before considering shapes and layouts.
@@ -936,25 +939,25 @@ cdef tuple _prepare_batched_matmul_operands(
         assert not b_vector  # cannot both be vectors here!
         m = 1
         n = b._shape.back()
-        kb = b._shape[b.ndim - 2]
-        for i in range(b.ndim - 2):
+        kb = b._shape[b_ndim - 2]
+        for i in range(b_ndim - 2):
             out_shape.push_back(b._shape[i])
         out_shape.push_back(n)
     elif b_vector:
-        m = a._shape[a.ndim - 2]
+        m = a._shape[a_ndim - 2]
         n = 1
         kb = b._shape.back()
-        for i in range(a.ndim - 2):
+        for i in range(a_ndim - 2):
             out_shape.push_back(a._shape[i])
         out_shape.push_back(m)
     else:
-        m = a._shape[a.ndim - 2]
+        m = a._shape[a_ndim - 2]
         n = b._shape.back()
-        kb = b._shape[b.ndim - 2]
+        kb = b._shape[b_ndim - 2]
 
         for i in range(-batch_ndim, 0):
-            a_sh = 1 if a.ndim + i - 2 < 0 else a._shape[a.ndim + i - 2]
-            b_sh = 1 if b.ndim + i - 2 < 0 else b._shape[b.ndim + i - 2]
+            a_sh = 1 if a_ndim + i - 2 < 0 else a._shape[a_ndim + i - 2]
+            b_sh = 1 if b_ndim + i - 2 < 0 else b._shape[b_ndim + i - 2]
 
             if a_sh == b_sh:
                 c_sh = a_sh
@@ -987,8 +990,8 @@ cdef tuple _prepare_batched_matmul_operands(
     # Core layout is independent of the batching API. Our integer kernels only
     # understand dense C-order matrices, so they never receive transpose flags.
     cdef bint transpose_a, transpose_b, transpose_out
-    cdef Py_ssize_t a_outer_dims = 0 if a_vector else a.ndim - 2
-    cdef Py_ssize_t b_outer_dims = 0 if b_vector else b.ndim - 2
+    cdef Py_ssize_t a_outer_dims = 0 if a_vector else a_ndim - 2
+    cdef Py_ssize_t b_outer_dims = 0 if b_vector else b_ndim - 2
     if _matmul_core_needs_copy(
             a, outer_dims=a_outer_dims, allow_transpose=allow_transpose,
             transpose=&transpose_a):
@@ -1238,9 +1241,11 @@ cpdef _ndarray_base matmul(
                 raise TypeError(dtype, a.dtype, b.dtype)
         else:
             ap = _matmul_matrix_ptrs(
-                a, batch_shape=batch_shape, core_ndim=1 if a.ndim == 1 else 2)
+                a, batch_shape=batch_shape,
+                core_ndim=1 if a._shape.size() == 1 else 2)
             bp = _matmul_matrix_ptrs(
-                b, batch_shape=batch_shape, core_ndim=1 if b.ndim == 1 else 2)
+                b, batch_shape=batch_shape,
+                core_ndim=1 if b._shape.size() == 1 else 2)
             cp = _matmul_matrix_ptrs(
                 c, batch_shape=batch_shape, core_ndim=1 if (
                     orig_a_ndim == 1 or orig_b_ndim == 1) else 2)
