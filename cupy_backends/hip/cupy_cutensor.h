@@ -5,8 +5,6 @@
 
 #define CUTENSOR_VERSION 0
 
-#include "cupy_cuda_common.h"
-
 extern "C" {
 
     typedef enum {} cutensorDataType_t;
