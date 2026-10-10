@@ -25,7 +25,11 @@ ACLNN_API aclnnStatus aclnnInplaceFillDiagonal(
 
 // linalg: qr / svd / inverse (trace is a UnaryOp, declared above)
 #include "aclnnop/aclnn_qr.h"
+// CANN 8.2 has no aclnnSvd (neither the header nor the library symbol), so
+// aclop_Svd reports ACL_ERROR_API_NOT_SUPPORT there (see below).
+#if defined(CUPY_CANN_VERSION) && CUPY_CANN_VERSION >= 850
 #include "aclnnop/aclnn_svd.h"
+#endif
 #include "aclnnop/aclnn_inverse.h"
 
 // triangular part
@@ -635,8 +639,14 @@ ACLNN_API aclnnStatus aclnnInplaceFillDiagonal(
         aclTensor* u = (outs.size() > 1) ? outs[1] : nullptr;
         aclTensor* v = (outs.size() > 2) ? outs[2] : nullptr;
         bool computeUV = (u != nullptr && v != nullptr);
+#if defined(CUPY_CANN_VERSION) && CUPY_CANN_VERSION >= 850
         return aclIrregularOpRun(aclnnSvdGetWorkspaceSize, aclnnSvd, stream,
             ins[0], full_matrices, computeUV, sigma, u, v);
+#else
+        // No SVD on CANN 8.2: fail loudly rather than returning garbage.
+        (void)full_matrices; (void)sigma; (void)u; (void)v; (void)computeUV;
+        return ACL_ERROR_API_NOT_SUPPORT;
+#endif
     }
 
     // numpy.linalg.inv(a) -> aclnnInverse(self, out)

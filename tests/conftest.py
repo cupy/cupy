@@ -96,6 +96,70 @@ def pytest_report_header(config):
         return None
 
 
+# ---------------------------------------------------------------------------
+# CUDA-only test modules
+#
+# Upstream test modules that import CUDA-only cupy internals at module scope
+# (nvrtc, cufft, cublas, curand, cusparse, `cupy._core._cub_reduction`,
+# `cupy._core._routines_math._scan_for_test`). Those modules are not compiled
+# on the Ascend backend (see `install/cupy_builder/features/ascend.py`), so the
+# import raises during *collection* and aborts the entire run before a single
+# test executes. Skip them at collection time instead.
+#
+# NB: `test_search.py` / `test_sumprod.py` also carry backend-neutral cases
+# (searchsorted, sum/prod); they are listed here because their module-level
+# `from cupy._core import _cub_reduction` cannot be satisfied without cub.
+_ASCEND_CUDA_ONLY_PATHS = frozenset({
+    'cupy_tests/test_cublas.py',
+    'cupy_tests/core_tests/test_core.py',
+    'cupy_tests/core_tests/test_cub_reduction.py',
+    'cupy_tests/core_tests/test_function.py',
+    'cupy_tests/core_tests/test_ndarray_reduction.py',
+    'cupy_tests/core_tests/test_raw.py',
+    'cupy_tests/core_tests/test_scan.py',
+    'cupy_tests/fft_tests/test_cache.py',
+    'cupy_tests/fft_tests/test_callback.py',
+    'cupy_tests/math_tests/test_sumprod.py',
+    'cupy_tests/sorting_tests/test_search.py',
+})
+
+#: Directories that target the CUDA backend exclusively.
+_ASCEND_CUDA_ONLY_DIRS = ('cupy_tests/cuda_tests',)
+
+
+def _is_ascend_backend():
+    try:
+        from cupy.backends.backend import is_ascend
+        return bool(is_ascend)
+    except Exception:
+        return False
+
+
+def pytest_ignore_collect(collection_path, config, **kwargs):
+    """Do not collect CUDA-only test modules when running on Ascend NPU."""
+    if not _is_ascend_backend():
+        return False
+    path = collection_path
+    if path is None:  # pytest < 8 named this argument `path`
+        path = kwargs.get('path')
+    if path is None:
+        return False
+    tests_dir = os.path.dirname(os.path.abspath(__file__))
+    rel = os.path.relpath(str(path), tests_dir).replace(os.sep, '/')
+    if rel in _ASCEND_CUDA_ONLY_PATHS:
+        return True
+    return any(rel == d or rel.startswith(d + '/')
+               for d in _ASCEND_CUDA_ONLY_DIRS)
+
+
+#: Ascend 上无条件跳过的 dtype。
+#:
+#: complex128 在部分 CANN 版本 (如 8.2) 上 aclnn 复数算子缺失/直接报错，
+#: 逐个用例失败没有意义，collection 阶段整批跳过。
+#: 单个用例/模块可用 ``ascend_dtype_filter_off`` 标记豁免。
+_ASCEND_SKIP_ALWAYS_DTYPES = frozenset({numpy.dtype('complex128')})
+
+
 def pytest_collection_modifyitems(config, items):
     """把 dtype 参数化用例里"NPU 不支持"的组合标记为 skip。
 
@@ -107,19 +171,31 @@ def pytest_collection_modifyitems(config, items):
         policy = module.policy()
     except Exception:  # pragma: no cover
         return
-    if not policy.enabled:
-        return
     skipped = 0
     for item in items:
         if item.get_closest_marker('ascend_dtype_filter_off') is not None:
             continue
-        hits = [d for d in module.item_dtypes(item) if policy.is_skipped(d)]
+        try:
+            dtypes = module.item_dtypes(item)
+        except Exception:  # pragma: no cover
+            dtypes = ()
+        always = sorted(d for d in dtypes if d in _ASCEND_SKIP_ALWAYS_DTYPES)
+        if always:
+            item.add_marker(pytest.mark.skip(
+                reason='{} not supported by this CANN build'.format(
+                    ', '.join(str(d) for d in always))))
+            skipped += 1
+            continue
+        if not policy.enabled:
+            continue
+        hits = [d for d in dtypes if policy.is_skipped(d)]
         if hits:
             item.add_marker(pytest.mark.skip(reason=policy.skip_reason(hits)))
             skipped += 1
     if skipped:
         print(f'\nascend dtype filter: {skipped} 个 dtype 参数化用例标记为 '
-              f'skip ({", ".join(policy.names)})')
+              f'skip ({"complex128, " if _ASCEND_SKIP_ALWAYS_DTYPES else ""}'
+              f'{", ".join(policy.names) if policy.enabled else "policy off"})')
 
 
 # https://docs.pytest.org/en/latest/how-to/writing_hook_functions.html#optionally-using-hooks-from-3rd-party-plugins

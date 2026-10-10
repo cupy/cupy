@@ -387,6 +387,30 @@ def _find_cann_version_file(cann_path: str) -> str:
     return ''
 
 
+#: CANN spells its version differently across releases; try each layout in
+#: turn and use the first one that matches. Group 3 (patch) is absent for
+#: versions whose third component is not numeric.
+#:
+#: * ``version=[8.2.0.0.0.201:xxx]`` / ``Version=8.5.1``   -> 8.2.0 / 8.5.1
+#: * ``Version=8.2.T12.0.B077`` (8.2.RC1)                  -> 8.2.0
+#: * ``runtime_running_version=[8.2.T12.0.B077:8.2.RC1]``  -> 8.2.0
+_CANN_VERSION_PATTERNS = (
+    r'(?i)version\s*=\s*\[?(\d+)\.(\d+)\.(\d+)',
+    r'\[(\d+)\.(\d+)\.(\d+)',
+    r'(?i)version\s*=\s*\[?(\d+)\.(\d+)\.[A-Za-z]',
+    r'\[(\d+)\.(\d+)\.[A-Za-z]',
+)
+
+
+def _match_cann_version(content: str):
+    """Return the first regex match identifying a CANN version in `content`."""
+    for pattern in _CANN_VERSION_PATTERNS:
+        match = re.search(pattern, content)
+        if match:
+            return match
+    return None
+
+
 def check_cann_version(compiler, settings):
     """Detect the installed CANN version and cache it in ``_cann_version``.
 
@@ -414,14 +438,16 @@ def check_cann_version(compiler, settings):
     try:
         with open(info_file_path, 'r') as f:
             content = f.read()
-        # Match both 'version=[8.2.0.0.0.201:xxx]' (8.2) and
-        # plain 'Version=8.5.1' / 'version=8.5.1' (8.5+).
-        match = re.search(r'(\d+)\.(\d+)\.(\d+)', content)
+        match = _match_cann_version(content)
         if match:
-            major = int(match.group(1))
-            minor = int(match.group(2))
-            patch = int(match.group(3))
-            _cann_version = major * 100 + minor * 10 + patch
+            groups = match.groups()
+            major = int(groups[0])
+            minor = int(groups[1])
+            # Group 3 (patch) is absent when the third component is not
+            # numeric (e.g. `8.2.T12.0.B077`); such a version counts as `.0`.
+            patch = groups[2] if len(groups) > 2 else None
+            _cann_version = major * 100 + minor * 10 + (
+                int(patch) if patch is not None and patch.isdigit() else 0)
         else:
             utils.print_warning(
                 "CANN version file found but version string not matched: %s"

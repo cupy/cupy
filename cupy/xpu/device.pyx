@@ -79,7 +79,13 @@ cpdef str get_compute_capability():
     ret = _compute_capabilities.get(dev_id, None)
     if ret is not None:
         return ret
-    return Device().compute_capability
+    IF CUPY_CANN_VERSION > 0:
+        # NPU has no CUDA compute capability: `Device.compute_capability`
+        # returns a placeholder int (see above), so stringify it to honour
+        # this function's `str` return type.
+        return str(Device().compute_capability)
+    ELSE:
+        return Device().compute_capability
 
 
 cdef bint _enable_peer_access(int device, int peer) except -1:

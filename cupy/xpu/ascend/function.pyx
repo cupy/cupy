@@ -91,11 +91,19 @@ cdef extern from "acl/acl.h" nogil:
                                          aclrtArgsHandle argsHandle,
                                          void* reserve)
 
-    # aclrtLaunchKernelAttrId (acl_rt.h)
-    int ACL_RT_LAUNCH_KERNEL_ATTR_DYN_UBUF_SIZE
+    # aclrtLaunchKernelAttrId (acl_rt.h). CANN 8.2 does not define
+    # ACL_RT_LAUNCH_KERNEL_ATTR_DYN_UBUF_SIZE: its attr-id enum stops at
+    # TIMEOUT and the value union exposes `localMemorySize`, not
+    # `dynUBufSize`. The dynamic-UB launch path is therefore compiled only
+    # from CANN 9.0 on and raises NotImplementedError below otherwise.
+    IF CUPY_CANN_VERSION >= 900:
+        int ACL_RT_LAUNCH_KERNEL_ATTR_DYN_UBUF_SIZE
 
-    ctypedef struct aclrtLaunchKernelAttrValue:
-        uint32_t dynUBufSize
+        ctypedef struct aclrtLaunchKernelAttrValue:
+            uint32_t dynUBufSize
+    ELSE:
+        ctypedef struct aclrtLaunchKernelAttrValue:
+            uint32_t localMemorySize
 
     ctypedef struct aclrtLaunchKernelAttr:
         int id
@@ -299,13 +307,19 @@ cdef _launch(intptr_t func, size_t num_blocks,
 
     if shared_mem > 0:
         # dynamic UB (unified buffer) == CUDA dynamic shared memory
-        attr.id = ACL_RT_LAUNCH_KERNEL_ATTR_DYN_UBUF_SIZE
-        attr.value.dynUBufSize = <uint32_t>shared_mem
-        cfg.attrs = &attr
-        cfg.numAttrs = 1
-        ret = aclrtLaunchKernelWithConfig(
-            <aclrtFuncHandle>func, <uint32_t>num_blocks,
-            <aclrtStream>stream, &cfg, args_handle, NULL)
+        IF CUPY_CANN_VERSION >= 900:
+            attr.id = ACL_RT_LAUNCH_KERNEL_ATTR_DYN_UBUF_SIZE
+            attr.value.dynUBufSize = <uint32_t>shared_mem
+            cfg.attrs = &attr
+            cfg.numAttrs = 1
+            ret = aclrtLaunchKernelWithConfig(
+                <aclrtFuncHandle>func, <uint32_t>num_blocks,
+                <aclrtStream>stream, &cfg, args_handle, NULL)
+        ELSE:
+            raise NotImplementedError(
+                'launching a kernel with shared_mem (dynamic UB) requires '
+                'CANN 9.0+: CANN 8.2 has no '
+                'ACL_RT_LAUNCH_KERNEL_ATTR_DYN_UBUF_SIZE launch attribute')
     else:
         ret = aclrtLaunchKernelWithConfig(
             <aclrtFuncHandle>func, <uint32_t>num_blocks,

@@ -61,7 +61,12 @@
 // equal scalar, tensor, vector/list is_nan (no such)
 #include "aclnnop/aclnn_is_inf.h"
 #include "aclnnop/aclnn_isfinite.h"
+// aclnnRightShift exists on CANN 8.5+; CANN 8.2 ships no right-shift op at
+// all, so aclop_RightShift is composed from Cast/Exp2/Div/Floor there (see
+// below), mirroring the left_shift composition used on CANN 8.5.
+#if defined(CUPY_CANN_VERSION) && CUPY_CANN_VERSION >= 850
 #include "aclnnop/aclnn_right_shift.h"
+#endif
 #include "aclnnop/aclnn_ne_tensor.h"
 #include "aclnnop/aclnn_isposinf.h"
 #include "aclnnop/aclnn_isneginf.h"
@@ -211,17 +216,57 @@ extern "C" {
     DECLARE_ACL_UNARY_OP(IsPosInf)
     DECLARE_ACL_UNARY_OP(IsNegInf)
 
-    // CANN 8.5.1 provides only `aclnnRightShift` (there is no left-shift op).
     // `bitwise_right_shift` is an Array API standard function, so this closes
-    // a real gap; `bitwise_left_shift` must be composed instead.
+    // a real gap.
     // NB: there is no `aclnnRightShiftScalar`; the scalar form is reached by
     // the dispatcher only if a SCALAR_BINARY_OP registration is added, which
     // would need an explicit aclScalar→tensor promotion here.
+#if defined(CUPY_CANN_VERSION) && CUPY_CANN_VERSION >= 850
+    // CANN 8.5.1 and newer ship `aclnnRightShift`.
     aclError aclop_RightShift(const aclTensor* self, const aclTensor* other,
                               aclTensor* out, aclrtStream stream) {
         return aclBinaryOpRun(self, other, out,
             aclnnRightShiftGetWorkspaceSize, aclnnRightShift, stream, false);
     }
+#else
+    // CANN 8.2 ships no right-shift op, so compose x >> n as floor(x / 2**n):
+    // t1 = double(n); t2 = 2**t1; t3 = double(x); t4 = t3 / t2; t5 = floor(t4).
+    // The floor is what makes this an arithmetic (sign-preserving) shift for
+    // negative x. Exact while |x| and 2**n fit the double mantissa; int64
+    // inputs beyond 2**53 lose the low bits — same caveat as LeftShift.
+    aclError aclop_RightShift(const aclTensor* self, const aclTensor* other,
+                              aclTensor* out, aclrtStream stream) {
+        if (self == nullptr || other == nullptr || out == nullptr) {
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        aclDataType out_dtype;
+        aclGetDataType(out, &out_dtype);
+        aclTensor* t1 = aclTensorLike(out, ACL_DOUBLE);
+        aclTensor* t2 = aclTensorLike(out, ACL_DOUBLE);
+        aclTensor* t3 = aclTensorLike(out, ACL_DOUBLE);
+        aclTensor* t4 = aclTensorLike(out, ACL_DOUBLE);
+        aclTensor* t5 = aclTensorLike(out, ACL_DOUBLE);
+        aclError ret = aclIrregularOpRun(aclnnCastGetWorkspaceSize, aclnnCast, stream,
+            other, ACL_DOUBLE, t1);
+        ret = aclUnaryOpRun(t1, t2,
+            aclnnExp2GetWorkspaceSize, aclnnExp2, stream, false);
+        ret = aclIrregularOpRun(aclnnCastGetWorkspaceSize, aclnnCast, stream,
+            self, ACL_DOUBLE, t3);
+        ret = aclBinaryOpRun(t3, t2, t4,
+            aclnnDivGetWorkspaceSize, aclnnDiv, stream, false);
+        ret = aclUnaryOpRun(t4, t5,
+            aclnnFloorGetWorkspaceSize, aclnnFloor, stream, false);
+        ret = aclIrregularOpRun(aclnnCastGetWorkspaceSize, aclnnCast, stream,
+            t5, out_dtype, out);
+        // aclTensorLike 会 aclrtMalloc 一块显存，必须用 DestroyTensorLike 成对释放
+        aclDestroyTensorLike(t1);
+        aclDestroyTensorLike(t2);
+        aclDestroyTensorLike(t3);
+        aclDestroyTensorLike(t4);
+        aclDestroyTensorLike(t5);
+        return ret;
+    }
+#endif
 
     // numpy.left_shift(x, n): CANN 8.5.1 has no left-shift aclnn op, so it is
     // composed as x * 2**n in double precision, then cast to the output dtype.
