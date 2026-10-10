@@ -30,12 +30,13 @@ ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/libcusparseLt/13:${LD_LIBRARY_PATH
 RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
-RUN PYTHON_CONFIGURE_OPTS="--disable-shared" pyenv install 3.14.6 && \
-    pyenv global 3.14.6 && \
+RUN git -C /opt/pyenv pull --ff-only && \
+    PYTHON_CONFIGURE_OPTS="--disable-shared" pyenv install 3.15.0rc3 && \
+    pyenv global 3.15.0rc3 && \
     pip install -U setuptools pip wheel && \
     pip install -U google-cloud-storage
 
-RUN pip install -U 'numpy==2.5.*' 'scipy==1.16.*' 'optuna==4.*' 'ml_dtypes==0.5.*' 'cython==3.2.*,!=3.2.6'
+RUN pip install -U 'numpy==2.5.*' 'scipy==1.18.*' 'optuna==5.*' 'ml_dtypes==0.5.*' 'cython==3.2.*,!=3.2.6'
 RUN pip uninstall -y mpi4py cuda-python nvmath-python cuda-cccl && \
     pip check
 
