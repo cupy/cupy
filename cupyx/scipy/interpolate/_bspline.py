@@ -689,7 +689,7 @@ class BSpline:
             x = t[k] + (x - t[k]) % (t[n] - t[k])
             extrapolate = False
         elif not extrapolate and (
-            (min(x) < t[k]) or (max(x) > t[t.shape[0] - k - 1])
+            (x.min() < t[k]) or (x.max() > t[t.shape[0] - k - 1])
         ):
             # Checks from `find_interval` function
             raise ValueError(f'Out of bounds w/ x = {x}.')
