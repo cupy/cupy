@@ -170,6 +170,31 @@ IF CUPY_CANN_VERSION > 0:
     # initialize ascend runtime and set device 0
     initialize_backend(0) # comment out this line if you do not have a NPU
 
+
+IF CUPY_CANN_VERSION >= 851:
+    # aclrtPointerGetAttributes() is verified in the CANN 8.5.1 and 9.0.1
+    # headers (acl/acl_rt.h); older CANN (e.g. 8.2) is NOT verified to have
+    # it, so those builds keep the conservative fallback implementation of
+    # pointerGetAttributes() below.
+    cdef extern from 'acl/acl_rt.h' nogil:
+        ctypedef enum aclrtMemLocationType:
+            ACL_MEM_LOCATION_TYPE_HOST
+            ACL_MEM_LOCATION_TYPE_DEVICE
+            ACL_MEM_LOCATION_TYPE_UNREGISTERED
+            ACL_MEM_LOCATION_TYPE_HOST_NUMA
+
+        ctypedef struct aclrtMemLocation:
+            unsigned int id
+            aclrtMemLocationType type
+
+        ctypedef struct aclrtPtrAttributes:
+            aclrtMemLocation location
+            unsigned int pageSize
+            unsigned int rsv[4]
+
+        int aclrtPointerGetAttributes(const void* ptr,
+                                      aclrtPtrAttributes* attrs)
+
 cpdef int driverGetVersion() except? -1:
     cdef int version
     status = cudaDriverGetVersion(&version)
@@ -778,7 +803,32 @@ cpdef memAdvise(intptr_t devPtr, size_t count, int advice, int device):
     check_status(status)
 
 cpdef PointerAttributes pointerGetAttributes(intptr_t ptr):
-    # TODO: ASCEND yet impl
+    IF CUPY_CANN_VERSION > 0:
+        IF CUPY_CANN_VERSION >= 851:
+            cdef aclrtPtrAttributes attrs
+            cdef int status = aclrtPointerGetAttributes(
+                <const void*>ptr, &attrs)
+            if status == 0:
+                if attrs.location.type == ACL_MEM_LOCATION_TYPE_DEVICE:
+                    # location.id is the id of the NPU device owning the
+                    # memory: this also works for peer-device pointers,
+                    # resolving the old "assume current device" TODO.
+                    return PointerAttributes(
+                        <int>attrs.location.id, ptr, 0, memoryTypeDevice)
+                if (attrs.location.type == ACL_MEM_LOCATION_TYPE_HOST or
+                        attrs.location.type ==
+                        ACL_MEM_LOCATION_TYPE_HOST_NUMA):
+                    return PointerAttributes(
+                        cudaCpuDeviceId, 0, ptr, memoryTypeHost)
+                # ACL_MEM_LOCATION_TYPE_UNREGISTERED / unknown
+                return PointerAttributes(
+                    cudaCpuDeviceId, 0, ptr, memoryTypeUnregistered)
+            # Query failed (e.g. ACL_ERROR_INVALID_PARAM): do not raise,
+            # keep the conservative fallback so callers like dlpack/pinned
+            # memory probing do not break.
+        # Fallback: old CANN, or aclrtPointerGetAttributes() failed --
+        # assume the pointer lives on the current device.
+        return PointerAttributes(getDevice(), ptr, 0, 0)
     return None
 
 IF CUPY_CANN_VERSION <= 0:
