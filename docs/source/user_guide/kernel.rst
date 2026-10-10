@@ -101,10 +101,10 @@ For example, the above kernel can be further made generic over multiple argument
 Note that this kernel requires the output argument to be explicitly specified, because the type ``Z`` cannot be automatically determined from the input arguments.
 
 
-Gufunc-like array-wise operations
----------------------------------
+Array-wise operations
+---------------------
 
-ElementwiseKernel supports array-wise operations comparable to NumPy's `generalized universal functions <https://numpy.org/doc/stable/reference/c-api/generalized-ufuncs.html>`_ (gufuncs). Information about core-dimensionality specified in NumPy through the gufunc signature, is specified in ElementwiseKernel through annotations in ``in_params`` and ``out_params``.
+ElementwiseKernel supports array-wise operations comparable to NumPy's `generalized universal functions <https://numpy.org/doc/stable/reference/c-api/generalized-ufuncs.html>`_ (gufuncs). Information about core-dimensionality specified in NumPy through the gufunc signature is specified in ElementwiseKernel through annotations in ``in_params`` and ``out_params``.
 
 A polynomial evaluation kernel with NumPy gufunc signature ``'(n),()->()'`` can be defined as:
 
@@ -138,19 +138,21 @@ Any valid Python identifier may be used for dimension names (e.g. ``n`` above) i
    ...     'dot_product')
 
 
-Not that this implementation is not efficient for dot products of large vectors. Each dot product is computed serially despite opportunities for parallelization. ElementwiseKernel's gufunc-like capabilities are best for parallelizing over large batches of relatively small core computations, especially those involving inherently sequential algorithms like Horner's method used in the polynomial evaluation kernel above.
+Note that this implementation is not efficient for dot products of large vectors. Each dot product is computed serially despite opportunities for parallelization. ElementwiseKernel's gufunc-like capabilities are best for parallelizing over large batches of relatively small core computations, especially those involving inherently sequential algorithms like Horner's method used in the polynomial evaluation kernel above.
 
-ElementwiseKernel supports specifying the sizes of output core dimensions through arithmetic expressions involving identifiers for the sizes of input core dimensions. A kernel that computes the pairwise distances among ``n`` vectors in ``d`` dimensions can be defined with::
+All functionality from NumPy gufunc signatures is supported except for the ``?`` character for specifying optional core dimensions (as in the signature ``'(m?,n),(n,p?)->(m?,p?)'`` for ``numpy.matmul``).
 
-    in_params='T(n, d) x'
-    out_params='T(n * (n - 1) // 2) y'
+In addition, ElementwiseKernel supports specifying the sizes of output core dimensions through arithmetic expressions involving identifiers for the sizes of input core dimensions. A kernel that computes the pairwise distances among ``n`` vectors in ``d`` dimensions can be defined with::
+
+    in_params = 'T(n, d) x'
+    out_params = 'T(n * (n - 1) // 2) y'
 
 The output core dimension size will be inferred by evaluating the expression ``n * (n - 1) // 2``.
 
 In cases where the size of an output core dimension cannot be directly inferred from the sizes of the input core dimensions, such as::
 
-    in_params='T(m, n) x'
-    out_params='T(p) y'
+    in_params = 'T(m, n) x'
+    out_params = 'T(p) y'
 
 it is up to the user to pass an appropriately sized output array when calling the kernel. All output arrays must be explicitly passed in such cases for kernels with multiple outputs.
 
