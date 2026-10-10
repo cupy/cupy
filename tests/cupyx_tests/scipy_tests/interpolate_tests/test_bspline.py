@@ -7,7 +7,9 @@ from cupy import testing
 from cupy_backends.cuda.api import driver
 from cupy_backends.cuda.api import runtime
 import numpy as np
+import cupy
 import cupyx.scipy.interpolate  # NOQA
+import cupyx.scipy.interpolate as csi
 
 try:
     from scipy import interpolate  # NOQA
@@ -489,3 +491,147 @@ class TestBSpline:
                         x, t, k, self.extrapolate).todense())
 
         return ret
+
+
+# Tests ported from scipy's TestSmoothingSpline (test_bsplines.py), adapted
+# to the fixed-lam scope of the cupyx version: the GCV tests and the
+# tests comparing against R, Julia, Octave and GCVSPL are not ported, and every
+# call passes an explicit ``lam``.
+class TestMakeSmoothingSpline:
+
+    def _get_data(self, n=100):
+        rng = np.random.RandomState(1234)
+        x = np.sort(rng.random_sample(n) * 4 - 2)
+        y = x**2 * np.sin(4 * x) + x**3 + rng.normal(0., 1.5, n)
+        return cupy.asarray(x), cupy.asarray(y)
+
+    def test_invalid_input(self):
+        x, y = self._get_data()
+        n = len(x)
+
+        # ``x`` and ``y`` should have same shapes (1-D array)
+        with pytest.raises(ValueError):
+            csi.make_smoothing_spline(x, y[1:], lam=1.)
+        with pytest.raises(ValueError):
+            csi.make_smoothing_spline(x[1:], y, lam=1.)
+        with pytest.raises(ValueError):
+            csi.make_smoothing_spline(x.reshape(1, n), y, lam=1.)
+
+        # ``x`` should be an ascending array
+        with pytest.raises(ValueError):
+            csi.make_smoothing_spline(x[::-1], y, lam=1.)
+
+        x_dupl = x.copy()
+        x_dupl[0] = x_dupl[1]
+        with pytest.raises(ValueError):
+            csi.make_smoothing_spline(x_dupl, y, lam=1.)
+
+        # ``x`` and ``y`` length must be >= 5
+        with pytest.raises(ValueError, match="at least length 5"):
+            csi.make_smoothing_spline(cupy.arange(4.), cupy.ones(4), lam=1.)
+
+        # GCV is not implemented, ``lam`` is required
+        with pytest.raises(ValueError, match="GCV"):
+            csi.make_smoothing_spline(x, y)
+
+        # ``lam`` should be a non-negative scalar
+        with pytest.raises(ValueError):
+            csi.make_smoothing_spline(x, y, lam=-3.)
+
+    def test_weighted_smoothing_spline(self):
+        # a point with a large weight pulls the spline closer to it
+        x, y = self._get_data()
+        n = len(x)
+        lam = 1e-3
+        spl = csi.make_smoothing_spline(x, y, lam=lam)
+
+        rng = np.random.RandomState(1234)
+        for ind in rng.choice(range(n), size=10):
+            ind = int(ind)
+            w = cupy.ones(n)
+            w[ind] = 30.
+            spl_w = csi.make_smoothing_spline(x, y, w, lam=lam)
+            orig = abs(spl(x[ind]) - y[ind])
+            weighted = abs(spl_w(x[ind]) - y[ind])
+            assert weighted < orig
+
+    def test_user_defined_knots(self):
+        # user-supplied knots are used verbatim in the returned spline
+        x, y = self._get_data(n=10)
+        t = cupy.concatenate([x[:1]] * 4 + [cupy.asarray([-1., 0., 1.])]
+                             + [x[-1:]] * 4)
+        spl = csi.make_smoothing_spline(x, y, lam=1e-3, t=t)
+        testing.assert_allclose(spl.t, t, atol=0)
+
+    @pytest.mark.parametrize('lam', [1e-5, 1e-4, 1e-2, 1.0, 1e2])
+    def test_knots_equal_abscissa(self, lam):
+        # passing the default knot vector explicitly via t= must
+        # reproduce the t=None result
+        x, y = self._get_data(n=10)
+        t = cupy.concatenate([x[:1]] * 3 + [x] + [x[-1:]] * 3)
+        spl1 = csi.make_smoothing_spline(x, y, lam=lam, t=t)
+        spl2 = csi.make_smoothing_spline(x, y, lam=lam)
+        testing.assert_allclose(spl1.t, spl2.t, atol=1e-15)
+        testing.assert_allclose(spl1.c, spl2.c,
+                                atol=1e-12 * max(1.0, lam / 1e-4))
+
+    def test_lam_zero_matches_lsq_spline(self):
+        # at lam=0 the smoothing spline reduces to an ordinary
+        # least-squares spline on the same knots (7 coefficients < 10
+        # data points, so the solution is unique)
+        x, y = self._get_data(n=10)
+        t = cupy.concatenate([x[:1]] * 4 + [cupy.asarray([-1., 0., 1.])]
+                             + [x[-1:]] * 4)
+        spl = csi.make_smoothing_spline(x, y, lam=0.0, t=t)
+        spl_lsq = csi.make_lsq_spline(x, y, t)
+        testing.assert_allclose(spl.t, spl_lsq.t, atol=1e-15)
+        testing.assert_allclose(spl.c, spl_lsq.c, rtol=1e-10)
+
+    def test_user_defined_knots_invalid_cases(self):
+        x, y = self._get_data(n=10)
+        lam = 1e-3
+
+        # not clamped
+        t = cupy.concatenate([x[:1]] * 3 + [x] + [x[-1:]] * 3)[1:]
+        with pytest.raises(ValueError, match="clamped"):
+            csi.make_smoothing_spline(x, y, lam=lam, t=t)
+
+        # too few knots
+        with pytest.raises(ValueError, match="at least 8 knots"):
+            csi.make_smoothing_spline(x, y, lam=lam,
+                                      t=cupy.concatenate([x[:1]] * 3
+                                                         + [x[-1:]] * 3))
+
+        # decreasing
+        t = cupy.concatenate([x[:1]] * 4 + [cupy.asarray([1., 0., -1.])]
+                             + [x[-1:]] * 4)
+        with pytest.raises(ValueError, match="non-decreasing"):
+            csi.make_smoothing_spline(x, y, lam=lam, t=t)
+
+        # non-finite
+        t = cupy.concatenate([x[:1]] * 4 + [cupy.asarray([cupy.nan])]
+                             + [x[-1:]] * 4)
+        with pytest.raises(ValueError, match="infs or nans"):
+            csi.make_smoothing_spline(x, y, lam=lam, t=t)
+
+    def test_user_defined_knots_axis(self):
+        # for 1-D y, axis 0 and -1 must give identical results
+        x = cupy.linspace(0.0, 1.0, 12)
+        y = cupy.sin(3 * x)
+        t = cupy.concatenate([x[:1]] * 4 + [x[1:-1]] + [x[-1:]] * 4)
+        spl0 = csi.make_smoothing_spline(x, y, lam=1e-3, t=t, axis=0)
+        spl1 = csi.make_smoothing_spline(x, y, lam=1e-3, t=t, axis=-1)
+        xx = cupy.linspace(0, 1, 50)
+        testing.assert_allclose(spl0(xx), spl1(xx), rtol=1e-15)
+
+    @testing.with_requires("scipy>=2.0")
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-10, rtol=1e-10)
+    def test_matches_scipy_user_knots(self, xp, scp):
+        # cross-library agreement at fixed lam
+        rng = np.random.RandomState(1234)
+        x = np.sort(rng.random_sample(50) * 4 - 2)
+        y = x**2 * np.sin(4 * x) + x**3 + rng.normal(0., 1.5, 50)
+        x, y = map(xp.asarray, (x, y))
+        t = xp.concatenate([x[:1]] * 4 + [x[5:-5:4]] + [x[-1:]] * 4)
+        spl = scp.interpolate.make_smoothing_spline(x, y, lam=1e-3, t=t)
+        return spl(xp.linspace(-2, 2, 100))
