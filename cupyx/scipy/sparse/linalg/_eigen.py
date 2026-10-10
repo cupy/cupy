@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import warnings
+
 import numpy
 import cupy
 
@@ -37,6 +39,34 @@ def _default_v0(n, dtype, rs):
     else:                                   # cupy.random.Generator
         u = rs.random((n,))
     return u.astype(dtype, copy=False)
+
+
+def _check_hermitian(a, n):
+    """Cheap Hermitian check with one fixed probe vector z:
+    compare a @ z against a^H z = conj(a.T @ conj(z)) (a.T is a free view
+    for dense and for CSR<->CSC). The Lanczos recurrence assumes a Hermitian
+    operator; a non-Hermitian input either yields invalid results or trips
+    the breakdown guard, which reports lost orthogonality and names remedies
+    that cannot help (gh-9019) -- warn so the cause is stated first.
+    Matrices Hermitian up to roundoff pass (sqrt(eps) relative tolerance).
+    LinearOperator inputs cannot be probed cheaply and are trusted, matching
+    SciPy. Cost: two matvecs, negligible next to the solve."""
+    if isinstance(a, _interface.LinearOperator):
+        return
+    z = (cupy.arange(1, n + 1) * (1.0 / n)).astype(a.dtype)
+    z[1::2] *= -1                     # oscillatory + smooth content
+    az = a @ z
+    ahz = cupy.conj(a.T @ cupy.conj(z))
+    nrm = max(float(cupy.linalg.norm(az)), float(cupy.linalg.norm(ahz)))
+    diff = float(cupy.linalg.norm(az - ahz))
+    rtol = float(numpy.sqrt(numpy.finfo(a.dtype).eps))
+    if diff > rtol * nrm:
+        warnings.warn(
+            'eigsh assumes a Hermitian operator, but the input appears '
+            'non-Hermitian (||A z - A^H z|| = {:.3e} vs ||A z|| = {:.3e} '
+            'for a probe vector z); the result will be invalid, or the '
+            'Lanczos recurrence will break down'.format(
+                diff, nrm), UserWarning)
 
 
 def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
@@ -184,6 +214,11 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
     if which not in ('LM', 'LA', 'SA', 'SM'):
         raise ValueError('which must be \'LM\', \'LA\', \'SA\' or \'SM\' '
                          '(actual: {})'.format(which))
+
+    # Probe before the shift-invert dispatch: that path drives _eigsh_impl on
+    # OPinv, a LinearOperator, which is trusted and so never probed, leaving
+    # the caller's own matrix unchecked.
+    _check_hermitian(a, n)
 
     if which == 'SM':
         if sigma is not None:

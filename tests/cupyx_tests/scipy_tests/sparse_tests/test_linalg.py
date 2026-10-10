@@ -356,6 +356,9 @@ class TestEigsh:
         raises=AssertionError,
         strict=False,
     )
+    # B @ C below is deliberately NON-symmetric (that is gh-5001's setup);
+    # the Hermitian probe correctly flags it, so silence the expected warning
+    @pytest.mark.filterwarnings('ignore:eigsh assumes a Hermitian')
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(rtol=tol, atol=tol, sp_name='sp')
     def test_dense_low_rank(self, dtype, xp, sp):
@@ -462,6 +465,79 @@ class TestEigsh:
         v_v0 = cupy.copysign(ev_v0[:, 0], v)
 
         assert cupy.linalg.norm(v - v_v0) < cupy.linalg.norm(v - v_aux)
+
+
+class TestEigshHermitianCheck:
+
+    def _mk(self, dtype, hermitian):
+        a = testing.shaped_random((50, 50), cupy, dtype=dtype, seed=3)
+        if hermitian:
+            a = (a + a.conj().T) / 2
+        return sparse.csr_matrix(a)
+
+    @testing.for_dtypes('fdFD')
+    def test_non_hermitian_warns(self, dtype):
+        # Lanczos assumes a Hermitian operator; a non-Hermitian input
+        # yields invalid results or trips the breakdown guard (gh-9019).
+        # eigsh probes cheaply and names the cause either way. Whether a
+        # given non-Hermitian input survives the solve is not part of
+        # this contract, so the guard's RuntimeError is tolerated here.
+        a = self._mk(dtype, hermitian=False)
+        with pytest.warns(UserWarning, match='non-Hermitian'):
+            try:
+                sparse.linalg.eigsh(a, k=6, return_eigenvectors=False)
+            except RuntimeError:
+                pass
+
+    @testing.for_dtypes('fdFD')
+    def test_hermitian_no_warning(self, dtype):
+        a = self._mk(dtype, hermitian=True)
+        with warnings.catch_warnings():
+            warnings.simplefilter('error', UserWarning)
+            sparse.linalg.eigsh(a, k=6, return_eigenvectors=False)
+
+    def test_dense_non_hermitian_warns(self):
+        a = testing.shaped_random((50, 50), cupy, dtype='d', seed=3)
+        with pytest.warns(UserWarning, match='non-Hermitian'):
+            try:
+                sparse.linalg.eigsh(a, k=6, return_eigenvectors=False)
+            except RuntimeError:
+                pass
+
+    def test_warning_precedes_the_breakdown_error(self):
+        # The point of the probe. The guard reports lost orthogonality and
+        # suggests a smaller ncv, a different v0, or float64; for a
+        # non-Hermitian operator none of those help, because the cause is
+        # the operator. Assert the probe names it before the guard fires.
+        a = self._mk('f', hermitian=False)
+        with warnings.catch_warnings(record=True) as log:
+            warnings.simplefilter('always')
+            with pytest.raises(RuntimeError, match='orthogonality'):
+                sparse.linalg.eigsh(a, k=6, return_eigenvectors=False)
+        assert any('non-Hermitian' in str(w.message) for w in log)
+
+    @testing.with_requires('scipy')
+    @pytest.mark.parametrize('kwargs', [{'sigma': 0.5}, {'which': 'SM'}])
+    def test_shift_invert_probes_the_input_matrix(self, kwargs):
+        # Shift-invert drives _eigsh_impl on OPinv, a LinearOperator, which
+        # is trusted and so never probed. The probe has to run on the
+        # caller's own matrix, before that dispatch.
+        a = self._mk('d', hermitian=False)
+        with pytest.warns(UserWarning, match='non-Hermitian'):
+            try:
+                sparse.linalg.eigsh(a, k=3, return_eigenvectors=False,
+                                    **kwargs)
+            except RuntimeError:
+                pass
+
+    def test_linear_operator_not_probed(self):
+        # LinearOperator inputs cannot be probed cheaply; trusted (SciPy
+        # behaviour). Must not warn.
+        a = self._mk('d', hermitian=True)
+        op = sparse.linalg.aslinearoperator(a)
+        with warnings.catch_warnings():
+            warnings.simplefilter('error', UserWarning)
+            sparse.linalg.eigsh(op, k=6, return_eigenvectors=False)
 
 
 @testing.with_requires('scipy')
