@@ -22,24 +22,86 @@ from cupy._core cimport internal
 #   args = [axis, stable, descending]  int64 / bool / bool
 # aclnnSort always returns ascending order when descending is false, and CuPy's
 # public sorting API is ascending only, so descending stays 0 here.
+cdef str _sort_key_dtype(_ndarray_base a):
+    """Return the signed-int dtype whose bit order equals `a`'s float order.
+
+    For IEEE-754 floats the sign bit is the MSB, so comparing the raw bit
+    patterns as *signed* integers orders the values exactly like the floats
+    (all negatives below all positives, magnitude-monotonic within each sign
+    group).  Sorting the bit pattern as int32/int64 therefore sorts the floats.
+    Only deviation: -NaN sorts before -inf (numpy moves every NaN to the end).
+    Returns None for non-float dtypes (which sort natively on the NPU).
+    """
+    if a.dtype == numpy.float32:
+        return 'int32'
+    if a.dtype == numpy.float64:
+        return 'int64'
+    return None
+
+
 cdef _ascend_sort(_ndarray_base self, _ndarray_base out, int axis):
     """Sort `self` along `axis`; the sorted values are written into `out`."""
     # CANN 8.5 aclnnSort does not accept nullptr as indices, not in used after return
     cdef _ndarray_base  indices = core.ndarray(out.shape, dtype=numpy.int64)
-    launch_general_func(
-        "ascend_sort",
-        [self], [out, indices],
-        [axis, 1, 0],  # axis, stable, descending
-        {}, 0)
+    cdef str key_dtype = _sort_key_dtype(self)
+    try:
+        if key_dtype is not None:
+            # CANN 9.0.1: the aclnnSort float kernels crash the vector core
+            # much earlier than the int kernels (>= ~2M f32 elements vs
+            # >= ~4M int32), reporting ACL_ERROR_NAME_UNKNOWN with an
+            # "fftsplus aivector error" device exception.  Sorting the
+            # IEEE-754 bit pattern as *signed* ints orders the floats
+            # identically (the sign bit is the MSB), so run the int kernels.
+            launch_general_func(
+                "ascend_sort",
+                [self.view(key_dtype)], [out.view(key_dtype), indices],
+                [axis, 1, 0],  # axis, stable, descending
+                {}, 0)
+        else:
+            launch_general_func(
+                "ascend_sort",
+                [self], [out, indices],
+                [axis, 1, 0],  # axis, stable, descending
+                {}, 0)
+        # The kernel fault is ASYNC: the launch returns fine and the device
+        # exception only surfaces on the next sync.  Sync here so the CPU
+        # fallback below can actually catch it (and callers see either a
+        # fully sorted result or a raised error, never a silent partial one).
+        cupy.cuda.runtime.deviceSynchronize()
+    except Exception:
+        # The aclnnSort kernels fault on the device for large inputs
+        # (int32 >= ~4M, int64/f64 >= ~10M elements on CANN 9.0.1/910B).
+        # Correctness first: finish the sort on the host.  The device
+        # exception does not poison the context (verified: ops launched
+        # after the fault run normally).
+        host = numpy.sort(self.get(), axis=axis)
+        out[...] = cupy.asarray(host)
+        cupy.cuda.runtime.deviceSynchronize()
 
 
 cdef _ascend_argsort(_ndarray_base self, _ndarray_base out, int axis):
     """Write the argsort indices of `self` along `axis` into `out`."""
-    launch_general_func(
-        "ascend_argsort",
-        [self], [out],
-        [axis, 0],  # dim, descending
-        {}, 0)
+    cdef str key_dtype = _sort_key_dtype(self)
+    try:
+        if key_dtype is not None:
+            # Same float aclnnSort kernel fault as _ascend_sort; the argsort
+            # order of the bit pattern is the argsort order of the floats.
+            launch_general_func(
+                "ascend_argsort",
+                [self.view(key_dtype)], [out],
+                [axis, 0],  # dim, descending
+                {}, 0)
+        else:
+            launch_general_func(
+                "ascend_argsort",
+                [self], [out],
+                [axis, 0],  # dim, descending
+                {}, 0)
+        cupy.cuda.runtime.deviceSynchronize()  # surface async kernel faults
+    except Exception:
+        host = numpy.argsort(self.get(), axis=axis).astype(numpy.int64)
+        out[...] = cupy.asarray(host)
+        cupy.cuda.runtime.deviceSynchronize()
 
 
 cdef _ndarray_sort(_ndarray_base self, int axis):
