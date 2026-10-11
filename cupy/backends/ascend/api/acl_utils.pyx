@@ -1130,6 +1130,37 @@ cdef dict _FLOAT64_TO_FLOAT32_PROMOTE = {
     'D': 'F',   # complex128 -> complex64
 }
 
+# 超越/取整类 ufunc 的整型提升：aclnn 的 exp/log/sin/cosh/... 内核只收
+# 浮点（连 INT32 都不收，常开层的 'b'->'i' 提升对它们无效，报
+# ret=500003 "Failed to run WorkspaceSize"）。numpy 语义里这些函数对整型
+# 输入返回浮点（exp/abs 类）或同整型（rint/ceil 类），统一按 float32
+# 计算后 cast 回原 out dtype 即可两全（f32 可精确表示 int16 全域）。
+cdef dict _INT_TO_FLOAT_PROMOTE = {
+    '?': 'f', 'b': 'f', 'B': 'f', 'h': 'f', 'H': 'f',
+    'i': 'f', 'I': 'f', 'l': 'f', 'L': 'f', 'q': 'f', 'Q': 'f',
+    # ufunc loop 对整型输入可能选 float16 out（如 rint(int8)->f16），而
+    # aclnn 的 round/ceil 内核要求 in/out dtype 一致 —— 统一按 f32 算，
+    # cast 回 f16 无损。
+    'e': 'f',
+}
+
+#: 无整型内核的 ufunc（不含 ascend_inplace_ 前缀，匹配时自动剥掉）。
+#: square: np.square(int)->int, f32 计算后 cast 回整型无损。
+cdef set _INT_TO_FLOAT_OPS = {
+    'ascend_exp', 'ascend_exp2', 'ascend_expm1',
+    'ascend_log', 'ascend_log10', 'ascend_log2', 'ascend_log1p',
+    'ascend_logaddexp', 'ascend_logaddexp2',
+    'ascend_sin', 'ascend_cos', 'ascend_tan',
+    'ascend_arcsin', 'ascend_arccos', 'ascend_arctan', 'ascend_arctan2',
+    'ascend_sinh', 'ascend_cosh', 'ascend_tanh',
+    'ascend_arcsinh', 'ascend_arccosh', 'ascend_arctanh',
+    'ascend_sqrt', 'ascend_rsqrt', 'ascend_cbrt', 'ascend_sinc',
+    'ascend_deg2rad', 'ascend_rad2deg', 'ascend_hypot', 'ascend_float_power',
+    'ascend_ceil', 'ascend_floor', 'ascend_rint', 'ascend_trunc',
+    'ascend_fix', 'ascend_fabs', 'ascend_square',
+}
+
+
 cdef dict _ASCEND_DTYPE_PROMOTE_ALL = dict(_ASCEND_DTYPE_PROMOTE)
 _ASCEND_DTYPE_PROMOTE_ALL.update(_FLOAT64_TO_FLOAT32_PROMOTE)
 
@@ -1188,13 +1219,32 @@ cdef dict ascend_float64_demote_table():
     return _FLOAT64_TO_FLOAT32_PROMOTE
 
 
-cdef bint _has_promotable_io(sequence arrs):
+cdef bint _has_promotable_io(sequence arrs, str opname):
     cdef object a
-    cdef dict table = _promote_table()
+    cdef dict table = _effective_promote_table(opname)
     for a in arrs:
         if isinstance(a, _ndarray_base) and a.dtype.char in table:
             return True
     return False
+
+
+cdef dict _effective_promote_table(str opname):
+    """按 op 取有效提升表：基础表 (+ 超越/取整类整型->f32 表)。
+
+    门控（_has_promotable_io）与执行层（_promote_io_dtype）必须共用本函数，
+    否则门控用默认表漏判（如 ceil 的 int32 输入）会整个跳过 promote。
+    """
+    cdef dict table
+    if ascend_float64_promote_enabled():
+        table = dict(_ASCEND_DTYPE_PROMOTE_ALL)
+    else:
+        table = dict(_ASCEND_DTYPE_PROMOTE)
+    cdef str _bare = opname
+    if _bare.startswith('ascend_inplace_'):
+        _bare = 'ascend_' + _bare[len('ascend_inplace_'):]
+    if _bare in _INT_TO_FLOAT_OPS:
+        table.update(_INT_TO_FLOAT_PROMOTE)
+    return table
 
 
 cdef tuple _promote_io_dtype(str opname, sequence ins, sequence outs):
@@ -1214,7 +1264,10 @@ cdef tuple _promote_io_dtype(str opname, sequence ins, sequence outs):
     列表内），不会被本拦截再次提升，无递归。
     """
     import cupy as _cupy_mod
-    cdef dict table = _promote_table()
+    cdef dict table = _effective_promote_table(opname)
+    if os.environ.get('CUPY_ASCEND_DBG_PROMOTE') == '1':
+        print(f'PROMOTE_DBG {opname} table_int2f='
+              f'{opname in _INT_TO_FLOAT_OPS}')
     cdef list p_ins = list(ins)
     cdef list p_outs = list(outs)
     cdef list orig_outs = []
@@ -1324,7 +1377,7 @@ cdef aclError launch_general_func_raw(str opname, sequence ins, sequence outs, l
     cdef list _cast_src
     cdef aclError _cret
     cdef bint _promoted = False
-    if opname not in _UINT_PROMOTE_EXEMPT_OPS and (_has_promotable_io(ins) or _has_promotable_io(outs)):
+    if opname not in _UINT_PROMOTE_EXEMPT_OPS and (_has_promotable_io(ins, opname) or _has_promotable_io(outs, opname)):
         ins, outs, _orig_outs, _cast_src = _promote_io_dtype(opname, ins, outs)
         # 修复 1（Float64Workaround.md P1）：ins/args/kwargs 里的 CScalar
         # 一并降档（arange 的 start/step、fill 的填充值都在这里），保证
@@ -1713,7 +1766,7 @@ cdef aclError launch_elementwise_func_raw(str opname, sequence ins, sequence out
     cdef list _cast_src
     cdef aclError _cret
     cdef bint _promoted = False
-    if opname not in _UINT_PROMOTE_EXEMPT_OPS and (_has_promotable_io(ins) or _has_promotable_io(outs)):
+    if opname not in _UINT_PROMOTE_EXEMPT_OPS and (_has_promotable_io(ins, opname) or _has_promotable_io(outs, opname)):
         ins, outs, _orig_outs, _cast_src = _promote_io_dtype(opname, ins, outs)
         # 修复 1（Float64Workaround.md P1）：标量操作数同步降档，使
         # scalar_binary_op 的 aclScalar 与提升后的 tensor dtype 一致。
