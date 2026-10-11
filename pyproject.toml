@@ -11,9 +11,9 @@ build-backend = "setuptools.build_meta"
 # *import* packages stay `cupy`/`cupyx`/`cupy_backends` — the same trick as
 # scikit-learn/sklearn or opencv-python/cv2 — so existing `import cupy` code
 # keeps working.
-name = "cupy"
+name = "numpy-ascend"
 description = "NumPy & SciPy for GPU and Ascend NPU (CuPy-compatible)"
-authors = [{ name = "Seiya Tokui", email = "tokui@preferred.jp" }]
+authors = [{ name = "qingfeng xia, cupy authors", email = "tokui@preferred.jp" }]
 maintainers = [{ name = "CuPy Developers" }]
 license = { text = "MIT" }
 # license-files = ["LICENSE", "docs/source/license.rst"]
@@ -23,7 +23,6 @@ classifiers = [
   "Intended Audience :: Developers",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
@@ -35,7 +34,7 @@ classifiers = [
   "Operating System :: POSIX",
   "Operating System :: Microsoft :: Windows",
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
   "numpy>=1.24,<2.6", # see #4773
   "fastrlock>=0.5",
@@ -48,7 +47,7 @@ dynamic = [
 [project.optional-dependencies]
 "all" = [
   "scipy>=1.10,<1.17", # see #4773
-  "Cython>=3",
+  "Cython>=3.1,<3.2",
   "optuna>=2.0",
 ]
 "test" = ["packaging", "pytest>=7.2", "hypothesis>=6.37.2,<6.55.0", "mpmath"]

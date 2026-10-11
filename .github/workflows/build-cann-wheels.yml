@@ -1,0 +1,219 @@
+# Build Ascend (CANN) wheels on GitHub Actions.
+#
+# NOTE: This workflow ONLY builds wheels — no NPU is attached to GitHub
+# runners, so no numeric tests are run. The only check performed inside the
+# CANN container is "compile + link + import cupy._core" (L1-L3); real device
+# tests must run on a self-hosted 910B/Atlas runner (see self-hosted-ci.yml).
+#
+# Wheels are auto-named by setup.py per CANN release train, e.g.
+#   numpy_ascend_cann90-14.0.0a1-cp311-cp311-manylinux_2_17_x86_64.cann9.0.whl
+# so no manual naming is needed here. The sdist is CANN-agnostic (bare
+# `numpy_ascend-*.tar.gz`) and builds once.
+#
+# CANN base images come from quay.io/ascend/cann. Tag patterns look like
+# `<cann>-<soc>-<os>-py<ver>[-devel]` (e.g. 9.0.1-910b-ubuntu22.04-py3.11).
+# Verify available tags at https://quay.io/repository/ascend/cann before
+# dispatching — the tag also fixes the default container Python (uv installs
+# the requested CPython anyway) and the image architecture must match the
+# runner (x86_64 tags on ubuntu-latest, aarch64 tags on ubuntu-24.04-arm).
+
+name: build-cann-wheels
+
+on:
+  workflow_dispatch:
+    inputs:
+      cann_tags:
+        description: "Comma-separated quay.io/ascend/cann tags"
+        default: "9.0.1-910b-ubuntu22.04-py3.12,9.0.1-a3-ubuntu22.04-py3.11"
+      pythons:
+        description: "Comma-separated CPython versions"
+        default: "3.11,3.12"
+      archs:
+        description: "Comma-separated archs (x86_64, aarch64)"
+        default: "x86_64"
+      target:
+        description: "Publish target"
+        default: "build-only"
+        type: choice
+        options: [build-only, testpypi, pypi]
+      socs:
+        description: "Optional CUPY_ASCEND_KERNEL_SOCS for AOT AscendC kernels (e.g. Ascend910B4); empty = skip"
+        default: ""
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  # GitHub Actions expressions have no split()/replace(), so expand the CSV
+  # inputs to JSON arrays here (the fromJson(format(replace(...))) trick in
+  # docs/ascend/github_packaging_pypi.md does not work).
+  gen-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      cann_tags: ${{ steps.m.outputs.cann_tags }}
+      pythons: ${{ steps.m.outputs.pythons }}
+      archs: ${{ steps.m.outputs.archs }}
+    steps:
+      - id: m
+        env:
+          CANN_TAGS: ${{ inputs.cann_tags || '9.0.1-910b-ubuntu22.04-py3.12' }}
+          PYTHONS: ${{ inputs.pythons || '3.12' }}
+          ARCHS: ${{ inputs.archs || 'x86_64' }}
+        run: |
+          j() { printf '%s' "$1" | jq -Rsc 'split(",") | map(gsub("^\\s+|\\s+$";"")) | map(select(length > 0))'; }
+          echo "cann_tags=$(j "$CANN_TAGS")" >> "$GITHUB_OUTPUT"
+          echo "pythons=$(j "$PYTHONS")"     >> "$GITHUB_OUTPUT"
+          echo "archs=$(j "$ARCHS")"         >> "$GITHUB_OUTPUT"
+
+  wheel:
+    needs: gen-matrix
+    strategy:
+      fail-fast: false
+      matrix:
+        cann_tag: ${{ fromJson(needs.gen-matrix.outputs.cann_tags) }}
+        python: ${{ fromJson(needs.gen-matrix.outputs.pythons) }}
+        arch: ${{ fromJson(needs.gen-matrix.outputs.archs) }}
+    # aarch64 CANN images need an arm runner; do NOT build them under QEMU.
+    runs-on: ${{ matrix.arch == 'aarch64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
+    timeout-minutes: 180
+    env:
+      IMAGE: quay.io/ascend/cann:${{ matrix.cann_tag }}
+    steps:
+      - uses: actions/checkout@v4
+        # third_party submodules are not needed: the Ascend build disables
+        # them (see setup.py / cupy_builder), so keep checkout fast.
+
+      - name: Log in to Quay.io (optional, avoids anonymous-pull rate limits)
+        if: ${{ secrets.QUAY_ROBOT_USER != '' }}
+        env:
+          QUAY_ROBOT_USER: ${{ secrets.QUAY_ROBOT_USER }}
+          QUAY_ROBOT_TOKEN: ${{ secrets.QUAY_ROBOT_TOKEN }}
+        run: echo "$QUAY_ROBOT_TOKEN" | docker login quay.io -u "$QUAY_ROBOT_USER" --password-stdin
+
+      - name: Build wheel inside CANN container
+        env:
+          # Optional AOT kernel SoCs, only passed through when non-empty
+          SOCS: ${{ inputs.socs }}
+        run: |
+          set -euo pipefail
+          docker pull "$IMAGE"
+
+          SOC_ARGS=()
+          if [ -n "$SOCS" ]; then
+            SOC_ARGS=(-e "CUPY_ASCEND_KERNEL_SOCS=$SOCS")
+          fi
+
+          mkdir -p dist
+          docker run --rm -i \
+            -v "$PWD":/src -w /src \
+            -e CUPY_INSTALL_USE_ASCEND=1 \
+            -e CANN_PYTHON="${{ matrix.python }}" \
+            "${SOC_ARGS[@]}" \
+            "$IMAGE" bash -s <<'BUILD_SCRIPT'
+            set -euxo pipefail
+            PYVER="$CANN_PYTHON"
+
+            # CANN environment (set_env.sh exports ASCEND_HOME_PATH and
+            # LD_LIBRARY_PATH for libascendcl etc.)
+            if [ -f /usr/local/Ascend/ascend-toolkit/set_env.sh ]; then
+              # shellcheck disable=SC1091
+              . /usr/local/Ascend/ascend-toolkit/set_env.sh
+            fi
+            export ASCEND_HOME_PATH="${ASCEND_HOME_PATH:-/usr/local/Ascend/ascend-toolkit/latest}"
+
+            # The image's bundled Python is fixed by its tag; install the
+            # requested CPython with uv instead of fragile
+            # update-alternatives juggling.
+            curl -LsSf https://astral.sh/uv/install.sh | sh
+            export PATH="$HOME/.local/bin:$PATH"
+            uv python install "$PYVER"
+            uv venv /opt/venv --python "$PYVER"
+            . /opt/venv/bin/activate
+
+            # Build requirements must be pre-installed for --no-isolation
+            # (keep in sync with pyproject.toml [build-system].requires).
+            uv pip install "pip>=24" "setuptools>=77" wheel \
+              "Cython>=3,<3.2" fastrlock "numpy>=1.24,<2.6" build
+
+            python -V
+            python -m build --wheel --no-isolation -o /src/dist
+
+            # Smoke check (no NPU on CI): install the wheel and import the
+            # compiled core from outside /src so the source tree does not
+            # shadow the installed package.
+            uv pip install /src/dist/*.whl
+            cd /tmp
+            python -c "import cupy._core; print('import cupy._core OK')"
+            ls -l /src/dist
+          BUILD_SCRIPT
+
+          # The container runs as root; fix ownership before uploading.
+          sudo chown -R "$(id -u):$(id -g)" dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheel-${{ matrix.cann_tag }}-py${{ matrix.python }}-${{ matrix.arch }}
+          path: dist/*.whl
+          if-no-files-found: error
+
+  sdist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # One CANN-agnostic tarball (numpy_ascend-<ver>.tar.gz); building an
+      # sdist needs no CANN at all (sdist keeps Cython sources only).
+      - run: python -m pip install -U build && python -m build --sdist -o dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sdist
+          path: dist/*.tar.gz
+          if-no-files-found: error
+
+  publish:
+    needs: [wheel, sdist]
+    # build-only dispatch: stop after uploading artifacts.
+    if: github.event_name == 'release' || inputs.target != 'build-only'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write   # OIDC Trusted Publishing (no PyPI token needed)
+      contents: write   # attach wheels to the GitHub Release
+    environment: ${{ (github.event_name == 'release' || inputs.target == 'pypi') && 'pypi' || 'testpypi' }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: "*"
+          path: dist
+          merge-multiple: true
+
+      - name: Twine check
+        run: python -m pip install twine && python -m twine check dist/*
+
+      - name: Attach artifacts to the GitHub Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+
+  publish-pypi:
+    if: github.event_name != 'workflow_dispatch' || inputs.target == 'pypi'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi          # 与 PyPI pending 的 Environment 一致；没填就删这行
+      url: https://pypi.org/project/<你的项目名>/
+    permissions:
+      id-token: write     # OIDC 必开，只给发布 job
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - name: twine check
+        run: pip install twine && twine check dist/*
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        # 不写 username/password；v1.11+ 默认生成 PEP 740 证明(attestation)
