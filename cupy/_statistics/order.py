@@ -26,9 +26,9 @@ def _get_percentile_weightnening_kernel():
     return cupy.ElementwiseKernel(
         'S idx, raw T a, int64 nsamples_, int64 nq_', 'U ret',
         '''
-        using index_t = decltype(i);
+        using index_t = decltype(a)::index_t;
         index_t nsamples = static_cast<index_t>(nsamples_);
-        index_t nq = static_cast<index_t>(nq_);
+        decltype(i) nq = static_cast<decltype(i)>(nq_);
 
         index_t idx_below = floor(idx);
         U weight_above = idx - idx_below;
