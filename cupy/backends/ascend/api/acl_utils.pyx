@@ -2812,6 +2812,8 @@ cdef extern from "../acl_general_ops.h" nogil:
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
     aclError aclop_Heaviside(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    aclError aclop_ReplaceNan(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
 
 
 cdef extern from "../acl_random_ops.h" nogil:
@@ -2894,6 +2896,9 @@ cdef void register_irregular_operators():
     _register_general("ascend_nan_to_num_", aclop_NanToNum)
     _register_general("ascend_divmod", aclop_Divmod)
     _register_general("ascend_heaviside", aclop_Heaviside)
+    # ElementwiseKernel cupy_replace_nan (cupy/_math/sumprod.py) behind
+    # cupy.nancumsum / cupy.nancumprod
+    _register_general("ascend_replace_nan", aclop_ReplaceNan)
     # complex construction: (re, im) -> complex
     _register_general("ascend_complex", aclop_Complex)
     # copyto(dst, src, where=mask): scalar vs tensor source

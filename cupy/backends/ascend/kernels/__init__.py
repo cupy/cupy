@@ -35,7 +35,7 @@ CUSTOM_UFUNCS = {
     },
     'angle': {
         'bin': 'elementwise', 'entry': 'ascendc_angle_f32',
-        'n_out': 1, 'n_in': 1, 'dtypes': ('F',),
+        'n_out': 1, 'n_in': 1, 'dtypes': ('f',),  # np.angle out is float
     },
     'imag': {
         'bin': 'elementwise', 'entry': 'ascendc_imag_f32',

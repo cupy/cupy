@@ -83,6 +83,16 @@ ACLNN_API aclnnStatus aclnnInplaceFillDiagonal(
 #include "aclnnop/aclnn_masked_select.h"
 // numpy.where(cond, x, y)
 #include "aclnnop/aclnn_s_where.h"
+#include "aclnnop/aclnn_cast.h"        // where(): cast the condition to bool
+#include "aclnnop/aclnn_ne_tensor.h"   // isnan := (a != a), replace_nan() composition
+// heaviside: aclnn_heaviside.h ships since CANN 8.2 (included at the top of
+// this file); the *kernel symbol* aclnnHeaviside lives in libopapi.so (CANN
+// >= 8.5 opapi layout), while 8.2 links libaclnn_ops_* which does not export
+// it -- hence the call site below is gated by CUPY_CANN_VERSION >= 900.
+#include "aclnnop/aclnn_abs.h"         // isclose() composition
+#include "aclnnop/aclnn_le_tensor.h"   // isclose(): |a-b| <= tol
+#include "aclnnop/aclnn_logical_or.h"  // isclose(equal_nan=True)
+// (aclnnMuls / aclnnAdds live in aclnn_mul.h / aclnn_add.h, included below)
 // numpy.searchsorted(sortedSequence, self, ...)
 #include "aclnnop/aclnn_searchsorted.h"
 // cupy.bincount (ElementwiseKernel cupy_bincount_kernel -> aclop_Bincount)
@@ -309,17 +319,27 @@ ACLNN_API aclnnStatus aclnnInplaceFillDiagonal(
 
     aclError aclop_Heaviside(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
-        aclTensor* self = outs[0];
-        if (args.size()) {
-            std::cout << "ASCEND: scaler version is yet impl for heaviside op\n";
-            return ACL_ERROR_INVALID_PARAM;
-        } else if (ins.size() >= 1) {
-            // return aclBinaryOpRun(self, ins[0], outs[0],
-            //     aclnnHeavisideGetWorkspaceSize, aclnnHeaviside, stream, false);
-            return ACL_ERROR_INVALID_PARAM;  // TODO: need link a new so file?
-        } else {
+        // numpy.heaviside(x1, x2): out = (x1 > 0) ? x1 : x2.  aclnnHeaviside
+        // (input, values, out) implements exactly this.  The header ships
+        // since CANN 8.2, but the kernel symbol is exported only by
+        // libopapi.so (CANN >= 8.5 opapi layout); 8.2 links libaclnn_ops_*
+        // which does not export it (the old "need link a new so file?" TODO),
+        // so the direct call is limited to CANN >= 9.0.
+#if CUPY_CANN_VERSION >= 900
+        if (ins.size() < 2 || outs.empty()) {
+            std::cout << "ASCEND: " << __func__
+                      << " needs 2 tensor operands (x1, x2); a scalar x2 is"
+                         " not supported yet\n";
+            PrintArgs(__func__, args, kwargs, std::cout);
             return ACL_ERROR_INVALID_PARAM;
         }
+        return aclBinaryOpRun(ins[0], ins[1], outs[0],
+            aclnnHeavisideGetWorkspaceSize, aclnnHeaviside, stream, false);
+#else
+        // CANN < 9.0: libaclnn_ops_* does not export aclnnHeaviside
+        // (kernel symbol lives in libopapi, CANN >= 8.5 layout)
+        return ACL_ERROR_API_NOT_SUPPORT;
+#endif
     }
 
     // numpy.arange(numpy.arange([start = 0, ]stop, [step = , ]) 
@@ -485,12 +505,91 @@ ACLNN_API aclnnStatus aclnnInplaceFillDiagonal(
     // TODO: dtype check（CANN 白名单：self/other 整型+浮点+bool，out 只收 BOOL）
     aclError aclop_IsClose(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
         const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        // CANN 9.0.1: aclnnIsClose fails at GetWorkspaceSize (ret=500003) with
+        // an internal "input dtype[DT_BOOL] should be same with output
+        // dtype[DT_INT32]" check, for plain float32 inputs too.  Compose it:
+        //   out = |self - other| <= atol + rtol*|other|
+        //        (| isnan(self) & isnan(other)   when equal_nan)
+        if (ins.size() < 2 || outs.empty()) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
         const aclTensor* self = ins[0];
+        const aclTensor* other = ins[1];
         double rtol = GetScalarArg<double>(args, 0, kwargs, "rtol", 1e-5);
         double atol = GetScalarArg<double>(args, 1, kwargs, "atol", 1e-8);
         bool equal_nan = GetScalarArg<bool>(args, 2, kwargs, "equal_nan", false);
-        return aclIrregularOpRun(aclnnIsCloseGetWorkspaceSize, aclnnIsClose, stream,
-            self, ins[1], rtol, atol, equal_nan, outs[0]);
+
+        aclDataType dtype = ACL_DT_UNDEFINED;
+        aclGetDataType(self, &dtype);
+        // scalars must carry the tensor dtype (aclnnMuls/aclnnAdds requirement)
+        float rtol_f = static_cast<float>(rtol), atol_f = static_cast<float>(atol);
+        float one_f = 1.0f; double one_d = 1.0;
+        const aclScalar* rtol_s = aclCreateScalar(
+            dtype == ACL_DOUBLE ? static_cast<void*>(&rtol) : static_cast<void*>(&rtol_f),
+            dtype == ACL_DOUBLE ? ACL_DOUBLE : ACL_FLOAT);
+        const aclScalar* atol_s = aclCreateScalar(
+            dtype == ACL_DOUBLE ? static_cast<void*>(&atol) : static_cast<void*>(&atol_f),
+            dtype == ACL_DOUBLE ? ACL_DOUBLE : ACL_FLOAT);
+        const aclScalar* one_s = aclCreateScalar(
+            dtype == ACL_DOUBLE ? static_cast<void*>(&one_d) : static_cast<void*>(&one_f),
+            dtype == ACL_DOUBLE ? ACL_DOUBLE : ACL_FLOAT);
+
+        aclTensor* diff = aclTensorLike(self, dtype);  // |self - other|
+        aclTensor* tol = aclTensorLike(self, dtype);   // atol + rtol*|other|
+        aclTensor* nan_pair = equal_nan ? aclTensorLike(self, ACL_BOOL) : nullptr;
+        aclError ret = ACL_SUCCESS;
+        if (rtol_s == nullptr || atol_s == nullptr || one_s == nullptr ||
+            diff == nullptr || tol == nullptr ||
+            (equal_nan && nan_pair == nullptr)) {
+            ret = ACL_ERROR_INVALID_PARAM;
+            goto cleanup_isclose;
+        }
+        // tol = rtol * |other| (abs first so that rtol*other == rtol*|other|)
+        ret = aclBinaryOpRun(other, rtol_s, tol,
+            aclnnMulsGetWorkspaceSize, aclnnMuls, stream, false);
+        if (ret != ACL_SUCCESS) goto cleanup_isclose;
+        ret = aclUnaryOpRun(tol, tol, aclnnAbsGetWorkspaceSize, aclnnAbs, stream, false);
+        if (ret != ACL_SUCCESS) goto cleanup_isclose;
+        // tol += atol (alpha=1)
+        ret = aclIrregularOpRun(aclnnAddsGetWorkspaceSize, aclnnAdds, stream,
+            tol, atol_s, one_s, tol);
+        if (ret != ACL_SUCCESS) goto cleanup_isclose;
+        // diff = |self - other| (aclnnSub takes an alpha, so use the ternary helper)
+        ret = aclTernaryOpRun(self, other, 1.0, diff,
+            aclnnSubGetWorkspaceSize, aclnnSub, stream, false);
+        if (ret != ACL_SUCCESS) goto cleanup_isclose;
+        ret = aclUnaryOpRun(diff, diff, aclnnAbsGetWorkspaceSize, aclnnAbs, stream, false);
+        if (ret != ACL_SUCCESS) goto cleanup_isclose;
+        // outs[0] = diff <= tol
+        ret = aclBinaryOpRun(diff, tol, outs[0],
+            aclnnLeTensorGetWorkspaceSize, aclnnLeTensor, stream, false);
+        if (ret != ACL_SUCCESS) goto cleanup_isclose;
+        if (equal_nan) {
+            // NaN is "close" to NaN: (self != self) & (other != other)
+            ret = aclBinaryOpRun(self, self, nan_pair,
+                aclnnNeTensorGetWorkspaceSize, aclnnNeTensor, stream, false);
+            if (ret != ACL_SUCCESS) goto cleanup_isclose;
+            aclTensor* nan_pair2 = aclTensorLike(other, ACL_BOOL);
+            if (nan_pair2 == nullptr) { ret = ACL_ERROR_INVALID_PARAM; goto cleanup_isclose; }
+            ret = aclBinaryOpRun(other, other, nan_pair2,
+                aclnnNeTensorGetWorkspaceSize, aclnnNeTensor, stream, false);
+            if (ret == ACL_SUCCESS)
+                ret = aclBinaryOpRun(nan_pair, nan_pair2, nan_pair,
+                    aclnnLogicalAndGetWorkspaceSize, aclnnLogicalAnd, stream, false);
+            if (ret == ACL_SUCCESS)
+                ret = aclBinaryOpRun(nan_pair, outs[0], outs[0],
+                    aclnnLogicalOrGetWorkspaceSize, aclnnLogicalOr, stream, false);
+            aclDestroyTensorLike(nan_pair2);
+        }
+cleanup_isclose:
+        aclDestroyTensorLike(diff);
+        aclDestroyTensorLike(tol);
+        if (nan_pair != nullptr) aclDestroyTensorLike(nan_pair);
+        if (rtol_s != nullptr) aclDestroyScalar(rtol_s);
+        if (atol_s != nullptr) aclDestroyScalar(atol_s);
+        if (one_s != nullptr) aclDestroyScalar(one_s);
+        return ret;
     }
 
     // cupy.linalg.einsum(subscripts, *operands) 的 Ascend 原生路径：
@@ -1101,8 +1200,85 @@ ACLNN_API aclnnStatus aclnnInplaceFillDiagonal(
             PrintArgs(__func__, args, kwargs, std::cout);
             return ACL_ERROR_INVALID_PARAM;
         }
+        // CANN 9.0.1: aclnnSWhere only accepts DT_BOOL / DT_UINT8 conditions
+        // ("Tensor condition not implemented for DT_INT32").  cupy_where can
+        // deliver an int32/int64 condition (e.g. a comparison result routed
+        // through the promote layer), so cast it to bool first.
+        aclDataType cond_dtype = ACL_DT_UNDEFINED;
+        aclGetDataType(ins[0], &cond_dtype);
+        if (cond_dtype != ACL_BOOL && cond_dtype != ACL_UINT8) {
+            aclTensor* cond_b = aclTensorLike(ins[0], ACL_BOOL);
+            if (cond_b == nullptr) {
+                return ACL_ERROR_INVALID_PARAM;
+            }
+            aclError ret = aclIrregularOpRun(aclnnCastGetWorkspaceSize, aclnnCast, stream,
+                ins[0], ACL_BOOL, cond_b);
+            if (ret == ACL_SUCCESS) {
+                ret = aclIrregularOpRun(aclnnSWhereGetWorkspaceSize, aclnnSWhere, stream,
+                    cond_b, ins[1], ins[2], outs[0]);
+            }
+            aclDestroyTensorLike(cond_b);
+            return ret;
+        }
         return aclIrregularOpRun(aclnnSWhereGetWorkspaceSize, aclnnSWhere, stream,
             ins[0], ins[1], ins[2], outs[0]);
+    }
+
+    // cupy_replace_nan(a, val) -> out = isnan(a) ? val : a
+    //   ElementwiseKernel in cupy/_math/sumprod.py, used by cupy.nancumsum /
+    //   cupy.nancumprod.  The scalar `val` arrives through the pos_args
+    //   channel (ARG_SCALAR).  Composition: ne(a,a) -> bool mask, fill a
+    //   tensor with `val`, then s_where(mask, val, a, out).
+    aclError aclop_ReplaceNan(const std::vector<const aclTensor*>& ins, const std::vector<aclTensor*>& outs,
+        const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) {
+        if (ins.empty() || outs.empty()) {
+            PrintArgs(__func__, args, kwargs, std::cout);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        const aclTensor* a = ins[0];
+        aclTensor* out = outs[0];
+        double val = GetScalarArg<double>(args, 0, kwargs, "val", 0.0);
+        aclDataType dtype = ACL_DT_UNDEFINED;
+        aclGetDataType(a, &dtype);
+        switch (dtype) {
+            case ACL_FLOAT16:
+            case ACL_FLOAT:
+            case ACL_DOUBLE:
+                break;              // NaN exists -> real work below
+            default:
+                // integer/bool dtypes have no NaN: plain copy (aclnnCast
+                // doubles as a copy when src and dst dtypes match)
+                return aclIrregularOpRun(aclnnCastGetWorkspaceSize, aclnnCast, stream,
+                    a, dtype, out);
+        }
+        aclTensor* mask = aclTensorLike(a, ACL_BOOL);   // isnan(a)
+        aclTensor* valt = aclTensorLike(out, dtype);    // filled with `val`
+        if (mask == nullptr || valt == nullptr) {
+            if (mask != nullptr) aclDestroyTensorLike(mask);
+            if (valt != nullptr) aclDestroyTensorLike(valt);
+            return ACL_ERROR_INVALID_PARAM;
+        }
+        float val_f = static_cast<float>(val);
+        const aclScalar* val_s = aclCreateScalar(
+            dtype == ACL_DOUBLE ? static_cast<void*>(&val) : static_cast<void*>(&val_f),
+            dtype == ACL_DOUBLE ? ACL_DOUBLE : ACL_FLOAT);
+        aclError ret = ACL_ERROR_INVALID_PARAM;
+        if (val_s != nullptr) {
+            ret = aclIrregularOpRun(aclnnInplaceFillScalarGetWorkspaceSize,
+                aclnnInplaceFillScalar, stream, valt, val_s);
+            if (ret == ACL_SUCCESS) {
+                ret = aclBinaryOpRun(a, a, mask,
+                    aclnnNeTensorGetWorkspaceSize, aclnnNeTensor, stream, false);
+            }
+            if (ret == ACL_SUCCESS) {
+                ret = aclIrregularOpRun(aclnnSWhereGetWorkspaceSize, aclnnSWhere, stream,
+                    mask, valt, a, out);
+            }
+            aclDestroyScalar(val_s);
+        }
+        aclDestroyTensorLike(mask);
+        aclDestroyTensorLike(valt);
+        return ret;
     }
 
     // cupy_var_core_float*（ReductionKernel 3-in/1-out）的 Ascend 组合实现
