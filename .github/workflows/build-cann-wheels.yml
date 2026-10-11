@@ -1,14 +1,19 @@
 # Build Ascend (CANN) wheels on GitHub Actions.
 #
 # NOTE: This workflow ONLY builds wheels - no NPU is attached to GitHub
-# runners, so no numeric tests are run. The only check performed inside the
-# CANN container is "compile + link + import cupy._core" (L1-L3); real device
-# tests must run on a self-hosted 910B/Atlas runner (see self-hosted-ci.yml).
+# runners, so no numeric tests are run and the import smoke check is
+# DISABLED (importing the built wheel requires NPU runtime libs/devices).
+# Real device tests must run on a self-hosted 910B/Atlas runner
+# (see self-hosted-ci.yml).
 #
 # Wheels are auto-named by setup.py per CANN release train, e.g.
 #   numpy_ascend_cann90-14.0.0a1-cp311-cp311-manylinux_2_17_x86_64.cann9.0.whl
 # so no manual naming is needed here. The sdist is CANN-agnostic (bare
 # `numpy_ascend-*.tar.gz`) and builds once.
+#
+# NOTE: keep ONE tag per CANN train in the default matrix. Different SoC tags
+# of the same CANN version (e.g. -910b- vs -a3-) yield identically-named
+# wheels that would collide when merged into dist/ at publish time.
 #
 # Trigger timing:
 #   - workflow_dispatch: manual; target=build-only only uploads artifacts,
@@ -18,11 +23,15 @@
 #   - regular push/PR: not triggered (no NPU; wheels are built on demand only)
 #
 # CANN base images come from quay.io/ascend/cann. Tag patterns look like
-# `<cann>-<soc>-<os>-py<ver>[-devel]` (e.g. 9.0.1-910b-ubuntu22.04-py3.11).
+# `<cann>-<soc>-<os>-py<ver>[-devel]` (e.g. 9.0.1-a3-linux-py3.11).
 # Verify available tags at https://quay.io/repository/ascend/cann before
 # dispatching - the tag also fixes the default container Python (uv installs
 # the requested CPython anyway) and the image architecture must match the
-# runner (x86_64 tags on ubuntu-latest, aarch64 tags on ubuntu-24.04-arm).
+# runner (x86_64 tags on ubuntu-latest; aarch64 tags on ubuntu-24.04-arm,
+# which is free for public repos). NOTE: the same cann_tag is pulled on both
+# arch jobs; `docker pull` selects the native-arch manifest, so the tag must
+# be multi-arch (or an aarch64 manifest must exist) or the arm job fails -
+# in that case pass an aarch64-capable tag via the cann_tags input.
 
 name: build-cann-wheels
 
@@ -30,14 +39,14 @@ on:
   workflow_dispatch:
     inputs:
       cann_tags:
-        description: "Comma-separated quay.io/ascend/cann tags"
-        default: "9.0.1-910b-ubuntu22.04-py3.12,9.0.1-a3-ubuntu22.04-py3.11"
+        description: "Comma-separated quay.io/ascend/cann tags (ONE tag per CANN train; e.g. a3 only)"
+        default: "9.0.1-a3-ubuntu22.04-py3.11"
       pythons:
         description: "Comma-separated CPython versions"
-        default: "3.11,3.12"
+        default: "3.11"
       archs:
         description: "Comma-separated archs (x86_64, aarch64)"
-        default: "x86_64"
+        default: "x86_64,aarch64"
       target:
         description: "Publish target"
         default: "build-only"
@@ -68,9 +77,9 @@ jobs:
     steps:
       - id: m
         env:
-          CANN_TAGS: ${{ inputs.cann_tags || '9.0.1-910b-ubuntu22.04-py3.12' }}
-          PYTHONS: ${{ inputs.pythons || '3.12' }}
-          ARCHS: ${{ inputs.archs || 'x86_64' }}
+          CANN_TAGS: ${{ inputs.cann_tags || '9.0.1-a3-ubuntu22.04-py3.11' }}
+          PYTHONS: ${{ inputs.pythons || '3.11' }}
+          ARCHS: ${{ inputs.archs || 'x86_64,aarch64' }}
         run: |
           j() { printf '%s' "$1" | jq -Rsc 'split(",") | map(gsub("^\\s+|\\s+$";"")) | map(select(length > 0))'; }
           echo "cann_tags=$(j "$CANN_TAGS")" >> "$GITHUB_OUTPUT"
@@ -156,12 +165,12 @@ jobs:
             python -V
             python -m build --wheel --no-isolation -o /src/dist
 
-            # Smoke check (no NPU on CI): install the wheel and import the
-            # compiled core from outside /src so the source tree does not
-            # shadow the installed package.
-            uv pip install /src/dist/*.whl
-            cd /tmp
-            python -c "import cupy._core; print('import cupy._core OK')"
+            # Smoke check DISABLED: there is no NPU on CI, and importing the
+            # built wheel needs the Ascend runtime (libascendcl etc. plus a
+            # visible device), which a bare container does not provide.
+            # Re-enable on a self-hosted NPU runner:
+            #   uv pip install /src/dist/*.whl
+            #   cd /tmp && python -c "import cupy._core"
             ls -l /src/dist
           BUILD_SCRIPT
 

@@ -107,9 +107,12 @@ package_data = {
 package_data['cupy'] += cupy_setup_build.prepare_wheel_libs(ctx)
 
 
-if ctx.setup_command in ('dist_info', 'egg_info'):
-    # Extensions are unnecessary for dist_info generation as all sources files
-    # can be enumerated via MANIFEST.in.
+if ctx.setup_command in ('sdist', 'dist_info', 'egg_info'):
+    # Extensions are unnecessary for these commands as all sources files
+    # can be enumerated via MANIFEST.in (the sdist keeps the .pyx sources,
+    # NOT the generated .cpp). Constructing them would probe the host
+    # build environment (CUDA/CANN toolchain), which is unavailable on a
+    # plain CI runner building the CANN-agnostic sdist.
     print('Skipping extensions configuration')
     ext_modules = []
 else:

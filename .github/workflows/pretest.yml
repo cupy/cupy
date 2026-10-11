@@ -46,6 +46,9 @@ jobs:
         pytest -v tests/typing_tests/test_typing.py
 
   build-cuda:
+    # Upstream cupy only; skipped in the numpy-ascend fork (no need to build
+    # CUDA wheels on every push here).
+    if: github.repository_owner == 'cupy'
     runs-on: ubuntu-22.04
     env:
       CUPY_CI: GitHub
@@ -97,6 +100,8 @@ jobs:
         python -c 'import cupy, cupyx'
 
   build-rocm:
+    # Upstream cupy only; skipped in the numpy-ascend fork.
+    if: github.repository_owner == 'cupy'
     runs-on: ubuntu-22.04
 
     steps:
