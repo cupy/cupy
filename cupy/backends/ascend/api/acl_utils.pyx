@@ -2103,6 +2103,14 @@ cdef aclError launch_reduction_op_raw(str opname, sequence ins, sequence outs, o
 cdef object _general_host_gate = None  # cpu_fallback.maybe_general_host（懒加载缓存）
 
 
+#: aclnn 无 COMPLEX64/128 内核的超越函数（实测 exp/log/log10/log2/sin/cos/
+#: tan/sinh/cosh/sqrt 原生支持复数；这批报 ret=500003）。复数输入时回退
+#: host 计算（numpy），out dtype 语义与 numpy 一致。
+cdef set _COMPLEX_NO_ACLNN_OPS = {
+    'ascend_expm1', 'ascend_exp2', 'ascend_log1p', 'ascend_tanh', 'ascend_sinc',
+}
+
+
 cdef aclError launch_general_func(str opname, sequence ins, sequence outs,
                                   list args, dict kwargs, intptr_t stream_ptr) except *:
     # CPU 模式的 general 直发拦截（docs/ascend/Float64Workaround.md §四-1）：
@@ -2119,6 +2127,25 @@ cdef aclError launch_general_func(str opname, sequence ins, sequence outs,
         _general_host_gate = _cpu_f64_mod.maybe_general_host
     if _general_host_gate(opname, ins, outs, args, kwargs):
         return 0
+    # 复数输入的 host 回退（aclnn 无复数内核的超越函数，见
+    # _COMPLEX_NO_ACLNN_OPS）：D2H -> numpy -> 写回 out。注意此处 opname
+    # 可能还是 'cupy_*' 原名（ascend_* 归一化在 raw 层），两种形式都查。
+    cdef str _clop = opname
+    if _clop.startswith('cupy_'):
+        _clop = 'ascend_' + _clop[len('cupy_'):]
+    if _clop in _COMPLEX_NO_ACLNN_OPS:
+        for _a in list(ins) + list(outs):
+            if isinstance(_a, _ndarray_base) and _a.dtype.kind == 'c':
+                import cupy as _cupy
+                import numpy as _numpy
+                _ins_np = [_cupy.asnumpy(_x) for _x in ins]
+                _res = getattr(_numpy, _clop[len('ascend_'):])(*_ins_np)
+                _out_dev = _cupy.asarray(_res)
+                _dst = outs[0]
+                if _out_dev.shape != _dst.shape or _out_dev.dtype != _dst.dtype:
+                    _out_dev = _out_dev.astype(_dst.dtype).reshape(_dst.shape)
+                _cupy.copyto(_dst, _out_dev)
+                return 0
     cdef aclError ret = launch_general_func_raw(opname, ins, outs, args, kwargs, stream_ptr)
     if ret != 0:
         raise_acl_op_error(opname, ret)
@@ -2527,6 +2554,12 @@ cdef void register_math_operators():
     register_acl_ufunc("ascend_trunc", UNARY_OP, func_union)
     func_union.inplace_unary_op = aclop_InplaceTrunc
     register_acl_ufunc("ascend_inplace_trunc", INPLACE_UNARY_OP, func_union)
+    # cupy.fix ≡ trunc（rounding.py 的 'floor if x>=0 else ceil' 即向零取整），
+    # 按别名注册到同一 aclnn 内核，免去 ElementwiseKernel 无注册的响亮报错。
+    func_union.unary_op = aclop_Trunc
+    register_acl_ufunc("ascend_fix", UNARY_OP, func_union)
+    func_union.inplace_unary_op = aclop_InplaceTrunc
+    register_acl_ufunc("ascend_inplace_fix", INPLACE_UNARY_OP, func_union)
     func_union.unary_op = aclop_Rint
     register_acl_ufunc("ascend_rint", UNARY_OP, func_union)
     func_union.inplace_unary_op = aclop_InplaceRint
