@@ -66,6 +66,7 @@ from __future__ import annotations
 import argparse
 import csv
 import importlib
+import os
 import sys
 import time
 from collections import Counter
@@ -91,14 +92,8 @@ else:
 # ---------------------------------------------------------------------------
 # 默认配置
 # ---------------------------------------------------------------------------
-# 2026-10-11: 默认规模从 10M/4K 降到 100K/1024 —— 在这台 910B3 + CANN 9.0.1
-# 上, 进程内多次大块分配后驱动 hugepage-managed 路径会失败 (halMemAlloc
-# drvRetCode=42), 导致大输入下部分 aclnn kernel 报 ACL_ERROR_NAME_UNKNOWN;
-# 大于 sort 类内部 workspace 阈值时 aclnnSort 直接设备异常 (已加 CPU 回退,
-# 但回退路径测不出 NPU 加速比)。默认改为小规模先保证全部用例不报错;
-# 需要测大输入吞吐时用 --vector-size 10000000 --matrix-size 4096 显式传参。
-VECTOR_SIZE = 100_000         # 100K 元素
-MATRIX_SIZE = 1024            # 1K x 1K
+VECTOR_SIZE = 10_000_000      # 10M 元素
+MATRIX_SIZE = 4096            # 4K x 4K
 VECTOR_REPEAT = 10            # 向量/归约重复次数
 MATRIX_REPEAT = 3             # 矩阵重复次数 (CPU 端 4K matmul 很慢)
 SORT_REPEAT = 2               # 排序类重复次数 (10M CPU 排序很慢)
@@ -119,13 +114,17 @@ DTYPES: dict[str, Any] = {
 }
 
 #: allclose 容差 (rtol, atol), 按 dtype
+# 910B 没有 float64 硬件吞吐, 后端在降档模式 (CUPY_ASCEND_ENABLE_FLOAT64_TO_
+# FLOAT32=1 或 CUPY_ASCEND_FLOAT64_MODE=float32, docs/ascend/Float64Workaround.md)
+# 下把 float64 降档为 float32 计算, 结果只能匹配到 float32 精度 (~1.2e-7 相对
+# 误差) —— 仅在该模式下把 float64 容差放宽到 float32 水平; 原生 float64 计算
+# (如健康机器直跑或 cpu 模式) 仍用严格容差。
+_F64_DEMOTE_MODE: bool = (
+    os.environ.get("CUPY_ASCEND_ENABLE_FLOAT64_TO_FLOAT32", "0") == "1"
+    or os.environ.get("CUPY_ASCEND_FLOAT64_MODE", "") == "float32")
 TOLERANCE: dict[str, tuple[float, float]] = {
     "float32": (1e-3, 1e-4),
-    # 910B 没有 float64 硬件吞吐, 后端把 float64 降档为 float32 计算
-    # (docs/ascend/Float64Workaround.md), 因此 float64 结果只能匹配到
-    # float32 精度 (~1.2e-7 相对误差) —— 与 float32 用同一组容差,
-    # 否则所有 float64 用例都会因 rtol=1e-9 误报 MISMATCH。
-    "float64": (1e-3, 1e-4),
+    "float64": (1e-3, 1e-4) if _F64_DEMOTE_MODE else (1e-9, 1e-12),
 }
 
 #: cupy/__init__.py 被裁剪后, 不少算子只有底层模块里有; 按这些模块回退查找
