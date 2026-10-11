@@ -293,21 +293,47 @@ cdef _ndarray_base _ascend_batched_matmul(
     into the leading dimension and the batches are broadcast explicitly.
     """
     cdef int ndim = max(a_ndim, b_ndim)
-    cdef _ndarray_base a2, b2, prod, result
+    cdef _ndarray_base a2, b2, prod, result, vec_res
     cdef list batch_shape = []
-    cdef list a_shape, b_shape
+    cdef list a_shape, b_shape, vec_shape
     cdef Py_ssize_t i, a_batch, b_batch, batch, n, k, m
     cdef bint a_is_vec, b_is_vec
 
     a_is_vec = a_ndim == 1
     b_is_vec = b_ndim == 1
 
-    if a_is_vec:
-        raise NotImplementedError(
-            'ASCEND: matmul with a 1-D operand is not supported')
-    if b_ndim < 2:
-        raise NotImplementedError(
-            'ASCEND: matmul with a 1-D operand is not supported')
+    if a_is_vec or b_is_vec:
+        # numpy.matmul with a 1-D operand: promote to 2-D, multiply, then
+        # drop the promoted axis from the result.
+        #   (k,)   @ (k, m) -> (m,)    a -> (1, k), result (1, m)
+        #   (n, k) @ (k,)   -> (n,)    b -> (k, 1), result (n, 1)
+        #   (k,)   @ (k,)   -> ()      both promoted, result (1, 1)
+        if a_is_vec and b_is_vec:
+            if a.size != b.size:
+                raise ValueError('Axis dimension mismatch')
+            prod = _ascend_matmul(
+                _manipulation._reshape(a, [1, a.size]),
+                _manipulation._reshape(b, [b.size, 1]), None)
+            vec_shape = []
+        elif a_is_vec:
+            if a.size != b.shape[b_ndim - 2]:
+                raise ValueError('Axis dimension mismatch')
+            prod = _ascend_batched_matmul(
+                _manipulation._reshape(a, [1, a.size]), b, None, 2, b_ndim)
+            # promoted a contributes an n=1 axis just before m; numpy drops
+            # THAT axis: (batch..., 1, m) -> (batch..., m)
+            vec_shape = list(prod._shape)[:-2] + [prod._shape[prod._shape.size() - 1]]
+        else:
+            if a.shape[a_ndim - 1] != b.size:
+                raise ValueError('Axis dimension mismatch')
+            prod = _ascend_batched_matmul(
+                a, _manipulation._reshape(b, [b.size, 1]), None, a_ndim, 2)
+            vec_shape = list(prod._shape)[:-1]
+        vec_res = _manipulation._reshape(prod, vec_shape)
+        if out is not None:
+            elementwise_copy(vec_res, out)
+            return out
+        return vec_res
 
     # broadcast the batch shapes
     a_shape = list(a.shape)
@@ -319,7 +345,9 @@ cdef _ndarray_base _ascend_batched_matmul(
             raise ValueError(
                 'operands could not be broadcast together with remapped '
                 'shapes {} and {}'.format(tuple(a_shape), tuple(b_shape)))
-        batch_shape.append(max(da, db))
+        # numpy broadcasting: a zero-sized batch dim wins over 1 (result is
+        # empty); max() would wrongly give 1 and blow up in broadcast_to.
+        batch_shape.append(0 if da == 0 or db == 0 else max(da, db))
 
     n = a_shape[a_ndim - 2]
     k = a_shape[a_ndim - 1]
@@ -346,11 +374,28 @@ cdef _ndarray_base _ascend_batched_matmul(
     b2 = _manipulation._reshape(b, [b_batch, k, m])
 
     if a_batch != batch:
+        # broadcast on the FULL shape (batch dims may themselves need
+        # broadcasting, e.g. (1, 5) -> (6, 5)), then fold into batch.
         a2 = _manipulation.broadcast_to(
-            a2, [batch, n, k]).copy()
+            a, batch_shape + [n, k]).copy()
+        a2 = _manipulation._reshape(a2, [batch, n, k])
     if b_batch != batch:
         b2 = _manipulation.broadcast_to(
-            b2, [batch, k, m]).copy()
+            b, batch_shape + [k, m]).copy()
+        b2 = _manipulation._reshape(b2, [batch, k, m])
+
+    if b_batch == 1 and batch > 1:
+        # B is shared across the whole batch: fold the batch into the row
+        # dimension and do ONE aclnnMatmul instead of `batch` launches
+        # (each launch costs ~ms of host overhead, which stalled large-batch
+        # test cases for minutes).
+        folded = _ascend_matmul(
+            _manipulation._reshape(a2, [batch * n, k]), b2, None)
+        result = _manipulation._reshape(folded, batch_shape + [n, m])
+        if out is not None:
+            elementwise_copy(result, out)
+            return out
+        return result
 
     # fold the batch dimension into the row dimension: (batch*n, k) @ (k, m)
     # is not equivalent for each batch, so loop over the batch instead.
@@ -388,7 +433,14 @@ cdef _ndarray_base _ascend_matmul(_ndarray_base a, _ndarray_base b, _ndarray_bas
     cdef _ndarray_base a_calc, b_calc, calc_out, result
     cdef object ret_dtype
     cdef bint int_fallback = (
-        a.dtype.kind in 'biu' or b.dtype.kind in 'biu')
+        a.dtype.kind in 'biu' or b.dtype.kind in 'biu' or
+        a.dtype == numpy.float64 or b.dtype == numpy.float64)
+    # aclnnMatmul accepts only FLOAT/FLOAT16/BFLOAT16 ("Unsupported data
+    # types for Cube"); float64 is demoted to float32, consistent with the
+    # backend-wide float64 demotion policy (docs/ascend/Float64Workaround.md).
+    cdef bint complex_fallback = (a.dtype.kind == 'c' or b.dtype.kind == 'c')
+    cdef object comp_dtype, real_dtype
+    cdef _ndarray_base ar, ai, br, bi, re_part, im_part, rv
 
     if out is None:
         if a.shape[1] != b.shape[0]:
@@ -399,6 +451,37 @@ cdef _ndarray_base _ascend_matmul(_ndarray_base a, _ndarray_base b, _ndarray_bas
     else:
         ret_shape = out._shape
         ret_dtype = out.dtype
+
+    if complex_fallback:
+        # aclnnMatmul only accepts FLOAT/FLOAT16/BFLOAT16 ("Unsupported data
+        # types for Cube" for complex inputs).  Decompose into 4 real
+        # matmuls: (ar + i*ai) @ (br + i*bi)
+        #   = (ar@br - ai@bi) + i*(ar@bi + ai@br)
+        comp_dtype = (numpy.complex128
+                      if (a.dtype == numpy.complex128
+                          or b.dtype == numpy.complex128)
+                      else numpy.complex64)
+        real_dtype = (numpy.float64 if comp_dtype == numpy.complex128
+                      else numpy.float32)
+        a_calc = a.astype(comp_dtype, 'K', None, None, True)
+        b_calc = b.astype(comp_dtype, 'K', None, None, True)
+        ar = a_calc.real.copy()
+        ai = a_calc.imag.copy()
+        br = b_calc.real.copy()
+        bi = b_calc.imag.copy()
+        re_part = _ascend_matmul(ar, br, None) - _ascend_matmul(ai, bi, None)
+        im_part = _ascend_matmul(ar, bi, None) + _ascend_matmul(ai, br, None)
+        result = _ndarray_init(cupy.ndarray, ret_shape, comp_dtype, None)
+        # interleave re/im into the complex buffer via a real-dtype view
+        # (2-D here: complex (m, n) -> real (m, 2n) with re at even columns)
+        rv = result.view(real_dtype)
+        rv[:, 0::2] = re_part
+        rv[:, 1::2] = im_part
+        result = result.astype(ret_dtype)
+        if out is None:
+            return result
+        elementwise_copy(result, out)
+        return out
 
     if int_fallback:
         # NB: `astype` is cimported from core.pxd where the defaults are
