@@ -1552,6 +1552,17 @@ cdef aclError _launch_custom_ufunc(str opname, dict spec, sequence ins,
                 f'custom AscendC kernel {opname!r} supports array operands '
                 f'only (got {type(op).__name__}); wrap scalars with '
                 'cupy.asarray(...) explicitly')
+    # f64/complex128 降档：与 general/elementwise 两通道共用 _promote_io_dtype
+    # （可选层，由 CUPY_ASCEND_FLOAT64_MODE / enable_float64_to_float32 控制）。
+    # kernel entry 均为 f32 布局的 *_f32 实现，'d'/'D' 输入先 demote 再进内核，
+    # 结果经 _cast_back_outs(ascend_cast) 写回调用方原 out（out dtype 不变，
+    # 精度降为单精度）。实数输入分支在 demote 之后判断：其重派发走
+    # general/elementwise 通道，内部自带 promote，与本处结果无关。
+    cdef tuple _promo = _promote_io_dtype(opname, a_ins, a_outs)
+    a_ins = list(_promo[0])
+    a_outs = list(_promo[1])
+    cdef list _promo_orig_outs = _promo[2]
+    cdef list _promo_cast_src = _promo[3]
     # out view write-back：AscendC kernel 直接按 data.ptr 线性读写，只认
     # C-连续内存。写目标若是偏移视图 / 非 C-连续数组，先物化成独立数组，
     # kernel 写完后再写回原视图（_wrap_materialize_outs / _write_acl_out_to_view）。
@@ -1579,7 +1590,20 @@ cdef aclError _launch_custom_ufunc(str opname, dict spec, sequence ins,
             zeros = _cupy_mod.zeros(a_ins[0].shape, a_ins[0].dtype)
             return launch_elementwise_func_raw(
                 'ascend_arctan2', [zeros] + list(a_ins), outs, [], {}, stream_ptr)
-    if dtypes and a_outs and a_outs[0].dtype.char not in dtypes:
+    if opname == 'ascend_angle':
+        # 复数输入：angle = arctan2(imag, real)。复数版内核 ascendc_angle_f32
+        # 实测恒返回 0（kernels/ascendc_elementwise.cpp 的 best-effort 实现，
+        # strided 提取实/虚部 + Atan 有 bug），改用 aclnnArctan2 组合保证正确性。
+        _z = a_ins[0]
+        return launch_elementwise_func_raw(
+            'ascend_arctan2', [_z.imag, _z.real], outs, [], {}, stream_ptr)
+    # frexp/modf/ldexp 只有 *_f32 内核入口：promote 后输入仍是 f16/整型的
+    # （ufunc loop 可能选 f16/int out），跳过内核直接走 numpy 回退，避免
+    # in/out dtype 不匹配的内核启动（读错字节/越界风险）。
+    cdef bint _need_fallback = (
+        opname in ('ascend_frexp', 'ascend_modf', 'ascend_ldexp')
+        and a_ins[0].dtype.char != 'f')
+    if not _need_fallback and dtypes and a_outs and a_outs[0].dtype.char not in dtypes:
         raise NotImplementedError(
             f'custom AscendC kernel {opname!r} supports out dtype '
             f'{dtypes} (got {a_outs[0].dtype})')
@@ -1612,36 +1636,59 @@ cdef aclError _launch_custom_ufunc(str opname, dict spec, sequence ins,
     cdef aclError ret = 0
     cdef const char* bin_c = bin_path
     cdef const char* entry_c = entry
-    with nogil:
-        ret = aclop_LaunchCustomKernel(
-            bin_c, entry_c, out0, out1, in0, in1, n, stream)
-    if ret != 0:
+    if not _need_fallback:
+        with nogil:
+            ret = aclop_LaunchCustomKernel(
+                bin_c, entry_c, out0, out1, in0, in1, n, stream)
+    if ret != 0 or _need_fallback:
         # fall back to CPU, why not impl in custom kernel?
-        if opname in ('ascend_conjugate', 'ascend_angle', 'ascend_imag'):
+        # 注意：本机 (CANN 9.0.1) aclrtBinaryLoadFromFile 对全部 fatbin 返回
+        # 107000，conjugate/angle/imag 一直靠这个 numpy 回退出正确结果。
+        # frexp/modf/ldexp 此前没进回退名单，在 gate 放行后裸抛；现补齐，
+        # 含 n_out=2 的双输出写回（frexp -> (mantissa, exponent)、
+        # modf -> (frac, integral)，与 numpy 语义一致）。
+        if opname in ('ascend_conjugate', 'ascend_angle', 'ascend_imag',
+                      'ascend_frexp', 'ascend_modf', 'ascend_ldexp'):
             import cupy as _cupy
             import numpy as _numpy
-            _in = _cupy.asnumpy(a_ins[0])
+            _ins_np = [_cupy.asnumpy(_x) for _x in a_ins]
             if opname == 'ascend_conjugate':
-                _res = _numpy.conjugate(_in)
+                _res = (_numpy.conjugate(_ins_np[0]),)
             elif opname == 'ascend_angle':
-                _res = _numpy.angle(_in)
-            else:
-                _res = _numpy.imag(_in)
-            _res = _numpy.asarray(_res)
-            # write into materialized Out
-            _out_dev = _cupy.asarray(_res)
-            if _out_dev.shape != a_outs[0].shape or _out_dev.dtype != a_outs[0].dtype:
-                _out_dev = _out_dev.astype(a_outs[0].dtype).reshape(a_outs[0].shape)
-            _cupy.copyto(a_outs[0], _out_dev)
+                _res = (_numpy.angle(_ins_np[0]),)
+            elif opname == 'ascend_imag':
+                _res = (_numpy.imag(_ins_np[0]),)
+            elif opname == 'ascend_frexp':
+                _res = _numpy.frexp(_ins_np[0])
+            elif opname == 'ascend_modf':
+                _res = _numpy.modf(_ins_np[0])
+            else:  # ascend_ldexp
+                _res = (_numpy.ldexp(_ins_np[0], _ins_np[1]),)
+            # write into materialized Outs
+            for _i, _r in enumerate(_res):
+                _out_dev = _cupy.asarray(_r)
+                if (_out_dev.shape != a_outs[_i].shape
+                        or _out_dev.dtype != a_outs[_i].dtype):
+                    _out_dev = _out_dev.astype(
+                        a_outs[_i].dtype).reshape(a_outs[_i].shape)
+                _cupy.copyto(a_outs[_i], _out_dev)
             if _wb_pairs:
                 for _orig, _mat in _wb_pairs:
                     _write_acl_out_to_view(_mat, _orig, stream_ptr)
+            if _promo_orig_outs:
+                ret = _cast_back_outs(_promo_orig_outs, _promo_cast_src, stream_ptr)
+                if ret != 0:
+                    return ret
             return 0
         raise RuntimeError(f'custom AscendC kernel {opname!r} launch failed: {ret}')
     # out view write-back：kernel 直接写物化副本（线性布局），成功后写回原视图。
     if _wb_pairs:
         for _orig, _mat in _wb_pairs:
             _write_acl_out_to_view(_mat, _orig, stream_ptr)
+    if _promo_orig_outs:
+        ret = _cast_back_outs(_promo_orig_outs, _promo_cast_src, stream_ptr)
+        if ret != 0:
+            return ret
     return 0
 
 
