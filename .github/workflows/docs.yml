@@ -4,9 +4,8 @@ name: "Docs: Build and publish"
 # Downloads the py<doc> linux-64 cu13 wheel from the triggering CI run,
 # builds the Sphinx HTML with RTD env vars mimicked, and -- in a separate
 # job with no PR code checked out -- uploads the HTML to RTD with the
-# readthedocs-upload CLI (pinned PyPI release). RTD serves what we
-# uploaded; it does not run a build of its own after .readthedocs.yaml
-# is removed in stage 2 (#10351).
+# readthedocs-upload CLI (pinned PyPI release). RTD only serves what
+# we upload; it runs no build of its own (there is no .readthedocs.yaml).
 
 on:
   workflow_run:
@@ -296,26 +295,18 @@ jobs:
           name: docs-html-${{ needs.build.outputs.suffix }}
           path: ./html
 
-      # Publish with the readthedocs-upload CLI (the client behind
-      # readthedocs/upload-action, used directly: the action has no
-      # release tag and tracks git@main, while the PyPI release is a
-      # pinned, immutable artifact). The CLI drives the same
-      # /api/v3/upload/ flow (initiate -> presigned S3 POST -> complete)
-      # and covers what the previous bash implementation hand-rolled: it
-      # retries the S3 POST 3x with backoff on transport errors/5xx,
-      # fails fast on 4xx, POSTs complete(failed) on any error so no
-      # pending build counts against RTD's upload cap, builds the zip
-      # layout from --html itself, and reads the token only from
-      # READTHEDOCS_TOKEN (never argv). The explicit
-      # --version-name/--version-type/--commit flags bypass its GitHub
-      # env inference, which would resolve every workflow_run to
+      # readthedocs-upload (pinned PyPI release) is used directly instead
+      # of readthedocs/upload-action: the action has no release tag and
+      # installs the CLI from git@main at run time. The explicit
+      # --version-name/--version-type/--commit flags bypass the CLI's
+      # GitHub env inference, which would resolve every workflow_run to
       # main/branch.
       - name: Install readthedocs-upload
         run: python3 -m pip install --user readthedocs-upload==1.0.0a1
 
-      # Non-fatal when the token is unset so stage 1 can land before the
-      # secret is wired. PR-origin values flow via env, not ${{ }}
-      # interpolation into the script.
+      # Non-fatal when the token is unset (forks, secret rotation).
+      # PR-origin values flow via env, not ${{ }} interpolation into
+      # the script.
       - name: Upload HTML to RTD
         env:
           READTHEDOCS_TOKEN: ${{ secrets.RTD_API_TOKEN }}
