@@ -235,12 +235,19 @@ jobs:
         done
 
     # Workflow_run check-suites attach to the default-branch head, not to
-    # HEAD_SHA, so a failed dispatch is invisible on the PR and on the merge
-    # commit unless we mirror the outcome as a commit status. The dispatcher
-    # already writes a pfn-public-ci (dashboard) success status on the head;
-    # this closes the negative side symmetrically for both PR and push legs.
+    # HEAD_SHA, so dispatch outcomes are invisible on the PR and on the
+    # merge commit unless we mirror the state as a commit status. The
+    # dispatcher already writes a pfn-public-ci (dashboard) success
+    # status on the head; the two steps below mirror pfn-public-ci
+    # (dispatch) on both legs. Having both is load-bearing: without the
+    # success step, a failed dispatch stamps `(dispatch) failure` and a
+    # later retry can turn the Actions tab green while leaving the PR's
+    # commit status stuck at failure (same context, no overwrite). The
+    # steps use the shared `steps.request.outputs.found == 'true'` gate
+    # so no-op runs that had nothing to dispatch do not post either
+    # state.
     - name: Report dispatch failure to HEAD_SHA
-      if: failure()
+      if: failure() && steps.request.outputs.found == 'true'
       env:
         GH_TOKEN: ${{ github.token }}
         HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
@@ -252,6 +259,21 @@ jobs:
           -f state=failure \
           -f context="pfn-public-ci (dispatch)" \
           -f description="FlexCI dispatch failed; see workflow_run logs" \
+          -f target_url="${RUN_URL}" >/dev/null
+
+    - name: Report dispatch success to HEAD_SHA
+      if: success() && steps.request.outputs.found == 'true'
+      env:
+        GH_TOKEN: ${{ github.token }}
+        HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: |
+        set -euo pipefail
+        gh api "repos/${GITHUB_REPOSITORY}/statuses/${HEAD_SHA}" \
+          --method POST \
+          -f state=success \
+          -f context="pfn-public-ci (dispatch)" \
+          -f description="FlexCI dispatch succeeded" \
           -f target_url="${RUN_URL}" >/dev/null
 
   reap-noop-run:
