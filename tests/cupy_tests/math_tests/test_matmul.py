@@ -122,6 +122,16 @@ class TestMatmulOut(unittest.TestCase):
 
 class TestMatmulOutOverlap:
 
+    def test_overlap_copied_input(self):
+        out = testing.shaped_random((2, 33, 33), cupy, numpy.float32)
+        a = out[..., ::-1]
+        b = testing.shaped_random(
+            out.shape, cupy, numpy.float32, seed=1)
+        expected = numpy.matmul(cupy.asnumpy(a), cupy.asnumpy(b))
+        result = cupy.matmul(a, b, out=out)
+        assert result is out
+        testing.assert_allclose(result, expected, rtol=1e-5, atol=1e-5)
+
     @pytest.mark.parametrize('shape', [
         (900, 900),
         (2, 600, 600),
@@ -152,11 +162,15 @@ class TestMatmulStrides:
         return x1 @ x2
 
     @pytest.mark.parametrize('side', ['left', 'right'])
+    @pytest.mark.parametrize('reverse_vector', [False, True])
     @testing.for_dtypes([
         numpy.int32, numpy.float16, numpy.float32, numpy.complex64])
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)
-    def test_vector_strided_batch_output(self, xp, dtype, side):
+    def test_vector_strided_batch_output(
+            self, xp, dtype, side, reverse_vector):
         vector = testing.shaped_arange((4,), xp, dtype)
+        if reverse_vector:
+            vector = vector[::-1]
         matrix_shape = (2, 5, 4, 3) if side == 'left' else (2, 5, 3, 4)
         matrix = testing.shaped_arange(matrix_shape, xp, dtype)
         out = xp.empty((2, 5, 5), dtype)[..., :3][::-1, ::-1]
@@ -166,7 +180,8 @@ class TestMatmulStrides:
 
     @pytest.mark.parametrize('broadcast', [False, True])
     @testing.for_all_dtypes()
-    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)
+    @testing.numpy_cupy_allclose(
+        rtol=1e-3, atol=1e-3, contiguous_check=False)  # FP16 may pad batches.
     def test_noncontiguous_matrices(self, xp, dtype, broadcast):
         a = testing.shaped_random((2, 5, 3, 8), xp, dtype)[..., ::-1]
         b_shape = (1, 5, 8, 3) if broadcast else (2, 5, 8, 3)
@@ -227,6 +242,42 @@ class TestMatmulMatrixOrder:
         a = make_array(a_shape, transpose_a)
         b = make_array(b_shape, transpose_b)
         out = make_array((2, 5, 3, 2), transpose_out, output=True)
+        expected = numpy.matmul(cupy.asnumpy(a), cupy.asnumpy(b))
+        result = cupy.matmul(a, b, out=out)
+        assert result is out
+        testing.assert_allclose(result, expected, rtol=1e-3, atol=1e-3)
+
+
+class TestMatmulLeadingDimension:
+
+    @pytest.mark.parametrize('dtype, orders, broadcast, offset', [
+        (numpy.float32, 'CCC', False, 0),
+        (numpy.float32, 'FCF', False, 0),
+        (numpy.float32, 'CFC', True, 0),
+        (numpy.float64, 'CCF', True, 0),
+        (numpy.float16, 'FFF', False, 0),
+        (numpy.float16, 'FFF', True, 0),
+        (numpy.float16, 'FCF', True, 1),  # Alignment copies reset the pitches.
+        (numpy.complex128, 'FCF', True, 0),
+        (numpy.int32, 'FFF', True, 0),
+    ])
+    def test_padded_cores(self, dtype, orders, broadcast, offset):
+        def make_array(shape, order, output=False):
+            if order == 'F':
+                shape = shape[:-2] + (shape[-1], shape[-2])
+            width = shape[-1]
+            pitch = (width + offset + 8) // 8 * 8
+            storage_shape = shape[:-1] + (pitch,)
+            arr = (cupy.empty(storage_shape, dtype) if output
+                   else testing.shaped_random(storage_shape, cupy, dtype))
+            arr = arr[..., offset:offset + width]
+            return arr.swapaxes(-1, -2) if order == 'F' else arr
+
+        a_shape = (2, 1, 3, 8) if broadcast else (2, 5, 3, 8)
+        b_shape = (1, 5, 8, 2) if broadcast else (2, 5, 8, 2)
+        a = make_array(a_shape, orders[0])
+        b = make_array(b_shape, orders[1])
+        out = make_array((2, 5, 3, 2), orders[2], output=True)
         expected = numpy.matmul(cupy.asnumpy(a), cupy.asnumpy(b))
         result = cupy.matmul(a, b, out=out)
         assert result is out
@@ -799,7 +850,7 @@ class TestMatmul16BitMatrixOrder(_Matmul16BitTestBase):
             a_shape, cupy, numpy.float32).astype(dtype).swapaxes(-1, -2)
         b = testing.shaped_random(
             b_shape, cupy, numpy.float32).astype(dtype).swapaxes(-1, -2)
-        storage = cupy.empty((2, 5, 16), dtype)
+        storage = cupy.full((2, 5, 16), -1, dtype)
         matrix_shape = (5, 3) if transpose_out else (3, 5)
         out = storage[..., :15].reshape((2, 5) + matrix_shape, copy=False)
         if transpose_out:
@@ -809,6 +860,7 @@ class TestMatmul16BitMatrixOrder(_Matmul16BitTestBase):
             cupy.asnumpy(b.astype(numpy.float32))).astype(dtype)
         result = cupy.matmul(a, b, out=out)
         assert result is out
+        testing.assert_array_equal(storage[..., 15].astype(numpy.float32), -1)
         testing.assert_allclose(
             result.astype(numpy.float32), expected.astype(numpy.float32),
             rtol=1e-2, atol=1e-3)
