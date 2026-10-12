@@ -233,8 +233,6 @@ cusparselt:
 # When adding a new Python version, you may also need to add the version to the
 # list of supported Python versions in the Python libraries.
 python:
-  "3.10":
-    spec: "3.10.18"
   "3.11":
     spec: "3.11.13"
   "3.12":
@@ -263,19 +261,16 @@ numpy:
   "2.0":
     spec: "==2.0.*"
     python:
-      - "3.10"
       - "3.11"
       - "3.12"
   "2.1":
     spec: "==2.1.*"
     python:
-      - "3.10"
       - "3.11"
       - "3.12"
   "2.2":
     spec: "==2.2.*"
     python:
-      - "3.10"
       - "3.11"
       - "3.12"
       - "3.13"
@@ -316,7 +311,6 @@ scipy:
   "1.14":
     spec: "==1.14.*"
     python:
-      - "3.10"
       - "3.11"
       - "3.12"
       - "3.13"
@@ -327,7 +321,6 @@ scipy:
   "1.15":
     spec: "==1.15.*"
     python:
-      - "3.10"
       - "3.11"
       - "3.12"
       - "3.13"
@@ -408,7 +401,6 @@ mpi4py:
   "4":
     spec: "==4.*"
     python:
-      - "3.10"
       - "3.11"
       - "3.12"
       - "3.13"
