@@ -57,7 +57,7 @@ def test_percentile_kernel_accepts_large_dimensions():
         cupy.array([1], dtype=cupy.float64), (2**31,))
     out = cupy.empty(1, dtype=cupy.float64)
     order_module._get_percentile_weightnening_kernel()(
-        indices, a, 0, a.size, out)
+        indices, a, a.shape[-1], 1, out)
     assert out[0] == 1
 
 
@@ -254,14 +254,16 @@ class TestQuantileMethods:
         return xp.quantile(
             a, q, axis=None, keepdims=True, method=method)
 
+    @pytest.mark.parametrize('order', ['C', 'F'])
     @testing.for_float_dtypes(no_float16=True)  # NumPy raises error on int8
-    @testing.numpy_cupy_allclose(rtol=1e-6)
-    def test_quantile_out(self, xp, dtype, method):
+    @testing.numpy_cupy_allclose(rtol=1e-6, contiguous_check=False)
+    def test_quantile_out(self, xp, dtype, method, order):
         a = testing.shaped_random((10, 2, 3, 2), xp, dtype)
         q = testing.shaped_random((5,), xp, dtype=dtype, scale=1)
-        out = testing.shaped_random((5, 10, 2, 3), xp, dtype)
-        return xp.quantile(
+        out = xp.empty((5, 10, 2, 3), dtype=dtype, order=order)
+        result = xp.quantile(
             a, q, axis=-1, method=method, out=out)
+        return result, out
 
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-6)
@@ -297,6 +299,25 @@ class TestQuantileMethods:
         a = testing.shaped_random((1, 6, 3, 2), xp, dtype)
         q = testing.shaped_random((5,), xp, scale=1)
         return xp.quantile(a, q, axis=0, keepdims=True, method=method)
+
+    @pytest.mark.parametrize('shape, axis', [
+        ((1, 10), 1), ((10, 1), 0), ((1, 1, 10), -1), ((1, 10, 1), 1),
+    ])
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_quantile_singleton_dimensions(
+            self, xp, dtype, method, shape, axis):
+        # See gh-9508
+        # Every dimension that is not reduced has length 1
+        a = testing.shaped_random(shape, xp, dtype)
+        q = testing.shaped_random((5,), xp, scale=1)
+        return xp.quantile(a, q, axis=axis, method=method)
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose()
+    def test_quantile_nan_in_next_slice(self, xp, dtype, method):
+        a = xp.array([[1., 2.], [xp.nan, xp.nan]], dtype=dtype)
+        return xp.quantile(a, 1., axis=1, method=method)
 
 
 class TestOrder:
