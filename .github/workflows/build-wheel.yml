@@ -299,6 +299,7 @@ jobs:
             ACTIONS_CACHE_SERVICE_V2=${{ env.ACTIONS_CACHE_SERVICE_V2 }}
             SCCACHE_DIR=/host/${{ env.SCCACHE_DIR }}
             SCCACHE_CACHE_SIZE=${{ env.SCCACHE_CACHE_SIZE }}
+            CUPY_TEST_CYTHON_NOEXCEPT=1
           # Windows builds run natively (no container), so the ACTIONS_*
           # values would flow in from the job environment -- but set them
           # explicitly anyway so both platform blocks are self-contained.
@@ -313,6 +314,7 @@ jobs:
             ACTIONS_CACHE_SERVICE_V2=${{ env.ACTIONS_CACHE_SERVICE_V2 }}
             SCCACHE_DIR='${{ env.SCCACHE_DIR }}'
             SCCACHE_CACHE_SIZE=${{ env.SCCACHE_CACHE_SIZE }}
+            CUPY_TEST_CYTHON_NOEXCEPT=1
           CIBW_BEFORE_TEST_LINUX: >
             "/host/${{ env.SCCACHE_PATH }}" --show-adv-stats &&
             "/host/${{ env.SCCACHE_PATH }}" --show-stats --stats-format=json > /host/${{ github.workspace }}/sccache_cupy.json
