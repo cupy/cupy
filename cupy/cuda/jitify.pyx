@@ -221,7 +221,7 @@ cdef inline void _init_cupy_headers() except*:
     _init_cupy_headers_from_scratch()
 
 
-cpdef void _init_module_locked() except*:
+cdef void _init_module_locked() except*:
     if _jitify_init:
         return
 

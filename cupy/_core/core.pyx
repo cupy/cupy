@@ -2542,7 +2542,7 @@ cpdef str _get_header_source():
 
 cpdef dict _get_header_source_map():
     global _header_source_map
-    if not _header_source_map:
+    if not _header_source_cache.initialized():
         _get_header_source()
     return _header_source_map
 

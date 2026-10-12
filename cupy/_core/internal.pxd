@@ -13,6 +13,7 @@ cdef extern from *:
 
     class cached_object {
     private:
+        // Once set, ptr is unchanged until destruction (no concurrent users).
         std::atomic<PyObject*> ptr;
 
     public:
