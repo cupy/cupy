@@ -20,7 +20,7 @@ _poisson_binom_cdf_all = ElementwiseKernel(
 
 
 _take_from_discrete_cdf = ElementwiseKernel(
-    in_params="T(n) cdf, int64 k",
+    in_params="T(n) cdf, U k",
     out_params="T out",
     operation="out = xsf::take_from_discrete_cdf(xsf::as_mdspan(cdf), k);",
     name="cupy_take_from_discrete_cdf",
