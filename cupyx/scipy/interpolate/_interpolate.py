@@ -6,6 +6,7 @@ import math
 import cupy
 from cupy._core import internal  # NOQA
 from cupy._core._scalar import get_typename  # NOQA
+from cupyx.scipy._lib._util import _get_index_type
 from cupyx.scipy import special as spec
 from cupyx.scipy.interpolate._bspline import BSpline, _get_dtype
 
@@ -30,9 +31,10 @@ INTERVAL_KERNEL = r'''
 #define ge_or_le(x, y, r) ((r) ? ((x) > (y)) : ((x) < (y)))
 #define geq_or_leq(x, y, r) ((r) ? ((x) >= (y)) : ((x) <= (y)))
 
+template<typename index_t>
 __device__ long long find_breakpoint_position(
         const double* breakpoints, const double xp, bool extrapolate,
-        const int total_breakpoints, const bool* pasc) {
+        const index_t total_breakpoints, const bool* pasc) {
 
     double a = *&breakpoints[0];
     double b = *&breakpoints[total_breakpoints - 1];
@@ -54,9 +56,9 @@ __device__ long long find_breakpoint_position(
         return total_breakpoints - 2;
     }
 
-    int left = 0;
-    int right = total_breakpoints - 2;
-    int mid;
+    index_t left = 0;
+    index_t right = total_breakpoints - 2;
+    index_t mid;
 
     if(le_or_ge(xp, *&breakpoints[left + 1], asc)) {
         right = left;
@@ -65,7 +67,7 @@ __device__ long long find_breakpoint_position(
     bool found = false;
 
     while(left < right && !found) {
-        mid = ((right + left) / 2);
+        mid = (left + (right - left) / 2);
         if(le_or_ge(xp, *&breakpoints[mid], asc)) {
             right = mid;
         } else if (geq_or_leq(xp, *&breakpoints[mid + 1], asc)) {
@@ -80,28 +82,30 @@ __device__ long long find_breakpoint_position(
 
 }
 
+template<typename index_t>
 __global__ void find_breakpoint_position_1d(
         const double* breakpoints, const double* x, long long* out,
-        bool extrapolate, int total_x, int total_breakpoints,
+        bool extrapolate, index_t total_x, index_t total_breakpoints,
         const bool* pasc) {
 
-    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    index_t idx = static_cast<index_t>(blockIdx.x) * blockDim.x + threadIdx.x;
     if(idx >= total_x) {
         return;
     }
 
     const double xp = *&x[idx];
-    out[idx] = find_breakpoint_position(
+    out[idx] = find_breakpoint_position<index_t>(
         breakpoints, xp, extrapolate, total_breakpoints, pasc);
 }
 
+template<typename index_t>
 __global__ void find_breakpoint_position_nd(
         const double* breakpoints, const double* x, long long* out,
-        bool extrapolate, int total_x, const long long* x_dims,
+        bool extrapolate, index_t total_x, const long long* x_dims,
         const long long* breakpoints_sizes,
         const long long* breakpoints_strides) {
 
-    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    index_t idx = static_cast<index_t>(blockIdx.x) * blockDim.x + threadIdx.x;
     if(idx >= total_x) {
         return;
     }
@@ -109,11 +113,11 @@ __global__ void find_breakpoint_position_nd(
     const long long x_dim = *&x_dims[idx];
     const long long stride = breakpoints_strides[x_dim];
     const double* dim_breakpoints = breakpoints + stride;
-    const int num_breakpoints = *&breakpoints_sizes[x_dim];
+    const index_t num_breakpoints = *&breakpoints_sizes[x_dim];
 
     const bool asc = true;
     const double xp = *&x[idx];
-    out[idx] = find_breakpoint_position(
+    out[idx] = find_breakpoint_position<index_t>(
         dim_breakpoints, xp, extrapolate, num_breakpoints, &asc);
 }
 '''
@@ -121,15 +125,18 @@ __global__ void find_breakpoint_position_nd(
 INTERVAL_MODULE = cupy.RawModule(
     code=INTERVAL_KERNEL,
     name_expressions=[
-        'find_breakpoint_position_1d', 'find_breakpoint_position_nd'])
+        f'{name}<{i}>'
+        for name in ('find_breakpoint_position_1d',
+                     'find_breakpoint_position_nd')
+        for i in INT_TYPES])
 
 PPOLY_KERNEL = r"""
 #include <cupy/complex.cuh>
 #include <cupy/math_constants.h>
 
-template<typename T>
+template<typename T, typename index_t>
 __device__ T eval_poly_1(
-        const double s, const T* coef, long long ci, int cj, int dx,
+        const double s, const T* coef, long long ci, index_t cj, int dx,
         const long long* c_dims, const long long stride_0,
         const long long stride_1) {
     int kp, k;
@@ -140,7 +147,7 @@ __device__ T eval_poly_1(
     z = 1.0;
 
     if(dx < 0) {
-        for(int i = 0; i < -dx; i++) {
+        for(index_t i = 0; i < -dx; i++) {
             z *= s;
         }
     }
@@ -166,7 +173,7 @@ __device__ T eval_poly_1(
             }
         }
 
-        int off = stride_0 * (c_dim_0 - kp - 1) + stride_1 * ci + cj;
+        index_t off = stride_0 * (c_dim_0 - kp - 1) + stride_1 * ci + cj;
         T cur_coef = *&coef[off];
         res += cur_coef * z * ((T) prefactor);
 
@@ -180,13 +187,13 @@ __device__ T eval_poly_1(
 
 }
 
-template<typename T>
+template<typename T, typename index_t>
 __global__ void eval_ppoly(
         const T* coef, const double* breakpoints, const double* x,
         const long long* intervals, int dx, const long long* c_dims,
-        const long long* c_strides, int num_x, T* out) {
+        const long long* c_strides, index_t num_x, T* out) {
 
-    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    index_t idx = static_cast<index_t>(blockIdx.x) * blockDim.x + threadIdx.x;
 
     if(idx >= num_x) {
         return;
@@ -196,41 +203,41 @@ __global__ void eval_ppoly(
     long long interval = *&intervals[idx];
     double breakpoint = *&breakpoints[interval];
 
-    const int num_c = *&c_dims[2];
+    const index_t num_c = *&c_dims[2];
     const long long stride_0 = *&c_strides[0];
     const long long stride_1 = *&c_strides[1];
 
     if(interval < 0) {
-        for(int j = 0; j < num_c; j++) {
+        for(index_t j = 0; j < num_c; j++) {
             out[num_c * idx + j] = CUDART_NAN;
         }
         return;
     }
 
-    for(int j = 0; j < num_c; j++) {
-        T res = eval_poly_1<T>(
+    for(index_t j = 0; j < num_c; j++) {
+        T res = eval_poly_1<T, index_t>(
             xp - breakpoint, coef, interval, ((long long) (j)), dx,
             c_dims, stride_0, stride_1);
         out[num_c * idx + j] = res;
     }
 }
 
-template<typename T>
+template<typename T, typename index_t>
 __global__ void eval_ppoly_nd(
         const T* coef, const double* xs, const double* xp,
         const long long* intervals, const long long* dx,
         const long long* ks, T* c2_all, const long long* c_dims,
         const long long* c_strides, const long long* xs_strides,
         const long long* xs_offsets, const long long* ks_strides,
-        const int num_x, const int ndims, const int num_ks, T* out) {
+        const index_t num_x, const int ndims, const int num_ks, T* out) {
 
-    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    index_t idx = static_cast<index_t>(blockIdx.x) * blockDim.x + threadIdx.x;
     if(idx >= num_x) {
         return;
     }
 
     const long long c_dim0 = c_dims[0];
-    const int num_c = *&c_dims[2];
+    const index_t num_c = *&c_dims[2];
     const long long c_stride0 = c_strides[0];
     const long long c_stride1 = c_strides[1];
 
@@ -239,12 +246,12 @@ __global__ void eval_ppoly_nd(
     T* c2 = c2_all + c_dim0 * idx;
 
     bool invalid = false;
-    for(int i = 0; i < ndims && !invalid; i++) {
+    for(index_t i = 0; i < ndims && !invalid; i++) {
         invalid = xp_intervals[i] < 0;
     }
 
     if(invalid) {
-        for(int j = 0; j < num_c; j++) {
+        for(index_t j = 0; j < num_c; j++) {
             out[num_c * idx + j] = CUDART_NAN;
         }
         return;
@@ -255,8 +262,8 @@ __global__ void eval_ppoly_nd(
         pos += xp_intervals[k] * xs_strides[k];
     }
 
-    for(int jp = 0; jp < num_c; jp++) {
-        for(int i = 0; i < c_dim0; i++) {
+    for(index_t jp = 0; jp < num_c; jp++) {
+        for(index_t i = 0; i < c_dim0; i++) {
             c2[i] = coef[c_stride0 * i + c_stride1 * pos + jp];
         }
 
@@ -268,12 +275,12 @@ __global__ void eval_ppoly_nd(
 
             const long long k_off = ks_strides[k];
             const long long dim_ks = ks[k];
-            int kpos = 0;
+            index_t kpos = 0;
 
-            for(int ko = 0; ko < k_off; ko++) {
+            for(index_t ko = 0; ko < k_off; ko++) {
                 const T* c2_off = c2 + kpos;
                 const int k_dx = dx[k];
-                T res = eval_poly_1<T>(
+                T res = eval_poly_1<T, index_t>(
                     xval, c2_off, ((long long) 0), 0, k_dx,
                     &dim_ks, ((long long) 1), ((long long) 1));
                 c2[ko] = res;
@@ -285,11 +292,11 @@ __global__ void eval_ppoly_nd(
     }
 }
 
-template<typename T>
+template<typename T, typename index_t>
 __global__ void fix_continuity(
         T* coef, const double* breakpoints, const int order,
         const long long* c_dims, const long long* c_strides,
-        int num_breakpoints) {
+        index_t num_breakpoints) {
 
     const long long c_size0 = *&c_dims[0];
     const long long c_size2 = *&c_dims[2];
@@ -297,14 +304,14 @@ __global__ void fix_continuity(
     const long long stride_1 = *&c_strides[1];
     const long long stride_2 = *&c_strides[2];
 
-    for(int idx = 1; idx < num_breakpoints - 1; idx++) {
+    for(index_t idx = 1; idx < num_breakpoints - 1; idx++) {
         const double breakpoint = *&breakpoints[idx];
         const long long interval = idx - 1;
         const double breakpoint_interval = *&breakpoints[interval];
 
-        for(int jp = 0; jp < c_size2; jp++) {
+        for(index_t jp = 0; jp < c_size2; jp++) {
             for(int dx = order; dx > -1; dx--) {
-                T res = eval_poly_1<T>(
+                T res = eval_poly_1<T, index_t>(
                     breakpoint - breakpoint_interval, coef,
                     interval, jp, dx, c_dims, stride_0, stride_1);
 
@@ -322,7 +329,7 @@ __global__ void fix_continuity(
     }
 }
 
-template<typename T>
+template<typename T, typename index_t>
 __global__ void integrate(
         const T* coef, const double* breakpoints,
         const double* a_val, const double* b_val,
@@ -330,7 +337,7 @@ __global__ void integrate(
         const long long* c_dims, const long long* c_strides,
         const bool* pasc, T* out) {
 
-    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    index_t idx = static_cast<index_t>(blockIdx.x) * blockDim.x + threadIdx.x;
     const long long c_dim2 = *&c_dims[2];
 
     if(idx >= c_dim2) {
@@ -354,25 +361,26 @@ __global__ void integrate(
     T vtot = 0;
     T vb;
     T va;
-    for(int interval = start_interval; interval <= end_interval; interval++) {
+    for(index_t interval = start_interval;
+        interval <= end_interval; interval++) {
         const double breakpoint = *&breakpoints[interval];
         if(interval == end_interval) {
-            vb = eval_poly_1<T>(
+            vb = eval_poly_1<T, index_t>(
                 b - breakpoint, coef, interval, idx, -1, c_dims,
                 stride_0, stride_1);
         } else {
             const double next_breakpoint = *&breakpoints[interval + 1];
-            vb = eval_poly_1<T>(
+            vb = eval_poly_1<T, index_t>(
                 next_breakpoint - breakpoint, coef, interval,
                 idx, -1, c_dims, stride_0, stride_1);
         }
 
         if(interval == start_interval) {
-            va = eval_poly_1<T>(
+            va = eval_poly_1<T, index_t>(
                 a - breakpoint, coef, interval, idx, -1, c_dims,
                 stride_0, stride_1);
         } else {
-            va = eval_poly_1<T>(
+            va = eval_poly_1<T, index_t>(
                 0, coef, interval, idx, -1, c_dims,
                 stride_0, stride_1);
         }
@@ -392,16 +400,20 @@ __global__ void integrate(
 PPOLY_MODULE = cupy.RawModule(
     code=PPOLY_KERNEL,
     name_expressions=(
-        [f'eval_ppoly<{type_name}>' for type_name in TYPES] +
-        [f'eval_ppoly_nd<{type_name}>' for type_name in TYPES] +
-        [f'fix_continuity<{type_name}>' for type_name in TYPES] +
-        [f'integrate<{type_name}>' for type_name in TYPES]))
+        [f'eval_ppoly<{type_name}, {i}>'
+         for type_name in TYPES for i in INT_TYPES] +
+        [f'eval_ppoly_nd<{type_name}, {i}>'
+         for type_name in TYPES for i in INT_TYPES] +
+        [f'fix_continuity<{type_name}, {i}>'
+         for type_name in TYPES for i in INT_TYPES] +
+        [f'integrate<{type_name}, {i}>'
+         for type_name in TYPES for i in INT_TYPES]))
 
 BPOLY_KERNEL = r"""
 #include <cupy/complex.cuh>
 #include <cupy/math_constants.h>
 
-template<typename T>
+template<typename T, typename index_t>
 __device__ T eval_bpoly1(
         const double s, const T* coef, const long long ci, const long long cj,
         const long long c_dims_0, const long long c_strides_0,
@@ -428,7 +440,7 @@ __device__ T eval_bpoly1(
     } else {
         T comb = 1;
         res = 0;
-        for(int j = 0; j < k + 1; j++) {
+        for(index_t j = 0; j < k + 1; j++) {
             const long long idx = j * c_strides_0 + ci * c_strides_1 + cj;
             res += (comb * pow(s, ((double) j)) * pow(s1, ((double) k) - j) *
                     coef[idx]);
@@ -439,7 +451,7 @@ __device__ T eval_bpoly1(
     return res;
 }
 
-template<typename T>
+template<typename T, typename index_t>
 __device__ T eval_bpoly1_deriv(
         const double s, const T* coef, const long long ci, const long long cj,
         int dx, T* wrk, const long long c_dims_0, const long long c_strides_0,
@@ -452,7 +464,7 @@ __device__ T eval_bpoly1_deriv(
     const long long k = c_dims_0 - 1;
 
     if(dx == 0) {
-        res = eval_bpoly1<T>(s, coef, ci, cj, c_dims_0, c_strides_0,
+        res = eval_bpoly1<T, index_t>(s, coef, ci, cj, c_dims_0, c_strides_0,
                              c_strides_1);
     } else {
         poch = 1.0;
@@ -464,7 +476,7 @@ __device__ T eval_bpoly1_deriv(
         for(int a = 0; a < k - dx + 1; a++) {
             term = 0;
             comb = 1;
-            for(int j = 0; j < dx + 1; j++) {
+            for(index_t j = 0; j < dx + 1; j++) {
                 const long long idx = (c_strides_0 * (j + a) +
                                        c_strides_1 * ci + cj);
                 term += coef[idx] * pow(-1.0, ((double) (j + dx))) * comb;
@@ -473,20 +485,20 @@ __device__ T eval_bpoly1_deriv(
             wrk[a] = term * poch;
         }
 
-        res = eval_bpoly1<T>(s, wrk, 0, 0, wrk_dims_0, wrk_strides_0,
+        res = eval_bpoly1<T, index_t>(s, wrk, 0, 0, wrk_dims_0, wrk_strides_0,
                              wrk_strides_1);
     }
     return res;
 }
 
-template<typename T>
+template<typename T, typename index_t>
 __global__ void eval_bpoly(
         const T* coef, const double* breakpoints, const double* x,
         const long long* intervals, int dx, T* wrk, const long long* c_dims,
         const long long* c_strides, const long long* wrk_dims,
-        const long long* wrk_strides, int num_x, T* out) {
+        const long long* wrk_strides, index_t num_x, T* out) {
 
-    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    index_t idx = static_cast<index_t>(blockIdx.x) * blockDim.x + threadIdx.x;
 
     if(idx >= num_x) {
         return;
@@ -494,7 +506,7 @@ __global__ void eval_bpoly(
 
     double xp = *&x[idx];
     long long interval = *&intervals[idx];
-    const int num_c = *&c_dims[2];
+    const index_t num_c = *&c_dims[2];
 
     const long long c_dims_0 = *&c_dims[0];
     const long long c_strides_0 = *&c_strides[0];
@@ -505,7 +517,7 @@ __global__ void eval_bpoly(
     const long long wrk_strides_1 = *&wrk_strides[1];
 
     if(interval < 0) {
-        for(int j = 0; j < num_c; j++) {
+        for(index_t j = 0; j < num_c; j++) {
             out[num_c * idx + j] = CUDART_NAN;
         }
         return;
@@ -515,15 +527,15 @@ __global__ void eval_bpoly(
     const double ds_dx = pow(ds, ((double) dx));
     T* off_wrk = wrk + idx * (c_dims_0 - dx);
 
-    for(int j = 0; j < num_c; j++) {
+    for(index_t j = 0; j < num_c; j++) {
         T res;
         const double s = (xp - breakpoints[interval]) / ds;
         if(dx == 0) {
-            res = eval_bpoly1<T>(
+            res = eval_bpoly1<T, index_t>(
                 s, coef, interval, ((long long) (j)), c_dims_0, c_strides_0,
                 c_strides_1);
         } else {
-            res = eval_bpoly1_deriv<T>(
+            res = eval_bpoly1_deriv<T, index_t>(
                 s, coef, interval, ((long long) (j)), dx,
                 off_wrk, c_dims_0, c_strides_0, c_strides_1,
                 wrk_dims_0, wrk_strides_0, wrk_strides_1) / ds_dx;
@@ -537,13 +549,17 @@ __global__ void eval_bpoly(
 BPOLY_MODULE = cupy.RawModule(
     code=BPOLY_KERNEL,
     name_expressions=(
-        [f'eval_bpoly<{type_name}>' for type_name in TYPES]))
+        [f'eval_bpoly<{type_name}, {i}>'
+         for type_name in TYPES for i in INT_TYPES]))
 
 
-def _get_module_func(module, func_name, *template_args):
+def _get_module_func(module, func_name, *template_args,
+                     index_type=None):
     args_dtypes = [get_typename(arg.dtype) for arg in template_args]
+    if index_type is not None:
+        args_dtypes.append(index_type)
     template = ', '.join(args_dtypes)
-    kernel_name = f'{func_name}<{template}>' if template_args else func_name
+    kernel_name = f'{func_name}<{template}>' if args_dtypes else func_name
     kernel = module.get_function(kernel_name)
     return kernel
 
@@ -576,8 +592,9 @@ def _ppoly_evaluate(c, x, xp, dx, extrapolate, out):
     ascending = x[-1] >= x[0]
 
     intervals = cupy.empty(xp.shape, dtype=cupy.int64)
-    interval_kernel = INTERVAL_MODULE.get_function(
-        'find_breakpoint_position_1d')
+    interval_kernel = _get_module_func(
+        INTERVAL_MODULE, 'find_breakpoint_position_1d',
+        index_type=_get_index_type(x, intervals))
     interval_kernel(((xp.shape[0] + 128 - 1) // 128,), (128,),
                     (x, xp, intervals, extrapolate, xp.shape[0], x.shape[0],
                      ascending))
@@ -586,7 +603,9 @@ def _ppoly_evaluate(c, x, xp, dx, extrapolate, out):
     c_shape = cupy.asarray(c.shape, dtype=cupy.int64)
     c_strides = cupy.asarray(c.strides, dtype=cupy.int64) // c.itemsize
 
-    ppoly_kernel = _get_module_func(PPOLY_MODULE, 'eval_ppoly', c)
+    ppoly_kernel = _get_module_func(
+        PPOLY_MODULE, 'eval_ppoly', c,
+        index_type=_get_index_type(c, x, xp, out))
     ppoly_kernel(((xp.shape[0] + 128 - 1) // 128,), (128,),
                  (c, x, xp, intervals, dx, c_shape, c_strides,
                   xp.shape[0], out))
@@ -643,8 +662,9 @@ def _ndppoly_evaluate(c, xs, ks, xp, dx, extrapolate, out):
     xp_dims = xp_dims.copy()
 
     # Compute n-dimensional intervals
-    interval_kernel = INTERVAL_MODULE.get_function(
-        'find_breakpoint_position_nd')
+    interval_kernel = _get_module_func(
+        INTERVAL_MODULE, 'find_breakpoint_position_nd',
+        index_type=_get_index_type(xs_complete, xp, intervals))
     interval_kernel(((total_xp + 128 - 1) // 128,), (128,),
                     (xs_complete, xp, intervals, extrapolate, total_xp,
                      xp_dims, xs_sizes, xs_offsets))
@@ -658,7 +678,9 @@ def _ndppoly_evaluate(c, xs, ks, xp, dx, extrapolate, out):
     ks_strides = cupy.cumprod(cupy.r_[1, ks])
     ks_strides = ks_strides[:-1]
 
-    ppoly_kernel = _get_module_func(PPOLY_MODULE, 'eval_ppoly_nd', c)
+    ppoly_kernel = _get_module_func(
+        PPOLY_MODULE, 'eval_ppoly_nd', c,
+        index_type=_get_index_type(c, xs_complete, xp, c2, out))
     ppoly_kernel(((num_samples + 128 - 1) // 128,), (128,),
                  (c, xs_complete, xp, intervals, dx, ks, c2, c_shape,
                   c_strides, xs_strides, xs_offsets, ks_strides, num_samples,
@@ -686,7 +708,9 @@ def _fix_continuity(c, x, order):
     c_shape = cupy.asarray(c.shape, dtype=cupy.int64)
     c_strides = cupy.asarray(c.strides, dtype=cupy.int64) // c.itemsize
 
-    continuity_kernel = _get_module_func(PPOLY_MODULE, 'fix_continuity', c)
+    continuity_kernel = _get_module_func(
+        PPOLY_MODULE, 'fix_continuity', c,
+        index_type=_get_index_type(c, x))
     continuity_kernel((1,), (1,),
                       (c, x, order, c_shape, c_strides, x.shape[0]))
 
@@ -722,8 +746,9 @@ def _integrate(c, x, a, b, extrapolate, out):
     start_interval = cupy.empty(a.shape, dtype=cupy.int64)
     end_interval = cupy.empty(b.shape, dtype=cupy.int64)
 
-    interval_kernel = INTERVAL_MODULE.get_function(
-        'find_breakpoint_position_1d')
+    interval_kernel = _get_module_func(
+        INTERVAL_MODULE, 'find_breakpoint_position_1d',
+        index_type=_get_index_type(x, start_interval, end_interval))
     interval_kernel(((a.shape[0] + 128 - 1) // 128,), (128,),
                     (x, a, start_interval, extrapolate, a.shape[0], x.shape[0],
                      ascending))
@@ -735,7 +760,9 @@ def _integrate(c, x, a, b, extrapolate, out):
     c_shape = cupy.asarray(c.shape, dtype=cupy.int64)
     c_strides = cupy.asarray(c.strides, dtype=cupy.int64) // c.itemsize
 
-    int_kernel = _get_module_func(PPOLY_MODULE, 'integrate', c)
+    int_kernel = _get_module_func(
+        PPOLY_MODULE, 'integrate', c,
+        index_type=_get_index_type(c, x, out))
     int_kernel(((c.shape[2] + 128 - 1) // 128,), (128,),
                (c, x, a, b, start_interval, end_interval, c_shape, c_strides,
                 ascending, out))
@@ -769,8 +796,9 @@ def _bpoly_evaluate(c, x, xp, dx, extrapolate, out):
     ascending = x[-1] >= x[0]
 
     intervals = cupy.empty(xp.shape, dtype=cupy.int64)
-    interval_kernel = INTERVAL_MODULE.get_function(
-        'find_breakpoint_position_1d')
+    interval_kernel = _get_module_func(
+        INTERVAL_MODULE, 'find_breakpoint_position_1d',
+        index_type=_get_index_type(x, intervals))
     interval_kernel(((xp.shape[0] + 128 - 1) // 128,), (128,),
                     (x, xp, intervals, extrapolate, xp.shape[0], x.shape[0],
                      ascending))
@@ -784,7 +812,9 @@ def _bpoly_evaluate(c, x, xp, dx, extrapolate, out):
     wrk_shape = cupy.asarray([c.shape[0] - dx, 1, 1], dtype=cupy.int64)
     wrk_strides = cupy.asarray(wrk.strides, dtype=cupy.int64) // wrk.itemsize
 
-    bpoly_kernel = _get_module_func(BPOLY_MODULE, 'eval_bpoly', c)
+    bpoly_kernel = _get_module_func(
+        BPOLY_MODULE, 'eval_bpoly', c,
+        index_type=_get_index_type(c, x, xp, wrk, out))
     bpoly_kernel(((xp.shape[0] + 128 - 1) // 128,), (128,),
                  (c, x, xp, intervals, dx, wrk, c_shape, c_strides, wrk_shape,
                   wrk_strides, xp.shape[0], out))

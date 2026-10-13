@@ -10,6 +10,7 @@ else:
     from numpy.lib.array_utils import normalize_axis_index
 
 import cupy
+from cupyx.scipy._lib._util import _get_index_type
 from cupyx.scipy import sparse
 from cupyx.scipy.sparse.linalg import spsolve
 from cupyx.scipy.interpolate._bspline import (
@@ -276,11 +277,14 @@ def make_interp_spline(x, y, k=3, t=None, bc_type=None, axis=0,
         dummy_c = cupy.empty((nt, num_c), dtype=float)
         out = cupy.empty((1, 1), dtype=dummy_c.dtype)
 
-        d_boor_kernel = _get_module_func(D_BOOR_MODULE, 'd_boor', dummy_c)
+        d_boor_kernel = _get_module_func(
+            D_BOOR_MODULE, 'd_boor', dummy_c,
+            index_type=_get_index_type(t, temp))
 
         # find the intervals for x[0] and x[-1]
         intervals_bc = cupy.empty(2, dtype=cupy.int64)
-        interval_kernel = _get_module_func(INTERVAL_MODULE, 'find_interval')
+        interval_kernel = _get_module_func(
+            INTERVAL_MODULE, 'find_interval', index_type=_get_index_type(t, x))
         interval_kernel((1,), (2,),
                         (t, cupy.r_[x[0], x[-1]], intervals_bc, k, nt,
                          False, 2))
@@ -401,7 +405,8 @@ def _make_interp_spline_full_matrix(x, y, k, t, bc_type):
 
     # 1. Compute intervals for each value
     intervals = cupy.empty_like(x, dtype=cupy.int64)
-    interval_kernel = _get_module_func(INTERVAL_MODULE, 'find_interval')
+    interval_kernel = _get_module_func(
+        INTERVAL_MODULE, 'find_interval', index_type=_get_index_type(t, x))
     interval_kernel(((x.shape[0] + 128 - 1) // 128,), (128,),
                     (t, x, intervals, k, nt, False, x.shape[0]))
 
@@ -415,7 +420,9 @@ def _make_interp_spline_full_matrix(x, y, k, t, bc_type):
 
     num_c = prod(dummy_c.shape[1:])
     temp = cupy.empty(x.shape[0] * (2 * k + 1))
-    d_boor_kernel = _get_module_func(D_BOOR_MODULE, 'd_boor', dummy_c)
+    d_boor_kernel = _get_module_func(
+        D_BOOR_MODULE, 'd_boor', dummy_c,
+        index_type=_get_index_type(t, temp))
     d_boor_kernel(((x.shape[0] + 128 - 1) // 128,), (128,),
                   (t, dummy_c, k, 0, x, intervals, out, temp, num_c, 0,
                    x.shape[0]))
@@ -498,7 +505,9 @@ def _make_periodic_spline(x, y, t, k, axis):
     dummy_c = cupy.empty((t.size - k - 1, num_c), dtype=float)
     out = cupy.empty((2, 1), dtype=dummy_c.dtype)
 
-    d_boor_kernel = _get_module_func(D_BOOR_MODULE, 'd_boor', dummy_c)
+    d_boor_kernel = _get_module_func(
+        D_BOOR_MODULE, 'd_boor', dummy_c,
+        index_type=_get_index_type(t, temp))
 
     # find the intervals for x[0] and x[-1]
     x0 = cupy.r_[x[0], x[-1]]
@@ -653,11 +662,11 @@ fprota(T c, T s, T f, T g, T *f_out, T *g_out) {
  *
  */
 __global__ void
-qr_reduce(double *a, int m, int nz, // a(m, nz), packed
+qr_reduce(double *a, ssize_t m, ssize_t nz, // a(m, nz), packed
           ssize_t *offset,          // offset(m)
-          int nc,                   // dense would be a(m, nc)
-          double *y, int ydim1,     // y(m, ydim1)
-          int startrow=1
+          ssize_t nc,               // dense would be a(m, nc)
+          double *y, ssize_t ydim1, // y(m, ydim1)
+          ssize_t startrow=1
 )
 {
     for (ssize_t i=startrow; i < m; i++) {

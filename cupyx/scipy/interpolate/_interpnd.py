@@ -6,6 +6,7 @@ from typing import Any
 
 import cupy
 from cupy._core._scalar import get_typename, format_type_decls
+from cupyx.scipy._lib._util import _get_index_type
 from cupyx.scipy.spatial._delaunay import Delaunay
 
 import warnings
@@ -16,10 +17,13 @@ TYPES = [get_typename(t, INTERPND_TYPE_DECLS)
          for t in [cupy.float64, cupy.complex128]]
 
 
-def _get_module_func(module, func_name, *template_args):
+def _get_module_func(module, func_name, *template_args,
+                     index_type=None):
     args_dtypes = [get_typename(arg.dtype) for arg in template_args]
+    if index_type is not None:
+        args_dtypes.append(index_type)
     template = ', '.join(args_dtypes)
-    kernel_name = f'{func_name}<{template}>' if template_args else func_name
+    kernel_name = f'{func_name}<{template}>' if args_dtypes else func_name
     kernel = module.get_function(kernel_name)
     return kernel
 
@@ -199,37 +203,38 @@ LINEAR_INTERP_ND_DEF = r"""
 #include <cupy/math_constants.h>
 ${type_decls}
 
-template<typename T>
+template<typename T, typename index_t>
 __global__ void evaluate_linear_nd_interp(
-        const int num_x, const int ndim, const int values_sz,
+        const index_t num_x, const int ndim, const index_t values_sz,
         const T* fill_value, const int* enc_simplices, const int* simplices,
         const double* coords, const T* values, T* out) {
 
-    const int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    const index_t idx = static_cast<index_t>(blockIdx.x) * blockDim.x +
+        threadIdx.x;
     if(idx >= num_x) {
         return;
     }
 
-    const int ch_simplex = enc_simplices[idx];
+    const index_t ch_simplex = enc_simplices[idx];
     if(ch_simplex == -1) {
-        for(int k = 0; k < values_sz; k++) {
+        for(index_t k = 0; k < values_sz; k++) {
             out[idx * values_sz + k] = fill_value[0];
         }
         return;
     }
 
-    const int simplex_sz = ndim + 1;
+    const index_t simplex_sz = ndim + 1;
     const int* simplex = simplices + simplex_sz * ch_simplex;
 
-    for(int k = 0; k < values_sz; k++) {
+    for(index_t k = 0; k < values_sz; k++) {
         out[idx * values_sz + k] = 0;
     }
 
     for(int j = 0; j < ndim + 1; j++) {
-        const int m = simplex[j];
+        const index_t m = simplex[j];
         double coord = coords[simplex_sz * idx + j];
 
-        for(int k = 0; k < values_sz; k++) {
+        for(index_t k = 0; k < values_sz; k++) {
             out[idx * values_sz + k] += coord * values[values_sz * m + k];
         }
     }
@@ -240,7 +245,8 @@ LINEAR_INTERP_ND_MODULE = cupy.RawModule(
     code=string.Template(LINEAR_INTERP_ND_DEF).substitute(
         type_decls=format_type_decls(INTERPND_TYPE_DECLS)),
     options=('-std=c++17',),
-    name_expressions=[f'evaluate_linear_nd_interp<{t}>' for t in TYPES])
+    name_expressions=[f'evaluate_linear_nd_interp<{t}, {i}>'
+                      for t in TYPES for i in ('int', 'long long')])
 
 
 class LinearNDInterpolator(NDInterpolatorBase):
@@ -342,7 +348,9 @@ class LinearNDInterpolator(NDInterpolatorBase):
         nvalues = out.shape[1]
 
         _eval_linear_nd_interp = _get_module_func(
-            LINEAR_INTERP_ND_MODULE, 'evaluate_linear_nd_interp', out)
+            LINEAR_INTERP_ND_MODULE, 'evaluate_linear_nd_interp', out,
+            index_type=_get_index_type(xi, c, self.values, out,
+                                       self.tri.simplices))
 
         block_sz = 128
         n_blocks = (xi.shape[0] + block_sz - 1) // block_sz
@@ -361,86 +369,92 @@ class LinearNDInterpolator(NDInterpolatorBase):
 CT_DEF = r"""
 #include <cupy/complex.cuh>
 
-__forceinline__ __device__ int getCurThreadIdx()
+template<typename index_t>
+__forceinline__ __device__ index_t getCurThreadIdx()
 {
-    const int threadsPerBlock   = blockDim.x;
-    const int curThreadIdx    = ( blockIdx.x * threadsPerBlock ) + threadIdx.x;
-    return curThreadIdx;
+    return index_t(blockIdx.x) * blockDim.x + threadIdx.x;
 }
 
-__forceinline__ __device__ int getThreadNum()
+template<typename index_t>
+__forceinline__ __device__ index_t getThreadNum()
 {
-    const int blocksPerGrid     = gridDim.x;
-    const int threadsPerBlock   = blockDim.x;
-    const int threadNum         = blocksPerGrid * threadsPerBlock;
-    return threadNum;
+    return index_t(gridDim.x) * blockDim.x;
 }
 
+template<typename index_t>
 __global__ void estimate_gradients_2d(
-        double* points, int n_points, double* values, int values_dim,
+        double* points, index_t n_points, double* values, index_t values_dim,
         long long* vertex_off, int* vertex_neighbors, double tol, double* err,
         double* prev_grad, double* grad) {
 
     __shared__ double block_err[512];
 
-    int total = n_points * values_dim;
+    index_t total = n_points * values_dim;
 
-    for (int midx = getCurThreadIdx(); midx < total; midx += getThreadNum()) {
-
-        int idx = midx / values_dim;
-        int dim_idx = midx % values_dim;
-
+    for (index_t base = index_t(blockIdx.x) * blockDim.x;
+         base < total; base += getThreadNum<index_t>()) {
+        index_t midx = base + threadIdx.x;
         block_err[threadIdx.x] = 0;
+        if (midx < total) {
 
-        double Q[4] = {0.0, 0.0, 0.0, 0.0};
-        double s[2] = {0.0, 0.0};
-        double r[2];
+            index_t idx = midx / values_dim;
+            index_t dim_idx = midx % values_dim;
 
-        for(int n = vertex_off[idx]; n < vertex_off[idx + 1]; n++) {
-            int nidx = vertex_neighbors[n];
+            double Q[4] = {0.0, 0.0, 0.0, 0.0};
+            double s[2] = {0.0, 0.0};
+            double r[2];
 
-            double ex = points[2 * nidx] - points[2 * idx];
-            double ey = points[2 * nidx + 1] - points[2 * idx + 1];
-            double L = sqrt(ex * ex + ey * ey);
-            double L3 = L * L * L;
+            for(index_t n = vertex_off[idx]; n < vertex_off[idx + 1]; n++) {
+                index_t nidx = vertex_neighbors[n];
 
-            double f1 = values[dim_idx * n_points + idx];
-            double f2 = values[dim_idx * n_points + nidx];
+                double ex = points[2 * nidx] - points[2 * idx];
+                double ey = points[2 * nidx + 1] - points[2 * idx + 1];
+                double L = sqrt(ex * ex + ey * ey);
+                double L3 = L * L * L;
 
-            double df2 = (
-                -ex * prev_grad[2 * n_points * dim_idx + 2 * nidx] -
-                 ey * prev_grad[2 * n_points * dim_idx + 2 * nidx + 1]);
+                double f1 = values[dim_idx * n_points + idx];
+                double f2 = values[dim_idx * n_points + nidx];
 
-            Q[0] += 4 * ex * ex / L3;
-            Q[1] += 4 * ex * ey / L3;
-            Q[3] += 4 * ey * ey / L3;
+                double df2 = (
+                    -ex * prev_grad[index_t(2) * n_points * dim_idx +
+                        2 * nidx] -
+                     ey * prev_grad[index_t(2) * n_points * dim_idx +
+                         2 * nidx + 1]);
 
-            s[0] += (6 * (f1 - f2) - 2 * df2) * ex / L3;
-            s[1] += (6 * (f1 - f2) - 2 * df2) * ey / L3;
+                Q[0] += 4 * ex * ex / L3;
+                Q[1] += 4 * ex * ey / L3;
+                Q[3] += 4 * ey * ey / L3;
+
+                s[0] += (6 * (f1 - f2) - 2 * df2) * ex / L3;
+                s[1] += (6 * (f1 - f2) - 2 * df2) * ey / L3;
+            }
+
+            Q[2] = Q[1];
+
+            double det = Q[0] * Q[3] - Q[1] * Q[2];
+            r[0] = (Q[3] * s[0] - Q[1] * s[1]) / det;
+            r[1] = (-Q[2] * s[0] + Q[0] * s[1]) / det;
+
+            double change = fmax(
+                fabs(prev_grad[index_t(2) * n_points * dim_idx +
+                    2 * idx + 0] + r[0]),
+                fabs(prev_grad[index_t(2) * n_points * dim_idx +
+                    2 * idx + 1] + r[1]));
+
+            grad[index_t(2) * n_points * dim_idx + 2 * idx + 0] = -r[0];
+            grad[index_t(2) * n_points * dim_idx + 2 * idx + 1] = -r[1];
+
+            change /= fmax(1.0, fmax(fabs(r[0]), fabs(r[1])));
+            block_err[threadIdx.x] = fmax(block_err[threadIdx.x], change);
+
         }
-
-        Q[2] = Q[1];
-
-        double det = Q[0] * Q[3] - Q[1] * Q[2];
-        r[0] = (Q[3] * s[0] - Q[1] * s[1]) / det;
-        r[1] = (-Q[2] * s[0] + Q[0] * s[1]) / det;
-
-        double change = fmax(
-            fabs(prev_grad[2 * n_points * dim_idx + 2 * idx + 0] + r[0]),
-            fabs(prev_grad[2 * n_points * dim_idx + 2 * idx + 1] + r[1]));
-
-        grad[2 * n_points * dim_idx + 2 * idx + 0] = -r[0];
-        grad[2 * n_points * dim_idx + 2 * idx + 1] = -r[1];
-
-        change /= fmax(1.0, fmax(fabs(r[0]), fabs(r[1])));
-        block_err[threadIdx.x] = fmax(block_err[threadIdx.x], change);
 
         __syncthreads();
 
         for(int stride = blockDim.x / 2; stride > 0; stride /= 2) {
             if (threadIdx.x < stride) {
-                float lhs = block_err[threadIdx.x];
-                float rhs = block_err[threadIdx.x + stride];
+                double lhs = block_err[threadIdx.x];
+                double rhs = block_err[threadIdx.x + stride];
                 block_err[threadIdx.x] = lhs < rhs ? rhs : lhs;
             }
             __syncthreads();
@@ -449,6 +463,7 @@ __global__ void estimate_gradients_2d(
         if(threadIdx.x == 0) {
             err[blockIdx.x] = fmax(err[blockIdx.x], block_err[threadIdx.x]);
         }
+        __syncthreads();
     }
 
 }
@@ -476,9 +491,10 @@ __device__ void compute_barycentric_coordinates(
     *t = 1.0 / (2.0 * A) * unT;
 }
 
-template<typename T>
+template<typename T, typename index_t>
 __device__ T clough_tocher_2d_single(
-        const double* points, const double* b, T* f, T* df, const int isimplex,
+        const double* points, const double* b, T* f, T* df,
+        const index_t isimplex,
         const int* simplices, const int* neighbors
 ) {
     T  c3000, c0300, c0030, c0003, c2100, c2010, c2001, c0210, c0201, c0021;
@@ -490,24 +506,24 @@ __device__ T clough_tocher_2d_single(
     T w;
     double minval;
     double b1, b2, b3, b4;
-    int itri;
+    index_t itri;
     double c[3];
     double y[2];
 
-    e12x = (+ points[0 + 2 * simplices[3 * isimplex + 1]]
-            - points[0 + 2 * simplices[3 * isimplex + 0]]);
-    e12y = (+ points[1 + 2 * simplices[3 * isimplex + 1]]
-            - points[1 + 2 * simplices[3 * isimplex + 0]]);
+    e12x = (+ points[0 + index_t(2) * simplices[index_t(3) * isimplex + 1]]
+            - points[0 + index_t(2) * simplices[index_t(3) * isimplex + 0]]);
+    e12y = (+ points[1 + index_t(2) * simplices[index_t(3) * isimplex + 1]]
+            - points[1 + index_t(2) * simplices[index_t(3) * isimplex + 0]]);
 
-    e23x = (+ points[0 + 2 * simplices[3 * isimplex + 2]]
-            - points[0 + 2 * simplices[3 * isimplex + 1]]);
-    e23y = (+ points[1 + 2 * simplices[3 * isimplex + 2]]
-            - points[1 + 2 * simplices[3 * isimplex + 1]]);
+    e23x = (+ points[0 + index_t(2) * simplices[index_t(3) * isimplex + 2]]
+            - points[0 + index_t(2) * simplices[index_t(3) * isimplex + 1]]);
+    e23y = (+ points[1 + index_t(2) * simplices[index_t(3) * isimplex + 2]]
+            - points[1 + index_t(2) * simplices[index_t(3) * isimplex + 1]]);
 
-    e31x = (+ points[0 + 2 * simplices[3 * isimplex + 0]]
-            - points[0 + 2 * simplices[3 * isimplex + 2]]);
-    e31y = (+ points[1 + 2 * simplices[3 * isimplex + 0]]
-            - points[1 + 2 * simplices[3 * isimplex + 2]]);
+    e31x = (+ points[0 + index_t(2) * simplices[index_t(3) * isimplex + 0]]
+            - points[0 + index_t(2) * simplices[index_t(3) * isimplex + 2]]);
+    e31y = (+ points[1 + index_t(2) * simplices[index_t(3) * isimplex + 0]]
+            - points[1 + index_t(2) * simplices[index_t(3) * isimplex + 2]]);
 
     f1 = f[0];
     f2 = f[1];
@@ -534,25 +550,27 @@ __device__ T clough_tocher_2d_single(
     c0201 = (c1200 + c0300 + c0210) / 3.0;
     c0021 = (c1020 + c0120 + c0030) / 3.0;
 
-    const double* p0 = points + 2 * simplices[3 * isimplex];
-    const double* p1 = points + 2 * simplices[3 * isimplex + 1];
-    const double* p2 = points + 2 * simplices[3 * isimplex + 2];
+    const double* p0 = points + index_t(2) * simplices[index_t(3) * isimplex];
+    const double* p1 = points +
+        index_t(2) * simplices[index_t(3) * isimplex + 1];
+    const double* p2 = points +
+        index_t(2) * simplices[index_t(3) * isimplex + 2];
 
     for(int k = 0; k < 3; k++) {
-        int tri_opp = neighbors[3 * isimplex + k];
+        int tri_opp = neighbors[index_t(3) * isimplex + k];
         if(tri_opp == -1) {
             g[k] = -0.5;
             continue;
         }
 
         itri = tri_opp >> 4;
-        y[0] = (+ points[0 + 2 * simplices[3 * itri + 0]]
-                + points[0 + 2 * simplices[3 * itri + 1]]
-                + points[0 + 2 * simplices[3 * itri + 2]]) / 3;
+        y[0] = (+ points[0 + index_t(2) * simplices[3 * itri + 0]]
+                + points[0 + index_t(2) * simplices[3 * itri + 1]]
+                + points[0 + index_t(2) * simplices[3 * itri + 2]]) / 3;
 
-        y[1] = (+ points[1 + 2 * simplices[3 * itri + 0]]
-                + points[1 + 2 * simplices[3 * itri + 1]]
-                + points[1 + 2 * simplices[3 * itri + 2]]) / 3;
+        y[1] = (+ points[1 + index_t(2) * simplices[3 * itri + 0]]
+                + points[1 + index_t(2) * simplices[3 * itri + 1]]
+                + points[1 + index_t(2) * simplices[3 * itri + 2]]) / 3;
 
         compute_barycentric_coordinates(y, p0, p1, p2, &c[1], &c[2]);
         c[0] = 1 - c[1] - c[2];
@@ -606,37 +624,38 @@ __device__ T clough_tocher_2d_single(
     return w;
 }
 
-template<typename T>
+template<typename T, typename index_t>
 __global__ void clough_tocher_2d(
-        const double* points, int n_points, const int* simplices,
+        const double* points, index_t n_points, const int* simplices,
         const int* tri_opp, const int* found_simplices, const double* bary,
-        int n_queries, const T* values, int values_sz,
+        index_t n_queries, const T* values, index_t values_sz,
         const T* grad, const T* fill_value, T* out) {
 
-    int total = n_queries * values_sz;
+    index_t total = n_queries * values_sz;
     T f[3];
     T df[3 * 2];
 
-    for (int midx = getCurThreadIdx(); midx < total; midx += getThreadNum()) {
-        int idx = midx / values_sz;
-        int value_dim = midx % values_sz;
+    for (index_t midx = getCurThreadIdx<index_t>();
+        midx < total; midx += getThreadNum<index_t>()) {
+        index_t idx = midx / values_sz;
+        index_t value_dim = midx % values_sz;
 
-        const int isimplex = found_simplices[idx];
-        const int* chosen_simplex = simplices + 3 * isimplex;
+        const index_t isimplex = found_simplices[idx];
+        const int* chosen_simplex = simplices + index_t(3) * isimplex;
 
         if(isimplex == -1) {
             out[idx * values_sz + value_dim] = fill_value[0];
-            return;
+            continue;
         }
 
         for(int j = 0; j < 3; j++) {
-            int vi = chosen_simplex[j];
+            index_t vi = chosen_simplex[j];
             f[j] = values[values_sz * vi + value_dim];
             df[2 * j] = grad[2 * values_sz * vi + 2 * value_dim];
             df[2 * j + 1] = grad[2 * values_sz * vi + 2 * value_dim + 1];
         }
 
-        T w = clough_tocher_2d_single(
+        T w = clough_tocher_2d_single<T, index_t>(
             points, bary + 3 * idx, f, df, isimplex, simplices, tri_opp);
 
         out[values_sz * idx + value_dim] = w;
@@ -646,8 +665,10 @@ __global__ void clough_tocher_2d(
 
 CT_MODULE = cupy.RawModule(
     code=CT_DEF, options=('-std=c++17',),
-    name_expressions=['estimate_gradients_2d'] +
-                     [f'clough_tocher_2d<{t}>' for t in TYPES])
+    name_expressions=[f'estimate_gradients_2d<{i}>'
+                      for i in ('int', 'long long')] +
+                     [f'clough_tocher_2d<{t}, {i}>'
+                      for t in TYPES for i in ('int', 'long long')])
 
 
 def estimate_gradients_2d_global(tri, y, maxiter=400, tol=1e-6):
@@ -676,7 +697,10 @@ def estimate_gradients_2d_global(tri, y, maxiter=400, tol=1e-6):
     prev_grad = cupy.zeros((y.shape[0], indptr.shape[0] - 1, 2),
                            dtype=cupy.float64)
 
-    estimate_gradients_2d = CT_MODULE.get_function('estimate_gradients_2d')
+    estimate_gradients_2d = _get_module_func(
+        CT_MODULE, 'estimate_gradients_2d',
+        index_type=_get_index_type(tri.points, y, indptr, indices,
+                                   prev_grad, grad))
     for iter in range(maxiter):
         estimate_gradients_2d((512,), (128,), (
             tri.points, grad.shape[1], y, y.shape[0], indptr, indices,
@@ -841,7 +865,9 @@ class CloughTocher2DInterpolator(NDInterpolatorBase):
                          dtype=self.values.dtype)
 
         clough_tocher_2d = _get_module_func(
-            CT_MODULE, 'clough_tocher_2d', self.values)
+            CT_MODULE, 'clough_tocher_2d', self.values,
+            index_type=_get_index_type(self.tri.points, c, self.values,
+                                       self.grad, out))
         clough_tocher_2d((512,), (128,), (
             self.tri.points, self.tri.points.shape[0], self.tri.simplices,
             self.tri.neighbors, isimplices, c, xi.shape[0], self.values,

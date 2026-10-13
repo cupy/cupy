@@ -6,6 +6,7 @@ from math import prod
 
 import cupy
 
+from cupyx.scipy._lib._util import _get_index_type
 from cupyx.scipy.interpolate._bspline import _get_dtype, _get_module_func
 from cupyx.scipy.interpolate._bspline2 import _not_a_knot
 from cupyx.scipy.sparse import csr_matrix
@@ -18,22 +19,20 @@ NDBSPL_DEF = r"""
 #include <cupy/complex.cuh>
 #include <cupy/math_constants.h>
 
-__forceinline__ __device__ int getCurThreadIdx()
+template<typename index_t>
+__forceinline__ __device__ index_t getCurThreadIdx()
 {
-    const int threadsPerBlock   = blockDim.x;
-    const int curThreadIdx    = ( blockIdx.x * threadsPerBlock ) + threadIdx.x;
-    return curThreadIdx;
+    return index_t(blockIdx.x) * blockDim.x + threadIdx.x;
 }
-__forceinline__ __device__ int getThreadNum()
+template<typename index_t>
+__forceinline__ __device__ index_t getThreadNum()
 {
-    const int blocksPerGrid     = gridDim.x;
-    const int threadsPerBlock   = blockDim.x;
-    const int threadNum         = blocksPerGrid * threadsPerBlock;
-    return threadNum;
+    return index_t(gridDim.x) * blockDim.x;
 }
 
+template<typename index_t>
 __device__ long long find_interval(
-        const double* t, double xp, int k, int n, bool extrapolate) {
+        const double* t, double xp, int k, index_t n, bool extrapolate) {
 
     double tb = *&t[k];
     double te = *&t[n];
@@ -46,13 +45,13 @@ __device__ long long find_interval(
         return -1;
     }
 
-    int left = k;
-    int right = n;
-    int mid;
+    index_t left = k;
+    index_t right = n;
+    index_t mid;
     bool found = false;
 
     while(left < right && !found) {
-        mid = ((right + left) / 2);
+        mid = (left + (right - left) / 2);
         if(xp > *&t[mid]) {
             left = mid + 1;
         } else if (xp < *&t[mid]) {
@@ -62,8 +61,8 @@ __device__ long long find_interval(
         }
     }
 
-    int default_value = left - 1 < k ? k : left - 1;
-    int result = found ? mid + 1 : default_value + 1;
+    index_t default_value = left - 1 < k ? k : left - 1;
+    index_t result = found ? mid + 1 : default_value + 1;
 
     while(xp >= *&t[result] && result != n) {
         result++;
@@ -72,6 +71,7 @@ __device__ long long find_interval(
     return result - 1;
 }
 
+template<typename index_t>
 __device__ void d_boor(
         const double* t, double xp, long long interval, const long long k,
         const int mu, double* temp) {
@@ -79,7 +79,8 @@ __device__ void d_boor(
     double* h = temp;
     double* hh = h + k + 1;
 
-    int ind, j, n;
+    index_t ind;
+    int j, n;
     double xa, xb, w;
 
     /*
@@ -132,16 +133,18 @@ __device__ void d_boor(
 
 }
 
+template<typename index_t>
 __global__ void compute_nd_bsplines(
-        const double* xi, int n_xi, const double* t, const long long* t_sz,
-        int ndim, int max_t, const long long* k, const long long* max_k,
+        const double* xi, index_t n_xi, const double* t, const long long* t_sz,
+        int ndim, index_t max_t, const long long* k, const long long* max_k,
         const int* nu, bool extrapolate, bool check_all_validity,
         long long* intervals, double* splines, bool* invalid) {
 
-    int total = n_xi * ndim;
+    index_t total = n_xi * ndim;
 
-    for(int midx = getCurThreadIdx(); midx < total; midx += getThreadNum()) {
-        int idx = midx / ndim;
+    for(index_t midx = getCurThreadIdx<index_t>();
+        midx < total; midx += getThreadNum<index_t>()) {
+        index_t idx = midx / ndim;
         int dim_idx = midx % ndim;
 
         double xd = xi[ndim * idx + dim_idx];
@@ -149,7 +152,7 @@ __global__ void compute_nd_bsplines(
         const long long dim_k = k[dim_idx];
         const long long dim_t_sz = t_sz[dim_idx];
 
-        long long interval = find_interval(
+        long long interval = find_interval<index_t>(
             dim_t, xd, dim_k, dim_t_sz - dim_k - 1, extrapolate);
 
         if(interval < 0) {
@@ -162,26 +165,27 @@ __global__ void compute_nd_bsplines(
             splines + ndim * (2 * max_k[0] + 2) * idx +
             (2 * max_k[0] + 2) * dim_idx);
 
-        d_boor(dim_t, xd, interval, dim_k, nu[dim_idx], dim_splines);
+        d_boor<index_t>(dim_t, xd, interval, dim_k, nu[dim_idx], dim_splines);
     }
 }
 
-template<typename T>
+template<typename T, typename index_t>
 __global__ void eval_nd_bspline(
         const long long* indices_k1d, const long long* strides_c1,
         const double* b, const long long* intervals, const long long* k,
-        bool* invalid, T* c1r, long long* volume, int ndim, int num_c,
-        int n_xi, const long long* max_k, T* out) {
+        bool* invalid, T* c1r, long long* volume, int ndim, index_t num_c,
+        index_t n_xi, const long long* max_k, T* out) {
 
-    for(int idx = getCurThreadIdx(); idx < n_xi; idx += getThreadNum()) {
+    for(index_t idx = getCurThreadIdx<index_t>();
+        idx < n_xi; idx += getThreadNum<index_t>()) {
         if(invalid[idx]) {
-            for(int i = 0; i < num_c; i++) {
+            for(index_t i = 0; i < num_c; i++) {
                 out[num_c * idx + i] = CUDART_NAN;
             }
             continue;
         }
 
-        for(int i = 0; i < num_c; i++) {
+        for(index_t i = 0; i < num_c; i++) {
             out[num_c * idx + i] = 0;
         }
 
@@ -200,7 +204,7 @@ __global__ void eval_nd_bspline(
                 idx_cflat_base += d_idx * strides_c1[d];
             }
 
-            for(int i = 0; i < num_c; i++) {
+            for(index_t i = 0; i < num_c; i++) {
                 out[num_c * idx + i] += c1r[idx_cflat_base + i] * factor;
             }
         }
@@ -208,17 +212,19 @@ __global__ void eval_nd_bspline(
 }
 
 
+template<typename index_t>
 __global__ void store_nd_bsplines(
         const long long* indices_k1d, const long long* strides_c1,
         const double* b, const long long* intervals, const long long* k,
-        long long* volume, int ndim, int n_xi, const long long* max_k,
+        long long* volume, int ndim, index_t n_xi, const long long* max_k,
         long long* out_idx, double* out) {
 
-    int total = n_xi * volume[0];
+    index_t total = n_xi * volume[0];
 
-    for(int midx = getCurThreadIdx(); midx < total; midx += getThreadNum()) {
-        int idx = midx / volume[0];
-        int iflat = midx % volume[0];
+    for(index_t midx = getCurThreadIdx<index_t>();
+        midx < total; midx += getThreadNum<index_t>()) {
+        index_t idx = midx / volume[0];
+        index_t iflat = midx % volume[0];
 
         const double* idx_splines = b + ndim * (2 * max_k[0] + 2) * idx;
         const long long* idx_b = indices_k1d + ndim * iflat;
@@ -242,8 +248,12 @@ __global__ void store_nd_bsplines(
 
 NDBSPL_MOD = cupy.RawModule(
     code=NDBSPL_DEF, options=('-std=c++17',),
-    name_expressions=['compute_nd_bsplines', 'store_nd_bsplines'] +
-                     [f'eval_nd_bspline<{t}>' for t in TYPES])
+    name_expressions=[f'{name}<{i}>'
+                      for name in ('compute_nd_bsplines',
+                                   'store_nd_bsplines')
+                      for i in ('int', 'long long')] +
+                     [f'eval_nd_bspline<{t}, {i}>'
+                      for t in TYPES for i in ('int', 'long long')])
 
 
 def evaluate_ndbspline(
@@ -329,13 +339,17 @@ def evaluate_ndbspline(
                          dtype=cupy.float64)
     invalid = cupy.zeros(xi.shape[0], dtype=cupy.bool_)
 
-    compute_nd_bsplines = NDBSPL_MOD.get_function('compute_nd_bsplines')
+    compute_nd_bsplines = _get_module_func(
+        NDBSPL_MOD, 'compute_nd_bsplines',
+        index_type=_get_index_type(t, intervals, splines))
     compute_nd_bsplines((512,), (128,), (
         xi, xi.shape[0], t, len_t, xi.shape[1], t.shape[1], k, max_k,
         nu, extrapolate, True, intervals, splines, invalid
     ))
 
-    eval_nd_bspline = _get_module_func(NDBSPL_MOD, 'eval_nd_bspline', c1r)
+    eval_nd_bspline = _get_module_func(
+        NDBSPL_MOD, 'eval_nd_bspline', c1r,
+        index_type=_get_index_type(c1r, intervals, splines, out))
     eval_nd_bspline((512,), (128,), (
         indices_k1d, strides_c1, splines, intervals, k, invalid, c1r, volume,
         xi.shape[1], num_c_tr, xi.shape[0], max_k, out))
@@ -397,7 +411,7 @@ def colloc_nd(xvals, t, len_t, k):
     splines = cupy.empty((xvals.shape[0], t.shape[0], 2 * max_k.item() + 2),
                          dtype=cupy.float64)
     invalid = cupy.zeros(512, dtype=cupy.bool_)
-    nu = cupy.zeros(ndim, dtype=cupy.int64)
+    nu = cupy.zeros(ndim, dtype=cupy.int32)
 
     k1_shape = tuple(kd + 1 for kd in k.get())
 
@@ -425,7 +439,9 @@ def colloc_nd(xvals, t, len_t, k):
     csr_indptr = cupy.arange(
         0, cpu_volume * size + 1, cpu_volume, dtype=cupy.int64)
 
-    compute_nd_bsplines = NDBSPL_MOD.get_function('compute_nd_bsplines')
+    compute_nd_bsplines = _get_module_func(
+        NDBSPL_MOD, 'compute_nd_bsplines',
+        index_type=_get_index_type(t, intervals, splines))
     compute_nd_bsplines((512,), (128,), (
         xvals, xvals.shape[0], t, len_t, xvals.shape[1], t.shape[1], k, max_k,
         nu, True, False, intervals, splines, invalid
@@ -434,7 +450,10 @@ def colloc_nd(xvals, t, len_t, k):
     if cupy.any(invalid).item():
         raise ValueError('Out of bounds')
 
-    store_nd_splines = NDBSPL_MOD.get_function('store_nd_bsplines')
+    store_nd_splines = _get_module_func(
+        NDBSPL_MOD, 'store_nd_bsplines',
+        index_type=_get_index_type(intervals, splines, csr_data,
+                                   csr_indices))
     store_nd_splines((512,), (128,), (
         _indices_k1d, cstrides, splines, intervals, k, volume, int(ndim),
         int(size), max_k, csr_indices, csr_data

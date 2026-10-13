@@ -9,6 +9,7 @@ import cupy
 from cupy._core.internal import _normalize_axis_index
 from cupy._core._scalar import get_typename, format_type_decls
 from cupy_backends.cuda.api import runtime
+from cupyx.scipy._lib._util import _get_index_type
 from cupyx.scipy.signal._arraytools import axis_slice
 
 
@@ -45,10 +46,10 @@ IIR_KERNEL = r"""
 #include <cupy/complex.cuh>
 ${type_decls}
 
-template<typename U, typename T>
+template<typename U, typename T, typename index_t>
 __global__ void compute_correction_factors(
         const int m, const int k, const T* b, U* out) {
-    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    index_t idx = static_cast<index_t>(blockIdx.x) * blockDim.x + threadIdx.x;
     if(idx >= k) {
         return;
     }
@@ -66,21 +67,22 @@ __global__ void compute_correction_factors(
     }
 }
 
-template<typename T>
+template<typename T, typename index_t>
 __global__ void first_pass_iir(
-        const int m, const int k, const int n, const int n_blocks,
-        const int carries_stride, const T* factors, T* out,
+        const int m, const int k, const index_t n, const index_t n_blocks,
+        const index_t carries_stride, const T* factors, T* out,
         T* carries) {
-    int orig_idx = blockDim.x * (blockIdx.x % n_blocks) + threadIdx.x;
+    index_t orig_idx = index_t(blockDim.x) * (blockIdx.x % n_blocks) +
+        threadIdx.x;
 
-    int num_row = blockIdx.x / n_blocks;
-    int idx = 2 * orig_idx + 1;
+    index_t num_row = blockIdx.x / n_blocks;
+    index_t idx = 2 * orig_idx + 1;
 
     if(idx >= n) {
         return;
     }
 
-    int group_num = idx / m;
+    index_t group_num = idx / m;
     int group_pos = idx % m;
 
     T* out_off = out + num_row * n;
@@ -136,16 +138,17 @@ __global__ void first_pass_iir(
 
 }
 
-template<typename T>
+template<typename T, typename index_t>
 __global__ void correct_carries(
-    const int m, const int k, const int n_blocks, const int carries_stride,
+        const int m, const int k, const index_t n_blocks,
+        const index_t carries_stride,
     const int offset, const T* factors, T* carries) {
 
-    int idx = threadIdx.x;
+    index_t idx = threadIdx.x;
     int pos = idx + (m - k);
     T* row_carries = carries + carries_stride * blockIdx.x;
 
-    for(int i = offset; i < n_blocks; i++) {
+    for(index_t i = offset; i < n_blocks; i++) {
         T* this_carries = row_carries + k * (i + (1 - offset));
         T* prev_carries = row_carries + k * (i - offset);
 
@@ -162,17 +165,18 @@ __global__ void correct_carries(
     }
 }
 
-template<typename T>
+template<typename T, typename index_t>
 __global__ void second_pass_iir(
-        const int m, const int k, const int n, const int carries_stride,
-        const int n_blocks, const int offset, const T* factors,
+        const int m, const int k, const index_t n,
+        const index_t carries_stride,
+        const index_t n_blocks, const int offset, const T* factors,
         T* carries, T* out) {
 
-    int idx = blockDim.x * (blockIdx.x % n_blocks) + threadIdx.x;
+    index_t idx = index_t(blockDim.x) * (blockIdx.x % n_blocks) + threadIdx.x;
     idx += offset * m;
 
-    int row_num = blockIdx.x / n_blocks;
-    int n_group = idx / m;
+    index_t row_num = blockIdx.x / n_blocks;
+    index_t n_group = idx / m;
     int pos = idx % m;
 
     if(idx >= n) {
@@ -201,15 +205,16 @@ IIR_SOS_KERNEL = r"""
 #include <cupy/complex.cuh>
 ${type_decls}
 
-template<typename T>
+template<typename T, typename index_t>
 __global__ void pick_carries(
-        const int m, const int n, const int carries_stride, const int n_blocks,
+        const int m, const index_t n, const index_t carries_stride,
+        const index_t n_blocks,
         const int offset, T* x, T* carries) {
 
-    int idx = m * (blockIdx.x % n_blocks) + threadIdx.x + m - 2;
+    index_t idx = index_t(m) * (blockIdx.x % n_blocks) + threadIdx.x + m - 2;
     int pos = threadIdx.x;
-    int row_num = blockIdx.x / n_blocks;
-    int n_group = idx / m;
+    index_t row_num = blockIdx.x / n_blocks;
+    index_t n_group = idx / m;
 
     T* x_off = x + row_num * n;
     T* carries_off = carries + row_num * carries_stride;
@@ -222,7 +227,7 @@ __global__ void pick_carries(
     group_carries[pos] = x_off[idx];
 }
 
-template<typename U, typename T>
+template<typename U, typename T, typename index_t>
 __global__ void compute_correction_factors_sos(
         const int m, const T* f_const, U* all_out) {
 
@@ -232,8 +237,8 @@ __global__ void compute_correction_factors_sos(
     __shared__ __align__(sizeof(T)) thrust::complex<double> off_d[4];
     U* off_cache = reinterpret_cast<U*>(off_d);
 
-    int idx = threadIdx.x;
-    int num_section = blockIdx.x;
+    index_t idx = threadIdx.x;
+    index_t num_section = blockIdx.x;
 
     const int n_const = 6;
     const int a_off = 3;
@@ -264,26 +269,26 @@ __global__ void compute_correction_factors_sos(
 }
 
 
-template<typename T>
+template<typename T, typename index_t>
 __global__ void first_pass_iir_sos(
-        const int m, const int n, const int n_blocks,
+        const int m, const index_t n, const index_t n_blocks,
         const T* factors, T* out, T* carries) {
 
     __shared__ unsigned int thread_status[2];
     __shared__ __align__(sizeof(T)) thrust::complex<double> fc_d[2 * 1024];
     T* factor_cache = reinterpret_cast<T*>(fc_d);
 
-    int orig_idx = blockDim.x * (blockIdx.x % n_blocks) + threadIdx.x;
+    index_t orig_idx = index_t(blockDim.x) * (blockIdx.x % n_blocks) + threadIdx.x;
 
-    int num_row = blockIdx.x / n_blocks;
-    int idx = 2 * orig_idx + 1;
+    index_t num_row = blockIdx.x / n_blocks;
+    index_t idx = 2 * orig_idx + 1;
     const int k = 2;
 
     if(idx >= n) {
         return;
     }
 
-    int group_num = idx / m;
+    index_t group_num = idx / m;
     int group_pos = idx % m;
     T* out_off = out + num_row * n;
     T* carries_off = carries + num_row * n_blocks * k;
@@ -346,15 +351,15 @@ __global__ void first_pass_iir_sos(
     }
 }
 
-template<typename T>
+template<typename T, typename index_t>
 __global__ void correct_carries_sos(
-    const int m, const int n_blocks, const int carries_stride,
-    const int offset, const T* factors, T* carries) {
+        const int m, const index_t n_blocks, const index_t carries_stride,
+        const int offset, const T* factors, T* carries) {
 
     __shared__ __align__(sizeof(T)) thrust::complex<double> fcd3[4];
     T* factor_cache = reinterpret_cast<T*>(fcd3);
 
-    int idx = threadIdx.x;
+    index_t idx = threadIdx.x;
     const int k = 2;
     int pos = idx + (m - k);
     T* row_carries = carries + carries_stride * blockIdx.x;
@@ -363,7 +368,7 @@ __global__ void correct_carries_sos(
     factor_cache[2 * idx + 1] = factors[m + pos];
     __syncthreads();
 
-    for(int i = offset; i < n_blocks; i++) {
+    for(index_t i = offset; i < n_blocks; i++) {
         T* this_carries = row_carries + k * (i + (1 - offset));
         T* prev_carries = row_carries + k * (i - offset);
 
@@ -381,10 +386,10 @@ __global__ void correct_carries_sos(
     }
 }
 
-template<typename T>
+template<typename T, typename index_t>
 __global__ void second_pass_iir_sos(
-        const int m, const int n, const int carries_stride,
-        const int n_blocks, const int offset, const T* factors,
+        const int m, const index_t n, const index_t carries_stride,
+        const index_t n_blocks, const int offset, const T* factors,
         T* carries, T* out) {
 
     __shared__ __align__(sizeof(T)) thrust::complex<double> fcd2[2 * 1024];
@@ -393,11 +398,11 @@ __global__ void second_pass_iir_sos(
     __shared__ __align__(sizeof(T)) thrust::complex<double> c_d[2];
     T* carries_cache = reinterpret_cast<T*>(c_d);
 
-    int idx = blockDim.x * (blockIdx.x % n_blocks) + threadIdx.x;
+    index_t idx = index_t(blockDim.x) * (blockIdx.x % n_blocks) + threadIdx.x;
     idx += offset * m;
 
-    int row_num = blockIdx.x / n_blocks;
-    int n_group = idx / m;
+    index_t row_num = blockIdx.x / n_blocks;
+    index_t n_group = idx / m;
     int pos = idx % m;
     const int k = 2;
 
@@ -428,9 +433,10 @@ __global__ void second_pass_iir_sos(
     out_off[idx] += carry;
 }
 
-template<typename T>
+template<typename T, typename index_t>
 __global__ void fir_sos(
-        const int m, const int n, const int carries_stride, const int n_blocks,
+        const int m, const index_t n, const index_t carries_stride,
+        const index_t n_blocks,
         const int offset, const T* sos, T* carries, T* out) {
 
     __shared__ __align__(sizeof(T)) thrust::complex<double> fir_cc[1024 + 2];
@@ -439,9 +445,9 @@ __global__ void fir_sos(
     __shared__ __align__(sizeof(T)) thrust::complex<double> fir_b[3];
     T* b = reinterpret_cast<T*>(fir_b);
 
-    int idx = blockDim.x * (blockIdx.x % n_blocks) + threadIdx.x;
-    int row_num = blockIdx.x / n_blocks;
-    int n_group = idx / m;
+    index_t idx = index_t(blockDim.x) * (blockIdx.x % n_blocks) + threadIdx.x;
+    index_t row_num = blockIdx.x / n_blocks;
+    index_t n_group = idx / m;
     int pos = idx % m;
     const int k = 2;
 
@@ -482,28 +488,35 @@ __global__ void fir_sos(
 IIR_MODULE = cupy.RawModule(
     code=string.Template(IIR_KERNEL).substitute(
         type_decls=format_type_decls(TYPE_DECLS)),
-    name_expressions=[f'compute_correction_factors<{x}, {y}>'
-                      for x, y in TYPE_PAIR_NAMES] +
-                     [f'correct_carries<{x}>' for x in TYPE_NAMES] +
-                     [f'first_pass_iir<{x}>' for x in TYPE_NAMES] +
-                     [f'second_pass_iir<{x}>' for x in TYPE_NAMES])
+    name_expressions=[f'compute_correction_factors<{x}, {y}, {i}>'
+                      for x, y in TYPE_PAIR_NAMES
+                      for i in ('int', 'long long')] +
+                     [f'{name}<{x}, {i}>'
+                      for name in ('correct_carries', 'first_pass_iir',
+                                   'second_pass_iir')
+                      for x in TYPE_NAMES for i in ('int', 'long long')])
 
 IIR_SOS_MODULE = cupy.RawModule(
     code=string.Template(IIR_SOS_KERNEL).substitute(
         type_decls=format_type_decls(TYPE_DECLS)),
-    name_expressions=[f'compute_correction_factors_sos<{x}, {y}>'
-                      for x, y in TYPE_PAIR_NAMES] +
-    [f'pick_carries<{x}>' for x in TYPE_NAMES] +
-    [f'correct_carries_sos<{x}>' for x in TYPE_NAMES] +
-    [f'first_pass_iir_sos<{x}>' for x in TYPE_NAMES] +
-    [f'second_pass_iir_sos<{x}>' for x in TYPE_NAMES] +
-    [f'fir_sos<{x}>' for x in TYPE_NAMES])
+    name_expressions=[f'compute_correction_factors_sos<{x}, {y}, {i}>'
+                      for x, y in TYPE_PAIR_NAMES
+                      for i in ('int', 'long long')] +
+                     [f'{name}<{x}, {i}>'
+                      for name in ('pick_carries', 'correct_carries_sos',
+                                   'first_pass_iir_sos', 'second_pass_iir_sos',
+                                   'fir_sos')
+                      for x in TYPE_NAMES for i in ('int', 'long long')])
 
 
-def _get_module_func(module, func_name, *template_args):
+def _get_module_func(module, func_name, *template_args,
+                     index_type=None):
     args_dtypes = [_get_typename(arg.dtype) for arg in template_args]
+    if index_type is None:
+        index_type = _get_index_type(*template_args)
+    args_dtypes.append(index_type)
     template = ', '.join(args_dtypes)
-    kernel_name = f'{func_name}<{template}>' if template_args else func_name
+    kernel_name = f'{func_name}<{template}>' if args_dtypes else func_name
     kernel = module.get_function(kernel_name)
     return kernel
 
@@ -574,10 +587,15 @@ def apply_iir(x, a, axis=-1, zi=None, dtype=None, block_sz=1024):
 
     corr_kernel = _get_module_func(
         IIR_MODULE, 'compute_correction_factors', correction, a)
-    first_pass_kernel = _get_module_func(IIR_MODULE, 'first_pass_iir', out)
-    second_pass_kernel = _get_module_func(IIR_MODULE, 'second_pass_iir', out)
+    index_type = _get_index_type(
+        out, correction, carries, zi,
+        max_size=num_rows * (n_blocks + 1) * k * out.itemsize)
+    first_pass_kernel = _get_module_func(
+        IIR_MODULE, 'first_pass_iir', out, index_type=index_type)
+    second_pass_kernel = _get_module_func(
+        IIR_MODULE, 'second_pass_iir', out, index_type=index_type)
     carry_correction_kernel = _get_module_func(
-        IIR_MODULE, 'correct_carries', out)
+        IIR_MODULE, 'correct_carries', out, index_type=index_type)
 
     corr_kernel((k,), (1,), (block_sz, k, a, correction))
     first_pass_kernel((total_blocks,), (block_sz // 2,),
@@ -670,14 +688,17 @@ def apply_iir_sos(x, sos, axis=-1, zi=None, dtype=None, block_sz=1024,
         all_carries = cupy.empty(
             (num_rows, n_blocks + 1, k), dtype=dtype)
 
+    index_type = _get_index_type(out, correction, all_carries)
     first_pass_kernel = _get_module_func(
-        IIR_SOS_MODULE, 'first_pass_iir_sos', out)
+        IIR_SOS_MODULE, 'first_pass_iir_sos', out, index_type=index_type)
     second_pass_kernel = _get_module_func(
-        IIR_SOS_MODULE, 'second_pass_iir_sos', out)
+        IIR_SOS_MODULE, 'second_pass_iir_sos', out, index_type=index_type)
     carry_correction_kernel = _get_module_func(
-        IIR_SOS_MODULE, 'correct_carries_sos', out)
-    fir_kernel = _get_module_func(IIR_SOS_MODULE, 'fir_sos', out)
-    carries_kernel = _get_module_func(IIR_SOS_MODULE, 'pick_carries', out)
+        IIR_SOS_MODULE, 'correct_carries_sos', out, index_type=index_type)
+    fir_kernel = _get_module_func(
+        IIR_SOS_MODULE, 'fir_sos', out, index_type=index_type)
+    carries_kernel = _get_module_func(
+        IIR_SOS_MODULE, 'pick_carries', out, index_type=index_type)
 
     starting_group = int(zi is None)
     blocks_to_merge = n_blocks - starting_group

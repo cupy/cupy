@@ -91,7 +91,7 @@ __device__ bool dominate_sp(int _x_1, int _y_1, int _z_1, int _x_2, int _y_2, in
             ((y_2 + y_3) * k_2 + ((x_3 - x_2) * (x_2 + x_3 - (x_0_2)) + (z_3 - z_2) * (z_2 + z_3 - (z_0_2)))) * k_1);
 }
 
-#define TOID(x, y, z, size)    ((((z) * (size)) + (y)) * (size) + (x))
+#define TOID(x, y, z, size)    (((index_t(z) * (size)) + (y)) * (size) + (x))
 
 
 extern "C"{
@@ -103,8 +103,8 @@ __global__ void kernelFloodZ(ENCODED_INT_TYPE *input, ENCODED_INT_TYPE *output, 
     int ty = blockIdx.y * blockDim.y + threadIdx.y;
     int tz = 0;
 
-    int plane = size * size;
-    int id = TOID(tx, ty, tz, size);
+    index_t plane = index_t(size) * size;
+    index_t id = TOID(tx, ty, tz, size);
     ENCODED_INT_TYPE pixel1, pixel2;
 
     pixel1 = ENCODE(ZERO,ZERO,ZERO,ONE,ZERO);
@@ -146,7 +146,7 @@ __global__ void kernelMaurerAxis(ENCODED_INT_TYPE *input, ENCODED_INT_TYPE *stac
     int tz = blockIdx.y * blockDim.y + threadIdx.y;
     int ty = 0;
 
-    int id = TOID(tx, ty, tz, size);
+    index_t id = TOID(tx, ty, tz, size);
 
     ENCODED_INT_TYPE lasty = 0;
     ENCODED_INT_TYPE x1, y1, z1, x2, y2, z2, nx, ny, nz;
@@ -194,7 +194,7 @@ __global__ void kernelMaurerAxisWithSpacing(ENCODED_INT_TYPE *input, ENCODED_INT
     int tz = blockIdx.y * blockDim.y + threadIdx.y;
     int ty = 0;
 
-    int id = TOID(tx, ty, tz, size);
+    index_t id = TOID(tx, ty, tz, size);
 
     ENCODED_INT_TYPE lasty = 0;
     ENCODED_INT_TYPE x1, y1, z1, x2, y2, z2, nx, ny, nz;
@@ -297,7 +297,7 @@ __global__ void kernelColorAxis(ENCODED_INT_TYPE *input, ENCODED_INT_TYPE *outpu
         __syncthreads();
 
         if(!threadIdx.y) {
-            int id = TOID(y_end + threadIdx.x, blockIdx.x * blockDim.x, tz, size);
+            index_t id = TOID(y_end + threadIdx.x, blockIdx.x * blockDim.x, tz, size);
             for(int i = 0; i < blockDim.x; i++, id+=size) {
                 output[id] = block[i][threadIdx.x];
             }
@@ -373,7 +373,7 @@ __global__ void kernelColorAxisWithSpacing(ENCODED_INT_TYPE *input, ENCODED_INT_
         __syncthreads();
 
         if(!threadIdx.y) {
-            int id = TOID(y_end + threadIdx.x, blockIdx.x * blockDim.x, tz, size);
+            index_t id = TOID(y_end + threadIdx.x, blockIdx.x * blockDim.x, tz, size);
             for(int i = 0; i < blockDim.x; i++, id+=size) {
                 output[id] = block[i][threadIdx.x];
             }

@@ -5,6 +5,7 @@ import string
 from typing import Any
 
 import cupy
+from cupyx.scipy._lib._util import _get_index_type
 from cupy._core._scalar import get_typename, format_type_decls
 from cupy._core.internal import _normalize_axis_index
 
@@ -23,9 +24,9 @@ SYMIIR2_KERNEL = r"""
 #include <cupy/carray.cuh>
 ${type_decls}
 
-template<typename T>
+template<typename T, typename index_t>
 __device__ T _compute_symiirorder2_fwd_hc(
-        const int k, const T cs, const T r, const T omega) {
+        const index_t k, const T cs, const T r, const T omega) {
     T base;
 
     if(k < 0) {
@@ -43,12 +44,12 @@ __device__ T _compute_symiirorder2_fwd_hc(
     return base;
 }
 
-template<typename T>
+template<typename T, typename index_t>
 __global__ void compute_symiirorder2_fwd_sc(
-        const int n, const int off, const T* cs_ptr, const T* r_ptr,
+        const index_t n, const index_t off, const T* cs_ptr, const T* r_ptr,
         const T* omega_ptr, const double precision, bool* valid, T* out) {
 
-    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    index_t idx = static_cast<index_t>(blockIdx.x) * blockDim.x + threadIdx.x;
     if(idx + off >= n) {
         return;
     }
@@ -57,21 +58,22 @@ __global__ void compute_symiirorder2_fwd_sc(
     const T r = r_ptr[0];
     const T omega = omega_ptr[0];
 
-    T val = _compute_symiirorder2_fwd_hc<T>(idx + off + 1, cs, r, omega);
+    T val = _compute_symiirorder2_fwd_hc<T, index_t>(idx + off + 1, cs,
+        r, omega);
     T err = val * val;
 
     out[idx] = val;
     valid[idx] = err <= precision;
 }
 
-template<typename T>
+template<typename T, typename index_t>
 __device__ T _compute_symiirorder2_bwd_hs(
-        const int ki, const T cs, const T rsq, const T omega) {
+        const index_t ki, const T cs, const T rsq, const T omega) {
     T c0;
     T gamma;
 
     T cssq = cs * cs;
-    int k = abs(ki);
+    index_t k = abs(ki);
     T rsupk = pow(rsq, ((T) k) / ((T) 2.0));
 
 
@@ -93,13 +95,14 @@ __device__ T _compute_symiirorder2_bwd_hs(
     return c0 * rsupk * (cos(omega * k) + gamma * sin(omega * k));
 }
 
-template<typename T>
+template<typename T, typename index_t>
 __global__ void compute_symiirorder2_bwd_sc(
-        const int n, const int off, const int l_off, const int r_off,
+        const index_t n, const index_t off, const index_t l_off,
+            const index_t r_off,
         const T* cs_ptr, const T* rsq_ptr, const T* omega_ptr,
         const double precision, bool* valid, T* out) {
 
-    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    index_t idx = static_cast<index_t>(blockIdx.x) * blockDim.x + threadIdx.x;
     if(idx + off >= n) {
         return;
     }
@@ -108,8 +111,10 @@ __global__ void compute_symiirorder2_bwd_sc(
     const T rsq = rsq_ptr[0];
     const T omega = omega_ptr[0];
 
-    T v1 = _compute_symiirorder2_bwd_hs<T>(idx + l_off + off, cs, rsq, omega);
-    T v2 = _compute_symiirorder2_bwd_hs<T>(idx + r_off + off, cs, rsq, omega);
+    T v1 = _compute_symiirorder2_bwd_hs<T, index_t>(idx + l_off + off,
+        cs, rsq, omega);
+    T v2 = _compute_symiirorder2_bwd_hs<T, index_t>(idx + r_off + off,
+        cs, rsq, omega);
 
     T diff = v1 + v2;
     T err = diff * diff;
@@ -121,16 +126,20 @@ __global__ void compute_symiirorder2_bwd_sc(
 SYMIIR2_MODULE = cupy.RawModule(
     code=string.Template(SYMIIR2_KERNEL).substitute(
         type_decls=format_type_decls(SYMIIR2_TYPE_DECLS)),
-    name_expressions=[f'compute_symiirorder2_bwd_sc<{t}>'
-                      for t in SYMIIR2_TYPE_NAMES] +
-    [f'compute_symiirorder2_fwd_sc<{t}>'
-     for t in SYMIIR2_TYPE_NAMES])
+    name_expressions=[f'{name}<{t}, {i}>'
+                      for name in ('compute_symiirorder2_bwd_sc',
+                                   'compute_symiirorder2_fwd_sc')
+                      for t in SYMIIR2_TYPE_NAMES
+                      for i in ('int', 'long long')])
 
 
-def _get_module_func(module, func_name, *template_args):
+def _get_module_func(module, func_name, *template_args,
+                     index_type=None):
     args_dtypes = [get_typename(arg.dtype) for arg in template_args]
+    if index_type is not None:
+        args_dtypes.append(index_type)
     template = ', '.join(args_dtypes)
-    kernel_name = f'{func_name}<{template}>' if template_args else func_name
+    kernel_name = f'{func_name}<{template}>' if args_dtypes else func_name
     kernel = module.get_function(kernel_name)
     return kernel
 
@@ -355,7 +364,8 @@ def _symiirorder2_nd(input, r, omega, precision=-1.0, axis=-1):
 
     # First compute the symmetric forward starting conditions
     compute_symiirorder2_fwd_sc = _get_module_func(
-        SYMIIR2_MODULE, 'compute_symiirorder2_fwd_sc', cs)
+        SYMIIR2_MODULE, 'compute_symiirorder2_fwd_sc', cs,
+        index_type=_get_index_type(input))
 
     diff = cupy.empty((block_sz + 1,), dtype=cs.dtype)
     all_valid = cupy.empty((block_sz + 1,), dtype=cupy.bool_)
@@ -419,7 +429,8 @@ def _symiirorder2_nd(input, r, omega, precision=-1.0, axis=-1):
 
     # Then compute the symmetric backward starting conditions
     compute_symiirorder2_bwd_sc = _get_module_func(
-        SYMIIR2_MODULE, 'compute_symiirorder2_bwd_sc', cs)
+        SYMIIR2_MODULE, 'compute_symiirorder2_bwd_sc', cs,
+        index_type=_get_index_type(input))
 
     diff = cupy.empty((block_sz,), dtype=cs.dtype)
     all_valid = cupy.empty((block_sz,), dtype=cupy.bool_)

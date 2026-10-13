@@ -41,7 +41,7 @@
 // END OF DEFINITIONS OVERRIDDEN BY THE PYTHON SCRIPT
 
 
-#define TOID(x, y, size)  ((y) * (size) + (x))
+#define TOID(x, y, size)  (index_t(y) * (size) + (x))
 
 #define LL long long
 __device__ bool dominate(LL x1, LL y1, LL x2, LL y2, LL x3, LL y3, LL x0)
@@ -75,7 +75,7 @@ __global__ void kernelFloodDown(pixel_int2_t *input, pixel_int2_t *output, int s
 {
     int tx = blockIdx.x * blockDim.x + threadIdx.x;
     int ty = blockIdx.y * bandSize;
-    int id = TOID(tx, ty, size);
+    index_t id = TOID(tx, ty, size);
 
     pixel_int2_t pixel1, pixel2;
 
@@ -95,7 +95,7 @@ __global__ void kernelFloodUp(pixel_int2_t *input, pixel_int2_t *output, int siz
 {
     int tx = blockIdx.x * blockDim.x + threadIdx.x;
     int ty = (blockIdx.y+1) * bandSize - 1;
-    int id = TOID(tx, ty, size);
+    index_t id = TOID(tx, ty, size);
 
     pixel_int2_t pixel1, pixel2;
     int dist1, dist2;
@@ -118,16 +118,17 @@ __global__ void kernelFloodUp(pixel_int2_t *input, pixel_int2_t *output, int siz
 __global__ void kernelPropagateInterband(pixel_int2_t *input, pixel_int2_t *margin_out, int size, int bandSize)
 {
     int tx = blockIdx.x * blockDim.x + threadIdx.x;
-    int inc = bandSize * size;
-    int ny, nid, nDist;
+    index_t inc = index_t(bandSize) * size;
+    int ny, nDist;
+    index_t nid;
     pixel_int2_t pixel;
 
     // Top row, look backward
     int ty = blockIdx.y * bandSize;
-    int topId = TOID(tx, ty, size);
-    int bottomId = TOID(tx, ty + bandSize - 1, size);
-    int tid = blockIdx.y * size + tx;
-    int bid = tid + (size * size / bandSize);
+    index_t topId = TOID(tx, ty, size);
+    index_t bottomId = TOID(tx, ty + bandSize - 1, size);
+    index_t tid = index_t(blockIdx.y) * size + tx;
+    index_t bid = tid + (index_t(size) * size / bandSize);
 
     pixel = input[topId];
     int myDist = abs(pixel.y - ty);
@@ -179,7 +180,7 @@ __global__ void kernelUpdateVertical(pixel_int2_t *color, pixel_int2_t *margin, 
 
     int dist, myDist;
 
-    int id = TOID(tx, ty, size);
+    index_t id = TOID(tx, ty, size);
 
     int n_step = bandSize / blockDim.x;
     for(int step = 0; step < n_step; ++step) {
@@ -204,7 +205,7 @@ __global__ void kernelUpdateVertical(pixel_int2_t *color, pixel_int2_t *margin, 
 
         // block is written to a transposed location in the output
 
-        int tid = TOID(blockIdx.y * bandSize + step * blockDim.x + threadIdx.x, \
+        index_t tid = TOID(blockIdx.y * bandSize + step * blockDim.x + threadIdx.x, \
                         blockIdx.x * blockDim.x, size);
 
         for(int i = 0; i < blockDim.x; ++i, tid += size) {
@@ -219,7 +220,7 @@ __global__ void kernelProximatePoints(pixel_int2_t *input, pixel_int2_t *stack, 
 {
     int tx = blockIdx.x * blockDim.x + threadIdx.x;
     int ty = blockIdx.y * bandSize;
-    int id = TOID(tx, ty, size);
+    index_t id = TOID(tx, ty, size);
     int lasty = -1;
     pixel_int2_t last1, last2, current;
 
@@ -256,7 +257,7 @@ __global__ void kernelProximatePointsWithSpacing(pixel_int2_t *input, pixel_int2
 {
     int tx = blockIdx.x * blockDim.x + threadIdx.x;
     int ty = blockIdx.y * bandSize;
-    int id = TOID(tx, ty, size);
+    index_t id = TOID(tx, ty, size);
     int lasty = -1;
     pixel_int2_t last1, last2, current;
 
@@ -292,7 +293,7 @@ __global__ void kernelCreateForwardPointers(pixel_int2_t *input, pixel_int2_t *o
 {
     int tx = blockIdx.x * blockDim.x + threadIdx.x;
     int ty = (blockIdx.y+1) * bandSize - 1;
-    int id = TOID(tx, ty, size);
+    index_t id = TOID(tx, ty, size);
     int lasty = -1, nexty;
     pixel_int2_t current;
 
@@ -561,7 +562,7 @@ __global__ void kernelDoubleToSingleList(pixel_int2_t *color, pixel_int2_t *link
 {
     int tx = blockIdx.x * blockDim.x + threadIdx.x;
     int ty = blockIdx.y;
-    int id = TOID(tx, ty, size);
+    index_t id = TOID(tx, ty, size);
 
     output[id] = make_pixel(color[id].x, link[id].y);
 }
@@ -618,7 +619,7 @@ __global__ void kernelColor(pixel_int2_t *input, pixel_int2_t *output, int size)
 
         // note: transposes back to original shape here
         if(!threadIdx.y) {
-            int id = TOID(y_end + threadIdx.x, blockIdx.x * blockDim.x, size);
+            index_t id = TOID(y_end + threadIdx.x, blockIdx.x * blockDim.x, size);
             for(int i = 0; i < blockDim.x; ++i, id+=size) {
                 output[id] = block[i][threadIdx.x];
             }
@@ -683,7 +684,7 @@ __global__ void kernelColorWithSpacing(pixel_int2_t *input, pixel_int2_t *output
 
         // note: transposes back to original shape here
         if(!threadIdx.y) {
-            int id = TOID(y_end + threadIdx.x, blockIdx.x * blockDim.x, size);
+            index_t id = TOID(y_end + threadIdx.x, blockIdx.x * blockDim.x, size);
             for(int i = 0; i < blockDim.x; ++i, id+=size) {
                 output[id] = block[i][threadIdx.x];
             }

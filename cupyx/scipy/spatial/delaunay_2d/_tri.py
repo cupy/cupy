@@ -33,6 +33,11 @@ class ActTriMode:
 
 class GDel2D:
     def __init__(self, points):
+        # At most 2 * (npoints + 1) triangles; TriOpp reserves
+        # four low bits of a signed int32 for flags.
+        if 2 * (points.shape[0] + 1) > (1 << 27):
+            raise ValueError("Too many points for Delaunay int32 "
+                             "triangle indices")
         self.n_points = points.shape[0] + 1
         self.max_triangles = 2 * self.n_points
         self.tri_num = 0
