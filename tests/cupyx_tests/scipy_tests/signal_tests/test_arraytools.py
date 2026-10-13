@@ -47,10 +47,10 @@ def test_const_and_zero_accept_n_ge_len(name, n):
     ((2, 5), 1),
     ((5, 3), 0),
 ])
-@testing.numpy_cupy_allclose(scipy_name='sp')
-def test_scipy_parity(name, n, shape, axis, xp, sp):
+@testing.numpy_cupy_allclose(scipy_name='scp')
+def test_scipy_parity(name, n, shape, axis, xp, scp):
     x = xp.arange(int(xp.prod(xp.array(shape)))).reshape(shape)
-    return getattr(sp.signal._arraytools, name)(x, n, axis=axis)
+    return getattr(scp.signal._arraytools, name)(x, n, axis=axis)
 
 
 def test_as_strided_reexport():
