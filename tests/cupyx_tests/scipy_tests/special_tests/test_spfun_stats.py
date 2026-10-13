@@ -36,3 +36,12 @@ class TestPoissonBinomCDF:
             [0.192, 0.656, 0.9520000000000001, 1.0], dtype=dtype)
         testing.assert_allclose(actual, desired)
         assert actual.dtype == desired.dtype
+
+    @testing.for_dtypes('fd')
+    def test_scalar_k(self, dtype):
+        p = cupy.asarray([0.2, 0.4, 0.6], dtype=dtype)
+        k = 1
+        actual = poisson_binom_cdf(k, p)
+        desired = cupy.asarray(0.656, dtype=dtype)
+        testing.assert_allclose(actual, desired)
+        assert actual.dtype == desired.dtype
