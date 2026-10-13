@@ -36,6 +36,15 @@ def _load_and_get_path(lib_name):
         return loaded_dl.abs_path
 
 
+def _get_cusparselt_runtime_version(cusparselt):
+    handle = cusparselt.Handle()
+    cusparselt.init(handle)
+    try:
+        return cusparselt.getVersion(handle)
+    finally:
+        cusparselt.destroy(handle)
+
+
 def _version_and_path(ver_seq, path_seq):
     assert len(ver_seq) >= len(path_seq)
     result = []
@@ -117,13 +126,16 @@ class _RuntimeInfo:
     nccl_path = None
     cub_build_version = None
     jitify_build_version = None
+    cutensor_build_version = None
     cutensor_version = None
     cutensor_path = None
+    cusparselt_build_version = None
     cusparselt_version = None
     cusparselt_path = None
     cython_build_version = None
     cython_version = None
 
+    numpy_build_version = None
     numpy_version = None
     scipy_version = None
 
@@ -273,6 +285,7 @@ class _RuntimeInfo:
         # cuTENSOR
         try:
             from cupy_backends.cuda.libs import cutensor
+            self.cutensor_build_version = cutensor.get_build_version()
             self.cutensor_version = cutensor.get_version()
         except ImportError:
             pass
@@ -282,7 +295,11 @@ class _RuntimeInfo:
         # cuSparseLT
         try:
             from cupy_backends.cuda.libs import cusparselt
-            self.cusparselt_version = cusparselt.get_build_version()
+            self.cusparselt_build_version = cusparselt.get_build_version()
+            if full:
+                self.cusparselt_version = _eval_or_error(
+                    lambda: _get_cusparselt_runtime_version(cusparselt),
+                    Exception)
         except ImportError:
             pass
         if full and not is_hip:
@@ -297,6 +314,7 @@ class _RuntimeInfo:
             pass
 
         # NumPy
+        self.numpy_build_version = cupy._util.numpy_build_ver
         self.numpy_version = numpy.version.full_version
 
         # SciPy
@@ -314,7 +332,8 @@ class _RuntimeInfo:
             ('Python Version', platform.python_version()),
             ('CuPy Version', self.cupy_version),
             ('CuPy Platform', 'NVIDIA CUDA' if not is_hip else 'AMD ROCm'),
-            ('NumPy Version', self.numpy_version),
+            ('NumPy Build Version', self.numpy_build_version),
+            ('NumPy Runtime Version', self.numpy_version),
             ('SciPy Version', self.scipy_version),
             ('Cython Build Version', self.cython_build_version),
             ('Cython Runtime Version', self.cython_version),
@@ -372,14 +391,19 @@ class _RuntimeInfo:
             records += [('NCCL Path', self.nccl_path)]
 
         records += [
-            ('cuTENSOR Version', self.cutensor_version),
+            ('cuTENSOR Build Version', self.cutensor_build_version),
+            ('cuTENSOR Runtime Version', self.cutensor_version),
         ]
         if full and not is_hip:
             records += [('cuTENSOR Path', self.cutensor_path)]
 
         records += [
-            ('cuSPARSELt Build Version', self.cusparselt_version),
+            ('cuSPARSELt Build Version', self.cusparselt_build_version),
         ]
+        if full:
+            records += [
+                ('cuSPARSELt Runtime Version', self.cusparselt_version),
+            ]
         if full and not is_hip:
             records += [('cuSPARSELt Path', self.cusparselt_path)]
 

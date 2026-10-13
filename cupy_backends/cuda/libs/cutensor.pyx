@@ -273,6 +273,9 @@ available = True
 # Version information
 ###############################################################################
 
+def get_build_version():
+    return CUTENSOR_VERSION
+
 cpdef size_t get_version():
     return cutensorGetVersion()
 
