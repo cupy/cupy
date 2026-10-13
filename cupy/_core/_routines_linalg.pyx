@@ -1288,8 +1288,19 @@ cpdef _ndarray_base matmul(
         one = numpy.array(1, dtype=coef_dtype)
         zero = numpy.array(0, dtype=coef_dtype)
         if not mml.use_batched_pointers:
-            if (cuda_dtype in (runtime.CUDA_R_16F, runtime.CUDA_R_16BF)
-                    or dtype.char in 'fFdD'):
+            if cuda_dtype == runtime.CUDA_C_32F:
+                # Ex API rejects negative batch strides on some old hardware.
+                cublas.cgemmStridedBatched(
+                    handle,
+                    mml.a.transpose, mml.b.transpose,
+                    mml.m, mml.n, mml.k, one.ctypes.data,
+                    a.data.ptr, mml.a.ld, mml.a.outer_stride,
+                    b.data.ptr, mml.b.ld, mml.b.outer_stride,
+                    zero.ctypes.data,
+                    c.data.ptr, mml.c.ld, mml.c.outer_stride,
+                    mml.batch_count)
+            elif (cuda_dtype in (runtime.CUDA_R_16F, runtime.CUDA_R_16BF)
+                    or dtype.char in 'fdD'):
                 cublas.gemmStridedBatchedEx(
                     handle,
                     mml.a.transpose, mml.b.transpose,
