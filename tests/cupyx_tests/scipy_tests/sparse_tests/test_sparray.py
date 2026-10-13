@@ -392,14 +392,16 @@ class TestSparseArrayTypeIdentity:
             A.toarray(), cupy.array([[1., 2.], [3., 4.]]))
 
     @testing.with_requires('scipy')
-    @pytest.mark.parametrize('iop', [operator.imul, operator.itruediv],
-                             ids=['imul', 'itruediv'])
-    def test_inplace_bool_scalar_diverges_from_scipy(self, iop):
+    @pytest.mark.parametrize('iop,exp_dtype', [
+        (operator.imul, numpy.int64),        # bool * 2 -> int64 (numpy)
+        (operator.itruediv, numpy.float64),  # bool / 2 -> float64
+    ], ids=['imul', 'itruediv'])
+    def test_inplace_bool_scalar_diverges_from_scipy(self, iop, exp_dtype):
         # ``bool *= int`` / ``bool /= int`` violate numpy's same_kind
         # cast rule.  scipy raises ``UFuncTypeError``; CuPy intentionally
-        # diverges, promoting ``self.data`` to a cuSPARSE-supported float
-        # dtype in place while preserving ``self`` (but not ``self.data``)
-        # identity.  Assert both branches directly.
+        # diverges, promoting ``self.data`` in place (to numpy's natural
+        # result dtype -- int64 for ``*``, float64 for ``/``) while
+        # preserving ``self`` (but not ``self.data``) identity.
         data = numpy.array([[True, False], [False, True]])
 
         s = scipy.sparse.csr_array(data)
@@ -411,10 +413,10 @@ class TestSparseArrayTypeIdentity:
         iop(A, 2)
         assert A is old
         assert A.data is not old_data
-        assert A.dtype == cupy.float64
-        # Stored entries are the two ``True``s: ``True * 2 == 2.0``,
+        assert A.dtype == exp_dtype
+        # Stored entries are the two ``True``s: ``True * 2 == 2``,
         # ``True / 2 == 0.5``.
-        expected = float(iop(numpy.float64(1), 2))
+        expected = iop(numpy.float64(1), 2)
         cupy.testing.assert_array_equal(A.data, cupy.full(2, expected))
 
     # Non-in-place ``/`` follows scipy's true-division dtype rules;
@@ -1784,8 +1786,8 @@ class TestSparseArray1D:
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_coo_coords_as_2d_dense_array(self, xp, sp):
-        # (data, (ndim, nnz)-array) coords form must still build 2-D
-        # (regression: a dense-coords guard had rejected it).
+        # The ``(data, coords)`` form with ``coords`` a dense (ndim, nnz)
+        # array of indices (not a tuple of 1-D arrays) builds a 2-D array.
         data = xp.array([1., 2., 3.])
         coords = xp.array([[0, 1, 0], [0, 1, 2]])
         return sp.coo_array((data, coords), shape=(2, 3))
@@ -2234,7 +2236,7 @@ class TestSparseArray1D:
 
     # A 2-D operand with a *single* row is still 2-D: the result must stay
     # (1, N), decided by the operand's dimensionality, not the result shape
-    # (regression: _squeeze_to_1d wrongly collapsed a real (1, N) to 1-D).
+    # (a genuine (1, N) result must not be squeezed to 1-D).
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_1d_lt_dense_1row_stays_2d(self, xp, sp):
         return sp.csr_array(xp.array([1., 0., 2.])) < xp.array([[1., 0., 3.]])

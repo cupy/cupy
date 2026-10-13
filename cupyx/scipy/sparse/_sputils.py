@@ -6,21 +6,190 @@ import numpy
 
 from cupy._core._dtype import get_dtype
 
-supported_dtypes = [get_dtype(x) for x in
-                    ('single', 'double', 'csingle', 'cdouble')]
+# Extra floating dtypes beyond numpy's own that CuPy can store and compute
+# on.  Today this is only ``ml_dtypes.bfloat16`` (an optional dependency):
+# CuPy has no float8 support.  These have no scipy.sparse equivalent (scipy
+# rejects them), so their semantics follow CuPy's dense arrays.  Detected by
+# identity, not dtype ``kind`` (bfloat16's kind is the opaque ``'V'``).
+#
+# CuPy only registers the bfloat16 kernel typename when ml_dtypes is present
+# AND numpy >= 2.1.2; on older numpy the bfloat16 loops are silently a no-op
+# (see cupy/_core/_scalar.pyx, dlpack.pyx and _util.pyx).  Match that guard --
+# without the version check the gate would admit bfloat16 sparse data whose
+# kernels do not exist, and every operation on it would miscompile.
+if numpy.lib.NumpyVersion(numpy.__version__) >= '2.1.2':
+    try:
+        import ml_dtypes as _ml_dtypes
+        _extra_float_dtypes = frozenset([numpy.dtype(_ml_dtypes.bfloat16)])
+    except ImportError:
+        _extra_float_dtypes = frozenset()
+else:
+    _extra_float_dtypes = frozenset()
 
-# dtype kind chars that cuSPARSE accepts for sparse ``data`` arrays:
-#   '?' bool, 'f' float32, 'd' float64, 'F' complex64, 'D' complex128.
-_SPARSE_DATA_KINDS = frozenset('?fdFD')
+# Dtypes ``upcast`` may promote to, widest last.  Mirrors scipy minus the
+# extended-precision types the GPU cannot store (longdouble/clongdouble):
+# without the integer entries ``upcast`` would promote every int/bool
+# combination to float (e.g. hstack/bmat/kronsum of int blocks -> float32).
+# The 16-bit floats (float16, then bfloat16 if available) sit just before
+# float32 so a same-dtype upcast stays 16-bit rather than widening.
+supported_dtypes = (
+    [get_dtype(x) for x in ('bool_', 'int8', 'uint8', 'int16', 'uint16',
+                            'int32', 'uint32', 'int64', 'uint64')]
+    + [get_dtype('float16')]
+    + sorted(_extra_float_dtypes, key=lambda d: d.itemsize)
+    + [get_dtype(x) for x in ('single', 'double', 'csingle', 'cdouble')])
+
+
+def is_extra_float_dtype(dtype):
+    """Whether ``dtype`` is a supported non-numpy float (e.g. bfloat16)."""
+    return numpy.dtype(dtype) in _extra_float_dtypes
+
+
+def is_16bit_float(dtype):
+    """Whether ``dtype`` is a 16-bit float (float16 or bfloat16).
+
+    These widen losslessly to float32, which the pure-CuPy fallbacks use for
+    accumulation and for the value-templated kernels: ``add.at``/``atomicAdd``
+    and the kernel instantiations do not cover the 16-bit floats uniformly.
+    """
+    dtype = numpy.dtype(dtype)
+    return dtype in _extra_float_dtypes or (
+        dtype.kind == 'f' and dtype.itemsize == 2)
+
+
+def is_float_dtype(dtype):
+    """True for real floating-point dtypes, *including* bfloat16.
+
+    A bare ``dtype.kind == 'f'`` test excludes bfloat16 (whose kind is the
+    opaque ``'V'``); use this where a float-vs-non-float decision must treat
+    bfloat16 as the float it is (e.g. ``asfptype``).
+    """
+    return numpy.dtype(dtype).kind == 'f' or is_extra_float_dtype(dtype)
+
+
+def promote_data_types(*dtypes):
+    """``numpy.promote_types`` reduction with a dense-parity fallback.
+
+    bfloat16 mixed with a >= 16-bit int (or with float16) has no numpy
+    abstract promotion -- ml_dtypes never registered it -- so
+    ``numpy.promote_types`` raises ``DTypePromotionError``.  Dense CuPy still
+    resolves the pair through its ufunc loops (e.g. ``bfloat16 + int32 ->
+    float64``); reproduce that by promoting through an actual (empty) add so
+    the elementwise sparse ops (add, multiply, maximum, comparison) match
+    dense.  Only the rare unpromotable mix reaches the fallback -- every other
+    combination takes the plain ``promote_types`` fast path.
+    """
+    try:
+        result = numpy.dtype(dtypes[0])
+        for dt in dtypes[1:]:
+            result = numpy.promote_types(result, dt)
+        return result
+    except TypeError:  # numpy's DTypePromotionError subclasses TypeError
+        acc = cupy.empty(0, numpy.dtype(dtypes[0]))
+        for dt in dtypes[1:]:
+            acc = acc + cupy.empty(0, numpy.dtype(dt))
+        return acc.dtype
+
+
+def promote_scalar_data_type(sparse_dtype, scalar):
+    """Dtype of an elementwise sparse-data op against a *scalar*, like dense.
+
+    For every dtype but the extra floats (bfloat16) this is value-based
+    ``numpy.result_type`` -- so a Python ``int``/``float`` promotes weakly.
+    ``numpy.result_type`` mishandles bfloat16, though: it *raises* for a typed
+    numpy scalar (e.g. ``numpy.int16(1)`` has no abstract promotion) and
+    *over-promotes* a Python float (``result_type(bfloat16, 2.0)`` -> float64
+    where the ufunc gives float32).  Reproduce dense CuPy's actual promotion
+    with a zero-length add so scalar ``maximum``/``minimum``/``*``/``*=`` on a
+    bfloat16 matrix match dense instead of raising or widening.
+    ``maximum``/``minimum``/``multiply`` share ``add``'s operand promotion;
+    division forces a float through its own path.
+    """
+    sparse_dtype = numpy.dtype(sparse_dtype)
+    if not is_extra_float_dtype(sparse_dtype):
+        return numpy.result_type(sparse_dtype, scalar)
+    return (cupy.empty(0, sparse_dtype) + scalar).dtype
+
+
+def get_sum_dtype(dtype):
+    """The dtype ``sum`` accumulates in, mirroring numpy/scipy.
+
+    The counterpart of ``scipy.sparse._sputils.get_sum_dtype``: bool and
+    signed integers widen to the platform int (int64 on the 64-bit builds
+    CuPy targets), unsigned integers to the platform uint; float and complex
+    are unchanged.  Used by the integer axis reductions, which accumulate in
+    an explicit wide type.
+    """
+    dtype = numpy.dtype(dtype)
+    if dtype.kind == 'u' and numpy.can_cast(dtype, numpy.uint):
+        return numpy.dtype(numpy.uint)
+    if numpy.can_cast(dtype, numpy.int_):
+        return numpy.dtype(numpy.int_)
+    return dtype
+
+
+def add_at_accumulator_dtype(dtype):
+    """Return an ``add.at``-compatible accumulator dtype for ``dtype``.
+
+    ``cupy.add.at`` targets only int32/int64/uint32/uint64 and
+    float16/32/64.  bool and narrow signed integers widen to int64 (bool via
+    "any nonzero"); narrow unsigned integers to uint64 (exact; the cast back
+    wraps like numpy); the 16-bit floats accumulate in float32 and round back
+    on the cast (lossless widening).  Every other (already-accepted) dtype is
+    returned unchanged, so the result is always a valid ``add.at`` target.
+    """
+    dtype = numpy.dtype(dtype)
+    if dtype.kind == 'b' or (dtype.kind == 'i' and dtype.itemsize < 4):
+        return numpy.dtype(numpy.int64)
+    if dtype.kind == 'u' and dtype.itemsize < 4:
+        return numpy.dtype(numpy.uint64)
+    if is_16bit_float(dtype):
+        return numpy.dtype(numpy.float32)
+    return dtype
 
 
 def is_sparse_data_dtype(dtype):
     """Return True if ``dtype`` can be stored in a sparse ``data`` array.
 
-    cuSPARSE-backed ops accept only bool, float32, float64, complex64,
-    and complex128 for ``data``.
+    Accepts every dtype CuPy dense arrays support: bool, every signed/
+    unsigned integer width, float16/32/64, complex64/128, and (if installed)
+    bfloat16.  cuSPARSE itself accepts only float32/64 and complex64/128;
+    bool, integers and the 16-bit floats route through pure-CuPy fallbacks.
+    This is a superset of scipy (which rejects float16 and bfloat16).
+    Rejected: extended precision (longdouble/clongdouble) and float8, which
+    the GPU cannot represent.  numpy pins the ``char`` of every fixed-width
+    float/complex ('e'/'f'/'d' and 'F'/'D') and gives longdouble its own
+    'g'/'G', so the char is the platform-independent test here -- the
+    *width* is not (MSVC's ``long double`` is 8 bytes, so longdouble would
+    pass an itemsize check).
     """
-    return numpy.dtype(dtype).char in _SPARSE_DATA_KINDS
+    dtype = numpy.dtype(dtype)
+    if dtype in _extra_float_dtypes:
+        return True
+    if dtype.kind in 'biu':          # bool, signed int, unsigned int
+        return True
+    if dtype.kind == 'f':            # float16/32/64 (not float8/longdouble)
+        return dtype.char in 'efd'
+    if dtype.kind == 'c':            # complex64/complex128 (not clongdouble)
+        return dtype.char in 'FD'
+    return False
+
+
+def check_data_dtype(dtype):
+    """Raise ``ValueError`` if ``dtype`` cannot back a sparse ``data`` array.
+
+    Shared by the constructors and :meth:`astype` so an unsupported dtype
+    (float8 or extended precision the GPU cannot store) is rejected the same
+    way everywhere.  The supported list is built from ``supported_dtypes``,
+    so bfloat16 appears only when ``ml_dtypes`` is installed, and the wording
+    mirrors scipy's ``getdtype`` rejection.
+    """
+    dtype = numpy.dtype(dtype)
+    if not is_sparse_data_dtype(dtype):
+        names = ', '.join(d.name for d in supported_dtypes)
+        raise ValueError(
+            f'cupyx.scipy.sparse does not support dtype {dtype.name}. '
+            f'The only supported types are: {names}.')
 
 
 _upcast_memo: dict = {}
