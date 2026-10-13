@@ -1,6 +1,9 @@
 """Assorted statistical functions"""
 from __future__ import annotations
 
+import numpy as np
+
+import cupy
 from cupy._core import ElementwiseKernel
 
 preamble = """
@@ -34,4 +37,6 @@ def poisson_binom_cdf(k, p):
     .. seealso:: :meth:`scipy.special.poisson_binom_cdf`
 
     """
+    if np.isscalar(k):
+        k = cupy.asarray(k)
     return _take_from_discrete_cdf(_poisson_binom_cdf_all(p), k)
