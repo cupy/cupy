@@ -16,6 +16,7 @@ HOST_PLATFORM_TO_SUBDIR: dict[str, str] = {
     "linux-64": "linux-x86_64",
     "linux-aarch64": "linux-sbsa",
     "win-64": "windows-x86_64",
+    "win-arm64": "windows-arm64",
 }
 
 # CTK 13.3.0 renamed the redistrib key from cuda_cccl to cccl.

@@ -75,7 +75,7 @@ runs:
           function extract() {
             tar -xvf $1 -C $CACHE_TMP_DIR --strip-components=1
           }
-        elif [[ "${{ inputs.host-platform }}" == "win-64" ]]; then
+        elif [[ "${{ inputs.host-platform }}" == win-* ]]; then
           function extract() {
             _TEMP_DIR_=$(mktemp -d)
             unzip $1 -d $_TEMP_DIR_

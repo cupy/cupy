@@ -146,6 +146,21 @@ class TestGaussPulse:
         return float_result, int_result
 
 
+@testing.slow
+@pytest.mark.thread_unsafe(reason='Allocation too large.')
+def test_unit_impulse_large_size():
+    out = None
+    try:
+        out = cupyx.scipy.signal.unit_impulse(
+            2**31, 2**31 - 1, dtype=cupy.uint8)
+        testing.assert_array_equal(out[-2:], [0, 1])
+    except MemoryError:
+        pytest.skip('out of memory in test.')
+    finally:
+        del out
+        cupy.get_default_memory_pool().free_all_blocks()
+
+
 @testing.with_requires('scipy')
 class TestUnitImpulse:
     @pytest.mark.parametrize('size', [7, (3, 3)])

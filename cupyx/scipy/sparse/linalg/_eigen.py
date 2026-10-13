@@ -7,29 +7,41 @@ from cupy import cublas
 from cupy._core import _dtype
 from cupy.cuda import device
 from cupy_backends.cuda.libs import cublas as _cublas
+from cupyx.scipy.linalg import lu_factor, lu_solve
 from cupyx.scipy.sparse import _csr
+from cupyx.scipy.sparse import identity, issparse
 from cupyx.scipy.sparse.linalg import _interface
+from cupyx.scipy.sparse.linalg._solve import splu
 
-# Seed of the default Lanczos start vector. Drawing it from a fixed seed
-# makes eigsh and svds deterministic for a given input, as ARPACK's default
-# start is, and independent of the global cupy.random state; the trajectory
-# can still be chosen explicitly through v0.
-_DEFAULT_V0_SEED = 0
+# Only CuPy's own generators: a NumPy generator would draw the start vector
+# on the host, and the global-state sentinel has no counterpart in scipy.
+_RNG_TYPES = (cupy.random.Generator, cupy.random.RandomState)
 
 
-def _default_v0(n, dtype, rs=None):
-    """Pseudo-random start vector of length ``n`` drawn from a fixed seed.
+def _resolve_rng(rng):
+    if rng is None:
+        return cupy.random.default_rng()
+    if isinstance(rng, (int, numpy.integer)):
+        return cupy.random.default_rng(int(rng))
+    if isinstance(rng, _RNG_TYPES):
+        return rng
+    raise TypeError(
+        'rng must be None, an int, or a cupy.random.Generator or '
+        'RandomState (actual: {})'.format(type(rng)))
 
-    A private ``RandomState`` is used so that neither ``cupy.random.seed``
-    nor any other consumer of the global generator changes the result.
-    """
-    if rs is None:
-        rs = cupy.random.RandomState(_DEFAULT_V0_SEED)
-    return rs.random_sample((n,)).astype(dtype)
+
+def _default_v0(n, dtype, rs):
+    """Random start vector of length ``n`` drawn from the resolved ``rs``."""
+    if isinstance(rs, cupy.random.RandomState):
+        u = rs.random_sample((n,))
+    else:                                   # cupy.random.Generator
+        u = rs.random((n,))
+    return u.astype(dtype, copy=False)
 
 
 def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
-          tol=0, return_eigenvectors=True):
+          tol=0, sigma=None, M=None, Minv=None, OPinv=None,
+          mode='normal', return_eigenvectors=True, rng=None):
     """
     Find ``k`` eigenvalues and eigenvectors of the real symmetric square
     matrix or complex Hermitian matrix ``A``.
@@ -44,24 +56,61 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
             :class:`cupyx.scipy.sparse.linalg.LinearOperator`.
         k (int): The number of eigenvalues and eigenvectors to compute. Must be
             ``1 <= k < n``.
-        which (str): 'LM' or 'LA' or 'SA'.
+        which (str): 'LM', 'LA', 'SA' or 'SM'.
             'LM': finds ``k`` largest (in magnitude) eigenvalues.
             'LA': finds ``k`` largest (algebraic) eigenvalues.
             'SA': finds ``k`` smallest (algebraic) eigenvalues.
+            'SM': finds ``k`` smallest (in magnitude) eigenvalues, through
+            shift-invert about 0 (plain Lanczos does not converge to the
+            smallest / interior eigenvalues). The shift is nudged slightly
+            below 0, so a singular positive-semidefinite ``a`` (a graph
+            Laplacian, say) still factorizes. ``a`` must be a sparse matrix
+            or a dense array, or ``OPinv`` must be supplied. Cannot be
+            combined with ``sigma``.
+            When ``sigma`` is given, ``which`` selects among the transformed
+            values ``1 / (w - sigma)``, as in SciPy: 'LM' gives the ``k``
+            eigenvalues nearest ``sigma``, 'LA' the ``k`` nearest from
+            above, 'SA' the ``k`` nearest from below.
 
-        v0 (ndarray): Starting vector for iteration. If ``None``, a
-            pseudo-random unit vector drawn from a fixed seed is used, so
-            repeated calls on the same input follow the same trajectory
-            regardless of the global :mod:`cupy.random` state (as
-            :func:`scipy.sparse.linalg.svds` does for its default start).
+        v0 (ndarray): Starting vector for iteration. If ``None``, a random
+            unit vector drawn from ``rng`` is used.
         ncv (int): The number of Lanczos vectors generated. Must be
-            ``k + 1 < ncv < n``. If ``None``, default value is used.
+            ``k < ncv <= n``. If ``None``, default value is used.
         maxiter (int): Maximum number of Lanczos update iterations.
             If ``None``, default value is used.
         tol (float): Tolerance for residuals ``||Ax - wx||``. If ``0``, machine
             precision is used.
+        sigma (float or complex): If not ``None``, find eigenvalues near
+            ``sigma`` using shift-invert mode: the Lanczos iteration is run
+            on ``(A - sigma * I)^{-1}`` and the values are mapped back by
+            ``w = sigma + 1 / w_inv``. ``A`` must then be a sparse matrix or
+            a dense array (so that ``A - sigma * I`` can be factorized)
+            unless ``OPinv`` is given.
+        M (ndarray or spmatrix): Accepted for signature compatibility with
+            :func:`scipy.sparse.linalg.eigsh`. The generalized eigenproblem
+            is not implemented, so any value other than ``None`` raises
+            :class:`NotImplementedError`.
+        Minv (ndarray or spmatrix): Accepted for signature compatibility
+            with :func:`scipy.sparse.linalg.eigsh`; any value other than
+            ``None`` raises :class:`NotImplementedError`.
+        OPinv (LinearOperator): Operator applying ``(A - sigma * I)^{-1}``,
+            used in shift-invert mode instead of factorizing
+            ``A - sigma * I``. Required when ``sigma`` is given and ``A`` is
+            not sparse.
+        mode (str): Only ``'normal'`` is implemented; ``'buckling'`` and
+            ``'cayley'`` raise :class:`NotImplementedError`.
         return_eigenvectors (bool): If ``True``, returns eigenvectors in
             addition to eigenvalues.
+        rng (int or generator): Source of the default start vector when
+            ``v0`` is ``None``. ``None`` (the default) draws from a fresh
+            :func:`cupy.random.default_rng`, so repeated calls start
+            differently, as in :func:`scipy.sparse.linalg.eigsh`; pass an
+            int for a reproducible start, or a
+            :class:`cupy.random.Generator` or
+            :class:`cupy.random.RandomState` to use and advance that object.
+            Anything else raises :class:`TypeError`; in particular the draw
+            never follows :func:`cupy.random.seed`. Ignored when ``v0`` is
+            given.
 
     Returns:
         tuple:
@@ -90,6 +139,17 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
         (https://sdm.lbl.gov/~kewu/ps/trlan.html).
 
     .. note::
+        In shift-invert mode (``sigma`` is not ``None``, which ``which='SM'``
+        also selects), where ``A - sigma * I`` is factorized depends on the
+        input type. A sparse ``a`` goes through
+        :func:`cupyx.scipy.sparse.linalg.splu`, which LU-decomposes on the
+        CPU using `scipy.sparse.linalg.splu` and is therefore not accelerated
+        on the GPU. A dense ``a`` is factorized on the GPU with
+        :func:`cupyx.scipy.linalg.lu_factor`. The triangular solves that the
+        Lanczos iteration performs are done on the GPU in both cases. Pass
+        ``OPinv`` to supply your own operator instead.
+
+    .. note::
         Degenerate and tightly clustered spectra exhaust the Krylov space
         early (a lucky breakdown). Those breakdowns are detected and
         repaired, which keeps the result correct but costs extra sweeps:
@@ -98,22 +158,126 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
         several times longer than the nominal iteration count suggests.
 
     """
+    if M is not None:
+        raise NotImplementedError(
+            'M (generalized eigenproblem) is not yet supported')
+    if Minv is not None:
+        raise NotImplementedError('Minv is not yet supported')
+    if mode != 'normal':
+        raise NotImplementedError(
+            "mode={!r} is not supported; only 'normal' is "
+            'implemented'.format(mode))
+
     n = a.shape[0]
     if a.ndim != 2 or a.shape[0] != a.shape[1]:
         raise ValueError('expected square matrix (shape: {})'.format(a.shape))
+    # Validate before the shift-invert dispatch, so that a bad dtype, k or
+    # which reports against 'a' instead of surfacing from the recursion as
+    # an error about OPinv (or, for an int dtype under 'SM', as a ValueError
+    # out of numpy.finfo while computing the automatic shift).
     if a.dtype.char not in 'fdFD':
         raise TypeError('unsupprted dtype (actual: {})'.format(a.dtype))
     if k <= 0:
         raise ValueError('k must be greater than 0 (actual: {})'.format(k))
     if k >= n:
         raise ValueError('k must be smaller than n (actual: {})'.format(k))
-    if which not in ('LM', 'LA', 'SA'):
-        raise ValueError('which must be \'LM\',\'LA\'or\'SA\' (actual: {})'
-                         ''.format(which))
-    if ncv is None:
-        ncv = min(max(2 * k, k + 32), n - 1)
+    if which not in ('LM', 'LA', 'SA', 'SM'):
+        raise ValueError('which must be \'LM\', \'LA\', \'SA\' or \'SM\' '
+                         '(actual: {})'.format(which))
+
+    if which == 'SM':
+        if sigma is not None:
+            # SciPy gives which='SM' a different meaning together with
+            # sigma (smallest magnitude of the *transformed* values); refuse
+            # the combination rather than silently pick one reading.
+            raise ValueError("which='SM' cannot be combined with sigma; pass "
+                             "sigma alone to find the eigenvalues near it")
+        # Smallest magnitude == nearest 0: shift-invert about 0, selecting
+        # the largest transformed values. The shift itself is set below,
+        # once the operator scale is known.
+        sigma = 0
+        which = 'LM'
+        auto_shift = True
     else:
-        ncv = min(max(ncv, k + 2), n - 1)
+        auto_shift = False
+
+    if sigma is not None:
+        # Shift-invert mode. Run the Lanczos iteration on the operator
+        # OPinv = (A - sigma * I)^{-1}: the eigenvalues of A nearest sigma
+        # become the largest-magnitude eigenvalues of OPinv, so they are well
+        # separated; eigenvectors are shared and eigenvalues map back by
+        # w = sigma + 1 / w_inv. `which` applies to the transformed values,
+        # as in scipy.sparse.linalg.eigsh.
+        if OPinv is None:
+            mat = a.A if isinstance(a, _interface.MatrixLinearOperator) else a
+            if not (issparse(mat) or isinstance(mat, cupy.ndarray)):
+                raise TypeError(
+                    "shift-invert mode requires a sparse matrix or a dense "
+                    "array 'a' (to factorize A - sigma*I), or an explicit "
+                    "OPinv operator for (A - sigma*I)^-1")
+            if auto_shift:
+                # A shift exactly at 0 makes A - sigma*I singular whenever A
+                # is (graph Laplacians, Gram matrices of rank-deficient
+                # data) and the factorization fails on the very inputs
+                # 'SM' is most used for. Nudge it below 0 by sqrt(eps) on
+                # the operator scale: far too small to change which
+                # eigenvalues are nearest, large enough to keep the LU
+                # away from the singularity.
+                vals = mat.data if issparse(mat) else mat
+                scale = float(cupy.abs(vals).max()) if vals.size else 0.0
+                sigma = -float(numpy.sqrt(numpy.finfo(a.dtype).eps)) * (
+                    scale if scale > 0.0 else 1.0)
+            if issparse(mat):
+                shifted = mat - sigma * identity(n, dtype=a.dtype,
+                                                 format='csc')
+                solve = splu(shifted.tocsc()).solve
+            else:
+                lu_piv = lu_factor(mat - sigma * cupy.eye(n, dtype=a.dtype))
+
+                def solve(b, lu_piv=lu_piv):
+                    return lu_solve(lu_piv, b)
+            OPinv = _interface.LinearOperator(
+                (n, n), matvec=solve, dtype=a.dtype)
+        elif not isinstance(OPinv, _interface.LinearOperator):
+            OPinv = _interface.aslinearoperator(OPinv)
+        # (A - sigma*I)^{-1} is nonsingular by construction, so the
+        # breakdown-reseed bias would cost a triangular solve and buy
+        # nothing: pass bias_op=None.
+        ret = _eigsh_impl(OPinv, k, which=which, v0=v0, ncv=ncv,
+                          maxiter=maxiter, tol=tol,
+                          return_eigenvectors=return_eigenvectors,
+                          rng=rng, bias_op=None)
+        w_inv, x = ret if return_eigenvectors else (ret, None)
+        w = (sigma + 1.0 / w_inv).real.astype(a.dtype.char.lower())
+        if return_eigenvectors:
+            order = cupy.argsort(w)
+            return w[order], x[:, order]
+        # Eigenvalues only: SciPy returns which='SM' in descending magnitude
+        # and a sigma-mode result ascending (checked on 1.13, 1.16, 1.18).
+        if auto_shift:
+            order = cupy.argsort(cupy.abs(w))[::-1]
+        else:
+            order = cupy.argsort(w)
+        return w[order]
+
+    # Restart-reseed bias (see _restart_ortho): pull reseeds out of the
+    # operator's null space, except for 'SA', where the smallest (possibly
+    # zero) eigenvalues are the ones being sought.
+    return _eigsh_impl(a, k, which=which, v0=v0, ncv=ncv, maxiter=maxiter,
+                       tol=tol, return_eigenvectors=return_eigenvectors,
+                       rng=rng, bias_op=a if which != 'SA' else None)
+
+
+def _eigsh_impl(a, k, *, which, v0, ncv, maxiter, tol,
+                return_eigenvectors, rng, bias_op):
+    # The thick-restart driver. Callers have already validated their
+    # arguments and resolved which operator to iterate on; the shift-invert
+    # branch of eigsh enters here directly with OPinv.
+    n = a.shape[0]
+    if ncv is None:
+        ncv = min(max(2 * k, k + 32), n)
+    else:
+        ncv = min(max(ncv, k + 2), n)
     if maxiter is None:
         maxiter = 10 * n
     if tol == 0:
@@ -125,7 +289,7 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
 
     # Set initial vector
     if v0 is None:
-        u = _default_v0(n, a.dtype)
+        u = _default_v0(n, a.dtype, _resolve_rng(rng))
         V[0] = u / cublas.nrm2(u)
     else:
         u = v0.copy()          # the driver writes into u; do not mutate v0
@@ -168,7 +332,6 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
     # Restart-reseed bias (see _restart_ortho): pull reseeds out of the
     # operator's null space -- except for 'SA', where the smallest
     # (possibly zero) eigenvalues are the ones being sought.
-    bias_op = a if which != 'SA' else None
     la_shift = (which == 'LA')
 
     # Lanczos iteration
@@ -188,7 +351,7 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
 
     uu = cupy.empty((k,), dtype=a.dtype)
 
-    while res > tol and iter < maxiter:
+    while res > tol and iter < maxiter and k + 1 < ncv:
         # Setup for thick-restart
         beta[:k] = 0
         alpha[:k] = w
@@ -770,17 +933,16 @@ def _eigsh_solve_ritz(alpha, beta, beta_k, k, which):
         idx = numpy.argsort(w)
         wk = w[idx[:k]]
         sk = s[:, idx[:k]]
-    # elif which == 'SM':  #dysfunctional
-    #   idx = cupy.argsort(abs(w))
-    #   wk = w[idx[:k]]
-    #   sk = s[:,idx[:k]]
+    # 'SM' (smallest magnitude) is handled in eigsh() via shift-invert at
+    # sigma = 0; plain-Lanczos Ritz selection does not converge to the
+    # smallest / interior eigenvalues, so it is intentionally not done here.
     # wk is already on the host here; handing it back lets the caller
     # test for degeneracy without paying a device sync.
     return cupy.array(wk), cupy.array(sk), wk
 
 
 def svds(a, k=6, *, ncv=None, tol=0, which='LM', v0=None,
-         maxiter=None, return_singular_vectors=True):
+         maxiter=None, return_singular_vectors=True, rng=None):
     """Finds the largest ``k`` singular values/vectors for a sparse matrix.
 
     Args:
@@ -791,19 +953,24 @@ def svds(a, k=6, *, ncv=None, tol=0, which='LM', v0=None,
         k (int): The number of singular values/vectors to compute. Must be
             ``1 <= k < min(m, n)``.
         ncv (int): The number of Lanczos vectors generated. Must be
-            ``k + 1 < ncv < min(m, n)``. If ``None``, default value is used.
+            ``k < ncv <= min(m, n)``. If ``None``, default value is used.
         tol (float): Tolerance for singular values. If ``0``, machine precision
             is used.
         which (str): Only 'LM' is supported. 'LM': finds ``k`` largest singular
             values.
         v0 (ndarray): Starting vector for iteration, of length
             ``min(a.shape)`` as in :func:`scipy.sparse.linalg.svds`. If
-            ``None``, a pseudo-random vector drawn from a fixed seed is
-            used (see :func:`eigsh`).
+            ``None``, a random vector drawn from ``rng`` is used.
         maxiter (int): Maximum number of Lanczos update iterations.
             If ``None``, default value is used.
         return_singular_vectors (bool): If ``True``, returns singular vectors
             in addition to singular values.
+        rng (int or generator): Source of the default start vector when
+            ``v0`` is ``None``, and of the orthonormal columns that complete
+            the singular vectors of a rank-deficient input. Accepts the same
+            values as :func:`eigsh`; ``None`` (the default) draws from a
+            fresh :func:`cupy.random.default_rng`, so repeated calls start
+            differently; pass an int for a reproducible result.
 
     Returns:
         tuple:
@@ -829,6 +996,12 @@ def svds(a, k=6, *, ncv=None, tol=0, which='LM', v0=None,
     if k >= min(m, n):
         raise ValueError('k must be smaller than min(m, n) (actual: {})'
                          ''.format(k))
+    # eigsh accepts 'SM' (shift-invert about 0); on a.H @ a that would hunt
+    # the smallest eigenvalues while everything below assumes the largest,
+    # so reject anything but 'LM' here instead of returning wrong values.
+    if which != 'LM':
+        raise ValueError(
+            "which must be 'LM' (actual: {})".format(which))
 
     a = _interface.aslinearoperator(a)
     if m >= n:
@@ -836,12 +1009,13 @@ def svds(a, k=6, *, ncv=None, tol=0, which='LM', v0=None,
     else:
         aH, a = a, a.H
 
+    rs = _resolve_rng(rng)
     if return_singular_vectors:
         w, x = eigsh(aH @ a, k=k, which=which, ncv=ncv, maxiter=maxiter,
-                     tol=tol, v0=v0, return_eigenvectors=True)
+                     tol=tol, v0=v0, return_eigenvectors=True, rng=rs)
     else:
         w = eigsh(aH @ a, k=k, which=which, ncv=ncv, maxiter=maxiter, tol=tol,
-                  v0=v0, return_eigenvectors=False)
+                  v0=v0, return_eigenvectors=False, rng=rs)
 
     w = cupy.maximum(w, 0)
     t = w.dtype.char.lower()
@@ -862,22 +1036,20 @@ def svds(a, k=6, *, ncv=None, tol=0, which='LM', v0=None,
     else:
         u = x
         v = a @ u / s[:n_large]
-    u = _augmented_orthnormal_cols(u, k - n_large)
-    v = _augmented_orthnormal_cols(v, k - n_large)
+    u = _augmented_orthnormal_cols(u, k - n_large, rs)
+    v = _augmented_orthnormal_cols(v, k - n_large, rs)
 
     return u, s, v.conj().T
 
 
-def _augmented_orthnormal_cols(x, n_aug):
+def _augmented_orthnormal_cols(x, n_aug, rs):
     if n_aug <= 0:
         return x
     m, n = x.shape
     y = cupy.empty((m, n + n_aug), dtype=x.dtype)
     y[:, :n] = x
-    # svds calls this twice (for u and for v); each call restarts from the
-    # same seed, so for m == n the pre-projection draws coincide and only
-    # the projections onto the two different bases separate them.
-    rs = cupy.random.RandomState(_DEFAULT_V0_SEED)
+    # svds calls this twice (for u and for v) with the same generator, which
+    # is advanced across both calls.
     for i in range(n, n + n_aug):
         v = _default_v0(m, x.dtype, rs)
         v -= v @ y[:, :i].conj() @ y[:, :i].T
