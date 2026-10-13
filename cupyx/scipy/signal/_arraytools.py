@@ -126,6 +126,12 @@ def odd_ext(x, n, axis=-1):
     array([[-1,  0,  1,  2,  3,  4,  5,  6,  7],
            [-4, -1,  0,  1,  4,  9, 16, 23, 28]])
     """
+    if n < 1:
+        return x
+    if n > x.shape[axis] - 1:
+        raise ValueError(("The extension length n (%d) is too big. " +
+                          "It must not exceed x.shape[axis]-1, which is %d.")
+                         % (n, x.shape[axis] - 1))
     pad = _pad_width(x.ndim, n, axis)
     return cupy.pad(x, pad, 'edge') * 2 - cupy.pad(x, pad, 'reflect')
 
@@ -154,6 +160,12 @@ def even_ext(x, n, axis=-1):
            [ 4,  1,  0,  1,  4,  9, 16,  9,  4]])
 
     """
+    if n < 1:
+        return x
+    if n > x.shape[axis] - 1:
+        raise ValueError(("The extension length n (%d) is too big. " +
+                          "It must not exceed x.shape[axis]-1, which is %d.")
+                         % (n, x.shape[axis] - 1))
     return cupy.pad(x, _pad_width(x.ndim, n, axis), 'reflect')
 
 
@@ -182,6 +194,8 @@ def const_ext(x, n, axis=-1):
     array([[ 1,  1,  1,  2,  3,  4,  5,  5,  5],
            [ 0,  0,  0,  1,  4,  9, 16, 16, 16]])
     """
+    if n < 1:
+        return x
     return cupy.pad(x, _pad_width(x.ndim, n, axis), 'edge')
 
 
@@ -210,4 +224,6 @@ def zero_ext(x, n, axis=-1):
     array([[ 0,  0,  1,  2,  3,  4,  5,  0,  0],
            [ 0,  0,  0,  1,  4,  9, 16,  0,  0]])
     """
+    if n < 1:
+        return x
     return cupy.pad(x, _pad_width(x.ndim, n, axis), 'constant')
