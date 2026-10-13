@@ -1,15 +1,9 @@
 from __future__ import annotations
 
-import numpy as np
 import pytest
 
 import cupy
 from cupy import testing
-
-try:
-    from scipy.signal import _arraytools as sp_arraytools
-except ImportError:
-    sp_arraytools = None
 
 from cupyx.scipy.signal import _arraytools as cp_arraytools
 
@@ -27,7 +21,6 @@ def test_short_circuit_returns_input(name, n):
     assert out is x
 
 
-@pytest.mark.skipif(sp_arraytools is None, reason='scipy required')
 @pytest.mark.parametrize('name', REFLECT_EXTS)
 def test_length_guard_raises(name):
     # cupy.pad's reflect silently cycles past shape[axis]-1; scipy raises
@@ -46,7 +39,6 @@ def test_const_and_zero_accept_n_ge_len(name, n):
     assert out.shape == (5 + 2 * n,)
 
 
-@pytest.mark.skipif(sp_arraytools is None, reason='scipy required')
 @pytest.mark.parametrize('name', EXT_NAMES)
 @pytest.mark.parametrize('n', [1, 2, 4])
 @pytest.mark.parametrize('shape,axis', [
@@ -55,12 +47,10 @@ def test_const_and_zero_accept_n_ge_len(name, n):
     ((2, 5), 1),
     ((5, 3), 0),
 ])
-def test_scipy_parity(name, n, shape, axis):
-    x_np = np.arange(int(np.prod(shape))).reshape(shape)
-    x_cp = cupy.asarray(x_np)
-    want = getattr(sp_arraytools, name)(x_np, n, axis=axis)
-    got = getattr(cp_arraytools, name)(x_cp, n, axis=axis)
-    testing.assert_array_equal(got, cupy.asarray(want))
+@testing.numpy_cupy_allclose(scipy_name='sp')
+def test_scipy_parity(name, n, shape, axis, xp, sp):
+    x = xp.arange(int(xp.prod(xp.array(shape)))).reshape(shape)
+    return getattr(sp.signal._arraytools, name)(x, n, axis=axis)
 
 
 def test_as_strided_reexport():
