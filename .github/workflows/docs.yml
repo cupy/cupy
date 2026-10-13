@@ -375,10 +375,14 @@ jobs:
           if [[ "${BUILD_RESULT}" != "success" ]]; then
             STATE=failure
             DESCRIPTION="Docs build job failed (${BUILD_RESULT})"
-          elif [[ "${PROCEED}" != "true" ]]; then
+          elif [[ "${PROCEED}" == "false" ]]; then
             # /test skip | force-skip: deliberate, report as passing so a
             # required docs/build context cannot wedge a skip-mode PR at
-            # "Expected".
+            # "Expected". Match the literal "false" (not "!= true") for
+            # symmetry with the RTD-stub guard below: if a future
+            # refactor leaves PROCEED empty, we fall through to the
+            # publish-result branches rather than silently reporting
+            # skipped-success.
             STATE=success
             DESCRIPTION="Docs build skipped (mode=${MODE})"
           elif [[ "${PUBLISH_RESULT}" == "success" ]]; then
