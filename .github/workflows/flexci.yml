@@ -247,11 +247,14 @@ jobs:
     # gate so no-op runs that had nothing to dispatch do not post either
     # state; `!cancelled()` matches the previous combined if:success() +
     # if:failure() semantics (cancellation left the previous status
-    # untouched).
+    # untouched). The `failure()` disjunct covers the case where the
+    # Find step itself failed (e.g. transient gh api error) before
+    # setting its `found` output -- without it the gate would skip and
+    # the failure would be invisible on the PR commit.
     - name: Report dispatch status to HEAD_SHA
       if: >-
         !cancelled() &&
-        steps.request.outputs.found == 'true'
+        (failure() || steps.request.outputs.found == 'true')
       env:
         GH_TOKEN: ${{ github.token }}
         HEAD_SHA: ${{ github.event.workflow_run.head_sha }}

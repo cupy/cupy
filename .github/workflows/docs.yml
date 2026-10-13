@@ -409,8 +409,11 @@ jobs:
           # On non-skip modes, RTD still owns this context (its upload
           # pipeline posts pending -> success/failure), and the latest
           # status for (context, sha) wins -- so this stub does not
-          # affect the real reporting path.
-          if [[ "${PROCEED}" != "true" ]]; then
+          # affect the real reporting path. Match the literal "false"
+          # (not "!= true") so a hypothetical future refactor that
+          # leaves PROCEED empty surfaces as RTD "Expected" instead of
+          # being masked by a stub-success post.
+          if [[ "${PROCEED}" == "false" ]]; then
             gh api "repos/${GITHUB_REPOSITORY}/statuses/${HEAD_SHA}" \
               -f state=success \
               -f context="docs/readthedocs.org:cupy" \
