@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+# DO NOT MERGE: dummy change to verify `/test skip` turns CI fully
+# green post-#10379. Remove before closing or merging this PR.
+print('verify-test-skip: dummy print')
+
 import cupy
 from cupyx import jit
 
