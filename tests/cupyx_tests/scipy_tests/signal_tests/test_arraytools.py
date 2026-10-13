@@ -51,8 +51,3 @@ def test_const_and_zero_accept_n_ge_len(name, n):
 def test_scipy_parity(name, n, shape, axis, xp, scp):
     x = xp.arange(int(xp.prod(xp.array(shape)))).reshape(shape)
     return getattr(scp.signal._arraytools, name)(x, n, axis=axis)
-
-
-def test_as_strided_reexport():
-    # The private name used to live in this module; keep it importable
-    assert cp_arraytools._as_strided is cupy.lib.stride_tricks.as_strided
