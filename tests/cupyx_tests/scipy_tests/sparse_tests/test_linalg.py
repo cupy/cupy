@@ -67,7 +67,7 @@ class TestLsqr(unittest.TestCase):
         return x[0]
 
     def test_strided_rhs(self):
-        A = sparse.csr_matrix(numpy.diag([2.0, 3.0]), dtype=self.dtype)
+        A = sparse.csr_matrix(cupy.diag([2.0, 3.0]), dtype=self.dtype)
         b = cupy.array([2.0, 0.0, 6.0, 0.0], dtype=self.dtype)[::2]
         assert not b.flags.c_contiguous
         x = sparse.linalg.lsqr(A, b)[0]

@@ -62,7 +62,8 @@ class TestLschol(unittest.TestCase):
         b_host = numpy.array(self.b, dtype=b_dtype)
         b = cp.array(b_host)
         x = cupyx.linalg.sparse.lschol(A, b)
-        expected = scipy.linalg.solve(A_host.toarray(), b_host)
+        expected = scipy.linalg.solve(
+            A_host.toarray(), b_host, assume_a='pos')
         decimal = 3 if self.dtype == b_dtype == numpy.float32 else 8
         testing.assert_array_almost_equal(x, expected, decimal=decimal)
 
@@ -74,7 +75,7 @@ class TestLschol(unittest.TestCase):
         testing.assert_array_almost_equal(x, self.x, decimal=self.decimal)
 
     def test_strided_rhs(self):
-        A = sp.csr_matrix(numpy.diag([2.0, 3.0]), dtype=self.dtype)
+        A = sp.csr_matrix(cp.diag([2.0, 3.0]), dtype=self.dtype)
         b = cp.array([2.0, 0.0, 6.0, 0.0], dtype=self.dtype)[::2]
         assert not b.flags.c_contiguous
         x = cupyx.linalg.sparse.lschol(A, b)

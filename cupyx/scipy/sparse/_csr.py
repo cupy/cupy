@@ -351,7 +351,7 @@ class _csr_base(_compressed._compressed_sparse_matrix):
         kept = cupy.empty(self.data.size + 1, dtype=idx_dtype)
         kept[0] = 0
         cupy.cumsum(mask, dtype=idx_dtype, out=kept[1:])
-        # Sample survivor counts at the old row boundaries.
+        # kept[i] is the remaining nonzeros in data[:i], giving new indptr:
         self.indptr = kept[self.indptr]
         self.data = self.data[mask]
         self.indices = self.indices[mask]
