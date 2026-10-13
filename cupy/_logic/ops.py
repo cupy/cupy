@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from cupy._core import _kernel
 from cupy._core import _routines_logic
 

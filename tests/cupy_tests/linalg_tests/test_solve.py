@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import unittest
 
 import numpy
@@ -41,17 +43,18 @@ class TestSolve(unittest.TestCase):
         cupy.testing.assert_array_equal(b_copy, b)
         return result
 
+    @testing.with_requires("numpy>=2.0")
     def test_solve(self):
         self.check_x((4, 4), (4,))
         self.check_x((5, 5), (5, 2))
-        self.check_x((2, 4, 4), (2, 4,))
         self.check_x((2, 5, 5), (2, 5, 2))
-        self.check_x((2, 3, 2, 2), (2, 3, 2,))
         self.check_x((2, 3, 3, 3), (2, 3, 3, 2))
         self.check_x((0, 0), (0,))
         self.check_x((0, 0), (0, 2))
-        self.check_x((0, 2, 2), (0, 2,))
         self.check_x((0, 2, 2), (0, 2, 3))
+        # Allowed since numpy 2
+        self.check_x((2, 3, 3), (3,))
+        self.check_x((2, 5, 3, 3), (3,))
 
     def check_shape(self, a_shape, b_shape, error_type):
         for xp in (numpy, cupy):
@@ -60,21 +63,43 @@ class TestSolve(unittest.TestCase):
             with pytest.raises(error_type):
                 xp.linalg.solve(a, b)
 
+    def test_solve_singular_empty(self):
+        a = cupy.zeros((3, 3))  # singular
+        b = cupy.empty((3, 0))  # nrhs = 0
+        c = cupy.linalg.solve(a, b)
+        assert c.size == 0
+
     @testing.numpy_cupy_allclose()
-    def test_solve_singular_empty(self, xp):
-        a = xp.zeros((3, 3))  # singular
+    def test_solve_non_singular_empty(self, xp):
+        a = xp.eye(3)  # non-singular
         b = xp.empty((3, 0))  # nrhs = 0
-        # LinAlgError("Singular matrix") is not raised
         return xp.linalg.solve(a, b)
 
+    def test_solve_singular_empty__assert_raises(self):
+        # OpenBLAS with NumPy 2.4.3 started raising a LinAlgError here,
+        # which seems correct.  We raise currently (do not test against
+        # NumPy as the behavior may depend on the BLAS version used)
+        a = cupy.zeros((3, 3))  # singular
+        b = cupy.empty((3, 0))  # nrhs = 0
+        # errstate is 'ignore' by default since enabling it causes
+        # synchronization
+        with cupyx.errstate(linalg='raise'):
+            with pytest.raises(numpy.linalg.LinAlgError):
+                cupy.linalg.solve(a, b)
+
+    @testing.with_requires("numpy>=2.0")
     def test_invalid_shape(self):
         self.check_shape((2, 3), (4,), numpy.linalg.LinAlgError)
         self.check_shape((3, 3), (2,), ValueError)
         self.check_shape((3, 3), (2, 2), ValueError)
         self.check_shape((3, 3, 4), (3,), numpy.linalg.LinAlgError)
-        self.check_shape((2, 3, 3), (3,), ValueError)
         self.check_shape((3, 3), (0,), ValueError)
         self.check_shape((0, 3, 4), (3,), numpy.linalg.LinAlgError)
+        self.check_shape((3, 3), (), ValueError)
+        # Not allowed since numpy 2
+        self.check_shape((0, 2, 2), (0, 2,), ValueError)
+        self.check_shape((2, 4, 4), (2, 4,), ValueError)
+        self.check_shape((2, 3, 2, 2), (2, 3, 2,), ValueError)
 
 
 @testing.parameterize(*testing.product({
@@ -236,7 +261,7 @@ class TestLstsq:
             cupy.linalg.lstsq(a, b, rcond=None)
 
     def test_lstsq_solutions(self):
-        # Comapres numpy.linalg.lstsq and cupy.linalg.lstsq solutions for:
+        # Compares numpy.linalg.lstsq and cupy.linalg.lstsq solutions for:
         #   a shapes range from (3, 3) to (5, 3) and (3, 5)
         #   b shapes range from (i, 3) to (i, )
         #   sets a random seed for deterministic testing
@@ -281,13 +306,14 @@ class TestLstsq:
         self.check_invalid_shapes((3, 3), (2, 2))
         self.check_invalid_shapes((4, 3), (10, 3, 3))
 
+    @testing.with_requires("numpy>=2.0")
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(atol=1e-3)
-    def test_warn_rcond(self, xp, dtype):
+    def test_nowarn_rcond(self, xp, dtype):
         a = testing.shaped_random((3, 3), xp, dtype)
         b = testing.shaped_random((3,), xp, dtype)
-        with testing.assert_warns(FutureWarning):
-            return xp.linalg.lstsq(a, b)
+        # FutureWarning is no longer emitted
+        return xp.linalg.lstsq(a, b)
 
 
 class TestTensorInv(unittest.TestCase):

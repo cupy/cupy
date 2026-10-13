@@ -1,8 +1,14 @@
+from __future__ import annotations
+
 import numpy
 import pytest
 
 import cupy
 from cupy import testing
+try:
+    from ml_dtypes import bfloat16
+except ImportError:
+    bfloat16 = None
 
 
 class C(cupy.ndarray):
@@ -112,6 +118,18 @@ class TestArrayUfunc:
         outb = numpy.sin(b)
         testing.assert_allclose(outa, outb)
 
+    @pytest.mark.parametrize('rows', [0, 2])
+    def test_subclass_broadcast_template(self, rows):
+        class Array(cupy.ndarray):
+            def __array_finalize__(self, parent):
+                self.parent = parent
+
+        a = cupy.ones((1, 3)).view(Array)
+        result = cupy.add(a, cupy.ones((rows, 3)))
+        assert isinstance(result, Array)
+        assert result.parent is a
+        testing.assert_array_equal(result, numpy.full((rows, 3), 2.0))
+
     def test_subclass_binary_op(self):
         a0 = cupy.array([0, 1, 2]).view(C)
         a0.info = 1
@@ -181,6 +199,15 @@ class TestArrayUfunc:
 
 
 class TestUfunc:
+    def test_broadcast_error_includes_output(self):
+        a = cupy.empty((0, 3))
+        out = cupy.empty((2, 3))
+        with pytest.raises(ValueError) as error:
+            cupy.add(a, 1, out=out)
+        assert str(error.value) == (
+            'operands could not be broadcast together with shapes '
+            '(0, 3) () (2, 3)')
+
     @pytest.mark.parametrize('ufunc', [
         'add',
         'sin',
@@ -196,6 +223,10 @@ class TestUfunc:
                 # (c)longdouble, datetime, timedelta, and object.
                 if not any(t in sig for t in 'GgMmO')
             ))
+        if xp == cupy and bfloat16 is not None:
+            # Ugly, but fetch the char from the `loop` and remove it
+            # (at the time of writing the char was E, hopefully it'll change)
+            types = [t for t in types if numpy.dtype(bfloat16).char not in t]
         return types
 
     @testing.numpy_cupy_allclose()

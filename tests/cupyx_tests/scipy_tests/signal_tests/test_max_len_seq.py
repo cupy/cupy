@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 
 import cupy
 from cupy import testing
 
-import cupyx.scipy.signal  # NOQAs
+import cupyx.scipy.signal  # NOQA
 
 import pytest
 import numpy as np
@@ -10,7 +12,7 @@ import numpy as np
 try:
     import scipy.signal  # NOQA
 except ImportError:
-    pass
+    scipy = None
 
 
 @testing.with_requires('scipy')

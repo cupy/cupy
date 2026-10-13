@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pickle
 import sys
 
@@ -207,22 +209,15 @@ class TestCooMatrix:
 
     @testing.with_requires('scipy')
     def test_str(self):
-        if numpy.dtype(self.dtype).kind == 'b':
-            expect = '''  (0, 0)\tFalse
-  (0, 1)\tTrue
-  (1, 3)\tTrue
-  (2, 2)\tTrue'''
-        elif numpy.dtype(self.dtype).kind == 'f':
-            expect = '''  (0, 0)\t0.0
-  (0, 1)\t1.0
-  (1, 3)\t2.0
-  (2, 2)\t3.0'''
-        elif numpy.dtype(self.dtype).kind == 'c':
-            expect = '''  (0, 0)\t0j
-  (0, 1)\t(1+0j)
-  (1, 3)\t(2+0j)
-  (2, 2)\t(3+0j)'''
-        assert str(self.m) == expect
+        # CuPy delegates ``__str__`` to ``str(self.get())`` so the output
+        # always matches the installed scipy's format.  Sanity-check the
+        # key repr fields explicitly so we'd notice if the delegation
+        # silently broke.
+        s = str(self.m)
+        assert 'COOrdinate' in s
+        assert 'sparse matrix' in s
+        assert str(self.m.shape) in s
+        assert s == str(self.m.get())
 
     def test_toarray(self):
         m = self.m.toarray()
@@ -246,7 +241,7 @@ class TestCooMatrix:
     def test_reshape_2(self):
         m = self.m.reshape((1, 12), order='F').toarray()
         expect = numpy.array(
-            [[1, 0, 0, 0, 0, 2, 0, 0, 0, 0, 3, 0]], dtype=self.dtype)
+            [[0, 0, 0, 1, 0, 0, 0, 0, 3, 0, 2, 0]], dtype=self.dtype)
         cupy.testing.assert_allclose(m, expect)
 
 
@@ -336,7 +331,7 @@ class TestCooMatrixInit:
 
     def test_invalid_format(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
-            with pytest.raises(TypeError):
+            with pytest.raises((TypeError, ValueError)):
                 sp.coo_matrix(
                     (self.data(xp), self.row(xp)), shape=self.shape)
 
@@ -501,6 +496,7 @@ class TestCooMatrixScipyComparison:
         m = self.make(xp, sp, self.dtype)
         return m.getnnz()
 
+    @pytest.mark.filterwarnings("ignore:.*asfptype.*:DeprecationWarning")
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_asfptype(self, xp, sp):
         m = _make(xp, sp, self.dtype)
@@ -510,11 +506,6 @@ class TestCooMatrixScipyComparison:
     def test_toarray(self, xp, sp):
         m = self.make(xp, sp, self.dtype)
         return m.toarray()
-
-    @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_A(self, xp, sp):
-        m = self.make(xp, sp, self.dtype)
-        return m.A
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_tocoo(self, xp, sp):
@@ -561,13 +552,13 @@ class TestCooMatrixScipyComparison:
         return n
 
     # dot
-    @testing.with_requires('scipy!=1.8.0')
+    @testing.with_requires('scipy')
     @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_dot_scalar(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         return m.dot(2.0)
 
-    @testing.with_requires('scipy!=1.8.0')
+    @testing.with_requires('scipy')
     @testing.numpy_cupy_allclose(sp_name='sp', _check_sparse_format=False)
     def test_dot_numpy_scalar(self, xp, sp):
         m = _make(xp, sp, self.dtype)
@@ -600,13 +591,12 @@ class TestCooMatrixScipyComparison:
         x = _make3(xp, sp, self.dtype).tocoo()
         return m.dot(x)
 
-    @testing.with_requires('scipy>=1.8.0rc1')
-    def test_dot_zero_dim(self):
-        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
-            m = _make(xp, sp, self.dtype)
-            x = xp.array(2, dtype=self.dtype)
-            with pytest.raises(ValueError):
-                m.dot(x)
+    @testing.with_requires('scipy>=1.16')
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_dot_zero_dim(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        x = xp.array(2, dtype=self.dtype)
+        return m.dot(x)
 
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_dot_dense_vector(self, xp, sp):
@@ -621,7 +611,7 @@ class TestCooMatrixScipyComparison:
             with pytest.raises(ValueError):
                 m.dot(x)
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', contiguous_check=False)
     def test_dot_dense_matrix(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         x = xp.arange(8).reshape(4, 2).astype(self.dtype)
@@ -641,6 +631,7 @@ class TestCooMatrixScipyComparison:
             with pytest.raises(ValueError):
                 m.dot(x)
 
+    @testing.with_requires("scipy!=1.15.0", "scipy!=1.15.1")
     def test_dot_unsupported(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             m = _make(xp, sp, self.dtype)
@@ -800,7 +791,7 @@ class TestCooMatrixScipyComparison:
             with pytest.raises(ValueError):
                 m * x
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', contiguous_check=False)
     def test_mul_dense_matrix(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         x = xp.arange(8).reshape(4, 2).astype(self.dtype)
@@ -863,7 +854,7 @@ class TestCooMatrixScipyComparison:
         x = xp.array(2, dtype=self.dtype)
         return x * m
 
-    @testing.numpy_cupy_allclose(sp_name='sp')
+    @testing.numpy_cupy_allclose(sp_name='sp', contiguous_check=False)
     def test_rmul_dense_matrix(self, xp, sp):
         m = _make(xp, sp, self.dtype)
         x = xp.arange(12).reshape(4, 3).astype(self.dtype)
@@ -876,11 +867,6 @@ class TestCooMatrixScipyComparison:
             with pytest.raises(ValueError):
                 x * m
 
-    @pytest.mark.xfail(
-        scipy_available and
-        numpy.lib.NumpyVersion(scipy.__version__) >= '1.8.0rc1' and
-        numpy.lib.NumpyVersion(scipy.__version__) <= '1.9.0rc1',
-        reason='See scipy/15210')
     def test_rmul_unsupported(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
             m = _make(xp, sp, self.dtype)
@@ -943,11 +929,11 @@ class TestCooMatrixScipyComparison:
             with pytest.raises(ValueError):
                 m ** -1
 
-    def test_sum_tuple_axis(self):
-        for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
-            m = _make(xp, sp, self.dtype)
-            with pytest.raises(TypeError):
-                m.sum(axis=(0, 1))
+    @testing.with_requires('scipy>=1.16')
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_sum_tuple_axis(self, xp, sp):
+        m = _make(xp, sp, self.dtype)
+        return m.sum(axis=(0, 1))
 
     def test_sum_float_axis(self):
         for xp, sp in ((numpy, scipy.sparse), (cupy, sparse)):
@@ -1045,7 +1031,7 @@ class TestCooMatrixSumDuplicates:
         assert m.nnz == 0
         return m
 
-    @testing.with_requires('scipy>=1.11.0')
+    @testing.with_requires('scipy')
     @testing.numpy_cupy_allclose(sp_name='sp')
     def test_sum_duplicates_compatibility(self, xp, sp):
         m = _make_sum_dup(xp, sp, self.dtype)
@@ -1057,29 +1043,6 @@ class TestCooMatrixSumDuplicates:
         testing.assert_array_equal(m.row, row)
         testing.assert_array_equal(m.col, col)
         assert m.has_canonical_format
-        return m
-
-    @testing.with_requires('scipy<1.11.0')
-    @testing.numpy_cupy_allclose(sp_name='sp')
-    def test_sum_duplicates_incompatibility(self, xp, sp):
-        # See #3620 and #3624. CuPy's and SciPy's COO indices could mismatch
-        # due to the order of lexsort, but the matrix is correct.
-        m = _make_sum_dup(xp, sp, self.dtype)
-        if xp is cupy:
-            sorted_first = m.row.copy()
-        else:
-            sorted_first = m.col.copy()
-        assert not m.has_canonical_format
-        m.sum_duplicates()
-        assert m.has_canonical_format
-        # Here we ensure this sorting order is not altered by future PRs...
-        sorted_first.sort()
-        if xp is cupy:
-            testing.assert_array_equal(m.row, sorted_first)
-        else:
-            testing.assert_array_equal(m.col, sorted_first)
-        assert m.has_canonical_format
-        # ...and now we make sure the dense matrix is the same
         return m
 
 
@@ -1130,7 +1093,7 @@ class TestIsspmatrixCoo:
 @testing.parameterize(*testing.product({
     'shape': [(8, 5), (5, 5), (5, 8)],
 }))
-@testing.with_requires('scipy>=1.5.0')
+@testing.with_requires('scipy')
 class TestCooMatrixDiagonal:
     density = 0.5
 

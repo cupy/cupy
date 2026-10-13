@@ -1,5 +1,7 @@
 # This source code contains SciPy's code.
 # https://github.com/scipy/scipy/blob/main/scipy/special/specfun/specfun.f
+from __future__ import annotations
+
 
 from cupy import _core  # NOQA
 

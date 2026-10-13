@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import unittest
 
 import cupy
@@ -12,6 +14,7 @@ class TestSpecial(unittest.TestCase):
         a = testing.shaped_random((2, 3), xp, dtype)
         return xp.i0(a)
 
+    @testing.with_requires("numpy>=2.0")
     @testing.for_dtypes(['e', 'f', 'd', 'F', 'D'])
     @testing.numpy_cupy_allclose(atol=1e-3)
     def test_sinc(self, xp, dtype):

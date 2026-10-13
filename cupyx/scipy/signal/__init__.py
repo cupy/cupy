@@ -114,6 +114,7 @@ from cupyx.scipy.signal._filter_design import freqs_zpk  # NOQA
 
 from cupyx.scipy.signal._filter_design import freqz  # NOQA
 from cupyx.scipy.signal._filter_design import freqz_zpk  # NOQA
+from cupyx.scipy.signal._filter_design import freqz_sos  # NOQA
 from cupyx.scipy.signal._filter_design import sosfreqz  # NOQA
 
 from cupyx.scipy.signal._waveforms import chirp  # NOQA
@@ -121,6 +122,7 @@ from cupyx.scipy.signal._waveforms import gausspulse  # NOQA
 from cupyx.scipy.signal._waveforms import sawtooth  # NOQA
 from cupyx.scipy.signal._waveforms import square  # NOQA
 from cupyx.scipy.signal._waveforms import unit_impulse  # NOQA
+from cupyx.scipy.signal._waveforms import sweep_poly  # NOQA
 from cupyx.scipy.signal._max_len_seq import max_len_seq  # NOQA
 
 from cupyx.scipy.signal._czt import *   # NOQA

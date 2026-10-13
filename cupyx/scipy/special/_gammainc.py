@@ -16,6 +16,8 @@ Cephes Math Library Release 2.0:  April, 1987
 Copyright 1984, 1987 by Stephen L. Moshier
 Direct inquiries to 30 Frost Street, Cambridge, MA 02140
 """
+from __future__ import annotations
+
 
 from cupy import _core
 
@@ -1097,7 +1099,7 @@ gammaincc = _core.create_ufunc(
 
     Regularized upper incomplete gamma function.
 
-    .. seealso:: :meth:`scipy.special.gammaincc`
+    .. seealso:: :func:`scipy.special.gammaincc`
     """,
 )
 
@@ -1111,7 +1113,7 @@ gammainc = _core.create_ufunc(
 
     Regularized lower incomplete gamma function.
 
-    .. seealso:: :meth:`scipy.special.gammainc`
+    .. seealso:: :func:`scipy.special.gammainc`
     """,
 )
 
@@ -1125,7 +1127,7 @@ gammainccinv = _core.create_ufunc(
 
     Inverse to gammaincc.
 
-    .. seealso:: :meth:`scipy.special.gammainccinv`
+    .. seealso:: :func:`scipy.special.gammainccinv`
     """,
 )
 
@@ -1139,6 +1141,6 @@ gammaincinv = _core.create_ufunc(
 
     Inverse to gammainc.
 
-    .. seealso:: :meth:`scipy.special.gammaincinv`
+    .. seealso:: :func:`scipy.special.gammaincinv`
     """,
 )

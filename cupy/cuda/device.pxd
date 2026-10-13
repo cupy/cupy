@@ -6,6 +6,7 @@ cpdef intptr_t get_cublas_handle() except? 0
 cpdef intptr_t get_cusolver_handle() except? 0
 cpdef intptr_t get_cusolver_sp_handle() except? 0
 cpdef intptr_t get_cusparse_handle() except? 0
+cpdef get_cutensor_handle()
 cpdef str get_compute_capability()
 cdef bint _enable_peer_access(int device, int peer) except -1
 

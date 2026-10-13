@@ -1,11 +1,12 @@
+from __future__ import annotations
+
 import numpy
-import unittest
 import pytest
 import cupy
 from cupy import testing
 
 
-class TestPacking(unittest.TestCase):
+class TestPacking:
 
     @testing.for_int_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -51,6 +52,23 @@ class TestPacking(unittest.TestCase):
     def test_pack_invalid_array(self):
         fa = cupy.array([10, 20, 30], dtype=float)
         pytest.raises(TypeError, cupy.packbits, fa)
+
+    @testing.slow
+    @pytest.mark.thread_unsafe(reason='Allocation too large.')
+    @pytest.mark.parametrize(
+        'bitorder, expected', [('big', 128), ('little', 1)])
+    def test_packbits_large_input(self, bitorder, expected):
+        a = packed = None
+        try:
+            a = cupy.zeros(2**31 + 1, dtype=cupy.uint8)
+            a[-1] = 1
+            packed = cupy.packbits(a, bitorder=bitorder)
+            assert packed[-1] == expected
+        except MemoryError:
+            pytest.skip('out of memory in test.')
+        finally:
+            del packed, a
+            cupy.get_default_memory_pool().free_all_blocks()
 
     def test_unpackbits(self):
         self.check_unpackbits([])

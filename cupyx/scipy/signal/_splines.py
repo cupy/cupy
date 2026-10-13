@@ -1,7 +1,11 @@
+from __future__ import annotations
+
+
+import string
+from typing import Any
 
 import cupy
-from cupy._core._scalar import get_typename
-from cupy_backends.cuda.api import runtime
+from cupy._core._scalar import get_typename, format_type_decls
 from cupy._core.internal import _normalize_axis_index
 
 from cupyx.scipy.signal._signaltools import lfilter
@@ -10,18 +14,14 @@ from cupyx.scipy.signal._arraytools import (
 from cupyx.scipy.signal._iir_utils import collapse_2d, apply_iir_sos
 
 
-if runtime.is_hip:
-    SYMIIR2_KERNEL = r"""#include <hip/hip_runtime.h>
-"""
-else:
-    SYMIIR2_KERNEL = r"""
-#include <cuda_runtime.h>
-#include <device_launch_parameters.h>
-"""
+SYMIIR2_TYPE_DECLS: set[Any] = set()
+SYMIIR2_TYPE_NAMES = [get_typename(t, SYMIIR2_TYPE_DECLS)
+                      for t in [cupy.float32, cupy.float64]]
 
-SYMIIR2_KERNEL = SYMIIR2_KERNEL + r"""
+SYMIIR2_KERNEL = r"""
 #include <cupy/math_constants.h>
 #include <cupy/carray.cuh>
+${type_decls}
 
 template<typename T>
 __device__ T _compute_symiirorder2_fwd_hc(
@@ -119,11 +119,12 @@ __global__ void compute_symiirorder2_bwd_sc(
 """
 
 SYMIIR2_MODULE = cupy.RawModule(
-    code=SYMIIR2_KERNEL, options=('-std=c++11',),
+    code=string.Template(SYMIIR2_KERNEL).substitute(
+        type_decls=format_type_decls(SYMIIR2_TYPE_DECLS)),
     name_expressions=[f'compute_symiirorder2_bwd_sc<{t}>'
-                      for t in ['float', 'double']] +
+                      for t in SYMIIR2_TYPE_NAMES] +
     [f'compute_symiirorder2_fwd_sc<{t}>'
-     for t in ['float', 'double']])
+     for t in SYMIIR2_TYPE_NAMES])
 
 
 def _get_module_func(module, func_name, *template_args):
@@ -136,10 +137,11 @@ def _get_module_func(module, func_name, *template_args):
 
 def _find_initial_cond(all_valid, cum_poly, n, off=0, axis=-1):
     indices = cupy.where(all_valid)[0] + 1 + off
-    zi = cupy.nan
+    zi = cum_poly.dtype.type(cupy.nan)
     if indices.size > 0:
         zi = cupy.where(
-            indices[0] >= n, cupy.nan,
+            indices[0] >= n,
+            cum_poly.dtype.type(cupy.nan),
             axis_slice(cum_poly, indices[0] - 1 - off,
                        indices[0] - off, axis=axis))
     return zi

@@ -1,15 +1,17 @@
+from __future__ import annotations
+
 import threading
-import unittest
+
 from unittest import mock
 
+import cupy
 import pytest
 
-import cupy
 from cupy import testing
 from cupy_tests.core_tests.fusion_tests import fusion_utils
 
 
-class FusionTestBase(unittest.TestCase):
+class FusionTestBase:
     def generate_inputs(self, xp, nargs, dtype):
         inputs = [
             testing.shaped_random((3, 4), xp, dtype, scale=10, seed=seed)
@@ -94,9 +96,9 @@ class TestFusionTuple(FusionTestBase):
 
         return func
 
-    @unittest.skipUnless(
-        fusion_utils.can_use_grid_synchronization(),
-        'Requires CUDA grid synchronization')
+    @pytest.mark.skipif(
+        not fusion_utils.can_use_grid_synchronization(),
+        reason='Requires CUDA grid synchronization')
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @fusion_utils.check_fusion(generate_inputs_args=(2,))
     def test_various_shape(self, xp, dtype):
@@ -135,7 +137,7 @@ class TestReturnNone(FusionTestBase):
         return impl
 
 
-class TestFusionNoneParams(unittest.TestCase):
+class TestFusionNoneParams:
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
@@ -178,8 +180,34 @@ class TestSpecialValues(FusionTestBase):
             return x
         return func
 
+    @testing.with_requires('numpy>=2.0')
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_inf_where(self, xp, dtype):
+        @cupy.fuse()
+        def func(points, mask):
+            return xp.where(mask[:, xp.newaxis], xp.inf, points)
 
-class TestFusionDecorator(unittest.TestCase):
+        N = 256
+        points = testing.shaped_random((N, 2), xp=xp, dtype=dtype)
+        mask = testing.shaped_random((N,), xp=xp, dtype=dtype) > 0.5
+        return func(points, mask)
+
+    @testing.with_requires('numpy>=2.0')
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_nan_where(self, xp, dtype):
+        @cupy.fuse()
+        def func(points, mask):
+            return xp.where(mask[:, xp.newaxis], xp.nan, points)
+
+        N = 256
+        points = testing.shaped_random((N, 2), xp=xp, dtype=dtype)
+        mask = testing.shaped_random((N,), xp=xp, dtype=dtype) > 0.5
+        return func(points, mask)
+
+
+class TestFusionDecorator:
     def test_without_paren(self):
         @cupy.fuse
         def func_wo_paren(x):
@@ -199,7 +227,8 @@ class TestFusionDecorator(unittest.TestCase):
         assert func_w_paren.__doc__ == 'Fuse with parentheses'
 
 
-class TestFusionKernelName(unittest.TestCase):
+@pytest.mark.thread_unsafe(reason="Uses mock.patch on global state")
+class TestFusionKernelName:
 
     def check(self, xp, func, expected_name, is_elementwise):
         a = xp.arange(0, 12, dtype='d').reshape(3, 4)
@@ -214,7 +243,7 @@ class TestFusionKernelName(unittest.TestCase):
 
             with mock.patch(target_full_name) as kernel:  # NOQA
                 func(a, b, c)
-                # TODO(asi1024): Uncomment after replace fusion implementaiton.
+                # TODO(asi1024): Uncomment after replace fusion implementation.
                 # kernel.assert_called_once()
                 # self.assertEqual(kernel.call_args.args[0], expected_name)
 
@@ -288,7 +317,7 @@ class TestFusionKernelName(unittest.TestCase):
         return self.check(xp, func, 'abc', False)
 
 
-class TestFusionComposition(unittest.TestCase):
+class TestFusionComposition:
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
@@ -313,7 +342,7 @@ class TestFusionComposition(unittest.TestCase):
         return h(x, y)
 
 
-class TestFusionCompile(unittest.TestCase):
+class TestFusionCompile:
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
@@ -340,7 +369,7 @@ class TestFusionGetArrayModule(FusionTestBase):
         return func
 
 
-class TestFusionThread(unittest.TestCase):
+class TestFusionThread:
 
     def test_thread(self):
         x = testing.shaped_arange((3, 3), cupy, cupy.int64)
@@ -401,7 +430,7 @@ class TestFusionThread(unittest.TestCase):
         return xp.concatenate(out)
 
 
-class TestFusionMultiDevice(unittest.TestCase):
+class TestFusionMultiDevice:
 
     @testing.multi_gpu(2)
     @testing.numpy_cupy_array_equal()
@@ -424,7 +453,7 @@ class TestFusionMultiDevice(unittest.TestCase):
         return out1, out2
 
 
-class TestFusionInvalid():
+class TestFusionInvalid:
 
     def test_branch(self):
         @cupy.fuse()
@@ -436,3 +465,20 @@ class TestFusionInvalid():
         x = testing.shaped_random((3, 3), cupy, cupy.int64, seed=0)
         with pytest.raises(TypeError, match="Python scalar"):
             f(x)
+
+
+class TestOldFusionExplicit:
+    def test_weak_int(self):
+        count = 0
+
+        @cupy.fuse()
+        def f(x, y):
+            nonlocal count
+            count += 1
+            return cupy.equal(x, 1)
+
+        x = cupy.arange(10)
+        fuse = cupy._core.fusion.Fusion(f, 'test_weak_int')
+        fuse(x, 1)
+        # Check that fusion only called f once (i.e. old fusion)
+        assert count == 1

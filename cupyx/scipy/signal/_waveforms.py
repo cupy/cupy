@@ -24,19 +24,22 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
+from __future__ import annotations
+
+
+import string
+from typing import Any
 
 import cupy
-from cupy._core._scalar import get_typename
+from cupy._core._scalar import get_typename, format_type_decls
 from cupy_backends.cuda.api import runtime
 
 import numpy as np
 
 
-def _get_typename(dtype):
-    typename = get_typename(dtype)
-    if cupy.dtype(dtype).kind == 'c':
-        typename = 'thrust::' + typename
-    elif typename == 'float16':
+def _get_typename(dtype, type_decls=None):
+    typename = get_typename(dtype, type_decls)
+    if typename == 'float16':
         if runtime.is_hip:
             # 'half' in name_expressions weirdly raises
             # HIPRTC_ERROR_NAME_EXPRESSION_NOT_VALID in getLoweredName() on
@@ -52,7 +55,8 @@ INT_TYPES = [cupy.int8, cupy.int16, cupy.int32, cupy.int64]
 UNSIGNED_TYPES = [cupy.uint8, cupy.uint16, cupy.uint32, cupy.uint64]
 COMPLEX_TYPES = [cupy.complex64, cupy.complex128]
 TYPES = FLOAT_TYPES + INT_TYPES + UNSIGNED_TYPES + COMPLEX_TYPES  # type: ignore  # NOQA
-TYPE_NAMES = [_get_typename(t) for t in TYPES]
+TYPE_DECLS: set[Any] = set()
+TYPE_NAMES = [_get_typename(t, TYPE_DECLS) for t in TYPES]
 
 
 def _get_module_func(module, func_name, *template_args):
@@ -73,7 +77,12 @@ _sawtooth_kernel = cupy.ElementwiseKernel(
         out = nan("0xfff8000000000000ULL");
     }
 
-    const T tmod { fmod( t, 2.0 * M_PI ) };
+    // Use Python-compatible modulo: result is always in [0, 2*pi)
+    // C fmod can return negative values for negative inputs
+    T tmod { fmod( t, 2.0 * M_PI ) };
+    if ( tmod < 0 ) {
+        tmod += 2.0 * M_PI;
+    }
     const bool mask2 { ( ( 1 - mask1 ) && ( tmod < ( w * 2.0 * M_PI ) ) ) };
 
     if ( mask2 ) {
@@ -87,7 +96,6 @@ _sawtooth_kernel = cupy.ElementwiseKernel(
     y = out;
     """,
     "_sawtooth_kernel",
-    options=("-std=c++11",),
 )
 
 
@@ -142,7 +150,12 @@ _square_kernel = cupy.ElementwiseKernel(
         y = nan("0xfff8000000000000ULL");
     }
 
-    const T tmod { fmod( t, 2.0 * M_PI ) };
+    // Use Python-compatible modulo: result is always in [0, 2*pi)
+    // C fmod can return negative values for negative inputs
+    T tmod { fmod( t, 2.0 * M_PI ) };
+    if ( tmod < 0 ) {
+        tmod += 2.0 * M_PI;
+    }
     const bool mask2 { ( ( 1 - mask1 ) && ( tmod < ( w * 2.0 * M_PI ) ) ) };
 
     if ( mask2 ) {
@@ -156,7 +169,6 @@ _square_kernel = cupy.ElementwiseKernel(
 
     """,
     "_square_kernel",
-    options=("-std=c++11",),
 )
 
 
@@ -222,7 +234,6 @@ _gausspulse_kernel_F_F = cupy.ElementwiseKernel(
     yI = yenv * cos( 2 * M_PI * fc * t);
     """,
     "_gausspulse_kernel",
-    options=("-std=c++11",),
 )
 
 _gausspulse_kernel_F_T = cupy.ElementwiseKernel(
@@ -233,7 +244,6 @@ _gausspulse_kernel_F_T = cupy.ElementwiseKernel(
     yI = yenv * cos( 2 * M_PI * fc * t);
     """,
     "_gausspulse_kernel",
-    options=("-std=c++11",),
 )
 
 _gausspulse_kernel_T_F = cupy.ElementwiseKernel(
@@ -249,7 +259,6 @@ _gausspulse_kernel_T_F = cupy.ElementwiseKernel(
     yQ = yenv * l_yQ;
     """,
     "_gausspulse_kernel",
-    options=("-std=c++11",),
 )
 
 _gausspulse_kernel_T_T = cupy.ElementwiseKernel(
@@ -265,7 +274,6 @@ _gausspulse_kernel_T_T = cupy.ElementwiseKernel(
     yQ = yenv * l_yQ;
     """,
     "_gausspulse_kernel",
-    options=("-std=c++11",),
 )
 
 
@@ -381,7 +389,6 @@ _chirp_phase_lin_kernel_real = cupy.ElementwiseKernel(
     phase = cos(temp + phi);
     """,
     "_chirp_phase_lin_kernel",
-    options=("-std=c++11",),
 )
 
 _chirp_phase_lin_kernel_cplx = cupy.ElementwiseKernel(
@@ -394,7 +401,6 @@ _chirp_phase_lin_kernel_cplx = cupy.ElementwiseKernel(
     phase = Y(cos(temp + phi), cos(temp + phi + M_PI/2) * -1);
     """,
     "_chirp_phase_lin_kernel",
-    options=("-std=c++11",),
 )
 
 _chirp_phase_quad_kernel = cupy.ElementwiseKernel(
@@ -414,7 +420,6 @@ _chirp_phase_quad_kernel = cupy.ElementwiseKernel(
     phase = cos(temp + phi);
     """,
     "_chirp_phase_quad_kernel",
-    options=("-std=c++11",),
 )
 
 _chirp_phase_log_kernel = cupy.ElementwiseKernel(
@@ -432,7 +437,6 @@ _chirp_phase_log_kernel = cupy.ElementwiseKernel(
     phase = cos(temp + phi);
     """,
     "_chirp_phase_log_kernel",
-    options=("-std=c++11",),
 )
 
 _chirp_phase_hyp_kernel = cupy.ElementwiseKernel(
@@ -450,7 +454,6 @@ _chirp_phase_hyp_kernel = cupy.ElementwiseKernel(
     phase = cos(temp + phi);
     """,
     "_chirp_phase_hyp_kernel",
-    options=("-std=c++11",),
 )
 
 
@@ -532,7 +535,7 @@ def chirp(t, f0, t1, f1, method="linear", phi=0, vertex_zero=True):
     """
     t = cupy.asarray(t)
 
-    if cupy.issubdtype(t.dtype, cupy.int_):
+    if cupy.issubdtype(t.dtype, cupy.integer):
         t = t.astype(cupy.float64)
 
     phi *= np.pi / 180
@@ -542,9 +545,11 @@ def chirp(t, f0, t1, f1, method="linear", phi=0, vertex_zero=True):
         if type == "real":
             return _chirp_phase_lin_kernel_real(t, f0, t1, f1, phi)
         elif type == "complex":
-            phase = cupy.empty(t.shape, dtype=cupy.complex64)
-            if np.issubclass_(t.dtype, (np.float64)):
+            # type hard-coded to 'real' above, so this code path is never used
+            if t.real.dtype.kind == 'f' and t.dtype.itemsize == 8:
                 phase = cupy.empty(t.shape, dtype=cupy.complex128)
+            else:
+                phase = cupy.empty(t.shape, dtype=cupy.complex64)
             _chirp_phase_lin_kernel_cplx(t, f0, t1, f1, phi, phase)
             return phase
         else:
@@ -574,25 +579,103 @@ def chirp(t, f0, t1, f1, method="linear", phi=0, vertex_zero=True):
         )
 
 
-if runtime.is_hip:
-    KERNEL_BASE = r"""
-    #include <hip/hip_runtime.h>
-"""
-else:
-    KERNEL_BASE = r"""
-#include <cuda_runtime.h>
-#include <device_launch_parameters.h>
-"""
+def sweep_poly(t, poly, phi=0):
+    """
+    Frequency-swept cosine generator, with a time-dependent frequency.
 
-UNIT_KERNEL = KERNEL_BASE + r'''
+    This function generates a sinusoidal function whose instantaneous
+    frequency varies with time.  The frequency at time `t` is given by
+    the `poly` array.
+
+    Parameters
+    ----------
+    t : ndarray
+        Times at which to evaluate the waveform.
+    poly : 1-D array_like or instance of numpy.poly1d
+        The desired frequency expressed as a polynomial.  If `poly` is
+        a list or ndarray of length n, then the elements of `poly` are
+        the coefficients of the polynomial, and the instantaneous
+        frequency is
+
+          ``f(t) = poly[0]*t**(n-1) + poly[1]*t**(n-2) + ... + poly[n-1]``
+
+        If `poly` is an instance of cupy.poly1d, then the
+        instantaneous frequency is
+
+          ``f(t) = poly(t)``
+
+    phi : float, optional
+        Phase offset, in degrees, Default: 0.
+
+    Returns
+    -------
+    sweep_poly : ndarray
+        A numpy array containing the signal evaluated at `t` with the
+        requested time-varying frequency.  More precisely, the function
+        returns ``cos(phase + (pi/180)*phi)``, where `phase` is the integral
+        (from 0 to t) of ``2 * pi * f(t)``; ``f(t)`` is defined above.
+
+    See Also
+    --------
+    scipy.signal.sweep_poly
+    chirp
+
+    Notes
+    -----
+
+    If `poly` is an ndarray of length `n`, then the elements of
+    `poly` are the coefficients of the polynomial, and the instantaneous
+    frequency is:
+
+        ``f(t) = poly[0]*t**(n-1) + poly[1]*t**(n-2) + ... + poly[n-1]``
+
+    If `poly` is an instance of `numpy.poly1d`, then the instantaneous
+    frequency is:
+
+          ``f(t) = poly(t)``
+
+    Finally, the output `s` is:
+
+        ``cos(phase + (pi/180)*phi)``
+
+    where `phase` is the integral from 0 to `t` of ``2 * pi * f(t)``,
+    ``f(t)`` as defined above.
+    """
+    # 'phase' is computed in _sweep_poly_phase, to make testing easier.
+    phase = _sweep_poly_phase(t, poly)
+    # Convert to radians.
+    phi *= cupy.pi / 180
+    return cupy.cos(phase + phi)
+
+
+def _sweep_poly_phase(t, poly):
+    """
+    Calculate the phase used by sweep_poly to generate its output.
+
+    See `sweep_poly` for a description of the arguments.
+
+    """
+    if isinstance(poly, cupy.poly1d):
+        poly = poly.coeffs
+
+    # a replacement for `intpoly = np.polyint(poly)`
+    intpoly = cupy.zeros(poly.shape[0] + 1)
+    intpoly[:-1] = poly / cupy.arange(1, poly.shape[0] + 1)[::-1]
+
+    phase = 2 * cupy.pi * cupy.polyval(intpoly, t)
+    return phase
+
+
+UNIT_KERNEL = r'''
 #include <cupy/math_constants.h>
 #include <cupy/carray.cuh>
 #include <cupy/complex.cuh>
-
+${type_decls}
 
 template<typename T>
-__global__ void unit_impulse(const int n, const int iidx, T* out) {
-    const int idx = blockIdx.x * blockDim.x + threadIdx.x;
+__global__ void unit_impulse(const long long n, const long long iidx, T* out) {
+    const long long idx =
+        static_cast<long long>(blockIdx.x) * blockDim.x + threadIdx.x;
 
     if(idx >= n) {
         return;
@@ -607,7 +690,8 @@ __global__ void unit_impulse(const int n, const int iidx, T* out) {
 '''
 
 UNIT_MODULE = cupy.RawModule(
-    code=UNIT_KERNEL, options=('-std=c++11',),
+    code=string.Template(UNIT_KERNEL).substitute(
+        type_decls=format_type_decls(TYPE_DECLS)),
     name_expressions=[f'unit_impulse<{x}>' for x in TYPE_NAMES])
 
 

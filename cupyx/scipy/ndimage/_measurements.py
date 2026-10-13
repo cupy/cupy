@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+import math
 import warnings
 
 import numpy
@@ -5,6 +8,7 @@ import numpy
 import cupy
 from cupy import _core
 from cupy import _util
+from cupyx.scipy.ndimage._bbox_slices import create_bbox_slice_tuple
 
 
 def label(input, structure=None, output=None):
@@ -41,9 +45,14 @@ def label(input, structure=None, output=None):
     structure = numpy.array(structure, dtype=bool)
     if structure.ndim != input.ndim:
         raise RuntimeError('structure and input must have equal rank')
-    for i in structure.shape:
-        if i != 3:
+    for ii in structure.shape:
+        if ii != 3:
             raise ValueError('structure dimensions must be equal to 3')
+
+    # Use 32 bits if it's large enough for this image.
+    # _ni_label.label() needs two entries for background and
+    # foreground tracking
+    need_64bits = input.size >= (2**31 - 2)
 
     if isinstance(output, cupy.ndarray):
         if output.shape != input.shape:
@@ -52,30 +61,43 @@ def label(input, structure=None, output=None):
     else:
         caller_provided_output = False
         if output is None:
-            output = cupy.empty(input.shape, numpy.int32)
+            output = cupy.empty(
+                input.shape, cupy.intp if need_64bits else cupy.int32
+            )
         else:
             output = cupy.empty(input.shape, output)
 
-    if input.size == 0:
-        # empty
-        maxlabel = 0
-    elif input.ndim == 0:
-        # 0-dim array
-        maxlabel = 0 if input.item() == 0 else 1
-        output.fill(maxlabel)
-    else:
-        if output.dtype != numpy.int32:
-            y = cupy.empty(input.shape, numpy.int32)
+    # handle scalars, 0-D arrays
+    if input.ndim == 0 or input.size == 0:
+        if input.ndim == 0:
+            # scalar
+            maxlabel = 1 if (input != 0) else 0
+            output.fill(maxlabel)
         else:
-            y = output
-        maxlabel = _label(input, structure, y)
-        if output.dtype != numpy.int32:
-            _core.elementwise_copy(y, output)
+            # 0-D
+            maxlabel = 0
+        if caller_provided_output:
+            return maxlabel
+        else:
+            return output, maxlabel
+
+    tmp_dtype = cupy.int64 if need_64bits else cupy.int32
+    if output.dtype == tmp_dtype or output.dtype == cupy.int64:
+        max_label = _label(input, structure, output)
+    else:
+        tmp_output = cupy.empty(input.shape, tmp_dtype)
+        max_label = _label(input, structure, tmp_output)
+        try:
+            output.dtype.type(max_label)
+        except (OverflowError, ValueError):
+            raise ValueError("insufficient bit-depth in output type")
+        _core.elementwise_copy(tmp_output, output)
 
     if caller_provided_output:
-        return maxlabel
+        # result was written in-place
+        return max_label
     else:
-        return output, maxlabel
+        return output, max_label
 
 
 def _generate_binary_structure(rank, connectivity):
@@ -98,16 +120,17 @@ def _label(x, structure, y):
     dirs = [[vecs[dm][dr] for dm in range(x.ndim)] for dr in indxs]
     dirs = cupy.array(dirs, dtype=numpy.int32)
     ndirs = indxs.shape[0]
-    y_shape = cupy.array(y.shape, dtype=numpy.int32)
-    count = cupy.zeros(2, dtype=numpy.int32)
+    y_shape = cupy.array(y.shape, dtype=numpy.int64)
+    count = cupy.zeros(2, dtype=y.dtype)
+
     _kernel_init()(x, y)
     _kernel_connect()(y_shape, dirs, ndirs, x.ndim, y, size=y.size)
     _kernel_count()(y, count, size=y.size)
-    maxlabel = int(count[0])
-    labels = cupy.empty(maxlabel, dtype=numpy.int32)
+    nlabels = int(count[0])
+    labels = cupy.empty(nlabels, dtype=y.dtype)
     _kernel_labels()(y, count, labels, size=y.size)
-    _kernel_finalize()(maxlabel, cupy.sort(labels), y, size=y.size)
-    return maxlabel
+    _kernel_finalize()(nlabels, cupy.sort(labels), y, size=y.size)
+    return nlabels
 
 
 def _kernel_init():
@@ -118,38 +141,45 @@ def _kernel_init():
 
 def _kernel_connect():
     return _core.ElementwiseKernel(
-        'raw int32 shape, raw int32 dirs, int32 ndirs, int32 ndim',
+        'raw int64 shape, raw int32 dirs, int32 ndirs, int32 ndim',
         'raw Y y',
         '''
+        using atomic_t = typename cupy::type_traits::conditional<
+            cupy::type_traits::is_same<Y, long long>::value,
+            unsigned long long,
+            Y
+        >::type;
         if (y[i] < 0) continue;
         for (int dr = 0; dr < ndirs; dr++) {
-            int j = i;
-            int rest = j;
-            int stride = 1;
-            int k = 0;
-            for (int dm = ndim-1; dm >= 0; dm--) {
-                int pos = rest % shape[dm] + dirs[dm + dr * ndim];
-                if (pos < 0 || pos >= shape[dm]) {
+            Y j = i;
+            Y rest = j;
+            Y stride = 1;
+            Y k = 0;
+            for (int dm = ndim - 1; dm >= 0; dm--) {
+                Y dim_size = static_cast<Y>(shape[dm]);
+                Y pos = rest % dim_size + dirs[dm + dr * ndim];
+                if (pos < 0 || pos >= dim_size) {
                     k = -1;
                     break;
                 }
                 k += pos * stride;
-                rest /= shape[dm];
-                stride *= shape[dm];
+                rest /= dim_size;
+                stride *= dim_size;
             }
             if (k < 0) continue;
             if (y[k] < 0) continue;
+
             while (1) {
                 while (j != y[j]) { j = y[j]; }
                 while (k != y[k]) { k = y[k]; }
                 if (j == k) break;
                 if (j < k) {
-                    int old = atomicCAS( &y[k], k, j );
+                    Y old = atomicCAS((atomic_t*)&y[k], k, j);
                     if (old == k) break;
                     k = old;
                 }
                 else {
-                    int old = atomicCAS( &y[j], j, k );
+                    Y old = atomicCAS((atomic_t*)&y[j], j, k);
                     if (old == j) break;
                     j = old;
                 }
@@ -161,10 +191,10 @@ def _kernel_connect():
 
 def _kernel_count():
     return _core.ElementwiseKernel(
-        '', 'raw Y y, raw int32 count',
+        '', 'raw Y y, raw Y count',
         '''
         if (y[i] < 0) continue;
-        int j = i;
+        Y j = i;
         while (j != y[j]) { j = y[j]; }
         if (j != i) y[i] = j;
         else atomicAdd(&count[0], 1);
@@ -174,10 +204,10 @@ def _kernel_count():
 
 def _kernel_labels():
     return _core.ElementwiseKernel(
-        '', 'raw Y y, raw int32 count, raw int32 labels',
+        '', 'raw Y y, raw Y count, raw Y labels',
         '''
         if (y[i] != i) continue;
-        int j = atomicAdd(&count[1], 1);
+        Y j = atomicAdd(&count[1], 1);
         labels[j] = i;
         ''',
         'cupyx_scipy_ndimage_label_labels')
@@ -185,16 +215,16 @@ def _kernel_labels():
 
 def _kernel_finalize():
     return _core.ElementwiseKernel(
-        'int32 maxlabel', 'raw int32 labels, raw Y y',
+        'Y maxlabel', 'raw Y labels, raw Y y',
         '''
         if (y[i] < 0) {
             y[i] = 0;
             continue;
         }
-        int yi = y[i];
-        int j_min = 0;
-        int j_max = maxlabel - 1;
-        int j = (j_min + j_max) / 2;
+        Y yi = y[i];
+        Y j_min = 0;
+        Y j_max = maxlabel - 1;
+        Y j = (j_min + j_max) / 2;
         while (j_min < j_max) {
             if (yi == labels[j]) break;
             if (yi < labels[j]) j_max = j - 1;
@@ -395,7 +425,7 @@ def sum_labels(input, labels=None, index=None):
                            cupy.float64, cupy.uint32, cupy.uint64,
                            cupy.ulonglong]:
         warnings.warn(
-            'Using the slower implmentation as '
+            'Using the slower implementation as '
             'cupyx.scipy.ndimage.sum supports int32, float16, '
             'float32, float64, uint32, uint64 as data types'
             'for the fast implmentation', _util.PerformanceWarning)
@@ -485,7 +515,7 @@ def mean(input, labels=None, index=None):
                            cupy.float64, cupy.uint32, cupy.uint64,
                            cupy.ulonglong]:
         warnings.warn(
-            'Using the slower implmentation as '
+            'Using the slower implementation as '
             'cupyx.scipy.ndimage.mean supports int32, float16, '
             'float32, float64, uint32, uint64 as data types '
             'for the fast implmentation', _util.PerformanceWarning)
@@ -1180,7 +1210,7 @@ def labeled_comprehension(
                 continue
             output[i] = func(*[inp[low:high] for inp in inputs])
 
-    if out_dtype == object:
+    if out_dtype == object:  # noqa: E721
         temp = {i: default for i in range(index.size)}
     else:
         temp = cupy.empty(index.shape, out_dtype)
@@ -1193,7 +1223,7 @@ def labeled_comprehension(
     else:
         do_map([input, positions], temp)
 
-    if out_dtype == object:
+    if out_dtype == object:  # noqa: E721
         # use a list of arrays since object arrays are not supported
         index_order = cupy.asnumpy(index_order)
         output = [temp[i] for i in index_order.argsort()]
@@ -1352,7 +1382,7 @@ def value_indices(arr, *, ignore_value=None, adaptive_index_dtype=False):
         raise ValueError('Parameter \'arr\' must be an integer array')
     if adaptive_index_dtype:
         # determined the minimum signed integer type needed to store the
-        # index rangle
+        # index range
         raveled_int_type = cupy.min_scalar_type(-(int(arr.size) + 1))
         coord_int_type = cupy.min_scalar_type(-(max(arr.shape) + 1))
     arr1d = arr.reshape(-1)
@@ -1378,3 +1408,210 @@ def value_indices(arr, *, ignore_value=None, adaptive_index_dtype=False):
         out[value] = tuple(c[offset:offset + count] for c in coords)
         offset += count
     return out
+
+
+def _unravel_loop_index_declarations(var_name, ndim, uint_t="unsigned int"):
+    """Declare variables needed for unraveling the index to nd coordinates"""
+    if ndim == 1:
+        code = f"""
+        {uint_t} in_coord[1];"""
+        return code
+
+    code = f"""
+        // variables for unraveling a linear index to a coordinate array
+        {uint_t} in_coord[{ndim}];
+        {uint_t} temp_floor;"""
+    for d in range(ndim):
+        code += f"""
+        {uint_t} dim{d}_size = {var_name}.shape()[{d}];"""
+    return code
+
+
+def _unravel_loop_index(
+    var_name,
+    ndim,
+    uint_t="unsigned int",
+    raveled_index="i",
+    omit_declarations=False,
+):
+    """
+    declare a multi-index array in_coord and unravel the 1D index, i into it.
+    This code assumes that the array is a C-ordered array.
+    """
+    code = (
+        ""
+        if omit_declarations
+        else _unravel_loop_index_declarations(var_name, ndim, uint_t)
+    )
+    if ndim == 1:
+        code = f"""
+        in_coord[0] = {raveled_index};\n"""
+        return code
+
+    code += f"{uint_t} temp_idx = {raveled_index};"
+    for d in range(ndim - 1, 0, -1):
+        code += f"""
+        temp_floor = temp_idx / dim{d}_size;
+        in_coord[{d}] = temp_idx - temp_floor * dim{d}_size;
+        temp_idx = temp_floor;"""
+    code += """
+        in_coord[0] = temp_idx;"""
+    return code
+
+
+@cupy.memoize(for_each_device=True)
+def get_bbox_coords_kernel(coord_dtype, ndim, pixels_per_thread=32):
+    coord_dtype = cupy.dtype(coord_dtype)
+
+    # maximum number of unique labels this thread might encounter
+    # (could use a smaller value for most datasets, but for safety assume
+    # every pixel in the window could have a separate label.)
+    max_unique = pixels_per_thread
+
+    uint_t = (
+        "unsigned int" if coord_dtype.itemsize <= 4 else "unsigned long long"
+    )
+
+    # declare storage for local min/max of each label within the pixel window
+    source = f"""
+    {uint_t} start_index = {pixels_per_thread}*i;
+    // bounding box variables
+    {uint_t} bbox_min[{ndim * max_unique}];
+    {uint_t} bbox_max[{ndim * max_unique}] = {{0}};
+    // initialize minimum coordinate to array size
+    for (unsigned int ii = 0; ii < {ndim * max_unique}; ii++) {{
+      bbox_min[ii] = image_size;
+    }}\n"""
+    source += _unravel_loop_index_declarations(
+        "image", ndim, uint_t=uint_t
+    )
+
+    # declare inner loop operation
+    inner_op = _unravel_loop_index(
+        "image",
+        ndim=ndim,
+        uint_t=uint_t,
+        raveled_index="ii",
+        omit_declarations=True,
+    )
+    for d in range(ndim):
+        inner_op += f"""
+          bbox_min[{ndim}*offset + {d}] = min(
+              in_coord[{d}], bbox_min[{ndim}*offset + {d}]);
+          bbox_max[{ndim}*offset + {d}] = max(
+              in_coord[{d}] + 1, bbox_max[{ndim}*offset + {d}]);"""
+
+    # Find min and max coordinates among the next pixels_per_thread pixels
+    source += f"""
+      X encountered_labels[{max_unique}] = {{0}};
+      X current_label;
+      X prev_label = image[start_index];
+      int offset = 0;
+      encountered_labels[0] = prev_label;
+      {uint_t} ii_max = min(start_index + {pixels_per_thread}, image_size);
+      for ({uint_t} ii = start_index; ii < ii_max; ii++) {{
+        current_label = image[ii];
+        if (current_label <= 0) {{ continue; }}
+        if (current_label != prev_label) {{
+            offset += 1;
+            prev_label = current_label;
+            encountered_labels[offset] = current_label;
+        }}
+        // inner loop operation for boundary box min/max
+        {inner_op}
+      }}\n"""
+
+    # Update the global min/max values with the min/max from the pixel group
+    source += """
+      for (unsigned int ii = 0; ii <= offset; ii++) {
+        X lab = encountered_labels[ii];
+        if (lab > 0) {"""
+    for d in range(ndim):
+        source += f"""
+          atomicMin(&bbox[(lab - 1)*{2*ndim} + {2*d}],
+                    bbox_min[{ndim}*ii + {d}]);
+          atomicMax(&bbox[(lab - 1)*{2*ndim} + {2*d + 1}],
+                    bbox_max[{ndim}*ii + {d}]);"""
+    source += """
+        }
+      }\n"""
+
+    inputs = f"raw X image, raw {coord_dtype.name} image_size"
+    outputs = f"raw {coord_dtype.name} bbox"
+    name = f"cucim_bbox_{ndim}d_{coord_dtype.char}"
+    name += f"_batch{pixels_per_thread}"
+    return cupy.ElementwiseKernel(
+        inputs, outputs, source, name=name
+    )
+
+
+def find_objects(input, max_label=0):
+    """
+    Find objects in a labeled array.
+
+    Parameters
+    ----------
+    input : ndarray of ints
+        Array containing objects defined by different labels. Labels with
+        value 0 are ignored.
+    max_label : int, optional
+        Maximum label to be searched for in `input`. If max_label is not
+        given, the positions of all objects are returned.
+
+    Returns
+    -------
+    object_slices : list of tuples
+        A list of tuples, with each tuple containing N slices (with N the
+        dimension of the input array). Slices correspond to the minimal
+        parallelepiped that contains the object. If a number is missing,
+        None is returned instead of a slice. The label ``l`` corresponds to
+        the index ``l-1`` in the returned list.
+
+    See Also
+    --------
+    label, center_of_mass
+
+    .. warning::
+
+        This function will synchronize the device.
+    """
+
+    image = input
+    if image.dtype.kind not in 'bui':
+        raise TypeError(
+            f"Input dtype {image.dtype.name} cannot be interpreted as an "
+            "integer"
+        )
+    if max_label < 1:
+        max_label = int(image.max())  # synchronize
+
+    # choose 32 or 64-bit coordinate type for atomicMin and atomicMax
+    coord_dtype = cupy.uint32 if image.size < 2**32 else cupy.uint64
+
+    # Could potentially expose pixels per thread as a tuning parameter instead
+    # of using a fixed value here.
+    pixels_per_thread = 32
+    bbox_coords_kernel = get_bbox_coords_kernel(
+        coord_dtype, image.ndim, pixels_per_thread
+    )
+
+    ndim = image.ndim
+    # 0 is the correct initial value for coordinate maxima
+    bbox_coords = cupy.zeros((max_label, 2 * ndim), dtype=coord_dtype)
+
+    # Initialize value for coordinate minima. Note that the order of
+    # coordinates on axis 1 is min_0, max_0, min_1, max_1 ... min_n, max_n.
+    int_max = cupy.iinfo(coord_dtype).max
+    bbox_coords[:, ::2] = int_max
+
+    # make a copy if the inputs are not already C-contiguous
+    if not image.flags.c_contiguous:
+        image = cupy.ascontiguousarray(image)
+
+    size = math.ceil(image.size / pixels_per_thread)
+    bbox_coords_kernel(image, image.size, bbox_coords, size=size)
+
+    # Copy bounding box coordinates to the CPU to create Python slice objects
+    bbox_coords_cpu = cupy.asnumpy(bbox_coords[:max_label, :])  # synchronize
+    bbox_slices = create_bbox_slice_tuple(bbox_coords_cpu, int_max)
+    return bbox_slices

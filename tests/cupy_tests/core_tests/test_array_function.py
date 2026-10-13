@@ -1,4 +1,4 @@
-import unittest
+from __future__ import annotations
 
 import numpy
 
@@ -6,7 +6,7 @@ import cupy
 from cupy import testing
 
 
-class TestArrayFunction(unittest.TestCase):
+class TestArrayFunction:
 
     @testing.with_requires('numpy>=1.17.0')
     def test_array_function(self):

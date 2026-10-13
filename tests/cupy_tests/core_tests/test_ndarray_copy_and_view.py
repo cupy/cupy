@@ -1,15 +1,20 @@
+from __future__ import annotations
+
 import numpy
 import pytest
 
 import cupy
+from cupy.exceptions import ComplexWarning
 from cupy import testing
 from cupy import _util
+from cupy.testing._protocol_helpers import (
+    DummyObjectWithCuPyGetNDArray, DummyObjectWithCudaArrayInterface)
 
 
 def astype_without_warning(x, dtype, *args, **kwargs):
     dtype = numpy.dtype(dtype)
     if x.dtype.kind == 'c' and dtype.kind not in ['b', 'c']:
-        with testing.assert_warns(numpy.ComplexWarning):
+        with testing.assert_warns(ComplexWarning):
             return x.astype(dtype, *args, **kwargs)
     else:
         return x.astype(dtype, *args, **kwargs)
@@ -257,7 +262,7 @@ class TestArrayFill:
 
     @testing.with_requires('numpy>=1.24.0')
     @testing.for_all_dtypes_combination(('dtype1', 'dtype2'))
-    @testing.numpy_cupy_array_equal(accept_error=numpy.ComplexWarning)
+    @testing.numpy_cupy_array_equal(accept_error=ComplexWarning)
     def test_fill_with_numpy_scalar_ndarray(self, xp, dtype1, dtype2):
         a = testing.shaped_arange((2, 3, 4), xp, dtype1)
         a.fill(numpy.ones((), dtype=dtype2))
@@ -265,7 +270,7 @@ class TestArrayFill:
 
     @testing.with_requires('numpy>=1.24.0')
     @testing.for_all_dtypes_combination(('dtype1', 'dtype2'))
-    @testing.numpy_cupy_array_equal(accept_error=numpy.ComplexWarning)
+    @testing.numpy_cupy_array_equal(accept_error=ComplexWarning)
     def test_fill_with_cupy_scalar_ndarray(self, xp, dtype1, dtype2):
         a = testing.shaped_arange((2, 3, 4), xp, dtype1)
         b = xp.ones((), dtype=dtype2)
@@ -278,6 +283,26 @@ class TestArrayFill:
         for xp in (numpy, cupy):
             with pytest.raises(ValueError):
                 a.fill(xp.ones((1,), dtype=dtype))
+
+    @pytest.mark.parametrize('value', [
+        (42, 3.14),
+        numpy.asarray((42, 3.14), dtype='i4,f4'),
+    ])
+    @testing.numpy_cupy_array_equal()
+    def test_fill_structured_scalar_like(self, xp, value):
+        a = xp.zeros(3, dtype='i4,f4')
+        a.fill(value)
+        return a
+
+    @pytest.mark.parametrize('cupy_like', [
+        DummyObjectWithCuPyGetNDArray,
+        DummyObjectWithCudaArrayInterface,
+    ])
+    def test_fill_with_cupy_like_scalar_ndarray(self, cupy_like):
+        a = cupy.zeros(3)
+        b = cupy.ones(())
+        a.fill(cupy_like(b))
+        testing.assert_array_equal(a, cupy.ones(3))
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()

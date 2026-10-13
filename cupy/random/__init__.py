@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy as _numpy
 
 import cupy as _cupy
@@ -32,7 +34,7 @@ def default_rng(seed=None):  # NOQA  avoid redefinition of seed
 
     Returns:
         Generator: The initialized generator object.
-    """  # NOQA, list of types need to be in one line for sphinx
+    """  # NOQA (list of types need to be in one line for sphinx)
     from cupy.random._generator_api import Generator
 
     if _runtime.is_hip and int(str(_runtime.runtimeGetVersion())[:3]) < 403:
@@ -50,7 +52,8 @@ def __getattr__(key):
     # users use the class for type annotation.
     if key == 'Generator':
         # Lazy import libraries depending on cuRAND
-        from cupy.random._generator_api import Generator
+        import cupy.random._generator_api
+        Generator = cupy.random._generator_api.Generator
         _cupy.random.Generator = Generator
         return Generator
     raise AttributeError(f"module '{__name__}' has no attribute '{key}'")

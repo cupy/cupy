@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import sys
-from typing import Any, Dict, List
+from typing import Any
 
 import cupy_builder.install_build as build
 import cupy_builder.install_utils as utils
@@ -18,17 +20,17 @@ class Feature:
         self.required = False
 
         # List of Cython modules.
-        self.modules: List[str] = []
+        self.modules: list[str] = []
 
         # C/C++ headers required for the feature.
         # This is used only for testing availability of the feature.
-        self.includes: List[str] = []
+        self.includes: list[str] = []
 
-        # Shared libraries to be linked.
-        self.libraries: List[str] = []
+        # Libraries (shared/static) on the search path to be linked.
+        self.libraries: list[str] = []
 
-        # Static libraries to be linked.
-        self.static_libraries: List[str] = []
+        # Static libraries (manually searched) to be linked.
+        self.static_libraries: list[str] = []
 
         # Version of the feature.
         self._version: Any = self._UNDETERMINED
@@ -61,7 +63,7 @@ class Feature:
         return getattr(self, key)
 
 
-def _from_dict(d: Dict[str, Any], ctx: Context) -> Feature:
+def _from_dict(d: dict[str, Any], ctx: Context) -> Feature:
     # Define a feature from dict.
     # TODO(kmaehashi): Remove this transient function.
     f = Feature(ctx)
@@ -70,7 +72,7 @@ def _from_dict(d: Dict[str, Any], ctx: Context) -> Feature:
     f.libraries = d['libraries']
     f.static_libraries = d.get('static_libraries', [])
 
-    # Note: the followings are renamed
+    # Note: the following are renamed
     f.modules = d['file']
     f.includes = d['include']
     if 'check_method' in d:
@@ -82,7 +84,7 @@ def _from_dict(d: Dict[str, Any], ctx: Context) -> Feature:
 
 
 # The value of the key 'file' is a list that contains extension names
-# or tuples of an extension name and a list of other souces files
+# or tuples of an extension name and a list of other sources files
 # required to build the extension such as .cpp files and .cu files.
 #
 #   <extension name> | (<extension name>, a list of <other source>)
@@ -104,6 +106,9 @@ _cuda_files = [
     'cupy_backends.cuda._softlink',
     'cupy._core._accelerator',
     'cupy._core._carray',
+    'cupy._core._cuda_compute_reduction',
+    'cupy._core._cuda_compute_common',
+    'cupy._core._cuda_compute_scan',
     'cupy._core._cub_reduction',
     'cupy._core._dtype',
     'cupy._core._fusion_kernel',
@@ -128,6 +133,7 @@ _cuda_files = [
     'cupy._core.internal',
     'cupy._core.fusion',
     'cupy._core.new_fusion',
+    'cupy._core.numpy_allocator',
     'cupy._core.raw',
     'cupy.cuda.common',
     'cupy.cuda.cufft',
@@ -140,9 +146,9 @@ _cuda_files = [
     'cupy.cuda.graph',
     'cupy.cuda.texture',
     'cupy.fft._cache',
-    'cupy.fft._callback',
     'cupy.lib._polynomial',
     'cupy._util',
+    'cupyx.scipy.ndimage._bbox_slices',
 ]
 
 # Libraries required for cudart_static
@@ -151,7 +157,7 @@ _cudart_static_libs = (
 )
 
 
-def get_features(ctx: Context) -> Dict[str, Feature]:
+def get_features(ctx: Context) -> dict[str, Feature]:
     # We handle nvtx (and likely any other future support) here, because
     # the HIP stubs (hip/cupy_*.h) would cause many symbols
     # to leak into all these modules even if unused. It's easier for all of
@@ -163,7 +169,7 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
         'file': _cuda_files + [
             'cupy_backends.cuda.libs.nvtx',
             'cupy_backends.cuda.libs.cusolver',
-            'cupyx.cusolver',
+            'cupyx._cusolver',
         ],
         'include': [
             'hip/hip_runtime_api.h',
@@ -182,6 +188,7 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
             'hiprand',
             'hipsparse',
             'rocfft',
+            'roctracer64',  # cudaProfilerStart/Stop -> roctracer_start/stop
             'roctx64',
             'rocblas',
             'rocsolver',
@@ -195,7 +202,7 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
         'required': True,
         'file': [
             'cupy_backends.cuda.libs.cusolver',
-            'cupyx.cusolver',
+            'cupyx._cusolver',
         ],
         'include': [
             'cusolverDn.h',
@@ -204,21 +211,7 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
             'cusolver',
         ],
     }
-    CUDA_cudnn = {
-        'name': 'cudnn',
-        'file': [
-            'cupy_backends.cuda.libs.cudnn',
-            'cupyx.cudnn',
-        ],
-        'include': [
-            'cudnn.h',
-        ],
-        'libraries': [
-            'cudnn',
-        ],
-        'check_method': build.check_cudnn_version,
-        'version_method': build.get_cudnn_version,
-    }
+
     CUDA_nccl = {
         'name': 'nccl',
         'file': [
@@ -249,13 +242,14 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
         'name': 'cutensor',
         'file': [
             'cupy_backends.cuda.libs.cutensor',
-            'cupyx.cutensor',
+            'cupyx._cutensor',
         ],
         'include': [
             'cutensor.h',
         ],
         'libraries': [
             'cutensor',
+            'cutensorMg',
             'cublas',
         ],
         'check_method': build.check_cutensor_version,
@@ -271,10 +265,7 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
             'cub/util_namespace.cuh',  # dummy
         ],
         'libraries': list(_cudart_static_libs),
-        'static_libraries': [
-            # Dependency from CUB header files
-            'cudart_static',
-        ],
+        'static_libraries': ['cudart_static'],
         'check_method': build.check_cub_version,
         'version_method': build.get_cub_version,
     }
@@ -294,10 +285,7 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
             'cuda',
             'nvrtc',
         ] + _cudart_static_libs,
-        'static_libraries': [
-            # Dependency from Jitify header files
-            'cudart_static',
-        ],
+        'static_libraries': ['cudart_static'],
         'check_method': build.check_jitify_version,
         'version_method': build.get_jitify_version,
     }
@@ -314,9 +302,7 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
         'libraries': [
             'curand',
         ] + _cudart_static_libs,
-        'static_libraries': [
-            'cudart_static',
-        ],
+        'static_libraries': ['cudart_static'],
     }
     HIP_random = {
         'name': 'random',
@@ -387,7 +373,9 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
             ('cupy.cuda.thrust', ['cupy/cuda/cupy_thrust.cu']),
         ],
         'include': [
-            'thrust/version.h',
+            # WAR #9098:
+            # rocThrust 3.3.0 (ROCm 6.4.0) cannot be compiled by host compiler
+            # 'thrust/version.h',
         ],
         'libraries': [
             'amdhip64',  # was hiprtc and hip_hcc before ROCm 3.8.0
@@ -400,15 +388,10 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
             ('cupy.cuda.thrust', ['cupy/cuda/cupy_thrust.cu']),
         ],
         'include': [
-            'thrust/device_ptr.h',
-            'thrust/sequence.h',
-            'thrust/sort.h',
+            'thrust/version.h',
         ],
         'libraries': list(_cudart_static_libs),
-        'static_libraries': [
-            # Dependency from Thrust header files
-            'cudart_static',
-        ],
+        'static_libraries': ['cudart_static'],
         'check_method': build.check_thrust_version,
         'version_method': build.get_thrust_version,
     }
@@ -437,7 +420,6 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
         features = [
             CUDA_cuda(ctx),
             _from_dict(CUDA_cusolver, ctx),
-            _from_dict(CUDA_cudnn, ctx),
             _from_dict(CUDA_nccl, ctx),
             _from_dict(CUDA_nvtx, ctx),
             _from_dict(CUDA_cutensor, ctx),
@@ -452,13 +434,16 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
 
 
 class CUDA_cuda(Feature):
-    minimum_cuda_version = 10020
+    _minimum_cuda_version = 12000
+    _minimum_cuda_version_str = "12.0"
 
     def __init__(self, ctx: Context):
         super().__init__(ctx)
         self.name = 'cuda'
         self.required = True
-        self.modules = _cuda_files
+        self.modules = _cuda_files + [
+            'cupy.fft._callback',
+        ]
         self.includes = [
             'cublas_v2.h',
             'cuda.h',
@@ -487,16 +472,17 @@ class CUDA_cuda(Feature):
               printf("%d", CUDA_VERSION);
               return 0;
             }
-            ''', include_dirs=settings['include_dirs'])  # type: ignore[no-untyped-call] # NOQA
+            ''', include_dirs=settings['include_dirs'],
+            extra_compile_args=settings['extra_compile_args'])  # type: ignore[no-untyped-call] # NOQA
         except Exception as e:
             utils.print_warning('Cannot check CUDA version', str(e))
             return False
 
         self._version = int(out)
 
-        if self._version < self.minimum_cuda_version:
+        if self._version < self._minimum_cuda_version:
             utils.print_warning(
-                'CUDA version is too old: %d' % self._version,
-                'CUDA 10.2 or newer is required')
+                f'CUDA version is too old: {self._version}',
+                f'CUDA {self._minimum_cuda_version_str} or newer is required')
             return False
         return True

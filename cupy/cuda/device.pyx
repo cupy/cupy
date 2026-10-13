@@ -55,7 +55,8 @@ cdef class Handle:
         self._destroy_func = destroy_func
 
     def __dealloc__(self):
-        self._destroy_func(self.handle)
+        if self._destroy_func is not None:
+            self._destroy_func(self.handle)
 
 
 cpdef intptr_t get_cublas_handle() except? 0:
@@ -72,6 +73,10 @@ cpdef intptr_t get_cusolver_sp_handle() except? 0:
 
 cpdef intptr_t get_cusparse_handle() except? 0:
     return _get_device().cusparse_handle
+
+
+cpdef get_cutensor_handle():
+    return _get_device().cutensor_handle
 
 
 cpdef str get_compute_capability():
@@ -230,14 +235,17 @@ cdef class Device:
         if handles is None:
             handles = {}
             setattr(_thread_local, name, handles)
-        handle = handles.get(self.id, None)
-        if handle is not None:
-            return handle.handle
+        entry = handles.get(self.id, None)
+        if entry is not None:
+            return entry if destroy_func is None else entry.handle
         prev_device = runtime.getDevice()
         try:
             runtime.setDevice(self.id)
             handle = create_func()
-            handles[self.id] = Handle(handle, destroy_func)
+            if destroy_func is None:
+                handles[self.id] = handle
+            else:
+                handles[self.id] = Handle(handle, destroy_func)
             return handle
         finally:
             runtime.setDevice(prev_device)
@@ -289,6 +297,17 @@ cdef class Device:
         from cupy_backends.cuda.libs import cusparse
         return self._get_handle(
             'cusparse_sp_handles', cusparse.create, cusparse.destroy)
+
+    @property
+    def cutensor_handle(self):
+        """The cuTENSOR handle for this device.
+
+        The same handle is used for the same device even if the Device instance
+        itself is different. Returns a CutensorHandle object that owns the
+        raw library handle and all associated per-device caches.
+        """
+        from cupyx.cutensor import CutensorHandle
+        return self._get_handle('cutensor_handles', CutensorHandle, None)
 
     @property
     def mem_info(self):

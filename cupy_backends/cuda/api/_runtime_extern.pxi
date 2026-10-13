@@ -88,10 +88,18 @@ cdef extern from '../../cupy_backend_runtime.h' nogil:
     int cudaMemset(void* devPtr, int value, size_t count)
     int cudaMemsetAsync(void* devPtr, int value, size_t count,
                         driver.Stream stream)
-    int cudaMemPrefetchAsync(const void *devPtr, size_t count, int dstDevice,
-                             driver.Stream stream)
-    int cudaMemAdvise(const void *devPtr, size_t count,
-                      MemoryAdvise advice, int device)
+    IF CUPY_CUDA_VERSION >= 13000:
+        int cudaMemPrefetchAsync(const void *devPtr, size_t count,
+                                 _MemLocation location, int flags,
+                                 driver.Stream stream)
+        int cudaMemAdvise(const void *devPtr, size_t count,
+                          MemoryAdvise advice, _MemLocation device)
+    ELSE:
+        int cudaMemPrefetchAsync(const void *devPtr,
+                                 size_t count, int dstDevice,
+                                 driver.Stream stream)
+        int cudaMemAdvise(const void *devPtr, size_t count,
+                          MemoryAdvise advice, int device)
     int cudaDeviceGetDefaultMemPool(MemPool*, int)
     int cudaDeviceGetMemPool(MemPool*, int)
     int cudaDeviceSetMemPool(int, MemPool)
@@ -110,6 +118,10 @@ cdef extern from '../../cupy_backend_runtime.h' nogil:
     int cudaStreamCreate(driver.Stream* pStream)
     int cudaStreamCreateWithFlags(driver.Stream* pStream,
                                   unsigned int flags)
+    int cudaStreamCreateWithPriority(driver.Stream* pStream,
+                                     unsigned int flags, int priority)
+    int cudaStreamGetFlags(driver.Stream pStream, unsigned int* flags)
+    int cudaStreamGetPriority(driver.Stream pStream, int* priority)
     int cudaStreamDestroy(driver.Stream stream)
     int cudaStreamSynchronize(driver.Stream stream)
     int cudaStreamAddCallback(driver.Stream stream, StreamCallback callback,
@@ -148,9 +160,13 @@ cdef extern from '../../cupy_backend_runtime.h' nogil:
     # Graph
     int cudaGraphDestroy(Graph graph)
     int cudaGraphExecDestroy(GraphExec graph)
-    int cudaGraphInstantiate(GraphExec*, Graph, GraphNode*, char*, size_t)
+    IF CUPY_HIP_VERSION > 0 or 12000 > CUPY_CUDA_VERSION > 0:
+        int cudaGraphInstantiate(GraphExec*, Graph, GraphNode*, char*, size_t)
+    ELSE:
+        int cudaGraphInstantiate(GraphExec*, Graph, unsigned long long)
     int cudaGraphLaunch(GraphExec, driver.Stream)
     int cudaGraphUpload(GraphExec, driver.Stream)
+    int cudaGraphDebugDotPrint(Graph, const char*, unsigned int)
 
     # Constants
     int cudaDevAttrComputeCapabilityMajor

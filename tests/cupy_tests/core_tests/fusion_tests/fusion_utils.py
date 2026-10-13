@@ -1,8 +1,12 @@
+from __future__ import annotations
+
+import inspect
+
 import numpy
 
 import cupy
 from cupy import testing
-
+from cupy.testing._loops import _wraps_partial_xp
 
 scalar_types = (numpy.generic, int, float, complex)
 
@@ -48,7 +52,7 @@ def check_fusion(
             check_array(actual, expected, **check_array_kwargs)
 
         elif isinstance(expected, (list, tuple)):
-            assert type(actual) == type(expected)
+            assert type(actual) is type(expected)
             for item_actual, item_expected in zip(actual, expected):
                 check(xp, item_actual, item_expected)
 
@@ -90,11 +94,20 @@ def check_fusion(
                 raise err_e
 
     def deco(func):
-        def wrapper(self, **generate_inputs_kwargs):
+        @_wraps_partial_xp(func, 'xp')
+        def wrapper(self, **kwargs):
             generate_inputs = getattr(self, generate_inputs_name)
 
-            impl_np = func(self, numpy, **generate_inputs_kwargs)
-            impl_cp = func(self, cupy, **generate_inputs_kwargs)
+            generate_inputs_params = inspect.signature(
+                generate_inputs).parameters
+
+            impl_np = func(self, numpy, **kwargs)
+            impl_cp = func(self, cupy, **kwargs)
+
+            generate_inputs_kwargs = {
+                k: v for k, v in kwargs.items()
+                if k in generate_inputs_params
+            }
 
             # TODO(imanishi): Fix these workaround after `cupy.fuse`
             # supports lambda function.
@@ -131,7 +144,6 @@ def check_fusion(
                 check(cupy, args_cp, args_np)
                 check(numpy, args_fuse_np, args_np)
                 check(cupy, args_fuse_cp, args_np)
-
         return wrapper
     return deco
 
@@ -139,5 +151,7 @@ def check_fusion(
 def can_use_grid_synchronization():
     return (
         not cupy.cuda.runtime.is_hip and
-        int(cupy.cuda.device.get_compute_capability()) >= 70
+        int(cupy.cuda.device.get_compute_capability()) >= 70 and
+        cupy.cuda.runtime.deviceGetAttribute(
+            cupy.cuda.runtime.cudaDevAttrCooperativeLaunch, 0)
     )

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import cupy
 from cupy.linalg import _util
 
@@ -19,7 +21,7 @@ def bandwidth(a):
     Returns
     -------
     lu : tuple
-        2-tuple of ints indicating the lower and upper bandwith. A zero
+        2-tuple of ints indicating the lower and upper bandwidth. A zero
         denotes no sub- or super-diagonal on that side (triangular), and,
         say for M rows (M-1) means that side is full. Same example applies
         to the upper triangular part with (N-1).
@@ -44,7 +46,7 @@ def bandwidth(a):
     row_num, col_num = cupy.mgrid[0:m, 0:n]
     bandpts = _kernel_cupy_band_pos_c(A, row_num, col_num)
 
-    # If F contigious, transpose
+    # If F contiguous, transpose
     if a.flags['F_CONTIGUOUS']:
         upper_band = int(cupy.amax(bandpts))
         lower_band = -int(cupy.amin(bandpts))

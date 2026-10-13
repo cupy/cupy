@@ -1,20 +1,24 @@
+from __future__ import annotations
+
 import unittest
 
 import cupy
 from cupy import testing
+from cupyx_tests.scipy_tests.special_tests import match_scipy_float32
 import cupyx.scipy.special  # NOQA
 
 
-@testing.with_requires('scipy')
+@testing.with_requires('scipy>=1.15')
 class TestSpecial:
 
-    @testing.for_dtypes(['e', 'f', 'd'])
+    @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-5, scipy_name='scp')
     def check_unary(self, name, xp, scp, dtype):
         import scipy.special  # NOQA
 
         a = testing.shaped_arange((2, 3), xp, dtype)
-        return getattr(scp.special, name)(a)
+        out = getattr(scp.special, name)(a)
+        return match_scipy_float32(out, xp, dtype)
 
     def test_j0(self):
         self.check_unary('j0')
@@ -63,7 +67,7 @@ class TestSpecial:
         return scp.special.yn(n[:, xp.newaxis], a[xp.newaxis, :])
 
 
-@testing.with_requires('scipy')
+@testing.with_requires('scipy>=1.15')
 class TestFusionSpecial(unittest.TestCase):
 
     @testing.for_dtypes(['e', 'f', 'd'])
@@ -77,7 +81,8 @@ class TestFusionSpecial(unittest.TestCase):
         def f(x):
             return getattr(scp.special, name)(x)
 
-        return f(a)
+        out = f(a)
+        return match_scipy_float32(out, xp, dtype)
 
     def test_j0(self):
         self.check_unary('j0')
@@ -132,4 +137,5 @@ class TestFusionSpecial(unittest.TestCase):
             return _k0 + _k0e + _k1 + _k1e + _rgamma
 
         a = xp.linspace(-10, 10, 50, dtype=dtype).reshape((2, -1))
-        return fused(a)
+        out = fused(a)
+        return match_scipy_float32(out, xp, dtype)

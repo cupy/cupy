@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import cupy
 from cupyx.scipy.special import _digamma
 from cupyx.scipy.special import _gamma
@@ -14,7 +16,7 @@ def polygamma(n, x):
     Returns:
         cupy.ndarray: The result.
 
-    .. seealso:: :data:`scipy.special.polygamma`
+    .. seealso:: :func:`scipy.special.polygamma`
 
     """
     n, x = cupy.broadcast_arrays(n, x)

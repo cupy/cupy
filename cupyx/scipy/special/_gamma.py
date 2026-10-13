@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from cupy import _core
 from cupyx.scipy.special._loggamma import loggamma_definition
 
@@ -5,9 +7,9 @@ from cupyx.scipy.special._loggamma import loggamma_definition
 _gamma_body = """
 
     if (isinf(in0) && in0 < 0) {
-        out0 = -1.0 / 0.0;
+        out0 = CUDART_NAN;
     } else if (in0 < 0. && in0 == floor(in0)) {
-        out0 = 1.0 / 0.0;
+        out0 = CUDART_NAN;
     } else {
         out0 = tgamma(in0);
     }
@@ -43,13 +45,15 @@ __device__ complex<double> cgamma(complex<double> z)
 gamma = _core.create_ufunc(
     'cupyx_scipy_gamma',
     (
+        ('l->d', 'out0 = Gamma(in0)'),
+        ('e->d', 'out0 = Gamma(in0)'),
         'f->f',
         'd->d',
         ('F->F', 'out0 = out0_type(cgamma(in0))'),
         ('D->D', 'out0 = cgamma(in0)')
     ),
     _gamma_body,
-    preamble=cgamma_definition,
+    preamble=gamma_definition + cgamma_definition,
     doc="""Gamma function.
 
     Args:
@@ -134,6 +138,9 @@ __device__ double rgamma(double x)
     double w, y, z;
     int sign;
 
+    if (isinf(x)) {
+        return 0.0;
+    }
     if (x > 34.84425627277176174) {
         return exp(-lgamma(x));
     }
@@ -200,6 +207,8 @@ __device__ complex<double> crgamma(complex<double> z)
 rgamma = _core.create_ufunc(
     'cupyx_scipy_rgamma',
     (
+        'l->d',
+        'e->d',
         'f->f',
         'd->d',
         ('F->F', 'out0 = out0_type(crgamma(in0))'),

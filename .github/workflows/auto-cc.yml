@@ -6,27 +6,31 @@ on:
   pull_request_target:
     types: [labeled]
 
+permissions:
+  issues: write
+  pull-requests: write
+
 jobs:
   auto-notify:
     if: |
         github.repository_owner == 'cupy' &&
         contains('|hip|array-api|', github.event.label.name)
     env:
-      NOTIFY_TARGETS: '{"hip": "@amathews-amd", "array-api": "@asmeurer @leofang"}'
+      NOTIFY_TARGETS: '{"hip": "@gpinkert", "array-api": "@asmeurer @leofang"}'
       ISSUE_NUMBER: ${{ (github.event_name == 'issues' && github.event.issue.number) || github.event.pull_request.number }}
       ISSUE_BODY_TAG: "<!-- Added by Auto Notify Bot (${{ github.event.label.name }}) -->"
     runs-on: ubuntu-22.04
 
     steps:
       - name: Find comment
-        uses: peter-evans/find-comment@v2
+        uses: peter-evans/find-comment@b30e6a3c0ed37e7c023ccd3f1db5c6c0b0c23aad  # v4.0.0
         id: fc
         with:
             issue-number: ${{ env.ISSUE_NUMBER }}
             body-includes: ${{ env.ISSUE_BODY_TAG }}
 
       - name: Create comment
-        uses: peter-evans/create-or-update-comment@v2
+        uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9  # v5.0.0
         with:
             issue-number: ${{ env.ISSUE_NUMBER }}
             comment-id: ${{steps.fc.outputs.comment-id}}

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import unittest
 
 import numpy
@@ -12,6 +14,17 @@ from cupy.cuda.texture import (ChannelFormatDescriptor, CUDAarray,
 
 
 class TestUserkernel(unittest.TestCase):
+
+    def test_explicit_none_output(self):
+        kernel = cupy.ElementwiseKernel(
+            'T x', 'T y, T z', 'y = x + 1; z = x + 2',
+            'optional_outputs')
+        a = cupy.arange(6, dtype='float32')
+        out = cupy.empty_like(a)
+        y, z = kernel(a, None, out)
+        assert z is out
+        testing.assert_array_equal(y, a.get() + 1)
+        testing.assert_array_equal(z, a.get() + 2)
 
     def test_manual_indexing(self, n=100):
         in1 = cupy.random.uniform(-1, 1, n).astype(cupy.float32)
@@ -35,6 +48,19 @@ class TestUserkernel(unittest.TestCase):
         out2 = uesr_kernel_2(in1, in2, size=n)
 
         testing.assert_array_equal(out1, out2)
+
+    def test_broadcast_error_ignores_raw_shape(self):
+        kernel = cupy.ElementwiseKernel(
+            'raw float32 raw_x, float32 x, float32 y', 'float32 z',
+            'z = x + y', 'raw_broadcast_error')
+        raw = cupy.empty(17, dtype='float32')
+        x = cupy.empty(2, dtype='float32')
+        y = cupy.empty(3, dtype='float32')
+        with pytest.raises(ValueError) as error:
+            kernel(raw, x, y)
+        assert str(error.value) == (
+            'operands could not be broadcast together with shapes '
+            '() (2,) (3,)')
 
     def test_python_scalar(self):
         for typ in (int, float, bool):
@@ -130,6 +156,18 @@ class TestElementwiseKernelSize(unittest.TestCase):
         kernel2(self.arr1, self.arr2, size=2)
         with self.raises_size_required():
             kernel2(self.arr1, self.arr2)
+
+    def test_all_scalars(self):
+        kernel = self.create_kernel((False,), (False,))
+        with self.raises_size_required():
+            kernel(1)
+        assert kernel(1, size=2).shape == (2,)
+
+    def test_no_arguments(self):
+        kernel = self.create_kernel((), (False,))
+        with self.raises_size_required():
+            kernel()
+        assert kernel(size=2).shape == (2,)
 
     def test_all_nonraws(self):
         # All arrays are not raw -> size not allowed
@@ -238,12 +276,12 @@ class TestUserkernelScalar(unittest.TestCase):
     @testing.numpy_cupy_array_equal()
     def test_scalar(self, xp, dtype):
         x = testing.shaped_arange((2, 3, 4), xp, dtype)
+        y = numpy.array(self.value).astype(dtype)[()]
         if xp is numpy:
-            y = numpy.array(self.value).astype(dtype)
             return x + y
         else:
             kernel = cupy.ElementwiseKernel('T x, T y', 'T z', 'z = x + y')
-            return kernel(x, self.value)
+            return kernel(x, y)
 
 
 class TestUserkernelManualBlockSize(unittest.TestCase):
@@ -276,7 +314,6 @@ class TestElementwiseKernelTexture(unittest.TestCase):
         shape = (depth, height, width) if dim == 3 else \
                 (height, width) if dim == 2 else \
                 (width,)
-        self.shape = shape
 
         # prepare input, output, and texture memory
         # self.data holds the data stored in the texture memory
@@ -285,7 +322,6 @@ class TestElementwiseKernelTexture(unittest.TestCase):
                                      runtime.cudaChannelFormatKindFloat)
         arr = CUDAarray(ch, width, height, depth)
         arr.copy_from(tex_data)
-        self.data = tex_data
 
         # create resource and texture descriptors
         res = ResourceDescriptor(runtime.cudaResourceTypeArray, cuArr=arr)
@@ -295,7 +331,7 @@ class TestElementwiseKernelTexture(unittest.TestCase):
                                 runtime.cudaReadModeElementType)
 
         # create a texture object
-        return TextureObject(res, tex)
+        return TextureObject(res, tex), tex_data, shape
 
     def _prep_kernel1D(self):
         return cupy.ElementwiseKernel(
@@ -337,7 +373,7 @@ class TestElementwiseKernelTexture(unittest.TestCase):
         width, height, depth = self.dimensions
         dim = 3 if depth != 0 else 2 if height != 0 else 1
 
-        texobj = self._prep_texture()
+        texobj, data, shape = self._prep_texture()
         ker = getattr(self, f'_prep_kernel{dim}D')()
 
         # prepare input
@@ -350,10 +386,10 @@ class TestElementwiseKernelTexture(unittest.TestCase):
             size *= depth
             args.append(height)
         in_arr = cupy.arange(size, dtype=cupy.float32)
-        in_arr = in_arr.reshape(self.shape)
+        in_arr = in_arr.reshape(shape)
         args[0] = in_arr
 
         # compute and validate output
         out_arr = ker(*args)
-        expected = in_arr + self.data
+        expected = in_arr + data
         testing.assert_allclose(out_arr, expected)

@@ -4,7 +4,7 @@ import numpy
 
 from cupy._core import _fusion_interface
 
-from cupy._core._scalar cimport get_typename
+from cupy._core._scalar cimport get_typename, _get_cuda_scalar_repr
 
 
 cdef class _AbstractDim:
@@ -124,12 +124,12 @@ class _TraceVariable:
 
     @property
     def var_name(self):
-        # The name of varialbe stored in global memory space.
+        # The name of variable stored in global memory space.
         raise NotImplementedError
 
     @property
     def lvar_name(self):
-        # The name of varialbe stored in registers in each thread.
+        # The name of variable stored in registers in each thread.
         raise NotImplementedError
 
     @property
@@ -140,15 +140,15 @@ class _TraceVariable:
         # same shape, for performance improvements.
         return 'ind{}_{}'.format(self.memory.id, self.serial_number)
 
-    def format(self, form, **kwargs):
+    def format(self, form, preamble=None, /, **kwargs):
         """Returns a string following the format taken as an input.
         """
-        kwargs = dict([
-            (k, get_typename(v) if isinstance(v, numpy.dtype) else v)
-            for k, v in kwargs.items()]
-        )
+        kwargs = {
+            k: get_typename(v, preamble) if isinstance(v, numpy.dtype) else v
+            for k, v in kwargs.items()
+        }
         return string.Template(form).substitute(
-            type=get_typename(self.dtype),
+            type=get_typename(self.dtype, preamble),
             var=self.var_name,
             lvar=self.lvar_name,
             indexer=self.indexer_name,
@@ -171,25 +171,19 @@ class _TraceScalar(_TraceVariable):
 
     # TODO(asi1024): Remove index argument.
     def __init__(
-            self, index, serial_number, dtype, input_index=None, *,
+            self, index, serial_number, dtype, sctype, input_index=None, *,
             const_value=None,):
         super().__init__(
             index, serial_number, dtype, (), (), input_index, None)
 
         self.const_value = const_value
+        self.pytype = sctype if sctype in (int, float, complex) else False
 
     @property
     def var_name(self):
         if self.const_value is None:
             return 'a{}'.format(self.memory.id)
-        if self.dtype == '?':
-            return str(self.const_value).lower()
-        if self.dtype.kind == 'c':
-            return '{}({}, {})'.format(
-                get_typename(self.dtype),
-                self.const_value.real,
-                self.const_value.imag)
-        return str(self.const_value)
+        return _get_cuda_scalar_repr(self.const_value, self.dtype)
 
     @property
     def lvar_name(self):

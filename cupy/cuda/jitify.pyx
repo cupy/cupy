@@ -7,13 +7,18 @@ from libcpp.map cimport map as cpp_map
 from libcpp.string cimport string as cpp_str
 from libcpp.vector cimport vector
 
+cimport cython
+
 import json
 import os
 import re
 import tempfile
+import warnings
 
-from cupy._environment import get_cuda_path
+from cuda.pathfinder import find_nvidia_header_directory
+
 from cupy.cuda import cub
+from cupy import _util
 
 
 ###############################################################################
@@ -42,7 +47,7 @@ cdef extern from 'cupy_jitify.h' namespace "jitify::detail" nogil:
 # users.
 cdef extern from *:
     """
-    const int build_num = 2;
+    const int build_num = 4;
     """
     const int build_num
 
@@ -60,14 +65,14 @@ def get_build_version():
 cpdef str get_cuda_version():
     # Read CUDART version from header if it exists, otherwise use NVRTC version
     # as a proxy.
-    cdef str cuda_path = get_cuda_path()
     cdef str cuda_ver = None
 
-    if cuda_path is not None:
+    include_dir = find_nvidia_header_directory('cudart')
+    if include_dir is not None:
         try:
             with open(
-                    os.path.join(cuda_path,
-                                 'include/cuda_runtime_api.h')) as f:
+                    os.path.join(include_dir,
+                                 'cuda_runtime_api.h')) as f:
                 hdr = f.read()
             m = re.search(r'#define CUDART_VERSION\s+([0-9]*)', hdr)
             if m:
@@ -89,6 +94,7 @@ cpdef str get_cuda_version():
 cdef cpp_map[cpp_str, cpp_str] cupy_headers
 
 # Module-level constants
+cdef cython.pymutex _jitify_init_mutex
 cdef bint _jitify_init = False
 cdef str _jitify_cache_dir = None
 cdef str _jitify_cache_versions = None
@@ -139,10 +145,10 @@ cdef str warmup_kernel = r"""cupy_jitify_exercise
 
 #include <cub/block/block_reduce.cuh>
 #include <cub/block/block_load.cuh>
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 700
+// not supported before CC 7.0
 #include <cuda/barrier>
-#include <cooperative_groups.h>
-#include <cooperative_groups/memcpy_async.h>
-
+#endif
 
 extern "C" __global__ void jitify_exercise() { }
 """
@@ -183,11 +189,17 @@ cdef inline void _init_cupy_headers_from_scratch() except*:
     # Same for tuple
     cupy_headers[b"tuple"] = b"#include <cupy/cuda_workaround.h>\n"
 
+    # Ensure users know this is normal and not hanging...
+    warnings.warn(
+        "Jitify is performing a one-time only warm-up to populate the "
+        "persistent cache, this may take a few seconds and will be improved "
+        "in a future release...", _util.PerformanceWarning)
+
     # Compile a dummy kernel to further populate the cache (with bundled
     # headers)
     # need to defer import to avoid circular dependency
     from cupy._core.core import assemble_cupy_compiler_options
-    cdef tuple options = ('-std=c++11', '-DCUB_DISABLE_BF16_SUPPORT',)
+    cdef tuple options = ('-std=c++17', '-DCUB_DISABLE_BF16_SUPPORT',)
     options = assemble_cupy_compiler_options(options)
     jitify(warmup_kernel, options)
 
@@ -209,7 +221,7 @@ cdef inline void _init_cupy_headers() except*:
     _init_cupy_headers_from_scratch()
 
 
-cpdef void _init_module() except*:
+cdef void _init_module_locked() except*:
     if _jitify_init:
         return
 
@@ -226,11 +238,19 @@ cpdef void _init_module() except*:
     # start time, for enabling CCCL + CuPy developers?
     global _jitify_cache_versions
     if _jitify_cache_versions is None:
+        # jitify version could be "<unknown>" and the angular brackets are not
+        # valid characters on Windows, so we need to strip them
+        _jitify_version = re.sub(r'<([^>]*)>', r'\1', get_build_version())
         _jitify_cache_versions = (
-            f"{get_build_version()}_{cub.get_build_version()}_"
+            f"{_jitify_version}_{cub.get_build_version()}_"
             f"{get_cuda_version()}_{build_num}_{cupy_cache_key.decode()}")
 
     _init_cupy_headers()
+
+
+cpdef void _init_module() except*:
+    with _jitify_init_mutex:
+        _init_module_locked()
 
 
 # Use Jitify's internal mechanism to search all included headers, and return

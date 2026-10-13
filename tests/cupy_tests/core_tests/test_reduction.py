@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import unittest
 
 import numpy
@@ -7,6 +9,10 @@ import cupy
 import cupy._core._accelerator as _acc
 from cupy import _core
 from cupy import testing
+from cupy.exceptions import ComplexWarning, AxisError
+
+from cupy.testing._protocol_helpers import (
+    DummyObjectWithCuPyGetNDArray, DummyObjectWithCudaArrayInterface)
 
 
 _noncontiguous_params = [
@@ -50,6 +56,27 @@ class SimpleReductionFunctionTestBase(AbstractReductionTestBase):
 
 class TestSimpleReductionFunction(
         unittest.TestCase, SimpleReductionFunctionTestBase):
+    def test_overlapping_output(self):
+        kernel = _core.create_reduction_func(
+            'overlapping_sum', ('q->q',),
+            ('in0', 'a + b', 'out0 = a', None), 0)
+        a = cupy.arange(64 * 64, dtype='int64').reshape(64, 64)
+        expected = a.get()
+        numpy.sum(expected, axis=1, out=expected[0])
+        out = a[0]
+        result = kernel(a, axis=1, out=out)
+        assert result is out
+        testing.assert_array_equal(a, expected)
+
+    def test_subclass_output(self):
+        class Array(cupy.ndarray):
+            pass
+
+        a = cupy.arange(6, dtype='int8').view(Array)
+        result = self.get_sum_func()(a)
+        assert type(result) is cupy.ndarray
+        testing.assert_array_equal(result, 15)
+
     def test_shape1(self):
         for i in range(1, 10):
             self.check_int8_sum((2 ** i,))
@@ -106,7 +133,7 @@ class TestSimpleReductionFunctionComplexWarning(unittest.TestCase):
     @testing.for_float_dtypes(name='f_dtype')
     @testing.numpy_cupy_allclose()
     def test_warns(self, xp, c_dtype, f_dtype):
-        with pytest.warns(numpy.ComplexWarning):
+        with pytest.warns(ComplexWarning):
             out = xp.ones((8,), dtype=c_dtype).sum(dtype=f_dtype)
         return out
 
@@ -120,7 +147,7 @@ class TestSimpleReductionFunctionInvalidAxis:
     def test_axis_overrun(self, axis):
         for xp in (numpy, cupy):
             a = xp.ones((2, 2))
-            with pytest.raises(numpy.AxisError):
+            with pytest.raises(AxisError):
                 a.sum(axis=axis)
 
     @pytest.mark.parametrize('axis', [
@@ -142,6 +169,27 @@ class ReductionKernelTestBase(AbstractReductionTestBase):
 
 
 class TestReductionKernel(ReductionKernelTestBase, unittest.TestCase):
+
+    def test_explicit_none_output(self):
+        a = cupy.arange(6, dtype='float32').reshape(2, 3)
+        result = self.get_sum_func()(a, None, axis=1)
+        testing.assert_array_equal(result, a.get().sum(axis=1))
+
+    def test_supplied_output_shape(self):
+        kernel = self.get_sum_func()
+        for shape in ((2, 1), (2, 3), (0, 3)):
+            a = cupy.arange(numpy.prod(shape), dtype='float32').reshape(shape)
+            out = cupy.empty(shape[0], dtype='float32')
+            result = kernel(a, axis=1, out=out)
+            assert result is out
+            testing.assert_array_equal(result, a.get().sum(axis=1))
+
+    def test_scalar_input_without_shape(self):
+        kernel = cupy.ReductionKernel(
+            'float32 x', 'float32 y', 'x', 'a + b', 'y = a', '0',
+            'scalar_sum')
+        with pytest.raises(ValueError, match='Loop size is undecided'):
+            kernel(1)
 
     def test_shape1(self):
         for i in range(1, 10):
@@ -231,3 +279,22 @@ class TestLargeMultiDimReduction(
         shape = (4, 3, 2, 4, 3, 2, 2)
         axis = (1, 4, 3, 6)
         self.check_int8_sum(shape, axis=axis, keepdims=True)
+
+
+class TestArgumentTypes:
+    kernel = _core.create_reduction_func(
+        'my_sum', ('f->f',), ('in0', 'a + b', 'out0 = a', None), 0)
+
+    @pytest.mark.parametrize('cupy_like', [
+        DummyObjectWithCuPyGetNDArray,
+        DummyObjectWithCudaArrayInterface,
+    ])
+    def test_cupy_like_protocols(self, cupy_like):
+        # Check that reduction kernels work on the cupy like protocols
+        x = cupy_like(cupy.arange(10, dtype=cupy.float32))
+        res = self.kernel(x)
+        assert res == 45
+
+    def test_bad_argument(self):
+        with pytest.raises(TypeError, match="Argument 'a' has incorrect type"):
+            self.kernel(numpy.array([1, 2, 3]))

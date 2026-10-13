@@ -2,6 +2,8 @@
 
 Split off _filter_design.py
 """
+from __future__ import annotations
+
 import warnings
 import math
 from math import pi, prod
@@ -85,15 +87,15 @@ def _align_nums(nums):
 
 def _polycoeffs_from_zeros(zeros, tol=10):
     # a clone of numpy.poly, simplified
-    dtyp = (cupy.complex_
+    dtyp = (cupy.complex128
             if cupy.issubdtype(zeros.dtype, cupy.complexfloating)
-            else cupy.float_)
+            else cupy.float64)
     a = cupy.ones(1, dtype=dtyp)
     for z in zeros:
         a = cupy.convolve(a, cupy.r_[1, -z], mode='full')
 
     # Use real output if possible.
-    if dtyp == cupy.complex_:
+    if dtyp == cupy.complex128:
         mask = cupy.abs(a.imag) < tol * cupy.finfo(a.dtype).eps
         a.imag[mask] = 0.0
         if mask.shape[0] == a.shape[0]:
@@ -181,9 +183,12 @@ def zpk2sos(z, p, k, pairing=None, *, analog=False):
 
     if len(z) == len(p) == 0:
         if not analog:
-            return cupy.array([[k, 0., 0., 1., 0., 0.]])
-        else:
-            return cupy.array([[0., 0., k, 0., 0., 1.]])
+            out = cupy.array([[0., 0., 0., 1., 0., 0.]])
+            out[0][0] = k
+            return out
+        out = cupy.array([[0., 0., 0., 0., 0., 1.]])
+        out[0][2] = k
+        return out
 
     if pairing != 'minimal':
         # ensure we have the same number of poles and zeros, and make copies
@@ -856,6 +861,10 @@ def bilinear(b, a, fs=1.0):
     """
     fs = float(fs)
     a, b = map(cupy.atleast_1d, (a, b))
+    # Remove leading zeros so they don't inflate the polynomial degrees and
+    # change the result (matches ``scipy.signal.bilinear``; see scipy gh-6606).
+    b = cupy.trim_zeros(b, 'f')
+    a = cupy.trim_zeros(a, 'f')
     D = a.shape[0] - 1
     N = b.shape[0] - 1
 
@@ -1951,7 +1960,7 @@ def _find_nat_freq(stopb, passb, gpass, gstop, filter_type, filter_kind):
         nat = ((stopb ** 2 - passb[0] * passb[1]) /
                (stopb * (passb[0] - passb[1])))
     else:
-        raise ValueError(f"should not happen: {filter_type =}.")
+        raise ValueError(f"should not happen: {filter_type=}.")
 
     nat = min(cupy.abs(nat))
     return nat, passb

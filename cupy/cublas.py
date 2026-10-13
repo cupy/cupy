@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+import math
+
 import numpy
 from numpy import linalg
 
@@ -50,7 +54,7 @@ def batched_gesv(a, b):
             'or (..., M, K)')
 
     dtype, out_dtype = _util.linalg_common_type(a, b)
-    if b.size == 0:
+    if a.size == 0:
         return cupy.empty(b.shape, out_dtype)
 
     if dtype == 'f':
@@ -66,7 +70,7 @@ def batched_gesv(a, b):
     getrf = getattr(cublas, t + 'getrfBatched')
     getrs = getattr(cublas, t + 'getrsBatched')
 
-    bs = numpy.prod(a.shape[:-2]) if a.ndim > 2 else 1
+    bs = math.prod(a.shape[:-2]) if a.ndim > 2 else 1
     n = a.shape[-1]
     nrhs = b.shape[-1] if a.ndim == b.ndim else 1
     b_shape = b.shape

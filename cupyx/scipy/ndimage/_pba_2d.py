@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import math
 import numbers
 import os
@@ -68,7 +70,7 @@ def get_pba2d_src(block_size_2d=64, marker=-32768, pixel_int2_t="short2"):
         make_pixel_func=make_pixel_func
     )
     kernel_directory = os.path.join(os.path.dirname(__file__), "cuda")
-    with open(os.path.join(kernel_directory, "pba_kernels_2d.h"), "rt") as f:
+    with open(os.path.join(kernel_directory, "pba_kernels_2d.h")) as f:
         pba2d_kernels = "\n".join(f.readlines())
 
     pba2d_code += pba2d_kernels
@@ -85,7 +87,7 @@ def _get_block_size(check_warp_size=False):
 
 
 @cupy.memoize(for_each_device=True)
-def _get_pack_kernel(int_type, marker=-32768):
+def _get_pack_kernel(marker=-32768):
     """Pack coordinates into array of type short2 (or int2).
 
     This kernel works with 2D input data, `arr` (typically boolean).
@@ -95,13 +97,14 @@ def _get_pack_kernel(int_type, marker=-32768):
     vector type such as `int2` or `float2`.
     """
     code = f"""
+    using index_t = decltype(arr)::index_t;
     if (arr[i]) {{
         out[2*i] = {marker};
         out[2*i + 1] = {marker};
     }} else {{
-        int shape_1 = arr.shape()[1];
-        int _i = i;
-        int ind_1 = _i % shape_1;
+        index_t shape_1 = arr.shape()[1];
+        index_t _i = i;
+        index_t ind_1 = _i % shape_1;
         _i /= shape_1;
         out[2*i] = ind_1;   // out.x
         out[2*i + 1] = _i;  // out.y
@@ -111,20 +114,16 @@ def _get_pack_kernel(int_type, marker=-32768):
         in_params="raw B arr",
         out_params="raw I out",
         operation=code,
-        options=("--std=c++11",),
     )
 
 
 def _pack_int2(arr, marker=-32768, int_dtype=cupy.int16):
     if arr.ndim != 2:
-        raise ValueError("only 2d arr suppported")
+        raise ValueError("only 2d arr supported")
     int2_dtype = cupy.dtype({"names": ["x", "y"], "formats": [int_dtype] * 2})
     out = cupy.zeros(arr.shape + (2,), dtype=int_dtype)
     assert out.size == 2 * arr.size
-    pack_kernel = _get_pack_kernel(
-        int_type="short" if int_dtype == cupy.int16 else "int",
-        marker=marker
-    )
+    pack_kernel = _get_pack_kernel(marker=marker)
     pack_kernel(arr, out, size=arr.size)
     out = cupy.squeeze(out.view(int2_dtype))
     return out
@@ -173,7 +172,7 @@ def _get_distance_kernel_code(int_type, dist_int_type, raw_out_var=True):
     )
     code += _generate_indices_ops(ndim=2, int_type=int_type)
     code += f"""
-    {int_type} tmp;
+    {dist_int_type} tmp;
     {dist_int_type} sq_dist;
     tmp = y[i] - ind_0;
     sq_dist = tmp * tmp;
@@ -194,7 +193,6 @@ def _get_distance_kernel(int_type, dist_int_type):
         in_params="raw I y, raw I x",
         out_params="raw F dist",
         operation=operation,
-        options=("--std=c++11",),
     )
 
 
@@ -223,7 +221,6 @@ def _get_aniso_distance_kernel(int_type):
         in_params="raw I y, raw I x, raw F sampling",
         out_params="raw F dist",
         operation=operation,
-        options=("--std=c++11",),
     )
 
 
@@ -433,7 +430,7 @@ def _pba_2d(arr, sampling=None, return_distances=True, return_indices=False,
         block,
         (input_arr, input_arr, size, bandSize2),
     )
-    # Repeatly merging two bands into one
+    # Repeatedly merging two bands into one
     noBand = m2
     while noBand > 1:
         grid = (math.ceil(size / block[0]), noBand // 2)

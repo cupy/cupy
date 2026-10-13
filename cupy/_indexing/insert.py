@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy
 
 import cupy
@@ -164,7 +166,7 @@ def fill_diagonal(a, val, wrap=False):
 
     .. seealso:: :func:`numpy.fill_diagonal`
     """
-    # The followings are imported from the original numpy
+    # The following are imported from the original numpy
     if a.ndim < 2:
         raise ValueError('array must be at least 2-d')
     end = None

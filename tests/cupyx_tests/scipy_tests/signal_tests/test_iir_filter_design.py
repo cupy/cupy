@@ -1,9 +1,13 @@
+from __future__ import annotations
+
 import pytest
 from pytest import raises as assert_raises
 
 import cupy
 
 from cupy import testing
+from cupy.testing._helper import installed_but_not_baseline
+from cupy.testing._helper import skip_if_after_baseline
 from cupyx.scipy import signal
 from cupyx.scipy.signal import iirdesign
 
@@ -17,7 +21,19 @@ nimpl = pytest.mark.xfail(reason="not implemented")
 prec_loss = pytest.mark.xfail(reason="zpk2tf loses precision")
 
 
-@testing.with_requires("scipy>=1.8")
+def _fix_iir_output_for_newer_scipy(zpk, N, ftype='ellip'):
+    if not installed_but_not_baseline(scipy="1.17"):
+        return zpk
+
+    if (ftype == 'ellip' and N < 2) or (ftype.startswith('cheby') and N == 0):
+        pytest.skip(
+            "SciPy>=1.17 changed degenerate zpk return dtype vs baseline.")
+
+    z, p, k = zpk
+    return z, p, float(k)
+
+
+@testing.with_requires("scipy")
 class TestIIRFilter:
 
     # NB: test_symmetry with higher order ellip filters need low tolerance
@@ -33,9 +49,10 @@ class TestIIRFilter:
         # symmetrical poles and zeros. Then ba representation (using
         # numpy.poly) will be purely real instead of having negligible
         # imaginary parts.
-        z, p, k = scp.signal.iirfilter(N, 1.1, 1, 20, 'low', analog=True,
-                                       ftype=ftype, output='zpk')
-        return z, p, k
+        return _fix_iir_output_for_newer_scipy(
+            scp.signal.iirfilter(
+                N, 1.1, 1, 20, 'low', analog=True, ftype=ftype, output='zpk'),
+            N, ftype)
 
     @pytest.mark.parametrize("N", list(range(1, 25)))
     @pytest.mark.parametrize("ftype", ['butter',
@@ -165,7 +182,7 @@ class TestButter:
                               'sos',
                               pytest.param('ba', marks=prec_loss)])
     @testing.numpy_cupy_allclose(scipy_name="scp")
-    @testing.with_requires("scipy>=1.8")
+    @testing.with_requires("scipy")
     def test_ba_output(self, xp, scp, outp):
         outp = scp.signal.butter(
             4, [100, 300], 'bandpass', analog=True, output=outp)
@@ -225,16 +242,17 @@ class TestCheby1:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_basic(self, xp, scp, N):
         wn = 0.01
-        z, p, k = scp.signal.cheby1(N, 1, wn, 'low', analog=True, output='zpk')
-        return z, p, k
+        return _fix_iir_output_for_newer_scipy(
+            scp.signal.cheby1(N, 1, wn, 'low', analog=True, output='zpk'),
+            N, 'cheby1')
 
     @pytest.mark.parametrize("N", list(range(25)))
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_basic_1(self, xp, scp, N):
         wn = 0.01
-        z, p, k = scp.signal.cheby1(
-            N, 1, wn, 'high', analog=False, output='zpk')
-        return z, p, k
+        return _fix_iir_output_for_newer_scipy(
+            scp.signal.cheby1(N, 1, wn, 'high', analog=False, output='zpk'),
+            N, 'cheby1')
 
     @pytest.mark.parametrize("arg, kwd",
                              [((8, 0.5, 0.048), {}),
@@ -325,9 +343,9 @@ class TestCheby2:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_basic(self, xp, scp, N):
         wn = 0.01
-        z, p, k = scp.signal.cheby2(
-            N, 40, wn, 'low', analog=True, output='zpk')
-        return z, p, k
+        return _fix_iir_output_for_newer_scipy(
+            scp.signal.cheby2(N, 40, wn, 'low', analog=True, output='zpk'),
+            N, 'cheby2')
         #    assert_(len(p) == N)
         #    assert_(all(np.real(p) <= 0))  # No poles in right half of S-plane
 
@@ -335,9 +353,9 @@ class TestCheby2:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_basic_1(self, xp, scp, N):
         wn = 0.01
-        z, p, k = scp.signal.cheby2(
-            N, 40, wn, 'high', analog=False, output='zpk')
-        return z, p, k
+        return _fix_iir_output_for_newer_scipy(
+            scp.signal.cheby2(N, 40, wn, 'high', analog=False, output='zpk'),
+            N, 'cheby2')
         #    assert_(all(np.abs(p) <= 1))  # No poles outside unit circle
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
@@ -391,7 +409,7 @@ class TestCheby2:
         # assert_allclose(a, a2, rtol=1e-14)
 
 
-@testing.with_requires("scipy>=1.8")
+@testing.with_requires("scipy")
 class TestEllip:
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
@@ -409,6 +427,8 @@ class TestEllip:
         return b, a
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
+    @skip_if_after_baseline(
+        scipy="1.17", reason="SciPy >= 1.17 fixed return dtype to complex")
     def test_degenerate_2(self, xp, scp):
         z, p, k = scp.signal.ellip(1, 1, 55, 0.3, output='zpk')
         return z, p, k
@@ -417,17 +437,17 @@ class TestEllip:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_basic(self, xp, scp, N):
         wn = 0.01
-        z, p, k = scp.signal.ellip(
-            N, 1, 40, wn, 'low', analog=True, output='zpk')
-        return z, p, k
+        return _fix_iir_output_for_newer_scipy(
+            scp.signal.ellip(N, 1, 40, wn, 'low', analog=True, output='zpk'),
+            N, 'ellip')
 
     @pytest.mark.parametrize('N', list(range(20)))
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_basic_1(self, xp, scp, N):
         wn = 0.01
-        z, p, k = scp.signal.ellip(
-            N, 1, 40, wn, 'high', analog=False, output='zpk')
-        return z, p, k
+        return _fix_iir_output_for_newer_scipy(
+            scp.signal.ellip(N, 1, 40, wn, 'high', analog=False, output='zpk'),
+            N, 'ellip')
 
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-14, rtol=1e-14)
     def test_basic_2(self, xp, scp):
@@ -528,7 +548,7 @@ class TestButtord:
         N, Wn = scp.signal.buttord(wp, ws, rp, rs, False)
         return N, Wn
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=3e-7)
     def test_bandstop(self, xp, scp):
         wp = [0.1, 0.6]
         ws = [0.2, 0.5]
@@ -588,7 +608,7 @@ class TestButtord:
         with pytest.warns(RuntimeWarning, match=r'Order is zero'):
             signal.buttord(0.0, 1.0, 3, 60)
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1E-7)
     def test_ellip_butter(self, xp, scp):
         # The purpose of the test is to make sure the result of `ellipord`
         # differs from that of `buttord`. The values to compare to are
@@ -771,7 +791,7 @@ class TestEllipord:
         return N, Wn
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
-    @testing.with_requires('scipy>=1.7')
+    @testing.with_requires('scipy')
     def test_lowpass_1000dB(self, xp, scp):
         # failed when ellipkm1 wasn't used in ellipord and ellipap
         wp = 0.2
@@ -799,7 +819,7 @@ class TestEllipord:
         N, Wn = scp.signal.ellipord(wp, ws, rp, rs, False)
         return N, Wn
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=3E-7)
     def test_bandstop(self, xp, scp):
         wp = xp.array([0.1, 0.6])
         ws = xp.array([0.2, 0.5])
@@ -817,7 +837,7 @@ class TestEllipord:
         N, Wn = scp.signal.ellipord(wp, ws, rp, rs, True)
         return N, Wn
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=3E-7)
     def test_fs_param(self, xp, scp):
         wp = [400, 2400]
         ws = [800, 2000]
@@ -840,7 +860,7 @@ class TestEllipord:
             signal.ellipord(0.2, 0.5, 1, -2)
         assert "gstop should be larger than 0.0" in str(exc_info.value)
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=3E-7)
     def test_ellip_butter(self, xp, scp):
         # The purpose of the test is to make sure the result of `ellipord`
         # differs from that of `buttord`. The values to compare to are
@@ -972,14 +992,14 @@ class TestIIRNotch:
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_ba_output(self, xp, scp):
-        # Compare coeficients with Matlab ones
+        # Compare coefficients with Matlab ones
         # for the equivalent input:
         b, a = scp.signal.iirnotch(0.06, 30)
         return b, a
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_frequency_response(self, xp, scp):
-        # Get filter coeficients
+        # Get filter coefficients
         b, a = scp.signal.iirnotch(0.3, 30)
         return b, a
 
@@ -995,7 +1015,7 @@ class TestIIRNotch:
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_fs_param(self, xp, scp):
-        # Get filter coeficients
+        # Get filter coefficients
         b, a = scp.signal.iirnotch(1500, 30, fs=10000)
         return b, a
 
@@ -1005,14 +1025,14 @@ class TestIIRPeak:
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_ba_output(self, xp, scp):
-        # Compare coeficients with Matlab ones
+        # Compare coefficients with Matlab ones
         # for the equivalent input:
         b, a = scp.signal.iirpeak(0.06, 30)
         return b, a
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_frequency_response(self, xp, scp):
-        # Get filter coeficients
+        # Get filter coefficients
         b, a = scp.signal.iirpeak(0.3, 30)
         return b, a
 
@@ -1028,7 +1048,7 @@ class TestIIRPeak:
 
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_fs_param(self, xp, scp):
-        # Get filter coeficients
+        # Get filter coefficients
         b, a = scp.signal.iirpeak(1200, 30, fs=8000)
         return b, a
 
@@ -1069,7 +1089,7 @@ class TestIIRComb:
         return b, a
 
     # Verify pass_zero parameter
-    @testing.with_requires("scipy>=1.9.0")
+    @testing.with_requires("scipy")
     @testing.numpy_cupy_allclose(scipy_name="scp")
     @pytest.mark.parametrize('ftype,pass_zero,peak,notch',
                              [('peak', True, 123.45, 61.725),
@@ -1102,7 +1122,7 @@ class TestIIRComb:
         return b, a
 
     # Verify that https://github.com/scipy/scipy/issues/14043 is fixed
-    @testing.with_requires('scipy>=1.9.0')
+    @testing.with_requires('scipy')
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_nearest_divisor(self, xp, scp):
         # Create a notching comb filter

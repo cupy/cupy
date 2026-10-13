@@ -1,4 +1,8 @@
+from __future__ import annotations
+
 import unittest
+
+import pytest
 
 from cupy import random
 from cupy import testing
@@ -6,6 +10,7 @@ from cupy import testing
 
 class TestResetSeed(unittest.TestCase):
 
+    @pytest.mark.thread_unsafe(reason="uses global random state")
     @testing.for_float_dtypes(no_float16=True)
     def test_reset_seed(self, dtype):
         rs = random.get_random_state()

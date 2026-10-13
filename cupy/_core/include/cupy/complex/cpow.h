@@ -2,7 +2,9 @@
 
 #include <cupy/complex/complex.h>
 
-namespace thrust {
+#include <cupy/complex/namespace.h>
+
+THRUST_NAMESPACE_BEGIN
 
 template <typename T>
 __host__ __device__ inline complex<T> pow(const complex<T>& z,
@@ -41,4 +43,4 @@ __host__ __device__ inline complex<typename _select_greater_type<T, U>::type> po
   return pow(PromotedType(x), complex<PromotedType>(exponent));
 }
 
-}
+THRUST_NAMESPACE_END

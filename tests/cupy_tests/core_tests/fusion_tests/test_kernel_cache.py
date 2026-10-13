@@ -1,13 +1,15 @@
-import unittest
+from __future__ import annotations
+
 from unittest import mock
 
 import numpy
-
 import cupy
+import pytest
+
 from cupy import testing
 
 
-class CreateMock(object):
+class CreateMock:
 
     def __init__(self, target):
         self.target = eval(target)
@@ -18,7 +20,7 @@ class CreateMock(object):
         return self.target(*args, **kwargs)
 
     def check_call_count(self, xp, count):
-        # TODO(asi1024): Uncomment after replace fusion implementaiton.
+        # TODO(asi1024): Uncomment after replace fusion implementation.
 
         # assert xp in (numpy, cupy)
         # assert isinstance(count, int)
@@ -40,7 +42,7 @@ def mock_fusion_history():
     return wrapper
 
 
-class TestFusionCache(unittest.TestCase):
+class TestFusionCache:
 
     @mock_fusion_history()
     def test_same_array(self, xp, m):
@@ -138,7 +140,7 @@ class TestFusionCache(unittest.TestCase):
 
         x = testing.shaped_random((2, 5), xp, 'int32', scale=10, seed=10)
         y = testing.shaped_random((4, 5), xp, 'int32', scale=10, seed=11)
-        with self.assertRaises(ValueError, msg='could not be broadcast'):
+        with pytest.raises(ValueError, match='could not be broadcast'):
             f(x, y)
         m.check_call_count(xp, 4)
 

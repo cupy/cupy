@@ -10,6 +10,7 @@
 extern "C" {
 
     typedef enum {} cutensorDataType_t;
+    typedef enum {} cutensorComputeType_t;
 
     typedef enum {
 	CUTENSOR_STATUS_SUCCESS = 0,
@@ -20,6 +21,7 @@ extern "C" {
     typedef enum {} cutensorPlan_t;
     typedef enum {} cutensorPlanPreference_t;
     typedef enum {} cutensorPlanPreferenceAttribute_t;
+    typedef enum {} cutensorPlanAttribute_t;
     typedef enum {} cutensorJitMode_t;
     typedef enum {} cutensorCacheMode_t;
     typedef enum {} cutensorWorksizePreference_t;
@@ -104,6 +106,10 @@ extern "C" {
 	return CUTENSOR_STATUS_SUCCESS;
     }
 
+    cutensorStatus_t cutensorPlanGetAttribute(...) {
+	return CUTENSOR_STATUS_SUCCESS;
+    }
+
     cutensorStatus_t cutensorDestroyPlan(...) {
 	return CUTENSOR_STATUS_SUCCESS;
     }
@@ -140,6 +146,87 @@ extern "C" {
 	return NULL;
     }
 
+    typedef enum {} cudaDataType_t;
+    typedef enum {} cutensorMgCopyPlan_t;
+    typedef enum {} cutensorMgCopyDescriptor_t;
+    typedef enum {} cutensorMgContractionDescriptor_t;
+    typedef enum {} cutensorMgContractionFind_t;
+    typedef enum {} cutensorMgContractionPlan_t;
+    typedef enum {} cutensorMgAlgo_t;
+    typedef void* cutensorMgHandle_t;
+    typedef void* cutensorMgTensorDescriptor_t;
+
+    cutensorStatus_t cutensorMgCreate(...) {
+	return CUTENSOR_STATUS_SUCCESS;
+    }
+
+    cutensorStatus_t cutensorMgDestroy(...) {
+	return CUTENSOR_STATUS_SUCCESS;
+    }
+
+    cutensorStatus_t cutensorMgCreateTensorDescriptor(...) {
+	return CUTENSOR_STATUS_SUCCESS;
+    }
+
+    cutensorStatus_t cutensorMgDestroyTensorDescriptor(...) {
+	return CUTENSOR_STATUS_SUCCESS;
+    }
+
+    cutensorStatus_t cutensorMgCreateCopyDescriptor(...) {
+	return CUTENSOR_STATUS_SUCCESS;
+    }
+
+    cutensorStatus_t cutensorMgDestroyCopyDescriptor(...) {
+	return CUTENSOR_STATUS_SUCCESS;
+    }
+
+    cutensorStatus_t cutensorMgCopyGetWorkspace(...) {
+	return CUTENSOR_STATUS_SUCCESS;
+    }
+
+    cutensorStatus_t cutensorMgCreateCopyPlan(...) {
+	return CUTENSOR_STATUS_SUCCESS;
+    }
+
+    cutensorStatus_t cutensorMgDestroyCopyPlan(...) {
+	return CUTENSOR_STATUS_SUCCESS;
+    }
+
+    cutensorStatus_t cutensorMgCopy(...) {
+	return CUTENSOR_STATUS_SUCCESS;
+    }
+
+    cutensorStatus_t cutensorMgCreateContractionDescriptor(...) {
+	return CUTENSOR_STATUS_SUCCESS;
+    }
+
+    cutensorStatus_t cutensorMgDestroyContractionDescriptor(...) {
+	return CUTENSOR_STATUS_SUCCESS;
+    }
+
+    cutensorStatus_t cutensorMgCreateContractionFind(...) {
+	return CUTENSOR_STATUS_SUCCESS;
+    }
+
+    cutensorStatus_t cutensorMgDestroyContractionFind(...) {
+	return CUTENSOR_STATUS_SUCCESS;
+    }
+
+    cutensorStatus_t cutensorMgContractionGetWorkspace(...) {
+	return CUTENSOR_STATUS_SUCCESS;
+    }
+
+    cutensorStatus_t cutensorMgCreateContractionPlan(...) {
+	return CUTENSOR_STATUS_SUCCESS;
+    }
+
+    cutensorStatus_t cutensorMgDestroyContractionPlan(...) {
+	return CUTENSOR_STATUS_SUCCESS;
+    }
+
+    cutensorStatus_t cutensorMgContraction(...) {
+	return CUTENSOR_STATUS_SUCCESS;
+    }
 } // extern "C"
 
 #endif // #ifndef INCLUDE_GUARD_STUB_CUPY_CUTENSOR_H

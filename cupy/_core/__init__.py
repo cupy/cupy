@@ -1,11 +1,13 @@
 # mypy: ignore-errors
+from __future__ import annotations
+
 
 from cupy._core import core  # NOQA
 from cupy._core import fusion  # NOQA
 from cupy._core import internal  # NOQA
 
 
-# internal APIs for testing and developement
+# internal APIs for testing and development
 from cupy._core._accelerator import set_elementwise_accelerators  # NOQA
 from cupy._core._accelerator import set_reduction_accelerators  # NOQA
 from cupy._core._accelerator import set_routine_accelerators  # NOQA
@@ -19,11 +21,15 @@ from cupy._core._kernel import create_ufunc  # NOQA
 from cupy._core._kernel import ElementwiseKernel  # NOQA
 from cupy._core._kernel import ufunc  # NOQA
 from cupy._core._kernel import _get_warpsize  # NOQA
+from cupy._core._kernel import _full_mask  # NOQA
+from cupy._core._kernel import _full_mask_hex  # NOQA
+from cupy._core._kernel import _is_hip_7_plus  # NOQA
 from cupy._core._reduction import create_reduction_func  # NOQA
 from cupy._core._reduction import ReductionKernel  # NOQA
 from cupy._core._routines_binary import bitwise_and  # NOQA
 from cupy._core._routines_binary import bitwise_or  # NOQA
 from cupy._core._routines_binary import bitwise_xor  # NOQA
+from cupy._core._routines_binary import bitwise_count  # NOQA
 from cupy._core._routines_binary import invert  # NOQA
 from cupy._core._routines_binary import left_shift  # NOQA
 from cupy._core._routines_binary import right_shift  # NOQA
@@ -46,7 +52,7 @@ from cupy._core._routines_manipulation import broadcast_to  # NOQA
 from cupy._core._routines_manipulation import concatenate_method  # NOQA
 from cupy._core._routines_manipulation import moveaxis  # NOQA
 from cupy._core._routines_manipulation import rollaxis  # NOQA
-from cupy._core._routines_manipulation import size  # NOQA'
+from cupy._core._routines_manipulation import size  # NOQA
 from cupy._core._routines_math import absolute  # NOQA
 from cupy._core._routines_math import add  # NOQA
 from cupy._core._routines_math import angle, angle_deg  # NOQA

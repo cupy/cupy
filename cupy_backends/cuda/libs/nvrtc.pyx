@@ -22,7 +22,7 @@ from cupy_backends.cuda.api cimport runtime
 ###############################################################################
 
 IF CUPY_USE_CUDA_PYTHON:
-    from cuda.cnvrtc cimport *
+    from cuda.bindings.cynvrtc cimport *
     cdef inline void initialize():
         pass
 ELSE:
@@ -183,29 +183,30 @@ cpdef bytes getCUBIN(intptr_t prog):
     return cubin_ptr[:cubinSizeRet-1]
 
 
-cpdef bytes getNVVM(intptr_t prog):
+cpdef bytes getLTOIR(intptr_t prog):
     initialize()
     if runtime._is_hip_environment:
-        raise RuntimeError("HIP does not support getNVVM")
-    if runtime.runtimeGetVersion() < 11040:
-        raise RuntimeError("getNVVM is supported since CUDA 11.4")
+        raise RuntimeError("HIP does not support getLTOIR")
+    if runtime.runtimeGetVersion() < 12000:
+        raise RuntimeError("getLTOIR is supported since CUDA 12.0")
 
-    cdef size_t nvvmSizeRet = 0
-    cdef vector.vector[char] nvvm
-    cdef char* nvvm_ptr = NULL
+    cdef size_t ltoirSizeRet = 0
+    cdef vector.vector[char] ltoir
 
     with nogil:
-        status = nvrtcGetNVVMSize(<Program>prog, &nvvmSizeRet)
+        status = nvrtcGetLTOIRSize(<Program>prog, &ltoirSizeRet)
     check_status(status)
 
-    nvvm.resize(nvvmSizeRet)
-    nvvm_ptr = nvvm.data()
+    if ltoirSizeRet == 0:
+        raise RuntimeError(
+            "no LTOIR is available, perhaps you forget passing \"-dlto\"?")
+
+    ltoir.resize(ltoirSizeRet)
     with nogil:
-        status = nvrtcGetNVVM(<Program>prog, nvvm_ptr)
+        status = nvrtcGetLTOIR(<Program>prog, ltoir.data())
     check_status(status)
 
-    # Strip the trailing NULL.
-    return nvvm_ptr[:nvvmSizeRet-1]
+    return ltoir.data()[:ltoirSizeRet]
 
 
 cpdef unicode getProgramLog(intptr_t prog):

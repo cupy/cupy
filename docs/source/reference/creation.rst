@@ -5,9 +5,8 @@ Array creation routines
 
 .. currentmodule:: cupy
 
-Ones and zeros
---------------
-
+From shape or value
+-------------------
 .. autosummary::
    :toctree: generated/
 
@@ -22,10 +21,8 @@ Ones and zeros
    full
    full_like
 
-
 From existing data
 ------------------
-
 .. autosummary::
    :toctree: generated/
 
@@ -33,8 +30,11 @@ From existing data
    asarray
    asanyarray
    ascontiguousarray
+   # asmatrix
+   astype
    copy
    frombuffer
+   from_dlpack
    fromfile
    fromfunction
    fromiter
@@ -44,21 +44,19 @@ From existing data
 
 Numerical ranges
 ----------------
-
 .. autosummary::
    :toctree: generated/
 
    arange
    linspace
    logspace
+   # geomspace
    meshgrid
    mgrid
    ogrid
 
-
 Building matrices
 -----------------
-
 .. autosummary::
    :toctree: generated/
 

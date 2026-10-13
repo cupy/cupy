@@ -121,7 +121,7 @@ However, there are occasions when users may *not* want to manage the FFT plans b
     hits / misses: 0 / 1 (counts)
     
     cached plans (most recently used first):
-    key: ((64, 64), (64, 64), 1, 4096, (64, 64), 1, 4096, 105, 4, 'C', 2, None), plan type: PlanNd, memory usage: 262144
+    key: ((64, 64), (64, 64), 1, 4096, (64, 64), 1, 4096, 105, 4), plan type: PlanNd, memory usage: 262144
     
     >>> # perform the same transform again, the plan is looked up from cache and reused
     >>> out = cp.fft.fftn(a, axes=(1, 2))
@@ -133,7 +133,7 @@ However, there are occasions when users may *not* want to manage the FFT plans b
     hits / misses: 1 / 1 (counts)
     
     cached plans (most recently used first):
-    key: ((64, 64), (64, 64), 1, 4096, (64, 64), 1, 4096, 105, 4, 'C', 2, None), plan type: PlanNd, memory usage: 262144
+    key: ((64, 64), (64, 64), 1, 4096, (64, 64), 1, 4096, 105, 4), plan type: PlanNd, memory usage: 262144
     
     >>> # clear the cache
     >>> cache.clear()
@@ -164,7 +164,7 @@ FFT callbacks
 
 `cuFFT`_ provides FFT callbacks for merging pre- and/or post- processing kernels with the FFT routines so as to reduce the access to global memory.
 This capability is supported *experimentally* by CuPy. Users need to supply custom load and/or store kernels as strings, and set up a context manager
-via :func:`~cupy.fft.config.set_cufft_callbacks`. Note that the load (store) kernel pointer has to be named as ``d_loadCallbackPtr`` (``d_storeCallbackPtr``).
+via :func:`~cupy.fft::config.set_cufft_callbacks`. Note that the load (store) kernel pointer has to be named as ``d_loadCallbackPtr`` (``d_storeCallbackPtr``).
 
 .. code-block:: python
 
@@ -260,7 +260,7 @@ The second kind of usage is to use the low-level, *private* CuPy APIs. You need 
     plan.fft(a, out_cp, cufft.CUFFT_FORWARD)
 
     out_np = numpy.fft.fft(a)  # use NumPy's fft
-    # np.fft.fft alway returns np.complex128
+    # np.fft.fft always returns np.complex128
     if dtype is numpy.complex64:
         out_np = out_np.astype(dtype)
 
@@ -309,7 +309,7 @@ Half-precision FFT
     out_np = out_np.view(np.float32)
     out_np = out_np.astype(np.float16)
 
-    # don't worry about accruacy for now, as we probably lost a lot during casting
+    # don't worry about accuracy for now, as we probably lost a lot during casting
     print('ok' if cp.mean(cp.abs(out - cp.asarray(out_np))) < 0.1 else 'not ok')
 
 The 64-bit indexing support for all high-level FFT APIs is planned for a future CuPy release.

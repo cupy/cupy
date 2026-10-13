@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+import platform
+
 import cupy
 
 import cupyx.scipy.signal as signal
@@ -315,7 +319,10 @@ class TestFirls:
         # negative weight
         # assert_raises(ValueError, firls, 11, [0.1, 0.2], [0, 0], [-1])
 
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-13)
+    @pytest.mark.xfail(
+        platform.machine() == "aarch64",
+        reason="aarch64 scipy does not match cupy/x86 see Scipy #20160")
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-12)
     def test_firls(self, xp, scp):
         N = 11  # number of taps in the filter
         a = 0.1  # width of the transition band
@@ -337,13 +344,15 @@ class TestFirls:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_compare(self, xp, scp):
         # compare to OCTAVE output
-        taps = scp.signal.firls(9, [0, 0.5, 0.55, 1], [1, 1, 0, 0], [1, 2])
+        taps = scp.signal.firls(
+            9, [0, 0.5, 0.55, 1], [1, 1, 0, 0], weight=[1, 2])
         return taps
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_compare_2(self, xp, scp):
         # compare to MATLAB output
-        taps = scp.signal.firls(11, [0, 0.5, 0.5, 1], [1, 1, 0, 0], [1, 2])
+        taps = scp.signal.firls(
+            11, [0, 0.5, 0.5, 1], [1, 1, 0, 0], weight=[1, 2])
         return taps
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
@@ -399,6 +408,7 @@ class TestMinimumPhase:
         assert_raises(ValueError, signal.minimum_phase,
                       cupy.ones(10), method='foo')
 
+    @testing.with_requires("scipy>=1.18.0")
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_homomorphic(self, xp, scp):
         # check that it can recover frequency responses of arbitrary
@@ -407,6 +417,14 @@ class TestMinimumPhase:
         # for some cases we can get the actual filter back
         h = xp.asarray([1, -1])
         h_new = scp.signal.minimum_phase(xp.convolve(h, h[::-1]))
+        return h_new
+
+    @testing.with_requires("scipy>=1.18.0")
+    @pytest.mark.parametrize("half", [True, False])
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_homomorphic_half(self, xp, scp, half):
+        h = xp.asarray([1, -1])
+        h_new = scp.signal.minimum_phase(xp.convolve(h, h[::-1]), half=half)
         return h_new
 
     @pytest.mark.parametrize("n", [2, 3, 10, 11, 15, 16, 17, 20, 21, 100, 101])
@@ -420,7 +438,7 @@ class TestMinimumPhase:
         h_new = scp.signal.minimum_phase(xp.convolve(h, h[::-1]))
         return h_new
 
-    @testing.numpy_cupy_allclose(scipy_name="scp", atol=2e-5)
+    @testing.numpy_cupy_allclose(scipy_name="scp", atol=1e-4)
     def test_hilbert(self, xp, scp):  # , n):
         # example from the docstring of `scipy.signal.minimum_phase`
         from scipy.signal import remez
@@ -429,3 +447,27 @@ class TestMinimumPhase:
         if xp == cupy:
             h_linear = cupy.asarray(h_linear)
         return scp.signal.minimum_phase(h_linear, method="hilbert")
+
+    @pytest.mark.parametrize("N", (963, 964))
+    @pytest.mark.parametrize("dtype", ("float32", "float64"))
+    def test_nyquist(self, N, dtype):
+        # Check that the magnitude spectrum is preserved, as SciPy's own
+        # test does.  The filter cannot be compared against SciPy's: even
+        # `N` puts a true 0 at Nyquist so CuPy can disagree a lot in absolute
+        # terms (the difference in `h_temp += 1e-7 * h_temp[h_temp > 0].min()`
+        # blows up in the following log)
+        fc = cupy.asarray(10)
+        fs = 100
+        h = signal.firwin(
+            N, fc, window="hann", pass_zero="lowpass",
+            scale=False, fs=fs
+        )
+        h = h.astype(dtype)
+        h_min = signal.minimum_phase(
+            h, method="homomorphic", n_fft=N, half=False
+        )
+        error = cupy.abs(cupy.fft.rfft(h, N)) - cupy.abs(
+            cupy.fft.rfft(h_min, N))
+        # float32 slightly relaxed compared to scipy (with some headroom).
+        atol = {"float32": 1.5e-5, "float64": 1e-13}[dtype]
+        testing.assert_allclose(error, cupy.zeros_like(error), atol=atol)

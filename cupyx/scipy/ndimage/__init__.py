@@ -36,6 +36,7 @@ from cupyx.scipy.ndimage._interpolation import spline_filter  # NOQA
 from cupyx.scipy.ndimage._interpolation import spline_filter1d  # NOQA
 from cupyx.scipy.ndimage._interpolation import zoom  # NOQA
 
+from cupyx.scipy.ndimage._measurements import find_objects  # NOQA
 from cupyx.scipy.ndimage._measurements import label  # NOQA
 from cupyx.scipy.ndimage._measurements import sum  # NOQA
 from cupyx.scipy.ndimage._measurements import sum_labels  # NOQA

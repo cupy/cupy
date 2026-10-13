@@ -4,23 +4,91 @@ from libc.stdint cimport uint16_t
 
 from cupy._core._carray cimport shape_t
 from cupy._core._carray cimport strides_t
+from cupy._core.core cimport _ndarray_base
 
 
-cpdef Py_ssize_t prod(const vector.vector[Py_ssize_t]& args)
+cdef extern from *:
+    """
+    #include <atomic>
+
+    class cached_object {
+    private:
+        // Once set, ptr is unchanged until destruction (no concurrent users).
+        std::atomic<PyObject*> ptr;
+
+    public:
+        cached_object() : ptr(nullptr) {}
+        cached_object(const cached_object&) = delete;
+        cached_object& operator=(const cached_object&) = delete;
+        ~cached_object() {
+            PyObject *val = ptr.exchange(nullptr, std::memory_order_relaxed);
+            if (val && Py_IsInitialized()) {
+                Py_DECREF(val);
+            }
+        }
+
+        PyObject* get(bool *initialized = nullptr) const {
+            PyObject* o = ptr.load(std::memory_order_acquire);
+            if (initialized) {
+                *initialized = (o != nullptr);
+            }
+            if (o != nullptr) {
+                Py_INCREF(o);
+                return o;
+            }
+            Py_RETURN_NONE;
+        }
+
+        bool initialized() const {
+            // NOTE: Using memory_order_acquire so that true means it is fully
+            // initialized with all side-effects.
+            return ptr.load(std::memory_order_acquire) != nullptr;
+        }
+
+        // Install ``value`` iff nothing is stored yet; always return the
+        // stored value (with a new strong reference for the caller).
+        PyObject* setdefault(PyObject* value) {
+            Py_INCREF(value);
+            PyObject* expected = nullptr;
+            if (!ptr.compare_exchange_strong(
+                    expected, value,
+                    std::memory_order_release,  // wrote value: release
+                    std::memory_order_acquire)  // read value: acquire
+                ) {
+                Py_DECREF(value);
+                value = expected;
+            }
+            Py_INCREF(value);
+            return value;
+        }
+    };
+    """
+    cppclass cached_object:
+        cached_object() except +
+        # Get the stored value or None.
+        object get()
+        # Also return if already initialized (useful if None is valid).
+        object get(cpp_bool *initialized)
+        cpp_bool initialized() const
+        object setdefault(object value)
+
+
+cpdef Py_ssize_t prod(const vector.vector[Py_ssize_t]& args) noexcept
 
 cpdef Py_ssize_t prod_sequence(object args)
 
-cpdef bint is_in(const vector.vector[Py_ssize_t]& args, Py_ssize_t x)
+cpdef bint is_in(const vector.vector[Py_ssize_t]& args, Py_ssize_t x) noexcept
 
 cpdef tuple get_size(object size)
 
 cpdef bint vector_equal(
-    const vector.vector[Py_ssize_t]& x, const vector.vector[Py_ssize_t]& y)
+    const vector.vector[Py_ssize_t]& x,
+    const vector.vector[Py_ssize_t]& y) noexcept
 
-cdef void get_reduced_dims(
+cdef int get_reduced_dims(
     shape_t& shape, strides_t& strides,
     Py_ssize_t itemsize, shape_t& reduced_shape,
-    strides_t& reduced_strides)
+    strides_t& reduced_strides) except -1
 
 # Computes the contiguous strides given a shape and itemsize.
 # Returns the size (total number of elements).
@@ -29,7 +97,7 @@ cdef Py_ssize_t get_contiguous_strides_inplace(
     Py_ssize_t itemsize, bint is_c_contiguous, bint zeros_for_zerosize)
 
 cpdef bint get_c_contiguity(
-    shape_t& shape, strides_t& strides, Py_ssize_t itemsize)
+    shape_t& shape, strides_t& strides, Py_ssize_t itemsize) noexcept
 
 cpdef shape_t infer_unknown_dimension(
     const shape_t& shape, Py_ssize_t size) except *
@@ -38,19 +106,19 @@ cpdef slice complete_slice(slice slc, Py_ssize_t dim)
 
 cpdef tuple complete_slice_list(list slice_list, Py_ssize_t ndim)
 
-cpdef size_t clp2(size_t x)
-
-ctypedef unsigned short _float16
-
-cpdef uint16_t to_float16(float f)
-
-cpdef float from_float16(uint16_t v)
+cpdef size_t clp2(size_t x) noexcept
 
 cdef int _normalize_order(order, cpp_bool allow_k=*) except? 0
 
+# Low-level broadcasting helpers:
+cdef bint _broadcast_shape(shape_t& bshape, const shape_t& next_shape)
+cdef _raise_broadcast_error(list arrays)
+cdef _ndarray_base _broadcast_to_unchecked(
+        _ndarray_base a, const shape_t& shape)
+
 cdef _broadcast_core(list arrays, shape_t& shape)
 
-cpdef bint _contig_axes(tuple axes)
+cpdef bint _contig_axes(tuple axes) except -1
 
 cpdef Py_ssize_t _normalize_axis_index(
     Py_ssize_t axis, Py_ssize_t ndim) except -1
@@ -58,9 +126,17 @@ cpdef Py_ssize_t _normalize_axis_index(
 cpdef tuple _normalize_axis_indices(
     axes, Py_ssize_t ndim, cpp_bool sort_axes=*)
 
-cpdef strides_t _get_strides_for_order_K(x, dtype, shape=*)
+cpdef strides_t _get_strides_for_order_K(x, dtype, shape=*) except *
 
 cpdef int _update_order_char(
-    bint is_c_contiguous, bint is_f_contiguous, int order_char)
+    bint is_c_contiguous, bint is_f_contiguous, int order_char) noexcept
+
+cpdef tuple _new_like_order_and_strides(a, dtype, order, shape=*)
 
 cpdef tuple _broadcast_shapes(shapes)
+
+cdef bint _is_layout_expected(
+    const bint c_contiguous, const bint f_contiguous,
+    expected_order) except*
+
+cdef bint check_aligned(_ndarray_base arr) except -1

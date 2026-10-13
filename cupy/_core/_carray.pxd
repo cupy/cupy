@@ -1,4 +1,5 @@
 cimport cython  # NOQA
+from libc.stdint cimport intptr_t
 from libcpp cimport vector
 
 from cupy.cuda cimport function
@@ -9,34 +10,38 @@ ctypedef vector.vector[Py_ssize_t] strides_t
 
 # this matches NPY_MAXDIMS
 # Note: we make it an enum to work around cython/cython#4369
-cdef enum: MAX_NDIM = 32
+cdef enum: MAX_NDIM = 64
 
 
+# This is now excluding shape/strides only for getting the compiler-time size
 cdef struct _CArray:
     void* data
     Py_ssize_t size
-    Py_ssize_t shape_and_strides[MAX_NDIM * 2]
+
+
+@cython.final
+cdef class mdspan(function.CPointer):
+
+    cdef int init(
+        self, void* data_ptr, int itemsize,
+        const shape_t& shape, const strides_t& strides,
+        int index_itemsize, bint allow_unsafe) except?-1
 
 
 @cython.final
 cdef class CArray(function.CPointer):
-
-    cdef:
-        _CArray val
 
     cdef void init(
         self, void* data_ptr, Py_ssize_t data_size,
         const shape_t& shape, const strides_t& strides) except*
 
 
+# This is now excluding shape/strides only for getting the compiler-time size
 cdef struct _CIndexer:
     Py_ssize_t size
-    Py_ssize_t shape_and_index[MAX_NDIM * 2]
 
 
 cdef class CIndexer(function.CPointer):
-    cdef:
-        _CIndexer val
 
     cdef void init(self, Py_ssize_t size, const shape_t &shape) except*
 
@@ -47,7 +52,7 @@ cdef class Indexer:
         readonly shape_t shape
         readonly bint _index_32_bits
 
-    cdef void init(self, const shape_t& shape)
+    cdef void init(self, const shape_t& shape) noexcept
 
     cdef function.CPointer get_pointer(self)
 

@@ -50,7 +50,9 @@
 #include <cupy/complex/complex.h>
 #include <cupy/complex/math_private.h>
 
-namespace thrust {
+#include <cupy/complex/namespace.h>
+
+THRUST_NAMESPACE_BEGIN
 namespace detail {
 namespace complex {
 
@@ -130,4 +132,4 @@ __host__ __device__ inline complex<float> sinh(const complex<float>& z) {
   return detail::complex::csinhf(z);
 }
 
-}  // namespace thrust
+THRUST_NAMESPACE_END

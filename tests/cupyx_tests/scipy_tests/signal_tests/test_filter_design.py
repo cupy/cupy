@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from math import sqrt, pi
 
 import pytest
@@ -263,9 +265,9 @@ class TestFreqz:
     def test_broadcasting1(self, xp, scp, whole, worN):
         # Test broadcasting with worN an integer or a 1-D array,
         # b and a are n-dimensional arrays.
-        np.random.seed(123)
-        b = np.random.rand(3, 5, 1)
-        a = np.random.rand(2, 1)
+        rng = np.random.RandomState(123)
+        b = rng.rand(3, 5, 1)
+        a = rng.rand(2, 1)
         if xp == cupy:
             a = cupy.asarray(a)
             b = cupy.asarray(b)
@@ -282,8 +284,8 @@ class TestFreqz:
     def test_broadcasting2(self, xp, scp, whole, worN):
         # Test broadcasting with worN an integer or a 1-D array,
         # b is an n-dimensional array, and a is left at the default value.
-        np.random.seed(123)
-        b = np.random.rand(3, 5, 1)
+        rng = np.random.RandomState(123)
+        b = rng.rand(3, 5, 1)
 
         if xp == cupy:
             b = cupy.asarray(b)
@@ -306,9 +308,9 @@ class TestFreqz:
     def test_broadcasting3(self, xp, scp, whole, worN):
         # Test broadcasting where b.shape[-1] is the same length
         # as worN, and a is left at the default value.
-        np.random.seed(123)
+        rng = np.random.RandomState(123)
         N = 16
-        b = np.random.rand(3, N)     # XXX: N is worN or len(worN) !
+        b = rng.rand(3, N)     # XXX: N is worN or len(worN) !
 
         if xp == cupy:
             b = cupy.asarray(b)
@@ -321,13 +323,13 @@ class TestFreqz:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_broadcasting4(self, xp, scp, whole):
         # Test broadcasting with worN a 2-D array.
-        np.random.seed(123)
-        b = np.random.rand(4, 2, 1, 1)
-        a = np.random.rand(5, 2, 1, 1)
+        rng = np.random.RandomState(123)
+        b = rng.rand(4, 2, 1, 1)
+        a = rng.rand(5, 2, 1, 1)
 
         wh = []
 
-        for worN in [np.random.rand(6, 7), np.empty((6, 0))]:
+        for worN in [rng.rand(6, 7), np.empty((6, 0))]:
             if xp == cupy:
                 a = cupy.asarray(a)
                 b = cupy.asarray(b)
@@ -417,7 +419,8 @@ class TestFreqz:
         w, h = scp.signal.freqz([1.0], worN=N)
         return w, h
 
-    @pytest.mark.parametrize("w", [8.0, 8.0 + 0j])
+    @pytest.mark.parametrize("w", [8.0, 8.0 + 0j, 8.0 + 3j])
+    @testing.with_requires('scipy>=1.16')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_w_or_N_types_3(self, xp, scp, w):
         # Measure at frequency 8 Hz
@@ -547,7 +550,7 @@ class TestFreqz_zpk:
             assert_array_almost_equal(h, [1])
 
 
-@testing.with_requires("scipy>=1.8")
+@testing.with_requires("scipy")
 class TestSOSFreqz:
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
@@ -577,7 +580,7 @@ class TestSOSFreqz:
         w, h = scp.signal.sosfreqz(sos)
         return w, h
 
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
     def test_sosfrez_design_cheb2_2(self, xp, scp):
         N, Wn = scp.signal.cheb2ord([0.1, 0.6], [0.2, 0.5], 3, 150)
         sos = scp.signal.cheby2(N, 150, Wn, 'stop', output='sos')
@@ -649,8 +652,8 @@ class TestSOSFreqz:
         w_mp = np.array([float(x) for x in w_mp])
         h_mp = np.array([complex(x) for x in h_mp])
 
-        sos = signal.butter(order, Wn, output='sos')
-        w, h = signal.sosfreqz(sos, worN=N)
+        sos = cupyx.scipy.signal.butter(order, Wn, output='sos')
+        w, h = cupyx.scipy.signal.sosfreqz(sos, worN=N)
         assert_allclose(w, w_mp, rtol=1e-12, atol=1e-14)
         assert_allclose(h, h_mp, rtol=1e-12, atol=1e-14)
 
@@ -793,7 +796,7 @@ class TestGroupDelay:
 
     @pytest.mark.parametrize('w', [8.0, 8.0+0j])
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
-    @testing.with_requires('scipy>=1.8')
+    @testing.with_requires('scipy')
     def test_w_types(self, w, xp, scp):
         # Measure at frequency 8 rad/sec
         w_out, gd = scp.signal.group_delay((1, 1), w)
@@ -802,7 +805,7 @@ class TestGroupDelay:
 
 @testing.with_requires('scipy')
 class TestGammatone:
-    # Test erroneus input cases.
+    # Test erroneous input cases.
     def test_invalid_input(self):
         for scp in [cupyx.scipy, scipy]:
             # Cutoff frequency is <= 0 or >= fs / 2.

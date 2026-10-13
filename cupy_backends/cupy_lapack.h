@@ -43,7 +43,7 @@ int gesvd_loop(
      * 2. the workspace is reused in the loop
      */
 
-    cusolverStatus_t status;
+    cusolverStatus_t status = static_cast<cusolverStatus_t>(0);
     int k = (m<n?m:n);
     typedef typename std::conditional<(std::is_same<T, float>::value) || (std::is_same<T, cuComplex>::value), float,
                                       /* double or cuDoubleComplex */ double>::type real_type;
@@ -98,7 +98,7 @@ int geqrf_loop(
      * 2. the workspace is reused in the loop
      */
 
-    cusolverStatus_t status;
+    cusolverStatus_t status = static_cast<cusolverStatus_t>(0);
     int k = (m<n?m:n);
     T* A = reinterpret_cast<T*>(a_ptr);
     T* Tau = reinterpret_cast<T*>(tau_ptr);
@@ -206,7 +206,7 @@ int orgqr_loop(
      * 2. the workspace is reused in the loop
      */
 
-    cusolverStatus_t status;
+    cusolverStatus_t status = static_cast<cusolverStatus_t>(0);
     T* A = reinterpret_cast<T*>(a_ptr);
     const T* Tau = reinterpret_cast<const T*>(tau_ptr);
     T* Work = reinterpret_cast<T*>(w_ptr);

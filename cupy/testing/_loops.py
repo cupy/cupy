@@ -1,8 +1,9 @@
+from __future__ import annotations
+
 import functools
 import inspect
 import os
 import random
-from typing import Tuple, Type
 import traceback
 import unittest
 import warnings
@@ -10,10 +11,9 @@ import warnings
 import numpy
 
 import cupy
+from cupy.exceptions import AxisError
 from cupy.testing import _array
 from cupy.testing import _parameterized
-import cupyx
-import cupyx.scipy.sparse
 
 from cupy.testing._pytest_impl import is_available
 
@@ -21,18 +21,26 @@ from cupy.testing._pytest_impl import is_available
 if is_available():
     import _pytest.outcomes
     _is_pytest_available = True
-    _skip_classes: Tuple[Type, ...] = (
+    _skip_classes: tuple[type, ...] = (
         unittest.SkipTest, _pytest.outcomes.Skipped)
 else:
     _is_pytest_available = False
     _skip_classes = unittest.SkipTest,
 
 
+_subsample_rng: random.Random | None = None
+
+# Set up a subsampling RNG to avoid tests from interfering with randomness.
+if int(os.environ.get('CUPY_TEST_RANDOM_SUBSAMPLE', '0')):
+    # Stabilize seed for `pytest-xdist` across workers:
+    seed = os.environ.get('_CUPY_TEST_SUBSAMPLE_SEED')
+    _subsample_rng = random.Random(None if seed is None else int(seed))
+
+
 def _format_exception(exc):
     if exc is None:
         return None
-    # TODO(kataoka): Use traceback.format_exception(exc) in Python 3.10
-    return ''.join(traceback.TracebackException.from_exception(exc).format())
+    return ''.join(traceback.format_exception(exc))
 
 
 def _call_func(impl, args, kw):
@@ -63,8 +71,10 @@ def _call_func_cupy(impl, args, kw, name, sp_name, scipy_name):
 
     # Run cupy
     if sp_name:
+        import cupyx.scipy.sparse
         kw[sp_name] = cupyx.scipy.sparse
     if scipy_name:
+        import cupyx
         kw[scipy_name] = cupyx.scipy
     kw[name] = cupy
     result, error = _call_func(impl, args, kw)
@@ -106,7 +116,7 @@ def _call_func_numpy_cupy(impl, args, kw, name, sp_name, scipy_name):
 _numpy_errors = [
     AttributeError, Exception, IndexError, TypeError, ValueError,
     NotImplementedError, DeprecationWarning,
-    numpy.AxisError, numpy.linalg.LinAlgError,
+    AxisError, numpy.linalg.LinAlgError,
 ]
 
 
@@ -250,7 +260,7 @@ def _wraps_partial(wrapped, *names):
     return decorator
 
 
-def _wraps_partial_xp(wrapped, name, sp_name, scipy_name):
+def _wraps_partial_xp(wrapped, name, sp_name=None, scipy_name=None):
     names = [name, sp_name, scipy_name]
     names = [n for n in names if n is not None]
     return _wraps_partial(wrapped, *names)
@@ -381,13 +391,14 @@ def _convert_output_to_ndarray(c_out, n_out, sp_name, check_sparse_format):
     Returns:
         The tuple of cupy.ndarray and numpy.ndarray.
     """
+    import cupyx.scipy.sparse
     if sp_name is not None and cupyx.scipy.sparse.issparse(c_out):
         # Sparse output case.
         import scipy.sparse
         assert scipy.sparse.issparse(n_out)
         if check_sparse_format:
             assert c_out.format == n_out.format
-        return c_out.A, n_out.A
+        return c_out.toarray(), n_out.toarray()
     if (isinstance(c_out, cupy.ndarray)
             and isinstance(n_out, (numpy.ndarray, numpy.generic))):
         # ndarray output case.
@@ -510,7 +521,8 @@ def numpy_cupy_allclose(rtol=1e-7, atol=0, err_msg='', verbose=True,
 
     def check_func(c, n):
         rtol1, atol1 = _resolve_tolerance(type_check, c, rtol, atol)
-        _array.assert_allclose(c, n, rtol1, atol1, err_msg, verbose)
+        _array.assert_allclose(
+            c, n, rtol1, atol1, err_msg=err_msg, verbose=verbose)
     return _make_decorator(check_func, name, type_check, contiguous_check,
                            accept_error, sp_name, scipy_name,
                            _check_sparse_format)
@@ -663,7 +675,8 @@ def numpy_cupy_array_equal(err_msg='', verbose=True, name='xp',
     .. seealso:: :func:`cupy.testing.assert_array_equal`
     """
     def check_func(x, y):
-        _array.assert_array_equal(x, y, err_msg, verbose, strides_check)
+        _array.assert_array_equal(
+            x, y, err_msg, verbose, strides_check=strides_check)
     return _make_decorator(check_func, name, type_check, False,
                            accept_error, sp_name, scipy_name)
 
@@ -834,6 +847,9 @@ def for_dtypes(dtypes, name='dtype'):
     by passing the each element of ``dtypes`` to the named
     argument.
     """
+    if _subsample_rng is not None:
+        dtypes = _subsample_rng.sample(dtypes, 1 + len(dtypes) // 15)
+
     def decorator(impl):
         @_wraps_partial(impl, name)
         def test_func(*args, **kw):
@@ -973,7 +989,7 @@ def for_signed_dtypes(name='dtype'):
 
 
 def for_unsigned_dtypes(name='dtype'):
-    """Decorator that checks the fixture with unsinged dtypes.
+    """Decorator that checks the fixture with unsigned dtypes.
 
     Args:
          name(str): Argument name to which specified dtypes are passed.
@@ -1072,6 +1088,10 @@ def for_dtypes_combination(types, names=('dtype',), full=None):
         combination = [tuple(zip(names, typs)) for typs in zip(*ts)]
         # Remove duplicate entries
         combination = [dict(assoc_list) for assoc_list in set(combination)]
+
+    if _subsample_rng is not None:
+        combination = _subsample_rng.sample(
+            combination, 1 + len(combination) // 15)
 
     def decorator(impl):
         @_wraps_partial(impl, *names)
@@ -1224,8 +1244,8 @@ def for_contiguous_axes(name='axis'):
     def decorator(impl):
         @_wraps_partial(impl, name)
         def test_func(self, *args, **kw):
-            ndim = len(self.shape)
-            order = self.order
+            ndim = len(kw['shape'])
+            order = kw['order']
             for i in range(ndim):
                 a = ()
                 if order in ('c', 'C'):
@@ -1241,7 +1261,7 @@ def for_contiguous_axes(name='axis'):
                     impl(self, *args, **kw)
                 except Exception:
                     print(name, 'is', a, ', ndim is', ndim, ', shape is',
-                          self.shape, ', order is', order)
+                          kw['shape'], ', order is', order)
                     raise
         return test_func
     return decorator

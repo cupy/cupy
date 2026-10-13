@@ -1,4 +1,6 @@
-import sys
+from __future__ import annotations
+
+import platform
 
 import cupy
 from cupyx.scipy.signal import abcd_normalize
@@ -572,8 +574,8 @@ class TestPlacePoles:
         self._check(A, B, P, method='YT')
 
     @pytest.mark.xfail(
-        sys.platform.startswith('win32'),
-        reason='passes locally, fails on windows CI')
+        platform.machine() == "aarch64",
+        reason='passes locally, fails on aarch64')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_real_2(self, xp, scp):
         # Try to reach the specific case in _YT_real where two singular
@@ -586,7 +588,7 @@ class TestPlacePoles:
         B = xp.array([0, 5.679, 1.136, 1.136, 0, 0, -3.146, 0]).reshape(4, 2)
 
         fsf = scp.signal.place_poles(A, B, xp.asarray([2, 2, 3, 3]))
-        poles = xp.real_if_close(fsf.computed_poles)
+        poles = xp.real_if_close(fsf.computed_poles, tol=200)
         p = poles.copy()    # make contiguous
         p.sort()
         return p
@@ -610,7 +612,7 @@ class TestPlacePoles:
         fsf = scp.signal.place_poles(A, B, P)
         return fsf.computed_poles
 
-    @testing.with_requires("scipy >= 1.9")
+    @testing.with_requires("scipy")
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-8)
     def test_complex_2(self, xp, scp):
         # Try to reach the specific case in _YT_complex where two singular

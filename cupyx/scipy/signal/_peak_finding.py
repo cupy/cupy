@@ -24,21 +24,24 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
+from __future__ import annotations
+
 
 import math
-import cupy
+import string
+from typing import Any
 
-from cupy._core._scalar import get_typename
+import cupy
+from cupy._core._scalar import get_typename, format_type_decls
+from cupy._core.internal import _normalize_axis_index
 from cupy_backends.cuda.api import runtime
 
 from cupyx import jit
 
 
-def _get_typename(dtype):
-    typename = get_typename(dtype)
-    if cupy.dtype(dtype).kind == 'c':
-        typename = 'thrust::' + typename
-    elif typename == 'float16':
+def _get_typename(dtype, type_decls=None):
+    typename = get_typename(dtype, type_decls)
+    if typename == 'float16':
         if runtime.is_hip:
             # 'half' in name_expressions weirdly raises
             # HIPRTC_ERROR_NAME_EXPRESSION_NOT_VALID in getLoweredName() on
@@ -54,8 +57,9 @@ INT_TYPES = [cupy.int8, cupy.int16, cupy.int32, cupy.int64]
 UNSIGNED_TYPES = [cupy.uint8, cupy.uint16, cupy.uint32, cupy.uint64]
 FLOAT_INT_TYPES = FLOAT_TYPES + INT_TYPES  # type: ignore
 TYPES = FLOAT_INT_TYPES + UNSIGNED_TYPES  # type: ignore
-TYPE_NAMES = [_get_typename(t) for t in TYPES]
-FLOAT_INT_NAMES = [_get_typename(t) for t in FLOAT_INT_TYPES]
+TYPE_DECLS: set[Any] = set()
+TYPE_NAMES = [_get_typename(t, TYPE_DECLS) for t in TYPES]
+FLOAT_INT_NAMES = [_get_typename(t, TYPE_DECLS) for t in FLOAT_INT_TYPES]
 
 _modedict = {
     cupy.less: 0,
@@ -66,20 +70,11 @@ _modedict = {
     cupy.not_equal: 5,
 }
 
-if runtime.is_hip:
-    PEAKS_KERNEL_BASE = r"""
-    #include <hip/hip_runtime.h>
-"""
-else:
-    PEAKS_KERNEL_BASE = r"""
-#include <cuda_runtime.h>
-#include <device_launch_parameters.h>
-"""
-
-PEAKS_KERNEL = PEAKS_KERNEL_BASE + r"""
+PEAKS_KERNEL = r"""
 #include <cupy/math_constants.h>
 #include <cupy/carray.cuh>
 #include <cupy/complex.cuh>
+${type_decls}
 
 template<typename T>
 __global__ void local_maxima_1d(
@@ -316,7 +311,8 @@ __global__ void peak_widths<half>(
 """  # NOQA
 
 PEAKS_MODULE = cupy.RawModule(
-    code=PEAKS_KERNEL, options=('-std=c++11',),
+    code=string.Template(PEAKS_KERNEL).substitute(
+        type_decls=format_type_decls(TYPE_DECLS)),
     name_expressions=[f'local_maxima_1d<{x}>' for x in TYPE_NAMES] +
     [f'peak_prominences<{x}>' for x in TYPE_NAMES] +
     [f'peak_widths<{x}>' for x in TYPE_NAMES])
@@ -326,6 +322,7 @@ ARGREL_KERNEL = r"""
 #include <cupy/math_constants.h>
 #include <cupy/carray.cuh>
 #include <cupy/complex.cuh>
+${type_decls}
 
 template<typename T>
 __device__ __forceinline__ bool less( const T &a, const T &b ) {
@@ -484,7 +481,8 @@ __global__ void boolrelextrema_2D( const int  in_x,
 
 
 ARGREL_MODULE = cupy.RawModule(
-    code=ARGREL_KERNEL, options=('-std=c++11',),
+    code=string.Template(ARGREL_KERNEL).substitute(
+        type_decls=format_type_decls(TYPE_DECLS)),
     name_expressions=[f'boolrelextrema_1D<{x}>' for x in FLOAT_INT_NAMES] +
     [f'boolrelextrema_2D<{x}>' for x in FLOAT_INT_NAMES])
 
@@ -625,7 +623,7 @@ def _select_by_peak_threshold(x, peaks, tmin, tmax):
 
     """
     # Stack thresholds on both sides to make min / max operations easier:
-    # tmin is compared with the smaller, and tmax with the greater thresold to
+    # tmin is compared with the smaller, and tmax with the greater threshold to
     # each peak's side
     stacked_thresholds = cupy.vstack([x[peaks] - x[peaks - 1],
                                       x[peaks] - x[peaks + 1]])
@@ -737,9 +735,8 @@ def _arg_wlen_as_expected(value):
         value = -1
     elif 1 < value:
         # Round up to a positive integer
-        if not cupy.can_cast(value, cupy.int64, "safe"):
-            value = math.ceil(value)
-        value = int(value)
+        value = math.ceil(value)
+        value = cupy.intp(value)
     else:
         raise ValueError('`wlen` must be larger than 1, was {}'
                          .format(value))
@@ -1293,6 +1290,10 @@ def _boolrelextrema(data, comparator, axis=0, order=1, mode="clip"):
     """
     if (int(order) != order) or (order < 1):
         raise ValueError("Order must be an int >= 1")
+
+    # The 2-D kernel selects its walk direction with a literal ``axis == 0``
+    # test, so a negative axis must be normalized before it reaches it.
+    axis = _normalize_axis_index(axis, data.ndim)
 
     if data.ndim < 3:
         results = cupy.empty(data.shape, dtype=bool)

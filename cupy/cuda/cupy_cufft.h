@@ -283,7 +283,7 @@ cufftResult_t cufftXtExecDescriptorZ2Z(...) {
 // common stubs for both no-cuda and hip environments
 
 extern "C" {
-// cufftXt relavant data structs
+// cufftXt relevant data structs
 typedef struct cudaXtDesc_t {
    int version;
    int nGPUs;
@@ -316,6 +316,18 @@ typedef enum cufftXtCopyType_t {
     CUFFT_COPY_DEVICE_TO_DEVICE = 0x02,
     CUFFT_COPY_UNDEFINED = 0x03
 } cufftXtCopyType;
+
+typedef enum cufftXtCallbackType_t {
+    CUFFT_CB_LD_COMPLEX = 0x0,
+    CUFFT_CB_LD_COMPLEX_DOUBLE = 0x1,
+    CUFFT_CB_LD_REAL = 0x2,
+    CUFFT_CB_LD_REAL_DOUBLE = 0x3,
+    CUFFT_CB_ST_COMPLEX = 0x4,
+    CUFFT_CB_ST_COMPLEX_DOUBLE = 0x5,
+    CUFFT_CB_ST_REAL = 0x6,
+    CUFFT_CB_ST_REAL_DOUBLE = 0x7,
+    CUFFT_CB_UNDEFINED = 0x8
+} cufftXtCallbackType;
 
 } // extern "C"
 

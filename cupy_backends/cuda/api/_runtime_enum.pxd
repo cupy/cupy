@@ -11,6 +11,9 @@ cpdef enum:
     cudaMemAttachHost = 2
     cudaMemAttachSingle = 4
 
+    cudaCpuDeviceId = -1
+    cudaInvalidDeviceId = -2
+
     cudaMemAdviseSetReadMostly = 1
     cudaMemAdviseUnsetReadMostly = 2
     cudaMemAdviseSetPreferredLocation = 3
@@ -28,6 +31,9 @@ cpdef enum:
     CUDA_C_8I = 7  # 8 bit complex as a pair of signed integers
     CUDA_R_8U = 8  # 8 bit real as a signed integer
     CUDA_C_8U = 9  # 8 bit complex as a pair of signed integers
+    CUDA_R_32I = 10  # 32 bit real as a signed integer
+    CUDA_C_32I = 11  # 32 bit complex as a pair of signed integers
+    CUDA_R_16BF = 14  # bfloat16 real
 
     # CUDA Limits
     cudaLimitStackSize = 0x00
@@ -92,8 +98,24 @@ cpdef enum:
     # cudaMemHandleTypeWin32Kmt = 0x4
 
     # cudaMemLocationType
+    cudaMemLocationTypeInvalid = 0          # CUDA 12.0
     cudaMemLocationTypeDevice = 1
+    cudaMemLocationTypeHost = 2             # CUDA 12.0
+    cudaMemLocationTypeHostNuma = 3         # CUDA 12.0
+    cudaMemLocationTypeHostNumaCurrent = 4  # CUDA 12.0
 
+    # cudaGraphDebugDotFlags
+    cudaGraphDebugDotFlagsVerbose = 1<<0
+    cudaGraphDebugDotFlagsKernelNodeParams = 1<<2
+    cudaGraphDebugDotFlagsMemcpyNodeParams = 1<<3
+    cudaGraphDebugDotFlagsMemsetNodeParams = 1<<4
+    cudaGraphDebugDotFlagsHostNodeParams = 1<<5
+    cudaGraphDebugDotFlagsEventNodeParams = 1<<6
+    cudaGraphDebugDotFlagsExtSemasSignalNodeParams = 1<<7
+    cudaGraphDebugDotFlagsExtSemasWaitNodeParams = 1<<8
+    cudaGraphDebugDotFlagsKernelNodeAttributes = 1<<9
+    cudaGraphDebugDotFlagsHandles = 1<<10
+    cudaGraphDebugDotFlagsConditionalNodeParams = 1<<15
 
 # This was a legacy mistake: the prefix "cuda" should have been removed
 # so that we can directly assign their C counterparts here. Now because
@@ -140,7 +162,7 @@ IF CUPY_HIP_VERSION > 0:
         cudaDevAttrMaxTexture3DWidth
         cudaDevAttrMaxTexture3DHeight
         cudaDevAttrMaxTexture3DDepth
-        # The following attributes do not exist in CUDA and cause segfualts
+        # The following attributes do not exist in CUDA and cause segfaults
         # if we try to access them
         # hipDeviceAttributeHdpMemFlushCntl
         # hipDeviceAttributeHdpRegFlushCntl

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import warnings
 
 import cupy
@@ -6,7 +8,7 @@ import numpy
 from cupy.cuda import thrust
 
 
-def sort(a, axis=-1, kind=None):
+def sort(a, axis=-1, kind=None, *, descending=False):
     """Returns a sorted copy of an array with a stable sorting algorithm.
 
     Args:
@@ -16,26 +18,27 @@ def sort(a, axis=-1, kind=None):
             flattened before sorting.
         kind: Default is `None`, which is equivalent to 'stable'. Unlike in
             NumPy any other options are not accepted here.
+        descending (bool): Sort order. If ``True``, the returned array is
+            sorted in descending order. NaN values are sorted to the end
+            for both orders. Default is ``False``.
 
     Returns:
         cupy.ndarray: Array of the same type and shape as ``a``.
 
     .. note::
-       For its implementation reason, ``cupy.sort`` currently does not support
-       ``kind`` and ``order`` parameters that ``numpy.sort`` does
+       For its implementation reason, ``cupy.sort`` currently does not fully
+       support ``kind`` and ``order`` parameters that ``numpy.sort`` does
        support.
 
     .. seealso:: :func:`numpy.sort`
 
     """
-    if kind is not None and kind != 'stable':
-        raise ValueError("kind can only be None or 'stable'")
     if axis is None:
         ret = a.flatten()
         axis = -1
     else:
         ret = a.copy()
-    ret.sort(axis=axis)
+    ret.sort(axis=axis, kind=kind, descending=descending)
     return ret
 
 
@@ -90,7 +93,7 @@ def lexsort(keys):
     return idx_array
 
 
-def argsort(a, axis=-1, kind=None):
+def argsort(a, axis=-1, kind=None, *, descending=False):
     """Returns the indices that would sort an array with a stable sorting.
 
     Args:
@@ -100,20 +103,21 @@ def argsort(a, axis=-1, kind=None):
             flattened before sorting.
         kind: Default is `None`, which is equivalent to 'stable'. Unlike in
             NumPy any other options are not accepted here.
+        descending (bool): Sort order. If ``True``, the returned indices
+            sort ``a`` in descending order. NaN values are sorted to the
+            end for both orders. Default is ``False``.
 
     Returns:
         cupy.ndarray: Array of indices that sort ``a``.
 
     .. note::
-        For its implementation reason, ``cupy.argsort`` does not support
-        ``kind`` and ``order`` parameters.
+        For its implementation reason, ``cupy.argsort`` does not fully support
+        ``kind`` and ``order`` parameters as ``numpy.argsort`` does.
 
     .. seealso:: :func:`numpy.argsort`
 
     """
-    if kind is not None and kind != 'stable':
-        raise ValueError("kind can only be None or 'stable'")
-    return a.argsort(axis=axis)
+    return a.argsort(axis=axis, kind=kind, descending=descending)
 
 
 def msort(a):

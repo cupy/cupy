@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import unittest
 import pytest
 
@@ -11,10 +13,10 @@ except ModuleNotFoundError:
     scipy_available = False
 import cupyx.scipy.spatial.distance  # NOQA
 try:
-    import pylibraft  # NOQA
-    pylibraft_available = True
+    import cuvs  # NOQA
+    cuvs_available = True
 except ModuleNotFoundError:
-    pylibraft_available = False
+    cuvs_available = False
 from cupy import testing
 
 
@@ -30,7 +32,7 @@ from cupy import testing
     'order': ["C", "F"]
 }))
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason="tests for CUDA only")
-@pytest.mark.skipif(not scipy_available or not pylibraft_available,
+@pytest.mark.skipif(not scipy_available or not cuvs_available,
                     reason='requires scipy and pylibraft')
 class TestCdist(unittest.TestCase):
 
@@ -92,14 +94,15 @@ class TestCdist(unittest.TestCase):
     'order': ["C", "F"]
 }))
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason="tests for CUDA only")
-@pytest.mark.skipif(not scipy_available or not pylibraft_available,
-                    reason='requires scipy and pylibraft')
+@pytest.mark.skipif(not scipy_available or not cuvs_available,
+                    reason='requires scipy and cuvs')
 class TestPdist:
 
     def _make_matrix(self, xp, dtype, order):
         shape = (self.rows, self.cols)
-        return testing.shaped_random(shape, xp, dtype=dtype,
-                                     scale=1, order=order)
+        out = testing.shaped_random(shape, xp, dtype=dtype,
+                                    scale=1, order=order)
+        return out
 
     @testing.numpy_cupy_array_almost_equal(decimal=4, scipy_name='scp')
     def test_pdist_(self, xp, scp):
@@ -118,8 +121,8 @@ class TestPdist:
     'order': ["C", "F"]
 }))
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason="tests for CUDA only")
-@pytest.mark.skipif(not scipy_available or not pylibraft_available,
-                    reason='requires scipy and pylibraft')
+@pytest.mark.skipif(not scipy_available or not cuvs_available,
+                    reason='requires scipy and cuvs')
 class TestDistanceMatrix(unittest.TestCase):
 
     def _make_matrix(self, xp, dtype, order):
@@ -143,8 +146,8 @@ class TestDistanceMatrix(unittest.TestCase):
     'order': ["C", "F"]
 }))
 @pytest.mark.skipif(cupy.cuda.runtime.is_hip, reason="tests for CUDA only")
-@pytest.mark.skipif(not scipy_available or not pylibraft_available,
-                    reason='requires scipy and pylibraft')
+@pytest.mark.skipif(not scipy_available or not cuvs_available,
+                    reason='requires scipy and cuvs')
 class TestDistanceFunction(unittest.TestCase):
 
     def _make_matrix(self, xp, dtype, order):

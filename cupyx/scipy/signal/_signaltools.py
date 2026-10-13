@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import warnings
 
 import cupy
@@ -582,8 +584,6 @@ def medfilt(volume, kernel_size=None):
         # scipy doesn't support bool
         raise ValueError("bool type not supported")
     kernel_size = _get_kernel_size(kernel_size, volume.ndim)
-    if volume.dtype == 'F':
-        raise TypeError("complex types not supported")
     if volume.dtype.kind == 'c':
         # scipy doesn't support complex
         raise ValueError("complex types not supported")
@@ -629,8 +629,6 @@ def medfilt2d(input, kernel_size=3):
     if input.ndim != 2:
         raise ValueError('input must be 2d')
     kernel_size = _get_kernel_size(kernel_size, input.ndim)
-    if input.dtype == 'F':
-        raise TypeError("complex types not supported")
     if input.dtype.kind == 'c':
         # scipy doesn't support complex
         raise ValueError("complex types not supported")
@@ -1750,7 +1748,7 @@ def hilbert2(x, N=None):
     Xf = sp_fft.fft2(x, N, axes=(0, 1))
     h1 = cupy.zeros(N[0], dtype=Xf.dtype)
     h2 = cupy.zeros(N[1], dtype=Xf.dtype)
-    for h in (h1, h1):
+    for h in (h1, h2):
         N1 = h.shape[0]
         if N1 % 2 == 0:
             h[0] = h[N1 // 2] = 1

@@ -6,16 +6,17 @@ Overview
 `CuPy <https://github.com/cupy/cupy>`__ is a NumPy/SciPy-compatible array library for GPU-accelerated computing with Python.
 CuPy acts as a drop-in replacement to run existing NumPy/SciPy code on `NVIDIA CUDA <https://developer.nvidia.com/cuda-toolkit>`__ or `AMD ROCm <https://www.amd.com/en/graphics/servers-solutions-rocm>`__ platforms.
 
-CuPy provides a ``ndarray``, sparse matrices, and the associated routines for GPU devices, all having the same API as NumPy and SciPy:
+CuPy provides a ``ndarray``, sparse arrays and matrices, and the associated routines for GPU devices, all having the same API as NumPy and SciPy:
 
 * **N-dimensional array** (``ndarray``): :doc:`cupy.ndarray <reference/ndarray>`
 
   * Data types (dtypes): boolean (``bool_``), integer (``int8``, ``int16``, ``int32``, ``int64``, ``uint8``, ``uint16``, ``uint32``, ``uint64``), float (``float16``, ``float32``, ``float64``), and complex (``complex64``, ``complex128``)
   * Supports the semantics identical to :class:`numpy.ndarray`, including basic / advanced indexing and broadcasting
 
-* **Sparse matrices**: :doc:`cupyx.scipy.sparse <reference/scipy_sparse>`
+* **Sparse arrays**: :doc:`cupyx.scipy.sparse <reference/scipy_sparse>`
 
-  * 2-D sparse matrix: ``csr_matrix``, ``coo_matrix``, ``csc_matrix``, and ``dia_matrix``
+  * Sparse arrays, preferred for new code: ``csr_array``, ``coo_array``, ``csc_array``, and ``dia_array`` (2-D, and 1-D for COO and CSR)
+  * 2-D sparse matrices, which SciPy plans to deprecate: ``csr_matrix``, ``coo_matrix``, ``csc_matrix``, and ``dia_matrix``
 
 * **NumPy Routines**
 
@@ -29,7 +30,7 @@ CuPy provides a ``ndarray``, sparse matrices, and the associated routines for GP
   * :doc:`Discrete Fourier Transforms <reference/scipy_fft>` (``cupyx.scipy.fft.*`` and ``cupyx.scipy.fftpack.*``)
   * :doc:`Advanced Linear Algebra <reference/scipy_linalg>` (``cupyx.scipy.linalg.*``)
   * :doc:`Multidimensional Image Processing <reference/scipy_ndimage>` (``cupyx.scipy.ndimage.*``)
-  * :doc:`Sparse Matrices <reference/scipy_sparse>` (``cupyx.scipy.sparse.*``)
+  * :doc:`Sparse Arrays <reference/scipy_sparse>` (``cupyx.scipy.sparse.*``)
   * :doc:`Sparse Linear Algebra <reference/scipy_sparse_linalg>` (``cupyx.scipy.sparse.linalg.*``)
   * :doc:`Special Functions <reference/scipy_special>` (``cupyx.scipy.special.*``)
   * :doc:`Signal Processing <reference/scipy_signal>` (``cupyx.scipy.signal.*``)
@@ -51,7 +52,7 @@ For users who need more fine-grain control for performance, accessing :doc:`low-
 * **Stream and Event**: CUDA stream and per-thread default stream are supported by all APIs
 * **Memory Pool**: Customizable memory allocator with a built-in memory pool
 * **Profiler**: Supports profiling code using CUDA Profiler and NVTX
-* **Host API Binding**: Directly call CUDA libraries, such as NCCL, cuDNN, cuTENSOR, and cuSPARSELt APIs from Python
+* **Host API Binding**: Directly call CUDA libraries, such as NCCL, cuTENSOR, and cuSPARSELt APIs from Python
 
 CuPy implements standard APIs for data exchange and interoperability, such as `DLPack <https://github.com/dmlc/dlpack>`__, `CUDA Array Interface <https://numba.readthedocs.io/en/stable/cuda/cuda_array_interface.html>`__, ``__array_ufunc__`` (`NEP 13 <https://numpy.org/neps/nep-0013-ufunc-overrides.html>`__), ``__array_function__`` (`NEP 18 <https://numpy.org/neps/nep-0018-array-function-protocol.html>`__), and `Array API Standard <https://data-apis.org/array-api/latest/>`__.
 Thanks to these protocols, CuPy easily :doc:`integrates <user_guide/interoperability>` with NumPy, PyTorch, TensorFlow, MPI4Py, and any other libraries supporting the standard.

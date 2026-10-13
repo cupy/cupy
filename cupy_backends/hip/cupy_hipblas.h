@@ -7,6 +7,15 @@
 #include <stdexcept>  // for gcc 10
 
 
+#if HIP_VERSION >= 70000000  // ROCm 7 renamed hipblas*Complex to hip*Complex
+#  if defined(__HIP_PLATFORM_HCC__) || defined(__HIP_PLATFORM_AMD__)
+#define hipblasDoubleComplex hipDoubleComplex
+#define hipblasComplex hipFloatComplex
+#define hipblasDatatype_t hipDataType
+#endif
+#else
+#define convert_hipblasComputeType_t convert_hipblasDatatype_t
+#endif
 extern "C" {
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -61,6 +70,30 @@ static hipblasDatatype_t convert_hipblasDatatype_t(cudaDataType_t type) {
     }
 }
 
+
+#if HIP_VERSION >= 70000000
+#  if defined(__HIP_PLATFORM_HCC__) || defined(__HIP_PLATFORM_AMD__)
+static hipblasComputeType_t convert_hipblasComputeType_t(cudaDataType_t type) {
+    switch(type)
+    {
+        case 2:   // CUDA_R_16F
+        case 14:  // CUDA_R_16BF
+        case 0:   // CUDA_R_32F
+        case 4:   // CUDA_C_32F
+            return HIPBLAS_COMPUTE_32F;
+        case 1:   // CUDA_R_64F
+        case 5:   // CUDA_C_64F
+            return HIPBLAS_COMPUTE_64F;
+        case 10:  // CUDA_R_32I
+        case 11:  // CUDA_C_32I
+            return HIPBLAS_COMPUTE_32I;
+        default:
+            throw std::invalid_argument(
+                "unsupported cudaDataType_t for hipblasComputeType_t: " + std::to_string(type));
+    }
+}
+#endif
+#endif
 
 // Context
 cublasStatus_t cublasCreate(cublasHandle_t* handle) {
@@ -376,7 +409,7 @@ cublasStatus_t cublasGemmStridedBatchedEx(cublasHandle_t handle, cublasOperation
                                        B, convert_hipblasDatatype_t(Btype), ldb, strideB,
                                        beta,
                                        C, convert_hipblasDatatype_t(Ctype), ldc, strideC,
-                                       batchCount, convert_hipblasDatatype_t(computeType),
+                                       batchCount, convert_hipblasComputeType_t(computeType),
                                        static_cast<hipblasGemmAlgo_t>(160));  // HIPBLAS_GEMM_DEFAULT
 }
 
@@ -525,7 +558,7 @@ cublasStatus_t cublasGemmEx(cublasHandle_t handle, cublasOperation_t transa, cub
                          B, convert_hipblasDatatype_t(Btype), ldb,
                          beta,
                          C, convert_hipblasDatatype_t(Ctype), ldc,
-                         convert_hipblasDatatype_t(computetype),
+                         convert_hipblasComputeType_t(computetype),
                          static_cast<hipblasGemmAlgo_t>(160));  // HIPBLAS_GEMM_DEFAULT
 }
 
@@ -584,6 +617,56 @@ cublasStatus_t cublasZtrsm(cublasHandle_t handle, cublasSideMode_t size, cublasF
                         reinterpret_cast<const hipblasDoubleComplex*>(alpha),
                         reinterpret_cast<hipblasDoubleComplex*>(const_cast<cuDoubleComplex*>(A)), lda,
                         reinterpret_cast<hipblasDoubleComplex*>(B), ldb);
+}
+
+cublasStatus_t cublasStrsmBatched(cublasHandle_t handle, cublasSideMode_t size, cublasFillMode_t uplo, cublasOperation_t trans,
+                                  cublasDiagType_t diag, int m, int n, const float* alpha,
+                                  const float* const A[], int lda, float* const B[], int ldb, int batchCount) {
+    return hipblasStrsmBatched(handle,
+                               convert_hipblasSideMode_t(size),
+                               convert_hipblasFillMode_t(uplo),
+                               convert_hipblasOperation_t(trans),
+                               convert_hipblasDiagType_t(diag),
+                               m, n, alpha, const_cast<float* const*>(A), lda, const_cast<float**>(B), ldb, batchCount);
+}
+
+cublasStatus_t cublasDtrsmBatched(cublasHandle_t handle, cublasSideMode_t size, cublasFillMode_t uplo, cublasOperation_t trans,
+                                  cublasDiagType_t diag, int m, int n, const double* alpha,
+                                  const double* const A[], int lda, double* const B[], int ldb, int batchCount) {
+    return hipblasDtrsmBatched(handle,
+                               convert_hipblasSideMode_t(size),
+                               convert_hipblasFillMode_t(uplo),
+                               convert_hipblasOperation_t(trans),
+                               convert_hipblasDiagType_t(diag),
+                               m, n, alpha, const_cast<double* const*>(A), lda, const_cast<double**>(B), ldb, batchCount);
+}
+
+cublasStatus_t cublasCtrsmBatched(cublasHandle_t handle, cublasSideMode_t size, cublasFillMode_t uplo, cublasOperation_t trans,
+                                  cublasDiagType_t diag, int m, int n, const cuComplex* alpha,
+                                  const cuComplex* const A[], int lda, cuComplex* const B[], int ldb, int batchCount) {
+    return hipblasCtrsmBatched(handle,
+                               convert_hipblasSideMode_t(size),
+                               convert_hipblasFillMode_t(uplo),
+                               convert_hipblasOperation_t(trans),
+                               convert_hipblasDiagType_t(diag),
+                               m, n,
+                               reinterpret_cast<const hipblasComplex*>(alpha),
+                               reinterpret_cast<hipblasComplex* const*>(const_cast<cuComplex* const*>(A)), lda,
+                               reinterpret_cast<hipblasComplex**>(const_cast<cuComplex**>(B)), ldb, batchCount);
+}
+
+cublasStatus_t cublasZtrsmBatched(cublasHandle_t handle, cublasSideMode_t size, cublasFillMode_t uplo, cublasOperation_t trans,
+                                  cublasDiagType_t diag, int m, int n, const cuDoubleComplex* alpha,
+                                  const cuDoubleComplex* const A[], int lda, cuDoubleComplex* const B[], int ldb, int batchCount) {
+    return hipblasZtrsmBatched(handle,
+                               convert_hipblasSideMode_t(size),
+                               convert_hipblasFillMode_t(uplo),
+                               convert_hipblasOperation_t(trans),
+                               convert_hipblasDiagType_t(diag),
+                               m, n,
+                               reinterpret_cast<const hipblasDoubleComplex*>(alpha),
+                               reinterpret_cast<hipblasDoubleComplex* const*>(const_cast<cuDoubleComplex* const*>(A)), lda,
+                               reinterpret_cast<hipblasDoubleComplex**>(const_cast<cuDoubleComplex**>(B)), ldb, batchCount);
 }
 
 cublasStatus_t cublasSsyrk(cublasHandle_t handle, cublasFillMode_t uplo, cublasOperation_t trans, int n, int k,

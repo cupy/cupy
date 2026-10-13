@@ -5,6 +5,8 @@
 #
 # Cephes Math Library Release 2.8:  June, 2000
 # Copyright 1984, 1987, 1992, 2000 by Stephen L. Moshier
+from __future__ import annotations
+
 
 from cupy import _core
 from cupyx.scipy.special._digamma import polevl_definition
@@ -85,15 +87,16 @@ ellipkm1 = _core.create_ufunc(
     ('f->f', 'd->d'),
     'out0 = ellpk(in0)',
     preamble=polevl_definition+ellpk_definition,
-    doc="""ellpkm1.
+    doc="""Complete elliptic integral of the first kind around ``m = 1``.
 
     Args:
-        x (cupy.ndarray): The input of digamma function.
+        p (cupy.ndarray): Defines the parameter of the elliptic integral as
+            ``m = 1 - p``.
 
     Returns:
-        cupy.ndarray: Computed value of digamma function.
+        cupy.ndarray: Computed value of the elliptic integral.
 
-    .. seealso:: :data:`scipy.special.digamma`
+    .. seealso:: :func:`scipy.special.ellipkm1`
 
     """)
 
@@ -103,15 +106,15 @@ ellipk = _core.create_ufunc(
     ("f->f", "d->d"),
     'out0 = ellpkm1(in0)',
     preamble=polevl_definition+ellpk_definition,
-    doc="""ellpk.
+    doc="""Complete elliptic integral of the first kind.
 
     Args:
-        x (cupy.ndarray): The input of digamma function.
+        m (cupy.ndarray): Parameter of the elliptic integral.
 
     Returns:
-        cupy.ndarray: Computed value of digamma function.
+        cupy.ndarray: Computed value of the elliptic integral.
 
-    .. seealso:: :data:`scipy.special.digamma`
+    .. seealso:: :func:`scipy.special.ellipk`
 
     """)
 
@@ -219,7 +222,7 @@ ellipj = _core.create_ufunc(
         out0 = sn; out1 = cn; out2 = dn; out3 = ph;
     ''',
     preamble=ellipj_preamble,
-    doc="""ellipj
+    doc="""Jacobi elliptic functions.
 
      Args:
          u (cupy.ndarray): The input of ellipj function.
@@ -229,6 +232,31 @@ ellipj = _core.create_ufunc(
      Returns:
         sn, cn, dn, ph: Computed values.
 
-     .. seealso:: :data:`scipy.special.ellipj`
+     .. seealso:: :func:`scipy.special.ellipj`
+    """
+)
+
+ellipkinc_preamble = "#include <cupy/xsf/cephes/ellik.h>"
+ellipeinc_preamble = "#include <cupy/xsf/cephes/ellie.h>"
+
+ellipkinc = _core.create_ufunc(
+    'cupyx_scipy_special_ellipkinc', ('ff->f', 'dd->d'),
+    'out0 = xsf::cephes::ellik(in0, in1)',
+    preamble=ellipkinc_preamble,
+    doc="""Incomplete elliptic integral of the first kind.
+
+    .. seealso:: :func:`scipy.special.ellipkinc`
+
+    """
+)
+
+ellipeinc = _core.create_ufunc(
+    'cupyx_scipy_special_ellipeinc', ('ff->f', 'dd->d'),
+    'out0 = xsf::cephes::ellie(in0, in1)',
+    preamble=ellipeinc_preamble,
+    doc="""Incomplete elliptic integral of the second kind.
+
+    .. seealso:: :func:`scipy.special.ellipeinc`
+
     """
 )

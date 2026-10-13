@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import NamedTuple
+
 import numpy
 
 import cupy
@@ -30,25 +34,41 @@ def delete(arr, indices, axis=None):
     .. seealso:: :func:`numpy.delete`.
     """
 
+    if not isinstance(arr, cupy.ndarray):
+        raise ValueError('delete(): arr must be a cupy.ndarray')
+
     if axis is None:
-
-        arr = arr.ravel()
-
-        if isinstance(indices, cupy.ndarray) and indices.dtype == cupy.bool_:
-            return arr[~indices]
-
-        mask = cupy.ones(arr.size, dtype=bool)
-        mask[indices] = False
-        return arr[mask]
-
+        if arr.ndim != 1:
+            arr = arr.ravel()
+        axis = 0
     else:
+        axis = _core.internal._normalize_axis_index(axis, arr.ndim)
 
-        if isinstance(indices, cupy.ndarray) and indices.dtype == cupy.bool_:
-            return cupy.compress(~indices, arr, axis=axis)
+    size = arr.shape[axis]
+    if not (
+            isinstance(indices, slice) or (
+                isinstance(indices, (int, numpy.integer))
+                and not isinstance(indices, bool)
+            )):
+        # NOTE(seberg): Delete is a utility function, but we could optimize
+        # it for slices and scalar integers (that are not bools).
+        # NumPy specializes slices, integers and boolean arrays.
+        idx_arr = cupy.asarray(indices)
+        if idx_arr.dtype == cupy.bool_:
+            if idx_arr.ndim != 1 or idx_arr.shape[0] != size:
+                raise ValueError(
+                    'boolean array argument indices to delete must be one '
+                    f'dimensional and match the axis length of {size}')
+            if arr.ndim == 1:
+                return arr[~idx_arr]
 
-        mask = cupy.ones(arr.shape[axis], dtype=bool)
-        mask[indices] = False
-        return cupy.compress(mask, arr, axis=axis)
+        # Use array unless it is e.g. an empty lists that indexing accepts.
+        if idx_arr.size != 0:
+            indices = idx_arr
+
+    mask = cupy.ones(size, dtype=cupy.bool_)
+    mask[indices,] = False
+    return cupy.compress(mask, arr, axis=axis)
 
 
 # TODO(okuta): Implement insert
@@ -153,10 +173,10 @@ def trim_zeros(filt, trim='fb'):
     .. seealso:: :func:`numpy.trim_zeros`
 
     """
+    if filt.ndim == 0:
+        return filt
     if filt.ndim > 1:
-        raise ValueError('Multi-dimensional trim is not supported')
-    if not filt.ndim:
-        raise TypeError('0-d array cannot be trimmed')
+        raise NotImplementedError('Multi-dimensional trim is not supported')
     start = 0
     end = filt.size
     trim = trim.upper()
@@ -208,7 +228,7 @@ def unique(ar, return_index=False, return_inverse=False,
             If there are no optional outputs, it returns the
             :class:`cupy.ndarray` of the sorted unique values. Otherwise, it
             returns the tuple which contains the sorted unique values and
-            followings.
+            following.
 
             * The indices of the first occurrences of the unique values in the
               original array. Only provided if `return_index` is True.
@@ -233,7 +253,7 @@ def unique(ar, return_index=False, return_inverse=False,
         ret = _unique_1d(ar, return_index=return_index,
                          return_inverse=return_inverse,
                          return_counts=return_counts,
-                         equal_nan=equal_nan)
+                         equal_nan=equal_nan, inverse_shape=ar.shape)
         return ret
 
     ar = cupy.moveaxis(ar, axis, 0)
@@ -325,7 +345,7 @@ def unique(ar, return_index=False, return_inverse=False,
 
 
 def _unique_1d(ar, return_index=False, return_inverse=False,
-               return_counts=False, equal_nan=True):
+               return_counts=False, equal_nan=True, inverse_shape=None):
     ar = cupy.asarray(ar).flatten()
 
     if return_index or return_inverse:
@@ -351,7 +371,7 @@ def _unique_1d(ar, return_index=False, return_inverse=False,
         imask = cupy.cumsum(mask) - 1
         inv_idx = cupy.empty(mask.shape, dtype=cupy.intp)
         inv_idx[perm] = imask
-        ret += inv_idx,
+        ret += inv_idx.reshape(inverse_shape),
     if return_counts:
         nonzero = cupy.nonzero(mask)[0]  # may synchronize
         idx = cupy.empty((nonzero.size + 1,), nonzero.dtype)
@@ -359,3 +379,179 @@ def _unique_1d(ar, return_index=False, return_inverse=False,
         idx[-1] = mask.size
         ret += idx[1:] - idx[:-1],
     return ret
+
+
+# Array API compatible unique_XXX wrappers
+
+class UniqueAllResult(NamedTuple):
+    values: cupy.ndarray
+    indices: cupy.ndarray
+    inverse_indices: cupy.ndarray
+    counts: cupy.ndarray
+
+
+class UniqueCountsResult(NamedTuple):
+    values: cupy.ndarray
+    counts: cupy.ndarray
+
+
+class UniqueInverseResult(NamedTuple):
+    values: cupy.ndarray
+    inverse_indices: cupy.ndarray
+
+
+def unique_all(x):
+    """
+    Find the unique elements of an array, and counts, inverse and indices.
+
+    This function is an Array API compatible alternative to:
+
+    >>> x = cupy.array([1, 1, 2])
+    >>> np.unique(x, return_index=True, return_inverse=True,
+    ...           return_counts=True, equal_nan=False)
+    (array([1, 2]), array([0, 2]), array([0, 0, 1]), array([2, 1]))
+
+    Parameters
+    ----------
+    x : ndarray
+        Input array. It will be flattened if it is not already 1-D.
+
+    Returns
+    -------
+    out : namedtuple
+        The result containing:
+
+        * values - The unique elements of an input array.
+        * indices - The first occurring indices for each unique element.
+        * inverse_indices - The indices from the set of unique elements
+          that reconstruct `x`.
+        * counts - The corresponding counts for each unique element.
+
+    See Also
+    --------
+    unique : Find the unique elements of an array.
+    numpy.unique_all
+
+    """
+    result = unique(
+        x,
+        return_index=True,
+        return_inverse=True,
+        return_counts=True,
+        equal_nan=False
+    )
+    return UniqueAllResult(*result)
+
+
+def unique_counts(x):
+    """
+    Find the unique elements and counts of an input array `x`.
+
+    This function is an Array API compatible alternative to:
+
+    >>> x = cupy.array([1, 1, 2])
+    >>> cupy.unique(x, return_counts=True, equal_nan=False)
+    (array([1, 2]), array([2, 1]))
+
+    Parameters
+    ----------
+    x : ndarray
+        Input array. It will be flattened if it is not already 1-D.
+
+    Returns
+    -------
+    out : namedtuple
+        The result containing:
+
+        * values - The unique elements of an input array.
+        * counts - The corresponding counts for each unique element.
+
+    See Also
+    --------
+    unique : Find the unique elements of an array.
+    np.unique_counts
+
+    """
+    result = unique(
+        x,
+        return_index=False,
+        return_inverse=False,
+        return_counts=True,
+        equal_nan=False
+    )
+    return UniqueCountsResult(*result)
+
+
+def unique_inverse(x):
+    """
+    Find the unique elements of `x` and indices to reconstruct `x`.
+
+    This function is Array API compatible alternative to:
+
+    >>> x = cupy.array([1, 1, 2])
+    >>> cupy.unique(x, return_inverse=True, equal_nan=False)
+    (array([1, 2]), array([0, 0, 1]))
+
+    Parameters
+    ----------
+    x : ndarray
+        Input array. It will be flattened if it is not already 1-D.
+
+    Returns
+    -------
+    out : namedtuple
+        The result containing:
+
+        * values - The unique elements of an input array.
+        * inverse_indices - The indices from the set of unique elements
+          that reconstruct `x`.
+
+    See Also
+    --------
+    unique : Find the unique elements of an array.
+    numpy.unique_inverse
+
+    """
+    result = unique(
+        x,
+        return_index=False,
+        return_inverse=True,
+        return_counts=False,
+        equal_nan=False
+    )
+    return UniqueInverseResult(*result)
+
+
+def unique_values(x):
+    """
+    Returns the unique elements of an input array `x`.
+
+    This function is Array API compatible alternative to:
+
+    >>> x = cupy.array([1, 1, 2])
+    >>> cupy.unique(x, equal_nan=False)
+    array([1, 2])
+
+    Parameters
+    ----------
+    x : ndarray
+        Input array. It will be flattened if it is not already 1-D.
+
+    Returns
+    -------
+    out : ndarray
+        The unique elements of an input array.
+
+    See Also
+    --------
+    unique : Find the unique elements of an array.
+    numpy.unique_values
+
+    """
+    return unique(
+        x,
+        return_index=False,
+        return_inverse=False,
+        return_counts=False,
+        equal_nan=False
+    )

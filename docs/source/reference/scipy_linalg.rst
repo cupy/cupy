@@ -12,8 +12,9 @@ Basics
    :toctree: generated/
 
    solve_triangular
-   tril
-   triu
+   kron
+   khatri_rao
+   bandwidth
 
 
 Matrix Functions
@@ -53,7 +54,5 @@ Special Matrices
    hankel
    helmert
    hilbert
-   kron
    leslie
    toeplitz
-   tri

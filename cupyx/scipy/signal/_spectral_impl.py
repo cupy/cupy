@@ -24,12 +24,13 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
+from __future__ import annotations
+
 
 import warnings
 
 import cupy
 
-from cupy_backends.cuda.api import runtime
 import cupyx.scipy.signal._signaltools as filtering
 from cupyx.scipy.signal._arraytools import (
     odd_ext, even_ext, zero_ext, const_ext, _as_strided)
@@ -48,25 +49,15 @@ def _get_module_func_raw(module, func_name, *template_args):
     return kernel
 
 
-if runtime.is_hip:
-    KERNEL_BASE = r"""
-    #include <hip/hip_runtime.h>
-"""
-else:
-    KERNEL_BASE = r"""
-#include <cuda_runtime.h>
-#include <device_launch_parameters.h>
-"""
-
-LOMBSCARGLE_KERNEL = KERNEL_BASE + r"""
+LOMBSCARGLE_KERNEL = r"""
 
 ///////////////////////////////////////////////////////////////////////////////
 //                            LOMBSCARGLE                                    //
 ///////////////////////////////////////////////////////////////////////////////
 
 template<typename T>
-__device__ void _cupy_lombscargle_float( const int x_shape,
-                                         const int freqs_shape,
+__device__ void _cupy_lombscargle_float( const long long x_shape,
+                                         const long long freqs_shape,
                                          const T *__restrict__ x,
                                          const T *__restrict__ y,
                                          const T *__restrict__ freqs,
@@ -83,7 +74,7 @@ __device__ void _cupy_lombscargle_float( const int x_shape,
         yD = 2.0f / y_dot[0];
     }
 
-    for ( int tid = tx; tid < freqs_shape; tid += stride ) {
+    for ( long long tid = tx; tid < freqs_shape; tid += stride ) {
 
         T freq { freqs[tid] };
 
@@ -95,7 +86,7 @@ __device__ void _cupy_lombscargle_float( const int x_shape,
         T c {};
         T s {};
 
-        for ( int j = 0; j < x_shape; j++ ) {
+        for ( long long j = 0; j < x_shape; j++ ) {
             sincosf( freq * x[j], &s, &c );
             xc += y[j] * c;
             xs += y[j] * s;
@@ -123,7 +114,8 @@ __device__ void _cupy_lombscargle_float( const int x_shape,
 }
 
 extern "C" __global__ void __launch_bounds__( 512 ) _cupy_lombscargle_float32(
-        const int x_shape, const int freqs_shape, const float *__restrict__ x,
+        const long long x_shape, const long long freqs_shape,
+        const float *__restrict__ x,
         const float *__restrict__ y, const float *__restrict__ freqs,
         float *__restrict__ pgram, const float *__restrict__ y_dot ) {
     _cupy_lombscargle_float<float>( x_shape, freqs_shape, x, y,
@@ -131,8 +123,8 @@ extern "C" __global__ void __launch_bounds__( 512 ) _cupy_lombscargle_float32(
 }
 
 template<typename T>
-__device__ void _cupy_lombscargle_double( const int x_shape,
-                                          const int freqs_shape,
+__device__ void _cupy_lombscargle_double( const long long x_shape,
+                                          const long long freqs_shape,
                                           const T *__restrict__ x,
                                           const T *__restrict__ y,
                                           const T *__restrict__ freqs,
@@ -149,7 +141,7 @@ __device__ void _cupy_lombscargle_double( const int x_shape,
         yD = 2.0 / y_dot[0];
     }
 
-    for ( int tid = tx; tid < freqs_shape; tid += stride ) {
+    for ( long long tid = tx; tid < freqs_shape; tid += stride ) {
 
         T freq { freqs[tid] };
 
@@ -161,7 +153,7 @@ __device__ void _cupy_lombscargle_double( const int x_shape,
         T c {};
         T s {};
 
-        for ( int j = 0; j < x_shape; j++ ) {
+        for ( long long j = 0; j < x_shape; j++ ) {
 
             sincos( freq * x[j], &s, &c );
             xc += y[j] * c;
@@ -190,7 +182,8 @@ __device__ void _cupy_lombscargle_double( const int x_shape,
 }
 
 extern "C" __global__ void __launch_bounds__( 512 ) _cupy_lombscargle_float64(
-        const int x_shape, const int freqs_shape, const double *__restrict__ x,
+        const long long x_shape, const long long freqs_shape,
+        const double *__restrict__ x,
         const double *__restrict__ y, const double *__restrict__ freqs,
         double *__restrict__ pgram, const double *__restrict__ y_dot ) {
 
@@ -201,7 +194,7 @@ extern "C" __global__ void __launch_bounds__( 512 ) _cupy_lombscargle_float64(
 
 
 LOMBSCARGLE_MODULE = cupy.RawModule(
-    code=LOMBSCARGLE_KERNEL, options=('-std=c++11',),
+    code=LOMBSCARGLE_KERNEL,
     name_expressions=['_cupy_lombscargle_float32',
                       '_cupy_lombscargle_float64'])
 
@@ -336,7 +329,7 @@ def _spectral_helper(
 
     if boundary not in boundary_funcs:
         raise ValueError(
-            "Unknown boundary option '{0}', must be one of: {1}".format(
+            "Unknown boundary option '{}', must be one of: {}".format(
                 boundary, list(boundary_funcs.keys())
             )
         )

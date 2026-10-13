@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from cupy import _core
 
 
@@ -13,7 +15,11 @@ static __device__ T logit(T x) {
 
 logit = _core.create_ufunc(
     'cupy_logit',
-    ('e->f', 'f->f', 'd->d'),
+    (
+        ('e->d', "out0 = logit(double(in0))"),
+        'f->f',
+        'd->d',
+    ),
     'out0 = logit(in0)',
     preamble=logit_definition,
     doc='''Logit function.
@@ -24,7 +30,7 @@ logit = _core.create_ufunc(
     Returns:
         cupy.ndarray: values of logit(x)
 
-    .. seealso:: :data:`scipy.special.logit`
+    .. seealso:: :func:`scipy.special.logit`
 
     ''')
 
@@ -40,7 +46,11 @@ static __device__ T expit(T x) {
 
 expit = _core.create_ufunc(
     'cupy_expit',
-    ('e->f', 'f->f', 'd->d'),
+    (
+        ('e->d', "out0 = expit(double(in0))"),
+        'f->f',
+        'd->d',
+    ),
     'out0 = expit(in0)',
     preamble=expit_definition,
     doc='''Logistic sigmoid function (expit).
@@ -51,7 +61,7 @@ expit = _core.create_ufunc(
     Returns:
         cupy.ndarray: values of expit(x)
 
-    .. seealso:: :data:`scipy.special.expit`
+    .. seealso:: :func:`scipy.special.expit`
 
     .. note::
         expit is the inverse of logit.
@@ -77,7 +87,11 @@ static __device__ T log_expit(T x)
 
 log_expit = _core.create_ufunc(
     'cupy_log_expit',
-    ('e->f', 'f->f', 'd->d'),
+    (
+        ('e->d', "out0 = log_expit(double(in0))"),
+        'f->f',
+        'd->d',
+    ),
     'out0 = log_expit(in0)',
     preamble=log_expit_definition,
     doc='''Logarithm of the logistic sigmoid function.
@@ -88,7 +102,7 @@ log_expit = _core.create_ufunc(
     Returns:
         cupy.ndarray: values of log(expit(x))
 
-    .. seealso:: :data:`scipy.special.log_expit`
+    .. seealso:: :func:`scipy.special.log_expit`
 
     .. note::
         The function is mathematically equivalent to ``log(expit(x))``, but
@@ -128,7 +142,7 @@ boxcox = _core.create_ufunc(
     Returns:
         cupy.ndarray: values of boxcox(x)
 
-    .. seealso:: :data:`scipy.special.boxcox`
+    .. seealso:: :func:`scipy.special.boxcox`
 
     ''')
 
@@ -164,7 +178,7 @@ boxcox1p = _core.create_ufunc(
     Returns:
         cupy.ndarray: values of boxcox1p(x)
 
-    .. seealso:: :data:`scipy.special.boxcox1p`
+    .. seealso:: :func:`scipy.special.boxcox1p`
 
     ''')
 
@@ -194,7 +208,7 @@ inv_boxcox = _core.create_ufunc(
     Returns:
         cupy.ndarray: values of inv_boxcox(x)
 
-    .. seealso:: :data:`scipy.special.inv_boxcox`
+    .. seealso:: :func:`scipy.special.inv_boxcox`
 
     ''')
 
@@ -226,5 +240,5 @@ inv_boxcox1p = _core.create_ufunc(
     Returns:
         cupy.ndarray: values of inv_boxcox1p(x)
 
-    .. seealso:: :data:`scipy.special.inv_boxcox1p`
+    .. seealso:: :func:`scipy.special.inv_boxcox1p`
 ''')

@@ -69,7 +69,10 @@ cusolverStatus_t cusolverGetProperty(libraryPropertyType type, int* val) {
 }
 
 
-typedef enum cusolverDnParams_t {};
+// Placeholder for cuSOLVER's opaque cusolverDnParams_t (HIP shims
+// ignore it). Anonymous enum named via typedef avoids the
+// "typedef ignored" warning the named-enum form produced.
+typedef enum {} cusolverDnParams_t;
 
 cusolverStatus_t cusolverDnCreateParams(...) {
     return rocblas_status_not_implemented;
@@ -973,15 +976,15 @@ cusolverStatus_t cusolverDnDestroyGesvdjInfo(...) {
 cusolverStatus_t cusolverDnSgesvdjBatched_bufferSize(
         cusolverDnHandle_t handle,
         cusolverEigMode_t jobz,
-        int m,                
-        int n,                
-        const float *A,    
-        int lda,           
-        const float *S, 
-        const float *U,   
-        int ldu, 
+        int m,
+        int n,
+        const float *A,
+        int lda,
+        const float *S,
+        const float *U,
+        int ldu,
         const float *V,
-        int ldv,  
+        int ldv,
         int *lwork,
         gesvdjInfo_t params,
         int batchSize) {
@@ -997,7 +1000,7 @@ cusolverStatus_t cusolverDnDgesvdjBatched_bufferSize(
         cusolverEigMode_t jobz,
         int m,
         int n,
-        const double *A, 
+        const double *A,
         int lda,
         const double *S,
         const double *U,
@@ -1038,14 +1041,14 @@ cusolverStatus_t cusolverDnCgesvdjBatched_bufferSize(
 
 cusolverStatus_t cusolverDnZgesvdjBatched_bufferSize(
         cusolverDnHandle_t handle,
-        cusolverEigMode_t jobz, 
-        int m, 
-        int n, 
+        cusolverEigMode_t jobz,
+        int m,
+        int n,
         const cuDoubleComplex *A,
         int lda,
         const double *S,
         const cuDoubleComplex *U,
-        int ldu, 
+        int ldu,
         const cuDoubleComplex *V,
         int ldv,
         int *lwork,
@@ -1060,16 +1063,16 @@ cusolverStatus_t cusolverDnZgesvdjBatched_bufferSize(
 
 cusolverStatus_t cusolverDnSgesvdjBatched(
         cusolverDnHandle_t handle,
-        cusolverEigMode_t jobz, 
-        int m, 
-        int n, 
-        float *A, 
-        int lda, 
-        float *S, 
+        cusolverEigMode_t jobz,
+        int m,
+        int n,
+        float *A,
+        int lda,
+        float *S,
         float *U,
         int ldu,
         float *V,
-        int ldv, 
+        int ldv,
         float *work,
         int lwork,
         int *info,
@@ -1120,7 +1123,7 @@ cusolverStatus_t cusolverDnDgesvdjBatched(
         int lwork,
         int *info,
         gesvdjInfo_t params,
-        int batchSize) { 
+        int batchSize) {
     #if HIP_VERSION < 309
     return rocblas_status_not_implemented;
     #else
@@ -1725,37 +1728,135 @@ cusolverStatus_t cusolverSpSetStream(...) {
 }
 
 
-/* ---------- potrs ---------- */
-cusolverStatus_t cusolverDnSpotrs(...) {
-    return rocblas_status_not_implemented;
+/* ---------- potrs ----------
+ * rocSOLVER potrs has no devInfo out-param; cusolver callers expect
+ * one (and uninitialised cupy.empty() devInfo would trip their post-
+ * synchronization check), so each shim zeros it via hipMemsetAsync.
+ */
+
+static cusolverStatus_t _cupy_zero_dev_info(rocblas_handle handle, int *devInfo) {
+    hipStream_t stream = 0;
+    rocblas_status s = rocblas_get_stream(handle, &stream);
+    if (s != rocblas_status_success) return s;
+    if (hipMemsetAsync(devInfo, 0, sizeof(int), stream) != hipSuccess) {
+        return rocblas_status_internal_error;
+    }
+    return rocblas_status_success;
 }
 
-cusolverStatus_t cusolverDnDpotrs(...) {
-    return rocblas_status_not_implemented;
+// A is `const T*` (matches cusolver); rocSOLVER takes T*, but never
+// mutates A for potrs, so const_cast is safe.
+
+cusolverStatus_t cusolverDnSpotrs(cusolverDnHandle_t handle,
+                                  cublasFillMode_t uplo,
+                                  int n, int nrhs,
+                                  const float *A, int lda,
+                                  float *B, int ldb,
+                                  int *devInfo) {
+    rocblas_status status = rocsolver_spotrs(
+        handle, convert_rocblas_fill(uplo), n, nrhs,
+        const_cast<float*>(A), lda, B, ldb);
+    if (status != rocblas_status_success) return status;
+    return _cupy_zero_dev_info(handle, devInfo);
 }
 
-cusolverStatus_t cusolverDnCpotrs(...) {
-    return rocblas_status_not_implemented;
+cusolverStatus_t cusolverDnDpotrs(cusolverDnHandle_t handle,
+                                  cublasFillMode_t uplo,
+                                  int n, int nrhs,
+                                  const double *A, int lda,
+                                  double *B, int ldb,
+                                  int *devInfo) {
+    rocblas_status status = rocsolver_dpotrs(
+        handle, convert_rocblas_fill(uplo), n, nrhs,
+        const_cast<double*>(A), lda, B, ldb);
+    if (status != rocblas_status_success) return status;
+    return _cupy_zero_dev_info(handle, devInfo);
 }
 
-cusolverStatus_t cusolverDnZpotrs(...) {
-    return rocblas_status_not_implemented;
+cusolverStatus_t cusolverDnCpotrs(cusolverDnHandle_t handle,
+                                  cublasFillMode_t uplo,
+                                  int n, int nrhs,
+                                  const cuComplex *A, int lda,
+                                  cuComplex *B, int ldb,
+                                  int *devInfo) {
+    rocblas_status status = rocsolver_cpotrs(
+        handle, convert_rocblas_fill(uplo), n, nrhs,
+        reinterpret_cast<rocblas_float_complex*>(const_cast<cuComplex*>(A)), lda,
+        reinterpret_cast<rocblas_float_complex*>(B), ldb);
+    if (status != rocblas_status_success) return status;
+    return _cupy_zero_dev_info(handle, devInfo);
 }
 
-cusolverStatus_t cusolverDnSpotrsBatched(...) {
-    return rocblas_status_not_implemented;
+cusolverStatus_t cusolverDnZpotrs(cusolverDnHandle_t handle,
+                                  cublasFillMode_t uplo,
+                                  int n, int nrhs,
+                                  const cuDoubleComplex *A, int lda,
+                                  cuDoubleComplex *B, int ldb,
+                                  int *devInfo) {
+    rocblas_status status = rocsolver_zpotrs(
+        handle, convert_rocblas_fill(uplo), n, nrhs,
+        reinterpret_cast<rocblas_double_complex*>(const_cast<cuDoubleComplex*>(A)), lda,
+        reinterpret_cast<rocblas_double_complex*>(B), ldb);
+    if (status != rocblas_status_success) return status;
+    return _cupy_zero_dev_info(handle, devInfo);
 }
 
-cusolverStatus_t cusolverDnDpotrsBatched(...) {
-    return rocblas_status_not_implemented;
+// Batched: match cython's plain T** signatures (no const).
+
+cusolverStatus_t cusolverDnSpotrsBatched(cusolverDnHandle_t handle,
+                                         cublasFillMode_t uplo,
+                                         int n, int nrhs,
+                                         float **Aarray, int lda,
+                                         float **Barray, int ldb,
+                                         int *devInfo, int batchSize) {
+    rocblas_status status = rocsolver_spotrs_batched(
+        handle, convert_rocblas_fill(uplo), n, nrhs,
+        Aarray, lda, Barray, ldb, batchSize);
+    if (status != rocblas_status_success) return status;
+    return _cupy_zero_dev_info(handle, devInfo);
 }
 
-cusolverStatus_t cusolverDnCpotrsBatched(...) {
-    return rocblas_status_not_implemented;
+cusolverStatus_t cusolverDnDpotrsBatched(cusolverDnHandle_t handle,
+                                         cublasFillMode_t uplo,
+                                         int n, int nrhs,
+                                         double **Aarray, int lda,
+                                         double **Barray, int ldb,
+                                         int *devInfo, int batchSize) {
+    rocblas_status status = rocsolver_dpotrs_batched(
+        handle, convert_rocblas_fill(uplo), n, nrhs,
+        Aarray, lda, Barray, ldb, batchSize);
+    if (status != rocblas_status_success) return status;
+    return _cupy_zero_dev_info(handle, devInfo);
 }
 
-cusolverStatus_t cusolverDnZpotrsBatched(...) {
-    return rocblas_status_not_implemented;
+cusolverStatus_t cusolverDnCpotrsBatched(cusolverDnHandle_t handle,
+                                         cublasFillMode_t uplo,
+                                         int n, int nrhs,
+                                         cuComplex **Aarray, int lda,
+                                         cuComplex **Barray, int ldb,
+                                         int *devInfo, int batchSize) {
+    rocblas_status status = rocsolver_cpotrs_batched(
+        handle, convert_rocblas_fill(uplo), n, nrhs,
+        reinterpret_cast<rocblas_float_complex* const*>(Aarray), lda,
+        reinterpret_cast<rocblas_float_complex* const*>(Barray), ldb,
+        batchSize);
+    if (status != rocblas_status_success) return status;
+    return _cupy_zero_dev_info(handle, devInfo);
+}
+
+cusolverStatus_t cusolverDnZpotrsBatched(cusolverDnHandle_t handle,
+                                         cublasFillMode_t uplo,
+                                         int n, int nrhs,
+                                         cuDoubleComplex **Aarray, int lda,
+                                         cuDoubleComplex **Barray, int ldb,
+                                         int *devInfo, int batchSize) {
+    rocblas_status status = rocsolver_zpotrs_batched(
+        handle, convert_rocblas_fill(uplo), n, nrhs,
+        reinterpret_cast<rocblas_double_complex* const*>(Aarray), lda,
+        reinterpret_cast<rocblas_double_complex* const*>(Barray), ldb,
+        batchSize);
+    if (status != rocblas_status_success) return status;
+    return _cupy_zero_dev_info(handle, devInfo);
 }
 
 
@@ -2106,6 +2207,13 @@ cusolverStatus_t cusolverDnXsyevd(...) {
     return rocblas_status_not_implemented;
 }
 
+cusolverStatus_t cusolverDnXgeev_bufferSize(...) {
+    return rocblas_status_not_implemented;
+}
+cusolverStatus_t cusolverDnXgeev(...) {
+    return rocblas_status_not_implemented;
+}
+
 cusolverStatus_t cusolverSpCreate(...) {
     return rocblas_status_not_implemented;
 }
@@ -2162,6 +2270,6 @@ cusolverStatus_t cusolverSpZcsreigvsi(...) {
     return rocblas_status_not_implemented;
 }
 
-} // extern "C" 
+} // extern "C"
 
 #endif // #ifdef INCLUDE_GUARD_HIP_CUPY_ROCSOLVER_H

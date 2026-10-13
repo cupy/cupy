@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import sys
 import warnings
 
@@ -10,19 +12,28 @@ from cupy import testing
 from cupy import _util
 from cupy._core import _accelerator
 import cupyx.scipy.ndimage  # NOQA
+from cupyx.scipy.ndimage import _measurements
 
 try:
     import scipy
     import scipy.ndimage  # NOQA
-    scipy_version = numpy.lib.NumpyVersion(scipy.__version__)
 except ImportError:
-    scipy_version = numpy.lib.NumpyVersion('0.0.0')
     pass
 
-stats_ops = ['sum', 'mean', 'variance', 'standard_deviation', 'center_of_mass']
-if scipy_version >= '1.6.0':
-    # 'scipy 1.6 added a copy of sum under the name sum_labels'
-    stats_ops += ['sum_labels']
+stats_ops = ['sum', 'mean', 'variance', 'standard_deviation', 'center_of_mass',
+             'sum_labels']
+
+
+def test_label_connect_accepts_int64_shape():
+    shape = cupy.array([2**31 + 1], dtype=cupy.int64)
+    dirs = cupy.array([1], dtype=cupy.int32)
+    labels_base = cupy.array([0, 1], dtype=cupy.int64)
+    # size=1 visits only element 0 and its single neighbour, so the
+    # oversized view is never dereferenced past `labels_base`.
+    labels = cupy.lib.stride_tricks.as_strided(
+        labels_base, shape=(2**31 + 1,), strides=labels_base.strides)
+    _measurements._kernel_connect()(shape, dirs, 1, 1, labels, size=1)
+    assert labels_base[1] == 0
 
 
 def _generate_binary_structure(rank, connectivity):
@@ -42,7 +53,9 @@ def _generate_binary_structure(rank, connectivity):
     'connectivity': [None, 2, 3],
     'x_dtype': [bool, numpy.int8, numpy.int32, numpy.int64,
                 numpy.float32, numpy.float64],
-    'output': [None, numpy.int32, numpy.int64],
+    # Mostly integers make sense, but SciPy allows a bit more
+    # (CuPy may allows most dtypes but checks label overflow.)
+    'output': [None, numpy.int32, numpy.int64, numpy.float32],
     'o_type': [None, 'ndarray']
 }))
 @testing.with_requires('scipy')
@@ -372,7 +385,7 @@ class TestMeasurementsSelect:
     'shape': [(200,), (16, 20)],
 }))
 @testing.with_requires('scipy')
-class TestHistogram():
+class TestHistogram:
 
     def _make_image(self, shape, xp, dtype, scale):
         return testing.shaped_random(shape, xp, dtype=dtype, scale=scale)
@@ -413,7 +426,7 @@ class TestHistogram():
     'pass_positions': [True, False],
 }))
 @testing.with_requires('scipy')
-class TestLabeledComprehension():
+class TestLabeledComprehension:
 
     def _make_image(self, shape, xp, dtype, scale):
         if dtype == xp.bool_:
@@ -424,6 +437,8 @@ class TestLabeledComprehension():
     @testing.for_all_dtypes(no_bool=True, no_complex=True, no_float16=True)
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-4, atol=1e-4)
     def test_labeled_comprehension(self, xp, scp, dtype):
+        if dtype == numpy.int8:
+            return xp.asarray([])   # TODO(asi1024): XXX: np2.0 OverflowError
         image = self._make_image(self.shape, xp, dtype, scale=101)
         labels = self.labels
         index = self.index
@@ -438,7 +453,7 @@ class TestLabeledComprehension():
             def func(x, pos):
                 return xp.sum(x + pos > 50)
         else:
-            # simple function to apply to each lable
+            # simple function to apply to each label
             func = xp.sum
 
         op = getattr(scp.ndimage, 'labeled_comprehension')
@@ -456,7 +471,7 @@ class TestLabeledComprehension():
 @testing.parameterize(*testing.product({
     'shape': [(500,), (220, 240), (16, 24, 32), (4, 6, 8, 10)],
 }))
-@testing.with_requires('scipy>=1.10')
+@testing.with_requires('scipy')
 class TestValueIndices:
 
     def _make_image(self, shape, xp, dtype, scale):
@@ -528,3 +543,228 @@ class TestValueIndices:
         image = cupy.zeros(self.shape, dtype=dtype)
         with pytest.raises(ValueError):
             cupyx.scipy.ndimage.value_indices(image)
+
+
+@testing.with_requires('scipy')
+class TestFindObjectsBasic:
+
+    @testing.numpy_cupy_equal(scipy_name='scp')
+    def test_find_objects_ones_1d(self, xp, scp):
+        data = xp.ones([5], dtype=cupy.int64)
+        return scp.ndimage.find_objects(data)
+
+    @pytest.mark.parametrize('expansion_factor', [1, 10, 100, 1000, 10000])
+    @testing.numpy_cupy_equal(scipy_name='scp')
+    def test_find_objects1d(self, xp, scp, expansion_factor):
+        data = xp.asarray([1, 0, 2, 2, 0, 3])
+        # using kronecker-product as a way to replicate elements with same
+        # general shape distribution but at different array sizes
+        data = xp.kron(
+            data, xp.ones((expansion_factor, ), dtype=data.dtype)
+        )
+        return scp.ndimage.find_objects(data)
+
+    @testing.for_int_dtypes(no_bool=True)
+    @pytest.mark.parametrize('expansion_factor', [1, 20, 400])
+    @testing.numpy_cupy_equal(scipy_name='scp')
+    def test_find_objects2d(self, xp, scp, dtype, expansion_factor):
+        data = xp.asarray([[1, 0, 0, 0, 0, 0],
+                           [0, 0, 2, 2, 0, 0],
+                           [0, 0, 2, 2, 2, 0],
+                           [3, 3, 0, 0, 0, 0],
+                           [3, 3, 0, 0, 0, 0],
+                           [0, 0, 0, 4, 4, 0]], dtype=dtype)
+        # using kronecker-product as a way to replicate elements with same
+        # general shape distribution but at different array sizes
+        data = xp.kron(
+            data, xp.ones((expansion_factor, ) * data.ndim, dtype=dtype)
+        )
+        return scp.ndimage.find_objects(data)
+
+    @pytest.mark.parametrize('max_label', [-1, 0, 1, 2, 3, 4, 100])
+    @testing.numpy_cupy_equal(scipy_name='scp')
+    def test_find_objects_max_label(self, xp, scp, max_label):
+        data = xp.asarray([[1, 0, 0, 0, 0, 0],
+                           [0, 0, 2, 2, 0, 0],
+                           [0, 0, 2, 2, 2, 0],
+                           [3, 3, 0, 0, 0, 0],
+                           [3, 3, 0, 0, 0, 0],
+                           [0, 0, 0, 4, 4, 0]])
+        return scp.ndimage.find_objects(data, max_label=max_label)
+
+    @testing.for_signed_dtypes()
+    @pytest.mark.parametrize('expansion_factor', [1, 20, 400])
+    @testing.numpy_cupy_equal(scipy_name='scp')
+    def test_find_objects_negative_values(self, xp, scp, dtype,
+                                          expansion_factor):
+        data = xp.asarray([[1, 0, 0, 0, 0, 0],
+                           [0, 0, -2, 2, 0, 0],
+                           [0, 0, -2, 2, 2, 0],
+                           [-3, -3, 0, 0, 0, 0],
+                           [-3, -3, 0, 0, 0, 0],
+                           [0, 0, 0, 4, 4, 0]], dtype=dtype)
+        # using kronecker-product as a way to replicate elements with same
+        # general shape distribution but at different array sizes
+        data = xp.kron(
+            data, xp.ones((expansion_factor, ) * data.ndim, dtype=dtype)
+        )
+        return scp.ndimage.find_objects(data)
+
+    @testing.for_dtypes([cupy.float16, cupy.float32, cupy.float64,
+                         cupy.complex64, cupy.complex128])
+    @testing.numpy_cupy_equal(scipy_name='scp')
+    def test_find_objects_invalid_types(self, xp, scp, dtype):
+        data = xp.asarray([[1, 0, 0, 0, 0, 0],
+                           [0, 0, 2, 2, 0, 0],
+                           [0, 0, 2, 2, 2, 0],
+                           [3, 3, 0, 0, 0, 0],
+                           [3, 3, 0, 0, 0, 0],
+                           [0, 0, 0, 4, 4, 0]], dtype=dtype)
+        # floating point types raise a TypeError
+        with pytest.raises(TypeError):
+            scp.ndimage.find_objects(data)
+
+    @testing.numpy_cupy_equal(scipy_name='scp')
+    @pytest.mark.parametrize('expansion_factor', [1, 25])
+    def test_find_objects_3d(self, xp, scp, expansion_factor):
+        dtype = xp.uint8
+        data = xp.asarray([[1, 0, 0, 0, 0, 0],
+                           [0, 0, 2, 2, 0, 0],
+                           [0, 0, 2, 2, 2, 0],
+                           [3, 3, 0, 0, 0, 0],
+                           [3, 3, 0, 0, 0, 0],
+                           [0, 0, 0, 4, 4, 0]], dtype=dtype)
+        data_3d = xp.tile(data[cupy.newaxis, :, :], (8, 1, 1))
+        data_3d[0, ...] = 0
+        data_3d[-1, 1:-1, 1:-1] = 5
+        # using kronecker-product as a way to replicate elements with same
+        # general shape distribution but at different array sizes
+        data_3d = xp.kron(
+            data, xp.ones((expansion_factor, ) * data_3d.ndim, dtype=dtype)
+        )
+        return scp.ndimage.find_objects(data_3d)
+
+    @pytest.mark.parametrize('expansion_factor', [1, 20, 400])
+    @testing.numpy_cupy_equal(scipy_name='scp')
+    def test_find_objects2d_missing_label(self, xp, scp, expansion_factor):
+        dtype = xp.uint8
+        data = xp.asarray([[1, 0, 0, 0, 0, 0],
+                           [0, 0, 2, 2, 0, 0],
+                           [0, 0, 2, 2, 2, 0],
+                           [0, 0, 0, 0, 0, 0],
+                           [0, 0, 0, 0, 0, 0],
+                           [0, 0, 0, 4, 4, 0]], dtype=dtype)
+        # using kronecker-product as a way to replicate elements with same
+        # general shape distribution but at different array sizes
+        data = xp.kron(
+            data, xp.ones((expansion_factor, ) * data.ndim, dtype=dtype)
+        )
+        return scp.ndimage.find_objects(data)
+
+    @pytest.mark.parametrize('expansion_factor', [1, 20, 400])
+    @testing.numpy_cupy_equal(scipy_name='scp')
+    @pytest.mark.parametrize("contiguous_type", ["C", "F", "strided"])
+    def test_find_objects_non_contiguous(self, xp, scp, expansion_factor,
+                                         contiguous_type):
+        dtype = xp.uint8
+        data = xp.asarray([[1, 0, 0, 0, 0, 0],
+                           [0, 0, 2, 2, 0, 0],
+                           [0, 0, 2, 2, 2, 0],
+                           [0, 0, 0, 0, 0, 0],
+                           [0, 0, 0, 0, 0, 0],
+                           [0, 0, 0, 4, 4, 0]], dtype=dtype)
+        # using kronecker-product as a way to replicate elements with same
+        # general shape distribution but at different array sizes
+        data = xp.kron(
+            data, xp.ones((expansion_factor, ) * data.ndim, dtype=dtype)
+        )
+        if contiguous_type == "F":
+            data = xp.asfortranarray(data)
+        if contiguous_type == "strided":
+            data = data[::2, ::2]
+        return scp.ndimage.find_objects(data)
+
+
+@pytest.mark.slow
+class TestLabelOverflow:
+    """Tests ndimage.label on arrays that trigger int32 overflow."""
+
+    _CELL_SIZE = 10
+    _RADIUS = 4
+    _INT32_MAX = 2**31 - 1
+
+    def _make_sphere_pack(self, tile_counts):
+        s = self._CELL_SIZE
+        c = s // 2
+        r = self._RADIUS
+        ix, iy, iz = numpy.mgrid[:s, :s, :s]
+        cell = (ix - c) ** 2 + (iy - c) ** 2 + (iz - c) ** 2 <= r ** 2
+        return cupy.tile(cupy.asarray(cell, dtype=cupy.float16), tile_counts)
+
+    #   cell grid | image dimensions | voxel count | above int32 limit?
+    # 100x100x100 |    1000x10001000 |        ~1e9 | no
+    # 130x130x130 |    1300x13001300 |    ~2.197e9 | yes
+    @pytest.mark.parametrize('tile_counts', [
+        ((100, 100, 100)),
+        ((130, 130, 130)),
+    ])
+    @pytest.mark.parametrize('output', [None, numpy.int32, numpy.int64])
+    def test_label_dtype_output(self, tile_counts, output):
+        """Correct label count with dtype-type output argument"""
+        try:
+            img = self._make_sphere_pack(tile_counts)
+            _, n_labels = cupyx.scipy.ndimage.label(img, output=output)
+            assert n_labels == numpy.prod(tile_counts)
+        except MemoryError:
+            pytest.skip("Test needs a massive amount of GPU memory to pass")
+
+    @pytest.mark.parametrize('tile_counts', [
+        ((100, 100, 100)),
+        ((130, 130, 130)),
+    ])
+    @pytest.mark.parametrize('output_dtype', [numpy.int32, numpy.int64])
+    def test_label_array_output(self, tile_counts, output_dtype):
+        """Correct label count with pre-allocated array output argument"""
+        try:
+            img = self._make_sphere_pack(tile_counts)
+            out = cupy.empty_like(img, dtype=output_dtype)
+            n_labels = cupyx.scipy.ndimage.label(img, output=out)
+            assert n_labels == numpy.prod(tile_counts)
+        except MemoryError:
+            pytest.skip("Test needs a massive amount of GPU memory to pass")
+
+    @pytest.mark.parametrize('output_dtype', [numpy.int16, numpy.uint16])
+    def test_label_array_output_non_default_dtype(self, output_dtype):
+        img = cupy.asarray([[1, 0, 1], [0, 1, 0]], dtype=numpy.int8)
+        out = cupy.empty_like(img, dtype=output_dtype)
+        n_labels = cupyx.scipy.ndimage.label(img, output=out)
+        assert n_labels == 3
+
+    @pytest.mark.parametrize('output_dtype', [numpy.int16, numpy.uint16])
+    def test_label_dtype_output_non_default_dtype(self, output_dtype):
+        img = cupy.asarray([[1, 0, 1], [0, 1, 0]], dtype=numpy.int8)
+        out, n_labels = cupyx.scipy.ndimage.label(img, output=output_dtype)
+        assert out.dtype == output_dtype
+        assert n_labels == 3
+
+    def test_label_int32_overflow_error(self):
+        """Raises ValueError when n_labels > INT32_MAX with int32 output."""
+        try:
+            img = cupy.ones((1300, 1300, 1300), dtype=cupy.float16)
+            assert img.size > self._INT32_MAX
+
+            # every voxel becomes its own component with zero structure
+            structure = numpy.zeros((3, 3, 3), dtype=bool)
+            out = cupy.empty_like(img, dtype=numpy.int32)
+
+            with pytest.raises(ValueError):
+                cupyx.scipy.ndimage.label(img, output=out, structure=structure)
+        except MemoryError:
+            pytest.skip("Test needs a massive amount of GPU memory to pass")
+
+    @pytest.mark.parametrize('output', [numpy.int8, 'int8'])
+    def test_label_small_integer_output_overflow_error(self, output):
+        img = cupy.ones((130,), dtype=numpy.int8)
+        structure = numpy.zeros((3,), dtype=bool)
+        with pytest.raises(ValueError):
+            cupyx.scipy.ndimage.label(img, output=output, structure=structure)

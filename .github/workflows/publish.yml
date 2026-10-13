@@ -5,14 +5,11 @@ on:
   workflow_dispatch:
     inputs:
       branch:
-        description: "Source: cupy-release-tools"
-        type: choice
-        options:
-          - main
-          - v12
+        description: "Source Branch (e.g., v13)"
+        default: "main"
       release:
-        description: "Release to Publish (draft/tag, e.g., v13.0.0a1)"
-        default: "v13.0.0rc9"
+        description: "Release to Publish (draft/tag, e.g., v14.0.0a1)"
+        default: "v14.0.0rc9"
 
 jobs:
   precheck:
@@ -21,14 +18,14 @@ jobs:
       contents: write  # to read draft releases
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
         repository: cupy/cupy-release-tools
         ref: ${{ inputs.branch }}
     - name: Setup Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
       with:
-        python-version: '3.10'
+        python-version: '3.11'
     - name: Check
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -85,16 +82,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
         repository: cupy/cupy-release-tools
         ref: ${{ inputs.branch }}
     - name: Setup Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
       with:
-        python-version: '3.10'
+        python-version: '3.11'
     - name: Check
       run: |
         pip install distlib
         CHECK_WHEEL="${{ inputs.branch != 'main' && '--pypi-wheel' || '' }}"
-        ./check_release_assets.py --version "${{ inputs.release }}" --pypi-sdist ${CHECK_WHEEL}
+
+        for i in 1 2 3 4 5; do
+          echo "Attempt ${i}: waiting for PyPI propagation..."
+          sleep 120s
+          if ./check_release_assets.py --version "${{ inputs.release }}" --pypi-sdist ${CHECK_WHEEL}; then
+            echo "Check succeeded on attempt ${i}."
+            exit 0
+          fi
+        done
+
+        echo "All attempts failed; consider rerunning after few minutes."
+        exit 1

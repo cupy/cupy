@@ -1,24 +1,31 @@
+from __future__ import annotations
+
 import numpy as np
 import pytest
 
+import cupy
+from cupyx.scipy.fft import _realtransforms
 from cupyx.scipy import fft as cp_fft
 from cupy import testing
 
 try:
-    # scipy.fft is available since scipy v1.4.0+
     import scipy.fft as scipy_fft  # noqa
 except ImportError:
     scipy_fft = None
 
-# used to avoid SciPy bug in complex dtype cases with output_x=True
-# https://github.com/scipy/scipy/pull/11904
-scipy_cplx_bug = not cp_fft._scipy_150
+all_dct_norms = [None, 'ortho', 'forward', 'backward']
 
-if cp_fft._scipy_160:
-    # additional normalization options available for SciPy>=1.6
-    all_dct_norms = [None, 'ortho', 'forward', 'backward']
-else:
-    all_dct_norms = [None, 'ortho']
+
+@pytest.mark.parametrize(
+    'kernel, expected',
+    [(_realtransforms._mult_factor_dct2, 2),
+     (_realtransforms._mult_factor_dct3, 2 * 2**31)])
+def test_mult_factor_accepts_large_transform_length(kernel, expected):
+    # At i == 0 the exponential is 1, so this pins the N-dependent prefactor.
+    x = cupy.empty(1, dtype=cupy.float32)
+    out = cupy.empty(1, dtype=cupy.complex64)
+    kernel(x, 2**31, cupy.float32(1), out)
+    assert out[0] == expected
 
 
 @testing.parameterize(
@@ -46,14 +53,11 @@ else:
         }
     )
 )
-@testing.with_requires('scipy>=1.4')
+@testing.with_requires('scipy')
 class TestDctDst:
 
     def _run_transform(self, dct_func, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        if scipy_cplx_bug and x.dtype.kind == 'c':
-            # skip cases where SciPy has a bug
-            return x
         x_orig = x.copy()
         kwargs = dict(type=self.type,
                       n=self.n,
@@ -80,6 +84,9 @@ class TestDctDst:
         fft_func = getattr(scp.fft, self.function)
         return self._run_transform(fft_func, xp, dtype)
 
+    @pytest.mark.thread_unsafe(
+        reason="scipy's set_backend() not fully thread-safe: "
+        "https://github.com/scipy/scipy/issues/25878#issuecomment-6033943581")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-5, accept_error=ValueError,
                                  contiguous_check=False)
@@ -133,14 +140,11 @@ class TestDctDst:
         )
     )
 )
-@testing.with_requires('scipy>=1.4')
-class TestDctnDstn():
+@testing.with_requires('scipy')
+class TestDctnDstn:
 
     def _run_transform(self, dct_func, xp, dtype):
         x = testing.shaped_random(self.shape, xp, dtype)
-        if scipy_cplx_bug and x.dtype.kind == 'c':
-            # skip cases where SciPy has a bug
-            return x
         x_orig = x.copy()
         out = dct_func(
             x,
@@ -163,6 +167,9 @@ class TestDctnDstn():
         fft_func = getattr(scp.fft, self.function)
         return self._run_transform(fft_func, xp, dtype)
 
+    @pytest.mark.thread_unsafe(
+        reason="scipy's set_backend() not fully thread-safe: "
+        "https://github.com/scipy/scipy/issues/25878#issuecomment-6033943581")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-5, accept_error=ValueError,
                                  contiguous_check=False)

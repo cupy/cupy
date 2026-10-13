@@ -7,3 +7,6 @@
 [submodule "third_party/dlpack"]
 	path = third_party/dlpack
 	url = https://github.com/dmlc/dlpack.git
+[submodule "third_party/xsf"]
+	path = third_party/xsf
+	url = https://github.com/scipy/xsf.git

@@ -6,6 +6,7 @@ import cython
 import numpy
 
 import cupy
+from cupy import _util
 from cupy._core._kernel import ElementwiseKernel
 from cupy._core._reduction import ReductionKernel
 from cupy._core._ufuncs import elementwise_copy
@@ -37,9 +38,12 @@ cdef extern from '../../cupy_backends/cupy_complex.h':
         double x, y
 
 
-cdef list compute_types = [COMPUTE_TYPE_TBD,  # float16
+cdef list compute_types = [COMPUTE_TYPE_TBD,  # bfloat16
+                           COMPUTE_TYPE_TBD,  # float16
                            COMPUTE_TYPE_TBD,  # float32
-                           COMPUTE_TYPE_TBD]  # float64
+                           COMPUTE_TYPE_TBD,  # float64
+                           COMPUTE_TYPE_TBD,  # int8
+                           COMPUTE_TYPE_TBD]  # int32
 cdef dict compute_type_str = {
     0: 'COMPUTE_TYPE_TBD',
     1: 'COMPUTE_TYPE_DEFAULT',
@@ -53,19 +57,34 @@ cdef dict compute_type_str = {
 
 
 cpdef int to_compute_type_index(dtype) except -1:
-    cdef str dtype_char = numpy.dtype(dtype).char
+    # Normalize once: callers pass dtype instances and scalar types
+    # (e.g. numpy.int8), and only the former have `.name`.
+    dtype = numpy.dtype(dtype)
+    cdef str dtype_char = dtype.char
     if dtype_char == 'e':
-        return 0
-    elif dtype_char in 'fF':
         return 1
-    elif dtype_char in 'dD':
+    elif dtype_char in 'fF':
         return 2
+    elif dtype_char in 'dD':
+        return 3
+    elif dtype.name == "bfloat16":
+        return 0
+    elif dtype_char == 'b':
+        return 4
+    elif dtype.name == "int32":
+        return 5
     else:
         raise TypeError('dtype is not supported: {}'.format(dtype))
 
 
 cpdef set_compute_type(dtype, compute_type):
     global compute_types
+    if numpy.dtype(dtype).name in ('int8', 'int32') and compute_type not in (
+            COMPUTE_TYPE_TBD, COMPUTE_TYPE_DEFAULT):
+        raise ValueError(
+            'Only COMPUTE_TYPE_DEFAULT is supported for integer dtypes '
+            '(got {} for dtype {!r})'.format(
+                compute_type_to_str(compute_type), dtype))
     if compute_type in (COMPUTE_TYPE_TBD, COMPUTE_TYPE_DEFAULT,
                         COMPUTE_TYPE_PEDANTIC, COMPUTE_TYPE_FP16,
                         COMPUTE_TYPE_FP32, COMPUTE_TYPE_FP64):
@@ -93,11 +112,13 @@ def _tensordot_core_int_kernel_impl(config, dtype, code, name):
     # This code is based in the GEMM implementation from MAGMA
     # (http://icl.cs.utk.edu/magma/)
     code = '''
+typedef INDEX_TYPE index_t;
+
 #define fetch(arr, col, m, n, bound) arr[min(n*col + m, bound)]
 
 template<typename T>
 __device__ void _tensordot_core_int_kernel_impl(
-        int M, int N, int K,
+        index_t M, index_t N, index_t K,
         const T* A,
         const T* B,
         T * C)
@@ -113,8 +134,8 @@ __device__ void _tensordot_core_int_kernel_impl(
     int idxB = idt % DIM_XB;
     int idyB = idt / DIM_XB;
 
-    int blx = blockIdx.x;
-    int bly = blockIdx.y;
+    index_t blx = blockIdx.x;
+    index_t bly = blockIdx.y;
 
     __shared__ T sA[BLK_K][BLK_M + 1];
     __shared__ T sB[BLK_N][BLK_K + 1];
@@ -128,11 +149,13 @@ __device__ void _tensordot_core_int_kernel_impl(
     T rb[BLK_N / DIM_YB][BLK_K / DIM_XB];
 
     const T* offs_dA = A + blx * BLK_M       + idyA * M + idxA;
-    int boundA = (M * (K - 1) + M) - (blx * BLK_M + idyA * M + idxA) - 1;
+    index_t boundA = (M * (K - 1) + M) - (blx * BLK_M + idyA * M + idxA) - 1;
     const T* offs_dB = B + bly * BLK_N * K + idyB * K + idxB;
-    int boundB = (K * (N - 1) + K) - (bly * BLK_N * K + idyB * K + idxB) - 1;
+    index_t boundB = (
+        K * (N - 1) + K) - (bly * BLK_N * K + idyB * K + idxB) - 1;
 
-    int m, n, k, kk;
+    int m, n, k;
+    index_t kk;
 
     #pragma unroll
     for (n = 0; n < THR_N; n++) {
@@ -270,10 +293,10 @@ __device__ void _tensordot_core_int_kernel_impl(
 
     #pragma unroll
     for (n = 0; n < THR_N; n++) {
-        int coord_dCn = bly * BLK_N + n * DIM_Y + idy;
+        index_t coord_dCn = bly * BLK_N + n * DIM_Y + idy;
         #pragma unroll
         for (m = 0; m < THR_M; m++) {
-            int coord_dCm = blx * BLK_M + m * DIM_X + idx;
+            index_t coord_dCm = blx * BLK_M + m * DIM_X + idx;
             if (coord_dCm < M && coord_dCn < N) {
                 C[coord_dCn * M + coord_dCm] = rC[n][m];
             }
@@ -294,8 +317,7 @@ __device__ void _tensordot_core_int_kernel_impl(
                         f'{name}<unsigned long>',
                         f'{name}<long long>',
                         f'{name}<unsigned long long>']
-    mod = cupy.RawModule(code=code, options=('--std=c++11',),
-                         name_expressions=name_expressions)
+    mod = cupy.RawModule(code=code, name_expressions=name_expressions)
     ker = mod.get_function(name + '<' + get_typename(dtype) + '>')
     return ker
 
@@ -305,7 +327,7 @@ def _tensordot_core_int_kernel(config, dtype):
     code = '''
 template<typename T>
 __global__ void _tensordot_core_int_kernel(
-        int M, int N, int K,
+        index_t M, index_t N, index_t K,
         const T* A,
         const T* B,
         T * C)
@@ -322,7 +344,7 @@ def _tensordot_core_int_batched_kernel(config, dtype):
     code = '''
 template<typename T>
 __global__ void _tensordot_core_int_batched_kernel(
-        int M, int N, int K,
+        index_t M, index_t N, index_t K,
         const T* A[], const T* B[],
         T* C[])
 {
@@ -341,7 +363,7 @@ def _tensordot_core_int_strided_batched_kernel(config, dtype):
     code = '''
 template<typename T>
 __global__ void _tensordot_core_int_strided_batched_kernel(
-        int M, int N, int K,
+        index_t M, index_t N, index_t K,
         const T* A, long long strideA,
         const T* B, long long strideB,
         T * C, long long strideC)
@@ -359,7 +381,8 @@ __global__ void _tensordot_core_int_strided_batched_kernel(
     return _tensordot_core_int_kernel_impl(config, dtype, code, name)
 
 
-cdef tuple _integral_tensordot_core_config():
+cdef tuple _integral_tensordot_core_config(
+        Py_ssize_t m, Py_ssize_t n, Py_ssize_t k):
     # TODO(leofang): autotune the tuning parameters here? See the discussion
     # in this thread: https://groups.google.com/a/icl.utk.edu/g/magma-user/c/igc66uduTfI  # NOQA
     dim_x=16
@@ -371,11 +394,27 @@ cdef tuple _integral_tensordot_core_config():
     dim_ya=2
     dim_xb=2
     dim_yb=128
+
+    cdef Py_ssize_t limit = 2**31 - 1
+    cdef Py_ssize_t padded_m, padded_n, padded_k
+    index_type = 'long long'
+    if m <= limit and n <= limit and k <= limit:
+        # While the precise bounds differ, roughly speaking, the kernel
+        # pads all dims, and all indices must fit after padding:
+        padded_m = ((m - 1) // blk_m + 1) * blk_m
+        padded_n = ((n - 1) // blk_n + 1) * blk_n
+        padded_k = ((k - 1) // blk_k + 1) * blk_k
+        if (padded_m * padded_k <= limit
+                and padded_n * padded_k <= limit
+                and padded_m * padded_n <= limit):
+            index_type = 'int'
+
     config = (('DIM_X', dim_x), ('DIM_Y', dim_y),
               ('BLK_M', blk_m), ('BLK_N', blk_n), ('BLK_K', blk_k),
               ('DIM_XA', dim_xa), ('DIM_YA', dim_ya),
               ('DIM_XB', dim_xb), ('DIM_YB', dim_yb),
-              ('THR_M', blk_m // dim_x), ('THR_N', blk_n // dim_y))
+              ('THR_M', blk_m // dim_x), ('THR_N', blk_n // dim_y),
+              ('INDEX_TYPE', index_type))
     return config, dim_x, dim_y, blk_m, blk_n
 
 
@@ -383,7 +422,8 @@ cdef _ndarray_base _integral_tensordot_core(
         _ndarray_base a, _ndarray_base b, _ndarray_base out, Py_ssize_t m,
         Py_ssize_t n, Py_ssize_t k, str dtype, const shape_t& ret_shape):
 
-    config, dim_x, dim_y, blk_m, blk_n = _integral_tensordot_core_config()
+    config, dim_x, dim_y, blk_m, blk_n = _integral_tensordot_core_config(
+        m, n, k)
     kern = _tensordot_core_int_kernel(config, dtype)
     args = (m, n, k, a, b, out)
     grid = (int(math.ceil(m / blk_m)), int(math.ceil(n / blk_n)), 1)
@@ -396,7 +436,8 @@ cdef _ndarray_base _integral_tensordot_core_batched(
         _ndarray_base a, _ndarray_base b, _ndarray_base out, Py_ssize_t m,
         Py_ssize_t n, Py_ssize_t k, str dtype, Py_ssize_t batch_count):
 
-    config, dim_x, dim_y, blk_m, blk_n = _integral_tensordot_core_config()
+    config, dim_x, dim_y, blk_m, blk_n = _integral_tensordot_core_config(
+        m, n, k)
     kern = _tensordot_core_int_batched_kernel(config, dtype)
     block = (dim_x, dim_y, 1)
     matPtrA = _mat_ptrs(a)
@@ -417,7 +458,8 @@ cdef _ndarray_base _integral_tensordot_core_strided_batched(
         _ndarray_base a, _ndarray_base b, _ndarray_base out, Py_ssize_t m,
         Py_ssize_t n, Py_ssize_t k, str dtype, Py_ssize_t batch_count):
 
-    config, dim_x, dim_y, blk_m, blk_n = _integral_tensordot_core_config()
+    config, dim_x, dim_y, blk_m, blk_n = _integral_tensordot_core_config(
+        m, n, k)
     kern = _tensordot_core_int_strided_batched_kernel(config, dtype)
     block = (dim_x, dim_y, 1)
     a = a.reshape((-1,) + a.shape[-2:])
@@ -546,10 +588,12 @@ cpdef _ndarray_base tensordot_core(
     cdef Py_ssize_t transa, transb, lda, ldb
     cdef intptr_t handle
     cdef _ndarray_base copy_to_out = None
-    cdef str dtype = a.dtype.char
+    cdef dtype = a.dtype
     cdef int compute_capability = int(device.get_compute_capability())
-    if dtype != b.dtype.char:
-        dtype = numpy.promote_types(dtype, b.dtype).char
+    cdef int c_cuda_dtype
+
+    if dtype != b.dtype:
+        dtype = numpy.promote_types(dtype, b.dtype)
     if not a.size or not b.size:
         if out is None:
             out = _ndarray_init(cupy.ndarray, ret_shape, dtype, None)
@@ -608,13 +652,38 @@ cpdef _ndarray_base tensordot_core(
         c = c.view()
         c.shape = (n, m)
 
-    if dtype not in 'efdFD':
+    # int8 uses cublasGemmEx with int32 accumulation (IMMA Tensor Cores on
+    # sm_75+). CUBLAS_COMPUTE_32I needs sm_61+ and IMMA needs k, lda and ldb
+    # aligned to 4; otherwise fall through to the integer kernel below.
+    if (
+        dtype.char == 'b'
+        and not runtime._is_hip_environment
+        and compute_capability >= 61
+        and k % 4 == 0 and lda % 4 == 0 and ldb % 4 == 0
+    ):
+        c_int32 = _ndarray_init(cupy.ndarray, (n, m), numpy.int32, None)
+        try:
+            tensordot_core_v11(
+                transb, transa, m, n, k, b, ldb, a, lda, c_int32, m)
+        except cublas.CUBLASError as exc:
+            warnings.warn(
+                'cublasGemmEx int8 path failed ({}); falling back to '
+                'CUDA integer kernel.'.format(exc),
+                _util.PerformanceWarning)
+        else:
+            # int32 -> int8 wraps mod 256, matching NumPy's matmul semantics.
+            elementwise_copy(c_int32, c)
+            if copy_to_out is not None:
+                elementwise_copy(copy_to_out, out)
+            return out
+
+    if dtype.kind in 'biu':
         if transa:
             a = a.T
             a = _internal_ascontiguousarray(a)
         if transb:
             b = _internal_ascontiguousarray(b)
-        _integral_tensordot_core(b, a, c, m, n, k, dtype, ret_shape)
+        _integral_tensordot_core(b, a, c, m, n, k, dtype.char, ret_shape)
         if copy_to_out is not None:
             elementwise_copy(copy_to_out, out)
         return out
@@ -629,14 +698,17 @@ cpdef _ndarray_base tensordot_core(
         return out
 
     handle = device.get_cublas_handle()
-    if dtype == 'e':
+
+    c_cuda_dtype = to_cuda_dtype(dtype, is_half_allowed=True)
+
+    if c_cuda_dtype in {runtime.CUDA_R_16BF, runtime.CUDA_R_16F}:
         coef_dtype = 'f'
     else:
         coef_dtype = dtype
     one = numpy.array(1.0, dtype=coef_dtype)
     zero = numpy.array(0.0, dtype=coef_dtype)
 
-    if dtype == 'e':
+    if c_cuda_dtype in {runtime.CUDA_R_16BF, runtime.CUDA_R_16F}:
         use_tensor_core = (not runtime._is_hip_environment and
                            compute_capability >= 70
                            ) or runtime._is_hip_environment
@@ -651,9 +723,9 @@ cpdef _ndarray_base tensordot_core(
 
             cublas.gemmEx(
                 handle, <int>transb, <int> transa, <int>m, <int>n, <int>k,
-                one.ctypes.data, b.data.ptr, runtime.CUDA_R_16F, <int>ldb,
-                a.data.ptr, runtime.CUDA_R_16F, <int>lda, zero.ctypes.data,
-                c.data.ptr, runtime.CUDA_R_16F, <int>m, runtime.CUDA_R_32F,
+                one.ctypes.data, b.data.ptr, c_cuda_dtype, <int>ldb,
+                a.data.ptr, c_cuda_dtype, <int>lda, zero.ctypes.data,
+                c.data.ptr, c_cuda_dtype, <int>m, runtime.CUDA_R_32F,
                 algo)
 
             if can_opt_in_tensorcore:
@@ -661,26 +733,26 @@ cpdef _ndarray_base tensordot_core(
         else:
             cublas.sgemmEx(
                 handle, <int>transb, <int> transa, <int>m, <int>n, <int>k,
-                one.ctypes.data, b.data.ptr, runtime.CUDA_R_16F, <int>ldb,
-                a.data.ptr, runtime.CUDA_R_16F, <int>lda, zero.ctypes.data,
-                c.data.ptr, runtime.CUDA_R_16F, <int>m)
-    elif dtype == 'f':
+                one.ctypes.data, b.data.ptr, c_cuda_dtype, <int>ldb,
+                a.data.ptr, c_cuda_dtype, <int>lda, zero.ctypes.data,
+                c.data.ptr, c_cuda_dtype, <int>m)
+    elif c_cuda_dtype == runtime.CUDA_R_32F:
         cublas.sgemmEx(
             handle, <int>transb, <int> transa, <int>m, <int>n, <int>k,
             one.ctypes.data, b.data.ptr, runtime.CUDA_R_32F, <int>ldb,
             a.data.ptr, runtime.CUDA_R_32F, <int>lda, zero.ctypes.data,
             c.data.ptr, runtime.CUDA_R_32F, <int>m)
-    elif dtype == 'd':
+    elif c_cuda_dtype == runtime.CUDA_R_64F:
         cublas.dgemm(
             handle, <int>transb, <int>transa, <int>m, <int>n, <int>k,
             one.ctypes.data, b.data.ptr, <int>ldb, a.data.ptr, <int>lda,
             zero.ctypes.data, c.data.ptr, <int>m)
-    elif dtype == 'F':
+    elif c_cuda_dtype == runtime.CUDA_C_32F:
         cublas.cgemm(
             handle, <int>transb, <int>transa, <int>m, <int>n, <int>k,
             one.ctypes.data, b.data.ptr, <int>ldb, a.data.ptr, <int>lda,
             zero.ctypes.data, c.data.ptr, <int>m)
-    elif dtype == 'D':
+    elif c_cuda_dtype == runtime.CUDA_C_64F:
         cublas.zgemm(
             handle, <int>transb, <int>transa, <int>m, <int>n, <int>k,
             one.ctypes.data, b.data.ptr, <int>ldb, a.data.ptr, <int>lda,
@@ -702,35 +774,47 @@ cpdef _ndarray_base tensordot_core_v11(
     cdef double one_d, zero_d
     cdef cuComplex one_F, zero_F
     cdef cuDoubleComplex one_D, zero_D
+    cdef int one_i, zero_i
     cdef size_t one_ptr, zero_ptr
+
+    cdef int a_cuda_dtype = to_cuda_dtype(a.dtype, is_half_allowed=True)
+    cdef int b_cuda_dtype = to_cuda_dtype(b.dtype, is_half_allowed=True)
+    cdef int c_cuda_dtype = to_cuda_dtype(c.dtype, is_half_allowed=True)
 
     cdef int compute_capability = int(device.get_compute_capability())
     cdef int compute_type = get_compute_type(c.dtype)
     cdef int cublas_compute_type = -1
-    if c.dtype.char in 'efF':
+
+    if (c_cuda_dtype in {
+            runtime.CUDA_R_16F, runtime.CUDA_R_16BF, runtime.CUDA_R_32F,
+            runtime.CUDA_C_32F}):
         if compute_type == COMPUTE_TYPE_PEDANTIC:
             cublas_compute_type = cublas.CUBLAS_COMPUTE_32F_PEDANTIC
-        elif compute_type == COMPUTE_TYPE_TF32 and c.dtype.char in 'fF':
+        elif compute_type == COMPUTE_TYPE_TF32 and c_cuda_dtype in {
+                runtime.CUDA_R_32F, runtime.CUDA_C_32F}:
             cublas_compute_type = cublas.CUBLAS_COMPUTE_32F_FAST_TF32
         else:
             cublas_compute_type = cublas.CUBLAS_COMPUTE_32F
-    elif c.dtype.char in 'dD':
+    elif c_cuda_dtype in {runtime.CUDA_R_64F, runtime.CUDA_C_64F}:
         if compute_type == COMPUTE_TYPE_PEDANTIC:
             cublas_compute_type = cublas.CUBLAS_COMPUTE_64F_PEDANTIC
         else:
             cublas_compute_type = cublas.CUBLAS_COMPUTE_64F
+    elif a.dtype.char == 'b':
+        cublas_compute_type = cublas.CUBLAS_COMPUTE_32I
     else:
         raise ValueError('Invalid dtype: {}'.format(c.dtype))
 
     cdef int algo = cublas.CUBLAS_GEMM_DEFAULT
     if ((compute_capability >= 80) or
-            (compute_capability >= 70 and c.dtype == 'e')):
+            (compute_capability >= 70 and c.dtype == 'e') or
+            (compute_capability >= 70 and a.dtype.char == 'b')):
         algo = cublas.CUBLAS_GEMM_DEFAULT_TENSOR_OP
 
     if cublas_compute_type in (cublas.CUBLAS_COMPUTE_32F,
                                cublas.CUBLAS_COMPUTE_32F_PEDANTIC,
                                cublas.CUBLAS_COMPUTE_32F_FAST_TF32):
-        if c.dtype.char in 'efd':
+        if c_cuda_dtype not in {runtime.CUDA_C_32F, runtime.CUDA_C_64F}:
             one_f = 1
             zero_f = 0
             one_ptr = <size_t>&one_f
@@ -742,7 +826,7 @@ cpdef _ndarray_base tensordot_core_v11(
             zero_ptr = <size_t>&zero_F
     elif cublas_compute_type in (cublas.CUBLAS_COMPUTE_64F,
                                  cublas.CUBLAS_COMPUTE_64F_PEDANTIC):
-        if c.dtype.char in 'efd':
+        if c_cuda_dtype not in {runtime.CUDA_C_32F, runtime.CUDA_C_64F}:
             one_d = 1
             zero_d = 0
             one_ptr = <size_t>&one_d
@@ -752,13 +836,15 @@ cpdef _ndarray_base tensordot_core_v11(
             zero_D = cuDoubleComplex(0, 0)
             one_ptr = <size_t>&one_D
             zero_ptr = <size_t>&zero_D
+    elif cublas_compute_type == cublas.CUBLAS_COMPUTE_32I:
+        one_i = 1
+        zero_i = 0
+        one_ptr = <size_t>&one_i
+        zero_ptr = <size_t>&zero_i
     else:
         raise ValueError('Invalid cublas compute type: {}'
                          .format(cublas_compute_type))
 
-    cdef int a_cuda_dtype = to_cuda_dtype(a.dtype, is_half_allowed=True)
-    cdef int b_cuda_dtype = to_cuda_dtype(b.dtype, is_half_allowed=True)
-    cdef int c_cuda_dtype = to_cuda_dtype(c.dtype, is_half_allowed=True)
     cdef intptr_t handle = device.get_cublas_handle()
     cublas.gemmEx(
         handle, <int>transa, <int>transb, <int>m, <int>n, <int>k, one_ptr,
@@ -885,8 +971,14 @@ cpdef _ndarray_base matmul(
 
     ret_dtype = numpy.promote_types(a.dtype, b.dtype)
     dtype = ret_dtype
-    if dtype.char == 'e':
-        dtype = numpy.dtype('f')
+
+    cdef int cuda_dtype = -1
+    if dtype.kind not in 'biu':
+        cuda_dtype = to_cuda_dtype(dtype, is_half_allowed=True)
+        if (cuda_dtype == runtime.CUDA_R_16F
+                or cuda_dtype == runtime.CUDA_R_16BF):
+            dtype = numpy.dtype('f')
+            cuda_dtype = runtime.CUDA_R_32F
 
     a = ascontiguousarray(a, dtype)
     b = ascontiguousarray(b, dtype)
@@ -977,7 +1069,7 @@ cpdef _ndarray_base matmul(
     else:
         c_view = c
 
-    if dtype.char not in 'efdFD':
+    if dtype.kind in 'biu':
         if not use_broadcast:
             _integral_tensordot_core_strided_batched(
                 a, b, c_view, n, m, ka, dtype.char, batchCount)
@@ -989,7 +1081,6 @@ cpdef _ndarray_base matmul(
         return out
 
     cdef intptr_t handle = device.get_cublas_handle()
-    cdef int cuda_dtype = to_cuda_dtype(dtype)
     cdef int algo = cublas.CUBLAS_GEMM_DEFAULT
 
     one = numpy.array(1, dtype=dtype)

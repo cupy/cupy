@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import math
 
 import numpy
@@ -5,6 +7,7 @@ import pytest
 
 import cupy
 from cupy import testing
+from cupy.exceptions import AxisError
 
 ignore_runtime_warnings = pytest.mark.filterwarnings(
     "ignore", category=RuntimeWarning)
@@ -51,16 +54,16 @@ class TestMedian:
     def test_median_invalid_axis(self):
         for xp in [numpy, cupy]:
             a = testing.shaped_random((3, 4, 5), xp)
-            with pytest.raises(numpy.AxisError):
+            with pytest.raises(AxisError):
                 return xp.median(a, -a.ndim - 1, keepdims=False)
 
-            with pytest.raises(numpy.AxisError):
+            with pytest.raises(AxisError):
                 return xp.median(a, a.ndim, keepdims=False)
 
-            with pytest.raises(numpy.AxisError):
+            with pytest.raises(AxisError):
                 return xp.median(a, (-a.ndim - 1, 1), keepdims=False)
 
-            with pytest.raises(numpy.AxisError):
+            with pytest.raises(AxisError):
                 return xp.median(a, (0, a.ndim,), keepdims=False)
 
     @testing.for_dtypes('efdFD')
@@ -216,7 +219,7 @@ class TestMeanVar:
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose()
     def test_mean_all_float64_dtype(self, xp, dtype):
-        a = xp.full((2, 3, 4), 123456789, dtype=dtype)
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
         return xp.mean(a, dtype=numpy.float64)
 
     @testing.for_all_dtypes(no_complex=True)

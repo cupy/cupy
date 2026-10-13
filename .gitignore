@@ -16,11 +16,14 @@ _readthedocs_build
 /docs/source/reference/**/generated
 /tags
 *.egg-info/
+*.dist-info/
 dist/
 htmlcov/
 .idea/
 .vs/
 .cache/
 .pytest_cache/
+/.cupy_builder.cache
 cupy/.data/
 cupy/cuda/thrust.h
+cupy/_core/numpy_allocator.h

@@ -1,19 +1,28 @@
+from __future__ import annotations
+
 
 import operator
+import string
+from typing import Any
 
 import cupy
 from cupy._core import internal
-from cupy._core._scalar import get_typename
+from cupy._core._scalar import get_typename, format_type_decls
 
 from cupyx.scipy.sparse import csr_matrix
 
 import numpy as np
 
-TYPES = ['double', 'thrust::complex<double>']
-INT_TYPES = ['int', 'long long']
+BSPLINE_TYPE_DECLS: set[Any] = set()
+TYPES = [get_typename(t, BSPLINE_TYPE_DECLS)
+         for t in [cupy.float64, cupy.complex128]]
+INT_TYPES = [get_typename(t, BSPLINE_TYPE_DECLS)
+             for t in [cupy.int32, cupy.int64]]
 
 INTERVAL_KERNEL = r'''
 #include <cupy/complex.cuh>
+${type_decls}
+
 extern "C" {
 __global__ void find_interval(
         const double* t, const double* x, long long* out,
@@ -57,7 +66,7 @@ __global__ void find_interval(
     int default_value = left - 1 < k ? k : left - 1;
     int result = found ? mid + 1 : default_value + 1;
 
-    while(xp >= *&t[result] && result != n) {
+    while(result != n && xp >= *&t[result]) {
         result++;
     }
 
@@ -67,13 +76,15 @@ __global__ void find_interval(
 '''
 
 INTERVAL_MODULE = cupy.RawModule(
-    code=INTERVAL_KERNEL, options=('-std=c++11',),)
+    code=string.Template(INTERVAL_KERNEL).substitute(
+        type_decls=format_type_decls(BSPLINE_TYPE_DECLS)),)
 #    name_expressions=[f'find_interval<{type_name}>' for type_name in TYPES])
 
 
 D_BOOR_KERNEL = r'''
 #include <cupy/complex.cuh>
 #include <cupy/math_constants.h>
+${type_decls}
 #define COMPUTE_LINEAR 0x1
 
 template<typename T>
@@ -143,7 +154,7 @@ __global__ void d_boor(
             xb = t[ind];
             xa = t[ind - j];
             if (xb == xa) {
-                h[mu] = 0.0;
+                h[n] = 0.0;
                 continue;
             }
             w = ((double) j) * hh[n - 1]/(xb - xa);
@@ -170,8 +181,10 @@ __global__ void d_boor(
 '''
 
 D_BOOR_MODULE = cupy.RawModule(
-    code=D_BOOR_KERNEL, options=('-std=c++11',),
-    name_expressions=[f'd_boor<{type_name}>' for type_name in TYPES])
+    code=string.Template(D_BOOR_KERNEL).substitute(
+        type_decls=format_type_decls(BSPLINE_TYPE_DECLS)),
+    name_expressions=[f'd_boor<{type_name}>'
+                      for type_name in TYPES])
 
 
 DESIGN_MAT_KERNEL = r'''
@@ -200,18 +213,13 @@ __global__ void compute_design_matrix(
 '''
 
 DESIGN_MAT_MODULE = cupy.RawModule(
-    code=DESIGN_MAT_KERNEL, options=('-std=c++11',),
+    code=DESIGN_MAT_KERNEL,
     name_expressions=[f'compute_design_matrix<{itype}>'
                       for itype in INT_TYPES])
 
 
 def _get_module_func(module, func_name, *template_args):
-    def _get_typename(dtype):
-        typename = get_typename(dtype)
-        if dtype.kind == 'c':
-            typename = 'thrust::' + typename
-        return typename
-    args_dtypes = [_get_typename(arg.dtype) for arg in template_args]
+    args_dtypes = [get_typename(arg.dtype) for arg in template_args]
     template = ', '.join(args_dtypes)
     kernel_name = f'{func_name}<{template}>' if template_args else func_name
     kernel = module.get_function(kernel_name)
@@ -221,15 +229,16 @@ def _get_module_func(module, func_name, *template_args):
 def _get_dtype(dtype):
     """Return np.complex128 for complex dtypes, np.float64 otherwise."""
     if cupy.issubdtype(dtype, cupy.complexfloating):
-        return cupy.complex_
+        return cupy.complex128
     else:
-        return cupy.float_
+        return cupy.float64
 
 
 def _as_float_array(x, check_finite=False):
     """Convert the input into a C contiguous float array.
     NB: Upcasts half- and single-precision floats to double precision.
     """
+    x = cupy.asarray(x)
     x = cupy.ascontiguousarray(x)
     dtyp = _get_dtype(x.dtype)
     x = x.astype(dtyp, copy=False)
@@ -318,7 +327,7 @@ def _make_design_matrix(x, t, k, extrapolate, indices):
                   (t, None, k, 0, x, intervals, None, bspline_basis, 0, 0,
                    x.shape[0]))
 
-    data = cupy.zeros(x.shape[0] * (k + 1), dtype=cupy.float_)
+    data = cupy.zeros(x.shape[0] * (k + 1), dtype=cupy.float64)
     design_mat_kernel = _get_module_func(
         DESIGN_MAT_MODULE, 'compute_design_matrix', indices)
     design_mat_kernel(((x.shape[0] + 128 - 1) // 128,), (128,),
@@ -370,7 +379,7 @@ def splder(tck, n=1):
             # See e.g. Schumaker, Spline Functions: Basic Theory, Chapter 5
 
             # Compute the denominator in the differentiation formula.
-            # (and append traling dims, if necessary)
+            # (and append trailing dims, if necessary)
             dt = t[k+1:-1] - t[1:-k-1]
             dt = dt[sh]
             # Compute the new coefficients
@@ -732,7 +741,7 @@ class BSpline:
 
         x = cupy.asarray(x)
         x_shape, x_ndim = x.shape, x.ndim
-        x = cupy.ascontiguousarray(cupy.ravel(x), dtype=cupy.float_)
+        x = cupy.ascontiguousarray(cupy.ravel(x), dtype=cupy.float64)
 
         # With periodic extrapolation we map x to the segment
         # [self.t[k], self.t[n]].
@@ -902,7 +911,7 @@ class BSpline:
 
             if n_periods > 0:
                 # Evaluate the difference of antiderivatives.
-                x = cupy.asarray([ts, te], dtype=cupy.float_)
+                x = cupy.asarray([ts, te], dtype=cupy.float64)
                 _evaluate_spline(ta, ca.reshape(ca.shape[0], -1),
                                  ka, x, 0, False, out)
                 integral = out[1] - out[0]
@@ -918,23 +927,23 @@ class BSpline:
             # If b <= te then we need to integrate over [a, b], otherwise
             # over [a, te] and from xs to what is remained.
             if b <= te:
-                x = cupy.asarray([a, b], dtype=cupy.float_)
+                x = cupy.asarray([a, b], dtype=cupy.float64)
                 _evaluate_spline(ta, ca.reshape(ca.shape[0], -1),
                                  ka, x, 0, False, out)
                 integral += out[1] - out[0]
             else:
-                x = cupy.asarray([a, te], dtype=cupy.float_)
+                x = cupy.asarray([a, te], dtype=cupy.float64)
                 _evaluate_spline(ta, ca.reshape(ca.shape[0], -1),
                                  ka, x, 0, False, out)
                 integral += out[1] - out[0]
 
-                x = cupy.asarray([ts, ts + b - te], dtype=cupy.float_)
+                x = cupy.asarray([ts, ts + b - te], dtype=cupy.float64)
                 _evaluate_spline(ta, ca.reshape(ca.shape[0], -1),
                                  ka, x, 0, False, out)
                 integral += out[1] - out[0]
         else:
             # Evaluate the difference of antiderivatives.
-            x = cupy.asarray([a, b], dtype=cupy.float_)
+            x = cupy.asarray([a, b], dtype=cupy.float64)
             _evaluate_spline(ta, ca.reshape(ca.shape[0], -1),
                              ka, x, 0, extrapolate, out)
             integral = out[1] - out[0]

@@ -1,6 +1,7 @@
 import numpy
 
 from cupy._core import _kernel
+from cupy._core import _scalar
 from cupy._core import _reduction
 from cupy._core import core
 from cupy._core._fusion_interface import _VariableProxy
@@ -82,7 +83,7 @@ cdef class _ShapeConstraints:
 
     # Used in runtime.
     def satisfy(self, dict dim_map):
-        """Check if the given dicionary satisfies the constraints.
+        """Check if the given dictionary satisfies the constraints.
 
         Args:
             dim_map (dict):
@@ -103,9 +104,13 @@ def _guess_routine(func, args, dtype):
 
     # Feeds dummy arguments with appropriate dtypes passed to `guess_routine`.
     dummy_args = []
+
     for x in args:
         if isinstance(x, _TraceScalar):
-            obj = x.dtype.type(0)
+            if x.pytype:
+                obj = _scalar.CScalar(x.pytype(0))
+            else:
+                obj = _scalar.CScalar(0, x.dtype)
         else:
             assert isinstance(x, _TraceArray)
             obj = core.ndarray((0,), x.dtype)
@@ -113,7 +118,10 @@ def _guess_routine(func, args, dtype):
 
     op = func._ops.guess_routine(
         func.name, func._routine_cache, dummy_args, dtype, None)
-    return op.get_in_dtypes(), op.get_out_dtypes(), op.routine
+
+    in_dtypes, out_dtypes = op.resolve_dtypes(
+        dummy_args[:func.nin], dummy_args[func.nin:])
+    return in_dtypes, out_dtypes, op.routine
 
 
 def _base(array):
@@ -124,7 +132,7 @@ def _base(array):
 
 
 class _VariableCoordinator:
-    """Variable constuct manager.
+    """Variable construct manager.
 
     This class calls ``_TraceArray`` or ``_TraceScalar`` internally
     with unique serial numbers and returns the variable object. In
@@ -166,10 +174,12 @@ class _VariableCoordinator:
         ret.memory.base_ashape = ret.ashape
         return ret
 
-    def generate_new_scalar(self, dtype, **kwargs):
+    def generate_new_scalar(self, sctype, **kwargs):
         """Generate new _TraceScalar object with a new memory space.
         """
-        return self._generate_new_variable(_TraceScalar, dtype, **kwargs)
+        dtype = numpy.dtype(sctype)
+        return self._generate_new_variable(
+            _TraceScalar, dtype, sctype=sctype, **kwargs)
 
     def make_view(self, var, **kwargs):
         assert isinstance(var, _TraceArray)
@@ -262,8 +272,7 @@ class TraceImpl:
         if isinstance(x, _VariableProxy):
             return x.content
         if isinstance(x, _accepted_types):
-            dtype = numpy.dtype(type(x))
-            return self.vc.generate_new_scalar(dtype, const_value=x)
+            return self.vc.generate_new_scalar(type(x), const_value=x)
         if isinstance(x, (numpy.ndarray, core.ndarray)):
             raise TypeError('Concrete ndarray is not supported in fusion.')
         raise TypeError('{} type is not supported'.format(type(x)))
@@ -524,9 +533,8 @@ class TraceImpl:
                 memory_dict[base_id] = input_index
             else:
                 # Scalar input.
-                dtype = numpy.dtype(type(arg))
                 var = self.vc.generate_new_scalar(
-                    dtype, input_index=input_index)
+                    type(arg), input_index=input_index)
             in_params.append(var)
 
         # Call the target function.

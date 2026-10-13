@@ -1,3 +1,4 @@
+from __future__ import annotations
 
 import pytest
 
@@ -10,7 +11,9 @@ except ImportError:
     pass
 
 
-@testing.with_requires('scipy')
+@pytest.mark.filterwarnings('ignore::DeprecationWarning')
+@pytest.mark.filterwarnings('ignore::cupy.exceptions.VisibleDeprecationWarning')
+@testing.with_requires("scipy<1.15")
 class TestWavelets:
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_qmf(self, xp, scp):

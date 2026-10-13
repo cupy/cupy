@@ -1,5 +1,5 @@
+from __future__ import annotations
 
-import sys
 import pytest
 
 import numpy as np
@@ -8,12 +8,30 @@ import cupy
 from cupy.cuda import driver
 from cupy.cuda import runtime
 from cupy import testing
+from cupy.testing._helper import skip_if_after_baseline
 import cupyx.scipy.signal  # NOQA
 
 try:
     import scipy.signal  # NOQA
 except ImportError:
-    pass
+    scipy = None
+
+
+@testing.slow
+@pytest.mark.thread_unsafe(reason='Allocation too large.')
+def test_lombscargle_large_frequency_array():
+    freqs = out = None
+    try:
+        x = cupy.array([0, np.pi / 2])
+        y = cupy.array([1, 0])
+        freqs = cupy.ones(2**31 + 1, dtype=cupy.float64)
+        out = cupyx.scipy.signal.lombscargle(x, y, freqs)
+        testing.assert_allclose(out[-2:], 0.5)
+    except MemoryError:
+        pytest.skip('out of memory in test.')
+    finally:
+        del out, freqs
+        cupy.get_default_memory_pool().free_all_blocks()
 
 
 @pytest.mark.xfail(
@@ -87,6 +105,8 @@ class TestLombscargle:
 
     @pytest.mark.parametrize('dtype', ['float32', 'float64'])
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
+    @skip_if_after_baseline(
+        scipy="1.17", reason="SciPy>=1.17 deprecates precenter kwarg")
     def test_precenter(self, dtype, xp, scp):
         # Test if precenter gives the same result as manually precentering.
         dtype = xp.dtype(dtype)
@@ -967,7 +987,7 @@ class TestCheckNOLACOLA:
         return result
 
 
-@testing.with_requires('scipy>=1.9.0')
+@testing.with_requires('scipy')
 class TestSTFT:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_average_all_segments(self, xp, scp):
@@ -1297,35 +1317,19 @@ class TestVectorstrength:
         strength, phase = scp.signal.vectorstrength(events, period)
         return strength, phase
 
-    @pytest.mark.xfail(
-        condition=(
-            sys.platform == 'linux' and
-            not (11030 <= runtime.runtimeGetVersion() < 11040 and
-                 testing.installed('scipy==1.8.*'))
-        ),
-        reason='It fails in the CI')
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-7, atol=1e-7)
     def test_opposite_1dperiod(self, xp, scp):
         events = xp.array([0, .25, .5, .75])
         period = 1.
+        strength, _ = scp.signal.vectorstrength(events, period)
+        return strength
 
-        strength, phase = scp.signal.vectorstrength(events, period)
-        return strength, phase
-
-    @pytest.mark.xfail(
-        condition=(
-            sys.platform == 'linux' and
-            not (11030 <= runtime.runtimeGetVersion() < 11040 and
-                 testing.installed('scipy==1.8.*'))
-        ),
-        reason='It fails in the CI')
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-7, atol=1e-7)
     def test_opposite_2dperiod(self, xp, scp):
         events = xp.array([0, .25, .5, .75])
         period = [1.] * 10
-
-        strength, phase = scp.signal.vectorstrength(events, period)
-        return strength, phase
+        strength, _ = scp.signal.vectorstrength(events, period)
+        return strength
 
     @pytest.mark.parametrize('mod', [(cupy, cupyx.scipy), (np, scipy)])
     def test_2d_events_ValueError(self, mod):

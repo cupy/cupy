@@ -13,6 +13,7 @@ from cupy.testing._helper import NumpyAliasBasicTestBase  # NOQA
 from cupy.testing._helper import NumpyAliasValuesTestBase  # NOQA
 from cupy.testing._helper import AssertFunctionIsCalled  # NOQA
 from cupy.testing._helper import shaped_arange  # NOQA
+from cupy.testing._helper import shaped_linspace  # NOQA
 from cupy.testing._helper import shaped_sparse_random  # NOQA
 from cupy.testing._helper import shaped_random  # NOQA
 from cupy.testing._helper import generate_matrix  # NOQA

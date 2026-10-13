@@ -24,33 +24,48 @@ cdef class _MemoryManager:
         self.memory = dict()
 
 
-cdef public char* cupy_malloc(void *m, size_t size) with gil:
+# MemoryError is caught explicitly so `noexcept` does not print an
+# "Exception ignored in: cupy_malloc" trace to stderr.  The C++ allocator
+# (cupy_thrust.cu) checks for NULL and throws std::bad_alloc so thrust
+# unwinds cleanly; the externs below use `except +` to convert that into
+# a Python MemoryError visible to the caller.  Any other (unexpected)
+# Python exception is left to noexcept to surface for diagnosis.
+# See cupy/cupy#9894.
+cdef public char* cupy_malloc(void *m, size_t size) noexcept with gil:
     if size == 0:
         return <char *>0
     cdef _MemoryManager mm = <_MemoryManager>m
-    mem = memory.alloc(size)
+    try:
+        mem = memory.alloc(size)
+    except MemoryError:
+        return <char *>0
     mm.memory[mem.ptr] = mem
     return <char *>mem.ptr
 
 
-cdef public void cupy_free(void *m, char* ptr) with gil:
+cdef public int cupy_free(void *m, char* ptr) except -1 with gil:
     if ptr == <char *>0:
-        return
+        return 0
     cdef _MemoryManager mm = <_MemoryManager>m
     del mm.memory[<size_t>ptr]
+    return 0
 
 
 ###############################################################################
 # Extern
 ###############################################################################
 
-cdef extern from 'cupy_thrust.h':
+cdef extern from 'cupy_thrust.h' nogil:
+    # `except +` propagates std::bad_alloc thrown by the C++ allocator
+    # (when cupy_malloc returns NULL) as a Python MemoryError instead of
+    # letting thrust silently operate on garbage memory.  See cupy/cupy#9894.
     void thrust_sort(int, void *, size_t *, const vector.vector[ptrdiff_t]&,
-                     intptr_t, void *)
+                     intptr_t, void *, bint) except +
     void thrust_lexsort(
-        int, size_t *, void *, size_t, size_t, intptr_t, void *)
-    void thrust_argsort(int, size_t *, void *, void *,
-                        const vector.vector[ptrdiff_t]&, intptr_t, void *)
+        int, size_t *, void *, size_t, size_t, intptr_t, void *) except +
+    void thrust_argsort(
+        int, size_t *, void *, void *,
+        const vector.vector[ptrdiff_t]&, intptr_t, void *, bint) except +
 
     # Build-time version
     int THRUST_VERSION
@@ -69,7 +84,7 @@ def get_build_version():
 
 
 cpdef sort(dtype, intptr_t data_start, intptr_t keys_start,
-           const vector.vector[ptrdiff_t]& shape) except +:
+           const vector.vector[ptrdiff_t]& shape, bint descending=False):
     cdef void* _data_start = <void*>data_start
     cdef size_t* _keys_start = <size_t*>keys_start
     cdef intptr_t _strm = stream.get_current_stream_ptr()
@@ -86,11 +101,13 @@ cpdef sort(dtype, intptr_t data_start, intptr_t keys_start,
         raise RuntimeError('either the GPU or the CUDA Toolkit does not '
                            'support fp16')
 
-    thrust_sort(dtype_id, _data_start, _keys_start, shape, _strm, mem)
+    with nogil:
+        thrust_sort(
+            dtype_id, _data_start, _keys_start, shape, _strm, mem, descending)
 
 
 cpdef lexsort(dtype, intptr_t idx_start, intptr_t keys_start,
-              size_t k, size_t n) except +:
+              size_t k, size_t n):
     cdef size_t* idx_ptr = <size_t*>idx_start
     cdef void* keys_ptr = <void*>keys_start
     cdef intptr_t _strm = stream.get_current_stream_ptr()
@@ -107,12 +124,13 @@ cpdef lexsort(dtype, intptr_t idx_start, intptr_t keys_start,
         raise RuntimeError('either the GPU or the CUDA Toolkit does not '
                            'support fp16')
 
-    thrust_lexsort(dtype_id, idx_ptr, keys_ptr, k, n, _strm, mem)
+    with nogil:
+        thrust_lexsort(dtype_id, idx_ptr, keys_ptr, k, n, _strm, mem)
 
 
 cpdef argsort(dtype, intptr_t idx_start, intptr_t data_start,
               intptr_t keys_start,
-              const vector.vector[ptrdiff_t]& shape) except +:
+              const vector.vector[ptrdiff_t]& shape, bint descending=False):
     cdef size_t*_idx_start = <size_t*>idx_start
     cdef void* _data_start = <void*>data_start
     cdef size_t* _keys_start = <size_t*>keys_start
@@ -129,6 +147,7 @@ cpdef argsort(dtype, intptr_t idx_start, intptr_t data_start,
     if dtype_id == 8 and not common._is_fp16_supported():
         raise RuntimeError('either the GPU or the CUDA Toolkit does not '
                            'support fp16')
-
-    thrust_argsort(
-        dtype_id, _idx_start, _data_start, _keys_start, shape, _strm, mem)
+    with nogil:
+        thrust_argsort(
+            dtype_id, _idx_start, _data_start, _keys_start, shape, _strm,
+            mem, descending)

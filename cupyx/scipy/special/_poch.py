@@ -8,6 +8,8 @@ Cephes Math Library Release 2.0:  April, 1987
 Copyright 1984, 1987 by Stephen L. Moshier
 Direct inquiries to 30 Frost Street, Cambridge, MA 02140
 """
+from __future__ import annotations
+
 
 from cupy import _core
 
@@ -113,7 +115,7 @@ poch = _core.create_ufunc(
     preamble=poch_definition,
     doc="""Elementwise function for scipy.special.poch (Pochhammer symbol)
 
-    .. seealso:: :meth:`scipy.special.poch`
+    .. seealso:: :func:`scipy.special.poch`
 
     """,
 )

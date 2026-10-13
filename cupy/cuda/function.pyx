@@ -3,15 +3,12 @@
 import numpy
 import warnings
 
-from libc.stdint cimport int8_t
-from libc.stdint cimport int16_t
-from libc.stdint cimport int32_t
-from libc.stdint cimport int64_t
 from libc.stdint cimport intptr_t
 from libc.stdint cimport uintmax_t
 from libcpp cimport vector
 
 from cupy._core cimport _carray
+from cupy._core cimport _scalar
 from cupy._core.core cimport _ndarray_base
 from cupy_backends.cuda.api cimport driver
 from cupy_backends.cuda.api cimport runtime
@@ -23,52 +20,7 @@ from cupy.cuda import device
 
 cdef class CPointer:
     def __init__(self, p=0):
-        self.ptr = <void*>p
-
-
-cdef class CInt8(CPointer):
-    cdef:
-        int8_t val
-
-    def __init__(self, int8_t v):
-        self.val = v
-        self.ptr = <void*>&self.val
-
-
-cdef class CInt16(CPointer):
-    cdef:
-        int16_t val
-
-    def __init__(self, int16_t v):
-        self.val = v
-        self.ptr = <void*>&self.val
-
-
-cdef class CInt32(CPointer):
-    cdef:
-        int32_t val
-
-    def __init__(self, int32_t v):
-        self.val = v
-        self.ptr = <void*>&self.val
-
-
-cdef class CInt64(CPointer):
-    cdef:
-        int64_t val
-
-    def __init__(self, int64_t v):
-        self.val = v
-        self.ptr = <void*>&self.val
-
-
-cdef class CInt128(CPointer):
-    cdef:
-        double complex val
-
-    def __init__(self, double complex v):
-        self.val = v
-        self.ptr = <void*>&self.val
+        self.ptr = p
 
 
 cdef class CUIntMax(CPointer):
@@ -77,7 +29,7 @@ cdef class CUIntMax(CPointer):
 
     def __init__(self, uintmax_t v):
         self.val = v
-        self.ptr = <void*>&self.val
+        self.ptr = <intptr_t><void*>(&self.val)
 
 
 cdef class CIntptr(CPointer):
@@ -86,7 +38,7 @@ cdef class CIntptr(CPointer):
 
     def __init__(self, intptr_t v):
         self.val = v
-        self.ptr = <void*>&self.val
+        self.ptr = <intptr_t><void*>(&self.val)
 
 
 cdef class CNumpyArray(CPointer):
@@ -95,18 +47,12 @@ cdef class CNumpyArray(CPointer):
 
     def __init__(self, v):
         self.val = v
-        self.ptr = <void*><size_t>v.__array_interface__['data'][0]
-
-
-cdef set _pointer_numpy_types = {numpy.dtype(i).type
-                                 for i in '?bhilqBHILQefdFD'}
+        self.ptr = <intptr_t><void*><size_t>v.__array_interface__['data'][0]
 
 
 cdef inline CPointer _pointer(x):
-    cdef Py_ssize_t itemsize
-
     if x is None:
-        return CPointer()
+        return CIntptr(0)
     if isinstance(x, _ndarray_base):
         return (<_ndarray_base>x).get_pointer()
     if isinstance(x, _carray.Indexer):
@@ -132,30 +78,8 @@ cdef inline CPointer _pointer(x):
                    'al__ memory, you need to pass a cupy.ndarray instead.')
             raise TypeError(msg.format(x.shape))
 
-    if type(x) not in _pointer_numpy_types:
-        if isinstance(x, int):
-            x = numpy.int64(x)
-        elif isinstance(x, float):
-            x = numpy.float64(x)
-        elif isinstance(x, bool):
-            x = numpy.bool_(x)
-        elif isinstance(x, complex):
-            x = numpy.complex128(x)
-        else:
-            raise TypeError('Unsupported type %s' % type(x))
-
-    itemsize = x.itemsize
-    if itemsize == 1:
-        return CInt8(x.view(numpy.int8))
-    if itemsize == 2:
-        return CInt16(x.view(numpy.int16))
-    if itemsize == 4:
-        return CInt32(x.view(numpy.int32))
-    if itemsize == 8:
-        return CInt64(x.view(numpy.int64))
-    if itemsize == 16:
-        return CInt128(x.view(numpy.complex128))
-    raise TypeError('Unsupported type %s. (size=%d)', type(x), itemsize)
+    # This should be a scalar understood by NumPy (and us).
+    return _scalar.CScalar(x)
 
 
 cdef inline size_t _get_stream(stream) except *:
@@ -176,7 +100,7 @@ cdef _launch(intptr_t func, Py_ssize_t grid0, int grid1, int grid2,
     for a in args:
         cp = _pointer(a)
         pargs.append(cp)  # keep the CPointer objects alive
-        kargs.push_back(cp.ptr)
+        kargs.push_back(<void*>(cp.ptr))
 
     runtime._ensure_context()
 
@@ -233,6 +157,12 @@ cdef class Function:
         cdef size_t gridx = min(
             0x7fffffffUL, (size + block_max_size - 1) // block_max_size)
         cdef size_t blockx = min(block_max_size, size)
+        IF CUPY_HIP_VERSION > 0:
+            # The HSA AQL dispatch packet stores the grid size as total
+            # work-items (gridDimX * blockDimX) in a uint32_t field, so the
+            # product must not overflow.
+            if blockx > 0:
+                gridx = min(gridx, 0xffffffffUL // blockx)
         s = _get_stream(stream)
         _launch(
             self.ptr,

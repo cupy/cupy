@@ -13,6 +13,9 @@ https://github.com/scipy/scipy/blob/main/scipy/special/cephes/pdtr.c
 Cephes Math Library, Release 2.3:  March, 1995
 Copyright 1984, 1995 by Stephen L. Moshier
 """
+from __future__ import annotations
+
+import warnings
 
 from cupy import _core
 from cupyx.scipy.special._beta import incbet_preamble, incbi_preamble
@@ -23,11 +26,13 @@ from cupyx.scipy.special._gammainc import _igam_preamble, _igami_preamble
 
 ndtr = _core.create_ufunc(
     'cupyx_scipy_special_ndtr',
-    (('f->f', 'out0 = normcdff(in0)'), 'd->d'),
+    (('e->d', 'out0 = normcdf(double(in0))'),
+     ('f->f', 'out0 = normcdff(in0)'),
+     'd->d'),
     'out0 = normcdf(in0)',
     doc='''Cumulative distribution function of normal distribution.
 
-    .. seealso:: :data:`scipy.special.ndtr`
+    .. seealso:: :func:`scipy.special.ndtr`
 
     ''')
 
@@ -61,12 +66,14 @@ static __device__ float log_ndtrf(float x)
 
 log_ndtr = _core.create_ufunc(
     'cupyx_scipy_special_log_ndtr',
-    (('f->f', 'out0 = log_ndtrf(in0)'), 'd->d'),
+    (('e->d', 'out0 = log_ndtr(double(in0))'),
+     ('f->f', 'out0 = log_ndtrf(in0)'),
+     'd->d'),
     'out0 = log_ndtr(in0)',
     preamble=log_ndtr_definition,
     doc="""Logarithm of Gaussian cumulative distribution function.
 
-    Returns the log of the area under the standard Gaussian propability
+    Returns the log of the area under the standard Gaussian probability
     density function.
 
     Parameters
@@ -95,7 +102,7 @@ ndtri = _core.create_ufunc(
     doc='''Inverse of the cumulative distribution function of the standard
            normal distribution.
 
-    .. seealso:: :data:`scipy.special.ndtri`
+    .. seealso:: :func:`scipy.special.ndtri`
 ''')
 
 
@@ -353,7 +360,7 @@ bdtri = _core.create_ufunc(
 
 # Beta distribution functions
 
-btdtr = _core.create_ufunc(
+_btdtr = _core.create_ufunc(
     "cupyx_scipy_btdtr",
     ("fff->f", "ddd->d"),
     "out0 = out0_type(incbet(in0, in1, in2));",
@@ -383,7 +390,13 @@ btdtr = _core.create_ufunc(
 )
 
 
-btdtri = _core.create_ufunc(
+def btdtr(a, b, x, out=None):
+    warnings.warn(
+        "Use cupyx.scipy.special.betainc instead.", DeprecationWarning)
+    return _btdtr(a, b, x, out)
+
+
+_btdtri = _core.create_ufunc(
     "cupyx_scipy_btdtri",
     ("fff->f", "ddd->d"),
     "out0 = out0_type(incbi(in0, in1, in2));",
@@ -415,6 +428,12 @@ btdtri = _core.create_ufunc(
 )
 
 
+def btdtri(a, b, p, out=None):
+    warnings.warn(
+        "Use cupyx.scipy.special.betaincinv instead.", DeprecationWarning)
+    return _btdtri(a, b, p, out)
+
+
 # Chi square distribution functions
 
 chdtrc_definition = """
@@ -423,7 +442,7 @@ __device__ double chdtrc(double df, double x)
 {
 
     if (x < 0.0) {
-        return 1.0;     /* modified by T. Oliphant */
+        return CUDART_NAN;
     }
     return igamc(df / 2.0, x / 2.0);
 }
@@ -631,7 +650,7 @@ fdtrc = _core.create_ufunc(
         The complemented F-distribution function with parameters dfn and dfd at
         x.
 
-    .. seealso:: :meth:`scipy.special.fdtrc`
+    .. seealso:: :func:`scipy.special.fdtrc`
 
     """,
 )
@@ -660,7 +679,7 @@ fdtri = _core.create_ufunc(
     y : cupy.ndarray
         The quantile corresponding to p.
 
-    .. seealso:: :meth:`scipy.special.fdtri`
+    .. seealso:: :func:`scipy.special.fdtri`
 
     """,
 )
@@ -688,7 +707,7 @@ fdtr = _core.create_ufunc(
     y : cupy.ndarray
         The CDF of the F-distribution with parameters dfn and dfd at x.
 
-    .. seealso:: :meth:`scipy.special.fdtr`
+    .. seealso:: :func:`scipy.special.fdtr`
 
     """,
 )
@@ -794,7 +813,7 @@ __device__ double nbdtr(int k, int n, double p)
 {
     double dk, dn;
 
-    if (((p < 0.0) || (p > 1.0)) || (k < 0))
+    if (((p < 0.0) || (p > 1.0)) || (k < 0) || n == 0)
     {
         return CUDART_NAN;
     }
@@ -821,7 +840,7 @@ __device__ double nbdtrc(int k, int n, double p)
 {
     double dk, dn;
 
-    if (((p < 0.0) || (p > 1.0)) || k < 0)
+    if (((p < 0.0) || (p > 1.0)) || k < 0 || n == 0)
     {
         return CUDART_NAN;
     }
@@ -854,6 +873,8 @@ __device__ double nbdtri(int k, int n, double y)
     }
     dk = k + 1;
     dn = n;
+    if (y <= 0.0) return 0.0;
+    if (y >= 1.0) return 1.0;
     w = incbi(dn, dk, y);
     return (w);
 }

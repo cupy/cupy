@@ -1,16 +1,29 @@
+from __future__ import annotations
+
 import pickle
 import unittest
 from unittest import mock
+
+import pytest
 
 import cupy
 from cupy.cuda import compiler
 
 
 def cuda_version():
-    return cupy.cuda.runtime.runtimeGetVersion()
+    # These NVRTC tests must gate on what compiler._get_arch() /
+    # compile_using_nvrtc actually key on -- the NVRTC version -- not
+    # runtimeGetVersion(), which reports the *build-time* cudart. The two
+    # coincide for a source build but differ when a prebuilt wheel is tested
+    # on a CUDA image of a different minor version.
+    if cupy.cuda.runtime.is_hip:
+        return 0
+    major, minor = compiler._get_nvrtc_version()
+    return major * 1000 + minor * 10
 
 
 @unittest.skipIf(cupy.cuda.runtime.is_hip, 'CUDA specific tests')
+@pytest.mark.thread_unsafe(reason="Uses mock.patch for (for most tests).")
 class TestNvrtcArch(unittest.TestCase):
     def setUp(self):
         cupy.clear_memo()  # _get_arch result is cached
@@ -21,7 +34,8 @@ class TestNvrtcArch(unittest.TestCase):
             assert compiler._get_arch() == expected_arch
         cupy.clear_memo()  # _get_arch result is cached
 
-    @unittest.skipUnless(9000 <= cuda_version(), 'Requires CUDA 9.x or later')
+    @unittest.skipUnless(
+        9000 <= cuda_version() < 13000, 'Requires CUDA 9.x-12.x')
     def test_get_arch_cuda9(self):
         self._check_get_arch('62', '62')  # Tegra
         self._check_get_arch('70', '70')
@@ -37,10 +51,17 @@ class TestNvrtcArch(unittest.TestCase):
     def test_get_arch_cuda11(self):
         self._check_get_arch('80', '80')
 
+    @unittest.skipUnless(12080 <= cuda_version(),
+                         'Requires CUDA 12.8 or later')
+    def test_get_arch_cuda128(self):
+        self._check_get_arch('100', '100')
+        self._check_get_arch('120', '120')
+
     def _compile(self, arch):
         compiler.compile_using_nvrtc('', arch=arch)
 
-    @unittest.skipUnless(9000 <= cuda_version(), 'Requires CUDA 9.0 or later')
+    @unittest.skipUnless(
+        9000 <= cuda_version() < 13000, 'Requires CUDA 9.x-12.x')
     def test_compile_cuda9(self):
         # This test is intended to detect specification change in NVRTC API.
 

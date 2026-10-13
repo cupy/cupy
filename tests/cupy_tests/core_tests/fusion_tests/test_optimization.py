@@ -1,12 +1,15 @@
-import unittest
+from __future__ import annotations
+
 from unittest import mock
+
+import pytest
 
 import cupy  # NOQA
 from cupy import testing
 from cupy_tests.core_tests.fusion_tests import fusion_utils
 
 
-class CreateMock(object):
+class CreateMock:
 
     def __init__(self, target):
         self.target = eval(target)
@@ -19,7 +22,7 @@ class CreateMock(object):
 
     def check_number_of_ops(
             self, loops, memories, variables, lookup, mutate):
-        # TODO(asi1024): Uncomment after replace fusion implementaiton.
+        # TODO(asi1024): Uncomment after replace fusion implementation.
 
         # assert isinstance(loops, int)
         # assert isinstance(memories, int)
@@ -51,10 +54,11 @@ def check_number_of_ops(
                     loops, memories, variables, lookup, mutate)
             return result
         return new_impl
-    return wrapper
+
+    return pytest.mark.thread_unsafe(reason="mocks TraceImpl.")(wrapper)
 
 
-class TestOptimizations(unittest.TestCase):
+class TestOptimizations:
 
     def generate_inputs(self, xp):
         x = testing.shaped_random((3, 4), xp, 'int64', scale=10, seed=0)

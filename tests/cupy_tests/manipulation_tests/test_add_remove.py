@@ -1,13 +1,14 @@
+from __future__ import annotations
+
 import unittest
 
 import pytest
 
-import numpy
 import cupy
 from cupy import testing
 
 
-class TestDelete(unittest.TestCase):
+class TestDelete:
 
     @testing.numpy_cupy_array_equal()
     def test_delete_with_no_axis(self, xp):
@@ -51,6 +52,40 @@ class TestDelete(unittest.TestCase):
         if cupy.cuda.runtime.is_hip:
             pytest.xfail('HIP may have a bug')
         return xp.delete(arr, indices)
+
+    def test_delete_array_like_input(self):
+        arr = [[0, 1, 2], [3, 4, 5]]
+        with pytest.raises(ValueError):
+            cupy.delete(arr, [1], axis=1)
+
+    @pytest.mark.parametrize('make_obj', [
+        pytest.param(lambda xp: [], id='empty_list'),
+        pytest.param(lambda xp: (), id='empty_tuple'),
+        pytest.param(lambda xp: [0, 2], id='int_list'),
+        pytest.param(lambda xp: [True, False, True], id='matching_bool_list'),
+        pytest.param(lambda xp: (0, True), id='mixed_tuple'),
+        pytest.param(lambda xp: xp.array([], dtype=xp.int_),
+                     id='empty_int_array'),
+        pytest.param(lambda xp: xp.array([0, 2]), id='int_array'),
+        pytest.param(lambda xp: xp.array([-1, -3]),
+                     id='negative_int_array'),
+        # The following raise ValueError (wrong-size or scalar bool masks).
+        pytest.param(lambda xp: True, id='scalar_true'),
+        pytest.param(lambda xp: False, id='scalar_false'),
+        pytest.param(lambda xp: [True, False], id='wrong_size_bool_list'),
+        pytest.param(lambda xp: xp.array(True), id='zerodim_bool_array'),
+        pytest.param(lambda xp: xp.array([True, False]),
+                     id='wrong_size_bool_array'),
+        pytest.param(lambda xp: xp.array([], dtype=xp.bool_),
+                     id='empty_bool_array'),
+        # The following raise IndexError (non-integer index arrays).
+        pytest.param(lambda xp: xp.array([1.5]), id='float_array_single'),
+        pytest.param(lambda xp: xp.array([0., 2.]), id='float_array_multi'),
+    ])
+    @testing.numpy_cupy_array_equal(accept_error=(ValueError, IndexError))
+    def test_delete_obj_variants(self, xp, make_obj):
+        arr = xp.array([10, 20, 30])
+        return xp.delete(arr, make_obj(xp))
 
 
 class TestAppend(unittest.TestCase):
@@ -161,40 +196,43 @@ class TestUnique:
 
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
-    def test_unique_index_no_axis(self, xp, dtype):
+    def test_unique_return_index_no_axis(self, xp, dtype):
         a = testing.shaped_random((100, 100), xp, dtype)
         return xp.unique(a, return_index=True)[1]
 
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
-    def test_unique_index(self, xp, dtype):
+    def test_unique_return_index(self, xp, dtype):
         a = testing.shaped_random((100, 100), xp, dtype)
         return xp.unique(a, return_index=True, axis=0)[1]
 
+    @testing.with_requires("numpy>=2.0")
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
-    def test_unique_inverse_no_axis(self, xp, dtype):
+    def test_unique_return_inverse_no_axis(self, xp, dtype):
         a = testing.shaped_random((100, 100), xp, dtype)
         return xp.unique(a, return_inverse=True)[1]
 
+    @testing.with_requires("numpy>=2.1")
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
-    def test_unique_inverse(self, xp, dtype):
+    def test_unique_return_inverse(self, xp, dtype):
         a = testing.shaped_random((100, 100), xp, dtype)
         return xp.unique(a, return_inverse=True, axis=1)[1]
 
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
-    def test_unique_counts_no_axis(self, xp, dtype):
+    def test_unique_return_counts_no_axis(self, xp, dtype):
         a = testing.shaped_random((100, 100), xp, dtype)
         return xp.unique(a, return_counts=True)[1]
 
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
-    def test_unique_counts(self, xp, dtype):
+    def test_unique_return_counts(self, xp, dtype):
         a = testing.shaped_random((100, 100), xp, dtype)
         return xp.unique(a, return_counts=True, axis=0)[1]
 
+    @testing.with_requires("numpy>=2.0")
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_unique_return_all_no_axis(self, xp, dtype):
@@ -202,6 +240,7 @@ class TestUnique:
         return xp.unique(
             a, return_index=True, return_inverse=True, return_counts=True)
 
+    @testing.with_requires("numpy>=2.1")
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_unique_return_all(self, xp, dtype):
@@ -222,6 +261,7 @@ class TestUnique:
         a = xp.empty((0,), dtype)
         return xp.unique(a, axis=0)
 
+    @testing.with_requires("numpy>=2.0")
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_unique_empty_return_all_no_axis(self, xp, dtype):
@@ -229,6 +269,7 @@ class TestUnique:
         return xp.unique(
             a, return_index=True, return_inverse=True, return_counts=True)
 
+    @testing.with_requires("numpy>=2.1")
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()
     def test_unique_empty_return_all(self, xp, dtype):
@@ -272,6 +313,40 @@ class TestUnique:
             ], dtype=dtype)
         return xp.unique(a, axis=0, equal_nan=equal_nan)
 
+    @testing.with_requires("numpy>=2.0")
+    @pytest.mark.parametrize(
+        "attr", ["values", "indices", "inverse_indices", "counts"]
+    )
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_unique_all(self, xp, dtype, attr):
+        a = testing.shaped_random((100, 100), xp, dtype)
+        return getattr(xp.unique_all(a), attr)
+
+    @testing.with_requires("numpy>=2.0")
+    @pytest.mark.parametrize("attr", ["values", "counts"])
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_unique_counts(self, xp, dtype, attr):
+        a = testing.shaped_random((100, 100), xp, dtype)
+        return getattr(xp.unique_counts(a), attr)
+
+    @testing.with_requires("numpy>=2.0")
+    @pytest.mark.parametrize("attr", ["values", "inverse_indices"])
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_unique_inverse(self, xp, dtype, attr):
+        a = testing.shaped_random((100, 100), xp, dtype)
+        return getattr(xp.unique_inverse(a), attr)
+
+    @testing.with_requires("numpy>=2.0")
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.numpy_cupy_array_equal()
+    def test_unique_values(self, xp, dtype):
+        a = testing.shaped_random((100, 100), xp, dtype)
+        out = xp.unique_values(a)  # may not be sorted from NumPy 2.3.
+        return xp.sort(out)
+
 
 @testing.parameterize(*testing.product({
     'trim': ['fb', 'f', 'b']
@@ -308,16 +383,16 @@ class TestTrim_zeros(unittest.TestCase):
         a = xp.array([1, 0, 2, 3, 0, 5, 0, 0, 0], dtype=dtype)
         return xp.trim_zeros(a, trim=self.trim)
 
+    @testing.with_requires('numpy>=2.2.0')
     @testing.for_all_dtypes()
-    def test_trim_zero_dim(self, dtype):
-        for xp in (numpy, cupy):
-            a = testing.shaped_arange((), xp, dtype)
-            with pytest.raises(TypeError):
-                xp.trim_zeros(a, trim=self.trim)
+    @testing.numpy_cupy_array_equal()
+    def test_trim_zero_dim(self, xp, dtype):
+        a = testing.shaped_arange((), xp, dtype)
+        return xp.trim_zeros(a, trim=self.trim)
 
+    @pytest.mark.xfail(reason='XXX: Not implemented')
     @testing.for_all_dtypes()
-    def test_trim_ndim(self, dtype):
-        for xp in (numpy, cupy):
-            a = testing.shaped_arange((2, 3), xp, dtype=dtype)
-            with pytest.raises(ValueError):
-                xp.trim_zeros(a, trim=self.trim)
+    @testing.numpy_cupy_array_equal()
+    def test_trim_ndim(self, xp, dtype):
+        a = testing.shaped_arange((2, 3), xp, dtype=dtype)
+        return xp.trim_zeros(a, trim=self.trim)

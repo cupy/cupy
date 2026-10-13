@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import collections
 import re
 import textwrap
@@ -43,7 +45,7 @@ def f(x):
     return x
 
 
-class C(object):
+class C:
 
     def __repr__(self):
         return '<C object>'

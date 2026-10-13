@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import numpy as np
 import pytest
+import sys
 
 import cupy
 from cupy import testing
@@ -63,8 +66,8 @@ class TestUniqueRoots:
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_single_unique_root(self, xp, scp):
-        np.random.seed(1234)
-        p = np.random.rand(100) + 1j * np.random.rand(100)
+        rng = np.random.RandomState(1234)
+        p = rng.rand(100) + 1j * rng.rand(100)
         p = xp.asarray(p)
 
         unique, multiplicity = scp.signal.unique_roots(p, 2)
@@ -182,6 +185,14 @@ class TestPartialFractionExpansion:
                               ])
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_residuez_general(self, xp, scp, ba):
+        if ba == ([1, 0, 1], [1, 0, 0, 0, 0, -1]) and sys.platform == 'win32':
+            # TODO(asi1024): Restore test case.
+            # _cmplx_sort returns a different value from CuPy, which is due to
+            # a non-compatible change in the 'stable' option of argsort
+            # from NumPy 2.0.
+            # https://github.com/scipy/scipy/blob/v1.14.1/scipy/signal/_signaltools.py#L2493  # noqa
+            pytest.skip()
+
         ba = map(xp.asarray, ba)
         r, p, k = scp.signal.residuez(*ba)
         return r, p, k

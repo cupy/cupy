@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 import unittest
-import pytest
 
 import numpy
 
@@ -31,7 +32,7 @@ class BitGeneratorTestCase:
     def test_seed_not_none(self, dtype):
         self.check_seed(dtype(0))
 
-    @testing.for_dtypes([numpy.complex_])
+    @testing.for_dtypes([numpy.complex128])
     def test_seed_invalid_type_complex(self, dtype):
         with self.assertRaises(TypeError):
             self.bg(dtype(0))
@@ -47,8 +48,6 @@ class BitGeneratorTestCase:
 
 @testing.with_requires('numpy>=1.17.0')
 @testing.fix_random()
-@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
-                    reason='HIP does not support this')
 class TestBitGeneratorXORWOW(BitGeneratorTestCase, unittest.TestCase):
     def setUp(self):
         super().setUp()
@@ -57,8 +56,6 @@ class TestBitGeneratorXORWOW(BitGeneratorTestCase, unittest.TestCase):
 
 @testing.with_requires('numpy>=1.17.0')
 @testing.fix_random()
-@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
-                    reason='HIP does not support this')
 class TestBitGeneratorMRG32k3a(BitGeneratorTestCase, unittest.TestCase):
     def setUp(self):
         super().setUp()
@@ -67,8 +64,6 @@ class TestBitGeneratorMRG32k3a(BitGeneratorTestCase, unittest.TestCase):
 
 @testing.with_requires('numpy>=1.17.0')
 @testing.fix_random()
-@pytest.mark.skipif(cupy.cuda.runtime.is_hip,
-                    reason='HIP does not support this')
 class TestBitGeneratorPhilox4x3210(BitGeneratorTestCase, unittest.TestCase):
     def setUp(self):
         super().setUp()

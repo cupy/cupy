@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from cupy import testing
 
 try:
@@ -25,3 +27,29 @@ class TestEllipj:
     def test_basic(self, xp, scp):
         el = scp.special.ellipj(0.2, 0)
         return el
+
+
+@testing.with_requires('scipy')
+class TestEllipkinc:
+    @testing.for_dtypes('fd')
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-15)
+    def test_values(self, xp, scp, dtype):
+        phi = xp.linspace(-xp.pi, xp.pi, 5)
+        m = xp.linspace(-1.0, 1.0, 5)
+        phi, m = xp.meshgrid(phi, m)
+        phi, m = phi.ravel(), m.ravel()
+
+        return scp.special.ellipkinc(phi, m)
+
+
+@testing.with_requires('scipy')
+class TestEllipeinc:
+    @testing.for_dtypes('fd')
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-15)
+    def test_values(self, xp, scp, dtype):
+        phi = xp.linspace(-xp.pi, xp.pi, 5)
+        m = xp.linspace(-1.0, 1.0, 5)
+        phi, m = xp.meshgrid(phi, m)
+        phi, m = phi.ravel(), m.ravel()
+
+        return scp.special.ellipeinc(phi, m)

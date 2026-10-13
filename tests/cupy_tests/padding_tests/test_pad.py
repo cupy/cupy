@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import unittest
 import warnings
 
@@ -6,6 +8,7 @@ import pytest
 
 import cupy
 from cupy import testing
+from cupy.exceptions import ComplexWarning
 
 
 @testing.parameterize(
@@ -35,7 +38,7 @@ class TestPadDefault(unittest.TestCase):
 
         if xp is numpy:
             with warnings.catch_warnings():
-                warnings.simplefilter('ignore', numpy.ComplexWarning)
+                warnings.simplefilter('ignore', ComplexWarning)
                 return f()
         else:
             return f()
@@ -64,7 +67,7 @@ class TestPadDefaultMean(unittest.TestCase):
 
         if xp is numpy:
             with warnings.catch_warnings():
-                warnings.simplefilter('ignore', numpy.ComplexWarning)
+                warnings.simplefilter('ignore', ComplexWarning)
                 return f()
         else:
             return f()
@@ -141,7 +144,7 @@ class TestPad(unittest.TestCase):
 
         if xp is numpy:
             with warnings.catch_warnings():
-                warnings.simplefilter('ignore', numpy.ComplexWarning)
+                warnings.simplefilter('ignore', ComplexWarning)
                 return f()
         else:
             return f()
@@ -179,7 +182,7 @@ class TestPadMean(unittest.TestCase):
 
         if xp is numpy:
             with warnings.catch_warnings():
-                warnings.simplefilter('ignore', numpy.ComplexWarning)
+                warnings.simplefilter('ignore', ComplexWarning)
                 return f()
         else:
             return f()

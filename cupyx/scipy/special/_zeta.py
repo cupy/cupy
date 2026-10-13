@@ -7,6 +7,8 @@
 # Direct inquiries to 30 Frost Street, Cambridge, MA 02140
 
 # TODO(YoshikawaMasashi): float implementation of zeta function
+from __future__ import annotations
+
 
 from cupy import _core
 
@@ -124,6 +126,6 @@ zeta = _core.create_ufunc(
     Returns:
         cupy.ndarray: Values of zeta(x, q).
 
-    .. seealso:: :data:`scipy.special.zeta`
+    .. seealso:: :func:`scipy.special.zeta`
 
     """)

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import warnings
 
 import numpy
@@ -7,27 +9,56 @@ import cupy
 import cupy._core._accelerator as _acc
 from cupy import cuda
 from cupy import testing
+from cupy._statistics import order as order_module
 
 
 _all_methods = (
-    # 'inverted_cdf',               # TODO(takagi) Not implemented
+    'inverted_cdf',
     # 'averaged_inverted_cdf',      # TODO(takagi) Not implemented
     # 'closest_observation',        # TODO(takagi) Not implemented
     # 'interpolated_inverted_cdf',  # TODO(takagi) Not implemented
-    # 'hazen',                      # TODO(takagi) Not implemented
-    # 'weibull',                    # TODO(takagi) Not implemented
+    'hazen',
+    'weibull',
     'linear',
-    # 'median_unbiased',            # TODO(takagi) Not implemented
-    # 'normal_unbiased',            # TODO(takagi) Not implemented
+    'median_unbiased',
+    'normal_unbiased',
     'lower',
     'higher',
     'midpoint',
-    # 'nearest',                    # TODO(hvy): Not implemented
+    'nearest',
 )
+
+
+@pytest.fixture
+def _fix_gamma(monkeypatch):
+    if numpy.__version__ == "2.4.1":
+        # NumPy 2.4.0 had a surprisingly large change, but I (seberg)
+        # incorrectly undid the change, making things maybe worse...
+        # this fixes that...
+        # See also https://github.com/numpy/numpy/pull/30710
+        def _get_gamma(virtual_indexes, previous_indexes, method):
+            gamma = numpy.asanyarray(virtual_indexes - previous_indexes)
+            gamma = method["fix_gamma"](gamma, virtual_indexes)
+            return numpy.asanyarray(gamma, dtype=virtual_indexes.dtype)
+
+        monkeypatch.setattr(
+            numpy.lib._function_base_impl, "_get_gamma", _get_gamma)
+
+    yield
 
 
 def for_all_methods(name='method'):
     return pytest.mark.parametrize(name, _all_methods)
+
+
+def test_percentile_kernel_accepts_large_dimensions():
+    indices = cupy.array([0], dtype=cupy.float64)
+    a = cupy.broadcast_to(
+        cupy.array([1], dtype=cupy.float64), (2**31,))
+    out = cupy.empty(1, dtype=cupy.float64)
+    order_module._get_percentile_weightnening_kernel()(
+        indices, a, a.shape[-1], 1, out)
+    assert out[0] == 1
 
 
 @testing.with_requires('numpy>=1.22.0rc1')
@@ -43,6 +74,7 @@ class TestQuantile:
 
     # See gh-4453
     @testing.for_float_dtypes()
+    @pytest.mark.thread_unsafe(reason="allocator setting not thread-safe")
     def test_percentile_memory_access(self, dtype):
         # Create an allocator that guarantees array allocated in
         # cupy.percentile call will be followed by a NaN
@@ -80,7 +112,8 @@ class TestQuantile:
                 xp.quantile(a, q, axis=-1, method='deadbeef')
 
 
-@testing.with_requires('numpy>=1.22.0rc1')
+@pytest.mark.usefixtures("_fix_gamma")
+@testing.with_requires('numpy>=2.0')
 @for_all_methods()
 class TestQuantileMethods:
 
@@ -171,9 +204,8 @@ class TestQuantileMethods:
                 with pytest.raises(ValueError):
                     xp.percentile(a, q, axis=-1, method=method)
 
-    @testing.for_all_dtypes()
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
-    @testing.numpy_cupy_allclose()
+    @testing.numpy_cupy_allclose(rtol=1e-6)
     def test_quantile_defaults(self, xp, dtype, method):
         a = testing.shaped_random((2, 3, 8), xp, dtype)
         q = testing.shaped_random((3,), xp, scale=1)
@@ -222,14 +254,16 @@ class TestQuantileMethods:
         return xp.quantile(
             a, q, axis=None, keepdims=True, method=method)
 
+    @pytest.mark.parametrize('order', ['C', 'F'])
     @testing.for_float_dtypes(no_float16=True)  # NumPy raises error on int8
-    @testing.numpy_cupy_allclose(rtol=1e-6)
-    def test_quantile_out(self, xp, dtype, method):
+    @testing.numpy_cupy_allclose(rtol=1e-6, contiguous_check=False)
+    def test_quantile_out(self, xp, dtype, method, order):
         a = testing.shaped_random((10, 2, 3, 2), xp, dtype)
         q = testing.shaped_random((5,), xp, dtype=dtype, scale=1)
-        out = testing.shaped_random((5, 10, 2, 3), xp, dtype)
-        return xp.quantile(
+        out = xp.empty((5, 10, 2, 3), dtype=dtype, order=order)
+        result = xp.quantile(
             a, q, axis=-1, method=method, out=out)
+        return result, out
 
     @testing.for_float_dtypes(no_float16=True)
     @testing.numpy_cupy_allclose(rtol=1e-6)
@@ -258,6 +292,32 @@ class TestQuantileMethods:
             for q in [[-0.1], [1.1]]:
                 with pytest.raises(ValueError):
                     xp.quantile(a, q, axis=-1, method=method)
+
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_quantile_axis_and_keepdims(self, xp, dtype, method):
+        a = testing.shaped_random((1, 6, 3, 2), xp, dtype)
+        q = testing.shaped_random((5,), xp, scale=1)
+        return xp.quantile(a, q, axis=0, keepdims=True, method=method)
+
+    @pytest.mark.parametrize('shape, axis', [
+        ((1, 10), 1), ((10, 1), 0), ((1, 1, 10), -1), ((1, 10, 1), 1),
+    ])
+    @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
+    @testing.numpy_cupy_allclose(rtol=1e-6)
+    def test_quantile_singleton_dimensions(
+            self, xp, dtype, method, shape, axis):
+        # See gh-9508
+        # Every dimension that is not reduced has length 1
+        a = testing.shaped_random(shape, xp, dtype)
+        q = testing.shaped_random((5,), xp, scale=1)
+        return xp.quantile(a, q, axis=axis, method=method)
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_allclose()
+    def test_quantile_nan_in_next_slice(self, xp, dtype, method):
+        a = xp.array([[1., 2.], [xp.nan, xp.nan]], dtype=dtype)
+        return xp.quantile(a, 1., axis=1, method=method)
 
 
 class TestOrder:

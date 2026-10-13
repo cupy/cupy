@@ -73,6 +73,7 @@ Measurements
 
    center_of_mass
    extrema
+   find_objects
    histogram
    label
    labeled_comprehension

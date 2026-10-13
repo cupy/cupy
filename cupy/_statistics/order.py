@@ -1,10 +1,55 @@
+from __future__ import annotations
+
 import warnings
+
+import numpy
 
 import cupy
 from cupy import _core
+from cupy import _util
 from cupy._core import _routines_statistics as _statistics
 from cupy._core import _fusion_thread_local
 from cupy._logic import content
+
+# Quantile method parameters (alpha, beta) from Hyndman & Fan (1996)
+# Used for continuous interpolation methods in percentile/quantile
+_QUANTILE_PARAMS = {
+    'hazen': (0.5, 0.5),            # H&F type 5
+    'weibull': (0, 0),              # H&F type 6
+    'median_unbiased': (1/3, 1/3),  # H&F type 8
+    'normal_unbiased': (3/8, 3/8),  # H&F type 9
+}
+
+
+@_util.memoize()
+def _get_percentile_weightnening_kernel():
+    return cupy.ElementwiseKernel(
+        'S idx, raw T a, int64 nsamples_, int64 nq_', 'U ret',
+        '''
+        using index_t = decltype(a)::index_t;
+        index_t nsamples = static_cast<index_t>(nsamples_);
+        decltype(i) nq = static_cast<decltype(i)>(nq_);
+
+        index_t idx_below = floor(idx);
+        U weight_above = idx - idx_below;
+
+        // `a` and `ret` differ in their last dimension (nsamples vs. nq).
+        // To index `a`, calculate the outer index offset from the index
+        // into `ret`:
+        index_t a_outer_idx = (i / nq) * nsamples;
+        index_t max_idx = a_outer_idx + nsamples - 1;
+        index_t offset_bottom = a_outer_idx + idx_below;
+        index_t offset_top = min(offset_bottom + 1, max_idx);
+
+        U diff = a[offset_top] - a[offset_bottom];
+
+        if (weight_above < 0.5) {
+            ret = a[offset_bottom] + diff * weight_above;
+        } else {
+            ret = a[offset_top] - diff * (1 - weight_above);
+        }
+        ''',
+        'cupy_percentile_weightnening')
 
 
 def amin(a, axis=None, out=None, keepdims=False):
@@ -178,6 +223,9 @@ def _quantile_unchecked(a, q, axis=None, out=None,
                         overwrite_input=False,
                         method='linear',
                         keepdims=False):
+    dtype = cupy.result_type(a, q)
+    q = cupy.asarray(q)
+
     if q.ndim == 0:
         q = q[None]
         zerod = True
@@ -185,7 +233,9 @@ def _quantile_unchecked(a, q, axis=None, out=None,
         zerod = False
     if q.ndim > 1:
         raise ValueError('Expected q to have a dimension of 1.\n'
-                         'Actual: {0} != 1'.format(q.ndim))
+                         'Actual: {} != 1'.format(q.ndim))
+    if isinstance(axis, int):
+        axis = axis,
     if keepdims:
         if axis is None:
             keepdim = (1,) * a.ndim
@@ -194,9 +244,6 @@ def _quantile_unchecked(a, q, axis=None, out=None,
             for ax in axis:
                 keepdim[ax % a.ndim] = 1
             keepdim = tuple(keepdim)
-
-    if isinstance(axis, int):
-        axis = axis,
     if axis is None:
         if overwrite_input:
             ap = a.ravel()
@@ -220,12 +267,15 @@ def _quantile_unchecked(a, q, axis=None, out=None,
     Nx = ap.shape[axis]
     indices = q * (Nx - 1.)
 
-    if method in ['inverted_cdf', 'averaged_inverted_cdf',
-                  'closest_observation', 'interpolated_inverted_cdf',
-                  'hazen', 'weibull', 'median_unbiased', 'normal_unbiased']:
+    if method in ['averaged_inverted_cdf',
+                  'closest_observation', 'interpolated_inverted_cdf']:
         # TODO(takagi) Implement new methods introduced in NumPy 1.22
         raise ValueError(f'\'{method}\' method is not yet supported. '
                          'Please use any other method.')
+    elif method in _QUANTILE_PARAMS:
+        alpha, beta = _QUANTILE_PARAMS[method]
+        indices = q * (Nx - alpha - beta + 1) + alpha - 1
+        indices = cupy.clip(indices, 0, Nx - 1)
     elif method == 'lower':
         indices = cupy.floor(indices).astype(cupy.int32)
     elif method == 'higher':
@@ -233,45 +283,28 @@ def _quantile_unchecked(a, q, axis=None, out=None,
     elif method == 'midpoint':
         indices = 0.5 * (cupy.floor(indices) + cupy.ceil(indices))
     elif method == 'nearest':
-        # TODO(hvy): Implement nearest using around
-        raise ValueError('\'nearest\' method is not yet supported. '
-                         'Please use any other method.')
+        indices = cupy.around(indices).astype(cupy.int32)
+    elif method == 'inverted_cdf':
+        indices = cupy.clip(cupy.ceil(q*Nx).astype(cupy.int32)-1, 0, Nx-1)
     elif method == 'linear':
         pass
     else:
         raise ValueError('Unexpected interpolation method.\n'
-                         'Actual: \'{0}\' not in (\'linear\', \'lower\', '
-                         '\'higher\', \'midpoint\')'.format(method))
+                         'Actual: \'{}\' not in (\'linear\', \'lower\','
+                         ' \'higher\',\'midpoint\', \'inverted_cdf\', '
+                         '\'nearest\')'.format(method))
 
     if indices.dtype == cupy.int32:
         ret = cupy.rollaxis(ap, axis)
         ret = ret.take(indices, axis=0, out=out)
     else:
         if out is None:
-            ret = cupy.empty(ap.shape[:-1] + q.shape, dtype=cupy.float64)
+            ret = cupy.empty(ap.shape[:-1] + q.shape, dtype=dtype)
         else:
             ret = cupy.rollaxis(out, 0, out.ndim)
 
-        cupy.ElementwiseKernel(
-            'S idx, raw T a, raw int32 offset, raw int32 size', 'U ret',
-            '''
-            ptrdiff_t idx_below = floor(idx);
-            U weight_above = idx - idx_below;
-
-            ptrdiff_t max_idx = size - 1;
-            ptrdiff_t offset_bottom = _ind.get()[0] * offset + idx_below;
-            ptrdiff_t offset_top = min(offset_bottom + 1, max_idx);
-
-            U diff = a[offset_top] - a[offset_bottom];
-
-            if (weight_above < 0.5) {
-                ret = a[offset_bottom] + diff * weight_above;
-            } else {
-                ret = a[offset_top] - diff * (1 - weight_above);
-            }
-            ''',
-            'cupy_percentile_weightnening'
-        )(indices, ap, ap.shape[-1] if ap.ndim > 1 else 0, ap.size, ret)
+        _get_percentile_weightnening_kernel()(
+            indices, ap, ap.shape[-1], q.size, ret)
         ret = cupy.rollaxis(ret, -1)  # Roll q dimension back to first axis
 
     if zerod:
@@ -285,9 +318,8 @@ def _quantile_unchecked(a, q, axis=None, out=None,
 
 
 def _quantile_is_valid(q):
-    if cupy.count_nonzero(q < 0.0) or cupy.count_nonzero(q > 1.0):
-        return False
-    return True
+    xp = cupy if isinstance(q, cupy.ndarray) else numpy
+    return xp.count_nonzero(0.0 <= q) and xp.count_nonzero(q <= 1.0)
 
 
 def percentile(a, q, axis=None, out=None,
@@ -311,8 +343,8 @@ def percentile(a, q, axis=None, out=None,
             function completes is undefined.
         method (str): Interpolation method when a quantile lies between
             two data points. ``linear`` interpolation is used by default.
-            Supported interpolations are``lower``, ``higher``, ``midpoint``,
-            ``nearest`` and ``linear``.
+            Supported interpolations are ``lower``, ``higher``, ``midpoint``,
+            ``nearest``, ``inverted_cdf``  and ``linear``.
         keepdims (bool): If ``True``, the axis is remained as an axis of
             size one.
         interpolation (str): Deprecated name for the method keyword argument.
@@ -325,10 +357,12 @@ def percentile(a, q, axis=None, out=None,
     if interpolation is not None:
         method = _check_interpolation_as_method(
             method, interpolation, 'percentile')
-    if not isinstance(q, cupy.ndarray):
-        q = cupy.asarray(q, dtype='d')
-    q = cupy.true_divide(q, 100)
-    if not _quantile_is_valid(q):  # synchronize
+    if isinstance(q, (tuple, list)):
+        # float is intentionally excluded here to compute the correct output
+        # dtype in _quantile_unchecked
+        q = numpy.asarray(q)
+    q = q / 100
+    if not _quantile_is_valid(q):  # synchronize if `q` is of cupy.ndarray
         raise ValueError('Percentiles must be in the range [0, 100]')
     return _quantile_unchecked(
         a, q, axis=axis, out=out,
@@ -358,8 +392,8 @@ def quantile(a, q, axis=None, out=None,
             function completes is undefined.
         method (str): Interpolation method when a quantile lies between
             two data points. ``linear`` interpolation is used by default.
-            Supported interpolations are``lower``, ``higher``, ``midpoint``,
-            ``nearest`` and ``linear``.
+            Supported interpolations are ``lower``, ``higher``, ``midpoint``,
+            ``nearest``, ``inverted_cdf`` and ``linear``.
         keepdims (bool): If ``True``, the axis is remained as an axis of
             size one.
         interpolation (str): Deprecated name for the method keyword argument.
@@ -372,9 +406,11 @@ def quantile(a, q, axis=None, out=None,
     if interpolation is not None:
         method = _check_interpolation_as_method(
             method, interpolation, 'quantile')
-    if not isinstance(q, cupy.ndarray):
-        q = cupy.asarray(q, dtype='d')
-    if not _quantile_is_valid(q):  # synchronize
+    if isinstance(q, (tuple, list)):
+        # float is intentionally excluded here to compute the correct output
+        # dtype in _quantile_unchecked
+        q = numpy.asarray(q)
+    if not _quantile_is_valid(q):  # synchronize if `q` is of cupy.ndarray
         raise ValueError('Quantiles must be in the range [0, 1]')
     return _quantile_unchecked(
         a, q, axis=axis, out=out,

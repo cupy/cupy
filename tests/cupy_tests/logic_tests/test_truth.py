@@ -1,4 +1,4 @@
-import warnings
+from __future__ import annotations
 
 import numpy
 
@@ -80,38 +80,23 @@ class TestAllAnyWithNaN:
         return out
 
 
-class TestAllAnyAlias:
-    @testing.numpy_cupy_array_equal()
-    def test_alltrue(self, xp):
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', DeprecationWarning)
-            return xp.alltrue(xp.array([1, 2, 3]))
-
-    @testing.numpy_cupy_array_equal()
-    def test_sometrue(self, xp):
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', DeprecationWarning)
-            return xp.sometrue(xp.array([0]))
-
-
 @testing.parameterize(
     *testing.product(
-        {'f': ['in1d', 'isin'],
-         'shape_x': [
-             (0, ),
-             (3, ),
-             (2, 3),
-             (2, 1, 3),
-             (2, 0, 1),
-             (2, 0, 1, 1)
+        {'shape_x': [
+            (0, ),
+            (3, ),
+            (2, 3),
+            (2, 1, 3),
+            (2, 0, 1),
+            (2, 0, 1, 1)
         ],
             'shape_y': [
-             (0, ),
-             (3, ),
-             (2, 3),
-             (2, 1, 3),
-             (2, 0, 1),
-             (2, 0, 1, 1)
+            (0, ),
+            (3, ),
+            (2, 3),
+            (2, 1, 3),
+            (2, 0, 1),
+            (2, 0, 1, 1)
         ],
             'assume_unique': [False, True],
             'invert': [False, True]}))
@@ -122,10 +107,7 @@ class TestIn1DIsIn:
     def test(self, xp, dtype):
         x = testing.shaped_arange(self.shape_x, xp, dtype)
         y = testing.shaped_arange(self.shape_y, xp, dtype)
-        if xp is numpy and self.f == 'isin':
-            return xp.in1d(x, y, self.assume_unique, self.invert)\
-                .reshape(x.shape)
-        return getattr(xp, self.f)(x, y, self.assume_unique, self.invert)
+        return xp.isin(x, y, self.assume_unique, self.invert)
 
 
 class TestSetdiff1d:
@@ -281,6 +263,36 @@ class TestIntersect1d:
         b = xp.array([4, 6, 2, 5, 7, 6], dtype=dtype)
         return xp.intersect1d(a, b, return_indices=True)
 
+    @testing.numpy_cupy_array_equal()
+    def test_intersect1d_both_empty(self, xp):
+        return xp.intersect1d(xp.array([]), xp.array([]))
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_intersect1d_empty_array(self, xp, dtype):
+        a = xp.array([], dtype=dtype)
+        b = xp.array([0], dtype=dtype)
+        return xp.intersect1d(a, b, return_indices=True)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_intersect1d_second_empty_array(self, xp, dtype):
+        a = xp.array([0], dtype=dtype)
+        b = xp.array([], dtype=dtype)
+        return xp.intersect1d(a, b, return_indices=True)
+
+    @testing.numpy_cupy_array_equal()
+    def test_intersect1d_mixed_dtypes_empty(self, xp):
+        a = xp.array([0], dtype=xp.int64)
+        b = xp.array([], dtype=xp.float64)
+        return xp.intersect1d(a, b)
+
+    @testing.numpy_cupy_array_equal()
+    def test_intersect1d_mixed_dtypes_empty_with_indices(self, xp):
+        a = xp.array([0], dtype=xp.int64)
+        b = xp.array([], dtype=xp.float64)
+        return xp.intersect1d(a, b, return_indices=True)
+
 
 class TestUnion1d:
 
@@ -300,6 +312,6 @@ class TestUnion1d:
 
     @testing.numpy_cupy_array_equal()
     def test_union1d_3(self, xp):
-        x = xp.zeros((2, 2), dtype=xp.complex_)
+        x = xp.zeros((2, 2), dtype=xp.complex128)
         y = xp.array([[1+1j, 2+3j], [4+1j, 0+7j]])
         return xp.union1d(x, y)

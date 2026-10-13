@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+import gc
+
 import pytest
 
 import cupy
@@ -8,8 +12,6 @@ import cupyx
 
 @pytest.mark.skipif(cuda.runtime.is_hip,
                     reason='HIP does not support this')
-@pytest.mark.skipif(cuda.driver.get_build_version() < 10010,
-                    reason='Only CUDA 10.1+ supports this')
 class TestGraph:
 
     def _helper1(self, a):
@@ -40,12 +42,15 @@ class TestGraph:
         return result
 
     @pytest.mark.parametrize('upload', (True, False))
+    @pytest.mark.thread_unsafe(
+        reason="FFT capture fails threaded (CuPy 14, may be fixable).")
     def test_capture_run_on_same_stream(self, upload):
         s = cupy.cuda.Stream(non_blocking=True)
+        a = cupy.random.random((100,))
+        cupy.cuda.get_current_stream().synchronize()  # ensure `a` is written
 
         for n in range(3):
             func = getattr(self, '_helper{}'.format(n+1))
-            a = cupy.random.random((100,))
 
             with s:
                 s.begin_capture()
@@ -60,13 +65,16 @@ class TestGraph:
             testing.assert_array_equal(out1, out2)
 
     @pytest.mark.parametrize('upload', (True, False))
+    @pytest.mark.thread_unsafe(
+        reason="FFT capture fails threaded (CuPy 14, may be fixable).")
     def test_capture_run_on_different_streams(self, upload):
         s1 = cupy.cuda.Stream(non_blocking=True)
         s2 = cupy.cuda.Stream(non_blocking=True)
+        a = cupy.random.random((100,))
+        cupy.cuda.get_current_stream().synchronize()  # ensure `a` is written
 
         for n in range(3):
             func = getattr(self, '_helper{}'.format(n+1))
-            a = cupy.random.random((100,))
 
             with s1:
                 s1.begin_capture()
@@ -98,9 +106,37 @@ class TestGraph:
         # check the graph integrity
         if upload and cuda.runtime.runtimeGetVersion() >= 11010:
             g.upload()
+
+        cupy.cuda.get_current_stream().synchronize()  # ensure `a` is written
         g.launch()
         s.synchronize()
         testing.assert_array_equal(b, 3 * a)
+
+    @pytest.mark.parametrize('upload', (True, False))
+    def test_capture_launch_host_func(self, upload):
+        s = cupy.cuda.Stream(non_blocking=True)
+
+        counter = {'count': 0}
+
+        def callback(x):
+            nonlocal counter
+            counter['count'] += x['delta']
+
+        with s:
+            s.begin_capture()
+            # Let launch_host_func keep the reference to the callback/args.
+            s.launch_host_func(callback, {'delta': 1})
+            del callback
+            gc.collect()
+            g = s.end_capture()
+        if upload:
+            g.upload()
+        g.launch()
+        cuda.stream.get_current_stream().synchronize()
+        assert counter['count'] == 1
+        g.launch()
+        cuda.stream.get_current_stream().synchronize()
+        assert counter['count'] == 2
 
     @pytest.mark.parametrize('upload', (True, False))
     def test_stream_fork_join(self, upload):
@@ -129,11 +165,14 @@ class TestGraph:
         assert not s2.is_capturing()
         if upload and cuda.runtime.runtimeGetVersion() >= 11010:
             g.upload()
+
+        cupy.cuda.get_current_stream().synchronize()  # ensure `a` is written
         g.launch()
         s1.synchronize()
         testing.assert_array_equal(out2, func(a * 100))
 
     @pytest.mark.parametrize('upload', (True, False))
+    @pytest.mark.thread_unsafe(reason="blocking stream so not parallelizable.")
     def test_null_stream_cannot_capture(self, upload):
         s = cupy.cuda.Stream(non_blocking=False)
         a = cupy.random.random((100,))
@@ -153,6 +192,8 @@ class TestGraph:
         # check the graph integrity
         if upload and cuda.runtime.runtimeGetVersion() >= 11010:
             g.upload()
+
+        cupy.cuda.get_current_stream().synchronize()  # ensure `a` is written
         g.launch()
         s.synchronize()
         testing.assert_array_equal(b, a + 4)
@@ -280,6 +321,8 @@ class TestGraph:
         assert not s.is_capturing()
         s.synchronize()
 
+    @pytest.mark.thread_unsafe(
+        reason="as of CuPy 14.0, one threads handle cleanup disrupts others.")
     def test_stream_capture_failure_cublas(self):
         s = cupy.cuda.Stream(non_blocking=True)
         a = cupy.random.random((3, 4))
@@ -296,6 +339,8 @@ class TestGraph:
         assert not s.is_capturing()
         s.synchronize()
 
+    @pytest.mark.thread_unsafe(
+        reason="as of CuPy 14.0, one threads handle cleanup disrupts others.")
     def test_stream_capture_failure_cusolver(self):
         s = cupy.cuda.Stream(non_blocking=True)
         a = cupy.random.random((8, 8))
@@ -326,6 +371,8 @@ class TestGraph:
         assert not s.is_capturing()
         s.synchronize()
 
+    @pytest.mark.thread_unsafe(
+        reason="as of CuPy 14.0, one threads handle cleanup disrupts others.")
     def test_stream_capture_failure_cusparse(self):
         s = cupy.cuda.Stream(non_blocking=True)
         a = cupy.zeros((3, 4))
@@ -343,3 +390,20 @@ class TestGraph:
         # check s left the capture mode and permits normal usage
         assert not s.is_capturing()
         s.synchronize()
+
+    @pytest.mark.skipif(cuda.driver.get_build_version() < 11030,
+                        reason='Requires CUDA 11.3+')
+    def test_debug_dot_str(self):
+        s = cupy.cuda.Stream(non_blocking=True)
+
+        a = cupy.random.random((100,))
+        with s:
+            s.begin_capture()
+            cupy.sin(a)
+            g = s.end_capture()
+            debug_str = g.debug_dot_str()
+            assert 'cupy_sin' in debug_str
+            debug_str_verbose = g.debug_dot_str(
+                cupy.cuda.runtime.cudaGraphDebugDotFlagsVerbose)
+            assert 'cupy_sin' in debug_str_verbose
+            assert debug_str != debug_str_verbose

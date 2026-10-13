@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import itertools
 
 import numpy
@@ -6,6 +8,7 @@ from cupy import _core
 from cupy._core import _fusion_interface
 from cupy._core import fusion
 from cupy._sorting import search
+from cupy.cuda import stream
 from cupy_backends.cuda.api import runtime
 
 
@@ -27,23 +30,32 @@ def copyto(dst, src, casting='same_kind', where=None):
     .. seealso:: :func:`numpy.copyto`
 
     """
-    src_is_numpy_scalar = False
-
+    src_is_scalar = False
     src_type = type(src)
-    src_is_python_scalar = src_type in (
-        int, bool, float, complex,
-        fusion._FusionVarScalar, _fusion_interface._ScalarProxy)
-    if src_is_python_scalar:
-        src_dtype = numpy.dtype(type(src))
-        can_cast = numpy.can_cast(src, dst.dtype, casting)
-    elif isinstance(src, numpy.ndarray) or numpy.isscalar(src):
+
+    if src_type in (bool, int, float, complex):
+        dst_arr = numpy.empty((), dtype=dst.dtype)
+        # NumPy 1.x and 2.0 make implementing copyto cast safety hard, so
+        # test whether NumPy copy allows the copy operation:
+        numpy.copyto(dst_arr, src, casting=casting)
+        can_cast = True
+        src_is_scalar = True
+    elif src_type in (fusion._FusionVarScalar, _fusion_interface._ScalarProxy):
+        src_dtype = src.dtype
+        can_cast = numpy.can_cast(src_dtype, dst.dtype, casting)
+        src_is_scalar = True
+    elif isinstance(src, numpy.ndarray):
         if src.size != 1:
             raise ValueError(
                 'non-scalar numpy.ndarray cannot be used for copyto')
         src_dtype = src.dtype
         can_cast = numpy.can_cast(src, dst.dtype, casting)
-        src = src.item()
-        src_is_numpy_scalar = True
+        src = src.squeeze()[()]  # work with the scalar value
+        src_is_scalar = True
+    elif numpy.isscalar(src):
+        src_dtype = src  # just report as the scalar value itself.
+        can_cast = numpy.can_cast(src, dst.dtype, casting)
+        src_is_scalar = True
     else:
         src_dtype = src.dtype
         can_cast = numpy.can_cast(src_dtype, dst.dtype, casting)
@@ -63,7 +75,7 @@ def copyto(dst, src, casting='same_kind', where=None):
             fusion._call_ufunc(search._where_ufunc, where, src, dst, dst)
         return
 
-    if not src_is_python_scalar and not src_is_numpy_scalar:
+    if not src_is_scalar:
         # Check broadcast condition
         # - for fast-paths and
         # - for a better error message (than ufunc's).
@@ -88,12 +100,26 @@ def copyto(dst, src, casting='same_kind', where=None):
     if dst.size == 0:
         return
 
-    if src_is_python_scalar or src_is_numpy_scalar:
+    if src_is_scalar:
         _core.elementwise_copy(src, dst)
         return
 
     if _can_memcpy(dst, src):
-        dst.data.copy_from_async(src.data, src.nbytes)
+        if runtime.is_hip and src.device != dst.device:
+            # From hip_runtime_api.h (hipMemcpyAsync): "For multi-gpu
+            # or peer-to-peer configurations, it is recommended to
+            # use a stream which is attached to the device where the
+            # src data is physically located."
+            # Issue the copy from the source device context, then
+            # make the destination device's stream wait for the copy
+            # to complete.
+            with src.device:
+                dst.data.copy_from_async(src.data, src.nbytes)
+                copy_event = stream.get_current_stream().record()
+            with dst.device:
+                stream.get_current_stream().wait_event(copy_event)
+        else:
+            dst.data.copy_from_async(src.data, src.nbytes)
         return
 
     device = dst.device

@@ -8,19 +8,20 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
         # Checkout using commit hash to make "no-commit-to-branch" test pass.
         ref: ${{ github.sha }}
+        submodules: recursive
 
     - name: Setup Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
       id: setup-python
       with:
-        python-version: '3.9'
+        python-version: '3.12'
 
     - name: Setup cache
-      uses: actions/cache@v3
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
       with:
         path: ~/.cache
         key:
@@ -39,8 +40,9 @@ jobs:
     - name: Type Check
       run: |
         # TODO: Test against various NumPy/SciPy versions.
-        pip install 'numpy==1.25.*' 'scipy==1.10.*'
-        pip install 'mypy==1.5.*' 'types-setuptools==57.4.14' 'pytest>=7.2'
+        pip install 'numpy==2.3.*' 'scipy==1.16.*'
+        pip install 'mypy==2.3.*' 'types-setuptools==57.4.14' 'pytest>=7.2'
+        sed -i s/error::cupy.exceptions./error::numpy.exceptions./ pyproject.toml  # Because no cupy here. See cupy#8346
         pytest -v tests/typing_tests/test_typing.py
 
   build-cuda:
@@ -50,23 +52,27 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
         submodules: recursive
 
     - name: Setup Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
       with:
-        python-version: '3.9'
+        python-version: '3.12'
 
-    - name: Setup cache
-      uses: actions/cache@v3
-      with:
-        path: ~/.cache
-        key: build-cuda-${{ github.sha }}
-        restore-keys: |
-          build-cuda-${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
-          build-cuda-
+    # Temporarily disabled: every run saves a fresh ~385 MB ~/.cache entry
+    # keyed on the merge SHA (build-cuda-<sha>), crowding the GHA Cache
+    # budget that the sccache-backed wheel builds rely on. A follow-up PR
+    # will rework the keying before re-enabling.
+    # - name: Setup cache
+    #   uses: actions/cache@v4
+    #   with:
+    #     path: ~/.cache
+    #     key: build-cuda-${{ github.sha }}
+    #     restore-keys: |
+    #       build-cuda-${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+    #       build-cuda-
 
     - name: Setup ccache
       run: |
@@ -77,9 +83,24 @@ jobs:
 
     - name: Build
       run: |
-        pip install -U pip wheel
+        pip install -U pip wheel setuptools
         READTHEDOCS=True pip install -v -e .
         ccache --max-size 0.5Gi --cleanup --show-stats
+
+    - name: Try to check for `noexcept` functions that may raise errors
+      # We ignore __dealloc__ or the pycapsule_deleter as it is hard to avoid there.
+      # Cython does give a warning with all warnings enabled (but those are many).
+      run: |
+        result=$(grep -r 'Pyx_WriteUnraisable' --include='*.cpp' . \
+                | grep -v -E \
+                '(__dealloc__|const char \*name|pycapsule_deleter|cupy\.cuda\.thrust\.cupy_malloc|\._streamCallbackFunc|\._HostFnFunc)' \
+                || true)
+        if [ -n "$result" ]; then
+          echo "$result"
+          echo "Found possibly bad functions (see above). If this check fails a function"
+          echo "could (theoretically) raise an error but is marked as noexcept."
+          exit 1
+        fi
 
     - name: Docs Build
       run: |
@@ -92,15 +113,7 @@ jobs:
 
     - name: Import Test
       run: |
-        python -c 'import cupy, cupyx'
-
-        # Test lazy-imported CUDA Toolkit library.
-        rm cupy/cuda/cufft.*.so
-        rm cupy/random/_generator_api.*.so
-        rm cupy_backends/cuda/libs/cusolver.*.so
-        rm cupy_backends/cuda/libs/cusparse.*.so
-        rm cupy_backends/cuda/libs/curand.*.so
-        rm cupy_backends/cuda/libs/cublas.*.so
+        unset CUPY_CI
         python -c 'import cupy, cupyx'
 
   build-rocm:
@@ -108,10 +121,11 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
         submodules: recursive
 
     - name: Build & Test
       run: |
-        docker run --rm -v "${PWD}:/src" -w /src "rocm/dev-ubuntu-20.04:5.0-complete" bash .github/workflows/pretest-rocm-test.sh
+        # Note: "-complete" Docker image variants exceeds disk size on GitHub hosted runners.
+        docker run --rm -v "${PWD}:/src" -w /src "rocm/dev-ubuntu-24.04:7.14.0-full" bash .github/workflows/scripts/pretest-rocm-test.sh

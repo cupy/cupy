@@ -6,7 +6,7 @@ Input and output
 .. currentmodule:: cupy
 
 
-NumPy binary files (NPY, NPZ)
+NumPy binary files (npy, npz)
 -----------------------------
 
 .. autosummary::
@@ -16,6 +16,7 @@ NumPy binary files (NPY, NPZ)
    save
    savez
    savez_compressed
+   # lib.npyio.NpzFile
 
 Text files
 -----------------------------
@@ -26,7 +27,22 @@ Text files
    loadtxt
    savetxt
    genfromtxt
+   # fromregex
    fromstring
+   # ndarray.tofile
+   # ndarray.tolist
+
+.. seealso:: :attr:`cupy.ndarray.tofile` and :func:`cupy.ndarray.tolist`
+
+Raw binary files
+----------------
+
+.. autosummary::
+
+   fromfile
+   # ndarray.tofile
+
+.. seealso:: :attr:`cupy.ndarray.tofile`
 
 String formatting
 -----------------
@@ -39,7 +55,6 @@ String formatting
    array_str
    format_float_positional
    format_float_scientific
-
 
 Base-n representations
 ----------------------

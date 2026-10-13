@@ -25,8 +25,9 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 
 """
+from __future__ import annotations
 
-from math import ceil
+
 import cupy
 
 _upfirdn_modes = [
@@ -44,6 +45,7 @@ UPFIRDN_KERNEL = r'''
 
 template<typename T>
 __device__ void _cupy_upfirdn1D( const T *__restrict__ inp,
+                                 const long long inp_stride,
                                  const T *__restrict__ h_trans_flip,
                                  const int up,
                                  const int down,
@@ -59,12 +61,10 @@ __device__ void _cupy_upfirdn1D( const T *__restrict__ inp,
 
     for ( size_t tid = t; tid < outW; tid += stride ) {
 
-#if ( __CUDACC_VER_MAJOR__ >= 11 ) && ( __CUDACC_VER_MINOR__ >= 2 )
         __builtin_assume( padded_len > 0 );
         __builtin_assume( up > 0 );
         __builtin_assume( down > 0 );
         __builtin_assume( tid > 0 );
-#endif
 
         const int x_idx { static_cast<int>( ( tid * down ) / up ) % padded_len };
         int       h_idx { static_cast<int>( ( tid * down ) % up * h_per_phase ) };
@@ -80,7 +80,7 @@ __device__ void _cupy_upfirdn1D( const T *__restrict__ inp,
         int stop = ( x_shape_a < ( x_idx + 1 ) ) ? x_shape_a : ( x_idx + 1 );
 
         for ( int x_c = x_conv_idx; x_c < stop; x_c++ ) {
-            temp += inp[x_c] * h_trans_flip[h_idx];
+            temp += inp[x_c * inp_stride] * h_trans_flip[h_idx];
             h_idx += 1;
         }
         out[tid] = temp;
@@ -88,6 +88,7 @@ __device__ void _cupy_upfirdn1D( const T *__restrict__ inp,
 }
 
 extern "C" __global__ void __launch_bounds__( 512 ) _cupy_upfirdn1D_float32( const float *__restrict__ inp,
+                                                                             const long long inp_stride,
                                                                              const float *__restrict__ h_trans_flip,
                                                                              const int up,
                                                                              const int down,
@@ -97,10 +98,11 @@ extern "C" __global__ void __launch_bounds__( 512 ) _cupy_upfirdn1D_float32( con
                                                                              const int padded_len,
                                                                              float *__restrict__ out,
                                                                              const int outW ) {
-    _cupy_upfirdn1D<float>( inp, h_trans_flip, up, down, axis, x_shape_a, h_per_phase, padded_len, out, outW );
+    _cupy_upfirdn1D<float>( inp, inp_stride, h_trans_flip, up, down, axis, x_shape_a, h_per_phase, padded_len, out, outW );
 }
 
 extern "C" __global__ void __launch_bounds__( 512 ) _cupy_upfirdn1D_float64( const double *__restrict__ inp,
+                                                                             const long long inp_stride,
                                                                              const double *__restrict__ h_trans_flip,
                                                                              const int up,
                                                                              const int down,
@@ -110,11 +112,12 @@ extern "C" __global__ void __launch_bounds__( 512 ) _cupy_upfirdn1D_float64( con
                                                                              const int padded_len,
                                                                              double *__restrict__ out,
                                                                              const int outW ) {
-    _cupy_upfirdn1D<double>( inp, h_trans_flip, up, down, axis, x_shape_a, h_per_phase, padded_len, out, outW );
+    _cupy_upfirdn1D<double>( inp, inp_stride, h_trans_flip, up, down, axis, x_shape_a, h_per_phase, padded_len, out, outW );
 }
 
 extern "C" __global__ void __launch_bounds__( 512 )
     _cupy_upfirdn1D_complex64( const thrust::complex<float> *__restrict__ inp,
+                               const long long inp_stride,
                                const thrust::complex<float> *__restrict__ h_trans_flip,
                                const int up,
                                const int down,
@@ -125,11 +128,12 @@ extern "C" __global__ void __launch_bounds__( 512 )
                                thrust::complex<float> *__restrict__ out,
                                const int outW ) {
     _cupy_upfirdn1D<thrust::complex<float>>(
-        inp, h_trans_flip, up, down, axis, x_shape_a, h_per_phase, padded_len, out, outW );
+        inp, inp_stride, h_trans_flip, up, down, axis, x_shape_a, h_per_phase, padded_len, out, outW );
 }
 
 extern "C" __global__ void __launch_bounds__( 512 )
     _cupy_upfirdn1D_complex128( const thrust::complex<double> *__restrict__ inp,
+                                const long long inp_stride,
                                 const thrust::complex<double> *__restrict__ h_trans_flip,
                                 const int up,
                                 const int down,
@@ -140,7 +144,7 @@ extern "C" __global__ void __launch_bounds__( 512 )
                                 thrust::complex<double> *__restrict__ out,
                                 const int outW ) {
     _cupy_upfirdn1D<thrust::complex<double>>(
-        inp, h_trans_flip, up, down, axis, x_shape_a, h_per_phase, padded_len, out, outW );
+        inp, inp_stride, h_trans_flip, up, down, axis, x_shape_a, h_per_phase, padded_len, out, outW );
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -149,7 +153,8 @@ extern "C" __global__ void __launch_bounds__( 512 )
 
 template<typename T>
 __device__ void _cupy_upfirdn2D( const T *__restrict__ inp,
-                                 const int inpH,
+                                 const long long inp_strideW,
+                                 const long long inp_strideH,
                                  const T *__restrict__ h_trans_flip,
                                  const int up,
                                  const int down,
@@ -172,22 +177,16 @@ __device__ void _cupy_upfirdn2D( const T *__restrict__ inp,
             int x_idx {};
             int h_idx {};
 
-#if ( __CUDACC_VER_MAJOR__ >= 11 ) && ( __CUDACC_VER_MINOR__ >= 2 )
             __builtin_assume( padded_len > 0 );
             __builtin_assume( up > 0 );
             __builtin_assume( down > 0 );
-#endif
 
             if ( axis == 1 ) {
-#if ( __CUDACC_VER_MAJOR__ >= 11 ) && ( __CUDACC_VER_MINOR__ >= 2 )
                 __builtin_assume( x > 0 );
-#endif
                 x_idx = ( static_cast<int>( x * down ) / up ) % padded_len;
                 h_idx = ( x * down ) % up * h_per_phase;
             } else {
-#if ( __CUDACC_VER_MAJOR__ >= 11 ) && ( __CUDACC_VER_MINOR__ >= 2 )
                 __builtin_assume( y > 0 );
-#endif
                 x_idx = ( static_cast<int>( y * down ) / up ) % padded_len;
                 h_idx = ( y * down ) % up * h_per_phase;
             }
@@ -204,9 +203,9 @@ __device__ void _cupy_upfirdn2D( const T *__restrict__ inp,
 
             for ( int x_c = x_conv_idx; x_c < stop; x_c++ ) {
                 if ( axis == 1 ) {
-                    temp += inp[y * inpH + x_c] * h_trans_flip[h_idx];
+                    temp += inp[y * inp_strideH + x_c * inp_strideW] * h_trans_flip[h_idx];
                 } else {
-                    temp += inp[x_c * inpH + x] * h_trans_flip[h_idx];
+                    temp += inp[x_c * inp_strideH + x * inp_strideW] * h_trans_flip[h_idx];
                 }
                 h_idx += 1;
             }
@@ -216,7 +215,8 @@ __device__ void _cupy_upfirdn2D( const T *__restrict__ inp,
 }
 
 extern "C" __global__ void __launch_bounds__( 64 ) _cupy_upfirdn2D_float32( const float *__restrict__ inp,
-                                                                            const int inpH,
+                                                                            const long long inp_strideW,
+                                                                            const long long inp_strideH,
                                                                             const float *__restrict__ h_trans_flip,
                                                                             const int up,
                                                                             const int down,
@@ -228,11 +228,12 @@ extern "C" __global__ void __launch_bounds__( 64 ) _cupy_upfirdn2D_float32( cons
                                                                             const int outW,
                                                                             const int outH ) {
     _cupy_upfirdn2D<float>(
-        inp, inpH, h_trans_flip, up, down, axis, x_shape_a, h_per_phase, padded_len, out, outW, outH );
+        inp, inp_strideW, inp_strideH, h_trans_flip, up, down, axis, x_shape_a, h_per_phase, padded_len, out, outW, outH );
 }
 
 extern "C" __global__ void _cupy_upfirdn2D_float64( const double *__restrict__ inp,
-                                                    const int inpH,
+                                                    const long long inp_strideW,
+                                                    const long long inp_strideH,
                                                     const double *__restrict__ h_trans_flip,
                                                     const int up,
                                                     const int down,
@@ -244,12 +245,13 @@ extern "C" __global__ void _cupy_upfirdn2D_float64( const double *__restrict__ i
                                                     const int outW,
                                                     const int outH ) {
     _cupy_upfirdn2D<double>(
-        inp, inpH, h_trans_flip, up, down, axis, x_shape_a, h_per_phase, padded_len, out, outW, outH );
+        inp, inp_strideW, inp_strideH, h_trans_flip, up, down, axis, x_shape_a, h_per_phase, padded_len, out, outW, outH );
 }
 
 extern "C" __global__ void __launch_bounds__( 64 )
     _cupy_upfirdn2D_complex64( const thrust::complex<float> *__restrict__ inp,
-                               const int inpH,
+                               const long long inp_strideW,
+                               const long long inp_strideH,
                                const thrust::complex<float> *__restrict__ h_trans_flip,
                                const int up,
                                const int down,
@@ -261,12 +263,13 @@ extern "C" __global__ void __launch_bounds__( 64 )
                                const int outW,
                                const int outH ) {
     _cupy_upfirdn2D<thrust::complex<float>>(
-        inp, inpH, h_trans_flip, up, down, axis, x_shape_a, h_per_phase, padded_len, out, outW, outH );
+        inp, inp_strideW, inp_strideH, h_trans_flip, up, down, axis, x_shape_a, h_per_phase, padded_len, out, outW, outH );
 }
 
 extern "C" __global__ void __launch_bounds__( 64 )
     _cupy_upfirdn2D_complex128( const thrust::complex<double> *__restrict__ inp,
-                                const int inpH,
+                                const long long inp_strideW,
+                                const long long inp_strideH,
                                 const thrust::complex<double> *__restrict__ h_trans_flip,
                                 const int up,
                                 const int down,
@@ -278,13 +281,13 @@ extern "C" __global__ void __launch_bounds__( 64 )
                                 const int outW,
                                 const int outH ) {
     _cupy_upfirdn2D<thrust::complex<double>>(
-        inp, inpH, h_trans_flip, up, down, axis, x_shape_a, h_per_phase, padded_len, out, outW, outH );
+        inp, inp_strideW, inp_strideH, h_trans_flip, up, down, axis, x_shape_a, h_per_phase, padded_len, out, outW, outH );
 }
 '''  # NOQA
 
 
 UPFIRDN_MODULE = cupy.RawModule(
-    code=UPFIRDN_KERNEL, options=('-std=c++11',),
+    code=UPFIRDN_KERNEL,
     name_expressions=[
         '_cupy_upfirdn1D_float32',
         '_cupy_upfirdn1D_float64',
@@ -338,7 +341,7 @@ def _get_tpb_bpg():
     return threadsperblock, blockspergrid
 
 
-class _UpFIRDn(object):
+class _UpFIRDn:
     def __init__(self, h, x_dtype, up, down):
         """Helper for resampling"""
         h = cupy.asarray(h)
@@ -365,6 +368,9 @@ class _UpFIRDn(object):
         """Apply the prepared filter to the specified axis of a nD signal x"""
 
         x = cupy.asarray(x, self._output_type)
+        # Element strides require byte strides divisible by itemsize.
+        # CuPy arrays always satisfy this in practice.
+        assert all(s % x.itemsize == 0 for s in x.strides)
 
         output_len = _output_len(
             self._h_len_orig, x.shape[axis], self._up, self._down)
@@ -379,13 +385,15 @@ class _UpFIRDn(object):
         padded_len = x.shape[axis] + (len(self._h_trans_flip) // self._up) - 1
 
         if out.ndim == 1:
-
             threadsperblock, blockspergrid = _get_tpb_bpg()
+
+            inp_stride = x.strides[axis] // x.itemsize
 
             kernel = UPFIRDN_MODULE.get_function(
                 f'_cupy_upfirdn1D_{out.dtype.name}')
             kernel(((x.shape[0] + 128 - 1) // 128,), (128,),
                    (x,
+                    inp_stride,
                     self._h_trans_flip,
                     self._up,
                     self._down,
@@ -399,40 +407,67 @@ class _UpFIRDn(object):
                    )
 
         elif out.ndim == 2:
-            # set up the kernel launch parameters
-            threadsperblock = (8, 8)
-            blocks = ceil(out.shape[0] / threadsperblock[0])
-            blockspergrid_x = (
-                blocks if blocks < _get_max_gdx() else _get_max_gdx())
-
-            blocks = ceil(out.shape[1] / threadsperblock[1])
-            blockspergrid_y = (
-                blocks if blocks < _get_max_gdy() else _get_max_gdy())
-
-            blockspergrid = (blockspergrid_x, blockspergrid_y)
-
-            # do computations
-            kernel = UPFIRDN_MODULE.get_function(
-                f'_cupy_upfirdn2D_{out.dtype.name}')
-            kernel(threadsperblock, blockspergrid,
-                   (x,
-                    x.shape[1],
-                    self._h_trans_flip,
-                    self._up,
-                    self._down,
-                    axis,
-                    x_shape_a,
-                    h_per_phase,
-                    padded_len,
-                    out,
-                    out.shape[0],
-                    out.shape[1]
-                    )
-                   )
+            self._apply_filter_2d(x, out, axis=axis,
+                                  x_shape_a=x_shape_a,
+                                  h_per_phase=h_per_phase,
+                                  padded_len=padded_len)
         else:
-            raise NotImplementedError("upfirdn() requires ndim <= 2")
+            # N-D case: reshape to 2D, apply filter, reshape back
+
+            # Move target axis to the end
+            x_moved = cupy.ascontiguousarray(cupy.moveaxis(x, axis, -1))
+            shape_with_axis_at_end = x_moved.shape
+
+            # Reshape to 2d
+            x_2d = x_moved.reshape(-1, x_moved.shape[-1])
+            out_2d = cupy.empty((x_2d.shape[0], output_len),
+                                dtype=self._output_type, order="C")
+            self._apply_filter_2d(x_2d, out_2d, axis=1,
+                                  x_shape_a=x_shape_a,
+                                  h_per_phase=h_per_phase,
+                                  padded_len=padded_len)
+
+            # Reshape back to N-D
+            new_shape = shape_with_axis_at_end[:-1] + (output_len,)
+            out_nd = out_2d.reshape(new_shape)
+            out = cupy.ascontiguousarray(cupy.moveaxis(out_nd, -1, axis))
 
         return out
+
+    def _apply_filter_2d(self, x, out, axis,
+                         x_shape_a, h_per_phase,
+                         padded_len):
+        """Apply the 2D upfirdn kernel."""
+        # set up the kernel launch parameters
+        threadsperblock = (8, 8)
+
+        blocks = (out.shape[0] + threadsperblock[0] - 1) // threadsperblock[0]
+        blockspergrid_x = min(blocks, _get_max_gdx())
+
+        blocks = (out.shape[1] + threadsperblock[1] - 1) // threadsperblock[1]
+        blockspergrid_y = min(blocks, _get_max_gdy())
+
+        blockspergrid = (blockspergrid_x, blockspergrid_y)
+
+        # do computations
+        inp_strideW = x.strides[1] // x.itemsize
+        inp_strideH = x.strides[0] // x.itemsize
+        kernel = UPFIRDN_MODULE.get_function(
+            f'_cupy_upfirdn2D_{out.dtype.name}')
+        kernel(blockspergrid, threadsperblock,
+               (x,
+                inp_strideW,
+                inp_strideH,
+                self._h_trans_flip,
+                self._up,
+                self._down,
+                axis,
+                x_shape_a,
+                h_per_phase,
+                padded_len,
+                out,
+                out.shape[0],
+                out.shape[1]))
 
 
 def upfirdn(
@@ -441,7 +476,7 @@ def upfirdn(
     up=1,
     down=1,
     axis=-1,
-    mode=None,
+    mode="constant",
     cval=0
 ):
     """
@@ -462,9 +497,9 @@ def upfirdn(
         linear filter. The filter is applied to each subarray along
         this axis. Default is -1.
     mode : str, optional
-        This parameter is not implemented.
+        This parameter is not implemented for values other than ``"constant"``.
     cval : float, optional
-        This parameter is not implemented.
+        This parameter is not implemented for values other than 0.
 
     Returns
     -------
@@ -492,8 +527,10 @@ def upfirdn(
     .. [1] P. P. Vaidyanathan, Multirate Systems and Filter Banks,
        Prentice Hall, 1993.
     """
-    if mode is not None or cval != 0:
-        raise NotImplementedError(f"{mode = } and {cval =} not implemented.")
+    if mode is None:
+        mode = "constant"  # For backwards compatibility
+    if mode != "constant" or cval != 0:
+        raise NotImplementedError(f"{mode=} and {cval=} not implemented.")
 
     ufd = _UpFIRDn(h, x.dtype, int(up), int(down))
     # This is equivalent to (but faster than) using cp.apply_along_axis

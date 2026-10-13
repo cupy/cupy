@@ -26,7 +26,7 @@ cdef class MemPoolProps:
 ###############################################################################
 
 IF CUPY_USE_CUDA_PYTHON:
-    from cuda.ccudart cimport *
+    from cuda.bindings.cyruntime cimport *
     # Aliases for compatibillity with existing CuPy codebase.
     # Keep in sync with names defined in `_runtime_typedef.pxi`.
     # TODO(kmaehashi): Remove these aliases.
@@ -89,6 +89,7 @@ IF CUPY_USE_CUDA_PYTHON:
     ctypedef cudaMemAllocationType MemAllocationType
     ctypedef cudaMemAllocationHandleType MemAllocationHandleType
     ctypedef cudaMemLocationType MemLocationType
+    ctypedef cudaMemLocation _MemLocation
 
 ELSE:
     include "_runtime_typedef.pxi"
@@ -250,6 +251,7 @@ cpdef memPrefetchAsync(intptr_t devPtr, size_t count, int dstDevice,
                        intptr_t stream)
 cpdef memAdvise(intptr_t devPtr, size_t count, int advice, int device)
 cpdef PointerAttributes pointerGetAttributes(intptr_t ptr)
+cpdef int pointerGetMemoryType(intptr_t ptr) except -1
 cpdef intptr_t deviceGetDefaultMemPool(int) except? 0
 cpdef intptr_t deviceGetMemPool(int) except? 0
 cpdef deviceSetMemPool(int, intptr_t)
@@ -266,11 +268,16 @@ cpdef memPoolSetAttribute(intptr_t, int, object)
 
 cpdef intptr_t streamCreate() except? 0
 cpdef intptr_t streamCreateWithFlags(unsigned int flags) except? 0
+cpdef intptr_t streamCreateWithPriority(unsigned int flags,
+                                        int priority) except? 0
+cpdef unsigned int streamGetFlags(intptr_t stream) except? 0
+cpdef int streamGetPriority(intptr_t stream) except? 0
 cpdef streamDestroy(intptr_t stream)
 cpdef streamSynchronize(intptr_t stream)
 cpdef streamAddCallback(intptr_t stream, callback, intptr_t arg,
                         unsigned int flags=*)
 cpdef launchHostFunc(intptr_t stream, callback, intptr_t arg)
+cpdef _launchHostFuncUnmanaged(intptr_t stream, tuple func_arg)
 cpdef streamQuery(intptr_t stream)
 cpdef streamWaitEvent(intptr_t stream, intptr_t event, unsigned int flags=*)
 cpdef streamBeginCapture(intptr_t stream, int mode=*)
@@ -321,6 +328,7 @@ cpdef graphExecDestroy(intptr_t graphExec)
 cpdef intptr_t graphInstantiate(intptr_t graph) except? 0
 cpdef graphLaunch(intptr_t graphExec, intptr_t stream)
 cpdef graphUpload(intptr_t graphExec, intptr_t stream)
+cpdef graphDebugDotPrint(intptr_t graph, str path, unsigned int flags)
 
 
 ##############################################################################

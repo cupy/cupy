@@ -1,14 +1,15 @@
+from __future__ import annotations
+
 import unittest
 from unittest import mock
 
 import numpy
-import pytest
 
 import cupy
 from cupy import cuda
-from cupy.cuda import runtime
 from cupy import random
 from cupy import testing
+from cupy.random import _sample
 from cupy.testing import _condition
 from cupy.testing import _hypothesis
 
@@ -98,7 +99,6 @@ class TestRandint2(unittest.TestCase):
         assert _hypothesis.chi_square_test(counts, expected)
 
     @_condition.repeat(3, 10)
-    @pytest.mark.xfail(runtime.is_hip, reason='ROCm/HIP may have a bug')
     def test_goodness_of_fit_2(self):
         mx = 5
         vals = random.randint(mx, size=(5, 20)).get()
@@ -109,6 +109,7 @@ class TestRandint2(unittest.TestCase):
 
 class TestRandintDtype(unittest.TestCase):
 
+    @testing.with_requires("numpy>=2.0")
     @testing.for_dtypes([
         numpy.int8, numpy.uint8, numpy.int16, numpy.uint16, numpy.int32])
     def test_dtype(self, dtype):
@@ -191,7 +192,6 @@ class TestRandomIntegers2(unittest.TestCase):
         assert _hypothesis.chi_square_test(counts, expected)
 
     @_condition.repeat(3, 10)
-    @pytest.mark.xfail(runtime.is_hip, reason='ROCm/HIP may have a bug')
     def test_goodness_of_fit_2(self):
         mx = 5
         vals = random.randint(0, mx, (5, 20)).get()
@@ -289,6 +289,20 @@ class TestRandomSample(unittest.TestCase):
 )
 @testing.fix_random()
 class TestMultinomial(unittest.TestCase):
+
+    def test_kernel_accepts_large_n(self):
+        xs = cupy.array([0], dtype=cupy.int64)
+        ys = cupy.zeros(1, dtype='l')
+        _sample._multinominal_kernel(xs, 1, 2**31, ys)
+        assert ys[0] == 1
+
+    def test_kernel_uses_large_p_for_output_offset(self):
+        xs = cupy.array([0, 0], dtype=cupy.int64)
+        ys = cupy.zeros(2, dtype='l')
+        ys_view = cupy.lib.stride_tricks.as_strided(
+            ys, shape=(2, 2**31), strides=(ys.itemsize, 0))
+        _sample._multinominal_kernel(xs, 2**31, 1, ys_view)
+        testing.assert_array_equal(ys, cupy.ones(2, dtype='l'))
 
     @_condition.repeat(3, 10)
     @testing.for_float_dtypes()

@@ -1,4 +1,21 @@
+from __future__ import annotations
+
+import math
+
 import cupy
+from cupyx.scipy import special
+
+
+def _log_mean(logx):
+    # compute log of mean of x from log(x)
+    return special.logsumexp(logx, axis=0) - math.log(len(logx))
+
+
+def _log_var(logx):
+    # compute log of variance of x from log(x)
+    neg_logmean = cupy.broadcast_to(_log_mean(logx) - cupy.pi * 1j, logx.shape)
+    logxmu = special.logsumexp(cupy.asarray([logx, neg_logmean]), axis=0)
+    return special.logsumexp(2 * logxmu, axis=0).real - math.log(len(logx))
 
 
 def boxcox_llf(lmb, data):
@@ -25,23 +42,28 @@ def boxcox_llf(lmb, data):
 
     """
 
-    if data.ndim == 1 and data.dtype == cupy.float16:
+    if data.dtype.kind in "biu":
         data = data.astype(cupy.float64)
-    if data.ndim == 1 and data.dtype == cupy.float32:
-        data = data.astype(cupy.float64)
-    if data.ndim == 1 and data.dtype == cupy.complex64:
-        data = data.astype(cupy.complex128)
+
+    dtype = data.dtype
+
+    if data.dtype == cupy.float16:
+        # Avoid large numerical errors in float16
+        data = data.astype(cupy.float32)
 
     N = data.shape[0]
     if N == 0:
-        return cupy.array(cupy.nan)
+        return cupy.array(cupy.nan, dtype=dtype)
 
     logdata = cupy.log(data)
 
     # Compute the variance of the transformed data
     if lmb == 0:
         variance = cupy.var(logdata, axis=0)
+        logvar = cupy.log(variance)
     else:
-        variance = cupy.var(data**lmb / lmb, axis=0)
+        logx = lmb * logdata
+        logvar = _log_var(logx) - 2 * math.log(abs(lmb))
 
-    return (lmb - 1) * cupy.sum(logdata, axis=0) - N/2 * cupy.log(variance)
+    res = (lmb - 1) * cupy.sum(logdata, axis=0) - N/2 * logvar
+    return res.astype(dtype, copy=False)

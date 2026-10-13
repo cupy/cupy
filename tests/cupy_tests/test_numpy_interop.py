@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import contextlib
+import os
 import unittest
 
 import numpy
@@ -150,7 +153,12 @@ class TestAsnumpy:
         assert isinstance(y.base, cupy.cuda.PinnedMemoryPointer)
         assert y.base.ptr == y.ctypes.data
 
+    @pytest.mark.skipif(
+        int(os.environ.get('CUPY_ENABLE_UMP', 0)) == 1,
+        reason='blocking or not is irrelevant when zero-copy is on'
+    )
     @pytest.mark.parametrize('blocking', (True, False))
+    @pytest.mark.thread_unsafe(reason="allocation too large.")
     def test_asnumpy_blocking(self, blocking):
         prefactor = 4
         a = cupy.random.random(prefactor*128*1024*1024, dtype=cupy.float64)

@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 import functools
 import warnings
 
 import numpy
 
 import cupy
-import cupyx.scipy.fft
+from cupy.exceptions import RankWarning
 
 
 def _wraps_polyroutine(func):
@@ -174,6 +176,7 @@ def _polypow(x, n):
         else:
             fft, ifft = cupy.fft.rfft, cupy.fft.irfft
         out_size = (x.size - 1) * n + 1
+        import cupyx.scipy.fft
         size = cupyx.scipy.fft.next_fast_len(out_size)
         fx = fft(x, size)
         fy = cupy.power(fx, n, fx)
@@ -224,7 +227,7 @@ def polyfit(x, y, deg, rcond=None, full=False, w=None, cov=False):
 
     .. warning::
 
-        numpy.RankWarning: The rank of the coefficient matrix in the
+        cupy.exceptions.RankWarning: The rank of the coefficient matrix in the
         least-squares fit is deficient. It is raised if ``full=False``.
 
     .. seealso:: :func:`numpy.polyfit`
@@ -279,7 +282,7 @@ def polyfit(x, y, deg, rcond=None, full=False, w=None, cov=False):
     order = deg + 1
     if rank != order and not full:
         msg = 'Polyfit may be poorly conditioned'
-        warnings.warn(msg, numpy.RankWarning, stacklevel=4)
+        warnings.warn(msg, RankWarning, stacklevel=4)
 
     if full:
         if resids.dtype.kind == 'c':
@@ -337,6 +340,8 @@ def polyval(p, x):
             res = res + prod * c
             prod = prod * x
         return res
+    if not isinstance(x, cupy.ndarray):
+        x = cupy.asarray(x)
     dtype = numpy.result_type(p.dtype.type(0), x)
     p = p.astype(dtype, copy=False)
     if p.size == 0:

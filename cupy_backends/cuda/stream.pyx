@@ -52,6 +52,17 @@ cdef intptr_t get_current_stream_ptr():
     tls = _ThreadLocal.get()
     return <intptr_t>tls.get_current_stream_ptr()
 
+cdef intptr_t get_stream_ptr(int device_id):
+    """C API to get device CUDA stream pointer.
+
+    Args:
+        device_id (int): device ID. Look up the current device if -1.
+
+    Returns:
+        intptr_t: The device CUDA stream pointer.
+    """
+    tls = _ThreadLocal.get()
+    return <intptr_t>tls.get_current_stream_ptr(device_id)
 
 cdef set_current_stream_ptr(intptr_t ptr, int device_id=-1):
     """C API to set current CUDA stream pointer.
@@ -73,7 +84,7 @@ cdef set_current_stream_ptr(intptr_t ptr, int device_id=-1):
 
 
 # cpdef for unit testing
-cpdef intptr_t get_default_stream_ptr():
+cpdef intptr_t get_default_stream_ptr() noexcept:
     """Get the CUDA default stream pointer.
 
     Returns:
@@ -85,8 +96,5 @@ cpdef intptr_t get_default_stream_ptr():
         return runtime.streamLegacy
 
 
-cdef bint is_ptds_enabled():
-    if runtime._is_hip_environment:
-        # HIP does not support PTDS, just ignore the env var
-        return False
+cdef bint is_ptds_enabled() noexcept:
     return _ptds

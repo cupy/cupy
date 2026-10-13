@@ -1,4 +1,6 @@
 # class s_(object):
+from __future__ import annotations
+
 
 import functools
 import numbers
@@ -11,7 +13,7 @@ from cupy._creation import from_data
 from cupy._manipulation import join
 
 
-class AxisConcatenator(object):
+class AxisConcatenator:
     """Translates slice objects to concatenation along an axis.
 
     For detailed documentation on usage, see :func:`cupy.r_`.
@@ -81,7 +83,7 @@ class AxisConcatenator(object):
 class CClass(AxisConcatenator):
 
     def __init__(self):
-        super(CClass, self).__init__(-1, ndmin=2, trans1d=0)
+        super().__init__(-1, ndmin=2, trans1d=0)
 
 
 c_ = CClass()
@@ -114,7 +116,7 @@ array([[1, 2, 3, 0, 0, 4, 5, 6]], dtype=int32)
 class RClass(AxisConcatenator):
 
     def __init__(self):
-        super(RClass, self).__init__()
+        super().__init__()
 
 
 r_ = RClass()

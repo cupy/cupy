@@ -331,7 +331,8 @@ __device__ int64_t rk_hypergeometric_hrua(T& state, int64_t good, int64_t bad, i
 
 template<typename T>
 __device__ int64_t rk_hypergeometric(T& state, int64_t good, int64_t bad, int64_t sample) {
-    if (sample > 10) {
+    if (sample <= 0) return 0;
+    if ((sample > 10) && (sample <= good + bad - 10)) {
         return rk_hypergeometric_hrua(state, good, bad, sample);
     }
     else {
@@ -759,7 +760,7 @@ template<typename T>
 struct array_data {};  // opaque type always used as a pointer type
 
 template<typename T>
-__device__ T get_index(array_data<T> *value, int id, ssize_t state_size) {
+__device__ T get_index(array_data<T> *value, ssize_t id, ssize_t state_size) {
     int64_t* data = reinterpret_cast<int64_t*>(value);
     intptr_t ptr = reinterpret_cast<intptr_t>(data[0]);
     int ndim = data[1];
@@ -772,11 +773,11 @@ __device__ T get_index(array_data<T> *value, int id, ssize_t state_size) {
 }
 
 template<typename T>
-__device__ typename std::enable_if<std::is_arithmetic<T>::value, T>::type get_index(T value, int id, ssize_t state_size) {
+__device__ typename std::enable_if<std::is_arithmetic<T>::value, T>::type get_index(T value, ssize_t id, ssize_t state_size) {
     return value;
 }
 
-__device__ rk_binomial_state* get_index(rk_binomial_state *value, int id, ssize_t state_size) {
+__device__ rk_binomial_state* get_index(rk_binomial_state *value, ssize_t id, ssize_t state_size) {
     return (value + id % state_size);
 }
 
@@ -785,7 +786,7 @@ __global__ void execute_dist( intptr_t state, ssize_t state_size, intptr_t out, 
     R* out_ptr = reinterpret_cast<R*>(out);
     F func;
     T random(blockIdx.x * blockDim.x + threadIdx.x, state);
-    for (int id = blockIdx.x * blockDim.x + threadIdx.x; 
+    for (ssize_t id = blockIdx.x * blockDim.x + threadIdx.x;
              id < size; 
              id += state_size) {
         out_ptr[id] = func(random, (get_index(args, id, state_size))...);
@@ -825,14 +826,14 @@ void random_uniform_float(int generator, intptr_t state, ssize_t state_size, int
 }
 
 //These functions will take the generator_id as a parameter
-void interval_32(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, int32_t mx, int32_t mask) {
-    kernel_launcher<interval_32_functor, int32_t> launcher(state_size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, state_size, out, size, static_cast<uint32_t>(mx), static_cast<uint32_t>(mask));
+void interval_32(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, uint32_t mx, uint32_t mask) {
+    kernel_launcher<interval_32_functor, uint32_t> launcher(state_size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, state_size, out, size, mx, mask);
 }
 
-void interval_64(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, int64_t mx, int64_t mask) {
-    kernel_launcher<interval_64_functor, int64_t> launcher(state_size, reinterpret_cast<cudaStream_t>(stream));
-    generator_dispatcher(generator, launcher, state, state_size, out, size, static_cast<uint64_t>(mx), static_cast<uint64_t>(mask));
+void interval_64(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, uint64_t mx, uint64_t mask) {
+    kernel_launcher<interval_64_functor, uint64_t> launcher(state_size, reinterpret_cast<cudaStream_t>(stream));
+    generator_dispatcher(generator, launcher, state, state_size, out, size, mx, mask);
 }
 
 void beta(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, intptr_t a, intptr_t b) {
@@ -892,8 +893,8 @@ void init_curand_generator(int generator, intptr_t state_ptr, ssize_t state_size
 void random_uniform(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream) {}
 void random_uniform_float(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream) {}
 void raw(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream) {}
-void interval_32(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, int32_t mx, int32_t mask) {}
-void interval_64(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, int64_t mx, int64_t mask) {}
+void interval_32(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, uint32_t mx, uint32_t mask) {}
+void interval_64(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, uint64_t mx, uint64_t mask) {}
 void beta(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, intptr_t a, intptr_t b) {}
 void exponential(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream) {}
 void geometric(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, intptr_t p) {}

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import operator
 import warnings
 
@@ -5,6 +7,11 @@ import numpy
 
 import cupy
 from cupy import _core
+from cupy._core import _accelerator
+from cupy._core import _cuda_compute_histogram
+from cupy.cuda import cub
+from cupy.cuda import common
+from cupy.cuda import runtime
 
 
 # rename builtin range for use in functions that take a range argument
@@ -13,17 +20,20 @@ _range = range
 
 # TODO(unno): use searchsorted
 _histogram_kernel = _core.ElementwiseKernel(
-    'S x, raw T bins, int32 n_bins',
+    'S x, raw T bins, int64 n_bins_',
     'raw U y',
     '''
+    using index_t = decltype(bins)::index_t;
+    index_t n_bins = static_cast<index_t>(n_bins_);
+
     if (x < bins[0] or bins[n_bins - 1] < x) {
         return;
     }
-    int high = n_bins - 1;
-    int low = 0;
+    index_t high = n_bins - 1;
+    index_t low = 0;
 
     while (high - low > 1) {
-        int mid = (high + low) / 2;
+        index_t mid = low + (high - low) / 2;
         if (bins[mid] <= x) {
             low = mid;
         } else {
@@ -36,17 +46,20 @@ _histogram_kernel = _core.ElementwiseKernel(
 
 
 _weighted_histogram_kernel = _core.ElementwiseKernel(
-    'S x, raw T bins, int32 n_bins, raw W weights',
+    'S x, raw T bins, int64 n_bins_, raw W weights',
     'raw Y y',
     '''
+    using index_t = decltype(bins)::index_t;
+    index_t n_bins = static_cast<index_t>(n_bins_);
+
     if (x < bins[0] or bins[n_bins - 1] < x) {
         return;
     }
-    int high = n_bins - 1;
-    int low = 0;
+    index_t high = n_bins - 1;
+    index_t low = 0;
 
     while (high - low > 1) {
-        int mid = (high + low) / 2;
+        index_t mid = low + (high - low) / 2;
         if (bins[mid] <= x) {
             low = mid;
         } else {
@@ -94,11 +107,11 @@ def _get_outer_edges(a, range):
                 'supplied range of [{}, {}] is not finite'.format(
                     first_edge, last_edge))
     elif a.size == 0:
-        first_edge = 0.0
-        last_edge = 1.0
+        first_edge = 0
+        last_edge = 1
     else:
-        first_edge = float(a.min())
-        last_edge = float(a.max())
+        first_edge = a.min()
+        last_edge = a.max()
         if not (cupy.isfinite(first_edge) and cupy.isfinite(last_edge)):
             raise ValueError(
                 'autodetected range of [{}, {}] is not finite'.format(
@@ -171,7 +184,7 @@ def _get_bin_edges(a, bins, range):
     return bin_edges
 
 
-def histogram(x, bins=10, range=None, weights=None, density=False):
+def histogram(x, bins=10, range=None, density=False, weights=None):
     """Computes the histogram of a set of data.
 
     Args:
@@ -216,10 +229,43 @@ def histogram(x, bins=10, range=None, weights=None, density=False):
 
     if weights is None:
         y = cupy.zeros(bin_edges.size - 1, dtype=cupy.int64)
-        # TODO(leofang): we temporarily remove CUB histogram support for now,
-        # see cupy/cupy#7698. When it's ready, revert the commit that checked
-        # in this comment to restore the support.
-        _histogram_kernel(x, bin_edges, bin_edges.size, y)
+        for accelerator in _accelerator.get_routine_accelerators():
+            # CUB uses int for bin counts
+            # TODO(leofang): support >= 2^31 elements in x?
+            if (accelerator == _accelerator.ACCELERATOR_CUB
+                    and x.size <= 0x7fffffff and bin_edges.size <= 0x7fffffff):
+                # Need to ensure the dtype of bin_edges as it's needed for both
+                # the CUB call and the correction later
+                assert isinstance(bin_edges, cupy.ndarray)
+                if numpy.issubdtype(x.dtype, numpy.integer):
+                    bin_type = float
+                else:
+                    bin_type = numpy.result_type(bin_edges.dtype, x.dtype)
+                    if (bin_type == numpy.float16 and
+                            not common._is_fp16_supported()):
+                        bin_type = numpy.float32
+                    x = x.astype(bin_type, copy=False)
+                acc_bin_edge = bin_edges.astype(bin_type, copy=True)
+                # CUB's upper bin boundary is exclusive for all bins, including
+                # the last bin, so we must shift it to comply with NumPy
+                if x.dtype.kind in 'ui':
+                    acc_bin_edge[-1] += 1
+                elif x.dtype.kind == 'f':
+                    last = acc_bin_edge[-1]
+                    acc_bin_edge[-1] = cupy.nextafter(last, last + 1)
+                if runtime.is_hip:
+                    y = y.astype(cupy.uint64, copy=False)
+                out = cub.cub_histogram(x, y, acc_bin_edge)
+                if out is None:
+                    # fallback to CuPy impl
+                    continue
+                else:
+                    y = out
+                if runtime.is_hip:
+                    y = y.astype(cupy.int64, copy=False)
+                break
+        else:
+            _histogram_kernel(x, bin_edges, bin_edges.size, y)
     else:
         simple_weights = (
             cupy.can_cast(weights.dtype, cupy.float64) or
@@ -513,16 +559,41 @@ def bincount(x, weights=None, minlength=None):
         if minlength < 0:
             raise ValueError('minlength must be non-negative')
 
+    if x.size == 0:
+        size = minlength if minlength is not None else 0
+        # NumPy returns intp dtype for empty input even when weights is given
+        return cupy.zeros((size,), dtype=numpy.intp)
+
     size = int(cupy.max(x)) + 1  # synchronize!
     if minlength is not None:
         size = max(size, minlength)
 
     if weights is None:
         b = cupy.zeros((size,), dtype=numpy.intp)
-        # TODO(leofang): we temporarily remove CUB histogram support for now,
-        # see cupy/cupy#7698. When it's ready, revert the commit that checked
-        # in this comment to restore the support.
-        _bincount_kernel(x, b)
+
+        accelerators = ([] if runtime.is_hip
+                        else _accelerator.get_routine_accelerators())
+        for accelerator in accelerators:
+            if accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE:
+                out = _cuda_compute_histogram.cuda_compute_bincount(
+                    x, b, size)
+                if out is None:
+                    continue
+                else:
+                    b = out
+                    break
+            # CUB uses int for bin counts
+            # TODO(leofang): support >= 2^31 elements in x?
+            if (accelerator == _accelerator.ACCELERATOR_CUB
+                    and x.size <= 0x7fffffff and size <= 0x7fffffff):
+                out = cub.cub_histogram(x, b, size+1)
+                if out is None:
+                    continue
+                else:
+                    b = out
+                    break
+        else:
+            _bincount_kernel(x, b)
     else:
         b = cupy.zeros((size,), dtype=numpy.float64)
         _bincount_with_weight_kernel(x, weights, b)

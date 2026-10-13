@@ -10,6 +10,7 @@ size can also be specified to cap the amount of caches.
 
 Note that this code relies on atime support of the filesystem.
 """
+from __future__ import annotations
 
 import argparse
 import datetime

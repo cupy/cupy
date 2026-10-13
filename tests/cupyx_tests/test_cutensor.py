@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 import gc
 
 import numpy
 import pytest
 
 import cupy
+import cupyx
 from cupy._core import _routines_linalg as _linalg
 from cupy import testing
 from cupy.cuda import device
@@ -115,13 +118,14 @@ class TestCuTensor:
         if compute_capability < 70 and self.dtype == numpy.float16:
             pytest.skip('Not supported.')
 
+        c = self.c.copy("K")
         d = cutensor.contraction(
             self.alpha, self.a, self.mode_a,
             self.b, self.mode_b,
-            self.beta, self.c, self.mode_c
+            self.beta, c, self.mode_c
         )
 
-        assert self.c is d
+        assert c is d
         testing.assert_allclose(
             self.alpha * self.a_transposed * self.b_transposed +
             self.beta * self.c_transposed,
@@ -316,12 +320,13 @@ class TestCuTensorContraction:
         mode_a = cutensor.create_mode('m', 'k')
         mode_b = cutensor.create_mode('k', 'n')
         mode_c = cutensor.create_mode('m', 'n')
+        c = self.c.copy()
         cutensor.contraction(self.alpha,
                              self.a, mode_a,
                              self.b, mode_b,
                              self.beta,
-                             self.c, mode_c)
-        cupy.testing.assert_allclose(self.c, self.c_ref,
+                             c, mode_c)
+        cupy.testing.assert_allclose(c, self.c_ref,
                                      rtol=self.tol, atol=self.tol)
 
         # test the contraction descriptor cache (issues #7318, #7812)
@@ -337,3 +342,185 @@ class TestCuTensorContraction:
                              self.c, mode_c)
         cupy.testing.assert_allclose(self.c, self.c_ref,
                                      rtol=self.tol, atol=self.tol)
+
+
+@testing.parameterize(*testing.product({
+    'dtype_char': ['e', 'f', 'd', 'F', 'D'],
+    'shape': [(30, 40, 30, 35)],
+    'alpha': [0.5, 1.0],
+    'beta': [0.0, 1.0],
+    'order': ['C', 'F']
+}))
+@pytest.mark.skipif(not ct.available, reason='cuTensor is unavailable')
+class TestCuTensorIncontiguous:
+    _tol = {'e': 1e-3, 'f': 2e-6, 'd': 1e-12}
+
+    @pytest.fixture(autouse=True)
+    def setUp(self):
+        compute_capability = int(device.get_compute_capability())
+        if compute_capability < 70 and self.dtype_char == 'e':
+            pytest.skip("Not supported")
+        self.dtype = numpy.dtype(self.dtype_char)
+        self.tol = self._tol[self.dtype_char.lower()]
+
+    def test_contraction(self):
+        mode_a = cutensor.create_mode('a', 'b', 'c')
+        mode_b = cutensor.create_mode('c', 'd', 'b')
+        mode_c = cutensor.create_mode('d', 'a')
+        a, b, c, d = self.shape
+        x = testing.shaped_random(
+            (a, b, c), cupy, dtype=self.dtype, order=self.order)
+        y = testing.shaped_random(
+            (c, d, b), cupy, dtype=self.dtype, order=self.order)
+        z = testing.shaped_random(
+            (d, a), cupy, dtype=self.dtype, order=self.order)
+        delta = 7
+        c_ref = z.copy()
+        c_ref = cutensor.contraction(self.alpha,
+                                     x, mode_a,
+                                     y, mode_b,
+                                     self.beta,
+                                     c_ref, mode_c)
+        for a0 in range(0, a, delta):
+            for d0 in range(0, d, delta):
+                cutensor.contraction(self.alpha,
+                                     x[a0:a0+delta], mode_a,
+                                     y[:, d0:d0+delta], mode_b,
+                                     self.beta,
+                                     z[d0:d0+delta, a0:a0+delta], mode_c)
+                cupy.testing.assert_allclose(z[d0:d0+delta, a0:a0+delta],
+                                             c_ref[d0:d0+delta, a0:a0+delta],
+                                             rtol=self.tol, atol=self.tol)
+
+    def test_reduction(self):
+        mode_a = cutensor.create_mode('a', 'b', 'c')
+        mode_c = cutensor.create_mode('b')
+        a, b, c, _ = self.shape
+        x = testing.shaped_random(
+            (a, b, c), cupy, dtype=self.dtype, order=self.order)
+        z = testing.shaped_random(
+            (b,), cupy, dtype=self.dtype, order=self.order)
+
+        c_ref = z.copy()
+        c_ref = cutensor.reduction(self.alpha,
+                                   x, mode_a,
+                                   self.beta,
+                                   c_ref, mode_c)
+        delta = 7
+        for b0 in range(0, b, delta):
+            cutensor.reduction(self.alpha,
+                               x[:, b0:b0+delta, :], mode_a,
+                               self.beta,
+                               z[b0:b0+delta], mode_c)
+            cupy.testing.assert_allclose(z[b0:b0+delta],
+                                         c_ref[b0:b0+delta],
+                                         rtol=self.tol, atol=self.tol)
+
+    def test_elementwise_binary(self):
+        mode_a = cutensor.create_mode('a', 'b', 'c')
+        mode_c = cutensor.create_mode('c', 'a', 'b')
+        a, b, c, _ = self.shape
+        x = testing.shaped_random(
+            (a, b, c), cupy, dtype=self.dtype, order=self.order)
+        z = testing.shaped_random(
+            (c, a, b), cupy, dtype=self.dtype, order=self.order)
+
+        c_ref = z.copy()
+        c_ref = cutensor.elementwise_binary(self.alpha,
+                                            x, mode_a,
+                                            self.beta,
+                                            c_ref, mode_c)
+        delta = 7
+        for b0 in range(0, b, delta):
+            cutensor.elementwise_binary(self.alpha,
+                                        x[:, b0:b0+delta], mode_a,
+                                        self.beta,
+                                        z[:, :, b0:b0+delta], mode_c,
+                                        out=z[:, :, b0:b0+delta])
+            cupy.testing.assert_allclose(z[:, :, b0:b0+delta],
+                                         c_ref[:, :, b0:b0+delta],
+                                         rtol=self.tol, atol=self.tol)
+
+    def test_elementwise_trinary(self):
+        mode_a = cutensor.create_mode('a', 'b', 'c')
+        mode_b = cutensor.create_mode('b', 'c', 'a')
+        mode_c = cutensor.create_mode('c', 'a', 'b')
+        a, b, c, _ = self.shape
+        x = testing.shaped_random(
+            (a, b, c), cupy, dtype=self.dtype, order=self.order)
+        y = testing.shaped_random(
+            (b, c, a), cupy, dtype=self.dtype, order=self.order)
+        z = testing.shaped_random(
+            (c, a, b), cupy, dtype=self.dtype, order=self.order)
+
+        for gamma in [0.0, 1.0]:
+            c_ref = z.copy()
+            c_ref = cutensor.elementwise_trinary(self.alpha, x, mode_a,
+                                                 self.beta, y, mode_b,
+                                                 gamma, c_ref, mode_c,
+                                                 out=c_ref)
+            delta = 7
+            for a0 in range(0, a, delta):
+                cutensor.elementwise_trinary(self.alpha,
+                                             x[a0:a0+delta],
+                                             mode_a, self.beta,
+                                             y[:, :, a0:a0+delta],
+                                             mode_b, gamma,
+                                             z[:, a0:a0+delta], mode_c,
+                                             out=z[:, a0:a0+delta])
+                cupy.testing.assert_allclose(z[:, a0:a0+delta],
+                                             c_ref[:, a0:a0+delta],
+                                             rtol=self.tol, atol=self.tol)
+
+
+@testing.parameterize(*testing.product({
+    'dtype_char': ['e', 'f', 'd', 'F', 'D'],
+    'shape': [32],
+}))
+@pytest.mark.skipif(not ct.available, reason='cuTensor is unavailable')
+class TestCuTensorMg:
+    _tol = {'e': 4e-3, 'f': 2e-6, 'd': 1e-12}
+
+    @pytest.fixture(autouse=True)
+    def setUp(self):
+        compute_capability = int(device.get_compute_capability())
+        if compute_capability < 70 and self.dtype_char == 'e':
+            pytest.skip("Not supported")
+        self.dtype = numpy.dtype(self.dtype_char)
+        self.tol = self._tol[self.dtype_char.lower()]
+
+    def test_contraction(self):
+        n = self.shape
+        if self.dtype == 'e':
+            a = cupyx.empty_pinned((n, n, n, n), dtype=self.dtype)
+            a[...] = testing.shaped_random(
+                (n, n, n, n), numpy, dtype="float32")
+        else:
+            a = testing.shaped_random(
+                (n, n, n, n), numpy, dtype=self.dtype)
+        b = testing.shaped_random(
+            (n, n, n, n), cupy, dtype=self.dtype)
+        c = cupyx.empty_pinned((n, n, n, n), dtype=self.dtype)
+        c_ref = numpy.einsum('kijl,kadl->iajd', a, b.get())
+        mga = cutensor.ndarray_mg(a, block_size=[8, 8, 8, 8])
+        cutensor.contractionMg(1, mga, 'kijl', b,
+                               'kadl', 0, c, 'iajd')
+        cupy.cuda.Device(0).synchronize()
+        cupy.testing.assert_allclose(c, c_ref, rtol=self.tol,
+                                     atol=self.tol)
+
+    def test_copy(self):
+        n = self.shape
+        if self.dtype == 'e':
+            # 16-bit result host pageable tensors are not supported in the
+            # contraction routines.
+            a = cupyx.empty_pinned((n, n, n, n), dtype=self.dtype)
+        else:
+            a = testing.shaped_random(
+                (n, n, n, n), numpy, dtype=self.dtype)
+        b = testing.shaped_random(
+            (n, n, n, n), cupy, dtype=self.dtype)
+        cutensor.copyMg(b, 'cabd', a, 'abcd')
+        cupy.cuda.Device(0).synchronize()
+        cupy.testing.assert_allclose(b.get(), a.transpose(
+            (2, 0, 1, 3)), rtol=self.tol, atol=self.tol)

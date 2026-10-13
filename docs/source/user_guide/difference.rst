@@ -99,26 +99,11 @@ If you want to use scalar values, cast the returned arrays explicitly.
   True
 
 
-Type promotion
-~~~~~~~~~~~~~~
-
-CuPy automatically promotes dtypes of :class:`cupy.ndarray` s in a function with two or more operands, the result dtype is determined by the dtypes of the inputs.
-This is different from NumPy's rule on type promotion, when operands contain zero-dimensional arrays.
-Zero-dimensional :class:`numpy.ndarray` s are treated as if they were scalar values if they appear in operands of NumPy's function,
-This may affect the dtype of its output, depending on the values of the "scalar" inputs.
-
-  >>> (np.array(3, dtype=np.int32) * np.array([1., 2.], dtype=np.float32)).dtype
-  dtype('float32')
-  >>> (np.array(300000, dtype=np.int32) * np.array([1., 2.], dtype=np.float32)).dtype
-  dtype('float64')
-  >>> (cupy.array(3, dtype=np.int32) * cupy.array([1., 2.], dtype=np.float32)).dtype
-  dtype('float64')
-
-
 Matrix type (:class:`numpy.matrix`)
 -----------------------------------
 
 SciPy returns :class:`numpy.matrix` (a subclass of :class:`numpy.ndarray`) when dense matrices are computed from sparse matrices (e.g., ``coo_matrix + ndarray``). However, CuPy returns :class:`cupy.ndarray` for such operations.
+This affects the ``*_matrix`` classes only; both SciPy and CuPy return plain arrays for the ``*_array`` classes.
 
 There is no plan to provide :class:`numpy.matrix` equivalent in CuPy.
 This is because the use of :class:`numpy.matrix` is no longer recommended since NumPy 1.15.
@@ -129,6 +114,13 @@ Data types
 
 Data type of CuPy arrays cannot be non-numeric like strings or objects.
 See :ref:`overview` for details.
+
+CuPy has very minimal support for structured dtypes.  Arrays with structured
+dtypes can be created and indexed by a single field ``arr["name"]`` which
+also allows assignment.
+However, as of now, the user has to ensure alignment of the structure dtype
+fields (or the dtype itself) and launching kernels is not supported yet so
+even copying such an array is not possible.
 
 
 Universal Functions only work with CuPy array or scalar

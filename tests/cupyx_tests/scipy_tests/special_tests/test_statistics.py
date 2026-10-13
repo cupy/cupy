@@ -1,29 +1,41 @@
+from __future__ import annotations
+
 import numpy
 import pytest
 
 import cupy
 from cupy import testing
 import cupyx.scipy.special
+from cupyx_tests.scipy_tests.special_tests import match_scipy_float32
+
+# The check helpers below are shared with `logit` and `ndtri`, which SciPy
+# 1.18 left on the float64 loop (`ndtri` already had a float32 one), so those
+# two still agree with CuPy on float16.
+_SCIPY_FLOAT32_LOOP = frozenset({'ndtr', 'log_ndtr', 'expit', 'log_expit'})
 
 
 class _TestBase:
 
+    @testing.with_requires('scipy>=1.16')
     def test_ndtr(self):
         self.check_unary_linspace0_1('ndtr')
 
+    @testing.with_requires('scipy>=1.16')
     def test_log_ndtr(self):
         self.check_unary_linspace0_1('log_ndtr')
 
     def test_ndtri(self):
         self.check_unary_linspace0_1('ndtri')
 
+    @testing.with_requires("scipy")
     def test_logit(self):
         self.check_unary_lower_precision('logit')
 
+    @testing.with_requires("scipy")
     def test_expit(self):
         self.check_unary_lower_precision('expit')
 
-    @testing.with_requires('scipy>=1.8.0rc0')
+    @testing.with_requires("scipy")
     def test_log_expit(self):
         self.check_unary_lower_precision('log_expit')
 
@@ -55,13 +67,19 @@ class TestSpecial(_TestBase):
                                  scipy_name='scp')
     def check_unary_lower_precision(self, name, xp, scp, dtype):
         a = xp.linspace(-10, 10, 100, dtype=dtype)
-        return self._check_unary(a, name, scp)
+        out = self._check_unary(a, name, scp)
+        if name in _SCIPY_FLOAT32_LOOP:
+            out = match_scipy_float32(out, xp, dtype)
+        return out
 
     @testing.for_dtypes(['e', 'f', 'd'])
     @testing.numpy_cupy_allclose(atol=atol, rtol=rtol, scipy_name='scp')
     def check_unary_linspace0_1(self, name, xp, scp, dtype):
         p = xp.linspace(0, 1, 1000, dtype=dtype)
-        return self._check_unary(p, name, scp)
+        out = self._check_unary(p, name, scp)
+        if name in _SCIPY_FLOAT32_LOOP:
+            out = match_scipy_float32(out, xp, dtype)
+        return out
 
     def test_logit_nonfinite(self):
         logit = cupyx.scipy.special.logit
@@ -133,13 +151,19 @@ class TestFusionSpecial(_TestBase):
                                  scipy_name='scp')
     def check_unary_lower_precision(self, name, xp, scp, dtype):
         a = testing.shaped_arange((2, 3), xp, dtype)
-        return self._check_unary(a, name, scp)
+        out = self._check_unary(a, name, scp)
+        if name in _SCIPY_FLOAT32_LOOP:
+            out = match_scipy_float32(out, xp, dtype)
+        return out
 
     @testing.for_dtypes(['e', 'f', 'd'])
     @testing.numpy_cupy_allclose(atol=atol, rtol=rtol, scipy_name='scp')
     def check_unary_linspace0_1(self, name, xp, scp, dtype):
         a = xp.linspace(0, 1, 1000, dtype)
-        return self._check_unary(a, name, scp)
+        out = self._check_unary(a, name, scp)
+        if name in _SCIPY_FLOAT32_LOOP:
+            out = match_scipy_float32(out, xp, a.dtype)
+        return out
 
 
 class _TestDistributionsBase:
@@ -154,6 +178,7 @@ class _TestDistributionsBase:
 @testing.with_requires('scipy')
 class TestTwoArgumentDistribution(_TestDistributionsBase):
 
+    @testing.with_requires('scipy>=1.16')
     @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
                         reason="avoid failures observed on HIP")
     @pytest.mark.parametrize('function', ['chdtr', 'chdtrc', 'chdtri',
@@ -203,11 +228,12 @@ class TestTwoArgumentDistribution(_TestDistributionsBase):
 
 @testing.with_requires('scipy')
 class TestThreeArgumentDistributions(_TestDistributionsBase):
+    tol = {numpy.float32: 2.22e-5, "default": 1e-8}
 
-    @pytest.mark.parametrize('function', ['btdtr', 'btdtri', 'fdtr', 'fdtrc',
+    @pytest.mark.parametrize('function', ['fdtr', 'fdtrc',
                                           'fdtri', 'gdtr', 'gdtrc'])
     @testing.for_float_dtypes()
-    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    @testing.numpy_cupy_allclose(atol=tol, rtol=tol, scipy_name='scp')
     def test_linspace_broadcasted(self, xp, scp, dtype, function):
         """Linspace with three arguments.
 
@@ -221,7 +247,7 @@ class TestThreeArgumentDistributions(_TestDistributionsBase):
         # a and b should be positive
         a = xp.linspace(-1, 21, 30, dtype=dtype)[:, xp.newaxis, xp.newaxis]
         b = xp.linspace(-1, 21, 30, dtype=dtype)[xp.newaxis, :, xp.newaxis]
-        if function in ['fdtri', 'btdtr', 'btdtri']:
+        if function == 'fdtri':
             # x should be in [0, 1] so concentrate values around that
             x = xp.linspace(-0.1, 1.3, 20, dtype=dtype)
         else:
@@ -230,12 +256,11 @@ class TestThreeArgumentDistributions(_TestDistributionsBase):
         x = x[xp.newaxis, xp.newaxis, :]
         return func(a, b, x)
 
-    # omit test with scipy < 1.5 due to change in ufunc type signatures
     @pytest.mark.parametrize('function', ['bdtr', 'bdtrc', 'bdtri'])
     @testing.for_float_dtypes()
     @testing.for_signed_dtypes(name='int_dtype')
     @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
-    @testing.with_requires('scipy>=1.5.0')
+    @testing.with_requires('scipy')
     @pytest.mark.skipif(cupy.cuda.runtime.is_hip,
                         reason="avoid failures observed on HIP")
     def test_binomdist_linspace(self, xp, scp, function, dtype, int_dtype):
@@ -275,9 +300,7 @@ class TestThreeArgumentDistributions(_TestDistributionsBase):
 
     @pytest.mark.parametrize(
         'function, args, expected',
-        [('btdtr', (1, 1, 1), 1.0),
-         ('btdtri', (1, 1, 1), 1.0),
-         ('betainc', (1, 1, 0), 0.0),
+        [('betainc', (1, 1, 0), 0.0),
          # Computed using Wolfram Alpha: CDF[FRatioDistribution[1e-6, 5], 10]
          ('fdtr', (1e-6, 5, 10), 0.9999940790193488),
          ('fdtrc', (1, 1, 0), 1.0),

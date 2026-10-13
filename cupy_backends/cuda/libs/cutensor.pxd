@@ -47,6 +47,9 @@ cpdef enum:
     WORKSPACE_RECOMMENDED = 2  # NOQA, The most suitable algorithm will be available
     WORKSPACE_MAX = 3          # NOQA, All algorithms will be available
 
+    # cutensorPlanAttribute_t
+    PLAN_REQUIRED_WORKSPACE = 0  # NOQA, The required workspace size for the plan
+
     # cutensorOperator_t (Unary)
     OP_IDENTITY = 1  # NOQA, Identity operator (i.e., elements are not changed)
     OP_SQRT = 2      # NOQA, Square root
@@ -97,7 +100,7 @@ cpdef enum:
     STATUS_IO_ERROR = 21
 
     # cutensorComputeType_t
-    # (*) compute types added in versoin 1.2
+    # (*) compute types added in version 1.2
     COMPUTE_16F = 1     # NOQA, half
     COMPUTE_16BF = 1024  # NOQA, bfloat
     COMPUTE_TF32 = 4096  # NOQA, tensor-float-32
@@ -108,7 +111,7 @@ cpdef enum:
     COMPUTE_8I = 256   # NOQA, int8
     COMPUTE_32U = 128   # NOQA, uint32
     COMPUTE_32I = 512   # NOQA, int32
-    # (*) compute types below will be deprecated in the furture release.
+    # (*) compute types below will be deprecated in the future release.
     R_MIN_16F = 1    # NOQA, real as a half
     C_MIN_16F = 2    # NOQA, complex as a half
     R_MIN_32F = 4    # NOQA, real as a float
@@ -123,7 +126,7 @@ cpdef enum:
     R_MIN_TF32 = 2048  # NOQA, real as a tensorfloat32
     C_MIN_TF32 = 4096  # NOQA, complex as a tensorfloat32
 
-    # cutensorComputeDescriptor_t altenatives
+    # cutensorComputeDescriptor_t alternatives
     COMPUTE_DESC_16F = 1
     COMPUTE_DESC_16BF = 1024
     COMPUTE_DESC_TF32 = 4096
@@ -135,6 +138,13 @@ cpdef enum:
     JIT_MODE_NONE = 0   # NOQA, no kernel will be just-in-time compiled.
     JIT_MODE_DEFAULT = 1,  # NOQA, the corresponding plan will try to compile a dedicated kernel for the given operation. Only supported for GPUs with compute capability >= 8.0 (Ampere or newer).
     JIT_MODE_ALL = 2  # NOQA, the corresponding plan will compile all the kernel candidates for the given contraction.
+
+    # cutensorMgHostDevice_t
+    CUTENSOR_MG_DEVICE_HOST = -1  # NOQA, regular memory on the host
+    CUTENSOR_MG_DEVICE_HOST_PINNED = -2  # NOQA, pinned memory on the host
+
+    # cutensorMgAlgo_t
+    CUTENSORMG_ALGO_DEFAULT = -1
 
 # Version information
 cpdef size_t get_version()
@@ -173,6 +183,14 @@ cpdef intptr_t createPlan(
     intptr_t desc,
     intptr_t pref,
     uint64_t workspaceSizeLimit) except? 0
+
+cpdef planGetAttribute(
+    intptr_t handle,
+    intptr_t plan,
+    int attr,
+    intptr_t buf,
+    size_t sizeInBytes)
+
 cpdef destroyPlan(intptr_t plan)
 
 # cutensorElementwiseTrinary
@@ -240,3 +258,100 @@ cpdef reduce(
 
 #
 cpdef destroyOperationDescriptor(intptr_t desc)
+
+###############################################################################
+# cutensorMg
+###############################################################################
+
+# MgHandle creation and destruction
+cpdef intptr_t createMg(uint32_t numDevices, intptr_t devices) except? 0
+cpdef destroyMg(intptr_t handle)
+
+# MgTensorDescriptor creation and destruction
+cpdef intptr_t createMgTensorDescriptor(
+    intptr_t handle,
+    uint32_t numModes,
+    intptr_t extent,
+    intptr_t elementStride,
+    intptr_t blockSize,
+    intptr_t blockStride,
+    intptr_t deviceCount,
+    uint32_t numDevices,
+    intptr_t devices,
+    int dataType) except? 0
+cpdef destroyMgTensorDescriptor(intptr_t desc)
+
+# MgCopyDescriptor creation and destruction
+cpdef intptr_t createMgCopyDescriptor(
+    intptr_t handle,
+    intptr_t descDst,
+    intptr_t modesDst,
+    intptr_t descSrc,
+    intptr_t modesSrc) except? 0
+cpdef destroyMgCopyDescriptor(intptr_t desc)
+
+cpdef int64_t getMgCopyWorkspace(
+    intptr_t handle,
+    intptr_t desc,
+    intptr_t workspaceDeviceSize)
+
+# MgCopyPlan creation and destruction
+cpdef intptr_t createMgCopyPlan(
+    intptr_t handle,
+    intptr_t desc,
+    intptr_t workspaceDeviceSize,
+    int64_t workspaceHostSize) except? 0
+cpdef destroyMgCopyPlan(intptr_t plan)
+
+# copyMg
+cpdef _copyMg(
+    intptr_t handle, intptr_t plan,
+    intptr_t ptrDst, const intptr_t ptrSrc,
+    intptr_t workspaceDevice, intptr_t workspaceHost,
+    intptr_t _streams)
+
+# MgContractionDescriptor creation and destruction
+cpdef intptr_t createMgContractionDescriptor(
+    intptr_t handle,
+    intptr_t descA,
+    intptr_t modesA,
+    intptr_t descB,
+    intptr_t modesB,
+    intptr_t descC,
+    intptr_t modesC,
+    intptr_t descD,
+    intptr_t modesD,
+    int compute) except? 0
+cpdef destroyMgContractionDescriptor(intptr_t desc)
+
+# MgContractionFind creation and destruction
+cpdef intptr_t createMgContractionFind(
+    intptr_t handle,
+    int algo) except? 0
+cpdef destroyMgContractionFind(intptr_t find)
+
+cpdef int64_t getMgContractionWorkspace(
+    intptr_t handle,
+    intptr_t desc,
+    intptr_t find,
+    int preference,
+    intptr_t workspaceDeviceSize)
+
+# MgContractionPlan creation and destruction
+cpdef intptr_t createMgContractionPlan(
+    intptr_t handle,
+    intptr_t desc,
+    intptr_t find,
+    intptr_t workspaceDeviceSize,
+    int64_t workspaceHostSize) except? 0
+cpdef destroyMgContractionPlan(intptr_t plan)
+
+# contractMg
+cpdef _contractMg(
+    intptr_t handle, intptr_t plan,
+    intptr_t alpha, const intptr_t A,
+    const intptr_t B, intptr_t beta,
+    const intptr_t C, intptr_t D,
+    intptr_t workspaceDevice,
+    intptr_t workspaceHost,
+    intptr_t _streams)

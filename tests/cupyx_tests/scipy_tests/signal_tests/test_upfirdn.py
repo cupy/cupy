@@ -34,6 +34,8 @@
 # LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+from __future__ import annotations
+
 
 from itertools import product
 
@@ -73,7 +75,7 @@ def make_case(up, down, h, x_dtype, case):
     return x, h
 
 
-def make_case_2D(up, down, h, x_dtype, case):
+def make_case_2D(up, down, h, x_dtype, case, xp):
     # replacement for the UpFIRDnCase class from the SciPy tests
     rng = np.random.RandomState(17)
     h = np.atleast_1d(h)
@@ -84,15 +86,15 @@ def make_case_2D(up, down, h, x_dtype, case):
         x = rng.randn(*size).astype(x_dtype)
         if x_dtype in (np.complex64, np.complex128):
             x += 1j * rng.randn(*size)
-        return x, h
+        return xp.asarray(x), xp.asarray(h)
     elif case == '2D_noncontig':
         # 2D, random, non-contiguous
         size = (3, 7)
         x = rng.randn(*size).astype(x_dtype)
         if x_dtype in (np.complex64, np.complex128):
             x += 1j * rng.randn(*size)
-        x = x[::2, 1::3].T
-        return x, h
+        x = xp.asarray(x)[::2, 1::3].T
+        return x, xp.asarray(h)
     else:
         raise ValueError(f"unknown 2D_case, {case}.")
 
@@ -103,6 +105,9 @@ _upfirdn_modes = [
     'constant', 'wrap', 'edge', 'smooth', 'symmetric', 'reflect',
     'antisymmetric', 'antireflect', 'line',
 ]
+_upfirdn_unsupported_mode = pytest.mark.xfail(
+    reason="upfirdn `mode=...` not implemented"
+)
 
 
 @testing.with_requires('scipy')
@@ -166,17 +171,22 @@ class TestUpfirdn:
         y = scp.signal.upfirdn(h, x, up=1, down=down)
         return y
 
-    @pytest.mark.xfail(reason="upfirdn `mode=...` not implemented")
+    @pytest.mark.parametrize('size', [8])
+    # include cases with h_len > 2*size
+    @pytest.mark.parametrize('h_len', [4, 5, 26])
     @pytest.mark.parametrize(
-        'size, h_len, mode, dtype',
-        product(
-            [8],
-            [4, 5, 26],  # include cases with h_len > 2*size
-            _upfirdn_modes,
-            [np.float32, np.float64, np.complex64, np.complex128],
-        )
+        'mode',
+        [
+            pytest.param(mode, marks=_upfirdn_unsupported_mode)
+            if mode != 'constant'
+            else mode
+            for mode in _upfirdn_modes
+        ]
     )
-    @testing.numpy_cupy_allclose(scipy_name='scp')
+    @pytest.mark.parametrize(
+        'dtype', [np.float32, np.float64, np.complex64, np.complex128]
+    )
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5)
     def test_modes(self, xp, scp, size, h_len, mode, dtype):
         random_state = np.random.RandomState(5)
         x = random_state.randn(size).astype(dtype)
@@ -209,9 +219,46 @@ class TestUpfirdn:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_vs_naive_delta_2D(self, axis, x_dtype, h, up, down,
                                case, xp, scp):
-        x, h = make_case_2D(up, down, h, x_dtype, case)
+        x, h = make_case_2D(up, down, h, x_dtype, case, xp)
+        y = scp.signal.upfirdn(h, x, up, down, axis=axis)
+        return y
+
+    @pytest.mark.parametrize('indexer', [
+        slice(None, None, 2),
+        slice(None, None, -1),
+        slice(None, None, -3),
+    ])
+    @pytest.mark.parametrize(
+        'dtype', [np.float32, np.float64, np.complex64, np.complex128])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_strides_1d(self, xp, scp, indexer, dtype):
+        x = xp.linspace(0, 1, 32, dtype=dtype)
+        h = xp.asarray([1., 1.], dtype=dtype)
+        return scp.signal.upfirdn(h, x[indexer], up=2, down=3)
+
+    @pytest.mark.parametrize('x_dtype', _UPFIRDN_TYPES)
+    @pytest.mark.parametrize('h', (1., 1j))
+    @pytest.mark.parametrize('up, down', [(1, 1), (2, 2), (3, 2), (2, 3)])
+    @pytest.mark.parametrize('shape, axis', [
+        # 3D
+        ((2, 3, 4), 0),
+        ((2, 3, 4), 1),
+        ((2, 3, 4), 2),
+        ((2, 3, 4), -1),
+        # 4D
+        ((2, 3, 4, 5), 0),
+        ((2, 3, 4, 5), 2),
+        ((2, 3, 4, 5), -1),
+    ])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_vs_naive_delta_nd(self, x_dtype, h, up, down, shape, axis,
+                               xp, scp):
+        rng = np.random.RandomState(17)
+        x = rng.randn(*shape).astype(x_dtype)
+        if x_dtype in (np.complex64, np.complex128):
+            x += 1j * rng.randn(*shape)
         x = xp.asarray(x)
-        h = xp.asarray(h)
+        h = xp.asarray(np.atleast_1d(h))
         y = scp.signal.upfirdn(h, x, up, down, axis=axis)
         return y
 
@@ -237,7 +284,7 @@ class TestUpfirdn:
             len_h = random_state.randint(longest_h) + 1
             h = np.atleast_1d(random_state.randint(len_h))
             h = h.astype(h_dtype)
-            if h_dtype == complex:
+            if h_dtype == complex:  # noqa: E721
                 h += 1j * random_state.randint(len_h)
             x, h = make_case(p, q, h, x_dtype, case)
             x = xp.asarray(x)

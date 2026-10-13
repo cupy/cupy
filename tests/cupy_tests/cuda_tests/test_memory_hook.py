@@ -1,4 +1,9 @@
+from __future__ import annotations
+
+import gc
 import unittest
+
+import pytest
 
 import cupy.cuda
 from cupy.cuda import memory
@@ -35,9 +40,11 @@ class SimpleMemoryHook(memory_hook.MemoryHook):
         self.free_postprocess_history.append(kwargs)
 
 
+@pytest.mark.thread_unsafe(reason="assumes single call of hook")
 class TestMemoryHook(unittest.TestCase):
 
     def setUp(self):
+        gc.collect()
         self.pool = memory.MemoryPool()
         self.unit = 512
 

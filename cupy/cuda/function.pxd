@@ -2,7 +2,8 @@ from libc.stdint cimport intptr_t
 
 
 cdef class CPointer:
-    cdef void* ptr
+    cdef:
+        readonly intptr_t ptr
 
 
 cdef class Function:

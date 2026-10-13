@@ -1,18 +1,22 @@
 import string
+import sys
 
 import numpy
 
 import cupy
 from cupy._core._reduction import create_reduction_func
 from cupy._core._kernel import create_ufunc, _get_warpsize
-from cupy._core._scalar import get_typename
+from cupy._core._kernel cimport _full_mask_hex
+from cupy._core._scalar import get_typename, format_type_decls
 from cupy._core._ufuncs import elementwise_copy
 import cupy._core.core as core
 from cupy._core cimport internal
 from cupy import _util
+from cupy._util import bf16_loop
 
 from cupy_backends.cuda.api cimport runtime
 from cupy._core cimport _accelerator
+from cupy._core._cuda_compute_scan cimport cuda_compute_scan
 from cupy._core._dtype cimport get_dtype
 from cupy._core.core cimport _ndarray_init
 from cupy._core.core cimport compile_with_cache
@@ -22,7 +26,7 @@ from cupy.cuda cimport memory
 from cupy.cuda import cub
 
 try:
-    import cupy_backends.cuda.libs.cutensor as cuda_cutensor
+    from cupy_backends.cuda.libs import cutensor as cuda_cutensor
 except ImportError:
     cuda_cutensor = None
 
@@ -84,45 +88,57 @@ cdef _ndarray_base _ndarray_imag_setter(_ndarray_base self, value):
 
 cdef _ndarray_base _ndarray_prod(
         _ndarray_base self, axis, dtype, out, keepdims):
+    reduce_func = _prod_auto_dtype if dtype is None else _prod_keep_dtype
     for accelerator in _accelerator._routine_accelerators:
-        result = None
+        if accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE:
+            # result will be None if the reduction is not served by
+            # cuda.compute
+            result = reduce_func(self, axis, dtype, out, keepdims,
+                                 cuda_compute_only=True)
+            if result is not None:
+                return result
         if accelerator == _accelerator.ACCELERATOR_CUB:
             # result will be None if the reduction is not compatible with CUB
             result = cub.cub_reduction(
                 self, cub.CUPY_CUB_PROD, axis, dtype, out, keepdims)
+            if result is not None:
+                return result
         if (accelerator == _accelerator.ACCELERATOR_CUTENSOR and
                 cuda_cutensor is not None):
             from cupyx import cutensor
             result = cutensor._try_reduction_routine(
                 self, axis, dtype, out, keepdims, cuda_cutensor.OP_MUL, 1, 0)
-        if result is not None:
-            return result
-    if dtype is None:
-        return _prod_auto_dtype(self, axis, dtype, out, keepdims)
-    else:
-        return _prod_keep_dtype(self, axis, dtype, out, keepdims)
+            if result is not None:
+                return result
+    return reduce_func(self, axis, dtype, out, keepdims)
 
 
 cdef _ndarray_base _ndarray_sum(
         _ndarray_base self, axis, dtype, out, keepdims):
+    reduce_func = _sum_auto_dtype if dtype is None else _sum_keep_dtype
     for accelerator in _accelerator._routine_accelerators:
-        result = None
+        if accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE:
+            # result will be None if the reduction is not served by
+            # cuda.compute
+            result = reduce_func(self, axis, dtype, out, keepdims,
+                                 cuda_compute_only=True)
+            if result is not None:
+                return result
         if accelerator == _accelerator.ACCELERATOR_CUB:
             # result will be None if the reduction is not compatible with CUB
             result = cub.cub_reduction(
                 self, cub.CUPY_CUB_SUM, axis, dtype, out, keepdims)
+            if result is not None:
+                return result
         if (accelerator == _accelerator.ACCELERATOR_CUTENSOR and
                 cuda_cutensor is not None):
             from cupyx import cutensor
             result = cutensor._try_reduction_routine(
                 self, axis, dtype, out, keepdims, cuda_cutensor.OP_ADD, 1, 0)
-        if result is not None:
-            return result
+            if result is not None:
+                return result
 
-    if dtype is None:
-        return _sum_auto_dtype(self, axis, dtype, out, keepdims)
-    else:
-        return _sum_keep_dtype(self, axis, dtype, out, keepdims)
+    return reduce_func(self, axis, dtype, out, keepdims)
 
 
 cdef _ndarray_base _ndarray_cumsum(_ndarray_base self, axis, dtype, out):
@@ -134,8 +150,6 @@ cdef _ndarray_base _ndarray_cumprod(_ndarray_base self, axis, dtype, out):
 
 
 cdef _ndarray_base _ndarray_clip(_ndarray_base self, a_min, a_max, out):
-    if a_min is None and a_max is None:
-        raise ValueError('array_clip: must set either max or min')
     kind = self.dtype.kind
     if a_min is None:
         if kind == 'f':
@@ -193,7 +207,7 @@ def _cupy_bsum_shfl(op, chunk_size, warp_size=32):
         if (2*i < a.size()) x = a[2*i];
         if (2*i + 1 < a.size()) x ${op}= a[2*i + 1];
         for (int j = 1; j < ${warp_size}; j *= 2) {
-            x ${op}= __shfl_xor_sync(0xffffffff, x, j, ${warp_size});
+            x ${op}= __shfl_xor_sync(${full_mask}, x, j, ${warp_size});
         }
         if (lane_id == 0) smem[warp_id] = x;
         __syncthreads();
@@ -201,13 +215,14 @@ def _cupy_bsum_shfl(op, chunk_size, warp_size=32):
             x = ${identity};
             if (lane_id < n_warp) x = smem[lane_id];
             for (int j = 1; j < n_warp; j *= 2) {
-                x ${op}= __shfl_xor_sync(0xffffffff, x, j, ${warp_size});
+                x ${op}= __shfl_xor_sync(${full_mask}, x, j, ${warp_size});
             }
             int block_id = i / ${block_size};
             if (lane_id == 0) b[block_id] = x;
         }
     """).substitute(block_size=block_size, warp_size=warp_size,
-                    op=_op_char[op], identity=_identity[op])
+                    op=_op_char[op], identity=_identity[op],
+                    full_mask=_full_mask_hex())
     return cupy.ElementwiseKernel(in_params, out_params, loop_body,
                                   'cupy_bsum_shfl', loop_prep=loop_prep)
 
@@ -496,7 +511,8 @@ cdef _ndarray_base scan(
 
 @_util.memoize(for_each_device=True)
 def _inclusive_batch_scan_kernel(
-        dtype, block_size, op, src_c_cont, out_c_cont):
+        dtype, block_size, op, src_c_cont, out_c_cont,
+        use_32bit_indexing, large_batch):
     """return Prefix Sum(Scan) cuda kernel
     for a 2d array over axis 1
     used for scanning over different axes
@@ -526,120 +542,122 @@ def _inclusive_batch_scan_kernel(
     op_char = {scan_op.SCAN_SUM: '+', scan_op.SCAN_PROD: '*'}
     identity = {scan_op.SCAN_SUM: 0, scan_op.SCAN_PROD: 1}
     name = 'cupy_inclusive_batch_scan_kernel'
-    dtype = get_typename(dtype)
+    type_decls = set()
+    dtype = get_typename(dtype, type_decls)
+
     source = string.Template("""
+    ${type_decls}
+    // blocks_per_batch: blocks spanning a single row (1 unless large_batch)
+    // remaining: valid elements in the last (padded) chunk of a row
+    // pad_batch_size: padded row length inside a block; divides block_size
+    //     and equals it when large_batch
     extern "C" __global__ void ${name}(
-        const CArray<${dtype}, 2, ${src_c_cont}> src,
-        CArray<${dtype}, 2, ${out_c_cont}> dst, int batch_size){
-        long long n = src.size();
+        const CArray<${dtype}, 2, ${src_c_cont}, ${use_32bit_indexing}> src,
+        CArray<${dtype}, 2, ${out_c_cont}, ${use_32bit_indexing}> dst,
+        unsigned int blocks_per_batch, unsigned int remaining,
+        unsigned int pad_batch_size
+    ){
+        using index_t = decltype(src)::index_t;
 
         extern __shared__ ${dtype} temp[];
 
         unsigned int thid = threadIdx.x;
-        unsigned int block = blockIdx.x * blockDim.x;
+        int n_batches_block;
+        bool must_copy;
+        index_t row, col;
 
-        unsigned int pad_batch_size = batch_size;
-        bool must_copy = true;
-
-        if (batch_size & (batch_size -1)) {
-            pad_batch_size = 1 << (32 - __clz(batch_size));
-            must_copy = (thid & (pad_batch_size-1)) < batch_size;
+        if constexpr (${large_batch}) {
+            // blockIdx.x / gridDim.x are 32-bit, so row fits. col may not:
+            // widen before multiplying by block_size.
+            unsigned int block_in_row = blockIdx.x % blocks_per_batch;
+            n_batches_block = 1;  // pad_batch_size == block_size
+            must_copy = (block_in_row + 1 != blocks_per_batch)
+                        || (thid < remaining);
+            col = static_cast<index_t>(block_in_row) * ${block_size} + thid;
+            row = blockIdx.x / blocks_per_batch;
+        } else {
+            // Multiple rows per block and `pad_batch_size` is a power of two
+            // so col is lower bits while the row is the higher.
+            unsigned int pad_batch_bits = 31U - __clz(pad_batch_size);
+            n_batches_block = ${block_size} >> pad_batch_bits;
+            col = thid & (pad_batch_size - 1);
+            row = static_cast<index_t>(blockIdx.x) * n_batches_block
+                  + (thid >> pad_batch_bits);
+            must_copy = col < remaining && row < src.shape()[0];
         }
-        if (pad_batch_size > ${block_size}) {
-            int blocks_per_batch = (batch_size - 1) / ${block_size} + 1;
-            pad_batch_size = ${block_size} * blocks_per_batch;
+        const index_t idx[] = {row, col};
 
-            // Must copy enables for all blocks but the last one in the batch
-            bool last_block = (blockIdx.x + 1) % blocks_per_batch == 0;
-            int remaining_batch = batch_size % ${block_size};
-            if (remaining_batch == 0) {
-                remaining_batch = ${block_size};
+        temp[thid] = (must_copy) ? src[idx] : (${dtype}) ${identity};
+        __syncthreads();
+        for (int j = 0; j < n_batches_block; j++) {
+            int offset = j * pad_batch_size;
+            for (int i = 1; i < pad_batch_size; i <<= 1) {
+                int index = ((threadIdx.x + 1) * 2 * i - 1);
+                int index_block = offset + index;
+                if (index < (pad_batch_size)){
+                    temp[index_block] ${op}= temp[index_block - i];
+                }
+                __syncthreads();
             }
-            must_copy = !last_block || (thid < (remaining_batch));
+            for (int i = pad_batch_size >> 1; i > 0; i >>= 1) {
+                int index = ((threadIdx.x + 1) * 2 * i - 1);
+                int index_block = offset + index;
+                if ((index + i) < (pad_batch_size)){
+                    temp[index_block + i] ${op}= temp[index_block];
+                }
+                __syncthreads();
+            }
         }
-
-        int pad_per_batch = pad_batch_size-batch_size;
-        int n_batches_block = ${block_size} / pad_batch_size;
-
-        unsigned int idx0 = thid + block;
-
-        int batch_id = idx0 / pad_batch_size;
-        idx0 = idx0 - pad_per_batch * batch_id;
-
-        int row = idx0 / batch_size;
-        int col = idx0 % batch_size;
-        const ptrdiff_t idx0_idx[] = {row, col};
-
-        if(idx0 < n){
-            temp[thid] = (must_copy) ? src[idx0_idx] : (${dtype}) ${identity};
-            __syncthreads();
-            if (!n_batches_block) {
-                n_batches_block = 1;
-                pad_batch_size = ${block_size};
-            }
-            for (int j = 0; j < n_batches_block; j++) {
-                int offset = j * pad_batch_size;
-                for (int i = 1; i <= pad_batch_size; i <<= 1) {
-                    int index = ((threadIdx.x + 1) * 2 * i - 1);
-                    int index_block = offset + index;
-                    if (index < (pad_batch_size)){
-                        temp[index_block] ${op}= temp[index_block - i];
-                    }
-                    __syncthreads();
-                }
-                for(int i = pad_batch_size >> 1; i > 0; i >>= 1){
-                    int index = ((threadIdx.x + 1) * 2 * i - 1);
-                    int index_block = offset + index;
-                    if((index + i) < (pad_batch_size)){
-                        temp[index_block + i] ${op}= temp[index_block];
-                    }
-                    __syncthreads();
-                }
-            }
-            if(must_copy){
-                dst[idx0_idx] = temp[thid];
-            }
+        if (must_copy) {
+            dst[idx] = temp[thid];
         }
     }
     """).substitute(name=name, dtype=dtype, block_size=block_size,
                     op=op_char[op], identity=identity[op],
-                    src_c_cont=src_c_cont, out_c_cont=out_c_cont)
+                    src_c_cont=src_c_cont, out_c_cont=out_c_cont,
+                    use_32bit_indexing=int(use_32bit_indexing),
+                    large_batch='true' if large_batch else 'false',
+                    type_decls=format_type_decls(type_decls))
     module = compile_with_cache(source)
     return module.get_function(name)
 
 
 @_util.memoize(for_each_device=True)
-def _add_scan_batch_blocked_sum_kernel(dtype, op, block_size, c_cont):
+def _add_scan_batch_blocked_sum_kernel(
+        dtype, op, block_size, c_cont, use_32bit_indexing):
     name = 'cupy_add_scan_blocked_sum_kernel'
-    dtype = get_typename(dtype)
+    type_decls = set()
+    dtype = get_typename(dtype, type_decls)
+
     ops = {scan_op.SCAN_SUM: '+', scan_op.SCAN_PROD: '*'}
     source = string.Template("""
-    extern "C" __global__ void ${name}(CArray<${dtype}, 2, ${c_cont}> src_dst,
-        int batch_size){
-        long long n = src_dst.size();
+    ${type_decls}
+    extern "C" __global__ void ${name}(
+        CArray<${dtype}, 2, ${c_cont}, ${use_32bit_indexing}> src_dst,
+        unsigned int blocks_per_batch, unsigned int remaining
+    ){
+        using index_t = decltype(src_dst)::index_t;
 
         unsigned int thid = threadIdx.x;
-        unsigned int block = blockIdx.x * ${block_size};
+        unsigned int block_in_row = blockIdx.x % blocks_per_batch;
+        index_t row = blockIdx.x / blocks_per_batch;
+        index_t block_start =
+            static_cast<index_t>(block_in_row) * ${block_size};
 
-        unsigned int idx0 = thid + block;
-
-        // Respect padding
-        unsigned int row = idx0 / batch_size;
-        unsigned int col = idx0 % batch_size;
-        int my_block = ${block_size} * (col / ${block_size});
-        const ptrdiff_t dst_idx[] = {row, col};
-        const ptrdiff_t src_idx[] = {row, my_block - 1};
-
-        // Avoid for the first block of every row
-        // This can be tweaked with kernel launch settings
-        bool first = col < ${block_size};
-        bool is_block = (col % (${block_size})) == ${block_size} - 1;
-        if(idx0 < n && !first && !is_block){
+        bool in_range = (block_in_row + 1 != blocks_per_batch)
+                        || (thid < remaining);
+        // The first block of a row has nothing to add and the last thread of
+        // a block already holds the sum of its block.
+        if (in_range && block_in_row != 0 && thid != ${block_size} - 1){
+            const index_t dst_idx[] = {row, block_start + thid};
+            const index_t src_idx[] = {row, block_start - 1};
             src_dst[dst_idx] ${op}= src_dst[src_idx];
         }
     }
     """).substitute(name=name, dtype=dtype, op=ops[op], block_size=block_size,
-                    c_cont=c_cont)
+                    c_cont=c_cont,
+                    use_32bit_indexing=int(use_32bit_indexing),
+                    type_decls=format_type_decls(type_decls))
     module = compile_with_cache(source)
     return module.get_function(name)
 
@@ -650,32 +668,42 @@ cdef _ndarray_base _batch_scan_op(
     # TODO(ecastill) replace this with "_reduction._block_size" once it is
     # properly exposed
     block_size = 512
-    # Since we need to pad each batch we spawn more threads as some
-    # of them will be idle
-    # Calc the total number of blocks
-    padded_bs = 1 << ((batch_size - 1).bit_length())
-    if padded_bs > block_size:
+    cdef bint large_batch = batch_size > block_size
+    if large_batch:
+        # A row spans several blocks, the last one is only partially filled.
         blocks_per_batch = (batch_size - 1) // block_size + 1
-        padded_bs = block_size * blocks_per_batch
-    padded_size = a.size // batch_size * padded_bs
+        pad_batch_size = block_size
+        remaining = (batch_size - 1) % block_size + 1
+    else:
+        # Pad each row to the next power of two so several rows can share a
+        # block. pad_batch_size <= block_size.
+        blocks_per_batch = 1
+        pad_batch_size = 1 << ((batch_size - 1).bit_length())
+        remaining = batch_size
+    padded_size = a.shape[0] * blocks_per_batch * pad_batch_size
+    n_blocks = (padded_size - 1) // block_size + 1
 
     cdef int src_cont = int(a.flags.c_contiguous)
     cdef int out_cont = int(out.flags.c_contiguous)
-    kern_scan = _inclusive_batch_scan_kernel(a.dtype, block_size, op,
-                                             src_cont, out_cont)
-    kern_scan(grid=((padded_size - 1) // (block_size) + 1,),
-              block=(block_size,),
-              args=(a, out, batch_size),
+    cdef int use_32 = int(a._index_32_bits and out._index_32_bits)
+
+    # Convert to uint32 for kernel arguments (could error for huge matrices):
+    blocks_per_batch = numpy.uint32(blocks_per_batch)
+    remaining = numpy.uint32(remaining)
+    pad_batch_size = numpy.uint32(pad_batch_size)
+
+    kern_scan = _inclusive_batch_scan_kernel(
+        a.dtype, block_size, op, src_cont, out_cont, use_32, large_batch)
+    kern_scan(grid=(n_blocks,), block=(block_size,),
+              args=(a, out, blocks_per_batch, remaining, pad_batch_size),
               shared_mem=a.itemsize * block_size)
-    if batch_size > block_size:
+    if large_batch:
         blocked_sum = out[:, block_size-1::block_size]
         _batch_scan_op(blocked_sum, op, blocked_sum)
         kern_add = _add_scan_batch_blocked_sum_kernel(
-            out.dtype, op, block_size, out_cont)
-        kern_add(
-            grid=((out.size - 1) // (block_size) + 1,),
-            block=(block_size,),
-            args=(out, batch_size))
+            out.dtype, op, block_size, out_cont, use_32)
+        kern_add(grid=(n_blocks,), block=(block_size,),
+                 args=(out, blocks_per_batch, remaining))
     return out
 
 
@@ -691,15 +719,21 @@ cdef _proc_as_batch(_ndarray_base x, int axis, scan_op op):
 
 cpdef scan_core(
         _ndarray_base a, axis, scan_op op, dtype=None, _ndarray_base out=None):
+    if axis is None:
+        a = a.ravel()
+        axis = 0
+    else:
+        axis = internal._normalize_axis_index(axis, a.ndim)
+
     if out is None:
         if dtype is None:
             kind = a.dtype.kind
             if kind == 'b':
-                dtype = numpy.dtype('l')
-            elif kind == 'i' and a.dtype.itemsize < numpy.dtype('l').itemsize:
-                dtype = numpy.dtype('l')
-            elif kind == 'u' and a.dtype.itemsize < numpy.dtype('L').itemsize:
-                dtype = numpy.dtype('L')
+                dtype = numpy.dtype('int64')
+            elif kind == 'i':
+                dtype = numpy.dtype('int64')
+            elif kind == 'u':
+                dtype = numpy.dtype('uint64')
             else:
                 dtype = a.dtype
         result = None
@@ -710,11 +744,23 @@ cpdef scan_core(
         else:
             result = a.astype(out.dtype, order='C')
 
-    if axis is None:
+    if a.ndim == 1 and axis == 0:
         for accelerator in _accelerator._routine_accelerators:
+            if accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE:
+                if op == scan_op.SCAN_SUM:
+                    cuda_compute_op = 'PLUS'
+                else:
+                    cuda_compute_op = 'MULTIPLIES'
+                # res will be None if the scan is not compatible with
+                # cuda.compute
+                res = cuda_compute_scan(
+                    a, result, dtype, cuda_compute_op)
+                if res is not None:
+                    result = res
+                    break
             if accelerator == _accelerator.ACCELERATOR_CUB:
                 if result is None:
-                    result = a.astype(dtype, order='C').ravel()
+                    result = a.astype(dtype, order='C')
                 # result will be None if the scan is not compatible with CUB
                 if op == scan_op.SCAN_SUM:
                     cub_op = cub.CUPY_CUB_CUMSUM
@@ -725,13 +771,12 @@ cpdef scan_core(
                     break
         else:
             if result is None:
-                result = scan(a.ravel(), op, dtype=dtype)
+                result = scan(a, op, dtype=dtype)
             else:
                 scan(result, op, dtype=dtype, out=result)
     else:
         if result is None:
             result = a.astype(dtype, order='C')
-        axis = internal._normalize_axis_index(axis, a.ndim)
         result = _proc_as_batch(result, axis, op)
     # This is for when the original out param was not contiguous
     if out is not None and out.data != result.data:
@@ -764,13 +809,28 @@ cpdef _ndarray_base _nanprod(_ndarray_base a, axis, dtype, out, keepdims):
         return _nanprod_keep_dtype(a, axis, dtype, out, keepdims)
 
 
+if sys.platform == "win32":
+    _sumprod_types = (
+        '?->q', 'b->q', 'B->Q', 'h->q', 'H->Q', 'i->q', 'I->Q', 'l->q', 'L->Q',
+        'q->q', 'Q->Q',
+        ('e->e', (None, None, None, 'float')),
+        *bf16_loop(code=(None, None, None, 'float')),
+        'f->f', 'd->d', 'F->F', 'D->D',
+    )
+else:
+    _sumprod_types = (
+        '?->l', 'b->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
+        'q->q', 'Q->Q',
+        ('e->e', (None, None, None, 'float')),
+        *bf16_loop(code=(None, None, None, 'float')),
+        'f->f', 'd->d', 'F->F', 'D->D',
+    )
+
+
 _sum_auto_dtype = create_reduction_func(
-    'cupy_sum',
-    ('?->l', 'b->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
-     'q->q', 'Q->Q',
-     ('e->e', (None, None, None, 'float')),
-     'f->f', 'd->d', 'F->F', 'D->D'),
-    ('in0', 'a + b', 'out0 = type_out0_raw(a)', None), 0)
+    'cupy_sum', _sumprod_types,
+    ('in0', 'a + b', 'out0 = type_out0_raw(a)', None), 0,
+    compute_opkind='PLUS')
 
 
 _sum_keep_dtype = create_reduction_func(
@@ -778,18 +838,16 @@ _sum_keep_dtype = create_reduction_func(
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q',
      ('e->e', (None, None, None, 'float')),
+     *bf16_loop(code=(None, None, None, 'float')),
      'f->f', 'd->d', 'F->F', 'D->D'),
-    ('in0', 'a + b', 'out0 = type_out0_raw(a)', None), 0)
+    ('in0', 'a + b', 'out0 = type_out0_raw(a)', None), 0,
+    compute_opkind='PLUS')
 
 
 _nansum_auto_dtype = create_reduction_func(
-    'cupy_nansum',
-    ('?->l', 'b->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
-     'q->q', 'Q->Q',
-     ('e->e', (None, None, None, 'float')),
-     'f->f', 'd->d', 'F->F', 'D->D'),
+    'cupy_nansum', _sumprod_types,
     ('(in0 == in0) ? in0 : type_in0_raw(0)',
-     'a + b', 'out0 = type_out0_raw(a)', None), 0)
+     'a + b', 'out0 = type_out0_raw(a)', None), 0, compute_opkind='PLUS')
 
 
 _nansum_keep_dtype = create_reduction_func(
@@ -797,9 +855,10 @@ _nansum_keep_dtype = create_reduction_func(
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q',
      ('e->e', (None, None, None, 'float')),
+     *bf16_loop(code=(None, None, None, 'float')),
      'f->f', 'd->d', 'F->F', 'D->D'),
     ('(in0 == in0) ? in0 : type_in0_raw(0)',
-     'a + b', 'out0 = type_out0_raw(a)', None), 0)
+     'a + b', 'out0 = type_out0_raw(a)', None), 0, compute_opkind='PLUS')
 
 
 _nansum_complex_dtype = create_reduction_func(
@@ -809,16 +868,13 @@ _nansum_complex_dtype = create_reduction_func(
     type_in0_raw((in0.real() == in0.real()) ? in0.real() : 0,
                  (in0.imag() == in0.imag()) ? in0.imag() : 0)
     ''',
-     'a + b', 'out0 = type_out0_raw(a)', None), 0)
+     'a + b', 'out0 = type_out0_raw(a)', None), 0, compute_opkind='PLUS')
 
 
 _prod_auto_dtype = create_reduction_func(
-    'cupy_prod',
-    ('?->l', 'b->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
-     'q->q', 'Q->Q',
-     ('e->e', (None, None, None, 'float')),
-     'f->f', 'd->d', 'F->F', 'D->D'),
-    ('in0', 'a * b', 'out0 = type_out0_raw(a)', None), 1)
+    'cupy_prod', _sumprod_types,
+    ('in0', 'a * b', 'out0 = type_out0_raw(a)', None), 1,
+    compute_opkind='MULTIPLIES')
 
 
 _prod_keep_dtype = create_reduction_func(
@@ -826,18 +882,16 @@ _prod_keep_dtype = create_reduction_func(
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q',
      ('e->e', (None, None, None, 'float')),
+     *bf16_loop(code=(None, None, None, 'float')),
      'f->f', 'd->d', 'F->F', 'D->D'),
-    ('in0', 'a * b', 'out0 = type_out0_raw(a)', None), 1)
+    ('in0', 'a * b', 'out0 = type_out0_raw(a)', None), 1,
+    compute_opkind='MULTIPLIES')
 
 
 _nanprod_auto_dtype = create_reduction_func(
-    'cupy_nanprod',
-    ('?->l', 'b->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
-     'q->q', 'Q->Q',
-     ('e->e', (None, None, None, 'float')),
-     'f->f', 'd->d', 'F->F', 'D->D'),
+    'cupy_nanprod', _sumprod_types,
     ('(in0 == in0) ? in0 : type_in0_raw(1)',
-     'a * b', 'out0 = type_out0_raw(a)', None), 1)
+     'a * b', 'out0 = type_out0_raw(a)', None), 1, compute_opkind='MULTIPLIES')
 
 
 _nanprod_keep_dtype = create_reduction_func(
@@ -845,9 +899,10 @@ _nanprod_keep_dtype = create_reduction_func(
     ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
      'q->q', 'Q->Q',
      ('e->e', (None, None, None, 'float')),
+     *bf16_loop(code=(None, None, None, 'float')),
      'f->f', 'd->d', 'F->F', 'D->D'),
     ('(in0 == in0) ? in0 : type_in0_raw(1)',
-     'a * b', 'out0 = type_out0_raw(a)', None), 1)
+     'a * b', 'out0 = type_out0_raw(a)', None), 1, compute_opkind='MULTIPLIES')
 
 
 _nanprod_complex_dtype = create_reduction_func(
@@ -857,7 +912,7 @@ _nanprod_complex_dtype = create_reduction_func(
     type_in0_raw((in0.real() == in0.real()) ? in0.real() : 1,
                  (in0.imag() == in0.imag()) ? in0.imag() : 1)
     ''',
-     'a * b', 'out0 = type_out0_raw(a)', None), 1)
+     'a * b', 'out0 = type_out0_raw(a)', None), 1, compute_opkind='MULTIPLIES')
 
 cdef create_arithmetic(
         name, op, boolop, doc, cutensor_op=None, scatter_op=None):
@@ -871,8 +926,8 @@ cdef create_arithmetic(
         'cupy_' + name,
         (('??->?', boolop),
          'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
-         'LL->L', 'qq->q', 'QQ->Q', 'ee->e', 'ff->f', 'dd->d', 'FF->F',
-         'DD->D'),
+         'LL->L', 'qq->q', 'QQ->Q',
+         'ee->e', *bf16_loop(2), 'ff->f', 'dd->d', 'FF->F', 'DD->D'),
         'out0 = in0 %s in1' % op,
         doc=doc,
         cutensor_op=cutensor_op,
@@ -892,7 +947,7 @@ _add = create_arithmetic(
 _conjugate = create_ufunc(
     'cupy_conjugate',
     ('b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L', 'q->q',
-     'Q->Q', 'e->e', 'f->f', 'd->d',
+     'Q->Q', 'e->e', *bf16_loop(), 'f->f', 'd->d',
      ('F->F', 'out0 = conj(in0)'),
      ('D->D', 'out0 = conj(in0)')),
     'out0 = in0',
@@ -905,10 +960,12 @@ _conjugate = create_ufunc(
 
 _angle = create_ufunc(
     'cupy_angle',
-    ('?->d', 'e->e', 'f->f', 'd->d',
+    ('?->d', 'e->e', *bf16_loop(), 'f->f', 'd->d',
      ('F->f', 'out0 = arg(in0)'),
      ('D->d', 'out0 = arg(in0)')),
-    'out0 = in0 >= 0 ? 0 : M_PI',
+    '''
+    out0 = in0 >= 0 ? 0.0 : M_PI
+    ''',
     doc='''Returns the angle of the complex argument.
 
     .. seealso:: :func:`numpy.angle`
@@ -918,10 +975,12 @@ _angle = create_ufunc(
 
 _angle_deg = create_ufunc(
     'cupy_angle_deg',
-    ('?->d', 'e->e', 'f->f', 'd->d',
+    ('?->d', 'e->e', *bf16_loop(), 'f->f', 'd->d',
      ('F->f', 'out0 = arg(in0) * (180.0 / M_PI)'),
      ('D->d', 'out0 = arg(in0) * (180.0 / M_PI)')),
-    'out0 = in0 >= 0 ? 0 : 180.0',
+    '''
+    out0 = in0 >= 0 ? 0.0 : 180.0
+    ''',
     doc='''Returns the angle of the complex argument.
 
     .. seealso:: :func:`numpy.angle`
@@ -938,7 +997,7 @@ _positive = create_ufunc(
     'cupy_positive',
     (('?->?', _positive_boolean_error),
      'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
-     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
+     'q->q', 'Q->Q', 'e->e', *bf16_loop(), 'f->f', 'd->d', 'F->F', 'D->D'),
     'out0 = +in0',
     doc='''Takes numerical positive elementwise.
 
@@ -957,7 +1016,7 @@ _negative = create_ufunc(
     'cupy_negative',
     (('?->?', _negative_boolean_error),
      'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
-     'q->q', 'Q->Q', 'e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
+     'q->q', 'Q->Q', 'e->e', *bf16_loop(), 'f->f', 'd->d', 'F->F', 'D->D'),
     'out0 = -in0',
     doc='''Takes numerical negative elementwise.
 
@@ -1003,11 +1062,14 @@ inline __device__ T complex_power(T in0, T in1) {
 }
 '''
 
+# NOTE(seberg): There is a __pow__ fastpath for python int/floats which
+# assumes (for floats) that power promotion is just result_type(x, y).
 _power = create_ufunc(
     'cupy_power',
     ('??->b', 'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
      'LL->L', 'qq->q', 'QQ->Q',
      ('ee->e', 'out0 = powf(in0, in1)'),
+     *bf16_loop(2, 1, code='out0 = powf(in0, in1)'),
      ('ff->f', 'out0 = powf(in0, in1)'),
      ('dd->d', 'out0 = pow(in0, in1)'),
      ('FF->F', 'out0 = complex_power(in0, in1)'),
@@ -1037,17 +1099,24 @@ _subtract = create_arithmetic(
     cutensor_op=('OP_ADD', 1, -1), scatter_op='sub')
 
 
+# NB: Cannot define loops with short ints in the NEP 50 world. Consider
+# `cupy.arange(3, dtype=cp.uint8) / (-2)`. It would select the 'BB->d' loop,
+# and the kernel would have a declaration `uint8_t in1;`, this converts
+# -2 to uint8_t at initialization (modulo UINT8_MAX, likely).
+# The family of qq loops is a work-around to achieve almost correct promotion.
+# TODO(seberg): Per-ufunc promotion or per-loop type resolution is probably
+#               needed for a full fix.
 _true_divide = create_ufunc(
     'cupy_true_divide',
-    ('bb->d', 'BB->d', 'hh->d', 'HH->d', 'ii->d', 'II->d', 'll->d', 'LL->d',
-     'qq->d', 'QQ->d', 'ee->e', 'ff->f', 'dd->d', 'FF->F', 'DD->D'),
-    'out0 = (out0_type)in0 / (out0_type)in1',
+    ('qq->d', 'qQ->d', 'Qq->d', 'QQ->d',
+     'ee->e', *bf16_loop(2), 'ff->f', 'dd->d', 'FF->F', 'DD->D'),
+    'out0 = static_cast<out0_type>(in0) / static_cast<out0_type>(in1)',
     doc='''Elementwise true division (i.e. division as floating values).
 
     .. seealso:: :data:`numpy.true_divide`
 
     ''',
-    out_ops=('ee->e', 'ff->f', 'dd->d', 'FF->F', 'DD->D'),
+    out_ops=('ee->e', *bf16_loop(2), 'ff->f', 'dd->d', 'FF->F', 'DD->D'),
 )
 
 
@@ -1057,7 +1126,7 @@ _divide = _true_divide
 _floor_divide = create_ufunc(
     'cupy_floor_divide',
     ('bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l', 'LL->L',
-     'qq->q', 'QQ->Q', 'ee->e', 'ff->f', 'dd->d'),
+     'qq->q', 'QQ->Q', 'ee->e', *bf16_loop(2), 'ff->f', 'dd->d'),
     'out0 = _floor_divide(in0, in1)',
     doc='''Elementwise floor division (i.e. integer quotient).
 
@@ -1071,6 +1140,7 @@ _remainder = create_ufunc(
     ('bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l', 'LL->L',
      'qq->q', 'QQ->Q',
      ('ee->e', 'out0 = in0 - _floor_divide(in0, in1) * in1'),
+     *bf16_loop(2, code='out0 = in0 - _floor_divide(in0, in1) * in1'),
      ('ff->f', 'out0 = in0 - _floor_divide(in0, in1) * in1'),
      ('dd->d', 'out0 = in0 - _floor_divide(in0, in1) * in1')),
     'out0 = (in0 - _floor_divide(in0, in1) * in1) * (in1 != 0)',
@@ -1088,6 +1158,7 @@ _absolute = create_ufunc(
      'i->i', ('I->I', 'out0 = in0'), 'l->l', ('L->L', 'out0 = in0'),
      'q->q', ('Q->Q', 'out0 = in0'),
      ('e->e', 'out0 = fabsf(in0)'),
+     *bf16_loop(code='out0 = fabsf(in0)'),
      ('f->f', 'out0 = fabsf(in0)'),
      ('d->d', 'out0 = fabs(in0)'),
      ('F->f', 'out0 = abs(in0)'),
@@ -1102,7 +1173,7 @@ _absolute = create_ufunc(
 
 _sqrt = create_ufunc(
     'cupy_sqrt',
-    ('e->e', 'f->f', 'd->d', 'F->F', 'D->D'),
+    ('e->e', *bf16_loop(), 'f->f', 'd->d', 'F->F', 'D->D'),
     'out0 = sqrt(in0)',
     doc='''Elementwise square root function.
 
@@ -1114,7 +1185,8 @@ _sqrt = create_ufunc(
 _clip = create_ufunc(
     'cupy_clip',
     ('???->?', 'bbb->b', 'BBB->B', 'hhh->h', 'HHH->H', 'iii->i', 'III->I',
-     'lll->l', 'LLL->L', 'qqq->q', 'QQQ->Q', 'eee->e', 'fff->f', 'ddd->d'),
+     'lll->l', 'LLL->L', 'qqq->q', 'QQQ->Q',
+     'eee->e', 'fff->f', 'ddd->d'),
     'out0 = in1 > in2 ? in2 : (in0 < in1 ? in1 : (in0 > in2 ? in2 : in0))')
 
 

@@ -4,7 +4,14 @@
 # -----------------------------------------------------------------------------
 # Matrix and vector products
 # -----------------------------------------------------------------------------
+from __future__ import annotations
+
 from cupy.linalg._product import matrix_power  # NOQA
+from cupy.linalg._product import linalg_cross as cross  # NOQA
+from cupy.linalg._product import matmul     # NOQA
+from cupy.linalg._product import matrix_transpose     # NOQA
+from cupy.linalg._product import tensordot  # NOQA
+
 
 # -----------------------------------------------------------------------------
 # Decompositions
@@ -17,12 +24,15 @@ from cupy.linalg._decomposition import svd  # NOQA
 # Matrix eigenvalues
 # -----------------------------------------------------------------------------
 from cupy.linalg._eigenvalue import eigh  # NOQA
+from cupy.linalg._eigenvalue import eig  # NOQA
 from cupy.linalg._eigenvalue import eigvalsh  # NOQA
+from cupy.linalg._eigenvalue import eigvals  # NOQA
 
 # -----------------------------------------------------------------------------
 # Norms and other numbers
 # -----------------------------------------------------------------------------
 from cupy.linalg._norms import norm  # NOQA
+from cupy.linalg._norms import cond  # NOQA
 from cupy.linalg._norms import det  # NOQA
 from cupy.linalg._norms import matrix_rank  # NOQA
 from cupy.linalg._norms import slogdet  # NOQA
@@ -41,3 +51,31 @@ from cupy.linalg._solve import tensorinv  # NOQA
 # Exceptions
 # -----------------------------------------------------------------------------
 from numpy.linalg import LinAlgError  # NOQA
+
+
+__all__ = [
+    "matrix_power",
+    "cholesky",
+    "qr",
+    "svd",
+    "eigh",
+    "eig",
+    "eigvalsh",
+    "eigvals",
+    "norm",
+    "cond",
+    "det",
+    "matrix_rank",
+    "slogdet",
+    "solve",
+    "tensorsolve",
+    "inv",
+    "pinv",
+    "tensorinv",
+    "lstsq",
+    "cross",
+    "LinAlgError",
+    "matmul",
+    "matrix_transpose",
+    "tensordot",
+]

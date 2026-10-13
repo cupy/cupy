@@ -16,6 +16,8 @@ The fortran code in scipy originated in the following book.
 
     Copyrighted but permission granted to use code in programs.
 """
+from __future__ import annotations
+
 
 from cupy import _core
 
@@ -411,7 +413,7 @@ lpmv = _core.create_ufunc(
     preamble=lpmv_definition,
     doc="""Associated Legendre function of integer order and real degree.
 
-    .. seealso:: :meth:`scipy.special.lpmv`
+    .. seealso:: :func:`scipy.special.lpmv`
 
     """,
 )

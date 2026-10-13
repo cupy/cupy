@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pytest
 import cupy as cp
 
@@ -10,7 +12,8 @@ from cupyx.scipy.interpolate import RegularGridInterpolator, interpn
 
 methods = ['linear', 'nearest']
 if not runtime.is_hip:
-    methods += ["slinear", "cubic", "quintic", 'pchip']
+    methods += ["slinear", "cubic", "quintic", 'pchip',
+                "slinear_legacy", "cubic_legacy", "quintic_legacy"]
 
 parametrize_rgi_interp_methods = pytest.mark.parametrize("method", methods)
 
@@ -190,12 +193,14 @@ class TestRegularGridInterpolator:
                       (x, y), values, fill_value=1+2j)
 
     def test_fillvalue_type(self):
-        # from #3703; test that interpolator object construction succeeds
-        values = cp.ones((10, 20, 30), dtype='>f4')
-        points = [cp.arange(n) for n in values.shape]
-        # xi = [(1, 1, 1)]
-        RegularGridInterpolator(points, values)
-        RegularGridInterpolator(points, values, fill_value=0.)
+        # SciPy #3703; test that interpolator object construction succeeds
+        # (Should not work unless CuPy supports big endian data)
+        with pytest.raises(ValueError):
+            values = cp.ones((10, 20, 30), dtype='>f4')
+            points = [cp.arange(n) for n in values.shape]
+            # xi = [(1, 1, 1)]
+            RegularGridInterpolator(points, values)
+            RegularGridInterpolator(points, values, fill_value=0.)
 
     def test_length_one_axis(self):
         # gh-5890, gh-9524 : length-1 axis is legal for method='linear'.
@@ -385,6 +390,9 @@ class TestRegularGridInterpolator:
 
     @parametrize_rgi_interp_methods
     def test_nonscalar_values(self, method):
+        if method in ("cubic_legacy", "quintic_legacy"):
+            pytest.skip("way too slow for a test")
+
         # Verify that non-scalar valued values also works
         points = [(0.0, 0.5, 1.0, 1.5, 2.0, 2.5)] * 2 + [
             (0.0, 5.0, 10.0, 15.0, 20, 25.0)
@@ -412,6 +420,9 @@ class TestRegularGridInterpolator:
     @parametrize_rgi_interp_methods
     @pytest.mark.parametrize("flip_points", [False, True])
     def test_nonscalar_values_2(self, method, flip_points):
+        if method in ("cubic_legacy", "quintic_legacy"):
+            pytest.skip("way too slow for a test")
+
         # Verify that non-scalar valued values also work : use different
         # lengths of axes to simplify tracing the internals
         points = [(0.0, 0.5, 1.0, 1.5, 2.0, 2.5),
@@ -438,7 +449,7 @@ class TestRegularGridInterpolator:
         assert v.shape == (1, *trailing_points)
 
         # check the values, too : manually loop over the trailing dimensions
-        vs = cp.empty((values.shape[-2:]))
+        vs = cp.empty(values.shape[-2:])
         for i in range(values.shape[-2]):
             for j in range(values.shape[-1]):
                 interp = RegularGridInterpolator(points, values[..., i, j],
@@ -469,7 +480,7 @@ class TestRegularGridInterpolator:
         assert v.shape == (1, *trailing_points)
 
         # check the values, too : manually loop over the trailing dimensions
-        vs = cp.empty((values.shape[-2:]))
+        vs = cp.empty(values.shape[-2:])
         for i in range(values.shape[-2]):
             for j in range(values.shape[-1]):
                 interp = RegularGridInterpolator(points, values[..., i, j],
@@ -478,6 +489,26 @@ class TestRegularGridInterpolator:
                 vs[i, j] = interp(sample)
         v2 = cp.expand_dims(vs, axis=0)
         assert_allclose(v, v2, atol=1e-14, err_msg=method)
+
+    def test_derivatives(self):
+        points, values = self._get_sample_4d()
+        sample = cp.array([[0.1, 0.1, 1., 0.9],
+                           [0.2, 0.1, 0.45, 0.8],
+                           [0.5, 0.5, 0.5, 0.5]])
+        interp = RegularGridInterpolator(points, values, method="slinear")
+
+        with assert_raises(ValueError):
+            # wrong number of derivatives (need 4)
+            interp(sample, nu=1)
+
+        assert_allclose(interp(sample, nu=(1, 0, 0, 0)),
+                        [1, 1, 1], atol=1e-15)
+        assert_allclose(interp(sample, nu=(0, 1, 0, 0)),
+                        [10, 10, 10], atol=1e-15)
+
+        # 2nd derivatives of a linear function are zero
+        assert_allclose(interp(sample, nu=(0, 1, 1, 0)),
+                        [0, 0, 0], atol=1e-12)
 
 
 class MyValue:
@@ -606,6 +637,9 @@ class TestInterpN:
     @parametrize_rgi_interp_methods
     def test_nonscalar_values(self, method):
         # Verify that non-scalar valued values also works
+        if method in ("cubic_legacy", "quintic_legacy"):
+            pytest.skip("way too slow for a test")
+
         points = [(0.0, 0.5, 1.0, 1.5, 2.0, 2.5)] * 2 + [
             (0.0, 5.0, 10.0, 15.0, 20, 25.0)
         ] * 2
@@ -628,6 +662,9 @@ class TestInterpN:
     def test_nonscalar_values_2(self, method):
         # Verify that non-scalar valued values also work : use different
         # lengths of axes to simplify tracing the internals
+        if method in ("cubic_legacy", "quintic_legacy"):
+            pytest.skip("way too slow for a test")
+
         points = [(0.0, 0.5, 1.0, 1.5, 2.0, 2.5),
                   (0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0),
                   (0.0, 5.0, 10.0, 15.0, 20, 25.0, 35.0, 36.0),

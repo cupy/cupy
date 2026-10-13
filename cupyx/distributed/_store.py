@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import atexit
 from ctypes import sizeof
 import multiprocessing
@@ -44,7 +46,7 @@ class ExceptionAwareProcess(multiprocessing.Process):
 
 class TCPStore:
     # This is only used for initialization of nccl so we don't care
-    # too much about peformance
+    # too much about performance
     def __init__(self, world_size):
         self.storage = {}
         self._process = None
@@ -85,7 +87,7 @@ class TCPStore:
             while self._run.value == 1:
                 try:
                     c_socket, addr = s.accept()
-                except socket.timeout:
+                except TimeoutError:
                     continue
 
                 t = threading.Thread(

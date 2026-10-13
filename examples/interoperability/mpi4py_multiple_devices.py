@@ -4,6 +4,8 @@
 #
 # This script executes simple communication and computation with 2 MPI
 # processes, each of which uses a different GPU
+from __future__ import annotations
+
 
 import cupy
 from mpi4py import MPI
@@ -20,7 +22,7 @@ if device_count < 2:
 
 # Select device based on local MPI rank.
 # Caveat: for simplicity we assume local_rank == rank here, which may or may
-# not be the case depending how MPI processes are lauched and how your code
+# not be the case depending how MPI processes are launched and how your code
 # is written. For more robust usage, you may need to consult the user manual
 # for your MPI library. For example:
 # local_rank = int(os.getenv("OMPI_COMM_WORLD_LOCAL_RANK"))  # Open MPI

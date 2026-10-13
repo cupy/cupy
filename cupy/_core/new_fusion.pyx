@@ -165,7 +165,6 @@ class Fusion:
 def fuse(*args, **kwargs):
     """Decorator that fuses a function.
     """
-
     def wrapper(f, kernel_name=None):
         return Fusion(f, kernel_name)
 

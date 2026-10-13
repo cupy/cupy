@@ -1,12 +1,14 @@
+from __future__ import annotations
+
+import math
+
 import numpy as np
 try:
-    # scipy.fft is available since scipy v1.4.0+
+    import scipy
     import scipy.fft as scipy_fft
 except ImportError:
     scipy_fft = None
     scipy = None
-else:
-    import scipy
 import pytest
 
 import cupy as cp
@@ -41,14 +43,38 @@ def _correct_np_dtype(xp, dtype, out):
     return out
 
 
-def _skip_forward_backward(norm):
-    if norm in ('backward', 'forward'):
-        if (scipy_fft is not None
-                and not (np.lib.NumpyVersion(scipy.__version__) >= '1.6.0')):
-            pytest.skip('forward/backward is supported by SciPy 1.6.0+')
-        elif (scipy_fft is None
-                and not (np.lib.NumpyVersion(np.__version__) >= '1.20.0')):
-            pytest.skip('forward/backward is supported by NumPy 1.20+')
+@pytest.mark.parametrize('dtype', [np.float32, np.float64])
+@pytest.mark.parametrize('offset', [0, 1])
+@pytest.mark.parametrize('ndim', [1, 3])
+@pytest.mark.parametrize('layout', ['view', 'strided', 'pointer'])
+def test_rfft_input_alignment(
+        dtype: type[np.float32 | np.float64], offset: int,
+        ndim: int, layout: str) -> None:
+    shape: tuple[int, ...] = (35,) * ndim
+    backing: cp.ndarray
+    x: cp.ndarray
+    if layout == 'view':
+        backing = cp.ones(shape=(2,) + shape, dtype=dtype)
+        x = backing[offset]
+    elif layout == 'strided':
+        backing = cp.ones(shape=shape[:-1] + (2 * shape[-1],), dtype=dtype)
+        x = backing[..., offset::2]
+    else:
+        backing = cp.ones(shape=math.prod(shape) + 1, dtype=dtype)
+        x = cp.ndarray(
+            shape=shape, dtype=dtype,
+            memptr=backing.data + offset * backing.itemsize)
+    assert x.data.ptr % (2 * x.itemsize) == offset * x.itemsize
+
+    out: cp.ndarray = (
+        cp_fft.rfft(x=x) if ndim == 1 else cp_fft.rfftn(x=x))
+    testing.assert_allclose(
+        actual=out,
+        desired=np.fft.rfftn(np.ones(shape=shape, dtype=dtype)),
+        rtol=1e-5 if dtype is np.float32 else 1e-12,
+        atol=1e-3 if dtype is np.float32 else 1e-9)
+    testing.assert_array_equal(
+        actual=backing, desired=np.ones(shape=backing.shape, dtype=dtype))
 
 
 @testing.parameterize(*testing.product({
@@ -58,10 +84,6 @@ def _skip_forward_backward(norm):
     'norm': [None, 'backward', 'ortho', 'forward', '']
 }))
 class TestFft:
-
-    @pytest.fixture(autouse=True)
-    def setUp(self):
-        _skip_forward_backward(self.norm)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
@@ -144,7 +166,10 @@ class TestFft:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.4.0')
+    @pytest.mark.thread_unsafe(
+        reason="scipy's set_backend() not fully thread-safe: "
+        "https://github.com/scipy/scipy/issues/25878#issuecomment-6033943581")
+    @testing.with_requires('scipy')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -157,7 +182,10 @@ class TestFft:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.5.0')
+    @pytest.mark.thread_unsafe(
+        reason="scipy's set_backend() not fully thread-safe: "
+        "https://github.com/scipy/scipy/issues/25878#issuecomment-6033943581")
+    @testing.with_requires('scipy')
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -263,7 +291,10 @@ class TestFft:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.4.0')
+    @pytest.mark.thread_unsafe(
+        reason="scipy's set_backend() not fully thread-safe: "
+        "https://github.com/scipy/scipy/issues/25878#issuecomment-6033943581")
+    @testing.with_requires('scipy')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -276,7 +307,10 @@ class TestFft:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.5.0')
+    @pytest.mark.thread_unsafe(
+        reason="scipy's set_backend() not fully thread-safe: "
+        "https://github.com/scipy/scipy/issues/25878#issuecomment-6033943581")
+    @testing.with_requires('scipy')
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -320,10 +354,6 @@ class TestFft:
     )
 ))
 class TestFft2:
-
-    @pytest.fixture(autouse=True)
-    def setUp(self):
-        _skip_forward_backward(self.norm)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
@@ -403,7 +433,10 @@ class TestFft2:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.4.0')
+    @pytest.mark.thread_unsafe(
+        reason="scipy's set_backend() not fully thread-safe: "
+        "https://github.com/scipy/scipy/issues/25878#issuecomment-6033943581")
+    @testing.with_requires('scipy')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -416,7 +449,10 @@ class TestFft2:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.5.0')
+    @pytest.mark.thread_unsafe(
+        reason="scipy's set_backend() not fully thread-safe: "
+        "https://github.com/scipy/scipy/issues/25878#issuecomment-6033943581")
+    @testing.with_requires('scipy')
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -519,7 +555,10 @@ class TestFft2:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.4.0')
+    @pytest.mark.thread_unsafe(
+        reason="scipy's set_backend() not fully thread-safe: "
+        "https://github.com/scipy/scipy/issues/25878#issuecomment-6033943581")
+    @testing.with_requires('scipy')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -532,7 +571,10 @@ class TestFft2:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.5.0')
+    @pytest.mark.thread_unsafe(
+        reason="scipy's set_backend() not fully thread-safe: "
+        "https://github.com/scipy/scipy/issues/25878#issuecomment-6033943581")
+    @testing.with_requires('scipy')
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -580,10 +622,6 @@ class TestFft2:
     )
 ))
 class TestFftn:
-
-    @pytest.fixture(autouse=True)
-    def setUp(self):
-        _skip_forward_backward(self.norm)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
@@ -664,7 +702,10 @@ class TestFftn:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.4.0')
+    @pytest.mark.thread_unsafe(
+        reason="scipy's set_backend() not fully thread-safe: "
+        "https://github.com/scipy/scipy/issues/25878#issuecomment-6033943581")
+    @testing.with_requires('scipy')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -677,7 +718,10 @@ class TestFftn:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.5.0')
+    @pytest.mark.thread_unsafe(
+        reason="scipy's set_backend() not fully thread-safe: "
+        "https://github.com/scipy/scipy/issues/25878#issuecomment-6033943581")
+    @testing.with_requires('scipy')
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -780,7 +824,10 @@ class TestFftn:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.4.0')
+    @pytest.mark.thread_unsafe(
+        reason="scipy's set_backend() not fully thread-safe: "
+        "https://github.com/scipy/scipy/issues/25878#issuecomment-6033943581")
+    @testing.with_requires('scipy')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -793,7 +840,10 @@ class TestFftn:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.5.0')
+    @pytest.mark.thread_unsafe(
+        reason="scipy's set_backend() not fully thread-safe: "
+        "https://github.com/scipy/scipy/issues/25878#issuecomment-6033943581")
+    @testing.with_requires('scipy')
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -825,10 +875,6 @@ class TestFftn:
     'norm': [None, 'backward', 'ortho', 'forward', '']
 }))
 class TestRfft:
-
-    @pytest.fixture(autouse=True)
-    def setUp(self):
-        _skip_forward_backward(self.norm)
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-6, accept_error=ValueError,
@@ -866,7 +912,10 @@ class TestRfft:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.4.0')
+    @pytest.mark.thread_unsafe(
+        reason="scipy's set_backend() not fully thread-safe: "
+        "https://github.com/scipy/scipy/issues/25878#issuecomment-6033943581")
+    @testing.with_requires('scipy')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-6, accept_error=ValueError,
                                  contiguous_check=False)
@@ -913,8 +962,6 @@ class TestRfft:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    # the irfft tests show a slightly different results in CUDA 11.0 when
-    # compared to SciPy 1.6.1
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-5, accept_error=ValueError,
                                  contiguous_check=False)
@@ -986,7 +1033,10 @@ class TestRfft:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.4.0')
+    @pytest.mark.thread_unsafe(
+        reason="scipy's set_backend() not fully thread-safe: "
+        "https://github.com/scipy/scipy/issues/25878#issuecomment-6033943581")
+    @testing.with_requires('scipy')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-5, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1030,10 +1080,6 @@ def _skip_hipFFT_PlanNd_bug(axes, shape):
     )
 ))
 class TestRfft2:
-
-    @pytest.fixture(autouse=True)
-    def setUp(self):
-        _skip_forward_backward(self.norm)
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
@@ -1128,7 +1174,10 @@ class TestRfft2:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.4.0')
+    @pytest.mark.thread_unsafe(
+        reason="scipy's set_backend() not fully thread-safe: "
+        "https://github.com/scipy/scipy/issues/25878#issuecomment-6033943581")
+    @testing.with_requires('scipy')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1250,9 +1299,12 @@ class TestRfft2:
 
         return _correct_np_dtype(xp, dtype, out)
 
+    @pytest.mark.thread_unsafe(
+        reason="scipy's set_backend() not fully thread-safe: "
+        "https://github.com/scipy/scipy/issues/25878#issuecomment-6033943581")
     @pytest.mark.skipif(_irfft_skip_condition,
                         reason="Known to fail with Pascal or older")
-    @testing.with_requires('scipy>=1.4.0')
+    @testing.with_requires('scipy')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1287,10 +1339,6 @@ class TestRfft2:
     )
 ))
 class TestRfftn:
-
-    @pytest.fixture(autouse=True)
-    def setUp(self):
-        _skip_forward_backward(self.norm)
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
@@ -1385,7 +1433,10 @@ class TestRfftn:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.4.0')
+    @pytest.mark.thread_unsafe(
+        reason="scipy's set_backend() not fully thread-safe: "
+        "https://github.com/scipy/scipy/issues/25878#issuecomment-6033943581")
+    @testing.with_requires('scipy')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1507,9 +1558,12 @@ class TestRfftn:
 
         return _correct_np_dtype(xp, dtype, out)
 
+    @pytest.mark.thread_unsafe(
+        reason="scipy's set_backend() not fully thread-safe: "
+        "https://github.com/scipy/scipy/issues/25878#issuecomment-6033943581")
     @pytest.mark.skipif(_irfft_skip_condition,
                         reason="Known to fail with Pascal or older")
-    @testing.with_requires('scipy>=1.4.0')
+    @testing.with_requires('scipy')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1530,10 +1584,6 @@ class TestRfftn:
     'norm': [None, 'backward', 'ortho', 'forward', ''],
 }))
 class TestHfft:
-
-    @pytest.fixture(autouse=True)
-    def setUp(self):
-        _skip_forward_backward(self.norm)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=4e-4, atol=1e-7, accept_error=ValueError,
@@ -1563,7 +1613,10 @@ class TestHfft:
             _fft_module(cp).hfft(x, n=self.n, axis=self.axis,
                                  norm=self.norm, plan='abc')
 
-    @testing.with_requires('scipy>=1.4.0')
+    @pytest.mark.thread_unsafe(
+        reason="scipy's set_backend() not fully thread-safe: "
+        "https://github.com/scipy/scipy/issues/25878#issuecomment-6033943581")
+    @testing.with_requires('scipy')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=4e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1604,7 +1657,10 @@ class TestHfft:
             _fft_module(cp).ihfft(x, n=self.n, axis=self.axis,
                                   norm=self.norm, plan='abc')
 
-    @testing.with_requires('scipy>=1.4.0')
+    @pytest.mark.thread_unsafe(
+        reason="scipy's set_backend() not fully thread-safe: "
+        "https://github.com/scipy/scipy/issues/25878#issuecomment-6033943581")
+    @testing.with_requires('scipy')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1635,12 +1691,8 @@ class TestHfft:
         testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
     )
 ))
-@testing.with_requires('scipy>=1.4.0')
+@testing.with_requires('scipy')
 class TestHfft2:
-
-    @pytest.fixture(autouse=True)
-    def setUp(self):
-        _skip_forward_backward(self.norm)
 
     @pytest.mark.skipif(_irfft_skip_condition,
                         reason="Known to fail with Pascal or older")
@@ -1655,6 +1707,9 @@ class TestHfft2:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
+    @pytest.mark.thread_unsafe(
+        reason="scipy's set_backend() not fully thread-safe: "
+        "https://github.com/scipy/scipy/issues/25878#issuecomment-6033943581")
     @pytest.mark.skipif(_irfft_skip_condition,
                         reason="Known to fail with Pascal or older")
     @testing.for_all_dtypes()
@@ -1682,6 +1737,9 @@ class TestHfft2:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
+    @pytest.mark.thread_unsafe(
+        reason="scipy's set_backend() not fully thread-safe: "
+        "https://github.com/scipy/scipy/issues/25878#issuecomment-6033943581")
     @pytest.mark.xfail(cp.cuda.runtime.is_hip, strict=False,  # see #6427
                        reason="Flaky in HIP when running with other tests")
     @testing.for_all_dtypes(no_complex=True)
@@ -1714,12 +1772,8 @@ class TestHfft2:
         testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
     )
 ))
-@testing.with_requires('scipy>=1.4.0')
+@testing.with_requires('scipy')
 class TestHfftn:
-
-    @pytest.fixture(autouse=True)
-    def setUp(self):
-        _skip_forward_backward(self.norm)
 
     @pytest.mark.skipif(_irfft_skip_condition,
                         reason="Known to fail with Pascal or older")
@@ -1734,6 +1788,9 @@ class TestHfftn:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
+    @pytest.mark.thread_unsafe(
+        reason="scipy's set_backend() not fully thread-safe: "
+        "https://github.com/scipy/scipy/issues/25878#issuecomment-6033943581")
     @pytest.mark.skipif(_irfft_skip_condition,
                         reason="Known to fail with Pascal or older")
     @testing.for_all_dtypes()
@@ -1761,6 +1818,9 @@ class TestHfftn:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
+    @pytest.mark.thread_unsafe(
+        reason="scipy's set_backend() not fully thread-safe: "
+        "https://github.com/scipy/scipy/issues/25878#issuecomment-6033943581")
     @pytest.mark.xfail(cp.cuda.runtime.is_hip, strict=False,  # see #6427
                        reason="Flaky in HIP when running with other tests")
     @testing.for_all_dtypes(no_complex=True)

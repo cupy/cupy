@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import sys
 import unittest
 import pytest
@@ -73,12 +75,13 @@ class TestQSpline:
         return scp.signal.qspline1d(xp.asarray([1., 2, 3, 4, 5]))
 
 
-@testing.with_requires('scipy')
 class TestCSplineEval:
+    @testing.with_requires('scipy')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_cspline_eval_zero(self, xp, scp):
         return scp.signal.cspline1d_eval(xp.asarray([0., 0]), xp.asarray([0.]))
 
+    @testing.with_requires('scipy')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_cspline_eval(self, xp, scp):
         x = [-3, -2, -1, 0, 1, 2, 3, 4, 5, 6]
@@ -93,13 +96,26 @@ class TestCSplineEval:
         cj = scp.signal.cspline1d(y)
         return scp.signal.cspline1d_eval(cj, newx, dx=dx, x0=x[0])
 
+    @testing.with_requires('scipy>=1.16.0')
+    @pytest.mark.parametrize("xp,scp", [(cupy, cupyx.scipy), (np, scipy)])
+    def test_cspline_eval_cj_empty(self, xp, scp):
+        with pytest.raises(
+                ValueError,
+                match="Spline coefficients 'cj' must not be empty."
+        ):
+            scp.signal.cspline1d_eval(
+                xp.asarray([], dtype=xp.float64),
+                xp.asarray([0.0], dtype=xp.float64)
+            )
 
-@testing.with_requires('scipy')
+
 class TestQSplineEval:
+    @testing.with_requires('scipy')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_qspline_eval_zero(self, xp, scp):
         return scp.signal.qspline1d_eval(xp.asarray([0., 0]), xp.asarray([0.]))
 
+    @testing.with_requires('scipy')
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_qspline_eval(self, xp, scp):
         x = [-3, -2, -1, 0, 1, 2, 3, 4, 5, 6]
@@ -114,6 +130,18 @@ class TestQSplineEval:
         cj = scp.signal.qspline1d(y)
         return scp.signal.qspline1d_eval(cj, newx, dx=dx, x0=x[0])
 
+    @testing.with_requires('scipy>=1.16.0')
+    @pytest.mark.parametrize("xp,scp", [(cupy, cupyx.scipy), (np, scipy)])
+    def test_qspline_eval_cj_empty(self, xp, scp):
+        with pytest.raises(
+                ValueError,
+                match="Spline coefficients 'cj' must not be empty."
+        ):
+            scp.signal.qspline1d_eval(
+                xp.asarray([], dtype=xp.float64),
+                xp.asarray([0.0], dtype=xp.float64)
+            )
+
 
 @testing.with_requires('scipy')
 class TestCSpline2D:
@@ -125,6 +153,10 @@ class TestCSpline2D:
 
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-4, rtol=1e-4)
     def test_cspline2d_iir2(self, xp, scp):
+        if np.lib.NumpyVersion(scipy.__version__) >= "1.15.0":
+            # TODO(asi1024): Fix numerical error
+            pytest.xfail(reason="XXX: Large numerical error occurs")
+
         image = testing.shaped_random((71, 73), xp, xp.float64,
                                       scale=1, seed=181819142)
         return scp.signal.cspline2d(image, 8.0)

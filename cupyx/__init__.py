@@ -1,4 +1,6 @@
 # "NOQA" to suppress flake8 warning
+from __future__ import annotations
+
 from cupyx._rsqrt import rsqrt  # NOQA
 from cupyx._runtime import get_runtime_info  # NOQA
 from cupyx._scatter import scatter_add  # NOQA
@@ -28,6 +30,11 @@ def __getattr__(key):
     if key == 'lapack':
         import cupyx.lapack
         return cupyx.lapack
+    if key == 'cusparse':
+        # Lazy so that touching ``cupyx`` does not load the cuSPARSE
+        # library; resolved on first ``cupyx.cusparse`` attribute access.
+        import cupyx.cusparse
+        return cupyx.cusparse
 
     raise AttributeError(
         "module '{}' has no attribute '{}'".format(__name__, key))

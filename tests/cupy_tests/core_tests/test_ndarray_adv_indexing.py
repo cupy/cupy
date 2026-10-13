@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import itertools
 import numpy
 import pytest
@@ -333,6 +335,15 @@ class TestArrayInvalidIndexAdvGetitem:
             a = testing.shaped_arange(self.shape, xp)
             with pytest.raises(IndexError):
                 a[self.indexes]
+
+
+class TestArrayBadDTypeIndexAdvGetitem:
+    @pytest.mark.parametrize('dtype', [object, "i,i", "float32", "str"])
+    def test_bad_dtype_adv_getitem(self, dtype):
+        # Test various bad dtypes, supported by CuPy or not.
+        a = cupy.arange(10)
+        with pytest.raises(IndexError, match="arrays used as indices"):
+            a[numpy.array([1, 2], dtype=dtype)]
 
 
 @testing.parameterize(
@@ -707,3 +718,73 @@ class TestArrayAdvancedIndexingSetitemTranspose:
         slices = (numpy.array([1, 0]), slice(None), numpy.array([2, 1]))
         a[slices] = 1
         return a
+
+
+class TestHugeArrays:
+    # These tests use arrays with large logical sizes.
+    def test_take_negative_index_at_int32_size_boundary(self):
+        # Only the broadcast view is huge, so this needs no real allocation.
+        arr = cupy.broadcast_to(cupy.array(42, dtype=cupy.uint8), (2**31,))
+        assert arr.take(-1).item() == 42
+
+    @testing.slow
+    def test_advanced(self):
+        try:
+            arr = cupy.ones((1, 2**30), dtype=cupy.int8)
+            indx = cupy.zeros(3, dtype=cupy.int32)
+            res = arr[indx, :]
+            # sanity check, we mostly care about it not crashing.
+            assert res.sum() == 3 * 2**30
+            del res
+
+            arr[indx, :] = cupy.array([[1], [2], [3]], dtype=cupy.int8)
+            # Check 3 got written (order may not be strictly guaranteed)
+            assert arr.sum() == 2**30 * 3
+        except MemoryError:
+            pytest.skip("out of memory in test.")
+
+    @testing.slow
+    @pytest.mark.thread_unsafe(reason="Allocation too large.")
+    def test_take_array(self):
+        arr = indices = res = None
+        try:
+            arr = cupy.array([[[1, 2]], [[3, 4]]], dtype=cupy.uint8)
+            indices = cupy.broadcast_to(
+                cupy.array(0, dtype=cupy.int8), (2**30,))
+            res = arr.take(indices, axis=1)
+            testing.assert_array_equal(res[0, 0], [1, 2])
+            testing.assert_array_equal(res[0, -1], [1, 2])
+            testing.assert_array_equal(res[1, 0], [3, 4])
+            testing.assert_array_equal(res[1, -1], [3, 4])
+        except MemoryError:
+            pytest.skip("out of memory in test.")
+        finally:
+            del res, indices, arr
+            cupy.get_default_memory_pool().free_all_blocks()
+
+    @testing.slow
+    @pytest.mark.thread_unsafe(reason="Allocation too large.")
+    def test_take_scalar(self):
+        arr = res = None
+        try:
+            arr = cupy.broadcast_to(
+                cupy.array([[1], [2]], dtype=cupy.uint8), (2, 2**31))
+            res = arr.take(1, axis=0)
+            assert res[0] == 2
+            assert res[-1] == 2
+        except MemoryError:
+            pytest.skip("out of memory in test.")
+        finally:
+            del res, arr
+            cupy.get_default_memory_pool().free_all_blocks()
+
+    @testing.slow
+    def test_choose(self):
+        try:
+            choices = cupy.zeros((2, 2**31), dtype=cupy.int8)
+            choices[1, :] = 1
+            res = choices[1, :].choose(choices)
+            # sanity check, we mostly care about it not crashing.
+            assert res.sum() == 2**31
+        except MemoryError:
+            pytest.skip("out of memory in test.")

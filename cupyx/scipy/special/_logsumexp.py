@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import cupy as cp
 
 
@@ -34,20 +36,23 @@ def logsumexp(a, axis=None, b=None, keepdims=False, return_sign=False):
     sgn : cupy.ndarray
         If return_sign is True, this will be an array of floating-point
         numbers matching res and +1, 0, or -1 depending on the sign of
-        the result. If False, only onw result is returned
+        the result. If False, only one result is returned.
 
     See Also
     --------
     scipy.special.logsumexp
 
     """
+    if a.dtype.kind in 'biu':
+        a = a.astype(cp.float64)
+
     if b is not None:
         a, b = cp.broadcast_arrays(a, b)
         if cp.any(b == 0):
             a = a + 0.  # promote to at least float
             a[b == 0] = -cp.inf
 
-    a_max = cp.max(a, axis=axis, keepdims=True)
+    a_max = cp.max(a.real, axis=axis, keepdims=True)
 
     if a_max.ndim > 0:
         a_max[~cp.isfinite(a_max)] = 0
@@ -61,8 +66,11 @@ def logsumexp(a, axis=None, b=None, keepdims=False, return_sign=False):
 
     s = cp.sum(tmp, axis=axis, keepdims=keepdims)
     if return_sign:
-        sgn = cp.sign(s)
-        s *= sgn
+        if s.dtype.char == 'c':
+            sgn = s / cp.where(s == 0, 1, cp.abs(s))
+        else:
+            sgn = cp.sign(s)
+        s = cp.abs(s)
     out = cp.log(s)
 
     if not keepdims:

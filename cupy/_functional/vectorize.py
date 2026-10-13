@@ -1,21 +1,18 @@
+from __future__ import annotations
+
 import numpy
 
 from cupy import _core
-from cupyx.jit import _interface
-from cupyx.jit import _cuda_types
 
 
 def _get_input_type(arg):
-    if isinstance(arg, int):
-        return 'l'
-    if isinstance(arg, float):
-        return 'd'
-    if isinstance(arg, complex):
-        return 'D'
-    return arg.dtype.char
+    if hasattr(arg, 'dtype'):
+        return arg.dtype.char
+    else:
+        return numpy.dtype(type(arg)).char
 
 
-class vectorize(object):
+class vectorize:
     """Generalized function class.
 
     .. seealso:: :class:`numpy.vectorize`
@@ -56,6 +53,7 @@ class vectorize(object):
 
     @staticmethod
     def _get_body(return_type, call):
+        from cupyx.jit import _cuda_types
         if isinstance(return_type, _cuda_types.Scalar):
             dtypes = [return_type.dtype]
             code = f'out0 = {call};'
@@ -75,6 +73,8 @@ class vectorize(object):
         return ', '.join(out_params), code
 
     def __call__(self, *args):
+        from cupyx.jit import _interface
+        from cupyx.jit import _cuda_types
         itypes = ''.join([_get_input_type(x) for x in args])
         kern = self._kernel_cache.get(itypes, None)
 
@@ -98,7 +98,7 @@ class vectorize(object):
             kern = _core.ElementwiseKernel(
                 in_params, out_params, body, 'cupy_vectorize',
                 preamble=result.code,
-                options=('-DCUPY_JIT_MODE', '--std=c++14'),
+                options=('-DCUPY_JIT_MODE', '--std=c++17'),
             )
             self._kernel_cache[itypes] = kern
 
