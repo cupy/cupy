@@ -7,7 +7,6 @@ python:
   # Python versions the wheel matrix is built across. ci.yml reads this
   # list and passes it to build-wheel.yml as the `python-versions` input.
   supported:
-    - "3.10"
     - "3.11"
     - "3.12"
     - "3.13"

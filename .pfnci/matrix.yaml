@@ -13,7 +13,7 @@
   nccl: "2.18"
   cutensor: "2.4"
   cusparselt: null
-  python: "3.10"
+  python: "3.11"
   numpy: "2.0"
   scipy: "1.14"
   optuna: "3"
