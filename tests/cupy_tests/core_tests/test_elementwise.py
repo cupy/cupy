@@ -444,6 +444,29 @@ class TestElementwiseGUFuncLike:
         with pytest.raises(ValueError, match='Out shape is mismatched'):
             kern(x, out)
 
+    @pytest.mark.parametrize('explicit_none', [False, True])
+    def test_raw_output_requires_array(self, explicit_none):
+        kern = cupy.ElementwiseKernel('T(n) x', 'raw T y', '')
+        x = cupy.ones((2, 3))
+        args = (x, None) if explicit_none else (x,)
+
+        with pytest.raises(ValueError, match='Output array size is Undecided'):
+            kern(*args)
+
+    def test_explicit_raw_output(self):
+        kern = cupy.ElementwiseKernel(
+            'T(n) x', 'raw T y',
+            '''
+            for (ptrdiff_t j = 0; j < x.size(); ++j) {
+                y[i * x.size() + j] = x[j];
+            }
+            ''')
+        x = cupy.arange(6, dtype=cupy.float64).reshape(2, 3)
+        out = cupy.empty(6, dtype=x.dtype)
+
+        assert kern(x, out) is out
+        testing.assert_array_equal(out, x.ravel())
+
     def test_return_tuple(self):
         # '(i)->()'
         kern = _make_test_kernel(('(i)',), ('()',), return_tuple=True)

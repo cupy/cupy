@@ -810,6 +810,8 @@ cdef class KernelArguments:
             p = out_params[i]
             a = self.get_out(i)
             if a is None:
+                if p.raw:
+                    raise ValueError('Output array size is Undecided')
                 new = _ndarray_init(
                     cupy.ndarray, out_shapes[i], out_types[i], None)
                 self.set_out(i, new)
