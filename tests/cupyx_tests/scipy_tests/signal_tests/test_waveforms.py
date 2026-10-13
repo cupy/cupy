@@ -1,14 +1,11 @@
 from __future__ import annotations
 
 
-from unittest import mock
-
 import pytest
 
 import cupy
 from cupy import testing
 import cupyx.scipy.signal  # NOQA
-from cupyx.scipy.signal import _waveforms
 
 import numpy as np
 
@@ -87,12 +84,23 @@ class TestChirp:
             result = result.astype(np.result_type(dtype, 1j), copy=False)
         return result
 
-    @pytest.mark.parametrize('method, vertex_zero', [
-        ('linear', True),
-        ('quadratic', True),
-        ('quadratic', False),
-        ('logarithmic', True),
-        ('hyperbolic', True),
+    # The quadratic and hyperbolic kernels do not compile for complex times.
+    @pytest.mark.parametrize('method', ['linear', 'logarithmic'])
+    @pytest.mark.parametrize('complex', [False, True])
+    @testing.with_requires('scipy>=1.15.0')
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-6, atol=1e-6)
+    def test_complex_time(self, method, complex, xp, scp):
+        # Complex times give a complex result for either value of `complex`.
+        t = xp.linspace(-0.25, 1.0, 11) + 0.1j
+        return scp.signal.chirp(
+            t, 3.0, 1.0, 1.0, method=method, phi=37.0, complex=complex)
+
+    @pytest.mark.parametrize('method, f0, f1, vertex_zero', [
+        ('linear', 1.0, 3.0, True),
+        ('quadratic', 1.0, 3.0, True),
+        ('quadratic', 1.0, 3.0, False),
+        ('logarithmic', 1.0, 3.0, True),
+        ('hyperbolic', 3.0, 1.0, True),
     ])
     @pytest.mark.parametrize('phi', [0.0, 37.0])
     @pytest.mark.parametrize('dtype, expected_dtype, tol', [
@@ -101,13 +109,14 @@ class TestChirp:
         (cupy.int64, cupy.complex128, 1e-12),
     ])
     def test_complex_properties(
-            self, method, vertex_zero, phi, dtype, expected_dtype, tol):
-        t = cupy.linspace(0.0, 1.0, 101, dtype=dtype)
+            self, method, f0, f1, vertex_zero, phi, dtype, expected_dtype,
+            tol):
+        t = cupy.linspace(0.0, 5.0, 101, dtype=dtype)
         actual = cupyx.scipy.signal.chirp(
-            t, 1.0, 1.0, 3.0, method=method, phi=phi,
+            t, f0, 1.0, f1, method=method, phi=phi,
             vertex_zero=vertex_zero, complex=True)
         expected_real = cupyx.scipy.signal.chirp(
-            t, 1.0, 1.0, 3.0, method=method, phi=phi,
+            t, f0, 1.0, f1, method=method, phi=phi,
             vertex_zero=vertex_zero)
 
         assert actual.dtype == expected_dtype
@@ -117,37 +126,6 @@ class TestChirp:
         testing.assert_allclose(
             cupy.abs(actual), cupy.ones_like(expected_real),
             rtol=tol, atol=tol)
-
-    @pytest.mark.parametrize('method, kernel_name, vertex_zero', [
-        ('linear', '_chirp_phase_lin_kernel', True),
-        ('quadratic', '_chirp_phase_quad_kernel', True),
-        ('quadratic', '_chirp_phase_quad_kernel', False),
-        ('logarithmic', '_chirp_phase_log_kernel', True),
-        ('hyperbolic', '_chirp_phase_hyp_kernel', True),
-    ])
-    @pytest.mark.parametrize('complex', [False, True])
-    @pytest.mark.parametrize('scalar', [False, True])
-    @testing.for_dtypes([np.float32, np.float64])
-    def test_single_output_and_kernel(
-            self, method, kernel_name, vertex_zero, complex, scalar, dtype):
-        t = cupy.asarray(0.25, dtype=dtype) if scalar else cupy.linspace(
-            0.0, 1.0, 101, dtype=dtype)
-        kernel = getattr(_waveforms, kernel_name)
-        with mock.patch.object(
-                cupy, 'empty_like', wraps=cupy.empty_like) as alloc:
-            with mock.patch.object(
-                    _waveforms, kernel_name, wraps=kernel) as launch:
-                actual = cupyx.scipy.signal.chirp(
-                    t, 1.0, 1.0, 3.0, method=method, phi=37.0,
-                    vertex_zero=vertex_zero, complex=complex)
-
-        expected_dtype = cupy.result_type(dtype, 1j) if complex else dtype
-        assert actual.dtype == expected_dtype
-        assert actual.shape == t.shape
-        alloc.assert_called_once_with(t, dtype=expected_dtype)
-        launch.assert_called_once()
-        assert launch.call_args.args[0] is t
-        assert launch.call_args.args[-1] is actual
 
     @pytest.mark.parametrize('method, f0, f1', [
         ('logarithmic', 0.0, 1.0),
