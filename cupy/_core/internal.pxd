@@ -135,6 +135,8 @@ cpdef tuple _new_like_order_and_strides(a, dtype, order, shape=*)
 
 cpdef tuple _broadcast_shapes(shapes)
 
+cdef bint _has_element(const shape_t &source, Py_ssize_t n)
+
 cdef bint _is_layout_expected(
     const bint c_contiguous, const bint f_contiguous,
     expected_order) except*

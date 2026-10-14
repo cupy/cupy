@@ -302,7 +302,7 @@ cpdef _ndarray_base moveaxis(_ndarray_base a, source, destination):
     cdef vector.vector[Py_ssize_t] order
     cdef Py_ssize_t i
     for i in range(ndim):
-        if not _has_element(src, i):
+        if not internal._has_element(src, i):
             order.push_back(i)
 
     cdef Py_ssize_t d, s
@@ -799,13 +799,6 @@ cpdef Py_ssize_t size(_ndarray_base a, axis=None) except? -1:
 # private
 
 
-cdef bint _has_element(const shape_t &source, Py_ssize_t n) noexcept:
-    for i in range(source.size()):
-        if source[i] == n:
-            return True
-    return False
-
-
 cdef _get_strides_for_nocopy_reshape(
         _ndarray_base a, const shape_t &newshape, strides_t &newstrides):
     cdef Py_ssize_t size, itemsize, ndim, dim, last_stride
@@ -854,7 +847,7 @@ cdef _normalize_axis_tuple(axis, Py_ssize_t ndim, shape_t &ret):
 
     for ax in axis:
         ax = internal._normalize_axis_index(ax, ndim)
-        if _has_element(ret, ax):
+        if internal._has_element(ret, ax):
             # the message in `numpy.core.numeric.normalize_axis_tuple`
             raise ValueError('repeated axis')
         ret.push_back(ax)
