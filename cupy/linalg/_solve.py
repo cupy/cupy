@@ -348,8 +348,6 @@ def pinv(a, rcond=1e-15):
     if a.size == 0:
         _, out_dtype = _util.linalg_common_type(a)
         m, n = a.shape[-2:]
-        if m == 0 or n == 0:
-            out_dtype = a.dtype  # NumPy bug?
         return cupy.empty(a.shape[:-2] + (n, m), dtype=out_dtype)
 
     u, s, vt = _decomposition.svd(a.conj(), full_matrices=False)

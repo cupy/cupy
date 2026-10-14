@@ -824,6 +824,13 @@ class TestSearchSortedWithSorter:
         y = xp.searchsorted(bins, x, sorter=sorter)
         return y,
 
+    @testing.with_requires('numpy>=2.6.0.dev0')
+    @testing.numpy_cupy_array_equal()
+    def test_sorter_uint64(self, xp):
+        a = xp.array([30, 10, 20])
+        sorter = xp.array([1, 2, 0], dtype=xp.uint64)
+        return xp.searchsorted(a, xp.array([15, 25]), sorter=sorter)
+
     def test_invalid_sorter(self):
         for xp in (numpy, cupy):
             x = testing.shaped_arange((12,), xp, xp.float64)

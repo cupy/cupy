@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import unittest
 
+import numpy
+
 from cupy import testing
 
 
@@ -60,56 +62,63 @@ class TestTrigonometric(unittest.TestCase):
 @testing.with_requires('numpy>=1.21.0')
 class TestUnwrap(unittest.TestCase):
 
+    def _make_input(self, shape, xp, dtype, period=2*numpy.pi):
+        a = testing.shaped_random(shape, xp, dtype)
+        if xp is numpy and testing.numpy_satisfies('<2.6.0.dev0'):
+            # Older NumPy computes differences before promoting unsigned data.
+            a = a.astype(numpy.result_type(a.dtype, period))
+        return a
+
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose()
     def test_unwrap_1dim(self, xp, dtype):
-        a = testing.shaped_random((5,), xp, dtype)
+        a = self._make_input((5,), xp, dtype)
         return xp.unwrap(a)
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose()
     def test_unwrap_1dim_with_discont(self, xp, dtype):
-        a = testing.shaped_random((5,), xp, dtype)
+        a = self._make_input((5,), xp, dtype)
         return xp.unwrap(a, discont=1.0)
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose()
     def test_unwrap_1dim_with_period(self, xp, dtype):
-        a = testing.shaped_random((5,), xp, dtype)
+        a = self._make_input((5,), xp, dtype, period=1.2)
         return xp.unwrap(a, period=1.2)
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose()
     def test_unwrap_1dim_with_discont_and_period(self, xp, dtype):
-        a = testing.shaped_random((5,), xp, dtype)
+        a = self._make_input((5,), xp, dtype, period=1.2)
         return xp.unwrap(a, discont=1.0, period=1.2)
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose()
     def test_unwrap_2dim_without_axis(self, xp, dtype):
-        a = testing.shaped_random((4, 5), xp, dtype)
+        a = self._make_input((4, 5), xp, dtype)
         return xp.unwrap(a)
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose()
     def test_unwrap_2dim_with_axis(self, xp, dtype):
-        a = testing.shaped_random((4, 5), xp, dtype)
+        a = self._make_input((4, 5), xp, dtype)
         return xp.unwrap(a, axis=1)
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose()
     def test_unwrap_2dim_with_discont(self, xp, dtype):
-        a = testing.shaped_random((4, 5), xp, dtype)
+        a = self._make_input((4, 5), xp, dtype)
         return xp.unwrap(a, discont=5.0, axis=1)
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose()
     def test_unwrap_2dim_with_period(self, xp, dtype):
-        a = testing.shaped_random((4, 5), xp, dtype)
+        a = self._make_input((4, 5), xp, dtype, period=4.5)
         return xp.unwrap(a, axis=1, period=4.5)
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose()
     def test_unwrap_2dim_with_discont_and_period(self, xp, dtype):
-        a = testing.shaped_random((4, 5), xp, dtype)
+        a = self._make_input((4, 5), xp, dtype, period=4.5)
         return xp.unwrap(a, discont=5.0, axis=1, period=4.5)

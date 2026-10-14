@@ -220,6 +220,7 @@ class TestPinv(unittest.TestCase):
                      rcond=[[0.2, 0.9, 0.1],
                             [0.7, 0.2, 0.5]])
 
+    @testing.with_requires('numpy>=2.6.0.dev0')  # Input dtype on older NumPy.
     def test_pinv_size_0(self):
         self.check_x((3, 0), rcond=1e-15)
         self.check_x((0, 3), rcond=1e-15)

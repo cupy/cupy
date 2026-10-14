@@ -136,6 +136,9 @@ def unwrap(p, discont=None, axis=-1, *, period=2*numpy.pi):
     """
 
     p = cupy.asarray(p)
+    dtype = numpy.result_type(p.dtype, period)
+    p = p.astype(dtype, copy=False)
+    # Promotion before differencing avoids unsigned subtraction wrapping.
     nd = p.ndim
     dd = sumprod.diff(p, axis=axis)
     if discont is None:
@@ -143,7 +146,6 @@ def unwrap(p, discont=None, axis=-1, *, period=2*numpy.pi):
     slice1 = [slice(None, None)]*nd     # full slices
     slice1[axis] = slice(1, None)
     slice1 = tuple(slice1)
-    dtype = numpy.result_type(dd.dtype, period)
     if numpy.issubdtype(dtype, numpy.integer):
         interval_high, rem = divmod(period, 2)
         boundary_ambiguous = rem == 0
