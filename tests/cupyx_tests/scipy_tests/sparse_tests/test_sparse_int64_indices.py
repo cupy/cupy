@@ -333,6 +333,27 @@ class TestSparseArithmeticDtypes:
         return c.toarray()
 
     @pytest.mark.parametrize('format', ['csr', 'csc'])
+    @pytest.mark.parametrize('index_dtype, nonempty', [
+        (numpy.int32, False),
+        # This case needs index narrowing from the same follow-up stack.
+        pytest.param(numpy.int32, True, marks=_integer_data_xfail),
+        (numpy.int64, False),
+        (numpy.int64, True),
+    ])
+    def test_bool_matmul_preserves_index_dtype(
+            self, format, index_dtype, nonempty):
+        a = getattr(sparse, format + '_matrix')(
+            cupy.array([[nonempty]], dtype=cupy.bool_))
+        a.indices = a.indices.astype(index_dtype)
+        a.indptr = a.indptr.astype(index_dtype)
+
+        c = a @ a
+
+        assert c.nnz == int(nonempty)
+        assert c.indices.dtype == index_dtype
+        assert c.indptr.dtype == index_dtype
+
+    @pytest.mark.parametrize('format', ['csr', 'csc'])
     @pytest.mark.parametrize('index_dtype', [numpy.int32, numpy.int64])
     @pytest.mark.parametrize('left_dtype', [numpy.uint8, numpy.int8])
     @_integer_data_xfail
