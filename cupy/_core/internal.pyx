@@ -471,6 +471,35 @@ cpdef tuple _normalize_axis_indices(
     return tuple(sorted(res) if sort_axes else res)
 
 
+cpdef tuple _normalize_axis_tuple(axis, Py_ssize_t ndim):
+    """Normalizes an axis argument into a tuple of non-negative integer axes.
+
+    Arguments `argname` and `allow_duplicate` are not supported.
+
+    Args:
+        axis (int, tuple of int or None):
+            The un-normalized indices of the axis. Can be negative.
+        ndim (int):
+            The number of dimensions of the array that ``axis`` should be
+            normalized against
+
+    Returns:
+        tuple of int:
+            The tuple of non-negative integer axes.
+    """
+    if numpy.isscalar(axis):
+        axis = (axis,)
+
+    ret = []
+    for ax in axis:
+        ax = _normalize_axis_index(ax, ndim)
+        if _has_element(ret, ax):
+            # the message in `numpy.core.numeric.normalize_axis_tuple`
+            raise ValueError('repeated axis')
+        ret.append(ax)
+    return tuple(ret)
+
+
 cpdef strides_t _get_strides_for_order_K(x, dtype, shape=None) except *:
     # x here can be either numpy.ndarray or cupy.ndarray
     cdef strides_t strides

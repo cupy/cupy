@@ -275,7 +275,7 @@ cpdef _ndarray_base _expand_dims(_ndarray_base a, tuple axis):
     cdef vector.vector[Py_ssize_t] normalized_axis
     cdef out_ndim = a.ndim + len(axis)
     cdef shape_t a_shape = a.shape, out_shape
-    _normalize_axis_tuple(axis, out_ndim, normalized_axis)
+    normalized_axis = internal._normalize_axis_tuple(axis, out_ndim)
     out_shape.assign(out_ndim, 0)
     cdef Py_ssize_t i, j
     for i in normalized_axis:
@@ -292,8 +292,8 @@ cpdef _ndarray_base _expand_dims(_ndarray_base a, tuple axis):
 cpdef _ndarray_base moveaxis(_ndarray_base a, source, destination):
     cdef shape_t src, dest
     cdef Py_ssize_t ndim = a.ndim
-    _normalize_axis_tuple(source, ndim, src)
-    _normalize_axis_tuple(destination, ndim, dest)
+    src = internal._normalize_axis_tuple(source, ndim)
+    dest = internal._normalize_axis_tuple(destination, ndim)
 
     if src.size() != dest.size():
         raise ValueError('`source` and `destination` arguments must have '
@@ -834,23 +834,6 @@ cdef _get_strides_for_nocopy_reshape(
         newstrides.push_back(last_stride)
         if shape[dim] == 1:
             dim += 1
-
-
-cdef _normalize_axis_tuple(axis, Py_ssize_t ndim, shape_t &ret):
-    """Normalizes an axis argument into a tuple of non-negative integer axes.
-
-    Arguments `argname` and `allow_duplicate` are not supported.
-
-    """
-    if numpy.isscalar(axis):
-        axis = (axis,)
-
-    for ax in axis:
-        ax = internal._normalize_axis_index(ax, ndim)
-        if internal._has_element(ret, ax):
-            # the message in `numpy.core.numeric.normalize_axis_tuple`
-            raise ValueError('repeated axis')
-        ret.push_back(ax)
 
 
 cdef _ndarray_base _concatenate_single_kernel(
