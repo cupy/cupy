@@ -146,34 +146,11 @@ def _build_indptr(row_indices, n_rows, dtype):
 def _argsort_major_minor(major, minor, major_count, minor_range):
     """Return the permutation that sorts entries by ``(major, minor)``.
 
-    Encodes the two coordinates into a single ``major * minor_range + minor``
-    key and radix ``argsort``s it -- one sort instead of the two stable passes
-    ``lexsort`` runs, roughly an order of magnitude faster on millions of
-    entries.  ``minor`` must lie in ``[0, minor_range)`` so the key is
-    order-isomorphic to the ``(major, minor)`` pair.
-
-    ``major`` is cast to int64 before the multiply so an int32 ``major`` does
-    not wrap.  Falls back to a two-key ``lexsort`` when the largest possible
-    key ``major_count * minor_range`` could exceed int64 -- reachable in the
-    int64-index regime, where a sparse matrix may have a logical shape whose
-    product overflows even though it holds few entries.
-
-    Args:
-        major: Per-entry primary sort coordinate (values in
-            ``[0, major_count)``).
-        minor: Per-entry secondary sort coordinate (values in
-            ``[0, minor_range)``).
-        major_count (int): Exclusive upper bound on ``major``; with
-            ``minor_range`` it bounds the composite key.
-        minor_range (int): Exclusive upper bound on ``minor``; the key
-            multiplier.
-
-    Returns:
-        cupy.ndarray: Indices that sort the entries into canonical order.
+    Coordinates must lie in ``[0, major_count)`` and ``[0, minor_range)``.
+    Use one radix sort on the int64 key ``major * minor_range + minor``
+    when the shape product fits int64; otherwise fall back to ``lexsort``.
     """
-    # Coerce the bounds to Python ints so the overflow check runs in exact
-    # arbitrary precision: a numpy scalar would wrap the product mod 2**64 and
-    # could pass a guard that should have failed, silently corrupting the sort.
+    # Python ints keep the bound check from overflowing for NumPy scalars.
     if int(major_count) * int(minor_range) < (1 << 63):
         return _cupy.argsort(
             major.astype(_cupy.int64, copy=False) * minor_range + minor)
@@ -601,38 +578,29 @@ def csrgeam(a, b, alpha=1, beta=1):
         has_canonical_format=True)
 
 
-def _scale_geam_operand(data, coeff):
-    """Scale a geam/gemm operand's ``data`` by ``coeff``.
-
-    The ``+``/``-`` operators only ever pass ``coeff`` of +1 or -1; other
-    values reach here solely via the low-level ``spgemm``/``csrgeam2`` entry
-    points.  Negation wraps for signed and unsigned integers, so ``-data``
-    handles the -1 case.  A general coefficient multiplies through numpy
-    promotion so a fractional coefficient on integer data is not silently
-    truncated (``int64(0.5) == 0``).  ``coeff == 1`` is a no-op returned
-    up front, so it is safe for any dtype including bool (bool SpGEMM keeps
-    its operands as bool -- products are logical AND, sum_duplicates ORs --
-    and only reaches here with the default ``alpha == 1``).
-    """
-    if coeff == 1:
-        return data
-    if data.dtype.kind == 'b':
-        # bool has no negation/scaling; callers scaling bool by a non-unit
-        # coefficient must convert to int8 first.  Raise (rather than assert,
-        # which ``python -O`` strips) so a forgetful caller cannot silently
-        # get an int64 result or cupy's raw "boolean negative" error.
-        raise TypeError(
-            'bool operands must be cast to int8 before scaling by a '
-            'non-unit coefficient')
-    if coeff == -1:
-        return -data
-    return data * coeff
+def _cupy_csr_add(a, b, a_negative=False, b_negative=False):
+    """Apply operator signs, then add operands with pure CuPy."""
+    a, b = _cast_common_type(a, b)
+    dtype = a.dtype
+    if dtype.kind == 'b':
+        # Bool subtraction must cancel coincident True entries, not OR them.
+        a = a._with_data(a.data.astype(_numpy.int8), copy=False)
+        b = b._with_data(b.data.astype(_numpy.int8), copy=False)
+    # Only operator signs reach here; negate data instead of casting -1.
+    if a_negative:
+        a = a._with_data(-a.data, copy=False)
+    if b_negative:
+        b = b._with_data(-b.data, copy=False)
+    c = _cupy_csrgeam_int64(a, b, 1, 1)
+    if dtype.kind == 'b':
+        c = c._with_data(c.data.astype(dtype), copy=False)
+    return c
 
 
 def _cupy_csrgeam_int64(a, b, alpha, beta):
     # TODO(eriknw): cuSPARSE--remove once SpGEAM ships across all
     # supported CUDA versions.
-    """Pure-CuPy CSR addition for int64: C = alpha*A + beta*B.
+    """Pure-CuPy CSR addition: C = alpha*A + beta*B.
 
     Uses COO concatenation + sum_duplicates.  O(nnz log nnz).
     """
@@ -641,26 +609,9 @@ def _cupy_csrgeam_int64(a, b, alpha, beta):
     # a.shape) instead of raising for incompatible operands.
     if a.shape != b.shape:
         raise ValueError('inconsistent shapes')
-    if a.dtype == _numpy.bool_ and b.dtype == _numpy.bool_:
-        # Compute bool +/- in int8 so subtraction follows C-style bool
-        # arithmetic like scipy (True - True -> 0 -> False), then cast back.
-        # The bool ``sum_duplicates`` kernel would instead OR the coalesced
-        # operands, which is wrong for subtraction.  Restage only ``data``:
-        # the coordinate arrays are read, never mutated, so a full ``astype``
-        # would copy them for nothing.
-        c = _cupy_csrgeam_int64(
-            a._with_data(a.data.astype(_numpy.int8), copy=False),
-            b._with_data(b.data.astype(_numpy.int8), copy=False),
-            alpha, beta)
-        return c._with_data(c.data.astype(_numpy.bool_), copy=False)
     idx_dtype = _numpy.result_type(a.indices.dtype, b.indices.dtype)
-    # ``alpha``/``beta`` are +1 or -1 (from ``+``/``-``).  Scale by negation
-    # rather than ``data * dtype.type(alpha)``: negating wraps correctly for
-    # every integer dtype (matching scipy), whereas ``uint8(-1)`` etc. raises
-    # an OverflowError.  ``dtype.type`` keeps a numpy scalar for other alphas
-    # (a 0-d ndarray would be rejected by CuPy's ufunc).
-    a_data = _scale_geam_operand(a.data, alpha)
-    b_data = _scale_geam_operand(b.data, beta)
+    a_data = a.data if alpha == 1 else a.data * a.dtype.type(alpha)
+    b_data = b.data if beta == 1 else b.data * b.dtype.type(beta)
 
     a_rows = _indptr_to_coo(a.indptr, idx_dtype, nnz=a.nnz)
     b_rows = _indptr_to_coo(b.indptr, idx_dtype, nnz=b.nnz)
@@ -695,6 +646,9 @@ def csrgeam2(a, b, alpha=1, beta=1):
         raise TypeError(f'unsupported type (actual: {type(a)})')
     if not _is_csr_type(b):
         raise TypeError(f'unsupported type (actual: {type(b)})')
+    if _needs_cupy_fallback(_numpy.promote_types(a.dtype, b.dtype)):
+        raise TypeError('csrgeam2 supports only float32, float64, complex64 '
+                        'and complex128 data')
 
     # TODO(eriknw): cuSPARSE--route int32 through spgeam() too when it
     # ships in a public release (see 'spgeam' in _available_cusparse_version).
@@ -771,16 +725,20 @@ def spgeam(a, b, alpha=1, beta=1):
         cupyx.scipy.sparse.csr_matrix: Result matrix C.
 
     """
+    if not _is_csr_type(a):
+        raise TypeError(f'unsupported type (actual: {type(a)})')
+    if not _is_csr_type(b):
+        raise TypeError(f'unsupported type (actual: {type(b)})')
+    if _needs_cupy_fallback(_numpy.promote_types(a.dtype, b.dtype)):
+        raise TypeError('spgeam supports only float32, float64, complex64 '
+                        'and complex128 data')
+
     if not check_availability('spgeam'):
         if a.indices.dtype == _cupy.int64 or b.indices.dtype == _cupy.int64:
             a, b = _cast_common_type(a, b)
             return _cupy_csrgeam_int64(a, b, alpha, beta)
         return csrgeam2(a, b, alpha, beta)
 
-    if not _is_csr_type(a):
-        raise TypeError(f'unsupported type (actual: {type(a)})')
-    if not _is_csr_type(b):
-        raise TypeError(f'unsupported type (actual: {type(b)})')
     if not a.has_canonical_format:
         raise ValueError('expected canonical format for a')
     if not b.has_canonical_format:
@@ -2637,12 +2595,14 @@ def _cupy_spgemm_int64(a, b, alpha):
     # TODO(eriknw): cuSPARSE--removable once all supported CUDA versions have
     # native int64 SpGEMM.  Verified working on CUDA 13.0+ (native is
     # ~14x faster).  Keep as fallback for CUDA < 13.0.
-    """Pure-CuPy sort-merge SpGEMM for int64: C = alpha * A * B.
+    """Pure-CuPy sort-merge SpGEMM: C = alpha * A * B.
 
-    Used on CUDA < 13.0 where cuSPARSE spGEMM lacks int64.
+    Fallback for unsupported value/index dtypes.
     Expands all (i,j,a*b) products into COO, then sum_duplicates.
     O(P log P) time, O(P + nnz_C) space, where P = total products.
     """
+    if a.shape[1] != b.shape[0]:
+        raise ValueError('mismatched shape')
     # Bool operands stay bool: the product ``a*b`` is a logical AND and the
     # bool ``sum_duplicates`` ORs coincident products, so a cell is True iff
     # any product is -- exact for any overlap count.  (Casting to int8 like
@@ -2694,8 +2654,8 @@ def _cupy_spgemm_int64(a, b, alpha):
     c_rows = a_rows[a_src]
     c_vals = a.data[a_src] * b.data[b_col_pos]
     del a_src, b_offset, b_col_pos, a_rows, a_col_k  # free P-sized temporaries
-    # Uint-safe scaling: ``a.dtype.type(-1)`` would raise OverflowError.
-    c_vals = _scale_geam_operand(c_vals, alpha)
+    if alpha != 1:
+        c_vals = c_vals * c_vals.dtype.type(alpha)
 
     # Merge products with the same (row, col) position.
     coo = cupyx.scipy.sparse.coo_matrix._from_parts(
@@ -2725,6 +2685,8 @@ def spgemm(a, b, alpha=1):
         raise TypeError(f'unsupported type (actual: {type(a)})')
     if not _is_csr_type(b):
         raise TypeError(f'unsupported type (actual: {type(b)})')
+    if _numpy.promote_types(a.dtype, b.dtype).char not in 'efdFD':
+        raise TypeError('spgemm supports only floating-point and complex data')
 
     # TODO(eriknw): cuSPARSE--remove pure-CuPy fallback when all supported CUDA
     # versions have native int64 SpGEMM.  Native int64 SpGEMM is ~14x

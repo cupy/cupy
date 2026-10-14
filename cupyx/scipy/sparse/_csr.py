@@ -63,6 +63,10 @@ class _csr_base(_compressed._compressed_sparse_matrix):
         self.sum_duplicates()
         other = other.tocsr()
         other.sum_duplicates()
+        dtype = numpy.promote_types(self.dtype, other.dtype)
+        if cusparse._needs_cupy_fallback(dtype):
+            return self._as_csr_type(cusparse._cupy_csr_add(
+                self, other, alpha == -1, beta == -1))
         if cusparse.check_availability('csrgeam2'):
             csrgeam = cusparse.csrgeam2
         elif cusparse.check_availability('csrgeam'):
@@ -195,6 +199,14 @@ class _csr_base(_compressed._compressed_sparse_matrix):
             # A 1-D operand is involved: run on the (1, N)/(N, 1) backing
             # with numpy-style 1-D matmul semantics.
             return self._matmul_1d(other)
+        if (_base.issparse(other) and cusparse._needs_cupy_fallback(
+                numpy.promote_types(self.dtype, other.dtype))):
+            self.sum_duplicates()
+            other = other.tocsr()
+            other.sum_duplicates()
+            a, b = cusparse._cast_common_type(self, other)
+            return self._as_csr_type(
+                cusparse._cupy_spgemm_int64(a, b, alpha=1))
         if _is_csr(other):
             self.sum_duplicates()
             other.sum_duplicates()

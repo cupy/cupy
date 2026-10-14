@@ -702,19 +702,8 @@ class _coo_base(sparse_data._data_matrix):
         # order.
         # See https://docs.nvidia.com/cuda/cusparse/index.html#coo-format
         #
-        # Only the (row, col) order matters here; within-duplicate order is
-        # irrelevant to the sum below.  A 1-D array's backing COO keeps ``row``
-        # all-zero, so ``nrow == 1`` and the composite key reduces to ``col``.
-        #
-        # That key is injective only for in-bounds coordinates (``col <
-        # ncol``), which every valid matrix and every internal ``_from_parts``
-        # caller guarantees.  A malformed matrix with out-of-bounds indices --
-        # already undefined for toarray/matmul, since the CSR ``(data,
-        # indices, indptr)`` constructor does not validate bounds -- could
-        # collide two distinct pairs onto one key and fail to coalesce them
-        # (the lexsort fallback is robust to it).  Not guarded here: detecting
-        # it would cost a D2H sync (``col.max()``) on this hot path, and the
-        # matrix is garbage regardless.
+        # The composite key assumes in-bounds coordinates. For 1-D arrays,
+        # row is all-zero and the key reduces to col.
         from cupyx import cusparse
         ncol = self.shape[-1]
         nrow = self.shape[0] if self.ndim > 1 else 1
