@@ -1,7 +1,7 @@
-// Stub header file of cuTENSOR
+// Fallback header for ROCm/HIP builds: ROCm has no cuTENSOR equivalent.
 
-#ifndef INCLUDE_GUARD_STUB_CUPY_CUTENSOR_H
-#define INCLUDE_GUARD_STUB_CUPY_CUTENSOR_H
+#ifndef INCLUDE_GUARD_CUPY_HIP_CUTENSOR_H
+#define INCLUDE_GUARD_CUPY_HIP_CUTENSOR_H
 
 #define CUTENSOR_VERSION 0
 
@@ -227,4 +227,4 @@ extern "C" {
     }
 } // extern "C"
 
-#endif // #ifndef INCLUDE_GUARD_STUB_CUPY_CUTENSOR_H
+#endif // #ifndef INCLUDE_GUARD_CUPY_HIP_CUTENSOR_H
