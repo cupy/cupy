@@ -238,10 +238,6 @@ def _quantile_unchecked(a, q, axis=None, out=None,
                          'Actual: {} != 1'.format(q.ndim))
 
     if axis is None:
-        # TODO: should this be moved into _normalize_axis_tuple? Would mean
-        #       introducing an additional 'size' parameter to the function
-        if a.size == 0:
-            raise ValueError("Expected input with size greater than zero.")
         if overwrite_input:
             ap = a.ravel()
         else:
@@ -249,9 +245,6 @@ def _quantile_unchecked(a, q, axis=None, out=None,
         nkeep = 0
     else:
         axis = internal._normalize_axis_tuple(axis, a.ndim)
-        # Reducing over a zero-length axis leaves nothing to take a quantile of
-        if any(a.shape[ax] == 0 for ax in axis):
-            raise ValueError("Expected input to not have a zero-length axis")
 
     if keepdims:
         if axis is None:
@@ -273,6 +266,8 @@ def _quantile_unchecked(a, q, axis=None, out=None,
     axis = -1
     ap.sort(axis=axis)
     Nx = ap.shape[axis]
+    if Nx == 0:
+        raise ValueError("Expected input to not have a zero-length axis")
     indices = q * (Nx - 1.)
 
     if method in ['averaged_inverted_cdf',

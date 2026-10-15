@@ -319,30 +319,18 @@ class TestQuantileMethods:
         a = xp.array([[1., 2.], [xp.nan, xp.nan]], dtype=dtype)
         return xp.quantile(a, 1., axis=1, method=method)
 
-    @testing.with_requires('numpy>=2.0')
     @pytest.mark.parametrize("func,q",
                              [('percentile', 50), ('quantile', 0.5)])
     @pytest.mark.parametrize("shape,axis", [
         ((0, ), None),
         ((0, 1), 0),
-        ((1, 0), 1),
-        ((1, 1, 0), (1, 2)),
-    ])
-    def test_axes_empty_raises_error(self, func, q, shape, axis, method):
-        a = cupy.empty(shape)
-        fn = getattr(cupy, func)
-        with pytest.raises(ValueError):
-            fn(a, q, axis=axis, method=method)
-
-    @pytest.mark.parametrize('func,q',
-                             [('percentile', 50), ('quantile', 0.5)])
-    @pytest.mark.parametrize("shape,axis", [
-        ((1, 0), -1),
         ((0, 1), -2),
+        ((1, 0), 1),
+        ((1, 0), -1),
+        ((1, 1, 0), (1, 2)),
         ((1, 1, 0), (-1, -2)),
     ])
-    def test_negative_axes_empty_raises_error(
-            self, func, q, shape, axis, method):
+    def test_axes_empty_raises_error(self, func, q, shape, axis, method):
         a = cupy.empty(shape)
         fn = getattr(cupy, func)
         with pytest.raises(ValueError):
