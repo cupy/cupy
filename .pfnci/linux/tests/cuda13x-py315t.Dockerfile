@@ -14,7 +14,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
        && \
     apt-get -qqy install ccache git curl && \
     apt-get -qqy --allow-change-held-packages \
-            --allow-downgrades install 'libnccl2=2.31.*+cuda13.4' 'libnccl-dev=2.31.*+cuda13.4' 'libcutensor2-cuda-13=2.4.*' 'libcutensor2-dev-cuda-13=2.4.*' 'libcusparselt0-cuda-13=0.9.1.*' 'libcusparselt0-dev-cuda-13=0.9.1.*'
+            --allow-downgrades install 'libnccl2=2.31.*+cuda13.4' 'libnccl-dev=2.31.*+cuda13.4' 'libcutensor2-cuda-13=2.4.*' 'libcutensor2-dev-cuda-13=2.4.*' 'libcusparselt0-cuda-13=0.10.0.*' 'libcusparselt0-dev-cuda-13=0.10.0.*'
 
 ENV PATH "/usr/lib/ccache:${PATH}"
 
@@ -31,8 +31,8 @@ RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
 RUN git -C /opt/pyenv pull --ff-only && \
-    PYTHON_CONFIGURE_OPTS="--disable-shared" pyenv install 3.15.0rc3t && \
-    pyenv global 3.15.0rc3t && \
+    PYTHON_CONFIGURE_OPTS="--disable-shared" pyenv install 3.15.0t && \
+    pyenv global 3.15.0t && \
     pip install -U setuptools pip wheel && \
     pip install -U google-cloud-storage
 
