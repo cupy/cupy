@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import warnings
 
 import numpy
@@ -240,7 +241,7 @@ def _quantile_unchecked(a, q, axis=None, out=None,
         # TODO: should this be moved into _normalize_axis_tuple? Would mean
         #       introducing an additional 'size' parameter to the function
         if a.size == 0:
-            raise ValueError("LOL!!!")
+            raise ValueError("Expected input with size greater than zero.")
         if overwrite_input:
             ap = a.ravel()
         else:
@@ -248,6 +249,10 @@ def _quantile_unchecked(a, q, axis=None, out=None,
         nkeep = 0
     else:
         axis = internal._normalize_axis_tuple(axis, a.ndim)
+        # Reducing over a zero-length axis leaves nothing to take a quantile of
+
+        if any(a.shape[ax] == 0 for ax in axis):
+            raise ValueError("Expected input to not have a zero-length axis")
 
     if keepdims:
         if axis is None:
@@ -258,14 +263,14 @@ def _quantile_unchecked(a, q, axis=None, out=None,
                 keepdim[ax % a.ndim] = 1
             keepdim = tuple(keepdim)
     if axis is not None:
-        keep = set(range(a.ndim)) - set(axis)
+        keep = sorted(set(range(a.ndim)) - set(axis))
         nkeep = len(keep)
-        for i, s in enumerate(sorted(keep)):
+        for i, s in enumerate(keep):
             a = a.swapaxes(i, s)
-        if overwrite_input:
-            ap = a.reshape(a.shape[:nkeep] + (-1,))
-        else:
-            ap = a.reshape(a.shape[:nkeep] + (-1,)).copy()
+        reduce_size = math.prod(a.shape[nkeep:])
+        ap = a.reshape(a.shape[:nkeep] + (reduce_size,))
+        if not overwrite_input:
+            ap = ap.copy()
     axis = -1
     ap.sort(axis=axis)
     Nx = ap.shape[axis]
