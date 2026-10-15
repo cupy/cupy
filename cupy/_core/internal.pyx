@@ -477,7 +477,7 @@ cpdef tuple _normalize_axis_tuple(axis, Py_ssize_t ndim):
     Arguments `argname` and `allow_duplicate` are not supported.
 
     Args:
-        axis (int, tuple of int or None):
+        axis (int, tuple of int):
             The un-normalized indices of the axis. Can be negative.
         ndim (int):
             The number of dimensions of the array that ``axis`` should be
@@ -487,18 +487,26 @@ cpdef tuple _normalize_axis_tuple(axis, Py_ssize_t ndim):
         tuple of int:
             The tuple of non-negative integer axes.
     """
+    cdef vector.vector[Py_ssize_t] out
+    _normalize_axis_tuple_into(axis, ndim, out)
+    return tuple(out)
+
+
+cpdef _normalize_axis_tuple_into(axis, Py_ssize_t ndim, shape_t &out):
+    """Normalizes an axis argument into a tuple of non-negative integer axes.
+
+    Arguments `argname` and `allow_duplicate` are not supported.
+
+    """
     if numpy.isscalar(axis):
         axis = (axis,)
 
-    ret = []
     for ax in axis:
         ax = _normalize_axis_index(ax, ndim)
-        if _has_element(ret, ax):
+        if _has_element(out, ax):
             # the message in `numpy.core.numeric.normalize_axis_tuple`
             raise ValueError('repeated axis')
-        ret.append(ax)
-    return tuple(ret)
-
+        out.push_back(ax)
 
 cpdef strides_t _get_strides_for_order_K(x, dtype, shape=None) except *:
     # x here can be either numpy.ndarray or cupy.ndarray

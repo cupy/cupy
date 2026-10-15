@@ -129,6 +129,9 @@ cpdef tuple _normalize_axis_indices(
 cpdef tuple _normalize_axis_tuple(
     axis, Py_ssize_t ndim)
 
+cpdef _normalize_axis_tuple_into(
+    axis, Py_ssize_t ndim, shape_t& out)
+
 cpdef strides_t _get_strides_for_order_K(x, dtype, shape=*) except *
 
 cpdef int _update_order_char(

@@ -250,7 +250,6 @@ def _quantile_unchecked(a, q, axis=None, out=None,
     else:
         axis = internal._normalize_axis_tuple(axis, a.ndim)
         # Reducing over a zero-length axis leaves nothing to take a quantile of
-
         if any(a.shape[ax] == 0 for ax in axis):
             raise ValueError("Expected input to not have a zero-length axis")
 

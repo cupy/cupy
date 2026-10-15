@@ -275,7 +275,7 @@ cpdef _ndarray_base _expand_dims(_ndarray_base a, tuple axis):
     cdef vector.vector[Py_ssize_t] normalized_axis
     cdef out_ndim = a.ndim + len(axis)
     cdef shape_t a_shape = a.shape, out_shape
-    normalized_axis = internal._normalize_axis_tuple(axis, out_ndim)
+    internal._normalize_axis_tuple_into(axis, out_ndim, normalized_axis)
     out_shape.assign(out_ndim, 0)
     cdef Py_ssize_t i, j
     for i in normalized_axis:
@@ -292,8 +292,8 @@ cpdef _ndarray_base _expand_dims(_ndarray_base a, tuple axis):
 cpdef _ndarray_base moveaxis(_ndarray_base a, source, destination):
     cdef shape_t src, dest
     cdef Py_ssize_t ndim = a.ndim
-    src = internal._normalize_axis_tuple(source, ndim)
-    dest = internal._normalize_axis_tuple(destination, ndim)
+    internal._normalize_axis_tuple_into(source, ndim, src)
+    internal._normalize_axis_tuple_into(destination, ndim, dest)
 
     if src.size() != dest.size():
         raise ValueError('`source` and `destination` arguments must have '
