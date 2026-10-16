@@ -156,7 +156,8 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
         if cached_plan is not None:
             plan = cached_plan
         elif mgr is None:
-            plan = cufft.Plan1d(out_size, fft_type, batch, devices=devices)
+            plan = cufft.Plan1d._create(
+                out_size, fft_type, batch, devices=devices)
         else:  # has callback
             # TODO(leofang): support multi-GPU callback (devices is ignored)
             if devices:
