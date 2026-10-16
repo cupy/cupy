@@ -701,8 +701,13 @@ class _coo_base(sparse_data._data_matrix):
         # the cuSPARSE functions such as cusparseSpMV() assume this sorting
         # order.
         # See https://docs.nvidia.com/cuda/cusparse/index.html#coo-format
-        keys = cupy.stack([self.col, self.row])
-        order = cupy.lexsort(keys)
+        #
+        # The composite key assumes in-bounds coordinates. For 1-D arrays,
+        # row is all-zero and the key reduces to col.
+        from cupyx import cusparse
+        ncol = self.shape[-1]
+        nrow = self.shape[0] if self.ndim > 1 else 1
+        order = cusparse._argsort_major_minor(self.row, self.col, nrow, ncol)
         src_data = self.data[order]
         src_row = self.row[order]
         src_col = self.col[order]
