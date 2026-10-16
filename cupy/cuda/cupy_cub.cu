@@ -16,8 +16,19 @@
 #include <hipcub/device/device_segmented_reduce.hpp>
 #include <hipcub/device/device_scan.hpp>
 #include <hipcub/device/device_histogram.hpp>
+// ROCm 7.x removed <hipcub/iterator/transform_input_iterator.hpp>
+// (hipcub::TransformInputIterator). Detect the header at compile time; when it
+// is unavailable, fall back to rocThrust iterators, which are portable across
+// ROCm versions and match the CUDA code path above. Older ROCm keeps the
+// original hipCUB path unchanged.
+#if defined(__has_include) && __has_include(<hipcub/iterator/transform_input_iterator.hpp>)
 #include <rocprim/iterator/counting_iterator.hpp>
 #include <hipcub/iterator/transform_input_iterator.hpp>
+#define CUPY_HIP_HAS_HIPCUB_TRANSFORM_ITERATOR 1
+#else
+#include <thrust/iterator/counting_iterator.h>
+#include <thrust/iterator/transform_iterator.h>
+#endif
 #endif
 
 
@@ -266,8 +277,10 @@ struct _arange
 
 #ifndef CUPY_USE_HIP
 typedef thrust::transform_iterator<_arange, thrust::counting_iterator<int>> seg_offset_itr;
-#else
+#elif defined(CUPY_HIP_HAS_HIPCUB_TRANSFORM_ITERATOR)
 typedef TransformInputIterator<int, _arange, rocprim::counting_iterator<int>> seg_offset_itr;
+#else
+typedef thrust::transform_iterator<_arange, thrust::counting_iterator<int>> seg_offset_itr;
 #endif
 
 /*
@@ -1119,8 +1132,10 @@ void cub_device_segmented_reduce(void* workspace, size_t& workspace_size,
     // This iterates over [0, segment_size, 2*segment_size, 3*segment_size, ...]
     #ifndef CUPY_USE_HIP
     thrust::counting_iterator<int> count_itr(0);
-    #else
+    #elif defined(CUPY_HIP_HAS_HIPCUB_TRANSFORM_ITERATOR)
     rocprim::counting_iterator<int> count_itr(0);
+    #else
+    thrust::counting_iterator<int> count_itr(0);
     #endif
     _arange scaling(segment_size);
     seg_offset_itr itr(count_itr, scaling);
