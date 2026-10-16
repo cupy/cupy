@@ -391,8 +391,16 @@ def fiedler(a):
         return cupy.zeros((0, 0))
     if a.size == 1:
         return cupy.zeros((1, 1))
+    if a.dtype.kind == 'c':
+        out = cupy.empty((a.size, a.size), dtype=a.real.dtype)
+        return _fiedler_kernel(a[:, None], a, out)
     a = a[:, None] - a
     return cupy.abs(a, out=a)
+
+
+_fiedler_kernel = _core.ElementwiseKernel(
+    'T x, T y', 'R out', 'out = abs(x - y);',
+    'cupyx_scipy_linalg_fiedler')
 
 
 @_uarray.implements('fiedler_companion')
