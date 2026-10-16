@@ -203,7 +203,9 @@ class TestEigsh:
         return a
 
     def _test_eigsh(self, a, xp, sp):
-        ret = sp.linalg.eigsh(a, k=self.k, which=self.which,
+        # Fix the start vector as SciPy defaults to a random one (gh-10396).
+        v0 = testing.shaped_random((self.n,), xp, a.dtype)
+        ret = sp.linalg.eigsh(a, k=self.k, which=self.which, v0=v0,
                               return_eigenvectors=self.return_eigenvectors)
         if self.return_eigenvectors:
             w, x = ret
@@ -395,11 +397,14 @@ class TestEigsh:
         # ('LM' on the inverted operator) case only.
         if self.use_linear_operator or self.which != 'LM':
             pytest.skip()
-        a = self._make_matrix(dtype, xp)          # PSD Hermitian
+        a = self._make_matrix(dtype, xp)
         a = sp.csr_matrix(a)
-        # sigma = -1 keeps A - sigma*I = A + I positive definite (invertible);
-        # 'LM' then returns the k eigenvalues nearest sigma.
-        ret = sp.linalg.eigsh(a, k=self.k, sigma=-1.0, which='LM',
+        # A - sigma*I = A + I is well away from singular at sigma = -1
+        # (cond 142 real, 349 complex); 'LM' then returns the k eigenvalues
+        # nearest sigma.
+        # Fix the start vector as SciPy defaults to a random one (gh-10396).
+        v0 = testing.shaped_random((self.n,), xp, a.dtype)
+        ret = sp.linalg.eigsh(a, k=self.k, sigma=-1.0, which='LM', v0=v0,
                               return_eigenvectors=self.return_eigenvectors)
         if self.return_eigenvectors:
             w, x = ret
@@ -605,8 +610,10 @@ class TestEigshSigma:
         a_norm = xp.linalg.norm(a)
         if self.format == 'csr':
             a = sp.csr_matrix(a)
+        # Fix the start vector as SciPy defaults to a random one (gh-10396).
+        v0 = testing.shaped_random((self.n,), xp, a.dtype)
         ret = sp.linalg.eigsh(a, k=self.k, sigma=self.sigma,
-                              which=self.which,
+                              which=self.which, v0=v0,
                               return_eigenvectors=self.return_eigenvectors)
         if self.return_eigenvectors:
             w, x = ret
@@ -1079,7 +1086,9 @@ class TestEigshSvdsSmallNcv:
     def test_eigsh(self, n, k, dtype, xp, sp):
         aux = testing.shaped_random((n, n), xp, dtype=dtype, scale=1)
         a = aux + aux.conj().T
-        w, _ = sp.linalg.eigsh(a, k=k)
+        # Fix the start vector as SciPy defaults to a random one (gh-10396).
+        v0 = testing.shaped_random((n,), xp, a.dtype)
+        w, _ = sp.linalg.eigsh(a, k=k, v0=v0)
         return xp.sort(w)
 
     @pytest.mark.parametrize(
