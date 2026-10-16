@@ -6,10 +6,11 @@ import numpy
 
 import cupy
 from cupy import _core
+from cupy.cuda.device import _ensure_current_device
 from cupy._util import bf16_loop
 
 
-def arange(start, stop=None, step=1, dtype=None):
+def arange(start, stop=None, step=1, dtype=None, *, device=None):
     """Returns an array with evenly spaced values within a given interval.
 
     Values are generated within the half-open interval [start, stop). The first
@@ -22,6 +23,8 @@ def arange(start, stop=None, step=1, dtype=None):
         step: Step width between each pair of consecutive values.
         dtype: Data type specifier. It is inferred from other arguments by
             default.
+        device (int or cupy.cuda.Device, optional): Device on which to create
+            the array. ``None`` (default) means the current device.
 
     Returns:
         cupy.ndarray: The 1-D array of range values.
@@ -29,6 +32,9 @@ def arange(start, stop=None, step=1, dtype=None):
     .. seealso:: :func:`numpy.arange`
 
     """
+    if device is not None:
+        with _ensure_current_device(device):
+            return arange(start, stop, step, dtype)
     if dtype is None:
         if any(numpy.dtype(type(val)).kind == 'f'
                for val in (start, stop, step)):
@@ -123,7 +129,7 @@ def _linspace_scalar(start, stop, num=50, endpoint=True, retstep=False,
 
 
 def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None,
-             axis=0):
+             axis=0, *, device=None):
     """Returns an array with evenly-spaced values within a given interval.
 
     Instead of specifying the step width like :func:`cupy.arange`, this
@@ -147,6 +153,8 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None,
             only if start or stop are array-like.  By default ``0``, the
             samples will be along a new axis inserted at the beginning.
             Use ``-1`` to get an axis at the end.
+        device (int or cupy.cuda.Device, optional): Device on which to create
+            the array. ``None`` (default) means the current device.
 
     Returns:
         cupy.ndarray: The 1-D array of ranged values.
@@ -154,6 +162,9 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=None,
     .. seealso:: :func:`numpy.linspace`
 
     """
+    if device is not None:
+        with _ensure_current_device(device):
+            return linspace(start, stop, num, endpoint, retstep, dtype, axis)
     if num < 0:
         raise ValueError('linspace with num<0 is not supported')
     div = (num - 1) if endpoint else num
