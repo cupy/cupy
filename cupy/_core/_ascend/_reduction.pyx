@@ -317,6 +317,14 @@ cdef class _AbstractReductionKernel:
         # NOTE: launch_reduction_op 的 kwargs 形参类型是 dict，传 None 会
         # 直接 TypeError（reduction 全部不可用）。当前没有需要透传的关键字参数，传空 dict。
 
+        # ASCEND: some aclnn does not accept complex,even demoted to complex64
+        # fallback to host CPU
+        if self.name in ('cupy_max', 'cupy_min', 'cupy_amax', 'cupy_amin', \
+            'cupy_mean') and in_args[0].dtype.kind == 'c':
+            _cpu_f64.run_reduction_host(
+                self.name, in_args, ret, axis, keepdims, dtype)
+            return ret
+
         # ASCEND: aclnn reductions take no unsigned integer inputs. Promote
         # uint -> signed per the table above, reduce into a promoted temp
         # out, then cast the result back into `ret` (whose dtype is what the

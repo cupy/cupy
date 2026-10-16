@@ -2177,8 +2177,12 @@ cdef extern from "../acl_math_ops.h" nogil:
 
     aclError aclop_BitwiseOrTensor(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
     aclError aclop_InplaceBitwiseOrTensor(aclTensor* self, const aclTensor* other, aclrtStream stream)
+    aclError aclop_BitwiseOrScalar(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_InplaceBitwiseOrScalar(aclTensor* self, const aclScalar* other, aclrtStream stream)
     aclError aclop_BitwiseXorTensor(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
     aclError aclop_InplaceBitwiseXorTensor(aclTensor* self, const aclTensor* other, aclrtStream stream)
+    aclError aclop_BitwiseXorScalar(const aclTensor* self, const aclScalar* other, aclTensor* out, aclrtStream stream)
+    aclError aclop_InplaceBitwiseXorScalar(aclTensor* self, const aclScalar* other, aclrtStream stream)
     aclError aclop_BitwiseNot(const aclTensor* self, aclTensor* out, aclrtStream stream) # no inplace version
     aclError aclop_RightShift(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
     aclError aclop_LeftShift(const aclTensor* self, const aclTensor* other, aclTensor* out, aclrtStream stream)
@@ -2368,6 +2372,17 @@ cdef void register_math_operators():
     register_acl_ufunc("ascend_bitwise_and", SCALAR_BINARY_OP, func_union)
     func_union.inplace_scalar_binary_op = aclop_InplaceBitwiseAndScalar
     register_acl_ufunc("ascend_inplace_bitwise_and", INPLACE_SCALAR_BINARY_OP, func_union)
+
+    # 注册aclop_BitwiseOrScalar/BitwiseXorScalar作为二元标量操作
+    func_union.scalar_binary_op = aclop_BitwiseOrScalar
+    register_acl_ufunc("ascend_bitwise_or", SCALAR_BINARY_OP, func_union)
+    func_union.inplace_scalar_binary_op = aclop_InplaceBitwiseOrScalar
+    register_acl_ufunc("ascend_inplace_bitwise_or", INPLACE_SCALAR_BINARY_OP, func_union)
+
+    func_union.scalar_binary_op = aclop_BitwiseXorScalar
+    register_acl_ufunc("ascend_bitwise_xor", SCALAR_BINARY_OP, func_union)
+    func_union.inplace_scalar_binary_op = aclop_InplaceBitwiseXorScalar
+    register_acl_ufunc("ascend_inplace_bitwise_xor", INPLACE_SCALAR_BINARY_OP, func_union)
 
     func_union.binary_op = aclop_LogicalAnd
     register_acl_ufunc("ascend_logical_and", BINARY_OP, func_union)

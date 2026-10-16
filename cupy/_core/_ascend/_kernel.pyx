@@ -1001,6 +1001,15 @@ cdef class ufunc:
                 self.name, inout_args, out_args, kwargs)
             return ret
 
+        # ASCEND: aclnnIsFinite/aclnnIsInf does not accept complex
+        # ascend_i0 not registered, which is deprecated from arrayapi
+        if (self.name in ('cupy_isfinite', 'cupy_isinf')  \
+            and inout_args and isinstance(inout_args[0], _ndarray_base) \
+            and inout_args[0].dtype.kind == 'c') \
+            or self.name == "cupy_i0":
+            _cpu_f64.run_elementwise_host(self.name, inout_args, out_args, kwargs)
+            return ret
+
         # ASCEND: aclnn ops does not support unsigned integer
         _needs_uint_promote = False
         if self.name not in _UINT_PROMOTE_EXEMPT:

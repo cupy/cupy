@@ -44,6 +44,14 @@ def bartlett(M):
 
     .. seealso:: :func:`numpy.bartlett`
     """
+    try:
+        from cupy.backends.backend import is_ascend
+        if is_ascend:
+            # ASCEND window functions not supported, using numpy host to impl
+            return cupy.asarray(numpy.bartlett(M))
+    except ImportError:
+        pass
+
     if M == 1:
         return cupy.ones(1, dtype=cupy.float64)
     if M <= 0:
@@ -73,6 +81,14 @@ def blackman(M):
 
     .. seealso:: :func:`numpy.blackman`
     """
+    try:
+        from cupy.backends.backend import is_ascend
+        if is_ascend:
+            # ASCEND window functions not supported, using numpy host to impl
+            return cupy.asarray(numpy.blackman(M))
+    except ImportError:
+        pass
+
     if M == 1:
         return cupy.ones(1, dtype=cupy.float64)
     if M <= 0:
@@ -109,6 +125,14 @@ def hamming(M):
 
     .. seealso:: :func:`numpy.hamming`
     """
+    try:
+        from cupy.backends.backend import is_ascend
+        if is_ascend:
+            # ASCEND window functions not supported, using numpy host to impl
+            return cupy.asarray(numpy.hamming(M))
+    except ImportError:
+        pass
+
     if M == 1:
         return cupy.ones(1, dtype=cupy.float64)
     if M <= 0:
@@ -145,6 +169,14 @@ def hanning(M):
 
     .. seealso:: :func:`numpy.hanning`
     """
+    try:
+        from cupy.backends.backend import is_ascend
+        if is_ascend:
+            # ASCEND window functions not supported, using numpy host to impl
+            return cupy.asarray(numpy.hanning(M))
+    except ImportError:
+        pass
+
     if M == 1:
         return cupy.ones(1, dtype=cupy.float64)
     if M <= 0:

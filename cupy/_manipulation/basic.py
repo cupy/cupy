@@ -126,6 +126,11 @@ def copyto(dst, src, casting='same_kind', where=None):
             # does not deal scalar (REVERSE_SCALAR_BINARY_OP)
             # convert to 0D array/tensor, so can use tensor copy/cast
             src = _core.array(src, dtype=dst.dtype)
+            # ASCEND: 0D complex src broadcast to dst fails
+            # broadcast to dst shape first so elementwise_copy sees same shape
+            if src.ndim == 0 and src.dtype.kind == "c":
+                import cupy
+                src = cupy.broadcast_to(src, dst.shape)
         _core.elementwise_copy(src, dst)
         return
 

@@ -1415,7 +1415,15 @@ cdef tuple _prepare_multiple_array_indexing(
         a_shape_i = a._shape[i]
         # wrap all out-of-bound indices
         if a_shape_i != 0:
-            _prepare_array_indexing(s, a_shape_i, stride, reduced_idx)
+            # ASCEND: _prepare_array_indexing is not available
+            # can not use _prepare_array_indexing(s, a_shape_i, stride, reduced_idx)
+            # workaround: out += stride * (s - (s // len) * len) == stride * (s % len)
+            if s.dtype != numpy.int64:
+                # the original kernel computes in S (intp); upcast s to
+                # avoid int32 overflow of stride * modded on large arrays
+                s = s.astype(numpy.int64)
+            modded = cupy.remainder(s, a_shape_i)
+            reduced_idx[...] += stride * modded
         stride *= a_shape_i
 
     return reduced_idx, start, stop

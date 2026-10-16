@@ -605,6 +605,16 @@ def interp(x, xp, fp, left=None, right=None, period=None):
     .. seealso:: :func:`numpy.interp`
 
     """
+    # ASCEND, interp(cupy_interp), use cpu_fallback: no aclnn op.
+    # NEP50: numpy.interp refuses a cupy ndarray operand, so D2H first
+    from cupy.backends.backend import is_ascend
+    if is_ascend:
+        import numpy as _np
+        _x = x.get() if isinstance(x, cupy.ndarray) else x
+        _xp = xp.get() if isinstance(xp, cupy.ndarray) else xp
+        _fp = fp.get() if isinstance(fp, cupy.ndarray) else fp
+        return cupy.asarray(
+            _np.interp(_x, _xp, _fp, left=left, right=right, period=period))
 
     if xp.ndim != 1 or fp.ndim != 1:
         raise ValueError('xp and fp must be 1D arrays')
