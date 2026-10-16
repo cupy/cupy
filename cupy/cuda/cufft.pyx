@@ -6,6 +6,7 @@ from libcpp cimport vector
 from cupy_backends.cuda._softlink cimport SoftLink
 
 import threading
+import warnings
 
 import numpy
 
@@ -339,8 +340,28 @@ cdef _XtFree(intptr_t ptr):
 
 
 cdef class Plan1d:
+    """A one-dimensional cuFFT plan.
+
+    .. deprecated:: 14.3
+        Direct instantiation is deprecated. Use ``nvmath.fft`` instead.
+    """
+
     def __init__(self, int nx, int fft_type, int batch, *,
                  devices=None, out=None, intptr_t prealloc_plan=0):
+        warnings.warn(
+            'Direct instantiation of cupy.cuda.cufft.Plan1d is deprecated. '
+            'Use nvmath.fft instead.', DeprecationWarning)
+        self._init(nx, fft_type, batch, devices=devices, out=out,
+                   prealloc_plan=prealloc_plan)
+
+    @staticmethod
+    def _create(*args, **kwargs):
+        cdef Plan1d plan = Plan1d.__new__(Plan1d)
+        plan._init(*args, **kwargs)
+        return plan
+
+    def _init(self, int nx, int fft_type, int batch, *,
+              devices=None, out=None, intptr_t prealloc_plan=0):
         cdef Handle plan
         cdef bint use_multi_gpus = 0 if devices is None else 1
         cdef int result
@@ -852,12 +873,36 @@ def _check_output_array(a, out, int fft_type, last_axis, out_size):
 
 
 cdef class PlanNd:
+    """A multidimensional cuFFT plan.
+
+    .. deprecated:: 14.3
+        Direct instantiation is deprecated. Use ``nvmath.fft`` instead.
+    """
+
     def __init__(self, object shape, object inembed, int istride,
                  int idist, object onembed, int ostride, int odist,
                  int fft_type, int batch,
                  # order, last_axis, and last_size accepted for API stability
                  str order=None, last_axis=None, last_size=None,
                  *, intptr_t prealloc_plan=0):
+        warnings.warn(
+            'Direct instantiation of cupy.cuda.cufft.PlanNd is deprecated. '
+            'Use nvmath.fft instead.', DeprecationWarning)
+        self._init(shape, inembed, istride, idist, onembed, ostride, odist,
+                   fft_type, batch, order, last_axis, last_size,
+                   prealloc_plan=prealloc_plan)
+
+    @staticmethod
+    def _create(*args, **kwargs):
+        cdef PlanNd plan = PlanNd.__new__(PlanNd)
+        plan._init(*args, **kwargs)
+        return plan
+
+    def _init(self, object shape, object inembed, int istride,
+              int idist, object onembed, int ostride, int odist,
+              int fft_type, int batch,
+              str order=None, last_axis=None, last_size=None,
+              *, intptr_t prealloc_plan=0):
         cdef Handle plan
         cdef size_t work_size
         cdef int ndim, result
@@ -1015,12 +1060,38 @@ cdef class PlanNd:
 # TODO(leofang): Unify with PlanND?!
 # TODO(leofang): support cufftXtSetGPUs?
 cdef class XtPlanNd:
+    """A cuFFT Xt plan.
+
+    .. deprecated:: 14.3
+        Direct instantiation is deprecated. Use ``nvmath.fft`` instead.
+    """
+
     def __init__(self, shape,
                  inembed, long long int istride, long long int idist, idtype,
                  onembed, long long int ostride, long long int odist, odtype,
                  long long int batch, edtype, *,
                  str order, int last_axis, last_size,
                  intptr_t prealloc_plan=0):
+        warnings.warn(
+            'Direct instantiation of cupy.cuda.cufft.XtPlanNd is deprecated. '
+            'Use nvmath.fft instead.', DeprecationWarning)
+        self._init(shape, inembed, istride, idist, idtype,
+                   onembed, ostride, odist, odtype, batch, edtype,
+                   order=order, last_axis=last_axis, last_size=last_size,
+                   prealloc_plan=prealloc_plan)
+
+    @staticmethod
+    def _create(*args, **kwargs):
+        cdef XtPlanNd plan = XtPlanNd.__new__(XtPlanNd)
+        plan._init(*args, **kwargs)
+        return plan
+
+    def _init(self, shape,
+              inembed, long long int istride, long long int idist, idtype,
+              onembed, long long int ostride, long long int odist, odtype,
+              long long int batch, edtype, *,
+              str order, int last_axis, last_size,
+              intptr_t prealloc_plan=0):
         # Note: we don't pass in fft_type here because it's redundant and
         # does not cover exotic types like complex32 or bf16
 
