@@ -9,7 +9,8 @@ import cupy
 from cupy._core import internal
 from cupy._core._scalar import get_typename, format_type_decls
 
-from cupyx.scipy.sparse import csr_matrix
+from cupyx.scipy.sparse import csr_matrix, diags_array
+from cupyx.scipy.sparse.linalg import lsqr
 
 import numpy as np
 
@@ -950,3 +951,142 @@ class BSpline:
 
         integral *= sign
         return integral.reshape(ca.shape[1:])
+
+
+def _deboor_derivative_matrix(t, order):
+    """Matrix mapping spline coefficients to derivative coefficients.
+
+    A spline of order ``order`` on the knot vector ``t`` has a derivative
+    which is a spline of order ``order - 1`` on the same knots, with
+    coefficients given by de Boor's formula. This returns that linear map
+    as a sparse matrix.
+    """
+    N = len(t) - order
+    d = cupy.zeros(N + 1)
+    j = cupy.arange(N + 1)
+    mask = cupy.where(t[j + order - 1] - t[j] > 0)
+    d[mask] = (order - 1) / (t[j[mask] + order - 1] - t[j[mask]])
+    return diags_array([d[:N], -d[1:]], offsets=[0, -1], shape=(N + 1, N))
+
+
+def _penalty_matrix(t):
+    """Penalty matrix of the penalized least squares spline problem.
+
+    Omega = C.T @ R @ C, where ``C`` maps cubic coefficients to the
+    coefficients of the second derivative and ``R`` is the mass matrix
+    of the hat functions on ``t``.
+
+    The construction follows the companion report of the SciPy
+    implementation: :doi:`10.5281/zenodo.22983807`
+    """
+    D1 = _deboor_derivative_matrix(t, order=4)  # cubic to quadratic
+    D2 = _deboor_derivative_matrix(t, order=3)  # quadratic to linear
+    C = D2 @ D1
+    R_size = len(t) - 2  # number of linear (order 2) basis elements
+
+    d0 = (t[2:] - t[:-2]) / 3.0
+    d1 = (t[2:-1] - t[1:-2]) / 6.0
+    R = diags_array([d1, d0, d1], offsets=[-1, 0, 1], shape=(R_size, R_size))
+    return C.T @ R @ C
+
+
+def _make_smoothing_spline_user_knots(x, y, w, t, lam, axis, y_shape1):
+    X = BSpline.design_matrix(x, t, k=3)
+    omega = _penalty_matrix(t)
+    XtWX = X.T @ X.multiply(w[:, None])
+    XtWy = X.T @ (w[:, None] * y)
+    lhs = XtWX + lam * omega
+
+    # the solver takes a 1-D right hand side, solve per column
+    # (C order: construct_fast expects contiguous coefficients)
+    c = cupy.empty(XtWy.shape, dtype=cupy.float64)
+    for i in range(XtWy.shape[1]):
+        rhs = cupy.ascontiguousarray(XtWy[:, i], dtype=cupy.float64)
+        c[:, i] = lsqr(lhs, rhs)[0]
+    c = c.reshape((c.shape[0], *y_shape1))
+    return BSpline.construct_fast(t, c, k=3, axis=axis)
+
+
+def make_smoothing_spline(x, y, w=None, lam=None, *, t=None, axis=0):
+    """Compute a smoothing cubic spline given data and a penalty parameter.
+
+    The spline minimizes the weighted sum of squared residuals plus
+    ``lam`` times the integral of the squared second derivative.
+
+    Parameters
+    ----------
+    x : array_like, shape (n,)
+        Abscissas. ``n`` must be at least 5 and the values strictly
+        increasing.
+    y : array_like, shape (n, ...)
+        Ordinates. Trailing dimensions are treated as independent batches
+        along ``axis``.
+    w : array_like, shape (n,), optional
+        Positive weights. By default, all weights are equal.
+    lam : float
+        The smoothing parameter. Must be non-negative. Unlike the SciPy
+        version, ``lam`` is required: the GCV selection of ``lam`` is not
+        implemented.
+    t : array_like, optional
+        A clamped knot vector for the spline: the first and the last knots
+        must each repeat 4 times. By default, knots are placed at the data
+        sites with clamped boundaries.
+    axis : int, optional
+        The data axis of ``y``. Default is 0.
+
+    Returns
+    -------
+    spl : BSpline
+        The fitted cubic spline.
+
+    See Also
+    --------
+    scipy.interpolate.make_smoothing_spline
+    """
+    x = cupy.ascontiguousarray(x, dtype=cupy.float64)
+    y = cupy.ascontiguousarray(y, dtype=cupy.float64)
+
+    if lam is None:
+        raise ValueError("``lam`` must be provided. The GCV selection of "
+                         "``lam`` is currently not supported.")
+    if cupy.ndim(lam) != 0 or lam < 0:
+        raise ValueError("``lam`` must be a non-negative scalar.")
+
+    if cupy.any(x[1:] - x[:-1] <= 0):
+        raise ValueError("``x`` should be an ascending array.")
+
+    if x.ndim != 1 or x.shape[0] != y.shape[axis]:
+        raise ValueError(f"``x`` should be 1-D and {x.shape} == {y.shape}")
+
+    if w is None:
+        w = cupy.ones_like(x)
+    else:
+        w = cupy.ascontiguousarray(w)
+        if w.shape != x.shape or cupy.any(w <= 0):
+            raise ValueError("Invalid vector of weights.")
+
+    n = x.shape[0]
+
+    if n <= 4:
+        raise ValueError("``x`` and ``y`` must be at least length 5")
+
+    axis = internal._normalize_axis_index(axis, y.ndim)
+    y = cupy.moveaxis(y, axis, 0)
+    y_shape1 = y.shape[1:]
+    y = y.reshape((n, -1))
+
+    if t is None:
+        t = cupy.r_[[x[0]] * 3, x, [x[-1]] * 3]
+    else:
+        t = cupy.ascontiguousarray(t, dtype=cupy.float64)
+        if not cupy.all(cupy.isfinite(t)):
+            raise ValueError("``t`` must not contain infs or nans")
+        if t.ndim != 1 or cupy.any(t[1:] - t[:-1] < 0):
+            raise ValueError("``t`` must be a 1-D non-decreasing array")
+        if len(t) < 8:
+            raise ValueError("``t`` must contain at least 8 knots")
+        if not (t[0] == t[3] and t[-4] == t[-1]):
+            raise ValueError("``t`` must be clamped: the first 4 and last 4 "
+                             "knots must each be equal")
+
+    return _make_smoothing_spline_user_knots(x, y, w, t, lam, axis, y_shape1)
