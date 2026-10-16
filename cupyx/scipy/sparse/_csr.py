@@ -60,13 +60,14 @@ class _csr_base(_compressed._compressed_sparse_matrix):
     def _add_sparse(self, other, alpha, beta):
         from cupyx import cusparse
 
+        assert alpha in (-1, 1) and beta in (-1, 1)
         self.sum_duplicates()
         other = other.tocsr()
         other.sum_duplicates()
         dtype = numpy.promote_types(self.dtype, other.dtype)
         if cusparse._needs_cupy_fallback(dtype):
             return self._as_csr_type(cusparse._cupy_csr_add(
-                self, other, alpha == -1, beta == -1))
+                self, other, alpha, beta))
         if cusparse.check_availability('csrgeam2'):
             csrgeam = cusparse.csrgeam2
         elif cusparse.check_availability('csrgeam'):
@@ -524,7 +525,7 @@ class _csr_base(_compressed._compressed_sparse_matrix):
         if self.nnz == 0:
             return cupy.zeros(shape=self.shape, dtype=self.dtype, order=order)
 
-        if self.dtype.char not in 'fdFD':
+        if cusparse._needs_cupy_fallback(self.dtype):
             return csr2dense(self, order)
 
         x = self.copy()

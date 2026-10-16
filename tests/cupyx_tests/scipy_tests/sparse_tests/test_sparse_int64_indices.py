@@ -257,20 +257,30 @@ class TestInt64Sort:
         testing.assert_array_equal(m.indices, cupy.array([0, 1, 2]))
         testing.assert_array_equal(m.data, cupy.array([2.0, 3.0, 1.0]))
 
-    def test_coosort_lexsort_fallback_huge_shape(self):
-        # Row 2's composite keys exceed int64; sort both coordinate orders.
-        ncol = 2**62
-        row = cupy.array([2, 0, 2, 0], dtype=cupy.int64)
-        col = cupy.array([ncol - 1, ncol - 2, 5, ncol - 2], dtype=cupy.int64)
-        data = cupy.array([10.0, 20.0, 30.0, 40.0])
-        for sort_by in ('r', 'c'):
-            m = sparse.coo_matrix((data, (row, col)), shape=(3, ncol))
-            cusparse.coosort(m, sort_by)
-            r, c = cupy.asnumpy(m.row), cupy.asnumpy(m.col)
-            pairs = list(zip(r, c)) if sort_by == 'r' else list(zip(c, r))
-            assert pairs == sorted(pairs), sort_by
-            assert m.col.dtype == cupy.int64
-            assert int(c.max()) == ncol - 1   # huge col not truncated
+    @pytest.mark.parametrize('shape', [
+        (7, (2**63 - 1) // 7),  # Product just below the dispatch boundary.
+        (2, 2**62),            # Product at the dispatch boundary.
+        (3, (2**63 + 1) // 3),  # Largest key overflows signed int64.
+        (3, 2**62),
+    ])
+    @pytest.mark.parametrize('sort_by', ['r', 'c'])
+    def test_coosort_huge_shape(self, shape, sort_by):
+        nrow, ncol = shape
+        row = numpy.array([nrow - 1, 0, nrow - 1, 0], dtype=numpy.int64)
+        col = numpy.array([ncol - 1, ncol - 2, 5, ncol - 3], dtype=numpy.int64)
+        data = numpy.array([10.0, 20.0, 30.0, 40.0])
+        order = numpy.lexsort(
+            (col, row) if sort_by == 'r' else (row, col))
+        m = sparse.coo_matrix(
+            (cupy.asarray(data), (cupy.asarray(row), cupy.asarray(col))),
+            shape=shape)
+
+        cusparse.coosort(m, sort_by)
+
+        for actual, original in zip(
+                (m.row, m.col, m.data), (row, col, data)):
+            testing.assert_array_equal(actual, original[order])
+        assert m.col.dtype == cupy.int64
 
     def test_csrsort_lexsort_fallback_huge_shape(self):
         # Exercise the fallback at the int64 shape-product boundary.

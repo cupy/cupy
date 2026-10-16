@@ -80,7 +80,7 @@ class _csc_base(_compressed._compressed_sparse_matrix):
     def _convert_dense(self, x):
         from cupyx import cusparse
 
-        if x.dtype.char not in 'fdFD':
+        if cusparse._needs_cupy_fallback(x.dtype):
             # cuSPARSE dense->sparse conversion is float-only.  The CSC
             # arrays of ``x`` are exactly the CSR arrays of ``x.T`` (same
             # data/indices/indptr with the shape swapped), so reuse
@@ -273,7 +273,7 @@ class _csc_base(_compressed._compressed_sparse_matrix):
         if self.nnz == 0:
             return cupy.zeros(shape=self.shape, dtype=self.dtype, order=order)
 
-        if self.dtype.char not in 'fdFD':
+        if cusparse._needs_cupy_fallback(self.dtype):
             # cuSPARSE sparse->dense is float-only.  The transpose of
             # this CSC is a CSR with the same arrays; densify through
             # its pure-CuPy non-float path and transpose back (with the

@@ -578,20 +578,16 @@ def csrgeam(a, b, alpha=1, beta=1):
         has_canonical_format=True)
 
 
-def _cupy_csr_add(a, b, a_negative=False, b_negative=False):
-    """Apply operator signs, then add operands with pure CuPy."""
+def _cupy_csr_add(a, b, a_sign=1, b_sign=1):
+    """Add operands with pure CuPy, with each operator sign in ``(-1, 1)``."""
+    assert a_sign in (-1, 1) and b_sign in (-1, 1)
     a, b = _cast_common_type(a, b)
     dtype = a.dtype
     if dtype.kind == 'b':
-        # Bool subtraction must cancel coincident True entries, not OR them.
+        # Match SciPy sparse bool subtraction: coincident True entries cancel.
         a = a._with_data(a.data.astype(_numpy.int8), copy=False)
         b = b._with_data(b.data.astype(_numpy.int8), copy=False)
-    # Only operator signs reach here; negate data instead of casting -1.
-    if a_negative:
-        a = a._with_data(-a.data, copy=False)
-    if b_negative:
-        b = b._with_data(-b.data, copy=False)
-    c = _cupy_csrgeam_int64(a, b, 1, 1)
+    c = _cupy_csrgeam_int64(a, b, a_sign, b_sign)
     if dtype.kind == 'b':
         c = c._with_data(c.data.astype(dtype), copy=False)
     return c
@@ -610,8 +606,11 @@ def _cupy_csrgeam_int64(a, b, alpha, beta):
     if a.shape != b.shape:
         raise ValueError('inconsistent shapes')
     idx_dtype = _numpy.result_type(a.indices.dtype, b.indices.dtype)
-    a_data = a.data if alpha == 1 else a.data * a.dtype.type(alpha)
-    b_data = b.data if beta == 1 else b.data * b.dtype.type(beta)
+    # Negate directly so unsigned subtraction wraps without casting -1.
+    a_data = a.data if alpha == 1 else (
+        -a.data if alpha == -1 else a.data * a.dtype.type(alpha))
+    b_data = b.data if beta == 1 else (
+        -b.data if beta == -1 else b.data * b.dtype.type(beta))
 
     a_rows = _indptr_to_coo(a.indptr, idx_dtype, nnz=a.nnz)
     b_rows = _indptr_to_coo(b.indptr, idx_dtype, nnz=b.nnz)
@@ -1028,7 +1027,7 @@ def csr2dense(x, out=None):
         raise RuntimeError('csr2dense is not available.')
 
     dtype = x.dtype
-    if dtype.char not in 'fdFD':
+    if _needs_cupy_fallback(dtype):
         raise ValueError('unsupported dtype')
     if out is None:
         out = _cupy.empty(x.shape, dtype=dtype, order='F')
@@ -1062,7 +1061,7 @@ def csc2dense(x, out=None):
         raise RuntimeError('csc2dense is not available.')
 
     dtype = x.dtype
-    if dtype.char not in 'fdFD':
+    if _needs_cupy_fallback(dtype):
         raise ValueError('unsupported dtype')
     if out is None:
         out = _cupy.empty(x.shape, dtype=dtype, order='F')
@@ -1330,14 +1329,9 @@ def csr2coo(x, data, indices):
 
 
 def _needs_cupy_fallback(dtype):
-    """Whether cuSPARSE cannot compute on this *data* dtype.
+    """Whether a value dtype needs fallback from the standard cuSPARSE paths.
 
-    cuSPARSE operates only on float32/float64/complex64/complex128
-    (``dtype.char in 'fdFD'``); bool and every integer dtype must route
-    through a pure-CuPy fallback.  This is the value-dtype axis only; int64
-    *indices* are a separate routing axis (``_check_int32_indices`` /
-    ``indices.dtype == int64``).  Some ops need the fallback when either
-    axis applies (see :func:`_transpose_needs_cupy`).
+    The native paths guarded here accept float32/float64/complex64/complex128.
     """
     return _numpy.dtype(dtype).char not in 'fdFD'
 
@@ -1659,7 +1653,7 @@ def csr2csr_compress(x, tol):
     if not check_availability('csr2csr_compress'):
         raise RuntimeError('csr2csr_compress is not available.')
 
-    if x.dtype.char not in 'fdFD':
+    if _needs_cupy_fallback(x.dtype):
         raise ValueError('unsupported dtype')
 
     handle = _device.get_cusparse_handle()
@@ -2223,7 +2217,7 @@ def denseToSparse(x, format='csr'):
 
     if x.ndim != 2:
         raise ValueError('expected 2-D matrix')
-    if x.dtype.char not in 'fdFD':
+    if _needs_cupy_fallback(x.dtype):
         raise ValueError('unsupported dtype')
     x = _cupy.asfortranarray(x)
     desc_x = DnMatDescriptor.create(x)
@@ -2301,7 +2295,7 @@ def sparseToDense(x, out=None):
         raise RuntimeError('sparseToDense is not available.')
 
     dtype = x.dtype
-    if dtype.char not in 'fdFD':
+    if _needs_cupy_fallback(dtype):
         raise ValueError('unsupported dtype')
     if out is None:
         out = _cupy.zeros(x.shape, dtype=dtype, order='F')
@@ -2401,7 +2395,7 @@ class _SpSM:
 
         # Check dtype
         dtype = a.dtype
-        if dtype.char not in 'fdFD':
+        if _needs_cupy_fallback(dtype):
             raise TypeError('Invalid dtype (actual: {})'.format(dtype))
 
         # Prepare fill mode
@@ -2588,7 +2582,7 @@ def _needs_cupy_spgemm(a, b):
     return (
         a.indices.dtype == _cupy.int64
         or b.indices.dtype == _cupy.int64
-        or _numpy.promote_types(a.dtype, b.dtype).char not in 'fdFD')
+        or _needs_cupy_fallback(_numpy.promote_types(a.dtype, b.dtype)))
 
 
 def _cupy_spgemm_int64(a, b, alpha):
@@ -2685,8 +2679,9 @@ def spgemm(a, b, alpha=1):
         raise TypeError(f'unsupported type (actual: {type(a)})')
     if not _is_csr_type(b):
         raise TypeError(f'unsupported type (actual: {type(b)})')
-    if _numpy.promote_types(a.dtype, b.dtype).char not in 'efdFD':
-        raise TypeError('spgemm supports only floating-point and complex data')
+    if _needs_cupy_fallback(_numpy.promote_types(a.dtype, b.dtype)):
+        raise TypeError('spgemm supports only float32, float64, complex64 '
+                        'and complex128 data')
 
     # TODO(eriknw): cuSPARSE--remove pure-CuPy fallback when all supported CUDA
     # versions have native int64 SpGEMM.  Native int64 SpGEMM is ~14x
