@@ -3,8 +3,10 @@ from __future__ import annotations
 import unittest
 
 import numpy
+import pytest
 
 from cupy import testing
+from cupy.testing._helper import installed_but_not_baseline
 
 
 class TestTrigonometric(unittest.TestCase):
@@ -63,11 +65,10 @@ class TestTrigonometric(unittest.TestCase):
 class TestUnwrap(unittest.TestCase):
 
     def _make_input(self, shape, xp, dtype, period=2*numpy.pi):
-        a = testing.shaped_random(shape, xp, dtype)
-        if xp is numpy and testing.numpy_satisfies('<2.6.0.dev0'):
-            # Older NumPy computes differences before promoting unsigned data.
-            a = a.astype(numpy.result_type(a.dtype, period))
-        return a
+        if (installed_but_not_baseline(numpy='2.6.0.dev0')
+                and numpy.dtype(dtype).kind in 'bu'):
+            pytest.skip('NumPy 2.6 promotes inputs before differencing.')
+        return testing.shaped_random(shape, xp, dtype)
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose()
