@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pickle
 import unittest
 
 import numpy
@@ -114,6 +115,25 @@ class TestUserkernel(unittest.TestCase):
         assert len(user_kernel_1._cached_codes) == 1
         user_kernel_1(in1.astype(cupy.float64), in2.astype(cupy.float64))
         assert len(user_kernel_1._cached_codes) == 2
+
+    def test_pickle_after_call(self):
+        user_kernel = cupy.ElementwiseKernel(
+            'T x', 'T y', 'y = x * scale', 'user_kernel_pickle',
+            loop_prep='const int scale = 2;')
+        x = testing.shaped_arange((4,), cupy, cupy.float32)
+        expected = user_kernel(x)
+        copy = pickle.loads(pickle.dumps(user_kernel))
+        testing.assert_array_equal(copy(x), expected)
+        del copy
+        testing.assert_array_equal(user_kernel(x), expected)
+
+    def test_pickle_loaded_module(self):
+        user_kernel = cupy.ElementwiseKernel(
+            'T x', 'T y', 'y = x * x', 'user_kernel_pickle_module')
+        user_kernel(testing.shaped_arange((4,), cupy, cupy.float32))
+        (kernel,) = user_kernel._elementwise_kernel_memo.values()
+        with pytest.raises(TypeError):
+            pickle.dumps(kernel.module)
 
 
 class TestElementwiseKernelSize(unittest.TestCase):
