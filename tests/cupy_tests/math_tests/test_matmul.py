@@ -839,17 +839,26 @@ class TestMatmul16BitVector(_Matmul16BitTestBase):
 
 
 @pytest.mark.parametrize('dtype_name', ['float16', 'bfloat16'])
-@pytest.mark.parametrize('broadcast', [False, True])
+@pytest.mark.parametrize('broadcast',
+                         ['none', 'partial', 'left', 'right', 'both'])
 @pytest.mark.parametrize('transpose_out', [False, True])
 class TestMatmul16BitMatrixOrder(_Matmul16BitTestBase):
 
     def test_matrix_order(self, dtype, broadcast, transpose_out):
-        a_shape = (2, 1, 8, 3) if broadcast else (2, 5, 8, 3)
-        b_shape = (1, 5, 5, 8) if broadcast else (2, 5, 5, 8)
+        a_batch, b_batch = {
+            'none': ((2, 5), (2, 5)),
+            'partial': ((2, 1), (1, 5)),
+            'left': ((1, 1), (2, 5)),
+            'right': ((2, 5), (1, 1)),
+            'both': ((1, 1), (1, 1)),
+        }[broadcast]
+        a_shape, b_shape = a_batch + (8, 3), b_batch + (5, 8)
         a = testing.shaped_random(
             a_shape, cupy, numpy.float32).astype(dtype).swapaxes(-1, -2)
         b = testing.shaped_random(
             b_shape, cupy, numpy.float32).astype(dtype).swapaxes(-1, -2)
+        a = cupy.broadcast_to(a, (2, 5, 3, 8))
+        b = cupy.broadcast_to(b, (2, 5, 8, 5))
         storage = cupy.full((2, 5, 16), -1, dtype)
         matrix_shape = (5, 3) if transpose_out else (3, 5)
         out = storage[..., :15].reshape((2, 5) + matrix_shape, copy=False)

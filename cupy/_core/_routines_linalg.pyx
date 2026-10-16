@@ -13,6 +13,7 @@ from cupy._core._ufuncs import elementwise_copy
 
 
 from libc.limits cimport INT_MAX
+from libcpp.atomic cimport atomic, memory_order_relaxed
 from libc.stdint cimport INT64_MIN, int64_t, intptr_t
 
 from cupy._core cimport _accelerator
@@ -1013,6 +1014,43 @@ cdef _ndarray_base _prepare_matmul_output(
     return out
 
 
+# The loaded cuBLAS version is process-wide; allow concurrent first calls.
+cdef atomic[int] _cublas_version
+
+
+cdef int _cublas_workarounds(_MatmulLayout *layout) except -1:
+    """Select pointer batching for affected cuBLAS strided GEMM kernels."""
+    if runtime._is_hip_environment or layout.batch_count <= 1:
+        return 0
+    cdef bint negative_stride = (
+        layout.a.outer_stride < 0 or layout.b.outer_stride < 0
+        or layout.c.outer_stride < 0)
+    cdef bint broadcast = (
+        layout.a.outer_stride == 0 or layout.b.outer_stride == 0)
+    if not negative_stride and not broadcast:
+        return 0
+
+    cdef int version = _cublas_version.load(memory_order_relaxed)
+    if version == 0:
+        # Keep cuBLAS loading lazy; subsequent calls only read a C integer.
+        from cupy_backends.cuda.libs import cublas
+        version = cublas.getVersion(device.get_cublas_handle())
+        _cublas_version.store(version, memory_order_relaxed)
+    if negative_stride and version < 120800:
+        # Reproduced on Turing through cuBLAS 12.6.4 (CUDA 12.6 Update 3);
+        # works with cuBLAS 12.8.3 (CUDA 12.8). Remove once cuBLAS <12.8
+        # is no longer supported.
+        layout.use_batched_pointers = True
+    elif (broadcast and 130100 <= version < 130601
+            and device.get_compute_capability() in ('120', '121')):
+        # NVIDIA issues 6040940, 5996751: introduced in cuBLAS 13.1.0
+        # (CUDA 13.0 Update 2), fixed in the separate cuBLAS 13.6.1 patch
+        # for CUDA 13.3 Update 1. Remove once the affected cuBLAS versions
+        # are no longer supported. Capability is cached per device.
+        layout.use_batched_pointers = True
+    return 0
+
+
 cdef tuple _prepare_batched_matmul_operands(
         _ndarray_base a, _ndarray_base b, _ndarray_base out,
         dtype, int cuda_dtype, bint use_cublas,
@@ -1115,13 +1153,18 @@ cdef tuple _prepare_batched_matmul_operands(
         batch_count=layout.batch_count, use_cublas=use_cublas,
         op_layout=&layout.c)
 
+    layout.use_batched_pointers = (
+        layout.a.outer_stride == INT64_MIN
+        or layout.b.outer_stride == INT64_MIN
+        or layout.c.outer_stride == INT64_MIN)
+    if use_cublas and not layout.use_batched_pointers:
+        _cublas_workarounds(layout)
+
     # Alignment is checked only after core layout and dispatch are settled.
     # Pointer-batched FP16/BF16 requires every matrix start to be aligned;
     # the strided API does not document this additional k-dependent rule.
     cdef Py_ssize_t alignment = 1
-    if ((layout.a.outer_stride == INT64_MIN
-         or layout.b.outer_stride == INT64_MIN
-         or layout.c.outer_stride == INT64_MIN)
+    if (layout.use_batched_pointers
             and cuda_dtype in (runtime.CUDA_R_16F, runtime.CUDA_R_16BF)):
         # https://docs.nvidia.com/cuda/cublas/index.html#cublasgemmbatchedex
         alignment = 16 if k % 8 == 0 else (4 if k % 2 == 0 else 2)
@@ -1154,10 +1197,6 @@ cdef tuple _prepare_batched_matmul_operands(
         layout.a, layout.b = layout.b, layout.a
 
     layout.m, layout.n, layout.k = m, n, k
-    layout.use_batched_pointers = (
-        layout.a.outer_stride == INT64_MIN
-        or layout.b.outer_stride == INT64_MIN
-        or layout.c.outer_stride == INT64_MIN)
     return a, b, c
 
 
