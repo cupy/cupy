@@ -698,7 +698,7 @@ def _check_mask_shape(mask, shape):
     assert mask.dtype == numpy.bool_
     if mask.shape != shape:
         raise IndexError(
-            f"boolean column index has incorrect length: "
+            f"boolean array index has incorrect length: "
             f"{mask.shape} instead of {shape}"
         )
 
