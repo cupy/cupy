@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import warnings
 
 import numpy
@@ -7,6 +8,7 @@ import numpy
 import cupy
 from cupy import _core
 from cupy import _util
+from cupy._core import internal
 from cupy._core import _routines_statistics as _statistics
 from cupy._core import _fusion_thread_local
 from cupy._logic import content
@@ -234,8 +236,16 @@ def _quantile_unchecked(a, q, axis=None, out=None,
     if q.ndim > 1:
         raise ValueError('Expected q to have a dimension of 1.\n'
                          'Actual: {} != 1'.format(q.ndim))
-    if isinstance(axis, int):
-        axis = axis,
+
+    if axis is None:
+        if overwrite_input:
+            ap = a.ravel()
+        else:
+            ap = a.flatten()
+        nkeep = 0
+    else:
+        axis = internal._normalize_axis_tuple(axis, a.ndim)
+
     if keepdims:
         if axis is None:
             keepdim = (1,) * a.ndim
@@ -244,27 +254,20 @@ def _quantile_unchecked(a, q, axis=None, out=None,
             for ax in axis:
                 keepdim[ax % a.ndim] = 1
             keepdim = tuple(keepdim)
-    if axis is None:
-        if overwrite_input:
-            ap = a.ravel()
-        else:
-            ap = a.flatten()
-        nkeep = 0
-    else:
-        # Reduce axes from a and put them last
-        axis = tuple(ax % a.ndim for ax in axis)
-        keep = set(range(a.ndim)) - set(axis)
+    if axis is not None:
+        keep = sorted(set(range(a.ndim)) - set(axis))
         nkeep = len(keep)
-        for i, s in enumerate(sorted(keep)):
+        for i, s in enumerate(keep):
             a = a.swapaxes(i, s)
-        if overwrite_input:
-            ap = a.reshape(a.shape[:nkeep] + (-1,))
-        else:
-            ap = a.reshape(a.shape[:nkeep] + (-1,)).copy()
-
+        reduce_size = math.prod(a.shape[nkeep:])
+        ap = a.reshape(a.shape[:nkeep] + (reduce_size,))
+        if not overwrite_input:
+            ap = ap.copy()
     axis = -1
     ap.sort(axis=axis)
     Nx = ap.shape[axis]
+    if Nx == 0:
+        raise ValueError("Expected input to not have a zero-length axis")
     indices = q * (Nx - 1.)
 
     if method in ['averaged_inverted_cdf',
