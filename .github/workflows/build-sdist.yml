@@ -11,8 +11,13 @@ name: Build CuPy sdist
 #     ``cupy/_core/include/cupy/{_cccl,xsf,_jitify,_dlpack}`` and packs the
 #     real files into the tarball, so downstream wheel builds (including
 #     Windows) get portable, symlink-free source.
-#   * CUPY_INSTALL_USE_STUB=1 skips CUDA extension detection during the
-#     sdist build (see install/cupy_builder/_context.py).
+#   * setup.py skips the CUDA probe + [ctk] extras computation when
+#     ctx.setup_command is one of {sdist, egg_info, dist_info}: these
+#     cover both direct `python setup.py sdist` and the PEP 517
+#     prep phases (get_requires_for_build_sdist / prepare_metadata_*)
+#     that `python -m build --sdist` goes through on a CUDA-less
+#     runner. `bdist_wheel` is a separate setup() invocation on the
+#     wheel builders, so the probe + [ctk] both run normally there.
 on:
   workflow_call:
     inputs:

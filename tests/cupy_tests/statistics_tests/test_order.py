@@ -319,6 +319,44 @@ class TestQuantileMethods:
         a = xp.array([[1., 2.], [xp.nan, xp.nan]], dtype=dtype)
         return xp.quantile(a, 1., axis=1, method=method)
 
+    @pytest.mark.parametrize("func,q",
+                             [('percentile', 50), ('quantile', 0.5)])
+    @pytest.mark.parametrize("shape,axis", [
+        ((0, ), None),
+        ((0, 1), 0),
+        ((0, 1), -2),
+        ((1, 0), 1),
+        ((1, 0), -1),
+        ((1, 1, 0), (1, 2)),
+        ((1, 1, 0), (-1, -2)),
+    ])
+    def test_axes_empty_raises_error(self, func, q, shape, axis, method):
+        a = cupy.empty(shape)
+        fn = getattr(cupy, func)
+        with pytest.raises(ValueError):
+            fn(a, q, axis=axis, method=method)
+
+    @pytest.mark.parametrize('func,q',
+                             [('percentile', 50), ('quantile', 0.5)])
+    @pytest.mark.parametrize("shape,axis", [
+        ((0, 1), 1),
+        ((1, 0), 0),
+        ((1, 1, 0), (0, 1)),
+    ])
+    def test_cupy_axes_empty_raises_no_error(
+            self, func, q, shape, axis, method):
+        a = cupy.empty(shape)
+        fn = getattr(cupy, func)
+        assert fn(a, q, axis=axis, method=method).size == 0
+
+    @pytest.mark.parametrize('func,q',
+                             [('percentile', 50), ('quantile', 0.5)])
+    def test_axes_none_empty_raises_error(self, func, q, method):
+        a = cupy.empty((0,))
+        fn = getattr(cupy, func)
+        with pytest.raises(ValueError):
+            fn(a, q, axis=None, method=method)
+
 
 class TestOrder:
 
