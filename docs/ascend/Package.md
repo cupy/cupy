@@ -168,16 +168,21 @@ minor = rest // 10
 return f'cann{major}.{minor}'          # 851 -> 'cann8.5'
 ```
 
-`setup.py:104-124` installs a `bdist_wheel` cmdclass that appends this tag to
-the platform tag, producing:
+`setup.py` (`_make_cmdclass`'s `bdist_wheel` cmdclass) injects this tag as the
+wheel's PEP 440 **local version segment**, dot-stripped to the `cu131`-style
+convention (`cann8.5` → `+cann85`), producing:
 
 ```
-numpy_ascend-14.0.0a1+cann8.5-cp311-cp311-manylinux_2_28_x86_64.whl
-numpy_ascend-14.0.0a1+cann9.0-cp311-cp311-manylinux_2_28_x86_64.whl
+numpy_ascend-14.0.0a1+cann85-cp311-cp311-manylinux_2_28_x86_64.whl
+numpy_ascend-14.0.0a1-cp311-cp311-manylinux_2_28_x86_64.whl   # the PyPI train, bare version
 ```
 
-Because the platform tags differ, the two wheels are distinct artifacts to pip
-and cannot silently overwrite each other.
+Because the version (hence filename) differs, the two wheels are distinct
+artifacts to pip and cannot silently overwrite each other. Note the PyPI train
+(`setup.py::_PYPI_CANN_TRAIN`) carries **no** local segment — PyPI rejects local
+version identifiers, so only that train is uploaded there; the rest ship via
+GitHub Releases and install with `pip install --find-links <release page>`
+(`docs/ascend/github_packaging_pypi.md` §7).
 
 ### 2.3 Build-time metadata
 
@@ -262,20 +267,22 @@ and still emitted.
 export ASCEND_HOME_PATH=/usr/local/Ascend/ascend-toolkit/latest   # CANN 8.5.x
 export CUPY_INSTALL_USE_ASCEND=1
 python -m build --wheel
-# -> numpy_ascend-14.0.0a1+cann8.5-cp311-cp311-manylinux_2_28_x86_64.whl
+# -> numpy_ascend-14.0.0a1+cann85-cp311-cp311-manylinux_2_28_x86_64.whl
 
 # ---------------- CANN 9.0 ----------------
 export ASCEND_HOME_PATH=/usr/local/Ascend/ascend-toolkit/9.0      # CANN 9.0.x
 export CUPY_INSTALL_USE_ASCEND=1
 python -m build --wheel
-# -> numpy_ascend-14.0.0a1+cann9.0-cp311-cp311-manylinux_2_28_x86_64.whl
+# -> numpy_ascend-14.0.0a1+cann90-cp311-cp311-manylinux_2_28_x86_64.whl
 ```
 
-The CANN release train appears **twice** in the file name, on purpose: in the
-local version segment (`+cann90`, what `pip` records and uninstalls) and
-in the platform tag (`.cann9.0`, what makes two trains unable to install over
-each other). The one artefact that is *not* per-train is the source tarball,
-see §2.9.
+The CANN release train appears in the local version segment (`+cann90`, what
+`pip` records and uninstalls; dot-stripped, the `cu131`-style convention). It
+appears **only once** — the platform tag stays standard manylinux, and the
+train that is published to PyPI (`_PYPI_CANN_TRAIN`) carries no local segment
+at all (PyPI rejects local version identifiers; see
+`github_packaging_pypi.md` §7). The one artefact that is *not* per-train is
+the source tarball, see §2.9.
 
 In-tree development (editable, faster iteration):
 
@@ -285,7 +292,7 @@ python setup.py develop --inplace
 python -c "import cupy._core"
 ```
 
-> Build **inside a `manylinux_2_17` container** to keep glibc/GCC consistent
+> Build **inside a `manylinux_2_28` container** to keep glibc/GCC consistent
 > with CANN's C++ ABI (see §3.2). CANN's own glibc symbol requirement is only
 > `GLIBC_2.14`, so glibc is *not* the binding constraint — `libstdc++` is.
 
@@ -295,17 +302,18 @@ python -c "import cupy._core"
 |---|---|
 | No SDK path leaked into any `.so` | `for f in $(find cupy cupyx -name '*.so'); do readelf -d "$f" \| grep -E 'RPATH\|RUNPATH' \| grep -i cann && echo "LEAK: $f"; done` |
 | Uses `DT_RUNPATH` (not `DT_RPATH`) | `readelf -d cupy/_core/core.*.so \| grep -E 'RPATH\|RUNPATH'` → must say `RUNPATH` |
+| Local version (train) | `numpy_ascend-<ver>+cann<XY>-...whl` | non-PyPI trains only; bare `<ver>` for the PyPI train (`_PYPI_CANN_TRAIN`) |
 | Metadata bundled | `unzip -p dist/*.whl 'cupy/.data/_wheel.json'` |
-| Platform tag correct | `ls dist/` → must end in `.cann8.5.whl` / `.cann9.0.whl` |
+| Platform tag standard | `ls dist/` → `manylinux_2_28_<arch>.whl` after auditwheel repair (bare `linux_*` before it; PyPI rejects those) |
 | Imports in a clean env | `python -c "import cupy; print(cupy.__version__)"` |
-| Version guard works | install the `cann9.0` wheel against a CANN 8.5 install → expect a `RuntimeWarning` |
+| Version guard works | install a `+cann85` wheel against a CANN 9.0 install → expect a `RuntimeWarning` |
 
 ### 2.8 Wheel naming rule and support matrix
 
 A wheel name encodes everything that must match on the target machine:
 
 ```
-numpy_ascend-14.0.0a1+cann9.0-cp311-cp311-manylinux_2_28_x86_64.whl
+numpy_ascend-14.0.0a1+cann90-cp311-cp311-manylinux_2_28_x86_64.whl
 ```
 
 | Field | Example | Meaning |
@@ -337,7 +345,7 @@ numpy_ascend-14.0.0a1+cann9.0-cp311-cp311-manylinux_2_28_x86_64.whl
   | Build | Distribution name | Where it comes from |
   |---|---|---|
   | CUDA / HIP / CPU stub | `cupy` | `[project].name` in `pyproject.toml` |
-  | Ascend, CANN 8.5.x | `numpy-ascend` (wheel `…+cann8.5…`) | `setup.py::_BackendAwareDistribution` |
+  | Ascend, CANN 8.5.x | `numpy-ascend` (wheel `…+cann85…`) | `setup.py::_BackendAwareDistribution` |
   | Ascend, CANN 9.0.x (PyPI train) | `numpy-ascend` (wheel `14.0.0a1`, bare) | 〃 |
   | Ascend, CANN version unknown | `numpy-ascend` | 〃 (no tag to derive the suffix from) |
   | Ascend, source tarball | `numpy-ascend` | 〃 (`sdist` is exempt — §2.9) |
@@ -382,7 +390,7 @@ python -m build --sdist            # add --no-isolation if deps are installed
 
 | Artefact | File name | Encodes |
 |---|---|---|
-| wheel | `numpy_ascend-14.0.0a1+cann9.0-cp311-cp311-manylinux_2_28_x86_64.whl` | distribution + local version (CANN train) + CPython + platform |
+| wheel | `numpy_ascend-14.0.0a1+cann90-cp311-cp311-manylinux_2_28_x86_64.whl` | distribution + local version (CANN train) + CPython + platform |
 | sdist | `numpy_ascend-14.0.0a1.tar.gz` | distribution only |
 
 Why the sdist drops **both** tags:
@@ -411,16 +419,16 @@ it runs on:
 
 ```sh
 pip install numpy_ascend-14.0.0a1.tar.gz
-# CANN 9.0.x host -> builds + installs numpy-ascend (wheel +cann9.0)
-# CANN 8.5.x host -> builds + installs numpy-ascend (wheel +cann8.5)
+# CANN 9.0.x host -> builds + installs numpy-ascend (wheel +cann90)
+# CANN 8.5.x host -> builds + installs numpy-ascend (wheel +cann85)
 ```
 
 One source artefact therefore covers the whole matrix:
 
 | Built from | CPython | CANN | Result |
 |---|---|---|---|
-| `numpy_ascend-14.0.0a1.tar.gz` | 3.9–3.13 | 8.5.x | `numpy_ascend-14.0.0a1+cann8.5-cp3XX-…-manylinux_2_28_{x86_64,aarch64}.whl` |
-| 〃 | 3.9–3.13 | 9.0.x | `numpy_ascend-14.0.0a1+cann9.0-cp3XX-…-manylinux_2_28_{x86_64,aarch64}.whl` |
+| `numpy_ascend-14.0.0a1.tar.gz` | 3.9–3.13 | 8.5.x | `numpy_ascend-14.0.0a1+cann85-cp3XX-…-manylinux_2_28_{x86_64,aarch64}.whl` |
+| 〃 | 3.9–3.13 | 9.0.x | `numpy_ascend-14.0.0a1+cann90-cp3XX-…-manylinux_2_28_{x86_64,aarch64}.whl` |
 | 〃 | 3.9 | 8.2 | in-place build only (`build_ext --inplace`, §2.6) |
 
 The installed distribution is reported under the CANN-suffixed name, so
@@ -599,7 +607,7 @@ export LD_PRELOAD=<cann>/opp/built-in/op_impl/ai_core/tbe/op_tiling/lib/linux/x8
 
 ```sh
 # 1. install the matching wheel
-pip install numpy_ascend-14.0.0a1+cann8.5-cp311-cp311-manylinux_2_28_x86_64.whl
+pip install numpy_ascend-14.0.0a1+cann85-cp311-cp311-manylinux_2_28_x86_64.whl
 
 # 2. bring CANN into the environment
 source /usr/local/Ascend/ascend-toolkit/set_env.sh

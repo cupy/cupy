@@ -343,8 +343,9 @@ class AscendBackend(Backend):
         can not be confused with one another.
 
         The value is injected as the wheel's PEP 440 local version segment by
-        ``setup.py`` (``bdist_wheel`` cmdclass), giving
-        ``numpy_ascend-<ver>+cann8.5-...whl``.
+        ``setup.py`` (``bdist_wheel`` cmdclass), dot-stripped to the
+        ``cu131``-style convention, giving
+        ``numpy_ascend-<ver>+cann85-...whl``.
 
         ``aclnn`` operator signatures change between CANN releases and
         ``libop_common.so``/``liboptiling.so`` are coupled per release, so a
