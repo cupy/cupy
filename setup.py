@@ -139,10 +139,11 @@ else:
     ext_modules = cupy_setup_build.get_ext_modules(True, ctx)
 
 
-long_description = ''
-if ctx.long_description_path is not None:
-    with open(ctx.long_description_path) as f:
-        long_description = f.read()
+# The long description (rendered on the PyPI project page) is provided
+# declaratively by pyproject.toml `[tool.setuptools.dynamic] readme`
+# (README.md, text/markdown) -- it applies to both wheel and sdist builds,
+# with no env var needed. NOTE: do NOT hardcode `text/x-rst` here: README.md
+# is Markdown, and a mismatched content type makes PyPI render it as raw text.
 
 
 # ASCEND: encode the backend's SDK tag (e.g. `cann8.5`) as a PEP 440
@@ -211,8 +212,6 @@ def _make_cmdclass():
 
 
 setup(
-    long_description=long_description,
-    long_description_content_type='text/x-rst',
     package_data=package_data,
     zip_safe=False,
     ext_modules=ext_modules,

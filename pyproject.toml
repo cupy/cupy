@@ -70,6 +70,13 @@ include = ["cupy*", "cupyx*", "cupy_backends*"]
 
 [tool.setuptools.dynamic]
 version = { attr = "cupy._version.__version__" }
+# PyPI renders ONLY the `Description` field embedded in each artifact's
+# METADATA/PKG-INFO; it never fetches README.md from the repository. `readme`
+# is declared dynamic in [project] above, so it must be provided here.
+# (Upstream cupy provides it via setup.py's long_description kwarg fed by the
+# CUPY_INSTALL_LONG_DESCRIPTION env var, which this fork's build/CI never set
+# -- that is why the published numpy-ascend release had an empty PyPI page.)
+readme = { file = "README.md", content-type = "text/markdown" }
 
 [tool.autopep8]
 exclude = "*.git*, *.eggs*, *cupy/array_api*, *tests/cupy_tests/array_api_tests*, *docs/source*"

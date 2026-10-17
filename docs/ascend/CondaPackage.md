@@ -11,11 +11,18 @@
 
 ## 1. 包命名与版本策略
 
-- 包名 **`numpy-ascend-cann90`**，与 wheel 命名（`setup.py` 的
-  `_ascend_distribution_name()` → `numpy-ascend-cann85/cann90`）对齐。
+- 包名 **`numpy-ascend-cann90`**（conda 侧按 train 拆包名）。
   **CANN release train 之间 ABI 不兼容**（库集合按 train 重新选择，见
-  `install/cupy_builder/features/ascend.py`），所以按 train 拆包名，
+  `install/cupy_builder/features/ascend.py`），所以 conda 按 train 拆包名，
   而不是只放 build string。
+- 注意与 **wheel 命名已分家**（2026-10-17 起）：wheel 现在是单一 PyPI 项目
+  `numpy-ascend`，train 编码在 PEP 440 本地版本段（`14.0.0a1+cann9.0`），
+  且只有主力 train（`setup.py::_PYPI_CANN_TRAIN`，当前 cann9.0）以裸版本
+  传 PyPI，其他 train 只上 GitHub Release——因为 PyPI 拒绝本地版本段。
+  conda 没有等价的本地版本段机制，所以继续用 per-train 包名；两条打包线
+  不再共享同一套名字，见
+  [GithubPackagingAndPypi.md](GithubPackagingAndPypi.md) §7 与
+  [Package.md](Package.md) §2.2。
 - import 包名保持 `cupy`/`cupyx`/`cupy_backends`（与 wheel 的 distclass
   改名技巧一致），用户代码 `import cupy` 无感。
 - conda 包版本 jinja 从 `cupy/_version.py` 提取：
@@ -79,7 +86,9 @@ conda-build 流程走到 **build 阶段全绿**：
 1. meta 渲染 → host env 求解（真实拉下 cann-toolkit/cann-950-ops 9.0.1）
 2. Cython + C++ 全量编译通过（~4 min，含 AOT Ascend910B4 内核 staging）
 3. wheel 构建成功装入 build env
-   （`numpy_ascend_cann90-14.0.0a1-cp310-...-linux_x86_64.cann9.0.whl`）
+   （`numpy_ascend-14.0.0a1-cp310-...-manylinux_2_34_x86_64.whl`，
+   即 PyPI 主力 train 的裸版本 wheel；其他 train 为
+   `numpy_ascend-14.0.0a1+cann8.5-...whl`）
 
 **未走通**：build 成功后的打包/清理阶段，conda 删除自己的 lock 文件
 （`~/miniconda3/locks/*`）会触发 IDE 批量删除保护把进程杀掉（复现 3 次，
