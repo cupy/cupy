@@ -22,10 +22,10 @@ cupy_builder.initialize(ctx)
 # Distribution name used for every Ascend artifact (wheels AND sdist).
 # `pyproject.toml` keeps `cupy` for the CUDA/HIP/CPU builds. A single PyPI
 # project `numpy-ascend` hosts every CANN release train: the trains are told
-# apart by the wheel's PEP 440 local version segment (`+cann85` / `+cann90`,
-# dot-stripped like PyTorch's `cu131`; see `_sdk_tag` below), which also keeps
-# the wheel filenames distinct, so wheels of different trains can live side by
-# side. The import package is `cupy` on every backend.
+# apart by the wheel's PEP 440 local version segment (`+cann8.5` / `+cann9.0`,
+# see `_sdk_tag` below), which also keeps the wheel filenames distinct, so
+# wheels of different trains can live side by side. The import package is
+# `cupy` on every backend.
 ASCEND_DISTRIBUTION_NAME = 'numpy-ascend'
 
 # Pure-Python cupyx subpackages removed from the Ascend wheel. They are
@@ -60,11 +60,11 @@ class _BackendAwareDistribution(Distribution):
     * Every Ascend artifact (wheel, editable install, sdist) is named
       ``numpy-ascend``: one PyPI project. Wheels of the primary CANN train
       (``_PYPI_CANN_TRAIN``) keep the bare public version and are uploaded
-      to PyPI; wheels of every other train carry a ``+cannXY`` local
-      version segment (dot-stripped, PyTorch's ``cu131`` style) and are
-      distributed via GitHub Releases only, because PyPI rejects local
-      version identifiers. The source tarball is CANN-agnostic by nature
-      (``MANIFEST.in`` excludes the generated ``.cpp``).
+      to PyPI; wheels of every other train carry a ``+cannX.Y`` local
+      version segment and are distributed via GitHub Releases only, because
+      PyPI rejects local version identifiers. The source tarball is
+      CANN-agnostic by nature (``MANIFEST.in`` excludes the generated
+      ``.cpp``).
 
     PEP 621 forbids a dynamic ``[project].name``, and a static ``[project]``
     value silently wins over ``setup(name=...)``, so the rename has to be done
@@ -145,19 +145,18 @@ if ctx.long_description_path is not None:
         long_description = f.read()
 
 
-# ASCEND: encode the backend's SDK tag (e.g. `cann8.5`, dot-stripped to
-# `cann85` - the `cu131`-style convention of PyTorch / nvidia-* packages) as a
-# PEP 440 *local version segment* of the wheel (PyTorch-style CANN train
-# selection), giving e.g.
-#   numpy_ascend-14.0.0a1+cann85-cp311-cp311-manylinux_2_28_x86_64.whl
+# ASCEND: encode the backend's SDK tag (e.g. `cann8.5`) as a PEP 440
+# *local version segment* of the wheel (PyTorch-style CANN train selection),
+# giving e.g.
+#   numpy_ascend-14.0.0a1+cann8.5-cp311-cp311-manylinux_2_28_x86_64.whl
 # EXCEPT for the train published to PyPI (`_PYPI_CANN_TRAIN` below), whose
 # wheels keep the bare public version - PyPI (Warehouse) rejects uploads
 # whose version carries a local segment ("The use of local versions in
-# '14.0.0a1+cann85' is not allowed"), which is also why PyTorch's
+# '14.0.0a1+cann8.5' is not allowed"), which is also why PyTorch's
 # `torch==2.5.1+cu121` wheels only ever live on download.pytorch.org.
 # Every other train is distributed through the GitHub Release, where users
 # pin the train explicitly:
-#   pip install numpy-ascend==14.0.0a1+cann85 \
+#   pip install numpy-ascend==14.0.0a1+cann8.5 \
 #       --find-links https://github.com/<owner>/<repo>/releases/expanded_assets/<tag>
 # (`--find-links` accepts an HTML page such as GitHub's expanded_assets view;
 # `--index-url` does NOT work there - GitHub Releases are not a PEP 503
@@ -167,15 +166,23 @@ if ctx.long_description_path is not None:
 # and the `sdist` command produces the CANN-agnostic
 # `numpy_ascend-14.0.0a1.tar.gz` (see `_BackendAwareDistribution` above).
 # Either way the importable packages are `cupy`/`cupyx`/`cupy_backends`.
+#
+# NOTE on the dotted form (`cann8.5`, not the `cann85` style PyTorch uses for
+# `+cu121`): dots are valid in PEP 440 local segments and pip handles them
+# fine; they keep the CANN version readable. Be aware that a plain dotted
+# `cannX.Y` compares the `cannX` part *lexically*, so `cann10.0` would sort
+# BELOW `cann9.0` - if that ever matters, switch to fully dot-separated
+# segments (`+cann.9.0` vs `+cann.10.0`), which compare the numbers
+# numerically. Today only single-digit CANN majors/minors exist, and the
+# primary train (bare version) is what pip installs by default anyway.
 _sdk_tag = cupy_setup_build.get_wheel_platform_tag(ctx)
 
 #: The CANN release train published to PyPI under the bare public version
-#: (e.g. `14.0.0a1`). Wheels of every other train carry the `+cannXY` local
-#: version segment (dot-stripped SDK tag, e.g. `+cann85`) and are distributed
-#: via GitHub Releases only. Bump this when the primary supported CANN release
-#: changes; the workflow's publish step selects the plain-versioned wheels
-#: accordingly.
-_PYPI_CANN_TRAIN = 'cann90'
+#: (e.g. `14.0.0a1`). Wheels of every other train carry the `+cannX.Y` local
+#: version segment and are distributed via GitHub Releases only. Bump this
+#: when the primary supported CANN release changes; the workflow's publish
+#: step selects the plain-versioned wheels accordingly.
+_PYPI_CANN_TRAIN = 'cann9.0'
 
 
 def _make_cmdclass():
@@ -191,14 +198,10 @@ def _make_cmdclass():
                 # the local segment must already be in place — otherwise only
                 # the filename carries it while PKG-INFO/dist-info keep the
                 # bare version (Warehouse rejects that mismatch).
-                # `cann8.5` -> `cann85`: local version segments are
-                # conventionally dot-free (PyTorch's `cu131`), and dotless
-                # compares correctly for CANN's single-digit minors.
-                train = _sdk_tag.replace('.', '') if _sdk_tag else ''
                 version = self.distribution.get_version()
-                if (train and train != _PYPI_CANN_TRAIN
-                        and f'+{train}' not in version):
-                    self.distribution.metadata.version = f'{version}+{train}'
+                if (_sdk_tag and _sdk_tag != _PYPI_CANN_TRAIN
+                        and f'+{_sdk_tag}' not in version):
+                    self.distribution.metadata.version = f'{version}+{_sdk_tag}'
                 super().finalize_options()
                 # The extensions are native, so never claim purity.
                 self.root_is_pure = False

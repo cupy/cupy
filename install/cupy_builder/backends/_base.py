@@ -114,10 +114,9 @@ class Backend(abc.ABC):
         or ``None``.
 
         The value becomes a PEP 440 local version segment, e.g. ``'cann8.5'``
-        producing ``numpy_ascend-14.0.0a1+cann85-...whl`` — consumers strip the
-        dot to follow the dotless ``cu131``-style convention of PyTorch's
-        ``torch==2.5.1+cu121`` (see ``setup.py``). This lets several
-        mutually-incompatible SDK builds coexist in one project on an index
+        producing ``numpy_ascend-14.0.0a1+cann8.5-...whl`` (the same scheme as
+        PyTorch's ``torch==2.5.1+cu121``). This lets several
+                mutually-incompatible SDK builds coexist in one project on an index
         without being mistaken for one another, and lets users pin the exact
         build with ``pip install <name>==<ver>+<tag>``. The platform tag
         itself stays standard manylinux (produced by auditwheel in CI).

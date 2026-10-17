@@ -71,7 +71,7 @@ permissions:
 jobs:
   # GitHub Actions expressions have no split()/replace(), so expand the CSV
   # inputs to JSON arrays here (the fromJson(format(replace(...))) trick in
-  # docs/ascend/github_packaging_pypi.md does not work).
+  # docs/ascend/GithubPackagingAndPypi.md does not work).
   gen-matrix:
     runs-on: ubuntu-latest
     outputs:
@@ -174,7 +174,7 @@ jobs:
             # tags. CANN runtime libs (libascendcl, libopapi, liboptiling, ...)
             # must come from the host CANN install, so they are excluded by
             # resolved path - auditwheel matches `--exclude` against both the
-            # SONAME and the realpath (see docs/ascend/github_packaging_pypi.md
+            # SONAME and the realpath (see docs/ascend/GithubPackagingAndPypi.md
             # section 7). If the wheel is not 2_28-compatible (e.g. a symbol
             # newer than GLIBC_2.28), repair fails loudly and the unrepaired
             # wheel is shipped for the GitHub Release, but PyPI publish will

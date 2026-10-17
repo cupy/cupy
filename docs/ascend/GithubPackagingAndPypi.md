@@ -63,7 +63,7 @@ git tag v14.0.0a1        # tag 名与包版本 14.0.0a1 对齐（PEP 440）
    `testpypi`：传 TestPyPI 做安装冒烟 
    `pypi` 或 `release: published`：传正式 PyPI + 建/更新 GitHub Release 附 wheel
 
-> 建议 wheel 命名带 CANN train：主力 train 用裸版本（`numpy_ascend-14.0.0a1-cp311-cp311-manylinux_2_28_x86_64.whl`，传 PyPI），其他 train 用本地版本段（`numpy_ascend-14.0.0a1+cann85-...whl`，仅 GitHub Release + `--find-links` 安装）——PyPI 拒绝本地版本段，详见 §7；sdist 不绑 CANN 版本，全 Python/CANN 通用 。
+> 建议 wheel 命名带 CANN train：主力 train 用裸版本（`numpy_ascend-14.0.0a1-cp311-cp311-manylinux_2_28_x86_64.whl`，传 PyPI），其他 train 用本地版本段（`numpy_ascend-14.0.0a1+cann8.5-...whl`，仅 GitHub Release + `--find-links` 安装）——PyPI 拒绝本地版本段，详见 §7；sdist 不绑 CANN 版本，全 Python/CANN 通用 。
 
 ## 二、CANN 镜像与矩阵选择
 
@@ -74,7 +74,7 @@ git tag v14.0.0a1        # tag 名与包版本 14.0.0a1 对齐（PEP 440）
 - 架构对应 runner：
   - x86_64 → GitHub `ubuntu-latest`（标准分钟计费/公库免费）
   - aarch64 → `ubuntu-24.04-arm`（若可用）或自托管 910B/Atlas 臂量机；别用 QEMU 编大 CANN 项目，极慢
-- 多 CANN 同发：单一 PyPI 项目 `numpy-ascend`，但只有主力 train（`setup.py::_PYPI_CANN_TRAIN`，当前 cann90）以裸版本传 PyPI；其他 train 带 `+cann85` 本地版本段只上 GitHub Release，用户用 `--find-links` + 显式 pin 安装（PyPI 拒绝本地版本段，见 §7）
+- 多 CANN 同发：单一 PyPI 项目 `numpy-ascend`，但只有主力 train（`setup.py::_PYPI_CANN_TRAIN`，当前 cann90）以裸版本传 PyPI；其他 train 带 `+cann8.5` 本地版本段只上 GitHub Release，用户用 `--find-links` + 显式 pin 安装（PyPI 拒绝本地版本段，见 §7）
 
 ## 三、容器内构建环境变量（按 numpy-ascend 调整）
 
@@ -165,7 +165,7 @@ cmake … && python -m build --wheel
 
 - 版本号单一来源：只在 `pyproject.toml` 改，`git tag vX.Y.Z` 与版本一致；CI 可加一步校验 tag≠已存在 PyPI 版本。
 - 人工两步发布更稳：dispatch 出 wheel → 人下载装测试 → 打 release 自动传 PyPI。比“一次 dispatch 直接传生产”安全。
-- 多 CANN 同版 Python 不覆盖：主力 train 裸版本传 PyPI，其他 train 带本地版本段 `+cann85` 只上 Release；sdist 只一个、不写 CANN 后缀 。
+- 多 CANN 同版 Python 不覆盖：主力 train 裸版本传 PyPI，其他 train 带本地版本段 `+cann8.5` 只上 Release；sdist 只一个、不写 CANN 后缀 。
 - 无 NPU runner 只做“构建+import 自检”；L4 数值测试放自托管 910B job，且不在 dispatch 默认矩阵里跑，避免耗免费额度。
 - quay 拉取：公共 tag 一般可匿名拉；若频繁 429，CI 里 `docker login quay.io -u robot -p …` 用 robot account，或把基础镜像缓存到 GHCR。
 - 大镜像缓存：用 `docker/build-push-action` 或 registry cache，别每次全拉 4–13GB 的 CANN 镜像。
@@ -188,7 +188,7 @@ cmake … && python -m build --wheel
 # PyPI 上的主力 train（裸公共版本，Warehouse 拒绝本地版本段）：
 numpy_ascend-14.0.0a1-cp311-cp311-manylinux_2_28_x86_64.whl
 # 其他 train（仅 GitHub Release，本地版本段标识 train）：
-numpy_ascend-14.0.0a1+cann85-cp311-cp311-manylinux_2_28_x86_64.whl
+numpy_ascend-14.0.0a1+cann8.5-cp311-cp311-manylinux_2_28_x86_64.whl
 ```
 
 四个设计决策，都是被 PyPI / pip 的现实约束逼出来的：
@@ -202,7 +202,7 @@ numpy_ascend-14.0.0a1+cann85-cp311-cp311-manylinux_2_28_x86_64.whl
 
 2. **只有主力 train 上 PyPI，其他 train 只上 GitHub Release**。2026-10-17
    实测：PyPI（Warehouse）**拒绝任何带本地版本段的上传**，报
-   `400 The use of local versions in '14.0.0a1+cann85' is not allowed`
+   `400 The use of local versions in '14.0.0a1+cann8.5' is not allowed`
    ——这是硬性规则，也正是 PyTorch 的 `torch==2.5.1+cu121` 只发在
    download.pytorch.org、从不上传 PyPI 的原因。因此：
    - `setup.py::_PYPI_CANN_TRAIN`（当前 `'cann90'`）指定的 train 用裸公共
@@ -211,7 +211,7 @@ numpy_ascend-14.0.0a1+cann85-cp311-cp311-manylinux_2_28_x86_64.whl
    - publish job 里用 `case "$f" in *+*)` 过滤出裸版本 wheel（+ sdist）传
      PyPI，Release 步骤仍然挂全部产物。
    - ⚠️ 已知陷阱：`--find-links` 与 PyPI 同时在场时，`==14.0.0a1` 也能匹配
-     `+cann85` 且 pip 优先选本地段（版本号更大）。所以 README 明确要求：
+     `+cann8.5` 且 pip 优先选本地段（版本号更大）。所以 README 明确要求：
      **用 `--find-links` 时必须显式 pin train**；9.0 用户直接从 PyPI 装，
      不要加 `--find-links`。
 
@@ -229,7 +229,7 @@ numpy_ascend-14.0.0a1+cann85-cp311-cp311-manylinux_2_28_x86_64.whl
    `.../releases/download/<tag>/<file>`）：
 
    ```sh
-   pip install numpy-ascend==14.0.0a1+cann85 \
+   pip install numpy-ascend==14.0.0a1+cann8.5 \
        --find-links https://github.com/qingfengxia/numpy-ascend/releases/expanded_assets/v14.0.0a1
    ```
 
@@ -286,7 +286,7 @@ numpy_ascend-14.0.0a1+cann85-cp311-cp311-manylinux_2_28_x86_64.whl
 # CANN 9.0.x（PyPI）：
 pip install numpy-ascend==14.0.0a1
 # CANN 8.5.x（GitHub Release，--find-links 指向资产页，必须显式 pin train）：
-pip install numpy-ascend==14.0.0a1+cann85 \
+pip install numpy-ascend==14.0.0a1+cann8.5 \
     --find-links https://github.com/qingfengxia/numpy-ascend/releases/expanded_assets/v14.0.0a1
 ```
 

@@ -383,14 +383,14 @@ The distribution *name* is backend-dependent: `[project].name` in
 `pyproject.toml` is `cupy` (CUDA/HIP/CPU builds), while an Ascend build renames
 itself in `setup.py` (`_BackendAwareDistribution`) to the bare `numpy-ascend` —
 one PyPI project for every CANN release train. The CANN train is encoded as a
-PEP 440 **local version segment** of the wheel (`+cann85` / `+cann90`, injected
+PEP 440 **local version segment** of the wheel (`+cann8.5` / `+cann9.0`, injected
 by the `bdist_wheel` cmdclass in `setup.py`), mirroring PyTorch's
-`torch==2.5.1+cu121`, so `pip install numpy-ascend==<ver>+cann90` pins the exact
+`torch==2.5.1+cu121`, so `pip install numpy-ascend==<ver>+cann9.0` pins the exact
 train. **Exception**: the train designated by `setup.py::_PYPI_CANN_TRAIN`
 (currently `cann9.0`) keeps the bare public version, because PyPI rejects local
 version identifiers — that train is the one uploaded to PyPI, the others are
 distributed via GitHub Releases (`pip install --find-links <release page>`;
-see `docs/ascend/github_packaging_pypi.md` §7). The `sdist` command keeps the
+see `docs/ascend/GithubPackagingAndPypi.md` §7). The `sdist` command keeps the
 same bare name, because a source tarball is not tied to a CANN release
 (`docs/ascend/Package.md` §2.9). The import packages (`cupy`, `cupyx`,
 `cupy_backends`) never change, so `import cupy` works on both.
@@ -402,7 +402,7 @@ Producing the two Ascend wheels:
 export ASCEND_HOME_PATH=/usr/local/Ascend/ascend-toolkit/latest   # CANN 8.5.x
 export CUPY_INSTALL_USE_ASCEND=1
 python -m build --wheel
-# -> numpy_ascend-<ver>+cann85-cp311-cp311-manylinux_2_28_x86_64.whl
+# -> numpy_ascend-<ver>+cann8.5-cp311-cp311-manylinux_2_28_x86_64.whl
 
 # ---- CANN 9.0 ----
 export ASCEND_HOME_PATH=/usr/local/Ascend/ascend-toolkit/9.0      # CANN 9.0.x
@@ -415,7 +415,7 @@ Note: `python -m build --wheel` on a plain Ubuntu host produces a `linux_*`
 platform tag, which PyPI rejects — run `auditwheel repair --plat
 manylinux_2_28_<arch>` (with the CANN libs excluded by path) to retag, exactly
 as `.github/workflows/build-cann-wheels.yml` does (see
-`docs/ascend/github_packaging_pypi.md` §7).
+`docs/ascend/GithubPackagingAndPypi.md` §7).
 
 The two wheels are distinct artifacts to `pip` (different distribution names
 *and* platform tags), but they must **not** be installed into the same
