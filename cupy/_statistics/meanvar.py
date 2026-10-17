@@ -210,7 +210,10 @@ def std(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
                  keepdims=keepdims)
 
 
-def nanmean(a, axis=None, dtype=None, out=None, keepdims=False):
+def nanmean(
+    a, axis=None, dtype=None, out=None, keepdims=numpy._NoValue, *,
+    where=numpy._NoValue
+):
     """Returns the arithmetic mean along an axis ignoring NaN values.
 
     Args:
@@ -228,15 +231,53 @@ def nanmean(a, axis=None, dtype=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.nanmean`
 
     """
-    if a.dtype.kind in 'biu':
-        return a.mean(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+    if keepdims is numpy._NoValue:
+        keepdims = False
 
-    # TODO(okuta): check type
-    return _statistics._nanmean(
-        a, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+    a = cupy.asanyarray(a)
+
+    if a.dtype.kind in 'fc':
+        isnan_mask = cupy.isnan(a)
+        if where is not numpy._NoValue and where is not None:
+            valid = cupy.asanyarray(where) & ~isnan_mask
+        else:
+            valid = ~isnan_mask
+    else:
+        if where is not numpy._NoValue and where is not None:
+            valid = cupy.asanyarray(where)
+        else:
+            valid = None
+
+    if valid is not None:
+        sum_valid = cupy.nansum(a, axis=axis, dtype=dtype,
+                                keepdims=keepdims, where=valid)
+        count = valid.sum(axis=axis, keepdims=keepdims)
+    else:
+        sum_valid = cupy.nansum(a, axis=axis, dtype=dtype, keepdims=keepdims)
+        if a.dtype.kind in 'fc':
+            count = (~isnan_mask).sum(axis=axis, keepdims=keepdims)
+        else:
+            if axis is None:
+                count = a.size
+            else:
+                axes = axis if isinstance(axis, tuple) else (axis,)
+                count = 1
+                for ax in axes:
+                    count *= a.shape[ax]
+            count = float(count)
+
+    res = sum_valid / count
+    if out is not None:
+        cupy.copyto(out, res)
+        return out
+    return res
 
 
-def nanvar(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
+def nanvar(
+    a, axis=None, dtype=None, out=None, ddof=0,
+    keepdims=numpy._NoValue, *, where=numpy._NoValue,
+    mean=numpy._NoValue, correction=numpy._NoValue
+):
     """Returns the variance along an axis ignoring NaN values.
 
     Args:
@@ -254,16 +295,81 @@ def nanvar(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
     .. seealso:: :func:`numpy.nanvar`
 
     """
-    if a.dtype.kind in 'biu':
-        return a.var(axis=axis, dtype=dtype, out=out, ddof=ddof,
-                     keepdims=keepdims)
+    if keepdims is numpy._NoValue:
+        keepdims = False
 
-    # TODO(okuta): check type
-    return _statistics._nanvar(
-        a, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
+    a = cupy.asanyarray(a)
+
+    if correction is not numpy._NoValue:
+        if ddof != 0:
+            raise ValueError(
+                "ddof and correction can't be provided simultaneously."
+            )
+        ddof = correction
+
+    if mean is numpy._NoValue or mean is None:
+        mean = nanmean(a, axis=axis, dtype=dtype, keepdims=True, where=where)
+    else:
+        mean = cupy.asanyarray(mean)
+
+    if a.dtype.kind == 'c':
+        sq_diff = cupy.abs(a - mean) ** 2
+    else:
+        sq_diff = (a - mean) ** 2
+
+    if a.dtype.kind in 'fc':
+        isnan_mask = cupy.isnan(a)
+        if where is not numpy._NoValue and where is not None:
+            valid = cupy.asanyarray(where) & ~isnan_mask
+        else:
+            valid = ~isnan_mask
+    else:
+        if where is not numpy._NoValue and where is not None:
+            valid = cupy.asanyarray(where)
+        else:
+            valid = None
+
+    if valid is not None:
+        sum_sq_diff = cupy.nansum(
+            sq_diff, axis=axis, dtype=dtype, keepdims=keepdims, where=valid)
+        count = valid.sum(axis=axis, keepdims=keepdims)
+    else:
+        sum_sq_diff = cupy.nansum(
+            sq_diff, axis=axis, dtype=dtype, keepdims=keepdims)
+        if a.dtype.kind in 'fc':
+            count = (~isnan_mask).sum(axis=axis, keepdims=keepdims)
+        else:
+            if axis is None:
+                count = a.size
+            else:
+                axes = axis if isinstance(axis, tuple) else (axis,)
+                count = 1
+                for ax in axes:
+                    count *= a.shape[ax]
+            count = float(count)
+
+    if isinstance(count, cupy.ndarray):
+        div = cupy.maximum(count - ddof, 0)
+    else:
+        div = max(count - ddof, 0)
+        if div <= 0:
+            import warnings
+            warnings.warn("Degrees of freedom <= 0 for slice",
+                          RuntimeWarning, stacklevel=2)
+
+    res = sum_sq_diff / div
+
+    if out is not None:
+        cupy.copyto(out, res)
+        return out
+    return res
 
 
-def nanstd(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
+def nanstd(
+    a, axis=None, dtype=None, out=None, ddof=0,
+    keepdims=numpy._NoValue, *, where=numpy._NoValue,
+    mean=numpy._NoValue, correction=numpy._NoValue
+):
     """Returns the standard deviation along an axis ignoring NaN values.
 
     Args:
@@ -281,10 +387,14 @@ def nanstd(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
     .. seealso:: :func:`numpy.nanstd`
 
     """
-    if a.dtype.kind in 'biu':
-        return a.std(axis=axis, dtype=dtype, out=out, ddof=ddof,
-                     keepdims=keepdims)
+    if keepdims is numpy._NoValue:
+        keepdims = False
 
-    # TODO(okuta): check type
-    return _statistics._nanstd(
-        a, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)
+    var = nanvar(a, axis=axis, dtype=dtype, ddof=ddof, keepdims=keepdims,
+                 where=where, mean=mean, correction=correction)
+    res = cupy.sqrt(var)
+
+    if out is not None:
+        cupy.copyto(out, res)
+        return out
+    return res
