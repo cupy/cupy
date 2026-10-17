@@ -63,7 +63,7 @@ git tag v14.0.0a1        # tag 名与包版本 14.0.0a1 对齐（PEP 440）
    `testpypi`：传 TestPyPI 做安装冒烟 
    `pypi` 或 `release: published`：传正式 PyPI + 建/更新 GitHub Release 附 wheel
 
-> 建议 wheel 命名带 CANN train：主力 train 用裸版本（`numpy_ascend-14.0.0a1-cp311-cp311-manylinux_2_28_x86_64.whl`，传 PyPI），其他 train 用本地版本段（`numpy_ascend-14.0.0a1+cann8.5-...whl`，仅 GitHub Release + `--find-links` 安装）——PyPI 拒绝本地版本段，详见 §7；sdist 不绑 CANN 版本，全 Python/CANN 通用 。
+> 建议 wheel 命名带 CANN train：主力 train 用裸版本（`numpy_ascend-14.0.0a1-cp311-cp311-manylinux_2_34_x86_64.whl`，传 PyPI），其他 train 用本地版本段（`numpy_ascend-14.0.0a1+cann8.5-...whl`，仅 GitHub Release + `--find-links` 安装）——PyPI 拒绝本地版本段，详见 §7；sdist 不绑 CANN 版本，全 Python/CANN 通用 。
 
 ## 二、CANN 镜像与矩阵选择
 
@@ -180,15 +180,15 @@ cmake … && python -m build --wheel
    dispatch 时 `archs=aarch64` + aarch64 可用的 CANN tag 即可；注意同一 tag 会同时被
    x86 和 arm job 拉取，需该 tag 在 quay 上有多架构 manifest（或另传 arm 专用 tag）。
 
-## 七、平台标签与 CANN train：manylinux_2_28 + 本地版本段（2026-10 定稿，v2）
+## 七、平台标签与 CANN train：manylinux_2_34 + 本地版本段（2026-10 定稿，v3）
 
 **当前产物命名**（CI + `setup.py`）：
 
 ```
 # PyPI 上的主力 train（裸公共版本，Warehouse 拒绝本地版本段）：
-numpy_ascend-14.0.0a1-cp311-cp311-manylinux_2_28_x86_64.whl
+numpy_ascend-14.0.0a1-cp311-cp311-manylinux_2_34_x86_64.whl
 # 其他 train（仅 GitHub Release，本地版本段标识 train）：
-numpy_ascend-14.0.0a1+cann8.5-cp311-cp311-manylinux_2_28_x86_64.whl
+numpy_ascend-14.0.0a1+cann8.5-cp311-cp311-manylinux_2_34_x86_64.whl
 ```
 
 四个设计决策，都是被 PyPI / pip 的现实约束逼出来的：
@@ -238,45 +238,61 @@ numpy_ascend-14.0.0a1+cann8.5-cp311-cp311-manylinux_2_28_x86_64.whl
    auditwheel repair 失败，Release 资产依然可 `pip install`（直链或
    find-links）。manylinux 只是 PyPI 上传的准入条件。
 
-4. **平台标签 = manylinux_2_28**：`bdist_wheel` 默认按构建机打
-   `linux_x86_64` / `linux_aarch64`，**不做 glibc 兼容检测**，而 PyPI
-   （Warehouse）**拒绝** `linux_*` 平台标签的 wheel。因此在 CI 的容器构建
-   之后增加 `auditwheel repair` 一步（见 `build-cann-wheels.yml`）：
+4. **平台标签 = manylinux_2_34（实测基线，auditwheel 自动判定）**：`bdist_wheel`
+   默认按构建机打 `linux_x86_64` / `linux_aarch64`，**不做 glibc 兼容检测**，
+   而 PyPI（Warehouse）**拒绝** `linux_*` 平台标签的 wheel。因此在 CI 的容器
+   构建之后增加 `auditwheel repair` 一步（见 `build-cann-wheels.yml`）：
 
    ```bash
-   uv pip install auditwheel
-   auditwheel repair --plat manylinux_2_28_$TARGET_ARCH \
+   # patchelf 是独立二进制，不是 auditwheel 的 Python 依赖，必须显式安装，
+   # 否则 repair 死在 "Cannot find required utility 'patchelf' in PATH"
+   uv pip install auditwheel patchelf
+   auditwheel show dist/*.whl || true     # 日志记录真实符号基线
+   # 不传 --plat：让 auditwheel 按符号基线选"最高兼容标签"，诚实且自适应
+   auditwheel repair \
        --exclude '/usr/local/Ascend/*' --exclude '*/Ascend/*' \
        dist/*.whl -w /src/wheelhouse
    ```
 
-   要点：
+   **2026-10-17 实测**（对 `numpy_ascend-14.0.0a1+cann9.0-...linux_x86_64.whl`
+   跑 `auditwheel show`）：libc 符号最高 `GLIBC_2.32`，`libpthread.so.0` 在
+   DT_NEEDED 里（glibc 2.34 起才被 manylinux 策略允许），libstdc++ 最高
+   `GLIBCXX_3.4.29` → **基线 = `manylinux_2_34_x86_64`**。CANN 官方镜像基于
+   Ubuntu 22.04（glibc 2.35），这就是该平台本身的基线；想要
+   `manylinux_2_28` 只能在 `quay.io/pypa/manylinux_2_28` 容器里自行安装 CANN
+   再构建（CANN 官方只发 ubuntu/openeuler 镜像，需自行验证）。
+   **PyPI 接受任意 `manylinux_<major>_<minor>_<arch>`**（warehouse 的正则
+   `^(many|musl)linux_\d+_\d+_<arch>`，arch 白名单含 x86_64/i686/aarch64/
+   armv7l/ppc64le/s390x/riscv64/ppc64，无版本上限），所以 2_34 可直接上传，
+   不需要伪造更低标签。
+   **安装侧**：pip 只在 glibc ≥ 2.34 的机器上选 manylinux_2_34 wheel
+   （Ubuntu 22.04+ / RHEL9+ / openEuler 22.03+）；更老的系统自动回退到 sdist
+   源码构建——这是正确行为，不要为此伪造标签。
+
+   其它要点：
 
    - **CANN 运行时库绝不 vendor 进 wheel**：它们必须来自目标机的 CANN 安装
      （ABI 与 toolkit 匹配）。auditwheel 的 `--exclude` 同时匹配 SONAME 与
      **解析后的真实路径**（fnmatch），所以按安装路径 `/usr/local/Ascend/*`
      整体排除即可覆盖 `libascendcl`/`libopapi`/`liboptiling`/`libcann_*` 及
-     其全部传递依赖，无需维护一长串库名名单。
-   - `libstdc++`/`libgcc_s` 等系统库不在排除名单里，auditwheel 会按标准
-     manylinux 行为 vendor 进 wheel——这同时缓解了 Package.md 里
-     "目标机 libstdc++ 过旧导致 `GLIBCXX_3.4.32 not found`" 那类问题。
-   - **repair 失败 = wheel 的符号基线高于 glibc 2.28**（CANN 官方镜像基于
-     Ubuntu 22.04，glibc 2.35；若扩展引用了 GLIBC_2.29+ 符号就会失败）。
-     CI 此时**不强行改标签**：保留未 repair 的 wheel 供 GitHub Release 使用
-     并打 `::warning::`，但 PyPI 上传会拒绝它。要修只有两条路：换更老的
-     构建基础镜像，或在 `quay.io/pypa/manylinux_2_28` 容器里自行安装 CANN
-     （CANN 官方只发 ubuntu/openeuler 镜像，需自行验证）。
-   - 发布前可本地预检：`auditwheel show dist/*.whl` 看当前标签与最高 glibc
-     符号要求；repair 后确认 wheel 内没有 CANN 库泄漏
-     （`unzip -l x.whl | grep -iE 'ascend|opapi|cann'` 应为空）。
-   - aarch64 侧同理产出 `manylinux_2_28_aarch64`。
+     其全部传递依赖，无需维护一长串库名名单。实测 repair 后的 wheel 内只有
+     `cupy/**.so` 与 `cupy/.data/_wheel.json`，无任何 CANN 库泄漏。
+   - **不要绕过 auditwheel 手工改标签**：只改文件名不够——wheel 内部的
+     `WHEEL` 文件里还有 `Tag: cp311-cp311-linux_x86_64`，必须同时改
+     WHEEL Tag 行和 RECORD 哈希；更重要的是标签是对 glibc 兼容性的承诺，
+     无验证打标签会让老系统用户 import 时报
+     `version 'GLIBC_2.xx' not found`。`auditwheel show` 一行就能看到真实
+     基线，没有理由绕过。
+   - repair 失败时 CI **不强行改标签**：保留未 repair 的 wheel 供 GitHub
+     Release 使用并打 `::warning::`，但 PyPI 上传会拒绝它。
+   - aarch64 侧同理产出 `manylinux_2_34_aarch64`。
 
 **wheel 命名总览**（单一 PyPI 项目 `numpy-ascend`，import 包恒为 `cupy`）：
 
 | 构件 | 命名 | 说明 |
 |---|---|---|
-| wheel（PyPI train） | `numpy_ascend-<ver>-cp<py>-cp<py>-manylinux_2_28_<arch>.whl` | 裸公共版本；`setup.py::_PYPI_CANN_TRAIN` 指定，当前 cann90 |
-| wheel（其他 train） | `numpy_ascend-<ver>+cann<XY>-cp<py>-cp<py>-manylinux_2_28_<arch>.whl` | 本地版本段；仅 GitHub Release，`--find-links` 安装 |
+| wheel（PyPI train） | `numpy_ascend-<ver>-cp<py>-cp<py>-manylinux_2_34_<arch>.whl` | 裸公共版本；`setup.py::_PYPI_CANN_TRAIN` 指定，当前 cann90 |
+| wheel（其他 train） | `numpy_ascend-<ver>+cann<XY>-cp<py>-cp<py>-manylinux_2_34_<arch>.whl` | 本地版本段；仅 GitHub Release，`--find-links` 安装 |
 | sdist | `numpy_ascend-<ver>.tar.gz` | 与 CPython/CANN 均无关，只发一份 |
 | CUDA/HIP 构建 | `cupy-<ver>-…` | 同一份代码的上游命名，不受影响 |
 
@@ -294,4 +310,14 @@ pip install numpy-ascend==14.0.0a1+cann8.5 \
 索引上，从不上传 PyPI），所以本地版本段的 wheel 只能走 GitHub Release；
 `--find-links`（不是 `--index-url`）指向 release 资产页即可安装——GitHub
 Release 不是 PEP 503 索引（没有 `/simple/` 项目页），但资产页是带链接的 HTML
-页，正是 pip `--find-links` 支持的格式。
+页，正是 pip `--find-links` 支持的格式。
+
+
+### pypi已传的 whl 不能覆盖
+这点经常和「手动上传」一起问，顺带提醒：
+同版本同文件名 不能重传，哪怕你把 release 删了也不行
+改了代码必须升版本号：0.1.0 → 0.1.1
+只想换某个平台的 wheel 不升主版本 → 加 wheel build tag：
+numpy_ascend_ext-0.1.0-1-cp312-cp312-manylinux_2_34_x86_64.whl
+
+pip 会挑 build tag 最高的

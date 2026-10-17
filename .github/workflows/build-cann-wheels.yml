@@ -7,9 +7,10 @@
 # (see self-hosted-ci.yml).
 #
 # Wheels are auto-named by setup.py per CANN release train, e.g.
-#   numpy_ascend-14.0.0a1+cann90-cp311-cp311-manylinux_2_28_x86_64.whl
-# (the CANN train is a PEP 440 local version segment; the platform tag is
-# standard manylinux_2_28, produced by the auditwheel repair step below -
+#   numpy_ascend-14.0.0a1+cann90-cp311-cp311-manylinux_2_34_x86_64.whl
+# (the CANN train is a PEP 440 local version segment; the platform tag is a
+# standard manylinux_* tag derived by auditwheel from the wheel's real glibc
+# symbol baseline - manylinux_2_34 for the Ubuntu 22.04-based CANN images;
 # PyPI rejects bare `linux_*` tags). The sdist is CANN-agnostic (bare
 # `numpy_ascend-*.tar.gz`) and builds once.
 #
@@ -170,26 +171,31 @@ jobs:
             python -V
             python -m build --wheel --no-isolation -o /src/dist
 
-            # Repair to manylinux_2_28: PyPI rejects bare `linux_*` platform
+            # Repair to a manylinux tag: PyPI rejects bare `linux_*` platform
             # tags. CANN runtime libs (libascendcl, libopapi, liboptiling, ...)
             # must come from the host CANN install, so they are excluded by
             # resolved path - auditwheel matches `--exclude` against both the
             # SONAME and the realpath (see
-            # docs/ascend/GithubPackagingAndPypi.md section 7). If the wheel is
-            # not 2_28-compatible (e.g. a symbol newer than GLIBC_2.28), repair
-            # fails loudly and the unrepaired wheel is shipped for the GitHub
-            # Release, but PyPI publish will reject it - fix the symbol
-            # baseline, do not force the tag.
-            # NOTE: `patchelf` is NOT a dependency of the auditwheel package
+            # docs/ascend/GithubPackagingAndPypi.md section 7).
+            # NOTE 1: `patchelf` is NOT a dependency of the auditwheel package
             # (it ships the patchelf binary); without it repair dies with
             # "Cannot find required utility 'patchelf' in PATH" - install both.
             # Fall back to apt if the PyPI wheel has no binary for this arch.
+            # NOTE 2: no `--plat`: the CANN images are Ubuntu 22.04 (glibc
+            # 2.35) and the built extensions reference libpthread.so.0 plus
+            # GLIBC_2.32 symbols, which pins the real baseline at
+            # manylinux_2_34 (measured 2026-10: auditwheel show -> "constrains
+            # the platform tag to manylinux_2_34_x86_64"). Letting auditwheel
+            # derive the tag from the symbols is both honest and self-adapting;
+            # PyPI accepts arbitrary manylinux_<major>_<minor>_<arch>. A
+            # manylinux_2_28 wheel would need a manylinux_2_28 build container
+            # with CANN installed.
             uv pip install auditwheel patchelf || true
             if ! command -v patchelf >/dev/null 2>&1; then
               apt-get update -qq && apt-get install -y -qq patchelf
             fi
             auditwheel show dist/*.whl || true
-            if auditwheel repair --plat "manylinux_2_28_$TARGET_ARCH" \
+            if auditwheel repair \
                 --exclude '/usr/local/Ascend/*' \
                 --exclude '*/Ascend/*' \
                 dist/*.whl -w /src/wheelhouse; then

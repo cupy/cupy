@@ -91,9 +91,9 @@ runtime (`libstdc++`, glibc >= 2.27) is new enough; CI is done on aarch64 Linux.
 | 3.12 | yes | yes |
 
 - Binary wheels: see the [Releases page](https://github.com/qingfengxia/numpy-ascend/releases).
-  Wheel naming: `numpy_ascend-<ver>+cann<XY>-cp<py>-cp<py>-manylinux_2_28_<arch>.whl`
+  Wheel naming: `numpy_ascend-<ver>+cann<XY>-cp<py>-cp<py>-manylinux_2_34_<arch>.whl`
   for non-PyPI trains (the `+cann8.5` / `+cann9.0` local version segment,
-  PyTorch-style) and `numpy_ascend-<ver>-cp<py>-cp<py>-manylinux_2_28_<arch>.whl`
+  PyTorch-style) and `numpy_ascend-<ver>-cp<py>-cp<py>-manylinux_2_34_<arch>.whl`
   for the train published to PyPI (currently CANN 9.0). Pick the wheel
   matching your interpreter (`cp311` = Python 3.11), CPU architecture and
   **CANN release train**.
@@ -132,8 +132,8 @@ for release `v14.0.0a1`:
 
 | CANN on the target machine | x86_64 wheel | aarch64 wheel | Where |
 |---|---|---|---|
-| 9.0.x | `numpy_ascend-14.0.0a1-cp311-cp311-manylinux_2_28_x86_64.whl` | `numpy_ascend-14.0.0a1-cp311-cp311-manylinux_2_28_aarch64.whl` | PyPI + Release |
-| 8.5.x | `numpy_ascend-14.0.0a1+cann8.5-cp311-cp311-manylinux_2_28_x86_64.whl` | `numpy_ascend-14.0.0a1+cann8.5-cp311-cp311-manylinux_2_28_aarch64.whl` | Release only |
+| 9.0.x | `numpy_ascend-14.0.0a1-cp311-cp311-manylinux_2_34_x86_64.whl` | `numpy_ascend-14.0.0a1-cp311-cp311-manylinux_2_34_aarch64.whl` | PyPI + Release |
+| 8.5.x | `numpy_ascend-14.0.0a1+cann8.5-cp311-cp311-manylinux_2_34_x86_64.whl` | `numpy_ascend-14.0.0a1+cann8.5-cp311-cp311-manylinux_2_34_aarch64.whl` | Release only |
 
 The non-PyPI trains carry the train as a PEP 440 **local version segment**
 (the same scheme as PyTorch's `torch==2.5.1+cu121`), so it can be pinned
@@ -141,10 +141,10 @@ exactly. Any release wheel can also be installed by direct URL or local file
 (download URL pattern: `.../releases/download/<tag>/<wheel-file>`):
 
 ```sh
-pip install https://github.com/qingfengxia/numpy-ascend/releases/download/v14.0.0a1/numpy_ascend-14.0.0a1+cann8.5-cp311-cp311-manylinux_2_28_x86_64.whl
+pip install https://github.com/qingfengxia/numpy-ascend/releases/download/v14.0.0a1/numpy_ascend-14.0.0a1+cann8.5-cp311-cp311-manylinux_2_34_x86_64.whl
 
 # or download the wheel from the Releases page first, then install the file:
-pip install ./numpy_ascend-14.0.0a1+cann8.5-cp311-cp311-manylinux_2_28_x86_64.whl
+pip install ./numpy_ascend-14.0.0a1+cann8.5-cp311-cp311-manylinux_2_34_x86_64.whl
 
 source /usr/local/Ascend/ascend-toolkit/set_env.sh
 export ASCEND_HOME_PATH=/usr/local/Ascend/ascend-toolkit/latest

@@ -402,18 +402,18 @@ Producing the two Ascend wheels:
 export ASCEND_HOME_PATH=/usr/local/Ascend/ascend-toolkit/latest   # CANN 8.5.x
 export CUPY_INSTALL_USE_ASCEND=1
 python -m build --wheel
-# -> numpy_ascend-<ver>+cann8.5-cp311-cp311-manylinux_2_28_x86_64.whl
+# -> numpy_ascend-<ver>+cann8.5-cp311-cp311-manylinux_2_34_x86_64.whl
 
 # ---- CANN 9.0 ----
 export ASCEND_HOME_PATH=/usr/local/Ascend/ascend-toolkit/9.0      # CANN 9.0.x
 export CUPY_INSTALL_USE_ASCEND=1
 python -m build --wheel
-# -> numpy_ascend-<ver>-cp311-cp311-manylinux_2_28_x86_64.whl  # PyPI train: bare version
+# -> numpy_ascend-<ver>-cp311-cp311-manylinux_2_34_x86_64.whl  # PyPI train: bare version
 ```
 
 Note: `python -m build --wheel` on a plain Ubuntu host produces a `linux_*`
 platform tag, which PyPI rejects — run `auditwheel repair --plat
-manylinux_2_28_<arch>` (with the CANN libs excluded by path) to retag, exactly
+manylinux_2_34_<arch>` (with the CANN libs excluded by path) to retag, exactly
 as `.github/workflows/build-cann-wheels.yml` does (see
 `docs/ascend/GithubPackagingAndPypi.md` §7).
 
