@@ -15,6 +15,8 @@ By Qingfeng Xia
 
 </div>
 
+[English](README.md) | [中文 Readme](Readme_ZH.md)
+
 **numpy-ascend** brings the CuPy ndarray API to Huawei Ascend NPUs. It is a fork
 of CuPy (v14 lineage, NumPy 2.x) with the CUDA backend replaced by an Ascend
 backend built on CANN's `aclnn` operator library, so that existing NumPy/CuPy
@@ -89,9 +91,11 @@ runtime (`libstdc++`, glibc >= 2.27) is new enough; CI is done on aarch64 Linux.
 | 3.12 | yes | yes |
 
 - Binary wheels: see the [Releases page](https://github.com/qingfengxia/numpy-ascend/releases).
-  Wheel naming: `numpy_ascend_cann<XY>-<ver>-cp3XX-cp3XX-manylinux_<glibc>_<arch>.whl`
+  Wheel naming: `numpy_ascend-<ver>+cann<XY>-cp<py>-cp<py>-manylinux_2_28_<arch>.whl`
   — pick the wheel matching your interpreter (`cp311` = Python 3.11), CPU
-  architecture and CANN release train.
+  architecture and **CANN release train** (the `+cann8.5` / `+cann9.0` local
+  version segment, PyTorch-style). All trains share the single
+  `numpy-ascend` project.
 - The wheel does **not** bundle the CANN SDK: the target machine needs a CANN
   toolkit of the same release train plus `set_env.sh`; see
   [docs/ascend/Package.md](docs/ascend/Package.md) for the hard runtime
@@ -104,14 +108,45 @@ runtime (`libstdc++`, glibc >= 2.27) is new enough; CI is done on aarch64 Linux.
 
 ### 1. From a binary wheel (recommended)
 
+Download the prebuilt wheels from the
+[Releases page](https://github.com/qingfengxia/numpy-ascend/releases).
+
+Each release ships one wheel per (CPython × architecture × CANN train), e.g.
+for release `v14.0.0a1`:
+
+| CANN on the target machine | x86_64 wheel | aarch64 wheel |
+|---|---|---|
+| 9.0.x | `numpy_ascend-14.0.0a1+cann9.0-cp311-cp311-manylinux_2_28_x86_64.whl` | `numpy_ascend-14.0.0a1+cann9.0-cp311-cp311-manylinux_2_28_aarch64.whl` |
+| 8.5.x | `numpy_ascend-14.0.0a1+cann8.5-cp311-cp311-manylinux_2_28_x86_64.whl` | `numpy_ascend-14.0.0a1+cann8.5-cp311-cp311-manylinux_2_28_aarch64.whl` |
+
+The CANN train is a PEP 440 **local version segment** (the same scheme as
+PyTorch's `torch==2.5.1+cu121`), so it can be pinned exactly:
+
 ```sh
-pip install numpy_ascend_cann90-...whl          # pick from the Releases page
+# from PyPI (once publishing is live) - pin the train explicitly:
+pip install numpy-ascend==14.0.0a1+cann9.0     # CANN 9.0.x
+pip install numpy-ascend==14.0.0a1+cann8.5     # CANN 8.5.x
+pip install numpy-ascend==14.0.0a1             # any train (highest = cann9.0)
+
+# straight from the GitHub release (download URL pattern:
+# .../releases/download/<tag>/<wheel-file>):
+pip install https://github.com/qingfengxia/numpy-ascend/releases/download/v14.0.0a1/numpy_ascend-14.0.0a1+cann9.0-cp311-cp311-manylinux_2_28_x86_64.whl
+
+# or download the wheel from the Releases page first, then install the file:
+pip install ./numpy_ascend-14.0.0a1+cann9.0-cp311-cp311-manylinux_2_28_x86_64.whl
 
 source /usr/local/Ascend/ascend-toolkit/set_env.sh
 export ASCEND_HOME_PATH=/usr/local/Ascend/ascend-toolkit/latest
 
 python -c "import cupy; print(cupy.__version__, cupy.backends.ascend.check_cann_version())"
 ```
+
+How to choose the CANN train: it must match the CANN **toolkit** installed
+on the target machine (`ls /usr/local/Ascend/`, or `npu-smi info`), not the
+NPU driver version. A `+cann8.5` wheel on a CANN 9.0 host (or vice versa)
+fails at import with an aclnn ABI mismatch — install the matching train
+(`pip uninstall numpy-ascend` first, since all trains share one distribution
+name).
 
 ### 2. From source (new platform / CANN version, or development)
 

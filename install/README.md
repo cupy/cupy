@@ -373,19 +373,23 @@ done
 
 ### Wheel naming and version safety
 
-`Backend.get_wheel_platform_tag()` appends an SDK identifier to the wheel's
-platform tag, and `Backend.get_wheel_metadata()` records the exact SDK version
-into `cupy/.data/_wheel.json`. Both are consumed by `setup.py`
-(`bdist_wheel` cmdclass) and `cupy/backends/ascend/__init__.py` respectively.
+`Backend.get_wheel_platform_tag()` supplies the SDK identifier that becomes the
+wheel's PEP 440 local version segment, and `Backend.get_wheel_metadata()`
+records the exact SDK version into `cupy/.data/_wheel.json`. Both are consumed
+by `setup.py` (`bdist_wheel` cmdclass) and
+`cupy/backends/ascend/__init__.py` respectively.
 
-The distribution *name* is also backend-dependent: `[project].name` in
+The distribution *name* is backend-dependent: `[project].name` in
 `pyproject.toml` is `cupy` (CUDA/HIP/CPU builds), while an Ascend build renames
-itself in `setup.py` (`_BackendAwareDistribution`) to
-`numpy-ascend-<platform tag without the dot>`, i.e. `numpy-ascend-cann85` /
-`numpy-ascend-cann90` — mirroring upstream's `cupy-cuda11x` scheme. The `sdist`
-command is exempt and keeps the bare `numpy-ascend`, because a source tarball is
-not tied to a CANN release (`docs/ascend/Package.md` §2.9). The import packages
-(`cupy`, `cupyx`, `cupy_backends`) never change, so `import cupy` works on both.
+itself in `setup.py` (`_BackendAwareDistribution`) to the bare `numpy-ascend` —
+one PyPI project for every CANN release train. The CANN train is encoded as a
+PEP 440 **local version segment** of the wheel (`+cann85` / `+cann90`, injected
+by the `bdist_wheel` cmdclass in `setup.py`), mirroring PyTorch's
+`torch==2.5.1+cu121`, so `pip install numpy-ascend==<ver>+cann90` pins the exact
+train. The `sdist` command keeps the same bare name, because a source tarball
+is not tied to a CANN release (`docs/ascend/Package.md` §2.9). The import
+packages (`cupy`, `cupyx`, `cupy_backends`) never change, so `import cupy` works
+on both.
 
 Producing the two Ascend wheels:
 
@@ -394,14 +398,20 @@ Producing the two Ascend wheels:
 export ASCEND_HOME_PATH=/usr/local/Ascend/ascend-toolkit/latest   # CANN 8.5.x
 export CUPY_INSTALL_USE_ASCEND=1
 python -m build --wheel
-# -> numpy_ascend_cann85-<ver>-cp311-cp311-manylinux_2_17_x86_64.cann8.5.whl
+# -> numpy_ascend-<ver>+cann8.5-cp311-cp311-manylinux_2_28_x86_64.whl
 
 # ---- CANN 9.0 ----
 export ASCEND_HOME_PATH=/usr/local/Ascend/ascend-toolkit/9.0      # CANN 9.0.x
 export CUPY_INSTALL_USE_ASCEND=1
 python -m build --wheel
-# -> numpy_ascend_cann90-<ver>-cp311-cp311-manylinux_2_17_x86_64.cann9.0.whl
+# -> numpy_ascend-<ver>+cann9.0-cp311-cp311-manylinux_2_28_x86_64.whl
 ```
+
+Note: `python -m build --wheel` on a plain Ubuntu host produces a `linux_*`
+platform tag, which PyPI rejects — run `auditwheel repair --plat
+manylinux_2_28_<arch>` (with the CANN libs excluded by path) to retag, exactly
+as `.github/workflows/build-cann-wheels.yml` does (see
+`docs/ascend/github_packaging_pypi.md` §7).
 
 The two wheels are distinct artifacts to `pip` (different distribution names
 *and* platform tags), but they must **not** be installed into the same

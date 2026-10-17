@@ -110,12 +110,16 @@ class Backend(abc.ABC):
     embed_sdk_in_rpath: bool = True
 
     def get_wheel_platform_tag(self) -> str | None:
-        """Return a platform-tag suffix identifying the SDK, or ``None``.
+        """Return an SDK identifier used as the wheel's local version segment,
+        or ``None``.
 
-        The value is appended to the wheel's platform tag, e.g. ``'cann8.5'``
-        producing ``manylinux_2_17_x86_64.cann8.5``. This lets several
-        mutually-incompatible SDK builds coexist on an index without being
-        mistaken for one another.
+        The value becomes a PEP 440 local version segment, e.g. ``'cann8.5'``
+        producing ``numpy_ascend-14.0.0a1+cann8.5-...whl`` (the same scheme as
+        PyTorch's ``torch==2.5.1+cu121``). This lets several
+        mutually-incompatible SDK builds coexist in one project on an index
+        without being mistaken for one another, and lets users pin the exact
+        build with ``pip install <name>==<ver>+<tag>``. The platform tag
+        itself stays standard manylinux (produced by auditwheel in CI).
         """
         return None
 

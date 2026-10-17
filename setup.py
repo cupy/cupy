@@ -19,37 +19,50 @@ ctx = cupy_builder.Context(source_root)
 cupy_builder.initialize(ctx)
 
 
-# Base distribution name used for the Ascend build. `pyproject.toml` keeps
-# `cupy` for the CUDA/HIP/CPU builds; the Ascend distribution adds the CANN
-# release train as a suffix (`numpy-ascend-cann85`, `numpy-ascend-cann90`),
-# mirroring upstream's `cupy-cuda11x` / `cupy-cuda12x` scheme so that
-# `pip list` / `pip freeze` / `pip uninstall` can tell the trains apart. The
+# Distribution name used for every Ascend artifact (wheels AND sdist).
+# `pyproject.toml` keeps `cupy` for the CUDA/HIP/CPU builds. A single PyPI
+# project `numpy-ascend` hosts every CANN release train: the trains are
+# told apart by the wheel platform tag suffix (`...cann8.5` / `...cann9.0`,
+# see `_sdk_tag` below), which also keeps the wheel filenames distinct, so
+# cann85 and cann90 wheels can live side by side in one project. The
 # import package is `cupy` on every backend.
 ASCEND_DISTRIBUTION_NAME = 'numpy-ascend'
 
-
-def _ascend_distribution_name() -> str:
-    """Return e.g. ``'numpy-ascend-cann85'`` for the active CANN release train.
-
-    Falls back to the bare ``'numpy-ascend'`` when the CANN version could not be
-    determined (no platform tag to derive the suffix from).
-    """
-    tag = cupy_setup_build.get_wheel_platform_tag(ctx)
-    if not tag:
-        return ASCEND_DISTRIBUTION_NAME
-    # 'cann8.5' -> 'cann85' (a dot is not a valid PEP 508 name character)
-    return f'{ASCEND_DISTRIBUTION_NAME}-{tag.replace(".", "")}'
+# Pure-Python cupyx subpackages removed from the Ascend wheel. They are
+# CUDA-specific (cusolver/cusparse/NCCL-backed or CUDA-only kernels) and
+# essentially unusable on Ascend; accessing them raises ImportError instead
+# of silently returning wrong results. The compiled cupyx extension modules
+# (cusolver.pyx/cusparse.pyx/...) are already not built for Ascend (see
+# cupy_builder/features/ascend.py) and degrade to _StubModule in cupyx.
+#
+# MUST KEEP (hard/lazy imports from `cupy` itself or `cupyx/__init__.py`):
+#   cupyx.scipy.fft      - imported at module scope by cupy/_math/misc.py and
+#                          cupy/lib/_routines_poly.py
+#   cupyx.scipy.sparse   - imported at module scope by cupyx/scipy/__init__.py
+#                          and cupy/testing
+#   cupyx.scipy.special  - lazily imported by cupy/_core/core.pyx (ufuncs)
+#   cupyx.linalg, cupyx.jit, cupyx.optimizing, cupyx.scipy (top level) -
+#                          imported by cupyx/__init__.py / cupy._functional
+_CUPYX_EXCLUDED_ON_ASCEND = [
+    'cupyx.distributed',      # NCCL-based DistributedArray, CUDA-only
+    'cupyx.scipy.fftpack',
+    'cupyx.scipy.interpolate',
+    'cupyx.scipy.ndimage',
+    'cupyx.scipy.signal',
+    'cupyx.scipy.spatial',
+    'cupyx.scipy.stats',
+]
 
 
 class _BackendAwareDistribution(Distribution):
     """Rename the distribution when building for Ascend.
 
-    * Wheels and editable installs are named after the CANN release train,
-      e.g. ``numpy-ascend-cann85``.
-    * ``sdist`` is deliberately left as the bare ``numpy-ascend``: the source
-      tarball holds Cython sources only (``MANIFEST.in`` excludes the generated
-      ``.cpp``) and no CANN-specific artifact, so one tarball can build wheels
-      for every CPython and every CANN release train.
+    * Every Ascend artifact (wheel, editable install, sdist) is named
+      ``numpy-ascend``: one PyPI project for all CANN release trains. The
+      source tarball is CANN-agnostic by nature (``MANIFEST.in`` excludes
+      the generated ``.cpp``), and wheels of different trains coexist in
+      the project thanks to the ``+cann8.5`` / ``+cann9.0`` local version
+      segment (see ``_sdk_tag`` below), which keeps filenames distinct.
 
     PEP 621 forbids a dynamic ``[project].name``, and a static ``[project]``
     value silently wins over ``setup(name=...)``, so the rename has to be done
@@ -62,13 +75,18 @@ class _BackendAwareDistribution(Distribution):
         super().parse_config_files(*args, **kwargs)
         if ctx.get_backend_name() != 'ascend':
             return
-        if ctx.setup_command == 'sdist':
-            # One tarball for every CPython/CANN combination: keep the bare
-            # name instead of falling back to `[project].name` (which is
-            # `cupy`, the CUDA/HIP/CPU name).
-            self.metadata.name = ASCEND_DISTRIBUTION_NAME
-            return
-        self.metadata.name = _ascend_distribution_name()
+        # Keep the bare name instead of falling back to `[project].name`
+        # (which is `cupy`, the CUDA/HIP/CPU name).
+        self.metadata.name = ASCEND_DISTRIBUTION_NAME
+        # Prune CUDA-leaning pure-Python cupyx subpackages from the Ascend
+        # wheel: they are unusable there (CUDA-specific algorithms, no aclnn
+        # port) and only bloat the distribution. See _CUPYX_EXCLUDED_ON_ASCEND
+        # for the list and _CUPYX_KEEP_ON_ASCEND for why the rest must stay.
+        self.packages = [
+            p for p in self.packages
+            if not any(p == x or p.startswith(x + '.')
+                       for x in _CUPYX_EXCLUDED_ON_ASCEND)
+        ]
 # ASCEND: temp disable third-party submodule, by add dlpack.h into source 
 # if not cupy_builder.preflight_check(ctx):
 #     sys.exit(1)
@@ -125,13 +143,20 @@ if ctx.long_description_path is not None:
         long_description = f.read()
 
 
-# ASCEND: append the backend's SDK tag (e.g. `cann8.5`) to the wheel platform
-# tag so that wheels built against mutually-incompatible CANN releases can not
-# be confused with one another, giving e.g.
-#   numpy_ascend_cann85-14.0.0a1-cp311-cp311-manylinux_2_17_x86_64.cann8.5.whl
-# (a CUDA/HIP build of the same tree still produces `cupy-14.0.0a1-...whl`, and
-# the `sdist` command produces the CANN-agnostic `numpy_ascend-14.0.0a1.tar.gz`;
-# see `_BackendAwareDistribution` above). Either way the importable packages are
+# ASCEND: encode the backend's SDK tag (e.g. `cann8.5`) as a PEP 440
+# *local version segment* of the wheel (PyTorch-style CANN train selection),
+# giving e.g.
+#   numpy_ascend-14.0.0a1+cann9.0-cp311-cp311-manylinux_2_28_x86_64.whl
+# (the cann8.5 train of the same public version gives
+#   numpy_ascend-14.0.0a1+cann8.5-cp311-cp311-manylinux_2_28_x86_64.whl
+# so both trains upload into the single `numpy-ascend` PyPI project without
+# filename collisions, and users can pin the exact train with
+# `pip install numpy-ascend==14.0.0a1+cann9.0`). The platform tag stays
+# standard manylinux (produced by the auditwheel repair step in CI; PyPI
+# rejects bare `linux_*` tags). A CUDA/HIP build of the same tree produces
+# `cupy-14.0.0a1-...whl` (no local segment), and the `sdist` command
+# produces the CANN-agnostic `numpy_ascend-14.0.0a1.tar.gz` (see
+# `_BackendAwareDistribution` above). Either way the importable packages are
 # `cupy`/`cupyx`/`cupy_backends`.
 _sdk_tag = cupy_setup_build.get_wheel_platform_tag(ctx)
 
@@ -143,17 +168,18 @@ def _make_cmdclass():
 
         class bdist_wheel(_bdist_wheel):
             def finalize_options(self):
+                # Mutate BEFORE super(): wheel's finalize_options pre-finalizes
+                # `egg_info`, and `egg_info.finalize_options` snapshots the
+                # version (egg_version) and resets metadata.version to it, so
+                # the local segment must already be in place — otherwise only
+                # the filename carries it while PKG-INFO/dist-info keep the
+                # bare version (Warehouse rejects that mismatch).
+                version = self.distribution.get_version()
+                if f'+{_sdk_tag}' not in version:
+                    self.distribution.metadata.version = f'{version}+{_sdk_tag}'
                 super().finalize_options()
                 # The extensions are native, so never claim purity.
                 self.root_is_pure = False
-
-            def get_tag(self):
-                python, abi, plat = super().get_tag()
-                # Keep the python/abi tags untouched; only specialise the
-                # platform tag, appending the SDK tag.
-                if _sdk_tag not in plat:
-                    plat = f'{plat}.{_sdk_tag}'
-                return python, abi, plat
 
         cmds['bdist_wheel'] = bdist_wheel
     return cmds

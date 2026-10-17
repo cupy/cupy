@@ -342,6 +342,10 @@ class AscendBackend(Backend):
         """Return e.g. ``'cann8.5'`` so wheels for different CANN majors/minors
         can not be confused with one another.
 
+        The value is injected as the wheel's PEP 440 local version segment by
+        ``setup.py`` (``bdist_wheel`` cmdclass), giving
+        ``numpy_ascend-<ver>+cann8.5-...whl``.
+
         ``aclnn`` operator signatures change between CANN releases and
         ``libop_common.so``/``liboptiling.so`` are coupled per release, so a
         binary built against 8.5 is *not* a drop-in replacement for 9.0.
