@@ -174,12 +174,21 @@ jobs:
             # tags. CANN runtime libs (libascendcl, libopapi, liboptiling, ...)
             # must come from the host CANN install, so they are excluded by
             # resolved path - auditwheel matches `--exclude` against both the
-            # SONAME and the realpath (see docs/ascend/GithubPackagingAndPypi.md
-            # section 7). If the wheel is not 2_28-compatible (e.g. a symbol
-            # newer than GLIBC_2.28), repair fails loudly and the unrepaired
-            # wheel is shipped for the GitHub Release, but PyPI publish will
-            # reject it - fix the symbol baseline, do not force the tag.
-            uv pip install auditwheel
+            # SONAME and the realpath (see
+            # docs/ascend/GithubPackagingAndPypi.md section 7). If the wheel is
+            # not 2_28-compatible (e.g. a symbol newer than GLIBC_2.28), repair
+            # fails loudly and the unrepaired wheel is shipped for the GitHub
+            # Release, but PyPI publish will reject it - fix the symbol
+            # baseline, do not force the tag.
+            # NOTE: `patchelf` is NOT a dependency of the auditwheel package
+            # (it ships the patchelf binary); without it repair dies with
+            # "Cannot find required utility 'patchelf' in PATH" - install both.
+            # Fall back to apt if the PyPI wheel has no binary for this arch.
+            uv pip install auditwheel patchelf || true
+            if ! command -v patchelf >/dev/null 2>&1; then
+              apt-get update -qq && apt-get install -y -qq patchelf
+            fi
+            auditwheel show dist/*.whl || true
             if auditwheel repair --plat "manylinux_2_28_$TARGET_ARCH" \
                 --exclude '/usr/local/Ascend/*' \
                 --exclude '*/Ascend/*' \
