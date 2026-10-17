@@ -29,6 +29,18 @@ cupy.poly1d 相关代码全部位于 cupy/lib/，没有独立的 CUDA kernel，�
 
 ### profiler
 
+`cudaProfilerStart/Stop` 已映射到 ACL profiler（`cupy/backends/ascend/cupy_ascend_profiler.h`），
+`cupy.cuda.runtime.profilerStart()` / `cupyx.profiler.profile()` 可直接使用：
+
+- 会话状态机：`aclprofInit(path)` → `aclprofCreateConfig(dev, metrics, dataType)` →
+  `aclprofStart` … `aclprofStop` → `aclprofDestroyConfig` → `aclprofFinalize`（每次 Stop 都会 flush）
+- 环境变量：`CUPY_ASCEND_PROFILER`(0/1)、`CUPY_ASCEND_PROFILER_PATH`(结果目录)、
+  `CUPY_ASCEND_PROFILER_DATA_TYPE`、`CUPY_ASCEND_PROFILER_AICORE_METRICS`
+- CANN 9.x 的 `aclprof*` 不在 `libascendcl.so` 中（只在 `libmsprofiler.so`），故用 dlopen/dlsym
+  延迟解析，库缺失时退化为 no-op（等价 CUDA 未挂 profiler 的行为）
+- TODO：`cupy.cuda.nvtx` 的 mark/range → `aclprofMarkEx/aclprofRangeStart/RangeStop`；
+  与 msprof/mindstudio 结果目录联动
+
 ## 2. Debug和性能优化
 
 ### pytest

@@ -61,6 +61,7 @@
 | [CondaPackage.md](CondaPackage.md) | 实战总结（2026-10-07） | conda 打包 CANN 9.0 全流程与坑；**conda 保留 per-train 包名**（`numpy-ascend-cann90`），已与 wheel 命名分家 |
 | [install_cann_ops_packages.md](install_cann_ops_packages.md) | 操作笔记 | 自编 CANN 额外算子包（ops-sparse / ops-fft / ops-solver…） |
 | [CustomKernel.md](CustomKernel.md) | 方案（待确认） | 自定义 AscendC Kernel（对标 `cupy.RawKernel`）基础设施设计 |
+| [Profiler.md](Profiler.md) | 活跃（2026-10-17） | `cudaProfilerStart/Stop` → ACL profiler（aclprof）映射：语义差异、环境变量、`msprof` 导出、NPU 测试 |
 
 ## 3. 文档维护约定
 
