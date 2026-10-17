@@ -1,5 +1,6 @@
 # github release and pypi publish
-下面给一套“人工触发 → 多 wheel 构建 → 打 GitHub Release → 自动传 PyPI”的可落地计划，按你用 `quay.io/ascend/cann` 给 numpy-ascend 打包来设计。核心原则：**构建用 CANN 容器、发布用 OIDC Trusted Publishing、人工触发只出包/可只发 TestPyPI、正式发 PyPI 再走 release 或二次确认**。
+下面给一套“人工触发 → 多 wheel 构建 → 打 GitHub Release → 自动传 PyPI”的可落地计划，按你用 `quay.io/ascend/cann` 给 numpy-ascend 打包来设计。
+核心原则：**构建用 CANN 容器、发布用 OIDC Trusted Publishing、人工触发只出包/可只发 TestPyPI、正式发 PyPI 再走 release 或二次确认**。
 
 [ascend/cann · Quay](https://quay.io/repository/ascend/cann)
 
@@ -62,7 +63,7 @@ git tag v14.0.0a1        # tag 名与包版本 14.0.0a1 对齐（PEP 440）
    `testpypi`：传 TestPyPI 做安装冒烟 
    `pypi` 或 `release: published`：传正式 PyPI + 建/更新 GitHub Release 附 wheel
 
-> 建议 wheel 命名带 CANN train，如 `numpy_ascend-14.0.0a1+cann90-cp311-cp311-manylinux_2_28_x86_64.whl`（PyTorch 方案：train 编码为 PEP 440 **本地版本段** `+cann90`，平台标签保持标准 manylinux，由 CI 的 auditwheel repair 产出）；sdist 不绑 CANN 版本，全 Python/CANN 通用 。
+> 建议 wheel 命名带 CANN train：主力 train 用裸版本（`numpy_ascend-14.0.0a1-cp311-cp311-manylinux_2_28_x86_64.whl`，传 PyPI），其他 train 用本地版本段（`numpy_ascend-14.0.0a1+cann8.5-...whl`，仅 GitHub Release + `--find-links` 安装）——PyPI 拒绝本地版本段，详见 §7；sdist 不绑 CANN 版本，全 Python/CANN 通用 。
 
 ## 二、CANN 镜像与矩阵选择
 
@@ -73,7 +74,7 @@ git tag v14.0.0a1        # tag 名与包版本 14.0.0a1 对齐（PEP 440）
 - 架构对应 runner：
   - x86_64 → GitHub `ubuntu-latest`（标准分钟计费/公库免费）
   - aarch64 → `ubuntu-24.04-arm`（若可用）或自托管 910B/Atlas 臂量机；别用 QEMU 编大 CANN 项目，极慢
-- 多 CANN 同发：单一 PyPI 项目 `numpy-ascend`，train 用本地版本段区分（`+cann90`/`+cann8.5`），文件名不冲突，且 `pip install numpy-ascend==14.0.0a1+cann90` 可精确选 train
+- 多 CANN 同发：单一 PyPI 项目 `numpy-ascend`，但只有主力 train（`setup.py::_PYPI_CANN_TRAIN`，当前 cann9.0）以裸版本传 PyPI；其他 train 带 `+cann8.5` 本地版本段只上 GitHub Release，用户用 `--find-links` + 显式 pin 安装（PyPI 拒绝本地版本段，见 §7）
 
 ## 三、容器内构建环境变量（按 numpy-ascend 调整）
 
@@ -164,7 +165,7 @@ cmake … && python -m build --wheel
 
 - 版本号单一来源：只在 `pyproject.toml` 改，`git tag vX.Y.Z` 与版本一致；CI 可加一步校验 tag≠已存在 PyPI 版本。
 - 人工两步发布更稳：dispatch 出 wheel → 人下载装测试 → 打 release 自动传 PyPI。比“一次 dispatch 直接传生产”安全。
-- 多 CANN 同版 Python 不覆盖：wheel 名带本地版本段 `+cann9.0/+cann8.5`；sdist 只一个、不写 CANN 后缀 。
+- 多 CANN 同版 Python 不覆盖：主力 train 裸版本传 PyPI，其他 train 带本地版本段 `+cann8.5` 只上 Release；sdist 只一个、不写 CANN 后缀 。
 - 无 NPU runner 只做“构建+import 自检”；L4 数值测试放自托管 910B job，且不在 dispatch 默认矩阵里跑，避免耗免费额度。
 - quay 拉取：公共 tag 一般可匿名拉；若频繁 429，CI 里 `docker login quay.io -u robot -p …` 用 robot account，或把基础镜像缓存到 GHCR。
 - 大镜像缓存：用 `docker/build-push-action` 或 registry cache，别每次全拉 4–13GB 的 CANN 镜像。
@@ -179,36 +180,65 @@ cmake … && python -m build --wheel
    dispatch 时 `archs=aarch64` + aarch64 可用的 CANN tag 即可；注意同一 tag 会同时被
    x86 和 arm job 拉取，需该 tag 在 quay 上有多架构 manifest（或另传 arm 专用 tag）。
 
-## 七、平台标签与 CANN train：manylinux_2_28 + 本地版本段（2026-10 定稿）
+## 七、平台标签与 CANN train：manylinux_2_28 + 本地版本段（2026-10 定稿，v2）
 
 **当前产物命名**（CI + `setup.py`）：
 
 ```
-numpy_ascend-14.0.0a1+cann9.0-cp311-cp311-manylinux_2_28_x86_64.whl
-numpy_ascend-14.0.0a1+cann8.5-cp311-cp311-manylinux_2_28_x86_64.whl   # 同一 PyPI 项目，另一 train
+# PyPI 上的主力 train（裸公共版本，Warehouse 拒绝本地版本段）：
+numpy_ascend-14.0.0a1-cp311-cp311-manylinux_2_28_x86_64.whl
+# 其他 train（仅 GitHub Release，本地版本段标识 train）：
+numpy_ascend-14.0.0a1+cann8.5-cp311-cp311-manylinux_2_28_x86_64.whl
 ```
 
-两个设计决策，都是被 PyPI/ pip 的现实约束逼出来的：
+四个设计决策，都是被 PyPI / pip 的现实约束逼出来的：
 
 1. **CANN train = PEP 440 本地版本段（PyTorch 方案）**，早期方案是把它拼进
    平台标签（`manylinux_2_17_x86_64.cann9.0`）。拼标签版有两个问题：
    - pip 从索引解析时**无法按 train 选择**（两个 train 的 wheel 都被判"兼容"，
      任意选一个），用户没有命令行手段指定；
    - 只有直链/本地文件安装时 pip 才接受带点标签，行为不一致。
-   改为本地版本段后：
-   - `pip install numpy-ascend==14.0.0a1+cann9.0` 精确选 train；
-   - `pip install numpy-ascend==14.0.0a1` 匹配任意本地段，pip 取本地段最大者
-     （`+cann9.0` > `+cann8.5`，确定性默认）；
-   - 平台标签回归标准 manylinux，wheel 完全合规。
-   实现在 `setup.py::_make_cmdclass` 的 `bdist_wheel` 子类：在
+   改为本地版本段后 train 可被精确 pin，平台标签回归标准 manylinux。
+
+2. **只有主力 train 上 PyPI，其他 train 只上 GitHub Release**。2026-10-17
+   实测：PyPI（Warehouse）**拒绝任何带本地版本段的上传**，报
+   `400 The use of local versions in '14.0.0a1+cann8.5' is not allowed`
+   ——这是硬性规则，也正是 PyTorch 的 `torch==2.5.1+cu121` 只发在
+   download.pytorch.org、从不上传 PyPI 的原因。因此：
+   - `setup.py::_PYPI_CANN_TRAIN`（当前 `'cann9.0'`）指定的 train 用裸公共
+     版本（如 `14.0.0a1`），上传 PyPI；换主力 train 时改这一个常量；
+   - 其他 train 的 wheel 带 `+cannX.Y` 本地段，只作为 GitHub Release 资产；
+   - publish job 里用 `case "$f" in *+*)` 过滤出裸版本 wheel（+ sdist）传
+     PyPI，Release 步骤仍然挂全部产物。
+   - ⚠️ 已知陷阱：`--find-links` 与 PyPI 同时在场时，`==14.0.0a1` 也能匹配
+     `+cann8.5` 且 pip 优先选本地段（版本号更大）。所以 README 明确要求：
+     **用 `--find-links` 时必须显式 pin train**；9.0 用户直接从 PyPI 装，
+     不要加 `--find-links`。
+
+   本地段的注入点在 `setup.py::_make_cmdclass` 的 `bdist_wheel` 子类：
    `finalize_options()` **最早**（`super()` 之前，因为 wheel 的
    `finalize_options` 会预先 finalize `egg_info` 并快照版本）把
    `+cannX.Y` 追加到 `distribution.metadata.version`。只作用于 wheel；
    sdist 与运行时 `cupy.__version__` 保持裸版本（tarball 与 CANN 无关）。
-   同一版本两个 train 的 wheel 文件名不同，可共存于单一 PyPI 项目
-   `numpy-ascend`，不再需要 per-train 项目名（`numpy-ascend-cann90` 方案已废弃）。
 
-2. **平台标签 = manylinux_2_28**：`bdist_wheel` 默认按构建机打
+3. **非 PyPI train 的安装通道 = GitHub Release + `pip --find-links`**。
+   GitHub Releases **不是** PEP 503 简单索引（没有 `/simple/` 项目页），
+   所以 `--index-url` 不可用；但 release 资产页（`expanded_assets` 视图）
+   是带链接的 HTML 页，正是 pip `--find-links` 接受的格式（已实测：pip
+   解析页面里的 `<a href>`，相对链接按页 URL 解析成
+   `.../releases/download/<tag>/<file>`）：
+
+   ```sh
+   pip install numpy-ascend==14.0.0a1+cann8.5 \
+       --find-links https://github.com/qingfengxia/numpy-ascend/releases/expanded_assets/v14.0.0a1
+   ```
+
+   注意：该路径对 wheel 的平台标签没有 manylinux 要求——`linux_x86_64` /
+   `linux_aarch64` 也在 pip 的兼容 tag 列表里（优先级最低），所以即使
+   auditwheel repair 失败，Release 资产依然可 `pip install`（直链或
+   find-links）。manylinux 只是 PyPI 上传的准入条件。
+
+4. **平台标签 = manylinux_2_28**：`bdist_wheel` 默认按构建机打
    `linux_x86_64` / `linux_aarch64`，**不做 glibc 兼容检测**，而 PyPI
    （Warehouse）**拒绝** `linux_*` 平台标签的 wheel。因此在 CI 的容器构建
    之后增加 `auditwheel repair` 一步（见 `build-cann-wheels.yml`）：
@@ -241,15 +271,27 @@ numpy_ascend-14.0.0a1+cann8.5-cp311-cp311-manylinux_2_28_x86_64.whl   # 同一 P
      （`unzip -l x.whl | grep -iE 'ascend|opapi|cann'` 应为空）。
    - aarch64 侧同理产出 `manylinux_2_28_aarch64`。
 
-**wheel 命名总览**（单一项目 `numpy-ascend`，import 包恒为 `cupy`）：
+**wheel 命名总览**（单一 PyPI 项目 `numpy-ascend`，import 包恒为 `cupy`）：
 
 | 构件 | 命名 | 说明 |
 |---|---|---|
-| wheel | `numpy_ascend-<ver>+cann<XY>-cp<py>-cp<py>-manylinux_2_28_<arch>.whl` | train 在本地版本段；`setup.py` 的 bdist_wheel 子类注入 |
+| wheel（PyPI train） | `numpy_ascend-<ver>-cp<py>-cp<py>-manylinux_2_28_<arch>.whl` | 裸公共版本；`setup.py::_PYPI_CANN_TRAIN` 指定，当前 cann9.0 |
+| wheel（其他 train） | `numpy_ascend-<ver>+cann<XY>-cp<py>-cp<py>-manylinux_2_28_<arch>.whl` | 本地版本段；仅 GitHub Release，`--find-links` 安装 |
 | sdist | `numpy_ascend-<ver>.tar.gz` | 与 CPython/CANN 均无关，只发一份 |
 | CUDA/HIP 构建 | `cupy-<ver>-…` | 同一份代码的上游命名，不受影响 |
 
-安装命令（README 同步维护）：`pip install numpy-ascend==14.0.0a1+cann9.0`。
+## 安装命令（README 同步维护）：
 
+```sh
+# CANN 9.0.x（PyPI）：
+pip install numpy-ascend==14.0.0a1
+# CANN 8.5.x（GitHub Release，--find-links 指向资产页，必须显式 pin train）：
+pip install numpy-ascend==14.0.0a1+cann8.5 \
+    --find-links https://github.com/qingfengxia/numpy-ascend/releases/expanded_assets/v14.0.0a1
+```
 
-不太适合cann, 这种基于ubuntu的镜像的, 所以希望是pip install auditwheel 然后 fix
+**PyPI 禁止本地版本段**（Warehouse 硬性规则，PyTorch 的 `+cu121` 只发在自己的
+索引上，从不上传 PyPI），所以本地版本段的 wheel 只能走 GitHub Release；
+`--find-links`（不是 `--index-url`）指向 release 资产页即可安装——GitHub
+Release 不是 PEP 503 索引（没有 `/simple/` 项目页），但资产页是带链接的 HTML
+页，正是 pip `--find-links` 支持的格式。

@@ -85,10 +85,11 @@ CANN 8.2测试时可以运行, 但是CANN支持的算子少几个, ops-fft, ops-
 Python3.12编译不是问题, 都可以github workflow生成
 
 - 二进制 wheel 见 [Releases 页面](https://github.com/qingfengxia/numpy-ascend/releases)。
-  命名规则：`numpy_ascend-<ver>+cann<XY>-cp<py>-cp<py>-manylinux_2_28_<arch>.whl`
-  ——按解释器（`cp311` = Python 3.11）、CPU 架构与 **CANN release train**
+  命名规则：非 PyPI train 为 `numpy_ascend-<ver>+cann<XY>-cp<py>-cp<py>-manylinux_2_28_<arch>.whl`
   （本地版本段 `+cann8.5` / `+cann9.0`，与 PyTorch 的 `torch==2.5.1+cu121`
-  同一方案）选择。所有 train 共用单一的 `numpy-ascend` 项目。
+  同一方案）；发布到 PyPI 的 train（当前为 CANN 9.0）为
+  `numpy_ascend-<ver>-cp<py>-cp<py>-manylinux_2_28_<arch>.whl`（裸版本号）。
+  按解释器（`cp311` = Python 3.11）、CPU 架构与 **CANN release train** 选择。
 - wheel **不含** CANN SDK：目标机需要同 release train 的 CANN toolkit 与
   `set_env.sh`；硬性运行时前置条件（libstdc++ 版本、可选 ops-fft 等）见
   [docs/ascend/Package.md](docs/ascend/Package.md)。
@@ -99,36 +100,51 @@ Python3.12编译不是问题, 都可以github workflow生成
 
 ### 1. 二进制 wheel（推荐）
 
-从 [Releases 页面](https://github.com/qingfengxia/numpy-ascend/releases)
-下载预编译 wheel。每个 release 按（CPython × 架构 × CANN train）提供 wheel，
-以 `v14.0.0a1` 为例：
-
-| 目标机的 CANN | x86_64 wheel | aarch64 wheel |
-|---|---|---|
-| 9.0.x | `numpy_ascend-14.0.0a1+cann9.0-cp311-cp311-manylinux_2_28_x86_64.whl` | `numpy_ascend-14.0.0a1+cann9.0-cp311-cp311-manylinux_2_28_aarch64.whl` |
-| 8.5.x | `numpy_ascend-14.0.0a1+cann8.5-cp311-cp311-manylinux_2_28_x86_64.whl` | `numpy_ascend-14.0.0a1+cann8.5-cp311-cp311-manylinux_2_28_aarch64.whl` |
-
-CANN train 是 PEP 440 **本地版本段**（与 PyTorch 的 `torch==2.5.1+cu121`
-同一方案），可以精确 pin：
+**CANN 9.0.x — 从 PyPI 安装**（主力发布 train）：
 
 ```sh
-# 从 PyPI 安装（发布恢复后）——显式 pin train：
-pip install numpy-ascend==14.0.0a1+cann9.0     # CANN 9.0.x
-pip install numpy-ascend==14.0.0a1+cann8.5     # CANN 8.5.x
-pip install numpy-ascend==14.0.0a1             # 任意 train（本地段最大者 = cann9.0）
+pip install numpy-ascend                # 最新 release
+pip install numpy-ascend==14.0.0a1      # 锁定版本
+```
 
-# 直接从 GitHub release 安装（下载地址格式：
-# .../releases/download/<tag>/<wheel 文件名>）：
-pip install https://github.com/qingfengxia/numpy-ascend/releases/download/v14.0.0a1/numpy_ascend-14.0.0a1+cann9.0-cp311-cp311-manylinux_2_28_x86_64.whl
+**CANN 8.5.x — 从 GitHub Release 安装。** PyPI 拒绝带本地版本段的版本号，
+因此只有 9.0 train 发布在 PyPI 上；8.5 train 只作为 release 资产分发。
+用 `--find-links` 指向 release 资产页（它接受 HTML 页——GitHub Releases
+**不是** PEP 503 索引，所以 `--index-url` 不可用），并显式 pin train：
+
+```sh
+pip install numpy-ascend==14.0.0a1+cann8.5 \
+    --find-links https://github.com/qingfengxia/numpy-ascend/releases/expanded_assets/v14.0.0a1
+```
+
+每个 release 按（CPython × 架构 × CANN train）提供 wheel，以 `v14.0.0a1`
+为例：
+
+| 目标机的 CANN | x86_64 wheel | aarch64 wheel | 分发位置 |
+|---|---|---|---|
+| 9.0.x | `numpy_ascend-14.0.0a1-cp311-cp311-manylinux_2_28_x86_64.whl` | `numpy_ascend-14.0.0a1-cp311-cp311-manylinux_2_28_aarch64.whl` | PyPI + Release |
+| 8.5.x | `numpy_ascend-14.0.0a1+cann8.5-cp311-cp311-manylinux_2_28_x86_64.whl` | `numpy_ascend-14.0.0a1+cann8.5-cp311-cp311-manylinux_2_28_aarch64.whl` | 仅 Release |
+
+非 PyPI train 用 PEP 440 **本地版本段**标识 train（与 PyTorch 的
+`torch==2.5.1+cu121` 同一方案），可精确 pin。任意 release wheel 也可用
+直链或本地文件安装（下载地址格式：
+`.../releases/download/<tag>/<wheel 文件名>`）：
+
+```sh
+pip install https://github.com/qingfengxia/numpy-ascend/releases/download/v14.0.0a1/numpy_ascend-14.0.0a1+cann8.5-cp311-cp311-manylinux_2_28_x86_64.whl
 
 # 或先从 Releases 页面下载 wheel，再装本地文件：
-pip install ./numpy_ascend-14.0.0a1+cann9.0-cp311-cp311-manylinux_2_28_x86_64.whl
+pip install ./numpy_ascend-14.0.0a1+cann8.5-cp311-cp311-manylinux_2_28_x86_64.whl
 
 source /usr/local/Ascend/ascend-toolkit/set_env.sh
 export ASCEND_HOME_PATH=/usr/local/Ascend/ascend-toolkit/latest
 
 python -c "import cupy; print(cupy.__version__, cupy.backends.ascend.check_cann_version())"
 ```
+
+> **注意**：使用 `--find-links` 时必须显式 pin train——`==14.0.0a1`
+> 也能匹配 `+cann8.5` 本地版本，而 pip 会优先选版本号更大（带本地段）
+> 的那个。9.0 用户请直接从 PyPI 安装，不要加 `--find-links`。
 
 如何选 CANN train：必须与目标机上安装的 CANN **toolkit** 匹配
 （`ls /usr/local/Ascend/` 或 `npu-smi info`），而不是 NPU 驱动版本。

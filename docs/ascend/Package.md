@@ -338,13 +338,16 @@ numpy_ascend-14.0.0a1+cann9.0-cp311-cp311-manylinux_2_28_x86_64.whl
   |---|---|---|
   | CUDA / HIP / CPU stub | `cupy` | `[project].name` in `pyproject.toml` |
   | Ascend, CANN 8.5.x | `numpy-ascend` (wheel `…+cann8.5…`) | `setup.py::_BackendAwareDistribution` |
-  | Ascend, CANN 9.0.x | `numpy-ascend` (wheel `…+cann9.0…`) | 〃 |
+  | Ascend, CANN 9.0.x (PyPI train) | `numpy-ascend` (wheel `14.0.0a1`, bare) | 〃 |
   | Ascend, CANN version unknown | `numpy-ascend` | 〃 (no tag to derive the suffix from) |
   | Ascend, source tarball | `numpy-ascend` | 〃 (`sdist` is exempt — §2.9) |
 
   The local segment is derived from `Backend.get_wheel_platform_tag()` (§2.2)
   (`cann8.5` kept verbatim) and injected by the `bdist_wheel` cmdclass in
-  `setup.py` — **before** `super().finalize_options()`, because wheel's
+  `setup.py` — **only for non-PyPI trains** (`_PYPI_CANN_TRAIN`, currently
+  `cann9.0`, keeps the bare public version because PyPI rejects local version
+  identifiers; see `github_packaging_pypi.md` §7). The injection happens
+  **before** `super().finalize_options()`, because wheel's
   `finalize_options` pre-finalizes `egg_info`, which snapshots the version and
   resets `metadata.version` to it (mutating after `super()` would leave
   PKG-INFO/dist-info with the bare version while only the filename carries the

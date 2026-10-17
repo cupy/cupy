@@ -386,10 +386,14 @@ one PyPI project for every CANN release train. The CANN train is encoded as a
 PEP 440 **local version segment** of the wheel (`+cann85` / `+cann90`, injected
 by the `bdist_wheel` cmdclass in `setup.py`), mirroring PyTorch's
 `torch==2.5.1+cu121`, so `pip install numpy-ascend==<ver>+cann90` pins the exact
-train. The `sdist` command keeps the same bare name, because a source tarball
-is not tied to a CANN release (`docs/ascend/Package.md` §2.9). The import
-packages (`cupy`, `cupyx`, `cupy_backends`) never change, so `import cupy` works
-on both.
+train. **Exception**: the train designated by `setup.py::_PYPI_CANN_TRAIN`
+(currently `cann9.0`) keeps the bare public version, because PyPI rejects local
+version identifiers — that train is the one uploaded to PyPI, the others are
+distributed via GitHub Releases (`pip install --find-links <release page>`;
+see `docs/ascend/github_packaging_pypi.md` §7). The `sdist` command keeps the
+same bare name, because a source tarball is not tied to a CANN release
+(`docs/ascend/Package.md` §2.9). The import packages (`cupy`, `cupyx`,
+`cupy_backends`) never change, so `import cupy` works on both.
 
 Producing the two Ascend wheels:
 

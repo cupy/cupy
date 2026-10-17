@@ -252,10 +252,33 @@ jobs:
           pattern: "*"
           path: dist
           merge-multiple: true
+      - name: Select PyPI upload set (primary CANN train + sdist)
+        # PyPI rejects local version identifiers, so only the primary train's
+        # wheels (bare public version, filename without `+cannX.Y`) plus the
+        # sdist are uploaded. Every other train's wheels stay on the GitHub
+        # Release and are installed with
+        #   pip install numpy-ascend==<ver>+cannX.Y \
+        #     --find-links https://github.com/<owner>/<repo>/releases/expanded_assets/<tag>
+        run: |
+          mkdir -p pypi_dist
+          cp dist/*.tar.gz pypi_dist/
+          for f in dist/*.whl; do
+            case "$f" in
+              *+*) ;;                      # local-versioned train: Release only
+              *) cp "$f" pypi_dist/ ;;     # primary train: PyPI
+            esac
+          done
+          if ! ls pypi_dist/*.whl >/dev/null 2>&1; then
+            echo "::error::no primary-train wheel in dist/ - the PyPI train build must have failed"
+            exit 1
+          fi
+          ls -l pypi_dist
       - name: twine check
-        run: python -m pip install twine && python -m twine check dist/*
+        run: python -m pip install twine && python -m twine check pypi_dist/*
       - uses: pypa/gh-action-pypi-publish@release/v1
         # No username/password: v1.11+ generates PEP 740 attestations by default
+        with:
+          packages-dir: pypi_dist/
       - name: Attach artifacts to the GitHub Release
         # release event: attach to the published Release; push tag v*: the
         # action creates the Release from the tag and attaches the artifacts.
