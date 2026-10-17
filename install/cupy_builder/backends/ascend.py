@@ -241,6 +241,10 @@ class AscendBackend(Backend):
         ops_fft_dir = self._ops_fft_lib_dir()
         if ops_fft_dir and ops_fft_dir not in dirs:
             dirs.append(ops_fft_dir)
+        # optional ops-sparse (CANN sparse) library directory, if present
+        ops_sparse_dir = self._ops_sparse_lib_dir()
+        if ops_sparse_dir and ops_sparse_dir not in dirs:
+            dirs.append(ops_sparse_dir)
         return [d for d in dirs if os.path.isdir(d)]
 
     @staticmethod
@@ -253,6 +257,15 @@ class AscendBackend(Backend):
         except ImportError:
             return None
         return find_ops_fft_lib()
+
+    @staticmethod
+    def _ops_sparse_lib_dir() -> str | None:
+        """Directory of ``libops_sparse.so`` (optional ops-sparse install)."""
+        try:
+            from cupy_builder.features.ascend_sparse import find_ops_sparse_lib
+        except ImportError:
+            return None
+        return find_ops_sparse_lib()
 
     def get_extra_compile_args(self) -> list[str]:
         return ['-std=c++17']

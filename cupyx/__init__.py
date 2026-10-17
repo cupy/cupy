@@ -53,13 +53,19 @@ class _StubModule:
 
 # CUDA-only submodules: import lazily so the attribute access works on the
 # CUDA backend, and degrade to a stub when they are not built (Ascend).
-_CUDA_ONLY_SUBMODULES = ('cusolver', 'cusparse', 'cutensor')
+# `cusparse` is *not* in this list: it is pure Python and dispatches to the
+# active backend (`cupy_backends.cuda.libs.cusparse` / acl_sparse) on its own.
+_CUDA_ONLY_SUBMODULES = ('cusolver', 'cutensor')
 
 
 def __getattr__(key):
     if key == 'lapack':
         import cupyx.lapack
         return cupyx.lapack
+
+    if key == 'cusparse':
+        import importlib
+        return importlib.import_module('cupyx.cusparse')
 
     if key in _CUDA_ONLY_SUBMODULES:
         # Ascend: not supported yet, always return the stub (a stale,

@@ -397,8 +397,14 @@ def lsmr(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
 
 
 def _should_use_spsm(b):
-    from cupy_backends.cuda.libs import cusparse as _cusparse
+    from cupyx import _cusparse_backend
 
+    if runtime.is_ascend:
+        # ops-sparse only implements the generic SpSM API; the legacy
+        # <t>csrsm2 entry points do not exist, so always use spsm here.
+        return True
+
+    _cusparse = _cusparse_backend.get_cusparse()
     if not runtime.is_hip:
         # Starting with CUDA 12.0, we use cusparseSpSM
         return _cusparse.get_build_version() >= 12000

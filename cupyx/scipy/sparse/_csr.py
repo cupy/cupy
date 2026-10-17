@@ -200,6 +200,7 @@ class csr_matrix(_compressed._compressed_sparse_matrix):
                 for accelerator in _accelerator.get_routine_accelerators():
                     if (accelerator == _accelerator.ACCELERATOR_CUB
                             and not runtime.is_hip
+                            and not runtime.is_ascend
                             and is_cub_safe and other.flags.c_contiguous):
                         return cub.device_csrmv(
                             self.shape[0], self.shape[1], self.nnz,

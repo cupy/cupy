@@ -6,14 +6,49 @@ import numpy as _numpy
 import platform as _platform
 
 import cupy as _cupy
-from cupy_backends.cuda.api import driver as _driver
-from cupy_backends.cuda.api import runtime as _runtime
-from cupy_backends.cuda.libs import cusparse as _cusparse
 from cupy._core import _dtype
 from cupy.cuda import device as _device
 from cupy.cuda import stream as _stream
 from cupy import _util
+# ASCEND: `cupy_backends.cuda.libs.cusparse` does not exist here; the sparse
+# library is resolved through the facade (ops-sparse on Ascend, cuSPARSE
+# elsewhere).  Resolution is lazy so that `import cupyx.cusparse` works even
+# when the optional ops-sparse binding was not compiled in.
+from cupyx import _cusparse_backend as _cusparse_backend_module
 import cupyx.scipy.sparse
+from cupy_backends.cuda.api import driver as _driver
+from cupy_backends.cuda.api import runtime as _runtime
+
+
+class _CuSparseProxy:
+    """Lazy attribute proxy for the backend's cuSPARSE-shaped module.
+
+    ``cupyx/cusparse.py`` predates backend abstraction and refers to
+    ``_cusparse.<name>`` / ``_cusparse.<CONSTANT>`` directly.  Instead of
+    touching every call site, this proxy resolves the real module on first
+    attribute access (see ``cupyx/_cusparse_backend.py``), which keeps
+    ``import cupyx.cusparse`` working on Ascend even without ops-sparse.
+    """
+
+    __slots__ = ('_module',)
+
+    def __init__(self):
+        self._module = None
+
+    def _resolve(self):
+        module = _cusparse_backend_module.get_cusparse()
+        # Cache only the success case so a later install/rebuild is picked up.
+        self._module = module
+        return module
+
+    def __getattr__(self, name):
+        module = self._module
+        if module is None:
+            module = self._resolve()
+        return getattr(module, name)
+
+
+_cusparse = _CuSparseProxy()
 
 
 class MatDescriptor:
@@ -167,6 +202,16 @@ def _get_avail_version_from_spec(x):
 
 @_util.memoize()
 def check_availability(name):
+    if _runtime.is_ascend:
+        # ops-sparse (Ascend): availability is per-op, not per-version --
+        # `_available_aclsparse` in the acl_sparse binding lists exactly the
+        # cuSPARSE entry points the library implements (everything else falls
+        # back to the generic descriptor API in cupyx).  A missing binding
+        # means nothing is available.
+        acl_sparse = _cusparse_backend_module._import_acl_sparse()[0]
+        if acl_sparse is None:
+            return False
+        return acl_sparse.has_op(name)
     if not _runtime.is_hip:
         available_version = _available_cusparse_version
         version = _cusparse.get_build_version()
@@ -1943,7 +1988,11 @@ def spsm(a, b, alpha=1.0, lower=True, unit_diag=False, transa=False):
     if b._f_contiguous:
         op_b = _cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
     elif b._c_contiguous:
-        if _cusparse.get_build_version() < 11701:  # earlier than CUDA 11.6
+        # ASCEND: aclsparseSpSM has taken `opB` since the first ops-sparse
+        # release (its bufferSize/analysis/solve entry points are the "v2"
+        # signatures), so the CUDA-11.6 version gate does not apply.
+        if (not _runtime.is_ascend
+                and _cusparse.get_build_version() < 11701):  # < CUDA 11.6
             raise ValueError('b must be F-contiguous.')
         b = b.T
         op_b = _cusparse.CUSPARSE_OPERATION_TRANSPOSE

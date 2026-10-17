@@ -302,9 +302,18 @@ cdef class Device:
         itself is different.
 
         """
-        from cupy.backends.cuda.libs import cusparse
-        return self._get_handle(
-            'cusparse_sp_handles', cusparse.create, cusparse.destroy)
+        IF CUPY_CANN_VERSION > 0:
+            # Ascend: the sparse library is ops-sparse (libops_sparse.so).
+            # Its binding keeps its own handle cache keyed by
+            # (device, current stream) -- exactly the semantics this property
+            # promises -- so delegate instead of creating a second handle
+            # through `_get_handle`.
+            from cupy.backends.ascend.api.acl_sparse import get_handle
+            return get_handle()
+        ELSE:
+            from cupy.backends.cuda.libs import cusparse
+            return self._get_handle(
+                'cusparse_sp_handles', cusparse.create, cusparse.destroy)
 
     @property
     def mem_info(self):
