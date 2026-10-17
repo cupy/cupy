@@ -39,11 +39,13 @@ on:
   workflow_dispatch:
     inputs:
       cann_tags:
-        description: "Comma-separated quay.io/ascend/cann tags (ONE tag per CANN train; e.g. a3 only)"
-        default: "9.0.1-a3-ubuntu22.04-py3.11"
+        description: "Comma-separated quay.io/ascend/cann tags (ONE tag per CANN train)"
+        # 8.5.1 -> cann85 wheel train, 9.0.1 -> cann90; distinct wheel names,
+        # no collision. Verify the exact soc/os/py suffix on quay first.
+        default: "8.5.1-910b-ubuntu22.04-py3.11,9.0.1-a3-ubuntu22.04-py3.11"
       pythons:
         description: "Comma-separated CPython versions"
-        default: "3.11"
+        default: "3.11,3.12"
       archs:
         description: "Comma-separated archs (x86_64, aarch64)"
         default: "x86_64,aarch64"
@@ -77,8 +79,8 @@ jobs:
     steps:
       - id: m
         env:
-          CANN_TAGS: ${{ inputs.cann_tags || '9.0.1-a3-ubuntu22.04-py3.11' }}
-          PYTHONS: ${{ inputs.pythons || '3.11' }}
+          CANN_TAGS: ${{ inputs.cann_tags || '8.5.1-910b-ubuntu22.04-py3.11,9.0.1-a3-ubuntu22.04-py3.11' }}
+          PYTHONS: ${{ inputs.pythons || '3.11,3.12' }}
           ARCHS: ${{ inputs.archs || 'x86_64,aarch64' }}
         run: |
           j() { printf '%s' "$1" | jq -Rsc 'split(",") | map(gsub("^\\s+|\\s+$";"")) | map(select(length > 0))'; }
@@ -177,9 +179,13 @@ jobs:
           # The container runs as root; fix ownership before uploading.
           sudo chown -R "$(id -u):$(id -g)" dist
 
+      - name: Derive CANN train tag for artifact naming (9.0.1 -> cann90)
+        id: train
+        run: echo "train=cann$(printf '%s' '${{ matrix.cann_tag }}' | awk -F. '{print $1 $2}')" >> "$GITHUB_OUTPUT"
+
       - uses: actions/upload-artifact@v4
         with:
-          name: wheel-${{ matrix.cann_tag }}-py${{ matrix.python }}-${{ matrix.arch }}
+          name: numpy-ascend-${{ steps.train.outputs.train }}-py${{ matrix.python }}-${{ matrix.arch }}
           path: dist/*.whl
           if-no-files-found: error
 

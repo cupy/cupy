@@ -61,20 +61,26 @@ export CUPY_ASCEND_FLOAT64_MODE=off     # 绝不静默丢精度
 
 ## 支持矩阵
 
-**仅支持 Linux。** 只要 C++ 运行时足够新（`libstdc++`、glibc >= 2.17），任意 Linux
-发行版都应可用；CI 在 x86_64 Linux 上进行。
+**仅支持 Linux。** 只要 C++ 运行时足够新（`libstdc++`、glibc >= 2.27），任意 2022年之后Linux
+发行版都应可用；测试在 aarch64 Linux 上进行。
+
+测试主要为910B卡, 950暂无资源,但是可以编译
 
 | CANN | x86_64 | aarch64 | 说明 |
 |---|---|---|---|
 | 9.0 | 二进制 wheel + 源码 | 源码 | 主力测试目标（Ascend 910B） |
 | 8.5 | 二进制 wheel + 源码 | 源码 |  主力测试目标（Ascend 910B）|
-| 8.2 | 仅源码 | 仅源码 | **未测试**；可能可用，无 CI 覆盖 |
+| 8.2 | 仅源码 | 仅源码 | **测试** |
+
+CANN 8.2测试时可以运行, 但是CANN支持的算子少几个, ops-fft, ops-sparse没法支持CANN 8.2, CANN 9.0是主力开发平台
 
 | Python | 二进制 wheel | 源码编译 |
 |---|---|---|
 | 3.10 | 有 | 有 |
 | 3.11 | 有 | 有 |
-| 3.12 | 暂无包 | 有 |
+| 3.12 | 有 | 有 |
+
+Python3.12编译不是问题, 都可以github workflow生成
 
 - 二进制 wheel 见 [Releases 页面](https://github.com/qingfengxia/numpy-ascend/releases)。
   命名规则：`numpy_ascend_cann<XY>-<ver>-cp3XX-cp3XX-manylinux_<glibc>_<arch>.whl`

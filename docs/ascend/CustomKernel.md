@@ -377,12 +377,10 @@ spawn bisheng。理由：
 `compile(source, options) -> bytes` 与缓存目录），与本仓库已有的
 `install/cupy_builder/{features,backends}/` 抽象同构。**现在不做**。
 
-**Module/Function 层**：继续用 `cupy.xpu.function` 的抽象（`CPointer` 打包、
-per-device 模块表、`get_cached_module`），在 `.pyx` 内用
-`IF CUPY_CANN_VERSION > 0:` 把 `Module.load` 的实现分叉为
-aclrt 三连（`aclrtCreateBinary/BinaryLoad/BinaryGetFunction`）——
-该文件已有 `IF` 分离 texture 等 CUDA 特性的先例（`function.pyx:118`），
-是既定模式，不新造抽象。
+**Module/Function 层**：~~继续用 `cupy.xpu.function` 的抽象，在 `.pyx` 内用
+`IF CUPY_CANN_VERSION > 0:` 把 `Module.load` 的实现分叉~~
+→ **已按 §7 落地：拆分为共享 pxd + 双 pyx 文件**（差异大到不值得塞进一个文件，
+且 `cupy/cuda/function.pyx` 保持 upstream 原样利于 merge），cimport 侧零改动。
 
 ### 3B.3 对比结论一句话
 
@@ -481,3 +479,111 @@ aclrt 三连（`aclrtCreateBinary/BinaryLoad/BinaryGetFunction`）——
 | 5 | 内置内核位置 / 缓存目录 | 按文档 §3.1（`cupy/backends/ascend/kernels/`、`~/.cache/cupy/cann_kernel_cache/`），评审时如有异议一并调整 |
 | 6 | Python 内核（triton-ascend） | **M6 可选层**：triton-ascend 为 Python 前端，产物仍走 aclrt 底座；零拷贝经 `_CuPyTensorAdapter`（data_ptr + strides，不搬数据）；流桥接是主要风险点；缺依赖时回退 ElementwiseKernel fallback（§3A） |
 | 7 | compiler 基础设施复用 | **复用抽象与骨架，不复用实现代码**：抽象层用 `cupy.xpu.function` + `raw_kernel_stub` 现成插座位；`cupy/cuda/compiler.py` 缓存骨架移植进 `bisheng.py`（不 import）；中性化收敛推迟到 CUDA 侧有收益时（§3B） |
+| 8 | Module/Function 适配落地 | **共享 pxd + 双 pyx 文件**（2026-10-08 实现，§7）：`cupy/xpu/function.pxd` 两后端共享声明，CUDA/Ascend 各一份 pyx 编译为同一模块名 `cupy.xpu.function`，cimport 侧零改动 |
+
+---
+
+## 7. 落地记录：`Module`/`Function` 的 Ascend 适配（2026-10-08）✅
+
+M3 的 Module/Function 层已实现并 cythonize 验证通过（数值验证待 910B）。
+本节记录实现决策与适配经验，修正 §3B.2 原方案。
+
+### 7.1 文件布局：共享 pxd + 双 pyx（否决了单文件 IF 分叉）
+
+最初方案是在 `cupy/xpu/function.pyx` 内用 `IF CUPY_CANN_VERSION <= 0:` 分叉
+（沿用该文件分离 texture 的旧先例）。实施时发现**差异面太大**（约一半代码不同：
+launch ABI、参数打包、二进制加载、`LinkState`/`get_global_var` 语义），IF 分叉
+导致单文件两套心智、merge 冲突集中。最终布局：
+
+```
+cupy/xpu/function.pxd            共享声明（唯一 pxd）
+                                 CPointer 增加 size 字段（Ascend 打包参数需要字节数，
+                                   CUDA 实现置 0 忽略）
+                                 Module 增加 _binary 字段（aclrtCreateBinary 产物，
+                                   内存加载时保活；CUDA 忽略）
+cupy/xpu/function.pyx            【已删除】
+cupy/cuda/function.pyx           CUDA 实现 = upstream 原样代码（保持 upstream
+                                 文件位置与内容，merge 零冲突）
+cupy/xpu/ascend/function.pyx     Ascend 实现（aclrt binary/launch API）
+```
+
+**构建机制**（关键经验）：`install/cupy_builder/features/{cuda,ascend}.py` 已有
+`(模块名, [pyx 源路径])` 元组语法（先例：`('cupy._core.raw',
+['cupy/_core/_ascend/raw_kernel_stub.pyx'])`）。两个后端各自把不同 pyx
+**编译为同一模块名 `cupy.xpu.function`**：
+
+```python
+# cuda.py
+('cupy.xpu.function', ['cupy/cuda/function.pyx']),
+# ascend.py
+('cupy.xpu.function', ['cupy/xpu/ascend/function.pyx']),
+```
+
+**收益：全部 16 处 cimport 点零改动**（`core.pxd`、`_scalar.pxd`、`_carray.pxd/.pyx`、
+`_reduction.pxd`、`core.pyx`、`_gpu/*`、`_ascend/*` 的
+`from cupy.xpu.function cimport ...` / `from cupy.xpu cimport function` 在两个
+后端原样成立），不需要任何 `IF CUPY_CANN_VERSION` 分支。
+
+代价与注意：
+- CUDA 构建后不存在 `cupy.cuda.function` 扩展模块（pyx 在 upstream 位置但模块名
+  是 `cupy.xpu.function`）；Python 层兼容由 `cupy/cuda/__init__.py` 既有的
+  `sys.modules.setdefault('cupy.cuda.function', _xpu_function)` 别名兜底。
+- **调试 Cython 时不能直接 `cython file.pyx`**：模块名按文件路径推导会找错 pxd，
+  必须用 `Cython.Build.cythonize([Extension('cupy.xpu.function', ...)])` 的方式
+  验证（与真实构建一致）。
+- 共享 pxd 只声明"被 cimport 的名字 + 两后端实现共需的 C 字段"；
+  子类的值字段（`CInt8.val` 等）留在各自 pyx 里（Cython 3 允许）。
+
+### 7.2 API 映射（实现所用，签名已对 `acl/acl_rt.h` 核对）
+
+| `cupy.cuda.function`（CUDA driver） | Ascend 实现（`cupy/xpu/ascend/function.pyx`） |
+|---|---|
+| `Module.load(bytes)` → `moduleLoadData` | `aclrtCreateBinary(data, len)` → `aclrtBinaryLoad`（`aclrtBinary` 保活至 unload） |
+| `Module.load_file(path)` | `aclrtBinaryLoadFromFile(path, NULL, &handle)`（与 `acl_custom_kernels.h` 同款） |
+| `Module.__dealloc__` → `moduleUnload` | `aclrtBinaryUnLoad` + `aclrtDestroyBinary` |
+| `Function.__init__` → `moduleGetFunction` | `aclrtBinaryGetFunction(binHandle, name, &funcHandle)` |
+| `_launch`：`vector[void*] kargs` 指针数组 + `driver.launchKernel` | `aclrtKernelArgsInit` → 逐参 `aclrtKernelArgsAppend(args, cp.ptr, cp.size, &param)` → `aclrtKernelArgsFinalize` → `aclrtLaunchKernelWithConfig(func, numBlocks, stream, cfg, args, NULL)`（与内置内核启动器同一约定） |
+| `shared_mem` 透传 | `ACL_RT_LAUNCH_KERNEL_ATTR_DYN_UBUF_SIZE` 启动属性（仅 >0 时构建 `aclrtLaunchKernelCfg`） |
+| `Module.get_global_var` | `NotImplementedError`（无 aclrt 对应物） |
+| `LinkState`（PTX JIT link） | `NotImplementedError`（无链接器；内核由 bisheng 离线编译，见 §2 路线 A） |
+
+选择 args-handle 变体（`KernelArgsInit/Append/Finalize`）而非 §4 表中的
+`aclrtLaunchKernelV2(argsData)` 裸缓冲变体：与树内已验证的
+`acl_custom_kernels.h`/`demo/load_bin_main.cxx` 保持同一调用序列，减少未知数；
+两者均可用，后续如需零拷贝大参数可再评估 V2。
+
+### 7.3 语义差异要点（`_pointer()` 的改写）
+
+- **参数按值拷贝**：`aclrtKernelArgsAppend` 拷贝 `paramSize` 字节，因此每个
+  `CPointer` 需带 `size`；CUDA 的"指针数组指向参数值"机制在 Ascend 不存在。
+- 设备指针（`ndarray`/`Indexer`/`MemoryPointer`）统一走 `CIntptr(设备地址)`
+  —— 追加 8 字节地址值，与 CUDA"内核参数收到指针值"语义一致。
+- `None` → `CIntptr(0)`（8 字节 0，等价 CUDA 传 NULL）。
+- size-1 numpy 标量按值传（`CNumpyArray`，`size=itemsize`），规则与 CUDA 相同。
+- texture/surface 对象在 Ascend 不可能存在实例（`texture_stub` 构造即抛），
+  `_pointer()` 无需分支。
+
+### 7.4 `grid/block → numBlocks` 的当前实现与 §3.4.1 的关系
+
+`Function.__call__` 当前实现：`numBlocks = gx*gy*gz`（grid 积），
+`block` 仅做 API 兼容接受并忽略；`linear_launch` 用
+`numBlocks = ceil(size / block_max_size)`（对齐
+`CUPY_CUSTOM_KERNEL_PER_BLOCK` 的"每块工作量"约定）。
+**§3.4.1 已确认的乘积映射（`numBlocks = grid × block` + block 维度首参注入）
+属于 `raw_kernel_stub.pyx`（RawKernel 打包器层）的工作**，在 M3 对接时实现；
+`Module/Function` 层保持"调用方给什么 numBlocks 就发什么"的薄语义。
+
+### 7.5 经验小结（可复用到其他后端拆分）
+
+1. **先盘点 Cython cimport 拓扑再决定拆分方式**：`cdef class` 必须实现在其 pxd
+   对应模块里；只要让两个后端的 pyx 以**同一模块名**编译，所有 cimport 自动成立。
+   `install/cupy_builder` 的 `(模块名, [源路径])` 元组就是为此准备的机制。
+2. **共享 pxd 只放"接口"**：两个实现的差分字段放进共享 pxd 时要标注归属后端
+   （CUDA 实现视其为保留字段），避免 upstream 侧理解成本。
+3. **upstream 文件位置留给 upstream 内容**：`cupy/cuda/function.pyx` 逐字保持
+   upstream 实现，Ascend 差异全部隔离到 `cupy/xpu/ascend/` —— merge 时该文件
+   永远无冲突。
+4. **Cython 校验必须模拟真实模块名**：直接 `cython xx.pyx` 按路径推导模块名，
+   共享 pxd 会解析失败，产生假错误。
+5. **`CUPY_USE_CUDA_PYTHON` 等 compile_time_env** 是构建系统对全后端统一注入的
+   upstream 开关（`_command.py`），手动 cython 验证时要带上完整环境，否则误报。

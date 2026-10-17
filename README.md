@@ -22,6 +22,7 @@ code and the wider CuPy/SciPy ecosystem run on the NPU with `import cupy`.
 
 ## Features
 
+0. complete ArrayAPI, 98% of cupy API, cupyx is not yet completed
 1. Default dtype `float32` (same as CuPy on GPU) — 10x–200x NPU acceleration for
    math workloads.
 2. `float64` and `complex128` are supported, with **three processing modes**
@@ -71,21 +72,21 @@ export CUPY_ASCEND_FLOAT64_MODE=off     # never silently lose precision
 
 ## Support Matrix
 
-**OS: Linux only.** Any Linux distribution should work provided the C++
-runtime (`libstdc++`, glibc >= 2.17) is new enough; CI is done on x86_64 Linux.
+**OS: Linux only.** Any Linux distribution since 2022 should work provided the C++
+runtime (`libstdc++`, glibc >= 2.27) is new enough; CI is done on aarch64 Linux.
 
 | CANN | x86_64 | aarch64 | Notes |
 |---|---|---|---|
-| 9.5 | source | source | **not tested**; may work, no CI coverage |
+| 9.2 | source | source | **not tested**; may work, no CI coverage |
 | 9.0 | binary wheel + source | source | primary test target (Ascend 910B) |
 | 8.5 | binary wheel + source | source | primary test target (Ascend 910B) |
-| 8.2 | source build | source build | **not tested**; may work, no CI coverage |
+| 8.2 | source build | source build | tested, no CI coverage |
 
 | Python | Binary wheel | Source build |
 |---|---|---|
 | 3.10 | yes | yes |
 | 3.11 | yes | yes |
-| 3.12 | no package yet | yes |
+| 3.12 | yes | yes |
 
 - Binary wheels: see the [Releases page](https://github.com/qingfengxia/numpy-ascend/releases).
   Wheel naming: `numpy_ascend_cann<XY>-<ver>-cp3XX-cp3XX-manylinux_<glibc>_<arch>.whl`
