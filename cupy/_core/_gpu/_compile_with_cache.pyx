@@ -192,8 +192,24 @@ cpdef tuple assemble_cupy_compiler_options(tuple options):
                 'are using CUDA versions not yet supported by CuPy.')
 
         if _bundled_include is not None:
-            options += ('-I' + os.path.join(
-                _get_header_dir_path(), 'cupy', '_cuda', _bundled_include),)
+            # Compliance: the CUDA Toolkit fp16 headers are NOT vendored in
+            # the source tree any more (they are NVIDIA proprietary, see
+            # docs/ascend/Compliance.md). `tools/fetch_cuda_fp16_headers.py`
+            # copies them from the local toolkit into this (gitignored) dir;
+            # a wheel/sdist never carries them. Fall through to the toolkit
+            # or conda/wheel include dirs when the copy is absent.
+            _bundled_dir = os.path.join(
+                _get_header_dir_path(), 'cupy', '_cuda', _bundled_include)
+            if os.path.isdir(_bundled_dir):
+                options += ('-I' + _bundled_dir,)
+            elif _cuda_path is None and not _headers_from_wheel_available:
+                raise RuntimeError(
+                    'Failed to auto-detect CUDA headers. This build does not '
+                    'bundle the CUDA fp16 headers (see '
+                    'docs/ascend/Compliance.md); set `CUDA_PATH` to a CUDA '
+                    'Toolkit installation, or run '
+                    '`python tools/fetch_cuda_fp16_headers.py` once to copy '
+                    'them from the local toolkit.')
     elif _is_hip:
         if _cuda_path is None:
             raise RuntimeError(

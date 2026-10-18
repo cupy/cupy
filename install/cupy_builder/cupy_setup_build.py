@@ -691,3 +691,85 @@ def get_ext_modules(use_cython: bool, ctx: Context):
     extensions = make_extensions(ctx, compiler, use_cython)
 
     return extensions
+
+
+# ---------------------------------------------------------------------------
+# Compliance: keep CUDA headers / CUDA device sources out of the artifacts
+# ---------------------------------------------------------------------------
+# See `docs/ascend/Compliance.md`. Two classes of files must never reach an
+# uploaded artifact (sdist or wheel):
+#
+# 1. **CUDA Toolkit headers** (`cuda_fp16.h` / `cuda_fp16.hpp`) are NVIDIA
+#    proprietary and may not be redistributed. They are no longer vendored in
+#    the source tree; `tools/fetch_cuda_fp16_headers.py` copies them from the
+#    local toolkit for the CUDA backend only. Setuptools' globs would happily
+#    ship a locally fetched copy, so they are filtered out *unconditionally*
+#    (every backend, every artifact).
+# 2. **CUDA-only sources** (CCCL/CUB/Thrust/libcudacxx, jitify, `*.cuh`, the
+#    PBA ndimage kernels) are open source (Apache-2.0 / BSD-3 / MIT) but are
+#    dead weight -- and unwanted -- in an Ascend distribution, so they are
+#    dropped when the active backend is Ascend. CUDA/HIP builds keep them:
+#    the NVRTC JIT includes CCCL at runtime.
+
+#: Substrings (posix separators) identifying proprietary CUDA Toolkit headers.
+CUDA_TOOLKIT_HEADER_PATHS = ('_core/include/cupy/_cuda/',)
+
+#: Substrings identifying CUDA-only (open source) source trees. The PBA
+#: directory is dropped as a whole (kernels + the LICENSE that documents them),
+#: because `cupyx.scipy.ndimage` itself is not shipped on Ascend.
+CUDA_ONLY_HEADER_PATHS = (
+    '_core/include/cupy/_cccl/',
+    '_core/include/cupy/_jitify/',
+    'cupyx/scipy/ndimage/cuda/',
+)
+
+#: `fnmatch` patterns for CUDA device sources that are useless off CUDA.
+CUDA_ONLY_FILE_PATTERNS = (
+    '*.cuh',
+    'pba_kernels_*.h',
+    'cupy_distributions.cu',
+    'cupy_thrust.cu',
+    'cupy_cub.cu',
+    'cupy_cufftXt.cu',
+)
+
+
+def _posix(path: str) -> str:
+    return str(path).replace(os.sep, '/').replace('\\', '/')
+
+
+def is_cuda_toolkit_header(path: str) -> bool:
+    """True for a (proprietary) CUDA Toolkit header path.
+
+    Only actual header files are matched: the ``_cuda`` directory also carries
+    this project's own ``README.md`` (explaining how to fetch the headers
+    locally), which is fine to ship.
+    """
+    posix = _posix(path)
+    if not any(p in posix for p in CUDA_TOOLKIT_HEADER_PATHS):
+        return False
+    return posix.rsplit('.', 1)[-1].lower() in ('h', 'hpp', 'hxx', 'cuh')
+
+
+def is_cuda_only_file(path: str, include_cccl: bool = True) -> bool:
+    """True for CUDA-only sources that a non-CUDA artifact does not need.
+
+    ``include_cccl=False`` only matches the proprietary CUDA Toolkit headers
+    (the minimum every artifact must drop); ``True`` additionally matches the
+    open-source CUDA-only trees and device sources.
+    """
+    if is_cuda_toolkit_header(path):
+        return True
+    if not include_cccl:
+        return False
+    posix = _posix(path)
+    if any(p in posix for p in CUDA_ONLY_HEADER_PATHS):
+        return True
+    import fnmatch
+    name = posix.rsplit('/', 1)[-1]
+    return any(fnmatch.fnmatch(name, pat) for pat in CUDA_ONLY_FILE_PATTERNS)
+
+
+def strip_cuda_headers(paths, include_cccl: bool = True):
+    """Filter ``paths`` for distribution artifacts (keeps ordering)."""
+    return [p for p in paths if not is_cuda_only_file(p, include_cccl)]

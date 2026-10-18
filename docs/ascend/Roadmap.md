@@ -12,7 +12,10 @@ complex, signal, fft, solver
 
 ### CPU 回退： CPU实现一些NPU没有算法
 
-scipy的cupyx的支持
+scipy的cupyx的支持 —— **具体缺口、可达上限与落地顺序见
+[CupyxScipyMigration.md](CupyxScipyMigration.md)**（2026-10-18 评估：现状 ~31 %，
+加逐函数 host 回退后 ~88-90 %；前置机制是把 `cupy/_logic/truth.py:14` 的逐调用点回退
+提升为 `cpu_fallback.host_unless_kernels()`）。
 
 64bit计算
 
@@ -41,11 +44,52 @@ cupy.poly1d 相关代码全部位于 cupy/lib/，没有独立的 CUDA kernel，�
 - TODO：`cupy.cuda.nvtx` 的 mark/range → `aclprofMarkEx/aclprofRangeStart/RangeStop`；
   与 msprof/mindstudio 结果目录联动
 
+### cupyx / cupyx.scipy 移植（2026-10-18 评估，详见 [CupyxScipyMigration.md](CupyxScipyMigration.md)）
+
+已打通：`cupyx.scipy.fft(+fftpack)`、`cupyx.scipy.sparse`（门面）、`cupy.random`、`cupyx.profiler`；
+25 个子模块全部可 import。剩余阻塞分两类：
+
+**A 类：子系统级（不可移植，需换实现路线）**
+
+| 子系统 | 卡点 | 路线 |
+|---|---|---|
+`cupyx.jit` / `cupy.RawKernel` | NVRTC，无 CUDA C 代码生成 | triton-ascend 或 AscendC JIT（[CustomKernel.md](CustomKernel.md)） |
+`cupyx.distributed` | NCCL（`_nccl_comm.py:7`） | HCCL 绑定 |
+`cupyx.cusolver` / `cupyx.lapack` | 无 cuSOLVER | ops-solver / ops-blas LAPACK |
+`cupyx.cutensor` | 无对应物 | 暂不做 |
+
+**B 类：248 个内联 CUDA kernel**（`ElementwiseKernel`/`RawKernel`/`create_ufunc`）——
+Ascend 上 kernel 体不编译，只按名字查注册表，未注册即 `NotImplementedError`
+（`cupy/_core/_ascend/_kernel.pyx:1036`、`acl_utils.pyx:1822`）。
+分布：special 101、signal 41、sparse 37、ndimage 27、interpolate 18、cupyx.signal 12、linalg 4、spatial 3、fft 2。
+
+**覆盖率与优先级**（公共名约 470 个）：
+
+| 档 | 覆盖率 | 动作 |
+|---|---|---|
+现状 | ~30 % | — |
++R1 | ~51 % | ① 派发器加 `cupyx_scipy_special_<x>` → `ascend_<x>` 归一化，白拿 6 个（erf/erfc/erfinv/cbrt/exp2/expm1）② 其余 93 个加 `cupyx_scipy_special_*` 前缀 host 回退（仿 `acl_utils.pyx:2109` 的 `_COMPLEX_NO_ACLNN_OPS`） |
++R3 | ~86 % | ndimage/signal/interpolate 逐**公共函数**回退（~50 条） |
++R2 | ~88 % | sparse 纯 cupy 回退：`tocsc/tocsr`（[TODO.md](TODO.md) S-1…S-5）+ `toarray` + 910B 缺失的 7 族 aclsparse 算子 |
+上限 | ~88-90 % | 余下为 jit/distributed/cusolver/cutensor 与 f64/complex 精度类 |
+
+前置：R0 把 `cupy/_logic/truth.py:14` `_ascend_set_host_fallback` 提升为
+`cpu_fallback.host_unless_kernels()`（`kernels=None` = 无条件回退），R1-R3 全部复用它。
+
+> scipy 侧注意：`SCIPY_ARRAY_API=1` 只对 `special` / `signal` / `ndimage` 三个模块把 cupy 数组
+> 委托给 `cupyx.scipy.*`；`scipy.sparse` 无任何 array-api 分支（构造走 `np.asarray` → `TypeError`），
+> **sparse 必须显式 `import cupyx.scipy.sparse as sparse`**。而被委托的三个模块正是 B 类重灾区。
+
 ## 2. Debug和性能优化
 
 ### pytest
 numpy/cupy的API细微差别, 兼容模式
 math_tests 时间很长
+
+`tests/cupyx_tests` 侧（2940 个 test def）：`tests/conftest.py:112` 的 CUDA-only 跳过表目前只覆盖
+`cupy_tests`，需补 `cupyx_tests/jit_tests`、`distributed_tests`、`test_cusolver.py`、
+`test_cutensor.py`、`test_lapack.py`，以及条件跳过 `fft_tests/test_callbacks.py`，
+否则 cupyx 基线会被 4 个未移植子系统掩盖（jit 目前还会在 `test_cooperative_groups.py` 处 collection error）。
 
 ### code review
 [X] memory leak

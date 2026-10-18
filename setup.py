@@ -38,6 +38,11 @@ ASCEND_DISTRIBUTION_NAME = 'numpy-ascend'
 # MUST KEEP (hard/lazy imports from `cupy` itself or `cupyx/__init__.py`):
 #   cupyx.scipy.fft      - imported at module scope by cupy/_math/misc.py and
 #                          cupy/lib/_routines_poly.py
+#   cupyx.scipy.fftpack  - `cupyx/scipy/fft/__init__.py:13` imports
+#                          `fftpack.get_fft_plan` at module scope, so dropping
+#                          it makes `import cupy` fail (verified by installing
+#                          the wheel); it also works on Ascend (pure Python on
+#                          top of the ops-fft backend).
 #   cupyx.scipy.sparse   - imported at module scope by cupyx/scipy/__init__.py
 #                          and cupy/testing
 #   cupyx.scipy.special  - lazily imported by cupy/_core/core.pyx (ufuncs)
@@ -45,12 +50,13 @@ ASCEND_DISTRIBUTION_NAME = 'numpy-ascend'
 #                          imported by cupyx/__init__.py / cupy._functional
 _CUPYX_EXCLUDED_ON_ASCEND = [
     'cupyx.distributed',      # NCCL-based DistributedArray, CUDA-only
-    'cupyx.scipy.fftpack',
     'cupyx.scipy.interpolate',
     'cupyx.scipy.ndimage',
     'cupyx.scipy.signal',
     'cupyx.scipy.spatial',
     'cupyx.scipy.stats',
+    # depends on `cupyx.scipy.signal` (excluded above); nothing imports it
+    'cupyx.signal',
 ]
 
 
@@ -117,6 +123,15 @@ cupy_package_data = [
     x for x in glob.glob('cupy/_core/include/cupy/**', recursive=True)
     if os.path.isfile(x)
 ]
+
+# Compliance (docs/ascend/Compliance.md): never ship the proprietary CUDA
+# Toolkit headers (they are no longer vendored; a locally fetched copy would
+# otherwise be picked up by the glob above). On Ascend, additionally drop the
+# open-source CUDA-only trees/sources (CCCL, jitify, *.cuh, PBA kernels) that
+# only the CUDA NVRTC JIT needs.
+_ascend_build = ctx.get_backend_name() == 'ascend'
+cupy_package_data = cupy_setup_build.strip_cuda_headers(
+    cupy_package_data, include_cccl=_ascend_build)
 
 package_data = {
     'cupy': [
@@ -188,6 +203,48 @@ _PYPI_CANN_TRAIN = 'cann9.0'
 
 def _make_cmdclass():
     cmds = {'build_ext': cupy_builder._command.custom_build_ext}
+
+    # `build_py` only ever *adds* files to `build/lib/`, so anything packaged
+    # by an earlier build survives and silently leaks into the next wheel:
+    #   * forbidden CUDA headers (after they were un-vendored / CCCL dropped),
+    #   * packages that are excluded on Ascend (`_CUPYX_EXCLUDED_ON_ASCEND`).
+    # Both were observed in practice (the first made the compliance filter look
+    # broken, the second shipped `cupyx/signal` while `cupyx/scipy/signal` was
+    # gone). Prune the build tree after copying so clean and incremental builds
+    # produce identical artifacts.
+    from setuptools.command.build_py import build_py as _build_py
+
+    class build_py(_build_py):
+        def run(self):
+            super().run()
+            self._prune_stale()
+
+        def _prune_stale(self):
+            import shutil
+
+            build_lib = self.build_lib
+            removed = 0
+            for root, _dirs, files in os.walk(build_lib):
+                for name in files:
+                    path = os.path.join(root, name)
+                    rel = os.path.relpath(path, build_lib)
+                    if cupy_setup_build.is_cuda_only_file(
+                            rel, include_cccl=_ascend_build):
+                        os.unlink(path)
+                        removed += 1
+            if removed:
+                print('INFO: pruned {} CUDA-only file(s) left in {} by an '
+                      'earlier build'.format(removed, build_lib))
+
+            if _ascend_build:
+                for pkg in _CUPYX_EXCLUDED_ON_ASCEND:
+                    path = os.path.join(build_lib, *pkg.split('.'))
+                    if os.path.isdir(path):
+                        shutil.rmtree(path)
+                        print('INFO: pruned stale package {!r} from {}'.format(
+                            pkg, build_lib))
+
+    cmds['build_py'] = build_py
     if _sdk_tag:
         from wheel.bdist_wheel import bdist_wheel as _bdist_wheel
 
@@ -208,6 +265,23 @@ def _make_cmdclass():
                 self.root_is_pure = False
 
         cmds['bdist_wheel'] = bdist_wheel
+
+    # Compliance (docs/ascend/Compliance.md): an Ascend sdist must not carry
+    # CUDA-only sources (*.cuh, CCCL, jitify, PBA kernels). MANIFEST.in still
+    # lists them so the plain CUDA/HIP tarball stays complete; the filter is
+    # applied to the file list handed to `make_release_tree`, i.e. only when
+    # `CUPY_INSTALL_USE_ASCEND=1` / the Ascend backend is active. Proprietary
+    # CUDA Toolkit headers are dropped from every artifact via `package_data`
+    # and MANIFEST.in, independently of this command.
+    from setuptools.command.sdist import sdist as _sdist
+
+    class sdist(_sdist):
+        def make_release_tree(self, base_dir, files):
+            files = cupy_setup_build.strip_cuda_headers(
+                files, include_cccl=_ascend_build)
+            super().make_release_tree(base_dir, files)
+
+    cmds['sdist'] = sdist
     return cmds
 
 

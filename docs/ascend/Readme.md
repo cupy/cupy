@@ -57,11 +57,21 @@
 | 文档 | 状态 | 内容 |
 |---|---|---|
 | [Package.md](Package.md) | 活跃（2026-10-17 更新命名） | **打包权威文档**：发行版命名/版本策略、wheel 结构、运行时前置（libstdc++/CANN）、安装排错 |
+| [Compliance.md](Compliance.md) | 活跃（2026-10-18） | **发布物合规**：仓库/wheel/sdist 里的 CUDA 资产审计、红线（不 vendor NVIDIA 专有头）、本地获取脚本、打包过滤器与验收命令 |
+| [../CudaBuild.md](../CudaBuild.md) | 活跃（2026-10-18） | **跨后端构建**：Ascend 的 xpu 抽象（4 条通道）、合规的 CUDA 编译步骤（fp16 头，12.2+ 不需要）、Ascend wheel 端到端构建与验收 A1-A5 |
 | [GithubPackagingAndPypi.md](GithubPackagingAndPypi.md) | 活跃（v3，2026-10-17） | GitHub Release + PyPI 发布全流程：workflow 矩阵、OIDC Trusted Publishing、auditwheel（实测 manylinux_2_34 基线）、本地版本段方案、`--find-links` 安装 |
 | [CondaPackage.md](CondaPackage.md) | 实战总结（2026-10-07） | conda 打包 CANN 9.0 全流程与坑；**conda 保留 per-train 包名**（`numpy-ascend-cann90`），已与 wheel 命名分家 |
-| [install_cann_ops_packages.md](install_cann_ops_packages.md) | 操作笔记 | 自编 CANN 额外算子包（ops-sparse / ops-fft / ops-solver…） |
+| [InstallCannOpsPackages.md](install_cann_ops_packages.md) | 操作笔记 | 自编 CANN 额外算子包（ops-sparse / ops-fft / ops-solver…） |
 | [CustomKernel.md](CustomKernel.md) | 方案（待确认） | 自定义 AscendC Kernel（对标 `cupy.RawKernel`）基础设施设计 |
 | [Profiler.md](Profiler.md) | 活跃（2026-10-17） | `cudaProfilerStart/Stop` → ACL profiler（aclprof）映射：语义差异、环境变量、`msprof` 导出、NPU 测试 |
+
+### 2.3 库级兼容（cupyx / scipy）
+
+| 文档 | 状态 | 内容 |
+|---|---|---|
+| [ScipyArrayApiCompat.md](ScipyArrayApiCompat.md) | 分析（2026-10-06） |  |
+| [CupyxScipyMigration.md](CupyxScipyMigration.md) | 分析（2026-10-18） | `cupyx` / `cupyx.scipy` 缺口盘点：4 个子系统级阻塞 + 248 个内联 kernel 分布、pytest 红区、覆盖率三档估算（~31 % → ~88-90 %）、落地顺序 R0-R5；含 scipy array-API 是否覆盖 sparse 的结论 |
+| [DistributedMigration.md](DistributedMigration.md) | 分析+方案（2026-10-18） | `cupyx.distributed` 原理拆解（`DistributedArray` 不是拆分 `_ndarray_base`、单进程多卡）、NCCL↔HCCL API/dtype 对照、四个结构性差异（root info 4108B、store 256B、无 group、P2P 不可假设）、Tier0/1/2 移植路线与风险 |
 
 ## 3. 文档维护约定
 
