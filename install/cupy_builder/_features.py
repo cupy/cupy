@@ -337,6 +337,14 @@ def get_features(ctx: Context) -> dict[str, Feature]:
         'check_method': build.check_cusparselt_version,
         'version_method': build.get_cusparselt_version,
     }
+    CUDA_cudss = {
+        'name': 'cudss',
+        'file': ['cupy_backends.cuda.libs.cudss'],
+        'include': ['cudss.h'],
+        'libraries': ['cudss'],
+        'check_method': build.check_cudss_version,
+        'version_method': build.get_cudss_version,
+    }
     HIP_cub = {
         'name': 'cub',
         'required': True,
@@ -428,6 +436,7 @@ def get_features(ctx: Context) -> dict[str, Feature]:
             _from_dict(CUDA_random, ctx),
             _from_dict(CUDA_thrust, ctx),
             _from_dict(CUDA_cusparselt, ctx),
+            _from_dict(CUDA_cudss, ctx),
             _from_dict(COMMON_dlpack, ctx),
         ]
     return {f.name: f for f in features}

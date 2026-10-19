@@ -687,6 +687,41 @@ def get_cusparselt_version(formatted=False):
     return _cusparselt_version
 
 
+_cudss_version = None
+
+
+def check_cudss_version(compiler, settings):
+    global _cudss_version
+    try:
+        out = build_and_run(compiler, '''
+        #include <cudss.h>
+        #include <stdio.h>
+        #ifndef CUDSS_VERSION
+        #define CUDSS_VERSION 0
+        #endif
+        int main(int argc, char* argv[]) {
+          printf("%d", CUDSS_VERSION);
+          return 0;
+        }
+        ''', include_dirs=settings['include_dirs'],
+                            extra_compile_args=settings['extra_compile_args'])
+    except Exception as e:
+        utils.print_warning('Cannot check cuDSS version\n{}'.format(e))
+        return False
+
+    _cudss_version = int(out)
+    return _cudss_version >= 800
+
+
+def get_cudss_version(formatted=False):
+    """Return cuDSS version cached in check_cudss_version()."""
+    global _cudss_version
+    if _cudss_version is None:
+        msg = 'check_cudss_version() must be called first.'
+        raise RuntimeError(msg)
+    return _cudss_version
+
+
 def conda_get_target_name():
     out = None
     if PLATFORM_LINUX:

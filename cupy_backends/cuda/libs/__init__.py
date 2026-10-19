@@ -18,7 +18,7 @@ if not _runtime.is_hip:
 # linked, so its loading is further deferred (to inside SoftLink).
 _submodules = (
     'cublas', 'cusolver', 'cusparse', 'curand', 'nccl', 'cutensor',
-    'cusparselt',
+    'cusparselt', 'cudss',
 )
 _submodules_runtime_link = (
     'nvrtc', 'nvtx'
