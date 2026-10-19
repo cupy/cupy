@@ -5,6 +5,7 @@
 #if defined(__HIPCC_RTC__) || defined(__HIPCC__)
 
 #include <hip/hip_bf16.h>
+#include "cupy/float_rounding.cuh"
 #define __nv_bfloat16 __hip_bfloat16
 
 #else
@@ -25,11 +26,31 @@ public:
 
   // Explicit constructors from other numeric types
   explicit __device__ bfloat16(bool v) : data_(float(v)) {}
-  explicit __device__ bfloat16(double v) : data_(float(v)) {}
-  explicit __device__ bfloat16(int v) : data_(float(v)) {}
-  explicit __device__ bfloat16(unsigned int v) : data_(float(v)) {}
-  explicit __device__ bfloat16(long long v) : data_(float(v)) {}
-  explicit __device__ bfloat16(unsigned long long v) : data_(float(v)) {}
+
+#if defined(__HIPCC_RTC__) || defined(__HIPCC__)
+  // Compatibility fallback: released ROCm lacks 64-bit integer constructors
+  // and some HIP toolchains truncate the native float -> bfloat16 narrowing,
+  // so round to nearest even directly with integer arithmetic.
+  explicit __device__ bfloat16(double v)
+      : data_(__ushort_as_bfloat16(double_to_bfloat16_round_to_neven(v))) {}
+  explicit __device__ bfloat16(int v)
+      : data_(__ushort_as_bfloat16(
+            integer_to_bfloat16_round_to_neven(static_cast<long long>(v)))) {}
+  explicit __device__ bfloat16(unsigned int v)
+      : data_(__ushort_as_bfloat16(
+            integer_to_bfloat16_round_to_neven(
+                static_cast<unsigned long long>(v)))) {}
+  explicit __device__ bfloat16(long long v)
+      : data_(__ushort_as_bfloat16(integer_to_bfloat16_round_to_neven(v))) {}
+  explicit __device__ bfloat16(unsigned long long v)
+      : data_(__ushort_as_bfloat16(integer_to_bfloat16_round_to_neven(v))) {}
+#else
+  explicit __device__ bfloat16(double v) : data_(v) {}
+  explicit __device__ bfloat16(int v) : data_(v) {}
+  explicit __device__ bfloat16(unsigned int v) : data_(v) {}
+  explicit __device__ bfloat16(long long v) : data_(v) {}
+  explicit __device__ bfloat16(unsigned long long v) : data_(v) {}
+#endif
 
   __device__ operator float() const {return float(data_);}
 
