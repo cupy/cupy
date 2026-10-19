@@ -126,6 +126,12 @@ cpdef Py_ssize_t _normalize_axis_index(
 cpdef tuple _normalize_axis_indices(
     axes, Py_ssize_t ndim, cpp_bool sort_axes=*)
 
+cpdef tuple _normalize_axis_tuple(
+    axis, Py_ssize_t ndim)
+
+cpdef _normalize_axis_tuple_into(
+    axis, Py_ssize_t ndim, shape_t& out)
+
 cpdef strides_t _get_strides_for_order_K(x, dtype, shape=*) except *
 
 cpdef int _update_order_char(
@@ -134,6 +140,8 @@ cpdef int _update_order_char(
 cpdef tuple _new_like_order_and_strides(a, dtype, order, shape=*)
 
 cpdef tuple _broadcast_shapes(shapes)
+
+cdef bint _has_element(const shape_t &source, Py_ssize_t n)
 
 cdef bint _is_layout_expected(
     const bint c_contiguous, const bint f_contiguous,
