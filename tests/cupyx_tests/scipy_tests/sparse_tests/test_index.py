@@ -123,12 +123,6 @@ class TestSetitemIndexing:
         m[0, 0] = rhs
         assert m.toarray()[0, 0] == 7.0
 
-    # scipy 1.13 tightened bool-mask shape validation in __setitem__;
-    # scipy raises ``IndexError: bool index N has shape X instead of Y``
-    # while cupy still accepts the looser broadcasting form.
-    @pytest.mark.xfail(reason="scipy >= 1.13 rejects this bool-mask shape; "
-                              "cupy still accepts it")
-    @testing.with_requires('scipy')
     def test_set_zero_dim_bool_mask(self):
         zero_dim_data = [numpy.array(5), cupy.array(5)]
         mask = testing.shaped_random(self.n_rows, dtype=bool)
@@ -569,7 +563,7 @@ class TestBoolMaskIndexing(IndexingTestBase):
         ([True, False, True], [True, False, True, False, True]),
     ],
 }))
-@testing.with_requires('scipy>=1.13.0')
+@testing.with_requires('scipy')
 class TestIndexingIndexError(IndexingTestBase):
 
     def test_indexing_index_error(self):
