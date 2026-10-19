@@ -98,6 +98,22 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
 
     """Custom `build_ext` command to include CUDA C source files."""
 
+    # Lines matching any of these substrings are excluded from the
+    # Pyx_WriteUnraisable check in `_check_noexcept`. Cython emits a
+    # Pyx_WriteUnraisable call site whenever a cdef function marked
+    # `noexcept` has a code path that could raise -- these particular
+    # patterns correspond to functions where raising cannot be avoided
+    # (dunder deallocators, Python/CUDA C-API callbacks) and where
+    # swallowing the exception is intentional.
+    _NOEXCEPT_EXCLUDES = (
+        '__dealloc__',
+        'const char *name',
+        'pycapsule_deleter',
+        'cupy.cuda.thrust.cupy_malloc',
+        '._streamCallbackFunc',
+        '._HostFnFunc',
+    )
+
     def _cythonize(self, nthreads: int) -> None:
         # Defer importing Cython as it may be installed via setup_requires if
         # the user does not have Cython installed.
@@ -131,10 +147,7 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
 
         compile_time_env['CUPY_CUFFT_STATIC'] = False
         compile_time_env['CUPY_CYTHON_VERSION'] = Cython.__version__
-        if ctx.use_stub:  # on RTD
-            compile_time_env['CUPY_CUDA_VERSION'] = 0
-            compile_time_env['CUPY_HIP_VERSION'] = 0
-        elif ctx.use_hip:  # on ROCm/HIP
+        if ctx.use_hip:  # on ROCm/HIP
             compile_time_env['CUPY_CUDA_VERSION'] = 0
             compile_time_env['CUPY_HIP_VERSION'] = build.get_hip_version()
         else:  # on CUDA
@@ -153,6 +166,40 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
             self.extensions, verbose=True, nthreads=nthreads, language_level=3,
             compiler_directives=compiler_directives, annotate=ctx.annotate,
             compile_time_env=compile_time_env)
+
+        if os.environ.get('CUPY_TEST_CYTHON_NOEXCEPT'):
+            self._check_noexcept()
+
+    def _check_noexcept(self) -> None:
+        """Grep cython-generated .cpp for Pyx_WriteUnraisable call sites that
+        don't match the known-safe exclusion list. Runs here (immediately
+        after cythonize) so the generated .cpp are produced from the exact
+        compiler directives + compile-time env above -- no duplicate dicts
+        to drift. Opt-in via CUPY_TEST_CYTHON_NOEXCEPT=1 so local
+        `pip install -e .` is unaffected; CI enables it in build-wheel.yml.
+        """
+        violations: list[str] = []
+        for ext in self.extensions:
+            for src in ext.sources:
+                if not src.endswith('.pyx'):
+                    continue
+                cpp = src[:-4] + '.cpp'
+                if not os.path.exists(cpp):
+                    continue
+                with open(cpp) as f:
+                    for lineno, line in enumerate(f, 1):
+                        if 'Pyx_WriteUnraisable' not in line:
+                            continue
+                        if any(ex in line for ex in self._NOEXCEPT_EXCLUDES):
+                            continue
+                        violations.append(f'{cpp}:{lineno}: {line.strip()}')
+        if violations:
+            raise RuntimeError(
+                'Possibly noexcept-violating functions found:\n'
+                + '\n'.join(violations)
+                + '\n\nIf these functions can raise, remove the noexcept '
+                'annotation. If they cannot, extend '
+                'custom_build_ext._NOEXCEPT_EXCLUDES.')
 
     def build_extensions(self) -> None:
         ctx = cupy_builder.get_context()

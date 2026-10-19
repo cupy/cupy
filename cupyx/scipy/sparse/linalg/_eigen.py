@@ -134,6 +134,10 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
 
     .. seealso:: :func:`scipy.sparse.linalg.eigsh`
 
+    .. note:: When ``a`` is not Hermitian, behavior is undefined: the input
+        is not checked, and the result may be silently wrong or the solver
+        may raise.
+
     .. note::
         This function uses the thick-restart Lanczos methods
         (https://sdm.lbl.gov/~kewu/ps/trlan.html).

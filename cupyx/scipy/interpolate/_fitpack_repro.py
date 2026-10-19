@@ -265,9 +265,9 @@ def _validate_inputs(x, y, w, k, s, xb, xe, parametric):
         raise ValueError(f"`s` must be non-negative. Got {s=}")
 
     if xb is None:
-        xb = min(x)
+        xb = x.min()
     if xe is None:
-        xe = max(x)
+        xe = x.max()
 
     return x, y, w, k, s, xb, xe
 

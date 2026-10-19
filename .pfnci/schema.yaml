@@ -224,6 +224,14 @@ cusparselt:
       "13.2":
       "13.3":
       "13.4":
+  "0.10.0":
+    spec: "0.10.0.*"
+    cuda:
+      "13.0":
+      "13.1":
+      "13.2":
+      "13.3":
+      "13.4":
 
 ###############################################################################
 # Python
@@ -244,9 +252,9 @@ python:
   "3.14t":
     spec: "3.14t"
   "3.15":
-    spec: "3.15.0rc3"
+    spec: "3.15.0"
   "3.15t":
-    spec: "3.15.0rc3t"
+    spec: "3.15.0t"
   "pre":
     spec: "3.16-dev"  # note that dependency python libraies may not work
 
@@ -301,7 +309,7 @@ numpy:
       - "3.15"
       - "3.15t"
   "pre":
-    spec: ">=0a0,<2.6"  # TODO(seberg): allow nightlies
+    spec: ">=0a0"
 scipy:
   # https://docs.scipy.org/doc/scipy/dev/toolchain.html#numpy
   null:
