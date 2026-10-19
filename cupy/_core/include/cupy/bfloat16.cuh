@@ -1,6 +1,7 @@
 #pragma once
 
 #include "cupy/carray.cuh"
+#include "cupy/float_rounding.cuh"
 
 #if defined(__HIPCC_RTC__) || defined(__HIPCC__)
 
@@ -25,11 +26,16 @@ public:
 
   // Explicit constructors from other numeric types
   explicit __device__ bfloat16(bool v) : data_(float(v)) {}
-  explicit __device__ bfloat16(double v) : data_(float(v)) {}
-  explicit __device__ bfloat16(int v) : data_(float(v)) {}
-  explicit __device__ bfloat16(unsigned int v) : data_(float(v)) {}
-  explicit __device__ bfloat16(long long v) : data_(float(v)) {}
-  explicit __device__ bfloat16(unsigned long long v) : data_(float(v)) {}
+  explicit __device__ bfloat16(double v)
+      : data_(double_to_float_round_to_odd(v)) {}
+  explicit __device__ bfloat16(int v)
+      : data_(integer_to_float_round_to_odd(v)) {}
+  explicit __device__ bfloat16(unsigned int v)
+      : data_(integer_to_float_round_to_odd(v)) {}
+  explicit __device__ bfloat16(long long v)
+      : data_(integer_to_float_round_to_odd(v)) {}
+  explicit __device__ bfloat16(unsigned long long v)
+      : data_(integer_to_float_round_to_odd(v)) {}
 
   __device__ operator float() const {return float(data_);}
 
