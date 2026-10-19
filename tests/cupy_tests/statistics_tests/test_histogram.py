@@ -526,48 +526,64 @@ class TestDigitizeNanInf(unittest.TestCase):
         y = xp.digitize(x, bins, right=self.right)
         return y,
 
-    @testing.numpy_cupy_array_equal()
-    def test_digitize_nan_bins(self, xp):
-        x = testing.shaped_arange((14,), xp, xp.float32)
-        bins = xp.array([1.0, 3.0, 5.0, 8.0, float('nan')], xp.float32)
-        y = xp.digitize(x, bins, right=self.right)
-        return y,
+    def test_digitize_nan_bins(self):
+        # NumPy >= 2.6 rejects NaN bins during its monotonicity check.
+        # CuPy skips that check to avoid synchronization, so test it directly.
+        x = testing.shaped_arange((14,), cupy, cupy.float32)
+        bins = cupy.array([1.0, 3.0, 5.0, 8.0, float('nan')], cupy.float32)
+        y = cupy.digitize(x, bins, right=self.right)
+        if self.right:
+            expected = [0, 1, 1, 2, 2, 3, 3, 3, 4, 4, 4, 4, 4, 4]
+        else:
+            expected = [1, 1, 2, 2, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4]
+        testing.assert_array_equal(y, expected)
 
-    @testing.numpy_cupy_array_equal()
-    def test_digitize_nan_bins_repeated(self, xp):
-        x = testing.shaped_arange((14,), xp, xp.float32)
+    def test_digitize_nan_bins_repeated(self):
+        x = testing.shaped_arange((14,), cupy, cupy.float32)
         x[5] = float('nan')
         bins = [1.0, 3.0, 5.0, 8.0, float('nan'), float('nan')]
-        bins = xp.array(bins, xp.float32)
-        y = xp.digitize(x, bins, right=self.right)
-        return y,
+        bins = cupy.array(bins, cupy.float32)
+        y = cupy.digitize(x, bins, right=self.right)
+        if self.right:
+            expected = [0, 1, 1, 2, 2, 4, 3, 3, 4, 4, 4, 4, 4, 4]
+        else:
+            expected = [1, 1, 2, 2, 3, 6, 3, 4, 4, 4, 4, 4, 4, 4]
+        testing.assert_array_equal(y, expected)
 
-    @testing.numpy_cupy_array_equal()
-    def test_digitize_nan_bins_decreasing(self, xp):
-        x = testing.shaped_arange((14,), xp, xp.float32)
+    def test_digitize_nan_bins_decreasing(self):
+        x = testing.shaped_arange((14,), cupy, cupy.float32)
         x[5] = float('nan')
         bins = [float('nan'), 8.0, 5.0, 3.0, 1.0]
-        bins = xp.array(bins, xp.float32)
-        y = xp.digitize(x, bins, right=self.right)
-        return y,
+        bins = cupy.array(bins, cupy.float32)
+        y = cupy.digitize(x, bins, right=self.right)
+        if self.right:
+            expected = [5, 4, 4, 3, 3, 1, 2, 2, 1, 1, 1, 1, 1, 1]
+        else:
+            expected = [4, 4, 3, 3, 2, 0, 2, 1, 1, 1, 1, 1, 1, 1]
+        testing.assert_array_equal(y, expected)
 
-    @testing.numpy_cupy_array_equal()
-    def test_digitize_nan_bins_decreasing_repeated(self, xp):
-        x = testing.shaped_arange((14,), xp, xp.float32)
+    def test_digitize_nan_bins_decreasing_repeated(self):
+        x = testing.shaped_arange((14,), cupy, cupy.float32)
         x[5] = float('nan')
         bins = [float('nan'), float('nan'), float('nan'), 5.0, 3.0, 1.0]
-        bins = xp.array(bins, xp.float32)
-        y = xp.digitize(x, bins, right=self.right)
-        return y,
+        bins = cupy.array(bins, cupy.float32)
+        y = cupy.digitize(x, bins, right=self.right)
+        if self.right:
+            expected = [6, 5, 5, 4, 4, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+        else:
+            expected = [5, 5, 4, 4, 3, 0, 3, 3, 3, 3, 3, 3, 3, 3]
+        testing.assert_array_equal(y, expected)
 
-    @testing.numpy_cupy_array_equal()
-    def test_digitize_all_nan_bins(self, xp):
-        x = testing.shaped_arange((14,), xp, xp.float32)
+    def test_digitize_all_nan_bins(self):
+        x = testing.shaped_arange((14,), cupy, cupy.float32)
         x[5] = float('nan')
         bins = [float('nan'), float('nan'), float('nan'), float('nan')]
-        bins = xp.array(bins, xp.float32)
-        y = xp.digitize(x, bins, right=self.right)
-        return y,
+        bins = cupy.array(bins, cupy.float32)
+        y = cupy.digitize(x, bins, right=self.right)
+        expected = [4] * 14
+        if not self.right:
+            expected[5] = 0
+        testing.assert_array_equal(y, expected)
 
     @testing.numpy_cupy_array_equal()
     def test_searchsorted_inf(self, xp):

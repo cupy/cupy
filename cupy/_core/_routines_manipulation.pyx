@@ -600,10 +600,10 @@ cpdef _ndarray_base _repeat(_ndarray_base a, repeats, axis=None):
     #         CuPy array (reps_arr).  reps_arr = None means scalar.
     reps_arr = _convert_from_cupy_like(repeats, error=False)
     if reps_arr is not None:
-        if not numpy.can_cast(reps_arr.dtype, numpy.intp, casting='safe'):
+        if not numpy.can_cast(reps_arr.dtype, numpy.intp, casting='same_kind'):
             raise TypeError(
                 "Cannot cast array data from dtype('{}') to "
-                "dtype('{}') according to the rule 'safe'"
+                "dtype('{}') according to the rule 'same_kind'"
                 .format(reps_arr.dtype, numpy.dtype(numpy.intp)))
         if reps_arr.ndim > 1:
             raise ValueError(
