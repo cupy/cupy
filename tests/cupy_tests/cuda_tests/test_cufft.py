@@ -36,7 +36,8 @@ class TestExceptionPicklable(unittest.TestCase):
             cupy.cuda.runtime.is_hip, reason='not supported by hipFFT')),
 ])
 def test_plan_instantiation_deprecated(create_plan):
-    match = r'Direct instantiation of .* is deprecated\. Use nvmath\.fft'
+    match = (r'Direct instantiation of .* is deprecated\. '
+             r'Use nvmath\.fft\.FFT instead\. \(deprecated in CuPy 14\.3\)')
     with pytest.warns(DeprecationWarning, match=match) as record:
         plan = create_plan()
     assert len(record) == 1
