@@ -43,7 +43,7 @@ class _KeyBuffer:
         self.shape = (size,)
         self.ndim = 1
         alignment = dtype.alignment
-        storage_size = size * dtype.itemsize + alignment - 1 
+        storage_size = size * dtype.itemsize + alignment - 1
         self._storage = cupy.empty(storage_size, dtype=cupy.uint8)
         _data = self._storage.data
         offset = (-_data.ptr) % alignment
