@@ -62,6 +62,10 @@ Part of the CUDA features in CuPy will be activated only when the corresponding 
 
     * The library to accelerate sparse matrix-matrix multiplication.
 
+* `cuDSS <https://docs.nvidia.com/cuda/cudss/>`_: v0.8.0
+
+    * The library to accelerate dense matrix operations.
+
 
 Installing CuPy
 ---------------

@@ -121,6 +121,8 @@ class _RuntimeInfo:
     cutensor_path = None
     cusparselt_version = None
     cusparselt_path = None
+    cudss_version = None
+    cudss_path = None
     cython_build_version = None
     cython_version = None
 
@@ -287,6 +289,15 @@ class _RuntimeInfo:
             pass
         if full and not is_hip:
             self.cusparselt_path = _load_and_get_path('cusparseLt')
+
+        # cuDSS
+        try:
+            from cupy_backends.cuda.libs import cudss
+            self.cudss_version = cudss.get_build_version()
+        except ImportError:
+            pass
+        if full and not is_hip:
+            self.cudss_path = _load_and_get_path('cudss')
 
         # Cython
         self.cython_build_version = cupy._util.cython_build_ver

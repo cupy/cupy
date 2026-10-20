@@ -120,7 +120,7 @@ cdef extern from "../../cupy_cudss.h" nogil:
         const void* nrows,
         const void* ncols,
         const void* ld,
-        const void*const* values,
+        const void* const* values,
         cudssDataType_t integerType,
         cudssDataType_t valueType,
         cudssLayout_t layout)
@@ -145,10 +145,10 @@ cdef extern from "../../cupy_cudss.h" nogil:
         const void* nrows,
         const void* ncols,
         const void* nnz,
-        const void*const* rowStart,
-        const void*const* rowEnd,
-        const void*const* colIndices,
-        const void*const* values,
+        const void* const* rowStart,
+        const void* const* rowEnd,
+        const void* const* colIndices,
+        const void* const* values,
         cudssDataType_t offsetType,
         cudssDataType_t indexType,
         cudssDataType_t valueType,
@@ -162,7 +162,7 @@ cdef extern from "../../cupy_cudss.h" nogil:
         const void* values)
     cudssStatus_t cudssMatrixSetBatchValues(
         cudssMatrix_t matrix,
-        const void*const* values)
+        const void* const* values)
     cudssStatus_t cudssMatrixSetCsrPointers(
         cudssMatrix_t matrix,
         const void* rowStart,
@@ -171,10 +171,10 @@ cdef extern from "../../cupy_cudss.h" nogil:
         const void* values)
     cudssStatus_t cudssMatrixSetBatchCsrPointers(
         cudssMatrix_t matrix,
-        const void*const* rowStart,
-        const void*const* rowEnd,
-        const void*const* colIndices,
-        const void*const* values)
+        const void* const* rowStart,
+        const void* const* rowEnd,
+        const void* const* colIndices,
+        const void* const* values)
     cudssStatus_t cudssMatrixSetDistributionRow1d(
         cudssMatrix_t matrix,
         int64_t first_row,
@@ -593,7 +593,7 @@ cpdef matrixCreateBatchDn(
             <const void*>nrows,
             <const void*>ncols,
             <const void*>ld,
-            <const void*const*>values,
+            <const void* const*>values,
             integerType,
             valueType,
             layout)
@@ -661,10 +661,10 @@ cpdef matrixCreateBatchCsr(
             <const void*>nrows,
             <const void*>ncols,
             <const void*>nnz,
-            <const void*const*>rowStart,
-            <const void*const*>rowEnd,
-            <const void*const*>colIndices,
-            <const void*const*>values,
+            <const void* const*>rowStart,
+            <const void* const*>rowEnd,
+            <const void* const*>colIndices,
+            <const void* const*>values,
             offsetType,
             indexType,
             valueType,
@@ -697,7 +697,7 @@ cpdef matrixSetBatchValues(intptr_t matrix, intptr_t values):
     with nogil:
         status = cudssMatrixSetBatchValues(
             <cudssMatrix_t>matrix,
-            <const void*const*>values)
+            <const void* const*>values)
     check_status(status)
 
 
@@ -728,10 +728,10 @@ cpdef matrixSetBatchCsrPointers(
     with nogil:
         status = cudssMatrixSetBatchCsrPointers(
             <cudssMatrix_t>matrix,
-            <const void*const*>rowStart,
-            <const void*const*>rowEnd,
-            <const void*const*>colIndices,
-            <const void*const*>values)
+            <const void* const*>rowStart,
+            <const void* const*>rowEnd,
+            <const void* const*>colIndices,
+            <const void* const*>values)
     check_status(status)
 
 

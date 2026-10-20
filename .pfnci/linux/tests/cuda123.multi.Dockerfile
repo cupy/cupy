@@ -14,13 +14,16 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
        && \
     apt-get -qqy install ccache git curl && \
     apt-get -qqy --allow-change-held-packages \
-            --allow-downgrades install 'libnccl2=2.19.*+cuda12.3' 'libnccl-dev=2.19.*+cuda12.3'
+            --allow-downgrades install 'libnccl2=2.19.*+cuda12.3' 'libnccl-dev=2.19.*+cuda12.3' 'libcudss0=0.8.0.*' 'libcudss0-dev=0.8.0.*'
 
 ENV PATH "/usr/lib/ccache:${PATH}"
 
 RUN curl -fsSL https://github.com/cli/cli/releases/download/v2.95.0/gh_2.95.0_linux_amd64.tar.gz \
         | tar -xz -C /usr/local --strip-components=1 gh_2.95.0_linux_amd64/bin/gh
 
+ENV CUPY_INCLUDE_PATH=/usr/include/libcudss/12:${CUPY_INCLUDE_PATH}
+ENV CUPY_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/libcudss/12:${CUPY_LIBRARY_PATH}
+ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/libcudss/12:${LD_LIBRARY_PATH}
 RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"

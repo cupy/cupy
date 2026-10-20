@@ -229,6 +229,26 @@ class LinuxGenerator:
                 ':${LD_LIBRARY_PATH}'
             )
 
+        # Define env vars to discover cudss during build/runtime.
+        if matrix.cudss is not None:
+            # The following assumes cuDSS 0.8.0+ package layout.
+            cuda_major = matrix.cuda.split('.')[0]
+            lines.append(
+                'ENV CUPY_INCLUDE_PATH='
+                f'/usr/include/libcudss/{cuda_major}'
+                ':${CUPY_INCLUDE_PATH}'
+            )
+            lines.append(
+                'ENV CUPY_LIBRARY_PATH='
+                f'/usr/lib/x86_64-linux-gnu/libcudss/{cuda_major}'
+                ':${CUPY_LIBRARY_PATH}'
+            )
+            lines.append(
+                'ENV LD_LIBRARY_PATH='
+                f'/usr/lib/x86_64-linux-gnu/libcudss/{cuda_major}'
+                ':${LD_LIBRARY_PATH}'
+            )
+
         # Set environment variables for ROCm.
         if matrix.rocm is not None:
             lines += [
@@ -290,6 +310,7 @@ class LinuxGenerator:
             nccl = matrix.nccl
             cutensor = matrix.cutensor
             cusparselt = matrix.cusparselt
+            cudss = matrix.cudss
             if nccl is not None:
                 spec = self.schema['nccl'][nccl]['spec']
                 nccl_cuda_schema = self.schema['nccl'][nccl]['cuda'][cuda]
@@ -329,6 +350,18 @@ class LinuxGenerator:
                         f'libcusparselt{spltmajor}-cuda-{cudamajor}-{spec}')
                     packages.append(
                         f'libcusparselt{spltmajor}-devel-cuda-{cudamajor}-{spec}')
+            if cudss is not None:
+                spec = self.schema['cudss'][cudss]['spec']
+                major = cudss.split('.')[0]
+                cuda_major = cuda.split('.')[0]
+                if apt:
+                    packages.append(
+                        f'libcudss{major}={spec}')
+                    packages.append(
+                        f'libcudss{major}-dev={spec}')
+                else:
+                    packages.append(f'libcudss{major}-{spec}')
+                    packages.append(f'libcudss-devel-{spec}')
             return packages
         elif matrix.rocm is not None:
             return self.schema['rocm'][matrix.rocm]['packages']  # type: ignore[no-any-return] # NOQA

@@ -13,105 +13,107 @@ sys.path.append(os.path.join(source_root, 'install'))
 import cupy_builder  # NOQA
 from cupy_builder import cupy_setup_build  # NOQA
 
-ctx = cupy_builder.Context(source_root)
-cupy_builder.initialize(ctx)
-if not cupy_builder.preflight_check(ctx):
-    sys.exit(1)
+
+def main():
+    ctx = cupy_builder.Context(source_root)
+    cupy_builder.initialize(ctx)
+    if not cupy_builder.preflight_check(ctx):
+        sys.exit(1)
+
+    # List of files that needs to be in the distribution (sdist/wheel).
+    # Notes:
+    # - Files only needed in sdist should be added to `MANIFEST.in`.
+    # - The following glob (`**`) ignores items starting with `.`.
+    # - libcudacxx's test files exceed the default path length limit on
+    #   Windows, so we exclude them to avoid requiring registry changes.
+    cupy_package_data = [
+        'cupy/cuda/cupy_thrust.cu',
+        'cupy/cuda/cupy_cub.cu',
+        'cupy/cuda/cupy_cufftXt.cu',  # for cuFFT callback
+        'cupy/cuda/cupy_cufftXt.h',  # for cuFFT callback
+        'cupy/cuda/cupy_cufft.h',  # for cuFFT callback
+        'cupy/cuda/cufft.pxd',  # for cuFFT callback
+        'cupy/cuda/cufft.pyx',  # for cuFFT callback
+        'cupy_backends/cuda/_softlink.pxd',  # for cuFFT callback
+        'cupy/random/cupy_distributions.cu',
+        'cupy/random/cupy_distributions.cuh',
+        'cupyx/scipy/ndimage/cuda/LICENSE',
+        'cupyx/scipy/ndimage/cuda/pba_kernels_2d.h',
+        'cupyx/scipy/ndimage/cuda/pba_kernels_3d.h',
+    ] + [
+        x for x in glob.glob('cupy/_core/include/cupy/**', recursive=True)
+        if os.path.isfile(x)
+    ]
+
+    package_data = {
+        'cupy': [
+            os.path.relpath(x, 'cupy') for x in cupy_package_data
+        ],
+    }
+
+    package_data['cupy'] += cupy_setup_build.prepare_wheel_libs(ctx)
+
+    # CUDA-less setup.py invocations: direct `sdist`, and PEP 517's
+    # get_requires_for_build_sdist, which setuptools backs with
+    # `setup.py egg_info`. Both must skip the CUDA probe + [ctk] so the
+    # sdist builder can run without a CUDA toolkit.
+    #
+    # Do NOT add `dist_info` here: that's the subcommand setuptools uses
+    # for `prepare_metadata_for_build_wheel` (and _for_build_editable).
+    # Pip resolves extras (`pip install .[ctk]`) from that prepared
+    # metadata, so skipping [ctk] in dist_info silently drops the toolkit
+    # wheels. bdist_wheel is a separate setup() invocation on the wheel
+    # builders where the probe + [ctk] both run normally.
+    _sdist_phase = ctx.setup_command in {'sdist', 'egg_info'}
+
+    ext_modules = [] if _sdist_phase else cupy_setup_build.get_ext_modules(
+        True, ctx)
+
+    long_description = ''
+    if ctx.long_description_path is not None:
+        with open(ctx.long_description_path) as f:
+            long_description = f.read()
+
+    dependencies = [
+        "numpy>=2.0,<2.7",  # see #4773
+    ]
+    optional_dependencies = {
+        "all": [
+            "scipy>=1.14,<1.19",  # see #4773
+            "Cython>=3,!=3.2.6",
+            "optuna>=2.0",
+        ],
+        "test": [
+            "packaging",
+            "pytest>=7.2",
+            "hypothesis>=6.37.2,<6.55.0",
+            "mpmath",
+        ],
+    }
+    if not ctx.use_hip:
+        dependencies.append("cuda-pathfinder>=1.3.4,==1.*")
+        # Same reasoning as the ext_modules guard: sdist/egg_info/dist_info
+        # run on a CUDA-less builder, so skip the version-detecting [ctk]
+        # computation. The wheel builder re-runs setup.py under bdist_wheel
+        # with CUDA available and populates [ctk] then.
+        if not _sdist_phase:
+            cuda_major = ctx.features["cuda"].get_version() // 1000
+            optional_dependencies["ctk"] = [
+                f"cuda-toolkit[cudart,nvrtc,cublas,cufft,cusolver,cusparse,curand]=={cuda_major}.*"  # NOQA
+            ]
+
+    setup(
+        long_description=long_description,
+        long_description_content_type='text/x-rst',
+        package_data=package_data,
+        install_requires=dependencies,
+        extras_require=optional_dependencies,
+        zip_safe=False,
+        ext_modules=ext_modules,
+        cmdclass={'build_ext': cupy_builder._command.custom_build_ext},
+    )
 
 
-# List of files that needs to be in the distribution (sdist/wheel).
-# Notes:
-# - Files only needed in sdist should be added to `MANIFEST.in`.
-# - The following glob (`**`) ignores items starting with `.`.
-# - libcudacxx's test files exceed the default path length limit on Windows, so
-#   we have to exclude them so as to avoid asking users to touch the registry.
-cupy_package_data = [
-    'cupy/cuda/cupy_thrust.cu',
-    'cupy/cuda/cupy_cub.cu',
-    'cupy/cuda/cupy_cufftXt.cu',  # for cuFFT callback
-    'cupy/cuda/cupy_cufftXt.h',  # for cuFFT callback
-    'cupy/cuda/cupy_cufft.h',  # for cuFFT callback
-    'cupy/cuda/cufft.pxd',  # for cuFFT callback
-    'cupy/cuda/cufft.pyx',  # for cuFFT callback
-    'cupy_backends/cuda/_softlink.pxd',  # for cuFFT callback
-    'cupy/random/cupy_distributions.cu',
-    'cupy/random/cupy_distributions.cuh',
-    'cupyx/scipy/ndimage/cuda/LICENSE',
-    'cupyx/scipy/ndimage/cuda/pba_kernels_2d.h',
-    'cupyx/scipy/ndimage/cuda/pba_kernels_3d.h',
-] + [
-    x for x in glob.glob('cupy/_core/include/cupy/**', recursive=True)
-    if os.path.isfile(x)
-]
-
-package_data = {
-    'cupy': [
-        os.path.relpath(x, 'cupy') for x in cupy_package_data
-    ],
-}
-
-package_data['cupy'] += cupy_setup_build.prepare_wheel_libs(ctx)
-
-
-# CUDA-less setup.py invocations: direct `sdist`, and PEP 517's
-# get_requires_for_build_sdist, which setuptools backs with
-# `setup.py egg_info`. Both must skip the CUDA probe + [ctk] so the
-# sdist builder can run without a CUDA toolkit.
-#
-# Do NOT add `dist_info` here: that's the subcommand setuptools uses
-# for `prepare_metadata_for_build_wheel` (and _for_build_editable).
-# Pip resolves extras (`pip install .[ctk]`) from that prepared
-# metadata, so skipping [ctk] in dist_info silently drops the toolkit
-# wheels. bdist_wheel is a separate setup() invocation on the wheel
-# builders where the probe + [ctk] both run normally.
-_sdist_phase = ctx.setup_command in {'sdist', 'egg_info'}
-
-ext_modules = [] if _sdist_phase else cupy_setup_build.get_ext_modules(
-    True, ctx)
-
-
-long_description = ''
-if ctx.long_description_path is not None:
-    with open(ctx.long_description_path) as f:
-        long_description = f.read()
-
-
-dependencies = [
-    "numpy>=2.0,<2.7",  # see #4773
-]
-optional_dependencies = {
-    "all": [
-        "scipy>=1.14,<1.19",  # see #4773
-        "Cython>=3,!=3.2.6",
-        "optuna>=2.0",
-    ],
-    "test": [
-        "packaging",
-        "pytest>=7.2",
-        "hypothesis>=6.37.2,<6.55.0",
-        "mpmath",
-    ],
-}
-if not ctx.use_hip:
-    dependencies.append("cuda-pathfinder>=1.3.4,==1.*")
-    # Same reasoning as the ext_modules guard: sdist/egg_info/dist_info
-    # run on a CUDA-less builder, so skip the version-detecting [ctk]
-    # computation. The wheel builder re-runs setup.py under bdist_wheel
-    # with CUDA available and populates [ctk] then.
-    if not _sdist_phase:
-        cuda_major = ctx.features["cuda"].get_version() // 1000
-        optional_dependencies["ctk"] = [
-            f"cuda-toolkit[cudart,nvrtc,cublas,cufft,cusolver,cusparse,curand]=={cuda_major}.*"  # NOQA
-        ]
-
-
-setup(
-    long_description=long_description,
-    long_description_content_type='text/x-rst',
-    package_data=package_data,
-    install_requires=dependencies,
-    extras_require=optional_dependencies,
-    zip_safe=False,
-    ext_modules=ext_modules,
-    cmdclass={'build_ext': cupy_builder._command.custom_build_ext},
-)
+# Cython workers import this file as __mp_main__ under spawn/forkserver.
+if __name__ == '__main__':
+    main()
