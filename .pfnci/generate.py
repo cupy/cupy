@@ -352,16 +352,18 @@ class LinuxGenerator:
                         f'libcusparselt{spltmajor}-devel-cuda-{cudamajor}-{spec}')
             if cudss is not None:
                 spec = self.schema['cudss'][cudss]['spec']
-                major = cudss.split('.')[0]
-                cuda_major = cuda.split('.')[0]
+                cudamajor = cuda.split('.')[0]
+                spltmajor = cudss.split('.')[0]
                 if apt:
                     packages.append(
-                        f'libcudss{major}={spec}')
+                        f'libcudss{spltmajor}-cuda-{cudamajor}={spec}')
                     packages.append(
-                        f'libcudss{major}-dev={spec}')
+                        f'libcudss{spltmajor}-dev-cuda-{cudamajor}={spec}')
                 else:
-                    packages.append(f'libcudss{major}-{spec}')
-                    packages.append(f'libcudss-devel-{spec}')
+                    packages.append(
+                        f'libcudss{spltmajor}-cuda-{cudamajor}-{spec}')
+                    packages.append(
+                        f'libcudss{spltmajor}-devel-cuda-{cudamajor}-{spec}')
             return packages
         elif matrix.rocm is not None:
             return self.schema['rocm'][matrix.rocm]['packages']  # type: ignore[no-any-return] # NOQA
