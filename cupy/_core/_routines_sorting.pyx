@@ -11,6 +11,8 @@ import cupy._core.core as core
 from cupy import _util
 from cupy.cuda import thrust
 
+from cupy_backends.cuda.api cimport runtime
+from cupy._core cimport _accelerator
 from cupy._core cimport _routines_manipulation as _manipulation
 from cupy._core.core cimport compile_with_cache
 from cupy._core.core cimport _ndarray_base
@@ -19,12 +21,8 @@ from cupy._core cimport internal
 
 cdef _ndarray_sort(_ndarray_base self, int axis, bint descending=False):
     cdef int ndim = self._shape.size()
-    cdef _ndarray_base data
-
-    if not cupy.cuda.thrust.available:
-        raise RuntimeError('Thrust is needed to use cupy.sort. Please '
-                           'install CUDA Toolkit with Thrust then '
-                           'reinstall CuPy after uninstalling it.')
+    cdef int accelerator
+    cdef _ndarray_base data, result
 
     if ndim == 0:
         raise AxisError('Sorting arrays with the rank of zero is not '
@@ -44,6 +42,23 @@ cdef _ndarray_sort(_ndarray_base self, int axis, bint descending=False):
         data = self
     else:
         data = _manipulation.rollaxis(self, axis, ndim).copy()
+
+    if not runtime._is_hip_environment:
+        for accelerator in _accelerator._routine_accelerators:
+            if accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE:
+                from cupy._core._cuda_compute_merge_sort import (
+                    cuda_compute_merge_sort)
+                result = cuda_compute_merge_sort(data, descending)
+                if result is not None:
+                    if axis != ndim - 1:
+                        result = _manipulation.rollaxis(result, -1, axis)
+                    elementwise_copy(result, self)
+                    return
+
+    if not cupy.cuda.thrust.available:
+        raise RuntimeError('Thrust is needed to use cupy.sort. Please '
+                           'install CUDA Toolkit with Thrust then '
+                           'reinstall CuPy after uninstalling it.')
 
     if ndim == 1:
         thrust.sort(self.dtype, data.data.ptr, 0, self.shape, descending)
@@ -71,13 +86,8 @@ cdef _ndarray_sort(_ndarray_base self, int axis, bint descending=False):
 
 cdef _ndarray_base _ndarray_argsort(_ndarray_base self, axis,
                                     bint descending=False):
-    cdef int _axis, ndim
-    cdef _ndarray_base data
-
-    if not cupy.cuda.thrust.available:
-        raise RuntimeError('Thrust is needed to use cupy.argsort. Please '
-                           'install CUDA Toolkit with Thrust then '
-                           'reinstall CuPy after uninstalling it.')
+    cdef int _axis, ndim, accelerator
+    cdef _ndarray_base data, result
 
     self = cupy.atleast_1d(self)
     ndim = self._shape.size()
@@ -96,6 +106,22 @@ cdef _ndarray_base _ndarray_argsort(_ndarray_base self, axis,
     else:
         data = _manipulation.rollaxis(data, _axis, ndim).copy()
     shape = data.shape
+
+    if not runtime._is_hip_environment:
+        for accelerator in _accelerator._routine_accelerators:
+            if accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE:
+                from cupy._core._cuda_compute_merge_sort import (
+                    cuda_compute_argsort)
+                result = cuda_compute_argsort(data, descending)
+                if result is not None:
+                    if _axis != ndim - 1:
+                        result = _manipulation.rollaxis(result, -1, _axis)
+                    return result
+
+    if not cupy.cuda.thrust.available:
+        raise RuntimeError('Thrust is needed to use cupy.argsort. Please '
+                           'install CUDA Toolkit with Thrust then '
+                           'reinstall CuPy after uninstalling it.')
 
     idx_array = core.ndarray(shape, dtype=numpy.intp)
 
