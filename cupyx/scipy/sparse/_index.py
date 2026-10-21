@@ -736,11 +736,10 @@ def _unpack_index(index, shape):
         else:
             raise IndexError('invalid number of indices')
     else:
-        idx = _compatible_boolean_index(index)
+        idx = _compatible_boolean_index(index, shape)
         if idx is None:
             row, col = index, slice(None)
         elif idx.ndim < 2:
-            _check_mask_shape(idx, (shape[0],))
             idx = _boolean_index_to_array(idx)
             return idx, slice(None)
         elif idx.ndim == 2:
@@ -753,10 +752,8 @@ def _unpack_index(index, shape):
             'Indexing with sparse matrices is not supported '
             'except boolean indexing where matrix and index '
             'are equal shapes.')
-    bool_row = _compatible_boolean_index(row)
-    _check_mask_shape(bool_row, (shape[0],))
-    bool_col = _compatible_boolean_index(col)
-    _check_mask_shape(bool_col, (shape[1],))
+    bool_row = _compatible_boolean_index(row, (shape[0],))
+    bool_col = _compatible_boolean_index(col, (shape[1],))
     if bool_row is not None:
         row = _boolean_index_to_array(bool_row)
     if bool_col is not None:
@@ -823,18 +820,24 @@ def _first_element_bool(idx, max_dim=2):
     return _first_element_bool(first, max_dim-1)
 
 
-def _compatible_boolean_index(idx):
+def _compatible_boolean_index(idx, shape=None):
     """Returns a boolean index array that can be converted to
     integer array. Returns None if no such array exists.
     """
+    result = None
     # presence of attribute `ndim` indicates a compatible array type.
     if hasattr(idx, 'ndim'):
         if idx.dtype.kind == 'b':
-            return idx
+            result = idx
     # non-ndarray bool collection should be converted to ndarray
     elif _first_element_bool(idx):
-        return cupy.asarray(idx, dtype='bool')
-    return None
+        result = cupy.asarray(idx, dtype='bool')
+
+    if result is not None and shape is not None:
+        expected = shape if (len(shape) == 2 and result.ndim == 2) \
+            else (shape[0],)
+        _check_mask_shape(result, expected)
+    return result
 
 
 def _boolean_index_to_array(idx):
