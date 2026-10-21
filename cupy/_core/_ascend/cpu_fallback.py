@@ -61,6 +61,7 @@ __all__ = [
     'maybe_call',
     'reset_cache',
     'run',
+    'scipy_sparse_host',
     'to_device',
     'to_numpy',
 ]
@@ -626,6 +627,114 @@ def _copy_host_into(out: Any, np_result: Any) -> None:
         numpy.ascontiguousarray(numpy.asarray(np_result), dtype=out.dtype))
     from cupy.backends.ascend.api.acl_utils import py_launch_general
     py_launch_general('ascend_copy', (dev,), (out,), (), {})
+
+
+# ---------------------------------------------------------------------------
+# cupyx.scipy.sparse：raw-CUDA ElementwiseKernel 的 host 复算
+#
+# ``cupyx/scipy/sparse/_compressed.py`` 的 has_sorted_indices /
+# has_canonical_format 判定是 raw CUDA body 的 ElementwiseKernel
+# （'cupyx_scipy_sparse_has_sorted_indices' /
+# 'cupyx_scipy_sparse_has_canonical_format'），Ascend 后端无法执行其 kernel
+# body。派发层（acl_utils.launch_general_func_raw 的 ``_scipy_fallback_host``
+# 钩子）在 aclnn 查表之前把它们拦下，整调用搬到 host 用 NumPy 复算逐行标志，
+# 再写回设备 out（调用点随后 ``.all()`` 得到标量 bool）。
+# ---------------------------------------------------------------------------
+
+#: kernel 名（去掉 ``cupyx_`` / ``cupy_`` / ``ascend_`` 前缀）-> 是否要求行内
+#: indices **严格**递增（True = canonical format 语义；False = sorted 语义）。
+_SCIPY_SPARSE_HOST_KERNELS: Dict[str, bool] = {
+    'scipy_sparse_has_sorted_indices': False,
+    'scipy_sparse_has_canonical_format': True,
+}
+
+
+def _scipy_sparse_kernel_key(opname: str) -> str:
+    """去掉 ``cupyx_`` / ``cupy_`` / ``ascend_`` 前缀，得到 kernel 名。"""
+    for prefix in ('cupyx_', 'cupy_', 'ascend_'):
+        if opname.startswith(prefix):
+            return opname[len(prefix):]
+    return opname
+
+
+def _host_row_flags(np_indptr: Any, np_indices: Any, n_rows: int,
+                    unique: bool) -> Any:
+    """逐行复算 CSR 行标志（True = 该行满足判定），与 kernel body 同语义。
+
+    * ``unique=False``（has_sorted_indices）：行内 indices 非降，允许重复；
+    * ``unique=True``（has_canonical_format）：先要求 ``indptr`` 非降
+      （kernel 里 ``indptr[i] > indptr[i+1] -> false``），再要求行内严格递增。
+
+    输入是 host 端 numpy 数组（``_to_host`` 之后），返回 bool 数组
+    ``(n_rows,)``。
+    """
+    np_indptr = numpy.asarray(np_indptr).ravel()
+    np_indices = numpy.asarray(np_indices).ravel()
+    flags = numpy.ones(n_rows, dtype=bool)
+    for i in range(n_rows):
+        lo = int(np_indptr[i])
+        hi = int(np_indptr[i + 1])
+        if hi < lo:
+            # canonical kernel 对此行直接置 false；sorted kernel 的循环不
+            # 执行，标志保持 true（与 kernel body 逐字对齐）。
+            if unique:
+                flags[i] = False
+            continue
+        seg = np_indices[lo:hi]
+        if seg.size < 2:
+            continue
+        if unique:
+            flags[i] = bool(numpy.all(seg[1:] > seg[:-1]))
+        else:
+            flags[i] = bool(numpy.all(seg[1:] >= seg[:-1]))
+    return flags
+
+
+def scipy_sparse_host(opname: str, ins: Any, outs: Any,
+                      stream_ptr: int = 0) -> None:
+    """``cupyx.scipy.sparse`` 判定 kernel 的 host 实现（D2H -> NumPy -> H2D）。
+
+    由 ``cupy.backends.ascend.api.acl_utils`` 的 ``_scipy_fallback_host`` 钩子
+    调用：``ins = [indptr, indices]``，``outs = [diff]``（bool，长度
+    ``indptr.size - 1``）；调用点随后 ``diff.all()``。
+
+    Args:
+        opname: ElementwiseKernel 名（``cupyx_scipy_sparse_has_*`` 形式，
+            前缀可有可无）。
+        ins/outs: 设备端操作数（见上）。
+        stream_ptr: 调用方 aclrtStream（0 = 默认流）。写回用 ``ndarray.set``
+            的裸 H2D memcpy（当前流），不经 aclnn —— bool 的 aclnnCast 支持
+            情况因 SOC 而异；ElementwiseKernel 派发传入的就是当前流。
+
+    Raises:
+        NotImplementedError: fallback 被 ``DISABLE_ENV`` 关闭，或 opname 未注册。
+        ValueError: ins/outs 形状与 kernel 契约不符。
+    """
+    if not active():
+        raise NotImplementedError(
+            '{}: cupyx.scipy.sparse 的判定 kernel 是 raw CUDA kernel，Ascend '
+            '后端只能走 host fallback，但它被 {}=1 关闭'.format(
+                opname, DISABLE_ENV))
+    key = _scipy_sparse_kernel_key(opname)
+    if key not in _SCIPY_SPARSE_HOST_KERNELS:
+        raise NotImplementedError(
+            '{}: 没有注册 cupyx.scipy.sparse 的 host 实现（已注册: {}）'.format(
+                opname, ', '.join(sorted(_SCIPY_SPARSE_HOST_KERNELS))))
+    if len(ins) < 2 or not outs:
+        raise ValueError(
+            '{}: 期望 ins=[indptr, indices] / outs=[diff]，实际 ins={} / '
+            'outs={}'.format(opname, len(ins), len(outs)))
+    out = outs[0]
+    np_indptr = _to_host(ins[0])
+    np_indices = _to_host(ins[1])
+    n_rows = int(out.size)
+    flags = _host_row_flags(np_indptr, np_indices, n_rows,
+                            _SCIPY_SPARSE_HOST_KERNELS[key])
+    flags = numpy.ascontiguousarray(
+        flags.reshape(out.shape), dtype=out.dtype)
+    # kernel 的 diff 是新建的 C-连续 bool 缓冲，shape/dtype 已由调用点定好，
+    # 裸 H2D memcpy 即可（set 要求 dtype/shape 完全一致）。
+    out.set(flags)
 
 
 def _host_take(ins: Any, outs: Any, args: Any, kwargs: Any) -> None:

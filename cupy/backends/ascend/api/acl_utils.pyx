@@ -1351,7 +1351,34 @@ _SCALAR_AS_TENSOR_OPS = {
 }
 
 
+#: cupyx.scipy.sparse 的判定 kernel（raw CUDA ElementwiseKernel，见
+#: ``cupyx/scipy/sparse/_compressed.py`` 的 _has_sorted_indices_kern /
+#: _has_canonical_format_kern）。Ascend 后端无法执行其 kernel body，在 aclnn
+#: 查表之前整调用转 host 复算（docs/ascend/CupyxScipyMigration.md §R2）。
+_SCIPY_SPARSE_HOST_OPS = frozenset((
+    'cupyx_scipy_sparse_has_sorted_indices',
+    'cupyx_scipy_sparse_has_canonical_format',
+))
+
+
+cdef aclError _scipy_fallback_host(str opname, sequence ins, sequence outs, intptr_t stream_ptr) except *:
+    """cupyx.scipy.sparse host fallback 的派发入口。
+
+    实现见 ``cupy._core._ascend.cpu_fallback.scipy_sparse_host``：
+    D2H indptr/indices -> NumPy 逐行复算 bool 标志 -> H2D 写回 outs[0]
+    （调用点随后 ``.all()``）。返回 0 表示已成功完成，无需再走 aclnn。
+    懒导入避免 acl_utils 模块初始化期拉入 cupy。
+    """
+    from cupy._core._ascend import cpu_fallback as _cpu_fallback
+    _cpu_fallback.scipy_sparse_host(opname, ins, outs, stream_ptr)
+    return 0
+
+
 cdef aclError launch_general_func_raw(str opname, sequence ins, sequence outs, list args, dict kwargs, intptr_t stream_ptr) except *:
+    # NOTE: cupyx.scipy.sparse host-fallback
+    if opname in _SCIPY_SPARSE_HOST_OPS:
+        return _scipy_fallback_host(opname, ins, outs, stream_ptr)
+
     if opname.startswith("cupy_"):
         opname = ASCEND_OP_PREFIX + opname[5:]
     # custom AscendC kernel registry takes precedence (B-tier ops with no

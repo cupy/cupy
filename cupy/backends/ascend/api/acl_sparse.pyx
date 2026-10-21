@@ -636,12 +636,17 @@ cdef intptr_t _create_handle(intptr_t stream) except? 0:
     if handle == NULL:
         raise CuSparseError(1, 'aclsparseCreate (null handle)')
     # Bind the handle to the current stream; alpha/beta live on the host.
-    with nogil:
-        status = aclsparseSetStream(handle, <aclrtStream>stream)
-    if status != ACL_SPARSE_STATUS_SUCCESS:
+    # NOTE: aclsparseSetStream(handle, NULL) succeeds but leaves the handle's
+    # stream null,breaking every following ops
+    # skip the aclsparseSetStream() call for default stream (ptr == 0)
+    # aclsparseCreate already binds a usable default stream
+    if stream != 0:
         with nogil:
-            aclsparseDestroy(handle)
-        raise CuSparseError(status, 'aclsparseSetStream')
+            status = aclsparseSetStream(handle, <aclrtStream>stream)
+        if status != ACL_SPARSE_STATUS_SUCCESS:
+            with nogil:
+                aclsparseDestroy(handle)
+            raise CuSparseError(status, 'aclsparseSetStream')
     with nogil:
         status = aclsparseSetPointerMode(handle,
                                          ACL_SPARSE_POINTER_MODE_HOST)
@@ -697,6 +702,9 @@ cdef void _bind_stream(intptr_t handle) except *:
     """Re-bind a handle to the current stream (mirrors cupy's ``_setStream``)."""
     cdef int status
     cdef intptr_t stream = stream_module.get_current_stream_ptr()
+    # NOTE: aclsparseSetStream(hanle, NULL) will leave the handle's stream null
+    if stream == 0:
+        return # keep the handle's existing (default) stream
     with nogil:
         status = aclsparseSetStream(<aclsparseHandle_t>handle,
                                     <aclrtStream>stream)
