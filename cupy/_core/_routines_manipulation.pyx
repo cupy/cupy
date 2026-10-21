@@ -19,7 +19,7 @@ from cupy._core cimport core
 from cupy._core.core cimport _ndarray_base
 from cupy._core.core cimport _convert_from_cupy_like
 from cupy._core cimport internal
-from cupy._core._kernel cimport _check_peer_access, _preprocess_args
+from cupy._core._kernel cimport _check_peer_access
 
 from cupy.cuda import device
 
@@ -275,7 +275,7 @@ cpdef _ndarray_base _expand_dims(_ndarray_base a, tuple axis):
     cdef vector.vector[Py_ssize_t] normalized_axis
     cdef out_ndim = a.ndim + len(axis)
     cdef shape_t a_shape = a.shape, out_shape
-    _normalize_axis_tuple(axis, out_ndim, normalized_axis)
+    internal._normalize_axis_tuple_into(axis, out_ndim, normalized_axis)
     out_shape.assign(out_ndim, 0)
     cdef Py_ssize_t i, j
     for i in normalized_axis:
@@ -292,8 +292,8 @@ cpdef _ndarray_base _expand_dims(_ndarray_base a, tuple axis):
 cpdef _ndarray_base moveaxis(_ndarray_base a, source, destination):
     cdef shape_t src, dest
     cdef Py_ssize_t ndim = a.ndim
-    _normalize_axis_tuple(source, ndim, src)
-    _normalize_axis_tuple(destination, ndim, dest)
+    internal._normalize_axis_tuple_into(source, ndim, src)
+    internal._normalize_axis_tuple_into(destination, ndim, dest)
 
     if src.size() != dest.size():
         raise ValueError('`source` and `destination` arguments must have '
@@ -302,7 +302,7 @@ cpdef _ndarray_base moveaxis(_ndarray_base a, source, destination):
     cdef vector.vector[Py_ssize_t] order
     cdef Py_ssize_t i
     for i in range(ndim):
-        if not _has_element(src, i):
+        if not internal._has_element(src, i):
             order.push_back(i)
 
     cdef Py_ssize_t d, s
@@ -517,7 +517,7 @@ cpdef _ndarray_base broadcast_to(_ndarray_base array, shape):
     view = array.view()
     # TODO(niboshi): Confirm update_x_contiguity flags
     view._set_shape_and_strides(_shape, strides, True, True)
-    if view.size * view.itemsize > 2**31:
+    if view.size * view.itemsize >= 2**31:
         view._index_32_bits = False
     return view
 
@@ -600,10 +600,10 @@ cpdef _ndarray_base _repeat(_ndarray_base a, repeats, axis=None):
     #         CuPy array (reps_arr).  reps_arr = None means scalar.
     reps_arr = _convert_from_cupy_like(repeats, error=False)
     if reps_arr is not None:
-        if not numpy.can_cast(reps_arr.dtype, numpy.intp, casting='safe'):
+        if not numpy.can_cast(reps_arr.dtype, numpy.intp, casting='same_kind'):
             raise TypeError(
                 "Cannot cast array data from dtype('{}') to "
-                "dtype('{}') according to the rule 'safe'"
+                "dtype('{}') according to the rule 'same_kind'"
                 .format(reps_arr.dtype, numpy.dtype(numpy.intp)))
         if reps_arr.ndim > 1:
             raise ValueError(
@@ -654,26 +654,25 @@ cpdef _ndarray_base concatenate_method(
         casting='same_kind'):
     cdef int ndim0
     cdef int i
+    cdef int dev_id = device.get_device_id()
     cdef _ndarray_base a, a0
+    cdef list arrays
 
     if dtype is not None:
         dtype = get_dtype(dtype)
 
-    dev_id = device.get_device_id()
-    arrays = _preprocess_args(dev_id, tup)
+    arrays = [_convert_from_cupy_like(
+                  x, error="Only cupy arrays can be concatenated: argument")
+              for x in tup]
 
     # Check if the input is not an empty sequence
     if len(arrays) == 0:
         raise ValueError('Cannot concatenate from empty tuple')
 
-    # Check types of the input arrays
-    for o in arrays:
-        if not isinstance(o, _ndarray_base):
-            raise TypeError('Only cupy arrays can be concatenated')
-
     # Check ndim > 0 for the input arrays
     for o in arrays:
         a = o
+        _check_peer_access(a, dev_id)
         if a._shape.size() == 0:
             raise TypeError('zero-dimensional arrays cannot be concatenated')
 
@@ -800,13 +799,6 @@ cpdef Py_ssize_t size(_ndarray_base a, axis=None) except? -1:
 # private
 
 
-cdef bint _has_element(const shape_t &source, Py_ssize_t n) noexcept:
-    for i in range(source.size()):
-        if source[i] == n:
-            return True
-    return False
-
-
 cdef _get_strides_for_nocopy_reshape(
         _ndarray_base a, const shape_t &newshape, strides_t &newstrides):
     cdef Py_ssize_t size, itemsize, ndim, dim, last_stride
@@ -842,23 +834,6 @@ cdef _get_strides_for_nocopy_reshape(
         newstrides.push_back(last_stride)
         if shape[dim] == 1:
             dim += 1
-
-
-cdef _normalize_axis_tuple(axis, Py_ssize_t ndim, shape_t &ret):
-    """Normalizes an axis argument into a tuple of non-negative integer axes.
-
-    Arguments `argname` and `allow_duplicate` are not supported.
-
-    """
-    if numpy.isscalar(axis):
-        axis = (axis,)
-
-    for ax in axis:
-        ax = internal._normalize_axis_index(ax, ndim)
-        if _has_element(ret, ax):
-            # the message in `numpy.core.numeric.normalize_axis_tuple`
-            raise ValueError('repeated axis')
-        ret.push_back(ax)
 
 
 cdef _ndarray_base _concatenate_single_kernel(

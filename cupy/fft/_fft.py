@@ -80,6 +80,15 @@ def _convert_fft_type(dtype, value_type):
         raise ValueError
 
 
+def _align_real_input(
+        a: cupy.ndarray, value_type: str, order: str = 'C') -> cupy.ndarray:
+    # cuFFT rejects a real input that is not aligned like its complex output
+    # elements, which an offset view or pointer can be.
+    if value_type == 'R2C' and a.data.ptr % (2 * a.itemsize):
+        return a.copy(order=order)
+    return a
+
+
 def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
               out_size=None, out=None, plan=None):
     from cupy.cuda import cufft
@@ -102,6 +111,7 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
         # hipFFT's R2C would overwrite input
         # hipFFT's C2R needs a workaround (see below)
         a = a.copy()
+    a = _align_real_input(a, value_type)
 
     n = a.shape[-1]
     if n < 1:
@@ -530,6 +540,7 @@ def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x,
         # hipFFT's R2C would overwrite input
         # hipFFT's C2R PlanNd is actually not in use so it's fine here
         a = a.copy()
+    a = _align_real_input(a, value_type, order)
 
     # plan search precedence:
     # 1. plan passed in as an argument
