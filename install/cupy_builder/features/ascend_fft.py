@@ -32,11 +32,15 @@ Detection order for the explicit ``-L`` directory:
 
 1. ``ASCEND_OPS_FFT_PATH`` environment variable (``<path>``, ``<path>/lib``,
    ``<path>/lib64`` are probed);
-2. the CANN tree (``<CANN>/lib64``, ``<CANN>/lib``,
-   ``<CANN>/x86_64-linux/lib64``, ``<CANN>/../ops_fft/lib64``) -- where the
-   official ``.run`` package installs;
-3. a source checkout at ``~/repos/ops-fft/build`` (development fallback);
-4. the default linker search path (``ldconfig``), in which case no explicit
+2. the CANN tree -- where the official ``.run`` package installs.  The
+   installer appends the toolkit directory to the given ``--install-path``, so
+   two layouts are probed: ``<CANN>/lib64`` (installed with
+   ``--install-path="$ASCEND_HOME_PATH/.."``, the shared base-operator layout
+   used by the other ``ops-*`` packages) and ``<CANN>/cann/lib64`` (installed
+   with ``--install-path="$ASCEND_HOME_PATH"``, which adds an extra ``cann``
+   level), each also under ``lib/`` and ``x86_64-linux/lib64/``, plus
+   ``<CANN>/../ops_fft/lib64``;
+3. the default linker search path (``ldconfig``), in which case no explicit
    ``-L`` directory is needed but the library is still available -- see
    :func:`has_ops_fft`.
 
@@ -67,19 +71,22 @@ def _candidate_dirs() -> list[str]:
         roots += [override, os.path.join(override, 'lib'),
                   os.path.join(override, 'lib64')]
 
-    # 2) CANN tree (the .run package's default install location)
+    # 2) CANN tree (the .run package's install location).  The installer
+    #    appends the toolkit dir to the given --install-path:
+    #      --install-path="$ASCEND_HOME_PATH/.." -> <CANN>/lib64
+    #          (shared base-operator layout, same as the other ops-* packages)
+    #      --install-path="$ASCEND_HOME_PATH"    -> <CANN>/cann/lib64
+    #          (one extra "cann" level, older/alternative install)
     cann_path = build.get_cann_path()
     if cann_path and cann_path != 'NOT_INITIALIZED':
-        roots += [
-            os.path.join(cann_path, 'lib64'),
-            os.path.join(cann_path, 'lib'),
-            os.path.join(cann_path, 'x86_64-linux', 'lib64'),
-            os.path.join(os.path.dirname(cann_path), 'ops_fft', 'lib64'),
-        ]
-
-    # 3) development source checkout
-    dev_root = os.path.expanduser('~/repos/ops-fft')
-    roots += [os.path.join(dev_root, 'build'), os.path.join(dev_root, 'lib64')]
+        for prefix in (cann_path, os.path.join(cann_path, 'cann')):
+            roots += [
+                os.path.join(prefix, 'lib64'),
+                os.path.join(prefix, 'lib'),
+                os.path.join(prefix, 'x86_64-linux', 'lib64'),
+            ]
+        roots.append(
+            os.path.join(os.path.dirname(cann_path), 'ops_fft', 'lib64'))
 
     return list(dict.fromkeys(roots))
 
