@@ -62,3 +62,9 @@ repos:
         pass_filenames: false
         language: python
         additional_dependencies: [PyYAML]
+      - id: check-xsf-includes
+        name: "check no transitive xsf includes"
+        entry: python tools/check_xsf_includes.py
+        language: python
+        files: ^(cupy/_core/include/|tools/check_xsf_includes\.py$)
+        pass_filenames: false
