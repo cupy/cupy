@@ -159,3 +159,78 @@ class TestSimpleCubReductionKernelMisc(CubReductionTestBase):
             a.sum(axis=0)
 
         _accelerator.set_routine_accelerators(old_routine_accelerators)
+
+
+class TestCubReductionUserOutput(CubReductionTestBase):
+
+    @pytest.fixture(autouse=True)
+    def disable_routine_accelerators(self):
+        old = _accelerator.get_routine_accelerators()
+        _accelerator.set_routine_accelerators([])
+        yield
+        _accelerator.set_routine_accelerators(old)
+
+    @pytest.mark.parametrize('order', ['C', 'F'])
+    @pytest.mark.parametrize('layout', ['C', 'F', 'strided'])
+    @pytest.mark.parametrize('keepdims', [False, True])
+    def test_user_output(self, order, layout, keepdims):
+        import numpy
+
+        shape = (128, 2, 3) if order == 'F' else (2, 3, 128)
+        axis = 0 if order == 'F' else 2
+        host = numpy.arange(768, dtype=numpy.float32).reshape(shape) % 17
+        a = cupy.array(host, order=order)
+        expected = numpy.nansum(host, axis=axis, keepdims=keepdims)
+        if layout == 'strided':
+            backing_shape = expected.shape[:-1] + (expected.shape[-1] * 2,)
+            backing = cupy.full(backing_shape, -8192, dtype=cupy.float32)
+            out = backing[..., ::2]
+            expected_backing = numpy.full(backing_shape, -8192,
+                                          dtype=numpy.float32)
+            expected_backing[..., ::2] = expected
+        else:
+            backing = cupy.full(expected.shape, -8192, dtype=cupy.float32,
+                                order=layout)
+            out = backing
+            expected_backing = expected
+        metadata = out.shape, out.strides, out.data.ptr
+        func_name = ('cupy._core._cub_reduction.'
+                     '_SimpleCubReductionKernel_get_cached_function')
+        func = _cub_reduction._SimpleCubReductionKernel_get_cached_function
+        with testing.AssertFunctionIsCalled(
+                func_name, wraps=func, times_called=int(layout == order)):
+            result = cupy.nansum(a, axis=axis, out=out, keepdims=keepdims)
+        assert result is out
+        assert (out.shape, out.strides, out.data.ptr) == metadata
+        testing.assert_array_equal(out, expected)
+        testing.assert_array_equal(backing, expected_backing)
+        testing.assert_array_equal(a, host)
+
+    def test_user_output_singleton_strides(self):
+        a = cupy.ones((128, 2, 3), dtype=cupy.float32, order='F')
+        backing = cupy.empty((2, 3), dtype=cupy.float32, order='F')
+        out = cupy.ndarray((1, 2, 3), dtype=cupy.float32,
+                           memptr=backing.data, strides=(128, 4, 8))
+        assert out.flags.f_contiguous
+        metadata = out.shape, out.strides, out.data.ptr
+        result = cupy.nansum(a, axis=0, out=out, keepdims=True)
+        assert result is out
+        assert (out.shape, out.strides, out.data.ptr) == metadata
+        testing.assert_array_equal(out, 128)
+
+    @pytest.mark.parametrize('order', ['C', 'F'])
+    def test_allocated_output_uses_cub(self, order):
+        a = testing.shaped_arange((128, 2, 128), dtype=cupy.float32,
+                                  order=order)
+        axis = 0 if order == 'F' else 2
+        func_name = ('cupy._core._cub_reduction.'
+                     '_SimpleCubReductionKernel_get_cached_function')
+        func = _cub_reduction._SimpleCubReductionKernel_get_cached_function
+        with testing.AssertFunctionIsCalled(func_name, wraps=func):
+            result = cupy.nansum(a, axis=axis)
+        assert result.flags.c_contiguous == (order == 'C')
+        assert result.flags.f_contiguous == (order == 'F')
+        import numpy
+
+        testing.assert_array_equal(result, numpy.nansum(cupy.asnumpy(a),
+                                                        axis=axis))

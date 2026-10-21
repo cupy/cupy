@@ -667,7 +667,7 @@ cdef class KernelArguments:
 
     cdef create_out_args_with_types(
             self, tuple out_types, casting, const shape_t& shape,
-            subtype=None, template=None):
+            subtype=None, template=None, bint c_order=True):
         # TODO(seberg): Moved code, merge with below.  Differences are just
         # that this checks casting and the other allows `p.raw`.
         assert self.is_ufunc
@@ -679,7 +679,8 @@ cdef class KernelArguments:
         for i in range(self.nout):
             a = self.get_out(i)
             if a is None:
-                new = _ndarray_init(subtype, shape, out_types[i], template)
+                new = _ndarray_init(
+                    subtype, shape, out_types[i], template, c_order)
                 self.set_out(i, new)
                 continue
 
@@ -696,7 +697,7 @@ cdef class KernelArguments:
 
     cdef create_out_args_with_params(
             self, tuple out_types, tuple out_params, bint is_size_specified,
-            const shape_t& shape):
+            const shape_t& shape, bint c_order=True):
         # TODO(seberg): Mostly moved code, can we merge these?
         assert not self.is_ufunc  # only makes sense for ElementwiseKernel
         cdef ParameterInfo p
@@ -708,7 +709,8 @@ cdef class KernelArguments:
                 # NOTE: Versions up to 14.0 did not allow explicit `None`.
                 if p.raw and not is_size_specified:
                     raise ValueError('Output array size is Undecided')
-                new = _ndarray_init(cupy.ndarray, shape, out_types[i], None)
+                new = _ndarray_init(
+                    cupy.ndarray, shape, out_types[i], None, c_order)
                 self.set_out(i, new)
                 continue
 
