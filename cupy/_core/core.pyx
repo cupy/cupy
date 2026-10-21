@@ -78,6 +78,7 @@ cdef extern from *:
 
 
 CUPY_CACHE_KEY = cupy_cache_key.decode()
+XSF_CACHE_KEY = xsf_cache_key.decode()
 
 cdef tuple _HANDLED_TYPES
 

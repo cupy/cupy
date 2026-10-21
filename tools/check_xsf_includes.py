@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Checks that xsf cannot be transitively included through any other headers.
 
 Allows invalidation of kernel cache only for kernels directly including
@@ -5,7 +6,7 @@ something from xsf when xsf is updated, preventing expensive recompilation
 of all kernels.
 
 """
-#!/usr/bin/env python3
+
 from __future__ import annotations
 from pathlib import Path
 import re
@@ -46,7 +47,7 @@ def main():
                 )
 
     if errors:
-        raise sys.exit('\n'.join(errors))
+        sys.exit('\n'.join(errors))
 
 
 if __name__ == '__main__':

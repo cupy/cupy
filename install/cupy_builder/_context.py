@@ -81,8 +81,12 @@ class Context:
 
         self.features = cupy_builder.get_features(self)
 
-        # Cache key for this build.
+        # Cache keys for this build.
         self.cupy_cache_key = None
+        # xsf cache key is appended to cupy_cache_key for kernels that
+        # directly include xsf. Transitive inclusion of xsf is not
+        # allowed; this is enforced with a pre-commit check.
+        self.xsf_cache_key = None
 
         # Host compiler path for Windows, see `_command.py`.
         self.win32_cl_exe_path = None
