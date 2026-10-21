@@ -561,6 +561,7 @@ class TestBoolMaskIndexing(IndexingTestBase):
         ([[0, 0], [1, 1]]),
         ([True, False, True], [True, False, True]),
         ([True, False, True], [True, False, True, False, True]),
+        [[True, False], [False, True]],
     ],
 }))
 @testing.with_requires('scipy')
