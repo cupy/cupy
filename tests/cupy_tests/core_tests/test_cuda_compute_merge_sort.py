@@ -218,24 +218,29 @@ def test_cache_round_trip_and_shape_reuse(tmp_path, operation):
         try:
             # Same ndim family and dtype: different row widths must reuse the
             # algorithm, since width is runtime state. 1-D has its own family.
-            shapes = [(17,), (29,), (2, 17), (3, 29)]
+            shapes = [(17,), (29,), (17,), (2, 17), (1, 34),
+                      (3, 29), (2, 17)]
             if operation == 'lexsort':
-                shapes = shapes[2:]
+                shapes = [(2, 17), (3, 17), (3, 29), (2, 17)]
             for shape in shapes:
                 host = numpy.arange(numpy.prod(shape), dtype=numpy.int32)
                 host = host[::-1].copy().reshape(shape)
-                a = cupy.asarray(host)
-                if operation == 'sort':
-                    result = merge_sort.cuda_compute_merge_sort(a)
-                    expected = numpy.sort(host, axis=-1)
-                elif operation == 'argsort':
-                    result = merge_sort.cuda_compute_argsort(a)
-                    expected = numpy.argsort(host, axis=-1, kind='stable')
-                else:
-                    result = merge_sort.cuda_compute_lexsort(a)
-                    expected = numpy.lexsort(host)
-                numpy.testing.assert_array_equal(
-                    cupy.asnumpy(result), expected)
+                # Reuse the algorithm across new allocations, streams, and
+                # runtime operator state.
+                with cupy.cuda.Stream(non_blocking=True):
+                    a = cupy.asarray(host)
+                    if operation == 'sort':
+                        result = merge_sort.cuda_compute_merge_sort(a)
+                        expected = numpy.sort(host, axis=-1)
+                    elif operation == 'argsort':
+                        result = merge_sort.cuda_compute_argsort(a)
+                        expected = numpy.argsort(
+                            host, axis=-1, kind='stable')
+                    else:
+                        result = merge_sort.cuda_compute_lexsort(a)
+                        expected = numpy.lexsort(host)
+                    numpy.testing.assert_array_equal(
+                        cupy.asnumpy(result), expected)
         except BaseException as error:
             errors.append(error)
 
