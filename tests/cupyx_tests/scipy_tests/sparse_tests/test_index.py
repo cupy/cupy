@@ -292,12 +292,6 @@ class TestSetitemIndexing:
 
     def test_fancy_setting_bool(self):
         mask = testing.shaped_random(
-            (1, self.n_cols), xp=numpy, dtype=bool).tolist()
-        for maj in _get_index_combos(mask):
-            self._run(maj, data=5)
-        self._run(mask, data=5)
-
-        mask = testing.shaped_random(
             self.n_rows, xp=numpy, dtype=bool).tolist()
         for maj in _get_index_combos(mask):
             self._run(maj, data=5)
@@ -562,6 +556,7 @@ class TestBoolMaskIndexing(IndexingTestBase):
         ([True, False, True], [True, False, True]),
         ([True, False, True], [True, False, True, False, True]),
         [[True, False], [False, True]],
+        [[True, False]],
     ],
 }))
 @testing.with_requires('scipy')
