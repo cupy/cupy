@@ -69,10 +69,12 @@ cdef extern from *:
     #define _str_(s) #s
     #define _xstr_(s) _str_(s)
     const char* cupy_cache_key = _xstr_(CUPY_CACHE_KEY);
+    const char* xsf_cache_key = _xstr_(XSF_CACHE_KEY);
     #undef _xstr_
     #undef _str_
     """
     const char* cupy_cache_key  # set at build time
+    const char* xsf_cache_key
 
 
 CUPY_CACHE_KEY = cupy_cache_key.decode()

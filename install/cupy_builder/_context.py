@@ -44,6 +44,7 @@ class Context:
     no_rpath: bool
     features: dict[str, cupy_builder.Feature]
     cupy_cache_key: str | None
+    xsf_cache_key: str | None
     win32_cl_exe_path: str | None
     dev_configure_cache: bool
     dev_configure_cache_key: str
@@ -103,12 +104,24 @@ class Context:
 
     def calculate_cupy_cache_key(self) -> None:
         print('Generating CUPY_CACHE_KEY from header files...')
-        pattern = os.path.join(
-            self.source_root, 'cupy', '_core', 'include', '**')
-        cache_key, count = self._calculate_checksum(pattern)
+        include_dir = os.path.join(
+            self.source_root, 'cupy', '_core', 'include')
+        pattern = os.path.join(include_dir, '**')
+        exclude_pattern = os.path.join(include_dir, 'cupy', 'xsf', '**')
+        cache_key, count = self._calculate_checksum(
+            pattern, exclude_patterns=[exclude_pattern])
         print(f'CUPY_CACHE_KEY ({count} files '
               f'matching {pattern}): {cache_key}')
         self.cupy_cache_key = cache_key
+
+    def calculate_xsf_cache_key(self) -> None:
+        print('Generating XSF_CACHE_KEY...')
+        pattern = os.path.join(
+            self.source_root, 'cupy', '_core', 'include', 'cupy', 'xsf', '**')
+        cache_key, count = self._calculate_checksum(pattern)
+        print(f'XSF_CACHE_KEY ({count} files '
+              f'matching {pattern}): {cache_key}')
+        self.xsf_cache_key = cache_key
 
     def calculate_dev_cache_key(self) -> None:
         print('Generating configure cache key...')
@@ -119,10 +132,16 @@ class Context:
               f'matching {pattern}): {cache_key}')
         self.dev_configure_cache_key = cache_key
 
-    def _calculate_checksum(self, glob_pattern: str) -> tuple[str, int]:
+    def _calculate_checksum(
+            self, glob_pattern: str, *, exclude_patterns: Sequence[str] = ()
+    ) -> tuple[str, int]:
+        excluded = {
+            f for pattern in exclude_patterns
+            for f in glob.glob(pattern, recursive=True)
+        }
         files = [
             f for f in sorted(glob.glob(glob_pattern, recursive=True))
-            if os.path.isfile(f)
+            if os.path.isfile(f) and f not in excluded
         ]
         hasher = hashlib.sha1(usedforsecurity=False)
         for path in files:

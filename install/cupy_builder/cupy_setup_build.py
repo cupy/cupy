@@ -287,12 +287,14 @@ def make_extensions(ctx: Context, compiler, use_cython):
     """Produce a list of Extension instances which passed to cythonize()."""
 
     ctx.calculate_cupy_cache_key()
+    ctx.calculate_xsf_cache_key()
     CACHE_FILE = f"{ctx.source_root}/.cupy_builder.cache"
     if ctx.dev_configure_cache and os.path.exists(CACHE_FILE):
         with open(CACHE_FILE, "rb") as f:
             (prev_ctx, ret) = pickle.load(f)
         if (ctx.dev_configure_cache_key == prev_ctx.dev_configure_cache_key and
-                ctx.cupy_cache_key == prev_ctx.cupy_cache_key):
+                ctx.cupy_cache_key == prev_ctx.cupy_cache_key and
+                ctx.xsf_cache_key == getattr(prev_ctx, 'xsf_cache_key', None)):
             print("***************************************************")
             print("*** NOTICE: Reusing build configuration from previous "
                   f"run. Remove the configuration cache ({CACHE_FILE}) "
@@ -348,6 +350,7 @@ def make_extensions(ctx: Context, compiler, use_cython):
         settings['define_macros'].append(
             ('THRUST_DEVICE_SYSTEM', 'THRUST_DEVICE_SYSTEM_HIP'))
     settings['define_macros'].append(('CUPY_CACHE_KEY', ctx.cupy_cache_key))
+    settings['define_macros'].append(('XSF_CACHE_KEY', ctx.xsf_cache_key))
 
     try:
         host_compiler = compiler

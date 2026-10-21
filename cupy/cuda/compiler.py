@@ -185,6 +185,17 @@ def _get_cupy_cache_key():
     return core.CUPY_CACHE_KEY
 
 
+@_util.memoize()
+def _get_xsf_cache_key():
+    from cupy._core import core
+    return core.XSF_CACHE_KEY
+
+
+_XSF_INCLUDE_RE = re.compile(
+    r'^[ \t]*#[ \t]*include[ \t]*[<"]cupy/xsf/',
+    re.MULTILINE,
+)
+
 # Known archs for Tegra/Jetson/Xavier/etc
 _tegra_archs = ('32', '53', '62', '72', '87')
 
@@ -697,6 +708,10 @@ def _compile_with_cache_cuda(
 
     key_src = '%s %s %s %s %s' % (
         env, base, source, extra_source, _get_cupy_cache_key())
+
+    if _XSF_INCLUDE_RE.search(source):
+        key_src += ' ' + _get_xsf_cache_key()
+
     if name_expressions:
         # Include name_expressions in the cache key so different template
         # instantiations get separate cache entries.  The separator is NUL
