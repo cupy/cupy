@@ -604,7 +604,10 @@ class TestIndexingValueError(IndexingTestBase):
                 a[self.indices]
 
     def test_set_indexing_value_error(self):
+        # SciPy < 1.17 raised ValueError for shape-mismatch in fancy
+        # indexing; SciPy >= 1.17 raises IndexError.  Accept either to
+        # remain compatible with both.
         for xp, sp in [(numpy, scipy.sparse), (cupy, sparse)]:
             a = self._make_matrix(sp, numpy.float32)
-            with pytest.raises(ValueError):
+            with pytest.raises((ValueError, IndexError)):
                 a[self.indices] = 5.0
