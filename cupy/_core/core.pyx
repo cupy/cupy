@@ -2595,12 +2595,6 @@ cpdef tuple assemble_cupy_compiler_options(tuple options):
         warn_on_unsupported_std(options)
 
     if not _is_hip:
-        # make sure bundled CCCL is searched first
-        options = (_get_cccl_include_options() + options)
-
-    options += ('-I%s' % _header_dir_path,)
-
-    if not _is_hip:
         cuda_include_dir = _cuda_include_dir.get(&initialized)
         if not initialized:
             from cuda.pathfinder import find_nvidia_header_directory
@@ -2630,6 +2624,13 @@ cpdef tuple assemble_cupy_compiler_options(tuple options):
         options += ('-I' + rocm_include_dir,)
 
     return options
+
+
+cpdef tuple add_cupy_include_dirs(tuple options):
+    if not _is_hip:
+        # Make sure bundled CCCL is searched first.
+        options = _get_cccl_include_options() + options
+    return options + ('-I%s' % _header_dir_path,)
 
 
 cpdef function.Module compile_with_cache(

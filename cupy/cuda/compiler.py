@@ -12,6 +12,7 @@ import sys
 import tempfile
 import warnings
 
+import cupy._core.core as _core
 from cupy.cuda import device
 from cupy.cuda import function
 from cupy.cuda._compiler_cache import (
@@ -71,6 +72,8 @@ def _run_cc(cmd, cwd, backend, log_stream=None):
     try:
         # Inherit the environment variable as NVCC refers to PATH, TMPDIR/TMP,
         # NVCC_PREPEND_FLAGS, NVCC_APPEND_FLAGS.
+        # NOTE(seberg): NVCC_PREPEND_FLAGS and NVCC_APPEND_FLAGS are used but
+        # not currently hashed in the kernel cache key.
         env = os.environ
         if _win32:
             # Adds the extra PATH for NVCC invocation.
@@ -179,10 +182,8 @@ def _get_nvrtc_version():
     return _nvrtc_version
 
 
-@_util.memoize()
 def _get_cupy_cache_key():
-    from cupy._core import core
-    return core.CUPY_CACHE_KEY
+    return _core.CUPY_CACHE_KEY
 
 
 # Known archs for Tegra/Jetson/Xavier/etc
@@ -689,6 +690,10 @@ def _compile_with_cache_cuda(
     # the backend is not nvrtc
     env = ((arch, options, _get_nvrtc_version(), backend)
            + _get_arch_for_options_for_nvrtc(arch))
+    # Bundled headers are covered by CUPY_CACHE_KEY, independently of their
+    # installation path. Add them after capturing the key options, keeping
+    # bundled CCCL first in the include search order.
+    options = _core.add_cupy_include_dirs(options)
     base = _empty_file_preprocess_cache.get(env, None)
     if base is None:
         # This is for checking NVRTC/NVCC compiler internal version
@@ -1039,6 +1044,7 @@ def _compile_with_cache_hip(source, options, arch, extra_source,
                                         is_hiprtc=(backend == 'hiprtc'))
 
     env = (arch, options, _get_nvrtc_version(), backend)
+    options = _core.add_cupy_include_dirs(options)
     base = _empty_file_preprocess_cache.get(env, None)
     if base is None:
         # This is for checking HIPRTC/HIPCC compiler internal version

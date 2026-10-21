@@ -198,9 +198,11 @@ cdef inline void _init_cupy_headers_from_scratch() except*:
     # Compile a dummy kernel to further populate the cache (with bundled
     # headers)
     # need to defer import to avoid circular dependency
-    from cupy._core.core import assemble_cupy_compiler_options
+    from cupy._core.core import (
+        add_cupy_include_dirs, assemble_cupy_compiler_options)
     cdef tuple options = ('-std=c++17', '-DCUB_DISABLE_BF16_SUPPORT',)
     options = assemble_cupy_compiler_options(options)
+    options = add_cupy_include_dirs(options)
     jitify(warmup_kernel, options)
 
     global _jitify_init

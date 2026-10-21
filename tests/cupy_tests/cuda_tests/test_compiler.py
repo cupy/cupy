@@ -149,3 +149,22 @@ class TestExceptionPicklable(unittest.TestCase):
 class TestCompileWithCache:
     def test_compile_module_with_cache(self):
         compiler._compile_module_with_cache('__device__ void func() {}')
+
+    @pytest.mark.thread_unsafe(reason='Mocks compiler entry point.')
+    @pytest.mark.parametrize('method',
+                             ['compile_with_cache', 'compile_to_ltoir'])
+    def test_cupy_include_paths_not_in_cache_key(self, method):
+        from cupy._core import core
+
+        user_options = ('-DVALUE=1', '-I/user/headers')
+        with mock.patch.object(compiler, '_compile_module_with_cache',
+                               return_value=None) as compile_mock:
+            getattr(core, method)('', options=user_options)
+
+        options = compile_mock.call_args.args[1]
+        assert all(option in options for option in user_options)
+
+        # Check that the bundled headers are currently added later
+        # (so they are not used as part of the cache key).
+        bundled = core.add_cupy_include_dirs(())
+        assert not any(option in options for option in bundled)
