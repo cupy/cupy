@@ -188,7 +188,7 @@ def _run_merge_sort(compute, family, key, keys_in, keys_out, comparator,
     # Build with real buffers: null proxy pointers are currently interpreted
     # as absent arrays. Addresses and array sizes are excluded from our key.
     sorter = cached_algorithm(
-        family, key, repr(key),
+        family, key, None,
         lambda: compute.make_merge_sort(**build_arguments))
     execution_arguments = dict(
         build_arguments, num_items=num_items,
