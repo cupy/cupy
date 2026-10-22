@@ -565,6 +565,19 @@ class TestBoolMaskIndexing(IndexingTestBase):
 @testing.with_requires('scipy')
 class TestIndexingIndexError(IndexingTestBase):
 
+    @pytest.fixture(autouse=True)
+    def _skip_lenient_scipy_2d_bool_mask(self):
+        # SciPy < 1.15 silently accepts shape-mismatched 2-D bool masks
+        # on both the get and set paths (unlike CuPy, which always
+        # rejects them).
+        is_2d_bool_mask = (
+            isinstance(self.indices, list)
+            and isinstance(self.indices[0], list)
+            and isinstance(self.indices[0][0], bool))
+        if (is_2d_bool_mask
+                and numpy.lib.NumpyVersion(scipy.__version__) < '1.15.0'):
+            pytest.skip('SciPy < 1.15 does not raise here')
+
     def test_indexing_index_error(self):
         for xp, sp in [(numpy, scipy.sparse), (cupy, sparse)]:
             a = self._make_matrix(sp, numpy.float32)
