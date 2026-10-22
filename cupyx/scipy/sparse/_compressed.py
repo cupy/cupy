@@ -170,52 +170,17 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         name_expressions=[
             t.format(func='min') for t in _arg_reduction_types])
 
-    # Per-segment scans; only used when ``_index_order_mod`` below does not
-    # apply (unsupported index dtypes, or non-monotone ``indptr`` for
-    # ``has_sorted_indices``, where segments overlap).
-    _has_sorted_indices_kern = _core.ElementwiseKernel(
-        'raw T indptr, raw T indices',
-        'bool diff',
-        '''
-        bool diff_out = true;
-        for (T jj = indptr[i]; jj < indptr[i+1] - 1; jj++) {
-            if (indices[jj] > indices[jj+1]){
-                diff_out = false;
-            }
-        }
-        diff = diff_out;
-        ''', 'cupyx_scipy_sparse_has_sorted_indices')
-
-    _has_canonical_format_kern = _core.ElementwiseKernel(
-        'raw T indptr, raw T indices',
-        'bool diff',
-        '''
-        bool diff_out = true;
-        if (indptr[i] > indptr[i+1]) {
-            diff = false;
-            return;
-        }
-        for (T jj = indptr[i]; jj < indptr[i+1] - 1; jj++) {
-            if (indices[jj] >= indices[jj+1]) {
-                diff_out = false;
-            }
-        }
-        diff = diff_out;
-        ''', 'cupyx_scipy_sparse_has_canonical_format')
-
     # Checks every adjacent pair of stored indices that lies inside one
     # segment, balanced over nonzeros rather than segments.  Each block takes
     # a tile of pairs, locates the ``indptr`` entries falling in the tile
     # with a 128-ary search, and marks those segment starts in shared memory.
     # ``flags[0]`` is cleared if ``indptr`` decreases, ``flags[1]`` if a pair
-    # inside a segment is out of order.  Requires blockDim.x == 256.
-    _index_order_code = r"""
-    template<typename T, bool STRICT>
-    __global__ void index_order(const T* __restrict__ indptr,
-                                const T* __restrict__ indices,
-                                const long long n_seg,
-                                const long long n_pairs,
-                                int* flags) {
+    # inside a segment is out of order.  Launch with ``block_size=256`` and a
+    # ``size`` that is a multiple of 256; each loop iteration of a block
+    # handles the tile ``i / 256``.
+    _index_order_tile = 256 * 8
+
+    _index_order_loop_prep = '''
         constexpr int BLOCK = 256;
         constexpr int TILE = BLOCK * 8;
         __shared__ T s_idx[TILE + 1];
@@ -223,13 +188,23 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         __shared__ long long s_a[2], s_b[2];
         __shared__ int s_cnt[2];
         __shared__ int s_done;
+        const long long n_seg = indptr.size() - 1;
+        const long long n_pairs = indices.size() > 1 ? indices.size() - 1 : 0;
+    '''
 
-        const long long base = (long long)blockIdx.x * TILE;
+    _index_order_operation = string.Template('''
+        // Shared memory is reused by the next tile of this block.
+        __syncthreads();
+        const long long base = (long long)(i / BLOCK) * TILE;
+        bool bad = false;
         for (int t = threadIdx.x; t < TILE; t += BLOCK) {
-            const long long i = base + t;
-            if (i < n_seg && indptr[i] > indptr[i + 1]) {
-                flags[0] = 0;
+            const long long j = base + t;
+            if (j < n_seg && indptr[j] > indptr[j + 1]) {
+                bad = true;
             }
+        }
+        if (__syncthreads_or(bad) && threadIdx.x == 0) {
+            atomicExch(&flags[0], 0);
         }
 
         // This block checks the pairs (k, k + 1) for k in [lo, hi).
@@ -239,7 +214,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         hi = hi < n_pairs ? hi : n_pairs;
         hi = hi < base + TILE ? hi : base + TILE;
         if (lo >= hi) {
-            return;
+            continue;
         }
 
         // Half h of the block finds the first j with indptr[j] >= target.
@@ -252,7 +227,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             s_cnt[threadIdx.x] = 0;
         }
         if (threadIdx.x == 0) {
-            s_done = *(volatile int*)&flags[1] == 0;
+            s_done = atomicAdd(&flags[1], 0) == 0;
         }
         for (int t = threadIdx.x; t < TILE; t += BLOCK) {
             s_start[t] = 0;
@@ -262,7 +237,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         }
         __syncthreads();
         if (s_done) {
-            return;
+            continue;
         }
         while (s_a[0] < s_b[0] || s_a[1] < s_b[1]) {
             const long long a = s_a[half];
@@ -302,10 +277,11 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         }
         __syncthreads();
 
+        bad = false;
         for (long long k = lo + threadIdx.x; k < hi; k += BLOCK) {
             const T x = s_idx[k - base];
             const T y = s_idx[k + 1 - base];
-            if (STRICT ? x >= y : x > y) {
+            if (${out_of_order}) {
                 bool start;
                 if (marked) {
                     start = s_start[k - base];
@@ -322,22 +298,28 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
                     start = a < jhi && (long long)indptr[a] == k + 1;
                 }
                 if (!start) {
-                    flags[1] = 0;
+                    bad = true;
                 }
             }
         }
-    }
-    """
+        if (__syncthreads_or(bad) && threadIdx.x == 0) {
+            atomicExch(&flags[1], 0);
+        }
+    ''')
 
-    _index_order_tile = 256 * 8
+    _has_canonical_format_kern = _core.ElementwiseKernel(
+        'raw T indptr, raw T indices',
+        'raw int32 flags',
+        _index_order_operation.substitute(out_of_order='x >= y'),
+        'cupyx_scipy_sparse_has_canonical_format',
+        loop_prep=_index_order_loop_prep)
 
-    _index_order_mod = _core.RawModule(
-        code=_index_order_code,
-        options=('-std=c++17',),
-        name_expressions=[
-            f'index_order<{t}, {s}>'
-            for t in _idx_types for s in ('true', 'false')],
-    )
+    _has_sorted_indices_kern = _core.ElementwiseKernel(
+        'raw T indptr, raw T indices',
+        'raw int32 flags',
+        _index_order_operation.substitute(out_of_order='x > y'),
+        'cupyx_scipy_sparse_has_sorted_indices',
+        loop_prep=_index_order_loop_prep)
 
     @staticmethod
     def _input_is_1d(arg1, shape):
@@ -1482,30 +1464,22 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
     def _check_index_order(self, strict):
         """Check that indices are ordered within each segment.
 
-        Returns ``(monotone, in_order)``: whether ``indptr`` is
-        non-decreasing, and whether every adjacent pair of indices inside a
-        segment is increasing (``strict``) or non-decreasing.  ``in_order``
-        is only meaningful if ``monotone``.  Returns ``None`` if the index
-        dtypes are not supported by the kernel.
+        Returns ``True`` if ``indptr`` is non-decreasing and every adjacent
+        pair of indices inside a segment is increasing (``strict``) or
+        non-decreasing.
         """
-        dtype = self.indptr.dtype
-        if dtype != self.indices.dtype or dtype not in (
-                numpy.int32, numpy.int64):
-            return None
         n_seg = self.indptr.size - 1
         n_pairs = max(self.indices.size - 1, 0)
-        flags = cupy.ones(2, dtype=cupy.int32)
         n = max(n_seg, n_pairs)
-        if n > 0:
-            tname = 'int' if dtype == numpy.int32 else 'long long'
-            ker = self._index_order_mod.get_function(
-                f'index_order<{tname}, {"true" if strict else "false"}>')
-            tile = self._index_order_tile
-            ker(((n + tile - 1) // tile,), (256,),
-                (self.indptr, self.indices, numpy.int64(n_seg),
-                 numpy.int64(n_pairs), flags))
-        monotone, in_order = flags.get()  # synchronize!
-        return bool(monotone), bool(in_order)
+        if n <= 0:
+            return True
+        kern = (self._has_canonical_format_kern if strict
+                else self._has_sorted_indices_kern)
+        tile = self._index_order_tile
+        flags = cupy.ones(2, dtype=cupy.int32)
+        kern(self.indptr, self.indices, flags,
+             size=(n + tile - 1) // tile * 256, block_size=256)
+        return bool(flags.get().all())  # synchronize!
 
     def __get_has_canonical_format(self):
         """Determine whether the matrix has sorted indices and no duplicates.
@@ -1535,14 +1509,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             # not sorted => not canonical
             self._has_canonical_format = False
         elif not hasattr(self, '_has_canonical_format'):
-            order = self._check_index_order(strict=True)
-            if order is None:
-                is_canonical = self._has_canonical_format_kern(
-                    self.indptr, self.indices, size=self.indptr.size-1)
-                self._has_canonical_format = bool(
-                    is_canonical.all())  # synchronize!
-            else:
-                self._has_canonical_format = order[0] and order[1]
+            self._has_canonical_format = self._check_index_order(strict=True)
             # Canonical implies sorted; mirror the setter so a later
             # ``has_sorted_indices`` access does not re-launch a kernel.
             if self._has_canonical_format:
@@ -1579,15 +1546,7 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             self._has_sorted_indices = True
         # check to see if result was cached
         elif not hasattr(self, '_has_sorted_indices'):
-            order = self._check_index_order(strict=False)
-            if order is None or not order[0]:
-                # Segments overlap if ``indptr`` decreases.
-                is_sorted = self._has_sorted_indices_kern(
-                    self.indptr, self.indices, size=self.indptr.size-1)
-                self._has_sorted_indices = bool(
-                    is_sorted.all())  # synchronize!
-            else:
-                self._has_sorted_indices = order[1]
+            self._has_sorted_indices = self._check_index_order(strict=False)
         return self._has_sorted_indices
 
     def __set_sorted(self, val):
