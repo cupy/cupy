@@ -36,6 +36,9 @@ repos:
     hooks:
       - id: cython-lint
         args: ["--max-line-length", "79"]
+        # Cython 3.3 added a DictComprehensionAppendNode layout that
+        # cython-lint < 0.21 crashes on. Pin until we upgrade cython-lint.
+        additional_dependencies: ["Cython<3.3"]
 
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v2.3.0

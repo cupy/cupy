@@ -101,10 +101,66 @@ For example, the above kernel can be further made generic over multiple argument
 Note that this kernel requires the output argument to be explicitly specified, because the type ``Z`` cannot be automatically determined from the input arguments.
 
 
+Array-wise operations
+---------------------
+
+ElementwiseKernel supports array-wise operations comparable to NumPy's `generalized universal functions <https://numpy.org/doc/stable/reference/c-api/generalized-ufuncs.html>`_ (gufuncs). Information about core-dimensionality specified in NumPy through the gufunc signature is specified in ElementwiseKernel through annotations in ``in_params`` and ``out_params``.
+
+A polynomial evaluation kernel with NumPy gufunc signature ``'(n),()->()'`` can be defined as:
+
+.. doctest::
+
+   >>> polyval = cp.ElementwiseKernel(
+   ...     'T(n) coeffs, T x',
+   ...     'T y',
+   ...     '''
+   ...     y = T(0);
+   ...     for (int i = 0; i < coeffs.size(); ++i) {
+   ...         y = y * x + coeffs[i];
+   ...     }
+   ...     ''',
+   ...     'polyval')
+
+
+Any valid Python identifier may be used for dimension names (e.g. ``n`` above) in such signatures. As in NumPy gufunc signatures, repeated use of an identifier signals a common size for the given core dimensions. A dot product kernel with NumPy gufunc signature ``'(n),(n)->()'`` can thus be defined as:
+
+.. doctest::
+
+   >>> dot_product = cp.ElementwiseKernel(
+   ...     'T(n) x, T(n) y',
+   ...     'T z',
+   ...     '''
+   ...     z = T(0);
+   ...     for (int i = 0; i < x.size(); ++i) {
+   ...         z += x[i] * y[i];
+   ...     }
+   ...     ''',
+   ...     'dot_product')
+
+
+Note that this implementation is not efficient for dot products of large vectors. Each dot product is computed serially despite opportunities for parallelization. ElementwiseKernel's gufunc-like capabilities are best for parallelizing over large batches of relatively small core computations, especially those involving inherently sequential algorithms like Horner's method used in the polynomial evaluation kernel above.
+
+All functionality from NumPy gufunc signatures is supported except for the ``?`` character for specifying optional core dimensions (as in the signature ``'(m?,n),(n,p?)->(m?,p?)'`` for ``numpy.matmul``).
+
+In addition, ElementwiseKernel supports specifying the sizes of output core dimensions through arithmetic expressions involving identifiers for the sizes of input core dimensions. A kernel that computes the pairwise distances among ``n`` vectors in ``d`` dimensions can be defined with::
+
+    in_params = 'T(n, d) x'
+    out_params = 'T(n * (n - 1) // 2) y'
+
+The output core dimension size will be inferred by evaluating the expression ``n * (n - 1) // 2``.
+
+In cases where the size of an output core dimension cannot be directly inferred from the sizes of the input core dimensions, such as::
+
+    in_params = 'T(m, n) x'
+    out_params = 'T(p) y'
+
+it is up to the user to pass an appropriately sized output array when calling the kernel. All output arrays must be explicitly passed in such cases for kernels with multiple outputs.
+
+
 Raw argument specifiers
 -----------------------
 
-The ElementwiseKernel class does the indexing with broadcasting automatically, which is useful to define most elementwise computations.
+The ElementwiseKernel class does the indexing with broadcasting automatically, which is useful to define most elementwise computations and many array-wise computations.
 On the other hand, we sometimes want to write a kernel with manual indexing for some arguments.
 We can tell the ElementwiseKernel class to use manual indexing by adding the ``raw`` keyword preceding the type specifier.
 

@@ -10,7 +10,7 @@ Local reproduction::
 
     python ci/tools/prepare_sdist_build.py >> .env
     set -a; . ./.env; set +a
-    CUPY_INSTALL_USE_STUB=1 python -m build --sdist
+    python -m build --sdist
 """
 from __future__ import annotations
 
@@ -27,7 +27,6 @@ def main() -> int:
     description_path = REPO_ROOT / "description.rst"
     description_path.write_text(SDIST_LONG_DESCRIPTION, encoding="utf-8")
     print(f"CUPY_INSTALL_LONG_DESCRIPTION={description_path.resolve()}")
-    print("CUPY_INSTALL_USE_STUB=1")
     return 0
 
 
