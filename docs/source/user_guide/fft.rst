@@ -235,6 +235,11 @@ If you need to perform 2D/3D transforms (ex: :func:`~cupy.fft.fftn`) instead of 
 
 The second kind of usage is to use the low-level, *private* CuPy APIs. You need to construct a :class:`~cupy.cuda.cufft.Plan1d` object and use it as if you are programming in C/C++ with `cuFFT`_. Using this approach, your input array can reside on the host as a :class:`numpy.ndarray` so that its size can be much larger than what a single GPU can accommodate, which is one of the main reasons to run multi-GPU FFT.
 
+.. deprecated:: 14.3
+
+    Direct instantiation of ``Plan1d`` is deprecated.
+    Use :class:`nvmath.fft.FFT` instead.
+
 .. code-block:: python
 
     import numpy as np
@@ -278,6 +283,11 @@ Half-precision FFT
 ------------------
 
 `cuFFT`_ provides ``cufftXtMakePlanMany`` and ``cufftXtExec`` routines to support a wide range of FFT needs, including 64-bit indexing and half-precision FFT. CuPy provides an *experimental* support for this capability via the new (though *private*) :class:`~cupy.cuda.cufft.XtPlanNd` API. For half-precision FFT, on supported hardware it can be twice as fast than its single-precision counterpart. NumPy does not yet provide the necessary infrastructure for half-precision complex numbers (i.e., ``numpy.complex32``), though, so the steps for this feature is currently a bit more involved than common cases.
+
+.. deprecated:: 14.3
+
+    Direct instantiation of ``XtPlanNd`` is deprecated.
+    Use :class:`nvmath.fft.FFT` instead.
 
 .. code-block:: python
 
