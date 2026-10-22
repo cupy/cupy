@@ -213,8 +213,8 @@ that computes the forward and backward pass of the logarithm using :class:`cupy.
 
     import cupy
     import torch
-    
-    
+
+
     cupy_custom_kernel_fwd = cupy.RawKernel(
         r"""
     extern "C" __global__
@@ -226,8 +226,8 @@ that computes the forward and backward pass of the logarithm using :class:`cupy.
     """,
         "cupy_custom_kernel_fwd",
     )
-    
-    
+
+
     cupy_custom_kernel_bwd = cupy.RawKernel(
         r"""
     extern "C" __global__
@@ -239,8 +239,8 @@ that computes the forward and backward pass of the logarithm using :class:`cupy.
     """,
         "cupy_custom_kernel_bwd",
     )
-    
-    
+
+
     class CuPyLog(torch.autograd.Function):
         @staticmethod
         def forward(ctx, x):
@@ -258,7 +258,7 @@ that computes the forward and backward pass of the logarithm using :class:`cupy.
             # going out of scope of this function.
             torch_y = torch.from_dlpack(cupy_y)
             return torch_y
-    
+
         @staticmethod
         def backward(ctx, grad_y):
             # Enforce contiguous arrays to simplify RawKernel indexing.
@@ -369,6 +369,8 @@ Export
 ******
 
 You can pass memory pointers allocated in CuPy to other libraries.
+C/Cython extensions that need the pointer (and other ndarray metadata)
+without a Python attribute lookup can use the :ref:`public_c_api`.
 
 .. code:: python
 
@@ -434,11 +436,11 @@ CuPy streams implement the ``__cuda_stream__`` method:
 .. code:: python
 
    s = cupy.cuda.Stream()
-   
+
    # Get version and stream pointer using the protocol
    version, stream_ptr = s.__cuda_stream__()
    print(version, stream_ptr)  # => 0 93997451352336
-   
+
    # Or directly access the pointer attribute
    print(s.ptr)  # => 93997451352336
 
