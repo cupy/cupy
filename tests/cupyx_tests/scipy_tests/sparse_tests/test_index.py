@@ -299,8 +299,11 @@ class TestSetitemIndexing:
 
         mask = testing.shaped_random(
             (self.n_rows, self.n_cols), xp=numpy, dtype=bool).tolist()
-        for maj in _get_index_combos(mask):
-            self._run(maj, data=5)
+        if numpy.lib.NumpyVersion(scipy.__version__) >= '1.17.0':
+            # SciPy < 1.17 raises IndexError ("Index makes 3D") when a
+            # full 2-D int array is used as a single fancy index here.
+            for maj in _get_index_combos(mask):
+                self._run(maj, data=5)
         self._run(mask, data=5)
 
     def test_fancy_setting(self):
@@ -573,8 +576,9 @@ class TestIndexingIndexError(IndexingTestBase):
             a = self._make_matrix(sp, numpy.float32)
 
             if self.indices == [[0, 0], [1, 1]]:
-                # NumPy raises ValueError only in this case
-                with pytest.raises(ValueError):
+                # SciPy < 1.17 raises ValueError here; SciPy >= 1.17
+                # raises IndexError instead.  Accept either.
+                with pytest.raises((ValueError, IndexError)):
                     a[self.indices] = 5.0
             else:
                 with pytest.raises(IndexError):
