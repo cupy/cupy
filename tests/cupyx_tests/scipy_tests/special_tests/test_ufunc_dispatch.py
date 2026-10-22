@@ -37,6 +37,10 @@ class TestUfunc:
             ):
                 pytest.skip('ROCm/HIP fails in ROCm 4.x')
 
+        if f.startswith("jn"):
+            pytest.skip('`jn` is an alias for `jv` in scipy, but not in cupy. '
+                        'See #7018 for additional info')
+
     @testing.numpy_cupy_allclose(atol=1e-4)
     def test_dispatch(self, xp, ufunc):
         self._should_skip(ufunc)
