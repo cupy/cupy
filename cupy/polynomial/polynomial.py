@@ -181,3 +181,36 @@ def polyvalfromroots(x, r, tensor=True):
         elif x.ndim >= r.ndim:
             raise ValueError("x.ndim must be < r.ndim when tensor == False")
     return cupy.prod(x - r, axis=0)
+
+
+def polymul(c1, c2):
+    """
+    Multiply one polynomial by another.
+
+    Returns the product of two polynomials `c1` * `c2`.  The arguments are
+    sequences of coefficients, from lowest order term to highest, e.g.,
+    [1,2,3] represents the polynomial ``1 + 2*x + 3*x**2.``
+
+    Parameters
+    ----------
+    c1, c2 : array_like
+        1-D arrays of coefficients representing a polynomial, relative to the
+        "standard" basis, and ordered from lowest order term to highest.
+
+    Returns
+    -------
+    out : cupy.ndarray
+        Of the coefficients of their product.
+
+    See Also
+    --------
+    polyadd, polysub, polymulx, polydiv, polypow
+
+    .. seealso:: :func:`numpy.polynomial.polynomial.polymul`
+    """
+    from cupy.polynomial import polyutils
+    from cupy._math import misc
+    # c1, c2 are trimmed copies
+    [c1, c2] = polyutils.as_series([c1, c2])
+    ret = misc.convolve(c1, c2, mode='full')
+    return polyutils.trimseq(ret)
