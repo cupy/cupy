@@ -409,6 +409,15 @@ class TestInterpPeriodic:
 
         return b(x)
 
+    @pytest.mark.parametrize('k', [0, 1, 2, 3, 4, 5])
+    # TODO: use testing.numpy_cupy_allclose when scipy release includes change
+    #   - https://github.com/scipy/scipy/pull/26172
+    def test_periodic_extrapolation(self, k):
+        xx, yy = self.get_xy(cupy)
+        b = csi.make_interp_spline(xx, yy, k=k, bc_type='periodic')
+        assert b.extrapolate == 'periodic'
+        assert b(xx[0] - 0.5) == b(xx[-1] - 0.5)
+
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-14)
     def test_periodic_axis(self, xp, scp):
         x, y = self.get_xy(xp)
