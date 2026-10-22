@@ -16,7 +16,10 @@ i0 = ufunc.create_math_ufunc(
 
 sinc = _core.create_ufunc(
     'cupy_sinc',
-    ('e->e', *bf16_loop(), 'f->f', 'd->d',
+    ('e->e', *bf16_loop(),
+     ('f->f', 'out0 = abs(in0) > 1e-9f ? '
+              'sinpi(in0) / ((in0_type) M_PI * in0) : 1'),
+     'd->d',
      ('F->F', 'in0_type pi_in0 = (in0_type) M_PI * in0;'
               'out0 = abs(in0) > 1e-9 ? sin(pi_in0) / (pi_in0) : 1'),
      ('D->D', 'in0_type pi_in0 = (in0_type) M_PI * in0;'
