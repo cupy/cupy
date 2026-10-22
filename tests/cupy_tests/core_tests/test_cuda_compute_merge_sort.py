@@ -53,6 +53,7 @@ def test_key_buffer_alignment(offset, size):
     assert keys.__cuda_array_interface__['data'][0] == keys.data.ptr
 
 
+@pytest.mark.thread_unsafe(reason='Patches the global key-buffer factory.')
 @pytest.mark.parametrize('dtype', ['float32', 'complex128'])
 @pytest.mark.parametrize('descending', [False, True])
 def test_sort_with_misaligned_key_storage(dtype, descending):
@@ -144,6 +145,7 @@ def test_stability(multi_row, descending, dtype):
         _expected(host, descending).view(numpy.uint8))
 
 
+@pytest.mark.thread_unsafe(reason='Mocks the global merge-sort runner.')
 @pytest.mark.parametrize('shape', [(0,), (3, 0), (0, 4), (1,), (2, 1)])
 def test_empty_and_singleton(shape):
     a = cupy.empty(shape, dtype=numpy.float32)
@@ -162,6 +164,7 @@ def test_unsupported():
     assert merge_sort.cuda_compute_merge_sort(cupy.ones(10)[::2]) is None
 
 
+@pytest.mark.thread_unsafe(reason='Mocks the global cuda.compute lookup.')
 def test_unavailable():
     with mock.patch.object(merge_sort, '_get_cuda_compute', return_value=None):
         assert merge_sort.cuda_compute_merge_sort(cupy.ones(3)) is None
