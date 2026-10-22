@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 
+import json
 import os
+from pathlib import Path
+import zlib
 
 from cupy_builder._context import (
     _get_env_bool, _get_env_path, Context)
@@ -33,6 +36,18 @@ class TestGetEnvPath:
 
 
 class TestContext:
+    def test_header_cache(self) -> None:
+        source_root = str(Path(__file__).resolve().parents[3])
+        ctx = Context(source_root, _env={}, _argv=[])
+        # Also validates every include in CuPy-owned repository headers.
+        ctx.calculate_cupy_cache_key()
+        assert ctx.header_cache is not None
+        cache = json.loads(zlib.decompress(bytes.fromhex(ctx.header_cache)))
+        assert cache['keys']['common'] == ctx.cupy_cache_key
+        assert cache['headers']['cupy/float16.cuh'] == 'float16'
+        assert cache['headers']['cuda/std/type_traits'] == 'common'
+        assert cache['headers']['cupy/xsf/config.h'] == 'xsf'
+
     def test_default(self) -> None:
         ctx = Context('.', _env={}, _argv=[])
 

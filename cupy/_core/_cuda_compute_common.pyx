@@ -60,7 +60,8 @@ cpdef str _environment_cache_key_prefix():
         _cache_key_prefix = '|'.join((
             cuda.cccl.__version__,
             str(cupy.cuda.runtime.runtimeGetVersion()),
-            compiler._get_cupy_cache_key()))
+            # Serialized algorithms can embed ops using any dtype header.
+            core.HEADER_CACHE['keys']['full']))
     return _cache_key_prefix
 
 

@@ -4,8 +4,11 @@ from __future__ import annotations
 import dataclasses
 import glob
 import hashlib
+import json
 import os
+import runpy
 import sys
+import zlib
 from typing import TYPE_CHECKING
 
 import cupy_builder
@@ -44,7 +47,7 @@ class Context:
     no_rpath: bool
     features: dict[str, cupy_builder.Feature]
     cupy_cache_key: str | None
-    xsf_cache_key: str | None
+    header_cache: str | None
     win32_cl_exe_path: str | None
     dev_configure_cache: bool
     dev_configure_cache_key: str
@@ -83,10 +86,7 @@ class Context:
 
         # Cache keys for this build.
         self.cupy_cache_key = None
-        # xsf cache key is appended to cupy_cache_key for kernels that
-        # directly include xsf. Transitive inclusion of xsf is not
-        # allowed; this is enforced with a pre-commit check.
-        self.xsf_cache_key = None
+        self.header_cache = None
 
         # Host compiler path for Windows, see `_command.py`.
         self.win32_cl_exe_path = None
@@ -107,25 +107,20 @@ class Context:
         self.wheel_includes = []
 
     def calculate_cupy_cache_key(self) -> None:
-        print('Generating CUPY_CACHE_KEY from header files...')
+        print('Generating kernel cache keys from header files...')
         include_dir = os.path.join(
             self.source_root, 'cupy', '_core', 'include')
-        pattern = os.path.join(include_dir, '**')
-        exclude_pattern = os.path.join(include_dir, 'cupy', 'xsf', '**')
-        cache_key, count = self._calculate_checksum(
-            pattern, exclude_patterns=[exclude_pattern])
-        print(f'CUPY_CACHE_KEY ({count} files '
-              f'matching {pattern}): {cache_key}')
-        self.cupy_cache_key = cache_key
-
-    def calculate_xsf_cache_key(self) -> None:
-        print('Generating XSF_CACHE_KEY...')
-        pattern = os.path.join(
-            self.source_root, 'cupy', '_core', 'include', 'cupy', 'xsf', '**')
-        cache_key, count = self._calculate_checksum(pattern)
-        print(f'XSF_CACHE_KEY ({count} files '
-              f'matching {pattern}): {cache_key}')
-        self.xsf_cache_key = cache_key
+        # Load the shared classifier without importing the CuPy extensions.
+        module = runpy.run_path(os.path.join(
+            self.source_root, 'cupy', '_core', '_header_cache.py'))
+        cache = module['build_header_cache'](include_dir)
+        self.cupy_cache_key = cache['keys']['common']
+        # Keep the exact bundled-header inventory in the extension. Compress
+        # it so the compiler definition stays below command-line size limits.
+        self.header_cache = zlib.compress(json.dumps(
+            cache, sort_keys=True, separators=(',', ':')).encode()).hex()
+        for group, key in cache['keys'].items():
+            print(f'Kernel header cache key ({group}): {key}')
 
     def calculate_dev_cache_key(self) -> None:
         print('Generating configure cache key...')
@@ -136,16 +131,10 @@ class Context:
               f'matching {pattern}): {cache_key}')
         self.dev_configure_cache_key = cache_key
 
-    def _calculate_checksum(
-            self, glob_pattern: str, *, exclude_patterns: Sequence[str] = ()
-    ) -> tuple[str, int]:
-        excluded = {
-            f for pattern in exclude_patterns
-            for f in glob.glob(pattern, recursive=True)
-        }
+    def _calculate_checksum(self, glob_pattern: str) -> tuple[str, int]:
         files = [
             f for f in sorted(glob.glob(glob_pattern, recursive=True))
-            if os.path.isfile(f) and f not in excluded
+            if os.path.isfile(f)
         ]
         hasher = hashlib.sha1(usedforsecurity=False)
         for path in files:

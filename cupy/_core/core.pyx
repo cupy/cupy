@@ -2,10 +2,12 @@
 
 import contextlib
 import functools
+import json
 import os
 import pickle
 import re
 import warnings
+import zlib
 
 import numpy
 
@@ -69,16 +71,17 @@ cdef extern from *:
     #define _str_(s) #s
     #define _xstr_(s) _str_(s)
     const char* cupy_cache_key = _xstr_(CUPY_CACHE_KEY);
-    const char* xsf_cache_key = _xstr_(XSF_CACHE_KEY);
+    const char* cupy_header_cache = _xstr_(CUPY_HEADER_CACHE);
     #undef _xstr_
     #undef _str_
     """
     const char* cupy_cache_key  # set at build time
-    const char* xsf_cache_key
+    const char* cupy_header_cache
 
 
 CUPY_CACHE_KEY = cupy_cache_key.decode()
-XSF_CACHE_KEY = xsf_cache_key.decode()
+HEADER_CACHE = json.loads(zlib.decompress(
+    bytes.fromhex(cupy_header_cache.decode())))
 
 cdef tuple _HANDLED_TYPES
 
@@ -2590,18 +2593,24 @@ cpdef warn_on_unsupported_std(tuple options):
 
 
 cpdef tuple assemble_cupy_compiler_options(tuple options):
-    cdef cpp_bool initialized
-
+    """Apply language defaults before classifying incoming compiler options."""
     if use_default_std(options):
         options += ('--std=c++17',)
     else:
         warn_on_unsupported_std(options)
 
-    if not _is_hip:
-        # make sure bundled CCCL is searched first
-        options = (_get_cccl_include_options() + options)
+    return options
 
-    options += ('-I%s' % _header_dir_path,)
+
+cpdef tuple add_cupy_include_dirs(tuple options):
+    if not _is_hip:
+        # Make sure bundled CCCL is searched first.
+        options = _get_cccl_include_options() + options
+    return options + ('-I%s' % _header_dir_path,)
+
+
+cpdef tuple add_runtime_include_dirs(tuple options):
+    cdef cpp_bool initialized
 
     if not _is_hip:
         cuda_include_dir = _cuda_include_dir.get(&initialized)
@@ -2657,7 +2666,7 @@ cpdef function.Module compile_with_cache(
         source, options, arch=arch, extra_source=extra_source, backend=backend,
         enable_cooperative_groups=enable_cooperative_groups,
         name_expressions=name_expressions, log_stream=log_stream,
-        jitify=jitify)
+        jitify=jitify, cupy_include_dirs=True, runtime_include_dirs=True)
 
 
 cpdef bytes compile_to_ltoir(
@@ -2675,7 +2684,7 @@ cpdef bytes compile_to_ltoir(
     return cuda.compiler._compile_module_with_cache(
         source, assemble_cupy_compiler_options(options), arch=arch,
         extra_source=_get_header_source(), log_stream=log_stream,
-        to_ltoir=True)
+        to_ltoir=True, cupy_include_dirs=True, runtime_include_dirs=True)
 
 
 # =============================================================================

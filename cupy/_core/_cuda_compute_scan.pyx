@@ -9,6 +9,7 @@ from cupy._core._cuda_compute_common cimport _get_cuda_compute
 import numpy
 
 import cupy
+from cupy._core import core
 from cupy._core._cuda_compute_common import _make_raw_op
 from cupy.cuda import compiler
 from cupy.cuda._compiler_cache import _hash_hexdigest
@@ -51,7 +52,8 @@ cdef str _scanner_cache_name(str op, dtype, str op_src):
         _cache_key_prefix = '|'.join((
             cuda.cccl.__version__,
             str(cupy.cuda.runtime.runtimeGetVersion()),
-            compiler._get_cupy_cache_key()))
+            # The serialized scanner also contains its compiled operator.
+            core.HEADER_CACHE['keys']['full']))
     cc = get_compute_capability()
     key_src = f'{_cache_key_prefix}|{cc}|{op}|{dtype.str}|{op_src}'.encode()
     return _hash_hexdigest(key_src) + '.cc_scan'

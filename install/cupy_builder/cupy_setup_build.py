@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import dataclasses
+import glob
 from distutils import ccompiler
 from distutils import sysconfig
 import logging
@@ -287,14 +288,13 @@ def make_extensions(ctx: Context, compiler, use_cython):
     """Produce a list of Extension instances which passed to cythonize()."""
 
     ctx.calculate_cupy_cache_key()
-    ctx.calculate_xsf_cache_key()
     CACHE_FILE = f"{ctx.source_root}/.cupy_builder.cache"
     if ctx.dev_configure_cache and os.path.exists(CACHE_FILE):
         with open(CACHE_FILE, "rb") as f:
             (prev_ctx, ret) = pickle.load(f)
         if (ctx.dev_configure_cache_key == prev_ctx.dev_configure_cache_key and
                 ctx.cupy_cache_key == prev_ctx.cupy_cache_key and
-                ctx.xsf_cache_key == getattr(prev_ctx, 'xsf_cache_key', None)):
+                ctx.header_cache == getattr(prev_ctx, 'header_cache', None)):
             print("***************************************************")
             print("*** NOTICE: Reusing build configuration from previous "
                   f"run. Remove the configuration cache ({CACHE_FILE}) "
@@ -350,7 +350,6 @@ def make_extensions(ctx: Context, compiler, use_cython):
         settings['define_macros'].append(
             ('THRUST_DEVICE_SYSTEM', 'THRUST_DEVICE_SYSTEM_HIP'))
     settings['define_macros'].append(('CUPY_CACHE_KEY', ctx.cupy_cache_key))
-    settings['define_macros'].append(('XSF_CACHE_KEY', ctx.xsf_cache_key))
 
     try:
         host_compiler = compiler
@@ -471,6 +470,19 @@ def make_extensions(ctx: Context, compiler, use_cython):
                 args.append(ldflag)
 
             sources = module_extension_sources(f, use_cython)
+            if name == 'cupy._core.core':
+                s_file['define_macros'].append(
+                    ('CUPY_HEADER_CACHE', ctx.header_cache))
+                # This extension embeds the header inventory and group keys.
+                # Rebuild it when bundled headers change, including editable
+                # builds that otherwise reuse the existing extension.
+                header_paths = glob.glob(os.path.join(
+                    ctx.source_root, 'cupy', '_core', 'include', '**'),
+                    recursive=True)
+                s_file.setdefault('depends', []).extend(
+                    os.path.relpath(path, ctx.source_root)
+                    for path in header_paths if os.path.isfile(path))
+                s_file['depends'].append('cupy/_core/_header_cache.py')
             extension = setuptools.Extension(name, sources, **s_file)
             ret.append(extension)
 

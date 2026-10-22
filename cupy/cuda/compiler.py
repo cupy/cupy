@@ -12,6 +12,7 @@ import sys
 import tempfile
 import warnings
 
+import cupy._core.core as _core
 from cupy.cuda import device
 from cupy.cuda import function
 from cupy.cuda._compiler_cache import (
@@ -24,6 +25,7 @@ from cupy_backends.cuda.api import runtime
 from cupy_backends.cuda.libs import nvrtc
 from cupy import _environment
 from cupy import _util
+from cupy._core import _header_cache
 
 
 _cuda_hip_version = driver.get_build_version()
@@ -179,22 +181,9 @@ def _get_nvrtc_version():
     return _nvrtc_version
 
 
-@_util.memoize()
 def _get_cupy_cache_key():
-    from cupy._core import core
-    return core.CUPY_CACHE_KEY
+    return _core.CUPY_CACHE_KEY
 
-
-@_util.memoize()
-def _get_xsf_cache_key():
-    from cupy._core import core
-    return core.XSF_CACHE_KEY
-
-
-_XSF_INCLUDE_RE = re.compile(
-    r'^[ \t]*#[ \t]*include[ \t]*[<"]cupy/xsf/',
-    re.MULTILINE,
-)
 
 # Known archs for Tegra/Jetson/Xavier/etc
 _tegra_archs = ('32', '53', '62', '72', '87')
@@ -305,9 +294,8 @@ def _jitify_prep(source, options, cu_path):
     # TODO(leofang): refactor this?
     global _jitify_header_source_map_populated
     if not _jitify_header_source_map_populated:
-        from cupy._core import core
         jitify._init_module()
-        jitify._add_sources(core._get_header_source_map())
+        jitify._add_sources(_core._get_header_source_map())
         _jitify_header_source_map_populated = True
 
     # jitify requires the 1st line to be the program name
@@ -635,7 +623,8 @@ def _decode_cache_payload(payload: bytes, count: int):
 def _compile_module_with_cache(
         source, options=(), *, arch=None, extra_source=None,
         backend='nvrtc', enable_cooperative_groups=False,
-        name_expressions=None, log_stream=None, jitify=False, to_ltoir=False):
+        name_expressions=None, log_stream=None, jitify=False, to_ltoir=False,
+        cupy_include_dirs=False, runtime_include_dirs=False):
 
     if enable_cooperative_groups:
         if runtime.is_hip:
@@ -655,34 +644,28 @@ def _compile_module_with_cache(
         backend = 'hiprtc' if backend == 'nvrtc' else 'hipcc'
         return _compile_with_cache_hip(
             source, options, arch, extra_source, backend,
-            name_expressions, log_stream, cache_in_memory)
+            name_expressions, log_stream, cache_in_memory,
+            cupy_include_dirs=cupy_include_dirs,
+            runtime_include_dirs=runtime_include_dirs)
     else:
         return _compile_with_cache_cuda(
             source, options, arch, extra_source, backend,
             enable_cooperative_groups, name_expressions, log_stream,
-            cache_in_memory, jitify, to_ltoir)
+            cache_in_memory, jitify, to_ltoir,
+            cupy_include_dirs=cupy_include_dirs,
+            runtime_include_dirs=runtime_include_dirs)
 
 
 def _compile_with_cache_cuda(
         source, options, arch, extra_source=None, backend='nvrtc',
         enable_cooperative_groups=False, name_expressions=None,
-        log_stream=None, cache_in_memory=False, jitify=False, to_ltoir=False):
+        log_stream=None, cache_in_memory=False, jitify=False, to_ltoir=False,
+        *, cupy_include_dirs=False, runtime_include_dirs=False):
     # NVRTC does not use extra_source. extra_source is used for cache key.
     global _empty_file_preprocess_cache
 
     if arch is None:
         arch = _get_arch()
-
-    # TODO(leofang): consider move --device-as-default-execution-space
-    # (-default-device) to here to avoid double definition error
-    options += ('-ftz=true',)
-
-    if to_ltoir:
-        options += ('-dlto',)
-
-    # TODO(leofang): check if this works for LTO IR
-    if _get_bool_env_variable('CUPY_CUDA_COMPILE_WITH_DEBUG', False):
-        options += ('--device-debug', '--generate-line-info')
 
     is_jitify_requested = ('-DCUPY_USE_JITIFY' in options)
     if jitify and not is_jitify_requested:
@@ -696,10 +679,24 @@ def _compile_with_cache_cuda(
     if jitify and backend != 'nvrtc':
         raise ValueError('jitify only works with NVRTC')
 
+    header_cache_key = _header_cache.get_cache_key(
+        source, _core.HEADER_CACHE, options, jitify=jitify)
+    if runtime_include_dirs:
+        options = _core.add_runtime_include_dirs(options)
+
+    options += ('-ftz=true',)
+    if to_ltoir:
+        options += ('-dlto',)
+    if _get_bool_env_variable('CUPY_CUDA_COMPILE_WITH_DEBUG', False):
+        options += ('--device-debug', '--generate-line-info')
+
     # TODO(leofang): technically we shouldn't use _get_nvrtc_version here if
     # the backend is not nvrtc
-    env = ((arch, options, _get_nvrtc_version(), backend)
+    env = ((arch, options, _get_nvrtc_version(), backend, cupy_include_dirs)
            + _get_arch_for_options_for_nvrtc(arch))
+    # Bundled headers are content-hashed independently of their install path.
+    if cupy_include_dirs:
+        options = _core.add_cupy_include_dirs(options)
     base = _empty_file_preprocess_cache.get(env, None)
     if base is None:
         # This is for checking NVRTC/NVCC compiler internal version
@@ -707,10 +704,8 @@ def _compile_with_cache_cuda(
         _empty_file_preprocess_cache[env] = base
 
     key_src = '%s %s %s %s %s' % (
-        env, base, source, extra_source, _get_cupy_cache_key())
-
-    if _XSF_INCLUDE_RE.search(source):
-        key_src += ' ' + _get_xsf_cache_key()
+        env, base, source, extra_source,
+        header_cache_key)
 
     if name_expressions:
         # Include name_expressions in the cache key so different template
@@ -1018,8 +1013,14 @@ def _convert_to_hip_source(source, extra_source, is_hiprtc):
 def _compile_with_cache_hip(source, options, arch, extra_source,
                             backend='hiprtc', name_expressions=None,
                             log_stream=None, cache_in_memory=False,
-                            use_converter=True):
+                            use_converter=True, *, cupy_include_dirs=False,
+                            runtime_include_dirs=False):
     global _empty_file_preprocess_cache
+
+    header_cache_key = _header_cache.get_cache_key(
+        source, _core.HEADER_CACHE, options)
+    if runtime_include_dirs:
+        options = _core.add_runtime_include_dirs(options)
 
     # TODO(leofang): this might be possible but is currently undocumented
     if _is_cudadevrt_needed(options):
@@ -1053,7 +1054,9 @@ def _compile_with_cache_hip(source, options, arch, extra_source,
         source = _convert_to_hip_source(source, extra_source,
                                         is_hiprtc=(backend == 'hiprtc'))
 
-    env = (arch, options, _get_nvrtc_version(), backend)
+    env = (arch, options, _get_nvrtc_version(), backend, cupy_include_dirs)
+    if cupy_include_dirs:
+        options = _core.add_cupy_include_dirs(options)
     base = _empty_file_preprocess_cache.get(env, None)
     if base is None:
         # This is for checking HIPRTC/HIPCC compiler internal version
@@ -1063,7 +1066,8 @@ def _compile_with_cache_hip(source, options, arch, extra_source,
             base = _preprocess_hipcc('', options)
         _empty_file_preprocess_cache[env] = base
 
-    key_src = '%s %s %s %s' % (env, base, source, extra_source)
+    key_src = '%s %s %s %s %s' % (
+        env, base, source, extra_source, header_cache_key)
     key_src = key_src.encode('utf-8')
     name = _hash_hexdigest(key_src) + '.hsaco'
 
