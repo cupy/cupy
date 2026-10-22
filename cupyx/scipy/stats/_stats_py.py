@@ -3,6 +3,115 @@ from __future__ import annotations
 import cupy
 
 
+def gmean(a, axis=0, dtype=None, weights=None,
+          nan_policy='propagate', keepdims=False):
+    # This is just the gmean function from scipy,
+    # but adapted to use cp functions instead of numpy/scipy ones.
+    r"""Compute the weighted geometric mean along the specified axis.
+
+    The weighted geometric mean of the array :math:`a_i` associated to weights
+    :math:`w_i` is:
+
+    .. math::
+
+        \exp \left( \frac{ \sum_{i=1}^n w_i \ln a_i }{ \sum_{i=1}^n w_i }
+                   \right) \, ,
+
+    and, with equal weights, it gives:
+
+    .. math::
+
+        \sqrt[n]{ \prod_{i=1}^n a_i } \, .
+
+    Parameters
+    ----------
+    a : cupy.ndarray
+        Input array or object that can be converted to an array.
+    axis : int or None, optional
+        Axis along which the geometric mean is computed. Default is 0.
+        If None, compute over the whole array `a`.
+    dtype : dtype, optional
+        Type to which the input arrays are cast before the calculation is
+        performed.
+    weights : cupy.ndarray, optional
+        The `weights` array must be broadcastable to the same shape as `a`.
+        Default is None, which gives each value a weight of 1.0.
+
+    Returns
+    -------
+    gmean : ndarray
+        See `dtype` parameter above.
+
+    Notes
+    -----
+    The sample geometric mean is the exponential of the mean of the natural
+    logarithms of the observations.
+    Negative observations will produce NaNs in the output because the *natural*
+    logarithm (as opposed to the *complex* logarithm) is defined only for
+    non-negative reals.
+
+    References
+    ----------
+    .. [1] "Weighted Geometric Mean", *Wikipedia*,
+           https://en.wikipedia.org/wiki/Weighted_geometric_mean.
+    .. [2] Grossman, J., Grossman, M., Katz, R., "Averages: A New Approach",
+           Archimedes Foundation, 1983
+
+    """
+
+    if nan_policy not in ['propagate', 'raise', 'omit']:
+        raise ValueError("nan_policy must be one of propagate, raise, omit")
+
+    if dtype == cupy.float16:
+        # Avoid large numerical errors in float16
+        dtype = cupy.float32
+
+    a = cupy.asarray(a, dtype=dtype)
+    if weights is not None:
+        weights = cupy.asarray(weights, dtype=dtype)
+
+    log_a = cupy.log(a)
+
+    if nan_policy == 'propagate':
+
+        # The cupy functions implicitly follow this policy
+        return cupy.exp(cupy.average(log_a, axis=axis, weights=weights,
+                                     keepdims=keepdims))
+
+    # Check whether there even are any nans
+    anan = cupy.isnan(log_a).any()
+    if weights is None:
+        wnan = False
+    else:
+        wnan = cupy.isnan(weights).any()
+
+    if not (wnan or anan):
+        # If there are no nans we can again just use the functions normally
+        return cupy.exp(cupy.average(log_a, axis=axis, weights=weights,
+                                     keepdims=keepdims))
+
+    # If we reach this point, there are nans somewhere
+    if nan_policy == 'raise':
+        raise ValueError("The input contains nan values")
+
+    # At this point nan_policy must then be omit
+    if nan_policy == 'omit':
+
+        # If there are no weights, we can just use the nanmean function
+        if weights is None:
+            return cupy.exp(cupy.nanmean(log_a, axis=axis, keepdims=keepdims))
+
+        # If there are weights, we need to normalize them to 1 for each axis
+        # First, we need to remove the weights whose corresponding entry is nan
+        else:
+
+            weights = cupy.where(cupy.isnan(log_a), 0, weights)
+
+            weights /= cupy.nansum(weights, axis=axis, keepdims=True)
+            log_a *= weights
+            return cupy.exp(cupy.nansum(log_a, axis=axis, keepdims=keepdims))
+
+
 def _first(arr, axis):
     """Return arr[..., 0:1, ...] where 0:1 is in the `axis` position
 
