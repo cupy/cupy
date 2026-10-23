@@ -18,9 +18,19 @@ import os
 import tempfile
 
 
-def _hash_hexdigest(value: bytes) -> str:
-    """Compute SHA1 hash of the given bytes."""
-    return hashlib.sha1(value, usedforsecurity=False).hexdigest()
+def _hash_hexdigest(value: str | bytes, *values: str | bytes,
+                    sep: bytes | None = b'\0') -> str:
+    """Hash UTF-8 strings/bytes with NUL separators; sep=None concatenates."""
+    if isinstance(value, str):
+        value = value.encode('utf-8')
+    hasher = hashlib.sha1(value, usedforsecurity=False)
+    for value in values:
+        if sep is not None:
+            hasher.update(sep)
+        if isinstance(value, str):
+            value = value.encode('utf-8')
+        hasher.update(value)
+    return hasher.hexdigest()
 
 
 _hash_length = len(_hash_hexdigest(b''))  # 40 for SHA1
