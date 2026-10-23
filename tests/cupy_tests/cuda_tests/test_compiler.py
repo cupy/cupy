@@ -159,12 +159,34 @@ class TestCompileWithCache:
         from cupy._core import core
 
         options = ('-I/user/headers',)
-        with mock.patch.object(compiler, '_compile_module_with_cache') as call:
+        with (
+            mock.patch.object(compiler, '_compile_module_with_cache') as call,
+            mock.patch.object(core, '_get_header_source',
+                              side_effect=AssertionError('Unexpected read')),
+        ):
             call.return_value = None
             getattr(core, method)('', options=options)
         assert call.call_args.args[1] == options + ('--std=c++17',)
         assert call.call_args.kwargs['cupy_include_dirs']
         assert call.call_args.kwargs['runtime_include_dirs']
+
+
+@pytest.mark.thread_unsafe(reason='Patches HIP compiler state')
+@pytest.mark.parametrize('version,needs_headers', [
+    (305, True), (40400000, False),
+])
+def test_hip_headers_loaded_lazily(version, needs_headers, monkeypatch):
+    from cupy._core import core
+
+    getter = mock.Mock(return_value='#pragma once\nstruct CachedHeader {};\n')
+    monkeypatch.setattr(core, '_get_header_source', getter)
+    monkeypatch.setattr(compiler, '_cuda_hip_version', version)
+    monkeypatch.setattr(compiler, '_hip_extra_source', None)
+    for source in ('// first kernel', '// second kernel'):
+        converted = compiler._convert_to_hip_source(source, is_hiprtc=True)
+        assert ('struct CachedHeader' in converted) == needs_headers
+        assert source in converted
+    assert getter.call_count == int(needs_headers)
 
 
 @pytest.mark.thread_unsafe(reason='Patches compiler cache state')

@@ -55,7 +55,7 @@ cdef str _scanner_cache_name(str op, dtype, str op_src):
             # The serialized scanner also contains its compiled operator.
             core.HEADER_CACHE['keys']['full']))
     cc = get_compute_capability()
-    key_src = f'{_cache_key_prefix}|{cc}|{op}|{dtype.str}|{op_src}'.encode()
+    key_src = f'{_cache_key_prefix}|{cc}|{op}|{dtype.str}|{op_src}'
     return _hash_hexdigest(key_src) + '.cc_scan'
 
 

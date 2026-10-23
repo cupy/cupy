@@ -2658,12 +2658,11 @@ cpdef function.Module compile_with_cache(
         source = _cupy_header + source
     if jitify:
         source = '#include <cupy/cuda_workaround.h>\n' + source
-    extra_source = _get_header_source()
 
     options = assemble_cupy_compiler_options(options)
 
     return cuda.compiler._compile_module_with_cache(
-        source, options, arch=arch, extra_source=extra_source, backend=backend,
+        source, options, arch=arch, backend=backend,
         enable_cooperative_groups=enable_cooperative_groups,
         name_expressions=name_expressions, log_stream=log_stream,
         jitify=jitify, cupy_include_dirs=True, runtime_include_dirs=True)
@@ -2683,7 +2682,7 @@ cpdef bytes compile_to_ltoir(
 
     return cuda.compiler._compile_module_with_cache(
         source, assemble_cupy_compiler_options(options), arch=arch,
-        extra_source=_get_header_source(), log_stream=log_stream,
+        log_stream=log_stream,
         to_ltoir=True, cupy_include_dirs=True, runtime_include_dirs=True)
 
 

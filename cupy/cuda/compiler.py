@@ -621,7 +621,7 @@ def _decode_cache_payload(payload: bytes, count: int):
 
 
 def _compile_module_with_cache(
-        source, options=(), *, arch=None, extra_source=None,
+        source, options=(), *, arch=None,
         backend='nvrtc', enable_cooperative_groups=False,
         name_expressions=None, log_stream=None, jitify=False, to_ltoir=False,
         cupy_include_dirs=False, runtime_include_dirs=False):
@@ -643,13 +643,13 @@ def _compile_module_with_cache(
     if runtime.is_hip:
         backend = 'hiprtc' if backend == 'nvrtc' else 'hipcc'
         return _compile_with_cache_hip(
-            source, options, arch, extra_source, backend,
+            source, options, arch, backend,
             name_expressions, log_stream, cache_in_memory,
             cupy_include_dirs=cupy_include_dirs,
             runtime_include_dirs=runtime_include_dirs)
     else:
         return _compile_with_cache_cuda(
-            source, options, arch, extra_source, backend,
+            source, options, arch, backend,
             enable_cooperative_groups, name_expressions, log_stream,
             cache_in_memory, jitify, to_ltoir,
             cupy_include_dirs=cupy_include_dirs,
@@ -657,11 +657,10 @@ def _compile_module_with_cache(
 
 
 def _compile_with_cache_cuda(
-        source, options, arch, extra_source=None, backend='nvrtc',
+        source, options, arch, backend='nvrtc',
         enable_cooperative_groups=False, name_expressions=None,
         log_stream=None, cache_in_memory=False, jitify=False, to_ltoir=False,
         *, cupy_include_dirs=False, runtime_include_dirs=False):
-    # NVRTC does not use extra_source. extra_source is used for cache key.
     global _empty_file_preprocess_cache
 
     if arch is None:
@@ -703,9 +702,7 @@ def _compile_with_cache_cuda(
         base = _preprocess('', options, arch, backend)
         _empty_file_preprocess_cache[env] = base
 
-    key_src = '%s %s %s %s %s' % (
-        env, base, source, extra_source,
-        header_cache_key)
+    key_src = (str(env), base, header_cache_key, source)
 
     if name_expressions:
         # Include name_expressions in the cache key so different template
@@ -714,12 +711,11 @@ def _compile_with_cache_cuda(
         # themselves, e.g. "kernel<float, double>".  The version tag keeps
         # these entries disjoint from those of a CuPy that stores a bare
         # cubin here; see _cache_payload_version.
-        key_src += ' ne%d ' % _cache_payload_version
-        key_src += '\0'.join(sorted(name_expressions))
-    key_src = key_src.encode('utf-8')
+        key_src += ('ne%d' % _cache_payload_version,
+                    *sorted(name_expressions))
     # In the case of generating LTO IRs, we pass them around as chunks of
     # bytes, so the filename extension is arbitrary
-    name = _hash_hexdigest(key_src) + ('.ltoir' if to_ltoir else '.cubin')
+    name = _hash_hexdigest(*key_src) + ('.ltoir' if to_ltoir else '.cubin')
 
     if not to_ltoir:
         mod = function.Module()
@@ -980,7 +976,7 @@ def _preprocess_hiprtc(source, options):
 _hip_extra_source = None
 
 
-def _convert_to_hip_source(source, extra_source, is_hiprtc):
+def _convert_to_hip_source(source, is_hiprtc):
     if not is_hiprtc:
         return '#include <hip/hip_runtime.h>\n' + source
     if _cuda_hip_version >= 40400000:
@@ -994,12 +990,11 @@ def _convert_to_hip_source(source, extra_source, is_hiprtc):
     # headers (as of ROCm 3.5.0), so we must prepend all CuPy's headers
     global _hip_extra_source
     if _hip_extra_source is None:
-        if extra_source is not None:
-            extra_source = extra_source.split('\n')
-            extra_source = [line for line in extra_source if (
-                not line.startswith('#include')
-                and not line.startswith('#pragma once'))]
-            _hip_extra_source = extra_source = '\n'.join(extra_source)
+        extra_source = _core._get_header_source().split('\n')
+        extra_source = [line for line in extra_source if (
+            not line.startswith('#include')
+            and not line.startswith('#pragma once'))]
+        _hip_extra_source = '\n'.join(extra_source)
 
     source = source.split('\n')
     source = [line for line in source if not line.startswith('#include')]
@@ -1010,7 +1005,7 @@ def _convert_to_hip_source(source, extra_source, is_hiprtc):
 
 
 # TODO(leofang): evaluate if this can be merged with _compile_with_cache_cuda()
-def _compile_with_cache_hip(source, options, arch, extra_source,
+def _compile_with_cache_hip(source, options, arch,
                             backend='hiprtc', name_expressions=None,
                             log_stream=None, cache_in_memory=False,
                             use_converter=True, *, cupy_include_dirs=False,
@@ -1051,8 +1046,8 @@ def _compile_with_cache_hip(source, options, arch, extra_source,
         # https://github.com/ROCm-Developer-Tools/HIP/blob/rocm-4.0.0/rocclr/hip_device.cpp#L202
         arch = device.Device().compute_capability
     if use_converter:
-        source = _convert_to_hip_source(source, extra_source,
-                                        is_hiprtc=(backend == 'hiprtc'))
+        source = _convert_to_hip_source(
+            source, is_hiprtc=(backend == 'hiprtc'))
 
     env = (arch, options, _get_nvrtc_version(), backend, cupy_include_dirs)
     if cupy_include_dirs:
@@ -1066,10 +1061,8 @@ def _compile_with_cache_hip(source, options, arch, extra_source,
             base = _preprocess_hipcc('', options)
         _empty_file_preprocess_cache[env] = base
 
-    key_src = '%s %s %s %s %s' % (
-        env, base, source, extra_source, header_cache_key)
-    key_src = key_src.encode('utf-8')
-    name = _hash_hexdigest(key_src) + '.hsaco'
+    key_src = (str(env), base, header_cache_key, source)
+    name = _hash_hexdigest(*key_src) + '.hsaco'
 
     mod = function.Module()
 
