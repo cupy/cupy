@@ -96,6 +96,15 @@ FFT plan cache
 
 However, there are occasions when users may *not* want to manage the FFT plans by themselves. Moreover, plans could also be reused internally in CuPy's routines, to which user-managed plans would not be applicable. Therefore, starting CuPy v8 we provide a built-in plan cache, enabled by default. The plan cache is done on a *per device, per thread* basis, and can be retrieved by the :func:`~cupy.fft.config.get_plan_cache` API.
 
+Cached plans are also keyed by the current CUDA stream. Transforms on different
+streams use separate plans and working areas so that concurrent executions do
+not overwrite each other's intermediate results. Using multiple streams can
+therefore increase the number of cached plans and their memory usage; the cache's
+count and memory limits apply across all streams in that device and thread.
+When supplying a plan explicitly, use a separate plan for each concurrent stream.
+Before capturing FFTs in a CUDA Graph, warm up the transforms on the stream that
+will be used for capture.
+
 .. code-block:: python
 
     >>> import cupy as cp
@@ -121,7 +130,7 @@ However, there are occasions when users may *not* want to manage the FFT plans b
     hits / misses: 0 / 1 (counts)
     
     cached plans (most recently used first):
-    key: ((64, 64), (64, 64), 1, 4096, (64, 64), 1, 4096, 105, 4), plan type: PlanNd, memory usage: 262144
+    key: ((64, 64), (64, 64), 1, 4096, (64, 64), 1, 4096, 105, 4, 0), plan type: PlanNd, memory usage: 262144
     
     >>> # perform the same transform again, the plan is looked up from cache and reused
     >>> out = cp.fft.fftn(a, axes=(1, 2))
@@ -133,7 +142,7 @@ However, there are occasions when users may *not* want to manage the FFT plans b
     hits / misses: 1 / 1 (counts)
     
     cached plans (most recently used first):
-    key: ((64, 64), (64, 64), 1, 4096, (64, 64), 1, 4096, 105, 4), plan type: PlanNd, memory usage: 262144
+    key: ((64, 64), (64, 64), 1, 4096, (64, 64), 1, 4096, 105, 4, 0), plan type: PlanNd, memory usage: 262144
     
     >>> # clear the cache
     >>> cache.clear()
