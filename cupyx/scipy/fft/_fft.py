@@ -6,7 +6,8 @@ import numpy as np
 
 import cupy
 
-from cupy.fft._fft import _fft, _default_fft_func, _swap_direction
+from cupy.fft._fft import (_fft, _default_fft_func, _resolve_fft_shape,
+                           _swap_direction)
 
 try:
     import scipy.fft as _scipy_fft
@@ -141,6 +142,7 @@ def fft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False, *, plan=None):
         s (None or tuple of ints): Shape of the transformed axes of the
             output. If ``s`` is not given, the lengths of the input along
             the axes specified by ``axes`` are used.
+            A length of ``-1`` uses the input length along that axis.
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
             to specify the normalization mode. Default is ``None``, which is
@@ -174,6 +176,7 @@ def ifft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False, *,
         s (None or tuple of ints): Shape of the transformed axes of the
             output. If ``s`` is not given, the lengths of the input along
             the axes specified by ``axes`` are used.
+            A length of ``-1`` uses the input length along that axis.
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
             to specify the normalization mode. Default is ``None``, which is
@@ -206,6 +209,7 @@ def fftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
         s (None or tuple of ints): Shape of the transformed axes of the
             output. If ``s`` is not given, the lengths of the input along
             the axes specified by ``axes`` are used.
+            A length of ``-1`` uses the input length along that axis.
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
             to specify the normalization mode. Default is ``None``, which is
@@ -230,6 +234,7 @@ def fftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
 
     s = _assequence(s)
     axes = _assequence(axes)
+    s = _resolve_fft_shape(x, s, axes)
     func = _default_fft_func(x, s, axes)
     return func(x, s, axes, norm, cufft.CUFFT_FORWARD, overwrite_x=overwrite_x,
                 plan=plan)
@@ -244,6 +249,7 @@ def ifftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
         s (None or tuple of ints): Shape of the transformed axes of the
             output. If ``s`` is not given, the lengths of the input along
             the axes specified by ``axes`` are used.
+            A length of ``-1`` uses the input length along that axis.
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
             to specify the normalization mode. Default is ``None``, which is
@@ -268,6 +274,7 @@ def ifftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
 
     s = _assequence(s)
     axes = _assequence(axes)
+    s = _resolve_fft_shape(x, s, axes)
     func = _default_fft_func(x, s, axes)
     return func(x, s, axes, norm, cufft.CUFFT_INVERSE, overwrite_x=overwrite_x,
                 plan=plan)
@@ -356,6 +363,7 @@ def rfft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False, *,
         s (None or tuple of ints): Shape to use from the input. If ``s`` is not
             given, the lengths of the input along the axes specified by
             ``axes`` are used.
+            A length of ``-1`` uses the input length along that axis.
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
             to specify the normalization mode. Default is ``None``, which is
@@ -391,6 +399,7 @@ def irfft2(x, s=None, axes=(-2, -1), norm=None, overwrite_x=False, *,
         s (None or tuple of ints): Shape of the output. If ``s`` is not given,
             they are determined from the lengths of the input along the axes
             specified by ``axes``.
+            A length of ``-1`` uses the input length along that axis.
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
             to specify the normalization mode. Default is ``None``, which is
@@ -427,6 +436,7 @@ def rfftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
         s (None or tuple of ints): Shape to use from the input. If ``s`` is not
             given, the lengths of the input along the axes specified by
             ``axes`` are used.
+            A length of ``-1`` uses the input length along that axis.
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
             to specify the normalization mode. Default is ``None``, which is
@@ -453,6 +463,7 @@ def rfftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
 
     s = _assequence(s)
     axes = _assequence(axes)
+    s = _resolve_fft_shape(x, s, axes)
     func = _default_fft_func(x, s, axes, value_type='R2C')
     return func(x, s, axes, norm, cufft.CUFFT_FORWARD, 'R2C',
                 overwrite_x=overwrite_x, plan=plan)
@@ -467,6 +478,7 @@ def irfftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
         s (None or tuple of ints): Shape of the output. If ``s`` is not given,
             they are determined from the lengths of the input along the axes
             specified by ``axes``.
+            A length of ``-1`` uses the input length along that axis.
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
             to specify the normalization mode. Default is ``None``, which is
@@ -495,6 +507,7 @@ def irfftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
 
     s = _assequence(s)
     axes = _assequence(axes)
+    s = _resolve_fft_shape(x, s, axes)
     func = _default_fft_func(x, s, axes, value_type='C2R')
     return func(x, s, axes, norm, cufft.CUFFT_INVERSE, 'C2R',
                 overwrite_x=overwrite_x, plan=plan)

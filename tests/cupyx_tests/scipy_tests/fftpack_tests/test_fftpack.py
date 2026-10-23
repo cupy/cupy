@@ -14,6 +14,40 @@ if cupyx.scipy._scipy_available:
     import scipy.fftpack  # NOQA
 
 
+@testing.with_requires('scipy')
+@testing.parameterize(*testing.product({
+    'name': ['fft2', 'ifft2', 'fftn', 'ifftn'],
+    'case': [((3, 5), (4, -1), (-2, -1)),
+             ((3, 5), (-1, -1), None),
+             ((3, 5), (-1, 2), (1, 0)),
+             ((5,), (-1,), (0,))],
+    'plan_mode': ['none', 'argument', 'context'],
+    'order': ['C', 'F'],
+}))
+class TestFFTNegativeOneShape(unittest.TestCase):
+
+    @testing.for_complex_dtypes()
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-6, scipy_name='scp',
+                                 contiguous_check=False)
+    def test_negative_one_shape(self, xp, scp, dtype):
+        shape, s, axes = self.case
+        a = testing.shaped_random(shape, xp, dtype)
+        a = xp.array(a, order=self.order)
+        original = a.copy()
+        transform = getattr(scp.fftpack, self.name)
+        if xp is cupy and self.plan_mode != 'none':
+            plan = scp.fftpack.get_fft_plan(a, shape=s, axes=axes)
+            if self.plan_mode == 'argument':
+                result = transform(a, shape=s, axes=axes, plan=plan)
+            else:
+                with plan:
+                    result = transform(a, shape=s, axes=axes)
+        else:
+            result = transform(a, shape=s, axes=axes)
+        testing.assert_array_equal(a, original)
+        return result
+
+
 @testing.parameterize(*testing.product({
     'n': [None, 0, 5, 10, 15],
     'shape': [(9,), (10,), (10, 9), (10, 10)],
