@@ -1,15 +1,36 @@
 from __future__ import annotations
 
+import unittest
+
 import cupy as cp
 import pytest
 
 import cupyx.scipy.special as sc
+from cupy import testing
 from cupy.testing import assert_allclose, assert_array_equal
 
 # from scipy.special._testutils import FuncData
 
 
 INVALID_POINTS = [(1, -1), (0, 0), (-1, 1), (cp.nan, 1), (1, cp.nan)]
+
+
+@testing.parameterize(*testing.product({
+    'function': ['gammainc', 'gammaincc', 'chdtr', 'chdtrc'],
+    'dtype': [cp.float16, cp.float32, cp.float64],
+    'nan_arg': [0, 1],
+}))
+class TestGammaincNan(unittest.TestCase):
+
+    def test_nan_argument(self):
+        # The chi-square functions also use the incomplete gamma kernels.
+        values = cp.asarray(
+            [-cp.inf, -1.0, -0.0, 0.0, 1.0, cp.inf, cp.nan], dtype=self.dtype)
+        args = [values, cp.asarray(cp.nan, dtype=self.dtype)]
+        if self.nan_arg == 0:
+            args.reverse()
+        result = getattr(sc, self.function)(*args)
+        assert cp.isnan(result).all()
 
 
 class TestGammainc:
