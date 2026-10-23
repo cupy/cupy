@@ -2,16 +2,15 @@
 
 import contextlib
 import functools
-import json
 import os
 import pickle
 import re
 import warnings
-import zlib
 
 import numpy
 
 import cupy
+from cupy._core import _header_cache
 from cupy._core._kernel import create_ufunc
 from cupy._core._kernel import ElementwiseKernel
 from cupy._core._ufuncs import elementwise_copy
@@ -66,22 +65,8 @@ from cupy.exceptions import ComplexWarning
 NUMPY_1x = numpy.__version__ < '2'
 
 
-cdef extern from *:
-    """
-    #define _str_(s) #s
-    #define _xstr_(s) _str_(s)
-    const char* cupy_cache_key = _xstr_(CUPY_CACHE_KEY);
-    const char* cupy_header_cache = _xstr_(CUPY_HEADER_CACHE);
-    #undef _xstr_
-    #undef _str_
-    """
-    const char* cupy_cache_key  # set at build time
-    const char* cupy_header_cache
-
-
-CUPY_CACHE_KEY = cupy_cache_key.decode()
-HEADER_CACHE = json.loads(zlib.decompress(
-    bytes.fromhex(cupy_header_cache.decode())))
+HEADER_CACHE = _header_cache.load_header_cache()
+CUPY_CACHE_KEY = HEADER_CACHE['keys']['common']
 
 cdef tuple _HANDLED_TYPES
 
@@ -2483,8 +2468,7 @@ _cupy_header_list = cupy_header_list
 cdef str _cupy_header = ''.join(
     ['#include <%s>\n' % i for i in cupy_header_list])
 
-# This is indirect include header list.
-# These header files are subject to a hash key.
+# Indirect dependencies preloaded for Jitify and legacy HIPRTC.
 cdef list _cupy_extra_header_list = [
     'cupy/complex/complex.h',
     'cupy/complex/math_private.h',

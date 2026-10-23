@@ -4,12 +4,12 @@ from cupy._core._dtype cimport get_dtype
 from cupy._core.core cimport _ndarray_base
 from cupy._core cimport _scalar
 from cupy.cuda.device cimport get_compute_capability
-from cupy._core._cuda_compute_common cimport _get_cuda_compute
+from cupy._core._cuda_compute_common cimport (
+    _environment_cache_key_prefix, _get_cuda_compute)
 
 import numpy
 
 import cupy
-from cupy._core import core
 from cupy._core._cuda_compute_common import _make_raw_op
 from cupy.cuda import compiler
 from cupy.cuda._compiler_cache import _hash_hexdigest
@@ -42,20 +42,12 @@ cdef str _get_generic_op(str op, dtype):
 
 
 cdef object _thread_local = threading.local()
-_cache_key_prefix = None
 
 
 cdef str _scanner_cache_name(str op, dtype, str op_src):
-    global _cache_key_prefix
-    if _cache_key_prefix is None:
-        import cuda.cccl
-        _cache_key_prefix = '|'.join((
-            cuda.cccl.__version__,
-            str(cupy.cuda.runtime.runtimeGetVersion()),
-            # The serialized scanner also contains its compiled operator.
-            core.HEADER_CACHE['keys']['full']))
+    prefix = _environment_cache_key_prefix()
     cc = get_compute_capability()
-    key_src = f'{_cache_key_prefix}|{cc}|{op}|{dtype.str}|{op_src}'
+    key_src = f'{prefix}|{cc}|{op}|{dtype.str}|{op_src}'
     return _hash_hexdigest(key_src) + '.cc_scan'
 
 

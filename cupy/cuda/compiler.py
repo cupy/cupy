@@ -555,8 +555,8 @@ _empty_file_preprocess_cache: dict = {}
 # (ELF, ``\x7fELF``) or for PTX, which is stored as text.
 #
 # _cache_payload_version goes into the cache key, which keeps these entries
-# in a keyspace of their own.  That matters because CUPY_CACHE_KEY is only a
-# checksum of the bundled headers and so does not separate CuPy versions:
+# in a keyspace of their own. Header keys do not otherwise track changes to
+# the cache payload format:
 # without the tag, a CuPy that predates this format could find a payload
 # where it expects a bare cubin and fail with CUDA_ERROR_INVALID_IMAGE.
 # Bump it whenever the layout above changes.

@@ -6,9 +6,9 @@ import glob
 import hashlib
 import json
 import os
+from pathlib import Path
 import runpy
 import sys
-import zlib
 from typing import TYPE_CHECKING
 
 import cupy_builder
@@ -46,8 +46,7 @@ class Context:
     annotate: bool
     no_rpath: bool
     features: dict[str, cupy_builder.Feature]
-    cupy_cache_key: str | None
-    header_cache: str | None
+    header_cache_key: str | None
     win32_cl_exe_path: str | None
     dev_configure_cache: bool
     dev_configure_cache_key: str
@@ -83,10 +82,7 @@ class Context:
             "CUPY_INSTALL_CYTHON_COVERAGE", _env)
 
         self.features = cupy_builder.get_features(self)
-
-        # Cache keys for this build.
-        self.cupy_cache_key = None
-        self.header_cache = None
+        self.header_cache_key = None
 
         # Host compiler path for Windows, see `_command.py`.
         self.win32_cl_exe_path = None
@@ -106,7 +102,7 @@ class Context:
         self.wheel_libs = []
         self.wheel_includes = []
 
-    def calculate_cupy_cache_key(self) -> None:
+    def generate_header_cache(self) -> None:
         print('Generating kernel cache keys from header files...')
         include_dir = os.path.join(
             self.source_root, 'cupy', '_core', 'include')
@@ -114,11 +110,11 @@ class Context:
         module = runpy.run_path(os.path.join(
             self.source_root, 'cupy', '_core', '_header_cache.py'))
         cache = module['build_header_cache'](include_dir)
-        self.cupy_cache_key = cache['keys']['common']
-        # Keep the exact bundled-header inventory in the extension. Compress
-        # it so the compiler definition stays below command-line size limits.
-        self.header_cache = zlib.compress(json.dumps(
-            cache, sort_keys=True, separators=(',', ':')).encode()).hex()
+        self.header_cache_key = cache['keys']['full']
+        data = json.dumps(cache, sort_keys=True, separators=(',', ':'))
+        path = Path(self.source_root) / 'cupy' / '_core' / '_header_cache.json'
+        if not path.exists() or path.read_text() != data:
+            path.write_text(data)
         for group, key in cache['keys'].items():
             print(f'Kernel header cache key ({group}): {key}')
 
