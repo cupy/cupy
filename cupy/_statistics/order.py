@@ -268,6 +268,10 @@ def _quantile_unchecked(a, q, axis=None, out=None,
     Nx = ap.shape[axis]
     if Nx == 0:
         raise ValueError("Expected input to not have a zero-length axis")
+    # inverted_cdf casts the sample count before subtracting one, so the
+    # count itself (not just the largest index) must fit in the index dtype.
+    index_dtype = (cupy.int32 if Nx <= numpy.iinfo(numpy.int32).max
+                   else cupy.int64)
     indices = q * (Nx - 1.)
 
     if method in ['averaged_inverted_cdf',
@@ -280,15 +284,15 @@ def _quantile_unchecked(a, q, axis=None, out=None,
         indices = q * (Nx - alpha - beta + 1) + alpha - 1
         indices = cupy.clip(indices, 0, Nx - 1)
     elif method == 'lower':
-        indices = cupy.floor(indices).astype(cupy.int32)
+        indices = cupy.floor(indices).astype(index_dtype)
     elif method == 'higher':
-        indices = cupy.ceil(indices).astype(cupy.int32)
+        indices = cupy.ceil(indices).astype(index_dtype)
     elif method == 'midpoint':
         indices = 0.5 * (cupy.floor(indices) + cupy.ceil(indices))
     elif method == 'nearest':
-        indices = cupy.around(indices).astype(cupy.int32)
+        indices = cupy.around(indices).astype(index_dtype)
     elif method == 'inverted_cdf':
-        indices = cupy.clip(cupy.ceil(q*Nx).astype(cupy.int32)-1, 0, Nx-1)
+        indices = cupy.clip(cupy.ceil(q*Nx).astype(index_dtype)-1, 0, Nx-1)
     elif method == 'linear':
         pass
     else:
@@ -297,7 +301,7 @@ def _quantile_unchecked(a, q, axis=None, out=None,
                          ' \'higher\',\'midpoint\', \'inverted_cdf\', '
                          '\'nearest\')'.format(method))
 
-    if indices.dtype == cupy.int32:
+    if indices.dtype.kind == 'i':
         ret = cupy.rollaxis(ap, axis)
         ret = ret.take(indices, axis=0, out=out)
     else:
