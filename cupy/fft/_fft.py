@@ -6,6 +6,7 @@ import math
 import numpy as np
 
 import cupy
+from cupy.cuda import stream
 from cupy.fft import config
 from cupy.fft._cache import get_plan_cache
 
@@ -150,7 +151,6 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
 
     if plan is None:
         devices = config.devices
-        # TODO(leofang): do we need to add the current stream to keys?
         keys = (out_size, fft_type, batch, devices)
         mgr = config.get_current_callback_manager()
         if mgr is not None:
@@ -162,13 +162,15 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
             keys += (mgr.cb_load, mgr.cb_store,
                      0 if load_data is None else load_data.ptr,
                      0 if store_data is None else store_data.ptr)
+        # Concurrent executions must not share a plan's work area.
+        cache_key = keys + (stream.get_current_stream().ptr,)
         cache = get_plan_cache()
-        cached_plan = cache.get(keys)
+        cached_plan = cache.get(cache_key)
         if cached_plan is not None:
             plan = cached_plan
         elif mgr is None:
             plan = cufft.Plan1d(out_size, fft_type, batch, devices=devices)
-            cache[keys] = plan
+            cache[cache_key] = plan
         else:  # has callback
             # TODO(leofang): support multi-GPU callback (devices is ignored)
             if devices:
@@ -180,7 +182,7 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
             else:  # identity = "jit"
                 plan = mgr.set_callbacks(fft_type)
                 plan = mgr.create_plan(plan, ('Plan1d', keys[:-5]))
-            cache[keys] = plan
+            cache[cache_key] = plan
     else:
         # check plan validity
         if not isinstance(plan, cufft.Plan1d):
@@ -473,7 +475,6 @@ def _get_cufft_plan_nd(
         shape, fft_type, axes=axes, order=order, out_size=out_size)
 
     # The cache identifies the backend plan plus any state bound to its handle.
-    # Without callbacks, the backend constructor arguments are the full key.
     cache_key = plan_args
     mgr = config.get_current_callback_manager()
     if mgr is not None:
@@ -485,6 +486,8 @@ def _get_cufft_plan_nd(
         cache_key += (mgr.cb_load, mgr.cb_store,
                       0 if load_data is None else load_data.ptr,
                       0 if store_data is None else store_data.ptr)
+    # Concurrent executions must not share a plan's work area.
+    cache_key += (stream.get_current_stream().ptr,)
     cache = get_plan_cache()
     cached_plan = cache.get(cache_key)
     if cached_plan is not None:
