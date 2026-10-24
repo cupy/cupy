@@ -33,8 +33,9 @@ ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
 RUN git -C /opt/pyenv pull --ff-only && \
     PYTHON_CONFIGURE_OPTS="--disable-shared" pyenv install 3.14.6 && \
     pyenv global 3.14.6 && \
+    # Remove the pinned pip once every Python in schema.yaml ships pip>=26.2.2 or blocks the eMudhra CAs.
     pip install 'pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70' && \
-    pip install -U setuptools wheel && \
+    pip install -U pip setuptools wheel && \
     pip install -U google-cloud-storage
 
 RUN pip install -U 'numpy==2.4.*' 'scipy==1.17.*' 'optuna==4.*' 'ml_dtypes==0.5.*' 'cython==3.2.*,!=3.2.6'

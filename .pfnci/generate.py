@@ -23,8 +23,9 @@ GH_CLI_VERSION = '2.95.0'
 
 # pip 26.2.2 is the first release that no longer trusts the compromised
 # eMudhra/emSign intermediate CAs via its vendored certifi. It must be
-# installed from this hash-pinned URL: upgrading pip with an older pip would
-# download the new one over a connection that still trusts those CAs.
+# bootstrapped from this hash-pinned URL: upgrading pip with an older pip would
+# download the new one over a connection that still trusts those CAs. Callers
+# then run `pip install -U pip` so pip is not frozen at this version.
 # Keep in sync with .github/actions/harden-pip/action.yml.
 # See https://discuss.python.org/t/109576
 PIP_SPEC = (
@@ -265,8 +266,10 @@ class LinuxGenerator:
             f'    PYTHON_CONFIGURE_OPTS="--disable-shared"'
             f' pyenv install {py_spec} && \\',
             f'    pyenv global {py_spec} && \\',
+            '    # Remove the pinned pip once every Python in schema.yaml'
+            ' ships pip>=26.2.2 or blocks the eMudhra CAs.',
             f'    pip install {shlex.quote(PIP_SPEC)} && \\',
-            '    pip install -U setuptools wheel && \\',
+            '    pip install -U pip setuptools wheel && \\',
             # For GCP kernel cache backend
             '    pip install -U google-cloud-storage',
             '',
