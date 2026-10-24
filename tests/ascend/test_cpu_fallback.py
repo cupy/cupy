@@ -330,6 +330,147 @@ def test_slogdet_matches_numpy(has_npu):
     numpy.testing.assert_allclose(cupy.asnumpy(logdet), exp_logdet, rtol=1e-5)
 
 
+# ---------------------------------------------------------------------------
+# 4. cupyx.scipy.sparse 判定 kernel 的 host fallback
+#
+# ``_compressed.py`` 的 has_sorted_indices / has_canonical_format 是 raw CUDA
+# ElementwiseKernel，Ascend 后端无法执行 kernel body，由
+# ``acl_utils.launch_general_func_raw`` 的 ``_scipy_fallback_host`` 钩子转到
+# ``cpu_fallback.scipy_sparse_host`` 在 host 复算。
+# ---------------------------------------------------------------------------
+_SORTED = 'cupyx_scipy_sparse_has_sorted_indices'
+_CANONICAL = 'cupyx_scipy_sparse_has_canonical_format'
+
+
+class _KernelOut:
+    """冒充 kernel 的输出缓冲（bool 设备数组），只记录 ``set`` 进来的值。"""
+
+    dtype = numpy.dtype(numpy.bool_)
+
+    def __init__(self, n_rows):
+        self.shape = (n_rows,)
+        self.size = n_rows
+        self.host = None
+
+    def set(self, arr):
+        assert arr.dtype == self.dtype, arr.dtype
+        assert arr.shape == self.shape, arr.shape
+        self.host = numpy.array(arr)
+
+
+def _run_kernel(name, indptr, indices):
+    out = _KernelOut(len(indptr) - 1)
+    cpu_fallback.scipy_sparse_host(name, (indptr, indices), (out,))
+    return out.host
+
+
+def _reference_flags(indptr, indices, unique):
+    """参考实现：与 kernel body 同语义（sorted: 非降；canonical: 严格递增）。"""
+    flags = []
+    for i in range(len(indptr) - 1):
+        lo, hi = int(indptr[i]), int(indptr[i + 1])
+        if hi < lo:
+            flags.append(not unique)
+            continue
+        seg = indices[lo:hi]
+        if unique:
+            flags.append(bool(numpy.all(numpy.diff(seg) > 0)))
+        else:
+            flags.append(bool(numpy.all(numpy.diff(seg) >= 0)))
+    return numpy.array(flags, dtype=bool)
+
+
+def test_host_row_flags_sorted_vs_canonical():
+    # 行 0 有重复索引 1：sorted=True，canonical=False
+    indptr = numpy.array([0, 3, 5], dtype=numpy.int32)
+    indices = numpy.array([0, 1, 1, 2, 3], dtype=numpy.int32)
+    assert _run_kernel(_SORTED, indptr, indices).tolist() == [True, True]
+    assert _run_kernel(_CANONICAL, indptr, indices).tolist() == [False, True]
+
+
+def test_host_row_flags_unsorted():
+    indptr = numpy.array([0, 2, 4], dtype=numpy.int64)
+    indices = numpy.array([0, 3, 2, 1], dtype=numpy.int64)
+    assert _run_kernel(_SORTED, indptr, indices).tolist() == [True, False]
+    assert _run_kernel(_CANONICAL, indptr, indices).tolist() == [True, False]
+
+
+def test_host_row_flags_decreasing_indptr():
+    """canonical kernel 对 ``indptr[i] > indptr[i+1]`` 直接 false；
+    sorted kernel 的循环不执行（保持 true）。"""
+    indptr = numpy.array([0, 2, 1], dtype=numpy.int32)
+    indices = numpy.array([0, 1, 2], dtype=numpy.int32)
+    assert _run_kernel(_SORTED, indptr, indices).tolist() == [True, True]
+    assert _run_kernel(_CANONICAL, indptr, indices).tolist() == [True, False]
+
+
+def test_host_row_flags_empty_rows():
+    """空行（indptr 相等）与整体 empty 都是平凡 true。"""
+    indptr = numpy.array([0, 0, 2, 2], dtype=numpy.int32)
+    indices = numpy.array([5, 7], dtype=numpy.int32)
+    assert _run_kernel(_SORTED, indptr, indices).tolist() == [True, True, True]
+    assert _run_kernel(_CANONICAL, indptr, indices).tolist() == [True] * 3
+    empty = numpy.zeros(1, dtype=numpy.int32)
+    for name in (_SORTED, _CANONICAL):
+        assert _run_kernel(
+            name, empty, numpy.zeros(0, dtype=numpy.int32)).tolist() == []
+
+
+@pytest.mark.parametrize('unique', [False, True])
+def test_host_row_flags_random(unique):
+    """随机 CSR 与参考实现对拍（含重复、无序、空行）。"""
+    rng = numpy.random.default_rng(0)
+    for _ in range(20):
+        n_rows = int(rng.integers(0, 6))
+        lengths = rng.integers(0, 4, size=n_rows)
+        indptr = numpy.concatenate([[0], numpy.cumsum(lengths)]).astype(
+            numpy.int32)
+        indices = rng.integers(0, 5, size=int(indptr[-1])).astype(numpy.int32)
+        name = _CANONICAL if unique else _SORTED
+        got = _run_kernel(name, indptr, indices)
+        numpy.testing.assert_array_equal(
+            got, _reference_flags(indptr, indices, unique))
+
+
+def test_scipy_sparse_host_prefix_tolerant(fallback_active, no_device_cupy):
+    """opname 前缀可有可无（cupyx_/cupy_ 两种拼法都命中）。"""
+    indptr = numpy.array([0, 2], dtype=numpy.int32)
+    indices = numpy.array([1, 0], dtype=numpy.int32)
+    for name in ('cupyx_scipy_sparse_has_sorted_indices',
+                 'cupy_scipy_sparse_has_sorted_indices',
+                 'scipy_sparse_has_sorted_indices'):
+        out = _KernelOut(1)
+        cpu_fallback.scipy_sparse_host(name, (indptr, indices), (out,))
+        assert out.host.tolist() == [False], name
+
+
+def test_scipy_sparse_host_unknown_opname(fallback_active, no_device_cupy):
+    with pytest.raises(NotImplementedError, match='没有注册'):
+        cpu_fallback.scipy_sparse_host(
+            'cupyx_scipy_sparse_does_not_exist', (), (_KernelOut(1),))
+
+
+def test_scipy_sparse_host_disabled(monkeypatch, no_device_cupy):
+    monkeypatch.setattr(cpu_fallback, '_ASCEND', True)
+    monkeypatch.setenv(cpu_fallback.DISABLE_ENV, '1')
+    with pytest.raises(NotImplementedError, match='只能走 host fallback'):
+        cpu_fallback.scipy_sparse_host(
+            _SORTED, (numpy.zeros(2, numpy.int32), numpy.zeros(0, numpy.int32)),
+            (_KernelOut(1),))
+
+
+def test_scipy_sparse_hook_wired_in_source():
+    """源码级校验：acl_utils 里两个 kernel 名都接到 ``_scipy_fallback_host``。"""
+    import cupy.backends.ascend.api.acl_utils as mod
+    pyx = os.path.join(os.path.dirname(os.path.abspath(mod.__file__)),
+                       'acl_utils.pyx')
+    with open(pyx, encoding='utf-8') as f:
+        source = f.read()
+    assert _SORTED in source and _CANONICAL in source, source
+    assert 'cdef aclError _scipy_fallback_host(' in source, source
+    assert 'if opname in _SCIPY_SPARSE_HOST_OPS:' in source, source
+
+
 @pytest.mark.parametrize('dtype', [numpy.float32, numpy.float64])
 def test_round_matches_numpy(dtype, has_npu):
     """aclnnRound 是 half-away-from-zero，numpy 是 banker's rounding（half-to-even）。"""
