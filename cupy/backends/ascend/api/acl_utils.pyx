@@ -945,25 +945,29 @@ cdef extern from "<cstdbool>" namespace "std":
     ctypedef bint bool "bool"  # 将C++的bool映射到Cython的bint
 
 ############################## 定义函数指针类型 ###########################################
-# 全部函数指针类型声明为 nogil：这些 C++ 包装函数内部只做 aclnn 两段调用
-# （GetWorkspaceSize + launch），Phase-2 派发因此可以在 with nogil 内执行
-# （nogil 改造计划 §3 Phase 2 / §2.E）。
+# 全部函数指针类型声明为 nogil + except +：
+#  * nogil   —— Phase-2 派发可以在 with nogil 内执行（nogil 改造计划 §3）；
+#  * except + —— C++ 包装函数内部（acl_scalar_arg.h 的 ToScalarArg /
+#    GetScalarArg / CheckIntegerArg / CheckFloatArg / AclScalarToDouble）会抛
+#    std::runtime_error / std::out_of_range（NaN、Inf、越界、缺参），不能让
+#    异常从 nogil 段逃逸（std::terminate）。Cython 3.2 会在调用点生成
+#    try/catch，捕获后重新获取 GIL 再转成 Python 异常（S3，路线 2）。
 ctypedef aclError (*TernaryOpFunc)(const aclTensor* self, const aclTensor* other,
-    const aclTensor* other2, aclTensor* out, aclrtStream stream) nogil
-ctypedef aclError (*InplaceTernaryOpFunc)(aclTensor* self, const aclTensor* other, aclrtStream stream) nogil
+    const aclTensor* other2, aclTensor* out, aclrtStream stream) nogil except +
+ctypedef aclError (*InplaceTernaryOpFunc)(aclTensor* self, const aclTensor* other, aclrtStream stream) nogil except +
 
 ctypedef aclError (*BinaryOpFunc)(const aclTensor* self, const aclTensor* other,
-    aclTensor* out, aclrtStream stream) nogil
-ctypedef aclError (*InplaceBinaryOpFunc)(aclTensor* self, const aclTensor* other, aclrtStream stream) nogil
+    aclTensor* out, aclrtStream stream) nogil except +
+ctypedef aclError (*InplaceBinaryOpFunc)(aclTensor* self, const aclTensor* other, aclrtStream stream) nogil except +
 ctypedef aclError (*ScalarBinaryOpFunc)(const aclTensor* self, const aclScalar* other,
-    aclTensor* out, aclrtStream stream) nogil
-ctypedef aclError (*InplaceScalarBinaryOpFunc)(aclTensor* self, const aclScalar* other, aclrtStream stream) nogil
+    aclTensor* out, aclrtStream stream) nogil except +
+ctypedef aclError (*InplaceScalarBinaryOpFunc)(aclTensor* self, const aclScalar* other, aclrtStream stream) nogil except +
 # out = scalar <op> tensor（标量在左）：参数顺序刻意「标量在前」，避免和上面混淆
 ctypedef aclError (*ReverseScalarBinaryOpFunc)(const aclScalar* self, const aclTensor* other,
-    aclTensor* out, aclrtStream stream) nogil
+    aclTensor* out, aclrtStream stream) nogil except +
 
-ctypedef aclError (*UnaryOpFunc)(const aclTensor* self, aclTensor* out, aclrtStream stream) nogil
-ctypedef aclError (*InplaceUnaryOpFunc)(aclTensor* self, aclrtStream stream) nogil
+ctypedef aclError (*UnaryOpFunc)(const aclTensor* self, aclTensor* out, aclrtStream stream) nogil except +
+ctypedef aclError (*InplaceUnaryOpFunc)(aclTensor* self, aclrtStream stream) nogil except +
 
 
 ###########################################################################################
@@ -971,10 +975,10 @@ ctypedef aclError (*InplaceUnaryOpFunc)(aclTensor* self, aclrtStream stream) nog
 
 # aclTensorList is not convenient to use in C++, so use std::vector directly
 ctypedef aclError (*GeneralOpFunc)(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
-    const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) nogil
+    const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) nogil except +
 
 ctypedef aclError (*ReductionOpFunc)(const aclTensor* self, const aclIntArray* dim, bool keepdim,
-    aclTensor* out, const KwargsType& kwargs, aclrtStream stream) nogil
+    aclTensor* out, const KwargsType& kwargs, aclrtStream stream) nogil except +
 
 # 函数指针联合体，用于存储不同类型的操作
 ctypedef union FuncPtrUnion:
