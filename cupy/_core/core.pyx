@@ -3119,7 +3119,9 @@ cdef _ndarray_base _array_default(
         a.data.copy_from_host_async(ptr_h, nbytes, stream)
         pinned_memory._add_to_watch_list(stream.record(), a_cpu)
     elif ((a_cpu.flags.c_contiguous or a_cpu.flags.f_contiguous)
-            and nbytes >= _host_transfer().H2D_THRESHOLD):
+            and nbytes >= _host_transfer().H2D_THRESHOLD
+            and (is_correct_contiguous
+                 or nbytes >= _host_transfer().H2D_REORDER_THRESHOLD)):
         # Large array: stage it in chunks through a bounded ring of pinned
         # buffers filled by several threads, overlapping the host copies
         # with the DMA (and reordering on the device if needed).

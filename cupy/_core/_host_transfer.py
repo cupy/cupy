@@ -34,9 +34,14 @@ from cupy.cuda import pinned_memory
 # a sweep on an RTX 5090 / PCIe 5 / dual-channel DDR5 machine; below these
 # sizes the single-buffer paths are as fast or faster.
 H2D_THRESHOLD = 16 << 20
+# With a layout change, the single-thread path (#10425) copies contiguous
+# blocks and is as fast as the pipeline up to ~64-128 MiB.
+H2D_REORDER_THRESHOLD = 128 << 20
 D2H_THRESHOLD = 32 << 20
 CHUNK_BYTES = 2 << 20
 NUM_THREADS = max(1, min(8, (os.cpu_count() or 2) // 2))
+# Size of the device staging blocks used when reordering (see #10425).
+REORDER_BLOCK_BYTES = 32 << 20
 # Pinned slots in flight per transfer (pinned memory: NUM_SLOTS * CHUNK_BYTES).
 NUM_SLOTS = 2 * NUM_THREADS
 
@@ -103,13 +108,25 @@ def copy_host_to_device(a_gpu, a_cpu, stream):
     src_u8 = a_cpu.ravel(order='K').view(numpy.uint8)
     nbytes = src_u8.size
 
+    # chunks: (block, source byte offset, nbytes, destination byte offset).
+    # Without a reorder the destination is `a_gpu` itself. With a reorder,
+    # the source is split into blocks of REORDER_BLOCK_BYTES that are
+    # contiguous in host memory (leading rows of a C source, trailing slices
+    # of an F source); each block's chunks land in a staging device array in
+    # the source layout, which is copied into `a_gpu` once per block.
+    blocks = []
     if reorder:
-        chunks = list(_row_chunks(a_cpu.shape, a_cpu.itemsize, src_order,
-                                  CHUNK_BYTES))
+        blocks = list(_row_chunks(a_cpu.shape, a_cpu.itemsize, src_order,
+                                  REORDER_BLOCK_BYTES))
+        chunks = [(b, boff + o, min(CHUNK_BYTES, bn - o), o)
+                  for b, (_, _, boff, bn) in enumerate(blocks)
+                  for o in range(0, bn, CHUNK_BYTES)]
     else:
-        chunks = [(None, None, off, min(CHUNK_BYTES, nbytes - off))
+        chunks = [(None, off, min(CHUNK_BYTES, nbytes - off), off)
                   for off in range(0, nbytes, CHUNK_BYTES)]
-    slot_bytes = max(c[3] for c in chunks)
+    last_chunk = {c[0]: i for i, c in enumerate(chunks)}
+    staging = {}
+    slot_bytes = max(c[2] for c in chunks)
     nslots = min(NUM_SLOTS, len(chunks))
     slots = [pinned_memory.alloc_pinned_memory(slot_bytes)
              for _ in range(nslots)]
@@ -118,22 +135,27 @@ def copy_host_to_device(a_gpu, a_cpu, stream):
     def fill(i, wait_event):
         if wait_event is not None:
             wait_event.synchronize()
-        off, n = chunks[i][2], chunks[i][3]
+        off, n = chunks[i][1], chunks[i][2]
         views[i % nslots][:n] = src_u8[off:off + n]
 
     def issue(i):
-        start, stop, off, n = chunks[i]
+        b, _, n, dst_off = chunks[i]
         slot = slots[i % nslots]
         if not reorder:
-            (a_gpu.data + off).copy_from_host_async(slot.ptr, n, stream)
+            (a_gpu.data + dst_off).copy_from_host_async(slot.ptr, n, stream)
             return
+        start, stop = blocks[b][0], blocks[b][1]
         if src_order == 'C':
             dst_view = a_gpu[start:stop]
         else:
             dst_view = a_gpu[..., start:stop]
-        tmp = cupy.empty(dst_view.shape, a_gpu.dtype, order=src_order)
-        tmp.data.copy_from_host_async(slot.ptr, n, stream)
-        cupy._core.elementwise_copy(tmp, dst_view)
+        tmp = staging.get(b)
+        if tmp is None:
+            tmp = staging[b] = cupy.empty(
+                dst_view.shape, a_gpu.dtype, order=src_order)
+        (tmp.data + dst_off).copy_from_host_async(slot.ptr, n, stream)
+        if last_chunk[b] == i:
+            cupy._core.elementwise_copy(staging.pop(b), dst_view)
 
     ex = _get_executor()
     futures = []

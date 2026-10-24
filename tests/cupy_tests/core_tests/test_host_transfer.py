@@ -13,9 +13,12 @@ def pipelined(monkeypatch):
     # Force the pipelined paths on small arrays, with small chunks and only
     # two slots so that slot reuse (waiting on earlier DMAs) is exercised.
     monkeypatch.setattr(_host_transfer, 'H2D_THRESHOLD', 0)
+    monkeypatch.setattr(_host_transfer, 'H2D_REORDER_THRESHOLD', 0)
     monkeypatch.setattr(_host_transfer, 'D2H_THRESHOLD', 0)
     monkeypatch.setattr(_host_transfer, 'CHUNK_BYTES', 4096)
     monkeypatch.setattr(_host_transfer, 'NUM_SLOTS', 2)
+    # Several chunks per reorder block, and several blocks per array.
+    monkeypatch.setattr(_host_transfer, 'REORDER_BLOCK_BYTES', 16384)
 
 
 _shapes = [(1,), (1000,), (1025, 3), (3, 1025), (17, 33, 9), (100003,)]
