@@ -23,7 +23,7 @@ cdef struct _CArray:
 cdef class mdspan(function.CPointer):
 
     cdef int init(
-        self, void* data_ptr, int itemsize,
+        self, void* data_ptr, void* mem_ptr, int itemsize,
         const shape_t& shape, const strides_t& strides,
         int index_itemsize, bint allow_unsafe) except?-1
 
