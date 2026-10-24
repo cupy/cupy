@@ -31,9 +31,10 @@ from cupy.cuda import pinned_memory
 
 
 # Arrays at least this large use the pipelined paths. The defaults come from
-# a sweep on an RTX 5090 / PCIe 5 / dual-channel DDR5 machine; below these
-# sizes the single-buffer paths are as fast or faster.
-H2D_THRESHOLD = 16 << 20
+# an RTX 5090 / PCIe 5 / dual-channel DDR5 machine. Below 64 MiB the old H2D
+# path wins in real workloads even where it ties in isolation: it returns
+# right after the host copy and its DMA overlaps with the caller's next work.
+H2D_THRESHOLD = 64 << 20
 # With a layout change, the single-thread path (#10425) copies contiguous
 # blocks and is as fast as the pipeline up to ~64-128 MiB.
 H2D_REORDER_THRESHOLD = 128 << 20
