@@ -7,6 +7,7 @@ import os.path
 import shutil
 import subprocess
 import sys
+import sysconfig
 from typing import Any
 
 import setuptools
@@ -166,6 +167,11 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
 
         if sys.platform == 'win32':
             # Disable multiprocessing on Windows (spawn)
+            nthreads = 0
+        elif sysconfig.get_config_var('Py_GIL_DISABLED'):
+            # Free-threaded CPython: multiprocessing defaults to forkserver,
+            # whose worker re-imports setup.py and recursively re-runs the
+            # build. Cythonize serially in-process instead.
             nthreads = 0
 
         Cython.Build.cythonize(

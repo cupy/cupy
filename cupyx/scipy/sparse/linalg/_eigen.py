@@ -19,7 +19,13 @@ from cupyx.scipy.sparse.linalg._solve import splu
 
 # Only CuPy's own generators: a NumPy generator would draw the start vector
 # on the host, and the global-state sentinel has no counterpart in scipy.
-_RNG_TYPES = (cupy.random.Generator, cupy.random.RandomState)
+try:
+    _GENERATOR = cupy.random.Generator
+except ModuleNotFoundError:
+    # cupy.random._generator_api is cuRAND-based and not built on Ascend
+    _GENERATOR = None
+_RNG_TYPES = tuple(
+    t for t in (_GENERATOR, cupy.random.RandomState) if t is not None)
 
 
 def _resolve_rng(rng):
