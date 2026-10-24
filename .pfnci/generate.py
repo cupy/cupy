@@ -248,7 +248,8 @@ class LinuxGenerator:
             'RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv',
             'ENV PYENV_ROOT "/opt/pyenv"',
             'ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"',
-            f'RUN PYTHON_CONFIGURE_OPTS="--disable-shared"'
+            'RUN git -C /opt/pyenv pull --ff-only && \\',
+            f'    PYTHON_CONFIGURE_OPTS="--disable-shared"'
             f' pyenv install {py_spec} && \\',
             f'    pyenv global {py_spec} && \\',
             '    pip install -U setuptools pip wheel && \\',

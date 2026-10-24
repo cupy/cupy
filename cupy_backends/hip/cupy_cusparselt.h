@@ -1,7 +1,7 @@
-// Stub header file for cuSPARSELt
+// Fallback header for ROCm/HIP builds: ROCm has no cuSPARSELt equivalent.
 
-#ifndef INCLUDE_GUARD_STUB_CUPY_CUSPARSELT_H
-#define INCLUDE_GUARD_STUB_CUPY_CUSPARSELT_H
+#ifndef INCLUDE_GUARD_CUPY_HIP_CUSPARSELT_H
+#define INCLUDE_GUARD_CUPY_HIP_CUSPARSELT_H
 
 #define CUSPARSELT_VERSION -1
 
@@ -156,4 +156,4 @@ cusparseStatus_t cusparseLtSpMMACompress2(...) {
 
 } // extern "C"
 
-#endif  // INCLUDE_GUARD_STUB_CUPY_CUSPARSE_H
+#endif  // INCLUDE_GUARD_CUPY_HIP_CUSPARSELT_H

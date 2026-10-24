@@ -50,10 +50,11 @@ class TestLsqr(unittest.TestCase):
                 sp.linalg.lsqr(A, b)
 
     @_condition.retry(10)
+    @testing.for_dtypes([numpy.float32, numpy.float64], name='b_dtype')
     @testing.numpy_cupy_allclose(atol=1e-1, sp_name='sp')
-    def test_csrmatrix(self, xp, sp):
+    def test_csrmatrix(self, xp, sp, b_dtype):
         A = sp.csr_matrix(self.A, dtype=self.dtype)
-        b = xp.array(self.b, dtype=self.dtype)
+        b = xp.array(self.b, dtype=b_dtype)
         x = sp.linalg.lsqr(A, b)
         return x[0]
 
@@ -64,6 +65,25 @@ class TestLsqr(unittest.TestCase):
         b = xp.array(self.b, dtype=self.dtype)
         x = sp.linalg.lsqr(A, b)
         return x[0]
+
+    def test_strided_rhs(self):
+        A = sparse.csr_matrix(cupy.diag([2.0, 3.0]), dtype=self.dtype)
+        b = cupy.array([2.0, 0.0, 6.0, 0.0], dtype=self.dtype)[::2]
+        assert not b.flags.c_contiguous
+        x = sparse.linalg.lsqr(A, b)[0]
+        testing.assert_array_almost_equal(x, [1.0, 2.0], decimal=3)
+
+
+@pytest.mark.skipif(runtime.is_hip, reason='lsqr not supported')
+@pytest.mark.parametrize('a_dtype,b_dtype', [
+    (cupy.complex64, cupy.float32),
+    (cupy.float32, cupy.complex128),
+])
+def test_lsqr_rejects_complex(a_dtype, b_dtype):
+    A = sparse.eye(2, format='csr', dtype=a_dtype)
+    b = cupy.ones(2, dtype=b_dtype)
+    with pytest.raises(TypeError, match='Invalid dtype'):
+        sparse.linalg.lsqr(A, b)
 
 
 @testing.parameterize(*testing.product({
@@ -183,7 +203,9 @@ class TestEigsh:
         return a
 
     def _test_eigsh(self, a, xp, sp):
-        ret = sp.linalg.eigsh(a, k=self.k, which=self.which,
+        # Fix the start vector as SciPy defaults to a random one (gh-10396).
+        v0 = testing.shaped_random((self.n,), xp, a.dtype)
+        ret = sp.linalg.eigsh(a, k=self.k, which=self.which, v0=v0,
                               return_eigenvectors=self.return_eigenvectors)
         if self.return_eigenvectors:
             w, x = ret
@@ -380,11 +402,14 @@ class TestEigsh:
         # ('LM' on the inverted operator) case only.
         if self.use_linear_operator or self.which != 'LM':
             pytest.skip()
-        a = self._make_matrix(dtype, xp)          # PSD Hermitian
+        a = self._make_matrix(dtype, xp)
         a = sp.csr_matrix(a)
-        # sigma = -1 keeps A - sigma*I = A + I positive definite (invertible);
-        # 'LM' then returns the k eigenvalues nearest sigma.
-        ret = sp.linalg.eigsh(a, k=self.k, sigma=-1.0, which='LM',
+        # A - sigma*I = A + I is well away from singular at sigma = -1
+        # (cond 142 real, 349 complex); 'LM' then returns the k eigenvalues
+        # nearest sigma.
+        # Fix the start vector as SciPy defaults to a random one (gh-10396).
+        v0 = testing.shaped_random((self.n,), xp, a.dtype)
+        ret = sp.linalg.eigsh(a, k=self.k, sigma=-1.0, which='LM', v0=v0,
                               return_eigenvectors=self.return_eigenvectors)
         if self.return_eigenvectors:
             w, x = ret
@@ -560,10 +585,10 @@ class TestEigshLockedBlockFailsClosed:
 @testing.with_requires('scipy')
 class TestEigshSM:
     # which='SM' against scipy, on sparse formats and dense, with and without
-    # a MatrixLinearOperator wrapper. The matrix is a*a^H: positive
-    # semidefinite and, at n=30 with density 0.33, generally rank-deficient,
-    # so this also exercises the automatic sub-zero shift -- a shift exactly
-    # at 0 would not factorize. (From cupy/cupy#10067.)
+    # a MatrixLinearOperator wrapper. a * a.conj().T is the ELEMENTWISE
+    # product, so the matrix is Hermitian but indefinite and 'SM' asks for an
+    # interior eigenvalue; the automatic sub-zero shift therefore lands inside
+    # the spectrum, not below it. (From cupy/cupy#10067.)
     n = 30
     density = 0.33
     tol = {numpy.float32: 1e-4, numpy.complex64: 1e-4, 'default': 1e-10}
@@ -578,7 +603,9 @@ class TestEigshSM:
         return a
 
     def _test_eigsh(self, a, a_norm, xp, sp):
-        ret = sp.linalg.eigsh(a, k=self.k, which='SM',
+        # Fix start vector as SciPy defaults to a random one (gh-10375).
+        v0 = testing.shaped_random((self.n,), xp, a.dtype)
+        ret = sp.linalg.eigsh(a, k=self.k, which='SM', v0=v0,
                               return_eigenvectors=self.return_eigenvectors)
         if self.return_eigenvectors:
             w, x = ret
@@ -646,8 +673,10 @@ class TestEigshSigma:
         a_norm = xp.linalg.norm(a)
         if self.format == 'csr':
             a = sp.csr_matrix(a)
+        # Fix the start vector as SciPy defaults to a random one (gh-10396).
+        v0 = testing.shaped_random((self.n,), xp, a.dtype)
         ret = sp.linalg.eigsh(a, k=self.k, sigma=self.sigma,
-                              which=self.which,
+                              which=self.which, v0=v0,
                               return_eigenvectors=self.return_eigenvectors)
         if self.return_eigenvectors:
             w, x = ret
@@ -1126,7 +1155,9 @@ class TestEigshSvdsSmallNcv:
     def test_eigsh(self, n, k, dtype, xp, sp):
         aux = testing.shaped_random((n, n), xp, dtype=dtype, scale=1)
         a = aux + aux.conj().T
-        w, _ = sp.linalg.eigsh(a, k=k)
+        # Fix the start vector as SciPy defaults to a random one (gh-10396).
+        v0 = testing.shaped_random((n,), xp, a.dtype)
+        w, _ = sp.linalg.eigsh(a, k=k, v0=v0)
         return xp.sort(w)
 
     @pytest.mark.parametrize(

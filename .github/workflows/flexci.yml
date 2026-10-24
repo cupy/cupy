@@ -153,6 +153,24 @@ jobs:
               > "${RUNNER_TEMP}/requests/push.zip"
           mkdir -p "${RUNNER_TEMP}/requests/push"
           unzip -q -o "${RUNNER_TEMP}/requests/push.zip" -d "${RUNNER_TEMP}/requests/push"
+          # Gate dispatch on mode == test. ci-guard.sh sets mode=doc-only
+          # on tag pushes (the tagged SHA was already fully tested on the
+          # branch push preceding the tag); re-dispatching FlexCI's full
+          # GPU matrix on that SHA burns ~16 lanes with no coverage gain.
+          # The sentinel we just extracted carries docs-meta.json with the
+          # trusted guard mode.
+          meta="${RUNNER_TEMP}/requests/push/docs-meta.json"
+          if [[ ! -f "${meta}" ]]; then
+            echo "::warning::push sentinel missing docs-meta.json; treating as no-dispatch."
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          mode="$(jq -r '.mode // ""' "${meta}")"
+          if [[ "${mode}" != "test" ]]; then
+            echo "push mode=${mode:-unknown}; nothing to dispatch."
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           dispatch_list+=("push")
           event=push
           ;;
@@ -189,7 +207,7 @@ jobs:
 
     - name: Setup Python
       if: steps.request.outputs.found == 'true'
-      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
       with:
         python-version: '3.13'
 
@@ -212,27 +230,50 @@ jobs:
               --webhook "${RUNNER_TEMP}/requests/${pr}/event.json" \
               --projects _config/.pfnci/config.tags.json \
               --external-tag jenkins \
-              --external-tag rocm
+              --external-tag rocm \
+              --external-tag doc-only
         done
 
-    # Workflow_run check-suites attach to the default-branch head, not to
-    # HEAD_SHA, so a failed dispatch is invisible on the PR and on the merge
-    # commit unless we mirror the outcome as a commit status. The dispatcher
-    # already writes a pfn-public-ci (dashboard) success status on the head;
-    # this closes the negative side symmetrically for both PR and push legs.
-    - name: Report dispatch failure to HEAD_SHA
-      if: failure()
+    # Workflow_run check-suites attach to the default-branch head, not
+    # to HEAD_SHA, so dispatch outcomes are invisible on the PR and on
+    # the merge commit unless we mirror the state as a commit status.
+    # The dispatcher already writes a pfn-public-ci (dashboard) success
+    # status on the head; this step mirrors pfn-public-ci (dispatch)
+    # for both legs. Posting on both success and failure (not just
+    # failure) is load-bearing: without it, a failed dispatch stamps
+    # `(dispatch) failure` and a later retry can turn the Actions tab
+    # green while leaving the PR's commit status stuck at failure (same
+    # context, no overwrite). The `steps.request.outputs.found == 'true'`
+    # gate so no-op runs that had nothing to dispatch do not post either
+    # state; `!cancelled()` matches the previous combined if:success() +
+    # if:failure() semantics (cancellation left the previous status
+    # untouched). The `failure()` disjunct covers the case where the
+    # Find step itself failed (e.g. transient gh api error) before
+    # setting its `found` output -- without it the gate would skip and
+    # the failure would be invisible on the PR commit.
+    - name: Report dispatch status to HEAD_SHA
+      if: >-
+        !cancelled() &&
+        (failure() || steps.request.outputs.found == 'true')
       env:
         GH_TOKEN: ${{ github.token }}
         HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
         RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        JOB_STATUS: ${{ job.status }}
       run: |
         set -euo pipefail
+        if [[ "${JOB_STATUS}" == "success" ]]; then
+          state=success
+          desc="FlexCI dispatch succeeded"
+        else
+          state=failure
+          desc="FlexCI dispatch failed; see workflow_run logs"
+        fi
         gh api "repos/${GITHUB_REPOSITORY}/statuses/${HEAD_SHA}" \
           --method POST \
-          -f state=failure \
+          -f state="${state}" \
           -f context="pfn-public-ci (dispatch)" \
-          -f description="FlexCI dispatch failed; see workflow_run logs" \
+          -f description="${desc}" \
           -f target_url="${RUN_URL}" >/dev/null
 
   reap-noop-run:

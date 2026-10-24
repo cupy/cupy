@@ -4,7 +4,7 @@
 #define _str_(s) #s
 #define _xstr_(s) _str_(s)
 
-#if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
+#ifndef CUPY_USE_HIP
 
 #include <cupy/_jitify/jitify.hpp>
 namespace jitify {
