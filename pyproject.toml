@@ -13,10 +13,17 @@ build-backend = "setuptools.build_meta"
 # keeps working.
 name = "numpy-ascend"
 description = "NumPy & SciPy for GPU and Ascend NPU (CuPy-compatible)"
-authors = [{ name = "qingfeng xia, cupy authors", email = "tokui@preferred.jp" }]
-maintainers = [{ name = "CuPy Developers" }]
-license = { text = "MIT" }
-# license-files = ["LICENSE", "docs/source/license.rst"]
+# Attribution policy (see NOTICE): the *distribution* is maintained by this
+# fork; upstream CuPy authors hold the copyright of the derived code and are
+# credited through LICENSE / NOTICE, not as authors of this metadata (an
+# upstream maintainer address here would misrepresent the package's origin).
+authors = [{ name = "Qingfeng Xia", email = "qingfeng.xia@hotmail.com" }]
+maintainers = [{ name = "Qingfeng Xia", email = "qingfeng.xia@hotmail.com" }]
+# PEP 639 SPDX string (required by `license-files` below, setuptools>=77).
+# Covers the MIT root license; Apache-2.0/BSD-3/BSL-1.0 portions and their
+# holders are listed in NOTICE.
+license = "MIT"
+license-files = ["LICENSE", "NOTICE", "docs/source/license.rst"]
 classifiers = [
   "Development Status :: 5 - Production/Stable",
   "Intended Audience :: Science/Research",

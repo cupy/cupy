@@ -19,7 +19,23 @@
 
 **numpy-ascend** 把 CuPy 的 ndarray API 带到华为昇腾（Ascend）NPU 上。项目 fork 自
 CuPy（v14 谱系，NumPy 2.x），用基于 CANN `aclnn` 算子库的 Ascend 后端替换 CUDA 后端，
-使现有 NumPy/CuPy 代码以及 CuPy/SciPy 生态在 NPU 上以 `import cupy` 方式运行。
+使现有 NumPy/CuPy 代码以及 CuPy/SciPy 生态能在 NPU 上运行。
+
+> **非官方衍生版本**：numpy-ascend 是 [CuPy](https://github.com/cupy/cupy) 的衍生作品，
+> 与 Preferred Networks, Inc. 及 CuPy 官方项目**无任何隶属、背书或赞助关系**。上游版权
+> 声明保留在 [LICENSE](LICENSE) 与 [NOTICE](NOTICE) 中；"CuPy" 一词仅用于说明本项目来源。
+
+### 导入名：`numpy_xpu`（推荐）或 `cupy`（兼容）
+
+```python
+import numpy_xpu as xp    # 本发行版的对外导入名
+import cupy as cp         # 仍然可用：xp is cp
+```
+
+`numpy_xpu` 是 `cupy` 代码树之上的薄别名包（`numpy_xpu/__init__.py`）。`cupy` 目录保留
+原名，因为 Cython/C++ 源码与整个 `import cupy` 生态都硬编码了它；两个名字指向**同一个
+模块对象**，不会出现两份类定义，`isinstance` / `except` 行为完全一致。已有代码无需修改，
+新代码建议使用 `import numpy_xpu as xp`。
 
 ## 特性
 

@@ -139,7 +139,7 @@ A7 | `python tools/fetch_cuda_fp16_headers.py --list`（无 CUDA 机器） | 打
 
 | 优先级 | 项 | 说明 |
 |---|---|---|
-P1 | `cupy/_core/include/cupy/complex/*` 补 NOTICE | 现仅文件头 Apache 声明，无独立 LICENSE |
+P1 | ✅ `cupy/_core/include/cupy/complex/*` 补 NOTICE | 已完成（2026-10-24）：根目录 `NOTICE` 统一列出上游 MIT 部分与 Apache-2.0/BSD-3/BSL-1.0 第三方的版权行、许可证位置、修改声明与商标声明；`pyproject.toml` 的 `license-files` 与 `MANIFEST.in` 保证其进入 wheel/sdist |
 P2 | `xsf` 的 Boost LICENSE 未进 wheel | 加 `_core/include/cupy/xsf/LICENSE` symlink 到 `third_party/xsf/LICENSE` |
 P2 | Ascend 发布物连 `xsf` 也剔除 | 无 `cupyx.scipy.special` 的 C++ 实现需求（kernel 路径在 Ascend 不可用），可再省 1.79 MB |
 P3 | 若"零 CUDA 源码"成为硬政策 | `cupy/cuda/*.cu{c,h}`、`cupy_distributions.cu{c,h}`、`pba_kernels_*.h` 也改为构建期从 cccl / 独立仓库获取 |
@@ -193,3 +193,26 @@ EOF
 - 代码：`install/cupy_builder/cupy_setup_build.py`（过滤器）、`setup.py`（package_data + sdist cmdclass）、
   `MANIFEST.in`（prune 兜底）、`tools/fetch_cuda_fp16_headers.py`、
   `cupy/_core/_gpu/_compile_with_cache.pyx`（运行时查找顺序）
+
+---
+
+## 8. 命名与商标（`numpy_xpu` / `cupy`）
+
+**版权与名称无关，商标才与名称有关。** 版权保护代码表达，不保护目录名/包名；
+CuPy 根许可是 MIT（另含 Apache-2.0/BSD-3/BSL-1.0 的第三方部分），义务是
+"保留版权与许可声明" —— 与目录是否叫 `cupy` 无关。
+
+| 项 | 风险 | 现状 |
+|---|---|---|
+| 目录名 `cupy` | 无（版权不覆盖名称；改不改名义务相同） | 保留原目录名，避免改上千个 `.pyx/.pxd` 中的 `cimport cupy` 与扩展模块路径 |
+| 分发名 | 中：不能以 "CuPy" 为产品名 | `numpy-ascend`（`ASCEND_DISTRIBUTION_NAME`），PyPI 与 wheel 名一致 |
+| 导入名 | 中：`import cupy` 占坑易被误认为官方包 | 对外主名 `numpy_xpu`（`numpy_xpu/__init__.py` 经 `sys.modules` 别名到 `cupy`，同一模块对象）；`cupy` 保留为兼容层 |
+| 元数据 | 高：上游维护者邮箱/姓名写成包作者属不实陈述 | 已改为本 fork 维护者；上游作者仅在 `NOTICE` 以版权行署名 |
+| 声明 | 高：缺 NOTICE → Apache-2.0 §4 / MIT 义务不完整 | 根目录 `NOTICE`（衍生作品、修改声明、商标声明），`license-files` + `MANIFEST.in` 保证随包分发 |
+
+商标合规的判定标准是**是否造成来源混淆**，而不是目录名。因此：
+不要使用 CuPy 的 logo/品牌做产品名；README 顶部保留 "Unofficial fork / 非官方衍生版本"
+声明；"CuPy-compatible" 属描述性使用（nominative use），可以继续用。
+
+长期（2.0 目标）：发布物只提供 `numpy_xpu`，`cupy` 通过可选 extra 或
+`.pth`/别名包反向提供，彻底消除 `import cupy` 占坑问题。

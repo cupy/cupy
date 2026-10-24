@@ -20,7 +20,27 @@ By Qingfeng Xia
 **numpy-ascend** brings the CuPy ndarray API to Huawei Ascend NPUs. It is a fork
 of CuPy (v14 lineage, NumPy 2.x) with the CUDA backend replaced by an Ascend
 backend built on CANN's `aclnn` operator library, so that existing NumPy/CuPy
-code and the wider CuPy/SciPy ecosystem run on the NPU with `import cupy`.
+code and the wider CuPy/SciPy ecosystem run on the NPU.
+
+> **Unofficial fork.** numpy-ascend is a derivative work of
+> [CuPy](https://github.com/cupy/cupy) and is **not** affiliated with, endorsed
+> or sponsored by Preferred Networks, Inc. or the CuPy project. Upstream
+> copyright notices are retained in [LICENSE](LICENSE) and [NOTICE](NOTICE);
+> the name "CuPy" is used only to describe the origin of this work.
+
+### Import name: `numpy_xpu` (preferred) or `cupy` (compatible)
+
+```python
+import numpy_xpu as xp    # public import name of this distribution
+import cupy as cp         # kept working: xp is cp
+```
+
+`numpy_xpu` is a thin alias package (`numpy_xpu/__init__.py`) over the
+upstream-derived `cupy` tree. That tree keeps its original directory name
+because the Cython/C++ sources and the wider `import cupy` ecosystem hard-code
+it; both names resolve to the **same module object**, so there is no duplicated
+set of classes and `isinstance` / `except` behave identically. Existing code
+needs no change; new code should prefer `import numpy_xpu as xp`.
 
 ## Features
 
