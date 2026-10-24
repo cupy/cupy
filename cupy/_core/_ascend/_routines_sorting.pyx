@@ -20,8 +20,8 @@ from cupy._core cimport internal
 #   ins  = [self]                      the tensor to sort
 #   outs = [values[, indices]]         indices is optional (int64)
 #   args = [axis, stable, descending]  int64 / bool / bool
-# aclnnSort always returns ascending order when descending is false, and CuPy's
-# public sorting API is ascending only, so descending stays 0 here.
+# aclnnSort takes the order flag directly (upstream `descending=`), so the
+# public `descending` keyword maps onto the third argument.
 cdef str _sort_key_dtype(_ndarray_base a):
     """Return the signed-int dtype whose bit order equals `a`'s float order.
 
@@ -39,7 +39,8 @@ cdef str _sort_key_dtype(_ndarray_base a):
     return None
 
 
-cdef _ascend_sort(_ndarray_base self, _ndarray_base out, int axis):
+cdef _ascend_sort(_ndarray_base self, _ndarray_base out, int axis,
+                  bint descending=False):
     """Sort `self` along `axis`; the sorted values are written into `out`."""
     # CANN 8.5 aclnnSort does not accept nullptr as indices, not in used after return
     cdef _ndarray_base  indices = core.ndarray(out.shape, dtype=numpy.int64)
@@ -55,13 +56,13 @@ cdef _ascend_sort(_ndarray_base self, _ndarray_base out, int axis):
             launch_general_func(
                 "ascend_sort",
                 [self.view(key_dtype)], [out.view(key_dtype), indices],
-                [axis, 1, 0],  # axis, stable, descending
+                [axis, 1, descending],  # axis, stable, descending
                 {}, 0)
         else:
             launch_general_func(
                 "ascend_sort",
                 [self], [out, indices],
-                [axis, 1, 0],  # axis, stable, descending
+                [axis, 1, descending],  # axis, stable, descending
                 {}, 0)
         # The kernel fault is ASYNC: the launch returns fine and the device
         # exception only surfaces on the next sync.  Sync here so the CPU
@@ -75,11 +76,14 @@ cdef _ascend_sort(_ndarray_base self, _ndarray_base out, int axis):
         # exception does not poison the context (verified: ops launched
         # after the fault run normally).
         host = numpy.sort(self.get(), axis=axis)
+        if descending:
+            host = numpy.flip(host, axis=axis)
         out[...] = cupy.asarray(host)
         cupy.cuda.runtime.deviceSynchronize()
 
 
-cdef _ascend_argsort(_ndarray_base self, _ndarray_base out, int axis):
+cdef _ascend_argsort(_ndarray_base self, _ndarray_base out, int axis,
+                      bint descending=False):
     """Write the argsort indices of `self` along `axis` into `out`."""
     cdef str key_dtype = _sort_key_dtype(self)
     try:
@@ -89,22 +93,24 @@ cdef _ascend_argsort(_ndarray_base self, _ndarray_base out, int axis):
             launch_general_func(
                 "ascend_argsort",
                 [self.view(key_dtype)], [out],
-                [axis, 0],  # dim, descending
+                [axis, descending],  # dim, descending
                 {}, 0)
         else:
             launch_general_func(
                 "ascend_argsort",
                 [self], [out],
-                [axis, 0],  # dim, descending
+                [axis, descending],  # dim, descending
                 {}, 0)
         cupy.cuda.runtime.deviceSynchronize()  # surface async kernel faults
     except Exception:
         host = numpy.argsort(self.get(), axis=axis).astype(numpy.int64)
+        if descending:
+            host = numpy.flip(host, axis=axis)
         out[...] = cupy.asarray(host)
         cupy.cuda.runtime.deviceSynchronize()
 
 
-cdef _ndarray_sort(_ndarray_base self, int axis):
+cdef _ndarray_sort(_ndarray_base self, int axis, bint descending=False):
     cdef int ndim = self._shape.size()
     cdef _ndarray_base data, out
 
@@ -131,7 +137,7 @@ cdef _ndarray_sort(_ndarray_base self, int axis):
     # optionally the indices) in a separate output tensor.  `data` now has the
     # sort axis as its last dimension, hence -1.
     out = core.ndarray(data.shape, dtype=data.dtype)
-    _ascend_sort(data, out, -1)
+    _ascend_sort(data, out, -1, descending)
 
     if axis == ndim - 1:
         # `data is self`, sorting in place through the temp output.
@@ -142,7 +148,8 @@ cdef _ndarray_sort(_ndarray_base self, int axis):
         elementwise_copy(data, self)
 
 
-cdef _ndarray_base _ndarray_argsort(_ndarray_base self, axis):
+cdef _ndarray_base _ndarray_argsort(
+        _ndarray_base self, axis, bint descending=False):
     cdef int _axis, ndim
     cdef _ndarray_base data, idx_view
 
@@ -168,7 +175,7 @@ cdef _ndarray_base _ndarray_argsort(_ndarray_base self, axis):
     # the last dimension, which is exactly where the target axis has been
     # moved to above.
     idx_array = core.ndarray(data.shape, dtype=numpy.int64)
-    _ascend_argsort(data, idx_array, -1)
+    _ascend_argsort(data, idx_array, -1, descending)
 
     if _axis == ndim - 1:
         return idx_array

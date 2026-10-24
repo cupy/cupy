@@ -246,7 +246,8 @@ cdef class _AbstractReductionKernel:
             list in_args, list out_args,
             const shape_t& a_shape, axis, dtype,
             bint keepdims, bint reduce_dims, int device_id,
-            stream, bint try_use_cub=False, bint sort_reduce_axis=True):
+            stream, bint try_use_cub=False, bint try_use_cuda_compute=False,
+            bint sort_reduce_axis=True, bint cuda_compute_only=False):
 
         cdef tuple reduce_axis, out_axis, axis_permutes
         cdef tuple params, opt_params
@@ -454,11 +455,11 @@ cdef class _AbstractReductionKernel:
             best.user_attrs['block_stride'],
             best.params['out_block_num'])
 
-    cdef inline void _launch(
+    cdef bint _launch(
             self, out_block_num, block_size, block_stride,
             in_args, out_args, in_shape, out_shape, type_map,
             map_expr, reduce_expr, post_map_expr, reduce_type,
-            stream, params):
+            stream, params) except -1:
         cdef function.Function func
 
         inout_args = (
@@ -482,6 +483,7 @@ cdef class _AbstractReductionKernel:
         # Launch the kernel
         func.linear_launch(
             out_block_num * block_size, inout_args, 0, block_size, stream)
+        return True
 
     cdef tuple _get_expressions_and_types(
             self, list in_args, list out_args, dtype):
@@ -610,10 +612,8 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
             self, list in_args, list out_args, dtype):
         cdef _kernel._Op op
 
-        # XXX: weaks
-        weaks = None
         op = self._ops.guess_routine(
-            self.name, self._routine_cache, in_args, weaks, dtype, self._ops)
+            self.name, self._routine_cache, in_args, dtype, self._ops)
         map_expr, reduce_expr, post_map_expr, reduce_type = op.routine
 
         if reduce_type is None:
@@ -768,8 +768,8 @@ cdef class ReductionKernel(_AbstractReductionKernel):
 
         # XXX: needs to handle weak scalars from _preprocess_args?
         dev_id = device.get_device_id()
-        in_args, _ = _preprocess_args(dev_id, args[:self.nin], False)
-        out_args, _ = _preprocess_args(dev_id, out_args, False)
+        in_args = _preprocess_args(dev_id, args[:self.nin])
+        out_args = _preprocess_args(dev_id, out_args)
         in_args = _broadcast(in_args, self.in_params, False, broad_shape)
 
         return self._call(

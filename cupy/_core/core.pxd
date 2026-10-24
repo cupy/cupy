@@ -54,9 +54,8 @@ cdef class _ndarray_base:
     cpdef _ndarray_base compress(self, condition, axis=*, out=*)
     cpdef _ndarray_base diagonal(self, offset=*, axis1=*, axis2=*)
     cpdef _ndarray_base trace(self, offset=*, axis1=*, axis2=*, dtype=*, out=*)
-    #IF CUPY_CANN_VERSION <= 0: # TODO: ASCEND
-    cpdef sort(self, int axis=*, kind=*)
-    cpdef _ndarray_base argsort(self, axis=*, kind=*)
+    # NB: `sort`/`argsort` are plain Python methods (upstream moved them out of
+    # this pxd so that the keyword-only `descending=` argument is allowed).
     cpdef partition(self, kth, int axis=*)
     cpdef _ndarray_base argpartition(self, kth, axis=*)
     

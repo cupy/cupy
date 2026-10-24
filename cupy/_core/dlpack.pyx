@@ -104,7 +104,8 @@ cdef DLDevice get_dlpack_device(_ndarray_base array) except DLDevice_err:
     device.device_id = array.data.device_id
 
     if not runtime._is_hip_environment:
-        mem_type = runtime.pointerGetMemoryType(array.data.ptr)
+        mem_type = runtime.pointerGetMemoryType(
+            <intptr_t>array.data.ptr)
         is_managed = (mem_type == runtime.memoryTypeManaged)
 
         if is_managed:

@@ -8,6 +8,7 @@ import warnings
 
 import numpy
 cimport cython  # NOQA
+cimport numpy as cnp
 cimport cpython
 from libc.stdint cimport int64_t, intptr_t, INT32_MAX
 from libc cimport stdlib
@@ -26,12 +27,14 @@ from cupy.xpu import memory as memory_module
 from cupy.xpu import stream as stream_mod
 
 from cupy._core cimport _carray
+from cupy._core cimport _memory_range
 from cupy._core._carray cimport shape_t
 from cupy._core cimport _dtype
 from cupy._core._dtype cimport get_dtype
 from cupy._core._dtype cimport populate_format
 from cupy._core._kernel import ElementwiseKernel, create_ufunc # only fill_kernel use this
 from cupy._core._routines_creation import array  # NOQA bitwise_and core.array used by _routines_indexing
+from cupy._core._routines_creation cimport _convert_from_cupy_like
 
 from cupy._core cimport _routines_binary as _binary
 from cupy._core cimport _routines_indexing as _indexing
@@ -816,10 +819,10 @@ cdef class _ndarray_base:
         # Complex types: byteswap real and imaginary components independently
         if numpy.issubdtype(dtype, numpy.complexfloating):
             component_dtype = numpy.finfo(dtype).dtype
-            contig = _internal_ascontiguousarray(self).ravel()
+            contig = _creation._internal_ascontiguousarray(self).ravel()
             float_view = contig.view(component_dtype)
             swapped = _byteswap_dispatch(float_view)
-            result = _internal_ascontiguousarray(swapped)
+            result = _creation._internal_ascontiguousarray(swapped)
             result = result.view(dtype).reshape(self.shape)
             if inplace:
                 elementwise_copy(result, self)
