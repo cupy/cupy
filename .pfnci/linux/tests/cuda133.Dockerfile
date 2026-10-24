@@ -12,7 +12,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
        liblzma-dev \
 \
        && \
-    apt-get -qqy install ccache git curl && \
+    apt-get -qqy install ca-certificates ccache git curl && \
     apt-get -qqy --allow-change-held-packages \
             --allow-downgrades install 'libnccl2=2.30.*+cuda13.3' 'libnccl-dev=2.30.*+cuda13.3' 'libcutensor2-cuda-13=2.4.*' 'libcutensor2-dev-cuda-13=2.4.*' 'libcusparselt0-cuda-13=0.10.0.*' 'libcusparselt0-dev-cuda-13=0.10.0.*'
 

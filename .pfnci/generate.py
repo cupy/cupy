@@ -140,7 +140,9 @@ class LinuxGenerator:
                 '       liblzma-dev \\',
                 '       libopenmpi-dev \\' if matrix.mpi4py else '\\',
                 '       && \\',
-                '    apt-get -qqy install ccache git curl && \\',
+                # Listing ca-certificates upgrades the base image's trust
+                # store, which can be years old.
+                '    apt-get -qqy install ca-certificates ccache git curl && \\',  # NOQA
                 '    apt-get -qqy --allow-change-held-packages \\',
                 '            --allow-downgrades install {}'.format(
                     shlex.join(self._additional_packages('apt'))
