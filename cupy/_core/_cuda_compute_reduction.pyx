@@ -1,7 +1,10 @@
 import string
 
 from cupy._core cimport _kernel
-from cupy._core.core cimport _ndarray_base, _internal_ascontiguousarray
+from cupy._core.core cimport _ndarray_base
+# ASCEND: `_internal_ascontiguousarray` lives in `_routines_creation` since
+# core.pxd was split; keep CUDA-only files in sync.
+from cupy._core._routines_creation cimport _internal_ascontiguousarray
 from cupy._core._cuda_compute_common cimport (_get_cuda_compute,
                                               cached_algorithm)
 from cupy._core._cuda_compute_common import _make_raw_ops

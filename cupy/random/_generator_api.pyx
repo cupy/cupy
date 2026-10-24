@@ -7,7 +7,9 @@ import cupy
 from cupy._core.internal cimport cached_object
 from cupy import _core
 from cupy.cuda cimport stream
-from cupy.cuda.function cimport CPointer
+# ASCEND: function.pyx keeps its upstream path but is compiled as
+# `cupy.xpu.function`; its declarations moved to cupy/xpu/function.pxd.
+from cupy.xpu.function cimport CPointer
 from cupy._core.core cimport _ndarray_base
 from cupy_backends.cuda.api import runtime
 

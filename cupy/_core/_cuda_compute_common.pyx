@@ -6,7 +6,8 @@ from cupy import _util
 from cupy._core import core
 from cupy.cuda import compiler
 from cupy.cuda._compiler_cache import _hash_hexdigest
-from cupy.cuda.device cimport get_compute_capability
+# ASCEND: device.pyx/.pxd moved to cupy/xpu/ (backend-neutral layer).
+from cupy.xpu.device cimport get_compute_capability
 
 
 _cuda_compute = False

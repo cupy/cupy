@@ -15,7 +15,11 @@ from cupy._core._ufuncs import elementwise_copy
 # cimport it (the Ascend extension module is not compiled there).
 IF CUPY_CANN_VERSION > 0:
     from cupy.backends.ascend.api.acl_utils cimport launch_general_func
-    from cupy.backends.backend import is_ascend
+
+# `is_ascend` comes from the always-built backend runtime module (pure Python
+# level), so it is imported outside the guard: the test helper below has to
+# compile on CUDA/HIP as well (where it simply returns False).
+from cupy.backends.backend import is_ascend
 
 # ---------------------------------------------------------------------------
 # Ascend 的 scatter dtype 门槛：aclnnScatterAdd 只支持
