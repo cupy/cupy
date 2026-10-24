@@ -201,6 +201,24 @@ class TestPadNumpybug(unittest.TestCase):
         return a
 
 
+@testing.parameterize(
+    # Issue #9123: when 'wrap' padding needs multiple iterations to fill
+    # the pad area, the wrapped region must be a strict repeat of the
+    # original data, not a partial/duplicated cycle.
+    {'array': numpy.arange(4).reshape(2, 2), 'pad_width': [(1, 4), (2, 1)]},
+    {'array': numpy.arange(4).reshape(2, 2), 'pad_width': [(2, 3), (2, 3)]},
+    {'array': numpy.arange(4).reshape(2, 2), 'pad_width': [(0, 4), (0, 0)]},
+    {'array': numpy.arange(3), 'pad_width': (7, 3)},
+)
+class TestPadWrapMultiIteration(unittest.TestCase):
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_array_equal()
+    def test_pad_wrap(self, xp, dtype):
+        array = xp.array(self.array, dtype=dtype)
+        return xp.pad(array, self.pad_width, mode='wrap')
+
+
 class TestPadEmpty(unittest.TestCase):
 
     @testing.with_requires('numpy>=1.17')
