@@ -529,12 +529,12 @@ cdef _ndarray_base _broadcast_repeat(
     ret_shape = list(a.shape)
     ret_shape[axis] = axis_size * rep_val
     if ret_shape[axis] == 0:
-        return core.ndarray(ret_shape, dtype=a.dtype)
+        return _ndarray.ndarray(ret_shape, dtype=a.dtype)
     insert_shape = list(a.shape)
     insert_shape.insert(axis + 1, 1)
     expand_shape = insert_shape[:]
     expand_shape[axis + 1] = rep_val
-    ret_expanded = core.ndarray(expand_shape, dtype=a.dtype)
+    ret_expanded = _ndarray.ndarray(expand_shape, dtype=a.dtype)
     elementwise_copy(a.reshape(insert_shape), ret_expanded)
     return ret_expanded.reshape(ret_shape)
 
@@ -556,7 +556,7 @@ cdef _ndarray_base _repeat_perelement(
     if n == 0:
         ret_shape = list(a.shape)
         ret_shape[axis] = 0
-        return core.ndarray(ret_shape, dtype=a.dtype)
+        return _ndarray.ndarray(ret_shape, dtype=a.dtype)
 
     # Launch min and cumsum back-to-back so both GPU kernels are
     # queued before we sync.
@@ -570,7 +570,7 @@ cdef _ndarray_base _repeat_perelement(
     ret_shape = list(a.shape)
     ret_shape[axis] = total
     if total == 0:
-        return core.ndarray(ret_shape, dtype=a.dtype)
+        return _ndarray.ndarray(ret_shape, dtype=a.dtype)
 
     src_idx = cupy.searchsorted(
         boundaries, cupy.arange(total, dtype=numpy.intp), side='right')

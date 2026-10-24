@@ -25,7 +25,13 @@ from cupy import _core
 from cupy import cuda
 from cupy.cuda import device
 from cupy.random import _kernels
-from cupy.random._generator_api import FeistelBijection
+try:
+    from cupy.random._generator_api import FeistelBijection
+except ImportError:
+    # Ascend: `cupy.random._generator_api` is cuRAND-based and not compiled
+    # (see `ascend_files` in install/cupy_builder/features/ascend.py).
+    # `choice(..., replace=False)` falls back to the shuffle-based path.
+    FeistelBijection = None
 from cupy import _util
 
 import importlib
@@ -1427,6 +1433,12 @@ class RandomState:
                     '\'replace=False\'')
 
             if isinstance(a, int):
+                if FeistelBijection is None:
+                    # Memory-heavier fallback for backends without
+                    # `cupy.random._generator_api` (Ascend).
+                    indices = cupy.arange(a_size)
+                    self.shuffle(indices)
+                    return indices[:size].reshape(shape)
                 # Use memory-efficient bijection approach
                 n_rounds = FeistelBijection.num_rounds
                 rk_seed = self._get_seed(n_rounds)

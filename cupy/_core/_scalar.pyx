@@ -3,6 +3,7 @@ from libc.stdint cimport intptr_t
 cimport cpython
 cimport numpy as cnp
 
+import ctypes
 import graphlib
 
 import numpy
@@ -380,164 +381,50 @@ cdef class CScalar(CPointer):
         PyArray_Pack(self.descr, <void*>(self.ptr), self.value)
 
     cpdef apply_dtype(self, dtype):
-        cdef Scalar* s = <Scalar*>self.ptr
-        # 读旧值：CScalar 可能已经是窄 dtype 存储（from_numpy_scalar_with_dtype
-        # / _demote_scalar_operands 先转过一次，elementwise 派发
-        # _kernel.pyx 再 apply_dtype(in_types[i])），不能假设 size==8。
-        # 按 kind/size 解引用（与 to_numpy_scalar 的映射一致），统一读成
-        # Python 对象再走下方写侧转换。
-        if self.kind == b'b':
-            val = s.bool_
-        elif self.kind == b'c':
-            if self.size == 8:
-                val = (<float complex*>self.ptr)[0]
-            elif self.size == 16:
-                val = (<double complex*>self.ptr)[0]
-            else:
-                assert False
-        elif self.kind == b'i':
-            if self.size == 1:
-                val = s.int8_
-            elif self.size == 2:
-                val = s.int16_
-            elif self.size == 4:
-                val = s.int32_
-            elif self.size == 8:
-                val = s.int64_
-            else:
-                assert False
-        elif self.kind == b'u':
-            if self.size == 1:
-                val = s.uint8_
-            elif self.size == 2:
-                val = s.uint16_
-            elif self.size == 4:
-                val = s.uint32_
-            elif self.size == 8:
-                val = s.uint64_
-            else:
-                assert False
-        elif self.kind == b'f':
-            if self.size == 2:
-                # float16 以 uint16 半精度位模式存储（见写侧 to_float16）
-                val = internal.from_float16((<uint16_t*>self.ptr)[0])
-            elif self.size == 4:
-                val = s.float32_
-            elif self.size == 8:
-                val = s.float64_
-            else:
-                assert False
-        else:
-            assert False
-        cdef char kind
-        cdef int size
-        kind, size = <tuple>_dtype_kind_size_dict[dtype]
-        cdef int64_t val_i
-        cdef uint64_t val_u
-        if kind == b'b':
-            s.bool_ = val
-            assert size == 1
-        elif kind == b'i':
-            if self.kind == b'u':
-                # avoid overflow exception
-                val_i = s.uint64_
-            else:
-                val_i = val
-            if size == 1:
-                s.int8_ = val_i
-            elif size == 2:
-                s.int16_ = val_i
-            elif size == 4:
-                s.int32_ = val_i
-            elif size == 8:
-                s.int64_ = val_i
-            else:
-                assert False
-        elif kind == b'u':
-            if self.kind == b'i':
-                # avoid overflow exception
-                val_u = s.int64_
-            else:
-                val_u = val
-            if size == 1:
-                s.uint8_ = val_u
-            elif size == 2:
-                s.uint16_ = val_u
-            elif size == 4:
-                s.uint32_ = val_u
-            elif size == 8:
-                s.uint64_ = val_u
-            else:
-                assert False
-        elif kind == b'f':
-            if size == 2:
-                s.uint16_ = internal.to_float16(<float>val)
-            elif size == 4:
-                s.float32_ = val
-            elif size == 8:
-                s.float64_ = val
-            else:
-                assert False
-        elif kind == b'c':
-            if size == 8:
-                (<float complex*>self.ptr)[0] = val
-            elif size == 16:
-                (<double complex*>self.ptr)[0] = val
-            else:
-                assert False
-        else:
-            assert False
-        self.kind = kind
-        self.size = size
-        # keep `descr` in sync (upstream reads it back via the `dtype` property
-        # and `_store_c_value`)
-        self.descr = <cnp.dtype>dtype
+        cdef cnp.dtype descr = cnp.dtype(dtype)
+        if descr.flags & (NPY_ITEM_REFCOUNT | NPY_ITEM_IS_POINTER):
+            # Can't support this, so make sure we raise appropriate error.
+            _dtype.check_supported_dtype(descr, True)
+            raise RuntimeError(f"Unsupported dtype {dtype} (but not raised?)")
+        if descr == self.descr:
+            self.descr = descr  # update dtype, may not be identical.
+            return
+        if self.value is None:
+            # Internal/theoretical but e.g. from_int32 has no value
+            raise RuntimeError("Cannot modify dtype if value is None.")
+
+        self.descr = descr  # modify dtype if allocation succeeded
+        self._free_ptr()
+        self._store_c_value()
 
     cpdef get_numpy_type(self):
         return <object>(self.descr.typeobj)  # typeobj is the C-level .type
 
     cpdef to_numpy_scalar(self):
-        """CScalar -> NumPy 标量（Python 层读取 CScalar 值的唯一合法入口）。
+        """Return the value as a NumPy scalar of the stored (loop) dtype.
 
-        ``ptr``/``size`` 是 cdef 属性，Python 层访问不到（cpu_fallback 旧
-        实现用 ctypes.memmove 读 ``value.ptr`` 直接 AttributeError）。这里
-        在 C 层按 kind/size 解引用后包成对应 NumPy 标量，零拷贝。
+        Fork helper: the Ascend CPU fallback reads scalar operands back on the
+        host.  `ptr`/`descr` are C-level, so dereference here.
         """
-        if self.kind == b'b':
-            return _numpy_bool_((<bint*>self.ptr)[0])
-        elif self.kind == b'i':
-            if self.size == 1:
-                return _numpy_int8((<int8_t*>self.ptr)[0])
-            elif self.size == 2:
-                return _numpy_int16((<int16_t*>self.ptr)[0])
-            elif self.size == 4:
-                return _numpy_int32((<int32_t*>self.ptr)[0])
-            elif self.size == 8:
-                return _numpy_int64((<int64_t*>self.ptr)[0])
-        elif self.kind == b'u':
-            if self.size == 1:
-                return _numpy_uint8((<uint8_t*>self.ptr)[0])
-            elif self.size == 2:
-                return _numpy_uint16((<uint16_t*>self.ptr)[0])
-            elif self.size == 4:
-                return _numpy_uint32((<uint32_t*>self.ptr)[0])
-            elif self.size == 8:
-                return _numpy_uint64((<uint64_t*>self.ptr)[0])
-        elif self.kind == b'f':
-            if self.size == 2:
-                # float16 以 uint16 半精度位模式存储（见 apply_dtype 的
-                # internal.to_float16），需 from_float16 解码，不能按 C float 读
-                return _numpy_float16(internal.from_float16((<uint16_t*>self.ptr)[0]))
-            elif self.size == 4:
-                return _numpy_float32((<float*>self.ptr)[0])
-            elif self.size == 8:
-                return _numpy_float64((<double*>self.ptr)[0])
-        elif self.kind == b'c':
-            if self.size == 8:
-                return _numpy_complex64((<float complex*>self.ptr)[0])
-            elif self.size == 16:
-                return _numpy_complex128((<double complex*>self.ptr)[0])
-        assert False
+        # NOTE: Cython's `numpy.pxd` does not expose `PyArray_Scalar`, so the
+        # value is materialized by copying the packed bytes into a 1-element
+        # NumPy array instead (portable across NumPy 1.x/2.x).
+        cdef object dtype = <object>self.descr
+        cdef cnp.ndarray arr
+        if self.ptr == 0 or self.value is None:
+            return None
+        arr = numpy.empty(1, dtype=dtype)
+        ctypes.memmove(arr.ctypes.data, self.ptr, dtype.itemsize)
+        return arr[0]
+
+    @staticmethod
+    cdef CScalar from_numpy_scalar_with_dtype(object value, dtype):
+        """Create a scalar already materialized with `dtype`.
+
+        Fork helper (Ascend): scalars are packed with the kernel loop dtype on
+        the host so the aclnn kernels never have to cast implicitly.
+        """
+        return CScalar(value, dtype)
 
     @property
     def dtype(self):
@@ -592,3 +479,13 @@ cpdef str _get_cuda_scalar_repr(obj, dtype):
         return f"bfloat16({float_repr})"
 
     raise TypeError(f'Unsupported dtype: {dtype}')
+
+
+cpdef CScalar scalar_to_c_scalar(object value):
+    """Ascend (fork): wrap a Python/NumPy scalar into a `CScalar`.
+
+    Kept because `cupy/backends/ascend/api/acl_utils.pyx` converts scalar
+    operands on the host; upstream inlined the equivalent `CScalar(value)`
+    call into `_kernel._preprocess_arg`.
+    """
+    return CScalar(value)

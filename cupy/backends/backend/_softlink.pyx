@@ -49,7 +49,7 @@ cdef class SoftLink:
                     raise RuntimeError(msg) from e
                 warnings.warn(msg)
 
-    cdef func_ptr get(self, str name) except NULL:
+    cdef func_ptr get(self, str name):
         """
         Returns a function pointer for the API.
         """
