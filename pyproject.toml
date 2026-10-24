@@ -1,7 +1,7 @@
 [build-system]
 # Need to be installed manually when using `--no-build-isolation`.
 # Keep in sync with `docs/source/contribution.rst`.
-requires = ["setuptools>=77", "wheel", "Cython>=3,<3.2", "fastrlock>=0.5"]
+requires = ["setuptools>=77", "wheel", "Cython>=3.2,<3.3", "numpy>=2.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -27,6 +27,7 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Cython",
   "Topic :: Software Development",
@@ -35,22 +36,14 @@ classifiers = [
   "Operating System :: Microsoft :: Windows",
 ]
 requires-python = ">=3.10"
-dependencies = [
-  "numpy>=1.24,<2.6", # see #4773
-  "fastrlock>=0.5",
-]
+# `dependencies` / `optional-dependencies` are filled in by setup.py
+# (install_requires / extras_require), see the dynamic list below.
 dynamic = [
   "version",
   "readme",  # long_description
+  "dependencies",  # install_requires
+  "optional-dependencies",  # extras_require
 ]
-
-[project.optional-dependencies]
-"all" = [
-  "scipy>=1.10,<1.17", # see #4773
-  "Cython>=3.1,<3.2",
-  "optuna>=2.0",
-]
-"test" = ["packaging", "pytest>=7.2", "hypothesis>=6.37.2,<6.55.0", "mpmath"]
 
 [project.urls]
 "Homepage" = "https://github.com/qingfengxia/numpy-ascend"
@@ -79,7 +72,7 @@ version = { attr = "cupy._version.__version__" }
 readme = { file = "README.md", content-type = "text/markdown" }
 
 [tool.autopep8]
-exclude = "*.git*, *.eggs*, *cupy/array_api*, *tests/cupy_tests/array_api_tests*, *docs/source*"
+exclude = "*.git*, *.eggs*, *docs/source*"
 
 [tool.autopep8.per-file-ignores]
 # ignore long lines containing arrays of numerical constants
@@ -98,6 +91,8 @@ addopts = "--strict-markers"
 markers = [
   "slow",
   "multi_gpu",
+  # If pytest-run-parallel is not available
+  "parallel_threads", "iterations", "thread_unsafe",
   # 豁免 Ascend dtype 过滤 (见 tests/conftest.py::pytest_collection_modifyitems)
   "ascend_dtype_filter_off",
 ]
@@ -106,6 +101,7 @@ markers = [
 # 命令行开关 --ascend-dtype-filter={auto,on,off}。
 ascend_dtype_filter = "auto"
 filterwarnings = [
+  "always",  # Make sure previous calls cannot hide future warnings.
   "error::FutureWarning",
   # ignore FutureWarning from cupy._util.experimental
   'ignore:.* is experimental\.:FutureWarning:cupy',
@@ -120,12 +116,6 @@ filterwarnings = [
   # pkg_resources
   "ignore::DeprecationWarning:pkg_resources",
   "ignore:pkg_resources is deprecated",
-  # importing old SciPy is warned because it tries to
-  # import nose via numpy.testing
-  'ignore::DeprecationWarning:scipy\._lib\._numpy_compat',
-  # importing stats from old SciPy is warned because it tries to
-  # import numpy.testing.decorators
-  'ignore::DeprecationWarning:scipy\.stats\.morestats',
   # Using `scipy.sparse` against NumPy 1.15+ raises warning
   # as it uses `np.matrix` which is pending deprecation.
   # Also exclude `numpy.matrixlib.defmatrix` as SciPy and our
@@ -133,8 +123,15 @@ filterwarnings = [
   # `np.matrix`.
   'ignore::PendingDeprecationWarning:scipy\.sparse\.\w+',
   'ignore::PendingDeprecationWarning:numpy\.matrixlib\.defmatrix',
+  # SciPy 1.17 announces an upcoming dtype change in
+  # ``diags()`` / ``diags_array()`` via a FutureWarning when the
+  # input dtype is integer.  CuPy mirrors current behaviour and
+  # will adapt when SciPy actually flips the default.
+  'ignore:Input has data type.*output has been cast.*:FutureWarning',
   # pyreadline (dependency from optuna -> cliff -> cmd2) uses deprecated ABCs
   "ignore:Using or importing the ABCs from:DeprecationWarning:pyreadline",
+  # google-api-core>=2.28.0 warns about Python versions approaching EOL
+  "ignore::FutureWarning:google.api_core",
   # Ignore warnings from Optuna 3.0 internal code
   # TODO(kmaehashi): Remove after the issue is fixed in Optuna.
   "ignore:(.+?) has been deprecated in v3.0.0:FutureWarning:optuna",
@@ -144,6 +141,8 @@ filterwarnings = [
   # setuptools 65+
   # TODO(kmaehashi): Remove distutils from cupy_builder to remove this
   "ignore:Absolute path '(.+?)' is being replaced with a relative path '(.+?)' for outputs:DeprecationWarning:distutils",
+  # Older SciPy versions + NumPy 2.5+ do not avoid this warning.
+  "ignore:Setting the shape on a NumPy:DeprecationWarning:scipy",
 ]
 
 [tool.coverage.run]
@@ -156,9 +155,7 @@ ecxlude_lines = ["if __name__ == .__main__.:"]
 [tool.ruff]
 line-length = 79
 extend-exclude = [
-  "cupy/array_api",
   "docs/source",
-  "tests/cupy_tests/array_api_tests",
   "third_party",
 ]
 

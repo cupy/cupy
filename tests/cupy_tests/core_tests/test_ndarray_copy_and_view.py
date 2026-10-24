@@ -7,6 +7,8 @@ import cupy
 from cupy.exceptions import ComplexWarning
 from cupy import testing
 from cupy import _util
+from cupy.testing._protocol_helpers import (
+    DummyObjectWithCuPyGetNDArray, DummyObjectWithCudaArrayInterface)
 
 
 def astype_without_warning(x, dtype, *args, **kwargs):
@@ -281,6 +283,26 @@ class TestArrayFill:
         for xp in (numpy, cupy):
             with pytest.raises(ValueError):
                 a.fill(xp.ones((1,), dtype=dtype))
+
+    @pytest.mark.parametrize('value', [
+        (42, 3.14),
+        numpy.asarray((42, 3.14), dtype='i4,f4'),
+    ])
+    @testing.numpy_cupy_array_equal()
+    def test_fill_structured_scalar_like(self, xp, value):
+        a = xp.zeros(3, dtype='i4,f4')
+        a.fill(value)
+        return a
+
+    @pytest.mark.parametrize('cupy_like', [
+        DummyObjectWithCuPyGetNDArray,
+        DummyObjectWithCudaArrayInterface,
+    ])
+    def test_fill_with_cupy_like_scalar_ndarray(self, cupy_like):
+        a = cupy.zeros(3)
+        b = cupy.ones(())
+        a.fill(cupy_like(b))
+        testing.assert_array_equal(a, cupy.ones(3))
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()

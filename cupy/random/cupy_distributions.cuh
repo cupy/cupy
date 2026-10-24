@@ -63,8 +63,8 @@ void init_curand_generator(int generator, intptr_t state_ptr, uint64_t seed, ssi
 void random_uniform(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream);
 void random_uniform_float(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream);
 void raw(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream);
-void interval_32(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, int32_t mx, int32_t mask);
-void interval_64(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, int64_t mx, int64_t mask);
+void interval_32(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, uint32_t mx, uint32_t mask);
+void interval_64(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, uint64_t mx, uint64_t mask);
 void beta(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, intptr_t a, intptr_t b);
 void exponential(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream);
 void geometric(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, intptr_t p);
@@ -85,8 +85,8 @@ void init_curand_generator(int generator, intptr_t state_ptr, uint64_t seed, ssi
 void random_uniform(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream) {}
 void random_uniform_float(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream) {}
 void raw(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream) {}
-void interval_32(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, int32_t mx, int32_t mask) {}
-void interval_64(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, int64_t mx, int64_t mask) {}
+void interval_32(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, uint32_t mx, uint32_t mask) {}
+void interval_64(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, uint64_t mx, uint64_t mask) {}
 void beta(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, intptr_t a, intptr_t b) {}
 void exponential(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream) {}
 void geometric(int generator, intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, intptr_t stream, intptr_t p) {}

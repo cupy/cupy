@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 import re
-import unittest
 
 from example_tests import example_test
 
@@ -13,7 +12,7 @@ def _normalize_regexp_eol(pattern):
     return pattern.replace(r'\n', re.escape(os.linesep))
 
 
-class TestBlackScholes(unittest.TestCase):
+class TestBlackScholes:
 
     def test_black_scholes(self):
         output = example_test.run_example(
@@ -27,7 +26,7 @@ class TestBlackScholes(unittest.TestCase):
         assert re.search(pattern, output.decode('utf-8'))
 
 
-class TestMonteCarlo(unittest.TestCase):
+class TestMonteCarlo:
 
     def test_monte_carlo(self):
         output = example_test.run_example(
@@ -44,7 +43,7 @@ class TestMonteCarlo(unittest.TestCase):
         assert re.search(pattern, output.decode('utf-8'))
 
 
-class TestMonteCarloWithMultiGPU(unittest.TestCase):
+class TestMonteCarloWithMultiGPU:
 
     @testing.multi_gpu(2)
     def test_monte_carlo_multigpu(self):

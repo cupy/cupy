@@ -126,7 +126,7 @@ cdef inline int _check(aclError ret, str what) except -1:
 # ---------------------------------------------------------------------------
 cdef class CPointer:
     def __init__(self, p=0):
-        self.ptr = <void*>p
+        self.ptr = <intptr_t>p
         self.size = 0
 
 
@@ -136,7 +136,7 @@ cdef class CInt8(CPointer):
 
     def __init__(self, int8_t v):
         self.val = v
-        self.ptr = <void*>&self.val
+        self.ptr = <intptr_t><void*>&self.val
         self.size = sizeof(self.val)
 
 
@@ -146,7 +146,7 @@ cdef class CInt16(CPointer):
 
     def __init__(self, int16_t v):
         self.val = v
-        self.ptr = <void*>&self.val
+        self.ptr = <intptr_t><void*>&self.val
         self.size = sizeof(self.val)
 
 
@@ -156,7 +156,7 @@ cdef class CInt32(CPointer):
 
     def __init__(self, int32_t v):
         self.val = v
-        self.ptr = <void*>&self.val
+        self.ptr = <intptr_t><void*>&self.val
         self.size = sizeof(self.val)
 
 
@@ -166,7 +166,7 @@ cdef class CInt64(CPointer):
 
     def __init__(self, int64_t v):
         self.val = v
-        self.ptr = <void*>&self.val
+        self.ptr = <intptr_t><void*>&self.val
         self.size = sizeof(self.val)
 
 
@@ -176,7 +176,7 @@ cdef class CInt128(CPointer):
 
     def __init__(self, double complex v):
         self.val = v
-        self.ptr = <void*>&self.val
+        self.ptr = <intptr_t><void*>&self.val
         self.size = sizeof(self.val)
 
 
@@ -186,7 +186,7 @@ cdef class CUIntMax(CPointer):
 
     def __init__(self, uintmax_t v):
         self.val = v
-        self.ptr = <void*>&self.val
+        self.ptr = <intptr_t><void*>&self.val
         self.size = sizeof(self.val)
 
 
@@ -196,7 +196,7 @@ cdef class CIntptr(CPointer):
 
     def __init__(self, intptr_t v):
         self.val = v
-        self.ptr = <void*>&self.val
+        self.ptr = <intptr_t><void*>&self.val
         self.size = sizeof(self.val)
 
 
@@ -206,7 +206,7 @@ cdef class CNumpyArray(CPointer):
 
     def __init__(self, v):
         self.val = v
-        self.ptr = <void*><size_t>v.__array_interface__['data'][0]
+        self.ptr = <intptr_t><size_t>v.__array_interface__['data'][0]
         self.size = v.itemsize
 
 
@@ -301,7 +301,7 @@ cdef _launch(intptr_t func, size_t num_blocks,
     for a in args:
         cp = _pointer(a)
         pargs.append(cp)  # keep the CPointer objects alive until launch
-        _check(aclrtKernelArgsAppend(args_handle, cp.ptr, cp.size, &param),
+        _check(aclrtKernelArgsAppend(args_handle, <void*>cp.ptr, cp.size, &param),
                'aclrtKernelArgsAppend')
     _check(aclrtKernelArgsFinalize(args_handle), 'aclrtKernelArgsFinalize')
 

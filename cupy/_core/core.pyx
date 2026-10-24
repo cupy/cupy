@@ -9,7 +9,7 @@ import warnings
 import numpy
 cimport cython  # NOQA
 cimport cpython
-from libc.stdint cimport int64_t, intptr_t
+from libc.stdint cimport int64_t, intptr_t, INT32_MAX
 from libc cimport stdlib
 from cpython cimport Py_buffer
 
@@ -61,6 +61,58 @@ from cupy.exceptions import ComplexWarning
 NUMPY_1x = numpy.__version__ < '2'
 cdef fill_kernel = ElementwiseKernel('T x', 'T y', 'y = x', 'cupy_fill')
 
+# `_ndarray_base.byteswap` (upstream 14.3). The kernel is device code; on the
+# Ascend backend no device code is generated, so only the dtype dispatch below
+# matters there.
+cdef _byteswap_kernel = ElementwiseKernel(
+    'T x', 'T y',
+    'y = cupy_byteswap(x)',
+    'cupy_byteswap',
+    preamble='''
+#ifdef __HIPCC_RTC__
+// HIPRTC lacks <cuda/std/bit> and <bit>; use clang builtins.
+template <typename T>
+__device__ inline T cupy_byteswap(T x) {
+    if constexpr (sizeof(T) == 2) {
+        return static_cast<T>(
+            __builtin_bswap16(static_cast<unsigned short>(x)));
+    } else if constexpr (sizeof(T) == 4) {
+        return static_cast<T>(
+            __builtin_bswap32(static_cast<unsigned int>(x)));
+    } else if constexpr (sizeof(T) == 8) {
+        return static_cast<T>(
+            __builtin_bswap64(static_cast<unsigned long long>(x)));
+    } else {
+        static_assert(
+            false,
+            "cupy_byteswap: only 16, 32, and 64 bit integer types "
+            "are supported under HIPRTC");
+    }
+}
+#else
+#include <cuda/std/bit>
+#include <cuda/std/utility>
+template <typename T>
+__device__ inline auto cupy_byteswap(T&& x) {
+    return cuda::std::byteswap(cuda::std::forward<T>(x));
+}
+#endif
+''')
+
+
+cdef _byteswap_dispatch(_ndarray_base a):
+    cdef int itemsize = a.dtype.itemsize
+    cdef _ndarray_base u, result
+    dtype = a.dtype
+    if itemsize == 2 or itemsize == 4 or itemsize == 8:
+        uint_dtype = numpy.dtype('uint{}'.format(itemsize * 8))
+        u = _creation._internal_ascontiguousarray(a).view(uint_dtype)
+        result = _byteswap_kernel(u)
+        return result.view(dtype)
+    raise TypeError(
+        'byteswap not supported for dtype with '
+        'itemsize {}'.format(itemsize))
+
 cdef extern from *:
     """
     #define _str_(s) #s
@@ -73,6 +125,15 @@ cdef extern from *:
 
 
 CUPY_CACHE_KEY = cupy_cache_key.decode()
+
+cdef tuple _HANDLED_TYPES
+
+cdef object _null_context = contextlib.nullcontext()
+
+# Supported index types for mdspan - initialized at runtime to avoid
+# circular import
+cdef tuple _MDSPAN_SUPPORTED_INDEX_TYPES = None
+cdef dict _MDSPAN_INDEX_TYPE_TO_ITEMSIZE = None
 
 
 # If rop of cupy.ndarray is called, cupy's op is the last chance.
@@ -97,19 +158,16 @@ CUPY_CACHE_KEY = cupy_cache_key.decode()
 #   `numpy.ndarray.__array_function__` does not disable `__array_priority__`.
 @cython.profile(False)
 cdef inline _should_use_rop(x, y):
-    try:
-        y_ufunc = y.__array_ufunc__
-    except AttributeError:
-        # NEP 13's recommendation is `return False`.
-        xp = getattr(x, '__array_priority__', 0)
-        yp = getattr(y, '__array_priority__', 0)
-        return xp < yp
-    return y_ufunc is None
+    # _HANDLED_TYPES is just a random private object as "singleton".
+    y_ufunc = getattr(y, "__array_ufunc__", _HANDLED_TYPES)
+    if y_ufunc is not _HANDLED_TYPES:
+        return y_ufunc is None
 
-
-cdef tuple _HANDLED_TYPES
-
-cdef object _null_context = contextlib.nullcontext()
+    # Did not find __array_ufunc__ so check array-priority.
+    # NEP 13's recommendation is `return False`.
+    xp = getattr(x, '__array_priority__', 0)
+    yp = getattr(y, '__array_priority__', 0)
+    return xp < yp
 
 cdef bint _is_ump_enabled = (int(os.environ.get('CUPY_ENABLE_UMP', '0')) != 0)
 
@@ -129,14 +187,14 @@ cdef inline bint is_ump_supported(int device_id) except*:
 cdef class _ndarray_base:
 
     def __init__(self, *args, **kwargs):
-        # Raise an error if underlaying `_ndarray_base` extension type is
+        # Raise an error if underlying `_ndarray_base` extension type is
         # directly instantiated. We must instantiate `ndarray` class instead
         # for our ndarray subclassing mechanism.
         raise RuntimeError('Must not be directly instantiated')
 
     def _init(self, shape, dtype=float, memptr=None, strides=None,
               order='C'):
-        cdef Py_ssize_t x, itemsize
+        cdef Py_ssize_t x, itemsize, alloc_size, left, right
         cdef tuple s = internal.get_size(shape)
         del shape
 
@@ -157,32 +215,50 @@ cdef class _ndarray_base:
         del s
 
         # dtype
-        self.dtype, itemsize = _dtype.get_dtype_with_itemsize(dtype)
+        # When memptr is provided (e.g. wrapping existing CAI memory),
+        # skip dtype support check to allow non-builtin dtypes as containers.
+        self.dtype, itemsize = _dtype.get_dtype_with_itemsize(
+            dtype, check_support=(memptr is None))
 
         # Store strides
         if strides is not None:
-            # TODO(leofang): this should be removed (cupy/cupy#7818)
-            if memptr is None:
-                raise ValueError('memptr is required if strides is given.')
-            # NumPy (undocumented) behavior: when strides is set, order is
-            # ignored...
             self._set_shape_and_strides(self._shape, strides, True, True)
-        elif order_char == b'C':
-            self._set_contiguous_strides(itemsize, True)
-        elif order_char == b'F':
-            self._set_contiguous_strides(itemsize, False)
+            _memory_range.get_range(
+                itemsize, self._shape, self._strides, left, right)
+
+            if memptr is None:
+                alloc_size = right
+                # NumPy allows allocation+strides but allocates a contiguous
+                # buffer. We check the same offset is 0 and allocation fits
+                # a contiguous allocation (but we end up allocating less).
+                if left != 0:
+                    raise ValueError(
+                        "ndarray() with strides currently does not allow "
+                        "negative strides")
+                if right > self.size * self.itemsize:
+                    raise ValueError(
+                        f"ndarray() with strides must stay withing a "
+                        f"contiguous size of {self.size * itemsize} but got "
+                        f"{alloc_size}.")
+            else:
+                alloc_size = right - left  # actual memory extend
         else:
-            assert False
+            self._set_contiguous_strides(itemsize, order_char == b'C')
+            alloc_size = self.size * itemsize  # contiguous
+
+        # Arrays can e.g. broadcast, so check that all pointer offsets fit and
+        # the size fit int32. (seberg: `* itemsize` may be unnecessary)
+        max_diff = max(alloc_size, self.size * itemsize)
+        self._index_32_bits = max_diff <= <Py_ssize_t>(1 << 31)
 
         # data
         if memptr is None:
-            self.data = memory.alloc(self.size * itemsize)
-            self._index_32_bits = (self.size * itemsize) <= (1 << 31)
+            self.data = memory.alloc(alloc_size)
         else:
             self.data = memptr
-            bound = cupy._core._memory_range.get_bound(self)
-            max_diff = max(bound[1] - bound[0], self.size * itemsize)
-            self._index_32_bits = max_diff <= (1 << 31)
+
+        # Note(seberg): We could check that we are not reaching past the
+        # allocated space (except for some external allocations).
 
     cdef _init_fast(self, const shape_t& shape, dtype, bint c_order):
         """ For internal ndarray creation. """
@@ -192,20 +268,19 @@ cdef class _ndarray_base:
             msg += f'{_carray.MAX_NDIM}, found {shape.size()}'
             raise ValueError(msg)
         self._shape = shape
-        self.dtype, itemsize = _dtype.get_dtype_with_itemsize(dtype)
+        self.dtype, itemsize = _dtype.get_dtype_with_itemsize(
+            dtype, check_support=True)
         self._set_contiguous_strides(itemsize, c_order)
         self.data = memory.alloc(self.size * itemsize)
-        self._index_32_bits = (self.size * itemsize) <= (1 << 31)
+        self._index_32_bits = (self.size * itemsize) <= <Py_ssize_t>(1 << 31)
 
     @property
     def __cuda_array_interface__(self):
-        if runtime._is_hip_environment:
-            raise AttributeError(
-                'HIP/ROCm does not support cuda array interface')
+        typestr, descr = _dtype.get_str_and_descr(self.dtype)
         cdef dict desc = {
             'shape': self.shape,
-            'typestr': self.dtype.str,
-            'descr': self.dtype.descr,
+            'typestr': typestr,
+            'descr': descr,
         }
         cdef int ver = _util.CUDA_ARRAY_INTERFACE_EXPORT_VERSION
         cdef intptr_t stream_ptr
@@ -238,13 +313,19 @@ cdef class _ndarray_base:
 
         return desc
 
-    def __dlpack__(
-            self, *, stream=None, max_version=None, dl_device=None, copy=None):
+    def __dlpack__(self, *, stream=None, tuple max_version=None,
+                   dl_device=None, copy=None):
         cdef bint use_versioned = False
         cdef bint to_cpu = False
+        # consumer_stream state machine:
+        #   -2: unset (including CPU which always synchronizes)
+        #   -1: establish no stream order
+        #   >= 0: stream ptr to compare against curr_stream_ptr
+        cdef intptr_t consumer_stream = -2
+        cdef intptr_t curr_stream_ptr
 
         # Check if we can export version 1
-        if max_version is not None and max_version[0] >= 1:
+        if max_version is not None and <Py_ssize_t>max_version[0] >= 1:
             use_versioned = True
 
         # If the user passed dl_device we must honor it, so check if it either
@@ -278,13 +359,19 @@ cdef class _ndarray_base:
         curr_stream_ptr = curr_stream.ptr
 
         # stream must be an int for CUDA/ROCm
-        if to_cpu and stream is None:
-            # We will use the current stream to copy/sync later.
-            stream = None
+        if to_cpu:
+            # Ignore a possibly passed stream.  Previously we assumed this was
+            # a CPU stream, but DLPack doesn't say that (CPU has no streams and
+            # the stream should match the requested device).  Synchronization
+            # for the CPU copy is handled inside _toDlpack().
+            pass
         elif not runtime._is_hip_environment:  # CUDA
             if stream is None:
-                stream = runtime.streamLegacy
-            elif not isinstance(stream, int) or stream < -1:
+                consumer_stream = runtime.streamLegacy
+            elif isinstance(stream, int):
+                consumer_stream = stream
+
+            if consumer_stream < -1:
                 # DLPack does not accept 0 as a valid stream, but there is a
                 # bug in PyTorch that exports the default stream as 0, which
                 # renders the protocol unusable, we will accept a 0 value
@@ -292,37 +379,40 @@ cdef class _ndarray_base:
                 raise ValueError(
                     f'On CUDA, the valid stream for the DLPack protocol is -1,'
                     f' 1, 2, or any larger value, but {stream} was provided')
-            if stream == 0:
+            elif consumer_stream == 0:
                 warnings.warn(
                     'Stream 0 is passed from a library that you are'
                     ' converting to; CuPy assumes 0 as a legacy default '
                     'stream. Please report this problem to the library as this'
                     ' violates the DLPack protocol.')
-                stream = runtime.streamLegacy
+                consumer_stream = runtime.streamLegacy
             if curr_stream_ptr == 0:
                 curr_stream_ptr = runtime.streamLegacy
         else:  # ROCm/HIP
             if stream is None:
-                stream = 0
-            elif (not isinstance(stream, int) or stream < -1
-                    or stream in (1, 2)):
+                consumer_stream = 0
+            elif isinstance(stream, int):
+                consumer_stream = stream
+
+            if (consumer_stream <= 2
+                    and consumer_stream != -1 and consumer_stream != 0):
                 raise ValueError(
                     f'On ROCm/HIP, the valid stream for the DLPack protocol is'
                     f' -1, 0, or any value > 2, but {stream} was provided')
 
-        # if -1, no stream order should be established; otherwise, the consumer
-        # stream should wait for the work on CuPy's current stream to finish
-        if stream is None or stream < 0:
-            # Establish no stream order for now (for `stream=None` do it later)
-            stream = None
-        elif stream != curr_stream_ptr:
-            stream = stream_mod.ExternalStream(stream)
+        # if -1, no stream order should be established;
+        # otherwise, the consumer stream should wait for the work on CuPy's
+        # current stream to finish
+        if consumer_stream < 0:
+            pass  # Establish no stream order (includes to_cpu)
+        elif consumer_stream != curr_stream_ptr:
+            stream = stream_mod._BaseStream(consumer_stream, -1)
             event = curr_stream.record()
             stream.wait_event(event)
 
         return dlpack._toDlpack(
             self, use_versioned=use_versioned, to_cpu=to_cpu,
-            ensure_copy=copy is True, stream=stream)
+            ensure_copy=copy is True)
 
     def __dlpack_device__(self):
         cdef dlpack.DLDevice dldevice = dlpack.get_dlpack_device(self)
@@ -496,6 +586,68 @@ cdef class _ndarray_base:
         """
         return _CArray_from_ndarray(self)
 
+    def mdspan(self, *, index_type, allow_unsafe=False):
+        """Returns an mdspan view of the array for use in CUDA kernels.
+
+        This method creates a view of the CuPy array that is compatible with
+        ``cuda::std::mdspan`` for use in custom CUDA kernels.
+
+        Args:
+            index_type (dtype): The data type for extent and stride indices.
+                Must be either ``cupy.int32`` or ``cupy.int64``. If
+                ``cupy.int32`` is specified, the array size must not exceed
+                ``INT32_MAX``.
+            allow_unsafe (bool): If True, allows creating an mdspan for arrays
+                that have either zero or negative strides, or one or more
+                dimensions of size zero. Depending on the access pattern such
+                mdspan may lead to undefined behavior when described with
+                either a left-, right, or stride- layout_stride as per C++
+                standard. For example, ``mdspan.required_span_size()`` might
+                become negative. Default is False.
+
+        Returns:
+            mdspan: An mdspan view of the array that can be passed to CUDA
+            kernels as a kernel argument.
+
+        Raises:
+            ValueError: If ``index_type`` is not ``cupy.int32`` or
+                ``cupy.int64``, or if the array size exceeds the range of
+                the specified ``index_type``.
+
+        Note:
+            The returned mdspan can work with either ``layout_stride``,
+            ``layout_left``, or ``layout_right``, but your kernel must declare
+            the mdspan type with all extents being **dynamic**:
+
+            .. code-block:: cpp
+
+                template<typename T, typename IndexType>
+                __global__ void my_kernel(
+                    cuda::std::mdspan<
+                        T,
+                        cuda::std::extents<
+                            IndexType,
+                            cuda::std::dynamic_extent,
+                            cuda::std::dynamic_extent>,
+                        cuda::std::layout_stride> arr
+                ) {
+                    // arr is a 2D mdspan
+                    // Access: arr(i, j)
+                }
+
+            **Static extents are NOT supported.** For example, using
+            ``extents<int, 4, 8>`` will result in undefined behavior.
+
+        Example:
+            >>> import cupy
+            >>> a = cupy.arange(12, dtype=cupy.float32).reshape(3, 4)
+            >>> a_mdspan = a.mdspan(index_type=cupy.int64)
+            >>> # Pass a_mdspan to a cupy.RawKernel expecting:
+            >>> # mdspan<float, extents<int64_t, dyn, dyn>, layout_stride>
+
+        """
+        return _mdspan_from_ndarray(self, index_type, allow_unsafe)
+
     # -------------------------------------------------------------------------
     # Array conversion
     # -------------------------------------------------------------------------
@@ -632,7 +784,53 @@ cdef class _ndarray_base:
         copy_ = True if copy else None
         return self._astype(dtype, order, casting, subok, copy_)
 
-    # TODO(okuta): Implement byteswap
+    cpdef _ndarray_base byteswap(self, inplace=False):
+        """Swap the bytes of the array elements.
+
+        Toggle between low-endian and big-endian data representation by
+        returning a byteswapped array, optionally swapped in-place.
+
+        Args:
+            inplace (bool): If ``True``, swap bytes in-place. Default is
+                ``False``.
+
+        Returns:
+            cupy.ndarray: The byteswapped array. If ``inplace`` is ``True``,
+            this is a view to self.
+
+        .. seealso:: :meth:`numpy.ndarray.byteswap`
+
+        """
+        dtype = self.dtype
+        itemsize = dtype.itemsize
+
+        if dtype.names is not None:
+            raise TypeError(
+                'byteswap is not supported for structured dtypes')
+
+        if itemsize == 1:
+            if inplace:
+                return self
+            return self.copy()
+
+        # Complex types: byteswap real and imaginary components independently
+        if numpy.issubdtype(dtype, numpy.complexfloating):
+            component_dtype = numpy.finfo(dtype).dtype
+            contig = _internal_ascontiguousarray(self).ravel()
+            float_view = contig.view(component_dtype)
+            swapped = _byteswap_dispatch(float_view)
+            result = _internal_ascontiguousarray(swapped)
+            result = result.view(dtype).reshape(self.shape)
+            if inplace:
+                elementwise_copy(result, self)
+                return self
+            return result
+
+        result = _byteswap_dispatch(self)
+        if inplace:
+            elementwise_copy(result, self)
+            return self
+        return result
 
     cpdef _ndarray_base copy(self, order='C'):
         """Returns a copy of the array.
@@ -680,13 +878,23 @@ cdef class _ndarray_base:
 
         copy_context = _null_context
         if runtime._is_hip_environment:
-            # HIP requires changing the active device to the one where
-            # src data is before the copy. From the docs:
-            # it is recommended to set the current device to the device
-            # where the src data is physically located.
+            # From hip_runtime_api.h (hipMemcpyAsync): "For multi-gpu
+            # or peer-to-peer configurations, it is recommended to
+            # use a stream which is attached to the device where the
+            # src data is physically located."
             copy_context = self.device
         with copy_context:
             newarray.data.copy_from_device_async(x.data, x.nbytes)
+            if runtime._is_hip_environment:
+                # The copy ran on the source device's stream. Record an
+                # event so the destination device's stream waits for the
+                # copy to complete before any subsequent work uses
+                # newarray (e.g. .get() readback).
+                copy_event = stream_module.get_current_stream().record()
+        if runtime._is_hip_environment:
+            newarray.device.use()
+            stream_module.get_current_stream().wait_event(copy_event)
+            runtime.setDevice(prev_device)
         return newarray
 
     cpdef _ndarray_base view(self, dtype=None, array_class=None):
@@ -716,7 +924,8 @@ cdef class _ndarray_base:
         if dtype is None:
             return v
 
-        v.dtype, v_is = _dtype.get_dtype_with_itemsize(dtype)
+        v.dtype, v_is = _dtype.get_dtype_with_itemsize(
+            dtype, check_support=False)
         self_is = self.dtype.itemsize
         if v_is == self_is:
             return v
@@ -771,21 +980,23 @@ cdef class _ndarray_base:
         .. seealso:: :meth:`numpy.ndarray.fill`
 
         """
-        if isinstance(value, cupy.ndarray):
-            if value.shape != ():
+        cupy_arr = _convert_from_cupy_like(value, error=False)
+        if cupy_arr is not None:
+            if cupy_arr.shape != ():
                 raise ValueError(
                     'non-scalar cupy.ndarray cannot be used for fill')
-            value = value.astype(self.dtype, copy=False)
-            fill_kernel(value, self)
-            return
-
-        if isinstance(value, numpy.ndarray):
+            value = cupy_arr.astype(self.dtype, copy=False)
+        else:
+            value = numpy.asarray(value, dtype=self.dtype)
             if value.shape != ():
                 raise ValueError(
                     'non-scalar numpy.ndarray cannot be used for fill')
-            value = value.astype(self.dtype, copy=False).item()
+            value = value[()]  # use scalar rather than NumPy array
 
-        if value == 0 and self._c_contiguous:
+        if ((<cnp.dtype>(self.dtype)).type_num != cnp.NPY_VOID
+                and value == 0 and self._c_contiguous):
+            # For most types, we can just memset if the value is zero.
+            # (Void also works mostly, but the `value == 0` could fail.)
             self.data.memset_async(0, self.nbytes)
         else:
             IF CUPY_CANN_VERSION > 0:
@@ -831,7 +1042,7 @@ cdef class _ndarray_base:
     # -------------------------------------------------------------------------
     # Shape manipulation
     # -------------------------------------------------------------------------
-    def reshape(self, *shape, order='C'):
+    def reshape(self, *shape, order='C', copy=None):
         """Returns an array of a different shape and the same content.
 
         .. seealso::
@@ -839,7 +1050,7 @@ cdef class _ndarray_base:
            :meth:`numpy.ndarray.reshape`
 
         """
-        return _manipulation._ndarray_reshape(self, shape, order)
+        return _manipulation._ndarray_reshape(self, shape, order, copy)
 
     # TODO(okuta): Implement resize
 
@@ -1001,7 +1212,7 @@ cdef class _ndarray_base:
         if kind is not None and kind != "stable":
             raise ValueError("kind can only be None or 'stable'")
 
-    cpdef sort(self, int axis=-1, kind=None):
+    def sort(self, int axis=-1, kind=None, *, descending=False):
         """Sort an array, in-place with a stable sorting algorithm.
 
         Args:
@@ -1009,6 +1220,9 @@ cdef class _ndarray_base:
                 sort along the last axis.
             kind: Default is `None`, which is equivalent to 'stable'. Unlike in
                 NumPy any other options are not accepted here.
+            descending (bool): Sort order. If ``True``, the array is sorted
+                in descending order. NaN values are sorted to the end for
+                both orders. Default is ``False``.
 
         .. note::
         For its implementation reason, ``ndarray.sort`` currently supports
@@ -1021,9 +1235,9 @@ cdef class _ndarray_base:
 
         """
         self._check_kind_sort(kind)
-        _sorting._ndarray_sort(self, axis)
+        _sorting._ndarray_sort(self, axis, descending)
 
-    cpdef _ndarray_base argsort(self, axis=-1, kind=None):
+    def argsort(self, axis=-1, kind=None, *, descending=False):
         """Returns the indices that would sort an array with stable sorting
 
         Args:
@@ -1032,6 +1246,9 @@ cdef class _ndarray_base:
                 is flattened before sorting.
             kind: Default is `None`, which is equivalent to 'stable'. Unlike in
                 NumPy any other options are not accepted here.
+            descending (bool): Sort order. If ``True``, the returned indices
+                sort the array in descending order. NaN values are sorted to
+                the end for both orders. Default is ``False``.
 
         Returns:
             cupy.ndarray: Array of indices that sort the array.
@@ -1042,7 +1259,7 @@ cdef class _ndarray_base:
 
         """
         self._check_kind_sort(kind)
-        return _sorting._ndarray_argsort(self, axis)
+        return _sorting._ndarray_argsort(self, axis, descending)
 
     cpdef partition(self, kth, int axis=-1):
         """Partitions an array.
@@ -1430,6 +1647,37 @@ cdef class _ndarray_base:
 
     def __pow__(x, y, modulo):
         # Note that we ignore the modulo argument as well as NumPy.
+
+        # Explicit special cases for common powers. As of 14.2, we do not
+        # have further special cases in the ufunc implementation.
+        # TODO(seberg): it would be nice to move part (or all!) of this into
+        #     the ufunc, but that would require new ufunc infrastructure
+        #     (i.e. for specific scalar values compile hard-code the kernel).
+        fast_func = None
+        fast_func_dtype = None
+        if type(y) is int:
+            if y == 2:
+                fast_func = cupy.square
+                if x.dtype.kind not in "ifc":
+                    fast_func_dtype = cupy.result_type(x.dtype, y)
+        elif type(y) is float:
+            if y == 0.5:
+                # For **0.5 promotion should be the same as sqrt
+                # (true for all typical numerical types we currently have)
+                fast_func = cupy.sqrt
+            elif y == 2.0:
+                fast_func = cupy.square
+            elif y == -1.0:
+                fast_func = cupy.reciprocal
+
+            if fast_func is not None and x.dtype.kind not in "fc":
+                # If the inputs aren't floats/ints, assume power is just
+                # a result_type() call.
+                fast_func_dtype = cupy.result_type(x.dtype, y)
+
+        if fast_func is not None:
+            return fast_func(x, dtype=fast_func_dtype)
+
         if isinstance(y, ndarray):
             return _math._power(x, y)
         elif _should_use_rop(x, y):
@@ -1558,7 +1806,7 @@ cdef class _ndarray_base:
             runtime.setDevice(prev_device)
 
     def __reduce__(self):
-        return _creation.array, (self.get(),)
+        return array, (self.get(order="A"),)
 
     # Basic customization:
 
@@ -1757,7 +2005,8 @@ cdef class _ndarray_base:
                 kwargs['out'] = out[0]
 
             if method in (
-                    '__call__', 'outer', 'at', 'reduce', 'accumulate', 'reduceat'
+                    '__call__', 'outer', 'at', 'reduce', 'accumulate',
+                    'reduceat'
             ):
                 name = ufunc.__name__
                 try:
@@ -1769,17 +2018,16 @@ cdef class _ndarray_base:
                 except AttributeError:
                     return NotImplemented
                 for x in inout:
-                    # numpy.ndarray is handled and then TypeError is raised due to
-                    # implicit host-to-device conversion.
+                    # numpy.ndarray is handled and then TypeError is raised due
+                    # to implicit host-to-device conversion.
                     # Except for numpy.ndarray, types should be supported by
                     # `_kernel._preprocess_args`.
-                    check = (hasattr(x, '__cuda_array_interface__')
-                            or hasattr(x, '__cupy_get_ndarray__'))
-                    if runtime._is_hip_environment and isinstance(x, ndarray):
-                        check = True
-                    if (not check
-                            and not type(x) in _scalar.scalar_type_set
-                            and not isinstance(x, numpy.ndarray)):
+                    if (
+                        not type(x) in _scalar.scalar_type_set
+                        and not isinstance(x, (_ndarray_base, numpy.ndarray))
+                        and not hasattr(x, '__cuda_array_interface__')
+                        and not hasattr(x, '__cupy_get_ndarray__')
+                    ):
                         return NotImplemented
                 if name in [
                         'greater', 'greater_equal', 'less', 'less_equal',
@@ -2053,14 +2301,14 @@ cdef class _ndarray_base:
         # TODO(niboshi): Confirm update_x_contiguity flags
         return self._view(type(self), shape, strides, False, True, self)
 
-    cpdef _update_c_contiguity(self):
+    cdef _update_c_contiguity(self):
         if self.size == 0:
             self._c_contiguous = True
             return
         self._c_contiguous = internal.get_c_contiguity(
             self._shape, self._strides, self.dtype.itemsize)
 
-    cpdef _update_f_contiguity(self):
+    cdef _update_f_contiguity(self):
         if self.size == 0:
             self._f_contiguous = True
             return
@@ -2079,7 +2327,7 @@ cdef class _ndarray_base:
         self._f_contiguous = internal.get_c_contiguity(
             rev_shape, rev_strides, self.dtype.itemsize)
 
-    cpdef _update_contiguity(self):
+    cdef _update_contiguity(self):
         self._update_c_contiguity()
         self._update_f_contiguity()
 
@@ -2121,7 +2369,7 @@ cdef class _ndarray_base:
             v.__array_finalize__(self)
         return v
 
-    cpdef _set_contiguous_strides(
+    cdef _set_contiguous_strides(
             self, Py_ssize_t itemsize, bint is_c_contiguous):
         self.size = internal.get_contiguous_strides_inplace(
             self._shape, self._strides, itemsize, is_c_contiguous, True)
@@ -2163,6 +2411,45 @@ cdef class _ndarray_base:
         """
         # Note: We use the "public" API to show the deprecation warning.
         return dlpack.toDlpack(self)
+
+
+cdef inline _carray.mdspan _mdspan_from_ndarray(
+        _ndarray_base arr, index_type, bint allow_unsafe):
+    # Creates mdspan from ndarray.
+    # Note that this function cannot be defined in _carray.pxd because that
+    # would cause cyclic cimport dependencies.
+    global _MDSPAN_SUPPORTED_INDEX_TYPES, _MDSPAN_INDEX_TYPE_TO_ITEMSIZE
+
+    cdef _carray.mdspan carr
+    cdef int index_itemsize
+
+    # Initialize cached constants on first use (avoid circular import)
+    if _MDSPAN_SUPPORTED_INDEX_TYPES is None:
+        _MDSPAN_SUPPORTED_INDEX_TYPES = (cupy.int32, cupy.int64)
+        _MDSPAN_INDEX_TYPE_TO_ITEMSIZE = {cupy.int32: 4, cupy.int64: 8}
+
+    carr = _carray.mdspan.__new__(_carray.mdspan)
+
+    # Use dict lookup with membership check for validation
+    if index_type not in _MDSPAN_SUPPORTED_INDEX_TYPES:
+        raise ValueError(
+            f"Unsupported index_type: {index_type}. "
+            "Must be cupy.int32 or cupy.int64."
+        )
+    index_itemsize = _MDSPAN_INDEX_TYPE_TO_ITEMSIZE[index_type]
+
+    # Validate that array size fits in index_type
+    if index_type == cupy.int32 and arr.size > INT32_MAX:
+        raise ValueError(
+            f"Array size {arr.size} exceeds int32 maximum ({INT32_MAX}). "
+            "Use index_type=cupy.int64 instead."
+        )
+
+    carr.init(
+        <void*>arr.data.ptr, arr.itemsize, arr._shape, arr._strides,
+        index_itemsize, allow_unsafe
+    )
+    return carr
 
 
 cdef inline _carray.CArray _CArray_from_ndarray(_ndarray_base arr):

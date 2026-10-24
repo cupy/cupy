@@ -1,16 +1,12 @@
 from __future__ import annotations
 
-import math
-import unittest
-
 import numpy
 import pytest
 
 from cupy._core import internal
-from cupy import testing
 
 
-class TestProd(unittest.TestCase):
+class TestProd:
 
     def test_empty(self):
         assert internal.prod([]) == 1
@@ -22,7 +18,7 @@ class TestProd(unittest.TestCase):
         assert internal.prod([2, 3]) == 6
 
 
-class TestProdSequence(unittest.TestCase):
+class TestProdSequence:
 
     def test_empty(self):
         assert internal.prod_sequence(()) == 1
@@ -71,7 +67,7 @@ class TestGetSize:
         assert internal.get_size(1.0) == (1.0,)
 
 
-class TestVectorEqual(unittest.TestCase):
+class TestVectorEqual:
 
     def test_empty(self):
         assert internal.vector_equal([], []) is True
@@ -86,7 +82,7 @@ class TestVectorEqual(unittest.TestCase):
         assert internal.vector_equal([1, 2, 3], [1, 2]) is False
 
 
-class TestGetCContiguity(unittest.TestCase):
+class TestGetCContiguity:
 
     def test_zero_in_shape(self):
         assert internal.get_c_contiguity((1, 0, 1), (1, 1, 1), 3)
@@ -119,125 +115,106 @@ class TestGetCContiguity(unittest.TestCase):
         assert not internal.get_c_contiguity((3, 1, 3), (6, 6, 4), 2)
 
 
-class TestInferUnknownDimension(unittest.TestCase):
+class TestInferUnknownDimension:
 
     def test_known_all(self):
         assert internal.infer_unknown_dimension((1, 2, 3), 6) == [1, 2, 3]
 
     def test_multiple_unknown(self):
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             internal.infer_unknown_dimension((-1, 1, -1), 10)
 
     def test_infer(self):
         assert internal.infer_unknown_dimension((-1, 2, 3), 12) == [2, 2, 3]
 
 
-@testing.parameterize(
-    {'slice': (2, 8, 1),    'expect': (2, 8, 1)},
-    {'slice': (2, None, 1), 'expect': (2, 10, 1)},
-    {'slice': (2, 1, 1),    'expect': (2, 2, 1)},
-    {'slice': (2, -1, 1),   'expect': (2, 9, 1)},
+@pytest.mark.parametrize(
+    ("slice_", "expect"),
+    [
+        ((2, 8, 1),    (2, 8, 1)),
+        ((2, None, 1), (2, 10, 1)),
+        ((2, 1, 1),    (2, 2, 1)),
+        ((2, -1, 1),   (2, 9, 1)),
 
-    {'slice': (None, 8, 1),  'expect': (0, 8, 1)},
-    {'slice': (-3, 8, 1),    'expect': (7, 8, 1)},
-    {'slice': (11, 8, 1),    'expect': (10, 10, 1)},
-    {'slice': (11, 11, 1),   'expect': (10, 10, 1)},
-    {'slice': (-11, 8, 1),   'expect': (0, 8, 1)},
-    {'slice': (-11, -11, 1), 'expect': (0, 0, 1)},
+        ((None, 8, 1),  (0, 8, 1)),
+        ((-3, 8, 1),    (7, 8, 1)),
+        ((11, 8, 1),    (10, 10, 1)),
+        ((11, 11, 1),   (10, 10, 1)),
+        ((-11, 8, 1),   (0, 8, 1)),
+        ((-11, -11, 1), (0, 0, 1)),
 
-    {'slice': (8, 2, -1),    'expect': (8, 2, -1)},
-    {'slice': (8, None, -1), 'expect': (8, -1, -1)},
-    {'slice': (8, 9, -1),    'expect': (8, 8, -1)},
-    {'slice': (8, -3, -1),   'expect': (8, 7, -1)},
+        ((8, 2, -1),    (8, 2, -1)),
+        ((8, None, -1), (8, -1, -1)),
+        ((8, 9, -1),    (8, 8, -1)),
+        ((8, -3, -1),   (8, 7, -1)),
 
-    {'slice': (None, 8, -1),  'expect': (9, 8, -1)},
-    {'slice': (-3, 6, -1),    'expect': (7, 6, -1)},
+        ((None, 8, -1), (9, 8, -1)),
+        ((-3, 6, -1),   (7, 6, -1)),
 
-    {'slice': (10, 10, -1),   'expect': (9, 9, -1)},
-    {'slice': (10, 8, -1),    'expect': (9, 8, -1)},
-    {'slice': (9, 10, -1),    'expect': (9, 9, -1)},
-    {'slice': (9, 9, -1),     'expect': (9, 9, -1)},
-    {'slice': (9, 8, -1),     'expect': (9, 8, -1)},
-    {'slice': (8, 8, -1),     'expect': (8, 8, -1)},
-    {'slice': (-9, -8, -1),   'expect': (1, 1, -1)},
-    {'slice': (-9, -9, -1),   'expect': (1, 1, -1)},
-    {'slice': (-9, -10, -1),  'expect': (1, 0, -1)},
-    {'slice': (-9, -11, -1),  'expect': (1, -1, -1)},
-    {'slice': (-9, -12, -1),  'expect': (1, -1, -1)},
-    {'slice': (-10, -9, -1),  'expect': (0, 0, -1)},
-    {'slice': (-10, -10, -1), 'expect': (0, 0, -1)},
-    {'slice': (-10, -11, -1), 'expect': (0, -1, -1)},
-    {'slice': (-10, -12, -1), 'expect': (0, -1, -1)},
-    {'slice': (-11, 8, -1),   'expect': (-1, -1, -1)},
-    {'slice': (-11, -9, -1),  'expect': (-1, -1, -1)},
-    {'slice': (-11, -10, -1), 'expect': (-1, -1, -1)},
-    {'slice': (-11, -11, -1), 'expect': (-1, -1, -1)},
-    {'slice': (-11, -12, -1), 'expect': (-1, -1, -1)},
+        ((10, 10, -1),  (9, 9, -1)),
+        ((10, 8, -1),   (9, 8, -1)),
+        ((9, 10, -1),   (9, 9, -1)),
+        ((9, 9, -1),    (9, 9, -1)),
+        ((9, 8, -1),    (9, 8, -1)),
+        ((8, 8, -1),    (8, 8, -1)),
+        ((-9, -8, -1),  (1, 1, -1)),
+        ((-9, -9, -1),  (1, 1, -1)),
+        ((-9, -10, -1), (1, 0, -1)),
+        ((-9, -11, -1), (1, -1, -1)),
+        ((-9, -12, -1), (1, -1, -1)),
+        ((-10, -9, -1), (0, 0, -1)),
+        ((-10, -10, -1), (0, 0, -1)),
+        ((-10, -11, -1), (0, -1, -1)),
+        ((-10, -12, -1), (0, -1, -1)),
+        ((-11, 8, -1),   (-1, -1, -1)),
+        ((-11, -9, -1),  (-1, -1, -1)),
+        ((-11, -10, -1), (-1, -1, -1)),
+        ((-11, -11, -1), (-1, -1, -1)),
+        ((-11, -12, -1), (-1, -1, -1)),
+    ],
 )
-class TestCompleteSlice(unittest.TestCase):
-
-    def test_complete_slice(self):
-        assert internal.complete_slice(
-            slice(*self.slice), 10) == slice(*self.expect)
+def test_complete_slice(slice_, expect):
+    assert internal.complete_slice(
+        slice(*slice_), 10) == slice(*expect)
 
 
-class TestCompleteSliceError(unittest.TestCase):
+class TestCompleteSliceError:
 
     def test_invalid_step_value(self):
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             internal.complete_slice(slice(1, 1, 0), 1)
 
     def test_invalid_step_type(self):
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             internal.complete_slice(slice(1, 1, (1, 2)), 1)
 
     def test_invalid_start_type(self):
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             internal.complete_slice(slice((1, 2), 1, 1), 1)
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             internal.complete_slice(slice((1, 2), 1, -1), 1)
 
     def test_invalid_stop_type(self):
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             internal.complete_slice(slice((1, 2), 1, 1), 1)
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             internal.complete_slice(slice((1, 2), 1, -1), 1)
 
 
-@testing.parameterize(
-    {'x': 0, 'expect': 0},
-    {'x': 1, 'expect': 1},
-    {'x': 2, 'expect': 2},
-    {'x': 3, 'expect': 4},
-    {'x': 2 ** 10,     'expect': 2 ** 10},
-    {'x': 2 ** 10 - 1, 'expect': 2 ** 10},
-    {'x': 2 ** 10 + 1, 'expect': 2 ** 11},
-    {'x': 2 ** 40,     'expect': 2 ** 40},
-    {'x': 2 ** 40 - 1, 'expect': 2 ** 40},
-    {'x': 2 ** 40 + 1, 'expect': 2 ** 41},
+@pytest.mark.parametrize(
+    ("x", "expect"),
+    [
+        (0, 0),
+        (1, 1),
+        (2, 2),
+        (3, 4),
+        (2 ** 10,     2 ** 10),
+        (2 ** 10 - 1, 2 ** 10),
+        (2 ** 10 + 1, 2 ** 11),
+        (2 ** 40,     2 ** 40),
+        (2 ** 40 - 1, 2 ** 40),
+        (2 ** 40 + 1, 2 ** 41),
+    ],
 )
-class TestClp2(unittest.TestCase):
-
-    def test_clp2(self):
-        assert internal.clp2(self.x) == self.expect
-
-
-@testing.parameterize(*testing.product({
-    'value': [0.0, 1.0, -1.0,
-              0.25, -0.25,
-              11.0, -11.0,
-              2 ** -15, -(2 ** -15),  # Denormalized Number
-              float('inf'), float('-inf')],
-}))
-class TestConvertFloat16(unittest.TestCase):
-
-    def test_conversion(self):
-        half = internal.to_float16(self.value)
-        assert internal.from_float16(half) == self.value
-
-
-class TestConvertFloat16Nan(unittest.TestCase):
-
-    def test_conversion(self):
-        half = internal.to_float16(float('nan'))
-        assert math.isnan(internal.from_float16(half))
+def test_clp2(x, expect):
+    assert internal.clp2(x) == expect

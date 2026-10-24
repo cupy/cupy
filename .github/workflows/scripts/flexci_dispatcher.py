@@ -60,12 +60,15 @@ def _forward_to_flexci(
 
 def _fill_commit_status(
         event_name: str, payload: dict[str, Any], token: str,
-        projects: set[str], context_prefix: str, base_url: str) -> None:
-    gh_repo = github.Github(token).get_repo(payload['repository']['full_name'])
+        projects: set[str], force_skip: bool, context_prefix: str,
+        base_url: str) -> None:
+    gh = github.Github(auth=github.Auth.Token(token))
+    gh_repo = gh.get_repo(payload['repository']['full_name'])
     if event_name == 'push':
         sha = payload['after']
     elif event_name == 'issue_comment':
-        sha = gh_repo.get_pull(payload['issue']['number']).head.sha
+        gh_pr = gh_repo.get_pull(payload['issue']['number'])
+        sha = gh_pr.head.sha
     else:
         assert False
 
@@ -83,16 +86,48 @@ def _fill_commit_status(
         _log('No projects to complement commit status')
         return
 
+    # Get the latest commit status for each context.
     _log(f'Checking statuses for commit {sha}')
-    contexts = [s.context for s in gh_commit.get_statuses()]
+    contexts = {
+        s.context: s
+        for s in sorted(gh_commit.get_statuses(), key=lambda s: s.updated_at)
+    }
+    force_skip_contexts: list[str] = []
     for prj in projects:
         context = f'{context_prefix}/{prj}'
         if context in contexts:
-            # Preserve status set via previous (real) CI run.
+            # If force-skip is requested, overwrite status later.
+            # Otherwise preserve status set via previous (real) CI run.
+            if contexts[context].state != 'success' and force_skip:
+                force_skip_contexts.append(context)
             continue
         _log(f'Setting status as skipped: {context}')
         gh_commit.create_status(
             state='success', description='Skipped', context=context)
+
+    if len(force_skip_contexts) != 0:
+        assert gh_pr is not None
+        force_skip_comment = gh_pr.create_issue_comment(
+            'The following tests were force-skipped:\n\n' +
+            '\n'.join(
+                f'- [`{c}`]({contexts[c].target_url}): '
+                f'{contexts[c].state} - {contexts[c].description}'
+                for c in sorted(force_skip_contexts)
+            )
+        )
+        gh_commit.create_status(
+            state='failure',
+            context=f'{context_prefix} (force-skip)',
+            target_url=force_skip_comment.html_url,
+        )
+        for context in force_skip_contexts:
+            _log(f'FORCE SKIP: overwriting status for {context}')
+            gh_commit.create_status(
+                state='success',
+                context=context,
+                description=f'❌ {contexts[context].description} (force-skip)',
+                target_url=contexts[context].target_url,
+            )
 
 
 def extract_requested_tags(comment: str) -> set[str] | None:
@@ -129,6 +164,10 @@ def parse_args(argv: Any) -> Any:
     parser.add_argument(
         '--external-tag', action='append', default=[],
         help='Test tags to be ignored by FlexCI Dispatcher')
+    parser.add_argument(
+        '--override-tags', type=str, default=None,
+        help='Comma-separated tag set to dispatch, replacing the tags '
+             'derived from the event (used by ci-nightly.yml).')
     return parser.parse_args(argv[1:])
 
 
@@ -198,19 +237,32 @@ def main(argv: Any) -> int:
         _log(f'Invalid event name: {event_name}')
         return 1
 
+    if options.override_tags is not None:
+        requested_tags = {
+            t.strip() for t in options.override_tags.split(',') if t.strip()
+        }
+        if not requested_tags:
+            _log('--override-tags parsed to an empty set')
+            return 1
+        _log(f'Overriding requested tags to: {requested_tags}')
+
     projects_dispatch: set[str] = set()
     projects_skip: set[str] = set()
     for project, tags in project_tags.items():
-        dispatch = (len(set(tags) & requested_tags) != 0)
+        dispatch = (requested_tags <= set(tags))
         if dispatch:
             projects_dispatch.add(project)
         else:
             projects_skip.add(project)
         _log(f'Project: {"✅" if dispatch else "🚫"} {project} (tags: {tags})')
 
+    force_skip = False
     if len(projects_dispatch) == 0:
         if requested_tags == {'skip'}:
             _log('Skipping all projects as requested')
+        elif requested_tags == {'force-skip'}:
+            _log('Force skipping all projects as requested')
+            force_skip = True
         else:
             _log('No projects matched with the requested tag')
             return 1
@@ -223,8 +275,12 @@ def main(argv: Any) -> int:
             _log('Failed to dispatch')
             return 1
 
+    # Push-time "Skipped" would drown the merge-commit checks tab in noise
+    # for nightly-only lanes. FlexCI posts those statuses when the lanes
+    # actually run (triggered later by ci-nightly.yml).
+    status_projects = set() if event_name == 'push' else projects_skip
     _fill_commit_status(
-        event_name, payload, github_token, projects_skip,
+        event_name, payload, github_token, status_projects, force_skip,
         options.flexci_context, options.flexci_uri)
 
     return 0

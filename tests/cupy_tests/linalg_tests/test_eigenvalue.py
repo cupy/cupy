@@ -257,9 +257,13 @@ class TestSymEigenvalueEmpty:
 )
 @pytest.mark.skipif(runtime.is_hip, reason="hip does not support eig")
 class TestEigenvalueEmpty:
+    # Test requires NumPy>=2.5.  Prior to this NumPy returned real if the
+    # input was real and the imaginary part was zero. CuPy never did this
+    # except for the empty array special case.
 
     @testing.for_dtypes('ifdFD')
     @testing.numpy_cupy_allclose()
+    @testing.with_requires('numpy>=2.5')
     def test_eig(self, xp, dtype, shape):
         if not cusolver.check_availability('geev'):
             pytest.skip('geev is not available')
@@ -269,6 +273,7 @@ class TestEigenvalueEmpty:
 
     @testing.for_dtypes('ifdFD')
     @testing.numpy_cupy_allclose()
+    @testing.with_requires('numpy>=2.5')
     def test_eigvals(self, xp, dtype, shape):
         if not cusolver.check_availability('geev'):
             pytest.skip('geev is not available')

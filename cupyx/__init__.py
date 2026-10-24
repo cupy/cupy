@@ -62,6 +62,11 @@ def __getattr__(key):
     if key == 'lapack':
         import cupyx.lapack
         return cupyx.lapack
+    if key == 'cusparse':
+        # Lazy so that touching ``cupyx`` does not load the cuSPARSE
+        # library; resolved on first ``cupyx.cusparse`` attribute access.
+        import cupyx.cusparse
+        return cupyx.cusparse
 
     if key == 'cusparse':
         import importlib

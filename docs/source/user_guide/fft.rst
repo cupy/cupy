@@ -121,7 +121,7 @@ However, there are occasions when users may *not* want to manage the FFT plans b
     hits / misses: 0 / 1 (counts)
     
     cached plans (most recently used first):
-    key: ((64, 64), (64, 64), 1, 4096, (64, 64), 1, 4096, 105, 4, 'C', 2, None), plan type: PlanNd, memory usage: 262144
+    key: ((64, 64), (64, 64), 1, 4096, (64, 64), 1, 4096, 105, 4), plan type: PlanNd, memory usage: 262144
     
     >>> # perform the same transform again, the plan is looked up from cache and reused
     >>> out = cp.fft.fftn(a, axes=(1, 2))
@@ -133,7 +133,7 @@ However, there are occasions when users may *not* want to manage the FFT plans b
     hits / misses: 1 / 1 (counts)
     
     cached plans (most recently used first):
-    key: ((64, 64), (64, 64), 1, 4096, (64, 64), 1, 4096, 105, 4, 'C', 2, None), plan type: PlanNd, memory usage: 262144
+    key: ((64, 64), (64, 64), 1, 4096, (64, 64), 1, 4096, 105, 4), plan type: PlanNd, memory usage: 262144
     
     >>> # clear the cache
     >>> cache.clear()
@@ -164,7 +164,7 @@ FFT callbacks
 
 `cuFFT`_ provides FFT callbacks for merging pre- and/or post- processing kernels with the FFT routines so as to reduce the access to global memory.
 This capability is supported *experimentally* by CuPy. Users need to supply custom load and/or store kernels as strings, and set up a context manager
-via :func:`~cupy.fft.config.set_cufft_callbacks`. Note that the load (store) kernel pointer has to be named as ``d_loadCallbackPtr`` (``d_storeCallbackPtr``).
+via :func:`~cupy.fft::config.set_cufft_callbacks`. Note that the load (store) kernel pointer has to be named as ``d_loadCallbackPtr`` (``d_storeCallbackPtr``).
 
 .. code-block:: python
 

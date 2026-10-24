@@ -10,6 +10,15 @@ from cupy._core import _routines_statistics as _statistics
 from cupy._core import _fusion_thread_local
 from cupy._logic import content
 
+# Quantile method parameters (alpha, beta) from Hyndman & Fan (1996)
+# Used for continuous interpolation methods in percentile/quantile
+_QUANTILE_PARAMS = {
+    'hazen': (0.5, 0.5),            # H&F type 5
+    'weibull': (0, 0),              # H&F type 6
+    'median_unbiased': (1/3, 1/3),  # H&F type 8
+    'normal_unbiased': (3/8, 3/8),  # H&F type 9
+}
+
 
 # 非 Ascend 打包可能不含 _ascend 包，模块级守卫导入
 try:
@@ -279,12 +288,15 @@ def _quantile_unchecked(a, q, axis=None, out=None,
     Nx = ap.shape[axis]
     indices = q * (Nx - 1.)
 
-    if method in ['inverted_cdf', 'averaged_inverted_cdf',
-                  'closest_observation', 'interpolated_inverted_cdf',
-                  'hazen', 'weibull', 'median_unbiased', 'normal_unbiased']:
+    if method in ['averaged_inverted_cdf',
+                  'closest_observation', 'interpolated_inverted_cdf']:
         # TODO(takagi) Implement new methods introduced in NumPy 1.22
         raise ValueError(f'\'{method}\' method is not yet supported. '
                          'Please use any other method.')
+    elif method in _QUANTILE_PARAMS:
+        alpha, beta = _QUANTILE_PARAMS[method]
+        indices = q * (Nx - alpha - beta + 1) + alpha - 1
+        indices = cupy.clip(indices, 0, Nx - 1)
     elif method == 'lower':
         indices = cupy.floor(indices).astype(cupy.int32)
     elif method == 'higher':
@@ -293,12 +305,15 @@ def _quantile_unchecked(a, q, axis=None, out=None,
         indices = 0.5 * (cupy.floor(indices) + cupy.ceil(indices))
     elif method == 'nearest':
         indices = cupy.around(indices).astype(cupy.int32)
+    elif method == 'inverted_cdf':
+        indices = cupy.clip(cupy.ceil(q*Nx).astype(cupy.int32)-1, 0, Nx-1)
     elif method == 'linear':
         pass
     else:
         raise ValueError('Unexpected interpolation method.\n'
-                         'Actual: \'{}\' not in (\'linear\', \'lower\', '
-                         '\'higher\', \'midpoint\')'.format(method))
+                         'Actual: \'{}\' not in (\'linear\', \'lower\','
+                         ' \'higher\',\'midpoint\', \'inverted_cdf\', '
+                         '\'nearest\')'.format(method))
 
     if indices.dtype == cupy.int32:
         ret = cupy.rollaxis(ap, axis)
@@ -368,7 +383,7 @@ def percentile(a, q, axis=None, out=None,
         method (str): Interpolation method when a quantile lies between
             two data points. ``linear`` interpolation is used by default.
             Supported interpolations are ``lower``, ``higher``, ``midpoint``,
-            ``nearest`` and ``linear``.
+            ``nearest``, ``inverted_cdf``  and ``linear``.
         keepdims (bool): If ``True``, the axis is remained as an axis of
             size one.
         interpolation (str): Deprecated name for the method keyword argument.
@@ -417,7 +432,7 @@ def quantile(a, q, axis=None, out=None,
         method (str): Interpolation method when a quantile lies between
             two data points. ``linear`` interpolation is used by default.
             Supported interpolations are ``lower``, ``higher``, ``midpoint``,
-            ``nearest`` and ``linear``.
+            ``nearest``, ``inverted_cdf`` and ``linear``.
         keepdims (bool): If ``True``, the axis is remained as an axis of
             size one.
         interpolation (str): Deprecated name for the method keyword argument.

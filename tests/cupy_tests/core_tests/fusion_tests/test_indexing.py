@@ -1,71 +1,77 @@
 from __future__ import annotations
 
-import unittest
+import pytest
 
 from cupy import testing
 from cupy_tests.core_tests.fusion_tests import fusion_utils
 
 
-@testing.parameterize(
-    # Integer
-    {'shape': (2, 3, 4), 'indices': 1},
-    {'shape': (2, 3, 4), 'indices': -1},
-    {'shape': (2, 3, 4), 'indices': (1,)},
-    {'shape': (2, 3, 4), 'indices': (1, 0)},
-    {'shape': (2, 3, 4), 'indices': (1, 0, 2)},
-    {'shape': (2, 3, 4), 'indices': (-1, 0, -2)},
-    # Slice
-    {'shape': (2, 3, 4), 'indices': slice(None)},
-    {'shape': (2, 3, 4), 'indices': slice(None, None, 1)},
-    {'shape': (2, 3, 4), 'indices': slice(None, None, -1)},
-    {'shape': (2, 3, 4), 'indices': (slice(None), slice(None, None, -1))},
-    # Ellipsis
-    {'shape': (2, 3, 4), 'indices': Ellipsis},
-    {'shape': (2, 3, 4), 'indices': (Ellipsis,)},
-    # Newaxis
-    {'shape': (2, 3, 4), 'indices': None},
-    {'shape': (2, 3, 4), 'indices': (None,)},
-    {'shape': (2, 3, 4), 'indices': (None, None, None)},
-    # Tuple
-    {'shape': (2, 3, 4), 'indices': (slice(None), 0, slice(None, None, -1))},
-    {'shape': (2, 3, 4), 'indices': (1, None, slice(None, None, -1), None, 2)},
-    {'shape': (2,), 'indices': (slice(None), None)},
-    {'shape': (2, 3, 4), 'indices': (Ellipsis, 2)},
-    {'shape': (2, 3, 4), 'indices': (1, Ellipsis)},
-    {'shape': (2, 3, 4, 5), 'indices': (1, Ellipsis, 3)},
+@pytest.mark.parametrize(
+    "shape,indices",
+    [
+        # Integer
+        ((2, 3, 4), 1),
+        ((2, 3, 4), -1),
+        ((2, 3, 4), (1,)),
+        ((2, 3, 4), (1, 0)),
+        ((2, 3, 4), (1, 0, 2)),
+        ((2, 3, 4), (-1, 0, -2)),
+        # Slice
+        ((2, 3, 4), slice(None)),
+        ((2, 3, 4), slice(None, None, 1)),
+        ((2, 3, 4), slice(None, None, -1)),
+        ((2, 3, 4), (slice(None), slice(None, None, -1))),
+        # Ellipsis
+        ((2, 3, 4), Ellipsis),
+        ((2, 3, 4), (Ellipsis,)),
+        # Newaxis
+        ((2, 3, 4), None),
+        ((2, 3, 4), (None,)),
+        ((2, 3, 4), (None, None, None)),
+        # Tuple
+        ((2, 3, 4), (slice(None), 0, slice(None, None, -1))),
+        ((2, 3, 4), (1, None, slice(None, None, -1), None, 2)),
+        ((2,), (slice(None), None)),
+        ((2, 3, 4), (Ellipsis, 2)),
+        ((2, 3, 4), (1, Ellipsis)),
+        ((2, 3, 4, 5), (1, Ellipsis, 3)),
+    ]
 )
-class TestIndexing(unittest.TestCase):
+class TestIndexing:
 
-    def generate_inputs(self, xp, dtype):
-        x = testing.shaped_random(self.shape, xp, dtype, scale=10, seed=0)
+    def generate_inputs(self, xp, dtype, shape):
+        x = testing.shaped_random(shape, xp, dtype, scale=10, seed=0)
         return (x,), {}
 
     @testing.for_all_dtypes()
     @fusion_utils.check_fusion()
-    def test_getitem(self, xp, dtype):
-        return lambda x: x[self.indices]
+    def test_getitem(self, xp, dtype, shape, indices):
+        return lambda x: x[indices]
 
 
-@testing.parameterize(
-    {'shape': (), 'indices': 0},
-    {'shape': (2, 3), 'indices': (0, 0, 0)},
-    {'shape': (2, 3, 4), 'indices': -3},
-    {'shape': (2, 3, 4), 'indices': 3},
+@pytest.mark.parametrize(
+    "shape,indices",
+    [
+        ((), 0),
+        ((2, 3), (0, 0, 0)),
+        ((2, 3, 4), -3),
+        ((2, 3, 4), 3),
+    ]
 )
 @testing.with_requires('numpy>=1.12.0')
-class TestArrayInvalidIndex(unittest.TestCase):
+class TestArrayInvalidIndex:
 
-    def generate_inputs(self, xp, dtype):
-        x = testing.shaped_arange(self.shape, xp, dtype)
+    def generate_inputs(self, xp, dtype, shape):
+        x = testing.shaped_arange(shape, xp, dtype)
         return (x,), {}
 
     @testing.for_all_dtypes()
     @fusion_utils.check_fusion(accept_error=(IndexError,))
-    def test_invalid_getitem(self, xp, dtype):
-        return lambda x: x[self.indices]
+    def test_invalid_getitem(self, xp, dtype, shape, indices):
+        return lambda x: x[indices]
 
 
-class TestIndexingCombination(unittest.TestCase):
+class TestIndexingCombination:
 
     def generate_inputs(self, xp, dtype1, dtype2):
         x = testing.shaped_random((3, 4), xp, dtype1, scale=10, seed=0)
@@ -109,9 +115,9 @@ class TestIndexingCombination(unittest.TestCase):
     def test_indexing_twice_2(self, xp, dtype1, dtype2):
         return lambda x, y, z: x[0][1] + x[1][0]
 
-    @unittest.skipUnless(
-        fusion_utils.can_use_grid_synchronization(),
-        'Requires CUDA grid synchronization')
+    @pytest.mark.skipif(
+        not fusion_utils.can_use_grid_synchronization(),
+        reason='Requires CUDA grid synchronization')
     @testing.for_all_dtypes_combination(
         names=['dtype1', 'dtype2'], no_bool=True)
     @fusion_utils.check_fusion()

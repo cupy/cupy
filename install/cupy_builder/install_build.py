@@ -1,8 +1,8 @@
 # mypy: ignore-errors
 from __future__ import annotations
 
-
 import contextlib
+import functools
 import logging
 import os
 import platform
@@ -32,6 +32,12 @@ _cuda_path = 'NOT_INITIALIZED'
 _rocm_path = 'NOT_INITIALIZED'
 _cann_path = 'NOT_INITIALIZED'
 _compiler_base_options = None
+
+
+def _get_win32_cuda_arch():
+    if platform.machine().lower() in ('arm64', 'aarch64'):
+        return 'arm64'
+    return 'x64'
 
 
 # Using tempfile.TemporaryDirectory would cause an error during cleanup
@@ -338,7 +344,8 @@ def check_hip_version(compiler, settings):
           printf("%d", HIP_VERSION);
           return 0;
         }
-        ''', include_dirs=settings['include_dirs'])
+        ''', include_dirs=settings['include_dirs'],
+                            extra_compile_args=settings['extra_compile_args'])
 
     except Exception as e:
         utils.print_warning('Cannot check HIP version', str(e))
@@ -521,7 +528,8 @@ def check_compute_capabilities(compiler, settings):
             compiler, src,
             include_dirs=settings['include_dirs'],
             libraries=('cudart',),
-            library_dirs=settings['library_dirs'])
+            library_dirs=settings['library_dirs'],
+            extra_compile_args=settings['extra_compile_args'])
         _compute_capabilities = set([int(o) for o in out.split()])
     except Exception as e:
         utils.print_warning('Cannot check compute capability\n{}'.format(e))
@@ -546,7 +554,8 @@ def check_thrust_version(compiler, settings):
           printf("%d", THRUST_VERSION);
           return 0;
         }
-        ''', include_dirs=settings['include_dirs'])
+        ''', include_dirs=settings['include_dirs'],
+                            extra_compile_args=settings['extra_compile_args'])
     except Exception as e:
         utils.print_warning('Cannot check Thrust version\n{}'.format(e))
         return False
@@ -594,7 +603,8 @@ def check_nccl_version(compiler, settings):
                             }
                             ''',
                             include_dirs=settings['include_dirs'],
-                            define_macros=settings['define_macros'])
+                            define_macros=settings['define_macros'],
+                            extra_compile_args=settings['extra_compile_args'])
 
     except Exception as e:
         utils.print_warning('Cannot include NCCL\n{}'.format(e))
@@ -653,7 +663,8 @@ def check_cub_version(compiler, settings):
                               return 0;
                             }''',
                             include_dirs=settings['include_dirs'],
-                            define_macros=settings['define_macros'])
+                            define_macros=settings['define_macros'],
+                            extra_compile_args=settings['extra_compile_args'])
     except Exception as e:
         # could be in a git submodule?
         try:
@@ -770,8 +781,8 @@ def check_cutensor_version(compiler, settings):
           printf("%d", CUTENSOR_VERSION);
           return 0;
         }
-        ''', include_dirs=settings['include_dirs'])
-
+        ''', include_dirs=settings['include_dirs'],
+                            extra_compile_args=settings['extra_compile_args'])
     except Exception as e:
         utils.print_warning('Cannot check cuTENSOR version\n{}'.format(e))
         return False
@@ -809,8 +820,8 @@ def check_cusparselt_version(compiler, settings):
           printf("%d", CUSPARSELT_VERSION);
           return 0;
         }
-        ''', include_dirs=settings['include_dirs'])
-
+        ''', include_dirs=settings['include_dirs'],
+                            extra_compile_args=settings['extra_compile_args'])
     except Exception as e:
         utils.print_warning('Cannot check cuSPARSELt version\n{}'.format(e))
         return False
@@ -844,6 +855,15 @@ def conda_get_target_name():
     return out
 
 
+@functools.cache
+def is_conda_cross_compiling() -> bool:
+    is_cross_compiling = os.environ.get('CONDA_BUILD_CROSS_COMPILATION', '0')
+    # Recent conda compilers might set CONDA_BUILD_CROSS_COMPILATION to empty.
+    if is_cross_compiling == '':
+        is_cross_compiling = '0'
+    return (int(is_cross_compiling, 0) == 1)
+
+
 def conda_update_dirs(include_dirs, library_dirs):
     # Note: These hacks are needed for the dependency detection stage to
     # function, because we create a fresh compiler instance that does not
@@ -851,12 +871,12 @@ def conda_update_dirs(include_dirs, library_dirs):
     include_dirs = list(include_dirs)
     library_dirs = list(library_dirs)
 
-    if (int(os.environ.get('CONDA_BUILD_CROSS_COMPILATION', 0)) == 1):
+    if is_conda_cross_compiling():
         # If we're cross compiling, we need to generate stub files that are
         # executable in the build environment, not the target environment.
         # This assumes, however, that the build/host environments see the same
         # CUDA Toolkit.
-        if os.environ.get('CONDA_OVERRIDE_CUDA', '0').startswith('12'):
+        if os.environ.get('CONDA_OVERRIDE_CUDA', '0').startswith(('12', '13')):
             include_dirs.insert(
                 0,
                 f'{os.environ["BUILD_PREFIX"]}/targets/x86_64-linux/include')
@@ -871,7 +891,7 @@ def conda_update_dirs(include_dirs, library_dirs):
         include_dirs.append(f'{os.environ["BUILD_PREFIX"]}/include')
         library_dirs.append(f'{os.environ["BUILD_PREFIX"]}/lib')
 
-    if os.environ.get('CONDA_OVERRIDE_CUDA', '0').startswith('12'):
+    if os.environ.get('CONDA_OVERRIDE_CUDA', '0').startswith(('12', '13')):
         if PLATFORM_LINUX:
             include_dirs.append(
                 f'{os.environ["BUILD_PREFIX"]}/targets/'

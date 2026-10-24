@@ -17,6 +17,7 @@ echo "================ Environment Variables ================"
 env
 echo "======================================================="
 
-"$ACTIONS/build.sh"
+
+trap "$ACTIONS/cleanup.sh" EXIT
+"$ACTIONS/fetch-wheel.sh"
 "$ACTIONS/example.sh"
-"$ACTIONS/cleanup.sh"

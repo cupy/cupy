@@ -81,10 +81,13 @@ class TestNpz(unittest.TestCase):
 
     @testing.for_all_dtypes()
     def test_pickle(self, dtype):
-        a = testing.shaped_arange((2, 3, 4), dtype=dtype)
-        s = pickle.dumps(a)
-        b = pickle.loads(s)
-        testing.assert_array_equal(a, b)
+        for order in ["C", "F"]:
+            a = testing.shaped_arange((2, 3, 4), dtype=dtype, order=order)
+            s = pickle.dumps(a)
+            b = pickle.loads(s)
+            testing.assert_array_equal(a, b)
+            assert a.flags.c_contiguous == b.flags.c_contiguous
+            assert a.flags.f_contiguous == b.flags.f_contiguous
 
     @testing.for_all_dtypes()
     def test_dump(self, dtype):

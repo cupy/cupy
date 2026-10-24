@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from cupy import _core
+from cupy._util import bf16_loop
 
 import cupy
 
@@ -8,7 +9,7 @@ import cupy
 def _create_float_test_ufunc(name, doc):
     return _core.create_ufunc(
         'cupy_' + name,
-        ('e->?', 'f->?', 'd->?', 'F->?', 'D->?',
+        ('e->?', *bf16_loop(1, '?'), 'f->?', 'd->?', 'F->?', 'D->?',
          ), 'out0 = %s(in0)' % name,
         doc=doc)
 

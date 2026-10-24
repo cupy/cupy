@@ -22,35 +22,67 @@ import tempfile
 import urllib.request
 
 
+_deprecation_message = """
+******************************************************************************
+
+The "cupyx.tools.install_library" tool is deprecated and will be removed in
+a future CuPy release. To install NCCL/cuTENSOR libraries, please install them
+via package managers (pip/conda) that are used to install CuPy.
+
+You can use the following command to see if NCCL/cuTENSOR is already installed.
+If you see the version number displayed for "NCCL Runtime Version" or "cuTENSOR
+Version", they are available and enabled in your CuPy installation.
+
+  $ python -c 'import cupy; cupy.show_config(_full=True)'
+
+If you see "None" instead of the version number, and you installed CuPy via pip
+or conda, you can get the instructions to install these libraries by running
+the following commands:
+
+  $ python -c 'import cupy.cuda.nccl'
+  $ python -c 'import cupy.cuda.cutensor'
+
+******************************************************************************
+"""
+
 _cutensor_records = []
 _nccl_records = []
 library_records = {}
 
 
-def _make_cutensor_url(platform, filename):
-    # https://developer.download.nvidia.com/compute/cutensor/redist/libcutensor/linux-x86_64/libcutensor-linux-x86_64-1.5.0.3-archive.tar.xz
+def _make_cutensor_url(platform_arch, filename):
+    # https://developer.download.nvidia.com/compute/cutensor/redist/libcutensor/windows-x86_64/libcutensor-windows-x86_64-2.4.1.4_cuda13-archive.zip
+    # https://developer.download.nvidia.com/compute/cutensor/redist/libcutensor/linux-sbsa/libcutensor-linux-sbsa-2.4.1.4_cuda13-archive.tar.xz
     return (
         'https://developer.download.nvidia.com/compute/cutensor/' +
-        f'redist/libcutensor/{platform}-x86_64/{filename}')
+        f'redist/libcutensor/{platform_arch}/{filename}')
 
 
 def __make_cutensor_record(
         cuda_version, public_version, min_pypi_version,
-        filename_linux, filename_windows):
+        filename_linux_x86_64, filename_linux_sbsa, filename_windows):
+    linux_filenames = [
+        'libcutensor.so.{}'.format(public_version),
+        'libcutensorMg.so.{}'.format(public_version),
+    ]
     return {
         'cuda': cuda_version,
         'cutensor': public_version,
         'min_pypi_version': min_pypi_version,
         'assets': {
             'Linux:x86_64': {
-                'url': _make_cutensor_url('linux', filename_linux),
-                'filenames': [
-                    'libcutensor.so.{}'.format(public_version),
-                    'libcutensorMg.so.{}'.format(public_version),
-                ],
+                'url': _make_cutensor_url(
+                    'linux-x86_64', filename_linux_x86_64),
+                'filenames': linux_filenames,
+            },
+            'Linux:aarch64': {
+                'url': _make_cutensor_url(
+                    'linux-sbsa', filename_linux_sbsa),
+                'filenames': linux_filenames,
             },
             'Windows:x86_64': {
-                'url': _make_cutensor_url('windows', filename_windows),
+                'url': _make_cutensor_url(
+                    'windows-x86_64', filename_windows),
                 'filenames': ['cutensor.dll', 'cutensorMg.dll'],
             },
         }
@@ -62,14 +94,17 @@ def _make_cutensor_record(cuda_version):
     # `min_pypi_version` must be bumped only when:
     # (1) Bumping the major version, or
     # (2) CuPy started to use APIs introduced in minor versions
+    cuda_major = cuda_version.split('.')[0]
     return __make_cutensor_record(
-        cuda_version, '2.1.0', '2.0.0',
-        'libcutensor-linux-x86_64-2.1.0.9-archive.tar.xz',
-        'libcutensor-windows-x86_64-2.1.0.9-archive.zip')
+        cuda_version, '2.4.1', '2.3.0',
+        f'libcutensor-linux-x86_64-2.4.1.4_cuda{cuda_major}-archive.tar.xz',
+        f'libcutensor-linux-sbsa-2.4.1.4_cuda{cuda_major}-archive.tar.xz',
+        f'libcutensor-windows-x86_64-2.4.1.4_cuda{cuda_major}-archive.zip',
+    )
 
 
 _cutensor_records.append(_make_cutensor_record('12.x'))
-_cutensor_records.append(_make_cutensor_record('11.x'))  # CUDA 11.2+
+_cutensor_records.append(_make_cutensor_record('13.x'))
 library_records['cutensor'] = _cutensor_records
 
 
@@ -104,23 +139,22 @@ def _make_nccl_record(
 
 # https://docs.nvidia.com/deeplearning/nccl/release-notes/overview.html
 _nccl_records.append(_make_nccl_record(
-    '13.x', '2.27.7', '2.27.7', '2.27.7',
-    'nccl_2.27.7-1+cuda13.0_x86_64.txz',
-    'nccl_2.27.7-1+cuda13.0_aarch64.txz'))
+    '13.x', '2.30.7', '2.30.7', '2.27.7',
+    'nccl_2.30.7-1+cuda13.3_x86_64.txz',
+    'nccl_2.30.7-1+cuda13.3_aarch64.txz'))
 _nccl_records.append(_make_nccl_record(
-    '12.x', '2.25.1', '2.25.1', '2.16.5',
+    '12.x', '2.25.1', '2.25.1', '2.18.1',
     'nccl_2.25.1-1+cuda12.8_x86_64.txz',
     'nccl_2.25.1-1+cuda12.8_aarch64.txz'))
-_nccl_records.append(_make_nccl_record(
-    '11.x', '2.16.5', '2.16.5', '2.16.5',  # CUDA 11.2+
-    'nccl_2.16.5-1+cuda11.8_x86_64.txz',
-    'nccl_2.16.5-1+cuda11.8_aarch64.txz'))
 library_records['nccl'] = _nccl_records
 
 
 def _unpack_archive(filename, extract_dir):
+    kwargs = {"filter": "data"}
+    if sys.version_info < (3, 12) or filename.endswith(".zip"):
+        kwargs = {}
     try:
-        shutil.unpack_archive(filename, extract_dir)
+        shutil.unpack_archive(filename, extract_dir, **kwargs)
     except shutil.ReadError:
         print('The archive format is not supported in your Python '
               'environment. Falling back to "tar" command...')
@@ -134,11 +168,10 @@ def _unpack_archive(filename, extract_dir):
 
 
 def install_lib(cuda, prefix, library, arch):
-    if library == 'nccl' and arch in ('x86_64', 'aarch64'):
-        pass  # Supported
-    elif arch != 'x86_64':
-        raise RuntimeError('''
-Currently this tool only supports x86_64 or aarch64 architecture for NCCL.''')
+    if arch not in ('x86_64', 'aarch64'):
+        raise RuntimeError(
+            f'Unsupported architecture: {arch}. '
+            'Supported: x86_64, aarch64.')
     record = None
     lib_records = library_records
     for record in lib_records[library]:
@@ -192,16 +225,16 @@ The current platform ({}) is not supported.'''.format(target_platform))
 
         print('Installing...')
         if library == 'cutensor':
-            if cuda.startswith('11.') and cuda != '11.0':
-                cuda = '11'
-            elif cuda.startswith('12.'):
-                cuda = '12'
             license = 'LICENSE'
             shutil.move(
                 os.path.join(outdir, dir_name, 'include'),
                 os.path.join(destination, 'include'))
+            if platform.system() == 'Windows':
+                shutil.move(
+                    os.path.join(outdir, dir_name, 'bin'),
+                    os.path.join(destination, 'bin'))
             shutil.move(
-                os.path.join(outdir, dir_name, 'lib', cuda),
+                os.path.join(outdir, dir_name, 'lib'),
                 os.path.join(destination, 'lib'))
             shutil.move(
                 os.path.join(outdir, dir_name, license), destination)
@@ -232,7 +265,7 @@ def main(args):
                         help='CUDA version')
     parser.add_argument('--arch', choices=['x86_64', 'aarch64'],
                         default=None,
-                        help='Target arhitecture (x86_64 or aarch64)')
+                        help='Target architecture (x86_64 or aarch64)')
     parser.add_argument('--prefix', type=str, default=None,
                         help='Install destination')
     parser.add_argument('--action', choices=['install', 'dump'],
@@ -253,9 +286,11 @@ def main(args):
         params.prefix = os.path.abspath(params.prefix)
 
     if params.action == 'install':
+        print(_deprecation_message)
         install_lib(params.cuda, params.prefix, params.library,
                     params.arch)
     elif params.action == 'dump':
+        # This option is only for internal use by cupy-release-tools.
         print(json.dumps(library_records[params.library], indent=4))
     else:
         assert False

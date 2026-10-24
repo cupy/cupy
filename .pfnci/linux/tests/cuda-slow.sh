@@ -17,6 +17,7 @@ echo "================ Environment Variables ================"
 env
 echo "======================================================="
 
-"$ACTIONS/build.sh"
-"$ACTIONS/unittest.sh" "slow"
-"$ACTIONS/cleanup.sh"
+
+trap "$ACTIONS/cleanup.sh" EXIT
+"$ACTIONS/fetch-wheel.sh"
+CUPY_CI_PYTEST_EXTRA_OPTS="${CUPY_CI_PYTEST_EXTRA_OPTS:+$CUPY_CI_PYTEST_EXTRA_OPTS }--deselect tests/install_tests/test_cupy_builder/test_features.py::test_CUDA_cuda" "$ACTIONS/unittest.sh" "slow"

@@ -15,6 +15,9 @@ bitwise_xor = _core.bitwise_xor
 bitwise_not = _core.invert
 
 
+bitwise_count = _core.bitwise_count
+
+
 invert = _core.invert
 
 

@@ -54,12 +54,12 @@ class TestPPolyCommon:
     def test_extend(self, xp, scp, cls):
         # Test adding new points to the piecewise polynomial
         cls = getattr(scp.interpolate, cls)
-        numpy.random.seed(1234)
+        rng = numpy.random.RandomState(1234)
 
         order = 3
-        x = numpy.unique(numpy.r_[0, 10 * numpy.random.rand(30), 10])
+        x = numpy.unique(numpy.r_[0, 10 * rng.uniform(size=30), 10])
         x = xp.asarray(x)
-        c = 2*numpy.random.rand(order+1, len(x)-1, 2, 3) - 1
+        c = 2*rng.uniform(size=(order+1, len(x)-1, 2, 3)) - 1
         c = xp.asarray(c)
 
         pp = cls(c[:, :9], x[:10])
@@ -77,13 +77,13 @@ class TestPPolyCommon:
     def test_extend_diff_orders(self, xp, scp, cls):
         # Test extending polynomial with different order one
         cls = getattr(scp.interpolate, cls)
-        numpy.random.seed(1234)
+        rng = np.random.RandomState(1234)
 
         x = xp.linspace(0, 1, 6)
-        c = xp.asarray(numpy.random.rand(2, 5))
+        c = xp.asarray(rng.rand(2, 5))
 
         x2 = xp.linspace(1, 2, 6)
-        c2 = xp.asarray(numpy.random.rand(4, 5))
+        c2 = xp.asarray(rng.rand(4, 5))
 
         pp1 = cls(c, x)
         pp2 = cls(c2, x2)
@@ -102,12 +102,12 @@ class TestPPolyCommon:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_extend_descending(self, xp, scp, cls):
         cls = getattr(scp.interpolate, cls)
-        numpy.random.seed(0)
+        rng = np.random.RandomState(0)
 
         order = 3
-        x = numpy.sort(numpy.random.uniform(0, 10, 20))
+        x = numpy.sort(rng.uniform(0, 10, 20))
         x = xp.asarray(x)
-        c = numpy.random.rand(order + 1, x.shape[0] - 1, 2, 3)
+        c = rng.rand(order + 1, x.shape[0] - 1, 2, 3)
         c = xp.asarray(c)
 
         p1 = cls(c[:, :9], x[:10])
@@ -122,13 +122,13 @@ class TestPPolyCommon:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_shape(self, xp, scp, cls):
         cls = getattr(scp.interpolate, cls)
-        numpy.random.seed(1234)
+        rng = np.random.RandomState(1234)
 
-        c = numpy.random.rand(8, 12, 5, 6, 7)
+        c = rng.rand(8, 12, 5, 6, 7)
         c = xp.asarray(c)
-        x = numpy.sort(numpy.random.rand(13))
+        x = numpy.sort(rng.rand(13))
         x = xp.asarray(x)
-        xpts = numpy.random.rand(3, 4)
+        xpts = rng.rand(3, 4)
         xpts = xp.asarray(xpts)
 
         p = cls(c, x)
@@ -138,11 +138,11 @@ class TestPPolyCommon:
     def test_shape_2(self, cls):
         for xp, scp in [(numpy, scipy), (cupy, cupyx.scipy)]:
             cls1 = getattr(scp.interpolate, cls)
-            numpy.random.seed(1234)
+            rng = np.random.RandomState(1234)
 
-            c = numpy.random.rand(8, 12, 5, 6, 7)
+            c = rng.rand(8, 12, 5, 6, 7)
             c = xp.asarray(c)
-            x = numpy.sort(numpy.random.rand(13))
+            x = numpy.sort(rng.rand(13))
             x = xp.asarray(x)
 
             # 'scalars'
@@ -162,13 +162,13 @@ class TestPPolyCommon:
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_complex_coef(self, xp, scp, cls):
         cls = getattr(scp.interpolate, cls)
-        numpy.random.seed(12345)
-        x = numpy.sort(numpy.random.random(13))
+        rng = np.random.RandomState(12345)
+        x = numpy.sort(rng.random(13))
         x = xp.array(x)
-        c = numpy.random.random((8, 12)) * (1. + 0.3j)
+        c = rng.random((8, 12)) * (1. + 0.3j)
         c = xp.array(c)
         # c_re, c_im = c.real, c.imag
-        xpt = xp.array(numpy.random.random(5))
+        xpt = xp.array(rng.random(5))
 
         p = cls(c, x)
         return [p(xpt, nu) for nu in [0, 1, 2]]
@@ -178,15 +178,15 @@ class TestPPolyCommon:
     def test_axis(self, cls, axis):
         for xp, scp in [(numpy, scipy), (cupy, cupyx.scipy)]:
             cls1 = getattr(scp.interpolate, cls)
-            numpy.random.seed(12345)
-            c = numpy.random.rand(3, 4, 5, 6, 7, 8)
+            rng = np.random.RandomState(12345)
+            c = rng.rand(3, 4, 5, 6, 7, 8)
             c = xp.asarray(c)
             c_s = c.shape
-            xpt = numpy.random.random((1, 2))
+            xpt = rng.random((1, 2))
             xpt = xp.asarray(xpt)
 
             m = c.shape[axis+1]
-            x = numpy.sort(numpy.random.rand(m+1))
+            x = numpy.sort(rng.rand(m+1))
             x = xp.asarray(x)
 
             p = cls1(c, x, axis=axis)
@@ -209,11 +209,11 @@ class TestPPolyCommon:
     @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=ValueError)
     def test_axis_2(self, xp, scp, cls, axis):
         cls = getattr(scp.interpolate, cls)
-        numpy.random.seed(12345)
-        c = numpy.random.rand(3, 4, 5, 6, 7, 8)
+        rng = np.random.RandomState(12345)
+        c = rng.rand(3, 4, 5, 6, 7, 8)
         c = xp.asarray(c)
 
-        x = numpy.sort(numpy.random.rand(c.shape[-1]))
+        x = numpy.sort(rng.rand(c.shape[-1]))
         x = xp.asarray(x)
 
         # c array needs two axes for the coefficients and intervals, so
@@ -258,7 +258,8 @@ class TestPPoly:
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_multi_shape(self, xp, scp):
-        c = numpy.random.rand(6, 2, 1, 2, 3)
+        rng = np.random.RandomState(1234)
+        c = rng.rand(6, 2, 1, 2, 3)
         c = xp.asarray(c)
         x = xp.array([0, 0.5, 1])
         p = scp.interpolate.PPoly(c, x)
@@ -689,11 +690,11 @@ class TestPPoly:
             B = cupy.asarray(B)
         return B[::-1, ::-1]
 
-    def _prepare_descending(self, m, xp, scp):
+    def _prepare_descending(self, m, xp, scp, rng):
         power = 3
-        x = numpy.sort(numpy.random.uniform(0, 10, m + 1))
+        x = numpy.sort(rng.uniform(0, 10, m + 1))
         x = xp.asarray(x)
-        ca = numpy.random.uniform(-2, 2, size=(power + 1, m))
+        ca = rng.uniform(-2, 2, size=(power + 1, m))
         ca = xp.asarray(ca)
 
         h = xp.diff(x)
@@ -710,30 +711,30 @@ class TestPPoly:
     @pytest.mark.parametrize('m', [10, 20, 30])
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-13)
     def test_descending(self, m, xp, scp):
-        numpy.random.seed(0)
-        pa, pd = self._prepare_descending(m, xp, scp)
+        rng = numpy.random.RandomState(0)
+        pa, pd = self._prepare_descending(m, xp, scp, rng)
 
-        x_test = numpy.random.uniform(-10, 20, 100)
+        x_test = rng.uniform(-10, 20, size=100)
         x_test = xp.asarray(x_test)
         return pa(x_test), pa(x_test, 1)
 
     @pytest.mark.parametrize('m', [10, 20, 30])
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-13)
     def test_descending_derivative(self, m, xp, scp):
-        numpy.random.seed(0)
-        pa, pd = self._prepare_descending(m, xp, scp)
+        rng = numpy.random.RandomState(0)
+        pa, pd = self._prepare_descending(m, xp, scp, rng)
         pa_d = pa.derivative()
         pd_d = pd.derivative()
 
-        x_test = numpy.random.uniform(-10, 20, 100)
+        x_test = rng.uniform(-10, 20, size=100)
         x_test = xp.asarray(x_test)
         return pa_d(x_test), pd_d(x_test)
 
     @pytest.mark.parametrize('m', [10, 20, 30])
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_descending_antiderivative(self, m, xp, scp):
-        numpy.random.seed(0)
-        pa, pd = self._prepare_descending(m, xp, scp)
+        rng = numpy.random.RandomState(0)
+        pa, pd = self._prepare_descending(m, xp, scp, rng)
 
         # Antiderivatives won't be equal because fixing continuity is
         # done in the reverse order, but surely the differences should be
@@ -741,7 +742,7 @@ class TestPPoly:
         pa_i = pa.antiderivative()
         pd_i = pd.antiderivative()
         results = []
-        for a, b in numpy.random.uniform(-10, 20, (5, 2)):
+        for a, b in rng.uniform(-10, 20, size=(5, 2)):
             int_a = pa.integrate(a, b)
             int_d = pd.integrate(a, b)
             results += [int_a, int_d]
@@ -752,8 +753,8 @@ class TestPPoly:
     @pytest.mark.parametrize('m', [10, 20, 30])
     @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-12)
     def test_descending_roots(self, m, xp, scp):
-        numpy.random.seed(0)
-        pa, pd = self._prepare_descending(m, xp, scp)
+        rng = numpy.random.RandomState(0)
+        pa, pd = self._prepare_descending(m, xp, scp, rng)
 
         roots_d = pd.roots()
         roots_a = pa.roots()

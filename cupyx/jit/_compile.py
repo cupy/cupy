@@ -6,7 +6,7 @@ import linecache
 import numbers
 import re
 import sys
-from typing import Any, NamedTuple, Optional, TypeVar, Union
+from typing import Any, NamedTuple, TypeVar
 from collections.abc import Sequence
 import warnings
 import types
@@ -34,8 +34,7 @@ _typeclasses = (bool, numpy.bool_, numbers.Number)
 
 if (3, 8) <= sys.version_info:
     from typing import Literal
-    _CastingType = Optional[
-        Literal['no', 'equiv', 'safe', 'same_kind', 'unsafe']]
+    _CastingType = Literal['no', 'equiv', 'safe', 'same_kind', 'unsafe']
 else:
     _CastingType = str
 
@@ -158,7 +157,7 @@ class Generated:
     def __init__(self) -> None:
         # list of str
         self.codes: list[str] = []
-        # (function, in_types) => Optional(function_name, return_type)
+        # (function, in_types) => (function_name, return_type) or None
         self.device_function: \
             dict[tuple[Any, tuple[_cuda_types.TypeBase, ...]],
                  tuple[str, _cuda_types.TypeBase]] = {}
@@ -205,6 +204,9 @@ def transpile(func, attributes, mode, in_types, ret_type):
         func, attributes, mode, in_types, ret_type, generated)
     func_name, _ = generated.device_function[(func, in_types)]
     code = '\n'.join(generated.codes)
+    # TODO(seberg): We should include this based on `get_typename()`
+    # (That is also necessary for bfloat16 support.)
+    code = '#include "cupy/float16.cuh"\n' + code
     backend = generated.backend
     options = generated.options
     jitify = generated.jitify
@@ -981,7 +983,7 @@ def _indexing(
     raise TypeError(f'{array.code} is not subscriptable.')
 
 
-_T = TypeVar('_T', Constant, Data, Union[Constant, Data])
+_T = TypeVar('_T', Constant, Data, Constant | Data)
 
 
 def _astype_scalar(

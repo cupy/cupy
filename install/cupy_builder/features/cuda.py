@@ -90,6 +90,10 @@ cuda_files = [
     ('cupy._core._compile_with_cache',
      ['cupy/_core/_gpu/_compile_with_cache.pyx']),
     ('cupy._core._cub_reduction', ['cupy/_core/_gpu/_cub_reduction.pyx']),
+    # CCCL (cuda.compute) based implementations, upstream 14.3 -- CUDA only
+    'cupy._core._cuda_compute_common',
+    'cupy._core._cuda_compute_reduction',
+    'cupy._core._cuda_compute_scan',
     ('cupy._core._reduction', ['cupy/_core/_gpu/_reduction.pyx']),
     'cupy._core._routines_binary',
     ('cupy._core._routines_creation', ['cupy/_core/_routines_creation.pyx']),
@@ -114,7 +118,8 @@ cuda_files = [
 
 
 class CUDA_cuda(Feature):
-    minimum_cuda_version = 11020
+    _minimum_cuda_version = 12000
+    _minimum_cuda_version_str = "12.0"
 
     def __init__(self, ctx: Context):
         super().__init__(ctx)
@@ -149,17 +154,18 @@ class CUDA_cuda(Feature):
               printf("%d", CUDA_VERSION);
               return 0;
             }
-            ''', include_dirs=settings['include_dirs'])  # type: ignore[no-untyped-call] # NOQA
+            ''', include_dirs=settings['include_dirs'],
+            extra_compile_args=settings['extra_compile_args'])  # type: ignore[no-untyped-call] # NOQA
         except Exception as e:
             utils.print_warning('Cannot check CUDA version', str(e))
             return False
 
         self._version = int(out)
 
-        if self._version < self.minimum_cuda_version:
+        if self._version < self._minimum_cuda_version:
             utils.print_warning(
-                'CUDA version is too old: %d' % self._version,
-                'CUDA 11.2 or newer is required')
+                f'CUDA version is too old: {self._version}',
+                f'CUDA {self._minimum_cuda_version_str} or newer is required')
             return False
         return True
 
@@ -176,7 +182,7 @@ def cuda_feature_dicts(cudart_static_libs: list[str]) -> dict[str, dict[str, Any
             'required': True,
             'file': [
                 'cupy.backends.cuda.libs.cusolver',
-                'cupyx.cusolver',
+                'cupyx._cusolver',
             ],
             'include': [
                 'cusolverDn.h',
@@ -215,7 +221,7 @@ def cuda_feature_dicts(cudart_static_libs: list[str]) -> dict[str, dict[str, Any
             'name': 'cutensor',
             'file': [
                 'cupy.backends.cuda.libs.cutensor',
-                'cupyx.cutensor',
+                'cupyx._cutensor',
             ],
             'include': [
                 'cutensor.h',

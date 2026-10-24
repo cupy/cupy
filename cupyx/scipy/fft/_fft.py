@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from numbers import Number
-import warnings
 
 import numpy as np
 
@@ -10,10 +9,7 @@ import cupy
 from cupy.fft._backend import get_cufft as _get_cufft  # NOQA
 from cupy.fft._fft import _fft, _default_fft_func, _swap_direction
 
-_scipy_150 = False
-_scipy_160 = False
 try:
-    import scipy
     import scipy.fft as _scipy_fft
 except ImportError:
     class _DummyModule:
@@ -21,12 +17,6 @@ except ImportError:
             return None
 
     _scipy_fft = _DummyModule()
-else:
-    from numpy.lib import NumpyVersion as Version
-    _scipy_150 = Version(scipy.__version__) >= Version('1.5.0')
-    _scipy_160 = Version(scipy.__version__) >= Version('1.6.0')
-    del Version
-    del scipy
 
 # Backend support for scipy.fft
 
@@ -56,8 +46,6 @@ def __ua_function__(method, args, kwargs):
     fn = _implemented.get(method, None)
     if fn is None:
         return NotImplemented
-    if 'plan' in kwargs and not _scipy_150:
-        warnings.warn('The \'plan\' argument is supported in SciPy v1.5.0+')
     return fn(*args, **kwargs)
 
 

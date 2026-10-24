@@ -183,9 +183,12 @@ def zpk2sos(z, p, k, pairing=None, *, analog=False):
 
     if len(z) == len(p) == 0:
         if not analog:
-            return cupy.array([[k, 0., 0., 1., 0., 0.]])
-        else:
-            return cupy.array([[0., 0., k, 0., 0., 1.]])
+            out = cupy.array([[0., 0., 0., 1., 0., 0.]])
+            out[0][0] = k
+            return out
+        out = cupy.array([[0., 0., 0., 0., 0., 1.]])
+        out[0][2] = k
+        return out
 
     if pairing != 'minimal':
         # ensure we have the same number of poles and zeros, and make copies
@@ -858,6 +861,10 @@ def bilinear(b, a, fs=1.0):
     """
     fs = float(fs)
     a, b = map(cupy.atleast_1d, (a, b))
+    # Remove leading zeros so they don't inflate the polynomial degrees and
+    # change the result (matches ``scipy.signal.bilinear``; see scipy gh-6606).
+    b = cupy.trim_zeros(b, 'f')
+    a = cupy.trim_zeros(a, 'f')
     D = a.shape[0] - 1
     N = b.shape[0] - 1
 

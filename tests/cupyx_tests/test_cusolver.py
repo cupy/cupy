@@ -152,7 +152,7 @@ class TestSyevj:
         a = cupy.array(self.a, order=self.order)
         w, v = cusolver.syevj(a, UPLO=self.UPLO, with_eigen_vector=True)
 
-        # check eignvalue equation
+        # check eigenvalue equation
         testing.assert_allclose(self.a.dot(
             v.get()), w * v, rtol=1e-3, atol=1e-4)
 
@@ -164,7 +164,7 @@ class TestSyevj:
 
         w, v = cusolver.syevj(a, UPLO=self.UPLO, with_eigen_vector=True)
 
-        # check eignvalue equation
+        # check eigenvalue equation
         batch_size = a.shape[0]
         for i in range(batch_size):
             testing.assert_allclose(

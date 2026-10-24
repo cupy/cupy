@@ -2,13 +2,11 @@ from __future__ import annotations
 
 import numpy as np
 try:
-    # scipy.fft is available since scipy v1.4.0+
+    import scipy
     import scipy.fft as scipy_fft
 except ImportError:
     scipy_fft = None
     scipy = None
-else:
-    import scipy
 import pytest
 
 import cupy as cp
@@ -43,16 +41,6 @@ def _correct_np_dtype(xp, dtype, out):
     return out
 
 
-def _skip_forward_backward(norm):
-    if norm in ('backward', 'forward'):
-        if (scipy_fft is not None
-                and not (np.lib.NumpyVersion(scipy.__version__) >= '1.6.0')):
-            pytest.skip('forward/backward is supported by SciPy 1.6.0+')
-        elif (scipy_fft is None
-                and not (np.lib.NumpyVersion(np.__version__) >= '1.20.0')):
-            pytest.skip('forward/backward is supported by NumPy 1.20+')
-
-
 @testing.parameterize(*testing.product({
     'n': [None, 0, 5, 10, 15],
     'shape': [(9,), (10,), (10, 9), (10, 10)],
@@ -60,10 +48,6 @@ def _skip_forward_backward(norm):
     'norm': [None, 'backward', 'ortho', 'forward', '']
 }))
 class TestFft:
-
-    @pytest.fixture(autouse=True)
-    def setUp(self):
-        _skip_forward_backward(self.norm)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
@@ -146,7 +130,7 @@ class TestFft:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.4.0')
+    @testing.with_requires('scipy')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -159,7 +143,7 @@ class TestFft:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.5.0')
+    @testing.with_requires('scipy')
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -265,7 +249,7 @@ class TestFft:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.4.0')
+    @testing.with_requires('scipy')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -278,7 +262,7 @@ class TestFft:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.5.0')
+    @testing.with_requires('scipy')
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -322,10 +306,6 @@ class TestFft:
     )
 ))
 class TestFft2:
-
-    @pytest.fixture(autouse=True)
-    def setUp(self):
-        _skip_forward_backward(self.norm)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
@@ -405,7 +385,7 @@ class TestFft2:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.4.0')
+    @testing.with_requires('scipy')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -418,7 +398,7 @@ class TestFft2:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.5.0')
+    @testing.with_requires('scipy')
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -521,7 +501,7 @@ class TestFft2:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.4.0')
+    @testing.with_requires('scipy')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -534,7 +514,7 @@ class TestFft2:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.5.0')
+    @testing.with_requires('scipy')
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -582,10 +562,6 @@ class TestFft2:
     )
 ))
 class TestFftn:
-
-    @pytest.fixture(autouse=True)
-    def setUp(self):
-        _skip_forward_backward(self.norm)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
@@ -666,7 +642,7 @@ class TestFftn:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.4.0')
+    @testing.with_requires('scipy')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -679,7 +655,7 @@ class TestFftn:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.5.0')
+    @testing.with_requires('scipy')
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -782,7 +758,7 @@ class TestFftn:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.4.0')
+    @testing.with_requires('scipy')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -795,7 +771,7 @@ class TestFftn:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.5.0')
+    @testing.with_requires('scipy')
     @testing.for_complex_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -827,10 +803,6 @@ class TestFftn:
     'norm': [None, 'backward', 'ortho', 'forward', '']
 }))
 class TestRfft:
-
-    @pytest.fixture(autouse=True)
-    def setUp(self):
-        _skip_forward_backward(self.norm)
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-6, accept_error=ValueError,
@@ -868,7 +840,7 @@ class TestRfft:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.4.0')
+    @testing.with_requires('scipy')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-6, accept_error=ValueError,
                                  contiguous_check=False)
@@ -915,8 +887,6 @@ class TestRfft:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    # the irfft tests show a slightly different results in CUDA 11.0 when
-    # compared to SciPy 1.6.1
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-5, accept_error=ValueError,
                                  contiguous_check=False)
@@ -988,7 +958,7 @@ class TestRfft:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.4.0')
+    @testing.with_requires('scipy')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-5, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1032,10 +1002,6 @@ def _skip_hipFFT_PlanNd_bug(axes, shape):
     )
 ))
 class TestRfft2:
-
-    @pytest.fixture(autouse=True)
-    def setUp(self):
-        _skip_forward_backward(self.norm)
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
@@ -1130,7 +1096,7 @@ class TestRfft2:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.4.0')
+    @testing.with_requires('scipy')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1254,7 +1220,7 @@ class TestRfft2:
 
     @pytest.mark.skipif(_irfft_skip_condition,
                         reason="Known to fail with Pascal or older")
-    @testing.with_requires('scipy>=1.4.0')
+    @testing.with_requires('scipy')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1289,10 +1255,6 @@ class TestRfft2:
     )
 ))
 class TestRfftn:
-
-    @pytest.fixture(autouse=True)
-    def setUp(self):
-        _skip_forward_backward(self.norm)
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
@@ -1387,7 +1349,7 @@ class TestRfftn:
         testing.assert_array_equal(x, x_orig)
         return _correct_np_dtype(xp, dtype, out)
 
-    @testing.with_requires('scipy>=1.4.0')
+    @testing.with_requires('scipy')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1511,7 +1473,7 @@ class TestRfftn:
 
     @pytest.mark.skipif(_irfft_skip_condition,
                         reason="Known to fail with Pascal or older")
-    @testing.with_requires('scipy>=1.4.0')
+    @testing.with_requires('scipy')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1532,10 +1494,6 @@ class TestRfftn:
     'norm': [None, 'backward', 'ortho', 'forward', ''],
 }))
 class TestHfft:
-
-    @pytest.fixture(autouse=True)
-    def setUp(self):
-        _skip_forward_backward(self.norm)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=4e-4, atol=1e-7, accept_error=ValueError,
@@ -1565,7 +1523,7 @@ class TestHfft:
             _fft_module(cp).hfft(x, n=self.n, axis=self.axis,
                                  norm=self.norm, plan='abc')
 
-    @testing.with_requires('scipy>=1.4.0')
+    @testing.with_requires('scipy')
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=4e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1606,7 +1564,7 @@ class TestHfft:
             _fft_module(cp).ihfft(x, n=self.n, axis=self.axis,
                                   norm=self.norm, plan='abc')
 
-    @testing.with_requires('scipy>=1.4.0')
+    @testing.with_requires('scipy')
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-7, accept_error=ValueError,
                                  contiguous_check=False)
@@ -1637,12 +1595,8 @@ class TestHfft:
         testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
     )
 ))
-@testing.with_requires('scipy>=1.4.0')
+@testing.with_requires('scipy')
 class TestHfft2:
-
-    @pytest.fixture(autouse=True)
-    def setUp(self):
-        _skip_forward_backward(self.norm)
 
     @pytest.mark.skipif(_irfft_skip_condition,
                         reason="Known to fail with Pascal or older")
@@ -1716,12 +1670,8 @@ class TestHfft2:
         testing.product({'norm': [None, 'backward', 'ortho', 'forward']})
     )
 ))
-@testing.with_requires('scipy>=1.4.0')
+@testing.with_requires('scipy')
 class TestHfftn:
-
-    @pytest.fixture(autouse=True)
-    def setUp(self):
-        _skip_forward_backward(self.norm)
 
     @pytest.mark.skipif(_irfft_skip_condition,
                         reason="Known to fail with Pascal or older")

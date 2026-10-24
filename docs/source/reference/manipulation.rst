@@ -43,7 +43,7 @@ Transpose-like operations
    # ndarray.T
    transpose
    permute_dims
-   # matrix_transpose (Array API compatible)
+   matrix_transpose (Array API compatible)
 
 .. seealso:: :attr:`cupy.ndarray.T`
 

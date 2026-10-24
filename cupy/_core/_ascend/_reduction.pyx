@@ -532,10 +532,10 @@ cdef class _AbstractReductionKernel:
 
 cpdef _SimpleReductionKernel create_reduction_func(
         name, ops, routine=None, identity=None, preamble='',
-        sort_reduce_axis=True):
+        sort_reduce_axis=True, compute_opkind=None):
     ops = _kernel._Ops.from_tuples(ops, routine)
     return _SimpleReductionKernel(
-        name, ops, identity, preamble, sort_reduce_axis)
+        name, ops, identity, preamble, sort_reduce_axis, compute_opkind)
 
 
 cdef class _SimpleReductionKernel(_AbstractReductionKernel):
@@ -549,10 +549,12 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
         readonly str _output_expr
         readonly dict _routine_cache
         readonly bint _sort_reduce_axis
+        # op kind hint for cuda.compute (CUDA only; kept for API parity)
+        readonly object compute_opkind
 
     def __init__(
             self, name, _kernel._Ops ops, identity, preamble,
-            sort_reduce_axis=True):
+            sort_reduce_axis=True, compute_opkind=None):
         super().__init__(
             name,
             '' if identity is None else str(identity),
@@ -567,6 +569,7 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
         self._output_expr = 'type_out0_raw &out0 = _raw_out0[_out_ind.get()];'
         self._routine_cache = {}
         self._sort_reduce_axis = sort_reduce_axis
+        self.compute_opkind = compute_opkind
 
     def __call__(self, object a, axis=None, dtype=None, _ndarray_base out=None,
                  bint keepdims=False):

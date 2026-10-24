@@ -2,10 +2,12 @@
 
 set -uex
 
+# The ROCm math/comm libraries (hipblas, rccl, rocfft, etc.) are already
+# shipped in the rocm/dev-ubuntu-22.04:*-full base image, so we only need to
+# make sure Python's dev headers and pip are available.
 apt-get -y update
 DEBIAN_FRONTEND=noninteractive apt-get -y install \
-    python3-dev python3-pip \
-    hipblas hipsparse rocsparse rocrand hiprand rocthrust rocsolver rocfft hipfft hipcub rocprim rccl
+    python3-dev python3-pip
 
 hipconfig
 

@@ -7,7 +7,6 @@ import numpy
 
 import cupy
 from cupy.exceptions import RankWarning
-import cupyx.scipy.fft
 
 # cupy.linalg is not importable on the Ascend backend (cupy/linalg/_solve.py
 # depends on cupy.cuda.device), so polyfit's lstsq/inv resolve to a pure-ufunc
@@ -211,6 +210,7 @@ def _polypow(x, n):
         else:
             fft, ifft = cupy.fft.rfft, cupy.fft.irfft
         out_size = (x.size - 1) * n + 1
+        import cupyx.scipy.fft
         size = cupyx.scipy.fft.next_fast_len(out_size)
         fx = fft(x, size)
         fy = cupy.power(fx, n, fx)

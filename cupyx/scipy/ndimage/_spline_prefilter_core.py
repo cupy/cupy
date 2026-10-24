@@ -68,19 +68,19 @@ def _causal_init_code(mode):
         }}
         c[0] /= 1 - z_i; /* z_i = pow(z, n) */'''
     elif mode == 'reflect':
+        # Accumulate into `sum` rather than into `c[0]`: the loop reads
+        # `c[n - 1 - i]`, which is `c[0]` itself on the last iteration.
         code += '''
         z_i = z;
         z_n = pow(z, (P)n);
-        c0 = c[0];
 
-        c[0] = c[0] + z_n * c[(n - 1) * element_stride];
+        sum = c[0] + z_n * c[(n - 1) * element_stride];
         for (i = 1; i < min(n, static_cast<idx_t>({n_boundary})); ++i) {{
-            c[0] += z_i * (c[i * element_stride] +
-                           z_n * c[(n - 1 - i) * element_stride]);
+            sum += z_i * (c[i * element_stride] +
+                          z_n * c[(n - 1 - i) * element_stride]);
             z_i *= z;
         }}
-        c[0] *= z / (1 - z_n * z_n);
-        c[0] += c0;'''
+        c[0] += sum * z / (1 - z_n * z_n);'''
     else:
         raise ValueError('invalid mode: {}'.format(mode))
     return code
@@ -156,7 +156,7 @@ def _get_spline1d_code(mode, poles, n_boundary):
         # variables specific to reflect boundary mode
         code.append('''
         P z_n;
-        T c0;''')
+        T sum;''')
 
     for pole in poles:
 
@@ -193,6 +193,8 @@ def _get_spline1d_code(mode, poles, n_boundary):
 _FILTER_GENERAL = '''
 #include "cupy/carray.cuh"
 #include "cupy/complex.cuh"
+{type_decls}
+
 typedef {data_type} T;
 typedef {pole_type} P;
 typedef {index_type} idx_t;
@@ -234,7 +236,7 @@ void {kernel_name}(T* __restrict__ y, const idx_t* __restrict__ info) {{
 @cupy.memoize(for_each_device=True)
 def get_raw_spline1d_kernel(axis, ndim, mode, order, index_type='int',
                             data_type='double', pole_type='double',
-                            block_size=128):
+                            block_size=128, *, type_decls):
     """Generate a kernel for applying a spline prefilter along a given axis."""
     poles = get_poles(order)
 
@@ -248,7 +250,8 @@ def get_raw_spline1d_kernel(axis, ndim, mode, order, index_type='int',
     # headers and general utility function for extracting rows of data
     code = _FILTER_GENERAL.format(index_type=index_type,
                                   data_type=data_type,
-                                  pole_type=pole_type)
+                                  pole_type=pole_type,
+                                  type_decls=type_decls)
 
     # generate source for a 1d function for a given boundary mode and poles
     code += _get_spline1d_code(mode, poles, n_boundary)

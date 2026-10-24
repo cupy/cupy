@@ -14,6 +14,7 @@ Basics
    solve_triangular
    kron
    khatri_rao
+   bandwidth
 
 
 Matrix Functions

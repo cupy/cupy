@@ -114,6 +114,7 @@ cupy_package_data = [
     'cupy/cuda/cupy_cufft.h',  # for cuFFT callback
     'cupy/cuda/cufft.pxd',  # for cuFFT callback
     'cupy/cuda/cufft.pyx',  # for cuFFT callback
+    'cupy_backends/cuda/_softlink.pxd',  # for cuFFT callback
     'cupy/random/cupy_distributions.cu',
     'cupy/random/cupy_distributions.cuh',
     'cupyx/scipy/ndimage/cuda/LICENSE',
@@ -285,8 +286,35 @@ def _make_cmdclass():
     return cmds
 
 
+dependencies = [
+    "numpy>=2.0,<2.7",  # see #4773
+]
+optional_dependencies = {
+    "all": [
+        "scipy>=1.14,<1.19",  # see #4773
+        "Cython>=3,!=3.2.6",
+        "optuna>=2.0",
+    ],
+    "test": [
+        "packaging",
+        "pytest>=7.2",
+        "hypothesis>=6.37.2,<6.55.0",
+        "mpmath",
+    ],
+}
+if not ctx.use_hip:
+    dependencies.append("cuda-pathfinder>=1.3.4,==1.*")
+    if not ctx.use_stub:
+        cuda_major = ctx.features["cuda"].get_version() // 1000
+        optional_dependencies["ctk"] = [
+            f"cuda-toolkit[cudart,nvrtc,cublas,cufft,cusolver,cusparse,curand]=={cuda_major}.*"  # NOQA
+        ]
+
+
 setup(
     package_data=package_data,
+    install_requires=dependencies,
+    extras_require=optional_dependencies,
     zip_safe=False,
     ext_modules=ext_modules,
     cmdclass=_make_cmdclass(),

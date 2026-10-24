@@ -41,8 +41,13 @@ cdef class RawKernel:
             compile C++ kernels. Defaults to ``False``.
 
     .. note::
-        Starting CuPy v13.0.0, `RawKernel` by default compiles with the C++11
-        standard (``-std=c++11``) if it's not specified in ``options``.
+        Starting CuPy v14.0.0, `RawKernel` by default compiles with the C++17
+        standard (``-std=c++17``) if it's not specified in ``options``.
+
+    .. note::
+        Unlike `ElementwiseKernel`, `RawKernel` ignores any views on
+        CuPy arrays. You are responsible for handling strides manually.
+        For example, passing `matrix.T` is treated as if you passed `matrix`.
 
     .. _Jitify:
         https://github.com/NVIDIA/jitify
@@ -55,7 +60,7 @@ cdef class RawKernel:
 
     def __init__(self, str code, str name, tuple options=(),
                  str backend='nvrtc', *, bint translate_cucomplex=False,
-                 bint enable_cooperative_groups=False, bint jitify=False):
+                 bint enable_cooperative_groups=False, object jitify=None):
 
         self.code = code
         self.name = name
@@ -64,6 +69,9 @@ cdef class RawKernel:
         self.translate_cucomplex = translate_cucomplex
         self.enable_cooperative_groups = enable_cooperative_groups
         self.jitify = jitify
+        if jitify is not None:
+            from cupy.cuda.compiler import _jitify_deprecation_warning
+            _jitify_deprecation_warning(jitify)
 
         # only used when RawKernels are produced from RawModule
         self.file_path = None  # for cubin/ptx
@@ -338,8 +346,8 @@ cdef class RawModule:
             compile C++ kernels. Defaults to ``False``.
 
     .. note::
-        Starting CuPy v13.0.0, `RawModule` by default compiles with the C++11
-        standard (``-std=c++11``) if it's not specified in ``options``.
+        Starting CuPy v14.0.0, `RawModule` by default compiles with the C++17
+        standard (``-std=c++17``) if it's not specified in ``options``.
 
     .. note::
         Each kernel in ``RawModule`` possesses independent function attributes.
@@ -356,7 +364,7 @@ cdef class RawModule:
     def __init__(self, *, str code=None, str path=None, tuple options=(),
                  str backend='nvrtc', bint translate_cucomplex=False,
                  bint enable_cooperative_groups=False,
-                 name_expressions=None, bint jitify=False):
+                 name_expressions=None, jitify=None):
         if (code is None) == (path is None):
             raise TypeError(
                 'Exactly one of `code` and `path` keyword arguments must be '
@@ -381,6 +389,9 @@ cdef class RawModule:
         self.file_path = path
         self.enable_cooperative_groups = enable_cooperative_groups
         self.jitify = jitify
+        if jitify is not None:
+            from cupy.cuda.compiler import _jitify_deprecation_warning
+            _jitify_deprecation_warning(jitify)
 
         if self.code is not None:
             self.options = options
@@ -449,7 +460,7 @@ cdef class RawModule:
                 '''
 
                 kers = ('func<int>', 'func<float>', 'func<double>')
-                mod = cupy.RawModule(code=code, options=('--std=c++11',),
+                mod = cupy.RawModule(code=code, options=('--std=c++17',),
                                      name_expressions=kers)
 
                 // retrieve func<int>
@@ -477,7 +488,7 @@ cdef class RawModule:
             self.code, name, self.options, self.backend,
             translate_cucomplex=self.translate_cucomplex,
             enable_cooperative_groups=self.enable_cooperative_groups,
-            jitify=self.jitify)
+            jitify=self.jitify or None)
 
         # for lookup in case we loaded from cubin/ptx
         ker.file_path = self.file_path

@@ -429,6 +429,22 @@ class TestArgrel:
         order = xp.argsort(row)
         return row[order], col[order]
 
+    @pytest.mark.parametrize('func_name', ['argrelmax', 'argrelmin'])
+    @pytest.mark.parametrize('axis', [-2, -1, 0, 1])
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_negative_axis_2d(self, func_name, axis, xp, scp):
+        # A negative axis must select the same axis as its positive
+        # counterpart (axis=-2 is the row axis on 2-D input).
+        x = xp.array([[1.0, 5.0, 3.0, 8.0],
+                      [7.0, 2.0, 6.0, 1.0],
+                      [3.0, 9.0, 2.0, 7.0],
+                      [8.0, 1.0, 7.0, 2.0]])
+
+        func = getattr(scp.signal, func_name)
+        row, col = func(x, axis=axis)
+        order = xp.lexsort(xp.stack([col, row]))
+        return row[order], col[order]
+
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_highorder(self, xp, scp):
         order = 2

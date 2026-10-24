@@ -86,8 +86,9 @@ class TestSearch:
         return a.argmax(axis=1)
 
     @testing.slow
+    @pytest.mark.thread_unsafe(reason="allocation too large.")
     def test_argmax_int32_overflow(self):
-        a = testing.shaped_arange((2 ** 32 + 1,), cupy, numpy.float64)
+        a = cupy.arange(2 ** 32 + 1, dtype=cupy.float64)
         assert a.argmax().item() == 2 ** 32
 
     @testing.for_all_dtypes(no_complex=True)
@@ -165,8 +166,9 @@ class TestSearch:
         return a.argmin(axis=1)
 
     @testing.slow
+    @pytest.mark.thread_unsafe(reason="allocation too large.")
     def test_argmin_int32_overflow(self):
-        a = testing.shaped_arange((2 ** 32 + 1,), cupy, numpy.float64)
+        a = cupy.arange(2 ** 32 + 1, dtype=cupy.float64)
         cupy.negative(a, out=a)
         assert a.argmin().item() == 2 ** 32
 
@@ -181,12 +183,15 @@ def _skip_cuda90(dtype):
 # This class compares CUB results against NumPy's
 # TODO(leofang): test axis after support is added
 @testing.parameterize(*testing.product({
-    'shape': [(10,), (10, 20), (10, 20, 30), (10, 20, 30, 40)],
+    # Keep the contiguous reduction axis (last for C, first for F) >= 128 so
+    # the CUB block-reduction path is used rather than the short-axis fallback.
+    'shape': [(128,), (128, 128), (128, 2, 128), (128, 2, 2, 128)],
     'order_and_axis': (('C', -1), ('C', None), ('F', 0), ('F', None)),
     'backend': ('device', 'block'),
 }))
 @pytest.mark.skipif(
     not cupy.cuda.cub.available, reason='The CUB routine is not enabled')
+@pytest.mark.thread_unsafe(reason="unsafe setUp and counts function calls.")
 class TestCubReduction:
 
     @pytest.fixture(autouse=True)
@@ -699,7 +704,9 @@ class TestSearchSorted:
         x = testing.shaped_arange(self.shape, xp, dtype)
         bins = xp.array(self.bins)
         y = xp.searchsorted(bins, x, side=self.side)
-        return y,
+        # python scalar for `v`
+        y1 = xp.searchsorted(bins, 42.5, side=self.side)
+        return y, y1
 
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_array_equal()
@@ -707,6 +714,15 @@ class TestSearchSorted:
         x = testing.shaped_arange(self.shape, xp, dtype)
         bins = xp.array(self.bins)
         y = bins.searchsorted(x, side=self.side)
+        return y,
+
+
+class TestSearchSortedScalar:
+    @pytest.mark.parametrize('side', ['left', 'right'])
+    @pytest.mark.parametrize('v', [-1.0, 0.0, 1.0, 1.5, 2.0, 4.0, 4.5])
+    @testing.numpy_cupy_array_equal()
+    def test_searchsorted_scalar(self, xp, v, side):
+        y = xp.searchsorted(xp.arange(3), v)
         return y,
 
 

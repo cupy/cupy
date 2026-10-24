@@ -612,7 +612,7 @@ class TestPlacePoles:
         fsf = scp.signal.place_poles(A, B, P)
         return fsf.computed_poles
 
-    @testing.with_requires("scipy >= 1.9")
+    @testing.with_requires("scipy")
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-8)
     def test_complex_2(self, xp, scp):
         # Try to reach the specific case in _YT_complex where two singular

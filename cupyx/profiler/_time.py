@@ -104,6 +104,11 @@ def benchmark(
         b = cp.random.random((100,))
         print(benchmark(f, (a, b), n_repeat=1000))
 
+    .. note::
+        For IPython/Jupyter users, the ``%gpu_timeit`` magic provides
+        a convenient way to use this function. See the documentation
+        for :doc:`/user_guide/performance` for details.
+
 
     Args:
         func (callable): a callable object to be timed.

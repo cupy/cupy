@@ -87,52 +87,6 @@ def nvcc_gencode_options(cuda_version: int) -> list[str]:
                     ('compute_72', 'sm_72'),  # Jetson (Xavier)
                     ('compute_87', 'sm_87'),  # Jetson (Orin)
                 ]
-        elif cuda_version >= 11080:
-            arch_list = [('compute_35', 'sm_35'),
-                         ('compute_37', 'sm_37'),
-                         ('compute_50', 'sm_50'),
-                         ('compute_52', 'sm_52'),
-                         ('compute_60', 'sm_60'),
-                         ('compute_61', 'sm_61'),
-                         ('compute_70', 'sm_70'),
-                         ('compute_75', 'sm_75'),
-                         ('compute_80', 'sm_80'),
-                         ('compute_86', 'sm_86'),
-                         ('compute_89', 'sm_89'),
-                         ('compute_90', 'sm_90'),
-                         'compute_90']
-            if aarch64:
-                arch_list += [
-                    ('compute_72', 'sm_72'),  # Jetson (Xavier)
-                    ('compute_87', 'sm_87'),  # Jetson (Orin)
-                ]
-        elif cuda_version >= 11040:
-            arch_list = [('compute_35', 'sm_35'),
-                         ('compute_37', 'sm_37'),
-                         ('compute_50', 'sm_50'),
-                         ('compute_52', 'sm_52'),
-                         ('compute_60', 'sm_60'),
-                         ('compute_61', 'sm_61'),
-                         ('compute_70', 'sm_70'),
-                         ('compute_75', 'sm_75'),
-                         ('compute_80', 'sm_80'),
-                         ('compute_86', 'sm_86'),
-                         'compute_86']
-            if aarch64:
-                arch_list += [
-                    ('compute_72', 'sm_72'),  # Jetson (Xavier)
-                    ('compute_87', 'sm_87'),  # Jetson (Orin)
-                ]
-        elif cuda_version >= 11020:
-            arch_list = ['compute_35',
-                         'compute_50',
-                         ('compute_60', 'sm_60'),
-                         ('compute_61', 'sm_61'),
-                         ('compute_70', 'sm_70'),
-                         ('compute_75', 'sm_75'),
-                         ('compute_80', 'sm_80'),
-                         ('compute_86', 'sm_86'),
-                         'compute_86']
         else:
             # This should not happen.
             assert False
@@ -189,6 +143,13 @@ class CudaBackend(Backend):
             dirs.append(stubs)
         return dirs
 
+    def get_extra_compile_args(self) -> list[str]:
+        # CCCL 3.x (for CUDA) requires c++17
+        if build.PLATFORM_LINUX:
+            return ['-std=c++17']
+        assert build.PLATFORM_WIN32
+        return ['/std:c++17']
+
     def get_device_compile_args(self, ctx: Context, src: str) -> list[str]:
         compiler = self.get_device_compiler()
         if compiler is None:
@@ -201,8 +162,7 @@ class CudaBackend(Backend):
             '--expt-relaxed-constexpr']
         num_threads = int(os.environ.get('CUPY_NUM_NVCC_THREADS', '2'))
         postargs += ['--std=c++17',
-                     f'-t{num_threads}',
-                     '-Xcompiler=-fno-gnu-unique']
+                     f'-t{num_threads}']
         return compiler + base_opts + postargs
 
     def get_compile_time_env(self, ctx: Context) -> dict[str, Any]:

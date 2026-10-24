@@ -7,6 +7,9 @@ from cupyx import jit
 Test to ensure that this file can be imported without CUDA Toolkit.
 """
 
+# Running without CUDA toolkit, is_available should return False.
+assert isinstance(cupy.is_available(), bool)
+
 
 @cupy.memoize()
 def user_func(a: cupy.ndarray):

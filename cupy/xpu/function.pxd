@@ -15,7 +15,9 @@ from libc.stdint cimport intptr_t, uintmax_t
 
 cdef class CPointer:
     cdef:
-        void* ptr
+        # intptr_t (not void*) since upstream 14.3: `ptr` is exposed read-only to
+        # Python, so the value has to be convertible to an integer.
+        readonly intptr_t ptr
         # Ascend only: number of bytes appended to the kernel argument buffer
         # by `aclrtKernelArgsAppend` (CUDA passes an array of pointers to the
         # argument values and needs no size).  The CUDA implementation leaves

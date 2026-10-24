@@ -143,6 +143,10 @@ def channelize_poly_cpu(x, h, n_chans):
 
 
 @pytest.mark.skipif(
+    cupy.cuda.runtime.is_hip,
+    reason="channelize_poly requires cooperative_groups reduce (not "
+           "available on HIP)")
+@pytest.mark.skipif(
     cupy.cuda.runtime.runtimeGetVersion() < 11040,
     reason='Requires CUDA 11.4 or greater')
 @pytest.mark.parametrize(

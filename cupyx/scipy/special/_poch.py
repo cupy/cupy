@@ -115,7 +115,7 @@ poch = _core.create_ufunc(
     preamble=poch_definition,
     doc="""Elementwise function for scipy.special.poch (Pochhammer symbol)
 
-    .. seealso:: :meth:`scipy.special.poch`
+    .. seealso:: :func:`scipy.special.poch`
 
     """,
 )

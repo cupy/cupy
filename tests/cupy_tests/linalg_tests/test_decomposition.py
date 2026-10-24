@@ -224,7 +224,9 @@ class TestSVD(unittest.TestCase):
                                         vh_gpu[..., :k, :])
             else:
                 a_gpu_usv = cupy.matmul(u_gpu*s_gpu[..., None, :], vh_gpu)
-        cupy.testing.assert_allclose(a_gpu, a_gpu_usv, rtol=1e-4, atol=1e-4)
+
+        tol = numpy.finfo(a_gpu_usv.dtype).eps * 1024
+        cupy.testing.assert_allclose(a_gpu, a_gpu_usv, rtol=tol, atol=tol)
 
         # assert unitary
         u_len = u_gpu.shape[-1]

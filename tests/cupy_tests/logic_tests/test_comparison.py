@@ -4,6 +4,7 @@ import operator
 import unittest
 
 import numpy
+import pytest
 
 import cupy
 from cupy import testing
@@ -37,13 +38,15 @@ class TestComparison(unittest.TestCase):
         self.check_binary('equal')
 
 
-class TestComparisonOperator(unittest.TestCase):
+operators = [
+    operator.lt, operator.le,
+    operator.eq, operator.ne,
+    operator.gt, operator.ge,
+]
 
-    operators = [
-        operator.lt, operator.le,
-        operator.eq, operator.ne,
-        operator.gt, operator.ge,
-    ]
+
+class TestComparisonOperator:
+    operators = operators
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
@@ -72,6 +75,46 @@ class TestComparisonOperator(unittest.TestCase):
         a = testing.shaped_arange((2, 3), xp, dtype)
         b = 3
         return [op(a, b) for op in self.operators]
+
+    @pytest.mark.parametrize('dtype', [
+        numpy.int8, numpy.int64, numpy.uint8, numpy.uint64])
+    @pytest.mark.parametrize('scalar', [-1, 0, 2**32, 2**63, 2**64-1])
+    @pytest.mark.parametrize('op', operators)
+    @testing.numpy_cupy_array_equal()
+    @numpy.errstate(over='ignore')
+    def test_binary_array_pyscalar_int(self, xp, dtype, scalar, op):
+        # This test also checks large mixed unsigned/signed comparisons.
+        min_, max_ = numpy.iinfo(dtype).min, numpy.iinfo(dtype).max
+
+        a = xp.array(
+            [min_, 0, max_, xp.dtype(dtype).type(0) - 1],
+            dtype=dtype)
+        b = scalar
+        return [op(a, b), op(b, a)]
+
+    @pytest.mark.parametrize('dtype', [
+        numpy.float16, numpy.float32, numpy.float64])
+    @pytest.mark.parametrize('scalar',
+                             [-1, 0, 2**32, 2**31-1, 2**31+1, 2**63, 2**64-1])
+    @pytest.mark.parametrize('op', operators)
+    @testing.numpy_cupy_array_equal()
+    @numpy.errstate(over='ignore')
+    def test_binary_array_pyscalar_int_and_float(self, xp, dtype, scalar, op):
+        a = xp.array([-1, 0, 2**31-1, 2**31+1, 2**32, 2**63-1, 2**62, 2**62+1])
+        a = a.astype(dtype)  # cast (overflow OK)
+        b = scalar
+        return [op(a, b), op(b, a)]
+
+    @pytest.mark.parametrize('scalar,safe_scalar',
+                             [(2**63, 2), (2**63+100, 2), (-2**63, -1)])
+    @pytest.mark.parametrize('op', operators)
+    def test_binary_array_pyscalar_int_and_bool(
+            self, scalar, safe_scalar, op):
+        # As of 2.5, NumPy uses the default integer and fails for very large
+        # Python scalars. But CuPy uses uint64 and succeeds.
+        a = cupy.array([True, False])
+        testing.assert_array_equal(op(a, scalar), op(a, safe_scalar))
+        testing.assert_array_equal(op(scalar, a), op(safe_scalar, a))
 
 
 class TestArrayEqual(unittest.TestCase):
@@ -205,6 +248,7 @@ class TestAllclose(unittest.TestCase):
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
+    @numpy.errstate(over='ignore')
     def test_allclose_min_int(self, xp, dtype):
         a = xp.array([0]).astype(dtype)
         b = xp.array([numpy.iinfo('i').min]).astype(dtype)
@@ -250,6 +294,7 @@ class TestIsclose(unittest.TestCase):
 
     @testing.for_all_dtypes(no_complex=True)
     @testing.numpy_cupy_array_equal()
+    @numpy.errstate(over='ignore')
     def test_is_close_min_int(self, xp, dtype):
         # In numpy<1.10 this test fails when dtype is bool
         a = xp.array([0]).astype(dtype)

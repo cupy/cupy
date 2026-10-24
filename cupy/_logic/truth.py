@@ -214,6 +214,7 @@ def intersect1d(arr1, arr2, assume_unique=False, return_indices=False):
     if ret is not None:
         return ret
     from cupy._sorting import search as _search
+    common_dtype = cupy.result_type(arr1.dtype, arr2.dtype)
     if not assume_unique:
         if return_indices:
             arr1, ind1 = cupy.unique(arr1, return_index=True)
@@ -227,11 +228,11 @@ def intersect1d(arr1, arr2, assume_unique=False, return_indices=False):
 
     if not return_indices:
         mask = _search._exists_kernel(arr1, arr2, arr2.size, False)
-        return arr1[mask]
+        return arr1[mask].astype(common_dtype)
 
     mask, v1 = _search._exists_and_searchsorted_kernel(
         arr1, arr2, arr2.size, False)
-    int1d = arr1[mask]
+    int1d = arr1[mask].astype(common_dtype)
     arr1_indices = cupy.flatnonzero(mask)
     arr2_indices = v1[mask]
 

@@ -14,13 +14,22 @@ from cupy_builder import install_build as build
 test_hip = bool(int(os.environ.get('CUPY_INSTALL_USE_HIP', '0')))
 
 
+@pytest.mark.parametrize(
+    ('machine', 'expected'),
+    [('AMD64', 'x64'), ('x86_64', 'x64'), ('ARM64', 'arm64'),
+     ('aarch64', 'arm64')])
+def test_get_win32_cuda_arch(monkeypatch, machine, expected):
+    monkeypatch.setattr(build.platform, 'machine', lambda: machine)
+    assert build._get_win32_cuda_arch() == expected
+
+
 class TestCheckVersion(unittest.TestCase):
 
     def setUp(self):
         ctx = Context('.', _env={}, _argv=[])
         self.compiler = ccompiler.new_compiler()
         sysconfig.customize_compiler(self.compiler)
-        self.settings = build.get_compiler_setting(ctx, False)
+        self.settings = build.get_compiler_setting(ctx, test_hip)
 
     @pytest.mark.skipif(not test_hip, reason='For ROCm/HIP environment')
     def test_check_hip_version(self):

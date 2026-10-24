@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import functools
 import os
+
 import unittest
 
 
@@ -27,10 +28,16 @@ def repeat_with_success_at_least(times, min_success):
             case is regarded as passed.
 
     """
+    import pytest
 
     assert times >= min_success
 
     def _repeat_with_success_at_least(f):
+        # Most tests marked this way are actually fine to run in parallel.
+        # However, the below launches a whole test runner and may call
+        # setUp methods (I believe), in which case they are not necessarily
+        # fine to repeat.
+        @pytest.mark.thread_unsafe(reason="repeat is not thread-safe")
         @functools.wraps(f)
         def wrapper(*args, **kwargs):
             assert len(args) > 0

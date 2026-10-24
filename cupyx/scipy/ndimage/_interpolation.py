@@ -8,6 +8,7 @@ import numpy
 
 from cupy import _core
 from cupy._core import internal
+from cupy._core._scalar import format_type_decls
 from cupy.cuda import runtime
 from cupyx import _texture
 from cupyx.scipy.ndimage import _util
@@ -112,8 +113,11 @@ def spline_filter1d(input, order=3, axis=-1, output=cupy.float64,
         return output
 
     temp, data_dtype, output_dtype = _get_spline_output(x, output)
-    data_type = cupy._core._scalar.get_typename(temp.dtype)
-    pole_type = cupy._core._scalar.get_typename(temp.real.dtype)
+    spline_type_decls = set()
+    data_type = cupy._core._scalar.get_typename(temp.dtype, spline_type_decls)
+    pole_type = cupy._core._scalar.get_typename(
+        temp.real.dtype, spline_type_decls)
+    spline_type_decls = format_type_decls(spline_type_decls)
 
     index_type = _util._get_inttype(input)
     index_dtype = cupy.int32 if index_type == 'int' else cupy.int64
@@ -133,6 +137,7 @@ def spline_filter1d(input, order=3, axis=-1, output=cupy.float64,
         data_type=data_type,
         pole_type=pole_type,
         block_size=block_size,
+        type_decls=spline_type_decls,
     )
 
     # Due to recursive nature, a given line of data must be processed by a
@@ -310,17 +315,19 @@ def map_coordinates(input, coordinates, output=None, order=3,
         input = input.astype(cupy.float32)
     coordinates = _check_coordinates(coordinates, order)
     filtered, nprepad = _filter_input(input, prefilter, mode, cval, order)
+    float_dtype = cupy.promote_types(input.real.dtype, cupy.float32)
     large_int = max(_prod(input.shape), coordinates.shape[0]) > 1 << 31
     kern = _interp_kernels._get_map_kernel(
         input.ndim, large_int, mode=mode, cval=cval,
-        order=order, integer_output=integer_output, nprepad=nprepad)
+        order=order, integer_output=integer_output, nprepad=nprepad,
+        float_dtype=float_dtype)
     kern(filtered, coordinates, ret)
     return ret
 
 
 def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
                      order=3, mode='constant', cval=0.0, prefilter=True, *,
-                     texture_memory=False):
+                     texture_memory=False, float64_coords=False):
     """Apply an affine transformation.
 
     Given an output image pixel index vector ``o``, the pixel value is
@@ -372,11 +379,13 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
 
             - 2D and 3D float32 arrays as input
             - ``(ndim + 1, ndim + 1)`` homogeneous float32 transformation
-                matrix
+              matrix
             - ``mode='constant'`` and ``mode='nearest'``
             - ``order=0`` (nearest neighbor) and ``order=1`` (linear
-                interpolation)
+              interpolation)
             - NVIDIA CUDA GPUs
+        float64_coords (bool): If True, force double precision computations
+            internally as in scipy.ndimage.
 
     Returns:
         cupy.ndarray or None:
@@ -429,10 +438,14 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
     if output_shape is None:
         output_shape = input.shape
 
+    float_dtype = cupy.float64
+    if not float64_coords:
+        float_dtype = cupy.promote_types(input.real.dtype, cupy.float32)
+    matrix = matrix.astype(float_dtype, copy=False)
     if mode == 'opencv' or mode == '_opencv_edge':
         if matrix.ndim == 1:
             matrix = cupy.diag(matrix)
-        coordinates = cupy.indices(output_shape, dtype=cupy.float64)
+        coordinates = cupy.indices(output_shape, dtype=float_dtype)
         coordinates = cupy.dot(matrix, coordinates.reshape((input.ndim, -1)))
         coordinates += cupy.expand_dims(cupy.asarray(offset), -1)
         ret = _util._get_output(output, input, shape=output_shape)
@@ -440,7 +453,6 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
                                  cval, prefilter).reshape(output_shape)
         return ret
 
-    matrix = matrix.astype(cupy.float64, copy=False)
     ndim = input.ndim
     output = _util._get_output(output, input, shape=output_shape)
     if input.dtype.kind in 'iu':
@@ -451,33 +463,33 @@ def affine_transform(input, matrix, offset=0.0, output_shape=None, output=None,
     _util._check_cval(mode, cval, integer_output)
     large_int = max(_prod(input.shape), _prod(output_shape)) > 1 << 31
     if matrix.ndim == 1:
-        offset = cupy.asarray(offset, dtype=cupy.float64)
+        offset = cupy.asarray(offset, dtype=float_dtype)
         offset = -offset / matrix
         kern = _interp_kernels._get_zoom_shift_kernel(
             ndim, large_int, output_shape, mode, cval=cval, order=order,
-            integer_output=integer_output, nprepad=nprepad)
+            integer_output=integer_output, nprepad=nprepad,
+            float_dtype=float_dtype)
         kern(filtered, offset, matrix, output)
     else:
         kern = _interp_kernels._get_affine_kernel(
             ndim, large_int, output_shape, mode, cval=cval, order=order,
-            integer_output=integer_output, nprepad=nprepad)
-        m = cupy.zeros((ndim, ndim + 1), dtype=cupy.float64)
+            integer_output=integer_output, nprepad=nprepad,
+            float_dtype=float_dtype)
+        m = cupy.zeros((ndim, ndim + 1), dtype=float_dtype)
         m[:, :-1] = matrix
-        m[:, -1] = cupy.asarray(offset, dtype=cupy.float64)
+        m[:, -1] = cupy.asarray(offset, dtype=float_dtype)
         kern(filtered, m, output)
     return output
 
 
-def _minmax(coor, minc, maxc):
-    if coor[0] < minc[0]:
-        minc[0] = coor[0]
-    if coor[0] > maxc[0]:
-        maxc[0] = coor[0]
-    if coor[1] < minc[1]:
-        minc[1] = coor[1]
-    if coor[1] > maxc[1]:
-        maxc[1] = coor[1]
-    return minc, maxc
+def _sincosdg(angle):
+    # We have no precise CPU sincosdg like SciPy, so reduce to 90 degrees
+    # and rotate quadrants for better accuracy.
+    # Python 3.16 will have sinpi/cospi which should be nicer.
+    q, rem = divmod(angle, 90.0)
+    s = math.sin(math.radians(rem))
+    c = math.cos(math.radians(rem))
+    return ((s, c), (c, -s), (-s, -c), (-c, s))[int(q) % 4]
 
 
 def rotate(input, angle, axes=(1, 0), reshape=True, output=None, order=3,
@@ -538,9 +550,8 @@ def rotate(input, angle, axes=(1, 0), reshape=True, output=None, order=3,
         raise ValueError('invalid rotation plane specified')
 
     ndim = input_arr.ndim
-    rad = numpy.deg2rad(angle)
-    sin = math.sin(rad)
-    cos = math.cos(rad)
+    sin, cos = _sincosdg(angle)
+    float_dtype = cupy.promote_types(input_arr.real.dtype, cupy.float32)
 
     # determine offsets and output shape as in scipy.ndimage.rotate
     rot_matrix = numpy.array([[cos, sin],
@@ -566,20 +577,20 @@ def rotate(input, angle, axes=(1, 0), reshape=True, output=None, order=3,
     output_shape[axes] = out_plane_shape
     output_shape = tuple(output_shape)
 
-    matrix = numpy.identity(ndim)
+    matrix = numpy.identity(ndim, dtype=float_dtype)
     matrix[axes[0], axes[0]] = cos
     matrix[axes[0], axes[1]] = sin
     matrix[axes[1], axes[0]] = -sin
     matrix[axes[1], axes[1]] = cos
 
-    offset = numpy.zeros(ndim, dtype=cupy.float64)
+    offset = numpy.zeros(ndim, dtype=float_dtype)
     offset[axes] = in_center - out_center
 
     matrix = cupy.asarray(matrix)
     offset = cupy.asarray(offset)
 
     return affine_transform(input, matrix, offset, output_shape, output, order,
-                            mode, cval, prefilter)
+                            mode, cval, prefilter, float64_coords=False)
 
 
 def shift(input, shift, output=None, order=3, mode='constant', cval=0.0,
@@ -647,10 +658,12 @@ def shift(input, shift, output=None, order=3, mode='constant', cval=0.0,
         integer_output = output.dtype.kind in 'iu'
         _util._check_cval(mode, cval, integer_output)
         large_int = _prod(input.shape) > 1 << 31
+        float_dtype = cupy.promote_types(input.real.dtype, cupy.float32)
         kern = _interp_kernels._get_shift_kernel(
             input.ndim, large_int, input.shape, mode, cval=cval, order=order,
-            integer_output=integer_output, nprepad=nprepad)
-        shift = cupy.asarray(shift, dtype=cupy.float64, order='C')
+            integer_output=integer_output, nprepad=nprepad,
+            float_dtype=float_dtype)
+        shift = cupy.asarray(shift, dtype=float_dtype, order='C')
         if shift.ndim != 1:
             raise ValueError('shift must be 1d')
         if shift.size != filtered.ndim:
@@ -773,10 +786,11 @@ def zoom(input, zoom, output=None, order=3, mode='constant', cval=0.0,
         integer_output = output.dtype.kind in 'iu'
         _util._check_cval(mode, cval, integer_output)
         large_int = max(_prod(input.shape), _prod(output_shape)) > 1 << 31
+        float_dtype = cupy.promote_types(input.real.dtype, cupy.float32)
         kern = _interp_kernels._get_zoom_kernel(
             input.ndim, large_int, output_shape, mode, order=order,
             integer_output=integer_output, grid_mode=grid_mode,
-            nprepad=nprepad)
-        zoom = cupy.asarray(zoom, dtype=cupy.float64)
+            nprepad=nprepad, float_dtype=float_dtype)
+        zoom = cupy.asarray(zoom, dtype=float_dtype)
         kern(filtered, zoom, output)
     return output

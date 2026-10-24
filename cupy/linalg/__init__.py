@@ -107,4 +107,7 @@ __all__ = [
     "tensorinv",
     # Exceptions
     "LinAlgError",
+    "matmul",
+    "matrix_transpose",
+    "tensordot",
 ]

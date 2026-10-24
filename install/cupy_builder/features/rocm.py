@@ -29,7 +29,7 @@ def rocm_feature_dicts() -> dict[str, dict[str, Any]]:
             'file': cuda_files + [
                 'cupy.backends.cuda.libs.nvtx',
                 'cupy.backends.cuda.libs.cusolver',
-                'cupyx.cusolver',
+                'cupyx._cusolver',
             ],
             'include': [
                 'hip/hip_runtime_api.h',
@@ -48,6 +48,7 @@ def rocm_feature_dicts() -> dict[str, dict[str, Any]]:
                 'hiprand',
                 'hipsparse',
                 'rocfft',
+                'roctracer64',  # cudaProfilerStart/Stop -> roctracer_start/stop
                 'roctx64',
                 'rocblas',
                 'rocsolver',

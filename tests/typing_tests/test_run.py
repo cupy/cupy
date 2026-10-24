@@ -5,7 +5,8 @@ from pathlib import Path
 import pytest
 
 
-@pytest.mark.parametrize("t", map(str, Path(__file__).parent.glob("**/*.pyi")))
+@pytest.mark.parametrize(
+    "t", list(map(str, Path(__file__).parent.glob("**/*.pyi"))))
 def test_run(t: Path) -> None:
     assert not t.endswith("._numpy.pyi")
 

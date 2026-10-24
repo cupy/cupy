@@ -8,6 +8,8 @@ import pytest
 
 import cupy
 from cupy import testing
+from cupy.testing._protocol_helpers import (
+    DummyObjectWithCuPyGetNDArray, DummyObjectWithCudaArrayInterface)
 from cupy.exceptions import ComplexWarning
 
 
@@ -233,3 +235,34 @@ class TestSetItemCompatBroadcast:
         a = xp.zeros((2, 3, 4), dtype)
         a[0, 1, 2] = testing.shaped_arange((), xp, dtype)
         return a
+
+
+@pytest.mark.parametrize('cupy_like', [
+    DummyObjectWithCuPyGetNDArray,
+    DummyObjectWithCudaArrayInterface,
+])
+def test_setitem_with_cupy_like(cupy_like):
+    # Test that normal assignment supports interfaces
+    a = cupy.zeros(10)
+    a[...] = cupy_like(cupy.arange(10))
+    testing.assert_array_equal(a, cupy.arange(10))
+
+
+@pytest.mark.parametrize('cupy_like', [
+    DummyObjectWithCuPyGetNDArray,
+    DummyObjectWithCudaArrayInterface,
+])
+def test_getitem_with_cupy_like_index(cupy_like):
+    # Test that normal assignment supports interfaces
+    a = cupy.zeros(10)
+    cupy_idx = cupy.arange(10)
+    idx = cupy_like(cupy_idx)
+    if cupy_like is DummyObjectWithCuPyGetNDArray:
+        # __cupy_get_ndarray__ path currently assumes .shape and .dtype
+        idx.shape = (10,)
+        idx.dtype = cupy_idx.dtype
+
+    # mostly to check that it works at all:
+    testing.assert_array_equal(a[idx], a[cupy_idx])
+    testing.assert_array_equal(a[idx,], a[cupy_idx,])
+    testing.assert_array_equal(a[[idx]], a[[cupy_idx]])

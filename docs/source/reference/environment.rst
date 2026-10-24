@@ -36,6 +36,19 @@ Here are the environment variables that CuPy uses at runtime.
   If set to ``1``, :envvar:`CUPY_CACHE_DIR` and :envvar:`CUPY_CACHE_SAVE_CUDA_SOURCE` will be ignored, and the cache is in memory.
   This environment variable allows reducing disk I/O, but is ignoed when ``nvcc`` is set to be the compiler backend.
 
+.. envvar:: CUPY_NVRTC_USE_PCH
+
+  Default: ``0``
+
+  If set to ``1``, precompiled headers (PCH) will be used to drastically speed up compilation when many kernels are compiled
+  (e.g. because the CuPy kernel cache is empty or due to ``CUPY_CACHE_IN_MEMORY``).
+  I.e. if set, CuPy always passes the ``--pch`` option to all NVRTC kernel compilations.
+
+  PCH does come at at the cost of temporary files which can be configured further, see:
+  https://docs.nvidia.com/cuda/nvrtc/index.html#precompiled-header-pch-cuda-12-8
+
+  The option is only available for CUDA 12.8 or later.
+
 .. envvar:: CUPY_DISABLE_JITIFY_CACHE
 
   Default: ``0``
@@ -71,7 +84,7 @@ Here are the environment variables that CuPy uses at runtime.
 .. envvar:: CUPY_EXPERIMENTAL_SLICE_COPY
 
   Default: ``0``
-  
+
   If set to ``1``, the following syntax is enabled::
 
     cupy_ndarray[:] = numpy_ndarray
@@ -80,8 +93,9 @@ Here are the environment variables that CuPy uses at runtime.
 
   Default: ``"cub"`` (In ROCm HIP environment, the default value is ``""``. i.e., no accelerators are used.)
 
-  A comma-separated string of backend names (``cub``, ``cutensor``, or ``cutensornet``) which indicates the acceleration backends used in CuPy operations and its priority (in descending order).
+  A comma-separated string of backend names (``cub``, ``cutensor``, ``cutensornet``, or ``cuda_compute``) which indicates the acceleration backends used in CuPy operations and its priority (in descending order).
   By default, all accelerators are disabled on HIP and only CUB is enabled on CUDA.
+  The ``cuda_compute`` backend requires the `cuda-cccl <https://pypi.org/project/cuda-cccl/>`_ package and currently accelerates reductions such as :func:`~cupy.sum`, inclusive scans (:func:`~cupy.cumsum` and :func:`~cupy.cumprod`) and :func:`~cupy.bincount`.
 
 .. envvar:: CUPY_TF32
 

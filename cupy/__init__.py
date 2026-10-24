@@ -31,7 +31,6 @@ _sys.modules["cupy_backends.cuda.libs"] = _cuda_backend_libs
 from cupy.backends.backend import is_ascend
 
 _environment._detect_duplicate_installation()  # NOQA
-_environment._setup_win32_dll_directory()  # NOQA
 _environment._preload_library('cutensor')  # NOQA
 
 
@@ -336,9 +335,7 @@ from cupy._manipulation.transpose import moveaxis  # NOQA
 from cupy._manipulation.transpose import rollaxis  # NOQA
 from cupy._manipulation.transpose import swapaxes  # NOQA
 from cupy._manipulation.transpose import transpose  # NOQA
-# NB: `matrix_transpose` exists in `cupy._manipulation.transpose` (Array API
-# support) but is NOT a cupy package-level API - upstream never exported it.
-# Use `x.mT` or `cupy.array_api.matrix_transpose` instead.
+from cupy._manipulation.transpose import matrix_transpose  # NOQA
 
 # NumPy 2.0 aliases
 permute_dims = transpose
@@ -405,6 +402,7 @@ from cupy._binary.elementwise import bitwise_and  # NOQA
 from cupy._binary.elementwise import bitwise_or  # NOQA
 from cupy._binary.elementwise import bitwise_xor  # NOQA
 from cupy._binary.elementwise import bitwise_not  # NOQA
+from cupy._binary.elementwise import bitwise_count  # NOQA
 from cupy._binary.elementwise import invert  # NOQA
 from cupy._binary.elementwise import left_shift  # NOQA
 from cupy._binary.elementwise import right_shift  # NOQA
@@ -486,6 +484,8 @@ from numpy import finfo  # NOQA
 from numpy import iinfo  # NOQA
 
 from numpy import issubdtype  # NOQA
+
+from numpy import isdtype  # NOQA
 
 from numpy import mintypecode  # NOQA
 from numpy import typename  # NOQA
@@ -699,6 +699,8 @@ from cupy._math.sumprod import product  # NOQA
 from cupy._math.sumprod import sum  # NOQA
 from cupy._math.sumprod import cumprod  # NOQA
 from cupy._math.sumprod import cumproduct  # NOQA
+from cupy._math.sumprod import cumulative_prod  # NOQA
+from cupy._math.sumprod import cumulative_sum  # NOQA
 from cupy._math.sumprod import cumsum  # NOQA
 from cupy._math.sumprod import ediff1d  # NOQA
 from cupy._math.sumprod import nancumprod  # NOQA
@@ -902,6 +904,7 @@ def ndim(a):
 from cupy._util import clear_memo  # NOQA
 from cupy._util import memoize  # NOQA
 
+from cupy._core._dtype import make_aligned_dtype  # NOQA
 # -----------------------------------------------------------------------------
 # DLPack
 # -----------------------------------------------------------------------------
@@ -974,8 +977,9 @@ def get_array_module(*args):
        ...     return xp.maximum(0, x) + xp.log1p(xp.exp(-abs(x)))
 
     """
+    import cupyx
     for arg in args:
-        if isinstance(arg, (ndarray, _cupyx.scipy.sparse.spmatrix,
+        if isinstance(arg, (ndarray, cupyx.scipy.sparse._spbase,
                             _core.fusion._FusionVarArray,
                             _core.new_fusion._ArrayProxy)):
             return _cupy
@@ -1026,7 +1030,8 @@ def get_default_pinned_memory_pool():
 
 def show_config(*, _full=False):
     """Prints the current runtime configuration to standard output."""
-    _sys.stdout.write(str(_cupyx.get_runtime_info(full=_full)))
+    import cupyx
+    _sys.stdout.write(str(cupyx.get_runtime_info(full=_full)))
     _sys.stdout.flush()
 
 
@@ -1036,10 +1041,8 @@ _deprecated_apis = [
     'bool8',
 ]
 
-# TODO (ASCEND)
-# # np 2.0: XXX shims for things removed in np 2.0
-# alltrue = all
-# sometrue = any
+# np 2.0: XXX shims for things removed in np 2.0
+# (`alltrue`/`sometrue` are assigned further below, next to `__getattr__`)
 # trapz = trapezoid
 
 # https://github.com/numpy/numpy/blob/v1.26.4/numpy/core/numerictypes.py#L283-L322   # NOQA
@@ -1193,14 +1196,8 @@ if _numpy.__version__ < "2":
 else:
 
     _template = '''\
-''This function has been removed in NumPy v2.
+This function has been removed in NumPy v2.
 Use {recommendation} instead.
-
-CuPy has been providing this function as an alias to the NumPy
-implementation, so it cannot be used in environments with NumPy
-v2 installed. If you rely on this function and you cannot modify
-the code to use {recommendation}, please downgrade NumPy to v1.26
-or earlier.
 '''
 
     def find_common_type(*args, **kwds):

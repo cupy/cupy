@@ -27,7 +27,7 @@ def lschol(A, b):
     """
     from cupy_backends.cuda.libs import cusolver
 
-    if not sparse.isspmatrix_csr(A):
+    if not (sparse.issparse(A) and A.format == 'csr'):
         A = sparse.csr_matrix(A)
     # csr_matrix is 2d
     _util._assert_stacked_square(A)

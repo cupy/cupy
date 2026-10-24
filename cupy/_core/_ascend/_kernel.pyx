@@ -54,6 +54,22 @@ def _get_warpsize():
     #return runtime.getDeviceProperties(device_id)['warpSize']
     return 32
 
+# ROCm 7+ mask semantics do not apply on Ascend; the mask is the CUDA-style
+# 32-bit full-lane mask. Ascend has no warp-level shuffles, so these helpers
+# exist purely to satisfy the shared `cupy/_core/_kernel.pxd` declarations
+# (cimported by the shared `_routines_*` modules).
+_is_hip_7_plus = False
+
+
+@_util.memoize(for_each_device=True)
+def _full_mask():
+    return 0xffffffff
+
+
+cpdef str _full_mask_hex():
+    return hex(_full_mask())
+
+
 @cython.profile(False)
 cpdef inline _check_peer_access(_ndarray_base arr, int device_id):
     if arr.data.device_id == device_id:
