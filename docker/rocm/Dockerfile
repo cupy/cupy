@@ -4,7 +4,7 @@ LABEL maintainer="CuPy Team"
 RUN curl -qL https://repo.radeon.com/rocm/rocm.gpg.key | apt-key add -
 RUN apt-get update -y && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-    hipblas hipsparse rocsparse hiprand rocrand rocthrust rocsolver rocfft hipfft hipcub rocprim rccl && \
+    ca-certificates hipblas hipsparse rocsparse hiprand rocrand rocthrust rocsolver rocfft hipfft hipcub rocprim rccl && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends python3.12 && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
