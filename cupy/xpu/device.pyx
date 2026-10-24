@@ -274,9 +274,15 @@ cdef class Device:
         itself is different.
 
         """
-        from cupy.backends.cuda.libs import cublas
-        return self._get_handle(
-            'cublas_handles', cublas.create, cublas.destroy)
+        IF CUPY_CANN_VERSION > 0:
+            # cupy.backends.cuda.libs.cublas is not built for the Ascend
+            # backend; fail fast instead of an obscure ImportError.
+            raise NotImplementedError(
+                'Device.cublas_handle is not supported on the Ascend backend')
+        ELSE:
+            from cupy.backends.cuda.libs import cublas
+            return self._get_handle(
+                'cublas_handles', cublas.create, cublas.destroy)
 
     @property
     def cusolver_handle(self):

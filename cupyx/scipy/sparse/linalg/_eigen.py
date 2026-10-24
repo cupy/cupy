@@ -5,8 +5,12 @@ import cupy
 
 from cupy import cublas
 from cupy._core import _dtype
+from cupy.backends.backend import is_ascend
 from cupy.cuda import device
-from cupy_backends.cuda.libs import cublas as _cublas
+if is_ascend:
+    _cublas = None
+else:
+    from cupy_backends.cuda.libs import cublas as _cublas
 from cupyx.scipy.linalg import lu_factor, lu_solve
 from cupyx.scipy.sparse import _csr
 from cupyx.scipy.sparse import identity, issparse

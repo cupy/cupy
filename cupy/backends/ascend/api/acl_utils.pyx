@@ -117,8 +117,12 @@ cdef aclDataType numpy_dtype_to_acl_dtype(dtype,
 
     if dtype_char == 'e':
         return aclDataType.ACL_FLOAT16
+    elif dtype_char is not dtype and dtype.name == "bfloat16":
+        # ml_dtypes.bfloat16 的 dtype char 也是 'E'（与 complex32 相同），
+        # 必须在 'E' 分支之前按 name 识别，否则会被错映射为 ACL_COMPLEX32
+        return aclDataType.ACL_BF16
     elif dtype_char == 'E' and is_half_allowed:
-        # complex32, bfloat16 not supported in NumPy
+        # complex32, bfloat16 handled above
         return aclDataType.ACL_COMPLEX32
     elif dtype_char == 'f':
         return aclDataType.ACL_FLOAT # float32
