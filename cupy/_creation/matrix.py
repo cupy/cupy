@@ -66,11 +66,11 @@ def diagflat(v, k=0):
 
 
 _tri_kernel = _core.ElementwiseKernel(
-    'int32 m, int32 k',
+    'int64 m, int64 k',
     'T out',
     '''
-    int row = i / m;
-    int col = i % m;
+    ptrdiff_t row = i / m;
+    ptrdiff_t col = i % m;
     out = (col <= row + k);
     ''',
     'cupy_tri',

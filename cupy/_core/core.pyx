@@ -12,6 +12,7 @@ cimport numpy as cnp
 cimport cpython
 from libc.stdint cimport int64_t, intptr_t, INT32_MAX
 from libc cimport stdlib
+from libcpp cimport bool as cpp_bool
 from cpython cimport Py_buffer
 
 import cupy
@@ -32,6 +33,7 @@ from cupy._core._carray cimport shape_t
 from cupy._core cimport _dtype
 from cupy._core._dtype cimport get_dtype
 from cupy._core._dtype cimport populate_format
+from cupy._core.internal cimport cached_object
 from cupy._core._kernel import ElementwiseKernel, create_ufunc # only fill_kernel use this
 from cupy._core._routines_creation import array  # NOQA bitwise_and core.array used by _routines_indexing
 from cupy._core._routines_creation cimport _convert_from_cupy_like
@@ -134,9 +136,8 @@ cdef tuple _HANDLED_TYPES
 cdef object _null_context = contextlib.nullcontext()
 
 # Supported index types for mdspan - initialized at runtime to avoid
-# circular import
-cdef tuple _MDSPAN_SUPPORTED_INDEX_TYPES = None
-cdef dict _MDSPAN_INDEX_TYPE_TO_ITEMSIZE = None
+# circular import.  Maps index type -> itemsize in bytes.
+cdef cached_object _MDSPAN_SUPPORTED_INDEX_TYPES
 
 
 # If rop of cupy.ndarray is called, cupy's op is the last chance.
@@ -249,10 +250,11 @@ cdef class _ndarray_base:
             self._set_contiguous_strides(itemsize, order_char == b'C')
             alloc_size = self.size * itemsize  # contiguous
 
-        # Arrays can e.g. broadcast, so check that all pointer offsets fit and
-        # the size fit int32. (seberg: `* itemsize` may be unnecessary)
+        # Arrays can e.g. broadcast, so check that all pointer offsets and
+        # size-bound indexing quantities fit int32. (seberg: `* itemsize`
+        # may be unnecessary)
         max_diff = max(alloc_size, self.size * itemsize)
-        self._index_32_bits = max_diff <= <Py_ssize_t>(1 << 31)
+        self._index_32_bits = max_diff < <Py_ssize_t>(1 << 31)
 
         # data
         if memptr is None:
@@ -275,7 +277,7 @@ cdef class _ndarray_base:
             dtype, check_support=True)
         self._set_contiguous_strides(itemsize, c_order)
         self.data = memory.alloc(self.size * itemsize)
-        self._index_32_bits = (self.size * itemsize) <= <Py_ssize_t>(1 << 31)
+        self._index_32_bits = (self.size * itemsize) < <Py_ssize_t>(1 << 31)
 
     @property
     def __cuda_array_interface__(self):
@@ -2421,25 +2423,26 @@ cdef inline _carray.mdspan _mdspan_from_ndarray(
     # Creates mdspan from ndarray.
     # Note that this function cannot be defined in _carray.pxd because that
     # would cause cyclic cimport dependencies.
-    global _MDSPAN_SUPPORTED_INDEX_TYPES, _MDSPAN_INDEX_TYPE_TO_ITEMSIZE
-
     cdef _carray.mdspan carr
     cdef int index_itemsize
+    cdef dict supported_index_types
 
     # Initialize cached constants on first use (avoid circular import)
-    if _MDSPAN_SUPPORTED_INDEX_TYPES is None:
-        _MDSPAN_SUPPORTED_INDEX_TYPES = (cupy.int32, cupy.int64)
-        _MDSPAN_INDEX_TYPE_TO_ITEMSIZE = {cupy.int32: 4, cupy.int64: 8}
+    supported_index_types = _MDSPAN_SUPPORTED_INDEX_TYPES.get()
+    if supported_index_types is None:
+        supported_index_types = _MDSPAN_SUPPORTED_INDEX_TYPES.setdefault({
+            cupy.int32: 4,
+            cupy.int64: 8,
+        })
 
     carr = _carray.mdspan.__new__(_carray.mdspan)
 
-    # Use dict lookup with membership check for validation
-    if index_type not in _MDSPAN_SUPPORTED_INDEX_TYPES:
+    index_itemsize = supported_index_types.get(index_type, -1)
+    if index_itemsize == -1:
         raise ValueError(
             f"Unsupported index_type: {index_type}. "
             "Must be cupy.int32 or cupy.int64."
         )
-    index_itemsize = _MDSPAN_INDEX_TYPE_TO_ITEMSIZE[index_type]
 
     # Validate that array size fits in index_type
     if index_type == cupy.int32 and arr.size > INT32_MAX:

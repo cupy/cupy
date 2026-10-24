@@ -412,6 +412,14 @@ cdef shape_t _reduced_view_core(
 cdef class ParameterInfo:
 
     def __init__(self, str param, bint is_const):
+        # Upstream 14.3 introduced core-dimension annotations in the param
+        # signature (e.g. ``T(n, m) x``).  The Ascend ElementwiseKernel has no
+        # core-dim support (see the merge notes), so the annotation is dropped
+        # and the parameter degrades to the plain type.
+        if '(' in param:
+            # `raw T(n, m) x` -> `raw T x`
+            param = (param.split('(')[0].rstrip() + ' '
+                     + param[param.rindex(')') + 1:].strip())
         self.name = None
         self.dtype = None
         self.ctype = None
@@ -466,11 +474,38 @@ cdef class ParameterInfo:
             ]))
 
 
+def _tokenize_params(s):
+    # Tokenizes a params string, taking into account that "," is used to
+    # separate different params but also to separate different dimensions in
+    # the signature for params with core_ndim > 0 (e.g. T(n, m)).
+    if not s.strip():
+        return []
+    depth = 0
+    chunks = []
+    chunk = ''
+    for c in s:
+        if c == '(':
+            depth += 1
+        elif c == ')':
+            depth -= 1
+        elif depth == 0 and c == ',':
+            chunks.append(chunk)
+            chunk = ''
+            continue
+        if depth < 0:
+            raise ValueError
+        chunk += c
+    if depth != 0:
+        raise ValueError
+    chunks.append(chunk)
+    return chunks
+
+
 @_util.memoize()
 def _get_param_info(str s, is_const):
     if len(s) == 0:
         return ()
-    return tuple([ParameterInfo(i, is_const) for i in s.strip().split(',')])
+    return tuple([ParameterInfo(i, is_const) for i in _tokenize_params(s)])
 
 
 @_util.memoize()

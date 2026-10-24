@@ -126,6 +126,17 @@ accepts an HTML page — GitHub Releases are *not* a PEP 503 index, so
 pip install numpy-ascend==14.0.0a1+cann8.5 \
     --find-links https://github.com/qingfengxia/numpy-ascend/releases/expanded_assets/v14.0.0a1
 ```
+- [Installation Guide](https://docs.cupy.dev/en/stable/install.html) - instructions on building from source
+- [Release Notes](https://github.com/cupy/cupy/releases)
+- [Projects using CuPy](https://github.com/cupy/cupy/wiki/Projects-using-CuPy)
+- [Contribution Guide](https://docs.cupy.dev/en/stable/contribution.html)
+
+## Learning Materials
+
+- [CUDA Python Samples (NVIDIA CUDA Samples)](https://github.com/NVIDIA/cuda-samples#cuda-python-samples)
+- [NVIDIA Accelerated Computing Hub](https://github.com/NVIDIA/accelerated-computing-hub)
+- [GPU Acceleration in Python using CuPy and Numba (GTC November 2021 Technical Session)](https://www.nvidia.com/en-us/on-demand/session/gtcfall21-a31149/)
+- [GPU-Acceleration of Signal Processing Workflows using CuPy and cuSignal (ICASSP'21 Tutorial)](https://github.com/awthomp/cusignal-icassp-tutorial)[^1]
 
 Each release ships one wheel per (CPython × architecture × CANN train), e.g.
 for release `v14.0.0a1`:
@@ -294,3 +305,23 @@ MIT-licensed and its copyright notice is preserved in the source tree.
 ## 中文文档
 
 简体中文说明见 [Readme_ZH.md](Readme_ZH.md)。
+## Acknowledgement
+
+CuPy is being developed and maintained by [Preferred Networks](https://www.preferred.jp/en/)™ (PFN™), [organizational supporters](https://cupy.dev/#supporters), and [community contributors](https://github.com/cupy/cupy/graphs/contributors).
+
+## Reference
+
+Ryosuke Okuta, Yuya Unno, Daisuke Nishino, Shohei Hido and Crissman Loomis.
+**CuPy: A NumPy-Compatible Library for NVIDIA GPU Calculations.**
+*Proceedings of Workshop on Machine Learning Systems (LearningSys) in The Thirty-first Annual Conference on Neural Information Processing Systems (NIPS)*, (2017).
+[[PDF](http://learningsys.org/nips17/assets/papers/paper_16.pdf)]
+
+```bibtex
+@inproceedings{cupy_learningsys2017,
+  author       = "Okuta, Ryosuke and Unno, Yuya and Nishino, Daisuke and Hido, Shohei and Loomis, Crissman",
+  title        = "CuPy: A NumPy-Compatible Library for NVIDIA GPU Calculations",
+  booktitle    = "Proceedings of Workshop on Machine Learning Systems (LearningSys) in The Thirty-first Annual Conference on Neural Information Processing Systems (NIPS)",
+  year         = "2017",
+  url          = "http://learningsys.org/nips17/assets/papers/paper_16.pdf"
+}
+```

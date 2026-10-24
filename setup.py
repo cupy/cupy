@@ -28,6 +28,11 @@ cupy_builder.initialize(ctx)
 # `cupy` on every backend.
 ASCEND_DISTRIBUTION_NAME = 'numpy-ascend'
 
+# Public import name of the Ascend build (`import numpy_xpu as xp`). It is a
+# thin shim over `cupy` (see `numpy_xpu/__init__.py`), shipped Ascend-only;
+# `cupy`/`cupyx`/`cupy_backends` stay importable for compatibility.
+ASCEND_ALIAS_PACKAGE = 'numpy_xpu'
+
 # Pure-Python cupyx subpackages removed from the Ascend wheel. They are
 # CUDA-specific (cusolver/cusparse/NCCL-backed or CUDA-only kernels) and
 # essentially unusable on Ascend; accessing them raises ImportError instead
@@ -82,6 +87,10 @@ class _BackendAwareDistribution(Distribution):
     def parse_config_files(self, *args, **kwargs):
         super().parse_config_files(*args, **kwargs)
         if ctx.get_backend_name() != 'ascend':
+            # `numpy_xpu` is the Ascend-facing import name only; keep the
+            # CUDA/HIP wheel identical to upstream (`import cupy`).
+            self.packages = [
+                p for p in self.packages if p != ASCEND_ALIAS_PACKAGE]
             return
         # Keep the bare name instead of falling back to `[project].name`
         # (which is `cupy`, the CUDA/HIP/CPU name).
@@ -143,16 +152,21 @@ package_data = {
 package_data['cupy'] += cupy_setup_build.prepare_wheel_libs(ctx)
 
 
-if ctx.setup_command in ('sdist', 'dist_info', 'egg_info'):
-    # Extensions are unnecessary for these commands as all sources files
-    # can be enumerated via MANIFEST.in (the sdist keeps the .pyx sources,
-    # NOT the generated .cpp). Constructing them would probe the host
-    # build environment (CUDA/CANN toolchain), which is unavailable on a
-    # plain CI runner building the CANN-agnostic sdist.
-    print('Skipping extensions configuration')
-    ext_modules = []
-else:
-    ext_modules = cupy_setup_build.get_ext_modules(True, ctx)
+# CUDA-less setup.py invocations: direct `sdist`, and PEP 517's
+# get_requires_for_build_sdist, which setuptools backs with
+# `setup.py egg_info`. Both must skip the CUDA probe + [ctk] so the
+# sdist builder can run without a CUDA toolkit.
+#
+# Do NOT add `dist_info` here: that's the subcommand setuptools uses
+# for `prepare_metadata_for_build_wheel` (and _for_build_editable).
+# Pip resolves extras (`pip install .[ctk]`) from that prepared
+# metadata, so skipping [ctk] in dist_info silently drops the toolkit
+# wheels. bdist_wheel is a separate setup() invocation on the wheel
+# builders where the probe + [ctk] both run normally.
+_sdist_phase = ctx.setup_command in {'sdist', 'egg_info'}
+
+ext_modules = [] if _sdist_phase else cupy_setup_build.get_ext_modules(
+    True, ctx)
 
 
 # The long description (rendered on the PyPI project page) is provided
@@ -306,7 +320,11 @@ optional_dependencies = {
 # pull in CUDA wheels (and `features["cuda"]` does not exist there).
 if not ctx.use_hip and not ctx.use_ascend:
     dependencies.append("cuda-pathfinder>=1.3.4,==1.*")
-    if not ctx.use_stub:
+    # Same reasoning as the ext_modules guard: sdist/egg_info/dist_info
+    # run on a CUDA-less builder, so skip the version-detecting [ctk]
+    # computation. The wheel builder re-runs setup.py under bdist_wheel
+    # with CUDA available and populates [ctk] then.
+    if not _sdist_phase:
         cuda_major = ctx.features["cuda"].get_version() // 1000
         optional_dependencies["ctk"] = [
             f"cuda-toolkit[cudart,nvrtc,cublas,cufft,cusolver,cusparse,curand]=={cuda_major}.*"  # NOQA

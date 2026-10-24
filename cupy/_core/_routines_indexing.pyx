@@ -672,26 +672,26 @@ _nonzero_kernel = ElementwiseKernel(
 _take_kernel_core = '''
 using idx_t = decltype(a)::index_t;
 idx_t index_range = static_cast<idx_t>(index_range_);
-idx_t ldim = static_cast<idx_t>(ldim_);
-idx_t cdim = static_cast<idx_t>(cdim_);
 idx_t rdim = static_cast<idx_t>(rdim_);
 
 ptrdiff_t out_i = indices % index_range;
 if (out_i < 0) out_i += index_range;
-if (ldim != 1) out_i += (i / (cdim * rdim)) * index_range;
+if (_ind.size() > out_block_size) {
+    out_i += (i / out_block_size) * index_range;
+}
 if (rdim != 1) out_i = out_i * rdim + i % rdim;
 out = a[out_i];
 '''
 
 
 _take_kernel = ElementwiseKernel(
-    'raw T a, S indices, int64 ldim_, int64 cdim_, int64 rdim_, '
+    'raw T a, S indices, int64 out_block_size, int64 rdim_, '
     'int64 index_range_',
     'U out', _take_kernel_core, 'cupy_take')
 
 
 _take_kernel_scalar = ElementwiseKernel(
-    'raw T a, int64 indices, int64 ldim_, int64 cdim_, int64 rdim_, '
+    'raw T a, int64 indices, int64 out_block_size, int64 rdim_, '
     'int64 index_range_',
     'U out', _take_kernel_core, 'cupy_take_scalar')
 

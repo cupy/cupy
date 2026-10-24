@@ -9,6 +9,7 @@ import pytest
 import cupy
 from cupy import testing
 from cupy._core import _accelerator
+from cupy._statistics import histogram as histogram_module
 
 
 # Note that numpy.bincount does not support uint64 on 64-bit environment
@@ -41,6 +42,38 @@ def for_all_dtypes_combination_bincount(names):
 
 
 class TestHistogram(unittest.TestCase):
+
+    # Number of bins that makes the searched index exceed 2**31.
+    _n_bins = 2**31 + 1
+
+    def _large_bins_and_counters(self, dtype):
+        # Equal bins send the binary search to the last one, `n_bins - 2`,
+        # without needing the gigabytes a monotonic `bins` would take. `y`
+        # only has to be indexable that far, and cycling it over three
+        # counters keeps it free while still recording which bin was picked.
+        bins = cupy.broadcast_to(
+            cupy.array([0], dtype=cupy.float32), (self._n_bins,))
+        counters = cupy.zeros(3, dtype=dtype)
+        y = cupy.lib.stride_tricks.as_strided(
+            counters, shape=(self._n_bins // counters.size + 1,
+                             counters.size),
+            strides=(0, counters.itemsize))
+        return bins, counters, y
+
+    def test_kernel_accepts_large_number_of_bins(self):
+        x = cupy.zeros(1, dtype=cupy.float32)
+        bins, counters, y = self._large_bins_and_counters(cupy.int64)
+        histogram_module._histogram_kernel(x, bins, bins.size, y)
+        # (2**31 - 1) % 3 == 1
+        testing.assert_array_equal(counters, [0, 1, 0])
+
+    def test_weighted_kernel_accepts_large_number_of_bins(self):
+        x = cupy.zeros(1, dtype=cupy.float32)
+        weights = cupy.full(1, 2, dtype=cupy.float32)
+        bins, counters, y = self._large_bins_and_counters(cupy.float32)
+        histogram_module._weighted_histogram_kernel(
+            x, bins, bins.size, weights, y)
+        testing.assert_array_equal(counters, [0, 2, 0])
 
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose(atol=1e-7)
@@ -493,48 +526,64 @@ class TestDigitizeNanInf(unittest.TestCase):
         y = xp.digitize(x, bins, right=self.right)
         return y,
 
-    @testing.numpy_cupy_array_equal()
-    def test_digitize_nan_bins(self, xp):
-        x = testing.shaped_arange((14,), xp, xp.float32)
-        bins = xp.array([1.0, 3.0, 5.0, 8.0, float('nan')], xp.float32)
-        y = xp.digitize(x, bins, right=self.right)
-        return y,
+    def test_digitize_nan_bins(self):
+        # NumPy >= 2.6 rejects NaN bins during its monotonicity check.
+        # CuPy skips that check to avoid synchronization, so test it directly.
+        x = testing.shaped_arange((14,), cupy, cupy.float32)
+        bins = cupy.array([1.0, 3.0, 5.0, 8.0, float('nan')], cupy.float32)
+        y = cupy.digitize(x, bins, right=self.right)
+        if self.right:
+            expected = [0, 1, 1, 2, 2, 3, 3, 3, 4, 4, 4, 4, 4, 4]
+        else:
+            expected = [1, 1, 2, 2, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4]
+        testing.assert_array_equal(y, expected)
 
-    @testing.numpy_cupy_array_equal()
-    def test_digitize_nan_bins_repeated(self, xp):
-        x = testing.shaped_arange((14,), xp, xp.float32)
+    def test_digitize_nan_bins_repeated(self):
+        x = testing.shaped_arange((14,), cupy, cupy.float32)
         x[5] = float('nan')
         bins = [1.0, 3.0, 5.0, 8.0, float('nan'), float('nan')]
-        bins = xp.array(bins, xp.float32)
-        y = xp.digitize(x, bins, right=self.right)
-        return y,
+        bins = cupy.array(bins, cupy.float32)
+        y = cupy.digitize(x, bins, right=self.right)
+        if self.right:
+            expected = [0, 1, 1, 2, 2, 4, 3, 3, 4, 4, 4, 4, 4, 4]
+        else:
+            expected = [1, 1, 2, 2, 3, 6, 3, 4, 4, 4, 4, 4, 4, 4]
+        testing.assert_array_equal(y, expected)
 
-    @testing.numpy_cupy_array_equal()
-    def test_digitize_nan_bins_decreasing(self, xp):
-        x = testing.shaped_arange((14,), xp, xp.float32)
+    def test_digitize_nan_bins_decreasing(self):
+        x = testing.shaped_arange((14,), cupy, cupy.float32)
         x[5] = float('nan')
         bins = [float('nan'), 8.0, 5.0, 3.0, 1.0]
-        bins = xp.array(bins, xp.float32)
-        y = xp.digitize(x, bins, right=self.right)
-        return y,
+        bins = cupy.array(bins, cupy.float32)
+        y = cupy.digitize(x, bins, right=self.right)
+        if self.right:
+            expected = [5, 4, 4, 3, 3, 1, 2, 2, 1, 1, 1, 1, 1, 1]
+        else:
+            expected = [4, 4, 3, 3, 2, 0, 2, 1, 1, 1, 1, 1, 1, 1]
+        testing.assert_array_equal(y, expected)
 
-    @testing.numpy_cupy_array_equal()
-    def test_digitize_nan_bins_decreasing_repeated(self, xp):
-        x = testing.shaped_arange((14,), xp, xp.float32)
+    def test_digitize_nan_bins_decreasing_repeated(self):
+        x = testing.shaped_arange((14,), cupy, cupy.float32)
         x[5] = float('nan')
         bins = [float('nan'), float('nan'), float('nan'), 5.0, 3.0, 1.0]
-        bins = xp.array(bins, xp.float32)
-        y = xp.digitize(x, bins, right=self.right)
-        return y,
+        bins = cupy.array(bins, cupy.float32)
+        y = cupy.digitize(x, bins, right=self.right)
+        if self.right:
+            expected = [6, 5, 5, 4, 4, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+        else:
+            expected = [5, 5, 4, 4, 3, 0, 3, 3, 3, 3, 3, 3, 3, 3]
+        testing.assert_array_equal(y, expected)
 
-    @testing.numpy_cupy_array_equal()
-    def test_digitize_all_nan_bins(self, xp):
-        x = testing.shaped_arange((14,), xp, xp.float32)
+    def test_digitize_all_nan_bins(self):
+        x = testing.shaped_arange((14,), cupy, cupy.float32)
         x[5] = float('nan')
         bins = [float('nan'), float('nan'), float('nan'), float('nan')]
-        bins = xp.array(bins, xp.float32)
-        y = xp.digitize(x, bins, right=self.right)
-        return y,
+        bins = cupy.array(bins, cupy.float32)
+        y = cupy.digitize(x, bins, right=self.right)
+        expected = [4] * 14
+        if not self.right:
+            expected[5] = 0
+        testing.assert_array_equal(y, expected)
 
     @testing.numpy_cupy_array_equal()
     def test_searchsorted_inf(self, xp):

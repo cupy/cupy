@@ -274,6 +274,7 @@ _op_char = {scan_op.SCAN_SUM: '+', scan_op.SCAN_PROD: '*'}
 _identity = {scan_op.SCAN_SUM: 0, scan_op.SCAN_PROD: 1}
 
 
+
 cpdef _ndarray_base _nansum(_ndarray_base a, axis, dtype, out, keepdims):
     if cupy.iscomplexobj(a):
         return _nansum_complex_dtype(a, axis, dtype, out, keepdims)

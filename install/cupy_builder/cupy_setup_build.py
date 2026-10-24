@@ -398,7 +398,6 @@ def make_extensions(ctx: Context, compiler, use_cython):
     if not ctx.use_stub:
         from cupy_builder.backends import get_backend
         settings['define_macros'] += get_backend(ctx).get_define_macros()
-
     settings['define_macros'].append(('CUPY_CACHE_KEY', ctx.cupy_cache_key))
 
     try:
@@ -459,11 +458,10 @@ def make_extensions(ctx: Context, compiler, use_cython):
             continue
 
         s = copy.deepcopy(settings)
-        if not no_cuda:
-            s['libraries'] = module.libraries
-            s['extra_objects'] = [
-                _find_static_library(name) for name in module.static_libraries
-            ]
+        s['libraries'] = module.libraries
+        s['extra_objects'] = [
+            _find_static_library(name) for name in module.static_libraries
+        ]
 
         compile_args = s.setdefault('extra_compile_args', [])
         link_args = s.setdefault('extra_link_args', [])

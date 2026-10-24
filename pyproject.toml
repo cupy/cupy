@@ -23,11 +23,11 @@ classifiers = [
   "Intended Audience :: Developers",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
   "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Cython",
   "Topic :: Software Development",
@@ -35,7 +35,7 @@ classifiers = [
   "Operating System :: POSIX",
   "Operating System :: Microsoft :: Windows",
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 # `dependencies` / `optional-dependencies` are filled in by setup.py
 # (install_requires / extras_require), see the dynamic list below.
 dynamic = [
@@ -59,7 +59,11 @@ include-package-data = false
 # Import packages (NOT the distribution name). Renaming the distribution to
 # `numpy-ascend` on Ascend deliberately leaves these untouched, so
 # `import cupy` works on every backend.
-include = ["cupy*", "cupyx*", "cupy_backends*"]
+# `numpy_xpu` is the public import name of the Ascend build: a ~90-line shim
+# that aliases `cupy` via sys.modules (see `numpy_xpu/__init__.py`). It is
+# pruned again for the CUDA/HIP wheels by `_BackendAwareDistribution` in
+# setup.py, so the upstream `cupy` wheel is byte-for-byte unaffected.
+include = ["cupy*", "cupyx*", "cupy_backends*", "numpy_xpu"]
 
 [tool.setuptools.dynamic]
 version = { attr = "cupy._version.__version__" }
@@ -91,6 +95,9 @@ addopts = "--strict-markers"
 markers = [
   "slow",
   "multi_gpu",
+  "slow", "multi_gpu",
+  # If pytest-timeout is not available
+  "timeout",
   # If pytest-run-parallel is not available
   "parallel_threads", "iterations", "thread_unsafe",
   # 豁免 Ascend dtype 过滤 (见 tests/conftest.py::pytest_collection_modifyitems)
@@ -110,7 +117,7 @@ filterwarnings = [
   "error::PendingDeprecationWarning",
   "error::cupy.exceptions.VisibleDeprecationWarning",
   "error::cupy.exceptions.ComplexWarning",
-  # distutils (Python 3.10)
+  # distutils (vendored by setuptools)
   "ignore:The distutils(.+) is deprecated:DeprecationWarning",
   "ignore:dep_util is Deprecated:DeprecationWarning",
   # pkg_resources
