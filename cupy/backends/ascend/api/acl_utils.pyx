@@ -15,7 +15,7 @@ from libc.stdint cimport (
     uint8_t, uint16_t, uint32_t, uint64_t,
     uintptr_t,
 )
-from libc.string cimport memcpy
+from libc.string cimport memcpy, memset
 from libcpp.unordered_map cimport unordered_map as cpp_map
 from cython.operator cimport dereference as deref, preincrement as inc
 from libcpp.set cimport set as cpp_set
@@ -929,34 +929,41 @@ cdef extern from "../acl_custom_kernels.h":
 # operator_function_ptr registry:
 #cdef cpp_map[OpInfo, FuncPtrUnion] _builtin_operators
 # unordered map for better performance
+# 注册表生命周期协议（nogil 改造计划 §2.C）：_builtin_operators /
+# _registered_op_names 只允许在 import 期由 init_builtin_operators() 写入
+# （注册期不再持有 nogil）；之后对所有派发路径只读。运行期注册入口
+# （py_register_acl_ufunc / py_register_custom_kernel）只允许在任何算子
+# 派发开始之前的单线程初始化阶段调用。
 cdef cpp_map[OpInfo, FuncPtrUnion, OpInfo.Hash] _builtin_operators
 
 # Every op name registered under *any* OpType (the map above is keyed by
 # (name, op_type)). Used by the "is this kernel callable on Ascend?" check in
-# `cupy/_core/_ascend/_kernel.pyx`; a std::set keeps the query O(log n) without
-# needing the GIL inside `register_acl_ufunc` (which is `nogil`).
+# `cupy/_core/_ascend/_kernel.pyx`; a std::set keeps the query O(log n).
 cdef cpp_set[string] _registered_op_names
 
 cdef extern from "<cstdbool>" namespace "std":
     ctypedef bint bool "bool"  # 将C++的bool映射到Cython的bint
 
 ############################## 定义函数指针类型 ###########################################
+# 全部函数指针类型声明为 nogil：这些 C++ 包装函数内部只做 aclnn 两段调用
+# （GetWorkspaceSize + launch），Phase-2 派发因此可以在 with nogil 内执行
+# （nogil 改造计划 §3 Phase 2 / §2.E）。
 ctypedef aclError (*TernaryOpFunc)(const aclTensor* self, const aclTensor* other,
-    const aclTensor* other2, aclTensor* out, aclrtStream stream)
-ctypedef aclError (*InplaceTernaryOpFunc)(aclTensor* self, const aclTensor* other, aclrtStream stream)
+    const aclTensor* other2, aclTensor* out, aclrtStream stream) nogil
+ctypedef aclError (*InplaceTernaryOpFunc)(aclTensor* self, const aclTensor* other, aclrtStream stream) nogil
 
 ctypedef aclError (*BinaryOpFunc)(const aclTensor* self, const aclTensor* other,
-    aclTensor* out, aclrtStream stream)
-ctypedef aclError (*InplaceBinaryOpFunc)(aclTensor* self, const aclTensor* other, aclrtStream stream)
+    aclTensor* out, aclrtStream stream) nogil
+ctypedef aclError (*InplaceBinaryOpFunc)(aclTensor* self, const aclTensor* other, aclrtStream stream) nogil
 ctypedef aclError (*ScalarBinaryOpFunc)(const aclTensor* self, const aclScalar* other,
-    aclTensor* out, aclrtStream stream) 
-ctypedef aclError (*InplaceScalarBinaryOpFunc)(aclTensor* self, const aclScalar* other, aclrtStream stream)
+    aclTensor* out, aclrtStream stream) nogil
+ctypedef aclError (*InplaceScalarBinaryOpFunc)(aclTensor* self, const aclScalar* other, aclrtStream stream) nogil
 # out = scalar <op> tensor（标量在左）：参数顺序刻意「标量在前」，避免和上面混淆
 ctypedef aclError (*ReverseScalarBinaryOpFunc)(const aclScalar* self, const aclTensor* other,
-    aclTensor* out, aclrtStream stream)
+    aclTensor* out, aclrtStream stream) nogil
 
-ctypedef aclError (*UnaryOpFunc)(const aclTensor* self, aclTensor* out, aclrtStream stream)
-ctypedef aclError (*InplaceUnaryOpFunc)(aclTensor* self, aclrtStream stream)
+ctypedef aclError (*UnaryOpFunc)(const aclTensor* self, aclTensor* out, aclrtStream stream) nogil
+ctypedef aclError (*InplaceUnaryOpFunc)(aclTensor* self, aclrtStream stream) nogil
 
 
 ###########################################################################################
@@ -964,10 +971,10 @@ ctypedef aclError (*InplaceUnaryOpFunc)(aclTensor* self, aclrtStream stream)
 
 # aclTensorList is not convenient to use in C++, so use std::vector directly
 ctypedef aclError (*GeneralOpFunc)(const vector[const aclTensor*]& ins, const vector[aclTensor*]& outs,
-    const ArgsType& args, const KwargsType& kwargs, aclrtStream stream)
+    const ArgsType& args, const KwargsType& kwargs, aclrtStream stream) nogil
 
 ctypedef aclError (*ReductionOpFunc)(const aclTensor* self, const aclIntArray* dim, bool keepdim,
-    aclTensor* out, const KwargsType& kwargs, aclrtStream stream)
+    aclTensor* out, const KwargsType& kwargs, aclrtStream stream) nogil
 
 # 函数指针联合体，用于存储不同类型的操作
 ctypedef union FuncPtrUnion:
@@ -983,7 +990,10 @@ ctypedef union FuncPtrUnion:
     ReductionOpFunc reduction_op
     GeneralOpFunc general_op
 
-cdef aclError register_acl_ufunc(string opname, OpType op_type, FuncPtrUnion func_ptr) except * nogil:
+cdef aclError register_acl_ufunc(string opname, OpType op_type, FuncPtrUnion func_ptr) except *:
+    # 只在 import 期（init_builtin_operators -> register_*）被调用，调用方
+    # 都持有 GIL；写成 nogil 会让 std::unordered_map/set 的写操作脱离任何
+    # 同步原语（free-threaded 下与派发读并发 = UB），故去掉 nogil。
     cdef OpInfo op_info
     op_info.op_name = opname
     op_info.op_type = op_type
@@ -1470,7 +1480,10 @@ cdef aclError launch_general_func_raw(str opname, sequence ins, sequence outs, l
             if issubclass(typ, _ndarray_base):
                 outtensors.push_back(cupy_ndarray_to_acl_tensor(op))
 
-        ret = func_ptr.general_op(intensors, outtensors, acl_args, acl_kwargs, stream)
+        # Phase 2（nogil）：二段接口调用只触碰 C 对象；Phase 1/3（Python ->
+        # C 转换、错误转换与资源回收）保持在 GIL 段（nogil 改造计划 §3）。
+        with nogil:
+            ret = func_ptr.general_op(intensors, outtensors, acl_args, acl_kwargs, stream)
     finally:
         # aclDestroyTensor does not deallocate array buffer, but shapes, strides
         for i in range(intensors.size()):
@@ -1877,35 +1890,42 @@ cdef aclError launch_elementwise_func_raw(str opname, sequence ins, sequence out
         if len(ops) == 3 and not has_scalar and not inplace:  # 二元操作
             if op_info.op_type != BINARY_OP:
                 raise RuntimeError(f"Operator {opname} is not a binary operator")
-            ret = func_ptr.binary_op(tensors[0], tensors[1], tensors[2], stream)
+            with nogil:
+                ret = func_ptr.binary_op(tensors[0], tensors[1], tensors[2], stream)
         elif len(ops) == 2 and inplace:  # 原地二元操作
             if op_info.op_type != INPLACE_BINARY_OP:
                 raise RuntimeError(f"Operator {opname} is not an inplace binary operator")
-            ret = func_ptr.inplace_binary_op(tensors[0], tensors[1], stream)
+            with nogil:
+                ret = func_ptr.inplace_binary_op(tensors[0], tensors[1], stream)
 
         elif len(ops) == 3 and has_scalar and not inplace:
             # tensors = [tensor_operand, out]（标量不建 tensor），顺序与 ins 中的
             # ndarray 顺序一致，所以两种方向都能直接取用。
             if op_info.op_type == REVERSE_SCALAR_BINARY_OP:  # out = scalar <biop> tensor
-                ret = func_ptr.reverse_scalar_binary_op(scalar_ptr, tensors[0], tensors[1], stream)
+                with nogil:
+                    ret = func_ptr.reverse_scalar_binary_op(scalar_ptr, tensors[0], tensors[1], stream)
             elif op_info.op_type == SCALAR_BINARY_OP:  # out = tensor <biop> scalar
-                ret = func_ptr.scalar_binary_op(tensors[0], scalar_ptr, tensors[1], stream)
+                with nogil:
+                    ret = func_ptr.scalar_binary_op(tensors[0], scalar_ptr, tensors[1], stream)
             else:
                 raise RuntimeError(f"Operator {opname} is not a scalar binary operator")
         elif len(ops) == 2 and has_scalar:  #  out = self <biop> scalar
             if op_info.op_type != INPLACE_SCALAR_BINARY_OP:
                 raise RuntimeError(f"Operator {opname} is not an inplace scalar binary operator")
-            ret = func_ptr.inplace_scalar_binary_op(tensors[0], scalar_ptr, stream)
+            with nogil:
+                ret = func_ptr.inplace_scalar_binary_op(tensors[0], scalar_ptr, stream)
         
         elif len(ops) == 2 and not inplace:  # 一元操作
             if op_info.op_type != UNARY_OP:
                 raise RuntimeError(f"Operator {opname} and is not a unary operator")
-            ret = func_ptr.unary_op(tensors[0], tensors[1], stream)
+            with nogil:
+                ret = func_ptr.unary_op(tensors[0], tensors[1], stream)
         
         elif len(ops) == 1 and inplace:  # 原地一元操作
             if op_info.op_type != INPLACE_UNARY_OP:
                 raise RuntimeError(f"Operator {opname.decode('utf-8')} is not an inplace unary operator")
-            ret = func_ptr.inplace_unary_op(tensors[0], stream)
+            with nogil:
+                ret = func_ptr.inplace_unary_op(tensors[0], stream)
         else:
             raise RuntimeError("Invalid number of operands or inplace flag")
             # TODO:  std::runtime_error() with nogil
@@ -2101,7 +2121,9 @@ cdef aclError launch_reduction_op_raw(str opname, sequence ins, sequence outs, o
     try:
         # 放进 try 内, 失败时由 finally 回收已创建的 dim/scalar
         acl_kwargs = _create_keyword_args(kwargs, opname)
-        ret = func_ptr.reduction_op(tensors[0], dim, keepdims, tensors[1], acl_kwargs, stream)
+        # Phase 2（nogil）：同 launch_general_func
+        with nogil:
+            ret = func_ptr.reduction_op(tensors[0], dim, keepdims, tensors[1], acl_kwargs, stream)
     finally:
         # does not deallocate array buffer, but shapes, strides
         for t in tensors:
@@ -2366,6 +2388,8 @@ cdef extern from "../acl_math_ops.h" nogil:
 # 初始化函数，注册内置操作
 cdef void register_math_operators():
     cdef FuncPtrUnion func_union
+    # union 只赋一个成员就注册，先清零避免读到未初始化填充（§2.F）
+    memset(&func_union, 0, sizeof(FuncPtrUnion))
 
     ###################################
     # 注册aclop_BitwiseAnd作为二元操作
@@ -2777,6 +2801,7 @@ cdef extern from "../acl_reduction_ops.h" nogil:
 
 cdef void register_reduction_operators():
     cdef FuncPtrUnion func_union
+    memset(&func_union, 0, sizeof(FuncPtrUnion))
     func_union.reduction_op = aclop_Any
     register_acl_ufunc("ascend_any", REDUCTION_OP, func_union)
     func_union.reduction_op = aclop_All
@@ -3050,6 +3075,7 @@ cdef set _STRUCTURAL_OPS = set()
 cdef void _register_general(str name, GeneralOpFunc fn, bint structural=False) except *:
     """GENERAL_OP 注册 + B 类(structural)旁表标注。"""
     cdef FuncPtrUnion func_union
+    memset(&func_union, 0, sizeof(FuncPtrUnion))
     func_union.general_op = fn
     # 运行时 str 对象必须显式 encode（std::string 的 from_py 转换器只收
     # bytes；字面量才会走编译期转换，故原有直传字面量的写法没有暴露此问题）
@@ -3060,6 +3086,7 @@ cdef void _register_general(str name, GeneralOpFunc fn, bint structural=False) e
 
 cdef void register_irregular_operators():
     cdef FuncPtrUnion func_union
+    memset(&func_union, 0, sizeof(FuncPtrUnion))
 
     # =====================================================================
     # A 类 numeric：数值计算（promote 降档通用有效）
