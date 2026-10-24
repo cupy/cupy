@@ -377,6 +377,59 @@ class TestArithmeticBinary3(ArithmeticBinaryBase):
         return y
 
 
+class TestPowerComplexBranchCut:
+
+    @testing.numpy_cupy_allclose(rtol=1e-14, atol=0)
+    def test_negative_zero_imag_squared(self, xp):
+        a = xp.asarray([
+            complex(-1.0, -0.0),
+            complex(-10.0, -0.0),
+            complex(-100.0, -0.0),
+        ], dtype=xp.complex128)
+        b = xp.float64(2.0)
+        return a ** b
+
+    @testing.numpy_cupy_allclose(rtol=0, atol=0)
+    def test_null_exponent(self, xp):
+        a = xp.asarray([
+            complex(-1.0, -0.0),
+            complex(-10.0, -0.0),
+            complex(-100.0, -0.0),
+        ], dtype=xp.complex128)
+        b = xp.float64(0.0)
+        return a ** b
+
+    @testing.numpy_cupy_allclose(rtol=0, atol=0)
+    def test_null_base(self, xp):
+        a = xp.asarray([
+            complex(0.0, 0.0),
+            complex(0.0, -0.0),
+            complex(-0.0, 0.0),
+            complex(-0.0, -0.0),
+        ], dtype=xp.complex128)
+        b = xp.float64(2.0)
+        return a ** b
+
+    @testing.numpy_cupy_array_equal()
+    def test_null_base_negative_exponent(self, xp):
+        a = xp.asarray([
+            complex(0.0, 0.0),
+            complex(0.0, -0.0),
+            complex(-0.0, 0.0),
+            complex(-0.0, -0.0),
+        ], dtype=xp.complex128)
+        b = xp.float64(-2.0)
+        y = a ** b
+        return xp.stack([
+            xp.isfinite(y.real),
+            xp.isfinite(y.imag),
+            xp.isinf(y.real),
+            xp.isinf(y.imag),
+            xp.isnan(y.real),
+            xp.isnan(y.imag),
+        ])
+
+
 class UfuncTestBase:
 
     @testing.numpy_cupy_allclose(accept_error=TypeError)
