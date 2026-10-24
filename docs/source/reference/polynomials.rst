@@ -52,7 +52,7 @@ Basics
    :toctree: generated/
 
    poly1d
-   cupy.poly
+   poly
    polyval
    roots
 
