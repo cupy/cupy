@@ -1,4 +1,14 @@
 # distutils: language = c++
+"""CUDA implementation of the kernel Module/Function API.
+
+This file lives at its *upstream* location and keeps the upstream
+implementation, so that upstream merges stay trivial.  It is compiled as the
+module ``cupy.xpu.function`` against the shared declarations in
+``cupy/xpu/function.pxd`` (the per-backend pyx source is selected in
+``install/cupy_builder/features/{cuda,ascend}.py``).  The Ascend
+implementation of the same interface lives in
+``cupy/xpu/ascend/function.pyx``.
+"""
 
 import numpy
 import warnings
@@ -10,12 +20,16 @@ from libcpp cimport vector
 from cupy._core cimport _carray
 from cupy._core cimport _scalar
 from cupy._core.core cimport _ndarray_base
-from cupy_backends.cuda.api cimport driver
-from cupy_backends.cuda.api cimport runtime
-from cupy.cuda cimport stream as stream_module
-from cupy.cuda.memory cimport MemoryPointer
-from cupy.cuda.texture cimport TextureObject, SurfaceObject
-from cupy.cuda import device
+from cupy.backends.backend.api cimport driver
+from cupy.backends.backend.api cimport runtime
+from cupy.xpu cimport stream as stream_module
+from cupy.xpu.memory cimport MemoryPointer
+# NOTE: texture/surface objects are CUDA-only and are imported lazily inside
+# `_pointer()` (see below) instead of with a module-level cimport: importing
+# `cupy.cuda.texture` here would pull in `cupy.cuda` at module init, and that
+# compatibility layer re-exports this very module -- a cycle while `cupy.cuda`
+# is still being initialised.
+from cupy.xpu import device
 
 
 cdef class CPointer:
@@ -61,6 +75,7 @@ cdef inline CPointer _pointer(x):
         return CIntptr(x.ptr)
     if isinstance(x, CPointer):
         return x
+    from cupy.cuda.texture import TextureObject, SurfaceObject
     if isinstance(x, (TextureObject, SurfaceObject)):
         return CUIntMax(x.ptr)
     if isinstance(x, numpy.ndarray):
@@ -115,13 +130,13 @@ cdef _launch(intptr_t func, Py_ssize_t grid0, int grid1, int grid2,
         if grid0 * grid1 * grid2 > max_grid_size:
             if grid1 == grid2 == 1:
                 warnings.warn('The grid size will be reduced from {} to {}, '
-                              'as the specified grid size exceeds the limit.'.
-                              format(grid0, max_grid_size))
+                            'as the specified grid size exceeds the limit.'.
+                            format(grid0, max_grid_size))
                 grid0 = max_grid_size
             else:
                 raise ValueError('The specified grid size ({} * {} * {}) '
-                                 'exceeds the limit ({}).'.
-                                 format(grid0, grid1, grid2, max_grid_size))
+                                'exceeds the limit ({}).'.
+                                format(grid0, grid1, grid2, max_grid_size))
         driver.launchCooperativeKernel(
             func, <int>grid0, grid1, grid2, <int>block0, block1, block2,
             <int>shared_mem, stream, <intptr_t>kargs.data())
@@ -140,7 +155,7 @@ cdef class Function:
         self.ptr = driver.moduleGetFunction(module.ptr, funcname)
 
     def __call__(self, tuple grid, tuple block, args, size_t shared_mem=0,
-                 stream=None, enable_cooperative_groups=False):
+                stream=None, enable_cooperative_groups=False):
         grid = (grid + (1, 1))[:3]
         block = (block + (1, 1))[:3]
         s = _get_stream(stream)

@@ -15,6 +15,10 @@ def _round_if_needed(arr, dtype):
     """Rounds arr inplace if the destination dtype is an integer.
     """
     if cupy.issubdtype(dtype, cupy.integer):
+        if cupy.issubdtype(arr.dtype, cupy.integer):
+            # ASCEND: integer array does not need rouding,
+            # CANN alcnnRound reject int dtypes, ret = 500003 on ASCEND
+            return
         arr.round(out=arr)  # bug in round so use rint (cupy/cupy#2330)
 
 

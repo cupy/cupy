@@ -95,6 +95,9 @@ def get_rocm_path():
         _rocm_path = _get_rocm_path()
     return _rocm_path
 
+def get_cann_path():
+    # TODO: ASCEND
+    return "/usr/local/Ascend/ascend-toolkit/latest"
 
 def get_hipcc_path():
     # Returns the path to the hipcc command or None if not found.
@@ -244,7 +247,7 @@ def _get_hipcc_path():
 
 def _get_cub_path():
     # runtime discovery of CUB headers
-    from cupy_backends.cuda.api import runtime
+    from cupy.backends.backend.api import runtime
     current_dir = os.path.dirname(os.path.abspath(__file__))
 
     if not runtime.is_hip:
@@ -308,7 +311,9 @@ def _can_attempt_preload(lib: str) -> bool:
     """Returns if the preload can be attempted."""
 
     config = get_preload_config()
-    if (config is None) or (config['packaging'] == 'conda'):
+    # NOTE: `.get()` rather than `[]` so that a hand-written or partial
+    # `_wheel.json` (e.g. from a source build) can not break `import cupy`.
+    if (config is None) or (config.get('packaging') == 'conda'):
         # We don't do preload if CuPy is installed from Conda-Forge, as we
         # cannot guarantee the version pinned in _wheel.json, which is
         # encoded in config[lib]['filenames'], is always available on
@@ -572,11 +577,20 @@ def _get_hipcc_include_dirs():
 
 
 def _detect_duplicate_installation():
-    # List of CuPy packages that cannot co-exist.
-    # Outdated ones can be removed once we drop support for Python version
-    # supported by that package.
+    # List of CuPy packages that cannot co-exist, including the distributions
+    # this fork ships. The Ascend builds are named after the CANN release train
+    # -- `numpy-ascend-cann85`, `numpy-ascend-cann90`, mirroring upstream's
+    # `cupy-cuda11x`/`cupy-cuda12x` scheme (see `ASCEND_DISTRIBUTION_NAME` in
+    # setup.py) -- while bare `numpy-ascend` is the CANN-agnostic name carried
+    # by the source tarball. The CUDA/HIP builds keep `cupy`. Every one of them
+    # provides the same top-level `cupy` package, so any two installed together
+    # shadow each other's files.
     known = (
         'cupy',
+        'numpy-ascend',
+        'numpy-ascend-cann82',
+        'numpy-ascend-cann85',
+        'numpy-ascend-cann90',
         'cupy-cuda12x',
         'cupy-cuda13x',
         'cupy-rocm-7-0',

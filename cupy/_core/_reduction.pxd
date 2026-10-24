@@ -1,8 +1,7 @@
 from cupy._core._carray cimport shape_t
 from cupy._core cimport _kernel
-from cupy._core._kernel cimport KernelArguments
 from cupy._core.core cimport _ndarray_base
-from cupy.cuda cimport function
+from cupy.xpu cimport function
 
 
 cdef Py_ssize_t _block_size
@@ -27,7 +26,9 @@ cdef class _AbstractReductionKernel:
         readonly dict _cached_codes
 
     cpdef _ndarray_base _call(
-        self, KernelArguments kargs, shape_t& in_shape, axis, dtype,
+        self,
+        list in_args, list out_args,
+        const shape_t& a_shape, axis, dtype,
         bint keepdims, bint reduce_dims, int device_id,
         stream, bint try_use_cub=*, bint try_use_cuda_compute=*,
         bint sort_reduce_axis=*, bint cuda_compute_only=*)
@@ -39,11 +40,10 @@ cdef class _AbstractReductionKernel:
         stream, params) except -1
 
     cdef tuple _get_expressions_and_types(
-        self, KernelArguments kargs, dtype)
+        self, list in_args, list out_args, dtype)
 
-    cdef _create_out_args(
-        self, KernelArguments kargs, tuple out_types,
-        shape_t& shape)
+    cdef list _get_out_args(
+        self, list out_args, tuple out_types, const shape_t& out_shape)
 
     cdef function.Function _get_function(
         self,
@@ -72,7 +72,7 @@ cdef shape_t _set_permuted_args(
     list args, tuple axis_permutes, const shape_t& shape,
     tuple params) except *
 
-cdef tuple _get_shape_and_strides(KernelArguments kargs)
+cdef tuple _get_shape_and_strides(list in_args, list out_args)
 
 cdef _optimizer_copy_arg(a)
 

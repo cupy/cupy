@@ -108,8 +108,8 @@ def trimcoef(c, tol=0):
         c = c.ravel()
     c = c.astype(cupy.common_type(c), copy=False)
     filt = (cupy.abs(c) > tol)[::-1]
-    ind = c.size - cupy._manipulation.add_remove._first_nonzero_krnl(
-        filt, c.size).item()
+    from cupy._manipulation.add_remove import _first_nonzero_index
+    ind = c.size - _first_nonzero_index(filt, c.size)
     if ind == 0:
         return cupy.zeros_like(c[:1])
     return c[: ind]

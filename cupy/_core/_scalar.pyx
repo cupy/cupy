@@ -3,6 +3,7 @@ from libc.stdint cimport intptr_t
 cimport cpython
 cimport numpy as cnp
 
+import ctypes
 import graphlib
 
 import numpy
@@ -402,6 +403,32 @@ cdef class CScalar(CPointer):
     cpdef get_numpy_type(self):
         return <object>(self.descr.typeobj)  # typeobj is the C-level .type
 
+    cpdef to_numpy_scalar(self):
+        """Return the value as a NumPy scalar of the stored (loop) dtype.
+
+        Fork helper: the Ascend CPU fallback reads scalar operands back on the
+        host.  `ptr`/`descr` are C-level, so dereference here.
+        """
+        # NOTE: Cython's `numpy.pxd` does not expose `PyArray_Scalar`, so the
+        # value is materialized by copying the packed bytes into a 1-element
+        # NumPy array instead (portable across NumPy 1.x/2.x).
+        cdef object dtype = <object>self.descr
+        cdef cnp.ndarray arr
+        if self.ptr == 0 or self.value is None:
+            return None
+        arr = numpy.empty(1, dtype=dtype)
+        ctypes.memmove(arr.ctypes.data, self.ptr, dtype.itemsize)
+        return arr[0]
+
+    @staticmethod
+    cdef CScalar from_numpy_scalar_with_dtype(object value, dtype):
+        """Create a scalar already materialized with `dtype`.
+
+        Fork helper (Ascend): scalars are packed with the kernel loop dtype on
+        the host so the aclnn kernels never have to cast implicitly.
+        """
+        return CScalar(value, dtype)
+
     @property
     def dtype(self):
         return self.descr
@@ -455,3 +482,13 @@ cpdef str _get_cuda_scalar_repr(obj, dtype):
         return f"bfloat16({float_repr})"
 
     raise TypeError(f'Unsupported dtype: {dtype}')
+
+
+cpdef CScalar scalar_to_c_scalar(object value):
+    """Ascend (fork): wrap a Python/NumPy scalar into a `CScalar`.
+
+    Kept because `cupy/backends/ascend/api/acl_utils.pyx` converts scalar
+    operands on the host; upstream inlined the equivalent `CScalar(value)`
+    call into `_kernel._preprocess_arg`.
+    """
+    return CScalar(value)

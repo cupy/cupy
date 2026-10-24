@@ -10,6 +10,24 @@ from cupy._core._kernel import ElementwiseKernel, _get_warpsize
 from cupy._core._kernel cimport _full_mask_hex
 from cupy._core._ufuncs import elementwise_copy
 
+# Ascend-only aclnn dispatcher.  Every call site below sits in an
+# `IF CUPY_CANN_VERSION > 0` block, so a CUDA/HIP build must not even
+# cimport it (the Ascend extension module is not compiled there).
+IF CUPY_CANN_VERSION > 0:
+    from cupy.backends.ascend.api.acl_utils cimport launch_general_func
+    from cupy.backends.backend import is_ascend
+
+# ---------------------------------------------------------------------------
+# Ascend 的 scatter dtype 门槛：aclnnScatterAdd 只支持
+# FLOAT16/FLOAT32/INT32/INT8/UINT8（aclnn_scatter_add.h:26-31），
+# scatter_max/min 的组合实现（acl_general_ops.h ScatterMaxMin）继承
+# Maximum/InplaceScatterUpdate 的白名单 —— 都比 CUDA atomic* 的窄。
+# dtype 不符时在 host 侧提前报错，而不是等 aclnn 的错误码。
+# ---------------------------------------------------------------------------
+def py_scatter_ascend_gate_active() -> bool:
+    """测试用：scatter 的 Ascend dtype 收窄门槛是否激活（无需设备/数组）。"""
+    return is_ascend
+
 from libcpp cimport vector
 
 from cupy._core._carray cimport shape_t
@@ -18,9 +36,9 @@ from cupy._core._dtype cimport _raise_if_invalid_cast
 from cupy._core cimport core
 from cupy._core cimport _routines_math as _math
 from cupy._core cimport _routines_manipulation as _manipulation
-from cupy._core.core cimport _convert_from_cupy_like, _ndarray_base
+from cupy._core._routines_creation cimport _convert_from_cupy_like
+from cupy._core.core cimport _ndarray_base
 from cupy._core cimport internal
-
 
 # _ndarray_base members
 
@@ -60,6 +78,19 @@ cdef _ndarray_base _ndarray_getitem(_ndarray_base self, slices):
 cdef _ndarray_setitem(_ndarray_base self, slices, value):
     if isinstance(value, _ndarray_base):
         value = _squeeze_leading_unit_dims(value)
+    from cupy.backends.backend import is_ascend
+    if is_ascend and isinstance(slices, _ndarray_base) and slices.dtype == numpy.bool_:
+        # ASCEND: boolean mask setitem (a[mask] = c) is unreliable
+        # fallback to CPU
+        import cupy as _cp
+        host = _cp.asnumpy(self)
+        mask = _cp.asnumpy(slices)
+        if isinstance(value, _ndarray_base):
+            host[mask] = _cp.asnumpy(value)
+        else:
+            host[mask] = value
+        self.set(host)
+        return
 
     # TODO: Use NumPy C-API to fast-path this.
     if self.dtype.fields is not None:
@@ -86,61 +117,94 @@ cdef tuple _ndarray_nonzero(_ndarray_base self):
         raise ValueError("Calling nonzero on 0d arrays is not allowed. "
                          "Use cp.atleast_1d(scalar).nonzero() instead.")
 
-
-# TODO(kataoka): Rename the function because `_ndarray_base` does not have
-# `argwhere` method
-cpdef _ndarray_base _ndarray_argwhere(_ndarray_base self):
-    cdef Py_ssize_t count_nonzero
-    cdef int ndim
-    cdef _ndarray_base nonzero
-    numpy_int64 = numpy.int64
-    if self.size == 0:
-        count_nonzero = 0
-    else:
-        if self.dtype == numpy.bool_:
-            nonzero = self.ravel()
+IF CUPY_CANN_VERSION <= 0:
+    # TODO(kataoka): Rename the function because `_ndarray_base` does not have
+    # `argwhere` method
+    cpdef _ndarray_base _ndarray_argwhere(_ndarray_base self):
+        cdef Py_ssize_t count_nonzero
+        cdef int ndim
+        cdef _ndarray_base nonzero
+        numpy_int64 = numpy.int64
+        if self.size == 0:
+            count_nonzero = 0
         else:
-            nonzero = cupy._core.not_equal(self, 0)
-            nonzero = nonzero.ravel()
+            if self.dtype == numpy.bool_:
+                nonzero = self.ravel()
+            else:
+                nonzero = cupy._core.not_equal(self, 0)
+                nonzero = nonzero.ravel()
 
-        # Get number of True in the mask to determine the shape of the array
-        # after masking.
-        if nonzero.size <= 2 ** 31 - 1:
-            scan_dtype = numpy.int32
+            # Get number of True in the mask to determine the shape of the array
+            # after masking.
+            if nonzero.size <= 2 ** 31 - 1:
+                scan_dtype = numpy.int32
+            else:
+                scan_dtype = numpy_int64
+
+            chunk_size = 512
+
+            # TODO(anaruse): Use Optuna to automatically tune the threshold
+            # that determines whether "incomplete scan" is enabled or not.
+            # Basically, "incomplete scan" is fast when the array size is large,
+            # but for small arrays, it is better to use the normal method.
+            incomplete_scan = nonzero.size > chunk_size
+
+            scan_index = _math.scan(
+                nonzero, op=_math.scan_op.SCAN_SUM, dtype=scan_dtype, out=None,
+                incomplete=incomplete_scan, chunk_size=chunk_size)
+            count_nonzero = int(scan_index[-1])  # synchronize!
+
+        ndim = self._shape.size()
+        dst = core.ndarray((count_nonzero, ndim), dtype=numpy_int64)
+        if dst.size == 0:
+            return dst
+
+        nonzero.shape = self.shape
+        if incomplete_scan:
+            warp_size = _get_warpsize()
+            size = scan_index.size * chunk_size
+            _nonzero_kernel_incomplete_scan(chunk_size, warp_size)(
+                nonzero, scan_index, dst,
+                size=size, block_size=chunk_size)
         else:
-            scan_dtype = numpy_int64
+            scan_index.shape = self.shape
+            _nonzero_kernel(nonzero, scan_index, dst)
 
-        chunk_size = 512
-
-        # TODO(anaruse): Use Optuna to automatically tune the threshold
-        # that determines whether "incomplete scan" is enabled or not.
-        # Basically, "incomplete scan" is fast when the array size is large,
-        # but for small arrays, it is better to use the normal method.
-        incomplete_scan = nonzero.size > chunk_size
-
-        scan_index = _math.scan(
-            nonzero, op=_math.scan_op.SCAN_SUM, dtype=scan_dtype, out=None,
-            incomplete=incomplete_scan, chunk_size=chunk_size)
-        count_nonzero = int(scan_index[-1])  # synchronize!
-
-    ndim = self._shape.size()
-    dst = core.ndarray((count_nonzero, ndim), dtype=numpy_int64)
-    if dst.size == 0:
         return dst
+ELSE:
+    cpdef _ndarray_base _ndarray_argwhere(_ndarray_base self):
+        # ASCEND: `aclnnNonzero` needs a *preallocated* output whose shape is
+        # data dependent ((count, ndim)), so this has to be two-stage: first the
+        # count of non-zero elements (a reduction, synchronised to host), then
+        # the actual index computation.
+        #
+        # This used to be a copy of the CUDA branch with the `scan`-based
+        # counting stage dropped, which left `count_nonzero` unbound (review D1)
+        # and also fell off the end without returning `dst`.
+        cdef Py_ssize_t count_nonzero
+        cdef int ndim
+        cdef _ndarray_base nonzero
+        numpy_int64 = numpy.int64
 
-    nonzero.shape = self.shape
-    if incomplete_scan:
-        warp_size = _get_warpsize()
-        size = scan_index.size * chunk_size
-        _nonzero_kernel_incomplete_scan(chunk_size, warp_size)(
-            nonzero, scan_index, dst,
-            size=size, block_size=chunk_size)
-    else:
-        scan_index.shape = self.shape
-        _nonzero_kernel(nonzero, scan_index, dst)
+        if self.size == 0:
+            count_nonzero = 0
+        else:
+            if self.dtype == numpy.bool_:
+                nonzero = self
+            else:
+                nonzero = cupy._core.not_equal(self, 0)
+            # ASCEND: NOTE: `cupy.count_nonzero` now registered and usable
+            count_nonzero = int(cupy.count_nonzero(nonzero))  # synchronize!
 
-    return dst
+        ndim = self._shape.size()
+        dst = core.ndarray((count_nonzero, ndim), dtype=numpy_int64)
+        if dst.size == 0:
+            return dst
+        # `[]`/`{}` (not None) so that the shape of the positional `args` and
+        # keyword `kwargs` arguments matches their declared types (review D7).
+        launch_general_func("ascend_nonzero", [self], [dst], [], {}, 0)
 
+        return dst
 
 cdef _ndarray_base _ndarray_take(_ndarray_base self, indices, axis, out):
     cdef Py_ssize_t ndim = self._shape.size()
@@ -167,6 +231,52 @@ cdef _ndarray_base _ndarray_put(_ndarray_base self, indices, values, mode):
     if not isinstance(values, _ndarray_base):
         values = core.array(values, dtype=self.dtype)
     if values.size == 0:
+        return
+
+    IF CUPY_CANN_VERSION > 0:
+        # ASCEND: the `_put_*_kernel` ElementwiseKernels are replaced by
+        # aclnnIndexPutImpl (registered as `ascend_index_put_impl`, see
+        # aclop_IndexPutImpl). The aclnn op takes non-negative, in-bounds
+        # INT64 indices and a values tensor matching the index count, so the
+        # clipmode semantics are normalized here, exactly mirroring the CUDA
+        # kernels:
+        #   raise: indices in [-n, n) are valid (numpy allows negatives),
+        #          out-of-range raises IndexError; then `ind % n`
+        #   wrap:  `ind % n`   clip: clamp to [0, n)
+        # `values` is cycled to `indices.size` (numpy.put repeats a short v);
+        # duplicates follow torch index_put_ (accumulate=False) instead of the
+        # sequential CUDA kernels.
+        if indices.size == 0:
+            return
+        if indices.dtype != numpy.int64:
+            indices = indices.astype(numpy.int64)
+        if mode == 'raise':
+            if indices.max() >= n or indices.min() < -n:
+                raise IndexError('invalid entry in indices array')
+            indices = indices % n
+        elif mode == 'wrap':
+            indices = indices % n
+        else:
+            indices = cupy.clip(indices, 0, n - 1)
+        if values.size != indices.size:
+            values = cupy.resize(values, (indices.size,))
+        else:
+            values = values.ravel()
+        values = values.astype(self.dtype, copy=False)
+        if self.ndim == 1:
+            # ascend_index_put_impl is working for 1D array
+            launch_general_func("ascend_index_put_impl", [indices, values], [self],
+                [0, 0], {}, 0)  # accumulate=False, unsafe=False
+            return
+        # ASCEND: TODO aclnnIndexPutImpl failed for ndim>1, BroadcastTo failed
+        # fallback to numpy
+        import numpy as _np_put
+        a_host =self.get()
+        idx_host = indices.get()
+        v_host = values.get()
+        _np_put.put(a_host,idx_host, v_host, mode='raise')
+        # why not use `self.set()`?
+        self[...] = core.array(a_host, dtype=self.dtype)
         return
 
     if mode == 'raise':
@@ -835,10 +945,26 @@ cpdef _ndarray_base _getitem_mask_single(
 
     mask, mask_scanned, masked_shape = _prepare_mask_indexing_single(
         a, mask, axis)
+    IF CUPY_CANN_VERSION > 0:
+        # ASCEND hs no `_getitem_mask_kernel`
+        out = core.ndarray(masked_shape, dtype=a.dtype)
+        if out.size == 0:
+            return out
+        pos = _ndarray_nonzero(mask.ravel())[0] # iD flat index
+        sel = _take(a.ravel(), pos, 0, 1)
+        out.reshape(-1)[...] = sel.reshape(-1)
+        return out
+
     out = core.ndarray(masked_shape, dtype=a.dtype)
     if out.size == 0:
         return out
-    return _getitem_mask_kernel(a, mask, mask_scanned, out)
+    # `out` is declared `raw T out` in the kernel, i.e. the kernel only sees a
+    # flat pointer and writes selected values at `mask_scanned - 1`.  Passing a
+    # 1-D view of the very same buffer keeps the CUDA behaviour identical and
+    # additionally lets the Ascend backend hand the tensor straight to
+    # `aclnnMaskedSelect`, which always produces a flat 1-D result.
+    _getitem_mask_kernel(a, mask, mask_scanned, out.reshape(-1))
+    return out
 
 
 cdef _ndarray_base _take(
@@ -847,7 +973,7 @@ cdef _ndarray_base _take(
     # When start + 1 == stop this function behaves similarly to np.take
     cdef tuple out_shape, indices_shape
     cdef int i, ndim = a._shape.size()
-    cdef Py_ssize_t cdim, rdim, index_range, out_block_size
+    cdef Py_ssize_t ldim, cdim, rdim, index_range
 
     assert start <= stop
 
@@ -860,7 +986,7 @@ cdef _ndarray_base _take(
         indices_shape = indices.shape
         cdim = indices.size
 
-    rdim = 1
+    ldim = rdim = 1
     if start == 0 and stop == ndim:
         out_shape = indices_shape
         index_range = a.size
@@ -871,6 +997,8 @@ cdef _ndarray_base _take(
             indices = _manipulation._reshape(
                 indices,
                 (1,) * start + indices_shape + (1,) * (ndim - stop))
+        for i in range(start):
+            ldim *= a._shape[i]
         for i in range(stop, ndim):
             rdim *= a._shape[i]
         index_range = 1
@@ -887,13 +1015,115 @@ cdef _ndarray_base _take(
     if a.size == 0 and out.size != 0:
         raise IndexError('cannot do a non-empty take from an empty axes.')
 
-    out_block_size = cdim * rdim
-    if isinstance(indices, _ndarray_base):
-        return _take_kernel(
-            a.reduced_view(), indices, out_block_size, rdim, index_range, out)
+    IF CUPY_CANN_VERSION > 0:
+        # ASCEND: `aclnnTake` treats `self` as a flat 1-D array and returns
+        # `out[i] = self[index[i]]` with out shape == index shape — i.e. it
+        # only implements the axis=None (ldim == rdim == 1) case of
+        # numpy.take (see aclop_Take). Takes along an inner axis go through
+        # aclnnIndexSelect (`ascend_index_select`, torch.index_select
+        # semantics) on a (ldim, index_range, rdim) view:
+        #   self3 = view(a, (ldim, index_range, rdim))
+        #   out3  = index_select(self3, dim=1, indices.ravel())
+        #        (= view of the same buffer as `out` when out is contiguous)
+        # Like the CUDA kernels, out-of-range indices wrap (`% index_range`),
+        # and indices are cast to int64 (aclnnGather accepts INT32/INT64).
+        if cdim == 0:
+            return out
+        if isinstance(indices, _ndarray_base):
+            if indices.dtype != numpy.int64:
+                indices = indices.astype(numpy.int64)
+            indices = indices % index_range
+        else:
+            indices = core.array(int(indices) % index_range,
+                                 dtype=numpy.int64)
+
+        if ldim == 1 and rdim == 1:
+            launch_general_func("ascend_take", [a, indices], [out],
+                [ldim, cdim, rdim, index_range], {}, 0)
+            return out
+        # take along an inner axis: view self as (ldim, index_range, rdim)
+        # and use aclnnIndexSelect (torch.index_select semantics: out = self
+        # with `dim` replaced by len(index)) -- one op instead of the
+        # broadcast + aclnnGather pair used before.
+        self3 = _manipulation._reshape(a, (ldim, index_range, rdim))
+        idx1 = indices.ravel()
+        out3 = _manipulation._reshape(out, (ldim, cdim, rdim))
+        launch_general_func("ascend_index_select", [self3, idx1], [out3],
+            [1], {}, 0)
+        if out3.data.ptr != out.data.ptr:
+            # `out` was not contiguous, so _reshape made a copy: write back
+            out[...] = out3
+        return out
+
+    ELSE:
+        if isinstance(indices, _ndarray_base):
+            return _take_kernel(
+                a.reduced_view(), indices, ldim, cdim, rdim, index_range, out)
+        else:
+            return _take_kernel_scalar(
+                a.reduced_view(), indices, ldim, cdim, rdim, index_range, out)
+
+# ASCEND: does not support scatter ops, so fallback to CPU
+cdef void _scatter_op_host_fallback(
+        _ndarray_base a, _ndarray_base indices, _ndarray_base v,
+        Py_ssize_t start, Py_ssize_t stop, str op) except *:
+    # The `_*_kernel` ElementwiseKernels are CUDA-only, and on Ascend only
+    # 'update' (aclnnScatterUpdate) and a narrow-dtype 'add'
+    # (aclnnScatterAdd) are available.  The remaining `*.at`-style scatter
+    # variants land here: copy the operands to host, apply the numpy
+    # semantics (duplicate indices accumulate via ``numpy.<ufunc>.at``),
+    # then write the result back to the device array.
+    #
+    # At this point `v` and `indices` are already broadcast to
+    # ``lshape + indices_shape + rshape`` (see `_scatter_op_single`), so the
+    # target of the flat element ``v[l, c, r]`` is
+    # ``a[l, indices[l, c, 0], r]`` — the same (ldim, cdim, rdim) arithmetic
+    # the CUDA kernels perform with `cdim`/`rdim`/`adim`.
+    cdef Py_ssize_t i, ldim, cdim, rdim, adim
+    cdef tuple v_shape = v.shape
+    cdef _ndarray_base out
+
+    ldim = cdim = rdim = adim = 1
+    for i in range(start):
+        ldim *= v_shape[i]
+    for i in range(start, stop):
+        cdim *= v_shape[i]
+        adim *= a._shape[i]
+    for i in range(stop, len(v_shape)):
+        rdim *= v_shape[i]
+
+    a_host = cupy.asnumpy(a).reshape(ldim, adim * rdim)
+    v_host = cupy.asnumpy(v).reshape(ldim, cdim, rdim)
+    # indices are constant along `rdim` (they were broadcast with 1-strides
+    # there), so one index per (l, c) slice is enough
+    idx_host = cupy.asnumpy(indices).reshape(
+        ldim, cdim, rdim)[:, :, 0].astype(numpy.intp)
+
+    rows = numpy.arange(ldim, dtype=numpy.intp)[:, None, None]
+    cols = numpy.arange(rdim, dtype=numpy.intp)[None, None, :]
+    # (ldim, cdim, rdim) flat column offsets into a_host, one contiguous
+    # run of `rdim` elements per (l, c) slice
+    flat_idx = idx_host[:, :, None] * rdim + cols
+
+    if op == 'update':
+        a_host[rows, flat_idx] = v_host
     else:
-        return _take_kernel_scalar(
-            a.reduced_view(), indices, out_block_size, rdim, index_range, out)
+        ufunc = {
+            'add': numpy.add,
+            'sub': numpy.subtract,
+            'max': numpy.maximum,
+            'min': numpy.minimum,
+            'and': numpy.bitwise_and,
+            'or': numpy.bitwise_or,
+            'xor': numpy.bitwise_xor,
+        }.get(op)
+        if ufunc is None:
+            raise ValueError('provided op is not supported')
+        # unbuffered: duplicates accumulate, negative indices wrap
+        ufunc.at(a_host, (rows, flat_idx), v_host)
+
+    out = cupy.asarray(a_host.reshape(a.shape), dtype=a.dtype)
+    a[...] = out
 
 
 cdef _scatter_op_single(
@@ -936,24 +1166,48 @@ cdef _scatter_op_single(
     indices = _manipulation.broadcast_to(indices, v_shape)
 
     if op == 'update':
-        _scatter_update_kernel(
-            v, indices, cdim, rdim, adim, a.reduced_view())
+        IF CUPY_CANN_VERSION > 0:
+            # ASCEND: a.reduced_view() will reduce 2D into 1D, but v/indices keep
+            # aclnnScatterUpdate will report dim not matching eror, so jsut transfer a
+            launch_general_func("ascend_scatter_update", [v, indices], [a],
+                [cdim, rdim, adim], {}, 0) # TODO: stream selection instead of 0(NULLPTR)
+            return
+        ELSE:
+            _scatter_update_kernel(
+                v, indices, cdim, rdim, adim, a.reduced_view())
+            return
     elif op == 'add':
-        # CUDA natively supports atomicAdd for int32, uint32, uint64,
-        # float32, float64.  CuPy's atomics.cuh provides an int64
-        # (long long) overload via reinterpret_cast to unsigned long long.
-        if not issubclass(v.dtype.type,
-                          (numpy.int32, numpy.int64,
-                           numpy.float16, numpy.float32, numpy.float64,
-                           numpy.uint32, numpy.uint64,
-                           numpy.intc, numpy.uintc,
-                           numpy.longlong, numpy.ulonglong)):
-            raise TypeError(
-                'cupy.add.at only supports int32, int64, float16, float32, '
-                'float64, uint32, uint64 as data type')
+        IF CUPY_CANN_VERSION > 0:
+            if issubclass(v.dtype.type,
+                          (numpy.int32, numpy.float16, numpy.float32)):
+                launch_general_func("ascend_scatter_add", [v, indices], [a],
+                    [cdim, rdim, adim], {}, 0)
+                return
+            _scatter_op_host_fallback(a, indices, v, start, stop, "add")
+            return
+        ELSE:
+            # CUDA natively supports atomicAdd for int32, uint32,
+            # uint64, float32, float64.  CuPy's atomics.cuh provides
+            # an int64 (long long) overload via reinterpret_cast to
+            # unsigned long long.
+            if not issubclass(v.dtype.type,
+                              (numpy.int32, numpy.int64,
+                               numpy.float16, numpy.float32,
+                               numpy.float64,
+                               numpy.uint32, numpy.uint64,
+                               numpy.intc, numpy.uintc,
+                               numpy.longlong, numpy.ulonglong)):
+                raise TypeError(
+                    'cupy.add.at only supports int32, int64, '
+                    'float16, float32, float64, uint32, uint64 '
+                    'as data type')
+        
         _scatter_add_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
     elif op == 'sub':
+        IF CUPY_CANN_VERSION > 0:
+            _scatter_op_host_fallback(a, indices, v, start, stop, "sub")
+            return
         if not issubclass(v.dtype.type,
                           (numpy.int32, numpy.uint32,
                            numpy.intc, numpy.uintc)):
@@ -962,30 +1216,39 @@ cdef _scatter_op_single(
         _scatter_sub_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
     elif op == 'max':
+        IF CUPY_CANN_VERSION > 0:
+            _scatter_op_host_fallback(a, indices, v, start, stop, "max")
+            return
         if not issubclass(v.dtype.type,
                           (numpy.int32, numpy.int64,
-                           numpy.float32, numpy.float64,
+                           numpy.float16, numpy.float32, numpy.float64,
                            numpy.uint32, numpy.uint64,
                            numpy.intc, numpy.uintc,
                            numpy.longlong, numpy.ulonglong)):
             raise TypeError(
-                'cupy.maximum.at only supports int32, int64, float32, '
-                'float64, uint32, uint64 as data type')
+                'cupy.maximum.at only supports int32, int64, float16, '
+                'float32, float64, uint32, uint64 as data type')
         _scatter_max_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
     elif op == 'min':
+        IF CUPY_CANN_VERSION > 0:
+            _scatter_op_host_fallback(a, indices, v, start, stop, "min")
+            return
         if not issubclass(v.dtype.type,
                           (numpy.int32, numpy.int64,
-                           numpy.float32, numpy.float64,
+                           numpy.float16, numpy.float32, numpy.float64,
                            numpy.uint32, numpy.uint64,
                            numpy.intc, numpy.uintc,
                            numpy.longlong, numpy.ulonglong)):
             raise TypeError(
-                'cupy.minimum.at only supports int32, int64, float32, '
-                'float64, uint32, uint64 as data type')
+                'cupy.minimum.at only supports int32, int64, float16, '
+                'float32, float64, uint32, uint64 as data type')
         _scatter_min_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
     elif op == 'and':
+        IF CUPY_CANN_VERSION > 0:
+            _scatter_op_host_fallback(a, indices, v, start, stop, "and")
+            return
         if not issubclass(v.dtype.type,
                           (numpy.int32, numpy.int64,
                            numpy.uint32, numpy.uint64,
@@ -997,6 +1260,9 @@ cdef _scatter_op_single(
         _scatter_and_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
     elif op == 'or':
+        IF CUPY_CANN_VERSION > 0:
+            _scatter_op_host_fallback(a, indices, v, start, stop, "or")
+            return
         if not issubclass(v.dtype.type,
                           (numpy.int32, numpy.int64,
                            numpy.uint32, numpy.uint64,
@@ -1008,6 +1274,9 @@ cdef _scatter_op_single(
         _scatter_or_kernel(
             v, indices, cdim, rdim, adim, a.reduced_view())
     elif op == 'xor':
+        IF CUPY_CANN_VERSION > 0:
+            _scatter_op_host_fallback(a, indices, v, start, stop, "xor")
+            return
         if not issubclass(v.dtype.type,
                           (numpy.int32, numpy.int64,
                            numpy.uint32, numpy.uint64,
@@ -1206,7 +1475,15 @@ cdef tuple _prepare_multiple_array_indexing(
         a_shape_i = a._shape[i]
         # wrap all out-of-bound indices
         if a_shape_i != 0:
-            _prepare_array_indexing(s, a_shape_i, stride, reduced_idx)
+            # ASCEND: _prepare_array_indexing is not available
+            # can not use _prepare_array_indexing(s, a_shape_i, stride, reduced_idx)
+            # workaround: out += stride * (s - (s // len) * len) == stride * (s % len)
+            if s.dtype != numpy.int64:
+                # the original kernel computes in S (intp); upcast s to
+                # avoid int32 overflow of stride * modded on large arrays
+                s = s.astype(numpy.int64)
+            modded = cupy.remainder(s, a_shape_i)
+            reduced_idx[...] += stride * modded
         stride *= a_shape_i
 
     return reduced_idx, start, stop

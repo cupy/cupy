@@ -177,8 +177,22 @@ def cholesky(a):
         configuration to a value that is not `ignore` in
         :func:`cupyx.errstate` or :func:`cupyx.seterr`.
 
+    .. note::
+        On the Ascend backend this falls back to NumPy on the host, because
+        CANN (aclnn and ops-blas) has no Cholesky routine. See
+        :mod:`cupy._core._ascend.cpu_fallback`.
+
     .. seealso:: :func:`numpy.linalg.cholesky`
     """
+    from cupy.backends.backend import is_ascend
+    if is_ascend:
+        # CANN 无 potrf（ops-blas 的 LAPACK 批量接口也不含）-> host NumPy。
+        from cupy._core._ascend import cpu_fallback
+        _util._assert_cupy_array(a)
+        _util._assert_stacked_2d(a)
+        _util._assert_stacked_square(a)
+        return cpu_fallback.call('linalg.cholesky', a)
+
     from cupy_backends.cuda.libs import cublas
     from cupy_backends.cuda.libs import cusolver
 
@@ -301,6 +315,35 @@ def qr(a, mode='reduced'):
         else:
             msg = 'Unrecognized mode \'{}\''.format(mode)
         raise ValueError(msg)
+
+    from cupy.backends.backend import is_ascend
+    if is_ascend:
+        # aclnnQr supports only the 'reduced'/'complete' 2-D cases.
+        if a.ndim > 2:
+            raise NotImplementedError(
+                'cupy.linalg.qr: batched (ndim > 2) input is not supported '
+                'on Ascend yet (aclnnQr is 2-D only).')
+        if mode == 'raw':
+            raise NotImplementedError(
+                "cupy.linalg.qr: mode='raw' is not supported on Ascend.")
+        from cupy._core import _routines_linalg as _linalg
+        dtype, out_dtype = _util.linalg_common_type(a)
+        if min(a.shape) == 0:
+            m, n = a.shape
+            if mode == 'reduced':
+                return (cupy.empty((m, 0), out_dtype),
+                        cupy.empty((0, n), out_dtype))
+            if mode == 'complete':
+                return (cupy.identity(m, out_dtype),
+                        cupy.empty((m, n), out_dtype))
+            return cupy.empty((0, n), out_dtype)   # mode == 'r'
+        q, r = _linalg._ascend_qr(
+            a.astype(dtype, copy=False), mode == 'complete')
+        if mode == 'r':
+            return r.astype(out_dtype, copy=False)
+        return (q.astype(out_dtype, copy=False),
+                r.astype(out_dtype, copy=False))
+
     if a.ndim > 2:
         return _qr_batched(a, mode)
 
@@ -498,8 +541,50 @@ def svd(a, full_matrices=True, compute_uv=True):
 
     .. seealso:: :func:`numpy.linalg.svd`
     """
-    from cupy_backends.cuda.libs import cusolver
+    try:
+        from cupy_backends.cuda.libs import cusolver
+    except ImportError:
+        pass # ASCEND does not support cusolver yet
     _util._assert_cupy_array(a)
+
+    from cupy.backends.backend import is_ascend
+    if is_ascend:
+        # aclnnSvd is 2-D only; `u` is returned (not `vh`), so transpose.
+        if a.ndim > 2:
+            raise NotImplementedError(
+                'cupy.linalg.svd: batched (ndim > 2) input is not supported '
+                'on Ascend yet (aclnnSvd is 2-D only).')
+        # aclnnSvd aborts on empy matrix
+        from cupy._core._ascend import cpu_fallback
+        if a.size == 0 or min(a.shape[-2:] == 0):
+            return cpu_fallback.call('linalg.svd', a, full_matrices=full_matrices,
+                                     compute_uv=compute_uv)
+        dtype, uv_dtype = _util.linalg_common_type(a)
+        s_dtype = uv_dtype.char.lower()
+        from cupy._core import _routines_linalg as _linalg
+        try:
+            s_host = _linalg._ascend_svd(
+                a.astype(dtype, copy=False), full_matrices, compute_uv=False)
+        except RuntimeError:
+            # aclnnSvd accasionlly returns ret=500003 on certain shape/dtype
+            # combination on CANN 9.0 (e.g. polyfit's reduced vandermonde)
+            # fallback to CPU
+            host_a = cupy.asnumpy(a.astype(dtype, copy=False))
+            if not compute_uv:
+                s_host = numpy.linalg.svd(host_a, )
+                return cupy.asarray(s_host).astype(s_dtype, copy=False)
+            u_host, s_host, vh_host = numpy.linalg.svd(host_a, full_matrices, compute_uv=True)
+            return (cupy.asarray(u_host).astype(uv_dtype, copy=False),
+                    cupy.asarray(s_host).astype(s_dtype, copy=False),
+                    cupy.asarray(vh_host).astype(uv_dtype, copy=False))
+
+        if not compute_uv:
+            return s[0].astype(s_dtype, copy=False)
+        u, sigma, v = s   # aclnnSvd gives U and V; numpy wants U and Vh
+        return (u.astype(uv_dtype, copy=False),
+                sigma.astype(s_dtype, copy=False),
+                v.transpose().conj().astype(uv_dtype, copy=False))
+
     if a.ndim > 2:
         return _svd_batched(a, full_matrices, compute_uv)
 
@@ -597,3 +682,23 @@ def svd(a, full_matrices=True, compute_uv=True):
             return vt, s, u
     else:
         return s
+
+
+def svdvals(x):
+    """Returns the singular values of a matrix (or a stack of matrices) ``x``.
+
+    This is the NumPy 2.0 / Array API ``svdvals``: equivalent to
+    ``cupy.linalg.svd(x, compute_uv=False)`` without computing the
+    singular vectors.
+
+    Args:
+        x (cupy.ndarray): Input array of shape ``(..., M, N)``.
+
+    Returns:
+        cupy.ndarray: The singular values of ``x``, shape ``(..., K)``
+        with ``K = min(M, N)``.
+
+    .. seealso:: :func:`numpy.linalg.svdvals`, :func:`cupy.linalg.svd`
+
+    """
+    return svd(x, compute_uv=False)

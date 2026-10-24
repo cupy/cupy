@@ -5,12 +5,25 @@ requires = ["setuptools>=77", "wheel", "Cython>=3.2,<3.3", "numpy>=2.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "cupy"
-description = "CuPy: NumPy & SciPy for GPU"
-authors = [{ name = "Seiya Tokui", email = "tokui@preferred.jp" }]
-maintainers = [{ name = "CuPy Developers" }]
+# Default (CUDA / HIP / CPU-stub) distribution name. PEP 621 forbids a dynamic
+# `name`, so the Ascend build renames itself to `numpy-ascend` from `setup.py`
+# (`distclass`, see `cupy_setup_build`-adjacent code there). Either way the
+# *import* packages stay `cupy`/`cupyx`/`cupy_backends` — the same trick as
+# scikit-learn/sklearn or opencv-python/cv2 — so existing `import cupy` code
+# keeps working.
+name = "numpy-ascend"
+description = "NumPy & SciPy for GPU and Ascend NPU (CuPy-compatible)"
+# Attribution policy (see NOTICE): the *distribution* is maintained by this
+# fork; upstream CuPy authors hold the copyright of the derived code and are
+# credited through LICENSE / NOTICE, not as authors of this metadata (an
+# upstream maintainer address here would misrepresent the package's origin).
+authors = [{ name = "Qingfeng Xia", email = "qingfeng.xia@hotmail.com" }]
+maintainers = [{ name = "Qingfeng Xia", email = "qingfeng.xia@hotmail.com" }]
+# PEP 639 SPDX string (required by `license-files` below, setuptools>=77).
+# Covers the MIT root license; Apache-2.0/BSD-3/BSL-1.0 portions and their
+# holders are listed in NOTICE.
 license = "MIT"
-license-files = ["LICENSE", "docs/source/license.rst"]
+license-files = ["LICENSE", "NOTICE", "docs/source/license.rst"]
 classifiers = [
   "Development Status :: 5 - Production/Stable",
   "Intended Audience :: Science/Research",
@@ -30,6 +43,8 @@ classifiers = [
   "Operating System :: Microsoft :: Windows",
 ]
 requires-python = ">=3.11"
+# `dependencies` / `optional-dependencies` are filled in by setup.py
+# (install_requires / extras_require), see the dynamic list below.
 dynamic = [
   "version",
   "readme",  # long_description
@@ -38,20 +53,34 @@ dynamic = [
 ]
 
 [project.urls]
-"Homepage" = "https://cupy.dev/"
-"Documentation" = "https://docs.cupy.dev/"
-"Bug Tracker" = "https://github.com/cupy/cupy/issues"
-"Source Code" = "https://github.com/cupy/cupy"
+"Homepage" = "https://github.com/qingfengxia/numpy-ascend"
+"Documentation" = "https://github.com/qingfengxia/numpy-ascend/tree/ascend/docs"
+"Bug Tracker" = "https://github.com/qingfengxia/numpy-ascend/issues"
+"Source Code" = "https://github.com/qingfengxia/numpy-ascend"
 
 [tool.setuptools]
 # Do not include files listed in MANIFEST.in to wheels.
 include-package-data = false
 
 [tool.setuptools.packages.find]
-include = ["cupy*", "cupyx*", "cupy_backends*"]
+# Import packages (NOT the distribution name). Renaming the distribution to
+# `numpy-ascend` on Ascend deliberately leaves these untouched, so
+# `import cupy` works on every backend.
+# `numpy_xpu` is the public import name of the Ascend build: a ~90-line shim
+# that aliases `cupy` via sys.modules (see `numpy_xpu/__init__.py`). It is
+# pruned again for the CUDA/HIP wheels by `_BackendAwareDistribution` in
+# setup.py, so the upstream `cupy` wheel is byte-for-byte unaffected.
+include = ["cupy*", "cupyx*", "cupy_backends*", "numpy_xpu"]
 
 [tool.setuptools.dynamic]
 version = { attr = "cupy._version.__version__" }
+# PyPI renders ONLY the `Description` field embedded in each artifact's
+# METADATA/PKG-INFO; it never fetches README.md from the repository. `readme`
+# is declared dynamic in [project] above, so it must be provided here.
+# (Upstream cupy provides it via setup.py's long_description kwarg fed by the
+# CUPY_INSTALL_LONG_DESCRIPTION env var, which this fork's build/CI never set
+# -- that is why the published numpy-ascend release had an empty PyPI page.)
+readme = { file = "README.md", content-type = "text/markdown" }
 
 [tool.autopep8]
 exclude = "*.git*, *.eggs*, *docs/source*"
@@ -71,12 +100,20 @@ xfail_strict = true
 testpaths = "tests"
 addopts = "--strict-markers"
 markers = [
+  "slow",
+  "multi_gpu",
   "slow", "multi_gpu",
   # If pytest-timeout is not available
   "timeout",
   # If pytest-run-parallel is not available
   "parallel_threads", "iterations", "thread_unsafe",
+  # 豁免 Ascend dtype 过滤 (见 tests/conftest.py::pytest_collection_modifyitems)
+  "ascend_dtype_filter_off",
 ]
+# Ascend(NPU) 不支持的 dtype (float64/complex64/complex128) 是否从测试参数化里去掉;
+# auto=按后端判断(仅 Ascend 生效)。策略见 cupy/testing/_ascend_dtypes.py,
+# 命令行开关 --ascend-dtype-filter={auto,on,off}。
+ascend_dtype_filter = "auto"
 filterwarnings = [
   "always",  # Make sure previous calls cannot hide future warnings.
   "error::FutureWarning",

@@ -92,6 +92,16 @@ def norm(x, ord=None, axis=None, keepdims=False):
             # special case for speedup
             return abs(x).sum(axis=axis, keepdims=keepdims)
         elif ord is None or ord == 2:
+            try:
+                from cupy.backends.backend import is_ascend
+                if is_ascend:
+                    # ASCEND _norm_ord2 not registered, impl it using cupy APIs
+                    sq = x * x
+                    s = sq.sum(axis=axis, keepdims=keepdims)
+                    return cupy.sqrt(s)
+            except ImportError:
+                pass
+
             # special case for speedup
             if x.dtype.kind == 'c':
                 return _norm_ord2_complex(x, axis=axis, keepdims=keepdims)
@@ -230,8 +240,24 @@ def det(a):
     Returns:
         cupy.ndarray: Determinant of ``a``. Its shape is ``a.shape[:-2]``.
 
+    .. note::
+        On the Ascend backend real-valued inputs run on the NPU through
+        aclnnSlogdet (``det = sign * exp(logdet)``); complex/other dtypes
+        fall back to NumPy on the host. See
+        :mod:`cupy._core._ascend.cpu_fallback`.
+
     .. seealso:: :func:`numpy.linalg.det`
     """
+    from cupy.backends.backend import is_ascend
+    if is_ascend:
+        _util._assert_stacked_2d(a)
+        _util._assert_stacked_square(a)
+        if a.dtype.kind in 'fc':
+            sign, logdet = slogdet(a)
+            return sign * cupy.exp(logdet)
+        # integer/bool inputs: compute in float64 like numpy does
+        return det(a.astype(numpy.float64, copy=False))
+
     sign, logdet = slogdet(a)
     return sign * cupy.exp(logdet)
 
@@ -292,10 +318,32 @@ def slogdet(a):
         To produce the same results as :func:`numpy.linalg.slogdet` for
         singular inputs, set the `linalg` configuration to `raise`.
 
+    .. note::
+        On the Ascend backend real float32/float64 inputs run on the NPU
+        through aclnnSlogdet; complex and other dtypes fall back to NumPy on
+        the host (CANN 9.0.1's aclnnSlogdet is real-valued only). See
+        :mod:`cupy._core._ascend.cpu_fallback`.
+
     .. seealso:: :func:`numpy.linalg.slogdet`
     """
     _util._assert_stacked_2d(a)
     _util._assert_stacked_square(a)
+
+    from cupy.backends.backend import is_ascend
+    if is_ascend:
+        if a.dtype.kind == 'f' and a.dtype in (numpy.float32, numpy.float64):
+            shape = a.shape[:-2]
+            if a.size == 0:
+                # empty matrices: det([[]]) == 1, like the CUDA path
+                sign = cupy.ones(shape, a.dtype)
+                return sign, cupy.zeros(shape, a.dtype)
+            sign = cupy.empty(shape, a.dtype)
+            logdet = cupy.empty(shape, a.dtype)
+            from cupy.backends.ascend.api.acl_utils import py_launch_general
+            py_launch_general('ascend_slogdet', (a,), (sign, logdet), (), {})
+            return sign, logdet
+        from cupy._core._ascend import cpu_fallback
+        return cpu_fallback.call('linalg.slogdet', a)
 
     dtype, sign_dtype = _util.linalg_common_type(a)
     logdet_dtype = numpy.dtype(sign_dtype.char.lower())
@@ -363,3 +411,53 @@ def trace(a, offset=0, axis1=0, axis2=1, dtype=None, out=None):
     """
     # TODO(okuta): check type
     return a.trace(offset, axis1, axis2, dtype, out)
+
+
+def vector_norm(x, /, *, ord=None, axis=None, keepdims=False):
+    """Computes the vector norm of an array.
+
+    This is the NumPy 2.0 / Array API ``vector_norm``: it is the vector
+    norm of ``x`` flattened (``axis=None``) or along the given ``axis``,
+    with ``ord`` selecting the norm order (default: Euclidean).
+
+    It is a thin wrapper around :func:`cupy.linalg.norm`; on the Ascend
+    backend it runs through the already-dispatched reduction ops
+    (``abs`` / ``sum`` / ``sqrt``, or ``svd`` for matrix ``ord``).
+
+    Args:
+        x (cupy.ndarray): Input array.
+        ord: Norm order (default: Euclidean). See :func:`numpy.linalg.norm`.
+        axis: Axis or axes over which to compute the norm (default: all).
+        keepdims (bool): If ``True``, the reduced axes are kept with
+            size one.
+
+    Returns:
+        cupy.ndarray: The vector norm(s) of ``x``.
+
+    .. seealso:: :func:`numpy.linalg.vector_norm`
+
+    """
+    return norm(cupy.asarray(x), ord=ord, axis=axis, keepdims=keepdims)
+
+
+def matrix_norm(x, /, *, ord='fro', keepdims=False):
+    """Computes the matrix norm of a matrix (or stack of matrices) ``x``.
+
+    This is the NumPy 2.0 / Array API ``matrix_norm``: the norm is computed
+    over the last two axes. It is a thin wrapper around
+    :func:`cupy.linalg.norm`.
+
+    Args:
+        x (cupy.ndarray): Input array of shape ``(..., M, N)``.
+        ord: Norm order. One of ``'fro'`` (default), ``'nuc'``, ``inf``,
+            ``-inf``, ``1``, ``-1``, ``2``, ``-2``.
+        keepdims (bool): If ``True``, the normed axes are kept with
+            size one.
+
+    Returns:
+        cupy.ndarray: The matrix norm(s) of ``x``.
+
+    .. seealso:: :func:`numpy.linalg.matrix_norm`
+
+    """
+    return norm(cupy.asarray(x), ord=ord, axis=(-2, -1), keepdims=keepdims)

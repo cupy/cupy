@@ -12,8 +12,9 @@ import sys
 import tempfile
 import warnings
 
-from cupy.cuda import device
-from cupy.cuda import function
+from cupy.xpu import device
+from cupy.xpu import function
+from cupy.cuda import get_rocm_path
 from cupy.cuda._compiler_cache import (
     DiskKernelCacheBackend as _DiskKernelCacheBackend,
     KernelCacheBackend as _KernelCacheBackend,

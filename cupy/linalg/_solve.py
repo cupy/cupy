@@ -195,7 +195,12 @@ def lstsq(a, b, rcond=None):
     if s.size > 0:
         cutoff = rcond * s.max()
         sing_vals = s <= cutoff
-        s1[sing_vals] = 0
+        from cupy.backends.backend import is_ascend
+        if is_ascend:
+            keep = (~sing_vals).astype(s1.dtype)
+            s1 = s1 * keep
+        else:
+            s1[sing_vals] = 0
         rank -= sing_vals.sum(dtype=numpy.int32)
 
     # Solve the least-squares solution
@@ -236,6 +241,18 @@ def inv(a):
     _util._assert_cupy_array(a)
     _util._assert_stacked_2d(a)
     _util._assert_stacked_square(a)
+
+    from cupy.backends.backend import is_ascend
+    if is_ascend:
+        # aclnnInverse only handles a single 2-D matrix; batch by looping.
+        from cupy._core import _routines_linalg as _linalg
+        if a.ndim == 2:
+            dtype, out_dtype = _util.linalg_common_type(a)
+            if a.size == 0:
+                return cupy.empty(a.shape, out_dtype)
+            return _linalg._ascend_inv(a.astype(dtype, copy=False)).astype(
+                out_dtype, copy=False)
+        return _batched_inv(a)
 
     if a.ndim >= 3:
         return _batched_inv(a)

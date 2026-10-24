@@ -185,7 +185,7 @@ class TestOptimizeBackends(unittest.TestCase):
 
     @pytest.mark.thread_unsafe(reason="AssertFunctionIsCalled.")
     def test_optimize1(self):
-        # Ensure the optimizer is run 3 times for all backends.
+        # Ensure the optimizer is run 3 times for all cupy.backends.
         func = 'cupyx.optimizing._optimize._optimize'
         times_called = 3
 

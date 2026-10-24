@@ -1,0 +1,84 @@
+numpy-ascend
+============
+
+This distribution ("numpy-ascend", import name `numpy_xpu`, with the
+`cupy` / `cupyx` / `cupy_backends` packages kept for compatibility) is an
+UNOFFICIAL derivative work of CuPy (https://github.com/cupy/cupy).
+It is not affiliated with, endorsed by, or sponsored by Preferred Networks,
+Inc. or the CuPy project.
+
+
+Upstream copyright and license notices
+--------------------------------------
+
+CuPy
+  Copyright (c) 2015 Preferred Infrastructure, Inc.
+  Copyright (c) 2015 Preferred Networks, Inc.
+  Licensed under the MIT License; see LICENSE.
+
+cupy/_core/include/cupy/complex/*  (derived by CuPy from NVIDIA headers)
+  Copyright 2008-2013 NVIDIA Corporation
+  Licensed under the Apache License, Version 2.0.
+
+third_party/cccl  (symlinked into cupy/_core/include/cupy/_cccl)
+  Copyright (c) NVIDIA Corporation and affiliates
+  Apache License 2.0 with LLVM exceptions; see third_party/cccl/LICENSE.
+  Not distributed with Ascend (CANN) builds.
+
+third_party/jitify  (symlinked into cupy/_core/include/cupy/_jitify)
+  Copyright (c) 2018-2020 NVIDIA Corporation
+  BSD 3-Clause; see third_party/jitify/LICENSE.
+  Not distributed with Ascend (CANN) builds.
+
+third_party/dlpack  (cupy/_core/include/cupy/_dlpack/dlpack.h)
+  Copyright (c) 2017 by Contributors
+  Apache License 2.0.
+
+third_party/xsf  (symlinked into cupy/_core/include/cupy/_xsf)
+  Boost Software License 1.0.
+
+cupyx/scipy/ndimage C++ PBA kernels
+  Copyright (c) 2019 School of Computing, National University of Singapore
+  MIT License; see cupyx/scipy/ndimage/cuda/LICENSE.
+  Not distributed with Ascend (CANN) builds.
+
+Every source file keeps its original copyright header. Please refer to the
+individual files and their adjacent LICENSE files for the full text.
+
+
+Modifications
+-------------
+
+This project modifies CuPy (MIT):
+
+  * The CUDA/HIP runtime backend is replaced by an Ascend NPU backend built on
+    the Huawei CANN / aclnn operator library; Ascend-specific runtime, drivers,
+    streams, helpers and kernels (`.ascend` sources, custom AscendC kernels)
+    were added.
+  * CUDA-only trees and sources were removed from the repository and from the
+    release artifacts (see docs/ascend/Compliance.md).
+  * A thin alias package `numpy_xpu` was added; it aliases the `cupy` import
+    package through `sys.modules` (same module object, not a second copy).
+  * Packaging metadata, CI and documentation were rewritten for the Ascend
+    distribution.
+
+Ascend-specific code added by this fork is released under the same MIT license
+unless a file header states otherwise. Modified upstream files retain their
+original copyright headers; the modification notices above are given as a
+whole-project statement, as required by the MIT license and by section 4 of the
+Apache License 2.0 for the Apache-licensed portions.
+
+
+Trademarks
+----------
+
+"CuPy" and the CuPy logo are trademarks of Preferred Networks, Inc. The name is
+used here only to describe the origin of this derivative work (nominative use),
+i.e. to tell users that this package is CuPy-compatible and derived from CuPy.
+It is not used as the name of this product, and no CuPy branding is applied to
+it. Apache License 2.0, section 6: this License does not grant permission to use
+the trade names, trademarks, service marks, or product names of the Licensor.
+
+"NVIDIA", "CUDA" and "cuBLAS"/"cuFFT"/"cuRAND"/"cuSOLVER"/"cuSPARSE" are
+trademarks of NVIDIA Corporation. "Ascend", "CANN" and "AscendC" are trademarks
+of Huawei Technologies Co., Ltd. All of them are used descriptively only.

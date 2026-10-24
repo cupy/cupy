@@ -5,7 +5,23 @@
 *.pyd
 *.cpp
 *.so
+# AscendC custom kernel SOURCES must be committed (wheel ships sources;
+# they are JIT-compiled by bisheng at import). Other *.cpp are
+# Cython-generated and stay ignored.
+!cupy/backends/ascend/kernels/*.cpp
+# built aicore fatbins are cache artifacts, never commit
+cupy/backends/ascend/kernels/_build/
+# AOT fatbins: built by `setup.py build_ext` (CUPY_ASCEND_KERNEL_SOCS) and
+# copied into the wheel; they are machine/SoC specific binaries, not sources.
+cupy/backends/ascend/kernels/_aot/
 build
+.codebuddy/**
+.agents/**
+docs/references/**
+tests/logs/**
+
+bdist-wheel/**
+
 \#*\#
 .\#*
 .coverage
@@ -27,3 +43,16 @@ htmlcov/
 cupy/.data/
 cupy/cuda/thrust.h
 cupy/_core/numpy_allocator.h
+.vscode/
+cupy/backends/ascend/demo/*
+
+# local porting notes (not tracked)
+docs/ascend/AscendSpecialization.md
+docs/ascend/TODO.md
+
+# CUDA Toolkit headers are NOT vendored (see docs/ascend/Compliance.md).
+# `python tools/fetch_cuda_fp16_headers.py` copies them from the local CUDA
+# Toolkit / conda / nvidia-* wheel; the copies must never be committed, and
+# MANIFEST.in + setup.py keep them out of sdist/wheel.
+/cupy/_core/include/cupy/_cuda/cuda-11/
+/cupy/_core/include/cupy/_cuda/cuda-12/

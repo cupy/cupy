@@ -6,10 +6,10 @@ from libcpp.vector cimport vector
 
 cimport numpy as cnp
 
-from cupy_backends.cuda.api cimport runtime
-from cupy_backends.cuda cimport stream as stream_module
+from cupy.backends.backend.api cimport runtime
+from cupy.backends.backend cimport stream as stream_module
 from cupy._core.core cimport _ndarray_base
-from cupy.cuda cimport memory
+from cupy.xpu cimport memory
 
 import warnings
 
@@ -17,7 +17,7 @@ import numpy
 
 import cupy
 import cupy._core.core as core
-from cupy.cuda cimport stream as py_stream_module
+from cupy.xpu cimport stream as py_stream_module
 
 # See also _util.pyx. older NumPy versions will cause crashes if we add
 # bfloat16 loops, so don't enable it.
@@ -104,7 +104,8 @@ cdef DLDevice get_dlpack_device(_ndarray_base array) except DLDevice_err:
     device.device_id = array.data.device_id
 
     if not runtime._is_hip_environment:
-        mem_type = runtime.pointerGetMemoryType(array.data.ptr)
+        mem_type = runtime.pointerGetMemoryType(
+            <intptr_t>array.data.ptr)
         is_managed = (mem_type == runtime.memoryTypeManaged)
 
         if is_managed:
@@ -554,9 +555,9 @@ def from_dlpack(array, *, device=None, copy=None):
 
     # CuPy is the consumer, so we provide our current stream to the producer
     if dev_type == <int>kDLCUDA or dev_type == <int>kDLCUDAManaged:
-        prev_device = cupy.cuda.runtime.getDevice()
+        prev_device = cupy.xpu.runtime.getDevice()
         try:
-            cupy.cuda.runtime.setDevice(dev_id)
+            cupy.xpu.runtime.setDevice(dev_id)
             assert not runtime._is_hip_environment
             stream = stream_module.get_current_stream_ptr()
             if stream == 0:
@@ -574,11 +575,11 @@ def from_dlpack(array, *, device=None, copy=None):
                     raise
                 dltensor = array.__dlpack__(stream=stream)
         finally:
-            cupy.cuda.runtime.setDevice(prev_device)
+            cupy.xpu.runtime.setDevice(prev_device)
     elif dev_type == <int>kDLROCM:
-        prev_device = cupy.cuda.runtime.getDevice()
+        prev_device = cupy.xpu.runtime.getDevice()
         try:
-            cupy.cuda.runtime.setDevice(dev_id)
+            cupy.xpu.runtime.setDevice(dev_id)
             assert runtime._is_hip_environment
             stream = stream_module.get_current_stream_ptr()
 
@@ -594,7 +595,7 @@ def from_dlpack(array, *, device=None, copy=None):
                     raise
                 dltensor = array.__dlpack__(stream=stream)
         finally:
-            cupy.cuda.runtime.setDevice(prev_device)
+            cupy.xpu.runtime.setDevice(prev_device)
     elif dev_type == <int>kDLCPU:
         raise TypeError(
             'CPU arrays cannot be directly imported to CuPy. '

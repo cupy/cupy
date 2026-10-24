@@ -8,6 +8,27 @@ import numpy as _numpy
 from cupy import _environment
 from cupy import _version
 
+# Module alias to keep compatible for cupy.cuda code
+from cupy import backends as cupy_backends
+_sys.modules["cupy_backends"] = cupy_backends
+_sys.modules.pop('cupy_backends.cuda', None)
+from cupy.backends import backend as xpu_backend
+_sys.modules["cupy_backends.cuda"] = xpu_backend
+
+# `cupy_backends/` used to be a single tree; it is now split in two
+# (`cupy/backends/backend/` for the backend-abstract runtime/driver/stream and
+# `cupy/backends/cuda/` for the CUDA specifics), so the *sub*-paths below have
+# to be aliased explicitly.  Registering the real module objects (instead of
+# relying on package paths) keeps module identity intact, i.e.
+# `cupy_backends.cuda.libs.cublas is cupy.backends.cuda.libs.cublas`.
+from cupy.backends.backend import api as _xpu_backend_api
+from cupy.backends.cuda import libs as _cuda_backend_libs
+_sys.modules["cupy_backends.cuda.api"] = _xpu_backend_api
+_sys.modules["cupy_backends.cuda.libs"] = _cuda_backend_libs
+
+# liboptiling.so 的 RTLD_GLOBAL 预加载已下沉到 cupy.backends.backend.__init__
+# （backend 扩展入口包，必须先于 api.runtime 的动态库解析完成，见该文件注释）。
+from cupy.backends.backend import is_ascend
 
 _environment._detect_duplicate_installation()  # NOQA
 _environment._preload_library('cutensor')  # NOQA
@@ -26,27 +47,57 @@ Original error:
 ''') from exc
 
 
+from cupy import xpu  # NOQA
+
+# NOTE: `cupy.cuda` 必须在这里导入（upstream 就是这一行）。`import cupy` 不会
+# 自动导入子模块，少了它 `cupy.cuda.Stream` / `cupy.cuda.device` 之类的访问会
+# AttributeError —— examples/ 和大量用户代码都直接这么写。
 from cupy import cuda  # NOQA
+
+# Device API 的顶层再导出：upstream 的顶层只保证 `cupy.cuda.<Class>`（兼容面见
+# cupy/cuda/__init__.py）；examples/ 与用户代码里还存在 `cupy.Stream` /
+# `cupy.Device` / `cupy.Memory` / `cupy.MemoryPool` 这类**顶层**写法。这里从后端
+# 无关的 cupy.xpu 统一再导出一遍（cupy.cuda.* / cupy.xpu.* / 顶层指向同一批对象）。
+from cupy.xpu import Device  # NOQA
+from cupy.xpu import Event  # NOQA
+from cupy.xpu import ExternalStream  # NOQA
+from cupy.xpu import Stream  # NOQA
+from cupy.xpu import BaseMemory  # NOQA
+from cupy.xpu import Memory  # NOQA
+from cupy.xpu import ManagedMemory  # NOQA
+from cupy.xpu import MemoryAsync  # NOQA
+from cupy.xpu import UnownedMemory  # NOQA
+from cupy.xpu import MemoryPointer  # NOQA
+from cupy.xpu import MemoryPool  # NOQA
+from cupy.xpu import PinnedMemory  # NOQA
+from cupy.xpu import PinnedMemoryPointer  # NOQA
+from cupy.xpu import PinnedMemoryPool  # NOQA
+from cupy.xpu import MemoryHook  # NOQA
+from cupy.xpu import get_current_stream  # NOQA
+from cupy.xpu import get_device_id  # NOQA
+from cupy.xpu import set_allocator  # NOQA
+from cupy.xpu import get_allocator  # NOQA
+from cupy.xpu import set_pinned_memory_allocator  # NOQA
+from cupy.xpu import using_allocator  # NOQA
+
+# Do not make `cupy.cupyx` available because it is confusing.
+# TODO: ASCEND  usable only if this cupy module has been ported
+import cupyx as _cupyx  # NOQA
 
 
 def is_available():
-    """Return True if GPU execution is available.
-
-    This function can be used to guard code for cases where CuPy is installed
-    but not usable, typically because the system has no GPU.
-    It checks whether the driver can be queried for devices and that there is
-    at least one device available.
-
-    Returns:
-        bool: True if GPU execution is possible.
-    """
-    return cuda.is_available()
+    return xpu.is_available()
 
 
 __version__ = _version.__version__
 
-
-from cupy import fft  # NOQA
+# ASCEND TODO
+try:
+    from cupy import fft  # NOQA
+except ImportError:
+    # FFT support needs cupy.fft._cache (compiled since the aclfft feature
+    # landed); keep `import cupy` working if it is ever absent.
+    pass
 from cupy import linalg  # NOQA
 from cupy import polynomial  # NOQA
 from cupy import random  # NOQA
@@ -54,6 +105,13 @@ from cupy import random  # NOQA
 # import class and function
 from cupy._core import ndarray  # NOQA
 from cupy._core import ufunc  # NOQA
+
+# kernel 编写接口（upstream 顶层同样导出；RawKernel/RawModule 在 Ascend 上
+# 构造时才需要 nvrtc/CANN 自定义核，import 类对象本身无害）
+from cupy._core import ElementwiseKernel  # NOQA
+from cupy._core import RawKernel  # NOQA
+from cupy._core import RawModule  # NOQA
+from cupy._core import ReductionKernel  # NOQA
 
 
 # =============================================================================
@@ -65,6 +123,7 @@ from numpy import inf  # NOQA
 from numpy import nan  # NOQA
 from numpy import newaxis  # == None  # NOQA
 from numpy import pi  # NOQA
+from numpy import mintypecode  # NOQA
 
 # APIs to be removed in NumPy 2.0.
 # Remove these when bumping the baseline API to NumPy 2.0.
@@ -222,6 +281,9 @@ from cupy._creation.ranges import ogrid  # NOQA
 from cupy._creation.matrix import diag  # NOQA
 from cupy._creation.matrix import diagflat  # NOQA
 from cupy._creation.matrix import tri  # NOQA
+# tril/triu are composed host-side from `tri` + `where` (both dispatched), and
+# map onto aclnnTril / aclnnTriu via the `ascend_tril` / `ascend_triu`
+# registrations for the direct kernel path.
 from cupy._creation.matrix import tril  # NOQA
 from cupy._creation.matrix import triu  # NOQA
 from cupy._creation.matrix import vander  # NOQA
@@ -235,9 +297,34 @@ from cupy.lib._shape_base import apply_along_axis  # NOQA
 from cupy.lib._shape_base import apply_over_axes  # NOQA
 from cupy.lib._shape_base import put_along_axis    # NOQA
 
+# Polynomial routines (see docs/ascend/polynomial_note.md). The poly1d Cython
+# module is compiled for Ascend since the aclfft/polynomial port; guard the
+# imports anyway so `import cupy` keeps working without them.
+from cupy.lib._polynomial import poly1d  # NOQA
+from cupy.lib._routines_poly import poly  # NOQA
+from cupy.lib._routines_poly import polyadd  # NOQA
+from cupy.lib._routines_poly import polyder  # NOQA
+from cupy.lib._routines_poly import polydiv  # NOQA
+from cupy.lib._routines_poly import polyint  # NOQA
+from cupy.lib._routines_poly import polysub  # NOQA
+from cupy.lib._routines_poly import polymul  # NOQA
+from cupy.lib._routines_poly import polyfit  # NOQA
+from cupy.lib._routines_poly import polyval  # NOQA
+from cupy.lib._routines_poly import roots  # NOQA
+
+# Discrete linear convolution (used by polymul / poly)
+from cupy._math.misc import convolve  # NOQA
+from cupy._math.misc import dot_product  # NOQA
+
+
+# Borrowed from NumPy
+if hasattr(_numpy, 'broadcast_shapes'):  # NumPy 1.20
+    from numpy import broadcast_shapes  # NOQA
+
 # -----------------------------------------------------------------------------
 # Array manipulation routines
 # -----------------------------------------------------------------------------
+# ASCEND TODO: concat
 from cupy._manipulation.basic import copyto  # NOQA
 
 from cupy._manipulation.shape import shape  # NOQA
@@ -287,15 +374,14 @@ from cupy._manipulation.split import vsplit  # NOQA
 from cupy._manipulation.tiling import repeat  # NOQA
 from cupy._manipulation.tiling import tile  # NOQA
 
+from cupy._manipulation.add_remove import unique  # NOQA
 from cupy._manipulation.add_remove import delete  # NOQA
 from cupy._manipulation.add_remove import append  # NOQA
 from cupy._manipulation.add_remove import resize  # NOQA
-from cupy._manipulation.add_remove import unique  # NOQA
 from cupy._manipulation.add_remove import unique_all  # NOQA
 from cupy._manipulation.add_remove import unique_counts  # NOQA
 from cupy._manipulation.add_remove import unique_values  # NOQA
 from cupy._manipulation.add_remove import unique_inverse  # NOQA
-
 from cupy._manipulation.add_remove import trim_zeros  # NOQA
 
 from cupy._manipulation.rearrange import flip  # NOQA
@@ -307,6 +393,7 @@ from cupy._manipulation.rearrange import rot90  # NOQA
 # Borrowed from NumPy
 if hasattr(_numpy, 'broadcast_shapes'):  # NumPy 1.20
     from numpy import broadcast_shapes  # NOQA
+
 
 # -----------------------------------------------------------------------------
 # Binary operations
@@ -320,13 +407,17 @@ from cupy._binary.elementwise import invert  # NOQA
 from cupy._binary.elementwise import left_shift  # NOQA
 from cupy._binary.elementwise import right_shift  # NOQA
 
+from cupy._binary.packing import packbits  # NOQA
+from cupy._binary.packing import unpackbits  # NOQA
+
 # NumPy 2.0 aliases
 bitwise_left_shift = left_shift
 bitwise_right_shift = right_shift
 bitwise_invert = invert
 
-from cupy._binary.packing import packbits  # NOQA
-from cupy._binary.packing import unpackbits  # NOQA
+# ASCEND TODO
+# from cupy._binary.packing import packbits  # NOQA
+# from cupy._binary.packing import unpackbits  # NOQA
 
 
 def binary_repr(num, width=None):
@@ -412,6 +503,10 @@ from numpy import typename  # NOQA
 # -----------------------------------------------------------------------------
 # Indexing routines
 # -----------------------------------------------------------------------------
+from cupy._indexing.insert import put  # NOQA
+from cupy._indexing.indexing import take  # NOQA
+from cupy._indexing.insert import fill_diagonal  # NOQA
+
 from cupy._indexing.generate import c_  # NOQA
 from cupy._indexing.generate import indices  # NOQA
 from cupy._indexing.generate import ix_  # NOQA
@@ -429,13 +524,10 @@ from cupy._indexing.indexing import compress  # NOQA
 from cupy._indexing.indexing import diagonal  # NOQA
 from cupy._indexing.indexing import extract  # NOQA
 from cupy._indexing.indexing import select  # NOQA
-from cupy._indexing.indexing import take  # NOQA
 from cupy._indexing.indexing import take_along_axis  # NOQA
 
 from cupy._indexing.insert import place  # NOQA
-from cupy._indexing.insert import put  # NOQA
 from cupy._indexing.insert import putmask  # NOQA
-from cupy._indexing.insert import fill_diagonal  # NOQA
 from cupy._indexing.insert import diag_indices  # NOQA
 from cupy._indexing.insert import diag_indices_from  # NOQA
 
@@ -476,22 +568,26 @@ from numpy import get_printoptions  # NOQA
 from numpy import set_printoptions  # NOQA
 from numpy import printoptions  # NOQA
 
-
 # -----------------------------------------------------------------------------
 # Linear algebra
 # -----------------------------------------------------------------------------
-from cupy.linalg._einsum import einsum  # NOQA
-
+#TODO (ASCEND)
+from cupy._core import matmul
+from cupy._core import dot
+# tensordot is composed on top of the dispatched dot/matmul path
+# (`_core.tensordot_core` routes to ascend_dot / ascend_matmul on Ascend).
+# NB: `vecdot` is not a cupy package-level API (NumPy 2.0 / Array API only),
+# so it stays in `cupy.linalg._product` without a package export.
+from cupy.linalg._product import tensordot  # NOQA
 from cupy.linalg._product import cross  # NOQA
-from cupy.linalg._product import dot  # NOQA
 from cupy.linalg._product import inner  # NOQA
 from cupy.linalg._product import kron  # NOQA
-from cupy.linalg._product import matmul  # NOQA
 from cupy.linalg._product import outer  # NOQA
-from cupy.linalg._product import tensordot  # NOQA
 from cupy.linalg._product import vdot  # NOQA
-
 from cupy.linalg._norms import trace  # NOQA
+# einsum 走 _einsum_cutn / _einsum_opt；其 `from cupy.cuda.device import Handle`
+# 依赖 cupy/cuda/__init__.py 里的 sys.modules 模块路径别名。
+from cupy.linalg._einsum import einsum  # NOQA
 
 # -----------------------------------------------------------------------------
 # Logic functions
@@ -550,14 +646,7 @@ from cupy._logic.truth import any  # NOQA
 # -----------------------------------------------------------------------------
 # Polynomial functions
 # -----------------------------------------------------------------------------
-from cupy.lib._polynomial import poly1d  # NOQA
-from cupy.lib._routines_poly import poly  # NOQA
-from cupy.lib._routines_poly import polyadd  # NOQA
-from cupy.lib._routines_poly import polysub  # NOQA
-from cupy.lib._routines_poly import polymul  # NOQA
-from cupy.lib._routines_poly import polyfit  # NOQA
-from cupy.lib._routines_poly import polyval  # NOQA
-from cupy.lib._routines_poly import roots  # NOQA
+# TODO (ASCEND)
 
 # -----------------------------------------------------------------------------
 # Mathematical functions
@@ -595,6 +684,7 @@ acosh = arccosh
 asinh = arcsinh
 atanh = arctanh
 
+# ASCEND TODO not yet check if there is op available
 from cupy._math.rounding import around  # NOQA
 from cupy._math.rounding import ceil  # NOQA
 from cupy._math.rounding import fix  # NOQA
@@ -665,31 +755,39 @@ from cupy._math.arithmetic import remainder as mod  # NOQA
 from cupy._math.arithmetic import subtract  # NOQA
 from cupy._math.arithmetic import true_divide  # NOQA
 
-pow = power
+# `absolute` / `sqrt` are defined as public module-level names in
+# `_routines_math.pyx` (ufuncs `cupy_absolute` / `cupy_sqrt`); `power` is
+# re-exported above from `cupy._math.arithmetic`. The aclnn registrations use
+# the same spelling (`ascend_absolute` / `ascend_sqrt` / `ascend_power`), so
+# these dispatch straight through to aclnnAbs / aclnnSqrt / aclnnPow.
+from cupy._core._routines_math import absolute  # NOQA
+from cupy._core._routines_math import sqrt  # NOQA
 
-from cupy._math.arithmetic import angle  # NOQA
-from cupy._math.arithmetic import conjugate as conj  # NOQA
-from cupy._math.arithmetic import conjugate  # NOQA
-from cupy._math.arithmetic import imag  # NOQA
-from cupy._math.arithmetic import real  # NOQA
+from cupy._math.misc import sign  # NOQA
+from cupy._math.misc import square  # NOQA
 
-from cupy._math.misc import absolute as abs  # NOQA
-from cupy._math.misc import absolute  # NOQA
 from cupy._math.misc import cbrt  # NOQA
 from cupy._math.misc import clip  # NOQA
 from cupy._math.misc import fabs  # NOQA
 from cupy._math.misc import fmax  # NOQA
 from cupy._math.misc import fmin  # NOQA
-from cupy._math.misc import interp  # NOQA
 from cupy._math.misc import maximum  # NOQA
 from cupy._math.misc import minimum  # NOQA
 from cupy._math.misc import nan_to_num  # NOQA
-from cupy._math.misc import real_if_close  # NOQA
-from cupy._math.misc import sign  # NOQA
 from cupy._math.misc import heaviside  # NOQA
-from cupy._math.misc import sqrt  # NOQA
-from cupy._math.misc import square  # NOQA
-from cupy._math.misc import convolve  # NOQA
+from cupy._math.misc import interp  # NOQA
+
+from cupy._math.arithmetic import real  # NOQA
+from cupy._math.arithmetic import angle  # NOQA
+from cupy._math.arithmetic import conjugate as conj  # NOQA
+from cupy._math.arithmetic import conjugate  # NOQA
+from cupy._math.arithmetic import imag  # NOQA
+from cupy._math.misc import real_if_close  # NOQA
+
+# NumPy-compatible aliases: `np.abs` is the historical spelling of
+# `np.absolute`, and `np.pow` was added in NumPy 2.0 for `np.power`.
+abs = absolute  # NOQA
+pow = power  # NOQA
 
 # -----------------------------------------------------------------------------
 # Miscellaneous routines
@@ -708,29 +806,28 @@ from numpy import iterable  # NOQA
 # -----------------------------------------------------------------------------
 from cupy._padding.pad import pad  # NOQA
 
-
 # -----------------------------------------------------------------------------
 # Sorting, searching, and counting
 # -----------------------------------------------------------------------------
 from cupy._sorting.count import count_nonzero  # NOQA
-
 from cupy._sorting.search import argmax  # NOQA
 from cupy._sorting.search import argmin  # NOQA
-from cupy._sorting.search import argwhere  # NOQA
-from cupy._sorting.search import flatnonzero  # NOQA
 from cupy._sorting.search import nanargmax  # NOQA
 from cupy._sorting.search import nanargmin  # NOQA
 from cupy._sorting.search import nonzero  # NOQA
-from cupy._sorting.search import searchsorted  # NOQA
 from cupy._sorting.search import where  # NOQA
+from cupy._sorting.search import argwhere  # NOQA
+from cupy._sorting.search import flatnonzero  # NOQA
+from cupy._sorting.search import searchsorted  # NOQA
 
-from cupy._sorting.sort import argpartition  # NOQA
+from cupy._sorting.sort import sort  # NOQA
 from cupy._sorting.sort import argsort  # NOQA
+from cupy._sorting.sort import argpartition  # NOQA
+from cupy._sorting.sort import partition  # NOQA
 from cupy._sorting.sort import lexsort  # NOQA
 from cupy._sorting.sort import msort  # NOQA
 from cupy._sorting.sort import sort_complex  # NOQA
-from cupy._sorting.sort import partition  # NOQA
-from cupy._sorting.sort import sort  # NOQA
+
 
 # -----------------------------------------------------------------------------
 # Statistics
@@ -807,13 +904,7 @@ def ndim(a):
 from cupy._util import clear_memo  # NOQA
 from cupy._util import memoize  # NOQA
 
-from cupy._core import ElementwiseKernel  # NOQA
-from cupy._core import RawKernel  # NOQA
-from cupy._core import RawModule  # NOQA
-from cupy._core._reduction import ReductionKernel  # NOQA
-
 from cupy._core._dtype import make_aligned_dtype  # NOQA
-
 # -----------------------------------------------------------------------------
 # DLPack
 # -----------------------------------------------------------------------------
@@ -827,7 +918,7 @@ def asnumpy(a, stream=None, order='C', out=None, *, blocking=True):
 
     Args:
         a: Arbitrary object that can be converted to :class:`numpy.ndarray`.
-        stream (cupy.cuda.Stream): CUDA stream object. If given, the
+        stream (cupy.xpu.Stream): XPU stream object. If given, the
             stream is used to perform the copy. Otherwise, the current
             stream is used. Note that if ``a`` is not a :class:`cupy.ndarray`
             object, then this argument has no effect.
@@ -849,7 +940,7 @@ def asnumpy(a, stream=None, order='C', out=None, *, blocking=True):
     if isinstance(a, ndarray):
         return a.get(stream=stream, order=order, out=out, blocking=blocking)
     elif hasattr(a, "__cuda_array_interface__"):
-        return array(a).get(
+        return _core.array(a).get(
             stream=stream, order=order, out=out, blocking=blocking)
     else:
         temp = _numpy.asarray(a, order=order)
@@ -894,30 +985,29 @@ def get_array_module(*args):
             return _cupy
     return _numpy
 
-
 fuse = _core.fusion.fuse
 
 disable_experimental_feature_warning = False
 
 
 # set default allocator
-_default_memory_pool = cuda.MemoryPool()
-_default_pinned_memory_pool = cuda.PinnedMemoryPool()
+_default_memory_pool = xpu.MemoryPool()
+_default_pinned_memory_pool = xpu.PinnedMemoryPool()
 
-cuda.set_allocator(_default_memory_pool.malloc)
-cuda.set_pinned_memory_allocator(_default_pinned_memory_pool.malloc)
+xpu.set_allocator(_default_memory_pool.malloc)
+xpu.set_pinned_memory_allocator(_default_pinned_memory_pool.malloc)
 
 
 def get_default_memory_pool():
     """Returns CuPy default memory pool for GPU memory.
 
     Returns:
-        cupy.cuda.MemoryPool: The memory pool object.
+        cupy.xpu.MemoryPool: The memory pool object.
 
     .. note::
        If you want to disable memory pool, please use the following code.
 
-       >>> cupy.cuda.set_allocator(None)
+       >>> cupy.xpu.set_allocator(None)
 
     """
     return _default_memory_pool
@@ -927,12 +1017,12 @@ def get_default_pinned_memory_pool():
     """Returns CuPy default memory pool for pinned memory.
 
     Returns:
-        cupy.cuda.PinnedMemoryPool: The memory pool object.
+        cupy.xpu.PinnedMemoryPool: The memory pool object.
 
     .. note::
        If you want to disable memory pool, please use the following code.
 
-       >>> cupy.cuda.set_pinned_memory_allocator(None)
+       >>> cupy.xpu.set_pinned_memory_allocator(None)
 
     """
     return _default_pinned_memory_pool
@@ -945,10 +1035,15 @@ def show_config(*, _full=False):
     _sys.stdout.flush()
 
 
+_deprecated_apis = [
+    'int0',
+    'uint0',
+    'bool8',
+]
+
 # np 2.0: XXX shims for things removed in np 2.0
-alltrue = all
-sometrue = any
-trapz = trapezoid
+# (`alltrue`/`sometrue` are assigned further below, next to `__getattr__`)
+# trapz = trapezoid
 
 # https://github.com/numpy/numpy/blob/v1.26.4/numpy/core/numerictypes.py#L283-L322   # NOQA
 
@@ -1126,6 +1221,18 @@ Use {recommendation} instead.
     def safe_eval(*args, **kwds):  # type: ignore [misc]
         mesg = _template.format(recommendation="`ast.literal_eval`")
         raise RuntimeError(mesg)
+
+
+# np 2.0 aliases kept for backwards compatibility with NumPy 1.x names.
+alltrue = all
+sometrue = any
+
+
+def __getattr__(name):
+    if name in _deprecated_apis:
+        return getattr(_numpy, name)
+
+    raise AttributeError(f"module 'cupy' has no attribute {name!r}")
 
 
 def _embed_signatures(dirs):

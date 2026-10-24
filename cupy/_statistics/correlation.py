@@ -9,6 +9,25 @@ import cupy
 from cupy import _core
 
 
+# 非 Ascend 打包可能不含 _ascend 包，模块级守卫导入
+try:
+    from cupy._core._ascend import cpu_fallback
+except ImportError:      # pragma: no cover
+    cpu_fallback = None
+
+
+def _ascend_host_fallback(name, *args, **kwargs):
+    """ASCEND: 软派发 host fallback（D2H -> NumPy -> H2D）。
+
+    判定（Ascend 后端 / fallback 开关 / 注册表查找）统一在
+    cpu_fallback.maybe_call；这里只处理本模块不可用的情形。
+    返回 fallback 结果；None 表示继续设备路径。
+    """
+    if cpu_fallback is None:
+        return None
+    return cpu_fallback.maybe_call(name, *args, **kwargs)
+
+
 def corrcoef(a, y=None, rowvar=True, bias=None, ddof=None, *, dtype=None):
     """Returns the Pearson product-moment correlation coefficients of an array.
 
@@ -34,6 +53,14 @@ def corrcoef(a, y=None, rowvar=True, bias=None, ddof=None, *, dtype=None):
     if bias is not None or ddof is not None:
         warnings.warn('bias and ddof have no effect and are deprecated',
                       DeprecationWarning)
+
+    # ASCEND: corrcoef = cov + 复数 diag/sqrt/clip 归一化，aclnn 的
+    # 统计族对 complex 支持不全；整调用走 host（NumPy 语义）。
+    ret = _ascend_host_fallback(
+        'statistics.corrcoef', a, y, rowvar=rowvar, bias=bias, ddof=ddof,
+        dtype=dtype)
+    if ret is not None:
+        return ret
 
     out = cov(a, y, rowvar, dtype=dtype)
     try:
@@ -70,6 +97,11 @@ def correlate(a, v, mode='valid'):
         raise ValueError('Array arguments cannot be empty')
     if a.ndim != 1 or v.ndim != 1:
         raise ValueError('object too deep for desired array')
+    # ASCEND: direct/fft 相关管线（_dot_convolve / _fft_convolve）在
+    # Ascend 后端没有对应的 aclnn 算子，整调用走 host（NumPy 语义）。
+    ret = _ascend_host_fallback('statistics.correlate', a, v, mode=mode)
+    if ret is not None:
+        return ret
     # choose_conv_method does not choose from the values in
     # the input array, so no need to apply conj.
     method = cupy._math.misc._choose_conv_method(a, v, mode)
@@ -138,6 +170,16 @@ def cov(a, y=None, rowvar=True, bias=False, ddof=None,
                 numpy.promote_types,
                 (a.dtype, y.dtype, numpy.float64)
             )
+
+    # ASCEND: 仅 complex dtype 时整调用走 host —— cov 的管线
+    # （average/mean 归约 + conj + matmul）里 aclnn 统计族不收 complex；
+    # float32/float64 保持 matmul 设备路径不变。
+    if numpy.issubdtype(dtype, numpy.complexfloating):
+        ret = _ascend_host_fallback(
+            'statistics.cov', a, y, rowvar=rowvar, bias=bias, ddof=ddof,
+            fweights=fweights, aweights=aweights, dtype=dtype)
+        if ret is not None:
+            return ret
 
     X = cupy.array(a, ndmin=2, dtype=dtype)
     if not rowvar and a.ndim != 1:

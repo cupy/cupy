@@ -3,7 +3,12 @@
 import gc
 import weakref
 
-from cupy_backends.cuda.api cimport runtime
+# The neutral runtime module lives under cupy.backends.backend.api on the
+# Ascend backend (no cupy_backends package there).
+IF CUPY_CANN_VERSION > 0:
+    from cupy.backends.backend.api cimport runtime
+ELSE:
+    from cupy_backends.cuda.api cimport runtime
 
 import threading
 
@@ -85,13 +90,20 @@ cdef class _Node:
         self.next = None
 
     def __repr__(self):
-        from cupy.cuda import cufft
-
         cdef str output
         cdef str plan_type = str(type(self.plan))
-        if isinstance(self.plan, cufft.Plan1d):
+        try:
+            from cupy.cuda import cufft
+        except ImportError:
+            # Ascend backend: cupy.cuda.cufft is not compiled; fall back to
+            # the aclfft binding (same Plan1d/PlanNd names) or type name.
+            try:
+                from cupy.backends.ascend.api import aclfft as cufft
+            except ImportError:
+                cufft = None
+        if cufft is not None and isinstance(self.plan, cufft.Plan1d):
             plan_type = 'Plan1d'
-        elif isinstance(self.plan, cufft.PlanNd):
+        elif cufft is not None and isinstance(self.plan, cufft.PlanNd):
             plan_type = 'PlanNd'
         elif 'cupy_callback' in plan_type:
             # <class 'cupy_callback.Plan1d'> or PlanNd

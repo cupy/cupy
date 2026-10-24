@@ -26,9 +26,11 @@ PLATFORM_LINUX = sys.platform.startswith('linux')
 PLATFORM_WIN32 = sys.platform.startswith('win32')
 
 minimum_hip_version = 305  # for ROCm 3.5.0+
+minimum_cann_version = 820 # CANN 8.2
 
 _cuda_path = 'NOT_INITIALIZED'
 _rocm_path = 'NOT_INITIALIZED'
+_cann_path = 'NOT_INITIALIZED'
 _compiler_base_options = None
 
 
@@ -59,6 +61,20 @@ def get_rocm_path():
 
     _rocm_path = os.environ.get('ROCM_HOME', '')
     return _rocm_path
+
+
+def get_cann_path():
+    global _cann_path
+
+    # Use a magic word to represent the cache not filled because None is a
+    # valid return value.
+    if _cann_path != 'NOT_INITIALIZED':
+        return _cann_path
+
+    _cann_path = os.environ.get('ASCEND_HOME_PATH', 'NOT_INITIALIZED')
+    if _cann_path == 'NOT_INITIALIZED':
+        logging.error("env var: ASCEND_HOME_PATH is not exported")
+    return _cann_path
 
 
 def get_cuda_path():
@@ -135,54 +151,52 @@ def get_hipcc_path() -> list[str]:
     else:
         return None
 
+def get_ascendcc_path() -> list[str]:
+    cann_path = get_cann_path()
+    if cann_path is None:
+        return None
 
-def get_compiler_setting(ctx: Context, use_hip):
-    cuda_path = None
-    rocm_path = None
-
-    if use_hip:
-        rocm_path = get_rocm_path()
+    if PLATFORM_WIN32:
+        basename = 'bisheng.exe'
     else:
-        cuda_path = get_cuda_path()
+        basename = 'bisheng'
+
+    # The bisheng compiler moved between releases; probe all known layouts:
+    #   - CANN <= 8.5:  compiler/ccec_compiler/bin/bisheng
+    #   - CANN >= 9.0:  tools/bisheng_compiler/bin/bisheng
+    candidates = [
+        os.path.join(cann_path, 'compiler', 'ccec_compiler', 'bin', basename),
+        os.path.join(cann_path, 'tools', 'bisheng_compiler', 'bin', basename),
+    ]
+    for ascendcc_bin in candidates:
+        if os.path.exists(ascendcc_bin):
+            return [ascendcc_bin]
+
+    print("Warning: cann_path found, but compiler path not found "
+          "(tried: %s)" % ', '.join(candidates))
+    return None
+
+def get_compiler_setting(ctx: Context, backend: str):
+    """Build the per-module compiler settings dict.
+
+    The backend-specific parts (SDK include/library dirs, extra compile flags)
+    are delegated to the matching :class:`cupy_builder.backends.Backend`,
+    keeping this function backend-agnostic.
+    """
+    # Imported lazily to avoid an import cycle at module load time
+    # (`backends` imports `install_build` for the path probes).
+    from cupy_builder.backends import get_backend_by_name
+
+    backend_obj = get_backend_by_name(backend)
 
     include_dirs = ctx.include_dirs.copy()
     library_dirs = ctx.library_dirs.copy()
     define_macros = []
     extra_compile_args = []
 
-    if cuda_path:
-        include_dirs.append(os.path.join(cuda_path, 'include'))
-        if PLATFORM_WIN32:
-            library_dirs.append(os.path.join(cuda_path, 'bin'))
-            library_dirs.append(os.path.join(
-                cuda_path, 'lib', _get_win32_cuda_arch()))
-        else:
-            library_dirs.append(os.path.join(cuda_path, 'lib64'))
-            library_dirs.append(os.path.join(cuda_path, 'lib'))
-
-    if rocm_path:
-        include_dirs.append(os.path.join(rocm_path, 'include'))
-        include_dirs.append(os.path.join(rocm_path, 'include', 'hip'))
-        include_dirs.append(os.path.join(rocm_path, 'include', 'rocrand'))
-        include_dirs.append(os.path.join(rocm_path, 'include', 'hiprand'))
-        include_dirs.append(os.path.join(rocm_path, 'include', 'roctracer'))
-        include_dirs.append(os.path.join(rocm_path, 'include', 'hipblas'))
-        include_dirs.append(os.path.join(rocm_path, 'include', 'hipsparse'))
-        include_dirs.append(os.path.join(rocm_path, 'include', 'hipfft'))
-        include_dirs.append(os.path.join(rocm_path, 'include', 'rocsolver'))
-        include_dirs.append(os.path.join(rocm_path, 'include', 'rccl'))
-        library_dirs.append(os.path.join(rocm_path, 'lib'))
-
-    if use_hip:
-        # ROCm 5.3 and above requires c++14
-        extra_compile_args.append('-std=c++14')
-    else:
-        # CCCL 3.x (for CUDA) requires c++17
-        if PLATFORM_LINUX:
-            extra_compile_args.append('-std=c++17')
-        else:
-            assert PLATFORM_WIN32
-            extra_compile_args.append('/std:c++17')
+    include_dirs += backend_obj.get_include_dirs(ctx)
+    library_dirs += backend_obj.get_library_dirs(ctx)
+    extra_compile_args += backend_obj.get_extra_compile_args()
 
     if PLATFORM_WIN32:
         nvtx_path = _environment.get_nvtx_path()
@@ -197,29 +211,34 @@ def get_compiler_setting(ctx: Context, use_hip):
     #   - for ROCm: built-in CUB
     # Note that starting CuPy v8 we no longer use CUB_PATH, and starting v13
     # we no longer use Thrust/CUB bundled in CUDA.
+    #
+    # Backends without a CUB/Thrust equivalent (e.g. Ascend) opt out via
+    # `Backend.needs_cub_headers`.
 
-    # for <cupy/complex.cuh>
-    cupy_header = os.path.join(
-        cupy_builder.get_context().source_root, 'cupy/_core/include')
-    global _jitify_path
-    _jitify_path = os.path.join(cupy_header, 'cupy/_jitify')
-    global _cub_path
-    if rocm_path:
-        _cub_path = os.path.join(rocm_path, 'include', 'hipcub')
-        if not os.path.exists(_cub_path):
-            raise Exception('Please install hipCUB and retry')
-        _thrust_path = None
-        _libcudacxx_path = None
-    else:
-        # all bundled together under cccl
-        _cub_path = os.path.join(cupy_header, 'cupy/_cccl/cub')
-        _thrust_path = os.path.join(cupy_header, 'cupy/_cccl/thrust')
-        _libcudacxx_path = os.path.join(cupy_header, 'cupy/_cccl/libcudacxx')
-    include_dirs.insert(0, cupy_header)
-    include_dirs.insert(0, _cub_path)
-    if _thrust_path and _libcudacxx_path:
-        include_dirs.insert(0, _thrust_path)
-        include_dirs.insert(0, _libcudacxx_path)
+    if backend_obj.needs_cub_headers:
+        # for <cupy/complex.cuh>
+        cupy_header = os.path.join(
+            cupy_builder.get_context().source_root, 'cupy/_core/include')
+        global _jitify_path
+        _jitify_path = os.path.join(cupy_header, 'cupy/_jitify')
+        global _cub_path
+        if backend == 'rocm':
+            rocm_path = backend_obj.get_sdk_path()
+            _cub_path = os.path.join(rocm_path, 'include', 'hipcub')
+            if not os.path.exists(_cub_path):
+                raise Exception('Please install hipCUB and retry')
+            _thrust_path = None
+            _libcudacxx_path = None
+        else:
+            # all bundled together under cccl
+            _cub_path = os.path.join(cupy_header, 'cupy/_cccl/cub')
+            _thrust_path = os.path.join(cupy_header, 'cupy/_cccl/thrust')
+            _libcudacxx_path = os.path.join(cupy_header, 'cupy/_cccl/libcudacxx')
+        include_dirs.insert(0, cupy_header)
+        include_dirs.insert(0, _cub_path)
+        if _thrust_path and _libcudacxx_path:
+            include_dirs.insert(0, _thrust_path)
+            include_dirs.insert(0, _libcudacxx_path)
 
     return {
         'include_dirs': include_dirs,
@@ -302,6 +321,8 @@ def _get_compiler_base_options(compiler_path):
 
 
 _hip_version = None
+_cann_version = None
+
 _thrust_version = None
 _nccl_version = None
 _cutensor_version = None
@@ -352,8 +373,139 @@ def get_hip_version(formatted: bool = False) -> int:
     return _hip_version
 
 
+def _find_cann_version_file(cann_path: str) -> str:
+    """Locate the file that carries the CANN version string.
+
+    The file name/layout changed across CANN releases, so probe all known
+    locations instead of hardcoding a single one:
+
+    * ``<cann>/version.cfg``          - CANN 8.2 and earlier
+    * ``<cann>/compiler/version.info``- CANN 8.5+ (toolkit)
+    * ``<cann>/opp/version.info``     - CANN 8.5+ (opp, fallback)
+    """
+    candidates = [
+        os.path.join(cann_path, 'version.cfg'),
+        os.path.join(cann_path, 'compiler', 'version.info'),
+        os.path.join(cann_path, 'opp', 'version.info'),
+    ]
+    for path in candidates:
+        if os.path.isfile(path):
+            return path
+    return ''
+
+
+#: CANN spells its version differently across releases; try each layout in
+#: turn and use the first one that matches. Group 3 (patch) is absent for
+#: versions whose third component is not numeric.
+#:
+#: * ``version=[8.2.0.0.0.201:xxx]`` / ``Version=8.5.1``   -> 8.2.0 / 8.5.1
+#: * ``Version=8.2.T12.0.B077`` (8.2.RC1)                  -> 8.2.0
+#: * ``runtime_running_version=[8.2.T12.0.B077:8.2.RC1]``  -> 8.2.0
+_CANN_VERSION_PATTERNS = (
+    r'(?i)version\s*=\s*\[?(\d+)\.(\d+)\.(\d+)',
+    r'\[(\d+)\.(\d+)\.(\d+)',
+    r'(?i)version\s*=\s*\[?(\d+)\.(\d+)\.[A-Za-z]',
+    r'\[(\d+)\.(\d+)\.[A-Za-z]',
+)
+
+
+def _match_cann_version(content: str):
+    """Return the first regex match identifying a CANN version in `content`."""
+    for pattern in _CANN_VERSION_PATTERNS:
+        match = re.search(pattern, content)
+        if match:
+            return match
+    return None
+
+
+def check_cann_version(compiler, settings):
+    """Detect the installed CANN version and cache it in ``_cann_version``.
+
+    The value is encoded as ``major * 100 + minor * 10 + patch`` so that
+    comparisons such as ``>= 850`` work for versions 8.2 / 8.5 / 9.0.
+
+    Returns:
+        bool: True when a supported CANN version was detected.
+    """
+    global _cann_version
+
+    cann_path = _cann_path
+    if not cann_path or cann_path == 'NOT_INITIALIZED':
+        # `check_cann_version` may be called directly (e.g. from
+        # `CUPY_ascend.__init__`) without `get_cann_path()` being called first.
+        cann_path = get_cann_path()
+
+    info_file_path = _find_cann_version_file(cann_path)
+    if not info_file_path:
+        utils.print_warning(
+            "CANN version file not found (tried version.cfg, "
+            "compiler/version.info, opp/version.info) under: %s" % cann_path)
+        return False
+
+    try:
+        with open(info_file_path, 'r') as f:
+            content = f.read()
+        match = _match_cann_version(content)
+        if match:
+            groups = match.groups()
+            major = int(groups[0])
+            minor = int(groups[1])
+            # Group 3 (patch) is absent when the third component is not
+            # numeric (e.g. `8.2.T12.0.B077`); such a version counts as `.0`.
+            patch = groups[2] if len(groups) > 2 else None
+            _cann_version = major * 100 + minor * 10 + (
+                int(patch) if patch is not None and patch.isdigit() else 0)
+        else:
+            utils.print_warning(
+                "CANN version file found but version string not matched: %s"
+                % info_file_path)
+            return False
+    except OSError as e:
+        utils.print_warning(f"Error reading CANN version file: {e}")
+        return False
+
+    if _cann_version < minimum_cann_version:
+        utils.print_warning(
+            'CANN version %d is too old: %d or newer is required'
+            % (_cann_version, minimum_cann_version))
+        return False
+
+    return True
+
+
+def get_cann_version(formatted: bool = False) -> int:
+    """Return the CANN version cached in check_cann_version().
+
+    If detection has not run (or failed) fall back to the minimum supported
+    version rather than a hardcoded, possibly-wrong number.
+    """
+    global _cann_version
+    if _cann_version is None:
+        utils.print_warning(
+            'check_cann_version() must be called first; '
+            'assuming minimum CANN version %d' % minimum_cann_version)
+        _cann_version = minimum_cann_version
+    if formatted:
+        return str(_cann_version)
+    return _cann_version
+
+
+def format_cann_version(version: int) -> str:
+    """Render an encoded CANN version as a human-readable string.
+
+    The encoding is ``major * 100 + minor * 10 + patch``, so ``851`` becomes
+    ``'8.5.1'`` and ``900`` becomes ``'9.0.0'``. ``-1`` (not detected) renders
+    as ``'unknown'``.
+    """
+    if version is None or version < 0:
+        return 'unknown'
+    major, rest = divmod(version, 100)
+    minor, patch = divmod(rest, 10)
+    return f'{major}.{minor}.{patch}'
+
+
 def check_compute_capabilities(compiler, settings):
-    """Return compute capabilities of the installed devices."""
+    """Return CUDA compute capabilities of the installed devices."""
     global _compute_capabilities
     try:
         src = '''

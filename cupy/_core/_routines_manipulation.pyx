@@ -5,9 +5,8 @@ import operator
 import cupy
 import numpy
 
-from cupy._core._kernel import ElementwiseKernel
+from cupy._core._kernel import ElementwiseKernel # 2 concat kerne use this
 from cupy._core._ufuncs import elementwise_copy
-import cupy._core.core as core
 from cupy.exceptions import AxisError
 
 cimport cpython  # NOQA
@@ -15,13 +14,14 @@ cimport cython  # NOQA
 from libcpp cimport vector
 
 from cupy._core._dtype cimport get_dtype, _raise_if_invalid_cast
-from cupy._core cimport core
+from cupy._core import _ndarray # for python class `ndarray`
 from cupy._core.core cimport _ndarray_base
-from cupy._core.core cimport _convert_from_cupy_like
+from cupy._core import _routines_creation as _creation
+from cupy._core._routines_creation cimport _convert_from_cupy_like
 from cupy._core cimport internal
 from cupy._core._kernel cimport _check_peer_access
 
-from cupy.cuda import device
+from cupy.xpu import device
 
 
 @cython.final
@@ -529,12 +529,12 @@ cdef _ndarray_base _broadcast_repeat(
     ret_shape = list(a.shape)
     ret_shape[axis] = axis_size * rep_val
     if ret_shape[axis] == 0:
-        return core.ndarray(ret_shape, dtype=a.dtype)
+        return _ndarray.ndarray(ret_shape, dtype=a.dtype)
     insert_shape = list(a.shape)
     insert_shape.insert(axis + 1, 1)
     expand_shape = insert_shape[:]
     expand_shape[axis + 1] = rep_val
-    ret_expanded = core.ndarray(expand_shape, dtype=a.dtype)
+    ret_expanded = _ndarray.ndarray(expand_shape, dtype=a.dtype)
     elementwise_copy(a.reshape(insert_shape), ret_expanded)
     return ret_expanded.reshape(ret_shape)
 
@@ -556,7 +556,7 @@ cdef _ndarray_base _repeat_perelement(
     if n == 0:
         ret_shape = list(a.shape)
         ret_shape[axis] = 0
-        return core.ndarray(ret_shape, dtype=a.dtype)
+        return _ndarray.ndarray(ret_shape, dtype=a.dtype)
 
     # Launch min and cumsum back-to-back so both GPU kernels are
     # queued before we sync.
@@ -570,7 +570,7 @@ cdef _ndarray_base _repeat_perelement(
     ret_shape = list(a.shape)
     ret_shape[axis] = total
     if total == 0:
-        return core.ndarray(ret_shape, dtype=a.dtype)
+        return _ndarray.ndarray(ret_shape, dtype=a.dtype)
 
     src_idx = cupy.searchsorted(
         boundaries, cupy.arange(total, dtype=numpy.intp), side='right')
@@ -622,7 +622,7 @@ cpdef _ndarray_base _repeat(_ndarray_base a, repeats, axis=None):
                 raise ValueError(
                     "'repeats' should be int or sequence: {}"
                     .format(repeats))
-            reps_arr = core.array(repeats, dtype=numpy.intp)
+            reps_arr = _creation.array(repeats, dtype=numpy.intp)
             if reps_arr.ndim > 1:
                 raise ValueError(
                     "object too deep for desired array")
@@ -720,7 +720,7 @@ cpdef _ndarray_base concatenate_method(
     # Prpare the output array
     shape_t = tuple(shape0)
     if out is None:
-        out = core.ndarray(shape_t, dtype=dtype)
+        out = _ndarray.ndarray(shape_t, dtype=dtype)
     else:
         if len(out.shape) != len(shape_t):
             raise ValueError('Output array has wrong dimensionality')
@@ -741,24 +741,31 @@ cpdef _ndarray_base _concatenate(
 
     dtype = out.dtype
 
-    if len(arrays) > 8:
-        all_same_type = True
-        same_shape_and_contiguous = True
-        axis_size = shape[axis] // len(arrays)
-        total_bytes = 0
-        itemsize = dtype.itemsize
-        for a in arrays:
-            if a.dtype != dtype:
-                all_same_type = False
-                break
-            if same_shape_and_contiguous:
-                same_shape_and_contiguous = (
-                    a._c_contiguous and a._shape[axis] == axis_size)
-            total_bytes += a.size * itemsize
+    IF CUPY_CANN_VERSION <= 0:
+        # CUDA-only trick: `_concatenate_single_kernel` reinterprets a *host
+        # array of device pointers* as the data to concatenate. On Ascend the
+        # kernel name is dispatched to an aclnn op (review M2), which would
+        # happily concatenate the pointer array itself and return garbage
+        # without any error (review D4). So on Ascend `len(arrays) > 8` always
+        # takes the per-slice copy path below instead.
+        if len(arrays) > 8:
+            all_same_type = True
+            same_shape_and_contiguous = True
+            axis_size = shape[axis] // len(arrays)
+            total_bytes = 0
+            itemsize = dtype.itemsize
+            for a in arrays:
+                if a.dtype != dtype:
+                    all_same_type = False
+                    break
+                if same_shape_and_contiguous:
+                    same_shape_and_contiguous = (
+                        a._c_contiguous and a._shape[axis] == axis_size)
+                total_bytes += a.size * itemsize
 
-        if all_same_type and total_bytes < threshold_size * len(arrays):
-            return _concatenate_single_kernel(
-                arrays, axis, shape, dtype, same_shape_and_contiguous, out)
+            if all_same_type and total_bytes < threshold_size * len(arrays):
+                return _concatenate_single_kernel(
+                    arrays, axis, shape, dtype, same_shape_and_contiguous, out)
 
     i = 0
     slice_list = [slice(None)] * len(shape)
@@ -853,7 +860,7 @@ cdef _ndarray_base _concatenate_single_kernel(
     for i, a in enumerate(arrays):
         _check_peer_access(a, device_id)
         ptrs[i] = a.data.ptr
-    x = core.array(ptrs)
+    x = _creation.array(ptrs)
 
     if same_shape_and_contiguous:
         base = internal.prod_sequence(shape[axis:]) // len(arrays)
@@ -871,7 +878,7 @@ cdef _ndarray_base _concatenate_single_kernel(
         cum += <int>a._shape[axis]
 
     _concatenate_kernel(
-        x, axis, core.array(cum_sizes), core.array(x_strides), out)
+        x, axis, _creation.array(cum_sizes), _creation.array(x_strides), out)
     return out
 
 
@@ -898,26 +905,26 @@ cdef _concatenate_kernel = ElementwiseKernel(
     ptrdiff_t right = cum_sizes.size();
 
     while (left < right - 1) {
-      ptrdiff_t m = (left + right) / 2;
-      if (axis_ind < cum_sizes[m]) {
+    ptrdiff_t m = (left + right) / 2;
+    if (axis_ind < cum_sizes[m]) {
         right = m;
-      } else {
+    } else {
         left = m;
-      }
+    }
     }
 
     ptrdiff_t array_ind = left;
     axis_ind -= cum_sizes[left];
     char* ptr = reinterpret_cast<char*>(x[array_ind]);
     for (int j = _ind.ndim - 1; j >= 0; --j) {
-      ptrdiff_t ind[] = {array_ind, j};
-      ptrdiff_t offset;
-      if (j == axis) {
+    ptrdiff_t ind[] = {array_ind, j};
+    ptrdiff_t offset;
+    if (j == axis) {
         offset = axis_ind;
-      } else {
+    } else {
         offset = _ind.get()[j];
-      }
-      ptr += x_strides[ind] * offset;
+    }
+    ptr += x_strides[ind] * offset;
     }
 
     y = *reinterpret_cast<T*>(ptr);

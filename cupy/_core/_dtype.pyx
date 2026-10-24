@@ -5,9 +5,15 @@ from . cimport _scalar
 import numpy
 import warnings
 
-from cupy_backends.cuda.api cimport runtime
+from cupy.backends.backend.api cimport runtime
 from cupy.exceptions import ComplexWarning
 
+# Ascend-only dependency: the aclnn dtype mapping lives in the Ascend backend
+# extension, which is not built for CUDA/HIP.  `IF` (compile-time) keeps the
+# cimport out of those builds; it is only referenced by the ELSE branch of
+# `to_cuda_dtype()` below, which is Ascend-only as well.
+IF CUPY_CANN_VERSION > 0:
+    from cupy.backends.ascend.api.acl_utils cimport numpy_dtype_to_acl_dtype
 
 cdef str all_type_chars = '?bhilqBHILQefdFD'
 cdef bytes all_type_chars_b = all_type_chars.encode()
@@ -116,37 +122,35 @@ cpdef tuple get_dtype_with_itemsize(t, bint check_support):
 
 
 cpdef int to_cuda_dtype(dtype, bint is_half_allowed=False) except -1:
-    cdef str dtype_char
-    try:
-        dtype_char = dtype.char
-    except AttributeError:
-        dtype_char = dtype
+    IF CUPY_CANN_VERSION <= 0:
+        cdef str dtype_char
+        try:
+            dtype_char = dtype.char
+        except AttributeError:
+            dtype_char = dtype
 
-    if dtype_char == 'e' and is_half_allowed:
-        return runtime.CUDA_R_16F
-    elif dtype_char == 'f':
-        return runtime.CUDA_R_32F
-    elif dtype_char == 'd':
-        return runtime.CUDA_R_64F
-    elif dtype_char == 'F':
-        return runtime.CUDA_C_32F
-    elif dtype_char == 'D':
-        return runtime.CUDA_C_64F
-    elif dtype_char is not dtype and dtype.name == "bfloat16":
-        # TODO(seberg): Better way to map this, doesn't support chars
-        # due to ml_dtypes using 'E' (for now 2025-01)
-        return runtime.CUDA_R_16BF
-    elif dtype_char == 'E' and is_half_allowed:
-        # complex32, not supported in NumPy
-        return runtime.CUDA_C_16F
-    elif dtype_char == 'b':
-        return runtime.CUDA_R_8I
-    elif dtype_char is not dtype and dtype.name == "int32":
-        # int32's char is platform-dependent ('i' on Linux, 'l' on Windows)
-        return runtime.CUDA_R_32I
-    else:
-        raise TypeError('dtype is not supported: {}'.format(dtype))
+        if dtype_char == 'e' and is_half_allowed:
+            return runtime.CUDA_R_16F
+        elif dtype_char == 'f':
+            return runtime.CUDA_R_32F
+        elif dtype_char == 'd':
+            return runtime.CUDA_R_64F
+        elif dtype_char == 'F':
+            return runtime.CUDA_C_32F
+        elif dtype_char == 'D':
+            return runtime.CUDA_C_64F
+        elif dtype_char is not dtype and dtype.name == "bfloat16":
+            # TODO(seberg): Better way to map this, doesn't support chars
+            # due to ml_dtypes using 'E' (for now 2025-01)
+            return runtime.CUDA_R_16BF
+        elif dtype_char == 'E' and is_half_allowed:
+            # complex32, not supported in NumPy
+            return runtime.CUDA_C_16F
+        else:
+            raise TypeError('dtype is not supported: {}'.format(dtype))
 
+    ELSE:
+        return numpy_dtype_to_acl_dtype(dtype, is_half_allowed)
 
 cdef _numpy_can_cast = numpy.can_cast
 

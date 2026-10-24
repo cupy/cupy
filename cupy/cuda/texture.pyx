@@ -4,7 +4,7 @@ from libc.string cimport memset as c_memset
 import numpy
 
 from cupy._core.core cimport _ndarray_base
-from cupy._core.core cimport _internal_ascontiguousarray
+from cupy._core._routines_creation cimport _internal_ascontiguousarray
 from cupy_backends.cuda.api cimport runtime
 from cupy_backends.cuda.api.runtime cimport Array, \
     ChannelFormatDesc, ChannelFormatKind, \
@@ -15,7 +15,7 @@ from cupy.cuda cimport stream as stream_module
 from cupy_backends.cuda.api.runtime import CUDARuntimeError
 
 
-cdef extern from '../../cupy_backends/cupy_backend.h':
+cdef extern from '../../cupy_backends/cupy_backend_common.h':
     pass
 
 cdef extern from '../../cupy_backends/cupy_backend_runtime.h':

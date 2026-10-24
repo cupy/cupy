@@ -73,6 +73,18 @@ class vectorize:
         return ', '.join(out_params), code
 
     def __call__(self, *args):
+        try:
+            from cupy.backends.backend import is_ascend
+            if is_ascend:
+                # ASCEND: use numpy host cpu to impl cupy_vectorize fallback
+                import numpy as _np
+                import cupy as _cp
+                np_args = [a.get() if hasattr(a, 'get') else a for a in args]
+                np_func = _np.vectorize(self.pyfunc, otypes=self.otypes)
+                return _cp.asarray(np_func(*np_args))
+        except ImportError:
+            pass
+
         from cupyx.jit import _interface
         from cupyx.jit import _cuda_types
         itypes = ''.join([_get_input_type(x) for x in args])

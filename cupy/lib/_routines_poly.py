@@ -8,6 +8,31 @@ import numpy
 import cupy
 from cupy.exceptions import RankWarning
 
+# cupy.linalg is not importable on the Ascend backend (cupy/linalg/_solve.py
+# depends on cupy.cuda.device), so polyfit's lstsq/inv resolve to a pure-ufunc
+# composition there. See docs/ascend/polynomial_note.md.
+try:
+    from cupy.linalg import lstsq as _lstsq  # NOQA
+    from cupy.linalg import inv as _inv  # NOQA
+except ImportError:
+    from cupy._core._ascend._poly_linalg import lstsq as _lstsq  # NOQA
+    from cupy._core._ascend._poly_linalg import inv as _inv  # NOQA
+
+
+def _eigvalsh():
+    """Return cupy.linalg.eigvalsh or raise a clear error on Ascend.
+
+    CANN has no ACLNN eigenvalue operator yet, and cupy.linalg is not
+    importable there, so roots()/poly(2-D) cannot run on the NPU.
+    """
+    try:
+        return cupy.linalg.eigvalsh
+    except AttributeError:
+        raise NotImplementedError(
+            'eigvalsh is not available on the Ascend backend yet (CANN has '
+            'no ACLNN eigenvalue operator); roots()/poly() of 2-D inputs '
+            'need it. See docs/ascend/polynomial_note.md') from None
+
 
 def _wraps_polyroutine(func):
     def _get_coeffs(x):
@@ -57,7 +82,7 @@ def poly(seq_of_zeros):
     x = seq_of_zeros
     if x.ndim == 2 and x.shape[0] == x.shape[1] and x.shape[0] != 0:
         if cupy.array_equal(x, x.conj().T):
-            x = cupy.linalg.eigvalsh(x)
+            x = _eigvalsh()(x)
         else:
             raise NotImplementedError('Only complex Hermitian and real '
                                       'symmetric 2d arrays are supported '
@@ -74,9 +99,18 @@ def poly(seq_of_zeros):
     a = cupy.zeros((size, 2), x.dtype)
     a[:, 0].fill(1)
     cupy.negative(x, out=a[:x.size, 1])
-    while size > 1:
-        size = size // 2
-        a = cupy._math.misc._fft_convolve(a[:size], a[size:], 'full')
+    if cupy._math.misc._fft_convolve_ok(a, a):
+        while size > 1:
+            size = size // 2
+            a = cupy._math.misc._fft_convolve(a[:size], a[size:], 'full')
+    else:
+        # ACLFFT (Ascend) has no double-precision support, so the batched
+        # FFT merge tree cannot run; accumulate the product
+        # (1 - r_0 z)(1 - r_1 z)... with direct 1-D convolutions instead.
+        coeffs = a[0]
+        for row in a[1:]:
+            coeffs = cupy.convolve(coeffs, row)
+        return coeffs
     return a[0, :x.size + 1]
 
 
@@ -186,6 +220,123 @@ def _polypow(x, n):
         assert False
 
 
+def polyder(p, m=1):
+    """Returns the derivative of the specified order of a polynomial.
+
+    Args:
+        p (cupy.ndarray or cupy.poly1d): polynomial coefficients
+            from highest to lowest degree.
+        m (int, optional): order of differentiation (default: 1).
+
+    Returns:
+        cupy.ndarray or cupy.poly1d: a new polynomial representing
+        the derivative.
+
+    .. seealso:: :func:`numpy.polyder`
+
+    """
+    m = int(m)
+    if m < 0:
+        raise ValueError('Order of derivative must be positive (see polyint)')
+
+    truepoly = isinstance(p, cupy.poly1d)
+    p = cupy.asarray(p)
+    n = len(p) - 1
+    y = p[:-1] * cupy.arange(n, 0, -1)
+    if m == 0:
+        val = p
+    else:
+        val = polyder(y, m - 1)
+    if truepoly:
+        val = cupy.poly1d(val)
+    return val
+
+
+def polydiv(u, v):
+    """Returns the quotient and remainder of polynomial division.
+
+    Args:
+        u (cupy.ndarray or cupy.poly1d): dividend polynomial's coefficients.
+        v (cupy.ndarray or cupy.poly1d): divisor polynomial's coefficients.
+
+    Returns:
+        tuple of cupy.ndarray or tuple of cupy.poly1d:
+        ``(q, r)`` where ``q`` is the quotient and ``r`` is the remainder.
+
+    .. seealso:: :func:`numpy.polydiv`
+
+    """
+    truepoly = (isinstance(u, cupy.poly1d) or isinstance(v, cupy.poly1d))
+    if isinstance(u, cupy.poly1d):
+        u = u.coeffs
+    if isinstance(v, cupy.poly1d):
+        v = v.coeffs
+    u = cupy.atleast_1d(u) + 0.0
+    v = cupy.atleast_1d(v) + 0.0
+    # w has the common type
+    w = u[0] + v[0]
+    m = len(u) - 1
+    n = len(v) - 1
+    scale = 1. / v[0]
+    q = cupy.zeros((max(m - n + 1, 1),), w.dtype)
+    r = u.astype(w.dtype)
+    for k in range(m - n + 1):
+        d = scale * r[k]
+        q[k] = d
+        r[k:k + n + 1] -= d * v
+    while cupy.allclose(r[0], 0, rtol=1e-14) and (r.shape[-1] > 1):
+        r = r[1:]
+    if truepoly:
+        return cupy.poly1d(q), cupy.poly1d(r)
+    return q, r
+
+
+def polyint(p, m=1, k=None):
+    """Returns an antiderivative (indefinite integral) of a polynomial.
+
+    Args:
+        p (cupy.ndarray or cupy.poly1d): polynomial coefficients
+            from highest to lowest degree.
+        m (int, optional): order of the antiderivative (default: 1).
+        k (scalar or cupy.ndarray, optional): integration constants.
+            They are given in the order of integration: those corresponding
+            to highest-order terms come first. If ``None`` (default),
+            all constants are assumed to be zero. If ``m == 1``, a single
+            scalar can be given instead of a list.
+
+    Returns:
+        cupy.ndarray or cupy.poly1d: a new polynomial representing
+        the antiderivative.
+
+    .. seealso:: :func:`numpy.polyint`
+
+    """
+    m = int(m)
+    if m < 0:
+        raise ValueError('Order of integral must be positive (see polyder)')
+    if k is None:
+        k = cupy.zeros(m, float)
+    k = cupy.atleast_1d(k)
+    if k.size == 1 and m > 1:
+        k = k[0] * cupy.ones(m, float)
+    if k.size < m:
+        raise ValueError('k must be a scalar or a rank-1 array of '
+                         'length 1 or >m.')
+
+    truepoly = isinstance(p, cupy.poly1d)
+    p = cupy.asarray(p)
+    if m == 0:
+        if truepoly:
+            return cupy.poly1d(p)
+        return p
+    # Note: this must work also with object and integer arrays
+    y = cupy.concatenate((p / cupy.arange(len(p), 0, -1), k[:1]))
+    val = polyint(y, m - 1, k=k[1:])
+    if truepoly:
+        return cupy.poly1d(val)
+    return val
+
+
 def _polyfit_typecast(x):
     if x.dtype.kind == 'c':
         return x.astype(numpy.complex128, copy=False)
@@ -274,7 +425,7 @@ def polyfit(x, y, deg, rcond=None, full=False, w=None, cov=False):
 
     scale = cupy.sqrt((cupy.square(lhs)).sum(axis=0))
     lhs /= scale
-    c, resids, rank, s = cupy.linalg.lstsq(lhs, rhs, rcond)
+    c, resids, rank, s = _lstsq(lhs, rhs, rcond)
     if y.ndim > 1:
         scale = scale.reshape(-1, 1)
     c /= scale
@@ -289,7 +440,7 @@ def polyfit(x, y, deg, rcond=None, full=False, w=None, cov=False):
             resids = cupy.absolute(resids)
         return c, resids, rank, s, rcond
     if cov:
-        base = cupy.linalg.inv(cupy.dot(lhs.T, lhs))
+        base = _inv(cupy.dot(lhs.T, lhs))
         base /= cupy.outer(scale, scale)
 
         if cov == 'unscaled':
@@ -393,7 +544,7 @@ def roots(p):
     cmatrix = cupy.polynomial.polynomial.polycompanion(p)
     # TODO(Dahlia-Chehata): Support after cupy.linalg.eigvals is supported
     if cupy.array_equal(cmatrix, cmatrix.conj().T):
-        out = cupy.linalg.eigvalsh(cmatrix)
+        out = _eigvalsh()(cmatrix)
     else:
         raise NotImplementedError('Only complex Hermitian and real '
                                   'symmetric 2d arrays are supported '

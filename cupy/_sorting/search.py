@@ -61,6 +61,12 @@ def nanargmax(a, axis=None, dtype=None, out=None, keepdims=False):
     if a.dtype.kind in 'biu':
         return argmax(a, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
+    from cupy._core._ascend import composite as _composite
+    if _composite.active():
+        # Ascend: aclnnArgMax 不能"忽略 NaN" -> where(NaN→-inf) + argmax 组合
+        return _composite.nanargmax(
+            a, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+
     return _statistics._nanargmax(a, axis, out, dtype, keepdims)
 
 
@@ -115,6 +121,12 @@ def nanargmin(a, axis=None, dtype=None, out=None, keepdims=False):
     """
     if a.dtype.kind in 'biu':
         return argmin(a, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+
+    from cupy._core._ascend import composite as _composite
+    if _composite.active():
+        # Ascend: where(NaN→+inf) + argmin 组合
+        return _composite.nanargmin(
+            a, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
     return _statistics._nanargmin(a, axis, out, dtype, keepdims)
 

@@ -16,6 +16,7 @@ import cupy_builder
 import cupy_builder.install_build as build
 from cupy_builder._context import Context
 from cupy_builder._compiler import DeviceCompilerUnix, DeviceCompilerWin32
+from cupy_builder.backends import get_backend
 
 
 def filter_files_by_extension(
@@ -77,6 +78,7 @@ def _get_timestamp(path: str | os.PathLike[str]) -> float:
 
 
 def dumpbin_dependents(dumpbin: str, path: str) -> list[str]:
+    # windows tool dumpbin
     args = [dumpbin, '/nologo', '/dependents', path]
     try:
         p = subprocess.run(args, stdout=subprocess.PIPE)
@@ -147,13 +149,17 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
 
         compile_time_env['CUPY_CUFFT_STATIC'] = False
         compile_time_env['CUPY_CYTHON_VERSION'] = Cython.__version__
-        if ctx.use_hip:  # on ROCm/HIP
+
+        # Backend-specific version constants (CUPY_CUDA_VERSION, etc.) are
+        # owned by the backend descriptor, so adding a backend does not
+        # require touching this file.
+        if ctx.use_stub:  # on RTD
             compile_time_env['CUPY_CUDA_VERSION'] = 0
-            compile_time_env['CUPY_HIP_VERSION'] = build.get_hip_version()
-        else:  # on CUDA
-            compile_time_env['CUPY_CUDA_VERSION'] = (
-                ctx.features['cuda'].get_version())
             compile_time_env['CUPY_HIP_VERSION'] = 0
+            compile_time_env['CUPY_CANN_VERSION'] = 0
+        else:
+            compile_time_env.update(
+                get_backend(ctx).get_compile_time_env(ctx))
 
         print('Compile-time constants: ' +
               json.dumps(compile_time_env, indent=4))
@@ -242,6 +248,8 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
         print('Building extensions...')
         super().build_extensions()
 
+        self._prebuild_backend_artifacts(ctx)
+
         if sys.platform == 'win32':
             print('Generating DLL dependency list...')
 
@@ -259,6 +267,34 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
             os.makedirs(os.path.dirname(depends_json), exist_ok=True)
             with open(depends_json, 'w') as f:
                 json.dump({'depends': depends}, f)
+
+    def _prebuild_backend_artifacts(self, ctx: Context) -> None:
+        """Stage backend artifacts that must ship inside the wheel.
+
+        See `Backend.prebuild_artifacts()`. They are produced here (and not by
+        `package_data`) because `build_py`, which expands the `package_data`
+        globs, has already run by the time `build_ext` executes: a glob entry
+        would have seen an empty directory. Copying the files into `build_lib`
+        is what puts them into the wheel, since `bdist_wheel` archives the
+        whole build tree.
+        """
+        try:
+            artifacts = get_backend(ctx).prebuild_artifacts(ctx)
+        except Exception as e:
+            # Optional artifacts: never fail a build, the wheel still works.
+            print(f'*** skipping prebuilt backend artifacts: {e}')
+            return
+        staged = 0
+        for src in artifacts:
+            rel = os.path.relpath(src, ctx.source_root)
+            if rel.startswith('..'):  # keep the build tree self-contained
+                continue
+            dst = os.path.join(self.build_lib, rel)
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            shutil.copy2(src, dst)
+            staged += 1
+        if staged:
+            print(f'Staged {staged} prebuilt artifact(s) into the build tree')
 
     def build_extension(self, ext: setuptools.Extension) -> None:
         ctx = cupy_builder.get_context()

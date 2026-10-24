@@ -14,9 +14,10 @@ from cupy_backends.cuda.api.runtime cimport getDeviceCount
 from cupy_backends.cuda cimport stream as stream_module
 
 from cupy._core cimport core
+from cupy._core cimport _routines_creation as _creation
 from cupy._core cimport _reduction
 from cupy.cuda cimport device
-from cupy.cuda.pinned_memory cimport alloc_pinned_memory, is_memory_pinned
+from cupy.xpu.pinned_memory cimport alloc_pinned_memory, is_memory_pinned
 from cupy_backends.cuda.libs cimport cutensor
 from cupy.cuda import Device
 
@@ -490,7 +491,7 @@ def elementwise_binary(
         See examples/cutensor/elementwise_binary.py
     """
     if out is None:
-        out = core._ndarray_init(
+        out = _creation._ndarray_init(
             _cupy.ndarray, C._shape, dtype=C.dtype, obj=None)
     elif C.dtype != out.dtype:
         raise ValueError('dtype mismatch: {} != {}'.format(C.dtype, out.dtype))
@@ -630,7 +631,7 @@ def elementwise_trinary(
         See examples/cutensor/elementwise_trinary.py
     """
     if out is None:
-        out = core._ndarray_init(
+        out = _creation._ndarray_init(
             _cupy.ndarray, C._shape, dtype=C.dtype, obj=None)
     elif C.dtype != out.dtype:
         raise ValueError('dtype mismatch: {} != {}'.format(C.dtype, out.dtype))
@@ -801,7 +802,7 @@ def contraction(
         actual_ws_size.ctypes.data, actual_ws_size.itemsize)
     ws_size = actual_ws_size.item()
     assert ws_size <= estimated_ws_size, "Workspace size is larger than the estimated workspace size"  # NOQA
-    ws = core._ndarray_init(
+    ws = _creation._ndarray_init(
         _cupy.ndarray, shape_t(1, ws_size), dtype=_numpy.int8, obj=None)
     scalar_dtype = _get_scalar_dtype(C.dtype)
     out = C
@@ -910,7 +911,7 @@ def reduction(
         _get_handle().ptr, operator.ptr, plan_pref.ptr,
         cutensor.WORKSPACE_RECOMMENDED)
     plan = create_plan(operator, plan_pref, ws_limit=ws_size)
-    ws = core._ndarray_init(
+    ws = _creation._ndarray_init(
         _cupy.ndarray, shape_t(1, ws_size), dtype=_numpy.int8, obj=None)
     cutensor.reduce(
         _get_handle().ptr, plan.ptr,
@@ -968,7 +969,7 @@ def _try_reduction_routine(
     out_shape = _reduction._get_out_shape(
         x._shape, reduce_axis, out_axis, keepdims)
     if out is None:
-        out = core._ndarray_init(
+        out = _creation._ndarray_init(
             _cupy.ndarray, out_shape, dtype=dtype, obj=None)
     elif not internal.vector_equal(out._shape, out_shape):
         # TODO(asi1024): Support broadcast
@@ -1061,7 +1062,7 @@ def _try_elementwise_binary_routine(
             subtype = c_type
             template = c
 
-        out = core._create_ndarray_from_shape_strides(
+        out = _creation._create_ndarray_from_shape_strides(
             subtype, c._shape, c._strides, compute_dtype, template)
     elif out.dtype != compute_dtype:
         return None
@@ -1559,7 +1560,7 @@ def copyMg(dst, mode_Dst, src, mode_Src, deviceBuf=None, hostBuf=None,
         deviceBuf = []
         for idevice, s in zip(handle.devices, deviceBufSize):
             with Device(idevice):
-                deviceBuf.append(core._ndarray_init(
+                deviceBuf.append(_creation._ndarray_init(
                     _cupy.ndarray, shape_t(1, s),
                     dtype=_numpy.int8, obj=None))
     else:
@@ -1802,7 +1803,7 @@ def contractionMg(alpha, A, modeA, B, modeB, beta, C, modeC,
         deviceBuf = []
         for idevice, s in zip(handle.devices, deviceBufSize):
             with Device(idevice):
-                deviceBuf.append(core._ndarray_init(
+                deviceBuf.append(_creation._ndarray_init(
                     _cupy.ndarray, shape_t(1, s),
                     dtype=_numpy.int8, obj=None))
     else:

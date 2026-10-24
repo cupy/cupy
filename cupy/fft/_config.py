@@ -15,7 +15,7 @@ from cupy.fft._cache import (get_plan_cache,
                              set_plan_cache_max_memsize,
                              show_plan_cache_info)
 # expose callback handles via `config` object (CUDA only)
-if not runtime.is_hip:
+if not runtime.is_hip and not runtime.is_ascend:
     from cupy.fft._callback import (
         get_current_callback_manager, set_cufft_callbacks)
 else:
@@ -23,7 +23,7 @@ else:
         return None
 
     def set_cufft_callbacks(*args, **kwargs):
-        raise RuntimeError('cuFFT callbacks are not supported on ROCm')
+        raise RuntimeError('cuFFT callbacks are not supported on this backend')
 
 
 class _FFTConfig:
