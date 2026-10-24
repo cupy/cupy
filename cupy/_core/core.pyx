@@ -2208,6 +2208,13 @@ cdef class _ndarray_base:
         prev_device = runtime.getDevice()
         try:
             runtime.setDevice(self.device.id)
+            if (blocking and a_gpu.nbytes >= _host_transfer().D2H_THRESHOLD
+                    and not pinned_memory.is_memory_pinned(ptr)):
+                # Large pageable destination: stage through a bounded pinned
+                # ring and copy out with several threads, overlapped with
+                # the DMA (this also spreads first-touch page faults).
+                _host_transfer().copy_device_to_host(a_gpu, a_cpu, stream)
+                return a_cpu
             a_gpu.data.copy_to_host_async(ptr, a_gpu.nbytes, stream)
             if blocking:
                 stream.synchronize()
@@ -3111,6 +3118,12 @@ cdef _ndarray_base _array_default(
         # memory already we can directly copy it.
         a.data.copy_from_host_async(ptr_h, nbytes, stream)
         pinned_memory._add_to_watch_list(stream.record(), a_cpu)
+    elif ((a_cpu.flags.c_contiguous or a_cpu.flags.f_contiguous)
+            and nbytes >= _host_transfer().H2D_THRESHOLD):
+        # Large array: stage it in chunks through a bounded ring of pinned
+        # buffers filled by several threads, overlapping the host copies
+        # with the DMA (and reordering on the device if needed).
+        _host_transfer().copy_host_to_device(a, a_cpu, stream)
     elif (not is_correct_contiguous
             and nbytes >= _reorder_min_bytes
             and (a_cpu.flags.c_contiguous or a_cpu.flags.f_contiguous)):
@@ -3196,6 +3209,18 @@ cdef tuple _compute_concat_info_impl(obj):
         return (dim,) + concat_shape, concat_type, concat_dtype
 
     return None, None, None
+
+
+cdef object _host_transfer_module = None
+
+
+cdef _host_transfer():
+    # Imported lazily: the module imports cupy itself.
+    global _host_transfer_module
+    if _host_transfer_module is None:
+        from cupy._core import _host_transfer as m
+        _host_transfer_module = m
+    return _host_transfer_module
 
 
 # Chunk size for _copy_from_host_reordered: bounds the extra device (and
