@@ -267,6 +267,7 @@ cpdef memPrefetchAsync(intptr_t devPtr, size_t count, int dstDevice,
                        intptr_t stream)
 cpdef memAdvise(intptr_t devPtr, size_t count, int advice, int device)
 cpdef PointerAttributes pointerGetAttributes(intptr_t ptr)
+cpdef int pointerGetMemoryType(intptr_t ptr) except -1
 
 IF CUPY_CANN_VERSION <= 0:
     # MemoryPool

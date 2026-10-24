@@ -168,7 +168,7 @@ IF CUPY_CANN_VERSION > 0:
         check_status(status)
 
     # initialize ascend runtime and set device 0
-    initialize_backend(0) # comment out this line if you do not have a NPU
+    #initialize_backend(0) # comment out this line if you do not have a NPU
 
 
 IF CUPY_CANN_VERSION >= 851:
@@ -938,6 +938,15 @@ IF CUPY_CANN_VERSION <= 0:
 ###############################################################################
 # Stream and Event
 ###############################################################################
+
+cpdef int pointerGetMemoryType(intptr_t ptr) except -1:
+    '''Allocation-free replacement for ``pointerGetAttributes(ptr).type``.
+
+    Returns the runtime memory type enum for ``ptr`` (e.g.
+    ``memoryTypeDevice`` / ``memoryTypeHost`` / ``memoryTypeManaged``).
+    '''
+    return pointerGetAttributes(ptr).type
+
 
 cpdef intptr_t streamCreate() except? 0:
     cdef driver.Stream stream

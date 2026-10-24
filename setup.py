@@ -302,7 +302,9 @@ optional_dependencies = {
         "mpmath",
     ],
 }
-if not ctx.use_hip:
+# `cuda-pathfinder` / the `ctk` extra are CUDA-only: an Ascend build must not
+# pull in CUDA wheels (and `features["cuda"]` does not exist there).
+if not ctx.use_hip and not ctx.use_ascend:
     dependencies.append("cuda-pathfinder>=1.3.4,==1.*")
     if not ctx.use_stub:
         cuda_major = ctx.features["cuda"].get_version() // 1000
