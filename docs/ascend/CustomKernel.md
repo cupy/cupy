@@ -1,6 +1,6 @@
 # 自定义 Ascend Kernel（Custom Kernel）基础设施设计
 
-> 状态：**计划（待确认）**
+> 状态：**M2/M3 已落地（2026-10-25，见 §8）**；数值验证待 910B
 > 目标：在 numpy-ascend 中提供与 `cupy.RawKernel` / `cupy.RawModule` 对标的自定义
 > kernel 能力，用 bisheng 编译 AscendC 内核；同时让内置缺失算子（Progress.md 中的
 > 缺口）可以"源码内置 + 运行时编译"的方式补齐；并作为客户编写自定义 kernel/ufunc
@@ -587,3 +587,45 @@ cupy/xpu/ascend/function.pyx     Ascend 实现（aclrt binary/launch API）
    共享 pxd 会解析失败，产生假错误。
 5. **`CUPY_USE_CUDA_PYTHON` 等 compile_time_env** 是构建系统对全后端统一注入的
    upstream 开关（`_command.py`），手动 cython 验证时要带上完整环境，否则误报。
+
+---
+
+## 8. 落地记录：bisheng compile-with-cache + RawKernel/RawModule（2026-10-25）✅
+
+M2（JIT 编译器 + 缓存）与 M3（RawKernel/RawModule 真实现）已落地并验证到
+**L3+**（bisheng 真实编译在本机通过；aclrt 加载/启动需 910B，按约定不谎称数值正确）。
+
+### 8.1 交付物
+
+| 件 | 位置 | 说明 |
+|---|---|---|
+| JIT 编译+缓存 | `cupy/backends/ascend/bisheng.py::compile_module_with_cache` | NVRTC `_compile_module_with_cache` 的 bisheng 对应物：sha1 缓存键（source+options+SoC+bisheng 指纹+CANN series+格式版本）、磁盘缓存（sha1 前缀校验、tempfile+`os.replace` 原子写、损坏自动重编）、`BishengCompileException`（含 `dump()`，兼容 `CUPY_DUMP_CUDA_SOURCE_ON_ERROR`） |
+| 缓存目录 | `~/.cache/cupy/cann_kernel_cache/`（`CUPY_CACHE_DIR` 覆盖基目录） | 落实 §6 决策 #5；`CUPY_CACHE_SAVE_CUDA_SOURCE=1` 可落 `.cce` 源码副本 |
+| RawKernel/RawModule | `cupy/_core/_ascend/raw_kernel_stub.pyx`（不再是空壳） | 对标 `cupy/_core/_gpu/raw.pyx`：惰性编译、per-device kernel 缓存、pickle（raw_ver=2）、`compile()`/`attributes`（NotImpl）、`get_function`/`get_global` |
+| 冒烟测试 | `tests/smoke_rawkernel.py` | 本机（无 NPU）可跑：编译/缓存/损坏恢复/异常/API 面 |
+
+### 8.2 关键实现决策
+
+1. **缓存键用 bisheng 二进制指纹（路径+mtime+`--version` 首行）**而非仅版本号：
+   CANN 升级常伴随 bisheng 变更但 CANN series 不动，指纹捕获真实二进制变化；
+   series（`compiler/version.info` 的 major.minor）保留 §3.1 的 9.0.1→9.0.2 复用语义。
+2. **`compile_kernel()` 新增 `extra_options`**：用户选项追加在默认 flag 之后
+   （clang 语义后值覆盖前值）；用户自带 `--cce-soc-version` 时跳过我们注入的 SoC。
+3. **`numBlocks = grid × block` 乘积映射**在 `RawKernel.__call__` 完成
+   （§7.4 既定分工：`Function` 层保持薄语义）；`block=(1,1,1)` 退化为原生风格。
+4. **`name_expressions` 延迟到使用时报错**：cupyx.scipy.sparse 在 import 期就构造
+   `RawModule(name_expressions=...)`（CUDA 模板 kernel 源码），构造期抛错会破坏
+   `import cupy`；`_module()`/`get_function()` 时才 `NotImplementedError`。
+   （这类 CUDA 源码本来也不可能用 bisheng 编译。）
+5. **bisheng 输出非确定性**（ar 归档头含时间戳）：缓存校验用 sha1 前缀完整性，
+   不做"重编结果应逐字节相等"的假设。
+
+### 8.3 验证记录（本机 CANN 9.0.1，无 NPU）
+
+- L1/L2：`build_ext --inplace` 通过（日志中 `ascend_fft` 的 ld error 是
+  ops-fft 未安装的可选探测，与本链路无关）。
+- L3：`import cupy` 全量通过（含 cupyx.scipy.sparse import 链）；
+  `compile_module_with_cache` 真实编译 37KB fatbin 3.9s、二次调用 0ms 命中、
+  损坏条目自动重编、坏源码抛 `BishengCompileException`、pickle 往返 OK。
+- 设备路径（`Module.load → aclrtCreateBinary`）报 `EL0003 Invalid_Argument`，
+  与本机所有 aclnn 设备调用同一失败模式 —— 数值验证待 910B（L4）。
