@@ -62,7 +62,7 @@
 | [GithubPackagingAndPypi.md](GithubPackagingAndPypi.md) | 活跃（v3，2026-10-17） | GitHub Release + PyPI 发布全流程：workflow 矩阵、OIDC Trusted Publishing、auditwheel（实测 manylinux_2_34 基线）、本地版本段方案、`--find-links` 安装 |
 | [CondaPackage.md](CondaPackage.md) | 实战总结（2026-10-07） | conda 打包 CANN 9.0 全流程与坑；**conda 保留 per-train 包名**（`numpy-ascend-cann90`），已与 wheel 命名分家 |
 | [InstallCannOpsPackages.md](install_cann_ops_packages.md) | 操作笔记 | 自编 CANN 额外算子包（ops-sparse / ops-fft / ops-solver…） |
-| [CustomKernel.md](CustomKernel.md) | 方案（待确认） | 自定义 AscendC Kernel（对标 `cupy.RawKernel`）基础设施设计 |
+| [CustomKernel.md](CustomKernel.md) | 活跃（M2/M3 落地 2026-10-25） | 自定义 AscendC Kernel（对标 `cupy.RawKernel`）基础设施设计；§8 落地记录：bisheng compile-with-cache + RawKernel/RawModule |
 | [Profiler.md](Profiler.md) | 活跃（2026-10-17） | `cudaProfilerStart/Stop` → ACL profiler（aclprof）映射：语义差异、环境变量、`msprof` 导出、NPU 测试 |
 
 ### 2.3 库级兼容（cupyx / scipy）
@@ -72,6 +72,7 @@
 | [ScipyArrayApiCompat.md](ScipyArrayApiCompat.md) | 分析（2026-10-06） |  |
 | [CupyxScipyMigration.md](CupyxScipyMigration.md) | 分析（2026-10-18） | `cupyx` / `cupyx.scipy` 缺口盘点：4 个子系统级阻塞 + 248 个内联 kernel 分布、pytest 红区、覆盖率三档估算（~31 % → ~88-90 %）、落地顺序 R0-R5；含 scipy array-API 是否覆盖 sparse 的结论 |
 | [DistributedMigration.md](DistributedMigration.md) | 分析+方案（2026-10-18） | `cupyx.distributed` 原理拆解（`DistributedArray` 不是拆分 `_ndarray_base`、单进程多卡）、NCCL↔HCCL API/dtype 对照、四个结构性差异（root info 4108B、store 256B、无 group、P2P 不可假设）、Tier0/1/2 移植路线与风险 |
+| **[HcclBinding.md](HcclBinding.md)** | **活跃（2026-10-25）** | **HCCL 绑定实现**：`cupy/backends/ascend/cupy_hccl.h`（NCCL API→HCCL 兼容层：版本号策略 2.17、dtype/错误码映射、`ncclGroupStart/End`→`HcclBatchSendRecv`、弱符号保护、abort/broadcast 语义）、`ascend_hccl` 构建特性与链接库解析（`hccl_fwk`↔`hcomm`）、root info 4108B 走 TCP store 的缓冲扩容；含已知缺口 R1–R8 与 T0–T8 测试计划 |
 
 ## 3. 文档维护约定
 

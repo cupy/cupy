@@ -17,6 +17,7 @@ from cupy_builder.features._base import Feature
 from cupy_builder.features._base import from_dict as _from_dict
 from cupy_builder.features.ascend import CUPY_ascend
 from cupy_builder.features.ascend_fft import CUPY_ascend_fft
+from cupy_builder.features.ascend_hccl import CUPY_ascend_hccl
 from cupy_builder.features.ascend_sparse import CUPY_ascend_sparse
 from cupy_builder.features.cuda import CUDA_cuda
 from cupy_builder.features.cuda import cuda_feature_dicts
@@ -40,6 +41,8 @@ def get_features(ctx: Context) -> dict[str, Feature]:
             CUPY_ascend(ctx),
             CUPY_ascend_fft(ctx),
             CUPY_ascend_sparse(ctx),
+            # NCCL-API-over-HCCL binding (cupy.cuda.nccl -> cupyx.distributed)
+            CUPY_ascend_hccl(ctx),
             # _from_dict(_common_dlpack(), ctx)
         ]
     else:

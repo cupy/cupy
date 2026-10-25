@@ -1,17 +1,21 @@
 #ifndef INCLUDE_GUARD_CUPY_NCCL_H
 #define INCLUDE_GUARD_CUPY_NCCL_H
 
-#if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
+// NOTE: the Ascend branch must be tested first.  `CUPY_USE_ASCEND` builds do
+// not define `CUPY_NO_CUDA` (CuPy's `no_cuda` flag only tracks the *stub*
+// build), so testing `!defined(CUPY_NO_CUDA)` before it would wrongly select
+// the CUDA NCCL header and fail on `#include <nccl.h>`.
+#if defined(CUPY_USE_ASCEND)
+
+#include "ascend/cupy_hccl.h"
+
+#elif !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
 
 #include "cuda/cupy_nccl.h"
 
 #elif defined(CUPY_USE_HIP)
 
 #include "hip/cupy_rccl.h"
-
-#elif defined(CUPY_USE_ASCEND)
-
-#include "ascend/cupy_hccl.h"
 
 #else // #ifndef CUPY_NO_CUDA
 

@@ -54,7 +54,12 @@ ASCEND_ALIAS_PACKAGE = 'numpy_xpu'
 #   cupyx.linalg, cupyx.jit, cupyx.optimizing, cupyx.scipy (top level) -
 #                          imported by cupyx/__init__.py / cupy._functional
 _CUPYX_EXCLUDED_ON_ASCEND = [
-    'cupyx.distributed',      # NCCL-based DistributedArray, CUDA-only
+    # `cupyx.distributed` used to be dropped ("NCCL-based, CUDA-only"); it is
+    # kept now that `cupy.cuda.nccl` is backed by HCCL
+    # (cupy/backends/ascend/cupy_hccl.h + the optional `ascend_hccl` build
+    # feature). Without HCCL at build time the package still imports fine and
+    # `init_process_group` raises "NCCL is not available" -- the same
+    # degradation as an upstream CuPy built without NCCL.
     'cupyx.scipy.interpolate',
     'cupyx.scipy.ndimage',
     'cupyx.scipy.signal',

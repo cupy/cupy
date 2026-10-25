@@ -3,7 +3,15 @@ from __future__ import annotations
 from ctypes import Structure, c_int, c_byte
 
 
-_VALUE_BUFFER_SIZE = 256
+# Size of the fixed value field of a KLV message.
+#
+# The largest payload exchanged during ``init_process_group`` is the
+# communicator bootstrap id: 128 B (``ncclUniqueId``) on CUDA/ROCm, but 4108 B
+# on Ascend (``HcclRootInfo``, see ``cupy/backends/ascend/cupy_hccl.h``).  The
+# original 256 B could not carry the HCCL one, so the buffer is sized for it
+# with room to spare.  This channel is only used for rendezvous, so the extra
+# bytes cost nothing measurable.
+_VALUE_BUFFER_SIZE = 8192
 
 
 class action_t(Structure):
