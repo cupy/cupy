@@ -3,6 +3,7 @@ FROM nvidia/cuda:13.0.0-devel-ubuntu24.04
 RUN apt-get update -y && \
     apt-get install -y --no-install-recommends \
     ca-certificates \
+    curl \
     python3-dev \
     python3-wheel \
     python3-setuptools && \
