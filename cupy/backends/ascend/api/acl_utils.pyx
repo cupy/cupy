@@ -1335,6 +1335,13 @@ cdef aclError launch_general_func_raw(str opname, sequence ins, sequence outs, l
 
     if opname.startswith("cupy_"):
         opname = ASCEND_OP_PREFIX + opname[5:]
+
+    # CANN bitwise_not rejects bool (return all-True), route to logical op
+    if (opname in ("ascend_bitwise_not", "ascend_invert") and ins
+            and isinstance(ins[0], _ndarray_base)
+            and ins[0].dtype.kind == 'b'):
+        opname = "ascend_logical_not"
+        
     # custom AscendC kernel registry takes precedence (B-tier ops with no
     # aclnn counterpart; see cupy/backends/ascend/kernels/__init__.py)
     if _custom_kernel_specs:
