@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 import itertools
 import json
 import os
@@ -69,6 +70,23 @@ def compile_device_code(
         objects.append(obj)
 
     return sources_cpp, objects
+
+
+def check_cuda_python(cuda_version: int) -> None:
+    """Checks the packages cimported by CUDA Python builds."""
+    cuda_major = cuda_version // 1000
+    try:
+        cuda_bindings = importlib.import_module('cuda.bindings')
+        importlib.import_module('nvmath.bindings')
+    except ImportError as e:
+        raise RuntimeError(
+            'CUPY_USE_CUDA_PYTHON requires nvmath-python and '
+            f'cuda-bindings=={cuda_major}.* to be installed: {e}') from e
+    bindings_version = cuda_bindings.__version__
+    if int(bindings_version.split('.')[0]) != cuda_major:
+        raise RuntimeError(
+            f'cuda-bindings {bindings_version} does not match CUDA '
+            f'{cuda_major}.x; install cuda-bindings=={cuda_major}.*')
 
 
 def _get_timestamp(path: str | os.PathLike[str]) -> float:
@@ -153,6 +171,8 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
             compile_time_env['CUPY_CUDA_VERSION'] = (
                 ctx.features['cuda'].get_version())
             compile_time_env['CUPY_HIP_VERSION'] = 0
+            if use_cuda_python:
+                check_cuda_python(compile_time_env['CUPY_CUDA_VERSION'])
 
         print('Compile-time constants: ' +
               json.dumps(compile_time_env, indent=4))
