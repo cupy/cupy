@@ -210,14 +210,14 @@ def choose(a, choices: Sequence[Any], out=None, mode: str = 'raise'):
     else:
         raise ValueError(f"mode must be one of 'raise', 'wrap', 'clip' (got {mode!r})")
 
-    dtype = numpy.result_type(*choices)
-    result = None
-    for k, choice in enumerate(choices):
-        candidate = cupy.broadcast_to(choice, shape).astype(dtype)
-        if k == 0:
-            result = candidate
-        else:
-            result = _where()(index == k, candidate, result)
+    # ASCEND: aclnnSWhere mis-selects mixed True/False conditions
+    # (the False branch returns the x operand), so the n-1 `where`
+    # chain above is unreliable, fallback to CPU host for this low freq API
+    # `index` has been validated, so just use `raise` mode
+    host_a = index.get()
+    host_choices = [c.get() for c in choices]
+    host_result = numpy.choose(host_a, host_choices, mode='raise')
+    result = cupy.asarray(host_result, dtype=numpy.result_type(*choices))
 
     if out is not None:
         out[...] = result

@@ -298,6 +298,14 @@ cdef _ndarray_base _ndarray_choose(_ndarray_base self, choices, out, mode):
     a = self
     n = choices.shape[0]
 
+    # ASCEND: `_choose_kernel` has no aclnn ops, workaround
+    IF CUPY_CANN_VERSION > 0:
+        if is_ascend:
+            from cupy._core._ascend import composite as _composite
+            if _composite.active():
+                choice_list = [choices[i] for i in range(n)]
+                return _composite.choose(a, choice_list, out=out, mode=mode)
+
     # broadcast `a` and `choices[i]` for all i
     if a.ndim < choices.ndim - 1:
         for i in range(choices.ndim - 1 - a.ndim):
