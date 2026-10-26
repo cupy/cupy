@@ -467,3 +467,4 @@ test:
   "unit-slow":
   "example":
   "benchmark":
+  "array-api":

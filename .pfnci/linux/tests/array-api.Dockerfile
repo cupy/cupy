@@ -1,5 +1,4 @@
-# Copied from cuda-head.Dockerfile; keep in sync with it.
-
+# AUTO GENERATED: DO NOT EDIT!
 ARG BASE_IMAGE="nvidia/cuda:12.9.1-devel-ubuntu24.04"
 FROM ${BASE_IMAGE}
 
@@ -19,14 +18,15 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
 
 ENV PATH "/usr/lib/ccache:${PATH}"
 
+RUN curl -fsSL https://github.com/cli/cli/releases/download/v2.95.0/gh_2.95.0_linux_amd64.tar.gz \
+        | tar -xz -C /usr/local --strip-components=1 gh_2.95.0_linux_amd64/bin/gh
+
 ENV CUPY_INCLUDE_PATH=/usr/include/libcutensor/12:${CUPY_INCLUDE_PATH}
 ENV CUPY_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/libcutensor/12:${CUPY_LIBRARY_PATH}
 ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/libcutensor/12:${LD_LIBRARY_PATH}
 RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
-# Python must be a release whose ssl module blocks the compromised
-# eMudhra/emSign CAs (see the python specs in schema.yaml).
 RUN git -C /opt/pyenv pull --ff-only && \
     PYTHON_CONFIGURE_OPTS="--disable-shared" pyenv install 3.12.16 && \
     pyenv global 3.12.16 && \
