@@ -8,7 +8,7 @@ RUN apt-get update -y && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends python3.12 && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
-# Remove the pinned pip once Ubuntu's python3-pip is >= 26.2.2 (see PIP_SPEC in .pfnci/generate.py).
+# Remove the pinned pip once Ubuntu's python3-pip is >= 26.2.2 (see .github/actions/harden-pip).
 # noble's python3-pip is 24.0, which trusts only its vendored certifi.
 # --ignore-installed: the distro pip has no RECORD file, so pip cannot
 # uninstall it; install the new pip into /usr/local alongside it instead.

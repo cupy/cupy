@@ -80,7 +80,7 @@ function Main {
     }
     # Bootstrap pip from a hash-pinned URL first: older pip releases still
     # trust the compromised eMudhra/emSign CAs and cannot upgrade themselves
-    # safely. Keep in sync with PIP_SPEC in generate.py.
+    # safely. Keep in sync with .github/actions/harden-pip/action.yml.
     # Remove the pinned pip once the uv-seeded pip is >= 26.2.2.
     RunOrDie python -m pip install --disable-pip-version-check "pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70"
     RunOrDie python -m pip install --disable-pip-version-check -U pip setuptools wheel
