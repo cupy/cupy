@@ -202,14 +202,17 @@ def fill_diagonal(a, val, wrap=False):
             raise ValueError('All dimensions of input must be of equal length')
         step = 1 + numpy.cumprod(a.shape[:-1]).sum()
 
-    if is_ascend and numpy.isscalar(val) and not numpy.iscomplexobj(val) \
-        and not numpy.issubtype(a.dtype, numpy.complexfloating):
-        # aclnnInplaceFillDiagonal accepts a scalar fill value only; 
-        # numpy's array_like / complex scalar/array keeps the path below.
-        from cupy.backends.ascend.api.acl_utils import py_launch_general
-        py_launch_general('ascend_fill_diagonal', (), (a,),
-                          (float(val), int(bool(wrap))), {})
-        return
+    # if is_ascend and numpy.isscalar(val) and not numpy.iscomplexobj(val) \
+    #     and not numpy.issubdtype(a.dtype, numpy.complexfloating):
+    #     # aclnnInplaceFillDiagonal accepts a scalar fill value only; 
+    #     # numpy's array_like / complex scalar/array keeps the path below.
+    #     from cupy.backends.ascend.api.acl_utils import py_launch_general
+    #     py_launch_general('ascend_fill_diagonal', (), (a,),
+    #                       (float(val), int(bool(wrap))), {})
+    #     return
+    # ASCEND NOTE: aclnninplaceFillDiagonal zroes the non-diagonal elements
+    # CANN 9.0 with 910B device, instead of touching only the diagnoal
+    # so use the platiter setitem path below
 
     a.flat[:end:step] = val
 
