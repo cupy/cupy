@@ -22,42 +22,19 @@ from cupy._core cimport internal
 #   args = [axis, stable, descending]  int64 / bool / bool
 # aclnnSort takes the order flag directly (upstream `descending=`), so the
 # public `descending` keyword maps onto the third argument.
-cdef str _sort_key_dtype(_ndarray_base a):
-    """Return the signed-int dtype whose bit order equals `a`'s float order.
-
-    For IEEE-754 floats the sign bit is the MSB, so comparing the raw bit
-    patterns as *signed* integers orders the values exactly like the floats
-    (all negatives below all positives, magnitude-monotonic within each sign
-    group).  Sorting the bit pattern as int32/int64 therefore sorts the floats.
-    Only deviation: -NaN sorts before -inf (numpy moves every NaN to the end).
-    Returns None for non-float dtypes (which sort natively on the NPU).
-    """
-    if a.dtype == numpy.float32:
-        return 'int32'
-    if a.dtype == numpy.float64:
-        return 'int64'
-    return None
-
-
 cdef _ascend_sort(_ndarray_base self, _ndarray_base out, int axis,
                   bint descending=False):
     """Sort `self` along `axis`; the sorted values are written into `out`."""
     # CANN 8.5 aclnnSort does not accept nullptr as indices, not in used after return
     cdef _ndarray_base  indices = core.ndarray(out.shape, dtype=numpy.int64)
-    cdef str key_dtype = _sort_key_dtype(self)
     try:
-        if key_dtype is not None:
-            # CANN 9.0.1: the aclnnSort float kernels crash the vector core
-            # much earlier than the int kernels (>= ~2M f32 elements vs
-            # >= ~4M int32), reporting ACL_ERROR_NAME_UNKNOWN with an
-            # "fftsplus aivector error" device exception.  Sorting the
-            # IEEE-754 bit pattern as *signed* ints orders the floats
-            # identically (the sign bit is the MSB), so run the int kernels.
-            launch_general_func(
-                "ascend_sort",
-                [self.view(key_dtype)], [out.view(key_dtype), indices],
-                [axis, 1, descending],  # axis, stable, descending
-                {}, 0)
+        if self.dtype.kind == 'f':
+            # CANN 9.0.1: aclnnSort float kernels crash the vector core
+            # (>= ~2M f32 elements); fall back to host CPU sort.
+            host = numpy.sort(self.get(), axis=axis)
+            if descending:
+                host = numpy.flip(host, axis=axis)
+            out[...] = cupy.asarray(host)
         else:
             launch_general_func(
                 "ascend_sort",
@@ -85,23 +62,22 @@ cdef _ascend_sort(_ndarray_base self, _ndarray_base out, int axis,
 cdef _ascend_argsort(_ndarray_base self, _ndarray_base out, int axis,
                       bint descending=False):
     """Write the argsort indices of `self` along `axis` into `out`."""
-    cdef str key_dtype = _sort_key_dtype(self)
     try:
-        if key_dtype is not None:
-            # Same float aclnnSort kernel fault as _ascend_sort; the argsort
-            # order of the bit pattern is the argsort order of the floats.
-            launch_general_func(
-                "ascend_argsort",
-                [self.view(key_dtype)], [out],
-                [axis, descending],  # dim, descending
-                {}, 0)
+        # Same float aclnnSort kernel fault as _ascend_sort
+        # argsort fall back
+        if self.dtype.kind == 'f':
+            host = numpy.argsort(self.get(), axis=axis).astype(numpy.int64)
+            if descending:
+                host = numpy.flip(host, axis=axis)
+            out[...] = cupy.asarray(host)
+            cupy.cuda.runtime.deviceSynchronize()
         else:
             launch_general_func(
                 "ascend_argsort",
                 [self], [out],
                 [axis, descending],  # dim, descending
                 {}, 0)
-        cupy.cuda.runtime.deviceSynchronize()  # surface async kernel faults
+            cupy.cuda.runtime.deviceSynchronize()  # surface async kernel faults
     except Exception:
         host = numpy.argsort(self.get(), axis=axis).astype(numpy.int64)
         if descending:
@@ -144,7 +120,10 @@ cdef _ndarray_sort(_ndarray_base self, int axis, bint descending=False):
         elementwise_copy(out, data)
     else:
         data = _manipulation.rollaxis(data, -1, axis)
-        elementwise_copy(out, data)
+        # roll the sorted output back the original axis layout before copying
+        # directly copy will have broadcast failure
+        out_view = _manipulation.rollaxis(out, -1, axis)
+        elementwise_copy(out_view, data)
         elementwise_copy(data, self)
 
 
