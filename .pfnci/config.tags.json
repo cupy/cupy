@@ -344,6 +344,10 @@
         "linux",
         "rapids"
     ],
+    "cupy.linux.array-api": [
+        "array-api",
+        "linux"
+    ],
     "cupy.linux.benchmark.head": [
         "benchmark",
         "linux"
