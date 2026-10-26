@@ -94,6 +94,32 @@ def get_cuda_path():
     return _cuda_path
 
 
+def detect_cuda_major(ctx: Context) -> int | None:
+    """Returns the CUDA major version from ``CUDA_VERSION`` in ``cuda.h``.
+
+    Unlike ``CUDA_cuda.get_version()``, this does not compile anything, so it
+    can be used in setup phases where the full CUDA probe is skipped (e.g.,
+    ``egg_info`` run by PEP 517 ``get_requires_for_build_wheel``).
+    Returns ``None`` if ``cuda.h`` cannot be found.
+    """
+    include_dirs = ctx.include_dirs.copy()
+    cuda_path = get_cuda_path()
+    if cuda_path:
+        include_dirs.append(os.path.join(cuda_path, 'include'))
+    include_dirs, _ = conda_update_dirs(include_dirs, [])
+
+    for include_dir in include_dirs:
+        cuda_h = os.path.join(include_dir, 'cuda.h')
+        if not os.path.isfile(cuda_h):
+            continue
+        with open(cuda_h, encoding='utf-8', errors='replace') as f:
+            m = re.search(r'^\s*#\s*define\s+CUDA_VERSION\s+(\d+)',
+                          f.read(), re.MULTILINE)
+        if m is not None:
+            return int(m.group(1)) // 1000
+    return None
+
+
 def get_nvcc_path() -> list[str]:
     nvcc = os.environ.get('NVCC', None)
     if nvcc:
