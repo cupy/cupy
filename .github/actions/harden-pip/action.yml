@@ -18,7 +18,8 @@ inputs:
 runs:
   using: composite
   steps:
-    # The pin may be removed once every Python used by CI ships pip>=26.2.2.
+    # The pin may be removed once every Python used by CI ships pip>=26.2.2
+    # or its ssl module blocks the eMudhra CAs (see .pfnci/schema.yaml).
     - name: Install pip 26.2.2 (hash-pinned), then upgrade
       shell: bash
       env:

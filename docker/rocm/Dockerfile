@@ -1,7 +1,6 @@
 FROM rocm/dev-ubuntu-24.04:7.0.2
 LABEL maintainer="CuPy Team"
 
-RUN curl -qL https://repo.radeon.com/rocm/rocm.gpg.key | apt-key add -
 RUN apt-get update -y && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     ca-certificates hipblas hipsparse rocsparse hiprand rocrand rocthrust rocsolver rocfft hipfft hipcub rocprim rccl && \
