@@ -270,8 +270,8 @@ class LinuxGenerator:
             f'    pyenv global {py_spec} && \\',
             '    # Remove the pinned pip once every Python in schema.yaml'
             ' ships pip>=26.2.2 or blocks the eMudhra CAs.',
-            f'    pip install {shlex.quote(PIP_SPEC)} && \\',
-            '    pip install -U pip setuptools wheel && \\',
+            f'    pip install --disable-pip-version-check {shlex.quote(PIP_SPEC)} && \\',  # NOQA
+            '    pip install --disable-pip-version-check -U pip setuptools wheel && \\',  # NOQA
             # For GCP kernel cache backend
             '    pip install -U google-cloud-storage',
             '',
