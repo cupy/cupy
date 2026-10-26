@@ -779,12 +779,6 @@
   tags: ["@nightly", "full", "linux", "rapids"]
   system: "linux"
 
-- project: "cupy.linux.array-api"
-  _extern: true
-  target: "array-api"
-  tags: ["array-api", "linux"]
-  system: "linux"
-
 - project: "cupy.linux.benchmark.head"
   _inherits: "cupy.linux.cuda130"
   target: "benchmark.head"
