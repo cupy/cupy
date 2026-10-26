@@ -139,6 +139,14 @@ def resize(a, new_shape):
     a = cupy.asarray(a)
     if a.size == 0:
         return cupy.zeros(new_shape, dtype=a.dtype)
+    from cupy.backends.backend import is_ascend
+    if is_ascend:
+        # ASCEND: no such kernel registered, so impl for C-contiguous filling
+        if isinstance(new_shape, tuple):
+            size = numpy.prod(new_shape, dtype=numpy.int64)
+        else:
+            size = new_shape
+        return cupy.take(a.ravel(), cupy.arange(size) % a.size).reshape(new_shape)
     out = cupy.empty(new_shape, a.dtype)
     _resize_kernel(a, a.size, out)
     return out
@@ -153,6 +161,25 @@ _first_nonzero_krnl = _core.ReductionKernel(
     'len',
     'first_nonzero'
 )
+
+
+def _first_nonzero_index(a, size):
+    """返回 ``a`` 中第一个非零元素的下标；无非零元素返回 ``size``。
+
+    ``_first_nonzero_krnl``（自定义 ReductionKernel，min 归约 + `_j` 下标）
+    在 ASCEND 上没有注册的 aclnn 内核，无法派发。本函数是两者语义的统一
+    入口：CUDA 走原 ReductionKernel；ASCEND 用已注册的 ``ascend_nonzero``
+    组合等价语义（polyutils.trimcoef 原地验证过的 workaround，收敛到此）。
+    ``a`` 为任意 1-D 数组（含 reversed 视图），``size`` 为归约 identity。
+    """
+    from cupy.backends.backend import is_ascend
+    if is_ascend:
+        # accasionally, ret=500003 for poly1d reverse/flit view on CANN 9.0.1
+        # so fallback to CPU, for caclnnNonzero bug on boundary input
+        np_a = cupy.asnumpy(a)
+        nz = numpy.nonzero(np_a)[0]
+        return int(nz[0]) if nz.size else int(size)
+    return int(_first_nonzero_krnl(a, size).item())
 
 
 def trim_zeros(filt, trim='fb'):
@@ -180,10 +207,11 @@ def trim_zeros(filt, trim='fb'):
     start = 0
     end = filt.size
     trim = trim.upper()
+
     if 'F' in trim:
-        start = _first_nonzero_krnl(filt, filt.size).item()
+        start = _first_nonzero_index(filt, filt.size)
     if 'B' in trim:
-        end = filt.size - _first_nonzero_krnl(filt[::-1], filt.size).item()
+        end = filt.size - _first_nonzero_index(filt[::-1], filt.size)
     return filt[start:end]
 
 

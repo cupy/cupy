@@ -5,7 +5,13 @@ from warnings import warn
 import numpy
 
 import cupy
-from cupy.cuda import cublas
+from cupy.backends.backend import is_ascend
+if is_ascend:
+    # cupy.backends.cuda.libs.cublas is not built for Ascend; None mirrors
+    # the guard in cupy/cublas.py. Unimplemented paths fail at call time.
+    cublas = None
+else:
+    from cupy.cuda import cublas
 from cupy.cuda import device
 from cupy.cuda import runtime
 from cupy.linalg import _util
@@ -91,6 +97,13 @@ def lu(a, permute_l=False, overwrite_a=False, check_finite=True):
 
 
 def _lu_factor(a, overwrite_a=False, check_finite=True):
+    if is_ascend:
+        # `cupy_backends.cuda.libs.cusolver` is not built for Ascend and its
+        # ops-blas counterpart is not wired in yet. Fail early with a clear
+        # message instead of a ModuleNotFoundError deep inside the call.
+        raise NotImplementedError(
+            'cupyx.scipy.linalg.lu_factor/lu is not implemented on Ascend '
+            '(cuSOLVER getrf is unavailable)')
     from cupy_backends.cuda.libs import cusolver
 
     a = cupy.asarray(a)
@@ -305,6 +318,13 @@ def lu_solve(lu_and_piv, b, trans=0, overwrite_b=False, check_finite=True):
 
     .. seealso:: :func:`scipy.linalg.lu_solve`
     """  # NOQA
+    if is_ascend:
+        # See the guard in `_lu_factor`: cuSOLVER getrs is unavailable, and
+        # `cublas` is None on Ascend (the CUBLAS_OP_* constants below would
+        # raise AttributeError).
+        raise NotImplementedError(
+            'cupyx.scipy.linalg.lu_solve is not implemented on Ascend '
+            '(cuSOLVER getrs is unavailable)')
     from cupy_backends.cuda.libs import cusolver
 
     (lu, ipiv) = lu_and_piv

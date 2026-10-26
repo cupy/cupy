@@ -70,6 +70,10 @@ def convolve(a, v, mode='full'):
     v = v.ravel()
 
     method = _choose_conv_method(a, v, mode)
+    if method == 'fft' and not _fft_convolve_ok(a, v):
+        # ACLFFT (Ascend) has no double-precision support; fall back to the
+        # direct method for dtypes it cannot handle.
+        method = 'direct'
     if method == 'direct':
         out = _dot_convolve(a, v, mode)
     elif method == 'fft':
@@ -77,6 +81,30 @@ def convolve(a, v, mode='full'):
     else:
         raise ValueError('Unsupported method')
     return out
+
+
+def _fft_convolve_ok(a1, a2):
+    """Whether the FFT-based convolution path can run on this backend.
+
+    aclfft (ops-fft on Ascend) supports only float32/complex64 transforms,
+    so any other result dtype must take the direct path.
+    """
+    try:
+        from cupy.backends.backend import is_ascend
+    except ImportError:
+        return True
+    if not is_ascend:
+        return True
+    if cupy.result_type(a1, a2) not in (numpy.float32, numpy.complex64):
+        return False
+    # even for right dtype, FFT may be not available at runtime
+    try:
+        from cupy.fft._backend import get_cufft
+        get_cufft()
+        return True
+    except RuntimeError:
+        # CUPY_ENABLE_ACLFFT=0 / libcann_ops_fft.so not found will throw
+        return False
 
 
 def _fft_convolve(a1, a2, mode):
@@ -118,6 +146,31 @@ def _fft_convolve(a1, a2, mode):
     return out.astype(dtype, copy=False)
 
 
+def dot_product(x1, x2):
+    """Returns the dot product of two arrays (inner product, no conjugation).
+
+    Equivalent to ``(x1 * x2).sum()``; unlike :func:`numpy.vdot` the first
+    argument is **not** conjugated. The name has been listed in this module's
+    ``__all__`` upstream but was never actually defined; it is implemented
+    here as a composition of registered ops so it works on every backend,
+    including Ascend (where the raw-CUDA ``_dot_kernel`` cannot compile; for
+    1-D equal-length inputs the single-op ``ascend_dot``/aclnnDot alternative
+    exists in ``tensordot_core``).
+
+    Args:
+        x1 (cupy.ndarray): first array.
+        x2 (cupy.ndarray): second array, broadcastable to ``x1``.
+
+    Returns:
+        cupy.ndarray: 0-D array with the sum of the elementwise product.
+
+    .. seealso:: :func:`numpy.vdot`
+    """
+    x1 = cupy.asarray(x1)
+    x2 = cupy.asarray(x2)
+    return (x1 * x2).sum()
+
+
 def _dot_convolve(a1, a2, mode):
 
     offset = 0
@@ -142,6 +195,18 @@ def _dot_convolve(a1, a2, mode):
 
     stride = a1.strides[0]
     a1 = stride_tricks.as_strided(a1, (out_size, n2), (stride, stride))
+    try:
+        from cupy.backends.backend import is_ascend
+    except ImportError:
+        is_ascend = False
+    if is_ascend:
+        # ASCEND: `_dot_kernel` is a raw-CUDA ReductionKernel (NVRTC) with no
+        # aclnn counterpart. Run the sliding-window dot as a GEMV-shaped
+        # matmul (aclnnMatmul via `@`), which also avoids materializing the
+        # (out_size, n2) elementwise-product temporary that
+        # `(a1 * a2[::-1]).sum(axis=1)` would need.
+        kernel = a2[::-1]
+        return (a1 @ kernel.reshape(n2, 1)).reshape(out_size)
     output = _dot_kernel(a1, a2[::-1], axis=1)
     return output
 
@@ -453,6 +518,15 @@ def nan_to_num(x, copy=True, nan=0.0, posinf=None, neginf=None):
     .. seealso:: :func:`numpy.nan_to_num`
 
     """
+    # ASCEND: aclop_NanToNum() reads nan/posinf/neginf from scalar arg
+    # not from ins, so it siliently use numpy defaults and ignore user inputs
+    # scalar ops are aborted on device, so handle scalar (0D) on host
+    # NEP50: numpy.nan_to_num refuses a cupy ndarray operand, so D2H first
+    from cupy.backends.backend import is_ascend
+    if is_ascend:
+        import numpy as _np
+        _nx = x.get() if isinstance(x, cupy.ndarray) else x
+        return cupy.asarray(_np.nan_to_num(_nx, copy=copy, nan=nan, posinf=posinf, neginf=neginf))
     if not isinstance(x, cupy.ndarray):
         out = cupy.full((), x)
     else:
@@ -558,6 +632,16 @@ def interp(x, xp, fp, left=None, right=None, period=None):
     .. seealso:: :func:`numpy.interp`
 
     """
+    # ASCEND, interp(cupy_interp), use cpu_fallback: no aclnn op.
+    # NEP50: numpy.interp refuses a cupy ndarray operand, so D2H first
+    from cupy.backends.backend import is_ascend
+    if is_ascend:
+        import numpy as _np
+        _x = x.get() if isinstance(x, cupy.ndarray) else x
+        _xp = xp.get() if isinstance(xp, cupy.ndarray) else xp
+        _fp = fp.get() if isinstance(fp, cupy.ndarray) else fp
+        return cupy.asarray(
+            _np.interp(_x, _xp, _fp, left=left, right=right, period=period))
 
     if xp.ndim != 1 or fp.ndim != 1:
         raise ValueError('xp and fp must be 1D arrays')

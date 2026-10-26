@@ -14,6 +14,19 @@ recursive-exclude cupy_backends *.cpp
 recursive-include install *.py
 recursive-include tests *.py
 
+# Compliance (docs/ascend/Compliance.md): the proprietary CUDA Toolkit headers
+# are NOT vendored in this tree. `tools/fetch_cuda_fp16_headers.py` may create
+# a gitignored local copy (CUDA backend only); these prunes are the safety net
+# that keeps it out of every source tarball.
+prune cupy/_core/include/cupy/_cuda/cuda-11
+prune cupy/_core/include/cupy/_cuda/cuda-12
+
 # Licenses
 include LICENSE
+# NOTICE: derivative-work statement + upstream copyright/trademark notices
+# (see docs/ascend/Compliance.md, P3).
+include NOTICE
 include docs/source/license.rst
+# `numpy_xpu` is discovered by `[tool.setuptools.packages.find]` (Ascend only);
+# list it here so an sdist built on a CUDA-less builder carries it too.
+recursive-include numpy_xpu *.py

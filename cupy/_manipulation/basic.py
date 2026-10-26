@@ -5,12 +5,14 @@ import itertools
 import numpy
 
 from cupy import _core
-from cupy._core import _fusion_interface
+from cupy.backends.backend.api import runtime
+if not runtime.is_ascend:
+    # TODO(ASCEND) better deal with not supported feature
+    from cupy._core import _fusion_interface
+    from cupy._sorting import search
+    # only used by the HIP multi-device path in copyto()
+    from cupy.cuda import stream
 from cupy._core import fusion
-from cupy._sorting import search
-from cupy.cuda import stream
-from cupy_backends.cuda.api import runtime
-
 
 def copyto(dst, src, casting='same_kind', where=None):
     """Copies values from one array to another with broadcasting.
@@ -40,7 +42,7 @@ def copyto(dst, src, casting='same_kind', where=None):
         numpy.copyto(dst_arr, src, casting=casting)
         can_cast = True
         src_is_scalar = True
-    elif src_type in (fusion._FusionVarScalar, _fusion_interface._ScalarProxy):
+    elif fusion._is_fusing() and src_type in (fusion._FusionVarScalar, _fusion_interface._ScalarProxy):
         src_dtype = src.dtype
         can_cast = numpy.can_cast(src_dtype, dst.dtype, casting)
         src_is_scalar = True
@@ -94,6 +96,29 @@ def copyto(dst, src, casting='same_kind', where=None):
             src = src.squeeze(tuple(range(squeeze_ndim)))
 
     if where is not None:
+        from cupy.backends.backend import is_ascend
+        if is_ascend:
+            # ASCEND: the `where=` ufunc kwarg has no impl in the dispatcher 
+            # Device mask setitem (`dst[mask]= v`) on ASCEND use
+            # cupy_scatter_update_mask which is unrealiable on CANN 8.5 ret=500003
+            # so, use cpu fallback
+            # `where` may be a scalar (complex) or bool/non-bool array,
+            # normalized to bool so dst[mask] is valid
+            import cupy
+            mask = cupy.asarray(where)
+            if mask.dtype.kind in 'biu':
+                pass
+            else:
+                mask = mask != 0
+            mask = cupy.broadcast_to(cupy.asarray(mask), dst.shape)
+            dst_host = cupy.asnumpy(dst)
+            if src_is_scalar:
+                dst_host[mask.get()] = src
+            else:
+                value = cupy.broadcast_to(cupy.asarray(src), dst.shape)
+                dst_host[mask.get()] = cupy.asnumpy(value)[mask.get()]
+            dst.set(dst_host)
+            return
         _core.elementwise_copy(src, dst, _where=where)
         return
 
@@ -101,6 +126,17 @@ def copyto(dst, src, casting='same_kind', where=None):
         return
 
     if src_is_scalar:
+        from cupy.backends.backend import is_ascend
+        if is_ascend:
+            # ASCEND: elementwise_copy(cupy_copy -> ascend_copy kernel)
+            # does not deal scalar (REVERSE_SCALAR_BINARY_OP)
+            # convert to 0D array/tensor, so can use tensor copy/cast
+            src = _core.array(src, dtype=dst.dtype)
+            # ASCEND: 0D complex src broadcast to dst fails
+            # broadcast to dst shape first so elementwise_copy sees same shape
+            if src.ndim == 0 and src.dtype.kind == "c":
+                import cupy
+                src = cupy.broadcast_to(src, dst.shape)
         _core.elementwise_copy(src, dst)
         return
 

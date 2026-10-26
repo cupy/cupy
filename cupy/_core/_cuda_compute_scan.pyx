@@ -3,7 +3,8 @@ import threading
 from cupy._core._dtype cimport get_dtype
 from cupy._core.core cimport _ndarray_base
 from cupy._core cimport _scalar
-from cupy.cuda.device cimport get_compute_capability
+# ASCEND: device.pyx/.pxd moved to cupy/xpu/ (backend-neutral layer).
+from cupy.xpu.device cimport get_compute_capability
 from cupy._core._cuda_compute_common cimport _get_cuda_compute
 
 import numpy

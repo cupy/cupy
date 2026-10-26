@@ -1,0 +1,1349 @@
+import string
+import sys
+
+import numpy
+
+import cupy
+from cupy._core._reduction import create_reduction_func
+from cupy._core._kernel import create_ufunc, _get_warpsize
+from cupy._core._kernel cimport _full_mask_hex
+from cupy._core._scalar import get_typename, format_type_decls
+from cupy._core._ufuncs import elementwise_copy
+import cupy._core.core as core
+from cupy._core cimport internal
+from cupy import _util
+from cupy._util import bf16_loop
+
+from cupy_backends.cuda.api cimport runtime
+from cupy._core cimport _accelerator
+from cupy._core._cuda_compute_scan cimport cuda_compute_scan
+from cupy._core._dtype cimport get_dtype
+from cupy._core._routines_creation cimport _ndarray_init
+from cupy._core._compile_with_cache cimport compile_with_cache
+from cupy._core.core cimport _ndarray_base
+from cupy.cuda cimport memory
+
+from cupy.cuda import cub
+
+try:
+    from cupy_backends.cuda.libs import cutensor as cuda_cutensor
+except ImportError:
+    cuda_cutensor = None
+
+
+# _ndarray_base members
+
+
+cdef _ndarray_base _ndarray_conj(_ndarray_base self):
+    if self.dtype.kind == 'c':
+        return _conjugate(self)
+    else:
+        return self
+
+
+cdef _ndarray_base _ndarray_real_getter(_ndarray_base self):
+    if self.dtype.kind == 'c':
+        dtype = get_dtype(self.dtype.char.lower())
+        view = core.ndarray.__new__(
+            type(self), shape=self._shape, dtype=dtype, _obj=self,
+            memptr=self.data, strides=self._strides)
+        (<_ndarray_base>view).base = (
+            self.base if self.base is not None else self)
+        return view
+    return self
+
+
+cdef _ndarray_base _ndarray_real_setter(_ndarray_base self, value):
+    elementwise_copy(value, _ndarray_real_getter(self))
+
+
+cdef _ndarray_base _ndarray_imag_getter(_ndarray_base self):
+    cdef memory.MemoryPointer memptr
+    if self.dtype.kind == 'c':
+        dtype = get_dtype(self.dtype.char.lower())
+        memptr = self.data
+        # Make the memory pointer point to the first imaginary element.
+        # Note that even if the array doesn't have a valid memory (e.g. 0-size
+        # array), the resulting array should be a view of the original array,
+        # aligning with NumPy behavior.
+        if memptr.ptr != 0:
+            memptr = memptr + self.dtype.itemsize // 2
+        view = core.ndarray.__new__(
+            type(self), shape=self._shape, dtype=dtype, memptr=memptr,
+            strides=self._strides)
+        (<_ndarray_base>view).base = (
+            self.base if self.base is not None else self)
+        return view
+    new_array = core.ndarray.__new__(type(self), self.shape, dtype=self.dtype)
+    new_array.fill(0)
+    return new_array
+
+
+cdef _ndarray_base _ndarray_imag_setter(_ndarray_base self, value):
+    if self.dtype.kind == 'c':
+        elementwise_copy(value, _ndarray_imag_getter(self))
+    else:
+        raise TypeError('cupy.ndarray does not have imaginary part to set')
+
+
+cdef _ndarray_base _ndarray_prod(
+        _ndarray_base self, axis, dtype, out, keepdims):
+    reduce_func = _prod_auto_dtype if dtype is None else _prod_keep_dtype
+    for accelerator in _accelerator._routine_accelerators:
+        if accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE:
+            # result will be None if the reduction is not served by
+            # cuda.compute
+            result = reduce_func(self, axis, dtype, out, keepdims,
+                                 cuda_compute_only=True)
+            if result is not None:
+                return result
+        if accelerator == _accelerator.ACCELERATOR_CUB:
+            # result will be None if the reduction is not compatible with CUB
+            result = cub.cub_reduction(
+                self, cub.CUPY_CUB_PROD, axis, dtype, out, keepdims)
+            if result is not None:
+                return result
+        if (accelerator == _accelerator.ACCELERATOR_CUTENSOR and
+                cuda_cutensor is not None):
+            from cupyx import cutensor
+            result = cutensor._try_reduction_routine(
+                self, axis, dtype, out, keepdims, cuda_cutensor.OP_MUL, 1, 0)
+            if result is not None:
+                return result
+    return reduce_func(self, axis, dtype, out, keepdims)
+
+
+cdef _ndarray_base _ndarray_sum(
+        _ndarray_base self, axis, dtype, out, keepdims):
+    reduce_func = _sum_auto_dtype if dtype is None else _sum_keep_dtype
+    for accelerator in _accelerator._routine_accelerators:
+        if accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE:
+            # result will be None if the reduction is not served by
+            # cuda.compute
+            result = reduce_func(self, axis, dtype, out, keepdims,
+                                 cuda_compute_only=True)
+            if result is not None:
+                return result
+        if accelerator == _accelerator.ACCELERATOR_CUB:
+            # result will be None if the reduction is not compatible with CUB
+            result = cub.cub_reduction(
+                self, cub.CUPY_CUB_SUM, axis, dtype, out, keepdims)
+            if result is not None:
+                return result
+        if (accelerator == _accelerator.ACCELERATOR_CUTENSOR and
+                cuda_cutensor is not None):
+            from cupyx import cutensor
+            result = cutensor._try_reduction_routine(
+                self, axis, dtype, out, keepdims, cuda_cutensor.OP_ADD, 1, 0)
+            if result is not None:
+                return result
+
+    return reduce_func(self, axis, dtype, out, keepdims)
+
+
+cdef _ndarray_base _ndarray_cumsum(_ndarray_base self, axis, dtype, out):
+    return cupy.cumsum(self, axis, dtype, out)
+
+
+cdef _ndarray_base _ndarray_cumprod(_ndarray_base self, axis, dtype, out):
+    return cupy.cumprod(self, axis, dtype, out)
+
+
+cdef _ndarray_base _ndarray_clip(_ndarray_base self, a_min, a_max, out):
+    kind = self.dtype.kind
+    if a_min is None:
+        if kind == 'f':
+            a_min = self.dtype.type('-inf')
+        elif kind in 'iu':
+            a_min = numpy.iinfo(self.dtype.type).min
+    if a_max is None:
+        if kind == 'f':
+            a_max = self.dtype.type('inf')
+        elif kind in 'iu':
+            a_max = numpy.iinfo(self.dtype.type).max
+    return _clip(self, a_min, a_max, out=out)
+
+
+# private/internal
+
+_op_char = {scan_op.SCAN_SUM: '+', scan_op.SCAN_PROD: '*'}
+_identity = {scan_op.SCAN_SUM: 0, scan_op.SCAN_PROD: 1}
+
+
+@cupy._util.memoize(for_each_device=True)
+def _cupy_bsum_shfl(op, chunk_size, warp_size=32):
+    """Returns a kernel that computes the sum/prod of each thread-block.
+
+    Args:
+        op (int): Operation type. SCAN_SUM or SCAN_PROD.
+        chunk_size (int): Number of array elements processed by a single
+            thread-block.
+        warp_size (int); Warp size.
+
+    Returns:
+        cupy.ElementwiseKernel
+
+    Example:
+        a = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        _cupy_bsum(op=SCAN_SUM, chunk_size=4)(a, b, ...)
+        b == [10, 26, 19]
+
+    Note:
+        This uses warp shuffle functions to exchange data in a warp.
+        See the link below for details about warp shuffle functions.
+        https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#warp-shuffle-functions
+    """
+    block_size = chunk_size // 2  # each thread handles two elements
+    in_params = 'raw T a'
+    out_params = 'raw O b'
+    loop_prep = string.Template("""
+        __shared__ O smem[${block_size} / ${warp_size}];
+        const int n_warp = ${block_size} / ${warp_size};
+        const int warp_id = threadIdx.x / ${warp_size};
+        const int lane_id = threadIdx.x % ${warp_size};
+    """).substitute(block_size=block_size, warp_size=warp_size)
+    loop_body = string.Template("""
+        O x = ${identity};
+        if (2*i < a.size()) x = a[2*i];
+        if (2*i + 1 < a.size()) x ${op}= a[2*i + 1];
+        for (int j = 1; j < ${warp_size}; j *= 2) {
+            x ${op}= __shfl_xor_sync(${full_mask}, x, j, ${warp_size});
+        }
+        if (lane_id == 0) smem[warp_id] = x;
+        __syncthreads();
+        if (warp_id == 0) {
+            x = ${identity};
+            if (lane_id < n_warp) x = smem[lane_id];
+            for (int j = 1; j < n_warp; j *= 2) {
+                x ${op}= __shfl_xor_sync(${full_mask}, x, j, ${warp_size});
+            }
+            int block_id = i / ${block_size};
+            if (lane_id == 0) b[block_id] = x;
+        }
+    """).substitute(block_size=block_size, warp_size=warp_size,
+                    op=_op_char[op], identity=_identity[op],
+                    full_mask=_full_mask_hex())
+    return cupy.ElementwiseKernel(in_params, out_params, loop_body,
+                                  'cupy_bsum_shfl', loop_prep=loop_prep)
+
+
+@cupy._util.memoize(for_each_device=True)
+def _cupy_bsum_smem(op, chunk_size, warp_size=32):
+    """Returns a kernel that computes the sum/prod of each thread-block.
+
+    Args:
+        op (int): Operation type. SCAN_SUM or SCAN_PROD.
+        chunk_size (int): Number of array elements processed by a single
+            thread-block.
+        warp_size (int); Warp size.
+
+    Returns:
+        cupy.ElementwiseKernel
+
+    Example:
+        a = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        _cupy_bsum(op=SCAN_SUM, chunk_size=4)(a, b, ...)
+        b == [10, 26, 19]
+
+    Note:
+        This uses shared memory to exchange data in a warp.
+    """
+    block_size = chunk_size // 2  # each thread handles two elements
+    in_params = 'raw T a'
+    out_params = 'raw O b'
+    loop_prep = string.Template("""
+        __shared__ O smem1[${block_size}];
+        __shared__ O smem2[${warp_size}];
+        const int n_warp = ${block_size} / ${warp_size};
+        const int warp_id = threadIdx.x / ${warp_size};
+        const int lane_id = threadIdx.x % ${warp_size};
+    """).substitute(block_size=block_size, warp_size=warp_size)
+    loop_body = string.Template("""
+        O x = ${identity};
+        if (2*i < a.size()) x = a[2*i];
+        if (2*i + 1 < a.size()) x ${op}= a[2*i + 1];
+        for (int j = 1; j < ${warp_size}; j *= 2) {
+            smem1[threadIdx.x] = x;          __syncwarp();
+            x ${op}= smem1[threadIdx.x ^ j]; __syncwarp();
+        }
+        if (lane_id == 0) smem2[warp_id] = x;
+        __syncthreads();
+        if (warp_id == 0) {
+            x = ${identity};
+            if (lane_id < n_warp) x = smem2[lane_id];
+            for (int j = 1; j < n_warp; j *= 2) {
+                smem2[lane_id] = x;          __syncwarp();
+                x ${op}= smem2[lane_id ^ j]; __syncwarp();
+            }
+            int block_id = i / ${block_size};
+            if (lane_id == 0) b[block_id] = x;
+        }
+    """).substitute(block_size=block_size, warp_size=warp_size,
+                    op=_op_char[op], identity=_identity[op])
+    return cupy.ElementwiseKernel(in_params, out_params, loop_body,
+                                  'cupy_bsum_smem', loop_prep=loop_prep)
+
+
+@cupy._util.memoize(for_each_device=True)
+def _cupy_scan_naive(op, chunk_size, warp_size=32):
+    """Returns a kernel to compute an inclusive scan.
+
+    It first performs an inclusive scan in each thread-block and then add the
+    scan results for the sum/prod of the chunks.
+
+    Args:
+        op (int): Operation type. SCAN_SUM or SCAN_PROD.
+        chunk_size (int): Number of array elements processed by a single
+            thread-block.
+        warp_size (int); Warp size.
+
+    Returns:
+        cupy.ElementwiseKernel
+
+    Example:
+        b = [10, 36, 55]
+        a = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        _cupy_scan(op=SCAN_SUM, chunk_size=4)(b, a, out, ...)
+        out == [1, 3, 6, 10, 15, 21, 28, 36, 45, 55]
+
+    Note:
+        This uses a kind of method called "Naive Parallel Scan" for inclusive
+        scan in each thread-block. See below for details about it.
+        https://developer.nvidia.com/gpugems/gpugems3/part-vi-gpu-computing/chapter-39-parallel-prefix-sum-scan-cuda
+    """
+    in_params = 'raw O b'
+    out_params = 'raw T a, raw O out'
+    loop_prep = string.Template("""
+        __shared__ O smem1[${block_size}];
+        __shared__ O smem2[${warp_size}];
+        const int n_warp = ${block_size} / ${warp_size};
+        const int warp_id = threadIdx.x / ${warp_size};
+        const int lane_id = threadIdx.x % ${warp_size};
+    """).substitute(block_size=chunk_size, warp_size=warp_size)
+    loop_body = string.Template("""
+        O x = ${identity};
+        if (i < a.size()) x = a[i];
+        for (int j = 1; j < ${warp_size}; j *= 2) {
+            smem1[threadIdx.x] = x;  __syncwarp();
+            if (lane_id - j >= 0) x ${op}= smem1[threadIdx.x - j];
+            __syncwarp();
+        }
+        if (lane_id == ${warp_size} - 1) smem2[warp_id] = x;
+        __syncthreads();
+        if (warp_id == 0) {
+            O y = ${identity};
+            if (lane_id < n_warp) y = smem2[lane_id];
+            for (int j = 1; j < n_warp; j *= 2) {
+                smem2[lane_id] = y;  __syncwarp();
+                if (lane_id - j >= 0) y ${op}= smem2[lane_id - j];
+                __syncwarp();
+            }
+            smem2[lane_id] = y;
+        }
+        __syncthreads();
+        if (warp_id > 0) x ${op}= smem2[warp_id - 1];
+        int block_id = i / ${block_size};
+        if (block_id > 0) x ${op}= b[block_id - 1];
+        if (i < a.size()) out[i] = x;
+    """).substitute(block_size=chunk_size, warp_size=warp_size,
+                    op=_op_char[op], identity=_identity[op])
+    return cupy.ElementwiseKernel(in_params, out_params, loop_body,
+                                  'cupy_scan_naive', loop_prep=loop_prep)
+
+
+@cupy._util.memoize(for_each_device=True)
+def _cupy_scan_btree(op, chunk_size, warp_size=32):
+    """Returns a kernel to compute an inclusive scan.
+
+    It first performs an inclusive scan in each thread-block and then add the
+    scan results for the sum/prod of the chunks.
+
+    Args:
+        op (int): Operation type. SCAN_SUM or SCAN_PROD.
+        chunk_size (int): Number of array elements processed by a single
+            thread-block.
+        warp_size (int); Warp size.
+
+    Returns:
+        cupy.ElementwiseKernel
+
+    Example:
+        b = [10, 36, 55]
+        a = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        _cupy_scan(op=SCAN_SUM, chunk_size=4)(b, a, out, ...)
+        out == [1, 3, 6, 10, 15, 21, 28, 36, 45, 55]
+
+    Note:
+        This uses a kind of method called "Work-Efficient Parallel Scan" for
+        inclusive scan in each thread-block. See below link for details about
+        "Work-Efficient Parallel Scan".
+        https://developer.nvidia.com/gpugems/gpugems3/part-vi-gpu-computing/chapter-39-parallel-prefix-sum-scan-cuda
+    """
+    in_params = 'raw O b'
+    out_params = 'raw T a, raw O out'
+    loop_prep = string.Template("""
+        __shared__ O smem0[${block_size} + 1];
+        O *smem1 = smem0 + 1;
+        __shared__ O smem2[${warp_size}];
+        const int n_warp = ${block_size} / ${warp_size};
+        const int warp_id = threadIdx.x / ${warp_size};
+        const int lane_id = threadIdx.x % ${warp_size};
+        if (threadIdx.x == 0) smem0[0] = ${identity};
+    """).substitute(block_size=chunk_size, warp_size=warp_size,
+                    identity=_identity[op])
+    loop_body = string.Template("""
+        O x = ${identity};
+        if (i < a.size()) x = a[i];
+        for (int j = 1; j < ${warp_size}; j *= 2) {
+            smem1[threadIdx.x] = x;  __syncwarp();
+            if (lane_id % (2*j) == (2*j)-1) {
+                x ${op}= smem1[threadIdx.x - j];
+            }
+            __syncwarp();
+        }
+        smem1[threadIdx.x] = x;
+        __syncthreads();
+        if (warp_id == 0) {
+            O y = ${identity};
+            if (lane_id < n_warp) {
+                y = smem0[${warp_size} * (lane_id + 1)];
+            }
+            for (int j = 1; j < n_warp; j *= 2) {
+                smem2[lane_id] = y;  __syncwarp();
+                if (lane_id % (2*j) == (2*j)-1) {
+                    y ${op}= smem2[lane_id - j];
+                }
+                __syncwarp();
+            }
+            for (int j = n_warp / 4; j > 0; j /= 2) {
+                smem2[lane_id] = y; __syncwarp();
+                if ((lane_id % (2*j) == j-1) && (lane_id >= 2*j)) {
+                    y ${op}= smem2[lane_id - j];
+                }
+                __syncwarp();
+            }
+            if (lane_id < n_warp) {
+                smem0[${warp_size} * (lane_id + 1)] = y;
+            }
+        }
+        __syncthreads();
+        x = smem0[threadIdx.x];
+        for (int j = ${warp_size} / 2; j > 0; j /= 2) {
+            if (lane_id % (2*j) == j) {
+                x ${op}= smem0[threadIdx.x - j];
+            }
+            __syncwarp();
+            smem0[threadIdx.x] = x;  __syncwarp();
+        }
+        __syncthreads();
+        x = smem1[threadIdx.x];
+        int block_id = i / ${block_size};
+        if (block_id > 0) x ${op}= b[block_id - 1];
+        if (i < a.size()) out[i] = x;
+    """).substitute(block_size=chunk_size, warp_size=warp_size,
+                    op=_op_char[op], identity=_identity[op])
+    return cupy.ElementwiseKernel(in_params, out_params, loop_body,
+                                  'cupy_scan_btree', loop_prep=loop_prep)
+
+
+cdef _ndarray_base scan(
+        _ndarray_base a, op, dtype=None, _ndarray_base out=None,
+        incomplete=False, chunk_size=512):
+    """Return the prefix sum(scan) of the elements.
+
+    Args:
+        a (cupy.ndarray): input array.
+        out (cupy.ndarray): Alternative output array in which to place
+            the result. The same size and same type as the input array(a).
+
+    Returns:
+        cupy.ndarray: A new array holding the result is returned.
+
+    """
+    if a._shape.size() != 1:
+        raise TypeError('Input array should be 1D array.')
+
+    if out is None:
+        if dtype is None:
+            dtype = a.dtype
+        if not incomplete:
+            out = _ndarray_init(cupy.ndarray, a._shape, dtype, None)
+    else:
+        if a.size != out.size:
+            raise ValueError('Provided out is the wrong size')
+        dtype = out.dtype
+    dtype = numpy.dtype(dtype)
+
+    warp_size = _get_warpsize()
+    if runtime._is_hip_environment:
+        if dtype.char in 'iIfdlq':
+            # On HIP, __shfl* supports int, unsigned int, float, double,
+            # long, and long long. The documentation is too outdated and
+            # unreliable; refer to the header at
+            # $ROCM_HOME/include/hip/hcc_detail/device_functions.h
+            bsum_kernel = _cupy_bsum_shfl(op, chunk_size, warp_size)
+        else:
+            bsum_kernel = _cupy_bsum_smem(op, chunk_size, warp_size)
+    else:
+        if dtype.char in 'iIlLqQfd':
+            bsum_kernel = _cupy_bsum_shfl(op, chunk_size, warp_size)
+        else:
+            bsum_kernel = _cupy_bsum_smem(op, chunk_size, warp_size)
+    if dtype.char in 'fdFD':
+        scan_kernel = _cupy_scan_btree(op, chunk_size, warp_size)
+    else:
+        scan_kernel = _cupy_scan_naive(op, chunk_size, warp_size)
+    b_size = (a.size + chunk_size - 1) // chunk_size
+    b = cupy.empty((b_size,), dtype=dtype)
+    size = b.size * chunk_size
+
+    if a.size > chunk_size:
+        bsum_kernel(a, b, size=size // 2, block_size=chunk_size // 2)
+        scan(b, op, dtype=dtype, out=b)
+        if incomplete:
+            return b
+        scan_kernel(b, a, out, size=size, block_size=chunk_size)
+    else:
+        scan_kernel(b, a, out, size=size, block_size=chunk_size)
+
+    return out
+
+
+@_util.memoize(for_each_device=True)
+def _inclusive_batch_scan_kernel(
+        dtype, block_size, op, src_c_cont, out_c_cont,
+        use_32bit_indexing, large_batch):
+    """return Prefix Sum(Scan) cuda kernel
+    for a 2d array over axis 1
+    used for scanning over different axes
+
+    e.g
+    if blocksize > len(src[0])
+    src [[1, 2, 3, 4],
+         [5, 6, 7, 8]]
+    dst [[1, 3, 6, 10],
+         [5, 11, 18, 26]]
+
+    if blocksize < len(src[0])
+    block_size: 2
+    # TODO show partialness
+    src [[1, 2, 3, 4],
+         [5, 6, 7, 8]]
+    dst [[1, 3, 3, 7],
+         [5, 11, 7, 15]]
+
+    Args:
+        dtype: src, dst array type
+        block_size: block_size
+
+    Returns:
+         cupy.cuda.Function: cuda function
+    """
+    op_char = {scan_op.SCAN_SUM: '+', scan_op.SCAN_PROD: '*'}
+    identity = {scan_op.SCAN_SUM: 0, scan_op.SCAN_PROD: 1}
+    name = 'cupy_inclusive_batch_scan_kernel'
+    type_decls = set()
+    dtype = get_typename(dtype, type_decls)
+
+    source = string.Template("""
+    ${type_decls}
+    // blocks_per_batch: blocks spanning a single row (1 unless large_batch)
+    // remaining: valid elements in the last (padded) chunk of a row
+    // pad_batch_size: padded row length inside a block; divides block_size
+    //     and equals it when large_batch
+    extern "C" __global__ void ${name}(
+        const CArray<${dtype}, 2, ${src_c_cont}, ${use_32bit_indexing}> src,
+        CArray<${dtype}, 2, ${out_c_cont}, ${use_32bit_indexing}> dst,
+        unsigned int blocks_per_batch, unsigned int remaining,
+        unsigned int pad_batch_size
+    ){
+        using index_t = decltype(src)::index_t;
+
+        extern __shared__ ${dtype} temp[];
+
+        unsigned int thid = threadIdx.x;
+        int n_batches_block;
+        bool must_copy;
+        index_t row, col;
+
+        if constexpr (${large_batch}) {
+            // blockIdx.x / gridDim.x are 32-bit, so row fits. col may not:
+            // widen before multiplying by block_size.
+            unsigned int block_in_row = blockIdx.x % blocks_per_batch;
+            n_batches_block = 1;  // pad_batch_size == block_size
+            must_copy = (block_in_row + 1 != blocks_per_batch)
+                        || (thid < remaining);
+            col = static_cast<index_t>(block_in_row) * ${block_size} + thid;
+            row = blockIdx.x / blocks_per_batch;
+        } else {
+            // Multiple rows per block and `pad_batch_size` is a power of two
+            // so col is lower bits while the row is the higher.
+            unsigned int pad_batch_bits = 31U - __clz(pad_batch_size);
+            n_batches_block = ${block_size} >> pad_batch_bits;
+            col = thid & (pad_batch_size - 1);
+            row = static_cast<index_t>(blockIdx.x) * n_batches_block
+                  + (thid >> pad_batch_bits);
+            must_copy = col < remaining && row < src.shape()[0];
+        }
+        const index_t idx[] = {row, col};
+
+        temp[thid] = (must_copy) ? src[idx] : (${dtype}) ${identity};
+        __syncthreads();
+        for (int j = 0; j < n_batches_block; j++) {
+            int offset = j * pad_batch_size;
+            for (int i = 1; i < pad_batch_size; i <<= 1) {
+                int index = ((threadIdx.x + 1) * 2 * i - 1);
+                int index_block = offset + index;
+                if (index < (pad_batch_size)){
+                    temp[index_block] ${op}= temp[index_block - i];
+                }
+                __syncthreads();
+            }
+            for (int i = pad_batch_size >> 1; i > 0; i >>= 1) {
+                int index = ((threadIdx.x + 1) * 2 * i - 1);
+                int index_block = offset + index;
+                if ((index + i) < (pad_batch_size)){
+                    temp[index_block + i] ${op}= temp[index_block];
+                }
+                __syncthreads();
+            }
+        }
+        if (must_copy) {
+            dst[idx] = temp[thid];
+        }
+    }
+    """).substitute(name=name, dtype=dtype, block_size=block_size,
+                    op=op_char[op], identity=identity[op],
+                    src_c_cont=src_c_cont, out_c_cont=out_c_cont,
+                    use_32bit_indexing=int(use_32bit_indexing),
+                    large_batch='true' if large_batch else 'false',
+                    type_decls=format_type_decls(type_decls))
+    module = compile_with_cache(source)
+    return module.get_function(name)
+
+
+@_util.memoize(for_each_device=True)
+def _add_scan_batch_blocked_sum_kernel(
+        dtype, op, block_size, c_cont, use_32bit_indexing):
+    name = 'cupy_add_scan_blocked_sum_kernel'
+    type_decls = set()
+    dtype = get_typename(dtype, type_decls)
+
+    ops = {scan_op.SCAN_SUM: '+', scan_op.SCAN_PROD: '*'}
+    source = string.Template("""
+    ${type_decls}
+    extern "C" __global__ void ${name}(
+        CArray<${dtype}, 2, ${c_cont}, ${use_32bit_indexing}> src_dst,
+        unsigned int blocks_per_batch, unsigned int remaining
+    ){
+        using index_t = decltype(src_dst)::index_t;
+
+        unsigned int thid = threadIdx.x;
+        unsigned int block_in_row = blockIdx.x % blocks_per_batch;
+        index_t row = blockIdx.x / blocks_per_batch;
+        index_t block_start =
+            static_cast<index_t>(block_in_row) * ${block_size};
+
+        bool in_range = (block_in_row + 1 != blocks_per_batch)
+                        || (thid < remaining);
+        // The first block of a row has nothing to add and the last thread of
+        // a block already holds the sum of its block.
+        if (in_range && block_in_row != 0 && thid != ${block_size} - 1){
+            const index_t dst_idx[] = {row, block_start + thid};
+            const index_t src_idx[] = {row, block_start - 1};
+            src_dst[dst_idx] ${op}= src_dst[src_idx];
+        }
+    }
+    """).substitute(name=name, dtype=dtype, op=ops[op], block_size=block_size,
+                    c_cont=c_cont,
+                    use_32bit_indexing=int(use_32bit_indexing),
+                    type_decls=format_type_decls(type_decls))
+    module = compile_with_cache(source)
+    return module.get_function(name)
+
+
+cdef _ndarray_base _batch_scan_op(
+        _ndarray_base a, scan_op op, _ndarray_base out):
+    batch_size = a.shape[1]
+    # TODO(ecastill) replace this with "_reduction._block_size" once it is
+    # properly exposed
+    block_size = 512
+    cdef bint large_batch = batch_size > block_size
+    if large_batch:
+        # A row spans several blocks, the last one is only partially filled.
+        blocks_per_batch = (batch_size - 1) // block_size + 1
+        pad_batch_size = block_size
+        remaining = (batch_size - 1) % block_size + 1
+    else:
+        # Pad each row to the next power of two so several rows can share a
+        # block. pad_batch_size <= block_size.
+        blocks_per_batch = 1
+        pad_batch_size = 1 << ((batch_size - 1).bit_length())
+        remaining = batch_size
+    padded_size = a.shape[0] * blocks_per_batch * pad_batch_size
+    n_blocks = (padded_size - 1) // block_size + 1
+
+    cdef int src_cont = int(a.flags.c_contiguous)
+    cdef int out_cont = int(out.flags.c_contiguous)
+    cdef int use_32 = int(a._index_32_bits and out._index_32_bits)
+
+    # Convert to uint32 for kernel arguments (could error for huge matrices):
+    blocks_per_batch = numpy.uint32(blocks_per_batch)
+    remaining = numpy.uint32(remaining)
+    pad_batch_size = numpy.uint32(pad_batch_size)
+
+    kern_scan = _inclusive_batch_scan_kernel(
+        a.dtype, block_size, op, src_cont, out_cont, use_32, large_batch)
+    kern_scan(grid=(n_blocks,), block=(block_size,),
+              args=(a, out, blocks_per_batch, remaining, pad_batch_size),
+              shared_mem=a.itemsize * block_size)
+    if large_batch:
+        blocked_sum = out[:, block_size-1::block_size]
+        _batch_scan_op(blocked_sum, op, blocked_sum)
+        kern_add = _add_scan_batch_blocked_sum_kernel(
+            out.dtype, op, block_size, out_cont, use_32)
+        kern_add(grid=(n_blocks,), block=(block_size,),
+                 args=(out, blocks_per_batch, remaining))
+    return out
+
+
+cdef _proc_as_batch(_ndarray_base x, int axis, scan_op op):
+    if x.shape[axis] == 0:
+        return cupy.empty_like(x)
+    t = cupy.rollaxis(x, axis, x.ndim)
+    s = t.shape
+    r = t.reshape(-1, x.shape[axis])
+    _batch_scan_op(r, op, r)
+    return cupy.rollaxis(r.reshape(s), x.ndim-1, axis)
+
+
+cpdef scan_core(
+        _ndarray_base a, axis, scan_op op, dtype=None, _ndarray_base out=None):
+    if out is None:
+        if dtype is None:
+            kind = a.dtype.kind
+            if kind == 'b':
+                dtype = numpy.dtype('int64')
+            elif kind == 'i':
+                dtype = numpy.dtype('int64')
+            elif kind == 'u':
+                dtype = numpy.dtype('uint64')
+            else:
+                dtype = a.dtype
+        result = None
+    else:
+        if (out.flags.c_contiguous or out.flags.f_contiguous):
+            result = out
+            elementwise_copy(a, result)
+        else:
+            result = a.astype(out.dtype, order='C')
+
+    if axis is None:
+        for accelerator in _accelerator._routine_accelerators:
+            if accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE:
+                if op == scan_op.SCAN_SUM:
+                    cuda_compute_op = 'PLUS'
+                else:
+                    cuda_compute_op = 'MULTIPLIES'
+                # res will be None if the scan is not compatible with
+                # cuda.compute
+                res = cuda_compute_scan(
+                    a, result, dtype, cuda_compute_op)
+                if res is not None:
+                    result = res
+                    break
+            if accelerator == _accelerator.ACCELERATOR_CUB:
+                if result is None:
+                    result = a.astype(dtype, order='C').ravel()
+                # result will be None if the scan is not compatible with CUB
+                if op == scan_op.SCAN_SUM:
+                    cub_op = cub.CUPY_CUB_CUMSUM
+                else:
+                    cub_op = cub.CUPY_CUB_CUMPROD
+                res = cub.cub_scan(result, cub_op)
+                if res is not None:
+                    break
+        else:
+            if result is None:
+                result = scan(a.ravel(), op, dtype=dtype)
+            else:
+                scan(result, op, dtype=dtype, out=result)
+    else:
+        if result is None:
+            result = a.astype(dtype, order='C')
+        axis = internal._normalize_axis_index(axis, a.ndim)
+        result = _proc_as_batch(result, axis, op)
+    # This is for when the original out param was not contiguous
+    if out is not None and out.data != result.data:
+        elementwise_copy(result.reshape(out.shape), out)
+    else:
+        out = result
+    return out
+
+
+# Only for test
+def _scan_for_test(a, out=None):
+    return scan(a, scan_op.SCAN_SUM, dtype=None, out=out)
+
+
+cpdef _ndarray_base _nansum(_ndarray_base a, axis, dtype, out, keepdims):
+    if cupy.iscomplexobj(a):
+        return _nansum_complex_dtype(a, axis, dtype, out, keepdims)
+    elif dtype is None:
+        return _nansum_auto_dtype(a, axis, dtype, out, keepdims)
+    else:
+        return _nansum_keep_dtype(a, axis, dtype, out, keepdims)
+
+
+cpdef _ndarray_base _nanprod(_ndarray_base a, axis, dtype, out, keepdims):
+    if cupy.iscomplexobj(a):
+        return _nanprod_complex_dtype(a, axis, dtype, out, keepdims)
+    elif dtype is None:
+        return _nanprod_auto_dtype(a, axis, dtype, out, keepdims)
+    else:
+        return _nanprod_keep_dtype(a, axis, dtype, out, keepdims)
+
+
+if sys.platform == "win32":
+    _sumprod_types = (
+        '?->q', 'b->q', 'B->Q', 'h->q', 'H->Q', 'i->q', 'I->Q', 'l->q', 'L->Q',
+        'q->q', 'Q->Q',
+        ('e->e', (None, None, None, 'float')),
+        *bf16_loop(code=(None, None, None, 'float')),
+        'f->f', 'd->d', 'F->F', 'D->D',
+    )
+else:
+    _sumprod_types = (
+        '?->l', 'b->l', 'B->L', 'h->l', 'H->L', 'i->l', 'I->L', 'l->l', 'L->L',
+        'q->q', 'Q->Q',
+        ('e->e', (None, None, None, 'float')),
+        *bf16_loop(code=(None, None, None, 'float')),
+        'f->f', 'd->d', 'F->F', 'D->D',
+    )
+
+
+_sum_auto_dtype = create_reduction_func(
+    'cupy_sum', _sumprod_types,
+    ('in0', 'a + b', 'out0 = type_out0_raw(a)', None), 0,
+    compute_opkind='PLUS')
+
+
+_sum_keep_dtype = create_reduction_func(
+    'cupy_sum_with_dtype',
+    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
+     'q->q', 'Q->Q',
+     ('e->e', (None, None, None, 'float')),
+     *bf16_loop(code=(None, None, None, 'float')),
+     'f->f', 'd->d', 'F->F', 'D->D'),
+    ('in0', 'a + b', 'out0 = type_out0_raw(a)', None), 0,
+    compute_opkind='PLUS')
+
+
+_nansum_auto_dtype = create_reduction_func(
+    'cupy_nansum', _sumprod_types,
+    ('(in0 == in0) ? in0 : type_in0_raw(0)',
+     'a + b', 'out0 = type_out0_raw(a)', None), 0, compute_opkind='PLUS')
+
+
+_nansum_keep_dtype = create_reduction_func(
+    'cupy_nansum_with_dtype',
+    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
+     'q->q', 'Q->Q',
+     ('e->e', (None, None, None, 'float')),
+     *bf16_loop(code=(None, None, None, 'float')),
+     'f->f', 'd->d', 'F->F', 'D->D'),
+    ('(in0 == in0) ? in0 : type_in0_raw(0)',
+     'a + b', 'out0 = type_out0_raw(a)', None), 0, compute_opkind='PLUS')
+
+
+_nansum_complex_dtype = create_reduction_func(
+    'cupy_nansum_complex_dtype',
+    ('F->F', 'D->D'),
+    ('''
+    type_in0_raw((in0.real() == in0.real()) ? in0.real() : 0,
+                 (in0.imag() == in0.imag()) ? in0.imag() : 0)
+    ''',
+     'a + b', 'out0 = type_out0_raw(a)', None), 0, compute_opkind='PLUS')
+
+
+_prod_auto_dtype = create_reduction_func(
+    'cupy_prod', _sumprod_types,
+    ('in0', 'a * b', 'out0 = type_out0_raw(a)', None), 1,
+    compute_opkind='MULTIPLIES')
+
+
+_prod_keep_dtype = create_reduction_func(
+    'cupy_prod_with_dtype',
+    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
+     'q->q', 'Q->Q',
+     ('e->e', (None, None, None, 'float')),
+     *bf16_loop(code=(None, None, None, 'float')),
+     'f->f', 'd->d', 'F->F', 'D->D'),
+    ('in0', 'a * b', 'out0 = type_out0_raw(a)', None), 1,
+    compute_opkind='MULTIPLIES')
+
+
+_nanprod_auto_dtype = create_reduction_func(
+    'cupy_nanprod', _sumprod_types,
+    ('(in0 == in0) ? in0 : type_in0_raw(1)',
+     'a * b', 'out0 = type_out0_raw(a)', None), 1, compute_opkind='MULTIPLIES')
+
+
+_nanprod_keep_dtype = create_reduction_func(
+    'cupy_nanprod_with_dtype',
+    ('?->?', 'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
+     'q->q', 'Q->Q',
+     ('e->e', (None, None, None, 'float')),
+     *bf16_loop(code=(None, None, None, 'float')),
+     'f->f', 'd->d', 'F->F', 'D->D'),
+    ('(in0 == in0) ? in0 : type_in0_raw(1)',
+     'a * b', 'out0 = type_out0_raw(a)', None), 1, compute_opkind='MULTIPLIES')
+
+
+_nanprod_complex_dtype = create_reduction_func(
+    'cupy_nanprod_complex_dtype',
+    ('F->F', 'D->D'),
+    ('''
+    type_in0_raw((in0.real() == in0.real()) ? in0.real() : 1,
+                 (in0.imag() == in0.imag()) ? in0.imag() : 1)
+    ''',
+     'a * b', 'out0 = type_out0_raw(a)', None), 1, compute_opkind='MULTIPLIES')
+
+cdef create_arithmetic(
+        name, op, boolop, doc, cutensor_op=None, scatter_op=None):
+    # boolop is either
+    #  - str (the operator for bool-bool inputs) or
+    #  - callable (a function to raise an error for bool-bool inputs).
+    if isinstance(boolop, str):
+        boolop = 'out0 = in0 %s in1' % boolop
+
+    return create_ufunc(
+        'cupy_' + name,
+        (('??->?', boolop),
+         'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
+         'LL->L', 'qq->q', 'QQ->Q',
+         'ee->e', *bf16_loop(2), 'ff->f', 'dd->d', 'FF->F', 'DD->D'),
+        'out0 = in0 %s in1' % op,
+        doc=doc,
+        cutensor_op=cutensor_op,
+        scatter_op=scatter_op)
+
+
+_add = create_arithmetic(
+    'add', '+', '|',
+    '''Adds two arrays elementwise.
+
+    .. seealso:: :data:`numpy.add`
+
+    ''',
+    cutensor_op=('OP_ADD', 1, 1), scatter_op='add')
+
+
+_conjugate = create_ufunc(
+    'cupy_conjugate',
+    ('b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L', 'q->q',
+     'Q->Q', 'e->e', *bf16_loop(), 'f->f', 'd->d',
+     ('F->F', 'out0 = conj(in0)'),
+     ('D->D', 'out0 = conj(in0)')),
+    'out0 = in0',
+    doc='''Returns the complex conjugate, element-wise.
+
+    .. seealso:: :data:`numpy.conjugate`
+
+    ''')
+
+
+_angle = create_ufunc(
+    'cupy_angle',
+    ('?->d', 'e->e', *bf16_loop(), 'f->f', 'd->d',
+     ('F->f', 'out0 = arg(in0)'),
+     ('D->d', 'out0 = arg(in0)')),
+    '''
+    out0 = in0 >= 0 ? 0.0 : M_PI
+    ''',
+    doc='''Returns the angle of the complex argument.
+
+    .. seealso:: :func:`numpy.angle`
+
+    ''')
+
+
+_angle_deg = create_ufunc(
+    'cupy_angle_deg',
+    ('?->d', 'e->e', *bf16_loop(), 'f->f', 'd->d',
+     ('F->f', 'out0 = arg(in0) * (180.0 / M_PI)'),
+     ('D->d', 'out0 = arg(in0) * (180.0 / M_PI)')),
+    '''
+    out0 = in0 >= 0 ? 0.0 : 180.0
+    ''',
+    doc='''Returns the angle of the complex argument.
+
+    .. seealso:: :func:`numpy.angle`
+
+    ''')
+
+
+def _positive_boolean_error():
+    raise TypeError(
+        'The cupy boolean positive, the `+` operator, is not supported.')
+
+
+_positive = create_ufunc(
+    'cupy_positive',
+    (('?->?', _positive_boolean_error),
+     'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
+     'q->q', 'Q->Q', 'e->e', *bf16_loop(), 'f->f', 'd->d', 'F->F', 'D->D'),
+    'out0 = +in0',
+    doc='''Takes numerical positive elementwise.
+
+    .. seealso:: :data:`numpy.positive`
+
+    ''')
+
+
+def _negative_boolean_error():
+    raise TypeError(
+        'The cupy boolean negative, the `-` operator, is not supported, '
+        'use the `~` operator or the logical_not function instead.')
+
+
+_negative = create_ufunc(
+    'cupy_negative',
+    (('?->?', _negative_boolean_error),
+     'b->b', 'B->B', 'h->h', 'H->H', 'i->i', 'I->I', 'l->l', 'L->L',
+     'q->q', 'Q->Q', 'e->e', *bf16_loop(), 'f->f', 'd->d', 'F->F', 'D->D'),
+    'out0 = -in0',
+    doc='''Takes numerical negative elementwise.
+
+    .. seealso:: :data:`numpy.negative`
+
+    ''')
+
+
+_multiply = create_arithmetic(
+    'multiply', '*', '&',
+    '''Multiplies two arrays elementwise.
+
+    .. seealso:: :data:`numpy.multiply`
+
+    ''',
+    cutensor_op=('OP_MUL', 1, 1))
+
+
+# `integral_power` should return somewhat appropriate values for negative
+# integral powers (for which NumPy would raise errors). Hence the branches in
+# the beginning. This behavior is not officially documented and could change.
+cdef _power_preamble = '''
+template <typename T>
+inline __device__ T integral_power(T in0, T in1) {
+    if (in1 < 0) {
+        if (in0 == -1) {return (in1 & 1) ? -1 : 1;}
+        else {return (in0 == 1) ? 1 : 0;}
+    }
+    T out0 = 1;
+    while (in1 > 0) {
+        if (in1 & 1) {
+            out0 *= in0;
+        }
+        in0 *= in0;
+        in1 >>= 1;
+    }
+    return out0;
+}
+
+template <typename T>
+inline __device__ T complex_power(T in0, T in1) {
+    return in1 == T(0) ? T(1): pow(in0, in1);
+}
+'''
+
+# NOTE(seberg): There is a __pow__ fastpath for python int/floats which
+# assumes (for floats) that power promotion is just result_type(x, y).
+_power = create_ufunc(
+    'cupy_power',
+    ('??->b', 'bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l',
+     'LL->L', 'qq->q', 'QQ->Q',
+     ('ee->e', 'out0 = powf(in0, in1)'),
+     *bf16_loop(2, 1, code='out0 = powf(in0, in1)'),
+     ('ff->f', 'out0 = powf(in0, in1)'),
+     ('dd->d', 'out0 = pow(in0, in1)'),
+     ('FF->F', 'out0 = complex_power(in0, in1)'),
+     ('DD->D', 'out0 = complex_power(in0, in1)')),
+    'out0 = integral_power(in0, in1)',
+    preamble=_power_preamble,
+    doc='''Computes ``x1 ** x2`` elementwise.
+
+    .. seealso:: :data:`numpy.power`
+
+    ''')
+
+
+def _subtract_boolean_error():
+    raise TypeError(
+        'cupy boolean subtract, the `-` operator, is deprecated, use the '
+        'bitwise_xor, the `^` operator, or the logical_xor function instead.')
+
+
+_subtract = create_arithmetic(
+    'subtract', '-', _subtract_boolean_error,
+    '''Subtracts arguments elementwise.
+
+    .. seealso:: :data:`numpy.subtract`
+
+    ''',
+    cutensor_op=('OP_ADD', 1, -1), scatter_op='sub')
+
+
+# NB: Cannot define loops with short ints in the NEP 50 world. Consider
+# `cupy.arange(3, dtype=cp.uint8) / (-2)`. It would select the 'BB->d' loop,
+# and the kernel would have a declaration `uint8_t in1;`, this converts
+# -2 to uint8_t at initialization (modulo UINT8_MAX, likely).
+# The family of qq loops is a work-around to achieve almost correct promotion.
+# TODO(seberg): Per-ufunc promotion or per-loop type resolution is probably
+#               needed for a full fix.
+_true_divide = create_ufunc(
+    'cupy_true_divide',
+    ('qq->d', 'qQ->d', 'Qq->d', 'QQ->d',
+     'ee->e', *bf16_loop(2), 'ff->f', 'dd->d', 'FF->F', 'DD->D'),
+    'out0 = static_cast<out0_type>(in0) / static_cast<out0_type>(in1)',
+    doc='''Elementwise true division (i.e. division as floating values).
+
+    .. seealso:: :data:`numpy.true_divide`
+
+    ''',
+    out_ops=('ee->e', *bf16_loop(2), 'ff->f', 'dd->d', 'FF->F', 'DD->D'),
+)
+
+
+_divide = _true_divide
+
+
+_floor_divide = create_ufunc(
+    'cupy_floor_divide',
+    ('bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l', 'LL->L',
+     'qq->q', 'QQ->Q', 'ee->e', *bf16_loop(2), 'ff->f', 'dd->d'),
+    'out0 = _floor_divide(in0, in1)',
+    doc='''Elementwise floor division (i.e. integer quotient).
+
+    .. seealso:: :data:`numpy.floor_divide`
+
+    ''')
+
+
+_remainder = create_ufunc(
+    'cupy_remainder',
+    ('bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l', 'LL->L',
+     'qq->q', 'QQ->Q',
+     ('ee->e', 'out0 = in0 - _floor_divide(in0, in1) * in1'),
+     *bf16_loop(2, code='out0 = in0 - _floor_divide(in0, in1) * in1'),
+     ('ff->f', 'out0 = in0 - _floor_divide(in0, in1) * in1'),
+     ('dd->d', 'out0 = in0 - _floor_divide(in0, in1) * in1')),
+    'out0 = (in0 - _floor_divide(in0, in1) * in1) * (in1 != 0)',
+    doc='''Computes the remainder of Python division elementwise.
+
+    .. seealso:: :data:`numpy.remainder`
+
+    ''')
+
+
+_absolute = create_ufunc(
+    'cupy_absolute',
+    (('?->?', 'out0 = in0'),
+     'b->b', ('B->B', 'out0 = in0'), 'h->h', ('H->H', 'out0 = in0'),
+     'i->i', ('I->I', 'out0 = in0'), 'l->l', ('L->L', 'out0 = in0'),
+     'q->q', ('Q->Q', 'out0 = in0'),
+     ('e->e', 'out0 = fabsf(in0)'),
+     *bf16_loop(code='out0 = fabsf(in0)'),
+     ('f->f', 'out0 = fabsf(in0)'),
+     ('d->d', 'out0 = fabs(in0)'),
+     ('F->f', 'out0 = abs(in0)'),
+     ('D->d', 'out0 = abs(in0)')),
+    'out0 = in0 > 0 ? in0 : -in0',
+    doc='''Elementwise absolute value function.
+
+    .. seealso:: :data:`numpy.absolute`
+
+    ''')
+
+
+_sqrt = create_ufunc(
+    'cupy_sqrt',
+    ('e->e', *bf16_loop(), 'f->f', 'd->d', 'F->F', 'D->D'),
+    'out0 = sqrt(in0)',
+    doc='''Elementwise square root function.
+
+    .. seealso:: :data:`numpy.sqrt`
+
+    ''')
+
+
+_clip = create_ufunc(
+    'cupy_clip',
+    ('???->?', 'bbb->b', 'BBB->B', 'hhh->h', 'HHH->H', 'iii->i', 'III->I',
+     'lll->l', 'LLL->L', 'qqq->q', 'QQQ->Q',
+     'eee->e', 'fff->f', 'ddd->d'),
+    'out0 = in1 > in2 ? in2 : (in0 < in1 ? in1 : (in0 > in2 ? in2 : in0))')
+
+
+# =============================================================================
+# round / divmod
+#
+# These two were split out of `core.pyx` into `_routines_math.pxd`'s interface
+# (`_ndarray_round` is called by `core.pyx::round`, `divmod` is re-exported by
+# `cupy/_core/__init__.py`).  The Ascend implementation lives in
+# `cupy/_core/_routines_math.pyx`; the CUDA/HIP one is here, both satisfying the
+# shared `cupy/_core/_routines_math.pxd` interface.
+# =============================================================================
+
+cdef str _divmod_float = '''
+    out0_type a = _floor_divide(in0, in1);
+    out0 = a;
+    out1 = in0 - a * in1'''
+
+
+_divmod = create_ufunc(
+    'cupy_divmod',
+    ('bb->bb', 'BB->BB', 'hh->hh', 'HH->HH', 'ii->ii', 'II->II', 'll->ll',
+     'LL->LL', 'qq->qq', 'QQ->QQ',
+     ('ee->ee', _divmod_float),
+     ('ff->ff', _divmod_float),
+     ('dd->dd', _divmod_float)),
+    '''
+    if (in1 == 0) {
+        out0 = 0;
+        out1 = 0;
+    } else {
+        out0_type a = _floor_divide(in0, in1);
+        out0 = a;
+        out1 = in0 - a * in1;
+    }''')
+
+
+cdef _round_preamble = '''
+#ifdef __HIP_DEVICE_COMPILE__
+#define round_float llrintf
+#else
+#define round_float __float2ll_rn
+#endif
+
+template<typename T> __device__ T pow10(long long n){
+  T x = 1, a = 10;
+  while (n) {
+    if (n & 1) x *= a;
+    a *= a;
+    n >>= 1;
+  }
+  return x;
+};
+'''
+
+
+cdef _round_float = '''
+if (in1 == 0) {
+    out0 = rint(in0);
+} else {
+    double x;
+    x = pow10<double>(abs(in1));  // TODO(okuta): Move before loop
+    out0 = in1 < 0 ? rint(in0 / x) * x : rint(in0 * x) / x;
+}'''
+
+cdef _round_complex = '''
+if (in1 == 0) {
+    out0 = in0_type(rint(in0.real()), rint(in0.imag()));
+} else {
+    double x = pow10<double>(abs(in1));  // TODO(okuta): Move before loop
+    if (in1 < 0) {
+        out0 = in0_type(rint(in0.real() / x) * x,
+                        rint(in0.imag() / x) * x);
+    } else {
+        out0 = in0_type(rint(in0.real() * x) / x,
+                        rint(in0.imag() * x) / x);
+    }
+}'''
+
+
+# There is a known incompatibility with NumPy (as of 1.16.4) such as
+# `numpy.around(2**63, -1) == cupy.around(2**63, -1)` gives `False`.
+#
+# NumPy seems to round integral values via double.  As double has
+# only 53 bit precision, last few bits of (u)int64 value may be lost.
+# As a consequence, `numpy.around(2**63, -1)` does NOT round up the
+# last digit (9223372036854775808 instead of ...810).
+#
+# The following code fixes the problem, so `cupy.around(2**63, -1)`
+# gives `...810`, which (may correct but) is incompatible with NumPy.
+_round_ufunc = create_ufunc(
+    'cupy_round',
+    ('?q->e',
+     'bq->b', 'Bq->B', 'hq->h', 'Hq->H', 'iq->i', 'Iq->I', 'lq->l', 'Lq->L',
+     'qq->q', 'Qq->Q',
+     ('eq->e', _round_float),
+     ('fq->f', _round_float),
+     ('dq->d', _round_float),
+     ('Fq->F', _round_complex),
+     ('Dq->D', _round_complex)),
+    '''
+    out0 = in0;
+    ''', preamble=_round_preamble)
+
+
+_round_ufunc_neg_uint = create_ufunc(
+    'cupy_round_neg_uint',
+    ('?q->e',
+     'bq->b', 'Bq->B', 'hq->h', 'Hq->H', 'iq->i', 'Iq->I', 'lq->l', 'Lq->L',
+     'qq->q', 'Qq->Q'),
+    '''
+        // TODO(okuta): Move before loop
+        long long x = pow10<long long>(in1 - 1);
+
+        // TODO(okuta): Check Numpy
+        // `cupy.around(-123456789, -4)` works as follows:
+        // (1) scale by `x` above: -123456.789
+        // (2) split at the last 2 digits: -123400 + (-5.6789 * 10)
+        // (3) round the latter by `rint()`: -123400 + (-6.0 * 10)
+        // (4) unscale by `x` above: -123460000
+        long long q = in0 / x / 100;
+        int r = in0 - q*x*100;
+        out0 = (q*100 + round_float(r/(x*10.0f))*10) * x;
+    ''', preamble=_round_preamble)
+
+cpdef _ndarray_base _ndarray_round(_ndarray_base self, decimals, out):
+    """Returns an array with values rounded to the given number of decimals.
+
+    .. seealso::
+    :func:`cupy.around` for full documentation,
+    :meth:`numpy.ndarray.round`
+
+    """  # NOQA
+    if decimals < 0 and issubclass(self.dtype.type, numpy.integer):
+        return _round_ufunc_neg_uint(self, -decimals, out=out)
+    else:
+        return _round_ufunc(self, decimals, out=out)
+
+
+# Variables to expose to Python
+# (cythonized data cannot be exposed to Python, even with cpdef.)
+
+
+add = _add
+conjugate = _conjugate
+angle = _angle
+angle_deg = _angle_deg
+positive = _positive
+negative = _negative
+multiply = _multiply
+divide = _divide
+power = _power
+subtract = _subtract
+true_divide = _true_divide
+floor_divide = _floor_divide
+remainder = _remainder
+absolute = _absolute
+sqrt = _sqrt
+divmod = _divmod
+
+sum_auto_dtype = _sum_auto_dtype  # used from cupy/math/sumprod.py
+nansum_auto_dtype = _nansum_auto_dtype  # used from cupy/math/sumprod.py
+prod_auto_dtype = _prod_auto_dtype  # used from cupy/math/sumprod.py
+nanprod_auto_dtype = _nanprod_auto_dtype  # used from cupy/math/sumprod.py
+clip = _clip  # used from cupy/math/misc.py

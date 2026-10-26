@@ -4,7 +4,13 @@ import math
 import numpy
 
 import cupy
-from cupy.cuda import cublas
+from cupy.backends.backend import is_ascend
+if is_ascend:
+    # cupy.backends.cuda.libs.cublas is not built for Ascend; None mirrors
+    # the guard in cupy/cublas.py. Unimplemented paths fail at call time.
+    cublas = None
+else:
+    from cupy.cuda import cublas
 from cupy.cuda import device
 from cupy.linalg import _util
 from cupyx.scipy.linalg import _uarray
@@ -45,6 +51,14 @@ def solve_triangular(a, b, trans=0, lower=False, unit_diagonal=False,
        of matrices.
     .. seealso:: :func:`scipy.linalg.solve_triangular`
     """
+
+    if is_ascend:
+        # `cublas` is None on Ascend (see the import guard above) and its
+        # ops-blas counterpart (aclblasStrsm) is Ascend 950-only. Fail early
+        # instead of raising AttributeError on the CUBLAS_OP_* constants.
+        raise NotImplementedError(
+            'cupyx.scipy.linalg.solve_triangular is not implemented on '
+            'Ascend (cuBLAS trsm is unavailable)')
 
     _util._assert_cupy_array(a, b)
 

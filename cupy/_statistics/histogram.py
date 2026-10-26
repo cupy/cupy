@@ -8,10 +8,32 @@ import numpy
 import cupy
 from cupy import _core
 from cupy._core import _accelerator
-from cupy._core import _cuda_compute_histogram
-from cupy.cuda import cub
-from cupy.cuda import common
-from cupy.cuda import runtime
+try:
+    from cupy._core import _cuda_compute_histogram
+except ImportError:
+    # ASCEND: CCCL (cuda.compute) based bincount is CUDA-only; the branch
+    # below is gated on the CUDA_COMPUTE accelerator, never registered here.
+    _cuda_compute_histogram = None
+try:
+    from cupy.cuda import cub
+except ImportError:
+    # ASCEND: cupy.cuda.cub is CUDA-only (CUB headers/NVRTC); the CUB
+    # accelerator branches below are gated on `cub is not None` and Ascend
+    # takes the aclnn/host paths instead.
+    cub = None
+try:
+    from cupy.xpu import common
+except ImportError:
+    # ASCEND: the xpu (Ascend) backend has no `common` module -- it only exists
+    # for CUDA. Its single use below guards the CUB histogram path, which the
+    # Ascend backend never reaches (no CUB accelerator is registered), so a
+    # "fp16 unsupported" stub is enough to keep the module importable.
+    common = None
+from cupy.xpu import runtime
+
+
+def _is_fp16_supported():
+    return common is not None and common._is_fp16_supported()
 
 
 # rename builtin range for use in functions that take a range argument
@@ -135,11 +157,18 @@ def _get_bin_edges(a, bins, range):
         range (None or tuple): Forwarded argument from `histogram`.
 
     Returns:
-        bin_edges (ndarray): Array of bin edges
+        Tuple ``(bin_edges, n_equal_bins, first_edge, last_edge)``:
+
+        - ``bin_edges``: array of bin edges
+        - ``n_equal_bins``: number of uniform bins when `bins` was an
+          integer, else ``None``
+        - ``first_edge`` / ``last_edge``: outer edges (only meaningful in
+          the uniform-bin case, else ``None``)
     """
     # parse the overloaded bins argument
     n_equal_bins = None
     bin_edges = None
+    first_edge = last_edge = None
 
     if isinstance(bins, str):
         raise NotImplementedError(
@@ -181,7 +210,73 @@ def _get_bin_edges(a, bins, range):
         bin_edges = cupy.linspace(
             first_edge, last_edge, n_equal_bins + 1,
             endpoint=True, dtype=bin_type)
-    return bin_edges
+    return bin_edges, n_equal_bins, first_edge, last_edge
+
+
+def _ascend_histogram(x, weights, bins, range, density):
+    """Ascend route for :func:`histogram`.
+
+    aclnnHistc (exported as ``ascend_histc``, see
+    ``cupy/backends/ascend/acl_general_ops.h``) computes the equal-width-bin
+    histogram over an inclusive ``[min, max]`` range, which matches the
+    NumPy semantics of ``histogram(x, bins=<int>)`` exactly (last bin
+    closed on the right edge). The dispatcher wrapper takes
+    ``ins=[x], outs=[counts], args=(n_bins, min, max)``.
+
+    Everything aclnnHistc cannot express -- array (non-uniform) bins,
+    weights, and dtypes it rejects (float64, uint16/32/64) -- runs the
+    whole call on host via cpu_fallback (registered as
+    ``'statistics.histogram'``), matching numpy.histogram exactly.
+
+    Returns:
+        ``(hist, bin_edges)`` when handled here, or ``None`` to let the
+        caller use the portable (CUB/ElementwiseKernel) path, which is the
+        correct behavior for non-Ascend backends and for Ascend with
+        CUPY_ASCEND_DISABLE_CPU_FALLBACK=1 (loud failure instead of a
+        silent change).
+    """
+    try:
+        from cupy.backends.backend import is_ascend
+    except ImportError:
+        return None
+    if not is_ascend:
+        return None
+
+    try:
+        from cupy._core._ascend import cpu_fallback
+    except ImportError:
+        cpu_fallback = None
+    histc_available = (cpu_fallback is not None
+                       and cpu_fallback.acl_ufunc_registered('ascend_histc'))
+
+    if histc_available and weights is None and numpy.ndim(bins) == 0 \
+            and x.dtype.char in 'efbhilqB':
+        # uniform-bin, unweighted, Histc-supported dtype -> device path
+        from cupy.backends.ascend.api import acl_utils
+        bin_edges, n_equal_bins, first_edge, last_edge = \
+            _get_bin_edges(x, bins, range)
+        y = cupy.zeros((n_equal_bins,), dtype=cupy.int64)
+        # float() on the edges syncs when `range` is None (0-d device
+        # scalars from a.min()/a.max()); histogram() already documents
+        # that it may synchronize.
+        acl_utils.py_launch_general(
+            'ascend_histc', (x,), (y,),
+            (int(n_equal_bins), float(first_edge), float(last_edge)), {},
+            cupy.cuda.get_current_stream().ptr)
+        if density:
+            db = cupy.array(cupy.diff(bin_edges), cupy.float64)
+            return y / db / y.sum(), bin_edges
+        return y, bin_edges
+
+    try:
+        from cupy._core._ascend import cpu_fallback
+    except ImportError:
+        cpu_fallback = None
+    if cpu_fallback is not None and cpu_fallback.active():
+        return cpu_fallback.call(
+            'statistics.histogram', x, bins, range=range,
+            density=density, weights=weights)
+    return None
 
 
 def histogram(x, bins=10, range=None, density=False, weights=None):
@@ -225,14 +320,24 @@ def histogram(x, bins=10, range=None, density=False, weights=None):
         raise ValueError('x must be a cupy.ndarray')
 
     x, weights = _ravel_and_check_weights(x, weights)
-    bin_edges = _get_bin_edges(x, bins, range)
+
+    # ASCEND: aclnnHistc device path for uniform unweighted bins; CPU
+    # fallback for the cases aclnnHistc cannot express. Returns None on
+    # non-Ascend backends.
+    ret = _ascend_histogram(x, weights, bins, range, density)
+    if ret is not None:
+        return ret
+
+    bin_edges, n_equal_bins, first_edge, last_edge = \
+        _get_bin_edges(x, bins, range)
 
     if weights is None:
         y = cupy.zeros(bin_edges.size - 1, dtype=cupy.int64)
         for accelerator in _accelerator.get_routine_accelerators():
             # CUB uses int for bin counts
             # TODO(leofang): support >= 2^31 elements in x?
-            if (accelerator == _accelerator.ACCELERATOR_CUB
+            if (cub is not None
+                    and accelerator == _accelerator.ACCELERATOR_CUB
                     and x.size <= 0x7fffffff and bin_edges.size <= 0x7fffffff):
                 # Need to ensure the dtype of bin_edges as it's needed for both
                 # the CUB call and the correction later
@@ -242,7 +347,7 @@ def histogram(x, bins=10, range=None, density=False, weights=None):
                 else:
                     bin_type = numpy.result_type(bin_edges.dtype, x.dtype)
                     if (bin_type == numpy.float16 and
-                            not common._is_fp16_supported()):
+                            not _is_fp16_supported()):
                         bin_type = numpy.float32
                     x = x.astype(bin_type, copy=False)
                 acc_bin_edge = bin_edges.astype(bin_type, copy=True)
@@ -354,6 +459,24 @@ def histogramdd(sample, bins=10, range=None, weights=None, density=False):
     else:
         sample = cupy.stack(sample, axis=-1)
         nsamples, ndim = sample.shape
+
+    # ASCEND: the histogramdd pipeline (searchsorted + ravel_multi_index +
+    # bincount) leans on the raw-CUDA _bincount kernels; there is no single
+    # aclnn kernel for the N-D histogram, so run the whole call on host
+    # (numpy.histogramdd, exact same semantics).
+    try:
+        from cupy.backends.backend import is_ascend
+    except ImportError:
+        is_ascend = False
+    if is_ascend:
+        try:
+            from cupy._core._ascend import cpu_fallback
+        except ImportError:
+            cpu_fallback = None
+        if cpu_fallback is not None and cpu_fallback.active():
+            return cpu_fallback.call(
+                'statistics.histogramdd', sample, bins, range=range,
+                weights=weights, density=density)
 
     nbin = numpy.empty(ndim, int)
     edges = ndim * [None]
@@ -524,6 +647,60 @@ _bincount_with_weight_kernel = _core.ElementwiseKernel(
     'cupy_bincount_with_weight_kernel')
 
 
+def _ascend_bincount(x, weights, minlength, size):
+    """Ascend route for :func:`bincount`.
+
+    aclnnBincount(self, weights, minlength, out) covers the common cases
+    natively (int8/16/32/64/uint8 input, float/int/bool weights, minlength).
+    Inputs it rejects -- uint16/32/64 and complex weights -- run on host via
+    cpu_fallback (``'statistics.bincount'`` -> numpy.bincount). Returns
+    None when the caller should use the portable path (non-Ascend backend,
+    or Ascend with CUPY_ASCEND_DISABLE_CPU_FALLBACK=1).
+    """
+    try:
+        from cupy.backends.backend import is_ascend
+    except ImportError:
+        return None
+    if not is_ascend:
+        return None
+
+    x_ok = x.dtype.kind == 'i' or x.dtype.char == 'B'
+    # aclnn weights: INT8-64/UINT8, BOOL, FLOAT16/32/64 (no uint16/32/64,
+    # no complex); cupy only reaches here with can_cast-to-float/complex
+    # weights, so 'c' (complex) is the kind that must fall back.
+    weights_ok = (weights is None
+                  or weights.dtype.kind in 'bif'
+                  or weights.dtype.char == 'B')
+    try:
+        from cupy._core._ascend import cpu_fallback
+    except ImportError:
+        cpu_fallback = None
+    bincount_available = (cpu_fallback is not None
+                          and cpu_fallback.acl_ufunc_registered(
+                              'ascend_bincount'))
+
+    if bincount_available and x_ok and weights_ok:
+        from cupy.backends.ascend.api import acl_utils
+        out_dtype = numpy.intp if weights is None else numpy.float64
+        y = cupy.zeros((size,), dtype=out_dtype)
+        ins = (x,) if weights is None else (x, weights)
+        acl_utils.py_launch_general(
+            'ascend_bincount', ins, (y,),
+            (0 if minlength is None else int(minlength),), {},
+            cupy.cuda.get_current_stream().ptr)
+        return y
+
+    try:
+        from cupy._core._ascend import cpu_fallback
+    except ImportError:
+        cpu_fallback = None
+    if cpu_fallback is not None and cpu_fallback.active():
+        return cpu_fallback.call(
+            'statistics.bincount', x, weights=weights,
+            minlength=0 if minlength is None else minlength)
+    return None
+
+
 def bincount(x, weights=None, minlength=None):
     """Count number of occurrences of each value in array of non-negative ints.
 
@@ -567,6 +744,10 @@ def bincount(x, weights=None, minlength=None):
     size = int(cupy.max(x)) + 1  # synchronize!
     if minlength is not None:
         size = max(size, minlength)
+
+    ret = _ascend_bincount(x, weights, minlength, size)
+    if ret is not None:
+        return ret
 
     if weights is None:
         b = cupy.zeros((size,), dtype=numpy.intp)
@@ -630,6 +811,29 @@ def digitize(x, bins, right=False):
         raise ValueError('object too deep for desired array')
     if bins.ndim < 1:
         raise ValueError('object of too small depth for desired array')
+
+    # ASCEND: aclnnSearchSorted assumes *ascending* `bins`, but
+    # numpy.digitize also accepts monotonically DECREASING bins (numpy
+    # detects the direction and mirrors the search). Probe the direction
+    # with a 2-scalar D2H (digitize() already documents that it may
+    # synchronize) and run the whole call on host via numpy.digitize for
+    # descending bins -- the host path also performs the monotonicity
+    # validation that numpy semantics require.
+    try:
+        from cupy.backends.backend import is_ascend
+    except ImportError:
+        is_ascend = False
+    cond1 = bins.size > 1 and bins[0] > bins[-1] # 2-scalar sync
+    # aclnnSearchSorted produces wrong indices for NaN bins edges
+    cond2 = bins.dtype.kind == 'f' and bool(cupy.isnan(bins).any())
+    if is_ascend and (cond1 or cond2):
+        try:
+            from cupy._core._ascend import cpu_fallback
+        except ImportError:
+            cpu_fallback = None
+        if cpu_fallback is not None and cpu_fallback.active():
+            return cpu_fallback.call('statistics.digitize', x, bins,
+                                     right=right)
 
     # As the order of the arguments are reversed, the side must be too.
     side = 'left' if right else 'right'

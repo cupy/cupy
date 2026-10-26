@@ -5,15 +5,61 @@ from cupy._core._kernel import create_ufunc
 from cupy._core._reduction import create_reduction_func
 from cupy._util import bf16_loop
 
+
 from cupy._core.core cimport _ndarray_base
+
+cdef _ndarray_base _ascend_all_any(_ndarray_base a, axis, out, keepdims,
+    bint is_all):
+    # ASCEND: aclnnAll/aclnnAny are broken on bool out -> int32 promote
+    # float-cast path -> ViewShape overlap, so use count_nonzero
+    import cupy
+    import numpy
+
+    nz = cupy.count_nonzero(a != 0, axis=axis)
+    if keepdims:
+        if axis is not None:
+            axes = axis if isinstance(axis, tuple) else (axis,)
+            for ax in axes:
+                nz = cupy.expand_dims(nz, ax)
+        else:
+            # axis is None + keepdims: numpy keeps ALL dims as size-1
+            # e.g. (1,3, 4) -> (1, 1, 1)
+            for _ in range(a.ndim):
+                nz = cupy.expand_dims(nz, 0)
+    if is_all:
+        if axis is None:
+            reduced_size = a.size
+        else:
+            axes = axis if isinstance(axis, tuple) else (axis,)
+            reduced_size = 1
+            for ax in axes:
+                reduced_size *= a.shape[ax]
+        # all: every reduced element is non-zero
+        res = (nz == reduced_size)
+    else:
+        # any: at least one reduced element is non-zero
+        res = (nz > 0)
+
+    if out is not None:
+        out[...] = res
+        return out
+    return res
 
 
 cdef _ndarray_base _ndarray_all(_ndarray_base self, axis, out, keepdims):
-    return _all(self, axis=axis, out=out, keepdims=keepdims)
+    from cupy.backends.backend import is_ascend
+    if is_ascend:
+        return _ascend_all_any(self, axis, out, keepdims, True)
+    else:
+        return _all(self, axis=axis, out=out, keepdims=keepdims)
 
 
 cdef _ndarray_base _ndarray_any(_ndarray_base self, axis, out, keepdims):
-    return _any(self, axis=axis, out=out, keepdims=keepdims)
+    from cupy.backends.backend import is_ascend
+    if is_ascend:
+        return _ascend_all_any(self, axis, out, keepdims, False)
+    else:
+        return _any(self, axis=axis, out=out, keepdims=keepdims)
 
 
 cdef _ndarray_base _ndarray_greater(_ndarray_base self, other):

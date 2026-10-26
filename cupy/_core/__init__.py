@@ -1,20 +1,9 @@
 # mypy: ignore-errors
 from __future__ import annotations
 
-
 from cupy._core import core  # NOQA
-from cupy._core import fusion  # NOQA
+
 from cupy._core import internal  # NOQA
-
-
-# internal APIs for testing and development
-from cupy._core._accelerator import set_elementwise_accelerators  # NOQA
-from cupy._core._accelerator import set_reduction_accelerators  # NOQA
-from cupy._core._accelerator import set_routine_accelerators  # NOQA
-from cupy._core._accelerator import get_elementwise_accelerators  # NOQA
-from cupy._core._accelerator import get_reduction_accelerators  # NOQA
-from cupy._core._accelerator import get_routine_accelerators  # NOQA
-
 
 # import class and function
 from cupy._core._kernel import create_ufunc  # NOQA
@@ -24,8 +13,40 @@ from cupy._core._kernel import _get_warpsize  # NOQA
 from cupy._core._kernel import _full_mask  # NOQA
 from cupy._core._kernel import _full_mask_hex  # NOQA
 from cupy._core._kernel import _is_hip_7_plus  # NOQA
-from cupy._core._reduction import create_reduction_func  # NOQA
 from cupy._core._reduction import ReductionKernel  # NOQA
+
+from cupy.backends.backend.api import runtime
+if not runtime.is_ascend:
+    # internal APIs for testing and development
+    from cupy._core._accelerator import set_elementwise_accelerators  # NOQA
+    from cupy._core._accelerator import set_reduction_accelerators  # NOQA
+    from cupy._core._accelerator import set_routine_accelerators  # NOQA
+    from cupy._core._accelerator import get_elementwise_accelerators  # NOQA
+    from cupy._core._accelerator import get_reduction_accelerators  # NOQA
+    from cupy._core._accelerator import get_routine_accelerators  # NOQA
+
+    from cupy._core import fusion  # NOQA
+    from cupy._core.raw import RawKernel  # NOQA
+    from cupy._core.raw import RawModule  # NOQA
+else:
+    # Ascend 无 CUB/cuTENSOR 二级加速器（aclnn 在 dispatch 层默认接管），
+    # 用空实现保持 cupy._core 顶层名字与 CUDA 路径一致，见 accelerator_stub
+    from cupy._core._ascend.accelerator_stub import (  # NOQA
+        set_elementwise_accelerators, set_reduction_accelerators,
+        set_routine_accelerators, get_elementwise_accelerators,
+        get_reduction_accelerators, get_routine_accelerators)
+
+    from cupy._core._ascend import fusion_stub as fusion
+    # 共享代码还引用 `cupy._core.new_fusion`（cupy.get_array_module 里的
+    # `_core.new_fusion._ArrayProxy`）；Ascend 下同样指向 fusion_stub。
+    from cupy._core._ascend import fusion_stub as new_fusion  # NOQA
+    from cupy._core.raw import RawKernel  # NOQA
+    from cupy._core.raw import RawModule  # NOQA
+    _fusion_thread_local = fusion
+
+from cupy._core._reduction import create_reduction_func  # NOQA
+    
+
 from cupy._core._routines_binary import bitwise_and  # NOQA
 from cupy._core._routines_binary import bitwise_or  # NOQA
 from cupy._core._routines_binary import bitwise_xor  # NOQA
@@ -33,12 +54,14 @@ from cupy._core._routines_binary import bitwise_count  # NOQA
 from cupy._core._routines_binary import invert  # NOQA
 from cupy._core._routines_binary import left_shift  # NOQA
 from cupy._core._routines_binary import right_shift  # NOQA
-from cupy._core._routines_linalg import _mat_ptrs  # NOQA
+
+# from cupy._core._routines_linalg import _mat_ptrs  # NOQA
 from cupy._core._routines_linalg import dot  # NOQA
-from cupy._core._routines_linalg import get_compute_type  # NOQA
+# from cupy._core._routines_linalg import get_compute_type  # NOQA
 from cupy._core._routines_linalg import matmul  # NOQA
-from cupy._core._routines_linalg import set_compute_type  # NOQA
-from cupy._core._routines_linalg import tensordot_core  # NOQA
+# from cupy._core._routines_linalg import set_compute_type  # NOQA
+# from cupy._core._routines_linalg import tensordot_core  # NOQA
+
 from cupy._core._routines_logic import create_comparison  # NOQA
 from cupy._core._routines_logic import equal  # NOQA
 from cupy._core._routines_logic import greater  # NOQA
@@ -46,6 +69,7 @@ from cupy._core._routines_logic import greater_equal  # NOQA
 from cupy._core._routines_logic import less  # NOQA
 from cupy._core._routines_logic import less_equal  # NOQA
 from cupy._core._routines_logic import not_equal  # NOQA
+
 from cupy._core._routines_manipulation import array_split  # NOQA
 from cupy._core._routines_manipulation import broadcast  # NOQA
 from cupy._core._routines_manipulation import broadcast_to  # NOQA
@@ -53,6 +77,7 @@ from cupy._core._routines_manipulation import concatenate_method  # NOQA
 from cupy._core._routines_manipulation import moveaxis  # NOQA
 from cupy._core._routines_manipulation import rollaxis  # NOQA
 from cupy._core._routines_manipulation import size  # NOQA
+
 from cupy._core._routines_math import absolute  # NOQA
 from cupy._core._routines_math import add  # NOQA
 from cupy._core._routines_math import angle, angle_deg  # NOQA
@@ -67,19 +92,22 @@ from cupy._core._routines_math import remainder  # NOQA
 from cupy._core._routines_math import sqrt  # NOQA
 from cupy._core._routines_math import subtract  # NOQA
 from cupy._core._routines_math import true_divide  # NOQA
-from cupy._core._routines_statistics import nanmax  # NOQA
-from cupy._core._routines_statistics import nanmin  # NOQA
-from cupy._core.core import _internal_ascontiguousarray  # NOQA
-from cupy._core.core import _internal_asfortranarray  # NOQA
-from cupy._core.core import array  # NOQA
-from cupy._core.core import ascontiguousarray  # NOQA
-from cupy._core.core import asfortranarray  # NOQA
-from cupy._core.core import divmod  # NOQA
+from cupy._core._routines_math import divmod # NOQA
+
+# from cupy._core._routines_statistics import nanmax  # NOQA
+# from cupy._core._routines_statistics import nanmin  # NOQA
+
+from cupy._core._routines_creation import _internal_ascontiguousarray  # NOQA
+from cupy._core._routines_creation import _internal_asfortranarray  # NOQA
+from cupy._core._routines_creation import array  # NOQA
+from cupy._core._routines_creation import ascontiguousarray  # NOQA
+from cupy._core._routines_creation import asfortranarray  # NOQA
+
+
 from cupy._core.core import elementwise_copy  # NOQA
-from cupy._core.core import ndarray  # NOQA
+from cupy._core._ndarray import ndarray  # NOQA
 from cupy._core.dlpack import fromDlpack  # NOQA
 from cupy._core.dlpack import from_dlpack  # NOQA
 from cupy._core.internal import complete_slice  # NOQA
 from cupy._core.internal import get_size  # NOQA
-from cupy._core.raw import RawKernel  # NOQA
-from cupy._core.raw import RawModule  # NOQA
+

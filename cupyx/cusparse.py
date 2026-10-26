@@ -6,14 +6,49 @@ import numpy as _numpy
 import platform as _platform
 
 import cupy as _cupy
-from cupy_backends.cuda.api import driver as _driver
-from cupy_backends.cuda.api import runtime as _runtime
-from cupy_backends.cuda.libs import cusparse as _cusparse
 from cupy._core import _dtype
 from cupy.cuda import device as _device
 from cupy.cuda import stream as _stream
 from cupy import _util
+# ASCEND: `cupy_backends.cuda.libs.cusparse` does not exist here; the sparse
+# library is resolved through the facade (ops-sparse on Ascend, cuSPARSE
+# elsewhere).  Resolution is lazy so that `import cupyx.cusparse` works even
+# when the optional ops-sparse binding was not compiled in.
+from cupyx import _cusparse_backend as _cusparse_backend_module
 import cupyx.scipy.sparse
+from cupy_backends.cuda.api import driver as _driver
+from cupy_backends.cuda.api import runtime as _runtime
+
+
+class _CuSparseProxy:
+    """Lazy attribute proxy for the backend's cuSPARSE-shaped module.
+
+    ``cupyx/cusparse.py`` predates backend abstraction and refers to
+    ``_cusparse.<name>`` / ``_cusparse.<CONSTANT>`` directly.  Instead of
+    touching every call site, this proxy resolves the real module on first
+    attribute access (see ``cupyx/_cusparse_backend.py``), which keeps
+    ``import cupyx.cusparse`` working on Ascend even without ops-sparse.
+    """
+
+    __slots__ = ('_module',)
+
+    def __init__(self):
+        self._module = None
+
+    def _resolve(self):
+        module = _cusparse_backend_module.get_cusparse()
+        # Cache only the success case so a later install/rebuild is picked up.
+        self._module = module
+        return module
+
+    def __getattr__(self, name):
+        module = self._module
+        if module is None:
+            module = self._resolve()
+        return getattr(module, name)
+
+
+_cusparse = _CuSparseProxy()
 
 
 def _is_csr_type(x):
@@ -287,6 +322,16 @@ def _get_avail_version_from_spec(x):
 
 @_util.memoize()
 def check_availability(name):
+    if _runtime.is_ascend:
+        # ops-sparse (Ascend): availability is per-op, not per-version --
+        # `_available_aclsparse` in the acl_sparse binding lists exactly the
+        # cuSPARSE entry points the library implements (everything else falls
+        # back to the generic descriptor API in cupyx).  A missing binding
+        # means nothing is available.
+        acl_sparse = _cusparse_backend_module._import_acl_sparse()[0]
+        if acl_sparse is None:
+            return False
+        return acl_sparse.has_op(name)
     if not _runtime.is_hip:
         available_version = _available_cusparse_version
         if _cusparse.is_cuda_python_build():
@@ -2510,8 +2555,149 @@ def spsm(a, b, alpha=1.0, lower=True, unit_diag=False, transa=False):
             'T' or True: op(a) == ``a.T``.
             'H': op(a) == ``a.conj().T``.
     """
-    return _SpSM(a, lower=lower, unit_diag=unit_diag,
-                 transa=transa).solve(b, alpha=alpha)
+    if not check_availability('spsm'):
+        raise RuntimeError('spsm is not available.')
+
+    # Canonicalise transa
+    if transa is False:
+        transa = 'N'
+    elif transa is True:
+        transa = 'T'
+    elif transa not in 'NTH':
+        raise ValueError(f'Unknown transa (actual: {transa})')
+
+    # Check A's type and sparse format
+    if _is_csr_type(a):
+        pass
+    elif _is_csc_type(a):
+        if transa == 'N':
+            a = a.T
+            transa = 'T'
+        elif transa == 'T':
+            a = a.T
+            transa = 'N'
+        elif transa == 'H':
+            a = a.conj().T
+            transa = 'N'
+        lower = not lower
+    elif cupyx.scipy.sparse.issparse(a) and a.format == 'coo':
+        pass
+    else:
+        raise ValueError('a must be CSR, CSC or COO sparse matrix')
+    if not a.has_canonical_format:
+        raise ValueError('expected canonical format for a')
+
+    # Check B's ndim
+    if b.ndim == 1:
+        is_b_vector = True
+        b = b.reshape(-1, 1)
+    elif b.ndim == 2:
+        is_b_vector = False
+    else:
+        raise ValueError('b.ndim must be 1 or 2')
+
+    # Check shapes
+    if not (a.shape[0] == a.shape[1] == b.shape[0]):
+        raise ValueError('mismatched shape')
+
+    # Check dtypes
+    dtype = a.dtype
+    if dtype.char not in 'fdFD':
+        raise TypeError('Invalid dtype (actual: {})'.format(dtype))
+    if dtype != b.dtype:
+        raise TypeError('dtype mismatch')
+
+    # Prepare fill mode
+    if lower is True:
+        fill_mode = _cusparse.CUSPARSE_FILL_MODE_LOWER
+    elif lower is False:
+        fill_mode = _cusparse.CUSPARSE_FILL_MODE_UPPER
+    else:
+        raise ValueError('Unknown lower (actual: {})'.format(lower))
+
+    # Prepare diag type
+    if unit_diag is False:
+        diag_type = _cusparse.CUSPARSE_DIAG_TYPE_NON_UNIT
+    elif unit_diag is True:
+        diag_type = _cusparse.CUSPARSE_DIAG_TYPE_UNIT
+    else:
+        raise ValueError('Unknown unit_diag (actual: {})'.format(unit_diag))
+
+    # Prepare op_a
+    if transa == 'N':
+        op_a = _cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
+    elif transa == 'T':
+        op_a = _cusparse.CUSPARSE_OPERATION_TRANSPOSE
+    else:  # transa == 'H'
+        if dtype.char in 'fd':
+            op_a = _cusparse.CUSPARSE_OPERATION_TRANSPOSE
+        else:
+            op_a = _cusparse.CUSPARSE_OPERATION_CONJUGATE_TRANSPOSE
+
+    # Prepare op_b
+    if b._f_contiguous:
+        op_b = _cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE
+    elif b._c_contiguous:
+        # NB: the CUDA < 11.6 restriction on non-F-contiguous `b` is gone since
+        # upstream dropped CUDA 11 support, and aclsparseSpSM has always taken
+        # `opB` (its entry points are the "v2" signatures).
+        b = b.T
+        op_b = _cusparse.CUSPARSE_OPERATION_TRANSPOSE
+    else:
+        raise ValueError('b must be F-contiguous or C-contiguous.')
+
+    # Allocate space for matrix C. Note that it is known cusparseSpSM requires
+    # the output matrix zero initialized.
+    m, _ = a.shape
+    if op_b == _cusparse.CUSPARSE_OPERATION_NON_TRANSPOSE:
+        _, n = b.shape
+    else:
+        n, _ = b.shape
+    c_shape = m, n
+    c = _cupy.zeros(c_shape, dtype=a.dtype, order='f')
+
+    # Prepare descriptors and other parameters
+    handle = _device.get_cusparse_handle()
+    mat_a = SpMatDescriptor.create(a)
+    mat_b = DnMatDescriptor.create(b)
+    mat_c = DnMatDescriptor.create(c)
+    spsm_descr = _cusparse.spSM_createDescr()
+    alpha = _numpy.array(alpha, dtype=c.dtype).ctypes
+    cuda_dtype = _dtype.to_cuda_dtype(c.dtype)
+    algo = _cusparse.CUSPARSE_SPSM_ALG_DEFAULT
+
+    try:
+        # Specify Lower|Upper fill mode
+        mat_a.set_attribute(_cusparse.CUSPARSE_SPMAT_FILL_MODE, fill_mode)
+
+        # Specify Unit|Non-Unit diagonal type
+        mat_a.set_attribute(_cusparse.CUSPARSE_SPMAT_DIAG_TYPE, diag_type)
+
+        # Allocate the workspace needed by the succeeding phases
+        buff_size = _cusparse.spSM_bufferSize(
+            handle, op_a, op_b, alpha.data, mat_a.desc, mat_b.desc,
+            mat_c.desc, cuda_dtype, algo, spsm_descr)
+        buff = _cupy.empty(buff_size, dtype=_cupy.int8)
+
+        # Perform the analysis phase
+        _cusparse.spSM_analysis(
+            handle, op_a, op_b, alpha.data, mat_a.desc, mat_b.desc,
+            mat_c.desc, cuda_dtype, algo, spsm_descr, buff.data.ptr)
+
+        # Executes the solve phase
+        _cusparse.spSM_solve(
+            handle, op_a, op_b, alpha.data, mat_a.desc, mat_b.desc,
+            mat_c.desc, cuda_dtype, algo, spsm_descr, buff.data.ptr)
+
+        # Reshape back if B was a vector
+        if is_b_vector:
+            c = c.reshape(-1)
+
+        return c
+
+    finally:
+        # Destroy matrix/vector descriptors
+        _cusparse.spSM_destroyDescr(spsm_descr)
 
 
 def _cupy_spgemm_int64(a, b, alpha):

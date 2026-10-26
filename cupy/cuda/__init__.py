@@ -1,30 +1,118 @@
-from __future__ import annotations
-
-import contextlib
-import importlib as _importlib
-import os as _os
 import warnings
 
-import cupy as _cupy
+from cupy_backends.cuda.api import driver  # NOQA
+from cupy_backends.cuda.api import runtime  # NOQA
+
 from cupy._environment import get_cuda_path  # NOQA
 from cupy._environment import get_nvcc_path  # NOQA
 from cupy._environment import get_rocm_path  # NOQA
 from cupy._environment import get_hipcc_path  # NOQA
-from cupy.cuda import compiler  # NOQA
-from cupy.cuda import device  # NOQA
-from cupy.cuda import function  # NOQA
-from cupy.cuda import memory  # NOQA
-from cupy.cuda import memory_hook  # NOQA
-from cupy.cuda import memory_hooks  # NOQA
-from cupy.cuda import pinned_memory  # NOQA
-from cupy.cuda import profiler  # NOQA
-from cupy.cuda import stream  # NOQA
-from cupy.cuda import texture  # NOQA
-from cupy_backends.cuda.api import driver  # NOQA
-from cupy_backends.cuda.api import runtime  # NOQA
-from cupy_backends.cuda.libs import nvrtc  # NOQA
+from cupy._environment import get_cann_path # NOQA
+
+from cupy.backends.backend import is_ascend as _is_ascend
+
+# ---------------------------------------------------------------------------
+# 模块路径兼容：upstream 与用户代码大量使用 `from cupy.cuda.device import ...`
+# 这类**模块路径**导入（cupyx/distributed/*、cupy/linalg/_einsum_cutn.py、
+# cupy/_core/_gpu/raw.pyx ...）。上面 `from cupy.xpu import device` 只绑定了
+# **属性**，`import cupy.cuda.device` 仍会失败（cupy/cuda/ 目录下没有这些
+# 子模块文件）。与 cupy/__init__.py 里 cupy_backends.cuda 的做法一致，用
+# sys.modules 别名把子模块路径指到 cupy.xpu 的实现（同一批对象，不复制）。
+# ---------------------------------------------------------------------------
+import sys
+
+import cupy.xpu.device as _xpu_device
+import cupy.xpu.function as _xpu_function
+import cupy.xpu.memory as _xpu_memory
+import cupy.xpu.memory_hook as _xpu_memory_hook
+import cupy.xpu.memory_hooks as _xpu_memory_hooks
+import cupy.xpu.pinned_memory as _xpu_pinned_memory
+import cupy.xpu.profiler as _xpu_profiler
+import cupy.xpu.stream as _xpu_stream
+
+sys.modules.setdefault('cupy.cuda.device', _xpu_device)
+sys.modules.setdefault('cupy.cuda.function', _xpu_function)
+sys.modules.setdefault('cupy.cuda.memory', _xpu_memory)
+sys.modules.setdefault('cupy.cuda.memory_hook', _xpu_memory_hook)
+sys.modules.setdefault('cupy.cuda.memory_hooks', _xpu_memory_hooks)
+sys.modules.setdefault('cupy.cuda.pinned_memory', _xpu_pinned_memory)
+sys.modules.setdefault('cupy.cuda.profiler', _xpu_profiler)
+sys.modules.setdefault('cupy.cuda.stream', _xpu_stream)
+# runtime/driver 的实现本体在 cupy_backends.cuda.api（见文件头两行 import）
+sys.modules.setdefault('cupy.cuda.runtime', runtime)
+sys.modules.setdefault('cupy.cuda.driver', driver)
+
+if not _is_ascend:
+    # CUDA/HIP-only modules, still living under `cupy.cuda` (not `cupy.xpu`).
+    from cupy.cuda import compiler  # NOQA
+    from cupy.cuda import texture  # NOQA
+else:
+    # On Ascend, texture.pyx is not compiled. Provide a pure-Python stub with
+    # the same class names (constructors raise NotImplementedError) so that
+    # `from cupy.cuda import texture` succeeds — e.g. cupyx.scipy.ndimage (via
+    # cupyx._texture) and scipy's array-API mode import it at module load time
+    # even when the texture code path is never used.
+    import cupy.xpu.texture_stub as _texture_stub
+    sys.modules.setdefault('cupy.cuda.texture', _texture_stub)
+    texture = _texture_stub  # NOQA
+from cupy.xpu import function  # NOQA
+from cupy.xpu import device  # NOQA
+from cupy.xpu import memory  # NOQA
+from cupy.xpu import memory_hook  # NOQA
+from cupy.xpu import memory_hooks  # NOQA
+from cupy.xpu import pinned_memory  # NOQA
+from cupy.xpu import profiler  # NOQA
+from cupy.xpu import stream  # NOQA
+
+# ---------------------------------------------------------------------------
+# 兼容层：`cupy.cuda.<Class>` 是 CuPy 的历史公开路径，examples/ 与用户代码大量
+# 使用它（`cupy.cuda.Stream` / `cupy.cuda.Device` / `cupy.cuda.MemoryPool` ...）。
+# 本 fork 把设备 API 搬到了后端无关的 `cupy.xpu`，所以这里必须把**类和函数**也
+# 重新导出：只 import 子模块（上面那些 `from cupy.xpu import stream`）会让
+# `cupy.cuda.Stream` 变成 AttributeError —— 而且 `import cupy` 不会自动导入
+# 子模块，所以 cupy/__init__.py 里还要有 `from cupy import cuda`。
+# 只"新增名字、不删除"，CUDA/HIP 专有的部分按 is_ascend 跳过（Ascend 上没有）。
+# ---------------------------------------------------------------------------
+from cupy.xpu import Device  # NOQA
+from cupy.xpu import get_cublas_handle  # NOQA
+from cupy.xpu import get_device_id  # NOQA
+from cupy.xpu import alloc  # NOQA
+from cupy.xpu import malloc_managed  # NOQA
+from cupy.xpu import malloc_async  # NOQA
+from cupy.xpu import BaseMemory  # NOQA
+from cupy.xpu import ManagedMemory  # NOQA
+from cupy.xpu import Memory  # NOQA
+from cupy.xpu import MemoryAsync  # NOQA
+from cupy.xpu import MemoryPointer  # NOQA
+from cupy.xpu import MemoryPool  # NOQA
+from cupy.xpu import PythonFunctionAllocator  # NOQA
+from cupy.xpu import CFunctionAllocator  # NOQA
+from cupy.xpu import set_allocator  # NOQA
+from cupy.xpu import get_allocator  # NOQA
+from cupy.xpu import UnownedMemory  # NOQA
+from cupy.xpu import MemoryHook  # NOQA
+from cupy.xpu import alloc_pinned_memory  # NOQA
+from cupy.xpu import PinnedMemory  # NOQA
+from cupy.xpu import PinnedMemoryPointer  # NOQA
+from cupy.xpu import PinnedMemoryPool  # NOQA
+from cupy.xpu import set_pinned_memory_allocator  # NOQA
+from cupy.xpu import Event  # NOQA
+from cupy.xpu import Stream  # NOQA
+from cupy.xpu import ExternalStream  # NOQA
+from cupy.xpu import get_current_stream  # NOQA
+from cupy.xpu import get_elapsed_time  # NOQA
+from cupy.xpu import using_allocator  # NOQA
+
+from cupy.xpu import Function  # NOQA
+from cupy.xpu import Module  # NOQA
+
+if not _is_ascend:
+    # CUDA/HIP-only 的设备 API（Ascend 上没有对应的实现）
+    from cupy.xpu import Graph  # NOQA
+    from cupy.xpu import MemoryAsyncPool  # NOQA
 
 
+import cupy as _cupy
 _available = None
 
 
@@ -34,9 +122,15 @@ class _UnavailableModule:
     def __init__(self, name):
         self.__name__ = name
 
+try:
+    from cupy_backends.cuda.libs import nvrtc  # NOQA
+except ImportError:
+    cub = _UnavailableModule('cupy.cuda.nvrtc')
 
-from cupy.cuda import cub  # NOQA
-
+try:
+    from cupy.cuda import cub  # NOQA
+except ImportError:
+    cub = _UnavailableModule('cupy.cuda.cub')
 
 try:
     from cupy_backends.cuda.libs import nvtx  # NOQA
@@ -127,90 +221,3 @@ def get_local_runtime_version() -> int:
     """
     return runtime._getLocalRuntimeVersion()
 
-
-# import class and function
-from cupy.cuda.device import Device  # NOQA
-from cupy.cuda.device import get_cublas_handle  # NOQA
-from cupy.cuda.device import get_device_id  # NOQA
-from cupy.cuda.function import Function  # NOQA
-from cupy.cuda.function import Module  # NOQA
-from cupy.cuda.memory import alloc  # NOQA
-from cupy.cuda.memory import BaseMemory  # NOQA
-from cupy.cuda.memory import malloc_managed  # NOQA
-from cupy.cuda.memory import malloc_async  # NOQA
-from cupy.cuda.memory import ManagedMemory  # NOQA
-from cupy.cuda.memory import Memory  # NOQA
-from cupy.cuda.memory import MemoryAsync  # NOQA
-from cupy.cuda.memory import MemoryPointer  # NOQA
-from cupy.cuda.memory import MemoryPool  # NOQA
-from cupy.cuda.memory import MemoryAsyncPool  # NOQA
-from cupy.cuda.memory import PythonFunctionAllocator  # NOQA
-from cupy.cuda.memory import CFunctionAllocator  # NOQA
-from cupy.cuda.memory import set_allocator  # NOQA
-from cupy.cuda.memory import get_allocator  # NOQA
-from cupy.cuda.memory import UnownedMemory  # NOQA
-from cupy.cuda.memory_hook import MemoryHook  # NOQA
-from cupy.cuda.pinned_memory import alloc_pinned_memory  # NOQA
-from cupy.cuda.pinned_memory import PinnedMemory  # NOQA
-from cupy.cuda.pinned_memory import PinnedMemoryPointer  # NOQA
-from cupy.cuda.pinned_memory import PinnedMemoryPool  # NOQA
-from cupy.cuda.pinned_memory import set_pinned_memory_allocator  # NOQA
-from cupy.cuda.stream import Event  # NOQA
-from cupy.cuda.stream import get_current_stream  # NOQA
-from cupy.cuda.stream import get_elapsed_time  # NOQA
-from cupy.cuda.stream import Stream  # NOQA
-from cupy.cuda.stream import ExternalStream  # NOQA
-from cupy.cuda.graph import Graph  # NOQA
-
-
-@contextlib.contextmanager
-def using_allocator(allocator=None):
-    """Sets a thread-local allocator for GPU memory inside a context manager.
-
-    Args:
-        allocator (function): CuPy memory allocator. It must have the same
-            interface as the :func:`cupy.cuda.alloc` function, which takes the
-            buffer size as an argument and returns the device buffer of that
-            size. When ``None`` is specified, raw memory allocator will be
-            used (i.e., memory pool is disabled).
-    """
-    # Note: cupy/memory.pyx would be the better place to implement this
-    # function but `contextmanager` decoration doesn't behave well in Cython.
-    if allocator is None:
-        allocator = memory._malloc
-    previous_allocator = memory._get_thread_local_allocator()
-    memory._set_thread_local_allocator(allocator)
-    try:
-        yield
-    finally:
-        memory._set_thread_local_allocator(previous_allocator)
-
-
-@contextlib.contextmanager
-def profile():
-    """Enable CUDA profiling during with statement.
-
-    This function enables profiling on entering a with statement, and disables
-    profiling on leaving the statement.
-
-    >>> with cupy.cuda.profile():
-    ...    # do something you want to measure
-    ...    pass
-
-    .. note::
-        When starting ``nvprof`` from the command line, manually setting
-        ``--profile-from-start off`` may be required for the desired behavior.
-
-    .. warning:: This context manager is deprecated. Please use
-        :class:`cupyx.profiler.profile` instead.
-    """
-    warnings.warn(
-        'cupy.cuda.profile has been deprecated since CuPy v10 '
-        'and will be removed in the future. Use cupyx.profiler.profile '
-        'instead.')
-
-    profiler.start()
-    try:
-        yield
-    finally:
-        profiler.stop()

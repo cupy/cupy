@@ -44,6 +44,22 @@ class ExceptionAwareProcess(multiprocessing.Process):
                 raise exception
 
 
+def _recv_exact(sock, size):
+    """Read exactly ``size`` bytes: ``socket.recv`` may return less.
+
+    The KLV frame is a fixed-size struct, and on Ascend it carries a 4108 B
+    payload (HCCL root info) instead of NCCL's 128 B -- large enough that a
+    single ``recv`` is no longer guaranteed to return the whole frame.
+    """
+    buf = bytearray()
+    while len(buf) < size:
+        chunk = sock.recv(size - len(buf))
+        if not chunk:
+            break
+        buf += chunk
+    return bytes(buf)
+
+
 class TCPStore:
     # This is only used for initialization of nccl so we don't care
     # too much about performance
@@ -66,10 +82,11 @@ class TCPStore:
     def _process_request(self, c_socket):
         with c_socket:
             # Receive in KLV format
-            action_bytes = c_socket.recv(sizeof(_klv_utils.action_t))
+            action_bytes = _recv_exact(
+                c_socket, sizeof(_klv_utils.action_t))
             if len(action_bytes) > 0:
                 action_m = _klv_utils.action_t.from_buffer_copy(action_bytes)
-                if action_m.length > 256:
+                if action_m.length > _klv_utils._VALUE_BUFFER_SIZE:
                     raise ValueError('Invalid length for message')
                 value = bytearray(action_m.value)[:action_m.length]
                 r = _store_actions.execute_action(action_m.action, value, self)
@@ -130,7 +147,7 @@ class TCPStoreProxy:
                     # TODO retry connects
                     s.connect((self.host, self.port))
                     s.sendall(action.klv())
-                    result_bytes = s.recv(sizeof(
+                    result_bytes = _recv_exact(s, sizeof(
                         _klv_utils.result_action_t))
                     if len(result_bytes) > 0:
                         result = _klv_utils.result_action_t.from_buffer_copy(

@@ -7,6 +7,35 @@ import cupy
 from cupy._core import _routines_statistics as _statistics
 
 
+# 非 Ascend 打包可能不含 _ascend 包，模块级守卫导入
+try:
+    from cupy._core._ascend import cpu_fallback
+except ImportError:      # pragma: no cover
+    cpu_fallback = None
+
+
+def _maybe_host_fallback(name, *args, **kwargs):
+    """ASCEND: 软派发 host fallback；判定与派发统一在 cpu_fallback.maybe_call。"""
+    if cpu_fallback is None:
+        return None
+    return cpu_fallback.maybe_call(name, *args, **kwargs)
+
+
+def _ascend_complex_to_host(name, a, *args, _force_host=False, **kwargs):
+    """ASCEND: aclnn 的 var/std/nanmedian 不收 complex 输入（设备端报错），
+    complex dtype 时把整个调用搬到 host（NumPy 语义，D2H -> NumPy -> H2D）。
+
+    ``_force_host=True`` 跳过 complex 判定，供 average 等由调用方按
+    权重 dtype 自行决定是否回退的场景使用。
+
+    返回 fallback 结果；None 表示继续设备路径（非 Ascend / 非 complex /
+    cpu_fallback 被环境变量关闭）。
+    """
+    if a.dtype.kind != 'c' and not _force_host:
+        return None
+    return _maybe_host_fallback(name, a, *args, **kwargs)
+
+
 def median(a, axis=None, out=None, overwrite_input=False, keepdims=False):
     """Compute the median along the specified axis.
 
@@ -62,6 +91,11 @@ def nanmedian(a, axis=None, out=None, overwrite_input=False, keepdims=False):
     .. seealso:: :func:`numpy.nanmedian`
 
     """
+    ret = _ascend_complex_to_host(
+        'statistics.nanmedian', a, axis=axis, out=out,
+        overwrite_input=overwrite_input, keepdims=keepdims)
+    if ret is not None:
+        return ret
     if a.dtype.char in 'efdFD':
         return _statistics._nanmedian(a, axis, out, overwrite_input, keepdims)
     else:
@@ -94,6 +128,20 @@ def average(a, axis=None, weights=None, returned=False, *, keepdims=False):
 
     .. seealso:: :func:`numpy.average`
     """
+    # ASCEND: aclnnSum 拒绝 int8/int16 权重（部分 axis 广播也不支持）；
+    # 权重为窄整型/复数，或输入为 complex 时整调用走 host（NumPy 语义）
+    _force = False
+    if weights is not None:
+        wdt = getattr(weights, 'dtype', None)
+        if wdt is not None:
+            _force = (wdt.kind == 'c'
+                      or (wdt.kind in 'iub' and wdt.itemsize <= 2))
+    ret = _ascend_complex_to_host(
+        'statistics.average', a, axis=axis, weights=weights, returned=returned,
+        keepdims=keepdims, _force_host=_force)
+    if ret is not None:
+        return ret
+
     # TODO(niboshi): Avoid synchronization.
     a = cupy.asarray(a)
 
@@ -126,13 +174,25 @@ def average(a, axis=None, weights=None, returned=False, *, keepdims=False):
             wgt = cupy.broadcast_to(wgt, (a.ndim - 1) * (1,) + wgt.shape)
             wgt = wgt.swapaxes(-1, axis)
 
-        scl = wgt.sum(axis=axis, dtype=result_dtype, keepdims=keepdims)
+        # ASCEND: aclnn reduction does not support float16/int, cast to float32
+        # NOTE: this should be an issue of ASCEND CANN ops
+        from cupy.backends.backend import is_ascend
+        if is_ascend and numpy.dtype(result_dtype).kind in 'iube':
+            scl_dtype = numpy.float32
+        else:
+            scl_dtype = result_dtype
+        scl = wgt.sum(axis=axis, dtype=scl_dtype, keepdims=keepdims)
         if cupy.any(scl == 0.0):  # synchronize!
             raise ZeroDivisionError(
                 'Weights sum to zero, can\'t be normalized')
 
         avg = cupy.multiply(a, wgt, dtype=result_dtype).sum(
             axis, keepdims=keepdims) / scl
+
+        # dtype cast back
+        if scl_dtype is not result_dtype:
+            avg = avg.astype(result_dtype)
+            scl = scl.astype(result_dtype)
 
     if returned:
         if scl.shape != avg.shape:
@@ -182,6 +242,13 @@ def var(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
     .. seealso:: :func:`numpy.var`
 
     """
+
+    ret = _ascend_complex_to_host(
+        'statistics.var', a, axis=axis, dtype=dtype, out=out, ddof=ddof,
+        keepdims=keepdims)
+    if ret is not None:
+        return ret
+        
     # TODO(okuta): check type
     return a.var(axis=axis, dtype=dtype, out=out, ddof=ddof,
                  keepdims=keepdims)
@@ -206,6 +273,11 @@ def std(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
 
     """
     # TODO(okuta): check type
+    ret = _ascend_complex_to_host(
+        'statistics.std', a, axis=axis, dtype=dtype, out=out, ddof=ddof,
+        keepdims=keepdims)
+    if ret is not None:
+        return ret
     return a.std(axis=axis, dtype=dtype, out=out, ddof=ddof,
                  keepdims=keepdims)
 
@@ -228,8 +300,19 @@ def nanmean(a, axis=None, dtype=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.nanmean`
 
     """
-    if a.dtype.kind in 'biu':
-        return a.mean(axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+
+    # ASCEND: nan + mean is unstable on ASCEND npu, use cpu
+    ret = _ascend_complex_to_host(
+        'statistics.nanmean', a, axis=axis, dtype=dtype, out=out,
+        keepdims=keepdims)
+    if ret is not None:
+        return ret
+
+    from cupy._core._ascend import composite as _composite
+    if _composite.active():
+        # Ascend: cupy_nanmean 无注册 -> nansum / 非 NaN 计数 组合
+        return _composite.nanmean(
+            a, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
 
     # TODO(okuta): check type
     return _statistics._nanmean(
@@ -254,9 +337,12 @@ def nanvar(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
     .. seealso:: :func:`numpy.nanvar`
 
     """
-    if a.dtype.kind in 'biu':
-        return a.var(axis=axis, dtype=dtype, out=out, ddof=ddof,
-                     keepdims=keepdims)
+
+    ret = _ascend_complex_to_host(
+        'statistics.nanvar', a, axis=axis, dtype=dtype, out=out, ddof=ddof,
+        keepdims=keepdims)
+    if ret is not None:
+        return ret
 
     # TODO(okuta): check type
     return _statistics._nanvar(
@@ -281,10 +367,13 @@ def nanstd(a, axis=None, dtype=None, out=None, ddof=0, keepdims=False):
     .. seealso:: :func:`numpy.nanstd`
 
     """
-    if a.dtype.kind in 'biu':
-        return a.std(axis=axis, dtype=dtype, out=out, ddof=ddof,
-                     keepdims=keepdims)
 
+    ret = _ascend_complex_to_host(
+        'statistics.nanstd', a, axis=axis, dtype=dtype, out=out, ddof=ddof,
+        keepdims=keepdims)
+    if ret is not None:
+        return ret
+    
     # TODO(okuta): check type
     return _statistics._nanstd(
         a, axis=axis, dtype=dtype, out=out, ddof=ddof, keepdims=keepdims)

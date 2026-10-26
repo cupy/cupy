@@ -4,6 +4,7 @@ import numpy
 
 import cupy
 from cupy import _core
+from cupy.backends.backend import is_ascend
 
 
 def place(arr, mask, vals):
@@ -138,7 +139,29 @@ def putmask(a, mask, values):
 
     else:
         values = values.ravel()
-        _putmask_kernel(mask, values, len(values), a)
+        if is_ascend:
+            # `_putmask_kernel` (ElementwiseKernel `cupy_putmask_kernel`) has
+            # no Ascend registration (`ascend_putmask_kernel` does not exist;
+            # neither do `ascend_resize`/`ascend_repeat`). Compose the
+            # positional-modulo semantics from the masked-indexing path
+            # instead, which routes to aclnnInplaceMaskedScatter
+            # (`ascend_scatter_update_mask`):
+            #   full.flat[n] == values.flat[n % len_vals]  (cyclic repetition
+            #   via concatenate; the copy count is host-side arithmetic), and
+            #   a[mask] = full[mask] writes the k-th True position n_k with
+            #   full.flat[n_k] == values[n_k % len_vals] -- exactly the CUDA
+            #   kernel's result (masked_scatter consumes source sequentially
+            #   in row-major order, so `full[mask]` reproduces the modulo
+            #   pattern).
+            if values.size == 0:
+                if bool(mask.any()):  # synchronize
+                    raise ValueError('Cannot insert from an empty array.')
+                return
+            n_rep = -(-a.size // values.size)  # ceil division
+            full = cupy.concatenate([values] * n_rep)[:a.size]
+            a[mask] = full.reshape(a.shape)[mask]
+        else:
+            _putmask_kernel(mask, values, len(values), a)
 
 
 def fill_diagonal(a, val, wrap=False):
@@ -178,6 +201,18 @@ def fill_diagonal(a, val, wrap=False):
         if not numpy.all(numpy.diff(a.shape) == 0):
             raise ValueError('All dimensions of input must be of equal length')
         step = 1 + numpy.cumprod(a.shape[:-1]).sum()
+
+    # if is_ascend and numpy.isscalar(val) and not numpy.iscomplexobj(val) \
+    #     and not numpy.issubdtype(a.dtype, numpy.complexfloating):
+    #     # aclnnInplaceFillDiagonal accepts a scalar fill value only; 
+    #     # numpy's array_like / complex scalar/array keeps the path below.
+    #     from cupy.backends.ascend.api.acl_utils import py_launch_general
+    #     py_launch_general('ascend_fill_diagonal', (), (a,),
+    #                       (float(val), int(bool(wrap))), {})
+    #     return
+    # ASCEND NOTE: aclnninplaceFillDiagonal zroes the non-diagonal elements
+    # CANN 9.0 with 910B device, instead of touching only the diagnoal
+    # so use the platiter setitem path below
 
     a.flat[:end:step] = val
 

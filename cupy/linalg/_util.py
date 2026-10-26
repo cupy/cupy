@@ -97,6 +97,23 @@ def linalg_common_type(*arrays, reject_float16=True):
     # numpy casts integer types to float64
     result_dtype = _common_type_internal('float64', *dtypes)
 
+    # ASCEND: aclnn linalg ops does not support float64/complex128
+    from cupy.backends.backend import is_ascend
+    if is_ascend:
+        try:
+            from cupy._core._ascend.cpu_fallback import f64_mode
+        except ImportError:
+            f64_mode = None
+        if f64_mode is not None and f64_mode() == 'float32':
+            if compute_dtype == numpy.complex128:
+                compute_dtype = numpy.complex64
+            elif compute_dtype == numpy.float64:
+                compute_dtype = numpy.float32
+        else:
+            raise NotImplementedError(
+                "ASCEND: aclnn does not support float64 linalg ops"
+                + "set CUPY_ASCEND_FLOAT64_MODE=float32 to demote")
+
     return compute_dtype, result_dtype
 
 
@@ -192,6 +209,12 @@ def stacked_identity_like(x):
     Precondition: ``x`` is `cupy.ndarray` of shape ``(..., N, N)``
     """
     n = x.shape[-1]
+    # ASCEND: advanced indexing setitem `x[..., idx, idx] = 1` is not supported
+    # workaround
+    from cupy.backends.backend import is_ascend
+    if is_ascend:
+        eye = cupy.asarray(numpy.eys(n, dtype=x.dtype))
+        return cupy.broadcast_to(eye, x.shape).copy()
     idx = cupy.arange(n)
     x = cupy.zeros_like(x)
     x[..., idx, idx] = 1

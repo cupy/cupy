@@ -2,8 +2,8 @@ from libc.stdint cimport intptr_t
 
 from cupy_backends.cuda.api cimport runtime
 from cupy._core.core cimport _ndarray_base
-from cupy.cuda.device cimport get_compute_capability
-from cupy.cuda.memory cimport MemoryPointer
+from cupy.xpu.device cimport get_compute_capability
+from cupy.xpu.memory cimport MemoryPointer
 
 import hashlib
 import importlib

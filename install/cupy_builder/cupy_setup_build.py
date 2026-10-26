@@ -33,11 +33,34 @@ def module_extension_name(file):
     return ensure_module_file(file)[0]
 
 
-def module_extension_sources(file, use_cython):
+def module_extension_sources(file, use_cython, no_cuda):
     pyx, others = ensure_module_file(file)
     base = os.path.join(*pyx.split('.'))
     pyx = base + ('.pyx' if use_cython else '.cpp')
-    return [pyx] + others
+
+    # If CUDA SDK is not available, remove CUDA C files from extension sources
+    # and use stubs defined in header files.
+    if no_cuda:
+        others1 = []
+        for source in others:
+            base, ext = os.path.splitext(source)
+            if ext == '.cu':
+                continue
+            others1.append(source)
+        others = others1
+
+    if others:
+        # `others` has two meanings, told apart by their extensions:
+        #   * a Cython source replaces the pyx implied by the module name
+        #     (backend-specific implementations, e.g. `_gpu/x.pyx` for CUDA and
+        #     `_ascend/x.pyx` for Ascend -- the module name stays canonical);
+        #   * plain C/CUDA sources are compiled *in addition* to the pyx
+        #     (upstream convention, e.g. `cupy/cuda/cupy_cub.cu`).
+        if any(os.path.splitext(src)[1] == '.pyx' for src in others):
+            return others
+        return [pyx] + others
+    else:
+        return [pyx] # single pyx file as the module name
 
 
 def get_required_modules(MODULES):
@@ -89,6 +112,7 @@ def preconfigure_modules(ctx: Context, MODULES, compiler, settings):
 
     nvcc_path = build.get_nvcc_path()
     hipcc_path = build.get_hipcc_path()
+    ascendcc = build.get_ascendcc_path()
     summary = [
         '',
         '************************************************************',
@@ -102,13 +126,25 @@ def preconfigure_modules(ctx: Context, MODULES, compiler, settings):
             nvcc_path if nvcc_path else '(not found)'),
         '  hipcc command      : {}'.format(
             hipcc_path if hipcc_path else '(not found)'),
+        '  ascend cc command  : {}'.format(
+            ascendcc if ascendcc else '(not found)'),
         '',
         'Environment Variables:',
     ]
 
+    # Report the active backend and its SDK/compiler discovery results.
+    from cupy_builder.backends import get_backend
+    _backend = get_backend(ctx)
+    summary.insert(summary.index('Build Environment:') + 1, '  Backend            : {}'.format(_backend.name))
+    summary.insert(summary.index('Build Environment:') + 2, '  SDK path           : {}'.format(
+        _backend.get_sdk_path() or '(not found)'))
+    summary.insert(summary.index('Build Environment:') + 3, '  Device compiler    : {}'.format(
+        _backend.get_device_compiler() or '(not found)'))
+
     for key in ['CFLAGS', 'LDFLAGS', 'LIBRARY_PATH',
-                'CUDA_PATH', 'NVCC', 'HIPCC',
-                'ROCM_HOME']:
+                'CUDA_PATH', 'NVCC', # nvidia
+                'HIPCC', 'ROCM_HOME', # AMD
+                'ASCEND_HOME_PATH']:
         summary += ['  {:<16}: {}'.format(key, os.environ.get(key, '(none)'))]
 
     summary += [
@@ -178,12 +214,21 @@ def preconfigure_modules(ctx: Context, MODULES, compiler, settings):
                       'Check your LDFLAGS environment variable.']
         elif not module.configure(compiler, settings):
             # Fail on per-library condition check (version requirements etc.)
+            # NOTE: this is what fills in `module._version` (e.g. the CUDA/CANN
+            # version) for every non-stub build, so it must run even when the
+            # feature sets its version in `__init__`.
             installed = True
             errmsg = ['The library is installed but not supported.']
         elif (module['name'] in ('thrust', 'cub', 'random')
-                and (nvcc_path is None and hipcc_path is None)):
+                and (nvcc_path is None and hipcc_path is None
+                     and ascendcc is None)):
             installed = True
-            cmd = 'nvcc' if not ctx.use_hip else 'hipcc'
+            if ctx.use_ascend:
+                cmd = 'bisheng (ascendcc)'
+            elif ctx.use_hip:
+                cmd = 'hipcc'
+            else:
+                cmd = 'nvcc'
             errmsg = ['{} command could not be found in PATH.'.format(cmd),
                       'Check your PATH environment variable.']
         else:
@@ -209,11 +254,14 @@ def preconfigure_modules(ctx: Context, MODULES, compiler, settings):
                 break
 
     # Get a list of the CC of the devices connected to this node
-    if not ctx.use_hip:
+    if not ctx.use_hip and not ctx.use_ascend:
         build.check_compute_capabilities(compiler, settings)
 
     if len(ret) != len(MODULES):
-        if 'cuda' in ret:
+        if 'cuda' in ret or ctx.use_ascend or ctx.use_hip:
+            # A missing *optional* module (e.g. ascend_fft -- ops-fft is not part
+            # of the base CANN SDK) is a warning on the non-CUDA backends; only a
+            # CUDA build without CUDA deserves the error text below.
             lines = [
                 'WARNING: Some modules could not be configured.',
                 'CuPy will be installed without these modules.',
@@ -305,8 +353,13 @@ def make_extensions(ctx: Context, compiler, use_cython):
 
     MODULES = ctx.features.values()
 
-    use_hip = ctx.use_hip
-    settings = build.get_compiler_setting(ctx, use_hip)
+    no_cuda = ctx.use_stub # TODO: this is not precise has more backends added
+    settings = build.get_compiler_setting(ctx, ctx.get_backend_name())
+
+    # The active backend decides the RPATH policy (see `Backend`): SDKs that
+    # are relocatable user installs (CANN) must stay out of DT_RUNPATH.
+    from cupy_builder.backends import get_backend
+    backend_obj = get_backend(ctx)
 
     include_dirs = settings['include_dirs']
     include_dirs.append(np.get_include())
@@ -338,15 +391,13 @@ def make_extensions(ctx: Context, compiler, use_cython):
     if ctx.linetrace:
         settings['define_macros'].append(('CYTHON_TRACE', '1'))
         settings['define_macros'].append(('CYTHON_TRACE_NOGIL', '1'))
-    if use_hip:
-        settings['define_macros'].append(('CUPY_USE_HIP', '1'))
-        # introduced since ROCm 4.2.0
-        settings['define_macros'].append(('__HIP_PLATFORM_AMD__', '1'))
-        # deprecated since ROCm 4.2.0
-        settings['define_macros'].append(('__HIP_PLATFORM_HCC__', '1'))
-        # Fix for ROCm 6.3.0, See https://github.com/ROCm/rocThrust/issues/502
-        settings['define_macros'].append(
-            ('THRUST_DEVICE_SYSTEM', 'THRUST_DEVICE_SYSTEM_HIP'))
+    if no_cuda:
+        settings['define_macros'].append(('CUPY_NO_CUDA', '1'))
+    # Backend-specific macros (CUPY_USE_HIP, CUPY_USE_ASCEND, HIP platform
+    # defines, CUPY_CANN_VERSION, ...) are owned by the backend descriptor.
+    if not ctx.use_stub:
+        from cupy_builder.backends import get_backend
+        settings['define_macros'] += get_backend(ctx).get_define_macros()
     settings['define_macros'].append(('CUPY_CACHE_KEY', ctx.cupy_cache_key))
 
     try:
@@ -386,12 +437,16 @@ def make_extensions(ctx: Context, compiler, use_cython):
             compiler.archiver = [ar, 'rcs']
             compiler.ranlib = None
 
-        available_modules, settings = preconfigure_modules(
-            ctx, MODULES, compiler, settings)
-        required_modules = get_required_modules(MODULES)
-        if not (set(required_modules) <= set(available_modules)):
-            raise Exception('Your CUDA environment is invalid. '
-                            'Please check above error log.')
+        available_modules = []
+        if no_cuda:
+            available_modules = [m['name'] for m in MODULES]
+        else:
+            available_modules, settings = preconfigure_modules(
+                ctx, MODULES, compiler, settings)
+            required_modules = get_required_modules(MODULES)
+            if not (set(required_modules) <= set(available_modules)):
+                raise Exception('Your Cupy building environment is invalid. '
+                                'Please check above error log.')
     finally:
         compiler = host_compiler
         if build.is_conda_cross_compiling():
@@ -413,7 +468,7 @@ def make_extensions(ctx: Context, compiler, use_cython):
 
         if module['name'] == 'cusolver':
             # openmp is required for cusolver
-            if use_hip:
+            if ctx.use_hip:
                 pass
             elif compiler.compiler_type == 'unix':
                 compile_args.append('-fopenmp')
@@ -445,8 +500,28 @@ def make_extensions(ctx: Context, compiler, use_cython):
             rpath = []
             if not ctx.no_rpath:
                 # Add library directories (e.g., `/usr/local/cuda/lib64`) to
-                # RPATH.
-                rpath += s_file['library_dirs']
+                # the runtime search path.
+                #
+                # Backends whose SDK is a *relocatable, user-installed*
+                # toolkit (Ascend/CANN) set `embed_sdk_in_rpath = False`: their
+                # absolute build-machine paths must never end up in a
+                # redistributable binary, otherwise the wheel only imports on
+                # the machine that produced it. Such backends rely on the
+                # user's environment (`source set_env.sh`, which exports
+                # `LD_LIBRARY_PATH`) plus the `$ORIGIN` entries below.
+                if backend_obj.embed_sdk_in_rpath:
+                    # `<cuda>/lib64/stubs` only holds link-time stubs (see
+                    # `CudaBackend.get_library_dirs`); the runtime library comes
+                    # from the driver, so keep the path out of DT_RUNPATH.
+                    rpath += [p for p in s_file['library_dirs']
+                              if os.path.basename(p.rstrip(os.sep)) != 'stubs']
+                else:
+                    # Keep the directories reachable at build time only; the
+                    # linker still needs `-L` (already in `library_dirs`), but
+                    # they are deliberately kept out of DT_RUNPATH.
+                    logging.debug(
+                        'Backend %s: skipping SDK library_dirs in RPATH (%s)',
+                        backend_obj.name, s_file['library_dirs'])
 
             if use_wheel_libs_rpath:
                 # Add `cupy/.data/lib` (where shared libraries included in
@@ -459,15 +534,21 @@ def make_extensions(ctx: Context, compiler, use_cython):
                 rpath.append(
                     '{}{}/cupy/.data/lib'.format(_rpath_base(), '/..' * depth))
 
-            if (PLATFORM_LINUX and len(rpath) != 0):
-                ldflag = '-Wl,'
-                if PLATFORM_LINUX:
-                    ldflag += '--disable-new-dtags,'
+            if PLATFORM_LINUX and rpath:
+                # Use DT_RUNPATH (the modern default) instead of DT_RPATH so
+                # that a user's `LD_LIBRARY_PATH` still takes precedence. The
+                # previous `--disable-new-dtags` forced the legacy DT_RPATH,
+                # which silently ignored any runtime override and made it
+                # impossible to point a wheel at a relocated CANN install.
+                if ctx.legacy_rpath:
+                    ldflag = '-Wl,--disable-new-dtags,'
+                else:
+                    ldflag = '-Wl,'
                 ldflag += ','.join('-rpath,' + p for p in rpath)
                 args = s_file.setdefault('extra_link_args', [])
                 args.append(ldflag)
 
-            sources = module_extension_sources(f, use_cython)
+            sources = module_extension_sources(f, use_cython, no_cuda)
             extension = setuptools.Extension(name, sources, **s_file)
             ret.append(extension)
 
@@ -476,6 +557,69 @@ def make_extensions(ctx: Context, compiler, use_cython):
         with open(CACHE_FILE, "wb") as f:
             pickle.dump((ctx, ret), f)
     return ret
+
+
+def get_wheel_platform_tag(ctx: Context) -> str | None:
+    """Return the backend-specific wheel platform tag suffix, or ``None``.
+
+    For example ``'cann8.5'`` for an Ascend build against CANN 8.5.1, which is
+    combined with the normal manylinux tag to give
+    ``manylinux_2_17_x86_64.cann8.5``. Encodes the fact that aclnn operator
+    ABIs are not compatible across CANN releases.
+    """
+    from cupy_builder.backends import get_backend
+    if ctx.use_stub:
+        return None
+    return get_backend(ctx).get_wheel_platform_tag()
+
+
+def _read_cupy_version(ctx: Context) -> str:
+    """Read ``cupy._version.__version__`` without importing the package."""
+    path = os.path.join(ctx.source_root, 'cupy', '_version.py')
+    namespace: dict = {}
+    with open(path) as f:
+        exec(compile(f.read(), path, 'exec'), namespace)
+    return namespace['__version__']
+
+
+def write_wheel_metadata(ctx: Context) -> str | None:
+    """Write ``cupy/.data/_wheel.json`` describing the build environment.
+
+    The file is bundled in the wheel and re-read at import time so that a
+    wheel built for one CANN version refuses to load against an incompatible
+    one with a clear message instead of an ``undefined symbol`` error.
+
+    Returns the absolute path of the written file, or ``None`` when there is
+    nothing to record (stub builds).
+    """
+    import json
+    from cupy_builder.backends import get_backend
+    if ctx.use_stub:
+        return None
+
+    backend = get_backend(ctx)
+    metadata = {
+        # Consumed by `cupy._environment._can_attempt_preload()`; must be
+        # present so that lookups of the preload config never KeyError.
+        'packaging': 'pip',
+        'backend': backend.name,
+    }
+    try:
+        metadata['cupy_version'] = _read_cupy_version(ctx)
+    except Exception:  # noqa: BLE001 - metadata is best-effort
+        pass
+    metadata.update(backend.get_wheel_metadata())
+
+    # Write to a temp file *outside* `cupy/.data`: that directory is cleared by
+    # `prepare_wheel_libs()`, which then copies this file into place, so writing
+    # it directly there would make the copy a no-op onto itself.
+    import tempfile
+    fd, path = tempfile.mkstemp(prefix='cupy_wheel_', suffix='.json')
+    with os.fdopen(fd, 'w') as f:
+        json.dump(metadata, f, indent=2, sort_keys=True)
+    print(f'Writing wheel metadata: {path}')
+    print(json.dumps(metadata, indent=2, sort_keys=True))
+    return path
 
 
 def prepare_wheel_libs(ctx: Context):
@@ -510,10 +654,15 @@ def prepare_wheel_libs(ctx: Context):
         dstpath = os.path.join(data_dir, 'include', relpath)
         files_to_copy.append((srcpath, dstpath))
 
-    # Wheel meta data
-    if ctx.wheel_metadata_path:
+    # Wheel meta data: prefer an explicitly supplied path, otherwise generate
+    # one describing the active backend/SDK so the wheel can be validated at
+    # import time.
+    metadata_path = ctx.wheel_metadata_path
+    if not metadata_path:
+        metadata_path = write_wheel_metadata(ctx)
+    if metadata_path:
         files_to_copy.append(
-            (ctx.wheel_metadata_path, os.path.join(data_dir, '_wheel.json')))
+            (metadata_path, os.path.join(data_dir, '_wheel.json')))
 
     # Copy
     for srcpath, dstpath in files_to_copy:
@@ -540,3 +689,85 @@ def get_ext_modules(use_cython: bool, ctx: Context):
     extensions = make_extensions(ctx, compiler, use_cython)
 
     return extensions
+
+
+# ---------------------------------------------------------------------------
+# Compliance: keep CUDA headers / CUDA device sources out of the artifacts
+# ---------------------------------------------------------------------------
+# See `docs/ascend/Compliance.md`. Two classes of files must never reach an
+# uploaded artifact (sdist or wheel):
+#
+# 1. **CUDA Toolkit headers** (`cuda_fp16.h` / `cuda_fp16.hpp`) are NVIDIA
+#    proprietary and may not be redistributed. They are no longer vendored in
+#    the source tree; `tools/fetch_cuda_fp16_headers.py` copies them from the
+#    local toolkit for the CUDA backend only. Setuptools' globs would happily
+#    ship a locally fetched copy, so they are filtered out *unconditionally*
+#    (every backend, every artifact).
+# 2. **CUDA-only sources** (CCCL/CUB/Thrust/libcudacxx, jitify, `*.cuh`, the
+#    PBA ndimage kernels) are open source (Apache-2.0 / BSD-3 / MIT) but are
+#    dead weight -- and unwanted -- in an Ascend distribution, so they are
+#    dropped when the active backend is Ascend. CUDA/HIP builds keep them:
+#    the NVRTC JIT includes CCCL at runtime.
+
+#: Substrings (posix separators) identifying proprietary CUDA Toolkit headers.
+CUDA_TOOLKIT_HEADER_PATHS = ('_core/include/cupy/_cuda/',)
+
+#: Substrings identifying CUDA-only (open source) source trees. The PBA
+#: directory is dropped as a whole (kernels + the LICENSE that documents them),
+#: because `cupyx.scipy.ndimage` itself is not shipped on Ascend.
+CUDA_ONLY_HEADER_PATHS = (
+    '_core/include/cupy/_cccl/',
+    '_core/include/cupy/_jitify/',
+    'cupyx/scipy/ndimage/cuda/',
+)
+
+#: `fnmatch` patterns for CUDA device sources that are useless off CUDA.
+CUDA_ONLY_FILE_PATTERNS = (
+    '*.cuh',
+    'pba_kernels_*.h',
+    'cupy_distributions.cu',
+    'cupy_thrust.cu',
+    'cupy_cub.cu',
+    'cupy_cufftXt.cu',
+)
+
+
+def _posix(path: str) -> str:
+    return str(path).replace(os.sep, '/').replace('\\', '/')
+
+
+def is_cuda_toolkit_header(path: str) -> bool:
+    """True for a (proprietary) CUDA Toolkit header path.
+
+    Only actual header files are matched: the ``_cuda`` directory also carries
+    this project's own ``README.md`` (explaining how to fetch the headers
+    locally), which is fine to ship.
+    """
+    posix = _posix(path)
+    if not any(p in posix for p in CUDA_TOOLKIT_HEADER_PATHS):
+        return False
+    return posix.rsplit('.', 1)[-1].lower() in ('h', 'hpp', 'hxx', 'cuh')
+
+
+def is_cuda_only_file(path: str, include_cccl: bool = True) -> bool:
+    """True for CUDA-only sources that a non-CUDA artifact does not need.
+
+    ``include_cccl=False`` only matches the proprietary CUDA Toolkit headers
+    (the minimum every artifact must drop); ``True`` additionally matches the
+    open-source CUDA-only trees and device sources.
+    """
+    if is_cuda_toolkit_header(path):
+        return True
+    if not include_cccl:
+        return False
+    posix = _posix(path)
+    if any(p in posix for p in CUDA_ONLY_HEADER_PATHS):
+        return True
+    import fnmatch
+    name = posix.rsplit('/', 1)[-1]
+    return any(fnmatch.fnmatch(name, pat) for pat in CUDA_ONLY_FILE_PATTERNS)
+
+
+def strip_cuda_headers(paths, include_cccl: bool = True):
+    """Filter ``paths`` for distribution artifacts (keeps ordering)."""
+    return [p for p in paths if not is_cuda_only_file(p, include_cccl)]

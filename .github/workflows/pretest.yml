@@ -45,7 +45,10 @@ jobs:
         sed -i s/error::cupy.exceptions./error::numpy.exceptions./ pyproject.toml  # Because no cupy here. See cupy#8346
         pytest -v tests/typing_tests/test_typing.py
 
+
   build-rocm:
+    # Upstream cupy only; skipped in the numpy-ascend fork.
+    if: github.repository_owner == 'cupy'
     runs-on: ubuntu-22.04
 
     steps:

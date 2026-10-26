@@ -5,7 +5,7 @@ cimport numpy as cnp
 from libc.stdint cimport int8_t
 from libc.stdint cimport int32_t
 
-from cupy.cuda.function cimport CPointer
+from cupy.xpu.function cimport CPointer
 
 
 cdef extern from 'numpy/ndarraytypes.h':
@@ -33,6 +33,7 @@ cdef class CScalar(CPointer):
     cdef _store_c_value(self)
     cpdef apply_dtype(self, dtype)
     cpdef get_numpy_type(self)
+    cpdef to_numpy_scalar(self)
 
 
 cpdef str format_type_decls(set type_decls)

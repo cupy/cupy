@@ -1,79 +1,151 @@
-<div align="center"><img src="https://raw.githubusercontent.com/cupy/cupy/main/docs/image/cupy_logo_1000px.png" width="400"/></div>
+<div align="center">
 
-# CuPy : NumPy & SciPy for GPU
+### numpy for Ascend NPU: fork of CuPy, backend-extended, API-compatible
 
-[![pypi](https://img.shields.io/pypi/v/cupy)](https://pypi.python.org/pypi/cupy)
-[![Conda](https://img.shields.io/badge/conda--forge-cupy-blue)](https://anaconda.org/conda-forge/cupy)
-[![GitHub license](https://img.shields.io/github/license/cupy/cupy)](https://github.com/cupy/cupy)
-[![Matrix](https://img.shields.io/matrix/cupy_community:gitter.im?server_fqdn=matrix.org)](https://gitter.im/cupy/community)
-[![Twitter](https://img.shields.io/twitter/follow/CuPy_Team?label=%40CuPy_Team)](https://twitter.com/CuPy_Team)
-[![Medium](https://img.shields.io/badge/Medium-CuPy-teal)](https://medium.com/cupy-team)
+By Qingfeng Xia
 
-[**Website**](https://cupy.dev/)
-| [**Install**](https://docs.cupy.dev/en/stable/install.html)
-| [**Tutorial**](https://docs.cupy.dev/en/stable/user_guide/basic.html)
-| [**Examples**](https://github.com/cupy/cupy/tree/main/examples)
-| [**Documentation**](https://docs.cupy.dev/en/stable/)
-| [**API Reference**](https://docs.cupy.dev/en/stable/reference/)
-| [**Forum**](https://groups.google.com/forum/#!forum/cupy)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg)](https://www.python.org/)
+[![CANN](https://img.shields.io/badge/CANN-9.0%20%7C%209.5-orange.svg)]()
+[![Platform](https://img.shields.io/badge/platform-Ascend%20910B-green.svg)]()
+[![Version](https://img.shields.io/badge/version-0.1.0-brightgreen.svg)]()
+[![Coverage](https://img.shields.io/badge/pytest%20pass%20rate-90%25-orange)]()
 
-CuPy is a NumPy/SciPy-compatible array library for GPU-accelerated computing with Python.
-CuPy acts as a [drop-in replacement](https://docs.cupy.dev/en/stable/reference/comparison.html) to run existing NumPy/SciPy code on NVIDIA CUDA or AMD ROCm platforms.
+[API Docs](https://numpy.org/doc/2.4/reference/index.html) | [Developer Docs](docs/ascend/DeveloperNotes.md) | [Benchmark](tools/benchmark.py) | [Architecture](docs/image/numpy-xpu-architecture.jpg) | [Issues](https://github.com/qingfengxia/numpy-ascend/issues)
 
-```py
->>> import cupy as cp
->>> x = cp.arange(6).reshape(2, 3).astype('f')
->>> x
-array([[ 0.,  1.,  2.],
-       [ 3.,  4.,  5.]], dtype=float32)
->>> x.sum(axis=1)
-array([  3.,  12.], dtype=float32)
+</div>
+
+[English](README.md) | [中文 Readme](Readme_ZH.md)
+
+**numpy-ascend** brings the CuPy ndarray API to Huawei Ascend NPUs. It is a fork
+of CuPy (v14 lineage, NumPy 2.x) with the CUDA backend replaced by an Ascend
+backend built on CANN's `aclnn` operator library, so that existing NumPy/CuPy
+code and the wider CuPy/SciPy ecosystem run on the NPU.
+
+> **Unofficial fork.** numpy-ascend is a derivative work of
+> [CuPy](https://github.com/cupy/cupy) and is **not** affiliated with, endorsed
+> or sponsored by Preferred Networks, Inc. or the CuPy project. Upstream
+> copyright notices are retained in [LICENSE](LICENSE) and [NOTICE](NOTICE);
+> the name "CuPy" is used only to describe the origin of this work.
+
+### Import name: `numpy_xpu` (preferred) or `cupy` (compatible)
+
+```python
+import numpy_xpu as xp    # public import name of this distribution
+import cupy as cp         # kept working: xp is cp
 ```
 
-CuPy also provides access to low-level CUDA features.
-You can pass `ndarray` to existing CUDA C/C++ programs via [RawKernels](https://docs.cupy.dev/en/stable/user_guide/kernel.html#raw-kernels), use [Streams](https://docs.cupy.dev/en/stable/reference/cuda.html) for performance, or even call [CUDA Runtime APIs](https://docs.cupy.dev/en/stable/reference/cuda.html#runtime-api) directly.
+`numpy_xpu` is a thin alias package (`numpy_xpu/__init__.py`) over the
+upstream-derived `cupy` tree. That tree keeps its original directory name
+because the Cython/C++ sources and the wider `import cupy` ecosystem hard-code
+it; both names resolve to the **same module object**, so there is no duplicated
+set of classes and `isinstance` / `except` behave identically. Existing code
+needs no change; new code should prefer `import numpy_xpu as xp`.
+
+## Features
+
+0. complete ArrayAPI, 98% of cupy API, cupyx is not yet completed
+1. Default dtype `float32` (same as CuPy on GPU) — 10x–200x NPU acceleration for
+   math workloads.
+2. `float64` and `complex128` are supported, with **three processing modes**
+   (see below) because the NPU has no native double-precision throughput and
+   some `aclnn` ops reject `DOUBLE`/`COMPLEX128` outright.
+3. `int64` and `int32` have hardware acceleration for add/subtract/multiply/divide.
+4. API-compatible with CuPy (GPU) and mostly compatible with NumPy (CPU); works
+   with the CuPy and SciPy ecosystem.
+
+### float64 / complex128 processing modes
+
+Selected via the environment variable `CUPY_ASCEND_FLOAT64_MODE` (read once at
+first use; legacy switch `CUPY_ASCEND_ENABLE_FLOAT64_TO_FLOAT32=1` is equivalent
+to `float32`):
+
+| Mode | Behavior | Precision | Speed |
+|---|---|---|---|
+| `float32` (**default**) | Demote `float64`/`complex128` operands to `float32`/`complex64` at the dispatch layer, compute on NPU, cast results back. | loses ~9 decimal digits per operation | fast (NPU) |
+| `cpu` | Whole-op interception: D2H → NumPy in true double precision → H2D. Works for ufuncs, reductions and most general ops (unsupported ones fail loudly instead of silently). | exact (matches NumPy) | slow (PCIe transfers per op) |
+| `off` | No demotion, no fallback: ops that cannot run in double precision raise an error. | exact or error | — |
+
+```sh
+export CUPY_ASCEND_FLOAT64_MODE=cpu     # exact double precision, host-computed
+export CUPY_ASCEND_FLOAT64_MODE=float32 # default: NPU speed, demoted precision
+export CUPY_ASCEND_FLOAT64_MODE=off     # never silently lose precision
+```
+
+**Why the default `float32` mode can be wrong for you** — error accumulation:
+
+- `float32` carries a 24-bit mantissa: ~7 significant decimal digits
+  (`float64`: ~16). Each arithmetic op rounds to the nearest representable
+  value, and the rounding errors **accumulate across the computation**.
+- Reductions are the worst case: summing `N` values has worst-case relative
+  error ~`N·eps` — summing 10^8 random `float64` samples in `float32` mode can
+  drift by 1e-2 relative, versus ~1e-16 in `cpu` mode. Long chains of
+  elementwise ops (iterative solvers, `cumsum`, normalization) compound the
+  same way; values above 2^24 (≈1.7e7) lose integer precision entirely.
+- `complex128` demotes to `complex64`, so both real and imaginary parts share
+  the same 24-bit mantissa — the relative error applies to magnitude and phase
+  alike.
+- Rule of thumb: for ML training/inference and image data, `float32` mode is
+  the intended trade-off. For numerical verification, financial/scientific
+  accumulation (large sums, variance over big arrays, eigen/solvers where the
+  residual matters), use `cpu` mode — it is exact and easy to switch per
+  process; or keep `float64` data in NumPy and move only the `float32`-hot
+  path to the NPU.
+
+## Support Matrix
+
+**OS: Linux only.** Any Linux distribution since 2022 should work provided the C++
+runtime (`libstdc++`, glibc >= 2.27) is new enough; CI is done on aarch64 Linux.
+
+| CANN | x86_64 | aarch64 | Notes |
+|---|---|---|---|
+| 9.2 | source | source | **not tested**; may work, no CI coverage |
+| 9.0 | binary wheel + source | source | primary test target (Ascend 910B) |
+| 8.5 | binary wheel + source | source | primary test target (Ascend 910B) |
+| 8.2 | source build | source build | tested, no CI coverage |
+
+| Python | Binary wheel | Source build |
+|---|---|---|
+| 3.10 | yes | yes |
+| 3.11 | yes | yes |
+| 3.12 | yes | yes |
+
+- Binary wheels: see the [Releases page](https://github.com/qingfengxia/numpy-ascend/releases).
+  Wheel naming: `numpy_ascend-<ver>+cann<XY>-cp<py>-cp<py>-manylinux_2_34_<arch>.whl`
+  for non-PyPI trains (the `+cann8.5` / `+cann9.0` local version segment,
+  PyTorch-style) and `numpy_ascend-<ver>-cp<py>-cp<py>-manylinux_2_34_<arch>.whl`
+  for the train published to PyPI (currently CANN 9.0). Pick the wheel
+  matching your interpreter (`cp311` = Python 3.11), CPU architecture and
+  **CANN release train**.
+- The wheel does **not** bundle the CANN SDK: the target machine needs a CANN
+  toolkit of the same release train plus `set_env.sh`; see
+  [docs/ascend/Package.md](docs/ascend/Package.md) for the hard runtime
+  prerequisites (libstdc++ version, optional ops-fft, etc.).
+- Only one package providing `cupy` may be installed per environment: never
+  co-install this with upstream `cupy` / `cupy-cudaXX` or a different CANN
+  train — they would overwrite each other's files.
 
 ## Installation
 
-### Pip
+### 1. From a binary wheel (recommended)
 
-Binary packages (wheels) are available for Linux and Windows on [PyPI](https://pypi.org/org/cupy/).
-Choose the right package for your platform.
+**CANN 9.0.x — install from PyPI** (the primary release train):
 
-| Platform                                                                                                     | Architecture      | Command                     |
-|--------------------------------------------------------------------------------------------------------------| ----------------- |-----------------------------|
-| CUDA 12.x                                                                                                    | x86_64 / aarch64  | `pip install cupy-cuda12x`  |
-| CUDA 13.x                                                                                                    | x86_64 / aarch64  | `pip install cupy-cuda13x`  |
-| ROCm 7.0 (*[experimental](https://docs.cupy.dev/en/latest/install.html#using-cupy-on-amd-gpu-experimental)*) | x86_64            | `pip install cupy-rocm-7-0` |
-
-> [!NOTE]\
-> To install pre-releases, append `--pre -U -f https://pip.cupy.dev/pre` (e.g., `pip install cupy-cuda12x --pre -U -f https://pip.cupy.dev/pre`).
-
-### Conda
-
-Binary packages are also available for Linux and Windows on [Conda-Forge](https://anaconda.org/conda-forge/cupy).
-
-| Platform              | Architecture                | Command                                                       |
-| --------------------- | --------------------------- | ------------------------------------------------------------- |
-| CUDA                  | x86_64 / aarch64 / ppc64le  | `conda install -c conda-forge cupy`                           |
-
-If you need a slim installation (without also getting CUDA dependencies installed), you can do `conda install -c conda-forge cupy-core`.
-
-If you need to use a particular CUDA version (say 12.0), you can use the `cuda-version` metapackage to select the version, e.g. `conda install -c conda-forge cupy cuda-version=12.0`.
-
-> [!NOTE]\
-> If you encounter any problem with CuPy installed from `conda-forge`, please feel free to report to [cupy-feedstock](https://github.com/conda-forge/cupy-feedstock/issues), and we will help investigate if it is just a packaging issue in `conda-forge`'s recipe or a real issue in CuPy.
-
-### Docker
-
-Use [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/overview.html) to run [CuPy container images](https://hub.docker.com/r/cupy/cupy).
-
-```
-$ docker run --gpus all -it cupy/cupy
+```sh
+pip install numpy-ascend                # latest release
+pip install numpy-ascend==14.0.0a1      # pin a version
 ```
 
-## Resources
+**CANN 8.5.x — install from the GitHub Release.** PyPI rejects local version
+identifiers, so only the 9.0 train is published there; the 8.5 train ships as
+release assets. Point pip at the release asset page with `--find-links` (it
+accepts an HTML page — GitHub Releases are *not* a PEP 503 index, so
+`--index-url` does not work) and pin the train explicitly:
 
+```sh
+pip install numpy-ascend==14.0.0a1+cann8.5 \
+    --find-links https://github.com/qingfengxia/numpy-ascend/releases/expanded_assets/v14.0.0a1
+```
 - [Installation Guide](https://docs.cupy.dev/en/stable/install.html) - instructions on building from source
 - [Release Notes](https://github.com/cupy/cupy/releases)
 - [Projects using CuPy](https://github.com/cupy/cupy/wiki/Projects-using-CuPy)
@@ -86,14 +158,173 @@ $ docker run --gpus all -it cupy/cupy
 - [GPU Acceleration in Python using CuPy and Numba (GTC November 2021 Technical Session)](https://www.nvidia.com/en-us/on-demand/session/gtcfall21-a31149/)
 - [GPU-Acceleration of Signal Processing Workflows using CuPy and cuSignal (ICASSP'21 Tutorial)](https://github.com/awthomp/cusignal-icassp-tutorial)[^1]
 
-[^1]: cuSignal is now part of CuPy starting v13.0.0.
+Each release ships one wheel per (CPython × architecture × CANN train), e.g.
+for release `v14.0.0a1`:
+
+| CANN on the target machine | x86_64 wheel | aarch64 wheel | Where |
+|---|---|---|---|
+| 9.0.x | `numpy_ascend-14.0.0a1-cp311-cp311-manylinux_2_34_x86_64.whl` | `numpy_ascend-14.0.0a1-cp311-cp311-manylinux_2_34_aarch64.whl` | PyPI + Release |
+| 8.5.x | `numpy_ascend-14.0.0a1+cann8.5-cp311-cp311-manylinux_2_34_x86_64.whl` | `numpy_ascend-14.0.0a1+cann8.5-cp311-cp311-manylinux_2_34_aarch64.whl` | Release only |
+
+The non-PyPI trains carry the train as a PEP 440 **local version segment**
+(the same scheme as PyTorch's `torch==2.5.1+cu121`), so it can be pinned
+exactly. Any release wheel can also be installed by direct URL or local file
+(download URL pattern: `.../releases/download/<tag>/<wheel-file>`):
+
+```sh
+pip install https://github.com/qingfengxia/numpy-ascend/releases/download/v14.0.0a1/numpy_ascend-14.0.0a1+cann8.5-cp311-cp311-manylinux_2_34_x86_64.whl
+
+# or download the wheel from the Releases page first, then install the file:
+pip install ./numpy_ascend-14.0.0a1+cann8.5-cp311-cp311-manylinux_2_34_x86_64.whl
+
+source /usr/local/Ascend/ascend-toolkit/set_env.sh
+export ASCEND_HOME_PATH=/usr/local/Ascend/ascend-toolkit/latest
+
+python -c "import cupy; print(cupy.__version__, cupy.backends.ascend.check_cann_version())"
+```
+
+> **Note**: when `--find-links` is in play, always pin the train explicitly —
+> `==14.0.0a1` also matches the `+cann8.5` local version, and pip prefers the
+> higher (local) version. 9.0 users should install from PyPI without
+> `--find-links`.
+
+How to choose the CANN train: it must match the CANN **toolkit** installed
+on the target machine (`ls /usr/local/Ascend/`, or `npu-smi info`), not the
+NPU driver version. A `+cann8.5` wheel on a CANN 9.0 host (or vice versa)
+fails at import with an aclnn ABI mismatch — install the matching train
+(`pip uninstall numpy-ascend` first, since all trains share one distribution
+name).
+
+### 2. From source (new platform / CANN version, or development)
+
+```sh
+git clone git@github.com:qingfengxia/numpy-ascend.git
+cd numpy-ascend && git checkout ascend      # the working branch is ascend, not main
+export CUPY_INSTALL_USE_ASCEND=1
+python setup.py build_ext --inplace         # incremental in-place build (dev)
+python -c "import cupy._core"               # L2/L3 check: link + op registration OK
+python -m build --wheel                     # optional wheel (cannX.Y tag auto-detected)
+python -m build --sdist                     # optional sdist (one file, CPython/CANN agnostic)
+```
+
+Environment setup (CANN 8.2/8.5/9.0 installation and switching, development on
+machines **without** an NPU, porting to new platforms, troubleshooting) is
+documented in [DeveloperNotes.md](docs/ascend/DeveloperNotes.md) §1–§3; wheel
+and sdist packaging strategy is in
+[docs/ascend/Package.md](docs/ascend/Package.md).
+
+### 3. Verify
+
+```sh
+pytest tests/ascend -q                     # no NPU needed: registry / composed ops / kernel parsing
+pytest tests/cupy_tests -q                 # needs NPU; unsupported dtypes skipped by default
+pytest tests/cupy_tests -q --ascend-dtype-filter=off   # full dtype matrix (shows real failures)
+python tools/benchmark.py --list           # no NPU needed: print the op x dtype matrix
+python tools/benchmark.py --csv result.csv # needs NPU
+
+# minimal numerical check (needs NPU)
+python -c "
+import numpy as np, cupy as cp
+x = np.random.rand(1000).astype(np.float32)
+assert np.allclose(cp.asnumpy(cp.asarray(x).sum()), x.sum(), rtol=1e-5); print('ok')
+"
+```
+
+Verification levels: **L1** Cython generates `.cpp` → **L2** links → **L3**
+`import cupy` + op-registry audit → **L4** numerical results on real hardware.
+A machine without an NPU can only reach **L3**; **L4 must run on a 910B**.
+
+## Project Status
+
+### API coverage
+
+See [Progress.md](Progress.md) for the full snapshot:
+
+- **Python Array API standard: > 98% covered** (2 gaps: `i0` — NumPy itself
+  recommends `scipy.special.i0` — and `nextafter`).
+- CuPy top-level API: > 98% covered.
+- Operator-level facts are auto-generated by
+  [tools/scan_ops.py](tools/scan_ops.py) into [tools/cst_db.md](tools/cst_db.md).
+
+### Test results (on Ascend 910B)
+
+| Suite | Pass rate |
+|---|---|
+| `tests/cupy_tests/math_tests` (math_test) | **100%** |
+| full `tests/cupy_tests` + `tests/ascend` | **90%** |
+
+Failures concentrate in the documented limitation areas below, not in the math kernels.
+
+### Completed
+
+1. Custom kernels (AscendC, and Triton-Ascend in Python).
+2. All major CuPy features: custom kernels, profiler, stream/device management —
+   except operator fusion (use a Triton kernel instead).
+3. scipy ecosystem support via array_api, see [scipy benchmark with numpy-ascend](tools/)
+
+### Limitations
+
+1. `uint64` is not supported (`int64` is used, with hardware acceleration for add/multiply).
+2. Operator fusion.
+3. Sparse array/matrix and some `cupy.random` distributions are supported only partially (low priority).
+4. Multi-NPU is not ported/tested yet.
+
+## Tools
+
+| Tool | Purpose |
+|---|---|
+| [`tools/benchmark.py`](tools/benchmark.py) | CLI benchmark: NumPy (CPU) vs numpy-ascend (NPU) speedup over an op × dtype matrix (unary/binary/reduction/matmul/manipulation/sort). `--list` prints the matrix without an NPU; `--category`, `--dtype`, `--repeat`, `--csv`, `--strict` filter and report. Exit code 2/3 signal import/device errors. |
+| [`tools/numpy_ascend_migration_helper/`](tools/numpy_ascend_migration_helper/) | Static migration analyzer for NumPy/CuPy source: reports unsupported APIs/dtypes, semantic differences and CPU-fallback candidates (AST-based, not string matching); `--fix` applies AUTO_SAFE rewrites, `--fail-on-error` gates CI. See its [README.md](tools/numpy_ascend_migration_helper/README.md). |
+| [`tools/scan_ops.py`](tools/scan_ops.py) | Scans the built backend and generates the operator/coverage database ([tools/cst_db.md](tools/cst_db.md)). |
+
+## Examples
+
+### Python Array API standard
+
+<https://github.com/data-apis/array-api>
+
+```python
+import cupy as cp
+import cupy.array_api as cpx   # CuPy's Array API namespace
+
+x_gpu = cpx.asarray([1, 2, 3, 4], device='cuda')  # device slot, NPU here
+y_gpu = cpx.reshape(x_gpu, (2, 2))
+z_gpu = cpx.matmul(y_gpu, y_gpu)
+```
+
+If you are writing new data-processing code and do not need NumPy/CuPy
+compatibility, `torch_npu`'s array API (`torch._numpy`) is an alternative.
+
+## Documentation Index
+
+| Document | Content |
+|---|---|
+| [Progress.md](Progress.md) | Status snapshot: coverage, operator counts, milestones, remaining gaps |
+| [Memory.md](Memory.md) | Developer handbook: command cheat-sheet, architecture key points, verification levels, pitfalls |
+| [DeveloperNotes.md](docs/ascend/DeveloperNotes.md) | Environment setup (incl. no-NPU development), CANN 8.2/8.5/9.0 install, conditional compilation, FFT |
+| [docs/ascend/Package.md](docs/ascend/Package.md) | Wheel packaging (cann tag), RPATH strategy, runtime hard prerequisites |
+| [install/README.md](install/README.md) | Build system architecture (features / backends) and op registration flow |
+| [docs/ascend/](docs/ascend/) | Custom AscendC kernels, FFT, matmul, code reviews, NumPy/CuPy/PyTorch API diffs |
+| [tools/cst_db.md](tools/cst_db.md) | Auto-generated operator/coverage database (`python tools/scan_ops.py`) |
+| [Roadmap.md](Roadmap.md) · [TODO.md](TODO.md) | Roadmap and task list |
+
+## Contributing
+
+Issues and PRs are welcome at
+<https://github.com/qingfengxia/numpy-ascend>. For a code change: rebuild with
+`CUPY_INSTALL_USE_ASCEND=1`, verify at least to L3 (`pytest tests/ascend -q`),
+and state honestly which verification level was reached (see
+[Memory.md](Memory.md)). Commit messages use the `ASCEND [AI]:` prefix on the
+`ascend` branch.
 
 ## License
 
-MIT License (see `LICENSE` file).
+MIT — see [LICENSE](LICENSE). This project forks CuPy; upstream CuPy is
+MIT-licensed and its copyright notice is preserved in the source tree.
 
-CuPy is designed based on NumPy's API and SciPy's API (see `docs/source/license.rst` file).
+## 中文文档
 
+简体中文说明见 [Readme_ZH.md](Readme_ZH.md)。
 ## Acknowledgement
 
 CuPy is being developed and maintained by [Preferred Networks](https://www.preferred.jp/en/)™ (PFN™), [organizational supporters](https://cupy.dev/#supporters), and [community contributors](https://github.com/cupy/cupy/graphs/contributors).

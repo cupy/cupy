@@ -12,9 +12,15 @@ import cupy
 import cupy_backends
 
 
-is_hip = cupy_backends.cuda.api.runtime.is_hip
+is_hip = cupy.backends.backend.api.runtime.is_hip
 if not is_hip:
-    from cuda import pathfinder
+    try:
+        from cuda import pathfinder
+    except ImportError:
+        # `cuda-pathfinder` is only needed to report CUDA library paths in
+        # `cupyx.show_config()`; keep `import cupyx` working without it
+        # (e.g. on Ascend builds).
+        pathfinder = None
 
 
 def _eval_or_error(func, errors):
@@ -28,6 +34,8 @@ def _eval_or_error(func, errors):
 
 
 def _load_and_get_path(lib_name):
+    if pathfinder is None:
+        return None
     try:
         loaded_dl = pathfinder.load_nvidia_dynamic_lib(lib_name)
     except (pathfinder.DynamicLibNotFoundError, RuntimeError):

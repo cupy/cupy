@@ -1,8 +1,17 @@
+"""Backend-union interface for the ``cupy._core._reduction`` module.
+
+Same arrangement as ``_kernel.pxd``: the module is compiled from
+``cupy/_core/_gpu/_reduction.pyx`` (CUDA/HIP, upstream implementation) or
+``cupy/_core/_ascend/_reduction.pyx`` (Ascend), so this pxd carries the union
+of both interfaces and each build only sees its own half via
+``IF CUPY_CANN_VERSION``.
+"""
 from cupy._core._carray cimport shape_t
 from cupy._core cimport _kernel
-from cupy._core._kernel cimport KernelArguments
+IF CUPY_CANN_VERSION <= 0:
+    from cupy._core._kernel cimport KernelArguments
 from cupy._core.core cimport _ndarray_base
-from cupy.cuda cimport function
+from cupy.xpu cimport function
 
 
 cdef Py_ssize_t _block_size
@@ -26,11 +35,23 @@ cdef class _AbstractReductionKernel:
         readonly str __name__
         readonly dict _cached_codes
 
-    cpdef _ndarray_base _call(
-        self, KernelArguments kargs, shape_t& in_shape, axis, dtype,
-        bint keepdims, bint reduce_dims, int device_id,
-        stream, bint try_use_cub=*, bint try_use_cuda_compute=*,
-        bint sort_reduce_axis=*, bint cuda_compute_only=*)
+    IF CUPY_CANN_VERSION <= 0:
+        # CUDA/HIP: the argument bundle (`KernelArguments`) carries the
+        # inspected args through the reduction pipeline.
+        cpdef _ndarray_base _call(
+            self, KernelArguments kargs, shape_t& in_shape, axis, dtype,
+            bint keepdims, bint reduce_dims, int device_id,
+            stream, bint try_use_cub=*, bint try_use_cuda_compute=*,
+            bint sort_reduce_axis=*, bint cuda_compute_only=*)
+    ELSE:
+        # Ascend: plain argument lists, no KernelArguments machinery.
+        cpdef _ndarray_base _call(
+            self,
+            list in_args, list out_args,
+            const shape_t& a_shape, axis, dtype,
+            bint keepdims, bint reduce_dims, int device_id,
+            stream, bint try_use_cub=*, bint try_use_cuda_compute=*,
+            bint sort_reduce_axis=*, bint cuda_compute_only=*)
 
     cdef bint _launch(
         self, out_block_num, block_size, block_stride,
@@ -38,12 +59,19 @@ cdef class _AbstractReductionKernel:
         map_expr, reduce_expr, post_map_expr, reduce_type,
         stream, params) except -1
 
-    cdef tuple _get_expressions_and_types(
-        self, KernelArguments kargs, dtype)
+    IF CUPY_CANN_VERSION <= 0:
+        cdef tuple _get_expressions_and_types(
+            self, KernelArguments kargs, dtype)
 
-    cdef _create_out_args(
-        self, KernelArguments kargs, tuple out_types,
-        shape_t& shape)
+        cdef _create_out_args(
+            self, KernelArguments kargs, tuple out_types,
+            shape_t& shape)
+    ELSE:
+        cdef tuple _get_expressions_and_types(
+            self, list in_args, list out_args, dtype)
+
+        cdef list _get_out_args(
+            self, list out_args, tuple out_types, const shape_t& out_shape)
 
     cdef function.Function _get_function(
         self,
@@ -72,7 +100,10 @@ cdef shape_t _set_permuted_args(
     list args, tuple axis_permutes, const shape_t& shape,
     tuple params) except *
 
-cdef tuple _get_shape_and_strides(KernelArguments kargs)
+IF CUPY_CANN_VERSION <= 0:
+    cdef tuple _get_shape_and_strides(KernelArguments kargs)
+ELSE:
+    cdef tuple _get_shape_and_strides(list in_args, list out_args)
 
 cdef _optimizer_copy_arg(a)
 

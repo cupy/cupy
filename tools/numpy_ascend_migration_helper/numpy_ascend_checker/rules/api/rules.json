@@ -1,0 +1,161 @@
+{
+  "schema_version": "1.0",
+  "source_versions": { "numpy": "2.x", "cupy": "14.x" },
+  "target": "ascend",
+  "target_version": "CANN-8.5/9.0",
+
+  "rules": [
+    { "id": "ascend.zeros",        "source": ["numpy", "cupy"], "operation": "zeros",       "support": { "status": "supported", "implementation": "native" } },
+    { "id": "ascend.ones",         "source": ["numpy", "cupy"], "operation": "ones",        "support": { "status": "supported", "implementation": "native" } },
+    { "id": "ascend.empty",        "source": ["numpy", "cupy"], "operation": "empty",       "support": { "status": "supported", "implementation": "native" } },
+    { "id": "ascend.full",         "source": ["numpy", "cupy"], "operation": "full",        "support": { "status": "supported", "implementation": "native" } },
+    { "id": "ascend.array",        "source": ["numpy", "cupy"], "operation": "array",       "support": { "status": "supported", "implementation": "native" } },
+    { "id": "ascend.asarray",      "source": ["numpy", "cupy"], "operation": "asarray",     "support": { "status": "supported", "implementation": "native" } },
+    { "id": "ascend.arange",       "source": ["numpy", "cupy"], "operation": "arange",      "support": { "status": "supported", "implementation": "native" } },
+    { "id": "ascend.linspace",     "source": ["numpy", "cupy"], "operation": "linspace",    "support": { "status": "supported", "implementation": "native" } },
+    { "id": "ascend.astype",       "source": ["numpy", "cupy"], "operation": "astype",      "support": { "status": "supported", "implementation": "native" } },
+    { "id": "ascend.sum",          "source": ["numpy", "cupy"], "operation": "sum",         "support": { "status": "supported", "implementation": "native" } },
+    { "id": "ascend.mean",         "source": ["numpy", "cupy"], "operation": "mean",        "support": { "status": "supported", "implementation": "native" } },
+    { "id": "ascend.min",          "source": ["numpy", "cupy"], "operation": "min",         "support": { "status": "supported", "implementation": "native" } },
+    { "id": "ascend.max",          "source": ["numpy", "cupy"], "operation": "max",         "support": { "status": "supported", "implementation": "native" } },
+    { "id": "ascend.where",        "source": ["numpy", "cupy"], "operation": "where",       "support": { "status": "supported", "implementation": "native" } },
+    { "id": "ascend.concatenate",  "source": ["numpy", "cupy"], "operation": "concatenate", "support": { "status": "supported", "implementation": "native" } },
+    { "id": "ascend.stack",        "source": ["numpy", "cupy"], "operation": "stack",       "support": { "status": "supported", "implementation": "native" } },
+    { "id": "ascend.reshape",      "source": ["numpy", "cupy"], "operation": "reshape",     "support": { "status": "supported", "implementation": "view" } },
+    { "id": "ascend.transpose",    "source": ["numpy", "cupy"], "operation": "transpose",   "support": { "status": "supported", "implementation": "view" } },
+    { "id": "ascend.unique",       "source": ["numpy", "cupy"], "operation": "unique",      "support": { "status": "supported", "implementation": "native" } },
+    { "id": "ascend.argsort",      "source": ["numpy", "cupy"], "operation": "argsort",     "support": { "status": "supported", "implementation": "native" } },
+    { "id": "ascend.nonzero",      "source": ["numpy", "cupy"], "operation": "nonzero",     "support": { "status": "supported", "implementation": "native" } },
+    { "id": "ascend.dot",          "source": ["numpy", "cupy"], "operation": "dot",         "support": { "status": "supported", "implementation": "native" } },
+    { "id": "ascend.linalg.inv",   "source": ["numpy", "cupy"], "operation": "linalg.inv",  "support": { "status": "supported", "implementation": "native" } },
+    { "id": "ascend.fft.fft",      "source": ["numpy", "cupy"], "operation": "fft.fft",     "support": { "status": "supported", "implementation": "native" } },
+
+    { "id": "ascend.sort", "source": ["numpy", "cupy"], "operation": "sort",
+      "support": { "status": "supported", "implementation": "native" },
+      "argument_rules": [
+        { "argument": "kind",
+          "semantic_values": ["quicksort", "heapsort", "unstable"],
+          "reason": "Ascend only has a stable-sort concept; non-stable tie order is not guaranteed",
+          "suggestion": "Use kind='stable' if stable ordering of ties is required." }
+      ] },
+
+    { "id": "ascend.matmul", "source": ["numpy", "cupy"], "operation": "matmul",
+      "support": { "status": "supported", "implementation": "native" },
+      "dtype_only": ["float16", "float32", "bfloat16"],
+      "suggest": "ASCEND TensorCore limitation: matmul supports only float16/float32/bfloat16. Use the float version instead.",
+      "suggest_zh": "ASCEND TensorCore 限制：matmul 仅支持 float16/float32/bfloat16，建议改用浮点版本。" },
+
+    { "id": "ascend.tensordot", "source": ["numpy", "cupy"], "operation": "tensordot",
+      "support": { "status": "supported", "implementation": "native" },
+      "dtype_only": ["float16", "float32", "bfloat16"],
+      "suggest": "ASCEND TensorCore limitation: tensordot supports only float16/float32/bfloat16. Use the float version instead.",
+      "suggest_zh": "ASCEND TensorCore 限制：tensordot 仅支持 float16/float32/bfloat16，建议改用浮点版本。" },
+
+    { "id": "ascend.power", "source": ["numpy", "cupy"], "operation": "power",
+      "support": { "status": "supported", "implementation": "native" },
+      "dtype_rules": {
+        "bool": { "status": "unsupported",
+                  "reason": "bool operands are not supported and are not implicitly cast to int",
+                  "suggestion": "Cast to an integer dtype explicitly before power()." }
+      } },
+
+    { "id": "ascend.take", "source": ["numpy", "cupy"], "operation": "take",
+      "support": { "status": "supported", "implementation": "native" },
+      "argument_rules": [
+        { "argument": "axis", "presence_unsupported": true,
+          "reason": "aclnnTake flattens the input; take with axis != None produces wrong results on Ascend",
+          "suggestion": "Avoid axis; reshape/permute before and after take instead.",
+          "suggest_zh": "aclnnTake 按展平语义执行，axis 索引在 Ascend 上结果错误；建议先 reshape/transpose 再 take。" },
+        { "argument": "mode", "unsupported_values": ["wrap", "clip"],
+          "reason": "no aclnn equivalent for wrap/clip out-of-range handling",
+          "suggestion": "Normalize indices manually (modulo / clip) before take." }
+      ] },
+
+    { "id": "ascend.put", "source": ["numpy", "cupy"], "operation": "put",
+      "support": { "status": "supported", "implementation": "native" },
+      "argument_rules": [
+        { "argument": "mode", "unsupported_values": ["wrap", "clip"],
+          "reason": "wrap/clip modes have no aclnn equivalent",
+          "suggestion": "Preprocess indices (modulo / clip) then put with the default mode." }
+      ] },
+
+    { "id": "ascend.pad", "source": ["numpy", "cupy"], "operation": "pad",
+      "support": { "status": "supported", "implementation": "python" },
+      "argument_rules": [
+        { "argument": "mode",
+          "unsupported_values": ["symmetric", "linear_ramp", "maximum", "mean", "median", "minimum", "empty"],
+          "reason": "no aclnn equivalent for this pad mode",
+          "suggestion": "Use constant/edge/reflect modes or implement padding manually." },
+        { "argument": "mode", "semantic_values": ["wrap"],
+          "reason": "wrap maps to circular padding which only supports 2d/3d on Ascend",
+          "suggestion": "Verify dimensionality when using mode='wrap'." }
+      ] },
+
+    { "id": "ascend.partition", "source": ["numpy", "cupy"], "operation": "partition",
+      "support": { "status": "unsupported", "reason": "not implemented on Ascend" },
+      "suggest": "Use sort or a topk-based workaround; np.partition kth semantics differ from topk.",
+      "suggest_zh": "Ascend 未实现 partition；建议用 sort 或基于 topk 的替代实现。" },
+
+    { "id": "ascend.argpartition", "source": ["numpy", "cupy"], "operation": "argpartition",
+      "support": { "status": "unsupported", "reason": "not implemented on Ascend" },
+      "suggest": "Use argsort or a topk-based workaround.",
+      "suggest_zh": "Ascend 未实现 argpartition；建议用 argsort 或基于 topk 的替代实现。" },
+
+    { "id": "ascend.searchsorted", "source": ["numpy", "cupy"], "operation": "searchsorted",
+      "support": { "status": "unsupported", "reason": "not implemented on Ascend" },
+      "suggest": "Sort the input and implement the binary search manually; the sorter= argument has no aclnn equivalent.",
+      "suggest_zh": "Ascend 未实现 searchsorted；建议自行排序后做二分查找（sorter 参数无对应实现）。" },
+
+    { "id": "ascend.io.load",      "source": ["numpy"], "operation": "load",
+      "support": { "status": "cpu_fallback", "implementation": "cpu" },
+      "suggest": "IO is performed via numpy on CPU and then copied to the device (H2D).", "suggest_zh": "IO 通过 numpy 在 CPU 上完成，再拷贝到设备（H2D）。" },
+    { "id": "ascend.io.save",      "source": ["numpy"], "operation": "save",
+      "support": { "status": "cpu_fallback", "implementation": "cpu" },
+      "suggest": "Device data is copied to host (D2H) and encoded by numpy on CPU.", "suggest_zh": "设备数据先拷回主机（D2H），由 numpy 在 CPU 上编码写盘。" },
+    { "id": "ascend.io.savez",     "source": ["numpy"], "operation": "savez",
+      "support": { "status": "cpu_fallback", "implementation": "cpu" } },
+    { "id": "ascend.io.loadtxt",   "source": ["numpy"], "operation": "loadtxt",
+      "support": { "status": "cpu_fallback", "implementation": "cpu" } },
+    { "id": "ascend.io.savetxt",   "source": ["numpy"], "operation": "savetxt",
+      "support": { "status": "cpu_fallback", "implementation": "cpu" } },
+    { "id": "ascend.io.genfromtxt","source": ["numpy"], "operation": "genfromtxt",
+      "support": { "status": "cpu_fallback", "implementation": "cpu" } },
+    { "id": "ascend.io.fromfile",  "source": ["numpy"], "operation": "fromfile",
+      "support": { "status": "cpu_fallback", "implementation": "cpu" } },
+
+    { "id": "numpy.product", "source": ["numpy"], "operation": "product",
+      "support": { "status": "unsupported", "reason": "removed in NumPy 2.x" },
+      "replacement": { "kind": "rename", "target": "prod", "fix_mode": "auto_safe" },
+      "suggest": "Use np.prod instead." },
+    { "id": "numpy.cumproduct", "source": ["numpy"], "operation": "cumproduct",
+      "support": { "status": "unsupported", "reason": "removed in NumPy 2.x" },
+      "replacement": { "kind": "rename", "target": "cumprod", "fix_mode": "auto_safe" },
+      "suggest": "Use np.cumprod instead." },
+    { "id": "numpy.sometrue", "source": ["numpy"], "operation": "sometrue",
+      "support": { "status": "unsupported", "reason": "removed in NumPy 2.x" },
+      "replacement": { "kind": "rename", "target": "any", "fix_mode": "auto_safe" },
+      "suggest": "Use np.any instead." },
+    { "id": "numpy.alltrue", "source": ["numpy"], "operation": "alltrue",
+      "support": { "status": "unsupported", "reason": "removed in NumPy 2.x" },
+      "replacement": { "kind": "rename", "target": "all", "fix_mode": "auto_safe" },
+      "suggest": "Use np.all instead." },
+
+    { "id": "cupy.fusion", "source": ["cupy"], "operation": "fusion",
+      "support": { "status": "unsupported", "reason": "kernel fusion is not supported on Ascend" },
+      "suggest": "Use triton_bridge (cupyx.jit) instead of cupy.fusion.",
+      "suggest_zh": "Ascend 不支持 op fusion，建议使用 triton_bridge 替代。" },
+
+    { "id": "cupy.argmax", "source": ["cupy"], "operation": "argmax",
+      "support": { "status": "supported", "implementation": "native" },
+      "semantic": [
+        { "reason": "CuPy's argmax signature adds a dtype positional argument that NumPy does not have (upstream incompatibility).",
+          "suggestion": "Avoid passing dtype positionally; verify against NumPy semantics." }
+      ] },
+    { "id": "cupy.argmin", "source": ["cupy"], "operation": "argmin",
+      "support": { "status": "supported", "implementation": "native" },
+      "semantic": [
+        { "reason": "CuPy's argmin signature adds a dtype positional argument that NumPy does not have (upstream incompatibility).",
+          "suggestion": "Avoid passing dtype positionally; verify against NumPy semantics." }
+      ] }
+  ]
+}

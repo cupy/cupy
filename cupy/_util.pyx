@@ -5,11 +5,11 @@ import functools
 import os
 import warnings
 
-import cython
+cimport cython
 import numpy
 
 import cupy
-from cupy_backends.cuda.api cimport runtime
+from cupy.backends.backend.api cimport runtime
 
 
 cython_build_ver = CUPY_CYTHON_VERSION

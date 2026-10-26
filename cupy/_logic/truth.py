@@ -3,8 +3,46 @@ from __future__ import annotations
 import cupy
 from cupy._core import _routines_logic as _logic
 from cupy._core import _fusion_thread_local
-from cupy._sorting import search as _search
 from cupy import _util
+
+# `cupy._sorting.search` is imported lazily inside in1d/intersect1d:
+# cupy/__init__.py imports cupy._logic.truth before cupy._sorting, so a
+# module-level import here would risk an import cycle (the kernels are only
+# needed at call time).
+
+
+def _ascend_set_host_fallback(name, kernels, *args, **kwargs):
+    """Set-logic host fallback for the Ascend backend (set ops 专用).
+
+    in1d/intersect1d/setxor1d are built on raw-CUDA ElementwiseKernels
+    (``cupy_exists_kernel``, ``cupy_exists_and_searchsorted_kernel``,
+    ``setxorkernel``) which have no aclnn counterpart. When any of the
+    required `kernels` (dispatch names, e.g. ``ascend_exists_kernel``) is
+    missing from the registry, run the whole public call on host via
+    cpu_fallback (D2H -> NumPy -> H2D) instead of failing deep in the
+    dispatcher with a KeyError.
+
+    与通用软派发 ``cpu_fallback.maybe_call`` 的分工：后端/开关/注册表
+    查找集中在 maybe_call；这里只保留 set ops 特有的「按调用点依赖的
+    设备内核探测是否回退」策略（kernel 列表是各函数自己的知识，无法
+    上收）。``kernels=None`` 表示无条件回退（如 union1d）。
+
+    Returns the fallback result, or None when the caller should proceed
+    with the normal device path (op registered, or backend not Ascend).
+    """
+    try:
+        from cupy._core._ascend import cpu_fallback
+    except ImportError:
+        return None
+    # NB: cannot use the builtin all() here — it is shadowed by cupy.all
+    # in this module namespace.
+    if kernels:
+        for k in kernels:
+            if not cpu_fallback.acl_ufunc_registered(k):
+                break
+        else:
+            return None
+    return cpu_fallback.maybe_call(name, *args, **kwargs)
 
 
 _setxorkernel = cupy._core.ElementwiseKernel(
@@ -115,6 +153,11 @@ def in1d(ar1, ar2, assume_unique=False, invert=False):
         The values ``ar1[in1d]`` are in ``ar2``.
 
     """
+    ret = _ascend_set_host_fallback(
+        'logic.in1d', ('ascend_exists_kernel',),
+        ar1, ar2, assume_unique=assume_unique, invert=invert)
+    if ret is not None:
+        return ret
     # Ravel both arrays, behavior for the first array could be different
     ar1 = ar1.ravel()
     ar2 = ar2.ravel()
@@ -125,6 +168,7 @@ def in1d(ar1, ar2, assume_unique=False, invert=False):
             return cupy.zeros(ar1.shape, dtype=cupy.bool_)
     # Use brilliant searchsorted trick
     # https://github.com/cupy/cupy/pull/4018#discussion_r495790724
+    from cupy._sorting import search as _search
     ar2 = cupy.sort(ar2)
     return _search._exists_kernel(ar1, ar2, ar2.size, invert)
 
@@ -162,6 +206,14 @@ def intersect1d(arr1, arr2, assume_unique=False, return_indices=False):
     numpy.intersect1d
 
     """
+    ret = _ascend_set_host_fallback(
+        'logic.intersect1d',
+        ('ascend_exists_kernel', 'ascend_exists_and_searchsorted_kernel'),
+        arr1, arr2, assume_unique=assume_unique,
+        return_indices=return_indices)
+    if ret is not None:
+        return ret
+    from cupy._sorting import search as _search
     common_dtype = cupy.result_type(arr1.dtype, arr2.dtype)
     if not assume_unique:
         if return_indices:
@@ -250,6 +302,12 @@ def setdiff1d(ar1, ar2, assume_unique=False):
     numpy.setdiff1d
 
     """
+    from cupy.backends.backend import is_ascend
+    if is_ascend:
+        ret = _ascend_set_host_fallback('logic.setdiff1d', ('ascend_unique',), ar1, ar2,
+                                        assume_unique=assume_unique)
+        if ret is not None:
+            return ret
     if assume_unique:
         ar1 = cupy.ravel(ar1)
     else:
@@ -281,6 +339,11 @@ def setxor1d(ar1, ar2, assume_unique=False):
     numpy.setxor1d
 
     """
+    ret = _ascend_set_host_fallback(
+        'logic.setxor1d', ('setxorkernel',),
+        ar1, ar2, assume_unique=assume_unique)
+    if ret is not None:
+        return ret
     if not assume_unique:
         ar1 = cupy.unique(ar1)
         ar2 = cupy.unique(ar2)
@@ -316,4 +379,12 @@ def union1d(arr1, arr2):
     numpy.union1d
 
     """
+    # ASCEND: cupy.unique is unreliable on Ascend (sort/lexsort issues)
+    # TODO: this conclusion should be reviewed
+    from cupy.backends.backend import is_ascend
+    if is_ascend:
+        ret = _ascend_set_host_fallback(
+            'logic.union1d', ('ascend_unique',), arr1, arr2)
+        if ret is not None:
+            return ret
     return cupy.unique(cupy.concatenate((arr1, arr2), axis=None))

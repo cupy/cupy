@@ -57,6 +57,14 @@ def array_equal(a1, a2, equal_nan=False):
     .. seealso:: :func:`numpy.array_equal`
 
     """
+
+    # ASCEND: equal_nan=True ues maksed indexing (a1[~a1nan]) whose
+    # cupy_getitem_mask coy fails for complex inptu, host numpy
+    from cupy.backends.backend import is_ascend
+    if is_ascend and equal_nan:
+        return cupy.asarray(numpy.array_equal(cupy.asnumpy(a1),
+                                               cupy.asnumpy(a2), equal_nan=True))
+
     if a1.shape != a2.shape:
         return cupy.array(False)
     if not equal_nan:

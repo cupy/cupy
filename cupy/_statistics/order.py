@@ -23,6 +23,23 @@ _QUANTILE_PARAMS = {
 }
 
 
+# 非 Ascend 打包可能不含 _ascend 包，模块级守卫导入
+try:
+    from cupy._core._ascend import cpu_fallback
+except ImportError:      # pragma: no cover
+    cpu_fallback = None
+
+
+def _ascend_host_fallback(name, *args, **kwargs):
+    """ASCEND: 软派发 host fallback（D2H -> NumPy -> H2D）。
+
+    判定（Ascend 后端 / fallback 开关 / 注册表查找）统一在
+    cpu_fallback.maybe_call；这里只处理本模块不可用的情形。
+    返回 fallback 结果；None 表示继续设备路径。
+    """
+    if cpu_fallback is None:
+        return None
+    return cpu_fallback.maybe_call(name, *args, **kwargs)
 @_util.memoize()
 def _get_percentile_weightnening_kernel():
     return cupy.ElementwiseKernel(
@@ -152,6 +169,11 @@ def nanmin(a, axis=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.nanmin`
 
     """
+    # ASCEND: aclnn 归约部分 dtype 触发 ret 500003（结果不可靠），整调用走 host
+    ret = _ascend_host_fallback(
+        'statistics.nanmin', a, axis=axis, out=out, keepdims=keepdims)
+    if ret is not None:
+        return ret
     # TODO(niboshi): Avoid synchronization.
     res = _core.nanmin(a, axis=axis, out=out, keepdims=keepdims)
     if content.isnan(res).any():  # synchronize!
@@ -183,6 +205,11 @@ def nanmax(a, axis=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.nanmax`
 
     """
+    # ASCEND: aclnn 归约部分 dtype 触发 ret 500003（结果不可靠），整调用走 host
+    ret = _ascend_host_fallback(
+        'statistics.nanmax', a, axis=axis, out=out, keepdims=keepdims)
+    if ret is not None:
+        return ret
     # TODO(niboshi): Avoid synchronization.
     res = _core.nanmax(a, axis=axis, out=out, keepdims=keepdims)
     if content.isnan(res).any():  # synchronize!
@@ -218,6 +245,11 @@ def ptp(a, axis=None, out=None, keepdims=False):
     .. seealso:: :func:`numpy.amin`
 
     """
+    # ASCEND: aclnn 归约部分 dtype 触发 ret 500003（结果不可靠），整调用走 host
+    ret = _ascend_host_fallback(
+        'statistics.ptp', a, axis=axis, out=out, keepdims=keepdims)
+    if ret is not None:
+        return ret
     return a.ptp(axis=axis, out=out, keepdims=keepdims)
 
 
@@ -225,6 +257,25 @@ def _quantile_unchecked(a, q, axis=None, out=None,
                         overwrite_input=False,
                         method='linear',
                         keepdims=False):
+    # Ascend: 'linear' / 'midpoint' reach the inline
+    # `cupy_percentile_weightnening` ElementwiseKernel below (a raw CUDA-style
+    # body using `_ind.get()`), which the Ascend backend cannot compile or
+    # run. Fall back to the host NumPy implementation for the whole call.
+    # This covers both percentile() and quantile(), which funnel through
+    # this helper. Note the fallback re-does the sort on host, so it suits
+    # small/medium inputs.
+    if method in ('linear', 'midpoint'):
+        ret = _ascend_host_fallback(
+            'statistics.quantile', a, q, axis=axis, out=out,
+            overwrite_input=overwrite_input, method=method,
+            keepdims=keepdims)
+        if ret is not None:
+            if overwrite_input:
+                # cpu fallback cannot change input inplace
+                # numpy semantics: set zero for the defined input
+                a[...] = 0
+            return ret
+
     dtype = cupy.result_type(a, q)
     q = cupy.asarray(q)
 

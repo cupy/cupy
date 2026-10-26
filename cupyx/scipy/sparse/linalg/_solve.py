@@ -3,7 +3,13 @@ from __future__ import annotations
 import numpy
 
 import cupy
-from cupy import cublas
+from cupy.backends.backend import is_ascend
+if is_ascend:
+    # cupy.cublas is not built for Ascend; None mirrors
+    # the guard in cupy/cublas.py. Unimplemented paths fail at call time.
+    cublas = None
+else:
+    from cupy import cublas
 from cupy.cuda import device
 from cupy.cuda import runtime
 from cupy.linalg import _util
@@ -407,7 +413,8 @@ def lsmr(A, b, x0=None, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8,
 
 def _should_use_spsm():
     # On CUDA (12.0+) use cusparseSpSM. ROCm keeps hipsparse<t>csrsm2 until it
-    # is dropped.
+    # is dropped. Ascend (ops-sparse) only implements the generic SpSM API, so
+    # it always takes this path as well.
     return not runtime.is_hip
 
 

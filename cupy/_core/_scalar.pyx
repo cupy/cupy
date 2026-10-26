@@ -3,6 +3,7 @@ from libc.stdint cimport intptr_t
 cimport cpython
 cimport numpy as cnp
 
+import ctypes
 import graphlib
 
 import numpy
@@ -401,6 +402,23 @@ cdef class CScalar(CPointer):
 
     cpdef get_numpy_type(self):
         return <object>(self.descr.typeobj)  # typeobj is the C-level .type
+
+    cpdef to_numpy_scalar(self):
+        """Return the value as a NumPy scalar of the stored (loop) dtype.
+
+        Fork helper: the Ascend CPU fallback reads scalar operands back on the
+        host.  `ptr`/`descr` are C-level, so dereference here.
+        """
+        # NOTE: Cython's `numpy.pxd` does not expose `PyArray_Scalar`, so the
+        # value is materialized by copying the packed bytes into a 1-element
+        # NumPy array instead (portable across NumPy 1.x/2.x).
+        cdef object dtype = <object>self.descr
+        cdef cnp.ndarray arr
+        if self.ptr == 0 or self.value is None:
+            return None
+        arr = numpy.empty(1, dtype=dtype)
+        ctypes.memmove(arr.ctypes.data, self.ptr, dtype.itemsize)
+        return arr[0]
 
     @property
     def dtype(self):

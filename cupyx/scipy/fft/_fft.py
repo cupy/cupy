@@ -6,6 +6,7 @@ import numpy as np
 
 import cupy
 
+from cupy.fft._backend import get_cufft as _get_cufft  # NOQA
 from cupy.fft._fft import _fft, _default_fft_func, _swap_direction
 
 try:
@@ -93,7 +94,7 @@ def fft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
 
     .. seealso:: :func:`scipy.fft.fft`
     """
-    from cupy.cuda import cufft
+    cufft = _get_cufft()
     return _fft(x, (n,), (axis,), norm, cufft.CUFFT_FORWARD,
                 overwrite_x=overwrite_x, plan=plan)
 
@@ -127,7 +128,7 @@ def ifft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
 
     .. seealso:: :func:`scipy.fft.ifft`
     """
-    from cupy.cuda import cufft
+    cufft = _get_cufft()
     return _fft(x, (n,), (axis,), norm, cufft.CUFFT_INVERSE,
                 overwrite_x=overwrite_x, plan=plan)
 
@@ -226,7 +227,7 @@ def fftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
 
     .. seealso:: :func:`scipy.fft.fftn`
     """
-    from cupy.cuda import cufft
+    cufft = _get_cufft()
 
     s = _assequence(s)
     axes = _assequence(axes)
@@ -264,7 +265,7 @@ def ifftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
 
     .. seealso:: :func:`scipy.fft.ifftn`
     """
-    from cupy.cuda import cufft
+    cufft = _get_cufft()
 
     s = _assequence(s)
     axes = _assequence(axes)
@@ -306,7 +307,7 @@ def rfft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
     .. seealso:: :func:`scipy.fft.rfft`
 
     """
-    from cupy.cuda import cufft
+    cufft = _get_cufft()
 
     return _fft(x, (n,), (axis,), norm, cufft.CUFFT_FORWARD, 'R2C',
                 overwrite_x=overwrite_x, plan=plan)
@@ -341,7 +342,7 @@ def irfft(x, n=None, axis=-1, norm=None, overwrite_x=False, *, plan=None):
 
     .. seealso:: :func:`scipy.fft.irfft`
     """
-    from cupy.cuda import cufft
+    cufft = _get_cufft()
     return _fft(x, (n,), (axis,), norm, cufft.CUFFT_INVERSE, 'C2R',
                 overwrite_x=overwrite_x, plan=plan)
 
@@ -449,7 +450,7 @@ def rfftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
 
     .. seealso:: :func:`scipy.fft.rfftn`
     """
-    from cupy.cuda import cufft
+    cufft = _get_cufft()
 
     s = _assequence(s)
     axes = _assequence(axes)
@@ -491,7 +492,7 @@ def irfftn(x, s=None, axes=None, norm=None, overwrite_x=False, *, plan=None):
 
     .. seealso:: :func:`scipy.fft.irfftn`
     """
-    from cupy.cuda import cufft
+    cufft = _get_cufft()
 
     s = _assequence(s)
     axes = _assequence(axes)

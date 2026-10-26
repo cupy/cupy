@@ -34,6 +34,8 @@ class Context:
 
     use_cuda_python: bool
     use_hip: bool
+    use_ascend: bool
+    use_stub: bool
     include_dirs: list[str]
     library_dirs: list[str]
     long_description_path: str | None
@@ -42,6 +44,10 @@ class Context:
     linetrace: bool
     annotate: bool
     no_rpath: bool
+    # Emit the legacy DT_RPATH tag instead of the modern DT_RUNPATH. Only
+    # needed to reproduce pre-existing CUDA wheels; DT_RPATH takes precedence
+    # over LD_LIBRARY_PATH and therefore defeats user overrides.
+    legacy_rpath: bool
     features: dict[str, cupy_builder.Feature]
     cupy_cache_key: str | None
     win32_cl_exe_path: str | None
@@ -61,6 +67,10 @@ class Context:
 
         self.use_cuda_python = _get_env_bool('CUPY_USE_CUDA_PYTHON', _env)
         self.use_hip = _get_env_bool('CUPY_INSTALL_USE_HIP', _env)
+        self.use_ascend = _get_env_bool('CUPY_INSTALL_USE_ASCEND', _env)
+
+        # Build CuPy with stub header file
+        self.use_stub = _get_env_bool("CUPY_INSTALL_USE_STUB", _env)
 
         # Extra paths to search for libraries/headers during build
         self.include_dirs = _get_env_path('CUPY_INCLUDE_PATH', _env)
@@ -72,11 +82,16 @@ class Context:
         self.wheel_metadata_path = _env.get("CUPY_INSTALL_WHEEL_METADATA")
         # disable adding default library directories to RPATH
         self.no_rpath = _get_env_bool("CUPY_INSTALL_NO_RPATH", _env)
+        # emit legacy DT_RPATH (ignores LD_LIBRARY_PATH at runtime)
+        self.legacy_rpath = _get_env_bool("CUPY_INSTALL_LEGACY_RPATH", _env)
         # enable profiling for Cython code
         self.profile = _get_env_bool("CUPY_INSTALL_CYTHON_PROFILE", _env)
         # enable coverage for Cython code
         self.annotate = self.linetrace = _get_env_bool(
             "CUPY_INSTALL_CYTHON_COVERAGE", _env)
+
+        if os.environ.get('READTHEDOCS', None) == 'True':
+            self.use_stub = True
 
         self.features = cupy_builder.get_features(self)
 
@@ -132,3 +147,13 @@ class Context:
                 hasher.update(f.read())
                 hasher.update(b'\x00')
         return hasher.hexdigest(), len(files)
+    
+    def get_backend_name(self):
+        if self.use_stub:
+            return "stub"
+        elif self.use_hip:
+            return "hip"
+        elif self.use_ascend:
+            return "ascend"
+        else:
+            return "cuda"
