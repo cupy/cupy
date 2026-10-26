@@ -420,15 +420,6 @@ cdef class CScalar(CPointer):
         ctypes.memmove(arr.ctypes.data, self.ptr, dtype.itemsize)
         return arr[0]
 
-    @staticmethod
-    cdef CScalar from_numpy_scalar_with_dtype(object value, dtype):
-        """Create a scalar already materialized with `dtype`.
-
-        Fork helper (Ascend): scalars are packed with the kernel loop dtype on
-        the host so the aclnn kernels never have to cast implicitly.
-        """
-        return CScalar(value, dtype)
-
     @property
     def dtype(self):
         return self.descr
@@ -482,13 +473,3 @@ cpdef str _get_cuda_scalar_repr(obj, dtype):
         return f"bfloat16({float_repr})"
 
     raise TypeError(f'Unsupported dtype: {dtype}')
-
-
-cpdef CScalar scalar_to_c_scalar(object value):
-    """Ascend (fork): wrap a Python/NumPy scalar into a `CScalar`.
-
-    Kept because `cupy/backends/ascend/api/acl_utils.pyx` converts scalar
-    operands on the host; upstream inlined the equivalent `CScalar(value)`
-    call into `_kernel._preprocess_arg`.
-    """
-    return CScalar(value)

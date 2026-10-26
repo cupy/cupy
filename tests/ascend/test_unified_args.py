@@ -81,19 +81,19 @@ def test_dump_args_string_is_whitelisted(acl_utils, strict_env):
 def test_complex_scalar_converted(acl_utils, strict_env):
     """complex 标量 -> aclScalar（aclCreateScalar 接受 ACL_COMPLEX64/128）。
 
-    参数通道按 CScalar 的归一化语义转成 ACL_COMPLEX128（_scalar.pyx 的
-    `_from_numpy_scalar` 把 complex 一律存为 double complex）；ufunc 操作数
-    路径经 from_numpy_scalar_with_dtype(x, loop_dtype) 保留 complex64
-    （ACL_COMPLEX64，与 tensor dtype 匹配）。若将来参数通道也保留
-    complex64，更新本断言。
+    参数通道保留 numpy 标量自身的 dtype（CScalar 按 `descr` 打包，
+    `cupy_scalar_to_acl_scalar` 直接映射 descr）：complex64 -> ACL_COMPLEX64，
+    complex128 -> ACL_COMPLEX128；ufunc 操作数路径经 CScalar(x, loop_dtype)
+    时同样与 tensor dtype 匹配。
     """
     import numpy as np
     dump64 = acl_utils.py_dump_args((np.complex64(1 + 2j),), {})
     dump128 = acl_utils.py_dump_args((np.complex128(3 - 1j),), {})
-    # 参数通道：归一化 complex128
-    assert 'type=ACL_COMPLEX128' in dump64
+    # 参数通道：保持标量自身 dtype
+    assert 'type=ACL_COMPLEX64' in dump64
     assert 'type=ACL_COMPLEX128' in dump128
     # complex 值打印（PrintScalarValue 的 ACL_COMPLEX64/128 分支）
+    assert '(1+2j)' in dump64
     assert 'j)' in dump128
 
 

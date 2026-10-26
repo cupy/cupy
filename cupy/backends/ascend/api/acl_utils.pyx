@@ -9,7 +9,7 @@ from collections import namedtuple
 
 from cupy._core import _dtype
 from cupy._core.core import _ndarray_base
-from cupy._core._scalar cimport CScalar, scalar_to_c_scalar
+from cupy._core._scalar cimport CScalar
 from libc.stdint cimport (
     int8_t, int16_t, int32_t, int64_t,
     uint8_t, uint16_t, uint32_t, uint64_t,
@@ -180,110 +180,44 @@ cdef aclScalar* create_acl_scalar_from_py_str(str py_str):
 
 cdef aclScalar* cupy_scalar_to_acl_scalar(_cupy_scalar s) except*:
     """
-    将 CuPy 标量对象转换为 aclScalar。
+    将 CuPy 标量对象（CScalar）转换为 aclScalar。
+
+    CScalar 的值已经由 `_store_c_value()` 按 `descr`（numpy dtype）用
+    `PyArray_Pack` 打包到 `ptr`，内存布局就是 numpy dtype 的布局；因此这里
+    只需要两件事：
+      * dtype：`numpy_dtype_to_acl_dtype(s.descr)`（与 ndarray 通路同一张表）；
+      * 值：按 `s.descr.itemsize` 原样拷贝 `s.ptr` 指向的字节。
+    这也是为什么 CScalar 不需要额外暴露 kind/size（该 fork 改动已撤销，
+    见 cupy/_core/_scalar.pxd）。
     参数:
-        s: CuPy 标量对象，应具有 `dtype` 属性和数据指针访问方式。
+        s: CuPy CScalar，`descr` 给出 dtype，`ptr` 指向已打包的值。
     返回:
-        aclScalar: 转换后的 ACL 标量。
+        aclScalar: 转换后的 ACL 标量，由调用方负责 `_destroy_acl_scalar()`。
     异常:
-        TypeError: 如果输入不是预期的 CuPy 标量类型。
-        ValueError: 如果 dtype 转换失败或数据指针无效。
+        TypeError: dtype 无法映射到 aclDataType（字符串 / 结构化 / object）。
+        MemoryError: 临时 buffer 分配失败，或 aclCreateScalar 失败。
     """
     cdef void* value_ptr = NULL
     cdef aclScalar* acl_scalar = NULL
     cdef aclDataType dtype
     cdef string msg
-    
+    cdef int itemsize = s.descr.itemsize
+
+    if s.ptr == 0 or itemsize <= 0:
+        raise TypeError(
+            "cupy_scalar_to_acl_scalar: scalar holds no value ({})".format(
+                <object>s.descr))
+    dtype = numpy_dtype_to_acl_dtype(<object>s.descr)
+    if dtype == aclDataType.ACL_DT_UNDEFINED:
+        raise TypeError(
+            "cupy_scalar_to_acl_scalar: unsupported scalar dtype: {}".format(
+                <object>s.descr))
+
     try:
-        # 根据数据类型分配内存并复制值
-        # 剩余：'S' 字符串（create_acl_scalar_from_py_str，仅白名单算子）、
-        # 'O' object（不支持，也不该静默支持）。
-        if s.kind == 'i' and s.size == 8:  # 整数类型
-            value_ptr = PyMem_Malloc(sizeof(int64_t))
-            if value_ptr == NULL:
-                raise MemoryError("Failed to allocate memory for integer64 scalar")
-            (<int64_t*>value_ptr)[0] = (<int64_t*>s.ptr)[0]
-            dtype = ACL_INT64
-        elif s.kind == 'i' and s.size == 4:  # 整数类型
-            value_ptr = PyMem_Malloc(sizeof(int32_t))
-            if value_ptr == NULL:
-                raise MemoryError("Failed to allocate memory for integer32 scalar")
-            (<int32_t*>value_ptr)[0] = (<int32_t*>s.ptr)[0]
-            dtype = ACL_INT32
-        elif s.kind == 'i' and s.size == 2:  # 整数类型
-            value_ptr = PyMem_Malloc(sizeof(int16_t))
-            if value_ptr == NULL:
-                raise MemoryError("Failed to allocate memory for integer16 scalar")
-            (<int16_t*>value_ptr)[0] = (<int16_t*>s.ptr)[0]
-            dtype = ACL_INT16
-        elif s.kind == 'i' and s.size == 1:  # 整数类型int8
-            value_ptr = PyMem_Malloc(sizeof(signed char))
-            if value_ptr == NULL:
-                raise MemoryError("Failed to allocate memory for integer8 scalar")
-            (<signed char*>value_ptr)[0] = (<signed char*>s.ptr)[0]
-            dtype = ACL_INT8
-        elif s.kind == 'u':  # unsigned 整数类型
-            value_ptr = PyMem_Malloc(s.size)
-            if value_ptr == NULL:
-                raise MemoryError("Failed to allocate memory for unsigned scalar")
-            if s.size == 1:
-                (<uint8_t*>value_ptr)[0] = (<uint8_t*>s.ptr)[0]
-                dtype = ACL_UINT8
-            elif s.size == 2:
-                (<uint16_t*>value_ptr)[0] = (<uint16_t*>s.ptr)[0]
-                dtype = ACL_UINT16
-            elif s.size == 4:
-                (<uint32_t*>value_ptr)[0] = (<uint32_t*>s.ptr)[0]
-                dtype = ACL_UINT32
-            elif s.size == 8:
-                (<uint64_t*>value_ptr)[0] = (<uint64_t*>s.ptr)[0]
-                dtype = ACL_UINT64
-            else:
-                raise TypeError(f"Unsigned scalar of size {s.size} is not supported")
-        elif s.kind == 'f' and s.size == 8:  # 浮点类型
-            value_ptr = PyMem_Malloc(sizeof(double))
-            if value_ptr == NULL:
-                raise MemoryError("Failed to allocate memory for float64 scalar")
-            (<double*>value_ptr)[0] = (<double*>s.ptr)[0]
-            dtype = ACL_DOUBLE
-        elif s.kind == 'f' and s.size == 4:  # 浮点类型
-            value_ptr = PyMem_Malloc(sizeof(float))
-            if value_ptr == NULL:
-                raise MemoryError("Failed to allocate memory for float32 scalar")
-            (<float*>value_ptr)[0] = (<float*>s.ptr)[0]
-            dtype = ACL_FLOAT
-        elif s.kind == 'f' and s.size == 2:  # float16: stored as raw bits
-            value_ptr = PyMem_Malloc(sizeof(uint16_t))
-            if value_ptr == NULL:
-                raise MemoryError("Failed to allocate memory for float16 scalar")
-            (<uint16_t*>value_ptr)[0] = (<uint16_t*>s.ptr)[0]
-            dtype = ACL_FLOAT16
-        elif s.kind == 'c' or s.kind == 'C':  # complex
-            if s.size == 8:
-                value_ptr = PyMem_Malloc(s.size)
-                if value_ptr == NULL:
-                    raise MemoryError("Failed to allocate memory for complex64 scalar")
-                (<complex[float]*>value_ptr)[0] = (<complex[float]*>s.ptr)[0]
-                dtype = ACL_COMPLEX64
-            elif s.size == 16:
-                value_ptr = PyMem_Malloc(s.size)
-                if value_ptr == NULL:
-                    raise MemoryError("Failed to allocate memory for complex128 scalar")
-                (<complex[double]*>value_ptr)[0] = (<complex[double]*>s.ptr)[0]
-                dtype = ACL_COMPLEX128
-            else:
-                raise TypeError(f"Complex scalar of size {s.size} is not supported")
-        elif s.kind == 'S':  # string type is not supported by cupy.CScalar
-            raise TypeError("string scalar is not supported yet, TODO")
-        elif s.kind == 'b':  # bool
-            value_ptr = PyMem_Malloc(sizeof(bint))
-            if value_ptr == NULL:
-                raise MemoryError("Failed to allocate memory for bool scalar")
-            (<bint*>value_ptr)[0] = (<bint*>s.ptr)[0]
-            dtype = ACL_BOOL
-        else:
-            raise TypeError(f"Unsupported dtype kind: {s.kind}")
-        
+        value_ptr = PyMem_Malloc(itemsize)
+        if value_ptr == NULL:
+            raise MemoryError("Failed to allocate memory for scalar")
+        memcpy(value_ptr, <const void*>s.ptr, itemsize)
         acl_scalar = aclCreateScalar(value_ptr, dtype)
         if acl_scalar == NULL:
             msg = aclGetRecentErrMsg()
@@ -303,18 +237,20 @@ cdef aclScalar* cupy_scalar_to_acl_scalar(_cupy_scalar s) except*:
         raise MemoryError("Failed to create aclScalar with error %s" % e)
 
 cdef aclScalar* _convert_arg_to_acl_scalar(arg):
+    cdef CScalar pyarg
     typ = type(arg)
     if issubclass(typ, CScalar):
         return cupy_scalar_to_acl_scalar(arg)
     elif typ is str:
         return create_acl_scalar_from_py_str(arg)
     else:
-        pyarg = scalar_to_c_scalar(arg)
-        if pyarg:
-            return cupy_scalar_to_acl_scalar(pyarg)
-        else:
-            print("ASCEND: arg can not be converted to aclScalar: ", arg)
+        try:
+            pyarg = CScalar(arg)
+        except TypeError:
+            # 不可转换的类型交回调用方统一报错（_convert_arg 的
+            # NotImplementedError 带 opname/name 上下文）
             return NULL
+        return cupy_scalar_to_acl_scalar(pyarg)
 
 # ---------------------------------------------------------------------------
 # 参数（args/kwargs）校验 —— 见 docs/ascend/arg_passing_plan.md 阶段 1
@@ -1463,11 +1399,10 @@ cdef aclError launch_general_func_raw(str opname, sequence ins, sequence outs, l
                 # x/y/out dtype 不一致拒绝 —— 与 CUDA 路径的 in-kernel cast
                 # 不同，这是 Ascend 派发层的已知差距。
                 s = <_cupy_scalar>op
-                import numpy as _numpy_mod
                 import cupy as _cupy_mod
-                buf = _numpy_mod.empty(s.size, dtype=_numpy_mod.uint8)
-                memcpy(<void*>buf.ctypes.data, <const void*>s.ptr, s.size)
-                ns = _numpy_mod.frombuffer(buf, dtype=s.get_numpy_type())[0]
+                # to_numpy_scalar() 按 descr 解引用 ptr（numpy 标量），
+                # 不再需要 CScalar 暴露 size。
+                ns = s.to_numpy_scalar()
                 intensors.push_back(cupy_ndarray_to_acl_tensor(
                     _cupy_mod.array(ns)))
             else:
@@ -1966,6 +1901,8 @@ cdef void _parse_reduction_axes(object axes, object in0, vector[int64_t]& shape)
     """
     cdef _cupy_scalar ax_scalar
     cdef int64_t ax_val = 0
+    cdef char ax_kind = 0
+    cdef int ax_size = 0
     cdef Py_ssize_t n_dim = 0
     cdef Py_ssize_t i
     typ = type(axes)
@@ -1976,39 +1913,41 @@ cdef void _parse_reduction_axes(object axes, object in0, vector[int64_t]& shape)
     elif typ is _cupy_scalar:
         # reduction 的 axis 以 CScalar 传入。旧实现是 `pass`：shape 落空后走
         # 兜底 push_back(0) —— 无论请求哪个轴都按 0 归约（静默错误结果）。
-        # numpy 语义要求 axis 是整数：从 CScalar 的 kind/size 读出整数值；
-        # float/bool/complex 轴显式报错（cupy gpu 侧在 python 层就归一成 int，
-        # 见 _reduction.pyx::_get_axis -> internal._normalize_axis_index）。
+        # numpy 语义要求 axis 是整数：按 CScalar 的 descr（kind/itemsize）读出
+        # 整数值；float/bool/complex 轴显式报错（cupy gpu 侧在 python 层就归一成
+        # int，见 _reduction.pyx::_get_axis -> internal._normalize_axis_index）。
         ax_scalar = <_cupy_scalar>axes
         ax_val = 0
-        if ax_scalar.kind == 'i':
-            if ax_scalar.size == 8:
+        ax_kind = ax_scalar.descr.kind
+        ax_size = ax_scalar.descr.itemsize
+        if ax_kind == b'i':
+            if ax_size == 8:
                 ax_val = (<int64_t*>ax_scalar.ptr)[0]
-            elif ax_scalar.size == 4:
+            elif ax_size == 4:
                 ax_val = (<int32_t*>ax_scalar.ptr)[0]
-            elif ax_scalar.size == 2:
+            elif ax_size == 2:
                 ax_val = (<int16_t*>ax_scalar.ptr)[0]
-            elif ax_scalar.size == 1:
+            elif ax_size == 1:
                 ax_val = (<int8_t*>ax_scalar.ptr)[0]
             else:
                 raise TypeError(
-                    f'reduction axis: unsupported int width {ax_scalar.size}')
-        elif ax_scalar.kind == 'u':
-            if ax_scalar.size == 8:
+                    f'reduction axis: unsupported int width {ax_size}')
+        elif ax_kind == b'u':
+            if ax_size == 8:
                 ax_val = <int64_t>(<uint64_t*>ax_scalar.ptr)[0]
-            elif ax_scalar.size == 4:
+            elif ax_size == 4:
                 ax_val = <int64_t>(<uint32_t*>ax_scalar.ptr)[0]
-            elif ax_scalar.size == 2:
+            elif ax_size == 2:
                 ax_val = <int64_t>(<uint16_t*>ax_scalar.ptr)[0]
-            elif ax_scalar.size == 1:
+            elif ax_size == 1:
                 ax_val = <int64_t>(<uint8_t*>ax_scalar.ptr)[0]
             else:
                 raise TypeError(
-                    f'reduction axis: unsupported uint width {ax_scalar.size}')
+                    f'reduction axis: unsupported uint width {ax_size}')
         else:
             raise TypeError(
-                'reduction axis must be an integer scalar, got kind '
-                f'{ax_scalar.kind!r} ({type(axes).__name__})')
+                'reduction axis must be an integer scalar, got dtype '
+                f'{ax_scalar.descr!r} ({type(axes).__name__})')
         shape.push_back(ax_val)
     elif axes is None:
         # axis=None：numpy 语义 = 沿**全部轴**归约（_reduction._get_axis(None,

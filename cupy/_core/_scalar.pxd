@@ -29,18 +29,12 @@ cdef class CScalar(CPointer):
     @staticmethod
     cdef CScalar from_int32(int32_t value)
 
-    # Ascend (fork): materialize the scalar with the kernel loop dtype
-    @staticmethod
-    cdef CScalar from_numpy_scalar_with_dtype(object value, dtype)
-
     cdef inline void _free_ptr(self) noexcept
     cdef _store_c_value(self)
     cpdef apply_dtype(self, dtype)
     cpdef get_numpy_type(self)
     cpdef to_numpy_scalar(self)
 
-
-cpdef CScalar scalar_to_c_scalar(object value)
 
 cpdef str format_type_decls(set type_decls)
 

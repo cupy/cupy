@@ -296,7 +296,7 @@ cdef class _AbstractReductionKernel:
         type_map = _kernel._TypeMap(type_map._pairs + (index_type,))
 
         in_args = [x if isinstance(x, _ndarray_base) else
-                _scalar.CScalar.from_numpy_scalar_with_dtype(x, t)
+                _scalar.CScalar(x, t)
                 for x, t in zip(in_args, in_types)]
 
         key = ()

@@ -1000,7 +1000,7 @@ cdef class ufunc:
                 # 与 tensor/out 一致，ascend 内核内部不再做隐式 cast。
                 # 与 CUDA 路径语义一致（_gpu/_kernel.pyx:1374-1379）。
                 # 见 docs/ascend/dtype_promotion.md §2 问题 1 / §3.1。
-                s = _scalar.CScalar.from_numpy_scalar_with_dtype(x, t)
+                s = _scalar.CScalar(x, t)
             else:
                 # accept python int/float/bool and numpy.scalar
                 s = _scalar.CScalar(x)
