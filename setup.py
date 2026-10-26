@@ -92,8 +92,20 @@ optional_dependencies = {
         "mpmath",
     ],
 }
+setup_requires = []
 if not ctx.use_hip:
     dependencies.append("cuda-pathfinder>=1.3.4,==1.*")
+    if ctx.use_cuda_python:
+        # nvmath-python and cuda-bindings are needed to build and to run.
+        # cuda-bindings must match the CUDA major version. pip collects
+        # setup_requires via `egg_info`, before CUDA is probed, so read the
+        # version from cuda.h.
+        _cuda_major = cupy_builder.install_build.detect_cuda_major(ctx)
+        if _cuda_major is not None:
+            setup_requires = [
+                "nvmath-python>=1.0,<2",
+                f"cuda-bindings=={_cuda_major}.*",
+            ]
     # Same reasoning as the ext_modules guard: sdist/egg_info/dist_info
     # run on a CUDA-less builder, so skip the version-detecting [ctk]
     # computation. The wheel builder re-runs setup.py under bdist_wheel
@@ -103,12 +115,18 @@ if not ctx.use_hip:
         optional_dependencies["ctk"] = [
             f"cuda-toolkit[cudart,nvrtc,cublas,cufft,cusolver,cusparse,curand]=={cuda_major}.*"  # NOQA
         ]
+        if ctx.use_cuda_python:
+            dependencies += [
+                "nvmath-python>=1.0,<2",
+                f"cuda-bindings=={cuda_major}.*",
+            ]
 
 
 setup(
     long_description=long_description,
     long_description_content_type='text/x-rst',
     package_data=package_data,
+    setup_requires=setup_requires,
     install_requires=dependencies,
     extras_require=optional_dependencies,
     zip_safe=False,

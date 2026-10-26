@@ -95,12 +95,10 @@ def get_cuda_path():
 
 
 def detect_cuda_major(ctx: Context) -> int | None:
-    """Returns the CUDA major version from ``CUDA_VERSION`` in ``cuda.h``.
+    """Returns the CUDA major version read from ``cuda.h``, or ``None``.
 
-    Unlike ``CUDA_cuda.get_version()``, this does not compile anything, so it
-    can be used in setup phases where the full CUDA probe is skipped (e.g.,
-    ``egg_info`` run by PEP 517 ``get_requires_for_build_wheel``).
-    Returns ``None`` if ``cuda.h`` cannot be found.
+    Unlike ``CUDA_cuda.get_version()``, this compiles nothing, so it works
+    before CUDA is probed (e.g., in ``egg_info``).
     """
     include_dirs = ctx.include_dirs.copy()
     cuda_path = get_cuda_path()
