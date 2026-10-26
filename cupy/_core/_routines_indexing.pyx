@@ -267,13 +267,11 @@ cdef _ndarray_base _ndarray_put(_ndarray_base self, indices, values, mode):
         else:
             values = values.ravel()
         values = values.astype(self.dtype, copy=False)
-        if self.ndim == 1:
-            # ascend_index_put_impl is working for 1D array
-            launch_general_func("ascend_index_put_impl", [indices, values], [self],
-                [0, 0], {}, 0)  # accumulate=False, unsafe=False
-            return
+
         # ASCEND: TODO aclnnIndexPutImpl failed for ndim>1, BroadcastTo failed
-        # fallback to numpy
+        # `ascend_index_put_impl` (aclnnIndexPutImpl) crashes for several narrow dtypes
+        # (int8 1D array segfault and left device in a poisoined state)
+        # fallback to numpy on host
         import numpy as _np_put
         a_host =self.get()
         idx_host = indices.get()
