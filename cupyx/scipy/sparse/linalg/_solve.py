@@ -3,7 +3,13 @@ from __future__ import annotations
 import numpy
 
 import cupy
-from cupy import cublas
+from cupy.backends.backend import is_ascend
+if is_ascend:
+    # cupy.cublas is not built for Ascend; None mirrors
+    # the guard in cupy/cublas.py. Unimplemented paths fail at call time.
+    cublas = None
+else:
+    from cupy import cublas
 from cupy.cuda import device
 from cupy.cuda import runtime
 from cupy.linalg import _util
