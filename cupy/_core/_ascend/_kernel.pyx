@@ -995,6 +995,13 @@ cdef class ufunc:
             x = broad_values[i]
             if isinstance(x, _ndarray_base):
                 s = x
+            elif isinstance(x, _scalar.CScalar):
+                # CScalar refactor drops use_c_scalar=False code path
+                if x.descr is not None and x.descr.type != 'c':
+                    s = _scalar.CScalar.from_numpy_scalar_with_dtype(
+                        x.to_numpy_scalar(), t)
+                else:
+                    s = x
             elif isinstance(x, numpy.generic):
                 # M-D1: 标量按 loop dtype 物化（host 侧 cast）——aclScalar 的 dtype
                 # 与 tensor/out 一致，ascend 内核内部不再做隐式 cast。
