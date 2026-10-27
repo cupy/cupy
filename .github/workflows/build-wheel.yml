@@ -190,10 +190,11 @@ jobs:
       - name: Dump environment
         run: env
 
+      - name: Harden pip
+        uses: ./.github/actions/harden-pip
+
       - name: Install Python build deps
-        run: |
-          python -m pip install --upgrade pip
-          pip install tomli_w pyyaml twine
+        run: pip install tomli_w pyyaml twine
 
       # Install under RUNNER_TEMP so cibuildwheel doesn't copy the mini-CTK
       # (~1-2 GB) into /project on Linux; the container reaches it through the
@@ -251,7 +252,7 @@ jobs:
             ${{ startsWith(inputs.host-platform, 'linux-') && '--root-prefix /project/srcpkg' || '' }} >> "$GITHUB_ENV"
 
       - name: Build cupy-cuda${{ env.BUILD_CUDA_MAJOR }}x wheel
-        uses: pypa/cibuildwheel@adba99c781d3746d38b3a09b1cf797965bcb7fe6  # v4.3.0
+        uses: pypa/cibuildwheel@b9e566a2b284570af229f6c2a33673410d0389a3  # v4.3.4
         with:
           package-dir: ./srcpkg
           output-dir: wheelhouse
@@ -294,6 +295,7 @@ jobs:
             ACTIONS_CACHE_SERVICE_V2=${{ env.ACTIONS_CACHE_SERVICE_V2 }}
             SCCACHE_DIR=/host/${{ env.SCCACHE_DIR }}
             SCCACHE_CACHE_SIZE=${{ env.SCCACHE_CACHE_SIZE }}
+            CUPY_TEST_CYTHON_NOEXCEPT=1
           # Windows builds run natively (no container), so the ACTIONS_*
           # values would flow in from the job environment -- but set them
           # explicitly anyway so both platform blocks are self-contained.
@@ -308,6 +310,7 @@ jobs:
             ACTIONS_CACHE_SERVICE_V2=${{ env.ACTIONS_CACHE_SERVICE_V2 }}
             SCCACHE_DIR='${{ env.SCCACHE_DIR }}'
             SCCACHE_CACHE_SIZE=${{ env.SCCACHE_CACHE_SIZE }}
+            CUPY_TEST_CYTHON_NOEXCEPT=1
           CIBW_BEFORE_TEST_LINUX: >
             "/host/${{ env.SCCACHE_PATH }}" --show-adv-stats &&
             "/host/${{ env.SCCACHE_PATH }}" --show-stats --stats-format=json > /host/${{ github.workspace }}/sccache_cupy.json

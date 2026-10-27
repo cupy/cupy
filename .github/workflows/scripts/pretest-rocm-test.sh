@@ -8,10 +8,12 @@ export PIP_BREAK_SYSTEM_PACKAGES=1
 
 # The ROCm math/comm libraries (hipblas, rccl, rocfft, etc.) are already
 # shipped in the rocm/dev-ubuntu-24.04:*-full base image, so we only need to
-# make sure Python's dev headers and pip are available.
+# make sure Python's dev headers and pip are available. ca-certificates is
+# listed explicitly so apt upgrades it (Ubuntu's pip uses the system store,
+# which needs the update for the eMudhra/emSign CA incident).
 apt-get -y update
 DEBIAN_FRONTEND=noninteractive apt-get -y install \
-    python3-dev python3-pip python3-wheel
+    ca-certificates python3-dev python3-pip python3-wheel
 
 hipconfig
 

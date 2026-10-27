@@ -140,6 +140,9 @@ jobs:
         with:
           python-version: '3.13'
 
+      - name: Harden pip
+        uses: ./.github/actions/harden-pip
+
       - name: Setup Environment
         run: pip install pygithub
 
