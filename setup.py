@@ -116,9 +116,14 @@ if not ctx.use_hip:
             f"cuda-toolkit[cudart,nvrtc,cublas,cufft,cusolver,cusparse,curand]=={cuda_major}.*"  # NOQA
         ]
         if ctx.use_cuda_python:
+            # CuPy cimports from these packages, so the versions installed at
+            # run time must be at least as new as the ones it was built with.
+            nvmath_version, bindings_version = (
+                cupy_builder._command.get_cuda_python_versions(
+                    ctx.features["cuda"].get_version()))
             dependencies += [
-                "nvmath-python>=1.0,<2",
-                f"cuda-bindings=={cuda_major}.*",
+                f"nvmath-python>={nvmath_version},<2",
+                f"cuda-bindings>={bindings_version},<{cuda_major + 1}",
             ]
 
 

@@ -72,11 +72,15 @@ def compile_device_code(
     return sources_cpp, objects
 
 
-def check_cuda_python(cuda_version: int) -> None:
-    """Checks the packages cimported by CUDA Python builds."""
+def get_cuda_python_versions(cuda_version: int) -> tuple[str, str]:
+    """Checks the packages cimported by CUDA Python builds.
+
+    Returns the installed versions of nvmath-python and cuda-bindings.
+    """
     cuda_major = cuda_version // 1000
     try:
         cuda_bindings = importlib.import_module('cuda.bindings')
+        nvmath = importlib.import_module('nvmath')
         importlib.import_module('nvmath.bindings')
     except ImportError as e:
         raise RuntimeError(
@@ -87,6 +91,8 @@ def check_cuda_python(cuda_version: int) -> None:
         raise RuntimeError(
             f'cuda-bindings {bindings_version} does not match CUDA '
             f'{cuda_major}.x; install cuda-bindings=={cuda_major}.*')
+    # Local version labels (e.g., `+g1234abc`) are not allowed in `>=`.
+    return (nvmath.__version__.split('+')[0], bindings_version.split('+')[0])
 
 
 def _get_timestamp(path: str | os.PathLike[str]) -> float:
@@ -171,8 +177,6 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
             compile_time_env['CUPY_CUDA_VERSION'] = (
                 ctx.features['cuda'].get_version())
             compile_time_env['CUPY_HIP_VERSION'] = 0
-            if use_cuda_python:
-                check_cuda_python(compile_time_env['CUPY_CUDA_VERSION'])
 
         print('Compile-time constants: ' +
               json.dumps(compile_time_env, indent=4))
