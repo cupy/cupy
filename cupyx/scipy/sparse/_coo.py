@@ -766,6 +766,9 @@ class _coo_base(sparse_data._data_matrix):
                     'cupyx_scipy_sparse_coo_sum_duplicates_assign_complex'
                 )(src_data.real, src_data.imag, src_row, src_col, index,
                   data.real, data.imag, row, col)
+            else:
+                raise NotImplementedError(
+                    'sum_duplicates does not support this data dtype yet')
 
         self.data = data
         self.row = row
