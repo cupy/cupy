@@ -211,6 +211,10 @@ jobs:
       with:
         python-version: '3.13'
 
+    - name: Harden pip
+      if: steps.request.outputs.found == 'true'
+      uses: ./.github/actions/harden-pip
+
     - name: Setup Environment
       if: steps.request.outputs.found == 'true'
       run: pip install pygithub
