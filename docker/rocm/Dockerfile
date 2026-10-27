@@ -3,7 +3,7 @@ LABEL maintainer="CuPy Team"
 
 RUN apt-get update -y && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-    ca-certificates hipblas hipsparse rocsparse hiprand rocrand rocthrust rocsolver rocfft hipfft hipcub rocprim rccl && \
+    ca-certificates curl hipblas hipsparse rocsparse hiprand rocrand rocthrust rocsolver rocfft hipfft hipcub rocprim rccl && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends python3.12 && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
