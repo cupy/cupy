@@ -4,7 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import shlex  # requires Python 3.8
+import shlex
 import sys
 
 import yaml
@@ -21,20 +21,6 @@ SchemaType = Mapping[str, Any]
 # cupy/cupy CI. Bump as needed; required interface is just `gh run download`.
 GH_CLI_VERSION = '2.95.0'
 
-# pip 26.2.2 is the first release that no longer trusts the compromised
-# eMudhra/emSign intermediate CAs via its vendored certifi. It must be
-# bootstrapped from this hash-pinned URL: upgrading pip with an older pip would
-# download the new one over a connection that still trusts those CAs. Callers
-# then run `pip install -U pip` so pip is not frozen at this version.
-# Keep in sync with .github/actions/harden-pip/action.yml.
-# See https://discuss.python.org/t/109576
-PIP_SPEC = (
-    'pip @ https://files.pythonhosted.org/packages/3f/06/'
-    '3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/'
-    'pip-26.2.2-py3-none-any.whl'
-    '#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70'
-)
-
 PYTHON_LIBRARIES = (
     'numpy', 'scipy', 'optuna', 'mpi4py', 'ml_dtypes', 'cython',
     'cuda-python', 'nvmath-python', 'cuda-cccl',
@@ -42,18 +28,21 @@ PYTHON_LIBRARIES = (
 
 
 class Matrix:
+    # Kept out of _rec so that _inherits does not overwrite a parent's value
+    # with a default the child never set.
+    _DEFAULTS: dict[str, Any] = {
+        '_inherits': None,
+        '_extern': False,
+        # Whether a CUDA target installs the GHA wheel (fetch-wheel.sh)
+        # instead of building from source (build.sh). Ignored for ROCm; set
+        # `wheel: false` on CUDA targets that must build from source (e.g.
+        # the cuda-python compile-time variant).
+        'wheel': True,
+        'pip_extra_args': [],
+    }
+
     def __init__(self, record: Mapping[str, Any]):
-        self._rec: dict[str, Any] = {
-            '_inherits': None,
-            '_extern': False,
-            # Whether a CUDA target installs the GHA wheel (fetch-wheel.sh)
-            # instead of building from source (build.sh). Ignored for ROCm; set
-            # `wheel: false` on CUDA targets that must build from source (e.g.
-            # the cuda-python compile-time variant).
-            'wheel': True,
-            'pip_extra_args': [],
-        }
-        self._rec.update(record)
+        self._rec: dict[str, Any] = dict(record)
 
     def env(self) -> dict[str, Any]:
         envvars = {}
@@ -66,6 +55,8 @@ class Matrix:
     def __getattr__(self, key: str) -> Any:
         if key in self._rec:
             return self._rec[key]
+        if key in self._DEFAULTS:
+            return self._DEFAULTS[key]
         raise AttributeError(f'"{key}" not defined in matrix {self._rec}')
 
     def copy(self) -> Matrix:
@@ -268,10 +259,7 @@ class LinuxGenerator:
             f'    PYTHON_CONFIGURE_OPTS="--disable-shared"'
             f' pyenv install {py_spec} && \\',
             f'    pyenv global {py_spec} && \\',
-            '    # Remove the pinned pip once every Python in schema.yaml'
-            ' ships pip>=26.2.2 or blocks the eMudhra CAs.',
-            f'    pip install {shlex.quote(PIP_SPEC)} && \\',
-            '    pip install -U pip setuptools wheel && \\',
+            '    pip install --disable-pip-version-check -U pip setuptools wheel && \\',  # NOQA
             # For GCP kernel cache backend
             '    pip install -U google-cloud-storage',
             '',
@@ -454,6 +442,8 @@ class LinuxGenerator:
             lines += ['"$ACTIONS/example.sh"']
         elif matrix.test == 'benchmark':
             lines += ['"$ACTIONS/benchmark.sh"']
+        elif matrix.test == 'array-api':
+            lines += ['"$ACTIONS/array-api.sh"']
         else:
             raise AssertionError
 
