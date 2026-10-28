@@ -4,7 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import shlex  # requires Python 3.8
+import shlex
 import sys
 
 import yaml
@@ -28,18 +28,21 @@ PYTHON_LIBRARIES = (
 
 
 class Matrix:
+    # Kept out of _rec so that _inherits does not overwrite a parent's value
+    # with a default the child never set.
+    _DEFAULTS: dict[str, Any] = {
+        '_inherits': None,
+        '_extern': False,
+        # Whether a CUDA target installs the GHA wheel (fetch-wheel.sh)
+        # instead of building from source (build.sh). Ignored for ROCm; set
+        # `wheel: false` on CUDA targets that must build from source (e.g.
+        # the cuda-python compile-time variant).
+        'wheel': True,
+        'pip_extra_args': [],
+    }
+
     def __init__(self, record: Mapping[str, Any]):
-        self._rec: dict[str, Any] = {
-            '_inherits': None,
-            '_extern': False,
-            # Whether a CUDA target installs the GHA wheel (fetch-wheel.sh)
-            # instead of building from source (build.sh). Ignored for ROCm; set
-            # `wheel: false` on CUDA targets that must build from source (e.g.
-            # the cuda-python compile-time variant).
-            'wheel': True,
-            'pip_extra_args': [],
-        }
-        self._rec.update(record)
+        self._rec: dict[str, Any] = dict(record)
 
     def env(self) -> dict[str, Any]:
         envvars = {}
@@ -52,6 +55,8 @@ class Matrix:
     def __getattr__(self, key: str) -> Any:
         if key in self._rec:
             return self._rec[key]
+        if key in self._DEFAULTS:
+            return self._DEFAULTS[key]
         raise AttributeError(f'"{key}" not defined in matrix {self._rec}')
 
     def copy(self) -> Matrix:
@@ -126,7 +131,9 @@ class LinuxGenerator:
                 '       liblzma-dev \\',
                 '       libopenmpi-dev \\' if matrix.mpi4py else '\\',
                 '       && \\',
-                '    apt-get -qqy install ccache git curl && \\',
+                # Listing ca-certificates upgrades the base image's trust
+                # store, which can be years old.
+                '    apt-get -qqy install ca-certificates ccache git curl && \\',  # NOQA
                 '    apt-get -qqy --allow-change-held-packages \\',
                 '            --allow-downgrades install {}'.format(
                     shlex.join(self._additional_packages('apt'))
@@ -252,7 +259,7 @@ class LinuxGenerator:
             f'    PYTHON_CONFIGURE_OPTS="--disable-shared"'
             f' pyenv install {py_spec} && \\',
             f'    pyenv global {py_spec} && \\',
-            '    pip install -U setuptools pip wheel && \\',
+            '    pip install --disable-pip-version-check -U pip setuptools wheel && \\',  # NOQA
             # For GCP kernel cache backend
             '    pip install -U google-cloud-storage',
             '',
@@ -435,6 +442,8 @@ class LinuxGenerator:
             lines += ['"$ACTIONS/example.sh"']
         elif matrix.test == 'benchmark':
             lines += ['"$ACTIONS/benchmark.sh"']
+        elif matrix.test == 'array-api':
+            lines += ['"$ACTIONS/array-api.sh"']
         else:
             raise AssertionError
 
