@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import importlib
 import itertools
 import json
 import os
@@ -70,34 +69,6 @@ def compile_device_code(
         objects.append(obj)
 
     return sources_cpp, objects
-
-
-def get_cuda_python_versions(cuda_version: int) -> tuple[str, str]:
-    """Checks the packages cimported by CUDA Python builds.
-
-    Returns the installed versions of nvmath-python and cuda-bindings.
-    """
-    cuda_major = cuda_version // 1000
-    try:
-        cuda_bindings = importlib.import_module('cuda.bindings')
-        nvmath = importlib.import_module('nvmath')
-        importlib.import_module('nvmath.bindings')
-    except ImportError as e:
-        raise RuntimeError(
-            'CUPY_USE_CUDA_PYTHON requires nvmath-python and '
-            f'cuda-bindings=={cuda_major}.* to be installed: {e}') from e
-    bindings_version = cuda_bindings.__version__
-    if int(bindings_version.split('.')[0]) != cuda_major:
-        raise RuntimeError(
-            f'cuda-bindings {bindings_version} does not match CUDA '
-            f'{cuda_major}.x; install cuda-bindings=={cuda_major}.*')
-    nvmath_version = nvmath.__version__
-    if int(nvmath_version.split('.')[0]) != 1:
-        raise RuntimeError(
-            f'nvmath-python {nvmath_version} is not supported; install '
-            'nvmath-python>=1.0,<2')
-    # Local version labels (e.g., `+g1234abc`) are not allowed in `>=`.
-    return (nvmath_version.split('+')[0], bindings_version.split('+')[0])
 
 
 def _get_timestamp(path: str | os.PathLike[str]) -> float:
