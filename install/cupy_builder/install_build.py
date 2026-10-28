@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import contextlib
 import functools
+import importlib
 import logging
 import os
 import platform
@@ -92,6 +93,57 @@ def get_cuda_path():
         _cuda_path = None
 
     return _cuda_path
+
+
+def detect_cuda_major(ctx: Context) -> int | None:
+    """Returns the CUDA major version read from ``cuda.h``, or ``None``.
+
+    Unlike ``CUDA_cuda.get_version()``, this compiles nothing, so it works
+    before CUDA is probed (e.g., in ``egg_info``).
+    """
+    include_dirs = ctx.include_dirs.copy()
+    cuda_path = get_cuda_path()
+    if cuda_path:
+        include_dirs.append(os.path.join(cuda_path, 'include'))
+    include_dirs, _ = conda_update_dirs(include_dirs, [])
+
+    for include_dir in include_dirs:
+        cuda_h = os.path.join(include_dir, 'cuda.h')
+        if not os.path.isfile(cuda_h):
+            continue
+        with open(cuda_h, encoding='utf-8', errors='replace') as f:
+            m = re.search(r'^\s*#\s*define\s+CUDA_VERSION\s+(\d+)',
+                          f.read(), re.MULTILINE)
+        if m is not None:
+            return int(m.group(1)) // 1000
+    return None
+
+
+def get_cuda_python_versions(cuda_major: int) -> tuple[str, str]:
+    """Checks the packages cimported by CUDA Python builds.
+
+    Returns the installed versions of nvmath-python and cuda-bindings.
+    """
+    try:
+        cuda_bindings = importlib.import_module('cuda.bindings')
+        nvmath = importlib.import_module('nvmath')
+        importlib.import_module('nvmath.bindings')
+    except ImportError as e:
+        raise RuntimeError(
+            'CUPY_USE_CUDA_PYTHON requires nvmath-python and '
+            f'cuda-bindings=={cuda_major}.* to be installed: {e}') from e
+    bindings_version = cuda_bindings.__version__
+    if int(bindings_version.split('.')[0]) != cuda_major:
+        raise RuntimeError(
+            f'cuda-bindings {bindings_version} does not match CUDA '
+            f'{cuda_major}.x; install cuda-bindings=={cuda_major}.*')
+    nvmath_version = nvmath.__version__
+    if int(nvmath_version.split('.')[0]) != 1:
+        raise RuntimeError(
+            f'nvmath-python {nvmath_version} is not supported; install '
+            'nvmath-python>=1.0,<2')
+    # Local version labels (e.g., `+g1234abc`) are not allowed in `>=`.
+    return (nvmath_version.split('+')[0], bindings_version.split('+')[0])
 
 
 def get_nvcc_path() -> list[str]:
