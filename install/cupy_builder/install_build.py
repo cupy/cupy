@@ -119,12 +119,11 @@ def detect_cuda_major(ctx: Context) -> int | None:
     return None
 
 
-def get_cuda_python_versions(cuda_version: int) -> tuple[str, str]:
+def get_cuda_python_versions(cuda_major: int) -> tuple[str, str]:
     """Checks the packages cimported by CUDA Python builds.
 
     Returns the installed versions of nvmath-python and cuda-bindings.
     """
-    cuda_major = cuda_version // 1000
     try:
         cuda_bindings = importlib.import_module('cuda.bindings')
         nvmath = importlib.import_module('nvmath')

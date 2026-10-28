@@ -120,7 +120,7 @@ if not ctx.use_hip:
             # run time must be at least as new as the ones it was built with.
             nvmath_version, bindings_version = (
                 cupy_builder.install_build.get_cuda_python_versions(
-                    ctx.features["cuda"].get_version()))
+                    cuda_major))
             dependencies += [
                 f"nvmath-python>={nvmath_version},<2",
                 f"cuda-bindings>={bindings_version},<{cuda_major + 1}",

@@ -92,39 +92,39 @@ class TestGetCudaPythonVersions:
             sys.modules, 'nvmath.bindings',
             types.ModuleType('nvmath.bindings') if nvmath else None)
 
-    @pytest.mark.parametrize(('cuda_version', 'cuda_bindings_version'), [
-        (12000, '12.9.4'), (12090, '12.8.0'), (13000, '13.4.4')])
-    def test_ok(self, monkeypatch, cuda_version, cuda_bindings_version):
+    @pytest.mark.parametrize(('cuda_major', 'cuda_bindings_version'), [
+        (12, '12.9.4'), (12, '12.8.0'), (13, '13.4.4')])
+    def test_ok(self, monkeypatch, cuda_major, cuda_bindings_version):
         self._install(monkeypatch, cuda_bindings_version)
-        assert build.get_cuda_python_versions(cuda_version) == (
+        assert build.get_cuda_python_versions(cuda_major) == (
             '1.0.0', cuda_bindings_version)
 
     def test_local_version_dropped(self, monkeypatch):
         self._install(monkeypatch, '12.9.4+g1234abc',
                       nvmath_version='1.1.0.dev3+gabcdef0')
-        assert build.get_cuda_python_versions(12090) == (
+        assert build.get_cuda_python_versions(12) == (
             '1.1.0.dev3', '12.9.4')
 
     def test_major_mismatch(self, monkeypatch):
         self._install(monkeypatch, '13.4.4')
         with pytest.raises(RuntimeError, match='does not match CUDA 12.x'):
-            build.get_cuda_python_versions(12090)
+            build.get_cuda_python_versions(12)
 
     @pytest.mark.parametrize('nvmath_version', ['0.9.0', '2.0.0'])
     def test_nvmath_major_mismatch(self, monkeypatch, nvmath_version):
         self._install(monkeypatch, '12.9.4', nvmath_version=nvmath_version)
         with pytest.raises(RuntimeError, match='nvmath-python>=1.0,<2'):
-            build.get_cuda_python_versions(12090)
+            build.get_cuda_python_versions(12)
 
     def test_missing_nvmath(self, monkeypatch):
         self._install(monkeypatch, '12.9.4', nvmath=False)
         with pytest.raises(RuntimeError, match='requires nvmath-python'):
-            build.get_cuda_python_versions(12090)
+            build.get_cuda_python_versions(12)
 
     def test_missing_cuda_bindings(self, monkeypatch):
         monkeypatch.setitem(sys.modules, 'cuda.bindings', None)
         with pytest.raises(RuntimeError, match=r'cuda-bindings==12\.\*'):
-            build.get_cuda_python_versions(12090)
+            build.get_cuda_python_versions(12)
 
 
 class TestCheckVersion(unittest.TestCase):
