@@ -91,8 +91,13 @@ def get_cuda_python_versions(cuda_version: int) -> tuple[str, str]:
         raise RuntimeError(
             f'cuda-bindings {bindings_version} does not match CUDA '
             f'{cuda_major}.x; install cuda-bindings=={cuda_major}.*')
+    nvmath_version = nvmath.__version__
+    if int(nvmath_version.split('.')[0]) != 1:
+        raise RuntimeError(
+            f'nvmath-python {nvmath_version} is not supported; install '
+            'nvmath-python>=1.0,<2')
     # Local version labels (e.g., `+g1234abc`) are not allowed in `>=`.
-    return (nvmath.__version__.split('+')[0], bindings_version.split('+')[0])
+    return (nvmath_version.split('+')[0], bindings_version.split('+')[0])
 
 
 def _get_timestamp(path: str | os.PathLike[str]) -> float:

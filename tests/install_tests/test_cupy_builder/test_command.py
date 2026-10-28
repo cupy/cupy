@@ -57,6 +57,12 @@ class TestGetCudaPythonVersions:
         with pytest.raises(RuntimeError, match='does not match CUDA 12.x'):
             get_cuda_python_versions(12090)
 
+    @pytest.mark.parametrize('nvmath_version', ['0.9.0', '2.0.0'])
+    def test_nvmath_major_mismatch(self, monkeypatch, nvmath_version):
+        self._install(monkeypatch, '12.9.4', nvmath_version=nvmath_version)
+        with pytest.raises(RuntimeError, match='nvmath-python>=1.0,<2'):
+            get_cuda_python_versions(12090)
+
     def test_missing_nvmath(self, monkeypatch):
         self._install(monkeypatch, '12.9.4', nvmath=False)
         with pytest.raises(RuntimeError, match='requires nvmath-python'):
