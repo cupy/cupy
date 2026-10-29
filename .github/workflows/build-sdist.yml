@@ -11,8 +11,13 @@ name: Build CuPy sdist
 #     ``cupy/_core/include/cupy/{_cccl,xsf,_jitify,_dlpack}`` and packs the
 #     real files into the tarball, so downstream wheel builds (including
 #     Windows) get portable, symlink-free source.
-#   * CUPY_INSTALL_USE_STUB=1 skips CUDA extension detection during the
-#     sdist build (see install/cupy_builder/_context.py).
+#   * setup.py skips the CUDA probe + [ctk] extras computation when
+#     ctx.setup_command is one of {sdist, egg_info, dist_info}: these
+#     cover both direct `python setup.py sdist` and the PEP 517
+#     prep phases (get_requires_for_build_sdist / prepare_metadata_*)
+#     that `python -m build --sdist` goes through on a CUDA-less
+#     runner. `bdist_wheel` is a separate setup() invocation on the
+#     wheel builders, so the probe + [ctk] both run normally there.
 on:
   workflow_call:
     inputs:
@@ -38,21 +43,22 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout ${{ github.event.repository.name }}
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           ref: ${{ inputs.ref }}
           fetch-depth: 1
           submodules: recursive
 
       - name: Set up Python
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
         with:
           python-version: "3.12"
 
+      - name: Harden pip
+        uses: ./.github/actions/harden-pip
+
       - name: Install Python build deps
-        run: |
-          python -m pip install --upgrade pip
-          pip install build twine
+        run: pip install build twine
 
       - name: Prepare sdist build
         run: python ci/tools/prepare_sdist_build.py >> "$GITHUB_ENV"
@@ -67,7 +73,7 @@ jobs:
         run: ls -lahR dist
 
       - name: Upload sdist artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: cupy-sdist-${{ inputs.artifact-suffix }}
           path: dist/*.tar.gz

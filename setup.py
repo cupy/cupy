@@ -53,7 +53,21 @@ package_data = {
 package_data['cupy'] += cupy_setup_build.prepare_wheel_libs(ctx)
 
 
-ext_modules = cupy_setup_build.get_ext_modules(True, ctx)
+# CUDA-less setup.py invocations: direct `sdist`, and PEP 517's
+# get_requires_for_build_sdist, which setuptools backs with
+# `setup.py egg_info`. Both must skip the CUDA probe + [ctk] so the
+# sdist builder can run without a CUDA toolkit.
+#
+# Do NOT add `dist_info` here: that's the subcommand setuptools uses
+# for `prepare_metadata_for_build_wheel` (and _for_build_editable).
+# Pip resolves extras (`pip install .[ctk]`) from that prepared
+# metadata, so skipping [ctk] in dist_info silently drops the toolkit
+# wheels. bdist_wheel is a separate setup() invocation on the wheel
+# builders where the probe + [ctk] both run normally.
+_sdist_phase = ctx.setup_command in {'sdist', 'egg_info'}
+
+ext_modules = [] if _sdist_phase else cupy_setup_build.get_ext_modules(
+    True, ctx)
 
 
 long_description = ''
@@ -67,7 +81,7 @@ dependencies = [
 ]
 optional_dependencies = {
     "all": [
-        "scipy>=1.14,<1.18",  # see #4773
+        "scipy>=1.14,<1.19",  # see #4773
         "Cython>=3,!=3.2.6",
         "optuna>=2.0",
     ],
@@ -78,19 +92,46 @@ optional_dependencies = {
         "mpmath",
     ],
 }
+setup_requires = []
 if not ctx.use_hip:
     dependencies.append("cuda-pathfinder>=1.3.4,==1.*")
-    if not ctx.use_stub:
+    if ctx.use_cuda_python:
+        # nvmath-python and cuda-bindings are needed to build and to run.
+        # cuda-bindings must match the CUDA major version. pip collects
+        # setup_requires via `egg_info`, before CUDA is probed, so read the
+        # version from cuda.h.
+        _cuda_major = cupy_builder.install_build.detect_cuda_major(ctx)
+        if _cuda_major is not None:
+            setup_requires = [
+                "nvmath-python>=1.0,<2",
+                f"cuda-bindings=={_cuda_major}.*",
+            ]
+    # Same reasoning as the ext_modules guard: sdist/egg_info/dist_info
+    # run on a CUDA-less builder, so skip the version-detecting [ctk]
+    # computation. The wheel builder re-runs setup.py under bdist_wheel
+    # with CUDA available and populates [ctk] then.
+    if not _sdist_phase:
         cuda_major = ctx.features["cuda"].get_version() // 1000
         optional_dependencies["ctk"] = [
             f"cuda-toolkit[cudart,nvrtc,cublas,cufft,cusolver,cusparse,curand]=={cuda_major}.*"  # NOQA
         ]
+        if ctx.use_cuda_python:
+            # CuPy cimports from these packages, so the versions installed at
+            # run time must be at least as new as the ones it was built with.
+            nvmath_version, bindings_version = (
+                cupy_builder.install_build.get_cuda_python_versions(
+                    cuda_major))
+            dependencies += [
+                f"nvmath-python>={nvmath_version},<2",
+                f"cuda-bindings>={bindings_version},<{cuda_major + 1}",
+            ]
 
 
 setup(
     long_description=long_description,
     long_description_content_type='text/x-rst',
     package_data=package_data,
+    setup_requires=setup_requires,
     install_requires=dependencies,
     extras_require=optional_dependencies,
     zip_safe=False,

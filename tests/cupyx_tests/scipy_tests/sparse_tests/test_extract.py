@@ -3,6 +3,7 @@ from __future__ import annotations
 import unittest
 
 import numpy
+import pytest
 try:
     import scipy.sparse
     scipy_available = True
@@ -39,6 +40,11 @@ class TestExtract(unittest.TestCase):
             b = sparse.coo_matrix(b)
         return a, b
 
+    # For dense input `tril` returns a sparse array from SciPy 1.20 on.
+    # TODO: return sparse arrays for dense input before allowing SciPy 1.20.
+    @pytest.mark.filterwarnings(
+        'ignore:`tril` is switching to the sparse array interface'
+        ':DeprecationWarning')
     @testing.for_dtypes('fdFD')
     def test_tril(self, dtype):
         np_a, cp_a = self._make_matrix(dtype)
@@ -50,6 +56,11 @@ class TestExtract(unittest.TestCase):
             assert np_out.nnz == cp_out.nnz
             cupy.testing.assert_allclose(np_out.todense(), cp_out.todense())
 
+    # For dense input `triu` returns a sparse array from SciPy 1.20 on.
+    # TODO: return sparse arrays for dense input before allowing SciPy 1.20.
+    @pytest.mark.filterwarnings(
+        'ignore:`triu` is switching to the sparse array interface'
+        ':DeprecationWarning')
     @testing.for_dtypes('fdFD')
     def test_triu(self, dtype):
         np_a, cp_a = self._make_matrix(dtype)

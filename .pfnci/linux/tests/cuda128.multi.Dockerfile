@@ -1,5 +1,5 @@
 # AUTO GENERATED: DO NOT EDIT!
-ARG BASE_IMAGE="nvidia/cuda:12.8.0-devel-ubuntu20.04"
+ARG BASE_IMAGE="nvidia/cuda:12.8.0-devel-ubuntu24.04"
 FROM ${BASE_IMAGE}
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
@@ -12,7 +12,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
        liblzma-dev \
        libopenmpi-dev \
        && \
-    apt-get -qqy install ccache git curl && \
+    apt-get -qqy install ca-certificates ccache git curl && \
     apt-get -qqy --allow-change-held-packages \
             --allow-downgrades install 'libnccl2=2.26.*+cuda12.8' 'libnccl-dev=2.26.*+cuda12.8'
 
@@ -24,9 +24,10 @@ RUN curl -fsSL https://github.com/cli/cli/releases/download/v2.95.0/gh_2.95.0_li
 RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
-RUN PYTHON_CONFIGURE_OPTS="--disable-shared" pyenv install 3.12.11 && \
-    pyenv global 3.12.11 && \
-    pip install -U setuptools pip wheel && \
+RUN git -C /opt/pyenv pull --ff-only && \
+    PYTHON_CONFIGURE_OPTS="--disable-shared" pyenv install 3.12.16 && \
+    pyenv global 3.12.16 && \
+    pip install --disable-pip-version-check -U pip setuptools wheel && \
     pip install -U google-cloud-storage
 
 RUN pip install -U 'numpy==2.3.*' 'scipy==1.15.*' 'optuna==4.*' 'mpi4py==4.*' 'ml_dtypes==0.5.*' 'cython==3.2.*,!=3.2.6'

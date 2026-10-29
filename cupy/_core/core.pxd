@@ -15,8 +15,9 @@ cdef class _ndarray_base:
         public strides_t _strides
         readonly bint _c_contiguous
         readonly bint _f_contiguous
-        # Whether the array memory can be addressed with 32bit signed
-        # integers. To do fast indexing in the CArray class.
+        # Whether the array's memory span and size are below 2**31,
+        # enabling fast signed 32-bit indexing in the CArray class.
+        # The bound is strict so that sizes are also representable.
         readonly bint _index_32_bits
         readonly object dtype
         readonly memory.MemoryPointer data
@@ -48,8 +49,6 @@ cdef class _ndarray_base:
     cpdef put(self, indices, values, mode=*)
     cpdef repeat(self, repeats, axis=*)
     cpdef choose(self, choices, out=*, mode=*)
-    cpdef sort(self, int axis=*, kind=*)
-    cpdef _ndarray_base argsort(self, axis=*, kind=*)
     cpdef partition(self, kth, int axis=*)
     cpdef _ndarray_base argpartition(self, kth, axis=*)
     cpdef tuple nonzero(self)
@@ -107,6 +106,9 @@ cpdef Module compile_with_cache(str source, tuple options=*, arch=*,
                                 enable_cooperative_groups=*,
                                 name_expressions=*, log_stream=*,
                                 bint jitify=*)
+
+cpdef bytes compile_to_ltoir(str source, tuple options=*, arch=*,
+                             bint prepend_cupy_headers=*, log_stream=*)
 
 
 # TODO(niboshi): Move to _routines_creation.pyx

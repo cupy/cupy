@@ -72,8 +72,7 @@ def __getattr__(key):
             try:
                 pathfinder.load_nvidia_dynamic_lib("nvrtc")
             except pathfinder.DynamicLibNotFoundError as e:
-                if (not (_os.environ.get('READTHEDOCS') == 'True') and
-                        not (_os.environ.get('CUPY_CI') is not None)):
+                if _os.environ.get('CUPY_CI') is None:
                     raise ImportError(str(e)) from e
             import cupy.cuda.jitify as jitify
         else:
@@ -86,8 +85,7 @@ def __getattr__(key):
             try:
                 pathfinder.load_nvidia_dynamic_lib("cufft")
             except pathfinder.DynamicLibNotFoundError as e:
-                if (not (_os.environ.get('READTHEDOCS') == 'True') and
-                        not (_os.environ.get('CUPY_CI') is not None)):
+                if _os.environ.get('CUPY_CI') is None:
                     raise ImportError(str(e)) from e
         return _importlib.import_module('cupy.cuda.cufft')
 
@@ -167,8 +165,7 @@ from cupy.cuda.graph import Graph  # NOQA
 
 @contextlib.contextmanager
 def using_allocator(allocator=None):
-    """Sets a thread-local allocator for GPU memory inside
-       context manager
+    """Sets a thread-local allocator for GPU memory inside a context manager.
 
     Args:
         allocator (function): CuPy memory allocator. It must have the same

@@ -26,6 +26,9 @@ PRELOAD_LIBRARIES: dict[str, dict[str, tuple[str, ...]]] = {
         "linux-64": ("cutensor", "nccl"),
         "linux-aarch64": ("cutensor", "nccl"),
         "win-64": ("cutensor",),
+        # No cuTENSOR / NCCL redist for Windows ARM64 yet (as of CTK 13.4).
+        # Revisit once NVIDIA ships those binaries; see cupy/cupy#10294.
+        "win-arm64": (),
     },
 }
 

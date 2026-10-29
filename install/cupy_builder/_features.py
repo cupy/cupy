@@ -106,6 +106,8 @@ _cuda_files = [
     'cupy_backends.cuda._softlink',
     'cupy._core._accelerator',
     'cupy._core._carray',
+    'cupy._core._cuda_compute_reduction',
+    'cupy._core._cuda_compute_common',
     'cupy._core._cuda_compute_scan',
     'cupy._core._cub_reduction',
     'cupy._core._dtype',
@@ -195,6 +197,8 @@ def get_features(ctx: Context) -> dict[str, Feature]:
         'check_method': build.check_hip_version,
         'version_method': build.get_hip_version,
     }
+    # With CUDA Python, cuSOLVER is used via nvmath-python, which loads it at
+    # runtime.
     CUDA_cusolver = {
         'name': 'cusolver',
         'required': True,
@@ -202,10 +206,10 @@ def get_features(ctx: Context) -> dict[str, Feature]:
             'cupy_backends.cuda.libs.cusolver',
             'cupyx._cusolver',
         ],
-        'include': [
+        'include': [] if ctx.use_cuda_python else [
             'cusolverDn.h',
         ],
-        'libraries': [
+        'libraries': [] if ctx.use_cuda_python else [
             'cusolver',
         ],
     }
@@ -443,21 +447,24 @@ class CUDA_cuda(Feature):
             'cupy.fft._callback',
         ]
         self.includes = [
-            'cublas_v2.h',
             'cuda.h',
             'cuda_profiler_api.h',
             'cuda_runtime.h',
             'cufft.h',
             'curand.h',
-            'cusparse.h',
         ]
         self.libraries = (
             # CUDA Runtime
             _cudart_static_libs +
 
             # CUDA Toolkit
-            ['cublas', 'cufft', 'curand', 'cusparse']
+            ['cufft', 'curand']
         )
+        # With CUDA Python, cuBLAS and cuSPARSE are used via nvmath-python,
+        # which loads them at runtime.
+        if not ctx.use_cuda_python:
+            self.includes += ['cublas_v2.h', 'cusparse.h']
+            self.libraries += ['cublas', 'cusparse']
         self.static_libraries = ['cudart_static']
         self._version = self._UNDETERMINED
 

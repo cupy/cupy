@@ -32,7 +32,7 @@ ndtr = _core.create_ufunc(
     'out0 = normcdf(in0)',
     doc='''Cumulative distribution function of normal distribution.
 
-    .. seealso:: :data:`scipy.special.ndtr`
+    .. seealso:: :func:`scipy.special.ndtr`
 
     ''')
 
@@ -102,7 +102,7 @@ ndtri = _core.create_ufunc(
     doc='''Inverse of the cumulative distribution function of the standard
            normal distribution.
 
-    .. seealso:: :data:`scipy.special.ndtri`
+    .. seealso:: :func:`scipy.special.ndtri`
 ''')
 
 
@@ -650,7 +650,7 @@ fdtrc = _core.create_ufunc(
         The complemented F-distribution function with parameters dfn and dfd at
         x.
 
-    .. seealso:: :meth:`scipy.special.fdtrc`
+    .. seealso:: :func:`scipy.special.fdtrc`
 
     """,
 )
@@ -679,7 +679,7 @@ fdtri = _core.create_ufunc(
     y : cupy.ndarray
         The quantile corresponding to p.
 
-    .. seealso:: :meth:`scipy.special.fdtri`
+    .. seealso:: :func:`scipy.special.fdtri`
 
     """,
 )
@@ -707,7 +707,7 @@ fdtr = _core.create_ufunc(
     y : cupy.ndarray
         The CDF of the F-distribution with parameters dfn and dfd at x.
 
-    .. seealso:: :meth:`scipy.special.fdtr`
+    .. seealso:: :func:`scipy.special.fdtr`
 
     """,
 )

@@ -213,6 +213,13 @@ class TestChoose(unittest.TestCase):
         c = testing.shaped_arange((3, 4), xp, dtype)
         return a.choose(c)
 
+    @testing.with_requires('numpy>=2.6.0.dev0')
+    @testing.numpy_cupy_array_equal()
+    def test_choose_uint64(self, xp):
+        a = xp.array([0, 2, 1, 2], dtype=xp.uint64)
+        choices = xp.arange(12).reshape(3, 4)
+        return xp.choose(a, choices)
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_array_equal()
     def test_choose_broadcast(self, xp, dtype):

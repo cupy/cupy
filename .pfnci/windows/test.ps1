@@ -74,17 +74,37 @@ function Main {
     # Build
     echo "Setting up test environment"
     RunOrDie python -V
-    RunOrDie python -m pip install -U pip setuptools wheel
+    $gil_disabled = (& python -c "import sysconfig; print('1' if sysconfig.get_config_var('Py_GIL_DISABLED') else '0')").Trim() -eq '1'
+    if ($python.EndsWith("t") -xor $gil_disabled) {
+        throw "Python interpreter GIL mismatch: requested $python, Py_GIL_DISABLED=$gil_disabled"
+    }
+    # Bootstrap pip from a hash-pinned URL first: older pip releases still
+    # trust the compromised eMudhra/emSign CAs and cannot upgrade themselves
+    # safely. Keep in sync with .github/actions/harden-pip/action.yml.
+    # Remove the pinned pip once the uv-seeded pip is >= 26.2.2 or the
+    # uv-managed Python's ssl module blocks the eMudhra CAs.
+    RunOrDie python -m pip install --disable-pip-version-check "pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70"
+    RunOrDie python -m pip install --disable-pip-version-check -U pip setuptools wheel
     RunOrDie python -m pip install -U google-cloud-storage  # For GCP kernel cache backend
     RunOrDie python -m pip freeze
 
     echo "Building..."
     $build_retval = 0
     RunOrDie python -m pip install "numpy==$numpy.*" "scipy==$scipy.*" "Cython==3.2.*,!=3.2.6"
-    if ($cuda.StartsWith("12.")) {
-        RunOrDie python -m pip install "cuda-cccl[minimal-sysctk12]>=1.1.1"
+    # TODO(seberg): Install cuda-cccl on Python 3.15 once releases are available.
+    if ($python.StartsWith("3.15")) {
+        echo "Skipping cuda-cccl: no Python 3.15 release available"
+    # TODO(leofang): remove this win.cuda124 carve-out once NVIDIA/cccl#11885
+    # is fixed and a cuda-cccl release NVVM-links cleanly against CTK 12.4.
+    } elseif ($cuda -eq "12.4") {
+        # cccl 1.2.1's bitcode trips a duplicate __half(__nv_bfloat16)
+        # symbol when NVVM-linked against CTK 12.4. Skip the install so
+        # cuda.compute is unavailable on this lane, matching linux.cuda124
+        # (which pip-uninstalls cccl in its Dockerfile).
+    } elseif ($cuda.StartsWith("12.")) {
+        RunOrDie python -m pip install "cuda-cccl[minimal-sysctk12]>=1.1.1,!=1.2.0"
     } else {
-        RunOrDie python -m pip install "cuda-cccl[minimal-sysctk13]>=1.1.1"
+        RunOrDie python -m pip install "cuda-cccl[minimal-sysctk13]>=1.1.1,!=1.2.0"
     }
 
     # Fetch the CuPy wheel built by GHA (.github/workflows/ci.yml -> build-wheel.yml)
@@ -220,6 +240,16 @@ function Main {
         $pytest_opts = "-m", "slow"
     } else {
         throw "Unsupported test target: $target"
+    }
+
+    RunOrDie python -m pip install pytest-run-parallel
+
+    if ($python.EndsWith("t")) {
+        # Limit OpenBLAS threads when running free-threaded tests in parallel.
+        # To avoid apparent threading issue in sparse eighs tests.
+        $Env:OMP_NUM_THREADS = "1"
+        $Env:CUPY_TEST_RANDOM_SUBSAMPLE = "1"
+        $pytest_opts += "--parallel-threads", "2"
     }
 
     # The fetched wheel can be built with a different CUDA minor than this

@@ -40,7 +40,6 @@ class TestContext:
         assert ctx.setup_command == ''
         assert not ctx.use_cuda_python
         assert not ctx.use_hip
-        assert not ctx.use_stub
         assert ctx.include_dirs == []
         assert ctx.library_dirs == []
         assert ctx.long_description_path is None

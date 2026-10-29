@@ -11,9 +11,9 @@ system:
 ###############################################################################
 # Name and version of the operating system to test on.
 os:
-  "ubuntu:20.04":
-    system: "linux"
   "ubuntu:22.04":    # CUDA 11.7+
+    system: "linux"
+  "ubuntu:24.04":    # CUDA 12.5.1+
     system: "linux"
   "centos:7":
     system: "linux"
@@ -74,6 +74,9 @@ cuda:
     repository: "nvidia/cuda"
   "13.3":
     full_version: "13.3.0"
+    repository: "nvidia/cuda"
+  "13.4":
+    full_version: "13.4.1"
     repository: "nvidia/cuda"
 rocm:
   null:
@@ -178,6 +181,10 @@ nccl:
     spec: "2.30.*"
     cuda:
       "13.3":
+  "2.31":
+    spec: "2.31.*"
+    cuda:
+      "13.4":
 cutensor:
   # https://docs.nvidia.com/cuda/cutensor/
   # https://developer.nvidia.com/cutensor/downloads
@@ -199,6 +206,7 @@ cutensor:
       "13.1":
       "13.2":
       "13.3":
+      "13.4":
 cusparselt:
   # https://docs.nvidia.com/cuda/cusparselt/
   # https://developer.nvidia.com/cusparselt/downloads
@@ -215,6 +223,15 @@ cusparselt:
       "13.1":
       "13.2":
       "13.3":
+      "13.4":
+  "0.10.0":
+    spec: "0.10.0.*"
+    cuda:
+      "13.0":
+      "13.1":
+      "13.2":
+      "13.3":
+      "13.4":
 
 ###############################################################################
 # Python
@@ -224,20 +241,25 @@ cusparselt:
 # When adding a new Python version, you may also need to add the version to the
 # list of supported Python versions in the Python libraries.
 python:
-  "3.10":
-    spec: "3.10.18"
+  # Keep at or above the releases whose ssl module blocks the compromised
+  # eMudhra/emSign CAs (https://discuss.python.org/t/109576); the generated
+  # Dockerfiles rely on this instead of bootstrapping a hash-pinned pip.
   "3.11":
-    spec: "3.11.13"
+    spec: "3.11.18"
   "3.12":
-    spec: "3.12.11"
+    spec: "3.12.16"
   "3.13":
-    spec: "3.13.8"
+    spec: "3.13.18"
   "3.14":
-    spec: "3.14.6"
+    spec: "3.14.10"
   "3.14t":
-    spec: "3.14t"
+    spec: "3.14.10t"
+  "3.15":
+    spec: "3.15.2"
+  "3.15t":
+    spec: "3.15.2t"
   "pre":
-    spec: "3.15-dev"  # note that dependency python libraies may not work
+    spec: "3.16-dev"  # note that dependency python libraies may not work
 
 ###############################################################################
 # Python Libraries
@@ -250,19 +272,16 @@ numpy:
   "2.0":
     spec: "==2.0.*"
     python:
-      - "3.10"
       - "3.11"
       - "3.12"
   "2.1":
     spec: "==2.1.*"
     python:
-      - "3.10"
       - "3.11"
       - "3.12"
   "2.2":
     spec: "==2.2.*"
     python:
-      - "3.10"
       - "3.11"
       - "3.12"
       - "3.13"
@@ -290,8 +309,10 @@ numpy:
       - "3.13"
       - "3.14"
       - "3.14t"
+      - "3.15"
+      - "3.15t"
   "pre":
-    spec: ">=0a0"  # latest, including pre-releases
+    spec: ">=0a0"
 scipy:
   # https://docs.scipy.org/doc/scipy/dev/toolchain.html#numpy
   null:
@@ -301,7 +322,6 @@ scipy:
   "1.14":
     spec: "==1.14.*"
     python:
-      - "3.10"
       - "3.11"
       - "3.12"
       - "3.13"
@@ -312,7 +332,6 @@ scipy:
   "1.15":
     spec: "==1.15.*"
     python:
-      - "3.10"
       - "3.11"
       - "3.12"
       - "3.13"
@@ -350,8 +369,25 @@ scipy:
       - "2.3"
       - "2.4"
       - "2.5"
+  "1.18":
+    spec: "==1.18.*"
+    python:
+      # Python 3.11 support was dropped in SciPy 1.18.
+      - "3.12"
+      - "3.13"
+      - "3.14"
+      - "3.14t"
+      - "3.15"
+      - "3.15t"
+    numpy:
+      - "2.0"
+      - "2.1"
+      - "2.2"
+      - "2.3"
+      - "2.4"
+      - "2.5"
   "pre":
-    spec: ">=0a0"  # latest, including pre-releases
+    spec: ">=0a0,<2.0"  # TODO(seberg): allow nightlies
 optuna:
   null:
     spec: null
@@ -359,6 +395,8 @@ optuna:
     spec: "==3.*"
   "4":
     spec: "==4.*"
+  "5":
+    spec: "==5.*"
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
 ml_dtypes:
@@ -374,11 +412,11 @@ mpi4py:
   "4":
     spec: "==4.*"
     python:
-      - "3.10"
       - "3.11"
       - "3.12"
       - "3.13"
       - "3.14"
+      - "3.15"
 cython:
   "3.2":
     spec: "==3.2.*,!=3.2.6"
@@ -393,6 +431,8 @@ cuda-python:
     spec: "==13.2.*"
   "13.3":
     spec: "==13.3.*"
+  "13.4":
+    spec: "==13.4.*"
 nvmath-python:
   null:
     spec: null
@@ -402,9 +442,9 @@ cuda-cccl:
   null:
     spec: null
   "cu12":
-    spec: "[minimal-sysctk12]>=1.1.1"
+    spec: "[minimal-sysctk12]>=1.1.1,!=1.2.0"
   "cu13":
-    spec: "[minimal-sysctk13]>=1.1.1"
+    spec: "[minimal-sysctk13]>=1.1.1,!=1.2.0"
 
 ###############################################################################
 # Environment Variables
@@ -427,3 +467,4 @@ test:
   "unit-slow":
   "example":
   "benchmark":
+  "array-api":

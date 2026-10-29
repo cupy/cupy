@@ -1,5 +1,5 @@
 # AUTO GENERATED: DO NOT EDIT!
-ARG BASE_IMAGE="nvidia/cuda:12.9.1-devel-ubuntu20.04"
+ARG BASE_IMAGE="nvidia/cuda:12.9.1-devel-ubuntu24.04"
 FROM ${BASE_IMAGE}
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
@@ -12,7 +12,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
        liblzma-dev \
 \
        && \
-    apt-get -qqy install ccache git curl && \
+    apt-get -qqy install ca-certificates ccache git curl && \
     apt-get -qqy --allow-change-held-packages \
             --allow-downgrades install 'libnccl2=2.26.*+cuda12.9' 'libnccl-dev=2.26.*+cuda12.9' 'libcutensor2-cuda-12=2.4.*' 'libcutensor2-dev-cuda-12=2.4.*'
 
@@ -27,12 +27,13 @@ ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/libcutensor/12:${LD_LIBRARY_PATH}
 RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
-RUN PYTHON_CONFIGURE_OPTS="--disable-shared" pyenv install 3.12.11 && \
-    pyenv global 3.12.11 && \
-    pip install -U setuptools pip wheel && \
+RUN git -C /opt/pyenv pull --ff-only && \
+    PYTHON_CONFIGURE_OPTS="--disable-shared" pyenv install 3.12.16 && \
+    pyenv global 3.12.16 && \
+    pip install --disable-pip-version-check -U pip setuptools wheel && \
     pip install -U google-cloud-storage
 
-RUN pip install -U 'numpy==2.3.*' 'scipy==1.16.*' 'optuna==4.*' 'cython==3.2.*,!=3.2.6' 'cuda-python==12.*' 'nvmath-python==1.*' 'cuda-cccl[minimal-sysctk12]>=1.1.1'
+RUN pip install -U 'numpy==2.3.*' 'scipy==1.16.*' 'optuna==4.*' 'cython==3.2.*,!=3.2.6' 'cuda-python==12.*' 'nvmath-python==1.*' 'cuda-cccl[minimal-sysctk12]>=1.1.1,!=1.2.0'
 RUN pip uninstall -y mpi4py ml_dtypes && \
     pip check
 

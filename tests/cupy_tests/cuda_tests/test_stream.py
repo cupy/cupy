@@ -138,8 +138,7 @@ class TestStream:
             with stream2:
                 assert stream2 == cuda.get_current_stream()
             assert stream1 == cuda.get_current_stream()
-        # self.stream is "forgotten"!
-        assert cuda.Stream.null == cuda.get_current_stream()
+        assert stream == cuda.get_current_stream()
 
     @pytest.mark.parametrize('stream_name', ['null', 'ptds'])
     @restore_stream()
@@ -183,6 +182,7 @@ class TestStream:
         # See cupy/cupy#5143
         s1 = cuda.Stream()
         s2 = cuda.Stream()
+        s2_ptr = s2.ptr
         s3 = cuda.Stream()
         assert cuda.get_current_stream() == stream
         with s1:
@@ -191,10 +191,33 @@ class TestStream:
             assert cuda.get_current_stream() == s2
             with s3:
                 assert cuda.get_current_stream() == s3
+                # The restoration stack must keep s2 alive.
                 del s2
-            assert cuda.get_current_stream() == s1
-        # self.stream is "forgotten"!
-        assert cuda.get_current_stream() == cuda.Stream.null
+            assert cuda.get_current_stream().ptr == s2_ptr
+        assert cuda.get_current_stream() == stream
+
+    @restore_stream()
+    def test_mix_use_context_reset(self):
+        # See cupy/cupy#8377
+        s1 = cuda.Stream()
+        s2 = cuda.Stream()
+        s1.use()
+        assert cuda.get_current_stream() == s1
+        with s2:
+            assert cuda.get_current_stream() == s2
+        assert cuda.get_current_stream() == s1
+
+    @testing.multi_gpu(2)
+    @restore_stream()
+    def test_bad_use_device(self):
+        # Test that a stray/bad `Device().use()` doesn't corrupt state.
+        with cuda.Device(0), cuda.Stream(null=True):
+            with cuda.Device(1), cuda.Stream(ptds=True):
+                with cuda.Stream(null=True):
+                    cuda.Device(0).use()  # switch current device!
+                # The above should have had no effect (except changing device)
+                assert cuda.get_current_stream(0) == cuda.Stream.null
+                assert cuda.get_current_stream(1) == cuda.Stream.ptds
 
     @restore_stream()
     def test_stream_thread(self):

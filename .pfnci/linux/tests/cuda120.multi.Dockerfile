@@ -1,5 +1,5 @@
 # AUTO GENERATED: DO NOT EDIT!
-ARG BASE_IMAGE="nvidia/cuda:12.0.1-devel-ubuntu20.04"
+ARG BASE_IMAGE="nvidia/cuda:12.0.1-devel-ubuntu22.04"
 FROM ${BASE_IMAGE}
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
@@ -12,9 +12,9 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
        liblzma-dev \
        libopenmpi-dev \
        && \
-    apt-get -qqy install ccache git curl && \
+    apt-get -qqy install ca-certificates ccache git curl && \
     apt-get -qqy --allow-change-held-packages \
-            --allow-downgrades install 'libnccl2=2.17.*+cuda12.0' 'libnccl-dev=2.17.*+cuda12.0' 'libcutensor2-cuda-12=2.4.*' 'libcutensor2-dev-cuda-12=2.4.*'
+            --allow-downgrades install 'libnccl2=2.18.*+cuda12.0' 'libnccl-dev=2.18.*+cuda12.0' 'libcutensor2-cuda-12=2.4.*' 'libcutensor2-dev-cuda-12=2.4.*'
 
 ENV PATH "/usr/lib/ccache:${PATH}"
 
@@ -27,9 +27,10 @@ ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/libcutensor/12:${LD_LIBRARY_PATH}
 RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
-RUN PYTHON_CONFIGURE_OPTS="--disable-shared" pyenv install 3.10.18 && \
-    pyenv global 3.10.18 && \
-    pip install -U setuptools pip wheel && \
+RUN git -C /opt/pyenv pull --ff-only && \
+    PYTHON_CONFIGURE_OPTS="--disable-shared" pyenv install 3.11.18 && \
+    pyenv global 3.11.18 && \
+    pip install --disable-pip-version-check -U pip setuptools wheel && \
     pip install -U google-cloud-storage
 
 RUN pip install -U 'numpy==2.0.*' 'scipy==1.14.*' 'optuna==3.*' 'mpi4py==4.*' 'ml_dtypes==0.5.*' 'cython==3.2.*,!=3.2.6'

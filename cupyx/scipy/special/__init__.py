@@ -47,6 +47,7 @@ from cupyx.scipy.special._statistics import boxcox  # NOQA
 from cupyx.scipy.special._statistics import boxcox1p  # NOQA
 from cupyx.scipy.special._statistics import inv_boxcox  # NOQA
 from cupyx.scipy.special._statistics import inv_boxcox1p  # NOQA
+from cupyx.scipy.special._spfun_stats import poisson_binom_cdf  # NOQA
 
 # Information Theory functions
 from cupyx.scipy.special._convex_analysis import entr  # NOQA
@@ -79,8 +80,12 @@ from cupyx.scipy.special._poch import poch  # NOQA
 from cupyx.scipy.special._erf import erf  # NOQA
 from cupyx.scipy.special._erf import erfc  # NOQA
 from cupyx.scipy.special._erf import erfcx  # NOQA
+from cupyx.scipy.special._erfi import erfi  # NOQA
 from cupyx.scipy.special._erf import erfinv  # NOQA
 from cupyx.scipy.special._erf import erfcinv  # NOQA
+from cupyx.scipy.special._wofz import wofz  # NOQA
+from cupyx.scipy.special._dawsn import dawsn  # NOQA
+from cupyx.scipy.special._voigt_profile import voigt_profile  # NOQA
 
 # Legendre functions
 from cupyx.scipy.special._lpmv import lpmv  # NOQA

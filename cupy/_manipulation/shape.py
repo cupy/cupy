@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy
+import warnings
 
 import cupy
 
@@ -22,14 +23,14 @@ def shape(a):
         return numpy.shape(a)
 
 
-def reshape(a, newshape, order='C', *, copy=None):
+def reshape(a, /, shape=None, order='C', *, newshape=None, copy=None):
     """Returns an array with new shape and same elements.
 
     It tries to return a view if possible, otherwise returns a copy.
 
     Args:
         a (cupy.ndarray): Array to be reshaped.
-        newshape (int or tuple of ints): The new shape of the array to return.
+        shape (int or tuple of ints): The new shape of the array to return.
             If it is an integer, then it is treated as a tuple of length one.
             It should be compatible with ``a.size``. One of the elements can be
             -1, which is automatically replaced with the appropriate value to
@@ -46,6 +47,10 @@ def reshape(a, newshape, order='C', *, copy=None):
             underlying array, and only refer to the order of indexing. 'A'
             means to read / write the elements in Fortran-like index order if
             a is Fortran contiguous in memory, C-like order otherwise.
+        newshape (int or tuple of ints):
+            .. deprecated:: 14.3.0
+                Replaced by ``shape`` argument. Retained for backward
+                compatibility.
         copy (bool or optional): If ``True``, then the array data is copied. If
             ``None``, a copy will only be made if it's required by ``order``.
             For ``False`` it raises a ``ValueError`` if a copy cannot be
@@ -57,8 +62,25 @@ def reshape(a, newshape, order='C', *, copy=None):
     .. seealso:: :func:`numpy.reshape`
 
     """
+    if newshape is None and shape is None:
+        raise TypeError(
+            "reshape() missing 1 required positional argument: 'shape'")
+    if newshape is not None:
+        if shape is not None:
+            raise TypeError(
+                "You cannot specify 'newshape' and 'shape' arguments "
+                "at the same time.")
+        # Deprecated in CuPy 14.3.0, 2026-08-31
+        warnings.warn(
+            "`newshape` keyword argument is deprecated, "
+            "use `shape=...` or pass shape positionally instead. "
+            "(deprecated in CuPy 14.3.0)",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        shape = newshape
     # TODO(okuta): check type
-    return a.reshape(newshape, order=order, copy=copy)
+    return a.reshape(shape, order=order, copy=copy)
 
 
 def ravel(a, order='C'):
