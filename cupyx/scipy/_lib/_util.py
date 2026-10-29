@@ -5,6 +5,21 @@ import math
 import cupy
 
 
+def _get_index_type(*arrays, max_size=0):
+    """Choose a RawModule index type for all inputs, outputs and workspace.
+
+    ``max_size`` also accounts for intermediate products that can exceed an
+    array's size (for example an output position times a resampling factor).
+    Leave room for padded thread indices in the usual 128-thread blocks.
+    """
+    if (max_size <= 0x7fffffff and
+            all(a is None or (a._index_32_bits and
+                              a.size <= 0x7fffffff - 128)
+                for a in arrays)):
+        return 'int'
+    return 'long long'
+
+
 def float_factorial(n):
     """Compute the factorial and return as a float
 

@@ -466,3 +466,57 @@ class TestArgrel:
         rel_max_rows, rel_max_cols = scp.signal.argrelmax(
             test_data_2, axis=1, order=1)
         return rel_max_rows, rel_max_cols
+
+
+def _require_memory(nbytes):
+    free, _ = cupy.cuda.runtime.memGetInfo()
+    if free < nbytes:
+        pytest.skip('not enough GPU memory for the large-array regression')
+
+
+@testing.slow
+@pytest.mark.thread_unsafe(reason='Large GPU allocations.')
+class TestPeakFindingLarge:
+    # Inputs with more than INT_MAX elements (gh-10290). These tests were
+    # written by @seberg in gh-10382.
+
+    @pytest.fixture(autouse=True)
+    def release_memory(self):
+        cupy.get_default_memory_pool().free_all_blocks()
+        yield
+        cupy.get_default_memory_pool().free_all_blocks()
+
+    def test_peak_prominences_large_input(self):
+        _require_memory(4 << 30)
+        x = cupy.zeros(2**31 + 5, dtype=cupy.int8)
+        peak = 2**31 + 2
+        x[peak] = 2
+        peaks = cupy.array([peak], dtype=cupy.int64)
+        prominence, left, right = cupyx.scipy.signal.peak_prominences(
+            x, peaks, wlen=3)
+        testing.assert_array_equal(prominence, [2])
+        testing.assert_array_equal(left, [peak - 1])
+        testing.assert_array_equal(right, [peak + 1])
+        widths, heights, left_ip, right_ip = cupyx.scipy.signal.peak_widths(
+            x, peaks, prominence_data=(prominence, left, right))
+        testing.assert_array_equal(widths, [1])
+        testing.assert_array_equal(heights, [1])
+        testing.assert_array_equal(left_ip, [peak - 0.5])
+        testing.assert_array_equal(right_ip, [peak + 0.5])
+
+    def test_argrelmax_large_flat_offsets(self):
+        _require_memory(8 << 30)
+        x = cupy.zeros((65537, 32769), dtype=cupy.int8)
+        x[-1, -2] = 1
+        rows, cols = cupyx.scipy.signal.argrelmax(x, axis=1)
+        testing.assert_array_equal(rows, [65536])
+        testing.assert_array_equal(cols, [32767])
+
+
+def test_argrelmax_many_rows():
+    # Cross gridDim.y's limit with a modest allocation (gh-10382).
+    x = cupy.zeros((2**20 + 1, 3), dtype=cupy.int8)
+    x[-1, 1] = 1
+    rows, cols = cupyx.scipy.signal.argrelmax(x, axis=1)
+    testing.assert_array_equal(rows, [2**20])
+    testing.assert_array_equal(cols, [1])
