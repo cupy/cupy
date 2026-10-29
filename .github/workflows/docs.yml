@@ -206,22 +206,26 @@ jobs:
             echo "promote_stable=false" >> "${GITHUB_OUTPUT}"
           fi
 
-      - name: Read python.doc.version from ci/versions.yml
+      - name: Read python.doc.* from ci/versions.yml
         if: steps.compute.outputs.proceed == 'true'
         id: pyver
-        run: echo "value=$(yq '.python.doc.version' ci/versions.yml)" >> "${GITHUB_OUTPUT}"
+        run: |
+          {
+            echo "label=$(yq '.python.doc.version' ci/versions.yml)"
+            echo "spec=$(yq '.python.doc.setup_spec' ci/versions.yml)"
+          } >> "${GITHUB_OUTPUT}"
 
       - name: Set up Python
         if: steps.compute.outputs.proceed == 'true'
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
         with:
-          python-version: ${{ steps.pyver.outputs.value }}
+          python-version: ${{ steps.pyver.outputs.spec }}
 
       - name: Download cupy wheel from triggering CI run
         if: steps.compute.outputs.proceed == 'true'
         uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0  # v5.0.0
         with:
-          name: cupy-cuda13x-py${{ steps.pyver.outputs.value }}-linux-64-${{ steps.compute.outputs.suffix }}
+          name: cupy-cuda13x-py${{ steps.pyver.outputs.label }}-linux-64-${{ steps.compute.outputs.suffix }}
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: ./wheel
