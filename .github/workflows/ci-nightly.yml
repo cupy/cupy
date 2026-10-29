@@ -138,10 +138,10 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
-          python-version: '3.13'
+          python-version: '~3.13.18'
 
       - name: Harden pip
-        uses: ./.github/actions/harden-pip
+        uses: ./.github/actions/update-pip
 
       - name: Setup Environment
         run: pip install pygithub

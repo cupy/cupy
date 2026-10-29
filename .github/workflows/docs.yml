@@ -231,7 +231,7 @@ jobs:
       # warnings that bubble up as unresolved references in the HTML.
       - name: Harden pip
         if: steps.compute.outputs.proceed == 'true'
-        uses: ./.github/actions/harden-pip
+        uses: ./.github/actions/update-pip
 
       - name: Install docs requirements + cupy[ctk] + nccl
         if: steps.compute.outputs.proceed == 'true'
@@ -307,15 +307,15 @@ jobs:
       # --version-name/--version-type/--commit flags bypass the CLI's
       # GitHub env inference, which would resolve every workflow_run to
       # main/branch.
-      # This job has no checkout (it holds RTD_API_TOKEN), so the pip
-      # hardening is inlined rather than using ./.github/actions/harden-pip.
-      # Keep the pip URL in sync with .github/actions/harden-pip/action.yml.
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: '~3.12.16'
       - name: Install readthedocs-upload
         run: |
-          python3 -m pip install --user --disable-pip-version-check "pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70"
-          python3 -m pip install --user --disable-pip-version-check --upgrade pip
-          python3 -m pip --version
-          python3 -m pip install --user readthedocs-upload==1.0.0a1
+          python -m pip install --disable-pip-version-check --upgrade pip
+          python -m pip --version
+          python -m pip install readthedocs-upload==1.0.0a1
 
       # Non-fatal when the token is unset (forks, secret rotation).
       # PR-origin values flow via env, not ${{ }} interpolation into

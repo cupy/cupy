@@ -17,4 +17,4 @@ python:
   # Single Python version used by the `/test doc-only` lane and by RTD's
   # docs.yml wheel install step.
   doc:
-    version: "3.12"
+    version: "~3.12.16"
