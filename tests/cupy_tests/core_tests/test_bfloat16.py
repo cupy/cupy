@@ -86,7 +86,8 @@ def test_sorting_empty_or_singleton(shape, func):
     a = cupy.zeros(shape, dtype=BF16)
     result = getattr(cupy, func)(a)
     assert result.shape == shape
-    assert result.dtype == (BF16 if func == 'sort' else numpy.dtype(numpy.intp))
+    assert result.dtype == (
+        BF16 if func == 'sort' else numpy.dtype(numpy.intp))
     testing.assert_array_equal(result.astype(numpy.float32),
                                numpy.zeros(shape, dtype=numpy.float32))
 
