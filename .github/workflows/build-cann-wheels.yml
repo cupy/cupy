@@ -164,9 +164,13 @@ jobs:
             . /opt/venv/bin/activate
 
             # Build requirements must be pre-installed for --no-isolation
-            # (keep in sync with pyproject.toml [build-system].requires).
+            # (keep in sync with pyproject.toml [build-system].requires:
+            # setuptools>=77, wheel, Cython>=3.2,<3.3, numpy>=2.0).
+            # NOTE: Cython is capped at <3.3 on purpose -- upstream CuPy main
+            # (a3851f0f1) uses the same `Cython>=3.2,<3.3` ceiling, so 3.3 is
+            # not yet validated; do not relax this without testing.
             uv pip install "pip>=24" "setuptools>=77" wheel \
-              "Cython>=3,<3.2" fastrlock "numpy>=1.24,<2.6" build
+              "Cython>=3.2,<3.3" fastrlock "numpy>=2.0,<2.7" build
 
             python -V
             python -m build --wheel --no-isolation -o /src/dist
