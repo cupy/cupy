@@ -30,6 +30,115 @@ TEST_VALUES = numpy.array(
     dtype=BF16)
 
 
+@pytest.mark.parametrize('axis', [None, 0, 1, -1])
+@pytest.mark.parametrize('shape', [(16,), (2, 8)])
+@pytest.mark.parametrize('descending', [False, True])
+@pytest.mark.parametrize('use_method', [False, True])
+@pytest.mark.parametrize('func', ['sort', 'argsort'])
+def test_sorting(func, use_method, descending, axis, shape):
+    if axis == 1 and len(shape) == 1:
+        pytest.skip('axis out of bounds')
+    if use_method and func == 'sort' and axis is None:
+        pytest.skip('ndarray.sort requires an integer axis')
+
+    # Include duplicate values, signed zeros, NaNs of both signs, and values
+    # outside float16's range. Use float32 as the reference so NumPy's sorting
+    # order for ml_dtypes does not affect the expected NaN placement.
+    values = numpy.array([
+        numpy.nan, 3, -0., 1e30, -numpy.inf, 3, numpy.inf, 0.,
+        -numpy.nan, -1e30, 1e-30, -1e-30, -2, 3, numpy.nan, 0.,
+    ], dtype=BF16).reshape(shape)
+    reference = values.astype(numpy.float32)
+    keys = -reference if descending else reference
+    indices = numpy.argsort(keys, axis=axis, kind='stable')
+    if func == 'argsort':
+        expected = indices
+    elif axis is None:
+        expected = reference.ravel()[indices]
+    else:
+        expected = numpy.take_along_axis(reference, indices, axis=axis)
+
+    a = cupy.asarray(values)
+    if use_method:
+        result = getattr(a, func)(axis=axis, descending=descending)
+        if func == 'sort':
+            result = a
+    else:
+        result = getattr(cupy, func)(a, axis=axis, descending=descending)
+    if func == 'sort':
+        assert result.dtype == BF16
+        result = result.astype(numpy.float32)
+    testing.assert_array_equal(result, expected)
+
+
+def test_lexsort():
+    keys = numpy.array([
+        [3, 1, 2, 1, numpy.nan, -numpy.inf, 1, numpy.inf],
+        [0, 0, 0, 0, numpy.nan, 0, 0, numpy.nan],
+    ], dtype=BF16)
+    expected = numpy.lexsort(keys.astype(numpy.float32))
+    testing.assert_array_equal(cupy.lexsort(cupy.asarray(keys)), expected)
+
+
+@pytest.mark.parametrize('shape', [(0,), (2, 0), (0, 3), (1,)])
+@pytest.mark.parametrize('func', ['sort', 'argsort'])
+def test_sorting_empty_or_singleton(shape, func):
+    a = cupy.zeros(shape, dtype=BF16)
+    result = getattr(cupy, func)(a)
+    assert result.shape == shape
+    assert result.dtype == (BF16 if func == 'sort' else numpy.dtype(numpy.intp))
+    testing.assert_array_equal(result.astype(numpy.float32),
+                               numpy.zeros(shape, dtype=numpy.float32))
+
+
+@pytest.mark.parametrize('side', ['left', 'right'])
+@pytest.mark.parametrize('use_sorter', [False, True])
+@pytest.mark.parametrize('query_dtype', [BF16, numpy.float32, numpy.int32])
+def test_searchsorted(side, use_sorter, query_dtype):
+    values = TEST_VALUES.astype(numpy.float32)
+    queries = numpy.array([-10, -1, 0, 1, 2, 10], dtype=query_dtype)
+    if query_dtype != numpy.int32:
+        queries = numpy.concatenate([
+            queries, numpy.array([numpy.nan, -numpy.inf, numpy.inf],
+                                 dtype=query_dtype)])
+    sorter = numpy.argsort(values, kind='stable') if use_sorter else None
+    if not use_sorter:
+        values = numpy.sort(values)
+    expected = numpy.searchsorted(values, queries.astype(numpy.float32),
+                                  side=side, sorter=sorter)
+    result = cupy.searchsorted(
+        cupy.asarray(values.astype(BF16)), cupy.asarray(queries), side=side,
+        sorter=None if sorter is None else cupy.asarray(sorter))
+    testing.assert_array_equal(result, expected)
+
+
+@pytest.mark.parametrize('right', [False, True])
+@pytest.mark.parametrize('decreasing', [False, True])
+def test_digitize(right, decreasing):
+    bins = numpy.array([-numpy.inf, -1, 0, 0, 1, numpy.inf], dtype=BF16)
+    if decreasing:
+        bins = bins[::-1].copy()
+    expected = numpy.digitize(TEST_VALUES.astype(numpy.float32),
+                              bins.astype(numpy.float32), right=right)
+    result = cupy.digitize(cupy.asarray(TEST_VALUES), cupy.asarray(bins),
+                           right=right)
+    testing.assert_array_equal(result, expected)
+
+
+@pytest.mark.parametrize('func', ['partition', 'argpartition'])
+@pytest.mark.parametrize('size', [16, 20000])
+def test_partition(func, size):
+    # Exercise both the Thrust fallback and the partial-selection kernels.
+    values = numpy.random.default_rng(0).normal(size=size).astype(BF16)
+    a = cupy.asarray(values)
+    result = getattr(cupy, func)(a, 5)
+    if func == 'argpartition':
+        result = a[result]
+    expected = numpy.sort(values.astype(numpy.float32))[:6]
+    testing.assert_array_equal(
+        cupy.sort(result[:6]).astype(numpy.float32), expected)
+
+
 @pytest.mark.parametrize("start,stop,step", [
     (0, 10, 1),
     (0, 10, 2),

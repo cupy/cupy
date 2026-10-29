@@ -11,6 +11,28 @@
 #include <new>
 #include <type_traits>
 
+#if defined(CUPY_USE_HIP)
+#include <hip/hip_bf16.h>
+using thrust_bfloat16 = __hip_bfloat16;
+#define ENABLE_BFLOAT16
+#elif __CUDACC_VER_MAJOR__ >= 11
+#include <cuda_bf16.h>
+using thrust_bfloat16 = __nv_bfloat16;
+#define ENABLE_BFLOAT16
+#endif
+
+// Keep bfloat16 instantiations local to Thrust: dtype_dispatcher is also
+// used by CUB operations that do not yet support this dtype.
+template <class functor_t, typename... Ts>
+void thrust_dtype_dispatcher(int dtype_id, functor_t f, Ts&&... args) {
+#ifdef ENABLE_BFLOAT16
+    if (dtype_id == CUPY_TYPE_BFLOAT16) {
+        return f.template operator()<thrust_bfloat16>(std::forward<Ts>(args)...);
+    }
+#endif
+    return dtype_dispatcher(dtype_id, f, std::forward<Ts>(args)...);
+}
+
 
 #if CUPY_USE_HIP
 typedef hipStream_t cudaStream_t;
@@ -86,6 +108,12 @@ __host__ __device__ __forceinline__ bool isnan(const __half& x) {
     #endif
 }
 #endif // ENABLE_HALF
+
+#ifdef ENABLE_BFLOAT16
+__host__ __device__ __forceinline__ bool isnan(const thrust_bfloat16& x) {
+    return isnan(static_cast<float>(x));
+}
+#endif
 
 template <bool Descending, typename T>
 __host__ __device__ __forceinline__ constexpr
@@ -323,6 +351,31 @@ struct select_cmp<thrust::tuple<size_t, __half>, Descending> {
 };
 #endif  // ENABLE_HALF
 
+#ifdef ENABLE_BFLOAT16
+template <bool Descending>
+struct select_cmp<thrust_bfloat16, Descending> {
+    struct type {
+        __host__ __device__ __forceinline__ constexpr
+        bool operator() (const thrust_bfloat16& lhs,
+                         const thrust_bfloat16& rhs) const {
+            return real_cmp<Descending>(lhs, rhs);
+        }
+    };
+};
+
+template <bool Descending>
+struct select_cmp<thrust::tuple<size_t, thrust_bfloat16>, Descending> {
+    struct type {
+        __host__ __device__ __forceinline__ constexpr
+        bool operator() (
+            const thrust::tuple<size_t, thrust_bfloat16>& lhs,
+            const thrust::tuple<size_t, thrust_bfloat16>& rhs) const {
+            return tuple_cmp<Descending>(lhs, rhs);
+        }
+    };
+};
+#endif  // ENABLE_BFLOAT16
+
 /*
  * -------------------------------------------------- end of boilerplate --------------------------------------------------
  */
@@ -534,9 +587,9 @@ void thrust_sort(int dtype_id, void *data_start, size_t *keys_start,
 
     // Make the direction compile-time, so each sort below is written only once.
     if (descending) {
-        return dtype_dispatcher(dtype_id, _sort<true>{}, data_start, keys_start, shape, stream, memory);
+        return thrust_dtype_dispatcher(dtype_id, _sort<true>{}, data_start, keys_start, shape, stream, memory);
     }
-    return dtype_dispatcher(dtype_id, _sort<false>{}, data_start, keys_start, shape, stream, memory);
+    return thrust_dtype_dispatcher(dtype_id, _sort<false>{}, data_start, keys_start, shape, stream, memory);
 }
 
 
@@ -545,7 +598,7 @@ void thrust_lexsort(int dtype_id, size_t *idx_start, void *keys_start, size_t k,
     size_t n, intptr_t stream, void *memory) {
 
     _lexsort op;
-    return dtype_dispatcher(dtype_id, op, idx_start, keys_start, k, n, stream, memory);
+    return thrust_dtype_dispatcher(dtype_id, op, idx_start, keys_start, k, n, stream, memory);
 }
 
 
@@ -554,9 +607,9 @@ void thrust_argsort(int dtype_id, size_t *idx_start, void *data_start,
     void *keys_start, const std::vector<ptrdiff_t>& shape, intptr_t stream, void *memory, bool descending) {
 
     if (descending) {
-        return dtype_dispatcher(dtype_id, _argsort<true>{}, idx_start, data_start, keys_start,
+        return thrust_dtype_dispatcher(dtype_id, _argsort<true>{}, idx_start, data_start, keys_start,
                                 shape, stream, memory);
     }
-    return dtype_dispatcher(dtype_id, _argsort<false>{}, idx_start, data_start, keys_start,
+    return thrust_dtype_dispatcher(dtype_id, _argsort<false>{}, idx_start, data_start, keys_start,
                             shape, stream, memory);
 }
