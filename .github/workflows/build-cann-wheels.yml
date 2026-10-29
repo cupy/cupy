@@ -48,7 +48,7 @@ on:
         default: "8.5.1-910b-ubuntu22.04-py3.11,9.0.1-a3-ubuntu22.04-py3.11"
       pythons:
         description: "Comma-separated CPython versions"
-        default: "3.11,3.12"
+        default: "3.10,3.11,3.12,3.13"
       archs:
         description: "Comma-separated archs (x86_64, aarch64)"
         default: "x86_64,aarch64"

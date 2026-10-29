@@ -30,6 +30,7 @@ classifiers = [
   "Intended Audience :: Developers",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
@@ -42,7 +43,7 @@ classifiers = [
   "Operating System :: POSIX",
   "Operating System :: Microsoft :: Windows",
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 # `dependencies` / `optional-dependencies` are filled in by setup.py
 # (install_requires / extras_require), see the dynamic list below.
 dynamic = [
