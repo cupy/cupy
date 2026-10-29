@@ -125,7 +125,11 @@ jobs:
           # yq -o json -I 0 flattens to one-line JSON so the string is safe
           # to pass through GHA outputs + fromJSON on the receiving side.
           python_full=$(yq -o json -I 0 '.python.supported' ci/versions.yml)
-          python_doc_ver=$(yq '.python.doc.version' ci/versions.yml)
+          # python.doc.version is a setup-python range ("~3.12.16"); the
+          # matrix needs the plain X.Y label ("3.12").
+          python_doc_spec=$(yq '.python.doc.version' ci/versions.yml)
+          IFS=. read -r py_major py_minor _ <<< "${python_doc_spec#\~}"
+          python_doc_ver="${py_major}.${py_minor}"
 
           # Mode-aware: `test` builds the full matrix; `doc-only` collapses
           # to the single wheel docs.yml needs. On `skip` / `no-op` the

@@ -5,38 +5,31 @@ description: >-
   The assertion catches regressions if the python-version spec in the calling
   workflow ever drifts below the required patch. Use a tilde-range spec
   (e.g. python-version: '~3.13.18') so setup-python enforces the floor while
-  automatically picking up newer security patches.
+  automatically picking up newer security patches. Operates on the `python`
+  found on PATH, i.e. the one installed by setup-python.
   See https://discuss.python.org/t/109576
-
-inputs:
-  python:
-    description: Python executable whose pip is upgraded.
-    required: false
-    default: python
 
 runs:
   using: composite
   steps:
-    - name: Assert Python blocks compromised CAs, then upgrade pip
-      shell: bash
-      env:
-        PYTHON: ${{ inputs.python }}
+    - name: Assert Python blocks compromised CAs
+      shell: python
       run: |
+        import sys
+
         # Fail if the interpreter predates the CPython security releases whose
         # ssl module rejects the compromised eMudhra/emSign keys. Keep the
         # version table in sync with .pfnci/schema.yaml.
-        "${PYTHON}" - <<'EOF'
-        import sys
-        v = sys.version_info
         minima = {11: 18, 12: 16, 13: 18, 14: 10, 15: 2}
+        v = sys.version_info
         if v.major != 3 or v.minor not in minima or v.micro < minima[v.minor]:
-            print(
+            sys.exit(
                 f"Python {sys.version} is below the minimum patch release "
                 "whose ssl module blocks the compromised eMudhra/emSign CAs. "
-                "Update the python-version spec in the calling workflow.",
-                flush=True,
+                "Update the python-version spec in the calling workflow."
             )
-            sys.exit(1)
-        EOF
-        "${PYTHON}" -m pip install --disable-pip-version-check --upgrade pip
-        "${PYTHON}" -m pip --version
+    - name: Upgrade pip
+      shell: bash
+      run: |
+        python -m pip install --disable-pip-version-check --upgrade pip
+        python -m pip --version
