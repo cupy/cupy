@@ -66,11 +66,12 @@ include-package-data = false
 # Import packages (NOT the distribution name). Renaming the distribution to
 # `numpy-ascend` on Ascend deliberately leaves these untouched, so
 # `import cupy` works on every backend.
-# `numpy_xpu` is the public import name of the Ascend build: a ~90-line shim
-# that aliases `cupy` via sys.modules (see `numpy_xpu/__init__.py`). It is
-# pruned again for the CUDA/HIP wheels by `_BackendAwareDistribution` in
-# setup.py, so the upstream `cupy` wheel is byte-for-byte unaffected.
-include = ["cupy*", "cupyx*", "cupy_backends*", "numpy_xpu"]
+# `numpy_xpu` / `numpy_ascend` are the public import names of the Ascend
+# build: ~90-line shims that alias `cupy` via sys.modules (see
+# `numpy_xpu/__init__.py` / `numpy_ascend/__init__.py`). They are pruned again
+# for the CUDA/HIP wheels by `_BackendAwareDistribution` in setup.py, so the
+# upstream `cupy` wheel is byte-for-byte unaffected.
+include = ["cupy*", "cupyx*", "cupy_backends*", "numpy_xpu", "numpy_ascend"]
 
 [tool.setuptools.dynamic]
 version = { attr = "cupy._version.__version__" }

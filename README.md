@@ -6,7 +6,7 @@ By Qingfeng Xia
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg)](https://www.python.org/)
-[![CANN](https://img.shields.io/badge/CANN-9.0%20%7C%209.5-orange.svg)]()
+[![CANN](https://img.shields.io/badge/CANN-8.5%20%7C%209.0-orange.svg)]()
 [![Platform](https://img.shields.io/badge/platform-Ascend%20910B-green.svg)]()
 [![Version](https://img.shields.io/badge/version-0.1.0-brightgreen.svg)]()
 [![Coverage](https://img.shields.io/badge/pytest%20pass%20rate-90%25-orange)]()
@@ -28,14 +28,15 @@ code and the wider CuPy/SciPy ecosystem run on the NPU.
 > copyright notices are retained in [LICENSE](LICENSE) and [NOTICE](NOTICE);
 > the name "CuPy" is used only to describe the origin of this work.
 
-### Import name: `numpy_xpu` (preferred) or `cupy` (compatible)
+### Import name: `numpy_ascend` (preferred) or `cupy` (compatible)
 
 ```python
+import numpy_ascend as ap # public import name of this distribution
 import numpy_xpu as xp    # public import name of this distribution
 import cupy as cp         # kept working: xp is cp
 ```
 
-`numpy_xpu` is a thin alias package (`numpy_xpu/__init__.py`) over the
+`numpy_ascend` is a thin alias package (`numpy_ascend/__init__.py`) over the
 upstream-derived `cupy` tree. That tree keeps its original directory name
 because the Cython/C++ sources and the wider `import cupy` ecosystem hard-code
 it; both names resolve to the **same module object**, so there is no duplicated

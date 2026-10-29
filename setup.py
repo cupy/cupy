@@ -28,10 +28,12 @@ cupy_builder.initialize(ctx)
 # `cupy` on every backend.
 ASCEND_DISTRIBUTION_NAME = 'numpy-ascend'
 
-# Public import name of the Ascend build (`import numpy_xpu as xp`). It is a
-# thin shim over `cupy` (see `numpy_xpu/__init__.py`), shipped Ascend-only;
-# `cupy`/`cupyx`/`cupy_backends` stay importable for compatibility.
-ASCEND_ALIAS_PACKAGE = 'numpy_xpu'
+# Public import name(s) of the Ascend build (`import numpy_xpu as xp`,
+# `import numpy_ascend as cp`). They are thin shims over `cupy`
+# (see `numpy_xpu/__init__.py` / `numpy_ascend/__init__.py`), shipped
+# Ascend-only; `cupy`/`cupyx`/`cupy_backends` stay importable for
+# compatibility.
+ASCEND_ALIAS_PACKAGES = ('numpy_xpu', 'numpy_ascend')
 
 # Pure-Python cupyx subpackages removed from the Ascend wheel. They are
 # CUDA-specific (cusolver/cusparse/NCCL-backed or CUDA-only kernels) and
@@ -92,10 +94,12 @@ class _BackendAwareDistribution(Distribution):
     def parse_config_files(self, *args, **kwargs):
         super().parse_config_files(*args, **kwargs)
         if ctx.get_backend_name() != 'ascend':
-            # `numpy_xpu` is the Ascend-facing import name only; keep the
-            # CUDA/HIP wheel identical to upstream (`import cupy`).
+            # `numpy_xpu` / `numpy_ascend` are the Ascend-facing import names
+            # only; keep the CUDA/HIP wheel identical to upstream
+            # (`import cupy`).
             self.packages = [
-                p for p in self.packages if p != ASCEND_ALIAS_PACKAGE]
+                p for p in self.packages
+                if p not in ASCEND_ALIAS_PACKAGES]
             return
         # Keep the bare name instead of falling back to `[project].name`
         # (which is `cupy`, the CUDA/HIP/CPU name).

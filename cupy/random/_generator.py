@@ -145,6 +145,7 @@ class RandomState:
             self._generator = None
             self.method = None
             self._finalizer = None
+            self._lock = threading.Lock()
             self._ascend_offset = 0
             self.seed(seed)
             return

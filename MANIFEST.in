@@ -27,6 +27,8 @@ include LICENSE
 # (see docs/ascend/Compliance.md, P3).
 include NOTICE
 include docs/source/license.rst
-# `numpy_xpu` is discovered by `[tool.setuptools.packages.find]` (Ascend only);
-# list it here so an sdist built on a CUDA-less builder carries it too.
+# `numpy_xpu` / `numpy_ascend` are discovered by
+# `[tool.setuptools.packages.find]` (Ascend only); list them here so an sdist
+# built on a CUDA-less builder carries them too.
 recursive-include numpy_xpu *.py
+recursive-include numpy_ascend *.py
