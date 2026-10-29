@@ -23,9 +23,17 @@ jobs:
         repository: cupy/cupy-release-tools
         ref: ${{ inputs.branch }}
     - name: Setup Python
-      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
       with:
         python-version: '3.11'
+    # The checkout above is cupy-release-tools, so the pip hardening is inlined
+    # rather than using ./.github/actions/harden-pip. Keep the URL in sync with
+    # that action. Do this before the token-bearing step below.
+    - name: Harden pip
+      run: |
+        python -m pip install --disable-pip-version-check "pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70"
+        python -m pip install --disable-pip-version-check --upgrade pip
+        python -m pip --version
     - name: Check
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -72,7 +80,7 @@ jobs:
         cat ../files.txt >> "${GITHUB_STEP_SUMMARY}"
         echo '```' >> "${GITHUB_STEP_SUMMARY}"
     - name: Publish to PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
+      uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086  # v1.14.3
       with:
         skip-existing: true
         print-hash: true
@@ -87,9 +95,14 @@ jobs:
         repository: cupy/cupy-release-tools
         ref: ${{ inputs.branch }}
     - name: Setup Python
-      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
       with:
         python-version: '3.11'
+    - name: Harden pip
+      run: |
+        python -m pip install --disable-pip-version-check "pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70"
+        python -m pip install --disable-pip-version-check --upgrade pip
+        python -m pip --version
     - name: Check
       run: |
         pip install distlib
