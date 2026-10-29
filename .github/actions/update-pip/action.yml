@@ -18,8 +18,10 @@ runs:
         import sys
 
         # Fail if the interpreter predates the CPython security releases whose
-        # ssl module rejects the compromised eMudhra/emSign keys. Keep the
-        # version table in sync with .pfnci/schema.yaml.
+        # ssl module rejects the compromised eMudhra/emSign keys. The same
+        # patch floors appear in .pfnci/schema.yaml, ci/versions.yml
+        # (python.doc.version), and the python-version specs of the calling
+        # workflows; update them all together.
         minima = {11: 18, 12: 16, 13: 18, 14: 10, 15: 2}
         v = sys.version_info
         if v.major != 3 or v.minor not in minima or v.micro < minima[v.minor]:
