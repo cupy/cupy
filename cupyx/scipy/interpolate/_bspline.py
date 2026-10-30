@@ -14,6 +14,12 @@ from cupyx.scipy.sparse.linalg import lsqr
 
 import numpy as np
 
+try:
+    import nvmath.sparse.advanced as adv
+    has_nvmath = True
+except ImportError:
+    has_nvmath = False
+
 BSPLINE_TYPE_DECLS: set[Any] = set()
 TYPES = [get_typename(t, BSPLINE_TYPE_DECLS)
          for t in [cupy.float64, cupy.complex128]]
@@ -997,12 +1003,20 @@ def _make_smoothing_spline_user_knots(x, y, w, t, lam, axis, y_shape1):
     XtWy = X.T @ (w[:, None] * y)
     lhs = XtWX + lam * omega
 
-    # the solver takes a 1-D right hand side, solve per column
-    # (C order: construct_fast expects contiguous coefficients)
-    c = cupy.empty(XtWy.shape, dtype=cupy.float64)
-    for i in range(XtWy.shape[1]):
-        rhs = cupy.ascontiguousarray(XtWy[:, i], dtype=cupy.float64)
-        c[:, i] = lsqr(lhs, rhs)[0]
+    if not has_nvmath:
+        # the solver takes a 1-D right hand side, solve per column
+        # (C order: construct_fast expects contiguous coefficients)
+        c = cupy.empty(XtWy.shape, dtype=cupy.float64)
+        for i in range(XtWy.shape[1]):
+            rhs = cupy.ascontiguousarray(XtWy[:, i], dtype=cupy.float64)
+            c[:, i] = lsqr(lhs, rhs)[0]
+    else:
+        rhs = cupy.asfortranarray(XtWy)
+        with adv.DirectSolver(lhs, rhs) as solver:
+            solver.plan()
+            solver.factorize()
+            c = solver.solve()
+        c = cupy.ascontiguousarray(c, dtype=cupy.float64)
     c = c.reshape((c.shape[0], *y_shape1))
     return BSpline.construct_fast(t, c, k=3, axis=axis)
 

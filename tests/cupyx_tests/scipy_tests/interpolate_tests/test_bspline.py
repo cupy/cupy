@@ -635,3 +635,24 @@ class TestMakeSmoothingSpline:
         t = xp.concatenate([x[:1]] * 4 + [x[5:-5:4]] + [x[-1:]] * 4)
         spl = scp.interpolate.make_smoothing_spline(x, y, lam=1e-3, t=t)
         return spl(xp.linspace(-2, 2, 100))
+
+    def test_nvmath_backend_matches_lsqr(self):
+        pytest.importorskip("nvmath")
+        from cupyx.scipy.interpolate import _bspline
+        assert _bspline.has_nvmath
+
+        rng = np.random.default_rng(1234)
+        x = cupy.asarray(np.sort(rng.uniform(0, 4, 50)))
+        y = cupy.sin(2 * x) + 0.1 * cupy.asarray(rng.normal(size=50))
+
+        spl = csi.make_smoothing_spline(x, y, lam=1e-3)
+
+        orig = _bspline.has_nvmath
+        _bspline.has_nvmath = False
+        try:
+            ref = csi.make_smoothing_spline(x, y, lam=1e-3)
+        finally:
+            _bspline.has_nvmath = orig
+
+        xx = cupy.linspace(0, 4, 200)
+        testing.assert_allclose(spl(xx), ref(xx), rtol=1e-6, atol=1e-8)
