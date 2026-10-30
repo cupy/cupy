@@ -474,11 +474,13 @@ def _require_memory(nbytes):
         pytest.skip('not enough GPU memory for the large-array regression')
 
 
+@pytest.mark.xfail(
+    runtime.is_hip and driver.get_build_version() < 5_00_00000,
+    reason='name_expressions with ROCm 4.3 may not work')
 @testing.slow
 @pytest.mark.thread_unsafe(reason='Large GPU allocations.')
 class TestPeakFindingLarge:
-    # Inputs with more than INT_MAX elements (gh-10290). These tests were
-    # written by @seberg in gh-10382.
+    # Inputs with more than INT_MAX elements (gh-10290).
 
     @pytest.fixture(autouse=True)
     def release_memory(self):
@@ -542,6 +544,9 @@ class TestPeakFindingLarge:
         testing.assert_array_equal(peaks, [peak])
 
 
+@pytest.mark.xfail(
+    runtime.is_hip and driver.get_build_version() < 5_00_00000,
+    reason='name_expressions with ROCm 4.3 may not work')
 def test_argrelmax_many_rows():
     # Cross gridDim.y's limit with a modest allocation (gh-10382).
     x = cupy.zeros((2**20 + 1, 3), dtype=cupy.int8)
