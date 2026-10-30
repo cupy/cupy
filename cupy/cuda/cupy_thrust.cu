@@ -14,22 +14,18 @@
 #if defined(CUPY_USE_HIP)
 #include <hip/hip_bf16.h>
 using thrust_bfloat16 = __hip_bfloat16;
-#define ENABLE_BFLOAT16
-#elif __CUDACC_VER_MAJOR__ >= 11
+#else
 #include <cuda_bf16.h>
 using thrust_bfloat16 = __nv_bfloat16;
-#define ENABLE_BFLOAT16
 #endif
 
 // Keep bfloat16 instantiations local to Thrust: dtype_dispatcher is also
 // used by CUB operations that do not yet support this dtype.
 template <class functor_t, typename... Ts>
 void thrust_dtype_dispatcher(int dtype_id, functor_t f, Ts&&... args) {
-#ifdef ENABLE_BFLOAT16
     if (dtype_id == CUPY_TYPE_BFLOAT16) {
         return f.template operator()<thrust_bfloat16>(std::forward<Ts>(args)...);
     }
-#endif
     return dtype_dispatcher(dtype_id, f, std::forward<Ts>(args)...);
 }
 
@@ -109,11 +105,9 @@ __host__ __device__ __forceinline__ bool isnan(const __half& x) {
 }
 #endif // ENABLE_HALF
 
-#ifdef ENABLE_BFLOAT16
 __host__ __device__ __forceinline__ bool isnan(const thrust_bfloat16& x) {
     return isnan(static_cast<float>(x));
 }
-#endif
 
 template <bool Descending, typename T>
 __host__ __device__ __forceinline__ constexpr
@@ -351,7 +345,6 @@ struct select_cmp<thrust::tuple<size_t, __half>, Descending> {
 };
 #endif  // ENABLE_HALF
 
-#ifdef ENABLE_BFLOAT16
 template <bool Descending>
 struct select_cmp<thrust_bfloat16, Descending> {
     struct type {
@@ -374,7 +367,6 @@ struct select_cmp<thrust::tuple<size_t, thrust_bfloat16>, Descending> {
         }
     };
 };
-#endif  // ENABLE_BFLOAT16
 
 /*
  * -------------------------------------------------- end of boilerplate --------------------------------------------------
