@@ -512,6 +512,35 @@ class TestPeakFindingLarge:
         testing.assert_array_equal(rows, [65536])
         testing.assert_array_equal(cols, [32767])
 
+    def test_argrelmax_large_1d(self):
+        _require_memory(8 << 30)
+        x = cupy.zeros(2**31 + 5, dtype=cupy.int8)
+        peak = 2**31 + 2
+        x[peak] = 1
+        (idx,) = cupyx.scipy.signal.argrelmax(x)
+        testing.assert_array_equal(idx, [peak])
+
+    @pytest.mark.parametrize('mode', ['clip', 'wrap'])
+    def test_argrelmax_large_1d_edge(self, mode):
+        # The last element is a peak only if its right neighbor wraps
+        # around to x[0]; this index is beyond INT_MAX.
+        _require_memory(8 << 30)
+        n = 2**31 + 5
+        x = cupy.zeros(n, dtype=cupy.int8)
+        x[-1] = 1
+        (idx,) = cupyx.scipy.signal.argrelmax(x, mode=mode)
+        expected = [n - 1] if mode == 'wrap' else []
+        testing.assert_array_equal(idx, expected)
+
+    def test_find_peaks_large_input(self):
+        # local_maxima_1d needs three int64 arrays of the input size.
+        _require_memory(60 << 30)
+        x = cupy.zeros(2**31 + 5, dtype=cupy.int8)
+        peak = 2**31 + 2
+        x[peak] = 1
+        peaks, _ = cupyx.scipy.signal.find_peaks(x)
+        testing.assert_array_equal(peaks, [peak])
+
 
 def test_argrelmax_many_rows():
     # Cross gridDim.y's limit with a modest allocation (gh-10382).

@@ -703,11 +703,13 @@ def _arg_peaks_as_expected(value):
 @jit.rawkernel()
 def _check_prominence_invalid(n, peaks, left_bases, right_bases, out):
     tid = jit.blockIdx.x * jit.blockDim.x + jit.threadIdx.x
-    i_min = left_bases[tid]
-    i_max = right_bases[tid]
-    peak = peaks[tid]
-    valid = 0 <= i_min and i_min <= peak and peak <= i_max and i_max < n
-    out[tid] = not valid
+    # The launch is rounded up to whole blocks, so skip the extra threads.
+    if tid < peaks.size:
+        i_min = left_bases[tid]
+        i_max = right_bases[tid]
+        peak = peaks[tid]
+        valid = 0 <= i_min and i_min <= peak and peak <= i_max and i_max < n
+        out[tid] = not valid
 
 
 def _peak_prominences(x, peaks, wlen=None, check=False):
