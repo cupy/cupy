@@ -72,7 +72,16 @@ log1p = ufunc.create_math_ufunc(
 
 logaddexp = _core.create_ufunc(
     'cupy_logaddexp',
-    ('ee->e', *bf16_loop(2), 'ff->f', 'dd->d'),
+    ('ee->e', *bf16_loop(2),
+     ('ff->f', '''
+    if (in0 == in1) {
+        /* Handles infinities of the same sign */
+        out0 = in0 + 0.6931471805599453f;
+    } else {
+        out0 = fmax(in0, in1) + log1p(exp(-fabs(in0 - in1)));
+    }
+    '''),
+     'dd->d'),
     '''
     if (in0 == in1) {
         /* Handles infinities of the same sign */
