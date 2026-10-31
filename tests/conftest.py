@@ -19,6 +19,13 @@ if numpy.lib.NumpyVersion(numpy.__version__) < "2.0.0":
 pytest_plugins = ['pytester']
 
 
+@pytest.fixture
+def allow_full_header_cache(monkeypatch):
+    """Exercise user kernels with intentionally unclassified inputs."""
+    from cupy._core import _header_cache
+    monkeypatch.setattr(_header_cache, '_error_on_unknown_header', False)
+
+
 def _is_pip_installed():
     try:
         import pip  # NOQA
@@ -70,6 +77,22 @@ def pytest_configure(config):
                 devices.rotate(-w)
                 devices = ','.join(devices)
                 os.environ['CUDA_VISIBLE_DEVICES'] = devices
+
+
+def pytest_collectstart(collector):
+    # Keep install/typing tests usable without built CuPy extensions. Enable
+    # before GPU test modules are imported, after CUDA_VISIBLE_DEVICES is set.
+    if not {'cupy_tests', 'cupyx_tests'}.intersection(collector.path.parts):
+        return
+    config = collector.config
+    if getattr(config, '_cupy_header_cache_configured', False):
+        return
+    from cupy._core import _header_cache
+    previous = _header_cache._error_on_unknown_header
+    _header_cache._error_on_unknown_header = True
+    config._cupy_header_cache_configured = True
+    config.add_cleanup(lambda: setattr(
+        _header_cache, '_error_on_unknown_header', previous))
 
 
 if int(os.environ.get('CUPY_ENABLE_UMP', 0)) != 0:

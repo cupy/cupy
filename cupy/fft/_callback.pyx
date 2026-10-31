@@ -597,14 +597,6 @@ cdef class _JITCallbackManager(_CallbackManager):
             else:
                 raise NotImplementedError
 
-    cdef str _get_cuda_include(self):
-        global _cuda_include
-        if _cuda_include is None:
-            _cuda_include = find_nvidia_header_directory('cudart')
-            if _cuda_include is None:
-                raise RuntimeError('Failed to find CUDA headers.')
-        return _cuda_include
-
     cdef _sanity_checks(self, cb_load, cb_store, cb_load_data, cb_store_data):
         from cupy.cuda.cufft import getVersion as get_cufft_version
         if runtime._is_hip_environment:
@@ -627,10 +619,11 @@ cdef class _JITCallbackManager(_CallbackManager):
                 raise ValueError('store callback is not given')
 
     cdef bytes compile_lto(self, str source, tuple options):
-        options += ('--std=c++17', '-I' + self._get_cuda_include())
+        options += ('--std=c++17',)
         # TODO(leofang): support log_stream & jitify
         return _compile_with_cache_cuda(
-            source, options, None, get_cache_dir(), to_ltoir=True)
+            source, options, None, to_ltoir=True,
+            runtime_include_dirs=True)
 
     cpdef create_plan(self, intptr_t prealloc_plan, tuple plan_info):
         cdef str plan_type

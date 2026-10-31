@@ -60,7 +60,8 @@ cpdef str _environment_cache_key_prefix():
         _cache_key_prefix = '|'.join((
             cuda.cccl.__version__,
             str(cupy.cuda.runtime.runtimeGetVersion()),
-            compiler._get_cupy_cache_key()))
+            # Serialized algorithms can embed ops using any dtype header.
+            core.HEADER_CACHE['keys']['full']))
     return _cache_key_prefix
 
 
@@ -84,7 +85,7 @@ cpdef cached_algorithm(str family, tuple key, str key_src, build):
     compute = _get_cuda_compute()
     prefix = _environment_cache_key_prefix()
     name = _hash_hexdigest(
-        f'{prefix}|{get_compute_capability()}|{key_src}'.encode()
+        f'{prefix}|{get_compute_capability()}|{key_src}'
     ) + f'.cc_{family}'
     algo = None
     blob = compiler._kernel_cache_backend.load(name)
