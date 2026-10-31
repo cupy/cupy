@@ -43,6 +43,7 @@ jobs:
       version_type: ${{ steps.compute.outputs.version_type }}
       suffix: ${{ steps.compute.outputs.suffix }}
       promote_stable: ${{ steps.stable.outputs.promote_stable }}
+      pyver_spec: ${{ steps.pyver.outputs.spec }}
     steps:
       # workflow_run.pull_requests[] is empty for fork PRs, so instead of
       # parsing the event payload we download the per-run sentinel artifact
@@ -332,7 +333,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
-          python-version: '~3.12.16'
+          python-version: ${{ needs.build.outputs.pyver_spec }}
       - name: Update pip
         uses: ./_cupy/.github/actions/update-pip
       - name: Install readthedocs-upload
