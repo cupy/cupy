@@ -650,6 +650,10 @@ __noinline__ __device__ double igamc(double a, double x)
 {
     double absxma_a;
 
+    if (isnan(a) || isnan(x)) {
+        return CUDART_NAN;
+    }
+
     if (x < 0 || a < 0) {
         // sf_error("gammaincc", SF_ERROR_DOMAIN, NULL);
         return CUDART_NAN;
@@ -704,6 +708,10 @@ __noinline__ __device__ double igamc(double a, double x)
 __noinline__ __device__ double igam(double a, double x)
 {
     double absxma_a;
+
+    if (isnan(a) || isnan(x)) {
+        return CUDART_NAN;
+    }
 
     if (x < 0 || a < 0) {
         // sf_error("gammainc", SF_ERROR_DOMAIN, NULL);
