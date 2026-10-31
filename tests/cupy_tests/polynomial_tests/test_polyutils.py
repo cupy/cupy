@@ -172,3 +172,73 @@ class TestTrimcoefInvalid(unittest.TestCase):
             a = testing.shaped_random((5,), xp, bool)
             with pytest.raises(ValueError):
                 xp.polynomial.polyutils.trimcoef(a)
+
+
+class TestMapparms(unittest.TestCase):
+
+    @testing.numpy_cupy_allclose()
+    def test_mapparms_real(self, xp):
+        dom1 = xp.array([0, 4])
+        dom2 = xp.array([1, 3])
+        return xp.polynomial.polyutils.mapparms(dom1, dom2)
+
+    @testing.numpy_cupy_allclose()
+    def test_mapparms_complex(self, xp):
+        dom1 = xp.array([0 - 1j, 2 + 1j])
+        dom2 = xp.array([-2, 2])
+        return xp.polynomial.polyutils.mapparms(dom1, dom2)
+
+    @testing.numpy_cupy_allclose()
+    def test_mapparms_float32(self, xp):
+        dom1 = xp.array([0.0, 4.0], dtype=xp.float32)
+        dom2 = xp.array([1.0, 3.0], dtype=xp.float32)
+        return xp.polynomial.polyutils.mapparms(dom1, dom2)
+
+
+class TestMapdomain(unittest.TestCase):
+
+    @testing.numpy_cupy_allclose()
+    def test_mapdomain_real(self, xp):
+        dom1 = xp.array([0, 4])
+        dom2 = xp.array([1, 3])
+        x = dom1
+        return xp.polynomial.polyutils.mapdomain(x, dom1, dom2)
+
+    @testing.numpy_cupy_allclose()
+    def test_mapdomain_complex(self, xp):
+        dom1 = xp.array([0 - 1j, 2 + 1j])
+        dom2 = xp.array([-2, 2])
+        x = dom1
+        return xp.polynomial.polyutils.mapdomain(x, dom1, dom2)
+
+    @testing.numpy_cupy_allclose()
+    def test_mapdomain_multidimensional(self, xp):
+        dom1 = xp.array([0, 4])
+        dom2 = xp.array([1, 3])
+        x = xp.array([dom1, dom1])
+        return xp.polynomial.polyutils.mapdomain(x, dom1, dom2)
+
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose()
+    def test_mapdomain_dtypes(self, xp, dtype):
+        if dtype == xp.complex64 or dtype == xp.complex128:
+            dom1 = xp.array([0 - 1j, 2 + 1j], dtype=dtype)
+            dom2 = xp.array([-2, 2], dtype=dtype)
+        else:
+            dom1 = xp.array([0, 4], dtype=dtype)
+            dom2 = xp.array([1, 3], dtype=dtype)
+        x = dom1
+        return xp.polynomial.polyutils.mapdomain(x, dom1, dom2)
+
+    @testing.numpy_cupy_allclose()
+    def test_mapdomain_scalar(self, xp):
+        dom1 = xp.array([0, 4])
+        dom2 = xp.array([1, 3])
+        x = 2.0
+        return xp.polynomial.polyutils.mapdomain(x, dom1, dom2)
+
+    @testing.numpy_cupy_allclose()
+    def test_mapdomain_identity_map(self, xp):
+        dom = xp.array([-1, 1])
+        x = xp.linspace(-1, 1, 10)
+        return xp.polynomial.polyutils.mapdomain(x, dom, dom)
