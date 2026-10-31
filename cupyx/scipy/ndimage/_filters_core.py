@@ -302,6 +302,9 @@ def _generate_nd_kernel(name, pre, found, post, modes, w_shape, int_type,
         cval = 'CUDART_INF'
     elif cval == -numpy.inf:
         cval = '-CUDART_INF'
+    elif numpy.iscomplex(cval):
+        cval = complex(cval)
+        cval = f'complex<double>({cval.real}, {cval.imag})'
 
     if binary_morphology:
         found = found.format(cond=cond, value=value)
