@@ -40,6 +40,7 @@ from cupyx.scipy.special._stats_distributions import chdtri  # NOQA
 from cupyx.scipy.special._stats_distributions import ndtr  # NOQA
 from cupyx.scipy.special._stats_distributions import log_ndtr  # NOQA
 from cupyx.scipy.special._stats_distributions import ndtri  # NOQA
+from cupyx.scipy.special._stats_distributions import stdtr  # NOQA
 from cupyx.scipy.special._statistics import logit  # NOQA
 from cupyx.scipy.special._statistics import expit  # NOQA
 from cupyx.scipy.special._statistics import log_expit  # NOQA
