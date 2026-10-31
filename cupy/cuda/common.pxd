@@ -16,6 +16,7 @@ cdef enum:
     CUPY_TYPE_COMPLEX64 = 11
     CUPY_TYPE_COMPLEX128 = 12
     CUPY_TYPE_BOOL = 13
+    CUPY_TYPE_BFLOAT16 = 14
 
 
 cpdef int _get_dtype_id(dtype) except -1
