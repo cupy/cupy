@@ -38,6 +38,19 @@ def _convert_dtype(a, value_type):
     return a
 
 
+def _resolve_fft_shape(a, s, axes):
+    # Resolve -1 before resizing: for C2R it is an explicit output length,
+    # whereas None uses twice the input length minus two.
+    if s is None or -1 not in s:
+        return s
+    if axes is None:
+        axes = tuple(range(-len(s), 0))
+    if len(s) != len(axes):
+        raise ValueError('Shape and axes have different lengths.')
+    return tuple(a.shape[axis] if n == -1 else n
+                 for n, axis in zip(s, axes))
+
+
 def _cook_shape(a, s, axes, value_type, order='C'):
     if s is None:
         return a
@@ -744,6 +757,7 @@ def fft2(a, s=None, axes=(-2, -1), norm=None):
         s (None or tuple of ints): Shape of the transformed axes of the
             output. If ``s`` is not given, the lengths of the input along the
             axes specified by ``axes`` are used.
+            A length of ``-1`` uses the input length along that axis.
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
             to specify the normalization mode. Default is ``None``, which is
@@ -758,6 +772,7 @@ def fft2(a, s=None, axes=(-2, -1), norm=None):
     """
     from cupy.cuda import cufft
 
+    s = _resolve_fft_shape(a, s, axes)
     func = _default_fft_func(a, s, axes)
     return func(a, s, axes, norm, cufft.CUFFT_FORWARD)
 
@@ -770,6 +785,7 @@ def ifft2(a, s=None, axes=(-2, -1), norm=None):
         s (None or tuple of ints): Shape of the transformed axes of the
             output. If ``s`` is not given, the lengths of the input along the
             axes specified by ``axes`` are used.
+            A length of ``-1`` uses the input length along that axis.
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
             to specify the normalization mode. Default is ``None``, which is
@@ -784,6 +800,7 @@ def ifft2(a, s=None, axes=(-2, -1), norm=None):
     """
     from cupy.cuda import cufft
 
+    s = _resolve_fft_shape(a, s, axes)
     func = _default_fft_func(a, s, axes)
     return func(a, s, axes, norm, cufft.CUFFT_INVERSE)
 
@@ -796,6 +813,7 @@ def fftn(a, s=None, axes=None, norm=None):
         s (None or tuple of ints): Shape of the transformed axes of the
             output. If ``s`` is not given, the lengths of the input along the
             axes specified by ``axes`` are used.
+            A length of ``-1`` uses the input length along that axis.
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
             to specify the normalization mode. Default is ``None``, which is
@@ -810,6 +828,7 @@ def fftn(a, s=None, axes=None, norm=None):
     """
     from cupy.cuda import cufft
 
+    s = _resolve_fft_shape(a, s, axes)
     func = _default_fft_func(a, s, axes)
     return func(a, s, axes, norm, cufft.CUFFT_FORWARD)
 
@@ -822,6 +841,7 @@ def ifftn(a, s=None, axes=None, norm=None):
         s (None or tuple of ints): Shape of the transformed axes of the
             output. If ``s`` is not given, the lengths of the input along the
             axes specified by ``axes`` are used.
+            A length of ``-1`` uses the input length along that axis.
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
             to specify the normalization mode. Default is ``None``, which is
@@ -836,6 +856,7 @@ def ifftn(a, s=None, axes=None, norm=None):
     """
     from cupy.cuda import cufft
 
+    s = _resolve_fft_shape(a, s, axes)
     func = _default_fft_func(a, s, axes)
     return func(a, s, axes, norm, cufft.CUFFT_INVERSE)
 
@@ -903,6 +924,7 @@ def rfft2(a, s=None, axes=(-2, -1), norm=None):
         s (None or tuple of ints): Shape to use from the input. If ``s`` is not
             given, the lengths of the input along the axes specified by
             ``axes`` are used.
+            A length of ``-1`` uses the input length along that axis.
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
             to specify the normalization mode. Default is ``None``, which is
@@ -918,6 +940,7 @@ def rfft2(a, s=None, axes=(-2, -1), norm=None):
     """
     from cupy.cuda import cufft
 
+    s = _resolve_fft_shape(a, s, axes)
     func = _default_fft_func(a, s, axes, value_type='R2C')
     return func(a, s, axes, norm, cufft.CUFFT_FORWARD, 'R2C')
 
@@ -930,6 +953,7 @@ def irfft2(a, s=None, axes=(-2, -1), norm=None):
         s (None or tuple of ints): Shape of the output. If ``s`` is not given,
             they are determined from the lengths of the input along the axes
             specified by ``axes``.
+            A length of ``-1`` uses the input length along that axis.
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
             to specify the normalization mode. Default is ``None``, which is
@@ -948,6 +972,7 @@ def irfft2(a, s=None, axes=(-2, -1), norm=None):
     from cupy.cuda import cufft
 
     caster = _compat_caster(a, axes)
+    s = _resolve_fft_shape(a, s, axes)
     func = _default_fft_func(a, s, axes, value_type='C2R')
     return caster(func(a, s, axes, norm, cufft.CUFFT_INVERSE, 'C2R'))
 
@@ -960,6 +985,7 @@ def rfftn(a, s=None, axes=None, norm=None):
         s (None or tuple of ints): Shape to use from the input. If ``s`` is not
             given, the lengths of the input along the axes specified by
             ``axes`` are used.
+            A length of ``-1`` uses the input length along that axis.
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
             to specify the normalization mode. Default is ``None``, which is
@@ -975,6 +1001,7 @@ def rfftn(a, s=None, axes=None, norm=None):
     """
     from cupy.cuda import cufft
 
+    s = _resolve_fft_shape(a, s, axes)
     func = _default_fft_func(a, s, axes, value_type='R2C')
     return func(a, s, axes, norm, cufft.CUFFT_FORWARD, 'R2C')
 
@@ -996,6 +1023,7 @@ def irfftn(a, s=None, axes=None, norm=None):
         s (None or tuple of ints): Shape of the output. If ``s`` is not given,
             they are determined from the lengths of the input along the axes
             specified by ``axes``.
+            A length of ``-1`` uses the input length along that axis.
         axes (tuple of ints): Axes over which to compute the FFT.
         norm (``"backward"``, ``"ortho"``, or ``"forward"``): Optional keyword
             to specify the normalization mode. Default is ``None``, which is
@@ -1014,6 +1042,7 @@ def irfftn(a, s=None, axes=None, norm=None):
     from cupy.cuda import cufft
 
     caster = _compat_caster(a, axes)
+    s = _resolve_fft_shape(a, s, axes)
     func = _default_fft_func(a, s, axes, value_type='C2R')
     return caster(func(a, s, axes, norm, cufft.CUFFT_INVERSE, 'C2R'))
 

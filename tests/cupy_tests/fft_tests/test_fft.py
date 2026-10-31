@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import functools
 import math
+import unittest
 import warnings
 
 import numpy as np
@@ -13,6 +14,47 @@ from cupy.fft._fft import (_default_fft_func, _fft, _fftn,
                            _size_last_transform_axis)
 from cupy import testing
 from cupy.testing._loops import _wraps_partial
+
+
+@testing.with_requires('numpy>=2.0')
+@testing.parameterize(*testing.product({
+    'name': ['fft2', 'ifft2', 'fftn', 'ifftn',
+             'rfft2', 'irfft2', 'rfftn', 'irfftn'],
+    'case': [
+        ((3, 5), (4, -1), (-2, -1)),
+        ((3, 5), (-1, -1), None),
+        ((3, 5), (-1, 2), (1, 0)),
+        ((3, 4, 5), (-1, 7, -1), (2, 0, 1)),
+        ((3, 4, 5), (-1, 3), (0, 2)),
+        ((5,), (-1,), (0,)),
+    ],
+    'order': ['C', 'F'],
+    'enable_nd': [True, False],
+}))
+class TestFFTNegativeOneShape(unittest.TestCase):
+
+    def setUp(self):
+        self.planning_token = config._enable_nd_planning.set(self.enable_nd)
+
+    def tearDown(self):
+        config._enable_nd_planning.reset(self.planning_token)
+
+    @testing.for_dtypes([np.float32, np.float64])
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-6,
+                                 contiguous_check=False)
+    def test_negative_one_shape(self, xp, dtype):
+        shape, s, axes = self.case
+        if not self.name.startswith('rfft'):
+            dtype = np.dtype(dtype).char.upper()
+        a = testing.shaped_random(shape, xp, dtype)
+        a = xp.array(a, order=self.order)
+        original = a.copy()
+        # NumPy 2.0 deprecated axes=None with an explicit shape.
+        if xp is np and axes is None:
+            axes = tuple(range(-len(s), 0))
+        result = getattr(xp.fft, self.name)(a, s=s, axes=axes)
+        testing.assert_array_equal(a, original)
+        return result
 
 
 @pytest.fixture
