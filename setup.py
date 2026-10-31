@@ -34,13 +34,15 @@ cupy_package_data = [
     'cupy/cuda/cufft.pxd',  # for cuFFT callback
     'cupy/cuda/cufft.pyx',  # for cuFFT callback
     'cupy_backends/cuda/_softlink.pxd',  # for cuFFT callback
+    'cupy/include/cupy_public_c_api.h',  # public C API
+    'cupy/public_c_api.pxd',  # public C API for Cython consumers
     'cupy/random/cupy_distributions.cu',
     'cupy/random/cupy_distributions.cuh',
     'cupyx/scipy/ndimage/cuda/LICENSE',
     'cupyx/scipy/ndimage/cuda/pba_kernels_2d.h',
     'cupyx/scipy/ndimage/cuda/pba_kernels_3d.h',
 ] + [
-    x for x in glob.glob('cupy/_core/include/cupy/**', recursive=True)
+    x for x in glob.glob('cupy/_core/include/**', recursive=True)
     if os.path.isfile(x)
 ]
 
