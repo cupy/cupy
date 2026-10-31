@@ -2734,9 +2734,8 @@ cdef _byteswap_dispatch(_ndarray_base a):
 
 
 cdef str _divmod_float = '''
-    out0_type a = _floor_divide(in0, in1);
-    out0 = a;
-    out1 = in0 - a * in1'''
+    out0 = _floor_divide(in0, in1);
+    out1 = _float_remainder(in0, in1)'''
 
 
 divmod = create_ufunc(

@@ -554,6 +554,46 @@ class TestArithmeticModf:
         return d
 
 
+class TestFloorDivideRemainderEdgeValues:
+
+    def _operands(self, xp, dtype):
+        info = numpy.finfo(dtype)
+        values = [0.0, -0.0, 1.0, -1.0, 0.5, 2.5, -2.5, 3.0, -3.0, 7.0,
+                  info.max, -info.max, info.tiny,
+                  numpy.inf, -numpy.inf, numpy.nan]
+        if dtype == numpy.float64:
+            # float32 subnormals are flushed to zero on the device
+            values += [info.smallest_subnormal, -info.smallest_subnormal]
+        a, b = numpy.array(list(itertools.product(values, repeat=2))).T
+        return xp.asarray(a, dtype=dtype), xp.asarray(b, dtype=dtype)
+
+    @pytest.mark.parametrize('name', ['floor_divide', 'remainder'])
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_edge_values(self, xp, dtype, name):
+        a, b = self._operands(xp, dtype)
+        with numpy.errstate(all='ignore'):
+            out = getattr(xp, name)(a, b)
+        # also compare the sign of zero results
+        return xp.stack([out, xp.signbit(out) & (out == 0)])
+
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_divmod_edge_values(self, xp, dtype):
+        a, b = self._operands(xp, dtype)
+        with numpy.errstate(all='ignore'):
+            q, r = xp.divmod(a, b)
+        return xp.stack([q, r, xp.signbit(q) & (q == 0),
+                         xp.signbit(r) & (r == 0)])
+
+    @testing.for_float_dtypes(no_float16=True)
+    @testing.numpy_cupy_array_equal()
+    def test_remainder_large_quotient(self, xp, dtype):
+        # x - floor(x / y) * y cancels catastrophically here
+        a = xp.array([1e30, -1e30, 123456789.0, 2.0 ** 60], dtype=dtype)
+        return xp.remainder(a, xp.array(3, dtype=dtype))
+
+
 @testing.parameterize(*testing.product({
     'xp': [numpy, cupy],
     'shape': [(3, 2), (), (3, 0, 2)]

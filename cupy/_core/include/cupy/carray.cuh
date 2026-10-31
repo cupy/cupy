@@ -734,10 +734,56 @@ __device__ unsigned long long _floor_divide(
   return x / y;
 }
 
+// Same algorithm as NumPy's npy_divmod.  Deriving the quotient from fmod
+// keeps the remainder exact; `x - floor(x / y) * y` loses all precision
+// once x / y is large and gets the sign wrong for tiny x.
+template <typename T>
+__device__ T _float_divmod(T x, T y, T* modulus) {
+  T mod = fmod(x, y);
+  if (!y) {
+    *modulus = mod;
+    return x / y;
+  }
+  T div = (x - mod) / y;
+  if (mod) {
+    if ((y < 0) != (mod < 0)) {
+      mod += y;
+      div -= T(1);
+    }
+  } else {
+    mod = copysign(T(0), y);
+  }
+  T floordiv;
+  if (div) {
+    floordiv = floor(div);
+    if (div - floordiv > T(0.5)) {
+      floordiv += T(1);
+    }
+  } else {
+    floordiv = copysign(T(0), x / y);
+  }
+  *modulus = mod;
+  return floordiv;
+}
+
 __device__ float _floor_divide(float x, float y) {
-  return floor(x / y);
+  float mod;
+  return _float_divmod(x, y, &mod);
 }
 
 __device__ double _floor_divide(double x, double y) {
-  return floor(x / y);
+  double mod;
+  return _float_divmod(x, y, &mod);
+}
+
+__device__ float _float_remainder(float x, float y) {
+  float mod;
+  _float_divmod(x, y, &mod);
+  return mod;
+}
+
+__device__ double _float_remainder(double x, double y) {
+  double mod;
+  _float_divmod(x, y, &mod);
+  return mod;
 }
