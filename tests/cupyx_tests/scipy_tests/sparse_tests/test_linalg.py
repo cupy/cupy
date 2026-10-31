@@ -1131,6 +1131,76 @@ class TestEigshSvdsSmallNcv:
 
 
 @testing.parameterize(*testing.product({
+    'solver': ['cg', 'cgs'],
+    'dtype': ['f', 'd', 'F', 'D'],
+    'format': ['dense', 'csr', 'linear_operator'],
+}))
+class TestIterativeInitialConvergence(unittest.TestCase):
+
+    def _make_system(self):
+        a = cupy.diag(cupy.array([1, 2, 4, 8], dtype=self.dtype))
+        expected = cupy.ones(4, dtype=self.dtype)
+        if expected.dtype.kind == 'c':
+            expected += 1j
+        b = a @ expected
+        if self.format == 'csr':
+            a = sparse.csr_matrix(a)
+        elif self.format == 'linear_operator':
+            a = sparse.linalg.aslinearoperator(a)
+        return a, b, expected
+
+    def _check_initial_convergence(self, perturbation, rtol, atol):
+        a, b, expected = self._make_system()
+        x0 = expected.copy()
+        x0[0] += perturbation
+        original_x0 = x0.copy()
+        preconditioner_calls = []
+        callback_calls = []
+
+        def precondition(x):
+            preconditioner_calls.append(1)
+            return x * 0.5
+
+        M = sparse.linalg.LinearOperator(
+            a.shape, matvec=precondition, dtype=self.dtype)
+        x, info = getattr(sparse.linalg, self.solver)(
+            a, b, x0=x0, M=M, rtol=rtol, atol=atol, maxiter=5,
+            callback=lambda x: callback_calls.append(1))
+
+        assert info == 0
+        testing.assert_array_equal(x, original_x0)
+        testing.assert_array_equal(x0, original_x0)
+        assert not preconditioner_calls
+        assert not callback_calls
+        assert x.dtype == x0.dtype
+        assert cupy.linalg.norm(b - a @ x) <= max(
+            atol, rtol * float(cupy.linalg.norm(b)))
+
+    def test_exact_initial_guess(self):
+        self._check_initial_convergence(0, rtol=1e-5, atol=0)
+
+    def test_initial_guess_within_atol(self):
+        self._check_initial_convergence(2**-10, rtol=0, atol=2**-8)
+
+    def test_initial_guess_within_rtol(self):
+        self._check_initial_convergence(2**-10, rtol=2**-8, atol=0)
+
+    def test_initial_guess_outside_tolerance(self):
+        a, b, expected = self._make_system()
+        x0 = cupy.zeros_like(expected)
+        callback_calls = []
+        x, info = getattr(sparse.linalg, self.solver)(
+            a, b, x0=x0, rtol=1e-5, atol=0, maxiter=20,
+            callback=lambda x: callback_calls.append(1))
+
+        assert info == 0
+        assert callback_calls
+        testing.assert_allclose(x, expected, rtol=1e-5, atol=1e-5)
+        testing.assert_array_equal(x0, cupy.zeros_like(expected))
+        assert cupy.linalg.norm(b - a @ x) <= 1e-5 * cupy.linalg.norm(b)
+
+
+@testing.parameterize(*testing.product({
     'x0': [None, 'ones'],
     'M': [None, 'jacobi'],
     'atol': [None, 'select-by-dtype'],
