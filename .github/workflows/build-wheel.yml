@@ -144,9 +144,15 @@ jobs:
         id: setup-python1
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
         with:
-          # WAR: setup-python is not relocatable, and cibuildwheel hard-wires to 3.12...
-          # see https://github.com/actions/setup-python/issues/871
-          python-version: "3.12"
+          # WAR: setup-python interpreters are not relocatable, see
+          # https://github.com/actions/setup-python/issues/871
+          # 3.14.10 is the lowest patch whose ssl module blocks the compromised
+          # eMudhra/emSign CAs that setup-python also publishes for Windows
+          # (3.11.18/3.12.16/3.13.18 are Linux-only in actions/python-versions),
+          # so the Windows wheel-build host gets a CA-clean interpreter and
+          # update-pip below runs safely. The tilde range keeps picking up newer
+          # 3.14.x security patches.
+          python-version: "~3.14.10"
           architecture: ${{ ((inputs.host-platform == 'linux-aarch64' || inputs.host-platform == 'win-arm64') && 'arm64') || 'x64' }}
 
       - name: Set up MSVC
@@ -191,7 +197,7 @@ jobs:
         run: env
 
       - name: Harden pip
-        uses: ./.github/actions/harden-pip
+        uses: ./.github/actions/update-pip
 
       - name: Install Python build deps
         run: pip install tomli_w pyyaml twine

@@ -43,6 +43,7 @@ jobs:
       version_type: ${{ steps.compute.outputs.version_type }}
       suffix: ${{ steps.compute.outputs.suffix }}
       promote_stable: ${{ steps.stable.outputs.promote_stable }}
+      pyver_spec: ${{ steps.pyver.outputs.spec }}
     steps:
       # workflow_run.pull_requests[] is empty for fork PRs, so instead of
       # parsing the event payload we download the per-run sentinel artifact
@@ -206,22 +207,31 @@ jobs:
             echo "promote_stable=false" >> "${GITHUB_OUTPUT}"
           fi
 
+      # python.doc.version is a setup-python range ("~3.12.16"): `spec` is
+      # passed to setup-python as is, `label` is the plain X.Y ("3.12") the
+      # wheel artifact is named after.
       - name: Read python.doc.version from ci/versions.yml
         if: steps.compute.outputs.proceed == 'true'
         id: pyver
-        run: echo "value=$(yq '.python.doc.version' ci/versions.yml)" >> "${GITHUB_OUTPUT}"
+        run: |
+          spec=$(yq '.python.doc.version' ci/versions.yml)
+          IFS=. read -r major minor _ <<< "${spec#\~}"
+          {
+            echo "spec=${spec}"
+            echo "label=${major}.${minor}"
+          } >> "${GITHUB_OUTPUT}"
 
       - name: Set up Python
         if: steps.compute.outputs.proceed == 'true'
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
         with:
-          python-version: ${{ steps.pyver.outputs.value }}
+          python-version: ${{ steps.pyver.outputs.spec }}
 
       - name: Download cupy wheel from triggering CI run
         if: steps.compute.outputs.proceed == 'true'
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
         with:
-          name: cupy-cuda13x-py${{ steps.pyver.outputs.value }}-linux-64-${{ steps.compute.outputs.suffix }}
+          name: cupy-cuda13x-py${{ steps.pyver.outputs.label }}-linux-64-${{ steps.compute.outputs.suffix }}
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: ./wheel
@@ -231,7 +241,7 @@ jobs:
       # warnings that bubble up as unresolved references in the HTML.
       - name: Harden pip
         if: steps.compute.outputs.proceed == 'true'
-        uses: ./.github/actions/harden-pip
+        uses: ./.github/actions/update-pip
 
       - name: Install docs requirements + cupy[ctk] + nccl
         if: steps.compute.outputs.proceed == 'true'
@@ -307,15 +317,27 @@ jobs:
       # --version-name/--version-type/--commit flags bypass the CLI's
       # GitHub env inference, which would resolve every workflow_run to
       # main/branch.
-      # This job has no checkout (it holds RTD_API_TOKEN), so the pip
-      # hardening is inlined rather than using ./.github/actions/harden-pip.
-      # Keep the pip URL in sync with .github/actions/harden-pip/action.yml.
+      # Trusted checkout, only to resolve ./.github/actions/update-pip. No
+      # `ref:` on purpose: in a workflow_run this is the default branch, NOT
+      # the PR. This job holds RTD_API_TOKEN, so it must never run a
+      # composite action taken from PR code (it could poison PATH/GITHUB_ENV
+      # for the upload step).
+      # path: _cupy is required: a root checkout would delete ./html, which is
+      # downloaded above and contains the docs artifact.
+      - name: Checkout update-pip action (default branch)
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        with:
+          path: _cupy
+          sparse-checkout: .github/actions/update-pip
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: ${{ needs.build.outputs.pyver_spec }}
+      - name: Update pip
+        uses: ./_cupy/.github/actions/update-pip
       - name: Install readthedocs-upload
-        run: |
-          python3 -m pip install --user --disable-pip-version-check "pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70"
-          python3 -m pip install --user --disable-pip-version-check --upgrade pip
-          python3 -m pip --version
-          python3 -m pip install --user readthedocs-upload==1.0.0a1
+        run: python -m pip install readthedocs-upload==1.0.0a1
 
       # Non-fatal when the token is unset (forks, secret rotation).
       # PR-origin values flow via env, not ${{ }} interpolation into
