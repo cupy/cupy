@@ -397,6 +397,71 @@ class TestFindPeaks:
 @testing.with_requires('scipy')
 class TestArgrel:
 
+    @pytest.mark.parametrize('func_name, comparator', [
+        ('argrelmax', None), ('argrelmin', None),
+        ('argrelextrema', 'greater'), ('argrelextrema', 'less')])
+    @pytest.mark.parametrize('mode', ['clip', 'wrap'])
+    @pytest.mark.parametrize('order', [1, 2])
+    @pytest.mark.parametrize('layout', ['C', 'strided', 'reversed'])
+    @testing.for_dtypes([np.int32, np.float64])
+    @testing.numpy_cupy_array_equal(scipy_name='scp')
+    def test_layout_1d(self, func_name, comparator, mode, order, layout,
+                       dtype, xp, scp):
+        x = xp.array([0, 2, 0, 3, 0, 1, 0, 4, 0], dtype=dtype)
+        if layout == 'strided':
+            x = x[::2]
+        elif layout == 'reversed':
+            x = x[::-1]
+
+        func = getattr(scp.signal, func_name)
+        args = () if comparator is None else (getattr(xp, comparator),)
+        return func(x, *args, order=order, mode=mode)
+
+    @pytest.mark.parametrize('func_name, comparator', [
+        ('argrelmax', None), ('argrelmin', None),
+        ('argrelextrema', 'greater'), ('argrelextrema', 'less')])
+    @pytest.mark.parametrize('mode', ['clip', 'wrap'])
+    @pytest.mark.parametrize('order', [1, 2])
+    @pytest.mark.parametrize('axis', [-2, -1, 0, 1])
+    @pytest.mark.parametrize('layout', ['C', 'F', 'transpose', 'columns',
+                                        'reversed'])
+    @testing.for_dtypes([np.int32, np.float64])
+    @testing.numpy_cupy_array_equal(scipy_name='scp')
+    def test_layout_2d(self, func_name, comparator, mode, order, axis, layout,
+                       dtype, xp, scp):
+        x = xp.array([[0, 3, 1],
+                      [5, 0, 2],
+                      [1, 4, 0],
+                      [2, 1, 3]], dtype=dtype)
+        if layout == 'F':
+            x = xp.asfortranarray(x)
+        elif layout == 'transpose':
+            x = x.T
+        elif layout == 'columns':
+            x = x[:, 1:]
+        elif layout == 'reversed':
+            x = x[::-1, ::-1]
+
+        func = getattr(scp.signal, func_name)
+        args = () if comparator is None else (getattr(xp, comparator),)
+        return func(x, *args, axis=axis, order=order, mode=mode)
+
+    @pytest.mark.parametrize('func_name, comparator', [
+        ('argrelmax', None), ('argrelmin', None),
+        ('argrelextrema', 'greater'), ('argrelextrema', 'less')])
+    @pytest.mark.parametrize('mode', ['clip', 'wrap'])
+    @pytest.mark.parametrize('axis', [0, 1, 2])
+    @testing.numpy_cupy_array_equal(scipy_name='scp')
+    def test_layout_3d(self, func_name, comparator, mode, axis, xp, scp):
+        x = xp.array([[[0, 3, 1], [5, 0, 2], [1, 4, 0]],
+                      [[2, 1, 3], [0, 5, 1], [4, 0, 2]],
+                      [[1, 4, 0], [3, 1, 2], [0, 2, 5]]], dtype=xp.float64)
+        x = x.transpose(2, 0, 1)[:, ::-1, :]
+
+        func = getattr(scp.signal, func_name)
+        args = () if comparator is None else (getattr(xp, comparator),)
+        return func(x, *args, axis=axis, mode=mode)
+
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_empty(self, xp, scp):
         # When there are no relative extrema, make sure that

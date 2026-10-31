@@ -1296,6 +1296,8 @@ def _boolrelextrema(data, comparator, axis=0, order=1, mode="clip"):
     axis = _normalize_axis_index(axis, data.ndim)
 
     if data.ndim < 3:
+        # The raw kernels index the input as a C-contiguous array.
+        data = cupy.ascontiguousarray(data)
         results = cupy.empty(data.shape, dtype=bool)
         _peak_finding(data, comparator, axis, order, mode, results)
     else:
