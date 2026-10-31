@@ -65,4 +65,4 @@ Automatic Kernel Parameters Optimizations (:mod:`cupyx.optimizing`)
 .. autosummary::
    :toctree: generated/
 
-   cupyx.optimizing.optimize
+   optimize
