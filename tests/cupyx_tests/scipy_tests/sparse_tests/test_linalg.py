@@ -2147,6 +2147,58 @@ class TestLOBPCG:
         assert len(l_h) == 22
 
 
+@testing.parameterize(*testing.product({
+    'dtype': [numpy.float32, numpy.float64],
+    'generalized': [False, True],
+    'largest': [False, True],
+}))
+class TestLOBPCGResidualBreakdown(unittest.TestCase):
+
+    def test_dependent_residuals(self):
+        # Independent Ritz vectors can have linearly dependent residuals.
+        n = 12
+        A = cupy.diag(cupy.arange(1, n + 1, dtype=self.dtype))
+        A[2, :2] = A[:2, 2] = 0.5
+        A = sparse.csr_matrix(A)
+        X = cupy.eye(n, 2, dtype=self.dtype)
+        B = 4 * sparse.eye(n, dtype=self.dtype) if self.generalized else None
+        tol = 1e-6
+
+        with pytest.warns(UserWarning, match='Failed at iteration 0'):
+            w, v, wh, rh = sparse.linalg.lobpcg(
+                A, X, B=B, tol=tol, largest=self.largest,
+                retLambdaHistory=True, retResidualNormsHistory=True)
+
+        expected = cupy.array([1, 2], dtype=self.dtype)
+        if self.generalized:
+            expected /= 4
+        if self.largest:
+            expected = expected[::-1]
+        testing.assert_allclose(w, expected, rtol=1e-6)
+        Bv = v if B is None else B @ v
+        testing.assert_allclose(v.T @ Bv, cupy.eye(2), atol=1e-6)
+        residual_norms = cupy.linalg.norm(A @ v - Bv * w, axis=0)
+        assert (residual_norms > tol).all()
+        assert len(wh) == len(rh) == 1
+        testing.assert_allclose(wh[-1], w)
+        testing.assert_allclose(rh[-1], residual_norms, rtol=1e-6)
+
+    def test_converged_residuals(self):
+        n = 12
+        A = sparse.diags(cupy.arange(1, n + 1, dtype=self.dtype))
+        X = cupy.eye(n, dtype=self.dtype)
+        X = X[:, -2:] if self.largest else X[:, :2]
+        B = 4 * sparse.eye(n, dtype=self.dtype) if self.generalized else None
+
+        with warnings.catch_warnings():
+            warnings.simplefilter('error')
+            w, v = sparse.linalg.lobpcg(
+                A, X, B=B, tol=1e-6, largest=self.largest)
+
+        Bv = v if B is None else B @ v
+        testing.assert_allclose(A @ v, Bv * w, atol=1e-6)
+
+
 @testing.with_requires('scipy')
 @testing.parameterize(*testing.product({
     'A_sparsity': [True, False],
