@@ -35,9 +35,13 @@ def piecewise(x, condlist, funclist):
 
         .. seealso:: :func:`numpy.piecewise`
         """
-    if cupy.isscalar(condlist):
+    x = cupy.asanyarray(x)
+
+    if cupy.isscalar(condlist) or (
+            not isinstance(condlist[0], (list, cupy.ndarray)) and x.ndim != 0):
         condlist = [condlist]
 
+    condlist = cupy.asarray(condlist, dtype=bool)
     condlen = len(condlist)
     funclen = len(funclist)
     if condlen == funclen:
