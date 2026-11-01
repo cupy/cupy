@@ -12,7 +12,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
        liblzma-dev \
 \
        && \
-    apt-get -qqy install ccache git curl && \
+    apt-get -qqy install ca-certificates ccache git curl && \
     apt-get -qqy --allow-change-held-packages \
             --allow-downgrades install 'libnccl2=2.27.*+cuda12.9' 'libnccl-dev=2.27.*+cuda12.9' 'libcutensor2-cuda-12=2.4.*' 'libcutensor2-dev-cuda-12=2.4.*'
 
@@ -28,9 +28,9 @@ RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
 RUN git -C /opt/pyenv pull --ff-only && \
-    PYTHON_CONFIGURE_OPTS="--disable-shared" pyenv install 3.12.11 && \
-    pyenv global 3.12.11 && \
-    pip install -U setuptools pip wheel && \
+    PYTHON_CONFIGURE_OPTS="--disable-shared" pyenv install 3.12.16 && \
+    pyenv global 3.12.16 && \
+    pip install --disable-pip-version-check -U pip setuptools wheel && \
     pip install -U google-cloud-storage
 
 RUN pip install -U --extra-index-url=https://pypi.anaconda.org/scientific-python-nightly-wheels/simple 'numpy>=0a0' 'scipy>=0a0,<2.0' 'optuna>=0a0' 'ml_dtypes>=0a0' 'cython==3.2.*,!=3.2.6'

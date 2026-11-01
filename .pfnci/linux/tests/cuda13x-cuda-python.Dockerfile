@@ -12,7 +12,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
        liblzma-dev \
 \
        && \
-    apt-get -qqy install ccache git curl && \
+    apt-get -qqy install ca-certificates ccache git curl && \
     apt-get -qqy --allow-change-held-packages \
             --allow-downgrades install 'libnccl2=2.31.*+cuda13.4' 'libnccl-dev=2.31.*+cuda13.4' 'libcutensor2-cuda-13=2.4.*' 'libcutensor2-dev-cuda-13=2.4.*'
 
@@ -28,9 +28,9 @@ RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
 RUN git -C /opt/pyenv pull --ff-only && \
-    PYTHON_CONFIGURE_OPTS="--disable-shared" pyenv install 3.14.6 && \
-    pyenv global 3.14.6 && \
-    pip install -U setuptools pip wheel && \
+    PYTHON_CONFIGURE_OPTS="--disable-shared" pyenv install 3.14.10 && \
+    pyenv global 3.14.10 && \
+    pip install --disable-pip-version-check -U pip setuptools wheel && \
     pip install -U google-cloud-storage
 
 RUN pip install -U 'numpy==2.4.*' 'scipy==1.16.*' 'optuna==4.*' 'cython==3.2.*,!=3.2.6' 'cuda-python==13.4.*' 'nvmath-python==1.*' 'cuda-cccl[minimal-sysctk13]>=1.1.1,!=1.2.0'

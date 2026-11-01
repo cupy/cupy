@@ -71,7 +71,7 @@ jobs:
             ci
 
       - name: Download sdist artifact
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
         with:
           name: cupy-sdist-${{ inputs.artifact-suffix }}
           path: ${{ runner.temp }}/sdist
@@ -142,11 +142,17 @@ jobs:
 
       - name: Set up Python
         id: setup-python1
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
         with:
-          # WAR: setup-python is not relocatable, and cibuildwheel hard-wires to 3.12...
-          # see https://github.com/actions/setup-python/issues/871
-          python-version: "3.12"
+          # WAR: setup-python interpreters are not relocatable, see
+          # https://github.com/actions/setup-python/issues/871
+          # 3.14.10 is the lowest patch whose ssl module blocks the compromised
+          # eMudhra/emSign CAs that setup-python also publishes for Windows
+          # (3.11.18/3.12.16/3.13.18 are Linux-only in actions/python-versions),
+          # so the Windows wheel-build host gets a CA-clean interpreter and
+          # update-pip below runs safely. The tilde range keeps picking up newer
+          # 3.14.x security patches.
+          python-version: "~3.14.10"
           architecture: ${{ ((inputs.host-platform == 'linux-aarch64' || inputs.host-platform == 'win-arm64') && 'arm64') || 'x64' }}
 
       - name: Set up MSVC
@@ -190,10 +196,11 @@ jobs:
       - name: Dump environment
         run: env
 
+      - name: Harden pip
+        uses: ./.github/actions/update-pip
+
       - name: Install Python build deps
-        run: |
-          python -m pip install --upgrade pip
-          pip install tomli_w pyyaml twine
+        run: pip install tomli_w pyyaml twine
 
       # Install under RUNNER_TEMP so cibuildwheel doesn't copy the mini-CTK
       # (~1-2 GB) into /project on Linux; the container reaches it through the
@@ -251,7 +258,7 @@ jobs:
             ${{ startsWith(inputs.host-platform, 'linux-') && '--root-prefix /project/srcpkg' || '' }} >> "$GITHUB_ENV"
 
       - name: Build cupy-cuda${{ env.BUILD_CUDA_MAJOR }}x wheel
-        uses: pypa/cibuildwheel@adba99c781d3746d38b3a09b1cf797965bcb7fe6  # v4.3.0
+        uses: pypa/cibuildwheel@b9e566a2b284570af229f6c2a33673410d0389a3  # v4.3.4
         with:
           package-dir: ./srcpkg
           output-dir: wheelhouse
@@ -373,7 +380,7 @@ jobs:
           twine check --strict wheelhouse/*.whl
 
       - name: Upload wheel artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: cupy-cuda${{ env.BUILD_CUDA_MAJOR }}x-py${{ matrix.python-version }}-${{ inputs.host-platform }}-${{ inputs.artifact-suffix }}
           path: wheelhouse/*.whl
