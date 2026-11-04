@@ -106,7 +106,7 @@ __host__ __device__ __forceinline__ bool isnan(const __half& x) {
 #endif // ENABLE_HALF
 
 __host__ __device__ __forceinline__ bool isnan(const thrust_bfloat16& x) {
-    return isnan(static_cast<float>(x));
+    return __hisnan(x);
 }
 
 template <bool Descending, typename T>
