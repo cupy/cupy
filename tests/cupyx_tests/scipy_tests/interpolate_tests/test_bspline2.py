@@ -502,14 +502,29 @@ class TestLSQ:
         b_w = scp.interpolate.make_lsq_spline(x, y, t, k, w=w)
         return b_w.c
 
-    @pytest.mark.xfail(reason="not implemented")
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_weights_arange(self, xp, scp):
-        # weights = 1 is same as None
+        # Nonuniform weights should match SciPy.
         x, y, t, k = self._get_xytk(xp)
         w = xp.arange(x.size)
         b_w = scp.interpolate.make_lsq_spline(x, y, t, k, w=w)
         return b_w.c
+
+    @pytest.mark.parametrize('axis', [0, 1])
+    @pytest.mark.parametrize('zero_weight', [False, True])
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-12, rtol=1e-12)
+    def test_nonuniform_weights(self, xp, scp, axis, zero_weight):
+        x = xp.asarray([0., .4, .8, 1.2, 1.6, 2., 2.4, 2.8, 3.])
+        y = xp.asarray([[0., .2, 1.5, -.5, 2., 2.5, 3., 2.8, 3.5],
+                        [1., -.8, 2., .1, 1.2, -.4, 1., 3.2, 2.]])
+        if axis == 0:
+            y = y.T
+        t = xp.asarray([0., 0., 1.5, 3., 3.])
+        w = xp.asarray([1., 2., 4., .5, 3., 2., 1., 1.5, 1.])
+        if zero_weight:
+            w[4] = 0.
+        spline = scp.interpolate.make_lsq_spline(x, y, t, k=1, w=w, axis=axis)
+        return spline.c, spline(x)
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_multiple_rhs(self, xp, scp):
