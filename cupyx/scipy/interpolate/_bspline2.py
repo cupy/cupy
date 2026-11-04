@@ -837,8 +837,6 @@ def make_lsq_spline(x, y, t, k=3, w=None, axis=0, check_finite=True, *,
 
     y = cupy.moveaxis(y, axis, 0)    # now internally interp axis is zero
 
-    if x.ndim != 1 or any(x[1:] - x[:-1] <= 0):
-        raise ValueError("Expect x to be a 1-D sorted array_like.")
     if x.ndim != 1:
         raise ValueError("Expect x to be a 1-D sequence.")
     if x.shape[0] < k+1:

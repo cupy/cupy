@@ -494,6 +494,29 @@ class TestLSQ:
         b = scp.interpolate.make_lsq_spline(x, y, t, k)
         return b.c
 
+    @pytest.mark.parametrize('axis', [0, 1])
+    @pytest.mark.parametrize('x_data', [
+        [0., 1., 1., 2., 3.],
+        [0., 0., 1., 2., 3., 3.],
+        [0., .6, .6, 1., 2., 2., 3.],
+    ])
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-12, rtol=1e-12)
+    def test_repeated_x(self, xp, scp, axis, x_data):
+        x = xp.asarray(x_data)
+        y = xp.stack((x*x + xp.arange(x.size)*.13, xp.cos(x)))
+        if axis == 0:
+            y = y.T
+        t = xp.asarray([0., 0., 1.5, 3., 3.])
+        spline = scp.interpolate.make_lsq_spline(x, y, t, k=1, axis=axis)
+        return spline.c, spline(x)
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=ValueError)
+    def test_decreasing_x(self, xp, scp):
+        x = xp.asarray([0., 1., .5, 2., 3.])
+        y = xp.arange(5.)
+        t = xp.asarray([0., 0., 1.5, 3., 3.])
+        scp.interpolate.make_lsq_spline(x, y, t, k=1)
+
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_weights_unity(self, xp, scp):
         # weights = 1 is same as None
