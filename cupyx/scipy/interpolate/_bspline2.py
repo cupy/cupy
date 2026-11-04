@@ -864,12 +864,18 @@ def make_lsq_spline(x, y, t, k=3, w=None, axis=0, check_finite=True, *,
     # number of coefficients
     nc = t.size - k - 1
 
-    # multiple r.h.s
+    # The QR kernel takes doubles. Treat complex values as pairs of
+    # real right-hand sides so that both components are transformed.
     extradim = prod(y.shape[1:])
     yy = y.reshape(-1, extradim)
+    was_complex = yy.dtype.kind == 'c'
+    if was_complex:
+        yy = cupy.ascontiguousarray(yy).view(cupy.float64).reshape(x.size, -1)
 
     # solve
     _, _, c = _lsq_solve_qr(x, yy, t, k, w)
+    if was_complex:
+        c = c.view(cupy.complex128)
 
     # restore the shape of `c` for both single and multiple r.h.s.
     c = c.reshape((nc,) + y.shape[1:])

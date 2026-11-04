@@ -522,15 +522,27 @@ class TestLSQ:
         b = scp.interpolate.make_lsq_spline(x, y, t, k)
         return b.c.shape
 
-    @pytest.mark.xfail
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_complex(self, xp, scp):
-        # cmplx-valued `y`
-        x, t, k = self.x, self.t, self.k
-        yc = self.y * (1. + 2.j)
-
+        x, y, t, k = self._get_xytk(xp)
+        yc = y * (1. + 2.j)
         b = scp.interpolate.make_lsq_spline(x, yc, t, k)
         return b.c
+
+    @pytest.mark.parametrize('axis', [0, 1])
+    @pytest.mark.parametrize('dtype', ['complex64', 'complex128'])
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-11, rtol=1e-11)
+    def test_complex_multiple_rhs(self, xp, scp, axis, dtype):
+        x = xp.asarray([0., .4, .8, 1.2, 1.6, 2., 2.4, 2.8, 3.])
+        real = xp.asarray([[0., .2, 1.5, -.5, 2., 2.5, 3., 2.8, 3.5],
+                           [1., -.8, 2., .1, 1.2, -.4, 1., 3.2, 2.]])
+        imag = xp.stack((xp.cos(x), xp.sin(x)))
+        y = (real + 1j*imag).astype(dtype)
+        if axis == 0:
+            y = y.T
+        t = xp.asarray([0., 0., 1.5, 3., 3.])
+        spline = scp.interpolate.make_lsq_spline(x, y, t, k=1, axis=axis)
+        return spline.c, spline(x)
 
     @testing.numpy_cupy_allclose(scipy_name='scp')
     def test_int_xy(self, xp, scp):
