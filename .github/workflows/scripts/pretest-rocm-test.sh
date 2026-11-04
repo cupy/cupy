@@ -16,8 +16,8 @@ DEBIAN_FRONTEND=noninteractive apt-get -y install \
 
 # Ubuntu's python3-pip (24.0) trusts the compromised eMudhra/emSign CAs, so
 # drop it if the base image has it and install pip from a hash-checked wheel
-# run as its own installer. Keep the URL in sync with
-# .github/actions/harden-pip/action.yml.
+# run as its own installer. Keep the URL in sync with docker/python3/Dockerfile,
+# docker/rocm/Dockerfile and .pfnci/windows/test.ps1.
 DEBIAN_FRONTEND=noninteractive apt-get -y purge python3-pip
 pip_whl=/tmp/pip-26.2.2-py3-none-any.whl
 curl -fsSLo "${pip_whl}" https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl
