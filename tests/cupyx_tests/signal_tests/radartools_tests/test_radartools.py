@@ -143,6 +143,24 @@ def test_ca_cfar2d(xp, dtype, shape, gc, rc):
         return out, array - out > 0
 
 
+@testing.slow
+@pytest.mark.thread_unsafe(reason='Allocation too large.')
+def test_ca_cfar_large_flat_index():
+    array = out = actual = None
+    try:
+        array = cupy.zeros((2**16, 2**15 + 1), dtype=cupy.uint8)
+        array[-2, -2] = 1
+        expected = signal.ca_cfar(array[-5:, -5:].copy(), (0, 0), (1, 1))
+        out = signal.ca_cfar(array, (0, 0), (1, 1))
+        for actual, reference in zip(out, expected):
+            testing.assert_allclose(actual[-3:, -3:], reference[-3:, -3:])
+    except MemoryError:
+        pytest.skip('out of memory in test.')
+    finally:
+        del actual, out, array
+        cupy.get_default_memory_pool().free_all_blocks()
+
+
 @pytest.mark.parametrize(
     "shape,gc,rc", [((3, 3), (1, 2), (1, 10)),
                     ((3, 3), (1, 1), (10, 1)),

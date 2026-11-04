@@ -5,13 +5,9 @@
 
 #include "hip/cupy_hipblas.h"
 
-#elif !defined(CUPY_NO_CUDA)
+#else
 
 #include "cuda/cupy_cublas.h"
 
-#else // #ifndef CUPY_NO_CUDA
-
-#include "stub/cupy_cublas.h"
-
-#endif // #ifndef CUPY_NO_CUDA
+#endif
 #endif // #ifndef INCLUDE_GUARD_CUPY_CUBLAS_H

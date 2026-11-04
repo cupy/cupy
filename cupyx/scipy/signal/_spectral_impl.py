@@ -56,8 +56,8 @@ LOMBSCARGLE_KERNEL = r"""
 ///////////////////////////////////////////////////////////////////////////////
 
 template<typename T>
-__device__ void _cupy_lombscargle_float( const int x_shape,
-                                         const int freqs_shape,
+__device__ void _cupy_lombscargle_float( const long long x_shape,
+                                         const long long freqs_shape,
                                          const T *__restrict__ x,
                                          const T *__restrict__ y,
                                          const T *__restrict__ freqs,
@@ -74,7 +74,7 @@ __device__ void _cupy_lombscargle_float( const int x_shape,
         yD = 2.0f / y_dot[0];
     }
 
-    for ( int tid = tx; tid < freqs_shape; tid += stride ) {
+    for ( long long tid = tx; tid < freqs_shape; tid += stride ) {
 
         T freq { freqs[tid] };
 
@@ -86,7 +86,7 @@ __device__ void _cupy_lombscargle_float( const int x_shape,
         T c {};
         T s {};
 
-        for ( int j = 0; j < x_shape; j++ ) {
+        for ( long long j = 0; j < x_shape; j++ ) {
             sincosf( freq * x[j], &s, &c );
             xc += y[j] * c;
             xs += y[j] * s;
@@ -114,7 +114,8 @@ __device__ void _cupy_lombscargle_float( const int x_shape,
 }
 
 extern "C" __global__ void __launch_bounds__( 512 ) _cupy_lombscargle_float32(
-        const int x_shape, const int freqs_shape, const float *__restrict__ x,
+        const long long x_shape, const long long freqs_shape,
+        const float *__restrict__ x,
         const float *__restrict__ y, const float *__restrict__ freqs,
         float *__restrict__ pgram, const float *__restrict__ y_dot ) {
     _cupy_lombscargle_float<float>( x_shape, freqs_shape, x, y,
@@ -122,8 +123,8 @@ extern "C" __global__ void __launch_bounds__( 512 ) _cupy_lombscargle_float32(
 }
 
 template<typename T>
-__device__ void _cupy_lombscargle_double( const int x_shape,
-                                          const int freqs_shape,
+__device__ void _cupy_lombscargle_double( const long long x_shape,
+                                          const long long freqs_shape,
                                           const T *__restrict__ x,
                                           const T *__restrict__ y,
                                           const T *__restrict__ freqs,
@@ -140,7 +141,7 @@ __device__ void _cupy_lombscargle_double( const int x_shape,
         yD = 2.0 / y_dot[0];
     }
 
-    for ( int tid = tx; tid < freqs_shape; tid += stride ) {
+    for ( long long tid = tx; tid < freqs_shape; tid += stride ) {
 
         T freq { freqs[tid] };
 
@@ -152,7 +153,7 @@ __device__ void _cupy_lombscargle_double( const int x_shape,
         T c {};
         T s {};
 
-        for ( int j = 0; j < x_shape; j++ ) {
+        for ( long long j = 0; j < x_shape; j++ ) {
 
             sincos( freq * x[j], &s, &c );
             xc += y[j] * c;
@@ -181,7 +182,8 @@ __device__ void _cupy_lombscargle_double( const int x_shape,
 }
 
 extern "C" __global__ void __launch_bounds__( 512 ) _cupy_lombscargle_float64(
-        const int x_shape, const int freqs_shape, const double *__restrict__ x,
+        const long long x_shape, const long long freqs_shape,
+        const double *__restrict__ x,
         const double *__restrict__ y, const double *__restrict__ freqs,
         double *__restrict__ pgram, const double *__restrict__ y_dot ) {
 

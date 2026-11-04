@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import numpy
+
 try:
     import scipy.sparse
     _scipy_available = True
@@ -78,7 +80,7 @@ class _csc_base(_compressed._compressed_sparse_matrix):
     def _convert_dense(self, x):
         from cupyx import cusparse
 
-        if x.dtype.char not in 'fdFD':
+        if cusparse._needs_cupy_fallback(x.dtype):
             # cuSPARSE dense->sparse conversion is float-only.  The CSC
             # arrays of ``x`` are exactly the CSR arrays of ``x.T`` (same
             # data/indices/indptr with the shape swapped), so reuse
@@ -106,6 +108,10 @@ class _csc_base(_compressed._compressed_sparse_matrix):
         if self.ndim != 2 or (_base.issparse(other) and other.ndim != 2):
             # A 1-D operand is involved: run on the (1, N)/(N, 1) backing.
             return self._matmul_1d(other)
+        if (_base.issparse(other) and cusparse._needs_cupy_fallback(
+                numpy.promote_types(self.dtype, other.dtype))):
+            return self._as_csr_type(
+                self.tocsr()._matmul_dispatch(other.tocsr()))
         if _base.issparse(other) and other.format == 'csr':
             self.sum_duplicates()
             other.sum_duplicates()
@@ -267,7 +273,7 @@ class _csc_base(_compressed._compressed_sparse_matrix):
         if self.nnz == 0:
             return cupy.zeros(shape=self.shape, dtype=self.dtype, order=order)
 
-        if self.dtype.char not in 'fdFD':
+        if cusparse._needs_cupy_fallback(self.dtype):
             # cuSPARSE sparse->dense is float-only.  The transpose of
             # this CSC is a CSR with the same arrays; densify through
             # its pure-CuPy non-float path and transpose back (with the
@@ -299,21 +305,8 @@ class _csc_base(_compressed._compressed_sparse_matrix):
                 raise ValueError('order not understood')
 
     def _add_sparse(self, other, alpha, beta):
-        from cupyx import cusparse
-
         self.sum_duplicates()
-        other = other.tocsc().T
-        other.sum_duplicates()
-        if cusparse.check_availability('csrgeam2'):
-            csrgeam = cusparse.csrgeam2
-        elif cusparse.check_availability('csrgeam'):
-            csrgeam = cusparse.csrgeam
-        else:
-            raise NotImplementedError
-        result = csrgeam(self.T, other, alpha, beta)
-        if not isinstance(result, self._csr_container):
-            result = self._csr_container(result)
-        return result.T
+        return self.T._add_sparse(other.tocsc().T, alpha, beta).T
 
     # TODO(unno): Implement tobsr
 

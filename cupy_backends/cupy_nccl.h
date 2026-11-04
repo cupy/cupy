@@ -1,17 +1,13 @@
 #ifndef INCLUDE_GUARD_CUPY_NCCL_H
 #define INCLUDE_GUARD_CUPY_NCCL_H
 
-#if !defined(CUPY_NO_CUDA) && !defined(CUPY_USE_HIP)
-
-#include "cuda/cupy_nccl.h"
-
-#elif defined(CUPY_USE_HIP)
+#ifdef CUPY_USE_HIP
 
 #include "hip/cupy_rccl.h"
 
-#else // #ifndef CUPY_NO_CUDA
+#else
 
-#include "stub/cupy_nccl.h"
+#include "cuda/cupy_nccl.h"
 
 #endif
 
@@ -65,7 +61,6 @@ ncclDataType_t _get_proper_datatype(ncclDataType_t datatype) {
     return TYPE2TYPE_V1[datatype];
 }
 
-#ifndef CUPY_NO_CUDA
 ncclResult_t ncclGroupStart() {
     return ncclSuccess;
 }
@@ -73,7 +68,6 @@ ncclResult_t ncclGroupStart() {
 ncclResult_t ncclGroupEnd() {
     return ncclSuccess;
 }
-#endif // #ifndef CUPY_NO_CUDA
 #endif // #if (NCCL_VERSION_CODE < NCCL_VERSION(2, 0, 0))
 
 #if (NCCL_VERSION_CODE < NCCL_VERSION(2, 2, 0))

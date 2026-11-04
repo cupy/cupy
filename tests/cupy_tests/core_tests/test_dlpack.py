@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ctypes
+import sys
 
 import numpy
 import pytest
@@ -12,6 +13,14 @@ from cupy import testing
 ctypes.pythonapi.PyCapsule_GetPointer.restype = ctypes.c_void_p
 ctypes.pythonapi.PyCapsule_GetPointer.argtypes = [
     ctypes.py_object, ctypes.c_char_p]
+
+
+def thread_unsafe_on_windows(func):
+    """Serialize CPU access to managed memory on Windows."""
+    if sys.platform == 'win32':
+        return pytest.mark.thread_unsafe(
+            reason='CPU access to managed memory overlaps GPU work')(func)
+    return func
 
 
 def _gen_array(dtype):
@@ -234,6 +243,7 @@ class TestNewDLPackConversion:
         with pytest.raises(BufferError):
             arr.__dlpack__(dl_device=(9, 0))
 
+    @thread_unsafe_on_windows
     def test_conversion_device_to_cpu(self):
         # NOTE: This defaults to the old unversioned, which is needed for
         #       NumPy 1.x support.

@@ -602,7 +602,7 @@ class IndexMixin:
 
     def _parse_indices(self, key):
         M, N = self.shape
-        row, col = _unpack_index(key)
+        row, col = _unpack_index(key, self.shape)
 
         if self._is_scalar(row):
             row = row.item()  # synchronize!
@@ -692,7 +692,18 @@ def _try_is_scipy_sparse(index):
     return False
 
 
-def _unpack_index(index):
+def _check_mask_shape(mask, shape):
+    if mask is None:
+        return
+    assert mask.dtype == numpy.bool_
+    if mask.shape != shape:
+        raise IndexError(
+            f"boolean array index has incorrect length: "
+            f"{mask.shape} instead of {shape}"
+        )
+
+
+def _unpack_index(index, shape):
     """ Parse index. Always return a tuple of the form (row, col).
     Valid type for row/col is integer, slice, or array of integers.
 
@@ -708,6 +719,7 @@ def _unpack_index(index):
                             numpy.ndarray))
          or _try_is_scipy_sparse(index))
             and index.ndim == 2 and index.dtype.kind == 'b'):
+        _check_mask_shape(index, shape)
         return index.nonzero()
 
     # Parse any ellipses.
@@ -724,11 +736,12 @@ def _unpack_index(index):
         else:
             raise IndexError('invalid number of indices')
     else:
-        idx = _compatible_boolean_index(index)
+        idx = _compatible_boolean_index(index, shape)
         if idx is None:
             row, col = index, slice(None)
         elif idx.ndim < 2:
-            return _boolean_index_to_array(idx), slice(None)
+            idx = _boolean_index_to_array(idx)
+            return idx, slice(None)
         elif idx.ndim == 2:
             return idx.nonzero()
     # Next, check for validity and transform the index as needed.
@@ -739,8 +752,8 @@ def _unpack_index(index):
             'Indexing with sparse matrices is not supported '
             'except boolean indexing where matrix and index '
             'are equal shapes.')
-    bool_row = _compatible_boolean_index(row)
-    bool_col = _compatible_boolean_index(col)
+    bool_row = _compatible_boolean_index(row, (shape[0],))
+    bool_col = _compatible_boolean_index(col, (shape[1],))
     if bool_row is not None:
         row = _boolean_index_to_array(bool_row)
     if bool_col is not None:
@@ -807,18 +820,24 @@ def _first_element_bool(idx, max_dim=2):
     return _first_element_bool(first, max_dim-1)
 
 
-def _compatible_boolean_index(idx):
+def _compatible_boolean_index(idx, shape=None):
     """Returns a boolean index array that can be converted to
     integer array. Returns None if no such array exists.
     """
+    result = None
     # presence of attribute `ndim` indicates a compatible array type.
     if hasattr(idx, 'ndim'):
         if idx.dtype.kind == 'b':
-            return idx
+            result = idx
     # non-ndarray bool collection should be converted to ndarray
     elif _first_element_bool(idx):
-        return cupy.asarray(idx, dtype='bool')
-    return None
+        result = cupy.asarray(idx, dtype='bool')
+
+    if result is not None and shape is not None:
+        expected = shape if (len(shape) == 2 and result.ndim == 2) \
+            else (shape[0],)
+        _check_mask_shape(result, expected)
+    return result
 
 
 def _boolean_index_to_array(idx):
