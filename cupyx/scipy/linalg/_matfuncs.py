@@ -165,6 +165,9 @@ def _bbc_taylor(A, E, deg):
         A4 = A2 @ _bbc_t8_left1(A, A2)
         A8 = _bbc_t8_left2(A2, A4) @ _bbc_t8_right(E, A, A2, A4)
         return _bbc_t8_finalize(E, A, A2, A8)
+    # TODO: in deg 12 and deg 18 the post-matmul adds could fold into
+    # the matmul itself (C = A@B + βC) once nvmath-python's advanced
+    # matmul or cupy.fuse's matmul support becomes available.
     if deg == 12:
         A2 = A @ A
         A3 = A @ A2
