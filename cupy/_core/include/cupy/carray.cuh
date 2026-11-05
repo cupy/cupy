@@ -248,7 +248,7 @@ private:
   ptrdiff_t strides_[ndim];
 
   template <typename U, int n, bool c, bool idx, int cdim>
-  friend auto xsf::as_mdspan(const CArray<U, n, c, idx, cdim>& arr);
+  friend __device__ auto xsf::as_mdspan(const CArray<U, n, c, idx, cdim>& arr);
 
 public:
   // Constructor supports pointers or initializer lists and strides is optional
