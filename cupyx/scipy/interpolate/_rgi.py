@@ -635,9 +635,7 @@ def interpn(points, values, xi, method="linear", bounds_error=True,
                                  "in dimension %d" % i)
 
     # perform interpolation
-    if method in ["linear", "nearest", "slinear", "cubic", "quintic", "pchip",
-                  "slinear_legacy", "cubic_legacy", "quintic_legacy"]:
-        interp = RegularGridInterpolator(points, values, method=method,
-                                         bounds_error=bounds_error,
-                                         fill_value=fill_value)
-        return interp(xi)
+    interp = RegularGridInterpolator(points, values, method=method,
+                                     bounds_error=bounds_error,
+                                     fill_value=fill_value)
+    return interp(xi)
