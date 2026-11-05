@@ -206,6 +206,22 @@ def get_hipcc_path() -> list[str]:
         return None
 
 
+def configure_msvc_for_hip(compiler):
+    """Makes an MSVC compiler instance use clang-cl from ROCm.
+
+    The HIP headers (e.g., ``hiprand_kernel.h``) cannot be compiled with
+    cl.exe. clang-cl produces objects for the same ABI, so link.exe and the
+    C runtime are unchanged.
+    """
+    if not compiler.initialized:
+        compiler.initialize()
+    clang_cl = os.path.join(
+        get_rocm_path(), 'lib', 'llvm', 'bin', 'clang-cl.exe')
+    if not os.path.exists(clang_cl):
+        raise RuntimeError(f'clang-cl could not be found: {clang_cl}')
+    compiler.cc = clang_cl
+
+
 def get_compiler_setting(ctx: Context, use_hip):
     cuda_path = None
     rocm_path = None
@@ -244,8 +260,11 @@ def get_compiler_setting(ctx: Context, use_hip):
         library_dirs.append(os.path.join(rocm_path, 'lib'))
 
     if use_hip:
-        # ROCm 5.3 and above requires c++14
-        extra_compile_args.append('-std=c++14')
+        if PLATFORM_WIN32:
+            extra_compile_args.append('/std:c++17')
+        else:
+            # ROCm 5.3 and above requires c++14
+            extra_compile_args.append('-std=c++14')
     else:
         # CCCL 3.x (for CUDA) requires c++17
         if PLATFORM_LINUX:

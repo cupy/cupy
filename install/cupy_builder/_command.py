@@ -217,6 +217,8 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
             # state as the init code is not locked and is not idempotent.
             # https://github.com/pypa/setuptools/blob/v60.0.0/setuptools/_distutils/_msvccompiler.py#L322-L327
             self.compiler.initialize()
+            if ctx.use_hip:
+                build.configure_msvc_for_hip(self.compiler)
             if hasattr(self.compiler, 'cc'):
                 cc = self.compiler.cc
                 print(f'Detected host compiler: {cc}')
