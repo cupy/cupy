@@ -252,7 +252,11 @@ class DeviceCompilerWin32(DeviceCompilerBase):
             raise RuntimeError(
                 'HCC_AMDGPU_TARGET must be set to the GPU architectures to '
                 'build for (e.g., gfx1151) to build CuPy for ROCm on Windows')
-        cc_args = self._get_preprocess_options(ext) + ['-c']
+        # hipcc.exe drops the quotes of `-DCYTHON_EXTERN_C=extern "C"` when
+        # it runs clang. The macro is only for Cython-generated sources.
+        cc_args = [
+            opt for opt in self._get_preprocess_options(ext)
+            if not opt.startswith('-DCYTHON_EXTERN_C=')] + ['-c']
         # hipcc links the static C runtime by default on Windows; the host
         # objects use the DLL runtime (/MD).
         postargs = ['-O2', '-fms-runtime-lib=dll', '--include',

@@ -1033,11 +1033,13 @@ def _compile_with_cache_hip(source, options, arch, extra_source,
     options += ('-fcuda-flush-denormals-to-zero',)
 
     # hiprtc doesn't always include the correct include dirs, so we always
-    # query hipcc to get them
-    options += tuple(
-        f"-I{include_dir}"
-        for include_dir in _environment._get_hipcc_include_dirs()
-    )
+    # query hipcc to get them. hipcc itself uses them by default, and on
+    # Windows, where they contain spaces, hipcc.exe would split them.
+    if backend == 'hiprtc' or not _win32:
+        options += tuple(
+            f"-I{include_dir}"
+            for include_dir in _environment._get_hipcc_include_dirs()
+        )
 
     # As of ROCm 3.5.0 hiprtc/hipcc can automatically pick up the
     # right arch without setting HCC_AMDGPU_TARGET, so we don't need
