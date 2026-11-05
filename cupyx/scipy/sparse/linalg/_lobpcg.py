@@ -133,7 +133,7 @@ def _b_orthonormalize(B, blockVectorV, blockVectorBV=None, retInvR=False):
     try:
         # VBV is a Cholesky factor
         VBV = _cholesky(VBV)
-        VBV = linalg.inv(VBV.T)
+        VBV = linalg.inv(VBV.T.conj())
         blockVectorV = cupy.matmul(blockVectorV, VBV)
         if B is not None:
             blockVectorBV = cupy.matmul(blockVectorBV, VBV)
@@ -175,7 +175,7 @@ def _eigh(A, B=None):
         return vals, vecs
     R = _cholesky(B)
     RTi = linalg.inv(R)
-    Ri = linalg.inv(R.T)
+    Ri = linalg.inv(R.T.conj())
     F = cupy.matmul(RTi, cupy.matmul(A, Ri))
     vals, vecs = linalg.eigh(F)
     eigVec = cupy.matmul(Ri, vecs)
