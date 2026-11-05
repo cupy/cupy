@@ -16,9 +16,21 @@ class TestCreation:
         assert a.dtype == "i,i"
         assert a.shape == (2, 3, 4)
 
+    def test_empty_list_structured_dtype(self):
+        # A list is a valid structured-dtype spec in NumPy but is unhashable,
+        # so it must not be used as a dtype-cache key (see gh-9969).
+        dtype = [("a", numpy.int32), ("b", numpy.float64)]
+        a = cupy.empty(5, dtype=dtype)
+        assert a.dtype == numpy.dtype(dtype)
+        assert a.shape == (5,)
+
     @testing.numpy_cupy_array_equal()
     def test_zeros(self, xp):
         return xp.zeros((2, 3, 4), dtype="i,i")
+
+    @testing.numpy_cupy_array_equal()
+    def test_zeros_list_structured_dtype(self, xp):
+        return xp.zeros(5, dtype=[("a", xp.int32), ("b", xp.float64)])
 
     @pytest.mark.parametrize("func", [
         cupy.array,
