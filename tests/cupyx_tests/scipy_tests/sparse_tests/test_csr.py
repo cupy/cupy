@@ -1373,6 +1373,148 @@ class TestCsrMatrixSum:
         return m.mean(axis=self.axis, dtype=self.ret_dtype, out=out)
 
 
+def _index_order_structures():
+    n = 100000
+    late_swap = list(range(n))
+    late_swap[-2], late_swap[-1] = late_swap[-1], late_swap[-2]
+    late_dup = list(range(n))
+    late_dup[-1] = late_dup[-2]
+    # the kernel checks pairs in tiles of 2048; violate the straddling pair
+    tile_dup = list(range(n))
+    tile_dup[2048] = tile_dup[2047]
+    tile_swap = list(range(n))
+    tile_swap[2047], tile_swap[2048] = tile_swap[2048], tile_swap[2047]
+    return [
+        # (indptr, indices)
+        ([0, 2, 4], [3, 4, 0, 1]),            # descends across a boundary
+        ([0, 2, 4], [0, 4, 4, 5]),            # repeats across a boundary
+        ([0, 0, 2, 2, 4, 4], [3, 4, 0, 1]),   # empty segments
+        ([0, 1, 2, 3], [2, 1, 0]),            # one entry per segment
+        ([0, 2, 4], [3, 4, 1, 1]),            # duplicate in a segment
+        ([0, 2, 5], [0, 1, 2, 4, 3]),         # unsorted last segment
+        ([0, 1, n + 1], [7] + list(range(n))),
+        ([0, n], late_swap),                  # violation at the end only
+        ([0, n], late_dup),
+        ([0, n], tile_dup),
+        ([0, n], tile_swap),
+        ([0, n // 2, n // 2, n], list(range(n // 2)) * 2),
+        # many empty segments sharing one boundary value
+        ([0, 2] + [2] * 20000 + [4], [3, 4, 0, 1]),
+        ([0, 2] + [2] * 20000 + [4], [3, 4, 1, 1]),
+        ([0, 2] + [2] * 20000 + [4], [3, 4, 1, 0]),
+    ]
+
+
+@testing.parameterize(*testing.product({
+    'format': ['csr', 'csc'],
+    'index_dtype': [numpy.int32, numpy.int64],
+    'case': list(range(len(_index_order_structures()))),
+}))
+@testing.with_requires('scipy')
+class TestCompressedIndexOrder:
+
+    def _make(self, xp, sp):
+        indptr, indices = _index_order_structures()[self.case]
+        indptr = xp.array(indptr, dtype=self.index_dtype)
+        indices = xp.array(indices, dtype=self.index_dtype)
+        data = xp.ones(indices.size, dtype=numpy.float32)
+        n_seg, n_minor = indptr.size - 1, int(indices.max()) + 1
+        # The *_array constructors keep int64 indices that fit in int32.
+        if self.format == 'csr':
+            m = sp.csr_array((data, indices, indptr), shape=(n_seg, n_minor))
+        else:
+            m = sp.csc_array((data, indices, indptr), shape=(n_minor, n_seg))
+        assert m.indices.dtype == m.indptr.dtype == self.index_dtype
+        return m
+
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_has_canonical_format(self, xp, sp):
+        return self._make(xp, sp).has_canonical_format
+
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_has_sorted_indices(self, xp, sp):
+        return self._make(xp, sp).has_sorted_indices
+
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_sorted_then_canonical(self, xp, sp):
+        m = self._make(xp, sp)
+        return m.has_sorted_indices, m.has_canonical_format
+
+
+@testing.parameterize(*testing.product({
+    'format': ['csr', 'csc'],
+    'index_dtype': [numpy.int32, numpy.int64],
+}))
+class TestCompressedIndexOrderNonMonotone:
+
+    # A decreasing ``indptr`` is not a valid structure; both checks report
+    # False for it.
+    structures = [
+        ([0, 3, 1, 4], [0, 1, 2, 3]),
+        ([0, 3, 1, 4], [0, 1, 2, 1]),
+        ([0, 2, 1, 4], [0, 1, 2, 3]),
+        ([0, 2, 1, 4], [0, 1, 1, 0]),
+    ]
+
+    def _make(self, indptr, indices):
+        cls = sparse.csr_array if self.format == 'csr' else sparse.csc_array
+        shape = (3, 4) if self.format == 'csr' else (4, 3)
+        return cls((cupy.ones(4, dtype=numpy.float32),
+                    cupy.array(indices, dtype=self.index_dtype),
+                    cupy.array(indptr, dtype=self.index_dtype)), shape=shape)
+
+    def test_has_canonical_format(self):
+        for indptr, indices in self.structures:
+            assert self._make(indptr, indices).has_canonical_format is False
+
+    def test_has_sorted_indices(self):
+        for indptr, indices in self.structures:
+            assert self._make(indptr, indices).has_sorted_indices is False
+
+
+@testing.parameterize(*testing.product({
+    'format': ['csr', 'csc'],
+    'index_dtype': [numpy.int32, numpy.int64],
+}))
+@testing.with_requires('scipy')
+class TestCompressedIndexOrderStrided:
+
+    # Views with stride 2 into arrays whose odd entries would break the
+    # order if they were read.
+    cases = [
+        ([0, 3, 6], [0, 1, 2, 0, 1, 2]),
+        ([0, 3, 6], [0, 1, 1, 0, 1, 2]),
+        ([0, 3, 6], [0, 2, 1, 0, 1, 2]),
+    ]
+
+    def _make(self, xp, sp, indptr, indices):
+        def strided(a):
+            a = xp.array(a, dtype=self.index_dtype)
+            out = xp.full(2 * a.size, -1, dtype=self.index_dtype)
+            out[::2] = a
+            return out[::2]
+        indptr, indices = strided(indptr), strided(indices)
+        data = xp.ones(indices.size, dtype=numpy.float32)
+        if self.format == 'csr':
+            m = sp.csr_array((data, indices, indptr), shape=(2, 3))
+        else:
+            m = sp.csc_array((data, indices, indptr), shape=(3, 2))
+        if xp is cupy:
+            assert not m.indices.flags.c_contiguous
+            assert not m.indptr.flags.c_contiguous
+        return m
+
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_has_canonical_format(self, xp, sp):
+        return [self._make(xp, sp, indptr, indices).has_canonical_format
+                for indptr, indices in self.cases]
+
+    @testing.numpy_cupy_equal(sp_name='sp')
+    def test_has_sorted_indices(self, xp, sp):
+        return [self._make(xp, sp, indptr, indices).has_sorted_indices
+                for indptr, indices in self.cases]
+
+
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
 }))
