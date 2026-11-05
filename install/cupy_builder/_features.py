@@ -197,6 +197,11 @@ def get_features(ctx: Context) -> dict[str, Feature]:
         'check_method': build.check_hip_version,
         'version_method': build.get_hip_version,
     }
+    if sys.platform == 'win32':
+        # ROCm on Windows ships neither roctx nor roctracer.
+        HIP_cuda_nvtx_cusolver['include'].remove('roctx.h')
+        HIP_cuda_nvtx_cusolver['libraries'].remove('roctracer64')
+        HIP_cuda_nvtx_cusolver['libraries'].remove('roctx64')
     # With CUDA Python, cuSOLVER is used via nvmath-python, which loads it at
     # runtime.
     CUDA_cusolver = {

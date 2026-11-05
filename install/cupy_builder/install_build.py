@@ -273,7 +273,11 @@ def get_compiler_setting(ctx: Context, use_hip):
             assert PLATFORM_WIN32
             extra_compile_args.append('/std:c++17')
 
-    if PLATFORM_WIN32:
+    if PLATFORM_WIN32 and use_hip:
+        # ROCm on Windows ships neither roctx nor roctracer.
+        define_macros.append(('CUPY_NO_NVTX', '1'))
+        define_macros.append(('CUPY_NO_ROCTRACER', '1'))
+    elif PLATFORM_WIN32:
         nvtx_path = _environment.get_nvtx_path()
         if nvtx_path is not None and os.path.exists(nvtx_path):
             include_dirs.append(os.path.join(nvtx_path, 'include'))
