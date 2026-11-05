@@ -261,6 +261,16 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
             with open(depends_json, 'w') as f:
                 json.dump({'depends': depends}, f)
 
+            if ctx.use_hip and (
+                    self.inplace or getattr(self, 'editable_mode', False)):
+                # In-place and editable installs import CuPy from the source
+                # tree, where the HIP build reads this list to find the ROCm
+                # runtime before loading any extension module.
+                depends_json_src = os.path.join(
+                    ctx.source_root, 'cupy', '.data', '_depends.json')
+                os.makedirs(os.path.dirname(depends_json_src), exist_ok=True)
+                shutil.copy2(depends_json, depends_json_src)
+
     def build_extension(self, ext: setuptools.Extension) -> None:
         ctx = cupy_builder.get_context()
 

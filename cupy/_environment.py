@@ -593,6 +593,32 @@ def _get_hipcc_include_dirs():
     )
 
 
+_win32_dll_directories = []
+
+
+def _setup_win32_hip_dll_directory():
+    """Makes the ROCm DLLs loadable for a HIP build on Windows.
+
+    Python does not search PATH for the DLLs that extension modules depend
+    on, so the ROCm ``bin`` directory is added explicitly. A HIP build is
+    recognized by the HIP runtime in the DLL dependency list recorded at build
+    time, which keeps CUDA builds unaffected.
+    """
+    if not _PLATFORM_WIN32:
+        return
+    depends = _get_json_data('_depends.json')
+    if depends is None or not any(
+            name.lower().startswith('amdhip64')
+            for name in depends['depends']):
+        return
+    rocm_path = get_rocm_path()
+    if rocm_path is None:
+        return
+    bin_path = os.path.join(rocm_path, 'bin')
+    if os.path.isdir(bin_path):
+        _win32_dll_directories.append(os.add_dll_directory(bin_path))
+
+
 def _detect_duplicate_installation():
     # List of CuPy packages that cannot co-exist.
     # Outdated ones can be removed once we drop support for Python version
