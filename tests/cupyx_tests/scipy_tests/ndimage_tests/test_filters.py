@@ -1111,3 +1111,19 @@ class TestSequenceModeRegression:
     def test_prewitt_sequence_mode(self, xp, scp):
         arr = xp.asarray([[1., 0., 0], [1, 1, 0], [0, 0, 0]])
         return scp.ndimage.prewitt(arr, mode=['reflect', 'reflect'])
+
+
+@testing.with_requires('scipy')
+class TestUniformFilter1dInteger:
+
+    @testing.numpy_cupy_array_equal(scipy_name='scp')
+    def test_window_of_ones(self, xp, scp):
+        a = xp.repeat(xp.asarray([0, 1, 0]), [9, 9, 9])
+        return scp.ndimage.uniform_filter1d(a, 6)
+
+    @testing.numpy_cupy_array_equal(scipy_name='scp')
+    def test_integer_output(self, xp, scp):
+        a = xp.asarray([[-3, 1, 4, 1, 5],
+                        [9, 2, 6, 5, 3]], dtype=xp.int32)
+        out = xp.empty_like(a)
+        return scp.ndimage.uniform_filter1d(a, 3, axis=1, output=out)
