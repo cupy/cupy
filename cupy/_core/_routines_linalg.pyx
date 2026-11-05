@@ -10,18 +10,19 @@ from cupy import _util
 from cupy._core._kernel import ElementwiseKernel
 from cupy._core._reduction import ReductionKernel
 from cupy._core._ufuncs import elementwise_copy
-import cupy._core.core as core
 
 
-from libc.stdint cimport intptr_t
+from libc.limits cimport INT_MAX
+from libcpp.atomic cimport atomic, memory_order_relaxed
+from libc.stdint cimport INT64_MIN, int64_t, intptr_t
 
 from cupy._core cimport _accelerator
+from cupy._core cimport internal
 from cupy._core._carray cimport shape_t
 from cupy._core._dtype cimport to_cuda_dtype
 from cupy._core._scalar cimport get_typename
 from cupy._core.core cimport _internal_ascontiguousarray
 from cupy._core.core cimport _ndarray_init
-from cupy._core.core cimport ascontiguousarray
 from cupy._core.core cimport _ndarray_base
 from cupy._core cimport _memory_range
 from cupy._core cimport _routines_manipulation as _manipulation
@@ -366,9 +367,9 @@ __global__ void _tensordot_core_int_strided_batched_kernel(
         index_t M, index_t N, index_t K,
         const T* A, long long strideA,
         const T* B, long long strideB,
-        T * C, long long strideC)
+        T * C, long long strideC, long long batch_offset)
 {
-    int batchid = blockIdx.z;
+    long long batchid = blockIdx.z + batch_offset;
     _tensordot_core_int_kernel_impl(
         M, N, K,
         &A[batchid * strideA],
@@ -432,48 +433,60 @@ cdef _ndarray_base _integral_tensordot_core(
     return out
 
 
+cdef struct OpLayout:
+    # A planned copy's metadata describes its dense C-order storage.
+    Py_ssize_t ld, dense_ld, core_size
+    int core_ndim
+    int64_t outer_stride
+    size_t alignment
+    bint transpose, copy
+
+
+cdef struct _MatmulLayout:
+    # Dimensions and operations are in cuBLAS operand order. Keeping this
+    # metadata in C avoids manufacturing array views to convey it.
+    Py_ssize_t m, n, k, batch_count
+    bint use_batched_pointers
+    OpLayout a, b, c
+
+
 cdef _ndarray_base _integral_tensordot_core_batched(
-        _ndarray_base a, _ndarray_base b, _ndarray_base out, Py_ssize_t m,
-        Py_ssize_t n, Py_ssize_t k, str dtype, Py_ssize_t batch_count):
+        _ndarray_base a, _ndarray_base b, _ndarray_base out, str dtype,
+        const _MatmulLayout& layout, const shape_t& batch_shape):
+    # The helper guarantees dense C-order cores; the launcher consumes its
+    # dimensions and batch steps without reshaping vectors or batch axes.
+    assert not layout.a.transpose and not layout.b.transpose
+    cdef Py_ssize_t m = layout.m, n = layout.n, k = layout.k
+    cdef Py_ssize_t batch_count = layout.batch_count
+    cdef Py_ssize_t pointer_offset
 
     config, dim_x, dim_y, blk_m, blk_n = _integral_tensordot_core_config(
         m, n, k)
-    kern = _tensordot_core_int_batched_kernel(config, dtype)
     block = (dim_x, dim_y, 1)
-    matPtrA = _mat_ptrs(a)
-    matPtrB = _mat_ptrs(b)
-    matPtrOut = _mat_ptrs(out)
+    if layout.use_batched_pointers:
+        kern = _tensordot_core_int_batched_kernel(config, dtype)
+        matPtrA = _matmul_matrix_ptrs(
+            a, batch_shape=batch_shape, core_ndim=layout.a.core_ndim)
+        matPtrB = _matmul_matrix_ptrs(
+            b, batch_shape=batch_shape, core_ndim=layout.b.core_ndim)
+        matPtrOut = _matmul_matrix_ptrs(
+            out, batch_shape=batch_shape, core_ndim=layout.c.core_ndim)
+    else:
+        kern = _tensordot_core_int_strided_batched_kernel(config, dtype)
     max_batch_count = 65000
     for i in range(0, batch_count, max_batch_count):
         ibatch = min(max_batch_count, batch_count - i)
-        args = (
-            m, n, k, matPtrA[i:i + ibatch], matPtrB[i:i + ibatch],
-            matPtrOut[i:i + ibatch])
-        grid = (int(math.ceil(m / blk_m)), int(math.ceil(n / blk_n)), ibatch)
-        kern(grid, block, args=args)
-    return out
-
-
-cdef _ndarray_base _integral_tensordot_core_strided_batched(
-        _ndarray_base a, _ndarray_base b, _ndarray_base out, Py_ssize_t m,
-        Py_ssize_t n, Py_ssize_t k, str dtype, Py_ssize_t batch_count):
-
-    config, dim_x, dim_y, blk_m, blk_n = _integral_tensordot_core_config(
-        m, n, k)
-    kern = _tensordot_core_int_strided_batched_kernel(config, dtype)
-    block = (dim_x, dim_y, 1)
-    a = a.reshape((-1,) + a.shape[-2:])
-    b = b.reshape((-1,) + b.shape[-2:])
-    out = out.reshape((-1,) + out.shape[-2:])
-    strideA = _get_stride_for_strided_batched_gemm(a)
-    strideB = _get_stride_for_strided_batched_gemm(b)
-    strideOut = _get_stride_for_strided_batched_gemm(out)
-    max_batch_count = 65000
-    for i in range(0, batch_count, max_batch_count):
-        ibatch = min(max_batch_count, batch_count - i)
-        args = (
-            m, n, k, a[i:i + ibatch], strideA, b[i:i + ibatch], strideB,
-            out[i:i + ibatch], strideOut)
+        if layout.use_batched_pointers:
+            pointer_offset = i * sizeof(size_t)
+            args = (
+                m, n, k, matPtrA.data + pointer_offset,
+                matPtrB.data + pointer_offset, matPtrOut.data + pointer_offset)
+        else:
+            # Advance by the calculated batch step without slicing or
+            # collapsing the original arrays' leading dimensions.
+            args = (
+                m, n, k, a, layout.a.outer_stride, b, layout.b.outer_stride,
+                out, layout.c.outer_stride, numpy.int64(i))
         grid = (int(math.ceil(m / blk_m)), int(math.ceil(n / blk_n)), ibatch)
         kern(grid, block, args=args)
     return out
@@ -853,18 +866,343 @@ cpdef _ndarray_base tensordot_core_v11(
         algo)
 
 
-cdef Py_ssize_t _get_stride_for_strided_batched_gemm(
-        _ndarray_base a) except? 0:
-    cdef int ndim = a._shape.size()
-    assert ndim > 2
-    assert a._c_contiguous
-    return a._shape[ndim - 2] * a._shape[ndim - 1]
+cdef int _matmul_op_layout(
+        _ndarray_base arr, int core_ndim, Py_ssize_t core_size,
+        Py_ssize_t dense_ld, Py_ssize_t batch_count, bint use_cublas,
+        OpLayout *op_layout) except -1:
+    """Select the core layout, batch step, and matrix-start alignment."""
+    op_layout[0] = OpLayout(
+        ld=dense_ld, dense_ld=dense_ld, core_size=core_size,
+        core_ndim=core_ndim, outer_stride=core_size, alignment=1,
+        transpose=False, copy=True)
+    if arr is None:
+        return 0
+
+    cdef Py_ssize_t nd, itemsize
+    cdef Py_ssize_t rows, cols, row_stride, col_stride, ld
+    cdef Py_ssize_t min_ld, major_size, stride
+    cdef bint transposed, compatible = True
+    if arr._c_contiguous:
+        op_layout.copy = False
+        _batched_matmul_layout(
+            arr, op_layout=op_layout, batch_count=batch_count)
+        return 0
+
+    nd, itemsize = arr._shape.size(), arr.itemsize
+    cols, col_stride = arr._shape[nd - 1], arr._strides[nd - 1]
+    if core_ndim == 1:
+        op_layout.copy = cols != 1 and col_stride != itemsize
+    else:
+        rows, row_stride = arr._shape[nd - 2], arr._strides[nd - 2]
+        if cols == 1 or col_stride == itemsize:
+            min_ld, major_size, stride = cols, rows, row_stride
+            transposed = False
+        elif use_cublas and (rows == 1 or row_stride == itemsize):
+            min_ld, major_size, stride = rows, cols, col_stride
+            transposed = True
+        else:
+            compatible = False
+
+        if compatible:
+            ld = 0
+            if major_size == 1:
+                ld = min_ld  # The stride is unused.
+            elif stride % itemsize == 0:
+                ld = stride // itemsize
+            # TODO(seberg): should be allowed via 64bit API
+            if (min_ld <= ld <= INT_MAX
+                    and (use_cublas or ld == min_ld)):
+                op_layout.ld = ld
+                op_layout.transpose = transposed
+                op_layout.copy = False
+
+    _batched_matmul_layout(
+        arr, op_layout=op_layout, batch_count=batch_count)
+    return 0
+
+
+cdef int _batched_matmul_layout(
+        _ndarray_base arr, OpLayout *op_layout,
+        Py_ssize_t batch_count) except -1:
+    """Find the batch step and the byte alignment of every matrix start."""
+    cdef Py_ssize_t i, stride, step = 0, count = 1
+    cdef size_t alignment
+    cdef bint collapsible
+    if op_layout.copy or arr._c_contiguous:
+        if arr.size == op_layout.core_size:
+            op_layout.outer_stride = 0  # A single matrix can broadcast.
+        elif arr.size == batch_count * op_layout.core_size:
+            op_layout.outer_stride = op_layout.core_size
+        else:
+            op_layout.outer_stride = INT64_MIN  # Partial broadcasting.
+        if op_layout.copy:
+            return 0
+        alignment = arr.data.ptr
+        if arr.size > op_layout.core_size:
+            alignment |= <size_t>(op_layout.core_size * arr.itemsize)
+    else:
+        alignment = arr.data.ptr
+        collapsible = (arr.size == op_layout.core_size
+                       or arr.size == batch_count * op_layout.core_size)
+        for i in range(arr._shape.size() - op_layout.core_ndim - 1, -1, -1):
+            if arr._shape[i] <= 1:
+                continue
+            stride = arr._strides[i]
+            alignment |= <size_t>stride
+            if count == 1:
+                step = stride
+            elif stride != step * count:
+                # Keep scanning: pointers still need every stride's alignment.
+                collapsible = False
+            count *= arr._shape[i]
+        op_layout.outer_stride = (
+            step // arr.itemsize if collapsible else INT64_MIN)
+    # The lowest set bit is the common power-of-two alignment.
+    op_layout.alignment = alignment & -alignment
+    return 0
+
+
+cdef _ndarray_base _matmul_copy_if_needed(
+        _ndarray_base arr, Py_ssize_t alignment, Py_ssize_t batch_count,
+        OpLayout *op_layout):
+    """Copy an input if its core layout or matrix starts are incompatible."""
+    if not op_layout.copy and op_layout.alignment >= <size_t>alignment:
+        return arr
+
+    # After copying, the input array is always aligned for cublas as the
+    # alignment "fits" `k` and the core size is `k * m` or `k * n`.
+    arr = arr.copy(order='C')
+    op_layout.ld = op_layout.dense_ld
+    op_layout.transpose = False
+    op_layout.copy = False
+    _batched_matmul_layout(
+        arr, op_layout=op_layout, batch_count=batch_count)
+    return arr
+
+
+cdef _ndarray_base _prepare_matmul_output(
+        _ndarray_base out, dtype, const shape_t& out_shape,
+        Py_ssize_t alignment, Py_ssize_t batch_count, OpLayout *op_layout):
+    """Reuse out or allocate storage with aligned batch starts."""
+    if not op_layout.copy and op_layout.alignment >= <size_t>alignment:
+        return out
+
+    cdef Py_ssize_t padding = 1
+    cdef Py_ssize_t inner_padded
+    cdef shape_t padded_shape
+    cdef _ndarray_base storage
+    if alignment != 1:
+        padding = alignment // <Py_ssize_t>dtype.itemsize
+    inner_padded = (op_layout.core_size + padding - 1) & ~(padding - 1)
+    if inner_padded == op_layout.core_size:
+        out = _ndarray_init(
+            cupy.ndarray, out_shape, dtype=dtype, obj=None)
+    else:
+        padded_shape = out_shape
+        padded_shape.resize(out_shape.size() - op_layout.core_ndim)
+        padded_shape.push_back(inner_padded)
+        storage = _ndarray_init(
+            cupy.ndarray, padded_shape, dtype=dtype, obj=None)
+        out = _manipulation._reshape(
+            storage[..., :op_layout.core_size], out_shape, copy=False)
+
+    op_layout.ld = op_layout.dense_ld
+    op_layout.transpose = False
+    op_layout.copy = False
+    _batched_matmul_layout(
+        out, op_layout=op_layout, batch_count=batch_count)
+    return out
+
+
+# The loaded cuBLAS version is process-wide; allow concurrent first calls.
+cdef atomic[int] _cublas_version
+
+
+cdef int _cublas_workarounds(_MatmulLayout *layout) except -1:
+    """Select pointer batching for affected cuBLAS strided GEMM kernels."""
+    if runtime._is_hip_environment or layout.batch_count <= 1:
+        return 0
+    cdef bint negative_stride = (
+        layout.a.outer_stride < 0 or layout.b.outer_stride < 0
+        or layout.c.outer_stride < 0)
+    cdef bint broadcast = (
+        layout.a.outer_stride == 0 or layout.b.outer_stride == 0)
+    if not negative_stride and not broadcast:
+        return 0
+
+    cdef int version = _cublas_version.load(memory_order_relaxed)
+    if version == 0:
+        # Keep cuBLAS loading lazy; subsequent calls only read a C integer.
+        from cupy_backends.cuda.libs import cublas
+        version = cublas.getVersion(device.get_cublas_handle())
+        _cublas_version.store(version, memory_order_relaxed)
+    if negative_stride and version < 120800:
+        # Reproduced on Turing through cuBLAS 12.6.4 (CUDA 12.6 Update 3);
+        # works with cuBLAS 12.8.3 (CUDA 12.8). Remove once cuBLAS <12.8
+        # is no longer supported.
+        layout.use_batched_pointers = True
+    elif (broadcast and 130100 <= version < 130601
+            and device.get_compute_capability() in ('120', '121')):
+        # NVIDIA issues 6040940, 5996751: introduced in cuBLAS 13.1.0
+        # (CUDA 13.0 Update 2), fixed in the separate cuBLAS 13.6.1 patch
+        # for CUDA 13.3 Update 1. Remove once the affected cuBLAS versions
+        # are no longer supported. Capability is cached per device.
+        layout.use_batched_pointers = True
+    return 0
+
+
+cdef tuple _prepare_batched_matmul_operands(
+        _ndarray_base a, _ndarray_base b, _ndarray_base out,
+        dtype, int cuda_dtype, bint use_cublas,
+        _MatmulLayout *layout, shape_t& batch_shape):
+    """Validate shapes and prepare operands without normalizing their views.
+
+    Check core layouts first, then batch steps, then the selected API's
+    alignment requirements. Return the original or necessarily copied
+    operands in cuBLAS order and a logical output array; vectors and
+    broadcasting are represented by metadata, not new array views.
+    """
+    cdef int a_ndim = a._shape.size(), b_ndim = b._shape.size()
+    cdef bint a_vector = a_ndim == 1
+    cdef bint b_vector = b_ndim == 1
+    cdef bint has_vector = a_vector or b_vector
+    cdef Py_ssize_t m, n, k, kb  # contraction sizes.
+    cdef Py_ssize_t i, a_sh, b_sh, c_sh
+    cdef shape_t out_shape
+    cdef _ndarray_base c
+    cdef int max_ndim = max(a_ndim, b_ndim)
+    cdef int batch_ndim = max_ndim - 2
+
+    assert max_ndim > 2
+    out_shape.reserve(max_ndim - has_vector)
+
+    k = a._shape.back()
+    if a_vector:
+        assert not b_vector  # cannot both be vectors here!
+        m = 1
+        n = b._shape.back()
+        kb = b._shape[b_ndim - 2]
+        for i in range(b_ndim - 2):
+            out_shape.push_back(b._shape[i])
+        out_shape.push_back(n)
+    elif b_vector:
+        m = a._shape[a_ndim - 2]
+        n = 1
+        kb = b._shape.back()
+        for i in range(a_ndim - 2):
+            out_shape.push_back(a._shape[i])
+        out_shape.push_back(m)
+    else:
+        m = a._shape[a_ndim - 2]
+        n = b._shape.back()
+        kb = b._shape[b_ndim - 2]
+
+        for i in range(-batch_ndim, 0):
+            a_sh = 1 if a_ndim + i - 2 < 0 else a._shape[a_ndim + i - 2]
+            b_sh = 1 if b_ndim + i - 2 < 0 else b._shape[b_ndim + i - 2]
+
+            if a_sh == b_sh:
+                c_sh = a_sh
+            elif a_sh == 1:
+                c_sh = b_sh
+            elif b_sh == 1:
+                c_sh = a_sh
+            else:
+                raise ValueError(
+                    'operands could not be broadcast together with '
+                    'remapped shapes')
+            out_shape.push_back(c_sh)
+
+        out_shape.push_back(m)
+        out_shape.push_back(n)
+
+    if k != kb:
+        raise ValueError(f'shapes {a.shape} and {b.shape} not aligned')
+
+    if out is not None and not internal.vector_equal(out._shape, out_shape):
+        raise ValueError('Output array has an invalid size')
+
+    # Empty products need shape validation, but no layout checks or copies.
+    if a.size == 0 or b.size == 0:
+        c = out if out is not None else _ndarray_init(
+            cupy.ndarray, out_shape, dtype=dtype, obj=None)
+        return a, b, c
+
+    # Fix dtypes before checking layout/strides of the operands.
+    if a.dtype != dtype:
+        a = a.astype(dtype, order='C')
+    if b.dtype != dtype:
+        b = b.astype(dtype, order='C')
+
+    batch_shape = out_shape
+    batch_shape.resize(batch_ndim)
+    layout.batch_count = internal.prod(batch_shape)
+    if out is not None and out.dtype != dtype:
+        out = None
+
+    _matmul_op_layout(
+        a, core_ndim=1 if a_vector else 2, core_size=m * k, dense_ld=k,
+        batch_count=layout.batch_count, use_cublas=use_cublas,
+        op_layout=&layout.a)
+    _matmul_op_layout(
+        b, core_ndim=1 if b_vector else 2, core_size=k * n, dense_ld=n,
+        batch_count=layout.batch_count, use_cublas=use_cublas,
+        op_layout=&layout.b)
+    _matmul_op_layout(
+        out, core_ndim=1 if has_vector else 2, core_size=m * n, dense_ld=n,
+        batch_count=layout.batch_count, use_cublas=use_cublas,
+        op_layout=&layout.c)
+
+    layout.use_batched_pointers = (
+        layout.a.outer_stride == INT64_MIN
+        or layout.b.outer_stride == INT64_MIN
+        or layout.c.outer_stride == INT64_MIN)
+    if use_cublas and not layout.use_batched_pointers:
+        _cublas_workarounds(layout)
+
+    # Alignment is checked only after core layout and dispatch are settled.
+    # Pointer-batched FP16/BF16 requires every matrix start to be aligned;
+    # the strided API does not document this additional k-dependent rule.
+    cdef Py_ssize_t alignment = 1
+    if (layout.use_batched_pointers
+            and cuda_dtype in (runtime.CUDA_R_16F, runtime.CUDA_R_16BF)):
+        # https://docs.nvidia.com/cuda/cublas/index.html#cublasgemmbatchedex
+        alignment = 16 if k % 8 == 0 else (4 if k % 2 == 0 else 2)
+
+    # A/B cores contain k, so an ordinary C-order copy meets the alignment.
+    a = _matmul_copy_if_needed(
+        a, alignment=alignment, batch_count=layout.batch_count,
+        op_layout=&layout.a)
+    b = _matmul_copy_if_needed(
+        b, alignment=alignment, batch_count=layout.batch_count,
+        op_layout=&layout.b)
+    if not layout.c.copy and (
+            _memory_range.may_share_bounds(out, a)
+            or _memory_range.may_share_bounds(out, b)):
+        layout.c.copy = True
+    # NOTE(seberg): Currently we don't do out self-overlap detection. cublas
+    # mentions this requirement, but we don't ensure it here either way.
+    c = _prepare_matmul_output(
+        out, dtype=dtype, out_shape=out_shape, alignment=alignment,
+        batch_count=layout.batch_count, op_layout=&layout.c)
+
+    # cuBLAS has no transpose flag for C. An F-order output computes
+    # C = A B; a C-order output computes C.T = B.T A.T instead.
+    if layout.c.transpose:
+        layout.a.transpose = not layout.a.transpose
+        layout.b.transpose = not layout.b.transpose
+    else:
+        a, b = b, a
+        m, n = n, m
+        layout.a, layout.b = layout.b, layout.a
+
+    layout.m, layout.n, layout.k = m, n, k
+    return a, b, c
 
 
 cdef _mat_ptrs_kernel = ElementwiseKernel(
-    'T base, T stride', 'T out',
-    'out = base + _ind.get()[_ind.ndim - 1] * stride', 'cupy_mat_ptrs',
-    reduce_dims=False)
+    'T base', 'uint64 out',
+    'out = reinterpret_cast<unsigned long long>(&base);', 'cupy_mat_ptrs')
 
 
 cpdef _ndarray_base _mat_ptrs(_ndarray_base a):
@@ -879,17 +1217,20 @@ cpdef _ndarray_base _mat_ptrs(_ndarray_base a):
     """
     cdef int ndim = a._shape.size()
     assert ndim > 2
-    cdef _ndarray_base idx
-    idx = _mat_ptrs_kernel(
-        a.data.ptr, a._strides[0],
-        core.ndarray((a._shape[0],), dtype=numpy.uintp))
+    cdef shape_t batch_shape = a._shape
+    batch_shape.resize(ndim - 2)
+    return _matmul_matrix_ptrs(a, batch_shape=batch_shape, core_ndim=2)
 
-    for i in range(1, ndim - 2):
-        idx = _mat_ptrs_kernel(
-            idx[:, None], a._strides[i],
-            core.ndarray((idx.size, a._shape[i]), dtype=numpy.uintp))
-        idx = idx.ravel()
-    return idx
+
+cdef _ndarray_base _matmul_matrix_ptrs(
+        _ndarray_base arr, const shape_t& batch_shape, int core_ndim):
+    """Enumerate matrix starts using the kernel's broadcast indexing."""
+    cdef _ndarray_base ptrs = _ndarray_init(
+        cupy.ndarray, batch_shape, dtype=numpy.uintp, obj=None)
+    # Callers return early for empty cores, so these indices always exist.
+    base = arr[..., 0] if core_ndim == 1 else arr[..., 0, 0]
+    _mat_ptrs_kernel(base, ptrs)
+    return ptrs
 
 
 cpdef _ndarray_base matmul(
@@ -915,22 +1256,22 @@ cpdef _ndarray_base matmul(
     """
     from cupy_backends.cuda.libs import cublas
 
-    cdef Py_ssize_t i, n, m, ka, kb, a_sh, b_sh, c_sh, ldc
-    cdef Py_ssize_t batchCount, a_part_outshape, b_part_outshape
-    cdef int orig_a_ndim, orig_b_ndim, a_ndim, b_ndim, ndim
-    cdef _ndarray_base ap, bp, cp, c_view
-    cdef bint use_broadcast
+    cdef _MatmulLayout mml
+    cdef shape_t batch_shape
+    cdef int orig_a_ndim, orig_b_ndim, ndim
+    cdef _ndarray_base ap, bp, cp, c
+    cdef intptr_t handle
 
     orig_a_ndim = a._shape.size()
     orig_b_ndim = b._shape.size()
     if orig_a_ndim == 0 or orig_b_ndim == 0:
         raise ValueError('Scalar operands are not allowed, use \'*\' instead')
 
+    ret_dtype = numpy.promote_types(a.dtype, b.dtype)
     ndim = max(orig_a_ndim, orig_b_ndim)
     if ndim <= 2:
         if out is None:
             return dot(a, b, out)
-        ret_dtype = numpy.promote_types(a.dtype, b.dtype)
         if out._c_contiguous and ret_dtype == out.dtype:
             return dot(a, b, out)
         c = _ndarray_init(cupy.ndarray, out._shape, dtype=ret_dtype, obj=None)
@@ -938,212 +1279,136 @@ cpdef _ndarray_base matmul(
         elementwise_copy(c, out)
         return out
 
-    orig_a = a
-    orig_b = b
-    a_part_outshape = b_part_outshape = 0
-    if orig_a_ndim == 1:
-        a = _manipulation._reshape(a, (1, a.size))
-    else:
-        a = a.view()
-        a_part_outshape = a._shape[orig_a_ndim - 2]
-    if orig_b_ndim == 1:
-        b = _manipulation._reshape(b, (b.size, 1))
-        ldc = 1
-    else:
-        b = b.view()
-        b_part_outshape = ldc = b._shape[orig_b_ndim - 1]
-
-    # expand dims
-    a_ndim = a._shape.size()
-    b_ndim = b._shape.size()
-    if a_ndim < ndim:
-        # TODO(niboshi): Confirm update_x_contiguity flags
-        a._set_shape_and_strides(
-            (1,) * (ndim - a_ndim) + a.shape,
-            (0,) * (ndim - a_ndim) + a.strides,
-            True, True)
-    if b_ndim < ndim:
-        # TODO(niboshi): Confirm update_x_contiguity flags
-        b._set_shape_and_strides(
-            (1,) * (ndim - b_ndim) + b.shape,
-            (0,) * (ndim - b_ndim) + b.strides,
-            True, True)
-
-    ret_dtype = numpy.promote_types(a.dtype, b.dtype)
     dtype = ret_dtype
 
     cdef int cuda_dtype = -1
+    cdef int compute_dtype = -1
+    coef_dtype = dtype
     if dtype.kind not in 'biu':
         cuda_dtype = to_cuda_dtype(dtype, is_half_allowed=True)
+        compute_dtype = cuda_dtype
         if (cuda_dtype == runtime.CUDA_R_16F
                 or cuda_dtype == runtime.CUDA_R_16BF):
-            dtype = numpy.dtype('f')
-            cuda_dtype = runtime.CUDA_R_32F
+            if (runtime._is_hip_environment
+                    or orig_a_ndim < 2 or orig_b_ndim < 2
+                    or int(device.get_compute_capability()) < (
+                        80 if cuda_dtype == runtime.CUDA_R_16BF else 70)):
+                dtype = numpy.dtype('f')
+                cuda_dtype = runtime.CUDA_R_32F
+                compute_dtype = cuda_dtype
+            else:
+                compute_dtype = cublas.CUBLAS_COMPUTE_32F
+            coef_dtype = numpy.dtype('f')
 
-    a = ascontiguousarray(a, dtype)
-    b = ascontiguousarray(b, dtype)
+    a, b, c = _prepare_batched_matmul_operands(
+        a, b, out, dtype=dtype, cuda_dtype=cuda_dtype,
+        use_cublas=cuda_dtype != -1, layout=&mml,
+        batch_shape=batch_shape)
 
-    # broadcast
-    batchCount = 1  # batchCount = numpy.prod(out_shape[:-2])
-    out_shape = []
-    use_broadcast = False
-    for i in range(0, ndim - 2):
-        a_sh = a._shape[i]
-        b_sh = b._shape[i]
-        if a_sh != b_sh and a_sh != 1 and b_sh != 1:
-            raise ValueError(
-                'operands could not be broadcast together with '
-                'remapped shapes')
-
-        if a_sh == 0 or b_sh == 0:
-            c_sh = 0
+    if out is None:
+        # If out was not passed in `c` (the computation) may have a different
+        # dtype for float16/bfloat16 depending on the code path.
+        if c.dtype == ret_dtype:
+            out = c
         else:
-            c_sh = max(a_sh, b_sh)
-        batchCount *= c_sh
-        out_shape.append(c_sh)
-        if a_sh == 1 and c_sh > 1:
-            a._strides[i] = 0
-            a._shape[i] = c_sh
-            a._c_contiguous = a._f_contiguous = False
-            use_broadcast = True
-
-        if b_sh == 1 and c_sh > 1:
-            b._strides[i] = 0
-            b._shape[i] = c_sh
-            b._c_contiguous = b._f_contiguous = False
-            use_broadcast = True
-
-    if orig_a_ndim != 1:
-        out_shape.append(a_part_outshape)
-    if orig_b_ndim != 1:
-        out_shape.append(b_part_outshape)
-
-    # (A B)^T = B^T A^T
-    a, b = b, a
-
-    ka = a._shape[ndim - 2]
-    lda = n = a._shape[ndim - 1]
-    m = b._shape[ndim - 2]
-    ldb = kb = b._shape[ndim - 1]
-
-    if ka != kb:
-        raise ValueError(
-            'shapes ({}) and ({}) not aligned'.format(
-                ','.join([str(_) for _ in orig_a.shape]),
-                ','.join([str(_) for _ in orig_b.shape])))
-
-    if out is not None and out.shape != tuple(out_shape):
-        raise ValueError('Output array has an invalid size')
+            out = _ndarray_init(
+                cupy.ndarray, c._shape, dtype=ret_dtype, obj=None)
 
     if a.size == 0 or b.size == 0:
-        if out is None:
-            return cupy.zeros(out_shape, ret_dtype)
-        else:
-            out.fill(0)
-            return out
-
-    if (
-        out is not None and out.dtype == dtype and out.flags.c_contiguous
-        and not _memory_range.may_share_bounds(out, a)
-        and not _memory_range.may_share_bounds(out, b)
-    ):
-        c = out
-    else:
-        c = core.ndarray(out_shape, dtype=dtype)
-        if out is None:
-            if dtype == ret_dtype:
-                out = c
-            else:
-                out = core.ndarray(out_shape, dtype=ret_dtype)
-
-    if orig_a_ndim == 1 or orig_b_ndim == 1:
-        c_view = c.view()
-        if orig_b_ndim == 1:
-            c_view._shape.push_back(1)
-            c_view._strides.push_back(0)
-        if orig_a_ndim == 1:
-            c_view._shape.insert(c_view._shape.end() - 1, 1)
-            c_view._strides.insert(c_view._strides.end() - 1, 0)
-        assert c_view._c_contiguous
-        c_view._update_f_contiguity()
-    else:
-        c_view = c
-
-    if dtype.kind in 'biu':
-        if not use_broadcast:
-            _integral_tensordot_core_strided_batched(
-                a, b, c_view, n, m, ka, dtype.char, batchCount)
-        else:
-            _integral_tensordot_core_batched(
-                a, b, c_view, n, m, ka, dtype.char, batchCount)
-        if out is not c:
-            elementwise_copy(c, out)
+        out.fill(0)
         return out
 
-    cdef intptr_t handle = device.get_cublas_handle()
-    cdef int algo = cublas.CUBLAS_GEMM_DEFAULT
-
-    one = numpy.array(1, dtype=dtype)
-    zero = numpy.array(0, dtype=dtype)
-    if not use_broadcast:
-        strideA = _get_stride_for_strided_batched_gemm(a)
-        strideB = _get_stride_for_strided_batched_gemm(b)
-        strideC = _get_stride_for_strided_batched_gemm(c_view)
-        if dtype.char in 'fFdD':
-            cublas.gemmStridedBatchedEx(
-                handle,
-                0,  # transa
-                0,  # transb
-                n, m, ka, one.ctypes.data,
-                a.data.ptr, cuda_dtype, lda, strideA,
-                b.data.ptr, cuda_dtype, ldb, strideB,
-                zero.ctypes.data,
-                c_view.data.ptr, cuda_dtype, ldc, strideC,
-                batchCount, cuda_dtype, algo)
-        else:
-            raise TypeError(dtype, a.dtype, b.dtype)
+    if cuda_dtype == -1:
+        _integral_tensordot_core_batched(
+            a, b, c, dtype=dtype.char, layout=mml, batch_shape=batch_shape)
     else:
-        ap = _mat_ptrs(a)
-        bp = _mat_ptrs(b)
-        cp = _mat_ptrs(c_view)
-        if dtype == numpy.float32:
-            cublas.sgemmBatched(
-                handle,
-                0,  # transa
-                0,  # transb
-                n, m, ka, one.ctypes.data,
-                ap.data.ptr, lda,
-                bp.data.ptr, ldb,
-                zero.ctypes.data, cp.data.ptr, ldc, batchCount)
-        elif dtype == numpy.float64:
-            cublas.dgemmBatched(
-                handle,
-                0,  # transa
-                0,  # transb
-                n, m, ka, one.ctypes.data,
-                ap.data.ptr, lda,
-                bp.data.ptr, ldb,
-                zero.ctypes.data, cp.data.ptr, ldc, batchCount)
-        elif dtype == numpy.complex64:
-            cublas.cgemmBatched(
-                handle,
-                0,  # transa
-                0,  # transb
-                n, m, ka, one.ctypes.data,
-                ap.data.ptr, lda,
-                bp.data.ptr, ldb,
-                zero.ctypes.data, cp.data.ptr, ldc, batchCount)
-        elif dtype == numpy.complex128:
-            cublas.zgemmBatched(
-                handle,
-                0,  # transa
-                0,  # transb
-                n, m, ka, one.ctypes.data,
-                ap.data.ptr, lda,
-                bp.data.ptr, ldb,
-                zero.ctypes.data, cp.data.ptr, ldc, batchCount)
+        handle = device.get_cublas_handle()
+
+        one = numpy.array(1, dtype=coef_dtype)
+        zero = numpy.array(0, dtype=coef_dtype)
+        if not mml.use_batched_pointers:
+            if cuda_dtype == runtime.CUDA_C_32F:
+                # Ex API rejects negative batch strides on some old hardware.
+                cublas.cgemmStridedBatched(
+                    handle,
+                    mml.a.transpose, mml.b.transpose,
+                    mml.m, mml.n, mml.k, one.ctypes.data,
+                    a.data.ptr, mml.a.ld, mml.a.outer_stride,
+                    b.data.ptr, mml.b.ld, mml.b.outer_stride,
+                    zero.ctypes.data,
+                    c.data.ptr, mml.c.ld, mml.c.outer_stride,
+                    mml.batch_count)
+            elif (cuda_dtype in (runtime.CUDA_R_16F, runtime.CUDA_R_16BF)
+                    or dtype.char in 'fdD'):
+                cublas.gemmStridedBatchedEx(
+                    handle,
+                    mml.a.transpose, mml.b.transpose,
+                    mml.m, mml.n, mml.k, one.ctypes.data,
+                    a.data.ptr, cuda_dtype, mml.a.ld, mml.a.outer_stride,
+                    b.data.ptr, cuda_dtype, mml.b.ld, mml.b.outer_stride,
+                    zero.ctypes.data,
+                    c.data.ptr, cuda_dtype, mml.c.ld, mml.c.outer_stride,
+                    mml.batch_count, compute_dtype,
+                    cublas.CUBLAS_GEMM_DEFAULT)
+            else:
+                raise TypeError(dtype, a.dtype, b.dtype)
         else:
-            raise TypeError(dtype, a.dtype, b.dtype)
+            ap = _matmul_matrix_ptrs(
+                a, batch_shape=batch_shape, core_ndim=mml.a.core_ndim)
+            bp = _matmul_matrix_ptrs(
+                b, batch_shape=batch_shape, core_ndim=mml.b.core_ndim)
+            cp = _matmul_matrix_ptrs(
+                c, batch_shape=batch_shape, core_ndim=mml.c.core_ndim)
+            if (cuda_dtype == runtime.CUDA_R_16F
+                    or cuda_dtype == runtime.CUDA_R_16BF):
+                cublas.gemmBatchedEx(
+                    handle,
+                    mml.a.transpose, mml.b.transpose,
+                    mml.m, mml.n, mml.k, one.ctypes.data,
+                    ap.data.ptr, cuda_dtype, mml.a.ld,
+                    bp.data.ptr, cuda_dtype, mml.b.ld,
+                    zero.ctypes.data,
+                    cp.data.ptr, cuda_dtype, mml.c.ld,
+                    mml.batch_count, compute_dtype,
+                    cublas.CUBLAS_GEMM_DEFAULT)
+            elif cuda_dtype == runtime.CUDA_R_32F:
+                cublas.sgemmBatched(
+                    handle,
+                    mml.a.transpose, mml.b.transpose,
+                    mml.m, mml.n, mml.k, one.ctypes.data,
+                    ap.data.ptr, mml.a.ld,
+                    bp.data.ptr, mml.b.ld,
+                    zero.ctypes.data, cp.data.ptr, mml.c.ld,
+                    mml.batch_count)
+            elif cuda_dtype == runtime.CUDA_R_64F:
+                cublas.dgemmBatched(
+                    handle,
+                    mml.a.transpose, mml.b.transpose,
+                    mml.m, mml.n, mml.k, one.ctypes.data,
+                    ap.data.ptr, mml.a.ld,
+                    bp.data.ptr, mml.b.ld,
+                    zero.ctypes.data, cp.data.ptr, mml.c.ld,
+                    mml.batch_count)
+            elif cuda_dtype == runtime.CUDA_C_32F:
+                cublas.cgemmBatched(
+                    handle,
+                    mml.a.transpose, mml.b.transpose,
+                    mml.m, mml.n, mml.k, one.ctypes.data,
+                    ap.data.ptr, mml.a.ld,
+                    bp.data.ptr, mml.b.ld,
+                    zero.ctypes.data, cp.data.ptr, mml.c.ld,
+                    mml.batch_count)
+            elif cuda_dtype == runtime.CUDA_C_64F:
+                cublas.zgemmBatched(
+                    handle,
+                    mml.a.transpose, mml.b.transpose,
+                    mml.m, mml.n, mml.k, one.ctypes.data,
+                    ap.data.ptr, mml.a.ld,
+                    bp.data.ptr, mml.b.ld,
+                    zero.ctypes.data, cp.data.ptr, mml.c.ld,
+                    mml.batch_count)
+            else:
+                raise TypeError(dtype, a.dtype, b.dtype)
 
     if out is not c:
         elementwise_copy(c, out)
