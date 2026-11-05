@@ -7,6 +7,14 @@
 
 #define CUDA_VERSION 0
 
+// The stubs that CuPy looks up by name in its own extension module at run
+// time must be exported; on Windows, a DLL only exports what is marked so.
+#ifdef _WIN32
+#define CUPY_HIP_EXPORT __declspec(dllexport)
+#else
+#define CUPY_HIP_EXPORT
+#endif
+
 extern "C" {
 
 ///////////////////////////////////////////////////////////////////////////////
