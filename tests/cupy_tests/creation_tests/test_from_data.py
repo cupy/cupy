@@ -609,6 +609,32 @@ def test_from_numpy_byteswapped(func):
     testing.assert_array_equal(np_arr, cupy_arr.reshape(-1))
 
 
+@pytest.mark.parametrize('src_order', ['C', 'F'])
+@pytest.mark.parametrize('dst_order', ['C', 'F'])
+@pytest.mark.parametrize('shape', [
+    (5, 7), (2, 3, 4),
+    # Larger than the reorder chunk (32 MiB), with a partial last chunk.
+    (300001, 32), (32, 300001), (4, 100003, 20),
+])
+def test_array_from_numpy_layout_change(src_order, dst_order, shape):
+    a = numpy.asarray(
+        numpy.random.default_rng(0).standard_normal(shape, numpy.float32),
+        order=src_order)
+    b = cupy.array(a, order=dst_order)
+    assert b.flags.c_contiguous if dst_order == 'C' else b.flags.f_contiguous
+    testing.assert_array_equal(b, a)
+
+
+def test_array_from_numpy_layout_change_stream():
+    a = testing.shaped_arange((1000, 33), numpy, numpy.int64)
+    stream = cuda.Stream()
+    with stream:
+        b = cupy.array(a, order='F')
+    stream.synchronize()
+    assert b.flags.f_contiguous
+    testing.assert_array_equal(b, a)
+
+
 max_cuda_array_interface_version = 3
 
 
