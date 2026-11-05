@@ -32,6 +32,7 @@ import math
 import cupy
 import cupyx.scipy.ndimage
 
+from cupyx.scipy.signal._arraytools import _real_type_preamble
 from cupyx.scipy.signal._iir_utils import apply_iir_sos
 from cupyx.scipy.signal._splines import _symiirorder1_nd, _symiirorder2_nd
 from cupyx.scipy.interpolate._bspline import BSpline
@@ -556,11 +557,13 @@ _gauss_spline_kernel = cupy.ElementwiseKernel(
     "T x, int32 n",
     "T output",
     """
-    output = 1 / sqrt( 2.0 * M_PI * signsq ) * exp( -( x * x ) * r_signsq );
+    output = 1 / sqrt( R(2 * M_PI) * signsq ) * exp( -( x * x ) * r_signsq );
     """,
     "_gauss_spline_kernel",
-    loop_prep="const double signsq { ( n + 1 ) / 12.0 }; \
-               const double r_signsq { 0.5 / signsq };",
+    preamble=_real_type_preamble,
+    loop_prep="using R = typename real_type<T>::type; \
+               const R signsq { ( n + 1 ) / R(12) }; \
+               const R r_signsq { R(0.5) / signsq };",
 )
 
 

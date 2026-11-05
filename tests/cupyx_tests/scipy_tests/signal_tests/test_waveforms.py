@@ -95,6 +95,17 @@ class TestChirp:
         return scp.signal.chirp(
             t, 3.0, 1.0, 1.0, method=method, phi=37.0, complex=complex)
 
+    @pytest.mark.parametrize('method', ['linear', 'logarithmic'])
+    @testing.with_requires('scipy>=1.15.0')
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-5, atol=1e-5)
+    def test_complex64_time(self, method, xp, scp):
+        t = (xp.linspace(-0.25, 1.0, 11) + 0.1j).astype(xp.complex64)
+        result = scp.signal.chirp(t, 3.0, 1.0, 1.0, method=method, phi=37.0)
+        if xp is np:
+            # SciPy promotes complex64 times to complex128.
+            result = result.astype(np.complex64)
+        return result
+
     @pytest.mark.parametrize('method, f0, f1, vertex_zero', [
         ('linear', 1.0, 3.0, True),
         ('quadratic', 1.0, 3.0, True),
@@ -243,6 +254,22 @@ class TestGaussPulse:
         float_result = scp.signal.gausspulse('cutoff', tpr=-60.0)
         int_result = scp.signal.gausspulse('cutoff', tpr=-60)
         return float_result, int_result
+
+    @pytest.mark.parametrize('retenv', [False, True])
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(
+        scipy_name='scp', rtol={np.float32: 1e-5, np.complex64: 1e-5,
+                                'default': 1e-7})
+    def test_dtypes(self, retenv, xp, scp, dtype):
+        t = xp.linspace(-1.0, 1.0, 101)
+        if dtype in (np.complex64, np.complex128):
+            t = t + 0.1j
+        result = scp.signal.gausspulse(t.astype(dtype), fc=5, retenv=retenv)
+        if xp is np:
+            # SciPy promotes single-precision times to double precision.
+            result = tuple(r.astype(dtype) for r in result) if retenv \
+                else result.astype(dtype)
+        return result
 
 
 @testing.slow
