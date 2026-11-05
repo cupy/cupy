@@ -562,7 +562,10 @@ You can install the library by:
 
 @functools.cache
 def _get_hipcc_include_dirs():
-    cmd = ["hipcc", "-x", "hip", "-E", "-v", "/dev/null"]
+    hipcc = "hipcc"
+    if _PLATFORM_WIN32:
+        hipcc = get_hipcc_path() or hipcc
+    cmd = [hipcc, "-x", "hip", "-E", "-v", os.devnull]
     proc = subprocess.run(cmd, stdout=subprocess.DEVNULL,
                           stderr=subprocess.PIPE, text=True)
 

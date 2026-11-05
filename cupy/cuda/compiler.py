@@ -884,11 +884,24 @@ def is_valid_kernel_name(name):
     return re.match('^[a-zA-Z_][a-zA-Z_0-9]*$', name) is not None
 
 
+def _get_hipcc_command(options):
+    if not _win32:
+        return ['hipcc']
+    # On Windows, `hipcc` on PATH may be a launcher outside the ROCm tree, and
+    # hipcc compiles for gfx906 unless it is given an architecture.
+    cmd = [_environment.get_hipcc_path() or 'hipcc']
+    if ('HCC_AMDGPU_TARGET' not in os.environ and
+            not any(o.startswith('--offload-arch') for o in options)):
+        props = runtime.getDeviceProperties(device.get_device_id())
+        cmd.append('--offload-arch=' + props['gcnArchName'].decode())
+    return cmd
+
+
 def compile_using_hipcc(source, options, arch, log_stream=None):
     # As of ROCm 3.5.0 hiprtc/hipcc can automatically pick up the
     # right arch without setting HCC_AMDGPU_TARGET, so we don't need
     # to set arch here
-    cmd = ['hipcc', '--genco'] + list(options)
+    cmd = _get_hipcc_command(options) + ['--genco'] + list(options)
 
     with tempfile.TemporaryDirectory() as root_dir:
         path = os.path.join(root_dir, 'kern')
@@ -925,7 +938,7 @@ def compile_using_hipcc(source, options, arch, log_stream=None):
 # TODO(leofang): consider merge _preprocess_hipcc with _preprocess_hiprtc,
 # perhaps also with _preprocess?
 def _preprocess_hipcc(source, options):
-    cmd = ['hipcc', '--preprocess'] + list(options)
+    cmd = _get_hipcc_command(options) + ['--preprocess'] + list(options)
     with tempfile.TemporaryDirectory() as root_dir:
         path = os.path.join(root_dir, 'kern')
         cu_path = '%s.cpp' % path
