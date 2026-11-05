@@ -292,6 +292,37 @@ def test_astype_from_bfloat16(xp, to_dtype):
     return a.astype(to_dtype)
 
 
+# Values that double-round through float32, plus rounding boundaries.
+ROUNDING_VALUES = [
+    (numpy.float64, 1.0 + 2.0**-8 + 2.0**-26, 0x3f81),
+    (numpy.float64, numpy.nextafter(1.01171875, 0.0), 0x3f81),
+    (numpy.float64, 1.0 + 2.0**-8, 0x3f80),
+    (numpy.float64, 127.5 * 2.0**-133, 0x0080),
+    (numpy.float64, numpy.nextafter(2.0**-134, numpy.inf), 0x0001),
+    (numpy.float64, numpy.nextafter(
+        (2.0 - 2.0**-8) * 2.0**127, 0.0), 0x7f7f),
+    (numpy.float64, -(1.0 + 2.0**-8 + 2.0**-26), 0xbf81),
+    (numpy.int32, 16842753, 0x4b81),
+    (numpy.uint32, 16842753, 0x4b81),
+    (numpy.int64, 16973823, 0x4b81),
+    (numpy.uint64, 16973823, 0x4b81),
+    (numpy.int64, -16973823, 0xcb81),
+    (numpy.int32, -16973823, 0xcb81),
+    (numpy.int64, 16973824, 0x4b82),
+    (numpy.int32, -(2**31), 0xcf00),
+    (numpy.uint32, 2**32 - 1, 0x4f80),
+    (numpy.int64, -(2**63), 0xdf00),
+    (numpy.uint64, 2**64 - 1, 0x5f80),
+]
+
+
+@pytest.mark.parametrize('source_dtype, value, expected', ROUNDING_VALUES)
+def test_astype_to_bfloat16_rounding(source_dtype, value, expected):
+    a = cupy.asarray(numpy.array([value], dtype=source_dtype))
+    result = a.astype(BF16)
+    assert int(result.view(cupy.uint16).get()[0]) == expected
+
+
 @pytest.mark.parametrize('func', [
     lambda x: x + ml_dtypes.bfloat16(numpy.inf),
     lambda x: x + x,

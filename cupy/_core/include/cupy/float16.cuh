@@ -18,33 +18,7 @@
 
 #include <cuda_fp16.h>
 
-#else  // #if __CUDACC_VER_MAJOR__ >= 9
-
-struct __half_raw {
-  unsigned short x;
-};
-
-struct half {
-private:
-  unsigned short data_;
-public:
-  __device__ half() {}
-  __device__ half(const half &v) : data_(v.data_) {}
-  __device__ half(float v) : data_(__float2half_rn(v)) {}
-
-  explicit __device__ half(const __half_raw &v) : data_(v.x) {}
-  explicit __device__ half(bool v) : data_(__float2half_rn(float(v))) {}
-  explicit __device__ half(double v) : data_(__float2half_rn(float(v))) {}
-  explicit __device__ half(int v) : data_(__float2half_rn(float(v))) {}
-  explicit __device__ half(unsigned int v) : data_(__float2half_rn(float(v))) {}
-  explicit __device__ half(long long v) : data_(__float2half_rn(float(v))) {}
-  explicit __device__ half(unsigned long long v) : data_(__float2half_rn(float(v))) {}
-
-  __device__ operator float() const {return __half2float(data_);}
-  __device__ operator __half_raw() const {__half_raw ret = {data_}; return ret;}
-};
-
-#endif  // #if __CUDACC_VER_MAJOR__ >= 9
+#endif
 
 
 class float16 {
