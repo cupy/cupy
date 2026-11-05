@@ -115,16 +115,20 @@ class TestExpM:
         return scp.linalg.expm(a)
 
     @pytest.mark.parametrize('norm', [
-        1.495585217958292e-2, 2.539398330063230e-1,
-        9.504178996162932e-1, 2.097847961257068,
-        5.371920351148152, 2 * 5.371920351148152])
+        3.397168839976962e-04,   # theta_4  (double)
+        4.991228871115323e-02,   # theta_8  (double)
+        2.996158913811580e-01,   # theta_12 (double)
+        1.090863719290036e+00,   # theta_18 (double)
+        3.010066362817634e+00,   # theta_18 (single)
+        2 * 3.010066362817634e+00,  # scaling path for both
+    ])
     @pytest.mark.parametrize('factor', [0.99, 1., 1.01])
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(
         scipy_name='scp', contiguous_check=False,
         rtol={'default': 1e-12, np.float32: 1e-5, np.complex64: 1e-5},
         atol={'default': 1e-14, np.float32: 1e-6, np.complex64: 1e-6})
-    def test_pade_thresholds(self, xp, scp, dtype, norm, factor):
+    def test_bbc_thresholds(self, xp, scp, dtype, norm, factor):
         a = xp.asarray([[0, norm * factor], [-norm * factor, 0]],
                        dtype=dtype)
         return scp.linalg.expm(a)
