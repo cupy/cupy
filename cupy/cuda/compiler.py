@@ -378,7 +378,12 @@ def _compile_using_nvrtc_no_warning(
                     _use_pch):
                 options += ('--pch',)
 
-        prog = _NVRTCProgram(source, cu_path, headers, include_names,
+        name = cu_path
+        if runtime.is_hip and _win32:
+            # hiprtc on Windows fails, with an empty log, to compile a program
+            # whose name is an absolute path.
+            name = os.path.basename(cu_path)
+        prog = _NVRTCProgram(source, name, headers, include_names,
                              name_expressions=name_expressions, method=method)
         try:
             compiled_obj, mapping = prog.compile(options, log_stream)
