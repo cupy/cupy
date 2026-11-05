@@ -43,7 +43,9 @@ import pytest
 
 import numpy as np
 
+import cupy
 from cupy import testing
+from cupyx.scipy import signal
 from cupyx.scipy.signal._upfirdn import _output_len
 
 
@@ -306,3 +308,69 @@ def test_output_len_long_input():
     # The expected value was computed "by hand" from the formula
     #   (((in_len - 1) * up + len_h) - 1) // down + 1
     assert out_len == 72562360
+
+
+@pytest.mark.parametrize('shape,axis', [
+    (((1 << 31) + 1,), 0),
+    ((1, (1 << 31) + 1), 1),
+    (((1 << 31) + 1, 1), 0),
+])
+def test_large_broadcast_input(shape, axis):
+    # The logical axis is larger than int32 but uses only one input element.
+    x = cupy.broadcast_to(cupy.array([2], dtype=cupy.float32), shape)
+    out = signal.upfirdn(cupy.array([1], dtype=cupy.float32), x,
+                         down=(1 << 31) - 1, axis=axis)
+    testing.assert_array_equal(out.ravel(), [2, 2])
+
+
+@pytest.mark.parametrize('down', [1 << 31, (1 << 63) - 1])
+def test_large_down_factor(down):
+    x = cupy.array([2], dtype=cupy.float32)
+    out = signal.upfirdn(cupy.array([1], dtype=cupy.float32), x, down=down)
+    testing.assert_array_equal(out, [2])
+
+
+@pytest.mark.parametrize('factor', ['up', 'down'])
+def test_factor_outside_int64(factor):
+    x = cupy.ones(1, dtype=cupy.float32)
+    with pytest.raises(OverflowError, match='signed 64-bit'):
+        signal.upfirdn(x, x, **{factor: 1 << 63})
+
+
+@pytest.fixture
+def release_large_pool():
+    yield
+    cupy.get_default_memory_pool().free_all_blocks()
+
+
+@testing.slow
+@pytest.mark.thread_unsafe(reason='Large GPU allocations.')
+@pytest.mark.parametrize('shape,axis', [
+    (((1 << 31) + 1,), 0),
+    ((1, (1 << 31) + 1), 1),
+    (((1 << 31) + 1, 1), 0),
+])
+def test_upfirdn_large_input(shape, axis, release_large_pool):
+    if cupy.cuda.runtime.memGetInfo()[0] < 12 << 30:
+        pytest.skip('not enough GPU memory for the large-array regression')
+    x = cupy.ones(shape, dtype=cupy.float32)
+    last = [slice(None)] * x.ndim
+    last[axis] = -1
+    x[tuple(last)] = 2
+    out = signal.upfirdn(cupy.array([1], dtype=cupy.float32), x,
+                         down=shape[axis] - 1, axis=axis)
+    testing.assert_array_equal(out.ravel(), [1, 2])
+
+
+@testing.slow
+@pytest.mark.thread_unsafe(reason='Large GPU allocations.')
+def test_upfirdn_large_output(release_large_pool):
+    if cupy.cuda.runtime.memGetInfo()[0] < 12 << 30:
+        pytest.skip('not enough GPU memory for the large-array regression')
+    x = cupy.ones((65537, 2), dtype=cupy.float32)
+    out = signal.upfirdn(cupy.ones(1, dtype=cupy.float32), x,
+                         up=32769, axis=1)
+    assert out.size > 1 << 31
+    testing.assert_array_equal(out[[0, -1], 0], [1, 1])
+    testing.assert_array_equal(out[[0, -1], -1], [1, 1])
+    testing.assert_array_equal(out[[0, -1], -2], [0, 0])
