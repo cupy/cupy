@@ -322,7 +322,7 @@ def _quantile_unchecked(a, q, axis=None, out=None,
 
 def _quantile_is_valid(q):
     xp = cupy if isinstance(q, cupy.ndarray) else numpy
-    return xp.count_nonzero(0.0 <= q) and xp.count_nonzero(q <= 1.0)
+    return xp.all((0.0 <= q) & (q <= 1.0))
 
 
 def percentile(a, q, axis=None, out=None,
