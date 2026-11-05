@@ -121,9 +121,9 @@ def _inputs_swap_needed(mode, shape1, shape2, axes=None):
 def _init_freq_conv_axes(in1, in2, mode, axes, sorted_axes=False):
     # See scipy's documentation in scipy.signal._signaltools
     s1, s2 = in1.shape, in2.shape
-    axes = _init_nd_and_axes(in1, axes)
+    all_axes = _init_nd_and_axes(in1, axes)
     # Length-1 axes can rely on broadcasting rules, no fft needed
-    axes = [ax for ax in axes if s1[ax] != 1 and s2[ax] != 1]
+    axes = [ax for ax in all_axes if s1[ax] != 1 and s2[ax] != 1]
     if sorted_axes:
         axes.sort()
 
@@ -138,7 +138,7 @@ def _init_freq_conv_axes(in1, in2, mode, axes, sorted_axes=False):
         # Convolution is commutative
         in1, in2 = in2, in1
 
-    return in1, in2, tuple(axes)
+    return in1, in2, tuple(axes), all_axes
 
 
 def _init_nd_and_axes(x, axes):
@@ -171,12 +171,17 @@ def _freq_domain_conv(in1, in2, axes, shape, calc_fast_len=False):
     return out[tuple(slice(x) for x in shape)] if calc_fast_len else out
 
 
-def _apply_conv_mode(full, s1, s2, mode, axes):
+def _apply_conv_mode(full, s1, s2, mode, axes, all_axes):
     # See scipy's documentation in scipy.signal._signaltools
     if mode == 'full':
         return cupy.ascontiguousarray(full)
     if mode == 'valid':
         s1 = [full.shape[a] if a not in axes else s1[a] - s2[a] + 1
+              for a in range(full.ndim)]
+    elif mode == 'same':
+        # Keep all requested convolution axes, including length-1 axes that
+        # did not need an FFT. Only batch axes retain their broadcast size.
+        s1 = [s1[a] if a in all_axes else full.shape[a]
               for a in range(full.ndim)]
     starts = [(cur-new)//2 for cur, new in zip(full.shape, s1)]
     slices = tuple(slice(start, start+length)

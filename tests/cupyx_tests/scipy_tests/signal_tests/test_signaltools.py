@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import unittest
 
 import numpy as np
 import pytest
@@ -144,7 +145,71 @@ class TestFFTConvolveFastShape:
             self, xp, scp, dtype, shape1, shape2, axes, mode):
         in1 = testing.shaped_random(shape1, xp, dtype)
         in2 = testing.shaped_random(shape2, xp, dtype)
+        if xp is np:
+            # SciPy also truncates broadcast batch dimensions in 'same' mode
+            # (scipy/scipy#26105). Broadcast before calling the reference.
+            s1, s2 = list(shape1), list(shape2)
+            for ax in range(in1.ndim):
+                if ax not in axes:
+                    s1[ax] = s2[ax] = max(s1[ax], s2[ax])
+            in1 = np.broadcast_to(in1, s1)
+            in2 = np.broadcast_to(in2, s2)
         return scp.signal.fftconvolve(in1, in2, mode=mode, axes=axes)
+
+
+@testing.parameterize(*testing.product({
+    'method': ['fftconvolve', 'oaconvolve'],
+    'mode': ['full', 'same', 'valid'],
+    'case': [
+        ((1, 100), (7, 3), 1),
+        ((7, 100), (1, 3), -1),
+        ((1, 40, 1), (2, 3, 4), 1),
+        ((1, 40, 6), (3, 3, 2), (2, 1)),
+        ((1, 3, 1), (3, 5, 4), (1, 2)),
+        ((1, 1), (7, 3), 1),
+        ((1, 4), (3, 1), 1),
+        ((1, 1), (2, 4), None),
+        ((1,), (7,), None),
+    ],
+}))
+@testing.with_requires('scipy')
+class TestFreqConvolveBatchShape(unittest.TestCase):
+    @testing.for_dtypes('fdFD')
+    def test_batch_shape(self, dtype):
+        shape1, shape2, axes = self.case
+        ndim = len(shape1)
+        if axes is None:
+            conv_axes = tuple(range(ndim))
+        elif np.isscalar(axes):
+            conv_axes = (int(axes) % ndim,)
+        else:
+            conv_axes = tuple(ax % ndim for ax in axes)
+        batch_axes = tuple(ax for ax in range(ndim) if ax not in conv_axes)
+        batch_shape = tuple(max(shape1[ax], shape2[ax]) for ax in batch_axes)
+        in1 = testing.shaped_random(shape1, np, dtype, scale=1, seed=1)
+        in2 = testing.shaped_random(shape2, np, dtype, scale=1, seed=2)
+        result = getattr(cupyx.scipy.signal, self.method)(
+            cupy.asarray(in1), cupy.asarray(in2), mode=self.mode, axes=axes)
+        result = result.get()
+
+        assert tuple(result.shape[ax] for ax in batch_axes) == batch_shape
+        tolerance = 1e-5 if np.dtype(dtype).char in 'fF' else 1e-12
+        # Each batch is an ordinary convolution. The direct CPU algorithm
+        # provides a reference independent of FFT and overlap-add slicing.
+        for batch_index in np.ndindex(batch_shape):
+            idx1 = [slice(None)] * ndim
+            idx2 = [slice(None)] * ndim
+            idx_out = [slice(None)] * ndim
+            for ax, index in zip(batch_axes, batch_index):
+                idx1[ax] = 0 if shape1[ax] == 1 else index
+                idx2[ax] = 0 if shape2[ax] == 1 else index
+                idx_out[ax] = index
+            expected = scipy.signal.convolve(
+                in1[tuple(idx1)], in2[tuple(idx2)],
+                mode=self.mode, method='direct')
+            np.testing.assert_allclose(
+                result[tuple(idx_out)], expected,
+                rtol=tolerance, atol=tolerance)
 
 
 @testing.parameterize(*testing.product({
