@@ -1720,29 +1720,52 @@ class SpMatDescriptor(BaseDescriptor):
         rows, cols = a.shape
         idx_base = _cusparse.CUSPARSE_INDEX_BASE_ZERO
         cuda_dtype = _dtype.to_cuda_dtype(a.dtype)
+        # cuSPARSE descriptors do not represent array strides. Keep copies
+        # local to the descriptor so the sparse matrix retains its views.
+        data = a.data
+        if not data._c_contiguous:
+            data = _cupy.ascontiguousarray(data)
         if a.format == 'csr':
+            indptr = a.indptr
+            if not indptr._c_contiguous:
+                indptr = _cupy.ascontiguousarray(indptr)
+            indices = a.indices
+            if not indices._c_contiguous:
+                indices = _cupy.ascontiguousarray(indices)
             desc = _cusparse.createCsr(
-                rows, cols, a.nnz, a.indptr.data.ptr, a.indices.data.ptr,
-                a.data.data.ptr, _dtype_to_IndexType(a.indptr.dtype),
+                rows, cols, a.nnz, indptr.data.ptr, indices.data.ptr,
+                data.data.ptr, _dtype_to_IndexType(a.indptr.dtype),
                 _dtype_to_IndexType(a.indices.dtype), idx_base, cuda_dtype)
             get = _cusparse.csrGet
             # Keep backing arrays alive, e.g. sum_duplicates() would
             # replace them.
-            owning_arrs = (a.data, a.indices, a.indptr)
+            owning_arrs = (data, indices, indptr)
         elif a.format == 'coo':
+            row = a.row
+            if not row._c_contiguous:
+                row = _cupy.ascontiguousarray(row)
+            col = a.col
+            if not col._c_contiguous:
+                col = _cupy.ascontiguousarray(col)
             desc = _cusparse.createCoo(
-                rows, cols, a.nnz, a.row.data.ptr, a.col.data.ptr,
-                a.data.data.ptr, _dtype_to_IndexType(a.row.dtype),
+                rows, cols, a.nnz, row.data.ptr, col.data.ptr,
+                data.data.ptr, _dtype_to_IndexType(a.row.dtype),
                 idx_base, cuda_dtype)
             get = _cusparse.cooGet
-            owning_arrs = (a.data, a.row, a.col)
+            owning_arrs = (data, row, col)
         elif a.format == 'csc':
+            indptr = a.indptr
+            if not indptr._c_contiguous:
+                indptr = _cupy.ascontiguousarray(indptr)
+            indices = a.indices
+            if not indices._c_contiguous:
+                indices = _cupy.ascontiguousarray(indices)
             desc = _cusparse.createCsc(
-                rows, cols, a.nnz, a.indptr.data.ptr, a.indices.data.ptr,
-                a.data.data.ptr, _dtype_to_IndexType(a.indptr.dtype),
+                rows, cols, a.nnz, indptr.data.ptr, indices.data.ptr,
+                data.data.ptr, _dtype_to_IndexType(a.indptr.dtype),
                 _dtype_to_IndexType(a.indices.dtype), idx_base, cuda_dtype)
             get = None
-            owning_arrs = (a.data, a.indices, a.indptr)
+            owning_arrs = (data, indices, indptr)
         else:
             raise ValueError('csr, csc and coo format are supported '
                              '(actual: {}).'.format(a.format))
