@@ -134,6 +134,7 @@ _cuda_files = [
     'cupy._core.fusion',
     'cupy._core.new_fusion',
     'cupy._core.numpy_allocator',
+    'cupy._core.public_c_api',
     'cupy._core.raw',
     'cupy.cuda.common',
     'cupy.cuda.cufft',
