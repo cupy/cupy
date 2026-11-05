@@ -214,7 +214,8 @@ class DeviceCompilerWin32(DeviceCompilerBase):
 
     def compile(self, obj: str, src: str, ext: Extension) -> None:
         if self._context.use_hip:
-            raise RuntimeError('ROCm is not supported on Windows')
+            self._compile_win32_hipcc(obj, src, ext)
+            return
 
         compiler_so = build.get_nvcc_path()
         cc_args = self._get_preprocess_options(ext) + ['-c']
@@ -238,6 +239,25 @@ class DeviceCompilerWin32(DeviceCompilerBase):
             print(f'Using host compiler at {cl_exe_path}')
             postargs += ['--compiler-bindir', cl_exe_path]
         print('NVCC options:', postargs)
+        self.spawn(compiler_so + cc_args + [src, '-o', obj] + postargs)
+
+    def _compile_win32_hipcc(self, obj: str, src: str, ext: Extension) -> None:
+        compiler_so = build.get_hipcc_path()
+        if compiler_so is None:
+            raise RuntimeError('hipcc could not be found')
+        # Without an explicit target, hipcc on Windows silently compiles for
+        # gfx906 instead of the GPU in the machine.
+        if ('HCC_AMDGPU_TARGET' not in os.environ and
+                not any(a.startswith('--offload-arch') for a in compiler_so)):
+            raise RuntimeError(
+                'HCC_AMDGPU_TARGET must be set to the GPU architectures to '
+                'build for (e.g., gfx1151) to build CuPy for ROCm on Windows')
+        cc_args = self._get_preprocess_options(ext) + ['-c']
+        # hipcc links the static C runtime by default on Windows; the host
+        # objects use the DLL runtime (/MD).
+        postargs = ['-O2', '-fms-runtime-lib=dll', '--include',
+                    'hip_runtime.h', '-D_USE_MATH_DEFINES', '--std=c++17']
+        print('HIPCC options:', postargs)
         self.spawn(compiler_so + cc_args + [src, '-o', obj] + postargs)
 
     def _find_host_compiler_path(self) -> str | None:
