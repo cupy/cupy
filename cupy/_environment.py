@@ -217,6 +217,11 @@ def _get_rocm_path():
     if os.path.exists(rocm_path):
         return rocm_path
 
+    if _PLATFORM_WIN32:
+        # On Windows, ROCm is installed from Python packages (TheRock), where
+        # `hipcc` on PATH is a console-script launcher outside the ROCm tree.
+        return _get_win32_rocm_path()
+
     # Resolve hipcc symlinks (distros expose /usr/bin/hipcc ->
     # /opt/rocm-X.Y/bin/hipcc via update-alternatives).
     hipcc_path = shutil.which('hipcc')
@@ -229,6 +234,20 @@ def _get_rocm_path():
         return '/opt/rocm'
 
     return None
+
+
+def _get_win32_rocm_path():
+    hipconfig = shutil.which('hipconfig')
+    if hipconfig is None:
+        return None
+    try:
+        out = subprocess.check_output(
+            [hipconfig, '--rocmpath'], universal_newlines=True,
+            creationflags=subprocess.CREATE_NO_WINDOW)
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    rocm_path = out.strip()
+    return rocm_path if os.path.isdir(rocm_path) else None
 
 
 def _get_hipcc_path():

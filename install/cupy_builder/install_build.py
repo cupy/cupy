@@ -59,7 +59,25 @@ def get_rocm_path():
         return _rocm_path
 
     _rocm_path = os.environ.get('ROCM_HOME', '')
+    if PLATFORM_WIN32 and not _rocm_path:
+        _rocm_path = _get_win32_rocm_path()
     return _rocm_path
+
+
+def _get_win32_rocm_path():
+    # On Windows, ROCm is installed from Python packages (TheRock), where
+    # `hipcc` on PATH is a console-script launcher outside the ROCm tree, so
+    # ask `hipconfig` for the root instead.
+    hipconfig = shutil.which('hipconfig')
+    if hipconfig is None:
+        return ''
+    try:
+        out = subprocess.check_output(
+            [hipconfig, '--rocmpath'], universal_newlines=True)
+    except (OSError, subprocess.CalledProcessError):
+        return ''
+    rocm_path = out.strip()
+    return rocm_path if os.path.isdir(rocm_path) else ''
 
 
 def get_cuda_path():
