@@ -90,3 +90,21 @@ class TestMLS:
             results.append(new_m)
 
         return results
+
+    @pytest.mark.parametrize('nbits,taps', [(33, [13]), (48, [47, 21, 1]),
+                                            (64, [63, 61, 60])])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_mls_output_multi_warp(self, nbits, taps, xp, scp):
+        # A shift register wider than one warp (nbits > 32, legal with
+        # custom taps) requires the kernel's threads to be explicitly
+        # synchronized; the recurrence must still match SciPy exactly.
+        return scp.signal.max_len_seq(nbits, taps=taps, length=4096)[0]
+
+    @pytest.mark.parametrize('nbits,taps', [(3, [3, 2]), (4, [4, 1]),
+                                            (3, [3])])
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_mls_tap_equal_nbits(self, nbits, taps, xp, scp):
+        # The documented tap range is [0, nbits] inclusive; a tap equal
+        # to nbits wraps (SciPy semantics) instead of reading past the
+        # end of the shift register.
+        return scp.signal.max_len_seq(nbits, taps=taps, length=12)[0]
