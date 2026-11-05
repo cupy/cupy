@@ -3,6 +3,7 @@ from __future__ import annotations
 from numpy import prod
 
 import cupy
+from cupy.cuda import stream
 from cupy.fft import config
 from cupy.fft._fft import (_convert_fft_type, _default_fft_func, _fft,
                            _get_cufft_plan_nd, _get_fftn_out_size,
@@ -151,8 +152,9 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
             keys += (mgr.cb_load, mgr.cb_store,
                      0 if load_aux is None else load_aux.data.ptr,
                      0 if store_aux is None else store_aux.data.ptr)
+        cache_key = keys + (stream.get_current_stream().ptr,)
         cache = get_plan_cache()
-        cached_plan = cache.get(keys)
+        cached_plan = cache.get(cache_key)
         if cached_plan is not None:
             plan = cached_plan
         elif mgr is None:
