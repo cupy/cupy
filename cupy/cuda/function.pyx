@@ -5,6 +5,7 @@ import warnings
 
 from libc.stdint cimport intptr_t
 from libc.stdint cimport uintmax_t
+from libc.stdint cimport UINT32_MAX
 from libcpp cimport vector
 
 from cupy._core cimport _carray
@@ -126,6 +127,22 @@ cdef _launch(intptr_t func, Py_ssize_t grid0, int grid1, int grid2,
             func, <int>grid0, grid1, grid2, <int>block0, block1, block2,
             <int>shared_mem, stream, <intptr_t>kargs.data())
     else:
+        IF CUPY_HIP_VERSION > 0:
+            _total_x = <unsigned long long>grid0 * block0
+            _total_y = <unsigned long long>grid1 * block1
+            _total_z = <unsigned long long>grid2 * block2
+            if _total_x > UINT32_MAX or _total_y > UINT32_MAX or \
+                    _total_z > UINT32_MAX:
+                raise ValueError(
+                    'Kernel launch requires {:,} total threads '
+                    '({:,} blocks * {:,} threads per block), '
+                    'but AMD GPUs support at most {:,} threads '
+                    'per launch. To process more elements, have each '
+                    'thread handle multiple elements in a loop and launch '
+                    'fewer blocks (at most {:,} blocks for this block '
+                    'size).'.format(
+                        _total_x, grid0, block0, UINT32_MAX,
+                        UINT32_MAX // max(block0, 1)))
         driver.launchKernel(
             func, <int>grid0, grid1, grid2, <int>block0, block1, block2,
             <int>shared_mem, stream, <intptr_t>kargs.data(), <intptr_t>0)
