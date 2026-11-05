@@ -1139,10 +1139,10 @@ _remainder = create_ufunc(
     'cupy_remainder',
     ('bb->b', 'BB->B', 'hh->h', 'HH->H', 'ii->i', 'II->I', 'll->l', 'LL->L',
      'qq->q', 'QQ->Q',
-     ('ee->e', 'out0 = in0 - _floor_divide(in0, in1) * in1'),
+     ('ee->e', 'out0 = _float_remainder(in0, in1)'),
      *bf16_loop(2, code='out0 = in0 - _floor_divide(in0, in1) * in1'),
-     ('ff->f', 'out0 = in0 - _floor_divide(in0, in1) * in1'),
-     ('dd->d', 'out0 = in0 - _floor_divide(in0, in1) * in1')),
+     ('ff->f', 'out0 = _float_remainder(in0, in1)'),
+     ('dd->d', 'out0 = _float_remainder(in0, in1)')),
     'out0 = (in0 - _floor_divide(in0, in1) * in1) * (in1 != 0)',
     doc='''Computes the remainder of Python division elementwise.
 
