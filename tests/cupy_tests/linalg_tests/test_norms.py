@@ -327,3 +327,45 @@ class TestCondBasicNonSVD(unittest.TestCase):
         testing.assert_array_almost_equal(
             cupy.linalg.cond(A, "fro"), cupy.sqrt(265 / 12)
         )
+
+
+class TestLinalgMatrixNorm:
+
+    @pytest.mark.parametrize(
+        'shape',
+        [
+            (3, 3),
+            (4, 5),
+            (5, 4),
+            (2, 3, 3),
+            (3, 2, 4, 5),
+        ],
+    )
+    @pytest.mark.parametrize(
+        'ord',
+        [
+            None, 'fro', 'nuc', 1, -1, 2, -2,
+            numpy.inf, -numpy.inf,
+        ],
+    )
+    @pytest.mark.parametrize('keepdims', [False, True])
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-6)
+    def test_matrix_norm(self, xp, shape, ord, keepdims):
+        a = testing.shaped_arange(shape, xp, dtype=xp.float64) + 1
+        kwargs = {} if ord is None else {'ord': ord}
+        return xp.linalg.matrix_norm(
+            a, keepdims=keepdims, **kwargs)
+
+    def test_matrix_norm_default_ord_is_fro(self):
+        a = testing.shaped_arange((3, 3), cupy, dtype=cupy.float64) + 1
+        default = cupy.linalg.matrix_norm(a)
+        explicit = cupy.linalg.matrix_norm(a, ord='fro')
+        testing.assert_array_equal(default, explicit)
+
+    def test_matrix_norm_keepdims_shape(self):
+        a = testing.shaped_arange(
+            (2, 3, 4), cupy, dtype=cupy.float64) + 1
+        kept = cupy.linalg.matrix_norm(a, keepdims=True)
+        not_kept = cupy.linalg.matrix_norm(a, keepdims=False)
+        assert kept.shape == (2, 1, 1)
+        assert not_kept.shape == (2,)

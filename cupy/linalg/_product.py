@@ -355,6 +355,36 @@ def outer(a, b, out=None):
     return cupy.multiply(a.ravel()[:, None], b.ravel()[None, :], out=out)
 
 
+def linalg_outer(a, b, /, *, out=None):
+    """Returns the outer product of two vectors.
+
+    The input arrays are checked for dimension. Value error is raised
+    if either of input arrays is a non 1-D array. Then it performs outer
+    product of these vectors.
+
+    Args:
+        a (cupy.1darray): The first argument, 1-D cupy array
+        b (cupy.1darray): The second argument, 1-D cupy array
+        out (cupy.ndarray): Output array.
+
+    Returns:
+        cupy.ndarray: 2-D array of the outer product of ``a`` and ``b``.
+
+    .. seealso:: :func:`numpy.outer`
+
+    """
+    a_ndim = a.ndim
+    b_ndim = b.ndim
+
+    if a_ndim != 1 or b_ndim != 1:
+        raise ValueError(
+            "Input arrays must be one-dimensional, but they are "
+            f"{a_ndim} and {b_ndim}."
+        )
+
+    return cupy.multiply(a[:, None], b[None, :], out=out)
+
+
 def tensordot(a, b, axes=2):
     """Returns the tensor dot product of two arrays along specified axes.
 
@@ -530,3 +560,21 @@ def matrix_transpose(a):
     if ndim < 2:
         raise ValueError('Matrix dimension is less than 2')
     return a.swapaxes(ndim-1, ndim-2)
+
+
+def diagonal(x, /, *, offset=0):
+    """Returns the specified diagonal of the last two dimensions of an array.
+
+    Args:
+        x (~cupy.ndarray): Input array with shape ``(..., M, N)``.
+        offset (int): Offset of the diagonal from the main diagonal.
+            A positive value selects a diagonal above the main diagonal,
+            while a negative value selects a diagonal below it.
+
+    Returns:
+        ~cupy.ndarray: The selected diagonal with shape
+        ``(..., K)``, where ``K`` is the length of the diagonal.
+
+    .. seealso:: :func:`numpy.linalg.diagonal`
+    """
+    return x.diagonal(offset, -2, -1)
