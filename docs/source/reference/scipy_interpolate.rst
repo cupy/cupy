@@ -58,6 +58,7 @@ Unstructured data:
    LinearNDInterpolator
    NearestNDInterpolator
    CloughTocher2DInterpolator
+   griddata
    RBFInterpolator
 
 
