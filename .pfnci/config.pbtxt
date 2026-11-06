@@ -532,9 +532,9 @@ configs {
   }
 }
 
-# CUDA 12.x + CUDA Python
+# CUDA 12.x + CUDA Python opt-out
 configs {
-  key: "cupy.linux.cuda12x-cuda-python"
+  key: "cupy.linux.cuda12x-no-cuda-python"
   value {
     requirement {
       cpu: 8
@@ -546,13 +546,13 @@ configs {
       seconds: 21600
     }
     environment_variables { key: "GPU" value: "1" }
-    command: ".pfnci/linux/main-flexci.sh cuda12x-cuda-python"
+    command: ".pfnci/linux/main-flexci.sh cuda12x-no-cuda-python"
   }
 }
 
-# CUDA 13.x + CUDA Python
+# CUDA 13.x + CUDA Python opt-out
 configs {
-  key: "cupy.linux.cuda13x-cuda-python"
+  key: "cupy.linux.cuda13x-no-cuda-python"
   value {
     requirement {
       cpu: 8
@@ -564,7 +564,7 @@ configs {
       seconds: 21600
     }
     environment_variables { key: "GPU" value: "1" }
-    command: ".pfnci/linux/main-flexci.sh cuda13x-cuda-python"
+    command: ".pfnci/linux/main-flexci.sh cuda13x-no-cuda-python"
   }
 }
 

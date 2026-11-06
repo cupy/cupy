@@ -221,19 +221,19 @@
         "head",
         "linux"
     ],
-    "cupy.linux.cuda12x-cuda-python": [
+    "cupy.linux.cuda12x-no-cuda-python": [
         "@push",
         "full",
         "mini",
         "linux",
-        "cuda-python"
+        "no-cuda-python"
     ],
-    "cupy.linux.cuda13x-cuda-python": [
+    "cupy.linux.cuda13x-no-cuda-python": [
         "@push",
         "full",
         "mini",
         "linux",
-        "cuda-python",
+        "no-cuda-python",
         "cuda13x"
     ],
     "cupy.win.cuda120": [

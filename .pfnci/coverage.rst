@@ -128,8 +128,8 @@ CuPy CI Test Coverage
      - `cuda-slow <t31_>`_ `🐳 <d31_>`_ `📜 <s31_>`_
      - `cuda-example <t32_>`_ `🐳 <d32_>`_ `📜 <s32_>`_
      - `cuda-head <t33_>`_ `🐳 <d33_>`_ `📜 <s33_>`_
-     - `cuda12x-cuda-python <t34_>`_ `🐳 <d34_>`_ `📜 <s34_>`_
-     - `cuda13x-cuda-python <t35_>`_ `🐳 <d35_>`_ `📜 <s35_>`_
+     - `cuda12x-no-cuda-python <t34_>`_ `🐳 <d34_>`_ `📜 <s34_>`_
+     - `cuda13x-no-cuda-python <t35_>`_ `🐳 <d35_>`_ `📜 <s35_>`_
      - `array-api <t36_>`_ `🐳 <d36_>`_ `📜 <s36_>`_
      - `benchmark.head <t37_>`_ `🐳 <d37_>`_ `📜 <s37_>`_
      - `benchmark <t38_>`_ `🐳 <d38_>`_ `📜 <s38_>`_
@@ -3495,7 +3495,7 @@ CuPy CI Test Coverage
      - 
    * - cuda-python
      - null
-     - 37
+     - 39
      - ✅
      - ✅
      - ✅
@@ -3530,14 +3530,14 @@ CuPy CI Test Coverage
      - ✅
      - ✅
      - ✅
-     - 
-     - 
+     - ✅
+     - ✅
      - ✅
      - ✅
      - ✅
    * - 
      - 12
-     - 1
+     - 🚨
      - 
      - 
      - 
@@ -3572,7 +3572,7 @@ CuPy CI Test Coverage
      - 
      - 
      - 
-     - ✅
+     - 
      - 
      - 
      - 
@@ -3663,7 +3663,7 @@ CuPy CI Test Coverage
      - 
    * - 
      - 13.4
-     - 1
+     - 🚨
      - 
      - 
      - 
@@ -3699,13 +3699,13 @@ CuPy CI Test Coverage
      - 
      - 
      - 
-     - ✅
+     - 
      - 
      - 
      - 
    * - nvmath-python
      - null
-     - 37
+     - 39
      - ✅
      - ✅
      - ✅
@@ -3740,14 +3740,14 @@ CuPy CI Test Coverage
      - ✅
      - ✅
      - ✅
-     - 
-     - 
+     - ✅
+     - ✅
      - ✅
      - ✅
      - ✅
    * - 
      - 1
-     - 2
+     - 🚨
      - 
      - 
      - 
@@ -3782,8 +3782,8 @@ CuPy CI Test Coverage
      - 
      - 
      - 
-     - ✅
-     - ✅
+     - 
+     - 
      - 
      - 
      - 
@@ -4520,12 +4520,12 @@ CuPy CI Test Coverage
 .. _t33: https://ci.preferred.jp/cupy.linux.cuda-head/
 .. _d33: linux/tests/cuda-head.Dockerfile
 .. _s33: linux/tests/cuda-head.sh
-.. _t34: https://ci.preferred.jp/cupy.linux.cuda12x-cuda-python/
-.. _d34: linux/tests/cuda12x-cuda-python.Dockerfile
-.. _s34: linux/tests/cuda12x-cuda-python.sh
-.. _t35: https://ci.preferred.jp/cupy.linux.cuda13x-cuda-python/
-.. _d35: linux/tests/cuda13x-cuda-python.Dockerfile
-.. _s35: linux/tests/cuda13x-cuda-python.sh
+.. _t34: https://ci.preferred.jp/cupy.linux.cuda12x-no-cuda-python/
+.. _d34: linux/tests/cuda12x-no-cuda-python.Dockerfile
+.. _s34: linux/tests/cuda12x-no-cuda-python.sh
+.. _t35: https://ci.preferred.jp/cupy.linux.cuda13x-no-cuda-python/
+.. _d35: linux/tests/cuda13x-no-cuda-python.Dockerfile
+.. _s35: linux/tests/cuda13x-no-cuda-python.sh
 .. _t36: https://ci.preferred.jp/cupy.linux.array-api/
 .. _d36: linux/tests/array-api.Dockerfile
 .. _s36: linux/tests/array-api.sh
