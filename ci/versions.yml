@@ -3,6 +3,16 @@ cuda:
     version: "13.4.1"
   prev_build:
     version: "12.9.2"
+# Exact versions the wheels are built with, which are also the wheels'
+# minimum runtime versions. Keep cuda-bindings on the same minor as the CTK.
+cuda_bindings:
+  build:
+    version: "13.4.4"
+  prev_build:
+    version: "12.9.10"
+nvmath_python:
+  build:
+    version: "1.0.0"
 python:
   # Python versions the wheel matrix is built across. ci.yml reads this
   # list and passes it to build-wheel.yml as the `python-versions` input.

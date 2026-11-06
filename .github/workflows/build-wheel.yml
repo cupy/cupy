@@ -213,7 +213,9 @@ jobs:
         with:
           host-platform: ${{ inputs.host-platform }}
           cuda-version: ${{ inputs.cuda-version }}
-          cuda-components: "cuda_nvcc,cuda_cudart,cuda_crt,cuda_cuxxfilt,libnvvm,cuda_nvrtc,cuda_nvtx,cuda_profiler_api,cuda_cccl,libnvjitlink,libcublas,libcufft,libcurand,libcusparse,libcusolver"
+          # cuBLAS, cuSPARSE and cuSOLVER are not needed: CuPy uses them
+          # through nvmath-python, which loads them at runtime.
+          cuda-components: "cuda_nvcc,cuda_cudart,cuda_crt,cuda_cuxxfilt,libnvvm,cuda_nvrtc,cuda_nvtx,cuda_profiler_api,cuda_cccl,libnvjitlink,libcufft,libcurand"
           cuda-path: ${{ runner.temp }}/cuda_toolkit
 
       - name: Install cuTENSOR preload
@@ -282,8 +284,8 @@ jobs:
           # BOTH platform blocks below.
           # LDFLAGS=-Wl,--as-needed mirrors cupy-release-tools' build-wrapper;
           # cupy_builder links every _cuda_files module against
-          # -lcublas -lcufft -lcurand -lcusparse. Without --as-needed, ld
-          # marks DT_NEEDED for all four on every .so even when unreferenced,
+          # -lcufft -lcurand. Without --as-needed, ld
+          # marks DT_NEEDED for both on every .so even when unreferenced,
           # so `import cupy._core.<mod>` dlopen-fails in a bare env before
           # cuda-pathfinder can preload the libs.
           CIBW_ENVIRONMENT_LINUX: >
@@ -333,8 +335,10 @@ jobs:
           # DT_NEEDED that would drag a missing libcublas/libcufft/... into
           # `import cupy._core.<mod>` via ld before cuda-pathfinder can
           # preload it. Interlocks with LDFLAGS=-Wl,--as-needed above.
+          # The second command makes sure the wheel was built with CUDA Python.
           CIBW_TEST_COMMAND_LINUX: >
-            python {package}/tests/import_tests/test_import.py
+            python {package}/tests/import_tests/test_import.py &&
+            python -c "from cupy_backends.cuda.api import driver; assert driver._is_cuda_python()"
           CIBW_REPAIR_WHEEL_COMMAND_LINUX: >
             auditwheel repair -w {dest_dir}
             --exclude 'libcuda.so*'
@@ -378,6 +382,19 @@ jobs:
       - name: Check wheel
         run: |
           twine check --strict wheelhouse/*.whl
+          python - <<'EOF'
+          import glob, zipfile
+          for whl in glob.glob('wheelhouse/*.whl'):
+              with zipfile.ZipFile(whl) as z:
+                  name = next(n for n in z.namelist()
+                              if n.endswith('.dist-info/METADATA'))
+                  requires = [line for line in z.read(name).decode().splitlines()
+                              if line.startswith('Requires-Dist: ')]
+              print(whl, *requires, sep='\n  ')
+              for package in ('nvmath-python', 'cuda-bindings'):
+                  assert any(r.split()[1].startswith(package) for r in requires), (
+                      f'{whl} does not require {package}')
+          EOF
 
       - name: Upload wheel artifact
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
