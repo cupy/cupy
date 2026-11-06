@@ -9,6 +9,7 @@ import sys
 from typing import TYPE_CHECKING
 
 import cupy_builder
+from cupy_builder import install_utils
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -59,8 +60,18 @@ class Context:
         self.source_root = source_root
         self.setup_command = _argv[1] if len(_argv) >= 2 else ''
 
-        self.use_cuda_python = _get_env_bool('CUPY_USE_CUDA_PYTHON', _env)
         self.use_hip = _get_env_bool('CUPY_INSTALL_USE_HIP', _env)
+        # CUDA builds use CUDA Python by default; HIP builds never do.
+        self.use_cuda_python = _get_env_bool(
+            'CUPY_USE_CUDA_PYTHON', _env, default=not self.use_hip)
+        if self.use_hip and self.use_cuda_python:
+            raise ValueError(
+                'CUPY_USE_CUDA_PYTHON cannot be used with '
+                'CUPY_INSTALL_USE_HIP')
+        if not self.use_hip and not self.use_cuda_python:
+            install_utils.print_warning(
+                'CUPY_USE_CUDA_PYTHON=0 is deprecated and will be removed '
+                'in a future release.')
 
         # Extra paths to search for libraries/headers during build
         self.include_dirs = _get_env_path('CUPY_INCLUDE_PATH', _env)
