@@ -1,0 +1,452 @@
+CuPy bytecode fusion compiler plan
+=================================
+
+Objective
+---------
+
+Extend cupy.fuse() to analyze function bytecode, support control flow and
+data-dependent conditions, recursively analyze Python callees, and combine
+existing fusion backends with kernel launches and host calls. Reuse CuPy's
+compilation infrastructure rather than build another general-purpose compiler.
+
+The result of fuse() is a cached executable plan. A plan may contain one fused
+kernel, several kernels, host calls, and host-controlled branches or loops.
+Diagnostics must explain the achieved fusion and the time spent compiling it.
+
+First-iteration call scope
+--------------------------
+
+Only calls whose bodies can themselves be compiled, or which have known CUDA
+implementations, are supported in the first iteration. Known implementations
+include registered host launchers and allocation operations needed to invoke
+CUDA-backed CuPy operations. They do not have to be device-callable.
+Arbitrary opaque Python calls and general host fallback are outside this
+iteration. Reject unsupported calls during analysis, with a source location
+and reason, before executing the function body. Do not invoke a callable to
+discover whether it is supported.
+
+Input constraints
+-----------------
+
+The supported input model is scalars and CuPy arrays. Scalars may originate
+from Python, NumPy, or CuPy. NumPy arrays are not generally accepted as inputs;
+do not silently transfer them to the GPU or retain the old NumPy-array
+execution path. An initial implementation may restrict inputs entirely to
+scalars and CuPy arrays, reporting other types explicitly as unsupported.
+An instance-method receiver is bound separately from these numerical inputs;
+supporting method calls does not imply support for arbitrary object operations.
+
+Convert scalars to CUDA representations at the first opportunity under the
+documented scalar contract below. Retain scalar origin and weak-scalar
+information needed for type resolution; preserving this information does not
+promise exact Python or NumPy arithmetic. Prefer CUDA scalar parameters for
+host scalar values and device-resident scalar values for results already on
+the GPU.
+Avoid copying a device scalar to the host merely to normalize its input type.
+Host-required metadata or registered launchers may require explicit boundary
+conversion, which must be visible in diagnostics.
+
+Scalar and arithmetic tradeoffs
+-------------------------------
+
+Compiled arithmetic uses the selected CUDA representations. The following
+differences from ordinary Python or NumPy scalar execution are accepted and
+must be documented, rather than mitigated with host arithmetic, speculative
+evaluation, range guards, or additional device checks:
+
+* NumPy arithmetic warnings are not emitted by compiled arithmetic, and
+  numpy.seterr warning, exception, and callback behavior is not reproduced.
+* Exceptions from evaluating user arithmetic, such as zero division, occur
+  only during execution, if raised by the executing operation. Analysis and
+  explain() must not evaluate arithmetic to discover those exceptions.
+  CUDA arithmetic may instead produce infinities, NaNs, or other backend
+  results; there is no promise to synthesize a Python ZeroDivisionError.
+  Device execution errors may surface later under normal asynchronous CUDA
+  error reporting. Input validation and compilation errors can still occur
+  before execution.
+* Python integers become fixed-width CUDA values and may lose precision or
+  range; arbitrary-precision Python arithmetic is not preserved. The chosen
+  integer conversion and overflow rules must be specified consistently.
+* Python float and complex inputs may use float64 and complex128 (64-bit
+  components), even where narrower representations would suffice. Do not
+  infer a smaller type from the current scalar value.
+* NumPy scalar inputs supply explicit dtype information, for example
+  numpy.float32 or numpy.complex64. Preserve supported explicit dtypes through
+  normalization; subsequent operations still apply the selected promotion
+  and casting rules. This does not restore NumPy host warning semantics.
+
+These are numerical compatibility tradeoffs, not permission to repeat side
+effects or execute untaken branches. Explicit host calls retain their own
+execution behavior. Host metadata such as shapes and axes remains usable
+without a round trip through a device scalar.
+
+Allocation constraints
+----------------------
+
+Array creation calls in the function must execute on the host: generated
+CUDA kernels cannot allocate arrays. Such calls are explicit allocation
+boundaries in the execution plan. The host allocates CuPy arrays and passes
+them to subsequent kernels. Initialization or filling may launch a CUDA
+kernel, but allocation itself remains a host action. Preserve conditional
+allocation, allocation frequency inside loops, and initialization ordering.
+Do not hoist or reuse allocations unless their observable semantics permit it.
+If an allocation shape depends on device data, materialize the necessary
+metadata on the host and report the synchronization and transfer.
+
+Existing infrastructure to reuse
+--------------------------------
+
+* cupy/_core/fusion.pyx: preferred backend for compatible regions.
+* cupy/_core/new_fusion.pyx: newer array tracing, shape constraints, and
+  support for multiple operations.
+* cupy/_core/_fusion_op.py: ufunc routines, preambles, elementwise and
+  reduction code generation.
+* cupy/_core/_fusion_trace.pyx: array typing and shape analysis.
+* cupy/_core/_fusion_optimization.py: existing fusion optimizations.
+* cupyx/jit/_compile.py: existing lowering for if, for, while, scalar
+  operations, and device functions.
+* Existing kernel infrastructure: indexing, NVRTC compilation, compilation
+  caches, and launches.
+
+Control-flow semantics
+----------------------
+
+Data-dependent control flow does not always fit inside one ordinary CUDA
+kernel. For example:
+
+    while cp.sum(x) > tolerance:
+        x = update(x)
+
+The reduction coordinates the entire array. Initially execute this as staged
+kernels with a host-controlled loop. A device-resident implementation needs
+an explicit synchronization strategy and compatible launch constraints.
+
+Loops whose iterations are independent across output elements may execute
+entirely within an elementwise kernel when their shapes and dependencies
+permit it. Distinguish uniform predicates from predicates that vary across
+threads, and prohibit divergent use of collective synchronization.
+
+Preserve ordinary CuPy truth-value semantics. A condition such as if x > 0
+for a multi-element array remains an ambiguous-truth-value error. Treating
+it as independent branches for each element requires an explicit additional
+API and is not an implicit change to fuse(). Scalar conditions derived from
+array contents must work, using kernel boundaries when necessary.
+
+Architecture
+------------
+
+1. Bytecode analysis without executing user code
+
+   Decode instructions into basic blocks, including exception edges.
+   Construct a control-flow graph and track stack values and local variables
+   across branches and loop backedges. Preserve bytecode offsets and source
+   locations throughout analysis and lowering.
+
+   Support functions without retrievable source. Handle Python bytecode
+   versions explicitly. Reject unsupported constructs in the first iteration,
+   with reasons recorded in the report; do not turn them into arbitrary host
+   regions.
+
+   Do not discover unsupported operations by speculatively executing user
+   callbacks or allocation calls. Analysis must not repeat side effects.
+
+2. A small array-oriented intermediate representation
+
+   Represent array operations, scalar operations, branches, loops, calls,
+   allocations, mutations, and effects. Track shapes, dtypes, strides, weak
+   scalar semantics, and aliasing separately from runtime values.
+
+   Normalize supported scalar values to CUDA representations early while
+   retaining the information needed for type resolution under the documented
+   scalar contract. Do not add host-semantic emulation for the accepted
+   arithmetic differences.
+
+   This representation is the new compiler infrastructure needed. Delegate
+   CUDA compilation, register allocation, and general optimization to the
+   existing infrastructure.
+
+3. Region selection
+
+   Prefer the legacy fusion engine wherever compatibility can be established.
+   Otherwise choose the newer fusion machinery, control-flow lowering, an
+   existing kernel launch, or a registered host operation associated with a
+   known CUDA implementation.
+
+   Select boundaries using dependencies and effects rather than basic-block
+   boundaries alone. Independent elementwise work around a branch may remain
+   fusible. Array allocation is always performed by a host plan operation.
+
+   Classify host-only work explicitly so scalar normalization does not force
+   shape metadata, allocation sizes, or registered-launcher arguments into an
+   unusable representation.
+
+4. Backend adapters
+
+   Reuse JIT control-flow generation, but retain normal CuPy array dtype and
+   broadcasting rules. Current JIT scalar typing is not the semantic
+   authority for array expressions.
+
+   Extract shared typing and lowering helpers where needed instead of
+   maintaining another collection of promotion rules. Cover broadcasting,
+   weak Python scalars, casting, output dtypes, and out= behavior, subject to
+   the documented scalar conversion and arithmetic tradeoffs.
+
+   Allocation and initialization must be represented separately: allocating
+   output storage is host work; filling that storage may use an existing or
+   fused CUDA kernel.
+
+5. Cached execution plan
+
+   Coordinate allocations, kernels, host calls, and predicates on the current
+   stream. Materialize values at boundaries. Synchronize only when the host
+   requires device data, including data-dependent allocation metadata.
+
+   Select compilation fallbacks before executing a region. Do not catch an
+   arbitrary runtime error and restart the original function: doing so may
+   repeat mutations, allocations, or external side effects. Preserve the
+   original error when execution itself fails.
+
+External functions and operation support
+----------------------------------------
+
+Dispatch external operations in this order:
+
+1. Registered lowering for known CuPy operations and supported custom
+   operations, including explicit host allocation operations.
+2. Recursive bytecode analysis of Python callees, including relevant closure
+   and global bindings.
+3. Reject any remaining callable as unsupported, without invoking it. Opaque
+   host-call boundaries may be considered in a later iteration.
+
+Reuse analysis of Python callees through the identity-based analysed-function
+cache described below. For ordinary instance methods, analyse and cache the
+underlying function definition resolved on the class (the bound method's
+__func__), rather than the temporary bound-method object. Bind self for each
+call; sharing method analysis must not capture the first instance's state.
+Unsupported descriptors or dynamic callable resolution are rejected unless
+they have a registered implementation or can be resolved without user-code
+execution.
+
+An available CUDA kernel is not automatically device-callable. Many CuPy
+top-level operations launch kernels or invoke libraries from the host. They
+can participate in the execution plan while remaining separate launches.
+Apply the same distinction to cuda.core APIs and custom kernels.
+
+Each operation registration should describe typing, shape inference, effects,
+aliasing, allocation requirements, lowering options, and synchronization
+requirements. Extend support through this registry rather than scattered
+function-name checks. Registered host operations do not imply that NumPy
+arrays become supported public inputs or that arbitrary NumPy operations gain
+GPU semantics.
+
+Diagnostics
+-----------
+
+Diagnostics are a first-class public result and remain available after a
+compilation failure. A proposed interface is:
+
+    f = cp.fuse(function)
+    result = f(x, y)
+    print(f.diagnostics)
+    report = f.explain(x, y)
+
+explain() performs analysis without executing user code. Reports distinguish
+statically established facts from decisions requiring runtime metadata.
+
+Report at least:
+
+* Whole-function fusion, partial fusion, or host execution.
+* Backend selected for each region.
+* Every kernel break, with location and reason.
+* Recursively analyzed callees, registered host operations, and rejected calls.
+* Host allocation sites and their initialization operations.
+* Scalar normalization choices and required boundary conversions.
+* The scalar arithmetic contract, including omitted NumPy warnings, possible
+  precision loss, and the chosen Python scalar representations. Do not execute
+  arithmetic or synchronize merely to identify individual warning or error
+  cases for the report.
+* Predicates and allocation metadata requiring device-to-host synchronization.
+* Specialization assumptions, cache hits, and recompilation reasons.
+* Analysis, typing, partitioning, lowering, and compilation times.
+* Planned kernel launches versus launches actually executed.
+* Compilation failures and the fallbacks selected for them.
+
+Provide a structured, serializable report in addition to a readable rendering.
+Keep compilation timing separate from asynchronous GPU execution timing.
+GPU timing is opt-in so normal diagnostics do not introduce synchronization.
+
+Caching
+-------
+
+Maintain an analysed-function cache keyed on id(function). Ordinary instance
+methods use id() of the resolved class method's underlying function definition,
+not id() of the bound-method wrapper or receiver. Repeated calls and calls on
+different instances therefore reuse analysis of the same definition; an
+override resolves to its own definition and cache entry.
+
+An entry must retain the function, or use a verified weak reference and remove
+the entry when the function dies, so Python id() reuse cannot return another
+function's analysis. Analysis caching is separate from executable-plan
+specialization: function identity alone does not establish input types,
+receiver state, closure values, or global bindings. Guard or refresh code and
+binding dependencies as required when reusing analysis or a specialized plan.
+
+Document that this cache works best with stable, standard function definitions.
+Warn against lambdas and dynamically created functions, especially functions
+recreated on each call: new function identities prevent analysis reuse. Such
+functions are not rejected solely for being lambdas, but identical bytecode
+does not make distinct function objects share an identity-cache entry.
+
+Guard every assumption used by a plan: device, dtype, shape and layout
+constraints, relevant aliases, specialized scalar values, captured bindings,
+and operation registrations. Account for normalized CUDA scalar types without
+discarding weak-scalar distinctions that affect type resolution.
+
+Do not cache an observed device predicate as an unguarded branch choice.
+Runtime scalar values remain runtime values unless deliberately specialized
+and guarded. Preserve allocation semantics when caching execution plans.
+
+Implementation milestones
+--------------------------
+
+1. Bytecode analysis, the identity-based analysed-function cache, diagnostics,
+   safe legacy selection, CUDA scalar normalization, input validation, and
+   recursive Python-callee analysis. Restrict calls to compilable functions
+   and registered CUDA implementations; reject unsupported calls before body
+   execution. Represent array creation as explicit host operations from the
+   outset.
+2. Partial fusion across registered launch boundaries and allocation sites,
+   including instance-method analysis reused by class method definition.
+3. Device control flow for regions proven independent across output elements.
+4. Staged array-wide control flow and broader operation registrations,
+   including data-dependent allocation metadata.
+5. More advanced device-resident coordination where benchmarks justify it.
+
+Validation
+----------
+
+Compare results, errors, and observable effects against unfused CuPy, allowing
+only the documented scalar and arithmetic differences, for:
+
+* Python, NumPy, and CuPy scalar inputs and their early CUDA normalization.
+* Explicit rejection of unsupported NumPy array inputs.
+* Broadcasting, weak scalar promotion, casting, and output dtypes.
+* Noncontiguous inputs, aliases, mutations, and out= operations.
+* Both branch outcomes and changing loop counts, including device predicates.
+* Host allocation ordering, conditional allocation, allocation inside loops,
+  initialization, and shapes derived from device data.
+* Recursive Python-callee analysis and registered CUDA-backed external calls.
+* Unsupported calls rejected before body execution, without invoking them.
+* Analysis-cache reuse for stable functions and class method definitions,
+  including different receivers, overrides, and changed receiver state.
+* Distinct analysis entries for dynamically recreated function objects and
+  protection against function id() reuse after collection.
+* Cache invalidation when guarded assumptions change.
+* Side effects occurring exactly once across fallbacks and runtime failures.
+* Diagnostics that accurately distinguish partial fusion from full fusion.
+
+Validate the accepted differences separately: NumPy warnings and seterr
+callbacks are not reproduced by compiled arithmetic; analysis and explain()
+do not raise errors from evaluating user arithmetic; execution follows the
+selected backend's arithmetic and error reporting; Python integer conversions
+follow the documented fixed-width policy; Python float/complex defaults and
+explicit NumPy scalar dtypes produce the intended representations. Check
+that changing scalar values does not cause value specialization merely to
+recover host precision or warning behavior.
+
+Benchmark first-call compilation and warm execution separately. Include
+legacy-compatible functions to check that the preferred fast path remains
+competitive, along with mixed plans containing host calls and allocations.
+
+Environment note
+----------------
+
+At the time of inspection, the installed CuPy imported, but CUDA reported no
+accessible device. GPU execution and performance validation require a CUDA
+device. Subsequent prototype validation obtained GPU access outside the
+sandbox; see the prototype status below. The full compiler described here
+remains a longer-term plan.
+
+
+Design decisions
+----------------
+
+1.
+What must the first prototype demonstrate?
+Straight-line elementwise fusion, nested function calls, allocations, branches, and loops are different-sized goals. I suggest straight-line expressions plus nested calls and one registered allocation operation; add host-controlled branches next.
+
+Performance and overhead of simple functions that work with the existing fuse(), e.g., the example from enfused:
+```python
+energy = (exp(-abs(x)) * sin(x)**2).sum(axis=1)
+mass = (1 / (1 + exp(-x))).sum(axis=1)
+score = sqrt(energy) / (mass + 1)
+```
+without significant regression.
+Features will be added progressively: elementwise fusion, nested function calls, allocations, branches at the
+first stop point.
+
+2.
+How will verified operations enter the existing fusion backend?
+The legacy decorator traces by executing a callable. Will we extract its code-generation machinery or generate a compiler-owned callable containing verified operations? The latter looks like a smaller initial experiment.
+
+Yes, each operation will have a class definition describing how to identify and implement.
+
+3.
+What exactly are the scalar conversion rules?
+Python integer width, signedness, and out-of-range conversion remain unspecified. Choose deterministic rules, plus float64/complex128 defaults and preserved NumPy scalar dtypes. Accepted precision loss still needs predictable behavior.
+
+Python int ->int64, float ->float64, complex ->complex128, bool ->uint8 in every case. Conversion of *input* values can raise, but not
+within the function,
+
+4.
+Which bindings and instance attributes may compiled functions read?
+For example, can self.scale be a scalar or array? Can properties execute? I suggest ordinary stored attributes initially, rejecting properties and custom attribute hooks. Instance state must remain separate from shared method analysis.
+
+Attributes lookup only, where it is an array or scalar. Attributes of arrays (e.g., dtype, shape) are known and determinable.
+
+5.
+What changes invalidate cached analysis and plans?
+Decide how to handle replaced __code__, changed defaults, rebound globals, closure cells, and replaced class methods. Function identity supplies the analysis key, but does not establish that these dependencies remain valid.
+
+Use id() only and require user to invalidate the cache when necessary.
+
+6.
+How strict is rejection of unsupported calls?
+Does an unsupported call in an untaken branch reject the function? I suggest rejecting every potentially reachable unsupported call, allowing elimination only when a condition is statically established under explicit guards.
+
+If the branch will not be executed (e.g., controlled by an input bool flag or shape predicate), do not parse at all. Implies
+that the *value* or bools , but only the dtype and ndim of arrays/scalar participate in the caching of compiled functons.
+
+7.
+What does a region return to the executor?
+Specify inputs, outputs, output allocation, aliases/mutations, and launch behavior. A small interface here will determine whether legacy fusion, existing kernels, and later control flow can share one executor.
+
+We will trial various options here.
+
+8.
+What constitutes a successful prototype?
+Pick a small numerical/effect test set and a warm-call overhead target against legacy fusion. Include changing scalar values and repeated nested calls to demonstrate cache reuse.
+
+Start by performance on the "score" expression, which already can be fused (overhead no worse than 2x overhead and 1.5x
+throughput). Addtitionaly, the ability to fuse the more complex cases and have them show any improvement in throughput
+for large arrays only (i.e., amortising overheads) compared to the eager cupy version without out= preallocation.
+
+
+Prototype status (2026-11-06)
+----------------------------
+
+An opt-in prototype is implemented in cupy/_core/_fusion_bytecode.py, leaving
+the public cupy.fuse unchanged. It covers elementwise/reduction expressions,
+recursive analysis of statically resolved callees, ordinary instance methods,
+explicit host allocation, and boolean/metadata-controlled branch selection.
+Loops and device-data predicates remain unsupported. Analysis caches use
+function identity, and dependency invalidation is explicitly user-controlled.
+
+The score workload uses three legacy-backed regions to avoid an expensive
+grid-synchronized multi-reduction schedule. Local measurements meet the
+initial overhead limits and show large-array throughput improvements over
+eager CuPy. The prototype and existing fusion-cache checks pass 35 cases on
+the available CUDA environment. See
+docs/source/user_guide/fusion_bytecode_prototype.rst for exact limitations,
+environment caveats, measurements, and reproduction commands, and
+examples/fusion/bytecode_prototype.py for the benchmark.
