@@ -214,7 +214,8 @@ jobs:
           host-platform: ${{ inputs.host-platform }}
           cuda-version: ${{ inputs.cuda-version }}
           # cuBLAS, cuSPARSE and cuSOLVER are not needed: CuPy uses them
-          # through nvmath-python, which loads them at runtime.
+          # through nvmath-python, which loads them at runtime. libcurand is
+          # only needed for the cuRAND device API headers.
           cuda-components: "cuda_nvcc,cuda_cudart,cuda_crt,cuda_cuxxfilt,libnvvm,cuda_nvrtc,cuda_nvtx,cuda_profiler_api,cuda_cccl,libnvjitlink,libcufft,libcurand"
           cuda-path: ${{ runner.temp }}/cuda_toolkit
 
@@ -284,8 +285,8 @@ jobs:
           # BOTH platform blocks below.
           # LDFLAGS=-Wl,--as-needed mirrors cupy-release-tools' build-wrapper;
           # cupy_builder links every _cuda_files module against
-          # -lcufft -lcurand. Without --as-needed, ld
-          # marks DT_NEEDED for both on every .so even when unreferenced,
+          # -lcufft. Without --as-needed, ld
+          # marks DT_NEEDED for it on every .so even when unreferenced,
           # so `import cupy._core.<mod>` dlopen-fails in a bare env before
           # cuda-pathfinder can preload the libs.
           CIBW_ENVIRONMENT_LINUX: >
