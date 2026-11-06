@@ -498,7 +498,7 @@ The AMD HIP SDK for Windows is not supported.
 * Install Visual Studio 2022 (or its Build Tools) with the C++ workload, and run the commands below in the "x64 Native Tools Command Prompt".
 * Install the ROCm packages for your GPU into the Python environment you build CuPy in (see `TheRock releases <https://github.com/ROCm/TheRock/blob/main/RELEASES.md>`_), and expand the development files with ``rocm-sdk init``.
 * ``HCC_AMDGPU_TARGET`` is required on Windows: without it, ``hipcc`` does not build for the GPU in the machine.
-* ``ROCM_HOME`` is optional on Windows. When it is not set, CuPy uses the directory printed by ``hipconfig --rocmpath``, at build time and at run time.
+* ``ROCM_HOME`` is optional on Windows. When it is not set, CuPy uses the directory printed by ``hipconfig --rocmpath``, at build time and at run time. ``hipconfig`` is looked up on ``PATH`` and in the ``Scripts`` directory of the running Python environment, so the environment does not need to be activated.
 
 ::
 

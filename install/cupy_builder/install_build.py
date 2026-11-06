@@ -12,6 +12,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import sysconfig
 import tempfile
 
 import cupy_builder
@@ -67,8 +68,11 @@ def get_rocm_path():
 def _get_win32_rocm_path():
     # On Windows, ROCm is installed from Python packages (TheRock), where
     # `hipcc` on PATH is a console-script launcher outside the ROCm tree, so
-    # ask `hipconfig` for the root instead.
-    hipconfig = shutil.which('hipconfig')
+    # ask `hipconfig` for the root instead. It is a console script, so also
+    # look next to the running interpreter, which works without activating
+    # the environment.
+    hipconfig = (shutil.which('hipconfig') or
+                 shutil.which('hipconfig', path=sysconfig.get_path('scripts')))
     if hipconfig is None:
         return ''
     try:
@@ -215,8 +219,12 @@ def configure_msvc_for_hip(compiler):
     """
     if not compiler.initialized:
         compiler.initialize()
-    clang_cl = os.path.join(
-        get_rocm_path(), 'lib', 'llvm', 'bin', 'clang-cl.exe')
+    rocm_path = get_rocm_path()
+    if not rocm_path:
+        raise RuntimeError(
+            'ROCm could not be found. Set the ROCM_HOME environment variable '
+            'to the ROCm root directory, or put `hipconfig` on PATH.')
+    clang_cl = os.path.join(rocm_path, 'lib', 'llvm', 'bin', 'clang-cl.exe')
     if not os.path.exists(clang_cl):
         raise RuntimeError(f'clang-cl could not be found: {clang_cl}')
     compiler.cc = clang_cl

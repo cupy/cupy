@@ -14,6 +14,7 @@ import re
 import shutil
 import subprocess
 import sys
+import sysconfig
 from typing import Any
 import warnings
 
@@ -237,7 +238,11 @@ def _get_rocm_path():
 
 
 def _get_win32_rocm_path():
-    hipconfig = shutil.which('hipconfig')
+    # `hipconfig` is a console script of the ROCm Python packages; also look
+    # next to the running interpreter, which works without activating the
+    # environment.
+    hipconfig = (shutil.which('hipconfig') or
+                 shutil.which('hipconfig', path=sysconfig.get_path('scripts')))
     if hipconfig is None:
         return None
     try:
@@ -595,6 +600,16 @@ def _get_hipcc_include_dirs():
 
 _win32_dll_directories = []
 
+_win32_rocm_not_found = (
+    'CuPy is built for ROCm, but the ROCm installation could not be found. '
+    'Set the ROCM_HOME environment variable to the ROCm root directory '
+    '(printed by `rocm-sdk path --root`), or put `hipconfig` on PATH.')
+
+
+def _is_win32_hip_build(depends: dict[str, Any]) -> bool:
+    return any(
+        name.lower().startswith('amdhip64') for name in depends['depends'])
+
 
 def _setup_win32_hip_dll_directory():
     """Makes the ROCm DLLs loadable for a HIP build on Windows.
@@ -607,12 +622,11 @@ def _setup_win32_hip_dll_directory():
     if not _PLATFORM_WIN32:
         return
     depends = _get_json_data('_depends.json')
-    if depends is None or not any(
-            name.lower().startswith('amdhip64')
-            for name in depends['depends']):
+    if depends is None or not _is_win32_hip_build(depends):
         return
     rocm_path = get_rocm_path()
     if rocm_path is None:
+        warnings.warn(_win32_rocm_not_found)
         return
     bin_path = os.path.join(rocm_path, 'bin')
     if os.path.isdir(bin_path):
@@ -729,12 +743,15 @@ def _diagnose_win32_dll_load() -> str:
     kernel32.GetModuleFileNameW.restype = wintypes.DWORD
 
     # Show dependents in similar form of ldd on Linux.
-    lines = [
-        '',
-        '',
-        f'CUDA Path: {get_cuda_path()}',
-        'DLL dependencies:'
-    ]
+    lines = ['', '']
+    if _is_win32_hip_build(depends):
+        rocm_path = get_rocm_path()
+        lines.append(f'ROCm Path: {rocm_path}')
+        if rocm_path is None:
+            lines.append(_win32_rocm_not_found)
+    else:
+        lines.append(f'CUDA Path: {get_cuda_path()}')
+    lines.append('DLL dependencies:')
     filepath = ctypes.create_unicode_buffer(2**15)
     for name in depends['depends']:
         try:
