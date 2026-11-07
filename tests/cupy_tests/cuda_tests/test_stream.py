@@ -482,3 +482,38 @@ class TestCUDAStreamProtocol:
         # Test that we can get the stream's properties
         # Just check it doesn't error
         assert cupy_stream.done or not cupy_stream.done
+
+
+class TestEvent:
+    def test_interprocess_event_limit_error_message(self):
+        # Test that creating many interprocess events gives a helpful error
+        # message when hitting the CUDA interprocess event limit (typically 4096).
+        # See https://github.com/cupy/cupy/issues/10458
+        evs = []
+        for i in range(5000):
+            try:
+                evs.append(cuda.Event(
+                    block=True, disable_timing=True, interprocess=True))
+            except RuntimeError as e:
+                # Verify the error message contains helpful information
+                assert 'interprocess event limit' in str(e)
+                assert '4096' in str(e)
+                assert 'interprocess=False' in str(e)
+                break
+            except Exception as e:
+                pytest.fail(
+                    f'Unexpected exception type: {type(e).__name__}: {e}')
+        else:
+            pytest.fail('Expected to hit interprocess event limit')
+
+    def test_interprocess_events_work_before_limit(self):
+        # Test that we can create interprocess events up to the limit
+        evs = [cuda.Event(block=True, disable_timing=True, interprocess=True)
+               for _ in range(100)]
+        assert len(evs) == 100
+
+    def test_non_interprocess_events_no_limit(self):
+        # Test that non-interprocess events don't hit the same limit
+        evs = [cuda.Event(block=True, disable_timing=True, interprocess=False)
+               for _ in range(5000)]
+        assert len(evs) == 5000

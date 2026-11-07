@@ -2,6 +2,7 @@ import threading
 import warnings
 
 from cupy_backends.cuda.api cimport runtime
+from cupy_backends.cuda.api import runtime as runtime_module
 from cupy_backends.cuda cimport stream as backends_stream
 from cupy.cuda cimport graph
 
@@ -126,7 +127,21 @@ class Event(object):
         flag = ((block and runtime.eventBlockingSync) |
                 (disable_timing and runtime.eventDisableTiming) |
                 (interprocess and runtime.eventInterprocess))
-        self.ptr = runtime.eventCreateWithFlags(flag)
+        try:
+            self.ptr = runtime.eventCreateWithFlags(flag)
+        except runtime_module.CUDARuntimeError as e:
+            # cudaErrorMemoryAllocation is also returned when hitting the
+            # concurrent interprocess event limit (4096 on most GPUs).
+            # See https://github.com/cupy/cupy/issues/10458
+            if interprocess and 'out of memory' in str(e):
+                raise RuntimeError(
+                    'cudaErrorMemoryAllocation: out of memory. '
+                    'This is likely due to the interprocess event limit '
+                    '(typically 4096 concurrent interprocess events). '
+                    'Try reducing the number of concurrent interprocess events, '
+                    'or set interprocess=False if interprocess sharing is not needed.'
+                ) from e
+            raise
 
     def __del__(self, is_shutting_down=_util.is_shutting_down):
         if is_shutting_down():
