@@ -138,8 +138,9 @@ class Event(object):
                     'cudaErrorMemoryAllocation: out of memory. '
                     'This is likely due to the interprocess event limit '
                     '(typically 4096 concurrent interprocess events). '
-                    'Try reducing the number of concurrent interprocess events, '
-                    'or set interprocess=False if interprocess sharing is not needed.'
+                    'Try reducing the number of concurrent interprocess '
+                    'events, or set interprocess=False if interprocess '
+                    'sharing is not needed.'
                 ) from e
             raise
 

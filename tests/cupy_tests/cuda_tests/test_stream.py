@@ -487,8 +487,8 @@ class TestCUDAStreamProtocol:
 class TestEvent:
     def test_interprocess_event_limit_error_message(self):
         # Test that creating many interprocess events gives a helpful error
-        # message when hitting the CUDA interprocess event limit (typically 4096).
-        # See https://github.com/cupy/cupy/issues/10458
+        # message when hitting the CUDA interprocess event limit
+        # (typically 4096). See https://github.com/cupy/cupy/issues/10458
         evs = []
         for i in range(5000):
             try:
