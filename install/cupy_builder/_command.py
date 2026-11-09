@@ -261,13 +261,10 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
             with open(depends_json, 'w') as f:
                 json.dump({'depends': depends}, f)
 
-            if ctx.use_hip and getattr(self, 'editable_mode', False):
-                self._copy_depends_json_to_source()
-
     def copy_extensions_to_source(self) -> None:
-        # Called after the build for `--inplace`; setuptools builds into
-        # `build_lib` with `inplace` cleared, so `build_extensions` cannot
-        # tell an in-place build apart.
+        # Called after the build for `--inplace` and editable builds;
+        # setuptools builds into `build_lib` with `inplace` cleared, so
+        # `build_extensions` cannot tell these builds apart.
         super().copy_extensions_to_source()
         if sys.platform == 'win32' and cupy_builder.get_context().use_hip:
             self._copy_depends_json_to_source()
