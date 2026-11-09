@@ -770,8 +770,18 @@ class FusedFunction:
                     keywords[parameter.name] = value
                 else:
                     positional.append(value)
-            result = builder.run(self.func, positional, keywords)
-            plan = Emitter(builder, len(args), result).build()
+            try:
+                result = builder.run(self.func, positional, keywords)
+                plan = Emitter(builder, len(args), result).build()
+            except Unsupported as original:
+                # Iterative functions need device control flow, which cannot
+                # be represented by a straight-line tracing backend.
+                from cupy._core._fusion_bytecode_kernel import compile_kernel
+                try:
+                    plan = compile_kernel(self.func, args, self._analyzer)
+                except Unsupported as kernel_error:
+                    raise Unsupported(f'{original}\nSingle-kernel lowering: '
+                                      f'{kernel_error}') from None
         except Exception as exc:
             self.diagnostics = {
                 'status': 'rejected',

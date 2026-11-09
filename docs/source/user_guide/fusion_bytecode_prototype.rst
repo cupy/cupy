@@ -126,7 +126,8 @@ Supported subset
   at runtime and inside their selected branch. Initialization is delegated to
   the original constructor rather than fused with its consumer.
 
-NumPy arrays, numerical subclasses, properties, custom attribute hooks,
+In the straight-line frontend, NumPy arrays, numerical subclasses, properties,
+custom attribute hooks,
 opaque callbacks, mutations, positional output arguments, ``out=``, loops,
 exception handlers, and device-data predicates are not supported yet.
 Metadata of computed intermediate arrays, general array indexing, dynamic
@@ -135,6 +136,72 @@ also outside the subset. A scalar-only region invokes its registered CuPy
 operations directly; it does not yet combine them into one kernel.
 The frontend accepts CPython 3.11--3.14; runtime validation currently covers
 3.14 only. It does not use CPython frame hooks.
+
+Single-kernel iteration prototype
+--------------------------------
+
+On CPython 3.14, the private ``fuse`` wrapper also tries a small CUDA bytecode
+lowering when the straight-line frontend refuses a function. The target is one
+scalar-output kernel for element counting and iterative sigma clipping, as
+shown in ``examples/fusion/bytecode_iteration.py``. This path emits device jumps,
+loops and reductions directly, rather than calling CuPy operations in a
+host loop. Analysis does not execute the original function or compile CUDA.
+
+An element loop can conditionally add independent contributions to a
+zero-initialized scalar accumulator. Threads visit disjoint input elements and
+combine their accumulators before returning. Reading the running accumulator
+in a predicate, breaking out of element iteration, and returning an element
+local are rejected because these depend on sequential iteration order.
+
+Uniform ``range(stop)`` loops support conditions and ``break`` based on device
+reductions. Boolean indexing of the input becomes a virtual filtered view:
+``len``, ``mean`` and population ``std`` visit selected values without allocating
+or compacting a variable-length array. Selection is snapshotted when a view is
+stored, so subsequent mask updates do not change that view. ``all`` supplies
+convergence tests. Masks and temporary selection storage are allocated before
+launch and reused across iterations; initializing and updating them happens in
+the same kernel. Sigma clipping uses three boolean workspace arrays.
+
+This deliberately limited implementation accepts one one-dimensional input
+array, Python scalar parameters, and produces a zero-dimensional
+CuPy output. In particular, counting returns a device int64 scalar instead of
+reading a Python integer back to the host. Integer, float32 and float64 inputs
+and strided views are supported; float16 and complex inputs are excluded.
+Array results, input mutation, general indexing, arbitrary callbacks and
+loop-carried element dependencies remain unsupported. Reduction order can
+change floating-point rounding and, near a clipping threshold, mask decisions.
+
+Scheduling is confined to iterative plans; cached straight-line calls such as
+``score`` do not invoke this scheduler. Inputs up to 16,384 elements use an
+ordinary launch of one block of 256 threads. Larger inputs use a cooperative
+grid when the device supports it, otherwise retaining the one-block schedule.
+The initial heuristic assigns about 4,096 elements per block and caps the grid
+at one block per SM, bounded by the compiled kernel's occupancy. Device
+capabilities, occupancy and compiled variants are cached; input size remains
+dynamic under the same dtype/ndim plan.
+
+Each function body has a sequence of phases. Dense array passes and element
+iteration retain the same grid-stride ownership, so an element is read by the
+thread that wrote it and these phases need no barriers. Reductions first
+combine thread values within each block, then publish block partials into
+scratch storage and synchronize the grid. Every block computes the same
+result before continuing. A second barrier protects scratch reuse. Counting
+needs this collective only at the end; sigma clipping needs collectives inside
+each iteration for statistics and convergence. All blocks take the same
+reduction-dependent branches and loop exits. This preserves one kernel launch
+without a host-controlled iteration loop or an initialization kernel.
+
+Sigma clipping retains three boolean workspace arrays. Multi-block execution
+also allocates eight bytes of reduction scratch per block, reused for all
+reductions. Single-block calls need no reduction scratch or cooperative launch.
+``explain`` includes generated CUDA, phase descriptions, workspace count and
+the planned launch count. After execution, ``diagnostics['schedule']`` describes
+the selected device, block count and reduction scratch size. CUDA graph tests
+check the actual launch structure. The heuristic is intentionally simple;
+cooperative launches and global barriers can cost more than one-block execution
+near the crossover. See ``examples/fusion/bytecode_iteration_benchmarks.py``
+for full-call timings against a forced one-block control and optional
+before/after ``score`` frontend measurements.
 
 Caching and scalar policy
 -------------------------

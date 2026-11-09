@@ -14,7 +14,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 import argparse
 import csv
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 import hashlib
 import json
 import math
@@ -278,7 +278,7 @@ def source_hashes():
 def environment(options):
     properties = cp.cuda.runtime.getDeviceProperties(options.device)
     return {
-        'started_utc': datetime.now(timezone.utc).isoformat(),
+        'started_utc': datetime.now(UTC).isoformat(),
         'commit': subprocess.check_output(
             ['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip(),
         'source_sha256': source_hashes(),

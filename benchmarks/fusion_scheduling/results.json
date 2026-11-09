@@ -1,0 +1,902 @@
+{
+  "python": "3.14.7",
+  "cupy": "14.3.0.dev0",
+  "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+  "repeat": 20,
+  "trials": 7,
+  "inputs": {
+    "filter_agg": "arange(size, float32) - 17",
+    "sigma_clipped_mean": "normal(seed=42), float32, every 100th value *= 100"
+  },
+  "single_block_limit": 16384,
+  "elements_per_block": 4096,
+  "source_hashes": {
+    "cupy/_core/_fusion_bytecode.py": "82dd0723134738fba12ccaefe4ebc9f25c822881874d4a2f2feed91e1b55f2f4",
+    "cupy/_core/_fusion_bytecode_kernel.py": "53c754154a2864e2825763917c96d59ab7cef19e78c48e8f97469d80532f9d11"
+  },
+  "rows": [
+    {
+      "function": "filter_agg",
+      "size": 4096,
+      "schedule": {
+        "kind": "single_block",
+        "blocks": 1,
+        "device": 0,
+        "cooperative": false,
+        "reduction_workspace_bytes": 0
+      },
+      "timings": {
+        "single_block": {
+          "trials": [
+            {
+              "cpu_us": 5.05175,
+              "elapsed_us": 5.409599840641022
+            },
+            {
+              "cpu_us": 4.78955,
+              "elapsed_us": 5.008000135421753
+            },
+            {
+              "cpu_us": 4.90035,
+              "elapsed_us": 5.110400170087814
+            },
+            {
+              "cpu_us": 4.84185,
+              "elapsed_us": 5.132799968123436
+            },
+            {
+              "cpu_us": 4.8535,
+              "elapsed_us": 5.0783999264240265
+            },
+            {
+              "cpu_us": 4.74325,
+              "elapsed_us": 5.04320003092289
+            },
+            {
+              "cpu_us": 4.68525,
+              "elapsed_us": 4.924799874424934
+            }
+          ],
+          "cpu_us": 4.84185,
+          "elapsed_us": 5.0783999264240265
+        },
+        "scheduled": {
+          "trials": [
+            {
+              "cpu_us": 4.8778500000000005,
+              "elapsed_us": 5.142400041222572
+            },
+            {
+              "cpu_us": 4.90435,
+              "elapsed_us": 5.142400041222572
+            },
+            {
+              "cpu_us": 4.91075,
+              "elapsed_us": 5.126399919390678
+            },
+            {
+              "cpu_us": 4.8465,
+              "elapsed_us": 5.056000128388405
+            },
+            {
+              "cpu_us": 4.9418,
+              "elapsed_us": 5.244800075888634
+            },
+            {
+              "cpu_us": 4.71995,
+              "elapsed_us": 4.950400069355965
+            },
+            {
+              "cpu_us": 4.70105,
+              "elapsed_us": 4.993600025773048
+            }
+          ],
+          "cpu_us": 4.8778500000000005,
+          "elapsed_us": 5.126399919390678
+        }
+      }
+    },
+    {
+      "function": "sigma_clipped_mean",
+      "size": 4096,
+      "schedule": {
+        "kind": "single_block",
+        "blocks": 1,
+        "device": 0,
+        "cooperative": false,
+        "reduction_workspace_bytes": 0
+      },
+      "timings": {
+        "single_block": {
+          "trials": [
+            {
+              "cpu_us": 13.82595,
+              "elapsed_us": 23.024000227451324
+            },
+            {
+              "cpu_us": 12.5643,
+              "elapsed_us": 22.95839935541153
+            },
+            {
+              "cpu_us": 12.4338,
+              "elapsed_us": 22.945599257946014
+            },
+            {
+              "cpu_us": 12.6783,
+              "elapsed_us": 22.871999442577362
+            },
+            {
+              "cpu_us": 12.490200000000002,
+              "elapsed_us": 22.90560007095337
+            },
+            {
+              "cpu_us": 12.7395,
+              "elapsed_us": 22.87680059671402
+            },
+            {
+              "cpu_us": 12.2249,
+              "elapsed_us": 22.862400114536285
+            }
+          ],
+          "cpu_us": 12.5643,
+          "elapsed_us": 22.90560007095337
+        },
+        "scheduled": {
+          "trials": [
+            {
+              "cpu_us": 12.8788,
+              "elapsed_us": 23.08640033006668
+            },
+            {
+              "cpu_us": 13.13085,
+              "elapsed_us": 22.964799404144287
+            },
+            {
+              "cpu_us": 12.74595,
+              "elapsed_us": 22.95839935541153
+            },
+            {
+              "cpu_us": 12.434299999999999,
+              "elapsed_us": 22.90239930152893
+            },
+            {
+              "cpu_us": 13.01855,
+              "elapsed_us": 22.912000119686127
+            },
+            {
+              "cpu_us": 12.698049999999999,
+              "elapsed_us": 22.963200509548187
+            },
+            {
+              "cpu_us": 12.9541,
+              "elapsed_us": 22.92959988117218
+            }
+          ],
+          "cpu_us": 12.8788,
+          "elapsed_us": 22.95839935541153
+        }
+      }
+    },
+    {
+      "function": "filter_agg",
+      "size": 65536,
+      "schedule": {
+        "kind": "cooperative_grid",
+        "blocks": 16,
+        "device": 0,
+        "cooperative": true,
+        "reduction_workspace_bytes": 128
+      },
+      "timings": {
+        "single_block": {
+          "trials": [
+            {
+              "cpu_us": 4.955850000000001,
+              "elapsed_us": 51.67840123176575
+            },
+            {
+              "cpu_us": 4.806100000000001,
+              "elapsed_us": 51.45599842071533
+            },
+            {
+              "cpu_us": 4.80175,
+              "elapsed_us": 51.4959990978241
+            },
+            {
+              "cpu_us": 4.9689,
+              "elapsed_us": 51.45599842071533
+            },
+            {
+              "cpu_us": 4.93245,
+              "elapsed_us": 51.497602462768555
+            },
+            {
+              "cpu_us": 5.00815,
+              "elapsed_us": 51.51680111885071
+            },
+            {
+              "cpu_us": 4.71915,
+              "elapsed_us": 51.48800015449524
+            }
+          ],
+          "cpu_us": 4.93245,
+          "elapsed_us": 51.4959990978241
+        },
+        "scheduled": {
+          "trials": [
+            {
+              "cpu_us": 6.56915,
+              "elapsed_us": 8.427199721336365
+            },
+            {
+              "cpu_us": 6.066350000000001,
+              "elapsed_us": 8.516799658536911
+            },
+            {
+              "cpu_us": 6.1015500000000005,
+              "elapsed_us": 8.292800188064575
+            },
+            {
+              "cpu_us": 5.981199999999999,
+              "elapsed_us": 8.505599945783615
+            },
+            {
+              "cpu_us": 6.1031,
+              "elapsed_us": 8.27839970588684
+            },
+            {
+              "cpu_us": 6.25815,
+              "elapsed_us": 8.459199965000153
+            },
+            {
+              "cpu_us": 6.05705,
+              "elapsed_us": 8.326400071382523
+            }
+          ],
+          "cpu_us": 6.1015500000000005,
+          "elapsed_us": 8.427199721336365
+        }
+      }
+    },
+    {
+      "function": "sigma_clipped_mean",
+      "size": 65536,
+      "schedule": {
+        "kind": "cooperative_grid",
+        "blocks": 16,
+        "device": 0,
+        "cooperative": true,
+        "reduction_workspace_bytes": 128
+      },
+      "timings": {
+        "single_block": {
+          "trials": [
+            {
+              "cpu_us": 14.125350000000001,
+              "elapsed_us": 894.1488265991211
+            },
+            {
+              "cpu_us": 14.246,
+              "elapsed_us": 894.4368362426758
+            },
+            {
+              "cpu_us": 13.767,
+              "elapsed_us": 894.6975708007812
+            },
+            {
+              "cpu_us": 13.373149999999999,
+              "elapsed_us": 894.1696166992188
+            },
+            {
+              "cpu_us": 14.40995,
+              "elapsed_us": 894.6880340576172
+            },
+            {
+              "cpu_us": 13.06725,
+              "elapsed_us": 894.382381439209
+            },
+            {
+              "cpu_us": 13.4415,
+              "elapsed_us": 894.1887855529785
+            }
+          ],
+          "cpu_us": 13.767,
+          "elapsed_us": 894.382381439209
+        },
+        "scheduled": {
+          "trials": [
+            {
+              "cpu_us": 16.744400000000002,
+              "elapsed_us": 138.32639455795288
+            },
+            {
+              "cpu_us": 16.20955,
+              "elapsed_us": 138.36480379104614
+            },
+            {
+              "cpu_us": 15.92665,
+              "elapsed_us": 138.86239528656006
+            },
+            {
+              "cpu_us": 15.20355,
+              "elapsed_us": 138.24479579925537
+            },
+            {
+              "cpu_us": 15.623149999999999,
+              "elapsed_us": 138.36959600448608
+            },
+            {
+              "cpu_us": 14.320049999999998,
+              "elapsed_us": 138.12320232391357
+            },
+            {
+              "cpu_us": 14.6558,
+              "elapsed_us": 138.20639848709106
+            }
+          ],
+          "cpu_us": 15.623149999999999,
+          "elapsed_us": 138.32639455795288
+        }
+      }
+    },
+    {
+      "function": "filter_agg",
+      "size": 1048576,
+      "schedule": {
+        "kind": "cooperative_grid",
+        "blocks": 188,
+        "device": 0,
+        "cooperative": true,
+        "reduction_workspace_bytes": 1504
+      },
+      "timings": {
+        "single_block": {
+          "trials": [
+            {
+              "cpu_us": 4.84525,
+              "elapsed_us": 801.8351554870605
+            },
+            {
+              "cpu_us": 4.7083,
+              "elapsed_us": 801.801586151123
+            },
+            {
+              "cpu_us": 4.941,
+              "elapsed_us": 802.2383689880371
+            },
+            {
+              "cpu_us": 4.748600000000001,
+              "elapsed_us": 802.2239685058594
+            },
+            {
+              "cpu_us": 4.9628000000000005,
+              "elapsed_us": 801.8336296081543
+            },
+            {
+              "cpu_us": 4.656350000000001,
+              "elapsed_us": 802.2591590881348
+            },
+            {
+              "cpu_us": 4.7574499999999995,
+              "elapsed_us": 802.0383834838867
+            }
+          ],
+          "cpu_us": 4.7574499999999995,
+          "elapsed_us": 802.0383834838867
+        },
+        "scheduled": {
+          "trials": [
+            {
+              "cpu_us": 6.26465,
+              "elapsed_us": 8.793599903583527
+            },
+            {
+              "cpu_us": 6.2542,
+              "elapsed_us": 8.601599931716919
+            },
+            {
+              "cpu_us": 6.0806499999999994,
+              "elapsed_us": 8.720000088214874
+            },
+            {
+              "cpu_us": 6.032100000000001,
+              "elapsed_us": 8.537600189447403
+            },
+            {
+              "cpu_us": 6.0673,
+              "elapsed_us": 8.646400272846222
+            },
+            {
+              "cpu_us": 5.90795,
+              "elapsed_us": 8.540800213813782
+            },
+            {
+              "cpu_us": 5.9201999999999995,
+              "elapsed_us": 8.534400165081024
+            }
+          ],
+          "cpu_us": 6.0673,
+          "elapsed_us": 8.601599931716919
+        }
+      }
+    },
+    {
+      "function": "sigma_clipped_mean",
+      "size": 1048576,
+      "schedule": {
+        "kind": "cooperative_grid",
+        "blocks": 188,
+        "device": 0,
+        "cooperative": true,
+        "reduction_workspace_bytes": 1504
+      },
+      "timings": {
+        "single_block": {
+          "trials": [
+            {
+              "cpu_us": 15.129700000000001,
+              "elapsed_us": 14825.2685546875
+            },
+            {
+              "cpu_us": 13.227450000000001,
+              "elapsed_us": 14826.869201660156
+            },
+            {
+              "cpu_us": 13.3034,
+              "elapsed_us": 14826.017761230469
+            },
+            {
+              "cpu_us": 12.007200000000001,
+              "elapsed_us": 14822.846984863281
+            },
+            {
+              "cpu_us": 13.7149,
+              "elapsed_us": 14821.17919921875
+            },
+            {
+              "cpu_us": 12.313799999999999,
+              "elapsed_us": 14870.054626464844
+            },
+            {
+              "cpu_us": 12.72315,
+              "elapsed_us": 14867.756652832031
+            }
+          ],
+          "cpu_us": 13.227450000000001,
+          "elapsed_us": 14826.017761230469
+        },
+        "scheduled": {
+          "trials": [
+            {
+              "cpu_us": 16.594900000000003,
+              "elapsed_us": 190.01920223236084
+            },
+            {
+              "cpu_us": 15.42325,
+              "elapsed_us": 189.27359580993652
+            },
+            {
+              "cpu_us": 15.673399999999999,
+              "elapsed_us": 189.75199460983276
+            },
+            {
+              "cpu_us": 14.4877,
+              "elapsed_us": 189.2367959022522
+            },
+            {
+              "cpu_us": 15.73635,
+              "elapsed_us": 190.17599821090698
+            },
+            {
+              "cpu_us": 14.627600000000001,
+              "elapsed_us": 189.56639766693115
+            },
+            {
+              "cpu_us": 16.493599999999997,
+              "elapsed_us": 190.36320447921753
+            }
+          ],
+          "cpu_us": 15.673399999999999,
+          "elapsed_us": 189.75199460983276
+        }
+      }
+    },
+    {
+      "function": "filter_agg",
+      "size": 8388608,
+      "schedule": {
+        "kind": "cooperative_grid",
+        "blocks": 188,
+        "device": 0,
+        "cooperative": true,
+        "reduction_workspace_bytes": 1504
+      },
+      "timings": {
+        "single_block": {
+          "trials": [
+            {
+              "cpu_us": 5.04555,
+              "elapsed_us": 6411.436462402344
+            },
+            {
+              "cpu_us": 4.7355,
+              "elapsed_us": 6412.731170654297
+            },
+            {
+              "cpu_us": 4.857,
+              "elapsed_us": 6412.010955810547
+            },
+            {
+              "cpu_us": 5.0339,
+              "elapsed_us": 6412.8814697265625
+            },
+            {
+              "cpu_us": 4.93905,
+              "elapsed_us": 6411.759948730469
+            },
+            {
+              "cpu_us": 4.69065,
+              "elapsed_us": 6410.001373291016
+            },
+            {
+              "cpu_us": 4.845899999999999,
+              "elapsed_us": 6410.771179199219
+            }
+          ],
+          "cpu_us": 4.857,
+          "elapsed_us": 6411.759948730469
+        },
+        "scheduled": {
+          "trials": [
+            {
+              "cpu_us": 6.7029499999999995,
+              "elapsed_us": 41.785600781440735
+            },
+            {
+              "cpu_us": 5.8997,
+              "elapsed_us": 41.363200545310974
+            },
+            {
+              "cpu_us": 6.79845,
+              "elapsed_us": 42.024001479148865
+            },
+            {
+              "cpu_us": 5.883850000000001,
+              "elapsed_us": 41.281598806381226
+            },
+            {
+              "cpu_us": 6.17845,
+              "elapsed_us": 41.48479998111725
+            },
+            {
+              "cpu_us": 5.8406,
+              "elapsed_us": 41.257598996162415
+            },
+            {
+              "cpu_us": 6.86515,
+              "elapsed_us": 41.98080003261566
+            }
+          ],
+          "cpu_us": 6.17845,
+          "elapsed_us": 41.48479998111725
+        }
+      }
+    },
+    {
+      "function": "sigma_clipped_mean",
+      "size": 8388608,
+      "schedule": {
+        "kind": "cooperative_grid",
+        "blocks": 188,
+        "device": 0,
+        "cooperative": true,
+        "reduction_workspace_bytes": 1504
+      },
+      "timings": {
+        "single_block": {
+          "trials": [
+            {
+              "cpu_us": 14.9179,
+              "elapsed_us": 118144.42138671875
+            },
+            {
+              "cpu_us": 12.709299999999999,
+              "elapsed_us": 118492.12646484375
+            },
+            {
+              "cpu_us": 14.387049999999999,
+              "elapsed_us": 118481.8359375
+            },
+            {
+              "cpu_us": 12.6841,
+              "elapsed_us": 118491.17431640625
+            },
+            {
+              "cpu_us": 16.4882,
+              "elapsed_us": 118491.6259765625
+            },
+            {
+              "cpu_us": 12.978549999999998,
+              "elapsed_us": 118509.41162109375
+            },
+            {
+              "cpu_us": 14.55275,
+              "elapsed_us": 118485.85205078125
+            }
+          ],
+          "cpu_us": 14.387049999999999,
+          "elapsed_us": 118491.17431640625
+        },
+        "scheduled": {
+          "trials": [
+            {
+              "cpu_us": 19.0976,
+              "elapsed_us": 872.3983764648438
+            },
+            {
+              "cpu_us": 15.40775,
+              "elapsed_us": 870.5488204956055
+            },
+            {
+              "cpu_us": 17.30455,
+              "elapsed_us": 871.4655876159668
+            },
+            {
+              "cpu_us": 14.81505,
+              "elapsed_us": 870.3295707702637
+            },
+            {
+              "cpu_us": 17.391849999999998,
+              "elapsed_us": 872.7184295654297
+            },
+            {
+              "cpu_us": 15.1727,
+              "elapsed_us": 870.8111763000488
+            },
+            {
+              "cpu_us": 17.766099999999998,
+              "elapsed_us": 873.3440399169922
+            }
+          ],
+          "cpu_us": 17.30455,
+          "elapsed_us": 871.4655876159668
+        }
+      }
+    },
+    {
+      "function": "score",
+      "shape": [
+        64,
+        64
+      ],
+      "timings": {
+        "current": {
+          "trials": [
+            {
+              "cpu_us": 17.1011,
+              "elapsed_us": 17.22079962491989
+            },
+            {
+              "cpu_us": 16.606900000000003,
+              "elapsed_us": 16.673600673675537
+            },
+            {
+              "cpu_us": 16.6011,
+              "elapsed_us": 16.657599806785583
+            },
+            {
+              "cpu_us": 16.482950000000002,
+              "elapsed_us": 16.577599942684174
+            },
+            {
+              "cpu_us": 16.548299999999998,
+              "elapsed_us": 16.662399470806122
+            },
+            {
+              "cpu_us": 16.43275,
+              "elapsed_us": 16.491200029850006
+            },
+            {
+              "cpu_us": 15.62885,
+              "elapsed_us": 15.681600570678711
+            }
+          ],
+          "cpu_us": 16.548299999999998,
+          "elapsed_us": 16.657599806785583
+        },
+        "before": {
+          "trials": [
+            {
+              "cpu_us": 16.985,
+              "elapsed_us": 17.054399847984314
+            },
+            {
+              "cpu_us": 16.78935,
+              "elapsed_us": 16.846400499343872
+            },
+            {
+              "cpu_us": 16.7739,
+              "elapsed_us": 16.838400065898895
+            },
+            {
+              "cpu_us": 16.670650000000002,
+              "elapsed_us": 16.69439971446991
+            },
+            {
+              "cpu_us": 16.66065,
+              "elapsed_us": 16.72160029411316
+            },
+            {
+              "cpu_us": 16.5912,
+              "elapsed_us": 16.649599373340607
+            },
+            {
+              "cpu_us": 16.16905,
+              "elapsed_us": 16.232000291347504
+            }
+          ],
+          "cpu_us": 16.670650000000002,
+          "elapsed_us": 16.72160029411316
+        }
+      },
+      "regions": 3
+    },
+    {
+      "function": "score",
+      "shape": [
+        4096,
+        64
+      ],
+      "timings": {
+        "current": {
+          "trials": [
+            {
+              "cpu_us": 16.08455,
+              "elapsed_us": 16.204799711704254
+            },
+            {
+              "cpu_us": 16.387400000000003,
+              "elapsed_us": 16.465599834918976
+            },
+            {
+              "cpu_us": 15.7744,
+              "elapsed_us": 15.811200439929962
+            },
+            {
+              "cpu_us": 16.21165,
+              "elapsed_us": 16.26400053501129
+            },
+            {
+              "cpu_us": 15.73235,
+              "elapsed_us": 15.812799334526062
+            },
+            {
+              "cpu_us": 15.7751,
+              "elapsed_us": 15.835200250148773
+            },
+            {
+              "cpu_us": 15.641350000000001,
+              "elapsed_us": 15.71200042963028
+            }
+          ],
+          "cpu_us": 15.7751,
+          "elapsed_us": 15.835200250148773
+        },
+        "before": {
+          "trials": [
+            {
+              "cpu_us": 16.18375,
+              "elapsed_us": 16.249600052833557
+            },
+            {
+              "cpu_us": 16.1986,
+              "elapsed_us": 16.24000072479248
+            },
+            {
+              "cpu_us": 16.0821,
+              "elapsed_us": 16.128000617027283
+            },
+            {
+              "cpu_us": 16.14555,
+              "elapsed_us": 16.21599942445755
+            },
+            {
+              "cpu_us": 15.731,
+              "elapsed_us": 15.79039990901947
+            },
+            {
+              "cpu_us": 15.735,
+              "elapsed_us": 15.798400342464447
+            },
+            {
+              "cpu_us": 15.64375,
+              "elapsed_us": 15.68640023469925
+            }
+          ],
+          "cpu_us": 16.0821,
+          "elapsed_us": 16.128000617027283
+        }
+      },
+      "regions": 3
+    },
+    {
+      "function": "score",
+      "shape": [
+        32768,
+        512
+      ],
+      "timings": {
+        "current": {
+          "trials": [
+            {
+              "cpu_us": 15.7832,
+              "elapsed_us": 55.11680245399475
+            },
+            {
+              "cpu_us": 15.64175,
+              "elapsed_us": 54.85919713973999
+            },
+            {
+              "cpu_us": 15.66375,
+              "elapsed_us": 54.92960214614868
+            },
+            {
+              "cpu_us": 15.6143,
+              "elapsed_us": 54.816001653671265
+            },
+            {
+              "cpu_us": 15.2879,
+              "elapsed_us": 54.80480194091797
+            },
+            {
+              "cpu_us": 15.4924,
+              "elapsed_us": 54.82400059700012
+            },
+            {
+              "cpu_us": 15.31205,
+              "elapsed_us": 54.86400127410889
+            }
+          ],
+          "cpu_us": 15.6143,
+          "elapsed_us": 54.85919713973999
+        },
+        "before": {
+          "trials": [
+            {
+              "cpu_us": 16.21115,
+              "elapsed_us": 54.99839782714844
+            },
+            {
+              "cpu_us": 15.769,
+              "elapsed_us": 54.95679974555969
+            },
+            {
+              "cpu_us": 15.80325,
+              "elapsed_us": 54.81439828872681
+            },
+            {
+              "cpu_us": 15.7059,
+              "elapsed_us": 54.88640069961548
+            },
+            {
+              "cpu_us": 15.466149999999999,
+              "elapsed_us": 54.87520098686218
+            },
+            {
+              "cpu_us": 15.386299999999999,
+              "elapsed_us": 54.90720272064209
+            },
+            {
+              "cpu_us": 15.4069,
+              "elapsed_us": 54.88799810409546
+            }
+          ],
+          "cpu_us": 15.7059,
+          "elapsed_us": 54.88799810409546
+        }
+      },
+      "regions": 3
+    }
+  ],
+  "baseline_frontend_sha256": "82dd0723134738fba12ccaefe4ebc9f25c822881874d4a2f2feed91e1b55f2f4"
+}
