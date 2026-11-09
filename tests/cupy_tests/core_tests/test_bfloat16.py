@@ -71,6 +71,26 @@ def test_sorting(func, use_method, descending, axis, shape):
     testing.assert_array_equal(result, expected)
 
 
+@pytest.mark.parametrize('descending', [False, True])
+@pytest.mark.parametrize('func', ['sort', 'argsort'])
+def test_sorting_all_encodings(func, descending):
+    # Cover every encoding twice, including signaling/quiet NaNs of both
+    # signs, their payloads, infinities, subnormals, and signed zero. Check
+    # original bits so canonicalizing values instead of keys cannot pass.
+    bits = numpy.tile(numpy.arange(65536, dtype=numpy.uint16), 2)
+    numpy.random.default_rng(0).shuffle(bits)
+    values = bits.view(BF16)
+    reference = values.astype(numpy.float32)
+    keys = -reference if descending else reference
+    indices = numpy.argsort(keys, kind='stable')
+
+    result = getattr(cupy, func)(cupy.asarray(values), descending=descending)
+    if func == 'argsort':
+        testing.assert_array_equal(result, indices)
+    else:
+        testing.assert_array_equal(result.view(numpy.uint16), bits[indices])
+
+
 def test_lexsort():
     keys = numpy.array([
         [3, 1, 2, 1, numpy.nan, -numpy.inf, 1, numpy.inf],
