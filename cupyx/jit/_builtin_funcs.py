@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import operator
 from typing import Any
 from collections.abc import Mapping
 import warnings
@@ -350,6 +351,147 @@ class GridFunc(BuiltinFunc):
             return Data(f'STD::make_tuple({elts_code})', ctype)
 
 
+def _get_warp_mask_ctype():
+    return _cuda_types.uint64 if runtime.is_hip else _cuda_types.uint32
+
+
+def _parse_warp_mask(mask):
+    try:
+        mask = operator.index(mask.obj)
+    except Exception:
+        raise TypeError('mask must be an integer')
+    mask_max = 0xffffffffffffffff if runtime.is_hip else 0xffffffff
+    if not (0x0 <= mask <= mask_max):
+        raise ValueError('mask is out of range')
+    return mask
+
+
+class ActiveMask(BuiltinFunc):
+
+    def __call__(self):
+        """Returns a bit-mask of all currently active threads in the warp.
+
+        .. seealso:: `Warp Vote Functions`_
+
+        .. _Warp Vote Functions:
+            https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#warp-vote-functions
+        """
+        super().__call__()
+
+    def call_const(self, env):
+        return Data('__activemask()', _get_warp_mask_ctype())
+
+
+class BitwisePopulationCount(BuiltinFunc):
+
+    def __call__(self, value):
+        """Returns the number of set bits in an integer value."""
+        super().__call__()
+
+    def call(self, env, value):
+        value = Data.init(value, env)
+        if not isinstance(value.ctype, _cuda_types.Scalar):
+            raise TypeError('`popc` supports only scalar input.')
+
+        dtype = value.ctype.dtype
+        if dtype.kind not in 'iu':
+            raise TypeError('`popc` supports only integer input.')
+
+        if dtype.itemsize <= 4:
+            code = f'__popc(static_cast<unsigned int>({value.code}))'
+        elif dtype.itemsize == 8:
+            code = (
+                '__popcll('
+                f'static_cast<unsigned long long>({value.code}))'
+            )
+        else:
+            raise TypeError('`popc` supports only integer input.')
+        return Data(code, _cuda_types.int32)
+
+
+class FindFirstSet(BuiltinFunc):
+
+    def __call__(self, value):
+        """Returns the position of the first set bit in an integer value."""
+        super().__call__()
+
+    def call(self, env, value):
+        value = Data.init(value, env)
+        if not isinstance(value.ctype, _cuda_types.Scalar):
+            raise TypeError('`ffs` supports only scalar input.')
+
+        dtype = value.ctype.dtype
+        if dtype.kind not in 'iu':
+            raise TypeError('`ffs` supports only integer input.')
+
+        if dtype.itemsize <= 4:
+            code = f'__ffs(static_cast<int>({value.code}))'
+        elif dtype.itemsize == 8:
+            code = f'__ffsll(static_cast<long long>({value.code}))'
+        else:
+            raise TypeError('`ffs` supports only integer input.')
+        return Data(code, _cuda_types.int32)
+
+
+class WarpMatchAny(BuiltinFunc):
+    _dtypes = (
+        'int32', 'uint32', 'int64', 'uint64', 'float32', 'float64')
+
+    def __call__(self, mask, value):
+        """Returns a mask of active lanes whose values equal ``value``.
+
+        .. note::
+            This function follows the convention of Numba's
+            :func:`numba.cuda.match_any_sync`.
+        """
+        super().__call__()
+
+    def call(self, env, mask, value):
+        mask = _parse_warp_mask(mask)
+        value = Data.init(value, env)
+        if not isinstance(value.ctype, _cuda_types.Scalar):
+            raise TypeError('`match_any_sync` supports only scalar input.')
+        if value.ctype.dtype.name not in self._dtypes:
+            raise TypeError(
+                f'`match_any_sync` does not support {value.ctype.dtype} '
+                'input.')
+        code = f'__match_any_sync({hex(mask)}, {value.code})'
+        return Data(code, _get_warp_mask_ctype())
+
+
+class WarpMatchAll(BuiltinFunc):
+    _dtypes = WarpMatchAny._dtypes
+
+    def __call__(self, mask, value):
+        """Returns ``(mask, pred)`` for lanes whose values all equal ``value``.
+
+        .. note::
+            This function follows the convention of Numba's
+            :func:`numba.cuda.match_all_sync`.
+        """
+        super().__call__()
+
+    def call(self, env, mask, value):
+        mask = _parse_warp_mask(mask)
+        value = Data.init(value, env)
+        if not isinstance(value.ctype, _cuda_types.Scalar):
+            raise TypeError('`match_all_sync` supports only scalar input.')
+        if value.ctype.dtype.name not in self._dtypes:
+            raise TypeError(
+                f'`match_all_sync` does not support {value.ctype.dtype} '
+                'input.')
+        code = (
+            '([&]() { '
+            'int pred; '
+            f'auto match = __match_all_sync({hex(mask)}, {value.code}, '
+            '&pred); '
+            'return STD::make_pair(match, pred != 0); '
+            '})()'
+        )
+        ctype = _cuda_types.Tuple([_get_warp_mask_ctype(), _cuda_types.bool_])
+        return Data(code, ctype)
+
+
 class WarpShuffleOp(BuiltinFunc):
 
     def __init__(self, op, dtypes):
@@ -458,6 +600,11 @@ shared_memory = SharedMemory()
 grid = GridFunc('grid')
 gridsize = GridFunc('gridsize')
 laneid = LaneID()
+activemask = ActiveMask()
+popc = BitwisePopulationCount()
+ffs = FindFirstSet()
+match_any_sync = WarpMatchAny()
+match_all_sync = WarpMatchAll()
 
 # atomic functions
 atomic_add = AtomicOp(
