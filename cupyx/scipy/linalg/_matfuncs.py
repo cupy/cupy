@@ -173,6 +173,7 @@ def _bbc_taylor(A, E, deg):
         A3 = A @ A2
         q31, q32, q33, q34 = _bbc_t12_qs(E, A, A2, A3)
         qaux = q33 + q34 @ q34
+        del q33, q34
         return q31 + (q32 + qaux) @ qaux
     if deg == 18:
         A2 = A @ A
@@ -180,6 +181,7 @@ def _bbc_taylor(A, E, deg):
         A6 = A3 @ A3
         q31, q61, q62, q63, q64 = _bbc_t18_qs(E, A, A2, A3, A6)
         q91 = q31 @ q64 + q63
+        del q31, q63, q64
         return q61 + (q62 + q91) @ q91
     raise ValueError(f'unsupported BBC degree: {deg}')
 
