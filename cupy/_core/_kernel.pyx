@@ -1570,15 +1570,16 @@ cdef function.Function _get_ufunc_kernel(
 cdef inline int _get_kind_score(kind) except -1:
     if issubclass(kind, numpy.bool_):
         return 0
-    if issubclass(kind, (numpy.integer, int)):
+    if issubclass(kind, numpy.integer):
         return 1
-    if issubclass(kind, (numpy.inexact, float, complex)):
+    if issubclass(kind, numpy.inexact):
         return 2
     # unknown type, assume higher score
     return 3
 
 
-cdef inline bint _check_should_use_weak_scalar(tuple in_types) except? -1:
+cdef inline bint _check_should_use_weak_scalar(
+        tuple in_types, tuple weaks) except? -1:
     """The promotion strategy of finding the first matching loop is not
     equipped to deal with correct promotion when mixing weak scalars and
     arrays/strong types.
@@ -1592,13 +1593,14 @@ cdef inline bint _check_should_use_weak_scalar(tuple in_types) except? -1:
 
     max_array_kind = -1
     max_scalar_kind = -1
-    for in_t in in_types:
-        if in_t in (int, float, complex):
-            kind = _get_kind_score(in_t)
-            max_scalar_kind = max(max_scalar_kind, kind)
-        else:
+    for in_t, weak in zip(in_types, weaks):
+        if weak is False:
             kind = _get_kind_score(in_t.type)  # kind score uses scalar type
             max_array_kind = max(max_array_kind, kind)
+        elif weak is int:
+            max_scalar_kind = max(max_scalar_kind, 1)
+        else:  # float or complex
+            max_scalar_kind = max(max_scalar_kind, 2)
 
     all_scalars_or_arrays = max_scalar_kind == -1 or max_array_kind == -1
 
@@ -2067,9 +2069,10 @@ cdef class _Ops:
         if dtype is None:
             for i, a in enumerate(in_args):
                 # Keep strong dtypes intact; Python types mark weak scalars.
+                # Single input ufuncs ignore the "weak" (for integer handling).
                 if type(a) is _scalar.CScalar:
                     weak_t = (<_scalar.CScalar>a).weak_t
-                    if weak_t is not False:
+                    if weak_t is not False and len(in_args) > 1:
                         t = weak_t
                     else:
                         t = (<_scalar.CScalar>a).descr
@@ -2084,16 +2087,12 @@ cdef class _Ops:
 
             op = cache.get(in_types, NotImplemented)
             if op is NotImplemented:
-                if not _check_should_use_weak_scalar(in_types):
-                    weaks = (False,) * len(in_types)
-                else:
-                    weaks = tuple([t if t in (int, float, complex) else False
-                                   for t in in_types])
+                weaks = tuple([t[0] if type(t) is tuple else False
+                               for t in in_types])
 
-                # Guessing the routine uses the weaks information separately:
+                # Guessing the routine uses the weaks information separately.
                 in_types_noweak = tuple([
-                    (t if t not in (int, float, complex) else
-                        (<_scalar.CScalar>a).descr)
+                    ((<tuple>t)[1] if type(t) is tuple else t)
                     for t, a in zip(in_types, in_args)
                 ])
 
@@ -2128,6 +2127,14 @@ cdef class _Ops:
             # NOTE(seberg): This works fine, but should maybe be considered
             # in flux. NumPy needs more (but mostly for loop registration).
             in_types, weaks = self.promote_types(in_types, weaks)
+
+        # If we reach here, NumPy let's weak-integers just be handled as int64
+        # and not uint64. May also need ignore weaks for the linear search.
+        if weaks is not None:
+            in_types = tuple([t if w is not int else numpy.int64
+                              for t, w in zip(in_types, weaks)])
+            if not _check_should_use_weak_scalar(in_types, weaks):
+                weaks = (False,) * len(in_types)
 
         for op in self.ops:
             op_types = op.in_types
