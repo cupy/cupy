@@ -1,7 +1,6 @@
 #ifndef INCLUDE_GUARD_CUPY_CUDA_THRUST_H
 #define INCLUDE_GUARD_CUPY_CUDA_THRUST_H
 
-#ifndef CUPY_NO_CUDA
 #include <vector>
 #include <cstdint>
 
@@ -20,20 +19,5 @@ void thrust_argsort(int, size_t *, void *, void *, const std::vector<ptrdiff_t>&
 #if (defined(_MSC_VER) && (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ == 2))
   #define __builtin_unreachable() __assume(false)
 #endif
-
-#else // CUPY_NO_CUDA
-
-#define THRUST_VERSION 0
-
-void thrust_sort(...) {
-}
-
-void thrust_lexsort(...) {
-}
-
-void thrust_argsort(...) {
-}
-
-#endif // #ifndef CUPY_NO_CUDA
 
 #endif // INCLUDE_GUARD_CUPY_CUDA_THRUST_H

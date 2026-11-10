@@ -5,6 +5,10 @@ import cupyx.scipy.sparse
 try:
     import pylibcugraph
     pylibcugraph_available = True
+    # pylibcugraph 26.06 replaced the legacy strongly_connected_components()
+    # (rapidsai/cugraph#5469).
+    _legacy_scc = tuple(
+        int(x) for x in pylibcugraph.__version__.split('.')[:2]) < (26, 6)
 except ModuleNotFoundError:
     pylibcugraph_available = False
 
@@ -60,9 +64,20 @@ def connected_components(csgraph, directed=True, connection='weak',
 
     if connection == 'strong':
         labels = cupy.empty(m, dtype=csgraph.indices.dtype)
-        pylibcugraph.strongly_connected_components(
-            offsets=csgraph.indptr, indices=csgraph.indices, weights=None,
-            num_verts=m, num_edges=csgraph.nnz, labels=labels)
+        if _legacy_scc:
+            pylibcugraph.strongly_connected_components(
+                offsets=csgraph.indptr, indices=csgraph.indices, weights=None,
+                num_verts=m, num_edges=csgraph.nnz, labels=labels)
+        else:
+            pylibcugraph.strongly_connected_components(
+                resource_handle=None,
+                graph=None,
+                offsets=csgraph.indptr,
+                indices=csgraph.indices,
+                weights=None,
+                labels=labels,
+                do_expensive_check=False,
+            )
     else:
         csgraph = _ensure_csr(csgraph + csgraph.T)
         _, labels = pylibcugraph.weakly_connected_components(

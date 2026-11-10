@@ -1,7 +1,7 @@
-// This file is a stub header file of cuda for Read the Docs.
+// Fallback header for ROCm/HIP builds: ROCm has no NVTX equivalent.
 
-#ifndef INCLUDE_GUARD_STUB_CUPY_NVTX_H
-#define INCLUDE_GUARD_STUB_CUPY_NVTX_H
+#ifndef INCLUDE_GUARD_CUPY_HIP_NVTX_H
+#define INCLUDE_GUARD_CUPY_HIP_NVTX_H
 
 extern "C" {
 

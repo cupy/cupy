@@ -17,11 +17,11 @@ classifiers = [
   "Intended Audience :: Developers",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
   "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Cython",
   "Topic :: Software Development",
@@ -29,7 +29,7 @@ classifiers = [
   "Operating System :: POSIX",
   "Operating System :: Microsoft :: Windows",
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dynamic = [
   "version",
   "readme",  # long_description
@@ -72,6 +72,8 @@ testpaths = "tests"
 addopts = "--strict-markers"
 markers = [
   "slow", "multi_gpu",
+  # If pytest-timeout is not available
+  "timeout",
   # If pytest-run-parallel is not available
   "parallel_threads", "iterations", "thread_unsafe",
 ]
@@ -85,7 +87,7 @@ filterwarnings = [
   "error::PendingDeprecationWarning",
   "error::cupy.exceptions.VisibleDeprecationWarning",
   "error::cupy.exceptions.ComplexWarning",
-  # distutils (Python 3.10)
+  # distutils (vendored by setuptools)
   "ignore:The distutils(.+) is deprecated:DeprecationWarning",
   "ignore:dep_util is Deprecated:DeprecationWarning",
   # pkg_resources

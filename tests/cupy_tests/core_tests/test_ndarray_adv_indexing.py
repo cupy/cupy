@@ -721,7 +721,12 @@ class TestArrayAdvancedIndexingSetitemTranspose:
 
 
 class TestHugeArrays:
-    # These tests require a lot of memory
+    # These tests use arrays with large logical sizes.
+    def test_take_negative_index_at_int32_size_boundary(self):
+        # Only the broadcast view is huge, so this needs no real allocation.
+        arr = cupy.broadcast_to(cupy.array(42, dtype=cupy.uint8), (2**31,))
+        assert arr.take(-1).item() == 42
+
     @testing.slow
     def test_advanced(self):
         try:
@@ -739,28 +744,39 @@ class TestHugeArrays:
             pytest.skip("out of memory in test.")
 
     @testing.slow
+    @pytest.mark.thread_unsafe(reason="Allocation too large.")
     def test_take_array(self):
+        arr = indices = res = None
         try:
-            arr = cupy.ones((1, 2**32), dtype=cupy.int8)
-            arr[0, 2**30] = 0  # We should see each of these once
-            arr[0, -1] = 0
-            res = arr.take(cupy.array([0, 0]), axis=0)
-            # sanity check, we mostly care about it not crashing.
-            assert res.sum() == 2 * (2**32 - 2)
+            arr = cupy.array([[[1, 2]], [[3, 4]]], dtype=cupy.uint8)
+            indices = cupy.broadcast_to(
+                cupy.array(0, dtype=cupy.int8), (2**30,))
+            res = arr.take(indices, axis=1)
+            testing.assert_array_equal(res[0, 0], [1, 2])
+            testing.assert_array_equal(res[0, -1], [1, 2])
+            testing.assert_array_equal(res[1, 0], [3, 4])
+            testing.assert_array_equal(res[1, -1], [3, 4])
         except MemoryError:
             pytest.skip("out of memory in test.")
+        finally:
+            del res, indices, arr
+            cupy.get_default_memory_pool().free_all_blocks()
 
     @testing.slow
+    @pytest.mark.thread_unsafe(reason="Allocation too large.")
     def test_take_scalar(self):
+        arr = res = None
         try:
-            arr = cupy.ones((1, 2**32), dtype=cupy.int8)
-            arr[0, 2**30] = 0  # We should see each of these once
-            arr[0, -1] = 0
-            res = arr.take(0, axis=0)
-            # sanity check, we mostly care about it not crashing.
-            assert res.sum() == 2**32 - 2
+            arr = cupy.broadcast_to(
+                cupy.array([[1], [2]], dtype=cupy.uint8), (2, 2**31))
+            res = arr.take(1, axis=0)
+            assert res[0] == 2
+            assert res[-1] == 2
         except MemoryError:
             pytest.skip("out of memory in test.")
+        finally:
+            del res, arr
+            cupy.get_default_memory_pool().free_all_blocks()
 
     @testing.slow
     def test_choose(self):

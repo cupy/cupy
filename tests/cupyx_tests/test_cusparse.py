@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import functools
+import gc
 import pickle
 import sys
+import weakref
 
 import numpy
 import pytest
@@ -536,6 +538,27 @@ class TestCoosort:
         testing.assert_array_almost_equal(self.a.data[argsort], a.data)
 
 
+class TestCoosortBool:
+
+    @pytest.mark.parametrize('sort_by', ['r', 'c'])
+    @pytest.mark.parametrize('index_dtype', [numpy.int32, numpy.int64])
+    def test_coosort(self, sort_by, index_dtype):
+        row = numpy.array([1, 0, 1, 0], dtype=index_dtype)
+        col = numpy.array([0, 1, 1, 0], dtype=index_dtype)
+        # Stored False entries expose a missing data permutation.
+        data = numpy.array([True, False, True, False])
+        order = numpy.lexsort(
+            (col, row) if sort_by == 'r' else (row, col))
+        x = sparse.coo_matrix._from_parts(
+            cupy.asarray(data), cupy.asarray(row), cupy.asarray(col), (2, 2))
+
+        cusparse.coosort(x, sort_by=sort_by)
+
+        for actual, original in zip(
+                (x.row, x.col, x.data), (row, col, data)):
+            testing.assert_array_equal(actual, original[order])
+
+
 @testing.with_requires('scipy')
 class TestCsrsort:
 
@@ -1002,6 +1025,37 @@ class TestSparseMatrixConversion:
             x = sparse.coo_matrix(x)
         y = cusparse.sparseToDense(x)
         testing.assert_array_equal(x.todense(), y)
+
+
+@testing.with_requires('scipy')
+class TestSpMatDescriptorOwnership:
+    # A descriptor stores raw device pointers into the matrix's arrays, and
+    # sparse matrices are mutable: a structure change rebinds a.data /
+    # a.indices / a.indptr, so the descriptor has to own what it points at.
+
+    @pytest.mark.parametrize('fmt', ['csr', 'csc', 'coo'])
+    def test_descriptor_keeps_arrays_alive(self, fmt):
+        a = sparse.random(200, 200, density=0.05, format=fmt,
+                          dtype=numpy.float64)
+        arrs = ((a.data, a.row, a.col) if fmt == 'coo'
+                else (a.data, a.indices, a.indptr))
+        owners = [weakref.ref(x) for x in arrs]
+        desc = cusparse.SpMatDescriptor.create(a)
+        del a, arrs
+        gc.collect()
+        assert all(o() is not None for o in owners)
+        del desc
+        gc.collect()
+        assert all(o() is None for o in owners)
+
+    def test_unsupported_format_still_raises_value_error(self):
+        # The ownership bookkeeping reads format-specific attributes, so
+        # it must not turn an unsupported format into AttributeError.
+        offsets = cupy.array([0], dtype=numpy.int32)
+        data = cupy.ones((1, 20), dtype=numpy.float64)
+        a = sparse.dia_matrix((data, offsets), shape=(20, 20))
+        with pytest.raises(ValueError):
+            cusparse.SpMatDescriptor.create(a)
 
 
 @pytest.mark.parametrize('dims', [(3, 4), (4, 3), (3, None)])

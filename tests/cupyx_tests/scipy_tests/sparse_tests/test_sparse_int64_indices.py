@@ -9,6 +9,7 @@ import cupy
 from cupy import testing
 from cupyx import cusparse
 from cupyx.scipy import sparse
+from cupyx.scipy.sparse import _sputils
 
 
 # Index value that exceeds INT32_MAX (= 2**31 - 1), forcing int64.
@@ -189,13 +190,11 @@ class TestInt64FormatConversion:
 
 
 class TestInt64Sort:
-    """Lexsort-based fallbacks for csrsort, cscsort, sum_duplicates.
-
-    cuSPARSE xcsrsort / xcscsort / xcoosort accept only int32 index pointers.
-    """
+    """Pure-CuPy sort fallbacks for int64 indices, including huge shapes."""
 
     def test_csr_sort_indices_int64(self):
-        # csrsort int64 path: expand indptr via searchsorted, then lexsort.
+        # csrsort int64 path: expand indptr via searchsorted, then sort by a
+        # composite (row, col) key.
         # Row 0 has columns [_LARGE+1, _LARGE] (deliberately unsorted).
         data = cupy.array([1.0, 2.0])
         indices = cupy.array([_LARGE + 1, _LARGE], dtype=cupy.int64)
@@ -257,6 +256,131 @@ class TestInt64Sort:
         assert m.has_sorted_indices
         testing.assert_array_equal(m.indices, cupy.array([0, 1, 2]))
         testing.assert_array_equal(m.data, cupy.array([2.0, 3.0, 1.0]))
+
+    @pytest.mark.parametrize('shape', [
+        (7, (2**63 - 1) // 7),  # Product just below the dispatch boundary.
+        (2, 2**62),            # Product at the dispatch boundary.
+        (3, (2**63 + 1) // 3),  # Largest key overflows signed int64.
+        (3, 2**62),
+    ])
+    @pytest.mark.parametrize('sort_by', ['r', 'c'])
+    def test_coosort_huge_shape(self, shape, sort_by):
+        nrow, ncol = shape
+        row = numpy.array([nrow - 1, 0, nrow - 1, 0], dtype=numpy.int64)
+        col = numpy.array([ncol - 1, ncol - 2, 5, ncol - 3], dtype=numpy.int64)
+        data = numpy.array([10.0, 20.0, 30.0, 40.0])
+        order = numpy.lexsort(
+            (col, row) if sort_by == 'r' else (row, col))
+        m = sparse.coo_matrix(
+            (cupy.asarray(data), (cupy.asarray(row), cupy.asarray(col))),
+            shape=shape)
+
+        cusparse.coosort(m, sort_by)
+
+        for actual, original in zip(
+                (m.row, m.col, m.data), (row, col, data)):
+            testing.assert_array_equal(actual, original[order])
+        assert m.col.dtype == cupy.int64
+
+    def test_csrsort_lexsort_fallback_huge_shape(self):
+        # Exercise the fallback at the int64 shape-product boundary.
+        ncol = 2**62
+        # row 0: cols [ncol-1, 5] (unsorted); row 1: [ncol-2]
+        data = cupy.array([1.0, 2.0, 3.0])
+        indices = cupy.array([ncol - 1, 5, ncol - 2], dtype=cupy.int64)
+        indptr = cupy.array([0, 2, 3], dtype=cupy.int64)
+        m = sparse.csr_matrix((data, indices, indptr), shape=(2, ncol))
+        m.has_sorted_indices = False
+        m.sort_indices()
+        assert m.has_sorted_indices
+        si = cupy.asnumpy(m.indices)
+        assert list(si[:2]) == [5, ncol - 1]           # row 0 sorted
+        assert float(cupy.asnumpy(m.data)[0]) == 2.0    # data followed indices
+
+
+# Remove this guard and the xfails when integer value dtypes are enabled.
+assert not _sputils.is_sparse_data_dtype(numpy.int8)
+_integer_data_xfail = pytest.mark.xfail(
+    reason='Requires follow-up integer value support',
+    strict=True)
+
+
+@testing.with_requires('scipy')
+class TestSparseArithmeticDtypes:
+
+    @pytest.mark.parametrize('format', ['csr', 'csc'])
+    @pytest.mark.parametrize('index_dtype', [numpy.int32, numpy.int64])
+    @pytest.mark.parametrize('dtypes', [
+        (numpy.bool_, numpy.bool_),
+        pytest.param((numpy.uint8, numpy.uint8), marks=_integer_data_xfail),
+        pytest.param((numpy.uint8, numpy.uint16), marks=_integer_data_xfail),
+        pytest.param((numpy.int8, numpy.uint8), marks=_integer_data_xfail),
+        pytest.param((numpy.uint64, numpy.uint64), marks=_integer_data_xfail),
+        pytest.param((numpy.uint64, numpy.int64), marks=_integer_data_xfail),
+    ])
+    @pytest.mark.parametrize('operation', [
+        pytest.param('add', marks=_integer_data_xfail),
+        pytest.param('subtract', marks=_integer_data_xfail),
+        'matmul',
+    ])
+    @testing.numpy_cupy_array_equal(sp_name='sp')
+    def test_operators(self, format, index_dtype, dtypes, operation, xp, sp):
+        constructor = getattr(sp, format + '_matrix')
+        a = constructor(xp.array([[1, 0], [3, 4]], dtype=dtypes[0]))
+        b = constructor(xp.array([[2, 5], [1, 4]], dtype=dtypes[1]))
+        for operand in (a, b):
+            operand.indices = operand.indices.astype(index_dtype)
+            operand.indptr = operand.indptr.astype(index_dtype)
+
+        if operation == 'add':
+            c = a + b
+        elif operation == 'subtract':
+            c = a - b
+        else:
+            c = a @ b
+
+        assert c.dtype == numpy.promote_types(*dtypes)
+        return c.toarray()
+
+    @pytest.mark.parametrize('format', ['csr', 'csc'])
+    @pytest.mark.parametrize('index_dtype, nonempty', [
+        (numpy.int32, False),
+        # This case needs index narrowing from the same follow-up stack.
+        pytest.param(numpy.int32, True, marks=_integer_data_xfail),
+        (numpy.int64, False),
+        (numpy.int64, True),
+    ])
+    def test_bool_matmul_preserves_index_dtype(
+            self, format, index_dtype, nonempty):
+        a = getattr(sparse, format + '_matrix')(
+            cupy.array([[nonempty]], dtype=cupy.bool_))
+        a.indices = a.indices.astype(index_dtype)
+        a.indptr = a.indptr.astype(index_dtype)
+
+        c = a @ a
+
+        assert c.nnz == int(nonempty)
+        assert c.indices.dtype == index_dtype
+        assert c.indptr.dtype == index_dtype
+
+    @pytest.mark.parametrize('format', ['csr', 'csc'])
+    @pytest.mark.parametrize('index_dtype', [numpy.int32, numpy.int64])
+    @pytest.mark.parametrize('left_dtype', [numpy.uint8, numpy.int8])
+    @_integer_data_xfail
+    @testing.numpy_cupy_array_equal(sp_name='sp')
+    def test_unsigned_subtraction_after_astype(
+            self, format, index_dtype, left_dtype, xp, sp):
+        constructor = getattr(sp, format + '_matrix')
+        a = constructor(xp.array([[1.0, 0.0]])).astype(left_dtype)
+        b = constructor(xp.array([[2.0, 3.0]])).astype(xp.uint8)
+        for operand in (a, b):
+            operand.indices = operand.indices.astype(index_dtype)
+            operand.indptr = operand.indptr.astype(index_dtype)
+
+        c = a - b
+
+        assert c.dtype == numpy.promote_types(left_dtype, numpy.uint8)
+        return c.toarray()
 
 
 class TestInt64Arithmetic:
@@ -331,6 +455,33 @@ class TestInt64Arithmetic:
         # col 0 → alpha*1.0 = 3.0;  col _LARGE → beta*1.0 = 4.0.
         assert float(c.data[0]) == pytest.approx(3.0)
         assert float(c.data[1]) == pytest.approx(4.0)
+
+    @pytest.mark.parametrize('dtype', [numpy.float32, numpy.complex64])
+    def test_csrgeam2_coefficients_preserve_dtype(self, dtype, monkeypatch):
+        available = cusparse.check_availability
+        monkeypatch.setattr(
+            cusparse, 'check_availability',
+            lambda name: False if name == 'spgeam' else available(name))
+        a = self._make_int64_csr(0).astype(dtype)
+        b = self._make_int64_csr(_LARGE).astype(dtype)
+        alpha, beta = numpy.float64(0.5), numpy.float64(2.5)
+
+        c = cusparse.csrgeam2(a, b, alpha=alpha, beta=beta)
+
+        assert c.dtype == dtype
+        testing.assert_array_equal(c.indices, [0, _LARGE])
+        testing.assert_array_equal(
+            c.data, numpy.array([alpha, beta], dtype=dtype))
+
+    @pytest.mark.parametrize('api', ['csrgeam2', 'spgeam', 'spgemm'])
+    @pytest.mark.parametrize('dtype', [numpy.bool_, numpy.uint8, numpy.int64])
+    @pytest.mark.parametrize('index_dtype', [numpy.int32, numpy.int64])
+    def test_direct_calls_reject_non_float_data(self, api, dtype, index_dtype):
+        a = sparse.csr_matrix(cupy.array([[1.0]])).astype(dtype)
+        a.indices = a.indices.astype(index_dtype)
+        a.indptr = a.indptr.astype(index_dtype)
+        with pytest.raises(TypeError, match='supports only'):
+            getattr(cusparse, api)(a, a)
 
     def test_spgeam_int64(self):
         # cusparse.spgeam() uses native cusparseSpGEAM when available and

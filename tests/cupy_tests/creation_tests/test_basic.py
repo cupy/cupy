@@ -320,11 +320,12 @@ class TestBasic:
     @pytest.mark.thread_unsafe(reason="large allocations")
     @pytest.mark.parametrize('arr_factory,expected', [
         (lambda: cupy.empty(2**31 - 1, dtype=cupy.int8), True),
-        (lambda: cupy.empty(2**31, dtype=cupy.int8), True),
+        # Array sizes should fit as well, so 2**31 is also rejected:
+        (lambda: cupy.empty(2**31, dtype=cupy.int8), False),
         (lambda: cupy.empty(2**31 + 1, dtype=cupy.int8)[::2], False),
-        (lambda: cupy.empty(2**31 // 8, dtype=cupy.complex64), True),
+        (lambda: cupy.empty(2**31 // 8, dtype=cupy.complex64), False),
         (lambda: cupy.empty(2**31 // 8 + 1, dtype=cupy.complex64), False),
-        # Regression test for gh-9750:
+        # Regression test for gh-9750 (first view spans 2**31 - 4 bytes)
         (lambda: cupy.empty(2**31 // 8, dtype=cupy.complex64).real, True),
         (lambda: cupy.empty(2**31 // 8 + 1, dtype=cupy.complex64).real, False),
         # broadcasting also causes this, test both broadcast_to and normal:

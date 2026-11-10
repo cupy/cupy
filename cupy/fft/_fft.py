@@ -62,7 +62,7 @@ def _cook_shape(a, s, axes, value_type, order='C'):
 
 
 def _convert_fft_type(dtype, value_type):
-    from cupy.cuda import cufft
+    cufft = cupy.cuda.cufft  # lazy import
 
     if value_type == 'C2C' and dtype == np.complex64:
         return cufft.CUFFT_C2C
@@ -80,9 +80,18 @@ def _convert_fft_type(dtype, value_type):
         raise ValueError
 
 
+def _align_real_input(
+        a: cupy.ndarray, value_type: str, order: str = 'C') -> cupy.ndarray:
+    # cuFFT rejects a real input that is not aligned like its complex output
+    # elements, which an offset view or pointer can be.
+    if value_type == 'R2C' and a.data.ptr % (2 * a.itemsize):
+        return a.copy(order=order)
+    return a
+
+
 def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
               out_size=None, out=None, plan=None):
-    from cupy.cuda import cufft
+    cufft = cupy.cuda.cufft  # lazy import
 
     fft_type = _convert_fft_type(a.dtype, value_type)
 
@@ -102,6 +111,7 @@ def _exec_fft(a, direction, value_type, norm, axis, overwrite_x,
         # hipFFT's R2C would overwrite input
         # hipFFT's C2R needs a workaround (see below)
         a = a.copy()
+    a = _align_real_input(a, value_type)
 
     n = a.shape[-1]
     if n < 1:
@@ -329,7 +339,7 @@ def _get_cufft_plan_nd_args(
     Returns:
         tuple: The ``PlanNd`` constructor arguments.
     """
-    from cupy.cuda import cufft
+    cufft = cupy.cuda.cufft  # lazy import
 
     ndim = len(shape)
 
@@ -511,7 +521,7 @@ def _get_fftn_out_size(in_shape, s, last_axis, value_type):
 
 def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x,
                plan=None, out=None, out_size=None):
-    from cupy.cuda import cufft
+    cufft = cupy.cuda.cufft  # lazy import
 
     fft_type = _convert_fft_type(a.dtype, value_type)
 
@@ -530,6 +540,7 @@ def _exec_fftn(a, direction, value_type, norm, axes, overwrite_x,
         # hipFFT's R2C would overwrite input
         # hipFFT's C2R PlanNd is actually not in use so it's fine here
         a = a.copy()
+    a = _align_real_input(a, value_type, order)
 
     # plan search precedence:
     # 1. plan passed in as an argument
@@ -632,7 +643,7 @@ def _fftn(a, s, axes, norm, direction, value_type='C2C', order='A', plan=None,
 
 
 def _default_fft_func(a, s=None, axes=None, plan=None, value_type='C2C'):
-    from cupy.cuda import cufft
+    cufft = cupy.cuda.cufft  # lazy import
 
     curr_plan = cufft.get_current_plan()
     if curr_plan is not None:
@@ -697,7 +708,7 @@ def fft(a, n=None, axis=-1, norm=None):
 
     .. seealso:: :func:`numpy.fft.fft`
     """
-    from cupy.cuda import cufft
+    cufft = cupy.cuda.cufft  # lazy import
     return _fft(a, (n,), (axis,), norm, cufft.CUFFT_FORWARD)
 
 
@@ -721,7 +732,7 @@ def ifft(a, n=None, axis=-1, norm=None):
 
     .. seealso:: :func:`numpy.fft.ifft`
     """
-    from cupy.cuda import cufft
+    cufft = cupy.cuda.cufft  # lazy import
     return _fft(a, (n,), (axis,), norm, cufft.CUFFT_INVERSE)
 
 
@@ -745,7 +756,7 @@ def fft2(a, s=None, axes=(-2, -1), norm=None):
 
     .. seealso:: :func:`numpy.fft.fft2`
     """
-    from cupy.cuda import cufft
+    cufft = cupy.cuda.cufft  # lazy import
 
     func = _default_fft_func(a, s, axes)
     return func(a, s, axes, norm, cufft.CUFFT_FORWARD)
@@ -771,7 +782,7 @@ def ifft2(a, s=None, axes=(-2, -1), norm=None):
 
     .. seealso:: :func:`numpy.fft.ifft2`
     """
-    from cupy.cuda import cufft
+    cufft = cupy.cuda.cufft  # lazy import
 
     func = _default_fft_func(a, s, axes)
     return func(a, s, axes, norm, cufft.CUFFT_INVERSE)
@@ -797,7 +808,7 @@ def fftn(a, s=None, axes=None, norm=None):
 
     .. seealso:: :func:`numpy.fft.fftn`
     """
-    from cupy.cuda import cufft
+    cufft = cupy.cuda.cufft  # lazy import
 
     func = _default_fft_func(a, s, axes)
     return func(a, s, axes, norm, cufft.CUFFT_FORWARD)
@@ -823,7 +834,7 @@ def ifftn(a, s=None, axes=None, norm=None):
 
     .. seealso:: :func:`numpy.fft.ifftn`
     """
-    from cupy.cuda import cufft
+    cufft = cupy.cuda.cufft  # lazy import
 
     func = _default_fft_func(a, s, axes)
     return func(a, s, axes, norm, cufft.CUFFT_INVERSE)
@@ -850,7 +861,7 @@ def rfft(a, n=None, axis=-1, norm=None):
 
     .. seealso:: :func:`numpy.fft.rfft`
     """
-    from cupy.cuda import cufft
+    cufft = cupy.cuda.cufft  # lazy import
 
     return _fft(a, (n,), (axis,), norm, cufft.CUFFT_FORWARD, 'R2C')
 
@@ -878,7 +889,7 @@ def irfft(a, n=None, axis=-1, norm=None):
 
     .. seealso:: :func:`numpy.fft.irfft`
     """
-    from cupy.cuda import cufft
+    cufft = cupy.cuda.cufft  # lazy import
 
     caster = _compat_caster(a, (axis,))
     return caster(_fft(a, (n,), (axis,), norm, cufft.CUFFT_INVERSE, 'C2R'))
@@ -905,7 +916,7 @@ def rfft2(a, s=None, axes=(-2, -1), norm=None):
 
     .. seealso:: :func:`numpy.fft.rfft2`
     """
-    from cupy.cuda import cufft
+    cufft = cupy.cuda.cufft  # lazy import
 
     func = _default_fft_func(a, s, axes, value_type='R2C')
     return func(a, s, axes, norm, cufft.CUFFT_FORWARD, 'R2C')
@@ -934,7 +945,7 @@ def irfft2(a, s=None, axes=(-2, -1), norm=None):
 
     .. seealso:: :func:`numpy.fft.irfft2`
     """
-    from cupy.cuda import cufft
+    cufft = cupy.cuda.cufft  # lazy import
 
     caster = _compat_caster(a, axes)
     func = _default_fft_func(a, s, axes, value_type='C2R')
@@ -962,7 +973,7 @@ def rfftn(a, s=None, axes=None, norm=None):
 
     .. seealso:: :func:`numpy.fft.rfftn`
     """
-    from cupy.cuda import cufft
+    cufft = cupy.cuda.cufft  # lazy import
 
     func = _default_fft_func(a, s, axes, value_type='R2C')
     return func(a, s, axes, norm, cufft.CUFFT_FORWARD, 'R2C')
@@ -1000,7 +1011,7 @@ def irfftn(a, s=None, axes=None, norm=None):
 
     .. seealso:: :func:`numpy.fft.irfftn`
     """
-    from cupy.cuda import cufft
+    cufft = cupy.cuda.cufft  # lazy import
 
     caster = _compat_caster(a, axes)
     func = _default_fft_func(a, s, axes, value_type='C2R')

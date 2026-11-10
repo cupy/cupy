@@ -29,11 +29,16 @@ import cupy
 
 
 _convolve1d2o_kernel = cupy.ElementwiseKernel(
-    'raw T in1, raw T in2, int32 W, int32 H', 'T out',
+    'raw T in1, raw T in2, int64 W_, int64 H_', 'T out',
     """
+    // W and H are the size of in2 (index_t). `i` may be larger.
+    using index_t = decltype(in2)::index_t;
+    index_t W = static_cast<index_t>(W_);
+    index_t H = static_cast<index_t>(H_);
+
     T temp {};
-    for (int x = 0; x < W; x++) {
-      for (int y = 0; y < H; y++) {
+    for (index_t x = 0; x < W; x++) {
+      for (index_t y = 0; y < H; y++) {
         temp += in1[i + W - x - 1] * in1[i + H - y - 1] * in2[H * x + y];
       }
     }
@@ -132,12 +137,18 @@ def convolve1d2o(in1, in2, mode='valid', method='direct'):
 
 
 _convolve1d3o_kernel = cupy.ElementwiseKernel(
-    'raw T in1, raw T in2, int32 W, int32 H, int32 D', 'T out',
+    'raw T in1, raw T in2, int64 W_, int64 H_, int64 D_', 'T out',
     """
+    // W, H, and D are the size of in2 (index_t). `i` may be larger.
+    using index_t = decltype(in2)::index_t;
+    index_t W = static_cast<index_t>(W_);
+    index_t H = static_cast<index_t>(H_);
+    index_t D = static_cast<index_t>(D_);
+
     T temp {};
-    for (int x = 0; x < W; x++) {
-      for (int y = 0; y < H; y++) {
-        for (int z = 0; z < D; z++) {
+    for (index_t x = 0; x < W; x++) {
+      for (index_t y = 0; y < H; y++) {
+        for (index_t z = 0; z < D; z++) {
           temp += in1[i + W - x - 1] * in1[i + H - y - 1] *
                   in1[i + D - z - 1] * in2[(H * x + y) * D + z];
         }

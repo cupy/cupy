@@ -212,12 +212,12 @@ def _determine_padding(shape, block_size, m1, m2, m3, blockx, blocky):
     return padding_width
 
 
-def _generate_distance_computation(int_type, dist_int_type):
+def _generate_distance_computation(dist_int_type):
     """
     Compute euclidean distance from current coordinate (ind_0, ind_1, ind_2) to
     the coordinates of the nearest point (z, y, x)."""
     return f"""
-    {int_type} tmp = z - ind_0;
+    {dist_int_type} tmp = z - ind_0;
     {dist_int_type} sq_dist = tmp * tmp;
     tmp = y - ind_1;
     sq_dist += tmp * tmp;
@@ -232,7 +232,7 @@ def _get_distance_kernel_code(int_type, dist_int_type, raw_out_var=True):
         ndim=3, int_type=int_type, var_name="dist", raw_var=raw_out_var
     )
     code += _generate_indices_ops(ndim=3, int_type=int_type)
-    code += _generate_distance_computation(int_type, dist_int_type)
+    code += _generate_distance_computation(dist_int_type)
     return code
 
 
@@ -289,7 +289,8 @@ def _get_aniso_distance_kernel(int_type):
 
 
 @cupy.memoize(for_each_device=True)
-def _get_decode_as_distance_kernel(size_max, large_dist=False, sampling=None):
+def _get_decode_as_distance_kernel(
+        size_max, int_type, large_dist=False, sampling=None):
     """Fused decode3d and distance computation.
 
     This kernel is for use when `return_distances=True`, but
@@ -300,7 +301,6 @@ def _get_decode_as_distance_kernel(size_max, large_dist=False, sampling=None):
     """
     if sampling is None:
         dist_int_type = "ptrdiff_t" if large_dist else "int"
-    int_type = "int"
 
     # Step 1: decode the (z, y, x) coordinate
     code = _get_decode3d_code(size_max, int_type=int_type)
@@ -311,7 +311,7 @@ def _get_decode_as_distance_kernel(size_max, large_dist=False, sampling=None):
     )
     code += _generate_indices_ops(ndim=3, int_type=int_type)
     if sampling is None:
-        code += _generate_distance_computation(int_type, dist_int_type)
+        code += _generate_distance_computation(dist_int_type)
         in_params = "E encoded"
     else:
         code += _generate_aniso_distance_computation()
@@ -451,6 +451,7 @@ def _pba_3d(arr, sampling=None, return_distances=True, return_indices=False,
             # Compute distances without forming explicit coordinate arrays.
             kern = _get_decode_as_distance_kernel(
                 size_max=size_max,
+                int_type=_get_inttype(distances),
                 large_dist=large_dist,
                 sampling=sampling
             )
