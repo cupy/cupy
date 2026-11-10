@@ -1,3 +1,0 @@
-========= COMPUTE-SANITIZER
-multi-block count and iterative mask update passed
-========= ERROR SUMMARY: 0 errors
