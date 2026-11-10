@@ -598,7 +598,7 @@ def _get_hipcc_include_dirs():
     )
 
 
-_win32_dll_directories = []
+_win32_dll_directories: list[Any] = []
 
 _win32_rocm_not_found = (
     'CuPy is built for ROCm, but the ROCm installation could not be found. '

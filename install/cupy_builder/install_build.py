@@ -14,6 +14,7 @@ import subprocess
 import sys
 import sysconfig
 import tempfile
+from typing import Any
 
 import cupy_builder
 import cupy_builder.install_utils as utils
@@ -210,7 +211,7 @@ def get_hipcc_path() -> list[str]:
         return None
 
 
-def configure_msvc_for_hip(compiler):
+def configure_msvc_for_hip(compiler: Any) -> None:
     """Makes an MSVC compiler instance use clang-cl from ROCm.
 
     The HIP headers (e.g., ``hiprand_kernel.h``) cannot be compiled with

@@ -162,7 +162,7 @@ def get_features(ctx: Context) -> dict[str, Feature]:
     # the HIP stubs (hip/cupy_*.h) would cause many symbols
     # to leak into all these modules even if unused. It's easier for all of
     # them to link to the same set of shared libraries.
-    HIP_cuda_nvtx_cusolver = {
+    HIP_cuda_nvtx_cusolver: dict[str, Any] = {
         # TODO(leofang): call this "rocm" or "hip" to avoid confusion?
         'name': 'cuda',
         'required': True,
