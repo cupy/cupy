@@ -72,6 +72,8 @@
 /linux/tests/cuda12x-cuda-python.sh linguist-generated
 /linux/tests/cuda13x-cuda-python.Dockerfile linguist-generated
 /linux/tests/cuda13x-cuda-python.sh linguist-generated
+/linux/tests/array-api.Dockerfile linguist-generated
+/linux/tests/array-api.sh linguist-generated
 /linux/tests/benchmark.head.Dockerfile linguist-generated
 /linux/tests/benchmark.head.sh linguist-generated
 /linux/tests/benchmark.Dockerfile linguist-generated

@@ -8,6 +8,11 @@ ACTIONS="$(dirname $0)/actions"
 export CUPY_NVCC_GENERATE_CODE="current"
 export NVCC="ccache nvcc"
 
+# The image's conda env is externally managed (PEP 668), so pip refuses to
+# install into it, including the --user install in unittest.sh. This is a
+# throwaway CI container built around that single env.
+export PIP_BREAK_SYSTEM_PACKAGES=1
+
 # Overwrite:
 #  - CXX to use ccache
 #  - CUDA_PATH set in conda to build CuPy

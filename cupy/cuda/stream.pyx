@@ -105,8 +105,9 @@ class Event(object):
     instance is destroyed by the GC, its handle is also destroyed.
 
     Args:
-        block (bool): If ``True``, the event blocks on the
-            :meth:`~cupy.cuda.Event.synchronize` method.
+        block (bool): If ``True``, :meth:`~cupy.cuda.Event.synchronize`
+            uses a blocking wait instead of busy-waiting. Defaults to
+            ``False``.
         disable_timing (bool): If ``True``, the event does not prepare the
             timing data.
         interprocess (bool): If ``True``, the event can be passed to other
@@ -155,10 +156,11 @@ class Event(object):
         runtime.eventRecord(self.ptr, stream_ptr)
 
     def synchronize(self):
-        """Synchronizes all device work to the event.
+        """Waits for all work captured by the event to complete.
 
-        If the event is created as a blocking event, it also blocks the CPU
-        thread until the event is done.
+        The calling CPU thread waits for the event regardless of the ``block``
+        flag. If ``block=True``, it uses a blocking wait; otherwise, it
+        busy-waits.
 
         """
         runtime.eventSynchronize(self.ptr)
