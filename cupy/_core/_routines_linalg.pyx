@@ -1290,7 +1290,6 @@ cpdef _ndarray_base matmul(
         if (cuda_dtype == runtime.CUDA_R_16F
                 or cuda_dtype == runtime.CUDA_R_16BF):
             if (runtime._is_hip_environment
-                    or orig_a_ndim < 2 or orig_b_ndim < 2
                     or int(device.get_compute_capability()) < (
                         80 if cuda_dtype == runtime.CUDA_R_16BF else 70)):
                 dtype = numpy.dtype('f')
