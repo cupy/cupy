@@ -25,6 +25,13 @@ iteration. Reject unsupported calls during analysis, with a source location
 and reason, before executing the function body. Do not invoke a callable to
 discover whether it is supported.
 
+Scope clarification (2026-11-10): exceptions, generators, coroutines, recursive
+call cycles, dynamic call resolution and arbitrary callbacks are explicitly
+excluded, rather than deferred milestones. Transitive analysis of statically
+resolved numerical helpers remains supported. General scans and sequential
+recurrences are deferred. Prefer analysis-time dispatch between existing
+executors over introducing a general runtime interpreter.
+
 Input constraints
 -----------------
 
@@ -137,7 +144,8 @@ Architecture
 
 1. Bytecode analysis without executing user code
 
-   Decode instructions into basic blocks, including exception edges.
+   Decode supported numerical/control instructions; exception-related bytecode
+   is excluded.
    Construct a control-flow graph and track stack values and local variables
    across branches and loop backedges. Preserve bytecode offsets and source
    locations throughout analysis and lowering.
@@ -215,8 +223,8 @@ Dispatch external operations in this order:
    operations, including explicit host allocation operations.
 2. Recursive bytecode analysis of Python callees, including relevant closure
    and global bindings.
-3. Reject any remaining callable as unsupported, without invoking it. Opaque
-   host-call boundaries may be considered in a later iteration.
+3. Reject any remaining callable as unsupported, without invoking it. Arbitrary
+   callbacks and opaque host-call boundaries are excluded.
 
 Reuse analysis of Python callees through the identity-based analysed-function
 cache described below. For ordinary instance methods, analyse and cache the

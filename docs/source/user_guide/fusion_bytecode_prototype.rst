@@ -100,8 +100,9 @@ Fusion thread-local state is restored after legacy analysis.
 For multiple reductions, the initial partitioner splits after each reduction.
 This avoids the grid-synchronized multi-reduction path for the score example.
 It is a simple heuristic, not a scheduling cost model. Single-reduction
-functions can retain their post-map in the same region. There is no new CUDA
-code generator, reduction implementation, or general optimization framework.
+functions can retain their post-map in the same region. Straight-line regions
+reuse the existing CUDA code generators and reductions; the iterative frontend
+below has a small dedicated CUDA emitter.
 
 Supported subset
 ----------------
@@ -126,16 +127,53 @@ Supported subset
   at runtime and inside their selected branch. Initialization is delegated to
   the original constructor rather than fused with its consumer.
 
-In the straight-line frontend, NumPy arrays, numerical subclasses, properties,
-custom attribute hooks,
-opaque callbacks, mutations, positional output arguments, ``out=``, loops,
-exception handlers, and device-data predicates are not supported yet.
-Metadata of computed intermediate arrays, general array indexing, dynamic
-call resolution, variadic signatures, and discarded arithmetic regions are
+NumPy arrays, numerical subclasses, properties, custom attribute hooks,
+positional output arguments and ``out=`` remain unsupported. Exceptions,
+generators, coroutines, recursive calls, dynamic call resolution and arbitrary
+callbacks are explicitly excluded from the compiler's scope.
+Metadata of computed intermediate arrays, variadic signatures and discarded
+arithmetic regions are
 also outside the subset. A scalar-only region invokes its registered CuPy
 operations directly; it does not yet combine them into one kernel.
 The frontend accepts CPython 3.11--3.14; runtime validation currently covers
 3.14 only. It does not use CPython frame hooks.
+
+Analysis-time dispatch and composition
+--------------------------------------
+
+The operation registry distinguishes fusible operations from ordered library
+boundaries. The emitter flushes numerical regions at a boundary, invokes the
+known implementation on the current stream, and resumes fusion afterwards.
+The initial library set includes ``matmul``/``@``, ``dot``, ``tensordot``,
+``reshape``, ``transpose``/``.T``, ``ascontiguousarray``, ``mean``, ``std``,
+``linalg.solve``, ``linalg.inv``, ``linalg.cholesky``, ``linalg.norm`` and
+one-dimensional ``fft.fft``/``fft.ifft``. This is an explicit registry, not
+permission to call arbitrary functions found in the CuPy namespace.
+
+Statically resolved numerical helpers are first analysed inline. If a helper
+requires the iterative frontend, analysis prepares that kernel as a boundary
+instead. For example, ``sigma_clipped_mean(cp.sin(data @ weight))`` composes a
+matrix-library call, a fused linear region and a cooperative loop kernel.
+Preparing such a helper uses dtype/rank metadata rather than evaluating CuPy
+operations or allocating sample arrays. Initial computed-argument typing covers
+registered elementwise operations, 1D/2D ``matmul``/``dot`` and basic indexing;
+other combinations are rejected explicitly. Source-free functions still work.
+
+Indexing, slice assignment and ``+=``/``-=``/``*=``/``/=`` on arrays are ordered
+boundaries delegated to native CuPy. Their receiver must be C-contiguous.
+Pending expressions are materialized before a write; views retain native
+aliasing, overlapping assignments use CuPy's implementation, and errors
+preserve preceding effects without replay. General indexed writes inside a
+cooperative device loop are not implemented.
+
+Short host-known ``range`` loops containing library operations can be expanded
+during analysis on CPython 3.14, up to 32 total iterations. Input integer bounds
+are guarded, so changing a bound selects another plan. This is bounded
+specialization, not a general host-loop executor. Library calls in
+device-dependent loops remain unsupported. Ordinary device loops continue to
+use the single-kernel path described below. Dispatch occurs at analysis;
+cached ``score`` calls acquire no extra runtime dispatcher. See
+``examples/fusion/bytecode_dispatch.py`` for runnable compositions.
 
 Single-kernel iteration prototype
 --------------------------------
@@ -167,8 +205,12 @@ array, Python scalar parameters, and produces a zero-dimensional
 CuPy output. In particular, counting returns a device int64 scalar instead of
 reading a Python integer back to the host. Integer, float32 and float64 inputs
 and strided views are supported; float16 and complex inputs are excluded.
-Array results, input mutation, general indexing, arbitrary callbacks and
-loop-carried element dependencies remain unsupported. Reduction order can
+Array results, input mutation, general indexing and loop-carried element
+dependencies remain unsupported inside this device kernel. Local input-array
+rebinding with unchanged dtype uses reusable workspace, leaving the caller's
+input unchanged; it cannot be combined with filtered views. Registered basic
+arithmetic and ``sin``, ``cos``, ``tan``, ``exp``, ``log``, ``sqrt`` and ``tanh``
+can occur inside device loops. Reduction order can
 change floating-point rounding and, near a clipping threshold, mask decisions.
 
 Scheduling is confined to iterative plans; cached straight-line calls such as

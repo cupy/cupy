@@ -7,6 +7,7 @@ compacting them. Collectives and range-loop conditions must be block-uniform.
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+from functools import partial
 import builtins
 import inspect
 import sys
@@ -15,7 +16,8 @@ import types
 import numpy as np
 import cupy as cp
 
-from cupy._core._fusion_bytecode import Plan, Unsupported
+from cupy._core._fusion_bytecode import (
+    ArraySpec, Plan, Unsupported, _BY_ID, _BINARY, _COMPARE)
 
 
 _TYPES = {'b': 'signed char', 'B': 'unsigned char', 'h': 'short',
@@ -23,6 +25,12 @@ _TYPES = {'b': 'signed char', 'B': 'unsigned char', 'h': 'short',
           'l': 'long long', 'L': 'unsigned long long',
           'q': 'long long', 'Q': 'unsigned long long',
           '?': 'bool', 'f': 'float', 'd': 'double'}
+_BINARY_UFUNCS = {name: symbol for symbol, name in
+                  {**_BINARY, **_COMPARE}.items()}
+_UNARY_UFUNCS = {'negative': '-', 'positive': '+', 'invert': '~',
+                 'logical_not': '!'}
+_MATH_UFUNCS = {name: getattr(np, name) for name in
+                ('sin', 'cos', 'tan', 'exp', 'log', 'sqrt', 'tanh')}
 _PREAMBLE = r'''
 #ifdef COOPERATIVE
 #include <cooperative_groups.h>
@@ -127,6 +135,8 @@ class Compiler:
         self.result_dtype = None
         self.array_arg = None
         self.input_array = None
+        self.rebound_input = None
+        self.filtered_input = False
         self.element_locals = set()
         self.element_loop_seen = False
         self.current = None
@@ -250,8 +260,14 @@ class Compiler:
             # grid barrier is needed until values are combined by a reduction.
             self.phases.append({'kind': 'array_pass', 'local': name,
                                 'synchronization': 'thread'})
-            if old is self.input_array:
-                self.fail('Reassignment of the input array is unsupported')
+            rebind = old is self.input_array
+            if rebind:
+                if (self.filtered_input or value.where != 'true'
+                        or value.dtype != old.dtype):
+                    self.fail('Input rebinding requires an unfiltered array '
+                              'with unchanged dtype')
+                if self.rebound_input is None:
+                    self.rebound_input = self.buffer(value.dtype)
             if value.where != 'true':
                 # Snapshot selection so later mask updates cannot change this
                 # view. Input data is immutable and need not be copied.
@@ -267,11 +283,16 @@ class Compiler:
             if old is not None and (not old.array or old.dtype != value.dtype
                                     or old.where != 'true'):
                 self.fail('Array locals must retain their dtype and layout')
-            dest = self.buffer(value.dtype) if old is None else old.code[:-4]
+            dest = (self.rebound_input if rebind else
+                    self.buffer(value.dtype) if old is None else old.code[:-4])
             self.emit('for (long long _i = _rank; _i < n; '
                       '_i += _width)')
             self.emit(f'    {dest}[_i] = {value.code};')
-            self.locals[name] = replace(value, code=f'{dest}[_i]')
+            if rebind:
+                self.emit(f'input_data = {dest}; input_stride = 1;')
+                self.locals[name] = self.input_array
+            else:
+                self.locals[name] = replace(value, code=f'{dest}[_i]')
         else:
             if old is not None and (old.array or old.dtype != value.dtype
                                     or old.weak != value.weak):
@@ -329,45 +350,99 @@ class Compiler:
                       f'({typ}){count}) : ({typ})NAN;')
         return Expr(result, dtype)
 
-    def call(self, target, args, kwargs):
-        if target is cp.zeros:
-            if (len(args) != 1 or args[0] != ('shape',)
-                    or kwargs != {'dtype': bool}):
-                self.fail('Only zeros(input.shape, dtype=bool) is supported')
-            return Expr('false', np.dtype(bool), array=True)
+    def _call_zeros(self, args, kwargs):
+        if (len(args) != 1 or args[0] != ('shape',)
+                or kwargs != {'dtype': bool}):
+            self.fail('Only zeros(input.shape, dtype=bool) is supported')
+        return Expr('false', np.dtype(bool), array=True)
+
+    def _call_range(self, args, kwargs):
         if kwargs:
             self.fail('Device calls do not support these keywords')
-        if target is range:
-            if len(args) != 1:
-                self.fail('Only range(stop) is supported')
-            stop = self.scalar(args[0])
-            if stop.array or stop.dtype.kind not in 'iu' or stop.carried:
-                self.fail('range requires a uniform integer bound')
-            index = self.temporary(np.dtype('int64'), 'index')
-            end = self.temporary(np.dtype('int64'), 'end')
-            self.emit(f'{index} = -1; {end} = {stop.code};')
-            return Iterator(index, end)
+        if len(args) != 1:
+            self.fail('Only range(stop) is supported')
+        stop = self.scalar(args[0])
+        if stop.array or stop.dtype.kind not in 'iu' or stop.carried:
+            self.fail('range requires a uniform integer bound')
+        index = self.temporary(np.dtype('int64'), 'index')
+        end = self.temporary(np.dtype('int64'), 'end')
+        self.emit(f'{index} = -1; {end} = {stop.code};')
+        return Iterator(index, end)
+
+    def _call_argument(self, args, kwargs):
+        if kwargs:
+            self.fail('Device calls do not support these keywords')
         if len(args) != 1:
             self.fail('Device call requires one argument')
-        if target is len:
-            value = self.scalar(args[0])
-            if not value.array:
-                self.fail('len requires an array')
-            return (Expr('n', np.dtype('int64')) if value.where == 'true'
-                    else self.reduce('len', value))
-        if target is cp.mean:
-            return self.reduce('mean', args[0])
-        if target is cp.std:
-            return self.reduce('std', args[0])
-        if target is cp.all:
-            return self.reduce('all', args[0])
-        if target is cp.abs or target is abs:
-            value = self.scalar(args[0])
-            if value.carried or value.where != 'true':
-                self.fail('abs requires a dense, non-accumulator expression')
-            code = (f'fabs({value.code})' if value.dtype.kind == 'f' else
-                    f'(({value.code}) < 0 ? -({value.code}) : ({value.code}))')
-            return replace(value, code=code)
+        return args[0]
+
+    def _call_len(self, args, kwargs):
+        value = self.scalar(self._call_argument(args, kwargs))
+        if not value.array:
+            self.fail('len requires an array')
+        return (Expr('n', np.dtype('int64')) if value.where == 'true'
+                else self.reduce('len', value))
+
+    def _call_reduction(self, args, kwargs, *, name):
+        return self.reduce(name, self._call_argument(args, kwargs))
+
+    def _call_abs(self, args, kwargs):
+        value = self.scalar(self._call_argument(args, kwargs))
+        if value.carried or value.where != 'true':
+            self.fail('abs requires a dense, non-accumulator expression')
+        code = (f'fabs({value.code})' if value.dtype.kind == 'f' else
+                f'(({value.code}) < 0 ? -({value.code}) : ({value.code}))')
+        return replace(value, code=code)
+
+    def _call_binary_ufunc(self, args, name):
+        return self.binary(_BINARY_UFUNCS[name], *args)
+
+    def _call_square(self, args, name):
+        return self.binary('*', args[0], args[0])
+
+    def _call_unary_ufunc(self, args, name):
+        return self.unary(_UNARY_UFUNCS[name], args[0])
+
+    def _call_math_ufunc(self, args, name):
+        value = self.scalar(args[0])
+        if value.carried or value.where != 'true':
+            self.fail('Device math requires a dense expression')
+        dtype = _MATH_UFUNCS[name].resolve_dtypes((value.dtype, None))[0]
+        code = f'{name}(({ctype(dtype)})({value.code}))'
+        return replace(value, dtype=dtype, code=code, weak=None)
+
+    # Explicit identity dispatch avoids invoking __hash__/__eq__ on an
+    # unsupported callable. Handlers own validation and lowering; the tables
+    # can later hold operation objects without changing bytecode analysis.
+    _CALL_HANDLERS = {
+        id(cp.zeros): _call_zeros,
+        id(range): _call_range,
+        id(len): _call_len,
+        id(cp.mean): partial(_call_reduction, name='mean'),
+        id(cp.std): partial(_call_reduction, name='std'),
+        id(cp.all): partial(_call_reduction, name='all'),
+        id(cp.abs): _call_abs,
+        id(abs): _call_abs,
+    }
+    _UFUNC_HANDLERS = {
+        **dict.fromkeys(_BINARY_UFUNCS, _call_binary_ufunc),
+        **dict.fromkeys(_UNARY_UFUNCS, _call_unary_ufunc),
+        **dict.fromkeys(_MATH_UFUNCS, _call_math_ufunc),
+        'square': _call_square,
+    }
+
+    def call(self, target, args, kwargs):
+        handler = self._CALL_HANDLERS.get(id(target))
+        if handler is not None:
+            return handler(self, args, kwargs)
+        self._call_argument(args, kwargs)
+        operation = _BY_ID.get(id(target))
+        if operation is not None and operation.kind == 'map':
+            if len(args) != operation.implementation.nin:
+                self.fail('Device ufunc arguments do not match its arity')
+            handler = self._UFUNC_HANDLERS.get(operation.name)
+            if handler is not None:
+                return handler(self, args, operation.name)
         self.fail('Call has no registered single-kernel implementation')
 
     def target(self, offset, stack):
@@ -392,14 +467,17 @@ class Compiler:
             self.fail('Generators and coroutines are unsupported')
         for i, (name, arg) in enumerate(zip(
                 self.entry.signature.parameters, self.args)):
-            if type(arg) is cp.ndarray:
+            if type(arg) in (cp.ndarray, ArraySpec):
                 if self.array_arg is not None or arg.ndim != 1:
                     self.fail('Single-kernel loops require one 1D input array')
                 self.array_arg = i
                 typ = ctype(arg.dtype)
                 self.parameters.extend([f'const {typ}* a{i}', 'long long n',
                                         'long long stride'])
-                self.locals[name] = Expr(f'a{i}[_i * stride]', arg.dtype,
+                self.declarations.extend((f'const {typ}* input_data = a{i};',
+                                          'long long input_stride = stride;'))
+                self.locals[name] = Expr('input_data[_i * input_stride]',
+                                         arg.dtype,
                                          array=True)
                 self.input_array = self.locals[name]
             elif type(arg) in (int, float, bool):
@@ -505,6 +583,7 @@ class Compiler:
                         or not index.array or index.dtype.kind != 'b'
                         or index.where != 'true'):
                     self.fail('Only dense-array boolean indexing is supported')
+                self.filtered_input = True
                 stack.append(replace(value, where=index.code))
             elif op in ('BINARY_OP', 'COMPARE_OP'):
                 right, left = stack.pop(), stack.pop()
@@ -615,6 +694,9 @@ class Compiler:
                 self.fail(f'Unsupported single-kernel instruction {op}')
         if not self.used_loop or self.result_dtype is None:
             self.fail('Single-kernel lowering requires iteration and a return')
+        if self.rebound_input is not None and self.filtered_input:
+            self.fail('Device input rebinding cannot be combined with '
+                      'filtered views')
         self.parameters.append(f'{ctype(self.result_dtype)}* output')
         self.parameters.append('unsigned long long* partials')
         source = (_PREAMBLE + '\nextern "C" __global__ void iterative('

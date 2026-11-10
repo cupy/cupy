@@ -15,6 +15,7 @@ import operator
 import sys
 import time
 import types
+from typing import Any
 
 import numpy as np
 
@@ -50,6 +51,13 @@ class Value:
     kind: str
     sample: object = None
     source: str | None = None
+
+
+@dataclass
+class ArraySpec:
+    """Type metadata for a computed array; never allocates device storage."""
+    dtype: np.dtype
+    ndim: int
 
 
 @dataclass
@@ -99,7 +107,40 @@ class Allocation(Operation):
                          frozenset({'shape', 'dtype', 'order', 'fill_value'}))
 
 
-_OPERATIONS = [Elementwise(name, getattr(cp, name)) for name in (
+class Library(Operation):
+    """A known implementation, emitted as an ordered region boundary."""
+
+    def __init__(self, name, implementation, keywords=()):
+        super().__init__(name, implementation, 'library', frozenset(keywords))
+
+
+def _contiguous(array):
+    if type(array) is not cp.ndarray or not array.flags.c_contiguous:
+        raise Unsupported('Indexing and mutation require C-contiguous arrays')
+    return array
+
+
+def _getitem(array, index):
+    return _contiguous(array)[index]
+
+
+def _setitem(array, index, value):
+    _contiguous(array)[index] = value
+
+
+def _inplace(array, value, operation):
+    return operation(_contiguous(array), value)
+
+
+_GETITEM = Library('getitem', _getitem)
+_SETITEM = Library('setitem', _setitem)
+_INPLACE = {symbol: Library(symbol, lambda a, b, op=op: _inplace(a, b, op))
+            for symbol, op in (
+                ('+=', operator.iadd), ('-=', operator.isub),
+                ('*=', operator.imul), ('/=', operator.itruediv))}
+
+
+_OPERATIONS: list[Any] = [Elementwise(name, getattr(cp, name)) for name in (
     'add', 'subtract', 'multiply', 'true_divide', 'floor_divide', 'remainder',
     'power', 'negative', 'positive', 'absolute', 'sin', 'cos', 'tan', 'exp',
     'log', 'sqrt', 'square', 'maximum', 'minimum', 'equal', 'not_equal',
@@ -111,6 +152,20 @@ _OPERATIONS += [Reduction(name, getattr(cp, name)) for name in (
 _OPERATIONS += [Allocation(name, getattr(cp, name)) for name in (
     'empty', 'zeros', 'ones', 'full', 'empty_like', 'zeros_like', 'ones_like',
     'full_like')]
+_OPERATIONS += [Library(name, getattr(cp, name), keywords)
+                for name, keywords in (
+                    ('matmul', ()), ('dot', ()), ('tensordot', ('axes',)),
+                    ('reshape', ('shape', 'order')),
+                    ('transpose', ('axes',)),
+                    ('ascontiguousarray', ('dtype',)),
+                    ('mean', ('axis', 'dtype', 'keepdims')),
+                    ('std', ('axis', 'dtype', 'ddof', 'keepdims')))]
+_OPERATIONS += [Library('linalg.' + name, getattr(cp.linalg, name), keywords)
+                for name, keywords in (('solve', ()), ('inv', ()),
+                                       ('cholesky', ()),
+                                       ('norm', ('ord', 'axis', 'keepdims')))]
+_OPERATIONS += [Library('fft.' + name, getattr(cp.fft, name),
+                        ('n', 'axis', 'norm')) for name in ('fft', 'ifft')]
 _BY_NAME = {op.name: op for op in _OPERATIONS}
 _BY_ID = {id(op.implementation): op for op in _OPERATIONS}
 _BINARY = dict(zip(
@@ -118,6 +173,7 @@ _BINARY = dict(zip(
     ('add', 'subtract', 'multiply', 'true_divide', 'floor_divide',
      'remainder', 'power', 'bitwise_and', 'bitwise_or', 'bitwise_xor',
      'left_shift', 'right_shift')))
+_BINARY['@'] = 'matmul'
 _COMPARE = {'<': 'less', '<=': 'less_equal', '==': 'equal',
             '!=': 'not_equal', '>': 'greater', '>=': 'greater_equal'}
 _HOST_COMPARE = {'<': operator.lt, '<=': operator.le, '==': operator.eq,
@@ -180,6 +236,8 @@ def _walk_values(value):
     elif isinstance(value, (tuple, list)):
         for item in value:
             yield from _walk_values(item)
+    elif type(value) is slice:
+        yield from _walk_values((value.start, value.stop, value.step))
 
 
 class Builder:
@@ -190,6 +248,8 @@ class Builder:
         self.callees = []
         self.active = set()
         self.location = {}
+        self.loop_targets = set()
+        self.unrolled = 0
 
     def fail(self, reason):
         loc = self.location
@@ -210,6 +270,10 @@ class Builder:
         return Value(source, kind, sample, source)
 
     def operation(self, op, args, kwargs):
+        if (op in (_GETITEM, _SETITEM, *_INPLACE.values()) and (
+                not args or not isinstance(args[0], Value)
+                or args[0].kind != 'array')):
+            self.fail('Indexing and mutation require an array operand')
         if op.kind == 'map' and len(args) != op.implementation.nin:
             self.fail(f'{op.name} requires {op.implementation.nin} inputs; '
                       'positional output arguments are unsupported')
@@ -236,6 +300,44 @@ class Builder:
         self.nodes.append(Node(op, tuple(args), dict(kwargs), value,
                                self.location.copy()))
         return value
+
+    def sample(self, value):
+        """Infer only types needed to prepare a non-linear callee."""
+        if not isinstance(value, Value):
+            return value
+        if value.sample is not None:
+            return value.sample
+        node = next(n for n in self.nodes if n.output is value)
+        samples = [self.sample(v) for v in node.arguments]
+        arrays = [v for v in samples if type(v) in (cp.ndarray, ArraySpec)]
+        dtypes = [v.dtype if type(v) in (cp.ndarray, ArraySpec)
+                  or type(v) in _SCALAR_TYPES else
+                  np.dtype('uint8') if type(v) is bool else type(v)
+                  for v in samples]
+        if node.operation.kind == 'map':
+            ufunc = getattr(np, node.operation.name)
+            dtype = ufunc.resolve_dtypes(tuple(dtypes) + (None,))[-1]
+            ndim = max((v.ndim for v in arrays), default=0)
+        elif node.operation.name in ('matmul', 'dot') and len(arrays) == 2:
+            left, right = arrays
+            if left.ndim not in (1, 2) or right.ndim not in (1, 2):
+                self.fail('Callee typing after matmul/dot requires '
+                          '1D/2D inputs')
+            dtype = np.result_type(*dtypes)
+            ndim = left.ndim + right.ndim - 2
+        elif node.operation is _GETITEM and arrays:
+            dtype, ndim = arrays[0].dtype, arrays[0].ndim
+            index = samples[1]
+            indices = index if type(index) is tuple else (index,)
+            if not all(type(i) in (int, slice) for i in indices):
+                self.fail('Callee typing requires basic integer/slice '
+                          'indexing')
+            ndim -= sum(type(i) is int for i in indices)
+        else:
+            self.fail(f'No callee type rule for {node.operation.name}')
+        value.sample = (ArraySpec(dtype, ndim) if arrays
+                        else np.dtype(dtype).type(0))
+        return value.sample
 
     def attribute(self, obj, name):
         if isinstance(obj, Value):
@@ -267,6 +369,10 @@ class Builder:
                                 getattr(obj.sample, name))
             if name in ('sum', 'prod', 'min', 'max', 'all', 'any'):
                 return Method(obj, name)
+            if name == 'T':
+                return self.operation(_BY_NAME['transpose'], (obj,), {})
+            if name in ('reshape', 'transpose'):
+                return Method(obj, name)
             self.fail(f'Unsupported numerical attribute {name!r}')
         if type(obj) is types.ModuleType:
             if name not in vars(obj):
@@ -276,6 +382,10 @@ class Builder:
 
     def call(self, function, args, kwargs):
         if isinstance(function, Method):
+            if (function.name in ('reshape', 'transpose') and len(args) > 1
+                    or function.name == 'transpose' and args
+                    and type(args[0]) is int):
+                args = (tuple(args),)
             return self.operation(_BY_NAME[function.name],
                                   (function.receiver, *args), kwargs)
         if isinstance(function, tuple) and len(function) == 2:
@@ -290,10 +400,55 @@ class Builder:
             return self.operation(op, args, kwargs)
         if function is abs:
             return self.operation(_BY_NAME['absolute'], args, kwargs)
+        if function is range:
+            if sys.version_info[:2] != (3, 14) or kwargs:
+                self.fail('Host range analysis requires CPython 3.14')
+            values = []
+            for arg in args:
+                sample = (arg.sample if isinstance(arg, (Value, Metadata))
+                          else arg)
+                if type(sample) is not int:
+                    self.fail('Host range bounds must be static or '
+                              'input integers')
+                if isinstance(arg, (Value, Metadata)):
+                    source = arg.source
+                    if source is None:
+                        self.fail('Host range requires an input bound')
+                    self.guards.append((f'({source} == {sample!r})', True))
+                values.append(sample)
+            return range(*values)
         if type(function) is FusedFunction:
             function = function.func
         if type(function) is types.FunctionType:
-            return self.run(function, args, kwargs)
+            if id(function) in self.active:
+                self.fail('Recursive call cycles are excluded')
+            lengths = len(self.nodes), len(self.guards), len(self.callees)
+            unrolled = self.unrolled
+            try:
+                return self.run(function, args, kwargs)
+            except Unsupported as original:
+                del self.nodes[lengths[0]:]
+                del self.guards[lengths[1]:]
+                del self.callees[lengths[2]:]
+                self.unrolled = unrolled
+                bound = self.analyzer.analyse(function).signature.bind(
+                    *args, **kwargs)
+                bound.apply_defaults()
+                values = tuple(bound.arguments.values())
+                from cupy._core._fusion_bytecode_kernel import compile_kernel
+                try:
+                    samples = tuple(map(self.sample, values))
+                    plan = compile_kernel(function, samples,
+                                          self.analyzer)
+                except Unsupported as error:
+                    raise Unsupported(f'{original}\nCallee lowering: '
+                                      f'{error}') from None
+                operation = Library(function.__qualname__, plan.execute)
+                operation.plan = plan
+                self.callees.extend(plan.report['callees'])
+                result = self.operation(operation, values, {})
+                result.sample = ArraySpec(plan.execute.dtype, 0)
+                return result
         self.fail('Call has neither compilable bytecode nor a registered '
                   'CUDA implementation')
 
@@ -332,6 +487,7 @@ class Builder:
         index = 0
         self.active.add(id(function))
         previous = self.location
+        previous_targets, self.loop_targets = self.loop_targets, set()
         try:
             while index < len(entry.instructions):
                 ins = entry.instructions[index]
@@ -394,11 +550,16 @@ class Builder:
                     right, left = stack.pop(), stack.pop()
                     symbol = ins.argrepr
                     if symbol == '[]':
-                        if (not isinstance(left, Metadata)
-                                or type(right) is not int):
-                            self.fail('Only metadata indexing is supported')
-                        stack.append(Metadata(f'{left.source}[{right}]',
-                                              left.sample[right]))
+                        if isinstance(left, Metadata) and type(right) is int:
+                            stack.append(Metadata(f'{left.source}[{right}]',
+                                                  left.sample[right]))
+                        else:
+                            stack.append(self.operation(_GETITEM,
+                                                        (left, right), {}))
+                    elif symbol in _INPLACE and isinstance(left, Value) \
+                            and left.kind == 'array':
+                        stack.append(self.operation(_INPLACE[symbol],
+                                                    (left, right), {}))
                     elif symbol in _BINARY:
                         stack.append(self.operation(_BY_NAME[_BINARY[symbol]],
                                                     (left, right), {}))
@@ -406,11 +567,51 @@ class Builder:
                         self.fail(f'Unsupported operator {symbol!r}')
                 elif name == 'BINARY_SUBSCR':
                     right, left = stack.pop(), stack.pop()
-                    if (not isinstance(left, Metadata)
-                            or type(right) is not int):
-                        self.fail('Only metadata indexing is supported')
-                    stack.append(Metadata(f'{left.source}[{right}]',
-                                          left.sample[right]))
+                    if isinstance(left, Metadata) and type(right) is int:
+                        stack.append(Metadata(f'{left.source}[{right}]',
+                                              left.sample[right]))
+                    else:
+                        stack.append(self.operation(_GETITEM,
+                                                    (left, right), {}))
+                elif name == 'BUILD_SLICE':
+                    items = stack[-ins.arg:]
+                    del stack[-ins.arg:]
+                    stack.append(slice(*items))
+                elif name == 'BINARY_SLICE':
+                    stop, start, value = stack.pop(), stack.pop(), stack.pop()
+                    stack.append(self.operation(
+                        _GETITEM, (value, slice(start, stop)), {}))
+                elif name == 'STORE_SUBSCR':
+                    subscript, array, value = (stack.pop(), stack.pop(),
+                                               stack.pop())
+                    self.operation(_SETITEM, (array, subscript, value), {})
+                elif name == 'STORE_SLICE':
+                    stop, start = stack.pop(), stack.pop()
+                    array, value = stack.pop(), stack.pop()
+                    self.operation(_SETITEM,
+                                   (array, slice(start, stop), value), {})
+                elif name == 'GET_ITER':
+                    value = stack.pop()
+                    if type(value) is not range:
+                        self.fail('Element iteration requires '
+                                  'the CUDA frontend')
+                    stack.append(iter(value))
+                elif name == 'FOR_ITER':
+                    iterator = stack[-1]
+                    self.loop_targets.add(ins.offset)
+                    value = next(iterator, None)
+                    if value is None:
+                        index = entry.offsets[ins.argval]
+                    else:
+                        self.unrolled += 1
+                        if self.unrolled > 32:
+                            self.fail('Host range expansion is limited '
+                                      'to 32 iterations')
+                        stack.append(value)
+                elif name == 'END_FOR':
+                    pass
+                elif name == 'POP_ITER':
+                    stack.pop()
                 elif name == 'COMPARE_OP':
                     right, left = stack.pop(), stack.pop()
                     symbol = ins.argrepr.replace('bool(', '').rstrip(')')
@@ -454,8 +655,10 @@ class Builder:
                         if ins.argval <= ins.offset:
                             self.fail('Loops are not supported yet')
                         index = entry.offsets[ins.argval]
-                elif name in ('JUMP_FORWARD', 'JUMP_ABSOLUTE'):
-                    if ins.argval <= ins.offset:
+                elif name in ('JUMP_FORWARD', 'JUMP_ABSOLUTE', 'JUMP_BACKWARD',
+                              'JUMP_BACKWARD_NO_INTERRUPT'):
+                    if (ins.argval <= ins.offset
+                            and ins.argval not in self.loop_targets):
                         self.fail('Loops are not supported yet')
                     index = entry.offsets[ins.argval]
                 elif name == 'BUILD_TUPLE':
@@ -485,6 +688,7 @@ class Builder:
         finally:
             self.active.remove(id(function))
             self.location = previous
+            self.loop_targets = previous_targets
 
 
 class RegionKernel:
@@ -580,6 +784,11 @@ class Emitter:
             if not value:
                 return '()'
             return '(' + ', '.join(self.render(v, names) for v in value) + ',)'
+        if type(value) is slice:
+            return f'{self.bind(slice)}(' + ', '.join(
+                self.render(v, names)
+                for v in (value.start, value.stop, value.step)
+            ) + ')'
         if type(value) in (type(None), bool, int, float, complex, str):
             # Keep weak literal origin; scalar arithmetic uses registered
             # ufuncs, never NumPy host arithmetic during analysis or tracing.
@@ -608,7 +817,7 @@ class Emitter:
         start = 0
         while start < len(nodes):
             node = nodes[start]
-            if node.operation.kind == 'allocation':
+            if node.operation.kind not in ('map', 'reduction'):
                 expr = node.operation.emit(node.arguments, node.keywords,
                                            self.render, self.bind)
                 lines.append(f'    {node.output.name} = {expr}')
@@ -616,7 +825,7 @@ class Emitter:
                 continue
             end = start
             while (end < len(nodes)
-                   and nodes[end].operation.kind != 'allocation'):
+                   and nodes[end].operation.kind in ('map', 'reduction')):
                 end += 1
                 if (staged_reductions and
                         nodes[end - 1].operation.kind == 'reduction'):
@@ -681,6 +890,14 @@ class Emitter:
                                 'complex': 'complex128', 'bool': 'uint8',
                                 'numpy_warnings': False},
         }
+        boundaries = [dict(operation=n.operation.name,
+                           plan=getattr(n.operation, 'plan', None).report
+                           if hasattr(n.operation, 'plan') else None)
+                      for n in nodes if n.operation.kind == 'library']
+        if boundaries:
+            report['boundaries'] = boundaries
+        if self.builder.unrolled:
+            report['expanded_iterations'] = self.builder.unrolled
         return Plan(execute, accepts, self.regions, source, report)
 
 
