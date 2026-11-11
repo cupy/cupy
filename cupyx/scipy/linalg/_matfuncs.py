@@ -294,9 +294,7 @@ def _bbc_t8_finalize(A, A2, A8):
 # Degree-12 coefficient matrix b_12 from PyTorch's compute_T12
 # (aten/src/ATen/native/LinearAlgebra.cpp).  Row i = coefficients of
 # q_i in powers [I, A, A2, A3].  The resulting p_12(A) is identical
-# to Lezcano's factorisation, but this parametrisation preserves
-# ~20% more accuracy in float32 / float64 / complex64 / complex128
-# across the deg-12 norm band.
+# to Lezcano's factorisation.
 # q32 = _BBC_T12_C32*I + r32 and q33 = _BBC_T12_C33*I + r33; the 9e-16
 # identity term of q31 only completes c*c' to 1 and is dropped (p31).
 @cupy.fuse
