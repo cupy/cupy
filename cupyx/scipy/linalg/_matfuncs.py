@@ -87,6 +87,11 @@ _BBC_T12_C33 = 0.18188869982170434744
 _BBC_T18_C62 = -1.09676396052962061844e+01
 _BBC_T18_C63 = -9.04316832390810593223e-02
 
+# Smallest n (single, double precision) at which the scaling is refined
+# with the bound of [2]. Its two extra norm evaluations cost as much as
+# several squarings while a matmul is not much dearer than a kernel launch.
+_BBC_SHARP_MIN_N = (2048, 512)
+
 
 def expm(a):
     """Compute the matrix exponential.
@@ -104,6 +109,8 @@ def expm(a):
     Uses the Bader-Blanes-Casas optimized Taylor polynomial algorithm
     [1]_ with degrees 1, 2, 4, 8, 12, or 18, selected by the
     trace-shifted matrix 1-norm, followed by scaling and squaring.
+    For large matrices the scaling is then reduced by using
+    ``max(||A^2||^(1/2), ||A^3||^(1/3))`` in place of ``||A||`` [2]_.
     Both stages work on ``exp(A) - I`` and the identity is added at the
     end. Matrix balancing is not performed.
 
@@ -113,6 +120,10 @@ def expm(a):
        Exponential with an Optimized Taylor Polynomial Algorithm",
        Mathematics 7(12), 1174 (2019).
        https://doi.org/10.3390/math7121174
+    .. [2] A. H. Al-Mohy and N. J. Higham, "A New Scaling and Squaring
+       Algorithm for the Matrix Exponential", SIAM J. Matrix Anal. Appl.
+       31(3), 970-989 (2009).
+       https://doi.org/10.1137/09074721X
 
     """
     if a.size == 0:
@@ -129,9 +140,8 @@ def expm(a):
     E = cupy.eye(n, dtype=a_dtype)
     A = a - E*mu
 
-    thetas = (_BBC_THETA_SINGLE
-              if a_dtype in (cupy.float32, cupy.complex64)
-              else _BBC_THETA_DOUBLE)
+    single = a_dtype in (cupy.float32, cupy.complex64)
+    thetas = _BBC_THETA_SINGLE if single else _BBC_THETA_DOUBLE
 
     nrmA = cupy.linalg.norm(A, ord=1).item()
     s = 0
@@ -151,7 +161,8 @@ def expm(a):
     if deg <= 8:
         x = _bbc_low_m1(A, E, deg)
     else:
-        x = _bbc_high_m1(A, E, deg)
+        sharp = n >= _BBC_SHARP_MIN_N[0 if single else 1]
+        x, s = _bbc_high_m1(A, E, deg, s, thetas, sharp)
     del A, E
 
     # (I + x) @ (I + x) - I
@@ -188,29 +199,54 @@ def _bbc_low_m1(A, E, deg):
     raise ValueError(f'unsupported BBC degree: {deg}')
 
 
-def _bbc_high_m1(A, E, deg):
-    """Return T(A) - I for the BBC Taylor polynomial T of degree 12 or 18."""
+def _bbc_high_m1(A, E, deg, s, thetas, sharp):
+    """Return ``(T(A) - I, s)`` for the BBC Taylor polynomial T of degree
+    12 or 18.
+
+    `A` must already be scaled by ``2**-s``. With `sharp`, part of that
+    scaling may be undone in place (`s` is lowered to match) and the
+    degree may drop from 18 to 12.
+    """
+    A2 = A @ A
+    A3 = A @ A2
+    if sharp and deg == 18:
+        # ||A^k|| <= alpha^k for every k >= 2 (write k = 2i + 3j), so alpha
+        # can replace ||A|| in the truncation bound behind thetas [2]. For
+        # large dense matrices ||A|| is several times larger than alpha.
+        alpha = max(math.sqrt(cupy.linalg.norm(A2, ord=1).item()),
+                    cupy.linalg.norm(A3, ord=1).item() ** (1 / 3))
+        # Trust alpha only if A2 and A3 cannot have underflowed.
+        finfo = cupy.finfo(A.dtype)
+        if alpha ** 3 * finfo.eps ** 2 > finfo.tiny:
+            k = min(s, math.floor(math.log2(thetas[-1] / alpha)))
+            if k > 0:
+                # scaling by powers of two is exact
+                A *= 2.0 ** k
+                A2 *= 4.0 ** k
+                A3 *= 8.0 ** k
+                alpha *= 2.0 ** k
+                s -= k
+            if alpha <= thetas[-2]:
+                deg = 12
     # Both schemes of [1] end in (c*I + left) @ (c'*I + right) with
     # c*c' = 1. The identity parts are multiplied out by hand, so only
     # left @ right goes through the matmul.
     # TODO: the post-matmul adds could fold into the matmul itself
     # (C = A@B + βC) once nvmath-python's advanced matmul or cupy.fuse's
     # matmul support becomes available.
-    A2 = A @ A
-    A3 = A @ A2
     if deg == 12:
         p31, r32, r33, q34 = _bbc_t12_qs(E, A, A2, A3)
         del A2, A3
         right, left = _bbc_mid(r32, r33, q34 @ q34)
         del r32, r33, q34
-        return _bbc_t12_finalize(p31, right, left, left @ right)
+        return _bbc_t12_finalize(p31, right, left, left @ right), s
     if deg == 18:
         A6 = A3 @ A3
         q31, q61, r62, r63, q64 = _bbc_t18_qs(A, A2, A3, A6)
         del A2, A3, A6
         right, left = _bbc_mid(r62, r63, q31 @ q64)
         del q31, r62, r63, q64
-        return _bbc_t18_finalize(q61, right, left, left @ right)
+        return _bbc_t18_finalize(q61, right, left, left @ right), s
     raise ValueError(f'unsupported BBC degree: {deg}')
 
 

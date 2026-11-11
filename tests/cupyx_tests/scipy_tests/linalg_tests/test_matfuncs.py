@@ -5,6 +5,7 @@ from numpy import linalg
 
 import cupy
 from cupyx.scipy.linalg import khatri_rao
+from cupyx.scipy.linalg import _matfuncs
 from cupyx.scipy import linalg as cx_linalg
 import pytest
 from cupy import testing
@@ -195,6 +196,31 @@ class TestExpM:
         assert result.dtype == dtype
         err = cupy.linalg.norm(result - expected) / cupy.linalg.norm(expected)
         assert float(err) < 50 * np.finfo(dtype).eps
+
+    @pytest.mark.parametrize('kind', ['dense', 'triu', 'graded'])
+    @pytest.mark.parametrize('norm', [2., 30., 300.])
+    @testing.for_dtypes('fdFD')
+    def test_refined_scaling(self, dtype, kind, norm, monkeypatch):
+        # The refined scaling is normally reserved for large matrices.
+        monkeypatch.setattr(_matfuncs, '_BBC_SHARP_MIN_N', (0, 0))
+        n = 96
+        rng = np.random.default_rng(7)
+        a = rng.standard_normal((n, n))
+        if np.issubdtype(dtype, np.complexfloating):
+            a = a + 1j * rng.standard_normal((n, n))
+        if kind == 'triu':
+            a = np.triu(a, 1)
+        elif kind == 'graded':
+            d = np.logspace(0, 3, n)
+            a = d[:, None] * a / d
+        a *= norm / np.linalg.norm(a, 1)
+        a = a.astype(dtype)
+        expected = scipy.linalg.expm(a.astype(np.promote_types(dtype, 'd')))
+        result = cx_linalg.expm(cupy.asarray(a))
+        assert result.dtype == dtype
+        err = (np.linalg.norm(result.get() - expected)
+               / np.linalg.norm(expected))
+        assert err < 100 * np.finfo(dtype).eps
 
     @pytest.mark.parametrize('scale', [0.01, 0.1, 0.5, 1.5, 3., 8., 100.])
     @testing.for_dtypes('fdFD')
