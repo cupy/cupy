@@ -462,10 +462,12 @@ struct _sort {
             if constexpr (std::is_same<T, thrust_bfloat16>::value) {
                 return bfloat16_radix_sort<Descending>(
                     dp_data_first, dp_data_first, size, stream_, alloc);
-            }
+            } else
             #endif
-            stable_sort(cuda::par_nosync(alloc).on(stream_), dp_data_first, dp_data_last,
-                        direct_cmp_t<T, Descending>{});
+            {
+                stable_sort(cuda::par_nosync(alloc).on(stream_), dp_data_first, dp_data_last,
+                            direct_cmp_t<T, Descending>{});
+            }
         } else {
             // Generate key indices.
             dp_keys_first = thrust::device_pointer_cast(keys_start);
@@ -589,13 +591,15 @@ struct _argsort {
             if constexpr (std::is_same<T, thrust_bfloat16>::value) {
                 return bfloat16_radix_sort<Descending>(
                     dp_data_first, dp_idx_first, size, stream_, alloc);
-            }
+            } else
             #endif
-            stable_sort_by_key(cuda::par_nosync(alloc).on(stream_),
-                               dp_data_first,
-                               dp_data_last,
-                               dp_idx_first,
-                               direct_cmp_t<T, Descending>{});
+            {
+                stable_sort_by_key(cuda::par_nosync(alloc).on(stream_),
+                                   dp_data_first,
+                                   dp_data_last,
+                                   dp_idx_first,
+                                   direct_cmp_t<T, Descending>{});
+            }
         } else {
             // Generate key indices.
             dp_keys_first = thrust::device_pointer_cast(static_cast<size_t*>(keys_start));
