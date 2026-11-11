@@ -164,6 +164,38 @@ class TestExpM:
         a *= 100 / np.linalg.norm(a, 1)
         return scp.linalg.expm(xp.asarray(a, dtype=dtype))
 
+    @testing.for_dtypes('fdFD')
+    def test_large_skew_hermitian_unitary(self, dtype):
+        # Roundoff grows with n if the identity goes through the matmuls.
+        n = 1024
+        rng = np.random.default_rng(1234)
+        a = rng.standard_normal((n, n))
+        if np.issubdtype(dtype, np.complexfloating):
+            a = a + 1j * rng.standard_normal((n, n))
+        a = a - a.conj().T
+        a *= 100 / np.linalg.norm(a, 1)
+        u = cx_linalg.expm(cupy.asarray(a, dtype=dtype))
+        assert u.dtype == dtype
+        u = u.astype(cupy.complex128)
+        defect = cupy.linalg.norm(u.conj().T @ u - cupy.eye(n)) / n**0.5
+        assert float(defect) < 150 * np.finfo(dtype).eps
+
+    @testing.for_dtypes('fF')
+    def test_large_single_precision(self, dtype):
+        n = 1024
+        rng = np.random.default_rng(4321)
+        a = rng.standard_normal((n, n))
+        if np.issubdtype(dtype, np.complexfloating):
+            a = a + 1j * rng.standard_normal((n, n))
+        a *= 1000 / np.linalg.norm(a, 1)
+        a += 0.5 * np.eye(n)
+        a = cupy.asarray(a, dtype=dtype)
+        expected = cx_linalg.expm(a.astype(np.promote_types(dtype, 'd')))
+        result = cx_linalg.expm(a)
+        assert result.dtype == dtype
+        err = cupy.linalg.norm(result - expected) / cupy.linalg.norm(expected)
+        assert float(err) < 50 * np.finfo(dtype).eps
+
     @pytest.mark.parametrize('scale', [0.01, 0.1, 0.5, 1.5, 3., 8., 100.])
     @testing.for_dtypes('fdFD')
     def test_nilpotent(self, dtype, scale):

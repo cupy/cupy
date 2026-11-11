@@ -79,6 +79,14 @@ _BBC_T8_X6 = (-99.0 + 11.0 * _BBC_T8_SQRT177) / (5040.0 * _BBC_T8_X3)
 _BBC_T8_X7 = (89.0 - _BBC_T8_SQRT177) / (5040.0 * _BBC_T8_X3 * _BBC_T8_X3)
 _BBC_T8_Y2 = (857.0 - 58.0 * _BBC_T8_SQRT177) / 630.0
 
+# Identity coefficients of q32, q33 (degree 12) and q62, q63 (degree 18).
+# They are multiplied out by hand in _bbc_high_m1 instead of entering a
+# matmul.
+_BBC_T12_C32 = 5.31597895759871264183
+_BBC_T12_C33 = 0.18188869982170434744
+_BBC_T18_C62 = -1.09676396052962061844e+01
+_BBC_T18_C63 = -9.04316832390810593223e-02
+
 
 def expm(a):
     """Compute the matrix exponential.
@@ -96,7 +104,8 @@ def expm(a):
     Uses the Bader-Blanes-Casas optimized Taylor polynomial algorithm
     [1]_ with degrees 1, 2, 4, 8, 12, or 18, selected by the
     trace-shifted matrix 1-norm, followed by scaling and squaring.
-    Matrix balancing is not performed.
+    Both stages work on ``exp(A) - I`` and the identity is added at the
+    end. Matrix balancing is not performed.
 
     References
     ----------
@@ -137,10 +146,20 @@ def expm(a):
             deg = d
             break
 
-    x = _bbc_taylor(A, E, deg)
+    # x = exp(A) - I. An O(1) identity inside a matmul gets its diagonal
+    # rounded relative to 1 on every accumulation; that error grows with n.
+    if deg <= 8:
+        x = _bbc_low_m1(A, E, deg)
+    else:
+        x = _bbc_high_m1(A, E, deg)
+    del A, E
 
+    # (I + x) @ (I + x) - I
     for _ in range(s):
-        x = x @ x
+        x = _expm_square_m1(x, x @ x)
+
+    d = x.diagonal()
+    d += 1
 
     # undo preprocessing
     emu = cmath.exp(mu) if cupy.issubdtype(
@@ -150,45 +169,59 @@ def expm(a):
     return x
 
 
-def _bbc_taylor(A, E, deg):
-    """Return the degree-`deg` BBC Taylor approximation of exp(A)."""
+def _bbc_low_m1(A, E, deg):
+    """Return T(A) - I for the BBC Taylor polynomial T of degree <= 8.
+
+    The result may be `A` itself.
+    """
     if deg == 1:
-        return E + A
+        return A
+    A2 = A @ A
     if deg == 2:
-        A2 = A @ A
-        return _bbc_t2(E, A, A2)
+        return _bbc_t2(A, A2)
     if deg == 4:
-        A2 = A @ A
-        return _bbc_t4_assemble(E, A, A2 @ _bbc_t4_inner(E, A, A2))
+        return _bbc_t4_assemble(A, A2 @ _bbc_t4_inner(E, A, A2))
     if deg == 8:
-        A2 = A @ A
         A4 = A2 @ _bbc_t8_left1(A, A2)
         A8 = _bbc_t8_left2(A2, A4) @ _bbc_t8_right(E, A, A2, A4)
-        return _bbc_t8_finalize(E, A, A2, A8)
-    # TODO: in deg 12 and deg 18 the post-matmul adds could fold into
-    # the matmul itself (C = A@B + βC) once nvmath-python's advanced
-    # matmul or cupy.fuse's matmul support becomes available.
+        return _bbc_t8_finalize(A, A2, A8)
+    raise ValueError(f'unsupported BBC degree: {deg}')
+
+
+def _bbc_high_m1(A, E, deg):
+    """Return T(A) - I for the BBC Taylor polynomial T of degree 12 or 18."""
+    # Both schemes of [1] end in (c*I + left) @ (c'*I + right) with
+    # c*c' = 1. The identity parts are multiplied out by hand, so only
+    # left @ right goes through the matmul.
+    # TODO: the post-matmul adds could fold into the matmul itself
+    # (C = A@B + βC) once nvmath-python's advanced matmul or cupy.fuse's
+    # matmul support becomes available.
+    A2 = A @ A
+    A3 = A @ A2
     if deg == 12:
-        A2 = A @ A
-        A3 = A @ A2
-        q31, q32, q33, q34 = _bbc_t12_qs(E, A, A2, A3)
-        qaux = q33 + q34 @ q34
-        del q33, q34
-        return q31 + (q32 + qaux) @ qaux
+        p31, r32, r33, q34 = _bbc_t12_qs(E, A, A2, A3)
+        del A2, A3
+        right, left = _bbc_mid(r32, r33, q34 @ q34)
+        del r32, r33, q34
+        return _bbc_t12_finalize(p31, right, left, left @ right)
     if deg == 18:
-        A2 = A @ A
-        A3 = A @ A2
         A6 = A3 @ A3
-        q31, q61, q62, q63, q64 = _bbc_t18_qs(E, A, A2, A3, A6)
-        q91 = q31 @ q64 + q63
-        del q31, q63, q64
-        return q61 + (q62 + q91) @ q91
+        q31, q61, r62, r63, q64 = _bbc_t18_qs(A, A2, A3, A6)
+        del A2, A3, A6
+        right, left = _bbc_mid(r62, r63, q31 @ q64)
+        del q31, r62, r63, q64
+        return _bbc_t18_finalize(q61, right, left, left @ right)
     raise ValueError(f'unsupported BBC degree: {deg}')
 
 
 @cupy.fuse
-def _bbc_t2(E, A, A2):
-    return E + A + 0.5 * A2
+def _expm_square_m1(x, x2):
+    return x2 + 2.0 * x
+
+
+@cupy.fuse
+def _bbc_t2(A, A2):
+    return A + 0.5 * A2
 
 
 @cupy.fuse
@@ -197,8 +230,8 @@ def _bbc_t4_inner(E, A, A2):
 
 
 @cupy.fuse
-def _bbc_t4_assemble(E, A, A2_inner):
-    return E + A + A2_inner
+def _bbc_t4_assemble(A, A2_inner):
+    return A + A2_inner
 
 
 @cupy.fuse
@@ -218,8 +251,8 @@ def _bbc_t8_right(E, A, A2, A4):
 
 
 @cupy.fuse
-def _bbc_t8_finalize(E, A, A2, A8):
-    return E + A + _BBC_T8_Y2 * A2 + A8
+def _bbc_t8_finalize(A, A2, A8):
+    return A + _BBC_T8_Y2 * A2 + A8
 
 
 # Degree-12 coefficient matrix b_12 from PyTorch's compute_T12
@@ -228,31 +261,37 @@ def _bbc_t8_finalize(E, A, A2, A8):
 # to Lezcano's factorisation, but this parametrisation preserves
 # ~20% more accuracy in float32 / float64 / complex64 / complex128
 # across the deg-12 norm band.
+# q32 = _BBC_T12_C32*I + r32 and q33 = _BBC_T12_C33*I + r33; the 9e-16
+# identity term of q31 only completes c*c' to 1 and is dropped (p31).
 @cupy.fuse
 def _bbc_t12_qs(E, A, A2, A3):
-    q31 = (9.0198e-16 * E
-           + 0.46932117595418237389 * A
+    p31 = (0.46932117595418237389 * A
            - 0.20099424927047284052 * A2
            - 0.04623946134063071740 * A3)
-    q32 = (5.31597895759871264183 * E
-           + 1.19926790417132231573 * A
+    r32 = (1.19926790417132231573 * A
            + 0.01179296240992997031 * A2
            + 0.01108844528519167989 * A3)
-    q33 = (0.18188869982170434744 * E
-           + 0.05502798439925399070 * A
+    r33 = (0.05502798439925399070 * A
            + 0.09351590770535414968 * A2
            + 0.00610700528898058230 * A3)
     q34 = (-2.0861320e-13 * E
            - 0.13181061013830184015 * A
            - 0.02027855540589259079 * A2
            - 0.00675951846863086359 * A3)
-    return q31, q32, q33, q34
+    return p31, r32, r33, q34
+
+
+@cupy.fuse
+def _bbc_t12_finalize(p31, right, left, m):
+    return (p31 + (_BBC_T12_C32 + _BBC_T12_C33) * right
+            + _BBC_T12_C33 * left + m)
 
 
 # Degree-18 coefficient matrix from [1] Table 3.  Row i = coefficients of
-# q_i in powers [I, A, A2, A3, A6].
+# q_i in powers [I, A, A2, A3, A6], with q62 = _BBC_T18_C62*I + r62 and
+# q63 = _BBC_T18_C63*I + r63.
 @cupy.fuse
-def _bbc_t18_qs(E, A, A2, A3, A6):
+def _bbc_t18_qs(A, A2, A3, A6):
     q31 = (-1.00365581030144618291e-01 * A
            - 8.02924648241156932449e-03 * A2
            - 8.92138498045729985177e-04 * A3)
@@ -260,17 +299,29 @@ def _bbc_t18_qs(E, A, A2, A3, A6):
            + 1.36783778460411720168e+00 * A2
            + 4.98289622525382669416e-01 * A3
            - 6.37898194594723280150e-04 * A6)
-    q62 = (-1.09676396052962061844e+01 * E
-           + 1.68015813878906206114e+00 * A
+    r62 = (1.68015813878906206114e+00 * A
            + 5.71779846478865511061e-02 * A2
            - 6.98210122488052056106e-03 * A3
            + 3.34975017086070470649e-05 * A6)
-    q63 = (-9.04316832390810593223e-02 * E
-           - 6.76404519071381882256e-02 * A
+    r63 = (-6.76404519071381882256e-02 * A
            + 6.75961301770459654925e-02 * A2
            + 2.95552570429315521194e-02 * A3
            - 1.39180257516060693404e-05 * A6)
     q64 = (-9.23364619367118555360e-02 * A2
            - 1.69364939002081722752e-02 * A3
            - 1.40086798182036094347e-05 * A6)
-    return q31, q61, q62, q63, q64
+    return q31, q61, r62, r63, q64
+
+
+@cupy.fuse
+def _bbc_t18_finalize(q61, right, left, m):
+    return (q61 + (_BBC_T18_C62 + _BBC_T18_C63) * right
+            + _BBC_T18_C63 * left + m)
+
+
+# right = r_b + m and left = r_a + right, i.e. the last two factors of the
+# degree-12/18 schemes without their identity parts.
+@cupy.fuse
+def _bbc_mid(r_a, r_b, m):
+    right = r_b + m
+    return right, r_a + right
