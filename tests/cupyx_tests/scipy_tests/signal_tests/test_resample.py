@@ -154,6 +154,18 @@ class TestResample:
         return y
 
     @pytest.mark.parametrize(
+        'dtype', ['float16', 'float32', 'float64', 'complex64', 'complex128',
+                  'int32'])
+    @pytest.mark.parametrize('up, down', [(1, 2), (3, 2), (5, 1)])
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-5, rtol=1e-5)
+    def test_output_match_dtype_default_padtype(self, dtype, up, down, xp,
+                                                scp):
+        # The designed filter follows the precision of floating-point and
+        # complex x, as in SciPy (cupy/cupy#10465)
+        x = xp.arange(64).astype(dtype)
+        return scp.signal.resample_poly(x, up, down)
+
+    @pytest.mark.parametrize(
         "method, ext, padtype",
         [("fft", False, None)]
         # upfirdn does not support cval and mode
