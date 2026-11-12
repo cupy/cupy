@@ -1021,10 +1021,11 @@ cdef class _ndarray_base:
                     'non-scalar numpy.ndarray cannot be used for fill')
             value = value[()]  # use scalar rather than NumPy array
 
-        if ((<cnp.dtype>(self.dtype)).type_num != cnp.NPY_VOID
-                and value == 0 and self._c_contiguous):
-            # For most types, we can just memset if the value is zero.
-            # (Void also works mostly, but the `value == 0` could fail.)
+        if (value.tobytes() == bytes(self.dtype.itemsize)
+                and self._c_contiguous):
+            # direct comparison of bytes allows cases with negatively
+            # signed zero to be routed to the fill_kernel path so that sign
+            # of zero is not lost.
             self.data.memset_async(0, self.nbytes)
         else:
             fill_kernel(value, self)
