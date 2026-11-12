@@ -68,10 +68,10 @@
 /linux/tests/cuda-example.sh linguist-generated
 /linux/tests/cuda-head.Dockerfile linguist-generated
 /linux/tests/cuda-head.sh linguist-generated
-/linux/tests/cuda12x-no-cuda-python.Dockerfile linguist-generated
-/linux/tests/cuda12x-no-cuda-python.sh linguist-generated
-/linux/tests/cuda13x-no-cuda-python.Dockerfile linguist-generated
-/linux/tests/cuda13x-no-cuda-python.sh linguist-generated
+/linux/tests/cuda12x-cuda-python.Dockerfile linguist-generated
+/linux/tests/cuda12x-cuda-python.sh linguist-generated
+/linux/tests/cuda13x-cuda-python.Dockerfile linguist-generated
+/linux/tests/cuda13x-cuda-python.sh linguist-generated
 /linux/tests/array-api.Dockerfile linguist-generated
 /linux/tests/array-api.sh linguist-generated
 /linux/tests/benchmark.head.Dockerfile linguist-generated

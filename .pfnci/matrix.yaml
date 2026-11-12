@@ -612,15 +612,17 @@
 ###############################################################################
 # CUDA Python Opt-out (CUPY_USE_CUDA_PYTHON=0) Test
 ###############################################################################
+# TODO: rename these jobs to cuda1{2,3}x-no-cuda-python. Renaming a project
+# also needs an update on the FlexCI (GCP) side, coordinated with @kmaehashi.
 
 # CUDA 12.x / CUDA Python opt-out | Linux
-- project: "cupy.linux.cuda12x-no-cuda-python"
-  target: "cuda12x-no-cuda-python"
+- project: "cupy.linux.cuda12x-cuda-python"
+  target: "cuda12x-cuda-python"
   # Tests the deprecated CUPY_USE_CUDA_PYTHON=0 build, which does not use
   # cuda-bindings or nvmath-python. The flag is baked in at compile time and the
   # wheels are built with it on, so this target must build from source.
   wheel: false
-  tags: ["@push", "full", "mini", "linux", "no-cuda-python"]
+  tags: ["@push", "full", "mini", "linux", "cuda-python"]
   system: "linux"
   os: "ubuntu:24.04"
   cuda: "12.9"
@@ -644,13 +646,13 @@
   test: "unit"
 
 # CUDA 13.x / CUDA Python opt-out | Linux
-- project: "cupy.linux.cuda13x-no-cuda-python"
-  target: "cuda13x-no-cuda-python"
+- project: "cupy.linux.cuda13x-cuda-python"
+  target: "cuda13x-cuda-python"
   # Tests the deprecated CUPY_USE_CUDA_PYTHON=0 build, which does not use
   # cuda-bindings or nvmath-python. The flag is baked in at compile time and the
   # wheels are built with it on, so this target must build from source.
   wheel: false
-  tags: ["@push", "full", "mini", "linux", "no-cuda-python", "cuda13x"]
+  tags: ["@push", "full", "mini", "linux", "cuda-python", "cuda13x"]
   system: "linux"
   os: "ubuntu:24.04"
   cuda: "13.4"
