@@ -336,10 +336,8 @@ jobs:
           # DT_NEEDED that would drag a missing libcublas/libcufft/... into
           # `import cupy._core.<mod>` via ld before cuda-pathfinder can
           # preload it. Interlocks with LDFLAGS=-Wl,--as-needed above.
-          # The second command makes sure the wheel was built with CUDA Python.
           CIBW_TEST_COMMAND_LINUX: >
-            python {package}/tests/import_tests/test_import.py &&
-            python -c "from cupy_backends.cuda.api import driver; assert driver._is_cuda_python()"
+            python {package}/tests/import_tests/test_import.py
           CIBW_REPAIR_WHEEL_COMMAND_LINUX: >
             auditwheel repair -w {dest_dir}
             --exclude 'libcuda.so*'
@@ -383,18 +381,23 @@ jobs:
       - name: Check wheel
         run: |
           twine check --strict wheelhouse/*.whl
+          # setup.py only adds nvmath-python and cuda-bindings to the wheel's
+          # requirements when building with CUDA Python.
           python - <<'EOF'
           import glob, zipfile
+          from packaging.requirements import Requirement
           for whl in glob.glob('wheelhouse/*.whl'):
               with zipfile.ZipFile(whl) as z:
                   name = next(n for n in z.namelist()
                               if n.endswith('.dist-info/METADATA'))
-                  requires = [line for line in z.read(name).decode().splitlines()
+                  requires = [Requirement(line.removeprefix('Requires-Dist: '))
+                              for line in z.read(name).decode().splitlines()
                               if line.startswith('Requires-Dist: ')]
               print(whl, *requires, sep='\n  ')
+              # Requirements under an extra (e.g., `; extra == "test"`) do not count.
+              names = {r.name for r in requires if r.marker is None}
               for package in ('nvmath-python', 'cuda-bindings'):
-                  assert any(r.split()[1].startswith(package) for r in requires), (
-                      f'{whl} does not require {package}')
+                  assert package in names, f'{whl} does not require {package}'
           EOF
 
       - name: Upload wheel artifact
