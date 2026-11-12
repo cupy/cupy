@@ -81,6 +81,45 @@ def test_filter_agg(gpu, dtype, size):
     assert int(actual) == np.count_nonzero(host % 2 == 0)
 
 
+@pytest.mark.parametrize('dtype', ['float32', 'float64'])
+def test_trig_and_classification_in_device_loop(gpu, dtype):
+    def count(data):
+        total = 0
+        for value in data:
+            if cp.isfinite(value):
+                if cp.arctan2(cp.sin(value), cp.cosh(value)) > 0:
+                    total += 1
+        return total
+
+    host = np.r_[np.linspace(-2, 2, 259), np.nan, np.inf, -np.inf]
+    host = host.astype(dtype)
+    finite = host[np.isfinite(host)]
+    angles = np.arctan2(np.sin(finite), np.cosh(finite))
+    expected = np.count_nonzero(angles > 0)
+    compiled = fuse(count)
+    assert int(compiled(cp.asarray(host))) == expected
+    assert compiled.diagnostics['backend'] == 'scheduled_cuda'
+
+
+@pytest.mark.parametrize('dtype', ['float32', 'float64'])
+@pytest.mark.parametrize('operation', [cp.arctan2, cp.hypot])
+def test_binary_device_math_weak_scalar(gpu, dtype, operation):
+    def function(data, iterations):
+        for _ in range(iterations):
+            data = operation(data, 1.)
+            if cp.mean(data) > 1000:
+                break
+        return cp.mean(data)
+
+    data = cp.linspace(.1, .8, 257, dtype=dtype)
+    expected = function(data, 3)
+    compiled = fuse(function)
+    actual = compiled(data, 3)
+    assert actual.dtype == expected.dtype
+    assert compiled.diagnostics['backend'] == 'scheduled_cuda'
+    cp.testing.assert_allclose(actual, expected, rtol=3e-6, atol=3e-12)
+
+
 @pytest.mark.parametrize('dtype', ['int32', 'float32', 'float64'])
 @pytest.mark.parametrize('sigma,max_iter', [(3., 5), (1., 5), (2., 1),
                                             (3., 0), (3., -2), (0., 5)])

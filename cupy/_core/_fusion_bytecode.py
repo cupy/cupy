@@ -95,6 +95,11 @@ class Elementwise(Operation):
     pass
 
 
+class LiteralSquare(Elementwise):
+    def emit(self, arguments, keywords, render, bind):
+        return f'{bind(_literal_square)}({render(arguments[0])})'
+
+
 class Reduction(Operation):
     def __init__(self, name, implementation):
         super().__init__(name, implementation, 'reduction',
@@ -132,6 +137,15 @@ def _inplace(array, value, operation):
     return operation(_contiguous(array), value)
 
 
+def _literal_square(array):
+    # Match ndarray.__pow__(array, 2), including boolean promotion. The
+    # metadata branch runs during tracing, so this remains a fused map.
+    if array.dtype.kind == 'b':
+        array = cp.add(array, np.int64(0))
+    return cp.square(array)
+
+
+_LITERAL_SQUARE = LiteralSquare('square', cp.square)
 _GETITEM = Library('getitem', _getitem)
 _SETITEM = Library('setitem', _setitem)
 _INPLACE = {symbol: Library(symbol, lambda a, b, op=op: _inplace(a, b, op))
@@ -140,13 +154,22 @@ _INPLACE = {symbol: Library(symbol, lambda a, b, op=op: _inplace(a, b, op))
                 ('*=', operator.imul), ('/=', operator.itruediv))}
 
 
-_OPERATIONS: list[Any] = [Elementwise(name, getattr(cp, name)) for name in (
-    'add', 'subtract', 'multiply', 'true_divide', 'floor_divide', 'remainder',
-    'power', 'negative', 'positive', 'absolute', 'sin', 'cos', 'tan', 'exp',
-    'log', 'sqrt', 'square', 'maximum', 'minimum', 'equal', 'not_equal',
-    'less', 'less_equal', 'greater', 'greater_equal', 'logical_not',
-    'bitwise_and', 'bitwise_or', 'bitwise_xor', 'invert', 'left_shift',
-    'right_shift', 'tanh')]
+def _elementwise_operations():
+    # Ufuncs already own dtype resolution and CUDA implementations. Recognize
+    # their identities rather than maintaining another list of math functions.
+    # Multi-output ufuncs need tuple-valued IR nodes and are excluded for now.
+    operations = {}
+    for name, function in vars(cp).items():
+        if isinstance(function, cp.ufunc) and function.nout == 1:
+            canonical = function.name.removeprefix('cupy_')
+            if getattr(cp, canonical, None) is not function:
+                canonical = name
+            operations.setdefault(id(function),
+                                  Elementwise(canonical, function))
+    return list(operations.values())
+
+
+_OPERATIONS: list[Any] = _elementwise_operations()
 _OPERATIONS += [Reduction(name, getattr(cp, name)) for name in (
     'sum', 'prod', 'min', 'max', 'all', 'any')]
 _OPERATIONS += [Allocation(name, getattr(cp, name)) for name in (
@@ -317,7 +340,26 @@ class Builder:
         if node.operation.kind == 'map':
             ufunc = getattr(np, node.operation.name)
             dtype = ufunc.resolve_dtypes(tuple(dtypes) + (None,))[-1]
+            if node.operation is _LITERAL_SQUARE and dtypes[0].kind == 'b':
+                dtype = np.dtype('int64')
             ndim = max((v.ndim for v in arrays), default=0)
+        elif node.operation.kind == 'reduction':
+            # Infer reduction metadata without evaluating a reduction. This
+            # also lets literal-power lowering see through a reduced mean.
+            dtype = np.dtype(node.keywords.get('dtype') or dtypes[0])
+            name = node.operation.name
+            if name in ('all', 'any'):
+                dtype = np.dtype(bool)
+            elif (name in ('sum', 'prod')
+                  and node.keywords.get('dtype') is None
+                  and dtype.kind in 'biu'
+                  and dtype.itemsize < np.dtype('intp').itemsize):
+                dtype = np.dtype('uintp' if dtype.kind == 'u' else 'intp')
+            ndim = max((v.ndim for v in arrays), default=0)
+            if not node.keywords.get('keepdims', False):
+                axis = node.keywords.get('axis')
+                ndim = (0 if axis is None else ndim -
+                        (len(axis) if type(axis) is tuple else 1))
         elif node.operation.name in ('matmul', 'dot') and len(arrays) == 2:
             left, right = arrays
             if left.ndim not in (1, 2) or right.ndim not in (1, 2):
@@ -561,8 +603,16 @@ class Builder:
                         stack.append(self.operation(_INPLACE[symbol],
                                                     (left, right), {}))
                     elif symbol in _BINARY:
-                        stack.append(self.operation(_BY_NAME[_BINARY[symbol]],
-                                                    (left, right), {}))
+                        name, operands = _BINARY[symbol], (left, right)
+                        if (symbol == '**' and type(right) is int
+                                and right == 2
+                                and isinstance(left, Value)
+                                and left.kind == 'array'):
+                            stack.append(self.operation(
+                                _LITERAL_SQUARE, (left,), {}))
+                        else:
+                            stack.append(self.operation(_BY_NAME[name],
+                                                        operands, {}))
                     else:
                         self.fail(f'Unsupported operator {symbol!r}')
                 elif name == 'BINARY_SUBSCR':
@@ -814,6 +864,30 @@ class Emitter:
         # reduction stages, retaining the legacy fast path for each one.
         staged_reductions = sum(n.operation.kind == 'reduction'
                                 for n in nodes) > 1
+        if not staged_reductions:
+            # A CUB fused reduction cannot typedef its reduction output as
+            # one type and its final output as another. Keep a dtype-changing
+            # epilogue separate (for example, all(x)**2 must return int64).
+            for index, reduction in enumerate(nodes):
+                if reduction.operation.kind != 'reduction':
+                    continue
+                descendants = {reduction.output}
+                try:
+                    dtype = self.builder.sample(reduction.output).dtype
+                    for node in nodes[index + 1:]:
+                        if node.operation.kind != 'map':
+                            break
+                        operands = (node.arguments,
+                                    tuple(node.keywords.values()))
+                        if any(v in descendants
+                               for v in _walk_values(operands)):
+                            descendants.add(node.output)
+                            if self.builder.sample(node.output).dtype != dtype:
+                                staged_reductions = True
+                                break
+                except (Unsupported, AttributeError):
+                    pass
+                break
         start = 0
         while start < len(nodes):
             node = nodes[start]
@@ -824,8 +898,22 @@ class Emitter:
                 start += 1
                 continue
             end = start
+            map_rank = None
             while (end < len(nodes)
                    and nodes[end].operation.kind in ('map', 'reduction')):
+                rank = None
+                if nodes[end].operation.kind == 'map':
+                    try:
+                        rank = self.builder.sample(nodes[end].output).ndim
+                    except (TypeError, AttributeError, ValueError):
+                        pass
+                    # Compute broadcast arrays (for example, column means)
+                    # once before their higher-rank consumers. Scalar-only
+                    # expressions retain their existing compiler selection.
+                    if (map_rank is not None and rank is not None
+                            and 0 < map_rank < rank):
+                        break
+                map_rank = rank
                 end += 1
                 if (staged_reductions and
                         nodes[end - 1].operation.kind == 'reduction'):

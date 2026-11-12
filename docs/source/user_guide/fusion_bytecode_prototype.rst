@@ -104,11 +104,45 @@ functions can retain their post-map in the same region. Straight-line regions
 reuse the existing CUDA code generators and reductions; the iterative frontend
 below has a small dedicated CUDA emitter.
 
+Literal squares and fallback scheduling
+--------------------------------------
+
+Array powers with a literal Python integer exponent of 2 use ``square``
+instead of the general ``power`` ufunc. Boolean arrays retain the int64
+promotion of ``ndarray.__pow__``. Runtime exponents are not specialized by
+value. The device-loop emitter also lowers literal squares to multiplication.
+Reduction dtype/rank inference lets this apply through reduced means; arrays
+used in broadcasting, such as column means, are computed before higher-rank
+consumers instead of being recomputed for every input element. A reduction
+epilogue that changes dtype is kept separate when required by the CUB backend.
+
+The tracing fallback backend sizes CUDA grids from the active device's SM
+count and the compiled kernel's occupancy, with a cap for small input work.
+When a large reduction has fewer output groups than SMs, its output-driven
+fused reduction cannot use the whole device. That execution switches to
+ordinary parallel CuPy reductions between fused elementwise stages. The same
+staging path handles devices without cooperative launch support; it is also
+used for multi-stage execution on HIP. Device limits are cached per device,
+while the scheduling decision remains dependent on the current input shape.
+Staged CUDA signatures distinguish ranks, contiguity and index widths.
+
+This uses the existing reduction implementations and their dtype, axis and
+stream handling rather than introducing a device-specific reduction tree.
+It may use more than one CUDA kernel for a frontend region. See the actual
+before/after timings in ``benchmarks/cupyx_fusion/fixes.rst`` and the raw
+``fixed_results.json``; the earlier launch-grid changes in
+``regressions.rst`` were diagnostic controls, whereas these are implemented
+production paths. The native extension must be rebuilt for scheduling changes.
+
 Supported subset
 ----------------
 
-* Read-only numerical expressions using the registered arithmetic and math
-  ufuncs, and ``sum``, ``prod``, ``min``, ``max``, ``all``, and ``any``.
+* Read-only numerical expressions using single-output CuPy namespace ufuncs,
+  including inverse/hyperbolic trig, ``arctan2``, ``isnan``, ``isinf``,
+  ``isfinite`` and logical operations, and ``sum``, ``prod``, ``min``, ``max``,
+  ``all``, and ``any``. Ufunc identities are discovered once at import and
+  dispatched through a dictionary; aliases share their canonical operation.
+  Multi-output ufuncs such as ``modf`` and ``frexp`` remain unsupported.
   Reduction options must be static. Array reduction methods normalize to
   their registered CuPy operations.
 * Statically resolved Python callees, including definitions without source.
@@ -210,7 +244,11 @@ dependencies remain unsupported inside this device kernel. Local input-array
 rebinding with unchanged dtype uses reusable workspace, leaving the caller's
 input unchanged; it cannot be combined with filtered views. Registered basic
 arithmetic and ``sin``, ``cos``, ``tan``, ``exp``, ``log``, ``sqrt`` and ``tanh``
-can occur inside device loops. Reduction order can
+can occur inside device loops. The explicit device-math table also covers
+inverse/hyperbolic trig, binary ``arctan2``/``hypot``, logarithm/exponential
+variants, and ``isnan``/``isinf``/``isfinite``/``signbit``. This emitter uses
+registered CUDA scalar math functions, rather than assuming every namespace
+ufunc has a device-loop lowering. Reduction order can
 change floating-point rounding and, near a clipping threshold, mask decisions.
 
 Scheduling is confined to iterative plans; cached straight-line calls such as

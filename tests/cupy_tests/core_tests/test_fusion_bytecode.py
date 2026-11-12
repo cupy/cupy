@@ -46,6 +46,65 @@ def test_source_less_function_and_scalar_conversion():
     json.dumps(report)
 
 
+@pytest.mark.parametrize('name', [
+    'arcsin', 'arccos', 'arctan', 'sinh', 'cosh', 'tanh',
+    'arcsinh', 'arctanh', 'exp2', 'expm1', 'log1p',
+    'isnan', 'isinf', 'isfinite', 'signbit'])
+@pytest.mark.parametrize('dtype', ['float32', 'float64'])
+def test_namespace_ufuncs(gpu, name, dtype):
+    operation = getattr(cp, name)
+
+    def function(x):
+        return operation(x)
+
+    data = cp.linspace(-.8, .8, 257, dtype=dtype)
+    if name in ('isnan', 'isinf', 'isfinite', 'signbit'):
+        data[:4] = cp.asarray([cp.nan, cp.inf, -cp.inf, -0.], dtype=dtype)
+    actual, expected = fuse(function)(data), function(data)
+    assert actual.dtype == expected.dtype
+    cp.testing.assert_allclose(actual, expected, rtol=3e-6, atol=3e-12)
+
+
+@pytest.mark.parametrize('name', ['arctan2', 'atan2', 'hypot', 'copysign',
+                                  'logical_and', 'logical_or', 'logical_xor'])
+def test_binary_namespace_ufuncs(gpu, name):
+    operation = getattr(cp, name)
+
+    def function(x, y):
+        return operation(x, y)
+
+    x = cp.linspace(-2, 2, 257)
+    cp.testing.assert_allclose(fuse(function)(x, 1.), function(x, 1.))
+
+
+def test_added_ufuncs_in_existing_cupyx_helpers(gpu):
+    from cupyx.scipy.signal import _bsplines
+    from cupy._manipulation.add_remove import _unique_update_mask_equal_nan
+
+    lam = cp.linspace(.1, 2., 257)
+    compiled = fuse(_bsplines._coeff_smooth.func)
+    for actual, expected in zip(compiled(lam), _bsplines._coeff_smooth(lam)):
+        cp.testing.assert_allclose(actual, expected, rtol=2e-12)
+    x = cp.asarray([0., cp.nan, 2., cp.nan])
+    mask = cp.ones(4, dtype=bool)
+    compiled = fuse(_unique_update_mask_equal_nan.func)
+    assert compiled(mask, x) is None
+    cp.testing.assert_array_equal(mask, cp.asarray([True, False, True, False]))
+
+
+def test_added_ufunc_output_and_multioutput_rejected():
+    def with_output(x):
+        return cp.arctan(x, out=x)
+
+    def multioutput(x):
+        return cp.modf(x)
+
+    with pytest.raises(Unsupported, match='Unsupported keyword'):
+        fuse(with_output).explain(1.)
+    with pytest.raises(Unsupported):
+        fuse(multioutput).explain(1.)
+
+
 def test_numpy_arrays_rejected():
     compiled = fuse(lambda x: x + 1)
     with pytest.raises(Unsupported, match='ndarray'):

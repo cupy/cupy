@@ -29,8 +29,18 @@ _BINARY_UFUNCS = {name: symbol for symbol, name in
                   {**_BINARY, **_COMPARE}.items()}
 _UNARY_UFUNCS = {'negative': '-', 'positive': '+', 'invert': '~',
                  'logical_not': '!'}
-_MATH_UFUNCS = {name: getattr(np, name) for name in
-                ('sin', 'cos', 'tan', 'exp', 'log', 'sqrt', 'tanh')}
+_MATH_UFUNCS = {
+    name: (getattr(np, name), cuda_name)
+    for name, cuda_name in {
+        **{name: name for name in (
+            'sin', 'cos', 'tan', 'sinh', 'cosh', 'tanh', 'hypot',
+            'exp', 'exp2', 'expm1', 'log', 'log2', 'log10', 'log1p',
+            'sqrt', 'cbrt', 'ceil', 'floor', 'trunc', 'rint',
+            'isnan', 'isinf', 'isfinite', 'signbit')},
+        'arcsin': 'asin', 'arccos': 'acos', 'arctan': 'atan',
+        'arctan2': 'atan2', 'arcsinh': 'asinh', 'arccosh': 'acosh',
+        'arctanh': 'atanh',
+    }.items()}
 _PREAMBLE = r'''
 #ifdef COOPERATIVE
 #include <cooperative_groups.h>
@@ -178,6 +188,12 @@ class Compiler:
                       'are unsupported')
 
     def binary(self, symbol, left, right):
+        if symbol == '**' and type(right) is int and right == 2:
+            value = self.scalar(left)
+            if value.dtype.kind == 'b':
+                value = replace(value, dtype=np.dtype('int64'), weak=None,
+                                code=f'((long long)({value.code}))')
+            return self.binary('*', value, value)
         left, right = self.scalar(left), self.scalar(right)
         if left.carried or right.carried:
             self.fail('Element-loop accumulators may only be read by +=')
@@ -404,12 +420,18 @@ class Compiler:
         return self.unary(_UNARY_UFUNCS[name], args[0])
 
     def _call_math_ufunc(self, args, name):
-        value = self.scalar(args[0])
-        if value.carried or value.where != 'true':
+        values = [self.scalar(arg) for arg in args]
+        if any(v.carried or v.where != 'true' for v in values):
             self.fail('Device math requires a dense expression')
-        dtype = _MATH_UFUNCS[name].resolve_dtypes((value.dtype, None))[0]
-        code = f'{name}(({ctype(dtype)})({value.code}))'
-        return replace(value, dtype=dtype, code=code, weak=None)
+        ufunc, cuda_name = _MATH_UFUNCS[name]
+        dtypes = ufunc.resolve_dtypes(
+            tuple(value.weak if value.weak in (int, float) else value.dtype
+                  for value in values) + (None,))
+        arguments = ', '.join(
+            f'({ctype(dtype)})({value.code})'
+            for value, dtype in zip(values, dtypes))
+        code = f'{cuda_name}({arguments})'
+        return Expr(code, dtypes[-1], array=any(v.array for v in values))
 
     # Explicit identity dispatch avoids invoking __hash__/__eq__ on an
     # unsupported callable. Handlers own validation and lowering; the tables
@@ -435,7 +457,8 @@ class Compiler:
         handler = self._CALL_HANDLERS.get(id(target))
         if handler is not None:
             return handler(self, args, kwargs)
-        self._call_argument(args, kwargs)
+        if kwargs:
+            self.fail('Device calls do not support these keywords')
         operation = _BY_ID.get(id(target))
         if operation is not None and operation.kind == 'map':
             if len(args) != operation.implementation.nin:
