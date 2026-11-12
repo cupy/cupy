@@ -153,9 +153,12 @@ Supported subset
   read again on each execution; methods are analysed by their underlying
   class function definition, including overrides.
 * Branches controlled by input booleans or supported input-array metadata
-  predicates, including shape comparisons and dtype comparisons. The selected
-  branch alone is analysed. Guard outcomes are checked at dispatch, allowing
-  shape-dependent variants under the same dtype/ndim key.
+  predicates, including shape comparisons, dtype comparisons, and
+  ``dtype.kind`` comparisons. Host membership predicates support ``in`` and
+  ``not in`` with strings, tuples, and frozensets of primitive literals.
+  These predicates use host metadata without device string operations. The
+  selected branch alone is analysed. Guard outcomes are checked at dispatch,
+  allowing shape-dependent variants under the same dtype/ndim key.
 * ``empty``, ``zeros``, ``ones``, ``full`` and their ``_like`` variants, using
   supported host shape arguments or input-array metadata. Allocations remain
   at runtime and inside their selected branch. Initialization is delegated to

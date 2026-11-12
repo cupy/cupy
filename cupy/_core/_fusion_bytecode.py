@@ -382,6 +382,9 @@ class Builder:
         return value.sample
 
     def attribute(self, obj, name):
+        if (isinstance(obj, Metadata) and isinstance(obj.sample, np.dtype)
+                and name == 'kind'):
+            return Metadata(f'{obj.source}.kind', obj.sample.kind)
         if isinstance(obj, Value):
             if obj.kind == 'object':
                 sample = obj.sample
@@ -504,6 +507,17 @@ class Builder:
                       'predicates are not supported yet')
         if type(value) in (bool, int, str, type(None)):
             return repr(value), value
+        if type(value) in (tuple, frozenset):
+            parts = [self.host(item) for item in value]
+            if any(type(sample) not in (bool, int, str, type(None))
+                   for _, sample in parts):
+                self.fail('Host containers require primitive literal values')
+            source = ('(' + ', '.join(src for src, _ in parts) + ',)'
+                      if parts else '()')
+            samples = tuple(sample for _, sample in parts)
+            if type(value) is frozenset:
+                return f'frozenset({source})', frozenset(samples)
+            return source, samples
         if (isinstance(value, np.dtype) or
                 type(value) is type and value in _SCALAR_TYPES):
             dtype = np.dtype(value)
@@ -677,6 +691,21 @@ class Builder:
                                                     (left, right), {}))
                     else:
                         self.fail(f'Unsupported comparison {symbol!r}')
+                elif name == 'CONTAINS_OP':
+                    right, left = stack.pop(), stack.pop()
+                    lsrc, lval = self.host(left)
+                    rsrc, rval = self.host(right)
+                    if (type(lval) not in (bool, int, str, type(None))
+                            or type(rval) not in (str, tuple, frozenset)
+                            or type(rval) is not str and any(
+                                type(item) not in (bool, int, str, type(None))
+                                for item in rval)):
+                        self.fail('Host membership requires primitive values '
+                                  'and immutable literal containers')
+                    symbol = 'not in' if ins.arg else 'in'
+                    sample = operator.contains(rval, lval)
+                    stack.append(Metadata(f'({lsrc} {symbol} {rsrc})',
+                                          not sample if ins.arg else sample))
                 elif name in _UNARY:
                     value = stack.pop()
                     if name == 'UNARY_NOT' and (

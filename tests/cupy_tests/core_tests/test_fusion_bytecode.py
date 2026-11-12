@@ -457,6 +457,118 @@ def test_dtype_predicate_and_method_override(gpu):
     assert id(Other.helper) in functions
 
 
+@pytest.mark.parametrize('predicate', [
+    lambda x: x.dtype.kind == 'f',
+    lambda x: 'f' != x.dtype.kind,
+    lambda x: x.dtype.kind in 'fc',
+    lambda x: x.dtype.kind not in 'fc',
+    lambda x: x.dtype.kind in ('i', 'u'),
+    lambda x: x.dtype.kind not in ('i', 'u'),
+    lambda x: x.dtype.kind in {'i', 'u'},
+    lambda x: x.dtype.kind not in {'i', 'u'},
+])
+def test_dtype_kind_predicates(gpu, predicate):
+    def function(x):
+        if predicate(x):
+            return cp.not_equal(x, x)
+        return cp.equal(x, x)
+
+    compiled = fuse(function)
+    for dtype in ('bool', 'int32', 'uint64', 'float32',
+                  'float64', 'complex64'):
+        x = cp.arange(7).astype(dtype)
+        for _ in range(2):
+            cp.testing.assert_array_equal(compiled(x), function(x))
+            assert compiled.diagnostics['guards']
+            assert '.dtype.kind' in compiled.diagnostics['guards'][0][
+                'expression']
+        assert compiled.diagnostics['cache_hit']
+
+
+def test_dtype_kind_stored_attribute_can_change(gpu):
+    class Model:
+        @fuse
+        def apply(self):
+            dtype = self.values.dtype
+            if dtype.kind in ('f', 'c'):
+                return cp.not_equal(self.values, self.values)
+            return cp.equal(self.values, self.values)
+
+    model = Model()
+    for dtype in ('float32', 'int32', 'float64', 'uint64', 'complex64'):
+        model.values = cp.arange(7).astype(dtype)
+        expected = (cp.not_equal(model.values, model.values)
+                    if model.values.dtype.kind in 'fc'
+                    else cp.equal(model.values, model.values))
+        cp.testing.assert_array_equal(model.apply(), expected)
+
+
+def test_dtype_kind_explain_without_cuda_or_user_execution():
+    class ArrayMetadata:
+        ndim = 1
+
+        def __init__(self, dtype):
+            self.dtype = np.dtype(dtype)
+
+    calls = []
+
+    def effect(x):
+        calls.append(x)
+        return x
+
+    def function(x):
+        if x.dtype.kind in 'iu':
+            return x + 1
+        return effect(x)
+
+    compiled = fuse(function)
+    with mock.patch.object(cp, 'ndarray', ArrayMetadata):
+        with mock.patch.object(cp, 'empty', side_effect=AssertionError):
+            report = compiled.explain(ArrayMetadata('int32'))
+            assert report['guards'][0]['outcome']
+            with pytest.raises(Unsupported):
+                compiled.explain(ArrayMetadata('float32'))
+    assert calls == []
+
+
+def test_shape_membership_guards(gpu):
+    def function(x):
+        if x.shape[0] in (1, 4):
+            return x + 1
+        return x - 1
+
+    compiled = fuse(function)
+    for size in (1, 8, 4, 3):
+        x = cp.arange(size, dtype=cp.float64)
+        cp.testing.assert_array_equal(compiled(x), function(x))
+    assert len(next(iter(compiled._plans.values()))) == 2
+
+
+@pytest.mark.parametrize('tuple_container', [False, True])
+def test_metadata_membership_rejects_custom_container(tuple_container):
+    class Container:
+        def __contains__(self, value):
+            raise AssertionError('user membership executed')
+
+        def __eq__(self, value):
+            raise AssertionError('user equality executed')
+
+    container = (Container(),) if tuple_container else Container()
+
+    def function(x):
+        if x.dtype.kind in container:
+            return x + 1
+        return x - 1
+
+    class ArrayMetadata:
+        dtype = np.dtype('float32')
+        ndim = 1
+
+    with mock.patch.object(cp, 'ndarray', ArrayMetadata):
+        with pytest.raises(Unsupported, match='Unsupported host predicate'):
+            fuse(function).explain(ArrayMetadata())
+
+
 def test_dynamic_reduction_options_rejected_during_analysis():
     def function(x, axis):
         return cp.sum(x, axis=axis)
