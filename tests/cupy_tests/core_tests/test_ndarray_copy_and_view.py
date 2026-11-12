@@ -312,6 +312,17 @@ class TestArrayFill:
         b.fill(1)
         return b
 
+    @pytest.mark.parametrize(
+        "val",
+        [float("-0"), complex("0-0j"), complex("-0+0j"), complex("-0-0j")]
+    )
+    @testing.numpy_cupy_array_equal()
+    def test_fill_python_scalar_signed_zero(self, xp, val):
+        dtype = xp.complex128 if xp.iscomplexobj(val) else xp.float64
+        a = testing.shaped_arange((2, 3, 4), xp, dtype)
+        a.fill(val)
+        return xp.stack((xp.signbit(a.real), xp.signbit(a.imag)))
+
 
 class TestArrayAsType:
 
