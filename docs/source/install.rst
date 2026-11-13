@@ -489,6 +489,29 @@ You can specify a comma-separated list of ISAs if you have multiple GPUs of diff
   If you don't specify the ``HCC_AMDGPU_TARGET`` environment variable, CuPy will be built for the GPU architectures available on the build host.
   This behavior is specific to ROCm builds; when building CuPy for NVIDIA CUDA, the build result is not affected by the host configuration.
 
+Building CuPy for ROCm on Windows
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+CuPy can be built from source for ROCm on Windows with ROCm 7.x installed from the Python packages built by `TheRock <https://github.com/ROCm/TheRock>`_.
+The AMD HIP SDK for Windows is not supported.
+
+* Install Visual Studio 2022 (or its Build Tools) with the C++ workload, and run the commands below in the "x64 Native Tools Command Prompt".
+* Install the ROCm packages for your GPU into the Python environment you build CuPy in (see `TheRock releases <https://github.com/ROCm/TheRock/blob/main/RELEASES.md>`_), and expand the development files with ``rocm-sdk init``.
+* ``HCC_AMDGPU_TARGET`` is required on Windows: without it, ``hipcc`` does not build for the GPU in the machine.
+* ``ROCM_HOME`` is optional on Windows. When it is not set, CuPy uses the directory printed by ``hipconfig --rocmpath``, at build time and at run time. ``hipconfig`` is looked up on ``PATH`` and in the ``Scripts`` directory of the running Python environment, so the environment does not need to be activated.
+
+::
+
+  > pip install --index-url https://rocm.nightlies.amd.com/v2/gfx1151/ "rocm[libraries,devel]"
+  > rocm-sdk init
+  > set CUPY_INSTALL_USE_HIP=1
+  > set HCC_AMDGPU_TARGET=gfx1151
+  > pip install cupy
+
+CuPy compiles kernels at run time with hiprtc and ``hipcc``, so the ROCm development package must stay installed in the environment CuPy runs in.
+The host code is compiled with ``clang-cl`` from the ROCm installation.
+NCCL (RCCL), NVTX (roctx) markers and ranges, and the profiler API (roctracer) are not available on Windows: ``cupy.cuda.nvtx`` and ``cupy.cuda.profiler`` calls succeed and have no effect.
+
 Limitations
 ~~~~~~~~~~~
 

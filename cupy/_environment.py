@@ -14,6 +14,7 @@ import re
 import shutil
 import subprocess
 import sys
+import sysconfig
 from typing import Any
 import warnings
 
@@ -217,6 +218,11 @@ def _get_rocm_path():
     if os.path.exists(rocm_path):
         return rocm_path
 
+    if _PLATFORM_WIN32:
+        # On Windows, ROCm is installed from Python packages (TheRock), where
+        # `hipcc` on PATH is a console-script launcher outside the ROCm tree.
+        return _get_win32_rocm_path()
+
     # Resolve hipcc symlinks (distros expose /usr/bin/hipcc ->
     # /opt/rocm-X.Y/bin/hipcc via update-alternatives).
     hipcc_path = shutil.which('hipcc')
@@ -229,6 +235,24 @@ def _get_rocm_path():
         return '/opt/rocm'
 
     return None
+
+
+def _get_win32_rocm_path():
+    # `hipconfig` is a console script of the ROCm Python packages; also look
+    # next to the running interpreter, which works without activating the
+    # environment.
+    hipconfig = (shutil.which('hipconfig') or
+                 shutil.which('hipconfig', path=sysconfig.get_path('scripts')))
+    if hipconfig is None:
+        return None
+    try:
+        out = subprocess.check_output(
+            [hipconfig, '--rocmpath'], universal_newlines=True,
+            creationflags=subprocess.CREATE_NO_WINDOW)
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    rocm_path = out.strip()
+    return rocm_path if os.path.isdir(rocm_path) else None
 
 
 def _get_hipcc_path():
@@ -543,7 +567,10 @@ You can install the library by:
 
 @functools.cache
 def _get_hipcc_include_dirs():
-    cmd = ["hipcc", "-x", "hip", "-E", "-v", "/dev/null"]
+    hipcc = "hipcc"
+    if _PLATFORM_WIN32:
+        hipcc = get_hipcc_path() or hipcc
+    cmd = [hipcc, "-x", "hip", "-E", "-v", os.devnull]
     proc = subprocess.run(cmd, stdout=subprocess.DEVNULL,
                           stderr=subprocess.PIPE, text=True)
 
@@ -569,6 +596,41 @@ def _get_hipcc_include_dirs():
         include_path.strip()
         for include_path in include_paths if include_path.strip()
     )
+
+
+_win32_dll_directories: list[Any] = []
+
+_win32_rocm_not_found = (
+    'CuPy is built for ROCm, but the ROCm installation could not be found. '
+    'Set the ROCM_HOME environment variable to the ROCm root directory '
+    '(printed by `rocm-sdk path --root`), or put `hipconfig` on PATH.')
+
+
+def _is_win32_hip_build(depends: dict[str, Any]) -> bool:
+    return any(
+        name.lower().startswith('amdhip64') for name in depends['depends'])
+
+
+def _setup_win32_hip_dll_directory():
+    """Makes the ROCm DLLs loadable for a HIP build on Windows.
+
+    Python does not search PATH for the DLLs that extension modules depend
+    on, so the ROCm ``bin`` directory is added explicitly. A HIP build is
+    recognized by the HIP runtime in the DLL dependency list recorded at build
+    time, which keeps CUDA builds unaffected.
+    """
+    if not _PLATFORM_WIN32:
+        return
+    depends = _get_json_data('_depends.json')
+    if depends is None or not _is_win32_hip_build(depends):
+        return
+    rocm_path = get_rocm_path()
+    if rocm_path is None:
+        warnings.warn(_win32_rocm_not_found)
+        return
+    bin_path = os.path.join(rocm_path, 'bin')
+    if os.path.isdir(bin_path):
+        _win32_dll_directories.append(os.add_dll_directory(bin_path))
 
 
 def _detect_duplicate_installation():
@@ -681,12 +743,15 @@ def _diagnose_win32_dll_load() -> str:
     kernel32.GetModuleFileNameW.restype = wintypes.DWORD
 
     # Show dependents in similar form of ldd on Linux.
-    lines = [
-        '',
-        '',
-        f'CUDA Path: {get_cuda_path()}',
-        'DLL dependencies:'
-    ]
+    lines = ['', '']
+    if _is_win32_hip_build(depends):
+        rocm_path = get_rocm_path()
+        lines.append(f'ROCm Path: {rocm_path}')
+        if rocm_path is None:
+            lines.append(_win32_rocm_not_found)
+    else:
+        lines.append(f'CUDA Path: {get_cuda_path()}')
+    lines.append('DLL dependencies:')
     filepath = ctypes.create_unicode_buffer(2**15)
     for name in depends['depends']:
         try:

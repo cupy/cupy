@@ -140,7 +140,13 @@ cdef SoftLink _get_softlink():
             libname = 'libamdhip64.so.6'
         elif runtime_version < 8_00_00000:
             # ROCm 7.x:
-            libname = 'libhiprtc.so.7'
+            if _sys.platform == 'win32':
+                # e.g., hiprtc0714.dll for ROCm 7.14
+                libname = 'hiprtc{:02d}{:02d}.dll'.format(
+                    runtime_version // 10_000_000,
+                    runtime_version // 100_000 % 100)
+            else:
+                libname = 'libhiprtc.so.7'
         else:
             # Unsupported ROCm version. If using a new ROCm
             # major please add support above.

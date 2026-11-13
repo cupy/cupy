@@ -162,7 +162,7 @@ def get_features(ctx: Context) -> dict[str, Feature]:
     # the HIP stubs (hip/cupy_*.h) would cause many symbols
     # to leak into all these modules even if unused. It's easier for all of
     # them to link to the same set of shared libraries.
-    HIP_cuda_nvtx_cusolver = {
+    HIP_cuda_nvtx_cusolver: dict[str, Any] = {
         # TODO(leofang): call this "rocm" or "hip" to avoid confusion?
         'name': 'cuda',
         'required': True,
@@ -197,6 +197,11 @@ def get_features(ctx: Context) -> dict[str, Feature]:
         'check_method': build.check_hip_version,
         'version_method': build.get_hip_version,
     }
+    if sys.platform == 'win32':
+        # ROCm on Windows ships neither roctx nor roctracer.
+        HIP_cuda_nvtx_cusolver['include'].remove('roctx.h')
+        HIP_cuda_nvtx_cusolver['libraries'].remove('roctracer64')
+        HIP_cuda_nvtx_cusolver['libraries'].remove('roctx64')
     # With CUDA Python, cuSOLVER is used via nvmath-python, which loads it at
     # runtime.
     CUDA_cusolver = {
