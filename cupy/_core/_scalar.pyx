@@ -302,20 +302,27 @@ cdef set scalar_type_set = _python_scalar_type_set | _numpy_scalar_type_set
 # Since NumPy 2 always true unless on 32bit (before windows was outlier)
 assert numpy.dtype(int) == numpy.int64
 
+# For integers we need to carry int64/uint64 information, so carry a tuple
+cdef tuple _weak_int64 = (int, _numpy_int64)
+cdef tuple _weak_uint64 = (int, _numpy_uint64)
+cdef tuple _weak_float64 = (float, _numpy_float64)
+cdef tuple _weak_complex128 = (complex, _numpy_complex128)
+
+
 cpdef tuple numpy_dtype_from_pyscalar(x):
     # Note that isinstance(x, int) matches with bool.
     typ = type(x)
     if typ is bool:
         return _numpy_bool, False
     elif typ is float:
-        return _numpy_float64, float
+        return _numpy_float64, _weak_float64
     elif typ is complex:
-        return _numpy_complex128, complex
+        return _numpy_complex128, _weak_complex128
     elif typ is int:
         if 0x8000000000000000 <= x:
-            return _numpy_uint64, int
+            return _numpy_uint64, _weak_uint64
         else:
-            return _numpy_int64, int
+            return _numpy_int64, _weak_int64
 
     return None, False
 
