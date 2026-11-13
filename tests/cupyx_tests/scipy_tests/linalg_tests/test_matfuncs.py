@@ -5,6 +5,7 @@ from numpy import linalg
 
 import cupy
 from cupyx.scipy.linalg import khatri_rao
+from cupyx.scipy.linalg import _matfuncs
 from cupyx.scipy import linalg as cx_linalg
 import pytest
 from cupy import testing
@@ -115,16 +116,20 @@ class TestExpM:
         return scp.linalg.expm(a)
 
     @pytest.mark.parametrize('norm', [
-        1.495585217958292e-2, 2.539398330063230e-1,
-        9.504178996162932e-1, 2.097847961257068,
-        5.371920351148152, 2 * 5.371920351148152])
+        3.397168839976962e-04,   # theta_4  (double)
+        4.991228871115323e-02,   # theta_8  (double)
+        2.996158913811580e-01,   # theta_12 (double)
+        1.090863719290036e+00,   # theta_18 (double)
+        3.010066362817634e+00,   # theta_18 (single)
+        2 * 3.010066362817634e+00,  # scaling path for both
+    ])
     @pytest.mark.parametrize('factor', [0.99, 1., 1.01])
     @testing.for_dtypes('fdFD')
     @testing.numpy_cupy_allclose(
         scipy_name='scp', contiguous_check=False,
         rtol={'default': 1e-12, np.float32: 1e-5, np.complex64: 1e-5},
         atol={'default': 1e-14, np.float32: 1e-6, np.complex64: 1e-6})
-    def test_pade_thresholds(self, xp, scp, dtype, norm, factor):
+    def test_bbc_thresholds(self, xp, scp, dtype, norm, factor):
         a = xp.asarray([[0, norm * factor], [-norm * factor, 0]],
                        dtype=dtype)
         return scp.linalg.expm(a)
@@ -159,6 +164,63 @@ class TestExpM:
         a = a - a.conj().T
         a *= 100 / np.linalg.norm(a, 1)
         return scp.linalg.expm(xp.asarray(a, dtype=dtype))
+
+    @testing.for_dtypes('fdFD')
+    def test_large_skew_hermitian_unitary(self, dtype):
+        # Roundoff grows with n if the identity goes through the matmuls.
+        n = 1024
+        rng = np.random.default_rng(1234)
+        a = rng.standard_normal((n, n))
+        if np.issubdtype(dtype, np.complexfloating):
+            a = a + 1j * rng.standard_normal((n, n))
+        a = a - a.conj().T
+        a *= 100 / np.linalg.norm(a, 1)
+        u = cx_linalg.expm(cupy.asarray(a, dtype=dtype))
+        assert u.dtype == dtype
+        u = u.astype(cupy.complex128)
+        defect = cupy.linalg.norm(u.conj().T @ u - cupy.eye(n)) / n**0.5
+        assert float(defect) < 150 * np.finfo(dtype).eps
+
+    @testing.for_dtypes('fF')
+    def test_large_single_precision(self, dtype):
+        n = 1024
+        rng = np.random.default_rng(4321)
+        a = rng.standard_normal((n, n))
+        if np.issubdtype(dtype, np.complexfloating):
+            a = a + 1j * rng.standard_normal((n, n))
+        a *= 1000 / np.linalg.norm(a, 1)
+        a += 0.5 * np.eye(n)
+        a = cupy.asarray(a, dtype=dtype)
+        expected = cx_linalg.expm(a.astype(np.promote_types(dtype, 'd')))
+        result = cx_linalg.expm(a)
+        assert result.dtype == dtype
+        err = cupy.linalg.norm(result - expected) / cupy.linalg.norm(expected)
+        assert float(err) < 50 * np.finfo(dtype).eps
+
+    @pytest.mark.parametrize('kind', ['dense', 'triu', 'graded'])
+    @pytest.mark.parametrize('norm', [2., 30., 300.])
+    @testing.for_dtypes('fdFD')
+    def test_refined_scaling(self, dtype, kind, norm, monkeypatch):
+        # The refined scaling is normally reserved for large matrices.
+        monkeypatch.setattr(_matfuncs, '_BBC_SHARP_MIN_N', (0, 0))
+        n = 96
+        rng = np.random.default_rng(7)
+        a = rng.standard_normal((n, n))
+        if np.issubdtype(dtype, np.complexfloating):
+            a = a + 1j * rng.standard_normal((n, n))
+        if kind == 'triu':
+            a = np.triu(a, 1)
+        elif kind == 'graded':
+            d = np.logspace(0, 3, n)
+            a = d[:, None] * a / d
+        a *= norm / np.linalg.norm(a, 1)
+        a = a.astype(dtype)
+        expected = scipy.linalg.expm(a.astype(np.promote_types(dtype, 'd')))
+        result = cx_linalg.expm(cupy.asarray(a))
+        assert result.dtype == dtype
+        err = (np.linalg.norm(result.get() - expected)
+               / np.linalg.norm(expected))
+        assert err < 100 * np.finfo(dtype).eps
 
     @pytest.mark.parametrize('scale', [0.01, 0.1, 0.5, 1.5, 3., 8., 100.])
     @testing.for_dtypes('fdFD')
