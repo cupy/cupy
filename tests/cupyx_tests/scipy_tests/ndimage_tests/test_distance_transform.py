@@ -255,15 +255,19 @@ class TestDistanceTransform:
             dt_func(img, distances=distances, return_distances=False,
                     return_indices=True)
 
-    @pytest.mark.parametrize('ndim', [2, 3])
+    @pytest.mark.parametrize('shape', [
+        (32, 32), (9, 9), (13, 37), (32, 64),
+        (32, 32, 32), (5, 9, 17),
+    ])
     @pytest.mark.parametrize('sampling', [None, 'iso', 'aniso'])
     @pytest.mark.parametrize('dtype', [cupy.int16, cupy.uint16, cupy.uint32,
                                        cupy.int32, cupy.uint64, cupy.int64])
     @pytest.mark.parametrize('return_distances', [False, True])
     def test_distance_transform_inplace_indices(
-        self, ndim, sampling, dtype, return_distances
+        self, shape, sampling, dtype, return_distances
     ):
-        img = self._binary_image((32, ) * ndim, xp=cupy, pct_true=80)
+        img = self._binary_image(shape, xp=cupy, pct_true=80)
+        ndim = img.ndim
         if ndim == 3 and dtype in [cupy.int16, cupy.uint16]:
             pytest.skip(reason="3D requires at least 32-bit integer output")
         if sampling == 'iso':
@@ -277,16 +281,24 @@ class TestDistanceTransform:
         # verify that in-place and out-of-place results agree
         indices = cupy.empty((ndim,) + img.shape, dtype=dtype)
         dt_func = cupyx.scipy.ndimage.distance_transform_edt
-        dt_func(img, indices=indices, **common_kwargs)
+        result = dt_func(img, indices=indices, **common_kwargs)
+        assert (result[1] if return_distances else result) is indices
         expected = dt_func(img, **common_kwargs)
         if return_distances:
             cupy.testing.assert_array_equal(indices, expected[1])
         else:
             cupy.testing.assert_array_equal(indices, expected)
 
-    @pytest.mark.parametrize('ndim', [2, 3])
-    def test_distance_transform_inplace_indices_errors(self, ndim):
-        img = self._binary_image((32, ) * ndim, pct_true=80)
+    @pytest.mark.parametrize('shape, wrong_shape', [
+        ((32, 32), (2, 64, 64)),
+        ((9, 9), (2, 32, 32)),
+        ((32, 32, 32), (3, 64, 64, 64)),
+        ((5, 9, 17), (3, 32, 32, 32)),
+    ])
+    def test_distance_transform_inplace_indices_errors(self, shape,
+                                                       wrong_shape):
+        img = self._binary_image(shape, pct_true=80)
+        ndim = img.ndim
         common_kwargs = dict(return_distances=False, return_indices=True)
 
         dt_func = cupyx.scipy.ndimage.distance_transform_edt
@@ -303,7 +315,13 @@ class TestDistanceTransform:
 
         # wrong shape
         with pytest.raises(RuntimeError):
-            indices = cupy.empty((ndim,), dtype=cupy.float32)
+            indices = cupy.empty((ndim,), dtype=cupy.int32)
+            dt_func(img, indices=indices, **common_kwargs)
+
+        # Internal padding must not change the required output shape.
+        with pytest.raises(RuntimeError,
+                           match='indices array has wrong shape'):
+            indices = cupy.empty(wrong_shape, dtype=cupy.int32)
             dt_func(img, indices=indices, **common_kwargs)
 
         # can't provide indices array when return_indices is False
