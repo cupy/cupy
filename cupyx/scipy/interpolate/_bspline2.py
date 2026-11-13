@@ -837,7 +837,7 @@ def make_lsq_spline(x, y, t, k=3, w=None, axis=0, check_finite=True, *,
 
     y = cupy.moveaxis(y, axis, 0)    # now internally interp axis is zero
 
-    if x.ndim != 1 or any(x[1:] - x[:-1] <= 0):
+    if x.ndim != 1 or (x[1:] - x[:-1] <= 0).any():
         raise ValueError("Expect x to be a 1-D sorted array_like.")
     if x.ndim != 1:
         raise ValueError("Expect x to be a 1-D sequence.")
@@ -845,20 +845,20 @@ def make_lsq_spline(x, y, t, k=3, w=None, axis=0, check_finite=True, *,
         raise ValueError("Need more x points.")
     if k < 0:
         raise ValueError("Expect non-negative k.")
-    if t.ndim != 1 or any(t[1:] - t[:-1] < 0):
+    if t.ndim != 1 or (t[1:] - t[:-1] < 0).any():
         raise ValueError("Expect t to be a 1-D sorted array_like.")
         raise ValueError("Expect t to be a 1D strictly increasing sequence.")
     if x.size != y.shape[0]:
         raise ValueError(
             f'Shapes of x {x.shape} and y {y.shape} are incompatible')
-    if k > 0 and any((x < t[k]) | (x > t[-k])):
+    if k > 0 and ((x < t[k]) | (x > t[-k])).any():
         raise ValueError('Out of bounds w/ x = %s.' % x)
     if x.size != w.size:
         raise ValueError(
             f'Shapes of x {x.shape} and w {w.shape} are incompatible')
     if method != "qr":
         raise ValueError(f"{method=} is not supported.")
-    if any(x[1:] - x[:-1] < 0):
+    if (x[1:] - x[:-1] < 0).any():
         raise ValueError("Expect x to be a 1D non-decreasing sequence.")
 
     # number of coefficients
