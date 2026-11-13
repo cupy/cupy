@@ -40,6 +40,9 @@ from cupyx.scipy.special._stats_distributions import chdtri  # NOQA
 from cupyx.scipy.special._stats_distributions import ndtr  # NOQA
 from cupyx.scipy.special._stats_distributions import log_ndtr  # NOQA
 from cupyx.scipy.special._stats_distributions import ndtri  # NOQA
+from cupyx.scipy.special._ndtri_exp import ndtri_exp  # NOQA
+from cupyx.scipy.special._owens_t import owens_t  # NOQA
+from cupyx.scipy.special._tklmbda import tklmbda  # NOQA
 from cupyx.scipy.special._statistics import logit  # NOQA
 from cupyx.scipy.special._statistics import expit  # NOQA
 from cupyx.scipy.special._statistics import log_expit  # NOQA
@@ -93,6 +96,7 @@ from cupyx.scipy.special._sph_harm import sph_harm  # NOQA
 from cupyx.scipy.special._sph_harm import sph_harm_y  # NOQA
 
 # Other special functions
+from cupyx.scipy.special._agm import agm  # NOQA
 from cupyx.scipy.special._binom import binom  # NOQA
 from cupyx.scipy.special._exp1 import exp1  # NOQA
 from cupyx.scipy.special._expi import expi  # NOQA
