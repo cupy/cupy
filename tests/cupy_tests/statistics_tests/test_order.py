@@ -117,6 +117,34 @@ class TestQuantile:
 @for_all_methods()
 class TestQuantileMethods:
 
+    @pytest.mark.parametrize('func,scale',
+                             [('quantile', 1), ('percentile', 100)])
+    @pytest.mark.parametrize('q', [
+        [-0.1, 0.5], [0.5, 1.1], [-0.1, 1.1],
+        [0.5, numpy.nan], [0.5, numpy.inf], [-numpy.inf, 0.5],
+    ])
+    @pytest.mark.parametrize(
+        'q_type', [list, tuple, numpy.asarray, cupy.asarray],
+        ids=['list', 'tuple', 'numpy', 'cupy'])
+    def test_mixed_out_of_range_q(self, func, scale, q, q_type, method):
+        a = cupy.array([3., 1., 2.])
+        q = q_type(numpy.asarray(q) * scale)
+        with pytest.raises(ValueError, match='must be in the range'):
+            getattr(cupy, func)(a, q, method=method)
+
+    @pytest.mark.parametrize('func,scale',
+                             [('quantile', 1), ('percentile', 100)])
+    @pytest.mark.parametrize('q', [[0., 1.], [0.8, 0.2, 0.5], []])
+    @pytest.mark.parametrize(
+        'q_type', [list, tuple, numpy.asarray, cupy.asarray],
+        ids=['list', 'tuple', 'numpy', 'cupy'])
+    def test_valid_q(self, func, scale, q, q_type, method):
+        a = numpy.array([3., 1., 2.])
+        q = numpy.asarray(q) * scale
+        expected = getattr(numpy, func)(a, q, method=method)
+        result = getattr(cupy, func)(cupy.asarray(a), q_type(q), method=method)
+        testing.assert_allclose(result, expected)
+
     @testing.for_all_dtypes(no_float16=True, no_bool=True, no_complex=True)
     @testing.numpy_cupy_allclose()
     def test_percentile_defaults(self, xp, dtype, method):
