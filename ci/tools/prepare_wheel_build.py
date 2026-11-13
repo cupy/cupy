@@ -7,7 +7,7 @@ This script:
 * Rewrites ``pyproject.toml``'s ``project.name`` to the CTK-major-specific
   package (``cupy-cuda12x`` / ``cupy-cuda13x``).
 * Pins nvmath-python and cuda-bindings in ``build-system.requires`` to the
-  versions in ``ci/versions.yml``.
+  minimum versions in ``pyproject.toml``'s ``[tool.cupy.cuda-python]``.
 * Writes ``description.rst`` (becomes the wheel's ``long_description``).
 * Generates ``_wheel.json`` preload metadata for the ``[ctk]`` runtime extras.
 * Globs ``--preload-dir`` for include/lib subdirs to point CuPy at.
@@ -41,7 +41,6 @@ from pathlib import Path
 
 import tomllib
 import tomli_w
-import yaml
 
 # Make sibling wheel_configs.py importable when invoked from anywhere.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -52,7 +51,6 @@ from wheel_configs import (  # noqa: E402
 )
 
 DEFAULT_SOURCE_ROOT = Path(__file__).resolve().parents[2]
-VERSIONS_YML = Path(__file__).resolve().parents[1] / "versions.yml"
 
 
 def rename_project(source_root: Path, cuda_major: str) -> str:
@@ -67,22 +65,18 @@ def rename_project(source_root: Path, cuda_major: str) -> str:
 
 
 def pin_build_requires(source_root: Path, cuda_major: str) -> None:
-    """Add the pinned nvmath-python / cuda-bindings to ``build-system.requires``.
+    """Pin nvmath-python / cuda-bindings in ``build-system.requires``.
 
-    The versions a wheel is built with become its minimum runtime versions.
+    Wheels are built with the minimum supported versions, which then become
+    the wheels' minimum runtime versions.
     """
-    versions = yaml.safe_load(VERSIONS_YML.read_text(encoding="utf-8"))
-    bindings_version = next(
-        v["version"] for v in versions["cuda_bindings"].values()
-        if v["version"].split(".")[0] == cuda_major
-    )
-    pins = [
-        f"nvmath-python=={versions['nvmath_python']['build']['version']}",
-        f"cuda-bindings=={bindings_version}",
-    ]
     pyproject = source_root / "pyproject.toml"
     data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
-    data["build-system"]["requires"] += pins
+    floors = data["tool"]["cupy"]["cuda-python"]
+    data["build-system"]["requires"] += [
+        f"nvmath-python=={floors['nvmath-python']}",
+        f"cuda-bindings=={floors['cuda-bindings'][cuda_major]}",
+    ]
     with pyproject.open("wb") as f:
         tomli_w.dump(data, f)
 
