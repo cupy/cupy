@@ -1111,3 +1111,52 @@ class TestSequenceModeRegression:
     def test_prewitt_sequence_mode(self, xp, scp):
         arr = xp.asarray([[1., 0., 0], [1, 1, 0], [0, 0, 0]])
         return scp.ndimage.prewitt(arr, mode=['reflect', 'reflect'])
+
+
+@testing.with_requires('scipy')
+class TestFloat16ConstantModeRegression:
+    # Regression test for CuPy issue #9122: float16 with mode="constant"
+    # caused ambiguous ternary operator in NVRTC compilation.
+
+    @pytest.mark.parametrize('func', [
+        'maximum_filter',
+        'minimum_filter',
+        'grey_dilation',
+        'grey_erosion',
+        'correlate',
+        'convolve',
+        'gaussian_filter',
+        'uniform_filter',
+    ])
+    @testing.numpy_cupy_allclose(atol=1e-3, rtol=1e-3, scipy_name='scp')
+    def test_float16_constant_mode(self, xp, scp, func):
+        arr = testing.shaped_random((5, 5), xp, xp.float16, seed=0)
+        # SciPy ndimage filters do not support float16 inputs;
+        # compute reference in float32 for SciPy.
+        if xp is numpy:
+            arr = arr.astype(numpy.float32)
+        fn = getattr(scp.ndimage, func)
+        if func in ('correlate', 'convolve'):
+            weights = xp.ones((3, 3), dtype=arr.dtype)
+            out = fn(arr, weights, mode='constant', cval=0.0)
+        elif func == 'gaussian_filter':
+            out = fn(arr, sigma=1.0, mode='constant', cval=0.0)
+        else:
+            out = fn(arr, size=3, mode='constant', cval=0.0)
+        return out.astype(xp.float16) if xp is numpy else out
+
+    @testing.numpy_cupy_allclose(atol=1e-3, rtol=1e-3, scipy_name='scp')
+    def test_float16_constant_mode_cval(self, xp, scp):
+        arr = testing.shaped_random((5, 5), xp, xp.float16, seed=1)
+        if xp is numpy:
+            arr = arr.astype(numpy.float32)
+        out = scp.ndimage.maximum_filter(arr, size=3, mode='constant', cval=1.5)
+        return out.astype(xp.float16) if xp is numpy else out
+
+    @testing.numpy_cupy_allclose(atol=1e-3, rtol=1e-3, scipy_name='scp')
+    def test_float16_constant_mode_1d(self, xp, scp):
+        arr = testing.shaped_random((10,), xp, xp.float16, seed=2)
+        if xp is numpy:
+            arr = arr.astype(numpy.float32)
+        out = scp.ndimage.maximum_filter1d(arr, size=3, mode='constant', cval=0.0)
+        return out.astype(xp.float16) if xp is numpy else out
