@@ -138,7 +138,10 @@ def get_cuda_python_versions(
     except ImportError as e:
         raise RuntimeError(
             f'CUPY_USE_CUDA_PYTHON requires nvmath-python{nvmath_spec} and '
-            f'cuda-bindings{bindings_spec} to be installed: {e}') from e
+            f'cuda-bindings{bindings_spec} to be installed: {e}. '
+            'If building with pip, cuda.h may not have been found when pip '
+            'collected the build requirements; set CUDA_PATH, or install '
+            'them and build with --no-build-isolation.') from e
     for name, version, spec in (
             ('nvmath-python', nvmath.__version__, nvmath_spec),
             ('cuda-bindings', cuda_bindings.__version__, bindings_spec)):
