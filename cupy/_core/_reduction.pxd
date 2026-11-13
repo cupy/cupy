@@ -43,7 +43,7 @@ cdef class _AbstractReductionKernel:
 
     cdef _create_out_args(
         self, KernelArguments kargs, tuple out_types,
-        shape_t& shape)
+        const shape_t& shape, bint c_order)
 
     cdef function.Function _get_function(
         self,
