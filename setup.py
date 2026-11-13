@@ -26,6 +26,7 @@ if not cupy_builder.preflight_check(ctx):
 # - libcudacxx's test files exceed the default path length limit on Windows, so
 #   we have to exclude them so as to avoid asking users to touch the registry.
 cupy_package_data = [
+    'cupy/_core/_header_cache.json',
     'cupy/cuda/cupy_thrust.cu',
     'cupy/cuda/cupy_cub.cu',
     'cupy/cuda/cupy_cufftXt.cu',  # for cuFFT callback

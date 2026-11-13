@@ -4,7 +4,10 @@ from __future__ import annotations
 import dataclasses
 import glob
 import hashlib
+import json
 import os
+from pathlib import Path
+import runpy
 import sys
 from typing import TYPE_CHECKING
 
@@ -43,7 +46,7 @@ class Context:
     annotate: bool
     no_rpath: bool
     features: dict[str, cupy_builder.Feature]
-    cupy_cache_key: str | None
+    header_cache_key: str | None
     win32_cl_exe_path: str | None
     dev_configure_cache: bool
     dev_configure_cache_key: str
@@ -79,9 +82,7 @@ class Context:
             "CUPY_INSTALL_CYTHON_COVERAGE", _env)
 
         self.features = cupy_builder.get_features(self)
-
-        # Cache key for this build.
-        self.cupy_cache_key = None
+        self.header_cache_key = None
 
         # Host compiler path for Windows, see `_command.py`.
         self.win32_cl_exe_path = None
@@ -101,14 +102,21 @@ class Context:
         self.wheel_libs = []
         self.wheel_includes = []
 
-    def calculate_cupy_cache_key(self) -> None:
-        print('Generating CUPY_CACHE_KEY from header files...')
-        pattern = os.path.join(
-            self.source_root, 'cupy', '_core', 'include', '**')
-        cache_key, count = self._calculate_checksum(pattern)
-        print(f'CUPY_CACHE_KEY ({count} files '
-              f'matching {pattern}): {cache_key}')
-        self.cupy_cache_key = cache_key
+    def generate_header_cache(self) -> None:
+        print('Generating kernel cache keys from header files...')
+        include_dir = os.path.join(
+            self.source_root, 'cupy', '_core', 'include')
+        # Load the shared classifier without importing the CuPy extensions.
+        module = runpy.run_path(os.path.join(
+            self.source_root, 'cupy', '_core', '_header_cache.py'))
+        cache = module['build_header_cache'](include_dir)
+        self.header_cache_key = cache['keys']['full']
+        data = json.dumps(cache, sort_keys=True, separators=(',', ':'))
+        path = Path(self.source_root) / 'cupy' / '_core' / '_header_cache.json'
+        if not path.exists() or path.read_text() != data:
+            path.write_text(data)
+        for group, key in cache['keys'].items():
+            print(f'Kernel header cache key ({group}): {key}')
 
     def calculate_dev_cache_key(self) -> None:
         print('Generating configure cache key...')

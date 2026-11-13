@@ -10,6 +10,7 @@ import warnings
 import numpy
 
 import cupy
+from cupy._core import _header_cache
 from cupy._core._kernel import create_ufunc
 from cupy._core._kernel import ElementwiseKernel
 from cupy._core._ufuncs import elementwise_copy
@@ -64,18 +65,8 @@ from cupy.exceptions import ComplexWarning
 NUMPY_1x = numpy.__version__ < '2'
 
 
-cdef extern from *:
-    """
-    #define _str_(s) #s
-    #define _xstr_(s) _str_(s)
-    const char* cupy_cache_key = _xstr_(CUPY_CACHE_KEY);
-    #undef _xstr_
-    #undef _str_
-    """
-    const char* cupy_cache_key  # set at build time
-
-
-CUPY_CACHE_KEY = cupy_cache_key.decode()
+HEADER_CACHE = _header_cache.load_header_cache()
+CUPY_CACHE_KEY = HEADER_CACHE['keys']['common']
 
 cdef tuple _HANDLED_TYPES
 
@@ -2477,8 +2468,7 @@ _cupy_header_list = cupy_header_list
 cdef str _cupy_header = ''.join(
     ['#include <%s>\n' % i for i in cupy_header_list])
 
-# This is indirect include header list.
-# These header files are subject to a hash key.
+# Indirect dependencies preloaded for Jitify and legacy HIPRTC.
 cdef list _cupy_extra_header_list = [
     'cupy/complex/complex.h',
     'cupy/complex/math_private.h',
@@ -2587,18 +2577,24 @@ cpdef warn_on_unsupported_std(tuple options):
 
 
 cpdef tuple assemble_cupy_compiler_options(tuple options):
-    cdef cpp_bool initialized
-
+    """Apply language defaults before classifying incoming compiler options."""
     if use_default_std(options):
         options += ('--std=c++17',)
     else:
         warn_on_unsupported_std(options)
 
-    if not _is_hip:
-        # make sure bundled CCCL is searched first
-        options = (_get_cccl_include_options() + options)
+    return options
 
-    options += ('-I%s' % _header_dir_path,)
+
+cpdef tuple add_cupy_include_dirs(tuple options):
+    if not _is_hip:
+        # Make sure bundled CCCL is searched first.
+        options = _get_cccl_include_options() + options
+    return options + ('-I%s' % _header_dir_path,)
+
+
+cpdef tuple add_runtime_include_dirs(tuple options):
+    cdef cpp_bool initialized
 
     if not _is_hip:
         cuda_include_dir = _cuda_include_dir.get(&initialized)
@@ -2646,15 +2642,14 @@ cpdef function.Module compile_with_cache(
         source = _cupy_header + source
     if jitify:
         source = '#include <cupy/cuda_workaround.h>\n' + source
-    extra_source = _get_header_source()
 
     options = assemble_cupy_compiler_options(options)
 
     return cuda.compiler._compile_module_with_cache(
-        source, options, arch=arch, extra_source=extra_source, backend=backend,
+        source, options, arch=arch, backend=backend,
         enable_cooperative_groups=enable_cooperative_groups,
         name_expressions=name_expressions, log_stream=log_stream,
-        jitify=jitify)
+        jitify=jitify, cupy_include_dirs=True, runtime_include_dirs=True)
 
 
 cpdef bytes compile_to_ltoir(
@@ -2671,8 +2666,8 @@ cpdef bytes compile_to_ltoir(
 
     return cuda.compiler._compile_module_with_cache(
         source, assemble_cupy_compiler_options(options), arch=arch,
-        extra_source=_get_header_source(), log_stream=log_stream,
-        to_ltoir=True)
+        log_stream=log_stream,
+        to_ltoir=True, cupy_include_dirs=True, runtime_include_dirs=True)
 
 
 # =============================================================================
