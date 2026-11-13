@@ -23,6 +23,8 @@ Utility
 
    show_config
 
+.. seealso:: :ref:`public_c_api`
+
 Matlab-like Functions
 ---------------------
 
