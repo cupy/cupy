@@ -554,6 +554,31 @@ class TestLSQ:
         b = scp.interpolate.make_lsq_spline(x, y, t, k=1)
         return b.c
 
+    def test_nvmath_backend_matches_qr(self):
+        pytest.importorskip("nvmath")
+        from cupyx.scipy.interpolate import _bspline2
+        assert _bspline2.has_nvmath
+
+        rng = _np.random.RandomState(1234)
+        n = 50
+        x = cupy.asarray(_np.sort(rng.uniform(0, 4, n)))
+        y = cupy.sin(2 * x[:, None]) + 0.1 * cupy.asarray(
+            rng.normal(size=(n, 3)))
+        t = cupy.asarray(_augknt(_np.linspace(0, 4, 7), 3))
+
+        # default weights only, the qr path disagrees with scipy for w != 1
+        spl = csi.make_lsq_spline(x, y, t, k=3)
+
+        orig = _bspline2.has_nvmath
+        _bspline2.has_nvmath = False
+        try:
+            ref = csi.make_lsq_spline(x, y, t, k=3)
+        finally:
+            _bspline2.has_nvmath = orig
+
+        xx = cupy.linspace(0, 4, 200)
+        testing.assert_allclose(spl(xx), ref(xx), rtol=1e-6, atol=1e-8)
+
 
 def fprota(c, s, a, b):
     """Givens rotate [a, b].

@@ -16,6 +16,12 @@ from cupyx.scipy.interpolate._bspline import (
     _get_dtype, _as_float_array, _get_module_func, INTERVAL_MODULE,
     D_BOOR_MODULE, BSpline)
 
+try:
+    import nvmath.sparse.advanced as adv
+    has_nvmath = True
+except ImportError:
+    has_nvmath = False
+
 
 #################################
 #  Interpolating spline helpers #
@@ -769,6 +775,24 @@ def fpback(R, nc, y):
     return c
 
 
+def _lsq_solve_normal(x, y, t, k, w):
+    """Solve for the LSQ spline coeffs via the normal equations and cuDSS.
+
+    The residuals are scaled by `w`, cf `_lsq_solve_qr`.
+    """
+    X = BSpline.design_matrix(x, t, k)
+    w2 = w * w
+    lhs = X.T @ X.multiply(w2[:, None])
+    rhs = X.T @ (w2[:, None] * y)
+
+    rhs = cupy.asfortranarray(rhs)
+    with adv.DirectSolver(lhs, rhs) as solver:
+        solver.plan()
+        solver.factorize()
+        c = solver.solve()
+    return cupy.ascontiguousarray(c, dtype=cupy.float64)
+
+
 def make_lsq_spline(x, y, t, k=3, w=None, axis=0, check_finite=True, *,
                     method="qr"):
     r"""Construct a BSpline via an LSQ (Least SQuared) fit.
@@ -828,6 +852,7 @@ def make_lsq_spline(x, y, t, k=3, w=None, axis=0, check_finite=True, *,
     x = _as_float_array(x, check_finite)
     y = _as_float_array(y, check_finite)
     t = _as_float_array(t, check_finite)
+    unweighted = w is None
     if w is not None:
         w = _as_float_array(w, check_finite)
     else:
@@ -869,7 +894,12 @@ def make_lsq_spline(x, y, t, k=3, w=None, axis=0, check_finite=True, *,
     yy = y.reshape(-1, extradim)
 
     # solve
-    _, _, c = _lsq_solve_qr(x, yy, t, k, w)
+    # w != 1 stays on the qr path until the weight handling there is fixed,
+    # see the xfail on test_weights_arange
+    if has_nvmath and unweighted and yy.dtype == cupy.float64:
+        c = _lsq_solve_normal(x, yy, t, k, w)
+    else:
+        _, _, c = _lsq_solve_qr(x, yy, t, k, w)
 
     # restore the shape of `c` for both single and multiple r.h.s.
     c = c.reshape((nc,) + y.shape[1:])
