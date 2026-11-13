@@ -35,6 +35,8 @@ cpdef int _get_dtype_id(dtype) except -1:
         ret = CUPY_TYPE_COMPLEX128
     elif dtype == numpy.bool_:
         ret = CUPY_TYPE_BOOL
+    elif numpy.dtype(dtype).name == 'bfloat16':
+        ret = CUPY_TYPE_BFLOAT16
     else:
         raise ValueError('Unsupported dtype ({})'.format(dtype))
     return ret

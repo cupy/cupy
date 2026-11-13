@@ -17,7 +17,6 @@ classifiers = [
   "Intended Audience :: Developers",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
@@ -30,7 +29,7 @@ classifiers = [
   "Operating System :: POSIX",
   "Operating System :: Microsoft :: Windows",
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dynamic = [
   "version",
   "readme",  # long_description
@@ -88,7 +87,7 @@ filterwarnings = [
   "error::PendingDeprecationWarning",
   "error::cupy.exceptions.VisibleDeprecationWarning",
   "error::cupy.exceptions.ComplexWarning",
-  # distutils (Python 3.10)
+  # distutils (vendored by setuptools)
   "ignore:The distutils(.+) is deprecated:DeprecationWarning",
   "ignore:dep_util is Deprecated:DeprecationWarning",
   # pkg_resources

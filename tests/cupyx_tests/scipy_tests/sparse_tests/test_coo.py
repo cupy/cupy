@@ -1002,6 +1002,23 @@ class TestCooMatrixSum:
 class TestCooMatrixSumDuplicates:
 
     @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_sum_duplicates_int32_key_overflow(self, xp, sp):
+        # Coordinates fit int32, but row * ncol + col does not.
+        data = xp.array([2, 3, 4], dtype=self.dtype)
+        row = xp.array([3000, 1, 3000], dtype=xp.int32)
+        col = xp.array([7, 5, 7], dtype=xp.int32)
+        m = sp.coo_matrix((data, (row, col)), shape=(3001, 10**6))
+        assert m.row.dtype == xp.int32
+
+        m.sum_duplicates()
+
+        assert m.has_canonical_format
+        testing.assert_array_equal(m.row, [1, 3000])
+        testing.assert_array_equal(m.col, [5, 7])
+        testing.assert_array_equal(m.data, xp.array([3, 6], dtype=self.dtype))
+        return m.row, m.col, m.data
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
     def test_sum_duplicates(self, xp, sp):
         m = _make_duplicate(xp, sp, self.dtype)
         assert not m.has_canonical_format

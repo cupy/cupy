@@ -15,8 +15,6 @@
 #define CUPY_CUB_VERSION_CODE 0
 #endif
 
-#ifndef CUPY_NO_CUDA
-
 // for cudaStream_t
 #ifndef CUPY_USE_HIP
 #include <cuda_runtime.h>
@@ -53,46 +51,5 @@ __device__ long long atomicAdd_block(long long *address, long long val) {
 #if (defined(_MSC_VER) && (__CUDACC_VER_MAJOR__ == 11 && __CUDACC_VER_MINOR__ == 2))
   #define __builtin_unreachable() __assume(false)
 #endif
-
-#else // CUPY_NO_CUDA
-
-typedef struct CUstream_st *cudaStream_t;
-
-void cub_device_reduce(...) {
-}
-
-void cub_device_segmented_reduce(...) {
-}
-
-void cub_device_scan(...) {
-}
-
-void cub_device_histogram_range(...) {
-}
-
-void cub_device_histogram_even(...) {
-}
-
-size_t cub_device_reduce_get_workspace_size(...) {
-    return 0;
-}
-
-size_t cub_device_segmented_reduce_get_workspace_size(...) {
-    return 0;
-}
-
-size_t cub_device_scan_get_workspace_size(...) {
-    return 0;
-}
-
-size_t cub_device_histogram_range_get_workspace_size(...) {
-    return 0;
-}
-
-size_t cub_device_histogram_even_get_workspace_size(...) {
-    return 0;
-}
-
-#endif // #ifndef CUPY_NO_CUDA
 
 #endif // #ifndef INCLUDE_GUARD_CUPY_CUDA_CUB_H

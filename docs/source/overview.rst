@@ -67,3 +67,8 @@ The CuPy team focuses on providing:
 
 * A complete NumPy and SciPy API coverage to become a full drop-in replacement, as well as advanced CUDA features to maximize the performance.
 * Mature and quality library as a fundamental package for all projects needing acceleration, from a lab environment to a large-scale cluster.
+
+Acknowledgement
+---------------
+
+CuPy is being developed and maintained by `Preferred Networks <https://www.preferred.jp/en/>`__\ ™ (PFN™), `organizational supporters <https://cupy.dev/#supporters>`__, and `community contributors <https://github.com/cupy/cupy/graphs/contributors>`__.

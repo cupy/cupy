@@ -100,6 +100,14 @@ cpdef _get_cuda_build_version():
         return 0
 
 
+cdef int _get_dtype_id(dtype) except -1:
+    cdef int dtype_id = common._get_dtype_id(dtype)
+    if dtype_id == common.CUPY_TYPE_BFLOAT16:
+        # TODO: support bfloat16 in CUB.
+        raise ValueError('Unsupported dtype ({})'.format(dtype))
+    return dtype_id
+
+
 cdef tuple _get_output_shape(_ndarray_base arr, tuple out_axis, bint keepdims):
     cdef tuple out_shape
 
@@ -182,7 +190,7 @@ def device_reduce(_ndarray_base x, op, tuple reduce_axis, tuple out_axis,
         y = _core.ndarray((kv_bytes,), numpy.int8)
     x_ptr = <void *>x.data.ptr
     y_ptr = <void *>y.data.ptr
-    dtype_id = common._get_dtype_id(x.dtype)
+    dtype_id = _get_dtype_id(x.dtype)
     s = <Stream_t>stream.get_current_stream_ptr()
     x_size = <int>x.size
     ws_size = cub_device_reduce_get_workspace_size(x_ptr, y_ptr, x.size, s,
@@ -253,7 +261,7 @@ def device_segmented_reduce(_ndarray_base x, op, tuple reduce_axis,
         return y
     n_segments = x.size//contiguous_size
     s = <Stream_t>stream.get_current_stream_ptr()
-    dtype_id = common._get_dtype_id(x.dtype)
+    dtype_id = _get_dtype_id(x.dtype)
 
     # get workspace size and then fire up
     ws_size = cub_device_segmented_reduce_get_workspace_size(
@@ -293,7 +301,7 @@ def device_scan(_ndarray_base x, op):
     x = _internal_ascontiguousarray(x)
     x_ptr = <void *>x.data.ptr
     s = <Stream_t>stream.get_current_stream_ptr()
-    dtype_id = common._get_dtype_id(x.dtype)
+    dtype_id = _get_dtype_id(x.dtype)
     ws_size = cub_device_scan_get_workspace_size(x_ptr, x_ptr, x_size, s,
                                                  op, dtype_id)
     ws = memory.alloc(ws_size)
@@ -338,7 +346,7 @@ def device_histogram(_ndarray_base x, _ndarray_base y, bins):
     y_ptr = <void*>y.data.ptr
     n_samples = x.size
     s = <Stream_t>stream.get_current_stream_ptr()
-    dtype_id = common._get_dtype_id(x.dtype)
+    dtype_id = _get_dtype_id(x.dtype)
 
     if is_even:
         ws_size = cub_device_histogram_even_get_workspace_size(
