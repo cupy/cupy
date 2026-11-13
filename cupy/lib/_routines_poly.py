@@ -307,6 +307,61 @@ def polyfit(x, y, deg, rcond=None, full=False, w=None, cov=False):
     return c
 
 
+def polyint(p, m=1, k=None):
+    """Returns an antiderivative (indefinite integral) of a polynomial.
+
+    Args:
+        p (cupy.ndarray or cupy.poly1d): Polynomial coefficients from highest
+            to lowest degree.
+        m (int): Order of the antiderivative.
+        k (scalar or array_like, optional): Integration constants.
+
+    Returns:
+        cupy.ndarray or cupy.poly1d: Coefficients of the integrated polynomial.
+
+    .. seealso:: :func:`numpy.polyint`
+    """
+    truepoly = isinstance(p, cupy.poly1d)
+    if truepoly:
+        p = p._coeffs
+    if not isinstance(p, cupy.ndarray):
+        p = cupy.asarray(p)
+    if p.ndim != 1:
+        raise ValueError('p must be 1-d array')
+
+    m = int(m)
+    if m < 0:
+        raise ValueError('Order of integral must be positive (see polyder)')
+    if m == 0:
+        return cupy.poly1d(p) if truepoly else p
+
+    if k is None:
+        k = cupy.zeros(m, float)
+    else:
+        k = cupy.asarray(k)
+        if k.ndim > 1:
+            k = k.ravel()
+        if k.ndim == 0:
+            k = k[None]
+        if len(k) == 1 and m > 1:
+            k = k[0] * \
+                cupy.ones(m, dtype=numpy.result_type(k.dtype, numpy.float64))
+        if len(k) < m:
+            raise ValueError(
+                'k must be a scalar or a rank-1 array of length 1 or >m.')
+
+    dtype = numpy.result_type(p.dtype, numpy.float64(1))
+    p = p.astype(dtype, copy=False)
+    k = k.astype(dtype, copy=False)
+
+    y = cupy.concatenate((
+        p / cupy.arange(len(p), 0, -1, dtype=dtype),
+        cupy.atleast_1d(k[0]).astype(dtype, copy=False)
+    ))
+    val = polyint(y, m - 1, k=k[1:])
+    return cupy.poly1d(val) if truepoly else val
+
+
 def polyval(p, x):
     """Evaluates a polynomial at specific values.
 

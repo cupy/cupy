@@ -53,6 +53,7 @@ Basics
 
    poly1d
    cupy.poly
+   polyint
    polyval
    roots
 
