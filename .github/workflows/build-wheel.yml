@@ -42,6 +42,9 @@ jobs:
                  (inputs.host-platform == 'linux-aarch64' && 'ubuntu-22.04-arm') ||
                  (inputs.host-platform == 'win-64'        && 'windows-2022')     ||
                  (inputs.host-platform == 'win-arm64'     && 'windows-11-arm') }}
+    env:
+      # nvmath-python has no wheels for these targets yet (#10473).
+      CUPY_USE_CUDA_PYTHON: ${{ (startsWith(matrix.python-version, '3.15') || inputs.host-platform == 'win-arm64') && '0' || '1' }}
     steps:
       - name: Verify LongPathsEnabled on Windows
         if: ${{ startsWith(inputs.host-platform, 'win') }}
@@ -213,7 +216,10 @@ jobs:
         with:
           host-platform: ${{ inputs.host-platform }}
           cuda-version: ${{ inputs.cuda-version }}
-          cuda-components: "cuda_nvcc,cuda_cudart,cuda_crt,cuda_cuxxfilt,libnvvm,cuda_nvrtc,cuda_nvtx,cuda_profiler_api,cuda_cccl,libnvjitlink,libcublas,libcufft,libcurand,libcusparse,libcusolver"
+          # With CUDA Python, cuBLAS, cuSPARSE and cuSOLVER are not needed:
+          # CuPy uses them through nvmath-python, which loads them at runtime.
+          # libcurand is only needed for the cuRAND device API headers.
+          cuda-components: "cuda_nvcc,cuda_cudart,cuda_crt,cuda_cuxxfilt,libnvvm,cuda_nvrtc,cuda_nvtx,cuda_profiler_api,cuda_cccl,libnvjitlink,libcufft,libcurand${{ env.CUPY_USE_CUDA_PYTHON == '0' && ',libcublas,libcusparse,libcusolver' || '' }}"
           cuda-path: ${{ runner.temp }}/cuda_toolkit
 
       - name: Install cuTENSOR preload
@@ -274,6 +280,7 @@ jobs:
             CUPY_LIBRARY_PATH
             CUPY_PACKAGE_NAME
             CUPY_NUM_BUILD_JOBS
+            CUPY_USE_CUDA_PYTHON
           # NOTE: cibuildwheel resolves CIBW_ENVIRONMENT_<PLATFORM> *in place
           # of* CIBW_ENVIRONMENT (last-match-wins, no merging -- see
           # OptionsReader.get() in cibuildwheel/options.py). A generic
@@ -281,11 +288,10 @@ jobs:
           # define a platform block, so keep shared variables duplicated in
           # BOTH platform blocks below.
           # LDFLAGS=-Wl,--as-needed mirrors cupy-release-tools' build-wrapper;
-          # cupy_builder links every _cuda_files module against
-          # -lcublas -lcufft -lcurand -lcusparse. Without --as-needed, ld
-          # marks DT_NEEDED for all four on every .so even when unreferenced,
-          # so `import cupy._core.<mod>` dlopen-fails in a bare env before
-          # cuda-pathfinder can preload the libs.
+          # cupy_builder links every _cuda_files module against -lcufft.
+          # Without --as-needed, ld marks DT_NEEDED for it on every .so even
+          # when unreferenced, so `import cupy._core.<mod>` dlopen-fails in a
+          # bare env before cuda-pathfinder can preload the libs.
           CIBW_ENVIRONMENT_LINUX: >
             CUDA_PATH=/host/${{ env.CUDA_PATH }}
             LDFLAGS="-Wl,--as-needed ${LDFLAGS}"
@@ -378,6 +384,27 @@ jobs:
       - name: Check wheel
         run: |
           twine check --strict wheelhouse/*.whl
+          # setup.py only adds nvmath-python and cuda-bindings to the wheel's
+          # requirements when building with CUDA Python.
+          python - <<'EOF'
+          import glob, os, zipfile
+          from packaging.requirements import Requirement
+          use_cuda_python = os.environ['CUPY_USE_CUDA_PYTHON'] != '0'
+          for whl in glob.glob('wheelhouse/*.whl'):
+              with zipfile.ZipFile(whl) as z:
+                  name = next(n for n in z.namelist()
+                              if n.endswith('.dist-info/METADATA'))
+                  requires = [Requirement(line.removeprefix('Requires-Dist: '))
+                              for line in z.read(name).decode().splitlines()
+                              if line.startswith('Requires-Dist: ')]
+              print(whl, *requires, sep='\n  ')
+              # Requirements under an extra (e.g., `; extra == "test"`) do not count.
+              names = {r.name for r in requires if r.marker is None}
+              for package in ('nvmath-python', 'cuda-bindings'):
+                  assert (package in names) == use_cuda_python, (
+                      f'{whl} should {"" if use_cuda_python else "not "}'
+                      f'require {package}')
+          EOF
 
       - name: Upload wheel artifact
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2

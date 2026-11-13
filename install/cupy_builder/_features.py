@@ -291,6 +291,8 @@ def get_features(ctx: Context) -> dict[str, Feature]:
         'check_method': build.check_jitify_version,
         'version_method': build.get_jitify_version,
     }
+    # The random kernels use the header-only cuRAND device API, so libcurand
+    # is only linked without CUDA Python.
     CUDA_random = {
         'name': 'random',
         'required': True,
@@ -301,9 +303,9 @@ def get_features(ctx: Context) -> dict[str, Feature]:
         ],
         'include': [
         ],
-        'libraries': [
+        'libraries': ([] if ctx.use_cuda_python else [
             'curand',
-        ] + _cudart_static_libs,
+        ]) + _cudart_static_libs,
         'static_libraries': ['cudart_static'],
     }
     HIP_random = {
@@ -451,6 +453,7 @@ class CUDA_cuda(Feature):
             'cuda_profiler_api.h',
             'cuda_runtime.h',
             'cufft.h',
+            # Also needed by the cuRAND device API (curand_kernel.h).
             'curand.h',
         ]
         self.libraries = (
@@ -458,13 +461,13 @@ class CUDA_cuda(Feature):
             _cudart_static_libs +
 
             # CUDA Toolkit
-            ['cufft', 'curand']
+            ['cufft']
         )
-        # With CUDA Python, cuBLAS and cuSPARSE are used via nvmath-python,
-        # which loads them at runtime.
+        # With CUDA Python, cuBLAS, cuSPARSE and cuRAND are used via
+        # nvmath-python, which loads them at runtime.
         if not ctx.use_cuda_python:
             self.includes += ['cublas_v2.h', 'cusparse.h']
-            self.libraries += ['cublas', 'cusparse']
+            self.libraries += ['cublas', 'cusparse', 'curand']
         self.static_libraries = ['cudart_static']
         self._version = self._UNDETERMINED
 

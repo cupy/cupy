@@ -27,6 +27,14 @@ NumPy/SciPy-compatible API in CuPy v14 is based on NumPy 2.3 and SciPy 1.16, and
 
 * `NumPy <https://numpy.org/>`_: v2.0 / v2.1 / v2.2 / v2.3 / v2.4 / v2.5
 
+* `cuda-bindings <https://nvidia.github.io/cuda-python/cuda-bindings/>`_ (CUDA only): v12.x for CUDA 12 / v13.x for CUDA 13
+
+    * Low-level Python bindings for the CUDA driver, runtime and NVRTC. Its major version must match the CUDA major version.
+
+* `nvmath-python <https://docs.nvidia.com/cuda/nvmath-python/>`_ (CUDA only): v1.x
+
+    * Provides the bindings CuPy uses for cuBLAS, cuSPARSE, cuSOLVER and cuRAND.
+
 * `SciPy <https://scipy.org/>`_ (*optional*): v1.14 / v1.15 / v1.16 / v1.17 / v1.18
 
     * Required only when copying sparse matrices from GPU to CPU (see :doc:`../reference/scipy_sparse`.)
@@ -37,6 +45,7 @@ NumPy/SciPy-compatible API in CuPy v14 is based on NumPy 2.3 and SciPy 1.16, and
 
 .. note::
 
+   cuda-bindings and nvmath-python are installed automatically.
    SciPy and Optuna are optional dependencies and will not be installed automatically.
 
 .. note::
@@ -195,6 +204,12 @@ If you want to install the latest development version of CuPy from a cloned Git 
 
    Cython 3 is required to build CuPy from source.
    It will be automatically installed during the build process if not available.
+
+.. note::
+
+   For CUDA, cuda-bindings and nvmath-python are also needed to build CuPy, and pip installs them automatically.
+   If you build with ``--no-build-isolation``, install them first (e.g., ``pip install nvmath-python "cuda-bindings==13.*"`` for CUDA 13).
+   The installed CuPy then requires at least the versions it was built with.
 
 .. note::
 

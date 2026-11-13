@@ -532,7 +532,7 @@ configs {
   }
 }
 
-# CUDA 12.x + CUDA Python
+# CUDA 12.x + CUDA Python opt-out
 configs {
   key: "cupy.linux.cuda12x-cuda-python"
   value {
@@ -550,7 +550,7 @@ configs {
   }
 }
 
-# CUDA 13.x + CUDA Python
+# CUDA 13.x + CUDA Python opt-out
 configs {
   key: "cupy.linux.cuda13x-cuda-python"
   value {

@@ -53,6 +53,15 @@ include = ["cupy*", "cupyx*", "cupy_backends*"]
 [tool.setuptools.dynamic]
 version = { attr = "cupy._version.__version__" }
 
+[tool.cupy.cuda-python]
+# Minimum versions for CUPY_USE_CUDA_PYTHON builds, read by setup.py and
+# ci/tools/prepare_wheel_build.py. Release wheels are built with exactly these
+# versions. Keep cuda-bindings on the same minor as the wheels' CTK
+# (ci/versions.yml). FlexCI tests these versions; update .pfnci/schema.yaml and
+# .pfnci/matrix.yaml too.
+nvmath-python = "1.0.0"
+cuda-bindings = { 12 = "12.9.10", 13 = "13.4.4" }
+
 [tool.autopep8]
 exclude = "*.git*, *.eggs*, *docs/source*"
 

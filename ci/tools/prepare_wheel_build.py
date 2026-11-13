@@ -6,6 +6,9 @@ This script:
 
 * Rewrites ``pyproject.toml``'s ``project.name`` to the CTK-major-specific
   package (``cupy-cuda12x`` / ``cupy-cuda13x``).
+* Pins nvmath-python and cuda-bindings in ``build-system.requires`` to the
+  minimum versions in ``pyproject.toml``'s ``[tool.cupy.cuda-python]``,
+  unless ``CUPY_USE_CUDA_PYTHON=0``.
 * Writes ``description.rst`` (becomes the wheel's ``long_description``).
 * Generates ``_wheel.json`` preload metadata for the ``[ctk]`` runtime extras.
 * Globs ``--preload-dir`` for include/lib subdirs to point CuPy at.
@@ -60,6 +63,23 @@ def rename_project(source_root: Path, cuda_major: str) -> str:
     with pyproject.open("wb") as f:
         tomli_w.dump(data, f)
     return package_name
+
+
+def pin_build_requires(source_root: Path, cuda_major: str) -> None:
+    """Pin nvmath-python / cuda-bindings in ``build-system.requires``.
+
+    Wheels are built with the minimum supported versions, which then become
+    the wheels' minimum runtime versions.
+    """
+    pyproject = source_root / "pyproject.toml"
+    data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+    floors = data["tool"]["cupy"]["cuda-python"]
+    data["build-system"]["requires"] += [
+        f"nvmath-python=={floors['nvmath-python']}",
+        f"cuda-bindings=={floors['cuda-bindings'][cuda_major]}",
+    ]
+    with pyproject.open("wb") as f:
+        tomli_w.dump(data, f)
 
 
 def write_long_description(source_root: Path, cuda_major: str) -> Path:
@@ -175,6 +195,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     package_name = rename_project(args.source_root, args.cuda_major)
+    if os.environ.get("CUPY_USE_CUDA_PYTHON") != "0":
+        pin_build_requires(args.source_root, args.cuda_major)
     description_path = write_long_description(args.source_root, args.cuda_major)
     metadata_path = generate_wheel_metadata(
         args.source_root, args.cuda_major, args.host_platform,

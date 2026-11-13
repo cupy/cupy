@@ -422,22 +422,20 @@ cython:
     spec: "==3.2.*,!=3.2.6"
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
-cuda-python:
+# Keep the minimum versions in sync with [tool.cupy.cuda-python] in
+# pyproject.toml.
+cuda-bindings:
   null:
     spec: null
-  "12":
-    spec: "==12.*"
-  "13.2":
-    spec: "==13.2.*"
-  "13.3":
-    spec: "==13.3.*"
-  "13.4":
-    spec: "==13.4.*"
+  "12.9.10":
+    spec: "==12.9.10"
+  "13.4.4":
+    spec: "==13.4.4"
 nvmath-python:
   null:
     spec: null
-  "1":
-    spec: "==1.*"
+  "1.0.0":
+    spec: "==1.0.0"
 cuda-cccl:
   null:
     spec: null

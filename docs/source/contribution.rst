@@ -295,6 +295,10 @@ In order to run unit tests at the repository root, you first have to build Cytho
 
     $ pip install "setuptools>=77" wheel "Cython>=3.1,<3.2" numpy
 
+  For CUDA, also install cuda-bindings matching your CUDA major version and nvmath-python::
+
+    $ pip install nvmath-python "cuda-bindings==13.*"  # use "cuda-bindings==12.*" for CUDA 12
+
 Once Cython modules are built, you can run unit tests by running the following command at the repository root::
 
   $ python -m pytest

@@ -178,9 +178,11 @@ These environment variables are used during installation (building CuPy from sou
 
 .. envvar:: CUPY_USE_CUDA_PYTHON
 
-  Default: ``0``
+  Default: ``1`` for CUDA, ``0`` for ROCm
 
-  If set to ``1``, CuPy is built using `CUDA Python <https://github.com/NVIDIA/cuda-python>`_.
+  If set to ``1``, CuPy is built using `CUDA Python <https://github.com/NVIDIA/cuda-python>`_ (cuda-bindings) and `nvmath-python <https://docs.nvidia.com/cuda/nvmath-python/>`_.
+  Setting it to ``0`` for CUDA is deprecated and will be removed in a future release.
+  It cannot be set to ``1`` for ROCm.
 
 .. envvar:: CUPY_NVCC_GENERATE_CODE
 

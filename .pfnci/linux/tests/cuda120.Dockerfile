@@ -33,8 +33,8 @@ RUN git -C /opt/pyenv pull --ff-only && \
     pip install --disable-pip-version-check -U pip setuptools wheel && \
     pip install -U google-cloud-storage
 
-RUN pip install -U 'numpy==2.0.*' 'scipy==1.14.*' 'optuna==3.*' 'ml_dtypes==0.5.*' 'cython==3.2.*,!=3.2.6'
-RUN pip uninstall -y mpi4py cuda-python nvmath-python cuda-cccl && \
+RUN pip install -U 'numpy==2.0.*' 'scipy==1.14.*' 'optuna==3.*' 'ml_dtypes==0.5.*' 'cython==3.2.*,!=3.2.6' cuda-bindings==12.9.10 nvmath-python==1.0.0
+RUN pip uninstall -y mpi4py cuda-cccl && \
     pip check
 
 RUN mkdir /home/cupy-user && chmod 777 /home/cupy-user
