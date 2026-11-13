@@ -143,14 +143,17 @@ class TestResample:
         y = scp.signal.resample_poly(x, 1, 2, window=h, padtype=padtype)
         return y
 
-    @pytest.mark.parametrize('padtype', padtype_options)
-    @pytest.mark.parametrize('dtype', [cupy.float32, cupy.float64])
+    @pytest.mark.parametrize(
+        'dtype', ['float16', 'float32', 'float64', 'complex64', 'complex128',
+                  'int32'])
+    @pytest.mark.parametrize('up, down', [(1, 2), (3, 2), (5, 1)])
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-5, rtol=1e-5)
-    @pytest.mark.skip(reason='cval and mode is not supported on upfirdn')
-    def test_output_match_dtype(self, padtype, dtype, xp, scp):
+    def test_output_match_dtype(self, dtype, up, down, xp, scp):
         # Test that the dtype of x is preserved per issue #14733
-        x = xp.arange(10, dtype=dtype)
-        y = scp.signal.resample_poly(x, 1, 2, padtype=padtype)
+        # (SciPy also loops over padtype, but upfirdn only supports the
+        # default 'constant' with no cval)
+        x = xp.arange(10).astype(dtype)
+        y = scp.signal.resample_poly(x, up, down)
         return y
 
     @pytest.mark.parametrize(
