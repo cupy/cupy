@@ -6,6 +6,8 @@ import cupy
 import numpy
 
 from cupy.cuda import thrust
+from cupy._core import _accelerator
+from cupy_backends.cuda.api import runtime
 
 
 def sort(a, axis=-1, kind=None, *, descending=False):
@@ -64,11 +66,6 @@ def lexsort(keys):
 
     # TODO(takagi): Support axis argument.
 
-    if not cupy.cuda.thrust.available:
-        raise RuntimeError('Thrust is needed to use cupy.lexsort. Please '
-                           'install CUDA Toolkit with Thrust then reinstall '
-                           'CuPy after uninstalling it.')
-
     if keys.ndim == ():
         # as numpy.lexsort() raises
         raise TypeError('need sequence of keys with len > 0 in lexsort')
@@ -81,9 +78,23 @@ def lexsort(keys):
         raise NotImplementedError('Keys with the rank of three or more is not '
                                   'supported in lexsort')
 
-    # thrust.lexsort() assumes a C-contiguous array
+    # Both sorting backends require C-contiguous key storage.
     if not keys.flags.c_contiguous:
         keys = keys.copy('C')
+
+    if not runtime.is_hip:
+        for accelerator in _accelerator.get_routine_accelerators():
+            if accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE:
+                from cupy._core._cuda_compute_merge_sort import (
+                    cuda_compute_lexsort)
+                result = cuda_compute_lexsort(keys)
+                if result is not None:
+                    return result
+
+    if not cupy.cuda.thrust.available:
+        raise RuntimeError('Thrust is needed to use cupy.lexsort. Please '
+                           'install CUDA Toolkit with Thrust then reinstall '
+                           'CuPy after uninstalling it.')
 
     idx_array = cupy.ndarray(keys._shape[1:], dtype=numpy.intp)
     k = keys._shape[0]
