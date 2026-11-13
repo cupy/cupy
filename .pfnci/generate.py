@@ -23,7 +23,7 @@ GH_CLI_VERSION = '2.95.0'
 
 PYTHON_LIBRARIES = (
     'numpy', 'scipy', 'optuna', 'mpi4py', 'ml_dtypes', 'cython',
-    'cuda-python', 'nvmath-python', 'cuda-cccl',
+    'cuda-bindings', 'nvmath-python', 'cuda-cccl',
 )
 
 

@@ -20,9 +20,10 @@
   ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.2"
-  cuda-python: null
+  # Test the minimum supported versions; other jobs use the latest.
+  cuda-bindings: "12.9.10"
   cuda-cccl: null
-  nvmath-python: null
+  nvmath-python: "1.0.0"
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
@@ -52,7 +53,7 @@
   ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.2"
-  cuda-python: null
+  cuda-bindings: null
   cuda-cccl: null
   nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
@@ -84,7 +85,7 @@
   ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.2"
-  cuda-python: null
+  cuda-bindings: null
   cuda-cccl: null
   nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
@@ -116,7 +117,7 @@
   ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.2"
-  cuda-python: null
+  cuda-bindings: null
   cuda-cccl: null
   nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
@@ -148,7 +149,7 @@
   ml_dtypes: null
   mpi4py: null
   cython: "3.2"
-  cuda-python: null
+  cuda-bindings: null
   cuda-cccl: null
   nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
@@ -180,7 +181,7 @@
   ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.2"
-  cuda-python: null
+  cuda-bindings: null
   cuda-cccl: null
   nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
@@ -212,7 +213,7 @@
   ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.2"
-  cuda-python: null
+  cuda-bindings: null
   cuda-cccl: null
   nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
@@ -244,7 +245,7 @@
   ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.2"
-  cuda-python: null
+  cuda-bindings: null
   cuda-cccl: null
   nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
@@ -276,7 +277,7 @@
   ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.2"
-  cuda-python: null
+  cuda-bindings: null
   cuda-cccl: null
   nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
@@ -310,9 +311,10 @@
   ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.2"
-  cuda-python: null
+  # Test the minimum supported versions; other jobs use the latest.
+  cuda-bindings: "13.4.4"
   cuda-cccl: null
-  nvmath-python: null
+  nvmath-python: "1.0.0"
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
@@ -342,7 +344,7 @@
   ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.2"
-  cuda-python: null
+  cuda-bindings: null
   cuda-cccl: null
   nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
@@ -374,7 +376,7 @@
   ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.2"
-  cuda-python: null
+  cuda-bindings: null
   cuda-cccl: null
   nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
@@ -406,7 +408,7 @@
   ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.2"
-  cuda-python: null
+  cuda-bindings: null
   cuda-cccl: null
   nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
@@ -439,7 +441,7 @@
   ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.2"
-  cuda-python: null
+  cuda-bindings: null
   cuda-cccl: null
   nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
@@ -512,7 +514,7 @@
   ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.2"
-  cuda-python: null
+  cuda-bindings: null
   cuda-cccl: null
   nvmath-python: null
   env:CUPY_ACCELERATORS: null
@@ -540,7 +542,7 @@
   ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.2"
-  cuda-python: null
+  cuda-bindings: null
   cuda-cccl: null
   nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
@@ -572,7 +574,7 @@
   ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.2"
-  cuda-python: null
+  cuda-bindings: null
   cuda-cccl: null
   nvmath-python: null
   env:CUPY_ACCELERATORS: ""
@@ -603,7 +605,7 @@
   ml_dtypes: "pre"
   mpi4py: null
   cython: "3.2"
-  cuda-python: null
+  cuda-bindings: null
   cuda-cccl: null
   nvmath-python: null
   env:CUPY_ACCELERATORS: "cub,cutensor"
@@ -637,7 +639,7 @@
   mpi4py: null
   ml_dtypes: null
   cython: "3.2"
-  cuda-python: null
+  cuda-bindings: null
   cuda-cccl: "cu12"
   nvmath-python: null
   env:CUPY_ACCELERATORS: "cuda_compute,cutensor,cub"
@@ -667,7 +669,7 @@
   mpi4py: null
   ml_dtypes: null
   cython: "3.2"
-  cuda-python: null
+  cuda-bindings: null
   cuda-cccl: "cu13"
   nvmath-python: null
   env:CUPY_ACCELERATORS: "cuda_compute,cutensor,cub"
