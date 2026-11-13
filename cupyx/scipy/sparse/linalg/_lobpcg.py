@@ -444,6 +444,14 @@ def lobpcg(A, X,
         aux = _b_orthonormalize(B, activeBlockVectorR)
         activeBlockVectorR, activeBlockVectorBR = aux
 
+        if activeBlockVectorR is None:
+            warnings.warn(
+                f'Failed at iteration {iterationNumber} with accuracies '
+                f'{residualNorms}\n not reaching the requested '
+                f'tolerance {residualTolerance}.',
+                UserWarning, stacklevel=2)
+            break
+
         activeBlockVectorAR = A(activeBlockVectorR)
 
         if iterationNumber > 0:
