@@ -1566,6 +1566,157 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
     # Reduce operations #
     #####################
 
+    _sum_reduction_mod = _core.RawModule(
+        code=r'''
+        #include <cupy/atomics.cuh>
+        #include <cupy/complex.cuh>
+
+        #ifdef __HIP_DEVICE_COMPILE__
+        #define CUPY_SUM_WARP_MASK __activemask()
+        #else
+        #define CUPY_SUM_WARP_MASK 0xffffffffu
+        #endif
+
+        template<typename T> __device__ T warp_sum(T value) {
+            for (int offset = warpSize / 2; offset > 0; offset /= 2) {
+                value += __shfl_down_sync(
+                    CUPY_SUM_WARP_MASK, value, offset);
+            }
+            return value;
+        }
+
+        template<typename T> __device__ complex<T> warp_sum(complex<T> value) {
+            return complex<T>(warp_sum(value.real()), warp_sum(value.imag()));
+        }
+
+        template<typename T> __device__ void add_sum(T* out, T value) {
+            atomicAdd(out, value);
+        }
+
+        template<typename T> __device__ void
+        add_sum(complex<T>* out, complex<T> value) {
+            atomicAdd(reinterpret_cast<T*>(out), value.real());
+            atomicAdd(reinterpret_cast<T*>(out) + 1, value.imag());
+        }
+
+        template<typename T, typename I> __global__ void
+        segment_sum(const T* data, const I* indptr, ptrdiff_t data_stride,
+                    ptrdiff_t indptr_stride, long long n, T* out,
+                    long long* tasks, unsigned long long* count) {
+            const int lane = threadIdx.x % warpSize;
+            const int warps = blockDim.x / warpSize;
+            for (long long row = (long long)blockIdx.x * warps
+                                 + threadIdx.x / warpSize;
+                 row < n; row += (long long)gridDim.x * warps) {
+                T value = T(0);
+                const long long begin = indptr[row * indptr_stride];
+                const long long end = indptr[(row + 1) * indptr_stride];
+                if (end - begin > 4096) {
+                    // Queue bounded tiles so even one very long segment
+                    // can use multiple blocks in the second launch.
+                    const long long tiles = (end - begin + 4095) / 4096;
+                    unsigned long long first = 0;
+                    if (lane == 0) first = atomicAdd(count, tiles);
+                    first = __shfl_sync(CUPY_SUM_WARP_MASK, first, 0);
+                    for (long long tile = lane; tile < tiles;
+                         tile += warpSize) {
+                        tasks[2 * (first + tile)] = row;
+                        tasks[2 * (first + tile) + 1] = begin + tile * 4096;
+                    }
+                } else {
+                    for (long long j = begin + lane; j < end; j += warpSize) {
+                        value += data[j * data_stride];
+                    }
+                    value = warp_sum(value);
+                }
+                if (lane == 0) out[row] = value;
+            }
+        }
+
+        template<typename T, typename I> __global__ void
+        segment_sum_tiles(const T* data, const I* indptr,
+                          ptrdiff_t data_stride, ptrdiff_t indptr_stride,
+                          T* out, const long long* tasks,
+                          const unsigned long long* count) {
+            extern __shared__ __align__(16) unsigned char storage[];
+            T* partial = reinterpret_cast<T*>(storage);
+            const int lane = threadIdx.x % warpSize;
+            const int warps = blockDim.x / warpSize;
+            for (unsigned long long tile = blockIdx.x; tile < *count;
+                 tile += gridDim.x) {
+                const long long row = tasks[2 * tile];
+                const long long begin = tasks[2 * tile + 1];
+                const long long end = min(begin + 4096,
+                    (long long)indptr[(row + 1) * indptr_stride]);
+                T value = T(0);
+                for (long long j = begin + threadIdx.x; j < end;
+                     j += blockDim.x) {
+                    value += data[j * data_stride];
+                }
+                value = warp_sum(value);
+                if (lane == 0) partial[threadIdx.x / warpSize] = value;
+                __syncthreads();
+                if (threadIdx.x < warpSize) {
+                    value = lane < warps ? partial[lane] : T(0);
+                    value = warp_sum(value);
+                    if (lane == 0) add_sum(out + row, value);
+                }
+                __syncthreads();
+            }
+        }
+        ''',
+        name_expressions=[
+            f'{name}<{t}, {i}>'
+            for i in _idx_types
+            for t in ('float', 'double', 'thrust::complex<float>',
+                      'thrust::complex<double>')
+            for name in ('segment_sum', 'segment_sum_tiles')])
+
+    def sum(self, axis=None, dtype=None, out=None):
+        if self.ndim != 2 or self.dtype.kind == 'b':
+            return super().sum(axis=axis, dtype=dtype, out=out)
+
+        axis = _sputils.collapse_2d_axis(axis)
+        _sputils.validateaxis(axis)
+        if axis is None or axis % 2 != self._swap(1, 0)[0]:
+            return super().sum(axis=axis, dtype=dtype, out=out)
+
+        # Sum each stored row (CSR) or column (CSC), without an auxiliary
+        # ones vector, sparse descriptors, or duplicate coalescing.
+        size = self._swap(*self.shape)[0]
+        ret = cupy.empty(size, dtype=self.dtype)
+        if size:
+            data_type = _scalar.get_typename(self.data.dtype)
+            index_type = _scalar.get_typename(self.indptr.dtype)
+            # A segment longer than 4096 needs at most twice as many tiles
+            # as its length // 4096. No host read of indptr is needed.
+            capacity = 2 * (self.nnz // 4096) if self.nnz > 4096 else 0
+            tasks = cupy.empty(
+                (capacity, 2), dtype=cupy.int64) if capacity else None
+            count = cupy.zeros(1, dtype=cupy.uint64) if capacity else None
+            kernel = self._sum_reduction_mod.get_function(
+                f'segment_sum<{data_type}, {index_type}>')
+            args = (self.data, self.indptr,
+                    numpy.int64(self.data.strides[0] // self.data.itemsize),
+                    numpy.int64(
+                        self.indptr.strides[0] // self.indptr.itemsize))
+            kernel((min((size + 3) // 4, 65535),), (128,),
+                   args + (numpy.int64(size), ret, tasks, count))
+            if capacity:
+                kernel = self._sum_reduction_mod.get_function(
+                    f'segment_sum_tiles<{data_type}, {index_type}>')
+                kernel((min(capacity, 1024),), (256,),
+                       args + (ret, tasks, count),
+                       shared_mem=8 * self.dtype.itemsize)
+        if not isinstance(self, _base.sparray):
+            ret = ret.reshape(self._swap(size, 1))
+        if out is not None:
+            if out.shape != ret.shape:
+                raise ValueError('dimensions do not match')
+            _core.elementwise_copy(ret, out)
+            return out
+        return ret.astype(dtype, copy=False) if dtype is not None else ret
+
     def _minor_reduce(self, ufunc, axis, nonzero):
         """Reduce nonzeros with a ufunc over the minor axis when non-empty
 
