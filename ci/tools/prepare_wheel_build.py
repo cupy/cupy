@@ -7,7 +7,8 @@ This script:
 * Rewrites ``pyproject.toml``'s ``project.name`` to the CTK-major-specific
   package (``cupy-cuda12x`` / ``cupy-cuda13x``).
 * Pins nvmath-python and cuda-bindings in ``build-system.requires`` to the
-  minimum versions in ``pyproject.toml``'s ``[tool.cupy.cuda-python]``.
+  minimum versions in ``pyproject.toml``'s ``[tool.cupy.cuda-python]``,
+  unless ``CUPY_USE_CUDA_PYTHON=0``.
 * Writes ``description.rst`` (becomes the wheel's ``long_description``).
 * Generates ``_wheel.json`` preload metadata for the ``[ctk]`` runtime extras.
 * Globs ``--preload-dir`` for include/lib subdirs to point CuPy at.
@@ -194,7 +195,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     package_name = rename_project(args.source_root, args.cuda_major)
-    pin_build_requires(args.source_root, args.cuda_major)
+    if os.environ.get("CUPY_USE_CUDA_PYTHON") != "0":
+        pin_build_requires(args.source_root, args.cuda_major)
     description_path = write_long_description(args.source_root, args.cuda_major)
     metadata_path = generate_wheel_metadata(
         args.source_root, args.cuda_major, args.host_platform,
