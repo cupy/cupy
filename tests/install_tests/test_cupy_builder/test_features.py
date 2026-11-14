@@ -59,3 +59,16 @@ def test_cuda_python_build_requirements(use_cuda_python):
         assert nvmath_libraries <= set(cuda.libraries)
         assert cusolver.includes == ['cusolverDn.h']
         assert cusolver.libraries == ['cusolver']
+
+
+def test_hip_profiling_is_optional():
+    ctx = Context('.', _env={'CUPY_INSTALL_USE_HIP': '1'}, _argv=[])
+    cuda, nvtx = ctx.features['cuda'], ctx.features['nvtx']
+    assert cuda.required
+    assert not nvtx.required
+    assert 'cupy_backends.cuda.libs.nvtx' not in cuda.modules
+    assert nvtx.modules == ['cupy_backends.cuda.libs.nvtx']
+    assert not {'roctx.h', 'roctracer/roctracer_ext.h'} & set(cuda.includes)
+    assert not {'roctx64', 'roctracer64'} & set(cuda.libraries)
+    assert nvtx.includes == ['roctx.h', 'roctracer/roctracer_ext.h']
+    assert nvtx.libraries == ['roctx64', 'roctracer64']

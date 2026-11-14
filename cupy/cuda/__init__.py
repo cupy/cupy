@@ -34,6 +34,10 @@ class _UnavailableModule:
     def __init__(self, name):
         self.__name__ = name
 
+    def __getattr__(self, name):
+        raise RuntimeError(
+            f'{self.__name__}.{name} is unavailable in this CuPy build')
+
 
 from cupy.cuda import cub  # NOQA
 

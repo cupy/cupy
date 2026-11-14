@@ -40,6 +40,7 @@ class TestContext:
         assert ctx.setup_command == ''
         assert not ctx.use_cuda_python
         assert not ctx.use_hip
+        assert ctx.hip_profiling
         assert ctx.include_dirs == []
         assert ctx.library_dirs == []
         assert ctx.long_description_path is None
@@ -58,6 +59,7 @@ class TestContext:
         ctx = Context('.', _env={
             'CUPY_USE_CUDA_PYTHON': '1',
             'CUPY_INSTALL_USE_HIP': '1',
+            'CUPY_INSTALL_HIP_PROFILING': '0',
             'CUPY_INCLUDE_PATH': f'/tmp/include{os.pathsep}/tmp2/include',
             'CUPY_LIBRARY_PATH': f'/tmp/lib{os.pathsep}/tmp2/lib',
             'CUPY_INSTALL_LONG_DESCRIPTION': 'foo.rst',
@@ -70,6 +72,7 @@ class TestContext:
 
         assert ctx.use_cuda_python
         assert ctx.use_hip
+        assert not ctx.hip_profiling
         assert ctx.include_dirs == ['/tmp/include', '/tmp2/include']
         assert ctx.library_dirs == ['/tmp/lib', '/tmp2/lib']
         assert ctx.long_description_path == 'foo.rst'

@@ -1,7 +1,10 @@
-// Fallback header for ROCm/HIP builds: ROCm has no NVTX equivalent.
+// NVTX event-attribute compatibility backed by real rocTX operations.
 
 #ifndef INCLUDE_GUARD_CUPY_HIP_NVTX_H
 #define INCLUDE_GUARD_CUPY_HIP_NVTX_H
+
+#include <stdint.h>
+#include "cupy_roctx.h"
 
 extern "C" {
 
@@ -45,18 +48,27 @@ typedef struct nvtxEventAttributes_v1
 
 typedef nvtxEventAttributes_v1 nvtxEventAttributes_t;
 
-void nvtxMarkEx(...) {
+static const char* cupy_roctx_message(
+        const nvtxEventAttributes_t* eventAttrib) {
+    return (eventAttrib->messageType == NVTX_MESSAGE_TYPE_ASCII &&
+            eventAttrib->message.ascii != nullptr)
+        ? eventAttrib->message.ascii : "";
 }
 
-int nvtxRangePushEx(...) {
-    return 0;
+void nvtxMarkEx(const nvtxEventAttributes_t* eventAttrib) {
+    roctxMarkA(cupy_roctx_message(eventAttrib));
 }
 
-uint64_t nvtxRangeStartEx(...) {
-    return 0;
+int nvtxRangePushEx(const nvtxEventAttributes_t* eventAttrib) {
+    return roctxRangePushA(cupy_roctx_message(eventAttrib));
 }
 
-void nvtxRangeEnd(...) {
+uint64_t nvtxRangeStartEx(const nvtxEventAttributes_t* eventAttrib) {
+    return roctxRangeStartA(cupy_roctx_message(eventAttrib));
+}
+
+void nvtxRangeEnd(uint64_t range_id) {
+    roctxRangeStop(static_cast<roctx_range_id_t>(range_id));
 }
 
 } // extern "C"

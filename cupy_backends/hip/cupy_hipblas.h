@@ -5,6 +5,7 @@
 #include <hipblas.h>
 #include <hip/hip_version.h>  // for HIP_VERSION
 #include <stdexcept>  // for gcc 10
+#include <string>
 
 
 #if HIP_VERSION >= 70000000  // ROCm 7 renamed hipblas*Complex to hip*Complex

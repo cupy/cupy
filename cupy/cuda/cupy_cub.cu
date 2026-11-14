@@ -17,7 +17,7 @@
 #include <hipcub/device/device_scan.hpp>
 #include <hipcub/device/device_histogram.hpp>
 #include <rocprim/iterator/counting_iterator.hpp>
-#include <hipcub/iterator/transform_input_iterator.hpp>
+#include <rocprim/iterator/transform_iterator.hpp>
 #endif
 
 
@@ -267,7 +267,7 @@ struct _arange
 #ifndef CUPY_USE_HIP
 typedef thrust::transform_iterator<_arange, thrust::counting_iterator<int>> seg_offset_itr;
 #else
-typedef TransformInputIterator<int, _arange, rocprim::counting_iterator<int>> seg_offset_itr;
+typedef rocprim::transform_iterator<rocprim::counting_iterator<int>, _arange, int> seg_offset_itr;
 #endif
 
 /*

@@ -6,6 +6,7 @@ import copy
 import dataclasses
 from distutils import ccompiler
 from distutils import sysconfig
+import json
 import logging
 import os
 import os.path
@@ -18,6 +19,7 @@ import setuptools
 
 import cupy_builder.install_build as build
 from cupy_builder._context import Context
+from cupy_builder._host_compiler import new_host_compiler
 from cupy_builder.install_build import PLATFORM_LINUX
 from cupy_builder.install_build import PLATFORM_WIN32
 
@@ -107,8 +109,8 @@ def preconfigure_modules(ctx: Context, MODULES, compiler, settings):
     ]
 
     for key in ['CFLAGS', 'LDFLAGS', 'LIBRARY_PATH',
-                'CUDA_PATH', 'NVCC', 'HIPCC',
-                'ROCM_HOME']:
+                'CUDA_PATH', 'NVCC', 'HIPCC', 'ROCM_HOME', 'HIP_PATH',
+                'HCC_AMDGPU_TARGET', 'CUPY_INSTALL_HIP_PROFILING']:
         summary += ['  {:<16}: {}'.format(key, os.environ.get(key, '(none)'))]
 
     summary += [
@@ -121,6 +123,12 @@ def preconfigure_modules(ctx: Context, MODULES, compiler, settings):
         installed = False
         status = 'No'
         errmsg = []
+        if (ctx.use_hip and module['name'] == 'nvtx' and
+                not ctx.hip_profiling):
+            summary += ['  {:<10}: Disabled (CUPY_INSTALL_HIP_PROFILING=0)'
+                        .format(module['name'])]
+            continue
+
 
         if module['name'] == 'cutensor':
             cutensor_path = os.environ.get('CUTENSOR_PATH', '')
@@ -207,6 +215,15 @@ def preconfigure_modules(ctx: Context, MODULES, compiler, settings):
             # Skip checking other modules when CUDA is unavailable.
             if module['name'] == 'cuda':
                 break
+
+    if ctx.use_hip:
+        if 'nvtx' in ret:
+            # The runtime module includes the profiler compatibility header,
+            # so its core link group also needs the real profiling libraries.
+            ctx.features['cuda'].libraries.extend(
+                ctx.features['nvtx'].libraries)
+        else:
+            settings['define_macros'].append(('CUPY_NO_HIP_PROFILER', '1'))
 
     # Get a list of the CC of the devices connected to this node
     if not ctx.use_hip:
@@ -441,6 +458,9 @@ def make_extensions(ctx: Context, compiler, use_cython):
         for f in module['file']:
             s_file = copy.deepcopy(s)
             name = module_extension_name(f)
+            if use_hip and name == 'cupy_backends.cuda.libs.cusparse':
+                s_file.setdefault('depends', []).append(
+                    './cupy_backends/hip/cupy_hipsparse.h')
 
             rpath = []
             if not ctx.no_rpath:
@@ -485,6 +505,9 @@ def prepare_wheel_libs(ctx: Context):
     RUNPATH will be set to this directory later (Linux only).
     Include files are placed under `cupy/.data/include`.
 
+    Build backend metadata is generated from the same context as the
+    extensions, including for in-place and editable builds.
+
     Returns the list of files (path relative to `cupy` module) to add to
     the sdist/wheel distribution.
     """
@@ -493,6 +516,9 @@ def prepare_wheel_libs(ctx: Context):
         print('Clearing directory: {}'.format(data_dir))
         shutil.rmtree(data_dir)
     os.mkdir(data_dir)
+    build_metadata = os.path.join(data_dir, '_build.json')
+    with open(build_metadata, 'w') as f:
+        json.dump({'use_hip': ctx.use_hip}, f)
 
     # Generate list files to copy
     # tuple of (src_path, dst_path)
@@ -525,6 +551,7 @@ def prepare_wheel_libs(ctx: Context):
         shutil.copy2(srcpath, dstpath)
 
     package_files = [x[1] for x in files_to_copy] + [
+        build_metadata,
         'cupy/.data/_depends.json',
     ]
     return [os.path.relpath(f, 'cupy') for f in package_files]
@@ -534,8 +561,7 @@ def get_ext_modules(use_cython: bool, ctx: Context):
     # We need to call get_config_vars to initialize _config_vars in distutils
     # see #1849
     sysconfig.get_config_vars()
-    compiler = ccompiler.new_compiler()
-    sysconfig.customize_compiler(compiler)
+    compiler = new_host_compiler(ctx)
 
     extensions = make_extensions(ctx, compiler, use_cython)
 

@@ -34,6 +34,7 @@ class Context:
 
     use_cuda_python: bool
     use_hip: bool
+    hip_profiling: bool
     include_dirs: list[str]
     library_dirs: list[str]
     long_description_path: str | None
@@ -61,6 +62,8 @@ class Context:
 
         self.use_cuda_python = _get_env_bool('CUPY_USE_CUDA_PYTHON', _env)
         self.use_hip = _get_env_bool('CUPY_INSTALL_USE_HIP', _env)
+        self.hip_profiling = _get_env_bool(
+            'CUPY_INSTALL_HIP_PROFILING', _env, default=True)
 
         # Extra paths to search for libraries/headers during build
         self.include_dirs = _get_env_path('CUPY_INCLUDE_PATH', _env)

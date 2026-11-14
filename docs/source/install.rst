@@ -484,6 +484,52 @@ You can specify a comma-separated list of ISAs if you have multiple GPUs of diff
   $ export HCC_AMDGPU_TARGET=gfx908
   $ pip install cupy
 
+On Windows, HIP builds use LLVM Clang in MSVC-compatible driver mode for
+both host extension compilation and configuration probes. Install the Visual
+Studio C++ build tools and Windows SDK required by your Python installation;
+CuPy retains their include/library paths, dynamic CRT, ``link.exe``, and
+manifest handling. The host compiler must support the real HIP headers,
+including Clang vector attributes; ``cl.exe`` is not used for these sources.
+
+CuPy discovers Clang in the HIP toolkit selected by ``ROCM_HOME`` (or
+``HIP_PATH`` on Windows). To select another LLVM installation, set
+``CUPY_HIP_HOST_COMPILER`` to the full path of ``clang-cl.exe`` or ``clang.exe``
+without command-line arguments. This override applies only to Windows HIP
+host compilation. Device sources use toolkit Clang directly on Windows;
+``HIP_CLANG_PATH`` can select its directory. This avoids ``hipcc.exe`` wrappers
+that flatten quoted paths or macros containing spaces. Host objects use
+the MSVC ABI and C++17, with MSVC-specific link-time optimization disabled
+so they can link with HIP device objects. Windows CUDA builds continue to
+use the standard MSVC toolchain.
+
+Windows HIP support in this source tree is experimental. The exercised setup
+is Python 3.12, Visual Studio 2022 build tools, and TheRock HIP 7.18 on an RX6600
+(gfx1032). It does not establish compatibility with every ROCm release or GPU.
+After activating a virtual environment in a Visual Studio developer shell::
+
+  set CUPY_INSTALL_USE_HIP=1
+  set ROCM_HOME=C:\ROCm
+  set HIP_PATH=%ROCM_HOME%
+  set HCC_AMDGPU_TARGET=gfx1032
+  set CUPY_INSTALL_HIP_PROFILING=0
+  python -m pip wheel --no-build-isolation --no-deps .
+
+Replace ``C:\ROCm`` with the actual toolkit directory. Required math libraries
+must be installed with their real headers and import libraries. Profiling is
+optional: setting ``CUPY_INSTALL_HIP_PROFILING=0`` omits rocTX/rocTracer and the
+NVTX extension; profiler operations then report unsupported and NVTX APIs raise
+an unavailable-feature error. No profiling operation reports fake success.
+
+The source checkout's bundled header links must be visible to Windows. A checkout
+made through WSL can contain Linux reparse links that native Windows compilers
+cannot follow. Use a Windows-compatible source checkout, or materialize those
+links from their genuine vendored targets while retaining their license files.
+
+At runtime, ``ROCM_HOME``/``HIP_PATH`` register the toolkit DLL directories before
+loading the core extension. HIPRTC uses the installed Windows HIPRTC DLL, and
+drive-qualified diagnostic paths are not passed as virtual HIPRTC source names.
+
+
 .. note::
 
   If you don't specify the ``HCC_AMDGPU_TARGET`` environment variable, CuPy will be built for the GPU architectures available on the build host.

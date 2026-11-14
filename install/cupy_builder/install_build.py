@@ -58,7 +58,8 @@ def get_rocm_path():
     if _rocm_path != 'NOT_INITIALIZED':
         return _rocm_path
 
-    _rocm_path = os.environ.get('ROCM_HOME', '')
+    _rocm_path = (os.environ.get('ROCM_HOME', '') or
+                  (os.environ.get('HIP_PATH', '') if PLATFORM_WIN32 else ''))
     return _rocm_path
 
 
@@ -170,6 +171,12 @@ def get_nvcc_path() -> list[str]:
 def get_hipcc_path() -> list[str]:
     hipcc = os.environ.get('HIPCC', None)
     if hipcc:
+        # An executable path can contain spaces and Windows backslashes.
+        # Keep it intact before considering the command-with-options form.
+        if PLATFORM_WIN32 and os.path.isfile(hipcc.strip('"')):
+            return [hipcc.strip('"')]
+        if PLATFORM_WIN32:
+            return [arg.strip('"') for arg in shlex.split(hipcc, posix=False)]
         return shlex.split(hipcc)
 
     rocm_path = get_rocm_path()
@@ -186,6 +193,26 @@ def get_hipcc_path() -> list[str]:
         return [hipcc_path]
     else:
         return None
+
+
+def get_hip_clang_path() -> list[str] | None:
+    """Find the Windows HIP toolkit's Clang, without invoking hipcc."""
+    clang_dir = os.environ.get('HIP_CLANG_PATH')
+    if clang_dir:
+        candidates = [os.path.join(clang_dir, 'clang.exe')]
+    else:
+        rocm_path = get_rocm_path()
+        if not rocm_path:
+            return None
+        # TheRock bundles LLVM under lib/llvm; other Windows HIP toolkits
+        # install it under llvm or directly in the toolkit's bin directory.
+        candidates = [os.path.join(rocm_path, *parts, 'clang.exe')
+                      for parts in (('lib', 'llvm', 'bin'),
+                                    ('llvm', 'bin'), ('bin',))]
+    for candidate in candidates:
+        if os.path.isfile(candidate):
+            return [candidate]
+    return None
 
 
 def get_compiler_setting(ctx: Context, use_hip):
@@ -213,6 +240,11 @@ def get_compiler_setting(ctx: Context, use_hip):
             library_dirs.append(os.path.join(cuda_path, 'lib'))
 
     if rocm_path:
+        # Recent ROCm packages install the unified CUB/Thrust and standard
+        # library headers here; match hipcub/rocprim/rocthrust CMake targets.
+        hipccl_path = os.path.join(rocm_path, 'include', 'hipccl')
+        if os.path.isdir(hipccl_path):
+            include_dirs.append(hipccl_path)
         include_dirs.append(os.path.join(rocm_path, 'include'))
         include_dirs.append(os.path.join(rocm_path, 'include', 'hip'))
         include_dirs.append(os.path.join(rocm_path, 'include', 'rocrand'))
@@ -226,8 +258,12 @@ def get_compiler_setting(ctx: Context, use_hip):
         library_dirs.append(os.path.join(rocm_path, 'lib'))
 
     if use_hip:
-        # ROCm 5.3 and above requires c++14
-        extra_compile_args.append('-std=c++14')
+        # ROCm 5.3 and above requires c++14. Windows uses Clang's MSVC
+        # driver for host extensions, including their configuration probes.
+        extra_compile_args.append(
+            '/std:c++17' if PLATFORM_WIN32 else '-std=c++14')
+        if PLATFORM_WIN32:
+            extra_compile_args.append('/Zc:__cplusplus')
     else:
         # CCCL 3.x (for CUDA) requires c++17
         if PLATFORM_LINUX:
@@ -236,7 +272,7 @@ def get_compiler_setting(ctx: Context, use_hip):
             assert PLATFORM_WIN32
             extra_compile_args.append('/std:c++17')
 
-    if PLATFORM_WIN32:
+    if PLATFORM_WIN32 and not use_hip:
         nvtx_path = _environment.get_nvtx_path()
         if nvtx_path is not None and os.path.exists(nvtx_path):
             include_dirs.append(os.path.join(nvtx_path, 'include'))

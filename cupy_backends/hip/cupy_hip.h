@@ -4,20 +4,31 @@
 #include "cupy_hip_common.h"
 #include "cupy_cuComplex.h"
 
+// SoftLink resolves these CUDA-to-HIP wrappers from the driver extension.
+// ELF exports them by default, but PE DLLs require explicit exports.
+#ifdef _WIN32
+#define CUPY_HIP_DRIVER_EXPORT __declspec(dllexport)
+#else
+#define CUPY_HIP_DRIVER_EXPORT
+#endif
+
 extern "C" {
 
 // Error handling
+CUPY_HIP_DRIVER_EXPORT
 CUresult cuGetErrorName(CUresult hipError, const char** pStr) {
     *pStr = hipGetErrorName(hipError);
     return CUDA_SUCCESS;
 }
 
+CUPY_HIP_DRIVER_EXPORT
 CUresult cuGetErrorString(CUresult hipError, const char** pStr) {
     *pStr = hipGetErrorString(hipError);
     return CUDA_SUCCESS;
 }
 
 // Primary context management
+CUPY_HIP_DRIVER_EXPORT
 CUresult cuDevicePrimaryCtxRelease(CUdevice dev) {
     // HIP documents this as a no-op that always returns hipSuccess;
     // marked [[deprecated]] in recent ROCm. Replicate inline.
@@ -26,77 +37,93 @@ CUresult cuDevicePrimaryCtxRelease(CUdevice dev) {
 }
 
 // Context management
+CUPY_HIP_DRIVER_EXPORT
 CUresult cuCtxGetCurrent(CUcontext *ctx) {
     // deprecated api
     //return hipCtxGetCurrent(ctx);
     return hipErrorUnknown;
 }
 
+CUPY_HIP_DRIVER_EXPORT
 CUresult cuCtxSetCurrent(CUcontext ctx) {
     // deprecated api
     //return hipCtxSetCurrent(ctx);
     return hipErrorUnknown;
 }
 
+CUPY_HIP_DRIVER_EXPORT
 CUresult cuCtxCreate(CUcontext* pctx, unsigned int flags, CUdevice dev) {
     // deprecated api
     //return hipCtxCreate(pctx, flags, dev);
     return hipErrorUnknown;
 }
 
+CUPY_HIP_DRIVER_EXPORT
 CUresult cuCtxDestroy(CUcontext ctx) {
     // deprecated api
     // return hipCtxDestroy(ctx);
     return hipErrorUnknown;
 }
 
+CUPY_HIP_DRIVER_EXPORT
 CUresult cuCtxGetDevice(...) {
     return hipErrorUnknown;
 }
 
 // Module load and kernel execution
+CUPY_HIP_DRIVER_EXPORT
 CUresult cuLinkCreate(...) {
     return hipErrorUnknown;
 }
 
+CUPY_HIP_DRIVER_EXPORT
 CUresult cuLinkAddData(...) {
     return hipErrorUnknown;
 }
 
+CUPY_HIP_DRIVER_EXPORT
 CUresult cuLinkAddFile(...) {
     return hipErrorUnknown;
 }
 
+CUPY_HIP_DRIVER_EXPORT
 CUresult cuLinkComplete(...) {
     return hipErrorUnknown;
 }
 
+CUPY_HIP_DRIVER_EXPORT
 CUresult cuLinkDestroy(...) {
     return hipErrorUnknown;
 }
 
+CUPY_HIP_DRIVER_EXPORT
 CUresult cuModuleLoad(CUmodule *module, const char *fname) {
     return hipModuleLoad(module, fname);
 }
 
+CUPY_HIP_DRIVER_EXPORT
 CUresult cuModuleLoadData(CUmodule *module, const void *image) {
     return hipModuleLoadData(module, image);
 }
 
+CUPY_HIP_DRIVER_EXPORT
 CUresult cuModuleUnload(CUmodule module) {
     return hipModuleUnload(module);
 }
 
+CUPY_HIP_DRIVER_EXPORT
 CUresult cuModuleGetFunction(CUfunction *function, CUmodule module,
                              const char *kname) {
     return hipModuleGetFunction(function, module, kname);
 }
 
+CUPY_HIP_DRIVER_EXPORT
 CUresult cuModuleGetGlobal(CUdeviceptr *dptr, size_t *bytes, CUmodule hmod,
                            const char *name) {
     return hipModuleGetGlobal(dptr, bytes, hmod, name);
 }
 
+CUPY_HIP_DRIVER_EXPORT
 CUresult cuLaunchKernel(CUfunction f, uint32_t gridDimX, uint32_t gridDimY,
                         uint32_t gridDimZ, uint32_t blockDimX,
                         uint32_t blockDimY, uint32_t blockDimZ,
@@ -107,15 +134,18 @@ CUresult cuLaunchKernel(CUfunction f, uint32_t gridDimX, uint32_t gridDimY,
                                  sharedMemBytes, hStream, kernelParams, extra);
 }
 
+CUPY_HIP_DRIVER_EXPORT
 CUresult cuLaunchCooperativeKernel(...) {
     return hipErrorUnknown;
 }
 
 // Function attribute
+CUPY_HIP_DRIVER_EXPORT
 CUresult cuFuncGetAttribute(int* pi, CUfunction_attribute attrib, CUfunction hfunc) {
     return hipFuncGetAttribute(pi, attrib, hfunc);
 }
 
+CUPY_HIP_DRIVER_EXPORT
 CUresult cuFuncSetAttribute(...) {
     return hipErrorUnknown;
 }
@@ -123,19 +153,24 @@ CUresult cuFuncSetAttribute(...) {
 // Occupancy
 typedef size_t (*CUoccupancyB2DSize)(int);
 
+CUPY_HIP_DRIVER_EXPORT
 CUresult cuOccupancyMaxActiveBlocksPerMultiprocessor(...) {
     return hipErrorUnknown;
 }
 
+CUPY_HIP_DRIVER_EXPORT
 CUresult cuOccupancyMaxPotentialBlockSize(...) {
     return hipErrorUnknown;
 }
 
 // Stream
+CUPY_HIP_DRIVER_EXPORT
 CUresult cuStreamGetCtx(...) {
     return hipErrorUnknown;
 }
 
 } // extern "C"
+
+#undef CUPY_HIP_DRIVER_EXPORT
 
 #endif // #ifndef INCLUDE_GUARD_HIP_CUPY_CUDA_H

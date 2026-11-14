@@ -159,9 +159,10 @@ class DeviceCompilerBase:
             macros.append((undef,))
         return distutils.ccompiler.gen_preprocess_options(macros, incdirs)
 
-    def spawn(self, commands: list[str]) -> None:
+    def spawn(self, commands: list[str], *,
+              env: dict[str, str] | None = None) -> None:
         print('Command:', commands)
-        subprocess.check_call(commands)
+        subprocess.check_call(commands, env=env)
 
 
 class DeviceCompilerUnix(DeviceCompilerBase):
@@ -214,7 +215,8 @@ class DeviceCompilerWin32(DeviceCompilerBase):
 
     def compile(self, obj: str, src: str, ext: Extension) -> None:
         if self._context.use_hip:
-            raise RuntimeError('ROCm is not supported on Windows')
+            self._compile_win32_hip_clang(obj, src, ext)
+            return
 
         compiler_so = build.get_nvcc_path()
         cc_args = self._get_preprocess_options(ext) + ['-c']
@@ -239,6 +241,38 @@ class DeviceCompilerWin32(DeviceCompilerBase):
             postargs += ['--compiler-bindir', cl_exe_path]
         print('NVCC options:', postargs)
         self.spawn(compiler_so + cc_args + [src, '-o', obj] + postargs)
+
+    def _compile_win32_hip_clang(
+            self, obj: str, src: str, ext: Extension) -> None:
+        compiler_so = build.get_hip_clang_path()
+        if compiler_so is None:
+            raise RuntimeError(
+                'Windows HIP Clang could not be found; set ROCM_HOME or '
+                'HIP_PATH to the toolkit, or HIP_CLANG_PATH to its Clang bin '
+                'directory')
+        rocm_path = build.get_rocm_path()
+        if not rocm_path:
+            raise RuntimeError(
+                'Set ROCM_HOME or HIP_PATH to the Windows HIP toolkit root')
+
+        cc_args = self._get_preprocess_options(ext) + ['-c']
+        # Windows hipcc rebuilds a shell command from argv without preserving
+        # spaces or embedded quotes. Invoke Clang directly, retaining each
+        # path and macro as a single argument through subprocess's Windows
+        # command-line quoting. Match Python and the host extension's /MD CRT.
+        postargs = [
+            '--driver-mode=g++', '-x', 'hip', f'--hip-path={rocm_path}',
+            '-O2', '--std=c++17', '-fms-runtime-lib=dll',
+            '-D_USE_MATH_DEFINES', '--include', 'hip_runtime.h',
+        ]
+        # Honor the existing HIP build target convention. Without an explicit
+        # target, require native GPU detection rather than Clang's default GPU.
+        targets = os.environ.get('HCC_AMDGPU_TARGET') or 'native'
+        postargs += [f'--offload-arch={target.strip()}'
+                     for target in targets.split(',') if target.strip()]
+
+        print('HIP Clang options:', postargs)
+        self.spawn(compiler_so + cc_args + postargs + [src, '-o', obj])
 
     def _find_host_compiler_path(self) -> str | None:
         # c.f. cupy.cuda.compiler._get_extra_path_for_msvc

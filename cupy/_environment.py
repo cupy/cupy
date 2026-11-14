@@ -25,6 +25,9 @@ _rocm_path = ''
 _hipcc_path = ''
 _cub_path = ''
 
+# Keep AddDllDirectory cookies alive for dependent extension-module loads.
+_win32_hip_dll_directory_handles = {}
+
 """
 Library Preloading
 ------------------
@@ -102,6 +105,27 @@ def get_hipcc_path():
     if _hipcc_path == '':
         _hipcc_path = _get_hipcc_path()
     return _hipcc_path
+
+
+def get_hip_compiler_command():
+    """Return an argv prefix without passing through Windows hipcc wrappers."""
+    if sys.platform != 'win32':
+        return ['hipcc']
+    roots = [os.environ.get('HIP_CLANG_PATH')]
+    rocm = get_rocm_path()
+    if rocm is not None:
+        roots.extend(os.path.join(rocm, suffix) for suffix in
+                     ('lib/llvm/bin', 'llvm/bin', 'bin'))
+    for root in roots:
+        if not root:
+            continue
+        compiler = os.path.join(root, 'clang.exe')
+        if os.path.isfile(compiler):
+            command = [compiler, '--driver-mode=g++', '-x', 'hip']
+            if rocm is not None:
+                command.append(f'--hip-path={rocm}')
+            return command
+    return None
 
 
 def get_cub_path():
@@ -212,14 +236,17 @@ def _get_nvcc_path():
 
 
 def _get_rocm_path():
-    # Use environment variable
-    rocm_path = os.environ.get('ROCM_HOME', '')
-    if os.path.exists(rocm_path):
-        return rocm_path
+    # Honor the toolkit root before looking for the compiler on PATH.
+    variables = (
+        ('ROCM_HOME', 'HIP_PATH') if _PLATFORM_WIN32 else ('ROCM_HOME',))
+    for variable in variables:
+        rocm_path = os.environ.get(variable, '')
+        if os.path.isdir(rocm_path):
+            return os.path.abspath(rocm_path)
 
     # Resolve hipcc symlinks (distros expose /usr/bin/hipcc ->
     # /opt/rocm-X.Y/bin/hipcc via update-alternatives).
-    hipcc_path = shutil.which('hipcc')
+    hipcc_path = shutil.which('hipcc.exe' if _PLATFORM_WIN32 else 'hipcc')
     if hipcc_path is not None:
         return os.path.dirname(
             os.path.dirname(os.path.realpath(hipcc_path)))
@@ -239,7 +266,38 @@ def _get_hipcc_path():
     if rocm_path is None:
         return None
 
-    return shutil.which('hipcc', path=os.path.join(rocm_path, 'bin'))
+    return shutil.which(
+        'hipcc.exe' if _PLATFORM_WIN32 else 'hipcc',
+        path=os.path.join(rocm_path, 'bin'))
+
+
+def _setup_win32_hip_dll_directory():
+    if not _PLATFORM_WIN32:
+        return
+    config = _get_json_data('_build.json')
+    if config is None or not config.get('use_hip', False):
+        return
+    rocm_path = get_rocm_path()
+    if rocm_path is None:
+        return
+    bin_path = os.path.abspath(os.path.join(rocm_path, 'bin'))
+    if (os.path.isdir(bin_path) and
+            bin_path not in _win32_hip_dll_directory_handles):
+        _win32_hip_dll_directory_handles[bin_path] = (
+            os.add_dll_directory(bin_path))
+        _log(f'Added HIP DLL directory: {bin_path}')
+
+
+def _get_win32_hip_library_path(filename: str) -> str:
+    rocm_path = get_rocm_path()
+    if rocm_path is None:
+        raise RuntimeError(
+            'HIP toolkit not found. Set ROCM_HOME or HIP_PATH to its root.')
+    _setup_win32_hip_dll_directory()
+    path = os.path.join(rocm_path, 'bin', filename)
+    if not os.path.isfile(path):
+        raise RuntimeError(f'HIP library not found: {path}')
+    return path
 
 
 def _get_cub_path():
@@ -543,12 +601,19 @@ You can install the library by:
 
 @functools.cache
 def _get_hipcc_include_dirs():
-    cmd = ["hipcc", "-x", "hip", "-E", "-v", "/dev/null"]
+    compiler = get_hip_compiler_command()
+    if compiler is None:
+        raise RuntimeError(
+            'HIP compiler not found. '
+            'Set ROCM_HOME, HIP_PATH or HIP_CLANG_PATH.')
+    cmd = compiler + ['-x', 'hip', '-E', '-v', os.devnull]
     proc = subprocess.run(cmd, stdout=subprocess.DEVNULL,
                           stderr=subprocess.PIPE, text=True)
 
     if proc.returncode != 0:
-        raise RuntimeError(f"Subprocess command '{proc}' failed.")
+        raise RuntimeError(
+            f'HIP include-directory discovery failed using {cmd}:\n'
+            f'{proc.stderr}')
 
     matches = re.search(
         r"#include <\.\.\.> search starts here:\n(.*?)\nEnd of search list.",
@@ -652,7 +717,7 @@ Failed to import CuPy.
 If you installed CuPy via wheels (cupy-cudaXXX or cupy-rocm-X-X), make sure that the package matches with the version of CUDA or ROCm installed.
 
 On Linux, you may need to set LD_LIBRARY_PATH environment variable depending on how you installed CUDA/ROCm.
-On Windows, try setting CUDA_PATH environment variable.
+On Windows, set CUDA_PATH for CUDA, or ROCM_HOME / HIP_PATH for HIP.
 
 Check the Installation Guide for details:
   https://docs.cupy.dev/en/latest/install.html'''  # NOQA

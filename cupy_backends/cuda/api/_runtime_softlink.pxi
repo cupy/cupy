@@ -42,7 +42,13 @@ cdef SoftLink _get_softlink():
         loaded_dl = pathfinder.load_nvidia_dynamic_lib('cudart')
         handle = loaded_dl._handle_uint
     elif CUPY_HIP_VERSION != 0:
-        # Use CUDA-to-HIP layer defined in the header.
-        libname = __file__
+        if _sys.platform == 'win32':
+            from cupy import _environment
+            prefix = 'hip'
+            libname = _environment._get_win32_hip_library_path(
+                f'amdhip64_{CUPY_HIP_VERSION // 10000000}.dll')
+        else:
+            # Use CUDA-to-HIP layer defined in the header.
+            libname = __file__
 
     return SoftLink(libname, prefix, mandatory=True, handle=handle)

@@ -16,6 +16,7 @@ import cupy_builder
 import cupy_builder.install_build as build
 from cupy_builder._context import Context
 from cupy_builder._compiler import DeviceCompilerUnix, DeviceCompilerWin32
+from cupy_builder._host_compiler import configure_win32_hip_host_compiler
 
 
 def filter_files_by_extension(
@@ -208,7 +209,7 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
 
         if (sys.platform == 'win32' and
                 hasattr(self.compiler, 'initialize')):  # i.e., MSVCCompiler
-            # Initialize to get path to the host compiler (cl.exe).
+            # Initialize to get the Visual Studio host toolchain.
             # This also workarounds a bug in setuptools/distutils on Windows by
             # initializing the compiler before starting a thread.
             # By default, MSVCCompiler performs initialization in the
@@ -216,11 +217,14 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
             # the init code runs in each thread and messes up the internal
             # state as the init code is not locked and is not idempotent.
             # https://github.com/pypa/setuptools/blob/v60.0.0/setuptools/_distutils/_msvccompiler.py#L322-L327
-            self.compiler.initialize()
+            if not self.compiler.initialized:
+                self.compiler.initialize(self.plat_name)
             if hasattr(self.compiler, 'cc'):
                 cc = self.compiler.cc
                 print(f'Detected host compiler: {cc}')
                 ctx.win32_cl_exe_path = cc
+        configure_win32_hip_host_compiler(
+            self.compiler, ctx, self.plat_name)
 
         # Compile "*.pyx" files into "*.cpp" files.
         print('Cythonizing...')

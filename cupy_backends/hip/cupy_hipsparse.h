@@ -7,6 +7,13 @@
 #include <hip/library_types.h>  // for hipDataType
 #include <stdexcept>  // for gcc 10.0
 
+// SoftLink resolves these wrappers from the cusparse extension itself.
+#ifdef _WIN32
+#define CUPY_HIPSPARSE_EXPORT __declspec(dllexport)
+#else
+#define CUPY_HIPSPARSE_EXPORT
+#endif
+
 #if HIP_VERSION >= 402
 static hipDataType convert_hipDatatype(cudaDataType type) {
     switch(static_cast<int>(type)) {
@@ -3191,6 +3198,7 @@ cusparseStatus_t cusparseCreateCsr(cusparseSpMatDescr_t* spMatDescr,
 #endif
 }
 
+CUPY_HIPSPARSE_EXPORT
 cusparseStatus_t cusparseCreateCsc(cusparseSpMatDescr_t* spMatDescr,
                                    int64_t               rows,
                                    int64_t               cols,
@@ -3331,6 +3339,7 @@ cusparseStatus_t cusparseSpMatGetStridedBatch(...) {
   return HIPSPARSE_STATUS_NOT_SUPPORTED;
 }
 
+CUPY_HIPSPARSE_EXPORT
 cusparseStatus_t cusparseSpMatSetAttribute(cusparseSpMatDescr_t     spMatDescr,
                                            cusparseSpMatAttribute_t attribute,
                                            void*                    data,
@@ -3522,6 +3531,7 @@ cusparseStatus_t cusparseSpMV(cusparseHandle_t     handle,
 #endif
 }
 
+CUPY_HIPSPARSE_EXPORT
 cusparseStatus_t cusparseSpSM_createDescr(cusparseSpSMDescr_t* descr) {
 #if HIP_VERSION >= 50000000
   return hipsparseSpSM_createDescr(descr);
@@ -3530,6 +3540,7 @@ cusparseStatus_t cusparseSpSM_createDescr(cusparseSpSMDescr_t* descr) {
 #endif
 }
 
+CUPY_HIPSPARSE_EXPORT
 cusparseStatus_t cusparseSpSM_destroyDescr(cusparseSpSMDescr_t descr) {
 #if HIP_VERSION >= 50000000
   return hipsparseSpSM_destroyDescr(descr);
@@ -3538,6 +3549,7 @@ cusparseStatus_t cusparseSpSM_destroyDescr(cusparseSpSMDescr_t descr) {
 #endif
 }
 
+CUPY_HIPSPARSE_EXPORT
 cusparseStatus_t cusparseSpSM_bufferSize(cusparseHandle_t     handle,
                                          cusparseOperation_t  opA,
                                          cusparseOperation_t  opB,
@@ -3557,6 +3569,7 @@ cusparseStatus_t cusparseSpSM_bufferSize(cusparseHandle_t     handle,
 #endif
 }
 
+CUPY_HIPSPARSE_EXPORT
 cusparseStatus_t cusparseSpSM_analysis(cusparseHandle_t     handle,
                                        cusparseOperation_t  opA,
                                        cusparseOperation_t  opB,
@@ -3577,6 +3590,7 @@ cusparseStatus_t cusparseSpSM_analysis(cusparseHandle_t     handle,
 }
 
 // See cusparse.pyx for a comment
+CUPY_HIPSPARSE_EXPORT
 cusparseStatus_t cusparseSpSM_solve(cusparseHandle_t     handle,
                                     cusparseOperation_t  opA,
                                     cusparseOperation_t  opB,
@@ -3634,6 +3648,7 @@ cusparseStatus_t cusparseSpMM(cusparseHandle_t     handle,
 #endif
 }
 
+CUPY_HIPSPARSE_EXPORT
 cusparseStatus_t cusparseSparseToDense_bufferSize(cusparseHandle_t           handle,
                                                   cusparseSpMatDescr_t       matA,
                                                   cusparseDnMatDescr_t       matB,
@@ -3646,6 +3661,7 @@ cusparseStatus_t cusparseSparseToDense_bufferSize(cusparseHandle_t           han
 #endif
 }
 
+CUPY_HIPSPARSE_EXPORT
 cusparseStatus_t cusparseSparseToDense(cusparseHandle_t           handle,
                                        cusparseSpMatDescr_t       matA,
                                        cusparseDnMatDescr_t       matB,
@@ -3658,6 +3674,7 @@ cusparseStatus_t cusparseSparseToDense(cusparseHandle_t           handle,
 #endif
 }
 
+CUPY_HIPSPARSE_EXPORT
 cusparseStatus_t cusparseDenseToSparse_bufferSize(cusparseHandle_t           handle,
                                                   cusparseDnMatDescr_t       matA,
                                                   cusparseSpMatDescr_t       matB,
@@ -3670,6 +3687,7 @@ cusparseStatus_t cusparseDenseToSparse_bufferSize(cusparseHandle_t           han
 #endif
 }
 
+CUPY_HIPSPARSE_EXPORT
 cusparseStatus_t cusparseDenseToSparse_analysis(cusparseHandle_t           handle,
                                                 cusparseDnMatDescr_t       matA,
                                                 cusparseSpMatDescr_t       matB,
@@ -3682,6 +3700,7 @@ cusparseStatus_t cusparseDenseToSparse_analysis(cusparseHandle_t           handl
 #endif
 }
 
+CUPY_HIPSPARSE_EXPORT
 cusparseStatus_t cusparseDenseToSparse_convert(cusparseHandle_t           handle,
                                                cusparseDnMatDescr_t       matA,
                                                cusparseSpMatDescr_t       matB,

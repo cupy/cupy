@@ -842,7 +842,14 @@ class _NVRTCProgram:
 
         self.src = src
         self.name = name
-        self.ptr = nvrtc.createProgram(src, name, headers, include_names)
+        # HIPRTC on Windows rejects drive-qualified virtual source names.
+        # Keep the original path for diagnostics; headers use explicit
+        # include paths.
+        program_name = (
+            os.path.basename(name)
+            if runtime.is_hip and sys.platform == 'win32' else name)
+        self.ptr = nvrtc.createProgram(
+            src, program_name, headers, include_names)
         self.name_expressions = name_expressions
         self.method = method
 
@@ -888,7 +895,14 @@ def compile_using_hipcc(source, options, arch, log_stream=None):
     # As of ROCm 3.5.0 hiprtc/hipcc can automatically pick up the
     # right arch without setting HCC_AMDGPU_TARGET, so we don't need
     # to set arch here
-    cmd = ['hipcc', '--genco'] + list(options)
+    compiler = _environment.get_hip_compiler_command()
+    if compiler is None:
+        raise HIPCCException(
+            'HIP compiler not found. '
+            'Set ROCM_HOME, HIP_PATH or HIP_CLANG_PATH.')
+    flags = (['--cuda-device-only', '-c', f'--offload-arch={arch}']
+             if sys.platform == 'win32' else ['--genco'])
+    cmd = compiler + flags + list(options)
 
     with tempfile.TemporaryDirectory() as root_dir:
         path = os.path.join(root_dir, 'kern')
@@ -925,7 +939,14 @@ def compile_using_hipcc(source, options, arch, log_stream=None):
 # TODO(leofang): consider merge _preprocess_hipcc with _preprocess_hiprtc,
 # perhaps also with _preprocess?
 def _preprocess_hipcc(source, options):
-    cmd = ['hipcc', '--preprocess'] + list(options)
+    compiler = _environment.get_hip_compiler_command()
+    if compiler is None:
+        raise HIPCCException(
+            'HIP compiler not found. '
+            'Set ROCM_HOME, HIP_PATH or HIP_CLANG_PATH.')
+    cmd = (compiler +
+           (['-E'] if sys.platform == 'win32' else ['--preprocess']) +
+           list(options))
     with tempfile.TemporaryDirectory() as root_dir:
         path = os.path.join(root_dir, 'kern')
         cu_path = '%s.cpp' % path
@@ -1031,9 +1052,14 @@ def _compile_with_cache_hip(source, options, arch, extra_source,
     # to tell the compiler which arch we are targeting. But, we still
     # need to know arch as part of the cache key:
     if arch is None:
-        # On HIP, gcnArch is computed from "compute capability":
-        # https://github.com/ROCm-Developer-Tools/HIP/blob/rocm-4.0.0/rocclr/hip_device.cpp#L202
-        arch = device.Device().compute_capability
+        if sys.platform == 'win32':
+            arch = runtime.getDeviceProperties(
+                device.get_device_id())['gcnArchName']
+            if isinstance(arch, bytes):
+                arch = arch.decode('utf-8')
+        else:
+            # Preserve the existing Linux HIP cache-key convention.
+            arch = device.Device().compute_capability
     if use_converter:
         source = _convert_to_hip_source(source, extra_source,
                                         is_hiprtc=(backend == 'hiprtc'))

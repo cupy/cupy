@@ -129,7 +129,13 @@ cdef SoftLink _get_softlink():
     elif CUPY_HIP_VERSION != 0:
         runtime_version = runtime.runtimeGetVersion()
         prefix = 'hiprtc'
-        if runtime_version < 5_00_00000:
+        if _sys.platform == 'win32':
+            from cupy import _environment
+            major = runtime_version // 10000000
+            minor = runtime_version // 100000 % 100
+            libname = _environment._get_win32_hip_library_path(
+                f'hiprtc{major:02d}{minor:02d}.dll')
+        elif runtime_version < 5_00_00000:
             # ROCm 4.x
             libname = 'libamdhip64.so.4'
         elif runtime_version < 6_00_00000:

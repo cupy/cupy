@@ -1028,6 +1028,39 @@ class TestSparseMatrixConversion:
 
 
 @testing.with_requires('scipy')
+class TestSparseMatrixConversionRoundTrip:
+
+    @pytest.mark.parametrize('fmt', ['csr', 'csc'])
+    @pytest.mark.parametrize('order', ['C', 'F'])
+    @testing.for_dtypes('fdFD')
+    def test_dense_sparse_dense(self, fmt, order, dtype):
+        for operation in ('denseToSparse', 'sparseToDense'):
+            if not cusparse.check_availability(operation):
+                pytest.skip('{} is not available'.format(operation))
+
+        expected = numpy.array([[1, 0, -2, 0],
+                                [0, 0, 0, 0],
+                                [0, 3, 0, 4]], dtype=dtype)
+        if numpy.dtype(dtype).kind == 'c':
+            expected += 1j * expected
+        dense = cupy.array(expected, order=order)
+        converted = cusparse.denseToSparse(dense, format=fmt)
+        reference = getattr(scipy.sparse, '{}_matrix'.format(fmt))(expected)
+        assert converted.format == fmt
+        assert converted.shape == expected.shape
+        assert converted.dtype == expected.dtype
+        testing.assert_array_equal(converted.indptr, reference.indptr)
+        testing.assert_array_equal(converted.indices, reference.indices)
+        testing.assert_array_equal(converted.data, reference.data)
+        testing.assert_array_equal(cusparse.sparseToDense(converted), expected)
+
+        out = cupy.full(expected.shape, numpy.nan, dtype=dtype, order='F')
+        assert cusparse.sparseToDense(converted, out=out) is out
+        testing.assert_array_equal(out, expected)
+
+
+
+@testing.with_requires('scipy')
 class TestSpMatDescriptorOwnership:
     # A descriptor stores raw device pointers into the matrix's arrays, and
     # sparse matrices are mutable: a structure change rebinds a.data /

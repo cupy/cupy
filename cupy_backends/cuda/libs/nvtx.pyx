@@ -87,6 +87,8 @@ cdef make_event_attributes(message, color, nvtxEventAttributes_t& attrib):
         attrib.messageType = NVTX_MESSAGE_TYPE_ASCII
         b_message = message.encode()
         attrib.message.ascii = b_message
+    # Keep the encoded message alive until the caller submits the event.
+    return b_message if message is not None else None
 
 
 cpdef MarkC(message, uint32_t color=0):
@@ -222,7 +224,7 @@ cpdef RangePop():
 
 cpdef unsigned long long RangeStart(message, color) except? 0:
     cdef nvtxEventAttributes_t attrib
-    make_event_attributes(message, color, attrib)
+    cdef object b_message = make_event_attributes(message, color, attrib)
     return nvtxRangeStartEx(&attrib)
 
 

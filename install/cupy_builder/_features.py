@@ -158,16 +158,12 @@ _cudart_static_libs = (
 
 
 def get_features(ctx: Context) -> dict[str, Feature]:
-    # We handle nvtx (and likely any other future support) here, because
-    # the HIP stubs (hip/cupy_*.h) would cause many symbols
-    # to leak into all these modules even if unused. It's easier for all of
-    # them to link to the same set of shared libraries.
-    HIP_cuda_nvtx_cusolver = {
+    # rocSOLVER shares HIP compatibility headers with the core modules.
+    HIP_cuda_cusolver = {
         # TODO(leofang): call this "rocm" or "hip" to avoid confusion?
         'name': 'cuda',
         'required': True,
         'file': _cuda_files + [
-            'cupy_backends.cuda.libs.nvtx',
             'cupy_backends.cuda.libs.cusolver',
             'cupyx._cusolver',
         ],
@@ -178,7 +174,6 @@ def get_features(ctx: Context) -> dict[str, Feature]:
             'hiprand/hiprand.h',
             'hipsparse.h',
             'hipfft.h',
-            'roctx.h',
             'rocsolver.h',
         ],
         'libraries': [
@@ -188,14 +183,18 @@ def get_features(ctx: Context) -> dict[str, Feature]:
             'hiprand',
             'hipsparse',
             'rocfft',
-            'roctracer64',  # cudaProfilerStart/Stop -> roctracer_start/stop
-            'roctx64',
             'rocblas',
             'rocsolver',
             'rocsparse',
         ],
         'check_method': build.check_hip_version,
         'version_method': build.get_hip_version,
+    }
+    HIP_nvtx = {
+        'name': 'nvtx',
+        'file': ['cupy_backends.cuda.libs.nvtx'],
+        'include': ['roctx.h', 'roctracer/roctracer_ext.h'],
+        'libraries': ['roctx64', 'roctracer64'],
     }
     # With CUDA Python, cuSOLVER is used via nvmath-python, which loads it at
     # runtime.
@@ -411,7 +410,8 @@ def get_features(ctx: Context) -> dict[str, Feature]:
 
     if ctx.use_hip:
         features = [
-            _from_dict(HIP_cuda_nvtx_cusolver, ctx),
+            _from_dict(HIP_cuda_cusolver, ctx),
+            _from_dict(HIP_nvtx, ctx),
             _from_dict(HIP_cub, ctx),
             _from_dict(HIP_nccl, ctx),
             _from_dict(HIP_random, ctx),
