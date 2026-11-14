@@ -95,19 +95,23 @@ _init_dtype_dict()
 
 @cython.profile(False)
 cpdef get_dtype(t):
-    ret = _dtype_dict.get(t, None)
-    if ret is None:
-        return _dtype(t)
-    return ret[0]
+    # A list dtype spec isn't hashable, so skip the cache lookup for it.
+    if type(t) is not list:
+        ret = _dtype_dict.get(t, None)
+        if ret is not None:
+            return ret[0]
+    return _dtype(t)
 
 
 @cython.profile(False)
 cpdef tuple get_dtype_with_itemsize(t, bint check_support):
     # check_support for clarity, mainly array creation has to check.
-    ret = _dtype_dict.get(t, None)
-    if ret is not None:
-        # Simple dtype request by user, always valid.
-        return ret
+    # A list dtype spec isn't hashable, so skip the cache lookup for it.
+    if type(t) is not list:
+        ret = _dtype_dict.get(t, None)
+        if ret is not None:
+            # Simple dtype request by user, always valid.
+            return ret
 
     t = _dtype(t)
     if check_support:
