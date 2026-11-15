@@ -66,6 +66,21 @@ class TestSpdiags:
         x = sp.spdiags(data, diags, 3, 4)
         return x
 
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_spdiags_default_shape(self, xp, sp):
+        # Without m and n the result is square, of size len(data[0]).
+        data = xp.arange(12, dtype=self.dtype).reshape(3, 4)
+        diags = xp.array([0, -1, 2], dtype='i')
+        x = sp.spdiags(data, diags)
+        return x
+
+    @testing.numpy_cupy_allclose(sp_name='sp')
+    def test_spdiags_shape_tuple(self, xp, sp):
+        data = xp.arange(12, dtype=self.dtype).reshape(3, 4)
+        diags = xp.array([0, -1, 2], dtype='i')
+        x = sp.spdiags(data, diags, (3, 4))
+        return x
+
 
 @testing.parameterize(*testing.product({
     'dtype': [numpy.float32, numpy.float64]

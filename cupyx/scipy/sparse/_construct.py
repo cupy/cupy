@@ -153,13 +153,15 @@ def identity(n, dtype='d', format=None):
     return eye(n, n, dtype=dtype, format=format)
 
 
-def spdiags(data, diags, m, n, format=None):
+def spdiags(data, diags, m=None, n=None, format=None):
     """Creates a sparse matrix from diagonals.
 
     Args:
         data (cupy.ndarray): Matrix diagonals stored row-wise.
         diags (cupy.ndarray): Diagonals to set.
-        m (int): Number of rows.
+        m (int or tuple of ints): Number of rows, or the shape of the result
+            if ``n`` is ``None``. If both ``m`` and ``n`` are omitted, the
+            result is square and its size is ``len(data[0])``.
         n (int): Number of cols.
         format (str or None): Sparse format, e.g. ``format="csr"``.
 
@@ -171,6 +173,10 @@ def spdiags(data, diags, m, n, format=None):
        - :func:`~cupyx.scipy.sparse.diags_array`
 
     """
+    if m is None and n is None:
+        m = n = len(data[0])
+    elif n is None:
+        m, n = m
     return _dia.dia_matrix((data, diags), shape=(m, n)).asformat(format)
 
 
