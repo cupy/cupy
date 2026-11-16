@@ -174,14 +174,8 @@ class _csc_base(_compressed._compressed_sparse_matrix):
                 return self._with_data(self.data * other)
             native_f16 = False
             if other.ndim in (1, 2):
-                # cuSPARSE spmv/spmm accept float/complex plus a native
-                # float16 mixed mode (f16 data, f32 compute).  bfloat16 and
-                # bool/integer results have no cuSPARSE path and route through
-                # the pure-CuPy scatter.  float16 must NOT: it has to reach the
-                # native spmv/spmm via ``self.T`` (transa), because routing it
-                # through ``_cupy_csr_dense_matmul(self.tocsr())`` would pay a
-                # full CSC->CSR conversion (~25x slower).  The transa path is
-                # buggy on HIP, so keep the fallback there.
+                # Use native float16 matmul on CUDA; other dtypes need a
+                # fallback.
                 result_dtype = cupy.promote_types(self.dtype, other.dtype)
                 native_f16 = (
                     result_dtype.char == 'e' and not runtime.is_hip
@@ -189,12 +183,8 @@ class _csc_base(_compressed._compressed_sparse_matrix):
                         'spmv' if other.ndim == 1 else 'spmm'))
                 if (_sputils.is_16bit_float(result_dtype)
                         and not native_f16 and not runtime.is_hip):
-                    # bfloat16 has no native cuSPARSE type (and float16 lands
-                    # here only if the native path is unavailable): upcast to
-                    # float32 and reuse the native CSC spmv/spmm, which is
-                    # cheap via ``self.T``, then downcast.  Routing through
-                    # ``_cupy_csr_dense_matmul(self.tocsr())`` would pay a full
-                    # CSC->CSR conversion (~25x slower) first.
+                    # Widen values to reuse CSC matmul without a CSC-to-CSR
+                    # conversion.
                     return (self.astype(cupy.float32)
                             @ other.astype(cupy.float32)).astype(result_dtype)
                 if (cusparse._needs_cupy_fallback(result_dtype)

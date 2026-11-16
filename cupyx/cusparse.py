@@ -63,10 +63,6 @@ class MatDescriptor:
 
 
 def _cast_common_type(*xs):
-    # ``promote_data_types`` falls back to dense CuPy's ufunc promotion for
-    # pairs numpy cannot promote abstractly (bfloat16 with a >= 16-bit int);
-    # only the elementwise callers hit that -- matmul rejects the mix at its
-    # routing gate first.
     from cupyx.scipy.sparse import _sputils
     dtypes = [x.dtype for x in xs if x is not None]
     dtype = _sputils.promote_data_types(*dtypes)
@@ -1855,24 +1851,13 @@ def spmv(a, x, y=None, alpha=1, beta=0, transa=False):
     desc_a = SpMatDescriptor.create(a, is_half_allowed=True)
     desc_x = DnVecDescriptor.create(x, is_half_allowed=True)
 
-    # float16 has no native cuSPARSE accumulate type -- only the mixed
-    # hf16_hf16_f32 mode (data float16, compute float32) -- so stage y in
-    # float32 and downcast, keeping the sparse matrix and x in float16 (no
-    # float32 copy of the potentially large operand).  bfloat16 is not routed
-    # here: CUDA_R_16BF needs compute capability >= 8.0, so bfloat16 matmul
-    # upcasts to float32 upstream instead.
-    half = a.dtype.char == 'e'
-    if half:
-        y_f32 = y.astype(_cupy.float32)
-        desc_y = DnVecDescriptor.create(y_f32)
-        cuda_dtype = _runtime.CUDA_R_32F
-        alpha = _numpy.array(alpha, _numpy.float32).ctypes
-        beta = _numpy.array(beta, _numpy.float32).ctypes
-    else:
-        desc_y = DnVecDescriptor.create(y)
-        cuda_dtype = _dtype.to_cuda_dtype(a.dtype)
-        alpha = _numpy.array(alpha, a.dtype).ctypes
-        beta = _numpy.array(beta, a.dtype).ctypes
+    # Keep float16 inputs; accumulate into a float32 output.
+    compute_dtype = _numpy.dtype('f') if a.dtype.char == 'e' else a.dtype
+    y_compute = y.astype(compute_dtype, copy=False)
+    desc_y = DnVecDescriptor.create(y_compute)
+    cuda_dtype = _dtype.to_cuda_dtype(compute_dtype)
+    alpha = _numpy.array(alpha, compute_dtype).ctypes
+    beta = _numpy.array(beta, compute_dtype).ctypes
 
     handle = _device.get_cusparse_handle()
     op_a = _transpose_flag(transa)
@@ -1884,8 +1869,8 @@ def spmv(a, x, y=None, alpha=1, beta=0, transa=False):
     _cusparse.spMV(handle, op_a, alpha.data, desc_a.desc, desc_x.desc,
                    beta.data, desc_y.desc, cuda_dtype, alg, buff.data.ptr)
 
-    if half:
-        y[...] = y_f32.astype(y.dtype)
+    if y_compute is not y:
+        y[...] = y_compute
     return y
 
 
@@ -1970,21 +1955,13 @@ def spmm(a, b, c=None, alpha=1, beta=0, transa=False, transb=False):
     desc_a = SpMatDescriptor.create(a, is_half_allowed=True)
     desc_b = DnMatDescriptor.create(b, is_half_allowed=True)
 
-    # float16 mixed precision: hf16_hf16_f32 (see spmv).  Stage c in float32
-    # and downcast, keeping the sparse matrix and b in float16.  bfloat16
-    # upcasts to float32 upstream instead (CUDA_R_16BF needs cc >= 8.0).
-    half = a.dtype.char == 'e'
-    if half:
-        c_f32 = c.astype(_cupy.float32)
-        desc_c = DnMatDescriptor.create(c_f32)
-        cuda_dtype = _runtime.CUDA_R_32F
-        alpha = _numpy.array(alpha, _numpy.float32).ctypes
-        beta = _numpy.array(beta, _numpy.float32).ctypes
-    else:
-        desc_c = DnMatDescriptor.create(c)
-        cuda_dtype = _dtype.to_cuda_dtype(a.dtype)
-        alpha = _numpy.array(alpha, a.dtype).ctypes
-        beta = _numpy.array(beta, a.dtype).ctypes
+    # Keep float16 inputs; accumulate into a float32 output.
+    compute_dtype = _numpy.dtype('f') if a.dtype.char == 'e' else a.dtype
+    c_compute = c.astype(compute_dtype, copy=False)
+    desc_c = DnMatDescriptor.create(c_compute)
+    cuda_dtype = _dtype.to_cuda_dtype(compute_dtype)
+    alpha = _numpy.array(alpha, compute_dtype).ctypes
+    beta = _numpy.array(beta, compute_dtype).ctypes
 
     handle = _device.get_cusparse_handle()
     op_a = _transpose_flag(transa)
@@ -1998,8 +1975,8 @@ def spmm(a, b, c=None, alpha=1, beta=0, transa=False, transb=False):
                                desc_b.desc, beta.data, desc_c.desc,
                                cuda_dtype, alg, buff.data.ptr)
 
-    if half:
-        c[...] = c_f32.astype(c.dtype)
+    if c_compute is not c:
+        c[...] = c_compute
     return c
 
 
@@ -2255,9 +2232,8 @@ def denseToSparse(x, format='csr'):
     if x.ndim != 2:
         raise ValueError('expected 2-D matrix')
     if _needs_cupy_fallback(x.dtype):
-        # TODO(eriknw): cuSPARSE--remove when cusparseDenseToSparse
-        #   supports non-float value types.  The pure-CuPy CSR builder
-        #   and format conversions are dtype-agnostic.
+        # cuSPARSE dense-to-sparse conversion only supports native float
+        # dtypes.
         from cupyx.scipy.sparse import _csr
         y = _csr.dense2csr(x)
         if format == 'csr':
@@ -2704,73 +2680,34 @@ def _cupy_spgemm_int64(a, b, alpha):
         c_vals, c_rows, c_cols, shape=(m, n))
     coo.sum_duplicates()
     c = coo.tocsr()
-    # Narrow the indices back to the operands' dtype when the result fits.
-    # ``nnz <= m*n`` and m, n are Python ints, so the cheap m*n bound settles
-    # the usual ``m*n < 2**31`` case without inspecting the result at all.
+    # Restore the input index width when the result fits.
     max_idx = _numpy.iinfo(out_idx_dtype).max
-    if c.indptr.dtype != out_idx_dtype and (
-            m * n <= max_idx or int(c.nnz) <= max_idx):
+    if c.indptr.dtype != out_idx_dtype and c.nnz <= max_idx:
         c = _with_indices_dtype(c, out_idx_dtype)
     return c
 
 
 def _cupy_csr_dense_matmul(a, x):
-    """``A @ X`` for value dtypes cuSPARSE ``spmv``/``spmm`` cannot multiply.
+    """Multiply CSR by a dense vector or matrix using value-dtype fallbacks.
 
-    ``a`` is CSR; ``x`` is a dense ``(K,)`` or ``(K, N)`` array.  A 16-bit
-    float result upcasts to float32, multiplies with native cuSPARSE, then
-    downcasts (float32 is a lossless widening) -- faster and lower-memory than
-    the scatter used for bool/integer results.  In practice only bfloat16
-    reaches this branch: float16 has its own native cuSPARSE mixed-precision
-    (f16 data, f32 compute) spmv/spmm path and never falls back here.
-
-    For a bool/integer result each nonzero ``a[i, k]`` scatters
-    ``a[i, k] * x[k]`` into output row ``i``; overlapping rows accumulate.
-    Narrow integers (and bool) accumulate in a 64-bit carrier and wrap on the
-    down-cast, matching numpy/scipy integer matmul (mod ``2**bits``); a bool
-    result becomes True where any product is nonzero.  This exact integer
-    path is why the result is not simply upcast to a float compute type,
-    which would lose precision past 2**53.  Duplicate entries in ``a`` sum
-    naturally, so no ``sum_duplicates`` is required.
+    Widen 16-bit floats for cuSPARSE. Accumulate integers exactly with
+    scatter-add, then cast back to preserve wrapping and bool semantics.
     """
     from cupyx.scipy.sparse import _sputils
-    # cupy fancy-indexing does not bounds-check the ``x2[a.indices]`` gather
-    # (it clamps), so an unchecked mismatch would return a silently wrong
-    # result where the float path and scipy both raise.
     if a.shape[1] != x.shape[0]:
         raise ValueError('dimension mismatch')
     res_dtype = _numpy.promote_types(a.dtype, x.dtype)
     if _sputils.is_16bit_float(res_dtype):
-        # 16-bit floats: upcast to float32 and reuse the native cuSPARSE
-        # spmv/spmm path (via ``@``), then downcast.  float32 is a lossless
-        # widening and accumulates the products in float32 exactly like the
-        # scatter, but is faster and uses less peak memory (no nnz x N
-        # products array).  float16 normally uses cuSPARSE's native f16/f32
-        # mixed mode directly; bfloat16 reaches here because its native
-        # CUDA_R_16BF path needs compute capability >= 8.0.
         return (a.astype(_cupy.float32)
                 @ x.astype(_cupy.float32)).astype(res_dtype)
     x2 = x[:, None] if x.ndim == 1 else x
-    # cupy.add.at cannot target bool, narrow ints, or bfloat16; accumulate in
-    # a compatible carrier (bool -> int64, so "any product nonzero"; else the
-    # shared int/bfloat16 carrier) and cast back.  Widen the K x N source
-    # before the gather, not the larger nnz x N result of it.
+    # Widen before gathering to keep the larger nnz-by-N temporary small.
     acc_dtype = _sputils.add_at_accumulator_dtype(res_dtype)
     rows = _indptr_to_coo(a.indptr, nnz=a.nnz)
     n = x2.shape[1]
     data_acc = a.data[:, None].astype(acc_dtype, copy=False)
-    # The per-nonzero products ``contrib`` are (nnz, block) -- up to
-    # ``nnz / m`` times larger than the (m, block) result -- so materialising
-    # them whole OOMs for a wide dense operand.  Split the dense columns into
-    # blocks sized to free memory; the scatter stays exact (no float64
-    # round-off) at any width.  Within a block ``contrib`` and its gather
-    # source are each (nnz, block) of ``acc_dtype`` and coexist during the
-    # multiply, so budget for 2x that with a safety margin (factor 4).
-    # ``contrib`` is passed straight into ``add.at`` (never name-bound), so it
-    # frees each pass and the peak stays one block.  Count the pool's free
-    # blocks as available -- ``memGetInfo`` alone reports them used and would
-    # over-chunk.  A single dense column cannot be split, so skip the probe
-    # (a host-blocking driver call) entirely for the matvec case.
+    # Budget for both the gather and products, with a safety margin. Include
+    # unused pool blocks; avoid querying free memory for matvec.
     if n == 1:
         block = 1
     else:
@@ -2779,17 +2716,12 @@ def _cupy_csr_dense_matmul(a, x):
                 + int(_cupy.get_default_memory_pool().free_bytes()))
         block = max(1, min(n, free // (4 * per_col)))
     if block >= n:
-        # Single block: accumulate straight into the wide carrier, then cast.
         y = _cupy.zeros((a.shape[0], n), dtype=acc_dtype)
         _cupy.add.at(y, rows,
                      data_acc * x2.astype(acc_dtype, copy=False)[a.indices])
         y = y.astype(res_dtype, copy=False)
     else:
-        # Near-OOM: keep the (m, n) output in the narrow res_dtype and widen
-        # only each block slice of the operand, casting the block back on
-        # store -- avoids a full-width (m, n) accumulator and a full-width copy
-        # of the dense operand.  Each output column is fully accumulated within
-        # its block, so the per-block cast is exact.
+        # Keep only one column block in the accumulator dtype.
         y = _cupy.zeros((a.shape[0], n), dtype=res_dtype)
         for j0 in range(0, n, block):
             j1 = min(j0 + block, n)

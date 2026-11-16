@@ -86,11 +86,7 @@ class _spbase:
             f"\twith {self.nnz} stored elements and shape {self.shape}>")
 
     def __str__(self):
-        # Delegate to scipy via ``self.get()`` so the output (including
-        # version-specific quirks like DIA's "(N diagonals)" annotation)
-        # tracks the installed scipy.  Fall back to ``repr`` only when
-        # ``get()`` is unavailable or scipy cannot represent the dtype
-        # (``ValueError`` for float16/bfloat16, which scipy.sparse rejects).
+        # Use SciPy formatting when it supports the dtype.
         try:
             return str(self.get())
         except (RuntimeError, NotImplementedError, ValueError):
@@ -644,19 +640,10 @@ class _spbase:
                 out=out)
 
         if self.ndim == 1:
-            # The only axis reduces everything to a scalar.  Implicit zeros
-            # contribute nothing, so summing the stored data suffices.  This
-            # equals numpy/scipy for a canonical matrix (the common case); a
-            # non-canonical *integer* matrix is the one divergence -- when
-            # its duplicates overflow the storage width scipy coalesces at
-            # that width first while this widens the accumulator -- accepted
-            # rather than force a copy+sort (or a canonical-format D2H sync)
-            # onto every reduction.  ``out=`` is forwarded to the reduction
-            # (which validates its shape and writes the result in place) and
-            # then returned explicitly: the cuTENSOR reduction backend
-            # returns a fresh 0-D array from a 1-D reduction even when
-            # ``out`` is given, which breaks numpy's out-identity contract
-            # (``a.sum(out=b) is b``).
+            # Reduce without coalescing: integer duplicates can overflow
+            # differently from SciPy, which coalesces in the storage dtype
+            # before widening. Return out explicitly because cuTENSOR may
+            # return a separate scalar.
             _sputils.validate_axis_1d(axis)
             result = self.data.sum(dtype=dtype, out=out)
             return out if out is not None else result
@@ -671,17 +658,9 @@ class _spbase:
         _sputils.validateaxis(axis)
 
         if axis is None:
-            # Both branches end in a 1-D reduction to a scalar whose ``out``
-            # must be returned explicitly: the cuTENSOR reduction backend
-            # returns a fresh 0-D array from a 1-D reduction even when ``out``
-            # is given (see the 1-D branch), which breaks numpy's out-identity
-            # contract (``a.sum(out=b) is b``).
+            # Preserve out identity even with the cuTENSOR reduction backend.
             if self.dtype.kind in 'iu':
-                # cuSPARSE has no integer ones-vector matmul; summing the
-                # stored values widens the accumulator to int64/uint64 like
-                # numpy/scipy, with the same non-canonical-duplicate
-                # divergence the 1-D branch documents.  DIA's ``data`` holds
-                # off-matrix padding, so take the coalesced COO values there.
+                # DIA data includes padding; use COO values to exclude it.
                 values = (self.data if self.format in ('csr', 'csc', 'coo')
                           else self.tocoo().data)
                 result = values.sum(dtype=dtype, out=out)
@@ -694,17 +673,8 @@ class _spbase:
             axis += 2
 
         if self.dtype.kind in 'iu':
-            # cuSPARSE has no integer arithmetic; reduce exactly into the
-            # numpy/scipy sum accumulator (int64/uint64 -- exact even past
-            # 2**53, unlike a float64 carrier) instead of the ones-vector
-            # matmul; duplicates accumulate there too, with the divergence
-            # the 1-D branch documents.  When the reduction axis is the
-            # format's already *contiguous* axis (CSR rows / CSC columns),
-            # sum each ``indptr`` segment with a contention-free cumsum -- no
-            # conversion, and it avoids the atomic pile-up a dense row/column
-            # would cause when scattered.  Otherwise scatter-add from COO:
-            # the cross axis would need a costly CSR<->CSC to make its groups
-            # contiguous, while its scatter has only light contention.
+            # Keep integer sums exact. Use prefix sums for contiguous segments
+            # and scatter-add for the other axis.
             acc_dtype = _sputils.get_sum_dtype(self.dtype)
             fmt = self.format
             if (fmt == 'csr' and axis == 1) or (fmt == 'csc' and axis == 0):
@@ -714,10 +684,8 @@ class _spbase:
                 acc = csum[self.indptr[1:]] - csum[self.indptr[:-1]]
             else:
                 if fmt in ('csr', 'csc'):
-                    # Reducing over the format's *minor* axis: ``indices``
-                    # already holds each entry's coordinate on it, so the
-                    # COO conversion (whose only extra output is the major
-                    # coordinate this branch never reads) is skipped.
+                    # Minor coordinates are already available without
+                    # converting to COO.
                     coord, data = self.indices, self.data
                 else:
                     coo = self.tocoo()

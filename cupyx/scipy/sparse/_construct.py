@@ -497,9 +497,7 @@ def random(m, n, density=0.01, format='coo', dtype=None,
 
     if data_rvs is None:
         if dtype.kind in 'iu':
-            # Sample uniformly across the whole integer range, like scipy;
-            # the default float sampler below would give [0, 1) values that
-            # truncate to all zeros.
+            # Sampling floats in [0, 1) would cast to all-zero integer data.
             info = numpy.iinfo(dtype)
             lo, hi = int(info.min), int(info.max)
 
@@ -507,13 +505,9 @@ def random(m, n, density=0.01, format='coo', dtype=None,
                 return random_state.randint(lo, hi + 1, size=size,
                                             dtype=dtype)
         elif dtype.kind == 'c':
-            # Give the imaginary part its own [0, 1) sample so complex
-            # results are not purely real.
             def data_rvs(size):
                 return random_state.rand(size) + 1j * random_state.rand(size)
         else:
-            # float32/float64 (and bool: [0, 1) samples are all nonzero, so
-            # the ``astype(bool)`` below yields all-True, matching scipy).
             data_rvs = random_state.rand
 
     mn = m * n
@@ -890,13 +884,7 @@ def block_diag(mats, format=None, dtype=None):
     coo_cls = _coo.coo_array if use_array else _coo.coo_matrix
 
     def _normalize_dense(a):
-        """Promote a dense input (list/tuple/scalar/ndarray) to a 2-D
-        ``cupy.ndarray`` with a sparse-supported dtype.
-
-        A dtype cupyx.scipy.sparse cannot store (e.g. longdouble) is
-        upcast to float64; every supported dtype -- including the
-        integer widths -- is preserved as-is.
-        """
+        """Make a 2-D dense input, converting unsupported dtypes to float64."""
         a = cupy.atleast_2d(cupy.asarray(a))
         if not _sputils.is_sparse_data_dtype(a.dtype):
             a = a.astype(cupy.float64, copy=False)
