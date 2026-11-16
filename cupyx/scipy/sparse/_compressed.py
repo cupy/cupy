@@ -23,10 +23,6 @@ from cupyx.scipy.sparse import _util
 
 from cupyx.scipy.sparse import _index
 
-# Match NumPy's platform-dependent index type. Keep this outside the class so
-# its comprehensions can access it.
-_ARG_REDUCTION_OUT_TYPENAME = _scalar.get_typename(numpy.dtype(int))
-
 
 class _compressed_sparse_matrix(sparse_data._data_matrix,
                                 sparse_data._minmax_mixin,
@@ -111,9 +107,9 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
     # the right template specialization according to input dtypes at runtime.
 
     _argmax_argmin_code = r'''
-        template<typename T1, typename T2, typename TI> __global__ void
+        template<typename T1, typename TI> __global__ void
         ${func}_arg_reduction(T1* data, TI* indices, TI* x, TI* y,
-                              TI length, T2* z) {
+                              TI length, long long* z) {
             // Get the index of the block
             int tid = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -161,17 +157,17 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             }
 
             // Store in the return function
-            z[tid] = (T2)data_index;
+            z[tid] = data_index;
         }'''
 
-    # T1=data type, T2=output type, TI=index type.
+    # T1=data type, TI=index type.
     _value_typenames = (
         'bool', 'signed char', 'short', 'int', 'long long',
         'unsigned char', 'unsigned short', 'unsigned int',
         'unsigned long long', 'float', 'double',
     )
     _arg_reduction_types = [
-        f'{{func}}_arg_reduction<{t1}, {_ARG_REDUCTION_OUT_TYPENAME}, {ti}>'
+        f'{{func}}_arg_reduction<{t1}, {ti}>'
         for t1 in _value_typenames
         for ti in ('int', 'long long')
     ]
@@ -1649,12 +1645,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
 
         """
 
-        # Call to the appropriate kernel function
-        # Create the vector to hold output
-        # Note: it's important to set "int" here, following what SciPy
-        # does, as the outcome dtype is platform dependent
         out_shape = self.shape[1 - axis]
-        out = cupy.zeros(out_shape, dtype=int)
+        out = cupy.zeros(out_shape, dtype=cupy.int64)
 
         # Perform the calculation
         # TI (index type) must match self.indices.dtype for correct int64
@@ -1671,9 +1663,8 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
         elif _sputils.is_16bit_float(data.dtype):
             data = data.astype(cupy.float32)
         data_t = _scalar.get_typename(data.dtype)
-        out_t = _scalar.get_typename(out.dtype)
         idx_t = _scalar.get_typename(idx_dtype)
-        ker_name = f'_arg_reduction<{data_t}, {out_t}, {idx_t}>'
+        ker_name = f'_arg_reduction<{data_t}, {idx_t}>'
 
         if ufunc == cupy.argmax:
             ker = self._max_arg_reduction_mod.get_function('max' + ker_name)

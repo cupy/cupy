@@ -12,6 +12,8 @@ from cupy.cuda import device as _device
 from cupy.cuda import stream as _stream
 from cupy import _util
 import cupyx.scipy.sparse
+from cupyx.scipy.sparse import _csr
+from cupyx.scipy.sparse import _sputils
 
 
 def _is_csr_type(x):
@@ -63,7 +65,6 @@ class MatDescriptor:
 
 
 def _cast_common_type(*xs):
-    from cupyx.scipy.sparse import _sputils
     dtypes = [x.dtype for x in xs if x is not None]
     dtype = _sputils.promote_data_types(*dtypes)
     return [x.astype(dtype) if x is not None and x.dtype != dtype else x
@@ -2240,7 +2241,6 @@ def denseToSparse(x, format='csr'):
     if _needs_cupy_fallback(x.dtype):
         # cuSPARSE dense-to-sparse conversion only supports native float
         # dtypes.
-        from cupyx.scipy.sparse import _csr
         y = _csr.dense2csr(x)
         if format == 'csr':
             return y
@@ -2699,7 +2699,6 @@ def _cupy_csr_dense_matmul(a, x):
     Widen 16-bit floats for cuSPARSE. Accumulate integers exactly with
     scatter-add, then cast back to preserve wrapping and bool semantics.
     """
-    from cupyx.scipy.sparse import _sputils
     if a.shape[1] != x.shape[0]:
         raise ValueError('dimension mismatch')
     res_dtype = _numpy.promote_types(a.dtype, x.dtype)
