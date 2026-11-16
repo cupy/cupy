@@ -1,13 +1,15 @@
-"""Last-axis merge sort using cuda.compute, with CuPy-managed caches.
+"""Last-axis sorting using cuda.compute, with CuPy-managed caches.
 
-This module provides an optional sorting accelerator. It relies on the current
-CUB merge-sort implementation's stability: SortKeysCopy and StableSortKeysCopy
-share the same implementation. cuda.compute does not expose a separate stable
-API, so tests guard the preservation of signed zeros and NaN payloads.
+One-dimensional integer inputs use radix sort. Other inputs use merge sort,
+relying on the current CUB implementation's stability: SortKeysCopy and
+StableSortKeysCopy share the same implementation. cuda.compute does not expose
+a separate stable merge-sort API, so tests guard the preservation of signed
+zeros and NaN payloads.
 """
 from __future__ import annotations
 
 from textwrap import dedent
+from types import SimpleNamespace
 
 import numpy
 
@@ -194,8 +196,37 @@ def _run_merge_sort(compute, family, key, keys_in, keys_out, comparator,
         build_arguments, num_items=num_items,
         stream=cupy.cuda.get_current_stream())
     tmp_size = sorter(temp_storage=None, **execution_arguments)
-    workspace = cupy.empty(tmp_size, dtype=numpy.uint8)
+    workspace = SimpleNamespace(
+        data=cupy.cuda.alloc(tmp_size), nbytes=tmp_size)
     sorter(temp_storage=workspace, **execution_arguments)
+
+
+def _sort_integer_1d(compute, a, descending, return_indices):
+    """Stable radix sort with separate input/output buffers."""
+    keys_out = cupy.empty_like(a)
+    if return_indices:
+        # DeviceRadixSort requires pointer inputs, including its values.
+        values_in = cupy.arange(a.size, dtype=numpy.intp)
+        result = cupy.empty(a.shape, dtype=numpy.intp)
+        values_out = result
+    else:
+        result = keys_out
+        values_in = values_out = None
+    order = (compute.SortOrder.DESCENDING if descending
+             else compute.SortOrder.ASCENDING)
+    buffers = dict(d_in_keys=a, d_out_keys=keys_out,
+                   d_in_values=values_in, d_out_values=values_out)
+    family = 'radix_argsort_1d' if return_indices else 'radix_sort_1d'
+    sorter = cached_algorithm(
+        family, (a.dtype, descending), None,
+        lambda: compute.make_radix_sort(**buffers, order=order))
+    execution_arguments = dict(
+        buffers, num_items=a.size, stream=cupy.cuda.get_current_stream())
+    tmp_size = sorter(temp_storage=None, **execution_arguments)
+    workspace = SimpleNamespace(
+        data=cupy.cuda.alloc(tmp_size), nbytes=tmp_size)
+    sorter(temp_storage=workspace, **execution_arguments)
+    return result
 
 
 def _copy_key_values(keys_out, result):
@@ -232,6 +263,9 @@ def _sort(a, descending, *, return_indices):
                 return (cupy.zeros(a.shape, dtype=numpy.intp)
                         if return_indices else a.copy())
             multi_row = a.ndim > 1
+            if not multi_row and a.dtype.kind in 'iu':
+                return _sort_integer_1d(
+                    compute, a, bool(descending), return_indices)
             ltoir, layout, source = _get_specialization(
                 a.dtype, bool(descending), multi_row)
             comparator = compute.op.RawOp(ltoir=ltoir, name='strict_cmp')
@@ -285,9 +319,9 @@ def cuda_compute_merge_sort(a, descending=False):
 
     Return a new array on success, or None for unsupported inputs or an
     allocation failure, allowing the caller to select another backend. Uses
-    the current stream on a's device. Stability relies on the current CUB
-    implementation, as described in the module docstring. This is an internal
-    accelerator entry point, not public dispatch.
+    the current stream on a's device. The merge-sort path's stability relies
+    on the current CUB implementation, as described in the module docstring.
+    This is an internal accelerator entry point, not public dispatch.
     """
     return _sort(a, descending, return_indices=False)
 
