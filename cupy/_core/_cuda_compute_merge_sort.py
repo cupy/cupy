@@ -5,6 +5,10 @@ relying on the current CUB implementation's stability: SortKeysCopy and
 StableSortKeysCopy share the same implementation. cuda.compute does not expose
 a separate stable merge-sort API, so tests guard the preservation of signed
 zeros and NaN payloads.
+
+The internal entry points accept algorithm='merge' or 'radix' for benchmarks.
+The floating-point radix path uses normalized integer keys to retain the same
+NaN and signed-zero ordering as merge sort; it is not selected automatically.
 """
 from __future__ import annotations
 
@@ -201,24 +205,55 @@ def _run_merge_sort(compute, family, key, keys_in, keys_out, comparator,
     sorter(temp_storage=workspace, **execution_arguments)
 
 
-def _sort_integer_1d(compute, a, descending, return_indices):
+@_util.memoize(for_each_device=True)
+def _float_radix_keys(dtype):
+    infinity = {
+        'float16': 0x7c00,
+        'float32': 0x7f800000,
+        'float64': 0x7ff0000000000000,
+    }[dtype.name]
+    return cupy.ElementwiseKernel(
+        'U bits, bool descending', 'U keys', dedent(f'''
+            const U sign = U(1) << (sizeof(U) * 8 - 1);
+            const U magnitude = bits & ~sign;
+            U key = magnitude == 0 ? sign :
+                    (bits & sign) ? U(~bits) : U(bits ^ sign);
+            if (descending) key = U(~key);
+            keys = magnitude > U({infinity:#x}ULL) ? U(~U(0)) : key;
+        '''), 'cupy_sort_float_radix_keys')
+
+
+def _sort_radix_1d(compute, a, descending, return_indices):
     """Stable radix sort with separate input/output buffers."""
-    keys_out = cupy.empty_like(a)
+    floating = a.dtype.kind == 'f'
+    if floating:
+        # Compare normalized keys, but carry the original values/indices so
+        # NaN signs/payloads and signed-zero bits are never reconstructed.
+        bits = a.view(numpy.dtype(f'u{a.dtype.itemsize}'))
+        keys_in = _float_radix_keys(a.dtype)(bits, descending)
+        radix_descending = False
+    else:
+        keys_in = a
+        radix_descending = descending
+    keys_out = cupy.empty_like(keys_in)
     if return_indices:
         # DeviceRadixSort requires pointer inputs, including its values.
         values_in = cupy.arange(a.size, dtype=numpy.intp)
         result = cupy.empty(a.shape, dtype=numpy.intp)
         values_out = result
+    elif floating:
+        result = cupy.empty_like(a)
+        values_in, values_out = a, result
     else:
         result = keys_out
         values_in = values_out = None
-    order = (compute.SortOrder.DESCENDING if descending
+    order = (compute.SortOrder.DESCENDING if radix_descending
              else compute.SortOrder.ASCENDING)
-    buffers = dict(d_in_keys=a, d_out_keys=keys_out,
+    buffers = dict(d_in_keys=keys_in, d_out_keys=keys_out,
                    d_in_values=values_in, d_out_values=values_out)
     family = 'radix_argsort_1d' if return_indices else 'radix_sort_1d'
     sorter = cached_algorithm(
-        family, (a.dtype, descending), None,
+        family, (a.dtype, radix_descending), None,
         lambda: compute.make_radix_sort(**buffers, order=order))
     execution_arguments = dict(
         buffers, num_items=a.size, stream=cupy.cuda.get_current_stream())
@@ -248,11 +283,15 @@ def _copy_key_values(keys_out, result):
         result.reshape(-1)[...] = values
 
 
-def _sort(a, descending, *, return_indices):
+def _sort(a, descending, *, return_indices, algorithm='auto'):
     """Shared last-axis implementation for sort and argsort."""
+    if algorithm not in ('auto', 'merge', 'radix'):
+        raise ValueError("algorithm must be 'auto', 'merge', or 'radix'")
     if (not isinstance(a, cupy.ndarray) or a.ndim == 0
             or not a.flags.c_contiguous
             or a.dtype.name not in _SUPPORTED_DTYPES):
+        return None
+    if algorithm == 'radix' and (a.ndim != 1 or a.dtype.kind not in 'iuf'):
         return None
     compute = _get_cuda_compute()
     if compute is None:
@@ -263,8 +302,9 @@ def _sort(a, descending, *, return_indices):
                 return (cupy.zeros(a.shape, dtype=numpy.intp)
                         if return_indices else a.copy())
             multi_row = a.ndim > 1
-            if not multi_row and a.dtype.kind in 'iu':
-                return _sort_integer_1d(
+            if (not multi_row and algorithm != 'merge'
+                    and (a.dtype.kind in 'iu' or algorithm == 'radix')):
+                return _sort_radix_1d(
                     compute, a, bool(descending), return_indices)
             ltoir, layout, source = _get_specialization(
                 a.dtype, bool(descending), multi_row)
@@ -314,7 +354,7 @@ def _sort(a, descending, *, return_indices):
         return result
 
 
-def cuda_compute_merge_sort(a, descending=False):
+def cuda_compute_merge_sort(a, descending=False, *, algorithm='auto'):
     """Return a sorted copy of a C-contiguous CuPy array along its last axis.
 
     Return a new array on success, or None for unsupported inputs or an
@@ -322,13 +362,17 @@ def cuda_compute_merge_sort(a, descending=False):
     the current stream on a's device. The merge-sort path's stability relies
     on the current CUB implementation, as described in the module docstring.
     This is an internal accelerator entry point, not public dispatch.
+
+    algorithm='auto' uses radix sort for 1D integers and merge sort otherwise.
+    For benchmarks, 'merge' forces merge sort; 'radix' selects radix sort for
+    1D integer/real floating-point arrays and returns None for other inputs.
     """
-    return _sort(a, descending, return_indices=False)
+    return _sort(a, descending, return_indices=False, algorithm=algorithm)
 
 
-def cuda_compute_argsort(a, descending=False):
-    """Return stable last-axis indices, or None to request another backend."""
-    return _sort(a, descending, return_indices=True)
+def cuda_compute_argsort(a, descending=False, *, algorithm='auto'):
+    """Return stable indices; algorithm has the same meaning as for sort."""
+    return _sort(a, descending, return_indices=True, algorithm=algorithm)
 
 
 @_util.memoize(for_each_device=True)
