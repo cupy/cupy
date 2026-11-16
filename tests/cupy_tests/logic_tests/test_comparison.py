@@ -105,16 +105,14 @@ class TestComparisonOperator:
         b = scalar
         return [op(a, b), op(b, a)]
 
-    @pytest.mark.parametrize('scalar,safe_scalar',
-                             [(2**63, 2), (2**63+100, 2), (-2**63, -1)])
+    @pytest.mark.parametrize('scalar', [2**63, 2**63+100, -2**63])
     @pytest.mark.parametrize('op', operators)
+    @pytest.mark.parametrize('reverse', [False, True])
+    @testing.numpy_cupy_array_equal(accept_error=OverflowError)
     def test_binary_array_pyscalar_int_and_bool(
-            self, scalar, safe_scalar, op):
-        # As of 2.5, NumPy uses the default integer and fails for very large
-        # Python scalars. But CuPy uses uint64 and succeeds.
-        a = cupy.array([True, False])
-        testing.assert_array_equal(op(a, scalar), op(a, safe_scalar))
-        testing.assert_array_equal(op(scalar, a), op(safe_scalar, a))
+            self, xp, scalar, op, reverse):
+        a = xp.array([True, False])
+        return op(scalar, a) if reverse else op(a, scalar)
 
 
 class TestArrayEqual(unittest.TestCase):
