@@ -1852,10 +1852,13 @@ def spmv(a, x, y=None, alpha=1, beta=0, transa=False):
     desc_x = DnVecDescriptor.create(x, is_half_allowed=True)
 
     # Keep float16 inputs; accumulate into a float32 output.
-    compute_dtype = _numpy.dtype('f') if a.dtype.char == 'e' else a.dtype
+    cuda_dtype = _dtype.to_cuda_dtype(a.dtype, is_half_allowed=True)
+    compute_dtype = a.dtype
+    if cuda_dtype == _runtime.CUDA_R_16F:
+        cuda_dtype = _runtime.CUDA_R_32F
+        compute_dtype = _numpy.dtype(_numpy.float32)
     y_compute = y.astype(compute_dtype, copy=False)
     desc_y = DnVecDescriptor.create(y_compute)
-    cuda_dtype = _dtype.to_cuda_dtype(compute_dtype)
     alpha = _numpy.array(alpha, compute_dtype).ctypes
     beta = _numpy.array(beta, compute_dtype).ctypes
 
@@ -1956,10 +1959,13 @@ def spmm(a, b, c=None, alpha=1, beta=0, transa=False, transb=False):
     desc_b = DnMatDescriptor.create(b, is_half_allowed=True)
 
     # Keep float16 inputs; accumulate into a float32 output.
-    compute_dtype = _numpy.dtype('f') if a.dtype.char == 'e' else a.dtype
+    cuda_dtype = _dtype.to_cuda_dtype(a.dtype, is_half_allowed=True)
+    compute_dtype = a.dtype
+    if cuda_dtype == _runtime.CUDA_R_16F:
+        cuda_dtype = _runtime.CUDA_R_32F
+        compute_dtype = _numpy.dtype(_numpy.float32)
     c_compute = c.astype(compute_dtype, copy=False)
     desc_c = DnMatDescriptor.create(c_compute)
-    cuda_dtype = _dtype.to_cuda_dtype(compute_dtype)
     alpha = _numpy.array(alpha, compute_dtype).ctypes
     beta = _numpy.array(beta, compute_dtype).ctypes
 
