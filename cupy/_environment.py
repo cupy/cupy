@@ -26,7 +26,7 @@ _hipcc_path = ''
 _cub_path = ''
 
 # Keep AddDllDirectory cookies alive for dependent extension-module loads.
-_win32_hip_dll_directory_handles = {}
+_win32_hip_dll_directory_handles: dict[str, Any] = {}
 
 """
 Library Preloading

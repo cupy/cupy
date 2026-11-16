@@ -50,7 +50,7 @@ def _tempdir():
         shutil.rmtree(temp_dir, ignore_errors=True)
 
 
-def get_rocm_path():
+def get_rocm_path() -> str | None:
     global _rocm_path
 
     # Use a magic word to represent the cache not filled because None is a

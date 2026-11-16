@@ -129,7 +129,6 @@ def preconfigure_modules(ctx: Context, MODULES, compiler, settings):
                         .format(module['name'])]
             continue
 
-
         if module['name'] == 'cutensor':
             cutensor_path = os.environ.get('CUTENSOR_PATH', '')
             inc_path = os.path.join(cutensor_path, 'include')

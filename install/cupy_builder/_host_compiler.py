@@ -4,13 +4,14 @@ from distutils import ccompiler, sysconfig
 from distutils.util import get_platform
 import os
 import shutil
+from typing import Any
 
 from cupy_builder._context import Context
 import cupy_builder.install_build as build
 
 
 def configure_win32_hip_host_compiler(
-        compiler, ctx: Context, plat_name: str | None = None) -> None:
+        compiler: Any, ctx: Context, plat_name: str | None = None) -> None:
     """Use Clang's MSVC driver with the Python toolchain's CRT and linker."""
     if not (build.PLATFORM_WIN32 and ctx.use_hip):
         return
@@ -18,6 +19,7 @@ def configure_win32_hip_host_compiler(
         raise RuntimeError('Windows HIP requires the MSVC-compatible host '
                            'compiler toolchain (do not select MinGW).')
 
+    executable: str | None
     override = os.environ.get('CUPY_HIP_HOST_COMPILER')
     if override:
         executable = override.strip('"')
@@ -61,7 +63,7 @@ def configure_win32_hip_host_compiler(
     print(f'Windows HIP host linker: {compiler.linker}')
 
 
-def new_host_compiler(ctx: Context):
+def new_host_compiler(ctx: Context) -> ccompiler.CCompiler:
     compiler = ccompiler.new_compiler()
     sysconfig.customize_compiler(compiler)
     configure_win32_hip_host_compiler(compiler, ctx)

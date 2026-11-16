@@ -1059,7 +1059,6 @@ class TestSparseMatrixConversionRoundTrip:
         testing.assert_array_equal(out, expected)
 
 
-
 @testing.with_requires('scipy')
 class TestSpMatDescriptorOwnership:
     # A descriptor stores raw device pointers into the matrix's arrays, and

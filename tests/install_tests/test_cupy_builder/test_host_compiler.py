@@ -34,8 +34,6 @@ def _msvc_compiler():
     return compiler
 
 
-
-
 @pytest.mark.parametrize('override', [None, 'missing-clang.exe'])
 def test_windows_hip_missing_clang(monkeypatch, override):
     monkeypatch.setattr(build, 'PLATFORM_WIN32', True)
@@ -53,16 +51,12 @@ def test_windows_hip_missing_clang(monkeypatch, override):
     assert compiler.cc == 'cl.exe'
 
 
-
-
 def test_windows_hip_rejects_mingw(monkeypatch):
     monkeypatch.setattr(build, 'PLATFORM_WIN32', True)
     with pytest.raises(RuntimeError, match='do not select MinGW'):
         _host_compiler.configure_win32_hip_host_compiler(
             SimpleNamespace(compiler_type='mingw32'),
             SimpleNamespace(use_hip=True))
-
-
 
 
 @pytest.mark.skipif(sys.platform != 'win32', reason='Native Windows HIP host')

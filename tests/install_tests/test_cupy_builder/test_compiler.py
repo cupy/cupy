@@ -107,8 +107,6 @@ def test_windows_hip_clang_directory_override(monkeypatch, tmp_path):
     assert build.get_hip_clang_path() is None
 
 
-
-
 def test_windows_hip_clang_requires_toolkit_root(monkeypatch, tmp_path):
     binary = tmp_path / 'LLVM tools' / 'clang.exe'
     binary.parent.mkdir()
@@ -155,5 +153,3 @@ def test_windows_explicit_hipcc_runtime_backend_executes():
     module.get_function('answer')((1,), (1,), (result,))
     cupy.cuda.runtime.deviceSynchronize()
     assert result.get().tolist() == [42]
-
-

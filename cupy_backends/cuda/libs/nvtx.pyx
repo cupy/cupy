@@ -224,7 +224,8 @@ cpdef RangePop():
 
 cpdef unsigned long long RangeStart(message, color) except? 0:
     cdef nvtxEventAttributes_t attrib
-    cdef object b_message = make_event_attributes(message, color, attrib)
+    # Keep the encoded message alive until nvtxRangeStartEx has consumed it.
+    cdef object _b_message = make_event_attributes(message, color, attrib)
     return nvtxRangeStartEx(&attrib)
 
 
