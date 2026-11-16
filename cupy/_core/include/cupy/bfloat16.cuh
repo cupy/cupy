@@ -44,22 +44,22 @@ public:
   // convert)
   bfloat16& operator=(const bfloat16&) = default;
 
-  bfloat16& operator+=(const bfloat16 &rhs) {
+  __device__ bfloat16& operator+=(const bfloat16 &rhs) {
     data_ += rhs.data_;
     return *this;
   }
 
-  bfloat16& operator-=(const bfloat16 &rhs) {
+  __device__ bfloat16& operator-=(const bfloat16 &rhs) {
     data_ -= rhs.data_;
     return *this;
   }
 
-  bfloat16& operator*=(const bfloat16 &rhs) {
+  __device__ bfloat16& operator*=(const bfloat16 &rhs) {
     data_ *= rhs.data_;
     return *this;
   }
 
-  bfloat16& operator/=(const bfloat16 &rhs) {
+  __device__ bfloat16& operator/=(const bfloat16 &rhs) {
     data_ /= rhs.data_;
     return *this;
   }
