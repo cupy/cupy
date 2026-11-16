@@ -257,7 +257,10 @@ class _csr_base(_compressed._compressed_sparse_matrix):
             elif other.ndim == 1:
                 self.sum_duplicates()
                 other = cupy.asfortranarray(other)
-                if cusparse.check_availability('csrmv'):
+                # Legacy csrmv/csrmm2 are int32-only (still available on
+                # HIP); int64 indices must use the generic SpMV/SpMM.
+                is_int64 = self.indices.dtype == cupy.int64
+                if not is_int64 and cusparse.check_availability('csrmv'):
                     csrmv = cusparse.csrmv
                 elif cusparse.check_availability('spmv'):
                     csrmv = cusparse.spmv
@@ -266,7 +269,8 @@ class _csr_base(_compressed._compressed_sparse_matrix):
                 return csrmv(self, other)
             elif other.ndim == 2:
                 self.sum_duplicates()
-                if cusparse.check_availability('csrmm2'):
+                is_int64 = self.indices.dtype == cupy.int64
+                if not is_int64 and cusparse.check_availability('csrmm2'):
                     csrmm = cusparse.csrmm2
                 elif cusparse.check_availability('spmm'):
                     csrmm = cusparse.spmm

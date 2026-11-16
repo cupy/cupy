@@ -2589,6 +2589,71 @@ class TestInt64SumAxis:
             s, cupy.array([[1.0, 2.0, 3.0]]))
 
 
+class TestInt64DenseMatmulDispatch:
+    """csr/csc @ dense vector/matrix with int64 indices.
+
+    The legacy csrmv/csrmm2 entry points take int32 index arrays.  They
+    are removed on CUDA 11+, but still advertised on HIP, where they used
+    to receive int64 arrays and silently return wrong values (for example
+    bool ``coo_array.sum()`` gave 2 instead of 4).  int64 must use the
+    generic SpMV/SpMM path, and the legacy wrappers must refuse int64.
+    """
+
+    _dense = numpy.array([[1., 0., 2., 0., 0.],
+                          [0., 0., 0., 3., 0.],
+                          [4., 5., 0., 0., 6.],
+                          [0., 0., 0., 0., 0.],
+                          [0., 7., 0., 8., 9.],
+                          [10., 0., 0., 0., 11.]])
+
+    def _int64(self, fmt):
+        m = getattr(sparse, f'{fmt}_matrix')(cupy.asarray(self._dense))
+        return getattr(sparse, f'{fmt}_matrix')._from_parts(
+            m.data, m.indices.astype(cupy.int64),
+            m.indptr.astype(cupy.int64), m.shape,
+            has_canonical_format=True)
+
+    @pytest.mark.parametrize('fmt', ['csr', 'csc'])
+    def test_matvec(self, fmt):
+        m = self._int64(fmt)
+        assert m.indices.dtype == cupy.int64
+        x = numpy.arange(1., 6.)
+        testing.assert_allclose(m @ cupy.asarray(x), self._dense @ x)
+
+    @pytest.mark.parametrize('fmt', ['csr', 'csc'])
+    def test_matmat(self, fmt):
+        m = self._int64(fmt)
+        x = numpy.arange(15.).reshape(5, 3)
+        testing.assert_allclose(m @ cupy.asarray(x), self._dense @ x)
+
+    @pytest.mark.parametrize('fmt', ['csr', 'csc'])
+    def test_sum(self, fmt):
+        m = self._int64(fmt)
+        assert float(m.sum()) == pytest.approx(self._dense.sum())
+        testing.assert_allclose(
+            cupy.asarray(m.sum(axis=0)).ravel(), self._dense.sum(axis=0))
+        testing.assert_allclose(
+            cupy.asarray(m.sum(axis=1)).ravel(), self._dense.sum(axis=1))
+
+    @pytest.mark.parametrize('dtype', [cupy.float64, cupy.bool_])
+    def test_coo_array_sum(self, dtype):
+        # coo_array keeps int64 coordinates; sum() goes through CSR matvec.
+        dense = self._dense.astype(dtype)
+        m = sparse.coo_array(cupy.asarray(dense))
+        assert int(m.sum()) == int(dense.sum())
+        testing.assert_array_equal(
+            cupy.asarray(m.sum(axis=0)).ravel(), dense.sum(axis=0))
+
+    @pytest.mark.parametrize('name', ['csrmv', 'csrmm', 'csrmm2'])
+    def test_legacy_wrappers_reject_int64(self, name):
+        if not cusparse.check_availability(name):
+            pytest.skip(f'{name} is not available')
+        m = self._int64('csr')
+        x = cupy.ones(5) if name == 'csrmv' else cupy.ones((5, 2), order='F')
+        with pytest.raises(ValueError, match='int64'):
+            getattr(cusparse, name)(m, x)
+
+
 class TestInt64EliminateZerosToarray:
     """eliminate_zeros preserves dense representation.
 
