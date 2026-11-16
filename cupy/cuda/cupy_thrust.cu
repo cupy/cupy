@@ -6,10 +6,30 @@
 #include <thrust/iterator/constant_iterator.h>
 #include <thrust/sequence.h>
 #include <thrust/sort.h>
+#include <thrust/transform.h>
 #include <thrust/tuple.h>
 #include <thrust/execution_policy.h>
 #include <new>
+#include <memory>
 #include <type_traits>
+
+#if defined(CUPY_USE_HIP)
+#include <hip/hip_bf16.h>
+using thrust_bfloat16 = __hip_bfloat16;
+#else
+#include <cuda_bf16.h>
+using thrust_bfloat16 = __nv_bfloat16;
+#endif
+
+// Keep bfloat16 instantiations local to Thrust: dtype_dispatcher is also
+// used by CUB operations that do not yet support this dtype.
+template <class functor_t, typename... Ts>
+void thrust_dtype_dispatcher(int dtype_id, functor_t f, Ts&&... args) {
+    if (dtype_id == CUPY_TYPE_BFLOAT16) {
+        return f.template operator()<thrust_bfloat16>(std::forward<Ts>(args)...);
+    }
+    return dtype_dispatcher(dtype_id, f, std::forward<Ts>(args)...);
+}
 
 
 #if CUPY_USE_HIP
@@ -86,6 +106,10 @@ __host__ __device__ __forceinline__ bool isnan(const __half& x) {
     #endif
 }
 #endif // ENABLE_HALF
+
+__host__ __device__ __forceinline__ bool isnan(const thrust_bfloat16& x) {
+    return __hisnan(x);
+}
 
 template <bool Descending, typename T>
 __host__ __device__ __forceinline__ constexpr
@@ -323,6 +347,29 @@ struct select_cmp<thrust::tuple<size_t, __half>, Descending> {
 };
 #endif  // ENABLE_HALF
 
+template <bool Descending>
+struct select_cmp<thrust_bfloat16, Descending> {
+    struct type {
+        __host__ __device__ __forceinline__ constexpr
+        bool operator() (const thrust_bfloat16& lhs,
+                         const thrust_bfloat16& rhs) const {
+            return real_cmp<Descending>(lhs, rhs);
+        }
+    };
+};
+
+template <bool Descending>
+struct select_cmp<thrust::tuple<size_t, thrust_bfloat16>, Descending> {
+    struct type {
+        __host__ __device__ __forceinline__ constexpr
+        bool operator() (
+            const thrust::tuple<size_t, thrust_bfloat16>& lhs,
+            const thrust::tuple<size_t, thrust_bfloat16>& rhs) const {
+            return tuple_cmp<Descending>(lhs, rhs);
+        }
+    };
+};
+
 /*
  * -------------------------------------------------- end of boilerplate --------------------------------------------------
  */
@@ -340,6 +387,48 @@ using direct_cmp_t = std::conditional_t<
 // Comparator for a segmented (multi-dimensional) sort, which zips a row index onto each value.
 template <typename T, bool Descending>
 using segment_cmp_t = typename select_cmp<thrust::tuple<size_t, T>, Descending>::type;
+
+
+#if !defined(CUPY_USE_HIP)
+template <bool Descending>
+struct bfloat16_sort_key {
+    __device__ __forceinline__
+    unsigned short operator()(const thrust_bfloat16& value) const {
+        unsigned short bits = __bfloat16_as_ushort(value);
+        unsigned short magnitude = bits & 0x7fff;
+        // All NaNs compare equal and sort last in either direction.
+        if (magnitude > 0x7f80) {
+            return 0xffff;
+        }
+        // Both zeros compare equal. Sort keys only: retain original value bits.
+        unsigned short key = magnitude == 0 ? 0x8000 :
+                             (bits & 0x8000) ? static_cast<unsigned short>(~bits) :
+                                               bits ^ 0x8000;
+        return Descending ? static_cast<unsigned short>(~key) : key;
+    }
+};
+
+// Generate radix-sortable keys while retaining stable NaN/zero ordering and
+// original bf16 payloads. Values are either the original elements or indices.
+template <bool Descending, typename ValuesIterator>
+void bfloat16_radix_sort(thrust::device_ptr<thrust_bfloat16> data_first,
+                        ValuesIterator values_first, ptrdiff_t size,
+                        cudaStream_t stream, cupy_allocator& alloc) {
+    if (size <= 1) {
+        return;
+    }
+    size_t bytes = static_cast<size_t>(size) * sizeof(unsigned short);
+    auto release = [&](char* ptr) { alloc.deallocate(ptr, bytes); };
+    std::unique_ptr<char, decltype(release)> storage(alloc.allocate(bytes), release);
+    auto keys_first = thrust::device_pointer_cast(
+        reinterpret_cast<unsigned short*>(storage.get()));
+    auto policy = cuda::par_nosync(alloc).on(stream);
+    thrust::transform(policy, data_first, data_first + size, keys_first,
+                      bfloat16_sort_key<Descending>{});
+    thrust::stable_sort_by_key(policy, keys_first, keys_first + size,
+                               values_first, thrust::less<unsigned short>{});
+}
+#endif
 
 
 /*
@@ -369,8 +458,16 @@ struct _sort {
         dp_data_last  = thrust::device_pointer_cast(static_cast<T*>(data_start) + size);
 
         if (ndim == 1) {
-            stable_sort(cuda::par_nosync(alloc).on(stream_), dp_data_first, dp_data_last,
-                        direct_cmp_t<T, Descending>{});
+            #if !defined(CUPY_USE_HIP)
+            if constexpr (std::is_same<T, thrust_bfloat16>::value) {
+                return bfloat16_radix_sort<Descending>(
+                    dp_data_first, dp_data_first, size, stream_, alloc);
+            } else
+            #endif
+            {
+                stable_sort(cuda::par_nosync(alloc).on(stream_), dp_data_first, dp_data_last,
+                            direct_cmp_t<T, Descending>{});
+            }
         } else {
             // Generate key indices.
             dp_keys_first = thrust::device_pointer_cast(keys_start);
@@ -490,11 +587,19 @@ struct _argsort {
 
         if (ndim == 1) {
             // Sort the index sequence by data.
-            stable_sort_by_key(cuda::par_nosync(alloc).on(stream_),
-                               dp_data_first,
-                               dp_data_last,
-                               dp_idx_first,
-                               direct_cmp_t<T, Descending>{});
+            #if !defined(CUPY_USE_HIP)
+            if constexpr (std::is_same<T, thrust_bfloat16>::value) {
+                return bfloat16_radix_sort<Descending>(
+                    dp_data_first, dp_idx_first, size, stream_, alloc);
+            } else
+            #endif
+            {
+                stable_sort_by_key(cuda::par_nosync(alloc).on(stream_),
+                                   dp_data_first,
+                                   dp_data_last,
+                                   dp_idx_first,
+                                   direct_cmp_t<T, Descending>{});
+            }
         } else {
             // Generate key indices.
             dp_keys_first = thrust::device_pointer_cast(static_cast<size_t*>(keys_start));
@@ -534,9 +639,9 @@ void thrust_sort(int dtype_id, void *data_start, size_t *keys_start,
 
     // Make the direction compile-time, so each sort below is written only once.
     if (descending) {
-        return dtype_dispatcher(dtype_id, _sort<true>{}, data_start, keys_start, shape, stream, memory);
+        return thrust_dtype_dispatcher(dtype_id, _sort<true>{}, data_start, keys_start, shape, stream, memory);
     }
-    return dtype_dispatcher(dtype_id, _sort<false>{}, data_start, keys_start, shape, stream, memory);
+    return thrust_dtype_dispatcher(dtype_id, _sort<false>{}, data_start, keys_start, shape, stream, memory);
 }
 
 
@@ -545,7 +650,7 @@ void thrust_lexsort(int dtype_id, size_t *idx_start, void *keys_start, size_t k,
     size_t n, intptr_t stream, void *memory) {
 
     _lexsort op;
-    return dtype_dispatcher(dtype_id, op, idx_start, keys_start, k, n, stream, memory);
+    return thrust_dtype_dispatcher(dtype_id, op, idx_start, keys_start, k, n, stream, memory);
 }
 
 
@@ -554,9 +659,9 @@ void thrust_argsort(int dtype_id, size_t *idx_start, void *data_start,
     void *keys_start, const std::vector<ptrdiff_t>& shape, intptr_t stream, void *memory, bool descending) {
 
     if (descending) {
-        return dtype_dispatcher(dtype_id, _argsort<true>{}, idx_start, data_start, keys_start,
+        return thrust_dtype_dispatcher(dtype_id, _argsort<true>{}, idx_start, data_start, keys_start,
                                 shape, stream, memory);
     }
-    return dtype_dispatcher(dtype_id, _argsort<false>{}, idx_start, data_start, keys_start,
+    return thrust_dtype_dispatcher(dtype_id, _argsort<false>{}, idx_start, data_start, keys_start,
                             shape, stream, memory);
 }
