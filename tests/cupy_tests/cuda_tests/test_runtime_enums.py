@@ -44,3 +44,19 @@ def test_hip_device_attribute_enums_defined_in_backend():
         val = getattr(e, n)
         assert isinstance(
             val, int), f'HIP enum {n} should be an int, got {type(val)}'
+
+
+def test_device_attributes_match_device_properties():
+    # The enum values must match the HIP header, so an attribute query
+    # returns the same number as the device properties struct.
+    props = runtime.getDeviceProperties(0)
+    pairs = [
+        ('cudaDevAttrMultiProcessorCount', 'multiProcessorCount'),
+        ('cudaDevAttrMaxThreadsPerBlock', 'maxThreadsPerBlock'),
+        ('cudaDevAttrWarpSize', 'warpSize'),
+        ('cudaDevAttrL2CacheSize', 'l2CacheSize'),
+        ('cudaDevAttrMaxRegistersPerBlock', 'regsPerBlock'),
+    ]
+    for attr, prop in pairs:
+        got = runtime.deviceGetAttribute(getattr(runtime, attr), 0)
+        assert got == props[prop], f'{attr}={got}, {prop}={props[prop]}'

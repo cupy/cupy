@@ -138,7 +138,6 @@ IF CUPY_HIP_VERSION >= 60100000:
         hipDeviceAttributeConcurrentManagedAccess
         hipDeviceAttributeCooperativeLaunch
         hipDeviceAttributeCooperativeMultiDeviceLaunch
-        hipDeviceAttributeHostRegisterSupported
         hipDeviceAttributeDeviceOverlap
         hipDeviceAttributeDirectManagedMemAccessFromHost
         hipDeviceAttributeGlobalL1CacheSupported
@@ -217,6 +216,9 @@ IF CUPY_HIP_VERSION >= 60100000:
         hipDeviceAttributeWarpSize
         hipDeviceAttributeMemoryPoolsSupported
         hipDeviceAttributeVirtualMemoryManagementSupported
+        # Order sets the values: HIP >= 6.1 declares HostRegisterSupported
+        # after VirtualMemoryManagementSupported.
+        hipDeviceAttributeHostRegisterSupported
 
         hipDeviceAttributeCudaCompatibleEnd = 9999
 
