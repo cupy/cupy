@@ -36,31 +36,23 @@ source and takes a long time. Install only one CuPy package per environment.
 For conda: `conda install -c conda-forge cupy`.
 
 Check the environment before answering version-specific questions:
-`python -c "import cupy; cupy.show_config()"`. `cupy.cuda.is_available()`.
+`python -c "import cupy; cupy.show_config()"`, and `cupy.cuda.is_available()` for GPU
+availability.
 
-CuPy v14 requires CUDA 12+, NumPy 2, and follows NumPy 2 type promotion.
-`cupy.sparse`, `cupy.prof` were removed: use `cupyx.scipy.sparse`, `cupyx.profiler`.
-cuDNN support was removed.
+CuPy v14 raised the minimum requirements, follows NumPy 2 type promotion, and removed some
+APIs. See the upgrade guide: https://docs.cupy.dev/en/stable/upgrade.html#cupy-v14
 
-SciPy equivalents live in `cupyx.scipy.` (`fft`, `linalg`, `sparse`, `signal`, and more). Coverage is partial: confirm a
-function exists in the installed version (`hasattr(cupyx.scipy.signal, "welch")`)
-before using it, instead of assuming.
+## Checking API coverage
 
-APIs that look like they should exist but do not (CuPy 14):
+SciPy equivalents live in `cupyx.scipy` (`fft`, `linalg`, `sparse`, `signal`, and more).
+Coverage of NumPy and SciPy is partial, so check the API comparison tables before assuming
+a function exists or is missing:
+https://docs.cupy.dev/en/stable/reference/comparison.html (SciPy:
+https://docs.cupy.dev/en/stable/reference/comparison.html#scipy-cupy-apis).
 
-| Missing | Use instead |
-|---|---|
-| `cp.random.default_rng()` methods `normal`, `choice`, `permutation`, `shuffle`, `multivariate_normal` | `rng.standard_normal(...) * sigma + mu`, `rng.integers`, `rng.random` + `cp.searchsorted(cp.cumsum(p), u)` for weighted choice, `cp.argsort(rng.random(n))` for permutations; or the legacy `cp.random.normal/choice/permutation` |
-| `cupyx.scipy.optimize`, `cupyx.scipy.integrate`, `cupyx.scipy.cluster` | Keep the solver on the CPU and evaluate the objective on the GPU, or vectorize (e.g. bisection over a batch) |
-| `cupyx.scipy.stats.norm`, `pearsonr`, `linregress`, `gaussian_kde` | `cupyx.scipy.special.ndtr` / `ndtri` (normal CDF / inverse CDF), `cp.corrcoef`, closed-form least squares |
-| `cupyx.scipy.interpolate.griddata` | `cupyx.scipy.interpolate.LinearNDInterpolator(points, values)(xi)` (GPU Delaunay, same result as `method="linear"`), `NearestNDInterpolator`, `CloughTocher2DInterpolator` |
-| `scipy.spatial.cKDTree`, `ConvexHull` | `cupyx.scipy.spatial.KDTree`, `Delaunay` |
-
-The opposite mistake is as common: assuming a function is missing and hand-writing it or
-moving the step to the CPU. These exist and run on the GPU: `cupyx.scipy.linalg.expm`,
-`cp.linalg.eig` / `eigvals`, `cupyx.scipy.spatial.KDTree` and `Delaunay`,
-`cupyx.scipy.interpolate.LinearNDInterpolator`, `cupyx.scipy.ndimage.label` and
-`distance_transform_edt`. Run `dir()` on the `cupyx.scipy` module first.
+Do not hand-write replacements for functions CuPy
+already provides (they are often specially optimized); if the task cannot wait, keeping just
+that step on the CPU is an acceptable stopgap.
 
 ## Porting NumPy code
 
@@ -69,73 +61,53 @@ moving the step to the CPU. These exist and run on the GPU: `cupyx.scipy.linalg.
 2. Move data to the GPU once, at the start: `x = cp.asarray(x_np)`. Generate data directly
    on the GPU when possible, in the precision you need
    (`cp.random.default_rng(0).standard_normal(n, dtype=cp.float32)`).
-3. Move results back once, at the end or when needed: `x.get()` or `cp.asnumpy(x)`.
+3. Move results back once, at the end or when needed: `cp.asnumpy(x)`.
 4. NumPy ufuncs on CuPy arrays dispatch to CuPy. Passing CuPy arrays into CPU-only libraries
-   (matplotlib, pandas, sklearn) needs `.get()` first.
-5. Validate against the NumPy version on a small input with `cp.testing.assert_allclose` /
-   `np.testing.assert_allclose(gpu.get(), cpu, rtol=...)`. Results can differ in the last
-   bits (different reduction order, float32 vs float64), so compare with tolerances.
+   (matplotlib, pandas, sklearn) needs `cp.asnumpy(x)` first.
+5. Validate against the NumPy version on a small input with
+   `cp.testing.assert_allclose(gpu, cpu, rtol=...)` (it accepts NumPy arrays too). Results
+   can differ in the last bits (different reduction order, float32 vs float64), so compare
+   with tolerances.
 
-Behavior that differs from NumPy and can silently change results (out-of-bounds indices
-wrap instead of raising, duplicate-index assignment is undefined, reductions return 0-d
-arrays, float-to-int casts, random streams differ for the same seed): see
-https://docs.cupy.dev/en/stable/user_guide/difference.html.
+Some behavior differs from NumPy and can silently change results. See
+https://docs.cupy.dev/en/stable/user_guide/difference.html
 
 ## Performance best practices
 
-1. Keep data on the GPU. Every `cp.asarray`/`.get()` crosses PCIe. A pipeline that
+Details: https://docs.cupy.dev/en/stable/user_guide/performance.html
+
+1. Keep data on the GPU. Every `cp.asarray`/`cp.asnumpy` crosses PCIe. A pipeline that
    bounces between NumPy and CuPy is usually slower than pure NumPy.
-2. No Python loops over elements. `for i in range(n): x[i] ...` launches one kernel
-   (and often one sync) per element. Vectorize, or write a custom kernel.
-   The same applies to many small problems: stack them into one batched array
-   (`cp.linalg.inv`, `solve`, `matmul`, `fft` all accept a leading batch dimension).
-   Loops of independent iterations (bootstrap resamples, Monte Carlo trials, parameter
-   sweeps) should become an extra array dimension too: draw all indices at once
-   (`idx = rng.integers(0, n, size=(n_boot, m))`), gather with `x[idx]`, and reduce along
-   an axis, chunking if memory is tight.
+2. No Python loops over elements: `for i in range(n): x[i] ...` launches one kernel
+   (and often one sync) per element. Vectorize, or write a custom kernel. Stack many small
+   problems into one batched array (`cp.linalg.inv`, `solve`, `matmul`, `fft` accept a
+   leading batch dimension). Independent iterations (bootstrap resamples, Monte Carlo
+   trials, parameter sweeps) should become an extra array dimension too.
 3. Watch for hidden synchronization. These block until the GPU finishes and copy to
-   host: `.get()`, `float(x)`, `int(x)`, `x.item()`, `print(x)`, `if x.any():`,
+   host: `cp.asnumpy(x)`, `float(x)`, `int(x)`, `x.item()`, `print(x)`, `if x.any():`,
    `while err > tol:` on a 0-d array, and boolean-mask indexing / `cp.nonzero` (output size
-   is unknown). In iterative solvers, a per-iteration `if err < tol:` check can
-   hurt the performance greatly. Fix it by computing the error and checking it only every
-   N iterations (e.g. 50-100):
-
-   ```python
-   for it in range(max_iter):
-       u_new = step(u)
-       if it % 50 == 49:                  # one reduction + one sync per 50 steps
-           if float(cp.abs(u_new - u).max()) < tol:
-               u = u_new
-               break
-       u = u_new
-   ```
-
-   This can run up to N-1 extra iterations past the CPU version's stopping point, which
-   only moves the solution further toward convergence. Validate against the CPU result
-   with a tolerance, not exact equality, and mention the different iteration count.
+   is unknown). In iterative solvers, check convergence only every N iterations (e.g.
+   50-100) instead of every iteration. This can run up to N-1 extra iterations past the CPU
+   version's stopping point, so validate with a tolerance, not exact equality, and mention
+   the different iteration count.
 4. Size matters. Each kernel launch costs many µs, so NumPy usually wins
-   below ~10^4-10^5 elements per operation. Batch small problems into one large array
-   instead of looping over them, and benchmark at the real problem size.
+   below ~10^4-10^5 elements per operation. Batch small problems into one large array and
+   benchmark at the real problem size.
 5. Choose precision deliberately. Consumer and workstation GPUs (GeForce, RTX) run
-   float64 at a small fraction of float32 speed. Use float32 when accuracy allows;
-   datacenter GPUs (A100, H100, B200) have full-rate float64. For float32 matmul-heavy code,
-   `CUPY_TF32=1` (set before CuPy initializes, no code changes) lets cuBLAS use TF32 Tensor
-   Cores on Ampere and newer GPUs, including GeForce RTX 30/40: 1.5x on an 8192x8192 matmul
-   on an RTX 4090. TF32 keeps float32's range but rounds the inputs to a 10-bit mantissa
-   (float32 has 23), so expect about 1e-3 relative error per product. Accumulation stays
-   in float32, so measured matmul error is often lower. Explain this trade-off and
+   float64 at a small fraction of float32 speed; datacenter GPUs (A100, H100, B200) have
+   full-rate float64. Use float32 when accuracy allows. For float32 matmul-heavy code,
+   `CUPY_TF32=1` (set before CuPy initializes) lets cuBLAS use TF32 Tensor Cores on Ampere
+   and newer GPUs at about 1e-3 relative error per product. Explain this trade-off and
    validate against a float32 result before enabling it.
-6. Pre-allocate and reuse with `out=` arguments in hot loops
+6. Pre-allocate and reuse with `out=` arguments in hot loops.
 7. Fuse elementwise chains. Each CuPy operation is a separate kernel that writes a full-size
    temporary, so long expressions are memory-bandwidth bound. Wrapping the function in
-   `@cp.fuse()` (or writing one `cp.ElementwiseKernel`) runs it as a single kernel: a
-   10-operation float32 activation on 64M elements went from 12.8 ms to 0.6 ms.
-   Keep whole-array reductions out of the fused code: a plain `.sum()`/`.max()` uses CUB,
-   while the same reduction as a `cp.ReductionKernel` or inside `cp.fuse` was 20x slower
-   (`((x - y) ** 2).sum()` on 134M float32: 3.5 ms plain, 69 ms as a ReductionKernel).
+   `@cp.fuse()` (or writing one `cp.ElementwiseKernel`) runs it as a single kernel. Keep
+   whole-array reductions out of the fused code: a plain `.sum()`/`.max()` uses CUB and is
+   much faster than the same reduction in a `cp.ReductionKernel` or inside `cp.fuse`.
 8. Small arrays with many steps are launch-bound (GPU looks idle in `nvidia-smi`). Fuse each
    step into as few kernels as possible, then capture the loop in a CUDA graph so it is
-   replayed without Python or launch overhead (5.5x on 20,000 steps of a 192x192 stencil):
+   replayed without Python or launch overhead:
 
    ```python
    s = cp.cuda.Stream(non_blocking=True)
@@ -149,6 +121,9 @@ https://docs.cupy.dev/en/stable/user_guide/difference.html.
            graph.launch(s)
        s.synchronize()
    ```
+9. Large host-to-device transfers are faster from pinned memory
+   (`cupyx.empty_pinned(shape, dtype)`), and transfers can overlap compute on non-default
+   streams (`with cp.cuda.Stream(non_blocking=True) as s: ...; s.synchronize()`).
 
 ## Measuring performance
 
@@ -161,12 +136,14 @@ from cupyx.profiler import benchmark
 print(benchmark(my_func, (x,), n_repeat=20, n_warmup=3))   # reports CPU and GPU times
 ```
 
-Or synchronize manually: `cp.cuda.Device().synchronize()` before stopping the timer. The
-first call of each kernel compiles it (cached in `~/.cupy/kernel_cache`), so always warm up
-and exclude the first run. Compare against NumPy at the real problem size, and include
-transfer time if the real pipeline has it.
+Or call `cp.cuda.Device().synchronize()` before stopping the timer, and always warm up
+(the first call of each kernel compiles it). Compare against NumPy at the real problem size,
+and include transfer time if the real pipeline has it. See
+https://docs.cupy.dev/en/stable/user_guide/performance.html#benchmarking
 
 ## Memory
+
+See https://docs.cupy.dev/en/stable/user_guide/memory.html
 
 - CuPy keeps freed memory in a pool, so `nvidia-smi` shows it as used.
   `cp.get_default_memory_pool().used_bytes()` / `.total_bytes()` show the real usage;
@@ -176,16 +153,14 @@ transfer time if the real pipeline has it.
   `cp.get_default_memory_pool().set_limit(size=...)`.
 - If you get Out of memory errors try to: process in chunks, delete large temporaries (`del x`),
   use float32, and free FFT plan caches (`cp.fft.config.get_plan_cache().clear()`) if many FFT shapes are used.
-- Large host-to-device transfers are faster from pinned memory: allocate host buffers with
-  `cupyx.empty_pinned(shape, dtype)` and copy with `cp.asarray` or `x.set(...)`.
-- Overlap transfers and compute with non-default streams:
-  `with cp.cuda.Stream(non_blocking=True) as s: ...; s.synchronize()`.
 
 ## Custom kernels
 
 Use them when vectorized CuPy and `cp.fuse` are not enough: `cp.ElementwiseKernel` and
 `cp.ReductionKernel` for C snippets, `cp.RawKernel` / `cp.RawModule` for full CUDA C++,
-`cupyx.jit.rawkernel` for Python-syntax kernels (experimental). See
+`cupyx.jit.rawkernel` for Python-syntax kernels. On NVIDIA CUDA GPUs, prefer
+`cuda.core.Program` over `RawKernel` / `RawModule`, and prefer numba-cuda-mlir over
+`cupyx.jit.rawkernel`, which is not being actively developed. See
 https://docs.cupy.dev/en/stable/user_guide/kernel.html before writing or debugging one.
 RawKernel does no argument checking, so the common bugs are silent wrong results:
 
@@ -198,7 +173,9 @@ RawKernel does no argument checking, so the common bugs are silent wrong results
 
 Kernel errors (`cudaErrorIllegalAddress`) are reported at a later, unrelated call and
 leave the CUDA context unusable: restart the process, then localize with
-`CUDA_LAUNCH_BLOCKING=1` and `compute-sanitizer python script.py`.
+`CUDA_LAUNCH_BLOCKING=1` and `compute-sanitizer python script.py`. You can also call
+`cp.cuda.Device().synchronize()` immediately after each kernel launch to find which launch
+causes the asynchronous error.
 
 ## Threads, processes, and deployment
 
@@ -211,13 +188,16 @@ leave the CUDA context unusable: restart the process, then localize with
   with `CUDA_VISIBLE_DEVICES` or `cp.cuda.Device(i)`.
 - Kernels are compiled on first use and cached in `~/.cupy/kernel_cache` (keyed by source,
   CuPy/CUDA version, and GPU architecture). In containers set `CUPY_CACHE_DIR` to a writable
-  or pre-warmed directory, warm up before serving, or use `CUPY_CACHE_IN_MEMORY=1`.
+  or pre-warmed directory and warm up before serving. Use `CUPY_CACHE_IN_MEMORY=1` only when
+  disk I/O must be avoided completely: the persistent on-disk cache is then not used, so
+  every process pays the JIT compile overhead.
 
 ## Going further
-- Interop for zero-copy with other libraries: DLPack: `cp.from_dlpack(t)` / `torch.from_dlpack(x)` with PyTorch and JAX;
-  `__cuda_array_interface__` with Numba and others; cuDF `Series.to_cupy()` /
-  `cudf.Series(cupy_array)`. Data stays on the GPU, so make sure the producer's stream work
-  is finished or on the same stream.
+
+- Interoperability with other libraries (zero-copy DLPack, e.g. `cp.from_dlpack(t)` /
+  `torch.from_dlpack(x)`): https://docs.cupy.dev/en/stable/user_guide/interoperability.html
+  Data stays on the GPU, so make sure the producer's stream work is finished or on the same
+  stream.
 - Multiple GPUs: `with cp.cuda.Device(1): ...` places arrays and kernels on device 1;
   arrays live on the device where they were created.
 
@@ -225,10 +205,11 @@ leave the CUDA context unusable: restart the process, then localize with
 
 - User guide: https://docs.cupy.dev/en/stable/user_guide/index.html
 - Differences from NumPy: https://docs.cupy.dev/en/stable/user_guide/difference.html
-- Custom kernels (Elementwise, Reduction, Raw, JIT): https://docs.cupy.dev/en/stable/user_guide/kernel.html
-- `cupyx.jit` API: https://docs.cupy.dev/en/stable/reference/kernel.html
 - Performance tips: https://docs.cupy.dev/en/stable/user_guide/performance.html
+- Memory management: https://docs.cupy.dev/en/stable/user_guide/memory.html
+- Custom kernels (Elementwise, Reduction, Raw, JIT): https://docs.cupy.dev/en/stable/user_guide/kernel.html
+- Interoperability: https://docs.cupy.dev/en/stable/user_guide/interoperability.html
 - API reference and NumPy/SciPy coverage: https://docs.cupy.dev/en/stable/reference/
+- Upgrade notes: https://docs.cupy.dev/en/stable/upgrade.html
 - If you are able to clone repos you can clone it into a temp location to verify APIs:
   https://github.com/cupy/cupy
-- Upgrade notes: https://docs.cupy.dev/en/stable/upgrade.html
