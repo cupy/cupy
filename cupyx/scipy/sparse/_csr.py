@@ -64,7 +64,7 @@ class _csr_base(_compressed._compressed_sparse_matrix):
         self.sum_duplicates()
         other = other.tocsr()
         other.sum_duplicates()
-        dtype = _sputils.promote_data_types(self.dtype, other.dtype)
+        dtype = numpy.promote_types(self.dtype, other.dtype)
         if _sputils.is_16bit_float(dtype):
             # Widen only values for cuSPARSE, then round back.
             a = self._with_data(self.data.astype(cupy.float32), copy=False)
@@ -341,7 +341,7 @@ class _csr_base(_compressed._compressed_sparse_matrix):
                 other, lambda a, o: a.__truediv__(o))
         if _util.isdense(other):
             # The division kernel requires both operands in the result dtype.
-            dtype = _sputils.promote_data_types(self.dtype, other.dtype)
+            dtype = numpy.promote_types(self.dtype, other.dtype)
             if dtype.kind in 'biu':
                 dtype = numpy.promote_types(numpy.float64, dtype)
             other = cupy.atleast_2d(other).astype(dtype, copy=False)
@@ -358,7 +358,7 @@ class _csr_base(_compressed._compressed_sparse_matrix):
             # in the "sparse / sparse" case.
             check_shape_for_pointwise_op(self.shape, other.shape,
                                          allow_broadcasting=False)
-            dtype = _sputils.promote_data_types(self.dtype, other.dtype)
+            dtype = numpy.promote_types(self.dtype, other.dtype)
             if dtype.char not in 'FD':
                 dtype = numpy.promote_types(numpy.float64, dtype)
             # Note: The following implementation converts two sparse matrices
@@ -409,7 +409,7 @@ class _csr_base(_compressed._compressed_sparse_matrix):
     def _maximum_minimum(self, other, cupy_op, op_name, dense_check):
         cls = type(self)
         if _util.isscalarlike(other):
-            dtype = _sputils.promote_scalar_data_type(self.dtype, other)
+            dtype = cupy.result_type(self.dtype, other)
             # Convert directly so out-of-range Python scalars raise instead of
             # wrap.
             other = cupy.asarray(other, dtype=dtype)
@@ -865,7 +865,7 @@ def multiply_by_dense(sp, dn):
     dn_m, dn_n = dn.shape
     m, n = max(sp_m, dn_m), max(sp_n, dn_n)
     nnz = sp.nnz * (m // sp_m) * (n // sp_n)
-    dtype = _sputils.promote_data_types(sp.dtype, dn.dtype)
+    dtype = numpy.promote_types(sp.dtype, dn.dtype)
     # Cast first: CUDA lacks mixed integer/complex multiplication.
     sp_data = sp.data.astype(dtype, copy=False)
     dn = dn.astype(dtype, copy=False)
@@ -1009,7 +1009,7 @@ def multiply_by_csr(a, b, *, out_cls=None):
     b_indices = b.indices.astype(idx_dtype, copy=False)
     b_indptr = b.indptr.astype(idx_dtype, copy=False)
     c_nnz = a_nnz
-    dtype = _sputils.promote_data_types(a.dtype, b.dtype)
+    dtype = numpy.promote_types(a.dtype, b.dtype)
     # Cast first: CUDA lacks mixed integer/complex multiplication.
     a_data = a.data.astype(dtype, copy=False)
     b_data = b.data.astype(dtype, copy=False)
@@ -1169,7 +1169,7 @@ def binopt_csr(a, b, op_name):
     a_valid = cupy.zeros(a_nnz, dtype=numpy.int8)
     b_valid = cupy.zeros(b_nnz, dtype=numpy.int8)
     c_indptr = cupy.zeros(m + 1, dtype=idx_dtype)
-    in_dtype = _sputils.promote_data_types(a.dtype, b.dtype)
+    in_dtype = numpy.promote_types(a.dtype, b.dtype)
     a_data = a.data.astype(in_dtype, copy=False)
     b_data = b.data.astype(in_dtype, copy=False)
     funcs = _GET_ROW_ID_

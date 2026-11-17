@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import functools as _functools
+
 import numpy as _numpy
 import platform as _platform
 
@@ -66,7 +68,7 @@ class MatDescriptor:
 
 def _cast_common_type(*xs):
     dtypes = [x.dtype for x in xs if x is not None]
-    dtype = _sputils.promote_data_types(*dtypes)
+    dtype = _functools.reduce(_numpy.promote_types, dtypes)
     return [x.astype(dtype) if x is not None and x.dtype != dtype else x
             for x in xs]
 
@@ -2693,6 +2695,15 @@ def _cupy_spgemm_int64(a, b, alpha):
     return c
 
 
+# Scratch budget for the column blocking in ``_cupy_csr_dense_matmul``.
+# A fixed guess beats querying the device: ``memGetInfo`` does not account for
+# CuPy's memory pool, and a stable block size lets the pool reuse the
+# allocation across calls.  The best value is GPU dependent -- a large-L2 card
+# prefers ~64 MiB (cache residency) while a small-L2 one keeps improving past
+# 256 MiB -- so this is a compromise; either extreme costs ~1.6x on the other.
+_CSR_DENSE_MATMUL_WORK_BYTES = 128 * 1024 * 1024
+
+
 def _cupy_csr_dense_matmul(a, x):
     """Multiply CSR by a dense vector or matrix using value-dtype fallbacks.
 
@@ -2706,34 +2717,33 @@ def _cupy_csr_dense_matmul(a, x):
         return (a.astype(_cupy.float32)
                 @ x.astype(_cupy.float32)).astype(res_dtype)
     x2 = x[:, None] if x.ndim == 1 else x
+    m, n = a.shape[0], x2.shape[1]
+    nnz = a.nnz
     # Widen before gathering to keep the larger nnz-by-N temporary small.
     acc_dtype = _sputils.add_at_accumulator_dtype(res_dtype)
-    rows = _indptr_to_coo(a.indptr, nnz=a.nnz)
-    n = x2.shape[1]
+    rows = _indptr_to_coo(a.indptr, nnz=nnz)
     data_acc = a.data[:, None].astype(acc_dtype, copy=False)
-    # Budget for both the gather and products, with a safety margin. Include
-    # unused pool blocks; avoid querying free memory for matvec.
-    if n == 1:
-        block = 1
-    else:
-        per_col = max(a.nnz * acc_dtype.itemsize, 1)
-        free = (int(_cupy.cuda.runtime.memGetInfo()[0])
-                + int(_cupy.get_default_memory_pool().free_bytes()))
-        block = max(1, min(n, free // (4 * per_col)))
-    if block >= n:
-        y = _cupy.zeros((a.shape[0], n), dtype=acc_dtype)
-        _cupy.add.at(y, rows,
-                     data_acc * x2.astype(acc_dtype, copy=False)[a.indices])
-        y = y.astype(res_dtype, copy=False)
-    else:
-        # Keep only one column block in the accumulator dtype.
-        y = _cupy.zeros((a.shape[0], n), dtype=res_dtype)
-        for j0 in range(0, n, block):
-            j1 = min(j0 + block, n)
-            yb = _cupy.zeros((a.shape[0], j1 - j0), dtype=acc_dtype)
-            xb = x2[:, j0:j1].astype(acc_dtype, copy=False)[a.indices]
-            _cupy.add.at(yb, rows, data_acc * xb)
-            y[:, j0:j1] = yb.astype(res_dtype, copy=False)
+
+    # Process the dense columns in blocks sized to the scratch budget.  A
+    # single column always goes through, even if it exceeds the budget; the
+    # lower clamp also keeps the loop step non-zero when ``n`` is zero.
+    per_col = max((nnz + m) * acc_dtype.itemsize, 1)
+    block = int(max(1, min(n, _CSR_DENSE_MATMUL_WORK_BYTES // per_col)))
+    x_work = _cupy.empty((nnz, block), dtype=acc_dtype)
+    y_work = _cupy.empty((m, block), dtype=acc_dtype)
+
+    y = _cupy.zeros((m, n), dtype=res_dtype)
+    for j0 in range(0, n, block):
+        j1 = min(j0 + block, n)
+        xb, yb = x_work[:, :j1 - j0], y_work[:, :j1 - j0]
+        # Gather into the work array and scale it in place, so only one
+        # nnz-by-block array is ever live.
+        _cupy.take(x2[:, j0:j1].astype(acc_dtype, copy=False), a.indices,
+                   axis=0, out=xb)
+        xb *= data_acc
+        yb.fill(0)
+        _cupy.add.at(yb, rows, xb)
+        y[:, j0:j1] = yb.astype(res_dtype, copy=False)
     return y.ravel() if x.ndim == 1 else y
 
 

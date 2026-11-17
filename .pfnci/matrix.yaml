@@ -436,7 +436,9 @@
   numpy: "2.5"
   scipy: "1.18"
   optuna: "5"
-  ml_dtypes: "0.5"
+  # 0.7 is the first release whose bfloat16 promotion matches the dense
+  # ufuncs (0.5/0.6 raise on bfloat16 mixed with float16 or >=16-bit int).
+  ml_dtypes: "0.7"
   mpi4py: null
   cython: "3.2"
   cuda-python: null

@@ -36,28 +36,6 @@ def is_float_dtype(dtype):
     return numpy.dtype(dtype).kind == 'f' or is_extra_float_dtype(dtype)
 
 
-def promote_data_types(*dtypes):
-    """Promote dtypes, using dense addition for unsupported bfloat16 mixes."""
-    try:
-        result = numpy.dtype(dtypes[0])
-        for dt in dtypes[1:]:
-            result = numpy.promote_types(result, dt)
-        return result
-    except TypeError:  # numpy's DTypePromotionError subclasses TypeError
-        acc = cupy.empty(0, numpy.dtype(dtypes[0]))
-        for dt in dtypes[1:]:
-            acc = acc + cupy.empty(0, numpy.dtype(dt))
-        return acc.dtype
-
-
-def promote_scalar_data_type(sparse_dtype, scalar):
-    """Match dense scalar promotion, including bfloat16 ufunc resolution."""
-    sparse_dtype = numpy.dtype(sparse_dtype)
-    if not is_extra_float_dtype(sparse_dtype):
-        return numpy.result_type(sparse_dtype, scalar)
-    return (cupy.empty(0, sparse_dtype) + scalar).dtype
-
-
 def get_sum_dtype(dtype):
     """Return the NumPy/SciPy sum accumulator dtype."""
     dtype = numpy.dtype(dtype)

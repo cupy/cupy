@@ -67,7 +67,7 @@ class _data_matrix(_base._spbase):
     @staticmethod
     def _scalar_op_dtype(self_dtype, other):
         """Choose a scalar-operation dtype, falling back to float64."""
-        out = _sputils.promote_scalar_data_type(self_dtype, other)
+        out = np.result_type(self_dtype, other)
         if not _sputils.is_sparse_data_dtype(out):
             out = np.dtype(np.float64)
         return out
@@ -192,25 +192,24 @@ class _data_matrix(_base._spbase):
             # empty axis, like scipy.
             _sputils.validate_axis_1d(axis)
             total = self.data.sum() * (1.0 / self.shape[0])
-            result = total.sum(dtype=dtype, out=out)
-        else:
-            axis = _sputils.collapse_2d_axis(axis)
-            _sputils.validateaxis(axis)
-            nRow, nCol = self.shape
-            if axis is None:
-                n = nRow * nCol
-            elif axis in (0, -2):
-                n = nRow
-            else:
-                n = nCol
-            result = self._with_data(self.data * (1.0 / n)).sum(
-                axis, dtype, out)
+            return total.sum(dtype=dtype, out=out)
 
-        if (dtype is None and out is None
-                and _sputils.is_extra_float_dtype(self.dtype)):
-            # Restore the dense bfloat16 mean dtype after float64 scaling.
-            result = result.astype(self.dtype)
-        return result
+        axis = _sputils.collapse_2d_axis(axis)
+        _sputils.validateaxis(axis)
+        nRow, nCol = self.shape
+        if axis is None:
+            n = nRow * nCol
+        elif axis in (0, -2):
+            n = nRow
+        else:
+            n = nCol
+
+        data = self.data * (1.0 / n)
+        if _sputils.is_extra_float_dtype(self.dtype):
+            # TODO(seberg): ml-dtypes>0.6.0 should not need this; weak-scalar
+            # promotion of ``bfloat16 * float`` currently widens to float32.
+            data = data.astype(self.dtype, copy=False)
+        return self._with_data(data).sum(axis, dtype, out)
 
     def power(self, n, dtype=None):
         """Elementwise power function.
