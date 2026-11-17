@@ -23,13 +23,14 @@ repos:
     rev: v2.3.2
     hooks:
       - id: autopep8
-        exclude: ^ci/
+        # skills/ holds signed agent skills; reformatting breaks the signature
+        exclude: ^(ci|skills)/
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.14.9
     hooks:
       - id: ruff-check
-        exclude: ^ci/
+        exclude: ^(ci|skills)/
 
   - repo: https://github.com/MarcoGorelli/cython-lint
     rev: v0.18.1
