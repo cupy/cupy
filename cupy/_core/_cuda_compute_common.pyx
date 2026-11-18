@@ -77,7 +77,8 @@ cpdef cached_algorithm(str family, tuple key, str key_src, build):
     if cache is None:
         cache = {}
         setattr(_thread_local, family, cache)
-    full_key = (cupy.cuda.device.get_device_id(),) + key
+    device_id = cupy.cuda.device.get_device_id()
+    full_key = (device_id,) + key
     cached = cache.get(full_key)
     if cached is not None:
         return cached
@@ -93,7 +94,10 @@ cpdef cached_algorithm(str family, tuple key, str key_src, build):
     blob = compiler._kernel_cache_backend.load(name)
     if blob is not None:
         try:
-            algo = compute.deserialize(blob)
+            try:
+                algo = compute.deserialize(blob, device_id=device_id)
+            except TypeError:
+                algo = compute.deserialize(blob)
         except Exception:
             algo = None
     if algo is None:
