@@ -96,6 +96,31 @@ class TestUnivariateSpline:
         spl = cls(x=x, y=y)
         return spl(xp, ext=ext)
 
+    @pytest.mark.parametrize('klass',
+                             ['UnivariateSpline',
+                              'InterpolatedUnivariateSpline']
+                             )
+    @pytest.mark.parametrize('ext', ['extrapolate', 'zeros', 'raise', 'const'])
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-15,
+                                 accept_error=ValueError)
+    def test_ext_in_constructor(self, klass, ext, xp, scp):
+        x = xp.arange(5, dtype=float)
+        spl = getattr(scp.interpolate, klass)(x=x, y=x**3, ext=ext)
+        return spl(xp.linspace(-8, 13, 100))
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=ValueError)
+    def test_unknown_ext(self, xp, scp):
+        x = xp.arange(5, dtype=float)
+        return scp.interpolate.UnivariateSpline(x, x**3, ext='typo')(x)
+
+    @pytest.mark.parametrize('ext', ['extrapolate', 'zeros', 'const'])
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-12)
+    def test_derivative_antiderivative(self, ext, xp, scp):
+        x = xp.arange(8, dtype=float)
+        spl = scp.interpolate.UnivariateSpline(x, x**3, s=0, ext=ext)
+        xx = xp.linspace(-2, 9, 12)
+        return spl.derivative()(xx), spl.antiderivative()(xx)
+
     def test_lsq_fpchec(self):
         xs = cupy.arange(100) * 1.
         ys = cupy.arange(100) * 1.
