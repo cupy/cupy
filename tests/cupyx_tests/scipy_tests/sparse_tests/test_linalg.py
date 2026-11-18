@@ -489,6 +489,22 @@ class TestEigsh:
         assert cupy.linalg.norm(v - v_v0) < cupy.linalg.norm(v - v_aux)
 
 
+@pytest.mark.parametrize('scale, largest', [
+    (1., 2.), (2.0 ** -25, 2.), (1., 1e5),
+])
+def test_eigsh_relative_residual(scale, largest):
+    diag = cupy.linspace(1., 2., 80)
+    diag[-1] = largest
+    diag *= scale
+    a = sparse.diags(diag).tocsr()
+    tol = 1e-6
+    w, v = sparse.linalg.eigsh(a, k=3, ncv=12, tol=tol,
+                               v0=cupy.ones_like(diag))
+    residuals = cupy.linalg.norm(a @ v - v * w, axis=0)
+    assert bool((residuals <= tol * cupy.abs(w)).all())
+    testing.assert_allclose(w, diag[-3:], rtol=tol, atol=0)
+
+
 @testing.with_requires('scipy')
 class TestEigshLateNormDiscovery:
     # An operator with wide dynamic range and a v0 orthogonal to its
