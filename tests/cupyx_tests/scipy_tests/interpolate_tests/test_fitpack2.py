@@ -100,18 +100,33 @@ class TestUnivariateSpline:
                              ['UnivariateSpline',
                               'InterpolatedUnivariateSpline']
                              )
-    @pytest.mark.parametrize('ext', ['extrapolate', 'zeros', 'raise', 'const'])
-    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-15,
-                                 accept_error=ValueError)
+    @pytest.mark.parametrize('ext', ['extrapolate', 'zeros', 'const'])
+    @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-15)
     def test_ext_in_constructor(self, klass, ext, xp, scp):
         x = xp.arange(5, dtype=float)
         spl = getattr(scp.interpolate, klass)(x=x, y=x**3, ext=ext)
         return spl(xp.linspace(-8, 13, 100))
 
-    @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=ValueError)
-    def test_unknown_ext(self, xp, scp):
-        x = xp.arange(5, dtype=float)
-        return scp.interpolate.UnivariateSpline(x, x**3, ext='typo')(x)
+    @pytest.mark.parametrize('klass',
+                             ['UnivariateSpline',
+                              'InterpolatedUnivariateSpline']
+                             )
+    def test_ext_raise_in_constructor(self, klass):
+        x = cupy.arange(5, dtype=float)
+        spl = getattr(csi, klass)(x=x, y=x**3, ext='raise')
+        spl(x)
+        with pytest.raises(ValueError, match="Out of bounds"):
+            spl(cupy.asarray([-1., 2.]))
+
+    def test_unknown_ext(self):
+        x = cupy.arange(5, dtype=float)
+        with pytest.raises(ValueError,
+                           match="Unknown extrapolation mode typo"):
+            csi.UnivariateSpline(x, x**3, ext='typo')
+        spl = csi.UnivariateSpline(x, x**3)
+        with pytest.raises(ValueError,
+                           match="Unknown extrapolation mode typo"):
+            spl(x, ext='typo')
 
     @pytest.mark.parametrize('ext', ['extrapolate', 'zeros', 'const'])
     @testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-12)
