@@ -200,6 +200,28 @@ class TestMapCoordinatesHalfInteger:
         return self._map_coordinates(xp, scp, a, coordinates)
 
 
+@testing.parameterize(*testing.product({
+    'order': [0, 1, 2, 3, 4, 5],
+    'mode': ['constant', 'nearest', 'mirror'] + scipy16_modes,
+}))
+@testing.with_requires('scipy')
+class TestMapCoordinatesFloat64Coordinates:
+
+    @testing.for_dtypes('fF')
+    @testing.numpy_cupy_allclose(atol=1e-4, scipy_name='scp')
+    def test_map_coordinates_near_index_boundary(self, xp, scp, dtype):
+        # https://github.com/cupy/cupy/issues/10470: float64 coordinates
+        # closer to a rounding boundary than half a float32 spacing.
+        base = testing.shaped_random((2049,), xp, dtype)
+        base[-1] = xp.nan  # catches reads past the end of `a`
+        a = base[:-1]
+        boundary = 0.5 if self.order % 2 == 0 else 0.0
+        coordinates = xp.arange(1024, 2048, 11, dtype=xp.float64)
+        coordinates = (coordinates + boundary - 1e-5)[xp.newaxis]
+        return scp.ndimage.map_coordinates(a, coordinates, order=self.order,
+                                           mode=self.mode)
+
+
 @testing.parameterize(*(
     testing.product({
         'matrix_shape': [(3, 3)],
