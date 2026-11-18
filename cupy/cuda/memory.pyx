@@ -1057,9 +1057,9 @@ cdef class _Arena:
     # A few notes on safety:
     #   * `index` is allocated on the heap in `__cinit__` and freed in
     #     `__dealloc__` to resolve -Winvalid-offsetof warning from G++
-    #     emitted because std::set is not a standard-layout type and 
+    #     emitted because std::set is not a standard-layout type and
     #     Cython-generated offsetof(_Arena, __weakref__) is supported
-    #     only conditionally. Cf. https://eel.is/c++draft/support.types.layout 
+    #     only conditionally. Cf. https://eel.is/c++draft/support.types.layout
     #   * All access to `index` requires a lock, the callers must ensure this.
     #     these means almost all methods must be called with a lock held.
     #   * `_add_pending_free_atomic` is atomic and safe without a lock, though.
