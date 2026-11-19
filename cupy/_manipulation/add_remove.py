@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import NamedTuple
+import warnings
 
 import numpy
 
@@ -99,12 +100,51 @@ def append(arr, values, axis=None):
     .. seealso:: :func:`numpy.append`
     """
     # TODO(asi1024): Implement fast path for scalar inputs.
-    arr = cupy.asarray(arr)
-    values = cupy.asarray(values)
+    arr_arr = cupy.asarray(arr)
+    val_arr = cupy.asarray(values)
     if axis is None:
-        return _core.concatenate_method(
-            (arr.ravel(), values.ravel()), 0).ravel()
-    return _core.concatenate_method((arr, values), axis)
+        res = _core.concatenate_method(
+            (arr_arr.ravel(), val_arr.ravel()), 0).ravel()
+
+        scalar_promotion = False
+        if type(arr) in {int, float, complex}:
+            rhs_promote = arr
+            scalar_promotion = True
+        else:
+            rhs_promote = arr_arr.dtype
+
+        if type(values) in {int, float, complex}:
+            lhs_promote = values
+            scalar_promotion = True
+        else:
+            lhs_promote = val_arr.dtype
+
+        if scalar_promotion:
+            # To align with NumPy, the scalar should use weak promotion
+            # in the future.
+            try:
+                dtype = numpy.result_type(rhs_promote, lhs_promote)
+            except TypeError:
+                change = " and will fail promotion in the future"
+            else:
+                if dtype == res.dtype:
+                    return res
+                change = (f"will return dtype {dtype} in the future which may "
+                          f"change results or error for out-of-bound values")
+            # NOTE(seberg): This is unfortunate, but hopefully niche enough...
+            # NumPy allows scalars in concatenate, so it points there.
+            # We don't, so this needs to ask users to use `np.float32(val)` or
+            # `arr.dtype.type(val)` if they prefer the future behavior.
+            # Warning added/Deprecated CuPy 14.3 (NumPy 2.6).
+            warnings.warn(
+                "append() with a Python scalar not convert the scalar to an "
+                f"array first and {change}.\n"
+                "Please convert the scalar to your desired type to avoid "
+                "this warning.", FutureWarning,
+                stacklevel=2)
+        return res
+
+    return _core.concatenate_method((arr_arr, val_arr), axis)
 
 
 _resize_kernel = _core.ElementwiseKernel(
