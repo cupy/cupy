@@ -486,6 +486,22 @@ class TestOrder:
         a = testing.shaped_random((2, 3, 4), xp, dtype)
         return xp.ptp(a, axis=2)
 
+    @pytest.mark.parametrize("has_out", [False, True])
+    @pytest.mark.parametrize(
+        "axis,out_shape",
+        [(None, ()), (0, (3, 4)), (1, (2, 4)), (2, (2, 3)), ((1, 2), (2,))])
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose()
+    def test_ptp_out(self, xp, dtype, axis, out_shape, has_out):
+        # See gh-9032
+        a = testing.shaped_random((2, 3, 4), xp, dtype)
+        if not has_out:
+            return xp.ptp(a, axis=axis)
+        out = xp.zeros(out_shape, dtype=dtype)
+        ret = xp.ptp(a, axis=axis, out=out)
+        assert ret is out
+        return out
+
     @testing.for_float_dtypes()
     @testing.numpy_cupy_allclose()
     def test_ptp_nan(self, xp, dtype):
