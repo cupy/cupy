@@ -2,6 +2,7 @@
 #define INCLUDE_GUARD_CUDA_CUPY_CUSPARSE_H
 
 #include <cuda.h>
+#define DISABLE_CUSPARSE_DEPRECATED
 #include <cusparse.h>
 
 // Functions deleted in cuSparse 11.0
