@@ -1,7 +1,9 @@
 [build-system]
 # Need to be installed manually when using `--no-build-isolation`.
 # Keep in sync with `docs/source/contribution.rst`.
-requires = ["setuptools>=77", "wheel", "Cython>=3.2,<3.3", "numpy>=2.0"]
+requires = [
+    "setuptools>=77", "wheel", "Cython>=3.2,<3.3", "numpy>=2.0", "packaging",
+]
 build-backend = "setuptools.build_meta"
 
 [project]
