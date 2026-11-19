@@ -66,10 +66,10 @@ def rename_project(source_root: Path, cuda_major: str) -> str:
 
 
 def pin_build_requires(source_root: Path, cuda_major: str) -> None:
-    """Pin nvmath-python / cuda-bindings in ``build-system.requires``.
+    """Pin nvmath-python / cuda-bindings / cuda-core in ``build-system.requires``.
 
     Wheels are built with the minimum supported versions, which then become
-    the wheels' minimum runtime versions.
+    the wheels' minimum runtime versions, and a cuda-core compatible with them.
     """
     pyproject = source_root / "pyproject.toml"
     data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
@@ -77,6 +77,7 @@ def pin_build_requires(source_root: Path, cuda_major: str) -> None:
     data["build-system"]["requires"] += [
         f"nvmath-python=={floors['nvmath-python']}",
         f"cuda-bindings=={floors['cuda-bindings'][cuda_major]}",
+        f"cuda-core=={floors['cuda-core']}",
     ]
     with pyproject.open("wb") as f:
         tomli_w.dump(data, f)
