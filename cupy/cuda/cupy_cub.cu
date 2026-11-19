@@ -2,6 +2,8 @@
 #include <cupy/type_dispatcher.cuh>
 
 #ifndef CUPY_USE_HIP
+#include <cstddef>
+#include <type_traits>
 #include <cub/device/device_reduce.cuh>
 #include <cub/device/device_segmented_reduce.cuh>
 #include <cub/device/device_scan.cuh>
@@ -963,8 +965,18 @@ struct _cub_reduce_argmin {
     void operator()(void* workspace, size_t& workspace_size, void* x, void* y,
         int num_items, cudaStream_t s)
     {
+#ifndef CUPY_USE_HIP
+        using Pair = KeyValuePair<int, T>;
+        static_assert(std::is_standard_layout_v<Pair>);
+        auto* output = static_cast<char*>(y);
+        auto* value = reinterpret_cast<T*>(output + offsetof(Pair, value));
+        auto* index = reinterpret_cast<int*>(output + offsetof(Pair, key));
+        DeviceReduce::ArgMin(workspace, workspace_size, static_cast<T*>(x),
+            value, index, num_items, s);
+#else
         DeviceReduce::ArgMin(workspace, workspace_size, static_cast<T*>(x),
             static_cast<KeyValuePair<int, T>*>(y), num_items, s);
+#endif
     }
 };
 
@@ -978,8 +990,18 @@ struct _cub_reduce_argmax {
     void operator()(void* workspace, size_t& workspace_size, void* x, void* y,
         int num_items, cudaStream_t s)
     {
+#ifndef CUPY_USE_HIP
+        using Pair = KeyValuePair<int, T>;
+        static_assert(std::is_standard_layout_v<Pair>);
+        auto* output = static_cast<char*>(y);
+        auto* value = reinterpret_cast<T*>(output + offsetof(Pair, value));
+        auto* index = reinterpret_cast<int*>(output + offsetof(Pair, key));
+        DeviceReduce::ArgMax(workspace, workspace_size, static_cast<T*>(x),
+            value, index, num_items, s);
+#else
         DeviceReduce::ArgMax(workspace, workspace_size, static_cast<T*>(x),
             static_cast<KeyValuePair<int, T>*>(y), num_items, s);
+#endif
     }
 };
 
