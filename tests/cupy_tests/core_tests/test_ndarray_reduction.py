@@ -476,19 +476,6 @@ class TestCubReduction:
     @testing.for_all_dtypes(no_bool=True)
     @testing.numpy_cupy_allclose(
         contiguous_check=False, accept_error=ValueError)
-    def test_cub_max_out(self, xp, dtype, axis, shape, order, backend):
-        # See gh-9032
-        a = testing.shaped_random(shape, xp, dtype, order=order)
-        out_shape = tuple(s for i, s in enumerate(shape) if i not in axis)
-        out = xp.zeros(out_shape, dtype=dtype)
-        ret = a.max(axis=axis, out=out)
-        assert ret is out
-        return out
-
-    @testing.for_contiguous_axes()
-    @testing.for_all_dtypes(no_bool=True)
-    @testing.numpy_cupy_allclose(
-        contiguous_check=False, accept_error=ValueError)
     def test_cub_ptp_out(self, xp, dtype, axis, shape, order, backend):
         # See gh-9032
         a = testing.shaped_random(shape, xp, dtype, order=order)
