@@ -252,8 +252,7 @@ def get_features(ctx: Context) -> dict[str, Feature]:
         'libraries': [
             'cutensor',
             'cutensorMg',
-            'cublas',
-        ],
+        ] + ([] if ctx.use_cuda_python else ['cublas']),
         'check_method': build.check_cutensor_version,
         'version_method': build.get_cutensor_version,
     }
