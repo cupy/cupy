@@ -16,6 +16,7 @@ WHEEL_PACKAGE_NAMES: dict[str, str] = {
 
 # Preload libraries to bundle metadata for, by host platform per CTK major.
 # Matches what ``cupyx/tools/install_library.py`` can download.
+# ``check_release_assets.py`` reads the keys as the platforms of a release.
 PRELOAD_LIBRARIES: dict[str, dict[str, tuple[str, ...]]] = {
     "12": {
         "linux-64": ("cutensor", "nccl"),
