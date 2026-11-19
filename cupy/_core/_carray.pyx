@@ -14,7 +14,7 @@ cdef inline int populate_shape_strides(
         index_t val, size_t ndim, bint allow_unsafe,
         void* data, size_t& offset, int itemsize,
         const shape_t& shape, const strides_t& strides) except?-1:
-    cdef int i
+    cdef size_t i
 
     for i in range(ndim):
         if not allow_unsafe and shape[i] == 0:

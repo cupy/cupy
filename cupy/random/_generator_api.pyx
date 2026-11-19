@@ -1096,7 +1096,7 @@ cdef class _FeistelBijectionParam(CPointer):
 cdef cached_object _feistel_bijection_with_cutoff_kernel
 
 
-cdef inline uint64_t get_cipher_bits(uint64_t m) nogil noexcept:
+cdef inline uint64_t get_cipher_bits(uint64_t m) noexcept nogil:
     if (m <= 256):
         return 8
     cdef uint64_t i = 0

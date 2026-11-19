@@ -11,6 +11,7 @@ cpdef create_bbox_slice_tuple(coord_index_type[:, ::1] bbox,
     cdef list slices_inner = []
     cdef coord_index_type n = bbox.shape[0]
     cdef coord_index_type i = 0
+    cdef int d = 0
     cdef int ndim = bbox.shape[1] // 2
 
     for i in range(n):

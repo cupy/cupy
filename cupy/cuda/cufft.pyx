@@ -36,7 +36,7 @@ cdef inline void initialize() except *:
             return
         _L = _initialize_locked()
 
-cdef SoftLink _initialize_locked() except *:
+cdef SoftLink _initialize_locked():
     global _cufftXtSetJITCallback
     cdef SoftLink L = _get_softlink()
 
