@@ -935,7 +935,7 @@ def _eigsh_solve_ritz(alpha, beta, beta_k, k, which, tol):
     # wk is already on the host here; handing it back lets the caller
     # test for degeneracy without paying a device sync.
     # The Lanczos residual bound for each Ritz pair is |beta[-1] * sk[-1]|.
-    # Use the ARPACK scale floor near zero. Both quantities are on the host.
+    # ARPACK's eps23 uses LAPACK xLAMCH('E'), the gap below 1 on IEEE floats.
     floor = numpy.finfo(wk.dtype).epsneg ** (2.0 / 3.0)
     bounds = numpy.abs(beta[-1] * sk[-1, :])
     converged = numpy.all(bounds <= tol * numpy.maximum(floor, numpy.abs(wk)))
