@@ -46,13 +46,15 @@ cdef _ndarray_sort(_ndarray_base self, int axis, bint descending=False):
     if not runtime._is_hip_environment:
         for accelerator in _accelerator._routine_accelerators:
             if accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE:
-                from cupy._core._cuda_compute_merge_sort import (
-                    cuda_compute_merge_sort)
-                result = cuda_compute_merge_sort(data, descending)
+                from cupy._core._cuda_compute_sort import (
+                    cuda_compute_sort)
+                result = cuda_compute_sort(
+                    data, descending, overwrite_input=True)
                 if result is not None:
                     if axis != ndim - 1:
                         result = _manipulation.rollaxis(result, -1, axis)
-                    elementwise_copy(result, self)
+                    if result is not self:
+                        elementwise_copy(result, self)
                     return
 
     if not cupy.cuda.thrust.available:
@@ -110,9 +112,12 @@ cdef _ndarray_base _ndarray_argsort(_ndarray_base self, axis,
     if not runtime._is_hip_environment:
         for accelerator in _accelerator._routine_accelerators:
             if accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE:
-                from cupy._core._cuda_compute_merge_sort import (
+                from cupy._core._cuda_compute_sort import (
                     cuda_compute_argsort)
-                result = cuda_compute_argsort(data, descending)
+                # data is already a private copy, also used as writable key
+                # storage by Thrust. Let radix sort reuse it during passes.
+                result = cuda_compute_argsort(
+                    data, descending, overwrite_input=True)
                 if result is not None:
                     if _axis != ndim - 1:
                         result = _manipulation.rollaxis(result, -1, _axis)

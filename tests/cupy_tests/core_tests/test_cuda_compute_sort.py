@@ -8,7 +8,7 @@ import pytest
 
 import cupy
 from cupy._core import _cuda_compute_common
-from cupy._core import _cuda_compute_merge_sort as merge_sort
+from cupy._core import _cuda_compute_sort as compute_sort
 from cupy._core import _accelerator
 from cupy.cuda._compiler_cache import DiskKernelCacheBackend
 from cupy.cuda import thrust
@@ -45,9 +45,9 @@ def _offset_allocator(offset):
 @pytest.mark.parametrize('offset', range(8))
 @pytest.mark.parametrize('size', [0, 3])
 def test_key_buffer_alignment(offset, size):
-    dtype = merge_sort._key_dtype(numpy.dtype('complex128'))
+    dtype = compute_sort._key_dtype(numpy.dtype('complex128'))
     with cupy.cuda.using_allocator(_offset_allocator(offset)):
-        keys = merge_sort._KeyBuffer(size, dtype)
+        keys = compute_sort._KeyBuffer(size, dtype)
     assert isinstance(keys.data.ptr, int)
     assert keys.data.ptr % dtype.alignment == 0
     assert keys.__cuda_array_interface__['data'][0] == keys.data.ptr
@@ -60,7 +60,7 @@ def test_sort_with_misaligned_key_storage(dtype, descending):
     host = numpy.arange(102, dtype=numpy.float64)[::-1].astype(dtype)
     host = host.reshape(3, 34)
     a = cupy.asarray(host)
-    key_buffer = merge_sort._KeyBuffer
+    key_buffer = compute_sort._KeyBuffer
     allocator = _offset_allocator(1)
 
     def allocate_keys(size, dtype):
@@ -68,8 +68,8 @@ def test_sort_with_misaligned_key_storage(dtype, descending):
             return key_buffer(size, dtype)
 
     with mock.patch.object(
-            merge_sort, '_KeyBuffer', side_effect=allocate_keys):
-        result = merge_sort.cuda_compute_merge_sort(a, descending)
+            compute_sort, '_KeyBuffer', side_effect=allocate_keys):
+        result = compute_sort.cuda_compute_sort(a, descending)
     assert result is not a
     numpy.testing.assert_array_equal(
         cupy.asnumpy(result), _expected(host, descending))
@@ -91,20 +91,93 @@ def test_integer_1d(dtype, descending, return_indices):
     numpy.random.default_rng(46).shuffle(host)
     a = cupy.asarray(host)
     if return_indices:
-        result = merge_sort.cuda_compute_argsort(a, descending)
+        result = compute_sort.cuda_compute_argsort(a, descending)
         expected = numpy.argsort(
             ~host if descending else host, kind='stable')
         assert result.dtype == numpy.dtype(numpy.intp)
     else:
-        result = merge_sort.cuda_compute_merge_sort(a, descending)
+        result = compute_sort.cuda_compute_sort(a, descending)
         expected = _expected(host, descending)
     numpy.testing.assert_array_equal(cupy.asnumpy(result), expected)
     numpy.testing.assert_array_equal(cupy.asnumpy(a), host)
 
 
+@pytest.mark.parametrize('dtype,algorithm', [
+    ('int16', 'auto'), ('int32', 'auto'),
+    ('float32', 'radix'), ('float32', 'radix_native'),
+])
+@pytest.mark.parametrize('size', [2048, 10007])
+@pytest.mark.parametrize('descending', [False, True])
+@pytest.mark.parametrize('return_indices', [False, True])
+def test_radix_writable_input(
+        dtype, algorithm, size, descending, return_indices):
+    host = numpy.random.default_rng(49).integers(-10, 10, size).astype(dtype)
+    a = cupy.asarray(host)
+    sort = (compute_sort.cuda_compute_argsort if return_indices
+            else compute_sort.cuda_compute_sort)
+    ready = cupy.cuda.get_current_stream().record()
+    with cupy.cuda.Stream(non_blocking=True) as stream:
+        stream.wait_event(ready)
+        result = sort(a, descending, algorithm=algorithm, overwrite_input=True)
+        actual = cupy.asnumpy(result)
+    if return_indices:
+        expected = numpy.argsort(
+            -host if descending else host, kind='stable')
+    else:
+        assert result is a
+        expected = _expected(host, descending)
+    numpy.testing.assert_array_equal(actual, expected)
+
+
+@pytest.mark.thread_unsafe(reason='Patches the workspace allocator.')
+@pytest.mark.parametrize('dtype', ['int16', 'int32'])
+@pytest.mark.parametrize('return_indices', [False, True])
+def test_radix_misaligned_workspace(dtype, return_indices):
+    host = numpy.random.default_rng(50).integers(-10, 10, 10007).astype(dtype)
+    a = cupy.asarray(host)
+    sort = (compute_sort.cuda_compute_argsort if return_indices
+            else compute_sort.cuda_compute_sort)
+    with mock.patch.object(cupy.cuda, 'alloc', _offset_allocator(1)):
+        result = sort(a)
+    expected = (numpy.argsort(host, kind='stable') if return_indices
+                else numpy.sort(host, kind='stable'))
+    numpy.testing.assert_array_equal(cupy.asnumpy(result), expected)
+    numpy.testing.assert_array_equal(cupy.asnumpy(a), host)
+
+
+@pytest.mark.parametrize('dtype', ['float16', 'float32', 'float64'])
+@pytest.mark.parametrize('descending', [False, True])
+@pytest.mark.parametrize('return_indices', [False, True])
+def test_native_float_radix(dtype, descending, return_indices):
+    dtype = numpy.dtype(dtype)
+    unsigned = numpy.dtype(f'u{dtype.itemsize}')
+    bits = numpy.random.default_rng(51).integers(
+        0, numpy.iinfo(unsigned).max, 10007, dtype=unsigned, endpoint=True)
+    sign = unsigned.type(1 << (8 * dtype.itemsize - 1))
+    bits[:4] = [0, sign, sign - unsigned.type(1), sign + unsigned.type(1)]
+    host = bits.view(dtype)
+    # Native CUB radix order includes NaN sign/payload bits, but treats both
+    # signed zeros as equivalent. This intentionally differs from NumPy.
+    keys = numpy.where(bits & sign, ~bits, bits ^ sign)
+    keys[bits & ~sign == 0] = sign
+    if descending:
+        keys = ~keys
+    indices = numpy.argsort(keys, kind='stable')
+    a = cupy.asarray(host)
+    sort = (compute_sort.cuda_compute_argsort if return_indices
+            else compute_sort.cuda_compute_sort)
+    result = sort(a, descending, algorithm='radix_native')
+    actual = cupy.asnumpy(result)
+    if return_indices:
+        numpy.testing.assert_array_equal(actual, indices)
+    else:
+        numpy.testing.assert_array_equal(actual.view(unsigned), bits[indices])
+    numpy.testing.assert_array_equal(cupy.asnumpy(a).view(unsigned), bits)
+
+
 def _check_float_1d(host, descending, return_indices, algorithm):
-    sort = (merge_sort.cuda_compute_argsort if return_indices
-            else merge_sort.cuda_compute_merge_sort)
+    sort = (compute_sort.cuda_compute_argsort if return_indices
+            else compute_sort.cuda_compute_sort)
     bits_dtype = numpy.dtype(f'u{host.dtype.itemsize}')
     with numpy.errstate(invalid='ignore'):
         indices = numpy.argsort(
@@ -164,17 +237,18 @@ def test_float16_all_encodings(descending, return_indices, algorithm):
 
 @pytest.mark.parametrize('return_indices', [False, True])
 def test_algorithm_selection(return_indices):
-    sort = (merge_sort.cuda_compute_argsort if return_indices
-            else merge_sort.cuda_compute_merge_sort)
+    sort = (compute_sort.cuda_compute_argsort if return_indices
+            else compute_sort.cuda_compute_sort)
     with pytest.raises(ValueError, match='algorithm'):
         sort(cupy.ones(3), algorithm='invalid')
-    for dtype in ('bool', 'complex64'):
-        assert sort(cupy.ones(3, dtype=dtype), algorithm='radix') is None
-    assert sort(cupy.ones((2, 3)), algorithm='radix') is None
+    for algorithm in ('radix', 'radix_native'):
+        for dtype in ('bool', 'complex64'):
+            assert sort(cupy.ones(3, dtype=dtype), algorithm=algorithm) is None
+        assert sort(cupy.ones((2, 3)), algorithm=algorithm) is None
     for dtype in ('int32', 'float32'):
         for size in (0, 1):
             a = cupy.ones(size, dtype=dtype)
-            for algorithm in ('merge', 'radix'):
+            for algorithm in ('merge', 'radix', 'radix_native'):
                 result = sort(a, algorithm=algorithm)
                 expected = (
                     numpy.zeros(size, dtype=numpy.intp) if return_indices
@@ -183,7 +257,7 @@ def test_algorithm_selection(return_indices):
                     cupy.asnumpy(result), expected)
 
 
-@pytest.mark.parametrize('dtype', sorted(merge_sort._SUPPORTED_DTYPES))
+@pytest.mark.parametrize('dtype', sorted(compute_sort._SUPPORTED_DTYPES))
 @pytest.mark.parametrize('descending', [False, True])
 @pytest.mark.parametrize('multi_row', [False, True])
 def test_sort(dtype, descending, multi_row):
@@ -205,7 +279,7 @@ def test_sort(dtype, descending, multi_row):
     ready = cupy.cuda.get_current_stream().record()
     with cupy.cuda.Stream(non_blocking=True) as stream:
         stream.wait_event(ready)
-        result = merge_sort.cuda_compute_merge_sort(a, descending)
+        result = compute_sort.cuda_compute_sort(a, descending)
         assert result is not a
     stream.synchronize()
     actual = cupy.asnumpy(result)
@@ -246,7 +320,7 @@ def test_stability(multi_row, descending, dtype):
     if multi_row:
         host = numpy.stack([host, host[::-1]])
     a = cupy.asarray(host)
-    result = merge_sort.cuda_compute_merge_sort(a, descending)
+    result = compute_sort.cuda_compute_sort(a, descending)
     numpy.testing.assert_array_equal(
         cupy.asnumpy(result).view(numpy.uint8),
         _expected(host, descending).view(numpy.uint8))
@@ -256,8 +330,8 @@ def test_stability(multi_row, descending, dtype):
 @pytest.mark.parametrize('shape', [(0,), (3, 0), (0, 4), (1,), (2, 1)])
 def test_empty_and_singleton(shape):
     a = cupy.empty(shape, dtype=numpy.float32)
-    with mock.patch.object(merge_sort, '_run_merge_sort') as build:
-        result = merge_sort.cuda_compute_merge_sort(a)
+    with mock.patch.object(compute_sort, '_run_merge_sort') as build:
+        result = compute_sort.cuda_compute_sort(a)
         assert result is not a
         assert result.shape == a.shape
         assert result.dtype == a.dtype
@@ -266,15 +340,16 @@ def test_empty_and_singleton(shape):
 
 
 def test_unsupported():
-    assert merge_sort.cuda_compute_merge_sort(numpy.ones(3)) is None
-    assert merge_sort.cuda_compute_merge_sort(cupy.ones(())) is None
-    assert merge_sort.cuda_compute_merge_sort(cupy.ones(10)[::2]) is None
+    assert compute_sort.cuda_compute_sort(numpy.ones(3)) is None
+    assert compute_sort.cuda_compute_sort(cupy.ones(())) is None
+    assert compute_sort.cuda_compute_sort(cupy.ones(10)[::2]) is None
 
 
 @pytest.mark.thread_unsafe(reason='Mocks the global cuda.compute lookup.')
 def test_unavailable():
-    with mock.patch.object(merge_sort, '_get_cuda_compute', return_value=None):
-        assert merge_sort.cuda_compute_merge_sort(cupy.ones(3)) is None
+    with mock.patch.object(
+            compute_sort, '_get_cuda_compute', return_value=None):
+        assert compute_sort.cuda_compute_sort(cupy.ones(3)) is None
 
 
 @pytest.mark.parametrize('shape,dtype,algorithm', [
@@ -282,16 +357,18 @@ def test_unavailable():
     ((3,), 'float32', 'radix'),
 ])
 @pytest.mark.parametrize('return_indices', [False, True])
+@pytest.mark.parametrize('overwrite_input', [False, True])
 def test_allocation_failure_leaves_input_unchanged(
-        shape, dtype, algorithm, return_indices):
+        shape, dtype, algorithm, return_indices, overwrite_input):
     host = numpy.array([3, 1, 2], dtype=dtype).reshape(shape)
     a = cupy.asarray(host)
     # Warm compilation and caches before injecting execution-time failures.
-    sort = (merge_sort.cuda_compute_argsort if return_indices
-            else merge_sort.cuda_compute_merge_sort)
-    result = sort(a, algorithm=algorithm)
+    sort = (compute_sort.cuda_compute_argsort if return_indices
+            else compute_sort.cuda_compute_sort)
+    result = sort(a, algorithm=algorithm, overwrite_input=overwrite_input)
     assert result is not None
     cupy.cuda.get_current_stream().synchronize()
+    a = cupy.asarray(host)
     allocator = cupy.cuda.get_allocator()
 
     # Fail each allocation in turn, stopping when the operation completes
@@ -312,8 +389,10 @@ def test_allocation_failure_leaves_input_unchanged(
             return allocator(size)
 
         with cupy.cuda.using_allocator(allocate):
-            result = sort(a, algorithm=algorithm)
-        numpy.testing.assert_array_equal(cupy.asnumpy(a), host)
+            result = sort(a, algorithm=algorithm,
+                          overwrite_input=overwrite_input)
+        if failure_injected or not overwrite_input:
+            numpy.testing.assert_array_equal(cupy.asnumpy(a), host)
         if not failure_injected:
             assert failure_index > 0
             assert result is not None
@@ -349,14 +428,14 @@ def test_cache_round_trip_and_shape_reuse(tmp_path, operation, dtype):
                 with cupy.cuda.Stream(non_blocking=True):
                     a = cupy.asarray(host)
                     if operation == 'sort':
-                        result = merge_sort.cuda_compute_merge_sort(a)
+                        result = compute_sort.cuda_compute_sort(a)
                         expected = numpy.sort(host, axis=-1)
                     elif operation == 'argsort':
-                        result = merge_sort.cuda_compute_argsort(a)
+                        result = compute_sort.cuda_compute_argsort(a)
                         expected = numpy.argsort(
                             host, axis=-1, kind='stable')
                     else:
-                        result = merge_sort.cuda_compute_lexsort(a)
+                        result = compute_sort.cuda_compute_lexsort(a)
                         expected = numpy.lexsort(host)
                     numpy.testing.assert_array_equal(
                         cupy.asnumpy(result), expected)
@@ -382,6 +461,10 @@ def test_cache_round_trip_and_shape_reuse(tmp_path, operation, dtype):
             assert build.call_count == (
                 1 if operation == 'lexsort' or uses_radix else 2)
             assert radix_build.call_count == int(uses_radix)
+            if uses_radix:
+                buffers = radix_build.call_args.kwargs['d_in_keys']
+                assert isinstance(buffers.current(), compute.ProxyArray)
+                assert isinstance(buffers.alternate(), compute.ProxyArray)
         family = 'merge_sort' if operation == 'sort' else f'merge_{operation}'
         if operation == 'lexsort':
             assert len(list(tmp_path.glob(f'*.cc_{family}'))) == 1
@@ -404,8 +487,8 @@ def test_cache_round_trip_and_shape_reuse(tmp_path, operation, dtype):
 def test_float_radix_cache_round_trip(tmp_path, return_indices):
     compute = _cuda_compute_common._get_cuda_compute()
     backend = DiskKernelCacheBackend(str(tmp_path))
-    sort = (merge_sort.cuda_compute_argsort if return_indices
-            else merge_sort.cuda_compute_merge_sort)
+    sort = (compute_sort.cuda_compute_argsort if return_indices
+            else compute_sort.cuda_compute_sort)
     errors = []
 
     def run():
@@ -441,7 +524,7 @@ def test_float_radix_cache_round_trip(tmp_path, return_indices):
     assert len(list(tmp_path.glob(f'*.cc_{family}'))) == 1
 
 
-@pytest.mark.parametrize('dtype', sorted(merge_sort._SUPPORTED_DTYPES))
+@pytest.mark.parametrize('dtype', sorted(compute_sort._SUPPORTED_DTYPES))
 def test_argsort(dtype):
     rng = numpy.random.default_rng(42)
     host = rng.integers(0, 10, size=(2, 7513)).astype(dtype)
@@ -461,7 +544,7 @@ def test_argsort(dtype):
                 if data.dtype.kind in 'biu':
                     order_values = data.astype(numpy.int64)
                 order_values = -order_values
-            result = merge_sort.cuda_compute_argsort(a, descending)
+            result = compute_sort.cuda_compute_argsort(a, descending)
             assert result.dtype == numpy.dtype(numpy.intp)
             numpy.testing.assert_array_equal(
                 cupy.asnumpy(result),
@@ -469,7 +552,7 @@ def test_argsort(dtype):
         numpy.testing.assert_array_equal(cupy.asnumpy(a), data)
 
 
-@pytest.mark.parametrize('dtype', sorted(merge_sort._SUPPORTED_DTYPES))
+@pytest.mark.parametrize('dtype', sorted(compute_sort._SUPPORTED_DTYPES))
 def test_lexsort(dtype):
     rng = numpy.random.default_rng(43)
     host = rng.integers(0, 5, size=(3, 7513)).astype(dtype)
@@ -481,7 +564,7 @@ def test_lexsort(dtype):
             host[:, 4:8] = [complex(numpy.nan, 1), complex(1, numpy.nan),
                             complex(numpy.nan, numpy.nan), complex(1, -1)]
     a = cupy.asarray(host)
-    result = merge_sort.cuda_compute_lexsort(a)
+    result = compute_sort.cuda_compute_lexsort(a)
     assert result.dtype == numpy.dtype(numpy.intp)
     numpy.testing.assert_array_equal(cupy.asnumpy(result), numpy.lexsort(host))
     numpy.testing.assert_array_equal(cupy.asnumpy(a), host)
@@ -490,13 +573,13 @@ def test_lexsort(dtype):
 def test_indirect_sort_empty_and_singleton():
     for shape in [(0,), (2, 0), (0, 4), (1,), (2, 1)]:
         a = cupy.zeros(shape)
-        result = merge_sort.cuda_compute_argsort(a)
+        result = compute_sort.cuda_compute_argsort(a)
         numpy.testing.assert_array_equal(
             cupy.asnumpy(result),
             numpy.argsort(cupy.asnumpy(a), kind='stable'))
     for shape in [(2, 0), (2, 1), (0, 5)]:
         a = cupy.zeros(shape)
-        result = merge_sort.cuda_compute_lexsort(a)
+        result = compute_sort.cuda_compute_lexsort(a)
         numpy.testing.assert_array_equal(
             cupy.asnumpy(result), numpy.arange(shape[-1]))
 
@@ -512,6 +595,26 @@ class TestSortDispatch:
         finally:
             _accelerator.set_routine_accelerators(previous)
 
+    @pytest.mark.parametrize('dtype', ['int16', 'int32'])
+    @pytest.mark.parametrize('size', [2048, 10007])
+    @pytest.mark.parametrize('return_indices', [False, True])
+    def test_radix_1d_dispatch(self, dtype, size, return_indices):
+        host = numpy.random.default_rng(52).integers(
+            -10, 10, size).astype(dtype)
+        a = cupy.asarray(host)
+        view = a.view()
+        with mock.patch.object(thrust, 'available', False):
+            if return_indices:
+                result = a.argsort()
+                expected = numpy.argsort(host, kind='stable')
+                numpy.testing.assert_array_equal(cupy.asnumpy(view), host)
+            else:
+                assert a.sort() is None
+                result = a
+                expected = numpy.sort(host, kind='stable')
+                numpy.testing.assert_array_equal(cupy.asnumpy(view), expected)
+        numpy.testing.assert_array_equal(cupy.asnumpy(result), expected)
+
     @pytest.mark.parametrize('dtype', ['int32', 'float32', 'complex128'])
     @pytest.mark.parametrize('axis', [-1, 0, 1])
     @pytest.mark.parametrize('descending', [False, True])
@@ -523,8 +626,8 @@ class TestSortDispatch:
             host.flat[0] = numpy.nan
         a = cupy.asarray(host)
         with mock.patch.object(
-                merge_sort, 'cuda_compute_merge_sort',
-                wraps=merge_sort.cuda_compute_merge_sort) as accelerated:
+                compute_sort, 'cuda_compute_sort',
+                wraps=compute_sort.cuda_compute_sort) as accelerated:
             with mock.patch.object(thrust, 'available', False):
                 if use_method:
                     assert a.sort(axis=axis, descending=descending) is None
@@ -564,8 +667,9 @@ class TestSortDispatch:
         for axis in [-1, 0, None]:
             for descending in [False, True]:
                 with mock.patch.object(
-                        merge_sort, 'cuda_compute_argsort',
-                        wraps=merge_sort.cuda_compute_argsort) as accelerated:
+                        compute_sort, 'cuda_compute_argsort',
+                        wraps=compute_sort.cuda_compute_argsort,
+                ) as accelerated:
                     with mock.patch.object(thrust, 'available', False):
                         if use_method:
                             result = a.argsort(
@@ -592,8 +696,8 @@ class TestSortDispatch:
             a = a[:, ::-2]
             host = host[:, ::-2]
         with mock.patch.object(
-                merge_sort, 'cuda_compute_lexsort',
-                wraps=merge_sort.cuda_compute_lexsort) as accelerated:
+                compute_sort, 'cuda_compute_lexsort',
+                wraps=compute_sort.cuda_compute_lexsort) as accelerated:
             with mock.patch.object(thrust, 'available', False):
                 result = cupy.lexsort(a)
         accelerated.assert_called_once()
@@ -611,16 +715,16 @@ class TestSortDispatch:
         if reason == 'disabled':
             _accelerator.set_routine_accelerators([])
         builder = '_run_merge_sort'
-        entry = ('cuda_compute_merge_sort' if operation == 'sort'
+        entry = ('cuda_compute_sort' if operation == 'sort'
                  else f'cuda_compute_{operation}')
         patches = {
-            'disabled': mock.patch.object(merge_sort, builder),
+            'disabled': mock.patch.object(compute_sort, builder),
             'declined': mock.patch.object(
-                merge_sort, entry, return_value=None),
+                compute_sort, entry, return_value=None),
             'missing': mock.patch.object(
-                merge_sort, '_get_cuda_compute', return_value=None),
+                compute_sort, '_get_cuda_compute', return_value=None),
             'oom': mock.patch.object(
-                merge_sort, builder,
+                compute_sort, builder,
                 side_effect=cupy.cuda.memory.OutOfMemoryError(1024, 0)),
         }
         a = cupy.asarray([[6, 4, 5], [3, 1, 2]], dtype=numpy.int32)

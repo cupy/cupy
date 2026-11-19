@@ -85,7 +85,7 @@ def lexsort(keys):
     if not runtime.is_hip:
         for accelerator in _accelerator.get_routine_accelerators():
             if accelerator == _accelerator.ACCELERATOR_CUDA_COMPUTE:
-                from cupy._core._cuda_compute_merge_sort import (
+                from cupy._core._cuda_compute_sort import (
                     cuda_compute_lexsort)
                 result = cuda_compute_lexsort(keys)
                 if result is not None:

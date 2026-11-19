@@ -6,9 +6,9 @@ StableSortKeysCopy share the same implementation. cuda.compute does not expose
 a separate stable merge-sort API, so tests guard the preservation of signed
 zeros and NaN payloads.
 
-The internal entry points accept algorithm='merge' or 'radix' for benchmarks.
-The floating-point radix path uses normalized integer keys to retain the same
-NaN and signed-zero ordering as merge sort; it is not selected automatically.
+The internal entry points accept algorithm='merge', 'radix' (NumPy-compatible
+integer keys for floats), or 'radix_native' (native floating-point radix order)
+for benchmarks. Floating-point radix paths are not selected automatically.
 """
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ from cupy._core import core
 from cupy._core._cuda_compute_common import _get_cuda_compute
 from cupy._core._cuda_compute_common import cached_algorithm
 from cupy._core._scalar import format_type_decls, get_typename
-from cupy.cuda import memory
+from cupy.cuda import memory, runtime
 
 
 _SUPPORTED_DTYPES = frozenset(
@@ -223,44 +223,79 @@ def _float_radix_keys(dtype):
         '''), 'cupy_sort_float_radix_keys')
 
 
-def _sort_radix_1d(compute, a, descending, return_indices):
-    """Stable radix sort with separate input/output buffers."""
-    floating = a.dtype.kind == 'f'
-    if floating:
+def _sort_radix_1d(compute, a, descending, return_indices, *,
+                   overwrite_input=False, native=False):
+    """Radix sort with writable double buffers and conditional copy-back."""
+    normalized = a.dtype.kind == 'f' and not native
+    if normalized:
         # Compare normalized keys, but carry the original values/indices so
         # NaN signs/payloads and signed-zero bits are never reconstructed.
         bits = a.view(numpy.dtype(f'u{a.dtype.itemsize}'))
         keys_in = _float_radix_keys(a.dtype)(bits, descending)
         radix_descending = False
     else:
-        keys_in = a
+        keys_in = a if overwrite_input else a.copy()
         radix_descending = descending
-    keys_out = cupy.empty_like(keys_in)
     if return_indices:
         # DeviceRadixSort requires pointer inputs, including its values.
-        values_in = cupy.arange(a.size, dtype=numpy.intp)
-        result = cupy.empty(a.shape, dtype=numpy.intp)
-        values_out = result
-    elif floating:
-        result = cupy.empty_like(a)
-        values_in, values_out = a, result
+        result = values_in = cupy.arange(a.size, dtype=numpy.intp)
+    elif normalized:
+        result = values_in = a if overwrite_input else a.copy()
     else:
-        result = keys_out
-        values_in = values_out = None
+        result = keys_in
+        values_in = None
     order = (compute.SortOrder.DESCENDING if radix_descending
              else compute.SortOrder.ASCENDING)
-    buffers = dict(d_in_keys=keys_in, d_out_keys=keys_out,
-                   d_in_values=values_in, d_out_values=values_out)
+    # Proxies describe the build without retaining an input allocation. Each
+    # call binds real pointers, including after deserialization.
+
+    def build():
+        key_proxy = compute.ProxyArray(keys_in.dtype)
+        value_proxy = (compute.ProxyArray(values_in.dtype)
+                       if values_in is not None else None)
+        return compute.make_radix_sort(
+            d_in_keys=compute.DoubleBuffer(key_proxy, key_proxy),
+            d_out_keys=None,
+            d_in_values=(compute.DoubleBuffer(value_proxy, value_proxy)
+                         if value_proxy is not None else None),
+            d_out_values=None, order=order)
+
     family = 'radix_argsort_1d' if return_indices else 'radix_sort_1d'
-    sorter = cached_algorithm(
-        family, (a.dtype, radix_descending), None,
-        lambda: compute.make_radix_sort(**buffers, order=order))
+    key = (keys_in.dtype, values_in.dtype if values_in is not None else None,
+           radix_descending)
+    sorter = cached_algorithm(family, key, None, build)
+    # The storage query does not dereference the alternate pointers. Unlike
+    # ProxyArray, these descriptors can be passed to the execution interface.
+    keys_alt = SimpleNamespace(data=SimpleNamespace(ptr=0))
+    keys = compute.DoubleBuffer(keys_in, keys_alt)
+    values_alt = (SimpleNamespace(data=SimpleNamespace(ptr=0))
+                  if values_in is not None else None)
+    values = (compute.DoubleBuffer(values_in, values_alt)
+              if values_in is not None else None)
+    stream = cupy.cuda.get_current_stream()
     execution_arguments = dict(
-        buffers, num_items=a.size, stream=cupy.cuda.get_current_stream())
+        d_in_keys=keys, d_out_keys=None, d_in_values=values, d_out_values=None,
+        num_items=a.size, stream=stream)
     tmp_size = sorter(temp_storage=None, **execution_arguments)
+    # One allocation for alternate keys/values and CUB scratch. Align using
+    # the absolute pointer so custom allocators need not align their base.
+    keys_bytes = (keys_in.nbytes + 127) // 128 * 128
+    values_bytes = ((values_in.nbytes + 127) // 128 * 128
+                    if values_in is not None else 0)
+    storage = cupy.cuda.alloc(127 + keys_bytes + values_bytes + tmp_size)
+    auxiliary = storage + (-storage.ptr % 128)
+    keys_alt.data = auxiliary
+    if values_alt is not None:
+        values_alt.data = auxiliary + keys_bytes
     workspace = SimpleNamespace(
-        data=cupy.cuda.alloc(tmp_size), nbytes=tmp_size)
+        data=auxiliary + keys_bytes + values_bytes, nbytes=tmp_size)
     sorter(temp_storage=workspace, **execution_arguments)
+    selected = values.current() if values is not None else keys.current()
+    if selected is not result:
+        # Argsort discards sorted keys: only the indices need copying back.
+        runtime.memcpyAsync(
+            result.data.ptr, selected.data.ptr, result.nbytes,
+            runtime.memcpyDeviceToDevice, stream.ptr)
     return result
 
 
@@ -283,15 +318,18 @@ def _copy_key_values(keys_out, result):
         result.reshape(-1)[...] = values
 
 
-def _sort(a, descending, *, return_indices, algorithm='auto'):
+def _sort(a, descending, *, return_indices, algorithm='auto',
+          overwrite_input=False):
     """Shared last-axis implementation for sort and argsort."""
-    if algorithm not in ('auto', 'merge', 'radix'):
-        raise ValueError("algorithm must be 'auto', 'merge', or 'radix'")
+    if algorithm not in ('auto', 'merge', 'radix', 'radix_native'):
+        raise ValueError(
+            "algorithm must be 'auto', 'merge', 'radix', or 'radix_native'")
     if (not isinstance(a, cupy.ndarray) or a.ndim == 0
             or not a.flags.c_contiguous
             or a.dtype.name not in _SUPPORTED_DTYPES):
         return None
-    if algorithm == 'radix' and (a.ndim != 1 or a.dtype.kind not in 'iuf'):
+    if (algorithm in ('radix', 'radix_native')
+            and (a.ndim != 1 or a.dtype.kind not in 'iuf')):
         return None
     compute = _get_cuda_compute()
     if compute is None:
@@ -303,9 +341,12 @@ def _sort(a, descending, *, return_indices, algorithm='auto'):
                         if return_indices else a.copy())
             multi_row = a.ndim > 1
             if (not multi_row and algorithm != 'merge'
-                    and (a.dtype.kind in 'iu' or algorithm == 'radix')):
+                    and (a.dtype.kind in 'iu'
+                         or algorithm in ('radix', 'radix_native'))):
                 return _sort_radix_1d(
-                    compute, a, bool(descending), return_indices)
+                    compute, a, bool(descending), return_indices,
+                    overwrite_input=overwrite_input,
+                    native=algorithm == 'radix_native')
             ltoir, layout, source = _get_specialization(
                 a.dtype, bool(descending), multi_row)
             comparator = compute.op.RawOp(ltoir=ltoir, name='strict_cmp')
@@ -354,10 +395,11 @@ def _sort(a, descending, *, return_indices, algorithm='auto'):
         return result
 
 
-def cuda_compute_merge_sort(a, descending=False, *, algorithm='auto'):
-    """Return a sorted copy of a C-contiguous CuPy array along its last axis.
+def cuda_compute_sort(a, descending=False, *, algorithm='auto',
+                      overwrite_input=False):
+    """Sort a C-contiguous CuPy array along its last axis.
 
-    Return a new array on success, or None for unsupported inputs or an
+    Return the result array on success, or None for unsupported inputs or an
     allocation failure, allowing the caller to select another backend. Uses
     the current stream on a's device. The merge-sort path's stability relies
     on the current CUB implementation, as described in the module docstring.
@@ -366,13 +408,27 @@ def cuda_compute_merge_sort(a, descending=False, *, algorithm='auto'):
     algorithm='auto' uses radix sort for 1D integers and merge sort otherwise.
     For benchmarks, 'merge' forces merge sort; 'radix' selects radix sort for
     1D integer/real floating-point arrays and returns None for other inputs.
+    'radix_native' sorts floating-point keys directly, including their NaN
+    sign/payload bits, instead of encoding NumPy-compatible integer keys.
+
+    With overwrite_input=True, radix sort may use a as writable storage and
+    return it. Callers must skip redundant copy-back when result is a. Argsort
+    callers may enable this for their private key copy. The default preserves
+    the input; merge sort always produces separate output storage.
     """
-    return _sort(a, descending, return_indices=False, algorithm=algorithm)
+    return _sort(a, descending, return_indices=False, algorithm=algorithm,
+                 overwrite_input=overwrite_input)
 
 
-def cuda_compute_argsort(a, descending=False, *, algorithm='auto'):
-    """Return stable indices; algorithm has the same meaning as for sort."""
-    return _sort(a, descending, return_indices=True, algorithm=algorithm)
+def cuda_compute_argsort(a, descending=False, *, algorithm='auto',
+                         overwrite_input=False):
+    """Return stable indices; algorithm has the same meaning as for sort.
+
+    overwrite_input=True permits radix sort to overwrite a. Public argsort
+    passes a private copy; direct callers preserve their input by default.
+    """
+    return _sort(a, descending, return_indices=True, algorithm=algorithm,
+                 overwrite_input=overwrite_input)
 
 
 @_util.memoize(for_each_device=True)
