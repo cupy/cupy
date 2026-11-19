@@ -1,0 +1,304 @@
+#!/usr/bin/env bash
+
+# A utility script to find a GitHub Actions workflow run ID.
+#
+# Two modes:
+#   --tag <tag>      Find the successful CI run triggered by a tag push.
+#   --branch <branch> Find the latest qualifying successful CI run on a branch.
+#
+# Outputs the run ID on stdout.  All diagnostic messages go to stderr.
+# When --head-sha is passed, a second line with the run's head SHA is printed.
+
+set -euo pipefail
+
+usage() {
+    cat >&2 <<EOF
+Usage:
+  $0 --tag <git-tag> [--run-id <id>] <repository> [workflow-name]
+  $0 --branch <branch> <repository> [workflow-name]
+
+Options:
+  --tag <tag>        Find run by git tag (requires local git repo with the tag)
+  --branch <branch>  Find latest successful run on the given branch
+  --event <event>    Restrict branch-mode runs to a trigger event (for example push)
+  --run-id <id>      Validate and use this exact run ID (tag mode only)
+  --head-sha         Also print the run's head commit SHA (second line)
+
+Examples:
+  $0 --tag v13.0.1 NVIDIA/cuda-python
+  $0 --branch main NVIDIA/cuda-python
+  $0 --branch main --head-sha NVIDIA/cuda-python "CI"
+  $0 --branch main --event push --head-sha NVIDIA/cuda-python "CI"
+EOF
+    exit 1
+}
+
+# ── Parse arguments ──
+MODE=""
+REF=""
+HEAD_SHA_FLAG=0
+EVENT=""
+EXPLICIT_RUN_ID=""
+
+while [[ $# -gt 0 ]]; do
+    case "${1}" in
+        --tag)
+            [[ $# -ge 2 ]] || usage
+            [[ -n "${MODE}" && "${MODE}" != "tag" ]] && { echo "Error: --tag and --branch are mutually exclusive" >&2; exit 1; }
+            MODE="tag"; REF="${2}"; shift 2 ;;
+        --branch)
+            [[ $# -ge 2 ]] || usage
+            [[ -n "${MODE}" && "${MODE}" != "branch" ]] && { echo "Error: --tag and --branch are mutually exclusive" >&2; exit 1; }
+            MODE="branch"; REF="${2}"; shift 2 ;;
+        --run-id)
+            [[ $# -ge 2 ]] || usage
+            EXPLICIT_RUN_ID="${2}"; shift 2 ;;
+        --event)
+            [[ $# -ge 2 && -n "${2}" ]] || usage
+            EVENT="${2}"; shift 2 ;;
+        --head-sha)
+            HEAD_SHA_FLAG=1; shift ;;
+        -h|--help)
+            usage ;;
+        *)
+            break ;;
+    esac
+done
+
+if [[ -z "${MODE}" ]]; then usage; fi
+
+REPOSITORY="${1:-}"; shift || true
+WORKFLOW_NAME="${1:-CI}"
+
+if [[ -z "${REPOSITORY}" ]]; then usage; fi
+
+if [[ "${MODE}" != "branch" && -n "${EVENT}" ]]; then
+    echo "Error: --event is only supported with --branch" >&2
+    exit 1
+fi
+
+if [[ "${MODE}" != "tag" && -n "${EXPLICIT_RUN_ID}" ]]; then
+    echo "Error: --run-id is only supported with --tag" >&2
+    exit 1
+fi
+
+if [[ -n "${EXPLICIT_RUN_ID}" && ! "${EXPLICIT_RUN_ID}" =~ ^[1-9][0-9]*$ ]]; then
+    echo "Error: --run-id must be a positive integer" >&2
+    exit 1
+fi
+
+# ── Prerequisite checks ──
+if [[ -z "${GH_TOKEN:-}" ]]; then
+    echo "Error: GH_TOKEN environment variable is required" >&2
+    exit 1
+fi
+
+for cmd in jq gh; do
+    if ! command -v "${cmd}" >/dev/null 2>&1; then
+        echo "Error: ${cmd} is required but not installed" >&2
+        exit 1
+    fi
+done
+
+# ── Mode: branch ──
+#
+# Walk the branch's commit history from HEAD and return the first commit
+# whose workflow has a successful run matching the optional event filter.
+# The one Actions-API filter used is ?head_sha=<SHA>, which is
+# not on the list of filters flagged as returning stale/cached slices in
+# https://github.com/orgs/community/discussions/24626.
+if [[ "${MODE}" == "branch" ]]; then
+    echo "Looking up latest successful '${WORKFLOW_NAME}' run on branch: ${REF}" >&2
+
+    # Resolve workflow selector to a numeric workflow ID.
+    WORKFLOW_ID=""
+    if [[ "${WORKFLOW_NAME}" =~ ^[0-9]+$ || "${WORKFLOW_NAME}" =~ \.(yml|yaml)$ ]]; then
+        if ! WORKFLOW_ID=$(gh api "repos/${REPOSITORY}/actions/workflows/${WORKFLOW_NAME}" \
+            --jq '.id' 2>/dev/null); then
+            WORKFLOW_ID=""
+        fi
+    fi
+    if [[ -z "${WORKFLOW_ID}" ]]; then
+        WORKFLOW_ID=$(gh api --paginate \
+            "repos/${REPOSITORY}/actions/workflows?per_page=100" \
+            | jq -sr --arg name "${WORKFLOW_NAME}" '
+                [.[] | .workflows[]]
+                | map(select(
+                    .name == $name
+                    or .path == $name
+                    or ((.path // "") | split("/") | last) == $name
+                ))
+                | .[0].id // empty
+            ')
+    fi
+    if [[ -z "${WORKFLOW_ID}" ]]; then
+        echo "Error: Could not resolve workflow '${WORKFLOW_NAME}' in '${REPOSITORY}'" >&2
+        exit 1
+    fi
+
+    # Resolve branch HEAD SHA.
+    if ! BRANCH_HEAD_SHA=$(gh api "repos/${REPOSITORY}/branches/${REF}" \
+        --jq '.commit.sha' 2>/dev/null); then
+        BRANCH_HEAD_SHA=""
+    fi
+    if [[ -z "${BRANCH_HEAD_SHA}" ]]; then
+        echo "Error: Could not resolve branch '${REF}' in '${REPOSITORY}'" >&2
+        exit 1
+    fi
+
+    # Walk branch commits newest-first; accept the newest successful run for
+    # the first commit with a qualifying run.
+    COMMIT_SCAN_LIMIT="${LOOKUP_RUN_ID_COMMIT_SCAN_LIMIT:-200}"
+    RUN_ID=""
+    HEAD_SHA=""
+    commits_scanned=0
+    page=1
+
+    while [[ ${commits_scanned} -lt ${COMMIT_SCAN_LIMIT} ]]; do
+        if ! COMMIT_PAGE=$(gh api --method GET \
+            "repos/${REPOSITORY}/commits" \
+            -f "sha=${BRANCH_HEAD_SHA}" \
+            -F "per_page=100" \
+            -F "page=${page}" \
+            --jq '.[].sha' 2>/dev/null); then
+            echo "Error: Failed to list commits for branch '${REF}' (page ${page})" >&2
+            exit 1
+        fi
+        [[ -n "${COMMIT_PAGE}" ]] || break
+
+        while IFS= read -r commit_sha; do
+            [[ -n "${commit_sha}" ]] || continue
+            [[ ${commits_scanned} -lt ${COMMIT_SCAN_LIMIT} ]] || break
+            commits_scanned=$((commits_scanned + 1))
+
+            if ! SHA_RUNS=$(gh api --method GET \
+                "repos/${REPOSITORY}/actions/workflows/${WORKFLOW_ID}/runs" \
+                -f "head_sha=${commit_sha}" \
+                -F "per_page=100" \
+                | jq -c --arg event "${EVENT}" '
+                    [.workflow_runs[]
+                     | select(.conclusion == "success" and ($event == "" or .event == $event))
+                     | {id, head_sha, created_at}]
+                    | sort_by(.created_at) | reverse
+                '); then
+                echo "Error: Failed to list runs for commit ${commit_sha}" >&2
+                exit 1
+            fi
+            [[ "${SHA_RUNS}" != "[]" ]] || continue
+
+            RUN_ID=$(echo "${SHA_RUNS}" | jq -r '.[0].id')
+            HEAD_SHA=$(echo "${SHA_RUNS}" | jq -r '.[0].head_sha')
+            break 2
+        done <<< "${COMMIT_PAGE}"
+
+        page=$((page + 1))
+    done
+
+    if [[ -z "${RUN_ID}" ]]; then
+        echo "Error: No successful '${WORKFLOW_NAME}' run found in the ${commits_scanned} most-recent commits of branch '${REF}'" >&2
+        echo "Branch HEAD: ${BRANCH_HEAD_SHA}" >&2
+        exit 1
+    fi
+
+    echo "Found run ID: ${RUN_ID} (sha ${HEAD_SHA:0:12})" >&2
+    echo "${RUN_ID}"
+
+    if [[ "${HEAD_SHA_FLAG}" == 1 ]]; then
+        echo "Head SHA: ${HEAD_SHA}" >&2
+        echo "${HEAD_SHA}"
+    fi
+    exit 0
+fi
+
+# ── Mode: tag ──
+echo "Looking up run ID for tag: ${REF} in repository: ${REPOSITORY}" >&2
+
+if ! COMMIT_SHA=$(git rev-parse --verify "refs/tags/${REF}^{commit}"); then
+    echo "Error: Could not resolve git tag '${REF}' to a commit SHA" >&2
+    echo "Make sure the tag exists and you have fetched it" >&2
+    exit 1
+fi
+
+echo "Resolved tag '${REF}' to commit: ${COMMIT_SHA}" >&2
+echo "Searching for '${WORKFLOW_NAME}' workflow runs for commit: ${COMMIT_SHA} (tag: ${REF})" >&2
+
+if [[ -n "${EXPLICIT_RUN_ID}" ]]; then
+    echo "Validating explicitly requested run ID: ${EXPLICIT_RUN_ID}" >&2
+    if ! RUN_DATA=$(gh run view "${EXPLICIT_RUN_ID}" \
+        --repo "${REPOSITORY}" \
+        --json databaseId,workflowName,status,conclusion,headSha,headBranch,event,createdAt,url); then
+        echo "Error: Could not inspect workflow run ${EXPLICIT_RUN_ID}" >&2
+        exit 1
+    fi
+
+    if ! jq -e \
+        --argjson id "${EXPLICIT_RUN_ID}" \
+        --arg workflow "${WORKFLOW_NAME}" \
+        --arg sha "${COMMIT_SHA}" \
+        --arg tag "${REF}" \
+        '.databaseId == $id
+         and .workflowName == $workflow
+         and .status == "completed"
+         and .conclusion == "success"
+         and .headSha == $sha
+         and .headBranch == $tag
+        and .event == "push"' <<< "${RUN_DATA}" >/dev/null; then
+        echo "Error: Run ${EXPLICIT_RUN_ID} is not a successful tag-triggered '${WORKFLOW_NAME}' run for '${REF}' at ${COMMIT_SHA}" >&2
+        echo "Observed run metadata:" >&2
+        jq -c '{workflowName, status, conclusion, headSha, headBranch, event}' <<< "${RUN_DATA}" >&2
+        exit 1
+    fi
+
+    echo "Validated workflow run ID: ${EXPLICIT_RUN_ID} for tag '${REF}'" >&2
+    echo "${EXPLICIT_RUN_ID}"
+    if [[ "${HEAD_SHA_FLAG}" == 1 ]]; then
+        echo "Head SHA: ${COMMIT_SHA}" >&2
+        echo "${COMMIT_SHA}"
+    fi
+    exit 0
+fi
+
+RUN_DATA=$(gh run list \
+    --repo "${REPOSITORY}" \
+    --commit "${COMMIT_SHA}" \
+    --workflow "${WORKFLOW_NAME}" \
+    --json databaseId,workflowName,status,conclusion,headSha,headBranch,event,createdAt,url \
+    --jq 'map(select(.status == "completed"))' \
+    --limit 50)
+
+if [[ -z "${RUN_DATA}" || "${RUN_DATA}" == "[]" ]]; then
+    echo "Error: No completed '${WORKFLOW_NAME}' workflow runs found for commit ${COMMIT_SHA}" >&2
+    echo "Available workflow runs for this commit:" >&2
+    gh run list --repo "${REPOSITORY}" --commit "${COMMIT_SHA}" --limit 10 || true
+    exit 1
+fi
+
+RUN_ID=$(echo "${RUN_DATA}" | jq -r \
+    --arg tag "${REF}" --arg workflow "${WORKFLOW_NAME}" --arg sha "${COMMIT_SHA}" '
+    map(select(.conclusion == "success" and .status == "completed"
+        and .event == "push" and .headBranch == $tag
+        and .workflowName == $workflow and .headSha == $sha))
+    | sort_by(.createdAt)
+    | reverse
+    | .[0].databaseId // empty
+')
+
+if [[ -z "${RUN_ID}" ]]; then
+    echo "Error: No successful '${WORKFLOW_NAME}' workflow runs found for tag '${REF}'." >&2
+    echo "This release workflow now requires artifacts from a tag-triggered CI run." >&2
+    echo "If you just pushed the tag, wait for CI on that tag to finish and retry." >&2
+    echo "" >&2
+    echo "Completed runs for commit ${COMMIT_SHA}:" >&2
+    echo "${RUN_DATA}" | jq -r '.[] | "\(.databaseId): event=\(.event // "null"), headBranch=\(.headBranch // "null"), conclusion=\(.conclusion // "null"), status=\(.status // "null"), createdAt=\(.createdAt // "null")"' >&2
+    exit 1
+fi
+
+echo "Found workflow run ID: ${RUN_ID} for tag '${REF}'" >&2
+echo "${RUN_ID}"
+
+if [[ "${HEAD_SHA_FLAG}" == 1 ]]; then
+    HEAD_SHA=$(echo "${RUN_DATA}" | jq -r --arg id "${RUN_ID}" '
+        map(select(.databaseId == ($id | tonumber))) | .[0].headSha // empty')
+    echo "Head SHA: ${HEAD_SHA}" >&2
+    echo "${HEAD_SHA}"
+fi
