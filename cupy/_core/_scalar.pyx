@@ -375,7 +375,7 @@ cdef class CScalar(CPointer):
         assert not self.descr.flags & NPY_NEEDS_INIT
         assert self.ptr == 0
 
-        if self.descr.itemsize < sizeof(self._data):
+        if <size_t>self.descr.itemsize < sizeof(self._data):
             self.ptr = <intptr_t><void *>(self._data)
         else:
             self.ptr = <intptr_t><void *>(
