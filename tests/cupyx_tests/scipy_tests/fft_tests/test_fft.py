@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import unittest
 
 import numpy as np
 try:
@@ -15,6 +16,73 @@ import cupy as cp
 from cupy import testing
 from cupy.fft._fft import _default_fft_func, _fftn
 import cupyx.scipy.fft as cp_fft
+
+
+@testing.with_requires('scipy')
+@testing.parameterize(*testing.product({
+    'name': ['fft2', 'ifft2', 'fftn', 'ifftn',
+             'rfft2', 'irfft2', 'rfftn', 'irfftn',
+             'hfft2', 'ihfft2', 'hfftn', 'ihfftn'],
+    'case': [
+        ((3, 5), (4, -1), (-2, -1)),
+        ((3, 5), (-1, -1), None),
+        ((3, 5), (-1, 2), (1, 0)),
+        ((3, 4, 5), (-1, 7, -1), (2, 0, 1)),
+        ((3, 4, 5), (-1, 3), (0, 2)),
+        ((5,), (-1,), (0,)),
+    ],
+    'order': ['C', 'F'],
+    'enable_nd': [True, False],
+}))
+class TestFFTNegativeOneShape(unittest.TestCase):
+
+    def setUp(self):
+        self.planning_token = cp.fft.config._enable_nd_planning.set(
+            self.enable_nd)
+
+    def tearDown(self):
+        cp.fft.config._enable_nd_planning.reset(self.planning_token)
+
+    @testing.for_dtypes([np.float32, np.float64])
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-6,
+                                 contiguous_check=False)
+    def test_negative_one_shape(self, xp, dtype):
+        shape, s, axes = self.case
+        if not self.name.startswith(('rfft', 'ihfft')):
+            dtype = np.dtype(dtype).char.upper()
+        a = testing.shaped_random(shape, xp, dtype)
+        a = xp.array(a, order=self.order)
+        original = a.copy()
+        module = scipy_fft if xp is np else cp_fft
+        result = getattr(module, self.name)(a, s=s, axes=axes)
+        testing.assert_array_equal(a, original)
+        return result
+
+
+@testing.with_requires('scipy')
+@testing.parameterize(*testing.product({
+    'name': ['fftn', 'ifftn', 'rfftn', 'irfftn'],
+    'case': [((3, 5), (4, -1), (-2, -1)),
+             ((3, 4, 5), (-1, 2, -1), (1, 0, 2)),
+             ((5,), (-1,), (0,))],
+    'plan_mode': ['argument', 'context'],
+}))
+class TestFFTNegativeOnePlan(unittest.TestCase):
+
+    def test_negative_one_plan(self):
+        shape, s, axes = self.case
+        value_type = {'rfftn': 'R2C', 'irfftn': 'C2R'}.get(self.name, 'C2C')
+        dtype = np.float32 if value_type == 'R2C' else np.complex64
+        a = testing.shaped_random(shape, cp, dtype)
+        expected = getattr(scipy_fft, self.name)(cp.asnumpy(a), s=s, axes=axes)
+        plan = cp_fft.get_fft_plan(a, shape=s, axes=axes,
+                                   value_type=value_type)
+        if self.plan_mode == 'argument':
+            result = getattr(cp_fft, self.name)(a, s=s, axes=axes, plan=plan)
+        else:
+            with plan:
+                result = getattr(cp_fft, self.name)(a, s=s, axes=axes)
+        testing.assert_allclose(result, expected, rtol=1e-5, atol=1e-6)
 
 
 _irfft_skip_condition = (
