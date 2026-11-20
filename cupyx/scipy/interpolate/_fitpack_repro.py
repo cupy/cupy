@@ -1173,6 +1173,13 @@ _extrap_modes = {0: 0, 'extrapolate': 0,
                  3: 3, 'const': 3}
 
 
+def _validate_ext(ext):
+    try:
+        return _extrap_modes[ext]
+    except KeyError as e:
+        raise ValueError(f"Unknown extrapolation mode {ext}.") from e
+
+
 class UnivariateSpline:
     """
     1-D smoothing spline fit to a given set of data points.
@@ -1248,7 +1255,7 @@ class UnivariateSpline:
         y = cupy.asarray(y, dtype=float)
         xb, xe = bbox
 
-        self.ext = ext
+        self.ext = _validate_ext(ext)
         self._xb = xb if xb else x[0]
         self._xe = xe if xe else x[-1]
         self._x = x
@@ -1271,6 +1278,7 @@ class UnivariateSpline:
         self._residual = residual
         self._xb = xb
         self._xe = xe
+        return self
 
     def _reset_class(self):
         ier = self._res.ier
@@ -1351,9 +1359,7 @@ class UnivariateSpline:
         if ext is None:
             ext = self.ext
         else:
-            ext = _extrap_modes.get(ext)
-            if ext is None:
-                raise ValueError("Unknown extrapolation mode %s." % ext)
+            ext = _validate_ext(ext)
 
         # default is to extrapolate, do extra work for other modes
         if ext != 0:
