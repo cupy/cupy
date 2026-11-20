@@ -5,6 +5,7 @@ import cupy
 from cupy import testing
 
 import cupyx.scipy.interpolate as csi  # NOQA
+from cupyx.scipy.interpolate import _fitpack_repro
 
 try:
     from scipy import interpolate  # NOQA
@@ -144,3 +145,16 @@ class TestUnivariateSpline:
 
         spl.set_smoothing_factor(s=0)
         assert spl.__class__ == csi.InterpolatedUnivariateSpline
+
+
+@pytest.mark.parametrize('s', [0.01, 20.0])
+@testing.with_requires('scipy>=1.15')
+@testing.numpy_cupy_allclose(scipy_name='scp', atol=1e-11, rtol=1e-11)
+def test_weighted_smoothing_splrep(xp, scp, s):
+    x = xp.linspace(0., 10., 25)
+    y = xp.sin(x) + 0.08*xp.cos(4*x)
+    w = 1 + 0.2*xp.cos(x)
+    func = (_fitpack_repro.make_splrep if xp is cupy
+            else scp.interpolate.make_splrep)
+    spline = func(x, y, w=w, k=3, s=s)
+    return spline(xp.linspace(0., 10., 101))

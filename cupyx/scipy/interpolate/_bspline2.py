@@ -729,6 +729,7 @@ def _lsq_solve_qr(x, y, t, k, w):
     indices = cupy.empty(m*(k+1), dtype=cupy.int64)
     A, indices = _make_design_matrix(x, t, k, True, indices)
     R = A.reshape(m, k+1)
+    R *= w[:, None]
 
     offset = indices[::(k+1)].copy()
     nc = t.shape[0] - k - 1
