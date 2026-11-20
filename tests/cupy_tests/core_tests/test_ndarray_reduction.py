@@ -187,6 +187,24 @@ class TestArrayReduction:
         a = xp.array([float('inf'), float('inf')], dtype, order=order)
         return a.min()
 
+    @pytest.mark.parametrize("has_out", [False, True])
+    @pytest.mark.parametrize(
+        "axis,out_shape",
+        [(None, ()), (0, (3, 4)), (1, (2, 4)), (2, (2, 3)), ((1, 2), (2,))])
+    @pytest.mark.parametrize("func", ['max', 'min'])
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(contiguous_check=False)
+    def test_minmax_out(
+            self, xp, dtype, order, func, axis, out_shape, has_out):
+        # See gh-9032
+        a = testing.shaped_random((2, 3, 4), xp, dtype, order=order)
+        if not has_out:
+            return getattr(a, func)(axis=axis)
+        out = xp.zeros(out_shape, dtype=dtype)
+        ret = getattr(a, func)(axis=axis, out=out)
+        assert ret is out
+        return out
+
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(contiguous_check=False)
     def test_argmax_all(self, xp, dtype, order):
