@@ -3111,6 +3111,14 @@ cdef _ndarray_base _array_default(
         # memory already we can directly copy it.
         a.data.copy_from_host_async(ptr_h, nbytes, stream)
         pinned_memory._add_to_watch_list(stream.record(), a_cpu)
+    elif (not is_correct_contiguous
+            and nbytes >= _reorder_min_bytes
+            and (a_cpu.flags.c_contiguous or a_cpu.flags.f_contiguous)):
+        # The requested layout differs from the input's (e.g. a C-ordered
+        # input with order='F'). Transposing on the host while filling the
+        # staging buffer is a single-threaded strided copy; transfer the
+        # input's own layout instead and reorder on the device.
+        _copy_from_host_reordered(a, a_cpu, stream)
     else:
         # The input numpy array does not live on pinned memory, so we allocate
         # an extra buffer and copy from it to avoid potential data race, see
@@ -3188,6 +3196,52 @@ cdef tuple _compute_concat_info_impl(obj):
         return (dim,) + concat_shape, concat_type, concat_dtype
 
     return None, None, None
+
+
+# Chunk size for _copy_from_host_reordered: bounds the extra device (and
+# pinned) memory needed for the reorder.
+cdef Py_ssize_t _reorder_chunk_bytes = 32 * 1024 * 1024
+# Below this the host-side transpose is cheaper than the extra kernel
+# launch and staging allocation (crossover ~128-256 KiB on an RTX 5090).
+cdef Py_ssize_t _reorder_min_bytes = 256 * 1024
+
+
+cdef _copy_from_host_reordered(_ndarray_base a, a_cpu, stream):
+    # `a_cpu` is C- or F-contiguous and `a` is contiguous in the other order.
+    # Copy blocks that are contiguous in host memory (leading rows of a
+    # C-ordered input, trailing slices of an F-ordered one) into a staging
+    # device array in the input's layout, then copy them into `a` on the
+    # device.
+    cdef bint src_c = a_cpu.flags.c_contiguous
+    cdef Py_ssize_t axis = 0 if src_c else a_cpu.ndim - 1
+    cdef Py_ssize_t n = a_cpu.shape[axis]
+    cdef Py_ssize_t block_bytes = a_cpu.nbytes // n if n else 0
+    cdef Py_ssize_t step, start, stop, nbytes
+    cdef str src_order = 'C' if src_c else 'F'
+    cdef pinned_memory.PinnedMemoryPointer mem
+    cdef _ndarray_base tmp
+
+    step = max(1, _reorder_chunk_bytes // max(block_bytes, 1))
+    for start in range(0, n, step):
+        stop = min(n, start + step)
+        if src_c:
+            src = a_cpu[start:stop]
+            dst = a[start:stop]
+        else:
+            src = a_cpu[..., start:stop]
+            dst = a[..., start:stop]
+        nbytes = src.nbytes
+        tmp = ndarray(src.shape, dtype=a.dtype, order=src_order)
+        mem = _alloc_async_transfer_buffer(nbytes)
+        if mem is not None:
+            numpy.frombuffer(mem, numpy.uint8, nbytes)[...] = (
+                src.ravel(order='K').view(numpy.uint8))
+            tmp.data.copy_from_host_async(mem.ptr, nbytes, stream)
+            pinned_memory._add_to_watch_list(stream.record(), mem)
+        else:
+            tmp.data.copy_from_host_async(
+                <intptr_t>src.ctypes.data, nbytes, stream)
+        elementwise_copy(tmp, dst)
 
 
 cdef inline _alloc_async_transfer_buffer(Py_ssize_t nbytes):
