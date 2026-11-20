@@ -75,10 +75,10 @@ def _check_int32_indices(a, func_name):
     """Raise ValueError if CSR/CSC ``a`` has int64 indices.
 
     Used by legacy cuSPARSE entry points whose backends accept only
-    int32 (csrgeam, csrgemm, csrsm2, csrlsvqr).  ``a`` must already be
-    CSR/CSC; COO has no ``indices`` attribute.  ``func_name`` appears
-    in the error message so it points at the user-facing operation
-    rather than the internal cuSPARSE name.
+    int32 (csrmv, csrmm, csrmm2, csrgeam, csrgemm, csrsm2, csrlsvqr).
+    ``a`` must already be CSR/CSC; COO has no ``indices`` attribute.
+    ``func_name`` appears in the error message so it points at the
+    user-facing operation rather than the internal cuSPARSE name.
     """
     if a.indices.dtype == _cupy.int64:
         raise ValueError(
@@ -359,6 +359,9 @@ def csrmv(a, x, y=None, alpha=1, beta=0, transa=False):
     if not check_availability('csrmv'):
         raise RuntimeError('csrmv is not available.')
 
+    # Legacy csrmv reads indptr/indices as int32.  On HIP (where it is
+    # still available) int64 indices would be reinterpreted silently.
+    _check_int32_indices(a, 'csrmv')
     if y is not None and not y.flags.f_contiguous:
         raise ValueError('expected F-contiguous array for y')
 
@@ -410,6 +413,7 @@ def csrmm(a, b, c=None, alpha=1, beta=0, transa=False):
     if not check_availability('csrmm'):
         raise RuntimeError('csrmm is not available.')
 
+    _check_int32_indices(a, 'csrmm')
     if a.ndim != 2 or b.ndim != 2:
         raise ValueError('expected 2-D matrices')
     if not b.flags.f_contiguous:
@@ -473,6 +477,7 @@ def csrmm2(a, b, c=None, alpha=1.0, beta=0.0, transa=False, transb=False):
     if not check_availability('csrmm2'):
         raise RuntimeError('csrmm2 is not available.')
 
+    _check_int32_indices(a, 'csrmm2')
     if a.ndim != 2 or b.ndim != 2:
         raise ValueError('expected 2-D matrices')
     if not a.has_canonical_format:
