@@ -685,6 +685,56 @@ class TestRaw:
         f_shfl_xor[1, 32](a)
         assert (a == b.sum() * cupy.ones(32, dtype=dtype)).all()
 
+    @pytest.mark.skipif(
+        runtime.is_hip or int(device.get_compute_capability()) < 80,
+        reason='warp reduce requires CUDA sm_80+')
+    @pytest.mark.parametrize('op, ref, dtype', [
+        ('add', numpy.sum, numpy.int32),
+        ('add', numpy.sum, numpy.uint32),
+        ('min', numpy.min, numpy.int32),
+        ('min', numpy.min, numpy.uint32),
+        ('max', numpy.max, numpy.int32),
+        ('max', numpy.max, numpy.uint32),
+        ('and', numpy.bitwise_and.reduce, numpy.uint32),
+        ('or', numpy.bitwise_or.reduce, numpy.uint32),
+        ('xor', numpy.bitwise_xor.reduce, numpy.uint32),
+    ])
+    def test_reduce_sync(self, op, ref, dtype):
+        func = getattr(jit, f'reduce_{op}_sync')
+        mask = 0x0000f0f0
+
+        @jit.rawkernel()
+        def f(a, out):
+            i = jit.threadIdx.x
+            if (mask >> i) & 1:
+                out[i] = func(mask, a[i])
+
+        a = cupy.arange(1, 33, dtype=dtype)
+        out = cupy.full(32, 999, dtype=dtype)
+        f[1, 32](a, out)
+        lanes = [i for i in range(32) if (mask >> i) & 1]
+        expected = numpy.full(32, 999, dtype=dtype)
+        expected[lanes] = ref(a.get()[lanes])
+        testing.assert_array_equal(out, expected)
+
+    @pytest.mark.skipif(
+        runtime.is_hip or int(device.get_compute_capability()) < 80,
+        reason='warp reduce requires CUDA sm_80+')
+    @pytest.mark.parametrize('op, dtype, mask, error', [
+        ('add', numpy.float32, 0xffffffff, TypeError),
+        ('xor', numpy.int32, 0xffffffff, TypeError),
+        ('add', numpy.int32, 1 << 32, ValueError),
+    ])
+    def test_reduce_sync_invalid(self, op, dtype, mask, error):
+        func = getattr(jit, f'reduce_{op}_sync')
+
+        @jit.rawkernel()
+        def f(a):
+            a[jit.threadIdx.x] = func(mask, a[jit.threadIdx.x])
+
+        with pytest.raises(error):
+            f[1, 32](cupy.ones(32, dtype=dtype))
+
     def test_error_msg(self):
         @jit.rawkernel()
         def f(x):
