@@ -125,7 +125,11 @@ jobs:
           # yq -o json -I 0 flattens to one-line JSON so the string is safe
           # to pass through GHA outputs + fromJSON on the receiving side.
           python_full=$(yq -o json -I 0 '.python.supported' ci/versions.yml)
-          python_doc_ver=$(yq '.python.doc.version' ci/versions.yml)
+          # python.doc.version is a setup-python range ("~3.12.16"); the
+          # matrix needs the plain X.Y label ("3.12").
+          python_doc_spec=$(yq '.python.doc.version' ci/versions.yml)
+          IFS=. read -r py_major py_minor _ <<< "${python_doc_spec#\~}"
+          python_doc_ver="${py_major}.${py_minor}"
 
           # Mode-aware: `test` builds the full matrix; `doc-only` collapses
           # to the single wheel docs.yml needs. On `skip` / `no-op` the
@@ -340,7 +344,7 @@ jobs:
               artifact_suffix: $artifact_suffix, ref: $ref}' \
             > "${RUNNER_TEMP}/artifact/docs-meta.json"
       - name: Upload
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           # Same values ci-guard.sh derives from this event (GITHUB_SHA on
           # push, pull_request.head.sha on PR) -- and exactly what GitHub

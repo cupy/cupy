@@ -13,7 +13,6 @@ import cupy
 from cupy._core._kernel import create_ufunc
 from cupy._core._kernel import ElementwiseKernel
 from cupy._core._ufuncs import elementwise_copy
-from cupy._core import flags as _flags
 from cupy._core import syncdetect
 from cupy import cuda
 from cupy.cuda import memory as memory_module
@@ -37,6 +36,7 @@ from cupy._core cimport _dtype
 from cupy._core._dtype cimport get_dtype
 from cupy._core._dtype cimport populate_format
 from cupy._core._kernel cimport create_ufunc
+from cupy._core cimport flags as _flags
 from cupy._core cimport _memory_range
 from cupy._core cimport _routines_binary as _binary
 from cupy._core cimport _routines_indexing as _indexing
@@ -208,7 +208,7 @@ cdef class _ndarray_base:
 
     def _init(self, shape, dtype=float, memptr=None, strides=None,
               order='C'):
-        cdef Py_ssize_t x, itemsize, alloc_size, left, right
+        cdef Py_ssize_t x, itemsize, alloc_size, left = 0, right = 0
         cdef tuple s = internal.get_size(shape)
         del shape
 
@@ -490,8 +490,8 @@ cdef class _ndarray_base:
         .. seealso:: :attr:`numpy.ndarray.flags`
 
         """
-        return _flags.Flags(self._c_contiguous, self._f_contiguous,
-                            self.base is None)
+        return _flags.Flags._create(
+            self._c_contiguous, self._f_contiguous, self.base is None)
 
     property shape:
         """Lengths of axes.
@@ -1521,7 +1521,7 @@ cdef class _ndarray_base:
 
     # Truth value of an array (bool):
 
-    def __nonzero__(self):
+    def __bool__(self):
         if self.size == 0:
             msg = ('The truth value of an empty array is ambiguous. Returning '
                    'False, but in future this will result in an error. Use '

@@ -1055,22 +1055,33 @@ ctypedef std_pair[size_t, uintptr_t] index_type
 cdef class _Arena:
     # Arena class managing all free chunks belonging to a single stream ident.
     # A few notes on safety:
+    #   * `index` is allocated on the heap in `__cinit__` and freed in
+    #     `__dealloc__` to resolve -Winvalid-offsetof warning from G++
+    #     emitted because std::set is not a standard-layout type and
+    #     Cython-generated offsetof(_Arena, __weakref__) is supported
+    #     only conditionally. Cf. https://eel.is/c++draft/support.types.layout
     #   * All access to `index` requires a lock, the callers must ensure this.
     #     these means almost all methods must be called with a lock held.
     #   * `_add_pending_free_atomic` is atomic and safe without a lock, though.
-    #   * No custom `__dealloc__`: the lifetime is tied to the `_Chunks`.
-    #     Only an empty Arena can be free'd (except maybe at shutdown).
     #
     # The index owns all chunks, we have one entry per chunk (rather than
     # buckets) for simplicity. Making it a `map` to buckets may be useful
     # including possibly to try and achieve less locking.
     cdef:
         list _pending_free  # "lock free" list to stage chunks
-        std_set[index_type] index  # bin_size, _Chunk
+        std_set[index_type]* index  # bin_size, _Chunk
         cdef object __weakref__
 
     def __cinit__(self):
+        self.index = NULL
+        self.index = new std_set[index_type]()
         self._pending_free = []
+
+    def __dealloc__(self):
+        # Chunks keep their arena alive, so the index should be empty here
+        # during normal operation. This only deletes the C++ container;
+        # its entries store integer addresses and do not decref chunks.
+        del self.index
 
     cdef add_pending_free_atomic(self, _Chunk chunk):
         """Add a chunk back to the arena as free. If you are holding the lock,

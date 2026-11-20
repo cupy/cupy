@@ -1080,7 +1080,11 @@ class _compressed_sparse_matrix(sparse_data._data_matrix,
             self.indptr, nnz=self.nnz)
         out_major = major_of_each[out_src]
 
-        sort_key = cupy.lexsort(cupy.stack([out_minor, out_major]))
+        # Canonical (major, minor) order; out_minor is a position within the
+        # selection, so its range is the selection size.
+        n_selected = idx.size
+        sort_key = _cusparse_mod._argsort_major_minor(
+            out_major, out_minor, self.indptr.size - 1, n_selected)
         out_major = out_major[sort_key]
         out_minor = out_minor[sort_key]
         out_data = out_data[sort_key]
