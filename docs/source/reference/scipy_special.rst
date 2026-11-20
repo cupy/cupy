@@ -58,6 +58,9 @@ Raw statistical functions
    ndtr
    log_ndtr
    ndtri
+   ndtri_exp
+   owens_t
+   tklmbda
    logit
    expit
    log_expit
@@ -169,7 +172,7 @@ Other special functions
 .. autosummary::
    :toctree: generated/
 
-   # agm
+   agm
    # bernoulli
    binom
    # diric
