@@ -310,6 +310,34 @@ class TestSparseArithmeticDtypes:
 
     @pytest.mark.parametrize('format', ['csr', 'csc'])
     @pytest.mark.parametrize('index_dtype', [numpy.int32, numpy.int64])
+    @pytest.mark.parametrize('dtype', [
+        numpy.float16, *_sputils._extra_float_dtypes])
+    @pytest.mark.parametrize('operation', ['add', 'subtract', 'matmul'])
+    def test_16bit_float_operators(
+            self, format, index_dtype, dtype, operation):
+        constructor = getattr(sparse, format + '_matrix')
+        a_dense = cupy.array([[1.5, 0], [3, 4]], dtype=cupy.float32)
+        b_dense = cupy.array([[2, 5], [1, 4]], dtype=cupy.float32)
+        a, b = constructor(a_dense), constructor(b_dense)
+        for operand in (a, b):
+            # Test the prepared operator paths before the dtype gate opens.
+            operand.data = operand.data.astype(dtype)
+            operand.indices = operand.indices.astype(index_dtype)
+            operand.indptr = operand.indptr.astype(index_dtype)
+
+        if operation == 'add':
+            c, expected = a + b, a_dense + b_dense
+        elif operation == 'subtract':
+            c, expected = a - b, a_dense - b_dense
+        else:
+            c, expected = a @ b, a_dense @ b_dense
+
+        assert c.dtype == dtype
+        assert c.format == ('csr' if operation == 'matmul' else format)
+        testing.assert_array_equal(c.toarray(), expected.astype(dtype))
+
+    @pytest.mark.parametrize('format', ['csr', 'csc'])
+    @pytest.mark.parametrize('index_dtype', [numpy.int32, numpy.int64])
     @pytest.mark.parametrize('dtypes', [
         (numpy.bool_, numpy.bool_),
         pytest.param((numpy.uint8, numpy.uint8), marks=_integer_data_xfail),
@@ -318,11 +346,7 @@ class TestSparseArithmeticDtypes:
         pytest.param((numpy.uint64, numpy.uint64), marks=_integer_data_xfail),
         pytest.param((numpy.uint64, numpy.int64), marks=_integer_data_xfail),
     ])
-    @pytest.mark.parametrize('operation', [
-        pytest.param('add', marks=_integer_data_xfail),
-        pytest.param('subtract', marks=_integer_data_xfail),
-        'matmul',
-    ])
+    @pytest.mark.parametrize('operation', ['add', 'subtract', 'matmul'])
     @testing.numpy_cupy_array_equal(sp_name='sp')
     def test_operators(self, format, index_dtype, dtypes, operation, xp, sp):
         constructor = getattr(sp, format + '_matrix')
@@ -345,8 +369,7 @@ class TestSparseArithmeticDtypes:
     @pytest.mark.parametrize('format', ['csr', 'csc'])
     @pytest.mark.parametrize('index_dtype, nonempty', [
         (numpy.int32, False),
-        # This case needs index narrowing from the same follow-up stack.
-        pytest.param(numpy.int32, True, marks=_integer_data_xfail),
+        (numpy.int32, True),
         (numpy.int64, False),
         (numpy.int64, True),
     ])
@@ -474,10 +497,13 @@ class TestInt64Arithmetic:
             c.data, numpy.array([alpha, beta], dtype=dtype))
 
     @pytest.mark.parametrize('api', ['csrgeam2', 'spgeam', 'spgemm'])
-    @pytest.mark.parametrize('dtype', [numpy.bool_, numpy.uint8, numpy.int64])
+    @pytest.mark.parametrize('dtype', [
+        numpy.bool_, numpy.uint8, numpy.int64, numpy.float16])
     @pytest.mark.parametrize('index_dtype', [numpy.int32, numpy.int64])
     def test_direct_calls_reject_non_float_data(self, api, dtype, index_dtype):
-        a = sparse.csr_matrix(cupy.array([[1.0]])).astype(dtype)
+        a = sparse.csr_matrix(cupy.array([[1.0]]))
+        # Exercise the low-level API guard independently of astype's gate.
+        a.data = a.data.astype(dtype)
         a.indices = a.indices.astype(index_dtype)
         a.indptr = a.indptr.astype(index_dtype)
         with pytest.raises(TypeError, match='supports only'):

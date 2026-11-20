@@ -404,6 +404,8 @@ ml_dtypes:
     spec: null
   "0.5":
     spec: "==0.5.*"
+  "0.7":
+    spec: "==0.7.*"
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
 mpi4py:

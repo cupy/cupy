@@ -226,10 +226,7 @@ class _coo_base(sparse_data._data_matrix):
         else:
             dtype = numpy.dtype(dtype)
 
-        if not _sputils.is_sparse_data_dtype(dtype):
-            raise ValueError(
-                'Only bool, float32, float64, complex64 and complex128'
-                ' are supported')
+        _sputils.check_data_dtype(dtype)
 
         data = data.astype(dtype, copy=copy)
         # Choose index dtype: int32 when values fit, int64 when they don't.
@@ -436,11 +433,8 @@ class _coo_base(sparse_data._data_matrix):
             m, n = self.shape
             mask = ((self.row == _normalize_index(key[0], m, 'row'))
                     & (self.col == _normalize_index(key[1], n, 'column')))
-        # Sum the stored values at the coordinate (duplicates included,
-        # like scipy); absent entries contribute nothing.  ``sum`` upcasts
-        # bool to int, so restore the bool dtype to match the CSR path.
-        s = self.data[mask].sum()
-        return s.astype(self.dtype) if self.dtype.kind == 'b' else s
+        # Sum duplicates in the storage dtype to preserve integer wrapping.
+        return self.data[mask].sum(dtype=self.dtype)
 
     def diagonal(self, k=0):
         """Returns the k-th diagonal of the matrix.
@@ -727,10 +721,10 @@ class _coo_base(sparse_data._data_matrix):
             idx_dtype = self.row.dtype
             index = cupy.cumsum(diff, dtype=idx_dtype)
             size = int(index[-1]) + 1  # synchronize!
-            data = cupy.zeros(size, dtype=self.data.dtype)
             row = cupy.empty(size, dtype=idx_dtype)
             col = cupy.empty(size, dtype=idx_dtype)
             if self.data.dtype.kind == 'b':
+                data = cupy.zeros(size, dtype=self.data.dtype)
                 cupy.ElementwiseKernel(
                     'T src_data, I src_row, I src_col, I index',
                     'raw T data, raw I row, raw I col',
@@ -741,7 +735,9 @@ class _coo_base(sparse_data._data_matrix):
                     ''',
                     'cupyx_scipy_sparse_coo_sum_duplicates_assign'
                 )(src_data, src_row, src_col, index, data, row, col)
-            elif self.data.dtype.kind == 'f':
+            elif (self.data.dtype.kind == 'f'
+                  and self.data.dtype.itemsize >= 4):
+                data = cupy.zeros(size, dtype=self.data.dtype)
                 cupy.ElementwiseKernel(
                     'T src_data, I src_row, I src_col, I index',
                     'raw T data, raw I row, raw I col',
@@ -753,6 +749,7 @@ class _coo_base(sparse_data._data_matrix):
                     'cupyx_scipy_sparse_coo_sum_duplicates_assign'
                 )(src_data, src_row, src_col, index, data, row, col)
             elif self.data.dtype.kind == 'c':
+                data = cupy.zeros(size, dtype=self.data.dtype)
                 cupy.ElementwiseKernel(
                     'T src_real, T src_imag, I src_row, I src_col, '
                     'I index',
@@ -767,8 +764,15 @@ class _coo_base(sparse_data._data_matrix):
                 )(src_data.real, src_data.imag, src_row, src_col, index,
                   data.real, data.imag, row, col)
             else:
-                raise NotImplementedError(
-                    'sum_duplicates does not support this data dtype yet')
+                # Accumulate unsupported atomic dtypes in a wider type, then
+                # cast back. Duplicate coordinates share a segment, so
+                # coordinate stores agree.
+                acc_dtype = _sputils.add_at_accumulator_dtype(self.data.dtype)
+                acc = cupy.zeros(size, dtype=acc_dtype)
+                cupy.add.at(acc, index, src_data.astype(acc_dtype, copy=False))
+                data = acc.astype(self.data.dtype, copy=False)
+                row[index] = src_row
+                col[index] = src_col
 
         self.data = data
         self.row = row

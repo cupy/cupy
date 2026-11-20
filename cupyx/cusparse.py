@@ -14,6 +14,8 @@ from cupy.cuda import device as _device
 from cupy.cuda import stream as _stream
 from cupy import _util
 import cupyx.scipy.sparse
+from cupyx.scipy.sparse import _csr
+from cupyx.scipy.sparse import _sputils
 
 
 def _is_csr_type(x):
@@ -1714,12 +1716,13 @@ class BaseDescriptor:
 class SpMatDescriptor(BaseDescriptor):
 
     @classmethod
-    def create(cls, a):
+    def create(cls, a, is_half_allowed=False):
         if not cupyx.scipy.sparse.issparse(a):
             raise TypeError('expected sparse matrix')
         rows, cols = a.shape
         idx_base = _cusparse.CUSPARSE_INDEX_BASE_ZERO
-        cuda_dtype = _dtype.to_cuda_dtype(a.dtype)
+        cuda_dtype = _dtype.to_cuda_dtype(
+            a.dtype, is_half_allowed=is_half_allowed)
         if a.format == 'csr':
             desc = _cusparse.createCsr(
                 rows, cols, a.nnz, a.indptr.data.ptr, a.indices.data.ptr,
@@ -1773,8 +1776,9 @@ class SpVecDescriptor(BaseDescriptor):
 class DnVecDescriptor(BaseDescriptor):
 
     @classmethod
-    def create(cls, x):
-        cuda_dtype = _dtype.to_cuda_dtype(x.dtype)
+    def create(cls, x, is_half_allowed=False):
+        cuda_dtype = _dtype.to_cuda_dtype(
+            x.dtype, is_half_allowed=is_half_allowed)
         desc = _cusparse.createDnVec(x.size, x.data.ptr, cuda_dtype)
         get = _cusparse.dnVecGet
         destroy = _cusparse.destroyDnVec
@@ -1784,14 +1788,15 @@ class DnVecDescriptor(BaseDescriptor):
 class DnMatDescriptor(BaseDescriptor):
 
     @classmethod
-    def create(cls, a):
+    def create(cls, a, is_half_allowed=False):
         if a.ndim != 2:
             raise ValueError('expected 2-D matrix')
         if not a.flags.f_contiguous:
             raise ValueError('expected F-contiguous array')
         rows, cols = a.shape
         ld = rows
-        cuda_dtype = _dtype.to_cuda_dtype(a.dtype)
+        cuda_dtype = _dtype.to_cuda_dtype(
+            a.dtype, is_half_allowed=is_half_allowed)
         desc = _cusparse.createDnMat(rows, cols, ld, a.data.ptr, cuda_dtype,
                                      _cusparse.CUSPARSE_ORDER_COL)
         get = _cusparse.dnMatGet
@@ -1846,15 +1851,22 @@ def spmv(a, x, y=None, alpha=1, beta=0, transa=False):
         y.fill(0)
         return y
 
-    desc_a = SpMatDescriptor.create(a)
-    desc_x = DnVecDescriptor.create(x)
-    desc_y = DnVecDescriptor.create(y)
+    desc_a = SpMatDescriptor.create(a, is_half_allowed=True)
+    desc_x = DnVecDescriptor.create(x, is_half_allowed=True)
+
+    # Keep float16 inputs; accumulate into a float32 output.
+    cuda_dtype = _dtype.to_cuda_dtype(a.dtype, is_half_allowed=True)
+    if cuda_dtype == _runtime.CUDA_R_16F:
+        cuda_dtype = _runtime.CUDA_R_32F
+        y_compute = y.astype(_cupy.float32)
+    else:
+        y_compute = y
+    desc_y = DnVecDescriptor.create(y_compute)
+    alpha = _numpy.array(alpha, y_compute.dtype).ctypes
+    beta = _numpy.array(beta, y_compute.dtype).ctypes
 
     handle = _device.get_cusparse_handle()
     op_a = _transpose_flag(transa)
-    alpha = _numpy.array(alpha, a.dtype).ctypes
-    beta = _numpy.array(beta, a.dtype).ctypes
-    cuda_dtype = _dtype.to_cuda_dtype(a.dtype)
     alg = _cusparse.CUSPARSE_MV_ALG_DEFAULT
     buff_size = _cusparse.spMV_bufferSize(handle, op_a, alpha.data,
                                           desc_a.desc, desc_x.desc, beta.data,
@@ -1863,6 +1875,8 @@ def spmv(a, x, y=None, alpha=1, beta=0, transa=False):
     _cusparse.spMV(handle, op_a, alpha.data, desc_a.desc, desc_x.desc,
                    beta.data, desc_y.desc, cuda_dtype, alg, buff.data.ptr)
 
+    if y_compute is not y:
+        y[...] = y_compute
     return y
 
 
@@ -1944,16 +1958,23 @@ def spmm(a, b, c=None, alpha=1, beta=0, transa=False, transb=False):
                  transa=transa, transb=transb)
         return c
 
-    desc_a = SpMatDescriptor.create(a)
-    desc_b = DnMatDescriptor.create(b)
-    desc_c = DnMatDescriptor.create(c)
+    desc_a = SpMatDescriptor.create(a, is_half_allowed=True)
+    desc_b = DnMatDescriptor.create(b, is_half_allowed=True)
+
+    # Keep float16 inputs; accumulate into a float32 output.
+    cuda_dtype = _dtype.to_cuda_dtype(a.dtype, is_half_allowed=True)
+    if cuda_dtype == _runtime.CUDA_R_16F:
+        cuda_dtype = _runtime.CUDA_R_32F
+        c_compute = c.astype(_cupy.float32)
+    else:
+        c_compute = c
+    desc_c = DnMatDescriptor.create(c_compute)
+    alpha = _numpy.array(alpha, c_compute.dtype).ctypes
+    beta = _numpy.array(beta, c_compute.dtype).ctypes
 
     handle = _device.get_cusparse_handle()
     op_a = _transpose_flag(transa)
     op_b = _transpose_flag(transb)
-    alpha = _numpy.array(alpha, a.dtype).ctypes
-    beta = _numpy.array(beta, a.dtype).ctypes
-    cuda_dtype = _dtype.to_cuda_dtype(a.dtype)
     alg = _cusparse.CUSPARSE_MM_ALG_DEFAULT
     buff_size = _cusparse.spMM_bufferSize(handle, op_a, op_b, alpha.data,
                                           desc_a.desc, desc_b.desc, beta.data,
@@ -1963,6 +1984,8 @@ def spmm(a, b, c=None, alpha=1, beta=0, transa=False, transb=False):
                                desc_b.desc, beta.data, desc_c.desc,
                                cuda_dtype, alg, buff.data.ptr)
 
+    if c_compute is not c:
+        c[...] = c_compute
     return c
 
 
@@ -2218,7 +2241,16 @@ def denseToSparse(x, format='csr'):
     if x.ndim != 2:
         raise ValueError('expected 2-D matrix')
     if _needs_cupy_fallback(x.dtype):
-        raise ValueError('unsupported dtype')
+        # cuSPARSE dense-to-sparse conversion only supports native float
+        # dtypes.
+        y = _csr.dense2csr(x)
+        if format == 'csr':
+            return y
+        elif format == 'csc':
+            return y.tocsc()
+        elif format == 'coo':
+            return y.tocoo()
+        raise TypeError('unsupported format (actual: {})'.format(format))
     x = _cupy.asfortranarray(x)
     desc_x = DnMatDescriptor.create(x)
     if format == 'csr':
@@ -2655,7 +2687,64 @@ def _cupy_spgemm_int64(a, b, alpha):
     coo = cupyx.scipy.sparse.coo_matrix._from_parts(
         c_vals, c_rows, c_cols, shape=(m, n))
     coo.sum_duplicates()
-    return coo.tocsr()
+    c = coo.tocsr()
+    # Restore the input index width when the result fits.
+    max_idx = _numpy.iinfo(out_idx_dtype).max
+    if c.indptr.dtype != out_idx_dtype and c.nnz <= max_idx:
+        c = _with_indices_dtype(c, out_idx_dtype)
+    return c
+
+
+# Scratch budget for the column blocking in ``_cupy_csr_dense_matmul``.
+# A fixed guess beats querying the device: ``memGetInfo`` does not account for
+# CuPy's memory pool, and a stable block size lets the pool reuse the
+# allocation across calls.  The best value is GPU dependent -- a large-L2 card
+# prefers ~64 MiB (cache residency) while a small-L2 one keeps improving past
+# 256 MiB -- so this is a compromise; either extreme costs ~1.6x on the other.
+_CSR_DENSE_MATMUL_WORK_BYTES = 128 * 1024 * 1024
+
+
+def _cupy_csr_dense_matmul(a, x):
+    """Multiply CSR by a dense vector or matrix using value-dtype fallbacks.
+
+    Widen 16-bit floats for cuSPARSE. Accumulate integers exactly with
+    scatter-add, then cast back to preserve wrapping and bool semantics.
+    """
+    if a.shape[1] != x.shape[0]:
+        raise ValueError('dimension mismatch')
+    res_dtype = _numpy.promote_types(a.dtype, x.dtype)
+    if _sputils.is_16bit_float(res_dtype):
+        return (a.astype(_cupy.float32)
+                @ x.astype(_cupy.float32)).astype(res_dtype)
+    x2 = x[:, None] if x.ndim == 1 else x
+    m, n = a.shape[0], x2.shape[1]
+    nnz = a.nnz
+    # Widen before gathering to keep the larger nnz-by-N temporary small.
+    acc_dtype = _sputils.add_at_accumulator_dtype(res_dtype)
+    rows = _indptr_to_coo(a.indptr, nnz=nnz)
+    data_acc = a.data[:, None].astype(acc_dtype, copy=False)
+
+    # Process the dense columns in blocks sized to the scratch budget.  A
+    # single column always goes through, even if it exceeds the budget; the
+    # lower clamp also keeps the loop step non-zero when ``n`` is zero.
+    per_col = max((nnz + m) * acc_dtype.itemsize, 1)
+    block = int(max(1, min(n, _CSR_DENSE_MATMUL_WORK_BYTES // per_col)))
+    x_work = _cupy.empty((nnz, block), dtype=acc_dtype)
+    y_work = _cupy.empty((m, block), dtype=acc_dtype)
+
+    y = _cupy.zeros((m, n), dtype=res_dtype)
+    for j0 in range(0, n, block):
+        j1 = min(j0 + block, n)
+        xb, yb = x_work[:, :j1 - j0], y_work[:, :j1 - j0]
+        # Gather into the work array and scale it in place, so only one
+        # nnz-by-block array is ever live.
+        _cupy.take(x2[:, j0:j1].astype(acc_dtype, copy=False), a.indices,
+                   axis=0, out=xb)
+        xb *= data_acc
+        yb.fill(0)
+        _cupy.add.at(yb, rows, xb)
+        y[:, j0:j1] = yb.astype(res_dtype, copy=False)
+    return y.ravel() if x.ndim == 1 else y
 
 
 def spgemm(a, b, alpha=1):
@@ -2683,6 +2772,9 @@ def spgemm(a, b, alpha=1):
         raise TypeError('spgemm supports only float32, float64, complex64 '
                         'and complex128 data')
 
+    if a.shape[1] != b.shape[0]:
+        raise ValueError('mismatched shape')
+
     # TODO(eriknw): cuSPARSE--remove pure-CuPy fallback when all supported CUDA
     # versions have native int64 SpGEMM.  Native int64 SpGEMM is ~14x
     # faster and within 1.6x of int32 (verified on CUDA 13.0+).
@@ -2691,8 +2783,6 @@ def spgemm(a, b, alpha=1):
     # the CUDA runtime version rather than check_availability().
     # Mixed int32/int64 inputs: upcast to int64, prefer cuSPARSE.
     if a.indices.dtype == _cupy.int64 or b.indices.dtype == _cupy.int64:
-        if a.shape[1] != b.shape[0]:
-            raise ValueError('mismatched shape')
         _native_int64 = (
             not _runtime.is_hip
             and _runtime.runtimeGetVersion() >= 13000
@@ -2715,8 +2805,6 @@ def spgemm(a, b, alpha=1):
         raise ValueError('expected canonical format for a')
     if not b.has_canonical_format:
         raise ValueError('expected canonical format for b')
-    if a.shape[1] != b.shape[0]:
-        raise ValueError('mismatched shape')
 
     m, k = a.shape
     _, n = b.shape
