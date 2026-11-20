@@ -46,6 +46,7 @@ Smoothing Splines
    UnivariateSpline
    InterpolatedUnivariateSpline
    LSQUnivariateSpline
+   make_smoothing_spline
 
 Multivariate interpolation
 --------------------------
