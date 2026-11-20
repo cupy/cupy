@@ -55,9 +55,8 @@ cdef function.Function _create_cub_reduction_function(
 
     cdef str backend = 'nvrtc'
     if runtime._is_hip_environment:
-        # In ROCm, we need to set the include path. This does not work for
-        # hiprtc as of ROCm 3.5.0, so we must use hipcc.
-        options += ('-I' + _rocm_path + '/include', '-O2')
+        # compile_with_cache supplies the ROCm include path.
+        options += ('-O2',)
         backend = 'nvcc'  # this is confusing...
 
     # TODO(leofang): try splitting the for-loop into full tiles and partial
@@ -258,7 +257,6 @@ def _SimpleCubReductionKernel_get_cached_function(
 
 
 cdef str _cub_path = _environment.get_cub_path()
-cdef str _rocm_path = _environment.get_rocm_path()
 cdef str _hipcc_path = _environment.get_hipcc_path()
 cdef str _cub_header = None
 
