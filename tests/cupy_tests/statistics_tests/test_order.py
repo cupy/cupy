@@ -61,6 +61,33 @@ def test_percentile_kernel_accepts_large_dimensions():
     assert out[0] == 1
 
 
+@testing.slow
+@pytest.mark.thread_unsafe(reason='Allocation too large.')
+@pytest.mark.parametrize('size', [2**31, 2**31 + 1])
+@pytest.mark.parametrize('method',
+                         ['lower', 'higher', 'nearest', 'inverted_cdf'])
+@pytest.mark.parametrize('func, q', [
+    ('quantile', [0., 0.5, 1.]),
+    ('percentile', [0., 50., 100.]),
+])
+def test_quantile_large_discrete_indices(size, method, func, q):
+    a = None
+    try:
+        # Check the int32 boundary for the last index and the sample count
+        # used by inverted_cdf. A uint8 input keeps the allocation to ~2 GiB.
+        a = cupy.zeros(size, dtype=cupy.uint8)
+        a[-1] = 1
+        result = getattr(cupy, func)(
+            a, q, method=method, overwrite_input=True)
+        testing.assert_array_equal(result, [0, 0, 1])
+        assert result.dtype == a.dtype
+    except MemoryError:
+        pytest.skip('Not enough GPU memory for the large array')
+    finally:
+        del a
+        cupy.get_default_memory_pool().free_all_blocks()
+
+
 @testing.with_requires('numpy>=1.22.0rc1')
 class TestQuantile:
 
