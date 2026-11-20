@@ -76,6 +76,88 @@ matmul = _GUFunc(
     """
 )
 
+# thrust's conj() only covers complex types, so a pass-through overload is
+# needed for the kernel below to compile for real ones as well.
+_vecdot_preamble = '''
+template <typename T>
+__device__ inline T _vecdot_conj(T x) { return x; }
+
+template <typename T>
+__device__ inline complex<T> _vecdot_conj(complex<T> x) { return conj(x); }
+'''
+
+_vecdot_mul_sum = _core.ReductionKernel(
+    'S x, T y', 'U out',
+    '_vecdot_conj(static_cast<U>(x)) * static_cast<U>(y)',
+    'a + b', 'out = a', '0', 'cupy_vecdot_mul_sum',
+    preamble=_vecdot_preamble,
+)
+
+
+def _vecdot_core(a, b, out=None):
+    # Deferred to avoid import cycle with cupy.cublas (which then imports
+    # cupy.linalg)
+    from cupy import cublas
+
+    if a.ndim == 1 and b.ndim == 1:
+        if (a.dtype == b.dtype and a.dtype.char in 'fdFD'
+                and a.flags.c_contiguous and b.flags.c_contiguous):
+            # cuBLAS ?dot/?dotc conjugates x1 on the fly
+            return cublas.dotc(a, b, out=out)
+        # Fallback for float16, ints, bool, mixed dtypes, non-contiguous.
+        if a.dtype.kind == 'c':
+            a = a.conj()
+        return _core.tensordot_core(a, b, out, 1, 1, a.size, ())
+
+    # The kernel's output type drives the accumulation, so accumulate into a
+    # buffer of the promoted dtype and cast once at the end whenever `out`
+    # asks for something else (e.g. complex inputs with casting='unsafe',
+    # which would not even compile as an accumulator type).
+    dtype = cupy.promote_types(a.dtype, b.dtype)
+    if out is None or out.dtype != dtype:
+        res = cupy.empty(cupy.broadcast_shapes(a.shape, b.shape)[:-1], dtype)
+    else:
+        res = out
+    _vecdot_mul_sum(a, b, res, axis=-1)
+    if out is not None and res is not out:
+        _core.elementwise_copy(res, out)
+        return out
+    return res
+
+
+vecdot = _GUFunc(
+    _vecdot_core,
+    '(n),(n)->()',
+    supports_batched=True,
+    supports_out=True,
+    name='vecdot',
+    doc="""vecdot(x1, x2, /, out=None, \\*\\*kwargs)
+
+    Vector dot product of two arrays.
+
+    Let :math:`\\mathbf{a}` be a vector in ``x1`` and :math:`\\mathbf{b}`
+    be a corresponding vector in ``x2``. The dot product is defined as:
+
+    .. math::
+       \\mathbf{a} \\cdot \\mathbf{b} = \\sum_{i=0}^{n-1} \\overline{a_i}b_i
+
+    where the sum is over the last dimension (unless ``axis`` is specified)
+    and where :math:`\\overline{a_i}` denotes the complex conjugate if
+    :math:`a_i` is complex and the identity otherwise.
+
+    Args:
+        x1 (cupy.ndarray): The first argument. It is conjugated if complex.
+        x2 (cupy.ndarray): The second argument.
+        out (cupy.ndarray, optional): Output array.
+        \\*\\*kwargs: ufunc keyword arguments.
+
+    Returns:
+        cupy.ndarray: The vector dot product of the inputs.
+
+    .. seealso:: :func:`numpy.vecdot`
+    """
+)
+
 
 def dot(a, b, out=None):
     """Returns a dot product of two arrays.
@@ -530,3 +612,23 @@ def matrix_transpose(a):
     if ndim < 2:
         raise ValueError('Matrix dimension is less than 2')
     return a.swapaxes(ndim-1, ndim-2)
+
+
+def linalg_vecdot(x1, x2, /, *, axis=-1):
+    """Computes the vector dot product.
+
+    This function is restricted to arguments compatible with the Array API,
+    contrary to :func:`cupy.vecdot`.
+
+    Args:
+        x1 (cupy.ndarray): The first argument. It is conjugated if complex.
+        x2 (cupy.ndarray): The second argument.
+        axis (int): Axis over which to compute the dot product.
+            Default: ``-1``.
+
+    Returns:
+        cupy.ndarray: The vector dot product of the inputs.
+
+    .. seealso:: :func:`numpy.linalg.vecdot`
+    """
+    return vecdot(x1, x2, axis=axis)
