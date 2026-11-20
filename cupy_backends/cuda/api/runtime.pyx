@@ -942,7 +942,7 @@ cpdef streamSynchronize(intptr_t stream):
 
 
 cdef void _streamCallbackFunc(driver.Stream hStream, int status,
-                              void* func_arg) nogil noexcept:
+                              void* func_arg) noexcept nogil:
     with gil:
         obj = <object>func_arg
         cpython.Py_DECREF(obj)
@@ -950,7 +950,7 @@ cdef void _streamCallbackFunc(driver.Stream hStream, int status,
         func(<intptr_t>hStream, status, arg)
 
 
-cdef void _HostFnFunc(void* func_arg) nogil noexcept:
+cdef void _HostFnFunc(void* func_arg) noexcept nogil:
     with gil:
         obj = <object>func_arg
         cpython.Py_DECREF(obj)
@@ -958,7 +958,7 @@ cdef void _HostFnFunc(void* func_arg) nogil noexcept:
         func(arg)
 
 
-cdef void _HostFnFuncUnmanaged(void* func_arg) nogil noexcept:
+cdef void _HostFnFuncUnmanaged(void* func_arg) noexcept nogil:
     with gil:
         obj = <object>func_arg
         func, arg = obj
