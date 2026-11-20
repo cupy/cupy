@@ -379,58 +379,113 @@ struct select_cmp<thrust::tuple<size_t, thrust_bfloat16>, Descending> {
  */
 
 
-// Comparator for a 1-D sort. Ascending floats use the backend's less to allow radix sort, which
-// already puts NaN last (radix with greater would put it first). This only holds when
-// thrust sorts the values themselves; a comparison sort needs the NaN aware select_cmp.
-template <typename T, bool Descending>
-using direct_cmp_t = std::conditional_t<
-    !Descending && std::is_floating_point<T>::value,
-    cupy_thrust_cmp::less<T>,
-    typename select_cmp<T, Descending>::type>;
-
 // Comparator for a segmented (multi-dimensional) sort, which zips a row index onto each value.
 template <typename T, bool Descending>
 using segment_cmp_t = typename select_cmp<thrust::tuple<size_t, T>, Descending>::type;
 
 
 #if !defined(CUPY_USE_HIP)
-template <bool Descending>
-struct bfloat16_sort_key {
+template <typename T>
+struct float_radix_traits {
+    using key_type = void;
+};
+
+#ifdef ENABLE_HALF
+template <>
+struct float_radix_traits<__half> {
+    using key_type = unsigned short;
+    static constexpr key_type infinity = 0x7c00;
+
     __device__ __forceinline__
-    unsigned short operator()(const thrust_bfloat16& value) const {
-        unsigned short bits = __bfloat16_as_ushort(value);
-        unsigned short magnitude = bits & 0x7fff;
-        // All NaNs compare equal and sort last in either direction.
-        if (magnitude > 0x7f80) {
-            return 0xffff;
-        }
-        // Both zeros compare equal. Sort keys only: retain original value bits.
-        unsigned short key = magnitude == 0 ? 0x8000 :
-                             (bits & 0x8000) ? static_cast<unsigned short>(~bits) :
-                                               bits ^ 0x8000;
-        return Descending ? static_cast<unsigned short>(~key) : key;
+    static key_type bits(__half value) {
+        return __half_as_ushort(value);
+    }
+};
+#endif
+
+template <>
+struct float_radix_traits<thrust_bfloat16> {
+    using key_type = unsigned short;
+    static constexpr key_type infinity = 0x7f80;
+
+    __device__ __forceinline__
+    static key_type bits(thrust_bfloat16 value) {
+        return __bfloat16_as_ushort(value);
     }
 };
 
-// Generate radix-sortable keys while retaining stable NaN/zero ordering and
-// original bf16 payloads. Values are either the original elements or indices.
-template <bool Descending, typename ValuesIterator>
-void bfloat16_radix_sort(thrust::device_ptr<thrust_bfloat16> data_first,
-                        ValuesIterator values_first, ptrdiff_t size,
-                        cudaStream_t stream, cupy_allocator& alloc) {
+template <>
+struct float_radix_traits<float> {
+    using key_type = unsigned int;
+    static constexpr key_type infinity = 0x7f800000;
+
+    __device__ __forceinline__
+    static key_type bits(float value) {
+        return __float_as_uint(value);
+    }
+};
+
+template <>
+struct float_radix_traits<double> {
+    using key_type = unsigned long long;
+    static constexpr key_type infinity = 0x7ff0000000000000ULL;
+
+    __device__ __forceinline__
+    static key_type bits(double value) {
+        return static_cast<key_type>(__double_as_longlong(value));
+    }
+};
+
+template <typename T>
+constexpr bool use_float_radix_sort =
+    !std::is_void_v<typename float_radix_traits<T>::key_type>;
+
+template <typename T, bool Descending>
+struct float_sort_key {
+    using traits = float_radix_traits<T>;
+    using key_type = typename traits::key_type;
+
+    __device__ __forceinline__
+    key_type operator()(const T& value) const {
+        constexpr key_type max_key = static_cast<key_type>(-1);
+        constexpr key_type magnitude_mask = max_key >> 1;
+        constexpr key_type sign_bit = magnitude_mask + 1;
+        key_type bits = traits::bits(value);
+        key_type magnitude = bits & magnitude_mask;
+        // All NaNs compare equal and sort last in either direction.
+        if (magnitude > traits::infinity) {
+            return max_key;
+        }
+        // Both zeros compare equal. Sort keys only: retain original value bits.
+        key_type key = sign_bit;
+        if (magnitude != 0) {
+            // Flip all bits for negatives and only the sign bit for positives.
+            key = bits ^ ((bits & sign_bit) ? max_key : sign_bit);
+        }
+        return Descending ? key ^ max_key : key;
+    }
+};
+
+// Sort unsigned keys while preserving the original floating-point bit patterns.
+// Values are either the original elements or indices.
+template <bool Descending, typename T, typename ValuesIterator>
+void float_radix_sort(thrust::device_ptr<T> data_first,
+                      ValuesIterator values_first, ptrdiff_t size,
+                      cudaStream_t stream, cupy_allocator& alloc) {
     if (size <= 1) {
         return;
     }
-    size_t bytes = static_cast<size_t>(size) * sizeof(unsigned short);
+    using key_type = typename float_sort_key<T, Descending>::key_type;
+    size_t bytes = static_cast<size_t>(size) * sizeof(key_type);
     auto release = [&](char* ptr) { alloc.deallocate(ptr, bytes); };
     std::unique_ptr<char, decltype(release)> storage(alloc.allocate(bytes), release);
     auto keys_first = thrust::device_pointer_cast(
-        reinterpret_cast<unsigned short*>(storage.get()));
+        reinterpret_cast<key_type*>(storage.get()));
     auto policy = cuda::par_nosync(alloc).on(stream);
     thrust::transform(policy, data_first, data_first + size, keys_first,
-                      bfloat16_sort_key<Descending>{});
+                      float_sort_key<T, Descending>{});
     thrust::stable_sort_by_key(policy, keys_first, keys_first + size,
-                               values_first, cupy_thrust_cmp::less<unsigned short>{});
+                               values_first, cupy_thrust_cmp::less<key_type>{});
 }
 #endif
 
@@ -463,14 +518,14 @@ struct _sort {
 
         if (ndim == 1) {
             #if !defined(CUPY_USE_HIP)
-            if constexpr (std::is_same<T, thrust_bfloat16>::value) {
-                return bfloat16_radix_sort<Descending>(
+            if constexpr (use_float_radix_sort<T>) {
+                return float_radix_sort<Descending>(
                     dp_data_first, dp_data_first, size, stream_, alloc);
             } else
             #endif
             {
                 stable_sort(cuda::par_nosync(alloc).on(stream_), dp_data_first, dp_data_last,
-                            direct_cmp_t<T, Descending>{});
+                            typename select_cmp<T, Descending>::type{});
             }
         } else {
             // Generate key indices.
@@ -592,8 +647,8 @@ struct _argsort {
         if (ndim == 1) {
             // Sort the index sequence by data.
             #if !defined(CUPY_USE_HIP)
-            if constexpr (std::is_same<T, thrust_bfloat16>::value) {
-                return bfloat16_radix_sort<Descending>(
+            if constexpr (use_float_radix_sort<T>) {
+                return float_radix_sort<Descending>(
                     dp_data_first, dp_idx_first, size, stream_, alloc);
             } else
             #endif
@@ -602,7 +657,7 @@ struct _argsort {
                                    dp_data_first,
                                    dp_data_last,
                                    dp_idx_first,
-                                   direct_cmp_t<T, Descending>{});
+                                   typename select_cmp<T, Descending>::type{});
             }
         } else {
             // Generate key indices.
