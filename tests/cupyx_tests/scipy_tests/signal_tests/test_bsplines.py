@@ -196,3 +196,13 @@ class TestGaussSpline:
     def test_gauss_spline_list(self, xp, scp):
         knots = [-1.0, 0.0, -1.0]
         return scp.signal.gauss_spline(knots, 3)
+
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(
+        scipy_name='scp', rtol={np.float32: 1e-5, np.complex64: 1e-5,
+                                'default': 1e-7})
+    def test_gauss_spline_dtypes(self, xp, scp, dtype):
+        x = xp.linspace(-3.0, 3.0, 31)
+        if dtype in (np.complex64, np.complex128):
+            x = x + 0.5j
+        return scp.signal.gauss_spline(x.astype(dtype), 3)

@@ -336,13 +336,13 @@ __device__ float k0f(float x){
 
     float y, z;
 
-    if (x <= 2.0) {
-        y = x * x - 2.0;
-        y = chbevl(y, k0_AF, 10) - logf(0.5 * x) * cyl_bessel_i0f(x);
+    if (x <= 2.0f) {
+        y = x * x - 2.0f;
+        y = chbevl(y, k0_AF, 10) - logf(0.5f * x) * cyl_bessel_i0f(x);
         return y;
     }
 
-    z = 8.0 / x - 2.0;
+    z = 8.0f / x - 2.0f;
     y = chbevl(z, k0_BF, 25) / sqrtf(x);
     return y * expf(-x);
 }
@@ -379,14 +379,14 @@ __device__ float k1f(float x){
     float y;
     float i1;
 
-    if (x <= 2.0) {
-        y = x * x - 2.0;
+    if (x <= 2.0f) {
+        y = x * x - 2.0f;
         i1 = cyl_bessel_i1f(x);
-        y = logf(0.5 * x) * i1 + chbevl(y, k1_AF, 11) / x;
+        y = logf(0.5f * x) * i1 + chbevl(y, k1_AF, 11) / x;
         return y;
     }
 
-    float z = 8.0 / x - 2.0;
+    float z = 8.0f / x - 2.0f;
     return (expf(-x) * chbevl(z, k1_BF, 25) / sqrtf(x));
 }
 """

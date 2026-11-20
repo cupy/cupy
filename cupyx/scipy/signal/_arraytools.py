@@ -7,6 +7,15 @@ import cupy
 from cupy.lib.stride_tricks import as_strided as _as_strided  # NOQA
 
 
+# Kernel preamble: ``real_type<T>::type`` is the real type of matching
+# precision, so constants written as ``R(2 * M_PI)`` stay in single precision
+# for float32/complex64 kernels.
+_real_type_preamble = '''
+template <typename T> struct real_type { using type = T; };
+template <typename T> struct real_type<complex<T>> { using type = T; };
+'''
+
+
 def axis_slice(a, start=None, stop=None, step=None, axis=-1):
     """Take a slice along axis 'axis' from 'a'.
 

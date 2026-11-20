@@ -10,7 +10,7 @@ from cupyx.scipy.special._exp1 import math_constants_and_eul
 
 expi_definition = """
 template < typename T >
-__device__ double expi(T x) {
+__device__ T expi(T x) {
     T ei = 1;
     T r = 1;
 
@@ -18,14 +18,14 @@ __device__ double expi(T x) {
         return -CUDART_INF;
     } else if (x < 0) {
         return -exp1(-x);
-    } else if (x <= 40.0) {
+    } else if (x <= T(40)) {
         for (int k = 1; k <= 100; k++) {
             int den = (k + 1) * (k + 1);
             r = r * k * x / den;
             ei += r;
         }
 
-        return EUL + x * ei + log(x);
+        return T(EUL) + x * ei + log(x);
     }
 
     for (int k = 1; k <= 40; k++) {
