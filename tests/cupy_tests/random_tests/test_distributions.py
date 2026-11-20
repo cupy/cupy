@@ -126,6 +126,10 @@ class TestDistributionsExponential(RandomDistributionsTestCase):
         self.check_distribution('exponential',
                                 {'scale': scale}, dtype)
 
+    @cupy.testing.for_float_dtypes('dtype', no_float16=True)
+    def test_exponential_default_scale(self, dtype):
+        self.check_distribution('exponential', {}, dtype)
+
 
 class TestDistributionsExponentialError(RandomDistributionsTestCase):
 
