@@ -92,6 +92,151 @@ def _ravel_and_check_weights(a, weights):
     return a, weights
 
 
+def _unsigned_subtract(a, b):
+    """
+    Subtract two values where a >= b, and produce an unsigned result
+
+    This is needed when finding the difference between the upper and lower
+    bound of an int16 histogram
+    """
+    # coerce to a single type
+    signed_to_unsigned = {
+        numpy.byte: numpy.ubyte,
+        numpy.short: numpy.ushort,
+        numpy.intc: numpy.uintc,
+        numpy.int_: numpy.uint,
+        numpy.longlong: numpy.ulonglong,
+    }
+    dt = numpy.result_type(a, b)
+    try:
+        unsigned_dt = signed_to_unsigned[dt.type]
+    except KeyError:
+        return cupy.subtract(a, b, dtype=dt)
+    else:
+        # we know the inputs are integers, and we are deliberately casting
+        # signed to unsigned. The input may be negative python integers so
+        # ensure we pass in arrays with the initial dtype (related to NEP 50).
+        return cupy.subtract(
+            cupy.asarray(a, dtype=dt), cupy.asarray(b, dtype=dt),
+            casting='unsafe', dtype=unsigned_dt)
+
+
+def _ptp(x):
+    """
+    Peak-to-peak value of x.
+
+    This implementation avoids the problem of signed integer arrays having a
+    peak-to-peak value that cannot be represented with the array's data type.
+    This function returns an unsigned value for signed integer arrays.
+    """
+    return _unsigned_subtract(x.max(), x.min())
+
+
+def _hist_bin_sqrt(x, range):
+    """Square root histogram bin estimator."""
+    return _ptp(x) / numpy.sqrt(x.size)
+
+
+def _hist_bin_sturges(x, range):
+    """Sturges histogram bin estimator."""
+    return _ptp(x) / (numpy.log2(x.size) + 1.0)
+
+
+def _hist_bin_rice(x, range):
+    """Rice histogram bin estimator."""
+    return _ptp(x) / (2.0 * x.size ** (1.0 / 3))
+
+
+def _hist_bin_scott(x, range):
+    """Scott histogram bin estimator."""
+    return (24.0 * numpy.pi**0.5 / x.size)**(1.0 / 3.0) * x.std()
+
+
+def _hist_bin_stone(x, range):
+    """
+    Histogram bin estimator based on minimizing the estimated integrated
+    squared error (ISE).
+
+    The number of bins is chosen by minimizing the estimated ISE against the
+    unknown true distribution. The ISE is estimated using cross-validation and
+    can be regarded as a generalization of Scott's rule.
+    """
+    n = x.size
+    ptp_x = _ptp(x)
+    if n <= 1 or ptp_x == 0:
+        return 0
+
+    def jhat(nbins):
+        hh = ptp_x / nbins
+        p_k = cupy.histogram(x, bins=nbins, range=range)[0] / n
+        return (2 - (n + 1) * p_k.dot(p_k)) / hh
+
+    nbins_upper_bound = max(100, int(numpy.sqrt(n)))
+    nbins = min(_range(1, nbins_upper_bound + 1), key=jhat)
+    if nbins == nbins_upper_bound:
+        warnings.warn('The number of bins estimated may be suboptimal.',
+                      RuntimeWarning, stacklevel=3)
+    return ptp_x / nbins
+
+
+def _hist_bin_doane(x, range):
+    """
+    Doane's histogram bin estimator.
+
+    Improved version of Sturges' formula which works better for non-normal
+    data.
+    """
+    if x.size > 2:
+        sg1 = numpy.sqrt(
+            6.0 * (x.size - 2) / ((x.size + 1.0) * (x.size + 3)))
+        sigma = x.std()
+        if sigma > 0.0:
+            # These three operations add up to
+            # g1 = np.mean(((x - np.mean(x)) / sigma)**3)
+            # but use only one temp array instead of three
+            temp = x - x.mean()
+            cupy.true_divide(temp, sigma, temp)
+            cupy.power(temp, 3, temp)
+            g1 = temp.mean()
+            return _ptp(x) / (
+                1.0 + numpy.log2(x.size)
+                + numpy.log2(1.0 + abs(g1) / sg1))
+    return 0.0
+
+
+def _hist_bin_fd(x, range):
+    """The Freedman-Diaconis histogram bin estimator."""
+    iqr = cupy.subtract(*cupy.percentile(x, [75, 25]))
+    return 2.0 * iqr * x.size ** (-1.0 / 3.0)
+
+
+def _hist_bin_auto(x, range):
+    """
+    Histogram bin estimator that uses the minimum width of a relaxed
+    Freedman-Diaconis and Sturges estimators if the FD bin width does not
+    result in a large number of bins.
+    """
+    fd_bw = _hist_bin_fd(x, range)
+    sturges_bw = _hist_bin_sturges(x, range)
+    sqrt_bw = _hist_bin_sqrt(x, range)
+    # heuristic to limit the maximal number of bins
+    fd_bw_corrected = max(fd_bw, sqrt_bw / 2)
+    return min(fd_bw_corrected, sturges_bw)
+
+
+# Private dict initialized at module load time
+_hist_bin_selectors = {
+    'stone': _hist_bin_stone,
+    'auto': _hist_bin_auto,
+    'doane': _hist_bin_doane,
+    'fd': _hist_bin_fd,
+    'rice': _hist_bin_rice,
+    'scott': _hist_bin_scott,
+    'sqrt': _hist_bin_sqrt,
+    'sturges': _hist_bin_sturges,
+}
+
+
 def _get_outer_edges(a, range):
     """
     Determine the outer bin edges to use, from either the data or the range
@@ -125,14 +270,15 @@ def _get_outer_edges(a, range):
     return first_edge, last_edge
 
 
-def _get_bin_edges(a, bins, range):
+def _get_bin_edges(a, bins, range, weights=None):
     """
     Computes the bins used internally by `histogram`.
 
     Args:
         a (ndarray): Ravelled data array
-        bins (int or ndarray): Forwarded argument from `histogram`.
+        bins (int or str or ndarray): Forwarded argument from `histogram`.
         range (None or tuple): Forwarded argument from `histogram`.
+        weights (None or ndarray): Ravelled weights array, or None
 
     Returns:
         bin_edges (ndarray): Array of bin edges
@@ -142,9 +288,43 @@ def _get_bin_edges(a, bins, range):
     bin_edges = None
 
     if isinstance(bins, str):
-        raise NotImplementedError(
-            'only integer and array bins are implemented')
-    elif isinstance(bins, cupy.ndarray) or numpy.ndim(bins) == 1:
+        bin_name = bins
+        # if `bins` is a string for an automatic method,
+        # this will replace it with the number of bins calculated
+        if bin_name not in _hist_bin_selectors:
+            raise ValueError(
+                '{} is not a valid estimator for `bins`'.format(
+                    repr(bin_name)))
+        if weights is not None:
+            raise TypeError(
+                'Automated estimation of the number of bins is not supported '
+                'for weighted data')
+
+        first_edge, last_edge = _get_outer_edges(a, range)
+
+        # truncate the range if needed
+        if range is not None:
+            keep = (a >= first_edge)
+            keep &= (a <= last_edge)
+            if not keep.all():  # synchronize! when CuPy
+                a = a[keep]
+
+        if a.size == 0:
+            n_equal_bins = 1
+        else:
+            # Do not call selectors on empty arrays
+            width = _hist_bin_selectors[bin_name](a, (first_edge, last_edge))
+            if width:
+                if numpy.issubdtype(a.dtype, numpy.integer) and width < 1:
+                    width = 1
+                delta = _unsigned_subtract(last_edge, first_edge)
+                n_equal_bins = int(cupy.ceil(delta / width))
+            else:
+                # Width can be zero for some estimators, e.g. FD when
+                # the IQR of the data is zero.
+                n_equal_bins = 1
+
+    elif numpy.ndim(bins) == 1:
         # TODO(okuta): After #3060 is merged, `if cupy.ndim(bins) == 1:`.
         if isinstance(bins, cupy.ndarray):
             bin_edges = bins
@@ -156,12 +336,17 @@ def _get_bin_edges(a, bins, range):
                 '`bins` must increase monotonically, when an array')
         if isinstance(bin_edges, numpy.ndarray):
             bin_edges = cupy.asarray(bin_edges)
+        return bin_edges
     elif numpy.ndim(bins) == 0:
         try:
             n_equal_bins = operator.index(bins)
         except TypeError:
-            raise TypeError(
-                '`bins` must be an integer, a string, or an array')
+            if isinstance(bins, cupy.ndarray) and bins.dtype.kind in 'bui':
+                # CuPy 0-d arrays do not implement ``__index__``
+                n_equal_bins = int(bins)  # synchronize! when CuPy
+            else:
+                raise TypeError(
+                    '`bins` must be an integer, a string, or an array')
         if n_equal_bins < 1:
             raise ValueError('`bins` must be positive, when an integer')
 
@@ -181,7 +366,88 @@ def _get_bin_edges(a, bins, range):
         bin_edges = cupy.linspace(
             first_edge, last_edge, n_equal_bins + 1,
             endpoint=True, dtype=bin_type)
+        if (bin_edges[:-1] >= bin_edges[1:]).any():  # synchronize!
+            raise ValueError(
+                'Too many bins for data range. Cannot create {} '
+                'finite-sized bins.'.format(n_equal_bins))
     return bin_edges
+
+
+def histogram_bin_edges(x, bins=10, range=None, weights=None):
+    """Calculates only the edges of the bins used by :func:`histogram`.
+
+    Args:
+        x (cupy.ndarray): Input array. The histogram is computed over the
+            flattened array.
+        bins (int or cupy.ndarray or str, optional): If ``bins`` is an int, it
+            defines the number of equal-width bins in the given range (10, by
+            default). If ``bins`` is a sequence, it defines the bin edges,
+            including the rightmost edge, allowing for non-uniform bin widths.
+
+            If ``bins`` is a string from the list below, ``histogram_bin_edges``
+            will use the method chosen to calculate the optimal bin width and
+            consequently the number of bins from the data that falls within the
+            requested range. While the bin width will be optimal for the
+            actual data in the range, the number of bins will be computed to
+            fill the entire range, including the empty portions. For
+            visualisation, using the ``'auto'`` option is suggested. Weighted
+            data is not supported for automated bin size selection.
+
+            - ``'auto'``: Minimum bin width between the 'sturges' and 'fd'
+              estimators. Provides good all-around performance.
+            - ``'fd'`` (Freedman Diaconis Estimator): Robust (resilient to
+              outliers) estimator that takes into account data variability and
+              data size.
+            - ``'doane'``: An improved version of Sturges' estimator that works
+              better with non-normal datasets.
+            - ``'scott'``: Less robust estimator that takes into account data
+              variability and data size.
+            - ``'stone'``: Estimator based on leave-one-out cross-validation
+              estimate of the integrated squared error. Can be regarded as a
+              generalization of Scott's rule.
+            - ``'rice'``: Estimator does not take variability into account, only
+              data size. Commonly overestimates number of bins required.
+            - ``'sturges'``: R's default method, only accounts for data size. Only
+              optimal for gaussian data and underestimates number of bins for
+              large non-gaussian datasets.
+            - ``'sqrt'``: Square root (of data size) estimator, used by Excel and
+              other programs for its speed and simplicity.
+        range (2-tuple of float, optional): The lower and upper range of the
+            bins.  If not provided, range is simply ``(x.min(), x.max())``.
+            Values outside the range are ignored. The first element of the
+            range must be less than or equal to the second. `range` affects the
+            automatic bin computation as well. While bin width is computed to
+            be optimal based on the actual data within `range`, the bin count
+            will fill the entire range including portions containing no data.
+        weights (cupy.ndarray, optional): An array of weights, of the same
+            shape as `x`.  Each value in `x` only contributes its associated
+            weight towards the bin count (instead of 1). This is currently not
+            used by any of the bin estimators, but may be in the future.
+
+    Returns:
+        cupy.ndarray: The edges to pass into :func:`histogram`, of dtype float.
+
+    .. note::
+
+        Unlike :func:`numpy.histogram_bin_edges`, ``x`` must already be a
+        :class:`cupy.ndarray`; array_like input such as a Python list raises
+        ``ValueError``. This matches :func:`cupy.histogram`.
+
+    .. warning::
+
+        This function may synchronize the device.
+
+    .. seealso:: :func:`numpy.histogram_bin_edges`
+    """  # NOQA: E501
+    if not isinstance(x, cupy.ndarray):
+        raise ValueError('x must be a cupy.ndarray')
+
+    if x.dtype.kind == 'c':
+        # TODO(unno): comparison between complex numbers is not implemented
+        raise NotImplementedError('complex number is not supported')
+
+    x, weights = _ravel_and_check_weights(x, weights)
+    return _get_bin_edges(x, bins, range, weights)
 
 
 def histogram(x, bins=10, range=None, density=False, weights=None):
@@ -189,9 +455,11 @@ def histogram(x, bins=10, range=None, density=False, weights=None):
 
     Args:
         x (cupy.ndarray): Input array.
-        bins (int or cupy.ndarray): If ``bins`` is an int, it represents the
-            number of bins. If ``bins`` is an :class:`~cupy.ndarray`, it
-            represents a bin edges.
+        bins (int or str or cupy.ndarray): If ``bins`` is an int, it represents
+            the number of bins. If ``bins`` is a string, it represents one of
+            the automatic bin width estimators documented in
+            :func:`histogram_bin_edges`. If ``bins`` is an
+            :class:`~cupy.ndarray`, it represents a bin edges.
         range (2-tuple of float, optional): The lower and upper range of the
             bins.  If not provided, range is simply ``(x.min(), x.max())``.
             Values outside the range are ignored. The first element of the
@@ -207,8 +475,14 @@ def histogram(x, bins=10, range=None, density=False, weights=None):
             weight towards the bin count (instead of 1).
     Returns:
         tuple: ``(hist, bin_edges)`` where ``hist`` is a :class:`cupy.ndarray`
-        storing the values of the histogram, and ``bin_edges`` is a
-        :class:`cupy.ndarray` storing the bin edges.
+            storing the values of the histogram, and ``bin_edges`` is a
+            :class:`cupy.ndarray` storing the bin edges.
+
+    .. note::
+
+        Unlike :func:`numpy.histogram`, ``x`` must already be a
+        :class:`cupy.ndarray`; array_like input such as a Python list raises
+        ``ValueError``.
 
     .. warning::
 
@@ -217,15 +491,15 @@ def histogram(x, bins=10, range=None, density=False, weights=None):
     .. seealso:: :func:`numpy.histogram`
     """
 
+    if not isinstance(x, cupy.ndarray):
+        raise ValueError('x must be a cupy.ndarray')
+
     if x.dtype.kind == 'c':
         # TODO(unno): comparison between complex numbers is not implemented
         raise NotImplementedError('complex number is not supported')
 
-    if not isinstance(x, cupy.ndarray):
-        raise ValueError('x must be a cupy.ndarray')
-
     x, weights = _ravel_and_check_weights(x, weights)
-    bin_edges = _get_bin_edges(x, bins, range)
+    bin_edges = _get_bin_edges(x, bins, range, weights)
 
     if weights is None:
         y = cupy.zeros(bin_edges.size - 1, dtype=cupy.int64)
