@@ -6,6 +6,7 @@ import glob
 import os
 from setuptools import setup
 import sys
+import tomllib
 
 source_root = os.path.abspath(os.path.dirname(__file__))
 sys.path.append(os.path.join(source_root, 'install'))
@@ -96,15 +97,19 @@ setup_requires = []
 if not ctx.use_hip:
     dependencies.append("cuda-pathfinder>=1.3.4,==1.*")
     if ctx.use_cuda_python:
+        with open(os.path.join(source_root, 'pyproject.toml'), 'rb') as f:
+            cuda_python_floors = tomllib.load(f)['tool']['cupy']['cuda-python']
         # nvmath-python and cuda-bindings are needed to build and to run.
         # cuda-bindings must match the CUDA major version. pip collects
         # setup_requires via `egg_info`, before CUDA is probed, so read the
         # version from cuda.h.
         _cuda_major = cupy_builder.install_build.detect_cuda_major(ctx)
         if _cuda_major is not None:
+            _bindings_floor = (
+                cuda_python_floors['cuda-bindings'][str(_cuda_major)])
             setup_requires = [
-                "nvmath-python>=1.0,<2",
-                f"cuda-bindings=={_cuda_major}.*",
+                f"nvmath-python>={cuda_python_floors['nvmath-python']},<2",
+                f"cuda-bindings>={_bindings_floor},<{_cuda_major + 1}",
             ]
     # Same reasoning as the ext_modules guard: sdist/egg_info/dist_info
     # run on a CUDA-less builder, so skip the version-detecting [ctk]
@@ -120,7 +125,7 @@ if not ctx.use_hip:
             # run time must be at least as new as the ones it was built with.
             nvmath_version, bindings_version = (
                 cupy_builder.install_build.get_cuda_python_versions(
-                    cuda_major))
+                    cuda_major, cuda_python_floors))
             dependencies += [
                 f"nvmath-python>={nvmath_version},<2",
                 f"cuda-bindings>={bindings_version},<{cuda_major + 1}",

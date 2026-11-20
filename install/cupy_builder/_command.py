@@ -141,8 +141,15 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
         # Enable CUDA Python.
         use_cuda_python = ctx.use_cuda_python
         compile_time_env['CUPY_USE_CUDA_PYTHON'] = use_cuda_python
+        compile_time_env['CUPY_CUDA_BINDINGS_VERSION'] = ''
+        compile_time_env['CUPY_NVMATH_VERSION'] = ''
         if use_cuda_python:
             print('Using CUDA Python')
+            import cuda.bindings
+            import nvmath
+            compile_time_env['CUPY_CUDA_BINDINGS_VERSION'] = (
+                cuda.bindings.__version__)
+            compile_time_env['CUPY_NVMATH_VERSION'] = nvmath.__version__
 
         compile_time_env['CUPY_CUFFT_STATIC'] = False
         compile_time_env['CUPY_CYTHON_VERSION'] = Cython.__version__
