@@ -412,6 +412,45 @@ class WarpShuffleOp(BuiltinFunc):
         return Data(code, ctype)
 
 
+class WarpReduceOp(BuiltinFunc):
+
+    def __init__(self, op, dtypes):
+        self._op = op
+        self._name = '__reduce_' + op + '_sync'
+        self._dtypes = dtypes
+        doc = f"""Calls the ``{self._name}`` function. Please refer to
+        `Warp Reduce Functions`_ for detailed explanation.
+
+        .. _Warp Reduce Functions:
+            https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#warp-reduce-functions
+        """
+        self.__doc__ = doc
+
+    def __call__(self, mask, var):
+        super().__call__()
+
+    def call(self, env, mask, var):
+        name = self._name
+        if runtime.is_hip:
+            raise RuntimeError(f'`{name}` is not supported on HIP')
+        if int(device.get_compute_capability()) < 80:
+            raise RuntimeError(f'`{name}` is not supported before sm_80')
+
+        var = Data.init(var, env)
+        ctype = var.ctype
+        if ctype.dtype.name not in self._dtypes:
+            raise TypeError(f'`{name}` does not support {ctype.dtype} input.')
+
+        try:
+            mask = mask.obj
+        except Exception:
+            raise TypeError('mask must be an integer')
+        if not (0x0 <= mask <= 0xffffffff):
+            raise ValueError('mask is out of range')
+
+        return Data(f'{name}({hex(mask)}, {var.code})', ctype)
+
+
 class LaneID(BuiltinFunc):
     def __call__(self):
         """Returns the lane ID of the calling thread, ranging in
@@ -495,3 +534,13 @@ shfl_sync = WarpShuffleOp('', _shfl_dtypes)
 shfl_up_sync = WarpShuffleOp('up', _shfl_dtypes)
 shfl_down_sync = WarpShuffleOp('down', _shfl_dtypes)
 shfl_xor_sync = WarpShuffleOp('xor', _shfl_dtypes)
+
+# warp-reduce functions (sm_80+, CUDA only)
+_reduce_dtypes = ('int32', 'uint32')
+_reduce_bitwise_dtypes = ('uint32',)
+reduce_add_sync = WarpReduceOp('add', _reduce_dtypes)
+reduce_min_sync = WarpReduceOp('min', _reduce_dtypes)
+reduce_max_sync = WarpReduceOp('max', _reduce_dtypes)
+reduce_and_sync = WarpReduceOp('and', _reduce_bitwise_dtypes)
+reduce_or_sync = WarpReduceOp('or', _reduce_bitwise_dtypes)
+reduce_xor_sync = WarpReduceOp('xor', _reduce_bitwise_dtypes)

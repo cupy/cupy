@@ -37,6 +37,12 @@ Supported Python built-in functions include: :obj:`range`, :func:`len`, :func:`m
    cupyx.jit.shfl_up_sync
    cupyx.jit.shfl_down_sync
    cupyx.jit.shfl_xor_sync
+   cupyx.jit.reduce_add_sync
+   cupyx.jit.reduce_min_sync
+   cupyx.jit.reduce_max_sync
+   cupyx.jit.reduce_and_sync
+   cupyx.jit.reduce_or_sync
+   cupyx.jit.reduce_xor_sync
    cupyx.jit.shared_memory
    cupyx.jit.atomic_add
    cupyx.jit.atomic_sub

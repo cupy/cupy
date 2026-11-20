@@ -28,6 +28,12 @@ from cupyx.jit._builtin_funcs import shfl_sync  # NOQA
 from cupyx.jit._builtin_funcs import shfl_up_sync  # NOQA
 from cupyx.jit._builtin_funcs import shfl_down_sync  # NOQA
 from cupyx.jit._builtin_funcs import shfl_xor_sync  # NOQA
+from cupyx.jit._builtin_funcs import reduce_add_sync  # NOQA
+from cupyx.jit._builtin_funcs import reduce_min_sync  # NOQA
+from cupyx.jit._builtin_funcs import reduce_max_sync  # NOQA
+from cupyx.jit._builtin_funcs import reduce_and_sync  # NOQA
+from cupyx.jit._builtin_funcs import reduce_or_sync  # NOQA
+from cupyx.jit._builtin_funcs import reduce_xor_sync  # NOQA
 
 from cupyx.jit import cg  # NOQA
 from cupyx.jit import cub  # NOQA
