@@ -63,6 +63,14 @@ class TestIndexing(unittest.TestCase):
         b = testing.shaped_random((30,), xp, dtype='int64', scale=24)
         return xp.take_along_axis(a, b, axis=None)
 
+    @testing.with_requires('numpy>=2.3')
+    @testing.numpy_cupy_array_equal()
+    def test_take_along_axis_default_axis(self, xp):
+        # NumPy 2.3 made `axis` optional; it defaults to the last axis.
+        a = testing.shaped_random((2, 4, 3), xp, dtype='float32')
+        b = testing.shaped_random((2, 4, 5), xp, dtype='int64', scale=3)
+        return xp.take_along_axis(a, b)
+
     @testing.numpy_cupy_array_equal()
     def test_compress(self, xp):
         a = testing.shaped_arange((3, 4, 5), xp)

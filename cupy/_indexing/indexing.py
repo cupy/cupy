@@ -30,13 +30,15 @@ def take(a, indices, axis=None, out=None):
     return a.take(indices, axis, out)
 
 
-def take_along_axis(a, indices, axis):
+def take_along_axis(a, indices, axis=-1):
     """Take values from the input array by matching 1d index and data slices.
 
     Args:
         a (cupy.ndarray): Array to extract elements.
         indices (cupy.ndarray): Indices to take along each 1d slice of ``a``.
-        axis (int): The axis to take 1d slices along.
+        axis (int or None): The axis to take 1d slices along. If ``None``,
+            the input array is treated as if it had first been flattened
+            to 1d. The default is ``-1``, the last axis.
 
     Returns:
         cupy.ndarray: The indexed result.
