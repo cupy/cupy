@@ -1,18 +1,90 @@
 name: "Publish to PyPI"
-run-name: "Publish to PyPI (${{ inputs.release }} - ${{ inputs.branch }})"
+run-name: "Publish to PyPI (${{ inputs.release }})"
 
 on:
   workflow_dispatch:
     inputs:
-      branch:
-        description: "Source Branch (e.g., v13)"
-        default: "main"
       release:
-        description: "Release to Publish (draft/tag, e.g., v14.0.0a1)"
+        description: "Release Tag to Publish (e.g., v14.0.0a1)"
         default: "v14.0.0rc9"
+      run-id:
+        description: "CI Run That Built the Release (default: found from the tag)"
+        default: ""
 
 jobs:
+  collect:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read    # to download artifacts of the CI run
+      contents: write  # to create the draft release and upload its assets
+    outputs:
+      prerelease: ${{ steps.check.outputs.prerelease }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      with:
+        sparse-checkout: |
+          .github/actions/update-pip
+          ci
+        persist-credentials: false
+    # The tools come from the checkout above; this one only provides the
+    # build matrix (and the commit) of the release.
+    - name: Checkout (release source)
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      with:
+        ref: refs/tags/${{ inputs.release }}
+        path: release-src
+        sparse-checkout: ci
+        persist-credentials: false
+    - name: Setup Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
+      with:
+        python-version: '~3.11.18'
+    - name: Update pip
+      uses: ./.github/actions/update-pip
+    - name: Find CI Run
+      id: run
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        RUN_ID: ${{ inputs.run-id }}
+      run: |
+        SHA="$(git -C release-src rev-parse HEAD)"
+        RUN_ID="$(./ci/tools/lookup-run-id ${RUN_ID:+--run-id "${RUN_ID}"} "${SHA}" "${GITHUB_REPOSITORY}")"
+        echo "run-id=${RUN_ID}" >> "${GITHUB_OUTPUT}"
+    - name: Download
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        RUN_ID: ${{ steps.run.outputs.run-id }}
+      run: |
+        mkdir -p dist_raw dist
+        gh run download "${RUN_ID}" -R "${GITHUB_REPOSITORY}" \
+          --pattern 'cupy-sdist-*' --pattern 'cupy-cuda*x-*' --dir dist_raw
+        find dist_raw -type f \( -name '*.whl' -o -name '*.tar.gz' \) -exec mv {} dist/ \;
+    - name: Check
+      id: check
+      env:
+        RELEASE: ${{ inputs.release }}
+      run: |
+        pip install distlib packaging pyyaml
+        ./ci/tools/check_release_assets.py --version "${RELEASE}" --source-root release-src --local dist
+        python -c "import sys; from packaging.version import Version; print('prerelease=' + str(Version(sys.argv[1]).is_prerelease).lower())" "${RELEASE}" >> "${GITHUB_OUTPUT}"
+    - name: Upload to Draft Release
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        RELEASE: ${{ inputs.release }}
+      run: |
+        IS_DRAFT="$(gh -R "${GITHUB_REPOSITORY}" release view "${RELEASE}" --json isDraft --jq .isDraft 2> /dev/null || echo none)"
+        if [[ "${IS_DRAFT}" == "false" ]]; then
+          echo "::error::Release ${RELEASE} is already published"
+          exit 1
+        elif [[ "${IS_DRAFT}" == "none" ]]; then
+          gh -R "${GITHUB_REPOSITORY}" release create "${RELEASE}" --verify-tag --draft \
+            --title "${RELEASE}" --notes "" ${{ steps.check.outputs.prerelease == 'true' && '--prerelease' || '' }}
+        fi
+        gh -R "${GITHUB_REPOSITORY}" release upload "${RELEASE}" --clobber dist/*
+
   precheck:
+    needs: collect
     runs-on: ubuntu-latest
     permissions:
       contents: write  # to read draft releases
@@ -20,28 +92,30 @@ jobs:
     - name: Checkout
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
-        repository: cupy/cupy-release-tools
-        ref: ${{ inputs.branch }}
-    # path: _cupy keeps the release-tools root intact.
-    - name: Checkout update-pip action
+        sparse-checkout: |
+          .github/actions/update-pip
+          ci
+        persist-credentials: false
+    - name: Checkout (release source)
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
-        path: _cupy
-        sparse-checkout: .github/actions/update-pip
+        ref: refs/tags/${{ inputs.release }}
+        path: release-src
+        sparse-checkout: ci
         persist-credentials: false
     - name: Setup Python
       uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
       with:
         python-version: '~3.11.18'
     - name: Update pip
-      uses: ./_cupy/.github/actions/update-pip
+      uses: ./.github/actions/update-pip
     - name: Check
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         STATUS=0
-        pip install distlib
-        ./check_release_assets.py --version "${{ inputs.release }}" --github > result.txt || STATUS=1
+        pip install distlib packaging pyyaml
+        ./ci/tools/check_release_assets.py --version "${{ inputs.release }}" --source-root release-src --github > result.txt || STATUS=1
         cat result.txt
 
         echo '## Check Result' >> "${GITHUB_STEP_SUMMARY}"
@@ -53,7 +127,7 @@ jobs:
         exit ${STATUS}
 
   upload:
-    needs: precheck
+    needs: [collect, precheck]
     environment:
       name: pypi-release
       url: https://pypi.org/org/cupy/
@@ -66,8 +140,9 @@ jobs:
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: gh -R cupy/cupy release download "${{ inputs.release }}" --dir dist --pattern "cupy-*.tar.gz"
+    # Pre-releases publish the sdist only; their wheels stay on GitHub.
     - name: Download (wheels)
-      if: ${{ inputs.branch != 'main' }}
+      if: ${{ needs.collect.outputs.prerelease != 'true' }}
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: gh -R cupy/cupy release download "${{ inputs.release }}" --dir dist --pattern "cupy_*.whl"
@@ -87,36 +162,38 @@ jobs:
         print-hash: true
 
   postcheck:
-    needs: upload
+    needs: [collect, upload]
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
-        repository: cupy/cupy-release-tools
-        ref: ${{ inputs.branch }}
-    # path: _cupy keeps the release-tools root intact.
-    - name: Checkout update-pip action
+        sparse-checkout: |
+          .github/actions/update-pip
+          ci
+        persist-credentials: false
+    - name: Checkout (release source)
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
-        path: _cupy
-        sparse-checkout: .github/actions/update-pip
+        ref: refs/tags/${{ inputs.release }}
+        path: release-src
+        sparse-checkout: ci
         persist-credentials: false
     - name: Setup Python
       uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
       with:
         python-version: '~3.11.18'
     - name: Update pip
-      uses: ./_cupy/.github/actions/update-pip
+      uses: ./.github/actions/update-pip
     - name: Check
       run: |
-        pip install distlib
-        CHECK_WHEEL="${{ inputs.branch != 'main' && '--pypi-wheel' || '' }}"
+        pip install distlib packaging pyyaml
+        CHECK_WHEEL="${{ needs.collect.outputs.prerelease != 'true' && '--pypi-wheel' || '' }}"
 
         for i in 1 2 3 4 5; do
           echo "Attempt ${i}: waiting for PyPI propagation..."
           sleep 120s
-          if ./check_release_assets.py --version "${{ inputs.release }}" --pypi-sdist ${CHECK_WHEEL}; then
+          if ./ci/tools/check_release_assets.py --version "${{ inputs.release }}" --source-root release-src --pypi-sdist ${CHECK_WHEEL}; then
             echo "Check succeeded on attempt ${i}."
             exit 0
           fi

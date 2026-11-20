@@ -1,0 +1,150 @@
+#!/usr/bin/env bash
+
+# Find the CI run that built the release artifacts of a commit.
+#
+# A commit can have several successful runs (its branch push builds all the
+# wheels, its tag push only the one for the docs), so pick the run holding
+# the most sdist/wheel artifacts.
+#
+# Outputs the run ID on stdout.  All diagnostic messages go to stderr.
+
+set -euo pipefail
+
+usage() {
+    cat >&2 <<EOF
+Usage:
+  $0 [--run-id <id>] <commit-sha> <repository> [workflow]
+
+Options:
+  --run-id <id>  Validate and use this exact run ID
+
+Examples:
+  $0 0123456789abcdef0123456789abcdef01234567 cupy/cupy
+  $0 --run-id 12345 0123456789abcdef0123456789abcdef01234567 cupy/cupy ci.yml
+EOF
+    exit 1
+}
+
+# ── Parse arguments ──
+EXPLICIT_RUN_ID=""
+
+while [[ $# -gt 0 ]]; do
+    case "${1}" in
+        --run-id)
+            [[ $# -ge 2 ]] || usage
+            EXPLICIT_RUN_ID="${2}"; shift 2 ;;
+        -h|--help)
+            usage ;;
+        *)
+            break ;;
+    esac
+done
+
+COMMIT_SHA="${1:-}"; shift || true
+REPOSITORY="${1:-}"; shift || true
+WORKFLOW="${1:-ci.yml}"
+
+if [[ -z "${COMMIT_SHA}" || -z "${REPOSITORY}" ]]; then usage; fi
+
+if [[ ! "${COMMIT_SHA}" =~ ^[0-9a-f]{40}$ ]]; then
+    echo "Error: '${COMMIT_SHA}' is not a full commit SHA" >&2
+    exit 1
+fi
+
+if [[ -n "${EXPLICIT_RUN_ID}" && ! "${EXPLICIT_RUN_ID}" =~ ^[1-9][0-9]*$ ]]; then
+    echo "Error: --run-id must be a positive integer" >&2
+    exit 1
+fi
+
+# ── Prerequisite checks ──
+if [[ -z "${GH_TOKEN:-}" ]]; then
+    echo "Error: GH_TOKEN environment variable is required" >&2
+    exit 1
+fi
+
+for cmd in jq gh; do
+    if ! command -v "${cmd}" >/dev/null 2>&1; then
+        echo "Error: ${cmd} is required but not installed" >&2
+        exit 1
+    fi
+done
+
+count_release_artifacts() {
+    gh api --paginate \
+        "repos/${REPOSITORY}/actions/runs/${1}/artifacts?per_page=100" \
+        --jq '.artifacts[] | select(.expired == false) | .name
+              | select(test("^cupy-(sdist|cuda[0-9]+x)-"))' \
+        | wc -l
+}
+
+echo "Searching for '${WORKFLOW}' workflow runs for commit: ${COMMIT_SHA}" >&2
+
+if [[ -n "${EXPLICIT_RUN_ID}" ]]; then
+    echo "Validating explicitly requested run ID: ${EXPLICIT_RUN_ID}" >&2
+    if ! RUN_DATA=$(gh api "repos/${REPOSITORY}/actions/runs/${EXPLICIT_RUN_ID}" \
+        --jq '{path, status, conclusion, head_sha, head_branch, event}'); then
+        echo "Error: Could not inspect workflow run ${EXPLICIT_RUN_ID}" >&2
+        exit 1
+    fi
+
+    if ! jq -e \
+        --arg workflow "${WORKFLOW}" \
+        --arg sha "${COMMIT_SHA}" \
+        '(.path | split("/") | last) == $workflow
+         and .status == "completed"
+         and .conclusion == "success"
+         and .head_sha == $sha
+         and .event == "push"' <<< "${RUN_DATA}" >/dev/null; then
+        echo "Error: Run ${EXPLICIT_RUN_ID} is not a successful push-triggered '${WORKFLOW}' run at ${COMMIT_SHA}" >&2
+        echo "Observed run metadata:" >&2
+        jq -c . <<< "${RUN_DATA}" >&2
+        exit 1
+    fi
+
+    if [[ "$(count_release_artifacts "${EXPLICIT_RUN_ID}")" -eq 0 ]]; then
+        echo "Error: Run ${EXPLICIT_RUN_ID} has no unexpired sdist/wheel artifacts" >&2
+        exit 1
+    fi
+
+    echo "Validated workflow run ID: ${EXPLICIT_RUN_ID}" >&2
+    echo "${EXPLICIT_RUN_ID}"
+    exit 0
+fi
+
+RUN_DATA=$(gh run list \
+    --repo "${REPOSITORY}" \
+    --commit "${COMMIT_SHA}" \
+    --workflow "${WORKFLOW}" \
+    --json databaseId,status,conclusion,headSha,headBranch,event,createdAt \
+    --limit 50)
+
+CANDIDATES=$(jq -r --arg sha "${COMMIT_SHA}" '
+    map(select(.status == "completed" and .conclusion == "success"
+        and .event == "push" and .headSha == $sha))
+    | sort_by(.createdAt)
+    | reverse
+    | .[].databaseId
+' <<< "${RUN_DATA}")
+
+RUN_ID=""
+MAX_ARTIFACTS=0
+for candidate in ${CANDIDATES}; do
+    n=$(count_release_artifacts "${candidate}")
+    echo "Run ${candidate}: ${n} sdist/wheel artifact(s)" >&2
+    if [[ "${n}" -gt "${MAX_ARTIFACTS}" ]]; then
+        RUN_ID="${candidate}"
+        MAX_ARTIFACTS="${n}"
+    fi
+done
+
+if [[ -z "${RUN_ID}" ]]; then
+    echo "Error: No successful push-triggered '${WORKFLOW}' run with sdist/wheel artifacts found for commit ${COMMIT_SHA}." >&2
+    echo "Wait for its run to finish, or re-run it if it was cancelled or skipped, then retry." >&2
+    echo "" >&2
+    echo "Runs for commit ${COMMIT_SHA}:" >&2
+    jq -r '.[] | "\(.databaseId): event=\(.event // "null"), headBranch=\(.headBranch // "null"), status=\(.status // "null"), conclusion=\(.conclusion // "null"), createdAt=\(.createdAt // "null")"' <<< "${RUN_DATA}" >&2
+    exit 1
+fi
+
+echo "Found workflow run ID: ${RUN_ID} (${MAX_ARTIFACTS} sdist/wheel artifacts)" >&2
+echo "${RUN_ID}"
