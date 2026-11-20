@@ -1256,7 +1256,14 @@ cdef _ndarray_base _add_reduceat(
         _ndarray_base array, indices, axis, dtype, out):
     from cupy._sorting import search
     axis = internal._normalize_axis_index(axis, array.ndim)
-    indices = cupy.append(indices, array.shape[axis])
+
+    max_index = array.shape[axis]
+    if max_index < 2**31:
+        max_index = numpy.int32(max_index)
+    else:
+        max_index = numpy.int64(max_index)
+
+    indices = cupy.append(indices, max_index)
     shape = [1 if i == axis else dim for i, dim in enumerate(array.shape)]
     acc = array.cumsum(axis, dtype)
     acc = cupy.append(cupy.zeros(shape, acc.dtype), acc, axis)
