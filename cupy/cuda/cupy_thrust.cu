@@ -14,10 +14,14 @@
 #include <type_traits>
 
 #if defined(CUPY_USE_HIP)
+#include <thrust/functional.h>
 #include <hip/hip_bf16.h>
+namespace cupy_thrust_cmp = thrust;
 using thrust_bfloat16 = __hip_bfloat16;
 #else
+#include <cuda/std/functional>
 #include <cuda_bf16.h>
+namespace cupy_thrust_cmp = ::cuda::std;
 using thrust_bfloat16 = __nv_bfloat16;
 #endif
 
@@ -202,10 +206,10 @@ static bool complex_cmp(const T& lhs, const T& rhs) {
 }
 
 // Comparison operator for the requested direction. Types whose order depends on NaN placement
-// are specialized below, everything else just uses thrust::less/thrust::greater.
+// are specialized below, everything else uses the backend's less/greater functors.
 template <typename T, bool Descending>
 struct select_cmp {
-    using type = std::conditional_t<Descending, thrust::greater<T>, thrust::less<T>>;
+    using type = std::conditional_t<Descending, cupy_thrust_cmp::greater<T>, cupy_thrust_cmp::less<T>>;
 };
 
 // We use tuple_desc_cmp for multi-dimensional sorts where the first entry is the row index.
@@ -225,12 +229,12 @@ struct tuple_desc_cmp {
     }
 };
 
-// Tuple sorts cannot use thrust::greater for descending: that would also reverse
+// Tuple sorts cannot use greater for descending: that would also reverse
 // the segment-key order and scramble rows. Keep keys ascending; flip values only.
 template <typename T, bool Descending>
 struct select_cmp<thrust::tuple<size_t, T>, Descending> {
     using type = std::conditional_t<Descending, tuple_desc_cmp<T>,
-                                    thrust::less<thrust::tuple<size_t, T>>>;
+                                    cupy_thrust_cmp::less<thrust::tuple<size_t, T>>>;
 };
 
 // complex numbers
@@ -481,7 +485,7 @@ void float_radix_sort(thrust::device_ptr<T> data_first,
     thrust::transform(policy, data_first, data_first + size, keys_first,
                       float_sort_key<T, Descending>{});
     thrust::stable_sort_by_key(policy, keys_first, keys_first + size,
-                               values_first, thrust::less<key_type>{});
+                               values_first, cupy_thrust_cmp::less<key_type>{});
 }
 #endif
 
