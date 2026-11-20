@@ -10,6 +10,7 @@ import pytest
 import cupy
 from cupy._core import _routines_linalg as _linalg
 from cupy import testing
+from cupy.cuda import runtime
 
 
 @testing.parameterize(
@@ -121,6 +122,16 @@ class TestMatmulOut(unittest.TestCase):
 
 class TestMatmulOutOverlap:
 
+    def test_overlap_copied_input(self):
+        out = testing.shaped_random((2, 33, 33), cupy, numpy.float32)
+        a = out[..., ::-1]
+        b = testing.shaped_random(
+            out.shape, cupy, numpy.float32, seed=1)
+        expected = numpy.matmul(cupy.asnumpy(a), cupy.asnumpy(b))
+        result = cupy.matmul(a, b, out=out)
+        assert result is out
+        testing.assert_allclose(result, expected, rtol=1e-5, atol=1e-5)
+
     @pytest.mark.parametrize('shape', [
         (900, 900),
         (2, 600, 600),
@@ -131,6 +142,15 @@ class TestMatmulOutOverlap:
         a = xp.ones(shape, dtype)
         return xp.matmul(a, a, out=a)
 
+    @pytest.mark.parametrize('side', ['left', 'right'])
+    @testing.for_dtypes([numpy.int32, numpy.float64])
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5)
+    def test_overlap_broadcast(self, xp, dtype, side):
+        a = testing.shaped_arange((2, 3, 3), xp, dtype)
+        if side == 'left':
+            return xp.matmul(a[0], a, out=a)
+        return xp.matmul(a, a[0], out=a)
+
 
 class TestMatmulStrides:
 
@@ -140,6 +160,264 @@ class TestMatmulStrides:
         x1 = testing.shaped_arange((2, 2, 3), xp, dtype)[:, None, :, :]
         x2 = testing.shaped_arange((2, 1, 3, 1), xp, dtype)
         return x1 @ x2
+
+    @pytest.mark.parametrize('side', ['left', 'right'])
+    @pytest.mark.parametrize('reverse_vector', [False, True])
+    @testing.for_dtypes([
+        numpy.int32, numpy.float16, numpy.float32, numpy.complex64])
+    @testing.numpy_cupy_allclose(rtol=1e-3, atol=1e-3)
+    def test_vector_strided_batch_output(
+            self, xp, dtype, side, reverse_vector):
+        vector = testing.shaped_arange((4,), xp, dtype)
+        if reverse_vector:
+            vector = vector[::-1]
+        matrix_shape = (2, 5, 4, 3) if side == 'left' else (2, 5, 3, 4)
+        matrix = testing.shaped_arange(matrix_shape, xp, dtype)
+        out = xp.empty((2, 5, 5), dtype)[..., :3][::-1, ::-1]
+        if side == 'left':
+            return xp.matmul(vector, matrix, out=out)
+        return xp.matmul(matrix, vector, out=out)
+
+    @pytest.mark.parametrize('broadcast', [False, True])
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose(
+        rtol=1e-3, atol=1e-3, contiguous_check=False)  # FP16 may pad batches.
+    def test_noncontiguous_matrices(self, xp, dtype, broadcast):
+        a = testing.shaped_random((2, 5, 3, 8), xp, dtype)[..., ::-1]
+        b_shape = (1, 5, 8, 3) if broadcast else (2, 5, 8, 3)
+        b = testing.shaped_random(b_shape, xp, dtype)[..., ::-1, :]
+        return xp.matmul(a, b)
+
+    @pytest.mark.parametrize('broadcast', [False, True])
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_batch_strided_integral(self, xp, dtype, broadcast):
+        a = testing.shaped_random((2, 5, 3, 8), xp, dtype)[::-1, ::-1]
+        b_shape = (1, 5, 8, 3) if broadcast else (2, 5, 8, 3)
+        b = testing.shaped_random(b_shape, xp, dtype)
+        out = xp.empty((2, 5, 3, 4), dtype)[..., :3][::-1, ::-1]
+        return xp.matmul(a, b, out=out)
+
+    @testing.for_int_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_padded_integral_batches(self, xp, dtype):
+        a_storage = testing.shaped_random((2, 5, 32), xp, dtype)
+        b_storage = testing.shaped_random((2, 5, 32), xp, dtype)
+        a = a_storage[..., :24].reshape((2, 5, 3, 8))
+        b = b_storage[..., :24].reshape((2, 5, 8, 3))
+        out_storage = xp.empty((2, 5, 16), dtype)
+        out = out_storage[..., :9].reshape((2, 5, 3, 3))
+        return xp.matmul(a, b, out=out)
+
+
+@pytest.mark.parametrize('dtype', [
+    numpy.bool_, numpy.int32, numpy.float16, numpy.float32, numpy.complex64,
+])
+@pytest.mark.parametrize('transpose_a, transpose_b, transpose_out', [
+    (a, b, c) for a in (False, True) for b in (False, True)
+    for c in (False, True)
+])
+@pytest.mark.parametrize('broadcast', [False, True])
+@pytest.mark.parametrize('layout', ['plain', 'reversed', 'permuted'])
+class TestMatmulMatrixOrder:
+
+    def test_matrix_order(
+            self, dtype, transpose_a, transpose_b, transpose_out,
+            broadcast, layout):
+        def make_array(shape, transpose, output=False):
+            if transpose:
+                shape = shape[:-2] + (shape[-1], shape[-2])
+            if layout == 'permuted':
+                shape = (shape[1], shape[0]) + shape[2:]
+            arr = (cupy.empty(shape, dtype) if output
+                   else testing.shaped_random(shape, cupy, dtype))
+            if layout == 'permuted':
+                arr = arr.swapaxes(0, 1)
+            elif layout == 'reversed':
+                arr = arr[::-1, ::-1]
+            return arr.swapaxes(-1, -2) if transpose else arr
+
+        a_shape = (2, 1, 3, 4) if broadcast else (2, 5, 3, 4)
+        b_shape = (1, 5, 4, 2) if broadcast else (2, 5, 4, 2)
+        a = make_array(a_shape, transpose_a)
+        b = make_array(b_shape, transpose_b)
+        out = make_array((2, 5, 3, 2), transpose_out, output=True)
+        expected = numpy.matmul(cupy.asnumpy(a), cupy.asnumpy(b))
+        result = cupy.matmul(a, b, out=out)
+        assert result is out
+        testing.assert_allclose(result, expected, rtol=1e-3, atol=1e-3)
+
+
+class TestMatmulLeadingDimension:
+
+    @pytest.mark.parametrize('dtype, orders, broadcast, offset', [
+        (numpy.float32, 'CCC', False, 0),
+        (numpy.float32, 'FCF', False, 0),
+        (numpy.float32, 'CFC', True, 0),
+        (numpy.float64, 'CCF', True, 0),
+        (numpy.float16, 'FFF', False, 0),
+        (numpy.float16, 'FFF', True, 0),
+        (numpy.float16, 'FCF', True, 1),  # Alignment copies reset the pitches.
+        (numpy.complex128, 'FCF', True, 0),
+        (numpy.int32, 'FFF', True, 0),
+    ])
+    def test_padded_cores(self, dtype, orders, broadcast, offset):
+        def make_array(shape, order, output=False):
+            if order == 'F':
+                shape = shape[:-2] + (shape[-1], shape[-2])
+            width = shape[-1]
+            pitch = (width + offset + 8) // 8 * 8
+            storage_shape = shape[:-1] + (pitch,)
+            arr = (cupy.empty(storage_shape, dtype) if output
+                   else testing.shaped_random(storage_shape, cupy, dtype))
+            arr = arr[..., offset:offset + width]
+            return arr.swapaxes(-1, -2) if order == 'F' else arr
+
+        a_shape = (2, 1, 3, 8) if broadcast else (2, 5, 3, 8)
+        b_shape = (1, 5, 8, 2) if broadcast else (2, 5, 8, 2)
+        a = make_array(a_shape, orders[0])
+        b = make_array(b_shape, orders[1])
+        out = make_array((2, 5, 3, 2), orders[2], output=True)
+        expected = numpy.matmul(cupy.asnumpy(a), cupy.asnumpy(b))
+        result = cupy.matmul(a, b, out=out)
+        assert result is out
+        testing.assert_allclose(result, expected, rtol=1e-3, atol=1e-3)
+
+
+@pytest.mark.parametrize('dtype', [
+    numpy.bool_, numpy.float16, numpy.float32, numpy.complex128,
+])
+@pytest.mark.parametrize('layout', [
+    'contiguous', 'reversed', 'permuted', 'empty_batch',
+])
+class TestMatPtrs:
+
+    def test_matrix_starts(self, dtype, layout):
+        shape = (2, 0, 3, 4) if layout == 'empty_batch' else (2, 5, 3, 4)
+        arr = cupy.empty(shape, dtype)
+        if layout == 'reversed':
+            arr = arr[::-1, ::-1]
+        elif layout == 'permuted':
+            arr = arr.swapaxes(0, 1)
+        expected = numpy.array([
+            arr.data.ptr + sum(i * s for i, s in zip(index, arr.strides))
+            for index in numpy.ndindex(arr.shape[:-2])
+        ], dtype=numpy.uintp).reshape(arr.shape[:-2])
+        ptrs = cupy._core._mat_ptrs(arr)
+        assert ptrs.shape == expected.shape
+        assert ptrs.dtype == numpy.dtype(numpy.uintp)
+        testing.assert_array_equal(ptrs, expected)
+
+
+class TestMatmulBroadcastBatchSteps:
+
+    @pytest.mark.parametrize('side', ['left', 'right', 'both'])
+    @pytest.mark.parametrize('batch_shape', [(2, 5), (2, 1, 5)])
+    @pytest.mark.parametrize('padded', [False, True])
+    @testing.for_dtypes([numpy.int32, numpy.float32, numpy.complex64])
+    @testing.numpy_cupy_allclose(rtol=1e-5, atol=1e-5)
+    def test_zero_steps(self, xp, dtype, side, batch_shape, padded):
+        def make_array(shape):
+            if not padded:
+                return testing.shaped_random(shape, xp, dtype)
+            core_size = shape[-2] * shape[-1]
+            storage = testing.shaped_random(
+                shape[:-2] + (core_size + 8,), xp, dtype)
+            return storage[..., :core_size].reshape(shape)
+
+        a_shape = (3, 4) if side in ('left', 'both') else batch_shape + (3, 4)
+        b_shape = (4, 2) if side in ('right', 'both') else batch_shape + (4, 2)
+        a = xp.broadcast_to(make_array(a_shape), batch_shape + (3, 4))
+        b = xp.broadcast_to(make_array(b_shape), batch_shape + (4, 2))
+        out = None
+        if padded:
+            storage = xp.empty(batch_shape + (14,), dtype)
+            out = storage[..., :6].reshape(batch_shape + (3, 2))
+        result = xp.matmul(a, b, out=out)
+        if out is not None:
+            assert result is out
+        return result
+
+
+@pytest.mark.parametrize('dtype, k', [
+    (numpy.float16, 2),  # 4-byte pointer alignment
+    (numpy.float16, 3),  # 2-byte pointer alignment
+    (numpy.float16, 8),  # 16-byte pointer alignment
+    (numpy.float32, 3), (numpy.complex64, 3),
+])
+@pytest.mark.parametrize('m, n', [(3, 3), (1, 3), (3, 1)])
+@pytest.mark.parametrize('layout', [
+    'contiguous', 'padded', 'reversed', 'permuted', 'unaligned_batch',
+    'column_strided', 'row_padded',
+])
+class TestMatmulBatchedOutput:
+
+    def test_output_layout(self, dtype, k, m, n, layout):
+        a = testing.shaped_random((2, 1, m, k), cupy, dtype)
+        b = testing.shaped_random((1, 5, k, n), cupy, dtype)
+        out_shape = (2, 5, m, n)
+        if layout == 'contiguous':
+            out = cupy.empty(out_shape, dtype)
+        elif layout in ('padded', 'reversed', 'permuted', 'unaligned_batch'):
+            batch_shape = (5, 2) if layout == 'permuted' else (2, 5)
+            stride = m * n + 1 if layout == 'unaligned_batch' else 16
+            storage = cupy.empty(batch_shape + (stride,), dtype)
+            out = storage[..., :m * n].reshape(batch_shape + (m, n))
+            if layout == 'reversed':
+                out = out[::-1, ::-1]
+            elif layout == 'permuted':
+                out = out.swapaxes(0, 1)
+        elif layout == 'column_strided':
+            out = cupy.empty((2, 5, m, 2 * n), dtype)[..., ::2]
+        else:
+            out = cupy.empty((2, 5, m, n + 1), dtype)[..., :n]
+
+        result = cupy.matmul(a, b, out=out)
+        assert result is out
+        assert result.dtype == dtype
+        expected = numpy.matmul(
+            cupy.asnumpy(a), cupy.asnumpy(b))
+        testing.assert_allclose(result, expected, rtol=1e-3, atol=1e-3)
+
+
+@pytest.mark.parametrize('dtype', [
+    numpy.int32, numpy.float16, numpy.float32, numpy.complex64,
+])
+@pytest.mark.parametrize('layout', [
+    'padded', 'reversed', 'permuted', 'unaligned_batch',
+])
+@pytest.mark.parametrize('m, k, n', [(1, 1, 1), (1, 1, 2), (3, 8, 3)])
+@pytest.mark.parametrize('reverse_b', [False, True])
+@pytest.mark.parametrize('reverse_out', [False, True])
+class TestMatmulBatchedInput:
+
+    def test_batch_strides(
+            self, dtype, layout, m, k, n, reverse_b, reverse_out):
+        if layout in ('padded', 'unaligned_batch'):
+            stride = m * k + (1 if layout == 'unaligned_batch' else 8)
+            storage = testing.shaped_random((2, 1, 5, stride), cupy, dtype)
+            a = storage[..., :m * k].reshape((2, 1, 5, m, k), copy=False)
+        elif layout == 'reversed':
+            a = testing.shaped_random(
+                (2, 1, 5, m, k), cupy, dtype)[::-1, :, ::-1]
+        else:
+            a = testing.shaped_random(
+                (5, 1, 2, m, k), cupy, dtype).swapaxes(0, 2)
+        b = testing.shaped_random((2, 1, 5, k, n), cupy, dtype)
+        out = None
+        if reverse_b:
+            b = b[::-1, :, ::-1]
+        if reverse_out:
+            out = cupy.empty((2, 1, 5, m, n), dtype)[::-1, :, ::-1]
+        expected = numpy.matmul(cupy.asnumpy(a), cupy.asnumpy(b))
+        result = cupy.matmul(a, b, out=out)
+        if out is not None:
+            assert result is out
+        assert result.dtype == dtype
+        if numpy.dtype(dtype).kind in 'biu':
+            testing.assert_array_equal(result, expected)
+        else:
+            testing.assert_allclose(result, expected, rtol=1e-3, atol=1e-3)
 
 
 @testing.parameterize(
@@ -199,22 +477,34 @@ class TestMatmulLarge(unittest.TestCase):
 @pytest.mark.parametrize('shape1,shape2', [
     ((256, 256, 3, 2), (256, 256, 2, 4)),
     ((256, 256, 3, 2), (2, 4)),
-    ((3, 2), (256, 256, 2, 4))
+    ((3, 2), (256, 256, 2, 4)),
+    ((256, 1, 3, 2), (1, 256, 2, 4)),
 ])
+@pytest.mark.parametrize('reverse_batch', [False, True])
 class TestMatmulIntegralLargeBatch:
 
     @testing.for_int_dtypes(name='dtype')
     @testing.numpy_cupy_array_equal()
-    def test_operator_matmul(self, xp, dtype, shape1, shape2):
+    def test_operator_matmul(self, xp, dtype, shape1, shape2, reverse_batch):
         x1 = testing.shaped_random(shape1, xp, dtype)
         x2 = testing.shaped_random(shape2, xp, dtype)
+        if reverse_batch:
+            if x1.ndim > 2:
+                x1 = x1[::-1, ::-1]
+            if x2.ndim > 2:
+                x2 = x2[::-1, ::-1]
         return operator.matmul(x1, x2)
 
     @testing.for_int_dtypes(name='dtype')
     @testing.numpy_cupy_array_equal()
-    def test_cupy_matmul(self, xp, dtype, shape1, shape2):
+    def test_cupy_matmul(self, xp, dtype, shape1, shape2, reverse_batch):
         x1 = testing.shaped_random(shape1, xp, dtype)
         x2 = testing.shaped_random(shape2, xp, dtype)
+        if reverse_batch:
+            if x1.ndim > 2:
+                x1 = x1[::-1, ::-1]
+            if x2.ndim > 2:
+                x2 = x2[::-1, ::-1]
         return xp.matmul(x1, x2)
 
 
@@ -496,3 +786,180 @@ class TestMatmulDispatch(unittest.TestCase):
         assert isinstance(o_np, cupy.ndarray)
         o_cp = cupy.matmul(x1, x2, axes=[(0, 1), (0, 1), (0, 1)])
         testing.assert_allclose(o_np, o_cp)
+
+
+class _Matmul16BitTestBase:
+
+    @pytest.fixture
+    def dtype(self, dtype_name):
+        if dtype_name == 'bfloat16':
+            if (runtime.is_hip
+                    or cupy.cuda.get_local_runtime_version() < 12020
+                    or numpy.lib.NumpyVersion(numpy.__version__) < '2.1.2'):
+                pytest.skip('bfloat16 is not supported')
+            ml_dtypes = pytest.importorskip('ml_dtypes')
+            return numpy.dtype(ml_dtypes.bfloat16)
+        return numpy.dtype(numpy.float16)
+
+    @staticmethod
+    def _misaligned_empty(shape, dtype):
+        out = cupy.empty(int(numpy.prod(shape)) + 1, dtype=dtype)
+        assert out.data.ptr % 16 == 0
+        out = out[1:].reshape(shape)
+        assert out.flags.c_contiguous
+        assert out.data.ptr % 16 == 2
+        return out
+
+
+@pytest.mark.parametrize('dtype_name', ['float16', 'bfloat16'])
+@pytest.mark.parametrize('side', ['left', 'right'])
+@pytest.mark.parametrize('k, batch_shape', [
+    (4, (2, 5)), (0, (2, 5)), (4, (0,)),
+])
+@pytest.mark.parametrize('with_out', [False, True])
+class TestMatmul16BitVector(_Matmul16BitTestBase):
+
+    def test_vector(self, dtype, side, k, batch_shape, with_out):
+        vector = testing.shaped_random((k,), cupy, numpy.float32).astype(dtype)
+        matrix_shape = (k, 3) if side == 'left' else (3, k)
+        matrix = testing.shaped_random(
+            batch_shape + matrix_shape, cupy, numpy.float32).astype(dtype)
+        a, b = (vector, matrix) if side == 'left' else (matrix, vector)
+        expected = numpy.matmul(
+            cupy.asnumpy(a.astype(numpy.float32)),
+            cupy.asnumpy(b.astype(numpy.float32))).astype(dtype)
+        out = cupy.empty(expected.shape, dtype) if with_out else None
+        result = cupy.matmul(a, b, out=out)
+        if with_out:
+            assert result is out
+        assert result.dtype == dtype
+        testing.assert_allclose(
+            result.astype(numpy.float32), expected.astype(numpy.float32),
+            rtol=1e-2, atol=1e-3)
+
+
+@pytest.mark.parametrize('dtype_name', ['float16', 'bfloat16'])
+@pytest.mark.parametrize('broadcast',
+                         ['none', 'partial', 'left', 'right', 'both'])
+@pytest.mark.parametrize('transpose_out', [False, True])
+class TestMatmul16BitMatrixOrder(_Matmul16BitTestBase):
+
+    def test_matrix_order(self, dtype, broadcast, transpose_out):
+        a_batch, b_batch = {
+            'none': ((2, 5), (2, 5)),
+            'partial': ((2, 1), (1, 5)),
+            'left': ((1, 1), (2, 5)),
+            'right': ((2, 5), (1, 1)),
+            'both': ((1, 1), (1, 1)),
+        }[broadcast]
+        a_shape, b_shape = a_batch + (8, 3), b_batch + (5, 8)
+        a = testing.shaped_random(
+            a_shape, cupy, numpy.float32).astype(dtype).swapaxes(-1, -2)
+        b = testing.shaped_random(
+            b_shape, cupy, numpy.float32).astype(dtype).swapaxes(-1, -2)
+        a = cupy.broadcast_to(a, (2, 5, 3, 8))
+        b = cupy.broadcast_to(b, (2, 5, 8, 5))
+        storage = cupy.full((2, 5, 16), -1, dtype)
+        matrix_shape = (5, 3) if transpose_out else (3, 5)
+        out = storage[..., :15].reshape((2, 5) + matrix_shape, copy=False)
+        if transpose_out:
+            out = out.swapaxes(-1, -2)
+        expected = numpy.matmul(
+            cupy.asnumpy(a.astype(numpy.float32)),
+            cupy.asnumpy(b.astype(numpy.float32))).astype(dtype)
+        result = cupy.matmul(a, b, out=out)
+        assert result is out
+        testing.assert_array_equal(storage[..., 15].astype(numpy.float32), -1)
+        testing.assert_allclose(
+            result.astype(numpy.float32), expected.astype(numpy.float32),
+            rtol=1e-2, atol=1e-3)
+
+
+@pytest.mark.parametrize('dtype_name', ['float16', 'bfloat16'])
+@pytest.mark.parametrize('shape_pair', [
+    ((2, 3, 64), (2, 64, 4)),
+    ((2, 5, 3, 64), (64, 4)),
+    ((2, 1, 3, 8), (1, 5, 8, 3)),
+    ((2, 1, 3, 2), (1, 5, 2, 3)),
+    ((2, 1, 3, 3), (1, 5, 3, 3)),
+])
+@pytest.mark.parametrize(
+    'layout', ['contiguous', 'noncontiguous', 'misaligned'])
+class TestMatmul16Bit(_Matmul16BitTestBase):
+
+    @pytest.mark.parametrize('with_out', [True, False])
+    def test_matmul(self, dtype, shape_pair, layout, with_out):
+        a = testing.shaped_random(
+            shape_pair[0], cupy, numpy.float32).astype(dtype)
+        b = testing.shaped_random(
+            shape_pair[1], cupy, numpy.float32).astype(dtype)
+
+        if layout == 'misaligned':
+            # Contiguous views retain this two-byte offset through
+            # ascontiguousarray, including when the contraction size is 64.
+            a_offset = self._misaligned_empty(a.shape, dtype)
+            b_offset = self._misaligned_empty(b.shape, dtype)
+            a_offset[...] = a
+            b_offset[...] = b
+            a, b = a_offset, b_offset
+        elif layout == 'noncontiguous':
+            a = a[..., ::-1]
+            b = b[..., ::-1, :]
+
+        # Compute the reference in float32 from the rounded inputs.
+        expected = numpy.matmul(
+            cupy.asnumpy(a.astype(numpy.float32)),
+            cupy.asnumpy(b.astype(numpy.float32)),
+        ).astype(dtype)
+
+        if not with_out:
+            out = None
+        elif layout == 'misaligned':
+            out = self._misaligned_empty(expected.shape, dtype)
+        else:
+            out = cupy.empty(expected.shape, dtype=dtype)
+        if with_out and layout == 'noncontiguous':
+            out = out[..., ::-1]
+
+        result = cupy.matmul(a, b, out=out)
+        if with_out:
+            assert result is out
+        assert result.dtype == dtype
+
+        testing.assert_allclose(
+            result.astype(numpy.float32),
+            expected.astype(numpy.float32),
+            rtol=1e-2,  # bfloat16 error range
+        )
+
+
+@pytest.mark.parametrize('dtype_name', ['float16', 'bfloat16'])
+@pytest.mark.parametrize('batch_shape', [(), (2, 3)])
+@pytest.mark.parametrize('k', [2, 3, 8])
+@pytest.mark.parametrize('misaligned', ['a', 'b', 'out', 'all'])
+class TestMatmul16BitBaseAlignment(_Matmul16BitTestBase):
+
+    def test_base_alignment(self, dtype, batch_shape, k, misaligned):
+        a = testing.shaped_random(
+            batch_shape + (3, k), cupy, numpy.float32).astype(dtype)
+        b = testing.shaped_random(
+            batch_shape + (k, 5), cupy, numpy.float32).astype(dtype)
+        out = cupy.empty(batch_shape + (3, 5), dtype)
+        operands = {'a': a, 'b': b, 'out': out}
+        for key in operands:
+            if misaligned in (key, 'all'):
+                source = operands[key]
+                operands[key] = self._misaligned_empty(source.shape, dtype)
+                if key != 'out':
+                    operands[key][...] = source
+        a, b, out = (operands[key] for key in ('a', 'b', 'out'))
+        expected = numpy.matmul(
+            cupy.asnumpy(a.astype(numpy.float32)),
+            cupy.asnumpy(b.astype(numpy.float32))).astype(dtype)
+
+        result = cupy.matmul(a, b, out=out)
+        assert result is out
+        assert result.dtype == dtype
+        testing.assert_allclose(
+            result.astype(numpy.float32), expected.astype(numpy.float32),
+            rtol=1e-2, atol=1e-3)
