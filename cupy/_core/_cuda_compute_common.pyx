@@ -4,6 +4,7 @@ import warnings
 import cupy
 from cupy import _util
 from cupy._core import core
+from cupy._core._header_cache_keys import HEADER_CACHE_KEYS
 from cupy.cuda import compiler
 from cupy.cuda._compiler_cache import _hash_hexdigest
 from cupy.cuda.device cimport get_compute_capability
@@ -61,7 +62,7 @@ cpdef str _environment_cache_key_prefix():
             cuda.cccl.__version__,
             str(cupy.cuda.runtime.runtimeGetVersion()),
             # Serialized algorithms can embed ops using any dtype header.
-            core.HEADER_CACHE['keys']['full']))
+            HEADER_CACHE_KEYS['keys']['full']))
     return _cache_key_prefix
 
 

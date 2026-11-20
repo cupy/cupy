@@ -623,7 +623,7 @@ cdef class _JITCallbackManager(_CallbackManager):
         # TODO(leofang): support log_stream & jitify
         return _compile_with_cache_cuda(
             source, options, None, to_ltoir=True,
-            runtime_include_dirs=True)
+            use_toolkit_headers=True)
 
     cpdef create_plan(self, intptr_t prealloc_plan, tuple plan_info):
         cdef str plan_type

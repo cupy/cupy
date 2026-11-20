@@ -19,6 +19,7 @@ from cuda.pathfinder import find_nvidia_header_directory
 
 from cupy.cuda import cub
 from cupy import _util
+from cupy._core import _header_cache_keys
 
 
 ###############################################################################
@@ -240,16 +241,14 @@ cdef void _init_module_locked() except*:
     # start time, for enabling CCCL + CuPy developers?
     global _jitify_cache_versions
     if _jitify_cache_versions is None:
-        from cupy._core.core import HEADER_CACHE
-
         # jitify version could be "<unknown>" and the angular brackets are not
         # valid characters on Windows, so we need to strip them
         _jitify_version = re.sub(r'<([^>]*)>', r'\1', get_build_version())
         _jitify_cache_versions = (
             f"{_jitify_version}_{cub.get_build_version()}_"
             f"{get_cuda_version()}_{build_num}_"
-            f"{HEADER_CACHE['keys']['common']}_"
-            f"{HEADER_CACHE['keys']['jitify']}")
+            f"{_header_cache_keys.HEADER_CACHE_KEYS['keys']['common']}_"
+            f"{_header_cache_keys.HEADER_CACHE_KEYS['keys']['jitify']}")
 
     _init_cupy_headers()
 

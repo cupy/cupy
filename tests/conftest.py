@@ -22,8 +22,8 @@ pytest_plugins = ['pytester']
 @pytest.fixture
 def allow_full_header_cache(monkeypatch):
     """Exercise user kernels with intentionally unclassified inputs."""
-    from cupy._core import _header_cache
-    monkeypatch.setattr(_header_cache, '_error_on_unknown_header', False)
+    from cupy._core import _header_cache_keys
+    monkeypatch.setattr(_header_cache_keys, '_error_on_unknown_header', False)
 
 
 def _is_pip_installed():
@@ -87,12 +87,12 @@ def pytest_collectstart(collector):
     config = collector.config
     if getattr(config, '_cupy_header_cache_configured', False):
         return
-    from cupy._core import _header_cache
-    previous = _header_cache._error_on_unknown_header
-    _header_cache._error_on_unknown_header = True
+    from cupy._core import _header_cache_keys
+    previous = _header_cache_keys._error_on_unknown_header
+    _header_cache_keys._error_on_unknown_header = True
     config._cupy_header_cache_configured = True
     config.add_cleanup(lambda: setattr(
-        _header_cache, '_error_on_unknown_header', previous))
+        _header_cache_keys, '_error_on_unknown_header', previous))
 
 
 if int(os.environ.get('CUPY_ENABLE_UMP', 0)) != 0:

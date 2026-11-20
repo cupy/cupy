@@ -42,8 +42,9 @@ class TestContext:
         ctx = Context(source_root, _env={}, _argv=[])
         # Also validates every include in CuPy-owned repository headers.
         ctx.generate_header_cache()
-        cache = json.loads((Path(source_root)
-                            / 'cupy/_core/_header_cache.json').read_text())
+        cache = json.loads(
+            (Path(source_root)
+             / 'cupy/_core/_header_cache_keys.json').read_text())
         assert cache['keys']['full'] == ctx.header_cache_key
         assert cache['headers']['cupy/float16.cuh'] == 'float16'
         assert cache['headers']['cuda/std/type_traits'] == 'common'
@@ -53,20 +54,19 @@ class TestContext:
         core = tmp_path / 'cupy' / '_core'
         core.mkdir(parents=True)
         shutil.copyfile(Path(__file__).resolve().parents[3]
-                        / 'cupy/_core/_header_cache.py',
-                        core / '_header_cache.py')
+                        / 'cupy/_core/_header_cache_keys.py',
+                        core / '_header_cache_keys.py')
         include = core / 'include'
         include.mkdir()
         ctx = Context(str(tmp_path), _env={}, _argv=[])
         ctx.generate_header_cache()
-        metadata = core / '_header_cache.json'
+        metadata = core / '_header_cache_keys.json'
         content = metadata.read_text()
-        module = runpy.run_path(str(core / '_header_cache.py'))
-        assert (module['load_header_cache']()
-                == module['build_header_cache'](include))
-        before = metadata.stat().st_mtime_ns
+        module = runpy.run_path(str(core / '_header_cache_keys.py'))
+        assert (module['HEADER_CACHE_KEYS']
+                == module['build_header_cache_keys'](ctx.use_hip))
         ctx.generate_header_cache()
-        assert metadata.stat().st_mtime_ns == before
+        assert metadata.read_text() == content
         (include / 'test.h').write_text('// changed\n')
         ctx.generate_header_cache()
         assert metadata.read_text() != content

@@ -104,17 +104,29 @@ class Context:
 
     def generate_header_cache(self) -> None:
         print('Generating kernel cache keys from header files...')
-        include_dir = os.path.join(
-            self.source_root, 'cupy', '_core', 'include')
         # Load the shared classifier without importing the CuPy extensions.
-        module = runpy.run_path(os.path.join(
-            self.source_root, 'cupy', '_core', '_header_cache.py'))
-        cache = module['build_header_cache'](include_dir)
+        _core_path = Path(self.source_root) / 'cupy' / '_core'
+        path = _core_path / '_header_cache_keys.json'
+        if path.exists():
+            print("Deleting possibly stale header cache keys file...")
+            # Delete existing file to avoid import trying to do a runtime
+            # cache key build (thinking it is an editable install).
+            path.unlink()
+
+        module = runpy.run_path(str(_core_path / '_header_cache_keys.py'))
+        cache = module['build_header_cache_keys'](hip=self.use_hip)
         self.header_cache_key = cache['keys']['full']
-        data = json.dumps(cache, sort_keys=True, separators=(',', ':'))
-        path = Path(self.source_root) / 'cupy' / '_core' / '_header_cache.json'
+
+        if self.setup_command != "editable_wheel":
+            print("Writing header cache keys to file...")
+            data = json.dumps(cache, sort_keys=True, separators=(',', ':'))
+        else:
+            print("Indicating editable to create cache key at runtime...")
+            data = json.dumps("EDITABLE_BUILD")
+
         if not path.exists() or path.read_text() != data:
             path.write_text(data)
+
         for group, key in cache['keys'].items():
             print(f'Kernel header cache key ({group}): {key}')
 

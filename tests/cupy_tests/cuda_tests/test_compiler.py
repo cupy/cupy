@@ -167,8 +167,8 @@ class TestCompileWithCache:
             call.return_value = None
             getattr(core, method)('', options=options)
         assert call.call_args.args[1] == options + ('--std=c++17',)
-        assert call.call_args.kwargs['cupy_include_dirs']
-        assert call.call_args.kwargs['runtime_include_dirs']
+        assert call.call_args.kwargs['use_bundled_headers']
+        assert call.call_args.kwargs['use_toolkit_headers']
 
 
 @pytest.mark.thread_unsafe(reason='Patches HIP compiler state')
@@ -193,15 +193,15 @@ def test_hip_headers_loaded_lazily(version, needs_headers, monkeypatch):
 class TestHeaderCache:
     @pytest.fixture
     def cache_backend(self, tmp_path, monkeypatch):
-        from cupy._core import core
+        from cupy._core import _header_cache_keys
         from cupy.cuda._compiler_cache import DiskKernelCacheBackend
 
-        cache = copy.deepcopy(core.HEADER_CACHE)
+        cache = copy.deepcopy(_header_cache_keys.HEADER_CACHE_KEYS)
         backend = DiskKernelCacheBackend(str(tmp_path / 'cache'))
         save = mock.Mock(wraps=backend.save)
         monkeypatch.setattr(backend, 'save', save)
         monkeypatch.setattr(compiler, '_kernel_cache_backend', backend)
-        monkeypatch.setattr(core, 'HEADER_CACHE', cache)
+        monkeypatch.setattr(_header_cache_keys, 'HEADER_CACHE_KEYS', cache)
         monkeypatch.setenv('CUPY_CACHE_IN_MEMORY', '0')
         return cache, save
 
@@ -229,7 +229,7 @@ class TestHeaderCache:
         def compile():
             return compiler._compile_with_cache_cuda(
                 '', ('--std=c++17',), '80', to_ltoir=True,
-                cupy_include_dirs=bundled, runtime_include_dirs=True)
+                use_bundled_headers=bundled, use_toolkit_headers=True)
 
         assert compile() == b'cached LTO'
         injected = preprocess.call_args.args[1]
@@ -287,10 +287,10 @@ class TestHeaderCache:
         assert save.call_count == 2
 
     def test_strict_unknown_header(self):
-        from cupy._core import _header_cache
+        from cupy._core import _header_cache_keys
 
         # conftest enables strict checking throughout the suite.
-        with pytest.raises(_header_cache._UnknownHeaderError,
+        with pytest.raises(_header_cache_keys._UnknownHeaderError,
                            match='user_wrapper.h'):
             compiler._compile_module_with_cache(
                 '#include "user_wrapper.h"', arch='80')

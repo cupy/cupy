@@ -10,7 +10,6 @@ import warnings
 import numpy
 
 import cupy
-from cupy._core import _header_cache
 from cupy._core._kernel import create_ufunc
 from cupy._core._kernel import ElementwiseKernel
 from cupy._core._ufuncs import elementwise_copy
@@ -64,9 +63,6 @@ from cupy.exceptions import ComplexWarning
 
 NUMPY_1x = numpy.__version__ < '2'
 
-
-HEADER_CACHE = _header_cache.load_header_cache()
-CUPY_CACHE_KEY = HEADER_CACHE['keys']['common']
 
 cdef tuple _HANDLED_TYPES
 
@@ -2649,7 +2645,7 @@ cpdef function.Module compile_with_cache(
         source, options, arch=arch, backend=backend,
         enable_cooperative_groups=enable_cooperative_groups,
         name_expressions=name_expressions, log_stream=log_stream,
-        jitify=jitify, cupy_include_dirs=True, runtime_include_dirs=True)
+        jitify=jitify, use_bundled_headers=True, use_toolkit_headers=True)
 
 
 cpdef bytes compile_to_ltoir(
@@ -2666,8 +2662,8 @@ cpdef bytes compile_to_ltoir(
 
     return cuda.compiler._compile_module_with_cache(
         source, assemble_cupy_compiler_options(options), arch=arch,
-        log_stream=log_stream,
-        to_ltoir=True, cupy_include_dirs=True, runtime_include_dirs=True)
+        log_stream=log_stream, to_ltoir=True,
+        use_bundled_headers=True, use_toolkit_headers=True)
 
 
 # =============================================================================

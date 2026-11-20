@@ -12,7 +12,7 @@ import sys
 import tempfile
 import warnings
 
-import cupy._core.core as _core
+import cupy._core.core as _core  # for include-directory helpers
 from cupy.cuda import device
 from cupy.cuda import function
 from cupy.cuda._compiler_cache import (
@@ -25,7 +25,7 @@ from cupy_backends.cuda.api import runtime
 from cupy_backends.cuda.libs import nvrtc
 from cupy import _environment
 from cupy import _util
-from cupy._core import _header_cache
+from cupy._core import _header_cache_keys
 
 
 _cuda_hip_version = driver.get_build_version()
@@ -179,10 +179,6 @@ def _get_nvrtc_version():
         _nvrtc_version = nvrtc.getVersion()
 
     return _nvrtc_version
-
-
-def _get_cupy_cache_key():
-    return _core.CUPY_CACHE_KEY
 
 
 # Known archs for Tegra/Jetson/Xavier/etc
@@ -624,7 +620,7 @@ def _compile_module_with_cache(
         source, options=(), *, arch=None,
         backend='nvrtc', enable_cooperative_groups=False,
         name_expressions=None, log_stream=None, jitify=False, to_ltoir=False,
-        cupy_include_dirs=False, runtime_include_dirs=False):
+        use_bundled_headers=False, use_toolkit_headers=False):
 
     if enable_cooperative_groups:
         if runtime.is_hip:
@@ -645,22 +641,22 @@ def _compile_module_with_cache(
         return _compile_with_cache_hip(
             source, options, arch, backend,
             name_expressions, log_stream, cache_in_memory,
-            cupy_include_dirs=cupy_include_dirs,
-            runtime_include_dirs=runtime_include_dirs)
+            use_bundled_headers=use_bundled_headers,
+            use_toolkit_headers=use_toolkit_headers)
     else:
         return _compile_with_cache_cuda(
             source, options, arch, backend,
             enable_cooperative_groups, name_expressions, log_stream,
             cache_in_memory, jitify, to_ltoir,
-            cupy_include_dirs=cupy_include_dirs,
-            runtime_include_dirs=runtime_include_dirs)
+            use_bundled_headers=use_bundled_headers,
+            use_toolkit_headers=use_toolkit_headers)
 
 
 def _compile_with_cache_cuda(
         source, options, arch, backend='nvrtc',
         enable_cooperative_groups=False, name_expressions=None,
         log_stream=None, cache_in_memory=False, jitify=False, to_ltoir=False,
-        *, cupy_include_dirs=False, runtime_include_dirs=False):
+        *, use_bundled_headers=False, use_toolkit_headers=False):
     global _empty_file_preprocess_cache
 
     if arch is None:
@@ -678,9 +674,9 @@ def _compile_with_cache_cuda(
     if jitify and backend != 'nvrtc':
         raise ValueError('jitify only works with NVRTC')
 
-    header_cache_key = _header_cache.get_cache_key(
-        source, _core.HEADER_CACHE, options, jitify=jitify)
-    if runtime_include_dirs:
+    header_cache_key = _header_cache_keys.get_cache_key(
+        source, options, jitify=jitify)
+    if use_toolkit_headers:
         options = _core.add_runtime_include_dirs(options)
 
     options += ('-ftz=true',)
@@ -691,10 +687,10 @@ def _compile_with_cache_cuda(
 
     # TODO(leofang): technically we shouldn't use _get_nvrtc_version here if
     # the backend is not nvrtc
-    env = ((arch, options, _get_nvrtc_version(), backend, cupy_include_dirs)
+    env = ((arch, options, _get_nvrtc_version(), backend, use_bundled_headers)
            + _get_arch_for_options_for_nvrtc(arch))
     # Bundled headers are content-hashed independently of their install path.
-    if cupy_include_dirs:
+    if use_bundled_headers:
         options = _core.add_cupy_include_dirs(options)
     base = _empty_file_preprocess_cache.get(env, None)
     if base is None:
@@ -1008,13 +1004,12 @@ def _convert_to_hip_source(source, is_hiprtc):
 def _compile_with_cache_hip(source, options, arch,
                             backend='hiprtc', name_expressions=None,
                             log_stream=None, cache_in_memory=False,
-                            use_converter=True, *, cupy_include_dirs=False,
-                            runtime_include_dirs=False):
+                            use_converter=True, *, use_bundled_headers=False,
+                            use_toolkit_headers=False):
     global _empty_file_preprocess_cache
 
-    header_cache_key = _header_cache.get_cache_key(
-        source, _core.HEADER_CACHE, options)
-    if runtime_include_dirs:
+    header_cache_key = _header_cache_keys.get_cache_key(source, options)
+    if use_toolkit_headers:
         options = _core.add_runtime_include_dirs(options)
 
     # TODO(leofang): this might be possible but is currently undocumented
@@ -1049,8 +1044,8 @@ def _compile_with_cache_hip(source, options, arch,
         source = _convert_to_hip_source(
             source, is_hiprtc=(backend == 'hiprtc'))
 
-    env = (arch, options, _get_nvrtc_version(), backend, cupy_include_dirs)
-    if cupy_include_dirs:
+    env = (arch, options, _get_nvrtc_version(), backend, use_bundled_headers)
+    if use_bundled_headers:
         options = _core.add_cupy_include_dirs(options)
     base = _empty_file_preprocess_cache.get(env, None)
     if base is None:

@@ -32,7 +32,12 @@ _GROUPS = {
     # Build-only in CuPy, but still cover explicit includes in user kernels.
     # TODO(seberg): Consider excluding these headers from wheels?
     'build': re.compile(r'cupy/(?:type_dispatcher\.cuh$|_dlpack/)'),
+    # On CUDA builds, HIP has no reason to be part of COMMON.
+    'hip': re.compile(r'cupy/hip_workaround\.cuh$'),
 }
+# On HIP should probably include HIP as part of the common key.
+_GROUPS_HIP = _GROUPS.copy()
+_GROUPS_HIP.pop('hip')
 
 _RELATIVE_HEADER_RE = re.compile(r'[A-Za-z0-9_.+-]+(?:/[A-Za-z0-9_.+-]+)*')
 
@@ -52,10 +57,6 @@ _error_on_unknown_header = False
 
 class _UnknownHeaderError(RuntimeError):
     pass
-
-
-def load_header_cache():
-    return json.loads(Path(__file__).with_suffix('.json').read_text())
 
 
 def _include_name(header):
@@ -99,8 +100,9 @@ def _get_header_groups(source, headers, parent='', *, unknown='full'):
     return groups
 
 
-def get_cache_key(source, cache, options=(), jitify=False):
+def get_cache_key(source, options=(), jitify=False):
     """Select group keys before internal compiler flags/paths are added."""
+    cache = HEADER_CACHE_KEYS
     for option in options:
         if not option.startswith((
                 '-D', '--define-macro=', '-std', '--std', '-O', '-w')):
@@ -118,9 +120,18 @@ def get_cache_key(source, cache, options=(), jitify=False):
                      for group in sorted(groups)])
 
 
-def build_header_cache(include_dir):
+def build_header_cache_keys(hip=None):
     """Hash groups with transitive dependencies, including cycles."""
-    include_dir = Path(include_dir)
+    if hip is None:
+        # In an editable install, this is reached at runtime.
+        from cupy.cuda.runtime import is_hip as hip
+
+    if hip:
+        GROUPS = _GROUPS_HIP
+    else:
+        GROUPS = _GROUPS
+
+    include_dir = Path(__file__).parent / 'include'
     files = {}
     headers = {}
     for filename in sorted(glob.glob(str(include_dir / '**'), recursive=True)):
@@ -129,14 +140,14 @@ def build_header_cache(include_dir):
                 or path.name.startswith(('LICENSE', 'README', '.'))):
             continue
         name = path.relative_to(include_dir).as_posix()
-        group = next((g for g, pattern in _GROUPS.items()
+        group = next((g for g, pattern in GROUPS.items()
                       if pattern.match(name)), 'common')
         files[name] = (path, group)
         # Match the search paths supplied by add_cupy_include_dirs.
         headers[_include_name(name)] = group
 
     hashes = {g: hashlib.sha1(usedforsecurity=False)
-              for g in ('common', *_GROUPS)}
+              for g in ('common', *GROUPS)}
     dependencies = {g: set() for g in hashes}
     # Changes to classification policy must invalidate existing entries too.
     hashes['common'].update(Path(__file__).read_bytes())
@@ -170,3 +181,13 @@ def build_header_cache(include_dir):
         keys[group] = combine(reachable)
     keys['full'] = combine(hashes)
     return {'keys': keys, 'headers': headers}
+
+
+if Path(__file__).with_suffix('.json').exists():
+    # Module is also imported at build time (keys will never be used).
+    cache = json.loads(Path(__file__).with_suffix('.json').read_text())
+    if cache == "EDITABLE_BUILD":
+        cache = build_header_cache_keys()
+
+    HEADER_CACHE_KEYS = cache
+    COMMON_HEADER_CACHE_KEY = cache['keys']['common']
