@@ -489,6 +489,53 @@ class TestEigsh:
         assert cupy.linalg.norm(v - v_v0) < cupy.linalg.norm(v - v_aux)
 
 
+@pytest.mark.parametrize('scale, largest', [
+    (1., 2.), (2.0 ** -25, 2.), (1., 1e5),
+])
+def test_eigsh_relative_residual(scale, largest):
+    diag = cupy.linspace(1., 2., 80)
+    diag[-1] = largest
+    diag *= scale
+    a = sparse.diags(diag).tocsr()
+    tol = 1e-6
+    w, v = sparse.linalg.eigsh(a, k=3, ncv=12, tol=tol,
+                               v0=cupy.ones_like(diag))
+    residuals = cupy.linalg.norm(a @ v - v * w, axis=0)
+    assert bool((residuals <= tol * cupy.abs(w)).all())
+    testing.assert_allclose(w, diag[-3:], rtol=tol, atol=0)
+
+
+@pytest.mark.parametrize('tol', [0., 1e-6])
+def test_eigsh_shift_invert_relative_residual(tol):
+    n, k, ncv = 48, 6, 16
+    scale = 2. ** 22
+    sigma = 2 * scale
+    off = numpy.ones(n - 1)
+    shifted = scale * (3 * numpy.eye(n) - numpy.diag(off, 1)
+                       - numpy.diag(off, -1))
+    a = cupy.asarray(shifted + sigma * numpy.eye(n))
+    inverse = cupy.asarray(numpy.linalg.inv(shifted))
+    calls = 0
+
+    def solve(x):
+        nonlocal calls
+        calls += 1
+        return inverse @ x
+
+    opinv = sparse.linalg.LinearOperator(a.shape, matvec=solve, dtype=a.dtype)
+    v0 = cupy.asarray(numpy.random.default_rng(101).standard_normal(n))
+    w, v = sparse.linalg.eigsh(a, k=k, sigma=sigma, OPinv=opinv, ncv=ncv,
+                               v0=v0, tol=tol, maxiter=600)
+    assert ncv < calls < 600
+
+    theta = 1 / (w - sigma)
+    residual = cupy.linalg.norm(inverse @ v - v * theta, axis=0)
+    limit = max(tol, 100 * numpy.finfo(float).eps)
+    assert bool((residual <= limit * abs(theta)).all())
+    testing.assert_allclose(w - sigma, numpy.linalg.eigvalsh(shifted)[:k],
+                            rtol=limit, atol=0)
+
+
 @testing.with_requires('scipy')
 class TestEigshLateNormDiscovery:
     # An operator with wide dynamic range and a v0 orthogonal to its
