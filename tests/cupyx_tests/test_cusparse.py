@@ -4,6 +4,7 @@ import functools
 import gc
 import pickle
 import sys
+import unittest
 import weakref
 
 import numpy
@@ -1041,7 +1042,24 @@ class TestSpMatDescriptorOwnership:
                 else (a.data, a.indices, a.indptr))
         owners = [weakref.ref(x) for x in arrs]
         desc = cusparse.SpMatDescriptor.create(a)
+        assert all(x is y for x, y in zip(desc._owning_arrs, arrs))
         del a, arrs
+        gc.collect()
+        assert all(o() is not None for o in owners)
+        del desc
+        gc.collect()
+        assert all(o() is None for o in owners)
+
+    @pytest.mark.parametrize('fmt', ['csr', 'csc', 'coo'])
+    def test_descriptor_keeps_contiguous_copies_alive(self, fmt):
+        a = sparse.random(20, 20, density=0.1, format=fmt,
+                          dtype=numpy.float64).astype(numpy.complex128).real
+        assert not a.data.flags.c_contiguous
+        desc = cusparse.SpMatDescriptor.create(a)
+        assert desc._owning_arrs[0] is not a.data
+        testing.assert_array_equal(desc._owning_arrs[0], a.data)
+        owners = [weakref.ref(x) for x in desc._owning_arrs]
+        del a
         gc.collect()
         assert all(o() is not None for o in owners)
         del desc
@@ -1056,6 +1074,95 @@ class TestSpMatDescriptorOwnership:
         a = sparse.dia_matrix((data, offsets), shape=(20, 20))
         with pytest.raises(ValueError):
             cusparse.SpMatDescriptor.create(a)
+
+
+@testing.parameterize(*testing.product({
+    'format': ['csr', 'csc', 'coo'],
+    'dtype': [numpy.float32, numpy.float64, numpy.complex64, numpy.complex128],
+    'index_dtype': [numpy.int32, numpy.int64],
+    'step': [2, -2],
+}))
+@testing.with_requires('scipy')
+class TestSpMatDescriptorStrides(unittest.TestCase):
+
+    def setUp(self):
+        self.expected = numpy.array(
+            [[1, 0, 2], [0, 3, 0], [4, 0, 5]], dtype=self.dtype)
+        if numpy.dtype(self.dtype).kind == 'c':
+            self.expected *= 1 + 2j
+        cpu = scipy.sparse.coo_matrix(self.expected).asformat(self.format)
+        self.a = getattr(sparse, self.format + '_matrix')(cpu)
+        names = (('data', 'row', 'col') if self.format == 'coo'
+                 else ('data', 'indices', 'indptr'))
+        self.arrays = {}
+        for name in names:
+            values = getattr(self.a, name)
+            if name != 'data':
+                values = values.astype(self.index_dtype)
+            storage = cupy.zeros(values.size * 2, dtype=values.dtype)
+            view = storage[::self.step]
+            view[...] = values
+            assert not view.flags.c_contiguous
+            setattr(self.a, name, view)
+            self.arrays[name] = view
+        self.a.has_canonical_format = True
+
+    def tearDown(self):
+        # Normalizing the descriptor must not replace the user's views.
+        for name, array in self.arrays.items():
+            assert getattr(self.a, name) is array
+
+    def test_sparse_to_dense(self):
+        if not cusparse.check_availability('sparseToDense'):
+            self.skipTest('sparseToDense is not available')
+        actual = cusparse.sparseToDense(self.a)
+        testing.assert_array_equal(actual, self.expected)
+
+    def test_spmv(self):
+        if not cusparse.check_availability('spmv'):
+            self.skipTest('spmv is not available')
+        if runtime.is_hip and self.format == 'csc':
+            pytest.xfail('may be buggy')
+        x = cupy.array([1, 2, 3], dtype=self.dtype)
+        actual = cusparse.spmv(self.a, x)
+        testing.assert_array_equal(actual, self.expected @ x.get())
+
+    def test_spmm(self):
+        if not cusparse.check_availability('spmm'):
+            self.skipTest('spmm is not available')
+        if cusparse.getVersion() == 11700 and self.format == 'coo':
+            self.skipTest('spmm fails on CUDA 11.5.x with COO')
+        if cusparse.getVersion() == 11702 and self.format in ('csr', 'csc'):
+            self.skipTest('spmm fails on CUDA 11.6.1/11.6.2 with CSR or CSC')
+        if runtime.is_hip and self.format == 'csc':
+            pytest.xfail('may be buggy')
+        b = cupy.array([[1, 2], [3, 4], [5, 6]], dtype=self.dtype, order='F')
+        actual = cusparse.spmm(self.a, b)
+        testing.assert_array_equal(actual, self.expected @ b.get())
+
+
+@testing.parameterize(*testing.product({
+    'format': ['csr', 'csc', 'coo'],
+    'dtype': [numpy.complex64, numpy.complex128],
+    'part': ['real', 'imag'],
+}))
+@testing.with_requires('scipy')
+class TestSpMatDescriptorComplexViews(unittest.TestCase):
+
+    def test_sparse_to_dense(self):
+        if not cusparse.check_availability('sparseToDense'):
+            self.skipTest('sparseToDense is not available')
+        dense = numpy.array([[1 + 2j, 0], [3 + 4j, 5 + 6j]], dtype=self.dtype)
+        cpu = scipy.sparse.coo_matrix(dense).asformat(self.format)
+        original = getattr(sparse, self.format + '_matrix')(cpu)
+        a = getattr(original, self.part)
+        data = a.data
+        assert not data.flags.c_contiguous
+        actual = cusparse.sparseToDense(a)
+        testing.assert_array_equal(actual, getattr(dense, self.part))
+        assert a.data is data
+        data[...] = 7
+        testing.assert_array_equal(getattr(original.data, self.part), 7)
 
 
 @pytest.mark.parametrize('dims', [(3, 4), (4, 3), (3, None)])
