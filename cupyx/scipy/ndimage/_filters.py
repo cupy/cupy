@@ -258,6 +258,20 @@ def uniform_filter1d(input, size, axis=-1, output=None, mode="reflect",
         and input is integral) the results may not perfectly match the results
         from SciPy due to floating-point rounding of intermediate results.
     """
+    if input.dtype.kind in 'iu':
+        # Accumulate integer windows exactly, then divide. Scaling by
+        # 1/size can leave a window of equal values just below the exact
+        # integer and truncate the result (GH-8401).
+        weights = cupy.ones(size, dtype=cupy.float64)
+        summed = correlate1d(
+            input, weights, axis, None, mode, cval, origin)
+        res = summed / size
+        if output is None:
+            return res.astype(input.dtype)
+        if isinstance(output, cupy.ndarray):
+            output[...] = res.astype(output.dtype)
+            return output
+        return res.astype(output)
     weights_dtype = _util._init_weights_dtype(input)
     weights = cupy.full(size, 1 / size, dtype=weights_dtype)
     return correlate1d(input, weights, axis, output, mode, cval, origin)
