@@ -54,7 +54,7 @@ include = ["cupy*", "cupyx*", "cupy_backends*"]
 version = { attr = "cupy._version.__version__" }
 
 [tool.autopep8]
-exclude = "*.git*, *.eggs*, *docs/source*"
+exclude = "*.git*, *.eggs*, *docs/source*, *skills/*"
 
 [tool.autopep8.per-file-ignores]
 # ignore long lines containing arrays of numerical constants
@@ -133,6 +133,7 @@ ecxlude_lines = ["if __name__ == .__main__.:"]
 line-length = 79
 extend-exclude = [
   "docs/source",
+  "skills",
   "third_party",
 ]
 
