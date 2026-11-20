@@ -66,6 +66,11 @@ static hipblasDatatype_t convert_hipblasDatatype_t(cudaDataType_t type) {
         case 7 /* CUDA_C_8I */ : return HIPBLAS_C_8I;
         case 8 /* CUDA_R_8U */ : return HIPBLAS_R_8U;
         case 9 /* CUDA_C_8U */ : return HIPBLAS_C_8U;
+#if HIP_VERSION >= 70000000
+        case 14 /* CUDA_R_16BF */: return HIP_R_16BF;
+#else
+        case 14 /* CUDA_R_16BF */: return HIPBLAS_R_16B;
+#endif
         default: throw std::runtime_error("unrecognized type");
     }
 }
