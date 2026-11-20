@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import functools
+import os
 
 import pytest
 
@@ -14,12 +15,29 @@ MDSPAN_INDEX_TYPES = [cupy.int32, cupy.int64]
 
 
 # Supported layout types for mdspan
-MDSPAN_LAYOUT_TYPES = ['layout_stride', 'layout_right', 'layout_left']
+MDSPAN_LAYOUT_TYPES = [
+    'layout_stride', 'layout_right', 'layout_left',
+]
 
 
 # TODO(leofang): do we have a better source of all dtypes?
 # All type chars from cupy/_core/_dtype.pyx
 ALL_TYPE_CHARS = '?bhilqBHILQefdFD'
+
+
+def _has_layout_stride_relaxed():
+    """Check if the bundled CCCL has the layout_stride_relaxed header."""
+    header = os.path.join(
+        os.path.dirname(cupy.__file__),
+        '_core', 'include', 'cupy', '_cccl', 'libcudacxx',
+        'cuda', '__mdspan', 'layout_stride_relaxed.h')
+    return os.path.isfile(header)
+
+
+skip_no_relaxed_layout = pytest.mark.skipif(
+    not _has_layout_stride_relaxed(),
+    reason='CCCL does not have layout_stride_relaxed support'
+)
 
 
 def make_kernel_code(kernel_name, ndim, layout='layout_stride'):
@@ -28,28 +46,40 @@ def make_kernel_code(kernel_name, ndim, layout='layout_stride'):
     Args:
         kernel_name: Name of the kernel function
         ndim: Number of dimensions (0, 1, 2, or 3)
-        layout: Layout policy ('layout_stride', 'layout_right', 'layout_left')
+        layout: Layout policy ('layout_stride', 'layout_right',
+            'layout_left', 'layout_stride_relaxed')
     """
-    # Common header
-    code = r"""
+    # layout_stride_relaxed lives in <cuda/mdspan>, not <cuda/std/mdspan>
+    if layout == 'layout_stride_relaxed':
+        includes = r"""
+#include <cuda/mdspan>
+#include <cupy/float16.cuh>
+#include <cupy/complex.cuh>"""
+        layout_qual = 'cuda::layout_stride_relaxed'
+    else:
+        includes = r"""
 #include <cuda/std/mdspan>
 #include <cupy/float16.cuh>
-#include <cupy/complex.cuh>
+#include <cupy/complex.cuh>"""
+        layout_qual = f'cuda::std::{layout}'
+    # Common header
+    code = """
+{includes}
 
 template<typename T, typename IndexType>
-__global__ void {kernel_name}(
+__global__ void {{kernel_name}}(
     cuda::std::mdspan<
         T,
-        cuda::std::extents<{extents}>,
-        cuda::std::{layout}> arr_in,
+        cuda::std::extents<{{extents}}>,
+        {layout_qual}> arr_in,
     cuda::std::mdspan<
         T,
-        cuda::std::extents<{extents}>,
-        cuda::std::{layout}> arr_out
-) {{
-{body}
-}}
-"""  # noqa: E501
+        cuda::std::extents<{{extents}}>,
+        {layout_qual}> arr_out
+) {{{{
+{{body}}
+}}}}
+""".format(includes=includes, layout_qual=layout_qual)  # noqa: E501
 
     # Build extents based on dimensionality
     dyn_ext = ["cuda::std::dynamic_extent"] * ndim
@@ -98,13 +128,14 @@ __global__ void {kernel_name}(
     return code.format(
         kernel_name=kernel_name,
         extents=extents,
-        layout=layout,
         body=body
     )
 
 
-# Kernel with compile-time size validation
-code_verify_with_validation = r"""
+# Kernel with compile-time size validation using layout_stride.
+# Note: layout_stride does not include an offset, so its sizeof is smaller
+# than CuPy's packed struct. The extra offset bytes are ignored by the kernel.
+code_verify_with_validation_stride = r"""
 #include <cuda/std/mdspan>
 #include <cupy/float16.cuh>
 #include <cupy/complex.cuh>
@@ -126,12 +157,9 @@ __global__ void verify_mdspan_with_size_check(
             cuda::std::dynamic_extent>,
         cuda::std::layout_stride> arr_out
 ) {
-    // Compile-time validation of mdspan size
     using mdspan_t = decltype(arr_in);
     static_assert(sizeof(mdspan_t) == sizeof(void*) + 4*sizeof(IndexType),
-                  "mdspan size does not match expected layout!");
-
-    // Verify all extents are dynamic
+                  "layout_stride mdspan size mismatch!");
     static_assert(mdspan_t::rank_dynamic() == mdspan_t::rank(),
                   "mdspan must have all dynamic extents!");
 
@@ -141,7 +169,49 @@ __global__ void verify_mdspan_with_size_check(
         for (IndexType j = blockIdx.y * (IndexType)blockDim.y + threadIdx.y;
              j < arr_in.extent(1);
              j += gridDim.y * blockDim.y) {
-            arr_out(i, j) = arr_in(i, j);  // copy
+            arr_out(i, j) = arr_in(i, j);
+        }
+    }
+}
+"""  # noqa: E501
+
+# Kernel with compile-time size validation using layout_stride_relaxed.
+# This matches CuPy's full packed struct including the offset field.
+code_verify_with_validation_relaxed = r"""
+#include <cuda/mdspan>
+#include <cupy/float16.cuh>
+#include <cupy/complex.cuh>
+
+template<typename T, typename IndexType>
+__global__ void verify_mdspan_relaxed_with_size_check(
+    cuda::std::mdspan<
+        T,
+        cuda::std::extents<
+            IndexType,
+            cuda::std::dynamic_extent,
+            cuda::std::dynamic_extent>,
+        cuda::layout_stride_relaxed> arr_in,
+    cuda::std::mdspan<
+        T,
+        cuda::std::extents<
+            IndexType,
+            cuda::std::dynamic_extent,
+            cuda::std::dynamic_extent>,
+        cuda::layout_stride_relaxed> arr_out
+) {
+    using mdspan_t = decltype(arr_in);
+    static_assert(sizeof(mdspan_t) == sizeof(void*) + 4*sizeof(IndexType) + sizeof(ptrdiff_t),
+                  "layout_stride_relaxed mdspan size mismatch!");
+    static_assert(mdspan_t::rank_dynamic() == mdspan_t::rank(),
+                  "mdspan must have all dynamic extents!");
+
+    for (IndexType i = blockIdx.x * (IndexType)blockDim.x + threadIdx.x;
+         i < arr_in.extent(0);
+         i += gridDim.x * blockDim.x) {
+        for (IndexType j = blockIdx.y * (IndexType)blockDim.y + threadIdx.y;
+             j < arr_in.extent(1);
+             j += gridDim.y * blockDim.y) {
+            arr_out(i, j) = arr_in(i, j);
         }
     }
 }
@@ -157,7 +227,10 @@ def index_type(request):
     return request.param
 
 
-@pytest.fixture(scope='class', params=MDSPAN_LAYOUT_TYPES)
+@pytest.fixture(scope='class', params=[
+    *MDSPAN_LAYOUT_TYPES,
+    pytest.param('layout_stride_relaxed', marks=skip_no_relaxed_layout),
+])
 def layout(request):
     return request.param
 
@@ -264,8 +337,8 @@ class TestMdspan1D:
     @testing.for_all_dtypes()
     def test_mdspan_1d_sliced(self, dtype, make_kernel_module):
         mod, layout, index_type = make_kernel_module(1)
-        if layout != 'layout_stride':
-            pytest.skip("Sliced test only applicable for layout_stride")
+        if layout not in ('layout_stride', 'layout_stride_relaxed'):
+            pytest.skip("Sliced test only for strided layouts")
 
         a = testing.shaped_random((100,), dtype=dtype)
         a_sliced = a[::3]  # Every 3rd element
@@ -287,20 +360,22 @@ class TestMdspan1D:
 
     @testing.for_all_dtypes()
     def test_mdspan_negative_stride_1d(self, dtype, make_kernel_module):
+        """Test negative strides with strided layouts."""
         mod, layout, index_type = make_kernel_module(1)
-        if layout != 'layout_stride':
+        if layout not in ('layout_stride', 'layout_stride_relaxed'):
             pytest.skip(
-                "Negative stride test only applicable for layout_stride")
+                "Negative stride test only for strided layouts")
 
         a = testing.shaped_random((100,), dtype=dtype)
-        a_rev = a[::-1]  # Negative stride
-        # Check if strides are actually negative
+        a_rev = a[::-1]
         assert a_rev.strides[0] < 0, "Expected negative stride"
 
-        a_mdspan = a_rev.mdspan(index_type=index_type, allow_unsafe=True)
+        # layout_stride needs allow_unsafe (legacy); relaxed does not
+        unsafe = (layout == 'layout_stride')
+        a_mdspan = a_rev.mdspan(index_type=index_type, allow_unsafe=unsafe)
         out = cupy.zeros_like(a)
         out_rev = out[::-1]
-        out_mdspan = out_rev.mdspan(index_type=index_type, allow_unsafe=True)
+        out_mdspan = out_rev.mdspan(index_type=index_type, allow_unsafe=unsafe)
 
         dtype_str = get_typename(dtype)
         index_type_str = get_typename(index_type)
@@ -308,7 +383,6 @@ class TestMdspan1D:
             f'verify_mdspan_{layout}_1d<{dtype_str}, {index_type_str}>'
         )
 
-        # This tests if mdspan correctly handles negative strides
         ker((1,), (100,), (a_mdspan, out_mdspan))
         testing.assert_array_equal(out_rev, a_rev +
                                    cupy.ones(100, dtype=dtype))
@@ -345,8 +419,8 @@ class TestMdspan2D:
     @testing.for_all_dtypes()
     def test_mdspan_2d_sliced(self, dtype, order, make_kernel_module):
         mod, layout, index_type = make_kernel_module(2)
-        if layout != 'layout_stride':
-            pytest.skip("Sliced test only applicable for layout_stride")
+        if layout not in ('layout_stride', 'layout_stride_relaxed'):
+            pytest.skip("Sliced test only for strided layouts")
 
         shape = (4, 16)
         a = testing.shaped_random(shape, dtype=dtype, order=order)
@@ -369,20 +443,23 @@ class TestMdspan2D:
 
     @testing.for_all_dtypes()
     def test_mdspan_negative_stride_2d(self, dtype, make_kernel_module):
+        """Test negative strides with strided layouts."""
         mod, layout, index_type = make_kernel_module(2)
-        if layout != 'layout_stride':
+        if layout not in ('layout_stride', 'layout_stride_relaxed'):
             pytest.skip(
-                "Negative stride test only applicable for layout_stride")
+                "Negative stride test only for strided layouts")
 
         shape = (10, 20)
         a = testing.shaped_random(shape, dtype=dtype)
-        a_rev = a[::-1, :]  # Negative stride in first dimension
+        a_rev = a[::-1, :]
         assert a_rev.strides[0] < 0, "Expected negative stride"
 
-        a_mdspan = a_rev.mdspan(index_type=index_type, allow_unsafe=True)
+        # layout_stride needs allow_unsafe (legacy); relaxed does not
+        unsafe = (layout == 'layout_stride')
+        a_mdspan = a_rev.mdspan(index_type=index_type, allow_unsafe=unsafe)
         out = cupy.zeros_like(a)
         out_rev = out[::-1, :]
-        out_mdspan = out_rev.mdspan(index_type=index_type, allow_unsafe=True)
+        out_mdspan = out_rev.mdspan(index_type=index_type, allow_unsafe=unsafe)
 
         dtype_str = get_typename(dtype)
         index_type_str = get_typename(index_type)
@@ -394,6 +471,68 @@ class TestMdspan2D:
         testing.assert_array_equal(
             out_rev, a_rev + cupy.ones_like(a_rev, dtype=dtype)
         )
+
+    @testing.for_all_dtypes()
+    def test_mdspan_negative_stride_2d_both_axes(
+            self, dtype, make_kernel_module):
+        """Test negative strides in both axes with strided layouts."""
+        mod, layout, index_type = make_kernel_module(2)
+        if layout not in ('layout_stride', 'layout_stride_relaxed'):
+            pytest.skip(
+                "Negative stride test only for strided layouts")
+
+        shape = (10, 20)
+        a = testing.shaped_random(shape, dtype=dtype)
+        a_rev = a[::-1, ::-1]
+        assert a_rev.strides[0] < 0
+        assert a_rev.strides[1] < 0
+
+        unsafe = (layout == 'layout_stride')
+        a_mdspan = a_rev.mdspan(index_type=index_type, allow_unsafe=unsafe)
+        out = cupy.zeros_like(a)
+        out_rev = out[::-1, ::-1]
+        out_mdspan = out_rev.mdspan(index_type=index_type, allow_unsafe=unsafe)
+
+        dtype_str = get_typename(dtype)
+        index_type_str = get_typename(index_type)
+        ker = mod.get_function(
+            f'verify_mdspan_{layout}_2d<{dtype_str}, {index_type_str}>'
+        )
+
+        ker((1,), shape, (a_mdspan, out_mdspan))
+        testing.assert_array_equal(
+            out_rev, a_rev + cupy.ones_like(a_rev, dtype=dtype))
+
+    @testing.for_all_dtypes()
+    def test_mdspan_sliced_negative_stride_2d(
+            self, dtype, make_kernel_module):
+        """Test sliced + reversed array with strided layouts."""
+        mod, layout, index_type = make_kernel_module(2)
+        if layout not in ('layout_stride', 'layout_stride_relaxed'):
+            pytest.skip(
+                "Sliced negative stride test only for strided layouts")
+
+        a = testing.shaped_random((20, 30), dtype=dtype)
+        a_sliced = a[::2, ::-3]
+        assert a_sliced.strides[1] < 0
+
+        unsafe = (layout == 'layout_stride')
+        a_mdspan = a_sliced.mdspan(index_type=index_type, allow_unsafe=unsafe)
+        out = cupy.zeros_like(a)
+        out_sliced = out[::2, ::-3]
+        out_mdspan = out_sliced.mdspan(
+            index_type=index_type, allow_unsafe=unsafe)
+
+        sliced_shape = a_sliced.shape
+        dtype_str = get_typename(dtype)
+        index_type_str = get_typename(index_type)
+        ker = mod.get_function(
+            f'verify_mdspan_{layout}_2d<{dtype_str}, {index_type_str}>'
+        )
+
+        ker((1,), sliced_shape, (a_mdspan, out_mdspan))
+        testing.assert_array_equal(
+            out_sliced, a_sliced + cupy.ones_like(a_sliced, dtype=dtype))
 
 
 @pytest.mark.skipif(
@@ -426,8 +565,8 @@ class TestMdspan3D:
     @testing.for_all_dtypes()
     def test_mdspan_3d_sliced(self, dtype, order, make_kernel_module):
         mod, layout, index_type = make_kernel_module(3)
-        if layout != 'layout_stride':
-            pytest.skip("Sliced test only applicable for layout_stride")
+        if layout not in ('layout_stride', 'layout_stride_relaxed'):
+            pytest.skip("Sliced test only for strided layouts")
 
         shape = (8, 10, 12)
         a = testing.shaped_random(shape, dtype=dtype, order=order)
@@ -454,7 +593,7 @@ class TestMdspan3D:
     cupy.cuda.runtime.is_hip, reason='libcudacxx not supported in HIP'
 )
 class TestMdspanValidation:
-    """Test mdspan with compile-time validation."""
+    """Test mdspan with compile-time validation using layout_stride."""
 
     def setup_class(self):
         dtypes = [cupy.dtype(c).type for c in ALL_TYPE_CHARS]
@@ -469,14 +608,14 @@ class TestMdspanValidation:
                 )
 
         self.mod = cupy.RawModule(
-            code=code_verify_with_validation,
+            code=code_verify_with_validation_stride,
             options=('--std=c++17',),
             name_expressions=name_expressions
         )
 
     @testing.for_all_dtypes()
     def test_mdspan_size_validation(self, dtype, index_type):
-        """Test that mdspan size matches expected layout."""
+        """Test layout_stride mdspan (extra offset bytes ignored)."""
         shape = (4, 8)
         a = testing.shaped_random(shape, dtype=dtype)
         a_mdspan = a.mdspan(index_type=index_type)
@@ -486,9 +625,56 @@ class TestMdspanValidation:
         dtype_str = get_typename(dtype)
         index_type_str = get_typename(index_type)
 
-        # This kernel has static_assert for size validation
         ker = self.mod.get_function(
             f'verify_mdspan_with_size_check<{dtype_str}, {index_type_str}>'
+        )
+
+        ker((1,), shape, (a_mdspan, out_mdspan))
+        testing.assert_array_equal(out, a)
+
+
+@pytest.mark.parametrize('index_type', MDSPAN_INDEX_TYPES)
+@pytest.mark.skipif(
+    cupy.cuda.runtime.is_hip, reason='libcudacxx not supported in HIP'
+)
+@skip_no_relaxed_layout
+class TestMdspanValidationRelaxed:
+    """Test mdspan with compile-time validation using layout_stride_relaxed."""
+
+    def setup_class(self):
+        dtypes = [cupy.dtype(c).type for c in ALL_TYPE_CHARS]
+
+        name_expressions = []
+        for dtype in dtypes:
+            for index_type in MDSPAN_INDEX_TYPES:
+                dtype_str = get_typename(dtype)
+                index_str = get_typename(index_type)
+                name_expressions.append(
+                    'verify_mdspan_relaxed_with_size_check'
+                    f'<{dtype_str}, {index_str}>'
+                )
+
+        self.mod = cupy.RawModule(
+            code=code_verify_with_validation_relaxed,
+            options=('--std=c++17',),
+            name_expressions=name_expressions
+        )
+
+    @testing.for_all_dtypes()
+    def test_mdspan_size_validation_relaxed(self, dtype, index_type):
+        """Test that layout_stride_relaxed mdspan matches full struct."""
+        shape = (4, 8)
+        a = testing.shaped_random(shape, dtype=dtype)
+        a_mdspan = a.mdspan(index_type=index_type)
+        out = cupy.zeros_like(a)
+        out_mdspan = out.mdspan(index_type=index_type)
+
+        dtype_str = get_typename(dtype)
+        index_type_str = get_typename(index_type)
+
+        ker = self.mod.get_function(
+            'verify_mdspan_relaxed_with_size_check'
+            f'<{dtype_str}, {index_type_str}>'
         )
 
         ker((1,), shape, (a_mdspan, out_mdspan))
@@ -504,7 +690,7 @@ class TestMdspanBroadcast:
     @testing.for_all_dtypes()
     def test_mdspan_broadcast_1d_zero_stride(self, dtype, make_kernel_module):
         mod, layout, index_type = make_kernel_module(1)
-        if layout != 'layout_stride':
+        if layout not in ('layout_stride', 'layout_stride_relaxed'):
             pytest.skip("Broadcast test only applicable for layout_stride")
 
         # Create broadcasted array with zero stride: [1] -> [1, 1, 1, ...]
@@ -535,7 +721,7 @@ class TestMdspanBroadcast:
     def test_mdspan_broadcast_2d_zero_stride_axis0(
             self, dtype, make_kernel_module):
         mod, layout, index_type = make_kernel_module(2)
-        if layout != 'layout_stride':
+        if layout not in ('layout_stride', 'layout_stride_relaxed'):
             pytest.skip("Broadcast test only applicable for layout_stride")
 
         # Broadcast along axis 0: (1, 5) -> (3, 5) with stride[0] = 0
@@ -565,7 +751,7 @@ class TestMdspanBroadcast:
     def test_mdspan_broadcast_2d_zero_stride_axis1(
             self, dtype, make_kernel_module):
         mod, layout, index_type = make_kernel_module(2)
-        if layout != 'layout_stride':
+        if layout not in ('layout_stride', 'layout_stride_relaxed'):
             pytest.skip("Broadcast test only applicable for layout_stride")
 
         # Broadcast along axis 1: (4, 1) -> (4, 6) with stride[1] = 0
@@ -594,7 +780,7 @@ class TestMdspanBroadcast:
     def test_mdspan_broadcast_2d_both_axes(
             self, dtype, make_kernel_module):
         mod, layout, index_type = make_kernel_module(2)
-        if layout != 'layout_stride':
+        if layout not in ('layout_stride', 'layout_stride_relaxed'):
             pytest.skip("Broadcast test only applicable for layout_stride")
 
         # Broadcast from scalar: (1, 1) -> (3, 4) with both strides = 0
@@ -667,7 +853,7 @@ class TestMdspanValidationUnsafe:
         assert a_broadcast.strides[0] == 0
 
         with pytest.raises(
-                RuntimeError, match="0-th dimension has non-positive stride"):
+                RuntimeError, match="0-th dimension has zero stride"):
             a_broadcast.mdspan(index_type=cupy.int64)
 
         # 2D broadcast along axis 0
@@ -676,7 +862,7 @@ class TestMdspanValidationUnsafe:
         assert a_broadcast.strides[0] == 0
 
         with pytest.raises(
-                RuntimeError, match="0-th dimension has non-positive stride"):
+                RuntimeError, match="0-th dimension has zero stride"):
             a_broadcast.mdspan(index_type=cupy.int64)
 
     def test_zero_stride_allowed_with_flag(self):
@@ -694,28 +880,34 @@ class TestMdspanValidationUnsafe:
         mdspan = a_broadcast.mdspan(index_type=cupy.int64, allow_unsafe=True)
         assert mdspan is not None
 
-    def test_negative_stride_rejected(self):
-        """Test that negative strides raise RuntimeError by default."""
+    def test_negative_stride_accepted_by_default(self):
+        """Test that negative strides are accepted without allow_unsafe.
+
+        Negative strides are packed with the correct offset for
+        layout_stride_relaxed, so they are safe by default.
+        """
         # 1D reversed
         a = cupy.arange(10, dtype=cupy.float32)
         a_rev = a[::-1]
         assert a_rev.strides[0] < 0
 
-        with pytest.raises(
-                RuntimeError, match="0-th dimension has non-positive stride"):
-            a_rev.mdspan(index_type=cupy.int64)
+        mdspan = a_rev.mdspan(index_type=cupy.int64)
+        assert mdspan is not None
 
         # 2D reversed first dimension
         a = cupy.arange(20, dtype=cupy.float32).reshape(4, 5)
         a_rev = a[::-1, :]
         assert a_rev.strides[0] < 0
 
-        with pytest.raises(
-                RuntimeError, match="0-th dimension has non-positive stride"):
-            a_rev.mdspan(index_type=cupy.int64)
+        mdspan = a_rev.mdspan(index_type=cupy.int64)
+        assert mdspan is not None
 
-    def test_negative_stride_allowed_with_flag(self):
-        """Test that negative strides work with allow_unsafe=True."""
+    def test_negative_stride_with_allow_unsafe(self):
+        """Test that negative strides with allow_unsafe use legacy packing.
+
+        With allow_unsafe=True, ptr=data.ptr and offset=0 (backward
+        compatible with layout_stride at the caller's risk).
+        """
         a = cupy.arange(10, dtype=cupy.float32)
         a_rev = a[::-1]
 
@@ -741,7 +933,7 @@ class TestMdspanValidationUnsafe:
 
         # Test zero stride
         a = cupy.broadcast_to(cupy.array([1]), (10,))
-        with pytest.raises(RuntimeError, match="non-positive stride"):
+        with pytest.raises(RuntimeError, match="zero stride"):
             a.mdspan(index_type=cupy.int32)
 
         mdspan = a.mdspan(index_type=cupy.int32, allow_unsafe=True)
@@ -757,12 +949,9 @@ class TestMdspanValidationUnsafe:
         mdspan = a.mdspan(index_type=cupy.int64, allow_unsafe=True)
         assert mdspan is not None
 
-        # Test negative stride
+        # Negative strides are accepted by default (layout_stride_relaxed)
         a = cupy.arange(10)[::-1]
-        with pytest.raises(RuntimeError, match="non-positive stride"):
-            a.mdspan(index_type=cupy.int64)
-
-        mdspan = a.mdspan(index_type=cupy.int64, allow_unsafe=True)
+        mdspan = a.mdspan(index_type=cupy.int64)
         assert mdspan is not None
 
     def test_multiple_zero_dimensions(self):
