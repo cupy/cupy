@@ -73,10 +73,9 @@ def _design_resample_poly(up, down, window):
     The functions `cusignal.get_window` and `cusignal.firwin`
     are called to generate the appropriate filter coefficients.
 
-    The returned array of coefficients will always be of data type
-    `complex128` to maintain precision. For use in lower-precision
-    filter operations, this array should be converted to the desired
-    data type before providing it to `cusignal.resample_poly`.
+    The returned array of coefficients is always of data type `float64`.
+    `resample_poly` converts it to the data type of a floating-point or
+    complex input before filtering.
 
     """
 
@@ -536,7 +535,11 @@ def resample_poly(x, up, down, axis=0, window=("kaiser", 5.0),
         h = up * window
     else:
         half_len = 10 * max(up, down)
-        h = up * _design_resample_poly(up, down, window)
+        h = _design_resample_poly(up, down, window)
+        if x.dtype.kind in 'fc':
+            # Filter in the precision of x, as SciPy does
+            h = h.astype(x.dtype, copy=False)
+        h = up * h
 
     # Zero-pad our filter to put the output samples at the center
     n_pre_pad = down - half_len % down
