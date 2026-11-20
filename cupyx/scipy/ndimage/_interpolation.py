@@ -320,7 +320,7 @@ def map_coordinates(input, coordinates, output=None, order=3,
     kern = _interp_kernels._get_map_kernel(
         input.ndim, large_int, mode=mode, cval=cval,
         order=order, integer_output=integer_output, nprepad=nprepad,
-        float_dtype=float_dtype)
+        float_dtype=float_dtype, coord_dtype=coordinates.dtype)
     kern(filtered, coordinates, ret)
     return ret
 
