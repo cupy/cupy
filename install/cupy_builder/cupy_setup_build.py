@@ -536,6 +536,8 @@ def get_ext_modules(use_cython: bool, ctx: Context):
     sysconfig.get_config_vars()
     compiler = ccompiler.new_compiler()
     sysconfig.customize_compiler(compiler)
+    if ctx.use_hip and PLATFORM_WIN32:
+        build.configure_msvc_for_hip(compiler)
 
     extensions = make_extensions(ctx, compiler, use_cython)
 

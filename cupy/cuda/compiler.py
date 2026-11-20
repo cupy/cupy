@@ -378,7 +378,12 @@ def _compile_using_nvrtc_no_warning(
                     _use_pch):
                 options += ('--pch',)
 
-        prog = _NVRTCProgram(source, cu_path, headers, include_names,
+        name = cu_path
+        if runtime.is_hip and _win32:
+            # hiprtc on Windows fails, with an empty log, to compile a program
+            # whose name is an absolute path.
+            name = os.path.basename(cu_path)
+        prog = _NVRTCProgram(source, name, headers, include_names,
                              name_expressions=name_expressions, method=method)
         try:
             compiled_obj, mapping = prog.compile(options, log_stream)
@@ -884,11 +889,24 @@ def is_valid_kernel_name(name):
     return re.match('^[a-zA-Z_][a-zA-Z_0-9]*$', name) is not None
 
 
+def _get_hipcc_command(options):
+    if not _win32:
+        return ['hipcc']
+    # On Windows, `hipcc` on PATH may be a launcher outside the ROCm tree, and
+    # hipcc compiles for gfx906 unless it is given an architecture.
+    cmd = [_environment.get_hipcc_path() or 'hipcc']
+    if ('HCC_AMDGPU_TARGET' not in os.environ and
+            not any(o.startswith('--offload-arch') for o in options)):
+        props = runtime.getDeviceProperties(device.get_device_id())
+        cmd.append('--offload-arch=' + props['gcnArchName'].decode())
+    return cmd
+
+
 def compile_using_hipcc(source, options, arch, log_stream=None):
     # As of ROCm 3.5.0 hiprtc/hipcc can automatically pick up the
     # right arch without setting HCC_AMDGPU_TARGET, so we don't need
     # to set arch here
-    cmd = ['hipcc', '--genco'] + list(options)
+    cmd = _get_hipcc_command(options) + ['--genco'] + list(options)
 
     with tempfile.TemporaryDirectory() as root_dir:
         path = os.path.join(root_dir, 'kern')
@@ -925,7 +943,7 @@ def compile_using_hipcc(source, options, arch, log_stream=None):
 # TODO(leofang): consider merge _preprocess_hipcc with _preprocess_hiprtc,
 # perhaps also with _preprocess?
 def _preprocess_hipcc(source, options):
-    cmd = ['hipcc', '--preprocess'] + list(options)
+    cmd = _get_hipcc_command(options) + ['--preprocess'] + list(options)
     with tempfile.TemporaryDirectory() as root_dir:
         path = os.path.join(root_dir, 'kern')
         cu_path = '%s.cpp' % path
@@ -1020,11 +1038,13 @@ def _compile_with_cache_hip(source, options, arch, extra_source,
     options += ('-fcuda-flush-denormals-to-zero',)
 
     # hiprtc doesn't always include the correct include dirs, so we always
-    # query hipcc to get them
-    options += tuple(
-        f"-I{include_dir}"
-        for include_dir in _environment._get_hipcc_include_dirs()
-    )
+    # query hipcc to get them. hipcc itself uses them by default, and on
+    # Windows, where they contain spaces, hipcc.exe would split them.
+    if backend == 'hiprtc' or not _win32:
+        options += tuple(
+            f"-I{include_dir}"
+            for include_dir in _environment._get_hipcc_include_dirs()
+        )
 
     # As of ROCm 3.5.0 hiprtc/hipcc can automatically pick up the
     # right arch without setting HCC_AMDGPU_TARGET, so we don't need

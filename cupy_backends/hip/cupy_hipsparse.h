@@ -2,6 +2,7 @@
 
 #ifndef INCLUDE_GUARD_HIP_CUPY_HIPSPARSE_H
 #define INCLUDE_GUARD_HIP_CUPY_HIPSPARSE_H
+#include "cupy_hip_common.h"  // for CUPY_HIP_EXPORT
 #include <hipsparse.h>
 #include <hip/hip_version.h>    // for HIP_VERSION
 #include <hip/library_types.h>  // for hipDataType
@@ -3191,7 +3192,7 @@ cusparseStatus_t cusparseCreateCsr(cusparseSpMatDescr_t* spMatDescr,
 #endif
 }
 
-cusparseStatus_t cusparseCreateCsc(cusparseSpMatDescr_t* spMatDescr,
+CUPY_HIP_EXPORT cusparseStatus_t cusparseCreateCsc(cusparseSpMatDescr_t* spMatDescr,
                                    int64_t               rows,
                                    int64_t               cols,
                                    int64_t               nnz,
@@ -3331,7 +3332,7 @@ cusparseStatus_t cusparseSpMatGetStridedBatch(...) {
   return HIPSPARSE_STATUS_NOT_SUPPORTED;
 }
 
-cusparseStatus_t cusparseSpMatSetAttribute(cusparseSpMatDescr_t     spMatDescr,
+CUPY_HIP_EXPORT cusparseStatus_t cusparseSpMatSetAttribute(cusparseSpMatDescr_t     spMatDescr,
                                            cusparseSpMatAttribute_t attribute,
                                            void*                    data,
                                            size_t                   dataSize) {
@@ -3522,7 +3523,7 @@ cusparseStatus_t cusparseSpMV(cusparseHandle_t     handle,
 #endif
 }
 
-cusparseStatus_t cusparseSpSM_createDescr(cusparseSpSMDescr_t* descr) {
+CUPY_HIP_EXPORT cusparseStatus_t cusparseSpSM_createDescr(cusparseSpSMDescr_t* descr) {
 #if HIP_VERSION >= 50000000
   return hipsparseSpSM_createDescr(descr);
 #else
@@ -3530,7 +3531,7 @@ cusparseStatus_t cusparseSpSM_createDescr(cusparseSpSMDescr_t* descr) {
 #endif
 }
 
-cusparseStatus_t cusparseSpSM_destroyDescr(cusparseSpSMDescr_t descr) {
+CUPY_HIP_EXPORT cusparseStatus_t cusparseSpSM_destroyDescr(cusparseSpSMDescr_t descr) {
 #if HIP_VERSION >= 50000000
   return hipsparseSpSM_destroyDescr(descr);
 #else
@@ -3538,7 +3539,7 @@ cusparseStatus_t cusparseSpSM_destroyDescr(cusparseSpSMDescr_t descr) {
 #endif
 }
 
-cusparseStatus_t cusparseSpSM_bufferSize(cusparseHandle_t     handle,
+CUPY_HIP_EXPORT cusparseStatus_t cusparseSpSM_bufferSize(cusparseHandle_t     handle,
                                          cusparseOperation_t  opA,
                                          cusparseOperation_t  opB,
                                          const void*          alpha,
@@ -3557,7 +3558,7 @@ cusparseStatus_t cusparseSpSM_bufferSize(cusparseHandle_t     handle,
 #endif
 }
 
-cusparseStatus_t cusparseSpSM_analysis(cusparseHandle_t     handle,
+CUPY_HIP_EXPORT cusparseStatus_t cusparseSpSM_analysis(cusparseHandle_t     handle,
                                        cusparseOperation_t  opA,
                                        cusparseOperation_t  opB,
                                        const void*          alpha,
@@ -3577,7 +3578,7 @@ cusparseStatus_t cusparseSpSM_analysis(cusparseHandle_t     handle,
 }
 
 // See cusparse.pyx for a comment
-cusparseStatus_t cusparseSpSM_solve(cusparseHandle_t     handle,
+CUPY_HIP_EXPORT cusparseStatus_t cusparseSpSM_solve(cusparseHandle_t     handle,
                                     cusparseOperation_t  opA,
                                     cusparseOperation_t  opB,
                                     const void*          alpha,
@@ -3634,7 +3635,7 @@ cusparseStatus_t cusparseSpMM(cusparseHandle_t     handle,
 #endif
 }
 
-cusparseStatus_t cusparseSparseToDense_bufferSize(cusparseHandle_t           handle,
+CUPY_HIP_EXPORT cusparseStatus_t cusparseSparseToDense_bufferSize(cusparseHandle_t           handle,
                                                   cusparseSpMatDescr_t       matA,
                                                   cusparseDnMatDescr_t       matB,
                                                   cusparseSparseToDenseAlg_t alg,
@@ -3646,7 +3647,7 @@ cusparseStatus_t cusparseSparseToDense_bufferSize(cusparseHandle_t           han
 #endif
 }
 
-cusparseStatus_t cusparseSparseToDense(cusparseHandle_t           handle,
+CUPY_HIP_EXPORT cusparseStatus_t cusparseSparseToDense(cusparseHandle_t           handle,
                                        cusparseSpMatDescr_t       matA,
                                        cusparseDnMatDescr_t       matB,
                                        cusparseSparseToDenseAlg_t alg,
@@ -3658,7 +3659,7 @@ cusparseStatus_t cusparseSparseToDense(cusparseHandle_t           handle,
 #endif
 }
 
-cusparseStatus_t cusparseDenseToSparse_bufferSize(cusparseHandle_t           handle,
+CUPY_HIP_EXPORT cusparseStatus_t cusparseDenseToSparse_bufferSize(cusparseHandle_t           handle,
                                                   cusparseDnMatDescr_t       matA,
                                                   cusparseSpMatDescr_t       matB,
                                                   cusparseDenseToSparseAlg_t alg,
@@ -3670,7 +3671,7 @@ cusparseStatus_t cusparseDenseToSparse_bufferSize(cusparseHandle_t           han
 #endif
 }
 
-cusparseStatus_t cusparseDenseToSparse_analysis(cusparseHandle_t           handle,
+CUPY_HIP_EXPORT cusparseStatus_t cusparseDenseToSparse_analysis(cusparseHandle_t           handle,
                                                 cusparseDnMatDescr_t       matA,
                                                 cusparseSpMatDescr_t       matB,
                                                 cusparseDenseToSparseAlg_t alg,
@@ -3682,7 +3683,7 @@ cusparseStatus_t cusparseDenseToSparse_analysis(cusparseHandle_t           handl
 #endif
 }
 
-cusparseStatus_t cusparseDenseToSparse_convert(cusparseHandle_t           handle,
+CUPY_HIP_EXPORT cusparseStatus_t cusparseDenseToSparse_convert(cusparseHandle_t           handle,
                                                cusparseDnMatDescr_t       matA,
                                                cusparseSpMatDescr_t       matB,
                                                cusparseDenseToSparseAlg_t alg,

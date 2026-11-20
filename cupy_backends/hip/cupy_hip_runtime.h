@@ -27,7 +27,7 @@ cudaError_t cudaDriverGetVersion(int *driverVersion) {
     return hipDriverGetVersion(driverVersion);
 }
 
-cudaError_t cudaRuntimeGetVersion(int *runtimeVersion) {
+CUPY_HIP_EXPORT cudaError_t cudaRuntimeGetVersion(int *runtimeVersion) {
     return hipRuntimeGetVersion(runtimeVersion);
 }
 

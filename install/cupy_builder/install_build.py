@@ -12,7 +12,9 @@ import shlex
 import shutil
 import subprocess
 import sys
+import sysconfig
 import tempfile
+from typing import Any
 
 import cupy_builder
 import cupy_builder.install_utils as utils
@@ -59,7 +61,28 @@ def get_rocm_path():
         return _rocm_path
 
     _rocm_path = os.environ.get('ROCM_HOME', '')
+    if PLATFORM_WIN32 and not _rocm_path:
+        _rocm_path = _get_win32_rocm_path()
     return _rocm_path
+
+
+def _get_win32_rocm_path():
+    # On Windows, ROCm is installed from Python packages (TheRock), where
+    # `hipcc` on PATH is a console-script launcher outside the ROCm tree, so
+    # ask `hipconfig` for the root instead. It is a console script, so also
+    # look next to the running interpreter, which works without activating
+    # the environment.
+    hipconfig = (shutil.which('hipconfig') or
+                 shutil.which('hipconfig', path=sysconfig.get_path('scripts')))
+    if hipconfig is None:
+        return ''
+    try:
+        out = subprocess.check_output(
+            [hipconfig, '--rocmpath'], universal_newlines=True)
+    except (OSError, subprocess.CalledProcessError):
+        return ''
+    rocm_path = out.strip()
+    return rocm_path if os.path.isdir(rocm_path) else ''
 
 
 def get_cuda_path():
@@ -188,6 +211,26 @@ def get_hipcc_path() -> list[str]:
         return None
 
 
+def configure_msvc_for_hip(compiler: Any) -> None:
+    """Makes an MSVC compiler instance use clang-cl from ROCm.
+
+    The HIP headers (e.g., ``hiprand_kernel.h``) cannot be compiled with
+    cl.exe. clang-cl produces objects for the same ABI, so link.exe and the
+    C runtime are unchanged.
+    """
+    if not compiler.initialized:
+        compiler.initialize()
+    rocm_path = get_rocm_path()
+    if not rocm_path:
+        raise RuntimeError(
+            'ROCm could not be found. Set the ROCM_HOME environment variable '
+            'to the ROCm root directory, or put `hipconfig` on PATH.')
+    clang_cl = os.path.join(rocm_path, 'lib', 'llvm', 'bin', 'clang-cl.exe')
+    if not os.path.exists(clang_cl):
+        raise RuntimeError(f'clang-cl could not be found: {clang_cl}')
+    compiler.cc = clang_cl
+
+
 def get_compiler_setting(ctx: Context, use_hip):
     cuda_path = None
     rocm_path = None
@@ -226,8 +269,11 @@ def get_compiler_setting(ctx: Context, use_hip):
         library_dirs.append(os.path.join(rocm_path, 'lib'))
 
     if use_hip:
-        # ROCm 5.3 and above requires c++14
-        extra_compile_args.append('-std=c++14')
+        if PLATFORM_WIN32:
+            extra_compile_args.append('/std:c++17')
+        else:
+            # ROCm 5.3 and above requires c++14
+            extra_compile_args.append('-std=c++14')
     else:
         # CCCL 3.x (for CUDA) requires c++17
         if PLATFORM_LINUX:
@@ -236,7 +282,11 @@ def get_compiler_setting(ctx: Context, use_hip):
             assert PLATFORM_WIN32
             extra_compile_args.append('/std:c++17')
 
-    if PLATFORM_WIN32:
+    if PLATFORM_WIN32 and use_hip:
+        # ROCm on Windows ships neither roctx nor roctracer.
+        define_macros.append(('CUPY_NO_NVTX', '1'))
+        define_macros.append(('CUPY_NO_ROCTRACER', '1'))
+    elif PLATFORM_WIN32:
         nvtx_path = _environment.get_nvtx_path()
         if nvtx_path is not None and os.path.exists(nvtx_path):
             include_dirs.append(os.path.join(nvtx_path, 'include'))

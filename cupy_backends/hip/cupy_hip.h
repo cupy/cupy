@@ -7,18 +7,18 @@
 extern "C" {
 
 // Error handling
-CUresult cuGetErrorName(CUresult hipError, const char** pStr) {
+CUPY_HIP_EXPORT CUresult cuGetErrorName(CUresult hipError, const char** pStr) {
     *pStr = hipGetErrorName(hipError);
     return CUDA_SUCCESS;
 }
 
-CUresult cuGetErrorString(CUresult hipError, const char** pStr) {
+CUPY_HIP_EXPORT CUresult cuGetErrorString(CUresult hipError, const char** pStr) {
     *pStr = hipGetErrorString(hipError);
     return CUDA_SUCCESS;
 }
 
 // Primary context management
-CUresult cuDevicePrimaryCtxRelease(CUdevice dev) {
+CUPY_HIP_EXPORT CUresult cuDevicePrimaryCtxRelease(CUdevice dev) {
     // HIP documents this as a no-op that always returns hipSuccess;
     // marked [[deprecated]] in recent ROCm. Replicate inline.
     (void)dev;
@@ -26,78 +26,78 @@ CUresult cuDevicePrimaryCtxRelease(CUdevice dev) {
 }
 
 // Context management
-CUresult cuCtxGetCurrent(CUcontext *ctx) {
+CUPY_HIP_EXPORT CUresult cuCtxGetCurrent(CUcontext *ctx) {
     // deprecated api
     //return hipCtxGetCurrent(ctx);
     return hipErrorUnknown;
 }
 
-CUresult cuCtxSetCurrent(CUcontext ctx) {
+CUPY_HIP_EXPORT CUresult cuCtxSetCurrent(CUcontext ctx) {
     // deprecated api
     //return hipCtxSetCurrent(ctx);
     return hipErrorUnknown;
 }
 
-CUresult cuCtxCreate(CUcontext* pctx, unsigned int flags, CUdevice dev) {
+CUPY_HIP_EXPORT CUresult cuCtxCreate(CUcontext* pctx, unsigned int flags, CUdevice dev) {
     // deprecated api
     //return hipCtxCreate(pctx, flags, dev);
     return hipErrorUnknown;
 }
 
-CUresult cuCtxDestroy(CUcontext ctx) {
+CUPY_HIP_EXPORT CUresult cuCtxDestroy(CUcontext ctx) {
     // deprecated api
     // return hipCtxDestroy(ctx);
     return hipErrorUnknown;
 }
 
-CUresult cuCtxGetDevice(...) {
+CUPY_HIP_EXPORT CUresult cuCtxGetDevice(...) {
     return hipErrorUnknown;
 }
 
 // Module load and kernel execution
-CUresult cuLinkCreate(...) {
+CUPY_HIP_EXPORT CUresult cuLinkCreate(...) {
     return hipErrorUnknown;
 }
 
-CUresult cuLinkAddData(...) {
+CUPY_HIP_EXPORT CUresult cuLinkAddData(...) {
     return hipErrorUnknown;
 }
 
-CUresult cuLinkAddFile(...) {
+CUPY_HIP_EXPORT CUresult cuLinkAddFile(...) {
     return hipErrorUnknown;
 }
 
-CUresult cuLinkComplete(...) {
+CUPY_HIP_EXPORT CUresult cuLinkComplete(...) {
     return hipErrorUnknown;
 }
 
-CUresult cuLinkDestroy(...) {
+CUPY_HIP_EXPORT CUresult cuLinkDestroy(...) {
     return hipErrorUnknown;
 }
 
-CUresult cuModuleLoad(CUmodule *module, const char *fname) {
+CUPY_HIP_EXPORT CUresult cuModuleLoad(CUmodule *module, const char *fname) {
     return hipModuleLoad(module, fname);
 }
 
-CUresult cuModuleLoadData(CUmodule *module, const void *image) {
+CUPY_HIP_EXPORT CUresult cuModuleLoadData(CUmodule *module, const void *image) {
     return hipModuleLoadData(module, image);
 }
 
-CUresult cuModuleUnload(CUmodule module) {
+CUPY_HIP_EXPORT CUresult cuModuleUnload(CUmodule module) {
     return hipModuleUnload(module);
 }
 
-CUresult cuModuleGetFunction(CUfunction *function, CUmodule module,
+CUPY_HIP_EXPORT CUresult cuModuleGetFunction(CUfunction *function, CUmodule module,
                              const char *kname) {
     return hipModuleGetFunction(function, module, kname);
 }
 
-CUresult cuModuleGetGlobal(CUdeviceptr *dptr, size_t *bytes, CUmodule hmod,
+CUPY_HIP_EXPORT CUresult cuModuleGetGlobal(CUdeviceptr *dptr, size_t *bytes, CUmodule hmod,
                            const char *name) {
     return hipModuleGetGlobal(dptr, bytes, hmod, name);
 }
 
-CUresult cuLaunchKernel(CUfunction f, uint32_t gridDimX, uint32_t gridDimY,
+CUPY_HIP_EXPORT CUresult cuLaunchKernel(CUfunction f, uint32_t gridDimX, uint32_t gridDimY,
                         uint32_t gridDimZ, uint32_t blockDimX,
                         uint32_t blockDimY, uint32_t blockDimZ,
                         uint32_t sharedMemBytes, cudaStream_t hStream,
@@ -107,32 +107,32 @@ CUresult cuLaunchKernel(CUfunction f, uint32_t gridDimX, uint32_t gridDimY,
                                  sharedMemBytes, hStream, kernelParams, extra);
 }
 
-CUresult cuLaunchCooperativeKernel(...) {
+CUPY_HIP_EXPORT CUresult cuLaunchCooperativeKernel(...) {
     return hipErrorUnknown;
 }
 
 // Function attribute
-CUresult cuFuncGetAttribute(int* pi, CUfunction_attribute attrib, CUfunction hfunc) {
+CUPY_HIP_EXPORT CUresult cuFuncGetAttribute(int* pi, CUfunction_attribute attrib, CUfunction hfunc) {
     return hipFuncGetAttribute(pi, attrib, hfunc);
 }
 
-CUresult cuFuncSetAttribute(...) {
+CUPY_HIP_EXPORT CUresult cuFuncSetAttribute(...) {
     return hipErrorUnknown;
 }
 
 // Occupancy
 typedef size_t (*CUoccupancyB2DSize)(int);
 
-CUresult cuOccupancyMaxActiveBlocksPerMultiprocessor(...) {
+CUPY_HIP_EXPORT CUresult cuOccupancyMaxActiveBlocksPerMultiprocessor(...) {
     return hipErrorUnknown;
 }
 
-CUresult cuOccupancyMaxPotentialBlockSize(...) {
+CUPY_HIP_EXPORT CUresult cuOccupancyMaxPotentialBlockSize(...) {
     return hipErrorUnknown;
 }
 
 // Stream
-CUresult cuStreamGetCtx(...) {
+CUPY_HIP_EXPORT CUresult cuStreamGetCtx(...) {
     return hipErrorUnknown;
 }
 

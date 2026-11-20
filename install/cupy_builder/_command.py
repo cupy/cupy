@@ -217,6 +217,8 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
             # state as the init code is not locked and is not idempotent.
             # https://github.com/pypa/setuptools/blob/v60.0.0/setuptools/_distutils/_msvccompiler.py#L322-L327
             self.compiler.initialize()
+            if ctx.use_hip:
+                build.configure_msvc_for_hip(self.compiler)
             if hasattr(self.compiler, 'cc'):
                 cc = self.compiler.cc
                 print(f'Detected host compiler: {cc}')
@@ -258,6 +260,26 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
             os.makedirs(os.path.dirname(depends_json), exist_ok=True)
             with open(depends_json, 'w') as f:
                 json.dump({'depends': depends}, f)
+
+    def copy_extensions_to_source(self) -> None:
+        # Called after the build for `--inplace` and editable builds;
+        # setuptools builds into `build_lib` with `inplace` cleared, so
+        # `build_extensions` cannot tell these builds apart.
+        super().copy_extensions_to_source()
+        if sys.platform == 'win32' and cupy_builder.get_context().use_hip:
+            self._copy_depends_json_to_source()
+
+    def _copy_depends_json_to_source(self) -> None:
+        # In-place and editable installs import CuPy from the source tree,
+        # where the HIP build reads this list to find the ROCm runtime before
+        # loading any extension module.
+        ctx = cupy_builder.get_context()
+        depends_json = os.path.join(
+            self.build_lib, 'cupy', '.data', '_depends.json')
+        depends_json_src = os.path.join(
+            ctx.source_root, 'cupy', '.data', '_depends.json')
+        os.makedirs(os.path.dirname(depends_json_src), exist_ok=True)
+        shutil.copy2(depends_json, depends_json_src)
 
     def build_extension(self, ext: setuptools.Extension) -> None:
         ctx = cupy_builder.get_context()

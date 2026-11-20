@@ -133,7 +133,7 @@ int gesvd_loop(
  * batched geqrf (only used on HIP)
  */
 template<typename T>
-using geqrf = cusolverStatus_t (*)(cusolverDnHandle_t, int, int, T* const[], int, T*, long int, int);
+using geqrf = cusolverStatus_t (*)(cusolverDnHandle_t, int, int, T* const[], int, T*, rocblas_stride, int);
 
 template<typename T> struct geqrf_func { geqrf<T> ptr; };
 template<> struct geqrf_func<float> { geqrf<float> ptr = rocsolver_sgeqrf_batched; };
