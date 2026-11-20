@@ -31,7 +31,13 @@ extern "C" __global__ void max_len_seq(
                 next_state ^= state[tap];
             }
         }
+        // Every thread reads cells owned by other threads above and
+        // writes its own below, so the block must advance in lock-step:
+        // one barrier so all reads finish before any write, and one so
+        // all writes finish before the next iteration's reads.
+        __syncthreads();
         state[idx] = next_state;
+        __syncthreads();
     }
 }
 """
@@ -92,6 +98,10 @@ def max_len_seq(nbits, state=None, length=None, taps=None):
         if cupy.any(taps < 0) or cupy.any(taps > nbits) or taps.size < 1:
             raise ValueError('taps must be non-empty with values between '
                              'zero and nbits (inclusive)')
+        # A tap equal to nbits is accepted (matching SciPy, which wraps it
+        # to 0 in its inner loop); normalize here so the kernel never
+        # indexes past the end of the shift register.
+        taps = taps % nbits
         taps = cupy.array(taps)  # needed for Cython and Pythran
 
     n_max = (2 ** nbits) - 1
