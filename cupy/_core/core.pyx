@@ -3052,7 +3052,7 @@ cdef inline _ndarray_base _try_skip_h2d_copy(
 cdef _ndarray_base _array_default(
         obj, dtype, copy, order, Py_ssize_t ndmin, bint blocking):
     cdef _ndarray_base a
-    cdef bint is_correct_contiguous
+    cdef bint is_correct_contiguous = False
     cdef int order_char = internal._normalize_order(order)
 
     # Fast path: zero-copy a NumPy array if possible
