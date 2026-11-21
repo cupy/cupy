@@ -237,8 +237,8 @@ The second kind of usage is to use the low-level, *private* CuPy APIs. You need 
 
 .. deprecated:: 14.3
 
-    Direct instantiation of ``Plan1d`` is deprecated.
-    Use :class:`nvmath.fft.FFT` instead.
+    Direct instantiation of ``Plan1d`` is deprecated on CUDA.
+    CUDA users should use :class:`nvmath.fft.FFT` instead.
 
 .. code-block:: python
 
@@ -286,8 +286,8 @@ Half-precision FFT
 
 .. deprecated:: 14.3
 
-    Direct instantiation of ``XtPlanNd`` is deprecated.
-    Use :class:`nvmath.fft.FFT` instead.
+    Direct instantiation of ``XtPlanNd`` is deprecated on CUDA.
+    CUDA users should use :class:`nvmath.fft.FFT` instead.
 
 .. code-block:: python
 

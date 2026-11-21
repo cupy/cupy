@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pickle
 import unittest
+import warnings
 
 import numpy
 import pytest
@@ -36,6 +37,13 @@ class TestExceptionPicklable(unittest.TestCase):
             cupy.cuda.runtime.is_hip, reason='not supported by hipFFT')),
 ])
 def test_plan_instantiation_deprecated(create_plan):
+    if cupy.cuda.runtime.is_hip:
+        # Not deprecated on ROCm as nvmath.fft does not support it.
+        with warnings.catch_warnings():
+            warnings.simplefilter('error', DeprecationWarning)
+            create_plan()
+        return
+
     match = (r'Direct instantiation of .* is deprecated\. '
              r'Use nvmath\.fft\.FFT instead\. \(deprecated in CuPy 14\.3\)')
     with pytest.warns(DeprecationWarning, match=match) as record:

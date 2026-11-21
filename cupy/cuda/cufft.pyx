@@ -339,21 +339,28 @@ cdef _XtFree(intptr_t ptr):
     PyMem_Free(xtArr)
 
 
+cdef _warn_plan_instantiation_deprecated(str name):
+    # nvmath.fft does not support ROCm, so plans are only deprecated on CUDA.
+    if runtime.is_hip:
+        return
+    # Deprecated CuPy 14.3, 2026-10-19
+    warnings.warn(
+        f'Direct instantiation of cupy.cuda.cufft.{name} is deprecated. '
+        'Use nvmath.fft.FFT instead. (deprecated in CuPy 14.3)',
+        DeprecationWarning)
+
+
 cdef class Plan1d:
     """A one-dimensional cuFFT plan.
 
     .. deprecated:: 14.3
-        Direct instantiation is deprecated.
-        Use :class:`nvmath.fft.FFT` instead.
+        Direct instantiation is deprecated on CUDA.
+        CUDA users should use :class:`nvmath.fft.FFT` instead.
     """
 
     def __init__(self, int nx, int fft_type, int batch, *,
                  devices=None, out=None, intptr_t prealloc_plan=0):
-        # Deprecated CuPy 14.3, 2026-10-19
-        warnings.warn(
-            'Direct instantiation of cupy.cuda.cufft.Plan1d is deprecated. '
-            'Use nvmath.fft.FFT instead. (deprecated in CuPy 14.3)',
-            DeprecationWarning)
+        _warn_plan_instantiation_deprecated('Plan1d')
         self._init(nx, fft_type, batch, devices=devices, out=out,
                    prealloc_plan=prealloc_plan)
 
@@ -879,8 +886,8 @@ cdef class PlanNd:
     """A multidimensional cuFFT plan.
 
     .. deprecated:: 14.3
-        Direct instantiation is deprecated.
-        Use :class:`nvmath.fft.FFT` instead.
+        Direct instantiation is deprecated on CUDA.
+        CUDA users should use :class:`nvmath.fft.FFT` instead.
     """
 
     def __init__(self, object shape, object inembed, int istride,
@@ -889,11 +896,7 @@ cdef class PlanNd:
                  # order, last_axis, and last_size accepted for API stability
                  str order=None, last_axis=None, last_size=None,
                  *, intptr_t prealloc_plan=0):
-        # Deprecated CuPy 14.3, 2026-10-19
-        warnings.warn(
-            'Direct instantiation of cupy.cuda.cufft.PlanNd is deprecated. '
-            'Use nvmath.fft.FFT instead. (deprecated in CuPy 14.3)',
-            DeprecationWarning)
+        _warn_plan_instantiation_deprecated('PlanNd')
         self._init(shape, inembed, istride, idist, onembed, ostride, odist,
                    fft_type, batch, order, last_axis, last_size,
                    prealloc_plan=prealloc_plan)
@@ -1069,8 +1072,8 @@ cdef class XtPlanNd:
     """A cuFFT Xt plan.
 
     .. deprecated:: 14.3
-        Direct instantiation is deprecated.
-        Use :class:`nvmath.fft.FFT` instead.
+        Direct instantiation is deprecated on CUDA.
+        CUDA users should use :class:`nvmath.fft.FFT` instead.
     """
 
     def __init__(self, shape,
@@ -1079,11 +1082,7 @@ cdef class XtPlanNd:
                  long long int batch, edtype, *,
                  str order, int last_axis, last_size,
                  intptr_t prealloc_plan=0):
-        # Deprecated CuPy 14.3, 2026-10-19
-        warnings.warn(
-            'Direct instantiation of cupy.cuda.cufft.XtPlanNd is deprecated. '
-            'Use nvmath.fft.FFT instead. (deprecated in CuPy 14.3)',
-            DeprecationWarning)
+        _warn_plan_instantiation_deprecated('XtPlanNd')
         self._init(shape, inembed, istride, idist, idtype,
                    onembed, ostride, odist, odtype, batch, edtype,
                    order=order, last_axis=last_axis, last_size=last_size,

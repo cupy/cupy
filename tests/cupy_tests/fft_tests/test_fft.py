@@ -670,7 +670,9 @@ def test_plan_nd_init_api(api):
     relevant_args = _get_cufft_plan_nd_args(
         a.shape, CUFFT_R2C, axes=axes, order='C', out_size=5)
     # But additionally pass order, last_axis, and last_size to test old API.
-    with pytest.warns(DeprecationWarning, match='Use nvmath.fft.FFT instead'):
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            'ignore', 'Direct instantiation', DeprecationWarning)
         if api == 'old':
             plan = PlanNd(*relevant_args, 'C', 2, 5)
         else:
