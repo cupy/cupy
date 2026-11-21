@@ -354,11 +354,11 @@ cdef class DLPackMemory(memory.BaseMemory):
         else:
             self.device_id = self.dl_tensor.device.device_id
 
-        cdef int64_t n = 0, s = 0
+        cdef int64_t n = 1, s = 0
         cdef int ndim = self.dl_tensor.ndim
         cdef int64_t* shape = self.dl_tensor.shape
         for s in shape[:ndim]:
-            n += s
+            n *= s
         self.size = self.dl_tensor.dtype.bits * n // 8
 
     def __dealloc__(self):

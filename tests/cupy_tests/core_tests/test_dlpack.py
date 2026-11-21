@@ -336,6 +336,12 @@ class TestDLTensorMemory:
         pool.free_all_blocks()
         cupy.cuda.set_allocator(old_pool.malloc)
 
+    @pytest.mark.parametrize('shape', [(), (5,), (3, 4), (2, 3, 4), (0, 3)])
+    def test_memory_size(self, shape):
+        array = cupy.empty(shape, dtype=cupy.float32)
+        out = cupy.from_dlpack(array)
+        assert out.data.mem.size == array.nbytes
+
     @pytest.mark.parametrize('max_version', [None, (1, 0)])
     @pytest.mark.thread_unsafe(reason="modifies pool and tracks allocations")
     def test_deleter(self, pool, max_version):
