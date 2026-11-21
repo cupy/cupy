@@ -418,6 +418,36 @@ class TestMisc:
         right = 20
         return xp.interp(x, fx, fy, left, right)
 
+    @testing.for_all_dtypes(name='dtype_y', no_bool=True)
+    @testing.numpy_cupy_allclose(rtol=1e-14, atol=1e-14)
+    def test_interp_left_right_precision(self, xp, dtype_y):
+        x = xp.asarray([-1.0, 0.0, 0.5, 1.0, 2.0])
+        results = []
+        for samples in ([0, 10], [10]):
+            fx = xp.arange(len(samples), dtype=xp.float64)
+            fy = xp.asarray(samples, dtype=dtype_y)
+            for left, right in ((-0.1234567890123, 10.9876543210987),
+                                (-0.1234567890123, None),
+                                (None, 10.9876543210987)):
+                results.append(xp.interp(x, fx, fy, left=left, right=right))
+        return tuple(results)
+
+    @testing.for_complex_dtypes(name='dtype_y')
+    @testing.numpy_cupy_allclose(rtol=1e-14, atol=1e-14)
+    def test_interp_complex_left_right_precision(self, xp, dtype_y):
+        x = xp.asarray([-1.0, 0.0, 0.5, 1.0, 2.0])
+        results = []
+        for samples in ([0, 10], [10]):
+            fx = xp.arange(len(samples), dtype=xp.float64)
+            fy = xp.asarray(samples, dtype=dtype_y)
+            for left, right in (
+                    (-0.1234567890123 + 0.2345678901234j,
+                     10.9876543210987j),
+                    (-0.1234567890123 + 0.2345678901234j, None),
+                    (None, 10.9876543210987j)):
+                results.append(xp.interp(x, fx, fy, left=left, right=right))
+        return tuple(results)
+
     @testing.with_requires('numpy>=1.17.0')
     @testing.for_all_dtypes(name='dtype_x', no_bool=True, no_complex=True)
     @testing.for_dtypes('efdFD', name='dtype_y')
