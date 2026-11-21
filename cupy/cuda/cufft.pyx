@@ -365,13 +365,15 @@ cdef class Plan1d:
                    prealloc_plan=prealloc_plan)
 
     @staticmethod
-    def _create(*args, **kwargs):
+    def _create(int nx, int fft_type, int batch, *,
+                devices=None, out=None, intptr_t prealloc_plan=0):
         cdef Plan1d plan = Plan1d.__new__(Plan1d)
-        plan._init(*args, **kwargs)
+        plan._init(nx, fft_type, batch, devices=devices, out=out,
+                   prealloc_plan=prealloc_plan)
         return plan
 
-    def _init(self, int nx, int fft_type, int batch, *,
-              devices=None, out=None, intptr_t prealloc_plan=0):
+    cdef _init(self, int nx, int fft_type, int batch,
+               devices, out, intptr_t prealloc_plan):
         cdef Handle plan
         cdef bint use_multi_gpus = 0 if devices is None else 1
         cdef int result
@@ -902,16 +904,22 @@ cdef class PlanNd:
                    prealloc_plan=prealloc_plan)
 
     @staticmethod
-    def _create(*args, **kwargs):
+    def _create(object shape, object inembed, int istride,
+                int idist, object onembed, int ostride, int odist,
+                int fft_type, int batch,
+                str order=None, last_axis=None, last_size=None,
+                *, intptr_t prealloc_plan=0):
         cdef PlanNd plan = PlanNd.__new__(PlanNd)
-        plan._init(*args, **kwargs)
+        plan._init(shape, inembed, istride, idist, onembed, ostride, odist,
+                   fft_type, batch, order, last_axis, last_size,
+                   prealloc_plan=prealloc_plan)
         return plan
 
-    def _init(self, object shape, object inembed, int istride,
-              int idist, object onembed, int ostride, int odist,
-              int fft_type, int batch,
-              str order=None, last_axis=None, last_size=None,
-              *, intptr_t prealloc_plan=0):
+    cdef _init(self, object shape, object inembed, int istride,
+               int idist, object onembed, int ostride, int odist,
+               int fft_type, int batch,
+               str order, last_axis, last_size,
+               intptr_t prealloc_plan):
         cdef Handle plan
         cdef size_t work_size
         cdef int ndim, result
@@ -1089,17 +1097,25 @@ cdef class XtPlanNd:
                    prealloc_plan=prealloc_plan)
 
     @staticmethod
-    def _create(*args, **kwargs):
+    def _create(shape,
+                inembed, long long int istride, long long int idist, idtype,
+                onembed, long long int ostride, long long int odist, odtype,
+                long long int batch, edtype, *,
+                str order, int last_axis, last_size,
+                intptr_t prealloc_plan=0):
         cdef XtPlanNd plan = XtPlanNd.__new__(XtPlanNd)
-        plan._init(*args, **kwargs)
+        plan._init(shape, inembed, istride, idist, idtype,
+                   onembed, ostride, odist, odtype, batch, edtype,
+                   order=order, last_axis=last_axis, last_size=last_size,
+                   prealloc_plan=prealloc_plan)
         return plan
 
-    def _init(self, shape,
-              inembed, long long int istride, long long int idist, idtype,
-              onembed, long long int ostride, long long int odist, odtype,
-              long long int batch, edtype, *,
-              str order, int last_axis, last_size,
-              intptr_t prealloc_plan=0):
+    cdef _init(self, shape,
+               inembed, long long int istride, long long int idist, idtype,
+               onembed, long long int ostride, long long int odist, odtype,
+               long long int batch, edtype,
+               str order, int last_axis, last_size,
+               intptr_t prealloc_plan):
         # Note: we don't pass in fft_type here because it's redundant and
         # does not cover exotic types like complex32 or bf16
 

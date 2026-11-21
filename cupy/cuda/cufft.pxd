@@ -71,6 +71,8 @@ cdef class Plan1d:
         void _multi_gpu_get_plan(
             self, Handle plan, int nx, int fft_type, int batch,
             devices, out) except*
+        _init(self, int nx, int fft_type, int batch,
+              devices, out, intptr_t prealloc_plan)
 
 
 cdef class PlanNd:
@@ -88,6 +90,11 @@ cdef class PlanNd:
         readonly list gpus
 
         _require_output_metadata(self)
+        _init(self, object shape, object inembed, int istride,
+              int idist, object onembed, int ostride, int odist,
+              int fft_type, int batch,
+              str order, last_axis, last_size,
+              intptr_t prealloc_plan)
 
 
 cdef class XtPlanNd:
@@ -104,3 +111,10 @@ cdef class XtPlanNd:
 
         # TODO(leofang): support multi-GPU transforms
         readonly list gpus
+
+        _init(self, shape,
+              inembed, long long int istride, long long int idist, idtype,
+              onembed, long long int ostride, long long int odist, odtype,
+              long long int batch, edtype,
+              str order, int last_axis, last_size,
+              intptr_t prealloc_plan)
