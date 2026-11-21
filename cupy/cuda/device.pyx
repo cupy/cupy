@@ -210,9 +210,15 @@ cdef class Device:
     def compute_capability(self):
         """Compute capability of this device.
 
-        The capability is represented by a string containing the major index
-        and the minor index. For example, compute capability 3.5 is represented
-        by the string '35'.
+        On CUDA the capability is represented by a string containing the
+        major index and the minor index. For example, compute capability
+        3.5 is represented by the string ``'35'``.
+
+        On HIP/ROCm this returns ``'9999'`` so that all CUDA
+        feature-level threshold checks (e.g. ``int(cc) >= 70``) pass
+        unconditionally.  The real GCN architecture name is used
+        internally for kernel cache keying via
+        :func:`cupy.cuda.compiler._get_arch`.
 
         """
         if self.id in _compute_capabilities:
@@ -220,11 +226,19 @@ cdef class Device:
         prev_device = runtime.getDevice()
         try:
             runtime.setDevice(self.id)
-            major = runtime.deviceGetAttribute(
-                runtime.deviceAttributeComputeCapabilityMajor, self.id)
-            minor = runtime.deviceGetAttribute(
-                runtime.deviceAttributeComputeCapabilityMinor, self.id)
-            cc = '%d%d' % (major, minor)
+            if runtime_module.is_hip:
+                # On HIP, all CUDA feature-level checks (fp16, bf16, etc.)
+                # should pass, so return a large value that is always above
+                # any CUDA compute-capability threshold.
+                # The real GCN arch name is used for cache keying in
+                # compiler._get_arch() instead.
+                cc = '9999'
+            else:
+                major = runtime.deviceGetAttribute(
+                    runtime.deviceAttributeComputeCapabilityMajor, self.id)
+                minor = runtime.deviceGetAttribute(
+                    runtime.deviceAttributeComputeCapabilityMinor, self.id)
+                cc = '%d%d' % (major, minor)
             _compute_capabilities[self.id] = cc
             return cc
         finally:
