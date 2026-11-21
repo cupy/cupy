@@ -54,7 +54,7 @@ class Fusion:
         self._cache = {}
 
     def __call__(self, *args, **kwargs):
-        cdef int nargs = len(args)
+        cdef int nargs = <int>len(args)
         cdef int i
 
         if _is_fusing():

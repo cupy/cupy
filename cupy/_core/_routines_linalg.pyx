@@ -855,7 +855,7 @@ cpdef _ndarray_base tensordot_core_v11(
 
 cdef Py_ssize_t _get_stride_for_strided_batched_gemm(
         _ndarray_base a) except? 0:
-    cdef int ndim = a._shape.size()
+    cdef int ndim = <int>a._shape.size()
     assert ndim > 2
     assert a._c_contiguous
     return a._shape[ndim - 2] * a._shape[ndim - 1]
@@ -877,7 +877,7 @@ cpdef _ndarray_base _mat_ptrs(_ndarray_base a):
     Returns:
         GPU array of pointers to matrices.
     """
-    cdef int ndim = a._shape.size()
+    cdef int ndim = <int>a._shape.size()
     assert ndim > 2
     cdef _ndarray_base idx
     idx = _mat_ptrs_kernel(
@@ -921,8 +921,8 @@ cpdef _ndarray_base matmul(
     cdef _ndarray_base ap, bp, cp, c_view
     cdef bint use_broadcast
 
-    orig_a_ndim = a._shape.size()
-    orig_b_ndim = b._shape.size()
+    orig_a_ndim = <int>a._shape.size()
+    orig_b_ndim = <int>b._shape.size()
     if orig_a_ndim == 0 or orig_b_ndim == 0:
         raise ValueError('Scalar operands are not allowed, use \'*\' instead')
 
@@ -954,8 +954,8 @@ cpdef _ndarray_base matmul(
         b_part_outshape = ldc = b._shape[orig_b_ndim - 1]
 
     # expand dims
-    a_ndim = a._shape.size()
-    b_ndim = b._shape.size()
+    a_ndim = <int>a._shape.size()
+    b_ndim = <int>b._shape.size()
     if a_ndim < ndim:
         # TODO(niboshi): Confirm update_x_contiguity flags
         a._set_shape_and_strides(

@@ -156,7 +156,7 @@ def device_reduce(_ndarray_base x, op, tuple reduce_axis, tuple out_axis,
 
     if keepdims:
         out_shape = _get_output_shape(x, out_axis, keepdims)
-        ndim_out = len(out_shape)
+        ndim_out = <int>len(out_shape)
     else:
         ndim_out = 0
     reduce_shape = _get_output_shape(x, reduce_axis, False)
@@ -193,7 +193,7 @@ def device_reduce(_ndarray_base x, op, tuple reduce_axis, tuple out_axis,
     dtype_id = _get_dtype_id(x.dtype)
     s = <Stream_t>stream.get_current_stream_ptr()
     x_size = <int>x.size
-    ws_size = cub_device_reduce_get_workspace_size(x_ptr, y_ptr, x.size, s,
+    ws_size = cub_device_reduce_get_workspace_size(x_ptr, y_ptr, x_size, s,
                                                    op, dtype_id)
     ws = memory.alloc(ws_size)
     ws_ptr = <void *>ws.ptr
@@ -224,7 +224,7 @@ def device_segmented_reduce(_ndarray_base x, op, tuple reduce_axis,
     cdef void* x_ptr
     cdef void* y_ptr
     cdef void* ws_ptr
-    cdef int dtype_id, n_segments, op_code
+    cdef int dtype_id, n_segments, segment_size, op_code
     cdef size_t ws_size
     cdef tuple out_shape
     cdef Stream_t s
@@ -259,13 +259,14 @@ def device_segmented_reduce(_ndarray_base x, op, tuple reduce_axis,
         elif op == CUPY_CUB_PROD:
             y.fill(1)
         return y
-    n_segments = x.size//contiguous_size
+    n_segments = <int>(x.size//contiguous_size)
+    segment_size = <int>contiguous_size
     s = <Stream_t>stream.get_current_stream_ptr()
     dtype_id = _get_dtype_id(x.dtype)
 
     # get workspace size and then fire up
     ws_size = cub_device_segmented_reduce_get_workspace_size(
-        x_ptr, y_ptr, n_segments, contiguous_size, s, op, dtype_id)
+        x_ptr, y_ptr, n_segments, segment_size, s, op, dtype_id)
     # CUB reports `ws_size == 1` when no scratch space is needed, because a
     # NULL workspace pointer switches the call into size-query mode, so alloc.
     ws = memory.alloc(ws_size)
@@ -273,7 +274,7 @@ def device_segmented_reduce(_ndarray_base x, op, tuple reduce_axis,
     op_code = <int>op
     with nogil:
         cub_device_segmented_reduce(ws_ptr, ws_size, x_ptr, y_ptr, n_segments,
-                                    contiguous_size, s, op_code, dtype_id)
+                                    segment_size, s, op_code, dtype_id)
 
     if out is not None:
         cupy._core.elementwise_copy(y, out)

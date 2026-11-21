@@ -18,7 +18,7 @@ from cupy._core cimport internal
 
 
 cdef _ndarray_sort(_ndarray_base self, int axis, bint descending=False):
-    cdef int ndim = self._shape.size()
+    cdef int ndim = <int>self._shape.size()
     cdef _ndarray_base data
 
     if not cupy.cuda.thrust.available:
@@ -35,7 +35,7 @@ cdef _ndarray_sort(_ndarray_base self, int axis, bint descending=False):
         raise NotImplementedError('Sorting non-contiguous array is not '
                                   'supported.')
 
-    axis = internal._normalize_axis_index(axis, ndim)
+    axis = <int>internal._normalize_axis_index(axis, ndim)
 
     if self._shape[axis] <= 1:
         return  # already sorted (#9816)
@@ -80,7 +80,7 @@ cdef _ndarray_base _ndarray_argsort(_ndarray_base self, axis,
                            'reinstall CuPy after uninstalling it.')
 
     self = cupy.atleast_1d(self)
-    ndim = self._shape.size()
+    ndim = <int>self._shape.size()
 
     if axis is None:
         data = self.ravel()
@@ -89,7 +89,7 @@ cdef _ndarray_base _ndarray_argsort(_ndarray_base self, axis,
         data = self
         _axis = axis
 
-    _axis = internal._normalize_axis_index(_axis, ndim)
+    _axis = <int>internal._normalize_axis_index(_axis, ndim)
 
     if _axis == ndim - 1:
         data = data.copy()
@@ -130,7 +130,7 @@ cdef _ndarray_partition(_ndarray_base self, kth, int axis):
 
     """
 
-    cdef int ndim = self._shape.size()
+    cdef int ndim = <int>self._shape.size()
     cdef Py_ssize_t k, max_k, length, s, sz, t
     cdef _ndarray_base data
 
@@ -142,7 +142,7 @@ cdef _ndarray_partition(_ndarray_base self, kth, int axis):
         raise NotImplementedError('Sorting non-contiguous array is not '
                                   'supported.')
 
-    axis = internal._normalize_axis_index(axis, ndim)
+    axis = <int>internal._normalize_axis_index(axis, ndim)
 
     if axis == ndim - 1:
         data = self
@@ -235,8 +235,8 @@ cdef _ndarray_base _ndarray_argpartition(self, kth, axis):
         data = self
         _axis = axis
 
-    ndim = data._shape.size()
-    _axis = internal._normalize_axis_index(_axis, ndim)
+    ndim = <int>data._shape.size()
+    _axis = <int>internal._normalize_axis_index(_axis, ndim)
 
     if _axis != ndim - 1:
         data = _manipulation.rollaxis(self, _axis, ndim).copy()

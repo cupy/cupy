@@ -1231,8 +1231,8 @@ cpdef inline check_status(int status):
 @cython.profile(False)
 cdef inline cuComplex complex_to_cuda(complex value) noexcept:
     cdef cuComplex value_cuda
-    value_cuda.x = value.real
-    value_cuda.y = value.imag
+    value_cuda.x = <float>value.real
+    value_cuda.y = <float>value.imag
     return value_cuda
 
 
