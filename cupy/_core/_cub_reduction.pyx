@@ -1,4 +1,5 @@
 import cython
+from libc.stdint cimport int32_t
 
 from cupy._core._carray cimport shape_t
 from cupy._core cimport _kernel
@@ -415,7 +416,7 @@ cdef _scalar.CScalar _cub_convert_to_c_scalar(
     if segment_size > 0x7fffffff:
         return _scalar.CScalar(value)
     else:
-        return _scalar.CScalar.from_int32(value)
+        return _scalar.CScalar.from_int32(<int32_t>value)
 
 
 cdef inline void _cub_two_pass_launch(

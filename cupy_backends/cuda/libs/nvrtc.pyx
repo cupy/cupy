@@ -93,7 +93,7 @@ cpdef intptr_t createProgram(unicode src, unicode name, headers,
         name_ptr = b_name
     else:
         name_ptr = NULL
-    cdef int num_headers = len(headers)
+    cdef int num_headers = <int>len(headers)
     cdef vector.vector[const char*] header_vec
     cdef vector.vector[const char*] include_name_vec
     cdef const char** header_vec_ptr = NULL
@@ -124,7 +124,7 @@ cpdef destroyProgram(intptr_t prog):
 
 cpdef compileProgram(intptr_t prog, options):
     initialize()
-    cdef int option_num = len(options)
+    cdef int option_num = <int>len(options)
     cdef vector.vector[const char*] option_vec
     cdef option_list = [opt.encode() for opt in options]
     cdef const char** option_vec_ptr = NULL

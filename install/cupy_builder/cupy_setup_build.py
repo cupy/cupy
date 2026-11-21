@@ -48,7 +48,10 @@ def check_library(compiler, includes=(), libraries=(),
                   include_dirs=(), library_dirs=(), define_macros=None,
                   extra_compile_args=()):
 
-    source = ''.join(['#include <%s>\n' % header for header in includes])
+    # Same as cupy_backends/cuda/cupy_cusparse.h; otherwise MSVC prints
+    # hundreds of C4996 warnings for cusparse.h.
+    source = '#define DISABLE_CUSPARSE_DEPRECATED\n'
+    source += ''.join(['#include <%s>\n' % header for header in includes])
     source += 'int main() {return 0;}'
     try:
         # We need to try to build a shared library because distutils
@@ -410,6 +413,17 @@ def make_extensions(ctx: Context, compiler, use_cython):
 
         compile_args = s.setdefault('extra_compile_args', [])
         link_args = s.setdefault('extra_link_args', [])
+
+        if compiler.compiler_type == 'msvc':
+            # Cython < 3.3.1 marks unused helpers with `(void)func;`, which
+            # MSVC flags as C4551: https://github.com/cython/cython/pull/7911
+            compile_args.append('/wd4551')
+
+        if (compiler.compiler_type == 'msvc'
+                and 'cudart_static' in module.static_libraries):
+            # CUDA 12.x cudart_static.lib is built with /MT (LIBCMT) but
+            # extensions use /MD; don't pull in the static CRT (LNK4098).
+            link_args.append('/NODEFAULTLIB:LIBCMT')
 
         if module['name'] == 'cusolver':
             # openmp is required for cusolver

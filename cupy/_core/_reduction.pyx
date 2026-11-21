@@ -776,8 +776,8 @@ cdef class ReductionKernel(_AbstractReductionKernel):
             in_params,
             out_params,
         )
-        self.nin = len(self.in_params)
-        self.nout = len(self.out_params)
+        self.nin = <int>len(self.in_params)
+        self.nout = <int>len(self.out_params)
         self.nargs = self.nin + self.nout
         self.reduce_expr = reduce_expr
         self.map_expr = map_expr

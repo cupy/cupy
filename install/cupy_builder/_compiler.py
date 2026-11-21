@@ -220,7 +220,7 @@ class DeviceCompilerWin32(DeviceCompilerBase):
         cc_args = self._get_preprocess_options(ext) + ['-c']
         cuda_version = self._context.features['cuda'].get_version()
         postargs = _nvcc_gencode_options(cuda_version) + [
-            '-Xfatbin=-compress-all', '-O2']
+            '-Xfatbin=-compress-all', '-O2', '--expt-relaxed-constexpr']
         # Note: we only support CUDA 11.2+ since CuPy v13.0.0.
         # MSVC 14.0 (2015) is deprecated for CUDA 11.2 but we need it
         # to build CuPy because some Python versions were built using it.
@@ -229,6 +229,8 @@ class DeviceCompilerWin32(DeviceCompilerBase):
         # "/bigobj" to silence `fatal error C1128: number of sections exceeded
         # object file format limit`
         postargs += ['-Xcompiler', '/MD /bigobj', '-D_USE_MATH_DEFINES']
+        # CCCL requires MSVC's standard-conforming preprocessor.
+        postargs += ['-Xcompiler', '/Zc:preprocessor']
         # Bumping C++ standard from C++14 to C++17 for "if constexpr"
         num_threads = int(os.environ.get('CUPY_NUM_NVCC_THREADS', '2'))
         postargs += ['--std=c++17',
