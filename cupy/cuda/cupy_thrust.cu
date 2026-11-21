@@ -487,7 +487,7 @@ struct _sort {
                       thrust::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
                       #endif
                       dp_keys_first,
-                      thrust::divides<size_t>());
+                      cupy_thrust_cmp::divides<size_t>());
 
             stable_sort(
                 cuda::par_nosync(alloc).on(stream_),
@@ -587,7 +587,7 @@ struct _argsort {
                   thrust::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
                   #endif
                   dp_idx_first,
-                  thrust::modulus<size_t>());
+                  cupy_thrust_cmp::modulus<size_t>());
 
         if (ndim == 1) {
             // Sort the index sequence by data.
@@ -619,7 +619,7 @@ struct _argsort {
                       thrust::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
                       #endif
                       dp_keys_first,
-                      thrust::divides<size_t>());
+                      cupy_thrust_cmp::divides<size_t>());
 
             stable_sort_by_key(
                 cuda::par_nosync(alloc).on(stream_),
