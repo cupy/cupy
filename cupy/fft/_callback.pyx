@@ -478,7 +478,7 @@ cdef class _LegacyCallbackManager(_CallbackManager):
         cdef tuple plan_args
 
         plan_type, plan_args = plan_info
-        plan = getattr(self.mod, plan_type)(*plan_args)
+        plan = getattr(self.mod, plan_type)._create(*plan_args)
         return plan
 
     cpdef set_callbacks(self, plan):
@@ -638,7 +638,7 @@ cdef class _JITCallbackManager(_CallbackManager):
 
         from cupy.cuda import cufft
         plan_type, plan_args = plan_info
-        plan = getattr(cufft, plan_type)(
+        plan = getattr(cufft, plan_type)._create(
             *plan_args, prealloc_plan=prealloc_plan)
         return plan
 

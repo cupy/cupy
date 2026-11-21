@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pickle
 import unittest
+import warnings
 
 import numpy
 import pytest
@@ -22,6 +23,34 @@ class TestExceptionPicklable(unittest.TestCase):
         e2 = pickle.loads(pickle.dumps(e1))
         assert e1.args == e2.args
         assert str(e1) == str(e2)
+
+
+@pytest.mark.parametrize('create_plan', [
+    pytest.param(lambda: cufft.Plan1d(8, cufft.CUFFT_C2C, 4), id='Plan1d'),
+    pytest.param(lambda: cufft.PlanNd(
+        (4, 8), None, 1, 0, None, 1, 0, cufft.CUFFT_C2C, 1), id='PlanNd'),
+    pytest.param(lambda: cufft.XtPlanNd(
+        (4, 8), None, 1, 0, numpy.dtype('complex64'),
+        None, 1, 0, numpy.dtype('complex64'), 1, numpy.dtype('complex64'),
+        order='C', last_axis=-1, last_size=None), id='XtPlanNd',
+        marks=pytest.mark.skipif(
+            cupy.cuda.runtime.is_hip, reason='not supported by hipFFT')),
+])
+def test_plan_instantiation_deprecated(create_plan):
+    if cupy.cuda.runtime.is_hip:
+        # Not deprecated on ROCm as nvmath.fft does not support it.
+        with warnings.catch_warnings():
+            warnings.simplefilter('error', DeprecationWarning)
+            create_plan()
+        return
+
+    match = (r'Direct instantiation of .* is deprecated\. '
+             r'Use nvmath\.fft\.FFT instead\. \(deprecated in CuPy 14\.3\)')
+    with pytest.warns(DeprecationWarning, match=match) as record:
+        plan = create_plan()
+    assert len(record) == 1
+    assert type(plan).__name__ in str(record[0].message)
+    assert record[0].filename == __file__
 
 
 # This class tests multi-GPU Plan1d with data sitting on host.
@@ -49,7 +78,8 @@ class TestMultiGpuPlan1dNumPy(unittest.TestCase):
 
         # compute via cuFFT
         cufft_type = _convert_fft_type(a.dtype, 'C2C')
-        plan = cufft.Plan1d(nx, cufft_type, batch, devices=config.devices)
+        plan = cufft.Plan1d._create(
+            nx, cufft_type, batch, devices=config.devices)
         out_cp = numpy.empty_like(a)
         plan.fft(a, out_cp, cufft.CUFFT_FORWARD)
 
@@ -79,7 +109,8 @@ class TestMultiGpuPlan1dNumPy(unittest.TestCase):
 
         # compute via cuFFT
         cufft_type = _convert_fft_type(a.dtype, 'C2C')
-        plan = cufft.Plan1d(nx, cufft_type, batch, devices=config.devices)
+        plan = cufft.Plan1d._create(
+            nx, cufft_type, batch, devices=config.devices)
         out_cp = numpy.empty_like(a)
         plan.fft(a, out_cp, cufft.CUFFT_INVERSE)
         # normalization
@@ -123,11 +154,10 @@ class TestXtPlanNd(unittest.TestCase):
         a = testing.shaped_random(shape, cupy, dtype)
         out = cupy.empty_like(a)
 
-        plan = cufft.XtPlanNd(shape[1:],
-                              shape[1:], 1, length, idtype,
-                              shape[1:], 1, length, odtype,
-                              shape[0], edtype,
-                              order='C', last_axis=-1, last_size=None)
+        plan = cufft.XtPlanNd._create(
+            shape[1:], shape[1:], 1, length, idtype,
+            shape[1:], 1, length, odtype, shape[0], edtype,
+            order='C', last_axis=-1, last_size=None)
         plan.fft(a, out, cufft.CUFFT_FORWARD)
 
         if len(shape) <= 2:
@@ -146,11 +176,10 @@ class TestXtPlanNd(unittest.TestCase):
         a = testing.shaped_random(shape, cupy, dtype)
         out = cupy.empty_like(a)
 
-        plan = cufft.XtPlanNd(shape[1:],
-                              shape[1:], 1, length, idtype,
-                              shape[1:], 1, length, odtype,
-                              shape[0], edtype,
-                              order='C', last_axis=-1, last_size=None)
+        plan = cufft.XtPlanNd._create(
+            shape[1:], shape[1:], 1, length, idtype,
+            shape[1:], 1, length, odtype, shape[0], edtype,
+            order='C', last_axis=-1, last_size=None)
         plan.fft(a, out, cufft.CUFFT_INVERSE)
 
         if len(shape) <= 2:
@@ -174,11 +203,10 @@ class TestXtPlanNd(unittest.TestCase):
 
         shape = old_shape
         length = cupy._core.internal.prod(shape[1:])
-        plan = cufft.XtPlanNd(shape[1:],
-                              shape[1:], 1, length, idtype,
-                              shape[1:], 1, length, odtype,
-                              shape[0], edtype,
-                              order='C', last_axis=-1, last_size=None)
+        plan = cufft.XtPlanNd._create(
+            shape[1:], shape[1:], 1, length, idtype,
+            shape[1:], 1, length, odtype, shape[0], edtype,
+            order='C', last_axis=-1, last_size=None)
         plan.fft(a, out, cufft.CUFFT_FORWARD)
 
         a_cp = a.astype(cupy.float32)  # upcast
@@ -209,11 +237,10 @@ class TestXtPlanNd(unittest.TestCase):
 
         shape = old_shape
         length = cupy._core.internal.prod(shape[1:])
-        plan = cufft.XtPlanNd(shape[1:],
-                              shape[1:], 1, length, idtype,
-                              shape[1:], 1, length, odtype,
-                              shape[0], edtype,
-                              order='C', last_axis=-1, last_size=None)
+        plan = cufft.XtPlanNd._create(
+            shape[1:], shape[1:], 1, length, idtype,
+            shape[1:], 1, length, odtype, shape[0], edtype,
+            order='C', last_axis=-1, last_size=None)
         plan.fft(a, out, cufft.CUFFT_INVERSE)
 
         a_cp = a.astype(cupy.float32)  # upcast
