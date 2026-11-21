@@ -9,7 +9,8 @@ cdef void get_range(
         Py_ssize_t& out_left, Py_ssize_t& out_right) noexcept:
     """Discover the byte range (out_left, out_right] (without ptr offset).
     """
-    cdef Py_ssize_t tmp, i
+    cdef Py_ssize_t tmp
+    cdef size_t i
     out_left = 0
     out_right = itemsize
 
@@ -28,7 +29,8 @@ cdef void get_range(
 
 cdef _get_bound(_ndarray_base array, pair[Py_ssize_t, Py_ssize_t]& bounds):
     # C-version of get_bounds (really to avoid the need for `except *`...)
-    cdef Py_ssize_t left, right
+    cdef Py_ssize_t left = 0
+    cdef Py_ssize_t right = 0
     get_range(array.dtype.itemsize, array._shape, array._strides, left, right)
 
     bounds.first = array.data.ptr + left
