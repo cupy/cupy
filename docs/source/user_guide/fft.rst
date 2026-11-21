@@ -233,7 +233,7 @@ The first kind of support is with the high-level :func:`~cupy.fft.fft` and :func
 
 If you need to perform 2D/3D transforms (ex: :func:`~cupy.fft.fftn`) instead of 1D (ex: :func:`~cupy.fft.fft`), it would likely still work, but in this particular use case it loops over the transformed axes under the hood (which is exactly what is done in NumPy too), which could lead to suboptimal performance.
 
-The second kind of usage is to use the low-level, *private* CuPy APIs. You need to construct a :class:`~cupy.cuda.cufft.Plan1d` object and use it as if you are programming in C/C++ with `cuFFT`_. Using this approach, your input array can reside on the host as a :class:`numpy.ndarray` so that its size can be much larger than what a single GPU can accommodate, which is one of the main reasons to run multi-GPU FFT.
+The second kind of usage is to use the low-level, *private* CuPy APIs. You need to obtain a :class:`~cupy.cuda.cufft.Plan1d` object from :func:`~cupyx.scipy.fftpack.get_fft_plan` and use it as if you are programming in C/C++ with `cuFFT`_. Using this approach, your input array can reside on the host as a :class:`numpy.ndarray` so that its size can be much larger than what a single GPU can accommodate, which is one of the main reasons to run multi-GPU FFT.
 
 .. deprecated:: 14.3
 
@@ -244,29 +244,23 @@ The second kind of usage is to use the low-level, *private* CuPy APIs. You need 
 
     import numpy as np
     import cupy as cp
+    from cupyx.scipy.fftpack import get_fft_plan
 
-    # no need to touch cp.fft.config, as we are using low-level API
+    cp.fft.config.use_multi_gpus = True
+    cp.fft.config.set_cufft_gpus([0, 1])  # use GPU 0 & 1
 
     shape = (64, 64)
     dtype = np.complex64
     a = np.random.random(shape).astype(dtype)  # reside on CPU
 
-    if len(shape) == 1:
-        batch = 1
-        nx = shape[0]
-    elif len(shape) == 2:
-        batch = shape[0]
-        nx = shape[1]
-
     # compute via cuFFT
-    cufft_type = cp.cuda.cufft.CUFFT_C2C  # single-precision c2c
-    plan = cp.cuda.cufft.Plan1d(nx, cufft_type, batch, devices=[0,1])
+    plan = get_fft_plan(a, axes=-1)
     out_cp = np.empty_like(a)  # output on CPU
-    plan.fft(a, out_cp, cufft.CUFFT_FORWARD)
+    plan.fft(a, out_cp, cp.cuda.cufft.CUFFT_FORWARD)
 
-    out_np = numpy.fft.fft(a)  # use NumPy's fft
+    out_np = np.fft.fft(a)  # use NumPy's fft
     # np.fft.fft always returns np.complex128
-    if dtype is numpy.complex64:
+    if dtype is np.complex64:
         out_np = out_np.astype(dtype)
 
     # check result
