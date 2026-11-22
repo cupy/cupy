@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import operator
 from math import prod
+import functools
+import logging
 
 import numpy
 if numpy.__version__ < '2':
@@ -16,16 +18,27 @@ from cupyx.scipy.interpolate._bspline import (
     _get_dtype, _as_float_array, _get_module_func, INTERVAL_MODULE,
     D_BOOR_MODULE, BSpline)
 
-try:
-    import nvmath.sparse.advanced as adv
-    has_nvmath = True
-except ImportError:
-    has_nvmath = False
 
+@functools.cache
+def _check_cudss_exists():
+    try:
+        from cuda import pathfinder
+    except ImportError:
+        return False
+    try:
+        pathfinder.load_nvidia_dynamic_lib("cudss")
+    except pathfinder.DynamicLibNotFoundError:
+        return False
+    return True
+
+
+_cudss_logger = logging.getLogger(__name__)
+_cudss_logger.setLevel(logging.ERROR)
 
 #################################
 #  Interpolating spline helpers #
 #################################
+
 
 def _not_a_knot(x, k):
     """Given data x, construct the knot vector w/ not-a-knot BC.
@@ -780,16 +793,14 @@ def _lsq_solve_normal(x, y, t, k, w):
 
     The residuals are scaled by `w`, cf `_lsq_solve_qr`.
     """
+    import nvmath.sparse.advanced as adv
     X = BSpline.design_matrix(x, t, k)
     w2 = w * w
     lhs = X.T @ X.multiply(w2[:, None])
     rhs = X.T @ (w2[:, None] * y)
 
     rhs = cupy.asfortranarray(rhs)
-    with adv.DirectSolver(lhs, rhs) as solver:
-        solver.plan()
-        solver.factorize()
-        c = solver.solve()
+    c = adv.direct_solver(lhs, rhs, options={"logger": _cudss_logger})
     return cupy.ascontiguousarray(c, dtype=cupy.float64)
 
 
@@ -829,6 +840,11 @@ def make_lsq_spline(x, y, t, k=3, w=None, axis=0, check_finite=True, *,
         Disabling may give a performance gain, but may result in problems
         (crashes, non-termination) if the inputs do contain infinities or NaNs.
         Default is True.
+    method : str, optional
+        Method for solving the linear LSQ problem. Allowed values are "norm-eq"
+        (Explicitly construct and solve the normal system of equations), and
+        "qr" (Use the QR factorization of the design matrix).
+        Default is "qr".
 
     Returns
     -------
@@ -852,7 +868,6 @@ def make_lsq_spline(x, y, t, k=3, w=None, axis=0, check_finite=True, *,
     x = _as_float_array(x, check_finite)
     y = _as_float_array(y, check_finite)
     t = _as_float_array(t, check_finite)
-    unweighted = w is None
     if w is not None:
         w = _as_float_array(w, check_finite)
     else:
@@ -870,7 +885,6 @@ def make_lsq_spline(x, y, t, k=3, w=None, axis=0, check_finite=True, *,
         raise ValueError("Expect non-negative k.")
     if t.ndim != 1 or (t[1:] - t[:-1] < 0).any():
         raise ValueError("Expect t to be a 1-D sorted array_like.")
-        raise ValueError("Expect t to be a 1D strictly increasing sequence.")
     if x.size != y.shape[0]:
         raise ValueError(
             f'Shapes of x {x.shape} and y {y.shape} are incompatible')
@@ -879,7 +893,7 @@ def make_lsq_spline(x, y, t, k=3, w=None, axis=0, check_finite=True, *,
     if x.size != w.size:
         raise ValueError(
             f'Shapes of x {x.shape} and w {w.shape} are incompatible')
-    if method != "qr":
+    if method not in ("qr", "norm-eq"):
         raise ValueError(f"{method=} is not supported.")
     if (x[1:] - x[:-1] < 0).any():
         raise ValueError("Expect x to be a 1D non-decreasing sequence.")
@@ -892,9 +906,14 @@ def make_lsq_spline(x, y, t, k=3, w=None, axis=0, check_finite=True, *,
     yy = y.reshape(-1, extradim)
 
     # solve
-    # w != 1 stays on the qr path until the weight handling there is fixed,
+    # QR Path weight handling is broken
     # see the xfail on test_weights_arange
-    if has_nvmath and unweighted and yy.dtype == cupy.float64:
+    if method == "norm-eq":
+        has_cudss = _check_cudss_exists()
+        if not has_cudss:
+            raise RuntimeError(
+                "method='norm-eq' requires the cuDSS binary to be installed."
+            )
         c = _lsq_solve_normal(x, yy, t, k, w)
     else:
         _, _, c = _lsq_solve_qr(x, yy, t, k, w)
