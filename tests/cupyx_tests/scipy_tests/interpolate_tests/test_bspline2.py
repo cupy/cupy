@@ -554,6 +554,22 @@ class TestLSQ:
         b = scp.interpolate.make_lsq_spline(x, y, t, k=1)
         return b.c
 
+    @testing.with_requires("scipy>=1.15")
+    @testing.numpy_cupy_allclose(scipy_name='scp')
+    def test_duplicate_x(self, xp, scp):
+        # method="qr" only needs x to be non-decreasing
+        x = xp.asarray([0., 0.1, 0.2, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.7,
+                        0.7, 0.8, 0.9, 1.])
+        t = xp.asarray([0.] * 4 + [0.35, 0.65] + [1.] * 4)
+        b = scp.interpolate.make_lsq_spline(x, xp.sin(4 * x), t, k=3)
+        return b.c
+
+    @testing.numpy_cupy_allclose(scipy_name='scp', accept_error=ValueError)
+    def test_decreasing_x(self, xp, scp):
+        x = xp.asarray([0., 0.2, 0.1, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.])
+        t = xp.asarray([0.] * 4 + [0.5] + [1.] * 4)
+        scp.interpolate.make_lsq_spline(x, xp.sin(4 * x), t, k=3)
+
 
 def fprota(c, s, a, b):
     """Givens rotate [a, b].

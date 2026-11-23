@@ -1361,7 +1361,7 @@ class UnivariateSpline:
             if ext == 1:   # "zeros"
                 result[(x < xb) | (x > xe)] = 0.
             elif ext == 2:   # raise
-                if any((x < xb) | (x > xe)):
+                if ((x < xb) | (x > xe)).any():
                     raise ValueError(f"Out of bounds {x=} with ext='raise'.")
             elif ext == 3:   # "const"
                 result[x < xb] = self._spl(xb)

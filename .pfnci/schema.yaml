@@ -241,20 +241,23 @@ cusparselt:
 # When adding a new Python version, you may also need to add the version to the
 # list of supported Python versions in the Python libraries.
 python:
+  # Keep at or above the releases whose ssl module blocks the compromised
+  # eMudhra/emSign CAs (https://discuss.python.org/t/109576); the generated
+  # Dockerfiles rely on this instead of bootstrapping a hash-pinned pip.
   "3.11":
-    spec: "3.11.13"
+    spec: "3.11.18"
   "3.12":
-    spec: "3.12.11"
+    spec: "3.12.16"
   "3.13":
-    spec: "3.13.8"
+    spec: "3.13.18"
   "3.14":
-    spec: "3.14.6"
+    spec: "3.14.10"
   "3.14t":
-    spec: "3.14t"
+    spec: "3.14.10t"
   "3.15":
-    spec: "3.15.0"
+    spec: "3.15.2"
   "3.15t":
-    spec: "3.15.0t"
+    spec: "3.15.2t"
   "pre":
     spec: "3.16-dev"  # note that dependency python libraies may not work
 
@@ -464,3 +467,4 @@ test:
   "unit-slow":
   "example":
   "benchmark":
+  "array-api":

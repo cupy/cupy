@@ -15,6 +15,11 @@ python:
     - "3.15"
     - "3.15t"
   # Single Python version used by the `/test doc-only` lane and by RTD's
-  # docs.yml wheel install step.
+  # docs.yml wheel install step. Written as a setup-python range "~X.Y.Z":
+  # docs.yml passes it to setup-python as is, and ci.yml/docs.yml derive the
+  # plain X.Y wheel label (cupy-cuda13x-py<X.Y>-...) from it. The patch floor
+  # is the first CPython release whose ssl module blocks the compromised
+  # eMudhra/emSign CAs; keep it in sync with
+  # .github/actions/update-pip/action.yml.
   doc:
-    version: "3.12"
+    version: "~3.12.16"

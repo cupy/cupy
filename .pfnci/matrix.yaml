@@ -780,10 +780,10 @@
   system: "linux"
 
 - project: "cupy.linux.array-api"
-  _extern: true
+  _inherits: "cupy.linux.cuda-head"
   target: "array-api"
   tags: ["array-api", "linux"]
-  system: "linux"
+  test: "array-api"
 
 - project: "cupy.linux.benchmark.head"
   _inherits: "cupy.linux.cuda130"

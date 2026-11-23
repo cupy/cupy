@@ -423,6 +423,13 @@ class UfuncTestBase:
 
 class TestUfunc(UfuncTestBase):
 
+    @pytest.mark.parametrize('a,b', [
+        # try similar ones again to test caching behavior
+        (2, 2**63), (2**63, 2), (2, 2**63), (2**63, 2), (1, 1)])
+    @testing.numpy_cupy_allclose(accept_error=OverflowError)
+    def test_add_large_python_int_cache(self, a, b, xp):
+        return xp.add(a, b)
+
     @pytest.mark.parametrize('casting', [
         'no',
         'equiv',

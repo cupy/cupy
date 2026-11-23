@@ -22,10 +22,19 @@ jobs:
       with:
         repository: cupy/cupy-release-tools
         ref: ${{ inputs.branch }}
-    - name: Setup Python
-      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+    # path: _cupy keeps the release-tools root intact.
+    - name: Checkout update-pip action
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
-        python-version: '3.11'
+        path: _cupy
+        sparse-checkout: .github/actions/update-pip
+        persist-credentials: false
+    - name: Setup Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
+      with:
+        python-version: '~3.11.18'
+    - name: Update pip
+      uses: ./_cupy/.github/actions/update-pip
     - name: Check
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -72,7 +81,7 @@ jobs:
         cat ../files.txt >> "${GITHUB_STEP_SUMMARY}"
         echo '```' >> "${GITHUB_STEP_SUMMARY}"
     - name: Publish to PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
+      uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086  # v1.14.3
       with:
         skip-existing: true
         print-hash: true
@@ -86,10 +95,19 @@ jobs:
       with:
         repository: cupy/cupy-release-tools
         ref: ${{ inputs.branch }}
-    - name: Setup Python
-      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+    # path: _cupy keeps the release-tools root intact.
+    - name: Checkout update-pip action
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
-        python-version: '3.11'
+        path: _cupy
+        sparse-checkout: .github/actions/update-pip
+        persist-credentials: false
+    - name: Setup Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
+      with:
+        python-version: '~3.11.18'
+    - name: Update pip
+      uses: ./_cupy/.github/actions/update-pip
     - name: Check
       run: |
         pip install distlib
