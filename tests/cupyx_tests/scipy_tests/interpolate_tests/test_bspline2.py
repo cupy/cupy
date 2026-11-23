@@ -589,6 +589,27 @@ class TestLSQ:
         xx = cupy.linspace(0, 4, 200)
         testing.assert_allclose(spl(xx), ref(xx), rtol=1e-6, atol=1e-8)
 
+    @pytest.mark.skipif(
+        not _check_cudss_exists(), reason="cuDSS is not available"
+    )
+    @testing.with_requires("scipy>=1.15")
+    def test_norm_eq_weighted_matches_scipy(self):
+        import scipy.interpolate as sci
+        rng = _np.random.RandomState(1234)
+        n = 50
+        x_np = _np.sort(rng.uniform(0, 4, n))
+        y_np = _np.sin(2 * x_np) + 0.1 * rng.normal(size=n)
+        w_np = rng.uniform(0.5, 2.0, n)
+        t_np = _augknt(_np.linspace(0, 4, 7), 3).get()
+
+        ref = sci.make_lsq_spline(x_np, y_np, t_np, k=3, w=w_np,
+                                  method="norm-eq")
+        spl = csi.make_lsq_spline(cupy.asarray(x_np), cupy.asarray(y_np),
+                                  cupy.asarray(t_np), k=3,
+                                  w=cupy.asarray(w_np), method="norm-eq")
+        testing.assert_allclose(spl.c, cupy.asarray(ref.c),
+                                rtol=1e-9, atol=1e-9)
+
     @pytest.mark.skipif(_check_cudss_exists(),
                         reason="tests the error when cuDSS is absent")
     def test_norm_eq_requires_cudss(self):

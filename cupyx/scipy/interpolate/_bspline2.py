@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import operator
 from math import prod
-import functools
 import logging
 
 import numpy
@@ -19,10 +18,20 @@ from cupyx.scipy.interpolate._bspline import (
     D_BOOR_MODULE, BSpline)
 
 
-@functools.cache
+_cudss_available = None
+
+
 def _check_cudss_exists():
+    global _cudss_available
+    if _cudss_available is None:
+        _cudss_available = _find_cudss()
+    return _cudss_available
+
+
+def _find_cudss():
     try:
         from cuda import pathfinder
+        import nvmath.sparse.advanced  # NOQA
     except ImportError:
         return False
     try:
@@ -844,7 +853,9 @@ def make_lsq_spline(x, y, t, k=3, w=None, axis=0, check_finite=True, *,
         Method for solving the linear LSQ problem. Allowed values are "norm-eq"
         (Explicitly construct and solve the normal system of equations), and
         "qr" (Use the QR factorization of the design matrix).
-        Default is "qr".
+        "norm-eq" requires nvmath-python and the cuDSS library (installed by
+        nvmath-python's cu12/cu13 extras) and raises ``RuntimeError`` if they
+        are missing. Default is "qr".
 
     Returns
     -------
@@ -906,14 +917,12 @@ def make_lsq_spline(x, y, t, k=3, w=None, axis=0, check_finite=True, *,
     yy = y.reshape(-1, extradim)
 
     # solve
-    # QR Path weight handling is broken
-    # see the xfail on test_weights_arange
     if method == "norm-eq":
-        has_cudss = _check_cudss_exists()
-        if not has_cudss:
+        if not _check_cudss_exists():
             raise RuntimeError(
-                "method='norm-eq' requires the cuDSS binary to be installed."
-            )
+                "method='norm-eq' requires nvmath-python and the cuDSS "
+                "library, installed via nvmath-python's cu12/cu13 extras "
+                "(e.g. `pip install nvmath-python[cu13]`).")
         c = _lsq_solve_normal(x, yy, t, k, w)
     else:
         _, _, c = _lsq_solve_qr(x, yy, t, k, w)
