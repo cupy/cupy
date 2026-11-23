@@ -208,8 +208,9 @@ If you want to install the latest development version of CuPy from a cloned Git 
 .. note::
 
    For CUDA, cuda-bindings and nvmath-python are also needed to build CuPy, and pip installs them automatically.
-   If you build with ``--no-build-isolation``, install them first (e.g., ``pip install nvmath-python "cuda-bindings==13.*"`` for CUDA 13).
-   The installed CuPy then requires at least the versions it was built with.
+   cuda-bindings must match the minor version of your CUDA Toolkit, so building for CUDA 12 requires CUDA 12.9 or later.
+   If you build with ``--no-build-isolation``, install them first (e.g., ``pip install nvmath-python "cuda-bindings==13.0.*"`` for CUDA 13.0).
+   The installed CuPy then requires at least the nvmath-python version it was built with.
 
 .. note::
 
