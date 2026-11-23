@@ -111,10 +111,3 @@ cdef class XtPlanNd:
 
         # TODO(leofang): support multi-GPU transforms
         readonly list gpus
-
-        _init(self, shape,
-              inembed, long long int istride, long long int idist, idtype,
-              onembed, long long int ostride, long long int odist, odtype,
-              long long int batch, edtype,
-              str order, int last_axis, last_size,
-              intptr_t prealloc_plan)

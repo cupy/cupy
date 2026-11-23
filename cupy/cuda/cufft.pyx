@@ -1077,45 +1077,12 @@ cdef class PlanNd:
 # TODO(leofang): Unify with PlanND?!
 # TODO(leofang): support cufftXtSetGPUs?
 cdef class XtPlanNd:
-    """A cuFFT Xt plan.
-
-    .. deprecated:: 14.3
-        Direct instantiation is deprecated on CUDA.
-        CUDA users should use :class:`nvmath.fft.FFT` instead.
-    """
-
     def __init__(self, shape,
                  inembed, long long int istride, long long int idist, idtype,
                  onembed, long long int ostride, long long int odist, odtype,
                  long long int batch, edtype, *,
                  str order, int last_axis, last_size,
                  intptr_t prealloc_plan=0):
-        _warn_plan_instantiation_deprecated('XtPlanNd')
-        self._init(shape, inembed, istride, idist, idtype,
-                   onembed, ostride, odist, odtype, batch, edtype,
-                   order=order, last_axis=last_axis, last_size=last_size,
-                   prealloc_plan=prealloc_plan)
-
-    @staticmethod
-    def _create(shape,
-                inembed, long long int istride, long long int idist, idtype,
-                onembed, long long int ostride, long long int odist, odtype,
-                long long int batch, edtype, *,
-                str order, int last_axis, last_size,
-                intptr_t prealloc_plan=0):
-        cdef XtPlanNd plan = XtPlanNd.__new__(XtPlanNd)
-        plan._init(shape, inembed, istride, idist, idtype,
-                   onembed, ostride, odist, odtype, batch, edtype,
-                   order=order, last_axis=last_axis, last_size=last_size,
-                   prealloc_plan=prealloc_plan)
-        return plan
-
-    cdef _init(self, shape,
-               inembed, long long int istride, long long int idist, idtype,
-               onembed, long long int ostride, long long int odist, odtype,
-               long long int batch, edtype,
-               str order, int last_axis, last_size,
-               intptr_t prealloc_plan):
         # Note: we don't pass in fft_type here because it's redundant and
         # does not cover exotic types like complex32 or bf16
 

@@ -278,11 +278,6 @@ Half-precision FFT
 
 `cuFFT`_ provides ``cufftXtMakePlanMany`` and ``cufftXtExec`` routines to support a wide range of FFT needs, including 64-bit indexing and half-precision FFT. CuPy provides an *experimental* support for this capability via the new (though *private*) :class:`~cupy.cuda.cufft.XtPlanNd` API. For half-precision FFT, on supported hardware it can be twice as fast than its single-precision counterpart. NumPy does not yet provide the necessary infrastructure for half-precision complex numbers (i.e., ``numpy.complex32``), though, so the steps for this feature is currently a bit more involved than common cases.
 
-.. deprecated:: 14.3
-
-    Direct instantiation of ``XtPlanNd`` is deprecated on CUDA.
-    CUDA users should use :class:`nvmath.fft.FFT` instead.
-
 .. code-block:: python
 
     import cupy as cp

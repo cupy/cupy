@@ -29,12 +29,6 @@ class TestExceptionPicklable(unittest.TestCase):
     pytest.param(lambda: cufft.Plan1d(8, cufft.CUFFT_C2C, 4), id='Plan1d'),
     pytest.param(lambda: cufft.PlanNd(
         (4, 8), None, 1, 0, None, 1, 0, cufft.CUFFT_C2C, 1), id='PlanNd'),
-    pytest.param(lambda: cufft.XtPlanNd(
-        (4, 8), None, 1, 0, numpy.dtype('complex64'),
-        None, 1, 0, numpy.dtype('complex64'), 1, numpy.dtype('complex64'),
-        order='C', last_axis=-1, last_size=None), id='XtPlanNd',
-        marks=pytest.mark.skipif(
-            cupy.cuda.runtime.is_hip, reason='not supported by hipFFT')),
 ])
 def test_plan_instantiation_deprecated(create_plan):
     if cupy.cuda.runtime.is_hip:
@@ -154,10 +148,11 @@ class TestXtPlanNd(unittest.TestCase):
         a = testing.shaped_random(shape, cupy, dtype)
         out = cupy.empty_like(a)
 
-        plan = cufft.XtPlanNd._create(
-            shape[1:], shape[1:], 1, length, idtype,
-            shape[1:], 1, length, odtype, shape[0], edtype,
-            order='C', last_axis=-1, last_size=None)
+        plan = cufft.XtPlanNd(shape[1:],
+                              shape[1:], 1, length, idtype,
+                              shape[1:], 1, length, odtype,
+                              shape[0], edtype,
+                              order='C', last_axis=-1, last_size=None)
         plan.fft(a, out, cufft.CUFFT_FORWARD)
 
         if len(shape) <= 2:
@@ -176,10 +171,11 @@ class TestXtPlanNd(unittest.TestCase):
         a = testing.shaped_random(shape, cupy, dtype)
         out = cupy.empty_like(a)
 
-        plan = cufft.XtPlanNd._create(
-            shape[1:], shape[1:], 1, length, idtype,
-            shape[1:], 1, length, odtype, shape[0], edtype,
-            order='C', last_axis=-1, last_size=None)
+        plan = cufft.XtPlanNd(shape[1:],
+                              shape[1:], 1, length, idtype,
+                              shape[1:], 1, length, odtype,
+                              shape[0], edtype,
+                              order='C', last_axis=-1, last_size=None)
         plan.fft(a, out, cufft.CUFFT_INVERSE)
 
         if len(shape) <= 2:
@@ -203,10 +199,11 @@ class TestXtPlanNd(unittest.TestCase):
 
         shape = old_shape
         length = cupy._core.internal.prod(shape[1:])
-        plan = cufft.XtPlanNd._create(
-            shape[1:], shape[1:], 1, length, idtype,
-            shape[1:], 1, length, odtype, shape[0], edtype,
-            order='C', last_axis=-1, last_size=None)
+        plan = cufft.XtPlanNd(shape[1:],
+                              shape[1:], 1, length, idtype,
+                              shape[1:], 1, length, odtype,
+                              shape[0], edtype,
+                              order='C', last_axis=-1, last_size=None)
         plan.fft(a, out, cufft.CUFFT_FORWARD)
 
         a_cp = a.astype(cupy.float32)  # upcast
@@ -237,10 +234,11 @@ class TestXtPlanNd(unittest.TestCase):
 
         shape = old_shape
         length = cupy._core.internal.prod(shape[1:])
-        plan = cufft.XtPlanNd._create(
-            shape[1:], shape[1:], 1, length, idtype,
-            shape[1:], 1, length, odtype, shape[0], edtype,
-            order='C', last_axis=-1, last_size=None)
+        plan = cufft.XtPlanNd(shape[1:],
+                              shape[1:], 1, length, idtype,
+                              shape[1:], 1, length, odtype,
+                              shape[0], edtype,
+                              order='C', last_axis=-1, last_size=None)
         plan.fft(a, out, cufft.CUFFT_INVERSE)
 
         a_cp = a.astype(cupy.float32)  # upcast
