@@ -66,7 +66,7 @@ cdef _ndarray_base _ndarray_min(
         if accelerator == _accelerator.ACCELERATOR_CUB:
             # result will be None if the reduction is not compatible with CUB
             result = cub.cub_reduction(
-                self, cub.CUPY_CUB_MIN, axis, out, dtype, keepdims)
+                self, cub.CUPY_CUB_MIN, axis, dtype, out, keepdims)
             if result is not None:
                 return result
         if (accelerator == _accelerator.ACCELERATOR_CUTENSOR and
@@ -98,7 +98,7 @@ cdef _ndarray_base _ndarray_ptp(_ndarray_base self, axis, out, keepdims):
         if accelerator == _accelerator.ACCELERATOR_CUB:
             # result will be None if the reduction is not compatible with CUB
             result = cub.cub_reduction(
-                self, cub.CUPY_CUB_MAX, axis, out, None, keepdims)
+                self, cub.CUPY_CUB_MAX, axis, None, out, keepdims)
             if result is not None:
                 result -= cub.cub_reduction(
                     self, cub.CUPY_CUB_MIN, axis, None, None, keepdims)

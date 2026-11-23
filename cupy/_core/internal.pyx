@@ -13,7 +13,8 @@ from cupy.exceptions import AxisError
 
 @cython.profile(False)
 cpdef inline Py_ssize_t prod(const vector.vector[Py_ssize_t]& args) noexcept:
-    cdef Py_ssize_t i, n = 1
+    cdef size_t i
+    cdef Py_ssize_t n = 1
     for i in range(args.size()):
         n *= args[i]
     return n
@@ -326,12 +327,15 @@ cdef bint _broadcast_shape(shape_t& bshape, const shape_t& next_shape):
     does NOT raise an exception (except for memory errors) since it does not
     have the necessary information to format a useful error message.
     """
-    cdef Py_ssize_t i_next, i_bshape
+    cdef size_t i_next = 0
+    cdef size_t i_bshape = 0
+    cdef size_t size_delta = 0
     if next_shape.size() > bshape.size():
         bshape.insert(bshape.begin(), next_shape.size() - bshape.size(), 1)
 
+    size_delta = bshape.size() - next_shape.size()
     for i_next in range(next_shape.size()):
-        i_bshape = i_next + (bshape.size() - next_shape.size())
+        i_bshape = i_next + size_delta
 
         if next_shape[i_next] == 1 or next_shape[i_next] == bshape[i_bshape]:
             pass

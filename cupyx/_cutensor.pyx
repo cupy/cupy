@@ -991,12 +991,13 @@ def _try_reduction_routine(
     out_arg._set_contiguous_strides(out_arg.itemsize, True)
 
     try:
-        return reduction(
+        reduction(
             alpha, in_arg, _create_mode_with_cache(in_arg._shape.size()),
             beta, out_arg, _create_mode_with_cache(out_axis),
             op_reduce=reduce_op)
     except ValueError:
         return None
+    return out
 
 
 @cython.profile(False)
