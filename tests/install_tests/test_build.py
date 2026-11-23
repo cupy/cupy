@@ -120,7 +120,7 @@ class TestGetCudaPythonVersions:
         assert build.get_cuda_python_versions(12, self.floors) == (
             '1.1.0.dev3', self.bindings_floor_12)
 
-    @pytest.mark.parametrize('cuda_bindings_version', ['12.9.4', '13.4.4'])
+    @pytest.mark.parametrize('cuda_bindings_version', ['12.0.0', '13.4.4'])
     def test_cuda_bindings_unsupported(
             self, monkeypatch, cuda_bindings_version):
         self._install(monkeypatch, cuda_bindings_version)

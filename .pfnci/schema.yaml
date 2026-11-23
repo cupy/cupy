@@ -422,8 +422,8 @@ cython:
     spec: "==3.2.*,!=3.2.6"
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
-# Keep the minimum versions in sync with [tool.cupy.cuda-python] in
-# pyproject.toml.
+# Minor versions only: within a major, cuda-bindings only adds cy* functions,
+# so CuPy keeps working with every patch release of a minor.
 cuda-bindings:
   null:
     spec: null
@@ -431,10 +431,10 @@ cuda-bindings:
     spec: "==12.*"
   "13":
     spec: "==13.*"
-  "12.9.10":
-    spec: "==12.9.10"
-  "13.0.1":
-    spec: "==13.0.1"
+  "12.9":
+    spec: "==12.9.*"
+  "13.0":
+    spec: "==13.0.*"
   "13.1":
     spec: "==13.1.*"
   "13.2":
@@ -453,6 +453,7 @@ cuda-core:
     spec: "[minimal-sysctk12]"
   "minimal-sysctk13":
     spec: "[minimal-sysctk13]"
+# Keep the minimum in sync with [tool.cupy.cuda-python] in pyproject.toml.
 nvmath-python:
   null:
     spec: null
