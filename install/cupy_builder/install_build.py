@@ -14,6 +14,8 @@ import subprocess
 import sys
 import tempfile
 
+from packaging.specifiers import SpecifierSet
+
 import cupy_builder
 import cupy_builder.install_utils as utils
 from cupy_builder import _environment
@@ -101,6 +103,15 @@ def detect_cuda_major(ctx: Context) -> int | None:
     Unlike ``CUDA_cuda.get_version()``, this compiles nothing, so it works
     before CUDA is probed (e.g., in ``egg_info``).
     """
+    version = detect_cuda_version(ctx)
+    return None if version is None else version // 1000
+
+
+def detect_cuda_version(ctx: Context) -> int | None:
+    """Returns ``CUDA_VERSION`` (e.g., 13040) from ``cuda.h``, or ``None``.
+
+    Like :func:`detect_cuda_major`, this compiles nothing.
+    """
     include_dirs = ctx.include_dirs.copy()
     cuda_path = get_cuda_path()
     if cuda_path:
@@ -115,35 +126,40 @@ def detect_cuda_major(ctx: Context) -> int | None:
             m = re.search(r'^\s*#\s*define\s+CUDA_VERSION\s+(\d+)',
                           f.read(), re.MULTILINE)
         if m is not None:
-            return int(m.group(1)) // 1000
+            return int(m.group(1))
     return None
 
 
-def get_cuda_python_versions(cuda_major: int) -> tuple[str, str]:
+def get_cuda_python_versions(
+        cuda_major: int, floors: dict) -> tuple[str, str]:
     """Checks the packages cimported by CUDA Python builds.
 
+    ``floors`` is the ``[tool.cupy.cuda-python]`` table of ``pyproject.toml``.
     Returns the installed versions of nvmath-python and cuda-bindings.
     """
+    nvmath_spec = f'>={floors["nvmath-python"]},<2'
+    bindings_spec = (
+        f'>={floors["cuda-bindings"][str(cuda_major)]},<{cuda_major + 1}')
     try:
         cuda_bindings = importlib.import_module('cuda.bindings')
         nvmath = importlib.import_module('nvmath')
         importlib.import_module('nvmath.bindings')
     except ImportError as e:
         raise RuntimeError(
-            'CUPY_USE_CUDA_PYTHON requires nvmath-python and '
-            f'cuda-bindings=={cuda_major}.* to be installed: {e}') from e
-    bindings_version = cuda_bindings.__version__
-    if int(bindings_version.split('.')[0]) != cuda_major:
-        raise RuntimeError(
-            f'cuda-bindings {bindings_version} does not match CUDA '
-            f'{cuda_major}.x; install cuda-bindings=={cuda_major}.*')
-    nvmath_version = nvmath.__version__
-    if int(nvmath_version.split('.')[0]) != 1:
-        raise RuntimeError(
-            f'nvmath-python {nvmath_version} is not supported; install '
-            'nvmath-python>=1.0,<2')
+            f'CUPY_USE_CUDA_PYTHON requires nvmath-python{nvmath_spec} and '
+            f'cuda-bindings{bindings_spec} to be installed: {e}. '
+            'If building with pip, cuda.h may not have been found when pip '
+            'collected the build requirements; set CUDA_PATH, or install '
+            'them and build with --no-build-isolation.') from e
+    for name, version, spec in (
+            ('nvmath-python', nvmath.__version__, nvmath_spec),
+            ('cuda-bindings', cuda_bindings.__version__, bindings_spec)):
+        if not SpecifierSet(spec).contains(version, prereleases=True):
+            raise RuntimeError(
+                f'{name} {version} is not supported; install {name}{spec}')
     # Local version labels (e.g., `+g1234abc`) are not allowed in `>=`.
-    return (nvmath_version.split('+')[0], bindings_version.split('+')[0])
+    return (nvmath.__version__.split('+')[0],
+            cuda_bindings.__version__.split('+')[0])
 
 
 def get_nvcc_path() -> list[str]:

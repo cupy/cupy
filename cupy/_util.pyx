@@ -13,6 +13,9 @@ from cupy_backends.cuda.api cimport runtime
 
 
 cython_build_ver = CUPY_CYTHON_VERSION
+# Empty when not built with CUDA Python.
+cuda_bindings_build_ver = CUPY_CUDA_BINDINGS_VERSION or None
+nvmath_build_ver = CUPY_NVMATH_VERSION or None
 
 
 ENABLE_SLICE_COPY = bool(
