@@ -64,9 +64,6 @@ nvmath-python = "1.0.0"
 # Minimum cuda-bindings at run time: within a major the cy* layer only grows,
 # and every cy* function CuPy uses exists since these versions.
 cuda-bindings = { 12 = "12.9.0", 13 = "13.0.1" }
-# cuda-bindings the release wheels are built with. cydriver.pxd needs a cuda.h at
-# least as new, so keep it on the minor of the wheels' CTK (ci/versions.yml).
-cuda-bindings-build = { 12 = "12.9.10", 13 = "13.4.4" }
 
 [tool.autopep8]
 exclude = "*.git*, *.eggs*, *docs/source*"

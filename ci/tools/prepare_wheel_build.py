@@ -6,9 +6,10 @@ This script:
 
 * Rewrites ``pyproject.toml``'s ``project.name`` to the CTK-major-specific
   package (``cupy-cuda12x`` / ``cupy-cuda13x``).
-* Pins nvmath-python and cuda-bindings in ``build-system.requires`` to the
-  build versions in ``pyproject.toml``'s ``[tool.cupy.cuda-python]``,
-  unless ``CUPY_USE_CUDA_PYTHON=0``.
+* Pins nvmath-python and cuda-bindings in ``build-system.requires``, unless
+  ``CUPY_USE_CUDA_PYTHON=0``: nvmath-python to its minimum in
+  ``pyproject.toml``'s ``[tool.cupy.cuda-python]``, cuda-bindings to the
+  version for the CTK major in ``ci/versions.yml``.
 * Writes ``description.rst`` (becomes the wheel's ``long_description``).
 * Generates ``_wheel.json`` preload metadata for the ``[ctk]`` runtime extras.
 * Globs ``--preload-dir`` for include/lib subdirs to point CuPy at.
@@ -42,6 +43,7 @@ from pathlib import Path
 
 import tomllib
 import tomli_w
+import yaml
 
 # Make sibling wheel_configs.py importable when invoked from anywhere.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -52,6 +54,7 @@ from wheel_configs import (  # noqa: E402
 )
 
 DEFAULT_SOURCE_ROOT = Path(__file__).resolve().parents[2]
+VERSIONS_YML = Path(__file__).resolve().parents[1] / "versions.yml"
 
 
 def rename_project(source_root: Path, cuda_major: str) -> str:
@@ -71,12 +74,17 @@ def pin_build_requires(source_root: Path, cuda_major: str) -> None:
     The cuda-core extra lets pip pick a cuda-core that accepts the pinned
     cuda-bindings (the build imports nvmath, which imports cuda.core).
     """
+    ci_versions = yaml.safe_load(VERSIONS_YML.read_text(encoding="utf-8"))
+    bindings_version = next(
+        v["version"] for v in ci_versions["cuda_bindings"].values()
+        if v["version"].split(".")[0] == cuda_major
+    )
     pyproject = source_root / "pyproject.toml"
     data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
     versions = data["tool"]["cupy"]["cuda-python"]
     data["build-system"]["requires"] += [
         f"nvmath-python=={versions['nvmath-python']}",
-        f"cuda-bindings=={versions['cuda-bindings-build'][cuda_major]}",
+        f"cuda-bindings=={bindings_version}",
         f"cuda-core[minimal-sysctk{cuda_major}]",
     ]
     with pyproject.open("wb") as f:
