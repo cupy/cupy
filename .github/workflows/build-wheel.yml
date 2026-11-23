@@ -218,10 +218,11 @@ jobs:
         with:
           host-platform: ${{ inputs.host-platform }}
           cuda-version: ${{ inputs.cuda-version }}
-          # With CUDA Python, cuBLAS, cuSPARSE and cuSOLVER are not needed:
-          # CuPy uses them through nvmath-python, which loads them at runtime.
-          # libcurand is only needed for the cuRAND device API headers.
-          cuda-components: "cuda_nvcc,cuda_cudart,cuda_crt,cuda_cuxxfilt,libnvvm,cuda_nvrtc,cuda_nvtx,cuda_profiler_api,cuda_cccl,libnvjitlink,libcufft,libcurand${{ env.CUPY_USE_CUDA_PYTHON == '0' && ',libcublas,libcusparse,libcusolver' || '' }}"
+          # TODO: once every target builds with CUDA Python (#10473), drop
+          # cuBLAS, cuSPARSE and cuSOLVER, which nvmath-python loads at run
+          # time. They stay until then so all jobs share one cached mini CTK:
+          # cuda-components: "cuda_nvcc,cuda_cudart,cuda_crt,cuda_cuxxfilt,libnvvm,cuda_nvrtc,cuda_nvtx,cuda_profiler_api,cuda_cccl,libnvjitlink,libcufft,libcurand"
+          cuda-components: "cuda_nvcc,cuda_cudart,cuda_crt,cuda_cuxxfilt,libnvvm,cuda_nvrtc,cuda_nvtx,cuda_profiler_api,cuda_cccl,libnvjitlink,libcublas,libcufft,libcurand,libcusparse,libcusolver"
           cuda-path: ${{ runner.temp }}/cuda_toolkit
 
       - name: Install cuTENSOR preload
