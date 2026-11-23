@@ -270,8 +270,7 @@ def _quantile_unchecked(a, q, axis=None, out=None,
         raise ValueError("Expected input to not have a zero-length axis")
     # inverted_cdf casts the sample count before subtracting one, so the
     # count itself (not just the largest index) must fit in the index dtype.
-    index_dtype = (cupy.int32 if Nx <= numpy.iinfo(numpy.int32).max
-                   else cupy.int64)
+    index_dtype = cupy.int32 if Nx < 2**31 else cupy.int64
     indices = q * (Nx - 1.)
 
     if method in ['averaged_inverted_cdf',
