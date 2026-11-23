@@ -31,8 +31,8 @@ RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
 RUN git -C /opt/pyenv pull --ff-only && \
-    PYTHON_CONFIGURE_OPTS="--disable-shared" pyenv install 3.14.10 && \
-    pyenv global 3.14.10 && \
+    PYTHON_CONFIGURE_OPTS="--disable-shared" pyenv install 3.15.2 && \
+    pyenv global 3.15.2 && \
     pip install --disable-pip-version-check -U pip setuptools wheel && \
     pip install -U google-cloud-storage
 

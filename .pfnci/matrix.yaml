@@ -20,9 +20,10 @@
   ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.2"
-  # Test the minimum supported versions; other jobs use the latest.
+  # Test the minimum supported versions. The cuda-core extra makes pip pick
+  # a cuda-core that accepts them, as it does for users.
   cuda-bindings: "12.9.10"
-  cuda-core: "1.2.2"
+  cuda-core: "minimal-sysctk12"
   cuda-cccl: null
   nvmath-python: "1.0.0"
   env:CUPY_ACCELERATORS: "cutensor,cub"
@@ -313,16 +314,18 @@
   nccl: "2.28"
   cutensor: "2.4"
   cusparselt: "0.9.1"
-  python: "3.14"
+  # cuda-bindings 13.0.1 (the minimum below) has no Python 3.14 wheels.
+  python: "3.13"
   numpy: "2.4"
   scipy: "1.16"
   optuna: "4"
   ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.2"
-  # Test the minimum supported versions; other jobs use the latest.
-  cuda-bindings: "13.4.4"
-  cuda-core: "1.2.2"
+  # Test the minimum supported versions. The cuda-core extra makes pip pick
+  # a cuda-core that accepts them, as it does for users.
+  cuda-bindings: "13.0.1"
+  cuda-core: "minimal-sysctk13"
   cuda-cccl: null
   nvmath-python: "1.0.0"
   env:CUPY_ACCELERATORS: "cutensor,cub"
@@ -354,8 +357,10 @@
   ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.2"
-  cuda-bindings: null
-  cuda-core: null
+  # Test the cuda-bindings minor matching the CTK; the .multi job tests
+  # the latest.
+  cuda-bindings: "13.1"
+  cuda-core: "minimal-sysctk13"
   cuda-cccl: null
   nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
@@ -367,6 +372,8 @@
   tags: ["@nightly", "full", "multi", "linux", "cuda131"]
   target: "cuda131.multi"
   mpi4py: "4"
+  cuda-bindings: null
+  cuda-core: null
   test: "unit-multi"
 
 # CUDA 13.2 | Linux
@@ -387,8 +394,10 @@
   ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.2"
-  cuda-bindings: null
-  cuda-core: null
+  # Test the cuda-bindings minor matching the CTK; the .multi job tests
+  # the latest.
+  cuda-bindings: "13.2"
+  cuda-core: "minimal-sysctk13"
   cuda-cccl: null
   nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
@@ -400,6 +409,8 @@
   tags: ["@nightly", "full", "multi", "linux", "cuda132"]
   target: "cuda132.multi"
   mpi4py: "4"
+  cuda-bindings: null
+  cuda-core: null
   test: "unit-multi"
 
 # CUDA 13.3 | Linux
@@ -420,8 +431,10 @@
   ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.2"
-  cuda-bindings: null
-  cuda-core: null
+  # Test the cuda-bindings minor matching the CTK; the .multi job tests
+  # the latest.
+  cuda-bindings: "13.3"
+  cuda-core: "minimal-sysctk13"
   cuda-cccl: null
   nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
@@ -433,6 +446,8 @@
   tags: ["@nightly", "full", "multi", "linux", "cuda133"]
   target: "cuda133.multi"
   mpi4py: "4"
+  cuda-bindings: null
+  cuda-core: null
   test: "unit-multi"
 
 # CUDA 13.4 | Linux
@@ -447,8 +462,7 @@
   nccl: "2.31"
   cutensor: "2.4"
   cusparselt: "0.10.0"
-  # TODO: back to 3.15 once its wheels are built with CUDA Python (#10473).
-  python: "3.14"
+  python: "3.15"
   numpy: "2.5"
   scipy: "1.18"
   optuna: "5"
@@ -482,6 +496,9 @@
   numpy: "2.4"
   scipy: "1.18"
   python: "3.14t"
+  # cuda134 runs Python 3.15, built without CUDA Python until #10473, so test
+  # cuda-bindings 13.4 here.
+  cuda-bindings: "13.4"
   env:CUPY_TEST_RANDOM_SUBSAMPLE: "1"
   env:CUPY_CI_PYTEST_EXTRA_OPTS: "--parallel-threads=2"
   test: "unit"

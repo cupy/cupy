@@ -103,6 +103,15 @@ def detect_cuda_major(ctx: Context) -> int | None:
     Unlike ``CUDA_cuda.get_version()``, this compiles nothing, so it works
     before CUDA is probed (e.g., in ``egg_info``).
     """
+    version = detect_cuda_version(ctx)
+    return None if version is None else version // 1000
+
+
+def detect_cuda_version(ctx: Context) -> int | None:
+    """Returns ``CUDA_VERSION`` (e.g., 13040) from ``cuda.h``, or ``None``.
+
+    Like :func:`detect_cuda_major`, this compiles nothing.
+    """
     include_dirs = ctx.include_dirs.copy()
     cuda_path = get_cuda_path()
     if cuda_path:
@@ -117,7 +126,7 @@ def detect_cuda_major(ctx: Context) -> int | None:
             m = re.search(r'^\s*#\s*define\s+CUDA_VERSION\s+(\d+)',
                           f.read(), re.MULTILINE)
         if m is not None:
-            return int(m.group(1)) // 1000
+            return int(m.group(1))
     return None
 
 

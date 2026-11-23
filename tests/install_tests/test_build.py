@@ -3,7 +3,10 @@ from __future__ import annotations
 from distutils import ccompiler
 from distutils import sysconfig
 import os
+import pathlib
+import re
 import sys
+import tomllib
 import types
 import unittest
 
@@ -53,6 +56,13 @@ class TestDetectCudaMajor:
         ctx = Context('.', _env={}, _argv=[])
         assert build.detect_cuda_major(ctx) == expected
 
+    def test_cuda_version(self, monkeypatch, tmp_path):
+        self._write_cuda_h(
+            tmp_path / 'include', '#define CUDA_VERSION 13040\n')
+        monkeypatch.setattr(build, 'get_cuda_path', lambda: str(tmp_path))
+        ctx = Context('.', _env={}, _argv=[])
+        assert build.detect_cuda_version(ctx) == 13040
+
     def test_include_path_takes_precedence(self, monkeypatch, tmp_path):
         self._write_cuda_h(
             tmp_path / 'cuda' / 'include', '#define CUDA_VERSION 12090\n')
@@ -79,14 +89,14 @@ class TestDetectCudaMajor:
 
 class TestGetCudaPythonVersions:
 
-    floors = {
-        'nvmath-python': '1.0.0',
-        'cuda-bindings': {'12': '12.9.10', '13': '13.4.4'},
-    }
+    with open(pathlib.Path(__file__).parents[2] / 'pyproject.toml', 'rb') as f:
+        floors = tomllib.load(f)['tool']['cupy']['cuda-python']
+    bindings_floor_12 = floors['cuda-bindings']['12']
+    nvmath_floor = floors['nvmath-python']
 
     @staticmethod
-    def _install(monkeypatch, cuda_bindings_version, nvmath_version='1.0.0',
-                 nvmath=True):
+    def _install(monkeypatch, cuda_bindings_version,
+                 nvmath_version=nvmath_floor, nvmath=True):
         cuda_bindings = types.ModuleType('cuda.bindings')
         cuda_bindings.__version__ = cuda_bindings_version
         monkeypatch.setitem(sys.modules, 'cuda.bindings', cuda_bindings)
@@ -97,34 +107,37 @@ class TestGetCudaPythonVersions:
             sys.modules, 'nvmath.bindings',
             types.ModuleType('nvmath.bindings') if nvmath else None)
 
-    @pytest.mark.parametrize(('cuda_major', 'cuda_bindings_version'), [
-        (12, '12.9.10'), (13, '13.5.0')])
-    def test_ok(self, monkeypatch, cuda_major, cuda_bindings_version):
-        self._install(monkeypatch, cuda_bindings_version)
+    @pytest.mark.parametrize('cuda_major', [12, 13])
+    def test_ok(self, monkeypatch, cuda_major):
+        bindings_floor = self.floors['cuda-bindings'][str(cuda_major)]
+        self._install(monkeypatch, bindings_floor)
         assert build.get_cuda_python_versions(cuda_major, self.floors) == (
-            '1.0.0', cuda_bindings_version)
+            self.nvmath_floor, bindings_floor)
 
     def test_local_version_dropped(self, monkeypatch):
-        self._install(monkeypatch, '12.9.10+g1234abc',
+        self._install(monkeypatch, f'{self.bindings_floor_12}+g1234abc',
                       nvmath_version='1.1.0.dev3+gabcdef0')
         assert build.get_cuda_python_versions(12, self.floors) == (
-            '1.1.0.dev3', '12.9.10')
+            '1.1.0.dev3', self.bindings_floor_12)
 
     @pytest.mark.parametrize('cuda_bindings_version', ['12.9.4', '13.4.4'])
     def test_cuda_bindings_unsupported(
             self, monkeypatch, cuda_bindings_version):
         self._install(monkeypatch, cuda_bindings_version)
-        with pytest.raises(RuntimeError, match=r'cuda-bindings>=12\.9\.10'):
+        with pytest.raises(RuntimeError, match=re.escape(
+                f'cuda-bindings>={self.bindings_floor_12}')):
             build.get_cuda_python_versions(12, self.floors)
 
     @pytest.mark.parametrize('nvmath_version', ['0.9.0', '2.0.0'])
     def test_nvmath_unsupported(self, monkeypatch, nvmath_version):
-        self._install(monkeypatch, '12.9.10', nvmath_version=nvmath_version)
-        with pytest.raises(RuntimeError, match=r'nvmath-python>=1\.0\.0,<2'):
+        self._install(monkeypatch, self.bindings_floor_12,
+                      nvmath_version=nvmath_version)
+        with pytest.raises(RuntimeError, match=re.escape(
+                f'nvmath-python>={self.nvmath_floor},<2')):
             build.get_cuda_python_versions(12, self.floors)
 
     def test_missing_nvmath(self, monkeypatch):
-        self._install(monkeypatch, '12.9.10', nvmath=False)
+        self._install(monkeypatch, self.bindings_floor_12, nvmath=False)
         with pytest.raises(RuntimeError, match='requires nvmath-python'):
             build.get_cuda_python_versions(12, self.floors)
 

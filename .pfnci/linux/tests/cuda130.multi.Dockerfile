@@ -31,12 +31,12 @@ RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
 RUN git -C /opt/pyenv pull --ff-only && \
-    PYTHON_CONFIGURE_OPTS="--disable-shared" pyenv install 3.14.10 && \
-    pyenv global 3.14.10 && \
+    PYTHON_CONFIGURE_OPTS="--disable-shared" pyenv install 3.13.18 && \
+    pyenv global 3.13.18 && \
     pip install --disable-pip-version-check -U pip setuptools wheel && \
     pip install -U google-cloud-storage
 
-RUN pip install -U 'numpy==2.4.*' 'scipy==1.16.*' 'optuna==4.*' 'mpi4py==4.*' 'ml_dtypes==0.5.*' 'cython==3.2.*,!=3.2.6' cuda-bindings==13.4.4 cuda-core==1.2.2 nvmath-python==1.0.0
+RUN pip install -U 'numpy==2.4.*' 'scipy==1.16.*' 'optuna==4.*' 'mpi4py==4.*' 'ml_dtypes==0.5.*' 'cython==3.2.*,!=3.2.6' cuda-bindings==13.0.1 'cuda-core[minimal-sysctk13]' nvmath-python==1.0.0
 RUN pip uninstall -y cuda-cccl && \
     pip check
 
