@@ -145,8 +145,8 @@ def extract_requested_tags(comment: str) -> list[set[str]] | None:
 
 
 def _keep_first_test_line(payload: dict[str, Any]) -> dict[str, Any]:
-    # FlexCI errors on a second /test line ("duplicated call: test") even
-    # though the projects are already selected via project=.
+    # Workaround for #10504: FlexCI errors on a second /test line even
+    # though projects are selected via project=. Remove once fixed.
     lines = payload['comment']['body'].splitlines()
     tests = [i for i, line in enumerate(lines) if line.startswith('/test')]
     if len(tests) <= 1:
