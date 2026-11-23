@@ -14,6 +14,7 @@ from cupy_backends.cuda.api import runtime
 import cupyx.scipy.sparse
 from cupyx.scipy.sparse import _base
 from cupyx.scipy.sparse import _compressed
+from cupyx.scipy.sparse import _sputils
 
 
 class _csc_base(_compressed._compressed_sparse_matrix):
@@ -171,10 +172,30 @@ class _csc_base(_compressed._compressed_sparse_matrix):
             if other.ndim == 0:
                 self.sum_duplicates()
                 return self._with_data(self.data * other)
-            elif other.ndim == 1:
+            native_f16 = False
+            if other.ndim in (1, 2):
+                # Use native float16 matmul on CUDA; other dtypes need a
+                # fallback.
+                result_dtype = cupy.promote_types(self.dtype, other.dtype)
+                native_f16 = (
+                    result_dtype.char == 'e' and not runtime.is_hip
+                    and cusparse.check_availability(
+                        'spmv' if other.ndim == 1 else 'spmm'))
+                if (_sputils.is_16bit_float(result_dtype)
+                        and not native_f16 and not runtime.is_hip):
+                    # Widen values to reuse CSC matmul without a CSC-to-CSR
+                    # conversion.
+                    return (self.astype(cupy.float32)
+                            @ other.astype(cupy.float32)).astype(result_dtype)
+                if (cusparse._needs_cupy_fallback(result_dtype)
+                        and not native_f16):
+                    return cusparse._cupy_csr_dense_matmul(
+                        self.tocsr(), other)
+            if other.ndim == 1:
                 self.sum_duplicates()
                 if (
-                    cusparse.check_availability('csrmv')
+                    not native_f16
+                    and cusparse.check_availability('csrmv')
                     and (
                         not runtime.is_hip
                         or driver.get_build_version() >= 5_00_00000
@@ -193,7 +214,8 @@ class _csc_base(_compressed._compressed_sparse_matrix):
             elif other.ndim == 2:
                 self.sum_duplicates()
                 if (
-                    cusparse.check_availability('csrmm2')
+                    not native_f16
+                    and cusparse.check_availability('csrmm2')
                     and (
                         not runtime.is_hip
                         or driver.get_build_version() >= 5_00_00000

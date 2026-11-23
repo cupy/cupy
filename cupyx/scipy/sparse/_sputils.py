@@ -6,21 +6,71 @@ import numpy
 
 from cupy._core._dtype import get_dtype
 
+# Match CuPy's bfloat16 registration guard; its dtype kind is V.
+_extra_float_dtypes: frozenset[numpy.dtype] = frozenset()
+if numpy.lib.NumpyVersion(numpy.__version__) >= '2.1.2':
+    try:
+        import ml_dtypes as _ml_dtypes
+        _extra_float_dtypes = frozenset([numpy.dtype(_ml_dtypes.bfloat16)])
+    except ImportError:
+        pass
+
+# Dtypes available to upcast, ordered by widening.
 supported_dtypes = [get_dtype(x) for x in
                     ('single', 'double', 'csingle', 'cdouble')]
 
-# dtype kind chars that cuSPARSE accepts for sparse ``data`` arrays:
-#   '?' bool, 'f' float32, 'd' float64, 'F' complex64, 'D' complex128.
-_SPARSE_DATA_KINDS = frozenset('?fdFD')
+
+def is_extra_float_dtype(dtype):
+    """Whether ``dtype`` is a supported non-numpy float (e.g. bfloat16)."""
+    return numpy.dtype(dtype) in _extra_float_dtypes
+
+
+def is_16bit_float(dtype):
+    """Whether dtype is float16 or bfloat16."""
+    dtype = numpy.dtype(dtype)
+    return dtype.char == 'e' or dtype in _extra_float_dtypes
+
+
+def is_float_dtype(dtype):
+    """Whether dtype is a real float, including bfloat16."""
+    return numpy.dtype(dtype).kind == 'f' or is_extra_float_dtype(dtype)
+
+
+def get_sum_dtype(dtype):
+    """Return the NumPy/SciPy sum accumulator dtype."""
+    dtype = numpy.dtype(dtype)
+    if dtype.kind == 'u' and numpy.can_cast(dtype, numpy.uint):
+        return numpy.dtype(numpy.uint)
+    if numpy.can_cast(dtype, numpy.int_):
+        return numpy.dtype(numpy.int_)
+    return dtype
+
+
+def add_at_accumulator_dtype(dtype):
+    """Widen bool, narrow integers and 16-bit floats for scatter-add."""
+    dtype = numpy.dtype(dtype)
+    if dtype.kind == 'b' or (dtype.kind == 'i' and dtype.itemsize < 4):
+        return numpy.dtype(numpy.int64)
+    if dtype.kind == 'u' and dtype.itemsize < 4:
+        return numpy.dtype(numpy.uint64)
+    if is_16bit_float(dtype):
+        return numpy.dtype(numpy.float32)
+    return dtype
 
 
 def is_sparse_data_dtype(dtype):
-    """Return True if ``dtype`` can be stored in a sparse ``data`` array.
+    """Keep the existing public dtype gate until the value operations land."""
+    return numpy.dtype(dtype).char in '?fdFD'
 
-    cuSPARSE-backed ops accept only bool, float32, float64, complex64,
-    and complex128 for ``data``.
-    """
-    return numpy.dtype(dtype).char in _SPARSE_DATA_KINDS
+
+def check_data_dtype(dtype):
+    """Raise ValueError if dtype is outside the public sparse dtype gate."""
+    dtype = numpy.dtype(dtype)
+    if not is_sparse_data_dtype(dtype):
+        names = ', '.join(d.name for d in supported_dtypes)
+        raise ValueError(
+            f'cupyx.scipy.sparse does not support dtype {dtype.name}. '
+            f'The only supported types are: {names}.')
 
 
 _upcast_memo: dict = {}

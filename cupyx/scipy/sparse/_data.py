@@ -66,26 +66,14 @@ class _data_matrix(_base._spbase):
 
     @staticmethod
     def _scalar_op_dtype(self_dtype, other):
-        """Pick the dtype for ``self.data * other`` / ``... / other``.
-
-        numpy's natural promotion can land outside the cuSPARSE-supported
-        set (e.g. ``bool * int -> int64``).  Upcast to ``float64`` in
-        that case so the result remains usable.  Mirrors scipy which
-        promotes bool / int sparse to float on division.
-        """
+        """Choose a scalar-operation dtype, falling back to float64."""
         out = np.result_type(self_dtype, other)
         if not _sputils.is_sparse_data_dtype(out):
             out = np.dtype(np.float64)
         return out
 
     def __imul__(self, other):
-        # In-place scalar multiply mutates ``self.data`` to preserve
-        # object identity.  Non-scalar falls through to NotImplemented
-        # so Python rebinds via ``self = self * other``.  Unlike scipy,
-        # which raises ``UFuncTypeError`` on out-of-set promotions
-        # (e.g. ``bool *= int``), CuPy reassigns ``self.data`` to a
-        # cuSPARSE-supported dtype.  Identity of ``self`` is preserved;
-        # identity of ``self.data`` is not.
+        # Preserve self's identity; widening may replace its data array.
         if _sparse_util.isscalarlike(other):
             new_dtype = self._scalar_op_dtype(self.dtype, other)
             if new_dtype != self.dtype:
@@ -96,19 +84,8 @@ class _data_matrix(_base._spbase):
         return NotImplemented
 
     def __itruediv__(self, other):
-        # In-place scalar division mutates ``self.data``.  See
-        # ``__imul__`` for the upcast rationale; division additionally
-        # promotes int dividends to float (``int / 2`` is ``float``
-        # in Python and ``self.data /= 2`` would otherwise raise on
-        # int data).
         if _sparse_util.isscalarlike(other):
-            recip = 1.0 / other
-            new_dtype = self._scalar_op_dtype(self.dtype, recip)
-            if new_dtype != self.dtype:
-                self.data = self.data.astype(new_dtype) * recip
-            else:
-                self.data *= recip
-            return self
+            return self.__imul__(1.0 / other)
         return NotImplemented
 
     def astype(self, dtype, copy=True):
@@ -124,6 +101,7 @@ class _data_matrix(_base._spbase):
             Sparse object with the requested dtype and the same format.
         """
         dtype = np.dtype(dtype)
+        _sputils.check_data_dtype(dtype)
         if self.dtype != dtype:
             return self._with_data(self.data.astype(dtype, copy=copy))
         if copy:
@@ -226,7 +204,12 @@ class _data_matrix(_base._spbase):
         else:
             n = nCol
 
-        return self._with_data(self.data * (1.0 / n)).sum(axis, dtype, out)
+        data = self.data * (1.0 / n)
+        if _sputils.is_extra_float_dtype(self.dtype):
+            # TODO(seberg): ml-dtypes>0.6.0 should not need this; weak-scalar
+            # promotion of ``bfloat16 * float`` currently widens to float32.
+            data = data.astype(self.dtype, copy=False)
+        return self._with_data(data).sum(axis, dtype, out)
 
     def power(self, n, dtype=None):
         """Elementwise power function.
@@ -245,12 +228,15 @@ class _data_matrix(_base._spbase):
                 'zero power is not supported as it would densify the '
                 'matrix.\n'
                 'Use cupy.ones(A.shape, dtype=A.dtype) for this case.')
-        if dtype is None:
-            data = self.data.copy()
-        else:
-            data = self.data.astype(dtype, copy=True)
-        data **= n
-        return self._with_data(data)
+        # Allow the power result to widen.
+        data = self.data if dtype is None else self.data.astype(
+            dtype, copy=False)
+        if data.dtype.kind == 'b':
+            # NumPy chooses a bool power dtype per exponent. Read device
+            # scalars on the host before using NumPy to select that dtype.
+            n_host = n.get() if isinstance(n, cupy.ndarray) else n
+            data = data.astype((np.ones(1, np.bool_) ** n_host).dtype)
+        return self._with_data(data ** n)
 
 
 def _find_missing_index(ind, n):
@@ -325,6 +311,8 @@ class _minmax_mixin:
             _sputils.validate_axis_1d(axis)
             axis = None
         else:
+            # Normalize tuple axes like sum/mean.
+            axis = _sputils.collapse_2d_axis(axis)
             _sputils.validateaxis(axis)
 
         if axis is None:
@@ -383,6 +371,8 @@ class _minmax_mixin:
             _sputils.validate_axis_1d(axis)
             axis = None
         else:
+            # Normalize tuple axes like sum/mean.
+            axis = _sputils.collapse_2d_axis(axis)
             _sputils.validateaxis(axis)
 
         if axis is None:
@@ -493,7 +483,8 @@ class _minmax_mixin:
         Implicit zero elements are taken into account. If there are several
         maximum values, the index of the first occurrence is returned. If
         ``NaN`` values occur in the matrix, the output defaults to a zero entry
-        for the row/column in which the NaN occurs.
+        for the row/column in which the NaN occurs. Complex inputs are
+        compared by their real part (like the ``min``/``max`` reductions).
 
         Args:
             axis (int): {-2, -1, 0, 1, ``None``} (optional)
@@ -518,7 +509,8 @@ class _minmax_mixin:
         Implicit zero elements are taken into account. If there are several
         minimum values, the index of the first occurrence is returned. If
         ``NaN`` values occur in the matrix, the output defaults to a zero entry
-        for the row/column in which the NaN occurs.
+        for the row/column in which the NaN occurs. Complex inputs are
+        compared by their real part (like the ``min``/``max`` reductions).
 
         Args:
             axis (int): {-2, -1, 0, 1, ``None``} (optional)

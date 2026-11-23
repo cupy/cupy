@@ -486,8 +486,7 @@ def random(m, n, density=0.01, format='coo', dtype=None,
     if density < 0 or density > 1:
         raise ValueError('density expected to be 0 <= density <= 1')
     dtype = cupy.dtype(dtype)
-    if dtype.char not in 'fd':
-        raise NotImplementedError('type %s not supported' % dtype)
+    _sputils.check_data_dtype(dtype)
 
     k = int(density * m * n)
 
@@ -497,7 +496,19 @@ def random(m, n, density=0.01, format='coo', dtype=None,
         random_state = cupy.random.RandomState(random_state)
 
     if data_rvs is None:
-        data_rvs = random_state.rand
+        if dtype.kind in 'iu':
+            # Sampling floats in [0, 1) would cast to all-zero integer data.
+            info = numpy.iinfo(dtype)
+            lo, hi = int(info.min), int(info.max)
+
+            def data_rvs(size):
+                return random_state.randint(lo, hi + 1, size=size,
+                                            dtype=dtype)
+        elif dtype.kind == 'c':
+            def data_rvs(size):
+                return random_state.rand(size) + 1j * random_state.rand(size)
+        else:
+            data_rvs = random_state.rand
 
     mn = m * n
 
@@ -873,14 +884,7 @@ def block_diag(mats, format=None, dtype=None):
     coo_cls = _coo.coo_array if use_array else _coo.coo_matrix
 
     def _normalize_dense(a):
-        """Promote a dense input (list/tuple/scalar/ndarray) to a 2-D
-        ``cupy.ndarray`` with a sparse-supported dtype.
-
-        Integer-typed dense input is upcast to float64 since cuSPARSE
-        won't store it.  This matches scipy's behaviour for integer
-        ``diags`` input -- the upstream FutureWarning is filtered out
-        in ``pyproject.toml``.
-        """
+        """Make a 2-D dense input, converting unsupported dtypes to float64."""
         a = cupy.atleast_2d(cupy.asarray(a))
         if not _sputils.is_sparse_data_dtype(a.dtype):
             a = a.astype(cupy.float64, copy=False)

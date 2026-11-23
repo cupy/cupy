@@ -65,6 +65,12 @@ class _csr_base(_compressed._compressed_sparse_matrix):
         other = other.tocsr()
         other.sum_duplicates()
         dtype = numpy.promote_types(self.dtype, other.dtype)
+        if _sputils.is_16bit_float(dtype):
+            # Widen only values for cuSPARSE, then round back.
+            a = self._with_data(self.data.astype(cupy.float32), copy=False)
+            b = other._with_data(other.data.astype(cupy.float32), copy=False)
+            c = a._add_sparse(b, alpha, beta)
+            return c._with_data(c.data.astype(dtype), copy=False)
         if cusparse._needs_cupy_fallback(dtype):
             return self._as_csr_type(cusparse._cupy_csr_add(
                 self, other, alpha, beta))
@@ -84,8 +90,12 @@ class _csr_base(_compressed._compressed_sparse_matrix):
                 other, lambda a, o: a._comparison(o, op, op_name))
         cls = type(self)
         if _util.isscalarlike(other):
-            data = cupy.asarray(other, dtype=self.dtype).reshape(1)
-            if numpy.isnan(data[0]):
+            if self.dtype.kind in 'biu':
+                # Avoid narrowing the scalar before comparing integer data.
+                data = cupy.asarray(other).reshape(1)
+            else:
+                data = cupy.asarray(other, dtype=self.dtype).reshape(1)
+            if data.dtype.kind in 'fc' and numpy.isnan(data[0]):
                 if op_name == '_ne_':
                     return cls(cupy.ones(self.shape, dtype=numpy.bool_))
                 else:
@@ -205,6 +215,14 @@ class _csr_base(_compressed._compressed_sparse_matrix):
             self.sum_duplicates()
             other = other.tocsr()
             other.sum_duplicates()
+            dtype = numpy.promote_types(self.dtype, other.dtype)
+            if _sputils.is_16bit_float(dtype):
+                # Accumulate 16-bit float products in float32 with cuSPARSE.
+                a = self._with_data(self.data.astype(cupy.float32), copy=False)
+                b = other._with_data(
+                    other.data.astype(cupy.float32), copy=False)
+                c = a._matmul_dispatch(b)
+                return c._with_data(c.data.astype(dtype), copy=False)
             a, b = cusparse._cast_common_type(self, other)
             return self._as_csr_type(
                 cusparse._cupy_spgemm_int64(a, b, alpha=1))
@@ -254,10 +272,23 @@ class _csr_base(_compressed._compressed_sparse_matrix):
             if other.ndim == 0:
                 self.sum_duplicates()
                 return self._with_data(self.data * other)
-            elif other.ndim == 1:
+            native_f16 = False
+            if other.ndim in (1, 2):
+                # Use native float16 matmul on CUDA; other dtypes need a
+                # fallback.
+                result_dtype = cupy.promote_types(self.dtype, other.dtype)
+                native_f16 = (
+                    result_dtype.char == 'e' and not runtime.is_hip
+                    and cusparse.check_availability(
+                        'spmv' if other.ndim == 1 else 'spmm'))
+                if (cusparse._needs_cupy_fallback(result_dtype)
+                        and not native_f16):
+                    return cusparse._cupy_csr_dense_matmul(self, other)
+            if other.ndim == 1:
                 self.sum_duplicates()
                 other = cupy.asfortranarray(other)
-                if cusparse.check_availability('csrmv'):
+                # The legacy API does not support float16.
+                if not native_f16 and cusparse.check_availability('csrmv'):
                     csrmv = cusparse.csrmv
                 elif cusparse.check_availability('spmv'):
                     csrmv = cusparse.spmv
@@ -266,7 +297,8 @@ class _csr_base(_compressed._compressed_sparse_matrix):
                 return csrmv(self, other)
             elif other.ndim == 2:
                 self.sum_duplicates()
-                if cusparse.check_availability('csrmm2'):
+                # The legacy API does not support float16.
+                if not native_f16 and cusparse.check_availability('csrmm2'):
                     csrmm = cusparse.csrmm2
                 elif cusparse.check_availability('spmm'):
                     csrmm = cusparse.spmm
@@ -287,19 +319,19 @@ class _csr_base(_compressed._compressed_sparse_matrix):
     def __truediv__(self, other):
         """Point-wise division by another matrix, vector or scalar"""
         if _util.isscalarlike(other):
-            # Pick the result dtype.  scipy upcasts any dtype that's
-            # castable to float64 (bool/int*/float16/float32/...) before
-            # dividing; mirror that behaviour, and additionally fall
-            # back to float64 for any non-cuSPARSE-supported dtype so
-            # the result remains usable with cuSPARSE-backed ops.
-            # Real-vs-complex follows numpy's natural promotion
-            # (``result_type(float64, complex64) -> complex128``).
             dtype = self.dtype
-            if dtype == numpy.float32:
-                dtype = numpy.float64
-            dtype = cupy.result_type(dtype, other)
+            if _sputils.is_16bit_float(dtype):
+                # Use dense division promotion for 16-bit floats.
+                dtype = (cupy.zeros(0, dtype) / other).dtype
+            else:
+                # Match SciPy by widening bool, integer and float32 dividends.
+                if dtype.kind in 'biu' or dtype == numpy.float32:
+                    dtype = numpy.dtype(numpy.float64)
+                dtype = cupy.result_type(dtype, other)
             if not _sputils.is_sparse_data_dtype(dtype):
-                dtype = numpy.dtype(numpy.float64)
+                # Cap extended precision while preserving real/complex kind.
+                dtype = numpy.dtype(numpy.complex128 if dtype.kind == 'c'
+                                    else numpy.float64)
             d = cupy.reciprocal(other, dtype=dtype)
             return multiply_by_scalar(self, d)
         if self.ndim != 2:
@@ -308,12 +340,17 @@ class _csr_base(_compressed._compressed_sparse_matrix):
             return self._run_1d_backing_op(
                 other, lambda a, o: a.__truediv__(o))
         if _util.isdense(other):
-            other = cupy.atleast_2d(other)
+            # The division kernel requires both operands in the result dtype.
+            dtype = numpy.promote_types(self.dtype, other.dtype)
+            if dtype.kind in 'biu':
+                dtype = numpy.promote_types(numpy.float64, dtype)
+            other = cupy.atleast_2d(other).astype(dtype, copy=False)
             other = cupy.broadcast_to(other, self.shape)
             check_shape_for_pointwise_op(self.shape, other.shape)
             ret = self.tocoo()
             ret.data = _cupy_divide_by_dense()(
-                ret.data, ret.row, ret.col, ret.shape[1], other)
+                ret.data.astype(dtype, copy=False),
+                ret.row, ret.col, ret.shape[1], other)
             return ret
         elif _base.issparse(other):
             # Note: If broadcasting is needed, an exception is raised here for
@@ -373,9 +410,10 @@ class _csr_base(_compressed._compressed_sparse_matrix):
         cls = type(self)
         if _util.isscalarlike(other):
             dtype = cupy.result_type(self.dtype, other)
-            other = cupy.asarray(other)
+            # Convert directly so out-of-range Python scalars raise instead of
+            # wrap.
+            other = cupy.asarray(other, dtype=dtype)
             if dense_check(other):
-                other = other.astype(dtype, copy=False)
                 new_array = cupy_op(self.todense(), other)
                 return cls(new_array)
             else:
@@ -828,6 +866,9 @@ def multiply_by_dense(sp, dn):
     m, n = max(sp_m, dn_m), max(sp_n, dn_n)
     nnz = sp.nnz * (m // sp_m) * (n // sp_n)
     dtype = numpy.promote_types(sp.dtype, dn.dtype)
+    # Cast first: CUDA lacks mixed integer/complex multiplication.
+    sp_data = sp.data.astype(dtype, copy=False)
+    dn = dn.astype(dtype, copy=False)
     data = cupy.empty(nnz, dtype=dtype)
     indices = cupy.empty(nnz, dtype=sp.indices.dtype)
     if m > sp_m:
@@ -844,7 +885,7 @@ def multiply_by_dense(sp, dn):
     idx_dtype = sp.indptr.dtype
     it = idx_dtype.type
     cupy_multiply_by_dense()(
-        sp.data, sp.indptr, sp.indices, it(sp_m), it(sp_n),
+        sp_data, sp.indptr, sp.indices, it(sp_m), it(sp_n),
         dn, it(dn_m), it(dn_n), indptr, it(m), it(n),
         data, indices)
 
@@ -969,6 +1010,9 @@ def multiply_by_csr(a, b, *, out_cls=None):
     b_indptr = b.indptr.astype(idx_dtype, copy=False)
     c_nnz = a_nnz
     dtype = numpy.promote_types(a.dtype, b.dtype)
+    # Cast first: CUDA lacks mixed integer/complex multiplication.
+    a_data = a.data.astype(dtype, copy=False)
+    b_data = b.data.astype(dtype, copy=False)
     c_data = cupy.empty(c_nnz, dtype=dtype)
     c_indices = cupy.empty(c_nnz, dtype=idx_dtype)
     if m > a_m:
@@ -986,8 +1030,8 @@ def multiply_by_csr(a, b, *, out_cls=None):
     # compute c = a * b where necessary and get sparsity pattern of matrix d
     it = idx_dtype.type
     cupy_multiply_by_csr_step1()(
-        a.data, a_indptr, a_indices, it(a_m), it(a_n),
-        b.data, b_indptr, b_indices, it(b_m), it(b_n),
+        a_data, a_indptr, a_indices, it(a_m), it(a_n),
+        b_data, b_indptr, b_indices, it(b_m), it(b_n),
         c_indptr, it(m), it(n), c_data, c_indices, flags, nnz_each_row)
 
     flags = cupy.cumsum(flags, dtype=idx_dtype)
@@ -1365,6 +1409,12 @@ def cupy_binopt_csr_step2(op_name):
 
 
 def csr2dense(a, order):
+    if a.dtype.char in 'bBhH':
+        # Narrow integers use direct stores, so coalesce duplicates first.
+        # Ignore a possibly stale canonical-format flag.
+        a = a.copy()
+        a.has_canonical_format = False
+        a.sum_duplicates()
     out = cupy.zeros(a.shape, dtype=a.dtype, order=order)
     m, n = a.shape
     idx_dtype = a.indptr.dtype
@@ -1378,6 +1428,9 @@ def csr2dense(a, order):
 def _cupy_csr2dense(dtype):
     if dtype == '?':
         op = "if (DATA) OUT[index] = true;"
+    elif dtype.char in 'bBhH':
+        # Duplicates were coalesced by csr2dense.
+        op = "OUT[index] = DATA;"
     else:
         op = "atomicAdd(&OUT[index], DATA);"
 

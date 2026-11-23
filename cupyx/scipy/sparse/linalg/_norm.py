@@ -7,11 +7,10 @@ import cupyx.scipy.sparse
 
 
 def _sparse_frobenius_norm(x):
-    if cupy.issubdtype(x.dtype, cupy.complexfloating):
-        sqnorm = abs(x).power(2).sum()
-    else:
-        sqnorm = x.power(2).sum()
-    return cupy.sqrt(sqnorm)
+    # Use linalg.norm to avoid integer overflow when squaring. DIA data
+    # includes padding; use COO values to exclude it.
+    data = x.data if x.format in ('csr', 'csc', 'coo') else x.tocoo().data
+    return cupy.linalg.norm(data)
 
 
 def norm(x, ord=None, axis=None):
