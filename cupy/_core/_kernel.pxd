@@ -120,10 +120,10 @@ cdef class KernelArguments:
 
     cdef create_out_args_with_types(
         self, tuple out_types, casting, const shape_t& shape,
-        subtype=*, template=*)
+        subtype=*, template=*, bint c_order=*)
     cdef create_out_args_with_params(
         self, tuple out_types, tuple out_params, bint is_size_specified,
-        const shape_t& shape)
+        const shape_t& shape, bint c_order=*)
     cdef create_out_args_with_params_gu(
         self, tuple out_types, tuple out_params, tuple out_shapes)
 
