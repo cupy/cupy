@@ -144,6 +144,18 @@ def extract_requested_tags(comment: str) -> list[set[str]] | None:
     return requests or None
 
 
+def _keep_first_test_line(payload: dict[str, Any]) -> dict[str, Any]:
+    # Workaround for #10504: FlexCI errors on a second /test line even
+    # though projects are selected via project=. Remove once fixed.
+    lines = payload['comment']['body'].splitlines()
+    tests = [i for i, line in enumerate(lines) if line.startswith('/test')]
+    if len(tests) <= 1:
+        return payload
+    body = '\n'.join(
+        line for i, line in enumerate(lines) if i not in tests[1:])
+    return {**payload, 'comment': {**payload['comment'], 'body': body}}
+
+
 def parse_args(argv: Any) -> Any:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -288,6 +300,8 @@ def main(argv: Any) -> int:
             return 1
     else:
         _log(f'Dispatching projects: {projects_dispatch}')
+        if event_name == 'issue_comment':
+            payload = _keep_first_test_line(payload)
         success = _forward_to_flexci(
             event_name, payload, webhook_secret, projects_dispatch,
             options.flexci_uri)
