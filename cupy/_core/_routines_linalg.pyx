@@ -534,7 +534,7 @@ cpdef _ndarray_base dot(
         # Deprecated CuPy 14.3 (NumPy 2.6).
         warnings.warn(
             "dot() with a.ndim >= 2 and b.ndim > 2 is deprecated as it "
-            "places leading dimenions of a in the middle of the result. "
+            "places leading dimensions of b in the middle of the result. "
             "Use `cupy.tensordot(a, b, axes=[-1, -2])` instead.",
             DeprecationWarning)
 

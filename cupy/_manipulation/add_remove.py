@@ -137,8 +137,8 @@ def append(arr, values, axis=None):
             # `arr.dtype.type(val)` if they prefer the future behavior.
             # Warning added/Deprecated CuPy 14.3 (NumPy 2.6).
             warnings.warn(
-                "append() with a Python scalar not convert the scalar to an "
-                f"array first and {change}.\n"
+                "append() with a Python scalar will not convert the scalar "
+                f"to an array first and {change}.\n"
                 "Please convert the scalar to your desired type to avoid "
                 "this warning.", FutureWarning,
                 stacklevel=2)
