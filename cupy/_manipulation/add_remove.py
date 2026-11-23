@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 from typing import NamedTuple
-import warnings
-
 import numpy
 
 import cupy
 import math
 from cupy import _core
+from cupy._util import warn_external
 
 
 def delete(arr, indices, axis=None):
@@ -108,37 +107,33 @@ def append(arr, values, axis=None):
 
         scalar_promotion = False
         if type(arr) in {int, float, complex}:
-            rhs_promote = arr
+            lhs_promote = arr
             scalar_promotion = True
         else:
-            rhs_promote = arr_arr.dtype
+            lhs_promote = arr_arr.dtype
 
         if type(values) in {int, float, complex}:
-            lhs_promote = values
+            rhs_promote = values
             scalar_promotion = True
         else:
-            lhs_promote = val_arr.dtype
+            rhs_promote = val_arr.dtype
 
         if scalar_promotion:
             # To align with NumPy, the scalar should use weak promotion
             # in the future.
-            try:
-                dtype = numpy.result_type(rhs_promote, lhs_promote)
-            except TypeError:
-                change = " and will fail promotion in the future"
-            else:
-                if dtype == res.dtype:
-                    return res
-                change = (f"will return dtype {dtype} in the future which may "
-                          f"change results or error for out-of-bound values")
+            dtype = numpy.result_type(lhs_promote, rhs_promote)
+            if dtype == res.dtype:
+                return res
             # NOTE(seberg): This is unfortunate, but hopefully niche enough...
             # NumPy allows scalars in concatenate, so it points there.
             # We don't, so this needs to ask users to use `np.float32(val)` or
             # `arr.dtype.type(val)` if they prefer the future behavior.
             # Warning added/Deprecated CuPy 14.3 (NumPy 2.6).
-            warnings.warn(
+            warn_external(
                 "append() with a Python scalar will not convert the scalar "
-                f"to an array first and {change}.\n"
+                f"to an array first and will return dtype {dtype} in the "
+                "future which may change results or error for "
+                "out-of-bound-values.\n"
                 "Please convert the scalar to your desired type to avoid "
                 "this warning.", FutureWarning,
                 stacklevel=2)

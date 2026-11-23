@@ -11,7 +11,7 @@ from cupy._core._kernel import ElementwiseKernel
 from cupy._core._reduction import ReductionKernel
 from cupy._core._ufuncs import elementwise_copy
 import cupy._core.core as core
-
+from cupy._util import warn_external
 
 from libc.stdint cimport intptr_t
 
@@ -532,7 +532,7 @@ cpdef _ndarray_base dot(
 
     if a_ndim >=2 and b_ndim > 2:
         # Deprecated CuPy 14.3 (NumPy 2.6).
-        warnings.warn(
+        warn_external(
             "dot() with a.ndim >= 2 and b.ndim > 2 is deprecated as it "
             "places leading dimensions of b in the middle of the result. "
             "Use `cupy.tensordot(a, b, axes=[-1, -2])` instead.",
