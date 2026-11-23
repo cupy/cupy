@@ -43,8 +43,10 @@ jobs:
                  (inputs.host-platform == 'win-64'        && 'windows-2022')     ||
                  (inputs.host-platform == 'win-arm64'     && 'windows-11-arm') }}
     env:
-      # nvmath-python has no wheels for these targets yet (#10473).
-      CUPY_USE_CUDA_PYTHON: ${{ (startsWith(matrix.python-version, '3.15') || inputs.host-platform == 'win-arm64') && '0' || '1' }}
+      # nvmath-python can't be installed on these targets yet (#10473): no
+      # wheels for 3.15 or win-arm64, and on Windows it requires pywin32,
+      # which has no free-threaded wheels.
+      CUPY_USE_CUDA_PYTHON: ${{ (startsWith(matrix.python-version, '3.15') || inputs.host-platform == 'win-arm64' || (startsWith(inputs.host-platform, 'win') && endsWith(matrix.python-version, 't'))) && '0' || '1' }}
     steps:
       - name: Verify LongPathsEnabled on Windows
         if: ${{ startsWith(inputs.host-platform, 'win') }}
