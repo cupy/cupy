@@ -33,7 +33,7 @@ _GROUPS = {
     # TODO(seberg): Consider excluding these headers from wheels?
     'build': re.compile(r'cupy/(?:type_dispatcher\.cuh$|_dlpack/)'),
     # On CUDA builds, HIP has no reason to be part of COMMON.
-    'hip': re.compile(r'cupy/hip_workaround\.cuh$'),
+    'hip': re.compile(r'cupy/hip_(?:workaround|bfloat16_rounding)\.cuh$'),
 }
 # On HIP should probably include HIP as part of the common key.
 _GROUPS_HIP = _GROUPS.copy()

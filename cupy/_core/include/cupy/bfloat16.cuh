@@ -5,7 +5,7 @@
 #if defined(__HIPCC_RTC__) || defined(__HIPCC__)
 
 #include <hip/hip_bf16.h>
-#include "cupy/float_rounding.cuh"
+#include "cupy/hip_bfloat16_rounding.cuh"
 #define __nv_bfloat16 __hip_bfloat16
 
 #else
