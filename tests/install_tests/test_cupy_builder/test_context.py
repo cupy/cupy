@@ -7,6 +7,8 @@ from pathlib import Path
 import runpy
 import shutil
 
+import pytest
+
 from cupy_builder._context import (
     _get_env_bool, _get_env_path, Context)
 
@@ -76,7 +78,7 @@ class TestContext:
 
         assert ctx.source_root == '.'
         assert ctx.setup_command == ''
-        assert not ctx.use_cuda_python
+        assert ctx.use_cuda_python
         assert not ctx.use_hip
         assert ctx.include_dirs == []
         assert ctx.library_dirs == []
@@ -94,7 +96,6 @@ class TestContext:
 
     def test_env(self) -> None:
         ctx = Context('.', _env={
-            'CUPY_USE_CUDA_PYTHON': '1',
             'CUPY_INSTALL_USE_HIP': '1',
             'CUPY_INCLUDE_PATH': f'/tmp/include{os.pathsep}/tmp2/include',
             'CUPY_LIBRARY_PATH': f'/tmp/lib{os.pathsep}/tmp2/lib',
@@ -106,7 +107,7 @@ class TestContext:
             'CUPY_INSTALL_NO_MEANING': '1',  # dummy
         }, _argv=[])
 
-        assert ctx.use_cuda_python
+        assert not ctx.use_cuda_python
         assert ctx.use_hip
         assert ctx.include_dirs == ['/tmp/include', '/tmp2/include']
         assert ctx.library_dirs == ['/tmp/lib', '/tmp2/lib']
@@ -116,3 +117,16 @@ class TestContext:
         assert ctx.profile
         assert ctx.annotate
         assert ctx.linetrace
+
+    def test_cuda_python_opt_out(self, capsys) -> None:
+        ctx = Context('.', _env={'CUPY_USE_CUDA_PYTHON': '0'}, _argv=[])
+        assert not ctx.use_cuda_python
+        out = capsys.readouterr().out
+        assert 'CUPY_USE_CUDA_PYTHON=0 is deprecated' in out
+
+    def test_cuda_python_with_hip(self) -> None:
+        with pytest.raises(ValueError, match='CUPY_INSTALL_USE_HIP'):
+            Context('.', _env={
+                'CUPY_USE_CUDA_PYTHON': '1',
+                'CUPY_INSTALL_USE_HIP': '1',
+            }, _argv=[])
