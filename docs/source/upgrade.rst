@@ -155,6 +155,7 @@ Other API Changes
 * :mod:`cupy.testing` module has been updated to follow NumPy's testing API changes. Some testing utilities may have different behavior or signatures.
 * ``cupy.fft.config`` is now thread and context safe. However, this also means that config is not inherited by threads (using ``contextvars``, so Python is likely to change this for newly created threads in the future).
 * ``cupy.fft.config.enable_nd_planning`` has been deprecated and will be removed in a future release (planning will always be enabled).
+* Direct instantiation of ``cupy.cuda.cufft.Plan1d`` and ``cupy.cuda.cufft.PlanNd`` has been deprecated on CUDA as of CuPy v14.3. Use ``nvmath.fft.FFT`` instead. This deprecation does not apply to ROCm.
 * Multi-GPU FFT support (``cupy.fft.config.use_multi_gpus`` and ``cupy.fft.config.set_cufft_gpus``) has been deprecated as of CuPy v14.3. Use ``nvmath.distributed.fft.FFT`` instead.
 * Jitify support is deprecated and will be removed in a future release. Avoid passing ``jitify=True`` to or setting ``-DCUPY_USE_JITIFY`` (which is an undocumented CuPy internal macro) in :class:`~cupy.RawModule` or :class:`~cupy.RawKernel`. Most things should just work today.
 * The experimental namespace ``cupy.array_api`` is now removed.
