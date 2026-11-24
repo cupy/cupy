@@ -60,15 +60,13 @@ cdef class _ArgInfo:
     cdef _ArgInfo from_scalar(_scalar.CScalar arg)
 
     @staticmethod
-    cdef _ArgInfo from_indexer(_carray.Indexer arg)
+    cdef _ArgInfo from_indexer(_carray.CIndexer arg)
 
     @staticmethod
     cdef _ArgInfo from_memptr(memory.MemoryPointer arg)
 
     @staticmethod
     cdef _ArgInfo from_texture(texture.TextureObject arg)
-
-    cdef _ArgInfo as_ndarray_with_ndim(self, int ndim)
 
     cdef bint is_ndarray(self) noexcept
 
@@ -114,21 +112,33 @@ cdef class KernelArguments:
 
     cdef find_and_apply_shape(
         self, tuple params, shape_t& shape, bint shape_fixed,
-        bint include_outputs=*)
-
-    cdef find_and_apply_shape_gu(self, tuple params, shape_t& shape)
+        bint include_outputs=*, bint gufunc=*)
 
     cdef create_out_args_with_types(
         self, tuple out_types, casting, const shape_t& shape,
         subtype=*, template=*)
     cdef create_out_args_with_params(
         self, tuple out_types, tuple out_params, bint is_size_specified,
-        const shape_t& shape)
-    cdef create_out_args_with_params_gu(
-        self, tuple out_types, tuple out_params, tuple out_shapes)
+        const shape_t& shape, tuple out_shapes=*)
 
     cdef result(self, bint tuple_return)
-    cdef finalize_scalars(self, tuple in_types)
+    cdef int reduce_dims(
+        self, tuple params, shape_t& shape,
+        vector.vector[int]& kept_axes) except -1
+    cdef int reduce_dims_for_reduction(
+        self, tuple params, shape_t& shape,
+        vector.vector[int]& kept_axes, int out_start, tuple output_axis_map,
+        shape_t& out_shape, vector.vector[int]& out_kept_axes,
+        bint pack_output=*) except -1
+    cdef tuple finalize_launch_args(
+        self, tuple params, tuple in_types,
+        const shape_t& shape, const vector.vector[int]& kept_axes,
+        tuple extra_args)
+    cdef tuple finalize_reduction_launch_args(
+        self, tuple params, tuple in_types,
+        const shape_t& shape, const vector.vector[int]& kept_axes,
+        tuple extra_args, const shape_t& out_shape,
+        const vector.vector[int]& out_kept_axes, bint pack_output)
     cdef tuple get_ndarray_dtypes(self)
 
     # Helpers to access arguments (makes offsets simpler and also may allow
@@ -153,9 +163,6 @@ cdef class KernelArguments:
     cdef inline set_where(self, arg):
         assert self.has_where
         self.args[self.nin] = arg
-
-    cdef inline set_indexer(self, indexer):
-        self.args[self.nin + self.nout + self.has_where] = indexer
 
 
 cdef class _Op:
@@ -225,11 +232,8 @@ cpdef create_ufunc(name, ops, routine=*, preamble=*, doc=*,
 
 cpdef str _full_mask_hex()
 
-cdef tuple _get_arginfos(list args, object core_ndims=*)
+cdef tuple _get_arginfos(list args)
 
 cdef str _get_kernel_params(tuple params, tuple arginfos, type_decls=*)
 
 cpdef _check_peer_access(_ndarray_base arr, int device_id)
-
-cdef shape_t _reduce_dims(
-    list args, tuple params, const shape_t& shape) except *

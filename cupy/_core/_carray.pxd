@@ -31,9 +31,24 @@ cdef class mdspan(function.CPointer):
 @cython.final
 cdef class CArray(function.CPointer):
 
-    cdef void init(
-        self, void* data_ptr, Py_ssize_t data_size,
-        const shape_t& shape, const strides_t& strides) except*
+    cdef int ndim
+
+    cdef _CArray* _allocate(
+        self, void* data_ptr, Py_ssize_t element_count, size_t ndim,
+    ) except NULL
+
+    @staticmethod
+    cdef CArray create(
+        void* data_ptr, Py_ssize_t element_count,
+        const shape_t& shape, const strides_t& strides)
+
+    @staticmethod
+    cdef CArray from_packed_layout(
+        void* data_ptr, Py_ssize_t element_count,
+        const shape_t& shape, const strides_t& strides,
+        const shape_t& loop_shape, const vector.vector[int]& kept_axes,
+        int core_ndim,
+    )
 
 
 # This is now excluding shape/strides only for getting the compiler-time size
@@ -43,18 +58,10 @@ cdef struct _CIndexer:
 
 cdef class CIndexer(function.CPointer):
 
-    cdef void init(self, Py_ssize_t size, const shape_t &shape) except*
+    cdef int ndim
 
+    @staticmethod
+    cdef CIndexer create(const shape_t& shape)
 
-cdef class Indexer:
-    cdef:
-        readonly Py_ssize_t size
-        readonly shape_t shape
-        readonly bint _index_32_bits
-
-    cdef void init(self, const shape_t& shape) noexcept
-
-    cdef function.CPointer get_pointer(self)
-
-
-cdef Indexer _indexer_init(const shape_t& shape)
+    cdef Py_ssize_t size(self) noexcept
+    cdef bint _index_32_bits(self) noexcept

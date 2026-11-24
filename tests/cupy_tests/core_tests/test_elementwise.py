@@ -252,6 +252,26 @@ def _reference_func(*args, out_shape, in_core_ndims, out_core_ndim):
 
 
 class TestElementwiseGUFuncLike:
+    @pytest.mark.parametrize('reduce_dims', [True, False])
+    def test_squash_batch_dims(self, reduce_dims):
+        batch_ndim = 1 if reduce_dims else 3
+        kern = cupy.ElementwiseKernel(
+            'float32(1,n) x, float32 c, raw float32 offset',
+            'float32(n) y',
+            f'''
+            static_assert(_ind.ndim == {batch_ndim}, "batch ndim");
+            static_assert(x.ndim == 2 && y.ndim == 1, "core ndim");
+            static_assert(offset.ndim == 2, "raw ndim");
+            for (ptrdiff_t j = 0; j < y.size(); ++j) {{
+                const ptrdiff_t idx[] = {{0, j}};
+                y[j] = x[idx] + c + offset[0];
+            }}
+            ''',
+            reduce_dims=reduce_dims)
+        x = cupy.arange(24, dtype='float32').reshape(2, 1, 3, 1, 4)
+        offset = cupy.full((1, 1), 3, dtype='float32')
+        testing.assert_array_equal(kern(x, 2, offset), x[..., 0, :] + 5)
+
     @staticmethod
     def assert_result_matches(actual, desired):
         rtol = 1e-5 if actual.dtype == numpy.float32 else 1e-7

@@ -13,6 +13,7 @@ cimport cython  # NOQA
 cimport cpython
 
 from libcpp cimport vector
+from libcpp cimport bool as cpp_bool
 
 from cupy.cuda cimport device
 from cupy.cuda cimport function
@@ -192,7 +193,7 @@ cdef class _ArgInfo:
             return _ArgInfo.from_ndarray(arg, core_ndim)
         if typ is _scalar.CScalar:
             return _ArgInfo.from_scalar(arg)
-        if typ is _carray.Indexer:
+        if typ is _carray.CIndexer:
             return _ArgInfo.from_indexer(arg)
         if typ is memory.MemoryPointer:
             return _ArgInfo.from_memptr(arg)
@@ -221,11 +222,11 @@ cdef class _ArgInfo:
         return ret
 
     @staticmethod
-    cdef _ArgInfo from_indexer(_carray.Indexer arg):
+    cdef _ArgInfo from_indexer(_carray.CIndexer arg):
         cdef _ArgInfo ret = _ArgInfo.__new__(_ArgInfo)
         ret._init(
-            ARG_KIND_INDEXER, _carray.Indexer, None, arg.ndim, True,
-            arg._index_32_bits)
+            ARG_KIND_INDEXER, _carray.CIndexer, None, arg.ndim, True,
+            arg._index_32_bits())
         return ret
 
     @staticmethod
@@ -272,16 +273,6 @@ cdef class _ArgInfo:
                 'core_ndim={!r}'.format(self.core_ndim),
             ]))
 
-    cdef _ArgInfo as_ndarray_with_ndim(self, int ndim):
-        # Returns an ndarray _ArgInfo with altered ndim.
-        # If ndim is the same, self is returned untouched.
-        assert self.arg_kind == ARG_KIND_NDARRAY
-        if self.ndim == ndim:
-            return self
-        return _ArgInfo(
-            ARG_KIND_NDARRAY, self.dtype, self.dtype, ndim, False, False,
-            core_ndim=self.core_ndim)
-
     cdef bint is_ndarray(self) noexcept:
         return self.arg_kind == ARG_KIND_NDARRAY
 
@@ -318,15 +309,6 @@ cdef class _ArgInfo:
         return p.name
 
 
-cdef tuple _get_arginfos(list args, object core_ndims = None):
-    if core_ndims is None:
-        return tuple([_ArgInfo.from_arg(a) for a in args])
-    return tuple(
-        [_ArgInfo.from_arg(a, core_ndim=core_ndim)
-         for a, core_ndim in zip(args, core_ndims)]
-    )
-
-
 cdef str _get_kernel_params(tuple params, tuple arginfos, type_decls=None):
     cdef ParameterInfo p
     cdef _ArgInfo arginfo
@@ -342,108 +324,31 @@ cdef str _get_kernel_params(tuple params, tuple arginfos, type_decls=None):
     return ', '.join(lst)
 
 
-cdef shape_t _reduce_dims(list args, tuple params,
-                          const shape_t& shape) except *:
-    """ Remove contiguous stride to optimize CUDA kernel."""
-    cdef _ndarray_base arr
-
-    if shape.size() <= 1 or len(args) == 0:
-        return shape
-
-    if len(args) == 1:  # fast path for reduction
-        a = args[0]
-        if (<ParameterInfo>params[0]).raw or not isinstance(a, _ndarray_base):
-            return shape
-        arr = a
-        arr = arr.reduced_view()
-        if arr is a:
-            return shape
-        else:
-            args[0] = arr
-            return arr._shape
-    return _reduced_view_core(args, params, shape)
+cdef tuple _get_arginfos(list args):
+    return tuple([_ArgInfo.from_arg(a) for a in args])
 
 
-cdef shape_t _reduced_view_core(
-        list args, tuple params, const shape_t& shape) except *:
-    cdef int i, ax, last_ax, ndim
-    cdef Py_ssize_t total_size
-    cdef shape_t vecshape, newshape, newstrides
-    cdef vector.vector[int] array_indexes, axes
-    cdef vector.vector[int] strides_indexes
-    cdef ParameterInfo p
-    cdef _ndarray_base arr
-
-    ndim = shape.size()
-    array_indexes.reserve(len(args))
-    strides_indexes.reserve(len(args))
-    for i in range(len(args)):
-        p = params[i]
-        if p.raw:
-            continue
-        a = args[i]
-        if isinstance(a, _ndarray_base):
-            array_indexes.push_back(i)
-            arr = a
-            if not arr._c_contiguous:
-                if ndim == 2:  # short cut
-                    return shape
-                strides_indexes.push_back(i)
-
-    if array_indexes.size() == 0:
-        return shape
-
-    if strides_indexes.size() == 0:
-        # The input arrays are all c_contiguous
-        i = array_indexes[0]
-        arr = args[i]
-        total_size = arr.size
-        newshape.assign(<Py_ssize_t>1, total_size)
-        newstrides.resize(1)
-        for i in array_indexes:
-            arr = args[i]
-            newstrides[0] = arr.dtype.itemsize
-            # TODO(niboshi): Confirm update_x_contiguity flags
-            args[i] = arr._view(
-                type(arr), newshape, newstrides, False, True, arr)
-        return newshape
-
-    axes.reserve(ndim)
-    vecshape.reserve(ndim)
-    for ax in range(ndim):
-        vecshape.push_back(shape[ax])
-    last_ax = -1
-    for ax in range(ndim):
-        if vecshape[ax] == 1:
-            continue
-        if last_ax < 0:
-            last_ax = ax
-            continue
-        for i in strides_indexes:
-            arr = args[i]
-            if arr._strides[ax] * vecshape[ax] != arr._strides[last_ax]:
-                axes.push_back(last_ax)
-                break
-        else:
-            vecshape[ax] *= vecshape[last_ax]
-        last_ax = ax
-    if last_ax >= 0:
-        axes.push_back(last_ax)
-    if <int>axes.size() == ndim:
-        return shape
-
-    newshape.reserve(axes.size())
-    newstrides.reserve(axes.size())
-    for ax in axes:
-        newshape.push_back(vecshape[ax])
-    for i in array_indexes:
-        arr = args[i]
-        newstrides.clear()
-        for ax in axes:
-            newstrides.push_back(arr._strides[ax])
-        # TODO(niboshi): Confirm update_x_contiguity flags
-        args[i] = arr._view(type(arr), newshape, newstrides, False, True, arr)
-    return newshape
+cdef int _apply_axis_merges(
+        const shape_t& shape, const vector.vector[cpp_bool]& squashable,
+        shape_t& packed_shape, vector.vector[int]& kept_axes,
+        int start) except -1:
+    cdef int ax
+    cdef size_t group
+    cdef Py_ssize_t axis_size
+    packed_shape.clear()
+    kept_axes.clear()
+    packed_shape.reserve(shape.size() - start)
+    kept_axes.reserve(shape.size() - start)
+    for ax in range(start, <int>shape.size()):
+        axis_size = shape[ax]
+        if ax == start or not squashable[ax]:
+            packed_shape.push_back(axis_size)
+            kept_axes.push_back(ax - start)
+        elif axis_size != 1:
+            group = packed_shape.size() - 1
+            packed_shape[group] *= axis_size
+            kept_axes[group] = ax - start
+    return 0
 
 
 def _parse_param_info(t):
@@ -553,9 +458,9 @@ cdef class KernelArguments:
         self.nin = nin
         self.nout = nout
         self.is_ufunc = is_ufunc
-        # Args is a list containing inputs, [where], outputs, and indexer.
+        # Args is a list containing inputs, [where], and outputs.
         self.has_where = where is not None
-        self.args = [None] * (nin + nout + self.has_where + 1)  # +1 indexer
+        self.args = [None] * (nin + nout + self.has_where)
 
         # Check number of arguments. NumPy allows weird partial output tuples
         # in ufuncs, so this checks takes that into account.
@@ -657,22 +562,21 @@ cdef class KernelArguments:
 
     cdef find_and_apply_shape(
             self, tuple params, shape_t& shape, bint shape_fixed,
-            bint include_outputs=True):
-        """
-        Find the broadcast shape of the arguments and adjust it into `shape`.
-        Then broadcast all inputs+where to the new shape. Output arguments
-        are checked later, since reductions find a different shape.
-        If `shape_fixed=True` then the shape will NOT be broadcast.
-        Reduction outputs do not participate in finding the input shape.
+            bint include_outputs=True, bint gufunc=False):
+        """Find the loop shape and broadcast inputs and where to it.
 
-        `params` is either the ParameterInfo tuple or None. If None, we assume
-        all parameters are non-raw arrays.
+        Core dimensions, when present, stay attached to each operand.
+        When params is None, all array parameters participate.
         """
         assert shape.size() == 0 or shape_fixed
+        assert not gufunc or params is not None
         cdef Py_ssize_t i, j, nargs = self.nin + self.has_where
         cdef bint shape_discovered = shape_fixed
+        cdef int core_ndim
+        cdef shape_t operand_shape
+        cdef const shape_t* arg_shape
+        cdef const shape_t* target_shape
 
-        # Broadcast non-raw arrays.
         if include_outputs:
             nargs += self.nout
         for i in range(nargs):
@@ -680,70 +584,51 @@ cdef class KernelArguments:
             if not isinstance(a, _ndarray_base):
                 continue
             if params is not None and (<ParameterInfo>params[i]).raw:
-                # Ignore raw arrays params (assume no raw if params is None)
                 continue
 
             if shape_fixed:
-                # User passed size is fixed and cannot be broadcast.
                 raise ValueError('Specified \'size\' can be used only '
                                  'if all of the ndarray are \'raw\'.')
 
             shape_discovered = True
-            # Update shape and raise an error if broadcast fails:
-            if not internal._broadcast_shape(
-                        shape, (<_ndarray_base>a)._shape):
+            arg_shape = &(<_ndarray_base>a)._shape
+            core_ndim = (<ParameterInfo>params[i]).core_ndim if gufunc else 0
+            if core_ndim:
+                if <int>arg_shape[0].size() < core_ndim:
+                    name = (<ParameterInfo>params[i]).name
+                    raise ValueError(
+                        f'Argument {name} has insufficient dimensions.')
+                operand_shape.assign(
+                    arg_shape[0].begin(), arg_shape[0].end() - core_ndim)
+                arg_shape = &operand_shape
+            if not internal._broadcast_shape(shape, arg_shape[0]):
                 internal._raise_broadcast_error(
                     [self.args[j]
                      if params is None or not (<ParameterInfo>params[j]).raw
                      else None for j in range(nargs)
                      if self.args[j] is not None])
 
-        if not self.is_ufunc and not shape_discovered:
-            # Custom kernels need a non-raw array or an explicit size.
-            # Ufuncs also accept scalar-only inputs.
+        if not (shape_discovered or self.is_ufunc or gufunc):
             raise ValueError('Loop size is undecided.')
 
-        # TODO(seberg): It would be cool to defer this to CArray creation.
-        # Update the array shapes if needed replacing the original ones.
         for i in range(self.nin + self.has_where):
             a = self.args[i]
             if not isinstance(a, _ndarray_base):
                 continue
             if params is not None and (<ParameterInfo>params[i]).raw:
-                # Ignore raw arrays params (assume no raw if params is None)
                 continue
 
+            target_shape = &shape
+            core_ndim = (<ParameterInfo>params[i]).core_ndim if gufunc else 0
+            if core_ndim:
+                arg_shape = &(<_ndarray_base>a)._shape
+                operand_shape = shape
+                operand_shape.insert(
+                    operand_shape.end(), arg_shape[0].end() - core_ndim,
+                    arg_shape[0].end())
+                target_shape = &operand_shape
             self.args[i] = internal._broadcast_to_unchecked(
-                    <_ndarray_base>a, shape)
-
-    cdef find_and_apply_shape_gu(self, tuple params, shape_t& shape):
-        cdef Py_ssize_t i
-        cdef ParameterInfo p
-
-        # Collect batch shapes from inputs and outputs.
-        batch_shapes = []
-        for i in range(self.nin + self.nout):
-            a = self.args[i]
-            p = params[i]
-            if p.raw or not isinstance(a, _ndarray_base):
-                continue
-            if a.ndim < p.core_ndim:
-                raise ValueError(
-                    f'Argument {p.name} has insufficient dimensions.')
-            batch_shapes.append(
-                a.shape[:-p.core_ndim] if p.core_ndim > 0 else a.shape)
-
-        batch_shape = numpy.broadcast_shapes(*batch_shapes)
-        shape = batch_shape
-
-        # Broadcast inputs, preserving core dimensions.
-        for i in range(self.nin):
-            a, p = self.args[i], params[i]
-            if p.raw or not isinstance(a, _ndarray_base):
-                continue
-
-            core_shape = a.shape[-p.core_ndim:] if p.core_ndim > 0 else ()
-            self.args[i] = cupy.broadcast_to(a, batch_shape + core_shape)
+                <_ndarray_base>a, target_shape[0])
 
     cdef create_out_args_with_types(
             self, tuple out_types, casting, const shape_t& shape,
@@ -776,53 +661,31 @@ cdef class KernelArguments:
 
     cdef create_out_args_with_params(
             self, tuple out_types, tuple out_params, bint is_size_specified,
-            const shape_t& shape):
-        # TODO(seberg): Mostly moved code, can we merge these?
-        assert not self.is_ufunc  # only makes sense for ElementwiseKernel
-        cdef ParameterInfo p
-        cdef _ndarray_base arr
-        for i in range(self.nout):
-            p = out_params[i]
-            a = self.get_out(i)
-            if a is None:
-                # NOTE: Versions up to 14.0 did not allow explicit `None`.
-                if p.raw and not is_size_specified:
-                    raise ValueError('Output array size is Undecided')
-                new = _ndarray_init(cupy.ndarray, shape, out_types[i], None)
-                self.set_out(i, new)
-                continue
-
-            if not isinstance(a, _ndarray_base):
-                raise TypeError(
-                    'Output arguments type must be cupy.ndarray')
-            arr = <_ndarray_base>a
-            if not p.raw and not internal.vector_equal(arr._shape, shape):
-                raise ValueError('Out shape is mismatched')
-
-    cdef create_out_args_with_params_gu(
-            self, tuple out_types, tuple out_params, tuple out_shapes):
-        # create_out_args_with_params equivalent for gufunc-like case with
-        # some args having core_ndim > 0.
+            const shape_t& shape, tuple out_shapes=None):
         assert not self.is_ufunc
         cdef ParameterInfo p
         cdef _ndarray_base arr
+        cdef shape_t operand_shape
+        cdef const shape_t* expected_shape = &shape
 
         for i in range(self.nout):
             p = out_params[i]
             a = self.get_out(i)
+            if out_shapes is not None:
+                operand_shape = out_shapes[i]
+                expected_shape = &operand_shape
             if a is None:
-                if p.raw:
+                if p.raw and not is_size_specified:
                     raise ValueError('Output array size is Undecided')
-                new = _ndarray_init(
-                    cupy.ndarray, out_shapes[i], out_types[i], None)
-                self.set_out(i, new)
+                self.set_out(i, _ndarray_init(
+                    cupy.ndarray, expected_shape[0], out_types[i], None))
                 continue
 
             if not isinstance(a, _ndarray_base):
-                raise TypeError(
-                    'Output arguments type must be cupy.ndarray')
-            arr = <_ndarray_base>a
-            if not p.raw and arr.shape != out_shapes[i]:
+                raise TypeError('Output arguments type must be cupy.ndarray')
+            arr = a
+            if not p.raw and not internal.vector_equal(
+                    arr._shape, expected_shape[0]):
                 raise ValueError('Out shape is mismatched')
 
     cdef result(self, bint tuple_return):
@@ -831,13 +694,134 @@ cdef class KernelArguments:
         else:
             return tuple([self.get_out(i) for i in range(self.nout)])
 
-    cdef finalize_scalars(self, tuple in_types):
-        # Scalars are cast before building/launching the kernel
-        # so they require a finalization step.
-        for i in range(self.nin):
-            a = self.get_in(i)
-            if type(a) is _scalar.CScalar:
+    cdef int reduce_dims(
+            self, tuple params, shape_t& shape,
+            vector.vector[int]& kept_axes) except -1:
+        # Forwards to `reduce_dims_for_reduction` but without pack_output
+        cdef shape_t out_shape
+        cdef vector.vector[int] out_kept_axes
+        return self.reduce_dims_for_reduction(
+            params, shape, kept_axes, 0, None, out_shape, out_kept_axes,
+            pack_output=False)
+
+    cdef int reduce_dims_for_reduction(
+            self, tuple params, shape_t& shape,
+            vector.vector[int]& kept_axes, int out_start,
+            tuple output_axis_map, shape_t& out_shape,
+            vector.vector[int]& out_kept_axes,
+            bint pack_output=True) except -1:
+        """Pack the retained input suffix separately for reduction outputs.
+
+        When keepdims inserts axes into the output, output_axis_map gives the
+        actual position of each retained axis in the output array.
+        """
+        cdef int ndim = shape.size()
+        cdef int ax, start, stride_axis, prev_axis
+        cdef Py_ssize_t i
+        cdef ParameterInfo p
+        cdef _ndarray_base arr
+        cdef shape_t squashed_shape
+        cdef vector.vector[cpp_bool] squashable
+        cdef bint is_output, map_strides
+        assert 0 <= out_start <= ndim
+        assert (output_axis_map is None
+                or len(output_axis_map) == ndim - out_start)
+
+        kept_axes.clear()
+        if ndim <= 1 and not pack_output:
+            return 0
+        squashable.assign(ndim, True)
+
+        for i, a in enumerate(self.args):
+            p = params[i]
+            if p.raw or not isinstance(a, _ndarray_base):
+                continue
+            arr = a
+            is_output = pack_output and i >= self.nin + self.has_where
+            start = out_start if is_output else 0
+            map_strides = is_output and output_axis_map is not None
+            assert is_output or <int>arr._shape.size() == ndim + p.core_ndim
+
+            prev_axis = -1
+            for ax in range(start, ndim):
+                if shape[ax] == 1:
+                    continue
+                stride_axis = ax - start
+                if map_strides:
+                    stride_axis = output_axis_map[stride_axis]
+                if (prev_axis >= 0 and squashable[ax]
+                        and arr._strides[prev_axis]
+                        != arr._strides[stride_axis] * shape[ax]):
+                    squashable[ax] = False
+                prev_axis = stride_axis
+
+        if pack_output:
+            _apply_axis_merges(shape, squashable, out_shape, out_kept_axes,
+                               out_start)
+            if output_axis_map is not None:
+                for ax in range(<int>out_kept_axes.size()):
+                    out_kept_axes[ax] = output_axis_map[out_kept_axes[ax]]
+        _apply_axis_merges(shape, squashable, squashed_shape, kept_axes, 0)
+        if <int>squashed_shape.size() == ndim and not pack_output:
+            kept_axes.clear()
+        else:
+            shape.swap(squashed_shape)
+        return 0
+
+    cdef tuple finalize_launch_args(
+            self, tuple params, tuple in_types,
+            const shape_t& shape, const vector.vector[int]& kept_axes,
+            tuple extra_args):
+        cdef shape_t out_shape
+        cdef vector.vector[int] out_kept_axes
+        return self.finalize_reduction_launch_args(
+            params, in_types, shape, kept_axes, extra_args,
+            out_shape, out_kept_axes, pack_output=False)
+
+    cdef tuple finalize_reduction_launch_args(
+            self, tuple params, tuple in_types,
+            const shape_t& shape, const vector.vector[int]& kept_axes,
+            tuple extra_args, const shape_t& out_shape,
+            const vector.vector[int]& out_kept_axes, bint pack_output):
+        """Keep self alive through launch because packed CArrays borrow the
+        device buffers owned by arrays in self.args.
+        """
+        cdef ParameterInfo p
+        cdef _ArgInfo arginfo
+        cdef _ndarray_base arr
+        cdef _carray.CArray carr
+        cdef bint is_output
+        cdef list arginfos = []
+        cdef list launch_args = self.args.copy()
+        assert len(params) == len(launch_args) + len(extra_args)
+
+        for i, a in enumerate(launch_args):
+            p = params[i]
+            if i < self.nin and type(a) is _scalar.CScalar:
                 (<_scalar.CScalar>a).apply_dtype(in_types[i])
+            arginfo = _ArgInfo.from_arg(a, p.core_ndim)
+            if arginfo.is_ndarray():
+                arr = a
+                is_output = pack_output and i >= self.nin + self.has_where
+                if not p.raw and (is_output or not kept_axes.empty()):
+                    carr = _carray.CArray.from_packed_layout(
+                        <void*>arr.data.ptr, arr.size,
+                        arr._shape, arr._strides,
+                        out_shape if is_output else shape,
+                        out_kept_axes if is_output else kept_axes,
+                        0 if is_output else p.core_ndim)
+                    arginfo.ndim = carr.ndim
+                else:
+                    carr = _carray.CArray.create(
+                        <void*>arr.data.ptr, arr.size, arr._shape,
+                        arr._strides)
+                launch_args[i] = carr
+            arginfos.append(arginfo)
+
+        launch_args.extend(extra_args)
+        arginfos.extend([_ArgInfo.from_arg(a) for a in extra_args])
+
+        return tuple(arginfos), launch_args
 
     cdef tuple get_ndarray_dtypes(self):
         """Helper for decide_params_type_core, should refactor it to
@@ -1289,30 +1273,26 @@ cdef class ElementwiseKernel:
         kargs = KernelArguments.create(
             self.nin, self.nout, args, None, None, False, dev_id, self.name)
 
-        if not self._is_gufunc_like:
-            if size != -1:
-                shape.assign(1, size)
-            kargs.find_and_apply_shape(
-                self.params, shape, shape_fixed=size != -1)
-        else:
-            if size != -1:
+        if size != -1:
+            if self._is_gufunc_like:
                 raise ValueError(
                     'size is not supported for gufunc-like kernels')
-            kargs.find_and_apply_shape_gu(self.params, shape)
+            shape.assign(1, size)
+        kargs.find_and_apply_shape(
+            self.params, shape, shape_fixed=size != -1, include_outputs=True,
+            gufunc=self._is_gufunc_like)
 
         # Find parameter types after extracting dtypes.
         in_ndarray_types, out_ndarray_types = kargs.get_ndarray_dtypes()
         in_types, out_types, type_map = self._decide_params_type(
             in_ndarray_types, out_ndarray_types)
 
-        if not self._is_gufunc_like:
-            kargs.create_out_args_with_params(
-                out_types, self.out_params, size != -1, shape)
-        else:
+        out_shapes = None
+        if self._is_gufunc_like:
             out_shapes = self._resolve_shapes(
                 kargs.in_args, kargs.out_args, shape)
-            kargs.create_out_args_with_params_gu(
-                out_types, self.out_params, out_shapes)
+        kargs.create_out_args_with_params(
+            out_types, self.out_params, size != -1, shape, out_shapes)
 
         ret = None
         if not self.no_return:
@@ -1321,21 +1301,17 @@ cdef class ElementwiseKernel:
         if _contains_zero(shape):
             return ret
 
-        kargs.finalize_scalars(in_types)
+        cdef vector.vector[int] kept_axes
+        if self.reduce_dims:
+            kargs.reduce_dims(self.params, shape, kept_axes)
 
-        if self.reduce_dims and not self._is_gufunc_like:
-            shape = _reduce_dims(kargs.args, self.params, shape)
+        indexer = _carray.CIndexer.create(shape)
 
-        indexer = _carray._indexer_init(shape)
-        kargs.set_indexer(indexer)
+        arginfos, launch_args = kargs.finalize_launch_args(
+            self.params, in_types, shape, kept_axes, (indexer,))
 
-        if not self._is_gufunc_like:
-            arginfos = _get_arginfos(kargs.args)
-        else:
-            core_ndims = (p.core_ndim for p in self.params)
-            arginfos = _get_arginfos(kargs.args, core_ndims=core_ndims)
         kern = self._get_elementwise_kernel(dev_id, arginfos, type_map)
-        kern.linear_launch(indexer.size, kargs.args, shared_mem=0,
+        kern.linear_launch(indexer.size(), launch_args, shared_mem=0,
                            block_max_size=block_size, stream=stream)
         return ret
 
@@ -1792,18 +1768,17 @@ cdef class ufunc:
         if _contains_zero(shape):
             return ret
 
-        kargs.finalize_scalars(core_in_dtypes)
-
         _params = self._params_with_where if kargs.has_where else self._params
-        shape = _reduce_dims(kargs.args, _params, shape)
-        indexer = _carray._indexer_init(shape)
-        kargs.set_indexer(indexer)
+        cdef vector.vector[int] kept_axes
+        kargs.reduce_dims(_params, shape, kept_axes)
+        indexer = _carray.CIndexer.create(shape)
 
-        arginfos = _get_arginfos(kargs.args)
+        arginfos, launch_args = kargs.finalize_launch_args(
+            _params, core_in_dtypes, shape, kept_axes, (indexer,))
         kern = self._get_ufunc_kernel(
             core_in_dtypes, core_out_dtypes, dev_id, op, arginfos,
             kargs.has_where)
-        kern.linear_launch(indexer.size, kargs.args)
+        kern.linear_launch(indexer.size(), launch_args)
         return ret
 
     cdef str _get_name_with_type(self, tuple arginfos, bint has_where):

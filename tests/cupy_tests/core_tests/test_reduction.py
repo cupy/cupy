@@ -170,6 +170,35 @@ class ReductionKernelTestBase(AbstractReductionTestBase):
 
 class TestReductionKernel(ReductionKernelTestBase, unittest.TestCase):
 
+    def test_shared_squash_with_keepdims(self):
+        x = cupy.arange(120, dtype='float32').reshape(3, 2, 4, 5)
+        x = x.swapaxes(0, 1)
+        out = cupy.empty((5, 2, 1, 4), dtype=x.dtype).transpose(1, 2, 3, 0)
+        kernel = cupy.ReductionKernel(
+            'float32 x', 'float32 y',
+            '_in_ind.ndim == 2 && _out_ind.ndim == 2 ? x : -1',
+            'a + b', 'y = a', '0')
+
+        assert kernel(x, out=out, axis=1, keepdims=True) is out
+        testing.assert_array_equal(out, x.get().sum(axis=1, keepdims=True))
+
+    def test_broadcast_scalar_and_raw_inputs(self):
+        x = cupy.arange(120, dtype='float32').reshape(2, 1, 3, 4, 5)
+        y = cupy.arange(20, dtype='float32').reshape(4, 5)
+        raw = cupy.ones((1, 1), dtype='float32')
+        out = cupy.empty((1, 1, 1, 5, 4), dtype='float32').swapaxes(-1, -2)
+        for reduce_dims in (True, False):
+            kernel = cupy.ReductionKernel(
+                'float32 x, float32 y, float32 c, raw float32 r',
+                'float32 z', 'x + y + c + r[0]', 'a + b', 'z = a', '0',
+                reduce_dims=reduce_dims)
+            result = kernel(x, y, 2, raw, out=out, axis=(0, 1, 2),
+                            keepdims=True)
+            assert result is out
+            testing.assert_array_equal(
+                result, (x.get() + y.get() + 3).sum(
+                    axis=(0, 1, 2), keepdims=True))
+
     def test_explicit_none_output(self):
         a = cupy.arange(6, dtype='float32').reshape(2, 3)
         result = self.get_sum_func()(a, None, axis=1)

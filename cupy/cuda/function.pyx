@@ -7,7 +7,6 @@ from libc.stdint cimport intptr_t
 from libc.stdint cimport uintmax_t
 from libcpp cimport vector
 
-from cupy._core cimport _carray
 from cupy._core cimport _scalar
 from cupy._core.core cimport _ndarray_base
 from cupy_backends.cuda.api cimport driver
@@ -53,14 +52,12 @@ cdef class CNumpyArray(CPointer):
 cdef inline CPointer _pointer(x):
     if x is None:
         return CIntptr(0)
-    if isinstance(x, _ndarray_base):
-        return (<_ndarray_base>x).get_pointer()
-    if isinstance(x, _carray.Indexer):
-        return (<_carray.Indexer>x).get_pointer()
-    if isinstance(x, MemoryPointer):
-        return CIntptr(x.ptr)
     if isinstance(x, CPointer):
         return x
+    if isinstance(x, _ndarray_base):
+        return (<_ndarray_base>x).get_pointer()
+    if isinstance(x, MemoryPointer):
+        return CIntptr(x.ptr)
     if isinstance(x, (TextureObject, SurfaceObject)):
         return CUIntMax(x.ptr)
     if isinstance(x, numpy.ndarray):

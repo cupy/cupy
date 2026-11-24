@@ -24,7 +24,7 @@ from cupy import _util
 
 cimport cython  # NOQA
 cimport cpython
-from libc.stdint cimport int64_t, intptr_t, INT32_MAX
+from libc.stdint cimport intptr_t, INT32_MAX
 from libc cimport stdlib
 from libcpp cimport bool as cpp_bool
 from cpython cimport Py_buffer
@@ -2431,9 +2431,8 @@ cdef inline _carray.CArray _CArray_from_ndarray(_ndarray_base arr):
     # Creates CArray from ndarray.
     # Note that this function cannot be defined in _carray.pxd because that
     # would cause cyclic cimport dependencies.
-    cdef _carray.CArray carr = _carray.CArray.__new__(_carray.CArray)
-    carr.init(<void*>arr.data.ptr, arr.size, arr._shape, arr._strides)
-    return carr
+    return _carray.CArray.create(
+        <void*>arr.data.ptr, arr.size, arr._shape, arr._strides)
 
 
 _HANDLED_TYPES = (ndarray, numpy.ndarray)
@@ -3425,15 +3424,9 @@ cpdef _ndarray_base empty_like(
 
 cdef _ndarray_base _create_ndarray_from_shape_strides(
         subtype, const shape_t& shape, const strides_t& strides, dtype, obj):
-    cdef int ndim = shape.size()
-    cdef int64_t begin = 0, end = dtype.itemsize
-    cdef memory.MemoryPointer ptr
-    for i in range(ndim):
-        if strides[i] > 0:
-            end += strides[i] * (shape[i] - 1)
-        elif strides[i] < 0:
-            begin += strides[i] * (shape[i] - 1)
-    ptr = memory.alloc(end - begin) + begin
+    cdef Py_ssize_t left, right
+    _memory_range.get_range(dtype.itemsize, shape, strides, left, right)
+    cdef memory.MemoryPointer ptr = memory.alloc(right - left) - left
     return ndarray.__new__(
         subtype, shape, dtype, _obj=obj, memptr=ptr, strides=strides)
 

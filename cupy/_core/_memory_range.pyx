@@ -5,7 +5,7 @@ from libcpp.pair cimport pair
 
 
 cdef void get_range(
-        Py_ssize_t itemsize, shape_t& shape, strides_t & strides,
+        Py_ssize_t itemsize, const shape_t& shape, const strides_t& strides,
         Py_ssize_t& out_left, Py_ssize_t& out_right) noexcept:
     """Discover the byte range (out_left, out_right] (without ptr offset).
     """

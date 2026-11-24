@@ -296,13 +296,12 @@ cdef class FusedKernel:
         """
         cdef list params = []
         cdef list indexers = []
-        cdef _carray.Indexer indexer
+        cdef _carray.CIndexer indexer
 
         for i in range(len(self._params)):
             array = ndarray_list[i]
             if isinstance(array, _ndarray_base):
-                indexer = _carray.Indexer.__new__(_carray.Indexer)
-                indexer.init(array._shape)
+                indexer = _carray.CIndexer.create(array._shape)
                 indexers.append(indexer)
                 params.append(array)
             elif self._input_index[i] >= 0:
