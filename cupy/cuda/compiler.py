@@ -431,6 +431,10 @@ def compile_using_nvcc(source, options=(), arch=None,
     cmd = _nvcc.split()
     cmd.append(arch_str)
 
+    if _win32:
+        # CCCL requires MSVC's standard-conforming preprocessor.
+        cmd += ['-Xcompiler', '/Zc:preprocessor']
+
     with tempfile.TemporaryDirectory() as root_dir:
         first_part = filename.split('.')[0]
 
