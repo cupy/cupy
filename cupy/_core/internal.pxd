@@ -1,5 +1,6 @@
 from libcpp cimport bool as cpp_bool
 from libcpp cimport vector
+from libc.limits cimport INT_MAX
 from libc.stdint cimport uint16_t
 
 from cupy._core._carray cimport shape_t
@@ -120,7 +121,7 @@ cdef _broadcast_core(list arrays, shape_t& shape)
 
 cpdef bint _contig_axes(tuple axes) except -1
 
-cpdef Py_ssize_t _normalize_axis_index(
+cpdef int _normalize_axis_index(
     Py_ssize_t axis, Py_ssize_t ndim) except -1
 
 cpdef tuple _normalize_axis_indices(
@@ -148,3 +149,11 @@ cdef bint _is_layout_expected(
     expected_order) except*
 
 cdef bint check_aligned(_ndarray_base arr) except -1
+
+
+cdef inline int safe_int_len(obj) except? -1:
+    # len() as a C int, raising instead of silently truncating.
+    cdef Py_ssize_t n = len(obj)
+    if n > INT_MAX:
+        raise OverflowError(f'length {n} does not fit in a C int')
+    return <int>n

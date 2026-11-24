@@ -11,6 +11,7 @@ from cupy._core._kernel cimport _full_mask_hex
 from cupy._core._ufuncs import elementwise_copy
 
 from libcpp cimport vector
+cimport numpy as cnp
 
 from cupy._core._carray cimport shape_t
 from cupy._core._carray cimport strides_t
@@ -26,7 +27,7 @@ from cupy._core cimport internal
 
 
 cdef _ndarray_base _ndarray_getitem(_ndarray_base self, slices):
-    cdef Py_ssize_t axis
+    cdef int axis
     cdef list slice_list
     cdef _ndarray_base a
 
@@ -50,7 +51,7 @@ cdef _ndarray_base _ndarray_getitem(_ndarray_base self, slices):
     if len(slice_list) == 1:
         s = slice_list[0]
         if s.dtype.kind == 'b':
-            return _getitem_mask_single(a, s, <int>axis)
+            return _getitem_mask_single(a, s, axis)
         else:
             return a.take(s, axis)
 
@@ -359,7 +360,7 @@ cdef tuple _view_getitem(_ndarray_base a, list slice_list):
                     "an index can only have a single ellipsis ('...')")
             has_ellipsis = True
         elif isinstance(s, _ndarray_base):
-            kind = <char>ord(s.dtype.kind)
+            kind = (<cnp.dtype>s.dtype).kind
             if kind == b'b':
                 k = s.ndim
             elif kind == b'i' or kind == b'u':
@@ -401,7 +402,7 @@ cdef tuple _view_getitem(_ndarray_base a, list slice_list):
             k = array_ndims[i]
             index_list.append((s, axis_v, k))
             i += 1
-            kind = <char>ord(s.dtype.kind)
+            kind = (<cnp.dtype>s.dtype).kind
             if kind == b'b':
                 _check_mask_shape(a, s, axis_a)
             for _ in range(k):
@@ -1213,10 +1214,10 @@ cdef tuple _prepare_multiple_array_indexing(
 
 
 cdef _ndarray_base _getitem_multiple(
-        _ndarray_base a, Py_ssize_t start, list slices):
+        _ndarray_base a, int start, list slices):
     reduced_idx, start, stop = _prepare_multiple_array_indexing(
         a, start, slices)
-    return _take(a, reduced_idx, <int>start, stop)
+    return _take(a, reduced_idx, start, stop)
 
 
 cdef _ndarray_base _getitem_fields(_ndarray_base a, slices):

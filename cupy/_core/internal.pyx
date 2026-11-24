@@ -415,7 +415,7 @@ cpdef bint _contig_axes(tuple axes) except -1:
     return contig
 
 
-cpdef Py_ssize_t _normalize_axis_index(
+cpdef int _normalize_axis_index(
         Py_ssize_t axis, Py_ssize_t ndim) except -1:
     """
     Normalizes an axis index, ``axis``, such that is a valid positive index
@@ -438,7 +438,7 @@ cpdef Py_ssize_t _normalize_axis_index(
         raise AxisError(axis, ndim)
     if axis < 0:
         axis += ndim
-    return axis
+    return <int>axis
 
 
 cpdef tuple _normalize_axis_indices(

@@ -35,7 +35,7 @@ cdef _ndarray_sort(_ndarray_base self, int axis, bint descending=False):
         raise NotImplementedError('Sorting non-contiguous array is not '
                                   'supported.')
 
-    axis = <int>internal._normalize_axis_index(axis, ndim)
+    axis = internal._normalize_axis_index(axis, ndim)
 
     if self._shape[axis] <= 1:
         return  # already sorted (#9816)
@@ -89,7 +89,7 @@ cdef _ndarray_base _ndarray_argsort(_ndarray_base self, axis,
         data = self
         _axis = axis
 
-    _axis = <int>internal._normalize_axis_index(_axis, ndim)
+    _axis = internal._normalize_axis_index(_axis, ndim)
 
     if _axis == ndim - 1:
         data = data.copy()
@@ -142,7 +142,7 @@ cdef _ndarray_partition(_ndarray_base self, kth, int axis):
         raise NotImplementedError('Sorting non-contiguous array is not '
                                   'supported.')
 
-    axis = <int>internal._normalize_axis_index(axis, ndim)
+    axis = internal._normalize_axis_index(axis, ndim)
 
     if axis == ndim - 1:
         data = self
@@ -236,7 +236,7 @@ cdef _ndarray_base _ndarray_argpartition(self, kth, axis):
         _axis = axis
 
     ndim = <int>data._shape.size()
-    _axis = <int>internal._normalize_axis_index(_axis, ndim)
+    _axis = internal._normalize_axis_index(_axis, ndim)
 
     if _axis != ndim - 1:
         data = _manipulation.rollaxis(self, _axis, ndim).copy()

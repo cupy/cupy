@@ -7,7 +7,7 @@ from libc.stdint cimport intptr_t
 
 from cupy_backends.cuda.api cimport runtime
 from cupy._core.core cimport _internal_ascontiguousarray
-from cupy._core.internal cimport _contig_axes, is_in
+from cupy._core.internal cimport _contig_axes, is_in, safe_int_len
 from cupy.cuda cimport common
 from cupy.cuda cimport device
 from cupy.cuda cimport memory
@@ -156,7 +156,7 @@ def device_reduce(_ndarray_base x, op, tuple reduce_axis, tuple out_axis,
 
     if keepdims:
         out_shape = _get_output_shape(x, out_axis, keepdims)
-        ndim_out = <int>len(out_shape)
+        ndim_out = safe_int_len(out_shape)
     else:
         ndim_out = 0
     reduce_shape = _get_output_shape(x, reduce_axis, False)

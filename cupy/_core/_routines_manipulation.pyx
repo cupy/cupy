@@ -494,7 +494,8 @@ cpdef _ndarray_base broadcast_to(_ndarray_base array, shape):
 
     """
     shape = tuple(shape) if numpy.iterable(shape) else (shape,)
-    cdef int i, j, ndim = <int>array._shape.size(), length = <int>len(shape)
+    cdef int i, j, ndim = <int>array._shape.size()
+    cdef int length = internal.safe_int_len(shape)
     cdef Py_ssize_t sh, a_sh
     if ndim > length:
         raise ValueError(
@@ -634,7 +635,7 @@ cpdef _ndarray_base _repeat(_ndarray_base a, repeats, axis=None):
         a = a.ravel()
         norm_axis = 0
     else:
-        norm_axis = <int>internal._normalize_axis_index(axis, a.ndim)
+        norm_axis = internal._normalize_axis_index(axis, a.ndim)
 
     # Step 3: dispatch
     if reps_arr is not None:
@@ -687,7 +688,7 @@ cpdef _ndarray_base concatenate_method(
 
     # Check shape consistency of the input arrays, and compute the output shape
     shape0 = a0._shape
-    axis = <int>internal._normalize_axis_index(axis, ndim0)
+    axis = internal._normalize_axis_index(axis, ndim0)
     for o in arrays[1:]:
         a = o
         for i in range(ndim0):

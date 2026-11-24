@@ -12,6 +12,7 @@ There are four differences compared to the original C API.
 
 """
 cimport cython  # NOQA
+from libc.limits cimport INT_MAX
 from libcpp cimport vector
 
 from cupy_backends.cuda.api cimport runtime
@@ -51,6 +52,14 @@ class NVRTCError(RuntimeError):
 cpdef inline check_status(int status):
     if status != 0:
         raise NVRTCError(status)
+
+
+# Same as cupy._core.internal.safe_int_len, which cupy_backends cannot cimport.
+cdef inline int _safe_int_len(obj) except? -1:
+    cdef Py_ssize_t n = len(obj)
+    if n > INT_MAX:
+        raise OverflowError(f'length {n} does not fit in a C int')
+    return <int>n
 
 
 cpdef tuple getVersion():
@@ -93,7 +102,7 @@ cpdef intptr_t createProgram(unicode src, unicode name, headers,
         name_ptr = b_name
     else:
         name_ptr = NULL
-    cdef int num_headers = <int>len(headers)
+    cdef int num_headers = _safe_int_len(headers)
     cdef vector.vector[const char*] header_vec
     cdef vector.vector[const char*] include_name_vec
     cdef const char** header_vec_ptr = NULL
@@ -124,7 +133,7 @@ cpdef destroyProgram(intptr_t prog):
 
 cpdef compileProgram(intptr_t prog, options):
     initialize()
-    cdef int option_num = <int>len(options)
+    cdef int option_num = _safe_int_len(options)
     cdef vector.vector[const char*] option_vec
     cdef option_list = [opt.encode() for opt in options]
     cdef const char** option_vec_ptr = NULL

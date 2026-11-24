@@ -489,7 +489,7 @@ cdef class ParameterInfo:
                 raise Exception('Syntax error: %s' % param)
         else:
             self.core_shape = () if core_shape is None else core_shape
-            self.core_ndim = <int>len(self.core_shape)
+            self.core_ndim = internal.safe_int_len(self.core_shape)
             if len(t) == 1:
                 self.ctype = t
             else:
@@ -1946,8 +1946,8 @@ cdef class _Op:
             assert callable(error_func)
         self.in_types = in_types
         self.out_types = out_types
-        self.nin = <int>len(in_types)
-        self.nout = <int>len(out_types)
+        self.nin = internal.safe_int_len(in_types)
+        self.nout = internal.safe_int_len(out_types)
         self.routine = routine
         self.error_func = error_func
 
