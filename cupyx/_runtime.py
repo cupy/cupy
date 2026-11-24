@@ -123,6 +123,10 @@ class _RuntimeInfo:
     cusparselt_path = None
     cython_build_version = None
     cython_version = None
+    cuda_bindings_build_version = None
+    cuda_bindings_version = None
+    nvmath_build_version = None
+    nvmath_version = None
 
     numpy_version = None
     scipy_version = None
@@ -145,17 +149,25 @@ class _RuntimeInfo:
 
         # CUDA Driver
         self.cuda_build_version = str(cupy.cuda.driver.get_build_version())
-        if cupy.cuda.driver._is_cuda_python():
-            try:
-                import cuda.bindings
-                cuda_version = cuda.bindings.__version__
-            except ImportError:
-                import cuda
-                cuda_version = cuda.__version__
-            self.cuda_build_version += f' (CUDA Python: {cuda_version})'
         self.cuda_driver_version = _eval_or_error(
             cupy.cuda.runtime.driverGetVersion,
             cupy.cuda.runtime.CUDARuntimeError)
+
+        # CUDA Python
+        if not is_hip:
+            self.cuda_bindings_build_version = (
+                cupy._util.cuda_bindings_build_ver)
+            self.nvmath_build_version = cupy._util.nvmath_build_ver
+            try:
+                import cuda.bindings
+                self.cuda_bindings_version = cuda.bindings.__version__
+            except ImportError:
+                pass
+            try:
+                import nvmath
+                self.nvmath_version = nvmath.__version__
+            except ImportError:
+                pass
 
         # CUDA Runtime
         self.cuda_runtime_version = _eval_or_error(
@@ -337,6 +349,10 @@ class _RuntimeInfo:
 
         records += [
             ('CUDA Extra Include Dirs', self.cuda_extra_include_dirs),
+            ('cuda-bindings Build Version', self.cuda_bindings_build_version),
+            ('cuda-bindings Runtime Version', self.cuda_bindings_version),
+            ('nvmath-python Build Version', self.nvmath_build_version),
+            ('nvmath-python Runtime Version', self.nvmath_version),
         ]
 
         ctk_lib_vers = [
