@@ -3,6 +3,13 @@ cuda:
     version: "13.4.1"
   prev_build:
     version: "12.9.2"
+# cuda-bindings the CUDA Python wheels are built with. cydriver.pxd needs a
+# cuda.h at least as new, so keep each on the same minor as the CTK above.
+cuda_bindings:
+  build:
+    version: "13.4.4"
+  prev_build:
+    version: "12.9.10"
 python:
   # Python versions the wheel matrix is built across. ci.yml reads this
   # list and passes it to build-wheel.yml as the `python-versions` input.

@@ -1,7 +1,9 @@
 [build-system]
 # Need to be installed manually when using `--no-build-isolation`.
 # Keep in sync with `docs/source/contribution.rst`.
-requires = ["setuptools>=77", "wheel", "Cython>=3.2,<3.3", "numpy>=2.0"]
+requires = [
+    "setuptools>=77", "wheel", "Cython>=3.2,<3.3", "numpy>=2.0", "packaging",
+]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -52,6 +54,16 @@ include = ["cupy*", "cupyx*", "cupy_backends*"]
 
 [tool.setuptools.dynamic]
 version = { attr = "cupy._version.__version__" }
+
+[tool.cupy.cuda-python]
+# Versions for CUPY_USE_CUDA_PYTHON builds, read by setup.py and
+# ci/tools/prepare_wheel_build.py.
+# Minimum nvmath-python. Release wheels are built with exactly this version.
+# FlexCI tests it; update .pfnci/schema.yaml and .pfnci/matrix.yaml too.
+nvmath-python = "1.0.0"
+# Minimum cuda-bindings at run time: within a major the cy* layer only grows,
+# and every cy* function CuPy uses exists since these versions.
+cuda-bindings = { 12 = "12.9.0", 13 = "13.0.1" }
 
 [tool.autopep8]
 exclude = "*.git*, *.eggs*, *docs/source*"
