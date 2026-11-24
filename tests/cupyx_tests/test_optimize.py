@@ -38,6 +38,14 @@ class TestOptimize(unittest.TestCase):
             y2 = my_sum(x, axis=1)
         testing.assert_array_equal(y1, y2)
 
+    def test_optimize_empty_strided_reduction(self):
+        my_sum = cupy.ReductionKernel(
+            'T x', 'T out', 'x', 'a + b', 'out = a', '0', 'my_sum')
+        x = cupy.empty((2, 128), dtype='float32')[:0, ::2]
+        with cupyx.optimizing.optimize(max_trials=1):
+            result = my_sum(x, axis=0)
+        testing.assert_array_equal(result, cupy.zeros(64, dtype=x.dtype))
+
     def test_optimize_cache(self):
         if (_accelerator.ACCELERATOR_CUB
                 in _accelerator.get_reduction_accelerators()):

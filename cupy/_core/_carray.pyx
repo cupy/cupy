@@ -103,9 +103,11 @@ cdef class CArray(function.CPointer):
         data.size = element_count
         return data
 
-    cdef int init(
-            self, void* data_ptr, Py_ssize_t element_count,
-            const shape_t& shape, const strides_t& strides) except -1:
+    @staticmethod
+    cdef CArray create(
+            void* data_ptr, Py_ssize_t element_count,
+            const shape_t& shape, const strides_t& strides):
+        cdef CArray self = CArray.__new__(CArray)
         cdef size_t ndim = shape.size()
         assert ndim == strides.size()
         cdef _CArray* data = self._allocate(data_ptr, element_count, ndim)
@@ -114,54 +116,35 @@ cdef class CArray(function.CPointer):
             memcpy(data + 1, shape.data(), sizeof(Py_ssize_t) * ndim)
             memcpy(<Py_ssize_t*>(data + 1) + ndim, strides.data(),
                    sizeof(Py_ssize_t) * ndim)
-        return 0
+        return self
 
     @staticmethod
-    cdef CArray create_squashed(
+    cdef CArray from_packed_layout(
             void* data_ptr, Py_ssize_t element_count,
             const shape_t& shape, const strides_t& strides,
-            const vector.vector[cpp_bool]& squashable,
-            const vector.vector[int]* output_axes):
-        """For a reduction output, output_axes maps the retained suffix of the
-        input loop axes to the corresponding axes in shape and strides.
+            const shape_t& loop_shape, const vector.vector[int]& kept_axes,
+            int core_ndim):
+        """Create a CArray which assumes `loop_shape` is the correct shape
+        except for the `core_ndim` (which come from shape).
         """
         cdef CArray self = CArray.__new__(CArray)
-        cdef size_t ndim = shape.size()
-        cdef size_t loop_ndim = squashable.size()
-        cdef size_t ax, array_axis, start = 0, curr_ndim = 0, packed_ndim
-        assert ndim == strides.size()
-        if output_axes == NULL:
-            assert loop_ndim <= ndim
-            packed_ndim = ndim - loop_ndim
-        else:
-            assert output_axes[0].size() <= loop_ndim
-            start = loop_ndim - output_axes[0].size()
-            packed_ndim = 0
-
-        for ax in range(start, loop_ndim):
-            if ax == start or not squashable[ax]:
-                packed_ndim += 1
+        cdef size_t loop_ndim = loop_shape.size()
+        cdef size_t packed_ndim = loop_ndim + core_ndim
+        cdef size_t ax
+        assert loop_ndim == kept_axes.size()
+        assert shape.size() == strides.size()
+        cdef size_t core_start = shape.size() - core_ndim
 
         cdef _CArray* data = self._allocate(
             data_ptr, element_count, packed_ndim)
         cdef Py_ssize_t* cshape = <Py_ssize_t*>(data + 1)
         cdef Py_ssize_t* cstrides = cshape + packed_ndim
-        for ax in range(start, loop_ndim):
-            array_axis = (
-                ax if output_axes == NULL else output_axes[0][ax - start])
-            if ax == start or not squashable[ax]:
-                cshape[curr_ndim] = shape[array_axis]
-                cstrides[curr_ndim] = strides[array_axis]
-                curr_ndim += 1
-            elif shape[array_axis] != 1:
-                cshape[curr_ndim - 1] *= shape[array_axis]
-                cstrides[curr_ndim - 1] = strides[array_axis]
-        if output_axes == NULL:
-            for ax in range(loop_ndim, ndim):
-                cshape[curr_ndim] = shape[ax]
-                cstrides[curr_ndim] = strides[ax]
-                curr_ndim += 1
-        assert curr_ndim == packed_ndim
+        for ax in range(loop_ndim):
+            cshape[ax] = loop_shape[ax]
+            cstrides[ax] = strides[kept_axes[ax]]
+        for ax in range(core_ndim):
+            cshape[loop_ndim + ax] = shape[core_start + ax]
+            cstrides[loop_ndim + ax] = strides[core_start + ax]
         return self
 
     def __cinit__(self):

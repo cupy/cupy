@@ -13,7 +13,6 @@ cimport cython  # NOQA
 cimport cpython
 
 from libcpp cimport vector
-from libcpp.optional cimport optional
 from libcpp cimport bool as cpp_bool
 
 from cupy.cuda cimport device
@@ -329,17 +328,27 @@ cdef tuple _get_arginfos(list args):
     return tuple([_ArgInfo.from_arg(a) for a in args])
 
 
-cdef void _squash_shape(
+cdef int _apply_axis_merges(
         const shape_t& shape, const vector.vector[cpp_bool]& squashable,
-        shape_t& result, int start=0) except *:
+        shape_t& packed_shape, vector.vector[int]& kept_axes,
+        int start) except -1:
     cdef int ax
-    result.clear()
-    result.reserve(shape.size() - start)
+    cdef size_t group
+    cdef Py_ssize_t axis_size
+    packed_shape.clear()
+    kept_axes.clear()
+    packed_shape.reserve(shape.size() - start)
+    kept_axes.reserve(shape.size() - start)
     for ax in range(start, <int>shape.size()):
+        axis_size = shape[ax]
         if ax == start or not squashable[ax]:
-            result.push_back(shape[ax])
-        else:
-            (&result.back())[0] *= shape[ax]
+            packed_shape.push_back(axis_size)
+            kept_axes.push_back(ax - start)
+        elif axis_size != 1:
+            group = packed_shape.size() - 1
+            packed_shape[group] *= axis_size
+            kept_axes[group] = ax - start
+    return 0
 
 
 def _parse_param_info(t):
@@ -683,38 +692,42 @@ cdef class KernelArguments:
         else:
             return tuple([self.get_out(i) for i in range(self.nout)])
 
-    cdef squash_dims(
+    cdef int reduce_dims(
             self, tuple params, shape_t& shape,
-            vector.vector[cpp_bool]& squashable):
-        cdef optional[shape_t] out_shape
-        cdef optional[vector.vector[int]] out_axes
-        self.squash_dims_reduce(params, shape, squashable, out_shape, out_axes)
+            vector.vector[int]& kept_axes) except -1:
+        # Forwards to `reduce_dims_for_reduction` but without pack_output
+        cdef shape_t out_shape
+        cdef vector.vector[int] out_kept_axes
+        return self.reduce_dims_for_reduction(
+            params, shape, kept_axes, 0, None, out_shape, out_kept_axes,
+            pack_output=False)
 
-    cdef squash_dims_reduce(
+    cdef int reduce_dims_for_reduction(
             self, tuple params, shape_t& shape,
-            vector.vector[cpp_bool]& squashable,
-            optional[shape_t]& out_shape,
-            const optional[vector.vector[int]]& out_axes):
-        """Record whether each loop axis merges into its predecessor.
+            vector.vector[int]& kept_axes, int out_start,
+            tuple output_axis_map, shape_t& out_shape,
+            vector.vector[int]& out_kept_axes,
+            bint pack_output=True) except -1:
+        """Pack the retained input suffix separately for reduction outputs.
 
-        For reduction outputs, out_axes maps the retained suffix of the input
-        loop axes to the output. The suffix starts its own group in out_shape.
+        When keepdims inserts axes into the output, output_axis_map gives the
+        actual position of each retained axis in the output array.
         """
         cdef int ndim = shape.size()
-        cdef const vector.vector[int]* axes = (
-            &out_axes.value() if out_axes.has_value() else NULL)
-        cdef int out_start = (
-            ndim - <int>axes[0].size() if axes != NULL else ndim)
         cdef int ax, start, stride_axis, prev_axis
         cdef Py_ssize_t i
         cdef ParameterInfo p
         cdef _ndarray_base arr
         cdef shape_t squashed_shape
-        cdef bint is_output
+        cdef vector.vector[cpp_bool] squashable
+        cdef bint is_output, map_strides
+        assert 0 <= out_start <= ndim
+        assert (output_axis_map is None
+                or len(output_axis_map) == ndim - out_start)
 
-        squashable.clear()
-        if ndim <= 1 and axes == NULL:
-            return
+        kept_axes.clear()
+        if ndim <= 1 and not pack_output:
+            return 0
         squashable.assign(ndim, True)
 
         for i, a in enumerate(self.args):
@@ -722,35 +735,52 @@ cdef class KernelArguments:
             if p.raw or not isinstance(a, _ndarray_base):
                 continue
             arr = a
-            is_output = axes != NULL and i >= self.nin + self.has_where
+            is_output = pack_output and i >= self.nin + self.has_where
             start = out_start if is_output else 0
+            map_strides = is_output and output_axis_map is not None
             assert is_output or <int>arr._shape.size() == ndim + p.core_ndim
 
             prev_axis = -1
             for ax in range(start, ndim):
                 if shape[ax] == 1:
                     continue
-                stride_axis = axes[0][ax - start] if is_output else ax
+                stride_axis = ax - start
+                if map_strides:
+                    stride_axis = output_axis_map[stride_axis]
                 if (prev_axis >= 0 and squashable[ax]
                         and arr._strides[prev_axis]
                         != arr._strides[stride_axis] * shape[ax]):
                     squashable[ax] = False
                 prev_axis = stride_axis
 
-        if axes != NULL:
-            assert out_shape.has_value()
-            _squash_shape(shape, squashable, out_shape.value(), out_start)
-        _squash_shape(shape, squashable, squashed_shape)
-        if <int>squashed_shape.size() == ndim and axes == NULL:
-            squashable.clear()
+        if pack_output:
+            _apply_axis_merges(shape, squashable, out_shape, out_kept_axes,
+                               out_start)
+            if output_axis_map is not None:
+                for ax in range(<int>out_kept_axes.size()):
+                    out_kept_axes[ax] = output_axis_map[out_kept_axes[ax]]
+        _apply_axis_merges(shape, squashable, squashed_shape, kept_axes, 0)
+        if <int>squashed_shape.size() == ndim and not pack_output:
+            kept_axes.clear()
         else:
             shape.swap(squashed_shape)
+        return 0
 
     cdef tuple finalize_launch_args(
             self, tuple params, tuple in_types,
-            const vector.vector[cpp_bool]& squashable,
-            tuple extra_args,
-            const optional[vector.vector[int]]& out_axes):
+            const shape_t& shape, const vector.vector[int]& kept_axes,
+            tuple extra_args):
+        cdef shape_t out_shape
+        cdef vector.vector[int] out_kept_axes
+        return self.finalize_reduction_launch_args(
+            params, in_types, shape, kept_axes, extra_args,
+            out_shape, out_kept_axes, pack_output=False)
+
+    cdef tuple finalize_reduction_launch_args(
+            self, tuple params, tuple in_types,
+            const shape_t& shape, const vector.vector[int]& kept_axes,
+            tuple extra_args, const shape_t& out_shape,
+            const vector.vector[int]& out_kept_axes, bint pack_output):
         """Keep self alive through launch because packed CArrays borrow the
         device buffers owned by arrays in self.args.
         """
@@ -768,17 +798,22 @@ cdef class KernelArguments:
             if i < self.nin and type(a) is _scalar.CScalar:
                 (<_scalar.CScalar>a).apply_dtype(in_types[i])
             arginfo = _ArgInfo.from_arg(a, p.core_ndim)
-            if arginfo.is_ndarray() and not p.raw:
-                is_output = (
-                    out_axes.has_value() and i >= self.nin + self.has_where)
-                if not squashable.empty() or is_output:
-                    arr = a
-                    carr = _carray.CArray.create_squashed(
+            if arginfo.is_ndarray():
+                arr = a
+                is_output = pack_output and i >= self.nin + self.has_where
+                if not p.raw and (is_output or not kept_axes.empty()):
+                    carr = _carray.CArray.from_packed_layout(
                         <void*>arr.data.ptr, arr.size,
                         arr._shape, arr._strides,
-                        squashable, &out_axes.value() if is_output else NULL)
+                        out_shape if is_output else shape,
+                        out_kept_axes if is_output else kept_axes,
+                        0 if is_output else p.core_ndim)
                     arginfo.ndim = carr.ndim
-                    launch_args[i] = carr
+                else:
+                    carr = _carray.CArray.create(
+                        <void*>arr.data.ptr, arr.size, arr._shape,
+                        arr._strides)
+                launch_args[i] = carr
             arginfos.append(arginfo)
 
         launch_args.extend(extra_args)
@@ -1264,15 +1299,14 @@ cdef class ElementwiseKernel:
         if _contains_zero(shape):
             return ret
 
-        cdef vector.vector[cpp_bool] squashable
+        cdef vector.vector[int] kept_axes
         if self.reduce_dims:
-            kargs.squash_dims(self.params, shape, squashable)
+            kargs.reduce_dims(self.params, shape, kept_axes)
 
         indexer = _carray.CIndexer.create(shape)
 
         arginfos, launch_args = kargs.finalize_launch_args(
-            self.params, in_types, squashable, (indexer,),
-            optional[vector.vector[int]]())
+            self.params, in_types, shape, kept_axes, (indexer,))
 
         kern = self._get_elementwise_kernel(dev_id, arginfos, type_map)
         kern.linear_launch(indexer.size(), launch_args, shared_mem=0,
@@ -1731,13 +1765,12 @@ cdef class ufunc:
             return ret
 
         _params = self._params_with_where if kargs.has_where else self._params
-        cdef vector.vector[cpp_bool] squashable
-        kargs.squash_dims(_params, shape, squashable)
+        cdef vector.vector[int] kept_axes
+        kargs.reduce_dims(_params, shape, kept_axes)
         indexer = _carray.CIndexer.create(shape)
 
         arginfos, launch_args = kargs.finalize_launch_args(
-            _params, core_in_dtypes, squashable, (indexer,),
-            optional[vector.vector[int]]())
+            _params, core_in_dtypes, shape, kept_axes, (indexer,))
         kern = self._get_ufunc_kernel(
             core_in_dtypes, core_out_dtypes, dev_id, op, arginfos,
             kargs.has_where)

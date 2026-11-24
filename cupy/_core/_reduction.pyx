@@ -1,8 +1,6 @@
 from cpython cimport sequence
 
 from libcpp cimport vector
-from libcpp.optional cimport optional
-from libcpp cimport bool as cpp_bool
 
 from cupy._core cimport _carray
 from cupy._core cimport _accelerator
@@ -310,12 +308,10 @@ cdef class _AbstractReductionKernel:
         cdef tuple shape_and_strides
         cdef list launch_args
         cdef KernelArguments trial_args
-        cdef vector.vector[cpp_bool] squashable
-        cdef optional[vector.vector[int]] launch_out_axes
-        cdef int output_axis
+        cdef vector.vector[int] kept_axes, out_kept_axes
         cdef Py_ssize_t in_size, out_size
         cdef Py_ssize_t block_size, block_stride, out_block_num
-        cdef optional[shape_t] out_shape
+        cdef shape_t out_shape
         cdef _ndarray_base ret
         cdef bint cub_success, cuda_compute_success
 
@@ -341,9 +337,8 @@ cdef class _AbstractReductionKernel:
                 reduce_axis = _sort_axis(reduce_axis, strides)
             out_axis = _sort_axis(out_axis, strides)
 
-        out_shape.emplace(
-            _get_out_shape(in_shape, reduce_axis, out_axis, keepdims))
-        self._create_out_args(kargs, out_types, out_shape.value())
+        out_shape = _get_out_shape(in_shape, reduce_axis, out_axis, keepdims)
+        self._create_out_args(kargs, out_types, out_shape)
         ret = kargs.get_out(0)  # result(), always one argument
         if ret.size == 0:
             return ret
@@ -353,7 +348,7 @@ cdef class _AbstractReductionKernel:
                               ' %s which has no identity') % self.name)
 
         in_size = internal.prod(in_shape)
-        out_size = internal.prod(out_shape.value())
+        out_size = internal.prod(out_shape)
         if in_size / out_size > 0x7fffffff:
             index_type = ('IndexT', 'int64')
         else:
@@ -386,7 +381,7 @@ cdef class _AbstractReductionKernel:
                     self, in_args, out_args, in_shape, stream,
                     optimize_context, key, map_expr, reduce_expr,
                     post_map_expr, reduce_type, type_map, reduce_axis,
-                    out_axis, out_shape.value(), ret)
+                    out_axis, out_shape, ret)
                 if cub_success:
                     return ret
 
@@ -401,16 +396,13 @@ cdef class _AbstractReductionKernel:
         kargs.args[:kargs.nin] = in_args
 
         if reduce_dims:
-            launch_out_axes.emplace()
-            for output_axis in (
-                    out_axis if keepdims else range(len(out_axis))):
-                launch_out_axes.value().push_back(output_axis)
-            kargs.squash_dims_reduce(
-                self._params, in_shape, squashable, out_shape, launch_out_axes)
+            kargs.reduce_dims_for_reduction(
+                self._params, in_shape, kept_axes, len(reduce_axis),
+                out_axis if keepdims else None, out_shape, out_kept_axes)
 
         extra_args = (
             _carray.CIndexer.create(in_shape),
-            _carray.CIndexer.create(out_shape.value()),
+            _carray.CIndexer.create(out_shape),
             _scalar.CScalar.from_int32(1))
         block_size, block_stride, out_block_num = _get_block_specs(
             in_size, out_size,
@@ -430,9 +422,10 @@ cdef class _AbstractReductionKernel:
                 trial_args.nout = kargs.nout
                 trial_args.args = [_optimizer_copy_arg(a) for a in kargs.args]
 
-                arginfos, launch_args = trial_args.finalize_launch_args(
-                    self._params, in_types, squashable, extra_args,
-                    launch_out_axes)
+                arginfos, launch_args = (
+                    trial_args.finalize_reduction_launch_args(
+                        self._params, in_types, in_shape, kept_axes,
+                        extra_args, out_shape, out_kept_axes, reduce_dims))
                 opt_params = self._get_optimized_params(
                     optimize_context.config, out_size,
                     (block_size, block_stride, out_block_num),
@@ -441,8 +434,9 @@ cdef class _AbstractReductionKernel:
                 optimize_context.set_params(key, opt_params)
             block_size, block_stride, out_block_num = opt_params
 
-        arginfos, launch_args = kargs.finalize_launch_args(
-            self._params, in_types, squashable, extra_args, launch_out_axes)
+        arginfos, launch_args = kargs.finalize_reduction_launch_args(
+            self._params, in_types, in_shape, kept_axes, extra_args,
+            out_shape, out_kept_axes, reduce_dims)
         self._launch(
             out_block_num, block_size, block_stride, arginfos, launch_args,
             type_map, map_expr, reduce_expr, post_map_expr, reduce_type,

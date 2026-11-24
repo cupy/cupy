@@ -1,6 +1,4 @@
-from libcpp cimport bool as cpp_bool
 from libcpp cimport vector
-from libcpp.optional cimport optional
 
 from cupy._core cimport _carray
 from cupy._core cimport _scalar
@@ -122,19 +120,23 @@ cdef class KernelArguments:
         const shape_t& shape, tuple out_shapes=*)
 
     cdef result(self, bint tuple_return)
-    cdef squash_dims(
+    cdef int reduce_dims(
         self, tuple params, shape_t& shape,
-        vector.vector[cpp_bool]& squashable)
-    cdef squash_dims_reduce(
+        vector.vector[int]& kept_axes) except -1
+    cdef int reduce_dims_for_reduction(
         self, tuple params, shape_t& shape,
-        vector.vector[cpp_bool]& squashable,
-        optional[shape_t]& out_shape,
-        const optional[vector.vector[int]]& out_axes)
+        vector.vector[int]& kept_axes, int out_start, tuple output_axis_map,
+        shape_t& out_shape, vector.vector[int]& out_kept_axes,
+        bint pack_output=*) except -1
     cdef tuple finalize_launch_args(
         self, tuple params, tuple in_types,
-        const vector.vector[cpp_bool]& squashable,
-        tuple extra_args,
-        const optional[vector.vector[int]]& out_axes)
+        const shape_t& shape, const vector.vector[int]& kept_axes,
+        tuple extra_args)
+    cdef tuple finalize_reduction_launch_args(
+        self, tuple params, tuple in_types,
+        const shape_t& shape, const vector.vector[int]& kept_axes,
+        tuple extra_args, const shape_t& out_shape,
+        const vector.vector[int]& out_kept_axes, bint pack_output)
     cdef tuple get_ndarray_dtypes(self)
 
     # Helpers to access arguments (makes offsets simpler and also may allow

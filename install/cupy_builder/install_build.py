@@ -226,8 +226,8 @@ def get_compiler_setting(ctx: Context, use_hip):
         library_dirs.append(os.path.join(rocm_path, 'lib'))
 
     if use_hip:
-        # Match the C++17 standard used for HIP device code.
-        extra_compile_args.append('-std=c++17')
+        # ROCm 5.3 and above requires c++14
+        extra_compile_args.append('-std=c++14')
     else:
         # CCCL 3.x (for CUDA) requires c++17
         if PLATFORM_LINUX:

@@ -1,7 +1,6 @@
 cimport cython  # NOQA
 from libc.stdint cimport intptr_t
 from libcpp cimport vector
-from libcpp cimport bool as cpp_bool
 
 from cupy.cuda cimport function
 
@@ -37,16 +36,17 @@ cdef class CArray(function.CPointer):
         self, void* data_ptr, Py_ssize_t element_count, size_t ndim,
     ) except NULL
 
-    cdef int init(
-        self, void* data_ptr, Py_ssize_t element_count,
-        const shape_t& shape, const strides_t& strides) except -1
+    @staticmethod
+    cdef CArray create(
+        void* data_ptr, Py_ssize_t element_count,
+        const shape_t& shape, const strides_t& strides)
 
     @staticmethod
-    cdef CArray create_squashed(
+    cdef CArray from_packed_layout(
         void* data_ptr, Py_ssize_t element_count,
         const shape_t& shape, const strides_t& strides,
-        const vector.vector[cpp_bool]& squashable,
-        const vector.vector[int]* output_axes,
+        const shape_t& loop_shape, const vector.vector[int]& kept_axes,
+        int core_ndim,
     )
 
 
