@@ -133,7 +133,7 @@ def append(arr, values, axis=None):
                 "append() with a Python scalar will not convert the scalar "
                 f"to an array first and will return dtype {dtype} in the "
                 "future which may change results or error for "
-                "out-of-bound-values.\n"
+                "out-of-bounds values.\n"
                 "Please convert the scalar to your desired type to avoid "
                 "this warning.", FutureWarning,
                 stacklevel=2)
