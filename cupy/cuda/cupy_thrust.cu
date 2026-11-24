@@ -19,6 +19,7 @@
 namespace cupy_thrust_cmp = thrust;
 using thrust_bfloat16 = __hip_bfloat16;
 #else
+#include <cuda/iterator>
 #include <cuda/std/functional>
 #include <cuda_bf16.h>
 namespace cupy_thrust_cmp = ::cuda::std;
@@ -484,7 +485,7 @@ struct _sort {
                       #else
                       thrust::make_counting_iterator<size_t>(0),
                       thrust::make_counting_iterator<size_t>(size),
-                      thrust::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
+                      cuda::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
                       #endif
                       dp_keys_first,
                       cupy_thrust_cmp::divides<size_t>());
@@ -584,7 +585,7 @@ struct _argsort {
                   #else
                   thrust::make_counting_iterator<size_t>(0),
                   thrust::make_counting_iterator<size_t>(size),
-                  thrust::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
+                  cuda::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
                   #endif
                   dp_idx_first,
                   cupy_thrust_cmp::modulus<size_t>());
@@ -616,7 +617,7 @@ struct _argsort {
                       #else
                       thrust::make_counting_iterator<size_t>(0),
                       thrust::make_counting_iterator<size_t>(size),
-                      thrust::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
+                      cuda::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
                       #endif
                       dp_keys_first,
                       cupy_thrust_cmp::divides<size_t>());
