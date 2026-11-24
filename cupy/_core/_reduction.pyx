@@ -377,6 +377,7 @@ cdef class _AbstractReductionKernel:
                 if cuda_compute_success:
                     return ret
             if try_use_cub and accelerator == _accelerator.ACCELERATOR_CUB:
+                # TODO(seberg): pass kargs instead of in_args, out_args.
                 cub_success = _cub_reduction._try_to_call_cub_reduction(
                     self, in_args, out_args, in_shape, stream,
                     optimize_context, key, map_expr, reduce_expr,

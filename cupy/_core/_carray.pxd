@@ -13,6 +13,7 @@ ctypedef vector.vector[Py_ssize_t] strides_t
 cdef enum: MAX_NDIM = 64
 
 
+# This is now excluding shape/strides only for getting the compiler-time size
 cdef struct _CArray:
     void* data
     Py_ssize_t size
@@ -50,6 +51,7 @@ cdef class CArray(function.CPointer):
     )
 
 
+# This is now excluding shape/strides only for getting the compiler-time size
 cdef struct _CIndexer:
     Py_ssize_t size
 

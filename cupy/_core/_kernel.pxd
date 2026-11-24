@@ -90,6 +90,8 @@ cdef class _TypeMap:
 
 
 cdef class KernelArguments:
+    # A kernels friendly helper to organize preparation of input and
+    # output arguments.
     cdef:
         Py_ssize_t nin
         Py_ssize_t nout

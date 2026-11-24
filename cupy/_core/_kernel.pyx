@@ -447,6 +447,8 @@ cdef class ParameterInfo:
 @cython.final
 @cython.no_gc
 cdef class KernelArguments:
+    # A kernels friendly helper to organize preparation of input and
+    # output arguments.
     @staticmethod
     cdef KernelArguments create(
             Py_ssize_t nin, Py_ssize_t nout, tuple args, out,
@@ -1718,14 +1720,16 @@ cdef class ufunc:
         kargs = KernelArguments.create(
             self.nin, self.nout, args, out, where, True, dev_id, self.name)
 
-        # Use the original input as the subclass initialization template.
+        # Keep the original input as the subclass initialization template,
+        # before broadcasting replaces it with a view.
+        def issubclass1(cls, classinfo):
+            return issubclass(cls, classinfo) and cls is not classinfo
         subtype = cupy.ndarray
         template = None
         for i in range(self.nin):
             in_arg = kargs.get_in(i)
             in_arg_type = type(in_arg)
-            if in_arg_type is not cupy.ndarray and issubclass(
-                    in_arg_type, cupy.ndarray):
+            if issubclass1(in_arg_type, cupy.ndarray):
                 subtype = in_arg_type
                 template = in_arg
                 break
