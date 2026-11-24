@@ -1,7 +1,13 @@
 from __future__ import annotations
 
 
+import json
 import os
+from pathlib import Path
+import runpy
+import shutil
+
+import pytest
 
 from cupy_builder._context import (
     _get_env_bool, _get_env_path, Context)
@@ -33,12 +39,46 @@ class TestGetEnvPath:
 
 
 class TestContext:
+    def test_header_cache(self) -> None:
+        source_root = str(Path(__file__).resolve().parents[3])
+        ctx = Context(source_root, _env={}, _argv=[])
+        # Also validates every include in CuPy-owned repository headers.
+        ctx.generate_header_cache()
+        cache = json.loads(
+            (Path(source_root)
+             / 'cupy/_core/_header_cache_keys.json').read_text())
+        assert cache['keys']['full'] == ctx.header_cache_key
+        assert cache['headers']['cupy/float16.cuh'] == 'float16'
+        assert cache['headers']['cuda/std/type_traits'] == 'common'
+        assert cache['headers']['cupy/xsf/config.h'] == 'xsf'
+
+    def test_generated_metadata(self, tmp_path) -> None:
+        core = tmp_path / 'cupy' / '_core'
+        core.mkdir(parents=True)
+        shutil.copyfile(Path(__file__).resolve().parents[3]
+                        / 'cupy/_core/_header_cache_keys.py',
+                        core / '_header_cache_keys.py')
+        include = core / 'include'
+        include.mkdir()
+        ctx = Context(str(tmp_path), _env={}, _argv=[])
+        ctx.generate_header_cache()
+        metadata = core / '_header_cache_keys.json'
+        content = metadata.read_text()
+        module = runpy.run_path(str(core / '_header_cache_keys.py'))
+        assert (module['HEADER_CACHE_KEYS']
+                == module['build_header_cache_keys'](ctx.use_hip))
+        ctx.generate_header_cache()
+        assert metadata.read_text() == content
+        (include / 'test.h').write_text('// changed\n')
+        ctx.generate_header_cache()
+        assert metadata.read_text() != content
+
     def test_default(self) -> None:
         ctx = Context('.', _env={}, _argv=[])
 
         assert ctx.source_root == '.'
         assert ctx.setup_command == ''
-        assert not ctx.use_cuda_python
+        assert ctx.use_cuda_python
         assert not ctx.use_hip
         assert ctx.include_dirs == []
         assert ctx.library_dirs == []
@@ -56,7 +96,6 @@ class TestContext:
 
     def test_env(self) -> None:
         ctx = Context('.', _env={
-            'CUPY_USE_CUDA_PYTHON': '1',
             'CUPY_INSTALL_USE_HIP': '1',
             'CUPY_INCLUDE_PATH': f'/tmp/include{os.pathsep}/tmp2/include',
             'CUPY_LIBRARY_PATH': f'/tmp/lib{os.pathsep}/tmp2/lib',
@@ -68,7 +107,7 @@ class TestContext:
             'CUPY_INSTALL_NO_MEANING': '1',  # dummy
         }, _argv=[])
 
-        assert ctx.use_cuda_python
+        assert not ctx.use_cuda_python
         assert ctx.use_hip
         assert ctx.include_dirs == ['/tmp/include', '/tmp2/include']
         assert ctx.library_dirs == ['/tmp/lib', '/tmp2/lib']
@@ -78,3 +117,16 @@ class TestContext:
         assert ctx.profile
         assert ctx.annotate
         assert ctx.linetrace
+
+    def test_cuda_python_opt_out(self, capsys) -> None:
+        ctx = Context('.', _env={'CUPY_USE_CUDA_PYTHON': '0'}, _argv=[])
+        assert not ctx.use_cuda_python
+        out = capsys.readouterr().out
+        assert 'CUPY_USE_CUDA_PYTHON=0 is deprecated' in out
+
+    def test_cuda_python_with_hip(self) -> None:
+        with pytest.raises(ValueError, match='CUPY_INSTALL_USE_HIP'):
+            Context('.', _env={
+                'CUPY_USE_CUDA_PYTHON': '1',
+                'CUPY_INSTALL_USE_HIP': '1',
+            }, _argv=[])
