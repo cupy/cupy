@@ -6,7 +6,7 @@ import numpy
 import cupy
 import math
 from cupy import _core
-from cupy._util import warn_external
+from cupy._warnings import warn_external
 
 
 def delete(arr, indices, axis=None):

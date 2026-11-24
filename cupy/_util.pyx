@@ -3,7 +3,6 @@
 import atexit
 import functools
 import os
-import sys
 import warnings
 
 import cython
@@ -278,17 +277,3 @@ else:
 
         signature = [in_tuple, out_tuple]
         return ((signature, code),)
-
-
-if sys.version_info >= (3, 12):
-    _skip_prefixes = (os.path.dirname(os.path.dirname(cupy.__file__)),)
-
-    def warn_external(message, category, stacklevel=1):
-        # Since Python 3.12 it is possible to use skip_file_prefixes
-        # to ensure warnings are given in the user scope.
-        warnings.warn(message, category, stacklevel=stacklevel,
-                      skip_file_prefixes=_skip_prefixes)
-
-else:
-    # Python 3.11 doesn't support skip_file_prefixes
-    warn_external = warnings.warn

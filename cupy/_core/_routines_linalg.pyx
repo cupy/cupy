@@ -11,7 +11,7 @@ from cupy._core._kernel import ElementwiseKernel
 from cupy._core._reduction import ReductionKernel
 from cupy._core._ufuncs import elementwise_copy
 import cupy._core.core as core
-from cupy._util import warn_external
+from cupy._warnings import warn_external
 
 from libc.stdint cimport intptr_t
 
