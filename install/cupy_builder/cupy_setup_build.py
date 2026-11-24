@@ -419,6 +419,14 @@ def make_extensions(ctx: Context, compiler, use_cython):
             # MSVC flags as C4551: https://github.com/cython/cython/pull/7911
             compile_args.append('/wd4551')
 
+        if ctx.werror:
+            # Not in `get_compiler_setting`: probes must not fail on warnings.
+            if compiler.compiler_type == 'msvc':
+                compile_args.append('/WX')
+                link_args.append('/WX')
+            else:
+                compile_args.append('-Werror')
+
         if (compiler.compiler_type == 'msvc'
                 and 'cudart_static' in module.static_libraries):
             # CUDA 12.x cudart_static.lib is built with /MT (LIBCMT) but

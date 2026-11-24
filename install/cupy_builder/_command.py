@@ -168,6 +168,10 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
             # Disable multiprocessing on Windows (spawn)
             nthreads = 0
 
+        if ctx.werror:
+            import Cython.Compiler.Options
+            Cython.Compiler.Options.warning_errors = True
+
         Cython.Build.cythonize(
             self.extensions, verbose=True, nthreads=nthreads, language_level=3,
             compiler_directives=compiler_directives, annotate=ctx.annotate,

@@ -189,6 +189,8 @@ class DeviceCompilerUnix(DeviceCompilerBase):
         # Bumping C++ standard from C++14 to C++17 for "if constexpr"
         postargs += ['--std=c++17',
                      f'-t{num_threads}']
+        if self._context.werror:
+            postargs += ['-Werror', 'all-warnings', '-Xcompiler', '-Werror']
         print('NVCC options:', postargs)
         self.spawn(compiler_so + base_opts + cc_args + [src, '-o', obj] +
                    postargs)
@@ -235,6 +237,8 @@ class DeviceCompilerWin32(DeviceCompilerBase):
         num_threads = int(os.environ.get('CUPY_NUM_NVCC_THREADS', '2'))
         postargs += ['--std=c++17',
                      f'-t{num_threads}']
+        if self._context.werror:
+            postargs += ['-Werror', 'all-warnings', '-Xcompiler', '/WX']
         cl_exe_path = self._find_host_compiler_path()
         if cl_exe_path is not None:
             print(f'Using host compiler at {cl_exe_path}')
