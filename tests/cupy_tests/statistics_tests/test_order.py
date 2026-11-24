@@ -357,6 +357,20 @@ class TestQuantileMethods:
         with pytest.raises(ValueError):
             fn(a, q, axis=None, method=method)
 
+    @pytest.mark.parametrize("func,q", [
+        ("percentile", 55), ("quantile", 0.55),
+    ])
+    def test_empty_input_does_not_poison_cuda_context(self, func, q, method):
+        # gh-9110: an empty sort used to poison the CUDA context before the
+        # zero-axis validation could reject the input.
+        a = cupy.empty((0,))
+        fn = getattr(cupy, func)
+        with pytest.raises(ValueError):
+            fn(a, q, axis=None, method=method)
+
+        # A failed empty input must leave subsequent CUDA work usable.
+        testing.assert_array_equal(cupy.array(1), numpy.array(1))
+
 
 class TestOrder:
 

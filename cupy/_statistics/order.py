@@ -264,10 +264,10 @@ def _quantile_unchecked(a, q, axis=None, out=None,
         if not overwrite_input:
             ap = ap.copy()
     axis = -1
-    ap.sort(axis=axis)
     Nx = ap.shape[axis]
     if Nx == 0:
         raise ValueError("Expected input to not have a zero-length axis")
+    ap.sort(axis=axis)
     indices = q * (Nx - 1.)
 
     if method in ['averaged_inverted_cdf',
