@@ -269,7 +269,7 @@ cdef _setup_type_dict():
         d = numpy.dtype(i)
         t = d.type
         _typenames[t] = _typenames_base[d]
-        k = (<cnp.dtype>d).kind
+        k = (<cnp.dtype>(d)).kind
         _dtype_kind_size_dict[t] = (k, d.itemsize)
     # CUDA types
     for t in ('cudaTextureObject_t',):

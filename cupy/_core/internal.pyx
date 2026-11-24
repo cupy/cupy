@@ -123,7 +123,7 @@ cdef inline Py_ssize_t get_contiguous_strides_inplace(
         bint is_c_contiguous, bint zeros_for_zerosize) except -1:
     cdef Py_ssize_t st, sh
     cdef Py_ssize_t is_nonzero_size = 1
-    cdef int i, ndim = <int>shape.size()
+    cdef int i, ndim = <int>(shape.size())
     cdef Py_ssize_t idx
     strides.resize(ndim, 0)
     st = 1
@@ -438,7 +438,7 @@ cpdef int _normalize_axis_index(
         raise AxisError(axis, ndim)
     if axis < 0:
         axis += ndim
-    return <int>axis
+    return <int>(axis)
 
 
 cpdef tuple _normalize_axis_indices(

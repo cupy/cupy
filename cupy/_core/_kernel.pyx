@@ -207,7 +207,7 @@ cdef class _ArgInfo:
             ARG_KIND_NDARRAY,
             type(arg),
             arg.dtype,
-            <int>arg._shape.size(),
+            <int>(arg._shape.size()),
             arg._c_contiguous,
             arg._index_32_bits,
             core_ndim)
@@ -374,7 +374,7 @@ cdef shape_t _reduced_view_core(
     cdef ParameterInfo p
     cdef _ndarray_base arr
 
-    ndim = <int>shape.size()
+    ndim = <int>(shape.size())
     array_indexes.reserve(len(args))
     strides_indexes.reserve(len(args))
     for i in range(len(args)):

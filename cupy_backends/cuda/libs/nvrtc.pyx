@@ -59,7 +59,7 @@ cdef inline int _safe_int_len(obj) except? -1:
     cdef Py_ssize_t n = len(obj)
     if n > INT_MAX:
         raise OverflowError(f'length {n} does not fit in a C int')
-    return <int>n
+    return <int>(n)
 
 
 cpdef tuple getVersion():

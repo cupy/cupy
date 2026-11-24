@@ -124,7 +124,7 @@ cpdef _ndarray_base _ndarray_argwhere(_ndarray_base self):
             incomplete=incomplete_scan, chunk_size=chunk_size)
         count_nonzero = int(scan_index[-1])  # synchronize!
 
-    ndim = <int>self._shape.size()
+    ndim = <int>(self._shape.size())
     dst = core.ndarray((count_nonzero, ndim), dtype=numpy_int64)
     if dst.size == 0:
         return dst
@@ -146,7 +146,7 @@ cpdef _ndarray_base _ndarray_argwhere(_ndarray_base self):
 cdef _ndarray_base _ndarray_take(_ndarray_base self, indices, axis, out):
     cdef Py_ssize_t ndim = self._shape.size()
     if axis is None:
-        return _take(self, indices, 0, <int>ndim, out)
+        return _take(self, indices, 0, <int>(ndim), out)
     elif ndim == 0:
         # check axis after atleast_1d
         internal._normalize_axis_index(axis, 1)
@@ -360,7 +360,7 @@ cdef tuple _view_getitem(_ndarray_base a, list slice_list):
                     "an index can only have a single ellipsis ('...')")
             has_ellipsis = True
         elif isinstance(s, _ndarray_base):
-            kind = (<cnp.dtype>s.dtype).kind
+            kind = (<cnp.dtype>(s.dtype)).kind
             if kind == b'b':
                 k = s.ndim
             elif kind == b'i' or kind == b'u':
@@ -402,7 +402,7 @@ cdef tuple _view_getitem(_ndarray_base a, list slice_list):
             k = array_ndims[i]
             index_list.append((s, axis_v, k))
             i += 1
-            kind = (<cnp.dtype>s.dtype).kind
+            kind = (<cnp.dtype>(s.dtype)).kind
             if kind == b'b':
                 _check_mask_shape(a, s, axis_a)
             for _ in range(k):
@@ -847,7 +847,7 @@ cdef _ndarray_base _take(
     # Take along (flattened) axes from start to stop.
     # When start + 1 == stop this function behaves similarly to np.take
     cdef tuple out_shape, indices_shape
-    cdef int i, ndim = <int>a._shape.size()
+    cdef int i, ndim = <int>(a._shape.size())
     cdef Py_ssize_t cdim, rdim, index_range, out_block_size
 
     assert start <= stop

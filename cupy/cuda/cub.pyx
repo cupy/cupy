@@ -260,7 +260,7 @@ def device_segmented_reduce(_ndarray_base x, op, tuple reduce_axis,
             y.fill(1)
         return y
     n_segments = <int>(x.size//contiguous_size)
-    segment_size = <int>contiguous_size
+    segment_size = <int>(contiguous_size)
     s = <Stream_t>stream.get_current_stream_ptr()
     dtype_id = _get_dtype_id(x.dtype)
 

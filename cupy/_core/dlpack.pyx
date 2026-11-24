@@ -176,7 +176,7 @@ cdef object _toDlpack(
     # Fetch device information since we need it to deal with CPU logic.
     cdef DLDevice device = get_dlpack_device(array)
 
-    cdef int32_t ndim = <int32_t>array._shape.size()
+    cdef int32_t ndim = <int32_t>(array._shape.size())
 
     if not to_cpu:
         owner = array

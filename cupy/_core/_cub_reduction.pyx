@@ -414,7 +414,7 @@ cdef _scalar.CScalar _cub_convert_to_c_scalar(
     if segment_size > 0x7fffffff:
         return _scalar.CScalar(value)
     else:
-        return _scalar.CScalar.from_int32(<int32_t>value)
+        return _scalar.CScalar.from_int32(<int32_t>(value))
 
 
 cdef inline void _cub_two_pass_launch(

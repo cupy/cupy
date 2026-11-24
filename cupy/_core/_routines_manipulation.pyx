@@ -168,7 +168,7 @@ cdef vector.vector[Py_ssize_t] _npyiter_k_order_axes(
     cdef vector.vector[Py_ssize_t] axes
     cdef Py_ssize_t stride0, stride1
     cdef int ndim, i0, i1, ipos, k
-    ndim = <int>strides.size()
+    ndim = <int>(strides.size())
     for i0 in reversed(range(ndim)):
         stride0 = abs(strides[i0])
         if stride0 == 0:  # ambiguous
@@ -494,7 +494,7 @@ cpdef _ndarray_base broadcast_to(_ndarray_base array, shape):
 
     """
     shape = tuple(shape) if numpy.iterable(shape) else (shape,)
-    cdef int i, j, ndim = <int>array._shape.size()
+    cdef int i, j, ndim = <int>(array._shape.size())
     cdef int length = internal.safe_int_len(shape)
     cdef Py_ssize_t sh, a_sh
     if ndim > length:
@@ -679,7 +679,7 @@ cpdef _ndarray_base concatenate_method(
 
     # Check ndim consistency of the input arrays
     a0 = arrays[0]
-    ndim0 = <int>a0._shape.size()
+    ndim0 = <int>(a0._shape.size())
     for o in arrays[1:]:
         a = o
         if <int>(a._shape.size()) != ndim0:
@@ -789,7 +789,7 @@ cpdef Py_ssize_t size(_ndarray_base a, axis=None) except? -1:
         return a.size
     else:
         index = axis
-        ndim = <int>a._shape.size()
+        ndim = <int>(a._shape.size())
         if index < 0:
             index += ndim
         if not 0 <= index < ndim:
