@@ -32,6 +32,9 @@ def sort(a, axis=-1, kind=None, *, descending=False):
        support ``kind`` and ``order`` parameters that ``numpy.sort`` does
        support.
 
+       The ``cuda_compute`` accelerator can reorder NaNs with distinct bit
+       patterns in one-dimensional floating-point sorts.
+
     .. seealso:: :func:`numpy.sort`
 
     """
@@ -124,6 +127,9 @@ def argsort(a, axis=-1, kind=None, *, descending=False):
     .. note::
         For its implementation reason, ``cupy.argsort`` does not fully support
         ``kind`` and ``order`` parameters as ``numpy.argsort`` does.
+
+        The ``cuda_compute`` accelerator can reorder NaNs with distinct bit
+        patterns in one-dimensional floating-point argsorts.
 
     .. seealso:: :func:`numpy.argsort`
 
