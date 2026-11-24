@@ -538,6 +538,27 @@ class TestCoosort:
         testing.assert_array_almost_equal(self.a.data[argsort], a.data)
 
 
+class TestCoosortBool:
+
+    @pytest.mark.parametrize('sort_by', ['r', 'c'])
+    @pytest.mark.parametrize('index_dtype', [numpy.int32, numpy.int64])
+    def test_coosort(self, sort_by, index_dtype):
+        row = numpy.array([1, 0, 1, 0], dtype=index_dtype)
+        col = numpy.array([0, 1, 1, 0], dtype=index_dtype)
+        # Stored False entries expose a missing data permutation.
+        data = numpy.array([True, False, True, False])
+        order = numpy.lexsort(
+            (col, row) if sort_by == 'r' else (row, col))
+        x = sparse.coo_matrix._from_parts(
+            cupy.asarray(data), cupy.asarray(row), cupy.asarray(col), (2, 2))
+
+        cusparse.coosort(x, sort_by=sort_by)
+
+        for actual, original in zip(
+                (x.row, x.col, x.data), (row, col, data)):
+            testing.assert_array_equal(actual, original[order])
+
+
 @testing.with_requires('scipy')
 class TestCsrsort:
 

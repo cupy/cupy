@@ -90,5 +90,10 @@ Multi-GPU FFT
 -------------
 :mod:`cupy.fft` can use multiple GPUs. To enable (disable) this feature, set :data:`cupy.fft::config.use_multi_gpus` to ``True`` (``False``). Next, to set the number of GPUs or the participating GPU IDs, use the function :func:`config.set_cufft_gpus`. All of the limitations listed in the `cuFFT documentation`_ apply here. In particular, using more than one GPU does not guarantee better performance.
 
+.. deprecated:: 14.3
+
+    Multi-GPU FFT support is deprecated.
+    Use :class:`nvmath.distributed.fft.FFT` instead.
+
 
 .. _cuFFT documentation: https://docs.nvidia.com/cuda/cufft/index.html

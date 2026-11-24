@@ -13,7 +13,7 @@ export NVCC="ccache nvcc"
 
 export CUPY_ACCELERATORS="cuda_compute,cutensor,cub"
 
-export CUPY_USE_CUDA_PYTHON="1"
+export CUPY_USE_CUDA_PYTHON="0"
 
 export CUPY_CI_PYTEST_EXTRA_OPTS="--junit-xml=/tmp/cupy_junit/junit.xml"
 

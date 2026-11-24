@@ -241,20 +241,23 @@ cusparselt:
 # When adding a new Python version, you may also need to add the version to the
 # list of supported Python versions in the Python libraries.
 python:
+  # Keep at or above the releases whose ssl module blocks the compromised
+  # eMudhra/emSign CAs (https://discuss.python.org/t/109576); the generated
+  # Dockerfiles rely on this instead of bootstrapping a hash-pinned pip.
   "3.11":
-    spec: "3.11.13"
+    spec: "3.11.18"
   "3.12":
-    spec: "3.12.11"
+    spec: "3.12.16"
   "3.13":
-    spec: "3.13.8"
+    spec: "3.13.18"
   "3.14":
-    spec: "3.14.6"
+    spec: "3.14.10"
   "3.14t":
-    spec: "3.14t"
+    spec: "3.14.10t"
   "3.15":
-    spec: "3.15.0"
+    spec: "3.15.2"
   "3.15t":
-    spec: "3.15.0t"
+    spec: "3.15.2t"
   "pre":
     spec: "3.16-dev"  # note that dependency python libraies may not work
 
@@ -419,22 +422,43 @@ cython:
     spec: "==3.2.*,!=3.2.6"
   "pre":
     spec: ">=0a0"  # latest, including pre-releases
-cuda-python:
+# Minor versions only: within a major, cuda-bindings only adds cy* functions,
+# so CuPy keeps working with every patch release of a minor.
+cuda-bindings:
   null:
     spec: null
   "12":
     spec: "==12.*"
+  "13":
+    spec: "==13.*"
+  "12.9":
+    spec: "==12.9.*"
+  "13.0":
+    spec: "==13.0.*"
+  "13.1":
+    spec: "==13.1.*"
   "13.2":
     spec: "==13.2.*"
   "13.3":
     spec: "==13.3.*"
   "13.4":
     spec: "==13.4.*"
-nvmath-python:
+cuda-core:
   null:
     spec: null
   "1":
     spec: "==1.*"
+  # No version: pip picks a cuda-core that accepts the cuda-bindings.
+  "minimal-sysctk12":
+    spec: "[minimal-sysctk12]"
+  "minimal-sysctk13":
+    spec: "[minimal-sysctk13]"
+# Keep the minimum in sync with [tool.cupy.cuda-python] in pyproject.toml.
+nvmath-python:
+  null:
+    spec: null
+  "1.0.0":
+    spec: "==1.0.0"
 cuda-cccl:
   null:
     spec: null
@@ -464,3 +488,4 @@ test:
   "unit-slow":
   "example":
   "benchmark":
+  "array-api":

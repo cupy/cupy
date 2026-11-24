@@ -6,6 +6,7 @@ from libcpp cimport vector
 from cupy_backends.cuda._softlink cimport SoftLink
 
 import threading
+import warnings
 
 import numpy
 
@@ -36,7 +37,7 @@ cdef inline void initialize() except *:
             return
         _L = _initialize_locked()
 
-cdef SoftLink _initialize_locked() except *:
+cdef SoftLink _initialize_locked():
     global _cufftXtSetJITCallback
     cdef SoftLink L = _get_softlink()
 
@@ -338,9 +339,41 @@ cdef _XtFree(intptr_t ptr):
     PyMem_Free(xtArr)
 
 
+cdef _warn_plan_instantiation_deprecated(str name):
+    # nvmath.fft does not support ROCm, so plans are only deprecated on CUDA.
+    if runtime.is_hip:
+        return
+    # Deprecated CuPy 14.3, 2026-10-19
+    warnings.warn(
+        f'Direct instantiation of cupy.cuda.cufft.{name} is deprecated. '
+        'Use nvmath.fft.FFT instead. (deprecated in CuPy 14.3)',
+        DeprecationWarning)
+
+
 cdef class Plan1d:
+    """A one-dimensional cuFFT plan.
+
+    .. deprecated:: 14.3
+        Direct instantiation is deprecated on CUDA.
+        CUDA users should use :class:`nvmath.fft.FFT` instead.
+    """
+
     def __init__(self, int nx, int fft_type, int batch, *,
                  devices=None, out=None, intptr_t prealloc_plan=0):
+        _warn_plan_instantiation_deprecated('Plan1d')
+        self._init(nx, fft_type, batch, devices=devices, out=out,
+                   prealloc_plan=prealloc_plan)
+
+    @staticmethod
+    def _create(int nx, int fft_type, int batch, *,
+                devices=None, out=None, intptr_t prealloc_plan=0):
+        cdef Plan1d plan = Plan1d.__new__(Plan1d)
+        plan._init(nx, fft_type, batch, devices=devices, out=out,
+                   prealloc_plan=prealloc_plan)
+        return plan
+
+    cdef _init(self, int nx, int fft_type, int batch,
+               devices, out, intptr_t prealloc_plan):
         cdef Handle plan
         cdef bint use_multi_gpus = 0 if devices is None else 1
         cdef int result
@@ -852,12 +885,41 @@ def _check_output_array(a, out, int fft_type, last_axis, out_size):
 
 
 cdef class PlanNd:
+    """A multidimensional cuFFT plan.
+
+    .. deprecated:: 14.3
+        Direct instantiation is deprecated on CUDA.
+        CUDA users should use :class:`nvmath.fft.FFT` instead.
+    """
+
     def __init__(self, object shape, object inembed, int istride,
                  int idist, object onembed, int ostride, int odist,
                  int fft_type, int batch,
                  # order, last_axis, and last_size accepted for API stability
                  str order=None, last_axis=None, last_size=None,
                  *, intptr_t prealloc_plan=0):
+        _warn_plan_instantiation_deprecated('PlanNd')
+        self._init(shape, inembed, istride, idist, onembed, ostride, odist,
+                   fft_type, batch, order, last_axis, last_size,
+                   prealloc_plan=prealloc_plan)
+
+    @staticmethod
+    def _create(object shape, object inembed, int istride,
+                int idist, object onembed, int ostride, int odist,
+                int fft_type, int batch,
+                str order=None, last_axis=None, last_size=None,
+                *, intptr_t prealloc_plan=0):
+        cdef PlanNd plan = PlanNd.__new__(PlanNd)
+        plan._init(shape, inembed, istride, idist, onembed, ostride, odist,
+                   fft_type, batch, order, last_axis, last_size,
+                   prealloc_plan=prealloc_plan)
+        return plan
+
+    cdef _init(self, object shape, object inembed, int istride,
+               int idist, object onembed, int ostride, int odist,
+               int fft_type, int batch,
+               str order, last_axis, last_size,
+               intptr_t prealloc_plan):
         cdef Handle plan
         cdef size_t work_size
         cdef int ndim, result
@@ -996,7 +1058,7 @@ cdef class PlanNd:
                 'from the plan; pass `last_axis` and `last_size` to the '
                 'constructor or allocate the output yourself. '
                 'Note that the plan object may be deprecated in the future, '
-                'we suggest using `nvmath.fft` instead.')
+                'we suggest using `nvmath.fft.FFT` instead.')
 
     def get_output_array(self, a, order='C'):
         # For backwards compatibility only.

@@ -286,13 +286,14 @@ def _find_static_library(name: str) -> str:
 def make_extensions(ctx: Context, compiler, use_cython):
     """Produce a list of Extension instances which passed to cythonize()."""
 
-    ctx.calculate_cupy_cache_key()
+    ctx.generate_header_cache()
     CACHE_FILE = f"{ctx.source_root}/.cupy_builder.cache"
     if ctx.dev_configure_cache and os.path.exists(CACHE_FILE):
         with open(CACHE_FILE, "rb") as f:
             (prev_ctx, ret) = pickle.load(f)
         if (ctx.dev_configure_cache_key == prev_ctx.dev_configure_cache_key and
-                ctx.cupy_cache_key == prev_ctx.cupy_cache_key):
+                ctx.header_cache_key == getattr(
+                    prev_ctx, 'header_cache_key', None)):
             print("***************************************************")
             print("*** NOTICE: Reusing build configuration from previous "
                   f"run. Remove the configuration cache ({CACHE_FILE}) "
@@ -347,7 +348,6 @@ def make_extensions(ctx: Context, compiler, use_cython):
         # Fix for ROCm 6.3.0, See https://github.com/ROCm/rocThrust/issues/502
         settings['define_macros'].append(
             ('THRUST_DEVICE_SYSTEM', 'THRUST_DEVICE_SYSTEM_HIP'))
-    settings['define_macros'].append(('CUPY_CACHE_KEY', ctx.cupy_cache_key))
 
     try:
         host_compiler = compiler

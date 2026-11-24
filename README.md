@@ -78,8 +78,13 @@ $ docker run --gpus all -it cupy/cupy
 - [Release Notes](https://github.com/cupy/cupy/releases)
 - [Projects using CuPy](https://github.com/cupy/cupy/wiki/Projects-using-CuPy)
 - [Contribution Guide](https://docs.cupy.dev/en/stable/contribution.html)
+
+## Learning Materials
+
+- [CUDA Python Samples (NVIDIA CUDA Samples)](https://github.com/NVIDIA/cuda-samples#cuda-python-samples)
+- [NVIDIA Accelerated Computing Hub](https://github.com/NVIDIA/accelerated-computing-hub)
 - [GPU Acceleration in Python using CuPy and Numba (GTC November 2021 Technical Session)](https://www.nvidia.com/en-us/on-demand/session/gtcfall21-a31149/)
-- [GPU-Acceleration of Signal Processing Workflows using CuPy and cuSignal[^1] (ICASSP'21 Tutorial)](https://github.com/awthomp/cusignal-icassp-tutorial)
+- [GPU-Acceleration of Signal Processing Workflows using CuPy and cuSignal (ICASSP'21 Tutorial)](https://github.com/awthomp/cusignal-icassp-tutorial)[^1]
 
 [^1]: cuSignal is now part of CuPy starting v13.0.0.
 
@@ -89,7 +94,9 @@ MIT License (see `LICENSE` file).
 
 CuPy is designed based on NumPy's API and SciPy's API (see `docs/source/license.rst` file).
 
-CuPy is being developed and maintained by [Preferred Networks](https://www.preferred.jp/en/) and [community contributors](https://github.com/cupy/cupy/graphs/contributors).
+## Acknowledgement
+
+CuPy is being developed and maintained by [Preferred Networks](https://www.preferred.jp/en/)™ (PFN™), [organizational supporters](https://cupy.dev/#supporters), and [community contributors](https://github.com/cupy/cupy/graphs/contributors).
 
 ## Reference
 

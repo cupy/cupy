@@ -63,7 +63,7 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
         This API is a deviation from SciPy's, is currently experimental, and
         may be changed in the future version.
     """
-    from cupy.cuda import cufft
+    cufft = cupy.cuda.cufft  # lazy import
 
     # check input array
     if a.flags.c_contiguous:
@@ -156,7 +156,8 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
         if cached_plan is not None:
             plan = cached_plan
         elif mgr is None:
-            plan = cufft.Plan1d(out_size, fft_type, batch, devices=devices)
+            plan = cufft.Plan1d._create(
+                out_size, fft_type, batch, devices=devices)
         else:  # has callback
             # TODO(leofang): support multi-GPU callback (devices is ignored)
             if devices:
@@ -197,7 +198,7 @@ def fft(x, n=None, axis=-1, overwrite_x=False, plan=None):
 
     .. seealso:: :func:`scipy.fftpack.fft`
     """
-    from cupy.cuda import cufft
+    cufft = cupy.cuda.cufft  # lazy import
     return _fft(x, (n,), (axis,), None, cufft.CUFFT_FORWARD,
                 overwrite_x=overwrite_x, plan=plan)
 
@@ -231,7 +232,7 @@ def ifft(x, n=None, axis=-1, overwrite_x=False, plan=None):
 
     .. seealso:: :func:`scipy.fftpack.ifft`
     """
-    from cupy.cuda import cufft
+    cufft = cupy.cuda.cufft  # lazy import
     return _fft(x, (n,), (axis,), None, cufft.CUFFT_INVERSE,
                 overwrite_x=overwrite_x, plan=plan)
 
@@ -265,7 +266,7 @@ def fft2(x, shape=None, axes=(-2, -1), overwrite_x=False, plan=None):
        The argument `plan` is currently experimental and the interface may be
        changed in the future version.
     """
-    from cupy.cuda import cufft
+    cufft = cupy.cuda.cufft  # lazy import
 
     func = _default_fft_func(x, shape, axes, plan)
     return func(x, shape, axes, None, cufft.CUFFT_FORWARD,
@@ -301,7 +302,7 @@ def ifft2(x, shape=None, axes=(-2, -1), overwrite_x=False, plan=None):
        The argument `plan` is currently experimental and the interface may be
        changed in the future version.
     """
-    from cupy.cuda import cufft
+    cufft = cupy.cuda.cufft  # lazy import
 
     func = _default_fft_func(x, shape, axes, plan)
     return func(x, shape, axes, None, cufft.CUFFT_INVERSE,
@@ -337,7 +338,7 @@ def fftn(x, shape=None, axes=None, overwrite_x=False, plan=None):
        The argument `plan` is currently experimental and the interface may be
        changed in the future version.
     """
-    from cupy.cuda import cufft
+    cufft = cupy.cuda.cufft  # lazy import
 
     func = _default_fft_func(x, shape, axes, plan)
     return func(x, shape, axes, None, cufft.CUFFT_FORWARD,
@@ -373,7 +374,7 @@ def ifftn(x, shape=None, axes=None, overwrite_x=False, plan=None):
        The argument `plan` is currently experimental and the interface may be
        changed in the future version.
     """
-    from cupy.cuda import cufft
+    cufft = cupy.cuda.cufft  # lazy import
 
     func = _default_fft_func(x, shape, axes, plan)
     return func(x, shape, axes, None, cufft.CUFFT_INVERSE,
@@ -416,7 +417,7 @@ def rfft(x, n=None, axis=-1, overwrite_x=False, plan=None):
        The argument `plan` is currently experimental and the interface may be
        changed in the future version.
     """
-    from cupy.cuda import cufft
+    cufft = cupy.cuda.cufft  # lazy import
 
     if n is None:
         n = x.shape[axis]
@@ -467,7 +468,7 @@ def irfft(x, n=None, axis=-1, overwrite_x=False):
        capability, please consider using :func:`cupy.fft.irfft` or :func:`
        cupyx.scipy.fft.irfft`.
     """
-    from cupy.cuda import cufft
+    cufft = cupy.cuda.cufft  # lazy import
 
     if n is None:
         n = x.shape[axis]

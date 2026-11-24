@@ -721,7 +721,9 @@ class TestRaw:
     @pytest.mark.skipif(
         cupy.cuda.runtime.is_hip,
         reason="ROCm/HIP does not support dynamic parallelism")
-    def test_dynamical_parallelism(self, backend, jitify):
+    @pytest.mark.thread_unsafe(reason='Changes header-cache policy')
+    def test_dynamical_parallelism(
+            self, backend, jitify, allow_full_header_cache):
         self._check_ptx_loadable('nvrtc')
         ker = cupy.RawKernel(_test_source4, 'test_kernel', options=('-dc',),
                              backend=backend, jitify=jitify)
@@ -1604,7 +1606,8 @@ class TestRawJitify:
         # if Jitify could redirect its output, we would be able to check
         # the error log here as well (NVIDIA/jitify#79)
 
-    def test_jitify5(self, configure, jitify):
+    @pytest.mark.thread_unsafe(reason='Changes strict header-cache checking')
+    def test_jitify5(self, configure, jitify, allow_full_header_cache):
         temp_dir = configure
         # If including a header that does not exist, Jitify would attempt to
         # comment it out and proceed. If this header is actually unused, then

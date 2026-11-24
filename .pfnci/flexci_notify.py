@@ -1,18 +1,35 @@
 #!/usr/bin/env python3
 
-# Note: keep this script runnable Python 3.6 until FlexCI Python update
 from __future__ import annotations
 
+import json
 import sys
 import os
+import urllib.error
+import urllib.request
+
+
+# Standard library only: installing packages here would expose the
+# credentials in the environment to whatever pip downloads.
+def send_slack(hook_url, text):
+    try:
+        req = urllib.request.Request(
+            hook_url,
+            data=json.dumps({'text': text}).encode('utf-8'),
+            headers={'Content-Type': 'application/json'},
+        )
+        with urllib.request.urlopen(req, timeout=30):
+            pass
+    except OSError as e:
+        print('Slack notification failed: {}'.format(e), file=sys.stderr)
+    except ValueError:
+        # The message would include the (secret) URL, and logs are public.
+        print('Slack notification failed: invalid hook URL', file=sys.stderr)
 
 
 def main(argv):
     # Slack config: "HOOK_URL1,HOOK_URL2,HOOK_URL3,..."
     slack_config = os.environ.get('CUPY_CI_SLACK_CONFIG', None)
-
-    # Gitter config: "TOKEN:ROOM1,ROOM2,ROOM3,..."
-    gitter_config = os.environ.get('CUPY_CI_GITTER_CONFIG', None)
 
     subdesc = os.environ.get('FLEXCI_SUB_DESCRIPTION', '')
     if subdesc == '':
@@ -27,18 +44,11 @@ def main(argv):
 ```
 '''.format(msg, url, subdesc)
 
-    if slack_config is not None:
-        from slack_sdk.webhook import WebhookClient
+    if slack_config:
         for hook_url in slack_config.split(','):
-            slack = WebhookClient(hook_url)
-            slack.send(text=body)
-
-    if gitter_config is not None:
-        from gitterpy.client import GitterClient
-        token, rooms = gitter_config.split(':')
-        gitter = GitterClient(token)
-        for room in rooms.split(','):
-            gitter.messages.send(room, body)
+            hook_url = hook_url.strip()
+            if hook_url:
+                send_slack(hook_url, body)
 
 
 if __name__ == '__main__':

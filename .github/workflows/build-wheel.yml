@@ -42,6 +42,11 @@ jobs:
                  (inputs.host-platform == 'linux-aarch64' && 'ubuntu-22.04-arm') ||
                  (inputs.host-platform == 'win-64'        && 'windows-2022')     ||
                  (inputs.host-platform == 'win-arm64'     && 'windows-11-arm') }}
+    env:
+      # nvmath-python can't be installed on these targets yet (#10473): no
+      # wheels for 3.15 or win-arm64, and on Windows it requires pywin32,
+      # which has no free-threaded wheels.
+      CUPY_USE_CUDA_PYTHON: ${{ (startsWith(matrix.python-version, '3.15') || inputs.host-platform == 'win-arm64' || (startsWith(inputs.host-platform, 'win') && endsWith(matrix.python-version, 't'))) && '0' || '1' }}
     steps:
       - name: Verify LongPathsEnabled on Windows
         if: ${{ startsWith(inputs.host-platform, 'win') }}
@@ -71,7 +76,7 @@ jobs:
             ci
 
       - name: Download sdist artifact
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
         with:
           name: cupy-sdist-${{ inputs.artifact-suffix }}
           path: ${{ runner.temp }}/sdist
@@ -142,11 +147,17 @@ jobs:
 
       - name: Set up Python
         id: setup-python1
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
         with:
-          # WAR: setup-python is not relocatable, and cibuildwheel hard-wires to 3.12...
-          # see https://github.com/actions/setup-python/issues/871
-          python-version: "3.12"
+          # WAR: setup-python interpreters are not relocatable, see
+          # https://github.com/actions/setup-python/issues/871
+          # 3.14.10 is the lowest patch whose ssl module blocks the compromised
+          # eMudhra/emSign CAs that setup-python also publishes for Windows
+          # (3.11.18/3.12.16/3.13.18 are Linux-only in actions/python-versions),
+          # so the Windows wheel-build host gets a CA-clean interpreter and
+          # update-pip below runs safely. The tilde range keeps picking up newer
+          # 3.14.x security patches.
+          python-version: "~3.14.10"
           architecture: ${{ ((inputs.host-platform == 'linux-aarch64' || inputs.host-platform == 'win-arm64') && 'arm64') || 'x64' }}
 
       - name: Set up MSVC
@@ -190,10 +201,11 @@ jobs:
       - name: Dump environment
         run: env
 
+      - name: Harden pip
+        uses: ./.github/actions/update-pip
+
       - name: Install Python build deps
-        run: |
-          python -m pip install --upgrade pip
-          pip install tomli_w pyyaml twine
+        run: pip install tomli_w pyyaml twine
 
       # Install under RUNNER_TEMP so cibuildwheel doesn't copy the mini-CTK
       # (~1-2 GB) into /project on Linux; the container reaches it through the
@@ -206,6 +218,10 @@ jobs:
         with:
           host-platform: ${{ inputs.host-platform }}
           cuda-version: ${{ inputs.cuda-version }}
+          # TODO: once every target builds with CUDA Python (#10473), drop
+          # cuBLAS, cuSPARSE and cuSOLVER, which nvmath-python loads at run
+          # time. They stay until then so all jobs share one cached mini CTK:
+          # cuda-components: "cuda_nvcc,cuda_cudart,cuda_crt,cuda_cuxxfilt,libnvvm,cuda_nvrtc,cuda_nvtx,cuda_profiler_api,cuda_cccl,libnvjitlink,libcufft,libcurand"
           cuda-components: "cuda_nvcc,cuda_cudart,cuda_crt,cuda_cuxxfilt,libnvvm,cuda_nvrtc,cuda_nvtx,cuda_profiler_api,cuda_cccl,libnvjitlink,libcublas,libcufft,libcurand,libcusparse,libcusolver"
           cuda-path: ${{ runner.temp }}/cuda_toolkit
 
@@ -251,7 +267,7 @@ jobs:
             ${{ startsWith(inputs.host-platform, 'linux-') && '--root-prefix /project/srcpkg' || '' }} >> "$GITHUB_ENV"
 
       - name: Build cupy-cuda${{ env.BUILD_CUDA_MAJOR }}x wheel
-        uses: pypa/cibuildwheel@adba99c781d3746d38b3a09b1cf797965bcb7fe6  # v4.3.0
+        uses: pypa/cibuildwheel@f9b966cfadf4109556cadc5bb39ddb72d0ce664e  # v4.3.5
         with:
           package-dir: ./srcpkg
           output-dir: wheelhouse
@@ -267,6 +283,7 @@ jobs:
             CUPY_LIBRARY_PATH
             CUPY_PACKAGE_NAME
             CUPY_NUM_BUILD_JOBS
+            CUPY_USE_CUDA_PYTHON
           # NOTE: cibuildwheel resolves CIBW_ENVIRONMENT_<PLATFORM> *in place
           # of* CIBW_ENVIRONMENT (last-match-wins, no merging -- see
           # OptionsReader.get() in cibuildwheel/options.py). A generic
@@ -274,11 +291,10 @@ jobs:
           # define a platform block, so keep shared variables duplicated in
           # BOTH platform blocks below.
           # LDFLAGS=-Wl,--as-needed mirrors cupy-release-tools' build-wrapper;
-          # cupy_builder links every _cuda_files module against
-          # -lcublas -lcufft -lcurand -lcusparse. Without --as-needed, ld
-          # marks DT_NEEDED for all four on every .so even when unreferenced,
-          # so `import cupy._core.<mod>` dlopen-fails in a bare env before
-          # cuda-pathfinder can preload the libs.
+          # cupy_builder links every _cuda_files module against -lcufft.
+          # Without --as-needed, ld marks DT_NEEDED for it on every .so even
+          # when unreferenced, so `import cupy._core.<mod>` dlopen-fails in a
+          # bare env before cuda-pathfinder can preload the libs.
           CIBW_ENVIRONMENT_LINUX: >
             CUDA_PATH=/host/${{ env.CUDA_PATH }}
             LDFLAGS="-Wl,--as-needed ${LDFLAGS}"
@@ -371,9 +387,30 @@ jobs:
       - name: Check wheel
         run: |
           twine check --strict wheelhouse/*.whl
+          # setup.py only adds nvmath-python and cuda-bindings to the wheel's
+          # requirements when building with CUDA Python.
+          python - <<'EOF'
+          import glob, os, zipfile
+          from packaging.requirements import Requirement
+          use_cuda_python = os.environ['CUPY_USE_CUDA_PYTHON'] != '0'
+          for whl in glob.glob('wheelhouse/*.whl'):
+              with zipfile.ZipFile(whl) as z:
+                  name = next(n for n in z.namelist()
+                              if n.endswith('.dist-info/METADATA'))
+                  requires = [Requirement(line.removeprefix('Requires-Dist: '))
+                              for line in z.read(name).decode().splitlines()
+                              if line.startswith('Requires-Dist: ')]
+              print(whl, *requires, sep='\n  ')
+              # Requirements under an extra (e.g., `; extra == "test"`) do not count.
+              names = {r.name for r in requires if r.marker is None}
+              for package in ('nvmath-python', 'cuda-bindings'):
+                  assert (package in names) == use_cuda_python, (
+                      f'{whl} should {"" if use_cuda_python else "not "}'
+                      f'require {package}')
+          EOF
 
       - name: Upload wheel artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: cupy-cuda${{ env.BUILD_CUDA_MAJOR }}x-py${{ matrix.python-version }}-${{ inputs.host-platform }}-${{ inputs.artifact-suffix }}
           path: wheelhouse/*.whl
