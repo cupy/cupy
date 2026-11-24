@@ -86,8 +86,12 @@ def multi_gpu_config(gpu_configs=None):
                     try:
                         nGPUs = len(gpus)
                         assert nGPUs >= 2, 'Must use at least two gpus'
-                        config.use_multi_gpus = True
-                        config.set_cufft_gpus(gpus)
+                        with warnings.catch_warnings():
+                            warnings.filterwarnings(
+                                'ignore', 'Multi-GPU FFT is deprecated',
+                                DeprecationWarning)
+                            config.use_multi_gpus = True
+                            config.set_cufft_gpus(gpus)
 
                         impl(self, *args, **kw)
                     except Exception:
@@ -99,6 +103,23 @@ def multi_gpu_config(gpu_configs=None):
 
         return test_func
     return decorator
+
+
+@pytest.mark.filterwarnings('ignore:.* is experimental:FutureWarning')
+def test_multi_gpu_config_deprecated():
+    use_multi_gpus = config._use_multi_gpus.get()
+    _devices = config._devices.get()
+    try:
+        with pytest.warns(DeprecationWarning, match='Multi-GPU FFT'):
+            config.use_multi_gpus = True
+        with pytest.warns(DeprecationWarning, match='Multi-GPU FFT'):
+            config.set_cufft_gpus([0, 1])
+        with warnings.catch_warnings():
+            warnings.simplefilter('error', DeprecationWarning)
+            config.use_multi_gpus = False
+    finally:
+        config._use_multi_gpus.set(use_multi_gpus)
+        config._devices.set(_devices)
 
 
 @testing.with_requires('numpy>=2.0')
@@ -670,10 +691,13 @@ def test_plan_nd_init_api(api):
     relevant_args = _get_cufft_plan_nd_args(
         a.shape, CUFFT_R2C, axes=axes, order='C', out_size=5)
     # But additionally pass order, last_axis, and last_size to test old API.
-    if api == 'old':
-        plan = PlanNd(*relevant_args, 'C', 2, 5)
-    else:
-        plan = PlanNd(*relevant_args)
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            'ignore', 'Direct instantiation', DeprecationWarning)
+        if api == 'old':
+            plan = PlanNd(*relevant_args, 'C', 2, 5)
+        else:
+            plan = PlanNd(*relevant_args)
 
     # These are not relevant and could probably be removed:
     assert plan.order == ('C' if api == 'old' else None)
