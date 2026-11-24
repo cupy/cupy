@@ -86,8 +86,12 @@ def multi_gpu_config(gpu_configs=None):
                     try:
                         nGPUs = len(gpus)
                         assert nGPUs >= 2, 'Must use at least two gpus'
-                        config.use_multi_gpus = True
-                        config.set_cufft_gpus(gpus)
+                        with warnings.catch_warnings():
+                            warnings.filterwarnings(
+                                'ignore', 'Multi-GPU FFT is deprecated',
+                                DeprecationWarning)
+                            config.use_multi_gpus = True
+                            config.set_cufft_gpus(gpus)
 
                         impl(self, *args, **kw)
                     except Exception:
@@ -99,6 +103,23 @@ def multi_gpu_config(gpu_configs=None):
 
         return test_func
     return decorator
+
+
+@pytest.mark.filterwarnings('ignore:.* is experimental:FutureWarning')
+def test_multi_gpu_config_deprecated():
+    use_multi_gpus = config._use_multi_gpus.get()
+    _devices = config._devices.get()
+    try:
+        with pytest.warns(DeprecationWarning, match='Multi-GPU FFT'):
+            config.use_multi_gpus = True
+        with pytest.warns(DeprecationWarning, match='Multi-GPU FFT'):
+            config.set_cufft_gpus([0, 1])
+        with warnings.catch_warnings():
+            warnings.simplefilter('error', DeprecationWarning)
+            config.use_multi_gpus = False
+    finally:
+        config._use_multi_gpus.set(use_multi_gpus)
+        config._devices.set(_devices)
 
 
 @testing.with_requires('numpy>=2.0')
