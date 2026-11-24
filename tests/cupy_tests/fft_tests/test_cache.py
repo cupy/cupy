@@ -6,6 +6,7 @@ import queue
 import threading
 import unittest
 
+import numpy
 import pytest
 
 import cupy
@@ -14,6 +15,7 @@ from cupy.cuda import cufft
 from cupy.cuda import device
 from cupy.cuda import runtime
 from cupy.fft import config
+from cupyx.scipy import fftpack
 
 from .test_fft import multi_gpu_config
 
@@ -26,6 +28,91 @@ def intercept_stdout(func):
 
 
 n_devices = runtime.getDeviceCount()
+
+
+@testing.parameterize(*[
+    {'name': name, 'shape': shape, 'value_type': value_type}
+    for shape, names in (
+        ((16, 127), ('fft', 'ifft', 'rfft', 'irfft')),
+        ((17, 31), ('fftn', 'ifftn', 'rfftn', 'irfftn')),
+    )
+    for name, value_type in zip(names, ('C2C', 'C2C', 'R2C', 'C2R'))
+])
+class TestPlanCacheStreams(unittest.TestCase):
+
+    def setUp(self):
+        self.cache = config.get_plan_cache()
+        self.old_size = self.cache.get_size()
+        self.old_memsize = self.cache.get_memsize()
+        self.cache.clear()
+        self.cache.set_memsize(-1)
+        self.cache.set_size(2)
+
+    def tearDown(self):
+        self.cache.clear()
+        self.cache.set_size(self.old_size)
+        self.cache.set_memsize(self.old_memsize)
+
+    def test_stream_plan_reuse(self):
+        dtype = cupy.float32 if self.value_type == 'R2C' else cupy.complex64
+        a = testing.shaped_random(self.shape, cupy, dtype)
+        cupy.cuda.get_current_stream().synchronize()
+        axes = None if self.name.endswith('n') else -1
+        fft = getattr(cupy.fft, self.name)
+        streams = [cupy.cuda.Stream(non_blocking=True) for _ in range(2)]
+        plans = []
+        for stream in streams:
+            with stream:
+                fft(a)
+                plan = next(iter(self.cache))[1].plan
+                plans.append(plan)
+                # Explicit plan lookup must use the same stream-specific key.
+                assert fftpack.get_fft_plan(
+                    a, axes=axes, value_type=self.value_type) is plan
+            stream.synchronize()
+
+        assert plans[0] is not plans[1]
+        assert self.cache.get_curr_size() == 2
+        with streams[0]:
+            fft(a)
+            reused = next(iter(self.cache))[1].plan
+        streams[0].synchronize()
+        assert reused is plans[0]
+        assert self.cache.get_curr_size() == 2
+
+        # A third stream still obeys the shared cache's LRU capacity.
+        with cupy.cuda.Stream(non_blocking=True) as stream:
+            fft(a)
+            plan = next(iter(self.cache))[1].plan
+            stream.synchronize()
+        assert plan is not plans[0] and plan is not plans[1]
+        assert self.cache.get_curr_size() == 2
+        assert all(node.plan is not plans[1] for _, node in self.cache)
+
+    def test_concurrent_transforms(self):
+        dtype = numpy.float32 if self.value_type == 'R2C' else numpy.complex64
+        arrays = [testing.shaped_random(
+            self.shape, numpy, dtype, scale=1, seed=i)
+            for i in range(2)]
+        references = [getattr(numpy.fft, self.name)(a) for a in arrays]
+        inputs = [cupy.asarray(a) for a in arrays]
+        cupy.cuda.get_current_stream().synchronize()
+        streams = [cupy.cuda.Stream(non_blocking=True) for _ in range(2)]
+        fft = getattr(cupy.fft, self.name)
+        # Warm up both plans before issuing concurrent transforms.
+        for stream, a in zip(streams, inputs):
+            with stream:
+                fft(a)
+            stream.synchronize()
+        outputs = []
+        for _ in range(5):
+            for stream, a, ref in zip(streams, inputs, references):
+                with stream:
+                    outputs.append((fft(a), ref))
+        for stream in streams:
+            stream.synchronize()
+        for output, ref in outputs:
+            testing.assert_allclose(output, ref, rtol=1e-5, atol=1e-5)
 
 
 class TestPlanCache(unittest.TestCase):
