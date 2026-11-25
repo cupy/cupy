@@ -160,6 +160,7 @@ def generate():
             'add_newdoc_ufunc',
             '_add_newdoc_ufunc',
             'fastCopyAndTranspose',
+            'isfortran',
             'kernel_version',
             'ScalarType',
             'sctypeDict',
