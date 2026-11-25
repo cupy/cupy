@@ -52,6 +52,10 @@ class _FFTConfig:
                 to be used. For the former case, the first ``gpus`` GPUs
                 will be used.
 
+        .. deprecated:: 14.3
+            Multi-GPU FFT is deprecated. Use
+            :class:`nvmath.distributed.fft.FFT` instead.
+
         .. warning::
             This API is currently experimental and may be changed in the future
             version.
@@ -61,6 +65,11 @@ class _FFTConfig:
         .. _Multiple GPU cuFFT Transforms:
             https://docs.nvidia.com/cuda/cufft/index.html#multiple-GPU-cufft-transforms
         '''
+        # Deprecated CuPy 14.3, 2026-11-23
+        warnings.warn(
+            'Multi-GPU FFT is deprecated as of CuPy 14.3. '
+            'Use nvmath.distributed.fft.FFT instead.',
+            DeprecationWarning, stacklevel=2)
         _util.experimental('cupy.fft.config.set_cufft_gpus')
 
         if isinstance(gpus, int):
@@ -95,6 +104,12 @@ class _FFTConfig:
 
     @use_multi_gpus.setter
     def use_multi_gpus(self, value):
+        if value:
+            # Deprecated CuPy 14.3, 2026-11-23
+            warnings.warn(
+                'Multi-GPU FFT is deprecated as of CuPy 14.3. '
+                'Use nvmath.distributed.fft.FFT instead.',
+                DeprecationWarning, stacklevel=2)
         self._use_multi_gpus.set(bool(value))
 
     @property
