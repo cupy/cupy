@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import itertools
 import json
+import multiprocessing
 import os
 import os.path
 import shutil
@@ -171,11 +172,20 @@ class custom_build_ext(setuptools.command.build_ext.build_ext):
         if ctx.werror:
             import Cython.Compiler.Options
             Cython.Compiler.Options.warning_errors = True
-
-        Cython.Build.cythonize(
-            self.extensions, verbose=True, nthreads=nthreads, language_level=3,
-            compiler_directives=compiler_directives, annotate=ctx.annotate,
-            compile_time_env=compile_time_env)
+        # cythonize's workers only inherit Options when forked; the Linux
+        # default is forkserver since Python 3.14.
+        force_fork = bool(ctx.werror and nthreads)
+        if force_fork:
+            start_method = multiprocessing.get_start_method(allow_none=True)
+            multiprocessing.set_start_method('fork', force=True)
+        try:
+            Cython.Build.cythonize(
+                self.extensions, verbose=True, nthreads=nthreads,
+                language_level=3, compiler_directives=compiler_directives,
+                annotate=ctx.annotate, compile_time_env=compile_time_env)
+        finally:
+            if force_fork:
+                multiprocessing.set_start_method(start_method, force=True)
 
         if os.environ.get('CUPY_TEST_CYTHON_NOEXCEPT'):
             self._check_noexcept()

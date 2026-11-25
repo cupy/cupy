@@ -4,7 +4,6 @@ from libc.string cimport memset as c_memset
 from libcpp cimport vector
 
 from cupy_backends.cuda._softlink cimport SoftLink
-from cupy._core.internal cimport safe_int_len
 
 import threading
 
@@ -256,7 +255,7 @@ cdef _reorder_buffers(Handle plan, intptr_t xtArr, list xtArr_buffer):
     cdef list temp_xtArr_buffer
 
     arr = <XtArray*>xtArr
-    nGPUs = safe_int_len(xtArr_buffer)
+    nGPUs = <int>(len(xtArr_buffer))
     assert nGPUs == arr.descriptor.nGPUs
 
     # allocate another buffer to prepare for order conversion
@@ -302,7 +301,7 @@ cdef _XtMalloc(list gpus, list sizes, XtSubFormat fmt):
     cdef int i, nGPUs
     cdef size_t size
 
-    nGPUs = safe_int_len(gpus)
+    nGPUs = <int>(len(gpus))
     assert nGPUs == len(sizes)
     xtArr_desc = <XtArrayDesc*>PyMem_Malloc(sizeof(XtArrayDesc))
     xtArr = <XtArray*>PyMem_Malloc(sizeof(XtArray))
@@ -436,7 +435,7 @@ cdef class Plan1d:
             raise ValueError('Currently for multiple GPUs only C2C and Z2Z are'
                              ' supported.')
         if isinstance(devices, (tuple, list)):
-            nGPUs = safe_int_len(devices)
+            nGPUs = <int>(len(devices))
             for i in range(nGPUs):
                 gpus.push_back(devices[i])
         elif isinstance(devices, int):
@@ -608,7 +607,7 @@ cdef class Plan1d:
 
         if isinstance(a, cupy.ndarray) or isinstance(a, numpy.ndarray):
             if self.xtArr == 0 and self.xtArr_buffer is None:
-                nGPUs = safe_int_len(self.gpus)
+                nGPUs = <int>(len(self.gpus))
 
                 # this is the rule for distributing the workload
                 if self.batch > 1:
@@ -675,7 +674,7 @@ cdef class Plan1d:
         ptr = self.xtArr
         arr = <XtArray*>ptr
         xtArr_buffer = self.xtArr_buffer
-        nGPUs = safe_int_len(self.gpus)
+        nGPUs = <int>(len(self.gpus))
         share = self.batch_share
 
         if action == 'scatter':
@@ -871,7 +870,7 @@ cdef class PlanNd:
         cdef intptr_t ptr
 
         self.handle = <intptr_t>0
-        ndim = safe_int_len(shape)
+        ndim = <int>(len(shape))
 
         if inembed is None:
             inembed_ptr = NULL  # ignore istride and use default strides
@@ -1036,7 +1035,7 @@ cdef class XtPlanNd:
         cdef long long int* onembed_ptr
 
         self.handle = <intptr_t>0
-        ndim = safe_int_len(shape)
+        ndim = <int>(len(shape))
 
         if inembed is None:
             inembed_ptr = NULL  # ignore istride and use default strides
