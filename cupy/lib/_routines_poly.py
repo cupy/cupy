@@ -55,6 +55,8 @@ def poly(seq_of_zeros):
 
     """
     x = seq_of_zeros
+    if x.ndim == 0:
+        x = x.ravel()
     if x.ndim == 2 and x.shape[0] == x.shape[1] and x.shape[0] != 0:
         if cupy.array_equal(x, x.conj().T):
             x = cupy.linalg.eigvalsh(x)
@@ -378,8 +380,6 @@ def roots(p):
         p = p.coeffs
     if p.dtype.kind == 'b':
         raise NotImplementedError('boolean inputs are not supported')
-    if p.ndim == 0:
-        raise TypeError('0-dimensional input is not allowed')
     if p.size < 2:
         return cupy.array([])
     [p] = cupy.polynomial.polyutils.as_series([p[::-1]])

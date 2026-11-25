@@ -289,11 +289,14 @@ class TestPoly:
                 xp.poly(a)
 
     @testing.for_all_dtypes(no_bool=True)
-    def test_poly_zero_dim(self, dtype):
-        for xp in (numpy, cupy):
-            a = testing.shaped_arange((), xp, dtype)
-            with pytest.raises(TypeError):
-                numpy.poly(a)
+    @testing.numpy_cupy_array_equal()
+    def test_poly_zero_dim(self, xp, dtype):
+        # NumPy currently accepts 0-D inputs, although that is debatable.
+        a = testing.shaped_arange((), xp, dtype)
+        if xp is numpy and testing.installed('numpy<2.6.0.dev0'):
+            # NumPy < 2.6 rejects 0-D inputs in the dispatcher.
+            a = a.ravel()
+        return xp.poly(a)
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_equal()
@@ -869,13 +872,15 @@ class TestRoots:
         a = xp.zeros((0,), dtype)
         return xp.roots(a)
 
-    @testing.with_requires('numpy>1.17')
     @testing.for_all_dtypes(no_bool=True)
-    def test_roots_zero_dim(self, dtype):
-        for xp in (numpy, cupy):
-            a = testing.shaped_random((), xp, dtype)
-            with pytest.raises(TypeError):
-                xp.roots(a)
+    @testing.numpy_cupy_array_equal()
+    def test_roots_zero_dim(self, xp, dtype):
+        # NumPy currently accepts 0-D inputs, although that is debatable.
+        a = testing.shaped_random((), xp, dtype)
+        if xp is numpy and testing.installed('numpy<2.6.0.dev0'):
+            # NumPy < 2.6 rejects 0-D inputs in the dispatcher.
+            a = a.ravel()
+        return xp.roots(a)
 
     @testing.for_all_dtypes(no_bool=True)
     def test_roots_ndim(self, dtype):
