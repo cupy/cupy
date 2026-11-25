@@ -55,6 +55,11 @@ typedef struct {} hiprandStatePhilox4_32_10_t;
 #endif
 
 #ifndef CUPY_USE_HIP
+// CUDA 13 deprecates double4; curand_poisson.h still accesses its members,
+// which MSVC reports as C4996. This only drops the deprecation attribute.
+#ifndef __NV_NO_VECTOR_DEPRECATION_DIAG
+#define __NV_NO_VECTOR_DEPRECATION_DIAG
+#endif
 #include <curand_kernel.h>
 #endif
 
