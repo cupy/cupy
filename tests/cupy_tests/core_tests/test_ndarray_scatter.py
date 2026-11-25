@@ -12,35 +12,16 @@ from cupy import testing
     'update', 'add', 'subtract', 'maximum', 'minimum',
     'bitwise_and', 'bitwise_or', 'bitwise_xor',
 ])
-@pytest.mark.parametrize('shape,slices', [
+@pytest.mark.parametrize('shape,index', [
+    # A non-empty index into an axis with no valid position must raise,
+    # even when another, unrelated axis is also empty (gh-10245).
     ((0,), ([0],)),
     ((0, 3), ([0], slice(None))),
     ((3, 0), (slice(None), [0])),
     ((0, 0), ([0], [0])),
-])
-def test_scatter_empty_target(
-        op: str, shape: tuple[int, ...],
-        slices: tuple[list[int] | slice, ...]) -> None:
-    for xp in (numpy, cupy):
-        a = xp.zeros(shape, dtype=numpy.int32)
-        indices = tuple(
-            xp.asarray(s, dtype=numpy.int32) if isinstance(s, list) else s
-            for s in slices)
-        with pytest.raises(IndexError):
-            if op == 'update':
-                a[indices] = 1
-            else:
-                getattr(xp, op).at(a, indices, 1)
-            if xp is cupy:
-                cupy.cuda.runtime.deviceSynchronize()
-    assert cupy.arange(4).sum().item() == 6
-
-
-@pytest.mark.parametrize('op', [
-    'update', 'add', 'subtract', 'maximum', 'minimum',
-    'bitwise_and', 'bitwise_or', 'bitwise_xor',
-])
-@pytest.mark.parametrize('shape,slices', [
+    ((0, 0), ([0], slice(None))),
+    ((0, 3, 0), ([0], slice(None), slice(None))),
+    # An empty index is always a valid no-op, even into a non-empty axis.
     ((0,), ([],)),
     ((0, 3), ([], slice(None))),
     ((3, 0), (slice(None), [])),
@@ -48,17 +29,14 @@ def test_scatter_empty_target(
     ((0, 3), (slice(None), [1])),
     ((3, 0), ([1], slice(None))),
 ])
-def test_scatter_empty_selection(
-        op: str, shape: tuple[int, ...],
-        slices: tuple[list[int] | slice, ...]) -> None:
-    for xp in (numpy, cupy):
-        a = xp.zeros(shape, dtype=numpy.int32)
-        if op == 'update':
-            a[slices] = 1
-        else:
-            getattr(xp, op).at(a, slices, 1)
-        assert a.shape == shape
-    cupy.cuda.runtime.deviceSynchronize()
+@testing.numpy_cupy_allclose(accept_error=IndexError)
+def test_scatter_empty(xp, op, shape, index):
+    a = xp.zeros(shape, dtype=numpy.int32)
+    if op == 'update':
+        a[index] = 1
+    else:
+        getattr(xp, op).at(a, index, 1)
+    return a
 
 
 @testing.parameterize(
