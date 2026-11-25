@@ -128,6 +128,72 @@ def amax(a, axis=None, out=None, keepdims=False):
     return a.max(axis=axis, out=out, keepdims=keepdims)
 
 
+# The reduction starts from a default-constructed (empty) value, which the
+# join skips. `v != v` is true only for NaN and also compiles for integers.
+_minmax_kernel = _core.ReductionKernel(
+    'T x', 'T lo, T hi',
+    'minmax_st<T>(x)', 'minmax_join<T>(a, b)', 'lo = a.lo, hi = a.hi',
+    None, 'cupy_minmax', reduce_type='minmax_st<T>', preamble='''
+template <typename T> struct minmax_st {
+    T lo, hi;
+    bool empty;
+    __device__ minmax_st() : empty(true) {}
+    __device__ minmax_st(T v) : lo(v), hi(v), empty(false) {}
+};
+template <typename T> __device__ minmax_st<T> minmax_join(
+        const minmax_st<T>& a, const minmax_st<T>& b) {
+    if (a.empty) return b;
+    if (b.empty) return a;
+    minmax_st<T> r(a.lo);
+    r.lo = a.lo != a.lo ? a.lo : b.lo != b.lo ? b.lo : min(a.lo, b.lo);
+    r.hi = a.hi != a.hi ? a.hi : b.hi != b.hi ? b.hi : max(a.hi, b.hi);
+    return r;
+}
+''')
+
+
+def minmax(a, axis=None, out=None, keepdims=False):
+    """Returns the minimum and maximum of an array or along an axis.
+
+    .. note::
+
+       When at least one element is NaN, the corresponding min and max values
+       will be NaN.
+
+    Args:
+        a (cupy.ndarray): Array to take the minimum and maximum.
+        axis (int or tuple of ints): Along which axis to take the minimum and
+            maximum. The flattened array is used by default.
+        out (tuple of cupy.ndarray): A tuple ``(min, max)`` of output arrays.
+        keepdims (bool): If ``True``, the axis is remained as an axis of
+            size one.
+
+    Returns:
+        tuple of cupy.ndarray: ``(min, max)`` of ``a``, along the axis if
+        specified.
+
+    .. seealso:: :func:`numpy.minmax`
+
+    """
+    if out is not None and not (type(out) is tuple and len(out) == 2):
+        raise TypeError('out must be a tuple of two arrays')
+    # For a full reduction, amin + amax is faster when they can use CUB.
+    # The other cases are rare, so they take the same two-pass path.
+    if axis is None or out is not None or a.dtype.kind in 'bc':
+        out_min, out_max = (None, None) if out is None else out
+        return (amin(a, axis=axis, out=out_min, keepdims=keepdims),
+                amax(a, axis=axis, out=out_max, keepdims=keepdims))
+    axes = internal._normalize_axis_indices(axis, a.ndim)
+    shape = tuple(s for i, s in enumerate(a.shape) if i not in axes)
+    lo = cupy.empty(shape, a.dtype)
+    hi = cupy.empty(shape, a.dtype)
+    _minmax_kernel(a, lo, hi, axis=axes)
+    if keepdims:
+        lo = cupy.expand_dims(lo, axes)
+        hi = cupy.expand_dims(hi, axes)
+    return lo, hi
+
+
 def nanmin(a, axis=None, out=None, keepdims=False):
     """Returns the minimum of an array along an axis ignoring NaN.
 

@@ -170,6 +170,7 @@ Extrema finding
    min
    amin
    fmin
+   minmax
    nanmin
    
 
