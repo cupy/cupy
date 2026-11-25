@@ -6,6 +6,7 @@ from libcpp cimport vector
 from cupy_backends.cuda._softlink cimport SoftLink
 
 import threading
+import warnings
 
 import numpy
 
@@ -255,7 +256,7 @@ cdef _reorder_buffers(Handle plan, intptr_t xtArr, list xtArr_buffer):
     cdef list temp_xtArr_buffer
 
     arr = <XtArray*>xtArr
-    nGPUs = len(xtArr_buffer)
+    nGPUs = <int>(len(xtArr_buffer))
     assert nGPUs == arr.descriptor.nGPUs
 
     # allocate another buffer to prepare for order conversion
@@ -301,7 +302,7 @@ cdef _XtMalloc(list gpus, list sizes, XtSubFormat fmt):
     cdef int i, nGPUs
     cdef size_t size
 
-    nGPUs = len(gpus)
+    nGPUs = <int>(len(gpus))
     assert nGPUs == len(sizes)
     xtArr_desc = <XtArrayDesc*>PyMem_Malloc(sizeof(XtArrayDesc))
     xtArr = <XtArray*>PyMem_Malloc(sizeof(XtArray))
@@ -338,9 +339,41 @@ cdef _XtFree(intptr_t ptr):
     PyMem_Free(xtArr)
 
 
+cdef _warn_plan_instantiation_deprecated(str name):
+    # nvmath.fft does not support ROCm, so plans are only deprecated on CUDA.
+    if runtime.is_hip:
+        return
+    # Deprecated CuPy 14.3, 2026-10-19
+    warnings.warn(
+        f'Direct instantiation of cupy.cuda.cufft.{name} is deprecated. '
+        'Use nvmath.fft.FFT instead. (deprecated in CuPy 14.3)',
+        DeprecationWarning)
+
+
 cdef class Plan1d:
+    """A one-dimensional cuFFT plan.
+
+    .. deprecated:: 14.3
+        Direct instantiation is deprecated on CUDA.
+        CUDA users should use :class:`nvmath.fft.FFT` instead.
+    """
+
     def __init__(self, int nx, int fft_type, int batch, *,
                  devices=None, out=None, intptr_t prealloc_plan=0):
+        _warn_plan_instantiation_deprecated('Plan1d')
+        self._init(nx, fft_type, batch, devices=devices, out=out,
+                   prealloc_plan=prealloc_plan)
+
+    @staticmethod
+    def _create(int nx, int fft_type, int batch, *,
+                devices=None, out=None, intptr_t prealloc_plan=0):
+        cdef Plan1d plan = Plan1d.__new__(Plan1d)
+        plan._init(nx, fft_type, batch, devices=devices, out=out,
+                   prealloc_plan=prealloc_plan)
+        return plan
+
+    cdef _init(self, int nx, int fft_type, int batch,
+               devices, out, intptr_t prealloc_plan):
         cdef Handle plan
         cdef bint use_multi_gpus = 0 if devices is None else 1
         cdef int result
@@ -435,7 +468,7 @@ cdef class Plan1d:
             raise ValueError('Currently for multiple GPUs only C2C and Z2Z are'
                              ' supported.')
         if isinstance(devices, (tuple, list)):
-            nGPUs = len(devices)
+            nGPUs = <int>(len(devices))
             for i in range(nGPUs):
                 gpus.push_back(devices[i])
         elif isinstance(devices, int):
@@ -607,7 +640,7 @@ cdef class Plan1d:
 
         if isinstance(a, cupy.ndarray) or isinstance(a, numpy.ndarray):
             if self.xtArr == 0 and self.xtArr_buffer is None:
-                nGPUs = len(self.gpus)
+                nGPUs = <int>(len(self.gpus))
 
                 # this is the rule for distributing the workload
                 if self.batch > 1:
@@ -674,7 +707,7 @@ cdef class Plan1d:
         ptr = self.xtArr
         arr = <XtArray*>ptr
         xtArr_buffer = self.xtArr_buffer
-        nGPUs = len(self.gpus)
+        nGPUs = <int>(len(self.gpus))
         share = self.batch_share
 
         if action == 'scatter':
@@ -852,12 +885,41 @@ def _check_output_array(a, out, int fft_type, last_axis, out_size):
 
 
 cdef class PlanNd:
+    """A multidimensional cuFFT plan.
+
+    .. deprecated:: 14.3
+        Direct instantiation is deprecated on CUDA.
+        CUDA users should use :class:`nvmath.fft.FFT` instead.
+    """
+
     def __init__(self, object shape, object inembed, int istride,
                  int idist, object onembed, int ostride, int odist,
                  int fft_type, int batch,
                  # order, last_axis, and last_size accepted for API stability
                  str order=None, last_axis=None, last_size=None,
                  *, intptr_t prealloc_plan=0):
+        _warn_plan_instantiation_deprecated('PlanNd')
+        self._init(shape, inembed, istride, idist, onembed, ostride, odist,
+                   fft_type, batch, order, last_axis, last_size,
+                   prealloc_plan=prealloc_plan)
+
+    @staticmethod
+    def _create(object shape, object inembed, int istride,
+                int idist, object onembed, int ostride, int odist,
+                int fft_type, int batch,
+                str order=None, last_axis=None, last_size=None,
+                *, intptr_t prealloc_plan=0):
+        cdef PlanNd plan = PlanNd.__new__(PlanNd)
+        plan._init(shape, inembed, istride, idist, onembed, ostride, odist,
+                   fft_type, batch, order, last_axis, last_size,
+                   prealloc_plan=prealloc_plan)
+        return plan
+
+    cdef _init(self, object shape, object inembed, int istride,
+               int idist, object onembed, int ostride, int odist,
+               int fft_type, int batch,
+               str order, last_axis, last_size,
+               intptr_t prealloc_plan):
         cdef Handle plan
         cdef size_t work_size
         cdef int ndim, result
@@ -870,7 +932,7 @@ cdef class PlanNd:
         cdef intptr_t ptr
 
         self.handle = <intptr_t>0
-        ndim = len(shape)
+        ndim = <int>(len(shape))
 
         if inembed is None:
             inembed_ptr = NULL  # ignore istride and use default strides
@@ -996,7 +1058,7 @@ cdef class PlanNd:
                 'from the plan; pass `last_axis` and `last_size` to the '
                 'constructor or allocate the output yourself. '
                 'Note that the plan object may be deprecated in the future, '
-                'we suggest using `nvmath.fft` instead.')
+                'we suggest using `nvmath.fft.FFT` instead.')
 
     def get_output_array(self, a, order='C'):
         # For backwards compatibility only.
@@ -1035,7 +1097,7 @@ cdef class XtPlanNd:
         cdef long long int* onembed_ptr
 
         self.handle = <intptr_t>0
-        ndim = len(shape)
+        ndim = <int>(len(shape))
 
         if inembed is None:
             inembed_ptr = NULL  # ignore istride and use default strides
