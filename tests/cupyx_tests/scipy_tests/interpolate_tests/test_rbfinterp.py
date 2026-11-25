@@ -20,16 +20,37 @@ except ImportError:
 
 
 from cupyx.scipy.interpolate._rbfinterp import (
-    _AVAILABLE, _SCALE_INVARIANT, _NAME_TO_MIN_DEGREE, NAME_TO_FUNC,
-    _monomial_powers, polynomial_matrix, kernel_matrix)
+    _AVAILABLE, _SCALE_INVARIANT, _NAME_TO_MIN_DEGREE,
+    _build_evaluation_coefficients, _kernel_matrix as _rbf_kernel_matrix,
+    _monomial_powers, polynomial_matrix)
 
 
 def _kernel_matrix(x, kernel):
     """Return RBFs, with centers at `x`, evaluated at `x`."""
     out = cp.empty((x.shape[0], x.shape[0]), dtype=float)
-    kernel_func = NAME_TO_FUNC[kernel]
-    kernel_matrix(x, kernel_func, out)
+    _rbf_kernel_matrix(x, x, kernel, 1.0, out)
     return out
+
+
+def _kernel_values(r, kernel):
+    """Evaluate an RBF directly from distances for use as a test oracle."""
+    if kernel == 'linear':
+        return -r
+    if kernel == 'thin_plate_spline':
+        return cp.where(r == 0, 0, r**2 * cp.log(r))
+    if kernel == 'cubic':
+        return r**3
+    if kernel == 'quintic':
+        return -r**5
+    if kernel == 'multiquadric':
+        return -cp.sqrt(r**2 + 1)
+    if kernel == 'inverse_multiquadric':
+        return 1 / cp.sqrt(r**2 + 1)
+    if kernel == 'inverse_quadratic':
+        return 1 / (r**2 + 1)
+    if kernel == 'gaussian':
+        return cp.exp(-r**2)
+    raise ValueError(f'Unknown kernel: {kernel}')
 
 
 def _polynomial_matrix(x, powers):
@@ -44,6 +65,27 @@ def _vandermonde(x, degree):
     # degree evaluated at x.
     powers = _monomial_powers(x.shape[1], degree)
     return _polynomial_matrix(x, powers)
+
+
+@pytest.mark.parametrize('kernel', sorted(_AVAILABLE))
+@pytest.mark.parametrize('degree', [-1, 2])
+def test_build_evaluation_coefficients(kernel, degree):
+    rng = _np.random.RandomState(0)
+    x = cp.asarray(rng.random_sample((11, 3)))
+    y = cp.asarray(rng.random_sample((7, 3)))
+    epsilon = 1.7
+    powers = _monomial_powers(x.shape[1], degree)
+    shift = cp.asarray([0.25, 0.5, 0.75])
+    scale = cp.asarray([0.5, 0.75, 1.0])
+
+    actual = _build_evaluation_coefficients(
+        x, y, kernel, epsilon, powers, shift, scale)
+
+    delta = epsilon * (x[:, None, :] - y[None, :, :])
+    rbf = _kernel_values(cp.linalg.norm(delta, axis=-1), kernel)
+    polynomial = _polynomial_matrix((x - shift) / scale, powers)
+    expected = cp.concatenate((rbf, polynomial), axis=1)
+    testing.assert_allclose(actual, expected, rtol=1e-13, atol=1e-13)
 
 
 def _1d_test_function(x, xp):
