@@ -928,15 +928,9 @@ cdef _scatter_op_single(
     indices_shape = indices.shape
     v_shape = lshape + indices_shape + rshape
     v = _manipulation.broadcast_to(v, v_shape)
-    # `adim == 0` means the axes actually being indexed have no valid
-    # position at all, so any non-empty index into them is out of bounds
-    # (it cannot be wrapped). Checking `v.size` instead would miss this
-    # when an unrelated axis outside `start:stop` is also empty, since
-    # that alone can make `v.size == 0` look like a no-op selection.
     if adim == 0 and indices.size != 0:
-        if op == 'update':
-            raise IndexError('cannot assign into an empty array.')
-        raise IndexError('cannot use ufunc.at on an empty array.')
+        raise IndexError(
+            'cannot index zero-length axes with a non-empty index.')
 
     cdim = indices.size
     rdim = internal.prod_sequence(rshape)
