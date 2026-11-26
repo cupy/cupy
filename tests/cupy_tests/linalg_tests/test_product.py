@@ -40,6 +40,7 @@ class TestDot(unittest.TestCase):
 
     @testing.for_all_dtypes_combination(['dtype_a', 'dtype_b'])
     @testing.numpy_cupy_allclose()
+    @pytest.mark.filterwarnings("ignore:.*a.ndim.*b.ndim:DeprecationWarning")
     def test_dot(self, xp, dtype_a, dtype_b):
         shape_a, shape_b = self.shape
         if self.trans_a:
@@ -56,6 +57,7 @@ class TestDot(unittest.TestCase):
     @testing.for_float_dtypes(name='dtype_b')
     @testing.for_float_dtypes(name='dtype_c')
     @testing.numpy_cupy_allclose(accept_error=ValueError)
+    @pytest.mark.filterwarnings("ignore:.*a.ndim.*b.ndim:DeprecationWarning")
     def test_dot_with_out(self, xp, dtype_a, dtype_b, dtype_c):
         shape_a, shape_b = self.shape
         if self.trans_a:
@@ -211,7 +213,14 @@ class TestProduct:
     def test_transposed_dot(self, xp, dtype):
         a = testing.shaped_arange((2, 3, 4), xp, dtype).transpose(1, 0, 2)
         b = testing.shaped_arange((2, 3, 4), xp, dtype).transpose(0, 2, 1)
-        return xp.dot(a, b)
+        if xp is numpy and testing.numpy_satisfies("<2.6"):
+            res = xp.dot(a, b)
+        else:
+            # NumPy 2.6 deprecated this pointing at tensordot, we do too
+            with pytest.warns(DeprecationWarning, match="a.ndim.*b.ndim"):
+                res = xp.dot(a, b)
+
+        return res
 
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose()
@@ -219,10 +228,18 @@ class TestProduct:
         a = testing.shaped_arange((2, 3, 4), xp, dtype).transpose(1, 0, 2)
         b = testing.shaped_arange((4, 2, 3), xp, dtype).transpose(2, 0, 1)
         c = xp.ndarray((3, 2, 3, 2), dtype=dtype)
-        xp.dot(a, b, out=c)
+        if xp is numpy and testing.numpy_satisfies("<2.6"):
+            xp.dot(a, b, out=c)
+        else:
+            # NumPy 2.6 deprecated this pointing at tensordot, we do too
+            with pytest.warns(DeprecationWarning, match="a.ndim.*b.ndim"):
+                xp.dot(a, b, out=c)
+
         return c
 
     @testing.for_all_dtypes()
+    # Note that CuPy doesn't warn here (it errors first)
+    @pytest.mark.filterwarnings("ignore:.*a.ndim.*b.ndim:DeprecationWarning")
     def test_transposed_dot_with_out_f_contiguous(self, dtype):
         for xp in (numpy, cupy):
             a = testing.shaped_arange((2, 3, 4), xp, dtype).transpose(1, 0, 2)
@@ -501,6 +518,76 @@ class TestProduct:
         a = xp.zeros((3, 4), dtype=dtype)[:0]
         b = xp.zeros((1, 2), dtype=dtype)
         return xp.kron(a, b)
+
+
+@testing.slow
+@pytest.mark.thread_unsafe(reason='Allocation too large.')
+def test_integer_tensordot_large_indexing():
+    # Dimensions fit int32, but the integer kernel's M * K does not.
+    # This needs just over 4 GiB; uint8 also avoids the int8 cuBLAS path.
+    # At this size the old bounds wrap to a small positive value, keeping
+    # its reads inside the allocation instead of causing invalid accesses.
+    k, m = 2**16 + 1, 2**16
+    a = b = out = None
+    try:
+        try:
+            a = cupy.zeros((2, k), dtype=cupy.uint8)
+            b = cupy.zeros((k, m), dtype=cupy.uint8)
+        except MemoryError:
+            pytest.skip('out of memory in test.')
+
+        # Select the second row, which is zero. The overflowing bound clamps
+        # its reads to the last element of the first row, which is one.
+        # A single contribution avoids masking the error via uint8 wraparound.
+        a[:, 1] = 1
+        b[0, :] = 1
+        out = cupy.tensordot(a, b, axes=1)
+        expected = numpy.zeros((2, m), dtype=numpy.uint8)
+        testing.assert_array_equal(out, expected)
+    finally:
+        del out, b, a
+        cupy.get_default_memory_pool().free_all_blocks()
+
+
+class TestInt8Tensordot:
+    """Smoke test for cupy.tensordot with int8 dtype via tensordot_core."""
+
+    def setup_method(self):
+        if cupy.cuda.runtime.is_hip:
+            pytest.skip('int8 cublasGemmEx path is NVIDIA-only')
+        if int(cupy.cuda.Device().compute_capability) < 61:
+            pytest.skip(
+                'CUBLAS_COMPUTE_32I requires compute capability >= 6.1')
+
+    @testing.numpy_cupy_array_equal()
+    def test_int8_tensordot_aligned(self, xp):
+        """k=16 is IMMA-aligned; exercises the cuBLAS Tensor Core path."""
+        rng = numpy.random.default_rng(seed=7)
+        a = xp.asarray(rng.integers(-5, 5, (8, 16), dtype=numpy.int8))
+        b = xp.asarray(rng.integers(-5, 5, (16, 8), dtype=numpy.int8))
+        return xp.tensordot(a, b, axes=1)
+
+    @testing.numpy_cupy_array_equal()
+    def test_int8_tensordot_unaligned(self, xp):
+        """k=7 is not IMMA-aligned; exercises the alignment-guard fallback."""
+        rng = numpy.random.default_rng(seed=13)
+        a = xp.asarray(rng.integers(-5, 5, (8, 7), dtype=numpy.int8))
+        b = xp.asarray(rng.integers(-5, 5, (7, 8), dtype=numpy.int8))
+        return xp.tensordot(a, b, axes=1)
+
+    @testing.numpy_cupy_array_equal()
+    def test_int8_inner_multidim(self, xp):
+        """ret_shape (2, 3, 3, 2) differs from the 2-D (6, 6) GEMM output."""
+        a = testing.shaped_arange((2, 3, 4), xp, numpy.int8)
+        b = testing.shaped_arange((3, 2, 4), xp, numpy.int8)
+        return xp.inner(a, b)
+
+    @testing.numpy_cupy_array_equal()
+    def test_int8_tensordot_multidim(self, xp):
+        rng = numpy.random.default_rng(seed=21)
+        a = xp.asarray(rng.integers(-5, 5, (2, 3, 8), dtype=numpy.int8))
+        b = xp.asarray(rng.integers(-5, 5, (8, 4, 5), dtype=numpy.int8))
+        return xp.tensordot(a, b, axes=1)
 
 
 @testing.parameterize(*testing.product({

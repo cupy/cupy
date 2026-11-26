@@ -1,0 +1,37 @@
+name: Update pip
+description: >-
+  Assert that the interpreter's ssl module blocks the compromised
+  eMudhra/emSign CAs, then upgrade pip to the latest release.
+  The assertion catches regressions if the python-version spec in the calling
+  workflow ever drifts below the required patch. Use a tilde-range spec
+  (e.g. python-version: '~3.13.18') so setup-python enforces the floor while
+  automatically picking up newer security patches. Operates on the `python`
+  found on PATH, i.e. the one installed by setup-python.
+  See https://discuss.python.org/t/109576
+
+runs:
+  using: composite
+  steps:
+    - name: Assert Python blocks compromised CAs
+      shell: python
+      run: |
+        import sys
+
+        # Fail if the interpreter predates the CPython security releases whose
+        # ssl module rejects the compromised eMudhra/emSign keys. The same
+        # patch floors appear in .pfnci/schema.yaml, ci/versions.yml
+        # (python.doc.version), and the python-version specs of the calling
+        # workflows; update them all together.
+        minima = {11: 18, 12: 16, 13: 18, 14: 10, 15: 2}
+        v = sys.version_info
+        if v.major != 3 or v.minor not in minima or v.micro < minima[v.minor]:
+            sys.exit(
+                f"Python {sys.version} is below the minimum patch release "
+                "whose ssl module blocks the compromised eMudhra/emSign CAs. "
+                "Update the python-version spec in the calling workflow."
+            )
+    - name: Upgrade pip
+      shell: bash
+      run: |
+        python -m pip install --disable-pip-version-check --upgrade pip
+        python -m pip --version

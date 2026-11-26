@@ -14,7 +14,7 @@ cdef inline int populate_shape_strides(
         index_t val, size_t ndim, bint allow_unsafe,
         void* data, size_t& offset, int itemsize,
         const shape_t& shape, const strides_t& strides) except?-1:
-    cdef int i
+    cdef size_t i
 
     for i in range(ndim):
         if not allow_unsafe and shape[i] == 0:
@@ -166,7 +166,7 @@ cdef class Indexer:
     cdef void init(self, const shape_t& shape) noexcept:
         self.shape = shape
         self.size = internal.prod(shape)
-        self._index_32_bits = self.size <= <Py_ssize_t>(1 << 31)
+        self._index_32_bits = self.size < <Py_ssize_t>(1 << 31)
 
     @property
     def ndim(self):

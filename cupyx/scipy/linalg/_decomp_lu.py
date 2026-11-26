@@ -162,8 +162,10 @@ def _cupy_split_lu(LU, order='C'):
 
 
 _device_get_index = '''
-__device__ inline int get_index(int row, int col, int num_rows, int num_cols,
-                                bool c_contiguous)
+template <typename IndexT>
+__device__ inline IndexT get_index(
+        IndexT row, IndexT col, IndexT num_rows, IndexT num_cols,
+        bool c_contiguous)
 {
     if (c_contiguous) {
         return col + num_cols * row;
@@ -174,22 +176,28 @@ __device__ inline int get_index(int row, int col, int num_rows, int num_cols,
 '''
 
 _kernel_cupy_split_lu = cupy.ElementwiseKernel(
-    'raw T LU, int32 M, int32 N, int32 K, bool C_CONTIGUOUS',
+    'raw T LU, int64 M_, int64 N_, int64 K_, bool C_CONTIGUOUS',
     'raw T L, raw T U',
     '''
+    using index_t = decltype(LU)::index_t;
+    index_t M = static_cast<index_t>(M_);
+    index_t N = static_cast<index_t>(N_);
+    index_t K = static_cast<index_t>(K_);
+    index_t in_i = static_cast<index_t>(i);
+
     // LU: shape: (M, N)
     // L: shape: (M, K)
     // U: shape: (K, N)
     const T* ptr_LU = &(LU[0]);
     T* ptr_L = &(L[0]);
     T* ptr_U = &(U[0]);
-    int row, col;
+    index_t row, col;
     if (C_CONTIGUOUS) {
-        row = i / N;
-        col = i % N;
+        row = in_i / N;
+        col = in_i % N;
     } else {
-        row = i % M;
-        col = i / M;
+        row = in_i % M;
+        col = in_i / M;
     }
     T lu_val = ptr_LU[get_index(row, col, M, N, false)];
     T l_val, u_val;
@@ -219,19 +227,27 @@ def _cupy_laswp(A, k1, k2, ipiv, incx):
     k = ipiv.shape[0]
     assert 0 <= k1 and k1 <= k2 and k2 < k
     assert A._c_contiguous or A._f_contiguous
-    _kernel_cupy_laswp(m, n, k1, k2, ipiv, incx, A._c_contiguous, A, size=n)
+    _kernel_cupy_laswp(
+        m, n, k1, k2, ipiv, incx, A._c_contiguous, A, size=n)
 
 
 _kernel_cupy_laswp = cupy.ElementwiseKernel(
-    'int32 M, int32 N, int32 K1, int32 K2, raw I IPIV, int32 INCX, '
+    'int64 M_, int64 N_, int64 K1_, int64 K2_, raw I IPIV, int32 INCX, '
     'bool C_CONTIGUOUS',
     'raw T A',
     '''
+    using index_t = decltype(A)::index_t;
+    index_t M = static_cast<index_t>(M_);
+    index_t N = static_cast<index_t>(N_);
+    index_t K1 = static_cast<index_t>(K1_);
+    index_t K2 = static_cast<index_t>(K2_);
+
     // IPIV: 0-based pivot indices. shape: (K,)  (*) K > K2
     // A: shape: (M, N)
     T* ptr_A = &(A[0]);
     if (K1 > K2) return;
-    int row_start, row_end, row_inc;
+    index_t row_start, row_end;
+    int row_inc;
     if (INCX > 0) {
         row_start = K1; row_end = K2; row_inc = 1;
     } else if (INCX < 0) {
@@ -239,13 +255,13 @@ _kernel_cupy_laswp = cupy.ElementwiseKernel(
     } else {
         return;
     }
-    int col = i;
-    int row1 = row_start;
+    index_t col = i;
+    index_t row1 = row_start;
     while (1) {
-        int row2 = IPIV[row1];
+        index_t row2 = static_cast<index_t>(IPIV[row1]);
         if (row1 != row2) {
-            int idx1 = get_index(row1, col, M, N, C_CONTIGUOUS);
-            int idx2 = get_index(row2, col, M, N, C_CONTIGUOUS);
+            index_t idx1 = get_index(row1, col, M, N, C_CONTIGUOUS);
+            index_t idx2 = get_index(row2, col, M, N, C_CONTIGUOUS);
             T tmp       = ptr_A[idx1];
             ptr_A[idx1] = ptr_A[idx2];
             ptr_A[idx2] = tmp;

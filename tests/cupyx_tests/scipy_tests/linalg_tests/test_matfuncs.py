@@ -5,6 +5,7 @@ from numpy import linalg
 
 import cupy
 from cupyx.scipy.linalg import khatri_rao
+from cupyx.scipy.linalg import _matfuncs
 from cupyx.scipy import linalg as cx_linalg
 import pytest
 from cupy import testing
@@ -83,7 +84,8 @@ class TestExpM:
 
     def test_zero(self):
         a = cupy.array([[0., 0], [0, 0]])
-        assert cupy.abs(cx_linalg.expm(a) - cupy.eye(2)).all() < 1e-10
+        testing.assert_allclose(cx_linalg.expm(a), cupy.eye(2),
+                                rtol=1e-14, atol=1e-15)
 
     def test_empty_matrix_input(self):
         # handle gh-11082
@@ -112,6 +114,144 @@ class TestExpM:
     def test_dtypes(self, xp, scp, dtype):
         a = xp.eye(2, dtype=dtype)
         return scp.linalg.expm(a)
+
+    @pytest.mark.parametrize('norm', [
+        3.397168839976962e-04,   # theta_4  (double)
+        4.991228871115323e-02,   # theta_8  (double)
+        2.996158913811580e-01,   # theta_12 (double)
+        1.090863719290036e+00,   # theta_18 (double)
+        3.010066362817634e+00,   # theta_18 (single)
+        2 * 3.010066362817634e+00,  # scaling path for both
+    ])
+    @pytest.mark.parametrize('factor', [0.99, 1., 1.01])
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(
+        scipy_name='scp', contiguous_check=False,
+        rtol={'default': 1e-12, np.float32: 1e-5, np.complex64: 1e-5},
+        atol={'default': 1e-14, np.float32: 1e-6, np.complex64: 1e-6})
+    def test_bbc_thresholds(self, xp, scp, dtype, norm, factor):
+        a = xp.asarray([[0, norm * factor], [-norm * factor, 0]],
+                       dtype=dtype)
+        return scp.linalg.expm(a)
+
+    @pytest.mark.parametrize('norm', [0.01, 0.1, 0.5, 1.5, 3., 8.])
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(
+        scipy_name='scp', contiguous_check=False,
+        rtol={'default': 1e-12, np.float32: 2e-5, np.complex64: 2e-5},
+        atol={'default': 1e-14, np.float32: 2e-6, np.complex64: 2e-6})
+    def test_random_noncontiguous(self, xp, scp, dtype, norm):
+        rng = np.random.default_rng(42)
+        a = rng.standard_normal((8, 8))
+        if np.issubdtype(dtype, np.complexfloating):
+            a = a + 1j * rng.standard_normal((8, 8))
+        a -= np.eye(8) * np.trace(a) / 8
+        a *= norm / np.linalg.norm(a, 1)
+        a += 0.5 * np.eye(8)
+        a = xp.asarray(a, dtype=dtype)[::-1, ::-1]
+        return scp.linalg.expm(a)
+
+    @testing.for_dtypes('fdFD')
+    @testing.numpy_cupy_allclose(
+        scipy_name='scp', contiguous_check=False,
+        rtol={'default': 1e-12, np.float32: 5e-5, np.complex64: 5e-5},
+        atol={'default': 1e-13, np.float32: 5e-6, np.complex64: 5e-6})
+    def test_large_skew_hermitian(self, xp, scp, dtype):
+        rng = np.random.default_rng(123)
+        a = rng.standard_normal((8, 8))
+        if np.issubdtype(dtype, np.complexfloating):
+            a = a + 1j * rng.standard_normal((8, 8))
+        a = a - a.conj().T
+        a *= 100 / np.linalg.norm(a, 1)
+        return scp.linalg.expm(xp.asarray(a, dtype=dtype))
+
+    @testing.for_dtypes('fdFD')
+    def test_large_skew_hermitian_unitary(self, dtype):
+        # Roundoff grows with n if the identity goes through the matmuls.
+        n = 1024
+        rng = np.random.default_rng(1234)
+        a = rng.standard_normal((n, n))
+        if np.issubdtype(dtype, np.complexfloating):
+            a = a + 1j * rng.standard_normal((n, n))
+        a = a - a.conj().T
+        a *= 100 / np.linalg.norm(a, 1)
+        u = cx_linalg.expm(cupy.asarray(a, dtype=dtype))
+        assert u.dtype == dtype
+        u = u.astype(cupy.complex128)
+        defect = cupy.linalg.norm(u.conj().T @ u - cupy.eye(n)) / n**0.5
+        assert float(defect) < 150 * np.finfo(dtype).eps
+
+    @testing.for_dtypes('fF')
+    def test_large_single_precision(self, dtype):
+        n = 1024
+        rng = np.random.default_rng(4321)
+        a = rng.standard_normal((n, n))
+        if np.issubdtype(dtype, np.complexfloating):
+            a = a + 1j * rng.standard_normal((n, n))
+        a *= 1000 / np.linalg.norm(a, 1)
+        a += 0.5 * np.eye(n)
+        a = cupy.asarray(a, dtype=dtype)
+        expected = cx_linalg.expm(a.astype(np.promote_types(dtype, 'd')))
+        result = cx_linalg.expm(a)
+        assert result.dtype == dtype
+        err = cupy.linalg.norm(result - expected) / cupy.linalg.norm(expected)
+        assert float(err) < 50 * np.finfo(dtype).eps
+
+    @pytest.mark.parametrize('kind', ['dense', 'triu', 'graded'])
+    @pytest.mark.parametrize('norm', [2., 30., 300.])
+    @testing.for_dtypes('fdFD')
+    def test_refined_scaling(self, dtype, kind, norm, monkeypatch):
+        n = 96
+        rng = np.random.default_rng(7)
+        a = rng.standard_normal((n, n))
+        if np.issubdtype(dtype, np.complexfloating):
+            a = a + 1j * rng.standard_normal((n, n))
+        if kind == 'triu':
+            a = np.triu(a, 1)
+        elif kind == 'graded':
+            d = np.logspace(0, 3, n)
+            a = d[:, None] * a / d
+        a *= norm / np.linalg.norm(a, 1)
+        a = a.astype(dtype)
+        expected = scipy.linalg.expm(a.astype(np.promote_types(dtype, 'd')))
+        default = cx_linalg.expm(cupy.asarray(a)).get()
+        # The refined scaling is normally reserved for large matrices.
+        with monkeypatch.context() as patch:
+            patch.setattr(_matfuncs, '_BBC_SHARP_MIN_N', (0, 0))
+            result = cx_linalg.expm(cupy.asarray(a))
+        assert result.dtype == dtype
+        result = result.get()
+        eps = np.finfo(dtype).eps
+
+        def error(ref):
+            return np.linalg.norm(result - ref) / np.linalg.norm(ref)
+
+        assert error(default) < 100 * eps
+        # SciPy < 1.18 is itself ~120 eps off for the float64 'triu' input.
+        assert error(expected) < 1000 * eps
+
+    @pytest.mark.parametrize('scale', [0.01, 0.1, 0.5, 1.5, 3., 8., 100.])
+    @testing.for_dtypes('fdFD')
+    def test_nilpotent(self, dtype, scale):
+        a = cupy.asarray([[0, scale], [0, 0]], dtype=dtype)
+        # A**2 = 0, so the exponential is exactly I + A.
+        tol = 1e-6 if dtype in (np.float32, np.complex64) else 1e-13
+        testing.assert_allclose(cx_linalg.expm(a), cupy.eye(2) + a,
+                                rtol=tol, atol=tol)
+
+    def test_input_unchanged(self):
+        a = testing.shaped_random((4, 4), cupy, dtype=np.float64)
+        original = a.copy()
+        cx_linalg.expm(a)
+        testing.assert_array_equal(a, original)
+
+    def test_stream(self):
+        with cupy.cuda.Stream(non_blocking=True) as stream:
+            a = cupy.asarray([[0., 0.1], [0., 0.]])
+            result = cx_linalg.expm(a)
+            expected = cupy.eye(2) + a
+        stream.synchronize()
+        testing.assert_allclose(result, expected, rtol=1e-14, atol=1e-15)
 
     @testing.numpy_cupy_allclose(scipy_name='scp', contiguous_check=False)
     def test_gh_9138(self, xp, scp):

@@ -7,22 +7,25 @@
   target: "cuda120"
   tags: ["@push", "full", "mini", "linux", "cuda120"]
   system: "linux"
-  os: "ubuntu:20.04"
+  os: "ubuntu:22.04"
   cuda: "12.0"
   rocm: null
-  nccl: "2.17"
+  nccl: "2.18"
   cutensor: "2.4"
   cusparselt: null
-  python: "3.10"
+  python: "3.11"
   numpy: "2.0"
   scipy: "1.14"
   optuna: "3"
   ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.2"
-  cuda-python: null
+  # Test the oldest cuda-bindings minor and the minimum nvmath-python. The
+  # cuda-core extra makes pip pick a cuda-core that accepts them, as for users.
+  cuda-bindings: "12.9"
+  cuda-core: "minimal-sysctk12"
   cuda-cccl: null
-  nvmath-python: null
+  nvmath-python: "1.0.0"
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
@@ -39,7 +42,7 @@
   target: "cuda121"
   tags: ["@nightly", "full", "linux", "cuda121"]
   system: "linux"
-  os: "ubuntu:20.04"
+  os: "ubuntu:22.04"
   cuda: "12.1"
   rocm: null
   nccl: "2.17"
@@ -52,7 +55,8 @@
   ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.2"
-  cuda-python: null
+  cuda-bindings: null
+  cuda-core: null
   cuda-cccl: null
   nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
@@ -71,7 +75,7 @@
   target: "cuda122"
   tags: ["@nightly", "full", "linux", "cuda122"]
   system: "linux"
-  os: "ubuntu:20.04"
+  os: "ubuntu:22.04"
   cuda: "12.2"
   rocm: null
   nccl: "2.18"
@@ -84,7 +88,8 @@
   ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.2"
-  cuda-python: null
+  cuda-bindings: null
+  cuda-core: null
   cuda-cccl: null
   nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
@@ -103,7 +108,7 @@
   target: "cuda123"
   tags: ["@nightly", "full", "linux", "cuda123"]
   system: "linux"
-  os: "ubuntu:20.04"
+  os: "ubuntu:22.04"
   cuda: "12.3"
   rocm: null
   nccl: "2.19"
@@ -116,7 +121,8 @@
   ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.2"
-  cuda-python: null
+  cuda-bindings: null
+  cuda-core: null
   cuda-cccl: null
   nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
@@ -135,7 +141,7 @@
   target: "cuda124"
   tags: ["@nightly", "full", "linux", "cuda124"]
   system: "linux"
-  os: "ubuntu:20.04"
+  os: "ubuntu:22.04"
   cuda: "12.4"
   rocm: null
   nccl: "2.20"
@@ -148,7 +154,8 @@
   ml_dtypes: null
   mpi4py: null
   cython: "3.2"
-  cuda-python: null
+  cuda-bindings: null
+  cuda-core: null
   cuda-cccl: null
   nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
@@ -167,7 +174,7 @@
   target: "cuda125"
   tags: ["@nightly", "full", "linux", "cuda125"]
   system: "linux"
-  os: "ubuntu:20.04"
+  os: "ubuntu:22.04"
   cuda: "12.5"
   rocm: null
   nccl: "2.21"
@@ -180,7 +187,8 @@
   ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.2"
-  cuda-python: null
+  cuda-bindings: null
+  cuda-core: null
   cuda-cccl: null
   nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
@@ -199,7 +207,7 @@
   target: "cuda126"
   tags: ["@nightly", "full", "linux", "cuda126"]
   system: "linux"
-  os: "ubuntu:20.04"
+  os: "ubuntu:24.04"
   cuda: "12.6"
   rocm: null
   nccl: "2.22"
@@ -212,7 +220,8 @@
   ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.2"
-  cuda-python: null
+  cuda-bindings: null
+  cuda-core: null
   cuda-cccl: null
   nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
@@ -231,7 +240,7 @@
   target: "cuda128"
   tags: ["@nightly", "full", "linux", "cuda128"]
   system: "linux"
-  os: "ubuntu:20.04"
+  os: "ubuntu:24.04"
   cuda: "12.8"
   rocm: null
   nccl: "2.26"
@@ -244,7 +253,8 @@
   ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.2"
-  cuda-python: null
+  cuda-bindings: null
+  cuda-core: null
   cuda-cccl: null
   nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
@@ -263,7 +273,7 @@
   target: "cuda129"
   tags: ["@push", "full", "mini", "linux", "cuda129"]
   system: "linux"
-  os: "ubuntu:20.04"
+  os: "ubuntu:24.04"
   cuda: "12.9"
   rocm: null
   nccl: "2.26"
@@ -276,7 +286,8 @@
   ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.2"
-  cuda-python: null
+  cuda-bindings: null
+  cuda-core: null
   cuda-cccl: null
   nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
@@ -297,7 +308,7 @@
   target: "cuda130"
   tags: ["@push", "full", "mini", "linux", "cuda130"]
   system: "linux"
-  os: "ubuntu:22.04"
+  os: "ubuntu:24.04"
   cuda: "13.0"
   rocm: null
   nccl: "2.28"
@@ -310,9 +321,12 @@
   ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.2"
-  cuda-python: null
+  # Test the oldest cuda-bindings minor and the minimum nvmath-python. The
+  # cuda-core extra makes pip pick a cuda-core that accepts them, as for users.
+  cuda-bindings: "13.0"
+  cuda-core: "minimal-sysctk13"
   cuda-cccl: null
-  nvmath-python: null
+  nvmath-python: "1.0.0"
   env:CUPY_ACCELERATORS: "cutensor,cub"
   test: "unit"
 
@@ -329,12 +343,12 @@
   target: "cuda131"
   tags: ["@nightly", "full", "linux", "cuda131"]
   system: "linux"
-  os: "ubuntu:22.04"
+  os: "ubuntu:24.04"
   cuda: "13.1"
   rocm: null
   nccl: "2.28"
   cutensor: "2.4"
-  cusparselt: "0.9.1"
+  cusparselt: "0.10.0"
   python: "3.14"
   numpy: "2.4"
   scipy: "1.17"
@@ -342,7 +356,10 @@
   ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.2"
-  cuda-python: null
+  # Test the cuda-bindings minor matching the CTK; the .multi job tests
+  # the latest.
+  cuda-bindings: "13.1"
+  cuda-core: "minimal-sysctk13"
   cuda-cccl: null
   nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
@@ -354,6 +371,8 @@
   tags: ["@nightly", "full", "multi", "linux", "cuda131"]
   target: "cuda131.multi"
   mpi4py: "4"
+  cuda-bindings: null
+  cuda-core: null
   test: "unit-multi"
 
 # CUDA 13.2 | Linux
@@ -361,12 +380,12 @@
   target: "cuda132"
   tags: ["@nightly", "full", "linux", "cuda132"]
   system: "linux"
-  os: "ubuntu:22.04"
+  os: "ubuntu:24.04"
   cuda: "13.2"
   rocm: null
   nccl: "2.29"
   cutensor: "2.4"
-  cusparselt: "0.9.1"
+  cusparselt: "0.10.0"
   python: "3.14"
   numpy: "2.4"
   scipy: "1.16"
@@ -374,7 +393,10 @@
   ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.2"
-  cuda-python: null
+  # Test the cuda-bindings minor matching the CTK; the .multi job tests
+  # the latest.
+  cuda-bindings: "13.2"
+  cuda-core: "minimal-sysctk13"
   cuda-cccl: null
   nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
@@ -386,6 +408,8 @@
   tags: ["@nightly", "full", "multi", "linux", "cuda132"]
   target: "cuda132.multi"
   mpi4py: "4"
+  cuda-bindings: null
+  cuda-core: null
   test: "unit-multi"
 
 # CUDA 13.3 | Linux
@@ -393,12 +417,12 @@
   target: "cuda133"
   tags: ["@nightly", "full", "linux", "cuda133"]
   system: "linux"
-  os: "ubuntu:22.04"
+  os: "ubuntu:24.04"
   cuda: "13.3"
   rocm: null
   nccl: "2.30"
   cutensor: "2.4"
-  cusparselt: "0.9.1"
+  cusparselt: "0.10.0"
   python: "3.14"
   numpy: "2.5"
   scipy: "1.18"
@@ -406,7 +430,10 @@
   ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.2"
-  cuda-python: null
+  # Test the cuda-bindings minor matching the CTK; the .multi job tests
+  # the latest.
+  cuda-bindings: "13.3"
+  cuda-core: "minimal-sysctk13"
   cuda-cccl: null
   nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
@@ -418,6 +445,8 @@
   tags: ["@nightly", "full", "multi", "linux", "cuda133"]
   target: "cuda133.multi"
   mpi4py: "4"
+  cuda-bindings: null
+  cuda-core: null
   test: "unit-multi"
 
 # CUDA 13.4 | Linux
@@ -426,20 +455,21 @@
   target: "cuda134"
   tags: ["@push", "full", "mini", "linux", "cuda134"]
   system: "linux"
-  os: "ubuntu:22.04"
+  os: "ubuntu:24.04"
   cuda: "13.4"
   rocm: null
   nccl: "2.31"
   cutensor: "2.4"
-  cusparselt: "0.9.1"
-  python: "3.14"
+  cusparselt: "0.10.0"
+  python: "3.15"
   numpy: "2.5"
-  scipy: "1.16"
-  optuna: "4"
+  scipy: "1.18"
+  optuna: "5"
   ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.2"
-  cuda-python: null
+  cuda-bindings: null
+  cuda-core: null
   cuda-cccl: null
   nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
@@ -451,19 +481,33 @@
   _inherits: "cupy.linux.cuda134"
   tags: ["@push", "full", "mini", "multi", "linux", "cuda134"]
   target: "cuda134.multi"
-  mpi4py: "4"
+  # TODO(seberg): enable mpi4py when 3.15 wheels available
+  mpi4py: null
   env:CUPY_CI_PYTEST_EXTRA_OPTS: null
   test: "unit-multi"
 
 # CUDA 13.x + Python 3.14 free-threaded | Linux
 - project: "cupy.linux.cuda13x-py314t"
   _inherits: "cupy.linux.cuda131"
-  tags: ["@push", "full", "mini", "linux", "cuda131", "py314t"]
+  tags: ["@push", "full", "mini", "linux", "cuda13x", "free-threaded"]
   target: "cuda13x-py314t"
-  # Use newest support numpy/scipy versions for free-threaded tests:
+  # SciPy 1.18 includes the ARPACK thread-safety fixes.
   numpy: "2.4"
-  scipy: "1.16"
+  scipy: "1.18"
   python: "3.14t"
+  # cuda134 runs Python 3.15, built without CUDA Python until #10473, so test
+  # cuda-bindings 13.4 here.
+  cuda-bindings: "13.4"
+  env:CUPY_TEST_RANDOM_SUBSAMPLE: "1"
+  env:CUPY_CI_PYTEST_EXTRA_OPTS: "--parallel-threads=2"
+  test: "unit"
+
+# CUDA 13.x + Python 3.15 free-threaded | Linux
+- project: "cupy.linux.cuda13x-py315t"
+  _inherits: "cupy.linux.cuda134"
+  tags: ["@nightly", "full", "linux", "cuda13x", "free-threaded"]
+  target: "cuda13x-py315t"
+  python: "3.15t"
   env:CUPY_TEST_RANDOM_SUBSAMPLE: "1"
   env:CUPY_CI_PYTEST_EXTRA_OPTS: "--parallel-threads=2"
   test: "unit"
@@ -501,7 +545,8 @@
   ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.2"
-  cuda-python: null
+  cuda-bindings: null
+  cuda-core: null
   cuda-cccl: null
   nvmath-python: null
   env:CUPY_ACCELERATORS: null
@@ -514,9 +559,9 @@
 # Slow | Linux
 - project: "cupy.linux.cuda-slow"
   target: "cuda-slow"
-  tags: ["slow", "linux"]
+  tags: ["@nightly", "slow", "linux"]
   system: "linux"
-  os: "ubuntu:20.04"
+  os: "ubuntu:24.04"
   cuda: "12.9"
   rocm: null
   nccl: "2.27"
@@ -529,7 +574,8 @@
   ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.2"
-  cuda-python: null
+  cuda-bindings: null
+  cuda-core: null
   cuda-cccl: null
   nvmath-python: null
   env:CUPY_ACCELERATORS: "cutensor,cub"
@@ -548,7 +594,7 @@
   target: "cuda-example"
   tags: ["@push", "full", "mini", "linux", "example"]
   system: "linux"
-  os: "ubuntu:20.04"
+  os: "ubuntu:24.04"
   cuda: "12.9"
   rocm: null
   nccl: "2.27"
@@ -561,7 +607,8 @@
   ml_dtypes: "0.5"
   mpi4py: null
   cython: "3.2"
-  cuda-python: null
+  cuda-bindings: null
+  cuda-core: null
   cuda-cccl: null
   nvmath-python: null
   env:CUPY_ACCELERATORS: ""
@@ -575,12 +622,11 @@
 # This combination tests against pre-releases. Use the highest supported combination.
 - project: "cupy.linux.cuda-head"
   target: "cuda-head"
-  # 'head' builds against pre-release deps; a released wheel can't exercise
-  # that, so this target builds from source (build.sh) instead of fetching.
-  wheel: false
-  tags: ["head", "linux"]
+  pip_extra_args:
+    - "--extra-index-url=https://pypi.anaconda.org/scientific-python-nightly-wheels/simple"
+  tags: ["@nightly", "head", "linux"]
   system: "linux"
-  os: "ubuntu:20.04"
+  os: "ubuntu:24.04"
   cuda: "12.9"
   rocm: null
   nccl: "2.27"
@@ -593,26 +639,29 @@
   ml_dtypes: "pre"
   mpi4py: null
   cython: "3.2"
-  cuda-python: null
+  cuda-bindings: null
+  cuda-core: null
   cuda-cccl: null
   nvmath-python: null
   env:CUPY_ACCELERATORS: "cub,cutensor"
   test: "unit"
 
 ###############################################################################
-# CUDA Python Test
+# CUDA Python Opt-out (CUPY_USE_CUDA_PYTHON=0) Test
 ###############################################################################
+# TODO: rename these jobs to cuda1{2,3}x-no-cuda-python. Renaming a project
+# also needs an update on the FlexCI (GCP) side, coordinated with @kmaehashi.
 
-# CUDA 12.x / CUDA Python | Linux
+# CUDA 12.x / CUDA Python opt-out | Linux
 - project: "cupy.linux.cuda12x-cuda-python"
   target: "cuda12x-cuda-python"
-  # CUPY_USE_CUDA_PYTHON is a compile-time flag baked into the Cython
-  # extensions; the released wheels are not built with it, so this target must
-  # build from source (build.sh) instead of fetching a wheel.
+  # Tests the deprecated CUPY_USE_CUDA_PYTHON=0 build, which does not use
+  # cuda-bindings or nvmath-python. The flag is baked in at compile time and the
+  # wheels are built with it on, so this target must build from source.
   wheel: false
   tags: ["@push", "full", "mini", "linux", "cuda-python"]
   system: "linux"
-  os: "ubuntu:20.04"
+  os: "ubuntu:24.04"
   cuda: "12.9"
   rocm: null
   nccl: "2.26"
@@ -625,24 +674,27 @@
   mpi4py: null
   ml_dtypes: null
   cython: "3.2"
-  cuda-python: "12"
+  # Required by cuda-cccl (null would uninstall them). CuPy itself does not use
+  # them in this build.
+  cuda-bindings: "12"
+  cuda-core: "1"
   cuda-cccl: "cu12"
-  nvmath-python: "1"
+  nvmath-python: null
   env:CUPY_ACCELERATORS: "cuda_compute,cutensor,cub"
-  env:CUPY_USE_CUDA_PYTHON: "1"
+  env:CUPY_USE_CUDA_PYTHON: "0"
   env:CUPY_CI_PYTEST_EXTRA_OPTS: "--junit-xml=/tmp/cupy_junit/junit.xml"
   test: "unit"
 
-# CUDA 13.x / CUDA Python | Linux
+# CUDA 13.x / CUDA Python opt-out | Linux
 - project: "cupy.linux.cuda13x-cuda-python"
   target: "cuda13x-cuda-python"
-  # CUPY_USE_CUDA_PYTHON is a compile-time flag baked into the Cython
-  # extensions; the released wheels are not built with it, so this target must
-  # build from source (build.sh) instead of fetching a wheel.
+  # Tests the deprecated CUPY_USE_CUDA_PYTHON=0 build, which does not use
+  # cuda-bindings or nvmath-python. The flag is baked in at compile time and the
+  # wheels are built with it on, so this target must build from source.
   wheel: false
-  tags: ["@push", "full", "mini", "linux", "cuda-python"]
+  tags: ["@push", "full", "mini", "linux", "cuda-python", "cuda13x"]
   system: "linux"
-  os: "ubuntu:22.04"
+  os: "ubuntu:24.04"
   cuda: "13.4"
   rocm: null
   nccl: "2.31"
@@ -655,11 +707,14 @@
   mpi4py: null
   ml_dtypes: null
   cython: "3.2"
-  cuda-python: "13.4"
+  # Required by cuda-cccl (null would uninstall them). CuPy itself does not use
+  # them in this build.
+  cuda-bindings: "13"
+  cuda-core: "1"
   cuda-cccl: "cu13"
-  nvmath-python: "1"
+  nvmath-python: null
   env:CUPY_ACCELERATORS: "cuda_compute,cutensor,cub"
-  env:CUPY_USE_CUDA_PYTHON: "1"
+  env:CUPY_USE_CUDA_PYTHON: "0"
   env:CUPY_CI_PYTEST_EXTRA_OPTS: "--junit-xml=/tmp/cupy_junit/junit.xml"
   test: "unit"
 
@@ -751,6 +806,18 @@
   tags: ["@push", "full", "mini", "windows", "cuda134"]
   system: "windows"
 
+- project: "cupy.win.cuda13x-py314t"
+  _extern: true
+  target: "cuda13x-py314t"
+  tags: ["@nightly", "full", "windows", "cuda13x", "free-threaded"]
+  system: "windows"
+
+- project: "cupy.win.cuda13x-py315t"
+  _extern: true
+  target: "cuda13x-py315t"
+  tags: ["@nightly", "full", "windows", "cuda13x", "free-threaded"]
+  system: "windows"
+
 - project: "cupy.linux.cuda-rapids"
   _extern: true
   target: "cuda-rapids"
@@ -758,10 +825,10 @@
   system: "linux"
 
 - project: "cupy.linux.array-api"
-  _extern: true
+  _inherits: "cupy.linux.cuda-head"
   target: "array-api"
   tags: ["array-api", "linux"]
-  system: "linux"
+  test: "array-api"
 
 - project: "cupy.linux.benchmark.head"
   _inherits: "cupy.linux.cuda130"

@@ -9,9 +9,10 @@ cpdef create_bbox_slice_tuple(coord_index_type[:, ::1] bbox,
     """
     cdef list slices = []
     cdef list slices_inner = []
-    cdef coord_index_type n = bbox.shape[0]
-    cdef coord_index_type i = 0
-    cdef int ndim = bbox.shape[1] // 2
+    cdef Py_ssize_t n = bbox.shape[0]
+    cdef Py_ssize_t i = 0
+    cdef int d = 0
+    cdef int ndim = <int>(bbox.shape[1] // 2)
 
     for i in range(n):
         if bbox[i, 0] == max_int:

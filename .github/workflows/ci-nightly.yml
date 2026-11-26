@@ -127,7 +127,7 @@ jobs:
       statuses: write
     steps:
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           # This workflow revision (dispatcher + @nightly tags), not the wheel
           # SHA. FlexCI tests the resolved SHA; checking it out here would
@@ -136,9 +136,12 @@ jobs:
           fetch-depth: 1
 
       - name: Setup Python
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
         with:
-          python-version: '3.13'
+          python-version: '~3.13.18'
+
+      - name: Harden pip
+        uses: ./.github/actions/update-pip
 
       - name: Setup Environment
         run: pip install pygithub
@@ -252,7 +255,7 @@ jobs:
           ls -la dist/
 
       - name: Upload wheels to scientific-python-nightly-wheels
-        uses: scientific-python/upload-nightly-action@e76cfec8a4611fd02808a801b0ff5a7d7c1b2d99  # 0.6.4
+        uses: scientific-python/upload-nightly-action@5a74a2a4ec19d7ab8b5317c1cdd356c150d92cd0  # 0.6.6
         with:
           artifacts_path: dist
           anaconda_nightly_upload_token: ${{ secrets.ANACONDA_ORG_UPLOAD_TOKEN }}

@@ -1,7 +1,9 @@
 [build-system]
 # Need to be installed manually when using `--no-build-isolation`.
 # Keep in sync with `docs/source/contribution.rst`.
-requires = ["setuptools>=77", "wheel", "Cython>=3.2,<3.3", "numpy>=2.0"]
+requires = [
+    "setuptools>=77", "wheel", "Cython>=3.2,<3.3", "numpy>=2.0", "packaging",
+]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -17,11 +19,11 @@ classifiers = [
   "Intended Audience :: Developers",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
   "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Cython",
   "Topic :: Software Development",
@@ -29,7 +31,7 @@ classifiers = [
   "Operating System :: POSIX",
   "Operating System :: Microsoft :: Windows",
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dynamic = [
   "version",
   "readme",  # long_description
@@ -53,6 +55,16 @@ include = ["cupy*", "cupyx*", "cupy_backends*"]
 [tool.setuptools.dynamic]
 version = { attr = "cupy._version.__version__" }
 
+[tool.cupy.cuda-python]
+# Versions for CUPY_USE_CUDA_PYTHON builds, read by setup.py and
+# ci/tools/prepare_wheel_build.py.
+# Minimum nvmath-python. Release wheels are built with exactly this version.
+# FlexCI tests it; update .pfnci/schema.yaml and .pfnci/matrix.yaml too.
+nvmath-python = "1.0.0"
+# Minimum cuda-bindings at run time: within a major the cy* layer only grows,
+# and every cy* function CuPy uses exists since these versions.
+cuda-bindings = { 12 = "12.9.0", 13 = "13.0.1" }
+
 [tool.autopep8]
 exclude = "*.git*, *.eggs*, *docs/source*"
 
@@ -72,6 +84,8 @@ testpaths = "tests"
 addopts = "--strict-markers"
 markers = [
   "slow", "multi_gpu",
+  # If pytest-timeout is not available
+  "timeout",
   # If pytest-run-parallel is not available
   "parallel_threads", "iterations", "thread_unsafe",
 ]
@@ -85,7 +99,7 @@ filterwarnings = [
   "error::PendingDeprecationWarning",
   "error::cupy.exceptions.VisibleDeprecationWarning",
   "error::cupy.exceptions.ComplexWarning",
-  # distutils (Python 3.10)
+  # distutils (vendored by setuptools)
   "ignore:The distutils(.+) is deprecated:DeprecationWarning",
   "ignore:dep_util is Deprecated:DeprecationWarning",
   # pkg_resources

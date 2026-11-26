@@ -48,6 +48,105 @@ class TestChirp:
             t=0, f0=10.0, f1=1.0, t1=1.0, method='hyperbolic')
         return w
 
+    @pytest.mark.parametrize('method, f0, f1, vertex_zero', [
+        ('linear', -3.0, 3.0, True),
+        ('lin', -3.0, 3.0, True),
+        ('li', -3.0, 3.0, True),
+        ('quadratic', 1.0, 3.0, True),
+        ('quadratic', 1.0, 3.0, False),
+        ('quad', 1.0, 3.0, True),
+        ('q', 1.0, 3.0, True),
+        ('logarithmic', 1.0, 3.0, True),
+        ('logarithmic', 1.0, 1.0, True),
+        ('log', 1.0, 3.0, True),
+        ('lo', 1.0, 3.0, True),
+        ('hyperbolic', 3.0, 1.0, True),
+        ('hyperbolic', 1.0, 1.0, True),
+        ('hyp', 3.0, 1.0, True),
+    ])
+    @pytest.mark.parametrize('scalar', [False, True])
+    @testing.with_requires('scipy>=1.15.0')
+    @testing.for_dtypes([np.float32, np.float64])
+    @testing.numpy_cupy_allclose(
+        scipy_name='scp',
+        rtol={np.complex64: 1e-5, 'default': 1e-6},
+        atol={np.complex64: 1e-5, 'default': 1e-6})
+    def test_complex(
+            self, method, f0, f1, vertex_zero, scalar, xp, scp, dtype):
+        t = xp.asarray(0.25, dtype=dtype) if scalar else xp.linspace(
+            -0.25, 1.0, 101, dtype=dtype)
+        result = scp.signal.chirp(
+            t, f0, 1.0, f1, method=method, phi=37.0,
+            vertex_zero=vertex_zero, complex=True)
+        if xp is np:
+            # SciPy computes the phase in float64 even for float32 times.
+            # Compare its reference at CuPy's corresponding complex precision.
+            result = result.astype(np.result_type(dtype, 1j), copy=False)
+        return result
+
+    # The quadratic and hyperbolic kernels do not compile for complex times.
+    @pytest.mark.parametrize('method', ['linear', 'logarithmic'])
+    @pytest.mark.parametrize('complex', [False, True])
+    @testing.with_requires('scipy>=1.15.0')
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-6, atol=1e-6)
+    def test_complex_time(self, method, complex, xp, scp):
+        # Complex times give a complex result for either value of `complex`.
+        t = xp.linspace(-0.25, 1.0, 11) + 0.1j
+        return scp.signal.chirp(
+            t, 3.0, 1.0, 1.0, method=method, phi=37.0, complex=complex)
+
+    @pytest.mark.parametrize('method, f0, f1, vertex_zero', [
+        ('linear', 1.0, 3.0, True),
+        ('quadratic', 1.0, 3.0, True),
+        ('quadratic', 1.0, 3.0, False),
+        ('logarithmic', 1.0, 3.0, True),
+        ('hyperbolic', 3.0, 1.0, True),
+    ])
+    @pytest.mark.parametrize('phi', [0.0, 37.0])
+    @pytest.mark.parametrize('dtype, expected_dtype, tol', [
+        (cupy.float32, cupy.complex64, 1e-5),
+        (cupy.float64, cupy.complex128, 1e-12),
+        (cupy.int64, cupy.complex128, 1e-12),
+    ])
+    def test_complex_properties(
+            self, method, f0, f1, vertex_zero, phi, dtype, expected_dtype,
+            tol):
+        t = cupy.linspace(0.0, 5.0, 101, dtype=dtype)
+        actual = cupyx.scipy.signal.chirp(
+            t, f0, 1.0, f1, method=method, phi=phi,
+            vertex_zero=vertex_zero, complex=True)
+        expected_real = cupyx.scipy.signal.chirp(
+            t, f0, 1.0, f1, method=method, phi=phi,
+            vertex_zero=vertex_zero)
+
+        assert actual.dtype == expected_dtype
+        assert expected_real.dtype == actual.real.dtype
+        testing.assert_allclose(
+            actual.real, expected_real, rtol=tol, atol=tol)
+        testing.assert_allclose(
+            cupy.abs(actual), cupy.ones_like(expected_real),
+            rtol=tol, atol=tol)
+
+    @pytest.mark.parametrize('method, f0, f1', [
+        ('logarithmic', 0.0, 1.0),
+        ('hyperbolic', 0.0, 1.0),
+    ])
+    @testing.with_requires('scipy>=1.15.0')
+    def test_complex_invalid_frequency(self, method, f0, f1):
+        for xp, scp in [(cupy, cupyx.scipy), (np, scipy)]:
+            t = xp.linspace(0.0, 1.0, 5)
+            with pytest.raises(ValueError):
+                scp.signal.chirp(
+                    t, f0, 1.0, f1, method=method, complex=True)
+
+    @testing.with_requires('scipy>=1.15.0')
+    def test_complex_keyword_only(self):
+        for xp, scp in [(cupy, cupyx.scipy), (np, scipy)]:
+            t = xp.linspace(0.0, 1.0, 5)
+            with pytest.raises(TypeError):
+                scp.signal.chirp(
+                    t, 1.0, 1.0, 3.0, 'linear', 0.0, True, True)
+
     def test_hyperbolic_zero_freq(self):
         # f0=0 or f1=0 must raise a ValueError.
         method = 'hyperbolic'
@@ -144,6 +243,21 @@ class TestGaussPulse:
         float_result = scp.signal.gausspulse('cutoff', tpr=-60.0)
         int_result = scp.signal.gausspulse('cutoff', tpr=-60)
         return float_result, int_result
+
+
+@testing.slow
+@pytest.mark.thread_unsafe(reason='Allocation too large.')
+def test_unit_impulse_large_size():
+    out = None
+    try:
+        out = cupyx.scipy.signal.unit_impulse(
+            2**31, 2**31 - 1, dtype=cupy.uint8)
+        testing.assert_array_equal(out[-2:], [0, 1])
+    except MemoryError:
+        pytest.skip('out of memory in test.')
+    finally:
+        del out
+        cupy.get_default_memory_pool().free_all_blocks()
 
 
 @testing.with_requires('scipy')

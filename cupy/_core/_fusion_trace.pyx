@@ -298,9 +298,11 @@ class TraceImpl:
                 'cannot specify \'out\' as both a positional and '
                 'keyword argument')
 
-        in_params = [self._unwrap_interface(x) for x in args[:nin]]
+        # Bind once: avoids a gcc false positive on free-threaded builds.
+        unwrap = self._unwrap_interface
+        in_params = [unwrap(x) for x in args[:nin]]
         out_params = [
-            self._unwrap_interface(x, allow_none=True)
+            unwrap(x, allow_none=True)
             for x in args[nin:] + (kwargs.pop('out', None),)
             if x is not None
         ]
@@ -538,7 +540,9 @@ class TraceImpl:
             in_params.append(var)
 
         # Call the target function.
-        inputs = [self._make_interface(x) for x in in_params]
+        # Bind once: avoids a gcc false positive on free-threaded builds.
+        make_interface = self._make_interface
+        inputs = [make_interface(x) for x in in_params]
         output = func(*inputs)
 
         # Register output variables.

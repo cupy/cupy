@@ -15,6 +15,17 @@ from cupy.cuda.texture import (ChannelFormatDescriptor, CUDAarray,
 
 class TestUserkernel(unittest.TestCase):
 
+    def test_explicit_none_output(self):
+        kernel = cupy.ElementwiseKernel(
+            'T x', 'T y, T z', 'y = x + 1; z = x + 2',
+            'optional_outputs')
+        a = cupy.arange(6, dtype='float32')
+        out = cupy.empty_like(a)
+        y, z = kernel(a, None, out)
+        assert z is out
+        testing.assert_array_equal(y, a.get() + 1)
+        testing.assert_array_equal(z, a.get() + 2)
+
     def test_manual_indexing(self, n=100):
         in1 = cupy.random.uniform(-1, 1, n).astype(cupy.float32)
         in2 = cupy.random.uniform(-1, 1, n).astype(cupy.float32)
@@ -37,6 +48,19 @@ class TestUserkernel(unittest.TestCase):
         out2 = uesr_kernel_2(in1, in2, size=n)
 
         testing.assert_array_equal(out1, out2)
+
+    def test_broadcast_error_ignores_raw_shape(self):
+        kernel = cupy.ElementwiseKernel(
+            'raw float32 raw_x, float32 x, float32 y', 'float32 z',
+            'z = x + y', 'raw_broadcast_error')
+        raw = cupy.empty(17, dtype='float32')
+        x = cupy.empty(2, dtype='float32')
+        y = cupy.empty(3, dtype='float32')
+        with pytest.raises(ValueError) as error:
+            kernel(raw, x, y)
+        assert str(error.value) == (
+            'operands could not be broadcast together with shapes '
+            '() (2,) (3,)')
 
     def test_python_scalar(self):
         for typ in (int, float, bool):
@@ -132,6 +156,18 @@ class TestElementwiseKernelSize(unittest.TestCase):
         kernel2(self.arr1, self.arr2, size=2)
         with self.raises_size_required():
             kernel2(self.arr1, self.arr2)
+
+    def test_all_scalars(self):
+        kernel = self.create_kernel((False,), (False,))
+        with self.raises_size_required():
+            kernel(1)
+        assert kernel(1, size=2).shape == (2,)
+
+    def test_no_arguments(self):
+        kernel = self.create_kernel((), (False,))
+        with self.raises_size_required():
+            kernel()
+        assert kernel(size=2).shape == (2,)
 
     def test_all_nonraws(self):
         # All arrays are not raw -> size not allowed

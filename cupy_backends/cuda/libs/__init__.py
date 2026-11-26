@@ -33,8 +33,7 @@ def __getattr__(name):
                 pathfinder_name = 'cusparseLt'
             _pathfinder.load_nvidia_dynamic_lib(pathfinder_name)
         except _pathfinder.DynamicLibNotFoundError as e:
-            if (not (_os.environ.get('READTHEDOCS') == 'True') and
-                    not (_os.environ.get('CUPY_CI') is not None)):
+            if _os.environ.get('CUPY_CI') is None:
                 raise ImportError(str(e)) from e
 
     if name in (_submodules + _submodules_runtime_link):

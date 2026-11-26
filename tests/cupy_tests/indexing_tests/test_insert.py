@@ -105,6 +105,17 @@ class TestPutScalars(unittest.TestCase):
         return a
 
 
+class TestPutUint64(unittest.TestCase):
+
+    @testing.with_requires('numpy>=2.6.0.dev0')
+    @testing.numpy_cupy_array_equal()
+    def test_put_uint64(self, xp):
+        a = xp.arange(5)
+        indices = xp.array([0, 2, 4], dtype=xp.uint64)
+        xp.put(a, indices, [10, 20, 30], mode='raise')
+        return a
+
+
 @testing.parameterize(*testing.product({
     'shape': [(7,), (2, 3)],
 }))

@@ -130,15 +130,30 @@ def _fill_commit_status(
             )
 
 
-def extract_requested_tags(comment: str) -> set[str] | None:
+def extract_requested_tags(comment: str) -> list[set[str]] | None:
     """
-    Returns the set of test tags requested in the comment.
+    Returns one tag set per /test line; lines select a union of projects.
     """
+    requests: list[set[str]] = []
     for line in comment.splitlines():
         match = re.fullmatch(r'/test ([\w,\- ]+)', line)
         if match is not None:
-            return set([x.strip() for x in match.group(1).split(',')])
-    return None
+            tags = {x.strip() for x in match.group(1).split(',')}
+            if tags not in requests:
+                requests.append(tags)
+    return requests or None
+
+
+def _keep_first_test_line(payload: dict[str, Any]) -> dict[str, Any]:
+    # Workaround for #10504: FlexCI errors on a second /test line even
+    # though projects are selected via project=. Remove once fixed.
+    lines = payload['comment']['body'].splitlines()
+    tests = [i for i, line in enumerate(lines) if line.startswith('/test')]
+    if len(tests) <= 1:
+        return payload
+    body = '\n'.join(
+        line for i, line in enumerate(lines) if i not in tests[1:])
+    return {**payload, 'comment': {**payload['comment'], 'body': body}}
 
 
 def parse_args(argv: Any) -> Any:
@@ -209,7 +224,7 @@ def main(argv: Any) -> int:
 
     requested_tags = None
     if event_name == 'push':
-        requested_tags = {'@push'}
+        requested_tags = [{'@push'}]
         _log('Requesting tests with @push tag')
     elif event_name == 'issue_comment':
         action = payload['action']
@@ -221,9 +236,18 @@ def main(argv: Any) -> int:
         if requested_tags is None:
             _log('No test requested in comment.')
             return 0
-        if len(requested_tags - set(options.external_tag)) == 0:
+        if len(requested_tags) > 1 and any(
+                tags in ({'skip'}, {'force-skip'})
+                for tags in requested_tags):
+            _log('Cannot combine skip or force-skip with other /test lines')
+            return 1
+        requested_tags = [
+            tags for tags in requested_tags
+            if tags - set(options.external_tag)
+        ]
+        if not requested_tags:
             _log('All tests requested are not for FlexCI')
-            requested_tags = {'skip'}
+            requested_tags = [{'skip'}]
 
         # Note: this is not for security but to show a friendly message.
         # FlexCI server also validates the membership of the user triggered.
@@ -238,18 +262,26 @@ def main(argv: Any) -> int:
         return 1
 
     if options.override_tags is not None:
-        requested_tags = {
+        override_tags = {
             t.strip() for t in options.override_tags.split(',') if t.strip()
         }
-        if not requested_tags:
+        if not override_tags:
             _log('--override-tags parsed to an empty set')
             return 1
+        requested_tags = [override_tags]
         _log(f'Overriding requested tags to: {requested_tags}')
+
+    for request in requested_tags:
+        if request in ({'skip'}, {'force-skip'}):
+            continue
+        if not any(request <= set(tags) for tags in project_tags.values()):
+            _log('Ignoring request with no matching projects: ' +
+                 ','.join(sorted(request)))
 
     projects_dispatch: set[str] = set()
     projects_skip: set[str] = set()
     for project, tags in project_tags.items():
-        dispatch = (requested_tags <= set(tags))
+        dispatch = any(request <= set(tags) for request in requested_tags)
         if dispatch:
             projects_dispatch.add(project)
         else:
@@ -258,9 +290,9 @@ def main(argv: Any) -> int:
 
     force_skip = False
     if len(projects_dispatch) == 0:
-        if requested_tags == {'skip'}:
+        if requested_tags == [{'skip'}]:
             _log('Skipping all projects as requested')
-        elif requested_tags == {'force-skip'}:
+        elif requested_tags == [{'force-skip'}]:
             _log('Force skipping all projects as requested')
             force_skip = True
         else:
@@ -268,6 +300,8 @@ def main(argv: Any) -> int:
             return 1
     else:
         _log(f'Dispatching projects: {projects_dispatch}')
+        if event_name == 'issue_comment':
+            payload = _keep_first_test_line(payload)
         success = _forward_to_flexci(
             event_name, payload, webhook_secret, projects_dispatch,
             options.flexci_uri)

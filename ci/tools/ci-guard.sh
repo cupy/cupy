@@ -10,6 +10,10 @@
 #            and the dispatcher posts skip statuses. Set for
 #            pull_request/labeled runs whose vouched artifact records a
 #            `/test skip` or `/test force-skip` comment.
+#   doc-only: builds only the sdist + the single wheel docs.yml needs
+#            (py3.12, linux-64, cu13) so RTD gets a preview without the
+#            full matrix or GPU tests. Set for pull_request/labeled runs
+#            whose vouched artifact records a `/test doc-only` comment.
 #   no-op  : nothing runs downstream. Unrelated labels, non-vouched
 #            ci:triggered, branch deletions, skip-ci merged PRs, etc.
 #
@@ -97,12 +101,13 @@ pull_request)
             > "${RUNNER_TEMP}/dispatch-request.zip"
         unzip -q -o "${RUNNER_TEMP}/dispatch-request.zip" -d "${RUNNER_TEMP}/dispatch-request"
         body="$(jq -r '.comment.body' "${RUNNER_TEMP}/dispatch-request/event.json")"
-        # Match the first-line convention used by the dispatcher's
-        # extract_requested_tags: a comment mixing "/test cuda120" and
-        # "/test skip" is treated as the first line's intent.
+        # Skip directives must be standalone; the dispatcher rejects
+        # comments combining them with other /test lines.
         first_test="$(printf '%s\n' "${body}" | grep -m1 -E '^/test[[:space:]]+[^[:space:]]' || true)"
         if [[ "${first_test}" =~ ^/test[[:space:]]+(skip|force-skip)[[:space:]]*$ ]]; then
           mode=skip
+        elif [[ "${first_test}" =~ ^/test[[:space:]]+doc-only[[:space:]]*$ ]]; then
+          mode=doc-only
         else
           mode=test
         fi
@@ -115,6 +120,18 @@ push)
   if [[ "$(jq -r '.deleted' "$GITHUB_EVENT_PATH")" == "true" ]] || \
      [[ "$(jq -r '.after' "$GITHUB_EVENT_PATH")" =~ ^0+$ ]]; then
     echo "Branch deletion; mode=no-op"
+  elif [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+    # Tag push: the tagged commit was already built + tested on the
+    # branch push that preceded the tag, so re-running the full matrix
+    # (and FlexCI GPU dispatch) at the same SHA is redundant. Run just
+    # the docs lane so docs.yml can publish `vX.Y.Z` to RTD. The push
+    # leg below also sets `pr_number` for the merged PR; clear it here
+    # so docs.yml classifies this as a tag event, not an external PR.
+    mode=doc-only
+    ref="${GITHUB_SHA}"
+    artifact_suffix="${GITHUB_SHA}"
+    head_sha="${GITHUB_SHA}"
+    pr_number=""
   else
     # Honor skip-ci on the merged PR. The commit->PRs endpoint can return
     # open/unrelated associations, so require a PR that was really merged

@@ -212,6 +212,11 @@ Multi-GPU FFT
 
 CuPy currently provides two kinds of *experimental* support for multi-GPU FFT.
 
+.. deprecated:: 14.3
+
+    Multi-GPU FFT support is deprecated.
+    Use :class:`nvmath.distributed.fft.FFT` instead.
+
 .. warning::
 
     Using multiple GPUs to perform FFT is not guaranteed to be more performant. The rule of thumb is if the transform fits in 1 GPU, you should avoid using multiple.
@@ -257,11 +262,11 @@ The second kind of usage is to use the low-level, *private* CuPy APIs. You need 
     cufft_type = cp.cuda.cufft.CUFFT_C2C  # single-precision c2c
     plan = cp.cuda.cufft.Plan1d(nx, cufft_type, batch, devices=[0,1])
     out_cp = np.empty_like(a)  # output on CPU
-    plan.fft(a, out_cp, cufft.CUFFT_FORWARD)
+    plan.fft(a, out_cp, cp.cuda.cufft.CUFFT_FORWARD)
 
-    out_np = numpy.fft.fft(a)  # use NumPy's fft
+    out_np = np.fft.fft(a)  # use NumPy's fft
     # np.fft.fft always returns np.complex128
-    if dtype is numpy.complex64:
+    if dtype is np.complex64:
         out_np = out_np.astype(dtype)
 
     # check result

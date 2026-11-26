@@ -7,6 +7,7 @@ import numpy
 import cupy
 from cupy import testing
 import cupyx.scipy.linalg
+from cupyx.scipy.linalg import _decomp_lu
 if cupyx.scipy._scipy_available:
     import scipy.linalg
 
@@ -16,6 +17,30 @@ if cupyx.scipy._scipy_available:
 requires_scipy_linalg_backend = unittest.skip(
     'scipy.linalg backend feature has not been released'
 )
+
+
+def test_split_lu_kernel_accepts_large_dimensions():
+    large = 2**31
+    lu = cupy.lib.stride_tricks.as_strided(
+        cupy.array([2], dtype=cupy.float32),
+        shape=(large, 1), strides=(0, 0))
+    lower = cupy.empty(1, dtype=cupy.float32)
+    upper = cupy.empty(1, dtype=cupy.float32)
+    _decomp_lu._kernel_cupy_split_lu(
+        lu, large, 1, 1, lower._c_contiguous, lower, upper, size=1)
+    assert lower[0] == 1
+    assert upper[0] == 2
+
+
+def test_laswp_kernel_accepts_large_dimensions():
+    large = 2**31
+    pivots = cupy.array([0], dtype=cupy.int64)
+    a_base = cupy.array([3], dtype=cupy.float32)
+    a = cupy.lib.stride_tricks.as_strided(
+        a_base, shape=(large, 1), strides=(0, 0))
+    _decomp_lu._kernel_cupy_laswp(
+        large, 1, 0, 0, pivots, 1, a._c_contiguous, a, size=1)
+    assert a_base[0] == 3
 
 
 @testing.parameterize(*testing.product({

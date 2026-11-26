@@ -13,6 +13,8 @@ cdef class ParameterInfo:
         readonly str name
         readonly object dtype
         readonly str ctype
+        readonly tuple core_shape
+        readonly int core_ndim
         readonly bint raw
         readonly bint is_const
 
@@ -36,6 +38,7 @@ cdef class _ArgInfo:
         readonly int ndim
         readonly bint c_contiguous
         readonly bint index_32_bits
+        readonly int core_ndim
 
     cdef _ArgInfo _init(
         self,
@@ -44,13 +47,14 @@ cdef class _ArgInfo:
         object dtype,
         int ndim,
         bint c_contiguous,
-        bint index_32_bits)
+        bint index_32_bits,
+        int core_ndim=*)
 
     @staticmethod
-    cdef _ArgInfo from_arg(object arg)
+    cdef _ArgInfo from_arg(object arg, int core_ndim=*)
 
     @staticmethod
-    cdef _ArgInfo from_ndarray(_ndarray_base arg)
+    cdef _ArgInfo from_ndarray(_ndarray_base arg, int core_ndim=*)
 
     @staticmethod
     cdef _ArgInfo from_scalar(_scalar.CScalar arg)
@@ -85,6 +89,73 @@ cdef class _TypeMap:
         tuple _pairs
 
     cdef str get_typedef_code(self, type_decls=*)
+
+
+cdef class KernelArguments:
+    # A kernels friendly helper to organize preparation of input and
+    # output arguments.
+    cdef:
+        Py_ssize_t nin
+        Py_ssize_t nout
+        # `args` is the argument storage, may micro-optimize this
+        # but right now it's a list and that is used in broadcasting.
+        list args
+        bint has_where
+        bint is_ufunc
+
+    @staticmethod
+    cdef KernelArguments create(
+            Py_ssize_t nin, Py_ssize_t nout, tuple args, out,
+            where, bint is_ufunc, int dev_id, str name)
+
+    cdef _copy_in_args_if_needed(self)
+
+    cdef _preprocess_args(self, dev_id)
+
+    cdef find_and_apply_shape(
+        self, tuple params, shape_t& shape, bint shape_fixed,
+        bint include_outputs=*)
+
+    cdef find_and_apply_shape_gu(self, tuple params, shape_t& shape)
+
+    cdef create_out_args_with_types(
+        self, tuple out_types, casting, const shape_t& shape,
+        subtype=*, template=*)
+    cdef create_out_args_with_params(
+        self, tuple out_types, tuple out_params, bint is_size_specified,
+        const shape_t& shape)
+    cdef create_out_args_with_params_gu(
+        self, tuple out_types, tuple out_params, tuple out_shapes)
+
+    cdef result(self, bint tuple_return)
+    cdef finalize_scalars(self, tuple in_types)
+    cdef tuple get_ndarray_dtypes(self)
+
+    # Helpers to access arguments (makes offsets simpler and also may allow
+    # to simplify changing the storage in the future).
+    cdef inline get_in(self, Py_ssize_t i):
+        return self.args[i]
+
+    cdef inline set_in(self, Py_ssize_t i, arg):
+        self.args[i] = arg
+
+    cdef inline get_out(self, Py_ssize_t i):
+        return self.args[self.nin + i + self.has_where]
+
+    cdef inline set_out(self, Py_ssize_t i, arg):
+        # We skip one for `where`
+        self.args[self.nin + i + self.has_where] = arg
+
+    cdef inline get_where(self):
+        assert self.has_where
+        return self.args[self.nin]
+
+    cdef inline set_where(self, arg):
+        assert self.has_where
+        self.args[self.nin] = arg
+
+    cdef inline set_indexer(self, indexer):
+        self.args[self.nin + self.nout + self.has_where] = indexer
 
 
 cdef class _Op:
@@ -154,23 +225,11 @@ cpdef create_ufunc(name, ops, routine=*, preamble=*, doc=*,
 
 cpdef str _full_mask_hex()
 
-cdef tuple _get_arginfos(list args)
+cdef tuple _get_arginfos(list args, object core_ndims=*)
 
 cdef str _get_kernel_params(tuple params, tuple arginfos, type_decls=*)
 
-cdef list _broadcast(list args, tuple params, bint use_size, shape_t& shape)
-
-cdef list _get_out_args_from_optionals(
-    subtype, list out_args, tuple out_types, const shape_t& out_shape, casting,
-    obj)
-
-cdef list _get_out_args_with_params(
-    list out_args, tuple out_types,
-    const shape_t& out_shape, tuple out_params, bint is_size_specified)
-
 cpdef _check_peer_access(_ndarray_base arr, int device_id)
-
-cdef list _preprocess_args(int dev_id, args)
 
 cdef shape_t _reduce_dims(
     list args, tuple params, const shape_t& shape) except *

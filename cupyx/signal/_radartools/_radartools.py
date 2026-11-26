@@ -177,6 +177,7 @@ def ca_cfar(array, guard_cells, reference_cells, pfa=1e-3):
     mask = cupy.zeros(shape, dtype=cupy.float32)
 
     if len(shape) == 1:
+        guard_cells, reference_cells = int(guard_cells), int(reference_cells)
         if len(array) <= 2 * guard_cells + 2 * reference_cells:
             raise ValueError('Array too small for given parameters')
         intermediate = cupy.cumsum(array, axis=0, dtype=cupy.float32)
@@ -192,8 +193,8 @@ def ca_cfar(array, guard_cells, reference_cells, pfa=1e-3):
         if len(guard_cells) != 2 or len(reference_cells) != 2:
             raise TypeError('Guard and reference cells must be two '
                             'dimensional.')
-        guard_cells_x, guard_cells_y = guard_cells
-        reference_cells_x, reference_cells_y = reference_cells
+        guard_cells_x, guard_cells_y = map(int, guard_cells)
+        reference_cells_x, reference_cells_y = map(int, reference_cells)
         if shape[0] - 2 * guard_cells_x - 2 * reference_cells_x <= 0:
             raise ValueError('Array first dimension too small for given '
                              'parameters.')
@@ -222,19 +223,21 @@ def ca_cfar(array, guard_cells, reference_cells, pfa=1e-3):
 _ca_cfar_2d_kernel = cupy.RawKernel(r'''
 extern "C" __global__ void
 _ca_cfar_2d_kernel(float * array, float * intermediate, float * mask,
-                   int width, int height, int N, float alpha,
-                   int guard_cells_x, int guard_cells_y,
-                   int reference_cells_x, int reference_cells_y)
+                   long long width, long long height, long long N, float alpha,
+                   long long guard_cells_x, long long guard_cells_y,
+                   long long reference_cells_x, long long reference_cells_y)
 {
-    int i_init = threadIdx.x+blockIdx.x*blockDim.x;
-    int j_init = threadIdx.y+blockIdx.y*blockDim.y;
-    int i, j, x, y, offset;
-    int tro, tlo, blo, bro, tri, tli, bli, bri;
+    long long i_init =
+        threadIdx.x+static_cast<long long>(blockIdx.x)*blockDim.x;
+    long long j_init =
+        threadIdx.y+static_cast<long long>(blockIdx.y)*blockDim.y;
+    long long i, j, x, y, offset;
+    long long tro, tlo, blo, bro, tri, tli, bli, bri;
     float outer_area, inner_area, T;
     for (i=i_init; i<width-2*(guard_cells_x+reference_cells_x);
-         i += blockDim.x*gridDim.x){
+         i += static_cast<long long>(blockDim.x)*gridDim.x){
         for (j=j_init; j<height-2*(guard_cells_y+reference_cells_y);
-             j += blockDim.y*gridDim.y){
+             j += static_cast<long long>(blockDim.y)*gridDim.y){
             /* 'tri' is Top Right Inner (square), 'blo' is Bottom Left
              * Outer (square), etc. These are the corners at which
              * the intermediate array must be evaluated.
@@ -283,15 +286,16 @@ _ca_cfar_2d_kernel(float * array, float * intermediate, float * mask,
 _ca_cfar_1d_kernel = cupy.RawKernel(r'''
 extern "C" __global__ void
 _ca_cfar_1d_kernel(float * array, float * intermediate, float * mask,
-                   int width, int N, float alpha,
-                   int guard_cells, int reference_cells)
+                   long long width, long long N, float alpha,
+                   long long guard_cells, long long reference_cells)
 {
-    int i_init = threadIdx.x+blockIdx.x*blockDim.x;
-    int i, x;
-    int br, bl, sr, sl;
+    long long i_init =
+        threadIdx.x+static_cast<long long>(blockIdx.x)*blockDim.x;
+    long long i, x;
+    long long br, bl, sr, sl;
     float big_area, small_area, T;
     for (i=i_init; i<width-2*(guard_cells+reference_cells);
-         i += blockDim.x*gridDim.x){
+         i += static_cast<long long>(blockDim.x)*gridDim.x){
         x = i+guard_cells+reference_cells;
         br = x+guard_cells+reference_cells;
         bl = x-guard_cells-reference_cells-1;

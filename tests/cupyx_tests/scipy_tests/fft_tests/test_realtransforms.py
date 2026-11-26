@@ -3,6 +3,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+import cupy
+from cupyx.scipy.fft import _realtransforms
 from cupyx.scipy import fft as cp_fft
 from cupy import testing
 
@@ -12,6 +14,18 @@ except ImportError:
     scipy_fft = None
 
 all_dct_norms = [None, 'ortho', 'forward', 'backward']
+
+
+@pytest.mark.parametrize(
+    'kernel, expected',
+    [(_realtransforms._mult_factor_dct2, 2),
+     (_realtransforms._mult_factor_dct3, 2 * 2**31)])
+def test_mult_factor_accepts_large_transform_length(kernel, expected):
+    # At i == 0 the exponential is 1, so this pins the N-dependent prefactor.
+    x = cupy.empty(1, dtype=cupy.float32)
+    out = cupy.empty(1, dtype=cupy.complex64)
+    kernel(x, 2**31, cupy.float32(1), out)
+    assert out[0] == expected
 
 
 @testing.parameterize(
@@ -70,6 +84,9 @@ class TestDctDst:
         fft_func = getattr(scp.fft, self.function)
         return self._run_transform(fft_func, xp, dtype)
 
+    @pytest.mark.thread_unsafe(
+        reason="scipy's set_backend() not fully thread-safe: "
+        "https://github.com/scipy/scipy/issues/25878#issuecomment-6033943581")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-5, accept_error=ValueError,
                                  contiguous_check=False)
@@ -150,6 +167,9 @@ class TestDctnDstn:
         fft_func = getattr(scp.fft, self.function)
         return self._run_transform(fft_func, xp, dtype)
 
+    @pytest.mark.thread_unsafe(
+        reason="scipy's set_backend() not fully thread-safe: "
+        "https://github.com/scipy/scipy/issues/25878#issuecomment-6033943581")
     @testing.for_all_dtypes()
     @testing.numpy_cupy_allclose(rtol=1e-4, atol=1e-5, accept_error=ValueError,
                                  contiguous_check=False)

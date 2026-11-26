@@ -8,9 +8,23 @@ from cupy import testing
 from cupy import cuda
 from cupy.exceptions import AxisError
 from cupy.testing._helper import skip_if_after_baseline
+from cupy.testing._protocol_helpers import (
+    DummyObjectWithCuPyGetNDArray, DummyObjectWithCudaArrayInterface)
 
 
 class TestJoin:
+
+    @pytest.mark.parametrize('wrapper', [
+        DummyObjectWithCuPyGetNDArray, DummyObjectWithCudaArrayInterface])
+    def test_concatenate_array_protocols(self, wrapper):
+        a = cupy.arange(3)
+        result = cupy.concatenate((a, wrapper(a)))
+        testing.assert_array_equal(result, [0, 1, 2, 0, 1, 2])
+
+    def test_concatenate_invalid_input(self):
+        with pytest.raises(
+                TypeError, match='Only cupy arrays can be concatenated'):
+            cupy.concatenate((cupy.ones(2), 1.0))
 
     @testing.for_all_dtypes(name='dtype1')
     @testing.for_all_dtypes(name='dtype2')

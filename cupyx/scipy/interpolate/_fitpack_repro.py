@@ -265,9 +265,9 @@ def _validate_inputs(x, y, w, k, s, xb, xe, parametric):
         raise ValueError(f"`s` must be non-negative. Got {s=}")
 
     if xb is None:
-        xb = min(x)
+        xb = x.min()
     if xe is None:
-        xe = max(x)
+        xe = x.max()
 
     return x, y, w, k, s, xb, xe
 
@@ -1361,7 +1361,7 @@ class UnivariateSpline:
             if ext == 1:   # "zeros"
                 result[(x < xb) | (x > xe)] = 0.
             elif ext == 2:   # raise
-                if any((x < xb) | (x > xe)):
+                if ((x < xb) | (x > xe)).any():
                     raise ValueError(f"Out of bounds {x=} with ext='raise'.")
             elif ext == 3:   # "const"
                 result[x < xb] = self._spl(xb)

@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from typing import NamedTuple
-
 import numpy
 
 import cupy
 import math
 from cupy import _core
+from cupy._warnings import warn_external
 
 
 def delete(arr, indices, axis=None):
@@ -99,12 +99,47 @@ def append(arr, values, axis=None):
     .. seealso:: :func:`numpy.append`
     """
     # TODO(asi1024): Implement fast path for scalar inputs.
-    arr = cupy.asarray(arr)
-    values = cupy.asarray(values)
+    arr_arr = cupy.asarray(arr)
+    val_arr = cupy.asarray(values)
     if axis is None:
-        return _core.concatenate_method(
-            (arr.ravel(), values.ravel()), 0).ravel()
-    return _core.concatenate_method((arr, values), axis)
+        res = _core.concatenate_method(
+            (arr_arr.ravel(), val_arr.ravel()), 0).ravel()
+
+        scalar_promotion = False
+        if type(arr) in {int, float, complex}:
+            lhs_promote = arr
+            scalar_promotion = True
+        else:
+            lhs_promote = arr_arr.dtype
+
+        if type(values) in {int, float, complex}:
+            rhs_promote = values
+            scalar_promotion = True
+        else:
+            rhs_promote = val_arr.dtype
+
+        if scalar_promotion:
+            # To align with NumPy, the scalar should use weak promotion
+            # in the future.
+            dtype = numpy.result_type(lhs_promote, rhs_promote)
+            if dtype == res.dtype:
+                return res
+            # NOTE(seberg): This is unfortunate, but hopefully niche enough...
+            # NumPy allows scalars in concatenate, so it points there.
+            # We don't, so this needs to ask users to use `np.float32(val)` or
+            # `arr.dtype.type(val)` if they prefer the future behavior.
+            # Warning added/Deprecated CuPy 14.3 (NumPy 2.6).
+            warn_external(
+                "append() with a Python scalar will not convert the scalar "
+                f"to an array first and will return dtype {dtype} in the "
+                "future which may change results or error for "
+                "out-of-bounds values.\n"
+                "Please convert the scalar to your desired type to avoid "
+                "this warning.", FutureWarning,
+                stacklevel=2)
+        return res
+
+    return _core.concatenate_method((arr_arr, val_arr), axis)
 
 
 _resize_kernel = _core.ElementwiseKernel(

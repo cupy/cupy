@@ -88,7 +88,10 @@ class TestSearch:
     @testing.slow
     @pytest.mark.thread_unsafe(reason="allocation too large.")
     def test_argmax_int32_overflow(self):
-        a = cupy.arange(2 ** 32 + 1, dtype=cupy.float64)
+        try:
+            a = cupy.arange(2 ** 32 + 1, dtype=cupy.float64)
+        except MemoryError:
+            pytest.skip('Not enough GPU memory for the large array')
         assert a.argmax().item() == 2 ** 32
 
     @testing.for_all_dtypes(no_complex=True)
@@ -168,7 +171,10 @@ class TestSearch:
     @testing.slow
     @pytest.mark.thread_unsafe(reason="allocation too large.")
     def test_argmin_int32_overflow(self):
-        a = cupy.arange(2 ** 32 + 1, dtype=cupy.float64)
+        try:
+            a = cupy.arange(2 ** 32 + 1, dtype=cupy.float64)
+        except MemoryError:
+            pytest.skip('Not enough GPU memory for the large array')
         cupy.negative(a, out=a)
         assert a.argmin().item() == 2 ** 32
 
@@ -817,6 +823,13 @@ class TestSearchSortedWithSorter:
         sorter = xp.array([3, 2, 1, 4, 0])
         y = xp.searchsorted(bins, x, sorter=sorter)
         return y,
+
+    @testing.with_requires('numpy>=2.6.0.dev0')
+    @testing.numpy_cupy_array_equal()
+    def test_sorter_uint64(self, xp):
+        a = xp.array([30, 10, 20])
+        sorter = xp.array([1, 2, 0], dtype=xp.uint64)
+        return xp.searchsorted(a, xp.array([15, 25]), sorter=sorter)
 
     def test_invalid_sorter(self):
         for xp in (numpy, cupy):

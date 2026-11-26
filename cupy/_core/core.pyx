@@ -13,7 +13,6 @@ import cupy
 from cupy._core._kernel import create_ufunc
 from cupy._core._kernel import ElementwiseKernel
 from cupy._core._ufuncs import elementwise_copy
-from cupy._core import flags as _flags
 from cupy._core import syncdetect
 from cupy import cuda
 from cupy.cuda import memory as memory_module
@@ -27,6 +26,7 @@ cimport cython  # NOQA
 cimport cpython
 from libc.stdint cimport int64_t, intptr_t, INT32_MAX
 from libc cimport stdlib
+from libcpp cimport bool as cpp_bool
 from cpython cimport Py_buffer
 
 cimport numpy as cnp
@@ -36,6 +36,7 @@ from cupy._core cimport _dtype
 from cupy._core._dtype cimport get_dtype
 from cupy._core._dtype cimport populate_format
 from cupy._core._kernel cimport create_ufunc
+from cupy._core cimport flags as _flags
 from cupy._core cimport _memory_range
 from cupy._core cimport _routines_binary as _binary
 from cupy._core cimport _routines_indexing as _indexing
@@ -48,6 +49,7 @@ from cupy._core cimport _routines_statistics as _statistics
 from cupy._core cimport _scalar
 from cupy._core cimport dlpack
 from cupy._core cimport internal
+from cupy._core.internal cimport cached_object
 from cupy.cuda cimport device
 from cupy.cuda cimport function
 from cupy.cuda cimport pinned_memory
@@ -62,27 +64,13 @@ from cupy.exceptions import ComplexWarning
 NUMPY_1x = numpy.__version__ < '2'
 
 
-cdef extern from *:
-    """
-    #define _str_(s) #s
-    #define _xstr_(s) _str_(s)
-    const char* cupy_cache_key = _xstr_(CUPY_CACHE_KEY);
-    #undef _xstr_
-    #undef _str_
-    """
-    const char* cupy_cache_key  # set at build time
-
-
-CUPY_CACHE_KEY = cupy_cache_key.decode()
-
 cdef tuple _HANDLED_TYPES
 
 cdef object _null_context = contextlib.nullcontext()
 
 # Supported index types for mdspan - initialized at runtime to avoid
-# circular import
-cdef tuple _MDSPAN_SUPPORTED_INDEX_TYPES = None
-cdef dict _MDSPAN_INDEX_TYPE_TO_ITEMSIZE = None
+# circular import.  Maps index type -> itemsize in bytes.
+cdef cached_object _MDSPAN_SUPPORTED_INDEX_TYPES
 
 
 # If rop of cupy.ndarray is called, cupy's op is the last chance.
@@ -220,7 +208,7 @@ cdef class _ndarray_base:
 
     def _init(self, shape, dtype=float, memptr=None, strides=None,
               order='C'):
-        cdef Py_ssize_t x, itemsize, alloc_size, left, right
+        cdef Py_ssize_t x, itemsize, alloc_size, left = 0, right = 0
         cdef tuple s = internal.get_size(shape)
         del shape
 
@@ -272,10 +260,11 @@ cdef class _ndarray_base:
             self._set_contiguous_strides(itemsize, order_char == b'C')
             alloc_size = self.size * itemsize  # contiguous
 
-        # Arrays can e.g. broadcast, so check that all pointer offsets fit and
-        # the size fit int32. (seberg: `* itemsize` may be unnecessary)
+        # Arrays can e.g. broadcast, so check that all pointer offsets and
+        # size-bound indexing quantities fit int32. (seberg: `* itemsize`
+        # may be unnecessary)
         max_diff = max(alloc_size, self.size * itemsize)
-        self._index_32_bits = max_diff <= <Py_ssize_t>(1 << 31)
+        self._index_32_bits = max_diff < <Py_ssize_t>(1 << 31)
 
         # data
         if memptr is None:
@@ -298,7 +287,7 @@ cdef class _ndarray_base:
             dtype, check_support=True)
         self._set_contiguous_strides(itemsize, c_order)
         self.data = memory.alloc(self.size * itemsize)
-        self._index_32_bits = (self.size * itemsize) <= <Py_ssize_t>(1 << 31)
+        self._index_32_bits = (self.size * itemsize) < <Py_ssize_t>(1 << 31)
 
     @property
     def __cuda_array_interface__(self):
@@ -461,7 +450,7 @@ cdef class _ndarray_base:
         buf.internal = NULL
         buf.readonly = 0  # TODO(leofang): use flags
         cdef int n, ndim
-        ndim = self._shape.size()
+        ndim = <int>(self._shape.size())
         cdef Py_ssize_t* shape_strides = <Py_ssize_t*>stdlib.malloc(
             sizeof(Py_ssize_t) * ndim * 2)
         for n in range(ndim):
@@ -501,8 +490,8 @@ cdef class _ndarray_base:
         .. seealso:: :attr:`numpy.ndarray.flags`
 
         """
-        return _flags.Flags(self._c_contiguous, self._f_contiguous,
-                            self.base is None)
+        return _flags.Flags._create(
+            self._c_contiguous, self._f_contiguous, self.base is None)
 
     property shape:
         """Lengths of axes.
@@ -1532,7 +1521,7 @@ cdef class _ndarray_base:
 
     # Truth value of an array (bool):
 
-    def __nonzero__(self):
+    def __bool__(self):
         if self.size == 0:
             msg = ('The truth value of an empty array is ambiguous. Returning '
                    'False, but in future this will result in an error. Use '
@@ -2403,25 +2392,26 @@ cdef inline _carray.mdspan _mdspan_from_ndarray(
     # Creates mdspan from ndarray.
     # Note that this function cannot be defined in _carray.pxd because that
     # would cause cyclic cimport dependencies.
-    global _MDSPAN_SUPPORTED_INDEX_TYPES, _MDSPAN_INDEX_TYPE_TO_ITEMSIZE
-
     cdef _carray.mdspan carr
     cdef int index_itemsize
+    cdef dict supported_index_types
 
     # Initialize cached constants on first use (avoid circular import)
-    if _MDSPAN_SUPPORTED_INDEX_TYPES is None:
-        _MDSPAN_SUPPORTED_INDEX_TYPES = (cupy.int32, cupy.int64)
-        _MDSPAN_INDEX_TYPE_TO_ITEMSIZE = {cupy.int32: 4, cupy.int64: 8}
+    supported_index_types = _MDSPAN_SUPPORTED_INDEX_TYPES.get()
+    if supported_index_types is None:
+        supported_index_types = _MDSPAN_SUPPORTED_INDEX_TYPES.setdefault({
+            cupy.int32: 4,
+            cupy.int64: 8,
+        })
 
     carr = _carray.mdspan.__new__(_carray.mdspan)
 
-    # Use dict lookup with membership check for validation
-    if index_type not in _MDSPAN_SUPPORTED_INDEX_TYPES:
+    index_itemsize = supported_index_types.get(index_type, -1)
+    if index_itemsize == -1:
         raise ValueError(
             f"Unsupported index_type: {index_type}. "
             "Must be cupy.int32 or cupy.int64."
         )
-    index_itemsize = _MDSPAN_INDEX_TYPE_TO_ITEMSIZE[index_type]
 
     # Validate that array size fits in index_type
     if index_type == cupy.int32 and arr.size > INT32_MAX:
@@ -2455,8 +2445,9 @@ _HANDLED_TYPES = (ndarray, numpy.ndarray)
 # TODO(niboshi): Move it out of core.pyx
 
 cdef bint _is_hip = runtime._is_hip_environment
-cdef str _cuda_include_dir = ''  # '' for uninitialized, None for non-existing
-cdef str _rocm_include_dir = ''  # '' for uninitialized, None for non-existing
+# Lazily resolved include dirs.
+cdef cached_object _cuda_include_dir
+cdef cached_object _rocm_include_dir
 
 cdef list cupy_header_list = [
     'cupy/complex.cuh',
@@ -2473,8 +2464,7 @@ _cupy_header_list = cupy_header_list
 cdef str _cupy_header = ''.join(
     ['#include <%s>\n' % i for i in cupy_header_list])
 
-# This is indirect include header list.
-# These header files are subject to a hash key.
+# Indirect dependencies preloaded for Jitify and legacy HIPRTC.
 cdef list _cupy_extra_header_list = [
     'cupy/complex/complex.h',
     'cupy/complex/math_private.h',
@@ -2498,49 +2488,47 @@ cdef list _cupy_extra_header_list = [
     'cupy/complex/catrigf.h',
 ]
 
-cdef str _header_path_cache = None
-cdef str _header_source = None
-cdef dict _header_source_map = {}
-
 
 cpdef str _get_header_dir_path():
-    global _header_path_cache
-    if _header_path_cache is None:
-        # Cython cannot use __file__ in global scope
-        _header_path_cache = os.path.abspath(
+    # Cython cannot use __file__ in global scope
+    return os.path.abspath(
             os.path.join(os.path.dirname(__file__), 'include'))
-    return _header_path_cache
+
+
+cdef str _header_dir_path = _get_header_dir_path()
+cdef cached_object _header_source_cache
+cdef dict _header_source_map = {}
 
 
 cpdef tuple _get_cccl_include_options():
     # the search paths are made such that they resemble the layout in CTK
-    return (f"-I{_get_header_dir_path()}/cupy/_cccl/cub",
-            f"-I{_get_header_dir_path()}/cupy/_cccl/thrust",
-            f"-I{_get_header_dir_path()}/cupy/_cccl/libcudacxx")
+    return (f"-I{_header_dir_path}/cupy/_cccl/cub",
+            f"-I{_header_dir_path}/cupy/_cccl/thrust",
+            f"-I{_header_dir_path}/cupy/_cccl/libcudacxx")
 
 
 cpdef str _get_header_source():
-    global _header_source
     global _header_source_map
     cdef str header_path, base_path, file_path, header
     cdef list source
+    cdef object header_source = _header_source_cache.get()
 
-    if _header_source is None or not _header_source_map:
+    if header_source is None or not _header_source_map:
         source = []
-        base_path = _get_header_dir_path()
+        base_path = _header_dir_path
         for file_path in _cupy_extra_header_list + cupy_header_list:
             header_path = os.path.join(base_path, file_path)
             with open(header_path) as header_file:
                 header = header_file.read()
             source.append(header)
             _header_source_map[file_path.encode()] = header.encode()
-        _header_source = '\n'.join(source)
-    return _header_source
+        header_source = _header_source_cache.setdefault('\n'.join(source))
+    return header_source
 
 
 cpdef dict _get_header_source_map():
     global _header_source_map
-    if not _header_source_map:
+    if not _header_source_cache.initialized():
         _get_header_source()
     return _header_source_map
 
@@ -2585,41 +2573,53 @@ cpdef warn_on_unsupported_std(tuple options):
 
 
 cpdef tuple assemble_cupy_compiler_options(tuple options):
+    """Apply language defaults before classifying incoming compiler options."""
     if use_default_std(options):
         options += ('--std=c++17',)
     else:
         warn_on_unsupported_std(options)
 
-    if not _is_hip:
-        # make sure bundled CCCL is searched first
-        options = (_get_cccl_include_options() + options)
+    return options
 
-    options += ('-I%s' % _get_header_dir_path(),)
+
+cpdef tuple add_cupy_include_dirs(tuple options):
+    if not _is_hip:
+        # Make sure bundled CCCL is searched first.
+        options = _get_cccl_include_options() + options
+    return options + ('-I%s' % _header_dir_path,)
+
+
+cpdef tuple add_runtime_include_dirs(tuple options):
+    cdef cpp_bool initialized
 
     if not _is_hip:
-        global _cuda_include_dir
-        if _cuda_include_dir == '':
+        cuda_include_dir = _cuda_include_dir.get(&initialized)
+        if not initialized:
             from cuda.pathfinder import find_nvidia_header_directory
-            _cuda_include_dir = find_nvidia_header_directory('cudart')
-        if _cuda_include_dir is None:
+            cuda_include_dir = _cuda_include_dir.setdefault(
+                find_nvidia_header_directory('cudart'))
+
+        if cuda_include_dir is None:
             raise RuntimeError(
                 'Failed to find CUDA headers. Please install CUDA toolkit '
                 'headers (e.g., pip install cupy-cuda12x[ctk]) or specify '
                 'CUDA_PATH environment variable.')
-        options += ('-I' + _cuda_include_dir,)
+        options += ('-I' + cuda_include_dir,)
     else:
-        global _rocm_include_dir
-        if _rocm_include_dir == '':
+        rocm_include_dir = _rocm_include_dir.get(&initialized)
+        if not initialized:
             _rocm_path = cuda.get_rocm_path()
             if _rocm_path is not None:
-                _rocm_include_dir = os.path.join(_rocm_path, 'include')
+                rocm_include_dir = os.path.join(_rocm_path, 'include')
             else:
-                _rocm_include_dir = None
-        if _rocm_include_dir is None:
+                rocm_include_dir = None
+            rocm_include_dir = _rocm_include_dir.setdefault(rocm_include_dir)
+
+        if rocm_include_dir is None:
             raise RuntimeError(
                 'Failed to auto-detect ROCm root directory. '
                 'Please specify `ROCM_HOME` environment variable.')
-        options += ('-I' + _rocm_include_dir,)
+        options += ('-I' + rocm_include_dir,)
 
     return options
 
@@ -2638,15 +2638,14 @@ cpdef function.Module compile_with_cache(
         source = _cupy_header + source
     if jitify:
         source = '#include <cupy/cuda_workaround.h>\n' + source
-    extra_source = _get_header_source()
 
     options = assemble_cupy_compiler_options(options)
 
     return cuda.compiler._compile_module_with_cache(
-        source, options, arch=arch, extra_source=extra_source, backend=backend,
+        source, options, arch=arch, backend=backend,
         enable_cooperative_groups=enable_cooperative_groups,
         name_expressions=name_expressions, log_stream=log_stream,
-        jitify=jitify)
+        jitify=jitify, use_bundled_headers=True, use_toolkit_headers=True)
 
 
 cpdef bytes compile_to_ltoir(
@@ -2663,8 +2662,8 @@ cpdef bytes compile_to_ltoir(
 
     return cuda.compiler._compile_module_with_cache(
         source, assemble_cupy_compiler_options(options), arch=arch,
-        extra_source=_get_header_source(), log_stream=log_stream,
-        to_ltoir=True)
+        log_stream=log_stream, to_ltoir=True,
+        use_bundled_headers=True, use_toolkit_headers=True)
 
 
 # =============================================================================
@@ -3044,7 +3043,7 @@ cdef inline _ndarray_base _try_skip_h2d_copy(
 cdef _ndarray_base _array_default(
         obj, dtype, copy, order, Py_ssize_t ndmin, bint blocking):
     cdef _ndarray_base a
-    cdef bint is_correct_contiguous
+    cdef bint is_correct_contiguous = False
     cdef int order_char = internal._normalize_order(order)
 
     # Fast path: zero-copy a NumPy array if possible
@@ -3426,7 +3425,7 @@ cpdef _ndarray_base empty_like(
 
 cdef _ndarray_base _create_ndarray_from_shape_strides(
         subtype, const shape_t& shape, const strides_t& strides, dtype, obj):
-    cdef int ndim = shape.size()
+    cdef int ndim = <int>(shape.size())
     cdef int64_t begin = 0, end = dtype.itemsize
     cdef memory.MemoryPointer ptr
     for i in range(ndim):

@@ -6,21 +6,31 @@ from cupy import _core
 
 _packbits_kernel = {
     'big': _core.ElementwiseKernel(
-        'raw T a, raw int32 a_size', 'uint8 packed',
-        '''for (int j = 0; j < 8; ++j) {
-                    int k = i * 8 + j;
-                    int bit = k < a_size && a[k] != 0;
-                    packed |= bit << (7 - j);
-                }''',
+        'raw T a, int64 a_size_', 'uint8 packed',
+        '''
+        using index_t = decltype(a)::index_t;
+        index_t a_size = static_cast<index_t>(a_size_);
+
+        for (int j = 0; j < 8; ++j) {
+            index_t k = static_cast<index_t>(i) * 8 + j;
+            int bit = k < a_size && a[k] != 0;
+            packed |= bit << (7 - j);
+        }
+        ''',
         'cupy_packbits_big'
     ),
     'little': _core.ElementwiseKernel(
-        'raw T a, raw int32 a_size', 'uint8 packed',
-        '''for (int j = 0; j < 8; ++j) {
-                    int k = i * 8 + j;
-                    int bit = k < a_size && a[k] != 0;
-                    packed |= bit << j;
-                }''',
+        'raw T a, int64 a_size_', 'uint8 packed',
+        '''
+        using index_t = decltype(a)::index_t;
+        index_t a_size = static_cast<index_t>(a_size_);
+
+        for (int j = 0; j < 8; ++j) {
+            index_t k = static_cast<index_t>(i) * 8 + j;
+            int bit = k < a_size && a[k] != 0;
+            packed |= bit << j;
+        }
+        ''',
         'cupy_packbits_little'
     )
 }

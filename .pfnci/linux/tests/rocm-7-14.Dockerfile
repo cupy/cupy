@@ -16,7 +16,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
        liblzma-dev \
 \
        && \
-    apt-get -qqy install ccache git curl && \
+    apt-get -qqy install ca-certificates ccache git curl && \
     apt-get -qqy --allow-change-held-packages \
             --allow-downgrades install 
 
@@ -33,13 +33,14 @@ ENV LDFLAGS "-L${ROCM_HOME}/lib"
 RUN git clone https://github.com/pyenv/pyenv.git /opt/pyenv
 ENV PYENV_ROOT "/opt/pyenv"
 ENV PATH "${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
-RUN PYTHON_CONFIGURE_OPTS="--disable-shared" pyenv install 3.11.13 && \
-    pyenv global 3.11.13 && \
-    pip install -U setuptools pip wheel && \
+RUN git -C /opt/pyenv pull --ff-only && \
+    PYTHON_CONFIGURE_OPTS="--disable-shared" pyenv install 3.11.18 && \
+    pyenv global 3.11.18 && \
+    pip install --disable-pip-version-check -U pip setuptools wheel && \
     pip install -U google-cloud-storage
 
 RUN pip install -U 'numpy==2.3.*' 'scipy==1.16.*' 'optuna==3.*' 'ml_dtypes==0.5.*' 'cython==3.2.*,!=3.2.6'
-RUN pip uninstall -y mpi4py cuda-python nvmath-python cuda-cccl && \
+RUN pip uninstall -y mpi4py cuda-bindings cuda-core nvmath-python cuda-cccl && \
     pip check
 
 RUN mkdir /home/cupy-user && chmod 777 /home/cupy-user

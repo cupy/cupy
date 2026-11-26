@@ -72,8 +72,7 @@ def __getattr__(key):
             try:
                 pathfinder.load_nvidia_dynamic_lib("nvrtc")
             except pathfinder.DynamicLibNotFoundError as e:
-                if (not (_os.environ.get('READTHEDOCS') == 'True') and
-                        not (_os.environ.get('CUPY_CI') is not None)):
+                if _os.environ.get('CUPY_CI') is None:
                     raise ImportError(str(e)) from e
             import cupy.cuda.jitify as jitify
         else:
@@ -86,8 +85,7 @@ def __getattr__(key):
             try:
                 pathfinder.load_nvidia_dynamic_lib("cufft")
             except pathfinder.DynamicLibNotFoundError as e:
-                if (not (_os.environ.get('READTHEDOCS') == 'True') and
-                        not (_os.environ.get('CUPY_CI') is not None)):
+                if _os.environ.get('CUPY_CI') is None:
                     raise ImportError(str(e)) from e
         return _importlib.import_module('cupy.cuda.cufft')
 

@@ -33,22 +33,10 @@ def module_extension_name(file):
     return ensure_module_file(file)[0]
 
 
-def module_extension_sources(file, use_cython, no_cuda):
+def module_extension_sources(file, use_cython):
     pyx, others = ensure_module_file(file)
     base = os.path.join(*pyx.split('.'))
     pyx = base + ('.pyx' if use_cython else '.cpp')
-
-    # If CUDA SDK is not available, remove CUDA C files from extension sources
-    # and use stubs defined in header files.
-    if no_cuda:
-        others1 = []
-        for source in others:
-            base, ext = os.path.splitext(source)
-            if ext == '.cu':
-                continue
-            others1.append(source)
-        others = others1
-
     return [pyx] + others
 
 
@@ -60,7 +48,10 @@ def check_library(compiler, includes=(), libraries=(),
                   include_dirs=(), library_dirs=(), define_macros=None,
                   extra_compile_args=()):
 
-    source = ''.join(['#include <%s>\n' % header for header in includes])
+    # Same as cupy_backends/cuda/cupy_cusparse.h; otherwise MSVC prints
+    # hundreds of C4996 warnings for cusparse.h.
+    source = '#define DISABLE_CUSPARSE_DEPRECATED\n'
+    source += ''.join(['#include <%s>\n' % header for header in includes])
     source += 'int main() {return 0;}'
     try:
         # We need to try to build a shared library because distutils
@@ -298,13 +289,14 @@ def _find_static_library(name: str) -> str:
 def make_extensions(ctx: Context, compiler, use_cython):
     """Produce a list of Extension instances which passed to cythonize()."""
 
-    ctx.calculate_cupy_cache_key()
+    ctx.generate_header_cache()
     CACHE_FILE = f"{ctx.source_root}/.cupy_builder.cache"
     if ctx.dev_configure_cache and os.path.exists(CACHE_FILE):
         with open(CACHE_FILE, "rb") as f:
             (prev_ctx, ret) = pickle.load(f)
         if (ctx.dev_configure_cache_key == prev_ctx.dev_configure_cache_key and
-                ctx.cupy_cache_key == prev_ctx.cupy_cache_key):
+                ctx.header_cache_key == getattr(
+                    prev_ctx, 'header_cache_key', None)):
             print("***************************************************")
             print("*** NOTICE: Reusing build configuration from previous "
                   f"run. Remove the configuration cache ({CACHE_FILE}) "
@@ -317,8 +309,7 @@ def make_extensions(ctx: Context, compiler, use_cython):
 
     MODULES = ctx.features.values()
 
-    no_cuda = ctx.use_stub
-    use_hip = not no_cuda and ctx.use_hip
+    use_hip = ctx.use_hip
     settings = build.get_compiler_setting(ctx, use_hip)
 
     include_dirs = settings['include_dirs']
@@ -351,8 +342,6 @@ def make_extensions(ctx: Context, compiler, use_cython):
     if ctx.linetrace:
         settings['define_macros'].append(('CYTHON_TRACE', '1'))
         settings['define_macros'].append(('CYTHON_TRACE_NOGIL', '1'))
-    if no_cuda:
-        settings['define_macros'].append(('CUPY_NO_CUDA', '1'))
     if use_hip:
         settings['define_macros'].append(('CUPY_USE_HIP', '1'))
         # introduced since ROCm 4.2.0
@@ -362,7 +351,6 @@ def make_extensions(ctx: Context, compiler, use_cython):
         # Fix for ROCm 6.3.0, See https://github.com/ROCm/rocThrust/issues/502
         settings['define_macros'].append(
             ('THRUST_DEVICE_SYSTEM', 'THRUST_DEVICE_SYSTEM_HIP'))
-    settings['define_macros'].append(('CUPY_CACHE_KEY', ctx.cupy_cache_key))
 
     try:
         host_compiler = compiler
@@ -401,16 +389,12 @@ def make_extensions(ctx: Context, compiler, use_cython):
             compiler.archiver = [ar, 'rcs']
             compiler.ranlib = None
 
-        available_modules = []
-        if no_cuda:
-            available_modules = [m['name'] for m in MODULES]
-        else:
-            available_modules, settings = preconfigure_modules(
-                ctx, MODULES, compiler, settings)
-            required_modules = get_required_modules(MODULES)
-            if not (set(required_modules) <= set(available_modules)):
-                raise Exception('Your CUDA environment is invalid. '
-                                'Please check above error log.')
+        available_modules, settings = preconfigure_modules(
+            ctx, MODULES, compiler, settings)
+        required_modules = get_required_modules(MODULES)
+        if not (set(required_modules) <= set(available_modules)):
+            raise Exception('Your CUDA environment is invalid. '
+                            'Please check above error log.')
     finally:
         compiler = host_compiler
         if build.is_conda_cross_compiling():
@@ -422,14 +406,32 @@ def make_extensions(ctx: Context, compiler, use_cython):
             continue
 
         s = copy.deepcopy(settings)
-        if not no_cuda:
-            s['libraries'] = module.libraries
-            s['extra_objects'] = [
-                _find_static_library(name) for name in module.static_libraries
-            ]
+        s['libraries'] = module.libraries
+        s['extra_objects'] = [
+            _find_static_library(name) for name in module.static_libraries
+        ]
 
         compile_args = s.setdefault('extra_compile_args', [])
         link_args = s.setdefault('extra_link_args', [])
+
+        if compiler.compiler_type == 'msvc':
+            # Cython < 3.3.1 marks unused helpers with `(void)func;`, which
+            # MSVC flags as C4551: https://github.com/cython/cython/pull/7911
+            compile_args.append('/wd4551')
+
+        if ctx.werror:
+            # Not in `get_compiler_setting`: probes must not fail on warnings.
+            if compiler.compiler_type == 'msvc':
+                compile_args.append('/WX')
+                link_args.append('/WX')
+            else:
+                compile_args.append('-Werror')
+
+        if (compiler.compiler_type == 'msvc'
+                and 'cudart_static' in module.static_libraries):
+            # CUDA 12.x cudart_static.lib is built with /MT (LIBCMT) but
+            # extensions use /MD; don't pull in the static CRT (LNK4098).
+            link_args.append('/NODEFAULTLIB:LIBCMT')
 
         if module['name'] == 'cusolver':
             # openmp is required for cusolver
@@ -487,7 +489,7 @@ def make_extensions(ctx: Context, compiler, use_cython):
                 args = s_file.setdefault('extra_link_args', [])
                 args.append(ldflag)
 
-            sources = module_extension_sources(f, use_cython, no_cuda)
+            sources = module_extension_sources(f, use_cython)
             extension = setuptools.Extension(name, sources, **s_file)
             ret.append(extension)
 

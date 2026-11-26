@@ -14,7 +14,7 @@ Requirements
     * This requirement is optional if you install both CUDA and CuPy from either PyPI or conda-forge. However, you still need to have a compatible
       driver installed for your GPU. See :ref:`install_cupy_from_pypi` and :ref:`install_cupy_from_conda_forge` for details.
 
-* `Python <https://python.org/>`_: v3.10 / v3.11 / v3.12 / v3.13 / v3.14
+* `Python <https://python.org/>`_: v3.11 / v3.12 / v3.13 / v3.14 / v3.15
 
 .. note::
 
@@ -27,16 +27,25 @@ NumPy/SciPy-compatible API in CuPy v14 is based on NumPy 2.3 and SciPy 1.16, and
 
 * `NumPy <https://numpy.org/>`_: v2.0 / v2.1 / v2.2 / v2.3 / v2.4 / v2.5
 
+* `cuda-bindings <https://nvidia.github.io/cuda-python/cuda-bindings/>`_ (CUDA only): v12.x for CUDA 12 / v13.x for CUDA 13
+
+    * Low-level Python bindings for the CUDA driver, runtime and NVRTC. Its major version must match the CUDA major version.
+
+* `nvmath-python <https://docs.nvidia.com/cuda/nvmath-python/>`_ (CUDA only): v1.x
+
+    * Provides the bindings CuPy uses for cuBLAS, cuSPARSE, cuSOLVER and cuRAND.
+
 * `SciPy <https://scipy.org/>`_ (*optional*): v1.14 / v1.15 / v1.16 / v1.17 / v1.18
 
     * Required only when copying sparse matrices from GPU to CPU (see :doc:`../reference/scipy_sparse`.)
 
-* `Optuna <https://optuna.org/>`_ (*optional*): v3.x / v4.x
+* `Optuna <https://optuna.org/>`_ (*optional*): v3.x / v4.x / v5.x
 
     * Required only when using :ref:`kernel_param_opt`.
 
 .. note::
 
+   cuda-bindings and nvmath-python are installed automatically.
    SciPy and Optuna are optional dependencies and will not be installed automatically.
 
 .. note::
@@ -195,6 +204,13 @@ If you want to install the latest development version of CuPy from a cloned Git 
 
    Cython 3 is required to build CuPy from source.
    It will be automatically installed during the build process if not available.
+
+.. note::
+
+   For CUDA, cuda-bindings and nvmath-python are also needed to build CuPy, and pip installs them automatically.
+   cuda-bindings must match the minor version of your CUDA Toolkit, so building for CUDA 12 requires CUDA 12.9 or later.
+   If you build with ``--no-build-isolation``, install them first (e.g., ``pip install nvmath-python "cuda-bindings==13.0.*"`` for CUDA 13.0).
+   The installed CuPy then requires at least the nvmath-python version it was built with.
 
 .. note::
 

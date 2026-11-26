@@ -137,8 +137,8 @@ def minkowski(u, v, p):
 
     check_soft_dependencies()
 
-    u_order = "F" if cupy.isfortran(u) else "C"
-    v_order = "F" if cupy.isfortran(v) else "C"
+    u_order = "F" if u.flags.fnc else "C"
+    v_order = "F" if v.flags.fnc else "C"
 
     if u_order != v_order:
         raise ValueError('u and v must have the same layout '
@@ -168,8 +168,8 @@ def canberra(u, v):
     """
     check_soft_dependencies()
 
-    u_order = "F" if cupy.isfortran(u) else "C"
-    v_order = "F" if cupy.isfortran(v) else "C"
+    u_order = "F" if u.flags.fnc else "C"
+    v_order = "F" if v.flags.fnc else "C"
 
     if u_order != v_order:
         raise ValueError('u and v must have the same layout '
@@ -199,8 +199,8 @@ def chebyshev(u, v):
     """
     check_soft_dependencies()
 
-    u_order = "F" if cupy.isfortran(u) else "C"
-    v_order = "F" if cupy.isfortran(v) else "C"
+    u_order = "F" if u.flags.fnc else "C"
+    v_order = "F" if v.flags.fnc else "C"
 
     if u_order != v_order:
         raise ValueError('u and v must have the same layout '
@@ -231,8 +231,8 @@ def cityblock(u, v):
     """
     check_soft_dependencies()
 
-    u_order = "F" if cupy.isfortran(u) else "C"
-    v_order = "F" if cupy.isfortran(v) else "C"
+    u_order = "F" if u.flags.fnc else "C"
+    v_order = "F" if v.flags.fnc else "C"
 
     if u_order != v_order:
         raise ValueError('u and v must have the same layout '
@@ -267,8 +267,8 @@ def correlation(u, v):
     """
     check_soft_dependencies()
 
-    u_order = "F" if cupy.isfortran(u) else "C"
-    v_order = "F" if cupy.isfortran(v) else "C"
+    u_order = "F" if u.flags.fnc else "C"
+    v_order = "F" if v.flags.fnc else "C"
 
     if u_order != v_order:
         raise ValueError('u and v must have the same layout '
@@ -300,8 +300,8 @@ def cosine(u, v):
     """
     check_soft_dependencies()
 
-    u_order = "F" if cupy.isfortran(u) else "C"
-    v_order = "F" if cupy.isfortran(v) else "C"
+    u_order = "F" if u.flags.fnc else "C"
+    v_order = "F" if v.flags.fnc else "C"
 
     if u_order != v_order:
         raise ValueError('u and v must have the same layout '
@@ -335,8 +335,8 @@ def hamming(u, v):
     """
     check_soft_dependencies()
 
-    u_order = "F" if cupy.isfortran(u) else "C"
-    v_order = "F" if cupy.isfortran(v) else "C"
+    u_order = "F" if u.flags.fnc else "C"
+    v_order = "F" if v.flags.fnc else "C"
 
     if u_order != v_order:
         raise ValueError('u and v must have the same layout '
@@ -366,8 +366,8 @@ def euclidean(u, v):
     """
     check_soft_dependencies()
 
-    u_order = "F" if cupy.isfortran(u) else "C"
-    v_order = "F" if cupy.isfortran(v) else "C"
+    u_order = "F" if u.flags.fnc else "C"
+    v_order = "F" if v.flags.fnc else "C"
 
     if u_order != v_order:
         raise ValueError('u and v must have the same layout '
@@ -401,8 +401,8 @@ def jensenshannon(u, v):
     """
     check_soft_dependencies()
 
-    u_order = "F" if cupy.isfortran(u) else "C"
-    v_order = "F" if cupy.isfortran(v) else "C"
+    u_order = "F" if u.flags.fnc else "C"
+    v_order = "F" if v.flags.fnc else "C"
 
     if u_order != v_order:
         raise ValueError('u and v must have the same layout '
@@ -436,8 +436,8 @@ def russellrao(u, v):
     """
     check_soft_dependencies()
 
-    u_order = "F" if cupy.isfortran(u) else "C"
-    v_order = "F" if cupy.isfortran(v) else "C"
+    u_order = "F" if u.flags.fnc else "C"
+    v_order = "F" if v.flags.fnc else "C"
 
     if u_order != v_order:
         raise ValueError('u and v must have the same layout '
@@ -468,8 +468,8 @@ def sqeuclidean(u, v):
     """
     check_soft_dependencies()
 
-    u_order = "F" if cupy.isfortran(u) else "C"
-    v_order = "F" if cupy.isfortran(v) else "C"
+    u_order = "F" if u.flags.fnc else "C"
+    v_order = "F" if v.flags.fnc else "C"
 
     if u_order != v_order:
         raise ValueError('u and v must have the same layout '
@@ -501,8 +501,8 @@ def hellinger(u, v):
     """
     check_soft_dependencies()
 
-    u_order = "F" if cupy.isfortran(u) else "C"
-    v_order = "F" if cupy.isfortran(v) else "C"
+    u_order = "F" if u.flags.fnc else "C"
+    v_order = "F" if v.flags.fnc else "C"
 
     if u_order != v_order:
         raise ValueError('u and v must have the same layout '
@@ -536,8 +536,8 @@ def kl_divergence(u, v):
     u = cupy.asarray(u)
     v = cupy.asarray(v)
 
-    u_order = "F" if cupy.isfortran(u) else "C"
-    v_order = "F" if cupy.isfortran(v) else "C"
+    u_order = "F" if u.flags.fnc else "C"
+    v_order = "F" if v.flags.fnc else "C"
 
     if u_order != v_order:
         raise ValueError('u and v must have the same layout '
@@ -588,8 +588,8 @@ def cdist(XA, XB, metric='euclidean', out=None, **kwargs):
             (cuvs_available and XB.dtype not in ['float32', 'float64']):
         XB = cupy.asarray(XB, dtype='float32')
 
-    XA_order = "F" if cupy.isfortran(XA) else "C"
-    XB_order = "F" if cupy.isfortran(XB) else "C"
+    XA_order = "F" if XA.flags.fnc else "C"
+    XB_order = "F" if XB.flags.fnc else "C"
 
     if XA_order != XB_order:
         raise ValueError('XA and XB must have the same layout '
@@ -614,7 +614,7 @@ def cdist(XA, XB, metric='euclidean', out=None, **kwargs):
     if out is not None:
         if (pylibraft_available and out.dtype != 'float32') or \
                 (cuvs_available and out.dtype not in ['float32', 'float64']):
-            out_order = "F" if cupy.isfortran(out) else "C"
+            out_order = "F" if out.flags.fnc else "C"
             if out_order != XA_order:
                 raise ValueError('out must have same layout as input '
                                  '(out.order=%s)' % out_order)

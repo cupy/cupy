@@ -9,6 +9,7 @@ import numpy
 
 import cupy
 from cupy._core cimport _dtype
+from cupy._core.internal cimport cached_object
 
 
 cdef dict _typenames_base = {
@@ -144,7 +145,7 @@ cdef dict _cuda_alignments = {
     numpy.dtype('complex64'): 8,
     numpy.dtype('complex128'): 16,
 }
-cdef object _alignment_kernel = None
+cdef cached_object _alignment_kernel
 
 
 cdef Py_ssize_t get_cuda_alignment(cnp.dtype dtype) except -1:
@@ -152,7 +153,8 @@ cdef Py_ssize_t get_cuda_alignment(cnp.dtype dtype) except -1:
     uses an ElementwiseKernel to compile and get the actual alignment.
     (Although, normally that should just be the itemsize.)
     """
-    global _cuda_alignments, _alignment_kernel
+    global _cuda_alignments
+    cdef object kernel
 
     alignment = _cuda_alignments.get(dtype)
     if alignment is not None:
@@ -176,15 +178,16 @@ cdef Py_ssize_t get_cuda_alignment(cnp.dtype dtype) except -1:
             # Alignment is inherited from the field dtype
             return get_cuda_alignment(dtype.base)
 
-    if _alignment_kernel is None:
-        _alignment_kernel = cupy.ElementwiseKernel(
+    kernel = _alignment_kernel.get()
+    if kernel is None:
+        kernel = _alignment_kernel.setdefault(cupy.ElementwiseKernel(
             "T in", "int64 out",
             "using in_t = decltype(in); out = alignof(in_t);",
             "_cupy_get_cuda_alignment",
-        )
+        ))
 
     # synchronize!
-    alignment = int(_alignment_kernel(cupy.empty((), dtype=dtype))[()])
+    alignment = int(kernel(cupy.empty((), dtype=dtype))[()])
     _cuda_alignments[dtype] = alignment
     return alignment
 
@@ -266,7 +269,7 @@ cdef _setup_type_dict():
         d = numpy.dtype(i)
         t = d.type
         _typenames[t] = _typenames_base[d]
-        k = ord(d.kind)
+        k = (<cnp.dtype>(d)).kind
         _dtype_kind_size_dict[t] = (k, d.itemsize)
     # CUDA types
     for t in ('cudaTextureObject_t',):
@@ -299,20 +302,27 @@ cdef set scalar_type_set = _python_scalar_type_set | _numpy_scalar_type_set
 # Since NumPy 2 always true unless on 32bit (before windows was outlier)
 assert numpy.dtype(int) == numpy.int64
 
+# For integers we need to carry int64/uint64 information, so carry a tuple
+cdef tuple _weak_int64 = (int, _numpy_int64)
+cdef tuple _weak_uint64 = (int, _numpy_uint64)
+cdef tuple _weak_float64 = (float, _numpy_float64)
+cdef tuple _weak_complex128 = (complex, _numpy_complex128)
+
+
 cpdef tuple numpy_dtype_from_pyscalar(x):
     # Note that isinstance(x, int) matches with bool.
     typ = type(x)
     if typ is bool:
         return _numpy_bool, False
     elif typ is float:
-        return _numpy_float64, float
+        return _numpy_float64, _weak_float64
     elif typ is complex:
-        return _numpy_complex128, complex
+        return _numpy_complex128, _weak_complex128
     elif typ is int:
         if 0x8000000000000000 <= x:
-            return _numpy_uint64, int
+            return _numpy_uint64, _weak_uint64
         else:
-            return _numpy_int64, int
+            return _numpy_int64, _weak_int64
 
     return None, False
 
@@ -365,7 +375,7 @@ cdef class CScalar(CPointer):
         assert not self.descr.flags & NPY_NEEDS_INIT
         assert self.ptr == 0
 
-        if self.descr.itemsize < sizeof(self._data):
+        if <size_t>(self.descr.itemsize) < sizeof(self._data):
             self.ptr = <intptr_t><void *>(self._data)
         else:
             self.ptr = <intptr_t><void *>(
