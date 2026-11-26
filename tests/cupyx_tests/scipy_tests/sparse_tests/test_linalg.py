@@ -2170,6 +2170,10 @@ class TestLOBPCG:
         lobpcg_w, lobpcg_V = sp.linalg.lobpcg(A, X, largest=False)
         return lobpcg_w, _eigen_vec_transform(lobpcg_V, xp)
 
+    # Older SciPy calls numpy.isfortran in the verbose LOBPCG norm checks.
+    @pytest.mark.filterwarnings(
+        r"ignore:numpy\.isfortran is deprecated:DeprecationWarning:"
+        r"scipy\.linalg\._misc")
     @testing.numpy_cupy_allclose(
         rtol=1e-5, atol=5e-3 if runtime.is_hip else 1e-3, sp_name='sp',
         contiguous_check=False)

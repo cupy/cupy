@@ -3,6 +3,9 @@ from __future__ import annotations
 import unittest
 
 import numpy
+import pytest
+
+import cupy
 
 from cupy import testing
 
@@ -57,9 +60,11 @@ class TestIsScalarValues2(testing.NumpyAliasValuesTestBase):
 )
 class TestIsFortran(unittest.TestCase):
 
-    @testing.numpy_cupy_equal()
-    def test(self, xp):
-        return xp.isfortran(xp.asarray(self.value))
+    def test(self):
+        a = cupy.asarray(self.value)
+        with pytest.warns(DeprecationWarning, match="isfortran is deprecated"):
+            result = cupy.isfortran(a)
+        assert result == self.value.flags.fnc
 
 
 @testing.parameterize(

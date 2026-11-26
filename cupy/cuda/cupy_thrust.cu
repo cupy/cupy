@@ -14,10 +14,15 @@
 #include <type_traits>
 
 #if defined(CUPY_USE_HIP)
+#include <thrust/functional.h>
 #include <hip/hip_bf16.h>
+namespace cupy_thrust_cmp = thrust;
 using thrust_bfloat16 = __hip_bfloat16;
 #else
+#include <cuda/iterator>
+#include <cuda/std/functional>
 #include <cuda_bf16.h>
+namespace cupy_thrust_cmp = ::cuda::std;
 using thrust_bfloat16 = __nv_bfloat16;
 #endif
 
@@ -202,10 +207,10 @@ static bool complex_cmp(const T& lhs, const T& rhs) {
 }
 
 // Comparison operator for the requested direction. Types whose order depends on NaN placement
-// are specialized below, everything else just uses thrust::less/thrust::greater.
+// are specialized below, everything else uses the backend's less/greater functors.
 template <typename T, bool Descending>
 struct select_cmp {
-    using type = std::conditional_t<Descending, thrust::greater<T>, thrust::less<T>>;
+    using type = std::conditional_t<Descending, cupy_thrust_cmp::greater<T>, cupy_thrust_cmp::less<T>>;
 };
 
 // We use tuple_desc_cmp for multi-dimensional sorts where the first entry is the row index.
@@ -225,12 +230,12 @@ struct tuple_desc_cmp {
     }
 };
 
-// Tuple sorts cannot use thrust::greater for descending: that would also reverse
+// Tuple sorts cannot use greater for descending: that would also reverse
 // the segment-key order and scramble rows. Keep keys ascending; flip values only.
 template <typename T, bool Descending>
 struct select_cmp<thrust::tuple<size_t, T>, Descending> {
     using type = std::conditional_t<Descending, tuple_desc_cmp<T>,
-                                    thrust::less<thrust::tuple<size_t, T>>>;
+                                    cupy_thrust_cmp::less<thrust::tuple<size_t, T>>>;
 };
 
 // complex numbers
@@ -375,13 +380,13 @@ struct select_cmp<thrust::tuple<size_t, thrust_bfloat16>, Descending> {
  */
 
 
-// Comparator for a 1-D sort. Ascending floats use thrust::less to allow radix sort, which
-// already puts NaN last (radix with thrust::greater would put it first). This only holds when
+// Comparator for a 1-D sort. Ascending floats use the backend's less to allow radix sort, which
+// already puts NaN last (radix with greater would put it first). This only holds when
 // thrust sorts the values themselves; a comparison sort needs the NaN aware select_cmp.
 template <typename T, bool Descending>
 using direct_cmp_t = std::conditional_t<
     !Descending && std::is_floating_point<T>::value,
-    thrust::less<T>,
+    cupy_thrust_cmp::less<T>,
     typename select_cmp<T, Descending>::type>;
 
 // Comparator for a segmented (multi-dimensional) sort, which zips a row index onto each value.
@@ -426,7 +431,7 @@ void bfloat16_radix_sort(thrust::device_ptr<thrust_bfloat16> data_first,
     thrust::transform(policy, data_first, data_first + size, keys_first,
                       bfloat16_sort_key<Descending>{});
     thrust::stable_sort_by_key(policy, keys_first, keys_first + size,
-                               values_first, thrust::less<unsigned short>{});
+                               values_first, cupy_thrust_cmp::less<unsigned short>{});
 }
 #endif
 
@@ -480,10 +485,10 @@ struct _sort {
                       #else
                       thrust::make_counting_iterator<size_t>(0),
                       thrust::make_counting_iterator<size_t>(size),
-                      thrust::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
+                      cuda::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
                       #endif
                       dp_keys_first,
-                      thrust::divides<size_t>());
+                      cupy_thrust_cmp::divides<size_t>());
 
             stable_sort(
                 cuda::par_nosync(alloc).on(stream_),
@@ -580,10 +585,10 @@ struct _argsort {
                   #else
                   thrust::make_counting_iterator<size_t>(0),
                   thrust::make_counting_iterator<size_t>(size),
-                  thrust::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
+                  cuda::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
                   #endif
                   dp_idx_first,
-                  thrust::modulus<size_t>());
+                  cupy_thrust_cmp::modulus<size_t>());
 
         if (ndim == 1) {
             // Sort the index sequence by data.
@@ -612,10 +617,10 @@ struct _argsort {
                       #else
                       thrust::make_counting_iterator<size_t>(0),
                       thrust::make_counting_iterator<size_t>(size),
-                      thrust::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
+                      cuda::make_constant_iterator<ptrdiff_t>(shape[ndim-1]),
                       #endif
                       dp_keys_first,
-                      thrust::divides<size_t>());
+                      cupy_thrust_cmp::divides<size_t>());
 
             stable_sort_by_key(
                 cuda::par_nosync(alloc).on(stream_),

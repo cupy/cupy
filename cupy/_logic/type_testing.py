@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy
 
 import cupy
+from cupy._warnings import warn_external
 
 
 def iscomplex(x):
@@ -123,7 +124,10 @@ def isfortran(a):
     False
 
     """
-    return a.flags.f_contiguous and not a.flags.c_contiguous
+    warn_external(
+        "isfortran is deprecated. Use a.flags.fnc instead.",
+        DeprecationWarning, stacklevel=2)
+    return a.flags.fnc
 
 
 def isreal(x):

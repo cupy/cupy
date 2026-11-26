@@ -269,7 +269,7 @@ cdef _setup_type_dict():
         d = numpy.dtype(i)
         t = d.type
         _typenames[t] = _typenames_base[d]
-        k = ord(d.kind)
+        k = (<cnp.dtype>(d)).kind
         _dtype_kind_size_dict[t] = (k, d.itemsize)
     # CUDA types
     for t in ('cudaTextureObject_t',):
@@ -375,7 +375,7 @@ cdef class CScalar(CPointer):
         assert not self.descr.flags & NPY_NEEDS_INIT
         assert self.ptr == 0
 
-        if self.descr.itemsize < sizeof(self._data):
+        if <size_t>(self.descr.itemsize) < sizeof(self._data):
             self.ptr = <intptr_t><void *>(self._data)
         else:
             self.ptr = <intptr_t><void *>(

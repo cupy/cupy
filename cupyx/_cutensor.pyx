@@ -991,12 +991,13 @@ def _try_reduction_routine(
     out_arg._set_contiguous_strides(out_arg.itemsize, True)
 
     try:
-        return reduction(
+        reduction(
             alpha, in_arg, _create_mode_with_cache(in_arg._shape.size()),
             beta, out_arg, _create_mode_with_cache(out_axis),
             op_reduce=reduce_op)
     except ValueError:
         return None
+    return out
 
 
 @cython.profile(False)
@@ -1097,7 +1098,7 @@ cdef class MgHandle:
     cdef public dict _contraction_plans
 
     def __init__(self, devices):
-        num_devices = len(devices)
+        num_devices = internal.safe_int_len(devices)
         self._ptr = cutensor.createMg(num_devices, devices.ctypes.data)
         self._devices = devices
         self._tensor_descriptors = {}

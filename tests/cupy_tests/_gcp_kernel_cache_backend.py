@@ -15,7 +15,7 @@ Requirements:
 
 from __future__ import annotations
 from cupy_backends.cuda.libs import nvrtc as _nvrtc
-from cupy.cuda.compiler import _get_cupy_cache_key
+from cupy._core._header_cache_keys import COMMON_HEADER_CACHE_KEY
 
 import platform
 import sys
@@ -91,7 +91,7 @@ class GCPStorageCacheBackend(DiskKernelCacheBackend):
         # CuPy builds do not collide or interfere with each other.
         major, minor = _nvrtc.getVersion()
         self._nvrtc_prefix = (
-            f'{self._prefix}{_get_cupy_cache_key()}/'
+            f'{self._prefix}{COMMON_HEADER_CACHE_KEY}/'
             f'{_get_platform_subdir()}/CUDA_{major}_{minor}/'
         )
         if not _GCP_AVAILABLE:

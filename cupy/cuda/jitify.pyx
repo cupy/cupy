@@ -19,6 +19,7 @@ from cuda.pathfinder import find_nvidia_header_directory
 
 from cupy.cuda import cub
 from cupy import _util
+from cupy._core import _header_cache_keys
 
 
 ###############################################################################
@@ -38,7 +39,6 @@ cdef extern from 'cupy_jitify.h' namespace "jitify::detail" nogil:
                       cpp_str*) except +
 
     const char* jitify_ver  # set at build time
-    const char* cupy_cache_key  # set at build time
 
 
 # We need an internal way to invalidate the cache (when the warmup_kernel below
@@ -198,9 +198,12 @@ cdef inline void _init_cupy_headers_from_scratch() except*:
     # Compile a dummy kernel to further populate the cache (with bundled
     # headers)
     # need to defer import to avoid circular dependency
-    from cupy._core.core import assemble_cupy_compiler_options
+    from cupy._core.core import (
+        add_cupy_include_dirs, add_runtime_include_dirs,
+        assemble_cupy_compiler_options)
     cdef tuple options = ('-std=c++17', '-DCUB_DISABLE_BF16_SUPPORT',)
     options = assemble_cupy_compiler_options(options)
+    options = add_cupy_include_dirs(add_runtime_include_dirs(options))
     jitify(warmup_kernel, options)
 
     global _jitify_init
@@ -243,7 +246,9 @@ cdef void _init_module_locked() except*:
         _jitify_version = re.sub(r'<([^>]*)>', r'\1', get_build_version())
         _jitify_cache_versions = (
             f"{_jitify_version}_{cub.get_build_version()}_"
-            f"{get_cuda_version()}_{build_num}_{cupy_cache_key.decode()}")
+            f"{get_cuda_version()}_{build_num}_"
+            f"{_header_cache_keys.HEADER_CACHE_KEYS['keys']['common']}_"
+            f"{_header_cache_keys.HEADER_CACHE_KEYS['keys']['jitify']}")
 
     _init_cupy_headers()
 

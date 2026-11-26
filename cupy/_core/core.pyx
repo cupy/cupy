@@ -64,19 +64,6 @@ from cupy.exceptions import ComplexWarning
 NUMPY_1x = numpy.__version__ < '2'
 
 
-cdef extern from *:
-    """
-    #define _str_(s) #s
-    #define _xstr_(s) _str_(s)
-    const char* cupy_cache_key = _xstr_(CUPY_CACHE_KEY);
-    #undef _xstr_
-    #undef _str_
-    """
-    const char* cupy_cache_key  # set at build time
-
-
-CUPY_CACHE_KEY = cupy_cache_key.decode()
-
 cdef tuple _HANDLED_TYPES
 
 cdef object _null_context = contextlib.nullcontext()
@@ -221,7 +208,7 @@ cdef class _ndarray_base:
 
     def _init(self, shape, dtype=float, memptr=None, strides=None,
               order='C'):
-        cdef Py_ssize_t x, itemsize, alloc_size, left, right
+        cdef Py_ssize_t x, itemsize, alloc_size, left = 0, right = 0
         cdef tuple s = internal.get_size(shape)
         del shape
 
@@ -463,7 +450,7 @@ cdef class _ndarray_base:
         buf.internal = NULL
         buf.readonly = 0  # TODO(leofang): use flags
         cdef int n, ndim
-        ndim = self._shape.size()
+        ndim = <int>(self._shape.size())
         cdef Py_ssize_t* shape_strides = <Py_ssize_t*>stdlib.malloc(
             sizeof(Py_ssize_t) * ndim * 2)
         for n in range(ndim):
@@ -1534,7 +1521,7 @@ cdef class _ndarray_base:
 
     # Truth value of an array (bool):
 
-    def __nonzero__(self):
+    def __bool__(self):
         if self.size == 0:
             msg = ('The truth value of an empty array is ambiguous. Returning '
                    'False, but in future this will result in an error. Use '
@@ -2477,8 +2464,7 @@ _cupy_header_list = cupy_header_list
 cdef str _cupy_header = ''.join(
     ['#include <%s>\n' % i for i in cupy_header_list])
 
-# This is indirect include header list.
-# These header files are subject to a hash key.
+# Indirect dependencies preloaded for Jitify and legacy HIPRTC.
 cdef list _cupy_extra_header_list = [
     'cupy/complex/complex.h',
     'cupy/complex/math_private.h',
@@ -2587,18 +2573,24 @@ cpdef warn_on_unsupported_std(tuple options):
 
 
 cpdef tuple assemble_cupy_compiler_options(tuple options):
-    cdef cpp_bool initialized
-
+    """Apply language defaults before classifying incoming compiler options."""
     if use_default_std(options):
         options += ('--std=c++17',)
     else:
         warn_on_unsupported_std(options)
 
-    if not _is_hip:
-        # make sure bundled CCCL is searched first
-        options = (_get_cccl_include_options() + options)
+    return options
 
-    options += ('-I%s' % _header_dir_path,)
+
+cpdef tuple add_cupy_include_dirs(tuple options):
+    if not _is_hip:
+        # Make sure bundled CCCL is searched first.
+        options = _get_cccl_include_options() + options
+    return options + ('-I%s' % _header_dir_path,)
+
+
+cpdef tuple add_runtime_include_dirs(tuple options):
+    cdef cpp_bool initialized
 
     if not _is_hip:
         cuda_include_dir = _cuda_include_dir.get(&initialized)
@@ -2646,15 +2638,14 @@ cpdef function.Module compile_with_cache(
         source = _cupy_header + source
     if jitify:
         source = '#include <cupy/cuda_workaround.h>\n' + source
-    extra_source = _get_header_source()
 
     options = assemble_cupy_compiler_options(options)
 
     return cuda.compiler._compile_module_with_cache(
-        source, options, arch=arch, extra_source=extra_source, backend=backend,
+        source, options, arch=arch, backend=backend,
         enable_cooperative_groups=enable_cooperative_groups,
         name_expressions=name_expressions, log_stream=log_stream,
-        jitify=jitify)
+        jitify=jitify, use_bundled_headers=True, use_toolkit_headers=True)
 
 
 cpdef bytes compile_to_ltoir(
@@ -2671,8 +2662,8 @@ cpdef bytes compile_to_ltoir(
 
     return cuda.compiler._compile_module_with_cache(
         source, assemble_cupy_compiler_options(options), arch=arch,
-        extra_source=_get_header_source(), log_stream=log_stream,
-        to_ltoir=True)
+        log_stream=log_stream, to_ltoir=True,
+        use_bundled_headers=True, use_toolkit_headers=True)
 
 
 # =============================================================================
@@ -3052,7 +3043,7 @@ cdef inline _ndarray_base _try_skip_h2d_copy(
 cdef _ndarray_base _array_default(
         obj, dtype, copy, order, Py_ssize_t ndmin, bint blocking):
     cdef _ndarray_base a
-    cdef bint is_correct_contiguous
+    cdef bint is_correct_contiguous = False
     cdef int order_char = internal._normalize_order(order)
 
     # Fast path: zero-copy a NumPy array if possible
@@ -3434,7 +3425,7 @@ cpdef _ndarray_base empty_like(
 
 cdef _ndarray_base _create_ndarray_from_shape_strides(
         subtype, const shape_t& shape, const strides_t& strides, dtype, obj):
-    cdef int ndim = shape.size()
+    cdef int ndim = <int>(shape.size())
     cdef int64_t begin = 0, end = dtype.itemsize
     cdef memory.MemoryPointer ptr
     for i in range(ndim):

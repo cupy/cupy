@@ -37,7 +37,6 @@ Array type testing
 
    iscomplex
    iscomplexobj
-   isfortran
    isreal
    isrealobj
    isscalar

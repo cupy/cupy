@@ -48,7 +48,10 @@ def check_library(compiler, includes=(), libraries=(),
                   include_dirs=(), library_dirs=(), define_macros=None,
                   extra_compile_args=()):
 
-    source = ''.join(['#include <%s>\n' % header for header in includes])
+    # Same as cupy_backends/cuda/cupy_cusparse.h; otherwise MSVC prints
+    # hundreds of C4996 warnings for cusparse.h.
+    source = '#define DISABLE_CUSPARSE_DEPRECATED\n'
+    source += ''.join(['#include <%s>\n' % header for header in includes])
     source += 'int main() {return 0;}'
     try:
         # We need to try to build a shared library because distutils
@@ -286,13 +289,14 @@ def _find_static_library(name: str) -> str:
 def make_extensions(ctx: Context, compiler, use_cython):
     """Produce a list of Extension instances which passed to cythonize()."""
 
-    ctx.calculate_cupy_cache_key()
+    ctx.generate_header_cache()
     CACHE_FILE = f"{ctx.source_root}/.cupy_builder.cache"
     if ctx.dev_configure_cache and os.path.exists(CACHE_FILE):
         with open(CACHE_FILE, "rb") as f:
             (prev_ctx, ret) = pickle.load(f)
         if (ctx.dev_configure_cache_key == prev_ctx.dev_configure_cache_key and
-                ctx.cupy_cache_key == prev_ctx.cupy_cache_key):
+                ctx.header_cache_key == getattr(
+                    prev_ctx, 'header_cache_key', None)):
             print("***************************************************")
             print("*** NOTICE: Reusing build configuration from previous "
                   f"run. Remove the configuration cache ({CACHE_FILE}) "
@@ -347,7 +351,6 @@ def make_extensions(ctx: Context, compiler, use_cython):
         # Fix for ROCm 6.3.0, See https://github.com/ROCm/rocThrust/issues/502
         settings['define_macros'].append(
             ('THRUST_DEVICE_SYSTEM', 'THRUST_DEVICE_SYSTEM_HIP'))
-    settings['define_macros'].append(('CUPY_CACHE_KEY', ctx.cupy_cache_key))
 
     try:
         host_compiler = compiler
@@ -410,6 +413,25 @@ def make_extensions(ctx: Context, compiler, use_cython):
 
         compile_args = s.setdefault('extra_compile_args', [])
         link_args = s.setdefault('extra_link_args', [])
+
+        if compiler.compiler_type == 'msvc':
+            # Cython < 3.3.1 marks unused helpers with `(void)func;`, which
+            # MSVC flags as C4551: https://github.com/cython/cython/pull/7911
+            compile_args.append('/wd4551')
+
+        if ctx.werror:
+            # Not in `get_compiler_setting`: probes must not fail on warnings.
+            if compiler.compiler_type == 'msvc':
+                compile_args.append('/WX')
+                link_args.append('/WX')
+            else:
+                compile_args.append('-Werror')
+
+        if (compiler.compiler_type == 'msvc'
+                and 'cudart_static' in module.static_libraries):
+            # CUDA 12.x cudart_static.lib is built with /MT (LIBCMT) but
+            # extensions use /MD; don't pull in the static CRT (LNK4098).
+            link_args.append('/NODEFAULTLIB:LIBCMT')
 
         if module['name'] == 'cusolver':
             # openmp is required for cusolver
