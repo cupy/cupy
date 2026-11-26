@@ -56,6 +56,10 @@
 /linux/tests/cuda134.sh linguist-generated
 /linux/tests/cuda134.multi.Dockerfile linguist-generated
 /linux/tests/cuda134.multi.sh linguist-generated
+/linux/tests/cuda135.Dockerfile linguist-generated
+/linux/tests/cuda135.sh linguist-generated
+/linux/tests/cuda135.multi.Dockerfile linguist-generated
+/linux/tests/cuda135.multi.sh linguist-generated
 /linux/tests/cuda13x-py314t.Dockerfile linguist-generated
 /linux/tests/cuda13x-py314t.sh linguist-generated
 /linux/tests/cuda13x-py315t.Dockerfile linguist-generated

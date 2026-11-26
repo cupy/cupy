@@ -36,7 +36,7 @@ RUN git -C /opt/pyenv pull --ff-only && \
     pip install --disable-pip-version-check -U pip setuptools wheel && \
     pip install -U google-cloud-storage
 
-RUN pip install -U 'numpy==2.4.*' 'scipy==1.18.*' 'optuna==4.*' 'ml_dtypes==0.5.*' 'cython==3.2.*,!=3.2.6' 'cuda-bindings==13.4.*' 'cuda-core[minimal-sysctk13]'
+RUN pip install -U 'numpy==2.4.*' 'scipy==1.18.*' 'optuna==4.*' 'ml_dtypes==0.5.*' 'cython==3.2.*,!=3.2.6' 'cuda-bindings==13.5.*' 'cuda-core[minimal-sysctk13]'
 RUN pip uninstall -y mpi4py nvmath-python cuda-cccl && \
     pip check
 

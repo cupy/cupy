@@ -450,13 +450,50 @@
   test: "unit-multi"
 
 # CUDA 13.4 | Linux
-# The latest CUDA version matrix is intended to cover the highest supported combination.
 - project: "cupy.linux.cuda134"
   target: "cuda134"
-  tags: ["@push", "full", "mini", "linux", "cuda134"]
+  tags: ["@nightly", "full", "linux", "cuda134"]
   system: "linux"
   os: "ubuntu:24.04"
   cuda: "13.4"
+  rocm: null
+  nccl: "2.31"
+  cutensor: "2.4"
+  cusparselt: "0.10.0"
+  python: "3.14"
+  numpy: "2.5"
+  scipy: "1.18"
+  optuna: "5"
+  ml_dtypes: "0.5"
+  mpi4py: null
+  cython: "3.2"
+  # Test the cuda-bindings minor matching the CTK; the .multi job tests
+  # the latest.
+  cuda-bindings: "13.4"
+  cuda-core: "minimal-sysctk13"
+  cuda-cccl: null
+  nvmath-python: null
+  env:CUPY_ACCELERATORS: "cutensor,cub"
+  test: "unit"
+
+# CUDA 13.4 (Multi-GPU) | Linux
+- project: "cupy.linux.cuda134.multi"
+  _inherits: "cupy.linux.cuda134"
+  tags: ["@nightly", "full", "multi", "linux", "cuda134"]
+  target: "cuda134.multi"
+  mpi4py: "4"
+  cuda-bindings: null
+  cuda-core: null
+  test: "unit-multi"
+
+# CUDA 13.5 | Linux
+# The latest CUDA version matrix is intended to cover the highest supported combination.
+- project: "cupy.linux.cuda135"
+  target: "cuda135"
+  tags: ["@push", "full", "mini", "linux", "cuda135"]
+  system: "linux"
+  os: "ubuntu:24.04"
+  cuda: "13.5"
   rocm: null
   nccl: "2.31"
   cutensor: "2.4"
@@ -476,11 +513,11 @@
   env:CUPY_CI_PYTEST_EXTRA_OPTS: "--junit-xml=/tmp/cupy_junit/junit.xml"
   test: "unit"
 
-# CUDA 13.4 (Multi-GPU) | Linux
-- project: "cupy.linux.cuda134.multi"
-  _inherits: "cupy.linux.cuda134"
-  tags: ["@push", "full", "mini", "multi", "linux", "cuda134"]
-  target: "cuda134.multi"
+# CUDA 13.5 (Multi-GPU) | Linux
+- project: "cupy.linux.cuda135.multi"
+  _inherits: "cupy.linux.cuda135"
+  tags: ["@push", "full", "mini", "multi", "linux", "cuda135"]
+  target: "cuda135.multi"
   # TODO(seberg): enable mpi4py when 3.15 wheels available
   mpi4py: null
   env:CUPY_CI_PYTEST_EXTRA_OPTS: null
@@ -495,16 +532,16 @@
   numpy: "2.4"
   scipy: "1.18"
   python: "3.14t"
-  # cuda134 runs Python 3.15, built without CUDA Python until #10473, so test
-  # cuda-bindings 13.4 here.
-  cuda-bindings: "13.4"
+  # cuda135 runs Python 3.15, built without CUDA Python until #10473, so test
+  # cuda-bindings 13.5 here.
+  cuda-bindings: "13.5"
   env:CUPY_TEST_RANDOM_SUBSAMPLE: "1"
   env:CUPY_CI_PYTEST_EXTRA_OPTS: "--parallel-threads=2"
   test: "unit"
 
 # CUDA 13.x + Python 3.15 free-threaded | Linux
 - project: "cupy.linux.cuda13x-py315t"
-  _inherits: "cupy.linux.cuda134"
+  _inherits: "cupy.linux.cuda135"
   tags: ["@nightly", "full", "linux", "cuda13x", "free-threaded"]
   target: "cuda13x-py315t"
   python: "3.15t"
@@ -695,7 +732,7 @@
   tags: ["@push", "full", "mini", "linux", "cuda-python", "cuda13x"]
   system: "linux"
   os: "ubuntu:24.04"
-  cuda: "13.4"
+  cuda: "13.5"
   rocm: null
   nccl: "2.31"
   cutensor: "2.4"
@@ -803,7 +840,13 @@
 - project: "cupy.win.cuda134"
   _extern: true
   target: "cuda134"
-  tags: ["@push", "full", "mini", "windows", "cuda134"]
+  tags: ["@nightly", "full", "windows", "cuda134"]
+  system: "windows"
+
+- project: "cupy.win.cuda135"
+  _extern: true
+  target: "cuda135"
+  tags: ["@push", "full", "mini", "windows", "cuda135"]
   system: "windows"
 
 - project: "cupy.win.cuda13x-py314t"

@@ -175,19 +175,32 @@
         "cuda133"
     ],
     "cupy.linux.cuda134": [
-        "@push",
+        "@nightly",
         "full",
-        "mini",
         "linux",
         "cuda134"
     ],
     "cupy.linux.cuda134.multi": [
+        "@nightly",
+        "full",
+        "multi",
+        "linux",
+        "cuda134"
+    ],
+    "cupy.linux.cuda135": [
+        "@push",
+        "full",
+        "mini",
+        "linux",
+        "cuda135"
+    ],
+    "cupy.linux.cuda135.multi": [
         "@push",
         "full",
         "mini",
         "multi",
         "linux",
-        "cuda134"
+        "cuda135"
     ],
     "cupy.linux.cuda13x-py314t": [
         "@push",
@@ -318,11 +331,17 @@
         "cuda133"
     ],
     "cupy.win.cuda134": [
+        "@nightly",
+        "full",
+        "windows",
+        "cuda134"
+    ],
+    "cupy.win.cuda135": [
         "@push",
         "full",
         "mini",
         "windows",
-        "cuda134"
+        "cuda135"
     ],
     "cupy.win.cuda13x-py314t": [
         "@nightly",
