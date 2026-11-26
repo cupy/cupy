@@ -5,6 +5,7 @@ import io
 import queue
 import threading
 import unittest
+import warnings
 
 import pytest
 
@@ -267,8 +268,11 @@ class TestPlanCache(unittest.TestCase):
         assert cache1.get_curr_size() == 0 <= cache1.get_size()
 
         # do a multi-GPU FFT
-        config.use_multi_gpus = True
-        config.set_cufft_gpus([0, 1])
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                'ignore', 'Multi-GPU FFT is deprecated', DeprecationWarning)
+            config.use_multi_gpus = True
+            config.set_cufft_gpus([0, 1])
         c = testing.shaped_random((128,), cupy, cupy.complex64)
         cupy.fft.fft(c)
         assert cache0.get_curr_size() == 2 <= cache0.get_size()
@@ -296,8 +300,11 @@ class TestPlanCache(unittest.TestCase):
         assert plan1 is not next(iter(cache1))[1].plan
 
         # now use it again to make it the most recent
-        config.use_multi_gpus = True
-        config.set_cufft_gpus([0, 1])
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                'ignore', 'Multi-GPU FFT is deprecated', DeprecationWarning)
+            config.use_multi_gpus = True
+            config.set_cufft_gpus([0, 1])
         c = testing.shaped_random((128,), cupy, cupy.complex64)
         cupy.fft.fft(c)
         assert cache0.get_curr_size() == 2 <= cache0.get_size()

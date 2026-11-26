@@ -111,7 +111,7 @@ cdef _launch(intptr_t func, Py_ssize_t grid0, int grid1, int grid2,
         dev_id = device.get_device_id()
         num_sm = device._get_attributes(dev_id)['MultiProcessorCount']
         max_grid_size = driver.occupancyMaxActiveBlocksPerMultiprocessor(
-            func, block0 * block1 * block2, shared_mem) * num_sm
+            func, <int>(block0 * block1 * block2), shared_mem) * num_sm
         if grid0 * grid1 * grid2 > max_grid_size:
             if grid1 == grid2 == 1:
                 warnings.warn('The grid size will be reduced from {} to {}, '

@@ -7,7 +7,7 @@ from libc.stdint cimport intptr_t
 
 from cupy_backends.cuda.api cimport runtime
 from cupy._core.core cimport _internal_ascontiguousarray
-from cupy._core.internal cimport _contig_axes, is_in
+from cupy._core.internal cimport _contig_axes, is_in, safe_int_len
 from cupy.cuda cimport common
 from cupy.cuda cimport device
 from cupy.cuda cimport memory
@@ -100,6 +100,14 @@ cpdef _get_cuda_build_version():
         return 0
 
 
+cdef int _get_dtype_id(dtype) except -1:
+    cdef int dtype_id = common._get_dtype_id(dtype)
+    if dtype_id == common.CUPY_TYPE_BFLOAT16:
+        # TODO: support bfloat16 in CUB.
+        raise ValueError('Unsupported dtype ({})'.format(dtype))
+    return dtype_id
+
+
 cdef tuple _get_output_shape(_ndarray_base arr, tuple out_axis, bint keepdims):
     cdef tuple out_shape
 
@@ -148,7 +156,7 @@ def device_reduce(_ndarray_base x, op, tuple reduce_axis, tuple out_axis,
 
     if keepdims:
         out_shape = _get_output_shape(x, out_axis, keepdims)
-        ndim_out = len(out_shape)
+        ndim_out = safe_int_len(out_shape)
     else:
         ndim_out = 0
     reduce_shape = _get_output_shape(x, reduce_axis, False)
@@ -182,10 +190,10 @@ def device_reduce(_ndarray_base x, op, tuple reduce_axis, tuple out_axis,
         y = _core.ndarray((kv_bytes,), numpy.int8)
     x_ptr = <void *>x.data.ptr
     y_ptr = <void *>y.data.ptr
-    dtype_id = common._get_dtype_id(x.dtype)
+    dtype_id = _get_dtype_id(x.dtype)
     s = <Stream_t>stream.get_current_stream_ptr()
     x_size = <int>x.size
-    ws_size = cub_device_reduce_get_workspace_size(x_ptr, y_ptr, x.size, s,
+    ws_size = cub_device_reduce_get_workspace_size(x_ptr, y_ptr, x_size, s,
                                                    op, dtype_id)
     ws = memory.alloc(ws_size)
     ws_ptr = <void *>ws.ptr
@@ -216,7 +224,7 @@ def device_segmented_reduce(_ndarray_base x, op, tuple reduce_axis,
     cdef void* x_ptr
     cdef void* y_ptr
     cdef void* ws_ptr
-    cdef int dtype_id, n_segments, op_code
+    cdef int dtype_id, n_segments, segment_size, op_code
     cdef size_t ws_size
     cdef tuple out_shape
     cdef Stream_t s
@@ -251,13 +259,14 @@ def device_segmented_reduce(_ndarray_base x, op, tuple reduce_axis,
         elif op == CUPY_CUB_PROD:
             y.fill(1)
         return y
-    n_segments = x.size//contiguous_size
+    n_segments = <int>(x.size//contiguous_size)
+    segment_size = <int>(contiguous_size)
     s = <Stream_t>stream.get_current_stream_ptr()
-    dtype_id = common._get_dtype_id(x.dtype)
+    dtype_id = _get_dtype_id(x.dtype)
 
     # get workspace size and then fire up
     ws_size = cub_device_segmented_reduce_get_workspace_size(
-        x_ptr, y_ptr, n_segments, contiguous_size, s, op, dtype_id)
+        x_ptr, y_ptr, n_segments, segment_size, s, op, dtype_id)
     # CUB reports `ws_size == 1` when no scratch space is needed, because a
     # NULL workspace pointer switches the call into size-query mode, so alloc.
     ws = memory.alloc(ws_size)
@@ -265,7 +274,7 @@ def device_segmented_reduce(_ndarray_base x, op, tuple reduce_axis,
     op_code = <int>op
     with nogil:
         cub_device_segmented_reduce(ws_ptr, ws_size, x_ptr, y_ptr, n_segments,
-                                    contiguous_size, s, op_code, dtype_id)
+                                    segment_size, s, op_code, dtype_id)
 
     if out is not None:
         cupy._core.elementwise_copy(y, out)
@@ -293,7 +302,7 @@ def device_scan(_ndarray_base x, op):
     x = _internal_ascontiguousarray(x)
     x_ptr = <void *>x.data.ptr
     s = <Stream_t>stream.get_current_stream_ptr()
-    dtype_id = common._get_dtype_id(x.dtype)
+    dtype_id = _get_dtype_id(x.dtype)
     ws_size = cub_device_scan_get_workspace_size(x_ptr, x_ptr, x_size, s,
                                                  op, dtype_id)
     ws = memory.alloc(ws_size)
@@ -338,7 +347,7 @@ def device_histogram(_ndarray_base x, _ndarray_base y, bins):
     y_ptr = <void*>y.data.ptr
     n_samples = x.size
     s = <Stream_t>stream.get_current_stream_ptr()
-    dtype_id = common._get_dtype_id(x.dtype)
+    dtype_id = _get_dtype_id(x.dtype)
 
     if is_even:
         ws_size = cub_device_histogram_even_get_workspace_size(

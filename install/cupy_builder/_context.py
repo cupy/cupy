@@ -4,11 +4,15 @@ from __future__ import annotations
 import dataclasses
 import glob
 import hashlib
+import json
 import os
+from pathlib import Path
+import runpy
 import sys
 from typing import TYPE_CHECKING
 
 import cupy_builder
+from cupy_builder import install_utils
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -43,9 +47,10 @@ class Context:
     annotate: bool
     no_rpath: bool
     features: dict[str, cupy_builder.Feature]
-    cupy_cache_key: str | None
+    header_cache_key: str | None
     win32_cl_exe_path: str | None
     dev_configure_cache: bool
+    werror: bool
     dev_configure_cache_key: str
 
     # Deprecated
@@ -59,8 +64,18 @@ class Context:
         self.source_root = source_root
         self.setup_command = _argv[1] if len(_argv) >= 2 else ''
 
-        self.use_cuda_python = _get_env_bool('CUPY_USE_CUDA_PYTHON', _env)
         self.use_hip = _get_env_bool('CUPY_INSTALL_USE_HIP', _env)
+        # CUDA builds use CUDA Python by default; HIP builds never do.
+        self.use_cuda_python = _get_env_bool(
+            'CUPY_USE_CUDA_PYTHON', _env, default=not self.use_hip)
+        if self.use_hip and self.use_cuda_python:
+            raise ValueError(
+                'CUPY_USE_CUDA_PYTHON cannot be used with '
+                'CUPY_INSTALL_USE_HIP')
+        if not self.use_hip and not self.use_cuda_python:
+            install_utils.print_warning(
+                'CUPY_USE_CUDA_PYTHON=0 is deprecated and will be removed '
+                'in a future release.')
 
         # Extra paths to search for libraries/headers during build
         self.include_dirs = _get_env_path('CUPY_INCLUDE_PATH', _env)
@@ -77,11 +92,11 @@ class Context:
         # enable coverage for Cython code
         self.annotate = self.linetrace = _get_env_bool(
             "CUPY_INSTALL_CYTHON_COVERAGE", _env)
+        # treat Cython and compiler warnings as errors (set in CI)
+        self.werror = _get_env_bool("CUPY_BUILD_WERROR", _env)
 
         self.features = cupy_builder.get_features(self)
-
-        # Cache key for this build.
-        self.cupy_cache_key = None
+        self.header_cache_key = None
 
         # Host compiler path for Windows, see `_command.py`.
         self.win32_cl_exe_path = None
@@ -101,14 +116,33 @@ class Context:
         self.wheel_libs = []
         self.wheel_includes = []
 
-    def calculate_cupy_cache_key(self) -> None:
-        print('Generating CUPY_CACHE_KEY from header files...')
-        pattern = os.path.join(
-            self.source_root, 'cupy', '_core', 'include', '**')
-        cache_key, count = self._calculate_checksum(pattern)
-        print(f'CUPY_CACHE_KEY ({count} files '
-              f'matching {pattern}): {cache_key}')
-        self.cupy_cache_key = cache_key
+    def generate_header_cache(self) -> None:
+        print('Generating kernel cache keys from header files...')
+        # Load the shared classifier without importing the CuPy extensions.
+        _core_path = Path(self.source_root) / 'cupy' / '_core'
+        path = _core_path / '_header_cache_keys.json'
+        if path.exists():
+            print("Deleting possibly stale header cache keys file...")
+            # Delete existing file to avoid import trying to do a runtime
+            # cache key build (thinking it is an editable install).
+            path.unlink()
+
+        module = runpy.run_path(str(_core_path / '_header_cache_keys.py'))
+        cache = module['build_header_cache_keys'](hip=self.use_hip)
+        self.header_cache_key = cache['keys']['full']
+
+        if self.setup_command != "editable_wheel":
+            print("Writing header cache keys to file...")
+            data = json.dumps(cache, sort_keys=True, separators=(',', ':'))
+        else:
+            print("Indicating editable to create cache key at runtime...")
+            data = json.dumps("EDITABLE_BUILD")
+
+        if not path.exists() or path.read_text() != data:
+            path.write_text(data)
+
+        for group, key in cache['keys'].items():
+            print(f'Kernel header cache key ({group}): {key}')
 
     def calculate_dev_cache_key(self) -> None:
         print('Generating configure cache key...')

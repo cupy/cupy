@@ -6,6 +6,7 @@ import glob
 import os
 from setuptools import setup
 import sys
+import tomllib
 
 source_root = os.path.abspath(os.path.dirname(__file__))
 sys.path.append(os.path.join(source_root, 'install'))
@@ -26,6 +27,7 @@ if not cupy_builder.preflight_check(ctx):
 # - libcudacxx's test files exceed the default path length limit on Windows, so
 #   we have to exclude them so as to avoid asking users to touch the registry.
 cupy_package_data = [
+    'cupy/_core/_header_cache_keys.json',
     'cupy/cuda/cupy_thrust.cu',
     'cupy/cuda/cupy_cub.cu',
     'cupy/cuda/cupy_cufftXt.cu',  # for cuFFT callback
@@ -96,15 +98,19 @@ setup_requires = []
 if not ctx.use_hip:
     dependencies.append("cuda-pathfinder>=1.3.4,==1.*")
     if ctx.use_cuda_python:
+        with open(os.path.join(source_root, 'pyproject.toml'), 'rb') as f:
+            cuda_python_floors = tomllib.load(f)['tool']['cupy']['cuda-python']
         # nvmath-python and cuda-bindings are needed to build and to run.
-        # cuda-bindings must match the CUDA major version. pip collects
-        # setup_requires via `egg_info`, before CUDA is probed, so read the
-        # version from cuda.h.
-        _cuda_major = cupy_builder.install_build.detect_cuda_major(ctx)
-        if _cuda_major is not None:
+        # pip collects setup_requires via `egg_info`, before CUDA is probed,
+        # so read the version from cuda.h. cydriver.pxd needs a cuda.h at least
+        # as new as cuda-bindings, so request the same minor.
+        _cuda_version = cupy_builder.install_build.detect_cuda_version(ctx)
+        if _cuda_version is not None:
+            _cuda_major = _cuda_version // 1000
+            _cuda_minor = _cuda_version % 1000 // 10
             setup_requires = [
-                "nvmath-python>=1.0,<2",
-                f"cuda-bindings=={_cuda_major}.*",
+                f"nvmath-python>={cuda_python_floors['nvmath-python']},<2",
+                f"cuda-bindings=={_cuda_major}.{_cuda_minor}.*",
             ]
     # Same reasoning as the ext_modules guard: sdist/egg_info/dist_info
     # run on a CUDA-less builder, so skip the version-detecting [ctk]
@@ -116,14 +122,20 @@ if not ctx.use_hip:
             f"cuda-toolkit[cudart,nvrtc,cublas,cufft,cusolver,cusparse,curand]=={cuda_major}.*"  # NOQA
         ]
         if ctx.use_cuda_python:
-            # CuPy cimports from these packages, so the versions installed at
-            # run time must be at least as new as the ones it was built with.
-            nvmath_version, bindings_version = (
+            # CuPy cimports from these packages. nvmath-python must be at
+            # least the version built with; cuda-bindings has a declared
+            # minimum (see pyproject.toml).
+            nvmath_version, _ = (
                 cupy_builder.install_build.get_cuda_python_versions(
-                    cuda_major))
+                    cuda_major, cuda_python_floors))
+            _bindings_floor = (
+                cuda_python_floors['cuda-bindings'][str(cuda_major)])
             dependencies += [
                 f"nvmath-python>={nvmath_version},<2",
-                f"cuda-bindings>={bindings_version},<{cuda_major + 1}",
+                f"cuda-bindings>={_bindings_floor},<{cuda_major + 1}",
+                # cuda-core (required by nvmath-python) checks its own
+                # cuda-bindings minimum at import but declares it only here.
+                f"cuda-core[minimal-sysctk{cuda_major}]",
             ]
 
 

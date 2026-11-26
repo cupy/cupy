@@ -10,7 +10,7 @@ from cupy import _util
 from cupy._core._kernel import ElementwiseKernel
 from cupy._core._reduction import ReductionKernel
 from cupy._core._ufuncs import elementwise_copy
-
+from cupy._warnings import warn_external
 
 from libc.limits cimport INT_MAX
 from libcpp.atomic cimport atomic, memory_order_relaxed
@@ -543,6 +543,14 @@ cpdef _ndarray_base dot(
     if a_ndim == 0 or b_ndim == 0:
         return _math._multiply(a, b, out=out)
 
+    if a_ndim >=2 and b_ndim > 2:
+        # Deprecated CuPy 14.3 (NumPy 2.6).
+        warn_external(
+            "dot() with a.ndim >= 2 and b.ndim > 2 is deprecated as it "
+            "places leading dimensions of b in the middle of the result. "
+            "Use `cupy.tensordot(a, b, axes=[-1, -2])` instead.",
+            DeprecationWarning)
+
     input_a_is_vec = a_ndim == 1
     input_b_is_vec = b_ndim == 1
     if input_a_is_vec:
@@ -1062,7 +1070,7 @@ cdef tuple _prepare_batched_matmul_operands(
     operands in cuBLAS order and a logical output array; vectors and
     broadcasting are represented by metadata, not new array views.
     """
-    cdef int a_ndim = a._shape.size(), b_ndim = b._shape.size()
+    cdef int a_ndim = <int>a._shape.size(), b_ndim = <int>b._shape.size()
     cdef bint a_vector = a_ndim == 1
     cdef bint b_vector = b_ndim == 1
     cdef bint has_vector = a_vector or b_vector
@@ -1215,7 +1223,7 @@ cpdef _ndarray_base _mat_ptrs(_ndarray_base a):
     Returns:
         GPU array of pointers to matrices.
     """
-    cdef int ndim = a._shape.size()
+    cdef int ndim = <int>(a._shape.size())
     assert ndim > 2
     cdef shape_t batch_shape = a._shape
     batch_shape.resize(ndim - 2)
@@ -1262,8 +1270,8 @@ cpdef _ndarray_base matmul(
     cdef _ndarray_base ap, bp, cp, c
     cdef intptr_t handle
 
-    orig_a_ndim = a._shape.size()
-    orig_b_ndim = b._shape.size()
+    orig_a_ndim = <int>(a._shape.size())
+    orig_b_ndim = <int>(b._shape.size())
     if orig_a_ndim == 0 or orig_b_ndim == 0:
         raise ValueError('Scalar operands are not allowed, use \'*\' instead')
 

@@ -374,6 +374,7 @@ intersphinx_mapping = {
         'https://static.scipy.org/doc/scipy/objects.inv',
     ),
     'numba': ('https://numba.readthedocs.io/en/stable', None),
+    'nvmath': ('https://docs.nvidia.com/cuda/nvmath-python/latest/', None),
     'cuquantum': ('https://docs.nvidia.com/cuda/cuquantum/latest', None),
     # blocked by data-apis/array-api#428
     #'array-api': ('https://data-apis.org/array-api/2021.12/', None),

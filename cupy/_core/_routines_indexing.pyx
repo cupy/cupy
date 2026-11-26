@@ -11,6 +11,7 @@ from cupy._core._kernel cimport _full_mask_hex
 from cupy._core._ufuncs import elementwise_copy
 
 from libcpp cimport vector
+cimport numpy as cnp
 
 from cupy._core._carray cimport shape_t
 from cupy._core._carray cimport strides_t
@@ -26,7 +27,7 @@ from cupy._core cimport internal
 
 
 cdef _ndarray_base _ndarray_getitem(_ndarray_base self, slices):
-    cdef Py_ssize_t axis
+    cdef int axis
     cdef list slice_list
     cdef _ndarray_base a
 
@@ -123,7 +124,7 @@ cpdef _ndarray_base _ndarray_argwhere(_ndarray_base self):
             incomplete=incomplete_scan, chunk_size=chunk_size)
         count_nonzero = int(scan_index[-1])  # synchronize!
 
-    ndim = self._shape.size()
+    ndim = <int>(self._shape.size())
     dst = core.ndarray((count_nonzero, ndim), dtype=numpy_int64)
     if dst.size == 0:
         return dst
@@ -145,7 +146,7 @@ cpdef _ndarray_base _ndarray_argwhere(_ndarray_base self):
 cdef _ndarray_base _ndarray_take(_ndarray_base self, indices, axis, out):
     cdef Py_ssize_t ndim = self._shape.size()
     if axis is None:
-        return _take(self, indices, 0, ndim, out)
+        return _take(self, indices, 0, <int>(ndim), out)
     elif ndim == 0:
         # check axis after atleast_1d
         internal._normalize_axis_index(axis, 1)
@@ -359,7 +360,7 @@ cdef tuple _view_getitem(_ndarray_base a, list slice_list):
                     "an index can only have a single ellipsis ('...')")
             has_ellipsis = True
         elif isinstance(s, _ndarray_base):
-            kind = ord(s.dtype.kind)
+            kind = (<cnp.dtype>(s.dtype)).kind
             if kind == b'b':
                 k = s.ndim
             elif kind == b'i' or kind == b'u':
@@ -401,7 +402,7 @@ cdef tuple _view_getitem(_ndarray_base a, list slice_list):
             k = array_ndims[i]
             index_list.append((s, axis_v, k))
             i += 1
-            kind = ord(s.dtype.kind)
+            kind = (<cnp.dtype>(s.dtype)).kind
             if kind == b'b':
                 _check_mask_shape(a, s, axis_a)
             for _ in range(k):
@@ -846,7 +847,7 @@ cdef _ndarray_base _take(
     # Take along (flattened) axes from start to stop.
     # When start + 1 == stop this function behaves similarly to np.take
     cdef tuple out_shape, indices_shape
-    cdef int i, ndim = a._shape.size()
+    cdef int i, ndim = <int>(a._shape.size())
     cdef Py_ssize_t cdim, rdim, index_range, out_block_size
 
     assert start <= stop
@@ -1213,7 +1214,7 @@ cdef tuple _prepare_multiple_array_indexing(
 
 
 cdef _ndarray_base _getitem_multiple(
-        _ndarray_base a, Py_ssize_t start, list slices):
+        _ndarray_base a, int start, list slices):
     reduced_idx, start, stop = _prepare_multiple_array_indexing(
         a, start, slices)
     return _take(a, reduced_idx, start, stop)
@@ -1256,7 +1257,14 @@ cdef _ndarray_base _add_reduceat(
         _ndarray_base array, indices, axis, dtype, out):
     from cupy._sorting import search
     axis = internal._normalize_axis_index(axis, array.ndim)
-    indices = cupy.append(indices, array.shape[axis])
+
+    max_index = array.shape[axis]
+    if max_index < 2**31:
+        max_index = numpy.int32(max_index)
+    else:
+        max_index = numpy.int64(max_index)
+
+    indices = cupy.append(indices, max_index)
     shape = [1 if i == axis else dim for i, dim in enumerate(array.shape)]
     acc = array.cumsum(axis, dtype)
     acc = cupy.append(cupy.zeros(shape, acc.dtype), acc, axis)

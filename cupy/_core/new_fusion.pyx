@@ -2,6 +2,7 @@ import functools
 
 import numpy
 
+from cupy._core.internal cimport safe_int_len
 from cupy._core import core
 from cupy._core import _fusion_trace
 from cupy._core import _fusion_kernel
@@ -54,7 +55,7 @@ class Fusion:
         self._cache = {}
 
     def __call__(self, *args, **kwargs):
-        cdef int nargs = len(args)
+        cdef int nargs = safe_int_len(args)
         cdef int i
 
         if _is_fusing():

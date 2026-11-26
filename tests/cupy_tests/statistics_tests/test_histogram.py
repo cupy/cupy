@@ -393,6 +393,21 @@ class TestCubHistogram(unittest.TestCase):
         yield
         _accelerator.set_routine_accelerators(old_accelerators)
 
+    @testing.with_requires('numpy>=2.1.2', 'ml_dtypes')
+    def test_histogram_bfloat16_unsupported(self):
+        from cupy.cuda import runtime
+        import ml_dtypes
+
+        if (
+                not runtime.is_hip
+                and cupy.cuda.get_local_runtime_version() < 12020
+        ):
+            pytest.skip('bfloat16 is missing some features')
+        x = cupy.arange(10).astype(ml_dtypes.bfloat16)
+        with pytest.raises(ValueError,
+                           match=r'Unsupported dtype \(bfloat16\)'):
+            cupy.histogram(x)
+
     @pytest.mark.thread_unsafe(reason="uses AssertFunctionIsCalled")
     @testing.for_all_dtypes(no_bool=True, no_complex=True)
     @testing.numpy_cupy_array_equal()

@@ -649,7 +649,8 @@ def _add_scan_batch_blocked_sum_kernel(
         // The first block of a row has nothing to add and the last thread of
         // a block already holds the sum of its block.
         if (in_range && block_in_row != 0 && thid != ${block_size} - 1){
-            const index_t dst_idx[] = {row, block_start + thid};
+            const index_t dst_idx[] = {
+                row, block_start + static_cast<index_t>(thid)};
             const index_t src_idx[] = {row, block_start - 1};
             src_dst[dst_idx] ${op}= src_dst[src_idx];
         }
