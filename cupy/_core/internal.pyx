@@ -123,7 +123,7 @@ cdef inline Py_ssize_t get_contiguous_strides_inplace(
         bint is_c_contiguous, bint zeros_for_zerosize) except -1:
     cdef Py_ssize_t st, sh
     cdef Py_ssize_t is_nonzero_size = 1
-    cdef int i, ndim = shape.size()
+    cdef int i, ndim = <int>(shape.size())
     cdef Py_ssize_t idx
     strides.resize(ndim, 0)
     st = 1
@@ -380,7 +380,7 @@ cdef _ndarray_base _broadcast_to_unchecked(
 
 cdef _broadcast_core(list arrays, shape_t& shape):
     cdef Py_ssize_t i
-    cdef vector.vector[int] index
+    cdef vector.vector[Py_ssize_t] index
     cdef _ndarray_base a
 
     shape.clear()
@@ -406,7 +406,7 @@ cdef _broadcast_core(list arrays, shape_t& shape):
 cpdef bint _contig_axes(tuple axes) except -1:
     # Indicate if the specified axes are in ascending order without gaps.
     cdef Py_ssize_t n
-    cdef int n_ax = len(axes)
+    cdef Py_ssize_t n_ax = len(axes)
     cdef bint contig = n_ax > 0
     for n in range(1, n_ax):
         contig = (axes[n] - axes[n - 1]) == 1
@@ -415,7 +415,7 @@ cpdef bint _contig_axes(tuple axes) except -1:
     return contig
 
 
-cpdef Py_ssize_t _normalize_axis_index(
+cpdef int _normalize_axis_index(
         Py_ssize_t axis, Py_ssize_t ndim) except -1:
     """
     Normalizes an axis index, ``axis``, such that is a valid positive index
@@ -438,7 +438,7 @@ cpdef Py_ssize_t _normalize_axis_index(
         raise AxisError(axis, ndim)
     if axis < 0:
         axis += ndim
-    return axis
+    return <int>(axis)
 
 
 cpdef tuple _normalize_axis_indices(

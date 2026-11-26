@@ -450,7 +450,7 @@ cdef class _ndarray_base:
         buf.internal = NULL
         buf.readonly = 0  # TODO(leofang): use flags
         cdef int n, ndim
-        ndim = self._shape.size()
+        ndim = <int>(self._shape.size())
         cdef Py_ssize_t* shape_strides = <Py_ssize_t*>stdlib.malloc(
             sizeof(Py_ssize_t) * ndim * 2)
         for n in range(ndim):
@@ -3425,7 +3425,7 @@ cpdef _ndarray_base empty_like(
 
 cdef _ndarray_base _create_ndarray_from_shape_strides(
         subtype, const shape_t& shape, const strides_t& strides, dtype, obj):
-    cdef int ndim = shape.size()
+    cdef int ndim = <int>(shape.size())
     cdef int64_t begin = 0, end = dtype.itemsize
     cdef memory.MemoryPointer ptr
     for i in range(ndim):

@@ -50,6 +50,7 @@ class Context:
     header_cache_key: str | None
     win32_cl_exe_path: str | None
     dev_configure_cache: bool
+    werror: bool
     dev_configure_cache_key: str
 
     # Deprecated
@@ -91,6 +92,8 @@ class Context:
         # enable coverage for Cython code
         self.annotate = self.linetrace = _get_env_bool(
             "CUPY_INSTALL_CYTHON_COVERAGE", _env)
+        # treat Cython and compiler warnings as errors (set in CI)
+        self.werror = _get_env_bool("CUPY_BUILD_WERROR", _env)
 
         self.features = cupy_builder.get_features(self)
         self.header_cache_key = None

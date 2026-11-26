@@ -1098,7 +1098,7 @@ cdef class MgHandle:
     cdef public dict _contraction_plans
 
     def __init__(self, devices):
-        num_devices = len(devices)
+        num_devices = internal.safe_int_len(devices)
         self._ptr = cutensor.createMg(num_devices, devices.ctypes.data)
         self._devices = devices
         self._tensor_descriptors = {}
