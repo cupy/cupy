@@ -2615,12 +2615,12 @@ class TestInt64DenseMatmulDispatch:
             a *= 1 - 2j
         return a
 
-    def _int64(self, fmt, dtype=numpy.float64):
+    def _int64(self, fmt, dtype=numpy.float64, index=cupy.int64):
         m = getattr(sparse, f'{fmt}_matrix')(
             cupy.asarray(self._as(self._dense, dtype)))
         return getattr(sparse, f'{fmt}_matrix')._from_parts(
-            m.data, m.indices.astype(cupy.int64),
-            m.indptr.astype(cupy.int64), m.shape,
+            m.data, m.indices.astype(index),
+            m.indptr.astype(index), m.shape,
             has_canonical_format=True)
 
     @pytest.mark.parametrize('dtype', [numpy.float32, numpy.float64,
@@ -2694,17 +2694,71 @@ class TestInt64DenseMatmulDispatch:
             else:
                 testing.assert_allclose(m @ cupy.asarray(x), self._dense @ x)
 
+    @pytest.mark.parametrize('index', [cupy.int32, cupy.int64])
+    @pytest.mark.parametrize('fmt', ['csr', 'csc'])
+    def test_hip_row_limits_empty(self, fmt, index, monkeypatch):
+        # A matrix without nonzeros never reaches the library, so it is
+        # computed even when it has more rows than the limits.
+        monkeypatch.setattr(cusparse, '_HIP_SPMV_MAX_ROWS', 5)
+        monkeypatch.setattr(cusparse, '_HIP_CSRMV_MAX_ROWS', 5)
+        monkeypatch.setattr(cusparse, '_HIP_CSRMVT_MAX_ROWS', 4)
+        monkeypatch.setattr(cusparse, '_HIP_SPMM_MAX_ROWS', 5)
+        monkeypatch.setattr(cusparse, '_HIP_SPMM_TRANS_MAX_ROWS', 4)
+        m = getattr(sparse, f'{fmt}_matrix')._from_parts(
+            cupy.zeros(0), cupy.zeros(0, index),
+            cupy.zeros(7 if fmt == 'csr' else 6, index), (6, 5),
+            has_canonical_format=True)
+        for x in (numpy.arange(1., 6.), numpy.arange(15.).reshape(5, 3)):
+            y = m @ cupy.asarray(x)
+            testing.assert_array_equal(y, numpy.zeros((6,) + x.shape[1:]))
+
+    @pytest.mark.parametrize('index', [cupy.int32, cupy.int64])
+    @pytest.mark.parametrize('n', [8, 9])
+    @pytest.mark.parametrize('over', [0, 1])
+    def test_hip_row_limits_transb(self, over, n, index, monkeypatch):
+        # Only a transposed B with more than 8 columns has the lower limit.
+        monkeypatch.setattr(cusparse, '_HIP_SPMM_NT_MAX_ROWS', 6 - over)
+        m = self._int64('csr', index=index)
+        b = cupy.asfortranarray(
+            cupy.arange(1., 5 * n + 1).reshape(n, 5))
+        spmm = cusparse.spmm
+        if index is cupy.int32 and cusparse.check_availability('csrmm2'):
+            spmm = cusparse.csrmm2
+        if over and n > 8 and cupy.cuda.runtime.is_hip:
+            with pytest.raises(ValueError, match='hipSPARSE'):
+                spmm(m, b, transb=True)
+        else:
+            testing.assert_allclose(
+                spmm(m, b, transb=True), self._dense @ b.get().T)
+
+    @pytest.mark.parametrize('over', [0, 1])
+    @pytest.mark.parametrize('fmt', ['csr', 'csc'])
+    def test_hip_row_limits_int32(self, fmt, over, monkeypatch):
+        # int32 indices use the legacy csrmv and csrmm2 on HIP.  csc @ x
+        # calls csrmv with transa.
+        monkeypatch.setattr(cusparse, '_HIP_CSRMV_MAX_ROWS', 6 - over)
+        monkeypatch.setattr(cusparse, '_HIP_CSRMVT_MAX_ROWS', 5 - over)
+        monkeypatch.setattr(cusparse, '_HIP_SPMM_MAX_ROWS', 6 - over)
+        monkeypatch.setattr(cusparse, '_HIP_SPMM_TRANS_MAX_ROWS', 5 - over)
+        m = self._int64(fmt, index=cupy.int32)
+        for x in (numpy.arange(1., 6.), numpy.arange(15.).reshape(5, 3)):
+            if over and cupy.cuda.runtime.is_hip:
+                with pytest.raises(ValueError, match='hipSPARSE'):
+                    m @ cupy.asarray(x)
+            else:
+                testing.assert_allclose(m @ cupy.asarray(x), self._dense @ x)
+
     @staticmethod
-    def _tall_csr(rows):
+    def _tall_csr(rows, index=cupy.int64):
         # float32 CSR with 2 columns and nonzeros in rows 0, rows - 6 and
         # rows - 1.
-        indptr = cupy.zeros(rows + 1, cupy.int64)
+        indptr = cupy.zeros(rows + 1, index)
         indptr[1:] = 1
         indptr[rows - 5:] = 2
         indptr[rows:] = 3
         return sparse.csr_matrix._from_parts(
             cupy.array([1.5, 3., 2.5], cupy.float32),
-            cupy.array([0, 1, 0], cupy.int64), indptr, (rows, 2),
+            cupy.array([0, 1, 0], index), indptr, (rows, 2),
             has_canonical_format=True)
 
     @staticmethod
@@ -2745,22 +2799,55 @@ class TestInt64DenseMatmulDispatch:
             pytest.skip('not enough GPU memory')
 
     @testing.slow
-    def test_hip_spmm_row_limit(self):
+    def test_hip_csrmv_row_limit(self):
+        # The legacy csrmv, used for int32 indices, aborted the process with
+        # a GPU memory access fault above 2**30 rows (ROCm 7.2).  csc @ x
+        # calls it with transa, which faults above 2**31 - 2**16 rows.
+        self._require_hip_memory(48)
+        v = cupy.array([2., 3.], cupy.float32)
+        rows = 2**30
+        try:
+            y = self._tall_csr(rows, cupy.int32) @ v
+            assert int(cupy.count_nonzero(y)) == 3
+            testing.assert_array_equal(y[[0, rows - 6, rows - 1]], [3, 9, 5])
+            del y
+            with pytest.raises(ValueError, match='hipSPARSE csrmv'):
+                self._tall_csr(rows + 1, cupy.int32) @ v
+            cupy.get_default_memory_pool().free_all_blocks()
+            rows = 2**31 - 2**16
+            x = cupy.zeros(rows + 1, cupy.float32)
+            x[[0, rows - 6, rows - 1]] = cupy.array([2., 3., 1.], cupy.float32)
+            a = self._tall_csr(rows, cupy.int32).T
+            testing.assert_array_equal(a @ x[:rows], [5.5, 9])
+            del a
+            cupy.get_default_memory_pool().free_all_blocks()
+            a = self._tall_csr(rows + 1, cupy.int32).T
+            with pytest.raises(ValueError, match='hipSPARSE csrmv'):
+                a @ x
+        except cupy.cuda.memory.OutOfMemoryError:
+            pytest.skip('not enough GPU memory')
+
+    @testing.slow
+    @pytest.mark.parametrize('index', [cupy.int32, cupy.int64])
+    def test_hip_spmm_row_limit(self, index):
         # hipSPARSE SpMM computed only part of C, with no error, once its
         # launch reached 2**32 threads (ROCm 7.2).  That happens above
-        # 2**29 - 32 rows for csr @ b, and above 2**30 - 64 rows of the
-        # transposed CSR for csc @ b.
+        # 2**29 - 32 rows for csr @ b, above 2**30 - 64 rows of the
+        # transposed CSR for csc @ b, and above 2**28 - 16 rows for csr @ b.T
+        # with 9 or more columns.  int32 indices use the legacy csrmm2,
+        # which has the same limits.
         self._require_hip_memory(48)
+        spmm = cusparse.spmm if index is cupy.int64 else cusparse.csrmm2
         b = cupy.array([[2., 4.], [3., 5.]], cupy.float32, order='F')
         rows = 2**29 - 32
         try:
-            c = self._tall_csr(rows) @ b
+            c = self._tall_csr(rows, index) @ b
             assert int(cupy.count_nonzero(c)) == 6
             testing.assert_array_equal(
                 c[[0, rows - 6, rows - 1]], [[3, 6], [9, 15], [5, 10]])
             del c
-            with pytest.raises(ValueError, match='hipSPARSE SpMM'):
-                self._tall_csr(rows + 1) @ b
+            with pytest.raises(ValueError, match='hipSPARSE'):
+                self._tall_csr(rows + 1, index) @ b
             # csc @ b multiplies with the transposed CSR, which has ``rows``
             # rows here.
             rows = 2**30 - 64
@@ -2768,13 +2855,34 @@ class TestInt64DenseMatmulDispatch:
             bt = cupy.zeros((rows, 2), cupy.float32, order='F')
             bt[[0, rows - 6, rows - 1]] = cupy.array(
                 [[2., 4.], [3., 5.], [1., 7.]], cupy.float32)
-            c = self._tall_csr(rows).T @ bt
+            c = self._tall_csr(rows, index).T @ bt
             testing.assert_array_equal(c, [[5.5, 23.5], [9, 15]])
             del bt, c
             cupy.get_default_memory_pool().free_all_blocks()
             bt = cupy.zeros((rows + 1, 2), cupy.float32, order='F')
-            with pytest.raises(ValueError, match='hipSPARSE SpMM'):
-                self._tall_csr(rows + 1).T @ bt
+            with pytest.raises(ValueError, match='hipSPARSE'):
+                self._tall_csr(rows + 1, index).T @ bt
+            del bt
+            # csr @ b.T, with b.T of 2 x 9 or 2 x 8.  Only 9 columns use 16
+            # threads per row.
+            rows = 2**28 - 16
+            cupy.get_default_memory_pool().free_all_blocks()
+            for n, rows_ok in [(9, rows), (8, rows + 1)]:
+                b = cupy.empty((n, 2), cupy.float32, order='F')
+                b[:, 0] = cupy.arange(1, n + 1, dtype=cupy.float32)
+                b[:, 1] = cupy.arange(2, n + 2, dtype=cupy.float32)
+                expected = numpy.stack([1.5 * b[:, 0].get(),
+                                        3. * b[:, 1].get(),
+                                        2.5 * b[:, 0].get()])
+                c = spmm(self._tall_csr(rows_ok, index), b, transb=True)
+                assert int(cupy.count_nonzero(c)) == 3 * n
+                testing.assert_array_equal(
+                    c[[0, rows_ok - 6, rows_ok - 1]], expected)
+                del c
+                cupy.get_default_memory_pool().free_all_blocks()
+            b = cupy.ones((9, 2), cupy.float32, order='F')
+            with pytest.raises(ValueError, match='hipSPARSE'):
+                spmm(self._tall_csr(rows + 1, index), b, transb=True)
         except cupy.cuda.memory.OutOfMemoryError:
             pytest.skip('not enough GPU memory')
 
