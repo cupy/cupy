@@ -33,7 +33,7 @@ _GROUPS = {
     # TODO(seberg): Consider excluding these headers from wheels?
     'build': re.compile(r'cupy/(?:type_dispatcher\.cuh$|_dlpack/)'),
     # On CUDA builds, HIP has no reason to be part of COMMON.
-    'hip': re.compile(r'cupy/hip_workaround\.cuh$'),
+    'hip': re.compile(r'cupy/hip_(?:workaround|bfloat16_rounding)\.cuh$'),
 }
 # On HIP should probably include HIP as part of the common key.
 _GROUPS_HIP = _GROUPS.copy()
@@ -149,8 +149,7 @@ def build_header_cache_keys(hip=None):
     hashes = {g: hashlib.sha1(usedforsecurity=False)
               for g in ('common', *GROUPS)}
     dependencies = {g: set() for g in hashes}
-    # Changes to classification policy must invalidate existing entries too.
-    hashes['common'].update(Path(__file__).read_bytes())
+
     for name, (path, group) in files.items():
         content = path.read_bytes()
         hashes[group].update(name.encode() + b'\0' + content + b'\0')
