@@ -2606,34 +2606,58 @@ class TestInt64DenseMatmulDispatch:
                           [0., 7., 0., 8., 9.],
                           [10., 0., 0., 0., 11.]])
 
-    def _int64(self, fmt):
-        m = getattr(sparse, f'{fmt}_matrix')(cupy.asarray(self._dense))
+    @staticmethod
+    def _as(a, dtype):
+        # Complex cases get nonzero imaginary parts.  All values stay small
+        # Gaussian integers, so every product and sum below is exact.
+        a = a.astype(dtype)
+        if a.dtype.kind == 'c':
+            a *= 1 - 2j
+        return a
+
+    def _int64(self, fmt, dtype=numpy.float64):
+        m = getattr(sparse, f'{fmt}_matrix')(
+            cupy.asarray(self._as(self._dense, dtype)))
         return getattr(sparse, f'{fmt}_matrix')._from_parts(
             m.data, m.indices.astype(cupy.int64),
             m.indptr.astype(cupy.int64), m.shape,
             has_canonical_format=True)
 
+    @pytest.mark.parametrize('dtype', [numpy.float32, numpy.float64,
+                                       numpy.complex64, numpy.complex128])
     @pytest.mark.parametrize('fmt', ['csr', 'csc'])
-    def test_matvec(self, fmt):
-        m = self._int64(fmt)
+    def test_matvec(self, fmt, dtype):
+        m = self._int64(fmt, dtype)
         assert m.indices.dtype == cupy.int64
-        x = numpy.arange(1., 6.)
-        testing.assert_allclose(m @ cupy.asarray(x), self._dense @ x)
+        assert m.dtype == dtype
+        d = self._as(self._dense, dtype)
+        x = self._as(numpy.arange(1., 6.), dtype)
+        y = m @ cupy.asarray(x)
+        assert y.dtype == dtype
+        testing.assert_allclose(y, d @ x)
 
+    @pytest.mark.parametrize('dtype', [numpy.float32, numpy.float64,
+                                       numpy.complex64, numpy.complex128])
     @pytest.mark.parametrize('fmt', ['csr', 'csc'])
-    def test_matmat(self, fmt):
-        m = self._int64(fmt)
-        x = numpy.arange(15.).reshape(5, 3)
-        testing.assert_allclose(m @ cupy.asarray(x), self._dense @ x)
+    def test_matmat(self, fmt, dtype):
+        m = self._int64(fmt, dtype)
+        d = self._as(self._dense, dtype)
+        x = self._as(numpy.arange(15.).reshape(5, 3), dtype)
+        y = m @ cupy.asarray(x)
+        assert y.dtype == dtype
+        testing.assert_allclose(y, d @ x)
 
+    @pytest.mark.parametrize('dtype', [numpy.float32, numpy.float64,
+                                       numpy.complex64, numpy.complex128])
     @pytest.mark.parametrize('fmt', ['csr', 'csc'])
-    def test_sum(self, fmt):
-        m = self._int64(fmt)
-        assert float(m.sum()) == pytest.approx(self._dense.sum())
+    def test_sum(self, fmt, dtype):
+        m = self._int64(fmt, dtype)
+        d = self._as(self._dense, dtype)
+        testing.assert_allclose(m.sum(), d.sum())
         testing.assert_allclose(
-            cupy.asarray(m.sum(axis=0)).ravel(), self._dense.sum(axis=0))
+            cupy.asarray(m.sum(axis=0)).ravel(), d.sum(axis=0))
         testing.assert_allclose(
-            cupy.asarray(m.sum(axis=1)).ravel(), self._dense.sum(axis=1))
+            cupy.asarray(m.sum(axis=1)).ravel(), d.sum(axis=1))
 
     @pytest.mark.parametrize('dtype', [cupy.float64, cupy.bool_])
     def test_coo_array_sum(self, dtype):
@@ -2652,6 +2676,107 @@ class TestInt64DenseMatmulDispatch:
         x = cupy.ones(5) if name == 'csrmv' else cupy.ones((5, 2), order='F')
         with pytest.raises(ValueError, match='int64'):
             getattr(cusparse, name)(m, x)
+
+    @pytest.mark.parametrize('over', [0, 1])
+    @pytest.mark.parametrize('fmt', ['csr', 'csc'])
+    def test_hip_row_limits(self, fmt, over, monkeypatch):
+        # Set the HIP row limits to the rows of the CSR that spmv and spmm
+        # get (6 for csr @ x, csc @ x and csr @ b, 5 for the transposed
+        # csc @ b), or to one less.  Only HIP enforces them.
+        monkeypatch.setattr(cusparse, '_HIP_SPMV_MAX_ROWS', 6 - over)
+        monkeypatch.setattr(cusparse, '_HIP_SPMM_MAX_ROWS', 6 - over)
+        monkeypatch.setattr(cusparse, '_HIP_SPMM_TRANS_MAX_ROWS', 5 - over)
+        m = self._int64(fmt)
+        for x in (numpy.arange(1., 6.), numpy.arange(15.).reshape(5, 3)):
+            if over and cupy.cuda.runtime.is_hip:
+                with pytest.raises(ValueError, match='hipSPARSE'):
+                    m @ cupy.asarray(x)
+            else:
+                testing.assert_allclose(m @ cupy.asarray(x), self._dense @ x)
+
+    @staticmethod
+    def _tall_csr(rows):
+        # float32 CSR with 2 columns and nonzeros in rows 0, rows - 6 and
+        # rows - 1.
+        indptr = cupy.zeros(rows + 1, cupy.int64)
+        indptr[1:] = 1
+        indptr[rows - 5:] = 2
+        indptr[rows:] = 3
+        return sparse.csr_matrix._from_parts(
+            cupy.array([1.5, 3., 2.5], cupy.float32),
+            cupy.array([0, 1, 0], cupy.int64), indptr, (rows, 2),
+            has_canonical_format=True)
+
+    @staticmethod
+    def _require_hip_memory(gib):
+        if not cupy.cuda.runtime.is_hip:
+            pytest.skip('hipSPARSE only')
+        cupy.get_default_memory_pool().free_all_blocks()
+        if cupy.cuda.runtime.memGetInfo()[0] < gib * (1 << 30):
+            pytest.skip(f'needs {gib} GiB of free GPU memory')
+
+    @testing.slow
+    def test_hip_spmv_row_limit(self):
+        # hipSPARSE SpMV wrote only y[0] for a CSR with 2**31 rows and 3
+        # nonzeros, with no error (ROCm 7.2).  On HIP, csc @ v and
+        # sum(axis=0) of a 2 x (2**31 + 2) matrix multiply in CSR form.
+        self._require_hip_memory(64)
+        v = cupy.array([2., 3.], cupy.float32)
+        rows = 2**31 - 1
+        try:
+            y = self._tall_csr(rows) @ v
+            assert int(cupy.count_nonzero(y)) == 3
+            testing.assert_array_equal(y[[0, rows - 6, rows - 1]], [3, 9, 5])
+            del y
+            with pytest.raises(ValueError, match='hipSPARSE SpMV'):
+                self._tall_csr(rows + 1) @ v
+            n = 2**31 + 2
+            a = sparse.csr_matrix._from_parts(
+                cupy.array([1.5, 2.5, 3.], cupy.float32),
+                cupy.array([0, n - 1, n - 6], cupy.int64),
+                cupy.array([0, 2, 3], cupy.int64), (2, n),
+                has_canonical_format=True)
+            cupy.get_default_memory_pool().free_all_blocks()
+            with pytest.raises(ValueError, match='hipSPARSE SpMV'):
+                a.T @ v
+            with pytest.raises(ValueError, match='hipSPARSE SpMV'):
+                a.sum(axis=0)
+        except cupy.cuda.memory.OutOfMemoryError:
+            pytest.skip('not enough GPU memory')
+
+    @testing.slow
+    def test_hip_spmm_row_limit(self):
+        # hipSPARSE SpMM computed only part of C, with no error, once its
+        # launch reached 2**32 threads (ROCm 7.2).  That happens above
+        # 2**29 - 32 rows for csr @ b, and above 2**30 - 64 rows of the
+        # transposed CSR for csc @ b.
+        self._require_hip_memory(48)
+        b = cupy.array([[2., 4.], [3., 5.]], cupy.float32, order='F')
+        rows = 2**29 - 32
+        try:
+            c = self._tall_csr(rows) @ b
+            assert int(cupy.count_nonzero(c)) == 6
+            testing.assert_array_equal(
+                c[[0, rows - 6, rows - 1]], [[3, 6], [9, 15], [5, 10]])
+            del c
+            with pytest.raises(ValueError, match='hipSPARSE SpMM'):
+                self._tall_csr(rows + 1) @ b
+            # csc @ b multiplies with the transposed CSR, which has ``rows``
+            # rows here.
+            rows = 2**30 - 64
+            cupy.get_default_memory_pool().free_all_blocks()
+            bt = cupy.zeros((rows, 2), cupy.float32, order='F')
+            bt[[0, rows - 6, rows - 1]] = cupy.array(
+                [[2., 4.], [3., 5.], [1., 7.]], cupy.float32)
+            c = self._tall_csr(rows).T @ bt
+            testing.assert_array_equal(c, [[5.5, 23.5], [9, 15]])
+            del bt, c
+            cupy.get_default_memory_pool().free_all_blocks()
+            bt = cupy.zeros((rows + 1, 2), cupy.float32, order='F')
+            with pytest.raises(ValueError, match='hipSPARSE SpMM'):
+                self._tall_csr(rows + 1).T @ bt
+        except cupy.cuda.memory.OutOfMemoryError:
+            pytest.skip('not enough GPU memory')
 
 
 class TestInt64EliminateZerosToarray:

@@ -1804,6 +1804,12 @@ class DnMatDescriptor(BaseDescriptor):
         return DnMatDescriptor(desc, get, destroy)
 
 
+# On HIP, the default CSR SpMV (rocSPARSE csrmv adaptive, ROCm 7.2) writes
+# only part of y, with no error, once one of its row blocks spans 2**31 rows.
+# A CSR with 2**31 or more rows and few nonzeros has such a block.
+_HIP_SPMV_MAX_ROWS = 2**31 - 1
+
+
 def spmv(a, x, y=None, alpha=1, beta=0, transa=False):
     """Multiplication of sparse matrix and dense vector.
 
@@ -1842,6 +1848,11 @@ def spmv(a, x, y=None, alpha=1, beta=0, transa=False):
         raise ValueError('expected canonical format')
 
     m, n = a_shape
+    if (_runtime.is_hip and _is_csr_type(a) and not transa and a.nnz > 0
+            and m > _HIP_SPMV_MAX_ROWS):
+        raise ValueError(
+            'hipSPARSE SpMV currently cannot handle CSR matrices with more '
+            f'than {_HIP_SPMV_MAX_ROWS} rows (got {m} rows)')
     a, x, y = _cast_common_type(a, x, y)
     if y is None:
         y = _cupy.zeros(m, a.dtype)
@@ -1875,6 +1886,12 @@ def spmv(a, x, y=None, alpha=1, beta=0, transa=False):
 # The kernel sets gridDim.y = ceil(n / 16); hardware max is 65535.
 # Fixed in cuSPARSE 12.7.20+ (CUDA 13.2+).
 _SPMM_MAX_DENSE_COLS = 65535 * 16  # 1,048,560
+
+# On HIP, rocSPARSE's CSR SpMM (ROCm 7.2) runs 8 threads per row of A (4 when
+# A is transposed) in blocks of 256, and computes only part of C, with no
+# error, once a launch reaches 2**32 threads.
+_HIP_SPMM_MAX_ROWS = 2**29 - 32
+_HIP_SPMM_TRANS_MAX_ROWS = 2**30 - 64
 
 
 def spmm(a, b, c=None, alpha=1, beta=0, transa=False, transb=False):
@@ -1925,6 +1942,12 @@ def spmm(a, b, c=None, alpha=1, beta=0, transa=False, transb=False):
 
     m, k = a_shape
     _, n = b_shape
+    if _runtime.is_hip and _is_csr_type(a) and a.nnz > 0:
+        max_rows = _HIP_SPMM_TRANS_MAX_ROWS if transa else _HIP_SPMM_MAX_ROWS
+        if a.shape[0] > max_rows:
+            raise ValueError(
+                'hipSPARSE SpMM currently cannot handle CSR matrices with '
+                f'more than {max_rows} rows (got {a.shape[0]} rows)')
     a, b, c = _cast_common_type(a, b, c)
     if c is None:
         c = _cupy.zeros((m, n), a.dtype, 'F')
