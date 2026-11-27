@@ -520,8 +520,6 @@ The following features are not available due to the limitation of ROCm or becaus
 The following features are not yet supported:
 
 * Sparse matrices (``cupyx.scipy.sparse``)
-* Hermitian/symmetric eigenvalue solver (``cupy.linalg.eigh``)
-* Polynomial roots (uses Hermitian/symmetric eigenvalue solver)
 * Splines in ``cupyx.scipy.interpolate`` (``make_interp_spline``, spline modes of ``RegularGridInterpolator``/``interpn``), as they depend on sparse matrices.
 
 The following features may not work in edge cases (e.g., some combinations of dtype):
