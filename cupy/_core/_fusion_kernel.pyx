@@ -28,6 +28,14 @@ cdef Py_ssize_t _default_block_size = (
 
 
 @_util.memoize(for_each_device=True)
+def _get_device_limits():
+    attributes = _cupy.cuda.Device().attributes
+    return (attributes['MultiProcessorCount'],
+            not runtime._is_hip_environment
+            and bool(attributes.get('CooperativeLaunch', 0)))
+
+
+@_util.memoize(for_each_device=True)
 def _cuda_compile(preamble, name, cuda_params, cuda_body, use_grid_sync):
     template = (
         '${preamble}\n\n'
@@ -69,6 +77,7 @@ cdef class FusedKernel:
 
         readonly list _reduction_in_array
         readonly list _reduction_out_array
+        readonly list _stages
         readonly vector.vector[bint] _is_base
         readonly list _dtypes
         readonly vector.vector[Py_ssize_t] _input_index
@@ -154,6 +163,7 @@ cdef class FusedKernel:
             self._view_of.push_back(view_of)
 
         self._block_strides = []
+        self._stages = []
 
         for op in op_list:
             if isinstance(op, _fusion_op._ReductionTraceOp):
@@ -163,6 +173,64 @@ cdef class FusedKernel:
                     array_dict[op.out_params.item().key()])
                 self._block_strides.append(
                     'int {}'.format(op.block_stride_name))
+                # The tracer has rotated the reduction axes to the front.
+                self._stages.append((
+                    'reduction', op.reduce_func,
+                    array_dict[op.in_params.item().key()],
+                    array_dict[op.out_params.item().key()],
+                    tuple(range(len(op.axis)))))
+            else:
+                output = next(iter(op.out_params))
+                self._stages.append((
+                    'elementwise', str(op.emit_code(type_decls)),
+                    array_dict[output.key()]))
+
+    cdef bint _should_split_reductions(
+            self, list arrays, list block_strides,
+            Py_ssize_t block_size, Py_ssize_t multiprocessors,
+            bint cooperative_launch):
+        if self._use_grid_sync and not cooperative_launch:
+            return True
+        for i in range(len(self._reduction_in_array)):
+            source = arrays[self._reduction_in_array[i]]
+            result = arrays[self._reduction_out_array[i]]
+            # An output group is owned by one block in the fused reducer.
+            # Large reductions with fewer groups than SMs cannot use the
+            # whole device. The ordinary reducer can split the input and use
+            # its parallel library implementation instead.
+            if (source.size > block_size * multiprocessors
+                    and result.size < block_strides[i] * multiprocessors):
+                return True
+        return False
+
+    cdef _execute_stages(self, tuple args, list arrays, list block_strides):
+        # Keep original ranks here: reductions use the axes rotated by the
+        # tracer, before _reduce_dims collapses contiguous dimensions.
+        cdef _ndarray_base array
+        layouts = []
+        for a in arrays:
+            if isinstance(a, _ndarray_base):
+                array = a
+                layouts.append((array.ndim, array._c_contiguous,
+                                array._index_32_bits))
+            else:
+                layouts.append(None)
+        cuda_params = self._get_cuda_params(
+            ('staged',) + tuple(layouts), arrays)
+        kernel_args = self._get_inout_args(args, arrays) + block_strides
+        preamble = self._get_typedefs(args) + self._submodule_code
+        for index, stage in enumerate(self._stages):
+            if stage[0] == 'reduction':
+                source, result = arrays[stage[2]], arrays[stage[3]]
+                stage[1](source, axis=stage[4], dtype=result.dtype, out=result)
+            else:
+                size = arrays[stage[2]].size
+                if size == 0:
+                    continue
+                kernel = _cuda_compile(
+                    preamble, '{}_stage_{}'.format(self._name, index),
+                    cuda_params, '{\n' + stage[1] + '\n}', False)
+                kernel.linear_launch(size, kernel_args, 0, 256)
 
     def get_shapes_of_kernel_params(self, tuple args):
         """Returns the shapes of parameters passed to kern.linear_launch.
@@ -355,6 +423,14 @@ cdef class FusedKernel:
     def execute(self, tuple args, list shapes):
         ndarray_list = self._get_ndarray_list(args, shapes)
         ret = self._get_return_value(ndarray_list)
+        multiprocessors, cooperative_launch = _get_device_limits()
+        block_strides, block_size, shared_mem = (
+            self._get_kernel_size(ndarray_list))
+        if self._should_split_reductions(
+                ndarray_list, block_strides, block_size,
+                multiprocessors, cooperative_launch):
+            self._execute_stages(args, ndarray_list, block_strides)
+            return ret
         reduce_key = self._reduce_dims(ndarray_list)
         inout_args = self._get_inout_args(args, ndarray_list)
         cuda_params = self._get_cuda_params(reduce_key, ndarray_list)
@@ -368,11 +444,23 @@ cdef class FusedKernel:
 
         # TODO(asi1024): Optimize kernel size parameter.
         if not runtime._is_hip_environment:
-            kern_size = driver.occupancyMaxActiveBlocksPerMultiprocessor(
-                kern.ptr, block_size, shared_mem) * block_size
+            kern_size = (
+                driver.occupancyMaxActiveBlocksPerMultiprocessor(
+                    kern.ptr, block_size, shared_mem)
+                * block_size * multiprocessors)
         else:
-            # In HIP sometimes the occupancy calc seems to be broken
-            kern_size = block_size * 512
+            # HIP's occupancy query can be unreliable. Use the actual device
+            # width instead of assuming a fixed number of blocks.
+            kern_size = block_size * multiprocessors
+
+        # Occupancy is a residency limit, not a reason to launch empty work
+        # across the whole device for a small input.
+        max_size = 0
+        for array in ndarray_list:
+            if isinstance(array, _ndarray_base):
+                max_size = max(max_size, array.size)
+        work_blocks = max(1, (max_size + block_size - 1) // block_size)
+        kern_size = min(kern_size, work_blocks * block_size)
 
         kargs = inout_args + block_strides
         kern.linear_launch(
