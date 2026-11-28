@@ -173,8 +173,16 @@ class _csc_base(_compressed._compressed_sparse_matrix):
                 return self._with_data(self.data * other)
             elif other.ndim == 1:
                 self.sum_duplicates()
+                # Legacy csrmv is int32-only.  For int64 indices CUDA uses
+                # the generic SpMV below, but hipSPARSE SpMV rejects a
+                # transposed int64 CSR (HIPSPARSE_STATUS_NOT_SUPPORTED as
+                # of ROCm 7.2), so on HIP multiply in CSR form instead.
+                is_int64 = self.indices.dtype == cupy.int64
+                if is_int64 and runtime.is_hip:
+                    return self.tocsr()._matmul_dispatch(other)
                 if (
-                    cusparse.check_availability('csrmv')
+                    not is_int64
+                    and cusparse.check_availability('csrmv')
                     and (
                         not runtime.is_hip
                         or driver.get_build_version() >= 5_00_00000
@@ -192,8 +200,11 @@ class _csc_base(_compressed._compressed_sparse_matrix):
                 return csrmv(self.T, cupy.asfortranarray(other), transa=True)
             elif other.ndim == 2:
                 self.sum_duplicates()
+                # Legacy csrmm2 is int32-only; int64 uses the generic SpMM.
+                is_int64 = self.indices.dtype == cupy.int64
                 if (
-                    cusparse.check_availability('csrmm2')
+                    not is_int64
+                    and cusparse.check_availability('csrmm2')
                     and (
                         not runtime.is_hip
                         or driver.get_build_version() >= 5_00_00000

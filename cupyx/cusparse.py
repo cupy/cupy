@@ -75,10 +75,10 @@ def _check_int32_indices(a, func_name):
     """Raise ValueError if CSR/CSC ``a`` has int64 indices.
 
     Used by legacy cuSPARSE entry points whose backends accept only
-    int32 (csrgeam, csrgemm, csrsm2, csrlsvqr).  ``a`` must already be
-    CSR/CSC; COO has no ``indices`` attribute.  ``func_name`` appears
-    in the error message so it points at the user-facing operation
-    rather than the internal cuSPARSE name.
+    int32 (csrmv, csrmm, csrmm2, csrgeam, csrgemm, csrsm2, csrlsvqr).
+    ``a`` must already be CSR/CSC; COO has no ``indices`` attribute.
+    ``func_name`` appears in the error message so it points at the
+    user-facing operation rather than the internal cuSPARSE name.
     """
     if a.indices.dtype == _cupy.int64:
         raise ValueError(
@@ -334,6 +334,13 @@ def getVersion() -> int:
     return _cusparse.getVersion(_device.get_cusparse_handle())
 
 
+# On HIP, the legacy csrmv (rocSPARSE csrmv, ROCm 7.2) aborts the process with
+# a GPU memory access fault for a CSR with more than 2**30 rows, or more than
+# 2**31 - 2**16 rows with transa (csc @ x).
+_HIP_CSRMV_MAX_ROWS = 2**30
+_HIP_CSRMVT_MAX_ROWS = 2**31 - 2**16
+
+
 def csrmv(a, x, y=None, alpha=1, beta=0, transa=False):
     """Matrix-vector product for a CSR-matrix and a dense vector.
 
@@ -359,6 +366,9 @@ def csrmv(a, x, y=None, alpha=1, beta=0, transa=False):
     if not check_availability('csrmv'):
         raise RuntimeError('csrmv is not available.')
 
+    # Legacy csrmv reads indptr/indices as int32.  On HIP (where it is
+    # still available) int64 indices would be reinterpreted silently.
+    _check_int32_indices(a, 'csrmv')
     if y is not None and not y.flags.f_contiguous:
         raise ValueError('expected F-contiguous array for y')
 
@@ -368,6 +378,12 @@ def csrmv(a, x, y=None, alpha=1, beta=0, transa=False):
 
     handle = _device.get_cusparse_handle()
     m, n = a_shape
+    if _runtime.is_hip and a.nnz > 0:
+        max_rows = _HIP_CSRMVT_MAX_ROWS if transa else _HIP_CSRMV_MAX_ROWS
+        if a.shape[0] > max_rows:
+            raise ValueError(
+                'hipSPARSE csrmv currently cannot handle CSR matrices with '
+                f'more than {max_rows} rows (got {a.shape[0]} rows)')
     a, x, y = _cast_common_type(a, x, y)
     dtype = a.dtype
     if y is None:
@@ -410,6 +426,7 @@ def csrmm(a, b, c=None, alpha=1, beta=0, transa=False):
     if not check_availability('csrmm'):
         raise RuntimeError('csrmm is not available.')
 
+    _check_int32_indices(a, 'csrmm')
     if a.ndim != 2 or b.ndim != 2:
         raise ValueError('expected 2-D matrices')
     if not b.flags.f_contiguous:
@@ -424,6 +441,8 @@ def csrmm(a, b, c=None, alpha=1, beta=0, transa=False):
     handle = _device.get_cusparse_handle()
     m, k = a_shape
     n = b.shape[1]
+    if _runtime.is_hip:
+        _check_hip_spmm_rows('csrmm', a, transa, False, n)
 
     a, b, c = _cast_common_type(a, b, c)
     if c is None:
@@ -473,6 +492,7 @@ def csrmm2(a, b, c=None, alpha=1.0, beta=0.0, transa=False, transb=False):
     if not check_availability('csrmm2'):
         raise RuntimeError('csrmm2 is not available.')
 
+    _check_int32_indices(a, 'csrmm2')
     if a.ndim != 2 or b.ndim != 2:
         raise ValueError('expected 2-D matrices')
     if not a.has_canonical_format:
@@ -491,6 +511,8 @@ def csrmm2(a, b, c=None, alpha=1.0, beta=0.0, transa=False, transb=False):
     handle = _device.get_cusparse_handle()
     m, k = a_shape
     n = b_shape[1]
+    if _runtime.is_hip:
+        _check_hip_spmm_rows('csrmm2', a, transa, transb, n)
 
     a, b, c = _cast_common_type(a, b, c)
     if c is None:
@@ -1799,6 +1821,12 @@ class DnMatDescriptor(BaseDescriptor):
         return DnMatDescriptor(desc, get, destroy)
 
 
+# On HIP, the default CSR SpMV (rocSPARSE csrmv adaptive, ROCm 7.2) writes
+# only part of y, with no error, for a CSR with 2**31 or more rows (seen with
+# 3 nonzeros).
+_HIP_SPMV_MAX_ROWS = 2**31 - 1
+
+
 def spmv(a, x, y=None, alpha=1, beta=0, transa=False):
     """Multiplication of sparse matrix and dense vector.
 
@@ -1837,6 +1865,11 @@ def spmv(a, x, y=None, alpha=1, beta=0, transa=False):
         raise ValueError('expected canonical format')
 
     m, n = a_shape
+    if (_runtime.is_hip and _is_csr_type(a) and not transa and a.nnz > 0
+            and m > _HIP_SPMV_MAX_ROWS):
+        raise ValueError(
+            'hipSPARSE SpMV currently cannot handle CSR matrices with more '
+            f'than {_HIP_SPMV_MAX_ROWS} rows (got {m} rows)')
     a, x, y = _cast_common_type(a, x, y)
     if y is None:
         y = _cupy.zeros(m, a.dtype)
@@ -1870,6 +1903,29 @@ def spmv(a, x, y=None, alpha=1, beta=0, transa=False):
 # The kernel sets gridDim.y = ceil(n / 16); hardware max is 65535.
 # Fixed in cuSPARSE 12.7.20+ (CUDA 13.2+).
 _SPMM_MAX_DENSE_COLS = 65535 * 16  # 1,048,560
+
+# On HIP, rocSPARSE's CSR SpMM (ROCm 7.2) runs 8 threads per row of A (4 when
+# A is transposed, 16 when B is transposed and has more than 8 columns) in
+# blocks of 256, and writes only part of C or none of it, with no error, once
+# a launch reaches 2**32 threads.  The legacy csrmm2 gives the same results.
+_HIP_SPMM_MAX_ROWS = 2**29 - 32
+_HIP_SPMM_TRANS_MAX_ROWS = 2**30 - 64
+_HIP_SPMM_NT_MAX_ROWS = 2**28 - 16
+
+
+def _check_hip_spmm_rows(name, a, transa, transb, n):
+    if a.nnz == 0:
+        return
+    if transa:
+        max_rows = _HIP_SPMM_TRANS_MAX_ROWS
+    elif transb and n > 8:
+        max_rows = _HIP_SPMM_NT_MAX_ROWS
+    else:
+        max_rows = _HIP_SPMM_MAX_ROWS
+    if a.shape[0] > max_rows:
+        raise ValueError(
+            f'hipSPARSE {name} currently cannot handle CSR matrices with '
+            f'more than {max_rows} rows (got {a.shape[0]} rows)')
 
 
 def spmm(a, b, c=None, alpha=1, beta=0, transa=False, transb=False):
@@ -1920,6 +1976,8 @@ def spmm(a, b, c=None, alpha=1, beta=0, transa=False, transb=False):
 
     m, k = a_shape
     _, n = b_shape
+    if _runtime.is_hip and _is_csr_type(a):
+        _check_hip_spmm_rows('SpMM', a, transa, transb, n)
     a, b, c = _cast_common_type(a, b, c)
     if c is None:
         c = _cupy.zeros((m, n), a.dtype, 'F')
