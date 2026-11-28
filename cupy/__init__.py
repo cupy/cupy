@@ -10,6 +10,7 @@ from cupy import _version
 
 
 _environment._detect_duplicate_installation()  # NOQA
+_environment._setup_win32_hip_dll_directory()  # NOQA
 _environment._preload_library('cutensor')  # NOQA
 
 
