@@ -1,0 +1,700 @@
+"""Last-axis sorting using cuda.compute, with CuPy-managed caches.
+
+One-dimensional integer inputs use radix sort. One-dimensional real floats,
+including bfloat16, use native radix sort followed by NaN rotation.
+Boolean vectors use merge sort up to 32768 elements and radix_transform above
+that size.
+Other inputs use merge sort, relying on the current CUB implementation's
+stability: SortKeysCopy and StableSortKeysCopy share the same implementation.
+cuda.compute does not expose a separate stable merge-sort API, so tests guard
+the preservation of signed zeros and NaN payloads.
+
+The internal entry points also accept explicit algorithms for benchmarks.
+See cuda_compute_sort for the available algorithms and their ordering.
+"""
+from __future__ import annotations
+
+from textwrap import dedent
+from types import SimpleNamespace
+
+import numpy
+
+import cupy
+from cupy import _util
+from cupy._core import core
+from cupy._core._cuda_compute_common import _get_cuda_compute
+from cupy._core._cuda_compute_common import cached_algorithm
+from cupy._core._scalar import format_type_decls, get_typename
+from cupy.cuda import memory, runtime
+
+
+_SUPPORTED_DTYPES = frozenset(
+    numpy.dtype(ch).name for ch in '?bBhHiIlLqQefdFD')
+if _util.BF16 is not None:
+    _SUPPORTED_DTYPES |= {'bfloat16'}
+_SORT_TYPES = {
+    "bool": "Bool",
+    "complex64": "Complex<float>", "complex128": "Complex<double>",
+}
+
+_INDEX_DTYPE = numpy.dtype(numpy.intp)
+_FLOAT_INFINITY_BITS = {
+    'bfloat16': 0x7f80,
+    'float16': 0x7c00,
+    'float32': 0x7f800000,
+    'float64': 0x7ff0000000000000,
+}
+_LEXSORT_STATE_DTYPE = numpy.dtype([
+    ('keys', numpy.uintp),
+    ('num_keys', numpy.intp),
+    ('row_width', numpy.intp),
+], align=True)
+
+
+class _KeyBuffer:
+    """Structured device storage, since CuPy does not support struct dtypes."""
+
+    def __init__(self, size, dtype):
+        self.dtype = dtype
+        self.size = size
+        self.shape = (size,)
+        self.ndim = 1
+        alignment = dtype.alignment
+        storage_size = size * dtype.itemsize + alignment - 1
+        self._storage = cupy.empty(storage_size, dtype=cupy.uint8)
+        _data = self._storage.data
+        offset = (-_data.ptr) % alignment
+        self.data = _data + offset
+        self.__cuda_array_interface__ = {
+            "shape": self.shape, "strides": None, "typestr": dtype.str,
+            "descr": dtype.descr, "data": (self.data.ptr, False),
+            "version": 3,
+        }
+
+
+def _key_dtype(dtype):
+    return numpy.dtype([('row', numpy.intp), ('value', dtype)], align=True)
+
+
+def _comparison_source(dtype_name, descending):
+    # The float16 comparison overload below needs CuPy's wrapper definition
+    # even when T is another type. Share scalar names with the other kernels.
+    type_decls = {
+        '#include <cupy/float16.cuh>',
+        '#include <cuda/std/cstdint>',
+    }
+    cpp_type = _SORT_TYPES.get(dtype_name)
+    if cpp_type is None:
+        cpp_type = get_typename(numpy.dtype(dtype_name), type_decls)
+    direction = 'true' if descending else 'false'
+    source_prolog = (format_type_decls(type_decls) +
+                     f'constexpr bool descending = {direction};\n')
+    source_body = r'''
+    // CuPy complex storage is two adjacent real components. Keep the native
+    // component alignment (rather than CUDA float2/double2 vector alignment).
+    template<class R> struct Complex { R real, imag; };
+
+    // Boolean views may contain any nonzero byte for true. Load the byte
+    // before converting: loading a C++ bool assumes canonical storage.
+    struct Bool { unsigned char value; };
+
+    template<class T>
+    __device__ bool numeric_strict_cmp(T a, T b) {
+        return descending ? b < a : a < b;
+    }
+    template<class T>
+    __device__ bool value_strict_cmp(T a, T b) {
+        return numeric_strict_cmp(a, b);
+    }
+    __device__ bool value_strict_cmp(Bool a, Bool b) {
+        return numeric_strict_cmp(
+            static_cast<bool>(a.value), static_cast<bool>(b.value));
+    }
+
+    template<class R>
+    __device__ bool real_strict_cmp(R a, R b) {
+        const bool an = a != a, bn = b != b;
+        return an ? false : (bn || numeric_strict_cmp(a, b));
+    }
+    __device__ bool value_strict_cmp(float a, float b) {
+        return real_strict_cmp(a, b);
+    }
+    __device__ bool value_strict_cmp(double a, double b) {
+        return real_strict_cmp(a, b);
+    }
+    __device__ bool value_strict_cmp(float16 a, float16 b) {
+        return real_strict_cmp(float(a), float(b));
+    }
+
+    template<class R>
+    __device__ bool value_strict_cmp(Complex<R> a, Complex<R> b) {
+        // NumPy categories, ordered before comparing the non-NaN components:
+        // (R,R), (R,NaN), (NaN,R), (NaN,NaN).
+        const bool arn = a.real != a.real, ain = a.imag != a.imag;
+        const bool brn = b.real != b.real, bin = b.imag != b.imag;
+        const int ac = 2 * int(arn) + int(ain);
+        const int bc = 2 * int(brn) + int(bin);
+        if (ac != bc) return ac < bc;
+        if (!arn && a.real != b.real)
+            return numeric_strict_cmp(a.real, b.real);
+        return !ain && numeric_strict_cmp(a.imag, b.imag);
+    }
+    '''
+    if dtype_name == 'bfloat16':
+        source_body += r'''
+        __device__ bool value_strict_cmp(bfloat16 a, bfloat16 b) {
+            return real_strict_cmp(float(a), float(b));
+        }
+        '''
+    source_epilog = (
+        f'using T = {cpp_type};\n'
+        f'static_assert(sizeof(intptr_t) == {_INDEX_DTYPE.itemsize});\n'
+        f'static_assert(alignof(intptr_t) == {_INDEX_DTYPE.alignment});\n')
+    return source_prolog + dedent(source_body) + source_epilog
+
+
+def _layout_assertions(cpp_type, dtype):
+    """Check that a C++ struct matches its NumPy storage layout."""
+    source = (
+        f'static_assert(sizeof({cpp_type}) == {dtype.itemsize});\n'
+        f'static_assert(alignof({cpp_type}) == {dtype.alignment});\n')
+    for name in dtype.names:
+        source += (
+            f'static_assert(__builtin_offsetof({cpp_type}, {name}) '
+            f'== {dtype.fields[name][1]});\n')
+    return source
+
+
+@_util.memoize(for_each_device=True)
+def _get_specialization(dtype, descending, multi_row):
+    """Compile ops once per device; array sizes are runtime state only."""
+    layout = _key_dtype(dtype) if multi_row else dtype
+    source = _comparison_source(dtype.name, descending)
+    if multi_row:
+        source += 'struct Key { intptr_t row; T value; };\n'
+        source += _layout_assertions('Key', layout)
+        source += dedent(r'''
+            __device__ bool key_strict_cmp(const Key& a, const Key& b) {
+                return a.row != b.row ? a.row < b.row :
+                    value_strict_cmp(a.value, b.value);
+            }
+            extern "C" __device__ void row_id(
+                    void* state, const void* input, void* result) {
+                *static_cast<intptr_t*>(result) =
+                    *static_cast<const intptr_t*>(input) /
+                    *static_cast<const intptr_t*>(state);
+            }
+            extern "C" __device__ void column_id(
+                    void* state, const void* input, void* result) {
+                *static_cast<intptr_t*>(result) =
+                    *static_cast<const intptr_t*>(input) %
+                    *static_cast<const intptr_t*>(state);
+            }
+        ''')
+    else:
+        source += dedent(r'''
+            using Key = T;
+            __device__ bool key_strict_cmp(const Key& a, const Key& b) {
+                return value_strict_cmp(a, b);
+            }
+        ''')
+    source += dedent(r'''
+        extern "C" __device__ void strict_cmp(
+                const void* lhs, const void* rhs, void* result) {
+            *static_cast<signed char*>(result) = key_strict_cmp(
+                *static_cast<const Key*>(lhs),
+                *static_cast<const Key*>(rhs));
+        }
+    ''')
+    ltoir = core.compile_to_ltoir(source, prepend_cupy_headers=True)
+    return ltoir, layout, source
+
+
+def _run_merge_sort(compute, family, key, keys_in, keys_out, comparator,
+                    num_items, *, values_in=None, values_out=None):
+    """Build or reuse an algorithm and execute its two-call interface."""
+    build_arguments = dict(
+        d_in_keys=keys_in, d_out_keys=keys_out,
+        d_in_values=values_in, d_out_values=values_out, op=comparator)
+    # Build with real buffers: null proxy pointers are currently interpreted
+    # as absent arrays. Addresses and array sizes are excluded from our key.
+    sorter = cached_algorithm(
+        family, key, None,
+        lambda: compute.make_merge_sort(**build_arguments))
+    execution_arguments = dict(
+        build_arguments, num_items=num_items,
+        stream=cupy.cuda.get_current_stream())
+    tmp_size = sorter(temp_storage=None, **execution_arguments)
+    workspace = SimpleNamespace(
+        data=cupy.cuda.alloc(tmp_size), nbytes=tmp_size)
+    sorter(temp_storage=workspace, **execution_arguments)
+
+
+def _radix_key_code(dtype):
+    if dtype.kind == 'b':
+        return 'keys = U(static_cast<bool>(bits) != descending);'
+    infinity = _FLOAT_INFINITY_BITS[dtype.name]
+    return dedent(f'''
+        const U sign = U(1) << (sizeof(U) * 8 - 1);
+        const U magnitude = bits & ~sign;
+        U key = magnitude == 0 ? sign :
+                (bits & sign) ? U(~bits) : U(bits ^ sign);
+        if (descending) key = U(~key);
+        keys = magnitude > U({infinity:#x}ULL) ? U(~U(0)) : key;
+    ''')
+
+
+@_util.memoize(for_each_device=True)
+def _radix_transform(dtype, descending):
+    source = dedent(f'''
+        #include <cuda/std/cstdint>
+        using U = uint{dtype.itemsize * 8}_t;
+        extern "C" __device__ void radix_key(
+                const void* input, void* output) {{
+            const U bits = *static_cast<const U*>(input);
+            constexpr bool descending = {'true' if descending else 'false'};
+            U keys;
+    ''') + _radix_key_code(dtype) + dedent('''
+            *static_cast<U*>(output) = keys;
+        }
+    ''')
+    ltoir = core.compile_to_ltoir(source, prepend_cupy_headers=True)
+    compute = _get_cuda_compute()
+    return compute.op.RawOp(ltoir=ltoir, name='radix_key'), source
+
+
+def _transform_radix_keys(compute, bits, dtype, descending):
+    keys = cupy.empty_like(bits)
+    op, source = _radix_transform(dtype, descending)
+
+    def build():
+        proxy = compute.ProxyArray(bits.dtype)
+        return compute.make_unary_transform(d_in=proxy, d_out=proxy, op=op)
+
+    transform = cached_algorithm(
+        'radix_keys_transform', (dtype, descending, source), None, build)
+    transform(d_in=bits, d_out=keys, op=op, num_items=bits.size,
+              stream=cupy.cuda.get_current_stream())
+    return keys
+
+
+@_util.memoize(for_each_device=True)
+def _radix_rotation_kernels(dtype, value_itemsize):
+    unsigned_type = {2: 'unsigned short', 4: 'unsigned int',
+                     8: 'unsigned long long'}
+    infinity = _FLOAT_INFINITY_BITS[dtype.name]
+    source = dedent(f'''
+        using Key = {unsigned_type[dtype.itemsize]};
+        using Value = {unsigned_type[value_itemsize]};
+        using Index = unsigned long long;
+        constexpr Key sign = Key(1) << (sizeof(Key) * 8 - 1);
+        constexpr Key infinity = {infinity:#x}ULL;
+    ''') + dedent(r'''
+        __device__ bool is_nan(Key bits) {
+            return (bits & (sign - 1)) > infinity;
+        }
+
+        __device__ bool is_leading_nan(Key bits, bool descending) {
+            return is_nan(bits) && bool(bits & sign) != descending;
+        }
+
+        extern "C" __global__ void radix_nan_prefix(
+                const Key* keys, Index size, bool descending, Index* offset) {
+            if (!is_leading_nan(keys[0], descending)) {
+                *offset = 0;
+                return;
+            }
+            Index lo = 1, hi = size;
+            while (lo < hi) {
+                const Index mid = lo + (hi - lo) / 2;
+                if (is_leading_nan(keys[mid], descending)) {
+                    lo = mid + 1;
+                } else {
+                    hi = mid;
+                }
+            }
+            // A NaN at the boundary means the whole array is NaNs.
+            *offset = lo < size && !is_nan(keys[lo]) ? lo : 0;
+        }
+
+        extern "C" __global__ void radix_copy(
+                const Value* src, Value* dst, Index size,
+                const Index* offset, bool rotate, bool skip_unrotated) {
+            const Index prefix = *offset;
+            if (skip_unrotated && prefix == 0) return;
+
+            const Index shift = rotate ? prefix : 0;
+            const Index stride = Index(gridDim.x) * blockDim.x;
+            const Index thread = Index(blockIdx.x) * blockDim.x + threadIdx.x;
+            const Index addresses = reinterpret_cast<Index>(src) |
+                                    reinterpret_cast<Index>(dst);
+            if (shift == 0 && (addresses & (alignof(uint4) - 1)) == 0) {
+                constexpr Index width = sizeof(uint4) / sizeof(Value);
+                const Index vectors = size / width;
+                const auto* vector_src = reinterpret_cast<const uint4*>(src);
+                auto* vector_dst = reinterpret_cast<uint4*>(dst);
+                for (Index i = thread; i < vectors; i += stride) {
+                    vector_dst[i] = vector_src[i];
+                }
+                for (Index i = vectors * width + thread; i < size;
+                     i += stride) {
+                    dst[i] = src[i];
+                }
+                return;
+            }
+
+            const Index split = size - shift;
+            for (Index i = thread; i < size; i += stride) {
+                dst[i] = src[i < split ? i + shift : i - split];
+            }
+        }
+    ''')
+    module = cupy.RawModule(code=source)
+    return (module.get_function('radix_nan_prefix'),
+            module.get_function('radix_copy'))
+
+
+def _sort_radix_1d(compute, a, descending, return_indices, *,
+                   overwrite_input=False, native=False,
+                   rotate_nans=False):
+    """Radix sort with writable double buffers and conditional copy-back."""
+    normalized = not native and (
+        a.dtype.kind in 'bf' or a.dtype.name == 'bfloat16')
+    if normalized:
+        # Compare normalized keys, but carry the original values/indices so
+        # NaN payloads, signed zeros, and bool bytes are never reconstructed.
+        bits = a.view(numpy.dtype(f'u{a.dtype.itemsize}'))
+        keys_in = _transform_radix_keys(compute, bits, a.dtype, descending)
+        radix_descending = False
+    else:
+        result = a if overwrite_input else a.copy()
+        keys_in = result.view(cupy.uint8) if a.dtype.kind == 'b' else result
+        radix_descending = descending
+    if return_indices:
+        # DeviceRadixSort requires pointer inputs, including its values.
+        result = values_in = cupy.arange(a.size, dtype=numpy.intp)
+    elif normalized:
+        result = values_in = a if overwrite_input else a.copy()
+        if a.dtype.kind == 'b':
+            # Preserve noncanonical true bytes while CUB moves the payload.
+            values_in = values_in.view(cupy.uint8)
+    else:
+        values_in = None
+    order = (compute.SortOrder.DESCENDING if radix_descending
+             else compute.SortOrder.ASCENDING)
+    key_dtype = keys_in.dtype
+    value_dtype = values_in.dtype if values_in is not None else None
+
+    def build():
+        key_proxy = compute.ProxyArray(key_dtype)
+        # cuda.compute supplies a non-null build-time pointer for each proxy,
+        # so CUB can distinguish a value proxy from a keys-only sort.
+        value_proxy = (compute.ProxyArray(value_dtype)
+                       if value_dtype is not None else None)
+        return compute.make_radix_sort(
+            d_in_keys=compute.DoubleBuffer(key_proxy, key_proxy),
+            d_out_keys=None,
+            d_in_values=(compute.DoubleBuffer(value_proxy, value_proxy)
+                         if value_proxy is not None else None),
+            d_out_values=None, order=order)
+
+    family = 'radix_argsort_1d' if return_indices else 'radix_sort_1d'
+    key = (key_dtype, value_dtype, radix_descending)
+    if value_dtype is not None:
+        # Discard cached kernels built with a null value pointer.
+        key += ('non_null_values',)
+    sorter = cached_algorithm(family, key, None, build)
+    # The storage query does not dereference the alternate pointers. Unlike
+    # ProxyArray, these descriptors can be passed to the execution interface.
+    keys_alt = SimpleNamespace(data=SimpleNamespace(ptr=0))
+    keys = compute.DoubleBuffer(keys_in, keys_alt)
+    values_alt = (SimpleNamespace(data=SimpleNamespace(ptr=0))
+                  if values_in is not None else None)
+    values = (compute.DoubleBuffer(values_in, values_alt)
+              if values_in is not None else None)
+    stream = cupy.cuda.get_current_stream()
+    execution_arguments = dict(
+        d_in_keys=keys, d_out_keys=None, d_in_values=values, d_out_values=None,
+        num_items=a.size, stream=stream)
+    if a.dtype.kind == 'b' and normalized:
+        execution_arguments['end_bit'] = 1
+    tmp_size = sorter(temp_storage=None, **execution_arguments)
+    # One allocation for alternate keys/values and CUB scratch. Align using
+    # the absolute pointer so custom allocators need not align their base.
+    keys_bytes = (keys_in.nbytes + 127) // 128 * 128
+    values_bytes = ((values_in.nbytes + 127) // 128 * 128
+                    if values_in is not None else 0)
+    scratch_bytes = tmp_size
+    if rotate_nans:
+        # Reuse CUB scratch for the offset after the last radix pass.
+        scratch_bytes = max(scratch_bytes, numpy.dtype(numpy.uint64).itemsize)
+        find_prefix, copy = _radix_rotation_kernels(a.dtype, result.itemsize)
+    storage = cupy.cuda.alloc(127 + keys_bytes + values_bytes + scratch_bytes)
+    auxiliary = storage + (-storage.ptr % 128)
+    keys_alt.data = auxiliary
+    if values_alt is not None:
+        values_alt.data = auxiliary + keys_bytes
+    workspace = SimpleNamespace(
+        data=auxiliary + keys_bytes + values_bytes, nbytes=tmp_size)
+    sorter(temp_storage=workspace, **execution_arguments)
+    selected = values.current() if values is not None else keys.current()
+    primary = values_in if values is not None else keys_in
+    if rotate_nans:
+        size = numpy.uint64(a.size)
+        offset = workspace.data
+        find_prefix((1,), (1,), (
+            keys.current().data, size, descending, offset
+        ), stream=stream)
+        block_size = 256
+        # A smaller grid limits the cost of skipped copies in the primary
+        # buffer case and keeps the vectorized copy-back grid from oversizing.
+        grid_limit = 1024 if selected is primary else 4096
+        grid = (min((a.size + block_size - 1) // block_size, grid_limit),)
+        block = (block_size,)
+        if selected is primary:
+            # Both copies can skip their work when there is nothing to rotate.
+            alternate = values_alt if values is not None else keys_alt
+            copy(grid, block, (selected.data, alternate.data, size, offset,
+                               True, True), stream=stream)
+            copy(grid, block, (alternate.data, result.data, size, offset,
+                               False, True), stream=stream)
+        else:
+            # Fold rotation into the copy-back the alternate already needs.
+            copy(grid, block, (selected.data, result.data, size, offset,
+                               True, False), stream=stream)
+    elif selected is not primary:
+        # Argsort discards sorted keys: only the indices need copying back.
+        runtime.memcpyAsync(
+            result.data.ptr, selected.data.ptr, result.nbytes,
+            runtime.memcpyDeviceToDevice, stream.ptr)
+    return result
+
+
+def _copy_key_values(keys_out, result):
+    """Extract values from packed keys without imposing vector alignment."""
+    layout = keys_out.dtype
+    value_ptr = keys_out.data + layout.fields['value'][1]
+    if result.dtype.kind == 'c':
+        # Packed complex fields have component alignment; copying as
+        # real components avoids vector-alignment requirements.
+        real_dtype = numpy.dtype(f'float{result.dtype.itemsize * 4}')
+        values = cupy.ndarray(
+            (result.size, 2), dtype=real_dtype, memptr=value_ptr,
+            strides=(layout.itemsize, real_dtype.itemsize))
+        result.view(real_dtype).reshape(-1, 2)[...] = values
+    else:
+        values = cupy.ndarray(
+            (result.size,), dtype=result.dtype, memptr=value_ptr,
+            strides=(layout.itemsize,))
+        result.reshape(-1)[...] = values
+
+
+def _sort(a, descending, *, return_indices, algorithm='auto',
+          overwrite_input=False):
+    """Shared last-axis implementation for sort and argsort."""
+    radix_algorithms = ('radix_native', 'radix_transform',
+                        'radix_native_rotate')
+    if algorithm not in ('auto', 'merge') + radix_algorithms:
+        raise ValueError(
+            "algorithm must be 'auto', 'merge', 'radix_native', "
+            "'radix_transform', or 'radix_native_rotate'")
+    if (not isinstance(a, cupy.ndarray) or a.ndim == 0
+            or not a.flags.c_contiguous):
+        return None
+    dtype = a.dtype
+    dtype_name = dtype.name
+    if dtype_name not in _SUPPORTED_DTYPES:
+        return None
+    is_float = dtype_name in _FLOAT_INFINITY_BITS
+    if algorithm == 'auto' and a.ndim == 1:
+        if dtype.kind in 'iu':
+            algorithm = 'radix_native'
+        elif is_float:
+            algorithm = 'radix_native_rotate'
+        elif dtype.kind == 'b' and a.size > 32768:
+            algorithm = 'radix_transform'
+    rotate_nans = algorithm == 'radix_native_rotate'
+    if algorithm in radix_algorithms:
+        if a.ndim != 1:
+            return None
+        if rotate_nans:
+            supported = is_float
+        else:
+            supported = dtype.kind in 'biuf' or (
+                dtype_name == 'bfloat16' and algorithm != 'radix_native')
+        if not supported:
+            return None
+    compute = _get_cuda_compute()
+    if compute is None:
+        return None
+    with a.device:
+        try:
+            if a.size == 0 or a.shape[-1] <= 1:
+                return (cupy.zeros(a.shape, dtype=numpy.intp)
+                        if return_indices else a.copy())
+            multi_row = a.ndim > 1
+            if algorithm in radix_algorithms:
+                return _sort_radix_1d(
+                    compute, a, bool(descending), return_indices,
+                    overwrite_input=overwrite_input,
+                    native=algorithm == 'radix_native' or rotate_nans,
+                    rotate_nans=rotate_nans)
+            ltoir, layout, source = _get_specialization(
+                a.dtype, bool(descending), multi_row)
+            comparator = compute.op.RawOp(ltoir=ltoir, name='strict_cmp')
+            if multi_row:
+                index_type = compute.types.from_numpy_dtype(_INDEX_DTYPE)
+                width_state = numpy.intp(a.shape[-1]).tobytes()
+                row_op = compute.op.RawOp(
+                    ltoir=ltoir, name='row_id', state=width_state,
+                    state_alignment=_INDEX_DTYPE.alignment)
+                row_ids = compute.TransformIterator(
+                    compute.CountingIterator(numpy.intp(0)), row_op,
+                    value_type=index_type)
+                keys_in = compute.ZipIterator(row_ids, a.reshape(-1))
+                # Merge passes read output keys, so use packed storage with
+                # the zip's layout instead of an output iterator proxy.
+                assert keys_in.value_type.dtype.itemsize == layout.itemsize
+                keys_out = _KeyBuffer(a.size, layout)
+            else:
+                keys_in = a
+                result = keys_out = cupy.empty_like(a)
+                if a.dtype.kind == 'b':
+                    # CUB may normalize bool keys while moving them. Treat
+                    # storage as bytes so the original representations survive.
+                    keys_in = keys_in.view(cupy.uint8)
+                    keys_out = keys_out.view(cupy.uint8)
+            if return_indices:
+                result = cupy.empty(a.shape, dtype=numpy.intp)
+                values_in = compute.CountingIterator(numpy.intp(0))
+                if multi_row:
+                    column_op = compute.op.RawOp(
+                        ltoir=ltoir, name='column_id', state=width_state,
+                        state_alignment=_INDEX_DTYPE.alignment)
+                    values_in = compute.TransformIterator(
+                        values_in, column_op, value_type=index_type)
+                values_out = result.reshape(-1)
+            else:
+                if multi_row:
+                    result = cupy.empty_like(a)
+                values_in = values_out = None
+            operation = 'merge_argsort' if return_indices else 'merge_sort'
+            family = operation + ('_nd' if multi_row else '_1d')
+            key = (a.dtype if multi_row else keys_in.dtype, source)
+            _run_merge_sort(
+                compute, family, key, keys_in, keys_out, comparator, a.size,
+                values_in=values_in, values_out=values_out)
+            if multi_row and not return_indices:
+                # Carry values only in the keys during sorting, then extract
+                # once instead of moving a duplicate payload in every pass.
+                _copy_key_values(keys_out, result)
+        except memory.OutOfMemoryError:
+            return None
+        return result
+
+
+def cuda_compute_sort(a, descending=False, *, algorithm='auto',
+                      overwrite_input=False):
+    """Sort a C-contiguous CuPy array along its last axis.
+
+    Return the result array on success, or None for unsupported inputs or an
+    allocation failure, allowing the caller to select another backend. Uses
+    the current stream on a's device. The merge-sort path's stability relies
+    on the current CUB implementation, as described in the module docstring.
+    This is an internal accelerator entry point, not public dispatch.
+
+    algorithm='auto' uses radix_native for 1D integers and radix_native_rotate
+    for 1D real floating-point inputs (including bfloat16). For 1D booleans,
+    sizes up to 32768 use merge sort; larger sizes use radix_transform. All
+    other inputs use merge sort.
+    For benchmarks, 'merge' forces merge sort. 'radix_native' sorts 1D integer,
+    boolean, and floating-point keys directly. It orders booleans by all eight
+    storage bits and distinguishes floating-point NaN signs and payloads.
+    'radix_transform' generates NumPy-compatible integer keys for 1D booleans
+    and real floating-point inputs (including bfloat16) using cuda.compute's
+    unary transform. It sorts 1D integers directly.
+    'radix_native_rotate' sorts float16, float32, float64, and bfloat16 native
+    keys and moves NaNs that precede numbers to the end in both directions.
+    It preserves NaN bit patterns. Distinct NaN encodings can change their
+    relative order.
+
+    With overwrite_input=True, radix sort may use a as writable storage and
+    return it. Callers must skip redundant copy-back when result is a. Argsort
+    callers may enable this for their private key copy. The default preserves
+    the input; merge sort always produces separate output storage.
+    """
+    return _sort(a, descending, return_indices=False, algorithm=algorithm,
+                 overwrite_input=overwrite_input)
+
+
+def cuda_compute_argsort(a, descending=False, *, algorithm='auto',
+                         overwrite_input=False):
+    """Return sorted indices using the ordering documented for sort.
+
+    overwrite_input=True permits radix sort to overwrite a. Public argsort
+    passes a private copy; direct callers preserve their input by default.
+    """
+    return _sort(a, descending, return_indices=True, algorithm=algorithm,
+                 overwrite_input=overwrite_input)
+
+
+@_util.memoize(for_each_device=True)
+def _get_lexsort_specialization(dtype):
+    source = _comparison_source(dtype.name, False) + dedent(r'''
+        struct LexsortState {
+            const T* keys;
+            intptr_t num_keys;
+            intptr_t row_width;
+        };
+        extern "C" __device__ void lex_strict_cmp(
+                void* state, const void* lhs, const void* rhs, void* result) {
+            const auto& s = *static_cast<const LexsortState*>(state);
+            const auto i = *static_cast<const intptr_t*>(lhs);
+            const auto j = *static_cast<const intptr_t*>(rhs);
+            auto& out = *static_cast<signed char*>(result);
+            // Last key is primary; earlier keys break ties in reverse order.
+            for (intptr_t k = s.num_keys; k-- > 0;) {
+                const T a = s.keys[k * s.row_width + i];
+                const T b = s.keys[k * s.row_width + j];
+                if (value_strict_cmp(a, b)) { out = 1; return; }
+                if (value_strict_cmp(b, a)) { out = 0; return; }
+            }
+            out = 0;
+        }
+    ''')
+    source += _layout_assertions('LexsortState', _LEXSORT_STATE_DTYPE)
+    return core.compile_to_ltoir(source, prepend_cupy_headers=True), source
+
+
+def cuda_compute_lexsort(keys):
+    """Return stable indices for C-contiguous (k, n) keys, or None."""
+    if (not isinstance(keys, cupy.ndarray) or keys.ndim != 2
+            or not keys.flags.c_contiguous
+            or keys.dtype.name not in _SUPPORTED_DTYPES):
+        return None
+    compute = _get_cuda_compute()
+    if compute is None:
+        return None
+    with keys.device:
+        try:
+            num_keys, row_width = keys.shape
+            if row_width <= 1 or num_keys == 0:
+                return cupy.arange(row_width, dtype=numpy.intp)
+            ltoir, source = _get_lexsort_specialization(keys.dtype)
+            state = numpy.zeros((), dtype=_LEXSORT_STATE_DTYPE)
+            state['keys'] = keys.data.ptr
+            state['num_keys'] = num_keys
+            state['row_width'] = row_width
+            comparator = compute.op.RawOp(
+                ltoir=ltoir, name='lex_strict_cmp',
+                state=state.tobytes(),
+                state_alignment=_LEXSORT_STATE_DTYPE.alignment)
+            indices_in = compute.CountingIterator(numpy.intp(0))
+            indices_out = cupy.empty(row_width, dtype=numpy.intp)
+            key = (keys.dtype, source)
+            _run_merge_sort(
+                compute, 'merge_lexsort', key, indices_in, indices_out,
+                comparator, row_width)
+        except memory.OutOfMemoryError:
+            return None
+        return indices_out

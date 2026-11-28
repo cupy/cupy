@@ -375,22 +375,35 @@ class TestCudaComputeCachedAlgorithm(CudaComputeReductionTestBase):
                 d_in=d_in, d_out=d_out, op=compute.OpKind.PLUS,
                 h_init=h_init)
 
-        key = ('test_disk_cache_round_trip',)
+        repr_calls = []
+
+        class ReprProbe:
+            def __repr__(self):
+                repr_calls.append(1)
+                return 'test_disk_cache_round_trip'
+
+        key = (ReprProbe(),)
         loaded = []
         with tempfile.TemporaryDirectory() as path:
             backend = _CountingCacheBackend(path)
             with mock.patch('cupy.cuda.compiler._kernel_cache_backend',
                             backend):
                 algo = _cuda_compute_common.cached_algorithm(
-                    'test_reduce', key, repr(key), build)
+                    'test_reduce', key, None, build)
                 assert builds == [1] and backend.saves == 1
+                assert repr_calls == [1]
+                assert _cuda_compute_common.cached_algorithm(
+                    'test_reduce', key, None, build) is algo
+                assert repr_calls == [1]
                 t = threading.Thread(target=lambda: loaded.append(
                     _cuda_compute_common.cached_algorithm(
+                        # An explicit key string must find the same disk entry.
                         'test_reduce', key, repr(key), build)))
                 t.start()
                 t.join()
             assert builds == [1] and backend.saves == 1
             assert backend.loads == 1
+            assert repr_calls == [1, 1]
         assert loaded[0] is not algo
         size = loaded[0](temp_storage=None, d_in=d_in, d_out=d_out,
                          num_items=d_in.size, op=compute.OpKind.PLUS,

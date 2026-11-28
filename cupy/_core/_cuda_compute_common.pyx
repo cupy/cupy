@@ -72,17 +72,21 @@ cpdef cached_algorithm(str family, tuple key, str key_src, build):
 
     Per thread because a built cuda.compute algorithm object is not safe to
     call from several threads at once (same as the scan accelerator).
+    Pass key_src=None to format repr(key) only on an in-memory cache miss.
     """
 
     cache = getattr(_thread_local, family, None)
     if cache is None:
         cache = {}
         setattr(_thread_local, family, cache)
-    full_key = (cupy.cuda.device.get_device_id(),) + key
+    device_id = cupy.cuda.device.get_device_id()
+    full_key = (device_id,) + key
     cached = cache.get(full_key)
     if cached is not None:
         return cached
 
+    if key_src is None:
+        key_src = repr(key)
     compute = _get_cuda_compute()
     prefix = _environment_cache_key_prefix()
     name = _hash_hexdigest(
@@ -92,7 +96,10 @@ cpdef cached_algorithm(str family, tuple key, str key_src, build):
     blob = compiler._kernel_cache_backend.load(name)
     if blob is not None:
         try:
-            algo = compute.deserialize(blob)
+            try:
+                algo = compute.deserialize(blob, device_id=device_id)
+            except TypeError:
+                algo = compute.deserialize(blob)
         except Exception:
             algo = None
     if algo is None:
