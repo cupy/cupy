@@ -489,7 +489,7 @@ def real_if_close(a, tol=100):
 @cupy._util.memoize(for_each_device=True)
 def _get_interp_kernel(is_complex):
     in_params = 'raw V x, raw U idx, '
-    in_params += 'raw W fx, raw Y fy, U len, raw Y left, raw Y right'
+    in_params += 'raw W fx, raw Y fy, U len, raw L left, raw R right'
     out_params = 'Z y'  # output dtype follows NumPy's
 
     if is_complex:
@@ -602,8 +602,8 @@ def interp(x, xp, fp, left=None, right=None, period=None):
     out_dtype = 'D' if fp.dtype.kind == 'c' else 'd'
     output = cupy.empty(x.shape, dtype=out_dtype)
     idx = cupy.searchsorted(xp, x, side='right')
-    left = fp[0] if left is None else cupy.array(left, fp.dtype)
-    right = fp[-1] if right is None else cupy.array(right, fp.dtype)
+    left = fp[0] if left is None else cupy.array(left, out_dtype)
+    right = fp[-1] if right is None else cupy.array(right, out_dtype)
     kern = _get_interp_kernel(out_dtype == 'D')
     kern(x, idx, xp, fp, xp.size, left, right, output)
     return output
