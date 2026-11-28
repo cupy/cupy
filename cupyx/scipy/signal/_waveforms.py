@@ -32,6 +32,7 @@ from typing import Any
 
 import cupy
 from cupy._core._scalar import get_typename, format_type_decls
+from cupyx.scipy.signal._arraytools import _real_type_preamble
 from cupy_backends.cuda.api import runtime
 
 import numpy as np
@@ -230,50 +231,58 @@ _gausspulse_kernel_F_F = cupy.ElementwiseKernel(
     "T t, T a, T fc",
     "T yI",
     """
+    using R = typename real_type<T>::type;
     T yenv = exp(-a * t * t);
-    yI = yenv * cos( 2 * M_PI * fc * t);
+    yI = yenv * cos( R(2 * M_PI) * fc * t);
     """,
     "_gausspulse_kernel",
+    preamble=_real_type_preamble,
 )
 
 _gausspulse_kernel_F_T = cupy.ElementwiseKernel(
     "T t, T a, T fc",
     "T yI, T yenv",
     """
+    using R = typename real_type<T>::type;
     yenv = exp(-a * t * t);
-    yI = yenv * cos( 2 * M_PI * fc * t);
+    yI = yenv * cos( R(2 * M_PI) * fc * t);
     """,
     "_gausspulse_kernel",
+    preamble=_real_type_preamble,
 )
 
 _gausspulse_kernel_T_F = cupy.ElementwiseKernel(
     "T t, T a, T fc",
     "T yI, T yQ",
     """
+    using R = typename real_type<T>::type;
     T yenv { exp(-a * t * t) };
 
     T l_yI {};
     T l_yQ {};
-    sincos(2 * M_PI * fc * t, &l_yQ, &l_yI);
+    sincos(R(2 * M_PI) * fc * t, &l_yQ, &l_yI);
     yI = yenv * l_yI;
     yQ = yenv * l_yQ;
     """,
     "_gausspulse_kernel",
+    preamble=_real_type_preamble,
 )
 
 _gausspulse_kernel_T_T = cupy.ElementwiseKernel(
     "T t, T a, T fc",
     "T yI, T yQ, T yenv",
     """
+    using R = typename real_type<T>::type;
     yenv = exp(-a * t * t);
 
     T l_yI {};
     T l_yQ {};
-    sincos(2 * M_PI * fc * t, &l_yQ, &l_yI);
+    sincos(R(2 * M_PI) * fc * t, &l_yQ, &l_yI);
     yI = yenv * l_yI;
     yQ = yenv * l_yQ;
     """,
     "_gausspulse_kernel",
+    preamble=_real_type_preamble,
 )
 
 
@@ -379,6 +388,14 @@ def gausspulse(t, fc=1000, bw=0.5, bwr=-6, tpr=-60, retquad=False,
         return _gausspulse_kernel_T_T(t, a, fc)
 
 
+# ``add_rn`` keeps the float phase from being contracted into an FMA, which
+# the real and complex kernels would otherwise round differently.
+_chirp_preamble = _real_type_preamble + '''
+template <typename T> __device__ T add_rn(T a, T b) { return a + b; }
+__device__ float add_rn(float a, float b) { return __fadd_rn(a, b); }
+'''
+
+
 def _chirp_phase_kernels(in_params, operation, name):
     """Return the real and complex kernels for a chirp phase operation.
 
@@ -386,12 +403,14 @@ def _chirp_phase_kernels(in_params, operation, name):
     kernel returns its cosine in the input type, so complex ``t`` still
     takes the cosine. The complex kernel returns ``exp(1j * phase)``.
     """
+    operation = "using R = typename real_type<T>::type;\n" + operation
     real_kernel = cupy.ElementwiseKernel(
-        in_params, "T phase", operation + "phase = cos(temp + phi);", name)
+        in_params, "T phase", operation + "phase = cos(add_rn(temp, phi));",
+        name, preamble=_chirp_preamble)
     complex_kernel = cupy.ElementwiseKernel(
         in_params, "Y phase",
-        operation + "phase = exp(Y(0, 1) * Y(temp + phi));",
-        name + "_complex")
+        operation + "phase = exp(Y(0, 1) * Y(add_rn(temp, phi)));",
+        name + "_complex", preamble=_chirp_preamble)
     return real_kernel, complex_kernel
 
 
@@ -399,7 +418,7 @@ _chirp_phase_lin_kernels = _chirp_phase_kernels(
     "T t, T f0, T t1, T f1, T phi",
     """
     const T beta { (f1 - f0) / t1 };
-    const T temp { 2 * M_PI * (f0 * t + 0.5 * beta * t * t) };
+    const T temp { R(2 * M_PI) * (f0 * t + R(0.5) * beta * t * t) };
     """,
     "_chirp_phase_lin_kernel",
 )
@@ -410,9 +429,9 @@ _chirp_phase_quad_kernels = _chirp_phase_kernels(
     T temp {};
     const T beta { (f1 - f0) / (t1 * t1) };
     if ( vertex_zero ) {
-        temp = 2 * M_PI * (f0 * t + beta * (t * t * t) / 3);
+        temp = R(2 * M_PI) * (f0 * t + beta * (t * t * t) / 3);
     } else {
-        temp = 2 * M_PI *
+        temp = R(2 * M_PI) *
             ( f1 * t + beta *
             ( ( (t1 - t) * (t1 - t) * (t1 - t) ) - (t1 * t1 * t1)) / 3);
     }
@@ -425,10 +444,10 @@ _chirp_phase_log_kernels = _chirp_phase_kernels(
     """
     T temp {};
     if ( f0 == f1 ) {
-        temp = 2 * M_PI * f0 * t;
+        temp = R(2 * M_PI) * f0 * t;
     } else {
         T beta { t1 / log(f1 / f0) };
-        temp = 2 * M_PI * beta * f0 * ( pow(f1 / f0, t / t1) - 1.0 );
+        temp = R(2 * M_PI) * beta * f0 * ( pow(f1 / f0, t / t1) - R(1) );
     }
     """,
     "_chirp_phase_log_kernel",
@@ -439,10 +458,10 @@ _chirp_phase_hyp_kernels = _chirp_phase_kernels(
     """
     T temp {};
     if ( f0 == f1 ) {
-        temp = 2 * M_PI * f0 * t;
+        temp = R(2 * M_PI) * f0 * t;
     } else {
         T sing { -f1 * t1 / (f0 - f1) };
-        temp = 2 * M_PI * ( -sing * f0 ) * log( abs( 1 - t / sing ) );
+        temp = R(2 * M_PI) * ( -sing * f0 ) * log( abs( 1 - t / sing ) );
     }
     """,
     "_chirp_phase_hyp_kernel",

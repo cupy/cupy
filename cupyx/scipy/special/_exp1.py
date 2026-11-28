@@ -25,15 +25,15 @@ static __device__ T exp1(T x) {
             R = -R * k * x / den;
             e1 += R;
         }
-        return -EUL - log(x) + x * e1;
+        return -T(EUL) - log(x) + x * e1;
     }
 
-    int M = 20 + 80.0 / x;
+    int M = 20 + T(80) / x;
     T t0 = 0;
     for (int k = M; k != 0; k--) {
-        t0 = k / (1.0 + k / (x + t0));
+        t0 = k / (T(1) + k / (x + t0));
     }
-    T t = 1.0 / (x + t0);
+    T t = T(1) / (x + t0);
     return exp(-x) * t;
 }
 """
