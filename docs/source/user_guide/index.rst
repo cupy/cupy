@@ -13,5 +13,6 @@ This user guide provides an overview of CuPy and explains its important features
    memory
    performance
    interoperability
+   c_api
    difference
    compatibility
