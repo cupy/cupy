@@ -1,0 +1,242 @@
+{
+  "skill_name": "cupy",
+  "evals": [
+    {
+      "id": "cupy-port-heat-diffusion",
+      "prompt": "code/heat.py is a NumPy heat diffusion solver that gets too slow once we raise max_iter. I have an NVIDIA GPU with CuPy installed: make it run on the GPU, check the result against the NumPy version, and tell me the measured speedup.",
+      "files": [
+        "files/cupy-port-heat-diffusion/code/heat.py"
+      ],
+      "expected_skill": "cupy",
+      "expected_script": null,
+      "expected_output": "Edits code/heat.py (or a GPU copy of it) to use CuPy: the grid is created on the GPU, the Jacobi stencil and max-diff reduction run with cupy, and the per-row Python loop in row_profile is replaced by a vectorized u.mean(axis=1). The convergence check no longer forces a host sync on every iteration (it is checked every N iterations or kept on the device), and results are copied to the host only at the end for printing and np.save. The GPU result is compared numerically with the NumPy result (maximum difference or allclose), and the reported speedup comes from an actual run timed with synchronization (or cupyx.profiler.benchmark), not from unsynchronized wall-clock time.",
+      "assertions": [
+        "Uses cupy arrays for the grid and stencil computation instead of numpy",
+        "Replaces the per-row Python loop in row_profile with a vectorized reduction",
+        "Avoids a GPU-to-host synchronization on every iteration of the convergence loop (for example by checking convergence only every N iterations), or explicitly explains the cost of the per-iteration sync",
+        "Compares the GPU output against the NumPy output numerically (maximum difference, allclose or equivalent)",
+        "Reports a speedup measured from an actual run, timed with GPU synchronization or cupyx.profiler.benchmark"
+      ]
+    },
+    {
+      "id": "cupy-port-signal-pipeline",
+      "prompt": "Port code/spectral.py to the GPU using CuPy. It's a band-pass filter + Welch PSD over 32 sensor channels, and we will scale it to thousands of channels later. Check that the peaks and RMS match the SciPy version and tell me the measured speedup.",
+      "files": [
+        "files/cupy-port-signal-pipeline/code/spectral.py"
+      ],
+      "expected_skill": "cupy",
+      "expected_script": null,
+      "expected_output": "Ports the pipeline so the data lives on the GPU and the filter and PSD run with cupyx.scipy.signal (sosfiltfilt, welch), with the argmax and RMS computed in cupy. The data is generated on the GPU or transferred once, and results are copied back once. Peaks and RMS are compared numerically against the SciPy version, and the reported speedup comes from a run timed with synchronization (or cupyx.profiler.benchmark) after a warm-up, so that first-call kernel compilation is not counted.",
+      "assertions": [
+        "Uses cupyx.scipy.signal for the filtering and Welch PSD instead of scipy.signal",
+        "Keeps the signal on the GPU between the filtering, PSD, argmax and RMS steps without intermediate host copies",
+        "Compares the GPU peaks and RMS against the SciPy version numerically (maximum difference, allclose or equivalent)",
+        "Reports a measured speedup from a run timed with GPU synchronization or cupyx.profiler.benchmark, after a warm-up or with first-call compilation excluded"
+      ]
+    },
+    {
+      "id": "cupy-async-timing",
+      "prompt": "I'm benchmarking CuPy vs NumPy for a 8000x8000 matrix multiply. NumPy takes 4 seconds, CuPy takes 0.0002 seconds?? That's 20000x faster, is that right? Here's my timing code:\n\n```python\nimport time, cupy as cp\na = cp.random.random((8000, 8000))\nt = time.time()\nc = a @ a\nprint(time.time() - t)\n```\n\nIf it's wrong, tell me why and show me how to time it properly.",
+      "expected_skill": "cupy",
+      "expected_script": null,
+      "expected_output": "Explains that CuPy kernel launches are asynchronous, so time.time() only measured the launch and not the multiply. Shows correct timing with cupyx.profiler.benchmark or with cp.cuda.Device().synchronize() (or a stream synchronize / CUDA events) before stopping the timer, with a warm-up run so first-call overhead is excluded.",
+      "assertions": [
+        "Explains that CuPy operations are asynchronous and the measurement only captured the kernel launch",
+        "Shows timing with cupyx.profiler.benchmark or with explicit synchronization before reading the timer",
+        "Includes a warm-up run (or uses cupyx.profiler.benchmark, which warms up) so first-call overhead is excluded"
+      ]
+    },
+    {
+      "id": "cupy-float64-consumer-gpu",
+      "prompt": "Our Monte Carlo option pricer in CuPy got ~40x over NumPy on the A100 cluster, but on my RTX 4090 workstation it's barely 2x. Same code, everything is float64. Why would a 4090 be that much worse? What should I change?",
+      "expected_skill": "cupy",
+      "expected_script": null,
+      "expected_output": "Explains that GeForce/RTX consumer GPUs run float64 at a small fraction of their float32 throughput, while datacenter GPUs like the A100 have full-rate float64, so the same float64 code is far slower on the 4090. Recommends running the pricer in float32 where the price accuracy allows (generating the random numbers directly in float32).",
+      "assertions": [
+        "Identifies low float64 throughput on consumer GeForce/RTX GPUs compared to datacenter GPUs like the A100 as the cause",
+        "Recommends switching the computation to float32 where accuracy allows"
+      ]
+    },
+    {
+      "id": "cupy-rawkernel-debug-garbage",
+      "prompt": "My custom kernel returns garbage (mostly zeros and weird tiny numbers) and doesn't raise any error. The math is trivial so I don't get what's wrong:\n\n```python\nimport cupy as cp\n\n_src = r'''\nextern \"C\" __global__\nvoid scale_shift(const float* x, float* y, float scale, float shift, int n) {\n    int i = blockDim.x * blockIdx.x + threadIdx.x;\n    if (i < n) y[i] = x[i] * scale + shift;\n}\n'''\n_k = cp.RawKernel(_src, \"scale_shift\")\n\ndef scale_shift(x, scale, shift):\n    y = cp.empty_like(x)\n    n = x.size\n    _k(((n + 255) // 256,), (256,), (x, y, scale, shift, n))\n    return y\n\nfeatures = cp.random.random((100_000, 8))   # sensor features\ncol = scale_shift(features[:, 2], 2.0, 1.0)\nprint(col[:5], (features[:, 2] * 2 + 1)[:5])\n```\n\nTell me everything that is wrong and give me a fixed version.",
+      "expected_skill": "cupy",
+      "expected_script": null,
+      "expected_output": "Finds all three silent bugs: (1) cp.random.random returns float64 but the kernel reads float*, so the bytes are reinterpreted; (2) scale, shift and n are Python scalars, which CuPy passes as double and long long while the kernel expects float and int; (3) features[:, 2] is a strided, non-contiguous view but the kernel indexes it as contiguous. Gives a corrected version with float32 data (or a double kernel), np.float32/np.int32 scalars, and cp.ascontiguousarray (or a strided kernel).",
+      "assertions": [
+        "Identifies that features is float64 (cp.random.random default) while the kernel reads float*, and fixes it",
+        "Identifies that scale, shift and n are passed as Python scalars that do not match the kernel's float/int parameter types, and fixes them with np.float32/np.int32 or equivalent",
+        "Identifies that features[:, 2] is a non-contiguous (strided) view that the kernel indexes as contiguous, and fixes it with cp.ascontiguousarray or a strided kernel",
+        "Provides a corrected version of the code that addresses all three problems"
+      ]
+    },
+    {
+      "id": "cupy-multiprocessing-fork",
+      "prompt": "Workers die with `cudaErrorInitializationError: initialization error`. It worked before I added the GPU count print. We have 2 GPUs. Tell me why it fails, fix it, and make the workers use both GPUs.\n\n```python\nimport multiprocessing as mp\nimport cupy as cp\nimport numpy as np\n\ndef process_file(path):\n    data = cp.asarray(np.load(path))\n    return float(cp.linalg.norm(data))\n\nif __name__ == \"__main__\":\n    print(\"GPUs:\", cp.cuda.runtime.getDeviceCount())\n    files = [f\"chunk_{i}.npy\" for i in range(64)]\n    with mp.Pool(8) as pool:\n        print(sum(pool.map(process_file, files)))\n```",
+      "expected_skill": "cupy",
+      "expected_script": null,
+      "expected_output": "Explains that getDeviceCount initializes CUDA in the parent, and processes forked after CUDA initialization cannot use CUDA. Fixes it with the spawn (or forkserver) start method, e.g. mp.get_context('spawn').Pool, or by not touching CUDA in the parent. Assigns workers to the 2 GPUs (CUDA_VISIBLE_DEVICES set per worker before CuPy initializes, or cp.cuda.Device(i) inside each worker), since all workers would otherwise use GPU 0.",
+      "assertions": [
+        "Identifies that CUDA is initialized in the parent (getDeviceCount) before the fork, and forked children cannot use CUDA",
+        "Fixes it with the spawn (or forkserver) start method, or by not initializing CUDA in the parent before forking",
+        "Distributes the workers across the 2 GPUs (CUDA_VISIBLE_DEVICES or cp.cuda.Device per worker)"
+      ]
+    },
+    {
+      "id": "cupy-jit-block-reduction",
+      "prompt": "Using cupyx.jit (Python-syntax kernels, not RawKernel strings), write a kernel that computes the sum of squares of a float32 array using a shared-memory block reduction with one atomic add per block. Put it in `sumsq.py`, test it on 10 million elements against `cp.sum(x * x)`, and show it works.",
+      "expected_skill": "cupy",
+      "expected_script": null,
+      "expected_output": "Creates sumsq.py with a @cupyx.jit.rawkernel kernel that uses jit.shared_memory, jit.threadIdx/blockIdx/blockDim (or jit.grid), jit.syncthreads in a tree reduction, and jit.atomic_add once per block. Out-of-range threads contribute zero. The kernel is launched with kernel[grid, block](...) and a grid covering all elements. The script runs on the GPU and matches cp.sum(x * x) within a float32-appropriate relative tolerance.",
+      "assertions": [
+        "Uses @cupyx.jit.rawkernel with jit.shared_memory, jit.syncthreads and jit.atomic_add",
+        "Launches the kernel with a grid covering all elements (kernel[grid, block](...) or the equivalent call form), guarding out-of-range threads",
+        "Runs the code successfully on the GPU",
+        "Compares against cp.sum(x * x) with a relative tolerance appropriate for float32 accumulation"
+      ]
+    },
+    {
+      "id": "cupy-port-montecarlo-stats",
+      "prompt": "Port code/risk.py to the GPU with CuPy. It's our portfolio risk Monte Carlo; the simulation and bootstrap are the slow parts. Keep the outputs statistically the same and report the speedup.",
+      "files": [
+        "files/cupy-port-montecarlo-stats/code/risk.py"
+      ],
+      "expected_skill": "cupy",
+      "expected_script": null,
+      "expected_output": "Ports simulation, VaR/ES and bootstrap to CuPy and runs it. Handles CuPy API gaps without guessing: cupy's Generator (cp.random.default_rng) has no normal, choice or permutation, so it uses standard_normal * sigma + mu (or the legacy cp.random / RandomState API) and an equivalent for the weighted regime choice and the permutation subsample; cupyx.scipy.stats has no norm or pearsonr, so it uses cupyx.scipy.special.ndtr/ndtri (or scipy on the scalar result) and cp.corrcoef; there is no cupyx.scipy.optimize, so brentq stays on the CPU (calling a GPU objective or on a host copy). Vectorizes or batches the bootstrap loop rather than 200 sequential Python iterations with host syncs. Compares the outputs to the CPU version statistically (not element-wise, since random streams differ) and reports a measured speedup.",
+      "assertions": [
+        "Uses only random-number APIs that exist in CuPy (e.g. Generator.standard_normal scaled by sigma plus mu, or the legacy cp.random API), not cp.random.default_rng(...).normal/choice/permutation",
+        "Replaces scipy.stats.norm and pearsonr with existing GPU equivalents (cupyx.scipy.special.ndtr/ndtri, cp.corrcoef) or computes them on the CPU from scalars, without calling non-existent cupyx.scipy.stats functions",
+        "Keeps the brentq calibration on the CPU (there is no cupyx.scipy.optimize) or replaces it with an equivalent GPU computation",
+        "Vectorizes or batches the bootstrap instead of 200 sequential iterations that each sync to the host",
+        "Runs the ported script and compares the results to the CPU version statistically, not element-wise",
+        "Reports a measured speedup"
+      ]
+    },
+    {
+      "id": "cupy-small-launch-bound",
+      "prompt": "code/reaction.py runs a 192x192 reaction-diffusion simulation with CuPy. 2,000 steps take about a second, we need millions of steps, and nvidia-smi shows the GPU barely busy. The grid size is fixed by the model, so we can't just make it bigger. Tell me what the bottleneck is, make it faster while keeping the results the same, and report the measured speedup.",
+      "files": [
+        "files/cupy-small-launch-bound/code/reaction.py"
+      ],
+      "expected_skill": "cupy",
+      "expected_script": null,
+      "expected_output": "Identifies that with a 192x192 grid each kernel does very little work, so the steps x ~20 kernel launches (rolls, temporaries) are dominated by Python and launch overhead rather than GPU compute. Removes most of that overhead by fusing the update into one or two custom kernels (RawKernel/ElementwiseKernel or cp.fuse) and/or capturing the step loop in a CUDA graph (stream.begin_capture()/end_capture() and graph.launch), with no per-step allocation or host syncs. Checks that the final fields match the original within float32 tolerance and reports a measured speedup of several times.",
+      "assertions": [
+        "Identifies that the small grid makes the loop kernel-launch / Python-overhead bound rather than compute bound",
+        "Cuts the per-step launch overhead by fusing the update into one or two kernels (custom kernel or cp.fuse) and/or by replaying the loop with a CUDA graph (stream.begin_capture / end_capture, graph.launch)",
+        "Checks that the final u/v fields match the original within a tolerance",
+        "Reports a measured speedup of several times over the original"
+      ]
+    },
+    {
+      "id": "cupy-tf32-matmul",
+      "prompt": "Our CuPy pipeline is dominated by large float32 matrix multiplies (cp.matmul / @ on 8192x8192) on an RTX 4090, and an A100 in production. We can tolerate around 1e-3 relative error. Is there a way to make the matmuls faster without rewriting the code? If so, what is the catch, and does it work on both GPUs?",
+      "expected_skill": "cupy",
+      "expected_script": null,
+      "expected_output": "Recommends enabling TF32 Tensor Core math for float32 cuBLAS calls with the CUPY_TF32=1 environment variable (set before CuPy initializes; no code changes). Explains the catch: TF32 keeps float32 range but rounds inputs to a 10-bit mantissa, giving about 1e-3 relative error, which should be validated against the plain float32 result. Says it needs Ampere or newer GPUs, so it works on both the RTX 4090 and the A100.",
+      "assertions": [
+        "Recommends the CUPY_TF32=1 environment variable to enable TF32 Tensor Core math for float32 matmuls",
+        "Notes that it must be set before CuPy initializes (or is imported) and requires no code changes",
+        "Explains the precision trade-off of TF32 (reduced mantissa, about 1e-3 relative error)",
+        "Says TF32 needs Ampere or newer GPUs and that both the RTX 4090 and the A100 support it"
+      ]
+    },
+    {
+      "id": "cupy-matrix-exponential",
+      "prompt": "Write expm_gpu.py that computes the matrix exponential of a 1500x1500 float64 matrix on the GPU with CuPy. Use `rng = np.random.default_rng(0); A = rng.standard_normal((1500, 1500)) / np.sqrt(1500) - 1.5 * np.eye(1500)` as the test matrix. I can't install any other packages (CuPy, NumPy and SciPy are there). Run it, check the result against scipy.linalg.expm, and tell me the maximum absolute difference and the speedup.",
+      "expected_skill": "cupy",
+      "expected_script": null,
+      "expected_output": "Checks what the installed CuPy provides and uses cupyx.scipy.linalg.expm on the GPU array instead of hand-writing a Pade / scaling-and-squaring or Taylor implementation. Runs the script, compares against scipy.linalg.expm (maximum absolute difference around 1e-14, i.e. float64 round-off), and reports a speedup of several times measured with synchronization after a warm-up.",
+      "assertions": [
+        "Uses cupyx.scipy.linalg.expm instead of a hand-written matrix exponential (Pade, scaling-and-squaring, Taylor or eigendecomposition)",
+        "Runs the script and compares the GPU result against scipy.linalg.expm",
+        "Reports a maximum absolute difference at float64 round-off level (about 1e-12 or smaller)",
+        "Reports a measured speedup over scipy.linalg.expm"
+      ]
+    },
+    {
+      "id": "cupy-griddata-port",
+      "prompt": "Port code/regrid.py to the GPU with CuPy; the griddata call is the bottleneck. I can't install other packages. The regridded field must match the SciPy version, so tell me the maximum absolute difference and the measured speedup.",
+      "files": [
+        "files/cupy-griddata-port/code/regrid.py"
+      ],
+      "expected_skill": "cupy",
+      "expected_script": null,
+      "expected_output": "cupyx.scipy.interpolate has no griddata, but it has the interpolator that griddata(method='linear') uses: LinearNDInterpolator (Delaunay triangulation on the GPU). The port builds LinearNDInterpolator(points, values) on GPU arrays and evaluates it on the grid, rather than switching to a different interpolant (RBFInterpolator, nearest neighbor) or keeping the triangulation or griddata on the CPU. The result matches SciPy to about 1e-6 (mean 0.04745317, max 1.07865020) and the measured speedup is large (tens of times on a recent GPU).",
+      "assertions": [
+        "Uses cupyx.scipy.interpolate.LinearNDInterpolator on GPU arrays for the interpolation",
+        "Does not replace linear interpolation with a different interpolant (RBF, nearest, regular-grid) and does not leave the interpolation or triangulation on the CPU",
+        "Reports a maximum absolute difference against the SciPy result of about 1e-5 or smaller, from an actual run",
+        "Reports a measured speedup over the SciPy version"
+      ]
+    },
+    {
+      "id": "cupy-whole-array-reduction",
+      "prompt": "x and y are 200M-element float32 CuPy arrays on an RTX 4090 and I compute `float(((x - y) ** 2).sum())` thousands of times. I was going to rewrite it as a cp.ReductionKernel (or put the whole thing in @cp.fuse) to get rid of the temporaries. Is that worth it? Which version should I use and roughly how do they compare?",
+      "expected_skill": "cupy",
+      "expected_script": null,
+      "expected_output": "No. A whole-array reduction such as .sum() on a contiguous array is accelerated by CUB in CuPy, while a cp.ReductionKernel and a reduction inside cp.fuse use CuPy's generic reduction kernel, which is much slower for a full reduction: about 20x slower measured (3.5 ms vs 69 ms on 134M float32 elements on an RTX 4090), despite avoiding the temporaries. Recommends keeping the plain expression (or fusing only the elementwise part and calling .sum() outside, or d = x - y; cp.dot(d, d)) and measuring with cupyx.profiler.benchmark. An answer that actually measures both and reports the ReductionKernel/fuse version as slower is also correct.",
+      "assertions": [
+        "Says the cp.ReductionKernel / fused-reduction rewrite is slower than (or at best not faster than) the plain expression for this whole-array sum, from knowledge or from a measurement",
+        "Recommends keeping the reduction as a plain .sum() (or cp.dot) call rather than moving it into a ReductionKernel or a fused function",
+        "Does not claim that the ReductionKernel or fuse version will be faster"
+      ]
+    },
+    {
+      "id": "cupy-float64-promotion-slowdown",
+      "prompt": "code/whiten.py runs on my RTX 4090 and takes far longer per batch than I'd expect for float32 data of this size. Find out why, fix it without changing what it computes, and tell me the cause and the measured speedup.",
+      "files": [
+        "files/cupy-float64-promotion-slowdown/code/whiten.py"
+      ],
+      "expected_skill": "cupy",
+      "expected_script": null,
+      "expected_output": "Finds that the pipeline is not running in float32: gain is a NumPy float64 scalar (np.linalg.norm returns np.float64), and under NumPy 2 promotion rules, which CuPy 14 follows, float32_array / np.float64 scalar gives a float64 array. Everything downstream (the matmul and the FFT) then runs in float64/complex128, which is many times slower on a GeForce/RTX GPU. Fixes it by converting the constant (float(gain) or np.float32(gain)) or otherwise keeping the arrays float32, confirms the output dtype is float32 with the same checksum to float32 precision (about 84254.97), and reports a measured speedup of well over 10x.",
+      "assertions": [
+        "Identifies that the NumPy float64 scalar gain (from np.linalg.norm) promotes the float32 frames to float64, so the matmul and FFT run in double precision",
+        "Fixes it by making the constant a Python float or float32 (or otherwise keeping the computation in float32), without changing the algorithm",
+        "Reports a measured speedup of more than 10x from an actual run",
+        "Explains the cause to the user: NumPy-scalar type promotion (NumPy 2 rules) and/or slow float64 on consumer GPUs"
+      ]
+    },
+    {
+      "id": "cupy-duplicate-index-assign",
+      "prompt": "Port code/latest.py to CuPy. The events will come from a GPU pipeline later, so keep the whole summarize step on the device. The printed numbers must be identical to the NumPy version; tell me whether they are.",
+      "files": [
+        "files/cupy-duplicate-index-assign/code/latest.py"
+      ],
+      "expected_skill": "cupy",
+      "expected_script": null,
+      "expected_output": "A mechanical port is silently wrong: `last[device] = value` and `last_seen[device] = arange` assign through duplicate indices, where NumPy keeps the last write but CuPy leaves the winner undefined, so the port prints plausible but different (and run-to-run varying) numbers such as last_sum=114648.33 instead of 115037.729089. A correct port computes the index of the last event per device deterministically (for example cupyx.scatter_max / cp.maximum.at on the event index, or a stable sort by device and taking the last of each run) and gathers value at those indices; cp.add.at (or cp.bincount with weights) handles the totals. The ported script is run and prints last_sum=115037.729089, last_seen_sum=9975080125, mean_sum=107498.375590 and 4661 devices, identical to NumPy.",
+      "assertions": [
+        "Does not rely on `last[device] = value` / `last_seen[device] = ...` with duplicate indices in CuPy to keep the last write; computes the last event per device deterministically instead",
+        "The ported script's output matches NumPy: last_sum=115037.729089, last_seen_sum=9975080125 and 4661 devices above their mean (as reported from an actual run)",
+        "Keeps the summarize computation on the GPU (no round trip through NumPy for the per-device results)",
+        "Tells the user whether the numbers are identical to the NumPy version, based on a comparison it ran"
+      ]
+    },
+    {
+      "id": "negative-numba-cuda-kernel",
+      "prompt": "My Numba CUDA kernel leaves the last few hundred elements of the output as zeros. What's wrong?\n\n```python\nimport numpy as np\nfrom numba import cuda\n\n@cuda.jit\ndef saxpy(a, x, y, out):\n    i = cuda.grid(1)\n    if i < out.size:\n        out[i] = a * x[i] + y[i]\n\nn = 1_000_000\nx = cuda.to_device(np.random.rand(n).astype(np.float32))\ny = cuda.to_device(np.random.rand(n).astype(np.float32))\nout = cuda.device_array(n, dtype=np.float32)\nthreads = 256\nblocks = n // threads\nsaxpy[blocks, threads](np.float32(2.0), x, y, out)\nprint(out.copy_to_host()[-5:])\n```",
+      "expected_skill": null,
+      "expected_script": null,
+      "expected_output": "Explains that blocks = n // threads rounds down, so 3906 * 256 = 999,936 threads are launched and the last 64 elements are never written (device_array memory is uninitialized, so they are not guaranteed to be zero either). Fixes it with ceiling division, blocks = (n + threads - 1) // threads, keeping the bounds check in the kernel. Stays within Numba; does not rewrite the kernel in CuPy.",
+      "assertions": [
+        "Identifies that the block count is rounded down, so the grid does not cover all n elements",
+        "Fixes it with ceiling division for the number of blocks (for example (n + threads - 1) // threads or math.ceil)",
+        "Keeps the solution in Numba rather than rewriting the kernel with CuPy"
+      ]
+    },
+    {
+      "id": "negative-numpy-no-gpu",
+      "prompt": "This NumPy function is the hot spot of a script I run on my MacBook Air (M3, no NVIDIA GPU). How do I make it faster?\n\n```python\nimport numpy as np\n\ndef rolling_zscore(x, w):\n    out = np.empty(len(x) - w + 1)\n    for i in range(len(out)):\n        win = x[i:i + w]\n        out[i] = (x[i + w - 1] - win.mean()) / win.std()\n    return out\n\nx = np.random.default_rng(0).standard_normal(5_000_000)\nz = rolling_zscore(x, 250)\n```",
+      "expected_skill": null,
+      "expected_script": null,
+      "expected_output": "Vectorizes the rolling window on the CPU: rolling mean and variance from cumulative sums (or np.lib.stride_tricks.sliding_window_view, bottleneck, pandas rolling, or Numba), noting floating-point cancellation with the cumulative-sum approach. Does not recommend CuPy, since there is no NVIDIA GPU on the machine.",
+      "assertions": [
+        "Replaces the per-window Python loop with a vectorized CPU approach (cumulative sums, sliding_window_view, pandas/bottleneck rolling, or Numba)",
+        "Does not recommend CuPy or another CUDA-only library as the solution for this machine"
+      ]
+    }
+  ]
+}
