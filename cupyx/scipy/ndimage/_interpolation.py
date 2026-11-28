@@ -652,6 +652,8 @@ def shift(input, shift, output=None, order=3, mode='constant', cval=0.0,
         )
     else:
         output = _util._get_output(output, input)
+        if cupy.shares_memory(output, input, 'MAY_SHARE_BOUNDS'):
+            input = input.copy()
         if input.dtype.kind in 'iu':
             input = input.astype(cupy.float32)
         filtered, nprepad = _filter_input(input, prefilter, mode, cval, order)

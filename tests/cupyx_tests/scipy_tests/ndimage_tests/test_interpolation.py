@@ -698,6 +698,15 @@ class TestShift:
         a = xp.asfortranarray(a)
         return self._shift(xp, scp, a)
 
+    def test_shift_aliased_output(self):
+        a = cupy.zeros((32, 32, 32), dtype=cupy.float32)
+        a[4:-4, 4:-4, 4:-4] = 1
+        expected = cupyx.scipy.ndimage.shift(a.copy(), (3, -5, -7), order=1)
+
+        cupyx.scipy.ndimage.shift(a, (3, -5, -7), output=a, order=1)
+
+        testing.assert_array_equal(a, expected)
+
     def _hip_skip_invalid_condition(self):
         if (runtime.is_hip
                 and self.cval == 1.0
