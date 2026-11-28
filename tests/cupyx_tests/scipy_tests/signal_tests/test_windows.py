@@ -342,6 +342,12 @@ class TestParzen:
                 scp.signal.windows.parzen(7, sym=True),
                 scp.signal.windows.parzen(6, False),)
 
+    @pytest.mark.parametrize('sym', [True, False])
+    @pytest.mark.parametrize('M', range(21))
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-13, atol=1e-13)
+    def test_lengths(self, xp, scp, M, sym):
+        return scp.signal.windows.parzen(M, sym=sym)
+
 
 @testing.with_requires("scipy")
 class TestTriang:
@@ -549,7 +555,7 @@ class TestGetWindow:
 @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-13, atol=1e-13)
 def test_windowfunc_basics(window_info, xp, scp):
     window_name, params = window_info
-    if window_name in {'parzen', 'tukey'}:
+    if window_name == 'tukey':
         pytest.skip()
 
     window = getattr(scp.signal.windows, window_name)
