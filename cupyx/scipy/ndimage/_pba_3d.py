@@ -479,7 +479,7 @@ def _pba_3d(arr, sampling=None, return_distances=True, return_indices=False,
         vals = vals + (distances,)
     if return_indices:
         if indices_inplace:
-            _check_indices(indices, (arr.ndim,) + arr.shape, x.dtype.itemsize)
+            _check_indices(indices, (arr.ndim,) + x.shape, x.dtype.itemsize)
             indices[0, ...] = z
             indices[1, ...] = y
             indices[2, ...] = x
