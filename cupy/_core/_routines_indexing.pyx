@@ -928,6 +928,9 @@ cdef _scatter_op_single(
     indices_shape = indices.shape
     v_shape = lshape + indices_shape + rshape
     v = _manipulation.broadcast_to(v, v_shape)
+    if adim == 0 and indices.size != 0:
+        raise IndexError(
+            'cannot index zero-length axes with a non-empty index.')
 
     cdim = indices.size
     rdim = internal.prod_sequence(rshape)

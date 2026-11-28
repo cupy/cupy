@@ -8,6 +8,37 @@ import cupy
 from cupy import testing
 
 
+@pytest.mark.parametrize('op', [
+    'update', 'add', 'subtract', 'maximum', 'minimum',
+    'bitwise_and', 'bitwise_or', 'bitwise_xor',
+])
+@pytest.mark.parametrize('shape,index', [
+    # A non-empty index into an axis with no valid position must raise,
+    # even when another, unrelated axis is also empty (gh-10245).
+    ((0,), ([0],)),
+    ((0, 3), ([0], slice(None))),
+    ((3, 0), (slice(None), [0])),
+    ((0, 0), ([0], [0])),
+    ((0, 0), ([0], slice(None))),
+    ((0, 3, 0), ([0], slice(None), slice(None))),
+    # An empty index is always a valid no-op, even into a non-empty axis.
+    ((0,), ([],)),
+    ((0, 3), ([], slice(None))),
+    ((3, 0), (slice(None), [])),
+    ((0, 0), ([], [])),
+    ((0, 3), (slice(None), [1])),
+    ((3, 0), ([1], slice(None))),
+])
+@testing.numpy_cupy_allclose(accept_error=IndexError)
+def test_scatter_empty(xp, op, shape, index):
+    a = xp.zeros(shape, dtype=numpy.int32)
+    if op == 'update':
+        a[index] = 1
+    else:
+        getattr(xp, op).at(a, index, 1)
+    return a
+
+
 @testing.parameterize(
     # array only
     {'shape': (2, 3, 4), 'slices': numpy.array(-1), 'value': 1},
