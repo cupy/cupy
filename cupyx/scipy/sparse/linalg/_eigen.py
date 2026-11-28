@@ -78,8 +78,10 @@ def eigsh(a, k=6, *, which='LM', v0=None, ncv=None, maxiter=None,
             ``k < ncv <= n``. If ``None``, default value is used.
         maxiter (int): Maximum number of Lanczos update iterations.
             If ``None``, default value is used.
-        tol (float): Tolerance for residuals ``||Ax - wx||``. If ``0``, machine
-            precision is used.
+        tol (float): Relative tolerance for each Ritz residual, with a
+            machine-precision floor on the eigenvalue magnitude near zero.
+            In shift-invert mode this applies to the transformed problem.
+            If ``0``, machine precision is used.
         sigma (float or complex): If not ``None``, find eigenvalues near
             ``sigma`` using shift-invert mode: the Lanczos iteration is run
             on ``(A - sigma * I)^{-1}`` and the values are mapped back by
@@ -346,16 +348,14 @@ def _eigsh_impl(a, k, *, which, v0, ncv, maxiter, tol,
                                                norm_bound=norm_bound)
 
     iter = work
-    w, s, w_host = _eigsh_solve_ritz(alpha, beta, None, k, which)
+    w, s, w_host, converged = _eigsh_solve_ritz(
+        alpha, beta, None, k, which, tol)
     x = V.T @ s
-
-    # Compute residual
-    beta_k = beta[-1] * s[-1, :]
-    res = cublas.nrm2(beta_k)
 
     uu = cupy.empty((k,), dtype=a.dtype)
 
-    while res > tol and iter < maxiter and k + 1 < ncv:
+    while not converged and iter < maxiter and k + 1 < ncv:
+        beta_k = beta[-1] * s[-1, :]
         # Setup for thick-restart
         beta[:k] = 0
         alpha[:k] = w
@@ -408,13 +408,9 @@ def _eigsh_impl(a, k, *, which, v0, ncv, maxiter, tol,
         # +1 for the u = a @ V[k] above; equals the former ncv - k when no
         # repair re-sweep ran.
         iter += work + 1
-        w, s, w_host = _eigsh_solve_ritz(alpha, beta, beta_k, k,
-                                         which)
+        w, s, w_host, converged = _eigsh_solve_ritz(
+            alpha, beta, beta_k, k, which, tol)
         x = V.T @ s
-
-        # Compute residual
-        beta_k = beta[-1] * s[-1, :]
-        res = cublas.nrm2(beta_k)
 
     if return_eigenvectors:
         idx = cupy.argsort(w)
@@ -904,7 +900,7 @@ def _restart_ortho(V, m, n, dtype, bias_op=None, bias_shift=0.0):
         'different v0.'.format(floor, 2 * len(order) + 1))
 
 
-def _eigsh_solve_ritz(alpha, beta, beta_k, k, which):
+def _eigsh_solve_ritz(alpha, beta, beta_k, k, which, tol):
     # Note: This is done on the CPU, because there is an issue in
     # cupy.linalg.eigh with CUDA 9.2, which can return NaNs. It will has little
     # impact on performance, since the matrix size processed here is not large.
@@ -938,7 +934,12 @@ def _eigsh_solve_ritz(alpha, beta, beta_k, k, which):
     # smallest / interior eigenvalues, so it is intentionally not done here.
     # wk is already on the host here; handing it back lets the caller
     # test for degeneracy without paying a device sync.
-    return cupy.array(wk), cupy.array(sk), wk
+    # The Lanczos residual bound for each Ritz pair is |beta[-1] * sk[-1]|.
+    # ARPACK's eps23 uses LAPACK xLAMCH('E'), the gap below 1 on IEEE floats.
+    floor = numpy.finfo(wk.dtype).epsneg ** (2.0 / 3.0)
+    bounds = numpy.abs(beta[-1] * sk[-1, :])
+    converged = numpy.all(bounds <= tol * numpy.maximum(floor, numpy.abs(wk)))
+    return cupy.array(wk), cupy.array(sk), wk, converged
 
 
 def svds(a, k=6, *, ncv=None, tol=0, which='LM', v0=None,
