@@ -933,6 +933,32 @@ class TestWeightComplexDtype(FilterTestCaseBase):
                 func(arr, weights, output=numpy.float64)
 
 
+# test convolutions w/ complex cval
+@testing.parameterize(*(
+    testing.product_dict(
+        testing.product({
+            'filter': ['convolve', 'correlate'],
+        }) + testing.product({
+            'filter': ['convolve1d', 'correlate1d'],
+            'axis': [-1],
+        }),
+        testing.product({
+            'shape': [(4, 4)],
+            'ksize': [5],
+            'output': [None],
+            'dtype': [numpy.complex64, numpy.complex128],
+            'mode': ['constant'],
+            'cval': [1.0, 1.0j, numpy.complex64(5.0+2.0j)],
+        })
+    )
+))
+@testing.with_requires('scipy')
+class TestComplexCval(FilterTestCaseBase):
+    @testing.numpy_cupy_allclose(atol=1e-5, rtol=1e-5, scipy_name='scp')
+    def test_filter(self, xp, scp):
+        return self._filter(xp, scp)
+
+
 # Tests special weights (ND)
 @testing.parameterize(*testing.product({
     'filter': ['convolve', 'correlate', 'minimum_filter', 'maximum_filter'],
