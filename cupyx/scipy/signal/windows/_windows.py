@@ -299,40 +299,22 @@ _parzen_kernel = cupy.ElementwiseKernel(
     "",
     "float64 w",
     """
-    double n {};
-    double temp {};
-    double sizeS1 {};
+    // n runs from -(M - 1) / 2 to (M - 1) / 2. The points with
+    // |n| <= (M - 1) / 4 use the middle polynomial, the others the tails.
+    double n { start + i };
+    double temp { abs( n ) * den };
 
-    if ( odd ) {
-        sizeS1 = s1 - start + 1.0;
-    } else {
-        s1 += 0.5;
-        s2 += 0.5;
-        sizeS1 = s1 - start;
-    }
-
-    double sizeS2 { s2 - start + 1.0 - sizeS1 };
-
-    if ( i < sizeS1 ) {
-        n = i + start;
-        temp = 1.0 - abs( n ) * den;
-        w = 2.0 * ( temp * temp * temp );
-    } else if ( i >= sizeS1 && i < ( sizeS1 + sizeS2 ) ) {
-        n = ( i - sizeS1 - s2 );
-        temp = abs( n ) * den;
+    if ( abs( n ) <= quarter ) {
         w = 1.0 - 6.0 * temp * temp + 6.0 * temp * temp * temp;
     } else {
-        n = s1 - ( i - ( sizeS2 + sizeS1 - ( 1 - odd ) ) );
-        temp = 1.0 - abs( n ) * den;
+        temp = 1.0 - temp;
         w = 2.0 * temp * temp * temp;
     }
     """,
     "_parzen_kernel",
     loop_prep="const double start { 0.5 * -( _ind.size () - 1 ) }; \
                const double den { 1.0 / ( 0.5 * _ind.size () ) }; \
-               const bool odd { (_ind.size() & 1) != 0 }; \
-               double s1 { floor(-0.25 * ( _ind.size () - 1 ) ) }; \
-               double s2 { floor(0.25 * ( _ind.size () - 1 ) ) };",
+               const double quarter { 0.25 * ( _ind.size () - 1 ) };",
 )
 
 
