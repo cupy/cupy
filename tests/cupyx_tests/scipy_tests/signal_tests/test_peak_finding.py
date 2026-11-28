@@ -456,6 +456,43 @@ class TestArgrel:
             test_data, order=order, mode='clip')[0]
         return rel_max_locs
 
+    @pytest.mark.parametrize('comparator_name,data,sentinel', [
+        ('less_equal', [1.0, 3.0, 4.0, 2.0], -1e9),
+        ('less_equal', [3.0, 4.0, 2.0, 1.0], -1e9),
+        ('greater_equal', [4.0, 1.0, 2.0, 3.0], 1e9),
+        ('greater_equal', [2.0, 3.0, 1.0, 4.0], 1e9),
+    ])
+    @pytest.mark.parametrize('order', [4, 5, 9])
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_wrap_order_larger_than_axis_1d(self, comparator_name, data,
+                                            sentinel, order, xp, scp):
+        # mode='wrap' with order > len(data) must wrap indices modulo the
+        # axis length. The input is a view into a larger buffer whose
+        # out-of-view cells hold an adversarial sentinel, so an
+        # out-of-bounds read one element before/after the view changes
+        # the result deterministically.
+        buf = xp.full(6, sentinel)
+        buf[1:5] = xp.asarray(data)
+        comparator = getattr(xp, comparator_name)
+        return scp.signal.argrelextrema(
+            buf[1:5], comparator, order=order, mode='wrap')
+
+    @pytest.mark.parametrize('axis', [0, 1])
+    @pytest.mark.parametrize('order', [4, 5, 9])
+    @testing.numpy_cupy_allclose(scipy_name="scp")
+    def test_wrap_order_larger_than_axis_2d(self, axis, order, xp, scp):
+        data = xp.asarray([[1.0, 5.0, 6.0, 7.0],
+                           [3.0, 6.0, 7.0, 8.0],
+                           [4.0, 7.0, 8.0, 9.0],
+                           [2.0, 8.0, 9.0, 6.0]])
+        # Row padding keeps the view contiguous while planting sentinels
+        # in the memory right before and after it.
+        buf = xp.full((6, 4), -1e9)
+        buf[1:5, :] = data
+        return scp.signal.argrelextrema(
+            buf[1:5, :], xp.less_equal, axis=axis, order=order,
+            mode='wrap')
+
     @testing.numpy_cupy_allclose(scipy_name="scp")
     def test_2d_gaussians(self, xp, scp):
         sigmas = [1.0, 2.0, 10.0]
