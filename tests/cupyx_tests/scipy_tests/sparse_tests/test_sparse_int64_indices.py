@@ -2697,8 +2697,8 @@ class TestInt64DenseMatmulDispatch:
     @pytest.mark.parametrize('index', [cupy.int32, cupy.int64])
     @pytest.mark.parametrize('fmt', ['csr', 'csc'])
     def test_hip_row_limits_empty(self, fmt, index, monkeypatch):
-        # A matrix without nonzeros never reaches the library, so it is
-        # computed even when it has more rows than the limits.
+        # The checks skip a matrix without nonzeros, so it is computed even
+        # when it has more rows than the limits.
         monkeypatch.setattr(cusparse, '_HIP_SPMV_MAX_ROWS', 5)
         monkeypatch.setattr(cusparse, '_HIP_CSRMV_MAX_ROWS', 5)
         monkeypatch.setattr(cusparse, '_HIP_CSRMVT_MAX_ROWS', 4)
@@ -2747,6 +2747,44 @@ class TestInt64DenseMatmulDispatch:
                     m @ cupy.asarray(x)
             else:
                 testing.assert_allclose(m @ cupy.asarray(x), self._dense @ x)
+
+    @pytest.mark.parametrize('over', [0, 1])
+    def test_hip_row_limits_csrmm(self, over, monkeypatch):
+        # The legacy csrmm takes int32 indices and has no transb.  The
+        # limits apply to the rows of the CSR passed in, which are 6 for
+        # csr @ b and 5 for the transposed csc @ b.
+        if not cusparse.check_availability('csrmm'):
+            pytest.skip('csrmm is not available')
+        monkeypatch.setattr(cusparse, '_HIP_SPMM_MAX_ROWS', 6 - over)
+        monkeypatch.setattr(cusparse, '_HIP_SPMM_TRANS_MAX_ROWS', 5 - over)
+        a = self._int64('csr', index=cupy.int32)
+        a_t = a.T.tocsr()
+        assert a_t.indices.dtype == cupy.int32
+        b = cupy.asfortranarray(cupy.arange(15.).reshape(5, 3))
+        expect = self._dense @ b.get()
+        if over and cupy.cuda.runtime.is_hip:
+            with pytest.raises(ValueError, match='hipSPARSE csrmm'):
+                cusparse.csrmm(a, b)
+            with pytest.raises(ValueError, match='hipSPARSE csrmm'):
+                cusparse.csrmm(a_t, b, transa=True)
+        else:
+            testing.assert_allclose(cusparse.csrmm(a, b), expect)
+            testing.assert_allclose(
+                cusparse.csrmm(a_t, b, transa=True), expect)
+
+    def test_hip_row_limits_transa_transb(self, monkeypatch):
+        # With both transposes the transa limit applies, even when the
+        # transb limit for more than 8 columns is lower.  The CSR has 5
+        # rows.
+        if not cupy.cuda.runtime.is_hip:
+            pytest.skip('hipSPARSE only')
+        monkeypatch.setattr(cusparse, '_HIP_SPMM_NT_MAX_ROWS', 4)
+        monkeypatch.setattr(cusparse, '_HIP_SPMM_TRANS_MAX_ROWS', 5)
+        a = self._int64('csc').T
+        b = cupy.asfortranarray(cupy.arange(1., 46.).reshape(9, 5))
+        testing.assert_allclose(
+            cusparse.spmm(a, b, transa=True, transb=True),
+            self._dense @ b.get().T)
 
     @staticmethod
     def _tall_csr(rows, index=cupy.int64):

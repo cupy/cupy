@@ -441,6 +441,8 @@ def csrmm(a, b, c=None, alpha=1, beta=0, transa=False):
     handle = _device.get_cusparse_handle()
     m, k = a_shape
     n = b.shape[1]
+    if _runtime.is_hip:
+        _check_hip_spmm_rows('csrmm', a, transa, False, n)
 
     a, b, c = _cast_common_type(a, b, c)
     if c is None:
