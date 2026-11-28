@@ -534,6 +534,31 @@ class TestArgsort(unittest.TestCase):
             a.argsort(-1, None, True)
 
 
+@pytest.mark.parametrize('dtype, uint_dtype', [
+    (numpy.float16, numpy.uint16),
+    (numpy.float32, numpy.uint32),
+    (numpy.float64, numpy.uint64),
+])
+@pytest.mark.parametrize('descending, order', [
+    (False, [3, 7, 2, 5, 1, 6, 0, 4, 8]),
+    (True, [6, 1, 2, 5, 7, 3, 0, 4, 8]),
+])
+def test_sort_signed_nans(dtype, uint_dtype, descending, order):
+    # Include both NaN signs, distinct payloads, signed zeros, and infinities.
+    values = numpy.array([
+        numpy.nan, 1, -0.0, -numpy.inf, -numpy.nan, 0.0, numpy.inf, -1,
+        numpy.nan,
+    ], dtype=dtype)
+    bits = values.view(uint_dtype)
+    bits[0] |= 1
+    a = cupy.asarray(values)
+
+    indices = cupy.argsort(a, descending=descending)
+    testing.assert_array_equal(indices, numpy.array(order))
+    sorted_a = cupy.sort(a, descending=descending)
+    testing.assert_array_equal(sorted_a.view(uint_dtype), bits[order])
+
+
 class TestSort_complex(unittest.TestCase):
 
     def test_sort_complex_zero_dim(self):
