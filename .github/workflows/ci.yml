@@ -32,9 +32,9 @@ on:
       - main
       - "v*"
       - "hotfix-*"
-    # Tag push produces the release-version RTD docs; the full build
-    # matrix also runs (guard falls through to mode=test) so release
-    # artifacts are re-verified at the tagged SHA.
+    # Tag push produces the release-version RTD docs only (guard maps it
+    # to mode=doc-only); publish.yml takes the release artifacts from the
+    # branch-push run of the tagged commit.
     tags:
       - "v*"
 

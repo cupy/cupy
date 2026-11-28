@@ -1,0 +1,76 @@
+name: "Tag Release"
+run-name: "Tag Release (${{ inputs.version }})"
+
+# The tag is created with a GitHub App token (Contents: write): one created
+# with GITHUB_TOKEN would not trigger ci.yml, which builds the release docs.
+# Requires repository configuration: variable RELEASE_TAG_APP_ID, secret
+# RELEASE_TAG_APP_PRIVATE_KEY in the `release-tag` environment, and the App
+# on the bypass list of the tag creation ruleset.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Tag to Create (e.g., v14.0.0a1)"
+        required: true
+      commit:
+        description: "Commit to Tag (default: head of main)"
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  tag:
+    if: github.repository_owner == 'cupy'
+    runs-on: ubuntu-latest
+    environment: release-tag
+    permissions:
+      actions: read   # to find the CI run that built the release artifacts
+      contents: read
+    steps:
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      with:
+        sparse-checkout: ci
+        persist-credentials: false
+
+    - name: Check
+      id: check
+      env:
+        GH_TOKEN: ${{ github.token }}
+        VERSION: ${{ inputs.version }}
+        COMMIT: ${{ inputs.commit }}
+      run: |
+        set -euo pipefail
+        sha="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${COMMIT:-main}" --jq .sha)"
+        source_version="$(gh api -H "Accept: application/vnd.github.raw" \
+            "repos/${GITHUB_REPOSITORY}/contents/cupy/_version.py?ref=${sha}" \
+            | sed -n "s/^__version__ = '\(.*\)'$/\1/p")"
+        if [[ "${VERSION}" != "v${source_version}" || "${VERSION}" == *.dev* ]]; then
+          echo "::error::${sha} has __version__ = '${source_version}'; refusing to tag it as ${VERSION}"
+          exit 1
+        fi
+        if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${VERSION}" > /dev/null 2>&1; then
+          echo "::error::Tag ${VERSION} already exists"
+          exit 1
+        fi
+        ./ci/tools/lookup-run-id "${sha}" "${GITHUB_REPOSITORY}"
+        echo "sha=${sha}" >> "${GITHUB_OUTPUT}"
+
+    - name: Mint release-tag App token
+      id: app-token
+      uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510  # v3.3.0
+      with:
+        app-id: ${{ vars.RELEASE_TAG_APP_ID }}
+        private-key: ${{ secrets.RELEASE_TAG_APP_PRIVATE_KEY }}
+
+    - name: Create Tag
+      env:
+        GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        VERSION: ${{ inputs.version }}
+        SHA: ${{ steps.check.outputs.sha }}
+      run: |
+        gh api "repos/${GITHUB_REPOSITORY}/git/refs" \
+            -f ref="refs/tags/${VERSION}" -f sha="${SHA}" --jq .ref
+        echo "::notice::Tagged ${SHA} as ${VERSION}"
