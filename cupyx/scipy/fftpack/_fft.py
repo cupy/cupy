@@ -6,7 +6,7 @@ import cupy
 from cupy.fft import config
 from cupy.fft._fft import (_convert_fft_type, _default_fft_func, _fft,
                            _get_cufft_plan_nd, _get_fftn_out_size,
-                           _output_dtype)
+                           _output_dtype, _resolve_fft_shape)
 from cupy.fft._cache import get_plan_cache
 
 
@@ -19,6 +19,7 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
         shape (None or tuple of ints): Shape of the transformed axes of the
             output. If ``shape`` is not given, the lengths of the input along
             the axes specified by ``axes`` are used.
+            A length of ``-1`` uses the input length along that axis.
         axes (None or int or tuple of int):  The axes of the array to
             transform. If `None`, it is assumed that all axes are transformed.
 
@@ -102,7 +103,7 @@ def get_fft_plan(a, shape=None, axes=None, value_type='C2C'):
     # the shape of the output array, and we need to convert it to the latter.
     # The result is as if "a=_cook_shape(a); return a.shape" is called.
     # Because of this, we need to use (possibly unsorted) axes.
-    transformed_shape = shape
+    transformed_shape = _resolve_fft_shape(a, shape, axes)
     shape = list(a.shape)
     if transformed_shape is not None:
         for s, axis in zip(transformed_shape, axes):
@@ -245,6 +246,7 @@ def fft2(x, shape=None, axes=(-2, -1), overwrite_x=False, plan=None):
         shape (None or tuple of ints): Shape of the transformed axes of the
             output. If ``shape`` is not given, the lengths of the input along
             the axes specified by ``axes`` are used.
+            A length of ``-1`` uses the input length along that axis.
         axes (tuple of ints): Axes over which to compute the FFT.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
         plan (:class:`cupy.cuda.cufft.PlanNd` or ``None``): a cuFFT plan for
@@ -268,6 +270,7 @@ def fft2(x, shape=None, axes=(-2, -1), overwrite_x=False, plan=None):
     """
     cufft = cupy.cuda.cufft  # lazy import
 
+    shape = _resolve_fft_shape(x, shape, axes)
     func = _default_fft_func(x, shape, axes, plan)
     return func(x, shape, axes, None, cufft.CUFFT_FORWARD,
                 overwrite_x=overwrite_x, plan=plan)
@@ -281,6 +284,7 @@ def ifft2(x, shape=None, axes=(-2, -1), overwrite_x=False, plan=None):
         shape (None or tuple of ints): Shape of the transformed axes of the
             output. If ``shape`` is not given, the lengths of the input along
             the axes specified by ``axes`` are used.
+            A length of ``-1`` uses the input length along that axis.
         axes (tuple of ints): Axes over which to compute the FFT.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
         plan (:class:`cupy.cuda.cufft.PlanNd` or ``None``): a cuFFT plan for
@@ -304,6 +308,7 @@ def ifft2(x, shape=None, axes=(-2, -1), overwrite_x=False, plan=None):
     """
     cufft = cupy.cuda.cufft  # lazy import
 
+    shape = _resolve_fft_shape(x, shape, axes)
     func = _default_fft_func(x, shape, axes, plan)
     return func(x, shape, axes, None, cufft.CUFFT_INVERSE,
                 overwrite_x=overwrite_x, plan=plan)
@@ -317,6 +322,7 @@ def fftn(x, shape=None, axes=None, overwrite_x=False, plan=None):
         shape (None or tuple of ints): Shape of the transformed axes of the
             output. If ``shape`` is not given, the lengths of the input along
             the axes specified by ``axes`` are used.
+            A length of ``-1`` uses the input length along that axis.
         axes (tuple of ints): Axes over which to compute the FFT.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
         plan (:class:`cupy.cuda.cufft.PlanNd` or ``None``): a cuFFT plan for
@@ -340,6 +346,7 @@ def fftn(x, shape=None, axes=None, overwrite_x=False, plan=None):
     """
     cufft = cupy.cuda.cufft  # lazy import
 
+    shape = _resolve_fft_shape(x, shape, axes)
     func = _default_fft_func(x, shape, axes, plan)
     return func(x, shape, axes, None, cufft.CUFFT_FORWARD,
                 overwrite_x=overwrite_x, plan=plan)
@@ -353,6 +360,7 @@ def ifftn(x, shape=None, axes=None, overwrite_x=False, plan=None):
         shape (None or tuple of ints): Shape of the transformed axes of the
             output. If ``shape`` is not given, the lengths of the input along
             the axes specified by ``axes`` are used.
+            A length of ``-1`` uses the input length along that axis.
         axes (tuple of ints): Axes over which to compute the FFT.
         overwrite_x (bool): If True, the contents of ``x`` can be destroyed.
         plan (:class:`cupy.cuda.cufft.PlanNd` or ``None``): a cuFFT plan for
@@ -376,6 +384,7 @@ def ifftn(x, shape=None, axes=None, overwrite_x=False, plan=None):
     """
     cufft = cupy.cuda.cufft  # lazy import
 
+    shape = _resolve_fft_shape(x, shape, axes)
     func = _default_fft_func(x, shape, axes, plan)
     return func(x, shape, axes, None, cufft.CUFFT_INVERSE,
                 overwrite_x=overwrite_x, plan=plan)
