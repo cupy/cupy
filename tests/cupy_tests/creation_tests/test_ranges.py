@@ -310,7 +310,7 @@ class TestRanges(unittest.TestCase):
         'copy': [False, True],
     })
 )
-class TestMeshgrid(unittest.TestCase):
+class TestMeshgrid:
 
     @testing.for_all_dtypes()
     def test_meshgrid0(self, dtype):
@@ -345,6 +345,39 @@ class TestMeshgrid(unittest.TestCase):
         z = xp.arange(4).astype(dtype)
         return xp.meshgrid(x, y, z, indexing=self.indexing, sparse=self.sparse,
                            copy=self.copy)
+
+    @pytest.mark.parametrize('shapes', [
+        [()],
+        [(2, 3)],
+        [(2, 0)],
+        [(), (3,)],
+        [(2, 3), (3, 2)],
+        [(2, 1, 2), (3,), ()],
+    ])
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_meshgrid_nd(self, xp, dtype, shapes):
+        arrays = [testing.shaped_arange(shape, xp, dtype) for shape in shapes]
+        return xp.meshgrid(*arrays, indexing=self.indexing, sparse=self.sparse,
+                           copy=self.copy)
+
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_array_equal()
+    def test_meshgrid_noncontiguous(self, xp, dtype):
+        x = testing.shaped_arange((2, 3), xp, dtype).T
+        y = testing.shaped_arange((3, 4), xp, dtype)[:, ::-2]
+        return xp.meshgrid(x, y, indexing=self.indexing, sparse=self.sparse,
+                           copy=self.copy)
+
+    @pytest.mark.parametrize('shape', [(), (3,), (2, 3)])
+    @pytest.mark.parametrize('ninputs', [1, 2])
+    @testing.numpy_cupy_array_equal()
+    def test_meshgrid_copy(self, xp, shape, ninputs):
+        x = testing.shaped_arange(shape, xp)
+        result = xp.meshgrid(*([x] * ninputs), indexing=self.indexing,
+                             sparse=self.sparse, copy=self.copy)
+        x[...] = -1
+        return result
 
 
 class TestMgrid(unittest.TestCase):

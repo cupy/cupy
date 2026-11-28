@@ -260,25 +260,23 @@ def logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None,
 def meshgrid(*xi, **kwargs):
     """Return coordinate matrices from coordinate vectors.
 
-    Given one-dimensional coordinate arrays ``x1, x2, ... , xn`` this
-    function makes N-D grids.
+    Given coordinate arrays ``x1, x2, ... , xn`` this function makes N-D
+    grids from their flattened values.
 
-    For one-dimensional arrays ``x1, x2, ... , xn`` with lengths
-    ``Ni = len(xi)``, this function returns ``(N1, N2, N3, ..., Nn)`` shaped
+    For arrays ``x1, x2, ... , xn`` with sizes ``Ni = xi.size``,
+    this function returns ``(N1, N2, N3, ..., Nn)`` shaped
     arrays if indexing='ij' or ``(N2, N1, N3, ..., Nn)`` shaped arrays
     if indexing='xy'.
 
-    Unlike NumPy, CuPy currently only supports 1-D arrays as inputs.
-
     Args:
-        xi (tuple of ndarrays): 1-D arrays representing the coordinates
-            of a grid.
+        xi (tuple of ndarrays): Arrays representing the coordinates
+            of a grid. Each input is flattened in C order.
         indexing ({'xy', 'ij'}, optional): Cartesian ('xy', default) or
             matrix ('ij') indexing of output.
         sparse (bool, optional): If ``True``, a sparse grid is returned in
             order to conserve memory. Default is ``False``.
-        copy (bool, optional): If ``False``, a view
-            into the original arrays are returned. Default is ``True``.
+        copy (bool, optional): If ``False``, views into the original arrays
+            are returned when possible. Default is ``True``.
 
     Returns:
         tuple of cupy.ndarray
@@ -297,26 +295,22 @@ def meshgrid(*xi, **kwargs):
         raise ValueError('Valid values for `indexing` are \'xy\' and \'ij\'.')
 
     for x in xi:
-        if x.ndim != 1:
-            raise ValueError('input has to be 1d')
         if not isinstance(x, cupy.ndarray):
             raise ValueError('input has to be cupy.ndarray')
-    if len(xi) <= 1:
-        return tuple(xi)
+    if not xi:
+        return ()
 
     meshes = []
     for i, x in enumerate(xi):
-        if indexing == 'xy' and i == 0:
-            left_none = 1
-        elif indexing == 'xy' and i == 1:
-            left_none = 0
+        if indexing == 'xy' and len(xi) > 1 and i < 2:
+            left_none = 1 - i
         else:
             left_none = i
 
-        expand_slices = ((None,) * left_none +
-                         (slice(None),) +
-                         (None,) * (len(xi) - (left_none + 1)))
-        meshes.append(x[expand_slices])
+        shape = ((1,) * left_none +
+                 (x.size,) +
+                 (1,) * (len(xi) - (left_none + 1)))
+        meshes.append(x.reshape(shape))
 
     if sparse:
         meshes_br = meshes
