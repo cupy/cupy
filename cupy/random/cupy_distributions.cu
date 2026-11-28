@@ -81,12 +81,13 @@ void generator_dispatcher(int generator_id, F f, Ts&&... args) {
 template<typename T>
 __global__ void init_curand(intptr_t state, uint64_t seed, ssize_t size) {
     int id = threadIdx.x + blockIdx.x * blockDim.x;
+    if (id >= size) {
+        return;
+    }
     /* Each thread gets same seed, a different sequence
        number, no offset */
     T curand_state(id, state);
-    if (id < size) {
-        curand_init(seed, id, 0, &curand_state._state);    
-    }
+    curand_init(seed, id, 0, &curand_state._state);
 }
 
 struct initialize_launcher {
@@ -783,12 +784,14 @@ __device__ rk_binomial_state* get_index(rk_binomial_state *value, ssize_t id, ss
 
 template<typename F, typename T, typename R, typename... Args>
 __global__ void execute_dist( intptr_t state, ssize_t state_size, intptr_t out, ssize_t size, Args... args) {
+    ssize_t id = blockIdx.x * blockDim.x + threadIdx.x;
+    if (id >= state_size) {
+        return;
+    }
     R* out_ptr = reinterpret_cast<R*>(out);
     F func;
-    T random(blockIdx.x * blockDim.x + threadIdx.x, state);
-    for (ssize_t id = blockIdx.x * blockDim.x + threadIdx.x;
-             id < size; 
-             id += state_size) {
+    T random(id, state);
+    for (; id < size; id += state_size) {
         out_ptr[id] = func(random, (get_index(args, id, state_size))...);
     }
     return;
