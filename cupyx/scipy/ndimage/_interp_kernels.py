@@ -229,7 +229,7 @@ def _unravel_loop_index(shape, uint_t='unsigned int'):
 
 def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
                             order, name='', integer_output=False, nprepad=0,
-                            float_dtype=cupy.float64):
+                            float_dtype=cupy.float64, coord_dtype=None):
     """
     Args:
         coord_func (function): generates code to do the coordinate
@@ -245,6 +245,8 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
             integer type.
         nprepad (int): integer indicating the amount of prepadding at the
             boundaries.
+        coord_dtype (dtype or None): dtype of a user-supplied coordinates
+            array (``W``) when it may be wider than ``float_dtype``.
 
     Returns:
         operation (str): code body for the ElementwiseKernel
@@ -253,6 +255,12 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
 
     ops = []
     float_type = cupy._core._scalar.get_typename(float_dtype)
+    # Index math in at least W's precision, like the weights (gh-10470)
+    if coord_dtype is None:
+        index_type = float_type
+    else:
+        index_type = cupy._core._scalar.get_typename(
+            cupy.promote_types(coord_dtype, float_dtype))
     internal_dtype = float_type if integer_output else 'Y'
     ops.append(f'{internal_dtype} out = 0.0;')
 
@@ -301,7 +309,7 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
     if order == 0:
         if mode == 'wrap':
             # mode 'wrap' requires this to work
-            ops.append(f'{float_type} dcoord;')
+            ops.append(f'{index_type} dcoord;')
         for j in range(ndim):
             # determine nearest neighbor
             if mode == 'wrap':
@@ -310,8 +318,8 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
             else:
                 ops.append(
                     f'''{int_t} cf_{j} = (
-                            {int_t})floor(({float_type})c_{j}
-                                          + ({float_type})0.5);'''
+                            {int_t})floor(({index_type})c_{j}
+                                          + ({index_type})0.5);'''
                 )
 
             # handle boundary
@@ -328,7 +336,7 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
                 if mode == 'wrap':
                     ops.append(f'''
                 {int_t} cf_{j} = ({int_t})floor(dcoord
-                                  + ({float_type})0.5);''')
+                                  + ({index_type})0.5);''')
 
             # sum over ic_j will give the raveled coordinate in the input
             ops.append(f'''
@@ -350,15 +358,15 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
         for j in range(ndim):
             # get coordinates for linear interpolation along axis j
             ops.append(f'''
-            {int_t} cf_{j} = ({int_t})floor(({float_type})c_{j});
+            {int_t} cf_{j} = ({int_t})floor(({index_type})c_{j});
             {int_t} cc_{j} = cf_{j} + 1;
             {int_t} n_{j} = (c_{j} == cf_{j}) ? 1 : 2;  // points needed
             ''')
 
             if mode == 'wrap':
                 ops.append(f'''
-                {float_type} dcoordf = c_{j};
-                {float_type} dcoordc = c_{j} + 1;''')
+                {index_type} dcoordf = c_{j};
+                {index_type} dcoordc = c_{j} + 1;''')
             else:
                 # handle boundaries for extension modes.
                 ops.append(f'''
@@ -385,7 +393,7 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
                         f'''
                     {int_t} cf_bounded_{j} = ({int_t})floor(dcoordf);
                     {int_t} cc_bounded_{j} = ({int_t})floor(dcoordf
-                                              + ({float_type})1.0);
+                                              + ({index_type})1.0);
                     '''
                     )
 
@@ -424,13 +432,13 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
 
             # get starting coordinate for spline interpolation along axis j
             if mode in ['wrap']:
-                ops.append(f'{float_type} dcoord = c_{j};')
+                ops.append(f'{index_type} dcoord = c_{j};')
                 coord_var = 'dcoord'
                 ops.append(
                     _util._generate_boundary_condition_ops(
                         mode, coord_var, f'xsize_{j}', int_t, True))
             else:
-                coord_var = f'({float_type})c_{j}'
+                coord_var = f'({index_type})c_{j}'
 
             if order & 1:
                 op_str = '''
@@ -438,10 +446,10 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
             else:
                 op_str = '''
                 start = ({int_t})floor(
-                    {coord_var} + ({float_type})0.5) - {order_2};'''
+                    {coord_var} + ({index_type})0.5) - {order_2};'''
             ops.append(
                 op_str.format(
-                    int_t=int_t, float_type=float_type, coord_var=coord_var,
+                    int_t=int_t, index_type=index_type, coord_var=coord_var,
                     order_2=order // 2
                 ))
 
@@ -509,7 +517,8 @@ def _generate_interp_custom(coord_func, ndim, large_int, yshape, mode, cval,
 
 @cupy._util.memoize(for_each_device=True)
 def _get_map_kernel(ndim, large_int, mode, cval=0.0, order=1,
-                    integer_output=False, nprepad=0, float_dtype=cupy.double):
+                    integer_output=False, nprepad=0, float_dtype=cupy.double,
+                    coord_dtype=None):
     in_params = 'raw X x, raw W coords'
     out_params = 'Y y'
     operation, name = _generate_interp_custom(
@@ -524,6 +533,7 @@ def _get_map_kernel(ndim, large_int, mode, cval=0.0, order=1,
         integer_output=integer_output,
         nprepad=nprepad,
         float_dtype=float_dtype,
+        coord_dtype=coord_dtype,
     )
     return cupy.ElementwiseKernel(in_params, out_params, operation, name,
                                   preamble=math_constants_preamble)
