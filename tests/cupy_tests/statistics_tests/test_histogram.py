@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 import unittest
+import warnings
 
 import numpy
 import pytest
@@ -380,6 +381,304 @@ class TestHistogram(unittest.TestCase):
         x = xp.array([], x_type)
         w = xp.array([], w_type)
         return xp.bincount(x, weights=w, minlength=2)
+
+
+# Every estimator NumPy accepts for the ``bins`` string argument.
+_bin_estimators = (
+    'auto', 'doane', 'fd', 'rice', 'scott', 'sqrt', 'sturges', 'stone')
+
+
+class TestHistogramBinEdges(unittest.TestCase):
+
+    def _check(self, x, **kwargs):
+        """Compare ``cupy.histogram_bin_edges`` against NumPy's."""
+        edges = cupy.histogram_bin_edges(x, **kwargs)
+        expected = numpy.histogram_bin_edges(cupy.asnumpy(x), **kwargs)
+        assert isinstance(edges, cupy.ndarray)
+        testing.assert_allclose(edges, expected, rtol=1e-7, atol=1e-12)
+        return edges
+
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.numpy_cupy_allclose(atol=1e-7)
+    def test_bin_edges_all_dtypes(self, xp, dtype):
+        x = testing.shaped_arange((10,), xp, dtype)
+        return xp.histogram_bin_edges(x)
+
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.numpy_cupy_allclose(atol=1e-7)
+    def test_bin_edges_int_bins_all_dtypes(self, xp, dtype):
+        x = testing.shaped_arange((10,), xp, dtype)
+        return xp.histogram_bin_edges(x, bins=4)
+
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    def test_bin_edges_string_bins_all_dtypes(self, dtype):
+        x = testing.shaped_arange((10,), cupy, dtype)
+        for estimator in _bin_estimators:
+            # 'stone' warns about a possibly suboptimal bin count, exactly as
+            # NumPy does, so silence it on both sides.
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', RuntimeWarning)
+                edges = cupy.histogram_bin_edges(x, estimator)
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', RuntimeWarning)
+                expected = numpy.histogram_bin_edges(cupy.asnumpy(x),
+                                                     estimator)
+            testing.assert_allclose(edges, expected, rtol=1e-7, atol=1e-12)
+
+    def test_bin_edges_float16(self):
+        x = cupy.arange(10, dtype=cupy.float16)
+        testing.assert_allclose(
+            cupy.histogram_bin_edges(x, bins=4),
+            numpy.histogram_bin_edges(cupy.asnumpy(x), bins=4),
+            rtol=1e-3, atol=1e-3)
+
+    def test_bin_edges_matches_histogram(self):
+        x = cupy.asarray([0., 0., 0., 1., 2., 3., 3., 4., 5.])
+        for bins in [10, 4, [1, 2], numpy.array([0.5, 2.5, 4.5])]:
+            for rng in [None, (0, 1), (-0.5, 5)]:
+                _, edges = cupy.histogram(x, bins=bins, range=rng)
+                testing.assert_array_equal(
+                    edges, cupy.histogram_bin_edges(x, bins=bins, range=rng))
+
+    def test_bin_edges_int_bins(self):
+        x = cupy.asarray([1., 2., 3., 4.])
+        testing.assert_array_equal(
+            cupy.histogram_bin_edges(x, bins=2), [1, 2.5, 4])
+
+    def test_bin_edges_array_bins_passthrough(self):
+        x = cupy.asarray([1., 2., 3., 4.])
+        for bins in [[1, 2], (1.5, 3.5), numpy.array([1., 2.]),
+                     cupy.array([1., 2.])]:
+            # NumPy and CuPy must pass pre-computed bins through unmodified.
+            # NumPy's ``__array_function__`` dispatch hands a CuPy ``bins``
+            # array back to CuPy, so compare against plain Python bins.
+            expected = numpy.histogram_bin_edges(
+                cupy.asnumpy(x), numpy.asarray(cupy.asnumpy(bins)))
+            testing.assert_array_equal(
+                cupy.histogram_bin_edges(x, bins),
+                numpy.asarray(expected))
+
+    def test_bin_estimators(self):
+        x = cupy.asarray([0., 0., 0., 1., 2., 3., 3., 4., 5.])
+        for estimator in _bin_estimators:
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', RuntimeWarning)
+                edges = cupy.histogram_bin_edges(x, estimator)
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', RuntimeWarning)
+                expected = numpy.histogram_bin_edges(
+                    cupy.asnumpy(x), estimator)
+            testing.assert_allclose(edges, expected, rtol=1e-7, atol=1e-12)
+
+    def test_bin_edges_range_wider_than_data(self):
+        x = cupy.asarray([0., 0., 0., 1., 2., 3., 3., 4., 5.])
+        self._check(x, bins=30, range=(-0.5, 5))
+
+    def test_bin_edges_range_narrower_than_data(self):
+        x = cupy.asarray([0., 0., 0., 1., 2., 3., 3., 4., 5.])
+        for rng in [(0, 1), (1, 2), (0.5, 4.5)]:
+            for bins in [4, 'auto', 'fd', 'sturges']:
+                with warnings.catch_warnings():
+                    warnings.simplefilter('ignore', RuntimeWarning)
+                    self._check(x, bins=bins, range=rng)
+
+    def test_bin_edges_range_excludes_everything(self):
+        x = cupy.asarray([0., 0., 0., 1., 2., 3., 3., 4., 5.])
+        # every value falls outside ``range``; only the outer edges matter
+        for bins in ['auto', 'fd', 'sturges', 'sqrt']:
+            self._check(x, bins=bins, range=(100, 200))
+
+    def test_bin_edges_empty(self):
+        x = cupy.asarray([], dtype=cupy.float64)
+        for bins in [10, 4, 'auto', 'fd', 'sturges', 'sqrt']:
+            testing.assert_array_equal(
+                cupy.histogram_bin_edges(x, bins),
+                numpy.histogram_bin_edges(cupy.asnumpy(x), bins))
+
+    def test_bin_edges_empty_with_range(self):
+        x = cupy.asarray([], dtype=cupy.float64)
+        self._check(x, bins='auto', range=(3, 7))
+        self._check(x, bins=5, range=(3, 7))
+
+    def test_bin_edges_single_element(self):
+        x = cupy.asarray([2.5])
+        for bins in [10, 4, 'auto', 'fd', 'sturges', 'sqrt']:
+            self._check(x, bins=bins)
+
+    def test_bin_edges_constant_input(self):
+        # zero-range edge case: NumPy expands the range by +/- 0.5
+        x = cupy.full(10, 3.0)
+        for bins in [10, 4, 'auto', 'fd', 'sturges', 'sqrt']:
+            self._check(x, bins=bins)
+
+    def test_bin_edges_all_nan(self):
+        x = cupy.full(10, numpy.nan)
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError, match='not finite'):
+                xp.histogram_bin_edges(x)
+
+    def test_bin_edges_integer_min_width(self):
+        # bin width for integer data is at least 1 (upstream gh-10322 rule)
+        x = cupy.tile(cupy.arange(9), 1000)
+        for bins in _bin_estimators:
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', RuntimeWarning)
+                edges = cupy.histogram_bin_edges(x, bins)
+            testing.assert_array_equal(edges, numpy.arange(9))
+
+    def test_bin_edges_integer_non_auto(self):
+        # the bin-width >= 1 requirement only applies to automatic binning
+        x = cupy.tile(cupy.arange(9), 1000)
+        testing.assert_array_equal(
+            cupy.histogram_bin_edges(x, 16), numpy.arange(17) / 2)
+        testing.assert_array_equal(
+            cupy.histogram_bin_edges(x, [0.1, 0.2]), [0.1, 0.2])
+
+    def test_bin_edges_limited_variance(self):
+        # IQR is 0 but the variance is not: check the estimators stay sane
+        x = cupy.ones(1000)
+        x[:3] = 0
+        x[-4:] = 100
+
+        edges_auto = cupy.histogram_bin_edges(x, 'auto')
+        testing.assert_allclose(edges_auto[0], 0)
+        testing.assert_allclose(edges_auto[-1], 100.)
+        assert len(edges_auto) < 100
+
+        testing.assert_array_equal(
+            cupy.histogram_bin_edges(x, 'fd'), numpy.array([0, 100]))
+        testing.assert_allclose(
+            cupy.histogram_bin_edges(x, 'sturges'),
+            numpy.linspace(0, 100, 12), rtol=1e-7, atol=1e-12)
+
+    def test_bin_edges_negative_values(self):
+        x = cupy.asarray([-5., -1., 0., 1., 7.])
+        for bins in [10, 4, 'auto', 'fd', 'sturges', 'sqrt']:
+            self._check(x, bins=bins)
+
+    def test_bin_edges_values_outside_range(self):
+        x = cupy.asarray([-100., 0., 1., 2., 100.])
+        self._check(x, bins=8, range=(0, 2))
+        for bins in ['auto', 'fd', 'sturges']:
+            self._check(x, bins=bins, range=(0, 2))
+
+    def test_bin_edges_signed_int_overflow(self):
+        # the peak-to-peak value of int16 data must not overflow
+        x = cupy.asarray([-30000, -1, 0, 1, 30000], dtype=cupy.int16)
+        for bins in [4, 'auto', 'fd', 'sturges', 'sqrt']:
+            self._check(x, bins=bins)
+
+    def test_bin_edges_weights_unused(self):
+        x = cupy.asarray([0., 1., 2., 3.])
+        weights = cupy.asarray([0., 0., 0., 5.])
+        testing.assert_array_equal(
+            cupy.histogram_bin_edges(x, weights=weights),
+            cupy.histogram_bin_edges(x))
+        testing.assert_array_equal(
+            cupy.histogram_bin_edges(x, bins=3, weights=weights),
+            cupy.histogram_bin_edges(x, bins=3))
+
+    def test_bin_edges_weights_shape_mismatch(self):
+        x = cupy.asarray([0., 1., 2., 3.])
+        weights = cupy.asarray([1., 1.])
+        with pytest.raises(ValueError):
+            cupy.histogram_bin_edges(x, weights=weights)
+
+    def test_bin_edges_weighted_estimator_raises(self):
+        x = cupy.asarray([0., 1., 2., 3.])
+        weights = cupy.ones(4)
+        for estimator in _bin_estimators:
+            with pytest.raises(TypeError):
+                cupy.histogram_bin_edges(x, estimator, weights=weights)
+
+    def test_bin_edges_invalid_estimator(self):
+        x = cupy.asarray([0., 1., 2., 3.])
+        with pytest.raises(ValueError, match='not a valid estimator'):
+            cupy.histogram_bin_edges(x, 'bogus')
+
+    def test_bin_edges_non_monotonic_bins(self):
+        x = cupy.asarray([0., 1., 2., 3.])
+        with pytest.raises(ValueError, match='monotonically'):
+            cupy.histogram_bin_edges(x, cupy.asarray([1., 3., 2.]))
+
+    def test_bin_edges_too_many_bins(self):
+        x = cupy.asarray([1, 1 + 2e-16] * 10)
+        with pytest.raises(ValueError, match='Too many bins for data range'):
+            cupy.histogram_bin_edges(x, bins=10)
+
+    def test_bin_edges_complex_not_supported(self):
+        x = cupy.asarray([1 + 2j, 3 + 4j])
+        with pytest.raises(NotImplementedError):
+            cupy.histogram_bin_edges(x)
+
+    def test_bin_edges_negative_int_range_with_estimator(self):
+        # regression: the shared unsigned-subtraction helper must handle
+        # negative Python ints passed through ``range`` (upstream NEP 50 guard)
+        x = cupy.arange(10.0)
+        for bins in _bin_estimators:
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', RuntimeWarning)
+                self._check(x, bins=bins, range=(-2, 4))
+                y, edges = cupy.histogram(x, bins, range=(-2, 4))
+            testing.assert_array_equal(edges, cupy.histogram_bin_edges(
+                x, bins, range=(-2, 4)))
+            testing.assert_array_equal(
+                y, numpy.histogram(cupy.asnumpy(x), bins, range=(-2, 4))[0])
+
+    def test_bin_edges_negative_int_range_signed_data(self):
+        # same, with signed integer data so ``result_type`` is an int type
+        x = cupy.arange(-5, 5)
+        for bins in _bin_estimators:
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', RuntimeWarning)
+                self._check(x, bins=bins, range=(-8, 8))
+
+    def test_bin_edges_2d_bins_array_raises(self):
+        # NumPy rejects multi-dimensional ``bins`` arrays
+        xn = numpy.asarray([0., 1., 2., 3.])
+        xc = cupy.asarray(xn)
+        with pytest.raises(ValueError, match='must be 1d'):
+            numpy.histogram_bin_edges(xn, numpy.asarray([[1., 2.], [3., 4.]]))
+        with pytest.raises(ValueError, match='must be 1d'):
+            cupy.histogram_bin_edges(xc, cupy.asarray([[1., 2.], [3., 4.]]))
+
+    def test_histogram_2d_bins_array_raises(self):
+        xn = numpy.asarray([0., 1., 2., 3.])
+        xc = cupy.asarray(xn)
+        with pytest.raises(ValueError, match='must be 1d'):
+            numpy.histogram(xn, numpy.asarray([[1., 2.], [3., 4.]]))
+        with pytest.raises(ValueError, match='must be 1d'):
+            cupy.histogram(xc, cupy.asarray([[1., 2.], [3., 4.]]))
+
+    def test_bin_edges_0d_bins_array(self):
+        # a 0-d integer array is a scalar ``bins``, as in NumPy
+        xn = numpy.asarray([0., 1., 2., 3.])
+        expected = numpy.histogram_bin_edges(xn, 4)
+        testing.assert_allclose(
+            numpy.histogram_bin_edges(xn, numpy.asarray(4)), expected)
+        testing.assert_allclose(
+            cupy.histogram_bin_edges(cupy.asarray(xn), cupy.asarray(4)),
+            expected)
+
+    def test_bin_edges_array_like_input_raises(self):
+        # conscious divergence: cupy requires a cupy.ndarray for ``x``
+        with pytest.raises(ValueError, match='x must be a cupy.ndarray'):
+            cupy.histogram_bin_edges([1, 2, 3])
+        with pytest.raises(ValueError, match='x must be a cupy.ndarray'):
+            cupy.histogram([1, 2, 3])
+
+    def test_histogram_string_bins(self):
+        # the shared helper means `histogram` gained the same estimators
+        x = cupy.asarray([0., 0., 0., 1., 2., 3., 3., 4., 5.])
+        for bins in _bin_estimators:
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', RuntimeWarning)
+                y, edges = cupy.histogram(x, bins)
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', RuntimeWarning)
+                expected_y, expected_e = numpy.histogram(cupy.asnumpy(x), bins)
+            testing.assert_array_equal(y, expected_y)
+            testing.assert_allclose(edges, expected_e, rtol=1e-7, atol=1e-12)
 
 
 # This class compares CUB results against NumPy's
