@@ -120,7 +120,7 @@ def check_soft_dependencies():
                                '24.12 should be installed to use this feature')
 
 
-def minkowski(u, v, p):
+def minkowski(u, v, p=2):
     """Compute the Minkowski distance between two 1-D arrays.
 
     Args:
@@ -130,6 +130,7 @@ def minkowski(u, v, p):
             :math:`{\\|u-v\\|}_p`. Note that for :math:`0 < p < 1`,
             the triangle inequality only holds with an additional
             multiplicative factor, i.e. it is only a quasi-metric.
+            The default is 2, the Euclidean distance.
 
     Returns:
         minkowski (double): The Minkowski distance between vectors `u` and `v`.

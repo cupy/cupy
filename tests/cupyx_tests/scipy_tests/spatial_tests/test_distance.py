@@ -162,6 +162,13 @@ class TestDistanceFunction(unittest.TestCase):
         out = scp.spatial.distance.minkowski(a, a, p=self.p)
         return out
 
+    @testing.numpy_cupy_allclose(scipy_name='scp', rtol=1e-4)
+    def test_minkowski_default_p(self, xp, scp):
+        a = self._make_matrix(xp, self.dtype, self.order)
+        b = self._make_matrix(xp, self.dtype, self.order) + 1
+        out = scp.spatial.distance.minkowski(a, b)
+        return xp.asarray(out)
+
     @testing.numpy_cupy_equal(scipy_name='scp')
     def test_canberra_(self, xp, scp):
 
