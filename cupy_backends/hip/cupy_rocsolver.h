@@ -2063,36 +2063,148 @@ cusolverStatus_t cusolverDnSHgels(...) {
     return rocblas_status_not_implemented;
 }
 
-cusolverStatus_t cusolverDnSsyevd_bufferSize(...) {
-    return rocblas_status_not_implemented;
+cusolverStatus_t cusolverDnSsyevd_bufferSize(cusolverDnHandle_t handle,
+                                             cusolverEigMode_t jobz,
+                                             cublasFillMode_t uplo,
+                                             int n,
+                                             const float *A,
+                                             int lda,
+                                             const float *W,
+                                             int *lwork) {
+    // work is not needed as workspace: it holds rocSOLVER's real off-diagonal array E
+    // (n elements)
+    *lwork = n;  // note: counts, not bytes!
+    return rocblas_status_success;
 }
 
-cusolverStatus_t cusolverDnDsyevd_bufferSize(...) {
-    return rocblas_status_not_implemented;
+cusolverStatus_t cusolverDnDsyevd_bufferSize(cusolverDnHandle_t handle,
+                                             cusolverEigMode_t jobz,
+                                             cublasFillMode_t uplo,
+                                             int n,
+                                             const double *A,
+                                             int lda,
+                                             const double *W,
+                                             int *lwork) {
+    // work is not needed as workspace: it holds rocSOLVER's real off-diagonal array E
+    // (n elements)
+    *lwork = n;  // note: counts, not bytes!
+    return rocblas_status_success;
 }
 
-cusolverStatus_t cusolverDnCheevd_bufferSize(...) {
-    return rocblas_status_not_implemented;
+cusolverStatus_t cusolverDnCheevd_bufferSize(cusolverDnHandle_t handle,
+                                             cusolverEigMode_t jobz,
+                                             cublasFillMode_t uplo,
+                                             int n,
+                                             const cuComplex *A,
+                                             int lda,
+                                             const float *W,
+                                             int *lwork) {
+    // work is not needed as workspace: it holds rocSOLVER's real off-diagonal array E
+    // (n elements)
+    *lwork = n;  // note: counts, not bytes!
+    return rocblas_status_success;
 }
 
-cusolverStatus_t cusolverDnZheevd_bufferSize(...) {
-    return rocblas_status_not_implemented;
+cusolverStatus_t cusolverDnZheevd_bufferSize(cusolverDnHandle_t handle,
+                                             cusolverEigMode_t jobz,
+                                             cublasFillMode_t uplo,
+                                             int n,
+                                             const cuDoubleComplex *A,
+                                             int lda,
+                                             const double *W,
+                                             int *lwork) {
+    // work is not needed as workspace: it holds rocSOLVER's real off-diagonal array E
+    // (n elements)
+    *lwork = n;  // note: counts, not bytes!
+    return rocblas_status_success;
 }
 
-cusolverStatus_t cusolverDnSsyevd(...) {
+cusolverStatus_t cusolverDnSsyevd(cusolverDnHandle_t handle,
+                                  cusolverEigMode_t jobz,
+                                  cublasFillMode_t uplo,
+                                  int n,
+                                  float *A,
+                                  int lda,
+                                  float *W,
+                                  float *work,
+                                  int lwork,
+                                  int *info) {
+    #if HIP_VERSION < 40400000
     return rocblas_status_not_implemented;
+    #else
+    return rocsolver_ssyevd(handle, convert_rocblas_evect(jobz), convert_rocblas_fill(uplo),
+                            n, A, lda, W,
+                            // work is unused otherwise, so it stores the temporary E array, to be
+                            // discarded after calculation
+                            work,
+                            info);
+    #endif
 }
 
-cusolverStatus_t cusolverDnDsyevd(...) {
+cusolverStatus_t cusolverDnDsyevd(cusolverDnHandle_t handle,
+                                  cusolverEigMode_t jobz,
+                                  cublasFillMode_t uplo,
+                                  int n,
+                                  double *A,
+                                  int lda,
+                                  double *W,
+                                  double *work,
+                                  int lwork,
+                                  int *info) {
+    #if HIP_VERSION < 40400000
     return rocblas_status_not_implemented;
+    #else
+    return rocsolver_dsyevd(handle, convert_rocblas_evect(jobz), convert_rocblas_fill(uplo),
+                            n, A, lda, W,
+                            // work is unused otherwise, so it stores the temporary E array, to be
+                            // discarded after calculation
+                            work,
+                            info);
+    #endif
 }
 
-cusolverStatus_t cusolverDnCheevd(...) {
+cusolverStatus_t cusolverDnCheevd(cusolverDnHandle_t handle,
+                                  cusolverEigMode_t jobz,
+                                  cublasFillMode_t uplo,
+                                  int n,
+                                  cuComplex *A,
+                                  int lda,
+                                  float *W,
+                                  cuComplex *work,
+                                  int lwork,
+                                  int *info) {
+    #if HIP_VERSION < 40400000
     return rocblas_status_not_implemented;
+    #else
+    return rocsolver_cheevd(handle, convert_rocblas_evect(jobz), convert_rocblas_fill(uplo),
+                            n, reinterpret_cast<rocblas_float_complex*>(A), lda, W,
+                            // work is unused otherwise, so it stores the temporary E array, to be
+                            // discarded after calculation
+                            reinterpret_cast<float*>(work),
+                            info);
+    #endif
 }
 
-cusolverStatus_t cusolverDnZheevd(...) {
+cusolverStatus_t cusolverDnZheevd(cusolverDnHandle_t handle,
+                                  cusolverEigMode_t jobz,
+                                  cublasFillMode_t uplo,
+                                  int n,
+                                  cuDoubleComplex *A,
+                                  int lda,
+                                  double *W,
+                                  cuDoubleComplex *work,
+                                  int lwork,
+                                  int *info) {
+    #if HIP_VERSION < 40400000
     return rocblas_status_not_implemented;
+    #else
+    return rocsolver_zheevd(handle, convert_rocblas_evect(jobz), convert_rocblas_fill(uplo),
+                            n, reinterpret_cast<rocblas_double_complex*>(A), lda, W,
+                            // work is unused otherwise, so it stores the temporary E array, to be
+                            // discarded after calculation
+                            reinterpret_cast<double*>(work),
+                            info);
+    #endif
 }
 
 cusolverStatus_t cusolverDnXsyevjSetTolerance(...) {
