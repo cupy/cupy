@@ -21,6 +21,7 @@ from cupy._core.core cimport _ndarray_base
 from cupy._core cimport internal
 from cupy.cuda cimport device
 from cupy.cuda cimport function
+from cupy.cuda cimport memory
 from cupy_backends.cuda.api cimport runtime
 
 import math
@@ -63,12 +64,50 @@ ${preamble}
 }
 
 typedef ${reduce_type} _type_reduce;
-extern "C" __global__ void ${name}(${params}) {
+#ifndef CUPY_SPLIT_STAGE
+#define CUPY_SPLIT_STAGE 0
+#endif
+// Split ("two-stage") variant for reductions with few outputs and a long
+// reduction axis (e.g. column sums of a tall C-ordered matrix): stage 1
+// reduces chunks of _J_chunk reduction indices per blockIdx.y into
+// _type_reduce partials, stage 2 combines the partials and applies POST_MAP.
+extern "C" __global__ void ${name}(${params}
+#if CUPY_SPLIT_STAGE == 1
+    , _type_reduce* _partial, long long _J_chunk
+#elif CUPY_SPLIT_STAGE == 2
+    , const _type_reduce* _partial, long long _n_split
+#endif
+    ) {
+#if CUPY_SPLIT_STAGE == 2
+  for (ptrdiff_t _i = (ptrdiff_t)blockIdx.x * blockDim.x + threadIdx.x;
+       _i < _out_ind.size(); _i += (ptrdiff_t)gridDim.x * blockDim.x) {
+    _type_reduce _s = _partial[_i];
+    for (long long _k = 1; _k < _n_split; ++_k) {
+      _type_reduce _a = _partial[_k * _out_ind.size() + _i];
+      _s = REDUCE(_s, _a);
+    }
+    _out_ind.set(_i);
+    ${output_expr}
+    POST_MAP(_s);
+  }
+#else
   __shared__ char _sdata_raw[${block_size} * sizeof(_type_reduce)];
   _type_reduce *_sdata = reinterpret_cast<_type_reduce*>(_sdata_raw);
   unsigned int _tid = threadIdx.x;
 
   IndexT _J_offset = _tid >> __popc(_block_stride - 1); // _tid / _block_stride
+#if CUPY_SPLIT_STAGE == 1
+  static_assert(sizeof(_type_reduce) <= 32,
+                "split reduction assumes sizeof(_type_reduce) <= 32");
+  const long long _J_lo = (long long)blockIdx.y * _J_chunk;
+  _J_offset += (IndexT)_J_lo;
+  const ptrdiff_t _j_end_chunk =
+      (ptrdiff_t)(_J_lo + _J_chunk) * _out_ind.size();
+  const ptrdiff_t _j_end =
+      _j_end_chunk < _in_ind.size() ? _j_end_chunk : _in_ind.size();
+#else
+  const ptrdiff_t _j_end = _in_ind.size();
+#endif
   ptrdiff_t _j_offset = (ptrdiff_t)_J_offset * _out_ind.size();
   IndexT _J_stride = ${block_size} >> __popc(_block_stride - 1);
   ptrdiff_t _j_stride = (ptrdiff_t)_J_stride * _out_ind.size();
@@ -80,7 +119,7 @@ extern "C" __global__ void ${name}(${params}) {
     ptrdiff_t _i =
         _i_base + (_tid & (_block_stride - 1));  // _tid % _block_stride
     IndexT _J = _J_offset;
-    for (ptrdiff_t _j = _i + _j_offset; _j < _in_ind.size();
+    for (ptrdiff_t _j = _i + _j_offset; _j < _j_end;
          _j += _j_stride, _J += _J_stride) {
       _in_ind.set(_j);
       ${input_expr}
@@ -100,11 +139,16 @@ extern "C" __global__ void ${name}(${params}) {
       _s = _sdata[_tid];
     }
     if (_tid < _block_stride && _i < _out_ind.size()) {
+#if CUPY_SPLIT_STAGE == 1
+      _partial[(ptrdiff_t)blockIdx.y * _out_ind.size() + _i] = _s;
+#else
       _out_ind.set(static_cast<ptrdiff_t>(_i));
       ${output_expr}
       POST_MAP(_s);
+#endif
     }
   }
+#endif  // CUPY_SPLIT_STAGE == 2
 }''').substitute(
         name=name,
         block_size=block_size,
@@ -224,6 +268,16 @@ cdef Py_ssize_t _get_contiguous_size(
         contiguous_size = max(contiguous_size, tmp_contiguous_size)
     return contiguous_size
 
+
+# Split reductions (see the kernel template): used when the single-pass
+# kernel would launch fewer than ``_split_min_blocks`` blocks.
+cdef tuple _split_stage_options = (
+    (), ('-DCUPY_SPLIT_STAGE=1',), ('-DCUPY_SPLIT_STAGE=2',))
+cdef Py_ssize_t _split_min_blocks = 64
+cdef Py_ssize_t _split_target_blocks = 1024
+cdef Py_ssize_t _split_min_size = 1 << 16
+cdef Py_ssize_t _split_min_items = 8  # per thread and chunk
+cdef Py_ssize_t _split_max_partials = 1 << 18  # x 32 bytes = 8 MiB
 
 cdef Py_ssize_t _default_block_size = (
     256 if runtime._is_hip_environment else 512)
@@ -509,10 +563,52 @@ cdef class _AbstractReductionKernel:
                 _scalar.CScalar.from_int32(block_stride),
             ])
 
+        cdef tuple arginfos = _get_arginfos(inout_args)
+        cdef Py_ssize_t in_size, out_size, n_reduce, n_split, j_chunk
+        cdef Py_ssize_t threads_per_out
+        cdef memory.MemoryPointer partial
+
+        if _split_min_blocks > 0 and out_block_num < _split_min_blocks:
+            # Few output blocks (e.g. column reduction of a tall C-ordered
+            # matrix): the single-pass kernel would occupy only a handful
+            # of SMs. Split the reduction axis over gridDim.y.
+            in_size = internal.prod(in_shape)
+            out_size = internal.prod(out_shape)
+            n_reduce = in_size // out_size if out_size else 0
+            threads_per_out = block_size // block_stride
+            if (in_size >= _split_min_size
+                    and n_reduce >= 2 * threads_per_out * _split_min_items):
+                n_split = min(
+                    (_split_target_blocks + out_block_num - 1)
+                    // out_block_num,
+                    n_reduce // (threads_per_out * _split_min_items),
+                    _split_max_partials // out_size, 65535)
+                if n_split >= 2:
+                    j_chunk = (n_reduce + n_split - 1) // n_split
+                    n_split = (n_reduce + j_chunk - 1) // j_chunk
+                    partial = memory.alloc(n_split * out_size * 32)
+                    func = self._get_function(
+                        params, arginfos, type_map, map_expr, reduce_expr,
+                        post_map_expr, reduce_type, block_size, 1)
+                    func(
+                        (out_block_num, n_split, 1), (block_size, 1, 1),
+                        inout_args + [partial,
+                                      _scalar.CScalar(j_chunk)],
+                        0, stream)
+                    func = self._get_function(
+                        params, arginfos, type_map, map_expr, reduce_expr,
+                        post_map_expr, reduce_type, block_size, 2)
+                    func.linear_launch(
+                        out_size,
+                        inout_args + [partial,
+                                      _scalar.CScalar(n_split)],
+                        0, 256, stream)
+                    return 0
+
         # Retrieve the kernel function
         func = self._get_function(
             params,
-            _get_arginfos(inout_args),
+            arginfos,
             type_map,
             map_expr, reduce_expr, post_map_expr, reduce_type,
             block_size)
@@ -534,7 +630,7 @@ cdef class _AbstractReductionKernel:
             self,
             tuple params, tuple arginfos, _kernel._TypeMap type_map,
             str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
-            Py_ssize_t block_size):
+            Py_ssize_t block_size, int split_stage=0):
         raise NotImplementedError()
 
     @property
@@ -679,14 +775,14 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
             self,
             tuple params, tuple arginfos, _kernel._TypeMap type_map,
             str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
-            Py_ssize_t block_size):
+            Py_ssize_t block_size, int split_stage=0):
 
         in_types = []
         for x in arginfos:
             if x.type is cupy.ndarray:
                 in_types.append(cupy.dtype(x.dtype).char)
         in_types = tuple(in_types)
-        if in_types not in self._cached_codes:
+        if split_stage == 0 and in_types not in self._cached_codes:
             code = _SimpleReductionKernel_get_cached_function_code(
                 map_expr, reduce_expr, post_map_expr, reduce_type,
                 params, arginfos, type_map,
@@ -698,7 +794,8 @@ cdef class _SimpleReductionKernel(_AbstractReductionKernel):
             map_expr, reduce_expr, post_map_expr, reduce_type,
             params, arginfos, type_map,
             self.name, block_size, self.identity,
-            self._input_expr, self._output_expr, self.preamble, ())
+            self._input_expr, self._output_expr, self.preamble,
+            _split_stage_options[split_stage])
 
 
 @_util.memoize()
@@ -876,14 +973,14 @@ cdef class ReductionKernel(_AbstractReductionKernel):
             self,
             tuple params, tuple arginfos, _kernel._TypeMap type_map,
             str map_expr, str reduce_expr, str post_map_expr, str reduce_type,
-            Py_ssize_t block_size):
+            Py_ssize_t block_size, int split_stage=0):
 
         in_types = []
         for x in arginfos:
             if x.type is cupy.ndarray:
                 in_types.append(cupy.dtype(x.dtype).char)
         in_types = tuple(in_types)
-        if in_types not in self._cached_codes:
+        if split_stage == 0 and in_types not in self._cached_codes:
             code =_ReductionKernel_get_cached_function_code(
                 self.nin, self.nout, params, arginfos, type_map,
                 self.name, block_size, reduce_type, self.identity,
@@ -894,7 +991,7 @@ cdef class ReductionKernel(_AbstractReductionKernel):
             self.nin, self.nout, params, arginfos, type_map,
             self.name, block_size, reduce_type, self.identity,
             map_expr, reduce_expr, post_map_expr,
-            self.preamble, self.options)
+            self.preamble, self.options + _split_stage_options[split_stage])
 
 
 @_util.memoize()
