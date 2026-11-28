@@ -518,6 +518,66 @@ class TestOrder:
         a = xp.array([float('nan'), float('nan')], dtype)
         return xp.ptp(a)
 
+    @pytest.mark.parametrize('keepdims', [False, True])
+    @pytest.mark.parametrize('axis', [None, 0, 1, 2, -1, (0, 2)])
+    @testing.for_all_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_minmax(self, xp, dtype, axis, keepdims):
+        a = testing.shaped_random((2, 3, 4), xp, dtype)
+        return _minmax(xp, a, axis=axis, keepdims=keepdims)
+
+    @pytest.mark.parametrize('axis', [0, 1])
+    @testing.for_all_dtypes(no_bool=True, no_complex=True)
+    @testing.numpy_cupy_allclose()
+    def test_minmax_axis_large(self, xp, dtype, axis):
+        a = testing.shaped_random((300, 1000), xp, dtype)
+        return _minmax(xp, a, axis=axis)
+
+    @pytest.mark.parametrize('pos', [0, 7, 999])
+    @testing.for_float_dtypes()
+    @testing.numpy_cupy_allclose()
+    def test_minmax_nan(self, xp, dtype, pos):
+        a = testing.shaped_random((4, 1000), xp, dtype)
+        a[::2, pos] = xp.nan
+        return _minmax(xp, a, axis=1)
+
+    @pytest.mark.parametrize('axis', [None, 1])
+    @testing.for_all_dtypes(no_bool=True)
+    @testing.numpy_cupy_allclose()
+    def test_minmax_out(self, xp, dtype, axis):
+        a = testing.shaped_random((2, 3), xp, dtype)
+        shape = () if axis is None else (2,)
+        out = (xp.empty(shape, dtype), xp.empty(shape, dtype))
+        ret = _minmax(xp, a, axis=axis, out=out)
+        assert ret[0] is out[0] and ret[1] is out[1]
+        return ret
+
+    @pytest.mark.parametrize('n', [1, 3])
+    def test_minmax_out_invalid(self, n):
+        a = cupy.ones((2, 3))
+        with pytest.raises(TypeError):
+            cupy.minmax(a, axis=1, out=[cupy.empty(2)] * 2)
+        with pytest.raises(TypeError):
+            cupy.minmax(a, axis=1, out=(cupy.empty(2),) * n)
+
+    @testing.numpy_cupy_allclose()
+    def test_minmax_zero_size_kept_axis(self, xp):
+        return _minmax(xp, xp.empty((0, 3)), axis=1)
+
+    def test_minmax_zero_size(self):
+        for xp in (numpy, cupy):
+            with pytest.raises(ValueError):
+                _minmax(xp, xp.empty((3, 0)), axis=1)
+
+
+def _minmax(xp, a, **kwargs):
+    # numpy.minmax is too new for most supported NumPy versions.
+    if xp is cupy:
+        return cupy.minmax(a, **kwargs)
+    out = kwargs.pop('out', (None, None))
+    return (numpy.amin(a, out=out[0], **kwargs),
+            numpy.amax(a, out=out[1], **kwargs))
+
 
 # See gh-4607
 # "Magic" values used in this test were empirically found to result in

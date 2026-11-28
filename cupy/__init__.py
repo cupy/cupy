@@ -743,6 +743,7 @@ from cupy._statistics.order import amax  # NOQA
 from cupy._statistics.order import amax as max  # NOQA
 from cupy._statistics.order import amin  # NOQA
 from cupy._statistics.order import amin as min  # NOQA
+from cupy._statistics.order import minmax  # NOQA
 from cupy._statistics.order import nanmax  # NOQA
 from cupy._statistics.order import nanmin  # NOQA
 from cupy._statistics.order import percentile  # NOQA
