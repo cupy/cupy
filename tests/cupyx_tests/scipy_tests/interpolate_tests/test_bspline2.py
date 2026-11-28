@@ -7,6 +7,7 @@ from cupy.cuda import runtime
 
 import numpy as _np
 import cupyx.scipy.interpolate as csi  # NOQA
+from cupyx.scipy.interpolate._bspline2 import _check_cudss_exists
 
 try:
     from scipy import interpolate  # NOQA
@@ -569,6 +570,53 @@ class TestLSQ:
         x = xp.asarray([0., 0.2, 0.1, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.])
         t = xp.asarray([0.] * 4 + [0.5] + [1.] * 4)
         scp.interpolate.make_lsq_spline(x, xp.sin(4 * x), t, k=3)
+
+    @pytest.mark.skipif(
+        not _check_cudss_exists(), reason="cuDSS is not available"
+    )
+    def test_nvmath_backend_matches_qr(self):
+        rng = _np.random.RandomState(1234)
+        n = 50
+        x = cupy.asarray(_np.sort(rng.uniform(0, 4, n)))
+        y = cupy.sin(2 * x[:, None]) + 0.1 * cupy.asarray(
+            rng.normal(size=(n, 3)))
+        t = cupy.asarray(_augknt(_np.linspace(0, 4, 7), 3))
+
+        # default weights only, the qr path disagrees with scipy for w != 1
+        spl = csi.make_lsq_spline(x, y, t, k=3, method="norm-eq")
+        ref = csi.make_lsq_spline(x, y, t, k=3, method="qr")
+
+        xx = cupy.linspace(0, 4, 200)
+        testing.assert_allclose(spl(xx), ref(xx), rtol=1e-6, atol=1e-8)
+
+    @pytest.mark.skipif(
+        not _check_cudss_exists(), reason="cuDSS is not available"
+    )
+    @testing.with_requires("scipy>=1.15")
+    def test_norm_eq_weighted_matches_scipy(self):
+        import scipy.interpolate as sci
+        rng = _np.random.RandomState(1234)
+        n = 50
+        x_np = _np.sort(rng.uniform(0, 4, n))
+        y_np = _np.sin(2 * x_np) + 0.1 * rng.normal(size=n)
+        w_np = rng.uniform(0.5, 2.0, n)
+        t_np = _augknt(_np.linspace(0, 4, 7), 3).get()
+
+        ref = sci.make_lsq_spline(x_np, y_np, t_np, k=3, w=w_np,
+                                  method="norm-eq")
+        spl = csi.make_lsq_spline(cupy.asarray(x_np), cupy.asarray(y_np),
+                                  cupy.asarray(t_np), k=3,
+                                  w=cupy.asarray(w_np), method="norm-eq")
+        testing.assert_allclose(spl.c, cupy.asarray(ref.c),
+                                rtol=1e-9, atol=1e-9)
+
+    @pytest.mark.skipif(_check_cudss_exists(),
+                        reason="tests the error when cuDSS is absent")
+    def test_norm_eq_requires_cudss(self):
+        x = cupy.linspace(0., 1., 10)
+        t = cupy.asarray([0.] * 4 + [0.5] + [1.] * 4)
+        with pytest.raises(RuntimeError, match="cuDSS"):
+            csi.make_lsq_spline(x, cupy.sin(x), t, k=3, method="norm-eq")
 
 
 def fprota(c, s, a, b):

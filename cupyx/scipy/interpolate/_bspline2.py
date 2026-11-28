@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import operator
 from math import prod
+import logging
 
 import numpy
 if numpy.__version__ < '2':
@@ -17,9 +18,36 @@ from cupyx.scipy.interpolate._bspline import (
     D_BOOR_MODULE, BSpline)
 
 
+_cudss_available = None
+
+
+def _check_cudss_exists():
+    global _cudss_available
+    if _cudss_available is None:
+        _cudss_available = _find_cudss()
+    return _cudss_available
+
+
+def _find_cudss():
+    try:
+        from cuda import pathfinder
+        import nvmath.sparse.advanced  # NOQA
+    except ImportError:
+        return False
+    try:
+        pathfinder.load_nvidia_dynamic_lib("cudss")
+    except pathfinder.DynamicLibNotFoundError:
+        return False
+    return True
+
+
+_cudss_logger = logging.getLogger(__name__)
+_cudss_logger.setLevel(logging.ERROR)
+
 #################################
 #  Interpolating spline helpers #
 #################################
+
 
 def _not_a_knot(x, k):
     """Given data x, construct the knot vector w/ not-a-knot BC.
@@ -769,6 +797,22 @@ def fpback(R, nc, y):
     return c
 
 
+def _lsq_solve_normal(x, y, t, k, w):
+    """Solve for the LSQ spline coeffs via the normal equations and cuDSS.
+
+    The residuals are scaled by `w`, cf `_lsq_solve_qr`.
+    """
+    import nvmath.sparse.advanced as adv
+    X = BSpline.design_matrix(x, t, k)
+    w2 = w * w
+    lhs = X.T @ X.multiply(w2[:, None])
+    rhs = X.T @ (w2[:, None] * y)
+
+    rhs = cupy.asfortranarray(rhs)
+    c = adv.direct_solver(lhs, rhs, options={"logger": _cudss_logger})
+    return cupy.ascontiguousarray(c, dtype=cupy.float64)
+
+
 def make_lsq_spline(x, y, t, k=3, w=None, axis=0, check_finite=True, *,
                     method="qr"):
     r"""Construct a BSpline via an LSQ (Least SQuared) fit.
@@ -805,6 +849,13 @@ def make_lsq_spline(x, y, t, k=3, w=None, axis=0, check_finite=True, *,
         Disabling may give a performance gain, but may result in problems
         (crashes, non-termination) if the inputs do contain infinities or NaNs.
         Default is True.
+    method : str, optional
+        Method for solving the linear LSQ problem. Allowed values are "norm-eq"
+        (Explicitly construct and solve the normal system of equations), and
+        "qr" (Use the QR factorization of the design matrix).
+        "norm-eq" requires nvmath-python and the cuDSS library (installed by
+        nvmath-python's cu12/cu13 extras) and raises ``RuntimeError`` if they
+        are missing. Default is "qr".
 
     Returns
     -------
@@ -845,7 +896,6 @@ def make_lsq_spline(x, y, t, k=3, w=None, axis=0, check_finite=True, *,
         raise ValueError("Expect non-negative k.")
     if t.ndim != 1 or (t[1:] - t[:-1] < 0).any():
         raise ValueError("Expect t to be a 1-D sorted array_like.")
-        raise ValueError("Expect t to be a 1D strictly increasing sequence.")
     if x.size != y.shape[0]:
         raise ValueError(
             f'Shapes of x {x.shape} and y {y.shape} are incompatible')
@@ -854,7 +904,7 @@ def make_lsq_spline(x, y, t, k=3, w=None, axis=0, check_finite=True, *,
     if x.size != w.size:
         raise ValueError(
             f'Shapes of x {x.shape} and w {w.shape} are incompatible')
-    if method != "qr":
+    if method not in ("qr", "norm-eq"):
         raise ValueError(f"{method=} is not supported.")
     if (x[1:] - x[:-1] < 0).any():
         raise ValueError("Expect x to be a 1D non-decreasing sequence.")
@@ -867,7 +917,15 @@ def make_lsq_spline(x, y, t, k=3, w=None, axis=0, check_finite=True, *,
     yy = y.reshape(-1, extradim)
 
     # solve
-    _, _, c = _lsq_solve_qr(x, yy, t, k, w)
+    if method == "norm-eq":
+        if not _check_cudss_exists():
+            raise RuntimeError(
+                "method='norm-eq' requires nvmath-python and the cuDSS "
+                "library, installed via nvmath-python's cu12/cu13 extras "
+                "(e.g. `pip install nvmath-python[cu13]`).")
+        c = _lsq_solve_normal(x, yy, t, k, w)
+    else:
+        _, _, c = _lsq_solve_qr(x, yy, t, k, w)
 
     # restore the shape of `c` for both single and multiple r.h.s.
     c = c.reshape((nc,) + y.shape[1:])
