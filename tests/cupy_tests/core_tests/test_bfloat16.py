@@ -303,7 +303,6 @@ def test_ldexp(xp):
     ((1, 10, 20_000), (2, 20_000, 10)),
 ])
 @testing.numpy_cupy_allclose(rtol=TOL, atol=TOL)
-@pytest.mark.skipif(runtime.is_hip, reason="Matrix version crashed CI.")
 def test_matmul(xp, shapes):
     shape_a, shape_b = shapes
     a = testing.shaped_arange(shape_a, xp, dtype=BF16)
