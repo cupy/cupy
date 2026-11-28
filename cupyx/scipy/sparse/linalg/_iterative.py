@@ -58,6 +58,8 @@ def cg(A, b, x0=None, *, rtol=1e-5, atol=0.0, maxiter=None, M=None,
     atol = max(float(atol), rtol * float(b_norm))
 
     r = b - matvec(x)
+    if cublas.nrm2(r) <= atol:
+        return x, 0
     iters = 0
     rho = 0
     while iters < maxiter:
@@ -239,6 +241,8 @@ def cgs(A, b, x0=None, *, rtol=1e-5, atol=0.0, maxiter=None, M=None,
         maxiter = n * 5
 
     r0 = b - matvec(x)
+    if cupy.linalg.norm(r0) <= atol:
+        return x, 0
 
     rho = cupy.dot(r0, r0)
 
